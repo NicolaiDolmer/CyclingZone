@@ -6,7 +6,7 @@
   "tour": {
     "placeBid": {
       "title": "Afgiv et bud",
-      "body": "Indtast dit bud og tryk 'Byd'. Min-bud er forudfyldt — du skal byde mindst 1 CZ$ over det aktuelle bud."
+      "body": "Indtast dit bud og tryk 'Byd'. Min-bud er forudfyldt. Du skal byde mindst 1 CZ$ over det aktuelle bud."
     },
     "countdown": {
       "title": "Tid tilbage og auto-forlængelse",
@@ -18,7 +18,7 @@
     "minBidLabel": "Min-bud:",
     "minBidBody": "Et nyt bud skal mindst være 1 CZ$ over det aktuelle bud. Min-bud er forudfyldt i input-feltet.",
     "autoExtendLabel": "10-min auto-forlængelse:",
-    "autoExtendBody": "Bud i de sidste 10 minutter forlænger auktionen — så du kan altid svare igen, hvis nogen overbyder dig på falderebet.",
+    "autoExtendBody": "Bud i de sidste 10 minutter forlænger auktionen, så du kan altid svare igen, hvis nogen overbyder dig på falderebet.",
     "startTour": "💡 Vis mig rundt"
   },
   "ticker": {

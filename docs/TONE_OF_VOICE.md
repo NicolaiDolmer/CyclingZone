@@ -1,8 +1,8 @@
-# Tone of voice — Cycling Zone player-facing copy
+# Tone of voice · Cycling Zone player-facing copy
 
 > **Established:** 2026-05-18 (tone session efter PR #475 PatchNotes overreach + #366 blokering)
 > **Owner:** Nicolai Dolmer Mikkelsen (founder)
-> **Konsulter denne guide før al ny player-facing tekst** — per `feedback_player_facing_copy_rules.md` regel 5.
+> **Konsulter denne guide før al ny player-facing tekst**, per `feedback_player_facing_copy_rules.md` regel 5.
 
 ## Language priority
 
@@ -10,17 +10,17 @@
 
 Se også: `memory/feedback_language_priority.md`.
 
-## Brand voice — founder-led, build-in-public
+## Brand voice · founder-led, build-in-public
 
 **Stemmen er Nicolais**, ikke et team eller en virksomhed:
-- "I" (EN) / "jeg" (DA) — ikke "we"/"vi"
+- "I" (EN) / "jeg" (DA), ikke "we"/"vi"
 - Reflective, honest, open about what we don't know yet
 - Address each player 1-to-1 ("you" / "du"), not as a crowd ("everyone"/"alle")
 - Share the thinking, not just the conclusion ("I'm trying to figure out..." / "jeg overvejer...")
 
 **Build-in-public means:** We share the decision-making process while it happens, not after. Players who join early should feel they are shaping the direction, not consuming a finished product.
 
-## Positioning — the game is free, premium is optional
+## Positioning · the game is free, premium is optional
 
 The game has been free, is free now, and will always remain free. There is no plan to gate gameplay behind payment, ever.
 
@@ -28,7 +28,7 @@ A premium tier exists as an **opt-in** for players who want either:
 1. Extra features that don't affect gameplay outcomes
 2. A way to back the project they enjoy
 
-Both reasons are valid. Neither is the "real" reason — players can choose either or both.
+Both reasons are valid. Neither is the "real" reason. Players can choose either or both.
 
 ## The fairness promise (brand-løfte)
 
@@ -77,6 +77,7 @@ Per `feedback_player_facing_copy_rules.md` regel 2 + dagens session-tillæg:
 
 **Punktuation:**
 - ❌ Em-dash (—) NOGENSTEDS i player-facing tekst, kode, docs, commits, PR-bodies, chat. Brug komma, punktum, kolon eller parentes.
+  → **Undtagelse:** et enkeltstående `—` brugt som tom-værdi-glyf i tabeller/dropdowns (en celle uden værdi, "ingen data") er ikke prosa og er tilladt. Det er en typografisk placeholder, ikke en sætnings-separator. Locale-nøgler som `rankNone`, `salaryNone`, `dash`, `noBuyOption` falder under denne undtagelse (#671).
 
 ### Session B naming-beslutning
 
@@ -89,7 +90,7 @@ Tier-navne er låst per `docs/decisions/session-b-naming-fair-premium-copy.md`:
 
 Brug ikke `Founder Supporter` som samlet navn. Hvis et teknisk felt eller en eksisterende enum stadig hedder `supporter`, må værdien beholdes internt, men player-facing labels skal følge listen ovenfor.
 
-## Eksempel — Discord launch-post (EN draft)
+## Eksempel · Discord launch-post (EN draft)
 
 > Hey, I want to share something I've been thinking about.
 >

@@ -1,9 +1,9 @@
 {
   "title": "Races",
   "subtitle": {
-    "withSeason": "Season {number} — {count} races",
+    "withSeason": "Season {number} · {count} races",
     "noSeason": "No active season",
-    "noSeasonWithCount": "No active season — {count} races",
+    "noSeasonWithCount": "No active season · {count} races",
     "library": "{count} races across all seasons",
     "points": "UCI points tables and prize formula"
   },
@@ -135,8 +135,8 @@
     "submitCta": "Submit for approval",
     "mySubmissions": "My submissions",
     "msgSelectRace": "❌ Select a race",
-    "msgUnmatched": "❌ {count} riders are not matched — fix them manually",
-    "msgSubmitted": "✅ Results submitted — awaiting admin approval",
+    "msgUnmatched": "❌ {count} riders are not matched. Fix them manually",
+    "msgSubmitted": "✅ Results submitted · awaiting admin approval",
     "msgError": "❌ {message}"
   },
   "resultType": {
@@ -199,7 +199,7 @@
     "noOverall": "No overall classifications recorded",
     "tableResult": "Result",
     "jerseysAfterStage": "Jerseys after the stage",
-    "stageFinishOrder": "Stage {number} — finish order",
+    "stageFinishOrder": "Stage {number} · finish order",
     "noResults": "No results",
     "classification": {
       "gc": "Overall (GC)",

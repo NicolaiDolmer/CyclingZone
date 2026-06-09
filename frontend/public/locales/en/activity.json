@@ -20,7 +20,7 @@
     "pending": "Awaiting response",
     "countered": "Counter received",
     "awaiting_confirmation": "Confirm deal",
-    "window_pending": "Agreed — awaiting window",
+    "window_pending": "Agreed · awaiting window",
     "accepted": "Accepted",
     "rejected": "Rejected",
     "withdrawn": "Withdrawn"

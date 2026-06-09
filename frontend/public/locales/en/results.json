@@ -7,14 +7,14 @@
   "hub": {
     "standings": { "label": "Standings", "desc": "Team standings for the active season" },
     "riderRankings": { "label": "Rider rankings", "desc": "Individual results for all riders" },
-    "library": { "label": "Race library", "desc": "All races across seasons — search & filter" },
+    "library": { "label": "Race library", "desc": "All races across seasons · search & filter" },
     "seasonSnapshot": { "label": "Season snapshot", "desc": "Calendar, final standings and season winners" },
     "hallOfFame": { "label": "Hall of Fame", "desc": "Records and manager ranking" },
     "points": { "label": "Points & prizes", "desc": "UCI points and prize formulas per race class" }
   },
-  "emptyNoSeason": "No active season — results will appear here once the season is underway",
-  "topTeams": "Top teams — Season {number}",
-  "topScorers": "Top scorers — Season {number}",
+  "emptyNoSeason": "No active season. Results will appear here once the season is underway",
+  "topTeams": "Top teams · Season {number}",
+  "topScorers": "Top scorers · Season {number}",
   "teamMeta": "{stageWins, plural, one {# stage win} other {# stage wins}} · {gcWins} GC",
   "freeAgent": "Free agent",
   "riderStageWins": "{count, plural, one {# stage win} other {# stage wins}}",

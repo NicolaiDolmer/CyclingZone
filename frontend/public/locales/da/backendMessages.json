@@ -1,20 +1,20 @@
 {
   "tx": {
     "sponsor": {
-      "seasonStartIntro": "Sponsorindtægt — Sæson start (intro {amount} ×{modifier})",
-      "seasonStartIntroPullout": "Sponsorindtægt — Sæson start (intro {amount} ×{modifier} · sponsor-pullout aktiv)",
-      "seasonStartVariable": "Sponsorindtægt — Sæson start (base {base} + variabel {variable} ×{modifier})",
-      "seasonStartVariablePullout": "Sponsorindtægt — Sæson start (base {base} + variabel {variable} ×{modifier} · sponsor-pullout aktiv)",
-      "seasonStartFallback": "Sponsorindtægt — Sæson start (fallback {amount} ×{modifier})",
-      "seasonStartFallbackPullout": "Sponsorindtægt — Sæson start (fallback {amount} ×{modifier} · sponsor-pullout aktiv)"
+      "seasonStartIntro": "Sponsorindtægt · Sæson start (intro {amount} ×{modifier})",
+      "seasonStartIntroPullout": "Sponsorindtægt · Sæson start (intro {amount} ×{modifier} · sponsor-pullout aktiv)",
+      "seasonStartVariable": "Sponsorindtægt · Sæson start (base {base} + variabel {variable} ×{modifier})",
+      "seasonStartVariablePullout": "Sponsorindtægt · Sæson start (base {base} + variabel {variable} ×{modifier} · sponsor-pullout aktiv)",
+      "seasonStartFallback": "Sponsorindtægt · Sæson start (fallback {amount} ×{modifier})",
+      "seasonStartFallbackPullout": "Sponsorindtægt · Sæson start (fallback {amount} ×{modifier} · sponsor-pullout aktiv)"
     },
-    "salary": "Sæsonlønninger — {count} ryttere",
+    "salary": "Sæsonlønninger · {count} ryttere",
     "interest": "Renter på gæld (10% af {amount} pts)",
-    "bonus": "Divisionsbonus — Division {division}, plads {rank}",
+    "bonus": "Divisionsbonus · Division {division}, plads {rank}",
     "loanReceivedShort": "Kort lån optaget (gebyr: {fee} CZ$)",
     "loanReceivedLong": "Langt lån optaget (gebyr: {fee} CZ$)",
     "loanRepayment": "Lånrate betalt",
-    "loanRepaymentFinal": "Lånrate betalt — lån fuldt tilbagebetalt! 🎉",
+    "loanRepaymentFinal": "Lånrate betalt. Lån fuldt tilbagebetalt! 🎉",
     "loanRepaymentRemaining": "Lånrate betalt (resterende: {remaining} CZ$)",
     "loanInterest": "Lånerenter tilskrevet ({rate}%)",
     "emergencyLoan": "Nødlån oprettet automatisk (gebyr: {feeRate}%, rente: {interestRate}%/sæson)",
@@ -25,11 +25,11 @@
   },
   "forecast": {
     "warning": {
-      "negativeNet": "Forventet underskud: {value} CZ$ næste sæson — sælg en rytter, reducér aktive lån eller forhandl bedre sponsor.",
-      "debtNearCeiling": "Gæld er {ratio}% af loftet ({totalDebt} / {ceiling} CZ$) — bestyrelsen er bekymret.",
-      "debtGrowing": "Gæld er {ratio}% af loftet — hold øje med rente-byrden.",
-      "debtTrend": "Med det nuværende underskud rammer du gældsloftet inden for 2 sæsoner — handl nu.",
-      "salaryExceedsSponsor": "Løn ({salary} CZ$) overstiger sponsor ({sponsor} CZ$) — rolig drift dækker ikke længere lønnen."
+      "negativeNet": "Forventet underskud: {value} CZ$ næste sæson. Sælg en rytter, reducér aktive lån eller forhandl bedre sponsor.",
+      "debtNearCeiling": "Gæld er {ratio}% af loftet ({totalDebt} / {ceiling} CZ$). Bestyrelsen er bekymret.",
+      "debtGrowing": "Gæld er {ratio}% af loftet. Hold øje med rente-byrden.",
+      "debtTrend": "Med det nuværende underskud rammer du gældsloftet inden for 2 sæsoner. Handl nu.",
+      "salaryExceedsSponsor": "Løn ({salary} CZ$) overstiger sponsor ({sponsor} CZ$). Rolig drift dækker ikke længere lønnen."
     }
   },
   "notif": {
@@ -73,7 +73,7 @@
     },
     "boardChairmanReplaced": {
       "title": "Bestyrelsen har valgt en ny formand",
-      "message": "Efter to skuffende plansæsoner har bestyrelsen udskiftet formanden. {chairmanLabel} overtager — forvent ny tone i de kommende forhandlinger."
+      "message": "Efter to skuffende plansæsoner har bestyrelsen udskiftet formanden. {chairmanLabel} overtager. Forvent ny tone i de kommende forhandlinger."
     },
     "boardForcedListing": {
       "title": "Bestyrelsen kræver salg",
@@ -106,7 +106,7 @@
     },
     "boardAutoAccepted": {
       "title": "Bestyrelsen valgte {planLabel} for dig",
-      "message": "Du nåede ikke at forhandle din {planLabel} — bestyrelsen valgte focus \"{focus}\" og standardmål. Du kan stadig anmode om ændringer når planen kører."
+      "message": "Du nåede ikke at forhandle din {planLabel}. Bestyrelsen valgte focus \"{focus}\" og standardmål. Du kan stadig anmode om ændringer når planen kører."
     },
     "autoBidPlaced": {
       "title": "Autobud afgivet",
@@ -118,9 +118,9 @@
     }
   },
   "error": {
-    "repayInsufficient": "Du har kun {available} CZ$ tilgængelig — resten er låst i aktive bud eller autobud",
+    "repayInsufficient": "Du har kun {available} CZ$ tilgængelig. Resten er låst i aktive bud eller autobud",
     "boardSigningRestriction": "Bestyrelsen blokerer køb over {threshold} CZ$ (tilfredshed under {satisfaction}%).",
-    "boardSalaryCap": "Lønloft pålagt af bestyrelsen ({cap} CZ$). Du kan ikke øge holdets samlede løn — sælg en rytter først.",
+    "boardSalaryCap": "Lønloft pålagt af bestyrelsen ({cap} CZ$). Du kan ikke øge holdets samlede løn. Sælg en rytter først.",
     "squadFineDeducted": "Bøde: {fineAmount} CZ$ · Fradrag: {penaltyPoints} point",
     "debtCapReached": "Gældsloft på {ceiling} CZ$ nået for denne division"
   },

@@ -6,7 +6,7 @@
   "tour": {
     "placeBid": {
       "title": "Place a bid",
-      "body": "Enter your bid and press 'Bid'. Min bid is pre-filled — you must bid at least 1 CZ$ above the current bid."
+      "body": "Enter your bid and press 'Bid'. Min bid is pre-filled. You must bid at least 1 CZ$ above the current bid."
     },
     "countdown": {
       "title": "Time left and auto-extension",
@@ -18,7 +18,7 @@
     "minBidLabel": "Min bid:",
     "minBidBody": "A new bid must be at least 1 CZ$ above the current bid. Min bid is pre-filled in the input field.",
     "autoExtendLabel": "10-min auto-extension:",
-    "autoExtendBody": "Bids in the last 10 minutes extend the auction — so you can always respond if someone outbids you at the very end.",
+    "autoExtendBody": "Bids in the last 10 minutes extend the auction, so you can always respond if someone outbids you at the very end.",
     "startTour": "💡 Show me around"
   },
   "ticker": {

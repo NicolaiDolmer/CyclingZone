@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.07",
+    date: "2026-06-09",
+    label: "Beta",
+    changes: [
+      {
+        category: "Improved · Brand identity",
+        items: [
+          "EN · The login screen tagline now reads \"Cycling Zone · Multiplayer Edition\" with a middot separator instead of a dash, matching the wordmark style already used in the browser tab and on shared links. Refs #481, #671.",
+          "DA · Tagline på login-skærmen står nu som \"Cycling Zone · Multiplayer Edition\" med en middot-separator i stedet for en streg, så den matcher wordmark-stilen der allerede bruges i browser-fanen og på delte links. Refs #481, #671.",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.06",
     date: "2026-06-09",
     label: "Beta",
@@ -149,8 +163,8 @@ const PATCHES = [
       {
         category: "Fixed · Board negotiation",
         items: [
-          "EN · In the board plan negotiation, the \"Negotiate down\" button no longer does nothing when a target can't be lowered — it's now clearly disabled and labelled \"Can't be negotiated\" instead of silently ignoring your click. Refs #864.",
-          "DA · I bestyrelsens planforhandling gør \"Forhandl ned\"-knappen ikke længere ingenting når et mål ikke kan sænkes — den er nu tydeligt deaktiveret og mærket \"Kan ikke forhandles\" i stedet for tavst at ignorere dit klik. Refs #864.",
+          "EN · In the board plan negotiation, the \"Negotiate down\" button no longer does nothing when a target can't be lowered. It's now clearly disabled and labelled \"Can't be negotiated\" instead of silently ignoring your click. Refs #864.",
+          "DA · I bestyrelsens planforhandling gør \"Forhandl ned\"-knappen ikke længere ingenting når et mål ikke kan sænkes. Den er nu tydeligt deaktiveret og mærket \"Kan ikke forhandles\" i stedet for tavst at ignorere dit klik. Refs #864.",
         ],
       },
     ],
@@ -177,8 +191,8 @@ const PATCHES = [
       {
         category: "New · Rider types",
         items: [
-          "EN · Riders now show a rider type — their two strongest roles, like \"Sprinter / Lead-out\" or \"Climber / GC contender\" — on the rider profile and in the rider list. The type is read from a rider's stats relative to the whole field (so it reflects what they're genuinely good at, not just high numbers), across 12 roles: Sprinter, Lead-out, Climber, Puncheur, Time-trialist, Classics specialist, GC contender, GOAT, All-rounder, Rouleur, Baroudeur and Domestique. You can also filter the rider list by type. Refs #49, #92.",
-          "DA · Ryttere viser nu en ryttertype — deres to stærkeste roller, fx \"Sprinter / Lead-out\" eller \"Bjergrytter / Etapeløbsrytter\" — på rytterprofilen og i rytterlisten. Typen aflæses af rytterens stats i forhold til hele feltet (så den afspejler hvad de reelt er gode til, ikke bare høje tal), på tværs af 12 roller: Sprinter, Lead-out, Bjergrytter, Bakkerytter, Tidskører, Brostensrytter, Etapeløbsrytter, GOAT, Allrounder, Rouleur, Baroudeur og Hjælperytter. Du kan også filtrere rytterlisten på type. Refs #49, #92.",
+          "EN · Riders now show a rider type (their two strongest roles, like \"Sprinter / Lead-out\" or \"Climber / GC contender\") on the rider profile and in the rider list. The type is read from a rider's stats relative to the whole field (so it reflects what they're genuinely good at, not just high numbers), across 12 roles: Sprinter, Lead-out, Climber, Puncheur, Time-trialist, Classics specialist, GC contender, GOAT, All-rounder, Rouleur, Baroudeur and Domestique. You can also filter the rider list by type. Refs #49, #92.",
+          "DA · Ryttere viser nu en ryttertype (deres to stærkeste roller, fx \"Sprinter / Lead-out\" eller \"Bjergrytter / Etapeløbsrytter\") på rytterprofilen og i rytterlisten. Typen aflæses af rytterens stats i forhold til hele feltet (så den afspejler hvad de reelt er gode til, ikke bare høje tal), på tværs af 12 roller: Sprinter, Lead-out, Bjergrytter, Bakkerytter, Tidskører, Brostensrytter, Etapeløbsrytter, GOAT, Allrounder, Rouleur, Baroudeur og Hjælperytter. Du kan også filtrere rytterlisten på type. Refs #49, #92.",
         ],
       },
     ],
@@ -191,8 +205,8 @@ const PATCHES = [
       {
         category: "New · Rider value",
         items: [
-          "EN · Rider profiles now show a \"New value (beta)\" chip next to the current value. It previews an upcoming valuation that's learned from what managers actually pay in auctions (abilities, age and more) instead of IRL UCI points. It does not affect buying, selling or salary yet — it's there so we can verify the new numbers before switching over. Refs #1101.",
-          "DA · Rytterprofiler viser nu en \"Ny værdi (beta)\"-chip ved siden af den nuværende værdi. Den forhåndsviser et kommende værdisystem, der er lært af hvad managers faktisk betaler i auktioner (evner, alder m.m.) i stedet for IRL UCI-point. Den påvirker endnu ikke køb, salg eller løn — den er der, så vi kan verificere de nye tal før vi skifter over. Refs #1101.",
+          "EN · Rider profiles now show a \"New value (beta)\" chip next to the current value. It previews an upcoming valuation that's learned from what managers actually pay in auctions (abilities, age and more) instead of IRL UCI points. It does not affect buying, selling or salary yet. It's there so we can verify the new numbers before switching over. Refs #1101.",
+          "DA · Rytterprofiler viser nu en \"Ny værdi (beta)\"-chip ved siden af den nuværende værdi. Den forhåndsviser et kommende værdisystem, der er lært af hvad managers faktisk betaler i auktioner (evner, alder m.m.) i stedet for IRL UCI-point. Den påvirker endnu ikke køb, salg eller løn. Den er der, så vi kan verificere de nye tal før vi skifter over. Refs #1101.",
         ],
       },
     ],
@@ -205,10 +219,10 @@ const PATCHES = [
       {
         category: "Improved · The board",
         items: [
-          "EN · New \"What drives this board?\" panel on the board page: a single overall-satisfaction bar (averaged across your 5/3/1-year plans) with a plain-language label, plus the two-to-three goal types your club's DNA weights most — so you can see at a glance what moves the board. Refs #102, #165.",
-          "DA · Nyt \"Hvad vægter dette board?\"-panel på bestyrelsessiden: én samlet tilfredsheds-bar (gennemsnit på tværs af dine 5/3/1-årsplaner) med en label i klar tale, plus de to-tre måltyper din klubs DNA vægter højest — så du med ét blik kan se, hvad der rykker bestyrelsen. Refs #102, #165.",
-          "EN · The board's \"sign a star rider\" goal is renamed to \"high-renown rider\" — the old wording clashed with the potential-star rating you see on riders. It now shows your progress (e.g. 0/1) and a \"How is this measured?\" note explaining the threshold. A fuller earned-renown system (rising with results, wins and honours) is coming. Refs #815.",
-          "DA · Bestyrelsens \"signér en stjerne-rytter\"-mål er omdøbt til \"rytter med højt omdømme\" — den gamle formulering kolliderede med potentiale-stjernerne du ser på ryttere. Det viser nu din fremgang (fx 0/1) og en \"Hvordan måles dette?\"-note der forklarer tærsklen. Et fuldt optjent omdømme-system (stiger med resultater, sejre og titler) er på vej. Refs #815.",
+          "EN · New \"What drives this board?\" panel on the board page: a single overall-satisfaction bar (averaged across your 5/3/1-year plans) with a plain-language label, plus the two-to-three goal types your club's DNA weights most. So you can see at a glance what moves the board. Refs #102, #165.",
+          "DA · Nyt \"Hvad vægter dette board?\"-panel på bestyrelsessiden: én samlet tilfredsheds-bar (gennemsnit på tværs af dine 5/3/1-årsplaner) med en label i klar tale, plus de to-tre måltyper din klubs DNA vægter højest. Så du med ét blik kan se, hvad der rykker bestyrelsen. Refs #102, #165.",
+          "EN · The board's \"sign a star rider\" goal is renamed to \"high-renown rider\". The old wording clashed with the potential-star rating you see on riders. It now shows your progress (e.g. 0/1) and a \"How is this measured?\" note explaining the threshold. A fuller earned-renown system (rising with results, wins and honours) is coming. Refs #815.",
+          "DA · Bestyrelsens \"signér en stjerne-rytter\"-mål er omdøbt til \"rytter med højt omdømme\". Den gamle formulering kolliderede med potentiale-stjernerne du ser på ryttere. Det viser nu din fremgang (fx 0/1) og en \"Hvordan måles dette?\"-note der forklarer tærsklen. Et fuldt optjent omdømme-system (stiger med resultater, sejre og titler) er på vej. Refs #815.",
           "EN · The 3-year \"top X in division\" goal and the U25 development goal now each carry a short \"How is this measured?\" note, clarifying that the ranking is judged on the plan's final season and that U25 development means average stat-points gained per young rider per season. Refs #989, #1096.",
           "DA · 3-årsplanens \"top X i divisionen\"-mål og U25-udviklingsmålet har nu hver en kort \"Hvordan måles dette?\"-note, der gør klart at placeringen vurderes på planens sidste sæson, og at U25-udvikling betyder gennemsnitlige stat-points pr. ung rytter pr. sæson. Refs #989, #1096.",
         ],
@@ -223,8 +237,8 @@ const PATCHES = [
       {
         category: "Improved · Standings",
         items: [
-          "EN · Gold now means one thing: the leader. The rank-1 team in a division carries a gold \"Leader\" jersey badge across the standings, season-end results and your dashboard — sitting alongside the green/red promotion and relegation markers, never replacing them. Your own team, which used to be gold (clashing with that signal), now stands out with a clean neutral highlight instead. Refs #481.",
-          "DA · Guld betyder nu én ting: føreren. Det førende hold i en division får et guld-\"Fører\"-trøjemærke på ranglisten, sæson-resultaterne og dit dashboard — ved siden af de grønne/røde op- og nedryknings-markører, aldrig i stedet for dem. Dit eget hold, der før var guld (og kolliderede med det signal), fremhæves nu i stedet med en ren, neutral markering. Refs #481.",
+          "EN · Gold now means one thing: the leader. The rank-1 team in a division carries a gold \"Leader\" jersey badge across the standings, season-end results and your dashboard. Sitting alongside the green/red promotion and relegation markers, never replacing them. Your own team, which used to be gold (clashing with that signal), now stands out with a clean neutral highlight instead. Refs #481.",
+          "DA · Guld betyder nu én ting: føreren. Det førende hold i en division får et guld-\"Fører\"-trøjemærke på ranglisten, sæson-resultaterne og dit dashboard. Ved siden af de grønne/røde op- og nedryknings-markører, aldrig i stedet for dem. Dit eget hold, der før var guld (og kolliderede med det signal), fremhæves nu i stedet med en ren, neutral markering. Refs #481.",
         ],
       },
     ],
@@ -260,8 +274,8 @@ const PATCHES = [
       {
         category: "Fixed · Profiles",
         items: [
-          "EN · The offline indicator dot on manager and team profile pages was invisible due to a missing color — offline managers now show a clear grey dot next to their last-seen time. Refs #1072.",
-          "DA · Den grå offline-prik på manager- og holdprofiler var usynlig på grund af en manglende farve — offline-managere viser nu en tydelig grå prik ved siden af deres sidst set-tidspunkt. Refs #1072.",
+          "EN · The offline indicator dot on manager and team profile pages was invisible due to a missing color. Offline managers now show a clear grey dot next to their last-seen time. Refs #1072.",
+          "DA · Den grå offline-prik på manager- og holdprofiler var usynlig på grund af en manglende farve. Offline-managere viser nu en tydelig grå prik ved siden af deres sidst set-tidspunkt. Refs #1072.",
         ],
       },
     ],
@@ -288,8 +302,8 @@ const PATCHES = [
       {
         category: "Fixed · The board",
         items: [
-          "EN · On your board plans, newer goal types — signing a star rider, developing your U25 riders, or finishing ahead of rival managers in your division — were not counted in your \"goals met\" tally or the goal status icons on the plan panels, even after you had achieved them; only the older goal types were. Every goal type now counts correctly, so your plan progress reflects what you have actually accomplished. Refs #55.",
-          "DA · På dine bestyrelses-planer blev nyere måltyper — at signere en stjernerytter, udvikle dine U25-ryttere eller slutte foran rival-managere i din division — ikke talt med i din \"mål opfyldt\"-optælling eller mål-status-ikonerne på plan-panelerne, selv efter du havde opnået dem; kun de ældre måltyper gjorde. Alle måltyper tælles nu korrekt, så din plan-fremgang afspejler det, du faktisk har opnået. Refs #55.",
+          "EN · On your board plans, newer goal types (signing a star rider, developing your U25 riders, or finishing ahead of rival managers in your division) were not counted in your \"goals met\" tally or the goal status icons on the plan panels, even after you had achieved them; only the older goal types were. Every goal type now counts correctly, so your plan progress reflects what you have actually accomplished. Refs #55.",
+          "DA · På dine bestyrelses-planer blev nyere måltyper (at signere en stjernerytter, udvikle dine U25-ryttere eller slutte foran rival-managere i din division) ikke talt med i din \"mål opfyldt\"-optælling eller mål-status-ikonerne på plan-panelerne, selv efter du havde opnået dem; kun de ældre måltyper gjorde. Alle måltyper tælles nu korrekt, så din plan-fremgang afspejler det, du faktisk har opnået. Refs #55.",
         ],
       },
     ],
@@ -400,8 +414,8 @@ const PATCHES = [
       {
         category: "Fixed · Board",
         items: [
-          "EN · Board messages now appear in English for English players. Choosing your club DNA, negotiating or signing a board plan, and the mid-season renegotiation lock previously fell back to Danish even in English mode — they are now fully localised. A negative-balance notification also showed up in Danish for English players and is now translated too. Refs #678.",
-          "DA · Bestyrelses-beskeder vises stadig på dansk for danske spillere uden ændringer — men engelske spillere så tidligere dansk tekst ved DNA-valg, forhandling/signering af bestyrelsesplaner og midt-sæson-låsen. Det er nu fuldt oversat. En notifikation om negativ saldo blev også vist på dansk for engelske spillere og er nu oversat. Refs #678.",
+          "EN · Board messages now appear in English for English players. Choosing your club DNA, negotiating or signing a board plan, and the mid-season renegotiation lock previously fell back to Danish even in English mode. They are now fully localised. A negative-balance notification also showed up in Danish for English players and is now translated too. Refs #678.",
+          "DA · Bestyrelses-beskeder vises stadig på dansk for danske spillere uden ændringer. Men engelske spillere så tidligere dansk tekst ved DNA-valg, forhandling/signering af bestyrelsesplaner og midt-sæson-låsen. Det er nu fuldt oversat. En notifikation om negativ saldo blev også vist på dansk for engelske spillere og er nu oversat. Refs #678.",
         ],
       },
     ],
@@ -414,8 +428,8 @@ const PATCHES = [
       {
         category: "Fixed · Transfers",
         items: [
-          "EN · Error messages across transfers, swaps and loans now appear in English for English players. Listing a rider, sending offers and counter-offers, proposing swaps, and creating or accepting loans previously fell back to Danish even in English mode — including squad-full warnings and \"can't afford\" notices. They are now fully localised, with amounts formatted to your language. Refs #678.",
-          "DA · Fejlbeskeder på tværs af transfers, byttehandler og lejeaftaler vises stadig på dansk for danske spillere uden ændringer — men engelske spillere så tidligere dansk tekst ved salg, tilbud, modbud, byttehandler og lejeaftaler. Det er nu fuldt oversat, med beløb formateret efter dit sprog. Refs #678.",
+          "EN · Error messages across transfers, swaps and loans now appear in English for English players. Listing a rider, sending offers and counter-offers, proposing swaps, and creating or accepting loans previously fell back to Danish even in English mode. Including squad-full warnings and \"can't afford\" notices. They are now fully localised, with amounts formatted to your language. Refs #678.",
+          "DA · Fejlbeskeder på tværs af transfers, byttehandler og lejeaftaler vises stadig på dansk for danske spillere uden ændringer. Men engelske spillere så tidligere dansk tekst ved salg, tilbud, modbud, byttehandler og lejeaftaler. Det er nu fuldt oversat, med beløb formateret efter dit sprog. Refs #678.",
         ],
       },
     ],
@@ -428,8 +442,8 @@ const PATCHES = [
       {
         category: "Fixed · Auctions",
         items: [
-          "EN · Error messages in the auction flow now appear in English for English players. Bidding, auto-bids and the \"too many actions\" rate-limit notices previously fell back to Danish even in English mode — they are now fully localised, with amounts formatted to your language. Refs #678.",
-          "DA · Fejlbeskeder i auktions-flowet vises nu på dansk for danske spillere uden ændringer — men engelske spillere så tidligere dansk tekst ved bud, autobud og \"for mange handlinger\"-beskeder. Det er nu fuldt oversat, med beløb formateret efter dit sprog. Refs #678.",
+          "EN · Error messages in the auction flow now appear in English for English players. Bidding, auto-bids and the \"too many actions\" rate-limit notices previously fell back to Danish even in English mode. They are now fully localised, with amounts formatted to your language. Refs #678.",
+          "DA · Fejlbeskeder i auktions-flowet vises nu på dansk for danske spillere uden ændringer. Men engelske spillere så tidligere dansk tekst ved bud, autobud og \"for mange handlinger\"-beskeder. Det er nu fuldt oversat, med beløb formateret efter dit sprog. Refs #678.",
         ],
       },
     ],
@@ -442,8 +456,8 @@ const PATCHES = [
       {
         category: "Improved · Brand",
         items: [
-          "EN · The sidebar navigation now marks each item with a small gold dot — solid gold for the page you are currently on, dimmed for the rest — and hovering an item slides in a short gold accent line borrowed from the brand wordmark. Together they make it clearer where you are and what you are about to open. Refs #481.",
-          "DA · Sidebar-navigationen markerer nu hvert punkt med en lille guld-prik — solid guld for den side, du er på, dæmpet for resten — og når du holder musen over et punkt, glider en kort guld-accent-streg ind, lånt fra brand-wordmark'et. Tilsammen gør de det tydeligere, hvor du er, og hvad du er ved at åbne. Refs #481.",
+          "EN · The sidebar navigation now marks each item with a small gold dot (solid gold for the page you are currently on, dimmed for the rest) and hovering an item slides in a short gold accent line borrowed from the brand wordmark. Together they make it clearer where you are and what you are about to open. Refs #481.",
+          "DA · Sidebar-navigationen markerer nu hvert punkt med en lille guld-prik (solid guld for den side, du er på, dæmpet for resten) og når du holder musen over et punkt, glider en kort guld-accent-streg ind, lånt fra brand-wordmark'et. Tilsammen gør de det tydeligere, hvor du er, og hvad du er ved at åbne. Refs #481.",
         ],
       },
     ],
@@ -456,8 +470,8 @@ const PATCHES = [
       {
         category: "Improved · Brand",
         items: [
-          "EN · Cycling Zone now renders in its own brand typefaces — a condensed display font for the wordmark and a dedicated font for numbers, stats and prices — together with a refined colour palette: a warmer off-white light mode, cleaner dark surfaces, and status colours (success, warning, error, info) retuned so \"warning\" no longer clashes with the brand gold. Faint text in dark mode is now easier to read. The fonts are self-hosted, so the page no longer shifts around while they load. Refs #481.",
-          "DA · Cycling Zone vises nu med sine egne brand-skrifttyper — en kondenseret display-font til wordmark'et og en dedikeret font til tal, statistik og priser — sammen med en forfinet farvepalet: en varmere off-white lys-tilstand, renere mørke flader, og status-farver (succes, advarsel, fejl, info) justeret så \"advarsel\" ikke længere kolliderer med brand-guld. Svag tekst i mørk tilstand er nemmere at læse nu. Skrifttyperne hostes lokalt, så siden ikke længere hopper rundt mens de indlæses. Refs #481.",
+          "EN · Cycling Zone now renders in its own brand typefaces (a condensed display font for the wordmark and a dedicated font for numbers, stats and prices) together with a refined colour palette: a warmer off-white light mode, cleaner dark surfaces, and status colours (success, warning, error, info) retuned so \"warning\" no longer clashes with the brand gold. Faint text in dark mode is now easier to read. The fonts are self-hosted, so the page no longer shifts around while they load. Refs #481.",
+          "DA · Cycling Zone vises nu med sine egne brand-skrifttyper (en kondenseret display-font til wordmark'et og en dedikeret font til tal, statistik og priser) sammen med en forfinet farvepalet: en varmere off-white lys-tilstand, renere mørke flader, og status-farver (succes, advarsel, fejl, info) justeret så \"advarsel\" ikke længere kolliderer med brand-guld. Svag tekst i mørk tilstand er nemmere at læse nu. Skrifttyperne hostes lokalt, så siden ikke længere hopper rundt mens de indlæses. Refs #481.",
         ],
       },
     ],
@@ -498,8 +512,8 @@ const PATCHES = [
       {
         category: "Fixed · Auctions & lists",
         items: [
-          "EN · When a bid exceeded your available balance, the auction showed a raw internal text instead of a readable message — it now reads \"Bid exceeds your available balance\". Filtering the Rider Database, Watchlist or Rider Rankings down to zero matches now shows a clear message with a \"Clear all filters\" button instead of a blank table. The watchlist star and compare controls are now translated, and a failed \"Start auction\" no longer shows a raw browser pop-up. Based on click-data from the UI audit. Refs #864, #670.",
-          "DA · Når et bud oversteg din tilgængelige saldo, viste auktionen en rå intern tekst i stedet for en læsbar besked — der står nu \"Buddet overstiger din tilgængelige saldo\". Filtrerer du Rytterdatabasen, Ønskelisten eller Rytterranglisten ned til nul match, vises nu en tydelig besked med en \"Ryd alle filtre\"-knap i stedet for en tom tabel. Ønskeliste-stjernen og sammenlign-knapperne er nu oversat, og en fejlet \"Start auktion\" viser ikke længere en rå browser-popup. Baseret på klikdata fra UI-auditten. Refs #864, #670.",
+          "EN · When a bid exceeded your available balance, the auction showed a raw internal text instead of a readable message. It now reads \"Bid exceeds your available balance\". Filtering the Rider Database, Watchlist or Rider Rankings down to zero matches now shows a clear message with a \"Clear all filters\" button instead of a blank table. The watchlist star and compare controls are now translated, and a failed \"Start auction\" no longer shows a raw browser pop-up. Based on click-data from the UI audit. Refs #864, #670.",
+          "DA · Når et bud oversteg din tilgængelige saldo, viste auktionen en rå intern tekst i stedet for en læsbar besked. Der står nu \"Buddet overstiger din tilgængelige saldo\". Filtrerer du Rytterdatabasen, Ønskelisten eller Rytterranglisten ned til nul match, vises nu en tydelig besked med en \"Ryd alle filtre\"-knap i stedet for en tom tabel. Ønskeliste-stjernen og sammenlign-knapperne er nu oversat, og en fejlet \"Start auktion\" viser ikke længere en rå browser-popup. Baseret på klikdata fra UI-auditten. Refs #864, #670.",
         ],
       },
     ],
@@ -512,8 +526,8 @@ const PATCHES = [
       {
         category: "Improved · Layout",
         items: [
-          "EN · Data-heavy pages (Rider Database, Auctions, Rider rankings, Watchlist) now use the full width of wide screens. The big tables previously had their right-hand columns cut off behind a scrollbar while empty side-margins sat unused — now the table fills the available space, so all columns are visible without scrolling on a normal desktop. Filter panels stay at a comfortable width so the input fields don't stretch. Refs #1027, #481.",
-          "DA · Data-tunge sider (Rytterdatabase, Auktioner, Rytterrangliste, Ønskeliste) bruger nu hele bredden på brede skærme. De store tabeller fik før deres højre kolonner klippet væk bag en scrollbar, mens tomme side-margener stod ubrugte — nu fylder tabellen den tilgængelige plads, så alle kolonner er synlige uden at scrolle på en normal desktop. Filter-paneler holder en behagelig bredde, så inputfelterne ikke strækkes. Refs #1027, #481.",
+          "EN · Data-heavy pages (Rider Database, Auctions, Rider rankings, Watchlist) now use the full width of wide screens. The big tables previously had their right-hand columns cut off behind a scrollbar while empty side-margins sat unused. Now the table fills the available space, so all columns are visible without scrolling on a normal desktop. Filter panels stay at a comfortable width so the input fields don't stretch. Refs #1027, #481.",
+          "DA · Data-tunge sider (Rytterdatabase, Auktioner, Rytterrangliste, Ønskeliste) bruger nu hele bredden på brede skærme. De store tabeller fik før deres højre kolonner klippet væk bag en scrollbar, mens tomme side-margener stod ubrugte. Nu fylder tabellen den tilgængelige plads, så alle kolonner er synlige uden at scrolle på en normal desktop. Filter-paneler holder en behagelig bredde, så inputfelterne ikke strækkes. Refs #1027, #481.",
         ],
       },
     ],
@@ -598,8 +612,8 @@ const PATCHES = [
       {
         category: "New · Dashboard",
         items: [
-          "EN · You can now customize your dashboard — a new Customize button lets you show or hide each module (auctions, transfers, races, standings, board) and your choice is remembered on this device.",
-          "DA · Du kan nu tilpasse dit dashboard — en ny Tilpas-knap lader dig vise eller skjule hvert modul (auktioner, transfers, løb, rangliste, bestyrelse), og dit valg huskes på denne enhed.",
+          "EN · You can now customize your dashboard. A new Customize button lets you show or hide each module (auctions, transfers, races, standings, board) and your choice is remembered on this device.",
+          "DA · Du kan nu tilpasse dit dashboard. En ny Tilpas-knap lader dig vise eller skjule hvert modul (auktioner, transfers, løb, rangliste, bestyrelse), og dit valg huskes på denne enhed.",
           "EN · Two new dashboard modules: Recent results (the latest finished races and their winners) and Rider ranking (this season's top scorers).",
           "DA · To nye dashboard-moduler: Seneste resultater (de senest afsluttede løb og deres vindere) og Rytterrangliste (sæsonens topscorere).",
         ],
@@ -649,8 +663,8 @@ const PATCHES = [
       {
         category: "New · Auctions",
         items: [
-          "EN · You can now list one of your own riders below their Value — set any starting price between 0 and the rider's Value. Listing above Value is no longer possible.",
-          "DA · Du kan nu sætte en af dine egne ryttere til auktion under deres Værdi — vælg en hvilken som helst startpris mellem 0 og rytterens Værdi. Det er ikke længere muligt at starte over Værdi.",
+          "EN · You can now list one of your own riders below their Value. Set any starting price between 0 and the rider's Value. Listing above Value is no longer possible.",
+          "DA · Du kan nu sætte en af dine egne ryttere til auktion under deres Værdi. Vælg en hvilken som helst startpris mellem 0 og rytterens Værdi. Det er ikke længere muligt at starte over Værdi.",
           "EN · The live bids panel on the auctions page can now be hidden, and the bids it shows now cover a much longer window than the previous 30 seconds.",
           "DA · Live bud-panelet på auktionssiden kan nu skjules, og de viste bud dækker nu en meget længere periode end de tidligere 30 sekunder.",
         ],
@@ -679,15 +693,15 @@ const PATCHES = [
       {
         category: "New · Prize money",
         items: [
-          "EN · The Standings page now shows a Prize money column, so you can see at a glance how much every team has earned this season — and stands to be paid out.",
-          "DA · Ranglisten viser nu en Præmiepenge-kolonne, så du med ét blik kan se hvor meget hvert hold har tjent i denne sæson — og står til at få udbetalt.",
+          "EN · The Standings page now shows a Prize money column, so you can see at a glance how much every team has earned this season. And stands to be paid out.",
+          "DA · Ranglisten viser nu en Præmiepenge-kolonne, så du med ét blik kan se hvor meget hvert hold har tjent i denne sæson. Og står til at få udbetalt.",
         ],
       },
       {
         category: "Fixes · Prize money",
         items: [
-          "EN · Re-applying a season's ranking points from the current setup now also refreshes rider market values right away, so a rider's value reflects the latest prize money the moment the points are updated — not only at payout or season end.",
-          "DA · Når en sæsons ranking-point slås igennem fra den aktuelle opsætning, opdateres rytternes markedsværdi nu samtidig, så en rytters værdi afspejler de nyeste præmiepenge i samme øjeblik pointene opdateres — ikke først ved udbetaling eller sæson-slut.",
+          "EN · Re-applying a season's ranking points from the current setup now also refreshes rider market values right away, so a rider's value reflects the latest prize money the moment the points are updated. Not only at payout or season end.",
+          "DA · Når en sæsons ranking-point slås igennem fra den aktuelle opsætning, opdateres rytternes markedsværdi nu samtidig, så en rytters værdi afspejler de nyeste præmiepenge i samme øjeblik pointene opdateres. Ikke først ved udbetaling eller sæson-slut.",
         ],
       },
     ],
@@ -756,8 +770,8 @@ const PATCHES = [
       {
         category: "New · Race results",
         items: [
-          "EN · Every race now has a full results page you can open with \"See full results\" from the race calendar. For stage races you can click between each stage to see the full finishing order, plus badges showing who wore the leader's, points, mountain and youth jerseys after that stage — and a \"Overall\" tab with the final classifications (GC, points, mountain, youth, teams). One-day races show the finishing order directly. Refs #959.",
-          "DA · Hvert løb har nu en fuld resultatside du kan åbne med \"Se fulde resultater\" fra løbskalenderen. For etapeløb kan du klikke rundt mellem hver etape og se den fulde målrækkefølge, plus badges der viser hvem der bar fører-, point-, bjerg- og ungdomstrøjen efter etapen — og en \"Samlet\"-fane med de endelige klassementer (GC, point, bjerg, ungdom, hold). Enkeltdagsløb viser målrækkefølgen direkte. Refs #959.",
+          "EN · Every race now has a full results page you can open with \"See full results\" from the race calendar. For stage races you can click between each stage to see the full finishing order, plus badges showing who wore the leader's, points, mountain and youth jerseys after that stage. And a \"Overall\" tab with the final classifications (GC, points, mountain, youth, teams). One-day races show the finishing order directly. Refs #959.",
+          "DA · Hvert løb har nu en fuld resultatside du kan åbne med \"Se fulde resultater\" fra løbskalenderen. For etapeløb kan du klikke rundt mellem hver etape og se den fulde målrækkefølge, plus badges der viser hvem der bar fører-, point-, bjerg- og ungdomstrøjen efter etapen. Og en \"Samlet\"-fane med de endelige klassementer (GC, point, bjerg, ungdom, hold). Enkeltdagsløb viser målrækkefølgen direkte. Refs #959.",
         ],
       },
     ],
@@ -770,8 +784,8 @@ const PATCHES = [
       {
         category: "Fixes · Dashboard",
         items: [
-          "EN · The \"Active auctions\" stat on the dashboard now counts only the auctions you're actually in (selling or leading), matching the list below it — before it showed the whole market's count, which didn't line up. The auctions card also shows \"No active auctions\" correctly when you have none. And the board satisfaction card is now hidden until you've negotiated a board plan, instead of sitting empty with \"No data\". Refs #271.",
-          "DA · \"Aktive auktioner\"-tallet på dashboardet tæller nu kun de auktioner du faktisk er med i (sælger eller fører), så det passer med listen nedenunder — før viste det hele markedets antal, hvilket ikke stemte. Auktions-kortet viser også korrekt \"Ingen aktive auktioner\" når du ingen har. Og bestyrelsestilfredsheds-kortet er nu skjult indtil du har forhandlet en bestyrelsesplan, i stedet for at stå tomt med \"Ingen data\". Refs #271.",
+          "EN · The \"Active auctions\" stat on the dashboard now counts only the auctions you're actually in (selling or leading), matching the list below it. Before it showed the whole market's count, which didn't line up. The auctions card also shows \"No active auctions\" correctly when you have none. And the board satisfaction card is now hidden until you've negotiated a board plan, instead of sitting empty with \"No data\". Refs #271.",
+          "DA · \"Aktive auktioner\"-tallet på dashboardet tæller nu kun de auktioner du faktisk er med i (sælger eller fører), så det passer med listen nedenunder. Før viste det hele markedets antal, hvilket ikke stemte. Auktions-kortet viser også korrekt \"Ingen aktive auktioner\" når du ingen har. Og bestyrelsestilfredsheds-kortet er nu skjult indtil du har forhandlet en bestyrelsesplan, i stedet for at stå tomt med \"Ingen data\". Refs #271.",
         ],
       },
     ],
@@ -784,8 +798,8 @@ const PATCHES = [
       {
         category: "Improvements · Dashboard",
         items: [
-          "EN · The dashboard now opens with a \"Next move\" panel at the top that gathers what's waiting for your decision — transfer offers, swap proposals, loan requests and auctions ending within the hour — each linking straight to where you act. When nothing needs you, it simply says you're all caught up. Refs #271.",
-          "DA · Dashboardet åbner nu med et \"Næste træk\"-panel øverst der samler det der venter på din beslutning — transfertilbud, bytteforslag, leje-anmodninger og auktioner der slutter inden for en time — hver med direkte link til hvor du handler. Når intet kræver dig, står der bare at du er på forkant. Refs #271.",
+          "EN · The dashboard now opens with a \"Next move\" panel at the top that gathers what's waiting for your decision (transfer offers, swap proposals, loan requests and auctions ending within the hour) each linking straight to where you act. When nothing needs you, it simply says you're all caught up. Refs #271.",
+          "DA · Dashboardet åbner nu med et \"Næste træk\"-panel øverst der samler det der venter på din beslutning (transfertilbud, bytteforslag, leje-anmodninger og auktioner der slutter inden for en time) hver med direkte link til hvor du handler. Når intet kræver dig, står der bare at du er på forkant. Refs #271.",
         ],
       },
     ],
@@ -798,8 +812,8 @@ const PATCHES = [
       {
         category: "Fixes · Inbox",
         items: [
-          "EN · Pending loan requests now appear in the inbox \"To handle\" tab of the rider's owner — the manager who actually has to accept or reject them. Before, they were shown to the requesting team (who could only wait) and were missing for the owner, so requests were easy to overlook. The action counts in the inbox, My Activity and Transfers now come from one shared source so they always agree. Refs #271.",
-          "DA · Afventende leje-anmodninger vises nu i \"Skal handles\"-fanen i indbakken hos rytterens ejer — den manager der faktisk skal acceptere eller afvise dem. Før blev de vist til det anmodende hold (som kun kunne vente) og manglede hos ejeren, så anmodninger var nemme at overse. Handlings-tallene i indbakke, Min Aktivitet og Transfers kommer nu fra én fælles kilde, så de altid stemmer overens. Refs #271.",
+          "EN · Pending loan requests now appear in the inbox \"To handle\" tab of the rider's owner. The manager who actually has to accept or reject them. Before, they were shown to the requesting team (who could only wait) and were missing for the owner, so requests were easy to overlook. The action counts in the inbox, My Activity and Transfers now come from one shared source so they always agree. Refs #271.",
+          "DA · Afventende leje-anmodninger vises nu i \"Skal handles\"-fanen i indbakken hos rytterens ejer. Den manager der faktisk skal acceptere eller afvise dem. Før blev de vist til det anmodende hold (som kun kunne vente) og manglede hos ejeren, så anmodninger var nemme at overse. Handlings-tallene i indbakke, Min Aktivitet og Transfers kommer nu fra én fælles kilde, så de altid stemmer overens. Refs #271.",
         ],
       },
     ],
@@ -1174,8 +1188,8 @@ const PATCHES = [
       {
         category: "Standings · Better colour contrast in light and dark mode",
         items: [
-          "EN · On the standings the promotion zone (top rows) and the gold highlight for your own team used fixed colours that didn't adapt to the theme — leaving a harsh bright band on the runner-up rows in dark mode and a washed-out, hard-to-read gold in light mode. They now use the theme's own colours, so the promotion zone is subtle in dark mode (matching the relegation zone) and your team's gold stays legible in both modes. Refs #825.",
-          "DA · På ranglisten brugte promotion-zonen (de øverste rækker) og guld-fremhævningen af dit eget hold faste farver, der ikke tilpassede sig temaet — det gav et grelt lyst bånd på de næstbedste rækker i dark mode og en udvasket, sværtlæselig guld i light mode. De bruger nu temaets egne farver, så promotion-zonen er afdæmpet i dark mode (som nedrykningszonen), og dit holds guld forbliver læsbar i begge temaer. Refs #825.",
+          "EN · On the standings the promotion zone (top rows) and the gold highlight for your own team used fixed colours that didn't adapt to the theme. Leaving a harsh bright band on the runner-up rows in dark mode and a washed-out, hard-to-read gold in light mode. They now use the theme's own colours, so the promotion zone is subtle in dark mode (matching the relegation zone) and your team's gold stays legible in both modes. Refs #825.",
+          "DA · På ranglisten brugte promotion-zonen (de øverste rækker) og guld-fremhævningen af dit eget hold faste farver, der ikke tilpassede sig temaet. Det gav et grelt lyst bånd på de næstbedste rækker i dark mode og en udvasket, sværtlæselig guld i light mode. De bruger nu temaets egne farver, så promotion-zonen er afdæmpet i dark mode (som nedrykningszonen), og dit holds guld forbliver læsbar i begge temaer. Refs #825.",
         ],
       },
     ],
@@ -1244,8 +1258,8 @@ const PATCHES = [
       {
         category: "Board · Open for testing with a frozen economy",
         items: [
-          "EN · The board (\"bestyrelsen\") is now open for everyone to try. You can negotiate and sign your multi-year plans (5yr, then 3yr, then 1yr), make requests, and see goals and consequences play out — exactly as it will work in production. During this test period the board's effect on your economy is frozen: sponsor income is unaffected, bonus offers pay nothing real, and forced sales and sponsor pull-outs are held back, so you can explore freely without real financial consequences. The board's hard limits (salary cap and signing restrictions) do still apply on real transfers. The test data is cleared automatically at the next season change. Refs #805.",
-          "DA · Bestyrelsen er nu åben for alle at prøve. Du kan forhandle og underskrive dine flerårsplaner (5 år, så 3 år, så 1 år), sende forespørgsler og se mål og konsekvenser udspille sig — præcis som det kommer til at fungere i drift. I denne testperiode er bestyrelsens effekt på din økonomi frosset: sponsorindtægten påvirkes ikke, bonustilbud udbetaler ingen rigtige penge, og tvangssalg og sponsorexit holdes tilbage, så du kan udforske frit uden reelle økonomiske konsekvenser. Bestyrelsens hårde grænser (lønloft og indkøbsrestriktioner) gælder dog stadig på rigtige transfers. Testdataene ryddes automatisk ved næste sæsonskifte. Refs #805.",
+          "EN · The board (\"bestyrelsen\") is now open for everyone to try. You can negotiate and sign your multi-year plans (5yr, then 3yr, then 1yr), make requests, and see goals and consequences play out. Exactly as it will work in production. During this test period the board's effect on your economy is frozen: sponsor income is unaffected, bonus offers pay nothing real, and forced sales and sponsor pull-outs are held back, so you can explore freely without real financial consequences. The board's hard limits (salary cap and signing restrictions) do still apply on real transfers. The test data is cleared automatically at the next season change. Refs #805.",
+          "DA · Bestyrelsen er nu åben for alle at prøve. Du kan forhandle og underskrive dine flerårsplaner (5 år, så 3 år, så 1 år), sende forespørgsler og se mål og konsekvenser udspille sig. Præcis som det kommer til at fungere i drift. I denne testperiode er bestyrelsens effekt på din økonomi frosset: sponsorindtægten påvirkes ikke, bonustilbud udbetaler ingen rigtige penge, og tvangssalg og sponsorexit holdes tilbage, så du kan udforske frit uden reelle økonomiske konsekvenser. Bestyrelsens hårde grænser (lønloft og indkøbsrestriktioner) gælder dog stadig på rigtige transfers. Testdataene ryddes automatisk ved næste sæsonskifte. Refs #805.",
         ],
       },
     ],
@@ -1272,8 +1286,8 @@ const PATCHES = [
       {
         category: "Season · Season progress now counts completed race days",
         items: [
-          "EN · Season progress now reflects how many race days have actually been ridden. The counter was never advanced when results were imported, so it stayed at 0 even after races were finalized — and the board's plan-negotiation reminders, which key off that counter, never fired. It is now recomputed from the completed races (a one-day race counts 1 day, a stage race counts its stages) every time results are imported, and Season 1 has been backfilled. Refs #804.",
-          "DA · Sæson-fremgangen afspejler nu hvor mange løbsdage der faktisk er kørt. Tælleren blev aldrig talt op når resultater blev importeret, så den blev stående på 0 selv efter løb var afviklet — og bestyrelsens påmindelser om planforhandling, der bygger på den tæller, blev derfor aldrig udløst. Den genberegnes nu ud fra de afviklede løb (et endagsløb tæller 1 dag, et etapeløb tæller sine etaper) hver gang resultater importeres, og Sæson 1 er rettet med tilbagevirkende kraft. Refs #804.",
+          "EN · Season progress now reflects how many race days have actually been ridden. The counter was never advanced when results were imported, so it stayed at 0 even after races were finalized. And the board's plan-negotiation reminders, which key off that counter, never fired. It is now recomputed from the completed races (a one-day race counts 1 day, a stage race counts its stages) every time results are imported, and Season 1 has been backfilled. Refs #804.",
+          "DA · Sæson-fremgangen afspejler nu hvor mange løbsdage der faktisk er kørt. Tælleren blev aldrig talt op når resultater blev importeret, så den blev stående på 0 selv efter løb var afviklet. Og bestyrelsens påmindelser om planforhandling, der bygger på den tæller, blev derfor aldrig udløst. Den genberegnes nu ud fra de afviklede løb (et endagsløb tæller 1 dag, et etapeløb tæller sine etaper) hver gang resultater importeres, og Sæson 1 er rettet med tilbagevirkende kraft. Refs #804.",
         ],
       },
     ],
@@ -1328,8 +1342,8 @@ const PATCHES = [
       {
         category: "Results · Standings, results and dashboard now update live",
         items: [
-          "EN · The standings, results hub and dashboard now refresh on their own when new race results come in — no more hard reload to see updated points, season progress or top riders. Previously these pages only loaded once when opened, so they could show stale numbers after a race was finalized. Refs #783.",
-          "DA · Ranglisten, resultat-hubben og dashboardet opdaterer nu af sig selv når nye løbsresultater kommer ind — ingen hård genindlæsning mere for at se opdaterede point, sæson-fremskridt eller top-ryttere. Tidligere indlæste siderne kun data én gang ved åbning, så de kunne vise gamle tal efter et løb var finaliseret. Refs #783.",
+          "EN · The standings, results hub and dashboard now refresh on their own when new race results come in. No more hard reload to see updated points, season progress or top riders. Previously these pages only loaded once when opened, so they could show stale numbers after a race was finalized. Refs #783.",
+          "DA · Ranglisten, resultat-hubben og dashboardet opdaterer nu af sig selv når nye løbsresultater kommer ind. Ingen hård genindlæsning mere for at se opdaterede point, sæson-fremskridt eller top-ryttere. Tidligere indlæste siderne kun data én gang ved åbning, så de kunne vise gamle tal efter et løb var finaliseret. Refs #783.",
         ],
       },
     ],
@@ -1342,8 +1356,8 @@ const PATCHES = [
       {
         category: "Admin · PCM-resultatimport (sæson 1)",
         items: [
-          "EN · Admins can now import race results directly from Pro Cycling Manager export files. For stage races you select all stage files at once — the pipeline orders the stages itself, awards stage-finish points every stage, jersey-leader points on intermediate stages (for holding the leader's jersey that day), and pays out the full general classification, jerseys and team result only on the final stage. One-day races are just one file. Riders are matched to their owner team by exact name (accent-tolerant); team results map through a manually verified PCM→game team-name table. Always dry-run preview first — it shows points, prize money and flags any unmatched riders that would otherwise score. Re-import cleanly replaces a race's results. Player-facing results pages are unchanged; this is an admin import tool.",
-          "DA · Admins kan nu importere løbsresultater direkte fra Pro Cycling Manager-eksportfiler. For etapeløb vælger du alle etape-filer på én gang — pipelinen finder selv etape-rækkefølgen, giver etape-point hver etape, trøje-leder-point på mellemetaper (for at holde førertrøjen den dag), og udbetaler først hele klassementet, trøjerne og holdresultatet på sidste etape. Endagsløb er bare én fil. Ryttere matches til deres ejer-hold på præcist navn (accent-tolerant); holdresultater mappes via en manuelt verificeret PCM→game-holdnavn-tabel. Forhåndsvis altid først — det viser point, præmiepenge og markerer evt. umatchede ryttere der ellers ville score. Re-import erstatter et løbs resultater rent. Spillervendte resultatsider er uændrede; dette er et admin-importværktøj.",
+          "EN · Admins can now import race results directly from Pro Cycling Manager export files. For stage races you select all stage files at once. The pipeline orders the stages itself, awards stage-finish points every stage, jersey-leader points on intermediate stages (for holding the leader's jersey that day), and pays out the full general classification, jerseys and team result only on the final stage. One-day races are just one file. Riders are matched to their owner team by exact name (accent-tolerant); team results map through a manually verified PCM→game team-name table. Always dry-run preview first. It shows points, prize money and flags any unmatched riders that would otherwise score. Re-import cleanly replaces a race's results. Player-facing results pages are unchanged; this is an admin import tool.",
+          "DA · Admins kan nu importere løbsresultater direkte fra Pro Cycling Manager-eksportfiler. For etapeløb vælger du alle etape-filer på én gang. Pipelinen finder selv etape-rækkefølgen, giver etape-point hver etape, trøje-leder-point på mellemetaper (for at holde førertrøjen den dag), og udbetaler først hele klassementet, trøjerne og holdresultatet på sidste etape. Endagsløb er bare én fil. Ryttere matches til deres ejer-hold på præcist navn (accent-tolerant); holdresultater mappes via en manuelt verificeret PCM→game-holdnavn-tabel. Forhåndsvis altid først. Det viser point, præmiepenge og markerer evt. umatchede ryttere der ellers ville score. Re-import erstatter et løbs resultater rent. Spillervendte resultatsider er uændrede; dette er et admin-importværktøj.",
         ],
       },
     ],
@@ -1356,8 +1370,8 @@ const PATCHES = [
       {
         category: "Localization · Hall of Fame now switches fully to English",
         items: [
-          "EN · The Hall of Fame page — record categories, manager titles, the division-history view and all table labels — now displays fully in English when the app language is set to English. Previously these showed Danish text regardless of the selected language. Refs #678.",
-          "DA · Hall of Fame-siden — rekordkategorier, manager-titler, divisionshistorik-visningen og alle tabel-labels — vises nu fuldt på engelsk når appens sprog er sat til engelsk. Tidligere viste disse dansk tekst uanset det valgte sprog. Refs #678.",
+          "EN · The Hall of Fame page (record categories, manager titles, the division-history view and all table labels) now displays fully in English when the app language is set to English. Previously these showed Danish text regardless of the selected language. Refs #678.",
+          "DA · Hall of Fame-siden (rekordkategorier, manager-titler, divisionshistorik-visningen og alle tabel-labels) vises nu fuldt på engelsk når appens sprog er sat til engelsk. Tidligere viste disse dansk tekst uanset det valgte sprog. Refs #678.",
         ],
       },
     ],
@@ -1384,8 +1398,8 @@ const PATCHES = [
       {
         category: "Reliability · Admin result import no longer crashes on an expired session",
         items: [
-          "EN · Importing race results from the admin panel now shows a clear \"session expired — log in again\" message if your login expired mid-upload, instead of throwing a silent error and leaving the import stuck. Admin-only; no change for managers. Refs #761.",
-          "DA · Import af løbsresultater fra admin-panelet viser nu en tydelig \"session udløbet — log ind igen\"-besked hvis dit login udløb midt i en upload, i stedet for at kaste en stille fejl og efterlade importen hængende. Kun admin; ingen ændring for managers. Refs #761.",
+          "EN · Importing race results from the admin panel now shows a clear \"session expired. Log in again\" message if your login expired mid-upload, instead of throwing a silent error and leaving the import stuck. Admin-only; no change for managers. Refs #761.",
+          "DA · Import af løbsresultater fra admin-panelet viser nu en tydelig \"session udløbet. Log ind igen\"-besked hvis dit login udløb midt i en upload, i stedet for at kaste en stille fejl og efterlade importen hængende. Kun admin; ingen ændring for managers. Refs #761.",
         ],
       },
     ],
@@ -1398,8 +1412,8 @@ const PATCHES = [
       {
         category: "Reliability · Stale-chunk recovery now covers initial page load",
         items: [
-          "EN · The stale-tab reload guard (added in 4.09) now also fires when a chunk fails to load before React itself has initialised — for example when the Layout or a large top-level module cannot be fetched after a deploy. Previously that case could leave the page blank with no recovery attempt. Refs #728.",
-          "DA · Stale-tab genindlæs-sikringen (tilføjet i 4.09) aktiveres nu også når en chunk fejler inden React selv er initialiseret — fx når Layout eller et stort top-level modul ikke kan hentes efter et deploy. Tidligere kunne den situation efterlade siden blank uden genindlæsningsforsøg. Refs #728.",
+          "EN · The stale-tab reload guard (added in 4.09) now also fires when a chunk fails to load before React itself has initialised. For example when the Layout or a large top-level module cannot be fetched after a deploy. Previously that case could leave the page blank with no recovery attempt. Refs #728.",
+          "DA · Stale-tab genindlæs-sikringen (tilføjet i 4.09) aktiveres nu også når en chunk fejler inden React selv er initialiseret. Fx når Layout eller et stort top-level modul ikke kan hentes efter et deploy. Tidligere kunne den situation efterlade siden blank uden genindlæsningsforsøg. Refs #728.",
         ],
       },
     ],
@@ -1480,10 +1494,10 @@ const PATCHES = [
     label: "Beta",
     changes: [
       {
-        category: "Bugfix · Rider values are accurate again — 296 riders restored after broken UCI sync",
+        category: "Bugfix · Rider values are accurate again, 296 riders restored after broken UCI sync",
         items: [
-          "EN · This morning's scheduled UCI value-update accidentally reset 319 riders to the minimum (5 UCI points / 20.000 CZ$), including stars like Vingegaard, Evenepoel, Pidcock, Pedersen, Bernal and Almeida. Root cause: the upstream PCS library silently returns `0` instead of decimal points (e.g. Vingegaard's `6885.1` became `0`), and our safety-gate didn't catch it because the riders WERE matched — just to a zero. We now also parse the raw PCS HTML to recover decimal points, so Vingegaard is back to 6885 and the other 295 affected riders are restored. Forward-guard: two new unit tests verify decimal parsing won't regress. Refs PR #700.",
-          "DA · Værdi-opdateringen i morges nullstillede ved et uheld 319 ryttere til minimum (5 UCI-point / 20.000 CZ$), inkl. stjerner som Vingegaard, Evenepoel, Pidcock, Pedersen, Bernal og Almeida. Rod-årsag: PCS-biblioteket returnerer stille `0` i stedet for decimaltal-points (fx Vingegaards `6885.1` blev til `0`), og vores safety-gate fangede det ikke fordi rytterne BLEV matched — bare mod et nul. Vi parser nu også rå PCS-HTML for at recovere decimaltal, så Vingegaard er tilbage på 6885 og de andre 295 berørte ryttere er gendannet. Forward-guard: to nye unit-tests sikrer decimal-parsingen ikke regresserer. Refs PR #700.",
+          "EN · This morning's scheduled UCI value-update accidentally reset 319 riders to the minimum (5 UCI points / 20.000 CZ$), including stars like Vingegaard, Evenepoel, Pidcock, Pedersen, Bernal and Almeida. Root cause: the upstream PCS library silently returns `0` instead of decimal points (e.g. Vingegaard's `6885.1` became `0`), and our safety-gate didn't catch it because the riders WERE matched. Just to a zero. We now also parse the raw PCS HTML to recover decimal points, so Vingegaard is back to 6885 and the other 295 affected riders are restored. Forward-guard: two new unit tests verify decimal parsing won't regress. Refs PR #700.",
+          "DA · Værdi-opdateringen i morges nullstillede ved et uheld 319 ryttere til minimum (5 UCI-point / 20.000 CZ$), inkl. stjerner som Vingegaard, Evenepoel, Pidcock, Pedersen, Bernal og Almeida. Rod-årsag: PCS-biblioteket returnerer stille `0` i stedet for decimaltal-points (fx Vingegaards `6885.1` blev til `0`), og vores safety-gate fangede det ikke fordi rytterne BLEV matched. Bare mod et nul. Vi parser nu også rå PCS-HTML for at recovere decimaltal, så Vingegaard er tilbage på 6885 og de andre 295 berørte ryttere er gendannet. Forward-guard: to nye unit-tests sikrer decimal-parsingen ikke regresserer. Refs PR #700.",
         ],
       },
     ],
@@ -1510,8 +1524,8 @@ const PATCHES = [
       {
         category: "Language · Mobile bottom-nav + 6 player-facing screens now switch labels with the language toggle",
         items: [
-          "EN · The mobile bottom-nav (Inbox / Market / Riders / My Team) stayed hard-coded Danish even when the language was set to English — it was the parallel mobile-version of the desktop sidebar but never got migrated when the rest of the navigation was. Fixed. Plus a sweep of six other screens that still had a few hard-coded Danish labels: the Manager Profile's rider-count stat, the Auction History page heading, the Deadline Day table's column header, the Activity page's Auctions + Watchlist filter tabs, the Season Preview's per-team rider-count stat, and the Admin area's Finance tab. All of them now follow the active language. A new CI guard (`i18n-check-nav-strings.mjs`) blocks future regressions: any new label literal in a Nav / Sidebar / Layout component fails the build until it's wired through i18n. Refs #678.",
-          "DA · Mobile bottom-nav'en (Indbakke / Marked / Ryttere / Mit Hold) forblev hard-kodet dansk selv når sproget var sat til engelsk — det var den parallelle mobile-version af desktop-sidebaren, men blev aldrig migreret da resten af navigationen blev oversat. Rettet. Plus en oprydning af seks andre skærme der stadig havde nogle få hard-kodede danske labels: Manager-profilens rytter-antal-stat, Auktionshistorik-sidens overskrift, Deadline Day-tabellens kolonne-header, Aktivitet-sidens Auktioner + Ønskeliste-filterfaner, Sæson Preview's pr-hold rytter-antal-stat, og Admin-områdets Økonomi-fane. Alle følger nu aktivt sprog. En ny CI-guard (`i18n-check-nav-strings.mjs`) blokerer fremtidige regressioner: enhver ny label-literal i en Nav / Sidebar / Layout-komponent fejler bygget indtil den er wired igennem i18n. Refs #678.",
+          "EN · The mobile bottom-nav (Inbox / Market / Riders / My Team) stayed hard-coded Danish even when the language was set to English. It was the parallel mobile-version of the desktop sidebar but never got migrated when the rest of the navigation was. Fixed. Plus a sweep of six other screens that still had a few hard-coded Danish labels: the Manager Profile's rider-count stat, the Auction History page heading, the Deadline Day table's column header, the Activity page's Auctions + Watchlist filter tabs, the Season Preview's per-team rider-count stat, and the Admin area's Finance tab. All of them now follow the active language. A new CI guard (`i18n-check-nav-strings.mjs`) blocks future regressions: any new label literal in a Nav / Sidebar / Layout component fails the build until it's wired through i18n. Refs #678.",
+          "DA · Mobile bottom-nav'en (Indbakke / Marked / Ryttere / Mit Hold) forblev hard-kodet dansk selv når sproget var sat til engelsk. Det var den parallelle mobile-version af desktop-sidebaren, men blev aldrig migreret da resten af navigationen blev oversat. Rettet. Plus en oprydning af seks andre skærme der stadig havde nogle få hard-kodede danske labels: Manager-profilens rytter-antal-stat, Auktionshistorik-sidens overskrift, Deadline Day-tabellens kolonne-header, Aktivitet-sidens Auktioner + Ønskeliste-filterfaner, Sæson Preview's pr-hold rytter-antal-stat, og Admin-områdets Økonomi-fane. Alle følger nu aktivt sprog. En ny CI-guard (`i18n-check-nav-strings.mjs`) blokerer fremtidige regressioner: enhver ny label-literal i en Nav / Sidebar / Layout-komponent fejler bygget indtil den er wired igennem i18n. Refs #678.",
         ],
       },
     ],
@@ -1566,8 +1580,8 @@ const PATCHES = [
       {
         category: "Infrastructure · RTL-readiness foundation (no visible LTR change)",
         items: [
-          "EN · Internal refactor: 88 Tailwind `ml-*/mr-*` margin classes across 43 files migrated to logical-property equivalents `ms-*/me-*` (margin-inline-start/end). In English and Danish (left-to-right) the layout is pixel-identical — no user-visible change. This is a foundation step that lets future right-to-left languages (Arabic, Hebrew) mirror correctly without per-component fixes. An ESLint rule blocks future regressions back to the old left/right classes. Refs #438 #409.",
-          "DA · Intern refaktor: 88 Tailwind `ml-*/mr-*` margin-klasser på tværs af 43 filer migreret til logical-property-varianterne `ms-*/me-*` (margin-inline-start/end). På engelsk og dansk (venstre-til-højre) er layoutet pixel-identisk — ingen brugerrettet ændring. Det er et fundamentsskridt der gør at fremtidige højre-til-venstre-sprog (arabisk, hebraisk) kan spejles korrekt uden per-komponent-fixes. En ESLint-regel blokerer fremtidig regression tilbage til de gamle venstre/højre-klasser. Refs #438 #409.",
+          "EN · Internal refactor: 88 Tailwind `ml-*/mr-*` margin classes across 43 files migrated to logical-property equivalents `ms-*/me-*` (margin-inline-start/end). In English and Danish (left-to-right) the layout is pixel-identical. No user-visible change. This is a foundation step that lets future right-to-left languages (Arabic, Hebrew) mirror correctly without per-component fixes. An ESLint rule blocks future regressions back to the old left/right classes. Refs #438 #409.",
+          "DA · Intern refaktor: 88 Tailwind `ml-*/mr-*` margin-klasser på tværs af 43 filer migreret til logical-property-varianterne `ms-*/me-*` (margin-inline-start/end). På engelsk og dansk (venstre-til-højre) er layoutet pixel-identisk. Ingen brugerrettet ændring. Det er et fundamentsskridt der gør at fremtidige højre-til-venstre-sprog (arabisk, hebraisk) kan spejles korrekt uden per-komponent-fixes. En ESLint-regel blokerer fremtidig regression tilbage til de gamle venstre/højre-klasser. Refs #438 #409.",
         ],
       },
     ],
@@ -1594,8 +1608,8 @@ const PATCHES = [
       {
         category: "UI · Active-auction badge background was invisible",
         items: [
-          "EN · The orange \"Active auction\" pill next to a rider's name in the Riders table and on the rider detail page had a broken Tailwind opacity class (`bg-cz-accent/100/15` is not valid syntax — two opacity modifiers chained), so the background rendered as transparent and only the orange text was visible. Fixed to `bg-cz-accent/15` so the pill has the intended 15%-opacity accent background, matching every other accent-pill on the site. Refs #647.",
-          "DA · Den orange \"Aktiv auktion\"-pille ved siden af en rytters navn i Rytter-tabellen og på rytter-detail-siden havde en kaput Tailwind opacity-klasse (`bg-cz-accent/100/15` er ikke gyldig syntaks — to opacity-modifiers kædet sammen), så baggrunden rendrede transparent og kun den orange tekst var synlig. Rettet til `bg-cz-accent/15` så pillen har den tiltænkte 15%-opacity accent-baggrund, ligesom alle andre accent-piller på siden. Refs #647.",
+          "EN · The orange \"Active auction\" pill next to a rider's name in the Riders table and on the rider detail page had a broken Tailwind opacity class (`bg-cz-accent/100/15` is not valid syntax. Two opacity modifiers chained), so the background rendered as transparent and only the orange text was visible. Fixed to `bg-cz-accent/15` so the pill has the intended 15%-opacity accent background, matching every other accent-pill on the site. Refs #647.",
+          "DA · Den orange \"Aktiv auktion\"-pille ved siden af en rytters navn i Rytter-tabellen og på rytter-detail-siden havde en kaput Tailwind opacity-klasse (`bg-cz-accent/100/15` er ikke gyldig syntaks. To opacity-modifiers kædet sammen), så baggrunden rendrede transparent og kun den orange tekst var synlig. Rettet til `bg-cz-accent/15` så pillen har den tiltænkte 15%-opacity accent-baggrund, ligesom alle andre accent-piller på siden. Refs #647.",
         ],
       },
     ],
@@ -1636,8 +1650,8 @@ const PATCHES = [
       {
         category: "Observability · Improved error tracking (user-context)",
         items: [
-          "EN · Improved error tracking: we can now see how many unique users are affected by a given error. After login (both fresh sign-in and session-restore) and on token-refresh, the frontend tags every Sentry event with your account ID (UUID only — no email, no team name, no personal data). The backend does the same on every authenticated API request. On logout, the user-context is cleared. Until now, Sentry's \"Affected users\" counter was stuck at 0 on every issue because no user identity was attached, so we couldn't tell whether a bug hit one tester or twenty. Refs #621 #348.",
-          "DA · Forbedret fejl-tracking: vi kan nu se hvor mange unikke brugere der rammes af en given fejl. Efter login (både fresh sign-in og session-restore) samt ved token-refresh tagger frontend hver Sentry-event med dit konto-ID (KUN UUID — ingen email, ingen holdnavn, ingen personlige data). Backend gør det samme på hvert authenticated API-kald. Ved logout ryddes user-context. Indtil nu sad Sentry's \"Affected users\"-counter på 0 for hver issue fordi ingen bruger-identitet var attached, så vi kunne ikke se om en bug ramte én tester eller tyve. Refs #621 #348.",
+          "EN · Improved error tracking: we can now see how many unique users are affected by a given error. After login (both fresh sign-in and session-restore) and on token-refresh, the frontend tags every Sentry event with your account ID (UUID only. No email, no team name, no personal data). The backend does the same on every authenticated API request. On logout, the user-context is cleared. Until now, Sentry's \"Affected users\" counter was stuck at 0 on every issue because no user identity was attached, so we couldn't tell whether a bug hit one tester or twenty. Refs #621 #348.",
+          "DA · Forbedret fejl-tracking: vi kan nu se hvor mange unikke brugere der rammes af en given fejl. Efter login (både fresh sign-in og session-restore) samt ved token-refresh tagger frontend hver Sentry-event med dit konto-ID (KUN UUID. Ingen email, ingen holdnavn, ingen personlige data). Backend gør det samme på hvert authenticated API-kald. Ved logout ryddes user-context. Indtil nu sad Sentry's \"Affected users\"-counter på 0 for hver issue fordi ingen bruger-identitet var attached, så vi kunne ikke se om en bug ramte én tester eller tyve. Refs #621 #348.",
         ],
       },
     ],
@@ -1650,8 +1664,8 @@ const PATCHES = [
       {
         category: "Reliability · Squad-enforcement partial-failure recovery",
         items: [
-          "EN · Backend-only reliability fix for the squad-size enforcement cron (the system that auto-buys/sells riders and fines you if your squad is outside the per-division limits when a transfer window closes). Before #606: if the cron process died mid-loop (Railway deploy, OOM), the window was marked as 'done' even though only some teams had been enforced — the unhandled teams stayed outside squad-limits forever with no fine. Fix: two-phase claim (started_at + completed_at) with stale-claim recovery after 10 minutes, plus per-team idempotency_key on fines so replay can't double-fine. Cron-audit verdict updated from 🔴 to ✅. Refs #606.",
-          "DA · Backend-only reliability-fix for squad-size enforcement cron (systemet der auto-køber/sælger ryttere og bøder dig hvis din trup er uden for division-grænserne ved window-close). Før #606: hvis cron-processen døde midt i loopen (Railway-deploy, OOM), blev windowet markeret som 'færdig' selvom kun halvdelen af holdene var enforced — de manglende hold forblev uden for squad-limits permanent uden bøde. Fix: to-faset claim (started_at + completed_at) med stale-recovery efter 10 minutter, plus per-team idempotency_key på bøder så replay ikke kan double-fine. Cron-audit-verdict opdateret fra 🔴 til ✅. Refs #606.",
+          "EN · Backend-only reliability fix for the squad-size enforcement cron (the system that auto-buys/sells riders and fines you if your squad is outside the per-division limits when a transfer window closes). Before #606: if the cron process died mid-loop (Railway deploy, OOM), the window was marked as 'done' even though only some teams had been enforced. The unhandled teams stayed outside squad-limits forever with no fine. Fix: two-phase claim (started_at + completed_at) with stale-claim recovery after 10 minutes, plus per-team idempotency_key on fines so replay can't double-fine. Cron-audit verdict updated from 🔴 to ✅. Refs #606.",
+          "DA · Backend-only reliability-fix for squad-size enforcement cron (systemet der auto-køber/sælger ryttere og bøder dig hvis din trup er uden for division-grænserne ved window-close). Før #606: hvis cron-processen døde midt i loopen (Railway-deploy, OOM), blev windowet markeret som 'færdig' selvom kun halvdelen af holdene var enforced. De manglende hold forblev uden for squad-limits permanent uden bøde. Fix: to-faset claim (started_at + completed_at) med stale-recovery efter 10 minutter, plus per-team idempotency_key på bøder så replay ikke kan double-fine. Cron-audit-verdict opdateret fra 🔴 til ✅. Refs #606.",
         ],
       },
     ],
@@ -1678,8 +1692,8 @@ const PATCHES = [
       {
         category: "Security · Race-result submit blev atomisk + RLS strammet på pending_race_result_rows",
         items: [
-          "EN · Two-in-one fix on the manager-driven race-result upload flow (#518). (1) Atomicity: the frontend previously inserted the parent pending_race_results row and the child pending_race_result_rows in two separate Supabase calls with no transaction — if the second call failed, an orphan parent row was left in the DB. The whole submit now goes through a single Postgres RPC submit_race_results(p_race_id, p_rows jsonb) that wraps both inserts in one transaction. (2) RLS lockdown: pending_race_result_rows had INSERT WITH CHECK (true) and SELECT USING (true), meaning any authenticated user could (a) read every other manager's pending submissions and (b) inject fake rows under anyone else's pending_id. Both policies replaced with owner-or-admin-gated equivalents that join to the parent row to verify submitted_by = auth.uid() (or is_admin()). Live-verified with two impersonated user sessions: user B sees 0 rows from user A's submission (was: all rows), and user B's direct INSERT under user A's pending_id is rejected with RLS violation 42501 (was: silent success). Admin approve/reject workflow unaffected — backend uses service_role which bypasses RLS. This clears the last rls_policy_always_true advisor warning. Refs #518.",
-          "DA · To-i-én fix på det manager-drevne race-result upload flow (#518). (1) Atomicity: frontend inserterede tidligere parent pending_race_results og børnene pending_race_result_rows i to separate Supabase-kald uden transaction — fejlede andet kald, var en orphan parent-row efterladt i DB. Hele submit går nu via en enkelt Postgres-RPC submit_race_results(p_race_id, p_rows jsonb) der wrapper begge inserts i én transaction. (2) RLS-lockdown: pending_race_result_rows havde INSERT WITH CHECK (true) og SELECT USING (true), så enhver authenticated user kunne (a) læse alle andre managers' pending submissions og (b) injicere fake rows under andres pending_id. Begge policies erstattet med owner-or-admin-gated equivalents der joiner til parent for at verificere submitted_by = auth.uid() (eller is_admin()). Live-verificeret med to impersonerede user-sessioner: user B ser 0 rows fra user A's submission (var: alle rows), og user B's direkte INSERT under user A's pending_id afvises med RLS-violation 42501 (var: silent success). Admin approve/reject upåvirket — backend bruger service_role som bypasser RLS. Sidste rls_policy_always_true advisor-warning er nu væk. Refs #518.",
+          "EN · Two-in-one fix on the manager-driven race-result upload flow (#518). (1) Atomicity: the frontend previously inserted the parent pending_race_results row and the child pending_race_result_rows in two separate Supabase calls with no transaction. If the second call failed, an orphan parent row was left in the DB. The whole submit now goes through a single Postgres RPC submit_race_results(p_race_id, p_rows jsonb) that wraps both inserts in one transaction. (2) RLS lockdown: pending_race_result_rows had INSERT WITH CHECK (true) and SELECT USING (true), meaning any authenticated user could (a) read every other manager's pending submissions and (b) inject fake rows under anyone else's pending_id. Both policies replaced with owner-or-admin-gated equivalents that join to the parent row to verify submitted_by = auth.uid() (or is_admin()). Live-verified with two impersonated user sessions: user B sees 0 rows from user A's submission (was: all rows), and user B's direct INSERT under user A's pending_id is rejected with RLS violation 42501 (was: silent success). Admin approve/reject workflow unaffected. Backend uses service_role which bypasses RLS. This clears the last rls_policy_always_true advisor warning. Refs #518.",
+          "DA · To-i-én fix på det manager-drevne race-result upload flow (#518). (1) Atomicity: frontend inserterede tidligere parent pending_race_results og børnene pending_race_result_rows i to separate Supabase-kald uden transaction. Fejlede andet kald, var en orphan parent-row efterladt i DB. Hele submit går nu via en enkelt Postgres-RPC submit_race_results(p_race_id, p_rows jsonb) der wrapper begge inserts i én transaction. (2) RLS-lockdown: pending_race_result_rows havde INSERT WITH CHECK (true) og SELECT USING (true), så enhver authenticated user kunne (a) læse alle andre managers' pending submissions og (b) injicere fake rows under andres pending_id. Begge policies erstattet med owner-or-admin-gated equivalents der joiner til parent for at verificere submitted_by = auth.uid() (eller is_admin()). Live-verificeret med to impersonerede user-sessioner: user B ser 0 rows fra user A's submission (var: alle rows), og user B's direkte INSERT under user A's pending_id afvises med RLS-violation 42501 (var: silent success). Admin approve/reject upåvirket. Backend bruger service_role som bypasser RLS. Sidste rls_policy_always_true advisor-warning er nu væk. Refs #518.",
         ],
       },
     ],
@@ -1692,8 +1706,8 @@ const PATCHES = [
       {
         category: "Security · RLS permissive policy lockdown + users PII leak fix",
         items: [
-          "EN · Five-in-one security hardening pass following the #548 RLS correctness audit. Five Row-Level Security policies named \"Service role full access X\" were technically scoped to the `public` PostgreSQL role, which in Postgres semantics means ALL roles — so any signed-in user could write through them. Verified exploits on prod (rolled back): random auth user could (1) INSERT/UPDATE/DELETE any team's loans, (2) UPDATE loan_config — changing interest rates and debt ceilings for ALL teams in the game, (3) INSERT phishing notifications targeting any user (\"You won $100k, click: evil.com\" — would appear as official in-app notification), (4) INSERT fake activity feed entries for any team, (5) INSERT fake admin_log entries (blocked only by CHECK constraint as defense-in-depth, not RLS). Plus a sixth, unrelated finding from the same audit: the \"Public read basic user info\" policy on the users table exposed EVERY column (email × 24, discord_id × 14, consent_preferences) to ANY authenticated user — a GDPR/doxxing risk. Fix migration applied to prod 2026-05-22: all 5 permissive policies rescoped to `TO service_role` (which is the only role that should be writing system tables — service_role bypasses RLS anyway, so this is the correct \"only service can write\" idiom), and the users policy was replaced with an admin-only cross-user read via the existing `is_admin()` SECURITY DEFINER function. Post-fix advisor: 15 → 10 findings (-33%). All flows verified: admins still see all users + emails, normal users only see their own profile. Refs #548. Audit: docs/RLS_AUDIT_2026-05-22.md. Postmortem: .claude/learnings/2026-05-22-rls-permissive-public-policies.md.",
-          "DA · Fem-i-én sikkerhedshærdning efter #548 RLS correctness audit. Fem Row-Level Security policies med navne som \"Service role full access X\" var teknisk scopet til `public` PostgreSQL-rollen, hvilket i Postgres-semantik betyder ALLE roller — så enhver logget-ind bruger kunne skrive via dem. Verificerede exploits på prod (rullet tilbage): random auth user kunne (1) INSERT/UPDATE/DELETE ethvert holds lån, (2) UPDATE loan_config — ændre renter og gældslofter for ALLE hold i spillet, (3) INSERT phishing-notifikationer rettet mod enhver bruger (\"Du har vundet $100k, klik: evil.com\" — ville fremstå som official in-app-notifikation), (4) INSERT fake activity-feed-entries for ethvert hold, (5) INSERT fake admin_log-entries (blokeret kun af CHECK-constraint som defense-in-depth, ikke RLS). Plus et sjette, urelateret fund fra samme audit: \"Public read basic user info\"-policy på users-tabellen eksponerede HVER kolonne (email × 24, discord_id × 14, consent_preferences) til ENHVER authenticated user — en GDPR/doxxing-risiko. Fix-migration applied til prod 2026-05-22: alle 5 permissive policies re-scopet til `TO service_role` (den eneste rolle der bør skrive system-tabeller — service_role bypasser RLS uanset, så dette er det korrekte \"kun service kan skrive\"-mønster), og users-policy'en blev erstattet med admin-only cross-user læsning via den eksisterende `is_admin()` SECURITY DEFINER function. Post-fix advisor: 15 → 10 findings (-33%). Alle flows verificeret: admins ser stadig alle users + emails, normale brugere ser kun egen profil. Refs #548. Audit: docs/RLS_AUDIT_2026-05-22.md. Postmortem: .claude/learnings/2026-05-22-rls-permissive-public-policies.md.",
+          "EN · Five-in-one security hardening pass following the #548 RLS correctness audit. Five Row-Level Security policies named \"Service role full access X\" were technically scoped to the `public` PostgreSQL role, which in Postgres semantics means ALL roles, so any signed-in user could write through them. Verified exploits on prod (rolled back): random auth user could (1) INSERT/UPDATE/DELETE any team's loans, (2) UPDATE loan_config, changing interest rates and debt ceilings for ALL teams in the game, (3) INSERT phishing notifications targeting any user (\"You won $100k, click: evil.com\", would appear as official in-app notification), (4) INSERT fake activity feed entries for any team, (5) INSERT fake admin_log entries (blocked only by CHECK constraint as defense-in-depth, not RLS). Plus a sixth, unrelated finding from the same audit: the \"Public read basic user info\" policy on the users table exposed EVERY column (email × 24, discord_id × 14, consent_preferences) to ANY authenticated user. A GDPR/doxxing risk. Fix migration applied to prod 2026-05-22: all 5 permissive policies rescoped to `TO service_role` (which is the only role that should be writing system tables. Service_role bypasses RLS anyway, so this is the correct \"only service can write\" idiom), and the users policy was replaced with an admin-only cross-user read via the existing `is_admin()` SECURITY DEFINER function. Post-fix advisor: 15 → 10 findings (-33%). All flows verified: admins still see all users + emails, normal users only see their own profile. Refs #548. Audit: docs/RLS_AUDIT_2026-05-22.md. Postmortem: .claude/learnings/2026-05-22-rls-permissive-public-policies.md.",
+          "DA · Fem-i-én sikkerhedshærdning efter #548 RLS correctness audit. Fem Row-Level Security policies med navne som \"Service role full access X\" var teknisk scopet til `public` PostgreSQL-rollen, hvilket i Postgres-semantik betyder ALLE roller, så enhver logget-ind bruger kunne skrive via dem. Verificerede exploits på prod (rullet tilbage): random auth user kunne (1) INSERT/UPDATE/DELETE ethvert holds lån, (2) UPDATE loan_config, ændre renter og gældslofter for ALLE hold i spillet, (3) INSERT phishing-notifikationer rettet mod enhver bruger (\"Du har vundet $100k, klik: evil.com\", ville fremstå som official in-app-notifikation), (4) INSERT fake activity-feed-entries for ethvert hold, (5) INSERT fake admin_log-entries (blokeret kun af CHECK-constraint som defense-in-depth, ikke RLS). Plus et sjette, urelateret fund fra samme audit: \"Public read basic user info\"-policy på users-tabellen eksponerede HVER kolonne (email × 24, discord_id × 14, consent_preferences) til ENHVER authenticated user. En GDPR/doxxing-risiko. Fix-migration applied til prod 2026-05-22: alle 5 permissive policies re-scopet til `TO service_role` (den eneste rolle der bør skrive system-tabeller. Service_role bypasser RLS uanset, så dette er det korrekte \"kun service kan skrive\"-mønster), og users-policy'en blev erstattet med admin-only cross-user læsning via den eksisterende `is_admin()` SECURITY DEFINER function. Post-fix advisor: 15 → 10 findings (-33%). Alle flows verificeret: admins ser stadig alle users + emails, normale brugere ser kun egen profil. Refs #548. Audit: docs/RLS_AUDIT_2026-05-22.md. Postmortem: .claude/learnings/2026-05-22-rls-permissive-public-policies.md.",
         ],
       },
     ],
@@ -1706,8 +1720,8 @@ const PATCHES = [
       {
         category: "Sikkerhed & Discord-DMs · webhook-URL'er låst ned + DM-observability",
         items: [
-          "EN · Two-in-one hardening pass. (1) Security #517: Discord webhook URLs were public-readable through Supabase's anon role — anyone could pull the full webhook list including the secret URL. Public read-policy on discord_settings has been dropped (verified: anon now sees 0 rows). Admin UI for Discord webhooks now goes through new backend endpoints under /api/admin/discord-settings, and the frontend only ever receives a masked URL (last 8 chars) for display — full URL never leaves the server. ACTION REQUIRED FROM ADMIN: rotate existing Discord webhook URLs in Discord (Server Settings → Integrations → Webhooks → regenerate) since the old URLs were exposed during the leak window. (2) Bug #449: Discord DMs on outbid silently stopped working around May 11. Root cause not 100% confirmed (likely related to the May 11 Supabase rotation/redeploy), but we found a class of silent fail-patterns in the notification pipeline: sendDM returned without logging when DISCORD_BOT_TOKEN was missing, and 5 .catch(() => {}) calls swallowed all DM-send errors. All now log structured warnings/errors so Railway logs will surface the real failure mode next time. If your DMs are still not working, ping in #bugs and we now have logs to diagnose with.",
-          "DA · To-i-én hardening-pass. (1) Sikkerhed #517: Discord webhook URLs var public-readable via Supabases anon-rolle — enhver kunne trække hele webhook-listen inklusive den hemmelige URL. Public-read-policy på discord_settings er droppet (verificeret: anon ser nu 0 rows). Admin-UI for Discord-webhooks går nu gennem nye backend-endpoints under /api/admin/discord-settings, og frontend modtager kun en maskeret URL (sidste 8 tegn) til visning — fuld URL forlader aldrig serveren. HANDLING KRÆVET FRA ADMIN: rotér eksisterende Discord webhook URLs i Discord (Server Settings → Integrations → Webhooks → regenerate), da de gamle URLs var eksponeret i leak-vinduet. (2) Bug #449: Discord-DM ved overbud holdt op silent omkring 11. maj. Root cause ikke 100% bekræftet (sandsynligvis relateret til Supabase-rotation/redeploy 11. maj), men vi fandt en klasse af silent fail-patterns i notifikations-pipelinen: sendDM returnerede uden at logge når DISCORD_BOT_TOKEN manglede, og 5 .catch(() => {})-kald slugte alle DM-send-fejl. Alle logger nu strukturerede warnings/errors så Railway-logs viser den faktiske fejl næste gang. Hvis dine DM'er stadig ikke virker, ping i #bugs og vi har nu logs at diagnostisere med.",
+          "EN · Two-in-one hardening pass. (1) Security #517: Discord webhook URLs were public-readable through Supabase's anon role. Anyone could pull the full webhook list including the secret URL. Public read-policy on discord_settings has been dropped (verified: anon now sees 0 rows). Admin UI for Discord webhooks now goes through new backend endpoints under /api/admin/discord-settings, and the frontend only ever receives a masked URL (last 8 chars) for display. Full URL never leaves the server. ACTION REQUIRED FROM ADMIN: rotate existing Discord webhook URLs in Discord (Server Settings → Integrations → Webhooks → regenerate) since the old URLs were exposed during the leak window. (2) Bug #449: Discord DMs on outbid silently stopped working around May 11. Root cause not 100% confirmed (likely related to the May 11 Supabase rotation/redeploy), but we found a class of silent fail-patterns in the notification pipeline: sendDM returned without logging when DISCORD_BOT_TOKEN was missing, and 5 .catch(() => {}) calls swallowed all DM-send errors. All now log structured warnings/errors so Railway logs will surface the real failure mode next time. If your DMs are still not working, ping in #bugs and we now have logs to diagnose with.",
+          "DA · To-i-én hardening-pass. (1) Sikkerhed #517: Discord webhook URLs var public-readable via Supabases anon-rolle. Enhver kunne trække hele webhook-listen inklusive den hemmelige URL. Public-read-policy på discord_settings er droppet (verificeret: anon ser nu 0 rows). Admin-UI for Discord-webhooks går nu gennem nye backend-endpoints under /api/admin/discord-settings, og frontend modtager kun en maskeret URL (sidste 8 tegn) til visning. Fuld URL forlader aldrig serveren. HANDLING KRÆVET FRA ADMIN: rotér eksisterende Discord webhook URLs i Discord (Server Settings → Integrations → Webhooks → regenerate), da de gamle URLs var eksponeret i leak-vinduet. (2) Bug #449: Discord-DM ved overbud holdt op silent omkring 11. maj. Root cause ikke 100% bekræftet (sandsynligvis relateret til Supabase-rotation/redeploy 11. maj), men vi fandt en klasse af silent fail-patterns i notifikations-pipelinen: sendDM returnerede uden at logge når DISCORD_BOT_TOKEN manglede, og 5 .catch(() => {})-kald slugte alle DM-send-fejl. Alle logger nu strukturerede warnings/errors så Railway-logs viser den faktiske fejl næste gang. Hvis dine DM'er stadig ikke virker, ping i #bugs og vi har nu logs at diagnostisere med.",
         ],
       },
     ],
@@ -1720,8 +1734,8 @@ const PATCHES = [
       {
         category: "Sæson · Loop-incident rest-cleanup: ghost-renter på lån fjernet (zero-sum-justering)",
         items: [
-          "EN · Forensic deep-dive after the v3.86 rollback revealed the original cleanup only removed ghost finance_transactions and reset team balances using SUM(ghost-tx.amount). But processLoanInterest writes a finance_transactions row with amount=-interest as audit, while the actual debit happens by increasing loans.amount_remaining (the loan grows by the interest), NOT by deducting from teams.balance. The original rollback therefore subtracted ghost loan_interest amounts from balance even though they were never in the balance to begin with — and left loans.amount_remaining pumped up by 3 extra ghost interest cycles. Net effect: 8 teams with loans had 1.09M CZ$ of phantom money on their balance, AND their loans had 1.09M CZ$ of phantom debt (perfect 1:1 correspondence). Rest-cleanup deployed: 10 active loans rolled back via amount_remaining / (1+interest_rate)^3 + seasons_remaining += 3, 8 teams' balances reduced by sum of per-loan overshoot. Manager net-worth (balance − debt) is unchanged per team. All 19 teams now reconcile cleanly against finance_transactions. New doc docs/SEASON_LOOP_FORENSICS.md documents the methodology so the same audit can be redone in the future.",
-          "DA · Forensisk dybde-undersøgelse efter v3.86-rollbacken afslørede at den oprindelige cleanup kun fjernede ghost finance_transactions og resatte hold-balancer via SUM(ghost-tx.amount). Men processLoanInterest skriver en finance_transactions-row med amount=-rente som audit, mens den faktiske debet sker ved at lægge renten oven i loans.amount_remaining (gælden vokser), IKKE ved at trække fra teams.balance. Original rollback subtraherede derfor ghost loan_interest-amounts fra balance selvom de aldrig var i balancen — og lod loans.amount_remaining stå pumpet med 3 ekstra ghost-rente-cykler. Net effekt: 8 hold med lån havde 1,09M CZ$ phantom-penge på balancen, OG deres lån havde 1,09M CZ$ phantom-gæld (perfekt 1:1 korrespondance). Rest-cleanup deployed: 10 aktive lån rullet tilbage via amount_remaining / (1+rente)^3 + seasons_remaining += 3, 8 holds balancer reduceret med sum af ghost-overshoot per lån. Manager net-worth (balance − gæld) er uændret per hold. Alle 19 hold matcher nu rekonstruktion fra finance_transactions. Ny doc docs/SEASON_LOOP_FORENSICS.md dokumenterer metodologien så samme audit kan gentages fremover.",
+          "EN · Forensic deep-dive after the v3.86 rollback revealed the original cleanup only removed ghost finance_transactions and reset team balances using SUM(ghost-tx.amount). But processLoanInterest writes a finance_transactions row with amount=-interest as audit, while the actual debit happens by increasing loans.amount_remaining (the loan grows by the interest), NOT by deducting from teams.balance. The original rollback therefore subtracted ghost loan_interest amounts from balance even though they were never in the balance to begin with. And left loans.amount_remaining pumped up by 3 extra ghost interest cycles. Net effect: 8 teams with loans had 1.09M CZ$ of phantom money on their balance, AND their loans had 1.09M CZ$ of phantom debt (perfect 1:1 correspondence). Rest-cleanup deployed: 10 active loans rolled back via amount_remaining / (1+interest_rate)^3 + seasons_remaining += 3, 8 teams' balances reduced by sum of per-loan overshoot. Manager net-worth (balance − debt) is unchanged per team. All 19 teams now reconcile cleanly against finance_transactions. New doc docs/SEASON_LOOP_FORENSICS.md documents the methodology so the same audit can be redone in the future.",
+          "DA · Forensisk dybde-undersøgelse efter v3.86-rollbacken afslørede at den oprindelige cleanup kun fjernede ghost finance_transactions og resatte hold-balancer via SUM(ghost-tx.amount). Men processLoanInterest skriver en finance_transactions-row med amount=-rente som audit, mens den faktiske debet sker ved at lægge renten oven i loans.amount_remaining (gælden vokser), IKKE ved at trække fra teams.balance. Original rollback subtraherede derfor ghost loan_interest-amounts fra balance selvom de aldrig var i balancen. Og lod loans.amount_remaining stå pumpet med 3 ekstra ghost-rente-cykler. Net effekt: 8 hold med lån havde 1,09M CZ$ phantom-penge på balancen, OG deres lån havde 1,09M CZ$ phantom-gæld (perfekt 1:1 korrespondance). Rest-cleanup deployed: 10 aktive lån rullet tilbage via amount_remaining / (1+rente)^3 + seasons_remaining += 3, 8 holds balancer reduceret med sum af ghost-overshoot per lån. Manager net-worth (balance − gæld) er uændret per hold. Alle 19 hold matcher nu rekonstruktion fra finance_transactions. Ny doc docs/SEASON_LOOP_FORENSICS.md dokumenterer metodologien så samme audit kan gentages fremover.",
         ],
       },
     ],
@@ -1734,8 +1748,8 @@ const PATCHES = [
       {
         category: "Sæson · Safety-net mod cron-loop bug (forward-guards efter v3.86)",
         items: [
-          "EN · Five forward-guards are now active after the v3.86 fix: (1) Discord-broadcast moved into transitionToNextSeason so EVERY transition — both admin-triggered and cron-triggered — posts to Discord (previously cron-fired transitions were silent and took 30 minutes to spot during the incident). (2) SIGTERM-handler in server.js: Railway deploys now wait up to 30 seconds for in-flight cron-ticks to finish before exiting, so a cron mid-season-transition is never interrupted by a redeploy. (3) Sentry alerts on cron failures: every cron-tick is now wrapped with a 'cron:<name>' tag, so any error in the season-transition chain is visible in the Sentry dashboard in real time. (4) Daily season-count safety-net: a new cron runs every 24h, counts season_transition entries in admin_log, and posts a Discord ALERT + Sentry event if more than 1 transition happened per day (a healthy season lasts weeks). (5) New admin checklist at docs/SEASON_TRANSITION_CHECKLIST.md documents the exact admin actions for ending a season + the expected cron-chain timing + abort procedure. Out of scope (parked as GitHub issues #542, #543, #544): refactoring the transfer_windows.status overload to an explicit lifecycle_phase enum, a season_transition_paused admin toggle, and a stricter DB CHECK on closed_at-manipulation. 5 new tests + 708 existing tests all pass.",
-          "DA · Fem forward-guards er nu aktive efter v3.86-fixet: (1) Discord-broadcast flyttet ind i transitionToNextSeason så HVER transition — både admin-trigget og cron-trigget — posteres til Discord (tidligere var cron-fyrede transitions silent og tog 30 min at spotte under incidenten). (2) SIGTERM-handler i server.js: Railway-deploy venter nu op til 30 sek på igangværende cron-ticks før exit, så en cron midt i sæson-transition aldrig afbrydes af et redeploy. (3) Sentry-alerts på cron-fejl: hver cron-tick er nu wrappet med 'cron:<navn>'-tag, så enhver fejl i sæson-transition-kæden bliver synlig i Sentry-dashboardet i realtid. (4) Daglig season-count safety-net: ny cron der kører hver 24t, tæller season_transition-entries i admin_log, og poster Discord-ALERT + Sentry-event hvis mere end 1 transition på en dag (en sund sæson varer uger). (5) Ny admin-checklist på docs/SEASON_TRANSITION_CHECKLIST.md dokumenterer de præcise admin-handlinger for at afslutte en sæson + det forventede cron-chain-tidsforløb + abort-procedure. Parkeret som GitHub-issues #542, #543, #544: refactor af transfer_windows.status-overloaden til en eksplicit lifecycle_phase enum, season_transition_paused admin-toggle, og strammere DB CHECK på closed_at-manipulation. 5 nye tests + 708 eksisterende tests består alle.",
+          "EN · Five forward-guards are now active after the v3.86 fix: (1) Discord-broadcast moved into transitionToNextSeason so EVERY transition (both admin-triggered and cron-triggered) posts to Discord (previously cron-fired transitions were silent and took 30 minutes to spot during the incident). (2) SIGTERM-handler in server.js: Railway deploys now wait up to 30 seconds for in-flight cron-ticks to finish before exiting, so a cron mid-season-transition is never interrupted by a redeploy. (3) Sentry alerts on cron failures: every cron-tick is now wrapped with a 'cron:<name>' tag, so any error in the season-transition chain is visible in the Sentry dashboard in real time. (4) Daily season-count safety-net: a new cron runs every 24h, counts season_transition entries in admin_log, and posts a Discord ALERT + Sentry event if more than 1 transition happened per day (a healthy season lasts weeks). (5) New admin checklist at docs/SEASON_TRANSITION_CHECKLIST.md documents the exact admin actions for ending a season + the expected cron-chain timing + abort procedure. Out of scope (parked as GitHub issues #542, #543, #544): refactoring the transfer_windows.status overload to an explicit lifecycle_phase enum, a season_transition_paused admin toggle, and a stricter DB CHECK on closed_at-manipulation. 5 new tests + 708 existing tests all pass.",
+          "DA · Fem forward-guards er nu aktive efter v3.86-fixet: (1) Discord-broadcast flyttet ind i transitionToNextSeason så HVER transition (både admin-trigget og cron-trigget) posteres til Discord (tidligere var cron-fyrede transitions silent og tog 30 min at spotte under incidenten). (2) SIGTERM-handler i server.js: Railway-deploy venter nu op til 30 sek på igangværende cron-ticks før exit, så en cron midt i sæson-transition aldrig afbrydes af et redeploy. (3) Sentry-alerts på cron-fejl: hver cron-tick er nu wrappet med 'cron:<navn>'-tag, så enhver fejl i sæson-transition-kæden bliver synlig i Sentry-dashboardet i realtid. (4) Daglig season-count safety-net: ny cron der kører hver 24t, tæller season_transition-entries i admin_log, og poster Discord-ALERT + Sentry-event hvis mere end 1 transition på en dag (en sund sæson varer uger). (5) Ny admin-checklist på docs/SEASON_TRANSITION_CHECKLIST.md dokumenterer de præcise admin-handlinger for at afslutte en sæson + det forventede cron-chain-tidsforløb + abort-procedure. Parkeret som GitHub-issues #542, #543, #544: refactor af transfer_windows.status-overloaden til en eksplicit lifecycle_phase enum, season_transition_paused admin-toggle, og strammere DB CHECK på closed_at-manipulation. 5 nye tests + 708 eksisterende tests består alle.",
         ],
       },
     ],
@@ -1748,8 +1762,8 @@ const PATCHES = [
       {
         category: "Sæson · Auto-transition cron-loop stoppet + rollback til sæson 1",
         items: [
-          "EN · After the season 0 → 1 transition completed correctly at 23:15, the auto-transition cron triggered a second transition 10 minutes later, and then kept firing every 5–10 minutes — landing the database on season 4 by midnight. Root cause: the freshly-created next-season transfer_window is inserted with status='closed' (it's a racing window — market is closed during races), but with closed_at=null since it was never actually closed via a deadline. Three crons (deadline-day, squad-enforcement, season auto-transition) filtered only on status='closed' without checking closed_at, so they processed the brand-new racing window as if it were a wrapped deadline-window and triggered yet another transition. The cron loop has been stopped, sessions 2/3/4 + their 144 ghost finance_transactions have been rolled back, and all three crons now filter on closed_at IS NOT NULL so racing-windows can never be matched again. Also fixed: admin_log.admin_user_id is now nullable so cron-initiated transitions get audit entries (previously the INSERT failed silently because cron passes admin_user_id=null against a NOT NULL column). Regression tests cover all three crons.",
-          "DA · Efter sæson 0 → 1 transitionen kørte korrekt kl 23:15, fyrede auto-transition cron'en en NY transition 10 minutter senere, og blev så ved hvert 5.-10. minut — så databasen landede på sæson 4 ved midnat. Rod-årsag: det nyoprettede vindue for næste sæson inserts med status='closed' (det er et racing-window — markedet er lukket under løb), men med closed_at=null da det aldrig faktisk blev lukket via en deadline. Tre crons (deadline-day, squad-enforcement, season auto-transition) filtrerede kun på status='closed' uden at tjekke closed_at, så de behandlede det helt nye racing-window som om det var et wrapped deadline-window og triggede endnu en transition. Cron-loopen er stoppet, sæson 2/3/4 + deres 144 ghost finance_transactions er rullet tilbage, og alle tre crons filtrerer nu på closed_at IS NOT NULL så racing-windows aldrig kan matches igen. Også fixet: admin_log.admin_user_id er nu nullable så cron-initierede transitions får audit-entries (tidligere fejlede INSERT'et silently fordi cron sender admin_user_id=null mod en NOT NULL kolonne). Regressionstests dækker alle tre crons.",
+          "EN · After the season 0 → 1 transition completed correctly at 23:15, the auto-transition cron triggered a second transition 10 minutes later, and then kept firing every 5–10 minutes, landing the database on season 4 by midnight. Root cause: the freshly-created next-season transfer_window is inserted with status='closed' (it's a racing window, market is closed during races), but with closed_at=null since it was never actually closed via a deadline. Three crons (deadline-day, squad-enforcement, season auto-transition) filtered only on status='closed' without checking closed_at, so they processed the brand-new racing window as if it were a wrapped deadline-window and triggered yet another transition. The cron loop has been stopped, sessions 2/3/4 + their 144 ghost finance_transactions have been rolled back, and all three crons now filter on closed_at IS NOT NULL so racing-windows can never be matched again. Also fixed: admin_log.admin_user_id is now nullable so cron-initiated transitions get audit entries (previously the INSERT failed silently because cron passes admin_user_id=null against a NOT NULL column). Regression tests cover all three crons.",
+          "DA · Efter sæson 0 → 1 transitionen kørte korrekt kl 23:15, fyrede auto-transition cron'en en NY transition 10 minutter senere, og blev så ved hvert 5.-10. minut, så databasen landede på sæson 4 ved midnat. Rod-årsag: det nyoprettede vindue for næste sæson inserts med status='closed' (det er et racing-window, markedet er lukket under løb), men med closed_at=null da det aldrig faktisk blev lukket via en deadline. Tre crons (deadline-day, squad-enforcement, season auto-transition) filtrerede kun på status='closed' uden at tjekke closed_at, så de behandlede det helt nye racing-window som om det var et wrapped deadline-window og triggede endnu en transition. Cron-loopen er stoppet, sæson 2/3/4 + deres 144 ghost finance_transactions er rullet tilbage, og alle tre crons filtrerer nu på closed_at IS NOT NULL så racing-windows aldrig kan matches igen. Også fixet: admin_log.admin_user_id er nu nullable så cron-initierede transitions får audit-entries (tidligere fejlede INSERT'et silently fordi cron sender admin_user_id=null mod en NOT NULL kolonne). Regressionstests dækker alle tre crons.",
         ],
       },
     ],
@@ -1776,8 +1790,8 @@ const PATCHES = [
       {
         category: "Discord · Final Whistle inkluderer nu ai-pool auktioner + viser største auktion og største transfer separat",
         items: [
-          "EN · The Final Whistle Discord embed (posted automatically when a transfer window closes) now counts ALL completed auctions during the window, including purchases from the free agent / AI rider pool. Previously only manager-to-manager auctions were counted, which made the report misleading in early seasons where most deals are from the open pool — e.g. season 0 had 111 completed auctions, but only 9 would have shown. The embed also splits 'Biggest deal' into two separate fields: 🏆 Biggest auction and 💸 Biggest transfer, so manager-vs-manager moves don't get hidden when an AI-pool buy happens to be larger. Auctions with no seller (pool buys) show as 'fri pulje' instead of '–'. Panic-handler flag still requires a real seller team, so AI-pool auctions can never be panic deals.",
-          "DA · Final Whistle Discord-embed (sendes automatisk når et transfervindue lukker) tæller nu ALLE gennemførte auktioner i vinduet, inklusive køb fra fri-agent-puljen / AI-rytter-puljen. Tidligere blev kun manager-til-manager auktioner talt med, hvilket gjorde rapporten misvisende i tidlige sæsoner hvor de fleste handler er fra den åbne pulje — fx havde sæson 0 111 gennemførte auktioner, men kun 9 ville være vist. Embeddet splitter også 'Største handel' i to separate felter: 🏆 Største auktion og 💸 Største transfer, så manager-vs-manager træk ikke skjules når et AI-pool-køb tilfældigvis er større. Auktioner uden sælger (pulje-køb) vises som 'fri pulje' i stedet for '–'. Panik-handler-flag kræver stadig et faktisk sælger-hold, så AI-pool auktioner kan aldrig være panik-handler.",
+          "EN · The Final Whistle Discord embed (posted automatically when a transfer window closes) now counts ALL completed auctions during the window, including purchases from the free agent / AI rider pool. Previously only manager-to-manager auctions were counted, which made the report misleading in early seasons where most deals are from the open pool, e.g. season 0 had 111 completed auctions, but only 9 would have shown. The embed also splits 'Biggest deal' into two separate fields: 🏆 Biggest auction and 💸 Biggest transfer, so manager-vs-manager moves don't get hidden when an AI-pool buy happens to be larger. Auctions with no seller (pool buys) show as 'fri pulje' instead of '–'. Panic-handler flag still requires a real seller team, so AI-pool auctions can never be panic deals.",
+          "DA · Final Whistle Discord-embed (sendes automatisk når et transfervindue lukker) tæller nu ALLE gennemførte auktioner i vinduet, inklusive køb fra fri-agent-puljen / AI-rytter-puljen. Tidligere blev kun manager-til-manager auktioner talt med, hvilket gjorde rapporten misvisende i tidlige sæsoner hvor de fleste handler er fra den åbne pulje. Fx havde sæson 0 111 gennemførte auktioner, men kun 9 ville være vist. Embeddet splitter også 'Største handel' i to separate felter: 🏆 Største auktion og 💸 Største transfer, så manager-vs-manager træk ikke skjules når et AI-pool-køb tilfældigvis er større. Auktioner uden sælger (pulje-køb) vises som 'fri pulje' i stedet for '–'. Panik-handler-flag kræver stadig et faktisk sælger-hold, så AI-pool auktioner kan aldrig være panik-handler.",
         ],
       },
     ],
@@ -1804,8 +1818,8 @@ const PATCHES = [
       {
         category: "Dokumentation · Sæsonstart-rækkefølge klargjort overalt",
         items: [
-          "EN · Help texts, FAQ, finance hints and admin dialogs now consistently describe the v3.78 cash-flow order: at season start sponsor is credited to ALL teams first, then loan interest is deducted, then salaries are deducted, and only if balance is still short does the system take an emergency loan. Several pages still said 'salaries are deducted at season end' — that was outdated since v3.78. No behaviour change; the engine has worked this way since 2026-05-21 morning. A new regression test locks the invariant so the order cannot regress unnoticed.",
-          "DA · Hjælpetekster, FAQ, finance-hints og admin-dialoger beskriver nu konsekvent v3.78-cashflowet: ved sæsonstart krediteres sponsor til ALLE hold først, dernæst trækkes lånerenter, så lønninger, og kun hvis balance stadig er negativ optager systemet et nødlån. Flere sider sagde stadig 'løn trækkes ved sæsonslut' — det var forældet siden v3.78. Ingen adfærdsændring; engine'n har kørt sådan siden morgenen 2026-05-21. Ny regressionstest låser invariant, så rækkefølgen ikke kan smutte uden vi opdager det.",
+          "EN · Help texts, FAQ, finance hints and admin dialogs now consistently describe the v3.78 cash-flow order: at season start sponsor is credited to ALL teams first, then loan interest is deducted, then salaries are deducted, and only if balance is still short does the system take an emergency loan. Several pages still said 'salaries are deducted at season end'. That was outdated since v3.78. No behaviour change; the engine has worked this way since 2026-05-21 morning. A new regression test locks the invariant so the order cannot regress unnoticed.",
+          "DA · Hjælpetekster, FAQ, finance-hints og admin-dialoger beskriver nu konsekvent v3.78-cashflowet: ved sæsonstart krediteres sponsor til ALLE hold først, dernæst trækkes lånerenter, så lønninger, og kun hvis balance stadig er negativ optager systemet et nødlån. Flere sider sagde stadig 'løn trækkes ved sæsonslut'. Det var forældet siden v3.78. Ingen adfærdsændring; engine'n har kørt sådan siden morgenen 2026-05-21. Ny regressionstest låser invariant, så rækkefølgen ikke kan smutte uden vi opdager det.",
         ],
       },
     ],
@@ -1818,8 +1832,8 @@ const PATCHES = [
       {
         category: "Sæson · Ingen op/nedrykninger i sæson 1 og 2",
         items: [
-          "EN · Promotion and relegation between divisions is paused for the rest of season 1 and all of season 2. When season 1 and season 2 end, no teams will move between Division 1, 2 and 3 based on the final standings. Division bonuses, board evaluation and rider value recalculation still run as normal — only the division-shuffle is skipped. Reason: with open beta still finding its footing and an uneven team-count per division, we want time to design a healthy long-term distribution before we start moving teams around. Promotion/relegation re-enables automatically when season 2 ends (i.e. starting with the season 2 → 3 transition), unless we change the rules again before then.",
-          "DA · Op- og nedrykning mellem divisioner er sat på pause for resten af sæson 1 og hele sæson 2. Når sæson 1 og sæson 2 slutter, flytter ingen hold mellem Division 1, 2 og 3 baseret på den endelige stilling. Divisionsbonusser, bestyrelses-evaluering og rytter-værdi-recalc kører stadig normalt — kun selve division-skiftet springes over. Begrundelse: open beta er stadig ved at finde sin form og hold-fordelingen per division er ujævn, så vi vil have tid til at designe en sund langtidsfordeling før vi begynder at flytte rundt på hold. Op/nedrykning genaktiveres automatisk når sæson 2 slutter (dvs. ved sæson 2 → 3-transitionen), medmindre vi ændrer reglerne igen inden da.",
+          "EN · Promotion and relegation between divisions is paused for the rest of season 1 and all of season 2. When season 1 and season 2 end, no teams will move between Division 1, 2 and 3 based on the final standings. Division bonuses, board evaluation and rider value recalculation still run as normal. Only the division-shuffle is skipped. Reason: with open beta still finding its footing and an uneven team-count per division, we want time to design a healthy long-term distribution before we start moving teams around. Promotion/relegation re-enables automatically when season 2 ends (i.e. starting with the season 2 → 3 transition), unless we change the rules again before then.",
+          "DA · Op- og nedrykning mellem divisioner er sat på pause for resten af sæson 1 og hele sæson 2. Når sæson 1 og sæson 2 slutter, flytter ingen hold mellem Division 1, 2 og 3 baseret på den endelige stilling. Divisionsbonusser, bestyrelses-evaluering og rytter-værdi-recalc kører stadig normalt. Kun selve division-skiftet springes over. Begrundelse: open beta er stadig ved at finde sin form og hold-fordelingen per division er ujævn, så vi vil have tid til at designe en sund langtidsfordeling før vi begynder at flytte rundt på hold. Op/nedrykning genaktiveres automatisk når sæson 2 slutter (dvs. ved sæson 2 → 3-transitionen), medmindre vi ændrer reglerne igen inden da.",
         ],
       },
     ],
@@ -1832,8 +1846,8 @@ const PATCHES = [
       {
         category: "Admin · Frys/optø manager-hold (Refs #452)",
         items: [
-          "EN · Admins can now freeze a manager team from /admin/economy → Overview. A frozen team is hidden from public standings, the team list, hall of fame, head-to-head search and the season-preview, and is automatically skipped by sponsor payouts, season-end processing, board flows, sequential negotiation and beta-reset jobs. The team's balance, riders and user account are fully preserved — the manager can still log in, and an admin can unfreeze later from the same row. Built for inactive managers who never bought riders and shouldn't take up a Division 3 slot until they come back. The first real team to be frozen with this tool is Inuit Cycling — they can be re-activated any time via the new \"Optø\" button.",
-          "DA · Admins kan nu fryse et manager-hold fra /admin/economy → Overblik. Et frosset hold skjules fra offentlige standings, holdlisten, hall of fame, head-to-head-søgningen og sæson-previewet, og springes automatisk over af sponsor-payouts, sæson-slut, bestyrelses-flow, sekventiel forhandling og beta-reset-jobs. Holdets balance, ryttere og bruger-konto bevares fuldstændigt — manageren kan stadig logge ind, og en admin kan optø igen fra samme række. Bygget til inaktive managers der aldrig har købt ryttere og ikke skal tage en Division 3-plads op indtil de kommer tilbage. Det første rigtige hold der fryses med værktøjet er Inuit Cycling — de kan reaktiveres når som helst via den nye \"Optø\"-knap.",
+          "EN · Admins can now freeze a manager team from /admin/economy → Overview. A frozen team is hidden from public standings, the team list, hall of fame, head-to-head search and the season-preview, and is automatically skipped by sponsor payouts, season-end processing, board flows, sequential negotiation and beta-reset jobs. The team's balance, riders and user account are fully preserved. The manager can still log in, and an admin can unfreeze later from the same row. Built for inactive managers who never bought riders and shouldn't take up a Division 3 slot until they come back. The first real team to be frozen with this tool is Inuit Cycling. They can be re-activated any time via the new \"Optø\" button.",
+          "DA · Admins kan nu fryse et manager-hold fra /admin/economy → Overblik. Et frosset hold skjules fra offentlige standings, holdlisten, hall of fame, head-to-head-søgningen og sæson-previewet, og springes automatisk over af sponsor-payouts, sæson-slut, bestyrelses-flow, sekventiel forhandling og beta-reset-jobs. Holdets balance, ryttere og bruger-konto bevares fuldstændigt. Manageren kan stadig logge ind, og en admin kan optø igen fra samme række. Bygget til inaktive managers der aldrig har købt ryttere og ikke skal tage en Division 3-plads op indtil de kommer tilbage. Det første rigtige hold der fryses med værktøjet er Inuit Cycling. De kan reaktiveres når som helst via den nye \"Optø\"-knap.",
         ],
       },
     ],
@@ -1846,8 +1860,8 @@ const PATCHES = [
       {
         category: "Admin · Sæson-transition preview omformuleret til v3.78-cashflow",
         items: [
-          "EN · The admin /admin/season preview table is renamed from \"Sæsonafslutnings-preview\" to \"Sæson-transition preview (næste sæson-start)\" and reordered to match the v3.78 cashflow order: balance + sponsor − interest − salary = balance after start. The columns are now Balance | + Sponsor (start) | − Interest | − Salary | Balance after start | Emergency loan? | Satisfaction | Rank. The underlying calculation also now includes sponsor income, so the emergency-loan flag matches what processSeasonStart actually does — teams that have low cash but enough sponsor to cover salary no longer falsely show as needing an emergency loan. The disclaimer now points at the \"Udfør sæsonskifte\" button in the Season cycle section instead of the deprecated ⏹ End button.",
-          "DA · Admin /admin/season preview-tabellen er omdøbt fra \"Sæsonafslutnings-preview\" til \"Sæson-transition preview (næste sæson-start)\" og kolonnerne er omarrangeret efter v3.78-rækkefølgen: balance + sponsor − renter − løn = balance efter start. Kolonnerne er nu Balance | + Sponsor (start) | − Renter | − Løn | Balance efter start | Nødlån? | Tilfredshed | Rang. Den underliggende beregning inkluderer nu også sponsor-indtægt, så nødlån-flaget stemmer med hvad processSeasonStart faktisk gør — hold med lav cash men nok sponsor til at dække løn flagges ikke længere fejlagtigt som nødlåns-kandidater. Disclaimer'en peger nu på \"Udfør sæsonskifte\"-knappen i Sæson-cyklus-sektionen i stedet for den deprecated ⏹ Afslut-knap.",
+          "EN · The admin /admin/season preview table is renamed from \"Sæsonafslutnings-preview\" to \"Sæson-transition preview (næste sæson-start)\" and reordered to match the v3.78 cashflow order: balance + sponsor − interest − salary = balance after start. The columns are now Balance | + Sponsor (start) | − Interest | − Salary | Balance after start | Emergency loan? | Satisfaction | Rank. The underlying calculation also now includes sponsor income, so the emergency-loan flag matches what processSeasonStart actually does. Teams that have low cash but enough sponsor to cover salary no longer falsely show as needing an emergency loan. The disclaimer now points at the \"Udfør sæsonskifte\" button in the Season cycle section instead of the deprecated ⏹ End button.",
+          "DA · Admin /admin/season preview-tabellen er omdøbt fra \"Sæsonafslutnings-preview\" til \"Sæson-transition preview (næste sæson-start)\" og kolonnerne er omarrangeret efter v3.78-rækkefølgen: balance + sponsor − renter − løn = balance efter start. Kolonnerne er nu Balance | + Sponsor (start) | − Renter | − Løn | Balance efter start | Nødlån? | Tilfredshed | Rang. Den underliggende beregning inkluderer nu også sponsor-indtægt, så nødlån-flaget stemmer med hvad processSeasonStart faktisk gør. Hold med lav cash men nok sponsor til at dække løn flagges ikke længere fejlagtigt som nødlåns-kandidater. Disclaimer'en peger nu på \"Udfør sæsonskifte\"-knappen i Sæson-cyklus-sektionen i stedet for den deprecated ⏹ Afslut-knap.",
         ],
       },
     ],
@@ -1860,8 +1874,8 @@ const PATCHES = [
       {
         category: "Økonomi · Løn betales nu ved sæson-START i stedet for sæson-slut",
         items: [
-          "EN · Rider salaries, loan interest, emergency loans and negative-balance interest now hit your balance at the START of each season (right when sponsor money lands), instead of at the end. You see one combined cashflow event per season instead of getting hit with a big bill when the season closes. Your forecast and accounting becomes simpler — what you see at season start is your real budget. No retroactive effect: season 0 stays untouched, season 1 starts with the new model when the season transition button is clicked tonight.",
-          "DA · Rytterlønninger, lånerenter, nødlån og negativ-balance-rente trækkes nu fra din balance ved STARTEN af hver sæson (samtidig med sponsorindkomst), i stedet for ved sæsonens slut. Du ser én samlet pengestrøm pr. sæson i stedet for at få regningen ved sæson-slut. Din prognose og bogføring bliver simplere — det du ser ved sæson-start er dit reelle budget. Ingen tilbagevirkende effekt: sæson 0 forbliver urørt, sæson 1 starter med den nye model når sæson-skifte-knappen trykkes i aften.",
+          "EN · Rider salaries, loan interest, emergency loans and negative-balance interest now hit your balance at the START of each season (right when sponsor money lands), instead of at the end. You see one combined cashflow event per season instead of getting hit with a big bill when the season closes. Your forecast and accounting becomes simpler. What you see at season start is your real budget. No retroactive effect: season 0 stays untouched, season 1 starts with the new model when the season transition button is clicked tonight.",
+          "DA · Rytterlønninger, lånerenter, nødlån og negativ-balance-rente trækkes nu fra din balance ved STARTEN af hver sæson (samtidig med sponsorindkomst), i stedet for ved sæsonens slut. Du ser én samlet pengestrøm pr. sæson i stedet for at få regningen ved sæson-slut. Din prognose og bogføring bliver simplere. Det du ser ved sæson-start er dit reelle budget. Ingen tilbagevirkende effekt: sæson 0 forbliver urørt, sæson 1 starter med den nye model når sæson-skifte-knappen trykkes i aften.",
         ],
       },
       {
@@ -1900,10 +1914,10 @@ const PATCHES = [
     label: "Beta",
     changes: [
       {
-        category: "Admin · Tab-based navigation re-applied — clean rollout (Refs #529)",
+        category: "Admin · Tab-based navigation re-applied. Clean rollout (Refs #529)",
         items: [
-          "EN · The /admin panel is now split into 5 tabs with their own URLs: /admin/season, /admin/economy, /admin/users, /admin/data, /admin/system. You can bookmark or share a link straight to a tab. Old /admin bookmarks redirect to /admin/season. This is the clean re-apply of the work that v3.75 rolled back — same scope, now committed properly via a reviewed PR instead of a pre-commit sweep. Beta-test reset tools are hidden in production (only visible in dev mode). No backend changes. The original AdminPage will be removed in a later phase once everything is verified on prod.",
-          "DA · /admin-panelet er nu opdelt i 5 faner med egne URLs: /admin/season, /admin/economy, /admin/users, /admin/data, /admin/system. Du kan bookmarke eller dele et link direkte til en fane. Gamle /admin-bookmarks redirecter til /admin/season. Dette er den rene re-apply af det arbejde v3.75 rullede tilbage — samme scope, nu committet ordentligt via en reviewed PR i stedet for et pre-commit sweep. Beta-test-nulstillingsværktøjer er skjult i prod (kun synlige i dev-tilstand). Ingen backend-ændringer. Den oprindelige AdminPage fjernes i en senere fase når alt er verificeret på prod.",
+          "EN · The /admin panel is now split into 5 tabs with their own URLs: /admin/season, /admin/economy, /admin/users, /admin/data, /admin/system. You can bookmark or share a link straight to a tab. Old /admin bookmarks redirect to /admin/season. This is the clean re-apply of the work that v3.75 rolled back. Same scope, now committed properly via a reviewed PR instead of a pre-commit sweep. Beta-test reset tools are hidden in production (only visible in dev mode). No backend changes. The original AdminPage will be removed in a later phase once everything is verified on prod.",
+          "DA · /admin-panelet er nu opdelt i 5 faner med egne URLs: /admin/season, /admin/economy, /admin/users, /admin/data, /admin/system. Du kan bookmarke eller dele et link direkte til en fane. Gamle /admin-bookmarks redirecter til /admin/season. Dette er den rene re-apply af det arbejde v3.75 rullede tilbage. Samme scope, nu committet ordentligt via en reviewed PR i stedet for et pre-commit sweep. Beta-test-nulstillingsværktøjer er skjult i prod (kun synlige i dev-tilstand). Ingen backend-ændringer. Den oprindelige AdminPage fjernes i en senere fase når alt er verificeret på prod.",
         ],
       },
     ],
@@ -1958,10 +1972,10 @@ const PATCHES = [
       {
         category: "Admin · Race-katalog edit (årgang/navn/klasse) gemmer nu rigtigt (Refs #515)",
         items: [
-          "EN · /admin → Løbskalender → ✏ Rediger now actually saves your changes. The old editor silently dropped name, class, type, stages and edition_year edits — the UI showed 'Løb gemt' but the database was unchanged. Cause: the frontend wrote straight to the races table from the browser, and the row-level security policy only allows reads. Saves now go through a new admin-gated backend endpoint that applies the update server-side and records before/after values to the admin audit log.",
-          "EN · Unblocks the pre-season-1 workflow of filling edition_year on the 26 season-1 races (needed before season 1 starts Thu 2026-05-21 23:00). If you previously typed an edition_year and it appeared blank afterwards, just open the row, retype it and click Gem — it now sticks.",
-          "DA · /admin → Løbskalender → ✏ Rediger gemmer nu rigtigt dine ændringer. Den gamle editor smed lydløst navn, klasse, type, etaper og løbsudgave-ændringer væk — UI'et viste 'Løb gemt' men databasen var uændret. Årsag: frontend skrev direkte til races-tabellen fra browseren, men row-level security-policy'en tillader kun læsning. Gem går nu gennem et nyt admin-gated backend-endpoint der laver ændringen server-side og logger før/efter-værdier til admin-audit-log.",
-          "DA · Fjerner blokeringen for pre-sæson-1-flowet med at udfylde edition_year på de 26 sæson 1-løb (skal være på plads inden sæson 1 starter Thu 2026-05-21 23:00). Hvis du tidligere har tastet et edition_year og det stod blankt bagefter, så åbn rækken, skriv det igen og klik Gem — det bliver gemt nu.",
+          "EN · /admin → Løbskalender → ✏ Rediger now actually saves your changes. The old editor silently dropped name, class, type, stages and edition_year edits. The UI showed 'Løb gemt' but the database was unchanged. Cause: the frontend wrote straight to the races table from the browser, and the row-level security policy only allows reads. Saves now go through a new admin-gated backend endpoint that applies the update server-side and records before/after values to the admin audit log.",
+          "EN · Unblocks the pre-season-1 workflow of filling edition_year on the 26 season-1 races (needed before season 1 starts Thu 2026-05-21 23:00). If you previously typed an edition_year and it appeared blank afterwards, just open the row, retype it and click Gem. It now sticks.",
+          "DA · /admin → Løbskalender → ✏ Rediger gemmer nu rigtigt dine ændringer. Den gamle editor smed lydløst navn, klasse, type, etaper og løbsudgave-ændringer væk. UI'et viste 'Løb gemt' men databasen var uændret. Årsag: frontend skrev direkte til races-tabellen fra browseren, men row-level security-policy'en tillader kun læsning. Gem går nu gennem et nyt admin-gated backend-endpoint der laver ændringen server-side og logger før/efter-værdier til admin-audit-log.",
+          "DA · Fjerner blokeringen for pre-sæson-1-flowet med at udfylde edition_year på de 26 sæson 1-løb (skal være på plads inden sæson 1 starter Thu 2026-05-21 23:00). Hvis du tidligere har tastet et edition_year og det stod blankt bagefter, så åbn rækken, skriv det igen og klik Gem. Det bliver gemt nu.",
         ],
       },
     ],
@@ -1974,8 +1988,8 @@ const PATCHES = [
       {
         category: "Admin · Race-katalog autocomplete i \"Tilføj nyt løb\"",
         items: [
-          "EN · /admin → Løbskalender → 'Tilføj nyt løb' now searches the race-catalog (race_pool) as you type. Pick a race from the dropdown and the name, class, type and stages auto-fill from the pool entry — you only need to type the edition_year. Removes the previous risk of typos that didn't match a pool name and let you skip the manual class/type/stages lookup. The free-text entry mode still works if you need a race that isn't in the catalog. Each pool match shows the class, stages, country and PCM real-world date; entries already added to the selected season show an 'allerede i sæson' marker so you don't double up.",
-          "DA · /admin → Løbskalender → 'Tilføj nyt løb' søger nu i race-kataloget (race_pool) mens du skriver. Vælg et løb i dropdown'en og navn, klasse, type og etaper auto-udfyldes fra pool-rækken — du skal kun taste edition_year selv. Fjerner risikoen for stavefejl der ikke matcher et pool-navn og sparer dig for manuel klasse/type/etaper-opslag. Frihåndsindtastning virker stadig hvis du har brug for et løb der ikke er i kataloget. Hver pool-match viser klasse, etaper, land og PCM-rigtig-verdens-dato; løb der allerede er tilføjet til den valgte sæson markeres med 'allerede i sæson' så du ikke dublerer.",
+          "EN · /admin → Løbskalender → 'Tilføj nyt løb' now searches the race-catalog (race_pool) as you type. Pick a race from the dropdown and the name, class, type and stages auto-fill from the pool entry. You only need to type the edition_year. Removes the previous risk of typos that didn't match a pool name and let you skip the manual class/type/stages lookup. The free-text entry mode still works if you need a race that isn't in the catalog. Each pool match shows the class, stages, country and PCM real-world date; entries already added to the selected season show an 'allerede i sæson' marker so you don't double up.",
+          "DA · /admin → Løbskalender → 'Tilføj nyt løb' søger nu i race-kataloget (race_pool) mens du skriver. Vælg et løb i dropdown'en og navn, klasse, type og etaper auto-udfyldes fra pool-rækken. Du skal kun taste edition_year selv. Fjerner risikoen for stavefejl der ikke matcher et pool-navn og sparer dig for manuel klasse/type/etaper-opslag. Frihåndsindtastning virker stadig hvis du har brug for et løb der ikke er i kataloget. Hver pool-match viser klasse, etaper, land og PCM-rigtig-verdens-dato; løb der allerede er tilføjet til den valgte sæson markeres med 'allerede i sæson' så du ikke dublerer.",
         ],
       },
     ],
@@ -1988,8 +2002,8 @@ const PATCHES = [
       {
         category: "Admin · Løbskalender 'Udgave'-kolonne synlig på mobil",
         items: [
-          "EN · The race calendar in /admin used to have a column titled 'Dato' that actually showed the edition year ('2024-udgave'), and it was hidden on screens narrower than 768px. The column is now titled 'Udgave' and visible at every screen size, so the edition_year you just typed is immediately confirmed after save — no more wondering if it stuck.",
-          "DA · Løbskalenderen i /admin havde en kolonne kaldet 'Dato', der faktisk viste løbsudgavens årstal ('2024-udgave'), og den var skjult på skærme smallere end 768px. Kolonnen hedder nu 'Udgave' og vises på alle skærmstørrelser, så det edition_year du lige har skrevet bekræftes med det samme efter gem — ingen tvivl om at det blev gemt.",
+          "EN · The race calendar in /admin used to have a column titled 'Dato' that actually showed the edition year ('2024-udgave'), and it was hidden on screens narrower than 768px. The column is now titled 'Udgave' and visible at every screen size, so the edition_year you just typed is immediately confirmed after save. No more wondering if it stuck.",
+          "DA · Løbskalenderen i /admin havde en kolonne kaldet 'Dato', der faktisk viste løbsudgavens årstal ('2024-udgave'), og den var skjult på skærme smallere end 768px. Kolonnen hedder nu 'Udgave' og vises på alle skærmstørrelser, så det edition_year du lige har skrevet bekræftes med det samme efter gem. Ingen tvivl om at det blev gemt.",
         ],
       },
     ],
@@ -2002,13 +2016,13 @@ const PATCHES = [
       {
         category: "UCI-points · Fix translit-mismatch for 45 ryttere (Refs #508)",
         items: [
-          "EN · 45 riders had their UCI points stuck at the minimum (5) because the weekly sync from ProCyclingStats couldn't match their database name to the published name. The cause: transliteration drift on Slavic / Arabic / Asian / Latin-American names — e.g. PCS publishes 'BOLDYREV Matvei' while the database stored 'Matvey Boldyrev', or 'JANG Kyung-Gu' vs 'Kyunggu Jang'. The token-set match used by the sync requires exact spelling, so it silently fell back to the minimum.",
+          "EN · 45 riders had their UCI points stuck at the minimum (5) because the weekly sync from ProCyclingStats couldn't match their database name to the published name. The cause: transliteration drift on Slavic / Arabic / Asian / Latin-American names, e.g. PCS publishes 'BOLDYREV Matvei' while the database stored 'Matvey Boldyrev', or 'JANG Kyung-Gu' vs 'Kyunggu Jang'. The token-set match used by the sync requires exact spelling, so it silently fell back to the minimum.",
           "EN · Largest corrections (uci_points before → after): Tegshbayar Batsaikhan (MN, pop 21) 5→196; Mohammad Al Mutaiwei (AE) 5→153; Alfie George (GB) 5→138; Edinson Alejandro Callejas (CO) 5→115; Nahom Zerai (ER) and Finlay Walsh (AU) 5→110 each; Cristofer Robin Jurado (PA) 5→101; Matvey Boldyrev (RU) 5→78; plus 37 more (full list in Refs #508).",
-          "EN · Manager-economy impact: each restored rider's salary jumped accordingly — Batsaikhan's CZ$ value went 2,000 → 78,400, Boldyrev's 2,000 → 31,200. If you had any of these riders on your team you'll see the new salaries on the next refresh.",
+          "EN · Manager-economy impact: each restored rider's salary jumped accordingly. Batsaikhan's CZ$ value went 2,000 → 78,400, Boldyrev's 2,000 → 31,200. If you had any of these riders on your team you'll see the new salaries on the next refresh.",
           "EN · Forward fix: the 45 verified name-variants are now in the scraper's UCI_NAME_OVERRIDE map, so next Wednesday's cron won't re-break them. A new GitHub Actions workflow ('UCI Translit Audit') can be run ad-hoc to surface any future translit drift before it bites.",
-          "DA · 45 ryttere stod fast på UCI-minimum (5 point) fordi den ugentlige sync fra ProCyclingStats ikke kunne matche deres database-navn til det offentliggjorte navn. Årsagen: transliteration-drift på slaviske/arabiske/asiatiske/latinamerikanske navne — fx PCS skriver 'BOLDYREV Matvei' mens databasen havde 'Matvey Boldyrev', eller 'JANG Kyung-Gu' vs 'Kyunggu Jang'. Token-set-matchet kræver præcis stavning og faldt derfor lydløst tilbage til minimum.",
+          "DA · 45 ryttere stod fast på UCI-minimum (5 point) fordi den ugentlige sync fra ProCyclingStats ikke kunne matche deres database-navn til det offentliggjorte navn. Årsagen: transliteration-drift på slaviske/arabiske/asiatiske/latinamerikanske navne. Fx PCS skriver 'BOLDYREV Matvei' mens databasen havde 'Matvey Boldyrev', eller 'JANG Kyung-Gu' vs 'Kyunggu Jang'. Token-set-matchet kræver præcis stavning og faldt derfor lydløst tilbage til minimum.",
           "DA · Største rettelser (uci_points før → efter): Tegshbayar Batsaikhan (MN, pop 21) 5→196; Mohammad Al Mutaiwei (AE) 5→153; Alfie George (GB) 5→138; Edinson Alejandro Callejas (CO) 5→115; Nahom Zerai (ER) og Finlay Walsh (AU) 5→110 hver; Cristofer Robin Jurado (PA) 5→101; Matvey Boldyrev (RU) 5→78; plus 37 til (komplet liste i Refs #508).",
-          "DA · Manager-økonomi-effekt: hver genoprettet rytters CZ$-værdi steg tilsvarende — Batsaikhan gik 2.000 → 78.400, Boldyrev 2.000 → 31.200. Har du nogle af disse ryttere på holdet, ser du de nye lønninger ved næste refresh.",
+          "DA · Manager-økonomi-effekt: hver genoprettet rytters CZ$-værdi steg tilsvarende. Batsaikhan gik 2.000 → 78.400, Boldyrev 2.000 → 31.200. Har du nogle af disse ryttere på holdet, ser du de nye lønninger ved næste refresh.",
           "DA · Forward-fix: de 45 verificerede navn-varianter ligger nu i scraperens UCI_NAME_OVERRIDE-map, så onsdagens cron ikke knækker dem igen. En ny GitHub Actions-workflow ('UCI Translit Audit') kan køres ad hoc og finde fremtidig translit-drift før den bider.",
         ],
       },
@@ -2023,10 +2037,10 @@ const PATCHES = [
         category: "Admin · Race-points editor med audit-log (Refs #505)",
         items: [
           "EN · Admin can now edit UCI race points (the per-classification, per-rank points awarded for race results) directly in /admin → Pointtabel per løbsklasse, with every edit logged to the admin audit trail. Replaces the older direct-write editor that bypassed audit logging and was missing the per-day jersey result_types added in v3.66.",
-          "EN · New per-row 'Reset til baseline' button restores the UCI default for a result type in one click. A sticky save bar collects pending edits and commits them as a batch — no more accidental saves on click-away.",
+          "EN · New per-row 'Reset til baseline' button restores the UCI default for a result type in one click. A sticky save bar collects pending edits and commits them as a batch. No more accidental saves on click-away.",
           "EN · Backend: 3 new endpoints (GET /admin/race-points, GET /admin/race-points/baseline, PUT /admin/race-points/:id) all guarded by requireAdmin + rate-limited. Each PUT writes a race_points_edited row to admin_log with before/after values, race_class, result_type and rank.",
           "DA · Admin kan nu redigere UCI race-points (point per klassifikation × placering) direkte i /admin → Pointtabel per løbsklasse, med audit-log på hver ændring. Erstatter den gamle direkte editor der gik uden om audit-trail og manglede de per-dag jersey-typer fra v3.66.",
-          "DA · Ny per-række 'Reset til baseline'-knap fører UCI-default tilbage med ét klik. En sticky save-bar samler ventende ændringer og commiter dem batch-vis — ingen flere uheld med save-on-click-away.",
+          "DA · Ny per-række 'Reset til baseline'-knap fører UCI-default tilbage med ét klik. En sticky save-bar samler ventende ændringer og commiter dem batch-vis. Ingen flere uheld med save-on-click-away.",
           "DA · Backend: 3 nye endpoints (GET /admin/race-points, GET /admin/race-points/baseline, PUT /admin/race-points/:id) auth-gated via requireAdmin + rate-limit. Hver PUT skriver en race_points_edited-række til admin_log med før/efter-værdier, race_class, result_type og rank.",
         ],
       },
@@ -2078,11 +2092,11 @@ const PATCHES = [
       {
         category: "Race-skema · Løbsudgave + ryddet up i metadata (Refs #168, #502)",
         items: [
-          "EN · Admin can now tag each race with the edition year it represents — e.g. 'Tour de France 2024' — via a new 'Løbsudgave (årstal)' input on the race create/edit form. The year appears on race cards in the calendar, the dashboard 'next races' panel, and on each historic edition in race history. Optional field — existing races start blank and you fill them in over time.",
-          "EN · The 'Startdato' and 'Præmiepulje' fields are removed from races. We don't know which day a race will run inside our game, and prize money is already determined by race class (race_points × 1500 CZ$) — the per-race override served no purpose. Race calendars now sort by the real-life PCM date (e.g. '20/5 - 24/5') from the race pool instead.",
+          "EN · Admin can now tag each race with the edition year it represents (e.g. 'Tour de France 2024') via a new 'Løbsudgave (årstal)' input on the race create/edit form. The year appears on race cards in the calendar, the dashboard 'next races' panel, and on each historic edition in race history. Optional field. Existing races start blank and you fill them in over time.",
+          "EN · The 'Startdato' and 'Præmiepulje' fields are removed from races. We don't know which day a race will run inside our game, and prize money is already determined by race class (race_points × 1500 CZ$). The per-race override served no purpose. Race calendars now sort by the real-life PCM date (e.g. '20/5 - 24/5') from the race pool instead.",
           "EN · Season 0 (open beta) is now permanently locked at 0 races via a database CHECK constraint. Any code path that tries to add a race to season 0 fails with a clear 400 error instead of silently writing.",
-          "DA · Admin kan nu mærke hvert løb med hvilken udgave/årgang det repræsenterer — fx 'Tour de France 2024' — via et nyt 'Løbsudgave (årstal)'-felt på opret/rediger-formularen. Årstallet vises på løbs-cards i kalenderen, dashboard-panelet 'kommende løb' og på hver historisk udgave i løbshistorik. Frivilligt felt — eksisterende løb starter blanke og du fylder dem ind over tid.",
-          "DA · Felterne 'Startdato' og 'Præmiepulje' er fjernet fra løb. Vi ved ikke hvilken dag et løb køres inde i spillet, og præmiepenge er allerede defineret af løbsklasse (race_points × 1500 CZ$) — per-løb override gjorde ingenting. Løbskalender sorterer nu efter den virkelige PCM-dato (fx '20/5 - 24/5') fra race-poolen i stedet.",
+          "DA · Admin kan nu mærke hvert løb med hvilken udgave/årgang det repræsenterer (fx 'Tour de France 2024') via et nyt 'Løbsudgave (årstal)'-felt på opret/rediger-formularen. Årstallet vises på løbs-cards i kalenderen, dashboard-panelet 'kommende løb' og på hver historisk udgave i løbshistorik. Frivilligt felt. Eksisterende løb starter blanke og du fylder dem ind over tid.",
+          "DA · Felterne 'Startdato' og 'Præmiepulje' er fjernet fra løb. Vi ved ikke hvilken dag et løb køres inde i spillet, og præmiepenge er allerede defineret af løbsklasse (race_points × 1500 CZ$). Per-løb override gjorde ingenting. Løbskalender sorterer nu efter den virkelige PCM-dato (fx '20/5 - 24/5') fra race-poolen i stedet.",
           "DA · Sæson 0 (open beta) er nu permanent låst til 0 løb via en database CHECK-constraint. Enhver kodevej der prøver at tilføje løb til sæson 0 fejler med en klar 400-fejl i stedet for at skrive stille.",
         ],
       },
@@ -2114,10 +2128,10 @@ const PATCHES = [
         items: [
           "EN · The race priority whitelists (stage race quota + single race boost) are now stored per season instead of being hardcoded. Each season starts with empty lists and falls back to alphabetic ordering when nothing is set. Use this to vary which races land in season 1, 2, 3 etc. so the same prestigious tours don't recur every year.",
           "EN · New admin section 'Prioritets-lister (per sæson)' in Race-katalog with drag-and-drop ordering. Add stage races from a dropdown, drag to reorder, remove with the ✕ button. Same flow for the single race boost list. Hit 'Gem prioritets-lister' to persist.",
-          "EN · Backend: seasons.stage_race_priority + seasons.single_race_boost (uuid[]) columns; new PUT /api/admin/seasons/:id/race-priority endpoint validates race_type consistency. Preview endpoint reads from DB unless body overrides — that lets the admin preview unsaved whitelist changes before committing.",
+          "EN · Backend: seasons.stage_race_priority + seasons.single_race_boost (uuid[]) columns; new PUT /api/admin/seasons/:id/race-priority endpoint validates race_type consistency. Preview endpoint reads from DB unless body overrides. That lets the admin preview unsaved whitelist changes before committing.",
           "DA · Race priority whitelists (etape-quota + single boost) er nu gemt per sæson i stedet for hardcoded. Hver sæson starter med tomme lister og falder tilbage til alfabetisk når intet er sat. Brug det til at variere hvilke løb der lander i sæson 1, 2, 3 osv. så de samme prestigious tours ikke gentager hvert år.",
           "DA · Ny admin-sektion 'Prioritets-lister (per sæson)' i Race-katalog med drag-and-drop. Tilføj etapeløb fra dropdown, træk for at omarrangere, fjern med ✕-knap. Samme flow for single race boost. Tryk 'Gem prioritets-lister' for at persistere.",
-          "DA · Backend: seasons.stage_race_priority + seasons.single_race_boost (uuid[]) felter; ny PUT /api/admin/seasons/:id/race-priority endpoint validerer race_type-konsistens. Preview-endpoint læser fra DB med mindre body overrider — det lader admin preview unsaved whitelist-ændringer før gem.",
+          "DA · Backend: seasons.stage_race_priority + seasons.single_race_boost (uuid[]) felter; ny PUT /api/admin/seasons/:id/race-priority endpoint validerer race_type-konsistens. Preview-endpoint læser fra DB med mindre body overrider. Det lader admin preview unsaved whitelist-ændringer før gem.",
         ],
       },
     ],
@@ -2130,12 +2144,12 @@ const PATCHES = [
       {
         category: "Admin · Sæson 1 kalender-balancering (stage race quota)",
         items: [
-          "EN · The race calendar generator now guarantees a minimum number of stage races so that GC riders (climbers, time-trialists, all-rounders) have meaningful action across a season. Previously the alphabetic sort pushed most stage races out — for season 1 only 6 of 26 available stage races were picked.",
+          "EN · The race calendar generator now guarantees a minimum number of stage races so that GC riders (climbers, time-trialists, all-rounders) have meaningful action across a season. Previously the alphabetic sort pushed most stage races out. For season 1 only 6 of 26 available stage races were picked.",
           "EN · A curated priority list ensures the prestigious Continental-Circuit stage races land first (Tour of Oman, Volta ao Algarve, Tour of the Alps, Vuelta a Burgos, Tour of Slovenia, Tour of Britain, etc.) before the algorithm fills the rest. Italian/Asian autumn one-day classics (Tre Valli Varesine, Trofeo Laigueglia, Veneto Classic, Japan Cup) also get a guaranteed boost.",
-          "EN · Admin · Race-katalog has a new input 'Min. etapeløb (garanteret)', default 8. Set 0 to fall back to the old alphabetic behaviour. Pure backend change to selectSeasonRaces() — fully backward compatible.",
-          "DA · Løbskalender-generatoren garanterer nu et minimum antal etapeløb, så GC-ryttere (bjergryttere, enkeltstart-folk, all-roundere) har relevant action gennem en sæson. Tidligere skubbede alfabetisk sortering de fleste etapeløb ud — sæson 1 fik kun 6 ud af 26 mulige.",
+          "EN · Admin · Race-katalog has a new input 'Min. etapeløb (garanteret)', default 8. Set 0 to fall back to the old alphabetic behaviour. Pure backend change to selectSeasonRaces(). Fully backward compatible.",
+          "DA · Løbskalender-generatoren garanterer nu et minimum antal etapeløb, så GC-ryttere (bjergryttere, enkeltstart-folk, all-roundere) har relevant action gennem en sæson. Tidligere skubbede alfabetisk sortering de fleste etapeløb ud. Sæson 1 fik kun 6 ud af 26 mulige.",
           "DA · En kurateret prioritets-liste sikrer at de prestigious Continental-Circuit etapeløb lander først (Tour of Oman, Volta ao Algarve, Tour of the Alps, Vuelta a Burgos, Tour of Slovenia, Tour of Britain, m.fl.) før resten af kalenderen fyldes. Italienske/asiatiske efterårsklassikere (Tre Valli Varesine, Trofeo Laigueglia, Veneto Classic, Japan Cup) får også garanteret plads.",
-          "DA · Admin · Race-katalog har et nyt felt 'Min. etapeløb (garanteret)', default 8. Sæt 0 for at falde tilbage til den gamle alfabetiske adfærd. Ren backend-ændring i selectSeasonRaces() — fuldt backward kompatibel.",
+          "DA · Admin · Race-katalog har et nyt felt 'Min. etapeløb (garanteret)', default 8. Sæt 0 for at falde tilbage til den gamle alfabetiske adfærd. Ren backend-ændring i selectSeasonRaces(). Fuldt backward kompatibel.",
         ],
       },
     ],
@@ -2206,7 +2220,7 @@ const PATCHES = [
     label: "Beta",
     changes: [
       {
-        category: "Infra · i18n Fase 3.5 — BoardPage på EN/DA (#484)",
+        category: "Infra · i18n Fase 3.5. BoardPage på EN/DA (#484)",
         items: [
           "Feature · Hele Bestyrelse-siden kører nu på begge sprog: sidetitlen, baseline-sæson observation-kort, klub-DNA-valg (3 forslag + badge), bonus-tilbud-card, konsekvens-panel (lønloft, signing-restriktion, tvunget salg, sponsor-pull-out), board-feed, auto-accept countdown og tilfredshedsforklaring.",
           "Feature · DashboardPlanPanel: 3-panel grid (5yr/3yr/1yr) oversat fuldt ud inkl. fokus-label, mål-progress, plan-timeline, halvvejsevaluering, sæsonhistorik-tabel, kumulative stats og bestyrelsens vurdering med personality-tags (Lav/Moderat/Høj ambition × Forsigtig/Balanceret/Aggressiv økonomi × Svag/Moderat/Stærk identitet).",
@@ -2215,7 +2229,7 @@ const PATCHES = [
           "Tone · Em-dash systematisk renset i alle nye player-facing strenge jf. tone-of-voice-guide. Erstattet med komma, kolon, parentes eller punktum afhængigt af kontekst.",
           "Infra · Nyt `board`-namespace (~110 keys/sprog) inline-bundlet i `i18n/index.js` (matcher help-pattern fra Fase 3d) for FOUC-fri first paint. Helper-functions: `getBoardGoalLabel(t, goal)`, `getPlanLabel(t, planType)`, `getFocusLabel(t, focus)`, `getGoalStatusMeta(t, status)`, `buildBoardTourSteps(t)`, `describeConsequence(t, c)`. Style-only constants (farver, emoji, severity) adskilt fra label-data så stylingen kan deles på tværs af sprog.",
           "Infra · `FOCUS_LABELS`-konstant fjernet fra `lib/boardUtils.js` (nu kun i `focus.*`-keys i board-namespace). `formatCash` skifter fra hardcoded `da-DK`-locale til i18next-locale-aware `formatNumber` fra `lib/intl.js`, så 1.500.000 CZ$ formatteres korrekt på begge sprog.",
-          "Scope · Backend-leverede strenge (board-member labels, goal labels fra API, DNA-beskrivelser, request-tekster, identity-profile summary, outlook-feedback) bevarer backend-sproget. Backend-localization tages som separat slice — alle frontend-konstruerede strings er nu locale-aware.",
+          "Scope · Backend-leverede strenge (board-member labels, goal labels fra API, DNA-beskrivelser, request-tekster, identity-profile summary, outlook-feedback) bevarer backend-sproget. Backend-localization tages som separat slice. Alle frontend-konstruerede strings er nu locale-aware.",
         ],
       },
     ],
@@ -2226,13 +2240,13 @@ const PATCHES = [
     label: "Beta",
     changes: [
       {
-        category: "Infra · i18n Fase 3d — Help på EN/DA (#412)",
+        category: "Infra · i18n Fase 3d. Help på EN/DA (#412)",
         items: [
           "Feature · Hele Hjælp & Regler-siden kører nu på begge sprog: sidetitlen, søgeboks, sidebar med 14 sektioner (Kom i gang / Getting started, Bestyrelse / Board, Auktioner / Auctions, Transfers, Manager & Profil / Manager & Profile, Discord DMs, Achievements, Talentspejder / Watchlist, Min Aktivitet / My Activity, Sæson / Season, Præmier / Prizes, Divisioner / Divisions, Ryttere / Riders, Aktivitetsfeed / Activity feed) og FAQ med 53 spørgsmål-svar.",
           "Feature · Alle ~80 indholds-blokke (titel + tekst, step-lister og tabeller) oversat fuldt ud. Tabeller bevarer struktur (Konsekvens-tier, Discord DMs, Achievement-kategorier, Divisionsbonus, Præmie-eksempler, Holdstørrelse, Aktivitetsfeed-events). Search filtrerer på tværs af sektion-labels, blok-titler, blok-tekst og FAQ Q/A på det aktive sprog.",
           "Tone · Em-dash systematisk renset i begge sprog jf. tone-of-voice-guide (2026-05-18). Erstattet med komma, kolon, parentes eller punktum afhængigt af kontekst. Ingen player-facing em-dash tilbage i Hjælp & Regler.",
           "Infra · Nyt `help`-namespace (~520 keys/sprog) inline-bundlet i `i18n/index.js` (matcher common/auth/errors/auctions/transfers/dashboard/banners-pattern) for FOUC-fri first paint. SECTIONS-array og FAQ-array refaktoreret fra hardcoded datastrukturer til `buildSections(t)` + `buildFaq(t)` hjælpefunktioner med stabile semantic keys (`sections.<area>.<block>.title|text|steps|rows`, `faq.<id>.q|a`).",
-          "Scope-justering · AdminPage forbliver dansk-only by design — alle 23 sektioner er internal admin-tools (race-katalog, økonomi, sæsoner, manuel override, discord webhooks, beta-reset osv.) bag admin-role gating. Ingen publik-facing flader. Issue #412 acceptance opdateret tilsvarende.",
+          "Scope-justering · AdminPage forbliver dansk-only by design. Alle 23 sektioner er internal admin-tools (race-katalog, økonomi, sæsoner, manuel override, discord webhooks, beta-reset osv.) bag admin-role gating. Ingen publik-facing flader. Issue #412 acceptance opdateret tilsvarende.",
           "Næste · #412 lukkes når alle Fase-3-sider er live og verificeret.",
         ],
       },
@@ -2259,11 +2273,11 @@ const PATCHES = [
       {
         category: "Fix · Lighthouse SEO + A11y polish på Founder Supporter waitlist (#361)",
         items: [
-          "Fix · robots.txt manglede (returnerede SPA-fallback index.html) — Google og andre crawlere kunne ikke korrekt indeksere /founder-supporter waitlist-siden. Ny `public/robots.txt` med Allow-all + sitemap-pointer. Score: SEO robots-txt audit 0 → 100.",
+          "Fix · robots.txt manglede (returnerede SPA-fallback index.html). Google og andre crawlere kunne ikke korrekt indeksere /founder-supporter waitlist-siden. Ny `public/robots.txt` med Allow-all + sitemap-pointer. Score: SEO robots-txt audit 0 → 100.",
           "Fix · Canonical link var statisk `https://cycling-zone.vercel.app/` i index.html, men /founder-supporter rapporterede 'invalid canonical' fordi den pegede væk fra current route. FounderSupporterPage opdaterer nu `<link rel=\"canonical\">` dynamisk via useEffect til den faktiske URL. Score: SEO canonical audit 0 → 100.",
-          "Fix · Hero-badges (Open beta / Fair freemium / GDPR-compliant) brugte `text-cz-3` (#9896b0 mod #f0ede6 baggrund = 3.4:1 kontrast) — under WCAG AA's 4.5:1 minimum for normal text. Skiftet til `text-cz-2` (#66637a = ~6:1). Score: A11y color-contrast audit 0 → 100.",
+          "Fix · Hero-badges (Open beta / Fair freemium / GDPR-compliant) brugte `text-cz-3` (#9896b0 mod #f0ede6 baggrund = 3.4:1 kontrast). Under WCAG AA's 4.5:1 minimum for normal text. Skiftet til `text-cz-2` (#66637a = ~6:1). Score: A11y color-contrast audit 0 → 100.",
           "Fix · Privatlivspolitik-link i samtykke-checkbox + andre `text-cz-accent`-links i waitlist-formularen brugte `hover:underline` (kun synlig underline ved hover). Lighthouse `link-in-text-block` fanger dette som 'links rely on color to be distinguishable'. Skiftet til altid-`underline`. Score: A11y link-in-text-block audit 0 → 100.",
-          "Verifikation · Desktop Lighthouse: Performance 94 / A11y 96 / SEO 100 / Best Practices 100 (alle over #361's acceptance criteria 90+/95+/90+). Mobile-Performance 78 er ikke i acceptance criteria — bundle-optimization tages som separat polish-batch (#479).",
+          "Verifikation · Desktop Lighthouse: Performance 94 / A11y 96 / SEO 100 / Best Practices 100 (alle over #361's acceptance criteria 90+/95+/90+). Mobile-Performance 78 er ikke i acceptance criteria. Bundle-optimization tages som separat polish-batch (#479).",
         ],
       },
     ],
@@ -2276,7 +2290,7 @@ const PATCHES = [
       {
         category: "Fix · Dashboard rå i18n-keys (#470)",
         items: [
-          "Fix · Dashboard viste ~20 rå i18n-keys i UI'et på både DA og EN (`STATS.BALANCE`, `cards.transfers.empty`, `forecast.tier.yellow.label`, ...). Manglende inline-bundling af `dashboard` + `banners`-namespaces i `i18n/index.js` betød at HttpBackend lazy-loade'd disse efter første render — med `useSuspense: false` returnerede `t()` raw key indtil fetch landede.",
+          "Fix · Dashboard viste ~20 rå i18n-keys i UI'et på både DA og EN (`STATS.BALANCE`, `cards.transfers.empty`, `forecast.tier.yellow.label`, ...). Manglende inline-bundling af `dashboard` + `banners`-namespaces i `i18n/index.js` betød at HttpBackend lazy-loade'd disse efter første render. Med `useSuspense: false` returnerede `t()` raw key indtil fetch landede.",
           "Fix · Bundle-ændring: `dashboard.json` + `banners.json` (begge sprog) importeret direkte og tilføjet til `resources`-blokken. Samme pattern som `auctions` (#466) og `transfers` (#468). Bundle-overhead ~3KB gzipped per sprog.",
           "Infra · NY CI-guard `scripts/i18n-check-namespace-inline.mjs` (REQUIRED i `.github/workflows/i18n-check.yml`) parser `useTranslation(...)`-kald og `t(\"ns:key\")` på tværs af `frontend/src/**` og fejler hvis et brugt namespace ikke er inlinet i `i18n/index.js`. Forhindrer at samme bug-klasse rammer i fremtidige i18n-faser. Postmortem: `.claude/learnings/2026-05-17-i18n-namespace-inline-missing.md`.",
           "Dev · `window.__i18n` eksponeret i dev-bundle (kun `import.meta.env.DEV`) så fremtidig i18n-debugging kan ske direkte fra DevTools uden fuld login-flow.",
@@ -2290,15 +2304,15 @@ const PATCHES = [
     label: "Beta",
     changes: [
       {
-        category: "Infra · i18n Fase 3c — Transfers på EN/DA (#412)",
+        category: "Infra · i18n Fase 3c. Transfers på EN/DA (#412)",
         items: [
           "Feature · Hele Transfers-siden kører nu på begge sprog: sidetitlen (Transfers), balance-card, transfervindue-banner (åbent/lukket), de 6 tabs (Modtagne / Received offers, Sendte / Sent offers, Historik / History, Byttehandler / Swaps, Lejeaftaler / Loans, Marked / Market).",
-          "Feature · ReceivedOfferCard + SentOfferCard: alle status-badges (Afventer svar / Awaiting response, Modbud sendt / Counter sent, Aftalt — afventer vindue / Agreed — awaiting window, Accepteret / Accepted, Afvist / Rejected, Trukket tilbage / Withdrawn) plus alle handlings-knapper (Accepter, Modbud, Afvis, Bekræft handel, Annuller handel, Arkivér) oversat.",
+          "Feature · ReceivedOfferCard + SentOfferCard: alle status-badges (Afventer svar / Awaiting response, Modbud sendt / Counter sent, Aftalt · afventer vindue / Agreed · awaiting window, Accepteret / Accepted, Afvist / Rejected, Trukket tilbage / Withdrawn) plus alle handlings-knapper (Accepter, Modbud, Afvis, Bekræft handel, Annuller handel, Arkivér) oversat.",
           "Feature · SwapCard + NewSwapForm: bytte-handler oversat fuldt ud inkl. \"Du tilbyder / De tilbyder\" / \"You offer / They offer\", kontantbetaling-labels, ren-bytte-badge og bytteforslag-formular.",
           "Feature · LoanCard + NewLoanForm: lejeaftaler oversat inkl. status (Aktiv / Active, Købt / Bought, Annulleret / Cancelled), sæson-formattering (Sæson 3 / Season 3), lejegebyr/sæson, købsoption og udnyt-knap. Den bindende note (\"Aktive lejeaftaler er bindende\" / \"Active loans are binding\") følger sproget.",
           "Feature · TransferCard (marked): \"Til salg siden 3. jul\" / \"Listed since Jul 3\" bruger locale-aware dato. Send tilbud-knap, fjern-listing-bekræftelse og BidConfirmModal (mode=transfer) viser alle korrekt sprog.",
-          "Feature · TeamTransferHistoryTab: transferhistorik på begge sprog — kolonne-headers (Dato/Type/Retning/Rytter/Modpart/Beløb), type-labels (Auktion/Transfer/Swap/Lån → Auction/Transfer/Swap/Loan), retning (Køb/Salg/Bytte → Buy/Sell/Swap), sæson-filter og (AI)/(lån)-tags.",
-          "Feature · Toast-beskeder oversat for hele flow: tilbud sendt, accepteret af køber/sælger, bekræftet, annulleret, modbud sendt, nyt bud, trukket tilbage, arkiveret — separate tekster for transfers, swaps og loans. Confetti-celebrations (Transfer gennemført / Transfer complete, Byttehandel gennemført / Swap complete, Rytter købt / Rider bought) følger sproget.",
+          "Feature · TeamTransferHistoryTab: transferhistorik på begge sprog. Kolonne-headers (Dato/Type/Retning/Rytter/Modpart/Beløb), type-labels (Auktion/Transfer/Swap/Lån → Auction/Transfer/Swap/Loan), retning (Køb/Salg/Bytte → Buy/Sell/Swap), sæson-filter og (AI)/(lån)-tags.",
+          "Feature · Toast-beskeder oversat for hele flow: tilbud sendt, accepteret af køber/sælger, bekræftet, annulleret, modbud sendt, nyt bud, trukket tilbage, arkiveret. Separate tekster for transfers, swaps og loans. Confetti-celebrations (Transfer gennemført / Transfer complete, Byttehandel gennemført / Swap complete, Rytter købt / Rider bought) følger sproget.",
           "Feature · timeAgo-helper konverteret til hook `useTimeAgo()` der renderer \"Lige nu / Just now\", \"15m siden / 15m ago\" osv. på korrekt sprog.",
           "Infra · ~30 hardcoded `toLocaleString(\"da-DK\")`-kald i TransfersPage + TeamTransferHistoryTab erstattet med `formatNumber(...)` fra `lib/intl.js`. Datoer bruger `formatDate(...)`.",
           "Infra · `transfers`-namespace tilføjet (~150 keys/sprog) og inline-bundlet i `i18n/index.js` (matcher common/auth/errors/auctions-pattern) for FOUC-fri first paint.",
@@ -2313,16 +2327,16 @@ const PATCHES = [
     label: "Beta",
     changes: [
       {
-        category: "Infra · i18n Fase 3b — Auctions på EN/DA (#412)",
+        category: "Infra · i18n Fase 3b. Auctions på EN/DA (#412)",
         items: [
           "Feature · Hele auktions-flowet kører nu på begge sprog: sidetitlen \"Auktioner / Auctions\", 3 filter-tabs (Min situation / My situation, Alle / All, Andre managers / Other managers), Ønskeliste-toggle og Aktive / Historik-navigation.",
-          "Feature · Alle stat-cards (Balance, Reserveret i bud / Reserved in bids, Ryttere nu / Riders now, Projektion / Projection) bruger nu locale-aware tal-formatering — \"1.500 CZ$\" på dansk, \"1,500 CZ$\" på engelsk.",
+          "Feature · Alle stat-cards (Balance, Reserveret i bud / Reserved in bids, Ryttere nu / Riders now, Projektion / Projection) bruger nu locale-aware tal-formatering. \"1.500 CZ$\" på dansk, \"1,500 CZ$\" på engelsk.",
           "Feature · Auktions-tabel + mobil-kort: alle kolonne-headers (Rytter/Højeste bud/Tid tilbage/Alder/Løn/Potentiale/Sælger/Byd), badges (Vinder, Sælger, Din, Ext, Flash), countdown-timer (\"2t 15m\" / \"2h 15m\") og bid-knapperne (Byd/Hæv/Fejl) følger nu sproget.",
-          "Feature · Autobud-loft (proxy): hele UX-flowet — opsætning, redigering, fjernelse, fejlbeskeder — oversat på begge sprog inkl. \"Autobud: max 15.000 CZ$\" / \"Auto-bid: max 15,000 CZ$\".",
+          "Feature · Autobud-loft (proxy): hele UX-flowet (opsætning, redigering, fjernelse, fejlbeskeder) oversat på begge sprog inkl. \"Autobud: max 15.000 CZ$\" / \"Auto-bid: max 15,000 CZ$\".",
           "Feature · BidConfirmModal: bekræftelses-dialogen for bud, autobud og transferbud viser nu titel, action-verb og knap-tekst på det valgte sprog.",
           "Feature · Live-elementer er oversat: aktivitets-tickeren (\"3 nye bud i sidste 30s\" med ICU plural), sidebar-feed (\"Du bød / You bid\", \"Modbud / Counter bid\", relative tidsstempler), overbid-toasts og first-bid hint-banneret.",
           "Feature · Empty-states og My situation-sektioner (🟢 Du leder / You're leading, 🔴 Du er overbudt / You've been outbid, 🔵 Du sælger / You're selling) er fuldt oversat med kontekstuelle hjælpe-tekster.",
-          "Infra · ~16 hardcoded `toLocaleString(\"da-DK\")`-kald i AuctionsPage og 3 components erstattet med `formatNumber(...)` fra `lib/intl.js` — tal følger nu user's sprog-præference.",
+          "Infra · ~16 hardcoded `toLocaleString(\"da-DK\")`-kald i AuctionsPage og 3 components erstattet med `formatNumber(...)` fra `lib/intl.js`. Tal følger nu user's sprog-præference.",
           "Infra · `AUCTIONS_TOUR_STEPS` konverteret fra modul-konstant til `getAuctionsTourSteps(t)`-funktion så onboarding-tour rendres med korrekt sprog.",
           "Næste · Fase 3c: Transfers + transfer-historik (#412 fortsætter).",
         ],
@@ -2335,15 +2349,15 @@ const PATCHES = [
     label: "Beta",
     changes: [
       {
-        category: "Infra · i18n Fase 3a — Dashboard på EN/DA (#412)",
+        category: "Infra · i18n Fase 3a. Dashboard på EN/DA (#412)",
         items: [
           "Feature · Dashboard er nu fuldt oversat på begge sprog: header (Division + rytter-count + ind/ud/leje-deltas), squad-warning, Discord-DM-nudge, Deadline Day-banner, Sæson-banner, alle 4 stat-cards og alle 5 indholds-kort (Aktive Auktioner, Transfers & Tilbud, Kommende Løb, Division-Stilling, Bestyrelsens Status).",
-          "Feature · Finance-forecast-kortet (\"Næste sæson — prognose\") og dets badge er oversat — inkl. de tre tier-labels (Grøn/Gul/Rød / Green/Yellow/Red) og hele cashflow-tabellen.",
+          "Feature · Finance-forecast-kortet (\"Næste sæson · prognose\") og dets badge er oversat, inkl. de tre tier-labels (Grøn/Gul/Rød / Green/Yellow/Red) og hele cashflow-tabellen.",
           "Feature · Onboarding-progress-kortet (\"Kom i gang\") og completion-kortet (\"Du er klar\") med deres step-labels og CTA-links følger nu sproget.",
           "Feature · Tal og datoer på Dashboard formateres locale-aware (dansk \"1.234\" / engelsk \"1,234\"; løbsdatoer \"3. jul\" / \"Jul 3\") via `Intl.NumberFormat`/`DateTimeFormat`-wrappers i `lib/intl.js`.",
-          "Infra · `dashboardSquadStats.warning` returnerer nu pure data (`{type, count, limit, division}`) i stedet for en hardcoded DK-streng — UI'et bygger beskeden via ICU plurals så \"Sælg 1 rytter\" og \"Sell 2 riders\" begge er korrekte.",
+          "Infra · `dashboardSquadStats.warning` returnerer nu pure data (`{type, count, limit, division}`) i stedet for en hardcoded DK-streng. UI'et bygger beskeden via ICU plurals så \"Sælg 1 rytter\" og \"Sell 2 riders\" begge er korrekte.",
           "Infra · `formatDate(date, null, {day,month})` understøtter nu fine-grained Intl-options uden at klashe med `dateStyle`.",
-          "Note · Bestyrelses-feedback-blokken (headline/summary/score-categories) kommer fra `/api/board/status` og er stadig DK-only — backend-i18n følger i en separat fase.",
+          "Note · Bestyrelses-feedback-blokken (headline/summary/score-categories) kommer fra `/api/board/status` og er stadig DK-only. Backend-i18n følger i en separat fase.",
           "Næste · Fase 3b: Auctions + bid-modal + Transfers (#412 fortsætter).",
         ],
       },
@@ -2394,7 +2408,7 @@ const PATCHES = [
           "Infra · Nye PreToolUse-hooks beskytter mod token-spild og drift: `gh issue`-kommandoer uden filtre giver nu en warning, edits der ville sprænge `docs/NOW.md`'s 30-linjers grænse blokeres, og skriv til `docs/archive/**` blokeres med forklaring.",
           "Infra · Stop-hook auto-arkiverer overflødige linjer i `docs/NOW.md` til `docs/archive/NOW-YYYY-MM-DD.md` ved session-slut og minder om manglende `Refs #N`-issue-kommentar når seneste main-commit refererer et issue uden close-out.",
           "Infra · Ny `node scripts/audit-memory-dir.mjs` scanner WARM-tier memory for stale entries, frontmatter-rot og duplikater; planlægges som ugentligt scheduled-task. `check-agent-token-hygiene.ps1` advarer nu hvis memory-dir vokser >10 % siden sidste baseline.",
-          "Infra · PatchNotes version-collision-checken (`scripts/check-patch-notes-version.js`) er nu LIVE som blokerende CI-step — verificeret efter #154 close-out.",
+          "Infra · PatchNotes version-collision-checken (`scripts/check-patch-notes-version.js`) er nu LIVE som blokerende CI-step. Verificeret efter #154 close-out.",
           "Note · Ingen brugerrettet UI-ændring i denne version; alle ændringer er på dev-workflow-laget.",
         ],
       },
@@ -2406,15 +2420,15 @@ const PATCHES = [
     label: "Beta",
     changes: [
       {
-        category: "Infra · i18n Fase 2 — Login + onboarding på EN/DA (#411)",
+        category: "Infra · i18n Fase 2. Login + onboarding på EN/DA (#411)",
         items: [
-          "Feature · Login + signup + glemt-password er nu fuldt oversat på både engelsk og dansk. Skift sprog live med 🇩🇰/🇬🇧-knappen øverst til højre på login-siden — også før du logger ind.",
+          "Feature · Login + signup + glemt-password er nu fuldt oversat på både engelsk og dansk. Skift sprog live med 🇩🇰/🇬🇧-knappen øverst til højre på login-siden. Også før du logger ind.",
           "Feature · Reset-password-siden, setup-wizarden (\"navngiv dit hold\") og første-gang-velkomst-modalet er ligeledes oversat.",
           "Feature · Onboarding-tour-knapper (\"Næste\", \"Spring over\", \"Færdig\") tilpasser sig sproget.",
           "Feature · Sidebar viser nu \"Balance\" + division + online-tæller på dit valgte sprog. Sidebar-tal formateres efter sprog (dansk \"1.234\" / engelsk \"1,234\").",
-          "Feature · Nye signups gemmer dit valgte sprog automatisk — du behøver ikke skifte igen efter første login.",
+          "Feature · Nye signups gemmer dit valgte sprog automatisk. Du behøver ikke skifte igen efter første login.",
           "Infra · Fejlbeskeder fra Supabase auth (forkert password, allerede registreret email, rate-limit m.fl.) oversættes via ny `mapSupabaseAuthError`-helper.",
-          "Infra · `auth.json` + `errors.json` bundles inline ligesom `common.json` — ingen flash af raw key-strings ved første sidevisning på login.",
+          "Infra · `auth.json` + `errors.json` bundles inline ligesom `common.json`. Ingen flash af raw key-strings ved første sidevisning på login.",
           "Docs · Glossary udvidet med 13 nye termer (Team name, Manager name, Password, Reset link, Division, League m.fl.).",
           "Næste · Fase 3 oversætter Dashboard, riders/auctions-sider og rolige toasts (#411 fortsætter mod Dashboard scope).",
         ],
@@ -2427,14 +2441,14 @@ const PATCHES = [
     label: "Beta",
     changes: [
       {
-        category: "Infra · i18n foundation — EN/DA sprog-switcher (#410)",
+        category: "Infra · i18n foundation. EN/DA sprog-switcher (#410)",
         items: [
-          "Feature · Ny 🇩🇰/🇬🇧 sprog-dropdown i sidebar-bunden (desktop) + mobile topbar. Lever-skift uden reload — vælg sprog én gang og det huskes både i din profil (DB) og lokalt i browseren.",
+          "Feature · Ny 🇩🇰/🇬🇧 sprog-dropdown i sidebar-bunden (desktop) + mobile topbar. Lever-skift uden reload. Vælg sprog én gang og det huskes både i din profil (DB) og lokalt i browseren.",
           "Feature · Eksisterende brugere er backfilled til dansk (du ser ingen ændring). Nye signups starter på engelsk som default.",
           "Infra · `users.language`-kolonne tilføjet med EN/DA-validering + sync-trigger til Supabase auth-metadata (klar til at email-templates og Edge Functions kan læse sproget).",
           "Infra · `react-i18next` + `ICU MessageFormat` (plural-håndtering) + HTTP backend (lazy-loaded namespaces). Common-strings (NavBar + switcher) bundles inline → ingen flash ved første sidevisning.",
           "Infra · `Intl.NumberFormat` / `DateTimeFormat`-wrappers i `lib/intl.js` så valuta og datoer formateres efter brugerens sprog (fx \"1.500,00 kr.\" på dansk, \"DKK 1,500.00\" på engelsk).",
-          "Dev · Pseudo-locale `en-XA` aktiveres med `?pseudo=1` i URL'en — alle tekster wrappes i `[...]` så hardcoded strings (der endnu ikke er oversat) bliver synlige under udvikling.",
+          "Dev · Pseudo-locale `en-XA` aktiveres med `?pseudo=1` i URL'en. Alle tekster wrappes i `[...]` så hardcoded strings (der endnu ikke er oversat) bliver synlige under udvikling.",
           "Docs · `docs/i18n/GLOSSARY.md` med 20+ domæne-termer (Squad, Bid, Manager, Patch Notes, CZ$, ...). CI-check fejler PR'er hvis en/da har forskellige nøgler.",
           "Næste · Fase 2 (#411) oversætter Login + onboarding-tekster, så hele appen ikke kun NavBar er flersproget.",
         ],
@@ -2451,11 +2465,11 @@ const PATCHES = [
         items: [
           "Feature · `/founder-supporter` er nu en fuld landing page i stedet for kun en form-side. Hero med tagline + non-pay-to-win-løfte øverst, fair-premium-løftet i fremhævet boks, 4-tier pris-sammenligning (Free/Supporter/Pro Analyst/Patron) og separat \"hvad må sælges vs IKKE sælges\"-tabel direkte fra brand-løftet.",
           "Feature · Founder Supporter benefits-sektion (badge, Discord-rolle, profil-tema, Founder Wall, dev-opdateringer, roadmap-stemmer på non-balance) + FAQ med 6 spørgsmål (pay-to-win, free-konkurrence, betaling-live osv.).",
-          "Feature · Sprog-toggle øverst (DA/EN) — synkroniseres med `?lang=en` i URL'en så delte links bevarer sproget. Hele siden + waitlist-formen oversættes inkl. radio-options, country-dropdown, fejlbeskeder og success-state.",
-          "Feature · `?variant=A|B|C` (kombineret med `utm_campaign=launch_29dkk|49dkk|69dkk`) ændrer Supporter-prisen direkte i pris-sammenligningen — så 3 landing-varianter kan dele samme URL men vise forskellige priser. Annual-pris (490 DKK/år) udregnes nu dynamisk fra månedlig × 10 i stedet for hardcoded.",
+          "Feature · Sprog-toggle øverst (DA/EN). Synkroniseres med `?lang=en` i URL'en så delte links bevarer sproget. Hele siden + waitlist-formen oversættes inkl. radio-options, country-dropdown, fejlbeskeder og success-state.",
+          "Feature · `?variant=A|B|C` (kombineret med `utm_campaign=launch_29dkk|49dkk|69dkk`) ændrer Supporter-prisen direkte i pris-sammenligningen. Så 3 landing-varianter kan dele samme URL men vise forskellige priser. Annual-pris (490 DKK/år) udregnes nu dynamisk fra månedlig × 10 i stedet for hardcoded.",
           "SEO · OpenGraph + Twitter Card-metadata tilføjet i `index.html` (title, description, og:image på 1200×630 SVG, canonical URL). Discord/Slack/Twitter viser nu pænt preview-kort når landing-URL'en deles.",
-          "Tests · 2 nye unit-tests for `validateForm(state, lang)` + `mapInsertError(error, lang)` — verificerer at engelske brugere får engelske fejlbeskeder. Backwards-compat: default `lang=\"da\"` så eksisterende kald uden lang-param fortsætter på dansk. 35/35 grønne.",
-          "Sprint-validation unblocker #3 af 3 — #361 lukker sammen med #362 (form) + #363 (admin-dashboard), så Monetization Validation Sprint kan starte 2026-05-18 med fuld stack.",
+          "Tests · 2 nye unit-tests for `validateForm(state, lang)` + `mapInsertError(error, lang)`. Verificerer at engelske brugere får engelske fejlbeskeder. Backwards-compat: default `lang=\"da\"` så eksisterende kald uden lang-param fortsætter på dansk. 35/35 grønne.",
+          "Sprint-validation unblocker #3 af 3. #361 lukker sammen med #362 (form) + #363 (admin-dashboard), så Monetization Validation Sprint kan starte 2026-05-18 med fuld stack.",
         ],
       },
     ],
@@ -2469,11 +2483,11 @@ const PATCHES = [
         category: "Sprint-validation · Founder Supporter waitlist-form (#362)",
         items: [
           "Feature · Ny offentlig side `/founder-supporter` med waitlist-form: kontakt (email og/eller Discord-handle), interesseniveau, foretrukken tier (49/89/490 DKK eller kun gratis), valgfri benefits-prioritering, fritekst-grunde og land. GDPR-consent IKKE pre-tjekket; link til privatlivspolitik åbner i ny fane.",
-          "Feature · UTM-tracking auto-capturer `utm_source`, `utm_campaign` og `utm_medium` fra URL — driver Option B price-variant-test (3 landing-varianter sender forskellige campaign-tags så vi kan måle hvilken pris der konverterer bedst).",
+          "Feature · UTM-tracking auto-capturer `utm_source`, `utm_campaign` og `utm_medium` fra URL. Driver Option B price-variant-test (3 landing-varianter sender forskellige campaign-tags så vi kan måle hvilken pris der konverterer bedst).",
           "Feature · Honeypot-felt mod bot-spam; submit-button disables under indsendelse; dubletter behandles som soft-success (\"Du står allerede på listen\") så bots ikke kan recon hvilke emails der findes.",
           "Feature · Success-state takker brugeren og peger på Discord-invite (kommer med #415) + email-opfølgning. Fejl-state mapper Supabase RLS/network/unknown til danske beskeder.",
           "Infra · DB-migration tilføjer `country` (ISO-2 m. CHECK-constraint), `utm_campaign` og `utm_medium` til `founder_supporter_waitlist`. Indsending bruger `Prefer: return=minimal` (UDEN `.select()`) så anon-RLS ikke fejler på RETURNING.",
-          "Admin · CSV-eksport på `/admin/waitlist` udvidet med de 3 nye kolonner (country/utm_campaign/utm_medium) — eksisterende dashboard og filtre uændrede.",
+          "Admin · CSV-eksport på `/admin/waitlist` udvidet med de 3 nye kolonner (country/utm_campaign/utm_medium). Eksisterende dashboard og filtre uændrede.",
           "Tests · 24 nye unit-tests for form-helpers (UTM-parsing, validering, error-mapping, payload-builder); #359 RLS-regression (7/7) verificeret efter migration.",
         ],
       },
@@ -2504,7 +2518,7 @@ const PATCHES = [
       {
         category: "Privatliv · Vercel Web Analytics consent-gated (#372)",
         items: [
-          "Privatliv · Vercel Web Analytics aktiveres nu kun hvis du har givet samtykke til `analytics` i cookie-banneret. Vælger du \"Kun nødvendige\", indlæses analytics-scriptet ikke — på linje med Microsoft Clarity og Vercel Speed Insights.",
+          "Privatliv · Vercel Web Analytics aktiveres nu kun hvis du har givet samtykke til `analytics` i cookie-banneret. Vælger du \"Kun nødvendige\", indlæses analytics-scriptet ikke. På linje med Microsoft Clarity og Vercel Speed Insights.",
           "Bugfix · Tidligere kørte analytics-scriptet ubetinget før consent-banneret nåede at resolve (regression fra auto-genereret Vercel-bot-PR #371). Default-deny respekteres nu fra første render.",
         ],
       },
@@ -2521,7 +2535,7 @@ const PATCHES = [
           "Docs · Privatlivspolitikken er udvidet med dedikeret sektion om Founder Supporter-waitlisten: hvilke data der gemmes (e-mail/Discord-handle, interesseniveau, foretrukken tier, opfølgnings-samtykke, attribution, samtykke-tidsstempel), formål, opbevaring (24 mdr. inaktivitet), tredjeparter, og at en tilmelding er uforpligtende.",
           "Feature · Engelsk version af privatlivspolitikken tilgængelig på `/privacy-policy`. Sprog-switcher i toppen af begge sider; footer-link på Login + Reset-password til både DK og EN.",
           "Docs · Dataansvarlig opdateret til `Cycling Zone v/ Nicolai Dolmer Mikkelsen` (enkeltmandsvirksomhed under registrering). Rettigheds-listen er nu eksplicit (indsigt, berigtigelse, sletning, dataportabilitet, indsigelse, tilbagetrækning, Datatilsynet-klage).",
-          "Infra · `WaitlistConsentText`-komponent klar til embed i waitlist-form (#362) — IKKE pre-tjekket checkbox, link til privatlivspolitik åbner i ny fane.",
+          "Infra · `WaitlistConsentText`-komponent klar til embed i waitlist-form (#362). IKKE pre-tjekket checkbox, link til privatlivspolitik åbner i ny fane.",
         ],
       },
     ],
@@ -2547,7 +2561,7 @@ const PATCHES = [
     label: "Beta",
     changes: [
       {
-        category: "Bugfix · Bestyrelsen — dublet-snapshots i Sæsonhistorik (#30)",
+        category: "Bugfix · Bestyrelsen. Dublet-snapshots i Sæsonhistorik (#30)",
         items: [
           "Bugfix · Sæsonhistorik på Bestyrelse-siden kunne i sjældne tilfælde vise to rækker for samme sæson med forskellige rangs og tilfredshed-deltas (sket hvis sæson-slut-cron'en blev kørt mere end én gang for samme sæson). Database-constraint sikrer nu at hver plan kun kan have ét snapshot pr. sæson, og cron'en er gjort idempotent.",
         ],
@@ -2565,7 +2579,7 @@ const PATCHES = [
           "Feature · Flere `Du er blevet overbudt!`-notifikationer på samme auktion stables nu til én boble med tæller (`Du er blevet overbudt! (×17)`) i stedet for at fylde indbakken med 17 separate rækker. Boblen viser både første og seneste tidspunkt, bumpes til toppen ved nyt overbud, og forbliver ulæst indtil mindst ét klik.",
           "Feature · Klik på aggregat-boblen folder historikken ud (kronologisk liste af alle bud) og markerer alle som læst. `Vis auktion →`-knap dyb-linker til auktionssiden.",
           "Feature · Når auktionen afsluttes (`auction_won`/`auction_lost`) skjules outbid-aggregatet automatisk i UI'et, så kun afslutnings-notifikationen står tilbage. Underliggende rækker bevares i databasen.",
-          "Infra · Aggregering sker client-side i [`groupNotifications.js`](frontend/src/lib/groupNotifications.js) med 12 unit-tests. Ingen DB-migration eller backend-ændringer — eksisterende 24-timers dedup-vindue i `notificationService.js` påvirkes ikke.",
+          "Infra · Aggregering sker client-side i [`groupNotifications.js`](frontend/src/lib/groupNotifications.js) med 12 unit-tests. Ingen DB-migration eller backend-ændringer. Eksisterende 24-timers dedup-vindue i `notificationService.js` påvirkes ikke.",
         ],
       },
     ],
@@ -2628,9 +2642,9 @@ const PATCHES = [
     label: "Beta",
     changes: [
       {
-        category: "Infra · Scaling Fase 3 — in-process response cache (#334)",
+        category: "Infra · Scaling Fase 3. In-process response cache (#334)",
         items: [
-          "Infra · `/api/riders` (60s TTL), `/api/races`, `/api/race-pool` og `/api/race-points` (10 min TTL) cacher nu responsen i backend-processen og rammer Supabase langt sjældnere ved gentagne reads. Ingen ekstra infra eller cost — Upstash Redis defer'es til når en anden backend-instans bliver relevant (#330).",
+          "Infra · `/api/riders` (60s TTL), `/api/races`, `/api/race-pool` og `/api/race-points` (10 min TTL) cacher nu responsen i backend-processen og rammer Supabase langt sjældnere ved gentagne reads. Ingen ekstra infra eller cost. Upstash Redis defer'es til når en anden backend-instans bliver relevant (#330).",
           "Infra · Cache invalideres automatisk når en handling ændrer state (auction-finalize, transfer-bekræftelse, swap-bekræftelse, lejeaftalens buyout, race-resultat-godkendelse, admin override/retirement/race-creation/race-pool-import). Aggressivt kort TTL på ryttere holder evt. resterende stale-vindue under 60 sekunder.",
           "Infra · Sentry breadcrumbs i `endpoint-timing`-kategorien giver P50/P95-baseline pr. endpoint så cache-effekten kan måles. Admin-endpoint `GET /api/admin/cache-stats` viser hit/miss/invalidations pr. namespace. `RESPONSE_CACHE_DISABLED=1` er break-glass.",
           "Bugfix · Cache-key normaliserer nu query-parametre sikkert, coalescer samtidige første reads, og forhindrer at en ældre in-flight miss kan genindføre stale data efter en invalidation.",
@@ -2713,7 +2727,7 @@ const PATCHES = [
       {
         category: "Sikkerhed · Backend rate limiting (#328)",
         items: [
-          "Infra · Bud-, transfer-, board- og admin-endpoints er nu beskyttet mod misbrug og trafikspikes via per-bruger throttling på backend. Ingen synlig ændring for managers i normal brug — du kan i sjældne tilfælde se en `For mange handlinger på kort tid`-besked hvis et script eller hurtige klik overstiger grænserne. Cron- og baggrunds-flows er ikke påvirket.",
+          "Infra · Bud-, transfer-, board- og admin-endpoints er nu beskyttet mod misbrug og trafikspikes via per-bruger throttling på backend. Ingen synlig ændring for managers i normal brug. Du kan i sjældne tilfælde se en `For mange handlinger på kort tid`-besked hvis et script eller hurtige klik overstiger grænserne. Cron- og baggrunds-flows er ikke påvirket.",
         ],
       },
     ],
@@ -2767,7 +2781,7 @@ const PATCHES = [
       {
         category: "Sikkerhed · Gitleaks som required check (#303)",
         items: [
-          "Infra · `gitleaks` secret-scanner er nu en *required* status check på `main` (efter 6 grønne PR-runs siden 2026-05-11). En PR kan ikke længere merges hvis gitleaks finder en hardcoded API-nøgle eller token. Ingen synlig ændring for managers — det er et ekstra net under enhver kode-ændring.",
+          "Infra · `gitleaks` secret-scanner er nu en *required* status check på `main` (efter 6 grønne PR-runs siden 2026-05-11). En PR kan ikke længere merges hvis gitleaks finder en hardcoded API-nøgle eller token. Ingen synlig ændring for managers. Det er et ekstra net under enhver kode-ændring.",
         ],
       },
     ],
@@ -2780,9 +2794,9 @@ const PATCHES = [
       {
         category: "Auth · Password-reset og uventede logouts (#35)",
         items: [
-          "Manager · \"Glemt password\"-reset-mailen kunne lande på en intern Vercel-login-side i stedet for spillet, fordi reset-linket fulgte den URL du startede fra — herunder Vercel's auto-genererede preview/team-domæner som var SSO-beskyttede. Reset-link peger nu altid på `https://cycling-zone.vercel.app/reset-password`, uanset hvilken vercel-URL du tilgår spillet fra.",
-          "Manager · De to ekstra `*.vercel.app`-domæner som Vercel auto-genererede til projektet er nu offentligt tilgængelige (Vercel Authentication slået fra). Hvis du bookmarkede et af dem, virker det fra nu af også — du behøver ikke logge ind med en Vercel-konto.",
-          "Manager · Hvis du blev logget ud i går aftes/i morges efter sikkerhedsopdateringen (#296 Supabase key-rotation), så log bare ind igen — det er en engangs-effekt.",
+          "Manager · \"Glemt password\"-reset-mailen kunne lande på en intern Vercel-login-side i stedet for spillet, fordi reset-linket fulgte den URL du startede fra. Herunder Vercel's auto-genererede preview/team-domæner som var SSO-beskyttede. Reset-link peger nu altid på `https://cycling-zone.vercel.app/reset-password`, uanset hvilken vercel-URL du tilgår spillet fra.",
+          "Manager · De to ekstra `*.vercel.app`-domæner som Vercel auto-genererede til projektet er nu offentligt tilgængelige (Vercel Authentication slået fra). Hvis du bookmarkede et af dem, virker det fra nu af også. Du behøver ikke logge ind med en Vercel-konto.",
+          "Manager · Hvis du blev logget ud i går aftes/i morges efter sikkerhedsopdateringen (#296 Supabase key-rotation), så log bare ind igen. Det er en engangs-effekt.",
         ],
       },
     ],
@@ -2795,10 +2809,10 @@ const PATCHES = [
       {
         category: "Observabilitet · Event-logging baseline (#137)",
         items: [
-          "Manager · Hvis du har accepteret Analyse-kategorien, registreres nu 10 anonyme handlinger pr. spiller: log-ins, auktionsvisninger, bud, transfertilbud, notifikations-klik samt 5 \"feature-impressions\" (Udvikling-fanen, Hall of Fame, Finance forecast, Board-konsekvenser, Admin-auktionsregler). Vi ser kun aggregeret data — RLS sikrer at du kun kan se dine egne events.",
-          "Manager · Hvis du har afslået Analyse, logges intet — samme gate som Microsoft Clarity (#297).",
+          "Manager · Hvis du har accepteret Analyse-kategorien, registreres nu 10 anonyme handlinger pr. spiller: log-ins, auktionsvisninger, bud, transfertilbud, notifikations-klik samt 5 \"feature-impressions\" (Udvikling-fanen, Hall of Fame, Finance forecast, Board-konsekvenser, Admin-auktionsregler). Vi ser kun aggregeret data. RLS sikrer at du kun kan se dine egne events.",
+          "Manager · Hvis du har afslået Analyse, logges intet. Samme gate som Microsoft Clarity (#297).",
           "DB · Ny `player_events`-tabel (team_id, user_id, event_name, event_data, created_at) med RLS-policies så managers kun ser egne rækker.",
-          "Backwards-audit · Ny Detector E i `audit-feature-liveness` finder \"deployed feature med 0 impressions sidste 30 dage\" — generaliserer slice 14 / #279-mønstret til frontend-only features hvor Detector A (backend-write) ikke kan se noget. Workflow kører ugentligt mandage 04:00 UTC og åbner tracking-issue ved fund.",
+          "Backwards-audit · Ny Detector E i `audit-feature-liveness` finder \"deployed feature med 0 impressions sidste 30 dage\". Generaliserer slice 14 / #279-mønstret til frontend-only features hvor Detector A (backend-write) ikke kan se noget. Workflow kører ugentligt mandage 04:00 UTC og åbner tracking-issue ved fund.",
         ],
       },
     ],
@@ -2813,7 +2827,7 @@ const PATCHES = [
         items: [
           "Backend · Den service_role API-nøgle der gav fuld adgang til databasen er udskiftet til Supabase's nye `sb_secret_...` system. Per-nøgle revokering betyder at hvis en nøgle eksponeres i fremtiden, behøver vi ikke længere rotere fælles JWT-secret.",
           "Backend · Den gamle nøgle (commiteret offentligt i `setup.py` i Initial commit 2026-04-17) er nu deaktiveret. Ingen kendt misbrug før rotation.",
-          "Repo · `setup.py` læser nu nøgler fra miljøvariabler i stedet for hardcoded værdier — fremtidige clones skal selv sætte env vars.",
+          "Repo · `setup.py` læser nu nøgler fra miljøvariabler i stedet for hardcoded værdier. Fremtidige clones skal selv sætte env vars.",
           "Drift · Ingen brugerrettet ændring; backend redeployet uden mærkbar nedetid.",
         ],
       },
@@ -2844,10 +2858,10 @@ const PATCHES = [
       {
         category: "Admin · Økonomi-panel taler dansk nu",
         items: [
-          "Admin · Felterne `Reason code`, `Actor type`, `Source path` og `Action type` vises som danske labels (fx \"Sponsorindtægt (sæsonstart)\" i stedet for `season_start_sponsor`, \"Automatisk job\" i stedet for `cron`, \"Auktion — udbetaling til sælger\" i stedet for `auctionFinalization.finalizeAuctionRecord.seller`).",
+          "Admin · Felterne `Reason code`, `Actor type`, `Source path` og `Action type` vises som danske labels (fx \"Sponsorindtægt (sæsonstart)\" i stedet for `season_start_sponsor`, \"Automatisk job\" i stedet for `cron`, \"Auktion. Udbetaling til sælger\" i stedet for `auctionFinalization.finalizeAuctionRecord.seller`).",
           "Admin · Detalje-modalen er omdøbt: `Reason code` → Begivenhed, `Actor type` → Hvem udløste, `Source path` → Kilde i koden, `Idempotency key` → Sikrings-nøgle. Den tekniske enum-værdi vises stadig i parentes så devs kan korrelere med kode/logs.",
           "Admin · Kolonneoverskrifter (`Reason`, `Actor`, `Source path`, `Action`) er omdøbt til Begivenhed, Udløst af, Kilde i koden, Handling.",
-          "Ingen DB- eller API-ændringer — kun visning.",
+          "Ingen DB- eller API-ændringer. Kun visning.",
         ],
       },
     ],
@@ -2934,7 +2948,7 @@ const PATCHES = [
       {
         category: "Drift · UCI-point synkroniseres nu om onsdagen i stedet for mandagen",
         items: [
-          "Manager · Den ugentlige UCI-point-opdatering fra ProCyclingStats (top 3000 ryttere → rytter-værdi/løn) flyttes fra mandag morgen 06:00 UTC til onsdag morgen 06:00 UTC. Dine ryttere får derfor friske UCI-point én gang om ugen onsdag i stedet for mandag — alle safety-gates fra v2.27 (compound-surname-match, høj-værdi-beskyttelse, mass-downgrade-loft) er uændrede.",
+          "Manager · Den ugentlige UCI-point-opdatering fra ProCyclingStats (top 3000 ryttere → rytter-værdi/løn) flyttes fra mandag morgen 06:00 UTC til onsdag morgen 06:00 UTC. Dine ryttere får derfor friske UCI-point én gang om ugen onsdag i stedet for mandag. Alle safety-gates fra v2.27 (compound-surname-match, høj-værdi-beskyttelse, mass-downgrade-loft) er uændrede.",
           "Internt · `.github/workflows/uci_sync.yml` cron ændret fra `0 6 * * 1` til `0 6 * * 3`. 21/21 unit tests grønne; sidste schedule-run mandag 2026-05-04 verificeret success (3000 ryttere, 4/100 downgrades, ingen safety-trip).",
         ],
       },
@@ -2950,7 +2964,7 @@ const PATCHES = [
         items: [
           "Internt · Nyt audit-script `backend/scripts/audit-feature-liveness.js` med 4 detector-klasser kører ugentligt cron + på alle PRs der rører schema/routes/frontend: (A) tabeller hvor backend skriver men der er 0 rows, (B) backend-endpoints uden frontend-caller, (C) migration committed men ikke applied, (D) prod-tabel uden CREATE TABLE i repo. Generaliserer slice 14 / #279-mønstret til flere drift-klasser.",
           "Internt · Workflow `feature-liveness-audit.yml` blokerer PR-merge ved nye findings og opretter auto-tracking-issue (label `quality-drift`) ved cron-drift. Helper-RPCs i ny migration. Agent-doctor.ps1 kører samme check lokalt før push.",
-          "Internt · Første run mod main bekræftede #284: 3 board-tabeller (board_consequences/board_request_log/team_board_members) er milestone-gated tomme — ikke broken — som dokumenteret i b53d831. Detector D afslører desuden 15 Studio-oprettede legacy-tabeller fra før migration-workflow (separat backfill-issue følger).",
+          "Internt · Første run mod main bekræftede #284: 3 board-tabeller (board_consequences/board_request_log/team_board_members) er milestone-gated tomme. Ikke broken. Som dokumenteret i b53d831. Detector D afslører desuden 15 Studio-oprettede legacy-tabeller fra før migration-workflow (separat backfill-issue følger).",
         ],
       },
     ],
@@ -2965,7 +2979,7 @@ const PATCHES = [
         items: [
           "Manager · Du kan nu kun have ÉN aktiv 'til salg'-listing pr. rytter ad gangen. Tidligere kunne du fejlbruge 'Sæt til salg' flere gange og oprette parallelle listings med forskellige priser, hvilket gav forvirrende dobbelt-visning i markedet og åbnede for at flere købere kunne lægge tilbud på samme rytter via forskellige listings.",
           "Manager · Hvis du prøver at oprette en ny listing på en rytter du allerede har til salg, får du nu en venlig fejl ('Rytteren er allerede til salg på transfermarkedet'). Vil du ændre prisen, fjern den eksisterende listing først via '🗑️ Fjern fra transferlisten' i markedsoversigten.",
-          "Backend · `POST /api/transfers` har nu både SELECT-pre-check og DB-niveau partial unique index (`uniq_transfer_listings_one_active_per_rider WHERE status IN ('open','negotiating')`). Race-vinduer ved dobbeltklik fanges af unique-constraint og mappes til 409 — samme mønster som auctions har haft siden 2026-05-06 (#69).",
+          "Backend · `POST /api/transfers` har nu både SELECT-pre-check og DB-niveau partial unique index (`uniq_transfer_listings_one_active_per_rider WHERE status IN ('open','negotiating')`). Race-vinduer ved dobbeltklik fanges af unique-constraint og mappes til 409. Samme mønster som auctions har haft siden 2026-05-06 (#69).",
         ],
       },
     ],
@@ -2976,11 +2990,11 @@ const PATCHES = [
     label: "Beta",
     changes: [
       {
-        category: "Bugfix · Auktionshistorik — 'Købt'-fane viser alle (#246) + selv-køb tydeliggjort (#244)",
+        category: "Bugfix · Auktionshistorik. 'Købt'-fane viser alle (#246) + selv-køb tydeliggjort (#244)",
         items: [
           "Manager · 'Købt' og 'Solgt'-fanerne under Auktioner → Historik viser nu alle dine vundne/solgte auktioner uanset hvor mange sider historikken er på. Tidligere blev fanerne filtreret klient-side EFTER pagination, så hvis dine 5 vundne auktioner lå spredt over 10 historik-sider, kunne 'Købt'-fanen vise 0-1 rytter på den side du var på, og 'Næste'-knappen hoppede ofte til en tom side.",
           "Manager · Stats-tællerne (Købt/Solgt/Brugt/Tjent) er nu korrekte for hele din historik, ikke kun den side du står på.",
-          "Manager · Når du selv vinder en auktion på din egen rytter (kan ske ved garanteret salg + afslutter du selv som leder), markeres rækken nu med en 'Selv'-badge og prisen vises neutralt uden minus/plus-prefix. Tidligere viste rækken 'Købt'+'Solgt'-badges med rødt minus-tegn på prisen, hvilket fejlagtigt antydede at du havde tabt penge — i virkeligheden er der intet nettoflow ved et selv-køb. Stats ekskluderer også selv-køb fra Brugt/Tjent.",
+          "Manager · Når du selv vinder en auktion på din egen rytter (kan ske ved garanteret salg + afslutter du selv som leder), markeres rækken nu med en 'Selv'-badge og prisen vises neutralt uden minus/plus-prefix. Tidligere viste rækken 'Købt'+'Solgt'-badges med rødt minus-tegn på prisen, hvilket fejlagtigt antydede at du havde tabt penge. I virkeligheden er der intet nettoflow ved et selv-køb. Stats ekskluderer også selv-køb fra Brugt/Tjent.",
           "Backend · `AuctionHistoryPage.jsx` filtrerer nu på server-siden (`current_bidder_id`/`seller_team_id`) i stedet for klient-side, og kører separat aggregat-query for stats. Self-purchase detekteres i ny pure-helper `isSelfPurchase`. Pagination resettes til side 1 ved fane-skift så man ikke lander på tom side.",
         ],
       },
@@ -2994,8 +3008,8 @@ const PATCHES = [
       {
         category: "Bugfix · Fjern-knappen virker nu rigtigt (#270 follow-up)",
         items: [
-          "Manager · '🗑️ Fjern fra transferlisten'-knappen virker nu reelt — tidligere klikkede knappen, viste en grøn 'fjernet'-toast, men listingen forblev i markedet. Bag kulisserne fejlede DB-skrivningen lydløst, og frontend troede den var lykkedes.",
-          "Backend · Endpointet skrev `status='closed'` til `transfer_listings`, men kolonnens CHECK-constraint tillader kun `open|negotiating|sold|withdrawn` — så UPDATE'en blev afvist af Postgres uden at backend tjekkede returkoden. Nu bruges `'withdrawn'` (samme værdi som transfer_offers/swap_offers withdraw-flows) og UPDATE-fejl propageres som 500 i stedet for at blive ignoreret.",
+          "Manager · '🗑️ Fjern fra transferlisten'-knappen virker nu reelt. Tidligere klikkede knappen, viste en grøn 'fjernet'-toast, men listingen forblev i markedet. Bag kulisserne fejlede DB-skrivningen lydløst, og frontend troede den var lykkedes.",
+          "Backend · Endpointet skrev `status='closed'` til `transfer_listings`, men kolonnens CHECK-constraint tillader kun `open|negotiating|sold|withdrawn`. Så UPDATE'en blev afvist af Postgres uden at backend tjekkede returkoden. Nu bruges `'withdrawn'` (samme værdi som transfer_offers/swap_offers withdraw-flows) og UPDATE-fejl propageres som 500 i stedet for at blive ignoreret.",
         ],
       },
     ],
@@ -3008,9 +3022,9 @@ const PATCHES = [
       {
         category: "UX · Banken hedder nu AI (#14)",
         items: [
-          "Manager · Holdet 'Banken' er omdøbt til 'AI' i hele spillet — det var hele tiden samme hold som AI-/free-agent-poolen (samme team-record med både `is_ai=true` og `is_bank=true`), men de to navne forvirrede. Nu er det ét konsistent navn alle steder: rytter-profiler, hjælpetekster, auktionshistorik og finance-beskrivelser.",
-          "Manager · Garanteret salg fungerer præcis som før — startpris 50% af Værdi, AI køber rytteren hvis ingen manager byder højere. Kun ordlyden er ændret: 'Sælg til bank' → 'Garanteret salg', 'Bankryttere kan ikke modtage tilbud' → 'AI-ryttere kan ikke modtage tilbud'.",
-          "Backend · Team-rækken med `is_bank=true` har fået `name='AI'` i prod. `is_bank`-flaget bevares som intern routing-markør for guaranteed-sale-flowet (uændret kode-path i `auctionFinalization.js`). Ingen funktionel ændring — kun strenge i `api.js`, `auctionFinalization.js`, `HelpPage`, `TeamPage`, `RiderStatsPage`, `AdminPage` og docs.",
+          "Manager · Holdet 'Banken' er omdøbt til 'AI' i hele spillet. Det var hele tiden samme hold som AI-/free-agent-poolen (samme team-record med både `is_ai=true` og `is_bank=true`), men de to navne forvirrede. Nu er det ét konsistent navn alle steder: rytter-profiler, hjælpetekster, auktionshistorik og finance-beskrivelser.",
+          "Manager · Garanteret salg fungerer præcis som før. Startpris 50% af Værdi, AI køber rytteren hvis ingen manager byder højere. Kun ordlyden er ændret: 'Sælg til bank' → 'Garanteret salg', 'Bankryttere kan ikke modtage tilbud' → 'AI-ryttere kan ikke modtage tilbud'.",
+          "Backend · Team-rækken med `is_bank=true` har fået `name='AI'` i prod. `is_bank`-flaget bevares som intern routing-markør for guaranteed-sale-flowet (uændret kode-path i `auctionFinalization.js`). Ingen funktionel ændring. Kun strenge i `api.js`, `auctionFinalization.js`, `HelpPage`, `TeamPage`, `RiderStatsPage`, `AdminPage` og docs.",
           "Cleanup · Bug #245 (rytter fjernes fra hold ved auktion på pending-incoming) blev allerede fikset 2026-05-09 i commit `814b5dc` via `getAuctionStartIssue`-gate der returnerer 409 hvis `pending_team_id` er sat. Verificeret: 0 ryttere i prod har pending_team_id sat, og POST /api/auctions afviser tilstanden ved kilden.",
         ],
       },
@@ -3025,9 +3039,9 @@ const PATCHES = [
         category: "Bugfix · Fjern rytter fra transferlisten igen (#270)",
         items: [
           "Manager · Du kan nu fjerne en rytter fra transferlisten igen efter du har sat den til salg. Knappen '🗑️ Fjern fra transferlisten' vises på din egen listing under Transfers → Marked. Klik → bekræft → listingen lukkes og rytteren forsvinder fra markedet med det samme.",
-          "Manager · Aktive tilbud på rytteren forbliver i deres state — købere kan stadig trække tilbage og du kan stadig afvise dem via det normale tilbuds-flow. Hvis du vil have dem helt af bordet, skal du afvise dem separat under Modtagne tilbud.",
+          "Manager · Aktive tilbud på rytteren forbliver i deres state. Købere kan stadig trække tilbage og du kan stadig afvise dem via det normale tilbuds-flow. Hvis du vil have dem helt af bordet, skal du afvise dem separat under Modtagne tilbud.",
           "Manager · Virker både i åbent og lukket transfervindue, så du kan rydde op i gamle listings uanset hvor i sæsonen du er.",
-          "Backend · Endpoint `DELETE /api/transfers/:id` har eksisteret siden start, men UI-knappen var aldrig blevet bygget — kun statisk 'Din listing'-tekst blev vist på egne rækker. Ny pure-funktion `getListingCancelIssue` i `transferExecution.js` parallel til `getTransferCancelIssue`/`getSwapCancelIssue`/`getLoanCancelIssue` håndhæver ejer-check + status-gating (open/negotiating tilladt, closed/sold afvises som 400). 570/570 backend-tests grønne (+1 ny dækker not_found, not_owner, already_closed og happy path).",
+          "Backend · Endpoint `DELETE /api/transfers/:id` har eksisteret siden start, men UI-knappen var aldrig blevet bygget. Kun statisk 'Din listing'-tekst blev vist på egne rækker. Ny pure-funktion `getListingCancelIssue` i `transferExecution.js` parallel til `getTransferCancelIssue`/`getSwapCancelIssue`/`getLoanCancelIssue` håndhæver ejer-check + status-gating (open/negotiating tilladt, closed/sold afvises som 400). 570/570 backend-tests grønne (+1 ny dækker not_found, not_owner, already_closed og happy path).",
         ],
       },
     ],
@@ -3040,7 +3054,7 @@ const PATCHES = [
       {
         category: "Bugfix · Bud kan ikke længere sniges igennem efter auktionen er udløbet (#269)",
         items: [
-          "Manager · Bud der lander efter auktionens sluttidspunkt afvises nu konsekvent med 'Auktionen er udløbet'. Tidligere var der et race-vindue på 100-500 ms mellem at serveren tjekkede 'er auktionen udløbet?' og at buddet blev gemt — i den korridor kunne et bud klikket meget tæt på (eller lige efter) sluttidspunktet stadig blive accepteret og forlænge auktionen yderligere.",
+          "Manager · Bud der lander efter auktionens sluttidspunkt afvises nu konsekvent med 'Auktionen er udløbet'. Tidligere var der et race-vindue på 100-500 ms mellem at serveren tjekkede 'er auktionen udløbet?' og at buddet blev gemt. I den korridor kunne et bud klikket meget tæt på (eller lige efter) sluttidspunktet stadig blive accepteret og forlænge auktionen yderligere.",
           "Manager · Konkret eksempel fra Axel Zingle's auktion 2026-05-10: et bud landede 308 ms EFTER calculated_end og udløste forlængelse #4, som muliggjorde forlængelse #5. Auktionen levede 11+ minutter ekstra. Med fixet kunne ingen af de to forlængelser være sket.",
           "Backend · DB-håndhævet via `BEFORE INSERT` trigger på `auction_bids` (migration `2026-05-10-reject-late-auction-bid-trigger.sql`). Triggeren afviser inserts hvor `bid_time >= auctions.calculated_end` eller status ≠ 'active'/'extended', uanset om buddet kommer fra POST /bid, PATCH /proxy openingBid eller cascade-proxy-counter. App-laget oversætter Postgres-fejlen (`P0001 auction_expired_at_insert`) til en venlig 400 i stedet for 500. 569/569 backend-tests grønne (+8 nye dækker trigger-error matcher + cascade-break ved late-bid + andre INSERT-fejl propageres).",
         ],
@@ -3055,8 +3069,8 @@ const PATCHES = [
       {
         category: "Bugfix · Auktioner forlænges kun ved reelt overbud (#257)",
         items: [
-          "Manager · En auktion bliver nu KUN forlænget hvis bud reelt skifter hvem der fører. Tidligere udløste ethvert bud i de sidste 10 minutter en forlængelse — også når et autobud-loft straks bød op igen og holdt den oprindelige leder. Det betød at et 1-CZ$-bud kunne strække auktioner i det uendelige.",
-          "Manager · Eksempel: Auktionen står på 20.000 CZ$ og du leder med autobud-loft 25.000. En anden manager byder 21.000. Dit autobud counter automatisk til 21.001 og du fortsætter som leder. Auktionen bliver IKKE forlænget — buddet flyttede ikke føringen.",
+          "Manager · En auktion bliver nu KUN forlænget hvis bud reelt skifter hvem der fører. Tidligere udløste ethvert bud i de sidste 10 minutter en forlængelse. Også når et autobud-loft straks bød op igen og holdt den oprindelige leder. Det betød at et 1-CZ$-bud kunne strække auktioner i det uendelige.",
+          "Manager · Eksempel: Auktionen står på 20.000 CZ$ og du leder med autobud-loft 25.000. En anden manager byder 21.000. Dit autobud counter automatisk til 21.001 og du fortsætter som leder. Auktionen bliver IKKE forlænget. Buddet flyttede ikke føringen.",
           "Manager · Hvis nogen byder OVER dit autobud-loft og overtager føringen, bliver auktionen stadig forlænget med 10 minutter (eller skubbet ud i grace-zonen / rullet over til næste døgn efter de eksisterende regler fra v2.87).",
           "Backend · Ny `applyLeaderShiftExtension`-helper i `auctionEngine.js` kaldes efter cascade af proxy-counter-bud er resolved; den sammenligner final leder med leder-før-bud og anvender kun forlængelsen ved skift. Cascaden selv extender ikke længere. 555/555 backend-tests grønne (+6 nye dækker spam-1-CZ-scenarie, leader-skift A→B, previousLeader=null, extension_count-bump fra eksisterende værdi, bid udenfor extension-vindue).",
         ],
@@ -3071,7 +3085,7 @@ const PATCHES = [
       {
         category: "Bugfix · Forsidens squad-tæller tager nu højde for transfers (#250)",
         items: [
-          "Manager · Forsidens 'Ryttere'-tæller og squad-warning forudsiger nu fremtidens hold-størrelse efter vinduet lukker (ejede MINUS pending-out PLUS pending-in PLUS aktive lån) i stedet for kun at tælle nuværende ejede. Tidligere kunne advarslen vise falsk 'for stort' hvis du var ved at sælge en rytter, eller falsk 'for lille' hvis du havde vundet auktioner i sæson 0 der venter på vinduet — begge dele er væk nu.",
+          "Manager · Forsidens 'Ryttere'-tæller og squad-warning forudsiger nu fremtidens hold-størrelse efter vinduet lukker (ejede MINUS pending-out PLUS pending-in PLUS aktive lån) i stedet for kun at tælle nuværende ejede. Tidligere kunne advarslen vise falsk 'for stort' hvis du var ved at sælge en rytter, eller falsk 'for lille' hvis du havde vundet auktioner i sæson 0 der venter på vinduet. Begge dele er væk nu.",
           "Manager · Header viser breakdown når der er bevægelse i holdet: 'Division 3 · 8 ryttere +2 ind −1 ud +1 leje', så du kan se på et øjeblik hvilke transfers der er undervejs. Stat-kortet 'Ryttere' viser fremtidens størrelse som primær tal og nuværende som sub.",
           "Refactor · Ny pure-funktion `computeDashboardSquadStats` i `frontend/src/lib/` med 11 unit-tests dækker alle hjørner: pending-in, pending-out, self-pending edge-case, deadline-day med både pending-in+pending-out, aktive lån, divisions-skalering. Sætter fundament for at samme regel kan genbruges på SeasonEnd, Finance og admin-overblik når de skal forudsige squad-status.",
         ],
@@ -3086,9 +3100,9 @@ const PATCHES = [
       {
         category: "Feature · Byd direkte fra rytter-profilen (#254)",
         items: [
-          "Manager · Når en rytter har en igangværende auktion, kan du nu byde på den direkte fra rytter-profilen — uden at gå omvejen via Auktioner-listen. Bud-panelet ligger lige under rytter-headeren og viser højeste bud, tid tilbage, sælger og status-badges (Du leder · Du er overbudt · Du sælger · ⚡ Forlænget · ⚡ Flash).",
-          "Manager · Fuld feature-parity med /auktioner — du kan både afgive almindelige bud, sætte/ændre/fjerne autobud-loft og bekræfte via samme bud-confirm-modal. Race-confirm-modal vises hvis prisen er ændret mens du forberedte dit bud (#194), og confetti popper når du vinder.",
-          "Manager · Live-opdatering på rytter-profilen — pris-cellen blinker når andre overbyder dig, og en toast siger 'Du er overbudt på X' så du kan reagere uden at refresh'e siden. Samme realtime-channel som /auktioner.",
+          "Manager · Når en rytter har en igangværende auktion, kan du nu byde på den direkte fra rytter-profilen. Uden at gå omvejen via Auktioner-listen. Bud-panelet ligger lige under rytter-headeren og viser højeste bud, tid tilbage, sælger og status-badges (Du leder · Du er overbudt · Du sælger · ⚡ Forlænget · ⚡ Flash).",
+          "Manager · Fuld feature-parity med /auktioner. Du kan både afgive almindelige bud, sætte/ændre/fjerne autobud-loft og bekræfte via samme bud-confirm-modal. Race-confirm-modal vises hvis prisen er ændret mens du forberedte dit bud (#194), og confetti popper når du vinder.",
+          "Manager · Live-opdatering på rytter-profilen. Pris-cellen blinker når andre overbyder dig, og en toast siger 'Du er overbudt på X' så du kan reagere uden at refresh'e siden. Samme realtime-channel som /auktioner.",
           "Refactor · Bid + autobud-state-machinen er trukket ud i en delt `useAuctionBidding`-hook + `auctionLogic`-modul, så AuctionsPage's tabel-row, mobile card og rytter-profilens bid-panel deler ÉN kilde til sandhed. Når der fixes en bug i bud-flowet fremover, bliver alle tre steder rettet på én gang.",
         ],
       },
@@ -3102,8 +3116,8 @@ const PATCHES = [
       {
         category: "Bugfix · Auktion-vindere afvist i døren ved division-cap (#267)",
         items: [
-          "Manager · Du må nu gå +2 over division-cap MIDT i et åbent transfervindue (D1 → 32, D2 → 22, D3 → 12). Squad-cap'en bliver først hard-håndhævet når transfervinduet lukker (squad-enforcement-cron auto-sælger ned til cap og fakturerer 100K CZ$ + 200 fradragspoint pr. afvigende rytter). Tidligere blev auktion-vindere afvist i døren hvis køberen var nået division-cap, selvom buddet var afgivet i god tro — nu lander rytteren på holdet og du kan sælge ned til cap inden sæsonstart.",
-          "Manager · Samme regel gælder også på transfertilbud, byttehandler og lejeaftaler. UI-fejlbesked opdateret til 'Dit hold er fyldt (12 ryttere — Div 3 cap 10 + 2 buffer i transfervinduet)' så det er tydeligt hvor langt du må gå.",
+          "Manager · Du må nu gå +2 over division-cap MIDT i et åbent transfervindue (D1 → 32, D2 → 22, D3 → 12). Squad-cap'en bliver først hard-håndhævet når transfervinduet lukker (squad-enforcement-cron auto-sælger ned til cap og fakturerer 100K CZ$ + 200 fradragspoint pr. afvigende rytter). Tidligere blev auktion-vindere afvist i døren hvis køberen var nået division-cap, selvom buddet var afgivet i god tro. Nu lander rytteren på holdet og du kan sælge ned til cap inden sæsonstart.",
+          "Manager · Samme regel gælder også på transfertilbud, byttehandler og lejeaftaler. UI-fejlbesked opdateret til 'Dit hold er fyldt (12 ryttere. Div 3 cap 10 + 2 buffer i transfervinduet)' så det er tydeligt hvor langt du må gå.",
           "Retroaktivt fix · Roman Ermakov og Harrison Wood blev fejlafvist på Vega - Vitalcare - Dynateks holdkonto 2026-05-09 grundet den her bug. Begge ryttere er nu blevet overdraget (60.000 CZ$ trukket fra balance, finance-audit + win-notifikation skrevet med samme rytternavne+priser som de oprindelige bud).",
           "Backend · Ny `softCapBuffer`-option på `getIncomingSquadViolation` + ny `TRANSFER_WINDOW_SOFT_CAP_BUFFER`-konstant (=2). `auctionFinalization.js` slår transfer-window-state op før squad-checket og sætter buffer=2 når vinduet er åbent. 5 user-initiated callsites (transfer-offer accept × 2, loan-proposal, loan-accept, transfer-execution) har soft-cap aktivt fordi endpointet allerede har gated på open-window. 545/545 backend-tests grønne (+5 nye for soft-cap, hard-cap og divisions-skalering).",
         ],
@@ -3119,7 +3133,7 @@ const PATCHES = [
         category: "Admin · Race-katalog (Slice 09)",
         items: [
           "Admin · Ny '🏁 Race-katalog'-sektion på admin-panelet med verdens-kalenderen (97 løb i alt på tværs af 7 klasser) og en wizard til at sammensætte sæsonens kalender. Vælg klasser via checkbox-grid, sæt race-dage-mål (default 60), klik 'Generér forslag' for at få en pre-checked liste, justér ved at af-vælge enkelte løb, og gem som sæsonens kalender. WorldTour-klasser er ekskluderet by-default for sæson 1 (per beslutning 2026-05-09 om gradvis opskalering).",
-          "Manager · Ny '🌍 Verdens-kalender'-tab på Løb-siden viser hele kataloget over tilgængelige løb. Klik en klasse for at filtrere; tabellen viser navn, klasse, type (Endags/Etape), antal etaper og dato. Read-only — udvælgelse til specifikke sæsoner sker via admin-panelet.",
+          "Manager · Ny '🌍 Verdens-kalender'-tab på Løb-siden viser hele kataloget over tilgængelige løb. Klik en klasse for at filtrere; tabellen viser navn, klasse, type (Endags/Etape), antal etaper og dato. Read-only. Udvælgelse til specifikke sæsoner sker via admin-panelet.",
           "Backend · Ny race_pool-tabel som katalog (separeret fra eksisterende races-tabel som nu er sæson-instans af et pool-løb via FK pool_race_id). race_class bruger frontend's 9-key-taksonomi (TourFrance, GiroVuelta, Monuments, OtherWorldTourA/B/C, ProSeries, Class1, Class2). 4 nye admin-endpoints: GET /api/admin/race-pool (overblik), POST /api/admin/race-pool/import-csv (idempotent re-upload), POST /api/admin/seasons/:id/race-selection/preview (forslag uden writes), POST /api/admin/seasons/:id/race-selection (gem som races-rows). Plus public GET /api/race-pool. Pure-funktioner: parseRacePoolCsv (deterministisk external_id via SHA-256 af navn+dato → idempotent re-import) + selectSeasonRaces (filter på klasser + race-dage-mål + overshoot-tolerance). 499/499 backend-tests grønne (+22 nye).",
         ],
       },
@@ -3135,7 +3149,7 @@ const PATCHES = [
         items: [
           "Admin · Ny '🔄 Sæson-cyklus'-sektion på admin-panelet lader dig udføre sæsonskifte med ét klik: lukker den aktive sæson (status='completed', end_date=nu), opretter næste sæson (status='active', start_date=nu), lukker det åbne transfervindue og opretter et lukket transfervindue til den nye sæson, udbetaler sponsor-penge til alle managers og logger handlingen i admin-loggen. Forhåndsvisning viser nøjagtigt hvad der sker (hvilke hold påvirkes, total sponsor-udbetaling, sponsor pr. hold) før du bekræfter.",
           "Manager · 93 ventende ryttere fra åbne-beta-fasens auktioner blev flyttet til deres rigtige hold med det samme, så holdene står korrekt inden sæson 1 starter. Fremover ved sæsonskifte 0→1 sker dette automatisk for alle ventende ryttere. Sæson 0 er nu dokumenteret som åbent transfervindue i databasen, hvilket gør at fremtidige auktioner i åbne-beta-fasen overdrager rytteren direkte (uden 'venter'-mellemtilstand).",
-          "Backend · Ny pure-funktion `transitionToNextSeason` (12 unit-tests inkl. dry-run, idempotent re-run efter delvis fejl, fuld idempotens, UUID-helpers). Sæsonskiftet er checkpoint-baseret: hver fase tjekker om den allerede er udført og springer over hvis ja, så re-run efter en transient fejl er sikkert. Sæson 1 er fredet for sponsor-modifier (×1.0) by-design — bestyrelsens budget_modifier træder først i kraft fra sæson 2.",
+          "Backend · Ny pure-funktion `transitionToNextSeason` (12 unit-tests inkl. dry-run, idempotent re-run efter delvis fejl, fuld idempotens, UUID-helpers). Sæsonskiftet er checkpoint-baseret: hver fase tjekker om den allerede er udført og springer over hvis ja, så re-run efter en transient fejl er sikkert. Sæson 1 er fredet for sponsor-modifier (×1.0) by-design. Bestyrelsens budget_modifier træder først i kraft fra sæson 2.",
           "Backend · To nye admin-endpoints bag requireAdmin: `GET /api/admin/season-transition/preview` (returnerer plan uden writes) og `POST /api/admin/season-transition` (udfører skiftet). Action-type 'season_transition' tilføjet til admin_log CHECK-constraint i database/2026-05-09-season-transition-admin-action.sql. 477/477 backend-tests grønne (+14 nye).",
         ],
       },
@@ -3149,9 +3163,9 @@ const PATCHES = [
       {
         category: "Manager · Sæson-finansrapport (07h)",
         items: [
-          "Manager · Ny dedikeret finansrapport per sæson: åbnes via 📊 Sæsonsrapport-knap på Finanser-siden eller via 📊 Finansrapport-knap på sæson-snapshot-siden (/seasons). Rapporten viser hero-kort med totalt indtægt/udgift/net cashflow, to donut-diagrammer over hvor pengene kommer fra (sponsor, præmiepenge, auktion-salg, ...) og hvor de går hen (auktion-køb, løn, lånerenter, ...), top-3 transaktioner i hver retning og en oversigt over aktive lån med næste sæsons forventede rente. Rapporten er privat per hold — ingen kan se andres økonomi.",
-          "Backend · Ny migration seeder sæson 0 (open beta transfervindue, 2026-05-08 18:00 UTC). Backfill'er alle 82 eksisterende finance_transactions med season_id og reason_code så donut-aggregeringen virker fra dag 1. Database-trigger auto-stamper season_id på fremtidige transaktioner — ingen callsite-ændringer nødvendige. Spillere mærker intet bortset fra rapportens nye data.",
-          "Backend · Ny pure-function `buildSeasonFinanceReport` (15 unit-tests dækker hero-aggregering, donut-fordeling, top-N-extraction, loan-summary + privatlivs-test der verificerer audit-internals ikke lækker til public output). Endpoint `GET /api/teams/:teamId/finance-report?seasonId=` har auth-gate: kun team-owner ELLER admin kan tilgå et hold's rapport. Sponsor-modifier-kurve placeholder vist når board_plan_snapshots er tom (dvs. før første afsluttede sæson) — vi viser ikke fake data.",
+          "Manager · Ny dedikeret finansrapport per sæson: åbnes via 📊 Sæsonsrapport-knap på Finanser-siden eller via 📊 Finansrapport-knap på sæson-snapshot-siden (/seasons). Rapporten viser hero-kort med totalt indtægt/udgift/net cashflow, to donut-diagrammer over hvor pengene kommer fra (sponsor, præmiepenge, auktion-salg, ...) og hvor de går hen (auktion-køb, løn, lånerenter, ...), top-3 transaktioner i hver retning og en oversigt over aktive lån med næste sæsons forventede rente. Rapporten er privat per hold. Ingen kan se andres økonomi.",
+          "Backend · Ny migration seeder sæson 0 (open beta transfervindue, 2026-05-08 18:00 UTC). Backfill'er alle 82 eksisterende finance_transactions med season_id og reason_code så donut-aggregeringen virker fra dag 1. Database-trigger auto-stamper season_id på fremtidige transaktioner. Ingen callsite-ændringer nødvendige. Spillere mærker intet bortset fra rapportens nye data.",
+          "Backend · Ny pure-function `buildSeasonFinanceReport` (15 unit-tests dækker hero-aggregering, donut-fordeling, top-N-extraction, loan-summary + privatlivs-test der verificerer audit-internals ikke lækker til public output). Endpoint `GET /api/teams/:teamId/finance-report?seasonId=` har auth-gate: kun team-owner ELLER admin kan tilgå et hold's rapport. Sponsor-modifier-kurve placeholder vist når board_plan_snapshots er tom (dvs. før første afsluttede sæson). Vi viser ikke fake data.",
         ],
       },
     ],
@@ -3166,8 +3180,8 @@ const PATCHES = [
         items: [
           "Manager · Ny prognose-sektion på Finanser-siden viser forventet cashflow næste sæson: sponsor + præmie − løn − lånerenter − lejegebyr = projected_net. Spændet (±20% på præmie-estimatet) viser usikkerheden, og en 🟢 grøn / 🟡 gul / 🔴 rød badge fortæller med ét blik om holdet er sundt, presset eller konkurs-tæt. Tærskler matcher 07g-spec: grøn = net ≥ +50K og gæld < 50% af loftet, gul = net mellem ±50K eller gæld 50-80%, rød = net < -50K eller gæld > 80% eller hvis underskuddet pejler mod gældsloftet inden for 2 sæsoner.",
           "Manager · Lille forecast-widget på Dashboard under squad-warning viser projected_net + risk-tier-badge så manageren kan måle finansiel sundhed uden først at klikke til Finanser-siden. Linker direkte til /finance for fuld breakdown.",
-          "Manager · Kontekstuelle warnings rapporterer specifikke trusler: 'Forventet underskud', 'Gæld nær loftet (X%)', 'Med det nuværende underskud rammer du gældsloftet inden for 2 sæsoner — handl nu', 'Løn overstiger sponsor — rolig drift dækker ikke længere lønnen'. Hver warning er actionable (sælg en rytter, reducér lån, forhandl bedre sponsor).",
-          "Backend · Ny pure-function `computeFinanceForecast` i backend/lib/financeForecast.js (11 unit-tests dækker 4 manager-arketyper + 7 edge cases inkl. risk-tier-grænser, sponsor-pullout, lejegebyr-vinduer). Endpoint `GET /api/me/finance-forecast` aggregerer team + roster + active loans + loan_agreements + boards + sponsor-pullouts + debt_ceiling og kalder pure-funktionen — UI er en tynd render af responsen. 448/448 backend-tests grønne (op fra 437).",
+          "Manager · Kontekstuelle warnings rapporterer specifikke trusler: 'Forventet underskud', 'Gæld nær loftet (X%)', 'Med det nuværende underskud rammer du gældsloftet inden for 2 sæsoner. Handl nu', 'Løn overstiger sponsor. Rolig drift dækker ikke længere lønnen'. Hver warning er actionable (sælg en rytter, reducér lån, forhandl bedre sponsor).",
+          "Backend · Ny pure-function `computeFinanceForecast` i backend/lib/financeForecast.js (11 unit-tests dækker 4 manager-arketyper + 7 edge cases inkl. risk-tier-grænser, sponsor-pullout, lejegebyr-vinduer). Endpoint `GET /api/me/finance-forecast` aggregerer team + roster + active loans + loan_agreements + boards + sponsor-pullouts + debt_ceiling og kalder pure-funktionen. UI er en tynd render af responsen. 448/448 backend-tests grønne (op fra 437).",
           "Hjælp · Ny FAQ 'Hvordan beregnes prognosen for næste sæson?' i Hjælp & Regler forklarer alle fem inputs (sponsor × board-modifier, prize_earnings_bonus, riders.salary, lån-renter, lejegebyr) plus risk-tier-tærsklerne og hvorfor præmie-estimatet er den variable komponent.",
         ],
       },
@@ -3195,8 +3209,8 @@ const PATCHES = [
         category: "Admin · Økonomi-dashboard udvidet med admin-feed + cron-korrelering (07e Fase B)",
         items: [
           "Admin · Ny 'Admin-handlinger'-sub-tab på Økonomi-sektionen viser et paginated feed af admin_log med filter på action_type (24 godkendte typer), admin user, target hold/rytter og dato-range. Klik på en row åbner en modal der pretty-printer den fulde meta-JSON, så du kan se nøjagtig hvilke felter en admin-handling påvirkede.",
-          "Admin · Ny 'Korrelering'-sub-tab grupperer finance_transactions per (actor_id, source_path) med ±5s tidsvindue og lister cron-runs nyeste først med tx-count, Σ-beløb, antal hold ramt og reason-codes. Klik en run for at drille direkte ned i Transaktioner-view med pre-fyldte filtre — rydder hurtigt mistænkeligt store cron-batches.",
-          "Backend · To nye admin-endpoints bag requireAdmin: `GET /api/admin/admin-log` (paginated + filtreret) og `GET /api/admin/cron-runs` (gruppe-aggregeret med konfigurerbart tidsvindue). Pure helper `groupCronRuns` i backend/lib/cronRunCorrelation.js holder grouping-logikken testbar uden HTTP/DB. CSV-bulk-export bevidst droppet fra scope — kører SQL direkte i Supabase Studio når ad hoc-eksport en sjælden gang skulle blive aktuelt.",
+          "Admin · Ny 'Korrelering'-sub-tab grupperer finance_transactions per (actor_id, source_path) med ±5s tidsvindue og lister cron-runs nyeste først med tx-count, Σ-beløb, antal hold ramt og reason-codes. Klik en run for at drille direkte ned i Transaktioner-view med pre-fyldte filtre. Rydder hurtigt mistænkeligt store cron-batches.",
+          "Backend · To nye admin-endpoints bag requireAdmin: `GET /api/admin/admin-log` (paginated + filtreret) og `GET /api/admin/cron-runs` (gruppe-aggregeret med konfigurerbart tidsvindue). Pure helper `groupCronRuns` i backend/lib/cronRunCorrelation.js holder grouping-logikken testbar uden HTTP/DB. CSV-bulk-export bevidst droppet fra scope. Kører SQL direkte i Supabase Studio når ad hoc-eksport en sjælden gang skulle blive aktuelt.",
           "Backend · 12 nye unit-tests for cron-grouping + 4 nye route-ownership-assertions (admin-log + cron-runs admin-protection, default 7-dages vindue, NULL-actor-filter). 437/437 backend-tests grønne.",
         ],
       },
@@ -3225,8 +3239,8 @@ const PATCHES = [
       {
         category: "Backend · Komplet audit-trail på alle penge-bevægelser (07d Fase B)",
         items: [
-          "Backend · Alle 26 callsites der mutere holdets balance via increment_balance_with_audit-RPC populerer nu actor_type (cron/api/admin), source_path, reason_code, related_entity_type/_id og — for cron-paths — en idempotency_key. Hver finance_transactions-row kan nu trace 'hvem ændrede saldo og hvorfor' uden at læse engine-koden.",
-          "Backend · Cron-paths (sponsor, salary, divisionsbonus, lejegebyr, præmiepenge) får UNIQUE-håndhævet idempotency_key så uniq_finance_idempotency_key giver en ekstra sikkerhedsspær oven på de eksisterende partial UNIQUE indices fra 07b — cron-retries kan ikke længere double-credit.",
+          "Backend · Alle 26 callsites der mutere holdets balance via increment_balance_with_audit-RPC populerer nu actor_type (cron/api/admin), source_path, reason_code, related_entity_type/_id og (for cron-paths) en idempotency_key. Hver finance_transactions-row kan nu trace 'hvem ændrede saldo og hvorfor' uden at læse engine-koden.",
+          "Backend · Cron-paths (sponsor, salary, divisionsbonus, lejegebyr, præmiepenge) får UNIQUE-håndhævet idempotency_key så uniq_finance_idempotency_key giver en ekstra sikkerhedsspær oven på de eksisterende partial UNIQUE indices fra 07b. Cron-retries kan ikke længere double-credit.",
           "Backend · 5 nye reason-codes i FINANCE_REASON (auction_guaranteed_bank_sale, squad_auto_purchase/_sale, squad_violation_fine, board_bonus_accepted) dækker manglende økonomi-paths så alle write-paths har en eksplicit årsag.",
           "Backend · Per-callsite audit-coverage tests verificerer at hver write sender korrekt actor_type + source_path + reason_code. 415/415 backend-tests grønne (op fra 410). Fundament for 07e admin økonomi-dashboard #83.",
         ],
@@ -3241,9 +3255,9 @@ const PATCHES = [
       {
         category: "Backend · Atomic balance-RPC eliminerer tabte penge-mutationer (07c)",
         items: [
-          "Backend · Alle ~22 callsites der opdaterer holdets balance — auktion-køb/-salg, transfer-køb/-salg, byttehandel-kontant, præmiepenge, lejegebyr og lejegebyr-refusion, lån (oprettelse, afdrag, nødlån, købsoption), sponsor-payout, sæson-løn, divisionsbonus, negativ-balance-rente, trupstørrelse-auto-køb/-salg/-bøde, board-bonus-tilbud og admin-balance-justering — kører nu via én Postgres-funktion `increment_balance_with_audit(team_id, delta, payload)` der atomic UPDATE'er teams.balance OG INSERT'er finance_transactions i én DB-transaktion pr. team.",
+          "Backend · Alle ~22 callsites der opdaterer holdets balance (auktion-køb/-salg, transfer-køb/-salg, byttehandel-kontant, præmiepenge, lejegebyr og lejegebyr-refusion, lån (oprettelse, afdrag, nødlån, købsoption), sponsor-payout, sæson-løn, divisionsbonus, negativ-balance-rente, trupstørrelse-auto-køb/-salg/-bøde, board-bonus-tilbud og admin-balance-justering) kører nu via én Postgres-funktion `increment_balance_with_audit(team_id, delta, payload)` der atomic UPDATE'er teams.balance OG INSERT'er finance_transactions i én DB-transaktion pr. team.",
           "Backend · Lost-update-races elimineret: pg_advisory_xact_lock(team_id) serialiserer concurrent calls på samme hold, så to samtidige finansoperationer ikke længere kan overskrive hinandens balance-ændring. Mellem-state hvor balance er ændret men finance_transactions mangler kan ikke længere opstå (rolled back atomic).",
-          "Backend · Hver finance-row får nu automatisk udfyldt before_balance + after_balance fra RPC'en — fundament for 07d Fase B's fulde audit-trail-population af de øvrige 7 audit-felter (actor_type, source_path, reason_code m.fl.).",
+          "Backend · Hver finance-row får nu automatisk udfyldt before_balance + after_balance fra RPC'en. Fundament for 07d Fase B's fulde audit-trail-population af de øvrige 7 audit-felter (actor_type, source_path, reason_code m.fl.).",
           "Backend · 8 nye unit-tests i balanceAtomicity.test.js + live race-test mod prod (10 deltas, audit-invariant after = before + amount holder for alle rows). 410/410 backend-tests grønne.",
         ],
       },
@@ -3257,9 +3271,9 @@ const PATCHES = [
       {
         category: "Backend · Audit-fundament for økonomi-historik (07d Fase A)",
         items: [
-          "Admin · admin_log fik 4 nye indices (admin_user_id, action_type, target_team_id, created_at) og en CHECK-constraint der håndhæver de 24 godkendte action_types — utilsigtede typoer fanges nu på databaseniveau i stedet for at blive lukket stille gennem.",
+          "Admin · admin_log fik 4 nye indices (admin_user_id, action_type, target_team_id, created_at) og en CHECK-constraint der håndhæver de 24 godkendte action_types. Utilsigtede typoer fanges nu på databaseniveau i stedet for at blive lukket stille gennem.",
           "Admin · auctionCancellation skriver nu admin_log med højlydt fejl i stedet for best-effort try/catch, så annullering ikke kan ske uden audit-spor.",
-          "Backend · finance_transactions udvidet med 9 audit-kolonner (actor_type, actor_id, source_path, reason_code, before_balance, after_balance, related_entity_type, related_entity_id, idempotency_key) — alle nullable og NULL-default for eksisterende rows, så ingen historik mistes. Population følger i 07d Fase B sammen med 07c atomic balance RPC.",
+          "Backend · finance_transactions udvidet med 9 audit-kolonner (actor_type, actor_id, source_path, reason_code, before_balance, after_balance, related_entity_type, related_entity_id, idempotency_key). Alle nullable og NULL-default for eksisterende rows, så ingen historik mistes. Population følger i 07d Fase B sammen med 07c atomic balance RPC.",
           "Backend · Nye enum-konstanter (ADMIN_ACTION_TYPE, FINANCE_ACTOR_TYPE, FINANCE_RELATED_ENTITY, FINANCE_REASON) i economyConstants.js erstatter hardkodede strings i 11 admin-routes. 7 nye unit-tests håndhæver at enum-values matcher DB CHECK-constraints så afvigelser fanges af CI før prod.",
         ],
       },
@@ -3273,7 +3287,7 @@ const PATCHES = [
       {
         category: "Auktioner · Lås rytter under afventende overførsel",
         items: [
-          "Auktioner · Når en rytter har vundet en auktion men endnu ikke er overført til vinderens hold (fordi transfervinduet er lukket og rytteren står som 'indgående'), kan ingen nu starte en ny auktion på rytteren. Tidligere kunne andre managere flash-auktionere rytteren væk fra den retmæssige vinder, hvilket fik den oprindelige finalisering til at annullere overførslen — bud bundet, ingen rytter til nogen.",
+          "Auktioner · Når en rytter har vundet en auktion men endnu ikke er overført til vinderens hold (fordi transfervinduet er lukket og rytteren står som 'indgående'), kan ingen nu starte en ny auktion på rytteren. Tidligere kunne andre managere flash-auktionere rytteren væk fra den retmæssige vinder, hvilket fik den oprindelige finalisering til at annullere overførslen. Bud bundet, ingen rytter til nogen.",
           "Rytter-profil · Profilen viser nu en lås-besked '🔒 Rytteren er vundet på auktion og afventer overførsel' og skjuler 'Start auktion'-, transferbud-, byttehandel- og lejeaftale-knapperne så længe rytteren er i transit.",
           "Backend · POST /api/auctions returnerer 409 'Rytteren er vundet på en auktion og afventer overførsel' hvis nogen forsøger at omgå UI-låsen. Ny pure-funktion `getAuctionStartIssue` med 2 unit-tests.",
         ],
@@ -3289,9 +3303,9 @@ const PATCHES = [
         category: "Admin · Marked-pause kill switch",
         items: [
           "Admin · Ny 'Marked-pause'-sektion i admin-panelet med to nødstop-niveauer: 'Frys auktioner' (blokerer nye bud, autobud-loft og nye auktioner) og 'Frys hele markedet' (samme + transfertilbud, byttehandler, lejeaftaler og bank-lån).",
-          "Auktioner forlænges automatisk ved genoptagelse — calculated_end skubbes frem med pause-varigheden, så bydere får samme resterende tid som de havde da pausen blev slået til. Cron pauser finalisering mens markedet er frosset, så ingen auktioner finaliseres bag scenen.",
+          "Auktioner forlænges automatisk ved genoptagelse, calculated_end skubbes frem med pause-varigheden, så bydere får samme resterende tid som de havde da pausen blev slået til. Cron pauser finalisering mens markedet er frosset, så ingen auktioner finaliseres bag scenen.",
           "Cleanup-handlinger (annullér eget bud, afvis modbud, træk lejeforslag tilbage) virker stadig under pause, så managere kan rydde op i pending tilbud uden admin-indblanding.",
-          "Spilleruvendt fejlmeddelelse: 'Auktioner/Markedet er midlertidigt pauset af admin' med valgfri årsag — vises som 503-svar når en blokeret handling forsøges.",
+          "Spilleruvendt fejlmeddelelse: 'Auktioner/Markedet er midlertidigt pauset af admin' med valgfri årsag. Vises som 503-svar når en blokeret handling forsøges.",
         ],
       },
     ],
@@ -3304,7 +3318,7 @@ const PATCHES = [
       {
         category: "Auktioner · Forlængelse over døgnskifte",
         items: [
-          "Auktioner · Bud i de sidste 10 minutter kan nu forlænge auktionen op til 1 time efter dagens vindueslukning (hverdage til 23:00, weekend til 00:00). Tidligere blev forlængelsen kappet præcist ved lukningstidspunktet — fx et bud kl. 21:55 hverdag rundede ned til 22:00 i stedet for at give de fulde 10 minutter.",
+          "Auktioner · Bud i de sidste 10 minutter kan nu forlænge auktionen op til 1 time efter dagens vindueslukning (hverdage til 23:00, weekend til 00:00). Tidligere blev forlængelsen kappet præcist ved lukningstidspunktet. Fx et bud kl. 21:55 hverdag rundede ned til 22:00 i stedet for at give de fulde 10 minutter.",
           "Auktioner · Hvis et bud sent i grace-timen ville skubbe slutningen længere, ruller den resterende tid over til næste vindues åbning. Eksempel: fredag bud kl. 22:55 → auktionen slutter lørdag kl. 08:05 (5 min overflow). Reglen er nu beskrevet i Hjælp-siden.",
         ],
       },
@@ -3318,7 +3332,7 @@ const PATCHES = [
       {
         category: "Auktioner · Ønskeliste-filter",
         items: [
-          "Auktioner · Ny 'Kun ønskeliste'-knap ved siden af filter-tabsene — slå til for at se kun aktive auktioner på ryttere du har stjernemarkeret. Kombineres oven på den aktive tab (Min situation / Alle / Andre managers).",
+          "Auktioner · Ny 'Kun ønskeliste'-knap ved siden af filter-tabsene. Slå til for at se kun aktive auktioner på ryttere du har stjernemarkeret. Kombineres oven på den aktive tab (Min situation / Alle / Andre managers).",
           "Valget huskes på tværs af sessions, så hvis du primært jagter et udvalg af ryttere, behøver du ikke slå filteret til hver gang du åbner siden.",
         ],
       },
@@ -3332,7 +3346,7 @@ const PATCHES = [
       {
         category: "Lejeaftale · Kontraktintegritet",
         items: [
-          "Lejeaftale · Aktive lejeaftaler kan ikke længere annulleres ensidigt — bruger ser nu kun købsoption-knappen (hvis den findes) plus en note om at admin skal kontaktes for annullering. Tidligere kunne enten part bryde en indgået aftale uden modpartens accept (#156).",
+          "Lejeaftale · Aktive lejeaftaler kan ikke længere annulleres ensidigt. Bruger ser nu kun købsoption-knappen (hvis den findes) plus en note om at admin skal kontaktes for annullering. Tidligere kunne enten part bryde en indgået aftale uden modpartens accept (#156).",
           "Pending lejeforslag kan stadig trækkes tilbage frit (lender har ikke accepteret endnu), så loop'et 'foreslå → fortryd' fungerer som før.",
           "Admin · Nyt endpoint `POST /api/admin/loans/:id/cancel` til nødannulleringer; refunderer betalt lejegebyr automatisk til lejer og trækker fra udlejer, og logger handlingen i admin_log med begrundelse.",
         ],
@@ -3347,7 +3361,7 @@ const PATCHES = [
       {
         category: "Transfer · Byttehandel & Lejeaftale",
         items: [
-          "Rytter-profil · Du kan nu foreslå byttehandel og lejeaftale direkte fra en anden managers rytter-profil — ligesom transferbud (#158). Knapperne 'Foreslå byttehandel' og 'Foreslå lejeaftale' vises under transferbud-knappen.",
+          "Rytter-profil · Du kan nu foreslå byttehandel og lejeaftale direkte fra en anden managers rytter-profil. Ligesom transferbud (#158). Knapperne 'Foreslå byttehandel' og 'Foreslå lejeaftale' vises under transferbud-knappen.",
           "Byttehandel · Forhandlings-loop virker nu korrekt: du kan sende modbud igen og igen til den anden part accepterer eller trækker sig. Tidligere stoppede loop'et efter første modbud (#159).",
           "Lejeaftale · Lejeaftaler kan kun oprettes for 1 sæson ad gangen (spilleregel). Formularen beder nu kun om ét sæsonnummer, og backend afviser forsøg på lejer i flere sæsoner (#160).",
         ],
@@ -3380,7 +3394,7 @@ const PATCHES = [
         category: "Mobile polish · 360px touch-targets",
         items: [
           "Onboarding-banner og overbudt-toast · × close-knapperne på 'Sådan virker auktioner'-banneret og 'Du er overbudt'-toasten har nu 44×44px tap-target (Apple HIG) i stedet for et lille kryds, der var svært at ramme på telefon.",
-          "Filter-chips · Aktive filtre på rytter- og auktionssiden er nu klikbare i hele deres bredde — tryk hvor som helst på chip'en for at fjerne filteret. Tidligere skulle du ramme det lille × præcist (#181).",
+          "Filter-chips · Aktive filtre på rytter- og auktionssiden er nu klikbare i hele deres bredde. Tryk hvor som helst på chip'en for at fjerne filteret. Tidligere skulle du ramme det lille × præcist (#181).",
           "Stats-popover · 'Vis stats'-menuen på auktionssiden har max-bredde der respekterer viewport, så menuen ikke længere kan flyde ud over kanten på 360px-skærme (#181).",
           "Holdside · 'Sælg / Auktion'-knappen i Squad-tabellen har nu 44px touch-target i stedet for et lille tryk-felt, så den er nemmere at ramme på mobil (#181).",
         ],
@@ -3395,12 +3409,12 @@ const PATCHES = [
       {
         category: "Auktioner · Stort overblik-overhaul",
         items: [
-          "Min situation · Ny default-tab på /auctions samler alle auktioner du er involveret i — opdelt i tre scanbare sektioner: 🟢 Du leder, 🔴 Du er overbudt, 🔵 Du sælger. Tomme sektioner skjules automatisk. Erstatter 'Mine'- og 'Vinder'-tabs.",
-          "Stats-toggle · Default vises ingen evne-kolonner i tabellen — det giver markant bedre overblik. Tryk 'Vis stats' øverst for at slå alle 14 evner til, eller vælg enkelt-evner via popover-menuen. Valget huskes på tværs af sessions (også på mobil-cards).",
-          "Wishlist-stjerne · Ⓘ-knappen er flyttet ind i rytter-cellen på auktionssiden — du kan tilføje/fjerne ryttere til din ønskeliste direkte fra auktioner uden at gå over på rytter-siden.",
+          "Min situation · Ny default-tab på /auctions samler alle auktioner du er involveret i. Opdelt i tre scanbare sektioner: 🟢 Du leder, 🔴 Du er overbudt, 🔵 Du sælger. Tomme sektioner skjules automatisk. Erstatter 'Mine'- og 'Vinder'-tabs.",
+          "Stats-toggle · Default vises ingen evne-kolonner i tabellen. Det giver markant bedre overblik. Tryk 'Vis stats' øverst for at slå alle 14 evner til, eller vælg enkelt-evner via popover-menuen. Valget huskes på tværs af sessions (også på mobil-cards).",
+          "Wishlist-stjerne · Ⓘ-knappen er flyttet ind i rytter-cellen på auktionssiden. Du kan tilføje/fjerne ryttere til din ønskeliste direkte fra auktioner uden at gå over på rytter-siden.",
           "Løn vises i stedet for Værdi · Auktionssiden viser nu rytternes løn (relevant for dine økonomi-beslutninger) i stedet for markedsværdi. Værdi er stadig synlig på Ryttere-siden og rytter-profilen.",
           "Kolonner omarrangeret · Ny rækkefølge på desktop: Rytter (sticky venstre) | Højeste bud | Tid tilbage | Alder | Løn | Potentiale | Sælger | Stats | Byd (sticky højre). Rytter-navnet bliver synligt selv når du scroller horisontalt gennem evner.",
-          "Pris-filter · Nyt min/max-felt på 'Højeste bud CZ$' i filter-baren — find fx kun ryttere under 100.000 CZ$ i auktionspris.",
+          "Pris-filter · Nyt min/max-felt på 'Højeste bud CZ$' i filter-baren. Find fx kun ryttere under 100.000 CZ$ i auktionspris.",
           "Bekræftelses-popup · Alle bud (auktion, autobud-loft, transferbud) viser nu en 'Er du sikker?'-dialog inden de afgives, så du ikke kommer til at sende et bud ved et uheld.",
         ],
       },
@@ -3415,7 +3429,7 @@ const PATCHES = [
         category: "Fejlrettelser",
         items: [
           "Auktioner · BYD-kolonnen på desktop har nu solid baggrund, også når rækken er markeret som vundet, så statistik og tekst ikke skinner igennem under den sticky bud-celle.",
-          "Autobud · '+ Autobud loft' er gjort tydeligere, og når du sætter autobud på en auktion du ikke fører, placerer systemet nu samtidig minimumsbuddet. Autobud fungerer dermed som et rigtigt første bud — du behøver ikke byde manuelt først.",
+          "Autobud · '+ Autobud loft' er gjort tydeligere, og når du sætter autobud på en auktion du ikke fører, placerer systemet nu samtidig minimumsbuddet. Autobud fungerer dermed som et rigtigt første bud. Du behøver ikke byde manuelt først.",
         ],
       },
     ],
@@ -3441,9 +3455,9 @@ const PATCHES = [
       {
         category: "Intern infrastruktur · Dependabot-hærdning pre-launch",
         items: [
-          "Dependabot kan ikke længere auto-merge afhængigheds-bumps (heller ikke patch/minor med grøn CI). Workflow'en kommenterer nu kun klassifikation og risiko-vurdering — manuel `auto-merge` label kræves for hver PR. Pre-launch beskyttelse mod runtime-regressioner og supply-chain-overraskelser.",
+          "Dependabot kan ikke længere auto-merge afhængigheds-bumps (heller ikke patch/minor med grøn CI). Workflow'en kommenterer nu kun klassifikation og risiko-vurdering. Manuel `auto-merge` label kræves for hver PR. Pre-launch beskyttelse mod runtime-regressioner og supply-chain-overraskelser.",
           "Vercel preview-builds skippes på `dependabot/*` branches (sparer build minutes og forhindrer kø-stuvning som blokerede main-deploys 2026-05-08).",
-          "`react-router-dom` v7 og `@vitejs/plugin-react` v6 tilføjet til ignore-listen — major-bumps åbnes ikke som PRs igen før manuel un-ignore.",
+          "`react-router-dom` v7 og `@vitejs/plugin-react` v6 tilføjet til ignore-listen. Major-bumps åbnes ikke som PRs igen før manuel un-ignore.",
         ],
       },
     ],
@@ -3456,10 +3470,10 @@ const PATCHES = [
       {
         category: "Forbedringer",
         items: [
-          "Auktioner · Live bud-feed på desktop: ny sidebar viser bud i realtid på de auktioner du selv deltager i (manuelt bud eller autobud). Andre managers' moves på fremmede auktioner forbliver private — kun \"din side af bordet\" feeder din skærm (#196).",
-          "Auktioner · Pris-cellen pulser kort i guld når current_price ændrer sig — så du kan se hvilken auktion lige fik et bud uden at skanne hele tabellen.",
-          "Auktioner · Du får nu en toast i hjørnet \"Du er overbudt på X\" når en anden manager overhaler dig — også hvis du allerede ser auktionen. Toasten fyrer aldrig på dit eget bud eller på dit autobuds eskalering.",
-          "Auktioner · Aggregat-ticker i header viser \"X nye bud i sidste 30s\" — uden navne eller beløb. Et hurtigt puls-tjek på markedet uden at lække andre managers' specifikke moves.",
+          "Auktioner · Live bud-feed på desktop: ny sidebar viser bud i realtid på de auktioner du selv deltager i (manuelt bud eller autobud). Andre managers' moves på fremmede auktioner forbliver private. Kun \"din side af bordet\" feeder din skærm (#196).",
+          "Auktioner · Pris-cellen pulser kort i guld når current_price ændrer sig. Så du kan se hvilken auktion lige fik et bud uden at skanne hele tabellen.",
+          "Auktioner · Du får nu en toast i hjørnet \"Du er overbudt på X\" når en anden manager overhaler dig. Også hvis du allerede ser auktionen. Toasten fyrer aldrig på dit eget bud eller på dit autobuds eskalering.",
+          "Auktioner · Aggregat-ticker i header viser \"X nye bud i sidste 30s\". Uden navne eller beløb. Et hurtigt puls-tjek på markedet uden at lække andre managers' specifikke moves.",
         ],
       },
     ],
@@ -3472,7 +3486,7 @@ const PATCHES = [
       {
         category: "Forbedringer",
         items: [
-          "Rytterprofil · Ny \"Bud-historik\"-fane viser live bud-timeline mens en auktion kører (manager + beløb + tidspunkt + Autobud-mærkat). Nye bud popper ind realtid uden refresh. Når auktionen slutter, kollapser fanen til \"Solgt til X for Y CZ$\". Autobud-loft eksponeres aldrig — strategi forbliver privat (#195).",
+          "Rytterprofil · Ny \"Bud-historik\"-fane viser live bud-timeline mens en auktion kører (manager + beløb + tidspunkt + Autobud-mærkat). Nye bud popper ind realtid uden refresh. Når auktionen slutter, kollapser fanen til \"Solgt til X for Y CZ$\". Autobud-loft eksponeres aldrig. Strategi forbliver privat (#195).",
         ],
       },
     ],
@@ -3485,7 +3499,7 @@ const PATCHES = [
       {
         category: "Fejlrettelser",
         items: [
-          "Autobud · Hvis dit autobud-loft afvises (fx ved forsøg på egen rytter, for lavt loft eller utilstrækkelig balance), vises nu en konkret dansk fejlbesked under Gem-knappen — ikke længere bare en tom \"Fejl\"-knap (#174).",
+          "Autobud · Hvis dit autobud-loft afvises (fx ved forsøg på egen rytter, for lavt loft eller utilstrækkelig balance), vises nu en konkret dansk fejlbesked under Gem-knappen. Ikke længere bare en tom \"Fejl\"-knap (#174).",
           "Autobud · Når du byder manuelt over dit eget autobud-loft, slettes det stale loft nu fra dit auktions-overblik. Tidligere blev \"Autobud max ...\"-mærkatet hængende selvom autobud reelt var udmattet (#183).",
         ],
       },
@@ -3519,7 +3533,7 @@ const PATCHES = [
       {
         category: "Forbedringer",
         items: [
-          "Auktioner · Race-beskyttelse: hvis prisen stiger mens du sender dit bud, viser vi nu en confirm-dialog med ny pris og nyt min-bud så du kan vælge at byde igen eller annullere — slut med at miste auktioner uden at vide hvorfor (#194).",
+          "Auktioner · Race-beskyttelse: hvis prisen stiger mens du sender dit bud, viser vi nu en confirm-dialog med ny pris og nyt min-bud så du kan vælge at byde igen eller annullere. Slut med at miste auktioner uden at vide hvorfor (#194).",
         ],
       },
     ],
@@ -3532,7 +3546,7 @@ const PATCHES = [
       {
         category: "Fejlrettelser",
         items: [
-          "Autobud · Du kan nu sætte autobud max-loft uden at have budt manuelt først — fix'ede en fejl hvor man kun kunne oprette autobud hvis man allerede var højestbydende (#172).",
+          "Autobud · Du kan nu sætte autobud max-loft uden at have budt manuelt først. Fix'ede en fejl hvor man kun kunne oprette autobud hvis man allerede var højestbydende (#172).",
         ],
       },
     ],
@@ -3545,7 +3559,7 @@ const PATCHES = [
       {
         category: "Fejlrettelser",
         items: [
-          "Indbakke · Ulæste-tælleren i headeren opdateres nu straks når du sletter beskeder — ingen F5 nødvendig (#176).",
+          "Indbakke · Ulæste-tælleren i headeren opdateres nu straks når du sletter beskeder. Ingen F5 nødvendig (#176).",
         ],
       },
     ],
@@ -3558,7 +3572,7 @@ const PATCHES = [
       {
         category: "Forbedringer",
         items: [
-          "Auktioner · Historik er nu en tydelig fane øverst på Auktioner-siden — ikke længere et lille tekstlink i hjørnet. Du kan skifte mellem Aktive og Historik fra begge sider (#59).",
+          "Auktioner · Historik er nu en tydelig fane øverst på Auktioner-siden. Ikke længere et lille tekstlink i hjørnet. Du kan skifte mellem Aktive og Historik fra begge sider (#59).",
         ],
       },
     ],
@@ -3571,13 +3585,13 @@ const PATCHES = [
       {
         category: "Fejlrettelser",
         items: [
-          "Autobud · Resolveren følger nu altid med op når en modstander byder markant over — fixede en edge case hvor et stale eget proxy-loft (sat lavt, derefter manuelt budet over) fik resolveren til at give op uden at place counter-bid (#171).",
+          "Autobud · Resolveren følger nu altid med op når en modstander byder markant over. Fixede en edge case hvor et stale eget proxy-loft (sat lavt, derefter manuelt budet over) fik resolveren til at give op uden at place counter-bid (#171).",
         ],
       },
       {
         category: "Hvorfor",
         items: [
-          "Pre-fix: hvis du satte autobud max 60K og senere manuelt bød 80K, troede resolveren stadig dit loft var 60K og lod modstandere lede uden modbud — selvom de andres autobud max var højere end deres bud. Resolveren behandler nu et udtømt eget loft som 'ingen aktiv proxy', så challengers' autobud altid byder mindst minimum over.",
+          "Pre-fix: hvis du satte autobud max 60K og senere manuelt bød 80K, troede resolveren stadig dit loft var 60K og lod modstandere lede uden modbud. Selvom de andres autobud max var højere end deres bud. Resolveren behandler nu et udtømt eget loft som 'ingen aktiv proxy', så challengers' autobud altid byder mindst minimum over.",
         ],
       },
     ],
@@ -3590,8 +3604,8 @@ const PATCHES = [
       {
         category: "Fejlrettelser",
         items: [
-          "Autobud · Discord DM sendes nu også når et autobud overbyder dig — før kom DM'en kun ved manuelle bud, så managers fik kun in-app-notifikationen ved auto-overbud (#155).",
-          "Autobud · Sælger får nu også besked når et autobud bliver afgivet på deres rytter — mirror'er flowet for manuelle bud.",
+          "Autobud · Discord DM sendes nu også når et autobud overbyder dig. Før kom DM'en kun ved manuelle bud, så managers fik kun in-app-notifikationen ved auto-overbud (#155).",
+          "Autobud · Sælger får nu også besked når et autobud bliver afgivet på deres rytter. Mirror'er flowet for manuelle bud.",
         ],
       },
       {
@@ -3610,14 +3624,14 @@ const PATCHES = [
       {
         category: "Forbedringer",
         items: [
-          "Auktioner · Min-bud er nu blot **1 CZ$ over** det aktuelle bud — 10%-overbudsregel og 1.000-afrunding er fjernet. Du kan også matche asking-prisen på et garanteret salg uden bud endnu (#175).",
+          "Auktioner · Min-bud er nu blot **1 CZ$ over** det aktuelle bud, 10%-overbudsregel og 1.000-afrunding er fjernet. Du kan også matche asking-prisen på et garanteret salg uden bud endnu (#175).",
           "Autobud · Resolveren bruger samme +1-step, så proxy-bidding følger korrekt med op uanset hvor markant en modstander byder over (#171, #173).",
         ],
       },
       {
         category: "Hvorfor",
         items: [
-          "10%-reglen blev oprindeligt indført for at undgå \"+1\"-spam, men proxy-bidding (#10, v2.64) løser det problem indirekte — sæt et max-loft og lad systemet håndtere stepningen. Reglen skabte derfor mere friction end nytte og kolliderede med autobud-resolveren. Drop'et fjerner en hel klasse af bugs i én bevægelse (#178 polish-sprint).",
+          "10%-reglen blev oprindeligt indført for at undgå \"+1\"-spam, men proxy-bidding (#10, v2.64) løser det problem indirekte. Sæt et max-loft og lad systemet håndtere stepningen. Reglen skabte derfor mere friction end nytte og kolliderede med autobud-resolveren. Drop'et fjerner en hel klasse af bugs i én bevægelse (#178 polish-sprint).",
         ],
       },
     ],
@@ -3630,14 +3644,14 @@ const PATCHES = [
       {
         category: "Fejlrettelser",
         items: [
-          "Mit hold · Klik på rytter-rækker åbner nu rytter-detaljesiden — manglede helt før (#157).",
+          "Mit hold · Klik på rytter-rækker åbner nu rytter-detaljesiden. Manglede helt før (#157).",
           "Transfers · Klik på rytternavn i tilbud, byttehandler og lejeaftaler navigerer nu til rytter-profilen (#157).",
         ],
       },
       {
         category: "Forbedringer",
         items: [
-          "Højreklik på rytter-rækker viser nu \"Åbn link i ny fane\" — virker også med Cmd/Ctrl-klik og museknap-3 (#166). Gælder /riders, /team, /transfers, /auctions og alle steder hvor rytter-navne vises.",
+          "Højreklik på rytter-rækker viser nu \"Åbn link i ny fane\". Virker også med Cmd/Ctrl-klik og museknap-3 (#166). Gælder /riders, /team, /transfers, /auctions og alle steder hvor rytter-navne vises.",
         ],
       },
     ],
@@ -3651,7 +3665,7 @@ const PATCHES = [
         category: "Nyt",
         items: [
           "Auktioner · Autobud med max-loft (proxy-bidding): sæt et max-loft på en auktion, og systemet byder automatisk +10% over modbudene op til dit loft (#10). Aktiveres via '+ Autobud loft' under bud-feltet.",
-          "Autobud stopper automatisk når loftet er nået eller du vinder — du får en notifikation i indbakken hvis du er overbudt over dit max.",
+          "Autobud stopper automatisk når loftet er nået eller du vinder. Du får en notifikation i indbakken hvis du er overbudt over dit max.",
           "Opdatér eller fjern dit max-loft når som helst mens auktionen er aktiv via 'Ændr' / 'Fjern' knapperne.",
         ],
       },
@@ -3665,7 +3679,7 @@ const PATCHES = [
       {
         category: "Fejlrettelser",
         items: [
-          "Deadline Day · Tickeren viser nu kun events fra det aktuelle Deadline Day-vindue (de 24 timer op til transferfristens udløb) i stedet for de seneste 24 timer fra browserens aktuelle tidspunkt — feedet starter ikke længere midt i en normal hverdagsdag (#51).",
+          "Deadline Day · Tickeren viser nu kun events fra det aktuelle Deadline Day-vindue (de 24 timer op til transferfristens udløb) i stedet for de seneste 24 timer fra browserens aktuelle tidspunkt. Feedet starter ikke længere midt i en normal hverdagsdag (#51).",
           "Deadline Day · Events i tickeren vises nu i kronologisk rækkefølge (ældste → nyeste) så budhistorien opbygges naturligt mod salgshændelsen, fremfor at vise konklusionen (salg) før opbygningen (bud) (#51).",
         ],
       },
@@ -3679,7 +3693,7 @@ const PATCHES = [
       {
         category: "Forbedringer",
         items: [
-          "Bestyrelsesside + Dashboard: al UI-copy bruger nu konsekvent danske labels — 'Board Request' er erstattet med 'Bestyrelsesforespørgsel', 'boardet' med 'bestyrelsen', og bestyrelsesfokus vises nu med de samme danske labels (Balanceret / Ungdomsudvikling / Stjernesignering) som på Bestyrelsessiden fremfor rå enum-værdier (#65).",
+          "Bestyrelsesside + Dashboard: al UI-copy bruger nu konsekvent danske labels. 'Board Request' er erstattet med 'Bestyrelsesforespørgsel', 'boardet' med 'bestyrelsen', og bestyrelsesfokus vises nu med de samme danske labels (Balanceret / Ungdomsudvikling / Stjernesignering) som på Bestyrelsessiden fremfor rå enum-værdier (#65).",
           "Hjælp: 'Board-siden' hedder nu 'Bestyrelsessiden', og 'board request' er oversat til 'bestyrelsesforespørgsel' overalt i FAQ-teksten (#65).",
         ],
       },
@@ -3708,7 +3722,7 @@ const PATCHES = [
       {
         category: "Fejlrettelser",
         items: [
-          "Tidszone-fix: Auktionsvinduerne (hverdage 16–22, weekend 08–23) beregnes nu eksplicit i Europe/Copenhagen og håndterer CEST/CET korrekt — auktioner slutter på de forventede tidspunkter uanset hvilken tidszone serveren kører i (#7).",
+          "Tidszone-fix: Auktionsvinduerne (hverdage 16–22, weekend 08–23) beregnes nu eksplicit i Europe/Copenhagen og håndterer CEST/CET korrekt. Auktioner slutter på de forventede tidspunkter uanset hvilken tidszone serveren kører i (#7).",
           "Auktioner · Countdown viser nu det absolutte sluttidspunkt med tidszone-label (f.eks. '21:00 CEST') under nedtællingen, så managere kan se præcist hvornår auktionen slutter (#7).",
         ],
       },
@@ -3754,7 +3768,7 @@ const PATCHES = [
         category: "Alder-visning og -filter er nu konsistente (#108)",
         items: [
           "RiderStatsPage viste tidligere alder ud fra eksakt fødselsdag (24 år for rytter født juni 2001), mens filter og U25-logik bruger 'racing-age' (årstals-aritmetik = 25 år).",
-          "Visningen er nu rettet ind så alder altid beregnes som indeværende år minus fødselsår — samme konvention som filter, U25 og U23-toggles.",
+          "Visningen er nu rettet ind så alder altid beregnes som indeværende år minus fødselsår. Samme konvention som filter, U25 og U23-toggles.",
           "Filter på 'Alder ≤ 25' returnerer fortsat ryttere født 2001 eller senere; nu matcher alder vist på rytter-profilen.",
         ],
       },
@@ -3769,7 +3783,7 @@ const PATCHES = [
         category: "Auktioner · Balance + rytterstatus synlig i auktion-tabben (#48)",
         items: [
           "Ny stats-bar øverst på /auctions: 'Balance', 'Sum af aktive bud', 'Ryttere nu' og 'Projektion'.",
-          "Projektion viser hvor mange ryttere man ville have hvis alle aktive auktioner sluttede med nuværende ledere — tæller +ryttere man vinder og -ryttere man er ved at sælge.",
+          "Projektion viser hvor mange ryttere man ville have hvis alle aktive auktioner sluttede med nuværende ledere. Tæller +ryttere man vinder og -ryttere man er ved at sælge.",
           "Aktive bud-felt viser summen af de bud man aktuelt er ledende på, med antal auktioner angivet underneden.",
           "Balance hentes fra eksisterende teams-query (ingen ny datakilde). Rider-count hentes via count-query på riders-tabellen. Division-felt tilføjet til teams-select.",
         ],
@@ -3784,7 +3798,7 @@ const PATCHES = [
       {
         category: "UX · Manager-online-status på holdprofil (#106)",
         items: [
-          "Bugfix ([TeamProfilePage.jsx](frontend/src/pages/TeamProfilePage.jsx)): tidligere viste hold-profilen en grøn 'Vindue åbent'-pille ved siden af manager-navnet — det indikerede transfervinduets status, men placeringen tæt på 'Manager: ...' fik flere til at læse den som manager-online-status (rapporteret af jeppek, Discord 2026-05-06). Transfervindue-status fjernet fra holdprofil (vises stadig på Dashboard, Mit hold og Transfers).",
+          "Bugfix ([TeamProfilePage.jsx](frontend/src/pages/TeamProfilePage.jsx)): tidligere viste hold-profilen en grøn 'Vindue åbent'-pille ved siden af manager-navnet. Det indikerede transfervinduets status, men placeringen tæt på 'Manager: ...' fik flere til at læse den som manager-online-status (rapporteret af jeppek, Discord 2026-05-06). Transfervindue-status fjernet fra holdprofil (vises stadig på Dashboard, Mit hold og Transfers).",
           "I stedet vises nu en korrekt online-prik + 'Online nu / X min siden' efter manager-navnet, baseret på samme `users.last_seen`-felt som ManagerProfilePage allerede bruger (5-min-tærskel matcher backend).",
           "Refaktor: OnlineBadge ekstraheret fra ManagerProfilePage til delt komponent ([OnlineBadge.jsx](frontend/src/components/OnlineBadge.jsx)), så begge sider deler én implementation.",
         ],
@@ -3799,7 +3813,7 @@ const PATCHES = [
       {
         category: "Auktioner · Squad-cap er nu warning, ikke block (#29)",
         items: [
-          "Bugfix ([auctionRules.js](backend/lib/auctionRules.js), [api.js](backend/routes/api.js)): manager med 10 ryttere + 1 garanteret salg blev tidligere blokeret fra at byde på andre auktioner — fordi bud-validering ignorerede pending salg ved beregning af 'tilgængelig trupplads'. Reglen i Cycling Zone tillader allerede at gå over/under min/max MIDT i transfervinduet (squadEnforcement-cron auto-sælger + bøder kun ved vindue-luk hvis stadig over max), så hard-blokken på squad-cap modsagde gameplay.",
+          "Bugfix ([auctionRules.js](backend/lib/auctionRules.js), [api.js](backend/routes/api.js)): manager med 10 ryttere + 1 garanteret salg blev tidligere blokeret fra at byde på andre auktioner. Fordi bud-validering ignorerede pending salg ved beregning af 'tilgængelig trupplads'. Reglen i Cycling Zone tillader allerede at gå over/under min/max MIDT i transfervinduet (squadEnforcement-cron auto-sælger + bøder kun ved vindue-luk hvis stadig over max), så hard-blokken på squad-cap modsagde gameplay.",
           "Konsekvens: bud + start-auktion er ikke længere blokeret af aktuel trupstørrelse. I stedet vises en warning i UI'en når bud/auktion ville bringe manager over max: 'OBS: leder nu auktioner svarende til 11 ryttere (max 10). Hvis du stadig er 1 over ved vindue-luk: auto-salg + 100.000 CZ$ bøde + 200 fradrag-points.' Manager træffer informeret valg.",
           "Backend ([auctionRules.js](backend/lib/auctionRules.js)): ny `getAuctionBidWarnings()` returnerer non-blocking advarsler; `getAuctionBidIssue` håndterer nu kun hard blocks (bid_below_minimum, insufficient_available_balance). Squad-cap-checks fjernet fra både POST `/api/auctions` (creation) og POST `/api/auctions/:id/bid` (bid placement). Warnings inkluderes i 200-respons.",
           "Frontend: AuctionsPage.jsx (table + card layout), RiderStatsPage.jsx og WatchlistPage.jsx læser `warnings`-felt og viser dem inline efter bud (~10 sek) eller som alert ved auction creation. Disse var de tre frontend-callsites til POST /api/auctions; TeamPage's egne-rytter-flows udløser ikke warning (initialBidderId=null).",
@@ -3816,8 +3830,8 @@ const PATCHES = [
       {
         category: "Admin · Ny knap: Nulstil rytter-historik (#104)",
         items: [
-          "Bugfix: Tidligere reset-flow rensede ikke completed auktioner og completed/buyout leje-aftaler — så alpha-historik forblev synlig på rytter-profiler. Ny knap 'Nulstil rytter-historik' under Admin → Beta-testværktøjer wiper ALL handelshistorik (auktioner inkl. bud, transfers, swaps, leje-aftaler) på ALLE ryttere så spillet kan starte uden alpha-støj.",
-          "Bevarer ønskelister, ryttere, hold, balancer, finance-historik, sæsoner, race-resultater og manager-progress — kun event-historikken på rytter-siden ryddes.",
+          "Bugfix: Tidligere reset-flow rensede ikke completed auktioner og completed/buyout leje-aftaler. Så alpha-historik forblev synlig på rytter-profiler. Ny knap 'Nulstil rytter-historik' under Admin → Beta-testværktøjer wiper ALL handelshistorik (auktioner inkl. bud, transfers, swaps, leje-aftaler) på ALLE ryttere så spillet kan starte uden alpha-støj.",
+          "Bevarer ønskelister, ryttere, hold, balancer, finance-historik, sæsoner, race-resultater og manager-progress. Kun event-historikken på rytter-siden ryddes.",
           "Tilføjet til 'Fuld nulstilling' så fremtidige reset altid rydder rytter-historik som en del af suiten.",
         ],
       },
@@ -3859,10 +3873,10 @@ const PATCHES = [
       {
         category: "Robusthed · TOCTOU-fixes + idempotency-keys for cron-payouts (slice 07b)",
         items: [
-          "Bugfix ([loanEngine.js](backend/lib/loanEngine.js)): `createLoan` brugte SELECT-then-INSERT til at validere divisions-gældsloftet — to parallelle requests (fx dobbeltklik på 'Optag lån') kunne begge passere tjekket og oprette to lån som tilsammen overstiger loftet. Ny Postgres-funktion `create_loan_atomic` serialiserer concurrent requests på team-niveau via `pg_advisory_xact_lock` så ceiling-tjek + INSERT kører i samme transaktion.",
-          "Idempotency på cron-payouts ([economyEngine.js](backend/lib/economyEngine.js), [loanEngine.js](backend/lib/loanEngine.js)): sponsor (sæson-start), løn + division-bonus + lånerenter (sæson-end) havde ingen DB-håndhævet uniqueness. Hvis en cron timeout'ede og blev retried — eller hvis admin kørte sæson-end-repair efter en delvis kørsel — kunne managere få samme udbetaling/opkrævning to gange. Ny migration ([2026-05-07-economy-idempotency.sql](database/2026-05-07-economy-idempotency.sql)) tilføjer 4 partial UNIQUE indices på `finance_transactions` så DB afviser dubletter; backend fanger `unique_violation` (PG 23505) og skipper stille i stedet for at crashe hele cron-kørslen.",
+          "Bugfix ([loanEngine.js](backend/lib/loanEngine.js)): `createLoan` brugte SELECT-then-INSERT til at validere divisions-gældsloftet. To parallelle requests (fx dobbeltklik på 'Optag lån') kunne begge passere tjekket og oprette to lån som tilsammen overstiger loftet. Ny Postgres-funktion `create_loan_atomic` serialiserer concurrent requests på team-niveau via `pg_advisory_xact_lock` så ceiling-tjek + INSERT kører i samme transaktion.",
+          "Idempotency på cron-payouts ([economyEngine.js](backend/lib/economyEngine.js), [loanEngine.js](backend/lib/loanEngine.js)): sponsor (sæson-start), løn + division-bonus + lånerenter (sæson-end) havde ingen DB-håndhævet uniqueness. Hvis en cron timeout'ede og blev retried (eller hvis admin kørte sæson-end-repair efter en delvis kørsel) kunne managere få samme udbetaling/opkrævning to gange. Ny migration ([2026-05-07-economy-idempotency.sql](database/2026-05-07-economy-idempotency.sql)) tilføjer 4 partial UNIQUE indices på `finance_transactions` så DB afviser dubletter; backend fanger `unique_violation` (PG 23505) og skipper stille i stedet for at crashe hele cron-kørslen.",
           "Renter sporbare per lån: `finance_transactions` får ny kolonne `related_loan_id`, og `processLoanInterest` skriver nu både team-id OG lån-id pr. rente-row. Det betyder dels at idempotency-indexet kan kræve unique-per-(loan, season), dels at FinancePage på sigt kan vise rente-fordeling per individuelt lån.",
-          "Light konkurs-mekanik (lag 1): `createEmergencyLoan` foretager nu et SOFT debt_ceiling-tjek. Hvis et nødlån presser holdets samlede gæld over divisions-loftet, oprettes lånet alligevel (status quo bevaret), men manageren får en `emergency_loan_breach`-notifikation: '🚨 Gældsloft overskredet — du kan stadig drive klubben videre, men du SKAL reducere udgifterne (sælg ryttere, fyr stjernekontrakter) inden næste sæsonslut for at undgå spiral.' Ingen automatiseret konsekvens i denne sæson-cyklus — vi lytter til live-data først.",
+          "Light konkurs-mekanik (lag 1): `createEmergencyLoan` foretager nu et SOFT debt_ceiling-tjek. Hvis et nødlån presser holdets samlede gæld over divisions-loftet, oprettes lånet alligevel (status quo bevaret), men manageren får en `emergency_loan_breach`-notifikation: '🚨 Gældsloft overskredet. Du kan stadig drive klubben videre, men du SKAL reducere udgifterne (sælg ryttere, fyr stjernekontrakter) inden næste sæsonslut for at undgå spiral.' Ingen automatiseret konsekvens i denne sæson-cyklus. Vi lytter til live-data først.",
           "Test-disciplin: ny test-fil ([economyInvariants.test.js](backend/lib/economyInvariants.test.js)) med 7 cases skrevet FØR fixen for at validere at race-conditions er reelle, ikke teoretiske. 5 fejlede mod uændret kode, 2 passerede; alle 7 grønne efter fix. Eksisterende 25 backend-tests fortsat grønne.",
         ],
       },
@@ -3877,7 +3891,7 @@ const PATCHES = [
         category: "Robusthed · Stale fallbacks fjernet, sponsor-default normaliseret til 240K (slice 07a)",
         items: [
           "Bugfix ([teamProfileEngine.js](backend/lib/teamProfileEngine.js)): nye hold blev oprettet med hardkodet `sponsor_income: 260000` mens DB-default + alle 5 v2.49-fix-callsites brugte 240K. Drift stammede fra v1.76 (30. april) hvor in-code default blev hævet uden ledsagende DB-migration. Prod-DB-snapshot 2026-05-07: alle 19 hold står med 240K, så ingen tilbage-kompensering var nødvendig.",
-          "Konsolidering ([economyConstants.js](backend/lib/economyConstants.js) · ny fil): 7 økonomi-konstanter samlet ét sted som single source of truth — SPONSOR_INCOME_BASE (240K), INITIAL_BALANCE (800K), MARKET_VALUE_MULTIPLIER (4000), MIN_UCI_POINTS_FOR_VALUE (5), PRIZE_PER_POINT (1500), NEGATIVE_BALANCE_INTEREST_RATE (0.10) og DEBT_CEILING_BY_DIVISION (1.2M/900K/600K). Alle matcher database/schema.sql-defaults. Importeres af teamProfileEngine, economyEngine, boardGoals og api.js.",
+          "Konsolidering ([economyConstants.js](backend/lib/economyConstants.js) · ny fil): 7 økonomi-konstanter samlet ét sted som single source of truth. SPONSOR_INCOME_BASE (240K), INITIAL_BALANCE (800K), MARKET_VALUE_MULTIPLIER (4000), MIN_UCI_POINTS_FOR_VALUE (5), PRIZE_PER_POINT (1500), NEGATIVE_BALANCE_INTEREST_RATE (0.10) og DEBT_CEILING_BY_DIVISION (1.2M/900K/600K). Alle matcher database/schema.sql-defaults. Importeres af teamProfileEngine, economyEngine, boardGoals og api.js.",
           "Fail-fast i [loanEngine.js](backend/lib/loanEngine.js): `createEmergencyLoan` kastede tidligere et stille `?? 0.15`-fallback hvis `loan_config` manglede emergency-row for en division. Prod-tjek bekræftede alle 3 divisioner har korrekte rows; men hvis en seed-fejl opstår fremover, fejler vi nu eksplicit med 'loan_config mangler emergency-row' i stedet for at oprette lån med forkerte rater. Ny regression-test låser adfærden.",
           "Stragglers fixet: 3 callsites brugte `team.sponsor_income ?? 0` i stedet for at falde tilbage til base-konstanten (api.js board-outlook for både negotiation- og preview-stien, boardGoals.js sponsor_growth-evaluering). Alle ændret til `?? SPONSOR_INCOME_BASE` så board-tilfredshedsvurdering ikke længere fejlrapporterer 0% sponsor-vækst hvis et team-objekt midlertidigt mangler feltet.",
           "Doc-drift ryddet op: [FEATURE_STATUS.md](docs/FEATURE_STATUS.md) + finance-onboarding-hint havde 260K-referencer, alle korrigeret til 240K. `DEFAULT_SPONSOR_INCOME` re-eksporteres fra economyEngine som alias for SPONSOR_INCOME_BASE i ét release for backward compat (deprecate i 07b). 299/299 backend-tests grønne, frontend build + lint grøn.",
@@ -3908,9 +3922,9 @@ const PATCHES = [
       {
         category: "Bugfix · Gældsloft kunne overskrides med oprettelses-gebyrets størrelse",
         items: [
-          "Bugfix ([loanEngine.js](backend/lib/loanEngine.js)): `createLoan` tjekkede om `currentDebt + principal` oversteg divisionens gældsloft, men det beløb der blev lagt på `loans.amount_remaining` var `principal + origination_fee`. Det betød at hvert lån kunne presse total-gælden lidt over loftet — præcis fee-beløbet (5% for kort/langt, 10% for nødlån). En manager i D3 fandt mønstret og pressede sin gæld til 600.054 CZ$ (54 over D3-loftet på 600.000) ved at stable mange små lån oven på et stort.",
+          "Bugfix ([loanEngine.js](backend/lib/loanEngine.js)): `createLoan` tjekkede om `currentDebt + principal` oversteg divisionens gældsloft, men det beløb der blev lagt på `loans.amount_remaining` var `principal + origination_fee`. Det betød at hvert lån kunne presse total-gælden lidt over loftet. Præcis fee-beløbet (5% for kort/langt, 10% for nødlån). En manager i D3 fandt mønstret og pressede sin gæld til 600.054 CZ$ (54 over D3-loftet på 600.000) ved at stable mange små lån oven på et stort.",
           "Fix: fee beregnes nu FØR ceiling-tjekket og tjekket bruger `principal + fee` i stedet for kun principal. To regression-tests i [loanEngine.test.js](backend/lib/loanEngine.test.js) verificerer dels at et lån der ville overskride loftet med præcis fee-beløbet afvises, dels at et lån der præcis fylder headroom op (inkl. fee) stadig accepteres.",
-          "Eksisterende prod-data (en manager 54 CZ$ over loft) ikke rørt — næste sæsons rente vil under alle omstændigheder ændre tallet, og loft-tjekket gælder kun nye lån, ikke renteperiodisering.",
+          "Eksisterende prod-data (en manager 54 CZ$ over loft) ikke rørt. Næste sæsons rente vil under alle omstændigheder ændre tallet, og loft-tjekket gælder kun nye lån, ikke renteperiodisering.",
         ],
       },
     ],
@@ -3923,10 +3937,10 @@ const PATCHES = [
       {
         category: "QoL · Refresh på Min aktivitet + bedre Head-to-Head-søgning",
         items: [
-          "Min aktivitet ([ActivityPage.jsx](frontend/src/pages/ActivityPage.jsx)) får en 'Opdater'-knap i toppen, så du kan hente seneste auktioner, tilbud og lån uden at refreshe browseren. Tidsstemplet 'Sidst opdateret HH:MM' viser hvor friske data er — vises i sidens header på desktop.",
+          "Min aktivitet ([ActivityPage.jsx](frontend/src/pages/ActivityPage.jsx)) får en 'Opdater'-knap i toppen, så du kan hente seneste auktioner, tilbud og lån uden at refreshe browseren. Tidsstemplet 'Sidst opdateret HH:MM' viser hvor friske data er. Vises i sidens header på desktop.",
           "Head-to-Head ([HeadToHeadPage.jsx](frontend/src/pages/HeadToHeadPage.jsx)): begge holdsøgefelter viser nu hold-forslag automatisk ved fokus (før kun det højre felt). Når søgningen ikke giver hits vises 'Ingen hold fundet for X' i stedet for at dropdown skjules tavst.",
           "Bugfix · Head-to-Head viste evig spinner hvis bare ét af de fire bagvedliggende queries fejlede (`Promise.all` uden try/catch). Fejl fanges nu og viser 'Prøv igen'-knap i stedet.",
-          "Bugfix · Stille fejl-skjul i Min aktivitet — `/api/transfers/my-offers` og `/api/loans` faldt tilbage til tomme lister hvis de fejlede, uden at logge noget. Fejl logges nu i devtools så det kan diagnosticeres.",
+          "Bugfix · Stille fejl-skjul i Min aktivitet, `/api/transfers/my-offers` og `/api/loans` faldt tilbage til tomme lister hvis de fejlede, uden at logge noget. Fejl logges nu i devtools så det kan diagnosticeres.",
         ],
       },
     ],
@@ -3939,10 +3953,10 @@ const PATCHES = [
       {
         category: "Bugfix · Umuligt at starte to auktioner på samme rytter (race condition)",
         items: [
-          "Bugfix ([api.js](backend/routes/api.js)): POST /api/auctions tjekkede 'no active auction for rider' med en SELECT, hvor en parallel request (typisk dobbeltklik på 'Start auktion') kunne smutte forbi inden vores INSERT — TOCTOU race. 5. maj fik én manager 3 auktioner på Gianni Moscon og 2 hver på Silvan Dillier + Morné van Niekerk inden for sub-sekund vinduer.",
-          "Ny migration ([2026-05-06-auctions-unique-active-rider.sql](database/2026-05-06-auctions-unique-active-rider.sql)) tilføjer unique partial index `uniq_auctions_one_active_per_rider ON auctions(rider_id) WHERE status IN ('active','extended')` — DB-niveau guard der gør det fysisk umuligt at have to aktive auktioner på samme rytter. Anden parallel INSERT fejler med 23505 og backend mapper det til samme 409 'Rider already has an active auction' som det eksisterende SELECT-tjek.",
-          "Cleanup: de 4 duplikat-rows i prod sat til `cancelled` (Gianni Moscon's auktion med rigtigt bud bevaret, ældste auktion bevaret for Silvan Dillier + Morné van Niekerk). Ingen pengebevægelse — seed-buddene var fra sælger på egen rytter og udløste ingen reservation.",
-          "Regression-test ([auctionSchemaContract.test.js](backend/lib/auctionSchemaContract.test.js)) verificerer at det unique partial index findes i schema.sql, supabase_setup.sql og setup.py — så friske setups ikke kan deploye uden DB-guarden.",
+          "Bugfix ([api.js](backend/routes/api.js)): POST /api/auctions tjekkede 'no active auction for rider' med en SELECT, hvor en parallel request (typisk dobbeltklik på 'Start auktion') kunne smutte forbi inden vores INSERT. TOCTOU race. 5. maj fik én manager 3 auktioner på Gianni Moscon og 2 hver på Silvan Dillier + Morné van Niekerk inden for sub-sekund vinduer.",
+          "Ny migration ([2026-05-06-auctions-unique-active-rider.sql](database/2026-05-06-auctions-unique-active-rider.sql)) tilføjer unique partial index `uniq_auctions_one_active_per_rider ON auctions(rider_id) WHERE status IN ('active','extended')`. DB-niveau guard der gør det fysisk umuligt at have to aktive auktioner på samme rytter. Anden parallel INSERT fejler med 23505 og backend mapper det til samme 409 'Rider already has an active auction' som det eksisterende SELECT-tjek.",
+          "Cleanup: de 4 duplikat-rows i prod sat til `cancelled` (Gianni Moscon's auktion med rigtigt bud bevaret, ældste auktion bevaret for Silvan Dillier + Morné van Niekerk). Ingen pengebevægelse. Seed-buddene var fra sælger på egen rytter og udløste ingen reservation.",
+          "Regression-test ([auctionSchemaContract.test.js](backend/lib/auctionSchemaContract.test.js)) verificerer at det unique partial index findes i schema.sql, supabase_setup.sql og setup.py. Så friske setups ikke kan deploye uden DB-guarden.",
         ],
       },
     ],
@@ -3985,7 +3999,7 @@ const PATCHES = [
       {
         category: "Admin-fix · 'Nulstil sæsoner' blokeret af finance_transactions",
         items: [
-          "Bugfix ([betaResetService.js](backend/lib/betaResetService.js)): admin-knappen 'Nulstil sæsoner' (og 'Fuld nulstilling') fejlede med FK-violation, fordi `finance_transactions.season_id` har `ON DELETE NO ACTION` og 307 rows i produktion holdt sæsonerne fast. `resetBetaSeasons` nuller nu `season_id` på ALLE finance_transactions (manager + AI + bank) før `DELETE FROM seasons` — historikken bevares, kun sæson-koblingen ryger",
+          "Bugfix ([betaResetService.js](backend/lib/betaResetService.js)): admin-knappen 'Nulstil sæsoner' (og 'Fuld nulstilling') fejlede med FK-violation, fordi `finance_transactions.season_id` har `ON DELETE NO ACTION` og 307 rows i produktion holdt sæsonerne fast. `resetBetaSeasons` nuller nu `season_id` på ALLE finance_transactions (manager + AI + bank) før `DELETE FROM seasons`. Historikken bevares, kun sæson-koblingen ryger",
           "Regression-test tilføjet ([betaResetService.test.js](backend/lib/betaResetService.test.js)) der verificerer at både manager- og AI-finance-rows får `season_id = null` før delete. 294/294 grønne",
         ],
       },
@@ -3997,7 +4011,7 @@ const PATCHES = [
     label: "Beta",
     changes: [
       {
-        category: "S-02j · Polish — onboarding-tour, HelpPage bestyrelse-sektion, doc-drift sweep",
+        category: "S-02j · Polish. Onboarding-tour, HelpPage bestyrelse-sektion, doc-drift sweep",
         items: [
           "Onboarding-tour på BoardPage ([BoardPage.jsx](frontend/src/pages/BoardPage.jsx)) opdateret efter S-02h wizard-redesign: de tre tour-trin beskriver nu det nye 3-panel-dashboard (side-om-side visning, klik-mål-mini-dialog, konsekvens-tier) og nævner navngivne bestyrelsesmedlemmer og klub-DNA som eksisterende features manageren vil møde. Tour peger fortsat på BoardEmptyState-sektionerne i onboarding-fasen (inden første plan forhandles).",
           "HelpPage ([HelpPage.jsx](frontend/src/pages/HelpPage.jsx)) har nu en dedikeret 'Bestyrelse'-sektion (◧) med 9 indholds-blokke: Hvad gør bestyrelsen, Sæson 1 baseline, Sekventiel onboarding sæson 2 (trin-liste), Det strategiske dashboard, Navngivne bestyrelsesmedlemmer (9 arketyper + formand-logik + replacement-trigger), Klub-DNA (5 arketyper + 3 effekter), Konsekvens-tier (6-rækket tabel lag 1–6), Board requests + drej-låsninger og Mid-season check. Sektionen er placeret som andet punkt i sidebaren (efter 'Kom i gang') da bestyrelsen er et af spillets primære systemer.",
@@ -4014,8 +4028,8 @@ const PATCHES = [
       {
         category: "S-02i · Bug-fix-pass + regression-tests",
         items: [
-          "Bugfix ([BoardPage.jsx](frontend/src/pages/BoardPage.jsx)): multi-plan-fornyelse starter nu altid med den længste udløbne plan uanset hvilken plan manageren klikker 'Forhandl ny plan →' på — Q-batch 1C Q19 specificerer eksplicit '5yr eller 3yr forhandles først'. Tidligere kunne klik på 1yr-panelet give forkert rækkefølge (1yr → 5yr i stedet for 5yr → 1yr)",
-          "processReplacementTrigger og evaluateAndApplyConsequences gjort deps-injectable i processTeamSeasonEnd ([economyEngine.js](backend/lib/economyEngine.js)) — følger det etablerede mønster for processLoanInterest/createEmergencyLoan og muliggør præcis unit-test af S-02c/S-02e paths",
+          "Bugfix ([BoardPage.jsx](frontend/src/pages/BoardPage.jsx)): multi-plan-fornyelse starter nu altid med den længste udløbne plan uanset hvilken plan manageren klikker 'Forhandl ny plan →' på. Q-batch 1C Q19 specificerer eksplicit '5yr eller 3yr forhandles først'. Tidligere kunne klik på 1yr-panelet give forkert rækkefølge (1yr → 5yr i stedet for 5yr → 1yr)",
+          "processReplacementTrigger og evaluateAndApplyConsequences gjort deps-injectable i processTeamSeasonEnd ([economyEngine.js](backend/lib/economyEngine.js)). Følger det etablerede mønster for processLoanInterest/createEmergencyLoan og muliggør præcis unit-test af S-02c/S-02e paths",
           "7 nye regression-tests for processSeasonEnd ([economyEngine.test.js](backend/lib/economyEngine.test.js)): processReplacementTrigger kaldt ved plan-completion, skippet ved mid-cycle, replacement-notifikation sendt ved replaced=true, triggerDoublePlanLapse (consecutiveLowExpirations=2 vs 0), fejl-isolation, u25_stat_sum + u25_count i snapshot. 293/293 tests grønne",
         ],
       },
@@ -4027,13 +4041,13 @@ const PATCHES = [
     label: "Beta",
     changes: [
       {
-        category: "S-02h · Wizard-redesign — Hybrid B+A (strategisk dashboard + modal wizard)",
+        category: "S-02h · Wizard-redesign. Hybrid B+A (strategisk dashboard + modal wizard)",
         items: [
-          "BoardPage ([BoardPage.jsx](frontend/src/pages/BoardPage.jsx)) redesignet til 3-kolonne dashboard: 5yr / 3yr / 1yr vises side om side på desktop (mobile: vertikal stack). Hvert panel viser tilfredshed%, sponsor×-modifier, mål-progress-bar og top 3 mål med status-ikoner (✓/!/~/○ fra GOAL_STATUS_META) — compact info-tæthed pr. Q-batch 1C Q17",
+          "BoardPage ([BoardPage.jsx](frontend/src/pages/BoardPage.jsx)) redesignet til 3-kolonne dashboard: 5yr / 3yr / 1yr vises side om side på desktop (mobile: vertikal stack). Hvert panel viser tilfredshed%, sponsor×-modifier, mål-progress-bar og top 3 mål med status-ikoner (✓/!/~/○ fra GOAL_STATUS_META). Compact info-tæthed pr. Q-batch 1C Q17",
           "GoalMiniDialog: klik på et mål i dashboard-panelet åbner en modal med fulde mål-detaljer (fremgang, kumulativt progress-bar, importance, tradeoff-stramning, identity-badge) + dominerende board-member-portræt og reaktions-citat. Giver immersion uden at fylde dashboard (Q-batch 1C Q17)",
-          "Wizard redesignet fra full-page takeover til modal overlay — dashboard forbliver synligt i baggrunden. WizardStep1/2/3 (strategi → forhandling → underskrift) er uændrede internt. Trin-indikator og satisfaction-meter bevaret. Lukkes med '← Tilbage til oversigt' (renewal) eller auto-lukkes ved sign (setup)",
-          "Multi-plan-fornyelse (Q-batch 1C Q19): når 2+ planer er udløbet samme sæson bygges en renewalQueue[] sorted by PLAN_SEQUENCE (5yr → 3yr → 1yr). Første plan åbner wizarden, efter sign åbner næste plan automatisk. Modal-header viser 'Planfornyelse 1/2 — 3-årsplan' + 'Derefter fortsættes med 1-årsplan'. '← Tilbage til 3-årsplan'-knap vises fra trin 2+",
-          "DashboardPlanPanel: ny kompakt komponent med expand-toggle '↓ Vis detaljer'. Detalje-sektionen inkluderer fulde GoalCards, PlanTimelineBar, SeasonSnapshotGrid, outlook/feedback, MemberReactionPanel og BoardRequestPanel — al eksisterende funktionalitet bevaret under fold",
+          "Wizard redesignet fra full-page takeover til modal overlay. Dashboard forbliver synligt i baggrunden. WizardStep1/2/3 (strategi → forhandling → underskrift) er uændrede internt. Trin-indikator og satisfaction-meter bevaret. Lukkes med '← Tilbage til oversigt' (renewal) eller auto-lukkes ved sign (setup)",
+          "Multi-plan-fornyelse (Q-batch 1C Q19): når 2+ planer er udløbet samme sæson bygges en renewalQueue[] sorted by PLAN_SEQUENCE (5yr → 3yr → 1yr). Første plan åbner wizarden, efter sign åbner næste plan automatisk. Modal-header viser 'Planfornyelse 1/2, 3-årsplan' + 'Derefter fortsættes med 1-årsplan'. '← Tilbage til 3-årsplan'-knap vises fra trin 2+",
+          "DashboardPlanPanel: ny kompakt komponent med expand-toggle '↓ Vis detaljer'. Detalje-sektionen inkluderer fulde GoalCards, PlanTimelineBar, SeasonSnapshotGrid, outlook/feedback, MemberReactionPanel og BoardRequestPanel. Al eksisterende funktionalitet bevaret under fold",
         ],
       },
     ],
@@ -4046,11 +4060,11 @@ const PATCHES = [
       {
         category: "S-02g · Manager-konkurrence + mid-season + drej-låsninger",
         items: [
-          "Mid-season auto-banner ([boardMidSeason.js](backend/lib/boardMidSeason.js)): når race_days_completed krydser midpoint (= floor(race_days_total/2)) tjekker en ny cron hver human team. Hvis tilfredshed <50% ELLER ≥50% af målbare plan-mål ligger 'behind'-status → fyrer `board_critical`-notif til Indbakke 'Skal handles'-tier (Q-batch 1B Q15 + Q-batch 1C Q21). Idempotent via per-board-per-season notif-dedupe — én fire pr. board pr. sæson",
-          "`relative_rank`-mål går live på BoardPage ([BoardPage.jsx](frontend/src/pages/BoardPage.jsx)): GoalCard renderer nu rich detail 'Du staar #4 af 8 managers i divisionen — slaar 4 (maal: 3 ✓)' baseret på `season_standings.rank_in_division` + antal humane managers i din division (Q-batch 1B Q12). Skalerer fra ~19 til 100+ managers uden cross-division-støj",
+          "Mid-season auto-banner ([boardMidSeason.js](backend/lib/boardMidSeason.js)): når race_days_completed krydser midpoint (= floor(race_days_total/2)) tjekker en ny cron hver human team. Hvis tilfredshed <50% ELLER ≥50% af målbare plan-mål ligger 'behind'-status → fyrer `board_critical`-notif til Indbakke 'Skal handles'-tier (Q-batch 1B Q15 + Q-batch 1C Q21). Idempotent via per-board-per-season notif-dedupe. én fire pr. board pr. sæson",
+          "`relative_rank`-mål går live på BoardPage ([BoardPage.jsx](frontend/src/pages/BoardPage.jsx)): GoalCard renderer nu rich detail 'Du staar #4 af 8 managers i divisionen. Slaar 4 (maal: 3 ✓)' baseret på `season_standings.rank_in_division` + antal humane managers i din division (Q-batch 1B Q12). Skalerer fra ~19 til 100+ managers uden cross-division-støj",
           "Tradeoff-låsninger ([boardRequests.js](backend/lib/boardRequests.js)) introducerer deferred konsekvenser af approved board requests: `lower_results_pressure` → +1 til min_u25_riders/min_national_riders i næste plan-renewal. `ease_identity_requirements` → +5pp på sponsor_growth-target. Stramningen markeres med '🔒 Strammet'-badge på det modificerede mål og forsvinder efter ÉN sæson (Q-batch 1B Q16). Hardkodet pr. request-type for forudsigelighed",
-          "MAJOR pivot cool-down: én MAJOR focus-skift pr. plan-livscyklus (Q-batch 1A Q3). MAJOR = krydsninger mellem extremer (more_youth_focus FRA star_signing eller more_results_focus FRA youth_development) — pivots til/fra balanced er ikke MAJOR og kan gentages. Stempel sidder på `board_profiles.major_pivot_used_at` og nulstilles ved plan-renewal (frisk plan = frisk cool-down)",
-          "Window-blokering: requests umulige i sidste 5 race-days af sæsonen. Bestyrelsen vil ikke have planen drejet umiddelbart før evaluering. Mid-cycle-låsning: 5yr/3yr-planer kræver ≥50% gennemført ELLER >30% absolut satisfaction-delta før de kan drejes — forhindrer impulsive flip-flops på langtidsplaner. 1yr-planer har ingen mid-cycle-lås (Q-batch 1A Q3, Appendix beslutning 3a/c)",
+          "MAJOR pivot cool-down: én MAJOR focus-skift pr. plan-livscyklus (Q-batch 1A Q3). MAJOR = krydsninger mellem extremer (more_youth_focus FRA star_signing eller more_results_focus FRA youth_development). Pivots til/fra balanced er ikke MAJOR og kan gentages. Stempel sidder på `board_profiles.major_pivot_used_at` og nulstilles ved plan-renewal (frisk plan = frisk cool-down)",
+          "Window-blokering: requests umulige i sidste 5 race-days af sæsonen. Bestyrelsen vil ikke have planen drejet umiddelbart før evaluering. Mid-cycle-låsning: 5yr/3yr-planer kræver ≥50% gennemført ELLER >30% absolut satisfaction-delta før de kan drejes. Forhindrer impulsive flip-flops på langtidsplaner. 1yr-planer har ingen mid-cycle-lås (Q-batch 1A Q3, Appendix beslutning 3a/c)",
           "Migration ([2026-05-05-board-tradeoff-pivot.sql](database/2026-05-05-board-tradeoff-pivot.sql)) tilføjer `board_profiles.tradeoff_active_until_season_id` (FK til seasons), `tradeoff_payload` (JSONB med stramnings-detaljer) og `major_pivot_used_at` (timestamp). Indexes for hurtig lookup ved plan-renewal. Cron integration i [cron.js](backend/cron.js) kører mid-season-review hver 30 min med immediate run on startup",
           "buildBoardProposal accepterer nu `tradeoffPayload`-param og applyTradeoffTighteningToGoals ([boardGoals.js](backend/lib/boardGoals.js)) anvender stramning som sidste step i goal-pipeline. /api/board/proposal + /api/board/sign læser tradeoff fra eksisterende board og clearer ved sign-time. Beta-reset wiper alle 3 nye felter via DELETE board_profiles ([betaResetService.js](backend/lib/betaResetService.js))",
           "36 nye backend-tests (286/286 grønne total) i [boardMidSeason.test.js](backend/lib/boardMidSeason.test.js): applyTradeoffTighteningToGoals (2 kinds + null + ikke-matchende type), isMajorPivotRequest (4 kombinationer), tradeoff/pivot-persistens i resolveBoardRequest, F4/F5/F6 availability-guards (4 mid-cycle-cases × plan_type-variationer + window-block + MAJOR-block), buildBoardProposal tradeoff-integration, evaluateMidSeasonTrigger (low_satisfaction + many_behind + ingen-trigger), processMidSeasonReviewCron (trigger ved midpoint, skip pre-midpoint, skip baseline/onboarding-fasen, idempotent replay, AI/bank/frozen-skip, pending-board-skip)",
@@ -4064,14 +4078,14 @@ const PATCHES = [
     label: "Beta",
     changes: [
       {
-        category: "S-02f · Klub-DNA — manageren vælger klubbens identitet i sæson 2",
+        category: "S-02f · Klub-DNA. Manageren vælger klubbens identitet i sæson 2",
         items: [
           "5 håndlavede klub-DNA-arketyper introduceret ([boardClubDna.js](backend/lib/boardClubDna.js)): 🌲 Skandinavisk udviklingshold (ungdom + nordisk arv), 🪨 Italiensk klassiker-traditionalist (forår + monumenter), ⚡ Sprint-fokuseret kommerciel (sprint + sponsorvækst), ⛰️ Fransk klatrer-arv (Tour-bjerge + national kerne), 🎯 Britisk all-rounder (bredde + datadrevet). Hver DNA har 8 policy-akser, member_alignment_bonus til 1-4 board-arketyper og en signature klub-tradition-mål",
-          "Ved sæson-2-onboarding (efter sæson 1's identity er observeret) viser BoardPage et `ClubDnaSelectionCard` med 3 algoritmisk-foreslåede DNA: ét national-match (mod `season_1_identity_basis.national_core`), ét specialization-match (mod `primary_specialization`) og ét wildcard. Manageren vælger frit fra de tre — ingen påtvunget valg, men forslagene føles 'set' pga. data-grunding ([api.js](backend/routes/api.js))",
+          "Ved sæson-2-onboarding (efter sæson 1's identity er observeret) viser BoardPage et `ClubDnaSelectionCard` med 3 algoritmisk-foreslåede DNA: ét national-match (mod `season_1_identity_basis.national_core`), ét specialization-match (mod `primary_specialization`) og ét wildcard. Manageren vælger frit fra de tre. Ingen påtvunget valg, men forslagene føles 'set' pga. data-grunding ([api.js](backend/routes/api.js))",
           "DNA påvirker board-medlems-tildeling: ved chairman-replacement i senere sæsoner tipper DNA-bonus alignment-scoren mod arketyper der matcher klubbens identitet. Eksempel: italiensk_klassiker giver +4 til klassiker_purist og -2 til gc_elsker, så formandsvalget reflekterer DNA'et ([boardMembers.js](backend/lib/boardMembers.js))",
           "5-årsplaners forslag får et ekstra DNA-tradition-mål injiceret som bonus (italiensk_klassiker → 'mindst ét Monument-podie pr. plan-cyklus', sprint_kommerciel → 'min. 2 etape-trøjer/sæson'). Plus DNA-vægtning multiplicerer satisfaction_bonus + _penalty på matchende mål-typer (italiensk_klassiker × 1.6 på monument_podium), så DNA føles igennem evaluering uden at ændre mål-targets ([boardGoals.js](backend/lib/boardGoals.js))",
-          "Migration ([2026-05-05-board-club-dna.sql](database/2026-05-05-board-club-dna.sql)) seedet `team_dna`-reference-tabel med alle 5 arketyper + tilføjer `teams.team_dna_key` (FK til team_dna) + `teams.team_dna_chosen_at`. To nye routes: `GET /api/board/dna-suggestions` (3 forslag) og `POST /api/board/dna-choose` (commit-valg). AI/bank/frozen får aldrig DNA — manager-only per Q-batch 1A Q8",
-          "Beta-reset ([betaResetService.js](backend/lib/betaResetService.js)) nulstiller `team_dna_key` + `team_dna_chosen_at` så næste sæson 2-onboarding gentager valget. DNA er 'final indtil drift' i denne slice — gradvis udvikling over 5 sæsoner kommer i opfølgnings-slice (S-02f.1)",
+          "Migration ([2026-05-05-board-club-dna.sql](database/2026-05-05-board-club-dna.sql)) seedet `team_dna`-reference-tabel med alle 5 arketyper + tilføjer `teams.team_dna_key` (FK til team_dna) + `teams.team_dna_chosen_at`. To nye routes: `GET /api/board/dna-suggestions` (3 forslag) og `POST /api/board/dna-choose` (commit-valg). AI/bank/frozen får aldrig DNA. Manager-only per Q-batch 1A Q8",
+          "Beta-reset ([betaResetService.js](backend/lib/betaResetService.js)) nulstiller `team_dna_key` + `team_dna_chosen_at` så næste sæson 2-onboarding gentager valget. DNA er 'final indtil drift' i denne slice. Gradvis udvikling over 5 sæsoner kommer i opfølgnings-slice (S-02f.1)",
           "18 nye backend-tests (250/250 grønne total) i [boardClubDna.test.js](backend/lib/boardClubDna.test.js) dækker konstanter (5 DNA × shape), suggestion-determinisme + national/spec-slot-matching, alignment-bias der tipper klassiker_purist højere med italiensk DNA, mål-vægtning (1.6× monument_podium for italiensk), tradition-goal injection i 5yr (med dedup mod base-pakken og kun 5yr) og fallback til defaults uden identityBasis",
         ],
       },
@@ -4083,12 +4097,12 @@ const PATCHES = [
     label: "Beta",
     changes: [
       {
-        category: "S-02e · Konsekvens-tier — bestyrelsen reagerer gradueret på lav (og høj) tilfredshed",
+        category: "S-02e · Konsekvens-tier. Bestyrelsen reagerer gradueret på lav (og høj) tilfredshed",
         items: [
-          "6-lags konsekvens-system ([boardConsequences.js](backend/lib/boardConsequences.js)) der gradvis hæver presset jo lavere tilfredsheden falder — og belønner overpræstation. Ingen automatisk fyring (Q-batch 1A #4): Lag 1 (passiv sponsor-modifier ±20%, eksisterende), Lag 2 (lønloft ved <40%), Lag 3 (signing-restriktion >300K kræver godkendelse ved <30%), Lag 4 (tvunget salg ved <15%), Lag 5 (sponsor-pull-out ved <10% ELLER 2× plan-udløb under 30%), Lag 6 (bonus-tilbud +200K mod ekstra-mål ved >75%)",
-          "Hard-blocks i transfer/auction-flow ([api.js](backend/routes/api.js)): nye køb ramler ind i `assertSigningAllowed` på `POST /api/auctions/:id/bid`, `POST /api/transfers/offer` og `accept_counter`-action. Returner 403 med `code='board_signing_restriction'` eller `code='board_salary_cap'` så frontend kan rendere klar fejlbesked. Lag 2 frosser holdets samlede løn ved trigger-tidspunktet — manageren kan stadig handle med rytter-rotation, bare ikke vækst",
+          "6-lags konsekvens-system ([boardConsequences.js](backend/lib/boardConsequences.js)) der gradvis hæver presset jo lavere tilfredsheden falder. Og belønner overpræstation. Ingen automatisk fyring (Q-batch 1A #4): Lag 1 (passiv sponsor-modifier ±20%, eksisterende), Lag 2 (lønloft ved <40%), Lag 3 (signing-restriktion >300K kræver godkendelse ved <30%), Lag 4 (tvunget salg ved <15%), Lag 5 (sponsor-pull-out ved <10% ELLER 2× plan-udløb under 30%), Lag 6 (bonus-tilbud +200K mod ekstra-mål ved >75%)",
+          "Hard-blocks i transfer/auction-flow ([api.js](backend/routes/api.js)): nye køb ramler ind i `assertSigningAllowed` på `POST /api/auctions/:id/bid`, `POST /api/transfers/offer` og `accept_counter`-action. Returner 403 med `code='board_signing_restriction'` eller `code='board_salary_cap'` så frontend kan rendere klar fejlbesked. Lag 2 frosser holdets samlede løn ved trigger-tidspunktet. Manageren kan stadig handle med rytter-rotation, bare ikke vækst",
           "Tvunget salg (lag 4) auto-lister rytteren med laveste market_value ved sæson-end. Beskytter pop≥70 OR uci_points≥100 (parallel til UCI-sync auto-protection) så bestyrelsen ikke smider stjernen. Inserter `transfer_listings`-row direkte + sender 'Skal handles'-notif. Sponsor-pull-out (lag 5) stacker multiplikativt med budget_modifier ind i næste sæson-starts sponsor-payment og auto-expirer derefter",
-          "Bonus-tilbud (lag 6) er positiv konsekvens — fyrer 1×/sæson når satisfaction >75% OG ≥75% af mål er nået. Tilbyder +200K mod 1 ekstra-mål: signature_rider ved star_signing-fokus, ellers monument_podium. Manager accepterer eller afviser i ny BonusOfferCard på BoardPage; accept krediterer balance + tilføjer mål til 1yr-board's current_goals. To nye routes `/api/board/bonus-offer/{accept,decline}`",
+          "Bonus-tilbud (lag 6) er positiv konsekvens. Fyrer 1×/sæson når satisfaction >75% OG ≥75% af mål er nået. Tilbyder +200K mod 1 ekstra-mål: signature_rider ved star_signing-fokus, ellers monument_podium. Manager accepterer eller afviser i ny BonusOfferCard på BoardPage; accept krediterer balance + tilføjer mål til 1yr-board's current_goals. To nye routes `/api/board/bonus-offer/{accept,decline}`",
           "Migration ([2026-05-05-board-consequences.sql](database/2026-05-05-board-consequences.sql)) tilføjer `board_consequences`-tabel med unique-active-index på (team_id, layer) der enforcer 1 aktiv pr. lag. Status-flow active → accepted/declined (lag 6) ELLER active → expired (lag 5 ved sæson-start) ELLER active → fulfilled (lag 4 når listing sælges). Notif-routing låst i Q-batch 1C Q21: lag 4-6 → `type='board_critical'` (Skal handles), lag 2-3 silent på BoardPage warning-panel",
           "Frontend ([BoardPage.jsx](frontend/src/pages/BoardPage.jsx)): nye `BoardConsequencesPanel` (lag 2-5 warning-cards, gul for lag 2-3, rød for lag 4-5) og `BonusOfferCard` (grøn med Acceptér/Afvis-knapper). Begge vises kun udenfor baseline-fasen. Beta-reset ([betaResetService.js](backend/lib/betaResetService.js)) clearer `board_consequences` så næste cyklus starter rent",
           "41 nye backend-tests (232/232 grønne total) i [boardConsequences.test.js](backend/lib/boardConsequences.test.js) dækker tærskel-trigger pr. lag, idempotency-replay, hard-block-flow med både salary-cap- og restriction-prioritet, forced-listing-rytter-valg med star-protection, sponsor-pullout-stack + season-scoped expiration, og bonus-offer accept/decline + 1×/sæson-guardrail",
@@ -4102,12 +4116,12 @@ const PATCHES = [
     label: "Beta",
     changes: [
       {
-        category: "S-02d · Udvidede mål-typer — bestyrelsen kan nu kræve monumenter, trøjer, stjerner og udvikling",
+        category: "S-02d · Udvidede mål-typer. Bestyrelsen kan nu kræve monumenter, trøjer, stjerner og udvikling",
         items: [
-          "7 nye mål-typer tilføjet til bestyrelsens repertoire ([boardGoals.js](backend/lib/boardGoals.js)): `monument_podium` (top-3 i Monuments-løb cumulative over plan), `jersey_wins` (point/bjerg/young-trøje pr. etapeløb), `signature_rider` (≥1 rytter med popularity ≥75), `profitable_transfers` (netto transfer-balance ≥200K cumulative), `u25_development_delta` (gnsn. ≥3 stat-points/sæson på U25-ryttere), `relative_rank` (slut foran ≥N andre managers i divisionen), `domestic_dominance` (skeleton — aktiveres i S-02g)",
+          "7 nye mål-typer tilføjet til bestyrelsens repertoire ([boardGoals.js](backend/lib/boardGoals.js)): `monument_podium` (top-3 i Monuments-løb cumulative over plan), `jersey_wins` (point/bjerg/young-trøje pr. etapeløb), `signature_rider` (≥1 rytter med popularity ≥75), `profitable_transfers` (netto transfer-balance ≥200K cumulative), `u25_development_delta` (gnsn. ≥3 stat-points/sæson på U25-ryttere), `relative_rank` (slut foran ≥N andre managers i divisionen), `domestic_dominance` (skeleton. Aktiveres i S-02g)",
           "3 af de nye typer integreres med det samme i auto-genererede focus-pakker som 5. mål: `youth_development` får `u25_development_delta` (måler om dine U25-ryttere faktisk udvikler sig), `star_signing` får `signature_rider` (tvinger dig til at signe en stjerne), `balanced` får `relative_rank` (du skal slå over halvdelen i divisionen). De 4 øvrige typer (monument/jersey/profit/domestic) er klar i motoren men venter på S-02f (klub-DNA) eller S-02g (manager-konkurrence) for at blive valgt",
           "Migration ([2026-05-05-board-goal-types.sql](database/2026-05-05-board-goal-types.sql)) tilføjer `u25_stat_sum` + `u25_count`-kolonner på `board_plan_snapshots`. processSeasonEnd snapshotter U25-stat-sum hver sæson, så `u25_development_delta` kan beregne udvikling fra plan-start-baseline. Pattern matcher eksisterende cumulative_stage_wins/gc_wins ([economyEngine.js](backend/lib/economyEngine.js))",
-          "Ny shared kontekst-loader [boardGoalContext.js](backend/lib/boardGoalContext.js) henter cumulativeMonumentPodiums, cumulativeJerseyWins, seasonJerseyWins, cumulativeTransferBalance, planStartU25StatSum/Count og divisionManagerCount fra DB. Kaldes både fra processSeasonEnd (sæson-evaluering) og /api/board/status (live BoardPage-outlook) — samme query-pattern, ingen drift",
+          "Ny shared kontekst-loader [boardGoalContext.js](backend/lib/boardGoalContext.js) henter cumulativeMonumentPodiums, cumulativeJerseyWins, seasonJerseyWins, cumulativeTransferBalance, planStartU25StatSum/Count og divisionManagerCount fra DB. Kaldes både fra processSeasonEnd (sæson-evaluering) og /api/board/status (live BoardPage-outlook). Samme query-pattern, ingen drift",
           "buildNegotiatedGoal udvidet for alle 7 typer: jersey_wins/profitable_transfers/u25_development_delta/relative_rank/domestic_dominance kan lempes på target (-1 hhv. -50K), monument_podium/signature_rider er allerede minimum (target=1) men halverer satisfaction_penalty. buildGoalLabel skriver danske labels for alle 7",
           "27 nye backend-tests (191/191 grønne total) i [boardGoalTypes.test.js](backend/lib/boardGoalTypes.test.js): hver type får true-case + false-case + null/awaiting_data-edge-case. Plus integration-tests der bekræfter at de 3 nye 5. mål dukker op i `generateBoardGoals` med korrekt category-metadata",
         ],
@@ -4120,14 +4134,14 @@ const PATCHES = [
     label: "Beta",
     changes: [
       {
-        category: "S-02c · Navngivne board-medlemmer — bestyrelsen får ansigter og stemmer",
+        category: "S-02c · Navngivne board-medlemmer. Bestyrelsen får ansigter og stemmer",
         items: [
           "Bestyrelsen er ikke længere en abstrakt enhed. 9 håndlavede arketyper (Sponsoraten 💰, Traditionalisten 🎩, Talentspejderen 🔭, Resultatjægeren 🏆, Pragmatikeren ⚖️, Ungdoms-idealisten 🌱, Nationalist-purist 🏳️, Klassiker-purist 🪨, GC-elsker ⛰️) udgør pool'en. Hvert hold får 5 medlemmer tildelt ved sæson-1-slut: 3 matchet til holdets identitet (`identity_basis`) + 2 wildcards der ikke modsiger de første ([boardArchetypes.js](backend/lib/boardArchetypes.js))",
           "Avatar-grid på BoardPage viser de 5 medlemmer med emoji, navn, kort beskrivelse og 'Formand'-mærke (★) på den med højeste alignment til dit hold. Wildcards markeres så du kan se hvem der bringer kontrast frem for ekko-kammer ([BoardPage.jsx](frontend/src/pages/BoardPage.jsx))",
           "Bestyrelsens vurdering på hver plan får nu en stemme: et citat fra det medlem der ejer feedback-kategorien (resultater → Resultatjægeren, økonomi → Sponsoraten, identitet → Traditionalisten/Nationalist-purist, etc.). Ved tvivl falder valget på formanden. 270 reaktions-templates total (30 pr. arketype, fordelt på 6 buckets: positive/warning/negative feedback + goal-proposal/achievement/failure)",
-          "Hver mål-kort har nu en 'X reagerer'-knap der expand'er et citat fra det medlem der ejer mål-kategorien — fx ★ Sponsoraten ved et 'no_outstanding_debt'-mål der bløder. Genbruger samme expand-pattern som S-02b's identity-badge ([BoardPage.jsx](frontend/src/pages/BoardPage.jsx))",
+          "Hver mål-kort har nu en 'X reagerer'-knap der expand'er et citat fra det medlem der ejer mål-kategorien. Fx ★ Sponsoraten ved et 'no_outstanding_debt'-mål der bløder. Genbruger samme expand-pattern som S-02b's identity-badge ([BoardPage.jsx](frontend/src/pages/BoardPage.jsx))",
           "Replacement-trigger live: 2× plan-udløb i træk under 30% tilfredshed → bestyrelsen udskifter formanden. Ny formand vælges fra de 4 ikke-tildelte arketyper baseret på alignment + non-conflict. Counter sidder per-team på `teams.consecutive_low_satisfaction_expirations`, resetes ved tilfredshed ≥30. Notif: \"Bestyrelsen har valgt en ny formand: {arketype-navn}\" ([economyEngine.js](backend/lib/economyEngine.js), [boardMembers.js](backend/lib/boardMembers.js))",
-          "Conflict-detection beskytter mod modsigende holdninger: 3 'friction-akser' (debt_aversion, youth_focus, results_pressure) tjekkes ved wildcard-valg. Algoritmen tillader fallback når non-conflicting pool er tom (sjælden edge case som meget youth-tunge hold), men foretrækker altid harmoni hvis muligt — Q2-præmis 'Må dog ikke være modsigende, hvis muligt'",
+          "Conflict-detection beskytter mod modsigende holdninger: 3 'friction-akser' (debt_aversion, youth_focus, results_pressure) tjekkes ved wildcard-valg. Algoritmen tillader fallback når non-conflicting pool er tom (sjælden edge case som meget youth-tunge hold), men foretrækker altid harmoni hvis muligt. Q2-præmis 'Må dog ikke være modsigende, hvis muligt'",
           "Migration ([2026-05-05-board-members.sql](database/2026-05-05-board-members.sql)) tilføjer `team_board_members`-tabel + `teams.consecutive_low_satisfaction_expirations`-counter. Beta-reset clearer alle members + nulstiller counter + identity_basis så næste sæson 1 starter fra ren tavle ([betaResetService.js](backend/lib/betaResetService.js))",
           "16 nye backend-tests (164/164 grønne total) dækker arketype-shape (9 × 30 templates), conflict-detection, alignment-scoring, non-conflicting wildcard-valg + fallback edge case, deterministisk re-replay, idempotent assignment, dominant-member-selection (kategori + chairman-fallback), reaction-sampling pr. tone/status, replacement-counter increment/reset/trigger, AI/bank skip, og end-to-end startSequentialNegotiation med member-tildeling",
         ],
@@ -4140,14 +4154,14 @@ const PATCHES = [
     label: "Beta",
     changes: [
       {
-        category: "S-02b · 1yr-auto-gen + identity-feeding + auto-accept — bestyrelsen kender dit hold",
+        category: "S-02b · 1yr-auto-gen + identity-feeding + auto-accept. Bestyrelsen kender dit hold",
         items: [
-          "Bestyrelsen \"ser\" nu hvem du er. Ved sæson-1-slut tager den et frosset snapshot af dit hold (national kerne, U25-andel, primær specialisering, stjerneprofil) og persisterer det på `teams.season_1_identity_basis`. Snapshottet er *narrativets fundament* — selv hvis dit hold ændrer sig i sæson 2+, husker bestyrelsen hvad den så ([boardIdentity.js](backend/lib/boardIdentity.js))",
+          "Bestyrelsen \"ser\" nu hvem du er. Ved sæson-1-slut tager den et frosset snapshot af dit hold (national kerne, U25-andel, primær specialisering, stjerneprofil) og persisterer det på `teams.season_1_identity_basis`. Snapshottet er *narrativets fundament*. Selv hvis dit hold ændrer sig i sæson 2+, husker bestyrelsen hvad den så ([boardIdentity.js](backend/lib/boardIdentity.js))",
           "5-årsmål viser nu inline-badges der forklarer *hvorfor* målet eksisterer: \"★ Bygger paa din FR-kerne (5/8 ryttere)\" eller \"★ Bygger paa dit ungdomsaftryk (50% U25 i sæson 1)\". Klik badgen → fuld forklaring expand med hvilke data fra sæson 1 der gjorde målet relevant. Implementeret som data-lag (`identity_basis_rationale` på goal-objektet) så fremtidige UI-redesigns kan genbruge det ([BoardPage.jsx](frontend/src/pages/BoardPage.jsx), [boardGoals.js](backend/lib/boardGoals.js))",
           "Ny auto-accept-cron tager over når manageren glemmer at handle. Tre tærskler styret af `seasons.race_days_completed` ([boardAutoAccept.js](backend/lib/boardAutoAccept.js)): T-3 (race-day 2) → info-reminder i Bestyrelse-feed (`board_update`); T-1 (race-day 4) → kritisk \"Skal handles\"-notif (`board_critical`); T-0 (race-day 5+) → bestyrelsen vælger selv en plan baseret på dit holds identitet og signer den. Notif-dedup (24h) gør cron idempotent",
-          "Auto-accept's default-fokus afledes fra `season_1_identity_basis`: høj U25-andel → ungdomsudvikling, elite-stjerneprofil → stjernesignering, GC/sprint/klassiker-spec → stjernesignering, ellers balanceret. Ingen blind \"balanced\"-fallback — selv hvis bestyrelsen tager over, matcher valget den retning, holdet allerede peger",
-          "Ny countdown-banner på BoardPage: \"Bestyrelsen venter paa din forhandling — N race-days tilbage\". Skifter til kritisk farve ved T-1. Ny Bestyrelse-feed-sektion samler alle board-relaterede notifs (`board_update` + `board_critical`) ét sted så manageren har overblik uden at gå ind i Indbakken",
-          "Migration ([2026-05-05-board-1yr-autogen.sql](database/2026-05-05-board-1yr-autogen.sql)) tilføjer `teams.season_1_identity_basis JSONB` + udvider `notifications_type_check` med `board_critical`. Migration kører automatisk ved push — ingen manuel handling",
+          "Auto-accept's default-fokus afledes fra `season_1_identity_basis`: høj U25-andel → ungdomsudvikling, elite-stjerneprofil → stjernesignering, GC/sprint/klassiker-spec → stjernesignering, ellers balanceret. Ingen blind \"balanced\"-fallback. Selv hvis bestyrelsen tager over, matcher valget den retning, holdet allerede peger",
+          "Ny countdown-banner på BoardPage: \"Bestyrelsen venter paa din forhandling. N race-days tilbage\". Skifter til kritisk farve ved T-1. Ny Bestyrelse-feed-sektion samler alle board-relaterede notifs (`board_update` + `board_critical`) ét sted så manageren har overblik uden at gå ind i Indbakken",
+          "Migration ([2026-05-05-board-1yr-autogen.sql](database/2026-05-05-board-1yr-autogen.sql)) tilføjer `teams.season_1_identity_basis JSONB` + udvider `notifications_type_check` med `board_critical`. Migration kører automatisk ved push. Ingen manuel handling",
           "Bagved-kulisserne: ny `boardGoals.generate1YrFromLongerPlans` returnerer to varianter (Stabil + Resultatfokus nu) klar til wizard-redesign i S-02h. 15 nye backend-tests dækker computeSeasonOneIdentity, identity-feeding-annotation, auto-accept-tærsklerne og idempotent replay (146/146 grønne)",
         ],
       },
@@ -4159,14 +4173,14 @@ const PATCHES = [
     label: "Beta",
     changes: [
       {
-        category: "S-02a · Bestyrelse-redesign foundation — sæson 1 = baseline, sæson 2+ åbner sekventielt",
+        category: "S-02a · Bestyrelse-redesign foundation. Sæson 1 = baseline, sæson 2+ åbner sekventielt",
         items: [
-          "Sæson 1 er nu en baseline-sæson hvor bestyrelsen *observerer* dit hold uden krav. Ingen mål, ingen tilfredsheds-evaluering, sponsor-modifier låst på 1.0× — du har en hel sæson til at finde din retning før forhandlingerne starter. Bestyrelsesside ([BoardPage](frontend/src/pages/BoardPage.jsx)) viser et nyt observations-banner i baseline-fasen i stedet for tomme plan-kort",
-          "Når sæson 1 slutter, åbner sekventiel onboarding automatisk: 5-årsplan først, derefter 3-årsplan, derefter 1-årsplan. Trigger sker inline i `processSeasonEnd` — ingen separat cron, ingen race conditions ([economyEngine.js](backend/lib/economyEngine.js))",
-          "Migration ([2026-05-05-board-foundation.sql](database/2026-05-05-board-foundation.sql)) tilføjer `board_profiles.is_baseline` + nyt `plan_type='baseline'` samt `transfer_windows.board_negotiation_state` (global onboarding-fase-lås: `locked` → `pending_5yr` → `complete`). Per-team-fremdrift udledes stadig af eksisterende rows i `board_profiles` — window-state låser kun globalt hvad der må forhandles",
-          "Beta-reset opretter nu *én* baseline-row pr. team i stedet for tre plan-rows ([betaResetService.js](backend/lib/betaResetService.js)) — fuld reset af alle eksisterende managers' board-data godkendt i Q-batch 1A Q6 (vision-lock). Næste reset starter alle hold i frisk observations-sæson",
+          "Sæson 1 er nu en baseline-sæson hvor bestyrelsen *observerer* dit hold uden krav. Ingen mål, ingen tilfredsheds-evaluering, sponsor-modifier låst på 1.0×. Du har en hel sæson til at finde din retning før forhandlingerne starter. Bestyrelsesside ([BoardPage](frontend/src/pages/BoardPage.jsx)) viser et nyt observations-banner i baseline-fasen i stedet for tomme plan-kort",
+          "Når sæson 1 slutter, åbner sekventiel onboarding automatisk: 5-årsplan først, derefter 3-årsplan, derefter 1-årsplan. Trigger sker inline i `processSeasonEnd`. Ingen separat cron, ingen race conditions ([economyEngine.js](backend/lib/economyEngine.js))",
+          "Migration ([2026-05-05-board-foundation.sql](database/2026-05-05-board-foundation.sql)) tilføjer `board_profiles.is_baseline` + nyt `plan_type='baseline'` samt `transfer_windows.board_negotiation_state` (global onboarding-fase-lås: `locked` → `pending_5yr` → `complete`). Per-team-fremdrift udledes stadig af eksisterende rows i `board_profiles`. Window-state låser kun globalt hvad der må forhandles",
+          "Beta-reset opretter nu *én* baseline-row pr. team i stedet for tre plan-rows ([betaResetService.js](backend/lib/betaResetService.js)). Fuld reset af alle eksisterende managers' board-data godkendt i Q-batch 1A Q6 (vision-lock). Næste reset starter alle hold i frisk observations-sæson",
           "Ny `boardEngine.startSequentialNegotiation` ([boardSequentialNegotiation.js](backend/lib/boardSequentialNegotiation.js)) sletter baseline-rows og åbner window i `pending_5yr` ved sæson-1-slut. `transfer-window/open` arver state fra forrige window så onboarding-fasen ikke nulstilles ved sæson-skift",
-          "Foundation for ~10-12 sub-slices i S-02 master-roadmap. S-02b (1yr-auto-gen + identity-feeding + auto-accept) eller S-02c (navngivne board-medlemmer) kan startes næste session — begge har kun S-02a som dep",
+          "Foundation for ~10-12 sub-slices i S-02 master-roadmap. S-02b (1yr-auto-gen + identity-feeding + auto-accept) eller S-02c (navngivne board-medlemmer) kan startes næste session. Begge har kun S-02a som dep",
         ],
       },
     ],
@@ -4177,11 +4191,11 @@ const PATCHES = [
     label: "Beta",
     changes: [
       {
-        category: "Ønskeliste-stjerne flyttet ud — én konsistent placering på tværs af sider",
+        category: "Ønskeliste-stjerne flyttet ud. én konsistent placering på tværs af sider",
         items: [
-          "Ønskeliste-stjernen sad i sidste kolonne på rytteroversigten — langt til højre forbi alle 14 stat-kolonner. Du skulle scrolle vandret for at finde den, og på ønskeliste-siden var fjern-handlingen en separat \"★ Fjern\"-knap i en \"Handling\"-kolonne, mens tilføj-handlingen kun fandtes på rytteroversigten. To forskellige interaktioner for samme funktion",
-          "Stjernen sidder nu i sin egen kolonne lige til højre for rytter-navnet på alle rytteroversigter — rytteroversigten ([RidersPage](frontend/src/pages/RidersPage.jsx)), ønskelisten ([WatchlistPage](frontend/src/pages/WatchlistPage.jsx)) og aktivitets-sidens ønskeliste-tab ([ActivityPage](frontend/src/pages/ActivityPage.jsx)). På ønskelisten er den fyldte stjerne (★) nok til at fjerne — \"★ Fjern\"-knappen er væk; \"Handling\"-kolonnen bruges nu kun til \"Start auktion\" hos fri agents",
-          "Ny delt komponent [WatchlistStar.jsx](frontend/src/components/WatchlistStar.jsx) sikrer at stjernen ser ens ud og opfører sig ens overalt — samme stopPropagation-håndtering så klik på stjernen ikke trigger row-navigation, samme tooltip og hover-effekt",
+          "Ønskeliste-stjernen sad i sidste kolonne på rytteroversigten. Langt til højre forbi alle 14 stat-kolonner. Du skulle scrolle vandret for at finde den, og på ønskeliste-siden var fjern-handlingen en separat \"★ Fjern\"-knap i en \"Handling\"-kolonne, mens tilføj-handlingen kun fandtes på rytteroversigten. To forskellige interaktioner for samme funktion",
+          "Stjernen sidder nu i sin egen kolonne lige til højre for rytter-navnet på alle rytteroversigter: rytteroversigten ([RidersPage](frontend/src/pages/RidersPage.jsx)), ønskelisten ([WatchlistPage](frontend/src/pages/WatchlistPage.jsx)) og aktivitets-sidens ønskeliste-tab ([ActivityPage](frontend/src/pages/ActivityPage.jsx)). På ønskelisten er den fyldte stjerne (★) nok til at fjerne. \"★ Fjern\"-knappen er væk; \"Handling\"-kolonnen bruges nu kun til \"Start auktion\" hos fri agents",
+          "Ny delt komponent [WatchlistStar.jsx](frontend/src/components/WatchlistStar.jsx) sikrer at stjernen ser ens ud og opfører sig ens overalt. Samme stopPropagation-håndtering så klik på stjernen ikke trigger row-navigation, samme tooltip og hover-effekt",
         ],
       },
     ],
@@ -4192,11 +4206,11 @@ const PATCHES = [
     label: "Beta",
     changes: [
       {
-        category: "Ønskeliste — paginering, fryst header og fuld bredde",
+        category: "Ønskeliste. Paginering, fryst header og fuld bredde",
         items: [
-          "Ønskelisten viste hele din watchlist i én lang liste på en smal centreret container — på en bred skærm var der >40% tom plads i siderne, og hvis du havde mange ryttere skulle du scrolle tilbage til toppen for at se kolonnenavne. Nu matcher den ryttersidens layout: tabellen fylder fuld bredde (max-w-full) og kolonne-headeren er sticky så den følger med når du scroller vertikalt",
+          "Ønskelisten viste hele din watchlist i én lang liste på en smal centreret container. På en bred skærm var der >40% tom plads i siderne, og hvis du havde mange ryttere skulle du scrolle tilbage til toppen for at se kolonnenavne. Nu matcher den ryttersidens layout: tabellen fylder fuld bredde (max-w-full) og kolonne-headeren er sticky så den følger med når du scroller vertikalt",
           "Client-side paginering: 50 ryttere ad gangen med Forrige/Næste-knapper nederst og \"Viser X–Y af N\" status. Page resettes til 1 når du ændrer et filter eller en sortering, så du ikke ender på en tom side hvis filteret krymper resultatet",
-          "Ryttersiden på mobil er skiftet fra kort-layout til samme tabel som desktop. Tabellen scroller vandret på små skærme i stedet for at gemme kolonner — konsistent oplevelse på tværs af platforme. Død kode (`RiderCard`-komponent, `MOBILE_STATS`-array, isMobile-state og resize-listener) er fjernet",
+          "Ryttersiden på mobil er skiftet fra kort-layout til samme tabel som desktop. Tabellen scroller vandret på små skærme i stedet for at gemme kolonner. Konsistent oplevelse på tværs af platforme. Død kode (`RiderCard`-komponent, `MOBILE_STATS`-array, isMobile-state og resize-listener) er fjernet",
         ],
       },
     ],
@@ -4207,13 +4221,13 @@ const PATCHES = [
     label: "Beta",
     changes: [
       {
-        category: "Indbakke — nyt \"Skal handles\"-tab samler pending decisions (S-05)",
+        category: "Indbakke. Nyt \"Skal handles\"-tab samler pending decisions (S-05)",
         items: [
           "Indbakken havde tabs for personlige notifikationer (\"Mine\") og liga-aktivitet (\"Ligaen\"), men der var ingen FM-stil oversigt over tilbud/byttehandler/lånetilbud du SKAL tage stilling til lige nu. Du måtte hoppe ind på Transfers-siden for at se om nogen ventede på dit svar. Det var sidste P0-slice fra pre-launch roadmap (S-05 Indbakke-unification)",
-          "Nyt tab \"Skal handles\" (mellem Mine og Ligaen) viser præcis de tilbud hvor DU er den part der skal beslutte: pending tilbud du har modtaget som sælger, modbud du har modtaget som køber, awaiting_confirmation hvor din bekræftelse mangler, og pending lånetilbud sendt til dit hold. Tab-knappen får en gul badge med antallet — så du kan se i ét blik om der er noget at handle på",
+          "Nyt tab \"Skal handles\" (mellem Mine og Ligaen) viser præcis de tilbud hvor DU er den part der skal beslutte: pending tilbud du har modtaget som sælger, modbud du har modtaget som køber, awaiting_confirmation hvor din bekræftelse mangler, og pending lånetilbud sendt til dit hold. Tab-knappen får en gul badge med antallet. Så du kan se i ét blik om der er noget at handle på",
           "Hvert item viser rytter, modpart, pris/cash-justering og hvilken handling der ventes (\"Acceptér / afvis tilbud\", \"Bekræft handel\", \"Svar på modbud\"). Klik fører til /transfers hvor du kan accept/reject/counter/confirm. Realtime-subscription på `transfer_offers`, `swap_offers` og `loan_agreements` opdaterer listen instant når en modpart eller du selv ændrer state",
-          "Auctions er IKKE inkluderet i \"Skal handles\" — at være current_bidder er ikke en stillestående beslutning (du KAN bidde højere men er ikke under tidskrav). Outbid-events kommer fortsat som notifikationer i \"Mine\". Backend: ny `inboxPending.js` lib + `GET /api/inbox/pending` (10/10 unit tests grønne for role-classification + aggregation + edge cases)",
-          "Drift-fix: `activity_feed`-tabellen har levet som runtime-only siden v2.x — nu committed til [schema.sql](database/schema.sql) + idempotent migration (`database/2026-05-04-activity-feed-schema-commit.sql`). Ingen data-migration; 467 historiske rows er bevaret intakt. Orphan side `ActivityFeedPage.jsx` slettet (allerede redirected til /notifications siden v2.x — selve filen ryddet op)",
+          "Auctions er IKKE inkluderet i \"Skal handles\". At være current_bidder er ikke en stillestående beslutning (du KAN bidde højere men er ikke under tidskrav). Outbid-events kommer fortsat som notifikationer i \"Mine\". Backend: ny `inboxPending.js` lib + `GET /api/inbox/pending` (10/10 unit tests grønne for role-classification + aggregation + edge cases)",
+          "Drift-fix: `activity_feed`-tabellen har levet som runtime-only siden v2.x. Nu committed til [schema.sql](database/schema.sql) + idempotent migration (`database/2026-05-04-activity-feed-schema-commit.sql`). Ingen data-migration; 467 historiske rows er bevaret intakt. Orphan side `ActivityFeedPage.jsx` slettet (allerede redirected til /notifications siden v2.x, selve filen ryddet op)",
         ],
       },
     ],
@@ -4226,12 +4240,12 @@ const PATCHES = [
       {
         category: "Trupstørrelse håndhæves automatisk ved vinduesluk (S-03)",
         items: [
-          "Hidtil har der ikke været en konsekvens for at gå i sæson med ulovlig trup. Squad-grænser (D1 20-30, D2 14-20, D3 8-10) er en dokumenteret invariant, men håndhævelse manglede helt — managers kunne starte sæsonen med fx 5 ryttere i D3 og bare scoor færre point. Det fjernede al deadline-day-pres og var sidste P0 i pre-launch roadmap der kunne lade en manager rage launch-balancen",
-          "Når et transfervindue lukker, fyrer cron én gang pr. lukket vindue (atomic claim på `transfer_windows.squad_enforcement_completed_at` — samme idempotency-mønster som Final Whistle-rapporten). Hvert human-team tjekkes mod sine division-grænser og auto-justeres: under min → cheapeste tilgængelige fri-/AI-rytter købes til 150% × market_value (nødlån oprettes hvis balancen ikke rækker); over max → seneste-erhvervede ejede rytter sælges tilbage til ai_team_id med fuld market_value som kredit",
+          "Hidtil har der ikke været en konsekvens for at gå i sæson med ulovlig trup. Squad-grænser (D1 20-30, D2 14-20, D3 8-10) er en dokumenteret invariant, men håndhævelse manglede helt. Managers kunne starte sæsonen med fx 5 ryttere i D3 og bare scoor færre point. Det fjernede al deadline-day-pres og var sidste P0 i pre-launch roadmap der kunne lade en manager rage launch-balancen",
+          "Når et transfervindue lukker, fyrer cron én gang pr. lukket vindue (atomic claim på `transfer_windows.squad_enforcement_completed_at`. Samme idempotency-mønster som Final Whistle-rapporten). Hvert human-team tjekkes mod sine division-grænser og auto-justeres: under min → cheapeste tilgængelige fri-/AI-rytter købes til 150% × market_value (nødlån oprettes hvis balancen ikke rækker); over max → seneste-erhvervede ejede rytter sælges tilbage til ai_team_id med fuld market_value som kredit",
           "Bøde + point-fradrag pr. afvigende rytter: 100.000 CZ$ + 200 point (begge retninger). Bøden bogføres som `squad_violation_fine` i finance_transactions; fradraget akkumuleres i en ny `season_standings.penalty_points`-kolonne der ikke overskrives af `updateStandings`-recompute fra race_results. Ranking i ranglisten bruger effektive points (`total_points − penalty_points`) så fradraget faktisk koster placering",
-          "Rangliste-UI viser nu fradraget eksplicit: \"1.500 (−200)\" med tooltip der forklarer både optjente og fradragne points. Ingen visuel støj for hold uden fradrag — notationen vises kun når penalty_points > 0",
+          "Rangliste-UI viser nu fradraget eksplicit: \"1.500 (−200)\" med tooltip der forklarer både optjente og fradragne points. Ingen visuel støj for hold uden fradrag. Notationen vises kun når penalty_points > 0",
           "Ny `riders.acquired_at`-kolonne sporer hvornår en rytter blev erhvervet, så over_max-salg går efter senest-tilkomne. Backfill brugte `created_at` som rimeligt udgangspunkt. Live-opdatering tilføjet til alle 6 write-paths: auktions-finalisering (vinder + bank-køb), direkte transfer, byttehandel (begge retninger + revert-path), lån-buyout, admin-override, samt window-open flush af pending-team-id",
-          "Migration: `database/2026-05-04-squad-enforcement.sql` — tilføjer `riders.acquired_at`, `transfer_windows.squad_enforcement_completed_at`, `season_standings.penalty_points`, plus tre finance-types (`auto_squad_purchase`, `auto_squad_sale`, `squad_violation_fine`) og notification-type `squad_enforced`. 7/7 unit tests grønne for `enforceTeamSquadCompliance` (within-limits no-op, auto-purchase med bøde, auto-sale med bøde, nødlån-fallback, AI-skip) + idempotency-test for cron-claim",
+          "Migration: `database/2026-05-04-squad-enforcement.sql`. Tilføjer `riders.acquired_at`, `transfer_windows.squad_enforcement_completed_at`, `season_standings.penalty_points`, plus tre finance-types (`auto_squad_purchase`, `auto_squad_sale`, `squad_violation_fine`) og notification-type `squad_enforced`. 7/7 unit tests grønne for `enforceTeamSquadCompliance` (within-limits no-op, auto-purchase med bøde, auto-sale med bøde, nødlån-fallback, AI-skip) + idempotency-test for cron-claim",
         ],
       },
     ],
@@ -4242,11 +4256,11 @@ const PATCHES = [
     label: "Beta",
     changes: [
       {
-        category: "Admin — Discord webhook-test viser nu konkret status pr. webhook (S-06)",
+        category: "Admin. Discord webhook-test viser nu konkret status pr. webhook (S-06)",
         items: [
-          "Test-knappen i Discord webhooks-sektionen viste tidligere kun en global toast (\"✅ Testbesked sendt\") uden at sige hvilken webhook der svarede hvad. Hvis testen fejlede, fik admin en generisk fejl-tekst og måtte gætte om det var URL'en, token'et eller netværket. Det gjorde smoke-verifikation upålidelig — man kunne ikke vide om en \"stille død\" webhook var i live eller ej",
+          "Test-knappen i Discord webhooks-sektionen viste tidligere kun en global toast (\"✅ Testbesked sendt\") uden at sige hvilken webhook der svarede hvad. Hvis testen fejlede, fik admin en generisk fejl-tekst og måtte gætte om det var URL'en, token'et eller netværket. Det gjorde smoke-verifikation upålidelig. Man kunne ikke vide om en \"stille død\" webhook var i live eller ej",
           "Resultatet vises nu inline pr. webhook-row med tidsstempel: \"✅ leveret (204) · 14:23:05\" ved succes, eller en konkret diagnose ved fejl: 404 → \"webhook ikke fundet (slettet på Discord?)\", 401/403 → \"adgang afvist (token revoket?)\", 429 → \"rate-limited\", 0 → netværksfejl med detail. Resten vises med rå Discord-status + fejl-tekst (op til 80 tegn)",
-          "Backend `sendTestEmbed` returnerer nu `{ ok, status, error }` i stedet for at kaste — så routen kan returnere struktureret data og frontend kan vise konkret diagnose. Loading-state nøgles på webhook-id i stedet for URL (mere stabilt hvis URL'en redigeres). Ingen schema-ændring; ingen invariant ændret",
+          "Backend `sendTestEmbed` returnerer nu `{ ok, status, error }` i stedet for at kaste. Så routen kan returnere struktureret data og frontend kan vise konkret diagnose. Loading-state nøgles på webhook-id i stedet for URL (mere stabilt hvis URL'en redigeres). Ingen schema-ændring; ingen invariant ændret",
           "Smoke-værktøjet er hermed launch-klar (S-06 P0 lukket): admin klikker Test pr. webhook → ser status med det samme → fixer eventuelle 404/401-cases ved at opdatere URL'en. Health-check cron er flyttet til P1 \"Drift-monitor\" hvor den hører hjemme",
         ],
       },
@@ -4258,11 +4272,11 @@ const PATCHES = [
     label: "Beta",
     changes: [
       {
-        category: "UCI-sync fanger nu compound surnames — ingen flere Tobias Lund Andresen-fejl",
+        category: "UCI-sync fanger nu compound surnames. Ingen flere Tobias Lund Andresen-fejl",
         items: [
-          "Mandags-cron'en (uci_scraper.py) downgradede 14 ryttere til 5 UCI-points pga. name-mismatch — bl.a. Tobias Lund Andresen (skulle være 2.514), Tobias Halland Johannessen (2.393) og Sakarias Koller Løland (319). Root cause: scraperen matchede DB-navne mod UCI-CSV som rene strings, så DB-rytteren \"Tobias\" + \"Lund Andresen\" matchede ikke UCI-formatet \"ANDRESEN Tobias Lund\" pga. ordrækkefølgen, og blev derfor sat til fallback-værdien 5",
+          "Mandags-cron'en (uci_scraper.py) downgradede 14 ryttere til 5 UCI-points pga. name-mismatch, bl.a. Tobias Lund Andresen (skulle være 2.514), Tobias Halland Johannessen (2.393) og Sakarias Koller Løland (319). Root cause: scraperen matchede DB-navne mod UCI-CSV som rene strings, så DB-rytteren \"Tobias\" + \"Lund Andresen\" matchede ikke UCI-formatet \"ANDRESEN Tobias Lund\" pga. ordrækkefølgen, og blev derfor sat til fallback-værdien 5",
           "Match-logikken er omskrevet til **token-set-baseret**: \"Tobias\" + \"Lund Andresen\" og \"ANDRESEN Tobias Lund\" har samme tokens {ANDRESEN, LUND, TOBIAS} og matches nu uafhængigt af ordrækkefølge. Subset-matching håndterer også middle names der findes på den ene side men ikke den anden (\"HONORÉ Mikkel Frølich\" ↔ \"Mikkel Honoré\")",
-          "Normalisering håndterer nu **æ/ø/å eksplicit** (æ→ae, ø→oe, å→aa) — tidligere blev de fjernet helt af ASCII-strip, så \"Mørkøv\" blev til \"MRKV\". Bindestreger, apostroffer og punktummer normaliseres også til mellemrum (\"Lund-Andresen\" og \"O'Connor\" tokeniseres ens på begge sider)",
+          "Normalisering håndterer nu **æ/ø/å eksplicit** (æ→ae, ø→oe, å→aa). Tidligere blev de fjernet helt af ASCII-strip, så \"Mørkøv\" blev til \"MRKV\". Bindestreger, apostroffer og punktummer normaliseres også til mellemrum (\"Lund-Andresen\" og \"O'Connor\" tokeniseres ens på begge sider)",
           "**Safety-gate** tilføjet: ryttere med popularity ≥ 70 ELLER nuværende uci_points ≥ 100 vil aldrig blive auto-downgraded til 5 igen pga. matching-fejl. Hvis matching slår fejl for en sådan rytter, bevares den nuværende værdi og der logges en warning til admin",
           "Backend's manuelle sync-knap (sheetsSync.js) er opdateret med præcis samme normaliseringslogik som mandags-cron'en, så de to paths ikke kan drive fra hinanden. Migration: `database/2026-05-04-fix-uci-points-token-mismatch.sql` (anvendt). 21/21 unit tests passerer for normalize/match/safety-gate",
         ],
@@ -4275,11 +4289,11 @@ const PATCHES = [
     label: "Beta",
     changes: [
       {
-        category: "Admin — annullér aktive auktioner med ét klik",
+        category: "Admin. Annullér aktive auktioner med ét klik",
         items: [
           "Live-drift har manglet et undo-værktøj: hvis en auktion blev oprettet ved fejl eller med forkert pris, var den eneste vej ud direkte DB-manipulation. Det har holdt admin-drift afhængig af manuelle SQL-kald og var en launch-blocker (S-04 i pre-launch roadmap)",
           "Ny `Aktive auktioner`-sektion i Admin-panelet lister alle aktive og forlængede auktioner med rytter, sælger, pris, antal unikke budgivere og sluttidspunkt. Per-auktion `Annullér`-knap åbner confirm-modal, kører backend-cancel og opdaterer listen",
-          "Backend: nyt `auctionCancellation.js`-modul kører atomar status-transition `active|extended → cancelled` (race-safe mod parallel cron-finalizer — hvis finalizer vinder, returneres 409). Bud frigives automatisk fordi balance-reservation beregnes ved query-time fra aktive auktioner — der er ingen fysisk balance at refundere",
+          "Backend: nyt `auctionCancellation.js`-modul kører atomar status-transition `active|extended → cancelled` (race-safe mod parallel cron-finalizer, hvis finalizer vinder, returneres 409). Bud frigives automatisk fordi balance-reservation beregnes ved query-time fra aktive auktioner. Der er ingen fysisk balance at refundere",
           "Notifikationer: ny `auction_cancelled`-type sendes til alle unikke budgivere + sælger (hvis ikke allerede budgivet). Inbox + Discord DM dækker begge kanaler. Admin-handling logges i `admin_log` med rytter-id, bidder-count og auktions-pris",
           "Migration: `auctions.cancelled_at` + `auctions.cancelled_by_user_id` tilføjet til audit-spor. `'cancelled'` var allerede gyldig status i CHECK-constraint",
         ],
@@ -4292,10 +4306,10 @@ const PATCHES = [
     label: "Beta",
     changes: [
       {
-        category: "Økonomi — rytter-løn beregnes nu udelukkende af databasen",
+        category: "Økonomi. Rytter-løn beregnes nu udelukkende af databasen",
         items: [
-          "Indtil nu havde to forskellige kode-paths hver sin løn-formel: økonomi-cron og sæson-end skrev 10% af markedsværdien (canonical), mens auktioner, transfers og lån-buyouts skrev 15% (afvigende). Den samme rytter kunne derfor have løn 80.000 mandag (efter cron) og 120.000 onsdag (efter en transfer) — og tilbage til 80.000 næste mandag. Det forvirrede økonomi-rapporter og gjorde sponsor-budgetter upålidelige",
-          "Fix: `riders.salary` er nu en GENERATED STORED column i Postgres med formlen `max(1, round((max(5, uci_points) * 4000 + prize_earnings_bonus) * 0.10))`. Ingen application-path kan længere skrive direkte til kolonnen — DB beregner den automatisk når `uci_points` eller `prize_earnings_bonus` opdateres",
+          "Indtil nu havde to forskellige kode-paths hver sin løn-formel: økonomi-cron og sæson-end skrev 10% af markedsværdien (canonical), mens auktioner, transfers og lån-buyouts skrev 15% (afvigende). Den samme rytter kunne derfor have løn 80.000 mandag (efter cron) og 120.000 onsdag (efter en transfer). Og tilbage til 80.000 næste mandag. Det forvirrede økonomi-rapporter og gjorde sponsor-budgetter upålidelige",
+          "Fix: `riders.salary` er nu en GENERATED STORED column i Postgres med formlen `max(1, round((max(5, uci_points) * 4000 + prize_earnings_bonus) * 0.10))`. Ingen application-path kan længere skrive direkte til kolonnen. DB beregner den automatisk når `uci_points` eller `prize_earnings_bonus` opdateres",
           "5 write-paths fjernet: `auctionFinalization.js` (vinder-tildeling + bank-salg), `transferExecution.js` (transfer-confirm), `routes/api.js` (lån-buyout), `economyEngine.js` (UCI-cron) og `scripts/import_riders.py`. Funktionerne `calculateMarketSalary` og `calculateAuctionSalary` er slettet (15%-formel forsvinder helt fra kodebasen)",
           "Migration kører som en del af release: `database/2026-05-04-salary-generated-column.sql` drop+add'er kolonnen, og DB udfylder alle 8.699 ryttere med korrekt 10%-værdi øjeblikkeligt. Fra dette punkt kan rytter-løn IKKE komme ud af sync med uci_points",
         ],
@@ -4308,11 +4322,11 @@ const PATCHES = [
     label: "Beta",
     changes: [
       {
-        category: "Tech debt — lint-baseline ryddet",
+        category: "Tech debt. Lint-baseline ryddet",
         items: [
           "Frontend lint stod på 0 errors / 41 warnings i flere måneder, hvor ~24 af dem var ren død kode (ubrugte imports, dead state, dead funktioner) efterladt fra refactors. Hver ship-rapport måtte verificere \"samme baseline\" i stedet for \"0/0\", hvilket gjorde det svært at opdage hvis en ny warning sneg sig ind",
           "Ryddet alle 24 unused-vars warnings: fjernet dead `ProfileRedirect` (App), `FormBadge` (Standings), `formatSignalDelta` (Board), gammel `prizes`-state + `savePrize` + `prizeGroups` + `prize_tables`-load (Admin), `myStanding`/`isNewUser` (Dashboard), `myUserId`/`myTeamId` (HallOfFame), `uploadedRows` duplikat-state (Races) og 10 andre dead identifiers",
-          "Baseline er nu 0 errors / 17 warnings — alle resterende er bevidste `react-hooks/exhaustive-deps` på load-once mønstre der ville kræve case-by-case analyse for at \"fixe\" sikkert. Build uændret (8.46s)",
+          "Baseline er nu 0 errors / 17 warnings. Alle resterende er bevidste `react-hooks/exhaustive-deps` på load-once mønstre der ville kræve case-by-case analyse for at \"fixe\" sikkert. Build uændret (8.46s)",
         ],
       },
     ],
@@ -4323,12 +4337,12 @@ const PATCHES = [
     label: "Beta",
     changes: [
       {
-        category: "Admin — Forhåndsvisning før import af løbsresultater",
+        category: "Admin. Forhåndsvisning før import af løbsresultater",
         items: [
-          "Sheets-import havde indtil nu ingen synlig matchrapport: når admin trykkede `Importer`, blev resultater committet med det samme — uden at vise hvilke ryttere/hold der matchede, hvilke der blev droppet, eller hvilke løb der ikke fandtes i DB. Det førte til Sæson 6-fejlen hvor forkerte sæsondata blev indlæst og måtte rulles tilbage manuelt",
+          "Sheets-import havde indtil nu ingen synlig matchrapport: når admin trykkede `Importer`, blev resultater committet med det samme. Uden at vise hvilke ryttere/hold der matchede, hvilke der blev droppet, eller hvilke løb der ikke fandtes i DB. Det førte til Sæson 6-fejlen hvor forkerte sæsondata blev indlæst og måtte rulles tilbage manuelt",
           "Ny flow: `Forhåndsvis`-knap kalder backend i dry-run mode (ingen DB writes) og viser per-løb tabel med: sæson-nummer, sheet-navn vs. DB-navn, antal rækker, matched/unmatched ryttere (✓/⚠), matched/unmatched hold, total points der ville blive tildelt. Hover over ⚠-tal viser de konkrete navne der ikke kunne resolves",
           "`Bekræft import`-knap (grøn) kører den rigtige import; `Annullér` rydder forhåndsvisningen. Skipped løb (race-navne uden DB-match) vises som separat advarsel øverst i preview",
-          "Backend: `POST /api/admin/import-results-sheets` accepterer nu `dry_run: true` i body. Dry-run springer alle DB-writes over (`race_results.delete/insert`, `races.update`, `import_log.insert`, standings-recompute) og returnerer kun `preview`-array. Singular execution path bevares — kun ét nyt parameter, ingen ny endpoint",
+          "Backend: `POST /api/admin/import-results-sheets` accepterer nu `dry_run: true` i body. Dry-run springer alle DB-writes over (`race_results.delete/insert`, `races.update`, `import_log.insert`, standings-recompute) og returnerer kun `preview`-array. Singular execution path bevares. Kun ét nyt parameter, ingen ny endpoint",
         ],
       },
     ],
@@ -4339,9 +4353,9 @@ const PATCHES = [
     label: "Beta",
     changes: [
       {
-        category: "Sæson-snapshot — tomme vinder-kort er nu ikke-klikbare",
+        category: "Sæson-snapshot. Tomme vinder-kort er nu ikke-klikbare",
         items: [
-          "Da Sæson 1 stadig er igangværende uden afsluttede løb, viser de 4 vinder-kort på `/seasons/:seasonId` tom-state (\"Ingen præmier endnu\" / \"Ingen transfers\" / \"Ingen handler\" / \"Ingen etaper kørt\"). Kortene rendrede dog stadig som klikbare buttons med hover-ring — klik gjorde dog intet, hvilket var forvirrende",
+          "Da Sæson 1 stadig er igangværende uden afsluttede løb, viser de 4 vinder-kort på `/seasons/:seasonId` tom-state (\"Ingen præmier endnu\" / \"Ingen transfers\" / \"Ingen handler\" / \"Ingen etaper kørt\"). Kortene rendrede dog stadig som klikbare buttons med hover-ring. Klik gjorde dog intet, hvilket var forvirrende",
           "Fix: tomme vinder-kort har nu `cursor: default`, ingen hover-effekt og er `disabled`. Når data dukker op (efter første løb afsluttes), bliver kortene automatisk klikbare igen og linker til hold-/rytter-profil",
         ],
       },
@@ -4353,13 +4367,13 @@ const PATCHES = [
     label: "Beta",
     changes: [
       {
-        category: "Sæson-snapshot — én side svarer på \"Hvad skete der i sæson N?\"",
+        category: "Sæson-snapshot. én side svarer på \"Hvad skete der i sæson N?\"",
         items: [
-          "Ny deelbar URL `/seasons/:seasonId` samler kalender, slutstilling og sæsonens vindere på ét skærmbillede. Eksisterende `SeasonEndPage` udvidet (ikke ny side) — bevarer slutstilling pr. division, op/ned-rykning og pointudviklings-charts uændret",
-          "Nyt: 4 vinder-kort øverst — 💰 Præmie-leader (mest CZ$ tjent fra løb), 💸 Største enkelt-transfer (køb/salg), 🔄 Mest aktive transfer-marked-hold, 🚴 Stage-king (flest etapesejre). Klikbare → hold-/rytter-profil",
+          "Ny deelbar URL `/seasons/:seasonId` samler kalender, slutstilling og sæsonens vindere på ét skærmbillede. Eksisterende `SeasonEndPage` udvidet (ikke ny side). Bevarer slutstilling pr. division, op/ned-rykning og pointudviklings-charts uændret",
+          "Nyt: 4 vinder-kort øverst. 💰 Præmie-leader (mest CZ$ tjent fra løb), 💸 Største enkelt-transfer (køb/salg), 🔄 Mest aktive transfer-marked-hold, 🚴 Stage-king (flest etapesejre). Klikbare → hold-/rytter-profil",
           "Nyt: Kalender-sektion lister alle løb i sæsonen med dato, type, præmiepulje og status (afsluttet/igang/kommende). Klik åbner løbets historikside",
           "Sidebar: `Resultater → Sæsonresultater` omdøbt til `Sæson-snapshot` og peger nu på `/seasons` (auto-vælger aktiv eller seneste). Den gamle URL `/season-end` redirecter automatisk",
-          "Bibliotek-tab: `Sæson N`-cellen er nu en klikbar genvej til snapshot-siden — drill-down fra et konkret løb til \"hvilken sæson-kontekst spillede dette i?\"",
+          "Bibliotek-tab: `Sæson N`-cellen er nu en klikbar genvej til snapshot-siden. Drill-down fra et konkret løb til \"hvilken sæson-kontekst spillede dette i?\"",
           "Dropdown-skift opdaterer URL så snapshottet kan deles via link, og siden er forudsigelig deeplinkbar",
         ],
       },
@@ -4371,12 +4385,12 @@ const PATCHES = [
     label: "Beta",
     changes: [
       {
-        category: "Løb — Konsolideret hub med Bibliotek og Point & præmier",
+        category: "Løb. Konsolideret hub med Bibliotek og Point & præmier",
         items: [
           "Tre overlappende race-sider (`/races`, `/race-archive`, `/race-points`) er konsolideret til ét hub `/races` med tabs: Kalender · Bibliotek · Point & præmier",
           "Nyt: Bibliotek-tab viser alle løb på tværs af alle sæsoner med filtre (sæson, klasse, status, fritekst-søgning). Klik på en række åbner løbets historikside med tidligere udgaver og top-ryttere",
           "Nyt: Point & præmier-tab samler præmieformlen (1 UCI-point = 1.500 CZ$) og fulde pointtabeller for alle 9 løbsklasser direkte i hubben",
-          "IA: Sidebaren viser nu kun ét race-link — `Liga → Løb`. `Resultater → Løbsarkiv` er fjernet (den gamle URL `/race-archive` redirecter til Bibliotek-tabben). `Resultater`-overbliksiden linker direkte til de relevante tabs",
+          "IA: Sidebaren viser nu kun ét race-link, `Liga → Løb`. `Resultater → Løbsarkiv` er fjernet (den gamle URL `/race-archive` redirecter til Bibliotek-tabben). `Resultater`-overbliksiden linker direkte til de relevante tabs",
           "Backend: ny `GET /api/races?season=&class=&q=&status=` for programmatisk adgang (auth-required, returnerer race-rows + season-relation)",
         ],
       },
@@ -4388,12 +4402,12 @@ const PATCHES = [
     label: "Beta",
     changes: [
       {
-        category: "Under motorhjelmen — Subtile alert-tints og hover-effekter virker nu på tværs af appen",
+        category: "Under motorhjelmen. Subtile alert-tints og hover-effekter virker nu på tværs af appen",
         items: [
-          "Alert-cards på Notifikationer, Bestyrelse, Admin, Marked, Auktioner, Transfers m.fl. brugte gennemsigtige farve-varianter (fx 8% rød tint på outbid-alerts, 30% grøn hover på dashboard-knapper) der silently rendrede transparent pga. en pre-eks. opacity-bug i color-tokens — Tailwinds `/N`-syntax virker ikke med plain `var()` farver, og 3 opacity-trin (3%, 8%, 12%) brugt 30+ steder var slet ikke defineret",
+          "Alert-cards på Notifikationer, Bestyrelse, Admin, Marked, Auktioner, Transfers m.fl. brugte gennemsigtige farve-varianter (fx 8% rød tint på outbid-alerts, 30% grøn hover på dashboard-knapper) der silently rendrede transparent pga. en pre-eks. opacity-bug i color-tokens. Tailwinds `/N`-syntax virker ikke med plain `var()` farver, og 3 opacity-trin (3%, 8%, 12%) brugt 30+ steder var slet ikke defineret",
           "Fix: alle status-farver (`cz-success`, `cz-danger`, `cz-warning`, `cz-info`, deres `-bg0` aliases samt `cz-accent`/`cz-accent-t`) konverteret til channel-format med `<alpha-value>` placeholder, og opacity-trin 3/8/12 tilføjet til Tailwind theme",
-          "Verificeret runtime via Claude Preview: 35 opacity-klasser tester nu korrekt — fx `bg-cz-info-bg0/20` = `rgba(29, 78, 216, 0.2)` (var transparent før). Dark mode `cz-*-bg` (uden -0) bevarer sin bevidste rgba 12% tint urørt",
-          "Visuel impact: subtile bg-tints på alert-cards, hover-feedback på CTA-knapper, status-baggrunde og badge-chips er nu synlige som designet — ikke kritisk regression, men polish",
+          "Verificeret runtime via Claude Preview: 35 opacity-klasser tester nu korrekt. Fx `bg-cz-info-bg0/20` = `rgba(29, 78, 216, 0.2)` (var transparent før). Dark mode `cz-*-bg` (uden -0) bevarer sin bevidste rgba 12% tint urørt",
+          "Visuel impact: subtile bg-tints på alert-cards, hover-feedback på CTA-knapper, status-baggrunde og badge-chips er nu synlige som designet. Ikke kritisk regression, men polish",
         ],
       },
     ],
@@ -4404,11 +4418,11 @@ const PATCHES = [
     label: "Beta",
     changes: [
       {
-        category: "Under motorhjelmen — Deadline Day banner-fase pressure-dot fix",
+        category: "Under motorhjelmen. Deadline Day banner-fase pressure-dot fix",
         items: [
-          "Banneret øverst i siden under Deadline Day havde en bug i 'pressure'-fasen (sidste timer): den røde indikator-prik var transparent fordi en CSS-token (`cz-danger-bg0`) brugt 20+ steder ikke var defineret i tailwind config — silently dropped",
+          "Banneret øverst i siden under Deadline Day havde en bug i 'pressure'-fasen (sidste timer): den røde indikator-prik var transparent fordi en CSS-token (`cz-danger-bg0`) brugt 20+ steder ikke var defineret i tailwind config. Silently dropped",
           "Fix: tilføjet 4 aliases i `tailwind.config.js` for de 4 status-farve-varianter (`cz-{danger,success,warning,info}-bg0` → peger på base-farven). Lukker også samme typo på Notifikationer, Bestyrelse, Admin og flere andre alert-cards",
-          "Verificeret runtime via Claude Preview: pressure-dot er nu `rgb(185, 28, 28)` (rød) som forventet. Final Whistle Discord-embed format auto-testet mod Discord limits — alle felter inden for spec",
+          "Verificeret runtime via Claude Preview: pressure-dot er nu `rgb(185, 28, 28)` (rød) som forventet. Final Whistle Discord-embed format auto-testet mod Discord limits. Alle felter inden for spec",
         ],
       },
     ],
@@ -4419,11 +4433,11 @@ const PATCHES = [
     label: "Beta",
     changes: [
       {
-        category: "Onboarding v2 — tour-knap på empty-states + completion-celebration",
+        category: "Onboarding v2. Tour-knap på empty-states + completion-celebration",
         items: [
-          "Marked, Auktioner og Bestyrelse: empty-state-kortene har nu en 'Vis mig rundt'-knap — managers der lander direkte på siden via menuen får nu tour-tilbuddet uanset om de gik via Dashboard eller ej (før virkede tour kun via 'Vis mig hvordan' på kom-i-gang-kortet)",
-          "Dashboard: nyt celebration-kort vises engang når alle 4 grundtrin er gennemført — 'Du er klar' + tre quick-links til næste fase (Deadline Day, Bestyrelse, Hjælp & regler). Lukker post-onboarding-cliff'et hvor kortet før bare forsvandt",
-          "Eksisterende managers der har dismisset progress-kortet ser stadig completion-kortet første gang efter denne deploy — derefter er begge kort skjult permanent indtil localStorage ryddes",
+          "Marked, Auktioner og Bestyrelse: empty-state-kortene har nu en 'Vis mig rundt'-knap. Managers der lander direkte på siden via menuen får nu tour-tilbuddet uanset om de gik via Dashboard eller ej (før virkede tour kun via 'Vis mig hvordan' på kom-i-gang-kortet)",
+          "Dashboard: nyt celebration-kort vises engang når alle 4 grundtrin er gennemført. 'Du er klar' + tre quick-links til næste fase (Deadline Day, Bestyrelse, Hjælp & regler). Lukker post-onboarding-cliff'et hvor kortet før bare forsvandt",
+          "Eksisterende managers der har dismisset progress-kortet ser stadig completion-kortet første gang efter denne deploy. Derefter er begge kort skjult permanent indtil localStorage ryddes",
         ],
       },
     ],
@@ -4436,10 +4450,10 @@ const PATCHES = [
       {
         category: "Flag virker nu korrekt i alle browsere (også Chrome på Windows)",
         items: [
-          "Tidligere: flag blev rendret som Unicode-emoji — virker fint på macOS/iOS/Android og Firefox, men Chrome på Windows viste landekoder som tekst (DK, FR, ES) i stedet for flag, fordi Windows ikke har flag-emoji indbygget",
-          "Nu: ny <Flag>-komponent baseret på flag-icons (SVG-sprite) — viser rigtige flag på tværs af alle browsere og OS, scalerer crisp ved enhver størrelse, virker offline",
-          "22 callsites opdateret — Auktioner, Auktionshistorik, Transfers, Ryttere, Watchlist, Holdside, Hold-profil, Race-historik, Resultater, Rytterrangliste, Rytter-sammenligning, Rytter-stats, Head-to-Head, Bestyrelse",
-          "Land-filter dropdown viser nu kun landenavn (uden emoji-prefix) — chip-visning og rytter-detaljer viser SVG-flag",
+          "Tidligere: flag blev rendret som Unicode-emoji. Virker fint på macOS/iOS/Android og Firefox, men Chrome på Windows viste landekoder som tekst (DK, FR, ES) i stedet for flag, fordi Windows ikke har flag-emoji indbygget",
+          "Nu: ny <Flag>-komponent baseret på flag-icons (SVG-sprite). Viser rigtige flag på tværs af alle browsere og OS, scalerer crisp ved enhver størrelse, virker offline",
+          "22 callsites opdateret. Auktioner, Auktionshistorik, Transfers, Ryttere, Watchlist, Holdside, Hold-profil, Race-historik, Resultater, Rytterrangliste, Rytter-sammenligning, Rytter-stats, Head-to-Head, Bestyrelse",
+          "Land-filter dropdown viser nu kun landenavn (uden emoji-prefix). Chip-visning og rytter-detaljer viser SVG-flag",
         ],
       },
     ],
@@ -4452,8 +4466,8 @@ const PATCHES = [
       {
         category: "Fix: Korrekt sponsor- og løntiming i økonomi-explainer",
         items: [
-          "Økonomi-explainer på /finance sagde fejlagtigt at sponsor udbetales 'månedligt' og løn trækkes 'løbende' — runtime udbetaler i virkeligheden begge som engangsbeløb (sponsor ved sæsonstart, løn ved sæsonafslutning)",
-          "Hint-kort og tour-tekster opdateret så managers får et retvisende billede af hvornår pengene bevæger sig — hjælper til bedre planlægning af transferspidser og lånevalg",
+          "Økonomi-explainer på /finance sagde fejlagtigt at sponsor udbetales 'månedligt' og løn trækkes 'løbende'. Runtime udbetaler i virkeligheden begge som engangsbeløb (sponsor ved sæsonstart, løn ved sæsonafslutning)",
+          "Hint-kort og tour-tekster opdateret så managers får et retvisende billede af hvornår pengene bevæger sig. Hjælper til bedre planlægning af transferspidser og lånevalg",
         ],
       },
     ],
@@ -4464,11 +4478,11 @@ const PATCHES = [
     label: "Beta",
     changes: [
       {
-        category: "Onboarding v2 — økonomi-explainer på /finance",
+        category: "Onboarding v2. Økonomi-explainer på /finance",
         items: [
-          "Finanser: nyt explainer-kort ved første besøg forklarer de fire pengestrømme — sponsor (260K base × bestyrelses-modifier, link direkte til /board), løn (10% af rytterværdien pr. sæson), gældsloft pr. division (D1 1.200K · D2 900K · D3 600K), og forskellen på kort vs. langt lån",
+          "Finanser: nyt explainer-kort ved første besøg forklarer de fire pengestrømme. Sponsor (260K base × bestyrelses-modifier, link direkte til /board), løn (10% af rytterværdien pr. sæson), gældsloft pr. division (D1 1.200K · D2 900K · D3 600K), og forskellen på kort vs. langt lån",
           "'Vis mig rundt'-knap starter en kort tour med 3 peg-pil-tooltips: balance-kortet, gældsloft-indikatoren på Total gæld-kortet, og transaktionshistorikken hvor sponsor og løn løbende tikker ind",
-          "Hint kan skjules permanent med × eller 'Spring over' — efter første dismiss vises explaineren ikke igen (gemt lokalt i din browser)",
+          "Hint kan skjules permanent med × eller 'Spring over'. Efter første dismiss vises explaineren ikke igen (gemt lokalt i din browser)",
         ],
       },
     ],
@@ -4479,12 +4493,12 @@ const PATCHES = [
     label: "Beta",
     changes: [
       {
-        category: "Onboarding v2 — bestyrelse-explainer",
+        category: "Onboarding v2. Bestyrelse-explainer",
         items: [
-          "Bestyrelse: nyt explainer-kort øverst på /board for managers uden plan — forklarer kort hvad bestyrelsen er, hvordan 1yr/3yr/5yr-strukturen virker, og hvilke KPI'er de vurderer på (resultater, økonomi, identitet, rangering)",
+          "Bestyrelse: nyt explainer-kort øverst på /board for managers uden plan. Forklarer kort hvad bestyrelsen er, hvordan 1yr/3yr/5yr-strukturen virker, og hvilke KPI'er de vurderer på (resultater, økonomi, identitet, rangering)",
           "Tilfredshed → sponsor-modifier-tabellen vises i empty-state så du forstår hvordan din indsats slår igennem på indkomsten allerede inden første forhandling",
-          "CTA 'Forhandl din første plan med bestyrelsen' åbner wizardens 5-årsplan-trin — og første gangs setup tvinger ikke længere wizarden op før du har set explaineren",
-          "Kom-i-gang-kortets 'Vis mig hvordan' fungerer nu også på det fjerde trin (vælg bestyrelsesplan) — touren peger på de tre planer, sponsor-modifier og KPI-listen",
+          "CTA 'Forhandl din første plan med bestyrelsen' åbner wizardens 5-årsplan-trin. Og første gangs setup tvinger ikke længere wizarden op før du har set explaineren",
+          "Kom-i-gang-kortets 'Vis mig hvordan' fungerer nu også på det fjerde trin (vælg bestyrelsesplan). Touren peger på de tre planer, sponsor-modifier og KPI-listen",
         ],
       },
     ],
@@ -4495,10 +4509,10 @@ const PATCHES = [
     label: "Beta",
     changes: [
       {
-        category: "Under motorhjelmen — Deadline Day Flash Auction sikret mod fresh-setup-fejl",
+        category: "Under motorhjelmen. Deadline Day Flash Auction sikret mod fresh-setup-fejl",
         items: [
-          "Database-opsætningen har manglet kolonnen som markerer en auktion som 'Flash Auction' (de 30-min-auktioner der kun kan startes under aktivt Deadline Day) — den var tilføjet manuelt i live-databasen, men ikke i de scripts der bruges når serveren sættes op fra bunden",
-          "Tilføjet både som ny migration og direkte i schema-filer, plus en automatisk test der fanger det hvis kolonnen forsvinder igen — ingen synlig ændring for dig som manager, men fjerner risikoen for at Flash Auctions fejler hvis databasen genopsættes",
+          "Database-opsætningen har manglet kolonnen som markerer en auktion som 'Flash Auction' (de 30-min-auktioner der kun kan startes under aktivt Deadline Day). Den var tilføjet manuelt i live-databasen, men ikke i de scripts der bruges når serveren sættes op fra bunden",
+          "Tilføjet både som ny migration og direkte i schema-filer, plus en automatisk test der fanger det hvis kolonnen forsvinder igen. Ingen synlig ændring for dig som manager, men fjerner risikoen for at Flash Auctions fejler hvis databasen genopsættes",
         ],
       },
     ],
@@ -4509,12 +4523,12 @@ const PATCHES = [
     label: "Beta",
     changes: [
       {
-        category: "Onboarding v2 — guided squad-builder",
+        category: "Onboarding v2. Guided squad-builder",
         items: [
-          "Marked: nyt empty-state-kort øverst på rytter-listen for managers uden ryttere — forklarer filtre, viser balance + division-minimum, og knappen 'Find din første rytter' filtrerer automatisk listen til ryttere du har råd til",
-          "Auktioner: engangs-banner forklarer +10%-overbud-reglen og 10-min auto-forlængelse første gang du besøger siden uden at have afgivet bud — kan skjules permanent med ×",
+          "Marked: nyt empty-state-kort øverst på rytter-listen for managers uden ryttere. Forklarer filtre, viser balance + division-minimum, og knappen 'Find din første rytter' filtrerer automatisk listen til ryttere du har råd til",
+          "Auktioner: engangs-banner forklarer +10%-overbud-reglen og 10-min auto-forlængelse første gang du besøger siden uden at have afgivet bud. Kan skjules permanent med ×",
           "Kom-i-gang-kortet på Dashboard har nu en 'Vis mig hvordan'-knap der starter en kort tour med 2-3 peg-pil-tooltips på næste-trin-siden (Marked eller Auktioner)",
-          "Touren peger på filtrene, rytter-listen og ønskelisten på Marked — og på bud-feltet og tid-tilbage-kolonnen på Auktioner — med 'Næste'/'Spring over' kontrol og automatisk scroll-til-element",
+          "Touren peger på filtrene, rytter-listen og ønskelisten på Marked (og på bud-feltet og tid-tilbage-kolonnen på Auktioner) med 'Næste'/'Spring over' kontrol og automatisk scroll-til-element",
         ],
       },
     ],
@@ -4525,12 +4539,12 @@ const PATCHES = [
     label: "Beta",
     changes: [
       {
-        category: "Onboarding v2 — kom-i-gang-kort på Dashboard",
+        category: "Onboarding v2. Kom-i-gang-kort på Dashboard",
         items: [
           "Nyt fremskridt-kort på Dashboard viser fire trin du har gennemført (eller mangler at gennemføre) for at få en god start: navngiv hold + manager, køb din første rytter, afgiv dit første bud og vælg en bestyrelsesplan",
           "Næste trin fremhæves med et direkte CTA-link så du ikke skal gætte hvor du skal hen",
-          "Kortet kan skjules permanent med × — og forsvinder automatisk når alle fire trin er ✓",
-          "Eksisterende managers ser kun de trin der ikke allerede er gennemført — har du fx alle tre indstillinger på plads, vises kortet slet ikke",
+          "Kortet kan skjules permanent med ×. Og forsvinder automatisk når alle fire trin er ✓",
+          "Eksisterende managers ser kun de trin der ikke allerede er gennemført. Har du fx alle tre indstillinger på plads, vises kortet slet ikke",
         ],
       },
     ],
@@ -4541,13 +4555,13 @@ const PATCHES = [
     label: "Beta",
     changes: [
       {
-        category: "Kodekvalitet — react-rules på alle .jsx",
+        category: "Kodekvalitet. React-rules på alle .jsx",
         items: [
-          "ESLint react-regelsæt løftet fra .js-only til .{js,jsx} efter saneringspass af 71 pre-eksisterende issues — nye .jsx-filer fanger nu fejl ved samme niveau som .js",
-          "Layout: NavItem og SidebarContent flyttet ud som top-level komponenter (rettede react-hooks/static-components — undgår at remounte sidebaren ved hver render)",
-          "ConfettiModal: konfetti-partiklers borderRadius låst ved mount (rettede react-hooks/purity — Math.random kunne ellers ændre form ved hver render)",
+          "ESLint react-regelsæt løftet fra .js-only til .{js,jsx} efter saneringspass af 71 pre-eksisterende issues. Nye .jsx-filer fanger nu fejl ved samme niveau som .js",
+          "Layout: NavItem og SidebarContent flyttet ud som top-level komponenter (rettede react-hooks/static-components. Undgår at remounte sidebaren ved hver render)",
+          "ConfettiModal: konfetti-partiklers borderRadius låst ved mount (rettede react-hooks/purity. Math.random kunne ellers ændre form ved hver render)",
           "BoardPage: ubrugt initial-værdi til nextNegotiationOptions fjernet",
-          "22 sider: useEffect-blokke flyttet ned under deres data-loader-funktioner (rettede react-hooks/immutability — eliminerer reference-mismatch hvor effect kaldte funktion før den var declared)",
+          "22 sider: useEffect-blokke flyttet ned under deres data-loader-funktioner (rettede react-hooks/immutability. Eliminerer reference-mismatch hvor effect kaldte funktion før den var declared)",
           "JSX-tekst med citationstegn escapet til &quot;/&apos; på 6 sider (rettede react/no-unescaped-entities)",
           "8 tomme catch-blokke fået kort begrundelse i stedet for at være helt tomme",
         ],
@@ -4560,9 +4574,9 @@ const PATCHES = [
     label: "Beta",
     changes: [
       {
-        category: "Tema — beskyttelse mod lyst-tema bugs",
+        category: "Tema. Beskyttelse mod lyst-tema bugs",
         items: [
-          "Lint-guard udvidet så hardcoded dark-only tekst- og kant-farver (text-white/N og border-white/N opacity-classes) ikke længere kan slippe gennem til prod — hullet der gjorde Panic Board ulæselig i lyst tema er nu lukket på rule-level",
+          "Lint-guard udvidet så hardcoded dark-only tekst- og kant-farver (text-white/N og border-white/N opacity-classes) ikke længere kan slippe gennem til prod. Hullet der gjorde Panic Board ulæselig i lyst tema er nu lukket på rule-level",
           "Sidste tilbageværende dark-only opacity-class (TEST-label på Deadline Day banner ved override) ryddet samtidig",
         ],
       },
@@ -4574,10 +4588,10 @@ const PATCHES = [
     label: "Beta",
     changes: [
       {
-        category: "Panic Board — synlighed og læsbarhed",
+        category: "Panic Board. Synlighed og læsbarhed",
         items: [
           "Panic Board ligger nu i venstremenuen under Marked → så du kan finde den uden at gætte URL'en",
-          "Siden er gjort læsbar i lyst tema — al tekst, kanter og status-farver bruger nu temasystemet i stedet for hardcodede dark-mode farver",
+          "Siden er gjort læsbar i lyst tema. Al tekst, kanter og status-farver bruger nu temasystemet i stedet for hardcodede dark-mode farver",
         ],
       },
     ],
@@ -4588,7 +4602,7 @@ const PATCHES = [
     label: "Beta",
     changes: [
       {
-        category: "Tema — finpudsning",
+        category: "Tema. Finpudsning",
         items: [
           "Potentiale-stjerner og rytter-statistik viser nu korrekt dæmpet tekst i begge temaer (PotentialeStars og statBg-fallback brugte tidligere en hardcoded grå der ikke fulgte temaet)",
         ],
@@ -4601,9 +4615,9 @@ const PATCHES = [
     label: "Beta",
     changes: [
       {
-        category: "Discord — privatliv",
+        category: "Discord. Privatliv",
         items: [
-          "Privat info bliver privat. Overbud, vundne auktioner, modtagne transfertilbud og svar på dine egne tilbud sendes nu kun som DM — ikke længere som @mention i den fælles kanal hvor alle kan læse med",
+          "Privat info bliver privat. Overbud, vundne auktioner, modtagne transfertilbud og svar på dine egne tilbud sendes nu kun som DM. Ikke længere som @mention i den fælles kanal hvor alle kan læse med",
           "Den offentlige kanal viser fortsat broadcasts (nye auktioner, gennemførte handler, byttehandler, sæson-events) men ingen person-rettet info",
         ],
       },
@@ -4617,7 +4631,7 @@ const PATCHES = [
       {
         category: "Tema",
         items: [
-          "Dark mode S2 — alle resterende sider og komponenter er nu fuldt tokeniseret. Transfers, Standings, Board, Notifikationer, Watchlist, Hall of Fame, Løb, Admin, Rytterstatistik og alle øvrige sider understøtter nu mørkt tema korrekt",
+          "Dark mode S2. Alle resterende sider og komponenter er nu fuldt tokeniseret. Transfers, Standings, Board, Notifikationer, Watchlist, Hall of Fame, Løb, Admin, Rytterstatistik og alle øvrige sider understøtter nu mørkt tema korrekt",
           "Komponenter opdateret: ConfettiModal, DeadlineDayBanner, DeadlineDayTicker, OnboardingModal, RiderDevelopmentTab, RiderFilters og SetupWizardModal",
         ],
       },
@@ -4631,9 +4645,9 @@ const PATCHES = [
       {
         category: "Discord",
         items: [
-          "Discord DM — push til hvor du allerede er. Når en bot er konfigureret på serveren, modtager du direkte beskeder ved overbud, vundne auktioner og transfer-tilbud/-svar",
+          "Discord DM. Push til hvor du allerede er. Når en bot er konfigureret på serveren, modtager du direkte beskeder ved overbud, vundne auktioner og transfer-tilbud/-svar",
           "Tilføj dit Discord bruger-ID under Profil → Discord Integration. Status-badge viser om DMs virker, og du kan sende en test-DM",
-          "Opt-out: slå DM'er fra hvis du foretrækker kun @mention i kanalen — du kan altid skifte tilbage",
+          "Opt-out: slå DM'er fra hvis du foretrækker kun @mention i kanalen. Du kan altid skifte tilbage",
           "Dashboard-nudge til managers uden Discord-ID (kan dismisses med ×)",
         ],
       },
@@ -4647,9 +4661,9 @@ const PATCHES = [
       {
         category: "Tema",
         items: [
-          "Dark mode — nyt mørkt tema kan nu vælges under Profil & Indstillinger → Udseende",
+          "Dark mode. Nyt mørkt tema kan nu vælges under Profil & Indstillinger → Udseende",
           "Tre valgmuligheder: 'Følg system' (auto), 'Lyst', 'Mørkt'. Standard er 'Følg system'",
-          "Sidebaren forbliver mørk i begge temaer for visuel konsistens. Dashboard, Mit Hold, Auktioner, Ryttere, Finanser, Login og Profil er fuldt understøttet — øvrige sider tokeniseres løbende",
+          "Sidebaren forbliver mørk i begge temaer for visuel konsistens. Dashboard, Mit Hold, Auktioner, Ryttere, Finanser, Login og Profil er fuldt understøttet. Øvrige sider tokeniseres løbende",
         ],
       },
     ],
@@ -4662,8 +4676,8 @@ const PATCHES = [
       {
         category: "Deadline Day",
         items: [
-          "Planlagte advarsler — alle aktive managers får en notifikation 24 timer, 2 timer og 30 minutter før transfervinduet lukker",
-          "Final Whistle-rapport — automatisk Discord-opsummering ved vinduesluk: største handel, mest aktive manager, antal panikhandler",
+          "Planlagte advarsler. Alle aktive managers får en notifikation 24 timer, 2 timer og 30 minutter før transfervinduet lukker",
+          "Final Whistle-rapport. Automatisk Discord-opsummering ved vinduesluk: største handel, mest aktive manager, antal panikhandler",
         ],
       },
     ],
@@ -4676,8 +4690,8 @@ const PATCHES = [
       {
         category: "Deadline Day",
         items: [
-          "Flash Auktion (30 min) — ny auktionstype tilgængelig under Deadline Day. Afsluttes præcis 30 minutter efter start, uanset aktivt vindue",
-          "Hastebudsignal — 🚨-badge på transfertilbud når sælgerholdet er under eller på divisions-minimum. Vises hos sælger (modtagne tilbud) og køber (sendte tilbud)",
+          "Flash Auktion (30 min). Ny auktionstype tilgængelig under Deadline Day. Afsluttes præcis 30 minutter efter start, uanset aktivt vindue",
+          "Hastebudsignal. 🚨-badge på transfertilbud når sælgerholdet er under eller på divisions-minimum. Vises hos sælger (modtagne tilbud) og køber (sendte tilbud)",
         ],
       },
     ],
@@ -4690,8 +4704,8 @@ const PATCHES = [
       {
         category: "Deadline Day",
         items: [
-          "Live Ticker — horisontal nyhedsstribe i bunden af alle sider under Deadline Day med seneste bud, salg og transfers",
-          "Panic Board (/deadline-day) — overblik over alle holds truppestørrelse vs. divisions-minimum med grøn/gul/rød status",
+          "Live Ticker. Horisontal nyhedsstribe i bunden af alle sider under Deadline Day med seneste bud, salg og transfers",
+          "Panic Board (/deadline-day). Overblik over alle holds truppestørrelse vs. divisions-minimum med grøn/gul/rød status",
           "Automatisk opdatering hvert 10. sekund (ticker) og 30. sekund (Panic Board)",
         ],
       },
@@ -4705,7 +4719,7 @@ const PATCHES = [
       {
         category: "Deadline Day",
         items: [
-          "Deadline Day-banner — fase-bevidst countdown (anticipation/pressure/chaos) med dynamisk farve og puls",
+          "Deadline Day-banner. Fase-bevidst countdown (anticipation/pressure/chaos) med dynamisk farve og puls",
           "Admin: toggle til at aktivere/deaktivere Deadline Day manuelt + input til lukketidspunkt for transfervinduet",
         ],
       },
@@ -4727,7 +4741,7 @@ const PATCHES = [
         items: [
           "Bugfix: auktionsbud-svar returnerede nu korrekt ISO-tidsformat ved forlængelse",
           "Intern kodekvalitet: automatisk lint-tjek (ESLint) og formatering (Prettier) tilføjet til begge frontend og backend",
-          "Databasetyper genereret direkte fra live schema — reducerer risiko for fremtidige fejl ved DB-ændringer",
+          "Databasetyper genereret direkte fra live schema. Reducerer risiko for fremtidige fejl ved DB-ændringer",
           "Nyt invariant-tjek: 6 domæne-regler verificeres automatisk mod live data efter hvert deploy",
         ],
       },
@@ -4741,10 +4755,10 @@ const PATCHES = [
       {
         category: "Admin",
         items: [
-          "Præmieudbetaling adskilt fra løbsresultat-import — resultater kan nu re-importeres uden at påvirke allerede udbetalte præmier",
+          "Præmieudbetaling adskilt fra løbsresultat-import. Resultater kan nu re-importeres uden at påvirke allerede udbetalte præmier",
           "Ny admin-sektion 'Præmieudbetaling': se hvad der er udbetalt og hvad der mangler for hele sæsonen",
           "Knap til at udbetale alle udestående præmier på én gang med komplet løb-for-løb oversigt",
-          "Præmier udbetales kun når admin godkender — aldrig automatisk ved import",
+          "Præmier udbetales kun når admin godkender. Aldrig automatisk ved import",
         ],
       },
     ],
@@ -4771,10 +4785,10 @@ const PATCHES = [
       {
         category: "Auktioner",
         items: [
-          "Ny tidsregel: auktioner løber i 6 aktive timer — nattimer tæller ikke med (hverdage 22-16, weekender 23-8)",
-          "Eksempel: auktion startet tirsdag 19:40 udløber onsdag 19:40 — auktion startet lørdag 19:40 udløber søndag 10:40",
+          "Ny tidsregel: auktioner løber i 6 aktive timer. Nattimer tæller ikke med (hverdage 22-16, weekender 23-8)",
+          "Eksempel: auktion startet tirsdag 19:40 udløber onsdag 19:40. Auktion startet lørdag 19:40 udløber søndag 10:40",
           "Forlængelsesregel: bud inden for de sidste 10 minutter forlænger auktionen med 10 minutter fra budtidspunktet",
-          "Admin: ny sektion 'Auktionsregler' i admin-panelet — rediger varighed, aktive vinduer og forlængelsesfrist",
+          "Admin: ny sektion 'Auktionsregler' i admin-panelet. Rediger varighed, aktive vinduer og forlængelsesfrist",
         ],
       },
     ],
@@ -4801,7 +4815,7 @@ const PATCHES = [
       {
         category: "Resultater",
         items: [
-          "Ny side: Pointtabel — vis UCI-point og præmier pr. løbsklasse (Tour de France, Giro/Vuelta, Monuments, WorldTour A/B/C, ProSeries, Klasse 1/2)",
+          "Ny side: Pointtabel. Vis UCI-point og præmier pr. løbsklasse (Tour de France, Giro/Vuelta, Monuments, WorldTour A/B/C, ProSeries, Klasse 1/2)",
           "Præmieformlen fremhævet med konkrete eksempler: 1 UCI-point = 1.500 CZ$",
           "Tilgængelig via Resultater → Pointtabel",
         ],
@@ -4816,7 +4830,7 @@ const PATCHES = [
       {
         category: "Ryttere",
         items: [
-          "Masseopdatering: 1.138 ryttere rettet fra minimumsværdi til korrekte UCI-points — heriblandt João Almeida (14M CZ$), Thomas Silva, Chris Hamilton og hundredvis af andre der manglede i gammel top-1000 CSV",
+          "Masseopdatering: 1.138 ryttere rettet fra minimumsværdi til korrekte UCI-points. Heriblandt João Almeida (14M CZ$), Thomas Silva, Chris Hamilton og hundredvis af andre der manglede i gammel top-1000 CSV",
           "Alle påvirkede rytteres løn er synkroniseret automatisk",
         ],
       },
@@ -4830,7 +4844,7 @@ const PATCHES = [
       {
         category: "Ryttere",
         items: [
-          "Synkroniseret rytterværdier med Google Sheet (autoritativ UCI-kilde, 3000 ryttere) — 35 ryttere opdateret inkl. Mick van Dijke, Brent Van Moer, Kwiatkowski, Valter, Tesfazion, Aniołkowski m.fl.",
+          "Synkroniseret rytterværdier med Google Sheet (autoritativ UCI-kilde, 3000 ryttere), 35 ryttere opdateret inkl. Mick van Dijke, Brent Van Moer, Kwiatkowski, Valter, Tesfazion, Aniołkowski m.fl.",
           "Rettet forældede værdier sat fra gammel CSV: Tobias Halland Johannessen (2393 pts), Magnus Cort Nielsen (321 pts), Fredrik Dversnes (431 pts) m.fl.",
           "Forbedret import-algoritme: håndterer nu polske/nordiske specialtegn (ł, Ø) og alternativ translitteration (Tesfazion/Tesfatsion)",
         ],
@@ -4845,7 +4859,7 @@ const PATCHES = [
       {
         category: "Ryttere",
         items: [
-          "Rettet rytterværdier for 17 ryttere med sammensatte efternavne eller mellemnavne i UCI-data (fx Tobias Lund Andresen, Tobias Halland Johannessen, Magnus Cort Nielsen, Mikkel Honoré m.fl.) — disse var sat til minimumsværdi (20.000 CZ$) pga. navne-mismatch ved import",
+          "Rettet rytterværdier for 17 ryttere med sammensatte efternavne eller mellemnavne i UCI-data (fx Tobias Lund Andresen, Tobias Halland Johannessen, Magnus Cort Nielsen, Mikkel Honoré m.fl.). Disse var sat til minimumsværdi (20.000 CZ$) pga. navne-mismatch ved import",
           "Forbedret import-algoritme: navnematch bruger nu token-baseret søgning der håndterer omvendt navnerækkefølge, mellemnavne i UCI og varianter som Joe/Joseph og Bjoern/Bjorn",
         ],
       },
@@ -4874,7 +4888,7 @@ const PATCHES = [
       {
         category: "Sikkerhed",
         items: [
-          "Erstattet xlsx-biblioteket (afviklet, to kendte sårbarheder) med exceljs — XLSX-import af løbsresultater er upåvirket",
+          "Erstattet xlsx-biblioteket (afviklet, to kendte sårbarheder) med exceljs. XLSX-import af løbsresultater er upåvirket",
         ],
       },
     ],
@@ -4887,7 +4901,7 @@ const PATCHES = [
       {
         category: "Dashboard",
         items: [
-          "Nyt Sæsonstatus-banner på dashboardet — viser aktiv sæson, antal dage til sæsonslut, løbsdage-progress og om transfervinduet er åbent eller lukket",
+          "Nyt Sæsonstatus-banner på dashboardet. Viser aktiv sæson, antal dage til sæsonslut, løbsdage-progress og om transfervinduet er åbent eller lukket",
         ],
       },
     ],
@@ -4900,7 +4914,7 @@ const PATCHES = [
       {
         category: "UI",
         items: [
-          "Tabeloverskriften (navn, evner, potentiale mv.) er nu sticky på rytteroversigten og auktionssiden — rækken fryser fast øverst, mens du scroller ned",
+          "Tabeloverskriften (navn, evner, potentiale mv.) er nu sticky på rytteroversigten og auktionssiden. Rækken fryser fast øverst, mens du scroller ned",
         ],
       },
     ],
@@ -4913,8 +4927,8 @@ const PATCHES = [
       {
         category: "Auktioner",
         items: [
-          "Byd-kolonnen er nu fastlåst i højre side af tabellen — input og knap er altid synlige uden vandret scroll",
-          "Fjernet 'Min. bud'-tekst fra hver række — minimumsbud er allerede forudindtastet i feltet",
+          "Byd-kolonnen er nu fastlåst i højre side af tabellen. Input og knap er altid synlige uden vandret scroll",
+          "Fjernet 'Min. bud'-tekst fra hver række. Minimumsbud er allerede forudindtastet i feltet",
           "Tættere rækker giver overblik over flere auktioner på skærmen ad gangen",
           "Sælger- og Alder-kolonner skjules på mindre skærme og vises kun på meget brede skærme (1280px+)",
         ],
@@ -4929,7 +4943,7 @@ const PATCHES = [
       {
         category: "Auktioner",
         items: [
-          "Rettet: Sortering på kolonner (navn, værdi, stats, potentiale) virkede ikke — rækkefølgen forblev uændret uanset valgt sortering",
+          "Rettet: Sortering på kolonner (navn, værdi, stats, potentiale) virkede ikke. Rækkefølgen forblev uændret uanset valgt sortering",
         ],
       },
     ],
@@ -4942,8 +4956,8 @@ const PATCHES = [
       {
         category: "Ryttere",
         items: [
-          "Rettet: Potentiale-synkronisering opdaterede kun ~900 ryttere — nu opdateres alle 7.600+ ryttere korrekt",
-          "Rettet: Halvstjerner (½) blev afrundet ned pga. europæisk decimalformat — potentiale-værdier som 4,5 vises nu korrekt",
+          "Rettet: Potentiale-synkronisering opdaterede kun ~900 ryttere. Nu opdateres alle 7.600+ ryttere korrekt",
+          "Rettet: Halvstjerner (½) blev afrundet ned pga. europæisk decimalformat. Potentiale-værdier som 4,5 vises nu korrekt",
         ],
       },
     ],
@@ -4956,8 +4970,8 @@ const PATCHES = [
       {
         category: "Ryttere",
         items: [
-          "Nyt: Potentiale-felt på alle ryttere — vises med guldstjerner (½–6 stjerner) på alle oversigter, rytterdetalje, auktioner, hold og ønskeliste",
-          "Ryttere over 30 år vises med sølvstjerner i stedet for guld — alder afgør fremtidigt potentiale",
+          "Nyt: Potentiale-felt på alle ryttere. Vises med guldstjerner (½–6 stjerner) på alle oversigter, rytterdetalje, auktioner, hold og ønskeliste",
+          "Ryttere over 30 år vises med sølvstjerner i stedet for guld. Alder afgør fremtidigt potentiale",
           "Sortering på Potentiale tilgængelig via kolonneoverskrift på alle lister",
           "Nyt filter: Potentiale (min–max) i filterpanelet på alle rytteroversigter",
           "Potentiale synkroniseres automatisk fra PCM-data (dyn_cyclist.value_f_potentiel) ved næste dataopdatering",
@@ -4973,8 +4987,8 @@ const PATCHES = [
       {
         category: "Filtrering",
         items: [
-          "Ny land-filter dropdown på alle rytter-oversigter — viser kun lande repræsenteret i det aktuelle datasæt, med flag og fuldt landsnavn",
-          "Fjernet 'Sortér efter' dropdown — sortering sker i stedet ved at klikke direkte på kolonneoverskrifterne (TT, BK, FL, Værdi osv.)",
+          "Ny land-filter dropdown på alle rytter-oversigter. Viser kun lande repræsenteret i det aktuelle datasæt, med flag og fuldt landsnavn",
+          "Fjernet 'Sortér efter' dropdown. Sortering sker i stedet ved at klikke direkte på kolonneoverskrifterne (TT, BK, FL, Værdi osv.)",
         ],
       },
     ],
@@ -4987,7 +5001,7 @@ const PATCHES = [
       {
         category: "Ryttere",
         items: [
-          "Alle 8.699 ryttere har nu korrekt nationalitetsflag baseret på PCM-regiondata — vises overalt: rytterliste, holdside, auktioner, transfers og rytterdetalje",
+          "Alle 8.699 ryttere har nu korrekt nationalitetsflag baseret på PCM-regiondata. Vises overalt: rytterliste, holdside, auktioner, transfers og rytterdetalje",
           "138 lande repræsenteret fra PCM's fulde region-database (inkl. Kosovo, Timor-Leste, Ghana, Senegal m.fl.)",
         ],
       },
@@ -5029,7 +5043,7 @@ const PATCHES = [
       {
         category: "Onboarding",
         items: [
-          "Ny tvungen navn-wizard: nye managers skal vælge holdnavn og managernavn ved første login — blokkerer navigationen til det er gjort",
+          "Ny tvungen navn-wizard: nye managers skal vælge holdnavn og managernavn ved første login. Blokkerer navigationen til det er gjort",
           "Ny velkomstmodal for nye managers: tre feature-cards (Marked, Auktioner, Bestyrelse) og et fremtrædende link til Hjælp & Regler",
           "Velkomstmodalen vises automatisk første gang (nul ryttere + ikke tidligere vist) og huskes via localStorage",
         ],
@@ -5067,15 +5081,15 @@ const PATCHES = [
         category: "Finanser",
         items: [
           "Finanssiden viser nu præmiepenge tydeligt: et dedikeret kort med samlet totalbeløb og en løb-for-løb oversigt med løbsnavn og beløb",
-          "Præmiepenge-transaktioner viser nu løbsnavn (f.eks. 'Præmiepenge — Tour de France') i stedet for generisk tekst",
+          "Præmiepenge-transaktioner viser nu løbsnavn (f.eks. 'Præmiepenge. Tour de France') i stedet for generisk tekst",
           "Divisionsbonus (type: bonus) vises nu korrekt i transaktionshistorik med grøn farve",
         ],
       },
       {
         category: "Økonomi",
         items: [
-          "Lønsats sænket fra 15% til 10% af rytterens effektive markedsværdi — giver mere holdbar økonomi med store hold",
-          "Gældslofter hævet markant: D1 360K→1.200K · D2 300K→900K · D3 240K→600K — bedre buffer ved svære sæsoner",
+          "Lønsats sænket fra 15% til 10% af rytterens effektive markedsværdi. Giver mere holdbar økonomi med store hold",
+          "Gældslofter hævet markant: D1 360K→1.200K · D2 300K→900K · D3 240K→600K. Bedre buffer ved svære sæsoner",
           "Startsponsoren for nye hold hævet fra 240K til 260K CZ$/sæson",
         ],
       },
@@ -5090,8 +5104,8 @@ const PATCHES = [
         category: "Økonomi",
         items: [
           "Præmiepenge fra løb er nu adskilt fra sæsonpoint: UCI-point bestemmer ranglisten, og præmiepenge = UCI-point × 1.500 CZ$ udbetales direkte til holdbalancen ved resultatimport",
-          "Divisionsbonus ved sæsonafslutning: D1 300K/200K/100K/50K · D2 150K/100K/50K/25K · D3 75K/50K/25K — bogføres som 'bonus' i finance-loggen",
-          "Præmiepenge knyttes nu til løbets klasse og UCI-pointtabellen — løb uden løbsklasse genererer 0 i præmie",
+          "Divisionsbonus ved sæsonafslutning: D1 300K/200K/100K/50K · D2 150K/100K/50K/25K · D3 75K/50K/25K. Bogføres som 'bonus' i finance-loggen",
+          "Præmiepenge knyttes nu til løbets klasse og UCI-pointtabellen. Løb uden løbsklasse genererer 0 i præmie",
         ],
       },
     ],
@@ -5104,7 +5118,7 @@ const PATCHES = [
       {
         category: "Profil",
         items: [
-          "/profil-siden viser nu korrekt Profil & Indstillinger — holdnavn og managernavn kan redigeres direkte her",
+          "/profil-siden viser nu korrekt Profil & Indstillinger. Holdnavn og managernavn kan redigeres direkte her",
         ],
       },
     ],
@@ -5375,7 +5389,7 @@ const PATCHES = [
         items: [
           "Parkerede transferaftaler og byttehandler kan ikke længere annulleres af manager, når begge parter har accepteret",
           "Parkerede direkte transfers holder transferlisten i forhandlingsstatus indtil transfervinduet åbner og handlen faktisk gennemføres",
-          "Bankryttere kan ikke længere modtage direkte transfer- eller byttetilbud — de skal gå via auktioner",
+          "Bankryttere kan ikke længere modtage direkte transfer- eller byttetilbud. De skal gå via auktioner",
         ],
       },
       {
@@ -5403,7 +5417,7 @@ const PATCHES = [
         category: "Integrationer",
         items: [
           "UCI-point synkroniseres nu automatisk hver mandag fra den officielle UCI-rangliste (top 3000 ryttere)",
-          "Historisk log af UCI-points og rytterstats gemmes ved hver synkronisering — danner grundlag for 'udvikling over tid'-visning på rytterprofilen (kommer i næste version)",
+          "Historisk log af UCI-points og rytterstats gemmes ved hver synkronisering. Danner grundlag for 'udvikling over tid'-visning på rytterprofilen (kommer i næste version)",
         ],
       },
     ],
@@ -5433,7 +5447,7 @@ const PATCHES = [
       {
         category: "Rytterprofil",
         items: [
-          "Ny 'Historik'-tab på rytterprofilen — viser alle ejerskiftehændelser i kronologisk rækkefølge",
+          "Ny 'Historik'-tab på rytterprofilen. Viser alle ejerskiftehændelser i kronologisk rækkefølge",
           "AI-salg vises med type-badge og vinderpris",
           "Direkte transferhandler vises med køber, sælger og pris",
           "Byttehandler vises med begge hold og eventuel kontantjustering",
@@ -5451,7 +5465,7 @@ const PATCHES = [
         category: "Transfers & Marked",
         items: [
           "Parkering af direkte transferaftaler og byttehandler: begge parter kan nu bekræfte en handel mens sæsonen er aktiv og transfervinduet er lukket",
-          "Handlen parkeres med status 'Aftalt — afventer vindue' (violet badge) og gennemføres automatisk simultant ved transfervinduets åbning",
+          "Handlen parkeres med status 'Aftalt. Afventer vindue' (violet badge) og gennemføres automatisk simultant ved transfervinduets åbning",
           "Samme model som auktioner: alle parkerede handler eksekveres på én gang når admin åbner vinduet",
           "Når en handel parkeres, trækkes alle andre aktive tilbud på de involverede ryttere øjeblikkeligt tilbage",
           "Begge parter kan stadig annullere en parkeret handel inden vinduet åbner",
@@ -5468,10 +5482,10 @@ const PATCHES = [
       {
         category: "Resultater",
         items: [
-          "Google Sheets-import af løbsresultater — admin kan nu importere sæsonresultater direkte fra et Google Sheet med kolonnerne Rank, Name, Team, Benævnelse, Løb, Sæson",
+          "Google Sheets-import af løbsresultater. Admin kan nu importere sæsonresultater direkte fra et Google Sheet med kolonnerne Rank, Name, Team, Benævnelse, Løb, Sæson",
           "Understøtter alle 8 benævnelse-typer: Etapeplacering, Klassement, Klassiker, Pointtrøje, Bjergtrøje, Ungdomstrøje, Etapeløb Hold, Klassiker Hold",
           "Automatisk etape-detektion (rank-nulstilling = ny etape) og standings-genberegning efter import",
-          "Re-import er idempotent — eksisterende resultater for matchede løb erstattes",
+          "Re-import er idempotent. Eksisterende resultater for matchede løb erstattes",
         ],
       },
     ],
@@ -5484,13 +5498,13 @@ const PATCHES = [
       {
         category: "Rytterdatabase",
         items: [
-          "Evne-filtre (slidere) virker nu korrekt — min og max er to separate, synlige slidere i stedet for overlappende (grå = minimum, amber = maximum)",
+          "Evne-filtre (slidere) virker nu korrekt. Min og max er to separate, synlige slidere i stedet for overlappende (grå = minimum, amber = maximum)",
         ],
       },
       {
         category: "Discord",
         items: [
-          "Webhook-routing rettet — gennemførte transfers og swaps sendes nu korrekt til 'Transferhistorik'-webhook, øvrige notifikationer til '#auktioner'",
+          "Webhook-routing rettet. Gennemførte transfers og swaps sendes nu korrekt til 'Transferhistorik'-webhook, øvrige notifikationer til '#auktioner'",
         ],
       },
     ],
@@ -5503,10 +5517,10 @@ const PATCHES = [
       {
         category: "Indbakke",
         items: [
-          "FM-style indbakke — notifikationer og aktivitetsfeed samlet på én side med to faner: 'Mine' og 'Ligaen'",
+          "FM-style indbakke. Notifikationer og aktivitetsfeed samlet på én side med to faner: 'Mine' og 'Ligaen'",
           "'Mine'-fanen har kategorifiltre: Alle, Ulæste, Auktioner, Transfers, Bestyrelse, Finans",
           "'Ligaen'-fanen viser globale spilhændelser med filtre: Alle, Auktioner, Transfers, Sæson",
-          "Aktivitetsfeed-siden er nu en del af Indbakke — /activity-feed redirecter automatisk",
+          "Aktivitetsfeed-siden er nu en del af Indbakke. /activity-feed redirecter automatisk",
         ],
       },
     ],
@@ -5519,7 +5533,7 @@ const PATCHES = [
       {
         category: "Managerprofiler",
         items: [
-          "Online-status er nu live — grøn indikator vises på managerprofiler og holdlisten når en manager har været aktiv inden for de seneste 5 minutter",
+          "Online-status er nu live. Grøn indikator vises på managerprofiler og holdlisten når en manager har været aktiv inden for de seneste 5 minutter",
           "Sidst set vises på managerprofiler (fx '12 min siden') når manageren er offline",
           "Login-streak tæller daglig aktivitet og vises på managerprofilen (🔥)",
           "Online-tæller i sidebaren viser antal aktive managere lige nu",
@@ -5528,7 +5542,7 @@ const PATCHES = [
       {
         category: "Notifikationer",
         items: [
-          "Ulæste-badge på 'Indbakke' i navigationssidebaren — viser antal ulæste notifikationer (maks 9+)",
+          "Ulæste-badge på 'Indbakke' i navigationssidebaren. Viser antal ulæste notifikationer (maks 9+)",
           "Mobilvisning: klokkebadge øverst til højre viser ulæste i realtid",
         ],
       },
@@ -5542,7 +5556,7 @@ const PATCHES = [
       {
         category: "Admin",
         items: [
-          "Beta-testværktøjer — ny admin-sektion med 4 handlinger: annuller marked, nulstil trupper, nulstil balancer og fuld nulstilling",
+          "Beta-testværktøjer. Ny admin-sektion med 4 handlinger: annuller marked, nulstil trupper, nulstil balancer og fuld nulstilling",
           "Hvert værktøj kræver bekræftelse og viser kvittering med præcist antal påvirkede ryttere, holds og markedsaktiviteter",
         ],
       },
@@ -5556,15 +5570,15 @@ const PATCHES = [
       {
         category: "Rytterdatabase",
         items: [
-          "Sort-dropdown viser nu 'Værdi' i stedet for 'UCI Point' — mere præcist navn",
-          "Ny 'Løn'-kolonne i rytterlisten — viser årsløn i CZ$, sorterbar ligesom Værdi",
-          "Nyt lønfilter — filtrer ryttere på løn-interval (min/max CZ$) med filter-chip",
+          "Sort-dropdown viser nu 'Værdi' i stedet for 'UCI Point'. Mere præcist navn",
+          "Ny 'Løn'-kolonne i rytterlisten. Viser årsløn i CZ$, sorterbar ligesom Værdi",
+          "Nyt lønfilter. Filtrer ryttere på løn-interval (min/max CZ$) med filter-chip",
         ],
       },
       {
         category: "Head-to-Head",
         items: [
-          "Hold B viser nu automatisk holdforslag ved fokus i søgefeltet — ingen typing nødvendig",
+          "Hold B viser nu automatisk holdforslag ved fokus i søgefeltet. Ingen typing nødvendig",
         ],
       },
     ],
@@ -5585,7 +5599,7 @@ const PATCHES = [
       {
         category: "Fejlrettelser",
         items: [
-          "Garanteret salg er nu låst til egne ryttere — exploit der tillod køb af AI-ejede ryttere til 50% af Værdi via Garanteret salg er lukket",
+          "Garanteret salg er nu låst til egne ryttere. Exploit der tillod køb af AI-ejede ryttere til 50% af Værdi via Garanteret salg er lukket",
           "Bestyrelses-outlook og category-scores på Dashboard vises nu korrekt igen efter boardEngine-refactor",
         ],
       },
@@ -5599,7 +5613,7 @@ const PATCHES = [
       {
         category: "Bugfix",
         items: [
-          "Rettet: man kan nu købe en AI/fri rytter på auktion, selvom man er den eneste byder — fejlen skyldtes at en mislykket budplacering blev vist som succes uden feedback",
+          "Rettet: man kan nu købe en AI/fri rytter på auktion, selvom man er den eneste byder. Fejlen skyldtes at en mislykket budplacering blev vist som succes uden feedback",
         ],
       },
     ],
@@ -5616,7 +5630,7 @@ const PATCHES = [
           "Lønnen er ændret fra 10% til 15% af rytterens effektive markedsværdi",
           "Alle eksisterende rytterlønninger er genberegnet med den nye 15%-model",
           "Minimum-regel: ryttere med færre end 5 UCI point tildeles automatisk 5 UCI point (20.000 CZ$ minimumsværdi)",
-          "Præmiebonus opdateres ved sæsonslut for alle ryttere — værdien vokser med holdsuccesen",
+          "Præmiebonus opdateres ved sæsonslut for alle ryttere. Værdien vokser med holdsuccesen",
           "Køb via auktion eller transfer sætter straks ny løn baseret på køberens præmiebonus + handelspris",
         ],
       },
@@ -5630,7 +5644,7 @@ const PATCHES = [
       {
         category: "Økonomi",
         items: [
-          "Alle beløb og værdier er skaleret ×4000 — rytterpriser, holdbudgetter, præmiepuljer, lønninger og gæld",
+          "Alle beløb og værdier er skaleret ×4000. Rytterpriser, holdbudgetter, præmiepuljer, lønninger og gæld",
           "Rytterens markedsværdi er nu UCI-point × 4000 CZ$ (f.eks. en rytter med 500 UCI-point er nu 2.000.000 CZ$ værd)",
           "Holdenes startkapital er 2.000.000 CZ$ og standard sponsor-indkomst er 400.000 CZ$ pr. sæson",
           "Alle eksisterende hold, ryttere, lån, auktioner og transaktioner er opdateret tilsvarende via database-migration",
@@ -5647,8 +5661,8 @@ const PATCHES = [
         category: "Admin",
         items: [
           "Ny Brugere-sektion i Admin: se alle brugere med hold og rolle, skift rolle mellem admin og manager, og slet brugere permanent",
-          "Sletning af bruger fjerner Supabase-login og notifikationer — holdet bevares men mister sin ejer",
-          "Løbskalender har nu Slet-knap — sletter løbet og alle tilknyttede resultater",
+          "Sletning af bruger fjerner Supabase-login og notifikationer. Holdet bevares men mister sin ejer",
+          "Løbskalender har nu Slet-knap. Sletter løbet og alle tilknyttede resultater",
         ],
       },
     ],
@@ -5661,11 +5675,11 @@ const PATCHES = [
       {
         category: "Forbedringer",
         items: [
-          "Hvert bestyrelsesmål viser nu om det er et obligatorisk krav eller ej — tydeligt markeret i måloversigten",
+          "Hvert bestyrelsesmål viser nu om det er et obligatorisk krav eller ej. Tydeligt markeret i måloversigten",
           "Mål der er bagud vises med advarselsstatus (I fare / Tæt på / På sporet) baseret på aktuelle holddata",
-          "Aktuelle fremskridt vises direkte på hvert mål — f.eks. nuværende placering vs. mål for top N-finish",
+          "Aktuelle fremskridt vises direkte på hvert mål, f.eks. nuværende placering vs. mål for top N-finish",
           "Bestyrelsens karakter (sportsambition, økonomirisiko, identitetsstyrke) vises nu i plankortet under bestyrelsens vurdering",
-          "Ny advarselsbanner hvis tilfredshed falder under 25% — ingen fyring, men skærpede krav ved næste planforhandling",
+          "Ny advarselsbanner hvis tilfredshed falder under 25%. Ingen fyring, men skærpede krav ved næste planforhandling",
           "Forhandlingswizarden viser nu tydeligt hvilke mål der er obligatoriske krav",
         ],
       },
@@ -5679,7 +5693,7 @@ const PATCHES = [
       {
         category: "Forbedringer",
         items: [
-          "Board-siden viser nu tre parallelle bestyrelsesplaner (5-årsplan, 3-årsplan og 1-årsplan) simultant på samme side — hver plan har egne mål og tilfredshedsmåling",
+          "Board-siden viser nu tre parallelle bestyrelsesplaner (5-årsplan, 3-årsplan og 1-årsplan) simultant på samme side. Hver plan har egne mål og tilfredshedsmåling",
           "Wizard-flowet åbner nu for én specifik plantype, så du forhandler med bestyrelsen om præcis den plan du vælger",
           "Første gang du åbner Board-siden oprettes alle tre planer automatisk i rækkefølge 5yr → 3yr → 1yr",
         ],
@@ -5694,7 +5708,7 @@ const PATCHES = [
       {
         category: "Forbedringer",
         items: [
-          "Nationalitetsflag vises nu på Hold, Team-profil, Auktioner, Ønskeliste, Transfermarked, Auktionshistorik, Head-to-Head og Ryttersammenligning — flag er nu konsekvent på alle rytterflader",
+          "Nationalitetsflag vises nu på Hold, Team-profil, Auktioner, Ønskeliste, Transfermarked, Auktionshistorik, Head-to-Head og Ryttersammenligning. Flag er nu konsekvent på alle rytterflader",
         ],
       },
     ],
@@ -5707,7 +5721,7 @@ const PATCHES = [
       {
         category: "Nyt",
         items: [
-          "Gennemførte transfers og byttehandler sendes nu automatisk til en dedikeret Discord-kanal — konfigureres via Admin under Discord webhooks med typen 'Transferhistorik'",
+          "Gennemførte transfers og byttehandler sendes nu automatisk til en dedikeret Discord-kanal. Konfigureres via Admin under Discord webhooks med typen 'Transferhistorik'",
         ],
       },
     ],
@@ -5720,9 +5734,9 @@ const PATCHES = [
       {
         category: "Nyt",
         items: [
-          "Løbsarkiv er nu tilgængeligt under Resultater — alle løb fra alle sæsoner kan nu browses på ét sted",
+          "Løbsarkiv er nu tilgængeligt under Resultater. Alle løb fra alle sæsoner kan nu browses på ét sted",
           "Hvert løb har sin egen historikside med alle tidligere udgaver og vinderen af hver sæson",
-          "Bedste ryttere vises akkumuleret på tværs af alle udgaver af et løb — sorteret efter sejre og point",
+          "Bedste ryttere vises akkumuleret på tværs af alle udgaver af et løb. Sorteret efter sejre og point",
           "Akkumuleret point-graf viser de bedste rytteres samlede præstationer i et givet løb",
           "Løbsarkiv er tilføjet som hub-link på Resultater-overblikssiden",
         ],
@@ -5737,8 +5751,8 @@ const PATCHES = [
       {
         category: "Nyt",
         items: [
-          "Resultater-hub tilføjet som samlet indgang til resultatområdet — viser tophold, topscorere og links til alle resultat-sider",
-          "Rytterrangliste er nu tilgængelig under Resultater — vis alle rytteres sæsonresultater med etapesejre, GC-sejre, pointklassement, bjergklassement og ungdomsklassement",
+          "Resultater-hub tilføjet som samlet indgang til resultatområdet. Viser tophold, topscorere og links til alle resultat-sider",
+          "Rytterrangliste er nu tilgængelig under Resultater. Vis alle rytteres sæsonresultater med etapesejre, GC-sejre, pointklassement, bjergklassement og ungdomsklassement",
           "Rytterranglisten inkluderer både manager-ejede og AI-ejede ryttere og kan filtreres og sorteres på alle kolonner",
         ],
       },
@@ -5752,9 +5766,9 @@ const PATCHES = [
       {
         category: "Forbedringer",
         items: [
-          "'UCI Point' er omdøbt til 'Værdi' i hele UI — rytterliste, auktioner, transfers og ønskeliste bruger nu det samme begreb",
-          "Auktionsformularen håndhæver nu minimum Værdi som startpris — du kan ikke sætte en lavere pris end rytterens Værdi",
-          "'Garanteret salg' er nu tydeligt markeret som undtagelse i auktionsformularen — afkrydses for at sætte startpris til 50% af Værdi",
+          "'UCI Point' er omdøbt til 'Værdi' i hele UI. Rytterliste, auktioner, transfers og ønskeliste bruger nu det samme begreb",
+          "Auktionsformularen håndhæver nu minimum Værdi som startpris. Du kan ikke sætte en lavere pris end rytterens Værdi",
+          "'Garanteret salg' er nu tydeligt markeret som undtagelse i auktionsformularen. Afkrydses for at sætte startpris til 50% af Værdi",
           "Rytterliste og rytterside viser nu en '⚡ Auktion'-badge hvis rytteren er i en aktiv auktion",
           "Transferlisten viser nu hvornår en rytter blev sat til salg",
           "Ryttertype vises nu som et tydeliggjort badge på ryttersiden",
@@ -5773,7 +5787,7 @@ const PATCHES = [
         category: "Forbedringer",
         items: [
           "Min Aktivitet er ombygget til seks faner: Kræver handling, Auktioner, Transfers, Lån, Ønskeliste og Historik",
-          "Siden åbner nu på 'Kræver handling' som default — tilbud du skal svare på, modbud og afventende lejeforslag samles øverst",
+          "Siden åbner nu på 'Kræver handling' som default. Tilbud du skal svare på, modbud og afventende lejeforslag samles øverst",
           "Auktioner der slutter inden for 1 time vises i 'Kræver handling' med live-nedtæller",
           "Lån (lejeaftaler) har fået sin egen fane med adskillelse af 'Jeg udlåner' og 'Jeg låner'",
           "Ønskeliste-fanen viser dine gemte ryttere kompakt med markedsstatus-badge hvis en rytter er i aktiv auktion",
@@ -5791,7 +5805,7 @@ const PATCHES = [
       {
         category: "Design",
         items: [
-          "UI er konverteret fra mørkt tema til lyst tema — varm creme-baggrund, hvide kort, mørk navy-sidebar",
+          "UI er konverteret fra mørkt tema til lyst tema. Varm creme-baggrund, hvide kort, mørk navy-sidebar",
           "Navigationen har nu tydelig hierarki: sektionsoverskrifter (OVERBLIK, MARKED osv.) er klart adskilt fra klikbare menupunkter",
           "Sidebar-ikoner er fjernet fra menupunkter for et renere og mere scanbart udtryk",
           "Aktiv menupunkt vises med gyldent highlight og afrundede kanter",
@@ -5810,7 +5824,7 @@ const PATCHES = [
       {
         category: "Forbedringer",
         items: [
-          "Notifikationer er omdøbt til Indbakke — siden samler alle systemhændelser ét sted",
+          "Notifikationer er omdøbt til Indbakke. Siden samler alle systemhændelser ét sted",
           "Klik på en besked i Indbakken fører nu direkte til den relevante side (auktioner, transfers, løb osv.) i stedet for blot at markere som læst",
           "Holdoversigten viser nu en grøn online-indikator ved managere der er aktive lige nu",
         ],
@@ -5825,13 +5839,13 @@ const PATCHES = [
       {
         category: "Forbedringer",
         items: [
-          "Navigationen er omstruktureret med fire tydelige grupper: Overblik, Marked, Resultater og Liga — tidligere var sider spredt på kryds og tværs",
+          "Navigationen er omstruktureret med fire tydelige grupper: Overblik, Marked, Resultater og Liga. Tidligere var sider spredt på kryds og tværs",
           "Ranglisten, Sæsonresultater og Hall of Fame er samlet i en ny 'Resultater'-gruppe",
           "Min Aktivitet og Ønskeliste (tidligere Talentspejder) er nu under Marked",
           "Løbskalender og Sæson Preview er flyttet under Liga",
           "Notifikationer og Min Managerprofil er rykket op under Overblik",
           "Klik på Cycling Zone-logoet fører nu direkte til Dashboard",
-          "Min Profil er foldet ind i managerprofilen — /profil-siden redirecter automatisk",
+          "Min Profil er foldet ind i managerprofilen. /profil-siden redirecter automatisk",
         ],
       },
     ],
@@ -5844,8 +5858,8 @@ const PATCHES = [
       {
         category: "Fejlrettelser",
         items: [
-          "Hemmelige achievements afslører ikke længere navn eller beskrivelse i tooltip-hover, før de er låst op — låste hemmelige achievements viser nu '???' i stedet",
-          "Discord-webhooks sendes nu korrekt ved nye auktioner, overbud, transfer-tilbud, transfer-svar og sæsonstart/-slut — notifier-modulet var tidligere koblet fra alle event-sites",
+          "Hemmelige achievements afslører ikke længere navn eller beskrivelse i tooltip-hover, før de er låst op. Låste hemmelige achievements viser nu '???' i stedet",
+          "Discord-webhooks sendes nu korrekt ved nye auktioner, overbud, transfer-tilbud, transfer-svar og sæsonstart/-slut. Notifier-modulet var tidligere koblet fra alle event-sites",
         ],
       },
     ],
@@ -6262,20 +6276,20 @@ const PATCHES = [
       {
         category: "Nyt",
         items: [
-          "Manager-profil — dedikeret profilside for hver manager med hold, sæsonhistorik, achievements og transferaktivitet",
-          "Online status — grøn prik + 'sidst set'-tekst vises overalt hvor manager-navn optræder",
-          "Managers online — tæller på Dashboard viser antal aktive managers lige nu",
-          "Login-streak — 🔥 tæller viser hvor mange dage i træk du har logget ind",
-          "Achievements — 45 achievements fordelt på auktioner, transfers, hold, sæson og hemmelige kategorier",
-          "Hemmelige achievements — låses op overraskende undervejs og vises som 🔒 indtil opdaget",
-          "Watchlist-tæller — se hvor mange managers der følger en rytter på rytterens statistikside (anonymt)",
-          "Transferrygter fix — notifikation til holdejer fungerer nu korrekt når en manager besøger en rytterside",
+          "Manager-profil. Dedikeret profilside for hver manager med hold, sæsonhistorik, achievements og transferaktivitet",
+          "Online status. Grøn prik + 'sidst set'-tekst vises overalt hvor manager-navn optræder",
+          "Managers online. Tæller på Dashboard viser antal aktive managers lige nu",
+          "Login-streak. 🔥 tæller viser hvor mange dage i træk du har logget ind",
+          "Achievements · 45 achievements fordelt på auktioner, transfers, hold, sæson og hemmelige kategorier",
+          "Hemmelige achievements. Låses op overraskende undervejs og vises som 🔒 indtil opdaget",
+          "Watchlist-tæller. Se hvor mange managers der følger en rytter på rytterens statistikside (anonymt)",
+          "Transferrygter fix. Notifikation til holdejer fungerer nu korrekt når en manager besøger en rytterside",
         ],
       },
       {
         category: "Forbedringer",
         items: [
-          "Hjælp & Regler — ny sektion om Manager-profil, Achievements, Online status og Login-streak",
+          "Hjælp & Regler. Ny sektion om Manager-profil, Achievements, Online status og Login-streak",
           "FAQ opdateret med 6 nye spørgsmål",
           "Patch Notes opdateret med denne version",
         ],
@@ -6290,18 +6304,18 @@ const PATCHES = [
       {
         category: "Nyt",
         items: [
-          "Aktivitetsfeed — offentlig realtidsstrøm af auktioner, transfers og sæsonhændelser",
-          "Transferrygter — anonym notifikation når en manager kigger på din rytter (max 1/time per rytter)",
-          "Deadline Day — rødt countdown-banner på Dashboard de sidste 48 timer inden transfervinduet lukker",
-          "Onboarding guide — 3-trins velkomstguide til nye spillere der endnu ikke har ryttere",
-          "Fejringsanimation — konfetti-modal med animation når du vinder en auktion eller en transfer accepteres",
-          "Mobil forbedringer — RidersPage med horisontal scroll, bedre padding på alle sider",
+          "Aktivitetsfeed. Offentlig realtidsstrøm af auktioner, transfers og sæsonhændelser",
+          "Transferrygter. Anonym notifikation når en manager kigger på din rytter (max 1/time per rytter)",
+          "Deadline Day. Rødt countdown-banner på Dashboard de sidste 48 timer inden transfervinduet lukker",
+          "Onboarding guide · 3-trins velkomstguide til nye spillere der endnu ikke har ryttere",
+          "Fejringsanimation. Konfetti-modal med animation når du vinder en auktion eller en transfer accepteres",
+          "Mobil forbedringer. RidersPage med horisontal scroll, bedre padding på alle sider",
         ],
       },
       {
         category: "Forbedringer",
         items: [
-          "Hjælp & Regler — ny sektion om Aktivitetsfeed og Transferrygter",
+          "Hjælp & Regler. Ny sektion om Aktivitetsfeed og Transferrygter",
           "FAQ opdateret med 4 nye spørgsmål",
           "Auktioner logger automatisk til aktivitetsfeed ved start og sejr",
           "Transfers logger automatisk til aktivitetsfeed ved gennemførelse",
@@ -6317,12 +6331,12 @@ const PATCHES = [
       {
         category: "Nyt",
         items: [
-          "Transfersystem v2 — Football Manager-stil forhandling direkte mellem managers",
-          "Send tilbud på enhver rytter fra rytterens side — ingen listing nødvendig",
-          "Modtagne tilbud — accepter, afvis eller send modbud med din pris",
-          "Sendte tilbud — accepter modbud, send nyt bud eller træk tilbud tilbage",
-          "Ubegrænset forhandlingsrunder frem og tilbage — runde-tæller viser fremgang",
-          "Tilbud er private — kun køber og sælger ser deres forhandling",
+          "Transfersystem v2. Football Manager-stil forhandling direkte mellem managers",
+          "Send tilbud på enhver rytter fra rytterens side. Ingen listing nødvendig",
+          "Modtagne tilbud. Accepter, afvis eller send modbud med din pris",
+          "Sendte tilbud. Accepter modbud, send nyt bud eller træk tilbud tilbage",
+          "Ubegrænset forhandlingsrunder frem og tilbage. Runde-tæller viser fremgang",
+          "Tilbud er private. Kun køber og sælger ser deres forhandling",
           "Besked-felt på alle tilbud og modbud",
           "Rytter skifter hold ved næste vindueåbning, forhandling kan ske hele sæsonen",
         ],
@@ -6345,12 +6359,12 @@ const PATCHES = [
       {
         category: "Nyt",
         items: [
-          "Løbskalender — dedikeret side med alle løb, detaljer og resultater",
-          "Resultatindberetning — managers uploader PCM Excel-filer til admin-godkendelse",
-          "Admin godkendelse — gennemgå og godkend/afvis indberetninger",
-          "Sæsonresultater — slutstillinger med op/nedrykning markeret, altid tilgængelig",
-          "Pointudviklingsgraf — SVG-linjegraf for dit holds kumulative point løb for løb",
-          "Delt RiderFilters komponent — samme filtrering på alle sider med ryttere",
+          "Løbskalender. Dedikeret side med alle løb, detaljer og resultater",
+          "Resultatindberetning. Managers uploader PCM Excel-filer til admin-godkendelse",
+          "Admin godkendelse. Gennemgå og godkend/afvis indberetninger",
+          "Sæsonresultater. Slutstillinger med op/nedrykning markeret, altid tilgængelig",
+          "Pointudviklingsgraf. SVG-linjegraf for dit holds kumulative point løb for løb",
+          "Delt RiderFilters komponent. Samme filtrering på alle sider med ryttere",
           "Filtrer på navn, Værdi, alder, U25, U23, fri agent og hold",
           "Sortering på alle stats med retningspil",
           "Aktive filter-chips der kan fjernes enkeltvis",
@@ -6359,10 +6373,10 @@ const PATCHES = [
       {
         category: "Forbedringer",
         items: [
-          "Dashboard — holdstørrelse-advarsel, transfers & tilbud sektion, divisions-stilling",
-          "Rangliste — mini sparkline-graf, progress-bars, op/nedrykning zoner",
-          "Transfers — RiderFilters på markedet",
-          "Bestyrelse — mål progress-bar, tilfredshedsniveauer forklaret",
+          "Dashboard. Holdstørrelse-advarsel, transfers & tilbud sektion, divisions-stilling",
+          "Rangliste. Mini sparkline-graf, progress-bars, op/nedrykning zoner",
+          "Transfers. RiderFilters på markedet",
+          "Bestyrelse. Mål progress-bar, tilfredshedsniveauer forklaret",
           "Alle sideoverskrifter ensrettet til samme størrelse",
         ],
       },
@@ -6376,14 +6390,14 @@ const PATCHES = [
       {
         category: "Nyt",
         items: [
-          "Fold-ud navigation — menuen organiseret i grupper: Overblik, Marked, Mit Hold, Liga",
+          "Fold-ud navigation. Menuen organiseret i grupper: Overblik, Marked, Mit Hold, Liga",
           "Auto-åbner aktiv gruppe ved navigation",
           "Balance og division vist direkte i sidebaren",
-          "Hall of Fame — rekorder, manager niveau-rangering, divisionshistorik",
-          "Sæson Preview — holdstyrker og topstjerner",
-          "Head-to-Head — sammenlign to managers statistik og transfers",
-          "Rytter sæsonhistorik — holdskifte og resultater på rytterens side",
-          "Manager XP system — optjen XP og stig i niveau (Rookie → Legende)",
+          "Hall of Fame. Rekorder, manager niveau-rangering, divisionshistorik",
+          "Sæson Preview. Holdstyrker og topstjerner",
+          "Head-to-Head. Sammenlign to managers statistik og transfers",
+          "Rytter sæsonhistorik. Holdskifte og resultater på rytterens side",
+          "Manager XP system. Optjen XP og stig i niveau (Rookie → Legende)",
           "Patch Notes side",
         ],
       },
@@ -6404,12 +6418,12 @@ const PATCHES = [
       {
         category: "Nyt",
         items: [
-          "Hjælp & Regler — komplet regeloversigt med søgefunktion og FAQ",
-          "Talentspejder / Ønskeliste — gem ryttere privat med ★ stjerne og noter",
-          "Min Aktivitet — samlet overblik over bud, auktioner og transfers",
-          "Discord integration — notifikationer ved ny auktion og andre events",
-          "Manuel override i admin — flyt ryttere direkte til hold",
-          "Min Profil — tilknyt Discord bruger-ID",
+          "Hjælp & Regler. Komplet regeloversigt med søgefunktion og FAQ",
+          "Talentspejder / Ønskeliste. Gem ryttere privat med ★ stjerne og noter",
+          "Min Aktivitet. Samlet overblik over bud, auktioner og transfers",
+          "Discord integration. Notifikationer ved ny auktion og andre events",
+          "Manuel override i admin. Flyt ryttere direkte til hold",
+          "Min Profil. Tilknyt Discord bruger-ID",
         ],
       },
       {

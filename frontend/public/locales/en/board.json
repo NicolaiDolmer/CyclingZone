@@ -7,7 +7,7 @@
   "tour": {
     "plans": {
       "title": "Three plans run in parallel",
-      "body": "Switch between the 1-, 3- and 5-year plans with the tabs — one plan at a time, full width. Each shows its standing, satisfaction, sponsor× modifier and targets with status icons. Click a target to see the board's reaction."
+      "body": "Switch between the 1-, 3- and 5-year plans with the tabs. One plan at a time, full width. Each shows its standing, satisfaction, sponsor× modifier and targets with status icons. Click a target to see the board's reaction."
     },
     "satisfaction": {
       "title": "Satisfaction drives sponsor and consequences",
@@ -112,8 +112,8 @@
   },
   "goalHelp": {
     "heading": "How is this measured?",
-    "signature_rider": "Counts riders whose renown is 75 or higher. Renown reflects a rider's fame — an earned reputation system (results, wins, rankings, national honours) is on the way; for now it is a fixed rating.",
-    "top_n_finish": "Evaluated on your final standing in the last season of the plan — not an average across the plan's seasons.",
+    "signature_rider": "Counts riders whose renown is 75 or higher. Renown reflects a rider's fame. An earned reputation system (results, wins, rankings, national honours) is on the way; for now it is a fixed rating.",
+    "top_n_finish": "Evaluated on your final standing in the last season of the plan, not an average across the plan's seasons.",
     "u25_development_delta": "The average stat-point gain per U25 rider per season. Develop young riders so their stats rise over the season."
   },
   "drivers": {
@@ -210,7 +210,7 @@
       "label": "Scandinavian development team",
       "shortDescription": "Youth, balance and Nordic heritage",
       "longDescription": "We build riders from the ground up: patience, structure and Nordic work ethic. Sponsors expect development, not fireworks.",
-      "traditionGoalLabel": "Club DNA: develop the talents — average +3 stat points per season for U25 riders"
+      "traditionGoalLabel": "Club DNA: develop the talents, average +3 stat points per season for U25 riders"
     },
     "italiensk_klassiker": {
       "label": "Italian classics traditionalist",

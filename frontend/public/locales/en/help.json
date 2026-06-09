@@ -330,7 +330,7 @@
           "Admin closes the transfer window and starts a new season.",
           "At season start: pending transfers are processed, sponsor money is paid out first, then loan interest and salaries are deducted (salaries follow the current market value). An emergency loan is created only if sponsor + balance can't cover the shortfall.",
           "Races are run in Pro Cycling Manager and results are reported by a manager and approved by admin.",
-          "At season end: points are tallied, division bonus is paid out, promotion/relegation is decided (from season 3 onwards), and board plans are evaluated. Salaries and interest are no longer deducted at season end — they moved to the next season's start (v3.78)."
+          "At season end: points are tallied, division bonus is paid out, promotion/relegation is decided (from season 3 onwards), and board plans are evaluated. Salaries and interest are no longer deducted at season end. They moved to the next season's start (v3.78)."
         ]
       },
       "racesAndResults": {

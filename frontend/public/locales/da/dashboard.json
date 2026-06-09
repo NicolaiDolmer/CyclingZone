@@ -8,20 +8,20 @@
   "nextActions": {
     "title": "Næste træk",
     "loading": "Tjekker hvad der venter…",
-    "allClear": "Du er på forkant — intet kræver din handling lige nu.",
+    "allClear": "Du er på forkant. Intet kræver din handling lige nu.",
     "transferOffers": "{count, plural, one {1 transfertilbud venter på din beslutning} other {# transfertilbud venter på din beslutning}}",
     "swapOffers": "{count, plural, one {1 bytteforslag venter på din beslutning} other {# bytteforslag venter på din beslutning}}",
     "loanRequests": "{count, plural, one {1 leje-anmodning venter på din beslutning} other {# leje-anmodninger venter på din beslutning}}",
     "urgentAuctions": "{count, plural, one {1 auktion slutter inden for en time} other {# auktioner slutter inden for en time}}"
   },
   "squadWarning": {
-    "over": "Hold er for stort — max {limit} i Division {division}. Sælg {count, plural, one {1 rytter} other {# ryttere}}.",
-    "under": "Hold er for lille — min {limit} i Division {division}. Køb {count, plural, one {1 rytter} other {# ryttere}} mere.",
+    "over": "Hold er for stort. Max {limit} i Division {division}. Sælg {count, plural, one {1 rytter} other {# ryttere}}.",
+    "under": "Hold er for lille. Min {limit} i Division {division}. Køb {count, plural, one {1 rytter} other {# ryttere}} mere.",
     "ctaMyTeam": "Mit Hold →"
   },
   "discordNudge": {
     "title": "Få DMs ved overbud, transfertilbud og bestyrelses-signaler",
-    "subtitle": "Tilføj dit Discord-ID under Profil — så er du på, selv når du ikke har app'en åben.",
+    "subtitle": "Tilføj dit Discord-ID under Profil. Så er du på, selv når du ikke har app'en åben.",
     "cta": "Tilføj",
     "dismissAria": "Skjul"
   },
@@ -76,7 +76,7 @@
       "dateTbd": "Dato TBD"
     },
     "standings": {
-      "title": "Division {division} — Stilling",
+      "title": "Division {division} · Stilling",
       "linkAll": "Fuld rangliste →",
       "empty": "Ingen sæsondata endnu"
     },
@@ -88,7 +88,7 @@
       "focus": "Fokus",
       "budgetMultiplier": "Budget multiplikator",
       "exceeds": "Overget",
-      "exceedsTitle": "Denne kategori scorede over 100% — du har overgået bestyrelsens forventninger her."
+      "exceedsTitle": "Denne kategori scorede over 100%. Du har overgået bestyrelsens forventninger her."
     },
     "recentResults": {
       "title": "Seneste resultater",
@@ -131,23 +131,23 @@
   },
   "forecast": {
     "loading": "Beregner forecast…",
-    "title": "Næste sæson — prognose",
+    "title": "Næste sæson · prognose",
     "subtitle": "Forventet cashflow baseret på roster + lån + sponsor",
     "tier": {
       "green": {
         "label": "Grøn",
         "headline": "Sund økonomi",
-        "summary": "Forventet overskud og gæld under kontrol — du kan satse offensivt."
+        "summary": "Forventet overskud og gæld under kontrol. Du kan satse offensivt."
       },
       "yellow": {
         "label": "Gul",
         "headline": "Pres på",
-        "summary": "Underskud eller stigende gæld — overvej salg eller lavere løn."
+        "summary": "Underskud eller stigende gæld. Overvej salg eller lavere løn."
       },
       "red": {
         "label": "Rød",
         "headline": "Konkurs-risiko",
-        "summary": "Kraftigt underskud eller gæld nær loftet — handl nu."
+        "summary": "Kraftigt underskud eller gæld nær loftet. Handl nu."
       }
     },
     "projectedLabel": "Forventet net næste sæson",
@@ -194,7 +194,7 @@
     }
   },
   "onboardingProgress": {
-    "header": "Kom i gang — {completed}/{total} trin fuldført",
+    "header": "Kom i gang · {completed}/{total} trin fuldført",
     "steps": {
       "team_named": "Navngiv hold og manager",
       "first_rider_owned": "Køb din første rytter",
@@ -211,8 +211,8 @@
     "dismissAria": "Skjul"
   },
   "onboardingComplete": {
-    "title": "Du er klar — grundforløbet er gennemført",
-    "body": "Alle fire kom-i-gang-trin er afkrydset. Næste fase er at bygge dit hold over flere sæsoner — følg Deadline Day, lever på bestyrelsens mål, og kæmp for oprykning.",
+    "title": "Du er klar. Grundforløbet er gennemført",
+    "body": "Alle fire kom-i-gang-trin er afkrydset. Næste fase er at bygge dit hold over flere sæsoner. Følg Deadline Day, lever på bestyrelsens mål, og kæmp for oprykning.",
     "nextLinks": {
       "deadlineDay": {
         "label": "Deadline Day",

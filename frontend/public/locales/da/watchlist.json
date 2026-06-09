@@ -1,6 +1,6 @@
 {
   "title": "Talentspejder",
-  "subtitle": "{count} ryttere på din ønskeliste — kun synlig for dig",
+  "subtitle": "{count} ryttere på din ønskeliste, kun synlig for dig",
   "addRiders": "+ Tilføj ryttere",
   "emptyTitle": "Din ønskeliste er tom",
   "emptyBody": "Klik på ⭐ ved siden af en rytter i rytterdatabasen for at tilføje dem her",

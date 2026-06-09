@@ -1,9 +1,9 @@
 {
   "title": "Løb",
   "subtitle": {
-    "withSeason": "Sæson {number} — {count} løb",
+    "withSeason": "Sæson {number} · {count} løb",
     "noSeason": "Ingen aktiv sæson",
-    "noSeasonWithCount": "Ingen aktiv sæson — {count} løb",
+    "noSeasonWithCount": "Ingen aktiv sæson · {count} løb",
     "library": "{count} løb på tværs af alle sæsoner",
     "points": "UCI-pointtabeller og præmieformel"
   },
@@ -135,8 +135,8 @@
     "submitCta": "Indsend til godkendelse",
     "mySubmissions": "Mine indberetninger",
     "msgSelectRace": "❌ Vælg et løb",
-    "msgUnmatched": "❌ {count} ryttere er ikke matchet — ret dem manuelt",
-    "msgSubmitted": "✅ Resultater indsendt — afventer godkendelse fra admin",
+    "msgUnmatched": "❌ {count} ryttere er ikke matchet. Ret dem manuelt",
+    "msgSubmitted": "✅ Resultater indsendt · afventer godkendelse fra admin",
     "msgError": "❌ {message}"
   },
   "resultType": {
@@ -199,7 +199,7 @@
     "noOverall": "Ingen samlede klassementer registreret",
     "tableResult": "Resultat",
     "jerseysAfterStage": "Trøjer efter etapen",
-    "stageFinishOrder": "Etape {number} — målrækkefølge",
+    "stageFinishOrder": "Etape {number} · målrækkefølge",
     "noResults": "Ingen resultater",
     "classification": {
       "gc": "Samlet (GC)",
