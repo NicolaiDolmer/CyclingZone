@@ -4,15 +4,18 @@
 // marketUtils.js og frontend/marketValues.js. I shadow-fasen bruges denne kun
 // til at BEREGNE + VISE base_value; den styrer endnu ikke økonomien.
 //
-// MODEL v2 (anchor-kalibreret, 7/6-2026) — afløser v1 (ridge på 141 uci-ankrede
-// auktionssalg → uci-cirkularitet, virkede ikke for fiktiv launch-population):
+// MODEL v3 (anchor-kalibreret, 9/6-2026) — afløser v2 (ren speciale-output, lineær),
+// som var blind for alsidighed og satte MvdP over Pogačar mod ejerens anchors:
 //
-//   ln(base_value) = a + b·output + offset[primary_type]
+//   ln(base_value) = a + b·O + c·O² + offset[primary_type]
+//   O = alpha·speciale-output + (1−alpha)·snit af alle evner
 //
-//   output (0-99) = vægtet snit af de POSITIVE type-vægte (riderTypes.js) på de
-//     rå abilities → "hvor god er rytteren til sit speciale".
+//   speciale-output (0-99) = vægtet snit af de POSITIVE type-vægte (riderTypes.js)
+//     på de rå abilities → "hvor god er rytteren til sit speciale".
+//   alsidigheds-leddet (1−alpha) belønner brede elite-profiler; c>0 strækker toppen.
 //   offset[type]  = type-fixed-effect (forventet præmie/omdømme pr. type), fittet
 //     af ejer-kalibrerede anchors.
+//   Bagudkompatibel: v2-model-JSON (uden alpha/c) → alpha=1, c=0 = v2-adfærd.
 //   INGEN bund (ejer-direktiv): dårligste ryttere ≈ 1.000; spil-data forfiner på sigt.
 //
 // Modellen fittes manuelt (ejer-godkendt) af scripts/fitRiderValuationModel.js fra
@@ -41,12 +44,26 @@ export function outputScore(abilities = {}, primaryType = null) {
     if (wsum > 0) return sum / wsum;
   }
   // Fallback: snit af alle abilities.
+  return meanAbilityScore(abilities);
+}
+
+// Uafrundet snit over alle abilities (0-99). riderOverall er display-versionen (afrundet).
+export function meanAbilityScore(abilities = {}) {
   let sum = 0, n = 0;
   for (const k of ABILITY_KEYS) {
     const v = Number(abilities?.[k]);
     if (Number.isFinite(v)) { sum += v; n += 1; }
   }
   return n > 0 ? sum / n : 0;
+}
+
+// v3-output: alsidigheds-blend mellem speciale-score og snit af alle evner.
+// alpha=1 → ren speciale-score (v2-adfærd). Kalibreret alpha ligger i model-JSON.
+export function blendedOutput(abilities = {}, primaryType = null, alpha = 1) {
+  const a = Number.isFinite(Number(alpha)) ? Math.min(1, Math.max(0, Number(alpha))) : 1;
+  const spec = outputScore(abilities, primaryType);
+  if (a >= 1) return spec;
+  return a * spec + (1 - a) * meanAbilityScore(abilities);
 }
 
 // Forudsig base_value (CZ$, heltal) for en rytter ud fra en fittet model.
@@ -61,9 +78,10 @@ export function predictBaseValue(rider, abilities, model /*, opts */) {
   if (!haveAbilities) return null;
 
   const type = rider?.primary_type ?? null;
-  const O = outputScore(abilities, type);
+  const O = blendedOutput(abilities, type, model.alpha ?? 1);
   const offset = model.offset?.[type] ?? 0;
-  const value = Math.exp(model.a + model.b * O + offset);
+  const c = Number.isFinite(Number(model.c)) ? Number(model.c) : 0;
+  const value = Math.exp(model.a + model.b * O + c * O * O + offset);
 
   if (!Number.isFinite(value) || value <= 0) return null;
   return Math.max(1, Math.round(value));
