@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.07",
+    date: "2026-06-09",
+    label: "Beta",
+    changes: [
+      {
+        category: "Improved · Brand identity",
+        items: [
+          "EN · The login screen tagline now reads \"Cycling Zone · Multiplayer Edition\" with a middot separator instead of a dash, matching the wordmark style already used in the browser tab and on shared links. Refs #481, #671.",
+          "DA · Tagline på login-skærmen står nu som \"Cycling Zone · Multiplayer Edition\" med en middot-separator i stedet for en streg, så den matcher wordmark-stilen der allerede bruges i browser-fanen og på delte links. Refs #481, #671.",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.06",
     date: "2026-06-09",
     label: "Beta",
