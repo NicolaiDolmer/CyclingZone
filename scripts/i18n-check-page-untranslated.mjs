@@ -55,7 +55,10 @@ function stripComments(src) {
 
 const DANISH = /[æøåÆØÅ]/;
 
-const files = readdirSync(PAGES_DIR).filter(f => /\.jsx?$/.test(f));
+// Kun rigtige side-komponenter — IKKE test-filer (*.test.js/.jsx). En test-fil i
+// pages/ (fx RidersPage.statBar.test.js, #1094) er aldrig player-facing og må
+// gerne indeholde danske assertions; uden dette filter fejler guarden falsk.
+const files = readdirSync(PAGES_DIR).filter(f => /\.jsx?$/.test(f) && !/\.test\.jsx?$/.test(f));
 
 const leaks = [];   // non-exempt, ukendte → guard-fejl
 const todos = [];   // kendte follow-up leaks → vises men fejler ikke alene
