@@ -17,6 +17,7 @@
 - **Sæson 1→2 skifte UDFØRT + VERIFICERET ([#1155](https://github.com/NicolaiDolmer/CyclingZone/issues/1155)).** Alle gates holdt. Bestyrelsen åbnet.
 - **Relaunch-spor (20/6):** Epic #1136 progression — L1 scouting #1138 live, L2 træning teaser #1163 live.
 - **Sikkerhed:** [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) SUPABASE_SERVICE_KEY-rotation åben.
+- **Skalering (ikke launch-blocker, 9/6-audit):** infra bærer kapacitetsmæssigt 100 aktive managers (backend i tomgang, CPU-peak 4,3 %). Eneste robusthed-hul = ingen backups på Supabase free → [#1181](https://github.com/NicolaiDolmer/CyclingZone/issues/1181) Pro-opgradering. Oprydning: [#1182](https://github.com/NicolaiDolmer/CyclingZone/issues/1182) ubrugte Railway Postgres+Redis. Tag efter launch medmindre brugervækst rykker før 20/6.
 - **TdF launch-prep:** [#676](https://github.com/NicolaiDolmer/CyclingZone/issues/676) Race Engine V1 · [#672](https://github.com/NicolaiDolmer/CyclingZone/issues/672) landing page · [#671](https://github.com/NicolaiDolmer/CyclingZone/issues/671) brand.
 
 _Opdateret af Manus AI 9. juni 2026 (formiddag) — **Health Check færdiggjort.** Prioriteret TdF-launch liste leveret. Handoff klar til Claude Code._
