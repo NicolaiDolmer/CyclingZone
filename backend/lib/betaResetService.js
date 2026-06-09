@@ -1,5 +1,6 @@
 import { createBaselineProfile } from "./boardEngine.js";
 import { DEFAULT_SPONSOR_INCOME } from "./economyEngine.js";
+import { FOUNDER_BADGE_KEY } from "./founderBadge.js";
 
 export const DEFAULT_BETA_BALANCE = 800000;
 export const DEFAULT_BETA_DIVISION = 3;
@@ -397,6 +398,7 @@ export async function resetBetaAchievements(supabase) {
     .from("manager_achievements")
     .delete()
     .in("user_id", userIds)
+    .neq("achievement_id", FOUNDER_BADGE_KEY)   // founder_badge overlever alle resets (#1103)
     .select("id"));
 
   return { manager_achievements: countRows(achievements) };

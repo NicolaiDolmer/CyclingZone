@@ -1,0 +1,92 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+
+import {
+  runRelaunchSeason1,
+  seedSeasonZero,
+  assertRelaunchProdGuard,
+  RELAUNCH_CONFIRM_TOKEN,
+} from "./relaunchOrchestrator.js";
+import { computeSeasonUuid } from "./seasonTransition.js";
+
+// Recorder-stubs for byggeklodserne (DI) — tester sekvens + dryRun-propagation.
+function makeDeps(order) {
+  const rec = (name, ret = {}) => async (_s, opts = {}) => {
+    order.push({ name, dryRun: opts.dryRun });
+    return ret;
+  };
+  return {
+    retireLegacyRiders: rec("retire", { wouldRetire: 8969 }),
+    runFullBetaReset: rec("reset"),
+    generateAndInsertPopulation: rec("population", { generated: 800 }),
+    runPhysiologyBackfill: rec("physiology"),
+    runRiderTypesBackfill: rec("types"),
+    runBaseValueBackfill: rec("baseValue"),
+    runStarterSquadAllocation: rec("allocation", { teams: 18 }),
+    seedSeasonZero: async () => { order.push({ name: "seedSeason0" }); return { seasonId: computeSeasonUuid(0) }; },
+    transitionToNextSeason: async () => { order.push({ name: "transition" }); return { ok: true }; },
+    grantFounderBadges: rec("founder", { wouldGrant: 18 }),
+    getBetaManagerTeams: async () => [{ id: "t1", user_id: "u1" }, { id: "t2", user_id: "u2" }],
+  };
+}
+
+test("runRelaunchSeason1 (dryRun): sekvens + dryRun-prop, INGEN reset/sæson-transition", async () => {
+  const order = [];
+  const summary = await runRelaunchSeason1({}, { dryRun: true, startDate: "2026-06-20", deps: makeDeps(order) });
+  assert.equal(summary.dryRun, true);
+  const names = order.map((o) => o.name);
+  // reset, seedSeason0 og transition kaldes IKKE i dry-run (kan ikke simuleres uden writes)
+  assert.deepEqual(names, ["retire", "population", "physiology", "types", "baseValue", "allocation", "founder"]);
+  // dryRun propagerer til alle byggeklodser der modtager opts
+  assert.ok(order.filter((o) => "dryRun" in o && o.dryRun !== undefined).every((o) => o.dryRun === true));
+  // summary har en nøgle pr. fase
+  for (const k of ["retireLegacy", "reset", "population", "backfills", "allocation", "season", "founderBadge"]) {
+    assert.ok(k in summary, `summary mangler ${k}`);
+  }
+});
+
+test("runRelaunchSeason1 (apply): kalder reset + seedSeason0 + transition i korrekt rækkefølge", async () => {
+  const order = [];
+  const summary = await runRelaunchSeason1({}, { dryRun: false, startDate: "2026-06-20", deps: makeDeps(order) });
+  assert.equal(summary.dryRun, false);
+  const names = order.map((o) => o.name);
+  assert.deepEqual(names, [
+    "retire", "reset", "population", "physiology", "types", "baseValue", "allocation",
+    "seedSeason0", "transition", "founder",
+  ]);
+});
+
+test("seedSeasonZero indsætter sæson number=0 (active) med deterministisk UUID", async () => {
+  const inserts = [];
+  const supabase = { from() { return { insert(row) { inserts.push(row); return Promise.resolve({ error: null }); } }; } };
+  const res = await seedSeasonZero(supabase, { startDate: "2026-06-20", dryRun: false });
+  assert.equal(res.seasonId, computeSeasonUuid(0));
+  assert.equal(inserts[0].number, 0);
+  assert.equal(inserts[0].status, "active");
+  assert.equal(inserts[0].start_date, "2026-06-20");
+});
+
+test("seedSeasonZero (dryRun) indsætter intet", async () => {
+  let wrote = false;
+  const supabase = { from() { return { insert() { wrote = true; return Promise.resolve({ error: null }); } }; } };
+  const res = await seedSeasonZero(supabase, { startDate: "2026-06-20", dryRun: true });
+  assert.equal(wrote, false);
+  assert.equal(res.seasonId, computeSeasonUuid(0));
+});
+
+test("assertRelaunchProdGuard: lagdelt prod-opt-in", () => {
+  // ingen --apply → dry-run
+  assert.equal(assertRelaunchProdGuard({ apply: false, isProd: true }).proceed, false);
+  // non-prod apply → fortsæt
+  assert.equal(assertRelaunchProdGuard({ apply: true, isProd: false }).proceed, true);
+  // prod apply uden --target-prod → kast
+  assert.throws(() => assertRelaunchProdGuard({ apply: true, isProd: true, targetProd: false }), /target-prod/);
+  // prod + target uden korrekt confirm → kast
+  assert.throws(() => assertRelaunchProdGuard({ apply: true, isProd: true, targetProd: true, confirm: "nope" }), /confirm/);
+  // prod + target + confirm uden #1101-cutover-ack → kast
+  assert.throws(() => assertRelaunchProdGuard({ apply: true, isProd: true, targetProd: true, confirm: RELAUNCH_CONFIRM_TOKEN, cutoverAck: "false" }), /1101/);
+  // alt sat → fortsæt mod PROD
+  const ok = assertRelaunchProdGuard({ apply: true, isProd: true, targetProd: true, confirm: RELAUNCH_CONFIRM_TOKEN, cutoverAck: "true" });
+  assert.equal(ok.proceed, true);
+  assert.equal(ok.target, "PROD");
+});
