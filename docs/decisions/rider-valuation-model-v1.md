@@ -121,3 +121,39 @@ data; de evner managers betaler mest for vægtes højest").
 - `backend/scripts/backfillRiderBaseValue.js` — idempotent backfill af hele populationen.
 - `database/2026-06-06-rider-base-value.sql` — `riders.base_value` (nullable).
 - `GET /api/admin/rider-valuation-preview` + admin-UI + rytter-beta-chip.
+
+## v3 (10/6-2026): alsidigheds-blend + krumning + guards
+
+Ejer-finding (9/6): v2 satte MvdP (107M) over Pogačar (67M) trods anchors 95M/125M — rent
+speciale-output er blind for alsidighed (Pogačars snit over ALLE 14 evner: 84,6 vs MvdP 76,6).
+
+**Formel:** `ln(v) = a + b·O + c·O² + offset[type]`, `O = 0,5·speciale + 0,5·snit(alle evner)`.
+
+**Anchors:** 26 (top-8 hævet af ejer 9/6: Pogačar 125M, MvdP 95M, Philipsen 65M, Milan 45M,
+Ganna 50M, Merlier 30M, Magnier 25M, Matthews 13M; + 4 bund-anchors 10/6 der pinner
+slice-1-skalaen: Uriarte 900k / Seye 200k / Kimpe 60k / Sanders 30k). Bund-anchorne kom af
+et ægte fund: uden dem ekstrapolerede fittet under output ~57 og kollapsede det fiktive felt
+(median 34 CZ$). Lærdom: anchors skal DÆKKE hele output-skalaen, ikke kun eliten.
+
+**Resultat (R²log 0,972):** Pogačar 163,5M #1 blandt virkelige · MvdP 110,3M · skala bevaret
+(median 46k→45k, p10 4k→9k) · 3 af 4 fiktive prod-outliers fikset af blendet selv (Bergström
+141M, under Pogačar). Kendt rest: Harry Ward (fiktiv test-rytter, slettes ved relaunch-swap)
+ligger over anchor-rækkevidden → 1,13 mia.; accepteret interim (ejer 10/6), løses af #1194.
+
+**Guards i fit-scriptet (permanente):** (1) ordens-guard — anchors med mål ≥15M og >30%
+målafstand SKAL forudsiges i ejerens rækkefølge, ellers exit 1 (bløde brud <15M rapporteres);
+(2) monotoni-guard — ln-kurven skal være voksende på hele [0,99]. Fit-kerne: `riderValuationFit.js`.
+
+**Følgevirkning:** fiktiv launch-pyramide bund-tung under v3 → interim-bånd i
+`fictionalLaunchPopulation.test.js` (ejer-re-godkendt 10/6); generator re-tunes i #1194 før 20/6.
+
+## Datadrevet roadmap (besluttet 9-10/6-2026)
+
+1. **Fase 1 (nu, launch 20/6):** Perception-model v3; anchors = træningsdata; manuel re-fit
+   med guards. Shadow indtil cutover (slice 2, ejer-gated).
+2. **Fase 2 (efter egen race-motor #1102/#676):** Værdi = forventet sæsonproduktion — simulér
+   sæsonkalenderen N gange, fit mod forventede point/præmier pr. rytter. Anchors degraderes
+   til VALIDERING. Modellen funderes i spillets egen fysik i stedet for håndsatte mål.
+3. **Fase 3 (live drift, #1101-scope):** Dynamisk glidning af base_value mod faktiske
+   auktions-/handelspriser ved finalization (triviel v1: vægtet glid) + periodisk re-fit.
+   Markedet bliver sandheden; outliers korrigeres af spillerne selv.

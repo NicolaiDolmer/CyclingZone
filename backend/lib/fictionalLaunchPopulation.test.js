@@ -23,8 +23,14 @@ test("launch-population er den låste skala (800) og deterministisk", () => {
 
 // Chain-integration: kør HELE værdi-kæden (som prod-backfillsne) og lås
 // pyramide-formen. Fanger hvis en generator-/model-/baseline-ændring senere
-// bryder den ejer-godkendte kalibrering (2026-06-07). Bounds er bevidst løse
-// (±) så seed-/refit-varians ikke giver falske fejl, men breakage fanges.
+// bryder den ejer-godkendte kalibrering. Bounds er bevidst løse (±) så
+// seed-/refit-varians ikke giver falske fejl, men breakage fanges.
+//
+// INTERIM (ejer-re-godkendt 10/6-2026, værdimodel v3): generatoren er tunet mod
+// v2-modellen, så pyramiden er bund-tung under v3 (6 superstjerner/688 domestikker
+// mod design-målet 12/500). Båndene afspejler v3-VIRKELIGHEDEN indtil generatoren
+// re-tunes mod 12/60/230/500-pyramiden (launch-kritisk follow-up i #677-sporet) —
+// derefter strammes båndene igen.
 test("hele værdi-kæden giver den godkendte launch-pyramide", () => {
   const { riders } = generateLaunchPopulation();
   let superstar = 0, domestique = 0, withType = 0;
@@ -43,8 +49,8 @@ test("hele værdi-kæden giver den godkendte launch-pyramide", () => {
   assert.equal(withType, 800, "alle ryttere får en type via kæden");
   // Smal top: en håndfuld superstjerner (ikke 0, ikke et helt felt).
   assert.ok(superstar >= 3 && superstar <= 25, `superstjerner=${superstar} uden for [3,25]`);
-  // Bred bund: størstedelen er domestikker (<200k).
-  assert.ok(domestique >= 450 && domestique <= 650, `domestikker=${domestique} uden for [450,650]`);
+  // Bred bund: størstedelen er domestikker (<200k). INTERIM-bånd under v3 (se ovenfor).
+  assert.ok(domestique >= 550 && domestique <= 750, `domestikker=${domestique} uden for [550,750]`);
   // Alle 9 typer skal emergere fra kæden (etape-variation).
   assert.equal(typeSet.size, 9, `kun ${typeSet.size}/9 typer emergerede: ${[...typeSet].join(",")}`);
 });

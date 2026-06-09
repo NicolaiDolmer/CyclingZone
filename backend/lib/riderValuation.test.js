@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 
 import {
   ABILITY_KEYS,
+  blendedOutput,
+  meanAbilityScore,
   outputScore,
   predictBaseValue,
   riderOverall,
@@ -79,4 +81,44 @@ test("riderOverall is the mean of abilities, clamped 0-99", () => {
   assert.equal(riderOverall(abilities(50)), 50);
   const high = riderOverall(abilities(99));
   assert.ok(high >= 0 && high <= 99);
+});
+
+test("meanAbilityScore er det uafrundede snit af alle abilities", () => {
+  assert.equal(meanAbilityScore(abilities(50)), 50);
+  // 13 evner på 40 + climbing 95 → 615/14 (uafrundet, modsat riderOverall).
+  assert.equal(meanAbilityScore(abilities(40, { climbing: 95 })), 615 / 14);
+});
+
+test("blendedOutput: alpha=1 → ren speciale-score, alpha=0 → snit af alt, 0.5 → midt imellem", () => {
+  const ab = abilities(40, { cobblestone: 90, flat: 90, endurance: 90, punch: 90 });
+  const spec = outputScore(ab, "brostensrytter");
+  const mean = meanAbilityScore(ab);
+  assert.equal(blendedOutput(ab, "brostensrytter", 1), spec);
+  assert.equal(blendedOutput(ab, "brostensrytter", 0), mean);
+  assert.equal(blendedOutput(ab, "brostensrytter", 0.5), (spec + mean) / 2);
+});
+
+test("predictBaseValue v2-model (uden alpha/c) er uændret", () => {
+  const model = { a: Math.log(1000), b: 0, offset: { gc: Math.log(2) } };
+  assert.equal(predictBaseValue({ primary_type: "gc" }, abilities(50), model), 2000);
+});
+
+test("predictBaseValue v3: kvadratisk led (c>0) strækker toppen relativt mere", () => {
+  const base = { a: 0, b: 0.05, offset: {} };
+  const quad = { ...base, c: 0.001 };
+  const liftLo = predictBaseValue({ primary_type: "gc" }, abilities(40), quad)
+    / predictBaseValue({ primary_type: "gc" }, abilities(40), base);
+  const liftHi = predictBaseValue({ primary_type: "gc" }, abilities(90), quad)
+    / predictBaseValue({ primary_type: "gc" }, abilities(90), base);
+  assert.ok(liftHi > liftLo, `c>0 skal løfte toppen relativt mere (${liftHi} > ${liftLo})`);
+});
+
+test("v3 med alpha<1 værdsætter alsidighed: bred elite slår smal specialist", () => {
+  // "Pogacar-profil": elite i ALT. "MvdP-profil": uslåelig på specialet, hul i klatring.
+  const broad = abilities(85, { climbing: 96, tempo: 99, endurance: 99 });
+  const narrow = abilities(55, { cobblestone: 95, flat: 92, endurance: 93, punch: 86, climbing: 45 });
+  const model = { alpha: 0.5, a: 0, b: 0.1, c: 0.0005, offset: {} };
+  const vBroad = predictBaseValue({ primary_type: "gc" }, broad, model);
+  const vNarrow = predictBaseValue({ primary_type: "brostensrytter" }, narrow, model);
+  assert.ok(vBroad > vNarrow, `bred elite (${vBroad}) skal slå smal specialist (${vNarrow})`);
 });
