@@ -6,9 +6,9 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (9/6):** **Implementer Relaunch-orchestrator ([#1103](https://github.com/NicolaiDolmer/CyclingZone/issues/1103)).** Orchestratoren skal nulstille game-state til en frisk sæson 1 med fiktive ryttere. **Langsigtet:** Strømlin onboarding (#1140).
+> **🎯 Next action (9/6):** **#1103 feasibility + design + plan KLAR** (spec + plan i `docs/superpowers/`, audit-kommentar på [#1103](https://github.com/NicolaiDolmer/CyclingZone/issues/1103)). Beslutninger: backfill-lib-ekstraktion · sæson 0→1-transition · lagdelt prod-guard · **løbsklart starthold på 8** (4 unge + 4 domestiques, koldstart-fix). Kan bygges + dry-run-verificeres mod preview NU. **Hård gate:** den *rigtige* prod-relaunch kræver [#1101](https://github.com/NicolaiDolmer/CyclingZone/issues/1101) base_value-cutover (din ejer-verifikation af shadow-værdier). **Langsigtet:** Strømlin onboarding (#1140).
 
-> **🤖 Working agent:** Ingen aktiv session. _(Sidst: Codex rettede #1094 med root-cause, regressionstest og release-hygiejne; #1103 er fortsat næste aktive slice.)._
+> **🤖 Working agent:** Ingen aktiv session. _(Sidst: Claude Code leverede #1103 feasibility-audit + design-doc + implementeringsplan (075ef63a) + audit-kommentar; ingen kode ændret, intet nulstillet. Næste: byg planen mod preview, ELLER unblock #1101-cutover.)._
 
 > **📊 Backlog-cleanup (9. juni):** Prioriteret liste over TdF-launch issues oprettet. Top-prioritet: #1103, #1094, #1140.
 
