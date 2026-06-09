@@ -8,7 +8,7 @@
 
 > **🎯 Next action (9/6):** **Implementer Relaunch-orchestrator ([#1103](https://github.com/NicolaiDolmer/CyclingZone/issues/1103)).** Orchestratoren skal nulstille game-state til en frisk sæson 1 med fiktive ryttere. **Quick-win:** Fiks StatBar dot bug ([#1094](https://github.com/NicolaiDolmer/CyclingZone/issues/1094)). **Langsigtet:** Strømlin onboarding (#1140).
 
-> **🤖 Working agent:** Manus AI (Health Check & Handoff færdiggjort 9/6). _(Sidst: Manus gennemførte repo health check, verificerede S1→S2 skifte, og prioriterede TdF-launch backlog. Handoff-fil oprettet i `docs/handoff/2026-06-09-manus-health-check.md`)._
+> **🤖 Working agent:** Ingen aktiv session. _(Sidst: Manus gennemførte repo health check + handoff (`docs/handoff/2026-06-09-manus-health-check.md`); Claude Code eksekverede triagen — handoff-kommentarer på #1103/#1094/#1140/#1162/#1126, `needs-ai-triage` fjernet fra #1162. Triage-flow afsluttet 9/6.)._
 
 > **📊 Backlog-cleanup (9. juni):** Prioriteret liste over TdF-launch issues oprettet. Top-prioritet: #1103, #1094, #1140.
 
