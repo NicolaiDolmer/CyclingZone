@@ -78,7 +78,13 @@ export function predictBaseValue(rider, abilities, model /*, opts */) {
   if (!haveAbilities) return null;
 
   const type = rider?.primary_type ?? null;
-  const O = blendedOutput(abilities, type, model.alpha ?? 1);
+  let O = blendedOutput(abilities, type, model.alpha ?? 1);
+  // Ekstrapolations-guard: kurven er kun kalibreret op til den højeste anchor
+  // (output_max i model-JSON). Output derover klampes — ellers eksploderer den
+  // konvekse top for urealistiske profiler (Harry Ward 1,13 mia., 10/6). KUN opad:
+  // bunden må fortsat ekstrapolere frit (ingen bund, ejer-direktiv 7/6).
+  const oMax = Number(model.output_max);
+  if (Number.isFinite(oMax) && O > oMax) O = oMax;
   const offset = model.offset?.[type] ?? 0;
   const c = Number.isFinite(Number(model.c)) ? Number(model.c) : 0;
   const value = Math.exp(model.a + model.b * O + c * O * O + offset);
