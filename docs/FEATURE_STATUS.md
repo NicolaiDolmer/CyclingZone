@@ -35,7 +35,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Rytter-popularitet V1 (#957, v4.64): unikke besøgende seneste 24t + 7d + trend-% på ryttersiden. `GET /api/riders/:id/view-count` aggregerer `rider_profile_views` (#963) via service_role (`COUNT(DISTINCT user_id)`, ren funktion `backend/lib/riderProfileViews.js`); cold-start (<14d historik) viser "Ny"-badge i stedet for trend. Trending-liste + dashboard-widget forbliver på epic #957
 - Rytter-sammenligning (side-by-side)
 - Watchlist + notifikation når ønskeliste-rytter sættes til salg eller auktion (v1.35). Indbakke-routing adskiller nu auktion (`watchlist_rider_auction` → `/auctions`) fra salg (`watchlist_rider_listed` → `/transfers`) med legacy-fallback for gamle auktion-notifikationer (v2.45)
-- Stat-grid med farvekodning (statBg.js)
+- Stat-grid med fælles gradientfarvekodning; rytterdatabasen viser kun det farvede stat-tal uden redundant minibjælke (#1094, v5.05)
 
 ### Auktioner
 - Opret auktion med starttid + vindueslogik

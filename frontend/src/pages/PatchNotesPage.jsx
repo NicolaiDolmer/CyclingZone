@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.05",
+    date: "2026-06-09",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fixed · Rider stats",
+        items: [
+          "EN · The rider database no longer shows a redundant colored dot next to every ability value. The color-coded ability number remains unchanged. Refs #1094.",
+          "DA · Rytterdatabasen viser ikke længere en overflødig farvet prik ud for hver evneværdi. Det farvekodede evnetal er uændret. Refs #1094.",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.04",
     date: "2026-06-09",
     label: "Beta",
