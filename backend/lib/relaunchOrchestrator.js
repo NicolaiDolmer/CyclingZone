@@ -1,0 +1,135 @@
+// Relaunch-orchestrator (#1103) — komponerer hele relaunch-sekvensen til en frisk,
+// uafhængig sæson 1. Dry-run-default. Den ÆGTE prod-relaunch er hård-gatet på
+// #1101 base_value-cutover (se assertRelaunchProdGuard + CLI).
+//
+// Sekvens (apply): retire legacy → fuld beta-reset → fiktiv population → backfill-kæde
+// (physiology+abilities → typer → base_value SHADOW) → startholds → frisk sæson 1
+// (sæson 0 → transition 0→1) → founder-badges.
+//
+// VIGTIGT om dry-run: en destruktiv sekvens kan ikke simuleres trofast uden writes
+// (hvert trin afhænger af forrige trins writes). Dry-run = per-trin "ville-gøre"-preview
+// mod NUVÆRENDE DB + ingen writes. Den ægte verifikation er en RIGTIG kørsel mod en
+// disposabel preview-branch (ikke prod). Derfor springes reset + sæson-transition over
+// i dry-run (de kræver hhv. destruktion og en sæson-0-row der først findes efter apply).
+
+import { fetchAllRows } from "./supabasePagination.js";
+import { foldNameNordic } from "./pcmRiderMatcher.js";
+import { generateLaunchPopulation, LAUNCH_POPULATION } from "./fictionalLaunchPopulation.js";
+import { toInsertPayload } from "./fictionalRiderGenerator.js";
+import { retireLegacyRiders } from "./legacyRiderRetirement.js";
+import { runFullBetaReset, getBetaManagerTeams } from "./betaResetService.js";
+import { runPhysiologyBackfill, runRiderTypesBackfill, runBaseValueBackfill } from "./backfillCores.js";
+import { runStarterSquadAllocation } from "./starterSquadAllocator.js";
+import { grantFounderBadges } from "./founderBadge.js";
+import { transitionToNextSeason, computeSeasonUuid } from "./seasonTransition.js";
+
+const INSERT_BATCH = 500;
+export const RELAUNCH_CONFIRM_TOKEN = "RELAUNCH SEASON 1";
+
+// Generér + indsæt den låste launch-population (pcm_id null), navne-unikke mod DB.
+export async function generateAndInsertPopulation(supabase, { dryRun = true } = {}) {
+  const existing = await fetchAllRows(() => supabase.from("riders").select("firstname, lastname").order("id"));
+  const folded = new Set(existing.map((r) => foldNameNordic(`${r.firstname} ${r.lastname}`)));
+  const { riders } = generateLaunchPopulation(folded);
+  const payload = toInsertPayload(riders);
+  for (const r of payload) {
+    if (r.pcm_id !== null) throw new Error("pre-flight: payload med pcm_id !== null — afbryder.");
+  }
+  if (dryRun) return { generated: payload.length, inserted: 0, dryRun: true };
+  let inserted = 0;
+  for (let i = 0; i < payload.length; i += INSERT_BATCH) {
+    const batch = payload.slice(i, i + INSERT_BATCH);
+    const { error } = await supabase.from("riders").insert(batch);
+    if (error) throw new Error(`population insert ved ${i}: ${error.message}`);
+    inserted += batch.length;
+  }
+  return { generated: payload.length, inserted };
+}
+
+// Genindsæt sæson 0 (deterministisk UUID, active) så transition 0→1 har en fromSeason.
+export async function seedSeasonZero(supabase, { startDate, dryRun = true } = {}) {
+  const seasonId = computeSeasonUuid(0);
+  if (dryRun) return { seasonId, dryRun: true };
+  const { error } = await supabase.from("seasons").insert({
+    id: seasonId,
+    number: 0,
+    status: "active",
+    start_date: startDate,
+    end_date: null,
+  });
+  if (error) throw new Error(`seedSeasonZero: ${error.message}`);
+  return { seasonId };
+}
+
+const DEFAULT_DEPS = {
+  retireLegacyRiders,
+  runFullBetaReset,
+  generateAndInsertPopulation,
+  runPhysiologyBackfill,
+  runRiderTypesBackfill,
+  runBaseValueBackfill,
+  runStarterSquadAllocation,
+  seedSeasonZero,
+  transitionToNextSeason,
+  grantFounderBadges,
+  getBetaManagerTeams,
+};
+
+export async function runRelaunchSeason1(supabase, {
+  dryRun = true,
+  startDate,
+  seed = LAUNCH_POPULATION.seed,
+  deps = {},
+} = {}) {
+  const d = { ...DEFAULT_DEPS, ...deps };
+  const summary = { dryRun, startDate, seed };
+
+  // 1. Pensionér legacy-ryttere (pcm_id IS NOT NULL).
+  summary.retireLegacy = await d.retireLegacyRiders(supabase, { dryRun });
+
+  // 2. Fuld game-state reset (springes i dry-run — destruktivt, kan ikke simuleres).
+  summary.reset = dryRun
+    ? { skipped: "dryRun" }
+    : await d.runFullBetaReset(supabase, { clearTransactions: true });
+
+  // 3. Fiktiv population (pcm_id null), navne-unik mod DB.
+  summary.population = await d.generateAndInsertPopulation(supabase, { dryRun });
+
+  // 4. Backfill-kæde: physiology+abilities → typer → base_value (SHADOW).
+  summary.backfills = {
+    physiology: await d.runPhysiologyBackfill(supabase, { dryRun }),
+    types: await d.runRiderTypesBackfill(supabase, { dryRun }),
+    baseValue: await d.runBaseValueBackfill(supabase, { dryRun }),
+  };
+
+  // 5. Startholds fra den fiktive pool.
+  summary.allocation = await d.runStarterSquadAllocation(supabase, { dryRun, seed });
+
+  // 6. Frisk sæson 1 (sæson 0 → transition 0→1). Springes i dry-run (kræver sæson-0-row).
+  if (dryRun) {
+    summary.season = { dryRun: true, plan: "insert sæson 0 (active) → transitionToNextSeason 0→1" };
+  } else {
+    const s0 = await d.seedSeasonZero(supabase, { startDate });
+    summary.season = await d.transitionToNextSeason({ supabase, fromSeasonId: s0.seasonId, transitionAt: startDate });
+  }
+
+  // 7. Founder-badges (grant sikrer også def'en; overlever fremtidige resets).
+  const teams = await d.getBetaManagerTeams(supabase);
+  const managerUserIds = teams.map((t) => t.user_id).filter(Boolean);
+  summary.founderBadge = await d.grantFounderBadges(supabase, { dryRun, managerUserIds });
+
+  return summary;
+}
+
+// Lagdelt prod-opt-in (testbar, brugt af CLI). Dry-run-default; prod kræver
+// eksplicit --target-prod + typed confirm + #1101-cutover-ack.
+export function assertRelaunchProdGuard({ apply, isProd, targetProd, confirm, cutoverAck } = {}) {
+  if (!apply) return { proceed: false, reason: "dry-run (no --apply)" };
+  if (!isProd) return { proceed: true, target: "non-prod" };
+  if (!targetProd) throw new Error("Prod-env detekteret. Nægter --apply uden eksplicit --target-prod.");
+  if (confirm !== RELAUNCH_CONFIRM_TOKEN) throw new Error(`Prod-apply kræver --confirm "${RELAUNCH_CONFIRM_TOKEN}".`);
+  if (cutoverAck !== "true") {
+    throw new Error("Blokeret: #1101 base_value-cutover ikke kvitteret (sæt RELAUNCH_1101_CUTOVER_ACK=true først).");
+  }
+  return { proceed: true, target: "PROD" };
+}
