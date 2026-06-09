@@ -17,6 +17,7 @@ const TOOLTIPS = {
   wau:      "Weekly Active Users: distinct users aktive i sidste 7 dage. Trend = aktive 7-14 dage siden.",
   mau:      "Monthly Active Users: distinct users aktive i sidste 30 dage. Trend = aktive 30-60 dage siden.",
   d7:       "D7 retention: % af users registreret for 7+ dage siden som har aktivitet i sidste 7 dage. Trend = samme kohorte forskudt 7 dage tilbage.",
+  cohort:   "Signup-kohorte-retention (#1168): kohorte = signup-uge. D1/D3/D7 = % af kohorten hvis seneste aktivitet (last_seen eller event) ligger mindst 1/3/7 dage efter signup (rolling retention). Kohorter yngre end N dage vises '—' (endnu ikke målbart). Kerne-metrik til go/no-go i Tourens 1. uge.",
   session:  "Gennemsnitlig session-længde (sekunder) over sidste 7 dage. Per user-day, defineret som max(event_time) − min(event_time) når brugeren har 2+ events samme UTC-dag. Trend = forrige 7-dages-periode.",
   active:   "Distinct users aktive (last_seen eller player_event) inden for valgt tidsvindue. Reagerer på tids-vælgeren.",
   features: "Top 5 frontend-features målt via player_events (event_name LIKE 'feature_%') inden for valgt tidsvindue. Konvention dokumenteret i frontend/src/lib/logEvent.js KNOWN_EVENTS.",
@@ -40,6 +41,19 @@ function fmtDuration(secs) {
   if (m < 60) return `${m}m ${s}s`;
   const h = Math.floor(m / 60);
   return `${h}t ${m % 60}m`;
+}
+
+function fmtCohortCell(pct, returned, eligible) {
+  // pct === null → kohorten er endnu ikke gammel nok til at +Nd kan måles.
+  if (pct == null) {
+    return <span className="text-cz-3" title="Endnu ikke målbart — kohorten er yngre end N dage.">—</span>;
+  }
+  return (
+    <span className="text-cz-1">
+      {pct}%
+      <span className="text-cz-3 text-xs ms-1">({returned}/{eligible})</span>
+    </span>
+  );
 }
 
 function fmtDelta(curr, prev, formatter) {
@@ -98,6 +112,7 @@ export default function AdminSprintMetricsPage() {
   const [adminStatus, setAdminStatus] = useState("checking"); // checking | admin | not_admin
   const [windowChoice, setWindowChoice] = useState("7d");
   const [metrics, setMetrics] = useState(null);
+  const [cohorts, setCohorts] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [lastFetched, setLastFetched] = useState(null);
@@ -115,12 +130,19 @@ export default function AdminSprintMetricsPage() {
   async function loadMetrics() {
     setLoading(true);
     setError(null);
-    const { data, error: err } = await supabase.rpc("get_sprint_metrics", { p_window: windowChoice });
-    if (err) {
-      setError(err.message);
+    const [metricsRes, cohortRes] = await Promise.all([
+      supabase.rpc("get_sprint_metrics", { p_window: windowChoice }),
+      supabase.rpc("get_cohort_retention", { p_weeks: 8 }),
+    ]);
+    if (metricsRes.error) {
+      setError(metricsRes.error.message);
     } else {
-      setMetrics(data);
+      setMetrics(metricsRes.data);
       setLastFetched(new Date());
+    }
+    // Kohorte-retention er uafhængig af tids-vælgeren; en fejl her må ikke skjule hoved-KPI'erne.
+    if (!cohortRes.error) {
+      setCohorts(cohortRes.data?.cohorts ?? []);
     }
     setLoading(false);
   }
@@ -257,6 +279,41 @@ export default function AdminSprintMetricsPage() {
                     <tr key={f.name} className="border-t border-cz-border">
                       <td className="py-1.5 text-cz-1 font-mono text-xs">{f.name}</td>
                       <td className="py-1.5 text-cz-1 text-right">{fmtNumber(f.count)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          <div className="bg-cz-card border border-cz-border rounded-xl p-4">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-cz-3 text-xs uppercase tracking-wide">Signup-kohorte-retention (go/no-go · #1168)</p>
+              <span className="text-cz-3 text-xs cursor-help" title={TOOLTIPS.cohort}>ⓘ</span>
+            </div>
+            {!cohorts ? (
+              <p className="text-cz-3 text-sm">Henter…</p>
+            ) : cohorts.length === 0 ? (
+              <p className="text-cz-3 text-sm">Ingen signups i de seneste 8 uger.</p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="text-cz-3 text-xs uppercase">
+                  <tr>
+                    <th className="text-left py-1">Signup-uge</th>
+                    <th className="text-right py-1">Kohorte</th>
+                    <th className="text-right py-1">D1</th>
+                    <th className="text-right py-1">D3</th>
+                    <th className="text-right py-1">D7</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {cohorts.map(c => (
+                    <tr key={c.cohort_week} className="border-t border-cz-border">
+                      <td className="py-1.5 text-cz-1 font-mono text-xs">{c.cohort_week}</td>
+                      <td className="py-1.5 text-cz-1 text-right">{fmtNumber(c.cohort_size)}</td>
+                      <td className="py-1.5 text-right">{fmtCohortCell(c.d1_pct, c.d1_returned, c.d1_eligible)}</td>
+                      <td className="py-1.5 text-right">{fmtCohortCell(c.d3_pct, c.d3_returned, c.d3_eligible)}</td>
+                      <td className="py-1.5 text-right">{fmtCohortCell(c.d7_pct, c.d7_returned, c.d7_eligible)}</td>
                     </tr>
                   ))}
                 </tbody>
