@@ -31,6 +31,10 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
 app.use(helmet());
 const ALLOWED_ORIGINS = [
   "https://cycling-zone.vercel.app",
+  // cyclingzone.org additivt tilføjet — virker side om side med .vercel.app
+  // indtil .org gøres til primary. Begge varianter (apex + www).
+  "https://cyclingzone.org",
+  "https://www.cyclingzone.org",
   process.env.FRONTEND_URL,
   "http://localhost:5173",
   "http://localhost:4173",
