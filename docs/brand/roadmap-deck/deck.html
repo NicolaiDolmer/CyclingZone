@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cycling Zone — roadmap storyboard v3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400..900&display=swap" rel="stylesheet">
+<style>
+  *{ margin:0; padding:0; box-sizing:border-box; }
+  :root{
+    --yellow:#e8c547; --yellow-bright:#ffd966;
+    --navy:#1a1f38; --canvas:#0e0f15; --cream:#f0ede6;
+    --muted:#aeb4c4; --dim:#797f8f;
+    --s:1;
+  }
+  html{ scroll-snap-type:y mandatory; scroll-behavior:smooth; }
+  body{ background:#06070b; font-family:'DM Sans',system-ui,sans-serif; color:var(--cream); -webkit-font-smoothing:antialiased; overflow-x:hidden; }
+
+  .slide{ height:100vh; display:grid; place-items:center; overflow:hidden; scroll-snap-align:center; }
+
+  .card{
+    width:1280px; height:720px; flex:none;
+    transform:scale(var(--s)); transform-origin:center;
+    position:relative; overflow:hidden;
+    border:1px solid rgba(232,197,71,.16); border-radius:22px;
+    background:
+      radial-gradient(120% 90% at 84% 6%, rgba(232,197,71,.10), transparent 50%),
+      linear-gradient(160deg,#15161e 0%,#0e0f15 56%,#0a0b11 100%);
+    box-shadow:0 60px 100px -45px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,255,255,.04);
+    padding:64px;
+    display:flex; flex-direction:column;
+  }
+  .card::before{
+    content:""; position:absolute; inset:0;
+    background-image:repeating-linear-gradient(115deg, rgba(255,255,255,.02) 0 1px, transparent 1px 52px);
+    mask-image:linear-gradient(120deg, transparent, #000 74%);
+    pointer-events:none;
+  }
+
+  .chrome{ height:44px; display:flex; align-items:center; justify-content:space-between; position:relative; z-index:3; }
+  .mono{ display:block; }
+  .decktitle{ font-size:12px; letter-spacing:.22em; text-transform:uppercase; color:var(--dim); font-weight:700; }
+
+  .body{ flex:1; display:grid; grid-template-columns:1fr 408px; gap:64px; align-items:center; position:relative; z-index:3; padding-top:8px; }
+  .body.center{ grid-template-columns:1fr; place-items:center; text-align:center; }
+  .txt{ min-width:0; }
+
+  .num{ font-size:92px; font-weight:900; line-height:.8; color:transparent; -webkit-text-stroke:1.6px rgba(232,197,71,.42); letter-spacing:-.04em; margin-bottom:22px; }
+  .eyebrow{ display:inline-block; font-size:12px; letter-spacing:.2em; text-transform:uppercase; color:var(--yellow); font-weight:700; padding:6px 13px; border:1px solid rgba(232,197,71,.32); border-radius:100px; margin-bottom:20px; }
+  h1{ font-size:46px; font-weight:800; line-height:1.05; letter-spacing:-.02em; text-wrap:balance; }
+  h1 .hl{ color:var(--yellow); }
+  .lede{ margin-top:18px; font-size:18px; color:var(--muted); line-height:1.55; max-width:46ch; font-weight:400; }
+  .depth{ margin-top:22px; font-size:14px; color:var(--dim); line-height:1.55; max-width:48ch; border-left:2px solid rgba(232,197,71,.4); padding-left:15px; }
+  .depth b{ color:var(--cream); font-weight:600; }
+
+  .foot{ height:24px; display:flex; align-items:center; justify-content:space-between; position:relative; z-index:3; }
+  .foot .l{ font-size:13px; color:var(--dim); letter-spacing:.02em; }
+  .progress{ display:flex; gap:6px; }
+  .progress i{ width:26px; height:3px; border-radius:2px; background:rgba(255,255,255,.12); }
+  .progress i.on{ background:var(--yellow); }
+
+  .intro-wm{ margin-bottom:38px; display:flex; justify-content:center; }
+  .intro-h{ font-size:50px; font-weight:800; line-height:1.08; letter-spacing:-.025em; text-wrap:balance; }
+  .intro-h .hl{ color:var(--yellow); }
+  .intro-h2{ font-size:38px; font-weight:600; line-height:1.12; letter-spacing:-.015em; color:var(--dim); margin-top:6px; }
+
+  .cta{ display:inline-flex; align-items:center; gap:11px; margin-top:28px; background:var(--yellow); color:#0a0b11; font-weight:800; font-size:20px; padding:16px 26px; border-radius:13px; }
+  .cta .arr{ font-weight:700; }
+
+  .motif{ width:100%; }
+  .panel{ background:rgba(26,31,56,.45); border:1px solid rgba(255,255,255,.09); border-radius:16px; padding:22px; }
+  .panel .h{ font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--dim); font-weight:700; margin-bottom:16px; }
+
+  .stat{ margin-bottom:15px; } .stat:last-child{ margin-bottom:0; }
+  .stat .row{ display:flex; justify-content:space-between; font-size:13px; margin-bottom:7px; color:var(--muted); }
+  .stat .row b{ color:var(--cream); } .stat .row .up{ color:var(--yellow); font-weight:700; }
+  .bar{ height:8px; border-radius:4px; background:rgba(255,255,255,.08); overflow:hidden; }
+  .bar i{ display:block; height:100%; background:linear-gradient(90deg,var(--yellow),var(--yellow-bright)); border-radius:4px; }
+
+  .talent .name{ font-size:21px; font-weight:800; }
+  .talent .meta{ font-size:13px; color:var(--dim); margin-top:3px; }
+  .talent .age{ display:inline-block; margin-top:16px; font-size:12px; color:var(--yellow); border:1px solid rgba(232,197,71,.3); border-radius:100px; padding:5px 12px; }
+  .talent .pot{ margin-top:18px; font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--dim); font-weight:700; }
+  .stars{ margin-top:7px; font-size:20px; letter-spacing:4px; color:var(--yellow); }
+  .stars .off{ color:rgba(255,255,255,.14); }
+
+  .race svg{ width:100%; height:auto; display:block; }
+  .race .legend{ display:flex; justify-content:space-between; margin-top:12px; font-size:12px; color:var(--dim); }
+
+  .rep .big{ font-size:40px; font-weight:900; color:var(--yellow); line-height:1; }
+  .rep .sub{ font-size:13px; color:var(--dim); margin-top:5px; }
+
+  .news .item{ display:flex; gap:11px; align-items:flex-start; padding:12px 0; border-bottom:1px solid rgba(255,255,255,.07); }
+  .news .item:first-child{ padding-top:0; } .news .item:last-child{ border-bottom:0; padding-bottom:0; }
+  .news .tag{ font-size:9px; letter-spacing:.1em; text-transform:uppercase; color:#0a0b11; background:var(--yellow); border-radius:5px; padding:4px 7px; font-weight:800; white-space:nowrap; margin-top:1px; }
+  .news .tx{ font-size:13px; color:var(--muted); line-height:1.45; } .news .tx b{ color:var(--cream); }
+
+  .hint{ position:fixed; bottom:14px; left:50%; transform:translateX(-50%); font-size:11px; color:#5a6070; letter-spacing:.1em; text-transform:uppercase; z-index:50; }
+</style>
+</head>
+<body>
+<!-- real brand assets, inlined from frontend/public/brand/ -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <g id="cz-mono">
+      <rect width="32" height="32" rx="5" fill="#e8c547"/>
+      <g fill="#0e0f15">
+        <path transform="translate(4.992 22.000) scale(0.007812 -0.007812)" d="M784 -20Q580 -20 417.5 68.0Q255 156 160.5 326.5Q66 497 66 744Q66 993 162.0 1164.0Q258 1335 421.0 1422.5Q584 1510 784 1510Q925 1510 1044.0 1471.5Q1163 1433 1252.5 1358.5Q1342 1284 1396.0 1176.5Q1450 1069 1462 930H1052Q1048 981 1029.5 1023.0Q1011 1065 978.5 1095.0Q946 1125 900.5 1141.5Q855 1158 796 1158Q695 1158 624.5 1108.5Q554 1059 518.0 966.5Q482 874 482 744Q482 608 519.0 516.0Q556 424 625.5 378.0Q695 332 794 332Q850 332 894.0 346.0Q938 360 971.0 387.0Q1004 414 1024.5 452.0Q1045 490 1052 538H1462Q1455 443 1409.5 344.5Q1364 246 1279.5 163.5Q1195 81 1071.5 30.5Q948 -20 784 -20Z"/>
+        <path transform="translate(16.594 22.000) scale(0.007812 -0.007812)" d="M78 0V224L782 1164H80V1490H1296V1266L592 326H1294V0Z"/>
+      </g>
+    </g>
+    <g id="cz-wordmark">
+      <g fill="#e8c547">
+        <path transform="translate(96.994 68.000) scale(0.062000 -0.062000)" d="M34 162V538Q34 620 75.5 665.0Q117 710 196 710Q275 710 316.5 665.0Q358 620 358 538V464H254V545Q254 610 199 610Q144 610 144 545V154Q144 90 199 90Q254 90 254 154V261H358V162Q358 80 316.5 35.0Q275 -10 196 -10Q117 -10 75.5 35.0Q34 80 34 162Z"/>
+        <path transform="translate(122.740 68.000) scale(0.062000 -0.062000)" d="M142 298 9 700H126L201 443H203L278 700H385L252 298V0H142Z"/>
+        <path transform="translate(149.168 68.000) scale(0.062000 -0.062000)" d="M34 162V538Q34 620 75.5 665.0Q117 710 196 710Q275 710 316.5 665.0Q358 620 358 538V464H254V545Q254 610 199 610Q144 610 144 545V154Q144 90 199 90Q254 90 254 154V261H358V162Q358 80 316.5 35.0Q275 -10 196 -10Q117 -10 75.5 35.0Q34 80 34 162Z"/>
+        <path transform="translate(174.914 68.000) scale(0.062000 -0.062000)" d="M41 700H151V100H332V0H41Z"/>
+        <path transform="translate(198.242 68.000) scale(0.062000 -0.062000)" d="M41 700H151V0H41Z"/>
+        <path transform="translate(212.146 68.000) scale(0.062000 -0.062000)" d="M41 700H179L286 281H288V700H386V0H273L141 511H139V0H41Z"/>
+        <path transform="translate(240.620 68.000) scale(0.062000 -0.062000)" d="M33 166V534Q33 619 75.0 664.5Q117 710 197 710Q277 710 319.0 664.5Q361 619 361 534V474H257V541Q257 610 200 610Q143 610 143 541V158Q143 90 200 90Q257 90 257 158V295H202V395H361V166Q361 81 319.0 35.5Q277 -10 197 -10Q117 -10 75.0 35.5Q33 81 33 166Z"/>
+        <path transform="translate(278.782 68.000) scale(0.062000 -0.062000)" d="M19 98 223 600H29V700H341V602L137 100H341V0H19Z"/>
+        <path transform="translate(303.226 68.000) scale(0.062000 -0.062000)" d="M33 166V534Q33 618 76.0 664.0Q119 710 200 710Q281 710 324.0 664.0Q367 618 367 534V166Q367 82 324.0 36.0Q281 -10 200 -10Q119 -10 76.0 36.0Q33 82 33 166ZM257 159V541Q257 610 200 610Q143 610 143 541V159Q143 90 200 90Q257 90 257 159Z"/>
+        <path transform="translate(330.026 68.000) scale(0.062000 -0.062000)" d="M41 700H179L286 281H288V700H386V0H273L141 511H139V0H41Z"/>
+        <path transform="translate(358.500 68.000) scale(0.062000 -0.062000)" d="M41 700H341V600H151V415H302V315H151V100H341V0H41Z"/>
+      </g>
+      <line x1="60" y1="90" x2="420" y2="90" stroke="#ffd966" stroke-width="1.8"/>
+      <line x1="218" y1="104" x2="262" y2="104" stroke="#ffd966" stroke-width="2.8" stroke-linecap="round"/>
+    </g>
+  </defs>
+</svg>
+
+<div class="deck">
+
+  <!-- 1 INTRO -->
+  <section class="slide"><div class="card">
+    <div class="chrome"><div></div><div class="decktitle">Vejen frem</div></div>
+    <div class="body center">
+      <div class="txt" style="max-width:880px">
+        <div class="intro-wm"><svg viewBox="0 0 480 140" width="380" height="111" role="img" aria-label="Cycling Zone"><use href="#cz-wordmark"/></svg></div>
+        <span class="eyebrow">Det her bygger jeg</span>
+        <h1 class="intro-h">Det handler om at <span class="hl">bygge</span> ryttere.</h1>
+        <div class="intro-h2">Ikke bare købe dem.</div>
+        <p class="lede" style="margin-inline:auto; max-width:40ch">En håndfuld ting jeg arbejder på lige nu, og det jeg glæder mig mest til at vise jer. Spillet er gratis, og det bliver det ved med at være.</p>
+      </div>
+    </div>
+    <div class="foot"><div class="l">Open beta</div><div class="progress"><i class="on"></i><i></i><i></i><i></i><i></i><i></i></div></div>
+  </div></section>
+
+  <!-- 2 TRÆNING -->
+  <section class="slide"><div class="card">
+    <div class="chrome"><svg class="mono" viewBox="0 0 32 32" width="44" height="44" role="img" aria-label="Cycling Zone"><use href="#cz-mono"/></svg><div class="decktitle">Vejen frem</div></div>
+    <div class="body">
+      <div class="txt">
+        <div class="num">01</div>
+        <span class="eyebrow">Træning</span>
+        <h1>Dine ryttere <span class="hl">vokser</span>, hvis du former dem.</h1>
+        <p class="lede">Læg en træningsplan, balancér form mod udvikling, og følg en rytter over en hel sæson. Fire til seks træningsdage om ugen, hvor dine valg faktisk flytter tallene.</p>
+        <p class="depth"><b>På sigt:</b> specialiserede træningsspor, formkurver der spidser mod sæsonens store løb, og risiko for overtræning hvis du presser for hårdt.</p>
+      </div>
+      <div class="motif"><div class="panel">
+        <div class="h">Marco Lindqvist · 21 år</div>
+        <div class="stat"><div class="row"><span>Bjerg</span><span><b>72</b> <span class="up">+6</span></span></div><div class="bar"><i style="width:72%"></i></div></div>
+        <div class="stat"><div class="row"><span>Udholdenhed</span><span><b>80</b> <span class="up">+4</span></span></div><div class="bar"><i style="width:80%"></i></div></div>
+        <div class="stat"><div class="row"><span>Spurt</span><span><b>54</b> <span class="up">+2</span></span></div><div class="bar"><i style="width:54%"></i></div></div>
+        <div class="stat"><div class="row"><span>Form</span><span><b>91</b></span></div><div class="bar"><i style="width:91%"></i></div></div>
+      </div></div>
+    </div>
+    <div class="foot"><div class="l">Udvikling, ikke bare indkøb</div><div class="progress"><i></i><i class="on"></i><i></i><i></i><i></i><i></i></div></div>
+  </div></section>
+
+  <!-- 3 UNGDOM -->
+  <section class="slide"><div class="card">
+    <div class="chrome"><svg class="mono" viewBox="0 0 32 32" width="44" height="44" role="img" aria-label="Cycling Zone"><use href="#cz-mono"/></svg><div class="decktitle">Vejen frem</div></div>
+    <div class="body">
+      <div class="txt">
+        <div class="num">02</div>
+        <span class="eyebrow">Ungdomsakademi</span>
+        <h1>Find talentet <span class="hl">før</span> alle andre.</h1>
+        <p class="lede">Scout unge ryttere, hent dem ind i dit akademi, og form dem til stjerner du selv har bygget. Det billigste talent i dag kan være din kaptajn om tre sæsoner.</p>
+        <p class="depth"><b>På sigt:</b> et scouting-netværk, skjulte potentialer der først viser sig når du udvikler dem, og et akademi der bliver en del af holdets identitet.</p>
+      </div>
+      <div class="motif"><div class="panel talent">
+        <div class="name">Theo Vasseur</div>
+        <div class="meta">Frankrig · klatrer</div>
+        <div class="age">18 år · akademi</div>
+        <div class="pot">Potentiale (scoutet)</div>
+        <div class="stars">★★★★<span class="off">★</span></div>
+        <div class="pot">Nuværende niveau</div>
+        <div class="stars">★★<span class="off">★★★</span></div>
+      </div></div>
+    </div>
+    <div class="foot"><div class="l">Byg en pipeline, ikke bare et hold</div><div class="progress"><i></i><i></i><i class="on"></i><i></i><i></i><i></i></div></div>
+  </div></section>
+
+  <!-- 4 RACE-MOTOR -->
+  <section class="slide"><div class="card">
+    <div class="chrome"><svg class="mono" viewBox="0 0 32 32" width="44" height="44" role="img" aria-label="Cycling Zone"><use href="#cz-mono"/></svg><div class="decktitle">Vejen frem</div></div>
+    <div class="body">
+      <div class="txt">
+        <div class="num">03</div>
+        <span class="eyebrow">Løbene</span>
+        <h1>Løb afgjort af <span class="hl">taktik</span>, ikke terninger.</h1>
+        <p class="lede">En helt ny race-motor bygget til Cycling Zone. Følg løbene live, læs rapporten kilometer for kilometer, og se dine taktiske valg betale sig. Eller ikke.</p>
+        <p class="depth"><b>På sigt:</b> dybere etape-profiler, holdtaktik og udbrud, og løb hvor terræn og ryttertype faktisk afgør udfaldet.</p>
+      </div>
+      <div class="motif"><div class="panel race">
+        <div class="h">Etape 14 · 184 km · bjerge</div>
+        <svg viewBox="0 0 360 96" preserveAspectRatio="none" aria-hidden="true">
+          <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="rgba(232,197,71,.35)"/><stop offset="1" stop-color="rgba(232,197,71,0)"/>
+          </linearGradient></defs>
+          <path d="M0,84 L46,74 L80,77 L124,42 L158,55 L196,18 L230,36 L276,10 L316,49 L360,32 L360,96 L0,96 Z" fill="url(#g)"/>
+          <path d="M0,84 L46,74 L80,77 L124,42 L158,55 L196,18 L230,36 L276,10 L316,49 L360,32" fill="none" stroke="var(--yellow)" stroke-width="2.2"/>
+          <circle cx="276" cy="10" r="4.5" fill="var(--yellow-bright)"/>
+        </svg>
+        <div class="legend"><span>Start</span><span style="color:var(--yellow)">Toppen · angreb</span><span>Mål</span></div>
+      </div></div>
+    </div>
+    <div class="foot"><div class="l">Vores egen motor, live</div><div class="progress"><i></i><i></i><i></i><i class="on"></i><i></i><i></i></div></div>
+  </div></section>
+
+  <!-- 5 FANS & OMDØMME -->
+  <section class="slide"><div class="card">
+    <div class="chrome"><svg class="mono" viewBox="0 0 32 32" width="44" height="44" role="img" aria-label="Cycling Zone"><use href="#cz-mono"/></svg><div class="decktitle">Vejen frem</div></div>
+    <div class="body">
+      <div class="txt">
+        <div class="num">04</div>
+        <span class="eyebrow">Omdømme</span>
+        <h1>Byg et <span class="hl">navn</span>, ikke bare et resultat.</h1>
+        <p class="lede">Fans følger med, giver indtægt og stiller krav. Ryttere og løb får prestige, så en stjerne føles som en stjerne og en klassiker føles stor.</p>
+        <p class="depth"><b>På sigt:</b> hjemmebane-effekt, loyalitet knyttet til holdets identitet, og omdømme der åbner sponsorater og presser dig til at levere.</p>
+      </div>
+      <div class="motif"><div class="panel rep">
+        <div class="h">Holdets omdømme</div>
+        <div class="big">A&minus;</div>
+        <div class="sub">142.000 fans · +8% denne sæson</div>
+        <div class="h" style="margin-top:22px">Stjernerytter</div>
+        <div class="stars">★★★★<span class="off">★</span></div>
+        <div class="sub">Publikumsfavorit i bjergene</div>
+      </div></div>
+    </div>
+    <div class="foot"><div class="l">Prestige du kan mærke</div><div class="progress"><i></i><i></i><i></i><i></i><i class="on"></i><i></i></div></div>
+  </div></section>
+
+  <!-- 6 LEVENDE VERDEN -->
+  <section class="slide"><div class="card">
+    <div class="chrome"><svg class="mono" viewBox="0 0 32 32" width="44" height="44" role="img" aria-label="Cycling Zone"><use href="#cz-mono"/></svg><div class="decktitle">Vejen frem</div></div>
+    <div class="body">
+      <div class="txt">
+        <div class="num">05</div>
+        <span class="eyebrow">Levende verden</span>
+        <h1>En karriere med <span class="hl">historie</span>. Ikke bare en tabel.</h1>
+        <p class="lede">Dine handlinger skaber historier. Skifter et topnavn hold midt på sæsonen? Det bliver til en overskrift. Hold der jagter de samme ryttere udvikler deres egne rivaliteter.</p>
+        <div class="cta"><span>cyclingzone.org</span><span class="arr">&rarr;</span></div>
+      </div>
+      <div class="motif"><div class="panel news">
+        <div class="item"><span class="tag">Rygte</span><span class="tx"><b>Vasseur</b> tæt på sensationelt skifte til CZ-Movistar?</span></div>
+        <div class="item"><span class="tag">Rivalitet</span><span class="tx">To hold byder hinanden op om sæsonens hotteste sprinter.</span></div>
+        <div class="item"><span class="tag">Resultat</span><span class="tx">Dit akademitalent vinder sin <b>første</b> proffsejr.</span></div>
+      </div></div>
+    </div>
+    <div class="foot"><div class="l">Visionen: en ægte managerkarriere, gjort multiplayer</div><div class="progress"><i></i><i></i><i></i><i></i><i></i><i class="on"></i></div></div>
+  </div></section>
+
+</div>
+<div class="hint">↓ scroll gennem de 6 slides ↓</div>
+
+<script>
+  function fit(){
+    var pad = 0.94;
+    var s = Math.min((window.innerWidth*pad)/1280, (window.innerHeight*pad)/720);
+    document.documentElement.style.setProperty('--s', s);
+  }
+  window.addEventListener('resize', fit);
+  window.addEventListener('load', fit);
+  fit();
+</script>
+</body>
+</html>
