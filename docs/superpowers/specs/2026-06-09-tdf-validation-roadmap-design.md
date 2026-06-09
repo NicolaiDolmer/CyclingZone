@@ -65,27 +65,20 @@ Nye spillere dømmer spillet på disse fire. De skal være "kommet en lang vej" 
 
 ## 5. Data-fundamentet — go/no-go-kohorten (BANE A, launch-blokerende)
 
-**Kernebegrundelse:** retention kan ikke måles bagudrettet. Skal go/no-go i Tourens 1. uge bygge på "vendte launch-spillerne tilbage dag 3 og dag 7?", så skal events være tændt **inden 20/6**. Tændes de 21/6, findes der ingen dag-7-data til gaten.
+**Kernebegrundelse:** retention kan ikke måles bagudrettet. Skal go/no-go i Tourens 1. uge bygge på "vendte launch-spillerne tilbage dag 3 og dag 7?", så skal grundlaget være på plads **inden 20/6**.
 
-**Clarity (allerede koblet) er ikke nok** — den giver heatmaps + session-recordings, men ikke retention-kohorter eller per-bruger funnel. Vi skal have eksplicit event-tracking med stabilt bruger-id.
+**VERIFICERET 9/6 — fundamentet er ~70% bygget allerede** (ikke greenfield som oprindeligt antaget):
+- `player_events`-tabel + `logEvent()`-API (`frontend/src/lib/logEvent.js`) med stabilt `user_id`/`team_id`. Eksisterende events: `session_started`, `auction_view`, `auction_bid_placed`, `transfer_offer_sent`, `notification_clicked` + feature-impressions.
+- `get_sprint_metrics`-RPC (`database/2026-05-17-sprint-metrics-rpc.sql`) beregner DAU/WAU/MAU/D7/session-længde live på `/admin/sprint-metrics`.
+- Retention bruger UNION af `last_seen` (server-side `/api/presence`, **ikke** consent-gated) + `player_events` → hovedtallet dækker også brugere uden analytics-consent.
 
-**Foreslået minimums-event-sæt (aktiverings-funnel + retention):**
+**Det reelle gap (3 ting, alle små):**
 
-1. `signup_completed` — konto oprettet
-2. `team_drafted` — første hold sammensat
-3. `first_bid_placed` — første auktionsbud
-4. `first_race_viewed` — første løb set/afviklet
-5. `training_set` — træningsfokus sat (pillar-engagement)
-6. `session_start` med bruger-id + timestamp — grundlag for retur-beregning (dag 1/3/7)
+1. **Signup-kohorte-kurve mangler (🔴 vigtigst).** Nuværende D7 er rullende aggregat ("af alle registreret 7+ dage siden, % aktive nu") — isolerer ikke Tour-kohorten. Kræver **ingen instrumentering**, kun ny SQL: `get_cohort_retention`-RPC (kohorte = signup-uge → retur +1d/+3d/+7d, fra `auth.users.created_at` + `last_seen` + `player_events`) + dashboard-række.
+2. **Løb + træning er blinde (🟡).** Funnel kan ~60% bygges fra data (signup→`auth.users`, hold→`teams`, første bud→`auction_bid_placed`). Men der mangler `logEvent`-kald for **løb** (`race_viewed`) og **træning** (`training_focus_set`) — skal tilføjes *samtidig med* #1102 og #1163, ellers valideres blindt på 2 af 4 pillars.
+3. **Consent-rate ukendt (🟡).** Funnel-events ud over signup/hold er consent-gated. Ét query afgør om consent-raten bærer funnel-tal, eller om vi læner os på `last_seen`-baserede tal.
 
-**Afledte mål til gaten:**
-- **Aktiverings-funnel:** % der når fra signup → team_drafted → first_bid → first_race.
-- **Retention-kohorte:** af spillere der signup'er i uge X, hvor mange har `session_start` på dag 1, 3, 7.
-- **Pillar-engagement:** andel der rører træning/ungdom/auktion/løb mindst én gang.
-
-**Værktøj:** der findes et tracking-skill-sæt (model-product → tracking-plan → instrument → implement). Bruges til at omsætte ovenstående til konkret instrumentering. Knytter an til [#1141](https://github.com/NicolaiDolmer/CyclingZone/issues/1141) (board-instrumentering) og [#1145](https://github.com/NicolaiDolmer/CyclingZone/issues/1145) (evidence-roadmap).
-
-**Handling:** opret issue for data-fundament som Fase 0 launch-blocker.
+**Handling:** opret issue for (1) `get_cohort_retention`-RPC + (2) pillar-events som checklist på #1102/#1163 + (3) consent-rate-query. Knytter an til [#1141](https://github.com/NicolaiDolmer/CyclingZone/issues/1141) (board-instrumentering) og [#1145](https://github.com/NicolaiDolmer/CyclingZone/issues/1145) (evidence-roadmap).
 
 ## 6. Brand & præsentation (BANE B)
 
