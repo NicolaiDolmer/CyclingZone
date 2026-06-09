@@ -11,7 +11,7 @@
 
 [#481](https://github.com/NicolaiDolmer/CyclingZone/issues/481) is the "once-and-for-all" brand overhaul. Its Phase 1 decisions are **locked** (ALL-CAPS Bebas Neue wordmark, dual-form favicon, Bebas + Inter Tight sibling-font system — see `DECISIONS_LOG.md`) but **not yet implemented** in the codebase, and the full logo/asset production is deliberately deferred to **V2, post-TdF**.
 
-This doc captures the **interim brand that is actually shipped right now** — the launch minimum. It is the source of truth for "is this on-brand for launch?" until the #481 V2 assets land. An audit on 2026-06-04 found the four dimensions below were already ~95% consistent in production; this doc locks them and records the one gap that was closed.
+This doc captures the **interim brand that is actually shipped right now** — the launch minimum. It is the source of truth for "is this on-brand for launch?" until the #481 V2 assets land. An audit on 2026-06-04 found the four dimensions below were already ~95% consistent in production; this doc locks them and records the gaps that were closed (one at audit time, a second found 2026-06-09).
 
 **Launch baseline (now) ≠ #481 target (V2).** Where they differ, it is intentional (logo deferred). Each section below flags the V2 successor.
 
@@ -67,7 +67,7 @@ Load-bearing rules for the brand minimum:
 - **The fairness promise** is the load-bearing sentence about premium — repeat it, don't water it down.
 - **No em-dash** anywhere in player-facing copy.
 
-Audit 2026-06-04 found production copy already consistent on this (no `we`/`vi`/`our` in player-facing surfaces).
+Audit 2026-06-04 found the founder-led / no-`we`/`vi` part already consistent in player-facing surfaces. **The no-em-dash rule was not:** the 2026-06-04 note wrongly recorded copy as consistent here, but 229 em-dashes remained live across 39 locale files plus 522 in the patch-note history. Swept 2026-06-09 (PR #1193, [#671](https://github.com/NicolaiDolmer/CyclingZone/issues/671)). Standalone `—` empty-value glyphs (table/dropdown placeholders: `rankNone`, `salaryNone`, `dash`, `noBuyOption`) are kept as a deliberate exception, recorded in [`TONE_OF_VOICE.md`](../TONE_OF_VOICE.md).
 
 ---
 
@@ -81,8 +81,9 @@ The #481 marks (produced 2026-06-04, see `ASSETS.md`) are now wired into the run
 
 ## Audit + fix record (2026-06-04)
 
-Full-surface audit of wordmark, font, color and tone. Result: **~95% already consistent.** One gap closed:
+Full-surface audit of wordmark, font, color and tone. Result: **~95% already consistent.** Gaps closed:
 
-- **Wordmark stragglers:** 4 player-facing lines used one-word `CyclingZone` instead of canonical `Cycling Zone` — 2 patch-note entries (EN+DA pairs) in `frontend/src/pages/PatchNotesPage.jsx` + 2 unsent Discord drafts + the title in `docs/TONE_OF_VOICE.md`. Corrected.
+- **Wordmark stragglers (2026-06-04):** 4 player-facing lines used one-word `CyclingZone` instead of canonical `Cycling Zone` — 2 patch-note entries (EN+DA pairs) in `frontend/src/pages/PatchNotesPage.jsx` + 2 unsent Discord drafts + the title in `docs/TONE_OF_VOICE.md`. Corrected.
+- **Em-dash in player-facing copy (found 2026-06-09):** the 2026-06-04 audit wrongly recorded the no-em-dash rule (§4) as consistent. In fact 229 em-dashes were live across 39 locale files, plus 522 in the patch-note history. All swept to period / comma / colon / parens / middot per the tone rule (#671); empty-value `—` glyphs kept as a deliberate exception.
 
 Everything else (accent tokens, DM Sans, founder-led tone) was already shipped and consistent — this doc locks that state.
