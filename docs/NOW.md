@@ -6,9 +6,9 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (9/6, eftermiddag):** To launch-blockers klar til build: **(a) [#1168](https://github.com/NicolaiDolmer/CyclingZone/issues/1168) data-fundament** — byg `get_cohort_retention`-RPC (signup-kohorte D1/D3/D7 til go/no-go-gaten; data findes allerede, ren SQL) + dashboard-række. **(b) #1103 relaunch-orchestrator** (feasibility+plan KLAR, kræver #1101 base_value-cutover som hård gate). **Domæne:** cyclingzone.org additivt wiret (CORS [#1167](https://github.com/NicolaiDolmer/CyclingZone/issues/1167) merged, Supabase-allowlist sat) — primary-flip-tjekliste i roadmap-doc når ejer beslutter. **Langtidskort:** [TdF-validerings-roadmap](superpowers/specs/2026-06-09-tdf-validation-roadmap-design.md).
+> **🎯 Next action (9/6, aften):** **#1168 opgave 1 bygget — PR [#1183](https://github.com/NicolaiDolmer/CyclingZone/pull/1183) afventer merge + ejer-verify** på `/admin/sprint-metrics` (signup-kohorte-retention D1/D3/D7; RPC allerede applied til prod). Consent-rate besvaret (70,8% proxy, hovedtal bærer på last_seen); pillar-events (#1102/#1163) efterladt som tracked checklist. **Næste launch-blocker: (b) [#1103](https://github.com/NicolaiDolmer/CyclingZone/issues/1103) relaunch-orchestrator** (feasibility+plan KLAR, kræver #1101 base_value-cutover som hård gate). **Domæne:** cyclingzone.org additivt wiret ([#1167](https://github.com/NicolaiDolmer/CyclingZone/issues/1167) merged) — primary-flip når ejer beslutter. **Langtidskort:** [TdF-validerings-roadmap](superpowers/specs/2026-06-09-tdf-validation-roadmap-design.md).
 
-> **🤖 Working agent:** Ingen aktiv session. _(Sidst 9/6 eftermiddag: Claude Code — brainstorm-session → TdF-validerings-roadmap (faser/baner/pillar-bar), domæne-wiring (#1167 merged), data-fundament-audit + gap-issue #1168 + roadmap §5-rettelse. Næste: byg #1168 kohorte-RPC ELLER #1103.)._
+> **🤖 Working agent:** Ingen aktiv session. _(Sidst 9/6 aften: Claude Code — byggede #1168 opgave 1: `get_cohort_retention`-RPC + admin-dashboard-række (PR #1183, RPC applied til prod), besvarede consent-rate (opgave 3), efterlod pillar-event-checklist på #1102/#1163 (opgave 2). Næste: merge #1183 → #1103.)._
 
 > **📊 Backlog-cleanup (9. juni):** Prioriteret liste over TdF-launch issues oprettet. Top-prioritet: #1103, #1094, #1140.
 
