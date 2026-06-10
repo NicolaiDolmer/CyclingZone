@@ -35,10 +35,10 @@ CREATE TABLE riders (
   popularity INTEGER DEFAULT 0,
   uci_points INTEGER DEFAULT 1,
   prize_earnings_bonus INTEGER NOT NULL DEFAULT 0,
-  price INTEGER GENERATED ALWAYS AS (uci_points * 4000) STORED,
-  market_value INTEGER GENERATED ALWAYS AS ((GREATEST(5, uci_points) * 4000) + prize_earnings_bonus) STORED,
+  base_value INTEGER,
+  market_value INTEGER GENERATED ALWAYS AS (COALESCE(base_value, 1000) + prize_earnings_bonus) STORED,
   salary INTEGER GENERATED ALWAYS AS (
-    (GREATEST((1)::numeric, round(((((GREATEST(5, uci_points) * 4000) + prize_earnings_bonus))::numeric * 0.10))))::integer
+    (GREATEST((1)::numeric, round(((COALESCE(base_value, 1000) + prize_earnings_bonus))::numeric * 0.10)))::integer
   ) STORED,
   team_id UUID REFERENCES teams(id) ON DELETE SET NULL,
   ai_team_id UUID REFERENCES teams(id) ON DELETE SET NULL,
@@ -88,21 +88,29 @@ test("fiktive ryttere INSERT'es mod prod-schemaet uden fejl (NOT NULL/kolonner O
   assert.equal(rows[0].n, 60);
 });
 
-test("generated-kolonner (price/market_value/salary) beregnes korrekt af DB", async () => {
+test("generated-kolonner (market_value/salary) beregnes korrekt af DB (#1101 cutover)", async () => {
   const { riders } = generateFictionalRiders({ seed: 7, count: 50, referenceYear: REF_YEAR });
   await insertRiders(db, toInsertPayload(riders));
 
   const { rows } = await db.query(
-    "SELECT uci_points, prize_earnings_bonus, price, market_value, salary FROM riders",
+    "SELECT base_value, prize_earnings_bonus, market_value, salary FROM riders",
   );
   for (const r of rows) {
-    const uci = r.uci_points;
     const bonus = r.prize_earnings_bonus;
     assert.equal(r.prize_earnings_bonus, 0, "bonus skal defaulte til 0 (ikke sat af generator)");
-    assert.equal(r.price, uci * 4000, "price = uci*4000");
-    assert.equal(r.market_value, Math.max(5, uci) * 4000 + bonus, "market_value-formel");
-    const expectedSalary = Math.max(1, Math.round((Math.max(5, uci) * 4000 + bonus) * 0.1));
-    assert.equal(r.salary, expectedSalary, "salary-formel");
+    // Generatoren sætter ikke base_value (backfill gør) → fallback-økonomien 1000/100
+    // dækker insert→backfill-vinduet uden NULL.
+    assert.equal(r.base_value, null, "base_value sættes af backfill, ikke generatoren");
+    assert.equal(r.market_value, 1000 + bonus, "market_value = COALESCE(base_value,1000) + bonus");
+    assert.equal(r.salary, Math.max(1, Math.round((1000 + bonus) * 0.1)), "salary-formel");
+  }
+
+  // Efter backfill (her: direkte UPDATE) følger økonomien base_value.
+  await db.query("UPDATE riders SET base_value = 50000");
+  const { rows: after } = await db.query("SELECT market_value, salary FROM riders LIMIT 5");
+  for (const r of after) {
+    assert.equal(r.market_value, 50000, "market_value følger base_value efter backfill");
+    assert.equal(r.salary, 5000, "salary = 10% af market_value");
   }
 });
 
@@ -125,12 +133,12 @@ test("eksisterende PCM-rytter er fuldstændig urørt af fiktiv insert", async ()
     "INSERT INTO riders (pcm_id, firstname, lastname, uci_points) VALUES ($1,$2,$3,$4)",
     [9999, "Real", "Rider", 1500],
   );
-  const before = await db.query("SELECT id, firstname, lastname, uci_points, price FROM riders WHERE pcm_id = 9999");
+  const before = await db.query("SELECT id, firstname, lastname, uci_points, market_value FROM riders WHERE pcm_id = 9999");
 
   const { riders } = generateFictionalRiders({ seed: 42, count: 50, referenceYear: REF_YEAR });
   await insertRiders(db, toInsertPayload(riders));
 
-  const after = await db.query("SELECT id, firstname, lastname, uci_points, price FROM riders WHERE pcm_id = 9999");
+  const after = await db.query("SELECT id, firstname, lastname, uci_points, market_value FROM riders WHERE pcm_id = 9999");
   assert.deepEqual(after.rows[0], before.rows[0], "PCM-rytteren må ikke ændres");
 
   const pcmCount = await db.query("SELECT COUNT(*)::int AS n FROM riders WHERE pcm_id IS NOT NULL");
@@ -161,9 +169,9 @@ test("payload indeholder ingen ukendte kolonner (alle keys findes i schemaet)", 
   for (const key of Object.keys(sample)) {
     assert.ok(schemaCols.has(key), `payload-kolonne '${key}' findes ikke i riders-schemaet`);
   }
-  // Sanity: payload rører ingen generated-kolonner.
-  for (const gen of ["price", "market_value", "salary"]) {
-    assert.ok(!(gen in sample), `payload må ikke sætte generated-kolonne '${gen}'`);
+  // Sanity: payload rører hverken generated-kolonner eller base_value (backfill ejer den).
+  for (const gen of ["market_value", "salary", "base_value"]) {
+    assert.ok(!(gen in sample), `payload må ikke sætte '${gen}'`);
   }
   // Sanity: alle 14 stats med.
   for (const s of STAT_KEYS) assert.ok(s in sample, `mangler ${s}`);
