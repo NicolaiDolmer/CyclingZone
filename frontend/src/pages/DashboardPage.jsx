@@ -7,7 +7,7 @@ import OnboardingProgressCard from "../components/OnboardingProgressCard";
 import OnboardingCompletionCard from "../components/OnboardingCompletionCard";
 import { FinanceForecastBadge } from "../components/FinanceForecastCard";
 import SurveyBanner from "../components/SurveyBanner";
-import { computeDashboardSquadStats } from "../lib/dashboardSquadStats";
+import { computeDashboardSquadStats, fetchSquadCountInputs } from "../lib/dashboardSquadStats";
 import { formatNumber } from "../lib/intl";
 import { dateTextToDayOfYear } from "../lib/raceCalendar";
 import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch";
@@ -58,7 +58,7 @@ export default function DashboardPage() {
   const [team, setTeam] = useState(null);
   const [riders, setRiders] = useState([]);
   const [pendingIncomingCount, setPendingIncomingCount] = useState(0);
-  const [activeLoanCount, setActiveLoanCount] = useState(0);
+  const [incomingLoanCount, setIncomingLoanCount] = useState(0);
   const [allAuctions, setAllAuctions] = useState([]);
   const [nextRaces, setNextRaces] = useState([]);
   const [standings, setStandings] = useState([]);
@@ -118,7 +118,7 @@ export default function DashboardPage() {
       }).then(async (response) => (response.ok ? response.json() : null))
       : Promise.resolve(null);
 
-    const [teamsRes, ridersRes, pendingIncomingRes, loansInRes, auctionsRes, racesRes, standingsRes, boardStatus, offersRes] = await Promise.all([
+    const [teamsRes, ridersRes, squadCountInputs, auctionsRes, racesRes, standingsRes, boardStatus, offersRes] = await Promise.all([
       supabase.from("teams")
         .select("id, name, division, is_ai")
         .eq("is_ai", false)
@@ -127,14 +127,10 @@ export default function DashboardPage() {
         .order("name"),
       supabase.from("riders").select("id, salary, is_u25, pending_team_id")
         .eq("team_id", teamData.id),
-      supabase.from("riders")
-        .select("id", { count: "exact", head: true })
-        .eq("pending_team_id", teamData.id)
-        .neq("team_id", teamData.id),
-      supabase.from("loan_agreements")
-        .select("id", { count: "exact", head: true })
-        .eq("to_team_id", teamData.id)
-        .eq("status", "active"),
+      // #1090: pending-in + indgående lån (inkl. window_pending) hentes med
+      // samme diskriminatorer som backend getTeamMarketState — se
+      // fetchSquadCountInputs i lib/dashboardSquadStats.js.
+      fetchSquadCountInputs(supabase, teamData.id),
       supabase.from("auctions")
         .select("id, current_price, calculated_end, status, is_guaranteed_sale, seller_team_id, current_bidder_id, rider:rider_id(firstname, lastname, team_id)")
         .in("status", ["active", "extended"]),
@@ -158,8 +154,8 @@ export default function DashboardPage() {
 
     setSeasonInfo(activeSeason || null);
     setRiders(ridersRes.data || []);
-    setPendingIncomingCount(pendingIncomingRes.count || 0);
-    setActiveLoanCount(loansInRes.count || 0);
+    setPendingIncomingCount(squadCountInputs.pendingIncomingCount);
+    setIncomingLoanCount(squadCountInputs.incomingLoanCount);
     setAllAuctions(auctionsRes.data || []);
     const sortedRaces = [...(racesRes.data || [])]
       .sort((a, b) => dateTextToDayOfYear(a.pool_race?.date_text) - dateTextToDayOfYear(b.pool_race?.date_text))
@@ -322,13 +318,15 @@ export default function DashboardPage() {
   const satisfactionColor = board?.satisfaction >= 70 ? "text-cz-success" : board?.satisfaction >= 40 ? "text-cz-accent-t" : "text-cz-danger";
 
   // Squad warnings — bug #250: tæller skal forudsige fremtidens hold-størrelse
-  // (ejede MINUS pending-out PLUS pending-in PLUS aktive lån), ikke nuværende
+  // (ejede MINUS pending-out PLUS pending-in PLUS indgående lån), ikke nuværende
   // ejet-tal. Ellers viser dashboardet falske over/under-warnings når en
-  // manager har transfers pending over et vindue.
+  // manager har transfers pending over et vindue. #1090: indgående lån dækker
+  // også window_pending (parkeret til næste sæson) — paritet med backend
+  // getTeamMarketState.
   const squadStats = computeDashboardSquadStats({
     riders,
     pendingIncomingCount,
-    activeLoanCount,
+    incomingLoanCount,
     myTeamId: team?.id,
     division: team?.division,
   });
@@ -354,7 +352,7 @@ export default function DashboardPage() {
             {t("dashboard:header.subtitle", { division: team?.division, count: ownedNow })}
             {pendingIncomingCount > 0 && <span className="text-cz-success"> {t("dashboard:header.incoming", { count: pendingIncomingCount })}</span>}
             {outgoingCount > 0 && <span className="text-cz-danger"> {t("dashboard:header.outgoing", { count: outgoingCount })}</span>}
-            {activeLoanCount > 0 && <span className="text-purple-400"> {t("dashboard:header.loans", { count: activeLoanCount })}</span>}
+            {incomingLoanCount > 0 && <span className="text-purple-400"> {t("dashboard:header.loans", { count: incomingLoanCount })}</span>}
           </p>
         </div>
         <div className="flex items-center gap-3 flex-shrink-0">
