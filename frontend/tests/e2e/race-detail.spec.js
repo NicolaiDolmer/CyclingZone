@@ -85,5 +85,5 @@ test("race detail page renders stage tabs, jerseys and overall classifications",
   await expect(page.getByText("Trøjer efter etapen")).toBeVisible();
   await expect(page.getByText("Fører", { exact: true })).toBeVisible();
   await expect(page.getByText("Bjerg", { exact: true })).toBeVisible();
-  await expect(page.getByText("Etape 1 — målrækkefølge")).toBeVisible();
+  await expect(page.getByText("Etape 1 · målrækkefølge")).toBeVisible();
 });
