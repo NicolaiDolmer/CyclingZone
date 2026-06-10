@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import TeamLink from "../components/TeamLink";
 import LeaderBadge from "../components/LeaderBadge";
 import { formatNumber } from "../lib/intl";
+import { countTeamPodiums } from "../lib/standingsPodiums";
 import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch";
 
 const DIV_COLORS = { 1: "#e8c547", 2: "#60a5fa", 3: "#a78bfa" };
@@ -38,6 +39,7 @@ export default function StandingsPage() {
   const [season, setSeason] = useState(null);
   const [racePoints, setRacePoints] = useState({});
   const [teamComp, setTeamComp] = useState({});
+  const [podiums, setPodiums] = useState({});
   const [prizeEarned, setPrizeEarned] = useState({});
   const [races, setRaces] = useState([]);
 
@@ -72,7 +74,7 @@ export default function StandingsPage() {
 
     // All human teams, merged with standings (0 points as fallback)
     const merged = (teamsRes.data || []).map(team => (
-      standingsMap[team.id] || { id: team.id, team_id: team.id, team, total_points: 0, stage_wins: 0, podiums: 0 }
+      standingsMap[team.id] || { id: team.id, team_id: team.id, team, total_points: 0, stage_wins: 0 }
     ));
 
     setStandings(merged);
@@ -113,6 +115,11 @@ export default function StandingsPage() {
         if (r.rank <= 3) c.podiums += 1;
       });
       setTeamComp(comp);
+
+      // Podier pr. hold (#1093): season_standings har ingen podiums-kolonne,
+      // så kolonnen viste altid 0. Tælles client-side fra race_results —
+      // semantik = rytter-ranglistens "Top 3" (kun stage + gc, rank <= 3).
+      setPodiums(countTeamPodiums(results));
 
       // Præmiepenge pr. hold: summér prize_money på race_results.team_id (det felt
       // udbetalingen bogfører på — se prizePayoutEngine), så kolonnen viser præcis
@@ -258,7 +265,7 @@ export default function StandingsPage() {
                         </td>
                         <td className="px-4 py-3.5 text-right text-cz-2 hidden sm:table-cell font-mono">{s.stage_wins || 0}</td>
                         <td className="px-4 py-3.5 text-right text-cz-2 hidden lg:table-cell font-mono">{teamComp[s.team_id]?.wins || 0}</td>
-                        <td className="px-4 py-3.5 text-right text-cz-2 hidden md:table-cell font-mono">{s.podiums || 0}</td>
+                        <td className="px-4 py-3.5 text-right text-cz-2 hidden md:table-cell font-mono">{podiums[s.team_id] || 0}</td>
                         <td className="px-4 py-3.5 text-right font-mono text-cz-2 whitespace-nowrap">
                           {formatNumber(prizeEarned[s.team_id] || 0)} <span className="text-cz-3 text-[10px]">CZ$</span>
                         </td>
