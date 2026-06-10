@@ -91,6 +91,7 @@ function createFinalizeAuctionSupabase({
   teamUpdates = [],
   riderUpdates = [],
   financeInserts = [],
+  listingUpdates = [],
 } = {}) {
   const bankTeam = Object.values(teams).find(team => team.is_bank) || null;
 
@@ -302,6 +303,27 @@ function createFinalizeAuctionSupabase({
           insert(payload) {
             financeInserts.push(payload);
             return Promise.resolve({ error: null });
+          },
+        };
+      }
+
+      // #776/#822: salg (auktion eller guaranteed-sale) skal lukke åbne
+      // transfer_listings — chain: update().in("rider_id").in("status").
+      if (table === "transfer_listings") {
+        return {
+          update(payload) {
+            return {
+              in(riderColumn, riderIds) {
+                assert.equal(riderColumn, "rider_id");
+                return {
+                  in(statusColumn, statuses) {
+                    assert.equal(statusColumn, "status");
+                    listingUpdates.push({ payload, riderIds, statuses });
+                    return Promise.resolve({ error: null });
+                  },
+                };
+              },
+            };
           },
         };
       }
@@ -835,6 +857,215 @@ test("finalizeAuctionById still pays the human seller for a normal owned-rider a
   ]);
 });
 
+// #822: en rytter solgt på normal auktion må ikke blive stående som "til salg"
+// på transfermarkedet — åbne/negotiating transfer_listings lukkes som 'sold'.
+test("finalizeAuctionById closes open transfer listings when the rider is sold at auction (#822)", async () => {
+  const auctionUpdates = [];
+  const riderUpdates = [];
+  const listingUpdates = [];
+
+  const result = await finalizeAuctionById({
+    supabase: createFinalizeAuctionSupabase({
+      auction: {
+        id: "auction-listing-cleanup",
+        status: "active",
+        current_bidder_id: "buyer-team",
+        current_price: 150,
+        seller_team_id: "seller-team",
+        rider: {
+          id: "rider-listed",
+          firstname: "Listed",
+          lastname: "Rider",
+          team_id: "seller-team",
+        },
+      },
+      teams: {
+        "buyer-team": {
+          id: "buyer-team",
+          name: "Buyer",
+          balance: 500,
+          division: 3,
+          user_id: "user-buyer",
+        },
+        "seller-team": {
+          id: "seller-team",
+          name: "Seller",
+          balance: 250,
+          division: 3,
+          user_id: "user-seller",
+          is_ai: false,
+        },
+      },
+      teamMarketCounts: {
+        "buyer-team": {
+          riderCount: 6,
+          pendingCount: 0,
+          activeLoanCount: 0,
+        },
+      },
+      auctionUpdates,
+      riderUpdates,
+      listingUpdates,
+    }),
+    auctionId: "auction-listing-cleanup",
+    notifyTeamOwner: async () => {},
+    now: new Date("2026-06-10T10:00:00.000Z"),
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.code, "completed");
+  assert.deepEqual(riderUpdates, [{
+    team_id: "buyer-team",
+    pending_team_id: null,
+    acquired_at: "2026-06-10T10:00:00.000Z",
+  }]);
+  assert.deepEqual(listingUpdates, [{
+    payload: { status: "sold" },
+    riderIds: ["rider-listed"],
+    statuses: ["open", "negotiating"],
+  }]);
+});
+
+// #822 (lukket vindue): salget er bindende selvom rytteren parkeres på
+// pending_team_id — listingen skal stadig lukkes, ellers kan rytteren
+// dobbelt-sælges via transfermarkedet mens auktionen allerede er betalt.
+test("finalizeAuctionById closes open transfer listings even when the window is closed (#822)", async () => {
+  const riderUpdates = [];
+  const listingUpdates = [];
+
+  const result = await finalizeAuctionById({
+    supabase: createFinalizeAuctionSupabase({
+      auction: {
+        id: "auction-listing-cleanup-closed",
+        status: "active",
+        current_bidder_id: "buyer-team",
+        current_price: 150,
+        seller_team_id: "seller-team",
+        rider: {
+          id: "rider-listed-cw",
+          firstname: "Listed",
+          lastname: "Pending",
+          team_id: "seller-team",
+        },
+      },
+      teams: {
+        "buyer-team": {
+          id: "buyer-team",
+          name: "Buyer",
+          balance: 500,
+          division: 3,
+          user_id: "user-buyer",
+        },
+        "seller-team": {
+          id: "seller-team",
+          name: "Seller",
+          balance: 250,
+          division: 3,
+          user_id: "user-seller",
+          is_ai: false,
+        },
+      },
+      teamMarketCounts: {
+        "buyer-team": {
+          riderCount: 6,
+          pendingCount: 0,
+          activeLoanCount: 0,
+        },
+      },
+      transferWindowStatus: "closed",
+      auctionUpdates: [],
+      riderUpdates,
+      listingUpdates,
+    }),
+    auctionId: "auction-listing-cleanup-closed",
+    notifyTeamOwner: async () => {},
+    now: new Date("2026-06-10T11:00:00.000Z"),
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.code, "completed");
+  assert.deepEqual(riderUpdates, [{ pending_team_id: "buyer-team" }]);
+  assert.deepEqual(listingUpdates, [{
+    payload: { status: "sold" },
+    riderIds: ["rider-listed-cw"],
+    statuses: ["open", "negotiating"],
+  }]);
+});
+
+// #776: guaranteed-sale til banken (AI-opkøb) er også et salg — rytteren må
+// ikke blive stående som zombie-listing på transfermarkedet.
+test("finalizeAuctionById closes open transfer listings on guaranteed sale to the bank (#776)", async () => {
+  const auctionUpdates = [];
+  const riderUpdates = [];
+  const financeInserts = [];
+  const listingUpdates = [];
+  const notifications = [];
+
+  const result = await finalizeAuctionById({
+    supabase: createFinalizeAuctionSupabase({
+      auction: {
+        id: "auction-guaranteed-owned",
+        status: "active",
+        current_bidder_id: null,
+        current_price: 50,
+        seller_team_id: "seller-team",
+        is_guaranteed_sale: true,
+        guaranteed_price: 50,
+        rider: {
+          id: "rider-guaranteed-owned",
+          firstname: "Guaranteed",
+          lastname: "Owned",
+          team_id: "seller-team",
+        },
+      },
+      teams: {
+        "seller-team": {
+          id: "seller-team",
+          name: "Seller",
+          balance: 200,
+          division: 3,
+          user_id: "user-seller",
+          is_ai: false,
+        },
+        bank: {
+          id: "bank",
+          name: "AI",
+          balance: 999999,
+          division: 1,
+          user_id: null,
+          is_ai: true,
+          is_bank: true,
+        },
+      },
+      auctionUpdates,
+      riderUpdates,
+      financeInserts,
+      listingUpdates,
+    }),
+    auctionId: "auction-guaranteed-owned",
+    notifyTeamOwner: async (teamId, type, title, message, entityId) => {
+      notifications.push({ teamId, type, title, message, entityId });
+    },
+    now: new Date("2026-06-10T12:00:00.000Z"),
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.code, "guaranteed_sale");
+  assert.deepEqual(riderUpdates, [{
+    team_id: "bank",
+    pending_team_id: null,
+    acquired_at: "2026-06-10T12:00:00.000Z",
+  }]);
+  assert.deepEqual(listingUpdates, [{
+    payload: { status: "sold" },
+    riderIds: ["rider-guaranteed-owned"],
+    statuses: ["open", "negotiating"],
+  }]);
+  assert.equal(financeInserts.length, 1);
+  assert.equal(financeInserts[0].team_id, "seller-team");
+  assert.equal(financeInserts[0].amount, 50);
+});
+
 test("finalizeAuctionById keeps guaranteed sale on non-owned riders payout-free and history-safe", async () => {
   const auctionUpdates = [];
   const teamUpdates = [];
@@ -842,6 +1073,7 @@ test("finalizeAuctionById keeps guaranteed sale on non-owned riders payout-free 
   const financeInserts = [];
   const notifications = [];
 
+  const listingUpdates = [];
   const result = await finalizeAuctionById({
     supabase: createFinalizeAuctionSupabase({
       auction: {
@@ -890,6 +1122,7 @@ test("finalizeAuctionById keeps guaranteed sale on non-owned riders payout-free 
       teamUpdates,
       riderUpdates,
       financeInserts,
+      listingUpdates,
     }),
     auctionId: "auction-guaranteed",
     notifyTeamOwner: async (teamId, type, title, message, entityId) => {
@@ -908,6 +1141,8 @@ test("finalizeAuctionById keeps guaranteed sale on non-owned riders payout-free 
   assert.deepEqual(teamUpdates, []);
   assert.deepEqual(riderUpdates, []);
   assert.deepEqual(financeInserts, []);
+  // #776: intet salg fandt sted → ingen listings må lukkes.
+  assert.deepEqual(listingUpdates, []);
   assert.equal(notifications.length, 1);
   assert.equal(notifications[0].teamId, "initiator-team");
 });

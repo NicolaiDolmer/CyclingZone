@@ -22,10 +22,12 @@ function createMockSupabase(initialState) {
     loanAgreements: [...(initialState.loanAgreements || [])],
     seasonStandings: [...(initialState.seasonStandings || [])],
     transferWindows: [...(initialState.transferWindows || [])],
+    transferListings: [...(initialState.transferListings || [])],
     financeTransactions: [],
     notifications: [],
     riderUpdates: [],
     teamUpdates: [],
+    listingUpdates: [],
     emergencyLoans: [],
   };
 
@@ -43,6 +45,7 @@ function createMockSupabase(initialState) {
     if (table === "loan_agreements") return loanAgreementsTable();
     if (table === "season_standings") return seasonStandingsTable();
     if (table === "transfer_windows") return transferWindowsTable();
+    if (table === "transfer_listings") return transferListingsTable();
     if (table === "finance_transactions") return financeTransactionsTable();
     if (table === "notifications") return notificationsTable();
     throw new Error(`Unexpected table: ${table}`);
@@ -305,6 +308,33 @@ function createMockSupabase(initialState) {
     };
   }
 
+  // #776/#822: auto-salg lukker åbne transfer_listings via
+  // update({status}).in("rider_id", [...]).in("status", ["open","negotiating"]).
+  function transferListingsTable() {
+    return {
+      update(payload) {
+        const filters = {};
+        const builder = {
+          in(col, vals) {
+            filters[col] = vals;
+            return builder;
+          },
+          then(resolve) {
+            const riderIds = filters.rider_id || [];
+            const statuses = filters.status || [];
+            const matches = state.transferListings.filter(
+              l => riderIds.includes(l.rider_id) && statuses.includes(l.status)
+            );
+            for (const listing of matches) Object.assign(listing, payload);
+            state.listingUpdates.push({ payload, riderIds, statuses });
+            resolve({ data: null, error: null });
+          },
+        };
+        return builder;
+      },
+    };
+  }
+
   function financeTransactionsTable() {
     return {
       insert(row) {
@@ -470,6 +500,12 @@ test("enforceTeamSquadCompliance: D3 hold med 32 ryttere → auto-sælg 2 + 200K
     seasonStandings: [
       { id: "s1", season_id: "season-1", team_id: "t1", division: 3, total_points: 500, penalty_points: 50 },
     ],
+    // #776/#822: r31 står til salg på transfermarkedet — auto-salget skal
+    // lukke listingen, ellers bliver den en zombie ("til salg" uden ejer).
+    transferListings: [
+      { id: "tl-1", rider_id: "r31", seller_team_id: "t1", status: "open" },
+      { id: "tl-2", rider_id: "r5", seller_team_id: "t1", status: "open" },
+    ],
   });
 
   const result = await enforceTeamSquadCompliance({
@@ -494,6 +530,10 @@ test("enforceTeamSquadCompliance: D3 hold med 32 ryttere → auto-sælg 2 + 200K
   // r30 og r31 har ai_team_id="ai-team" → returneret dér
   const r30 = supabase.state.riders.find(r => r.id === "r30");
   assert.equal(r30.team_id, "ai-team");
+
+  // #776/#822: r31's åbne listing lukkes som 'sold'; r5 (ikke solgt) forbliver åben.
+  assert.equal(supabase.state.transferListings.find(l => l.id === "tl-1").status, "sold");
+  assert.equal(supabase.state.transferListings.find(l => l.id === "tl-2").status, "open");
 
   // Akkumuleret penalty (50 + 400 = 450)
   assert.equal(supabase.state.seasonStandings[0].penalty_points, 450);

@@ -1,4 +1,5 @@
 import {
+  closeTransferListingsForRiders,
   ensureNoError,
   expectMaybeSingle,
   expectMutation,
@@ -312,6 +313,12 @@ async function finalizeAuctionRecord({
         .eq("id", auction.rider.id)
     );
 
+    // #822: rytteren er solgt — luk alle åbne transfer_listings så han ikke
+    // står som zombie-"til salg" på transfermarkedet. Gælder også ved lukket
+    // vindue (pending_team_id): salget er bindende og betalt, så et åbent
+    // listing ville kunne dobbelt-sælge rytteren.
+    await closeTransferListingsForRiders(supabase, [auction.rider.id], "sold");
+
     // Slice 07c: balance + finance_transactions atomic via RPC.
     // 07d Fase B / #240: cron-finalizer → actor_type=cron, actor_id=null,
     // season_id eksplicit + idempotency_key så cron-retries ikke double-pay.
@@ -431,6 +438,10 @@ async function finalizeAuctionRecord({
         })
         .eq("id", auction.rider.id)
     );
+
+    // #776: guaranteed-sale til banken er også et salg — luk åbne
+    // transfer_listings så rytteren ikke står som zombie-"til salg".
+    await closeTransferListingsForRiders(supabase, [auction.rider.id], "sold");
 
     // Slice 07c: balance + finance_transactions atomic via RPC.
     // 07d Fase B / #240: season_id eksplicit + idempotency_key per auction.
