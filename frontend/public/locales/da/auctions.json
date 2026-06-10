@@ -188,5 +188,8 @@
     "bidFailed": "Buddet kunne ikke placeres",
     "proxyFailed": "Fejl ved sæt autobud",
     "insufficientBalance": "Buddet overstiger din tilgængelige saldo"
+  },
+  "warning": {
+    "squadCapacity": "OBS: leder nu auktioner svarende til {totalAfter} ryttere (max {maxRiders}). Hvis du stadig er {exceedBy} over ved vindue-luk: auto-salg + {fine} CZ$ bøde + {points} fradrag-points."
   }
 }

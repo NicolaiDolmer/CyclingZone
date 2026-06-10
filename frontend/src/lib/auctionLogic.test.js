@@ -78,7 +78,9 @@ test("getAuctionSellerLabel — manager-listing viser holdnavn, ellers AI", () =
   assert.equal(getAuctionSellerLabel(auction({ seller_team_id: null })), "AI");
 });
 
-test("formatBidWarning — squad-cap warning beregner total bøde og point", () => {
+test("formatBidWarning — squad-cap warning resolver i18n-key med beregnet bøde og point (#1170)", () => {
+  const calls = [];
+  const t = (key, params) => { calls.push({ key, params }); return `[${key}]`; };
   const message = formatBidWarning({
     code: "squad_capacity_exceeded",
     totalAfter: 32,
@@ -86,17 +88,23 @@ test("formatBidWarning — squad-cap warning beregner total bøde og point", () 
     exceedBy: 2,
     finePerRider: 1500,
     penaltyPointsPerRider: 4,
-  });
+  }, t);
 
-  assert.match(message, /leder nu auktioner svarende til 32 ryttere \(max 30\)/);
-  assert.match(message, /2 over ved vindue-luk/);
-  assert.match(message, /3,000 CZ\$ bøde/);
-  assert.match(message, /8 fradrag-points/);
+  assert.equal(message, "[auctions:warning.squadCapacity]");
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].params.totalAfter, 32);
+  assert.equal(calls[0].params.maxRiders, 30);
+  assert.equal(calls[0].params.exceedBy, 2);
+  assert.equal(calls[0].params.fine, "3,000"); // formatNumber(1500 * 2)
+  assert.equal(calls[0].params.points, 8);     // 4 * 2
 });
 
-test("formatBidWarning — ignorerer ukendte warning-koder", () => {
-  assert.equal(formatBidWarning({ code: "other_warning" }), null);
-  assert.equal(formatBidWarning(null), null);
+test("formatBidWarning — ignorerer ukendte warning-koder og manglende t", () => {
+  const t = () => "skal-ikke-kaldes";
+  assert.equal(formatBidWarning({ code: "other_warning" }, t), null);
+  assert.equal(formatBidWarning(null, t), null);
+  // Uden t (defensive): ingen crash, bare null.
+  assert.equal(formatBidWarning({ code: "squad_capacity_exceeded", exceedBy: 1, finePerRider: 1, penaltyPointsPerRider: 1 }), null);
 });
 
 // ── #1184: worst-case reservation + tilgængelig-for-bud (klient-spejl af #44) ──

@@ -80,7 +80,7 @@ export function useAuctionBidding({
         setErrorText(result.error || "");
         if (result.ok) {
           logEvent("auction_bid_placed", { auction_id: auction.id, amount: bidAmount });
-          const warningMsg = (result.warnings || []).map(formatBidWarning).filter(Boolean).join(" ");
+          const warningMsg = (result.warnings || []).map(w => formatBidWarning(w, t)).filter(Boolean).join(" ");
           if (warningMsg) {
             setWarningText(warningMsg);
             setTimeout(() => setWarningText(""), 10000);
@@ -104,8 +104,8 @@ export function useAuctionBidding({
         if (result.ok) {
           setProxyExpanded(false);
         } else {
-          // #174: vis dansk fejlbesked fra backend (egen rytter, max-loft, balance, ...)
-          setProxyErrorText(result.error || "Fejl ved sæt autobud");
+          // #174: vis fejlbesked fra backend (egen rytter, max-loft, balance, ...)
+          setProxyErrorText(result.error || t("auctions:error.proxyFailed"));
         }
         setTimeout(() => setProxyStatus(null), result.ok ? 2000 : 3000);
       },
