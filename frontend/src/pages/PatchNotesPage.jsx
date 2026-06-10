@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.17",
+    date: "2026-06-10",
+    label: "Beta",
+    changes: [
+      {
+        category: "Balance · Star riders",
+        items: [
+          "EN · A star rider is now a rider valued at 8,000,000 CZ$ or more (was 5,000,000). The threshold is recalibrated to the new rider generation so roughly the top 1.5% count as stars. Stars are protected from the board's forced sale, and the Star team achievement follows the new amount.",
+          "DA · En stjernerytter er nu en rytter med en værdi på mindst 8.000.000 CZ$ (før 5.000.000). Grænsen er re-kalibreret til den nye rytter-generation, så cirka top 1,5 % tæller som stjerner. Stjerner er beskyttet mod bestyrelsens tvangssalg, og Stjernehold-achievementet følger det nye beløb.",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.15",
     date: "2026-06-10",
     label: "Beta",
