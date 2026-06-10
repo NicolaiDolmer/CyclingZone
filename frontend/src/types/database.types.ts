@@ -1755,11 +1755,11 @@ export type Database = {
           lastname: string
           market_value: number | null
           nationality_code: string | null
+          base_value: number | null
           pcm_id: number | null
           pending_team_id: string | null
           popularity: number | null
           potentiale: number | null
-          price: number | null
           prize_earnings_bonus: number
           salary: number | null
           stat_acc: number | null
@@ -1794,11 +1794,11 @@ export type Database = {
           lastname: string
           market_value?: number | null
           nationality_code?: string | null
+          base_value?: number | null
           pcm_id?: number | null
           pending_team_id?: string | null
           popularity?: number | null
           potentiale?: number | null
-          price?: number | null
           prize_earnings_bonus?: number
           salary?: number | null
           stat_acc?: number | null
@@ -1833,11 +1833,11 @@ export type Database = {
           lastname?: string
           market_value?: number | null
           nationality_code?: string | null
+          base_value?: number | null
           pcm_id?: number | null
           pending_team_id?: string | null
           popularity?: number | null
           potentiale?: number | null
-          price?: number | null
           prize_earnings_bonus?: number
           salary?: number | null
           stat_acc?: number | null
