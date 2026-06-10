@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabase";
 import RiderLink from "./RiderLink";
 import TeamLink from "./TeamLink";
 import { formatNumber, formatDate } from "../lib/intl";
+import { computeTransferProfit } from "../lib/transferProfit.js";
 
 const TYPE_LABEL_KEY = { auction: "type.auction", transfer: "type.transfer", swap: "type.swap", loan: "type.loan" };
 
@@ -44,6 +45,80 @@ function RiderCell({ event }) {
     );
   }
   return primary;
+}
+
+function ProfitAmount({ profit }) {
+  const { t } = useTranslation("transfers");
+  if (profit == null) {
+    return <span className="text-cz-3" title={t("profit.unknownBuyHint")}>—</span>;
+  }
+  if (profit > 0) return <span className="text-cz-success">+{formatNumber(profit)} CZ$</span>;
+  if (profit < 0) return <span className="text-cz-danger">-{formatNumber(Math.abs(profit))} CZ$</span>;
+  return <span className="text-cz-2">0 CZ$</span>;
+}
+
+function TradeLeg({ amount, date }) {
+  const { t } = useTranslation("transfers");
+  if (amount == null) {
+    return <span className="text-cz-3" title={t("profit.unknownBuyHint")}>{t("profit.unknownBuy")}</span>;
+  }
+  return (
+    <span className="whitespace-nowrap">
+      <span className="font-mono text-cz-1">{formatNumber(amount)} CZ$</span>
+      {date && <span className="text-cz-3 ms-1.5 text-[10px]">{formatDate(date, "short")}</span>}
+    </span>
+  );
+}
+
+// Transfer-profit pr. rytter (#1107): realiserede køb→salg-par udledt af
+// historikken. Altid alle sæsoner — køb og salg kan ligge i hver sin sæson.
+function TransferProfitPanel({ trades, totals }) {
+  const { t } = useTranslation("transfers");
+  if (trades.length === 0) return null;
+  const unknownCount = totals.tradeCount - totals.knownTradeCount;
+  return (
+    <div className="bg-cz-card border border-cz-border rounded-xl p-5">
+      <div className="mb-1">
+        <h2 className="text-cz-1 font-semibold text-sm">{t("profit.title")}</h2>
+        <p className="text-cz-3 text-xs mt-0.5">{t("profit.subtitle")}</p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="border-b border-cz-border">
+              <th className="text-left py-2 text-cz-3">{t("profit.header.rider")}</th>
+              <th className="text-right py-2 text-cz-3">{t("profit.header.bought")}</th>
+              <th className="text-right py-2 text-cz-3">{t("profit.header.sold")}</th>
+              <th className="text-right py-2 text-cz-3">{t("profit.header.profit")}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {trades.map((tr, i) => (
+              <tr key={`${tr.rider.id}:${tr.sellDate}:${i}`} className="border-b border-cz-border last:border-0 hover:bg-cz-subtle/40">
+                <td className="py-2">
+                  <RiderLink id={tr.rider.id} className="text-cz-1 hover:text-cz-accent-t">
+                    {tr.rider.firstname} {tr.rider.lastname}
+                  </RiderLink>
+                </td>
+                <td className="py-2 text-right"><TradeLeg amount={tr.buyAmount} date={tr.buyDate} /></td>
+                <td className="py-2 text-right"><TradeLeg amount={tr.sellAmount} date={tr.sellDate} /></td>
+                <td className="py-2 text-right font-mono whitespace-nowrap"><ProfitAmount profit={tr.profit} /></td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr className="border-t border-cz-border">
+              <td colSpan={3} className="py-2 text-cz-2 font-medium">{t("profit.total")}</td>
+              <td className="py-2 text-right font-mono whitespace-nowrap"><ProfitAmount profit={totals.realizedProfit} /></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      {unknownCount > 0 && (
+        <p className="text-cz-3 text-[11px] mt-2">{t("profit.totalExcluded", { count: unknownCount })}</p>
+      )}
+    </div>
+  );
 }
 
 export default function TeamTransferHistoryTab({ teamId }) {
@@ -89,6 +164,10 @@ export default function TeamTransferHistoryTab({ teamId }) {
     return [...set].sort((a, b) => b - a);
   }, [events]);
 
+  // #1107: profit pr. rytter beregnes på ALLE events (ikke sæson-filtreret) —
+  // køb og salg kan ligge i hver sin sæson.
+  const profit = useMemo(() => computeTransferProfit(events), [events]);
+
   const filtered = useMemo(() => {
     let list = events;
     if (seasonFilter === "current" && currentSeason != null) {
@@ -126,6 +205,7 @@ export default function TeamTransferHistoryTab({ teamId }) {
   const noResults = events.length === 0;
 
   return (
+    <div className="space-y-4">
     <div className="bg-cz-card border border-cz-border rounded-xl p-5">
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <h2 className="text-cz-1 font-semibold text-sm">{t("history.title")}</h2>
@@ -195,6 +275,9 @@ export default function TeamTransferHistoryTab({ teamId }) {
           </table>
         </div>
       )}
+    </div>
+
+    <TransferProfitPanel trades={profit.trades} totals={profit.totals} />
     </div>
   );
 }
