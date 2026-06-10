@@ -570,7 +570,7 @@
     },
     "debtCeiling": {
       "q": "Hvad er gældsloftet, og hvornår gælder det?",
-      "a": "Hver division har et maksimalt gældsbeløb: Division 1: 1.200.000 CZ$, Division 2: 900.000 CZ$, Division 3: 600.000 CZ$. Systemet afviser nødlån der ville overskride loftet. Lånerenter tilskrives ved sæsonstart oveni eksisterende gæld (flyttet fra sæsonslut i v3.78)."
+      "a": "Hver division har et maksimalt gældsbeløb: Division 1: 1.200.000 CZ$, Division 2: 900.000 CZ$, Division 3: 600.000 CZ$. Nye korte og lange lån afvises, hvis lånet plus gebyret ville skubbe din samlede gæld over loftet. Gebyret tæller med under loftet, så det maksimale du kan låne er lidt mindre end pladsen under loftet. Låneformularen på Økonomi-siden viser dit aktuelle max. Automatiske nødlån kan overskride loftet, men du får en advarsel og skal skære i omkostningerne. Lånerenter tilskrives ved sæsonstart oveni eksisterende gæld (flyttet fra sæsonslut i v3.78)."
     },
     "prizeMoneyFaq": {
       "q": "Hvad er præmiepenge, og hvornår udbetales de?",

@@ -71,6 +71,7 @@ import {
   repayLoan,
   getLoanConfig,
   getTotalDebt,
+  computeMaxLoanPrincipal,
 } from "../lib/loanEngine.js";
 import {
   notifyTeamOwner as notifyTeamOwnerShared,
@@ -4992,9 +4993,25 @@ router.get("/finance/loans", requireAuth, async (req, res) => {
       getLoanConfig(req.team.id),
       getTotalDebt(req.team.id),
     ]);
+    // #1012: berig hver config med max-lånbart lige nu (gebyr-inkl.) via SAMME
+    // formel som createLoans loft-validering — UI'et viser tallet 1:1.
+    const configsWithMax = configs.map((config) => {
+      const max = computeMaxLoanPrincipal({
+        currentDebt: debt,
+        debtCeiling: config.debt_ceiling,
+        originationFeePct: config.origination_fee_pct,
+      });
+      if (!max) return config;
+      return {
+        ...config,
+        max_principal: max.principal,
+        max_fee: max.fee,
+        max_total_debt: max.totalDebt,
+      };
+    });
     res.json({
       loans: loansRes.data || [],
-      configs,
+      configs: configsWithMax,
       total_debt: debt,
       debt_ceiling: configs[0]?.debt_ceiling,
     });
@@ -5016,7 +5033,15 @@ router.post("/finance/loans", requireAuth, marketWriteLimiter, async (req, res) 
       actorId: req.user.id,
     });
     res.json({ success: true, loan });
-  } catch (e) { res.status(400).json({ error: e.message }); }
+  } catch (e) {
+    // #1012: propagér loanEngine's strukturerede kode (fx error.debtCapReached)
+    // så frontend kan rendere lokaliseret via backendMessages-namespacet.
+    res.status(400).json({
+      error: e.message,
+      ...(e.code ? { errorCode: e.code } : {}),
+      ...(e.params ? { errorParams: e.params } : {}),
+    });
+  }
 });
 
 // POST /api/finance/loans/:id/repay — betal rate på finanslån
@@ -5030,7 +5055,15 @@ router.post("/finance/loans/:id/repay", requireAuth, marketWriteLimiter, async (
       actorId: req.user.id,
     });
     res.json({ success: true, ...result });
-  } catch (e) { res.status(400).json({ error: e.message }); }
+  } catch (e) {
+    // #1012: samme strukturerede fejl-propagering som POST /finance/loans
+    // (fx error.repayInsufficient med { available }).
+    res.status(400).json({
+      error: e.message,
+      ...(e.code ? { errorCode: e.code } : {}),
+      ...(e.params ? { errorParams: e.params } : {}),
+    });
+  }
 });
 
 // PATCH /api/admin/loan-config — opdater lånekonfiguration

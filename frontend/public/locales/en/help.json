@@ -570,7 +570,7 @@
     },
     "debtCeiling": {
       "q": "What is the debt ceiling, and when does it apply?",
-      "a": "Each division has a maximum debt amount: Division 1: 1,200,000 CZ$, Division 2: 900,000 CZ$, Division 3: 600,000 CZ$. The system rejects emergency loans that would exceed the ceiling. Loan interest is added at season start on top of existing debt (moved from season end in v3.78)."
+      "a": "Each division has a maximum debt amount: Division 1: 1,200,000 CZ$, Division 2: 900,000 CZ$, Division 3: 600,000 CZ$. New short-term and long-term loans are rejected if the loan plus its fee would push your total debt over the ceiling. The fee counts towards the cap, so the max you can borrow is a bit less than the room under the cap. The loan form on the Finances page shows your current max. Automatic emergency loans can exceed the ceiling, but you get a warning and must cut costs. Loan interest is added at season start on top of existing debt (moved from season end in v3.78)."
     },
     "prizeMoneyFaq": {
       "q": "What is prize money, and when is it paid out?",
