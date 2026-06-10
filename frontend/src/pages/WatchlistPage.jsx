@@ -195,7 +195,7 @@ export default function WatchlistPage() {
                     <th className="px-2 py-3 w-8" />
                     <th className="px-3 py-3 text-left text-cz-3 font-medium uppercase tracking-wider hidden sm:table-cell">{t("thTeam")}</th>
                     <th className="px-3 py-3 text-left text-cz-3 font-medium uppercase tracking-wider hidden sm:table-cell">{t("thBadges")}</th>
-                    <SortTh sortKey="uci_points" sort={sort} sortDir={sortDir} onSort={handleSort}
+                    <SortTh sortKey="value" sort={sort} sortDir={sortDir} onSort={handleSort}
                       className="px-3 py-3 text-right font-medium">{t("thValue")}</SortTh>
                     <SortTh sortKey="salary" sort={sort} sortDir={sortDir} onSort={handleSort}
                       className="px-3 py-3 text-right font-medium">{t("thSalary")}</SortTh>

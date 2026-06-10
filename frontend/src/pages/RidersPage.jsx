@@ -299,7 +299,7 @@ export default function RidersPage() {
       {showEmptyState && myTeam && (
         <RidersEmptyState
           balance={myTeam.balance}
-          onFilterByBudget={() => setFilter("max_uci", String(myTeam.balance ?? ""))}
+          onFilterByBudget={() => setFilter("max_value", String(myTeam.balance ?? ""))}
           onStartTour={() => startTour("riders")}
         />
       )}
@@ -326,7 +326,7 @@ export default function RidersPage() {
                   <th className="px-2 py-3 w-8" />
                   <th className="px-3 py-3 text-left font-medium uppercase tracking-wider text-cz-3 cursor-default hidden sm:table-cell">{t("table.team")}</th>
                   <th className="px-3 py-3 text-left font-medium uppercase tracking-wider text-cz-3 cursor-default hidden sm:table-cell">{t("table.badges")}</th>
-                  <SortTh sortKey="uci_points" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
+                  <SortTh sortKey="value" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
                     className="px-3 py-3 text-right font-medium uppercase tracking-wider w-20">{t("table.value")}</SortTh>
                   <SortTh sortKey="salary" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
                     className="px-3 py-3 text-right font-medium uppercase tracking-wider w-20">{t("table.salary")}</SortTh>

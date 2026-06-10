@@ -45,12 +45,12 @@ function makeStatDefaults() {
 
 export const DEFAULT_FILTERS = {
   q: "",
-  sort: "uci_points",
+  sort: "value",
   sort_dir: "desc",
   nationality_code: "",
   rider_type: "",
-  min_uci: "",
-  max_uci: "",
+  min_value: "",
+  max_value: "",
   min_salary: "",
   max_salary: "",
   min_age: "",
@@ -69,7 +69,7 @@ export const DEFAULT_FILTERS = {
 // #960: alle ikke-stat filter-nøgler, i samme rækkefølge som chips'ene nedenfor.
 // Bruges både til "har aktivt filter"-tjek og til "Nulstil alt (N)"-tælleren.
 const BASIC_FILTER_KEYS = [
-  "q", "nationality_code", "rider_type", "min_uci", "max_uci", "min_salary", "max_salary",
+  "q", "nationality_code", "rider_type", "min_value", "max_value", "min_salary", "max_salary",
   "min_age", "max_age", "min_potentiale", "max_potentiale",
   "min_auction_price", "max_auction_price", "u25", "u23", "free_agent", "team_id",
 ];
@@ -207,11 +207,11 @@ export default function RiderFilters({
           <div>
             <label className="block text-cz-3 text-[10px] uppercase tracking-wider mb-1">{t("fields.valueRange")}</label>
             <div className="flex gap-1">
-              <input type="number" value={filters.min_uci} onChange={e => onChange("min_uci", e.target.value)}
+              <input type="number" value={filters.min_value} onChange={e => onChange("min_value", e.target.value)}
                 placeholder={t("fields.min")}
                 className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2
                   text-cz-1 text-sm placeholder-cz-3 focus:outline-none focus:border-cz-accent" />
-              <input type="number" value={filters.max_uci} onChange={e => onChange("max_uci", e.target.value)}
+              <input type="number" value={filters.max_value} onChange={e => onChange("max_value", e.target.value)}
                 placeholder={t("fields.max")}
                 className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2
                   text-cz-1 text-sm placeholder-cz-3 focus:outline-none focus:border-cz-accent" />
@@ -348,8 +348,8 @@ export default function RiderFilters({
             />
           )}
           {filters.rider_type && <Chip t={t} label={tTypes(`types.${filters.rider_type}`)} onRemove={() => onChange("rider_type", "")} />}
-          {filters.min_uci && <Chip t={t} label={t("chips.value.min", { amount: formatNumber(parseInt(filters.min_uci)) })} onRemove={() => onChange("min_uci", "")} />}
-          {filters.max_uci && <Chip t={t} label={t("chips.value.max", { amount: formatNumber(parseInt(filters.max_uci)) })} onRemove={() => onChange("max_uci", "")} />}
+          {filters.min_value && <Chip t={t} label={t("chips.value.min", { amount: formatNumber(parseInt(filters.min_value)) })} onRemove={() => onChange("min_value", "")} />}
+          {filters.max_value && <Chip t={t} label={t("chips.value.max", { amount: formatNumber(parseInt(filters.max_value)) })} onRemove={() => onChange("max_value", "")} />}
           {filters.min_salary && <Chip t={t} label={t("chips.salary.min", { amount: formatNumber(parseInt(filters.min_salary)) })} onRemove={() => onChange("min_salary", "")} />}
           {filters.max_salary && <Chip t={t} label={t("chips.salary.max", { amount: formatNumber(parseInt(filters.max_salary)) })} onRemove={() => onChange("max_salary", "")} />}
           {filters.min_age && <Chip t={t} label={t("chips.age.min", { value: filters.min_age })} onRemove={() => onChange("min_age", "")} />}

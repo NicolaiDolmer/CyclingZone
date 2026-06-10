@@ -3,17 +3,18 @@ import assert from "node:assert/strict";
 import {
   filtersToSearchParams,
   searchParamsToFilters,
+  loadFiltersFromSession,
 } from "./ridersUrlState.js";
 
 // Minimalt subset af DEFAULT_FILTERS (RiderFilters.jsx) — dækker alle typer
 // (string, number, boolean) som encode/decode skal håndtere.
 const DEFAULTS = {
   q: "",
-  sort: "uci_points",
+  sort: "value",
   sort_dir: "desc",
   nationality_code: "",
-  min_uci: "",
-  max_uci: "",
+  min_value: "",
+  max_value: "",
   u25: false,
   u23: false,
   free_agent: false,
@@ -66,7 +67,7 @@ test("filtersToSearchParams — sort/sort_dir encodes kun når forskellig fra de
 
 test("filtersToSearchParams — tom-streng-filtre encodes ikke (default er '')", () => {
   const params = filtersToSearchParams(
-    { ...DEFAULTS, min_uci: "", max_uci: "", q: "" },
+    { ...DEFAULTS, min_value: "", max_value: "", q: "" },
     DEFAULTS,
   );
   assert.equal(params.toString(), "");
@@ -74,23 +75,23 @@ test("filtersToSearchParams — tom-streng-filtre encodes ikke (default er '')",
 
 test("filtersToSearchParams — numeriske filtre som strings encodes når forskellig fra default", () => {
   const params = filtersToSearchParams(
-    { ...DEFAULTS, min_uci: "100000", max_uci: "" },
+    { ...DEFAULTS, min_value: "100000", max_value: "" },
     DEFAULTS,
   );
-  assert.equal(params.get("min_uci"), "100000");
-  assert.equal(params.has("max_uci"), false);
+  assert.equal(params.get("min_value"), "100000");
+  assert.equal(params.has("max_value"), false);
 });
 
 test("searchParamsToFilters — læser tekst, tal og booleans korrekt", () => {
-  const params = new URLSearchParams("q=Pogacar&u25=1&stat_bro_min=70&page=3&min_uci=50000");
+  const params = new URLSearchParams("q=Pogacar&u25=1&stat_bro_min=70&page=3&min_value=50000");
   const filters = searchParamsToFilters(params, DEFAULTS);
   assert.equal(filters.q, "Pogacar");
   assert.equal(filters.u25, true);
   assert.equal(filters.stat_bro_min, 70);
   assert.equal(filters.page, 3);
-  assert.equal(filters.min_uci, "50000");
+  assert.equal(filters.min_value, "50000");
   // urørte defaults
-  assert.equal(filters.sort, "uci_points");
+  assert.equal(filters.sort, "value");
   assert.equal(filters.sort_dir, "desc");
   assert.equal(filters.free_agent, false);
 });
@@ -103,7 +104,7 @@ test("searchParamsToFilters — round-trip bevarer ikke-default filtre", () => {
     stat_bro_min: 70,
     sort: "salary",
     page: 2,
-    min_uci: "10000",
+    min_value: "10000",
   };
   const params = filtersToSearchParams(original, DEFAULTS);
   const restored = searchParamsToFilters(params, DEFAULTS);
@@ -121,4 +122,47 @@ test("searchParamsToFilters — ugyldig page falder tilbage til default", () => 
   const params = new URLSearchParams("page=abc");
   const filters = searchParamsToFilters(params, DEFAULTS);
   assert.equal(filters.page, 1);
+});
+
+// ── #1101 cutover: bagudkompat for uci_points-æraens nøglenavne ──────────────
+
+test("searchParamsToFilters — legacy sort=uci_points mappes til value", () => {
+  const params = new URLSearchParams("sort=uci_points&sort_dir=asc");
+  const filters = searchParamsToFilters(params, DEFAULTS);
+  assert.equal(filters.sort, "value");
+  assert.equal(filters.sort_dir, "asc");
+});
+
+test("searchParamsToFilters — legacy min_uci/max_uci mappes til min_value/max_value", () => {
+  const params = new URLSearchParams("min_uci=50000&max_uci=200000");
+  const filters = searchParamsToFilters(params, DEFAULTS);
+  assert.equal(filters.min_value, "50000");
+  assert.equal(filters.max_value, "200000");
+  assert.equal(filters.min_uci, undefined);
+  assert.equal(filters.max_uci, undefined);
+});
+
+test("legacy URL round-trip — serialiseres med nye nøglenavne", () => {
+  const legacy = new URLSearchParams("sort=uci_points&min_uci=50000");
+  const filters = searchParamsToFilters(legacy, DEFAULTS);
+  const params = filtersToSearchParams(filters, DEFAULTS);
+  // sort=value er default og udelades; min_value bærer værdien videre
+  assert.equal(params.toString(), "min_value=50000");
+});
+
+test("loadFiltersFromSession — legacy sessionStorage-blob normaliseres", () => {
+  globalThis.window = {
+    sessionStorage: {
+      getItem: () => JSON.stringify({ sort: "uci_points", min_uci: "50000", q: "Pog" }),
+    },
+  };
+  try {
+    const filters = loadFiltersFromSession(DEFAULTS);
+    assert.equal(filters.sort, "value");
+    assert.equal(filters.min_value, "50000");
+    assert.equal(filters.min_uci, undefined);
+    assert.equal(filters.q, "Pog");
+  } finally {
+    delete globalThis.window;
+  }
 });

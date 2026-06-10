@@ -30,8 +30,8 @@ export function useClientRiderFilters(riders = []) {
       result = result.filter(r => `${r.firstname} ${r.lastname}`.toLowerCase().includes(q));
     }
 
-    if (filters.min_uci) result = result.filter(r => getRiderMarketValue(r) >= parseInt(filters.min_uci));
-    if (filters.max_uci) result = result.filter(r => getRiderMarketValue(r) <= parseInt(filters.max_uci));
+    if (filters.min_value) result = result.filter(r => getRiderMarketValue(r) >= parseInt(filters.min_value));
+    if (filters.max_value) result = result.filter(r => getRiderMarketValue(r) <= parseInt(filters.max_value));
     if (filters.min_salary) result = result.filter(r => (r.salary || 0) >= parseInt(filters.min_salary));
     if (filters.max_salary) result = result.filter(r => (r.salary || 0) <= parseInt(filters.max_salary));
 
@@ -86,7 +86,7 @@ export function useClientRiderFilters(riders = []) {
       if (filters.sort === "birthdate") {
         aVal = a.birthdate ? new Date(a.birthdate).getFullYear() : 1970;
         bVal = b.birthdate ? new Date(b.birthdate).getFullYear() : 1970;
-      } else if (filters.sort === "uci_points") {
+      } else if (filters.sort === "value") {
         aVal = getRiderMarketValue(a);
         bVal = getRiderMarketValue(b);
       } else {
@@ -113,8 +113,8 @@ export function useClientRiderFilters(riders = []) {
 export function buildSupabaseQuery(query, filters) {
   query = query.eq("is_retired", false);
   if (filters.q) query = query.or(`firstname.ilike.%${filters.q}%,lastname.ilike.%${filters.q}%`);
-  if (filters.min_uci) query = query.gte("market_value", parseInt(filters.min_uci));
-  if (filters.max_uci) query = query.lte("market_value", parseInt(filters.max_uci));
+  if (filters.min_value) query = query.gte("market_value", parseInt(filters.min_value));
+  if (filters.max_value) query = query.lte("market_value", parseInt(filters.max_value));
   if (filters.min_salary) query = query.gte("salary", parseInt(filters.min_salary));
   if (filters.max_salary) query = query.lte("salary", parseInt(filters.max_salary));
   if (filters.u25) query = query.eq("is_u25", true);
@@ -157,7 +157,7 @@ export function buildSupabaseQuery(query, filters) {
   if (filters.sort === "firstname") {
     const asc = filters.sort_dir === "asc";
     query = query.order("lastname", { ascending: asc, nullsFirst: false });
-  } else if (filters.sort === "uci_points") {
+  } else if (filters.sort === "value") {
     query = query.order("market_value", { ascending: filters.sort_dir === "asc", nullsFirst: false });
   } else {
     const sortAsc = filters.sort === "birthdate"
