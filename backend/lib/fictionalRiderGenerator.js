@@ -104,13 +104,32 @@ const SPECIALITY_STATS = ["stat_bj", "stat_kb", "stat_bk", "stat_bro", "stat_tt"
 // boostede signatur-stats lander → afledt ability-output → base_value-bånd.
 // Kvote = andel af count (ejer-spec ~800: 12 super / 60 stjerner / 230 solide /
 // resten domestik). uci-felterne er legacy efter #1101-cutover (økonomien kører
-// på base_value via backfill); potential/popularity styrer demografi. Re-tune: #1194.
+// på base_value via backfill); potential/popularity styrer demografi.
+//
+// v3-kalibrering (#1194): værdimodellen blender speciale 50/50 med SNITTET af
+// alle evner (riderValuation.js), så de øvre bånd kræver BREDE profiler —
+// dampScale skalerer rolle-svagheds-dæmpningen ned pr. tier (superstjerner er
+// alsidige, domestikker beholder fuld rolle-svaghed). sd strammes mod toppen:
+// modellens konvekse kurve (c·O²) forstørrer stat-varians eksponentielt deroppe,
+// så et bredt sd ville skyde enkelte superstjerner langt over værdi-loftet
+// (~25M) og tabe andre under 8M. statMean/dampScale/sd er empirisk tunet mod
+// 12/60/230/500 via scripts/previewFictionalPopulation.js.
 const TIERS = [
-  { value: "superstar",  fraction: 12 / 800,  statMean: 70, uci: [1800, 4000], potential: [3.0, 5.0], popularity: [70, 100] },
-  { value: "star",       fraction: 60 / 800,  statMean: 64, uci: [700, 1800],  potential: [3.0, 6.0], popularity: [45, 85] },
-  { value: "solid",      fraction: 230 / 800, statMean: 60, uci: [120, 700],   potential: [2.0, 5.0], popularity: [10, 50] },
-  { value: "domestique", fraction: null,      statMean: 53, uci: [1, 120],     potential: [1.0, 4.0], popularity: [0, 18] }, // rest
+  { value: "superstar",  fraction: 12 / 800,  statMean: 70.75, dampScale: 0.35, sd: 1.5,  uci: [1800, 4000], potential: [3.0, 5.0], popularity: [70, 100] },
+  { value: "star",       fraction: 60 / 800,  statMean: 67,    dampScale: 0.5,  sd: 2.5,  uci: [700, 1800],  potential: [3.0, 6.0], popularity: [45, 85] },
+  { value: "solid",      fraction: 230 / 800, statMean: 63.75, dampScale: 0.75, sd: 2.75, uci: [120, 700],   potential: [2.0, 5.0], popularity: [10, 50] },
+  { value: "domestique", fraction: null,      statMean: 53,   dampScale: 1,    sd: 3.5,  uci: [1, 120],     potential: [1.0, 4.0], popularity: [0, 18] }, // rest
 ];
+
+// v3-værdi-udligning (#1194): værdimodellens type-offsets (riderValuationModel.json:
+// sprinter +1.06 … puncheur −0.66) flytter bånd-grænserne flere O-enheder pr. type.
+// Uden modvægt eksploderer sprinter-toppen (~4× en tt-profil ved samme stats) og
+// puncheur/rouleur når aldrig deres tier-bånd. Justerer tier-basen (stat-point)
+// pr. arketype; empirisk tunet mod preview-harnessen.
+const TYPE_MEAN_ADJUST = {
+  sprinter: -1.5, climber: -0.5, leadout: 0, brostensrytter: 0, baroudeur: 0.5,
+  gc: 0.5, tt: -1, rouleur: 1.5, puncheur: 1.5,
+};
 
 // Tier-aware type-fordeling (vægte) — realistisk peloton: ledere (gc/klatrer/
 // sprinter/tt/puncheur/brosten) i toppen, hjælpere (rouleur/leadout/baroudeur)
@@ -164,10 +183,12 @@ const STAT_CEIL = 85;
 // over base, så sprintere ≫ klatrere i sprint osv.
 function buildStats(rng, tier, archetype) {
   const stats = {};
+  const base = tier.statMean + (TYPE_MEAN_ADJUST[archetype.type] ?? 0);
+  const dampScale = tier.dampScale ?? 1;
   for (const key of STAT_KEYS) {
-    let v = gaussian(rng, tier.statMean, 3.5);
+    let v = gaussian(rng, base, tier.sd ?? 3.5);
     if (archetype.boost[key]) v += archetype.boost[key] + intBetween(rng, -2, 2);
-    else if (archetype.damp?.includes(key)) v -= intBetween(rng, 5, 10);
+    else if (archetype.damp?.includes(key)) v -= intBetween(rng, 5, 10) * dampScale;
     stats[key] = Math.round(clamp(v, STAT_FLOOR, STAT_CEIL));
   }
   // Hårdt gulv → opfyld type-GUARDS ved alle tiers (fx gc's climbing/tt/recovery).

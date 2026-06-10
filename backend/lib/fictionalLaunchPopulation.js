@@ -10,12 +10,12 @@
 // og fordelingen verificeres med:
 //   node scripts/previewFictionalPopulation.js --count 800 --seed 2026
 //
-// Kalibrering (ejer-godkendt 2026-06-07, design-mål) → kører hele værdi-kæden
-// (deriveAbilities → computeRiderTypes → predictBaseValue) til denne pyramide:
-//   superstjerne ~10  (≥8M)   ·  stjerne ~68   (1–8M)
-//   solid        ~160 (200k–1M) ·  domestik ~560 (<200k)
-// INTERIM (10/6-2026): under værdimodel v3 (alsidigheds-blend) er feltet bund-tungt
-// (6/22/84/688) — generatoren skal re-tunes mod design-målet før 20/6 (#677-spor).
+// Kalibrering (ejer-godkendt 2026-06-07, re-tunet mod værdimodel v3 i #1194) →
+// kører hele værdi-kæden (deriveAbilities → computeRiderTypes → predictBaseValue)
+// til design-pyramiden:
+//   superstjerne ~12  (≥8M)     ·  stjerne  ~60  (1–8M)
+//   solid        ~230 (200k–1M) ·  domestik ~500 (<200k)
+// Faktisk ved seed 2026: 12/68/203/517, max ~24M (ingen urealistiske outliers).
 // Type-mix: alle 9 repræsenteret (gulv gc≥30, sprinter≥40); klatrer/tt tungest,
 // realistisk peloton-form. Detaljer: docs/slices/669-fictional-riders.md.
 
