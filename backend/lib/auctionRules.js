@@ -19,6 +19,50 @@ export function getAuctionStartIssue({ rider } = {}) {
   return null;
 }
 
+// #1089: dobbelt-salgs-guard mellem auktioner og byttehandler.
+// En rytter på aktiv auktion må ikke samtidig indgå i en byttehandel — ellers
+// kan samme rytter både blive solgt på auktionen og byttet væk. Auktioner kan
+// ikke annulleres af manageren selv, så konflikten skal blokeres ved kilden.
+export const ACTIVE_AUCTION_STATUSES = ["active", "extended"];
+
+// Åbne swap-tilstande = handlen kan stadig blive til noget. window_pending er
+// IKKE med: dér er rytterne allerede parkeret på pending_team_id, som
+// getAuctionStartIssue blokerer separat.
+export const OPEN_SWAP_STATUSES = ["pending", "countered", "awaiting_confirmation"];
+
+// Gate for POST /api/transfers/swaps: ingen af de to ryttere i byttehandlen må
+// have en aktiv auktion. activeAuctionRiderIds = rider_id'er med status i
+// ACTIVE_AUCTION_STATUSES (kalderen querier auctions for de to ryttere).
+export function getSwapAuctionConflict({
+  offeredRiderId,
+  requestedRiderId,
+  activeAuctionRiderIds = [],
+} = {}) {
+  const active = new Set(activeAuctionRiderIds);
+  if (offeredRiderId && active.has(offeredRiderId)) {
+    return { code: "offered_rider_on_auction" };
+  }
+  if (requestedRiderId && active.has(requestedRiderId)) {
+    return { code: "requested_rider_on_auction" };
+  }
+  return null;
+}
+
+// Symmetrisk gate for POST /api/auctions (#1089): en rytter der er TILBUDT i et
+// åbent swap-tilbud kan ikke sættes på auktion — manageren har selv oprettet
+// swap-tilbuddet og må trække det tilbage først. Vi blokerer bevidst IKKE på
+// "rytteren er ØNSKET i andres swap-tilbud": det ville lade enhver manager
+// låse andres ryttere ude af auktionsmarkedet ved blot at sende swap-forslag.
+export function getAuctionStartSwapIssue({
+  riderId,
+  openSwapOfferedRiderIds = [],
+} = {}) {
+  if (riderId && new Set(openSwapOfferedRiderIds).has(riderId)) {
+    return { code: "rider_in_open_swap" };
+  }
+  return null;
+}
+
 // Startpris-gate for ny auktion (POST /api/auctions).
 // - Egen rytter: pris skal være mellem 0 og Værdi (sælg billigt hvis du vil, men
 //   ingen kunstig inflation over rytterens Værdi).

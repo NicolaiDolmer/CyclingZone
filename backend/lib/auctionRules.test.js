@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  ACTIVE_AUCTION_STATUSES,
+  OPEN_SWAP_STATUSES,
   computeAvailableBalance,
   computeReservedBalance,
   computeWorstCaseCommitment,
@@ -10,10 +12,12 @@ import {
   getAuctionBidWarnings,
   getAuctionStartIssue,
   getAuctionStartPriceIssue,
+  getAuctionStartSwapIssue,
   getMinimumAuctionBid,
   getProxyMaxIssue,
   getProxyOpeningBidAmount,
   getSpendIssue,
+  getSwapAuctionConflict,
   isExpectedPriceStale,
 } from "./auctionRules.js";
 import {
@@ -48,6 +52,64 @@ test("getAuctionStartIssue allows rider without pending transfer", () => {
   );
   assert.equal(getAuctionStartIssue({}), null);
   assert.equal(getAuctionStartIssue(), null);
+});
+
+// #1089: dobbelt-salgs-guard — rytter på aktiv auktion kan ikke indgå i byttehandel.
+test("getSwapAuctionConflict blocks offered rider with active auction (#1089)", () => {
+  const issue = getSwapAuctionConflict({
+    offeredRiderId: "r1",
+    requestedRiderId: "r2",
+    activeAuctionRiderIds: ["r1"],
+  });
+  assert.deepEqual(issue, { code: "offered_rider_on_auction" });
+});
+
+test("getSwapAuctionConflict blocks requested rider with active auction (#1089)", () => {
+  const issue = getSwapAuctionConflict({
+    offeredRiderId: "r1",
+    requestedRiderId: "r2",
+    activeAuctionRiderIds: ["r2"],
+  });
+  assert.deepEqual(issue, { code: "requested_rider_on_auction" });
+});
+
+test("getSwapAuctionConflict allows swap when no involved rider is on auction", () => {
+  assert.equal(
+    getSwapAuctionConflict({
+      offeredRiderId: "r1",
+      requestedRiderId: "r2",
+      activeAuctionRiderIds: ["r3"],
+    }),
+    null,
+  );
+  assert.equal(
+    getSwapAuctionConflict({ offeredRiderId: "r1", requestedRiderId: "r2", activeAuctionRiderIds: [] }),
+    null,
+  );
+  assert.equal(getSwapAuctionConflict({}), null);
+  assert.equal(getSwapAuctionConflict(), null);
+});
+
+// #1089 symmetrisk retning: rytter der selv er TILBUDT i et åbent swap-tilbud
+// kan ikke sættes på auktion (manageren må trække swap-tilbuddet først).
+test("getAuctionStartSwapIssue blocks rider offered in open swap (#1089)", () => {
+  const issue = getAuctionStartSwapIssue({
+    riderId: "r1",
+    openSwapOfferedRiderIds: ["r1", "r9"],
+  });
+  assert.deepEqual(issue, { code: "rider_in_open_swap" });
+});
+
+test("getAuctionStartSwapIssue allows rider not offered in any open swap", () => {
+  assert.equal(getAuctionStartSwapIssue({ riderId: "r1", openSwapOfferedRiderIds: ["r2"] }), null);
+  assert.equal(getAuctionStartSwapIssue({ riderId: "r1", openSwapOfferedRiderIds: [] }), null);
+  assert.equal(getAuctionStartSwapIssue({}), null);
+  assert.equal(getAuctionStartSwapIssue(), null);
+});
+
+test("auction/swap status-konstanter matcher domænets åbne tilstande", () => {
+  assert.deepEqual(ACTIVE_AUCTION_STATUSES, ["active", "extended"]);
+  assert.deepEqual(OPEN_SWAP_STATUSES, ["pending", "countered", "awaiting_confirmation"]);
 });
 
 test("getAuctionStartPriceIssue — egen rytter: 0..Værdi tilladt, over Værdi afvist", () => {

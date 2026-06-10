@@ -23,6 +23,8 @@ import {
   DEFAULT_AUCTION_CONFIG,
 } from "../lib/auctionEngine.js";
 import {
+  ACTIVE_AUCTION_STATUSES,
+  OPEN_SWAP_STATUSES,
   computeAvailableBalance,
   computeReservedBalance,
   computeWorstCaseCommitment,
@@ -31,10 +33,12 @@ import {
   getAuctionInitialBidderId,
   getAuctionStartIssue,
   getAuctionStartPriceIssue,
+  getAuctionStartSwapIssue,
   getMinimumAuctionBid,
   getProxyMaxIssue,
   getProxyOpeningBidAmount,
   getSpendIssue,
+  getSwapAuctionConflict,
   isExpectedPriceStale,
 } from "../lib/auctionRules.js";
 import {
@@ -1079,6 +1083,23 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
 
   if (existing) {
     return res.status(409).json({ error: "Rider already has an active auction" });
+  }
+
+  // #1089 symmetrisk: en rytter manageren selv har TILBUDT i et åbent
+  // swap-tilbud kan ikke sættes på auktion — træk byttetilbuddet tilbage først.
+  // Ryttere der blot er ØNSKET i andres swap-tilbud blokeres bevidst ikke
+  // (ellers kunne enhver låse andres ryttere ude af auktionsmarkedet).
+  const { data: openSwapsForRider } = await supabase
+    .from("swap_offers")
+    .select("offered_rider_id")
+    .eq("offered_rider_id", rider_id)
+    .in("status", OPEN_SWAP_STATUSES);
+  const swapIssue = getAuctionStartSwapIssue({
+    riderId: rider_id,
+    openSwapOfferedRiderIds: (openSwapsForRider || []).map(s => s.offered_rider_id),
+  });
+  if (swapIssue) {
+    return res.status(409).json({ error: "Rytteren er tilbudt i en åben byttehandel. Træk byttetilbuddet tilbage, før du starter en auktion", errorCode: "rider_in_open_swap_auction" });
   }
 
   const riderValue = Math.max(calculateRiderMarketValue(rider), 1);
@@ -2281,6 +2302,25 @@ router.post("/transfers/swaps", requireAuth, marketWriteLimiter, async (req, res
     .single();
   if (requestedTeam?.is_bank)
     return res.status(400).json({ error: "AI-ryttere kan ikke indgå i direkte byttehandler. Brug auktioner i stedet.", errorCode: "ai_rider_no_swap" });
+
+  // #1089: dobbelt-salgs-guard — en rytter på aktiv auktion kan ikke samtidig
+  // indgå i en byttehandel (samme rytter ville kunne sælges to gange).
+  const { data: conflictAuctions } = await supabase
+    .from("auctions")
+    .select("rider_id")
+    .in("rider_id", [offered_rider_id, requested_rider_id])
+    .in("status", ACTIVE_AUCTION_STATUSES);
+  const auctionConflict = getSwapAuctionConflict({
+    offeredRiderId: offered_rider_id,
+    requestedRiderId: requested_rider_id,
+    activeAuctionRiderIds: (conflictAuctions || []).map(a => a.rider_id),
+  });
+  if (auctionConflict) {
+    if (auctionConflict.code === "offered_rider_on_auction") {
+      return res.status(409).json({ error: "Din tilbudte rytter er på aktiv auktion og kan ikke tilbydes i bytte, før auktionen er afsluttet", errorCode: "offered_rider_on_auction" });
+    }
+    return res.status(409).json({ error: "Målrytteren er på aktiv auktion og kan ikke indgå i en byttehandel, før auktionen er afsluttet", errorCode: "requested_rider_on_auction" });
+  }
 
   if (cash_adjustment > 0) {
     const proposingState = await getTeamMarketState(supabase, req.team.id);
