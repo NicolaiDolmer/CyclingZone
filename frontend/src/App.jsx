@@ -119,7 +119,11 @@ export default function App() {
   }
 
   return (
-    <BrowserRouter>
+    // #969: v7_startTransition wrapper alle router-state-opdateringer i React.startTransition,
+    // så sidebar-klik ikke blokerer paint mens destinationssidens første render kører
+    // (INP 248ms -> klik-respons males straks, tung render bliver interruptible).
+    // Kræver at alle lazy()-kald ligger på module-scope — verificeret 2026-06-10.
+    <BrowserRouter future={{ v7_startTransition: true }}>
       <Suspense fallback={null}>
         <ClarityIntegration />
         <SpeedInsightsIntegration />
