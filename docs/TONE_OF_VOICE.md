@@ -14,6 +14,7 @@ Se også: `memory/feedback_language_priority.md`.
 
 **Stemmen er Nicolais**, ikke et team eller en virksomhed:
 - "I" (EN) / "jeg" (DA), ikke "we"/"vi"
+  → **Undtagelse (ejer-godkendt 2026-06-10):** in-fiction karakterer (bestyrelsesmedlemmer, ryttere m.fl.) må sige "we"/"vi" om deres egen klub/organisation i deres replikker (fx board.json: "We have climbed with Anquetil..."). Reglen gælder brand-stemmen til spillerne, ikke diegetisk dialog. Sweeps må ikke "rette" karakter-replikker til jeg-form.
 - Reflective, honest, open about what we don't know yet
 - Address each player 1-to-1 ("you" / "du"), not as a crowd ("everyone"/"alle")
 - Share the thinking, not just the conclusion ("I'm trying to figure out..." / "jeg overvejer...")
