@@ -11,7 +11,7 @@ Flyttet fra `NOW.md` 2026-05-14 (Phase 4 af `scalable-wobbling-blossom`) for at 
   - `DEFAULT_BETA_BALANCE = 800_000`
   - `sponsor = 240_000`
   - `SALARY_RATE = 0.10`
-  - `MARKET_VALUE_MULTIPLIER = 4000` (× uci_points, min 5 point)
+  - **Rytter-værdi (#1101 cutover 2026-06-10):** `market_value = COALESCE(base_value, 1000) + prize_earnings_bonus` og `salary = max(1, round(10%))` — GENERATED i DB (`database/2026-06-10-value-cutover-base-value.sql`). `base_value` skrives KUN af backfill/relaunch-orchestrator (model v3: `riderValuationModel.json`). `uci_points` er afkoblet og må ikke vises player-facing eller indgå i værdi-formler. Fallback-konstanten 1000 spejles i `marketUtils.RIDER_BASE_VALUE_FALLBACK` + frontend `marketValues.js`. Audit: `backend/scripts/auditValuationCutover.js`.
   - `PRIZE_PER_POINT = 1_500` — race_results.prize_money = points × 1500 i alle import-stier (XLSX, Google Sheets, PCM). Backend importerer fra `economyConstants.js`; frontend har sin egen kilde (`frontend/src/lib/expectedPrizeCalculator.js`) — de to codebaser kan ikke dele import, så hold dem i sync.
   - Gældsloft: D1 = 1.2M · D2 = 900K · D3 = 600K
 - **Fri/AI-ryttere & præmie:** præmie optjent af ryttere uden manager-hold tæller med i deres `market_value` + `salary` (`updateRiderValues` summerer `prize_money` pr. rytter **uden** team-filter), men **udbetales aldrig** til et hold. Det er bevidst: holdsløse ryttere stiger i værdi, men ingen modtager pengene.

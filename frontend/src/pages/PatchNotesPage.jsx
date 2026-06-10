@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.08",
+    date: "2026-06-10",
+    label: "Beta",
+    changes: [
+      {
+        category: "New · Rider values",
+        items: [
+          "EN · Rider values and salaries now run on Cycling Zone's own valuation engine instead of real-world UCI points. A rider's value is driven by their actual in-game abilities, with versatile all-round stars valued highest, and salary remains 10% of value. Values and salaries across the game have shifted as a result: the very best riders are now markedly more expensive, while the broad mid-field is cheaper. UCI points are no longer shown anywhere in the game; the rider database, team pages and auction history now show Value instead. Your balance and existing contracts are untouched. Refs #1101.",
+          "DA · Rytter-værdier og lønninger drives nu af Cycling Zones egen værdimotor i stedet for virkelighedens UCI-point. En rytters værdi bestemmes af de faktiske evner i spillet, hvor alsidige all-round-stjerner værdisættes højest, og lønnen er fortsat 10% af værdien. Værdier og lønninger i hele spillet har derfor flyttet sig: de allerbedste ryttere er nu markant dyrere, mens det brede midterfelt er billigere. UCI-point vises ikke længere nogen steder i spillet; rytterdatabasen, holdsider og auktionshistorik viser nu Værdi i stedet. Din saldo og eksisterende kontrakter er urørte. Refs #1101.",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.07",
     date: "2026-06-09",
     label: "Beta",
