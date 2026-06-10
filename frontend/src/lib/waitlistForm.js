@@ -1,82 +1,44 @@
 // Pure helpers for FounderSupporterWaitlistForm (#362). Isolated fra React
 // så de kan unit-testes uden DOM. Lokal til waitlist-flowet — ikke generel utility.
+//
+// #1170 slice B: al player-facing tekst (labels, subs, fejlbeskeder) lever i
+// locale-filerne under `founder.form.*` (en + da). Her ligger KUN enum-values
+// (DB-kontrakt) og locale-KEYS — komponenten oversætter via t().
 
-export const INTEREST_OPTIONS = [
-  { value: "very", label: "Meget interesseret, vil gerne være med fra start", label_en: "Very interested, want to be there from the start" },
-  { value: "maybe", label: "Måske, afhænger af pris og indhold", label_en: "Maybe, depends on price and content" },
-  { value: "unsure", label: "Usikker, vil vide mere først", label_en: "Unsure, want to know more first" },
-];
+export const INTEREST_OPTIONS = ["very", "maybe", "unsure"];
 
 // Tier-enum values bevares (DB-felt forventer dem) selv om labels er omdøbt
 // til Session B-naming: supporter_* → Premium label, pro_analyst → Pro Analyst.
 export const TIER_OPTIONS = [
-  {
-    value: "supporter_monthly",
-    label: "Premium månedligt",
-    label_en: "Premium monthly",
-    sub: "49 DKK/md, bak projektet op og lås founder-badge",
-    sub_en: "49 DKK/mo, back the project and unlock founder badge",
-  },
-  {
-    value: "supporter_annual",
-    label: "Premium årligt",
-    label_en: "Premium annual",
-    sub: "490 DKK/år, samme som månedlig + 2 måneder gratis",
-    sub_en: "490 DKK/yr, same as monthly + 2 months free",
-  },
-  {
-    value: "pro_analyst_monthly",
-    label: "Pro Analyst månedligt",
-    label_en: "Pro Analyst monthly",
-    sub: "89 DKK/md, Premium + avanceret tactical analysis",
-    sub_en: "89 DKK/mo, Premium + advanced tactical analysis",
-  },
-  {
-    value: "free_only",
-    label: "Kun gratis",
-    label_en: "Free only",
-    sub: "Jeg vil spille gratis, ikke betale",
-    sub_en: "I will play for free, not pay",
-  },
+  "supporter_monthly",
+  "supporter_annual",
+  "pro_analyst_monthly",
+  "free_only",
 ];
 
 // Multi-select benefits. Strings gemmes som text[] i DB.
 export const VALUED_BENEFITS = [
-  { value: "founder_badge", label: "Founder-badge på profil", label_en: "Founder badge on profile" },
-  { value: "early_pricing", label: "Lås tidlig pris for fremtiden", label_en: "Lock early-bird pricing for the future" },
-  { value: "dev_dialog", label: "Direkte dialog med udvikler (Discord/DM)", label_en: "Direct dialog with developer (Discord/DM)" },
-  { value: "beta_features", label: "Tidlig adgang til nye features", label_en: "Early access to new features" },
-  { value: "tactical_analysis", label: "Avancerede tactical insights", label_en: "Advanced tactical insights" },
-  { value: "income_breakdown", label: "Detaljeret indkomst-statistik", label_en: "Detailed income statistics" },
-  { value: "ad_free", label: "Reklame-fri oplevelse", label_en: "Ad-free experience" },
-  { value: "support_project", label: "Bare for at bakke projektet op", label_en: "Just to back the project" },
+  "founder_badge",
+  "early_pricing",
+  "dev_dialog",
+  "beta_features",
+  "tactical_analysis",
+  "income_breakdown",
+  "ad_free",
+  "support_project",
 ];
 
 // Top EU + nordic prefill. "OTHER" → bruger må indtaste i fairness_red_line-feltet
 // eller vi gemmer null.
 export const COUNTRY_OPTIONS = [
-  { value: "DK", label: "Danmark", label_en: "Denmark" },
-  { value: "NO", label: "Norge", label_en: "Norway" },
-  { value: "SE", label: "Sverige", label_en: "Sweden" },
-  { value: "DE", label: "Tyskland", label_en: "Germany" },
-  { value: "NL", label: "Holland", label_en: "Netherlands" },
-  { value: "BE", label: "Belgien", label_en: "Belgium" },
-  { value: "FR", label: "Frankrig", label_en: "France" },
-  { value: "IT", label: "Italien", label_en: "Italy" },
-  { value: "ES", label: "Spanien", label_en: "Spain" },
-  { value: "GB", label: "Storbritannien", label_en: "United Kingdom" },
-  { value: "IE", label: "Irland", label_en: "Ireland" },
-  { value: "PL", label: "Polen", label_en: "Poland" },
-  { value: "CH", label: "Schweiz", label_en: "Switzerland" },
-  { value: "AT", label: "Østrig", label_en: "Austria" },
-  { value: "US", label: "USA", label_en: "USA" },
-  { value: "OTHER", label: "Andet land", label_en: "Other country" },
+  "DK", "NO", "SE", "DE", "NL", "BE", "FR", "IT",
+  "ES", "GB", "IE", "PL", "CH", "AT", "US", "OTHER",
 ];
 
-const VALID_TIERS = new Set(TIER_OPTIONS.map(o => o.value));
-const VALID_INTERESTS = new Set(INTEREST_OPTIONS.map(o => o.value));
-const VALID_BENEFITS = new Set(VALUED_BENEFITS.map(o => o.value));
-const VALID_COUNTRIES = new Set(COUNTRY_OPTIONS.map(o => o.value));
+const VALID_TIERS = new Set(TIER_OPTIONS);
+const VALID_INTERESTS = new Set(INTEREST_OPTIONS);
+const VALID_BENEFITS = new Set(VALUED_BENEFITS);
+const VALID_COUNTRIES = new Set(COUNTRY_OPTIONS);
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -113,35 +75,34 @@ export function isValidDiscordHandle(value) {
   return DISCORD_RE.test(trimmed);
 }
 
-// Lang-aware fejlbeskeder. `da` er backwards-compat default.
-const VALIDATION_MESSAGES = {
-  da: {
-    _contact: "Angiv mindst email eller Discord-handle",
-    email: "Ugyldig email-adresse",
-    discord_handle: "Ugyldigt Discord-handle (eks. nicolai.dolmer eller Name#1234)",
-    interest_level: "Vælg dit interesse-niveau",
-    preferred_tier: "Vælg en tier",
-    country: "Ugyldigt land",
-    valued_benefits: "Ukendt benefit valgt",
-    gdpr_consent: "Du skal acceptere privatlivspolitikken for at fortsætte",
-  },
-  en: {
-    _contact: "Please enter at least an email or Discord handle",
-    email: "Invalid email address",
-    discord_handle: "Invalid Discord handle (e.g. nicolai.dolmer or Name#1234)",
-    interest_level: "Pick your interest level",
-    preferred_tier: "Pick a tier",
-    country: "Invalid country",
-    valued_benefits: "Unknown benefit selected",
-    gdpr_consent: "You must accept the privacy policy to continue",
-  },
+// Locale-keys i `founder`-namespacet for fejlbeskeder. Selve teksterne lever i
+// frontend/public/locales/{en,da}/founder.json (EN-first, DA sekundært).
+const ERROR_KEYS = {
+  _contact: "form.errors.contact",
+  email: "form.errors.email",
+  discord_handle: "form.errors.discordHandle",
+  interest_level: "form.errors.interestLevel",
+  preferred_tier: "form.errors.preferredTier",
+  country: "form.errors.country",
+  valued_benefits: "form.errors.valuedBenefits",
+  gdpr_consent: "form.errors.gdprConsent",
 };
 
 // Validér form-state. Returnerer { ok, errors }.
 // errors-map har key per felt; UI viser kun fejl efter touched=true.
-// `lang` styrer fejlbesked-sproget (default `da` for backwards compat).
-export function validateForm(state, lang = "da") {
-  const msg = VALIDATION_MESSAGES[lang] || VALIDATION_MESSAGES.da;
+// `t` er en oversætter-funktion (i18next t fra `founder`-namespacet); uden t
+// returneres rå locale-keys (praktisk i unit-tests).
+export function validateForm(state, t = (key) => key) {
+  const msg = {
+    _contact: t(ERROR_KEYS._contact),
+    email: t(ERROR_KEYS.email),
+    discord_handle: t(ERROR_KEYS.discord_handle),
+    interest_level: t(ERROR_KEYS.interest_level),
+    preferred_tier: t(ERROR_KEYS.preferred_tier),
+    country: t(ERROR_KEYS.country),
+    valued_benefits: t(ERROR_KEYS.valued_benefits),
+    gdpr_consent: t(ERROR_KEYS.gdpr_consent),
+  };
   const errors = {};
 
   // Mindst én kontakt-kanal (matcher contact_present CHECK i DB).
@@ -186,27 +147,25 @@ export function isHoneypotTripped(honeypotValue) {
   return typeof honeypotValue === "string" && honeypotValue.length > 0;
 }
 
-const INSERT_ERROR_MESSAGES = {
-  da: {
-    duplicate: "Du står allerede på listen — tjek din inbox (og spam) for vores første mail.",
-    rls: "Adgang nægtet. Genindlæs siden og prøv igen — kontakt support hvis problemet fortsætter.",
-    network: "Kunne ikke kontakte serveren. Tjek din forbindelse og prøv igen.",
-    unknown: "Noget gik galt. Prøv igen om lidt.",
-  },
-  en: {
-    duplicate: "You're already on the list — check your inbox (and spam) for our first email.",
-    rls: "Access denied. Reload the page and try again — contact support if the problem persists.",
-    network: "Couldn't reach the server. Check your connection and try again.",
-    unknown: "Something went wrong. Try again in a moment.",
-  },
+// Locale-keys i `founder`-namespacet for insert-fejl. Tekster i locale-filerne.
+const INSERT_ERROR_KEYS = {
+  duplicate: "form.insertErrors.duplicate",
+  rls: "form.insertErrors.rls",
+  network: "form.insertErrors.network",
+  unknown: "form.insertErrors.unknown",
 };
 
 // Map Supabase insert-fejl til UI-venlig besked.
 // Per #359-verifikation: brug error.code === '23505' for duplicate (anon kan ikke pre-SELECT).
-// `lang` styrer besked-sproget (default `da` for backwards compat).
-export function mapInsertError(error, lang = "da") {
+// `t` er en oversætter-funktion; uden t returneres rå locale-keys.
+export function mapInsertError(error, t = (key) => key) {
   if (!error) return null;
-  const messages = INSERT_ERROR_MESSAGES[lang] || INSERT_ERROR_MESSAGES.da;
+  const messages = {
+    duplicate: t(INSERT_ERROR_KEYS.duplicate),
+    rls: t(INSERT_ERROR_KEYS.rls),
+    network: t(INSERT_ERROR_KEYS.network),
+    unknown: t(INSERT_ERROR_KEYS.unknown),
+  };
   const code = error.code || error?.details || "";
   const msg = (error.message || "").toLowerCase();
 

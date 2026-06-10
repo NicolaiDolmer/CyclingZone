@@ -127,5 +127,97 @@
   ],
   "footerPrivacy": "Privatlivspolitik",
   "footerBack": "← Tilbage til Cycling Zone",
-  "footerSprintRef": "Refs #361/#362/#363. Foundation #359."
+  "footerSprintRef": "Refs #361/#362/#363. Foundation #359.",
+  "form": {
+    "contactLegend": "Sådan kontakter vi dig",
+    "contactHelp": "Mindst én af felterne skal udfyldes.",
+    "emailLabel": "Email",
+    "emailPlaceholder": "din@email.dk",
+    "discordLabel": "Discord-handle (valgfri)",
+    "discordPlaceholder": "f.eks. nicolai.dolmer",
+    "interestLegend": "Hvor interesseret er du?",
+    "tierLegend": "Hvilken tier ville passe dig?",
+    "tierHelp": "Jeg tester forskellige prispunkter, dit svar er ikke bindende.",
+    "benefitsLegend": "Hvad ville være vigtigt for dig? (valgfri)",
+    "benefitsHelp": "Vælg så mange som relevant.",
+    "mainReasonLabel": "Hvad er den vigtigste grund til, at du overvejer at bakke projektet op? (valgfri)",
+    "mainReasonPlaceholder": "Skriv et par sætninger...",
+    "fairnessLabel": "Noget der ville få dig til at sige nej? (valgfri)",
+    "fairnessPlaceholder": "F.eks. pay-to-win mekanikker, dårlig fairness...",
+    "countryLabel": "Hvor bor du?",
+    "followUpConsent": "Det er OK at jeg bliver kontaktet med op til 2 follow-up spørgsmål (interview / kort survey). Dette er valgfrit.",
+    "gdprBefore": "Jeg har læst og accepterer ",
+    "gdprLink": "privatlivspolitikken",
+    "gdprAfter": " og indvilliger i at min email + Discord-handle gemmes til formålet ovenfor.",
+    "privacyPath": "/privatlivspolitik",
+    "submit": "Skriv mig på Founder-waitlisten",
+    "submitLoading": "Sender...",
+    "submitDisclaimer": "Vi sender ikke spam og deler aldrig din info. Du kan altid skrive til os for at blive slettet.",
+    "priceVariantPrefix": "Pris-variant:",
+    "honeypotLabel": "Lad dette felt være tomt",
+    "successTitle": "Du er på listen!",
+    "successBody": "Tak fordi du vil være med fra start. Vi sender en mail når premium åbner, og inden da hvis vi har spørgsmål til hvad du synes.",
+    "successNextTitle": "Næste skridt:",
+    "successNext": [
+      { "text": "Tilmeld dig vores Discord når invite-link er klar (se ", "link": { "href": "https://github.com/NicolaiDolmer/CyclingZone/issues/415", "text": "#415" }, "suffix": ")" },
+      { "text": "Følg patch notes for fremgang" },
+      { "text": "Tjek din inbox de næste dage" }
+    ],
+    "successFooterRefs": "Refs #362. Du kan altid skrive til ",
+    "interestOptions": {
+      "very": "Meget interesseret, vil gerne være med fra start",
+      "maybe": "Måske, afhænger af pris og indhold",
+      "unsure": "Usikker, vil vide mere først"
+    },
+    "tierOptions": {
+      "supporter_monthly": { "label": "Premium månedligt", "sub": "49 DKK/md, bak projektet op og lås founder-badge" },
+      "supporter_annual": { "label": "Premium årligt", "sub": "490 DKK/år, samme som månedlig + 2 måneder gratis" },
+      "pro_analyst_monthly": { "label": "Pro Analyst månedligt", "sub": "89 DKK/md, Premium + avanceret tactical analysis" },
+      "free_only": { "label": "Kun gratis", "sub": "Jeg vil spille gratis, ikke betale" }
+    },
+    "benefitOptions": {
+      "founder_badge": "Founder-badge på profil",
+      "early_pricing": "Lås tidlig pris for fremtiden",
+      "dev_dialog": "Direkte dialog med udvikler (Discord/DM)",
+      "beta_features": "Tidlig adgang til nye features",
+      "tactical_analysis": "Avancerede tactical insights",
+      "income_breakdown": "Detaljeret indkomst-statistik",
+      "ad_free": "Reklame-fri oplevelse",
+      "support_project": "Bare for at bakke projektet op"
+    },
+    "countryOptions": {
+      "DK": "Danmark",
+      "NO": "Norge",
+      "SE": "Sverige",
+      "DE": "Tyskland",
+      "NL": "Holland",
+      "BE": "Belgien",
+      "FR": "Frankrig",
+      "IT": "Italien",
+      "ES": "Spanien",
+      "GB": "Storbritannien",
+      "IE": "Irland",
+      "PL": "Polen",
+      "CH": "Schweiz",
+      "AT": "Østrig",
+      "US": "USA",
+      "OTHER": "Andet land"
+    },
+    "errors": {
+      "contact": "Angiv mindst email eller Discord-handle",
+      "email": "Ugyldig email-adresse",
+      "discordHandle": "Ugyldigt Discord-handle (eks. nicolai.dolmer eller Name#1234)",
+      "interestLevel": "Vælg dit interesse-niveau",
+      "preferredTier": "Vælg en tier",
+      "country": "Ugyldigt land",
+      "valuedBenefits": "Ukendt benefit valgt",
+      "gdprConsent": "Du skal acceptere privatlivspolitikken for at fortsætte"
+    },
+    "insertErrors": {
+      "duplicate": "Du står allerede på listen. Tjek din inbox (og spam) for vores første mail.",
+      "rls": "Adgang nægtet. Genindlæs siden og prøv igen. Kontakt support hvis problemet fortsætter.",
+      "network": "Kunne ikke kontakte serveren. Tjek din forbindelse og prøv igen.",
+      "unknown": "Noget gik galt. Prøv igen om lidt."
+    }
+  }
 }

@@ -30,15 +30,15 @@ const EXEMPT_DIRS = [
 const EXEMPT_FILES = new Map([
   ["frontend/src/lib/uciRaceClasses.js", "Bruges KUN af admin-sider (RacePoolSection/AdminDataTab/AdminPage)."],
   ["frontend/src/components/WaitlistConsentText.jsx", "Dual-sprog-komponent med eksplicit lang-prop — dansk gren er bevidst."],
+  ["frontend/src/lib/sentry.jsx", "Error-boundary: statisk EN+DA med EN-default — må IKKE afhænge af i18n-runtime (kan være nede/uinitialiseret når boundary rammer). #1170 slice B-beslutning."],
 ]);
 
-// Kendte, endnu-ikke-konverterede player-facing leaks (#1170 slice B). Listet
-// her så de er SYNLIGE i guard-output i stedet for tavst at slippe igennem.
-// Fjern efterhånden som hver fil konverteres.
+// Kendte, endnu-ikke-konverterede player-facing leaks. Listet her så de er
+// SYNLIGE i guard-output i stedet for tavst at slippe igennem. Fjern
+// efterhånden som hver fil konverteres. Format: [sti, "#issue — begrundelse"].
 const KNOWN_TODO = new Map([
-  ["frontend/src/lib/waitlistForm.js", "#1170 slice B — founder-waitlist-form (stor flade, egen slice)."],
-  ["frontend/src/components/waitlist/FounderSupporterWaitlistForm.jsx", "#1170 slice B — founder-waitlist-form."],
-  ["frontend/src/lib/sentry.jsx", "#1170 slice B — error-boundary-tekster; kræver beslutning (i18n kan være nede når boundary rammer)."],
+  // Tom — #1170 slice B konverterede waitlist-formen til founder.form.* og
+  // afgjorde sentry-boundary som permanent EXEMPT (se ovenfor).
 ]);
 
 function stripComments(src) {

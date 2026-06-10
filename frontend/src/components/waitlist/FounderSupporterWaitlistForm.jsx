@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { track } from "@vercel/analytics";
 import { supabase } from "../../lib/supabase";
 import {
@@ -18,94 +19,14 @@ import {
 // Form til Founder-waitlist (#362, Session B naming locked in #500). Embeddes i landing
 // page (#361) eller står alene på /founder-supporter til preview.
 //
+// Al copy lever i `founder.form.*` i locale-filerne (en + da) — #1170 slice B.
+// Sproget følger appens globale i18n-sprog via useTranslation("founder").
+//
 // Implementations-locks fra #359-verifikation (overhold):
 //   1. .insert() UDEN .select() → Supabase sender Prefer: return=minimal automatisk.
 //      Anon har ingen SELECT-policy, så RETURNING fejler med RLS-violation.
 //   2. Duplicate-check via error.code === '23505' (ikke pre-SELECT).
 //   3. Honeypot er client-side; ingen edge-function rate-limit i denne PR.
-
-const FORM_COPY = {
-  da: {
-    contactLegend: "Sådan kontakter vi dig",
-    contactHelp: "Mindst én af felterne skal udfyldes.",
-    emailLabel: "Email",
-    emailPlaceholder: "din@email.dk",
-    discordLabel: "Discord-handle (valgfri)",
-    discordPlaceholder: "f.eks. nicolai.dolmer",
-    interestLegend: "Hvor interesseret er du?",
-    tierLegend: "Hvilken tier ville passe dig?",
-    tierHelp: "Jeg tester forskellige prispunkter, dit svar er ikke bindende.",
-    benefitsLegend: "Hvad ville være vigtigt for dig? (valgfri)",
-    benefitsHelp: "Vælg så mange som relevant.",
-    mainReasonLabel: "Hvad er den vigtigste grund til, at du overvejer at bakke projektet op? (valgfri)",
-    mainReasonPlaceholder: "Skriv et par sætninger...",
-    fairnessLabel: "Noget der ville få dig til at sige nej? (valgfri)",
-    fairnessPlaceholder: "F.eks. pay-to-win mekanikker, dårlig fairness...",
-    countryLabel: "Hvor bor du?",
-    followUpConsent:
-      "Det er OK at jeg bliver kontaktet med op til 2 follow-up spørgsmål (interview / kort survey). Dette er valgfrit.",
-    gdprBefore: "Jeg har læst og accepterer ",
-    gdprLink: "privatlivspolitikken",
-    gdprAfter: " og indvilliger i at min email + Discord-handle gemmes til formålet ovenfor.",
-    privacyPath: "/privatlivspolitik",
-    submit: "Skriv mig på Founder-waitlisten",
-    submitLoading: "Sender...",
-    submitDisclaimer:
-      "Vi sender ikke spam og deler aldrig din info. Du kan altid skrive til os for at blive slettet.",
-    priceVariantPrefix: "Pris-variant:",
-    honeypotLabel: "Lad dette felt være tomt",
-    successTitle: "Du er på listen!",
-    successBody:
-      "Tak fordi du vil være med fra start. Vi sender en mail når premium åbner, og inden da hvis vi har spørgsmål til hvad du synes.",
-    successNextTitle: "Næste skridt:",
-    successNext: [
-      { text: "Tilmeld dig vores Discord når invite-link er klar (se ", link: { href: "https://github.com/NicolaiDolmer/CyclingZone/issues/415", text: "#415" }, suffix: ")" },
-      { text: "Følg patch notes for fremgang" },
-      { text: "Tjek din inbox de næste dage" },
-    ],
-    successFooterRefs: "Refs #362. Du kan altid skrive til ",
-  },
-  en: {
-    contactLegend: "How we contact you",
-    contactHelp: "At least one of the fields below must be filled.",
-    emailLabel: "Email",
-    emailPlaceholder: "you@email.com",
-    discordLabel: "Discord handle (optional)",
-    discordPlaceholder: "e.g. nicolai.dolmer",
-    interestLegend: "How interested are you?",
-    tierLegend: "Which tier would suit you?",
-    tierHelp: "I'm testing different price points, your answer is not binding.",
-    benefitsLegend: "What would matter to you? (optional)",
-    benefitsHelp: "Pick as many as apply.",
-    mainReasonLabel: "What's the main reason you're considering backing the project? (optional)",
-    mainReasonPlaceholder: "Write a few sentences...",
-    fairnessLabel: "Anything that would make you say no? (optional)",
-    fairnessPlaceholder: "e.g. pay-to-win mechanics, unfair systems...",
-    countryLabel: "Where do you live?",
-    followUpConsent:
-      "It's OK to contact me with up to 2 follow-up questions (interview / short survey). This is optional.",
-    gdprBefore: "I have read and accept the ",
-    gdprLink: "privacy policy",
-    gdprAfter: " and consent to storing my email + Discord handle for the purpose stated above.",
-    privacyPath: "/privacy-policy",
-    submit: "Join the Founder waitlist",
-    submitLoading: "Sending...",
-    submitDisclaimer:
-      "We don't spam and never share your info. You can always email us to be removed.",
-    priceVariantPrefix: "Price variant:",
-    honeypotLabel: "Leave this field empty",
-    successTitle: "You're on the list!",
-    successBody:
-      "Thanks for joining early. We'll email when premium opens, and before that if we have questions about what you think.",
-    successNextTitle: "Next steps:",
-    successNext: [
-      { text: "Join our Discord when the invite link is ready (see ", link: { href: "https://github.com/NicolaiDolmer/CyclingZone/issues/415", text: "#415" }, suffix: ")" },
-      { text: "Follow patch notes for progress" },
-      { text: "Check your inbox the next few days" },
-    ],
-    successFooterRefs: "Refs #362. You can always email ",
-  },
-};
 
 const fieldLabel = "block text-xs font-medium text-cz-2 uppercase tracking-wider mb-1.5";
 const inputBase =
@@ -113,13 +34,6 @@ const inputBase =
   "px-4 py-2.5 text-cz-1 text-sm placeholder-cz-3 " +
   "focus:outline-none focus:border-cz-accent transition-all";
 const inputErr = "border-cz-danger/50 focus:border-cz-danger";
-
-function pickLabel(opt, lang) {
-  return lang === "en" && opt.label_en ? opt.label_en : opt.label;
-}
-function pickSub(opt, lang) {
-  return lang === "en" && opt.sub_en ? opt.sub_en : opt.sub;
-}
 
 function RadioCard({ name, value, checked, onChange, label, sub, disabled }) {
   return (
@@ -180,10 +94,10 @@ function FieldError({ id, message }) {
   );
 }
 
-export default function FounderSupporterWaitlistForm({ priceVariantLabel = null, lang = "da" }) {
+export default function FounderSupporterWaitlistForm({ priceVariantLabel = null }) {
+  const { t } = useTranslation("founder");
   const [searchParams] = useSearchParams();
   const utm = useMemo(() => parseUtm(searchParams.toString()), [searchParams]);
-  const t = FORM_COPY[lang] || FORM_COPY.da;
 
   const [state, setState] = useState(INITIAL_STATE);
   const [touched, setTouched] = useState(false);
@@ -198,7 +112,7 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null,
     }
   }, [utm]);
 
-  const { errors } = useMemo(() => validateForm(state, lang), [state, lang]);
+  const { errors } = useMemo(() => validateForm(state, t), [state, t]);
 
   function setField(name, value) {
     setState(prev => ({ ...prev, [name]: value }));
@@ -224,7 +138,7 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null,
       return;
     }
 
-    const { ok } = validateForm(state, lang);
+    const { ok } = validateForm(state, t);
     if (!ok) return;
 
     setSubmitting(true);
@@ -238,7 +152,7 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null,
         .insert(payload);
 
       if (error) {
-        const mapped = mapInsertError(error, lang);
+        const mapped = mapInsertError(error, t);
         // Duplicate behandles som soft-success (de står allerede på listen).
         if (mapped.kind === "duplicate") {
           setSuccess(true);
@@ -259,22 +173,23 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null,
         });
       }
     } catch (err) {
-      setSubmitErr(mapInsertError(err, lang) ?? { kind: "unknown", message: lang === "en" ? "Unexpected error. Try again." : "Uventet fejl. Prøv igen." });
+      setSubmitErr(mapInsertError(err, t) ?? { kind: "unknown", message: t("form.insertErrors.unknown") });
     } finally {
       setSubmitting(false);
     }
   }
 
   if (success) {
+    const successNext = t("form.successNext", { returnObjects: true });
     return (
       <div className="bg-cz-card border border-cz-border rounded-2xl p-6 text-center">
         <div className="text-4xl mb-3">🎉</div>
-        <h2 className="text-cz-1 text-xl font-bold mb-2">{t.successTitle}</h2>
-        <p className="text-cz-2 text-sm mb-4">{t.successBody}</p>
+        <h2 className="text-cz-1 text-xl font-bold mb-2">{t("form.successTitle")}</h2>
+        <p className="text-cz-2 text-sm mb-4">{t("form.successBody")}</p>
         <div className="bg-cz-subtle border border-cz-border rounded-lg p-3 text-left text-cz-2 text-sm">
-          <p className="font-medium mb-1">{t.successNextTitle}</p>
+          <p className="font-medium mb-1">{t("form.successNextTitle")}</p>
           <ul className="list-disc list-inside space-y-1 text-cz-3">
-            {t.successNext.map((item, i) => (
+            {(Array.isArray(successNext) ? successNext : []).map((item, i) => (
               <li key={i}>
                 {item.text}
                 {item.link && (
@@ -290,7 +205,7 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null,
           </ul>
         </div>
         <p className="text-cz-3 text-xs mt-4">
-          {t.successFooterRefs}
+          {t("form.successFooterRefs")}
           <a href="mailto:nicolai.dolmer.mikkelsen@gmail.com" className="text-cz-accent underline">
             nicolai.dolmer.mikkelsen@gmail.com
           </a>
@@ -306,18 +221,18 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null,
     <form onSubmit={handleSubmit} className="bg-cz-card border border-cz-border rounded-2xl p-5 sm:p-6 flex flex-col gap-6" noValidate>
       {priceVariantLabel && (
         <div className="bg-cz-accent/10 border border-cz-accent/30 rounded-lg px-3 py-2 text-cz-1 text-sm">
-          <span className="text-cz-3 text-xs">{t.priceVariantPrefix}</span>{" "}
+          <span className="text-cz-3 text-xs">{t("form.priceVariantPrefix")}</span>{" "}
           <span className="font-semibold">{priceVariantLabel}</span>
         </div>
       )}
 
       {/* ----- Kontakt ----- */}
       <fieldset className="flex flex-col gap-3">
-        <legend className="text-cz-1 text-base font-semibold mb-1">{t.contactLegend}</legend>
-        <p className="text-cz-3 text-xs -mt-1">{t.contactHelp}</p>
+        <legend className="text-cz-1 text-base font-semibold mb-1">{t("form.contactLegend")}</legend>
+        <p className="text-cz-3 text-xs -mt-1">{t("form.contactHelp")}</p>
 
         <div>
-          <label htmlFor="waitlist-email" className={fieldLabel}>{t.emailLabel}</label>
+          <label htmlFor="waitlist-email" className={fieldLabel}>{t("form.emailLabel")}</label>
           <input
             id="waitlist-email"
             type="email"
@@ -325,7 +240,7 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null,
             autoComplete="email"
             value={state.email}
             onChange={e => setField("email", e.target.value)}
-            placeholder={t.emailPlaceholder}
+            placeholder={t("form.emailPlaceholder")}
             className={`${inputBase} ${showErr("email") ? inputErr : ""}`}
             aria-invalid={Boolean(showErr("email"))}
             aria-describedby={showErr("email") ? "err-email" : undefined}
@@ -334,14 +249,14 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null,
         </div>
 
         <div>
-          <label htmlFor="waitlist-discord" className={fieldLabel}>{t.discordLabel}</label>
+          <label htmlFor="waitlist-discord" className={fieldLabel}>{t("form.discordLabel")}</label>
           <input
             id="waitlist-discord"
             type="text"
             autoComplete="off"
             value={state.discord_handle}
             onChange={e => setField("discord_handle", e.target.value)}
-            placeholder={t.discordPlaceholder}
+            placeholder={t("form.discordPlaceholder")}
             className={`${inputBase} ${showErr("discord_handle") ? inputErr : ""}`}
             aria-invalid={Boolean(showErr("discord_handle"))}
             aria-describedby={showErr("discord_handle") ? "err-discord" : undefined}
@@ -356,15 +271,15 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null,
 
       {/* ----- Interesse-niveau ----- */}
       <fieldset className="flex flex-col gap-2">
-        <legend className="text-cz-1 text-base font-semibold mb-1">{t.interestLegend}</legend>
-        {INTEREST_OPTIONS.map(opt => (
+        <legend className="text-cz-1 text-base font-semibold mb-1">{t("form.interestLegend")}</legend>
+        {INTEREST_OPTIONS.map(value => (
           <RadioCard
-            key={opt.value}
+            key={value}
             name="interest_level"
-            value={opt.value}
-            checked={state.interest_level === opt.value}
-            onChange={() => setField("interest_level", opt.value)}
-            label={pickLabel(opt, lang)}
+            value={value}
+            checked={state.interest_level === value}
+            onChange={() => setField("interest_level", value)}
+            label={t(`form.interestOptions.${value}`)}
           />
         ))}
         <FieldError id="err-interest" message={showErr("interest_level")} />
@@ -372,17 +287,17 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null,
 
       {/* ----- Tier ----- */}
       <fieldset className="flex flex-col gap-2">
-        <legend className="text-cz-1 text-base font-semibold mb-1">{t.tierLegend}</legend>
-        <p className="text-cz-3 text-xs -mt-1 mb-1">{t.tierHelp}</p>
-        {TIER_OPTIONS.map(opt => (
+        <legend className="text-cz-1 text-base font-semibold mb-1">{t("form.tierLegend")}</legend>
+        <p className="text-cz-3 text-xs -mt-1 mb-1">{t("form.tierHelp")}</p>
+        {TIER_OPTIONS.map(value => (
           <RadioCard
-            key={opt.value}
+            key={value}
             name="preferred_tier"
-            value={opt.value}
-            checked={state.preferred_tier === opt.value}
-            onChange={() => setField("preferred_tier", opt.value)}
-            label={pickLabel(opt, lang)}
-            sub={pickSub(opt, lang)}
+            value={value}
+            checked={state.preferred_tier === value}
+            onChange={() => setField("preferred_tier", value)}
+            label={t(`form.tierOptions.${value}.label`)}
+            sub={t(`form.tierOptions.${value}.sub`)}
           />
         ))}
         <FieldError id="err-tier" message={showErr("preferred_tier")} />
@@ -390,16 +305,16 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null,
 
       {/* ----- Valued benefits ----- */}
       <fieldset className="flex flex-col gap-2">
-        <legend className="text-cz-1 text-base font-semibold mb-1">{t.benefitsLegend}</legend>
-        <p className="text-cz-3 text-xs -mt-1 mb-1">{t.benefitsHelp}</p>
+        <legend className="text-cz-1 text-base font-semibold mb-1">{t("form.benefitsLegend")}</legend>
+        <p className="text-cz-3 text-xs -mt-1 mb-1">{t("form.benefitsHelp")}</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {VALUED_BENEFITS.map(opt => (
+          {VALUED_BENEFITS.map(value => (
             <CheckboxCard
-              key={opt.value}
-              value={opt.value}
-              checked={state.valued_benefits.includes(opt.value)}
-              onChange={() => toggleBenefit(opt.value)}
-              label={pickLabel(opt, lang)}
+              key={value}
+              value={value}
+              checked={state.valued_benefits.includes(value)}
+              onChange={() => toggleBenefit(value)}
+              label={t(`form.benefitOptions.${value}`)}
             />
           ))}
         </div>
@@ -409,27 +324,27 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null,
       {/* ----- Fri tekst (optional) ----- */}
       <fieldset className="flex flex-col gap-3">
         <div>
-          <label htmlFor="waitlist-main-reason" className={fieldLabel}>{t.mainReasonLabel}</label>
+          <label htmlFor="waitlist-main-reason" className={fieldLabel}>{t("form.mainReasonLabel")}</label>
           <textarea
             id="waitlist-main-reason"
             value={state.main_reason}
             onChange={e => setField("main_reason", e.target.value)}
             rows={2}
             maxLength={500}
-            placeholder={t.mainReasonPlaceholder}
+            placeholder={t("form.mainReasonPlaceholder")}
             className={`${inputBase} resize-y`}
           />
         </div>
 
         <div>
-          <label htmlFor="waitlist-fairness" className={fieldLabel}>{t.fairnessLabel}</label>
+          <label htmlFor="waitlist-fairness" className={fieldLabel}>{t("form.fairnessLabel")}</label>
           <textarea
             id="waitlist-fairness"
             value={state.fairness_red_line}
             onChange={e => setField("fairness_red_line", e.target.value)}
             rows={2}
             maxLength={500}
-            placeholder={t.fairnessPlaceholder}
+            placeholder={t("form.fairnessPlaceholder")}
             className={`${inputBase} resize-y`}
           />
         </div>
@@ -437,15 +352,15 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null,
 
       {/* ----- Country ----- */}
       <div>
-        <label htmlFor="waitlist-country" className={fieldLabel}>{t.countryLabel}</label>
+        <label htmlFor="waitlist-country" className={fieldLabel}>{t("form.countryLabel")}</label>
         <select
           id="waitlist-country"
           value={state.country}
           onChange={e => setField("country", e.target.value)}
           className={`${inputBase} ${showErr("country") ? inputErr : ""}`}
         >
-          {COUNTRY_OPTIONS.map(opt => (
-            <option key={opt.value} value={opt.value}>{pickLabel(opt, lang)}</option>
+          {COUNTRY_OPTIONS.map(value => (
+            <option key={value} value={value}>{t(`form.countryOptions.${value}`)}</option>
           ))}
         </select>
         <FieldError id="err-country" message={showErr("country")} />
@@ -460,7 +375,7 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null,
             onChange={e => setField("follow_up_consent", e.target.checked)}
             className="mt-0.5 accent-cz-accent"
           />
-          <span>{t.followUpConsent}</span>
+          <span>{t("form.followUpConsent")}</span>
         </label>
 
         <label className="flex items-start gap-2.5 cursor-pointer text-sm text-cz-2">
@@ -472,11 +387,11 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null,
             aria-invalid={Boolean(showErr("gdpr_consent"))}
           />
           <span>
-            {t.gdprBefore}
-            <Link to={t.privacyPath} target="_blank" className="text-cz-accent underline">
-              {t.gdprLink}
+            {t("form.gdprBefore")}
+            <Link to={t("form.privacyPath")} target="_blank" className="text-cz-accent underline">
+              {t("form.gdprLink")}
             </Link>
-            {t.gdprAfter}
+            {t("form.gdprAfter")}
           </span>
         </label>
         <FieldError id="err-gdpr" message={showErr("gdpr_consent")} />
@@ -485,7 +400,7 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null,
       {/* Honeypot — skjult for sighted users + screen-readers (aria-hidden + tabIndex=-1). */}
       <div aria-hidden="true" className="absolute opacity-0 pointer-events-none" style={{ left: "-9999px", height: 0, overflow: "hidden" }}>
         <label>
-          {t.honeypotLabel}
+          {t("form.honeypotLabel")}
           <input
             type="text"
             tabIndex={-1}
@@ -510,10 +425,10 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null,
           disabled:opacity-50 disabled:cursor-not-allowed
           shadow-[0_4px_20px_rgba(232,197,71,0.2)]"
       >
-        {submitting ? t.submitLoading : t.submit}
+        {submitting ? t("form.submitLoading") : t("form.submit")}
       </button>
 
-      <p className="text-cz-3 text-xs text-center">{t.submitDisclaimer}</p>
+      <p className="text-cz-3 text-xs text-center">{t("form.submitDisclaimer")}</p>
     </form>
   );
 }
