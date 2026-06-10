@@ -12,7 +12,8 @@
   },
   "debt": {
     "label": "Total debt",
-    "ceiling": "Cap: {value} CZ$"
+    "ceiling": "Cap: {value} CZ$",
+    "headroom": "Room under cap: {value} CZ$"
   },
   "prize": {
     "label": "Prize money",
@@ -55,6 +56,11 @@
       "interestValue": "{pct}%",
       "totalLabel": "Total repayment",
       "totalValue": "{value} CZ$",
+      "maxBorrowable": "Max loan right now: {value} CZ$",
+      "maxBorrowableDetail": "The fee of {fee} CZ$ is added to your debt, so it reaches {total} CZ$ of the {ceiling} CZ$ cap.",
+      "useMax": "Use max",
+      "maxZero": "No room for a new loan. Your debt is at the division cap of {ceiling} CZ$.",
+      "exceedsMax": "This would push you over the debt cap, because the fee counts towards it. Max loan right now: {value} CZ$.",
       "submit": "Take loan",
       "processing": "Processing..."
     },

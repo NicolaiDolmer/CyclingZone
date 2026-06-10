@@ -12,7 +12,8 @@
   },
   "debt": {
     "label": "Total gæld",
-    "ceiling": "Loft: {value} CZ$"
+    "ceiling": "Loft: {value} CZ$",
+    "headroom": "Plads under loftet: {value} CZ$"
   },
   "prize": {
     "label": "Præmiepenge",
@@ -55,6 +56,11 @@
       "interestValue": "{pct}%",
       "totalLabel": "Total tilbagebetaling",
       "totalValue": "{value} CZ$",
+      "maxBorrowable": "Max lån lige nu: {value} CZ$",
+      "maxBorrowableDetail": "Gebyret på {fee} CZ$ lægges oveni din gæld, så den rammer {total} CZ$ af loftet på {ceiling} CZ$.",
+      "useMax": "Brug max",
+      "maxZero": "Ikke plads til et nyt lån. Din gæld er på divisionens loft på {ceiling} CZ$.",
+      "exceedsMax": "Dette vil skubbe dig over gældsloftet, fordi gebyret tæller med. Max lån lige nu: {value} CZ$.",
       "submit": "Optag lån",
       "processing": "Behandler..."
     },

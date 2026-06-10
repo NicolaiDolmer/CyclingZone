@@ -4,9 +4,14 @@ import assert from "node:assert/strict";
 process.env.SUPABASE_URL ??= "https://example.supabase.co";
 process.env.SUPABASE_SERVICE_KEY ??= "test-service-key";
 
-const { createEmergencyLoan, createLoan, processLoanAgreementSeasonFees, shouldChargeLoanAgreementSeasonFee } = await import(
-  "./loanEngine.js"
-);
+const {
+  computeLoanFee,
+  computeMaxLoanPrincipal,
+  createEmergencyLoan,
+  createLoan,
+  processLoanAgreementSeasonFees,
+  shouldChargeLoanAgreementSeasonFee,
+} = await import("./loanEngine.js");
 
 test("shouldChargeLoanAgreementSeasonFee only charges later covered seasons", () => {
   assert.equal(
@@ -462,6 +467,69 @@ test("createLoan accepts when principal+fee fits exactly within remaining headro
   const loan = await createLoan("team-1", "long", 1500, supabase.client);
   assert.equal(loan.amount_remaining, 1575);
   assert.equal(supabase.state.loans.length, 1);
+});
+
+// ── #1012: max-lånbart (gebyr-inkl.) — delt formel med createLoan ─────────────
+
+test("computeLoanFee matcher createLoans afrunding", () => {
+  assert.equal(computeLoanFee(1500, 0.05), 75);
+  assert.equal(computeLoanFee(1449, 0.05), 72); // 72.45 → 72
+  assert.equal(computeLoanFee(1450, 0.05), 73); // 72.5 → 73 (Math.round half-up)
+  assert.equal(computeLoanFee(100, 0), 0);
+});
+
+test("computeMaxLoanPrincipal finder største principal hvor gæld+principal+gebyr <= loft", () => {
+  // Tomt loft-headroom: 600000, 5% gebyr → 571429 + round(28571.45)=28571 = 600000 præcist.
+  const max = computeMaxLoanPrincipal({ currentDebt: 0, debtCeiling: 600000, originationFeePct: 0.05 });
+  assert.equal(max.principal, 571429);
+  assert.equal(max.fee, 28571);
+  assert.equal(max.totalDebt, 600000);
+  assert.equal(max.headroom, 600000);
+  // +1 ville overskride loftet: 571430 + round(28571.5)=28572 = 600002 > 600000.
+  assert.ok(571430 + computeLoanFee(571430, 0.05) > 600000);
+});
+
+test("computeMaxLoanPrincipal håndterer eksisterende gæld + afrundings-kanter", () => {
+  // Headroom 1521: 1449 + round(72.45)=72 = 1521 ≤ 1521; 1450 + 73 = 1523 > 1521.
+  const max = computeMaxLoanPrincipal({ currentDebt: 598479, debtCeiling: 600000, originationFeePct: 0.05 });
+  assert.equal(max.principal, 1449);
+  assert.equal(max.fee, 72);
+  assert.equal(max.totalDebt, 1521);
+});
+
+test("computeMaxLoanPrincipal returnerer 0 ved fyldt loft og null uden loft", () => {
+  const full = computeMaxLoanPrincipal({ currentDebt: 600000, debtCeiling: 600000, originationFeePct: 0.05 });
+  assert.equal(full.principal, 0);
+  assert.equal(full.fee, 0);
+  assert.equal(full.totalDebt, 0);
+  assert.equal(full.headroom, 0);
+
+  const over = computeMaxLoanPrincipal({ currentDebt: 700000, debtCeiling: 600000, originationFeePct: 0.05 });
+  assert.equal(over.principal, 0);
+  assert.equal(over.headroom, 0);
+
+  assert.equal(computeMaxLoanPrincipal({ currentDebt: 0, debtCeiling: null, originationFeePct: 0.05 }), null);
+});
+
+test("createLoan accepterer præcist computeMaxLoanPrincipal og afviser +1 (ingen formel-drift)", async () => {
+  const existingDebt = 598479;
+  const max = computeMaxLoanPrincipal({ currentDebt: existingDebt, debtCeiling: 600000, originationFeePct: 0.05 });
+
+  // Max accepteres.
+  const okSupabase = createCeilingSupabase({ existingDebt });
+  const loan = await createLoan("team-1", "long", max.principal, okSupabase.client);
+  assert.equal(loan.amount_remaining, max.totalDebt);
+
+  // Max + 1 afvises af serverens loft-tjek.
+  const rejectSupabase = createCeilingSupabase({ existingDebt });
+  await assert.rejects(
+    () => createLoan("team-1", "long", max.principal + 1, rejectSupabase.client),
+    (err) => {
+      assert.equal(err.code, "error.debtCapReached");
+      return true;
+    },
+  );
+  assert.equal(rejectSupabase.state.loans.length, 0);
 });
 
 test("createEmergencyLoan kaster hvis loan_config mangler emergency-row (DB-seed-fejl)", async () => {

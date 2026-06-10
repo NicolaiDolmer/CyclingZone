@@ -175,6 +175,41 @@ export async function getTotalDebt(teamId, supabaseClient = null) {
   return (loans || []).reduce((sum, l) => sum + l.amount_remaining, 0);
 }
 
+// ── Gebyr + max-lånbart (delt formel — #1012) ─────────────────────────────────
+//
+// computeLoanFee + computeMaxLoanPrincipal er den ENESTE kilde til gebyr- og
+// loft-matematikken. Både createLoan/createEmergencyLoan (validering) og
+// GET /api/finance/loans (UI'ets "max lånbart") bruger samme funktioner, så
+// det viste max aldrig kan drifte fra serverens faktiske afvisningsgrænse.
+
+export function computeLoanFee(principalAmount, originationFeePct) {
+  return Math.round(principalAmount * (originationFeePct || 0));
+}
+
+/**
+ * Max principal et hold kan låne lige nu, givet at gebyret lægges oveni gælden:
+ * størst mulige P hvor currentDebt + P + computeLoanFee(P) <= debtCeiling.
+ * Samme grænse som createLoans loft-tjek (inkl. Math.round-afrunding af gebyret).
+ *
+ * @returns {{ principal: number, fee: number, totalDebt: number, headroom: number }|null}
+ *   null hvis der ikke er konfigureret et gældsloft (ubegrænset).
+ */
+export function computeMaxLoanPrincipal({ currentDebt, debtCeiling, originationFeePct }) {
+  if (debtCeiling == null) return null;
+  const headroom = Math.max(0, debtCeiling - (currentDebt || 0));
+  const feePct = originationFeePct || 0;
+  // Startgæt uden afrunding; justér derefter for Math.round i computeLoanFee.
+  let principal = Math.max(0, Math.floor(headroom / (1 + feePct)));
+  while (principal > 0 && principal + computeLoanFee(principal, feePct) > headroom) {
+    principal -= 1;
+  }
+  while (principal + 1 + computeLoanFee(principal + 1, feePct) <= headroom) {
+    principal += 1;
+  }
+  const fee = computeLoanFee(principal, feePct);
+  return { principal, fee, totalDebt: principal + fee, headroom };
+}
+
 // ── Opret lån (manager-initieret: short eller long) ───────────────────────────
 
 export async function createLoan(teamId, loanType, principalAmount, supabaseClient = null, auditCtx = null) {
@@ -183,7 +218,7 @@ export async function createLoan(teamId, loanType, principalAmount, supabaseClie
   const config = configs.find(c => c.loan_type === loanType);
   if (!config) throw new Error("Ugyldig låntype");
 
-  const fee = Math.round(principalAmount * config.origination_fee_pct);
+  const fee = computeLoanFee(principalAmount, config.origination_fee_pct);
   const totalOwed = principalAmount + fee;
 
   // Slice 07b · TOCTOU-fix: brug create_loan_atomic Postgres-RPC når tilgængelig.
@@ -299,7 +334,7 @@ export async function createEmergencyLoan(teamId, amountNeeded, supabaseClient =
   const feeRate = config.origination_fee_pct;
   const interestRate = config.interest_rate_pct;
 
-  const fee = Math.round(amountNeeded * feeRate);
+  const fee = computeLoanFee(amountNeeded, feeRate);
   const totalOwed = amountNeeded + fee;
 
   // Slice 07b · SOFT debt_ceiling-tjek (besluttet 2026-05-07).

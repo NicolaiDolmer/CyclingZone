@@ -212,7 +212,12 @@ export default function FinancePage() {
         setLoanAmount("");
         loadAll();
       } else {
-        showMsg(`${t("msg.errorPrefix")}${result.error}`, "error");
+        // #1012: strukturerede engine-fejl (error.debtCapReached m.fl.) renderes
+        // lokaliseret via backendMessages; rå error-string er fallback.
+        const errText = result.errorCode
+          ? renderBackendMessage({ code: result.errorCode, params: result.errorParams }, tBackend, result.error)
+          : result.error;
+        showMsg(`${t("msg.errorPrefix")}${errText}`, "error");
       }
     } catch {
       showMsg(t("auth:error.connectionFailed"), "error");
@@ -243,7 +248,12 @@ export default function FinancePage() {
         setRepayAmount("");
         loadAll();
       } else {
-        showMsg(`${t("msg.errorPrefix")}${result.error}`, "error");
+        // #1012: samme lokaliserede fejl-rendering som handleTakeLoan
+        // (fx error.repayInsufficient med { available }).
+        const errText = result.errorCode
+          ? renderBackendMessage({ code: result.errorCode, params: result.errorParams }, tBackend, result.error)
+          : result.error;
+        showMsg(`${t("msg.errorPrefix")}${errText}`, "error");
       }
     } catch {
       showMsg(t("auth:error.connectionFailed"), "error");
@@ -262,6 +272,13 @@ export default function FinancePage() {
   const configs = (loanData?.configs || []).filter(c => c.loan_type !== "emergency");
   const selectedConfig = configs.find(c => c.loan_type === loanType);
   const loanAmountNum = parseInt(loanAmount) || 0;
+  // #1012: max_principal/max_fee/max_total_debt kommer fra backend (samme formel
+  // som serverens loft-validering — ingen klient-kopi der kan drifte).
+  const maxPrincipal = selectedConfig?.max_principal ?? null;
+  const exceedsMax = maxPrincipal != null && loanAmountNum > maxPrincipal;
+  const debtHeadroom = loanData?.debt_ceiling != null
+    ? Math.max(0, loanData.debt_ceiling - (loanData?.total_debt || 0))
+    : null;
   const loanLabel = (type) => t(`loans.types.${type}`, { defaultValue: type });
   const txLabel = (type) => t(`transactions.type.${type}`, { defaultValue: type });
 
@@ -318,6 +335,11 @@ export default function FinancePage() {
           {loanData?.debt_ceiling && (
             <p className="text-cz-3 text-xs mt-1">
               {t("debt.ceiling", { value: formatNumber(loanData.debt_ceiling) })}
+            </p>
+          )}
+          {debtHeadroom != null && (
+            <p className="text-cz-3 text-xs mt-2 leading-snug">
+              {t("debt.headroom", { value: formatNumber(debtHeadroom) })}
             </p>
           )}
         </div>
@@ -479,6 +501,35 @@ export default function FinancePage() {
               </div>
             </div>
 
+            {/* #1012: max lånbart lige nu (gebyr-inkl.) — tal fra serverens egen formel */}
+            {maxPrincipal != null && (
+              maxPrincipal > 0 ? (
+                <div className="flex items-center justify-between gap-2 -mt-2 mb-4">
+                  <p className="text-cz-3 text-xs leading-snug">
+                    {t("loans.take.maxBorrowable", { value: formatNumber(maxPrincipal) })}
+                    <br />
+                    <span className="text-cz-3/70">
+                      {t("loans.take.maxBorrowableDetail", {
+                        fee: formatNumber(selectedConfig.max_fee || 0),
+                        total: formatNumber(selectedConfig.max_total_debt || 0),
+                        ceiling: formatNumber(selectedConfig.debt_ceiling || 0),
+                      })}
+                    </span>
+                  </p>
+                  <button type="button"
+                    onClick={() => setLoanAmount(String(maxPrincipal))}
+                    className="px-3 py-1.5 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg
+                      text-xs hover:text-cz-1 hover:border-cz-accent transition-all flex-shrink-0">
+                    {t("loans.take.useMax")}
+                  </button>
+                </div>
+              ) : (
+                <p className="text-cz-danger text-xs -mt-2 mb-4 leading-snug">
+                  {t("loans.take.maxZero", { ceiling: formatNumber(selectedConfig.debt_ceiling || 0) })}
+                </p>
+              )
+            )}
+
             {selectedConfig && loanAmountNum > 0 && (
               <div className="bg-cz-subtle border border-cz-border rounded-lg p-3 mb-4">
                 <div className="grid grid-cols-3 gap-2 text-center text-xs">
@@ -495,14 +546,19 @@ export default function FinancePage() {
                   <div>
                     <p className="text-cz-3">{t("loans.take.totalLabel")}</p>
                     <p className="text-cz-accent-t font-mono mt-0.5">
-                      {t("loans.take.totalValue", { value: formatNumber(Math.round(loanAmountNum * (1 + selectedConfig.origination_fee_pct))) })}
+                      {t("loans.take.totalValue", { value: formatNumber(loanAmountNum + Math.round(loanAmountNum * selectedConfig.origination_fee_pct)) })}
                     </p>
                   </div>
                 </div>
+                {exceedsMax && (
+                  <p className="text-cz-danger text-xs mt-2 text-center leading-snug">
+                    {t("loans.take.exceedsMax", { value: formatNumber(maxPrincipal) })}
+                  </p>
+                )}
               </div>
             )}
 
-            <button type="submit" disabled={takingLoan || !loanAmount}
+            <button type="submit" disabled={takingLoan || !loanAmount || exceedsMax}
               className="w-full py-2.5 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm
                 hover:brightness-110 disabled:opacity-50 transition-all">
               {takingLoan ? t("loans.take.processing") : t("loans.take.submit")}
