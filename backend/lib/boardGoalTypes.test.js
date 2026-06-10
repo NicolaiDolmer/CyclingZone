@@ -332,13 +332,6 @@ test("buildNegotiatedGoal halves penalty + reduces target where possible", () =>
   assert.equal(jersey.satisfaction_penalty, 5);
   assert.equal(jersey.negotiated, true);
 
-  // signature_rider: target=1 minimum, kan ikke lempes
-  const sig = buildNegotiatedGoal({
-    type: "signature_rider", target: 1, satisfaction_penalty: 10,
-  });
-  assert.equal(sig.target, 1);
-  assert.equal(sig.satisfaction_penalty, 5);
-
   // profitable_transfers: target 250K → 200K (-50K)
   const profit = buildNegotiatedGoal({
     type: "profitable_transfers", target: 250_000, satisfaction_penalty: 10,
@@ -356,6 +349,62 @@ test("buildNegotiatedGoal halves penalty + reduces target where possible", () =>
     type: "relative_rank", target: 3, satisfaction_penalty: 8,
   });
   assert.equal(rank.target, 2);
+});
+
+// =====================================================================
+// #1234 · No-op-rabat: mål uden reel lempelse kan ikke forhandles
+// =====================================================================
+
+test("#1234 · buildNegotiatedGoal returns null when target cannot genuinely be relaxed", () => {
+  // Binært mål — target=0 er absolut minimum
+  assert.equal(buildNegotiatedGoal({
+    type: "no_outstanding_debt", target: 0, satisfaction_penalty: 8,
+  }), null);
+
+  // Minimums-mål på target=1 — relax-formlen rammer sit gulv
+  assert.equal(buildNegotiatedGoal({
+    type: "monument_podium", target: 1, cumulative: true, satisfaction_penalty: 12,
+  }), null);
+  assert.equal(buildNegotiatedGoal({
+    type: "signature_rider", target: 1, satisfaction_penalty: 10,
+  }), null);
+
+  // Alle typer hvis floor allerede er nået
+  assert.equal(buildNegotiatedGoal({
+    type: "stage_wins", target: 1, satisfaction_penalty: 5,
+  }), null);
+  assert.equal(buildNegotiatedGoal({
+    type: "gc_wins", target: 1, satisfaction_penalty: 10,
+  }), null);
+  assert.equal(buildNegotiatedGoal({
+    type: "sponsor_growth", target: 5, satisfaction_penalty: 10,
+  }), null);
+  assert.equal(buildNegotiatedGoal({
+    type: "min_riders", target: 5, min_target: 5, satisfaction_penalty: 10,
+  }), null);
+  assert.equal(buildNegotiatedGoal({
+    type: "profitable_transfers", target: 50_000, satisfaction_penalty: 10,
+  }), null);
+
+  // Ukendte typer kan heller ikke forhandles
+  assert.equal(buildNegotiatedGoal({
+    type: "future_unknown_type", target: 3, satisfaction_penalty: 10,
+  }), null);
+});
+
+test("#1234 · monument_podium and signature_rider with target > 1 relax on target", () => {
+  const monument = buildNegotiatedGoal({
+    type: "monument_podium", target: 2, cumulative: true, satisfaction_penalty: 12,
+  });
+  assert.equal(monument.target, 1);
+  assert.equal(monument.satisfaction_penalty, 6);
+  assert.equal(monument.negotiated, true);
+
+  const sig = buildNegotiatedGoal({
+    type: "signature_rider", target: 2, satisfaction_penalty: 10,
+  });
+  assert.equal(sig.target, 1);
+  assert.equal(sig.satisfaction_penalty, 5);
 });
 
 // =====================================================================
@@ -506,4 +555,62 @@ test("#55 · cumulative stage_wins: met = fuld kumulativ optælling, ikke pro-ra
     planDuration: 3, seasonsCompleted: 1, cumulativeStats: { stageWins: 6 },
   });
   assert.equal(fullyMet.met, true);
+});
+
+// =====================================================================
+// #1238 · monument_podium med race_scope "classics" — klassiker-orienterede
+// boards honorerer hele klassiker-kategorien (Monuments ⊂ klassikere)
+// =====================================================================
+
+test("#1238 · monument_podium with race_scope classics counts classics podiums", () => {
+  const goal = { type: "monument_podium", target: 2, cumulative: true, race_scope: "classics" };
+  // 2 klassiker-podier (heraf 0 monumenter) opfylder målet
+  assert.equal(evaluateGoal(goal, null, {}, {
+    cumulativeClassicPodiums: 2, cumulativeMonumentPodiums: 0,
+  }), true);
+  // 1 klassiker-podie er ikke nok
+  assert.equal(evaluateGoal(goal, null, {}, {
+    cumulativeClassicPodiums: 1, cumulativeMonumentPodiums: 1,
+  }), false);
+  // Manglende klassiker-optælling → awaiting data (null), selv med monument-count
+  assert.equal(evaluateGoal(goal, null, {}, {
+    cumulativeMonumentPodiums: 2,
+  }), null);
+});
+
+test("#1238 · default monument scope ignores the broader classics count", () => {
+  const goal = { type: "monument_podium", target: 1, cumulative: true };
+  assert.equal(evaluateGoal(goal, null, {}, {
+    cumulativeClassicPodiums: 5, cumulativeMonumentPodiums: 0,
+  }), false);
+  assert.equal(evaluateGoal(goal, null, {}, {
+    cumulativeClassicPodiums: 5, cumulativeMonumentPodiums: 1,
+  }), true);
+});
+
+test("#1238 · evaluateGoalProgress monument_podium reads classics count for classics scope", () => {
+  const goal = { type: "monument_podium", target: 1, cumulative: true, race_scope: "classics" };
+  const progress = evaluateGoalProgress(goal, null, {}, {
+    planDuration: 5, seasonsCompleted: 5, isFinalSeason: true,
+    cumulativeClassicPodiums: 1, cumulativeMonumentPodiums: 0,
+  });
+  assert.equal(progress.actual, 1);
+  assert.equal(progress.status, "ahead");
+  assert.equal(progress.met, true);
+
+  const awaiting = evaluateGoalProgress(goal, null, {}, {
+    planDuration: 5, seasonsCompleted: 1, cumulativeMonumentPodiums: 3,
+  });
+  assert.equal(awaiting.status, "awaiting_data");
+});
+
+test("#1238 · buildGoalLabel for classics scope mentions klassikere, default mentions Monuments", () => {
+  const classicsLabel = buildGoalLabel({
+    type: "monument_podium", target: 1, cumulative: true, race_scope: "classics",
+  });
+  assert.match(classicsLabel, /klassiker/i);
+  const monumentLabel = buildGoalLabel({
+    type: "monument_podium", target: 1, cumulative: true,
+  });
+  assert.match(monumentLabel, /Monuments/);
 });
