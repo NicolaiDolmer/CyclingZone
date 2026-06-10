@@ -445,7 +445,7 @@
       },
       "scouting": {
         "title": "Scouting af potentiale",
-        "text": "En rytters potentiale er skjult indtil du scouter rytteren. Uscoutede ryttere viser et usikkert estimat: et stjerne-interval og en kort vurdering (for eksempel 'Højt loft'), bredest for unge, uafprøvede talenter og smallere for etablerede ryttere. Du har et begrænset antal scout-slots hver sæson; bruger du et på en rytter, fra dens profil eller en auktion, strammes dit estimat, og fuld scouting afslører det eksakte potentiale. Estimater er personlige for dit hold, så to managere kan vurdere samme talent forskelligt. Dine egne ryttere viser altid deres eksakte potentiale. Scouting er gratis og koster ikke penge."
+        "text": "En rytters potentiale er skjult indtil du scouter rytteren. Uscoutede ryttere viser et usikkert estimat: et stjerne-interval og en kort vurdering (for eksempel 'Højt loft'), bredest for unge, uafprøvede talenter og smallere for etablerede ryttere. Du har et begrænset antal scout-slots hver sæson; bruger du et på en rytter, fra dens profil eller en auktion, strammes dit estimat, og fuld scouting afslører den eksakte stjerne-vurdering. Estimater er personlige for dit hold, så to managere kan vurdere samme talent forskelligt. Dine egne ryttere er altid fuldt afslørede: eksakte stjerner plus vurderingen, i samme præsentation som alle andre. Potentiale vises altid som stjerner og en vurdering, aldrig som et tal. Scouting er gratis og koster ikke penge."
       },
       "u25u23": {
         "title": "U25 og U23 ryttere",

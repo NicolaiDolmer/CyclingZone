@@ -1,14 +1,25 @@
-// useScouting — frontend-state for progression L1 (#1138).
+// useScouting — frontend-state for progression L1 (#1138) + server-estimater (#1162).
 //
 // Henter holdets scout-state (slots + per-rytter niveau + eget team-id) fra
-// backend én gang, og eksponerer en scout(riderId)-handling der bruger ét slot
-// og opdaterer state fra svaret. Sider bruger `levelFor` + `teamId` til at
-// beregne estimat-intervallet lokalt (display-lag v1, frontend/src/lib/scouting.js).
+// backend én gang, og eksponerer:
+//   • scout(riderId)        — brug ét slot; opdaterer state + estimat fra svaret
+//   • requestEstimates(ids) — batched fetch af viewer-maskerede potentiale-
+//                             estimater (POST /api/scouting/estimates). Den rå
+//                             riders.potentiale findes IKKE i klienten længere —
+//                             serveren beregner { lo, hi, exact, level } pr.
+//                             (rytter, hold) og kun det sendes.
+//   • estimateFor(riderId)  — undefined = ikke hentet (endnu), null = rytter
+//                             uden potentiale, ellers estimat-objektet.
+//
+// Batching: ScoutablePotentiale kalder requestEstimates([id]) pr. række; hooket
+// samler ids i en kort timer-vindue og sender ÉT request pr. side-load.
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { getSession } from "./supabase";
 
 const API = import.meta.env.VITE_API_URL;
+const BATCH_DELAY_MS = 25;
+const BATCH_MAX = 400; // server capper på 500 — hold os under med margin
 
 async function authHeaders() {
   const { data } = await getSession();
@@ -24,6 +35,13 @@ export function useScouting() {
   const [teamId, setTeamId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [scoutingId, setScoutingId] = useState(null); // rytter under aktiv scout
+  const [estimates, setEstimates] = useState({});     // { <rider_id>: {lo,hi,exact,level} | null }
+
+  const requestedRef = useRef(new Set()); // ids vi allerede har bedt om (dedup)
+  const pendingRef = useRef(new Set());   // ids der venter på næste batch
+  const timerRef = useRef(null);
+  const mountedRef = useRef(true);
+  useEffect(() => () => { mountedRef.current = false; clearTimeout(timerRef.current); }, []);
 
   const refresh = useCallback(async () => {
     const headers = await authHeaders();
@@ -46,6 +64,52 @@ export function useScouting() {
 
   useEffect(() => { refresh(); }, [refresh]);
 
+  // Tømmer pending-køen i batches. While-loopet (frem for selv-genplanlægning)
+  // dækker ids der kommer til MENS et fetch er i gang — ingen self-reference.
+  const flushEstimates = useCallback(async () => {
+    timerRef.current = null;
+    while (mountedRef.current && pendingRef.current.size > 0) {
+      const batch = [...pendingRef.current].slice(0, BATCH_MAX);
+      batch.forEach((id) => pendingRef.current.delete(id));
+      const headers = await authHeaders();
+      if (!headers) return;
+      try {
+        const res = await fetch(`${API}/api/scouting/estimates`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ riderIds: batch }),
+        });
+        if (!res.ok) throw new Error("estimates_failed");
+        const data = await res.json();
+        if (!mountedRef.current || !data?.estimates) return;
+        setEstimates((prev) => ({ ...prev, ...data.estimates }));
+        if (data.maxLevel) setMaxLevel(data.maxLevel);
+        if (data.teamId) setTeamId((prev) => prev ?? data.teamId);
+      } catch {
+        // Netværk/serverfejl — tillad nyt forsøg for batchens ids senere.
+        batch.forEach((id) => requestedRef.current.delete(id));
+        return;
+      }
+    }
+  }, []);
+
+  // Bed om estimater for en liste rytter-ids (dedupes; batched).
+  const requestEstimates = useCallback((riderIds) => {
+    let added = false;
+    for (const id of riderIds ?? []) {
+      if (!id || requestedRef.current.has(id)) continue;
+      requestedRef.current.add(id);
+      pendingRef.current.add(id);
+      added = true;
+    }
+    if (added && !timerRef.current) {
+      timerRef.current = setTimeout(flushEstimates, BATCH_DELAY_MS);
+    }
+  }, [flushEstimates]);
+
+  // undefined = ikke hentet, null = intet potentiale, ellers { lo, hi, exact, level }.
+  const estimateFor = useCallback((riderId) => (riderId ? estimates[riderId] : undefined), [estimates]);
+
   // Brug ét scout-slot på en rytter. Returnerer { ok, error?, level? }.
   const scout = useCallback(async (riderId) => {
     const headers = await authHeaders();
@@ -58,6 +122,9 @@ export function useScouting() {
       if (data.slots) setSlots(data.slots);
       if (data.maxLevel) setMaxLevel(data.maxLevel);
       setLevels((prev) => ({ ...prev, [riderId]: data.level ?? (prev[riderId] ?? 0) + 1 }));
+      if (data.estimate !== undefined) {
+        setEstimates((prev) => ({ ...prev, [riderId]: data.estimate }));
+      }
       return { ok: true, level: data.level };
     } catch {
       return { ok: false, error: "network" };
@@ -68,5 +135,8 @@ export function useScouting() {
 
   const levelFor = useCallback((riderId) => levels[riderId] ?? 0, [levels]);
 
-  return { slots, maxLevel, levels, teamId, loading, scoutingId, scout, refresh, levelFor };
+  return {
+    slots, maxLevel, levels, teamId, loading, scoutingId,
+    scout, refresh, levelFor, requestEstimates, estimateFor, estimates,
+  };
 }

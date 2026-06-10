@@ -7,7 +7,9 @@ import { statStyle } from "../lib/statColor";
 import NationCell from "../components/rider/NationCell";
 import { getRiderMarketValue } from "../lib/marketValues";
 import { formatNumber, formatDate } from "../lib/intl";
-import PotentialeStars from "../components/PotentialeStars";
+import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
+import { useScouting } from "../lib/useScouting";
+import { scoutSortValue } from "../lib/scouting";
 import TeamTransferHistoryTab from "../components/TeamTransferHistoryTab";
 import { resolveApiError } from "../lib/apiError";
 
@@ -25,7 +27,7 @@ function SortTh({ children, sortKey, sort, sortDir, onSort, className = "" }) {
   );
 }
 
-function RiderActionModal({ rider, onClose, onAction }) {
+function RiderActionModal({ rider, scouting, onClose, onAction }) {
   const { t } = useTranslation("team");
   const riderValue = getRiderMarketValue(rider);
   const [auctionPrice, setAuctionPrice] = useState(riderValue);
@@ -92,10 +94,12 @@ function RiderActionModal({ rider, onClose, onAction }) {
           <button onClick={onClose} className="text-cz-3 hover:text-cz-1 text-xl">×</button>
         </div>
         <div className="p-5 border-b border-cz-border">
-          {rider.potentiale != null && (
+          {/* #1242: samme kvalitative scouting-præsentation som alle andre flader —
+              det hardcodede rå tal (showValue) er fjernet. */}
+          {scouting.estimateFor(rider.id) !== null && (
             <div className="flex items-center justify-between mb-2 pb-2 border-b border-cz-border">
               <span className="text-cz-3 text-xs">{t("actionModal.potentialLabel")}</span>
-              <PotentialeStars value={rider.potentiale} birthdate={rider.birthdate} showValue />
+              <ScoutablePotentiale rider={rider} scouting={scouting} />
             </div>
           )}
           <div className="grid grid-cols-2 gap-x-6 gap-y-1.5">
@@ -159,7 +163,7 @@ function RiderActionModal({ rider, onClose, onAction }) {
   );
 }
 
-function SquadTab({ riders, onSelectRider, windowOpen }) {
+function SquadTab({ riders, scouting, onSelectRider, windowOpen }) {
   const { t } = useTranslation("team");
   const [showIncoming, setShowIncoming] = useState(true);
   const [showOutgoing, setShowOutgoing] = useState(true);
@@ -173,7 +177,9 @@ function SquadTab({ riders, onSelectRider, windowOpen }) {
     ...riders.filter(r => !r._isIncoming && !r._isOutgoing),
     ...(showIncoming ? incomingRiders : []),
     ...(showOutgoing ? outgoingRiders : []),
-  ];
+    // #1162: dekorér med estimat-midtpunktet så potentiale-kolonnen kan sorteres
+    // uden den rå (server-skjulte) potentiale.
+  ].map(r => ({ ...r, _scoutMid: scoutSortValue(scouting.estimateFor(r.id)) }));
   const riderFilters = useClientRiderFilters(displayRidersBase);
   const displayRiders = riderFilters.filtered;
   const sort = riderFilters.filters.sort;
@@ -249,7 +255,7 @@ function SquadTab({ riders, onSelectRider, windowOpen }) {
                   <SortTh sortKey="value" sort={sort} sortDir={sortDir} onSort={handleSort}
                     className="px-3 py-3 text-right font-medium">{t("squad.headers.value")}</SortTh>
                   <th className="px-3 py-3 text-right text-cz-3 font-medium">{t("squad.headers.salary")}</th>
-                  <SortTh sortKey="potentiale" sort={sort} sortDir={sortDir} onSort={handleSort}
+                  <SortTh sortKey="_scoutMid" sort={sort} sortDir={sortDir} onSort={handleSort}
                     className="px-3 py-3 text-left font-medium">{t("squad.headers.potential")}</SortTh>
                   {STATS.map((key, i) => (
                     <SortTh key={key} sortKey={key} sort={sort} sortDir={sortDir} onSort={handleSort}
@@ -301,7 +307,7 @@ function SquadTab({ riders, onSelectRider, windowOpen }) {
                     </td>
                     <td className="px-3 py-2.5 text-right text-cz-2 font-mono text-xs">{r.salary || 0}</td>
                     <td className="px-3 py-2.5">
-                      <PotentialeStars value={r.potentiale} birthdate={r.birthdate} />
+                      <ScoutablePotentiale rider={r} scouting={scouting} />
                     </td>
                     {STATS.map(key => (
                       <td key={key} className="px-1.5 py-2.5 text-center">
@@ -446,6 +452,7 @@ function EconomyTab({ team, riders, transactions }) {
 
 export function TeamPage() {
   const { t } = useTranslation("team");
+  const scouting = useScouting();
   const [team, setTeam] = useState(null);
   const [riders, setRiders] = useState([]);
   const [transactions, setTransactions] = useState([]);
@@ -465,11 +472,11 @@ export function TeamPage() {
 
     const [ridersRes, pendingRes, finRes, windowRes, loansOutRes, loansInRes] = await Promise.all([
       supabase.from("riders")
-        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, potentiale, ${STATS.join(", ")}`)
+        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, ${STATS.join(", ")}`)
         .eq("team_id", myTeam.id)
         .order("market_value", { ascending: false }),
       supabase.from("riders")
-        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, potentiale, ${STATS.join(", ")}`)
+        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, ${STATS.join(", ")}`)
         .eq("pending_team_id", myTeam.id)
         .order("market_value", { ascending: false }),
       supabase.from("finance_transactions")
@@ -483,7 +490,7 @@ export function TeamPage() {
         .eq("from_team_id", myTeam.id).eq("status", "active"),
       // Riders we're borrowing
       supabase.from("loan_agreements")
-        .select(`rider:rider_id(id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, nationality_code, potentiale, ${STATS.join(", ")}), from_team:from_team_id(name), start_season, end_season, buy_option_price`)
+        .select(`rider:rider_id(id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, nationality_code, ${STATS.join(", ")}), from_team:from_team_id(name), start_season, end_season, buy_option_price`)
         .eq("to_team_id", myTeam.id).eq("status", "active"),
     ]);
 
@@ -564,7 +571,7 @@ export function TeamPage() {
       </div>
 
       {activeTab === "squad" && (
-        <SquadTab riders={riders} onSelectRider={setSelectedRider} windowOpen={windowOpen} />
+        <SquadTab riders={riders} scouting={scouting} onSelectRider={setSelectedRider} windowOpen={windowOpen} />
       )}
       {activeTab === "economy" && (
         <EconomyTab team={team} riders={riders} transactions={transactions} />
@@ -574,7 +581,7 @@ export function TeamPage() {
       )}
 
       {selectedRider && (
-        <RiderActionModal rider={selectedRider} onClose={() => setSelectedRider(null)} onAction={loadAll} />
+        <RiderActionModal rider={selectedRider} scouting={scouting} onClose={() => setSelectedRider(null)} onAction={loadAll} />
       )}
     </div>
   );

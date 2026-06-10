@@ -13,7 +13,6 @@
     "salaryRange": "Løn CZ$ (min-max)",
     "ageRange": "Alder (min-max)",
     "bidRange": "Højeste bud CZ$ (min-max)",
-    "potentialRange": "Potentiale (min-max)",
     "team": "Hold",
     "teamAll": "Alle hold",
     "min": "Min",
@@ -40,10 +39,6 @@
     "age": {
       "min": "Alder ≥ {value}",
       "max": "Alder ≤ {value}"
-    },
-    "potential": {
-      "min": "Pot. ≥ {value}",
-      "max": "Pot. ≤ {value}"
     },
     "bid": {
       "min": "Bud ≥ {amount} CZ$",

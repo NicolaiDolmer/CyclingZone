@@ -11,6 +11,7 @@ import { RacePriceModal } from "../components/RacePriceModal";
 import { Flag } from "../components/Flag";
 import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
 import { useScouting } from "../lib/useScouting";
+import { scoutSortValue } from "../lib/scouting";
 import AuctionsFirstBidHint from "../components/AuctionsFirstBidHint";
 import OnboardingTour from "../components/OnboardingTour";
 import { startTour } from "../lib/onboardingTour";
@@ -430,7 +431,7 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, watchlist,
         </div>
       </div>
 
-      {r?.potentiale != null && (
+      {r?.id && scouting.estimateFor(r.id) !== null && (
         <div className="mt-2 flex items-center gap-1.5">
           <span className="text-cz-3 text-[9px] uppercase tracking-wider">{t("auctions:card.potential")}</span>
           <ScoutablePotentiale rider={r} scouting={scouting} showScout />
@@ -557,6 +558,9 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, watchlist,
 export default function AuctionsPage() {
   const { t } = useTranslation(["auctions", "common"]);
   const auctionsTourSteps = useMemo(() => getAuctionsTourSteps(t), [t]);
+  // #1162: hoisted hertil (fra AuctionsContent) så rider-listen kan dekoreres med
+  // estimat-midtpunkter (_scoutMid) til klient-side potentiale-sortering.
+  const scouting = useScouting();
   const [auctions, setAuctions] = useState([]);
   const [myTeamId, setMyTeamId] = useState(null);
   const [userId, setUserId] = useState(null);
@@ -701,7 +705,7 @@ export default function AuctionsPage() {
         .select(`id, current_price, min_increment, calculated_end, status, is_guaranteed_sale, is_flash,
           seller_team_id, current_bidder_id,
           rider:rider_id(id, firstname, lastname, market_value, is_u25, team_id, birthdate, nationality_code,
-            prize_earnings_bonus, potentiale, salary, ${STATS.join(", ")}),
+            prize_earnings_bonus, salary, ${STATS.join(", ")}),
           seller:seller_team_id(id, name),
           current_bidder:current_bidder_id(id, name)`)
         .in("status", ["active", "extended"])
@@ -995,7 +999,10 @@ export default function AuctionsPage() {
     }
   }
 
-  const riderFilters = useClientRiderFilters(auctions.map(a => a.rider).filter(Boolean));
+  const riderFilters = useClientRiderFilters(
+    auctions.map(a => a.rider).filter(Boolean)
+      .map(r => ({ ...r, _scoutMid: scoutSortValue(scouting.estimateFor(r.id)) }))
+  );
   const filteredRiderOrder = new Map(riderFilters.filtered.map((r, i) => [r.id, i]));
 
   const winningAuctions  = auctions.filter(a => getAuctionLeaderId(a) === myTeamId);
@@ -1253,6 +1260,7 @@ export default function AuctionsPage() {
         <AuctionsContent
           filter={filter}
           filtered={filtered}
+          scouting={scouting}
           wishlistOnly={wishlistOnly}
           mySituationBuckets={{
             leading: myLeadingAuctions.filter(a => (!a.rider || filteredRiderOrder.has(a.rider.id)) && passesAuctionPriceFilter(a) && passesWishlistFilter(a)),
@@ -1321,9 +1329,9 @@ function AuctionTableHead({ visibleStats, activeSort, activeSortDir, handleSort,
         <SortTh sortKey="salary" sort={activeSort("salary") ? "salary" : riderFiltersSort}
           sortDir={activeSortDir("salary")} onSort={handleSort}
           className="px-2 py-3 text-right font-medium">{t("table.salary")}</SortTh>
-        <SortTh sortKey="potentiale"
-          sort={activeSort("potentiale") ? "potentiale" : riderFiltersSort}
-          sortDir={activeSortDir("potentiale")} onSort={handleSort}
+        <SortTh sortKey="_scoutMid"
+          sort={activeSort("_scoutMid") ? "_scoutMid" : riderFiltersSort}
+          sortDir={activeSortDir("_scoutMid")} onSort={handleSort}
           className="px-3 py-3 text-left font-medium uppercase tracking-wider whitespace-nowrap">{t("table.potential")}</SortTh>
         <th className="px-3 py-3 text-left text-cz-3 font-medium uppercase tracking-wider hidden xl:table-cell">{t("table.seller")}</th>
         {visibleStatsArr.map(key => (
@@ -1422,8 +1430,7 @@ function AuctionsContent(props) {
     feedEvents, auctionsById, myTeamId, now, showFeed,
     ...rest
   } = props;
-  const scouting = useScouting();
-  const sharedProps = { myTeamId, scouting, ...rest };
+  const sharedProps = { myTeamId, ...rest };
   const mySituationVisibleCount = mySituationBuckets.leading.length + mySituationBuckets.overbid.length + mySituationBuckets.selling.length;
 
   const isEmpty = filter === "my-situation"

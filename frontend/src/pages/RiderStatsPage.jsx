@@ -898,7 +898,15 @@ export default function RiderStatsPage() {
     // for ryttere uden backfill) aldrig brækker rytter-siden — preview vises bare ikke.
     const safe = async (q) => { try { return await q; } catch { return { data: null }; } };
     const [riderRes, resultsRes, seasonRowsAll, physRes, abilRes] = await Promise.all([
-      supabase.from("riders").select(`*, team:team_id(id, name, is_ai, is_bank)`).eq("id", id).single(),
+      // #1162: eksplicit kolonneliste — `select=*` på riders afvises efter
+      // column-privilege-migrationen (potentiale er server-skjult; klienter får
+      // kun det maskerede estimat via POST /api/scouting/estimates).
+      supabase.from("riders").select(`id, pcm_id, firstname, lastname, birthdate, height, weight,
+        market_value, base_value, prize_earnings_bonus, salary, is_u25, is_retired, pending_team_id,
+        nationality_code, primary_type, secondary_type, team_id, acquired_at,
+        stat_fl, stat_bj, stat_kb, stat_bk, stat_tt, stat_prl, stat_bro, stat_sp,
+        stat_acc, stat_ned, stat_udh, stat_mod, stat_res, stat_ftr,
+        team:team_id(id, name, is_ai, is_bank)`).eq("id", id).single(),
       // Seneste 20 til "Løbsresultater"-listen (visning).
       supabase.from("race_results")
         .select(`*, race:race_id(name, race_type, season:season_id(number))`)
@@ -907,7 +915,14 @@ export default function RiderStatsPage() {
       // ville .limit(20) trunkere sejre/præmie-totalerne (PostgREST capper ved 1000).
       fetchAllRiderSeasonRows(id),
       safe(supabase.from("rider_physiology_profiles").select("*").eq("rider_id", id).maybeSingle()),
-      safe(supabase.from("rider_derived_abilities").select("*").eq("rider_id", id).maybeSingle()),
+      // #1162: eksplicit kolonneliste — hidden_potential er server-skjult (eksakt
+      // invertérbar til potentiale: ungdom + seeded støj kan begge beregnes i
+      // klienten), og select=* afvises efter column-privilege-migrationen.
+      // Kun de 16 synlige evner (DERIVED_ABILITIES) + metadata bruges i UI'et.
+      safe(supabase.from("rider_derived_abilities").select(`rider_id, formula_version,
+        climbing, time_trial, prolog, flat, tempo, sprint, acceleration, punch,
+        endurance, recovery, durability, descending, cobblestone, positioning,
+        aggression, tactics`).eq("rider_id", id).maybeSingle()),
     ]);
     setRider(riderRes.data
       ? { ...riderRes.data, physiology: physRes.data || null, abilities: abilRes.data || null }
@@ -1254,7 +1269,7 @@ export default function RiderStatsPage() {
               {rider.height && <span className="text-cz-3 text-sm">{t("header.heightCm", { height: rider.height })}</span>}
               {rider.weight && <span className="text-cz-3 text-sm">{t("header.weightKg", { weight: rider.weight })}</span>}
             </div>
-            {rider.potentiale != null && (
+            {scouting.estimateFor(rider.id) !== null && (
               <div className="flex items-center gap-2 mt-2">
                 <span className="text-cz-3 text-xs uppercase tracking-wider">{t("header.potential")}</span>
                 <ScoutablePotentiale rider={rider} scouting={scouting} showScout large />
@@ -1356,7 +1371,7 @@ export default function RiderStatsPage() {
       {tab === "stats" && (
         <>
           <div className="bg-cz-card border border-cz-border rounded-xl p-5">
-            {rider.potentiale != null && (
+            {scouting.estimateFor(rider.id) !== null && (
               <div className="flex items-center gap-3 py-2 mb-1 border-b border-cz-border">
                 <span className="text-cz-3 w-4 text-center text-sm">◆</span>
                 <span className="text-cz-2 text-sm w-28 sm:w-36 flex-shrink-0">{t("stats.potentialRow")}</span>

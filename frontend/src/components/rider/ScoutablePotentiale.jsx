@@ -1,56 +1,59 @@
-// ScoutablePotentiale — progression L1 (#1138).
+// ScoutablePotentiale — progression L1 (#1138) + server-side skjuling (#1162).
 //
 // Viser en rytters potentiale som et SCOUTET estimat (stjerne-range + kvalitativ
-// label) i stedet for det eksakte tal, plus en valgfri scout-knap der bruger ét
-// slot og indsnævrer estimatet. Egne ryttere + fuldt scoutede vises eksakt.
+// label), plus en valgfri scout-knap der bruger ét slot og indsnævrer estimatet.
 //
-// Estimatet beregnes lokalt (display-lag v1) ud fra (sand potentiale + scout-
-// niveau + per-manager seed) — se frontend/src/lib/scouting.js.
+// #1162: Estimatet beregnes på SERVEREN (POST /api/scouting/estimates) — den rå
+// riders.potentiale findes ikke i klienten. Egne ryttere + fuldt scoutede får et
+// eksakt estimat (lo == hi) og vises som eksakte stjerner + kvalitativ tekst.
+// #1242 (ejer-beslutning dokumenteret her): egne ryttere viser SAMME kvalitative
+// præsentation som andres — aldrig et råt tal. Stjernerne (0,5-trin) ER den
+// fulde indsigt; potentiale-skalaen er ikke spillervendt som tal.
 
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import PotentialeStars from "../PotentialeStars";
-import { estimatePotentialRange, potentialLabelKey } from "../../lib/scouting";
-
-const CURRENT_YEAR = new Date().getFullYear();
+import { potentialLabelKey } from "../../lib/scouting";
 
 export default function ScoutablePotentiale({ rider, scouting, showScout = false, large = false }) {
   const { t } = useTranslation();
-  const { teamId, maxLevel, levelFor, scout, scoutingId, slots } = scouting;
+  const { maxLevel, scout, scoutingId, slots, requestEstimates, estimateFor } = scouting;
 
-  if (rider?.potentiale == null) {
+  const riderId = rider?.id;
+  useEffect(() => {
+    if (riderId) requestEstimates([riderId]);
+  }, [riderId, requestEstimates]);
+
+  const estimate = estimateFor(riderId);
+
+  // undefined = ikke hentet endnu, null = rytter uden potentiale → begge "—".
+  if (estimate == null) {
     return <PotentialeStars value={null} />;
   }
 
-  const age = rider.birthdate ? CURRENT_YEAR - new Date(rider.birthdate).getFullYear() : null;
-  const riderTeamId = rider.team_id ?? rider.team?.id ?? null;
-  const isOwn = riderTeamId && teamId && riderTeamId === teamId;
-  const level = levelFor(rider.id);
-
-  // Egne ryttere + fuldt scoutede → eksakt visning (klassisk).
-  if (isOwn || level >= maxLevel) {
-    return <PotentialeStars value={rider.potentiale} birthdate={rider.birthdate} large={large} showValue={isOwn} />;
-  }
-
-  const range = estimatePotentialRange(rider.potentiale, level, age, rider.id, teamId, maxLevel);
-  if (!range) {
-    return <PotentialeStars value={rider.potentiale} birthdate={rider.birthdate} large={large} />;
-  }
-  const labelKey = potentialLabelKey(range);
+  const labelKey = potentialLabelKey(estimate);
   const label = labelKey ? t(`rider:scouting.label_${labelKey}`) : null;
 
+  // Eksakt (egen rytter eller fuldt scoutet) → eksakte stjerner + kvalitativ
+  // tekst. Ingen scout-knap (intet at indsnævre) og intet niveau-badge.
+  if (estimate.exact || estimate.lo === estimate.hi) {
+    return <PotentialeStars value={estimate.lo} label={label} birthdate={rider.birthdate} large={large} />;
+  }
+
+  const level = estimate.level ?? 0;
   const remaining = slots?.remaining ?? 0;
-  const busy = scoutingId === rider.id;
+  const busy = scoutingId === riderId;
   const canScout = remaining > 0 && level < maxLevel && !busy;
 
   const handleScout = (e) => {
     e.stopPropagation();
     e.preventDefault();
-    if (canScout) scout(rider.id);
+    if (canScout) scout(riderId);
   };
 
   return (
     <span className="inline-flex items-center gap-2 flex-wrap">
-      <PotentialeStars range={range} label={label} birthdate={rider.birthdate} large={large} />
+      <PotentialeStars range={estimate} label={label} birthdate={rider.birthdate} large={large} />
       {level > 0 && (
         <span className="text-[10px] font-mono text-cz-3" title={t("rider:scouting.levelTitle")}>
           {level}/{maxLevel}

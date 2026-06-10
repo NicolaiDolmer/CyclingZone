@@ -14,6 +14,7 @@ import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 import { formatNumber } from "../lib/intl";
 import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
 import { useScouting } from "../lib/useScouting";
+import { scoutSortValue } from "../lib/scouting";
 import WatchlistStar from "../components/WatchlistStar";
 import { CompareToggle, CompareBar, MAX_COMPARE } from "../components/CompareSelection";
 
@@ -62,7 +63,7 @@ export default function WatchlistPage() {
       .from("rider_watchlist")
       .select(`id, note, created_at,
         rider:rider_id(id, firstname, lastname, birthdate, market_value, is_u25,
-          salary, team_id, nationality_code, prize_earnings_bonus, potentiale, ${STATS.join(", ")},
+          salary, team_id, nationality_code, prize_earnings_bonus, ${STATS.join(", ")},
           team:team_id(id, name))`)
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
@@ -115,7 +116,11 @@ export default function WatchlistPage() {
     }
   }
 
-  const riderFilters = useClientRiderFilters(entries.map(e => e.rider));
+  // #1162: dekorér med estimat-midtpunkt så potentiale-kolonnen kan sorteres
+  // uden den rå (server-skjulte) potentiale.
+  const riderFilters = useClientRiderFilters(
+    entries.map(e => ({ ...e.rider, _scoutMid: scoutSortValue(scouting.estimateFor(e.rider.id)) }))
+  );
   const filteredRiders = new Set(riderFilters.filtered.map(r => r.id));
   const sort = riderFilters.filters.sort;
   const sortDir = riderFilters.filters.sort_dir;
@@ -199,7 +204,7 @@ export default function WatchlistPage() {
                       className="px-3 py-3 text-right font-medium">{t("thValue")}</SortTh>
                     <SortTh sortKey="salary" sort={sort} sortDir={sortDir} onSort={handleSort}
                       className="px-3 py-3 text-right font-medium">{t("thSalary")}</SortTh>
-                    <SortTh sortKey="potentiale" sort={sort} sortDir={sortDir} onSort={handleSort}
+                    <SortTh sortKey="_scoutMid" sort={sort} sortDir={sortDir} onSort={handleSort}
                       className="px-3 py-3 text-left font-medium">{t("thPotential")}</SortTh>
                     {STATS.map((key, i) => (
                       <SortTh key={key} sortKey={key} sort={sort} sortDir={sortDir} onSort={handleSort}

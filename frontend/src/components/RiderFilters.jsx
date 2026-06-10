@@ -55,8 +55,6 @@ export const DEFAULT_FILTERS = {
   max_salary: "",
   min_age: "",
   max_age: "",
-  min_potentiale: "",
-  max_potentiale: "",
   min_auction_price: "",
   max_auction_price: "",
   u25: false,
@@ -70,7 +68,7 @@ export const DEFAULT_FILTERS = {
 // Bruges både til "har aktivt filter"-tjek og til "Nulstil alt (N)"-tælleren.
 const BASIC_FILTER_KEYS = [
   "q", "nationality_code", "rider_type", "min_value", "max_value", "min_salary", "max_salary",
-  "min_age", "max_age", "min_potentiale", "max_potentiale",
+  "min_age", "max_age",
   "min_auction_price", "max_auction_price", "u25", "u23", "free_agent", "team_id",
 ];
 
@@ -265,20 +263,9 @@ export default function RiderFilters({
             </div>
           )}
 
-          {/* Potentiale */}
-          <div>
-            <label className="block text-cz-3 text-[10px] uppercase tracking-wider mb-1">{t("fields.potentialRange")}</label>
-            <div className="flex gap-1">
-              <input type="number" value={filters.min_potentiale} onChange={e => onChange("min_potentiale", e.target.value)}
-                placeholder={t("fields.min")} min={1} max={6} step={0.5}
-                className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2
-                  text-cz-1 text-sm placeholder-cz-3 focus:outline-none focus:border-cz-accent" />
-              <input type="number" value={filters.max_potentiale} onChange={e => onChange("max_potentiale", e.target.value)}
-                placeholder={t("fields.max")} min={1} max={6} step={0.5}
-                className="w-full bg-cz-subtle border border-cz-border rounded-lg px-2 py-2
-                  text-cz-1 text-sm placeholder-cz-3 focus:outline-none focus:border-cz-accent" />
-            </div>
-          </div>
+          {/* Potentiale-filter fjernet (#1162): potentialet er skjult information —
+              man kan ikke filtrere på en værdi man ikke har scoutet, og et
+              server-filter på den rå kolonne var en oracle-lækage. */}
 
           {/* Team */}
           {showTeamFilter && teams.length > 0 && (
@@ -354,8 +341,6 @@ export default function RiderFilters({
           {filters.max_salary && <Chip t={t} label={t("chips.salary.max", { amount: formatNumber(parseInt(filters.max_salary)) })} onRemove={() => onChange("max_salary", "")} />}
           {filters.min_age && <Chip t={t} label={t("chips.age.min", { value: filters.min_age })} onRemove={() => onChange("min_age", "")} />}
           {filters.max_age && <Chip t={t} label={t("chips.age.max", { value: filters.max_age })} onRemove={() => onChange("max_age", "")} />}
-          {filters.min_potentiale && <Chip t={t} label={t("chips.potential.min", { value: filters.min_potentiale })} onRemove={() => onChange("min_potentiale", "")} />}
-          {filters.max_potentiale && <Chip t={t} label={t("chips.potential.max", { value: filters.max_potentiale })} onRemove={() => onChange("max_potentiale", "")} />}
           {filters.min_auction_price && <Chip t={t} label={t("chips.bid.min", { amount: formatNumber(parseInt(filters.min_auction_price)) })} onRemove={() => onChange("min_auction_price", "")} />}
           {filters.max_auction_price && <Chip t={t} label={t("chips.bid.max", { amount: formatNumber(parseInt(filters.max_auction_price)) })} onRemove={() => onChange("max_auction_price", "")} />}
           {filters.u25 && <Chip t={t} label={t("toggles.u25")} onRemove={() => onChange("u25", false)} />}

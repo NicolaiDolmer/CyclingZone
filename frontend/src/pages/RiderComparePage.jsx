@@ -12,6 +12,13 @@ import { statColor, statStyle } from "../lib/statColor";
 
 const MAX_COMPARE = 3;
 
+// #1162: riders-kolonner er klient-læsbare via eksplicit kolonne-GRANT (potentiale
+// er server-skjult) — `select=*` afvises af PostgREST, så listen skal være eksplicit.
+const COMPARE_RIDER_COLUMNS = `id, firstname, lastname, birthdate, market_value, base_value,
+  prize_earnings_bonus, salary, is_u25, nationality_code, team_id, primary_type, secondary_type,
+  stat_fl, stat_bj, stat_kb, stat_bk, stat_tt, stat_prl, stat_bro, stat_sp, stat_acc, stat_ned,
+  stat_udh, stat_mod, stat_res, stat_ftr`;
+
 // Skill labels reuse the shared rider:skills.{slug}.long translations (same as RiderStatsPage).
 const STATS = [
   { key: "stat_fl",  slug: "fl",  icon: "═" },
@@ -107,7 +114,7 @@ export default function RiderComparePage() {
     (async () => {
       const { data } = await supabase
         .from("riders")
-        .select(`*, team:team_id(id, name)`)
+        .select(`${COMPARE_RIDER_COLUMNS}, team:team_id(id, name)`)
         .in("id", ids);
       if (cancelled || !data) return;
       const ordered = ids.map(id => data.find(r => r.id === id)).filter(Boolean);
@@ -132,7 +139,7 @@ export default function RiderComparePage() {
 
     const { data } = await supabase
       .from("riders")
-      .select(`*, team:team_id(name)`)
+      .select(`${COMPARE_RIDER_COLUMNS}, team:team_id(id, name)`)
       .eq("id", rider.id)
       .single();
     if (data) setFullRiders(prev => [...prev, data]);
@@ -199,7 +206,7 @@ export default function RiderComparePage() {
           {/* Stats comparison */}
           <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
             {/* Potentiale row */}
-            {fullRiders.some(r => r.potentiale != null) && (
+            {fullRiders.some(r => scouting.estimateFor(r.id) !== null) && (
               <div className="grid items-center py-3 px-4 border-b border-cz-border bg-cz-accent/10/30"
                 style={{ gridTemplateColumns: `200px repeat(${fullRiders.length}, 1fr)` }}>
                 <div className="flex items-center gap-2">
