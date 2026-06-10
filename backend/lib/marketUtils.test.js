@@ -2,10 +2,12 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  calculateRiderMarketValue,
   getIncomingSquadViolation,
   getOutgoingSquadViolation,
   getTeamMarketState,
   MARKET_SQUAD_LIMITS,
+  RIDER_BASE_VALUE_FALLBACK,
   TRANSFER_WINDOW_SOFT_CAP_BUFFER,
 } from "./marketUtils.js";
 
@@ -313,4 +315,17 @@ test("getOutgoingSquadViolation prefers future_count over total_count (#268)", (
 
   assert.equal(issue?.minRiders, 8);
   assert.equal(issue?.totalAfter, 7);
+});
+
+// #1101 cutover: værdi er DB-først (market_value) — uci_points indgår aldrig.
+test("calculateRiderMarketValue er DB-først: market_value vinder", () => {
+  assert.equal(calculateRiderMarketValue({ market_value: 900000, base_value: 100, prize_earnings_bonus: 5 }), 900000);
+});
+
+test("calculateRiderMarketValue falder tilbage til base_value + bonus", () => {
+  assert.equal(calculateRiderMarketValue({ base_value: 50000, prize_earnings_bonus: 1500 }), 51500);
+});
+
+test("calculateRiderMarketValue uden base_value bruger fallback (aldrig uci_points)", () => {
+  assert.equal(calculateRiderMarketValue({ uci_points: 500, prize_earnings_bonus: 0 }), RIDER_BASE_VALUE_FALLBACK);
 });

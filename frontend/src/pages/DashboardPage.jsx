@@ -125,7 +125,7 @@ export default function DashboardPage() {
         .eq("is_test_account", false)
         .order("division")
         .order("name"),
-      supabase.from("riders").select("id, uci_points, salary, is_u25, pending_team_id")
+      supabase.from("riders").select("id, salary, is_u25, pending_team_id")
         .eq("team_id", teamData.id),
       supabase.from("riders")
         .select("id", { count: "exact", head: true })

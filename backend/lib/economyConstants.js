@@ -9,10 +9,9 @@ export const SPONSOR_INCOME_BASE = 240000;
 // Også brugt som DEFAULT_BETA_BALANCE i betaResetService.js.
 export const INITIAL_BALANCE = 800000;
 
-// riders.value = uci_points × MARKET_VALUE_MULTIPLIER (forudsat uci_points ≥ MIN_UCI_POINTS_FOR_VALUE).
-// Locked 2026-04-25 i economy-scale-4000x.sql.
-export const MARKET_VALUE_MULTIPLIER = 4000;
-export const MIN_UCI_POINTS_FOR_VALUE = 5;
+// Rytter-værdi (#1101 cutover 2026-06-10): market_value/salary er GENERATED fra
+// base_value (model v3, riderValuationModel.json) — uci_points er afkoblet.
+// Runtime-fallback: RIDER_BASE_VALUE_FALLBACK i marketUtils.js (spejler DB'ens COALESCE).
 
 // Præmie per UCI-point ved race-import (prizePayoutEngine).
 export const PRIZE_PER_POINT = 1500;
@@ -67,8 +66,8 @@ export const SEASON_VALUE_RECALC_ENABLED = false;
 // koerer developRidersForSeason som foer.
 export const SEASON_RIDER_PROGRESSION_ENABLED = false;
 
-// SALARY_RATE = 0.10 lever i database/2026-05-04-salary-generated-column.sql som
-// GENERATED-formel og kan ikke skrives fra applikationskode. Defineret her som info-only.
+// SALARY_RATE = 0.10 lever i database/2026-06-10-value-cutover-base-value.sql som
+// GENERATED-formel (fra base_value) og kan ikke skrives fra applikationskode. Info-only.
 export const SALARY_RATE_INFO = 0.10;
 
 // ============================================================

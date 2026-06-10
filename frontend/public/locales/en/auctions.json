@@ -69,7 +69,7 @@
     "colPrice": "Price",
     "colTime": "Time",
     "noBids": "No bids",
-    "riderMeta": "UCI: {points} pt · Salary: {salary}",
+    "riderMeta": "Value: {value} CZ$ · Salary: {salary}",
     "salaryNone": "—",
     "pageOf": "Page {page} of {total}",
     "prev": "Previous",

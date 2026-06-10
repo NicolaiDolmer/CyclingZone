@@ -3,10 +3,7 @@ import assert from "node:assert/strict";
 import i18n from "i18next";
 import {
   formatCz,
-  getRiderBaseValue,
   getRiderMarketValue,
-  MIN_RIDER_UCI_POINTS,
-  RIDER_VALUE_FACTOR,
 } from "./marketValues.js";
 
 async function setLanguage(language) {
@@ -42,30 +39,21 @@ test("formatCz — ugyldig værdi bevarer fallback", async () => {
   assert.equal(formatCz("ikke-et-tal"), "-");
 });
 
-test("getRiderBaseValue — bruger pris før UCI-point", () => {
+// #1101 cutover: DB-kolonnen market_value er sandheden; fallback = base_value + bonus.
+test("getRiderMarketValue — market_value vinder", () => {
   assert.equal(
-    getRiderBaseValue({ price: 750000, uci_points: 10 }),
-    750000,
-  );
-});
-
-test("getRiderBaseValue — bruger minimum UCI-point når point mangler", () => {
-  assert.equal(
-    getRiderBaseValue({}),
-    MIN_RIDER_UCI_POINTS * RIDER_VALUE_FACTOR,
-  );
-});
-
-test("getRiderMarketValue — market_value vinder over beregnet værdi", () => {
-  assert.equal(
-    getRiderMarketValue({ market_value: 900000, price: 750000, prize_earnings_bonus: 50000 }),
+    getRiderMarketValue({ market_value: 900000, base_value: 100, prize_earnings_bonus: 50000 }),
     900000,
   );
 });
 
-test("getRiderMarketValue — lægger bonus oven i fallback-værdi", () => {
+test("getRiderMarketValue — base_value + bonus som fallback", () => {
   assert.equal(
-    getRiderMarketValue({ uci_points: 20, prize_earnings_bonus: 15000 }),
-    20 * RIDER_VALUE_FACTOR + 15000,
+    getRiderMarketValue({ base_value: 50000, prize_earnings_bonus: 15000 }),
+    65000,
   );
+});
+
+test("getRiderMarketValue — uci_points indgår aldrig", () => {
+  assert.equal(getRiderMarketValue({ uci_points: 500 }), 1000);
 });

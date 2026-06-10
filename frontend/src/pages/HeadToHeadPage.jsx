@@ -132,8 +132,8 @@ export default function HeadToHeadPage() {
           .eq("status", "completed")
           .or(`and(seller_team_id.eq.${teamA.id},current_bidder_id.eq.${teamB.id}),and(seller_team_id.eq.${teamB.id},current_bidder_id.eq.${teamA.id})`),
 
-        supabase.from("riders").select("id, firstname, lastname, uci_points, nationality_code").eq("team_id", teamA.id),
-        supabase.from("riders").select("id, firstname, lastname, uci_points, nationality_code").eq("team_id", teamB.id),
+        supabase.from("riders").select("id, firstname, lastname, market_value, nationality_code").eq("team_id", teamA.id),
+        supabase.from("riders").select("id, firstname, lastname, market_value, nationality_code").eq("team_id", teamB.id),
       ]);
 
       const standingsA = standingsRes.data?.filter(s => s.team_id === teamA.id) || [];
@@ -144,9 +144,8 @@ export default function HeadToHeadPage() {
       const bBoughtFromA = h2hAuctions.filter(a => a.seller_team_id === teamA.id && a.current_bidder_id === teamB.id);
 
       // #826 — squad "Top 5" must show points the rider actually earned racing in-game
-      // (summed from race_results), not the static PCM `uci_points` strength attribute
-      // (which is MIN/0 for many riders → "0 for a rider who has raced"). Tie-break on
-      // uci_points so pre-season (no results yet) still surfaces the strongest riders.
+      // (summed from race_results), not a static strength attribute. Tie-break on
+      // market_value (#1101) so pre-season (no results yet) still surfaces the strongest riders.
       const ridersA = ridersARes.data || [];
       const ridersB = ridersBRes.data || [];
       const allRiderIds = [...ridersA, ...ridersB].map(r => r.id);
@@ -162,7 +161,7 @@ export default function HeadToHeadPage() {
       }
       const topFiveByPoints = (list) => list
         .map(r => ({ ...r, pointsEarned: pointsByRider[r.id] || 0 }))
-        .sort((a, b) => b.pointsEarned - a.pointsEarned || (b.uci_points || 0) - (a.uci_points || 0))
+        .sort((a, b) => b.pointsEarned - a.pointsEarned || (b.market_value || 0) - (a.market_value || 0))
         .slice(0, 5);
 
       setStats({

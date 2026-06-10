@@ -699,7 +699,7 @@ export default function AuctionsPage() {
       supabase.from("auctions")
         .select(`id, current_price, min_increment, calculated_end, status, is_guaranteed_sale, is_flash,
           seller_team_id, current_bidder_id,
-          rider:rider_id(id, firstname, lastname, uci_points, is_u25, team_id, birthdate, nationality_code,
+          rider:rider_id(id, firstname, lastname, market_value, is_u25, team_id, birthdate, nationality_code,
             prize_earnings_bonus, potentiale, salary, ${STATS.join(", ")}),
           seller:seller_team_id(id, name),
           current_bidder:current_bidder_id(id, name)`)

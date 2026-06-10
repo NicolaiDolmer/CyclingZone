@@ -69,7 +69,7 @@
     "colPrice": "Pris",
     "colTime": "Tidspunkt",
     "noBids": "Ingen bud",
-    "riderMeta": "UCI: {points} pt · Løn: {salary}",
+    "riderMeta": "Værdi: {value} CZ$ · Løn: {salary}",
     "salaryNone": "—",
     "pageOf": "Side {page} af {total}",
     "prev": "Forrige",

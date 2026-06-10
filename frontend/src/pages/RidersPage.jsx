@@ -225,7 +225,7 @@ export default function RidersPage() {
     const statKeys = STATS.map(s => s.key).join(", ");
     let query = supabase
       .from("riders")
-      .select(`id, firstname, lastname, birthdate, uci_points, salary, market_value, prize_earnings_bonus, is_u25, nationality_code, potentiale, primary_type, secondary_type,
+      .select(`id, firstname, lastname, birthdate, salary, market_value, prize_earnings_bonus, is_u25, nationality_code, potentiale, primary_type, secondary_type,
         ${statKeys}, team:team_id(id, name)`, { count: "exact" })
       .range((filters.page - 1) * 50, filters.page * 50 - 1);
 

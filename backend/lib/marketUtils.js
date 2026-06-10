@@ -20,8 +20,12 @@ export const MARKET_SQUAD_LIMITS = {
 export const TRANSFER_WINDOW_SOFT_CAP_BUFFER = 2;
 
 export const MIN_RIDERS_FOR_RACE = 8;
-export const RIDER_VALUE_FACTOR = 4000;
-export const MIN_RIDER_UCI_POINTS = 5;
+
+// #1101 cutover: værdi kommer fra DB-kolonnen market_value (GENERATED fra
+// base_value + prize_earnings_bonus). Fallback spejler DB'ens
+// COALESCE(base_value, 1000) for callsites uden market_value i select.
+// uci_points indgår ALDRIG. SKAL matche database/2026-06-10-value-cutover-base-value.sql.
+export const RIDER_BASE_VALUE_FALLBACK = 1000;
 
 const DEFAULT_DIVISION = 3;
 
@@ -58,12 +62,11 @@ export function getSquadLimits(division = DEFAULT_DIVISION) {
   return MARKET_SQUAD_LIMITS[division] || MARKET_SQUAD_LIMITS[DEFAULT_DIVISION];
 }
 
-export function calculateRiderBaseValue(rider = {}) {
-  return Math.max(MIN_RIDER_UCI_POINTS, Number(rider.uci_points) || 0) * RIDER_VALUE_FACTOR;
-}
-
 export function calculateRiderMarketValue(rider = {}) {
-  return calculateRiderBaseValue(rider) + (Number(rider.prize_earnings_bonus) || 0);
+  const explicit = Number(rider.market_value);
+  if (Number.isFinite(explicit)) return explicit;
+  const base = Number(rider.base_value) > 0 ? Number(rider.base_value) : RIDER_BASE_VALUE_FALLBACK;
+  return base + (Number(rider.prize_earnings_bonus) || 0);
 }
 
 export async function getTransferWindowOpen(supabase) {

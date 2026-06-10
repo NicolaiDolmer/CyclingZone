@@ -51,15 +51,19 @@ CREATE TABLE riders (
   height INTEGER, -- cm
   weight INTEGER, -- kg
   popularity INTEGER DEFAULT 0,
-  -- UCI Points (from Google Sheets top-1000, else 1)
+  -- UCI Points (legacy/afkoblet siden #1101-cutover 2026-06-10 — styrer IKKE økonomien)
   uci_points INTEGER DEFAULT 1,
   prize_earnings_bonus INTEGER NOT NULL DEFAULT 0,
-  price INTEGER GENERATED ALWAYS AS (uci_points * 4000) STORED,
-  market_value INTEGER GENERATED ALWAYS AS (GREATEST(5, uci_points) * 4000 + prize_earnings_bonus) STORED,
+  -- Data-drevet rytter-værdi (#1101, model v3 — riderValuationModel.json).
+  -- Skrives af backfillRiderBaseValue/relaunch-orchestrator. NULL = endnu ikke
+  -- beregnet (insert→backfill-vinduet) — generated-kolonnerne falder da tilbage
+  -- til 1000 (bundskala; spejles i marketUtils.RIDER_BASE_VALUE_FALLBACK).
+  base_value INTEGER,
+  market_value INTEGER GENERATED ALWAYS AS (COALESCE(base_value, 1000) + prize_earnings_bonus) STORED,
   -- salary: 10% af market_value, beregnes automatisk af DB. Kan ikke skrives fra applikationskode.
   salary INTEGER GENERATED ALWAYS AS (
     GREATEST(1, ROUND(
-      (GREATEST(5, uci_points) * 4000 + prize_earnings_bonus) * 0.10
+      (COALESCE(base_value, 1000) + prize_earnings_bonus) * 0.10
     ))::INTEGER
   ) STORED,
   -- Current owner

@@ -69,7 +69,7 @@ export default function AuctionHistoryPage() {
     let query = supabase
       .from("auctions")
       .select(`id, current_price, actual_end, status, is_guaranteed_sale, seller_team_id, current_bidder_id,
-        rider:rider_id(id, firstname, lastname, birthdate, uci_points, salary, prize_earnings_bonus, is_u25, nationality_code, team_id),
+        rider:rider_id(id, firstname, lastname, birthdate, market_value, salary, is_u25, nationality_code, team_id),
         seller:seller_team_id(id, name),
         winner:current_bidder_id(id, name)`,
         { count: "exact" })
@@ -243,7 +243,7 @@ export default function AuctionHistoryPage() {
                         {a.rider?.firstname} {a.rider?.lastname}
                       </RiderLink>
                       <p className="text-cz-3 text-xs mt-0.5">{t("history.riderMeta", {
-                        points: formatNumber(a.rider?.uci_points),
+                        value: formatNumber(a.rider?.market_value),
                         salary: a.rider?.salary ? `${formatNumber(a.rider.salary)} CZ$` : t("history.salaryNone"),
                       })}</p>
                     </td>

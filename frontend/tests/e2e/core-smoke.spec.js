@@ -328,7 +328,6 @@ test("rider profile value header stays contained on mobile", async ({ page }) =>
         team: { id: "team-e2e", name: "E2E Racing" },
         nationality_code: "dk",
         birthdate: "2002-04-12",
-        uci_points: 420,
         market_value: 123456789012,
         salary: 42000,
         prize_earnings_bonus: 0,

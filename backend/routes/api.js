@@ -717,14 +717,14 @@ router.get("/deadline-day/squads", requireAuth, async (req, res) => {
 router.get("/riders", requireAuth, cached({ namespace: "riders", ttlMs: CACHE_TTL.riders }, async (req, res) => {
   const {
     q, team_id, free_agent, u25, min_uci, max_uci,
-    sort = "uci_points", order = "desc",
+    sort = "market_value", order = "desc",
     page = 1, limit = 50,
   } = req.query;
 
   let query = supabase
     .from("riders")
     .select(`
-      id, pcm_id, firstname, lastname, birthdate, uci_points, price,
+      id, pcm_id, firstname, lastname, birthdate, market_value,
       salary, is_u25, nationality_code, popularity,
       stat_fl, stat_bj, stat_kb, stat_bk, stat_tt, stat_prl,
       stat_bro, stat_sp, stat_acc, stat_ned, stat_udh, stat_mod,
@@ -745,12 +745,15 @@ router.get("/riders", requireAuth, cached({ namespace: "riders", ttlMs: CACHE_TT
   if (team_id) query = query.eq("team_id", team_id);
   if (free_agent === "true") query = query.is("team_id", null);
   if (u25 === "true") query = query.eq("is_u25", true);
-  if (min_uci) query = query.gte("uci_points", parseInt(min_uci));
-  if (max_uci) query = query.lte("uci_points", parseInt(max_uci));
+  // #1101 cutover: min_uci/max_uci-params beholdes for API-kompat, men filtrerer
+  // nu på market_value (samme mapping som frontend useRiderFilters).
+  if (min_uci) query = query.gte("market_value", parseInt(min_uci));
+  if (max_uci) query = query.lte("market_value", parseInt(max_uci));
 
-  const allowedSort = ["uci_points", "stat_bj", "stat_sp", "stat_tt",
+  const allowedSort = ["market_value", "stat_bj", "stat_sp", "stat_tt",
                        "stat_fl", "lastname", "birthdate"];
-  const safeSort = allowedSort.includes(sort) ? sort : "uci_points";
+  const requestedSort = sort === "uci_points" ? "market_value" : sort;
+  const safeSort = allowedSort.includes(requestedSort) ? requestedSort : "market_value";
   query = query
     .order(safeSort, { ascending: order === "asc" })
     .range((page - 1) * limit, page * limit - 1);
@@ -986,7 +989,7 @@ router.get("/auctions", requireAuth, async (req, res) => {
     .select(`
       id, starting_price, current_price, calculated_end, actual_end,
       status, extension_count, created_at, is_guaranteed_sale,
-      rider:rider_id(id, firstname, lastname, uci_points, prize_earnings_bonus, is_u25,
+      rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, is_u25,
         stat_fl, stat_bj, stat_kb, stat_bk, stat_tt, stat_prl,
         stat_bro, stat_sp, stat_acc, stat_ned, stat_udh, stat_mod,
         stat_res, stat_ftr),
@@ -1028,7 +1031,7 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
   // Verify rider belongs to this team
   const { data: rider } = await supabase
     .from("riders")
-    .select("id, firstname, lastname, team_id, pending_team_id, is_retired, uci_points, prize_earnings_bonus, pcm_id")
+    .select("id, firstname, lastname, team_id, pending_team_id, is_retired, market_value, pcm_id")
     .eq("id", rider_id)
     .single();
 
@@ -1185,7 +1188,7 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
 
   notifyNewAuction({
     riderName: `${rider.firstname} ${rider.lastname}`,
-    riderUci: rider.uci_points,
+    riderValue: rider.market_value,
     sellerName: req.team.name,
     startPrice: price,
     endsAt: calculatedEnd.toISOString(),
@@ -1706,7 +1709,7 @@ router.get("/transfers", requireAuth, async (req, res) => {
   const { data, error } = await supabase
     .from("transfer_listings")
     .select(`id, asking_price, status, created_at,
-      rider:rider_id(id, firstname, lastname, uci_points, prize_earnings_bonus, is_u25, nationality_code,
+      rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, is_u25, nationality_code,
         stat_fl, stat_bj, stat_kb, stat_bk, stat_tt, stat_prl,
         stat_bro, stat_sp, stat_acc, stat_ned, stat_udh, stat_mod, stat_res, stat_ftr),
       seller:seller_team_id(id, name)`)
@@ -1896,14 +1899,14 @@ router.get("/transfers/my-offers", requireAuth, async (req, res) => {
   const [sentRes, receivedRes] = await Promise.all([
     supabase.from("transfer_offers")
       .select(`id, offer_amount, counter_amount, status, round, message, buyer_confirmed, seller_confirmed, created_at, updated_at,
-        rider:rider_id(id, firstname, lastname, uci_points, prize_earnings_bonus, nationality_code, stat_bj, stat_sp, stat_tt, stat_fl),
+        rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, nationality_code, stat_bj, stat_sp, stat_tt, stat_fl),
         seller:seller_team_id(id, name)`)
       .eq("buyer_team_id", req.team.id)
       .is("buyer_archived_at", null)
       .order("updated_at", { ascending: false }),
     supabase.from("transfer_offers")
       .select(`id, offer_amount, counter_amount, status, round, message, buyer_confirmed, seller_confirmed, created_at, updated_at,
-        rider:rider_id(id, firstname, lastname, uci_points, prize_earnings_bonus, nationality_code, stat_bj, stat_sp, stat_tt, stat_fl),
+        rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, nationality_code, stat_bj, stat_sp, stat_tt, stat_fl),
         buyer:buyer_team_id(id, name)`)
       .eq("seller_team_id", req.team.id)
       .is("seller_archived_at", null)
@@ -1912,14 +1915,14 @@ router.get("/transfers/my-offers", requireAuth, async (req, res) => {
   const [archivedSentRes, archivedReceivedRes] = await Promise.all([
     supabase.from("transfer_offers")
       .select(`id, offer_amount, counter_amount, status, round, message, buyer_confirmed, seller_confirmed, created_at, updated_at,
-        rider:rider_id(id, firstname, lastname, uci_points, prize_earnings_bonus, nationality_code, stat_bj, stat_sp, stat_tt, stat_fl),
+        rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, nationality_code, stat_bj, stat_sp, stat_tt, stat_fl),
         seller:seller_team_id(id, name)`)
       .eq("buyer_team_id", req.team.id)
       .not("buyer_archived_at", "is", null)
       .order("buyer_archived_at", { ascending: false }),
     supabase.from("transfer_offers")
       .select(`id, offer_amount, counter_amount, status, round, message, buyer_confirmed, seller_confirmed, created_at, updated_at,
-        rider:rider_id(id, firstname, lastname, uci_points, prize_earnings_bonus, nationality_code, stat_bj, stat_sp, stat_tt, stat_fl),
+        rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, nationality_code, stat_bj, stat_sp, stat_tt, stat_fl),
         buyer:buyer_team_id(id, name)`)
       .eq("seller_team_id", req.team.id)
       .not("seller_archived_at", "is", null)
@@ -1964,7 +1967,7 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
 
   const { data: offer } = await supabase
     .from("transfer_offers")
-    .select(`*, rider:rider_id(id, firstname, lastname, team_id, uci_points)`)
+    .select(`*, rider:rider_id(id, firstname, lastname, team_id, market_value)`)
     .eq("id", req.params.id).single();
 
   if (!offer) return res.status(404).json({ error: "Tilbud ikke fundet", errorCode: "offer_not_found" });
@@ -2226,8 +2229,8 @@ router.post("/transfers/:id/offer", requireAuth, marketWriteLimiter, async (req,
 router.get("/transfers/swaps", requireAuth, async (req, res) => {
   const fields = `id, cash_adjustment, counter_cash, status, message,
     proposing_confirmed, receiving_confirmed, created_at, updated_at,
-    offered:offered_rider_id(id, firstname, lastname, uci_points, stat_bj, stat_sp, stat_tt, stat_fl),
-    requested:requested_rider_id(id, firstname, lastname, uci_points, stat_bj, stat_sp, stat_tt, stat_fl),
+    offered:offered_rider_id(id, firstname, lastname, market_value, stat_bj, stat_sp, stat_tt, stat_fl),
+    requested:requested_rider_id(id, firstname, lastname, market_value, stat_bj, stat_sp, stat_tt, stat_fl),
     proposing:proposing_team_id(id, name),
     receiving:receiving_team_id(id, name)`;
 
@@ -2465,7 +2468,7 @@ router.patch("/transfers/swaps/:id", requireAuth, marketWriteLimiter, async (req
 // ── Loan Agreements ───────────────────────────────────────────────────────────
 
 const LOAN_FIELDS = `id, loan_fee, start_season, end_season, buy_option_price, status, created_at, updated_at,
-  rider:rider_id(id, firstname, lastname, uci_points, stat_bj, stat_sp, stat_tt, stat_fl),
+  rider:rider_id(id, firstname, lastname, market_value, stat_bj, stat_sp, stat_tt, stat_fl),
   from_team:from_team_id(id, name),
   to_team:to_team_id(id, name)`;
 
@@ -2980,9 +2983,9 @@ router.get("/teams/:id", requireAuth, async (req, res) => {
 
   const { data: riders } = await supabase
     .from("riders")
-    .select("id, firstname, lastname, uci_points, salary, is_u25, stat_bj, stat_sp, stat_tt, stat_fl")
+    .select("id, firstname, lastname, market_value, salary, is_u25, stat_bj, stat_sp, stat_tt, stat_fl")
     .eq("team_id", req.params.id)
-    .order("uci_points", { ascending: false });
+    .order("market_value", { ascending: false });
 
   res.json({ ...team, riders: riders || [] });
 });
@@ -3322,7 +3325,7 @@ router.get("/admin/auctions/active", requireAdmin, async (req, res) => {
     .from("auctions")
     .select(
       "id, current_price, current_bidder_id, calculated_end, status, seller_team_id, is_flash, is_guaranteed_sale, " +
-      "rider:rider_id(id, firstname, lastname, uci_points), " +
+      "rider:rider_id(id, firstname, lastname, market_value), " +
       "seller:seller_team_id(id, name)"
     )
     .in("status", ["active", "extended"])
@@ -3366,7 +3369,7 @@ router.get("/admin/rider-valuation-preview", requireAdmin, async (req, res) => {
   const [riders, abilities] = await Promise.all([
     fetchAllRows(() => supabase
       .from("riders")
-      .select("id, firstname, lastname, primary_type, uci_points, prize_earnings_bonus, nationality_code, pcm_id, is_retired")
+      .select("id, firstname, lastname, primary_type, base_value, market_value, prize_earnings_bonus, nationality_code, pcm_id, is_retired")
       .order("id")),
     fetchAllRows(() => supabase
       .from("rider_derived_abilities")
@@ -6160,8 +6163,8 @@ router.get("/managers/:teamId", requireAuth, async (req, res) => {
       .select("id, username, last_seen, login_streak")
       .eq("id", team.user_id).single(),
     supabase.from("riders")
-      .select("id, firstname, lastname, uci_points, is_u25, stat_bj, stat_sp, stat_tt")
-      .eq("team_id", teamId).order("uci_points", { ascending: false }),
+      .select("id, firstname, lastname, market_value, is_u25, stat_bj, stat_sp, stat_tt")
+      .eq("team_id", teamId).order("market_value", { ascending: false }),
     supabase.from("season_standings")
       .select("*, season:season_id(number)")
       .eq("team_id", teamId).order("created_at", { ascending: false }),

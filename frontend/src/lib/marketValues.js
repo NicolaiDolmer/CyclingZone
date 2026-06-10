@@ -1,16 +1,13 @@
 import { formatNumber } from "./intl.js";
 
-export const RIDER_VALUE_FACTOR = 4000;
-export const MIN_RIDER_UCI_POINTS = 5;
-
-export function getRiderBaseValue(rider = {}) {
-  const uciPoints = Math.max(Number(rider?.uci_points) || 0, MIN_RIDER_UCI_POINTS);
-  return Number(rider?.price) || uciPoints * RIDER_VALUE_FACTOR;
-}
+// #1101 cutover: DB-kolonnen market_value (GENERATED fra base_value + bonus) er
+// sandheden. Fallback spejler DB'ens COALESCE(base_value, 1000). Aldrig uci_points.
+const RIDER_BASE_VALUE_FALLBACK = 1000;
 
 export function getRiderMarketValue(rider = {}) {
   if (Number.isFinite(Number(rider?.market_value))) return Number(rider.market_value);
-  return getRiderBaseValue(rider) + (Number(rider?.prize_earnings_bonus) || 0);
+  const base = Number(rider?.base_value) > 0 ? Number(rider.base_value) : RIDER_BASE_VALUE_FALLBACK;
+  return base + (Number(rider?.prize_earnings_bonus) || 0);
 }
 
 export function formatCz(value) {

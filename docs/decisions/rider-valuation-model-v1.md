@@ -147,6 +147,13 @@ målafstand SKAL forudsiges i ejerens rækkefølge, ellers exit 1 (bløde brud <
 **Følgevirkning:** fiktiv launch-pyramide bund-tung under v3 → interim-bånd i
 `fictionalLaunchPopulation.test.js` (ejer-re-godkendt 10/6); generator re-tunes i #1194 før 20/6.
 
+**Cutover udført 10/6-2026 (slice 2, ejer-go):** `market_value`/`salary` er GENERATED fra
+`base_value` (`COALESCE(base_value, 1000) + bonus`; salary 10%), `price` droppet (død kolonne),
+`uci_points` afkoblet og fjernet fra al player-facing UI (rytterdatabase, holdsider,
+auktionshistorik, manager-profil, udvikling-fane, Discord-notifikation). Al runtime læser
+DB-kolonnen direkte (DB-først) — migrationen flippede økonomien atomisk.
+Audit: `backend/scripts/auditValuationCutover.js`. Dynamisk glidning mod handelspris = fase 3.
+
 ## Datadrevet roadmap (besluttet 9-10/6-2026)
 
 1. **Fase 1 (nu, launch 20/6):** Perception-model v3; anchors = træningsdata; manuel re-fit

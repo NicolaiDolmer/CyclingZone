@@ -6,8 +6,8 @@
 //   • Deterministisk: samme (seed, referenceYear) → identisk output. Egen
 //     seeded PRNG (mulberry32), aldrig Math.random.
 //   • pcm_id ALTID null → markerer "egen rytter", usynlig for PCM-resultat-import.
-//   • Sætter ALDRIG generated-kolonner (price/market_value/salary) eller id —
-//     DB udleder dem. Ingen team_id (fri agent).
+//   • Sætter ALDRIG generated-kolonner (market_value/salary), base_value eller id —
+//     DB udleder/backfill ejer dem. Ingen team_id (fri agent).
 //   • Navne-unikhed håndhæves mod eksisterende DB-navne (foldNameNordic) for ikke
 //     at gøre en ægte PCM-rytter "ambiguous" ved resultat-import (§3-fælden).
 
@@ -103,8 +103,8 @@ const SPECIALITY_STATS = ["stat_bj", "stat_kb", "stat_bk", "stat_bro", "stat_tt"
 // statMean = overall stat-niveau pr. tier; tier styrer hvor højt arketypens
 // boostede signatur-stats lander → afledt ability-output → base_value-bånd.
 // Kvote = andel af count (ejer-spec ~800: 12 super / 60 stjerner / 230 solide /
-// resten domestik). uci/popularity bevarer de gamle generated price/market/salary
-// indtil #1101 cutover; potential/popularity styrer demografi.
+// resten domestik). uci-felterne er legacy efter #1101-cutover (økonomien kører
+// på base_value via backfill); potential/popularity styrer demografi. Re-tune: #1194.
 const TIERS = [
   { value: "superstar",  fraction: 12 / 800,  statMean: 70, uci: [1800, 4000], potential: [3.0, 5.0], popularity: [70, 100] },
   { value: "star",       fraction: 60 / 800,  statMean: 64, uci: [700, 1800],  potential: [3.0, 6.0], popularity: [45, 85] },
@@ -336,7 +336,7 @@ export function generateFictionalRiders({
       is_u25: demo.is_u25,
       potentiale: demo.potentiale,
       ...stats,
-      // Bevidst udeladt (DB udleder/defaulter): id, price, market_value, salary,
+      // Bevidst udeladt (DB udleder/defaulter, backfill ejer base_value): id, base_value, market_value, salary,
       // team_id, ai_team_id, pending_team_id, prize_earnings_bonus, is_retired,
       // created_at, updated_at, acquired_at.
       _meta: { tier: tier.value, archetype: archetype.type, age: demo.age, cluster: clusterKey },
