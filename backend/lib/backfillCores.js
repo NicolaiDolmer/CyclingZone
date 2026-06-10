@@ -122,7 +122,7 @@ export async function runRiderTypesBackfill(supabase, { dryRun = true, baseline,
 export async function runBaseValueBackfill(supabase, { dryRun = true, model, log = noop } = {}) {
   const m = model || JSON.parse(readFileSync(VALUATION_MODEL_PATH, "utf8"));
   const [riders, abilities] = await Promise.all([
-    fetchAllRows(() => supabase.from("riders").select("id, primary_type, uci_points, prize_earnings_bonus").order("id")),
+    fetchAllRows(() => supabase.from("riders").select("id, primary_type, base_value, market_value, prize_earnings_bonus").order("id")),
     fetchAllRows(() => supabase.from("rider_derived_abilities").select("*").order("rider_id")),
   ]);
   const abilityByRider = new Map(abilities.map((a) => [a.rider_id, a]));

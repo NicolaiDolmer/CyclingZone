@@ -294,7 +294,7 @@ function buildEmbed(type, title, description, fields = []) {
 
 // ── Public notification functions ─────────────────────────────────────────────
 
-export async function notifyNewAuction({ riderName, riderUci, sellerName, startPrice, endsAt, webhookUrl }) {
+export async function notifyNewAuction({ riderName, riderValue, sellerName, startPrice, endsAt, webhookUrl }) {
   const url = webhookUrl || await getDefaultWebhook();
   if (!url) return;
   const payload = buildEmbed(
@@ -302,7 +302,7 @@ export async function notifyNewAuction({ riderName, riderUci, sellerName, startP
     riderName,
     `**${sellerName}** har sat **${riderName}** på auktion!`,
     [
-      { name: "UCI Points", value: `${riderUci?.toLocaleString("da-DK")} CZ$` },
+      { name: "Værdi", value: `${riderValue?.toLocaleString("da-DK")} CZ$` },
       { name: "Startbud", value: `${startPrice?.toLocaleString("da-DK")} CZ$` },
       { name: "Slutter", value: new Date(endsAt).toLocaleString("da-DK") },
     ]
