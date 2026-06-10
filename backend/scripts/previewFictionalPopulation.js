@@ -85,6 +85,16 @@ function main() {
     console.log(`  ${b.key.padEnd(18)} ${String(bandCount[b.key]).padStart(7)}  ${String(b.target).padStart(7)}   ${range}`);
   }
 
+  // ── Tier × bånd-krydstabel (hvor lækker tiers hen?) ────────────────────────
+  const tierOrder = ["superstar", "star", "solid", "domestique"];
+  const cross = Object.fromEntries(tierOrder.map((t) => [t, Object.fromEntries(BANDS.map((b) => [b.key, 0]))]));
+  for (const r of rows) cross[r._meta.tier][bandOf(r.base_value)]++;
+  console.log("\nTier × bånd (rækker=tier, kolonner=bånd):");
+  console.log(`  ${"".padEnd(12)} ${BANDS.map((b) => b.key.slice(0, 8).padStart(9)).join("")}`);
+  for (const t of tierOrder) {
+    console.log(`  ${t.padEnd(12)} ${BANDS.map((b) => String(cross[t][b.key]).padStart(9)).join("")}`);
+  }
+
   // ── Type-fordeling ──────────────────────────────────────────────────────────
   const typeCount = {};
   for (const r of rows) typeCount[r.primary_type] = (typeCount[r.primary_type] || 0) + 1;

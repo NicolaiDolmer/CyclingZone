@@ -26,14 +26,13 @@ test("launch-population er den låste skala (800) og deterministisk", () => {
 // bryder den ejer-godkendte kalibrering. Bounds er bevidst løse (±) så
 // seed-/refit-varians ikke giver falske fejl, men breakage fanges.
 //
-// INTERIM (ejer-re-godkendt 10/6-2026, værdimodel v3): generatoren er tunet mod
-// v2-modellen, så pyramiden er bund-tung under v3 (6 superstjerner/688 domestikker
-// mod design-målet 12/500). Båndene afspejler v3-VIRKELIGHEDEN indtil generatoren
-// re-tunes mod 12/60/230/500-pyramiden (launch-kritisk follow-up i #677-sporet) —
-// derefter strammes båndene igen.
+// Design-pyramiden (ejer-godkendt 7/6, re-tunet mod værdimodel v3 i #1194):
+// 12 superstjerner (≥8M) / 60 stjerner (1–8M) / 230 solide (200k–1M) /
+// 500 domestikker (<200k). Faktisk ved seed 2026: 12/68/203/517, max ~24M.
 test("hele værdi-kæden giver den godkendte launch-pyramide", () => {
   const { riders } = generateLaunchPopulation();
-  let superstar = 0, domestique = 0, withType = 0;
+  let superstar = 0, star = 0, solid = 0, domestique = 0, withType = 0;
+  let maxValue = 0;
   const typeSet = new Set();
   for (let i = 0; i < riders.length; i++) {
     const riderRow = { ...riders[i], id: `fic-test-${i}` };
@@ -44,13 +43,21 @@ test("hele værdi-kæden giver den godkendte launch-pyramide", () => {
     assert.ok(bv != null && bv >= 1, "hver rytter skal kunne værdisættes");
     if (primary.key) withType++;
     if (bv >= 8_000_000) superstar++;
-    if (bv < 200_000) domestique++;
+    else if (bv >= 1_000_000) star++;
+    else if (bv >= 200_000) solid++;
+    else domestique++;
+    if (bv > maxValue) maxValue = bv;
   }
   assert.equal(withType, 800, "alle ryttere får en type via kæden");
-  // Smal top: en håndfuld superstjerner (ikke 0, ikke et helt felt).
-  assert.ok(superstar >= 3 && superstar <= 25, `superstjerner=${superstar} uden for [3,25]`);
-  // Bred bund: størstedelen er domestikker (<200k). INTERIM-bånd under v3 (se ovenfor).
-  assert.ok(domestique >= 550 && domestique <= 750, `domestikker=${domestique} uden for [550,750]`);
+  // Smal top: ~12 superstjerner (ikke 0, ikke et helt felt).
+  assert.ok(superstar >= 8 && superstar <= 18, `superstjerner=${superstar} uden for [8,18]`);
+  // Midten skal bære auktioner og starthold (var hhv. 22/84 før #1194-re-tune).
+  assert.ok(star >= 40 && star <= 90, `stjerner=${star} uden for [40,90]`);
+  assert.ok(solid >= 160 && solid <= 280, `solide=${solid} uden for [160,280]`);
+  // Bred bund: størstedelen er domestikker (<200k).
+  assert.ok(domestique >= 450 && domestique <= 650, `domestikker=${domestique} uden for [450,650]`);
+  // v3-gevinst bevaret: ingen urealistiske outliers over toppen af design-skalaen.
+  assert.ok(maxValue <= 40_000_000, `max base_value=${maxValue} over 40M-loftet`);
   // Alle 9 typer skal emergere fra kæden (etape-variation).
   assert.equal(typeSet.size, 9, `kun ${typeSet.size}/9 typer emergerede: ${[...typeSet].join(",")}`);
 });
