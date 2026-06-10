@@ -1,0 +1,48 @@
+{
+  "page": {
+    "title": "Roadmap",
+    "subtitle": "Hvor Cycling Zone er på vej hen"
+  },
+  "labels": {
+    "today": "Hvor det er i dag",
+    "next": "Hvor det er på vej hen"
+  },
+  "engines": {
+    "races": {
+      "title": "Løb",
+      "today": "En fuld sæsonkalender med planlagte løb, resultater, stillinger, præmiepenge og historik.",
+      "next": [
+        "En løbsmotor bygget til historier: etapedrama du kan følge, diskutere og prale af.",
+        "Mere levende løbsrapporter, på vej mod at følge løb mens de udfolder sig.",
+        "Taktik og rytterform der reelt former udfaldet, uden at skjule hvorfor."
+      ]
+    },
+    "training": {
+      "title": "Træning",
+      "today": "Træningsfokus er live: et sæson-langt fokus og intensitet på dine nøgleryttere, med ægte trade-offs.",
+      "next": [
+        "Rigtig træningsdybde: programmer til den enkelte rytter, ikke kun ét fokus.",
+        "Langsigtet udvikling du kan se og styre, sæson efter sæson.",
+        "Meningsfulde valg med konsekvenser, aldrig regnearks-lektier."
+      ]
+    },
+    "youth": {
+      "title": "Ungdomsudvikling",
+      "today": "Scouting er live: afdæk en rytters skjulte potentiale med begrænsede scout-slots og estimater der er personlige for dit hold.",
+      "next": [
+        "Ungdomsakademier: din egen næste generation der vokser op gennem klubben.",
+        "Unge ryttere du selv opdagede, udviklede og gjorde til dine stjerner.",
+        "Generationsskifte, så din klub har en fremtid ud over den nuværende trup."
+      ]
+    },
+    "market": {
+      "title": "Transfers & auktioner",
+      "today": "Den stærkeste del af spillet lige nu: live-auktioner, autobud, transfers, lån og forhandlinger mellem managers.",
+      "next": [
+        "Deadlineday: et fælles, dramatisk klimaks på hvert transfervindue.",
+        "Dybere forhandling mellem managers.",
+        "Et marked der fortæller historier: rygter, rivaliseringer og store handler hele verden taler om."
+      ]
+    }
+  }
+}

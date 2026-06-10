@@ -1,0 +1,48 @@
+{
+  "page": {
+    "title": "Roadmap",
+    "subtitle": "Where Cycling Zone is heading"
+  },
+  "labels": {
+    "today": "Where it is today",
+    "next": "Where it's heading"
+  },
+  "engines": {
+    "races": {
+      "title": "Races",
+      "today": "A full season calendar with scheduled races, results, standings, prize money and history.",
+      "next": [
+        "A race engine built for stories: stage drama you can follow, discuss and brag about.",
+        "Livelier race reports, on the way to following races as they unfold.",
+        "Tactics and rider form that actually shape outcomes, without hiding why."
+      ]
+    },
+    "training": {
+      "title": "Training",
+      "today": "Training focus is live: a season-long focus and intensity on your key riders, with real trade-offs.",
+      "next": [
+        "Real training depth: programs for individual riders, not just a single focus.",
+        "Long-term development you can see and steer, season over season.",
+        "Meaningful choices with consequences, never spreadsheet homework."
+      ]
+    },
+    "youth": {
+      "title": "Youth development",
+      "today": "Scouting is live: uncover a rider's hidden potential with limited scout slots and estimates personal to your team.",
+      "next": [
+        "Youth academies: your own next generation growing up through the club.",
+        "Young riders you discovered, developed and made your stars.",
+        "Generational renewal, so your club has a future beyond its current squad."
+      ]
+    },
+    "market": {
+      "title": "Transfers & auctions",
+      "today": "The strongest part of the game right now: live auctions, autobids, transfers, loans and negotiations between managers.",
+      "next": [
+        "Deadline day: a shared, dramatic climax to every transfer window.",
+        "Deeper negotiation between managers.",
+        "A market that tells stories: rumors, rivalries and big moves the whole world talks about."
+      ]
+    }
+  }
+}
