@@ -19,7 +19,16 @@ function buildSeasonResolver(seasons) {
     if (Number.isNaN(d.getTime())) return null;
     for (const s of sorted) {
       const start = new Date(s.start_date);
-      const end = s.end_date ? new Date(s.end_date) : null;
+      // end_date er en DATE-kolonne (midnat UTC). Sæsonens sidste dag er
+      // INKLUSIV: ved sæsonskifte deler gammel sæsons end_date og ny sæsons
+      // start_date kalenderdag, og grænsedagens events (vindues-lukning +
+      // salg før transitionen) hører til den gamle sæson (#984). Ascending
+      // start_date-sortering gør at den gamle sæson vinder på grænsedagen.
+      let end = null;
+      if (s.end_date) {
+        end = new Date(s.end_date);
+        end.setUTCHours(23, 59, 59, 999);
+      }
       if (d >= start && (!end || d <= end)) return s.number;
     }
     // Fallback: senest startede sæson før datoen (for events efter sæson-slut uden end_date)
@@ -72,6 +81,9 @@ export async function buildTeamTransferHistory(supabase, teamId) {
       id: `auction:${a.id}`,
       type: "auction",
       direction: isSeller ? "out" : "in",
+      // direction er rytter-centrisk; cash_flow er kontobevægelsen (#984):
+      // salg = penge ind, køb = penge ud.
+      cash_flow: a.current_price > 0 ? (isSeller ? "in" : "out") : null,
       date,
       rider: a.rider,
       counterparty: isSeller ? a.winner : a.seller,
@@ -83,14 +95,16 @@ export async function buildTeamTransferHistory(supabase, teamId) {
 
   for (const o of offersRes.data || []) {
     const isSeller = o.seller_team_id === teamId;
+    const offerAmount = o.counter_amount ?? o.offer_amount;
     events.push({
       id: `transfer:${o.id}`,
       type: "transfer",
       direction: isSeller ? "out" : "in",
+      cash_flow: offerAmount > 0 ? (isSeller ? "in" : "out") : null,
       date: o.updated_at,
       rider: o.rider,
       counterparty: isSeller ? o.buyer : o.seller,
-      amount: o.counter_amount ?? o.offer_amount,
+      amount: offerAmount,
       status: o.status,
       season_number: resolveSeason(o.updated_at),
     });
@@ -112,6 +126,8 @@ export async function buildTeamTransferHistory(supabase, teamId) {
       id: `swap:${s.id}`,
       type: "swap",
       direction,
+      // For swap følger direction allerede cash-flowet (se ovenfor)
+      cash_flow: cashAdj === 0 ? null : direction,
       date: s.updated_at,
       rider: riderIn,
       rider_swapped: riderOut,
@@ -128,6 +144,8 @@ export async function buildTeamTransferHistory(supabase, teamId) {
       id: `loan:${l.id}`,
       type: "loan",
       direction: isFrom ? "out" : "in",
+      // Udlejer (from_team) modtager loan_fee, lejer betaler (api.js loan-accept)
+      cash_flow: l.loan_fee > 0 ? (isFrom ? "in" : "out") : null,
       date: l.created_at,
       rider: l.rider,
       counterparty: isFrom ? l.to_team : l.from_team,
