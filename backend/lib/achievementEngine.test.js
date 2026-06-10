@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { checkAchievements, getAchievementUnlocks } from "./achievementEngine.js";
+import { STAR_RIDER_MARKET_VALUE } from "./economyConstants.js";
 
 function createAchievementSupabase(initialState) {
   const state = {
@@ -165,12 +166,12 @@ test("checkAchievements unlocks team and board achievements and cascades team_5_
     users: [{ id: "user-1", login_streak: 7 }],
     rider_watchlist: [],
     riders: [
-      // #1205: stjernerytter = market_value >= 5M (STAR_RIDER_MARKET_VALUE).
+      // #1205/#1210: stjernerytter = market_value >= STAR_RIDER_MARKET_VALUE.
       ...Array.from({ length: 16 }, (_, index) => ({
         id: `team-rider-${index}`,
         team_id: "team-1",
         is_u25: index < 8,
-        market_value: index === 0 ? 5_000_000 : 100_000,
+        market_value: index === 0 ? STAR_RIDER_MARKET_VALUE : 100_000,
       })),
     ],
     auction_bids: [],

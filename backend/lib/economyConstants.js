@@ -15,11 +15,12 @@ export const INITIAL_BALANCE = 800000;
 
 // Stjernerytter-definition (#1205): market_value >= denne tærskel. Delt diskriminator
 // for force-sale-beskyttelse (boardConsequences lag 4) og team_star-achievementet —
-// samme "Value" som spillerne ser i UI. Kalibrering 2026-06-10 mod prod (8964 aktive):
-// p99 = 4,59M; >=5M = 79 ryttere (0,9%). Player-facing copy (achievements, help)
+// samme "Value" som spillerne ser i UI. Re-kalibreret 2026-06-10 (#1210, ejer valgte A)
+// mod den fiktive launch-population (800 ryttere, post-#1209): >=8M = 12 ryttere (1,5%)
+// = samme grænse som generatorens superstjerne-bånd, så "superstjerner er beskyttede"
+// er ét begreb (5M ramte 2,5% efter re-tunen). Player-facing copy (achievements, help)
 // nævner beløbet — ændres tærsklen skal copy + docs/GAME_INVARIANTS.md følge med.
-// Re-verificér mod fiktiv population efter generator-re-tune #1194.
-export const STAR_RIDER_MARKET_VALUE = 5_000_000;
+export const STAR_RIDER_MARKET_VALUE = 8_000_000;
 
 // Præmie per UCI-point ved race-import (prizePayoutEngine).
 export const PRIZE_PER_POINT = 1500;
