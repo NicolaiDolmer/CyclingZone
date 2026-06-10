@@ -9,6 +9,7 @@ import RiderNameCell from "../components/rider/RiderNameCell";
 import RiderBadges from "../components/rider/RiderBadges";
 import { ageBadgeKey } from "../lib/riderAge";
 import { formatNumber } from "../lib/intl";
+import { STAT_KEYS, riderStatRating } from "../lib/riderRating";
 
 // Altid-synlige sejr-kolonner (kategori-sejre) — venstre→højre.
 const WIN_COLS = [
@@ -70,6 +71,8 @@ export default function RiderRankingsPage() {
   const [sortKey, setSortKey] = useState("points");
   const [sortAsc, setSortAsc] = useState(false);
   const [ownerFilter, setOwnerFilter] = useState("all");
+  // #1004: filter på ét konkret hold ("all" = alle hold).
+  const [teamFilter, setTeamFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [colVisible, setColVisible] = useState(loadColumnVisibility);
   const [colMenuOpen, setColMenuOpen] = useState(false);
@@ -89,12 +92,25 @@ export default function RiderRankingsPage() {
     const raceIds = racesData.map(r => r.id);
     // Paginér: PostgREST capper ved 1000 (også .range(0,9999)) → ellers
     // underberegnes ranglisten for sæsoner med >1000 resultatrækker.
-    const results = await fetchAllRows(() => supabase
-      .from("race_results")
-      .select("rider_id, result_type, rank, points_earned, prize_money, race:race_id(race_type), rider:rider_id(id, firstname, lastname, birthdate, nationality_code, is_u25, is_retired, team:team_id(id, name, is_ai))")
-      .in("race_id", raceIds)
-      .not("rider_id", "is", null)
-      .order("id", { ascending: true }));
+    // #1009: stats hentes som separat parallel query (i stedet for at blæse
+    // 14 ekstra felter ind i rider-embed'et pr. resultatrække). Best-effort:
+    // fejler stats-fetch, viser ranglisten stadig (rating = 0).
+    const [results, statRows] = await Promise.all([
+      fetchAllRows(() => supabase
+        .from("race_results")
+        .select("rider_id, result_type, rank, points_earned, prize_money, race:race_id(race_type), rider:rider_id(id, firstname, lastname, birthdate, nationality_code, is_u25, is_retired, team:team_id(id, name, is_ai))")
+        .in("race_id", raceIds)
+        .not("rider_id", "is", null)
+        .order("id", { ascending: true })),
+      fetchAllRows(() => supabase
+        .from("riders")
+        .select(`id, ${STAT_KEYS.join(", ")}`)
+        .eq("is_retired", false)
+        .order("id", { ascending: true }))
+        .catch(() => []),
+    ]);
+
+    const ratingByRider = new Map((statRows || []).map(r => [r.id, riderStatRating(r)]));
 
     const agg = {};
     (results || []).forEach(r => {
@@ -102,6 +118,7 @@ export default function RiderRankingsPage() {
       if (!agg[r.rider_id]) {
         agg[r.rider_id] = {
           ...r.rider,
+          rating: ratingByRider.get(r.rider_id) ?? 0,
           points: 0,
           stage_wins: 0,
           gc_wins: 0,
@@ -166,6 +183,13 @@ export default function RiderRankingsPage() {
     });
   }
 
+  // #1004: hold-vælgerens options = de hold der faktisk optræder i ranglisten.
+  const teamOptions = [...new Map(
+    riders.filter(r => r.team).map(r => [String(r.team.id), r.team.name])
+  ).entries()]
+    .map(([id, name]) => ({ id, name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
   const filtered = riders
     .filter(r => {
       if (ownerFilter === "manager") return r.team && !r.team.is_ai;
@@ -173,6 +197,7 @@ export default function RiderRankingsPage() {
       if (ownerFilter === "free")    return !r.team;
       return true;
     })
+    .filter(r => teamFilter === "all" || String(r.team?.id) === teamFilter)
     .filter(r => {
       if (!search) return true;
       return `${r.firstname} ${r.lastname}`.toLowerCase().includes(search.toLowerCase());
@@ -222,6 +247,22 @@ export default function RiderRankingsPage() {
           </button>
         ))}
 
+        {/* #1004: filter på ét konkret hold (fx for at se egne ryttere samlet) */}
+        <select
+          value={teamFilter}
+          onChange={e => setTeamFilter(e.target.value)}
+          aria-label={t("rankings.teamFilterLabel")}
+          className={`px-3 py-2 rounded-lg text-sm font-medium transition-all border max-w-[14rem] cursor-pointer
+            focus:outline-none focus:ring-1 focus:ring-cz-accent
+            ${teamFilter !== "all"
+              ? "bg-cz-accent/10 border-cz-accent/30 text-cz-accent-t"
+              : "bg-cz-card border-cz-border text-cz-2"}`}>
+          <option value="all">{t("rankings.teamFilterAll")}</option>
+          {teamOptions.map(team => (
+            <option key={team.id} value={team.id}>{team.name}</option>
+          ))}
+        </select>
+
         {/* Kolonne-synlighed */}
         <div className="relative ms-auto">
           <button
@@ -265,8 +306,8 @@ export default function RiderRankingsPage() {
         <div className="text-center py-16 text-cz-3">
           <p className="text-4xl mb-3">◉</p>
           <p>{search ? t("rankings.noResultsFor", { q: search }) : t("rankings.noResults")}</p>
-          {(ownerFilter !== "all" || search) && (
-            <button onClick={() => { setOwnerFilter("all"); setSearch(""); }}
+          {(ownerFilter !== "all" || teamFilter !== "all" || search) && (
+            <button onClick={() => { setOwnerFilter("all"); setTeamFilter("all"); setSearch(""); }}
               className="mt-4 px-3 py-1.5 bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30
                 rounded-lg text-xs font-medium hover:bg-cz-accent/10 transition-all">
               {t("common:controls.clearFilters")}
@@ -284,6 +325,9 @@ export default function RiderRankingsPage() {
                   <th className="px-3 py-3 text-left text-xs font-medium text-cz-3 min-w-[120px] sticky left-0 z-20 bg-cz-subtle border-r border-cz-border">{t("rankings.thRider")}</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-cz-3 hidden sm:table-cell">{t("rankings.thBadges")}</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-cz-3 hidden md:table-cell">{t("rankings.thTeam")}</th>
+                  {/* #1009: Samlet rating (snit af rytterens stats) — attribut, ikke resultat, derfor før Point */}
+                  <SortHeader col={{ key: "rating", labelKey: "rankings.colRating", shortKey: "rankings.shortRating" }}
+                    sortKey={sortKey} sortAsc={sortAsc} onSort={handleSort} t={t} />
                   {/* Point — primær sortering, længst til venstre af stats */}
                   <SortHeader col={{ key: "points", labelKey: "rankings.colPoints", shortKey: "rankings.shortPoints" }}
                     sortKey={sortKey} sortAsc={sortAsc} onSort={handleSort} t={t} />
@@ -329,6 +373,8 @@ export default function RiderRankingsPage() {
                     <td className="px-3 py-3 text-xs hidden md:table-cell">
                       <TeamLink id={rider.team?.id} stopPropagation className="text-cz-2 hover:text-cz-accent-t transition-colors">{rider.team?.name || t("rankings.teamFree")}</TeamLink>
                     </td>
+                    {/* #1009: Samlet rating */}
+                    <StatCell value={rider.rating} active={sortKey === "rating"} />
                     {/* Point — bold, sorted col highlighted */}
                     <td className={`px-3 py-3 text-right font-mono font-bold
                       ${sortKey === "points" ? "text-cz-accent-t" : "text-cz-1"}`}>
@@ -366,6 +412,7 @@ export default function RiderRankingsPage() {
             <span>{t("rankings.legendPcl")}</span>
             <span>{t("rankings.legendMtn")}</span>
             <span>{t("rankings.legendU25")}</span>
+            <span>{t("rankings.legendRating")}</span>
             <span className="ms-auto">{t("rankings.legendSort")}</span>
           </div>
         </div>

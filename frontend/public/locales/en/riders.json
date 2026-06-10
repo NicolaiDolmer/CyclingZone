@@ -62,6 +62,9 @@
     "ownerManager": "Manager-owned",
     "ownerAi": "AI-owned",
     "ownerFree": "Free agents",
+    "teamFilterLabel": "Filter by team",
+    "teamFilterAll": "All teams",
+    "colRating": "Rating",
     "colPoints": "Points",
     "colTotalWins": "Total wins",
     "colStageWins": "Stage wins",
@@ -77,6 +80,7 @@
     "colGreenDays": "Green days",
     "colPolkaDays": "Polka days",
     "colWhiteDays": "White days",
+    "shortRating": "Rtg",
     "shortPoints": "Pts",
     "shortTotalWins": "Wins",
     "shortStageWins": "Stage",
@@ -100,6 +104,7 @@
     "legendPcl": "PCL = points classification",
     "legendMtn": "Mtn = mountains classification",
     "legendU25": "U25 = youth classification",
+    "legendRating": "Rating = average of all rider stats",
     "legendSort": "Click a column to sort"
   }
 }

@@ -19,11 +19,11 @@ import { getCountryName } from "../lib/countryUtils";
 import { Flag } from "./Flag";
 import { formatNumber } from "../lib/intl";
 import { RIDER_TYPE_KEYS } from "../lib/riderTypeKeys";
+// Kanonisk nøgleliste bor i lib/riderRating.js (ren .js → node --test-venlig).
+// Re-eksporteres her for bagudkompatibilitet med eksisterende imports.
+import { STAT_KEYS } from "../lib/riderRating";
 
-export const STAT_KEYS = [
-  "stat_fl","stat_bj","stat_kb","stat_bk","stat_tt","stat_prl",
-  "stat_bro","stat_sp","stat_acc","stat_ned","stat_udh","stat_mod","stat_res","stat_ftr",
-];
+export { STAT_KEYS };
 
 export const STAT_LABELS_MAP = {
   stat_fl:"FL", stat_bj:"BJ", stat_kb:"KB", stat_bk:"BAK", stat_tt:"TT",

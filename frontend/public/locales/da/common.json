@@ -78,7 +78,11 @@
     "compareMinHint": "(vælg mindst 2)",
     "clear": "Ryd",
     "noFilterResults": "Ingen ryttere matcher dine filtre",
-    "clearFilters": "Ryd alle filtre"
+    "clearFilters": "Ryd alle filtre",
+    "statsToggleButton": "Vis stats",
+    "statsToggleHeading": "Stats",
+    "statsToggleShowAll": "Vis alle",
+    "statsToggleHideAll": "Skjul alle"
   },
   "race": {
     "editionYear": "{year}-udgave"

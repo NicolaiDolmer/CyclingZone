@@ -78,7 +78,11 @@
     "compareMinHint": "(select at least 2)",
     "clear": "Clear",
     "noFilterResults": "No riders match your filters",
-    "clearFilters": "Clear all filters"
+    "clearFilters": "Clear all filters",
+    "statsToggleButton": "Show stats",
+    "statsToggleHeading": "Stats",
+    "statsToggleShowAll": "Show all",
+    "statsToggleHideAll": "Hide all"
   },
   "race": {
     "editionYear": "{year} edition"

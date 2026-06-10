@@ -23,6 +23,8 @@ import RidersEmptyState from "../components/RidersEmptyState";
 import OnboardingTour from "../components/OnboardingTour";
 import WatchlistStar from "../components/WatchlistStar";
 import { CompareToggle, CompareBar, MAX_COMPARE } from "../components/CompareSelection";
+import StatsToggle from "../components/StatsToggle";
+import useStatsToggle from "../lib/useStatsToggle";
 import { startTour } from "../lib/onboardingTour";
 import { formatNumber } from "../lib/intl";
 
@@ -82,7 +84,7 @@ function StatBar({ value }) {
   );
 }
 
-function RiderRow({ rider, onSelect, watchlist, onToggleWatchlist, isInAuction, compareActive, compareDisabled, onToggleCompare, scouting, t }) {
+function RiderRow({ rider, statCols, onSelect, watchlist, onToggleWatchlist, isInAuction, compareActive, compareDisabled, onToggleCompare, scouting, t }) {
   // #1029 affordance: hele rækken er ét klikmål (navigerer til rytter-detalje).
   // Data-cellerne (stjerner, stat-bjælker) er rent display — kun de eksplicitte
   // knapper (Compare/Watchlist) + interne links (navn/hold) stopper propagation.
@@ -123,7 +125,7 @@ function RiderRow({ rider, onSelect, watchlist, onToggleWatchlist, isInAuction, 
       <td className="px-3 py-2.5">
         <ScoutablePotentiale rider={rider} scouting={scouting} />
       </td>
-      {STATS.map(({ key }) => (
+      {statCols.map(({ key }) => (
         <td key={key} className="px-1.5 py-2.5 w-14">
           <StatBar value={rider[key]} />
         </td>
@@ -151,6 +153,14 @@ export default function RidersPage() {
   const scouting = useScouting();
   const [showEmptyState, setShowEmptyState] = useState(false);
   const [compareIds, setCompareIds] = useState([]);
+
+  // #1006: skjul/vis stats-kolonner — samme mønster som auktionssiden, men
+  // "omvendt" default: alle stats er synlige, og man klikker dem FRA.
+  const { visibleStats, toggleStat, showAll, hideAll } = useStatsToggle({
+    storageKey: "cz-riders-visible-stats",
+    defaultVisible: STATS.map(s => s.key),
+  });
+  const visibleStatCols = STATS.filter(s => visibleStats.has(s.key));
 
   const ridersTourSteps = buildRidersTourSteps(t);
 
@@ -289,11 +299,19 @@ export default function RidersPage() {
           <h1 className="text-xl font-bold text-cz-1">{t("page.title")}</h1>
           <p className="text-cz-3 text-sm">{t("page.subtitle", { count: formatNumber(total) })}</p>
         </div>
-        <Link to="/watchlist" data-tour="riders-watchlist"
-          className="w-full sm:w-auto text-center px-3 py-1.5 bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30
-            rounded-lg text-xs font-medium hover:bg-cz-accent/10 transition-all">
-          {t("page.watchlistLink", { count: watchlist.size })}
-        </Link>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <StatsToggle
+            visibleStats={visibleStats}
+            onToggleStat={toggleStat}
+            onShowAll={showAll}
+            onHideAll={hideAll}
+          />
+          <Link to="/watchlist" data-tour="riders-watchlist"
+            className="flex-1 sm:flex-none text-center px-3 py-1.5 bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30
+              rounded-lg text-xs font-medium hover:bg-cz-accent/10 transition-all">
+            {t("page.watchlistLink", { count: watchlist.size })}
+          </Link>
+        </div>
       </div>
 
       {showEmptyState && myTeam && (
@@ -332,7 +350,7 @@ export default function RidersPage() {
                     className="px-3 py-3 text-right font-medium uppercase tracking-wider w-20">{t("table.salary")}</SortTh>
                   <SortTh sortKey="potentiale" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
                     className="px-3 py-3 text-left font-medium uppercase tracking-wider w-24">{t("table.potential")}</SortTh>
-                  {STATS.map(({ key, label }) => (
+                  {visibleStatCols.map(({ key, label }) => (
                     <SortTh key={key} sortKey={key} sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
                       className="px-1.5 py-3 text-center font-medium w-14">{label}</SortTh>
                   ))}
@@ -341,7 +359,7 @@ export default function RidersPage() {
               <tbody>
                 {riders.length === 0 ? (
                   <tr>
-                    <td colSpan={9 + STATS.length} className="px-3 py-12 text-center">
+                    <td colSpan={9 + visibleStatCols.length} className="px-3 py-12 text-center">
                       <p className="text-cz-3 text-sm">{tCommon("controls.noFilterResults")}</p>
                       <button onClick={onReset}
                         className="mt-3 px-3 py-1.5 bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30
@@ -352,6 +370,7 @@ export default function RidersPage() {
                   </tr>
                 ) : riders.map(r => (
                   <RiderRow key={r.id} rider={r}
+                    statCols={visibleStatCols}
                     onSelect={r => navigate(`/riders/${r.id}`)}
                     watchlist={watchlist}
                     onToggleWatchlist={toggleWatchlist}
