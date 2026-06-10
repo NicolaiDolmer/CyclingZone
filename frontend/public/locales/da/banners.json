@@ -5,5 +5,34 @@
     "dismissAriaLabel": "Luk banner",
     "regionAriaLabel": "Undersøgelses-invitation",
     "adminPreviewHint": "(Admin-preview, kun synligt for dig indtil flag flippes)"
+  },
+  "consent": {
+    "title": "Vi bruger data til at gøre spillet bedre",
+    "intro": "Du bestemmer hvad vi må måle. Du kan altid skifte valg i din profil under \"Privatliv\".",
+    "privacyLink": "Læs privatlivspolitikken",
+    "closeAriaLabel": "Luk uden at ændre",
+    "alwaysOn": "(altid på)",
+    "save": "Gem mine valg",
+    "customize": "Tilpas",
+    "rejectAll": "Kun nødvendige",
+    "acceptAll": "Accepter alle",
+    "categories": {
+      "necessary": {
+        "label": "Nødvendige",
+        "desc": "Login, session og dine kontoindstillinger. Spillet virker ikke uden."
+      },
+      "analytics": {
+        "label": "Analyse",
+        "desc": "Vi måler anonymt hvilke knapper der frustrerer brugere (fx via Microsoft Clarity), så vi kan rette dårlig UX."
+      },
+      "marketing": {
+        "label": "Marketing",
+        "desc": "Bruges ikke i dag. Hvis vi senere viser annoncer eller remarketer, sker det kun hvis du siger ja her."
+      },
+      "email_marketing": {
+        "label": "E-mail",
+        "desc": "Sjældne nyhedsmails om store sæsonopdateringer eller events. Transaktionelle mails (auktion vundet osv.) afhænger ikke af dette valg."
+      }
+    }
   }
 }

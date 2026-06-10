@@ -1,32 +1,19 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useConsent } from "../lib/consent.jsx";
 
+// Kategorierne er datadrevne; labels/beskrivelser resolves via i18n (#1170 —
+// banneret var 100 % hardcodet dansk og vises for alle nye brugere, også EN).
 const CATEGORIES = [
-  {
-    key: "necessary",
-    label: "Nødvendige",
-    desc: "Login, session og dine kontoindstillinger. Spillet virker ikke uden.",
-    locked: true,
-  },
-  {
-    key: "analytics",
-    label: "Analyse",
-    desc: "Vi måler anonymt hvilke knapper der frustrerer brugere (fx via Microsoft Clarity), så vi kan rette dårlig UX.",
-  },
-  {
-    key: "marketing",
-    label: "Marketing",
-    desc: "Bruges ikke i dag. Hvis vi senere viser annoncer eller remarketer, sker det kun hvis du siger ja her.",
-  },
-  {
-    key: "email_marketing",
-    label: "E-mail",
-    desc: "Sjældne nyhedsmails om store sæsonopdateringer eller events. Transaktionelle mails (auktion vundet osv.) afhænger ikke af dette valg.",
-  },
+  { key: "necessary", locked: true },
+  { key: "analytics" },
+  { key: "marketing" },
+  { key: "email_marketing" },
 ];
 
 export default function CookieBanner() {
+  const { t, i18n } = useTranslation("banners");
   const { bannerOpen, closeBanner, consent, saveConsent, acceptAll, rejectAll, hasResponded } = useConsent();
   const [expanded, setExpanded] = useState(false);
   const [draft, setDraft] = useState(() => ({
@@ -47,6 +34,9 @@ export default function CookieBanner() {
 
   if (!bannerOpen) return null;
 
+  // Dual-page-mønster (jf. WaitlistConsentText): EN har sin egen privacy-side.
+  const privacyPath = i18n.language?.startsWith("da") ? "/privatlivspolitik" : "/privacy-policy";
+
   function toggle(key) {
     setDraft(prev => ({ ...prev, [key]: !prev[key] }));
   }
@@ -62,18 +52,18 @@ export default function CookieBanner() {
         <div className="flex items-start justify-between gap-3 mb-3">
           <div>
             <h2 id="cookie-banner-title" className="text-cz-1 font-bold text-base sm:text-lg">
-              Vi bruger data til at gøre spillet bedre
+              {t("consent.title")}
             </h2>
             <p className="text-cz-3 text-sm mt-1">
-              Du bestemmer hvad vi må måle. Du kan altid skifte valg i din profil under &quot;Privatliv&quot;.{" "}
-              <Link to="/privatlivspolitik" className="text-cz-accent-t underline">Læs privatlivspolitikken</Link>.
+              {t("consent.intro")}{" "}
+              <Link to={privacyPath} className="text-cz-accent-t underline">{t("consent.privacyLink")}</Link>.
             </p>
           </div>
           {hasResponded && (
             <button
               type="button"
               onClick={closeBanner}
-              aria-label="Luk uden at ændre"
+              aria-label={t("consent.closeAriaLabel")}
               className="text-cz-3 hover:text-cz-1 text-xl leading-none px-1"
             >
               ×
@@ -109,8 +99,11 @@ export default function CookieBanner() {
                     />
                   </label>
                   <div className="flex-1">
-                    <div className="text-cz-1 text-sm font-semibold">{cat.label}{cat.locked && <span className="ms-2 text-cz-3 text-xs font-normal">(altid på)</span>}</div>
-                    <div className="text-cz-3 text-xs">{cat.desc}</div>
+                    <div className="text-cz-1 text-sm font-semibold">
+                      {t(`consent.categories.${cat.key}.label`)}
+                      {cat.locked && <span className="ms-2 text-cz-3 text-xs font-normal">{t("consent.alwaysOn")}</span>}
+                    </div>
+                    <div className="text-cz-3 text-xs">{t(`consent.categories.${cat.key}.desc`)}</div>
                   </div>
                 </li>
               );
@@ -125,7 +118,7 @@ export default function CookieBanner() {
               onClick={() => saveConsent(draft)}
               className="bg-cz-accent-t text-white font-semibold text-sm rounded-lg px-4 py-2 hover:opacity-90"
             >
-              Gem mine valg
+              {t("consent.save")}
             </button>
           ) : (
             <button
@@ -133,7 +126,7 @@ export default function CookieBanner() {
               onClick={() => setExpanded(true)}
               className="bg-cz-subtle text-cz-1 font-semibold text-sm rounded-lg px-4 py-2 hover:bg-cz-subtle/70"
             >
-              Tilpas
+              {t("consent.customize")}
             </button>
           )}
           <button
@@ -141,14 +134,14 @@ export default function CookieBanner() {
             onClick={rejectAll}
             className="bg-cz-subtle text-cz-1 font-semibold text-sm rounded-lg px-4 py-2 hover:bg-cz-subtle/70"
           >
-            Kun nødvendige
+            {t("consent.rejectAll")}
           </button>
           <button
             type="button"
             onClick={acceptAll}
             className="bg-cz-accent-t text-white font-semibold text-sm rounded-lg px-4 py-2 hover:opacity-90 sm:ms-auto"
           >
-            Accepter alle
+            {t("consent.acceptAll")}
           </button>
         </div>
       </div>

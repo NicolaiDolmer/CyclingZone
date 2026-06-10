@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.14",
+    date: "2026-06-10",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fixed · English completeness",
+        items: [
+          "EN · The cookie consent banner is now fully in English when playing in English (it was Danish-only for everyone). The squad warning when leading many auctions and the auto-bid error fallback are also translated. Part of the full-site English audit. Refs #1170.",
+          "DA · Cookie-samtykke-banneret følger nu dit sprogvalg (det var kun på dansk for alle). Trup-advarslen når du leder mange auktioner og autobud-fejlbeskeden er også oversat. Del af den fulde engelsk-audit af sitet. Refs #1170.",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.13",
     date: "2026-06-10",
     label: "Beta",

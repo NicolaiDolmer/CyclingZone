@@ -5,5 +5,34 @@
     "dismissAriaLabel": "Dismiss banner",
     "regionAriaLabel": "Survey invitation",
     "adminPreviewHint": "(Admin preview, only visible to you until flag is flipped)"
+  },
+  "consent": {
+    "title": "We use data to make the game better",
+    "intro": "You decide what we may measure. You can always change your choices in your profile under \"Privacy\".",
+    "privacyLink": "Read the privacy policy",
+    "closeAriaLabel": "Close without changing",
+    "alwaysOn": "(always on)",
+    "save": "Save my choices",
+    "customize": "Customize",
+    "rejectAll": "Necessary only",
+    "acceptAll": "Accept all",
+    "categories": {
+      "necessary": {
+        "label": "Necessary",
+        "desc": "Login, session and your account settings. The game does not work without these."
+      },
+      "analytics": {
+        "label": "Analytics",
+        "desc": "We anonymously measure which buttons frustrate players (e.g. via Microsoft Clarity) so we can fix bad UX."
+      },
+      "marketing": {
+        "label": "Marketing",
+        "desc": "Not used today. If we later show ads or remarket, it only happens if you say yes here."
+      },
+      "email_marketing": {
+        "label": "Email",
+        "desc": "Occasional newsletters about major season updates or events. Transactional emails (auction won, etc.) do not depend on this choice."
+      }
+    }
   }
 }

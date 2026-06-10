@@ -9,6 +9,7 @@ on:
       - 'scripts/i18n-check-namespace-inline.mjs'
       - 'scripts/i18n-check-nav-strings.mjs'
       - 'scripts/i18n-check-page-untranslated.mjs'
+      - 'scripts/i18n-check-lib-strings.mjs'
       - '.github/workflows/i18n-check.yml'
   push:
     branches: [main]
@@ -19,6 +20,7 @@ on:
       - 'scripts/i18n-check-namespace-inline.mjs'
       - 'scripts/i18n-check-nav-strings.mjs'
       - 'scripts/i18n-check-page-untranslated.mjs'
+      - 'scripts/i18n-check-lib-strings.mjs'
   workflow_dispatch:
 
 permissions:
@@ -102,3 +104,23 @@ jobs:
 
       - name: Run i18n page-untranslated guard
         run: node scripts/i18n-check-page-untranslated.mjs
+
+  lib-strings:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # REQUIRED (Refs #1170) — fanger danske string-literals i lib/ og
+    # components/ (usynlige for page-untranslated som kun scanner pages/).
+    # Bug-klassen: CookieBanner/formatBidWarning rendered ren dansk i EN-mode
+    # mens hele batteriet var grønt. KNOWN_TODO-listen i scriptet bærer de
+    # kendte slice-B-leaks (waitlist-form, sentry-boundary) uden at fejle.
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+
+      - name: Run i18n lib-strings guard
+        run: node scripts/i18n-check-lib-strings.mjs

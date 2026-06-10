@@ -58,12 +58,18 @@ export function computeAvailableForBid({ balance, reservedBalance, auction, myTe
 
 // Bug #29 — squad-cap er warning, ikke block. Manager må gå over max under transfer-vinduet;
 // squadEnforcement-cron auto-sælger + bøder først ved vindue-luk hvis stadig over max.
-export function formatBidWarning(warning) {
-  if (warning?.code === "squad_capacity_exceeded") {
+// #1170: teksten resolves via i18n (var hardcodet dansk — lækkede i EN-mode).
+export function formatBidWarning(warning, t) {
+  if (warning?.code === "squad_capacity_exceeded" && typeof t === "function") {
     const fine = warning.finePerRider * warning.exceedBy;
     const points = warning.penaltyPointsPerRider * warning.exceedBy;
-    return `OBS: leder nu auktioner svarende til ${warning.totalAfter} ryttere (max ${warning.maxRiders}). ` +
-      `Hvis du stadig er ${warning.exceedBy} over ved vindue-luk: auto-salg + ${formatNumber(fine)} CZ$ bøde + ${points} fradrag-points.`;
+    return t("auctions:warning.squadCapacity", {
+      totalAfter: warning.totalAfter,
+      maxRiders: warning.maxRiders,
+      exceedBy: warning.exceedBy,
+      fine: formatNumber(fine),
+      points,
+    });
   }
   return null;
 }
