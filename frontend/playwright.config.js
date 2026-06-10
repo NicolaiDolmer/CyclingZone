@@ -1,9 +1,17 @@
 import { defineConfig, devices } from "@playwright/test";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { resolveRuntimePort } from "./playwright.ports.js";
 
-const PORT = 4173;
+// Port pr. worktree: main-checkout = 4173 (CI uændret), linked worktrees får en
+// deterministisk hash-afledt port, PW_PORT overrider. Se playwright.ports.js
+// for hvorfor (false-green via delt port, bidt 2026-05-31 + 2026-06-10).
+const FRONTEND_ROOT = path.dirname(fileURLToPath(import.meta.url));
+const PORT = resolveRuntimePort(FRONTEND_ROOT);
 
 export default defineConfig({
   testDir: "./tests/e2e",
+  globalSetup: "./tests/e2e/global-setup.js",
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
   workers: 1,
@@ -42,7 +50,9 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: `npm run dev -- --host 127.0.0.1 --port ${PORT}`,
+    // --strictPort: hellere højlydt bind-fejl end at vite hopper til nabo-port
+    // mens baseURL stadig peger på den fremmede server.
+    command: `npm run dev -- --host 127.0.0.1 --port ${PORT} --strictPort`,
     url: `http://127.0.0.1:${PORT}`,
     reuseExistingServer: !process.env.CI,
     timeout: 120000,
