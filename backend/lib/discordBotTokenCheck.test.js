@@ -38,6 +38,21 @@ test("401 Unauthorized: alert + Sentry-capture + webhook", async () => {
   assert.equal(deps._captures[0].ctx.extra.status, 401);
 });
 
+test("429 rate-limit: alert med korrekt diagnose (IP-rate-limit, IKKE token-fejl) (#1115)", async () => {
+  const deps = makeDeps({ fetchFn: async () => ({ ok: false, status: 429 }) });
+  const result = await processDiscordBotTokenCheck({ botToken: "valid-but-ratelimited", ...deps });
+  assert.equal(result.alerted, true);
+  assert.equal(result.status, 429);
+  assert.equal(deps._webhookCalls.length, 1);
+  const embed = deps._webhookCalls[0].payload.embeds[0];
+  // 9/6-regressionen: 429 blev rapporteret som "roteret/ugyldigt" og sendte
+  // fejlsøgningen mod token-rotation. Alarmen skal nu skelne.
+  assert.match(embed.title, /rate-limiter/i);
+  assert.doesNotMatch(embed.title, /ugyldig/i);
+  assert.doesNotMatch(deps._captures[0].err.message, /roteret\/ugyldigt/i);
+  assert.equal(deps._captures[0].ctx.extra.status, 429);
+});
+
 test("manglende token: alert uden netværksopkald", async () => {
   let fetchCalled = false;
   const deps = makeDeps({ fetchFn: async () => { fetchCalled = true; return { ok: true, status: 200 }; } });

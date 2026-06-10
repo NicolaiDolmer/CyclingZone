@@ -35,7 +35,15 @@ export async function processDiscordBotTokenCheck({
       });
       status = res.status;
       if (!res.ok) {
-        problem = `Discord afviste bot-token (HTTP ${res.status}) — sandsynligvis roteret/ugyldigt.`;
+        // #1115: 429 ≠ token-problem. 9/6 ramte vi 429 på processens FØRSTE
+        // request efter boot (Sentry CYCLINGZONE-Z) — det er rate-limit på
+        // Railways delte egress-IP, ikke et roteret token. Den gamle tekst
+        // ("sandsynligvis roteret/ugyldigt") sendte fejlsøgningen i den
+        // forkerte retning. Skeln nu eksplicit, så alarmen diagnosticerer korrekt.
+        problem =
+          res.status === 429
+            ? "Discord rate-limiter serverens IP (HTTP 429) — token er sandsynligvis OK. DM-outbox-cron retryer automatisk; vedvarende 429 over flere dage kræver handling (delt Railway-egress-IP)."
+            : `Discord afviste bot-token (HTTP ${res.status}) — sandsynligvis roteret/ugyldigt.`;
       }
     } catch (err) {
       problem = `Kunne ikke nå Discord for token-validering: ${err.message}`;
@@ -48,12 +56,15 @@ export async function processDiscordBotTokenCheck({
 
   const url = getDefaultWebhookFn ? await getDefaultWebhookFn() : null;
   if (url && sendWebhookFn) {
+    const isRateLimit = status === 429;
     await sendWebhookFn(url, {
       embeds: [
         {
-          title: "🚨 Discord bot-token ugyldig",
-          description: `${problem}\nPerson-rettede DMs (overbud, auktion vundet, transfertilbud) leveres ikke. Synk et gyldigt token til Railway DISCORD_BOT_TOKEN.`,
-          color: 0xe74c3c,
+          title: isRateLimit ? "⚠️ Discord rate-limiter serverens IP" : "🚨 Discord bot-token ugyldig",
+          description: isRateLimit
+            ? `${problem}\nDMs forsinkes men leveres via outbox-retry. Ingen token-handling nødvendig.`
+            : `${problem}\nPerson-rettede DMs (overbud, auktion vundet, transfertilbud) leveres ikke. Synk et gyldigt token til Railway DISCORD_BOT_TOKEN.`,
+          color: isRateLimit ? 0xe8c547 : 0xe74c3c,
           timestamp: now.toISOString(),
         },
       ],
