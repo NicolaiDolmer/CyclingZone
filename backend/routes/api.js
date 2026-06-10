@@ -101,7 +101,7 @@ import {
 import { buildRiderHistory } from "../lib/riderHistory.js";
 import { buildTeamTransferHistory } from "../lib/teamTransferHistory.js";
 import { buildRiderBidTimeline } from "../lib/riderBidTimeline.js";
-import { deriveScoutState, canScout } from "../lib/scouting.js";
+import { SCOUTING_CONFIG, deriveScoutState, canScout, buildScoutEstimate } from "../lib/scouting.js";
 import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity } from "../lib/training.js";
 import { handleDynCyclistSyncRequest } from "../lib/dynCyclistSync.js";
 import {
@@ -779,10 +779,15 @@ router.get("/riders/:id", requireAuth, async (req, res) => {
     .single();
 
   if (error || !data) return res.status(404).json({ error: "Rider not found" });
+  const viewerIsAdmin = await isViewerAdmin(req);
   // #669: en fiktiv rytter (pcm_id NULL) findes kun for admin under test.
-  if (data.pcm_id === null && !(await isViewerAdmin(req))) {
+  if (data.pcm_id === null && !viewerIsAdmin) {
     return res.status(404).json({ error: "Rider not found" });
   }
+
+  // #1162: den sande potentiale forlader aldrig serveren for ikke-admins —
+  // klienter får KUN det viewer-maskerede estimat via POST /scouting/estimates.
+  if (!viewerIsAdmin) delete data.potentiale;
 
   // #1101 SHADOW: vedhæft den data-drevne base_value som PREVIEW (beta-chip).
   // Beregnes live fra modellen — styrer endnu intet i økonomien. null hvis model
@@ -861,6 +866,36 @@ router.get("/scouting/me", requireAuth, async (req, res) => {
   }
 });
 
+// POST /api/scouting/estimates — viewer-maskerede potentiale-estimater (#1162).
+// Body: { riderIds: [uuid, ...] } (max 500). Returnerer pr. rytter det maskerede
+// { lo, hi, exact, level } beregnet SERVER-SIDE fra (sand potentiale + viewerens
+// scout-niveau + per-manager seed) — den rå riders.potentiale sendes aldrig.
+// Egne ryttere + fuldt scoutede er eksakte (lo == hi). Rytter uden potentiale → null.
+// VIGTIGT: skal være registreret FØR POST /scouting/:riderId (ellers fanges
+// "estimates" som riderId).
+router.post("/scouting/estimates", requireAuth, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  const ids = Array.isArray(req.body?.riderIds)
+    ? [...new Set(req.body.riderIds.filter((id) => typeof id === "string" && id))]
+    : [];
+  if (ids.length === 0) return res.json({ teamId: req.team.id, maxLevel: SCOUTING_CONFIG.maxLevel, estimates: {} });
+  if (ids.length > 500) return res.status(400).json({ error: "too_many_riders", max: 500 });
+  try {
+    const [{ state }, { data: riders, error }] = await Promise.all([
+      loadScoutState(req.team.id),
+      supabase.from("riders").select("id, potentiale, birthdate, team_id").in("id", ids),
+    ]);
+    if (error) throw new Error(error.message);
+    const estimates = {};
+    for (const rider of riders ?? []) {
+      estimates[rider.id] = buildScoutEstimate(rider, state.levels[rider.id] ?? 0, req.team.id);
+    }
+    res.json({ teamId: req.team.id, maxLevel: state.maxLevel, estimates });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/scouting/:riderId — brug ét scout-slot på en rytter (indsnævrer
 // estimatet ét niveau). Håndhæver slot-kapacitet + maxLevel. Idempotens er
 // bevidst FRA: hver handling forbruger et slot (det er ressource-mekanikken).
@@ -873,7 +908,7 @@ router.post("/scouting/:riderId", requireAuth, marketWriteLimiter, async (req, r
 
     // Rytteren skal findes (og ikke være ens egen — egne ryttere vises eksakt).
     const { data: rider } = await supabase
-      .from("riders").select("id, team_id").eq("id", riderId).maybeSingle();
+      .from("riders").select("id, team_id, potentiale, birthdate").eq("id", riderId).maybeSingle();
     if (!rider) return res.status(404).json({ error: "Rider not found" });
     if (rider.team_id && rider.team_id === req.team.id) {
       return res.status(400).json({ error: "own_rider", message: "Own riders are already fully known." });
@@ -888,9 +923,18 @@ router.post("/scouting/:riderId", requireAuth, marketWriteLimiter, async (req, r
       .insert({ team_id: req.team.id, rider_id: riderId, season_id: activeSeasonId });
     if (insErr) throw new Error(insErr.message);
 
-    // Returnér frisk state så UI'et kan opdatere slots + niveau uden ekstra round-trip.
+    // Returnér frisk state + nyt maskeret estimat (#1162) så UI'et kan opdatere
+    // slots, niveau og stjerne-range uden ekstra round-trip.
     const { state: next } = await loadScoutState(req.team.id);
-    res.json({ ok: true, riderId, level: next.levels[riderId] ?? 0, slots: next.slots, maxLevel: next.maxLevel });
+    const nextLevel = next.levels[riderId] ?? 0;
+    res.json({
+      ok: true,
+      riderId,
+      level: nextLevel,
+      slots: next.slots,
+      maxLevel: next.maxLevel,
+      estimate: buildScoutEstimate(rider, nextLevel, req.team.id),
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

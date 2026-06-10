@@ -235,7 +235,7 @@ export default function RidersPage() {
     const statKeys = STATS.map(s => s.key).join(", ");
     let query = supabase
       .from("riders")
-      .select(`id, firstname, lastname, birthdate, salary, market_value, prize_earnings_bonus, is_u25, nationality_code, potentiale, primary_type, secondary_type,
+      .select(`id, firstname, lastname, birthdate, salary, market_value, prize_earnings_bonus, is_u25, nationality_code, primary_type, secondary_type,
         ${statKeys}, team:team_id(id, name)`, { count: "exact" })
       .range((filters.page - 1) * 50, filters.page * 50 - 1);
 
@@ -348,8 +348,9 @@ export default function RidersPage() {
                     className="px-3 py-3 text-right font-medium uppercase tracking-wider w-20">{t("table.value")}</SortTh>
                   <SortTh sortKey="salary" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
                     className="px-3 py-3 text-right font-medium uppercase tracking-wider w-20">{t("table.salary")}</SortTh>
-                  <SortTh sortKey="potentiale" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
-                    className="px-3 py-3 text-left font-medium uppercase tracking-wider w-24">{t("table.potential")}</SortTh>
+                  {/* #1162: potentiale er server-skjult — listen er server-pagineret,
+                      så sortering på det scoutede estimat er ikke meningsfuld her. */}
+                  <th className="px-3 py-3 text-left font-medium uppercase tracking-wider w-24 text-cz-3 cursor-default">{t("table.potential")}</th>
                   {visibleStatCols.map(({ key, label }) => (
                     <SortTh key={key} sortKey={key} sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
                       className="px-1.5 py-3 text-center font-medium w-14">{label}</SortTh>

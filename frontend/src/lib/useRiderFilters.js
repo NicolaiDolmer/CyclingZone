@@ -60,8 +60,8 @@ export function useClientRiderFilters(riders = []) {
       result = result.filter(r => r.primary_type === filters.rider_type || r.secondary_type === filters.rider_type);
     }
 
-    if (filters.min_potentiale) result = result.filter(r => r.potentiale != null && r.potentiale >= parseFloat(filters.min_potentiale));
-    if (filters.max_potentiale) result = result.filter(r => r.potentiale != null && r.potentiale <= parseFloat(filters.max_potentiale));
+    // #1162: potentiale-min/max-filtre er fjernet — den rå potentiale findes ikke
+    // i klienten længere (server-side skjult; kun scoutede estimater vises).
 
     // Stat range filters — only apply when range differs from default (50–85)
     for (const key of STAT_KEYS) {
@@ -129,8 +129,8 @@ export function buildSupabaseQuery(query, filters) {
     query = query.or(`primary_type.eq.${filters.rider_type},secondary_type.eq.${filters.rider_type}`);
   }
 
-  if (filters.min_potentiale) query = query.gte("potentiale", parseFloat(filters.min_potentiale));
-  if (filters.max_potentiale) query = query.lte("potentiale", parseFloat(filters.max_potentiale));
+  // #1162: INGEN filter/order på potentiale — kolonnen er ikke klient-læsbar
+  // (column privilege), og et server-filter på den ville være en oracle-lækage.
 
   if (filters.min_age) {
     const maxBirth = new Date(`${CURRENT_YEAR - parseInt(filters.min_age)}-12-31`).toISOString().split("T")[0];
@@ -157,7 +157,10 @@ export function buildSupabaseQuery(query, filters) {
   if (filters.sort === "firstname") {
     const asc = filters.sort_dir === "asc";
     query = query.order("lastname", { ascending: asc, nullsFirst: false });
-  } else if (filters.sort === "value") {
+  } else if (filters.sort === "value" || filters.sort === "potentiale" || filters.sort === "_scoutMid") {
+    // potentiale/_scoutMid: stale URL/sessionStorage kan stadig bære den gamle
+    // sort-nøgle — kolonnen er ikke klient-læsbar (#1162), så ORDER BY ville
+    // fejle hele kaldet. Fald tilbage til værdi-sortering.
     query = query.order("market_value", { ascending: filters.sort_dir === "asc", nullsFirst: false });
   } else {
     const sortAsc = filters.sort === "birthdate"

@@ -33,7 +33,7 @@ function RangeStar({ certain, uncertain, color, uncertainColor, emptyColor }) {
 
 const clamp01 = (n) => Math.max(0, Math.min(1, n));
 
-export default function PotentialeStars({ value, range, label, birthdate, showValue = false, large = false }) {
+export default function PotentialeStars({ value, range, label, birthdate, large = false }) {
   const age = birthdate ? CURRENT_YEAR - new Date(birthdate).getFullYear() : null;
   const isOld = age !== null && age >= 30;
   const color = isOld ? "#94a3b8" : "#e8c547";
@@ -60,7 +60,9 @@ export default function PotentialeStars({ value, range, label, birthdate, showVa
     );
   }
 
-  // ── Eksakt (kendt) potentiale — uændret klassisk visning ──────────────────────
+  // ── Eksakt (kendt) potentiale — klassiske stjerner + valgfri kvalitativ label.
+  // #1162/#1242: det rå tal vises ALDRIG (serveren sender det ikke længere);
+  // 0,5-trins-stjernerne + label er den fulde indsigt.
   if (value == null) return <span className="text-cz-3 text-xs">—</span>;
 
   const stars = [];
@@ -75,9 +77,7 @@ export default function PotentialeStars({ value, range, label, birthdate, showVa
       {stars.map((type, i) => (
         <StarIcon key={i} type={type} color={color} emptyColor={emptyColor} />
       ))}
-      {showValue && (
-        <span className="ms-1 text-[10px] font-mono text-cz-3">{value}</span>
-      )}
+      {label && <span className="ms-1.5 text-[10px] font-medium text-cz-3 whitespace-nowrap">{label}</span>}
     </span>
   );
 }

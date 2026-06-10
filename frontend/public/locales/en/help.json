@@ -449,7 +449,7 @@
       },
       "scouting": {
         "title": "Scouting potential",
-        "text": "A rider's potential is hidden until you scout them. Unscouted riders show an uncertain estimate: a star range and a short verdict (for example 'High ceiling'), widest for young, unproven talents and narrower for established riders. You have a limited number of scout slots each season; spending one on a rider, from their profile or an auction, tightens your estimate, and scouting fully reveals the exact potential. Estimates are personal to your team, so two managers can read the same talent differently. Your own riders always show their exact potential. Scouting is free and does not cost money."
+        "text": "A rider's potential is hidden until you scout them. Unscouted riders show an uncertain estimate: a star range and a short verdict (for example 'High ceiling'), widest for young, unproven talents and narrower for established riders. You have a limited number of scout slots each season; spending one on a rider, from their profile or an auction, tightens your estimate, and scouting fully reveals the exact star rating. Estimates are personal to your team, so two managers can read the same talent differently. Your own riders are always fully revealed: exact stars plus the verdict, in the same presentation as everyone else. Potential is always shown as stars and a verdict, never as a number. Scouting is free and does not cost money."
       },
       "u25u23": {
         "title": "U25 and U23 riders",

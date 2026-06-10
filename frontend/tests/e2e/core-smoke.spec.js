@@ -332,7 +332,6 @@ test("rider profile value header stays contained on mobile", async ({ page }) =>
         salary: 42000,
         prize_earnings_bonus: 0,
         is_u25: true,
-        potentiale: 82,
         stat_fl: 74,
         stat_bj: 68,
         stat_kb: 70,

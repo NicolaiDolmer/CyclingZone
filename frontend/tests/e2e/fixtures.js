@@ -60,7 +60,8 @@ const RIDERS = [
     salary: 42000,
     prize_earnings_bonus: 0,
     is_u25: true,
-    potentiale: 82,
+    // #1162: potentiale er server-skjult (column privilege) — feltet findes ikke
+    // i klient-payloads. Visningen kommer fra /api/scouting/estimates-mocket.
     stat_fl: 74,
     stat_bj: 68,
     stat_kb: 70,
@@ -91,7 +92,6 @@ const RIDERS = [
     salary: 35000,
     prize_earnings_bonus: 0,
     is_u25: false,
-    potentiale: 74,
     primary_type: "climber",
     secondary_type: "gc",
     team: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name },
@@ -311,6 +311,23 @@ export async function installNetworkMocks(page) {
     const url = new URL(request.url());
 
     if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
+
+    // #1162: viewer-maskerede potentiale-estimater (POST, batched fra useScouting).
+    // Egne ryttere = eksakt (lo == hi), andres = usikkert interval.
+    if (url.pathname.endsWith("/api/scouting/estimates") && request.method() === "POST") {
+      let ids = [];
+      try { ids = JSON.parse(request.postData() || "{}").riderIds || []; } catch { /* tom body */ }
+      const estimates = {};
+      for (const id of ids) {
+        const rider = RIDERS.find(r => r.id === id);
+        if (!rider) continue;
+        estimates[id] = rider.team_id === TEST_TEAM.id
+          ? { lo: 4.5, hi: 4.5, exact: true, level: 3 }
+          : { lo: 3.5, hi: 5, exact: false, level: 0 };
+      }
+      return json(route, { teamId: TEST_TEAM.id, maxLevel: 3, estimates });
+    }
+
     if (request.method() !== "GET") return json(route, { ok: true });
 
     return json(route, apiResponse(url.pathname));
