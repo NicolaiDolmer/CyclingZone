@@ -368,7 +368,7 @@ test("enforceTeamSquadCompliance: hold inden for limits → no-op", async () => 
     teams: [{ id: "t1", name: "Test", balance: 500_000, division: 3, user_id: "u1", is_ai: false, is_bank: false }],
     riders: Array.from({ length: 9 }, (_, i) => ({
       id: `r${i}`, firstname: "F", lastname: `L${i}`, team_id: "t1",
-      market_value: 50_000, uci_points: 10, ai_team_id: null, acquired_at: null, created_at: "2026-01-01",
+      market_value: 50_000, ai_team_id: null, acquired_at: null, created_at: "2026-01-01",
     })),
   });
 
@@ -394,13 +394,13 @@ test("enforceTeamSquadCompliance: D3 hold med 5 ryttere → auto-køb 3 + 300K b
     riders: [
       ...Array.from({ length: 5 }, (_, i) => ({
         id: `r${i}`, firstname: "Owned", lastname: `R${i}`, team_id: "t1",
-        market_value: 50_000, uci_points: 10, ai_team_id: null, acquired_at: null, created_at: "2026-01-01",
+        market_value: 50_000, ai_team_id: null, acquired_at: null, created_at: "2026-01-01",
       })),
-      // Fri agents — sorteres efter uci_points ASC
-      { id: "fa1", firstname: "Cheap", lastname: "Filler1", team_id: null, market_value: 20_000, uci_points: 1, ai_team_id: null },
-      { id: "fa2", firstname: "Cheap", lastname: "Filler2", team_id: null, market_value: 20_000, uci_points: 2, ai_team_id: null },
-      { id: "fa3", firstname: "Cheap", lastname: "Filler3", team_id: null, market_value: 20_000, uci_points: 3, ai_team_id: null },
-      { id: "fa4", firstname: "Skip", lastname: "Me", team_id: null, market_value: 20_000, uci_points: 50, ai_team_id: null },
+      // Fri agents — sorteres efter market_value ASC (#1205)
+      { id: "fa1", firstname: "Cheap", lastname: "Filler1", team_id: null, market_value: 20_000, ai_team_id: null },
+      { id: "fa2", firstname: "Cheap", lastname: "Filler2", team_id: null, market_value: 20_100, ai_team_id: null },
+      { id: "fa3", firstname: "Cheap", lastname: "Filler3", team_id: null, market_value: 20_200, ai_team_id: null },
+      { id: "fa4", firstname: "Skip", lastname: "Me", team_id: null, market_value: 60_000, ai_team_id: null },
     ],
     seasonStandings: [
       { id: "s1", season_id: "season-1", team_id: "t1", division: 3, total_points: 1000, penalty_points: 0 },
@@ -462,7 +462,6 @@ test("enforceTeamSquadCompliance: D3 hold med 32 ryttere → auto-sælg 2 + 200K
       lastname: `${i}`,
       team_id: "t1",
       market_value: 100_000,
-      uci_points: 10,
       ai_team_id: i < 30 ? null : "ai-team",
       // Stigende acquired_at — hver rytter har unikt timestamp; r30 og r31 er nyest
       acquired_at: `2026-01-01T00:${String(i).padStart(2, "0")}:00Z`,
@@ -506,9 +505,9 @@ test("enforceTeamSquadCompliance: utilstrækkelig balance → nødlån oprettes"
     riders: [
       ...Array.from({ length: 7 }, (_, i) => ({
         id: `r${i}`, team_id: "t1", firstname: "F", lastname: `${i}`,
-        market_value: 50_000, uci_points: 10, ai_team_id: null, acquired_at: null, created_at: "2026-01-01",
+        market_value: 50_000, ai_team_id: null, acquired_at: null, created_at: "2026-01-01",
       })),
-      { id: "fa1", firstname: "Filler", lastname: "Hi", team_id: null, market_value: 200_000, uci_points: 1, ai_team_id: null },
+      { id: "fa1", firstname: "Filler", lastname: "Hi", team_id: null, market_value: 200_000, ai_team_id: null },
     ],
   });
 
@@ -620,17 +619,17 @@ test("processSquadEnforcementCron: atomic claim sætter completed_at + iter alle
       // t1 har 9 ryttere — inden for limits
       ...Array.from({ length: 9 }, (_, i) => ({
         id: `t1-r${i}`, team_id: "t1", firstname: "F", lastname: `${i}`,
-        market_value: 50_000, uci_points: 10, ai_team_id: null, acquired_at: "2026-01-01", created_at: "2026-01-01",
+        market_value: 50_000, ai_team_id: null, acquired_at: "2026-01-01", created_at: "2026-01-01",
       })),
       // t2 har 5 ryttere — under min
       ...Array.from({ length: 5 }, (_, i) => ({
         id: `t2-r${i}`, team_id: "t2", firstname: "F", lastname: `${i}`,
-        market_value: 50_000, uci_points: 10, ai_team_id: null, acquired_at: "2026-01-01", created_at: "2026-01-01",
+        market_value: 50_000, ai_team_id: null, acquired_at: "2026-01-01", created_at: "2026-01-01",
       })),
       // Fri agents til auto-køb
-      { id: "fa1", firstname: "F1", lastname: "L", team_id: null, market_value: 20_000, uci_points: 1, ai_team_id: null },
-      { id: "fa2", firstname: "F2", lastname: "L", team_id: null, market_value: 20_000, uci_points: 2, ai_team_id: null },
-      { id: "fa3", firstname: "F3", lastname: "L", team_id: null, market_value: 20_000, uci_points: 3, ai_team_id: null },
+      { id: "fa1", firstname: "F1", lastname: "L", team_id: null, market_value: 20_000, ai_team_id: null },
+      { id: "fa2", firstname: "F2", lastname: "L", team_id: null, market_value: 20_100, ai_team_id: null },
+      { id: "fa3", firstname: "F3", lastname: "L", team_id: null, market_value: 20_200, ai_team_id: null },
     ],
     transferWindows: [
       { id: "w1", season_id: "season-1", status: "closed", closed_at: "2026-05-04T11:00:00Z", squad_enforcement_completed_at: null, created_at: "2026-05-04" },
@@ -677,7 +676,7 @@ test("processSquadEnforcementCron: frosne hold inkluderes IKKE i load → ingen 
     ],
     riders: Array.from({ length: 9 }, (_, i) => ({
       id: `r${i}`, team_id: "active1", firstname: "F", lastname: `${i}`,
-      market_value: 50_000, uci_points: 10, ai_team_id: null, acquired_at: "2026-01-01", created_at: "2026-01-01",
+      market_value: 50_000, ai_team_id: null, acquired_at: "2026-01-01", created_at: "2026-01-01",
     })),
     transferWindows: [
       { id: "w1", season_id: "season-1", status: "closed", closed_at: "2026-05-21T21:00:00Z", squad_enforcement_completed_at: null, created_at: "2026-05-21" },
@@ -748,11 +747,11 @@ test("processSquadEnforcementCron: stale started_at + completed_at null → repl
     riders: [
       ...Array.from({ length: 5 }, (_, i) => ({
         id: `t2-r${i}`, team_id: "t2", firstname: "F", lastname: `${i}`,
-        market_value: 50_000, uci_points: 10, ai_team_id: null, acquired_at: "2026-01-01", created_at: "2026-01-01",
+        market_value: 50_000, ai_team_id: null, acquired_at: "2026-01-01", created_at: "2026-01-01",
       })),
-      { id: "fa1", firstname: "F1", lastname: "L", team_id: null, market_value: 20_000, uci_points: 1, ai_team_id: null },
-      { id: "fa2", firstname: "F2", lastname: "L", team_id: null, market_value: 20_000, uci_points: 2, ai_team_id: null },
-      { id: "fa3", firstname: "F3", lastname: "L", team_id: null, market_value: 20_000, uci_points: 3, ai_team_id: null },
+      { id: "fa1", firstname: "F1", lastname: "L", team_id: null, market_value: 20_000, ai_team_id: null },
+      { id: "fa2", firstname: "F2", lastname: "L", team_id: null, market_value: 20_100, ai_team_id: null },
+      { id: "fa3", firstname: "F3", lastname: "L", team_id: null, market_value: 20_200, ai_team_id: null },
     ],
     transferWindows: [
       {
@@ -794,7 +793,7 @@ test("processSquadEnforcementCron: fresh started_at (ikke stale) → 2. tick få
     ],
     riders: Array.from({ length: 5 }, (_, i) => ({
       id: `t2-r${i}`, team_id: "t2", firstname: "F", lastname: `${i}`,
-      market_value: 50_000, uci_points: 10, ai_team_id: null, acquired_at: "2026-01-01", created_at: "2026-01-01",
+      market_value: 50_000, ai_team_id: null, acquired_at: "2026-01-01", created_at: "2026-01-01",
     })),
     transferWindows: [
       {
@@ -831,11 +830,11 @@ test("enforceTeamSquadCompliance: fine får idempotency_key=squad_fine:${windowI
     riders: [
       ...Array.from({ length: 5 }, (_, i) => ({
         id: `r${i}`, team_id: "t1", firstname: "F", lastname: `${i}`,
-        market_value: 50_000, uci_points: 10, ai_team_id: null, acquired_at: "2026-01-01", created_at: "2026-01-01",
+        market_value: 50_000, ai_team_id: null, acquired_at: "2026-01-01", created_at: "2026-01-01",
       })),
-      { id: "fa1", firstname: "F1", lastname: "L", team_id: null, market_value: 20_000, uci_points: 1, ai_team_id: null },
-      { id: "fa2", firstname: "F2", lastname: "L", team_id: null, market_value: 20_000, uci_points: 2, ai_team_id: null },
-      { id: "fa3", firstname: "F3", lastname: "L", team_id: null, market_value: 20_000, uci_points: 3, ai_team_id: null },
+      { id: "fa1", firstname: "F1", lastname: "L", team_id: null, market_value: 20_000, ai_team_id: null },
+      { id: "fa2", firstname: "F2", lastname: "L", team_id: null, market_value: 20_100, ai_team_id: null },
+      { id: "fa3", firstname: "F3", lastname: "L", team_id: null, market_value: 20_200, ai_team_id: null },
     ],
     seasonStandings: [
       { id: "s1", season_id: "season-1", team_id: "t1", division: 3, total_points: 1000, penalty_points: 0 },
@@ -870,11 +869,11 @@ test("enforceTeamSquadCompliance: uden windowId → idempotency_key=null (backwa
     riders: [
       ...Array.from({ length: 5 }, (_, i) => ({
         id: `r${i}`, team_id: "t1", firstname: "F", lastname: `${i}`,
-        market_value: 50_000, uci_points: 10, ai_team_id: null, acquired_at: "2026-01-01", created_at: "2026-01-01",
+        market_value: 50_000, ai_team_id: null, acquired_at: "2026-01-01", created_at: "2026-01-01",
       })),
-      { id: "fa1", firstname: "F1", lastname: "L", team_id: null, market_value: 20_000, uci_points: 1, ai_team_id: null },
-      { id: "fa2", firstname: "F2", lastname: "L", team_id: null, market_value: 20_000, uci_points: 2, ai_team_id: null },
-      { id: "fa3", firstname: "F3", lastname: "L", team_id: null, market_value: 20_000, uci_points: 3, ai_team_id: null },
+      { id: "fa1", firstname: "F1", lastname: "L", team_id: null, market_value: 20_000, ai_team_id: null },
+      { id: "fa2", firstname: "F2", lastname: "L", team_id: null, market_value: 20_100, ai_team_id: null },
+      { id: "fa3", firstname: "F3", lastname: "L", team_id: null, market_value: 20_200, ai_team_id: null },
     ],
     seasonStandings: [
       { id: "s1", season_id: "season-1", team_id: "t1", division: 3, total_points: 1000, penalty_points: 0 },
@@ -902,7 +901,7 @@ test("processSquadEnforcementCron: replay med samme windowId → fines er idempo
     teams: [{ id: "t1", balance: 5_000_000, division: 3, user_id: "u1", is_ai: false, is_bank: false, is_frozen: false }],
     riders: Array.from({ length: 5 }, (_, i) => ({
       id: `r${i}`, team_id: "t1", firstname: "F", lastname: `${i}`,
-      market_value: 50_000, uci_points: 10, ai_team_id: null, acquired_at: "2026-01-01", created_at: "2026-01-01",
+      market_value: 50_000, ai_team_id: null, acquired_at: "2026-01-01", created_at: "2026-01-01",
     })),
     seasonStandings: [
       { id: "s1", season_id: "season-1", team_id: "t1", division: 3, total_points: 1000, penalty_points: 0 },
@@ -958,7 +957,7 @@ test("processSquadEnforcementCron: per-team fail kalder captureExceptionFn med t
     ],
     riders: Array.from({ length: 9 }, (_, i) => ({
       id: `t-ok-r${i}`, team_id: "t-ok", firstname: "F", lastname: `${i}`,
-      market_value: 50_000, uci_points: 10, ai_team_id: null, acquired_at: "2026-01-01", created_at: "2026-01-01",
+      market_value: 50_000, ai_team_id: null, acquired_at: "2026-01-01", created_at: "2026-01-01",
     })),
     transferWindows: [
       { id: "w-sentry", season_id: "season-1", status: "closed", closed_at: "2026-05-04T11:00:00Z", squad_enforcement_completed_at: null, created_at: "2026-05-04" },

@@ -2,5 +2,13 @@
   "founder_badge": {
     "title": "Grundlægger",
     "description": "Med fra åbningssæsonen. Permanent. Overlever alle resets."
+  },
+  "team_star": {
+    "title": "Stjerneholdet",
+    "description": "Hav en stjernerytter på holdet: en rytter med en værdi på mindst 5.000.000 CZ$."
+  },
+  "transfer_bargain": {
+    "title": "Kuppet",
+    "description": "Køb en rytter for under halvdelen af hans værdi."
   }
 }

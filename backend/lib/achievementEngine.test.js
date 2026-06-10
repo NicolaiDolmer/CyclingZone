@@ -94,7 +94,8 @@ test("checkAchievements derives auction and transfer unlocks from live-history t
     teams: [{ id: "team-1", user_id: "user-1" }],
     users: [{ id: "user-1", login_streak: 2 }],
     rider_watchlist: Array.from({ length: 50 }, (_, index) => ({ id: `watch-${index}`, user_id: "user-1" })),
-    riders: [{ id: "rider-bargain", uci_points: 100, team_id: "other-team" }],
+    // #1205: bargain måles mod market_value — offer 40 < 100/2.
+    riders: [{ id: "rider-bargain", market_value: 100, team_id: "other-team" }],
     auction_bids: [{ id: "bid-1", team_id: "team-1", amount: 2000000001 }],
     auctions: [],
     transfer_offers: [
@@ -164,11 +165,12 @@ test("checkAchievements unlocks team and board achievements and cascades team_5_
     users: [{ id: "user-1", login_streak: 7 }],
     rider_watchlist: [],
     riders: [
+      // #1205: stjernerytter = market_value >= 5M (STAR_RIDER_MARKET_VALUE).
       ...Array.from({ length: 16 }, (_, index) => ({
         id: `team-rider-${index}`,
         team_id: "team-1",
         is_u25: index < 8,
-        uci_points: index === 0 ? 60001 : 1000,
+        market_value: index === 0 ? 5_000_000 : 100_000,
       })),
     ],
     auction_bids: [],

@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.11",
+    date: "2026-06-10",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fixed · Star riders and achievements",
+        items: [
+          "EN · Star riders are now defined by their Value: a rider valued at 5,000,000 CZ$ or more counts as a star. This fixes two achievements that were impossible to unlock: Star team (previously tied to an unreachable UCI points threshold) now unlocks when you have a star rider on your team, and The Steal now unlocks when you buy a rider for less than half his value. The board's forced-sale protection uses the same star definition, and the squad auto-purchase after a window closes now picks the genuinely cheapest fillers by Value. Refs #1205.",
+          "DA · Stjerneryttere defineres nu ud fra deres Værdi: en rytter med en værdi på mindst 5.000.000 CZ$ tæller som stjerne. Det fikser to achievements der var umulige at låse op: Stjerneholdet (før bundet til en uopnåelig UCI-point-tærskel) låses nu op når du har en stjernerytter på holdet, og Kuppet låses nu op når du køber en rytter for under halvdelen af hans værdi. Bestyrelsens tvangssalgs-beskyttelse bruger samme stjerne-definition, og squad-autokøbet efter vindueslukning vælger nu de reelt billigste fillers efter Værdi. Refs #1205.",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.10",
     date: "2026-06-10",
     label: "Beta",

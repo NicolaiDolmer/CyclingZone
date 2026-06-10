@@ -100,11 +100,13 @@ async function findCheapestAvailableRiders(supabase, count, excludedTeamIds) {
   // Vi henter 3x count for at have buffer mod race conditions / duplicate-team-ownership.
   const limit = Math.max(count * 3, count + 10);
 
+  // "Billigst" = laveste market_value — samme felt som prisen der betales
+  // (SQUAD_PURCHASE_MARKUP), #1205. uci_points er frosset/afkoblet (#1101).
   const { data: freeAgents, error: faError } = await supabase
     .from("riders")
-    .select("id, firstname, lastname, team_id, ai_team_id, market_value, uci_points")
+    .select("id, firstname, lastname, team_id, ai_team_id, market_value")
     .is("team_id", null)
-    .order("uci_points", { ascending: true })
+    .order("market_value", { ascending: true })
     .limit(limit);
   ensureNoError(faError);
 
@@ -113,15 +115,15 @@ async function findCheapestAvailableRiders(supabase, count, excludedTeamIds) {
   if (pool.length < count && aiTeamIds.size > 0) {
     const { data: aiOwned, error: aiOwnedError } = await supabase
       .from("riders")
-      .select("id, firstname, lastname, team_id, ai_team_id, market_value, uci_points")
+      .select("id, firstname, lastname, team_id, ai_team_id, market_value")
       .in("team_id", [...aiTeamIds])
-      .order("uci_points", { ascending: true })
+      .order("market_value", { ascending: true })
       .limit(limit);
     ensureNoError(aiOwnedError);
     pool = pool.concat(aiOwned || []);
   }
 
-  pool.sort((a, b) => (a.uci_points || 0) - (b.uci_points || 0));
+  pool.sort((a, b) => (a.market_value || 0) - (b.market_value || 0));
   return pool.slice(0, count);
 }
 

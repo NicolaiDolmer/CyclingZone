@@ -1,3 +1,5 @@
+import { STAR_RIDER_MARKET_VALUE } from "./economyConstants.js";
+
 const AUCTION_WIN_THRESHOLDS = [
   ["auction_first_win", 1],
   ["auction_5_wins", 5],
@@ -140,7 +142,7 @@ async function loadTeamStats({ supabase, teamId }) {
 
   const [riders, boardProfiles] = await Promise.all([
     readMany(
-      supabase.from("riders").select("id, is_u25, uci_points").eq("team_id", teamId)
+      supabase.from("riders").select("id, is_u25, market_value").eq("team_id", teamId)
     ),
     readMany(
       supabase
@@ -162,7 +164,8 @@ async function loadTeamStats({ supabase, teamId }) {
   return {
     riderCount: riders.length,
     u25RiderCount: riders.filter(rider => rider.is_u25).length,
-    hasStarRider: riders.some(rider => toNumber(rider.uci_points) > 50000),
+    // #1205: stjernerytter = market_value >= delt konstant (før: dødt uci_points-tjek).
+    hasStarRider: riders.some(rider => toNumber(rider.market_value) >= STAR_RIDER_MARKET_VALUE),
     boardSatisfaction,
   };
 }
@@ -236,19 +239,21 @@ async function loadTransferStats({ supabase, teamId }) {
   const riderIds = [...new Set(buyerTransfers.map(transfer => transfer.rider_id).filter(Boolean))];
   const riders = riderIds.length
     ? await readMany(
-        supabase.from("riders").select("id, uci_points").in("id", riderIds)
+        supabase.from("riders").select("id, market_value").in("id", riderIds)
       )
     : [];
-  const riderPointsById = new Map(riders.map(rider => [rider.id, toNumber(rider.uci_points)]));
+  const riderValueById = new Map(riders.map(rider => [rider.id, toNumber(rider.market_value)]));
 
   return {
     transferCount: transferIds.size,
     transferBuyerCount: buyerTransfers.length,
     transferSellerCount: sellerTransfers.length,
     hasNegotiatorTransfer: [...buyerTransfers, ...sellerTransfers].some(transfer => toNumber(transfer.round) >= 3),
+    // #1205: kup = købt for under halvdelen af rytterens nuværende market_value
+    // (før: CZ$ mod rå uci_points — reelt dødt efter 4000x-skaleringen).
     hasBargainTransfer: buyerTransfers.some(transfer => {
-      const riderPoints = riderPointsById.get(transfer.rider_id);
-      return riderPoints > 0 && toNumber(transfer.offer_amount) < riderPoints / 2;
+      const riderValue = riderValueById.get(transfer.rider_id);
+      return riderValue > 0 && toNumber(transfer.offer_amount) < riderValue / 2;
     }),
   };
 }
