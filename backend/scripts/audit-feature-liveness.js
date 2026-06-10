@@ -171,6 +171,10 @@ const WHITELIST_ZERO_IMPRESSION_EVENTS = new Set([
   // indtil Tally-URL flippes (sprint uge 1 ons/tor). Naturlige impressions
   // begynder efter flag-flip — fjern denne entry når banner går live for alle.
   "survey_banner_dismissed",
+  // Pillar-event (#1168) instrumenteret 2026-06-10 sammen med firing-stien
+  // (useTraining.setPlan). Starter naturligt på 0 indtil spillere sætter fokus
+  // — fjern entry når events flyder (tjek player_events for training_focus_set).
+  "training_focus_set",
 ]);
 
 // Detector D: prod-tabeller vi accepterer uden CREATE TABLE i repo
