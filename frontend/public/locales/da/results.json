@@ -10,7 +10,7 @@
     "library": { "label": "Løbsbibliotek", "desc": "Alle løb på tværs af sæsoner · søg & filtrér" },
     "seasonSnapshot": { "label": "Sæson-snapshot", "desc": "Kalender, slutstilling og sæsonens vindere" },
     "hallOfFame": { "label": "Hall of Fame", "desc": "Rekorder og manager-rangliste" },
-    "points": { "label": "Point & præmier", "desc": "UCI-point og præmieformler pr. løbsklasse" }
+    "points": { "label": "Point & præmier", "desc": "Point og præmieformler pr. løbsklasse" }
   },
   "emptyNoSeason": "Ingen aktiv sæson. Resultater vises her når sæsonen er i gang",
   "topTeams": "Tophold · Sæson {number}",

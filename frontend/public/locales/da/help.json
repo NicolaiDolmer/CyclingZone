@@ -69,7 +69,7 @@
           ["1", "Tilfredshed-baseret", "Sponsor-modifier ±20% (passiv)"],
           ["2", "Tilfredshed <40%", "Lønloft: total løn frosses, ingen vækst"],
           ["3", "Tilfredshed <30%", "Signing-restriktion: køb >300K blokeres"],
-          ["4", "Tilfredshed <15%", "Tvunget salg: én rytter auto-listes (pop≥70 og uci≥100 beskyttede)"],
+          ["4", "Tilfredshed <15%", "Tvunget salg: én rytter auto-listes (pop≥70 og stjerneryttere beskyttede)"],
           ["5", "<10% eller 2× plan-udløb under 30%", "Sponsor-pull-out: −10% sponsor én sæson"],
           ["6 (positiv)", ">75% tilfredshed + ≥75% mål nået", "Bonus-tilbud: +200K mod ét ekstra-mål"]
         ]
@@ -339,7 +339,7 @@
       },
       "prizeMoney": {
         "title": "Præmiepenge fra løb",
-        "text": "Hvert resultat der tilhører en rytter på dit hold genererer præmiepenge: UCI-point for placeringen × 1.500 CZ$. Præmiepengene udbetales automatisk til dit holds balance når admin finaliserer resultaterne og vises som 'prize'-transaktion i din finance-log. Point til sæsonranglisten og præmier beregnes separat: UCI-point bestemmer ranglisten, mens CZ$-præmien kun påvirker din balance. Løb uden løbsklasse genererer ingen præmiepenge. Se den fulde pointtabel under Sæson & Resultater, Løb, Point & præmier."
+        "text": "Hvert resultat der tilhører en rytter på dit hold genererer præmiepenge: point for placeringen × 1.500 CZ$. Præmiepengene udbetales automatisk til dit holds balance når admin finaliserer resultaterne og vises som 'prize'-transaktion i din finance-log. Point til sæsonranglisten og præmier beregnes separat: pointene bestemmer ranglisten, mens CZ$-præmien kun påvirker din balance. Løb uden løbsklasse genererer ingen præmiepenge. Se den fulde pointtabel under Sæson & Resultater, Løb, Point & præmier."
       },
       "divisionBonus": {
         "title": "Divisionsbonus ved sæsonafslutning",
@@ -375,12 +375,12 @@
       "label": "Præmier",
       "formula": {
         "title": "Præmieformlen",
-        "text": "Præmiepenge beregnes direkte fra UCI-point: 1 UCI-point = 1.500 CZ$. Kun løb med en løbsklasse (Tour de France, Giro/Vuelta, Monumenter, WorldTour, ProSeries, Klasse 1, Klasse 2) genererer præmiepenge. Løb uden klasse giver 0 CZ$."
+        "text": "Præmiepenge beregnes direkte fra point: 1 point = 1.500 CZ$. Kun løb med en løbsklasse (Tour de France, Giro/Vuelta, Monumenter, WorldTour, ProSeries, Klasse 1, Klasse 2) genererer præmiepenge. Løb uden klasse giver 0 CZ$."
       },
       "examples": {
         "title": "Eksempler på præmiebeløb",
         "rows": [
-          ["Sejr", "UCI-point", "Præmie"],
+          ["Sejr", "Point", "Præmie"],
           ["Tour de France-sejr", "1.300", "1.950.000 CZ$"],
           ["Monument-sejr", "800", "1.200.000 CZ$"],
           ["Etapesejr (Tour de France)", "210", "315.000 CZ$"],
@@ -391,7 +391,7 @@
       },
       "payout": {
         "title": "Udbetaling",
-        "text": "Præmiepenge udbetales automatisk til din balance når admin finaliserer løbsresultaterne og vises som 'prize'-transaktion i din finance-log. Point til sæsonranglisten og præmier beregnes separat: UCI-point bestemmer ranglisten, mens CZ$-præmien kun påvirker din balance."
+        "text": "Præmiepenge udbetales automatisk til din balance når admin finaliserer løbsresultaterne og vises som 'prize'-transaktion i din finance-log. Point til sæsonranglisten og præmier beregnes separat: pointene bestemmer ranglisten, mens CZ$-præmien kun påvirker din balance."
       },
       "fullTable": {
         "title": "Den fulde pointtabel",
@@ -562,7 +562,7 @@
     },
     "prizeMoneyFaq": {
       "q": "Hvad er præmiepenge, og hvornår udbetales de?",
-      "a": "Præmiepenge er en direkte CZ$-belønning for resultater dine ryttere opnår i løbene. Beregningen er: UCI-point for placeringen × 1.500 CZ$. Pengene udbetales automatisk til din balance når admin finaliserer resultaterne og vises som 'prize' i din finance-log. Kun løb med en løbsklasse (Tour de France, WorldTour, ProSeries osv.) genererer præmiepenge. Løb uden løbsklasse giver 0."
+      "a": "Præmiepenge er en direkte CZ$-belønning for resultater dine ryttere opnår i løbene. Beregningen er: point for placeringen × 1.500 CZ$. Pengene udbetales automatisk til din balance når admin finaliserer resultaterne og vises som 'prize' i din finance-log. Kun løb med en løbsklasse (Tour de France, WorldTour, ProSeries osv.) genererer præmiepenge. Løb uden løbsklasse giver 0."
     },
     "divisionBonusFaq": {
       "q": "Hvad er divisionsbonus, og hvornår udbetales den?",
@@ -642,7 +642,7 @@
     },
     "boardUnsatisfiedConsequences": {
       "q": "Hvad sker der når bestyrelsen er meget utilfreds, kan jeg blive fyret?",
-      "a": "Du kan ikke blive fyret. I stedet reagerer bestyrelsen gradvist gennem 6 lag jo lavere tilfredsheden bliver: ved <40% pålægger den et lønloft (du kan ikke øge holdets samlede løn, sælg en rytter først). Ved <30% kommer en signing-restriktion: køb over 300K CZ$ blokeres. Ved <15% tvangs-listes en rytter på markedet (laveste market_value, stjerner med pop≥70 eller uci≥100 er beskyttede). Ved <10% trækker en hovedsponsor sig: sponsorindtægten reduceres med 10% i den næste sæson. Alle aktive konsekvenser vises i panelet 'Aktive konsekvenser' på Bestyrelse-siden, og lag 4-5 sender også 'Skal handles'-notifs. Tilfredshed der stiger igen expirerer automatisk lag 2-3."
+      "a": "Du kan ikke blive fyret. I stedet reagerer bestyrelsen gradvist gennem 6 lag jo lavere tilfredsheden bliver: ved <40% pålægger den et lønloft (du kan ikke øge holdets samlede løn, sælg en rytter først). Ved <30% kommer en signing-restriktion: køb over 300K CZ$ blokeres. Ved <15% tvangs-listes en rytter på markedet (laveste market_value, ryttere med pop≥70 og stjerner er beskyttede). Ved <10% trækker en hovedsponsor sig: sponsorindtægten reduceres med 10% i den næste sæson. Alle aktive konsekvenser vises i panelet 'Aktive konsekvenser' på Bestyrelse-siden, og lag 4-5 sender også 'Skal handles'-notifs. Tilfredshed der stiger igen expirerer automatisk lag 2-3."
     },
     "bonusOffer": {
       "q": "Hvad er bonus-tilbuddet jeg lige fik fra bestyrelsen?",

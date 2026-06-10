@@ -69,7 +69,7 @@
           ["1", "Satisfaction-based", "Sponsor modifier ±20% (passive)"],
           ["2", "Satisfaction <40%", "Salary cap: total salary frozen, no growth"],
           ["3", "Satisfaction <30%", "Signing restriction: buys >300K blocked"],
-          ["4", "Satisfaction <15%", "Forced sale: one rider auto-listed (pop≥70 and uci≥100 protected)"],
+          ["4", "Satisfaction <15%", "Forced sale: one rider auto-listed (pop≥70 and star riders protected)"],
           ["5", "<10% or 2× plan expiry below 30%", "Sponsor pullout: −10% sponsor for one season"],
           ["6 (positive)", ">75% satisfaction + ≥75% targets met", "Bonus offer: +200K for one extra target"]
         ]
@@ -339,7 +339,7 @@
       },
       "prizeMoney": {
         "title": "Prize money from races",
-        "text": "Each result for a rider on your team generates prize money: UCI points for the placing × 1,500 CZ$. Prize money is paid automatically to your team balance when admin finalises the results and shows as a 'prize' transaction in your finance log. Points for the season leaderboard and prize money are computed separately: UCI points decide the leaderboard, while the CZ$ prize only affects your balance. Races without a race class generate no prize money. See the full points table under Season & Results, Races, Points & prizes."
+        "text": "Each result for a rider on your team generates prize money: points for the placing × 1,500 CZ$. Prize money is paid automatically to your team balance when admin finalises the results and shows as a 'prize' transaction in your finance log. Points for the season leaderboard and prize money are computed separately: points decide the leaderboard, while the CZ$ prize only affects your balance. Races without a race class generate no prize money. See the full points table under Season & Results, Races, Points & prizes."
       },
       "divisionBonus": {
         "title": "Division bonus at season end",
@@ -375,12 +375,12 @@
       "label": "Prizes",
       "formula": {
         "title": "The prize formula",
-        "text": "Prize money is computed directly from UCI points: 1 UCI point = 1,500 CZ$. Only races with a race class (Tour de France, Giro/Vuelta, Monuments, WorldTour, ProSeries, Class 1, Class 2) generate prize money. Races without a class give 0 CZ$."
+        "text": "Prize money is computed directly from points: 1 point = 1,500 CZ$. Only races with a race class (Tour de France, Giro/Vuelta, Monuments, WorldTour, ProSeries, Class 1, Class 2) generate prize money. Races without a class give 0 CZ$."
       },
       "examples": {
         "title": "Prize amount examples",
         "rows": [
-          ["Win", "UCI points", "Prize"],
+          ["Win", "Points", "Prize"],
           ["Tour de France win", "1,300", "1,950,000 CZ$"],
           ["Monument win", "800", "1,200,000 CZ$"],
           ["Stage win (Tour de France)", "210", "315,000 CZ$"],
@@ -391,7 +391,7 @@
       },
       "payout": {
         "title": "Payout",
-        "text": "Prize money is paid automatically to your balance when admin finalises race results and shows as a 'prize' transaction in your finance log. Points for the season leaderboard and prize money are computed separately: UCI points decide the leaderboard, while the CZ$ prize only affects your balance."
+        "text": "Prize money is paid automatically to your balance when admin finalises race results and shows as a 'prize' transaction in your finance log. Points for the season leaderboard and prize money are computed separately: points decide the leaderboard, while the CZ$ prize only affects your balance."
       },
       "fullTable": {
         "title": "The full points table",
@@ -562,7 +562,7 @@
     },
     "prizeMoneyFaq": {
       "q": "What is prize money, and when is it paid out?",
-      "a": "Prize money is a direct CZ$ reward for results your riders achieve in races. The formula is: UCI points for the placing × 1,500 CZ$. The money is paid automatically to your balance when admin finalises results and shows as 'prize' in your finance log. Only races with a race class (Tour de France, WorldTour, ProSeries etc.) generate prize money. Races without a race class give 0."
+      "a": "Prize money is a direct CZ$ reward for results your riders achieve in races. The formula is: points for the placing × 1,500 CZ$. The money is paid automatically to your balance when admin finalises results and shows as 'prize' in your finance log. Only races with a race class (Tour de France, WorldTour, ProSeries etc.) generate prize money. Races without a race class give 0."
     },
     "divisionBonusFaq": {
       "q": "What is the division bonus, and when is it paid out?",
@@ -642,7 +642,7 @@
     },
     "boardUnsatisfiedConsequences": {
       "q": "What happens when the board is very unhappy, can I be fired?",
-      "a": "You cannot be fired. Instead the board reacts gradually through 6 layers the lower satisfaction goes: at <40% it imposes a salary cap (you can't grow the team's total salary, sell a rider first). At <30% comes a signing restriction: buys above 300K CZ$ are blocked. At <15% a rider is force-listed on the market (lowest market_value, stars with pop≥70 or uci≥100 are protected). At <10% a main sponsor pulls out: sponsor income is reduced by 10% for the next season. All active consequences show in the 'Active consequences' panel on the Board page, and layers 4-5 also send 'Action required' notifications. Satisfaction that rises again automatically expires layers 2-3."
+      "a": "You cannot be fired. Instead the board reacts gradually through 6 layers the lower satisfaction goes: at <40% it imposes a salary cap (you can't grow the team's total salary, sell a rider first). At <30% comes a signing restriction: buys above 300K CZ$ are blocked. At <15% a rider is force-listed on the market (lowest market_value, riders with pop≥70 and stars are protected). At <10% a main sponsor pulls out: sponsor income is reduced by 10% for the next season. All active consequences show in the 'Active consequences' panel on the Board page, and layers 4-5 also send 'Action required' notifications. Satisfaction that rises again automatically expires layers 2-3."
     },
     "bonusOffer": {
       "q": "What is the bonus offer I just got from the board?",

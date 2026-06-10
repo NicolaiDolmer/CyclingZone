@@ -5,7 +5,7 @@
     "noSeason": "No active season",
     "noSeasonWithCount": "No active season · {count} races",
     "library": "{count} races across all seasons",
-    "points": "UCI points tables and prize formula"
+    "points": "Points tables and prize formula"
   },
   "tabs": {
     "calendar": "📅 Calendar",
@@ -160,12 +160,12 @@
   },
   "points": {
     "title": "Points & prize overview",
-    "subtitle": "How your race prizes are calculated from UCI placements",
+    "subtitle": "How your race prizes are calculated from your placements",
     "help": "Help & Rules",
-    "formula": "Prize formula: 1 UCI point = {amount} CZ$",
+    "formula": "Prize formula: 1 point = {amount} CZ$",
     "noClassData": "No points data for this class",
     "thRank": "Rank",
-    "thUciPoints": "UCI points",
+    "thPoints": "Points",
     "thPrize": "Prize",
     "showLess": "Hide ↑",
     "showAll": "Show all {count} ranks ↓",

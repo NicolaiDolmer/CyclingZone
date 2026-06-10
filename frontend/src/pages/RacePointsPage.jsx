@@ -198,7 +198,7 @@ export default function RacePointsPage() {
                     <thead>
                       <tr className="border-b border-cz-border text-left">
                         <th className="px-4 py-2 font-medium text-cz-2 text-xs w-14">{t("points.thRank")}</th>
-                        <th className="px-4 py-2 font-medium text-cz-2 text-xs">{t("points.thUciPoints")}</th>
+                        <th className="px-4 py-2 font-medium text-cz-2 text-xs">{t("points.thPoints")}</th>
                         <th className="px-4 py-2 font-medium text-cz-2 text-xs text-right">{t("points.thPrize")}</th>
                       </tr>
                     </thead>

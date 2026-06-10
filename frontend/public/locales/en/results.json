@@ -10,7 +10,7 @@
     "library": { "label": "Race library", "desc": "All races across seasons · search & filter" },
     "seasonSnapshot": { "label": "Season snapshot", "desc": "Calendar, final standings and season winners" },
     "hallOfFame": { "label": "Hall of Fame", "desc": "Records and manager ranking" },
-    "points": { "label": "Points & prizes", "desc": "UCI points and prize formulas per race class" }
+    "points": { "label": "Points & prizes", "desc": "Points and prize formulas per race class" }
   },
   "emptyNoSeason": "No active season. Results will appear here once the season is underway",
   "topTeams": "Top teams · Season {number}",
