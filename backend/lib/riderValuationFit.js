@@ -60,6 +60,38 @@ export function fitValuationModel(anchors, { quadratic = true } = {}) {
   return { a, b, c, offset, r2: 1 - ssRes / ssTot, predictLn };
 }
 
+// Monotoni-guard (#1198 VM-M2): ln-kurven a+bO+cO² skal være VOKSENDE på hele
+// [lo,hi]. Afledt b+2cO er lineær i O, så det er tilstrækkeligt at tjekke begge
+// endepunkter. Fanger BÅDE konkav-med-toppunkt (c<0 — den gamle guard) og
+// konveks-med-bundpunkt (b<0, c>0 — U-kurve hvor vrag-ryttere er dyrest, som
+// to ekstra-nuller-typos i bund-anchors kan give).
+export function isMonotoneIncreasingOn(b, c, lo = 0, hi = 99) {
+  return b + 2 * c * lo > 0 && b + 2 * c * hi > 0;
+}
+
+// Gate-integritets-guards (#1198): evalueres af fitRiderValuationModel.js FØR
+// rapport/skriv — brud afviser fittet (exit 1).
+//   1. Monotoni på hele output-domænet (se ovenfor).
+//   2. Hård-bånds-befolkning (VM-M1): ordens-guarden håndhæver kun par hvor
+//      høj-målet er ≥ hardMin. Resolver INGEN anchors i hård-båndet (fx alle
+//      topstjerner droppet pga. manglende ability-rækker), er guarden de facto
+//      slukket og superstjerne-skalaen ukalibreret — det skal fejle højt.
+export function evaluateFitGuards(anchors = [], fit = {}, { hardMin = 15e6, domain = [0, 99] } = {}) {
+  const failures = [];
+  if (!isMonotoneIncreasingOn(fit.b, fit.c, domain[0], domain[1])) {
+    failures.push(
+      `modellen er ikke monoton voksende på [${domain[0]},${domain[1]}] (b=${Number(fit.b).toFixed(4)}, c=${Number(fit.c).toExponential(3)}) — bedre ryttere skal altid være dyrere`
+    );
+  }
+  const hardBand = anchors.filter((a) => a.target >= hardMin);
+  if (hardBand.length === 0) {
+    failures.push(
+      `0 resolved anchors med mål ≥${hardMin / 1e6}M — den hårde ordens-guard er de facto slukket (topstjerne-anchors droppet ved resolution?)`
+    );
+  }
+  return failures;
+}
+
 // Ordens-guard: for alle anchor-par hvor mål adskiller sig > ratio skal forudsigelsen
 // bevare ejerens rækkefølge. Brud med høj-anchor-mål ≥ hardMin er HÅRDE (fit afvises);
 // resten er bløde (rapporteres — ægte anchor/ability-uenigheder i midterfeltet).

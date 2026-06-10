@@ -20,12 +20,51 @@
 // realistisk peloton-form. Detaljer: docs/slices/669-fictional-riders.md.
 
 import { generateFictionalRiders } from "./fictionalRiderGenerator.js";
+import { STAR_RIDER_MARKET_VALUE } from "./economyConstants.js";
+import { RIDER_TYPE_KEYS } from "./riderTypes.js";
 
 export const LAUNCH_POPULATION = Object.freeze({
   seed: 2026,
   count: 800,
   referenceYear: 2026,
 });
+
+// Launch-pyramide-bånd (CZ$) — ejer-spec 2026-06-07. Superstjerne-grænsen ER
+// spillets stjernerytter-tærskel (STAR_RIDER_MARKET_VALUE, #1205/#1210): én delt
+// konstant, så bånd-definitionen, force-sale-beskyttelsen og team_star-achievementet
+// aldrig kan drifte fra hinanden (#1198 mutant pop-MUT-4 — tidligere var 8M
+// hardcodet to steder uden kobling).
+export const LAUNCH_VALUE_BANDS = Object.freeze([
+  Object.freeze({ key: "superstjerne", lo: STAR_RIDER_MARKET_VALUE, hi: Infinity, target: 12 }),
+  Object.freeze({ key: "stjerne", lo: 1_000_000, hi: STAR_RIDER_MARKET_VALUE, target: 60 }),
+  Object.freeze({ key: "solid", lo: 200_000, hi: 1_000_000, target: 230 }),
+  Object.freeze({ key: "domestik", lo: 0, hi: 200_000, target: 500 }),
+]);
+
+// Ejer-gulve for type-mixet ved launch ("alle 9 repræsenteret, gulv gc≥30,
+// sprinter≥40"). Generatorens ENSURE_MIN_TYPES er MEKANISMEN — dette er ORAKLET
+// (uafhængig dobbelt-bogføring som preview-gaten håndhæver, #1198 pop-MUT-6).
+export const LAUNCH_TYPE_FLOORS = Object.freeze({ gc: 30, sprinter: 40 });
+
+/**
+ * Oracle for launch-type-mixet (#1198): alle 9 typer repræsenteret + ejer-gulve.
+ * @param {Record<string, number>} typeCounts afledt primary_type → antal
+ * @returns {string[]} liste af brud (tom = OK)
+ */
+export function checkLaunchTypeMix(typeCounts = {}) {
+  const failures = [];
+  for (const key of RIDER_TYPE_KEYS) {
+    if (!((typeCounts[key] || 0) >= 1)) {
+      failures.push(`type '${key}' er slet ikke repræsenteret i populationen (launch-krav: alle 9 typer)`);
+    }
+  }
+  for (const [key, min] of Object.entries(LAUNCH_TYPE_FLOORS)) {
+    if ((typeCounts[key] || 0) < min) {
+      failures.push(`type '${key}' har ${typeCounts[key] || 0} ryttere — ejer-gulvet er ≥${min}`);
+    }
+  }
+  return failures;
+}
 
 /**
  * Generér den låste launch-population (rør ingen DB).

@@ -11,6 +11,7 @@
     "start": "node --import ./instrument.mjs server.js",
     "seed:uci-race-points": "node scripts/seedUciMenRacePoints.js",
     "economy:baseline": "node scripts/economyBaselineSimulation.js",
+    "gates:mutation-audit": "node scripts/gateMutationAudit.js",
     "season:end:verify-repair": "node scripts/verifySeasonEndRepair.js",
     "board:repair-members-after-dna": "node scripts/repairBoardMembersAfterDna.js",
     "test": "node --test --import ./test-setup.js",

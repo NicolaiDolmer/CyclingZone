@@ -5,6 +5,7 @@ import {
   runRelaunchSeason1,
   seedSeasonZero,
   assertRelaunchProdGuard,
+  isProdSupabaseUrl,
   RELAUNCH_CONFIRM_TOKEN,
 } from "./relaunchOrchestrator.js";
 import { computeSeasonUuid } from "./seasonTransition.js";
@@ -89,4 +90,18 @@ test("assertRelaunchProdGuard: lagdelt prod-opt-in", () => {
   const ok = assertRelaunchProdGuard({ apply: true, isProd: true, targetProd: true, confirm: RELAUNCH_CONFIRM_TOKEN, cutoverAck: "true" });
   assert.equal(ok.proceed, true);
   assert.equal(ok.target, "PROD");
+});
+
+// ── #1198 rel-M2: prod-detektion skal være casing-robust ──────────────────────
+test("isProdSupabaseUrl: DNS er case-insensitive — uppercased prod-URL er stadig prod", () => {
+  assert.equal(isProdSupabaseUrl("https://ghwvkxzhsbbltzfnuhhz.supabase.co"), true);
+  // Mutanten fra #1198-kataloget: casing-trick måtte IKKE omgå den lagdelte guard.
+  assert.equal(isProdSupabaseUrl("https://GHWVKXZHSBBLTZFNUHHZ.supabase.co"), true);
+  assert.equal(isProdSupabaseUrl("https://GhWvKxZhSbBlTzFnUhHz.supabase.co"), true);
+  // Pooler-/connection-string-varianter med ref-strengen fanges også.
+  assert.equal(isProdSupabaseUrl("postgres://x@db.GHWVKXZHSBBLTZFNUHHZ.supabase.co:5432/postgres"), true);
+  // Ikke-prod og tomme input → false (fail-closed mod guard, fail-open mod dry-run).
+  assert.equal(isProdSupabaseUrl("https://abcdefabcdefabcdefab.supabase.co"), false);
+  assert.equal(isProdSupabaseUrl(null), false);
+  assert.equal(isProdSupabaseUrl(undefined), false);
 });

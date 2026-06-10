@@ -25,6 +25,16 @@ import { transitionToNextSeason, computeSeasonUuid } from "./seasonTransition.js
 
 const INSERT_BATCH = 500;
 export const RELAUNCH_CONFIRM_TOKEN = "RELAUNCH SEASON 1";
+export const RELAUNCH_PROD_PROJECT_REF = "ghwvkxzhsbbltzfnuhhz";
+
+// Prod-detektion (#1198 rel-M2): DNS/hostnames er case-insensitive, så
+// https://GHWVKXZHSBBLTZFNUHHZ.supabase.co rammer prod selvom en case-sensitiv
+// substring-match siger "non-prod" — og dermed ville HELE den lagdelte prod-guard
+// (--target-prod + typed confirm + cutover-ack) blive omgået af en casing-/
+// copy-paste-fejl i .env. Normalisér ALTID før sammenligning.
+export function isProdSupabaseUrl(url, ref = RELAUNCH_PROD_PROJECT_REF) {
+  return String(url || "").toLowerCase().includes(String(ref).toLowerCase());
+}
 
 // Generér + indsæt den låste launch-population (pcm_id null), navne-unikke mod DB.
 export async function generateAndInsertPopulation(supabase, { dryRun = true } = {}) {

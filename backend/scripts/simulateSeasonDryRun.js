@@ -25,6 +25,7 @@ import { predictBaseValue, riderOverall, riderSpecialty } from "../lib/riderValu
 import { DEMAND_VECTORS } from "../lib/raceStageProfileGenerator.js";
 import { simulateStage, stableSeed, NOISE_SD_SCALE } from "../lib/raceSimulator.js";
 import { buildRaceResults } from "../lib/raceRunner.js";
+import { evaluateRaceStructuralOracles } from "../lib/raceDryRunOracles.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -43,6 +44,10 @@ const GT_FIELD = parseInt(arg("gtField", "176"), 10);
 const REFERENCE_YEAR = 2026;
 const WRITE_HTML = !arg("no-html", false);
 const HTML_PATH = arg("html", join(__dirname, "out", "race-dry-run.html"));
+// #1198/#1144: strukturelle motor-oracles (sektion D) håndhæves ALTID (exit 1 ved
+// brud). Kalibrerings-bånd (sektion B-scorecardet) håndhæves kun med dette flag,
+// da baseline-targets afventer ejer-beslutning (se kalibrerings-loggen nedenfor).
+const ENFORCE_TARGETS = !!arg("enforce-targets", false);
 
 const baseline = JSON.parse(readFileSync(join(__dirname, "../lib/riderTypesBaseline.json"), "utf8"));
 const model = JSON.parse(readFileSync(join(__dirname, "../lib/riderValuationModel.json"), "utf8"));
@@ -253,6 +258,61 @@ console.log(`  🏆 GC top 10:`);
 for (const g of gtFinal.gc.slice(0, 10)) console.log(`   ${padS(g.rank, 2)}. ${lbl(g.rider)}  ${g.time ?? ""}`);
 console.log(`  👕 Grøn: ${gtFinal.points[0] ? gtFinal.points[0].rider.name + " (" + gtFinal.points[0].rider.bornAs + ")" : "—"} · Bjerg: ${gtFinal.mountain[0] ? gtFinal.mountain[0].rider.name + " (" + gtFinal.mountain[0].rider.bornAs + ")" : "—"} · Ungdom: ${gtFinal.young[0] ? gtFinal.young[0].rider.name : "—"}`);
 
+// ── D. STRUKTURELLE MOTOR-ORACLES (#1198/#1144) — håndhævet, exit 1 ved brud ──
+// GC-tid-invarianten genberegnes UAFHÆNGIGT af raceRunner: summen af etape-gab
+// pr. rytter fra de rå 'stage'-rækker — GC-vinderen skal have feltets minimum.
+const parseGap = (t) => {
+  const m = /^\+(\d+):(\d{2})$/.exec(String(t || ""));
+  return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+};
+const cumGapById = new Map();
+for (const row of resultRows) {
+  if (row.result_type !== "stage") continue;
+  const s = parseGap(row.finish_time);
+  if (s == null) continue;
+  cumGapById.set(row.rider_id, (cumGapById.get(row.rider_id) || 0) + s);
+}
+const gcAllRows = rowsOf("gc", finalStage);
+const gcOracle = gcAllRows.length
+  ? {
+      winnerCumSeconds: cumGapById.get(gcAllRows[0].rider_id) ?? NaN,
+      minCumSeconds: Math.min(...gcAllRows.map((g) => cumGapById.get(g.rider_id) ?? NaN)),
+    }
+  : null;
+
+// Værdi-sanity: top-decilen (overall) skal være mere værd end bund-decilen.
+const medianOf = (arr) => {
+  const s = arr.filter((v) => v != null).sort((a, b) => a - b);
+  return s.length ? s[Math.floor(s.length / 2)] : null;
+};
+const byOverallDesc = [...field].sort((a, b) => b.overall - a.overall);
+const decileN = Math.max(1, Math.floor(field.length / 10));
+const valueOracle = {
+  topDecileMedian: medianOf(byOverallDesc.slice(0, decileN).map((r) => r.baseValue)),
+  bottomDecileMedian: medianOf(byOverallDesc.slice(-decileN).map((r) => r.baseValue)),
+};
+
+const structuralFailures = evaluateRaceStructuralOracles({ terrainResults, gc: gcOracle, value: valueOracle });
+const failedTargets = scorecard.filter((s) => !s.pass);
+
+console.log(`\n${"─".repeat(80)}`);
+console.log("D. STRUKTURELLE MOTOR-ORACLES (håndhævet — exit 1 ved brud)\n");
+if (structuralFailures.length) {
+  console.log("   ❌ ORACLE-BRUD:");
+  for (const f of structuralFailures) console.log(`   - ${f}`);
+  process.exitCode = 1;
+} else {
+  console.log("   ✓ nøgle-evne belønnes på alle terræner · ingen monopol-vindere · GC = laveste tid · værdi-pyramide ikke inverteret");
+}
+if (failedTargets.length) {
+  if (ENFORCE_TARGETS) {
+    console.log(`   ❌ ${failedTargets.length} kalibrerings-bånd under mål (--enforce-targets aktiv → exit 1): ${failedTargets.map((s) => s.terrain).join(", ")}`);
+    process.exitCode = 1;
+  } else {
+    console.log(`   ⚠ ${failedTargets.length} kalibrerings-bånd under mål (rapport-only; håndhæv med --enforce-targets): ${failedTargets.map((s) => s.terrain).join(", ")}`);
+  }
+}
+
 // ── HTML-cockpit ──────────────────────────────────────────────────────────────
 if (WRITE_HTML) {
   const chip = (r) => r ? `<span class="chip ${r.bornAs}">${esc(r.bornAs)}</span>` : "—";
@@ -370,4 +430,4 @@ ${stageBlocks}
 }
 
 console.log(`\n${"─".repeat(80)}`);
-console.log(`Færdig. Read-only — intet skrevet til prod/DB.\n`);
+console.log(`Færdig. Read-only — intet skrevet til prod/DB. Exit-kontrakt: ${process.exitCode === 1 ? "❌ exit 1 (oracle-/bånd-brud)" : "✅ exit 0"}.\n`);
