@@ -425,7 +425,7 @@
       "label": "Ryttere",
       "valueAndPrice": {
         "title": "Værdi og pris",
-        "text": "En rytters markedsværdi er baseværdien (minimum 5 UCI-point × 4.000 CZ$) plus gennemsnittet af rytterens præmiepenge i de seneste op til 3 afsluttede sæsoner. Startprisen på en auktion skal minimum svare til rytterens Værdi."
+        "text": "En rytters markedsværdi er rytterens baseværdi (beregnet ud fra rytterens stats og ryttertype) plus gennemsnittet af rytterens præmiepenge i de seneste sæsoner (op til 3). Startprisen på en auktion skal minimum svare til rytterens Værdi."
       },
       "salary": {
         "title": "Løn",
@@ -437,7 +437,7 @@
       },
       "development": {
         "title": "Udvikling over tid",
-        "text": "På en rytters statistikside ligger fanen 'Udvikling'. Her kan du se UCI-point over tid, vælge en af de 14 stats og følge stat-udviklingen som graf, samt se de seneste historiske datapunkter. Hvis fanen er tom, er der endnu ikke opsamlet historik fra de ugentlige syncs."
+        "text": "På en rytters statistikside ligger fanen 'Udvikling'. Her kan du vælge en af de 14 stats, følge stat-udviklingen som graf og se de seneste historiske datapunkter. Hvis fanen er tom, er der endnu ikke opsamlet historik fra de ugentlige syncs."
       },
       "scouting": {
         "title": "Scouting af potentiale",
@@ -550,7 +550,7 @@
     },
     "riderDevelopment": {
       "q": "Hvor kan jeg se om en rytter udvikler sig?",
-      "a": "Åbn rytterens statistikside og vælg fanen 'Udvikling'. Den viser historiske UCI-point, en valgbar graf for hver stat og de seneste datapunkter fra sync-historikken."
+      "a": "Åbn rytterens statistikside og vælg fanen 'Udvikling'. Den viser en valgbar graf for hver stat og de seneste datapunkter fra sync-historikken."
     },
     "salaryShortfall": {
       "q": "Hvad sker der hvis jeg ikke kan betale lønninger?",
