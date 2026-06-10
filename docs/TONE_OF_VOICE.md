@@ -78,6 +78,7 @@ Per `feedback_player_facing_copy_rules.md` regel 2 + dagens session-tillæg:
 **Punktuation:**
 - ❌ Em-dash (—) NOGENSTEDS i player-facing tekst, kode, docs, commits, PR-bodies, chat. Brug komma, punktum, kolon eller parentes.
   → **Undtagelse:** et enkeltstående `—` brugt som tom-værdi-glyf i tabeller/dropdowns (en celle uden værdi, "ingen data") er ikke prosa og er tilladt. Det er en typografisk placeholder, ikke en sætnings-separator. Locale-nøgler som `rankNone`, `salaryNone`, `dash`, `noBuyOption` falder under denne undtagelse (#671).
+  → **Forward-guard:** `scripts/tone-check-em-dash.mjs` (kører i CI via `i18n-check.yml`) blokerer nye em-dashes i locales + PatchNotes + privacy-prosa; undtagelsen ovenfor er kodet ind (#1172).
 
 ### Session B naming-beslutning
 
