@@ -18,6 +18,7 @@ frontend/.env.*
 scripts/*.csv
 !scripts/race_pool_seed.csv
 scripts/__pycache__/
+scripts/out/
 audit-output/
 backend/scripts/out/
 .codex.local/
