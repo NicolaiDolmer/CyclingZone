@@ -62,6 +62,23 @@ export function getSquadLimits(division = DEFAULT_DIVISION) {
   return MARKET_SQUAD_LIMITS[division] || MARKET_SQUAD_LIMITS[DEFAULT_DIVISION];
 }
 
+// #776/#822: når en rytter skifter ejer (auktionssalg, guaranteed-sale til
+// banken, transfer/swap-execution, auto-salg) skal hans aktive
+// transfer_listings lukkes, ellers står han som zombie-"til salg" på
+// transfermarkedet — og kan i værste fald dobbelt-sælges via et åbent listing.
+// status skal være i CHECK-enum'en: 'sold' (handlen gennemført) eller
+// 'withdrawn' (annulleret). Delt af transferExecution + auctionFinalization +
+// squadEnforcement.
+export async function closeTransferListingsForRiders(supabase, riderIds, status) {
+  await expectMutation(
+    supabase
+      .from("transfer_listings")
+      .update({ status })
+      .in("rider_id", riderIds)
+      .in("status", ["open", "negotiating"])
+  );
+}
+
 export function calculateRiderMarketValue(rider = {}) {
   const explicit = Number(rider.market_value);
   if (Number.isFinite(explicit)) return explicit;

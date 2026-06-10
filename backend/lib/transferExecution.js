@@ -1,5 +1,6 @@
 import { computeWorstCaseCommitment } from "./auctionRules.js";
 import {
+  closeTransferListingsForRiders,
   expectMaybeSingle,
   expectMutation,
   expectSingle,
@@ -195,15 +196,8 @@ async function withdrawSwapOffer(supabase, swapId) {
   );
 }
 
-async function closeTransferListingsForRiders(supabase, riderIds, status) {
-  await expectMutation(
-    supabase
-      .from("transfer_listings")
-      .update({ status })
-      .in("rider_id", riderIds)
-      .in("status", ["open", "negotiating"])
-  );
-}
+// #776/#822: closeTransferListingsForRiders bor nu i marketUtils.js (delt med
+// auctionFinalization + squadEnforcement).
 
 async function withdrawTransferOffersForRiders(supabase, riderIds, excludeOfferId = null) {
   let query = supabase

@@ -27,6 +27,7 @@
  */
 
 import {
+  closeTransferListingsForRiders,
   ensureNoError,
   expectMaybeSingle,
   expectMutation,
@@ -217,6 +218,10 @@ async function executeAutoSale({
       })
       .eq("id", rider.id)
   );
+
+  // #776/#822 forward-guard: auto-salg til AI/fri agent er også et salg —
+  // luk åbne transfer_listings så rytteren ikke står som zombie-"til salg".
+  await closeTransferListingsForRiders(supabase, [rider.id], "sold");
 
   return { riderId: rider.id, riderName: `${rider.firstname} ${rider.lastname}`, credit };
 }
