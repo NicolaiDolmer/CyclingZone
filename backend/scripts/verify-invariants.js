@@ -95,11 +95,12 @@ async function main() {
 
   const fetch_ = (table, select, filters) => fetchAll(baseUrl, apiKey, table, select, filters);
 
-  const [teams, riders, activeAuctions, openListings, financeRows, notifRows, activeLoans] = await Promise.all([
+  const [teams, riders, activeAuctions, openListings, openSwaps, financeRows, notifRows, activeLoans] = await Promise.all([
     fetch_("teams", "id,division,is_ai,is_frozen,is_bank"),
     fetch_("riders", "id,team_id"),
     fetch_("auctions", "id,rider_id,status", { status: "in.(active,extended)" }),
     fetch_("transfer_listings", "id,rider_id,status", { status: "eq.open" }),
+    fetch_("swap_offers", "id,offered_rider_id,status", { status: "in.(pending,countered,awaiting_confirmation)" }),
     fetch_("finance_transactions", "type"),
     fetch_("notifications", "type"),
     fetch_("loans", "team_id,amount_remaining,loan_type", { status: "eq.active" }),
@@ -161,6 +162,14 @@ async function main() {
     .filter(id => openListingRiders.has(id))
     .map(riderId => ({ riderId }));
 
+  // Check 7 (#1089): Ingen rytter er i både aktiv auktion og TILBUDT i et åbent
+  // swap-tilbud. Ryttere der blot er ØNSKET i andres swap-tilbud er tilladt
+  // (auktions-start blokeres bevidst ikke af indkommende swap-forslag).
+  const offeredSwapRiders = new Set(openSwaps.map(s => s.offered_rider_id));
+  const doubleSwapMarket = [...activeAuctionRiders]
+    .filter(id => offeredSwapRiders.has(id))
+    .map(riderId => ({ riderId }));
+
   const checks = {
     no_double_active_auctions: check(
       doubleAuctions.length === 0,
@@ -203,6 +212,13 @@ async function main() {
         ? `OK — ${activeAuctions.length} auktioner, ${openListings.length} transferlistinger`
         : `${doubleMarket.length} rytter(e) er i både aktiv auktion og åben transferliste`,
       doubleMarket
+    ),
+    no_auction_swap_overlap: check(
+      doubleSwapMarket.length === 0,
+      doubleSwapMarket.length === 0
+        ? `OK — ${activeAuctions.length} auktioner, ${openSwaps.length} åbne swap-tilbud`
+        : `${doubleSwapMarket.length} rytter(e) er i både aktiv auktion og tilbudt i åbent swap-tilbud`,
+      doubleSwapMarket
     ),
   };
 
