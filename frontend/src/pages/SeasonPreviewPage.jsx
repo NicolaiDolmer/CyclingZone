@@ -23,7 +23,7 @@ export default function SeasonPreviewPage() {
 
     const [teamsRes, ridersRes, seasonRes] = await Promise.all([
       supabase.from("teams").select("id, name, division, sponsor_income").eq("is_ai", false).eq("is_test_account", false).eq("is_frozen", false).order("division").order("name"),
-      supabase.from("riders").select("id, team_id, uci_points, market_value, prize_earnings_bonus, is_u25, stat_bj, stat_sp, stat_tt, stat_fl").not("team_id", "is", null),
+      supabase.from("riders").select("id, team_id, market_value, is_u25, stat_bj, stat_sp, stat_tt, stat_fl").not("team_id", "is", null),
       supabase.from("seasons").select("*").eq("status", "active").single(),
     ]);
 

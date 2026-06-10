@@ -61,7 +61,7 @@ export default function WatchlistPage() {
     const { data } = await supabase
       .from("rider_watchlist")
       .select(`id, note, created_at,
-        rider:rider_id(id, firstname, lastname, birthdate, uci_points, is_u25,
+        rider:rider_id(id, firstname, lastname, birthdate, market_value, is_u25,
           salary, team_id, nationality_code, prize_earnings_bonus, potentiale, ${STATS.join(", ")},
           team:team_id(id, name))`)
       .eq("user_id", user.id)

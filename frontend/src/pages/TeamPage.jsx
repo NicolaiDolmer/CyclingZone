@@ -465,13 +465,13 @@ export function TeamPage() {
 
     const [ridersRes, pendingRes, finRes, windowRes, loansOutRes, loansInRes] = await Promise.all([
       supabase.from("riders")
-        .select(`id, firstname, lastname, birthdate, uci_points, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, potentiale, ${STATS.join(", ")}`)
+        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, potentiale, ${STATS.join(", ")}`)
         .eq("team_id", myTeam.id)
-        .order("uci_points", { ascending: false }),
+        .order("market_value", { ascending: false }),
       supabase.from("riders")
-        .select(`id, firstname, lastname, birthdate, uci_points, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, potentiale, ${STATS.join(", ")}`)
+        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, potentiale, ${STATS.join(", ")}`)
         .eq("pending_team_id", myTeam.id)
-        .order("uci_points", { ascending: false }),
+        .order("market_value", { ascending: false }),
       supabase.from("finance_transactions")
         .select("*").eq("team_id", myTeam.id)
         .order("created_at", { ascending: false }).limit(100),
@@ -483,7 +483,7 @@ export function TeamPage() {
         .eq("from_team_id", myTeam.id).eq("status", "active"),
       // Riders we're borrowing
       supabase.from("loan_agreements")
-        .select(`rider:rider_id(id, firstname, lastname, birthdate, uci_points, salary, prize_earnings_bonus, is_u25, nationality_code, potentiale, ${STATS.join(", ")}), from_team:from_team_id(name), start_season, end_season, buy_option_price`)
+        .select(`rider:rider_id(id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, nationality_code, potentiale, ${STATS.join(", ")}), from_team:from_team_id(name), start_season, end_season, buy_option_price`)
         .eq("to_team_id", myTeam.id).eq("status", "active"),
     ]);
 

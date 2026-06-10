@@ -38,7 +38,7 @@ export default function TeamProfilePage() {
   const [showOutgoing, setShowOutgoing] = useState(true);
   const [loading, setLoading] = useState(true);
   const [myTeamId, setMyTeamId] = useState(null);
-  const [tableSort, setTableSort] = useState({ key: "uci_points", dir: "desc" });
+  const [tableSort, setTableSort] = useState({ key: "market_value", dir: "desc" });
   const [activeTab, setActiveTab] = useState("squad");
 
   function handleSort(key) {
@@ -54,15 +54,15 @@ export default function TeamProfilePage() {
     const [teamRes, ridersRes, pendingRes, standingRes] = await Promise.all([
       supabase.from("teams").select("*, manager:user_id(last_seen)").eq("id", id).single(),
       supabase.from("riders")
-        .select(`id, firstname, lastname, birthdate, uci_points, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, ${STATS.join(", ")}`)
+        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, ${STATS.join(", ")}`)
         .eq("team_id", id)
-        .order("uci_points", { ascending: false }),
+        .order("market_value", { ascending: false }),
       supabase.from("riders")
         // #922: incoming-ryttere manglede nationality_code (var med for current på
         // linje 57), så NationCell fik undefined → intet flag på "se andet hold"-siden.
-        .select(`id, firstname, lastname, birthdate, uci_points, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, ${STATS.join(", ")}`)
+        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, ${STATS.join(", ")}`)
         .eq("pending_team_id", id)
-        .order("uci_points", { ascending: false }),
+        .order("market_value", { ascending: false }),
       supabase.from("season_standings")
         .select("*").eq("team_id", id)
         .order("updated_at", { ascending: false }).limit(1).single(),
@@ -229,7 +229,7 @@ export default function TeamProfilePage() {
                   <SortTh sortKey="firstname" sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
                     className="px-4 py-3 text-left font-medium uppercase sticky left-0 z-20 bg-cz-card border-r border-cz-border">{t("profile.thRider")}</SortTh>
                   <th className="px-4 py-3 text-left font-medium uppercase hidden sm:table-cell">{t("profile.thBadges")}</th>
-                  <SortTh sortKey="uci_points" sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
+                  <SortTh sortKey="market_value" sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
                     className="px-4 py-3 text-right font-medium">{t("profile.thValue")}</SortTh>
                   {STATS.map((key, i) => (
                     <SortTh key={key} sortKey={key} sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}

@@ -158,7 +158,7 @@ export default function ActivityPage() {
     const [activeRes, completedRes, offersData, loansData, watchlistRes, histLoansRes] = await Promise.all([
       supabase.from("auctions")
         .select(`id, current_price, calculated_end, status, is_guaranteed_sale, seller_team_id, current_bidder_id,
-          rider:rider_id(id, firstname, lastname, uci_points, team_id),
+          rider:rider_id(id, firstname, lastname, market_value, team_id),
           seller:seller_team_id(name), current_bidder:current_bidder_id(name)`)
         .in("status", ["active", "extended"])
         .or(`seller_team_id.eq.${team.id},current_bidder_id.eq.${team.id}`)
@@ -166,7 +166,7 @@ export default function ActivityPage() {
 
       supabase.from("auctions")
         .select(`id, current_price, actual_end, status, is_guaranteed_sale, seller_team_id, current_bidder_id,
-          rider:rider_id(id, firstname, lastname, uci_points, team_id),
+          rider:rider_id(id, firstname, lastname, market_value, team_id),
           seller:seller_team_id(name), winner:current_bidder_id(name)`)
         .eq("status", "completed")
         .or(`seller_team_id.eq.${team.id},current_bidder_id.eq.${team.id}`)
@@ -182,13 +182,13 @@ export default function ActivityPage() {
         .catch(err => { console.warn("activity: loans load failed", err); return { lending: [], borrowing: [] }; }),
 
       supabase.from("rider_watchlist")
-        .select(`id, created_at, rider:rider_id(id, firstname, lastname, uci_points, prize_earnings_bonus, team:team_id(name))`)
+        .select(`id, created_at, rider:rider_id(id, firstname, lastname, market_value, team:team_id(name))`)
         .eq("user_id", user.id)
         .order("created_at", { ascending: false }),
 
       supabase.from("loan_agreements")
         .select(`id, loan_fee, start_season, end_season, status, updated_at,
-          rider:rider_id(id, firstname, lastname, uci_points),
+          rider:rider_id(id, firstname, lastname, market_value),
           from_team:from_team_id(id, name), to_team:to_team_id(id, name)`)
         .in("status", ["rejected", "cancelled", "completed", "buyout"])
         .or(`from_team_id.eq.${team.id},to_team_id.eq.${team.id}`)

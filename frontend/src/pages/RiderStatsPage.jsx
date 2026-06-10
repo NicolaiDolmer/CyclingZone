@@ -202,7 +202,7 @@ function SwapOfferButton({ rider, myTeamId }) {
   async function loadMyRiders() {
     const { data } = await supabase
       .from("riders")
-      .select("id, firstname, lastname, uci_points, prize_earnings_bonus")
+      .select("id, firstname, lastname, market_value")
       .eq("team_id", myTeamId)
       .order("lastname");
     setMyRiders(data || []);
