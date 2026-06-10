@@ -22,6 +22,7 @@ function buildBottomItems(t) {
   return [
     { to: "/profile",     label: t("nav.item.profile") },
     { to: "/help",        label: t("nav.item.help") },
+    { to: "/roadmap",     label: t("nav.item.roadmap") },
     { to: "/patch-notes", label: t("nav.item.patchNotes") },
   ];
 }

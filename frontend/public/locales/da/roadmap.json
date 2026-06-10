@@ -1,0 +1,57 @@
+{
+  "page": {
+    "title": "Roadmap",
+    "subtitle": "Hvor Cycling Zone er på vej hen"
+  },
+  "intro": {
+    "p1": "Jeg bygger Cycling Zone i fuld åbenhed, og du fortjener at se hvor det er på vej hen. Denne side er den retning jeg har forpligtet mig til: fire motorer der tilsammen skaber en levende cykelverden. Ingen faste datoer. Ting udkommer når de er gode nok til at spille, og alt der udkommer lander i Patch Notes.",
+    "fairness": "Én ting ændrer sig aldrig: spillet skal være lige for alle. Du kan ikke betale dig til bedre ryttere, hurtigere træning eller bedre resultater."
+  },
+  "labels": {
+    "today": "Hvor det er i dag",
+    "next": "Hvor det er på vej hen"
+  },
+  "engines": {
+    "races": {
+      "title": "Løb",
+      "today": "En fuld sæsonkalender med planlagte løb, resultater, stillinger, præmiepenge og historik.",
+      "next": [
+        "En løbsmotor bygget til historier: etapedrama du kan følge, diskutere og prale af.",
+        "Mere levende løbsrapporter, på vej mod at følge løb mens de udfolder sig.",
+        "Taktik og rytterform der reelt former udfaldet, uden at skjule hvorfor."
+      ]
+    },
+    "training": {
+      "title": "Træning",
+      "today": "Træningsfokus er live: et sæson-langt fokus og intensitet på dine nøgleryttere, med ægte trade-offs.",
+      "next": [
+        "Rigtig træningsdybde: programmer til den enkelte rytter, ikke kun ét fokus.",
+        "Langsigtet udvikling du kan se og styre, sæson efter sæson.",
+        "Meningsfulde valg med konsekvenser, aldrig regnearks-lektier."
+      ]
+    },
+    "youth": {
+      "title": "Ungdomsudvikling",
+      "today": "Scouting er live: afdæk en rytters skjulte potentiale med begrænsede scout-slots og estimater der er personlige for dit hold.",
+      "next": [
+        "Ungdomsakademier: din egen næste generation der vokser op gennem klubben.",
+        "Unge ryttere du selv opdagede, udviklede og gjorde til dine stjerner.",
+        "Generationsskifte, så din klub har en fremtid ud over den nuværende trup."
+      ]
+    },
+    "market": {
+      "title": "Transfers & auktioner",
+      "today": "Den stærkeste del af spillet lige nu: live-auktioner, autobud, transfers, lån og forhandlinger mellem managers.",
+      "next": [
+        "Deadlineday: et fælles, dramatisk klimaks på hvert transfervindue.",
+        "Dybere forhandling mellem managers.",
+        "Et marked der fortæller historier: rygter, rivaliseringer og store handler hele verden taler om."
+      ]
+    }
+  },
+  "outro": {
+    "title": "Sådan arbejder jeg",
+    "p1": "Cycling Zone er i open beta, og jeg bygger det færdigt. Rækkefølgen kan ændre sig når jeres feedback fortæller mig at noget er vigtigere, ambitionen gør ikke. Vil du påvirke hvad der kommer først, så sig til i Discord eller i spillets feedback. Det virker.",
+    "patchNotesCta": "Se hvad der allerede er udkommet i Patch Notes"
+  }
+}

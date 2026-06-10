@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.16",
+    date: "2026-06-10",
+    label: "Beta",
+    changes: [
+      {
+        category: "New · Roadmap",
+        items: [
+          "EN · New Roadmap page in the sidebar: where Cycling Zone is heading across the four engines (races, training, youth development, transfers & auctions). Direction and ambition, no fixed dates. Refs #1169.",
+          "DA · Ny Roadmap-side i sidebaren: hvor Cycling Zone er på vej hen på tværs af de fire motorer (løb, træning, ungdomsudvikling, transfers & auktioner). Retning og ambition, ingen faste datoer. Refs #1169.",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.15",
     date: "2026-06-10",
     label: "Beta",
