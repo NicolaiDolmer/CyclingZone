@@ -37,7 +37,7 @@ test("setup wizard surfaces an error and re-enables submit when team-create fail
 
   // Tydelig fejl vises — ikke en evig spinner.
   await expect(
-    page.getByText("Kunne ikke nå serveren — tjek din forbindelse og prøv igen")
+    page.getByText("Kunne ikke nå serveren. Tjek din forbindelse og prøv igen.")
   ).toBeVisible();
 
   // Knappen er klikbar igen (saving nulstillet i finally) og viser ikke loading-tekst.

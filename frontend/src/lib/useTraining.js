@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { getSession } from "./supabase";
+import { logEvent } from "./logEvent";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -56,6 +57,8 @@ export function useTraining() {
       if (!res.ok) return { ok: false, error: data.error || "failed" };
       if (data.slots) setSlots(data.slots);
       setPlans((prev) => ({ ...prev, [riderId]: data.plan ?? { focus, intensity } }));
+      // Pillar-event (#1168): trænings-funnellen til go/no-go. Consent-gated i logEvent.
+      logEvent("training_focus_set", { focus, intensity });
       return { ok: true };
     } catch {
       return { ok: false, error: "network" };

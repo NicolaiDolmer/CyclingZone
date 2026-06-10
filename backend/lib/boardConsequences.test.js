@@ -22,6 +22,7 @@ import {
   selectBonusExtraGoal,
   selectForcedListingRider,
 } from "./boardConsequences.js";
+import { STAR_RIDER_MARKET_VALUE } from "./economyConstants.js";
 
 // =====================================================================
 // Constants + helpers
@@ -73,17 +74,18 @@ test("selectForcedListingRider protects popularity >= 70", () => {
 
 test("selectForcedListingRider protects market_value >= STAR_RIDER_MARKET_VALUE (#1205)", () => {
   // Begge over tærsklen → ingen kandidat; lige under tærsklen → vælges.
+  // Referér konstanten (#1210) så re-kalibreringer ikke brækker testen.
   const allStars = selectForcedListingRider([
-    { id: "r-star-1", market_value: 5_000_000, popularity: 30 },
-    { id: "r-star-2", market_value: 8_000_000, popularity: 30 },
+    { id: "r-star-1", market_value: STAR_RIDER_MARKET_VALUE, popularity: 30 },
+    { id: "r-star-2", market_value: STAR_RIDER_MARKET_VALUE * 2, popularity: 30 },
   ]);
   assert.equal(allStars, null, "Roster of only stars must not force-list anyone");
 
   const target = selectForcedListingRider([
-    { id: "r-almost-star", market_value: 4_999_999, popularity: 30 },
-    { id: "r-star", market_value: 5_000_000, popularity: 30 },
+    { id: "r-almost-star", market_value: STAR_RIDER_MARKET_VALUE - 1, popularity: 30 },
+    { id: "r-star", market_value: STAR_RIDER_MARKET_VALUE, popularity: 30 },
   ]);
-  assert.equal(target.id, "r-almost-star", "Boundary: 5M is protected, 4_999_999 is not");
+  assert.equal(target.id, "r-almost-star", "Boundary: threshold is protected, threshold-1 is not");
 });
 
 test("selectForcedListingRider ignores frozen uci_points (#1101 decoupling)", () => {
@@ -97,7 +99,7 @@ test("selectForcedListingRider ignores frozen uci_points (#1101 decoupling)", ()
 test("selectForcedListingRider returns null when all riders are protected", () => {
   const target = selectForcedListingRider([
     { id: "r-1", market_value: 20_000, popularity: 80 },
-    { id: "r-2", market_value: 6_000_000, popularity: 30 },
+    { id: "r-2", market_value: STAR_RIDER_MARKET_VALUE + 1_000_000, popularity: 30 },
   ]);
   assert.equal(target, null);
 });

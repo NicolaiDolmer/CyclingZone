@@ -2,7 +2,7 @@
 
 const PATCHES = [
   {
-    version: "5.16",
+    version: "5.18",
     date: "2026-06-10",
     label: "Beta",
     changes: [
@@ -11,6 +11,20 @@ const PATCHES = [
         items: [
           "EN · New Roadmap page in the sidebar: where Cycling Zone is heading across the four engines (races, training, youth development, transfers & auctions). Direction and ambition, no fixed dates. Refs #1169.",
           "DA · Ny Roadmap-side i sidebaren: hvor Cycling Zone er på vej hen på tværs af de fire motorer (løb, træning, ungdomsudvikling, transfers & auktioner). Retning og ambition, ingen faste datoer. Refs #1169.",
+        ],
+      },
+    ],
+  },
+  {
+    version: "5.17",
+    date: "2026-06-10",
+    label: "Beta",
+    changes: [
+      {
+        category: "Balance · Star riders",
+        items: [
+          "EN · A star rider is now a rider valued at 8,000,000 CZ$ or more (was 5,000,000). The threshold is recalibrated to the new rider generation so roughly the top 1.5% count as stars. Stars are protected from the board's forced sale, and the Star team achievement follows the new amount.",
+          "DA · En stjernerytter er nu en rytter med en værdi på mindst 8.000.000 CZ$ (før 5.000.000). Grænsen er re-kalibreret til den nye rytter-generation, så cirka top 1,5 % tæller som stjerner. Stjerner er beskyttet mod bestyrelsens tvangssalg, og Stjernehold-achievementet følger det nye beløb.",
         ],
       },
     ],

@@ -101,7 +101,10 @@ function Test-CiStatus {
     return @{ Done = $false; Ok = $false; Message = "$($unfinished.Count) workflow(s) koerer stadig" }
   }
 
-  $failed = @($matching | Where-Object { $_.conclusion -ne "success" })
+  # #1212: kun reelle fejl taeller. 'skipped' (fx claude-mention-workflowet paa
+  # ikke-mention-events) og 'neutral' er normale, ikke deploy-blokkere.
+  $failureConclusions = @("failure", "timed_out", "cancelled", "startup_failure")
+  $failed = @($matching | Where-Object { $_.conclusion -in $failureConclusions })
   if ($failed.Count -gt 0) {
     $names = ($failed | ForEach-Object { "$($_.name):$($_.conclusion)" }) -join ", "
     return @{ Done = $true; Ok = $false; Message = $names }
@@ -253,14 +256,17 @@ if ($normalizedResolvedRoot -ne $script:RepoRoot) {
 }
 
 $script:GitHub = Get-GitHubRepo
-if (-not $Sha) {
-  $Sha = Invoke-Git @("rev-parse", "HEAD")
-}
-$script:Sha = (Invoke-Git @("rev-parse", $Sha)).Trim()
-
 $originMain = (Invoke-Git @("ls-remote", "origin", "refs/heads/main")).Split("`t")[0]
-if ($originMain -ne $script:Sha) {
-  throw "HEAD/Sha $($script:Sha.Substring(0, 7)) er ikke origin/main ($($originMain.Substring(0, 7))). Push foerst, eller angiv den sha der faktisk er deployet fra main."
+
+if (-not $Sha) {
+  # #1212: default til origin/main, ikke HEAD — saa post-merge-verify kan koere
+  # mens en feature-branch er checked out (multi-iterations-loop).
+  $script:Sha = $originMain
+} else {
+  $script:Sha = (Invoke-Git @("rev-parse", $Sha)).Trim()
+  if ($originMain -ne $script:Sha) {
+    throw "Angivet Sha $($script:Sha.Substring(0, 7)) er ikke origin/main ($($originMain.Substring(0, 7))). Push foerst, eller angiv den sha der faktisk er deployet fra main."
+  }
 }
 
 Write-Host "Verificerer deploy for $($script:GitHub.FullName)@$($script:Sha.Substring(0, 7))"
