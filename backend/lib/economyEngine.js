@@ -1006,6 +1006,14 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
     let replacementInfo = null;
     if (planIsComplete) {
       // Plan expired — reset for re-negotiation
+      // #1236 · Rul plan-vinduet frem til den nye cyklus. Uden dette pegede
+      // plan_start_season_number stadig på den udløbne plans start-sæson, så
+      // /board/status' snapshot-filter (season_number >= plan_start_season_number)
+      // talte forrige cyklus' sæsoner med i den nye plan. Den nye cyklus kører
+      // tidligst fra næste sæson (sæson-transition er altid number+1) —
+      // /board/sign og boardAutoAccept overskriver med den faktiske aktive
+      // sæson ved signering. En plan der stadig KØRER (else-branchen nedenfor)
+      // beholder sin oprindelige start-sæson.
       const { error: boardUpdateError } = await supabaseClient.from("board_profiles").update({
         satisfaction: newSatisfaction,
         budget_modifier: newModifier,
@@ -1013,6 +1021,8 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
         seasons_completed: 0,
         cumulative_stage_wins: 0,
         cumulative_gc_wins: 0,
+        plan_start_season_number: currentSeasonNumber + 1,
+        plan_end_season_number: currentSeasonNumber + planDuration,
         updated_at: new Date().toISOString(),
       }).eq("id", board.id);
       throwIfSupabaseError(boardUpdateError, `Could not update completed board plan for ${team.name}`);
