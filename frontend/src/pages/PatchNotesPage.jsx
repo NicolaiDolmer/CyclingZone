@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.15",
+    date: "2026-06-10",
+    label: "Beta",
+    changes: [
+      {
+        category: "Improved · Help & FAQ",
+        items: [
+          "EN · The Help page now explains Training focus: how to set a season-long focus and intensity on your own riders, the 3 focus slots per season, and the setback risk at higher intensity. A new FAQ answers \"How do I train a rider?\". Outdated references to the old weekly data syncs in the rider development texts are rewritten, and the prize table disclaimer no longer points at season 1. Refs #1171.",
+          "DA · Hjælp-siden forklarer nu Træningsfokus: hvordan du sætter et sæson-langt fokus og intensitet på dine egne ryttere, de 3 fokus-slots pr. sæson, og risikoen for tilbageslag ved højere intensitet. En ny FAQ svarer på \"Hvordan træner jeg en rytter?\". Forældede referencer til de gamle ugentlige data-syncs i rytterudviklings-teksterne er omskrevet, og præmietabellens forbehold peger ikke længere på sæson 1. Refs #1171.",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.14",
     date: "2026-06-10",
     label: "Beta",

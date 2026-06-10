@@ -398,7 +398,7 @@
         "text": "Under Sæson & Resultater, Løb, Point & præmier finder du alle løbsklassers komplette point- og præmieskala med alle pladser.",
         "ctaLabel": "Åbn Point & præmier →",
         "ctaTo": "/races?tab=points",
-        "disclaimer": "Præmiebeløb kan justeres frem til sæson 1 afsluttes."
+        "disclaimer": "Præmiebeløb kan stadig justeres i løbet af den åbne beta."
       }
     },
     "divisions": {
@@ -437,7 +437,11 @@
       },
       "development": {
         "title": "Udvikling over tid",
-        "text": "På en rytters statistikside ligger fanen 'Udvikling'. Her kan du vælge en af de 14 stats, følge stat-udviklingen som graf og se de seneste historiske datapunkter. Hvis fanen er tom, er der endnu ikke opsamlet historik fra de ugentlige syncs."
+        "text": "På en rytters statistikside ligger fanen 'Udvikling'. Her kan du vælge en af de 14 stats, følge stat-udviklingen som graf og se de seneste historiske datapunkter. Nye datapunkter kommer til når ryttere udvikler sig, fx ved sæsonskifte. Hvis fanen er tom, har rytteren endnu ingen registreret udvikling."
+      },
+      "trainingFocus": {
+        "title": "Træningsfokus",
+        "text": "Fra profilen på en af dine egne ryttere kan du sætte et sæson-langt træningsfokus: en retning (VO2max, Tærskel/TT, Spurt, Udholdenhed, Teknik eller Aero) plus en intensitet. De trænede evner udvikler sig så hurtigere mod deres loft, og det slår igennem ved næste sæsonskifte. Højere intensitet træner hurtigere, men har en risiko for tilbageslag (tabt fremgang): Let er sikker, Normal har en lille risiko, Hård en tydelig. Andre evner vokser en anelse langsommere mens et fokus er aktivt. Du har 3 fokus-slots pr. sæson, så vælg dine nøgleryttere; at ændre et eksisterende fokus koster intet. Træning er gratis og koster ikke penge."
       },
       "scouting": {
         "title": "Scouting af potentiale",
@@ -550,7 +554,11 @@
     },
     "riderDevelopment": {
       "q": "Hvor kan jeg se om en rytter udvikler sig?",
-      "a": "Åbn rytterens statistikside og vælg fanen 'Udvikling'. Den viser en valgbar graf for hver stat og de seneste datapunkter fra sync-historikken."
+      "a": "Åbn rytterens statistikside og vælg fanen 'Udvikling'. Den viser en valgbar graf for hver stat og rytterens registrerede udvikling over tid."
+    },
+    "trainingFocusFaq": {
+      "q": "Hvordan træner jeg en rytter?",
+      "a": "Åbn en af dine egne ryttere og sæt et træningsfokus under 'Træningsfokus' på profilen: vælg en retning og en intensitet. De trænede evner udvikler sig hurtigere mod deres loft ved næste sæsonskifte. Du har 3 fokus-slots pr. sæson. Højere intensitet træner hurtigere men risikerer et tilbageslag; at ændre et eksisterende fokus koster intet, og træning er gratis."
     },
     "salaryShortfall": {
       "q": "Hvad sker der hvis jeg ikke kan betale lønninger?",
