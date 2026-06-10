@@ -1,0 +1,30 @@
+import { getRiderMarketValue } from "./marketValues.js";
+
+/**
+ * riderTableSort — delt sorteringslogik for rytter-tabeller uden fuld
+ * filter-pipeline (fx TeamProfilePage's trup-tabel).
+ *
+ * #1092: Værdi-kolonnen VISER getRiderMarketValue(r) — sortering skal bruge
+ * præcis samme udledte værdi, ikke en rå kolonne. "Mit Hold" gør det allerede
+ * rigtigt via useRiderFilters (sort === "value" → getRiderMarketValue); før
+ * #1101-cutover sorterede TeamProfilePage på den frosne uci_points og gav
+ * forkert rækkefølge. Generisk `r[key] || 0` må ikke bruges til værdi-kolonnen.
+ */
+export function sortRidersForTable(riders, { key, dir } = {}) {
+  return [...riders].sort((a, b) => {
+    if (key === "firstname") {
+      const an = `${a.lastname} ${a.firstname}`.toLowerCase();
+      const bn = `${b.lastname} ${b.firstname}`.toLowerCase();
+      return dir === "desc" ? bn.localeCompare(an) : an.localeCompare(bn);
+    }
+    let av, bv;
+    if (key === "market_value") {
+      av = getRiderMarketValue(a);
+      bv = getRiderMarketValue(b);
+    } else {
+      av = a[key] || 0;
+      bv = b[key] || 0;
+    }
+    return dir === "desc" ? bv - av : av - bv;
+  });
+}

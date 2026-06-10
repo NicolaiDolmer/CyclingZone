@@ -9,6 +9,7 @@ import RiderBadges from "../components/rider/RiderBadges";
 import { ageBadgeKey } from "../lib/riderAge";
 import OnlineBadge from "../components/OnlineBadge";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
+import { sortRidersForTable } from "../lib/riderTableSort";
 import { formatNumber } from "../lib/intl";
 import TeamTransferHistoryTab from "../components/TeamTransferHistoryTab";
 
@@ -96,20 +97,13 @@ export default function TeamProfilePage() {
   const outgoingRiders = riders.filter(r => r._isOutgoing);
   const isMyTeam = team.id === myTeamId;
 
-  const displayRiders = [
+  // #1092: sortér værdi-kolonnen på den VISTE værdi (getRiderMarketValue),
+  // som "Mit Hold" gør — aldrig på en rå/frossen kolonne direkte.
+  const displayRiders = sortRidersForTable([
     ...riders.filter(r => !r._isIncoming && !r._isOutgoing),
     ...(showIncoming ? incomingRiders : []),
     ...(showOutgoing ? outgoingRiders : []),
-  ].sort((a, b) => {
-    if (tableSort.key === "firstname") {
-      const an = `${a.lastname} ${a.firstname}`.toLowerCase();
-      const bn = `${b.lastname} ${b.firstname}`.toLowerCase();
-      return tableSort.dir === "desc" ? bn.localeCompare(an) : an.localeCompare(bn);
-    }
-    const av = a[tableSort.key] || 0;
-    const bv = b[tableSort.key] || 0;
-    return tableSort.dir === "desc" ? bv - av : av - bv;
-  });
+  ], tableSort);
 
   const hasTransfers = incomingRiders.length > 0 || outgoingRiders.length > 0;
   const totalValue = currentRiders.reduce((s, r) => s + getRiderMarketValue(r), 0);
