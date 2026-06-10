@@ -327,6 +327,26 @@
       "errorPrefix": "❌"
     }
   },
+  "sellRider": {
+    "buttonOpen": "↔ Sæt til salg",
+    "description": "Sæt rytteren til salg med fast pris på transferlisten. Du kan til enhver tid redigere prisen eller fjerne listingen.",
+    "pricePlaceholder": "Pris i CZ$",
+    "submit": "Sæt til salg",
+    "submitUpdate": "Opdatér pris",
+    "sending": "Gemmer...",
+    "listedStatus": "På transferlisten for {amount} CZ$",
+    "editPrice": "Redigér pris",
+    "hideEdit": "Skjul",
+    "remove": "Fjern fra listen",
+    "confirmRemove": "Ja, fjern",
+    "cancel": "Annullér",
+    "toast": {
+      "listed": "✅ Sat på transferlisten!",
+      "priceUpdated": "✅ Pris opdateret",
+      "removed": "✅ Fjernet fra transferlisten",
+      "errorPrefix": "❌"
+    }
+  },
   "swapOffer": {
     "buttonOpen": "⇄ Foreslå byttehandel",
     "windowClosed": "Transfervindue lukket",
