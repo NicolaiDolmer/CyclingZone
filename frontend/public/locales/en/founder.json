@@ -127,5 +127,97 @@
   ],
   "footerPrivacy": "Privacy policy",
   "footerBack": "← Back to Cycling Zone",
-  "footerSprintRef": "Refs #361/#362/#363. Foundation #359."
+  "footerSprintRef": "Refs #361/#362/#363. Foundation #359.",
+  "form": {
+    "contactLegend": "How we contact you",
+    "contactHelp": "At least one of the fields below must be filled.",
+    "emailLabel": "Email",
+    "emailPlaceholder": "you@email.com",
+    "discordLabel": "Discord handle (optional)",
+    "discordPlaceholder": "e.g. nicolai.dolmer",
+    "interestLegend": "How interested are you?",
+    "tierLegend": "Which tier would suit you?",
+    "tierHelp": "I'm testing different price points, your answer is not binding.",
+    "benefitsLegend": "What would matter to you? (optional)",
+    "benefitsHelp": "Pick as many as apply.",
+    "mainReasonLabel": "What's the main reason you're considering backing the project? (optional)",
+    "mainReasonPlaceholder": "Write a few sentences...",
+    "fairnessLabel": "Anything that would make you say no? (optional)",
+    "fairnessPlaceholder": "e.g. pay-to-win mechanics, unfair systems...",
+    "countryLabel": "Where do you live?",
+    "followUpConsent": "It's OK to contact me with up to 2 follow-up questions (interview / short survey). This is optional.",
+    "gdprBefore": "I have read and accept the ",
+    "gdprLink": "privacy policy",
+    "gdprAfter": " and consent to storing my email + Discord handle for the purpose stated above.",
+    "privacyPath": "/privacy-policy",
+    "submit": "Join the Founder waitlist",
+    "submitLoading": "Sending...",
+    "submitDisclaimer": "We don't spam and never share your info. You can always email us to be removed.",
+    "priceVariantPrefix": "Price variant:",
+    "honeypotLabel": "Leave this field empty",
+    "successTitle": "You're on the list!",
+    "successBody": "Thanks for joining early. We'll email when premium opens, and before that if we have questions about what you think.",
+    "successNextTitle": "Next steps:",
+    "successNext": [
+      { "text": "Join our Discord when the invite link is ready (see ", "link": { "href": "https://github.com/NicolaiDolmer/CyclingZone/issues/415", "text": "#415" }, "suffix": ")" },
+      { "text": "Follow patch notes for progress" },
+      { "text": "Check your inbox the next few days" }
+    ],
+    "successFooterRefs": "Refs #362. You can always email ",
+    "interestOptions": {
+      "very": "Very interested, want to be there from the start",
+      "maybe": "Maybe, depends on price and content",
+      "unsure": "Unsure, want to know more first"
+    },
+    "tierOptions": {
+      "supporter_monthly": { "label": "Premium monthly", "sub": "{price}/mo, back the project and unlock founder badge" },
+      "supporter_annual": { "label": "Premium annual", "sub": "{price}/yr, same as monthly + 2 months free" },
+      "pro_analyst_monthly": { "label": "Pro Analyst monthly", "sub": "{price}/mo, Premium + advanced tactical analysis" },
+      "free_only": { "label": "Free only", "sub": "I will play for free, not pay" }
+    },
+    "benefitOptions": {
+      "founder_badge": "Founder badge on profile",
+      "early_pricing": "Lock early-bird pricing for the future",
+      "dev_dialog": "Direct dialog with developer (Discord/DM)",
+      "beta_features": "Early access to new features",
+      "tactical_analysis": "Advanced tactical insights",
+      "income_breakdown": "Detailed income statistics",
+      "ad_free": "Ad-free experience",
+      "support_project": "Just to back the project"
+    },
+    "countryOptions": {
+      "DK": "Denmark",
+      "NO": "Norway",
+      "SE": "Sweden",
+      "DE": "Germany",
+      "NL": "Netherlands",
+      "BE": "Belgium",
+      "FR": "France",
+      "IT": "Italy",
+      "ES": "Spain",
+      "GB": "United Kingdom",
+      "IE": "Ireland",
+      "PL": "Poland",
+      "CH": "Switzerland",
+      "AT": "Austria",
+      "US": "USA",
+      "OTHER": "Other country"
+    },
+    "errors": {
+      "contact": "Please enter at least an email or Discord handle",
+      "email": "Invalid email address",
+      "discordHandle": "Invalid Discord handle (e.g. nicolai.dolmer or Name#1234)",
+      "interestLevel": "Pick your interest level",
+      "preferredTier": "Pick a tier",
+      "country": "Invalid country",
+      "valuedBenefits": "Unknown benefit selected",
+      "gdprConsent": "You must accept the privacy policy to continue"
+    },
+    "insertErrors": {
+      "duplicate": "You're already on the list. Check your inbox (and spam) for our first email.",
+      "rls": "Access denied. Reload the page and try again. Contact support if the problem persists.",
+      "network": "Couldn't reach the server. Check your connection and try again.",
+      "unknown": "Something went wrong. Try again in a moment."
+    }
+  }
 }

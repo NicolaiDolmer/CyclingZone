@@ -309,158 +309,93 @@ export function generateBoardGoals({
   }));
 }
 
+// #1234 · Returnerer den forhandlede (lempede) variant af et mål — eller NULL
+// når målet ikke reelt kan lempes. Før kunne binære/minimums-mål
+// (no_outstanding_debt, monument_podium/signature_rider på target=1, samt alle
+// typer hvis relax-formel rammer sit gulv) "forhandles" til et IDENTISK target
+// med halveret satisfaction_penalty — en gratis no-op-rabat. Null betyder:
+// ingen negotiation-option i forslaget (frontend disabler knappen, #864),
+// finalizeBoardGoals falder tilbage til originalen, og
+// inferNegotiationIndexesFromGoals afviser payloads der påstår forhandling.
 export function buildNegotiatedGoal(goal) {
   const enrichedGoal = addGoalMetadata(goal);
+  const relaxed = relaxGoalTarget(enrichedGoal);
 
+  // Ingen reel lempelse mulig → ingen forhandlings-option.
+  if (!relaxed || relaxed.target === enrichedGoal.target) return null;
+
+  return addGoalMetadata({
+    ...enrichedGoal,
+    target: relaxed.target,
+    label: relaxed.label,
+    satisfaction_penalty: Math.round(enrichedGoal.satisfaction_penalty * 0.5),
+    negotiated: true,
+  });
+}
+
+// Beregner det lempede target pr. mål-type. Returnerer null for typer der
+// aldrig kan lempes (binære mål + ukendte typer). Et target identisk med
+// originalen (relax-formlen ramte sit gulv) filtreres af buildNegotiatedGoal.
+function relaxGoalTarget(enrichedGoal) {
   switch (enrichedGoal.type) {
     case "top_n_finish": {
       const target = enrichedGoal.target + 2;
-      return addGoalMetadata({
-        ...enrichedGoal,
-        target,
-        label: `Top ${target} i divisionen`,
-        satisfaction_penalty: Math.round(enrichedGoal.satisfaction_penalty * 0.5),
-        negotiated: true,
-      });
+      return { target, label: `Top ${target} i divisionen` };
     }
     case "stage_wins": {
       const target = Math.max(1, enrichedGoal.target - 1);
-      return addGoalMetadata({
-        ...enrichedGoal,
+      return {
         target,
         label: enrichedGoal.cumulative
           ? `Mindst ${target} etapesejre over planperioden`
           : `Mindst ${target} etapesejr${target !== 1 ? "er" : ""}`,
-        satisfaction_penalty: Math.round(enrichedGoal.satisfaction_penalty * 0.5),
-        negotiated: true,
-      });
+      };
     }
     case "gc_wins": {
       const target = Math.max(1, enrichedGoal.target - 1);
-      return addGoalMetadata({
-        ...enrichedGoal,
+      return {
         target,
         label: enrichedGoal.cumulative
           ? `Mindst ${target} samlede sejre over planperioden`
           : `Mindst ${target} samlet sejr`,
-        satisfaction_penalty: Math.round(enrichedGoal.satisfaction_penalty * 0.5),
-        negotiated: true,
-      });
+      };
     }
     case "min_u25_riders": {
       const target = Math.max(1, enrichedGoal.target - 1);
-      return addGoalMetadata({
-        ...enrichedGoal,
-        target,
-        label: `Min. ${target} U25-ryttere pa holdet`,
-        satisfaction_penalty: Math.round(enrichedGoal.satisfaction_penalty * 0.5),
-        negotiated: true,
-      });
+      return { target, label: `Min. ${target} U25-ryttere pa holdet` };
     }
     case "min_national_riders": {
       const target = Math.max(2, enrichedGoal.target - 1);
-      return addGoalMetadata({
-        ...enrichedGoal,
-        target,
-        label: buildGoalLabel({ ...enrichedGoal, target }),
-        satisfaction_penalty: Math.round(enrichedGoal.satisfaction_penalty * 0.5),
-        negotiated: true,
-      });
+      return { target, label: buildGoalLabel({ ...enrichedGoal, target }) };
     }
     case "min_riders": {
       const target = Math.max(enrichedGoal.min_target ?? 5, enrichedGoal.target - 3);
-      return addGoalMetadata({
-        ...enrichedGoal,
-        target,
-        label: `Hold pa min. ${target} ryttere`,
-        satisfaction_penalty: Math.round(enrichedGoal.satisfaction_penalty * 0.5),
-        negotiated: true,
-      });
+      return { target, label: `Hold pa min. ${target} ryttere` };
     }
     case "sponsor_growth": {
       const target = Math.max(5, enrichedGoal.target - 5);
-      return addGoalMetadata({
-        ...enrichedGoal,
-        target,
-        label: `Sponsor-indkomst vokset med ${target}%`,
-        satisfaction_penalty: Math.round(enrichedGoal.satisfaction_penalty * 0.5),
-        negotiated: true,
-      });
+      return { target, label: `Sponsor-indkomst vokset med ${target}%` };
     }
-    // S-02d · 7 nye mål-typer
-    case "monument_podium": {
-      // Allerede minimum (1) — kan ikke lempes på target. Kun penalty halveres.
-      return addGoalMetadata({
-        ...enrichedGoal,
-        satisfaction_penalty: Math.round(enrichedGoal.satisfaction_penalty * 0.5),
-        negotiated: true,
-      });
-    }
-    case "jersey_wins": {
+    // S-02d · 7 nye mål-typer. monument_podium/signature_rider lempes på target
+    // når target > 1; på minimum (1) er der intet at forhandle → null via guard.
+    case "monument_podium":
+    case "signature_rider":
+    case "jersey_wins":
+    case "u25_development_delta":
+    case "relative_rank":
+    case "domestic_dominance": {
       const target = Math.max(1, enrichedGoal.target - 1);
-      return addGoalMetadata({
-        ...enrichedGoal,
-        target,
-        label: buildGoalLabel({ ...enrichedGoal, target }),
-        satisfaction_penalty: Math.round(enrichedGoal.satisfaction_penalty * 0.5),
-        negotiated: true,
-      });
-    }
-    case "signature_rider": {
-      // target=1 er minimum — kan ikke lempes mere
-      return addGoalMetadata({
-        ...enrichedGoal,
-        satisfaction_penalty: Math.round(enrichedGoal.satisfaction_penalty * 0.5),
-        negotiated: true,
-      });
+      return { target, label: buildGoalLabel({ ...enrichedGoal, target }) };
     }
     case "profitable_transfers": {
       const target = Math.max(50_000, enrichedGoal.target - 50_000);
-      return addGoalMetadata({
-        ...enrichedGoal,
-        target,
-        label: buildGoalLabel({ ...enrichedGoal, target }),
-        satisfaction_penalty: Math.round(enrichedGoal.satisfaction_penalty * 0.5),
-        negotiated: true,
-      });
+      return { target, label: buildGoalLabel({ ...enrichedGoal, target }) };
     }
-    case "u25_development_delta": {
-      const target = Math.max(1, enrichedGoal.target - 1);
-      return addGoalMetadata({
-        ...enrichedGoal,
-        target,
-        label: buildGoalLabel({ ...enrichedGoal, target }),
-        satisfaction_penalty: Math.round(enrichedGoal.satisfaction_penalty * 0.5),
-        negotiated: true,
-      });
-    }
-    case "relative_rank": {
-      const target = Math.max(1, enrichedGoal.target - 1);
-      return addGoalMetadata({
-        ...enrichedGoal,
-        target,
-        label: buildGoalLabel({ ...enrichedGoal, target }),
-        satisfaction_penalty: Math.round(enrichedGoal.satisfaction_penalty * 0.5),
-        negotiated: true,
-      });
-    }
-    case "domestic_dominance": {
-      const target = Math.max(1, enrichedGoal.target - 1);
-      return addGoalMetadata({
-        ...enrichedGoal,
-        target,
-        label: buildGoalLabel({ ...enrichedGoal, target }),
-        satisfaction_penalty: Math.round(enrichedGoal.satisfaction_penalty * 0.5),
-        negotiated: true,
-      });
-    }
+    // Binære mål (target er allerede absolut minimum) + ukendte typer:
+    // intet meningsfuldt at lempe.
     case "no_outstanding_debt":
     default:
-      return addGoalMetadata({
-        ...enrichedGoal,
-        satisfaction_penalty: Math.round(enrichedGoal.satisfaction_penalty * 0.5),
-        negotiated: true,
-      });
+      return null;
   }
 }
 
@@ -743,8 +678,14 @@ export function finalizeBoardGoals({ goals = [], negotiationIndexes = [] } = {})
       .filter((value) => Number.isInteger(value) && value >= 0)
   );
 
+  // #1234 · buildNegotiatedGoal returnerer null for mål uden reel lempelse.
+  // Fallback til originalen, så et råt negotiations-index fra klienten (POST
+  // /board/sign accepterer indexes direkte) aldrig kan udmønte sig i en
+  // halveret penalty uden et reelt lempet target.
   return goals.map((goal, index) => (
-    selectedIndexes.has(index) ? buildNegotiatedGoal(goal) : addGoalMetadata({ ...goal })
+    selectedIndexes.has(index)
+      ? (buildNegotiatedGoal(goal) ?? addGoalMetadata({ ...goal }))
+      : addGoalMetadata({ ...goal })
   ));
 }
 
@@ -762,13 +703,24 @@ export function inferNegotiationIndexesFromGoals({
   submittedGoals.forEach((submittedGoal, index) => {
     const normalizedSubmitted = normalizeComparableGoal(submittedGoal);
     const normalizedGoal = normalizeComparableGoal(goals[index]);
-    const normalizedNegotiation = normalizeComparableGoal(negotiationOptions[index]);
 
     if (JSON.stringify(normalizedSubmitted) === JSON.stringify(normalizedGoal)) return;
 
-    if (JSON.stringify(normalizedSubmitted) === JSON.stringify(normalizedNegotiation)) {
-      selectedIndexes.push(index);
-      return;
+    // #1234 · Mål uden reel lempelse har ingen negotiation-option (null) — et
+    // submitted goal der afviger fra originalen kan derfor aldrig matches her.
+    // Guard mod option ≡ original (no-op-rabat) er defensiv: strukturelt
+    // umulig efter buildNegotiatedGoal-fixet, men beskytter mod regressioner.
+    const negotiationOption = negotiationOptions[index];
+    if (negotiationOption) {
+      const normalizedNegotiation = normalizeComparableGoal(negotiationOption);
+      const negotiationIsRealChange =
+        JSON.stringify(normalizedNegotiation) !== JSON.stringify(normalizedGoal);
+
+      if (negotiationIsRealChange
+        && JSON.stringify(normalizedSubmitted) === JSON.stringify(normalizedNegotiation)) {
+        selectedIndexes.push(index);
+        return;
+      }
     }
 
     throw new Error(`Invalid goal payload at index ${index}`);
@@ -819,10 +771,17 @@ export function evaluateGoal(goal, standing, team, context = {}) {
       if (!planStartSponsorIncome || planStartSponsorIncome === 0) return null;
       return ((currentSponsorIncome - planStartSponsorIncome) / planStartSponsorIncome * 100) >= enrichedGoal.target;
     // S-02d · 7 nye mål-typer
-    case "monument_podium":
-      // Cumulative over plan-perioden (Q-A) — minst N podie-placeringer i Monuments
-      if (cumulativeMonumentPodiums == null) return null;
-      return cumulativeMonumentPodiums >= enrichedGoal.target;
+    case "monument_podium": {
+      // Cumulative over plan-perioden (Q-A) — mindst N podie-placeringer.
+      // #1238 · race_scope "classics" (klassiker-orienterede boards, fx
+      // italiensk_klassiker-DNA) tæller hele klassiker-kategorien (Monuments ⊂
+      // klassikere, kanonisk mapping i boardConstants.js); default er Monuments.
+      const podiums = enrichedGoal.race_scope === "classics"
+        ? context.cumulativeClassicPodiums
+        : cumulativeMonumentPodiums;
+      if (podiums == null) return null;
+      return podiums >= enrichedGoal.target;
+    }
     case "jersey_wins":
       // Cumulative for 3yr/5yr (Q-B), per-sæson for 1yr
       if (enrichedGoal.cumulative) {
@@ -1040,7 +999,10 @@ export function evaluateGoalProgress(goal, standing, team, context = {}) {
     }
     // S-02d · 7 nye mål-typer
     case "monument_podium": {
-      const cum = context.cumulativeMonumentPodiums;
+      // #1238 · race_scope "classics" læser klassiker-optællingen (se evaluateGoal).
+      const cum = enrichedGoal.race_scope === "classics"
+        ? context.cumulativeClassicPodiums
+        : context.cumulativeMonumentPodiums;
       if (cum == null) {
         missingData = true;
         score = 0.6;
@@ -1191,7 +1153,9 @@ export function addGoalMetadata(goal = {}) {
 }
 
 export function normalizeComparableGoal(goal) {
-  const enrichedGoal = addGoalMetadata(goal);
+  // Null-safe (#1234): negotiation_options kan nu indeholde null for mål uden
+  // reel lempelse, og et malformet payload må ikke kunne vælte sammenligningen.
+  const enrichedGoal = goal == null ? null : addGoalMetadata(goal);
   return {
     type: enrichedGoal?.type ?? null,
     target: enrichedGoal?.target ?? null,
@@ -1203,6 +1167,7 @@ export function normalizeComparableGoal(goal) {
     satisfaction_bonus: enrichedGoal?.satisfaction_bonus ?? 0,
     satisfaction_penalty: enrichedGoal?.satisfaction_penalty ?? 0,
     nationality_code: enrichedGoal?.nationality_code ?? null,
+    race_scope: enrichedGoal?.race_scope ?? null,
     negotiated: Boolean(enrichedGoal?.negotiated),
   };
 }
@@ -1237,6 +1202,12 @@ export function buildGoalLabel(goal = {}) {
       return "Ingen udestaende gaeld ved saesonslut";
     // S-02d · 7 nye mål-typer
     case "monument_podium":
+      // #1238 · race_scope "classics" dækker alle WT-endagsløb (inkl. Monuments).
+      if (goal.race_scope === "classics") {
+        return goal.cumulative
+          ? `Mindst ${goal.target} podie-placering${goal.target !== 1 ? "er" : ""} i klassikere (inkl. Monuments) over planperioden`
+          : `Top-3 i mindst ${goal.target} klassiker-loeb (inkl. Monuments)`;
+      }
       return goal.cumulative
         ? `Mindst ${goal.target} podie-placering${goal.target !== 1 ? "er" : ""} i Monuments-loeb over planperioden`
         : `Top-3 i mindst ${goal.target} Monuments-loeb`;

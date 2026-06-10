@@ -387,6 +387,35 @@ test("lower_results_pressure: stærk stjerne-profil giver kun delvis lettelse ud
   assert.ok(["partial", "tradeoff"].includes(result.outcome));
 });
 
+test("#1234 · lower_results_pressure: mål på sit gulv lempes ikke og får ingen penalty-rabat", () => {
+  const result = resolveBoardRequest({
+    board: readyBoard({
+      current_goals: [
+        { type: "top_n_finish", target: 10, label: "Top 10 i divisionen", satisfaction_bonus: 10, satisfaction_penalty: 10 },
+        // results-mål på absolut minimum — buildNegotiatedGoal returnerer null.
+        // Før #1234 blev det "lempet" til samme target med halveret penalty.
+        { type: "stage_wins", target: 1, label: "Mindst 1 etapesejr", satisfaction_bonus: 8, satisfaction_penalty: 8 },
+        { type: "min_u25_riders", target: 3, label: "Mindst 3 U25-ryttere", satisfaction_bonus: 6, satisfaction_penalty: 6 },
+        { type: "no_outstanding_debt", label: "Ingen udestaaende gaeld", satisfaction_bonus: 5, satisfaction_penalty: 5 },
+      ],
+    }),
+    requestType: "lower_results_pressure",
+    team: STRONG_TEAM,
+    standing: STRONG_STANDING,
+    context: openContext(),
+  });
+
+  // Kun ranking-målet kan reelt lempes → 1 relaxed → partial (ikke tradeoff)
+  assert.equal(result.outcome, "partial");
+  assert.equal(result.goal_changes.filter((c) => c.kind === "relaxed").length, 1);
+
+  // stage_wins-målet står helt uændret: samme target, FULD penalty, ikke negotiated
+  const stageGoal = result.updated_board.current_goals.find((g) => g.type === "stage_wins");
+  assert.equal(stageGoal.target, 1);
+  assert.equal(stageGoal.satisfaction_penalty, 8);
+  assert.equal(Boolean(stageGoal.negotiated), false);
+});
+
 // =====================================================================
 // resolveBoardRequest — more_youth_focus
 // =====================================================================

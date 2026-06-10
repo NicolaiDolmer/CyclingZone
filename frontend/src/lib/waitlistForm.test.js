@@ -133,20 +133,22 @@ test("validateForm — ugyldig email vises selv hvis Discord også sat", () => {
   assert.equal(result.errors._contact, undefined); // contact requirement opfyldt via discord
 });
 
-test("validateForm — lang=en returnerer engelske fejl-beskeder", () => {
-  const state = { ...INITIAL_STATE };
-  const result = validateForm(state, "en");
-  assert.equal(result.ok, false);
-  assert.match(result.errors._contact, /email or Discord/i);
-  assert.match(result.errors.interest_level, /interest level/i);
-  assert.match(result.errors.gdpr_consent, /privacy policy/i);
-});
-
-test("validateForm — default lang er da (backwards-compat)", () => {
+test("validateForm — uden t returneres rå locale-keys (founder.form.errors.*)", () => {
   const state = { ...INITIAL_STATE };
   const result = validateForm(state);
   assert.equal(result.ok, false);
-  assert.match(result.errors._contact, /email eller Discord/i);
+  assert.equal(result.errors._contact, "form.errors.contact");
+  assert.equal(result.errors.interest_level, "form.errors.interestLevel");
+  assert.equal(result.errors.preferred_tier, "form.errors.preferredTier");
+  assert.equal(result.errors.gdpr_consent, "form.errors.gdprConsent");
+});
+
+test("validateForm — t-parameter oversætter fejl-beskeder", () => {
+  const t = (key) => `T:${key}`;
+  const result = validateForm({ ...INITIAL_STATE }, t);
+  assert.equal(result.ok, false);
+  assert.equal(result.errors._contact, "T:form.errors.contact");
+  assert.equal(result.errors.interest_level, "T:form.errors.interestLevel");
 });
 
 test("validateForm — manglende GDPR-consent blokerer", () => {
@@ -234,7 +236,7 @@ test("mapInsertError — null returnerer null", () => {
 test("mapInsertError — 23505 duplicate", () => {
   const r = mapInsertError({ code: "23505", message: "duplicate key value violates unique constraint" });
   assert.equal(r.kind, "duplicate");
-  assert.ok(r.message.includes("står allerede på listen"));
+  assert.equal(r.message, "form.insertErrors.duplicate");
 });
 
 test("mapInsertError — duplicate detektion via message hvis code mangler", () => {
@@ -247,16 +249,18 @@ test("mapInsertError — RLS violation", () => {
   assert.equal(r.kind, "rls");
 });
 
-test("mapInsertError — lang=en returnerer engelske beskeder", () => {
-  const dup = mapInsertError({ code: "23505" }, "en");
+test("mapInsertError — t-parameter oversætter beskeder", () => {
+  const t = (key) => `T:${key}`;
+
+  const dup = mapInsertError({ code: "23505" }, t);
   assert.equal(dup.kind, "duplicate");
-  assert.match(dup.message, /already on the list/i);
+  assert.equal(dup.message, "T:form.insertErrors.duplicate");
 
-  const rls = mapInsertError({ code: "42501" }, "en");
-  assert.match(rls.message, /access denied/i);
+  const rls = mapInsertError({ code: "42501" }, t);
+  assert.equal(rls.message, "T:form.insertErrors.rls");
 
-  const net = mapInsertError({ message: "Failed to fetch" }, "en");
-  assert.match(net.message, /couldn't reach/i);
+  const net = mapInsertError({ message: "Failed to fetch" }, t);
+  assert.equal(net.message, "T:form.insertErrors.network");
 });
 
 test("mapInsertError — network fejl", () => {

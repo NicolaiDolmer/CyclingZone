@@ -387,7 +387,7 @@ export default function FounderSupporterPage() {
               <h2 className="text-cz-1 text-2xl sm:text-3xl font-bold mb-3">{t("formSectionTitle")}</h2>
               <p className="text-cz-2 text-sm sm:text-base">{t("formSectionSub")}</p>
             </div>
-            <FounderSupporterWaitlistForm priceVariantLabel={variantLabel} lang={lang} />
+            <FounderSupporterWaitlistForm priceVariantLabel={variantLabel} />
           </div>
         </section>
 

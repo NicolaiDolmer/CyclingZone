@@ -12,6 +12,7 @@ import { Flag } from "../components/Flag";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 import { formatNumber, formatDate } from "../lib/intl";
 import { resolveApiError } from "../lib/apiError";
+import { sortListings, LISTING_SORT_OPTIONS } from "../lib/transferListingSort";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -904,15 +905,108 @@ function NewLoanForm({ myTeamId, onSubmit, onCancel }) {
   );
 }
 
+// ── Egne listings: redigér pris + fjern (#1185) ──────────────────────────────
+// Fjern-flowet bruger in-app confirm i stedet for window.confirm — native
+// confirm-dialoger undertrykkes i visse mobile in-app-browsere/PWA-kontekster,
+// så knappen virkede ikke for alle på mobil. Eneste player-facing window.confirm
+// i appen lå her.
+function OwnListingActions({ listing, riderName, onRemove, onUpdatePrice }) {
+  const { t } = useTranslation("transfers");
+  const [mode, setMode] = useState(null); // null | "edit" | "confirmRemove"
+  const [price, setPrice] = useState(listing.asking_price || 0);
+  const [busy, setBusy] = useState(false);
+
+  const priceInvalid = !Number.isInteger(price) || price <= 0;
+
+  async function savePrice() {
+    setBusy(true);
+    try {
+      // Luk kun edit-formen ved succes — ved fejl (toast vises af parent)
+      // beholder vi formen åben så prisen kan rettes uden at genåbne.
+      const ok = await onUpdatePrice(listing.id, price);
+      if (ok) setMode(null);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function performRemove() {
+    setBusy(true);
+    try {
+      await onRemove(listing.id, riderName);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (mode === "edit") {
+    return (
+      <div className="bg-cz-subtle rounded-lg p-3 flex flex-col gap-2">
+        <label className="text-cz-3 text-xs uppercase tracking-wider">{t("transferCard.editPriceLabel")}</label>
+        <div className="flex flex-col sm:flex-row gap-2">
+          <input type="number" value={price} min={1}
+            onChange={e => { const v = parseInt(e.target.value, 10); setPrice(Number.isNaN(v) ? 0 : v); }}
+            className="min-w-0 flex-1 min-h-[44px] bg-cz-card border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-sm focus:outline-none focus:border-cz-accent" />
+          <div className="flex gap-2">
+            <button onClick={savePrice} disabled={busy || priceInvalid}
+              className="flex-1 sm:flex-none min-h-[44px] px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50 transition-all">
+              {busy ? "..." : t("transferCard.savePrice")}
+            </button>
+            <button onClick={() => { setMode(null); setPrice(listing.asking_price || 0); }} disabled={busy}
+              className="flex-1 sm:flex-none min-h-[44px] px-4 py-2 bg-cz-card text-cz-2 border border-cz-border rounded-lg text-sm hover:text-cz-1 disabled:opacity-50 transition-all">
+              {t("transferCard.cancel")}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (mode === "confirmRemove") {
+    return (
+      <div className="bg-cz-subtle rounded-lg p-3 flex flex-col gap-2">
+        <p className="text-cz-2 text-sm">{t("transferCard.removeConfirm", { riderName })}</p>
+        <div className="flex gap-2">
+          <button onClick={performRemove} disabled={busy}
+            className="flex-1 min-h-[44px] py-2 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-lg text-sm font-medium hover:bg-cz-danger-bg disabled:opacity-50 transition-all">
+            {busy ? t("transferCard.removing") : t("transferCard.confirmRemoveButton")}
+          </button>
+          <button onClick={() => setMode(null)} disabled={busy}
+            className="flex-1 min-h-[44px] py-2 bg-cz-card text-cz-2 border border-cz-border rounded-lg text-sm hover:text-cz-1 disabled:opacity-50 transition-all">
+            {t("transferCard.cancel")}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      <button onClick={() => { setPrice(listing.asking_price || 0); setMode("edit"); }}
+        aria-label={t("transferCard.editPriceAria", { riderName })}
+        className="min-h-[44px] py-2 rounded-lg text-sm font-medium transition-all border
+          bg-cz-subtle text-cz-2 border-cz-border hover:text-cz-1 hover:border-cz-accent/40">
+        {t("transferCard.editPrice")}
+      </button>
+      <button onClick={() => setMode("confirmRemove")}
+        aria-label={t("transferCard.removeAria", { riderName })}
+        className="min-h-[44px] py-2 rounded-lg text-sm font-medium transition-all border
+          bg-cz-subtle text-cz-2 border-cz-border
+          hover:bg-cz-danger-bg hover:text-cz-danger hover:border-cz-danger/30">
+        {t("transferCard.removeListing")}
+      </button>
+    </div>
+  );
+}
+
 // ── Transfer market listing card ─────────────────────────────────────────────
-function TransferCard({ listing, myTeamId, onOffer, onRemove, windowOpen = true }) {
+function TransferCard({ listing, myTeamId, onOffer, onRemove, onUpdatePrice, windowOpen = true }) {
   const { t } = useTranslation("transfers");
   const [offerAmt, setOfferAmt] = useState(listing.asking_price || 0);
   const [msg, setMsg] = useState("");
   const [showOffer, setShowOffer] = useState(false);
   const [loading, setLoading] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [removing, setRemoving] = useState(false);
 
   const isOwn = listing.seller?.id === myTeamId;
   const riderName = listing.rider ? `${listing.rider.firstname} ${listing.rider.lastname}` : t("transferCard.ridersForSale");
@@ -925,17 +1019,6 @@ function TransferCard({ listing, myTeamId, onOffer, onRemove, windowOpen = true 
       setConfirmOpen(false);
     } finally {
       setLoading(false);
-    }
-  }
-
-  async function performRemove() {
-    if (!onRemove) return;
-    if (!window.confirm(t("transferCard.removeConfirm", { riderName }))) return;
-    setRemoving(true);
-    try {
-      await onRemove(listing.id, riderName);
-    } finally {
-      setRemoving(false);
     }
   }
 
@@ -1010,15 +1093,12 @@ function TransferCard({ listing, myTeamId, onOffer, onRemove, windowOpen = true 
         </div>
       )}
       {isOwn && (
-        <button
-          onClick={performRemove}
-          disabled={removing}
-          aria-label={t("transferCard.removeAria", { riderName })}
-          className="w-full min-h-[44px] py-2 rounded-lg text-sm font-medium transition-all border
-            bg-cz-subtle text-cz-2 border-cz-border
-            hover:bg-cz-danger-bg hover:text-cz-danger hover:border-cz-danger/30 disabled:opacity-50">
-          {removing ? t("transferCard.removing") : t("transferCard.removeListing")}
-        </button>
+        <OwnListingActions
+          listing={listing}
+          riderName={riderName}
+          onRemove={onRemove}
+          onUpdatePrice={onUpdatePrice}
+        />
       )}
       <BidConfirmModal
         show={confirmOpen}
@@ -1055,6 +1135,7 @@ export default function TransfersPage() {
   const [celebration, setCelebration] = useState(null);
   const [msg, setMsg] = useState({ text: "", type: "success" });
   const [transferWindow, setTransferWindow] = useState({ open: true, status: "open" });
+  const [listingSort, setListingSort] = useState("newest"); // #1185: market-tab sortering
 
   useEffect(() => { loadAll(); }, []);
 
@@ -1137,6 +1218,29 @@ export default function TransfersPage() {
       }
     } catch {
       showMsg(t("auth:error.connectionFailed"), "error");
+    }
+  }
+
+  // #1185: inline pris-redigering — før skulle listingen fjernes + genoprettes.
+  // Returnerer true ved succes så OwnListingActions kun lukker edit-formen da.
+  async function handleUpdateListingPrice(listingId, askingPrice) {
+    try {
+      const res = await fetch(`${API}/api/transfers/${listingId}`, {
+        method: "PATCH",
+        headers: await getHeaders(),
+        body: JSON.stringify({ asking_price: askingPrice }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        showMsg(t("toast.priceUpdated"));
+        loadAll();
+        return true;
+      }
+      showMsg(`❌ ${resolveApiError(data, t, t("toast.priceUpdateFailed"))}`, "error");
+      return false;
+    } catch {
+      showMsg(t("auth:error.connectionFailed"), "error");
+      return false;
     }
   }
 
@@ -1294,7 +1398,12 @@ export default function TransfersPage() {
 
   const riderFilters = useClientRiderFilters(listings.map(l => l.rider).filter(Boolean));
   const filteredIds = new Set(riderFilters.filtered.map(r => r.id));
-  const filteredListings = listings.filter(l => !l.rider || filteredIds.has(l.rider.id));
+  // Rytter-filtrene styrer hvilke listings der vises; rækkefølgen styres på
+  // listing-niveau (asking_price/created_at) — se lib/transferListingSort (#1185).
+  const filteredListings = sortListings(
+    listings.filter(l => !l.rider || filteredIds.has(l.rider.id)),
+    listingSort
+  );
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -1536,6 +1645,19 @@ export default function TransfersPage() {
                 showTeamFilter={false}
                 nationalities={riderFilters.nationalities}
               />
+              {/* #1185: sortér på listing-pris (asking_price) eller nyeste */}
+              <div className="flex items-center gap-2 mb-3 flex-wrap">
+                <span className="text-cz-3 text-xs uppercase tracking-wider">{t("marketSort.label")}</span>
+                {LISTING_SORT_OPTIONS.map(key => (
+                  <button key={key} onClick={() => setListingSort(key)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border
+                      ${listingSort === key
+                        ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
+                        : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
+                    {t(`marketSort.${key}`)}
+                  </button>
+                ))}
+              </div>
               {filteredListings.length === 0 ? (
                 <div className="text-center py-16 text-cz-3">
                   <p className="text-4xl mb-3">↔</p>
@@ -1550,6 +1672,7 @@ export default function TransfersPage() {
                       myTeamId={myTeamId}
                       onOffer={(riderId, amt, msg) => handleOffer(riderId, amt, msg)}
                       onRemove={handleRemoveListing}
+                      onUpdatePrice={handleUpdateListingPrice}
                       windowOpen={transferWindow.open}
                     />
                   ))}

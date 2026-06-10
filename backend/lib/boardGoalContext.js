@@ -8,6 +8,13 @@
 //   D: profitable_transfers = SUM(amount) finance_transactions type IN (transfer_in, transfer_out)
 //   E1: planStart-baseline fra første board_plan_snapshots-row i planen
 //   F: divisionManagerCount = is_ai=false-teams i samme division for sæsonen
+//
+// #1238 · Podie-queryen dækker hele den kanoniske klassiker-kategori
+// (CLASSIC_RACE_CLASSES, Monuments ⊂ klassikere) og splittes i JS via
+// isMonumentRace/isClassicRace, så monument_podium-mål med race_scope
+// "classics" (klassiker-orienterede boards) kan honorere alle WT-endagsløb.
+
+import { CLASSIC_RACE_CLASSES, isClassicRace, isMonumentRace } from "./boardConstants.js";
 
 export async function loadGoalContextForBoard({
   supabase,
@@ -55,21 +62,28 @@ export async function loadGoalContextForBoard({
 
   // Defaults — null betyder "missing data" så evaluator returnerer awaiting_data
   let cumulativeMonumentPodiums = null;
+  let cumulativeClassicPodiums = null;
   let cumulativeJerseyWins = null;
   let seasonJerseyWins = null;
   let cumulativeTransferBalance = null;
 
   if (planSeasonIds.length > 0) {
-    // Monument podie-placeringer (rank 1-3 i GC for race_class='Monuments')
-    const { data: monumentResults, error: monErr } = await supabase
+    // Podie-placeringer (rank 1-3 i GC) i klassiker-kategorien. #1238: én query
+    // over den kanoniske klasse-liste; Monuments-delmængden + den fulde
+    // klassiker-optælling (kun endagsløb) splittes i JS via de delte helpers.
+    const { data: classicResults, error: monErr } = await supabase
       .from("race_results")
-      .select("rank, races!inner(race_class, season_id)")
+      .select("rank, races!inner(race_class, race_type, season_id)")
       .eq("team_id", teamId)
       .eq("result_type", "gc")
       .lte("rank", 3)
-      .eq("races.race_class", "Monuments")
+      .in("races.race_class", CLASSIC_RACE_CLASSES)
       .in("races.season_id", planSeasonIds);
-    if (!monErr) cumulativeMonumentPodiums = (monumentResults || []).length;
+    if (!monErr) {
+      const podiumRows = classicResults || [];
+      cumulativeMonumentPodiums = podiumRows.filter((row) => isMonumentRace(row.races)).length;
+      cumulativeClassicPodiums = podiumRows.filter((row) => isClassicRace(row.races)).length;
+    }
 
     // Etapeløb-trøjer (point/bjerg/young, rank=1)
     const { data: jerseyResults, error: jerErr } = await supabase
@@ -123,6 +137,7 @@ export async function loadGoalContextForBoard({
     planStartU25StatSum,
     planStartU25Count,
     cumulativeMonumentPodiums,
+    cumulativeClassicPodiums,
     cumulativeJerseyWins,
     seasonJerseyWins,
     cumulativeTransferBalance,

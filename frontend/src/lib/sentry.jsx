@@ -53,6 +53,11 @@ export function SentryBoundary({ children }) {
   );
 }
 
+// #1170 slice B-beslutning: boundary-copy herunder er BEVIDST statisk (ingen
+// t()/i18n). Error-boundary kan ramme før i18n er initialiseret eller mens et
+// chunk-load fejler, så den må ikke afhænge af i18n-runtime. EN er default;
+// DA vælges kun ved eksplicit cz_lang=da (samme nøgle som LanguageProvider)
+// eller dansk browser-sprog. Filen er EXEMPT i scripts/i18n-check-lib-strings.mjs.
 function getPreferredLanguage() {
   if (typeof window === "undefined") return "en";
   try {

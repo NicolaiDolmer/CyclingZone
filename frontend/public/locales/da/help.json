@@ -60,7 +60,7 @@
       },
       "clubDna": {
         "title": "Klub-DNA",
-        "text": "I sæson 2 vælger du én af 5 klub-DNA-arketyper før bestyrelsen sammensættes: 🌲 Skandinavisk udviklingshold, 🪨 Italiensk klassiker-traditionalist, ⚡ Sprint-fokuseret kommerciel, ⛰️ Fransk klatrer-arv, 🎯 Britisk all-rounder. DNA påvirker tre ting: (1) 5-årsplaner får et ekstra tradition-mål (fx monumenter for italiensk_klassiker), (2) mål der matcher DNA-prioriteter får boosted satisfaction-bonus og -penalty, (3) board-medlemmer og fremtidige formandsskifter tipper mod passende arketyper."
+        "text": "I sæson 2 vælger du én af 5 klub-DNA-arketyper før bestyrelsen sammensættes: 🌲 Skandinavisk udviklingshold, 🪨 Italiensk klassiker-traditionalist, ⚡ Sprint-fokuseret kommerciel, ⛰️ Fransk klatrer-arv, 🎯 Britisk all-rounder. DNA påvirker tre ting: (1) 5-årsplaner får et ekstra tradition-mål (fx et podie i en klassiker, inkl. Monuments, for italiensk_klassiker), (2) mål der matcher DNA-prioriteter får boosted satisfaction-bonus og -penalty, (3) board-medlemmer og fremtidige formandsskifter tipper mod passende arketyper."
       },
       "consequenceTiers": {
         "title": "Konsekvens-tier (6 lag)",
@@ -129,6 +129,10 @@
       "whatTransfers": {
         "title": "Hvad er transfersystemet?",
         "text": "Transfersystemet lader dig forhandle direkte med andre managers om at købe eller sælge ryttere, ligesom i Football Manager. Du kan sende et tilbud på enhver rytter, uanset om den er sat til salg eller ej."
+      },
+      "sellOnTransferList": {
+        "title": "Sælg via transferlisten",
+        "text": "Du kan sætte dine egne ryttere til salg til en fast pris, enten fra Min trup eller direkte fra rytterens profilside. Mens en rytter er på listen, kan du til enhver tid redigere prisen eller fjerne listingen, både fra Transfers-siden og fra rytterens profil. Købere kan sortere markedet efter pris eller efter nyeste."
       },
       "sendOffer": {
         "title": "Send et tilbud",
@@ -566,7 +570,7 @@
     },
     "debtCeiling": {
       "q": "Hvad er gældsloftet, og hvornår gælder det?",
-      "a": "Hver division har et maksimalt gældsbeløb: Division 1: 1.200.000 CZ$, Division 2: 900.000 CZ$, Division 3: 600.000 CZ$. Systemet afviser nødlån der ville overskride loftet. Lånerenter tilskrives ved sæsonstart oveni eksisterende gæld (flyttet fra sæsonslut i v3.78)."
+      "a": "Hver division har et maksimalt gældsbeløb: Division 1: 1.200.000 CZ$, Division 2: 900.000 CZ$, Division 3: 600.000 CZ$. Nye korte og lange lån afvises, hvis lånet plus gebyret ville skubbe din samlede gæld over loftet. Gebyret tæller med under loftet, så det maksimale du kan låne er lidt mindre end pladsen under loftet. Låneformularen på Økonomi-siden viser dit aktuelle max. Automatiske nødlån kan overskride loftet, men du får en advarsel og skal skære i omkostningerne. Lånerenter tilskrives ved sæsonstart oveni eksisterende gæld (flyttet fra sæsonslut i v3.78)."
     },
     "prizeMoneyFaq": {
       "q": "Hvad er præmiepenge, og hvornår udbetales de?",

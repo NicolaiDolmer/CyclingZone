@@ -1,8 +1,10 @@
 name: Deploy verify
 
 # Trigger:
-#  - Direkte push til main (manuel commit eller bruger-mergede PR)
-#  - PR squash-merged til main (pull_request: closed) — fanger merges fra non-GITHUB_TOKEN actors
+#  - Push til main (manuel commit eller bruger-merget PR — push-eventet fyrer for
+#    alle non-GITHUB_TOKEN merges). BEMÆRK: ingen `pull_request: closed`-trigger;
+#    den var redundant med push og gav tvilling-runs for samme merge-commit, som
+#    cancellede hinanden via concurrency-gruppen (falsk "cancelled" i verify-deploy.ps1).
 #  - workflow_dispatch — eksplicit trigger fra auto-merge.yml/dependabot-auto-merge.yml,
 #    fordi GITHUB_TOKEN-merges ikke fyrer push/pull_request events (anti-loop-safeguard).
 # Effekt: Venter på Vercel + Railway deploy, smoke-tester prod, kommenterer ✅/❌
@@ -10,9 +12,6 @@ name: Deploy verify
 
 on:
   push:
-    branches: [main]
-  pull_request:
-    types: [closed]
     branches: [main]
   workflow_dispatch:
     inputs:
@@ -31,13 +30,11 @@ permissions:
   issues: write
 
 concurrency:
-  group: deploy-verify-${{ github.event.pull_request.merge_commit_sha || github.event.inputs.sha || github.sha }}
+  group: deploy-verify-${{ github.event.inputs.sha || github.sha }}
   cancel-in-progress: true
 
 jobs:
   verify:
-    # Skip lukkede PRs der ikke er merged (close uden merge → ingen deploy at verify)
-    if: github.event_name != 'pull_request' || github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
       - name: Resolve target sha and PR number
@@ -46,15 +43,10 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           EVENT_NAME: ${{ github.event_name }}
           PUSH_SHA: ${{ github.sha }}
-          PR_MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
           INPUT_SHA: ${{ github.event.inputs.sha }}
           INPUT_PR_NUMBER: ${{ github.event.inputs.pr_number }}
         run: |
-          if [[ "$EVENT_NAME" == "pull_request" ]]; then
-            SHA="$PR_MERGE_SHA"
-            NUMBER="$PR_NUMBER"
-          elif [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
             SHA="${INPUT_SHA:-$(gh api repos/${{ github.repository }}/commits/main --jq .sha)}"
             if [[ -n "$INPUT_PR_NUMBER" ]]; then
               NUMBER="$INPUT_PR_NUMBER"

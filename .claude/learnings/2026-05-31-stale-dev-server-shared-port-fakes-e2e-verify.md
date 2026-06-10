@@ -45,3 +45,9 @@ fra MIN worktree → testen passerede på alle 3 projekter, og fixet var bevist.
 - Cluster: dette hører sammen med worktree-disciplinen ([[feedback_worktree_before_parallel_commits]])
   — delt main-dir/port mellem parallelle sessioner er fælden, både for commits og
   for verifikation.
+
+## Opdatering 2026-06-10
+
+Fælden bed igen under multiagent-bølge 2 (suite 18/18 grøn mod anden worktrees server).
+Tjekliste-disciplinen skalerede ikke til parallelle agenter → strukturelt fix:
+per-worktree-port + identity-guard, se [2026-06-10-shared-playwright-port-false-green-worktrees.md](2026-06-10-shared-playwright-port-false-green-worktrees.md).
