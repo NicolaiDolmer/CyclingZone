@@ -3,6 +3,8 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { track } from "@vercel/analytics";
 import { supabase } from "../../lib/supabase";
+import { formatCurrency, currencyForLocale } from "../../lib/intl.js";
+import { getTierPricesDkk, monthlyInCurrency, annualOf } from "../../lib/pricing.js";
 import {
   INITIAL_STATE,
   INTEREST_OPTIONS,
@@ -95,8 +97,28 @@ function FieldError({ id, message }) {
 }
 
 export default function FounderSupporterWaitlistForm({ priceVariantLabel = null }) {
-  const { t } = useTranslation("founder");
+  const { t, i18n } = useTranslation("founder");
   const [searchParams] = useSearchParams();
+
+  // #1104: tier-subs viser default-prisvarianten (B, locked) i visningsvalutaen
+  // (da -> DKK, ellers EUR) fra samme centrale konfig som sidens tier-kort, så
+  // formen aldrig drifter fra pricing.js. free_only har ingen pris.
+  const tierPrice = useMemo(() => {
+    const currency = currencyForLocale(i18n.language);
+    const dkk = getTierPricesDkk();
+    const fmt = amount =>
+      formatCurrency(amount, currency, {
+        minimumFractionDigits: Number.isInteger(amount) ? 0 : 2,
+        maximumFractionDigits: 2,
+      });
+    const supporter = monthlyInCurrency(dkk.supporter, currency);
+    const pro = monthlyInCurrency(dkk.pro, currency);
+    return {
+      supporter_monthly: fmt(supporter),
+      supporter_annual: fmt(annualOf(supporter)),
+      pro_analyst_monthly: fmt(pro),
+    };
+  }, [i18n.language]);
   const utm = useMemo(() => parseUtm(searchParams.toString()), [searchParams]);
 
   const [state, setState] = useState(INITIAL_STATE);
@@ -297,7 +319,7 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null 
             checked={state.preferred_tier === value}
             onChange={() => setField("preferred_tier", value)}
             label={t(`form.tierOptions.${value}.label`)}
-            sub={t(`form.tierOptions.${value}.sub`)}
+            sub={t(`form.tierOptions.${value}.sub`, { price: tierPrice[value] })}
           />
         ))}
         <FieldError id="err-tier" message={showErr("preferred_tier")} />

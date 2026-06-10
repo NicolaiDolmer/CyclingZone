@@ -4,6 +4,14 @@ import { useTranslation } from "react-i18next";
 import { useLanguage } from "../lib/language.jsx";
 import FounderSupporterWaitlistForm from "../components/waitlist/FounderSupporterWaitlistForm.jsx";
 import { Wordmark, Monogram } from "../components/Brand.jsx";
+import { formatCurrency, currencyForLocale } from "../lib/intl.js";
+import {
+  TIER_PRICES_DKK,
+  getTierPricesDkk,
+  monthlyInCurrency,
+  perDayOf,
+  annualOf,
+} from "../lib/pricing.js";
 
 // Landing page for Founder waitlist (#361, Session B naming locked in #500).
 // Public route, no auth. Embedder waitlist-form (#362) som sektion.
@@ -11,18 +19,27 @@ import { Wordmark, Monogram } from "../components/Brand.jsx";
 // via useLanguage() — DA/EN-toggle persisterer i localStorage (#678).
 // Pris-variant via ?variant=A|B|C styrer Option B price-test (utm_campaign er
 // canonical attribution; ?variant er menneskelig debug-hint).
+// Priser kommer fra central konfig i lib/pricing.js (#1104): DA viser DKK,
+// EN viser EUR (fast dokumenteret kurs) + "pr. dag"-omregning ved siden af
+// den faktiske månedspris.
 
-const VARIANT_LABELS = {
-  A: "Premium 29 / Pro Analyst 49 DKK",
-  B: "Premium 49 / Pro Analyst 89 DKK",
-  C: "Premium 69 / Pro Analyst 119 DKK",
-};
+// Debug/attribution-labels afledt af konfigen. Bevarer det historiske
+// DKK-format så gemte waitlist-rækker forbliver sammenlignelige.
+const VARIANT_LABELS = Object.fromEntries(
+  Object.entries(TIER_PRICES_DKK).map(([key, p]) => [
+    key,
+    `Premium ${p.supporter} / Pro Analyst ${p.pro} DKK`,
+  ])
+);
 
-const VARIANT_PRICES = {
-  A: { supporter: "29", pro: "49" },
-  B: { supporter: "49", pro: "89" },
-  C: { supporter: "69", pro: "119" },
-};
+// Prisformatering: hele beløb uden decimaler ("49 kr."), brudte beløb med
+// 2 decimaler ("€6.57") — gælder både måneds- og pr-dag-beløb.
+function formatPriceIn(currency, amount) {
+  return formatCurrency(amount, currency, {
+    minimumFractionDigits: Number.isInteger(amount) ? 0 : 2,
+    maximumFractionDigits: 2,
+  });
+}
 
 function LanguageToggle({ language, onChange, label }) {
   return (
@@ -72,6 +89,7 @@ function TierCard({ tier, highlighted = false }) {
               <span className="text-cz-3 text-xs font-normal ms-1">{tier.priceSuffix}</span>
             )}
           </div>
+          {tier.perDay && <div className="text-cz-3 text-[11px]">{tier.perDay}</div>}
           {tier.altYear && <div className="text-cz-3 text-[11px]">{tier.altYear}</div>}
         </div>
       </div>
@@ -122,7 +140,9 @@ export default function FounderSupporterPage() {
 
   const variantKey = (searchParams.get("variant") || "").toUpperCase();
   const variantLabel = VARIANT_LABELS[variantKey] || null;
-  const variantPrices = VARIANT_PRICES[variantKey] || { supporter: "49", pro: "89" };
+  const tierPricesDkk = getTierPricesDkk(variantKey);
+  // Visningsvaluta (#1104): da → DKK, en → EUR (fast kurs i pricing.js).
+  const currency = currencyForLocale(lang);
 
   const langParam = (searchParams.get("lang") || "").toLowerCase();
 
@@ -156,22 +176,43 @@ export default function FounderSupporterPage() {
     canonical.href = "https://cycling-zone.vercel.app/founder-supporter";
   }, [lang, t]);
 
-  // Bevar useMemo så vi ikke regenererer ved hver render; recompute ved sprogskift.
-  const tierFreeData = useMemo(() => t("tierFree", { returnObjects: true }), [t, lang]);
-  const tierSupporterData = useMemo(() => {
-    const base = t("tierSupporter", { returnObjects: true });
-    const monthly = Number(variantPrices.supporter);
-    const annual = Number.isFinite(monthly) ? monthly * 10 : null;
-    return {
-      ...base,
-      price: variantPrices.supporter,
-      altYear: annual != null && base.altYearTemplate
-        ? t("tierSupporter.altYearTemplate", { annual })
-        : null,
+  // Bevar useMemo så vi ikke regenererer ved hver render; recompute ved
+  // sprogskift (t + currency skifter sammen med lang) og variantskift
+  // (tierPricesDkk).
+  const tiers = useMemo(() => {
+    const buildTier = (base, dkkMonthly, { withAnnual = false } = {}) => {
+      const monthly = monthlyInCurrency(dkkMonthly, currency);
+      const perDay = monthly > 0 ? perDayOf(monthly) : null;
+      const annual = withAnnual ? annualOf(monthly) : null;
+      return {
+        ...base,
+        price: formatPriceIn(currency, monthly),
+        perDay:
+          perDay != null
+            ? t("perDayApprox", { price: formatPriceIn(currency, perDay) })
+            : null,
+        altYear:
+          annual != null && base.altYearTemplate
+            ? t("tierSupporter.altYearTemplate", { annual: formatPriceIn(currency, annual) })
+            : null,
+      };
     };
-  }, [t, lang, variantPrices.supporter]);
-  const tierProData = useMemo(() => ({ ...t("tierPro", { returnObjects: true }), price: variantPrices.pro }), [t, lang, variantPrices.pro]);
-  const tierPatronData = useMemo(() => t("tierPatron", { returnObjects: true }), [t, lang]);
+    return {
+      free: buildTier(t("tierFree", { returnObjects: true }), tierPricesDkk.free),
+      supporter: buildTier(t("tierSupporter", { returnObjects: true }), tierPricesDkk.supporter, { withAnnual: true }),
+      pro: buildTier(t("tierPro", { returnObjects: true }), tierPricesDkk.pro),
+      patron: buildTier(t("tierPatron", { returnObjects: true }), tierPricesDkk.patron),
+    };
+  }, [t, currency, tierPricesDkk]);
+
+  // Premium-prispunkter (A/B/C) til tiersSub-copy, i visningsvalutaen.
+  const supporterPricePoints = useMemo(
+    () =>
+      ["A", "B", "C"]
+        .map((key) => formatPriceIn(currency, monthlyInCurrency(TIER_PRICES_DKK[key].supporter, currency)))
+        .join(" / "),
+    [currency]
+  );
 
   return (
     <div className="min-h-screen bg-cz-body">
@@ -253,7 +294,7 @@ export default function FounderSupporterPage() {
           <div className="max-w-6xl mx-auto">
             <div className="max-w-2xl mx-auto text-center mb-10">
               <h2 className="text-cz-1 text-2xl sm:text-3xl font-bold mb-3">{t("tiersTitle")}</h2>
-              <p className="text-cz-2 text-sm sm:text-base">{t("tiersSub")}</p>
+              <p className="text-cz-2 text-sm sm:text-base">{t("tiersSub", { prices: supporterPricePoints })}</p>
               {variantLabel && (
                 <p className="mt-3 inline-flex items-center gap-2 bg-cz-accent/10 border border-cz-accent/30 rounded-lg px-3 py-1.5 text-cz-1 text-xs">
                   <span className="text-cz-3">{t("variantLabel")}</span>
@@ -263,10 +304,10 @@ export default function FounderSupporterPage() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <TierCard tier={tierFreeData} />
-              <TierCard tier={tierSupporterData} highlighted />
-              <TierCard tier={tierProData} />
-              <TierCard tier={tierPatronData} />
+              <TierCard tier={tiers.free} />
+              <TierCard tier={tiers.supporter} highlighted />
+              <TierCard tier={tiers.pro} />
+              <TierCard tier={tiers.patron} />
             </div>
 
             <div className="mt-8 max-w-3xl mx-auto bg-cz-subtle border border-cz-border rounded-xl p-5">
