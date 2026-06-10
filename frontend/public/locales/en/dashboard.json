@@ -95,6 +95,7 @@
       "linkAll": "See all →",
       "empty": "No completed races yet this season",
       "gc": "Overall winner",
+      "winner": "Winner",
       "stage": "Stage {n} winner",
       "aiBadge": "AI"
     },

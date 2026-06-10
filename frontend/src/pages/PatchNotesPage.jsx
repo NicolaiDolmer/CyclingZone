@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.13",
+    date: "2026-06-10",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fixed · Dashboard",
+        items: [
+          "EN · One-day race winners on the dashboard's Recent results are now labelled \"Winner\" instead of \"Overall winner\". A one-day race has no general classification, so the old label was misleading. Stage races keep the \"Overall winner\" label. Refs #1188.",
+          "DA · Vindere af endagsløb på dashboardets Seneste resultater hedder nu \"Vinder\" i stedet for \"Samlet vinder\". Et endagsløb har intet samlet klassement, så den gamle label var misvisende. Etapeløb beholder \"Samlet vinder\". Refs #1188.",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.12",
     date: "2026-06-10",
     label: "Beta",
