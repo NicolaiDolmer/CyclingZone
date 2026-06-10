@@ -16,7 +16,8 @@ const API = import.meta.env.VITE_API_URL;
 // rytter-/auktions-tabeller bruger den tilgængelige bredde (ingen klippede kolonner +
 // side-whitespace samtidig). Alle andre sider beholder den læsbare max-w-6xl.
 // Filter-paneler cappes per-side (max-w-[1600px]) så form-inputs ikke strækkes.
-const WIDE_CONTENT_ROUTES = new Set(["/riders", "/rider-rankings", "/watchlist", "/auctions"]);
+// "/team" tilføjet per #1186 — trup-tabellen (14 stat-kolonner) var klemt i max-w-5xl.
+const WIDE_CONTENT_ROUTES = new Set(["/riders", "/rider-rankings", "/watchlist", "/auctions", "/team"]);
 
 function buildBottomItems(t) {
   return [
