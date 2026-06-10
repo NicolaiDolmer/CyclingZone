@@ -138,10 +138,15 @@ export const STAR_PROFILE_SPONSOR_PRESSURE_BY_LEVEL = {
   elite: 10,
 };
 
+// NB: market_value bruges af selectForcedListingRider (sortering + asking_price,
+// #1205) — manglede før, så lag 4 listede til asking_price 0. uci_points bruges
+// stadig af boardIdentity.calculateRiderStarScore (frossen kolonne, skifte = separat
+// kalibrerings-beslutning, se #1205 out-of-scope).
 export const BOARD_IDENTITY_RIDER_SELECT = [
   "id",
   "is_u25",
   "salary",
+  "market_value",
   "uci_points",
   "nationality_code",
   "popularity",

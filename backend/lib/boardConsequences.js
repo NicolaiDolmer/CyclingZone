@@ -13,6 +13,8 @@
  * (expireSeasonScopedConsequences).
  */
 
+import { STAR_RIDER_MARKET_VALUE } from "./economyConstants.js";
+
 const SATISFACTION_THRESHOLDS = {
   SALARY_CAP: 40,
   SIGNING_RESTRICTION: 30,
@@ -35,9 +37,10 @@ const BONUS_OFFER_AMOUNT = 200_000;
 // Lag 6 — eligibility. Mindst 75% af mål 'ahead' (proxy: goalsMet / goalsTotal ≥ 0.75).
 const BONUS_OFFER_GOALS_THRESHOLD = 0.75;
 
-// Lag 4 — beskytter star/popularity-rytter mod tvunget listing (parallel til UCI-sync).
+// Lag 4 — beskytter star/popularity-rytter mod tvunget listing. Stjerne-definitionen
+// er market_value-baseret (#1205, delt konstant) — uci_points er frosset/afkoblet (#1101).
 const FORCED_LISTING_PROTECTION_POPULARITY = 70;
-const FORCED_LISTING_PROTECTION_UCI = 100;
+const FORCED_LISTING_PROTECTION_STAR_VALUE = STAR_RIDER_MARKET_VALUE;
 
 // Lag 5 — alternativ trigger: 2× plan-udløb i træk under 30% tilfredshed
 // (samme counter som S-02c chairman-replacement).
@@ -51,7 +54,7 @@ export const CONSEQUENCE_CONSTANTS = {
   BONUS_OFFER_AMOUNT,
   BONUS_OFFER_GOALS_THRESHOLD,
   FORCED_LISTING_PROTECTION_POPULARITY,
-  FORCED_LISTING_PROTECTION_UCI,
+  FORCED_LISTING_PROTECTION_STAR_VALUE,
   PULLOUT_PLAN_LAPSE_TRIGGER,
   PULLOUT_PLAN_LAPSE_SATISFACTION,
 };
@@ -220,7 +223,8 @@ export async function assertSigningAllowed({ supabase, buyerTeamId, riderId, pur
 
 /**
  * Vælger den rytter der skal tvangs-listes ved sat<15.
- * - Beskytter pop≥70 OR uci≥100 (parallel til UCI-sync auto-protection).
+ * - Beskytter pop≥70 OR market_value≥STAR_RIDER_MARKET_VALUE ("star riders protected"
+ *   i help-teksten — samme stjerne-definition som team_star-achievementet, #1205).
  * - Vælger laveste market_value blandt resten.
  * - Returnerer null hvis ingen kandidat (alle beskyttede eller ingen ryttere).
  */
@@ -230,7 +234,7 @@ export function selectForcedListingRider(riders) {
   const candidates = riders.filter((r) => {
     if (!r || !r.id) return false;
     if ((r.popularity || 0) >= FORCED_LISTING_PROTECTION_POPULARITY) return false;
-    if ((r.uci_points || 0) >= FORCED_LISTING_PROTECTION_UCI) return false;
+    if ((r.market_value || 0) >= FORCED_LISTING_PROTECTION_STAR_VALUE) return false;
     return true;
   });
 

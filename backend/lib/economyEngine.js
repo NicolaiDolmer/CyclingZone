@@ -1213,8 +1213,8 @@ const VALUATION_WINDOW_SEASONS = 3;
  * (paySeasonPrizesToDate) so values track the active season's prizes live (R3,
  * issue #895). See docs/slices/prize-money-audit-r3-design.md.
  *
- * salary er en GENERATED STORED column (se database/2026-05-04-salary-generated-column.sql)
- * — DB genberegner automatisk når prize_earnings_bonus eller uci_points opdateres.
+ * salary er en GENERATED STORED column (se database/2026-06-10-value-cutover-base-value.sql)
+ * — DB genberegner automatisk når base_value eller prize_earnings_bonus opdateres (#1101).
  */
 export async function updateRiderValues(supabaseClient) {
   const { data: activeSeason } = await supabaseClient

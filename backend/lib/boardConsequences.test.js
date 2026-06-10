@@ -56,33 +56,48 @@ test("CONSEQUENCE_CONSTANTS lock Q-batch 1B Q11 thresholds", () => {
 
 test("selectForcedListingRider picks lowest market_value among unprotected", () => {
   const target = selectForcedListingRider([
-    { id: "r-1", market_value: 80_000, popularity: 30, uci_points: 50 },
-    { id: "r-2", market_value: 50_000, popularity: 30, uci_points: 50 },
-    { id: "r-3", market_value: 120_000, popularity: 30, uci_points: 50 },
+    { id: "r-1", market_value: 80_000, popularity: 30 },
+    { id: "r-2", market_value: 50_000, popularity: 30 },
+    { id: "r-3", market_value: 120_000, popularity: 30 },
   ]);
   assert.equal(target.id, "r-2");
 });
 
 test("selectForcedListingRider protects popularity >= 70", () => {
   const target = selectForcedListingRider([
-    { id: "r-star", market_value: 20_000, popularity: 80, uci_points: 50 },
-    { id: "r-other", market_value: 60_000, popularity: 30, uci_points: 50 },
+    { id: "r-star", market_value: 20_000, popularity: 80 },
+    { id: "r-other", market_value: 60_000, popularity: 30 },
   ]);
   assert.equal(target.id, "r-other", "Star with low value must not be selected");
 });
 
-test("selectForcedListingRider protects uci_points >= 100", () => {
+test("selectForcedListingRider protects market_value >= STAR_RIDER_MARKET_VALUE (#1205)", () => {
+  // Begge over tærsklen → ingen kandidat; lige under tærsklen → vælges.
+  const allStars = selectForcedListingRider([
+    { id: "r-star-1", market_value: 5_000_000, popularity: 30 },
+    { id: "r-star-2", market_value: 8_000_000, popularity: 30 },
+  ]);
+  assert.equal(allStars, null, "Roster of only stars must not force-list anyone");
+
   const target = selectForcedListingRider([
-    { id: "r-uci", market_value: 20_000, popularity: 30, uci_points: 150 },
+    { id: "r-almost-star", market_value: 4_999_999, popularity: 30 },
+    { id: "r-star", market_value: 5_000_000, popularity: 30 },
+  ]);
+  assert.equal(target.id, "r-almost-star", "Boundary: 5M is protected, 4_999_999 is not");
+});
+
+test("selectForcedListingRider ignores frozen uci_points (#1101 decoupling)", () => {
+  const target = selectForcedListingRider([
+    { id: "r-frozen-uci", market_value: 20_000, popularity: 30, uci_points: 150 },
     { id: "r-other", market_value: 60_000, popularity: 30, uci_points: 50 },
   ]);
-  assert.equal(target.id, "r-other");
+  assert.equal(target.id, "r-frozen-uci", "uci_points must no longer protect");
 });
 
 test("selectForcedListingRider returns null when all riders are protected", () => {
   const target = selectForcedListingRider([
-    { id: "r-1", market_value: 20_000, popularity: 80, uci_points: 50 },
-    { id: "r-2", market_value: 60_000, popularity: 30, uci_points: 200 },
+    { id: "r-1", market_value: 20_000, popularity: 80 },
+    { id: "r-2", market_value: 6_000_000, popularity: 30 },
   ]);
   assert.equal(target, null);
 });
@@ -94,8 +109,8 @@ test("selectForcedListingRider returns null for empty roster", () => {
 
 test("selectForcedListingRider tie-breaks deterministically by id", () => {
   const target = selectForcedListingRider([
-    { id: "z-rider", market_value: 50_000, popularity: 30, uci_points: 50 },
-    { id: "a-rider", market_value: 50_000, popularity: 30, uci_points: 50 },
+    { id: "z-rider", market_value: 50_000, popularity: 30 },
+    { id: "a-rider", market_value: 50_000, popularity: 30 },
   ]);
   assert.equal(target.id, "a-rider");
 });
@@ -236,8 +251,8 @@ test("evaluateAndApplyConsequences inserts forced_listing at sat<15 + sends noti
     id: "team-1",
     name: "Test Team",
     riders: [
-      { id: "r-cheap", market_value: 40_000, popularity: 30, uci_points: 50, firstname: "Cheap", lastname: "Rider", salary: 4_000 },
-      { id: "r-star", market_value: 20_000, popularity: 80, uci_points: 50, firstname: "Star", lastname: "Rider", salary: 2_000 },
+      { id: "r-cheap", market_value: 40_000, popularity: 30, firstname: "Cheap", lastname: "Rider", salary: 4_000 },
+      { id: "r-star", market_value: 20_000, popularity: 80, firstname: "Star", lastname: "Rider", salary: 2_000 },
     ],
   };
 
@@ -277,7 +292,7 @@ test("evaluateAndApplyConsequences skips forced_listing when no eligible rider e
   const team = {
     id: "team-1",
     name: "All-Star Team",
-    riders: [{ id: "r-1", market_value: 200_000, popularity: 90, uci_points: 200 }],
+    riders: [{ id: "r-1", market_value: 200_000, popularity: 90 }],
   };
 
   await evaluateAndApplyConsequences({
@@ -303,7 +318,7 @@ test("evaluateAndApplyConsequences suppresses forced_listing in board test-mode"
     id: "team-1",
     name: "Test Team",
     riders: [
-      { id: "r-cheap", market_value: 40_000, popularity: 30, uci_points: 50, firstname: "Cheap", lastname: "Rider", salary: 4_000 },
+      { id: "r-cheap", market_value: 40_000, popularity: 30, firstname: "Cheap", lastname: "Rider", salary: 4_000 },
     ],
   };
 
@@ -333,7 +348,7 @@ test("evaluateAndApplyConsequences suppresses sponsor_pullout in board test-mode
 
   const result = await evaluateAndApplyConsequences({
     supabase,
-    team: makeBaseTeam({ riders: [{ market_value: 50_000, popularity: 30, uci_points: 30 }] }),
+    team: makeBaseTeam({ riders: [{ market_value: 50_000, popularity: 30 }] }),
     board: makeBaseBoard(),
     newSatisfaction: 8,
     goalsMet: 0,
@@ -355,7 +370,7 @@ test("evaluateAndApplyConsequences inserts sponsor_pullout at sat<10", async () 
 
   await evaluateAndApplyConsequences({
     supabase,
-    team: makeBaseTeam({ riders: [{ market_value: 50_000, popularity: 30, uci_points: 30 }] }),
+    team: makeBaseTeam({ riders: [{ market_value: 50_000, popularity: 30 }] }),
     board: makeBaseBoard(),
     newSatisfaction: 8,
     goalsMet: 0,

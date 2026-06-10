@@ -2,5 +2,13 @@
   "founder_badge": {
     "title": "Founding Manager",
     "description": "Here from the opening season. Permanent. Survives every reset."
+  },
+  "team_star": {
+    "title": "Star team",
+    "description": "Have a star rider on your team: a rider valued at 5,000,000 CZ$ or more."
+  },
+  "transfer_bargain": {
+    "title": "The Steal",
+    "description": "Buy a rider for less than half his value."
   }
 }
