@@ -4,7 +4,15 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { LAUNCH_POPULATION, generateLaunchPopulation } from "./fictionalLaunchPopulation.js";
+import {
+  LAUNCH_POPULATION,
+  LAUNCH_VALUE_BANDS,
+  LAUNCH_TYPE_FLOORS,
+  checkLaunchTypeMix,
+  generateLaunchPopulation,
+} from "./fictionalLaunchPopulation.js";
+import { STAR_RIDER_MARKET_VALUE } from "./economyConstants.js";
+import { RIDER_TYPE_KEYS } from "./riderTypes.js";
 import { deriveAbilities } from "./abilityDerivation.js";
 import { computeRiderTypes } from "./riderTypes.js";
 import { predictBaseValue } from "./riderValuation.js";
@@ -60,4 +68,34 @@ test("hele værdi-kæden giver den godkendte launch-pyramide", () => {
   assert.ok(maxValue <= 40_000_000, `max base_value=${maxValue} over 40M-loftet`);
   // Alle 9 typer skal emergere fra kæden (etape-variation).
   assert.equal(typeSet.size, 9, `kun ${typeSet.size}/9 typer emergerede: ${[...typeSet].join(",")}`);
+});
+
+// ── #1198 pop-MUT-4: bånd-grænse og spil-diskriminator må ALDRIG drifte ───────
+test("superstjerne-båndet ER spillets stjernerytter-tærskel (én delt konstant, #1210)", () => {
+  const superstjerne = LAUNCH_VALUE_BANDS.find((b) => b.key === "superstjerne");
+  const stjerne = LAUNCH_VALUE_BANDS.find((b) => b.key === "stjerne");
+  assert.equal(superstjerne.lo, STAR_RIDER_MARKET_VALUE);
+  assert.equal(stjerne.hi, STAR_RIDER_MARKET_VALUE);
+});
+
+// ── #1198 pop-MUT-6: type-mix-oraklet håndhæver ejer-gulvene ──────────────────
+test("checkLaunchTypeMix: sundt launch-mix er grønt", () => {
+  const counts = Object.fromEntries(RIDER_TYPE_KEYS.map((k) => [k, 50]));
+  assert.deepEqual(checkLaunchTypeMix(counts), []);
+});
+
+test("checkLaunchTypeMix fanger gc-kollaps og manglende typer", () => {
+  const counts = Object.fromEntries(RIDER_TYPE_KEYS.map((k) => [k, 50]));
+  counts.gc = 0;
+  const failures = checkLaunchTypeMix(counts);
+  assert.ok(failures.some((f) => /'gc' er slet ikke repræsenteret/.test(f)), failures.join("; "));
+  assert.ok(failures.some((f) => /ejer-gulvet er ≥30/.test(f)), failures.join("; "));
+
+  counts.gc = LAUNCH_TYPE_FLOORS.gc - 1; // under gulv men repræsenteret
+  const f2 = checkLaunchTypeMix(counts);
+  assert.equal(f2.length, 1);
+  assert.match(f2[0], /ejer-gulvet er ≥30/);
+
+  delete counts.puncheur;
+  assert.ok(checkLaunchTypeMix(counts).some((f) => /'puncheur'/.test(f)));
 });

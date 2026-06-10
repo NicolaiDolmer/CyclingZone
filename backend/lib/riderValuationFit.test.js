@@ -1,7 +1,19 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
-import { olsSolve, fitValuationModel, checkAnchorOrdering } from "./riderValuationFit.js";
+import {
+  olsSolve,
+  fitValuationModel,
+  checkAnchorOrdering,
+  isMonotoneIncreasingOn,
+  evaluateFitGuards,
+} from "./riderValuationFit.js";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const committedModel = JSON.parse(readFileSync(join(__dirname, "./riderValuationModel.json"), "utf8"));
 
 test("olsSolve løser y=2x eksakt", () => {
   const beta = olsSolve([[1, 1], [1, 2], [1, 3]], [2, 4, 6]);
@@ -51,4 +63,46 @@ test("checkAnchorOrdering er tom når ordenen holder", () => {
   const anchors = [{ name: "A", target: 10e6 }, { name: "B", target: 1e6 }];
   const { hard, soft } = checkAnchorOrdering(anchors, (a) => a.target);
   assert.equal(hard.length + soft.length, 0);
+});
+
+// ── #1198 fit-guards ──────────────────────────────────────────────────────────
+
+test("isMonotoneIncreasingOn: committed model er voksende på [0,99]", () => {
+  assert.equal(isMonotoneIncreasingOn(committedModel.b, Number(committedModel.c)), true);
+});
+
+test("isMonotoneIncreasingOn fanger BEGGE fortegns-kombinationer", () => {
+  // Konkav med toppunkt i domænet (den gamle guards case): b>0, c<0, top ved O=50.
+  assert.equal(isMonotoneIncreasingOn(0.1, -0.001), false);
+  // Konveks med BUNDPUNKT i domænet (#1198 VM-M2 — U-kurve, hullet i den gamle
+  // guard): b<0, c>0, bund ved O≈47 → kurven FALDER på [0,47].
+  assert.equal(isMonotoneIncreasingOn(-0.361, 0.0038), false);
+  // Konkav men toppunkt EFTER domænet → ok.
+  assert.equal(isMonotoneIncreasingOn(0.3, -0.001), true);
+});
+
+test("VM-M2-mutanten (ekstra-nuller-typo i bund-anchors) afvises af fit-guards", () => {
+  // Replay af gatens egen sekvens på de committede anchors med to typos:
+  // Ian Kimpe 60K→6M og D'Arcy Sanders 30K→3M giver OLS en U-formet ln-kurve.
+  const anchors = committedModel.anchors_fit.map((an) => ({
+    ...an,
+    target: an.name === "Ian Kimpe" ? 6_000_000 : an.name === "D'Arcy Sanders" ? 3_000_000 : an.target,
+  }));
+  const fit = fitValuationModel(anchors, { quadratic: true });
+  const failures = evaluateFitGuards(anchors, fit);
+  assert.ok(failures.some((f) => /monoton/.test(f)), `forventede monotoni-brud: ${failures.join("; ")}`);
+});
+
+test("VM-M1-mutanten (alle ≥15M-anchors droppet) afvises: hård-båndet må ikke være tomt", () => {
+  const anchors = committedModel.anchors_fit.filter((an) => an.target < 15e6);
+  assert.ok(anchors.length >= 5, "mutanten skal stadig have nok anchors til et fit");
+  const fit = fitValuationModel(anchors, { quadratic: true });
+  const failures = evaluateFitGuards(anchors, fit);
+  assert.ok(failures.some((f) => /hårde ordens-guard er de facto slukket/.test(f)), failures.join("; "));
+});
+
+test("committed anchors + committed fit består alle fit-guards (baseline grøn)", () => {
+  const anchors = committedModel.anchors_fit;
+  const fit = fitValuationModel(anchors, { quadratic: true });
+  assert.deepEqual(evaluateFitGuards(anchors, fit), []);
 });

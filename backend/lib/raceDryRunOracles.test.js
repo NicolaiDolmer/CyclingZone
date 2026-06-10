@@ -1,0 +1,74 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+
+import { evaluateRaceStructuralOracles, minDistinctWinners } from "./raceDryRunOracles.js";
+
+const healthyTerrain = (over = {}) => ({
+  terrain: "flat", keyAb: "sprint", races: 300,
+  winnerKeyAvg: 76, fieldMedianKey: 18, distinct: 34,
+  ...over,
+});
+const healthyGc = { winnerCumSeconds: 0, minCumSeconds: 0 };
+const healthyValue = { topDecileMedian: 2_000_000, bottomDecileMedian: 9_000 };
+
+test("strukturelle oracles: sund baseline giver ingen brud", () => {
+  const failures = evaluateRaceStructuralOracles({
+    terrainResults: [healthyTerrain(), healthyTerrain({ terrain: "mountain", keyAb: "climbing", winnerKeyAvg: 88, fieldMedianKey: 23, distinct: 27 })],
+    gc: healthyGc,
+    value: healthyValue,
+  });
+  assert.deepEqual(failures, []);
+});
+
+test("inverteret motor fanges: vinder-nøgleevne under felt-median (#1198 race-M1)", () => {
+  const failures = evaluateRaceStructuralOracles({
+    terrainResults: [healthyTerrain({ winnerKeyAvg: 9, fieldMedianKey: 18 })],
+  });
+  assert.equal(failures.length, 1);
+  assert.match(failures[0], /belønner ikke evnen/);
+});
+
+test("monopol-degeneration fanges: 1 distinkt vinder på 300 løb (#1198 race-M2)", () => {
+  const failures = evaluateRaceStructuralOracles({
+    terrainResults: [healthyTerrain({ distinct: 1 })],
+  });
+  assert.equal(failures.length, 1);
+  assert.match(failures[0], /monopol-degeneration/);
+});
+
+test("minDistinctWinners: absolut gulv 2 (pool-størrelse gør andels-gulve falske)", () => {
+  // Ved count=140 hvor hele puljen kører hvert løb er 2-5 distinkte vindere
+  // legitimt — kun totalt monopol (distinkt=1 over flere løb) er broken.
+  assert.equal(minDistinctWinners(300), 2);
+  assert.equal(minDistinctWinners(10), 2);
+  assert.equal(minDistinctWinners(1), 1);
+});
+
+test("inverteret GC fanges: vinderen har ikke laveste samlede tid (#1198 race-M6)", () => {
+  const failures = evaluateRaceStructuralOracles({
+    gc: { winnerCumSeconds: 5400, minCumSeconds: 0 },
+  });
+  assert.equal(failures.length, 1);
+  assert.match(failures[0], /laveste-tid-vinder/);
+});
+
+test("GC-oracle fejler højt ved ikke-finite tider (parse-hul må ikke blive grønt)", () => {
+  const failures = evaluateRaceStructuralOracles({
+    gc: { winnerCumSeconds: NaN, minCumSeconds: 0 },
+  });
+  assert.equal(failures.length, 1);
+  assert.match(failures[0], /kunne ikke udlede/);
+});
+
+test("flad/inverteret værdimodel fanges: top-decil ikke dyrere end bund-decil (#1198 race-M5)", () => {
+  const inverted = evaluateRaceStructuralOracles({
+    value: { topDecileMedian: 9_000, bottomDecileMedian: 2_000_000 },
+  });
+  assert.equal(inverted.length, 1);
+  assert.match(inverted[0], /flad\/inverteret/);
+
+  const flat = evaluateRaceStructuralOracles({
+    value: { topDecileMedian: 1000, bottomDecileMedian: 1000 },
+  });
+  assert.equal(flat.length, 1);
+});

@@ -19,6 +19,7 @@ import { generateFictionalRiders } from "../lib/fictionalRiderGenerator.js";
 import { deriveAbilities } from "../lib/abilityDerivation.js";
 import { computeRiderTypes } from "../lib/riderTypes.js";
 import { predictBaseValue } from "../lib/riderValuation.js";
+import { LAUNCH_POPULATION, LAUNCH_VALUE_BANDS, checkLaunchTypeMix } from "../lib/fictionalLaunchPopulation.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -35,13 +36,10 @@ const REFERENCE_YEAR = 2026;
 const baseline = JSON.parse(readFileSync(join(__dirname, "../lib/riderTypesBaseline.json"), "utf8"));
 const model = JSON.parse(readFileSync(join(__dirname, "../lib/riderValuationModel.json"), "utf8"));
 
-// Launch-pyramide-bånd (CZ$) — ejer-spec 2026-06-07 (~800).
-const BANDS = [
-  { key: "superstjerne", lo: 8_000_000, hi: Infinity, target: 12 },
-  { key: "stjerne",      lo: 1_000_000, hi: 8_000_000, target: 60 },
-  { key: "solid",        lo: 200_000,   hi: 1_000_000, target: 230 },
-  { key: "domestik",     lo: 0,         hi: 200_000,   target: 500 },
-];
+// Launch-pyramide-bånd (CZ$) — ejer-spec 2026-06-07. Delt definition i
+// fictionalLaunchPopulation.js: superstjerne-grænsen er STAR_RIDER_MARKET_VALUE,
+// så bånd og spil-diskriminator (force-sale/achievement) ikke kan drifte (#1198).
+const BANDS = LAUNCH_VALUE_BANDS;
 
 const fmt = (n) => (n == null ? "—" : Math.round(n).toLocaleString("da-DK"));
 const pct = (sortedAsc, p) => sortedAsc[Math.min(sortedAsc.length - 1, Math.floor(p * sortedAsc.length))];
@@ -103,6 +101,25 @@ function main() {
     console.log(`  ${t.padEnd(18)} ${String(n).padStart(4)}  (${(100 * n / COUNT).toFixed(1)}%)`);
   }
 
+  // ── Type-mix-oracle (#1198 pop-MUT-6) — håndhævet ved launch-skala ─────────
+  // Ejer-gulve (alle 9 typer + gc≥30/sprinter≥40) gælder den certificerede
+  // launch-population (count=800). Ved andre counts rapporteres kun.
+  // Pyramide-bånd-afvigelser er fortsat rapport-only: tolerance pr. bånd er en
+  // ejer-beslutning (dokumenteret i docs/GATE_MUTATION_AUDIT.md, mutant pop-MUT-1).
+  const oracleFailures = [];
+  if (COUNT === LAUNCH_POPULATION.count) {
+    oracleFailures.push(...checkLaunchTypeMix(typeCount));
+    if (oracleFailures.length) {
+      console.log("\n❌ TYPE-MIX-ORACLE FEJLEDE (launch-gulve, ejer-spec 2026-06-07):");
+      for (const f of oracleFailures) console.log(`  - ${f}`);
+      process.exitCode = 1;
+    } else {
+      console.log("\n✅ Type-mix-oracle: alle 9 typer repræsenteret, ejer-gulve (gc≥30, sprinter≥40) holder.");
+    }
+  } else {
+    console.log(`\n(type-mix-oracle springes over: count=${COUNT} ≠ launch-count ${LAUNCH_POPULATION.count})`);
+  }
+
   // ── Alder + nationalitet ────────────────────────────────────────────────────
   const ages = rows.map((r) => r._meta.age).sort((a, b) => a - b);
   console.log(`\nAlder: min ${ages[0]} · median ${pct(ages, 0.5)} · max ${ages[ages.length - 1]}`);
@@ -142,6 +159,8 @@ function main() {
     const name = `${r.firstname} ${r.lastname}`.slice(0, 21).padEnd(21);
     console.log(`  ${t.padEnd(14)}  ${name}  ${fmt(r.base_value).padStart(11)}   ${top3}`);
   }
+
+  console.log(`\nExit-kontrakt: ${process.exitCode === 1 ? "❌ exit 1 (type-mix-oracle brudt)" : "✅ exit 0"} · pyramide-bånd er rapport-only (bånd-tolerance = ejer-beslutning, #1198).`);
 }
 
 main();

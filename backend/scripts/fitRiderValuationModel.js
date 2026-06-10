@@ -23,7 +23,8 @@ import { fileURLToPath } from "node:url";
 
 import { fetchAllRows } from "../lib/supabasePagination.js";
 import { blendedOutput } from "../lib/riderValuation.js";
-import { fitValuationModel, checkAnchorOrdering } from "../lib/riderValuationFit.js";
+import { RIDER_TYPE_KEYS } from "../lib/riderTypes.js";
+import { fitValuationModel, checkAnchorOrdering, evaluateFitGuards } from "../lib/riderValuationFit.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, "../.env"), quiet: true });
@@ -80,10 +81,13 @@ async function main() {
   const predict = (an) => Math.exp(fit.predictLn(an));
   const { hard, soft } = checkAnchorOrdering(anchors, predict);
 
-  // Monotoni-guard: ln-kurven skal være voksende på hele output-domænet [0, 99] —
-  // ellers bliver de allerbedste ryttere billigere end midterfeltet.
-  if (fit.c < 0 && -fit.b / (2 * fit.c) < 99) {
-    console.error(`❌ Modellen er ikke monoton på [0,99] (toppunkt ved O=${(-fit.b / (2 * fit.c)).toFixed(1)}). Afbryder.`);
+  // Gate-integritets-guards (#1198): monotoni på HELE [0,99] (begge fortegns-
+  // kombinationer, ikke kun konkav-med-toppunkt) + hård-båndet skal være befolket
+  // (ellers er ordens-guarden de facto slukket). Se riderValuationFit.js.
+  const guardFailures = evaluateFitGuards(anchors, fit);
+  if (guardFailures.length) {
+    console.error("❌ Fit-guards fejlede — fittet afvises:");
+    for (const f of guardFailures) console.error(`  - ${f}`);
     process.exit(1);
   }
 
@@ -95,6 +99,14 @@ async function main() {
   console.log("Type-offset (×-effekt vs neutral):");
   for (const [t, off] of Object.entries(fit.offset).sort((x, y) => y[1] - x[1])) {
     console.log(`  ${t.padEnd(16)} ${off >= 0 ? "+" : ""}${off.toFixed(2)}  (×${Math.exp(off).toFixed(2)})`);
+  }
+  // #1198 VM-M5: typer uden anchor får offset 0 (neutral) — det kan fejlprise en
+  // HEL rytterklasse relativt til de kalibrerede typer. Rapporteres (blokerer ikke;
+  // fix = ejer tilføjer anchor for typen i riderValuationAnchors.json).
+  const anchoredTypes = new Set(anchors.map((an) => an.type));
+  const unanchored = RIDER_TYPE_KEYS.filter((t) => !anchoredTypes.has(t));
+  if (unanchored.length) {
+    console.warn(`  ⚠ typer UDEN anchor (offset=0 → hele typen potentielt fejlprist): ${unanchored.join(", ")}`);
   }
   console.log("\nAnchors (forudsagt vs mål):");
   for (const an of [...anchors].sort((x, y) => y.target - x.target)) {
