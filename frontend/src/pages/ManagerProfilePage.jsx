@@ -218,7 +218,7 @@ export default function ManagerProfilePage() {
             <table className="w-full">
               <thead><tr className="border-b border-cz-border">
                 <th className="px-4 py-3 text-left text-cz-3 text-[10px] uppercase">{t("manager.thRider")}</th>
-                <th className="px-4 py-3 text-right text-cz-3 text-[10px] uppercase">UCI</th>
+                <th className="px-4 py-3 text-right text-cz-3 text-[10px] uppercase">{t("manager.thValue")}</th>
                 <th className="px-4 py-3 text-right text-cz-3 text-[10px] uppercase hidden sm:table-cell">BJ</th>
                 <th className="px-4 py-3 text-right text-cz-3 text-[10px] uppercase hidden sm:table-cell">SP</th>
                 <th className="px-4 py-3 text-right text-cz-3 text-[10px] uppercase hidden sm:table-cell">TT</th>
@@ -234,7 +234,7 @@ export default function ManagerProfilePage() {
                       </RiderLink>
                       {r.is_u25 && <span className="text-[9px] bg-cz-info-bg0/20 text-cz-info px-1.5 py-0.5 rounded">U25</span>}
                     </td>
-                    <td className="px-4 py-3 text-right text-cz-accent-t font-mono text-sm">{formatNumber(r.uci_points)}</td>
+                    <td className="px-4 py-3 text-right text-cz-accent-t font-mono text-sm">{formatNumber(r.market_value)}</td>
                     <td className="px-4 py-3 text-right text-cz-2 text-sm hidden sm:table-cell">{r.stat_bj || "—"}</td>
                     <td className="px-4 py-3 text-right text-cz-2 text-sm hidden sm:table-cell">{r.stat_sp || "—"}</td>
                     <td className="px-4 py-3 text-right text-cz-2 text-sm hidden sm:table-cell">{r.stat_tt || "—"}</td>

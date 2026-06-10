@@ -78,41 +78,24 @@ function DevelopmentChart({ title, subtitle, data, color }) {
   );
 }
 
-export default function RiderDevelopmentTab({ uciHistory, statHistory, stats }) {
+// #1101 cutover: UCI-point-grafen er fjernet — uci_points er afkoblet og må ikke
+// vises player-facing. Tab'en viser kun stats-udvikling (rider_stat_history).
+export default function RiderDevelopmentTab({ statHistory, stats }) {
   const [selectedStat, setSelectedStat] = useState(stats[0].key);
 
   const selectedStatMeta = stats.find(s => s.key === selectedStat) || stats[0];
-  const uciChartData = uciHistory.map(row => toHistoryPoint(row, "uci_points"));
   const statChartData = statHistory.map(row => toHistoryPoint(row, selectedStat));
-  const recentDevelopmentRows = [...new Set([
-    ...uciHistory.map(row => row.synced_at),
-    ...statHistory.map(row => row.synced_at),
-  ])]
-    .sort((a, b) => new Date(b) - new Date(a))
+  const recentDevelopmentRows = [...statHistory]
+    .sort((a, b) => new Date(b.synced_at) - new Date(a.synced_at))
     .slice(0, 8)
-    .map(date => ({
-      synced_at: date,
-      uci_points: uciHistory.find(row => row.synced_at === date)?.uci_points,
-      stat_value: statHistory.find(row => row.synced_at === date)?.[selectedStat],
-    }));
+    .map(row => ({ synced_at: row.synced_at, stat_value: row[selectedStat] }));
 
   return (
     <div className="bg-cz-card border border-cz-border rounded-xl p-5">
-      {uciHistory.length === 0 && statHistory.length === 0 ? (
+      {statHistory.length === 0 ? (
         <p className="text-cz-3 text-center py-8">Ingen historik endnu — data akkumuleres fra næste ugentlige sync</p>
       ) : (
         <div className="space-y-6">
-          {uciHistory.length > 0 && (
-            <section>
-              <DevelopmentChart
-                title="UCI-point over tid"
-                subtitle="Seneste historiske syncs for rytterens pointtotal"
-                data={uciChartData}
-                color="#e8c547"
-              />
-            </section>
-          )}
-
           {statHistory.length > 0 && (
             <section>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
@@ -148,7 +131,6 @@ export default function RiderDevelopmentTab({ uciHistory, statHistory, stats }) 
                 <thead>
                   <tr className="border-b border-cz-border">
                     <th className="px-4 py-2 text-left text-cz-3 text-[10px] uppercase">Dato</th>
-                    <th className="px-4 py-2 text-right text-cz-3 text-[10px] uppercase">UCI</th>
                     <th className="px-4 py-2 text-right text-cz-3 text-[10px] uppercase">{selectedStatMeta.label}</th>
                   </tr>
                 </thead>
@@ -156,7 +138,6 @@ export default function RiderDevelopmentTab({ uciHistory, statHistory, stats }) 
                   {recentDevelopmentRows.map(row => (
                     <tr key={row.synced_at} className="border-b border-cz-border last:border-0">
                       <td className="px-4 py-2 text-cz-2">{formatHistoryDate(row.synced_at, { day: "numeric", month: "short", year: "numeric" })}</td>
-                      <td className="px-4 py-2 text-right text-cz-accent-t font-mono">{row.uci_points ?? "—"}</td>
                       <td className="px-4 py-2 text-right text-blue-500 font-mono">{row.stat_value ?? "—"}</td>
                     </tr>
                   ))}

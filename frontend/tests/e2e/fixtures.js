@@ -53,7 +53,10 @@ const RIDERS = [
     team_id: TEST_TEAM.id,
     nationality_code: "dk",
     birthdate: "2002-04-12",
-    uci_points: 420,
+    // #1101 cutover: market_value pinnet til samme tal som den gamle
+    // uci-fallback rendrede (420×4000) — holder snapshots stabile.
+    base_value: 1680000,
+    market_value: 1680000,
     salary: 42000,
     prize_earnings_bonus: 0,
     is_u25: true,
@@ -83,7 +86,8 @@ const RIDERS = [
     team_id: RIVAL_TEAM.id,
     nationality_code: "dk",
     birthdate: "1997-09-03",
-    uci_points: 350,
+    base_value: 1400000,
+    market_value: 1400000,
     salary: 35000,
     prize_earnings_bonus: 0,
     is_u25: false,

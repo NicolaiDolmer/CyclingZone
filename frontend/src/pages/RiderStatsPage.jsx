@@ -721,7 +721,6 @@ export default function RiderStatsPage() {
   const [activeAuction, setActiveAuction]   = useState(null);
   const [auctionError, setAuctionError]     = useState(null);
   const [history, setHistory]               = useState([]);
-  const [uciHistory, setUciHistory]         = useState([]);
   const [statHistory, setStatHistory]       = useState([]);
   const [ddActive, setDdActive]             = useState(false);
   // #195: live bud-timeline for seneste auktion (aktiv eller completed).
@@ -803,22 +802,16 @@ export default function RiderStatsPage() {
   }
 
   async function loadDevelopmentHistory() {
+    // #1101 cutover: rider_uci_history hentes ikke længere — uci_points er
+    // afkoblet og vises ikke player-facing. Kun stats-udvikling vises.
     const statColumns = STATS.map(s => s.key).join(", ");
-    const [uciRes, statRes] = await Promise.all([
-      supabase.from("rider_uci_history")
-        .select("uci_points, synced_at")
-        .eq("rider_id", id)
-        .order("synced_at", { ascending: true })
-        .limit(104),
-      supabase.from("rider_stat_history")
-        .select(`synced_at, ${statColumns}`)
-        .eq("rider_id", id)
-        .order("synced_at", { ascending: true })
-        .limit(52),
-    ]);
+    const { data } = await supabase.from("rider_stat_history")
+      .select(`synced_at, ${statColumns}`)
+      .eq("rider_id", id)
+      .order("synced_at", { ascending: true })
+      .limit(52);
 
-    setUciHistory(uciRes.data || []);
-    setStatHistory(statRes.data || []);
+    setStatHistory(data || []);
   }
 
   async function loadMyTeam() {
@@ -1431,7 +1424,7 @@ export default function RiderStatsPage() {
       {tab === "development" && (
         <Suspense fallback={<div className="bg-cz-card border border-cz-border rounded-xl p-5 text-cz-3 text-center py-8">{t("stats.loadingDevelopment")}</div>}>
           {isMyRider && !isRetired && <TrainingFocus rider={rider} training={training} />}
-          <RiderDevelopmentTab uciHistory={uciHistory} statHistory={statHistory} stats={localizedSkills} />
+          <RiderDevelopmentTab statHistory={statHistory} stats={localizedSkills} />
         </Suspense>
       )}
     </div>
