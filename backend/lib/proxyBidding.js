@@ -61,6 +61,12 @@ async function canAffordAutoBid(supabase, teamId, autoBidAmount, currentAuctionI
 //     max(winnerProxy.max + 1, minBid); previous winner gets "auction_proxy_outbid".
 //   If winner has no proxy → challenger bids at minimum; loop continues for more challengers.
 //
+// #1091 tie-break: ved identisk bud vinder den hidtidige fører med autobud.
+//   Hvis den nye vinders bud lander PRÆCIS på previousLeader's proxy-loft, matcher
+//   proxyen buddet (samme beløb) og føringen går tilbage uden prisstigning. En
+//   udfordrer skal OVERGÅ førerens loft for at overtage — ikke bare matche det.
+//   Kalderen sender previousLeader (lederen FØR det udløsende bud-event).
+//
 // Note: bidCfg is no longer used inside the cascade (extension lives in the
 // caller per #257), but we keep the parameter so callers don't need to change
 // signature.
@@ -72,6 +78,9 @@ export async function resolveProxyBids({
   bidCfg,
   notifyTeamOwner,
   notifyOutbidDM,
+  // #1091: lederen før det udløsende bud — nødvendig for tie-break til fordel
+  // for den hidtidige fører. null/udeladt = ingen tie-break (bagudkompat).
+  previousLeader = null,
   // #44: balance-check er injectable så tests kan stube den uden at mock'e
   // teams/auctions/auction_proxy_bids-tabellerne i fuld bredde. Default = real
   // DB-aware impl.
@@ -103,6 +112,87 @@ export async function resolveProxyBids({
       .eq("auction_id", auctionId);
 
     const allProxies = proxies || [];
+
+    // #1091: tie-break til fordel for den hidtidige fører med autobud. Hvis den
+    // nuværende vinders bud lander PRÆCIS på previousLeader's proxy-loft, matcher
+    // proxyen buddet (samme beløb, is_proxy) og føringen går tilbage til den
+    // hidtidige fører — prisen er uændret. Fyrer max én gang pr. cascade-run:
+    // efter match er currentWinner === previousLeader, og et evt. counter-bid fra
+    // den fortrængte byders egen proxy hæver prisen over loftet, så betingelsen
+    // ikke kan gen-fyre.
+    const tieBreakProxy =
+      previousLeader && currentWinner && currentWinner !== previousLeader
+        ? allProxies.find(
+            (p) =>
+              p.team_id === previousLeader &&
+              Number(p.max_amount) === Number(currentPrice) &&
+              !balanceRejectedTeams.has(p.team_id),
+          )
+        : null;
+
+    if (tieBreakProxy) {
+      const riderName = `${auction.rider.firstname} ${auction.rider.lastname}`;
+
+      // #44-paritet: samme balance-gate som almindelige auto-bids — proxyen kan
+      // være sat før en salary-deduction el.lign.
+      const canAffordTie = await canAffordAutoBidFn(supabase, previousLeader, currentPrice, auctionId);
+      if (!canAffordTie) {
+        balanceRejectedTeams.add(previousLeader);
+        if (notifyTeamOwner) {
+          await notifyTeamOwner(
+            previousLeader,
+            "auction_proxy_outbid",
+            "Dit autobud er stoppet",
+            `Dit autobud på ${riderName} stoppede pga. utilstrækkelig balance — sørg for at have penge på kontoen for at byde igen`,
+            auctionId,
+          ).catch((e) => console.error("[proxy-balance-reject] notif failed", { auctionId, e }));
+        }
+        continue;
+      }
+
+      // #269-paritet: late-bid-trigger kan afvise insert'en hvis auktionen
+      // udløb/blev finaliseret mellem iterationerne.
+      const { error: tieInsertError } = await supabase.from("auction_bids").insert({
+        auction_id: auctionId,
+        team_id: previousLeader,
+        amount: currentPrice,
+        bid_time: bidTime.toISOString(),
+        triggered_extension: false,
+        is_proxy: true,
+      });
+      if (tieInsertError) {
+        if (isLateBidTriggerError(tieInsertError)) break;
+        throw tieInsertError;
+      }
+
+      // Kun føringen flyttes tilbage — current_price er allerede beløbet.
+      await supabase.from("auctions").update({
+        current_bidder_id: previousLeader,
+      }).eq("id", auctionId);
+
+      if (notifyTeamOwner) {
+        const { data: leaderTeam } = await supabase
+          .from("teams")
+          .select("name")
+          .eq("id", previousLeader)
+          .maybeSingle();
+        const leaderName = leaderTeam?.name || "Autobud";
+        await notifyTeamOwner(
+          currentWinner,
+          "auction_outbid",
+          "Du er blevet overbudt!",
+          `${leaderName}'s autobud matchede dit bud på ${riderName} og beholder føringen ved identisk bud`,
+          auctionId,
+        ).catch((e) => console.error("[proxy-notif] failed", { auctionId, e }));
+      }
+      // Ingen sælger-notif her: prisen steg ikke, og sælgeren fik allerede
+      // bid_received for det udløsende bud på samme beløb.
+
+      // Fortsæt cascaden — den fortrængte byders egen proxy (hvis højere end
+      // loftet) kan stadig counter-byde i næste iteration.
+      continue;
+    }
+
     const challengers = allProxies
       .filter(
         (p) =>
