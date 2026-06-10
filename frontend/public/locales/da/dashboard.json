@@ -95,6 +95,7 @@
       "linkAll": "Se alle →",
       "empty": "Ingen afsluttede løb endnu denne sæson",
       "gc": "Samlet vinder",
+      "winner": "Vinder",
       "stage": "Vinder af etape {n}",
       "aiBadge": "AI"
     },

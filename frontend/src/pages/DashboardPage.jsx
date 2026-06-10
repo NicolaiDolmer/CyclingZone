@@ -777,7 +777,11 @@ export default function DashboardPage() {
                     <p className="text-cz-1 text-sm truncate">{race.name}</p>
                     <p className="text-cz-3 text-xs mt-0.5">
                       {race.winner?.result_type === "gc"
-                        ? t("dashboard:cards.recentResults.gc")
+                        // Endagsløb gemmer vinderen som gc-række men har intet
+                        // samlet klassement — dér er han bare "Vinder" (#1188).
+                        ? (race.race_type === "stage_race"
+                            ? t("dashboard:cards.recentResults.gc")
+                            : t("dashboard:cards.recentResults.winner"))
                         : t("dashboard:cards.recentResults.stage", { n: race.winner?.stage_number ?? 0 })}
                     </p>
                   </div>
