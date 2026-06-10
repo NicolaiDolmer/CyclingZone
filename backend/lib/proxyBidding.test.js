@@ -675,6 +675,227 @@ test("resolver: challenger-overtages med winnerProxy clamper bud til winnerProxy
 });
 
 // =============================================================================
+// #1091 — tie-break: ved identisk bud beholder den hidtidige fører med autobud føringen
+// =============================================================================
+
+test("#1091: manuelt bud PRÆCIS på førerens proxy-max → føreren beholder føringen (proxy-vs-manuelt)", async () => {
+  // A leder ved 80K med proxy max 100K. B byder manuelt PRÆCIS 100K — routen har
+  // allerede sat price=100K, bidder=B før cascaden. Med previousLeader=A skal
+  // cascaden matche buddet på A's vegne: føringen tilbage til A, prisen uændret.
+  const auction = {
+    id: "auc-tie-1",
+    status: "active",
+    calculated_end: FUTURE_END,
+    current_price: 100000,
+    current_bidder_id: "team-b",
+    rider: { firstname: "Test", lastname: "Rider", team_id: null },
+    seller_team_id: "ai-team",
+    extension_count: 0,
+  };
+  const proxies = [{ team_id: "team-a", max_amount: 100000 }];
+  const teams = { "team-a": { name: "Aalborg" } };
+  const supabase = createMockSupabase({ auction, proxies, teams });
+
+  const ownerCalls = [];
+  await resolveProxyBids({
+    supabase,
+    auctionId: "auc-tie-1",
+    bidTime: BID_TIME,
+    bidCfg: { extension_minutes: 10 },
+    notifyTeamOwner: async (...args) => { ownerCalls.push(args); },
+    previousLeader: "team-a",
+  });
+
+  assert.equal(supabase.state.bids.length, 1, "præcis 1 tie-match-bid");
+  assert.equal(supabase.state.bids[0].team_id, "team-a");
+  assert.equal(supabase.state.bids[0].amount, 100000, "match på samme beløb — ingen prisstigning");
+  assert.equal(supabase.state.bids[0].is_proxy, true);
+  assert.equal(supabase.state.auction.current_price, 100000);
+  assert.equal(supabase.state.auction.current_bidder_id, "team-a", "føringen skal tilbage til A");
+
+  // B skal notificeres som overbudt
+  const outbidNotif = ownerCalls.find((c) => c[1] === "auction_outbid");
+  assert.ok(outbidNotif, "auction_outbid notif til den fortrængte byder");
+  assert.equal(outbidNotif[0], "team-b");
+});
+
+test("#1091: tie-match + fortrængt byder har højere proxy → dennes proxy counter-byder bagefter", async () => {
+  // A leder med proxy 100K. B byder manuelt 100K MED proxy_max 150K (gemt af routen).
+  // Forventet: A matcher ved 100K (tie går til føreren), derefter counter-byder B's
+  // proxy ved 100.001 — eBay-semantik: tie kræver at udfordreren OVERGÅR loftet.
+  const auction = {
+    id: "auc-tie-2",
+    status: "active",
+    calculated_end: FUTURE_END,
+    current_price: 100000,
+    current_bidder_id: "team-b",
+    rider: { firstname: "Test", lastname: "Rider", team_id: null },
+    seller_team_id: "ai-team",
+    extension_count: 0,
+  };
+  const proxies = [
+    { team_id: "team-a", max_amount: 100000 },
+    { team_id: "team-b", max_amount: 150000 },
+  ];
+  const teams = { "team-a": { name: "Aalborg" }, "team-b": { name: "Brønderslev" } };
+  const supabase = createMockSupabase({ auction, proxies, teams });
+
+  await resolveProxyBids({
+    supabase,
+    auctionId: "auc-tie-2",
+    bidTime: BID_TIME,
+    bidCfg: { extension_minutes: 10 },
+    notifyTeamOwner: async () => {},
+    previousLeader: "team-a",
+  });
+
+  assert.equal(supabase.state.bids.length, 2, "tie-match (A) + counter-bid (B)");
+  assert.equal(supabase.state.bids[0].team_id, "team-a");
+  assert.equal(supabase.state.bids[0].amount, 100000);
+  assert.equal(supabase.state.bids[1].team_id, "team-b");
+  assert.equal(supabase.state.bids[1].amount, 100001);
+  assert.equal(supabase.state.auction.current_bidder_id, "team-b");
+  assert.equal(supabase.state.auction.current_price, 100001);
+});
+
+test("#1091: proxy-vs-proxy tie ved minBid-kanten → hidtidig fører beholder føringen", async () => {
+  // A leder ved 100.000 med proxy max 100.001. B sætter proxy max 100.001 — routens
+  // opening bid (minBid 100.001) har gjort B til midlertidig leder. Identisk
+  // effektivt loft: tie skal gå til A (hidtidig fører).
+  // Pre-fix: A's proxy (max == currentPrice < minBid) var ikke challenger → B beholdt føringen.
+  const auction = {
+    id: "auc-tie-3",
+    status: "active",
+    calculated_end: FUTURE_END,
+    current_price: 100001,
+    current_bidder_id: "team-b",
+    rider: { firstname: "Test", lastname: "Rider", team_id: null },
+    seller_team_id: "ai-team",
+    extension_count: 0,
+  };
+  const proxies = [
+    { team_id: "team-a", max_amount: 100001 },
+    { team_id: "team-b", max_amount: 100001 },
+  ];
+  const teams = { "team-a": { name: "Aalborg" } };
+  const supabase = createMockSupabase({ auction, proxies, teams });
+
+  await resolveProxyBids({
+    supabase,
+    auctionId: "auc-tie-3",
+    bidTime: BID_TIME,
+    bidCfg: { extension_minutes: 10 },
+    notifyTeamOwner: async () => {},
+    previousLeader: "team-a",
+  });
+
+  assert.equal(supabase.state.bids.length, 1, "kun A's tie-match — B kan ikke counter-byde over eget loft");
+  assert.equal(supabase.state.bids[0].team_id, "team-a");
+  assert.equal(supabase.state.bids[0].amount, 100001);
+  assert.equal(supabase.state.auction.current_bidder_id, "team-a");
+  assert.equal(supabase.state.auction.current_price, 100001);
+});
+
+test("#1091: proxy-vs-proxy med ens max over minBid → hidtidig fører vinder ved max (eksisterende cascade-adfærd)", async () => {
+  // A leder ved 50K med proxy 100K. B sætter proxy 100K — opening bid 50.001 gjorde
+  // B til midlertidig leder. Cascadens challenger-overtagelses-gren klamper B's
+  // "winner-proxy" til A.max = 100K, så A (challenger i cascadens optik) ender med
+  // føringen ved 100K. Pin'er at tie-reglen allerede holdt i dette flow.
+  const auction = {
+    id: "auc-tie-4",
+    status: "active",
+    calculated_end: FUTURE_END,
+    current_price: 50001,
+    current_bidder_id: "team-b",
+    rider: { firstname: "Test", lastname: "Rider", team_id: null },
+    seller_team_id: "ai-team",
+    extension_count: 0,
+  };
+  const proxies = [
+    { team_id: "team-a", max_amount: 100000 },
+    { team_id: "team-b", max_amount: 100000 },
+  ];
+  const teams = { "team-a": { name: "Aalborg" } };
+  const supabase = createMockSupabase({ auction, proxies, teams });
+
+  await resolveProxyBids({
+    supabase,
+    auctionId: "auc-tie-4",
+    bidTime: BID_TIME,
+    bidCfg: { extension_minutes: 10 },
+    notifyTeamOwner: async () => {},
+    previousLeader: "team-a",
+  });
+
+  const lastBid = supabase.state.bids.at(-1);
+  assert.equal(lastBid.team_id, "team-a");
+  assert.equal(lastBid.amount, 100000);
+  assert.equal(supabase.state.auction.current_bidder_id, "team-a", "ved ens proxy-max vinder den hidtidige fører");
+  assert.equal(supabase.state.auction.current_price, 100000);
+});
+
+test("#1091: uden previousLeader (bagudkompat) → ingen tie-match, ny byder beholder føringen", async () => {
+  // Kalder uden previousLeader (fx ældre call-sites/tests): adfærd som før fixet.
+  const auction = {
+    id: "auc-tie-5",
+    status: "active",
+    calculated_end: FUTURE_END,
+    current_price: 100000,
+    current_bidder_id: "team-b",
+    rider: { firstname: "Test", lastname: "Rider", team_id: null },
+    seller_team_id: "ai-team",
+    extension_count: 0,
+  };
+  const proxies = [{ team_id: "team-a", max_amount: 100000 }];
+  const supabase = createMockSupabase({ auction, proxies });
+
+  await resolveProxyBids({
+    supabase,
+    auctionId: "auc-tie-5",
+    bidTime: BID_TIME,
+    bidCfg: { extension_minutes: 10 },
+    notifyTeamOwner: async () => {},
+  });
+
+  assert.equal(supabase.state.bids.length, 0);
+  assert.equal(supabase.state.auction.current_bidder_id, "team-b");
+});
+
+test("#1091 + #44: tie-match balance-gates — fører uden råd mister tie-fortrinnet", async () => {
+  // A's proxy matcher beløbet, men A har ikke længere råd (fx salary-deduction
+  // siden proxy blev sat). Tie-match skal afvises, B beholder føringen, A notificeres.
+  const auction = {
+    id: "auc-tie-6",
+    status: "active",
+    calculated_end: FUTURE_END,
+    current_price: 100000,
+    current_bidder_id: "team-b",
+    rider: { firstname: "Test", lastname: "Rider", team_id: null },
+    seller_team_id: "ai-team",
+    extension_count: 0,
+  };
+  const proxies = [{ team_id: "team-a", max_amount: 100000 }];
+  const supabase = createMockSupabase({ auction, proxies });
+
+  const ownerCalls = [];
+  await resolveProxyBidsRaw({
+    supabase,
+    auctionId: "auc-tie-6",
+    bidTime: BID_TIME,
+    bidCfg: { extension_minutes: 10 },
+    notifyTeamOwner: async (...args) => { ownerCalls.push(args); },
+    previousLeader: "team-a",
+    canAffordAutoBidFn: async () => false,
+  });
+
+  assert.equal(supabase.state.bids.length, 0, "ingen tie-match uden råd");
+  assert.equal(supabase.state.auction.current_bidder_id, "team-b");
+  const rejectNotif = ownerCalls.find((c) => c[0] === "team-a" && c[1] === "auction_proxy_outbid");
+  assert.ok(rejectNotif, "A skal notificeres om stoppet autobud");
+  assert.match(rejectNotif[3], /utilstr.kkelig balance/);
+});
+
+// =============================================================================
 // #44 — balance-gate på auto-bid (canAffordAutoBidFn)
 // =============================================================================
 
