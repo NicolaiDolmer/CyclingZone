@@ -12,6 +12,23 @@
 
 export const RIDERS_FILTERS_SESSION_KEY = "riders.filters.v1";
 
+// #1101 cutover: interne nøglenavne fra uci_points-æraen er omdøbt (sort
+// "uci_points" → "value", filter min_uci/max_uci → min_value/max_value).
+// Gamle URL'er (bookmarks/delte links) og sessionStorage-blobs accepteres
+// stadig ved parse, men de gamle navne skrives aldrig længere.
+// Map (ikke objekt-literal) så nøgler som "__proto__" ikke rammer prototypen.
+const LEGACY_KEY_MAP = new Map([
+  ["min_uci", "min_value"],
+  ["max_uci", "max_value"],
+]);
+const LEGACY_SORT_VALUE = "uci_points";
+
+function normalizeLegacyEntry(key, value) {
+  const mappedKey = LEGACY_KEY_MAP.get(key) ?? key;
+  const mappedValue = mappedKey === "sort" && value === LEGACY_SORT_VALUE ? "value" : value;
+  return [mappedKey, mappedValue];
+}
+
 function isDefaultValue(value, defaultVal) {
   if (defaultVal === undefined) return true;
   if (value == null || value === "") {
@@ -35,7 +52,8 @@ export function filtersToSearchParams(filters, defaults) {
 
 export function searchParamsToFilters(searchParams, defaults) {
   const result = { ...defaults };
-  for (const [key, raw] of searchParams.entries()) {
+  for (const [rawKey, rawValue] of searchParams.entries()) {
+    const [key, raw] = normalizeLegacyEntry(rawKey, rawValue);
     if (!(key in defaults)) continue;
     const defaultVal = defaults[key];
     if (typeof defaultVal === "boolean") {
@@ -66,7 +84,12 @@ export function loadFiltersFromSession(defaults) {
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (!parsed || typeof parsed !== "object") return null;
-    return { ...defaults, ...parsed };
+    // Object.fromEntries (define-semantik) så et legacy "__proto__"-felt i
+    // blob'en ikke kan ramme prototypen via [[Set]].
+    const normalized = Object.fromEntries(
+      Object.entries(parsed).map(([key, value]) => normalizeLegacyEntry(key, value)),
+    );
+    return { ...defaults, ...normalized };
   } catch {
     return null;
   }
