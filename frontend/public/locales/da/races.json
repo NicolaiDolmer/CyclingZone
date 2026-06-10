@@ -5,7 +5,7 @@
     "noSeason": "Ingen aktiv sæson",
     "noSeasonWithCount": "Ingen aktiv sæson · {count} løb",
     "library": "{count} løb på tværs af alle sæsoner",
-    "points": "UCI-pointtabeller og præmieformel"
+    "points": "Pointtabeller og præmieformel"
   },
   "tabs": {
     "calendar": "📅 Kalender",
@@ -160,12 +160,12 @@
   },
   "points": {
     "title": "Point- og præmieoversigt",
-    "subtitle": "Sådan beregnes dine løbspræmier fra UCI-placeringer",
+    "subtitle": "Sådan beregnes dine løbspræmier fra dine placeringer",
     "help": "Hjælp & Regler",
-    "formula": "Præmieformlen: 1 UCI-point = {amount} CZ$",
+    "formula": "Præmieformlen: 1 point = {amount} CZ$",
     "noClassData": "Ingen pointdata for denne klasse",
     "thRank": "Plads",
-    "thUciPoints": "UCI-point",
+    "thPoints": "Point",
     "thPrize": "Præmie",
     "showLess": "Skjul ↑",
     "showAll": "Vis alle {count} pladser ↓",

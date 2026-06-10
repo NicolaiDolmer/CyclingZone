@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.10",
+    date: "2026-06-10",
+    label: "Beta",
+    changes: [
+      {
+        category: "Improved · Race points naming",
+        items: [
+          "EN · Race scoring is now simply called points everywhere in the game. The points and prizes pages, help sections and table headers no longer use the UCI name, as part of making Cycling Zone's world fully independent of real-world cycling bodies. Nothing changes functionally: the points tables, the leaderboard and the prize formula (1 point = 1,500 CZ$) are exactly as before. Refs #1105.",
+          "DA · Løbsscoring hedder nu bare point overalt i spillet. Point- og præmiesiderne, hjælpesektionerne og tabel-headers bruger ikke længere UCI-navnet, som led i at gøre Cycling Zones verden fuldt uafhængig af virkelighedens cykelforbund. Intet ændrer sig funktionelt: pointtabellerne, ranglisten og præmieformlen (1 point = 1.500 CZ$) er præcis som før. Refs #1105.",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.09",
     date: "2026-06-10",
     label: "Beta",

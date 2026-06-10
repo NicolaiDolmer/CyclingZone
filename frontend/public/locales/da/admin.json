@@ -24,8 +24,8 @@
     "generateError": "Kunne ikke generére: {error}",
     "invalidValue": "Skal være et ikke-negativt tal"
   },
-    "sectionTitle": "Race points · UCI override",
-    "intro": "Justér UCI-ranking-point per placering og løbsklasse. Ændringer logges i admin log. Brug \"Reset til baseline\" for at gå tilbage til UCI default.",
+    "sectionTitle": "Race points · override",
+    "intro": "Justér point per placering og løbsklasse. Ændringer logges i admin log. Brug \"Reset til baseline\" for at gå tilbage til default.",
     "appliesToFutureHint": "Gemte ændringer påvirker kun løb der importeres fra nu af. For at slå dem igennem på eksisterende rangliste, kør \"↻ Point fra config\" under Sæson-fanen (allerede udbetalte løb røres ikke).",
     "raceClassTab": "Løbsklasse",
     "rankHeader": "#{rank}",
