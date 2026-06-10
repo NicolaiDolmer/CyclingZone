@@ -102,6 +102,20 @@ To værn fanger det hvis vanen glipper:
 
 ## Gotchas
 
+### Playwright-port pr. worktree (false-green-guard)
+
+> Indført 2026-06-10 efter at en agents core-smoke-suite passerede 18/18 mod en **anden** worktrees dev-server — ændringerne var reelt uverificerede. Samme rod-årsag bed også 2026-05-31 (se `.claude/learnings/`).
+
+Alle worktrees delte tidligere hardcodet port 4173, og `webServer.reuseExistingServer` genbrugte stille enhver server på porten — uanset hvilken worktree den servede fra. Nu (logik i `frontend/playwright.ports.js`):
+
+- **Main-checkout** (`C:\Dev\CyclingZone`, `.git` er en mappe) beholder **4173** — CI og snapshots uændret.
+- **Linked worktrees** (`.git` er en fil) får en **deterministisk hash-afledt port i 4300-4999** baseret på worktree-stien. Parallelle worktrees kolliderer ikke uden manuel handling.
+- **`PW_PORT`** overrider alt: `$env:PW_PORT=4600; npx playwright test`
+- **`--strictPort`**: vite fejler højlydt i stedet for at hoppe til en nabo-port som baseURL ikke peger på.
+- **Identity-guard**: dev/preview-serveren eksponerer `/__worktree-id` (vite-plugin), og Playwrights `globalSetup` fejler højlydt FØR suiten hvis serveren på porten serverer en anden rod end testens egen worktree — inkl. stale servere fra før dette fix (de har intet id-endpoint og afvises også).
+
+Når guarden fejler: dræb processen på porten (`netstat -ano | findstr :<port>` → `Stop-Process -Id <PID> -Force`) eller kør med eksplicit fri `PW_PORT`.
+
 ### Delt node_modules
 
 Worktrees deler `node_modules/` via junction. Det betyder:
