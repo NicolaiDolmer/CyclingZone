@@ -36,7 +36,7 @@ Fuld doc-index: [`docs/META_DOCS_INDEX.md`](docs/META_DOCS_INDEX.md). Top-3 hits
 1. **Issue:** `gh issue comment N --body "..."` eller `gh issue close N --reason completed` hvis verificeret. Bruger lukker selv per label-state-maskine i `GITHUB_WORKFLOW.md`.
 2. **NOW.md:** opdatér hvis aktiv slice ændrer sig — maks 30 linjer. Trim gamle close-out-blokke **direkte** (historik bevares i git-log + issue-tråde); opret IKKE separate `docs/archive/NOW-*.md` — mappen er hard-beskyttet af #684-deny ([#750](https://github.com/NicolaiDolmer/CyclingZone/issues/750)). **Obligatorisk:** opdatér **🎯 Next action** (peg på næste session-kandidat eller nulstil) + nulstil **🤖 Working agent** til "Ingen aktiv session" ([#558](https://github.com/NicolaiDolmer/CyclingZone/issues/558)/[#559](https://github.com/NicolaiDolmer/CyclingZone/issues/559)).
 3. **FEATURE_STATUS.md:** opdatér hvis kontrakter eller features ændret.
-4. **PatchNotesPage.jsx:** opdatér ved enhver brugerrettet ændring (eller skriv hvorfor ikke).
+4. **PatchNotesPage.jsx:** opdatér ved enhver brugerrettet ændring (eller skriv hvorfor ikke). **Hjælp/FAQ samme rutine** (#1171): ny/ændret spilmekanik → opdatér `help.json` (en+da) eller skriv hvorfor ikke.
 5. **Postmortem:** ved bugfix → `.claude/learnings/<dato>-<slug>.md`.
 6. **Token-hygiejne:** kør `pwsh -File scripts/check-agent-token-hygiene.ps1` ved lange sessioner.
 

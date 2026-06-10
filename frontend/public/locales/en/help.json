@@ -398,7 +398,7 @@
         "text": "Under Season & Results, Races, Points & prizes you'll find every race class's complete points and prize scale with all places.",
         "ctaLabel": "Open Points & prizes →",
         "ctaTo": "/races?tab=points",
-        "disclaimer": "Prize amounts may be adjusted until season 1 finishes."
+        "disclaimer": "Prize amounts may still be adjusted during the open beta."
       }
     },
     "divisions": {
@@ -437,7 +437,11 @@
       },
       "development": {
         "title": "Development over time",
-        "text": "On a rider's stats page there's a 'Development' tab. Here you can pick one of the 14 stats, follow its development as a graph, and see recent historical data points. If the tab is empty, no history from the weekly syncs has been gathered yet."
+        "text": "On a rider's stats page there's a 'Development' tab. Here you can pick one of the 14 stats, follow its development as a graph, and see recent historical data points. New data points are added as riders develop, for example at season changes. If the tab is empty, the rider has no recorded development yet."
+      },
+      "trainingFocus": {
+        "title": "Training focus",
+        "text": "From the profile of one of your own riders you can set a season-long training focus: a direction (VO2max, Threshold/TT, Sprint, Endurance, Technique or Aero) plus an intensity. The trained abilities then develop faster toward their ceiling, applied at the next season change. Higher intensity trains faster but carries a setback risk (lost gains): Easy is safe, Normal has a small risk, Hard a clear one. Other abilities grow a little slower while a focus is active. You have 3 focus slots per season, so pick your key riders; changing an existing focus costs nothing. Training is free and does not cost money."
       },
       "scouting": {
         "title": "Scouting potential",
@@ -550,7 +554,11 @@
     },
     "riderDevelopment": {
       "q": "Where can I see whether a rider is developing?",
-      "a": "Open the rider's stats page and pick the 'Development' tab. It shows a selectable graph for each stat and the latest data points from the sync history."
+      "a": "Open the rider's stats page and pick the 'Development' tab. It shows a selectable graph for each stat and the rider's recorded development over time."
+    },
+    "trainingFocusFaq": {
+      "q": "How do I train a rider?",
+      "a": "Open one of your own riders and set a training focus under 'Training focus' on the profile: pick a direction and an intensity. The trained abilities develop faster toward their ceiling at the next season change. You have 3 focus slots per season. Higher intensity trains faster but risks a setback; changing an existing focus costs nothing, and training is free."
     },
     "salaryShortfall": {
       "q": "What happens if I can't pay the salaries?",
