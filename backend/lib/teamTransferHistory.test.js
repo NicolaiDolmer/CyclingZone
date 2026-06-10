@@ -196,6 +196,65 @@ test("teamTransferHistory — season_number udledes fra dato", async () => {
   assert.equal(byId["auction:A-s6"].season_number, 6);
 });
 
+test("teamTransferHistory — cash_flow afspejler kontobevægelsen, ikke rytter-retningen (#984)", async () => {
+  // direction er rytter-centrisk (in=køb, out=salg) for auction/transfer/loan,
+  // men pengestrømmen er omvendt: køb = penge UD, salg = penge IND.
+  // For swap følger direction allerede cash-flowet.
+  const supabase = createSupabase({
+    auctions: [
+      auctionRow({ id: "A-buy", seller: OTHER, winner: TEAM, price: 50000, date: "2026-05-01T00:00:00Z" }),
+      auctionRow({ id: "A-sell", seller: TEAM, winner: OTHER, price: 40000, date: "2026-05-02T00:00:00Z" }),
+    ],
+    transferOffers: [
+      offerRow({ id: "T-buy", seller: OTHER, buyer: TEAM, amount: 30000, date: "2026-05-03T00:00:00Z" }),
+      offerRow({ id: "T-sell", seller: TEAM, buyer: OTHER, amount: 35000, date: "2026-05-04T00:00:00Z" }),
+    ],
+    loanAgreements: [
+      loanRow({ id: "L-out", from: TEAM, to: OTHER, date: "2026-05-05T00:00:00Z" }),
+      loanRow({ id: "L-in", from: OTHER, to: TEAM, date: "2026-05-06T00:00:00Z" }),
+      loanRow({ id: "L-free", from: TEAM, to: OTHER, fee: 0, date: "2026-05-07T00:00:00Z" }),
+    ],
+    swapOffers: [
+      swapRow({ id: "S-even", proposing: TEAM, receiving: OTHER, cash: 0, date: "2026-05-08T00:00:00Z" }),
+      swapRow({ id: "S-paid", proposing: TEAM, receiving: OTHER, cash: 5000, date: "2026-05-09T00:00:00Z" }),
+      swapRow({ id: "S-received", proposing: TEAM, receiving: OTHER, cash: -3000, date: "2026-05-10T00:00:00Z" }),
+    ],
+  });
+  const events = await buildTeamTransferHistory(supabase, TEAM);
+  const byId = Object.fromEntries(events.map((e) => [e.id, e]));
+  assert.equal(byId["auction:A-buy"].cash_flow, "out", "auktionskøb = penge ud");
+  assert.equal(byId["auction:A-sell"].cash_flow, "in", "auktionssalg = penge ind");
+  assert.equal(byId["transfer:T-buy"].cash_flow, "out", "transferkøb = penge ud");
+  assert.equal(byId["transfer:T-sell"].cash_flow, "in", "transfersalg = penge ind");
+  assert.equal(byId["loan:L-out"].cash_flow, "in", "udlejning = fee ind (api.js: from_team får +loan_fee)");
+  assert.equal(byId["loan:L-in"].cash_flow, "out", "leje = fee ud");
+  assert.equal(byId["loan:L-free"].cash_flow, null, "gratis leje = ingen pengestrøm");
+  assert.equal(byId["swap:S-even"].cash_flow, null, "ren bytte = ingen pengestrøm");
+  assert.equal(byId["swap:S-paid"].cash_flow, "out", "swap med betalt cash = penge ud");
+  assert.equal(byId["swap:S-received"].cash_flow, "in", "swap med modtaget cash = penge ind");
+});
+
+test("teamTransferHistory — grænsedag: salg samme dag som ny sæson starter hører til den gamle sæson (#984)", async () => {
+  // seasons.start_date/end_date er DATE-kolonner: ved sæsonskifte deler gammel
+  // sæsons end_date og ny sæsons start_date kalenderdag. Salg på grænsedagen
+  // (vindues-lukning før transitionen) skal tilhøre den gamle sæson — ikke den
+  // nye, som midnats-sammenligningen ellers tildeler dem.
+  const supabase = createSupabase({
+    auctions: [
+      auctionRow({ id: "A-boundary", seller: TEAM, winner: OTHER, price: 20000, date: "2026-06-30T08:30:00Z" }),
+      auctionRow({ id: "A-next", seller: TEAM, winner: OTHER, price: 25000, date: "2026-07-01T10:00:00Z" }),
+    ],
+    seasons: [
+      { id: "s6", number: 6, start_date: "2026-04-01", end_date: "2026-06-30" },
+      { id: "s7", number: 7, start_date: "2026-06-30", end_date: null },
+    ],
+  });
+  const events = await buildTeamTransferHistory(supabase, TEAM);
+  const byId = Object.fromEntries(events.map((e) => [e.id, e]));
+  assert.equal(byId["auction:A-boundary"].season_number, 6, "grænsedags-salg → gammel sæson");
+  assert.equal(byId["auction:A-next"].season_number, 7, "dagen efter → ny sæson");
+});
+
 test("teamTransferHistory — private statuses ekskluderes (#105 kontrakt)", async () => {
   // Mock-supabase'en respekterer `.in()`-filteret. Hvis buildTeamTransferHistory
   // ikke kalder .in() med PUBLIC_*-whitelisten, ville disse rows slippe igennem.

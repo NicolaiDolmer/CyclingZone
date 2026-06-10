@@ -180,9 +180,11 @@ export default function TeamTransferHistoryTab({ teamId }) {
                     ) : <span className="text-cz-3">—</span>}
                   </td>
                   <td className="py-2 text-right font-mono whitespace-nowrap">
+                    {/* Fortegn/farve følger kontobevægelsen (cash_flow), ikke rytter-retningen:
+                        salg = +grøn (penge ind), køb = -rød (penge ud) (#984) */}
                     {ev.amount > 0
-                      ? <span className={ev.direction === "in" ? "text-cz-success" : ev.direction === "out" ? "text-cz-danger" : "text-cz-2"}>
-                          {ev.direction === "out" ? "-" : ev.direction === "in" ? "+" : ""}{formatNumber(ev.amount)} CZ$
+                      ? <span className={ev.cash_flow === "in" ? "text-cz-success" : ev.cash_flow === "out" ? "text-cz-danger" : "text-cz-2"}>
+                          {ev.cash_flow === "in" ? "+" : ev.cash_flow === "out" ? "-" : ""}{formatNumber(ev.amount)} CZ$
                         </span>
                       : <span className="text-cz-3">{ev.type === "swap" ? t("history.swapZero") : "—"}</span>}
                     {ev.type === "loan" && <span className="text-cz-3 ms-1">{t("history.loanTag")}</span>}
