@@ -145,7 +145,13 @@
     "removing": "Fjerner...",
     "removeAria": "Fjern {riderName} fra transferlisten",
     "removeConfirm": "Fjern {riderName} fra transferlisten?",
-    "ridersForSale": "rytter"
+    "ridersForSale": "rytter",
+    "editPrice": "✏️ Redigér pris",
+    "editPriceAria": "Redigér prisen på {riderName}",
+    "editPriceLabel": "Ny pris (CZ$)",
+    "savePrice": "Gem",
+    "cancel": "Annullér",
+    "confirmRemoveButton": "Ja, fjern"
   },
   "newSwap": {
     "title": "Foreslå byttehandel",
@@ -255,7 +261,9 @@
     "loanActivated": "✅ Lejeaftale aktiveret",
     "loanRejected": "Lejeforslag afvist",
     "loanCancelled": "Lejeaftale annulleret",
-    "loanProposalSent": "✅ Lejeforslag sendt!"
+    "loanProposalSent": "✅ Lejeforslag sendt!",
+    "priceUpdated": "✅ Pris opdateret",
+    "priceUpdateFailed": "Kunne ikke opdatere prisen"
   },
   "celebration": {
     "transferDone": {
@@ -270,5 +278,11 @@
       "title": "Rytter købt! 🎉",
       "subtitle": "Købsoptionen er udnyttet"
     }
+  },
+  "marketSort": {
+    "label": "Sortering",
+    "newest": "Nyeste først",
+    "price_asc": "Pris: laveste først",
+    "price_desc": "Pris: højeste først"
   }
 }

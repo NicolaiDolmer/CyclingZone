@@ -45,6 +45,7 @@ const SECTION_DEFS = [
     icon: "↔",
     blocks: [
       { id: "whatTransfers", kind: "text" },
+      { id: "sellOnTransferList", kind: "text" },
       { id: "sendOffer", kind: "steps" },
       { id: "receiveAndReply", kind: "text" },
       { id: "finalConfirmation", kind: "text" },

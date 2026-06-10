@@ -145,7 +145,13 @@
     "removing": "Removing...",
     "removeAria": "Remove {riderName} from transfer list",
     "removeConfirm": "Remove {riderName} from transfer list?",
-    "ridersForSale": "rider"
+    "ridersForSale": "rider",
+    "editPrice": "✏️ Edit price",
+    "editPriceAria": "Edit asking price for {riderName}",
+    "editPriceLabel": "New asking price (CZ$)",
+    "savePrice": "Save",
+    "cancel": "Cancel",
+    "confirmRemoveButton": "Yes, remove"
   },
   "newSwap": {
     "title": "Propose swap",
@@ -255,7 +261,9 @@
     "loanActivated": "✅ Loan activated",
     "loanRejected": "Loan proposal rejected",
     "loanCancelled": "Loan cancelled",
-    "loanProposalSent": "✅ Loan proposal sent!"
+    "loanProposalSent": "✅ Loan proposal sent!",
+    "priceUpdated": "✅ Asking price updated",
+    "priceUpdateFailed": "Could not update the price"
   },
   "celebration": {
     "transferDone": {
@@ -270,5 +278,11 @@
       "title": "Rider bought! 🎉",
       "subtitle": "The buy option has been exercised"
     }
+  },
+  "marketSort": {
+    "label": "Sort",
+    "newest": "Newest first",
+    "price_asc": "Price: lowest first",
+    "price_desc": "Price: highest first"
   }
 }

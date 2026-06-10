@@ -327,6 +327,26 @@
       "errorPrefix": "❌"
     }
   },
+  "sellRider": {
+    "buttonOpen": "↔ List for sale",
+    "description": "List the rider for sale at a fixed price on the transfer list. You can edit the price or remove the listing at any time.",
+    "pricePlaceholder": "Asking price in CZ$",
+    "submit": "List for sale",
+    "submitUpdate": "Update price",
+    "sending": "Saving...",
+    "listedStatus": "On the transfer list for {amount} CZ$",
+    "editPrice": "Edit price",
+    "hideEdit": "Hide",
+    "remove": "Remove from list",
+    "confirmRemove": "Yes, remove",
+    "cancel": "Cancel",
+    "toast": {
+      "listed": "✅ Listed for sale!",
+      "priceUpdated": "✅ Asking price updated",
+      "removed": "✅ Removed from the transfer list",
+      "errorPrefix": "❌"
+    }
+  },
   "swapOffer": {
     "buttonOpen": "⇄ Propose swap",
     "windowClosed": "Transfer window closed",

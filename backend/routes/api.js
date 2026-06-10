@@ -165,6 +165,7 @@ import {
   confirmTransferOffer,
   flushWindowPendingOffers,
   getListingCancelIssue,
+  getListingPriceUpdateIssue,
   getLoanCancelIssue,
   getSwapCancelIssue,
   getTransferCancelIssue,
@@ -1835,6 +1836,45 @@ router.delete("/transfers/:id", requireAuth, marketWriteLimiter, async (req, res
     .eq("id", req.params.id);
   if (updateErr) return res.status(500).json({ error: updateErr.message });
   res.json({ success: true });
+});
+
+// PATCH /api/transfers/:id — redigér asking_price på egen listing (#1185).
+// Før skulle rytteren fjernes + genoprettes for at ændre prisen. Genbruger
+// ejerskabs-/status-reglerne fra DELETE-flowet (getListingCancelIssue) plus
+// pris-validering via getListingPriceUpdateIssue. Aktive offers påvirkes ikke
+// — et tilbud forhandles videre på offer_amount, ikke asking_price.
+router.patch("/transfers/:id", requireAuth, marketWriteLimiter, async (req, res) => {
+  const askingPrice = Number(req.body?.asking_price);
+  const { data: listing } = await supabase
+    .from("transfer_listings")
+    .select("seller_team_id, status")
+    .eq("id", req.params.id)
+    .maybeSingle();
+  const issue = getListingPriceUpdateIssue(listing, { teamId: req.team.id, askingPrice });
+  if (issue) {
+    const message = {
+      not_found: "Listing findes ikke",
+      not_owner: "Ikke din liste",
+      already_closed: "Listingen er allerede lukket",
+      invalid_price: "Prisen skal være et positivt heltal",
+    }[issue.code];
+    const errorCode = {
+      not_found: "listing_not_found",
+      not_owner: "listing_not_owner",
+      already_closed: "listing_already_closed",
+      invalid_price: "invalid_asking_price",
+    }[issue.code];
+    const status = ["already_closed", "invalid_price"].includes(issue.code) ? 400 : 403;
+    return res.status(status).json({ error: message, errorCode });
+  }
+  const { data, error } = await supabase
+    .from("transfer_listings")
+    .update({ asking_price: askingPrice })
+    .eq("id", req.params.id)
+    .select()
+    .single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
 });
 
 // POST /api/transfers/offer — direct offer on any rider (no listing needed)

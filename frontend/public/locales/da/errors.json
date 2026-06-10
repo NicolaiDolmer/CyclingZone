@@ -119,6 +119,7 @@
     "board_renegotiation_locked_progress": "Bestyrelsesplanen kan ikke gen-forhandles midt i en igangværende sæson (efter {percent}% af sæsonen er kørt). Vent til planen udløber eller sæsonen slutter.",
     "board_unavailable": "Bestyrelsesfunktioner er ikke tilgængelige endnu",
     "dna_requires_season_1": "Du skal afslutte sæson 1 før DNA kan vælges",
-    "dna_already_chosen": "Klub-DNA er allerede valgt og kan ikke skiftes (drift kommer i senere slice)"
+    "dna_already_chosen": "Klub-DNA er allerede valgt og kan ikke skiftes (drift kommer i senere slice)",
+    "invalid_asking_price": "Prisen skal være et positivt heltal"
   }
 }
