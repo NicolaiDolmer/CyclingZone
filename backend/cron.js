@@ -21,7 +21,13 @@ import {
   notifyTeamOwner as notifyTeamOwnerShared,
   notifyUser as notifyUserShared,
 } from "./lib/notificationService.js";
-import { notifyAuctionWon, getDefaultWebhook, sendWebhook, getBotToken } from "./lib/discordNotifier.js";
+import {
+  notifyAuctionWon,
+  getDefaultWebhook,
+  sendWebhook,
+  getBotToken,
+  drainDiscordDmOutbox,
+} from "./lib/discordNotifier.js";
 import { processDeadlineDayCron } from "./lib/deadlineDayReport.js";
 import { processSquadEnforcementCron } from "./lib/squadEnforcement.js";
 import { processSeasonAutoTransitionCron } from "./lib/seasonAutoTransition.js";
@@ -336,6 +342,21 @@ async function runDiscordBotTokenCheck() {
   }
 }
 
+// ─── Discord DM-outbox drain (#1115) ─────────────────────────────────────────
+// Retryable DM-fejl (429 fra Railways delte egress-IP, Discord 5xx, netværk)
+// lander i discord_dm_outbox i stedet for at blive droppet. Denne cron prøver
+// forfaldne rækker igen med eksponentiel backoff; opgivne rækker markeres dead
+// + alarmeres via webhook/Sentry — så DM-død opdages i stedet for at fejle tavst.
+
+async function runDiscordDmOutboxDrain() {
+  const result = await drainDiscordDmOutbox({ now: new Date() });
+  if (result.processed) {
+    console.log(
+      `📬 Discord DM-outbox: ${result.processed} behandlet — ${result.sent} sendt, ${result.rescheduled} replanlagt, ${result.dead} opgivet`
+    );
+  }
+}
+
 // ─── Squad Enforcement ───────────────────────────────────────────────────────
 
 async function runSquadEnforcementCron() {
@@ -439,6 +460,9 @@ export function startCron() {
   // Every 24 hours: Discord bot-token safety-net (forward-guard mod tavs token-drift).
   setInterval(trackedTick("discord bot-token check", runDiscordBotTokenCheck), 24 * 60 * 60 * 1000);
 
+  // Every 5 minutes: Discord DM-outbox drain (#1115 — retry af fejlede DMs).
+  setInterval(trackedTick("discord dm-outbox drain", runDiscordDmOutboxDrain), 5 * 60 * 1000);
+
   // Run immediately on start
   trackedTick("auctions", finalizeExpiredAuctions)();
   trackedTick("board auto-accept", runBoardAutoAcceptCron)();
@@ -446,6 +470,7 @@ export function startCron() {
   trackedTick("daily season-count check", runDailySeasonCountCheck)();
   trackedTick("uci stale-data check", runUciStaleDataCheck)();
   trackedTick("discord bot-token check", runDiscordBotTokenCheck)();
+  trackedTick("discord dm-outbox drain", runDiscordDmOutboxDrain)();
 }
 
 // ── Standalone mode ──────────────────────────────────────────────────────────
