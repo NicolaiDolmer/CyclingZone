@@ -29,6 +29,33 @@ export function getAuctionSellerLabel(auction) {
   return "AI";
 }
 
+// #44/#1184: klient-spejl af backendens worst-case commitment (auctionRules.js
+// computeWorstCaseCommitment): leading auktion tæller MAX(current_price, eget
+// autobud-loft); ikke-leading med autobud tæller loftet. `auctions` skal have
+// myProxyMax mappet på forhånd.
+export function computeWorstCaseReservation(auctions, myTeamId) {
+  let total = 0;
+  for (const a of auctions || []) {
+    if (getAuctionLeaderId(a) === myTeamId) {
+      total += Math.max(a.current_price || 0, a.myProxyMax || 0);
+    } else if (a.myProxyMax) {
+      total += a.myProxyMax;
+    }
+  }
+  return total;
+}
+
+// #1184: tilgængelig saldo for et NYT bud på netop denne auktion. Spejler
+// backend-gaten (POST /bid): reservationen EKSKLUDERER denne auktions egen
+// andel — buddet selv erstatter den (man betaler kun én gang pr. auktion).
+export function computeAvailableForBid({ balance, reservedBalance, auction, myTeamId }) {
+  const myShareThisAuction = getAuctionLeaderId(auction) === myTeamId
+    ? Math.max(auction?.current_price || 0, auction?.myProxyMax || 0)
+    : (auction?.myProxyMax || 0);
+  const reservedExclThis = Math.max(0, (Number(reservedBalance) || 0) - myShareThisAuction);
+  return Math.max(0, (Number(balance) || 0) - reservedExclThis);
+}
+
 // Bug #29 — squad-cap er warning, ikke block. Manager må gå over max under transfer-vinduet;
 // squadEnforcement-cron auto-sælger + bøder først ved vindue-luk hvis stadig over max.
 export function formatBidWarning(warning) {

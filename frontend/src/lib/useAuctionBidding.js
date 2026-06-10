@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { getMinimumAuctionBid } from "./marketValues";
-import { formatBidWarning } from "./auctionLogic";
+import { formatBidWarning, computeAvailableForBid } from "./auctionLogic";
 import { logEvent } from "./logEvent";
 
 // Delt bid + autobud-loft state-machine. Bruges af AuctionRow (desktop tabel),
@@ -11,10 +11,16 @@ import { logEvent } from "./logEvent";
 // Komponenten der kalder hooket renderer selv JSX (input, knap, badges) men
 // bruger handlerne herfra. Tre kalder-sites = tre layouts (compact tabel-celle,
 // comfortable card, rytter-profil) men identisk opførsel.
+//
+// #1184: balance-gaten beregnes HER (ikke hos kalderne) ud fra rå saldo +
+// samlet worst-case-reservation, så ekskluder-denne-auktion-semantikken matcher
+// backend-gaten (auctionRules.js) ens på alle tre flader.
 
 export function useAuctionBidding({
   auction,
-  myAvailableBalance,
+  myBalance,
+  reservedBalance,
+  myTeamId,
   onBid,
   onSetProxy,
   onRemoveProxy,
@@ -46,7 +52,13 @@ export function useAuctionBidding({
   }, [proxyExpanded]);
 
   function handleBid() {
-    if (bidAmount > myAvailableBalance) {
+    const availableForBid = computeAvailableForBid({
+      balance: myBalance,
+      reservedBalance,
+      auction,
+      myTeamId,
+    });
+    if (bidAmount > availableForBid) {
       setBidStatus("error");
       setErrorText(t("auctions:error.insufficientBalance"));
       setTimeout(() => setBidStatus(null), 3000);

@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.12",
+    date: "2026-06-10",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fixed · Auction bidding",
+        items: [
+          "EN · Bid validation on the rider profile now checks your available balance (balance minus money committed to auctions you lead and autobid caps) instead of your raw balance, matching the auctions page and the server. A bug that could silently swallow the error message on the rider profile is fixed, so an over-budget bid now always shows a clear error. Raising your own leading bid no longer counts your existing bid twice. Refs #1184.",
+          "DA · Bud-validering på rytterprofilen tjekker nu din tilgængelige saldo (saldo minus penge bundet i auktioner du fører og autobud-lofter) i stedet for din rå saldo, så den matcher auktionssiden og serveren. En fejl der kunne sluge fejlbeskeden på rytterprofilen er rettet, så et bud over budgettet nu altid viser en klar fejl. Når du hæver dit eget førende bud, tæller dit eksisterende bud ikke længere dobbelt. Refs #1184.",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.11",
     date: "2026-06-10",
     label: "Beta",
