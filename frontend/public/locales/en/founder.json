@@ -14,13 +14,13 @@
   "promiseBody": "Premium can unlock identity, convenience, analytics and ways to back development. It cannot unlock better race results, faster training, stronger riders, transfer advantages, improved scouting odds or hidden power.",
   "promiseFootnote": "This promise appears here and near any future pricing info. It's the most important trust message in the whole premium conversation.",
   "tiersTitle": "What might fair premium look like?",
-  "tiersSub": "Decisions made 2026-05-14. The survey tests different price points, so Premium varies between 29/49/69 DKK depending on which link you clicked.",
+  "tiersSub": "Decisions made 2026-05-14. The survey tests different price points, so Premium varies between {prices} depending on which link you clicked.",
+  "perDayApprox": "≈ {price}/day",
   "variantLabel": "Variant:",
   "founderNoteTitle": "Where does the Founder waitlist fit?",
   "founderNoteBody": "Founder is not a separate paid tier. It's an early waitlist status for the first 100 players who want to be considered if payment opens later. Joining is non-binding, and you are charged nothing today.",
   "tierFree": {
     "name": "Free Manager",
-    "price": "0 DKK",
     "tagline": "New / casual players",
     "bullets": [
       "Full competitive access",
@@ -30,8 +30,8 @@
   },
   "tierSupporter": {
     "name": "Premium",
-    "priceSuffix": "DKK/mo",
-    "altYearTemplate": "{annual} DKK/yr (= 10 months)",
+    "priceSuffix": "/mo",
+    "altYearTemplate": "{annual}/yr (= 10 months)",
     "tagline": "Engaged players",
     "bullets": [
       "Premium badge on profile",
@@ -42,7 +42,7 @@
   },
   "tierPro": {
     "name": "Pro Analyst",
-    "priceSuffix": "DKK/mo",
+    "priceSuffix": "/mo",
     "tagline": "Hardcore managers",
     "bullets": [
       "Advanced analytics",
@@ -53,7 +53,7 @@
   },
   "tierPatron": {
     "name": "Patron",
-    "price": "149 DKK/mo",
+    "priceSuffix": "/mo",
     "tagline": "Superfans / early believers",
     "bullets": [
       "Founder badge + cosmetics",

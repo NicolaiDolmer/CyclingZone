@@ -14,13 +14,13 @@
   "promiseBody": "Premium kan låse op for identitet, bekvemmelighed, analyser og måder at bakke udviklingen op. Det kan IKKE låse op for bedre løbsresultater, hurtigere træning, stærkere ryttere, transfer-fordele, bedre scout-odds eller skjult magt.",
   "promiseFootnote": "Dette løfte vises både her og ved enhver fremtidig pris-info. Det er den vigtigste tillids-besked i hele samtalen om premium.",
   "tiersTitle": "Hvad kunne fair premium se ud som?",
-  "tiersSub": "Beslutninger truffet 2026-05-14. Surveyen tester forskellige prispunkter, så Premium varierer mellem 29/49/69 DKK afhængig af, hvor du klikker fra.",
+  "tiersSub": "Beslutninger truffet 2026-05-14. Surveyen tester forskellige prispunkter, så Premium varierer mellem {prices} afhængig af, hvor du klikker fra.",
+  "perDayApprox": "≈ {price}/dag",
   "variantLabel": "Variant:",
   "founderNoteTitle": "Hvor passer Founder-waitlisten ind?",
   "founderNoteBody": "Founder er ikke en separat betalt tier. Det er en early waitlist-status for de første 100 spillere, der vil overvejes, hvis betaling åbner senere. Tilmelding er uforpligtende, og du opkræves ingenting i dag.",
   "tierFree": {
     "name": "Free Manager",
-    "price": "0 DKK",
     "tagline": "Nye / casual spillere",
     "bullets": [
       "Fuld konkurrencemæssig adgang",
@@ -30,8 +30,8 @@
   },
   "tierSupporter": {
     "name": "Premium",
-    "priceSuffix": "DKK/md",
-    "altYearTemplate": "{annual} DKK/år (= 10 måneder)",
+    "priceSuffix": "/md",
+    "altYearTemplate": "{annual}/år (= 10 måneder)",
     "tagline": "Engagerede spillere",
     "bullets": [
       "Premium-badge på profil",
@@ -42,7 +42,7 @@
   },
   "tierPro": {
     "name": "Pro Analyst",
-    "priceSuffix": "DKK/md",
+    "priceSuffix": "/md",
     "tagline": "Hardcore managers",
     "bullets": [
       "Avanceret analytics",
@@ -53,7 +53,7 @@
   },
   "tierPatron": {
     "name": "Patron",
-    "price": "149 DKK/md",
+    "priceSuffix": "/md",
     "tagline": "Superfans / tidlige troende",
     "bullets": [
       "Founder-badge + kosmetik",

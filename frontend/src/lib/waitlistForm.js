@@ -1,6 +1,14 @@
 // Pure helpers for FounderSupporterWaitlistForm (#362). Isolated fra React
 // så de kan unit-testes uden DOM. Lokal til waitlist-flowet — ikke generel utility.
 
+import { getTierPricesDkk, dkkToEur, annualOf, eurLabel } from "./pricing.js";
+
+// Tier-priser fra central konfig (#1104). Formens subs viser default-varianten
+// (B, locked): DA i DKK, EN i EUR med fast dokumenteret kurs — se pricing.js.
+const PRICES_DKK = getTierPricesDkk();
+const SUPPORTER_ANNUAL_DKK = annualOf(PRICES_DKK.supporter);
+const eurAnnualLabel = (dkkMonthly) => `€${annualOf(dkkToEur(dkkMonthly)).toFixed(2)}`;
+
 export const INTEREST_OPTIONS = [
   { value: "very", label: "Meget interesseret, vil gerne være med fra start", label_en: "Very interested, want to be there from the start" },
   { value: "maybe", label: "Måske, afhænger af pris og indhold", label_en: "Maybe, depends on price and content" },
@@ -14,22 +22,22 @@ export const TIER_OPTIONS = [
     value: "supporter_monthly",
     label: "Premium månedligt",
     label_en: "Premium monthly",
-    sub: "49 DKK/md, bak projektet op og lås founder-badge",
-    sub_en: "49 DKK/mo, back the project and unlock founder badge",
+    sub: `${PRICES_DKK.supporter} DKK/md, bak projektet op og lås founder-badge`,
+    sub_en: `${eurLabel(PRICES_DKK.supporter)}/mo, back the project and unlock founder badge`,
   },
   {
     value: "supporter_annual",
     label: "Premium årligt",
     label_en: "Premium annual",
-    sub: "490 DKK/år, samme som månedlig + 2 måneder gratis",
-    sub_en: "490 DKK/yr, same as monthly + 2 months free",
+    sub: `${SUPPORTER_ANNUAL_DKK} DKK/år, samme som månedlig + 2 måneder gratis`,
+    sub_en: `${eurAnnualLabel(PRICES_DKK.supporter)}/yr, same as monthly + 2 months free`,
   },
   {
     value: "pro_analyst_monthly",
     label: "Pro Analyst månedligt",
     label_en: "Pro Analyst monthly",
-    sub: "89 DKK/md, Premium + avanceret tactical analysis",
-    sub_en: "89 DKK/mo, Premium + advanced tactical analysis",
+    sub: `${PRICES_DKK.pro} DKK/md, Premium + avanceret tactical analysis`,
+    sub_en: `${eurLabel(PRICES_DKK.pro)}/mo, Premium + advanced tactical analysis`,
   },
   {
     value: "free_only",
