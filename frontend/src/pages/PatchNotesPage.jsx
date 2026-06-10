@@ -2,6 +2,91 @@
 
 const PATCHES = [
   {
+    version: "5.20",
+    date: "2026-06-10",
+    label: "Beta",
+    changes: [
+      {
+        category: "New · Scouting & potential",
+        items: [
+          "EN · Scouting is now cheat-proof: a rider's true potential never leaves the server, so it cannot be read in browser devtools. Your own riders show exact stars plus a verdict instead of a raw number, matching how all other riders are shown. The potential min-max filter is removed, you cannot filter on what you have not scouted. Refs #1162, #1242.",
+          "DA · Scouting er nu snydesikker: en rytters sande potentiale forlader aldrig serveren og kan ikke læses i browserens devtools. Dine egne ryttere viser eksakte stjerner plus en vurdering i stedet for et råt tal, præcis som alle andre ryttere vises. Potentiale-min/max-filteret er fjernet, man kan ikke filtrere på noget man ikke har scoutet. Refs #1162, #1242.",
+        ],
+      },
+      {
+        category: "New · Riders list",
+        items: [
+          "EN · The riders ranking can now be filtered by a specific team, sorted by overall rating, and you can show or hide individual stat columns just like on the auction page. Refs #1004, #1009, #1006.",
+          "DA · Rytterranglisten kan nu filtreres på et konkret hold, sorteres efter samlet rating, og du kan vise eller skjule enkelte stat-kolonner ligesom på auktionssiden. Refs #1004, #1009, #1006.",
+        ],
+      },
+      {
+        category: "New · Team page",
+        items: [
+          "EN · My Team now uses the full width of the screen and shows more columns, and a new switcher lets you view both your current squad and the upcoming squad after pending transfers. Refs #1186, #1095.",
+          "DA · Mit Hold bruger nu hele skærmens bredde og viser flere kolonner, og en ny vælger lader dig se både din nuværende trup og den kommende trup efter ventende transfers. Refs #1186, #1095.",
+        ],
+      },
+      {
+        category: "New · Transfer market",
+        items: [
+          "EN · Transfer list upgrade: edit the asking price inline, list riders for sale straight from their profile page, remove listings on mobile, and sort the market by price. Refs #1185.",
+          "DA · Transferlisten er opgraderet: redigér prisen direkte på listen, sæt ryttere til salg fra deres profilside, fjern annoncer på mobil, og sortér markedet efter pris. Refs #1185.",
+          "EN · A new transfer profit panel under the transfer history shows purchase price, sale price and your gain or loss per sold rider, plus the total realised profit. Refs #1107.",
+          "DA · Et nyt transfer-profit-panel under transferhistorikken viser købspris, salgspris og din gevinst eller dit tab pr. solgt rytter, plus den samlede realiserede gevinst. Refs #1107.",
+        ],
+      },
+      {
+        category: "New · Finances",
+        items: [
+          "EN · The loan form now shows the max you can borrow right now, fee included, with a Use max button. The debt card shows your room under the cap, and loan errors are now properly translated. Refs #1012.",
+          "DA · Låneformularen viser nu det maksimale du kan låne lige nu, inkl. gebyr, med en Brug max-knap. Gældskortet viser din plads under loftet, og lånefejl oversættes nu korrekt. Refs #1012.",
+        ],
+      },
+      {
+        category: "Fixed · Board",
+        items: [
+          "EN · Goals that cannot genuinely be lowered (such as No outstanding debt) no longer offer a negotiation that only halved the penalty, and the Italian classics club DNA now also counts podiums in all WorldTour one-day classics, not only Monuments. Refs #1234, #1238.",
+          "DA · Mål der ikke reelt kan lempes (fx Ingen gæld) tilbyder ikke længere en forhandling der kun halverede straffen, og italiensk klassiker-DNA tæller nu også podier i alle WorldTour-endagsklassikere, ikke kun Monuments. Refs #1234, #1238.",
+          "EN · The negotiation wizard has a back button, goal labels show the actual number instead of Top n finish, U25 goals show the rider count, and board modals no longer have overflowing or hard-to-read text. Refs #1240, #1233, #1232, #1241.",
+          "DA · Forhandlings-wizarden har fået en tilbageknap, mål-tekster viser det faktiske tal i stedet for Top n finish, U25-mål viser antallet af ryttere, og board-modaler har ikke længere tekst der flyder over eller er svær at læse. Refs #1240, #1233, #1232, #1241.",
+          "EN · A new board plan cycle no longer counts seasons from the previous plan. Existing affected plans were corrected. Refs #1236.",
+          "DA · En ny bestyrelsesplan-cyklus tæller ikke længere sæsoner med fra den forrige plan. Eksisterende berørte planer er rettet. Refs #1236.",
+        ],
+      },
+      {
+        category: "Fixed · Dashboard",
+        items: [
+          "EN · The squad size warning now counts riders joining or leaving next season, including loan deals waiting for the transfer window. Refs #1090.",
+          "DA · Advarslen om trupstørrelse tæller nu ryttere på vej ind eller ud til næste sæson, inklusive lejeaftaler der venter på transfervinduet. Refs #1090.",
+        ],
+      },
+      {
+        category: "Fixed · Notifications",
+        items: [
+          "EN · Discord DMs for outbids, auction wins and transfer offers are now retried automatically if Discord is temporarily unavailable. Notifications no longer get lost silently. Refs #1115.",
+          "DA · Discord-DM'er ved overbud, vundne auktioner og transfertilbud bliver nu automatisk forsøgt igen, hvis Discord midlertidigt afviser dem. Notifikationer går ikke længere tabt i stilhed. Refs #1115.",
+        ],
+      },
+      {
+        category: "Improved · Mobile & speed",
+        items: [
+          "EN · The mobile top bar no longer sticks to the screen while you scroll, leaving more room for content, and the app responds instantly when you click a sidebar link, even on heavy pages. Refs #1007, #969.",
+          "DA · Topbjælken på mobil følger ikke længere med når du scroller, så der er mere plads til indholdet, og appen reagerer med det samme når du klikker på et link i sidemenuen, også på tunge sider. Refs #1007, #969.",
+        ],
+      },
+      {
+        category: "Improved · Language & landing",
+        items: [
+          "EN · The Founder waitlist form now fully follows your language setting, with all labels, options and error messages translated in both languages. Refs #1170.",
+          "DA · Founder-waitlist-formularen følger nu dit sprogvalg fuldt ud, med alle labels, valgmuligheder og fejlbeskeder oversat på begge sprog. Refs #1170.",
+          "EN · The founder landing page shows prices in euro on the English version, with an approximate price per day next to the monthly price. The Danish version still shows DKK. Refs #1104.",
+          "DA · Founder-landingssiden viser priser i euro på den engelske version, med en cirkapris pr. dag ved siden af månedsprisen. Den danske version viser fortsat DKK. Refs #1104.",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.19",
     date: "2026-06-10",
     label: "Beta",
