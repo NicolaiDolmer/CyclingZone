@@ -2,6 +2,45 @@
 
 const PATCHES = [
   {
+    version: "5.19",
+    date: "2026-06-10",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fixed · Auctions & bidding",
+        items: [
+          "EN · When a bid exactly matches the auction leader's auto-bid limit, the leader now keeps the lead instead of being overtaken by the identical bid. Refs #1091.",
+          "DA · Når et bud rammer auktionsførerens autobud-loft præcist, beholder føreren nu føringen i stedet for at blive overhalet af det identiske bud. Refs #1091.",
+        ],
+      },
+      {
+        category: "Fixed · Transfer market",
+        items: [
+          "EN · Riders sold at auction, bought by the bank or auto-sold no longer linger as ghost listings on the transfer market. Existing outdated listings were cleaned up. Refs #776, #822.",
+          "DA · Ryttere solgt på auktion, opkøbt af banken eller auto-solgt står ikke længere tilbage som spøgelses-annoncer på transfermarkedet. Eksisterende forældede annoncer er ryddet op. Refs #776, #822.",
+          "EN · A rider in an active auction can no longer be offered in a swap, and a rider offered in an open swap can no longer be put up for auction at the same time. Refs #1089.",
+          "DA · En rytter på aktiv auktion kan ikke længere tilbydes i en byttehandel, og en rytter i et åbent byttetilbud kan ikke længere sættes på auktion samtidig. Refs #1089.",
+        ],
+      },
+      {
+        category: "Fixed · Team page",
+        items: [
+          "EN · Transfer history now shows purchases with a minus and sales with a plus, matching the account movement, and transfers on a season boundary day land in the correct season. Refs #984.",
+          "DA · Transferhistorikken viser nu køb med minus og salg med plus, så det matcher kontobevægelsen, og transfers på en sæsongrænse-dag lander i den rigtige sæson. Refs #984.",
+          "EN · Sorting another team's squad by value now follows the value column shown in the table. Refs #1092.",
+          "DA · Sortering af et andet holds trup efter værdi følger nu værdi-kolonnen som vist i tabellen. Refs #1092.",
+        ],
+      },
+      {
+        category: "Fixed · Standings",
+        items: [
+          "EN · The Podiums column in the standings now counts top 3 results on stages and in classifications. Refs #1093.",
+          "DA · Podie-kolonnen i ranglisten tæller nu top 3-resultater på etaper og i klassementer. Refs #1093.",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.18",
     date: "2026-06-10",
     label: "Beta",
