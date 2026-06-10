@@ -22,6 +22,7 @@ import {
   getAuctionLeaderId,
   getAuctionLeaderName,
   getAuctionSellerLabel,
+  computeWorstCaseReservation,
 } from "../lib/auctionLogic";
 import { useAuctionBidding } from "../lib/useAuctionBidding";
 import { isOverbidEvent, shouldFlashPrice } from "../lib/auctionsRealtime";
@@ -492,8 +493,11 @@ function AuctionCountdown({ end, status }) {
   );
 }
 
-function RiderBidPanel({ auction, myTeamId, myAvailableBalance, riderName, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFlashing }) {
-  const { t } = useTranslation("rider");
+function RiderBidPanel({ auction, myTeamId, myBalance, reservedBalance, riderName, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFlashing }) {
+  // "auctions" loades med så hookets fejltekst (auctions:error.insufficientBalance)
+  // kan resolves — uden den kastede klient-gaten TypeError (t var ikke givet videre)
+  // og spilleren så ingen fejl overhovedet (#1184).
+  const { t } = useTranslation(["rider", "auctions"]);
   const r = auction?.rider;
   const isMyRider = r?.team_id === myTeamId;
   const isSeller  = isManagerSeller(auction, myTeamId);
@@ -508,8 +512,9 @@ function RiderBidPanel({ auction, myTeamId, myAvailableBalance, riderName, onBid
     proxyStatus, proxyErrorText,
     handleBid, handleSaveProxy, handleRemoveProxy,
   } = useAuctionBidding({
-    auction, myAvailableBalance, onBid, onSetProxy, onRemoveProxy, requestBidConfirm,
+    auction, myBalance, reservedBalance, myTeamId, onBid, onSetProxy, onRemoveProxy, requestBidConfirm,
     riderName: riderName || t("auctionPanel.riderNameFallback"),
+    t,
   });
 
   return (
@@ -718,6 +723,7 @@ export default function RiderStatsPage() {
   const [tab, setTab]                       = useState("stats");
   const [myTeamId, setMyTeamId]             = useState(null);
   const [myBalance, setMyBalance]           = useState(0);
+  const [myReservedBalance, setMyReservedBalance] = useState(0);
   const [activeAuction, setActiveAuction]   = useState(null);
   const [auctionError, setAuctionError]     = useState(null);
   const [history, setHistory]               = useState([]);
@@ -818,6 +824,36 @@ export default function RiderStatsPage() {
     const { data: { user } } = await supabase.auth.getUser();
     const { data: t } = await supabase.from("teams").select("id, balance, division, name").eq("user_id", user.id).single();
     if (t) { setMyTeamId(t.id); setMyBalance(t.balance || 0); }
+
+    // #1184: hent worst-case commitment (førende auktioner + autobud-lofter) så
+    // bid-panelets klient-gate validerer mod TILGÆNGELIG saldo — samme semantik
+    // som auktionssiden og backend-gaten (auctionRules.js).
+    if (t?.id) {
+      const [leadingRes, proxiesRes] = await Promise.all([
+        supabase.from("auctions")
+          .select("id, current_price, current_bidder_id")
+          .in("status", ["active", "extended"])
+          .eq("current_bidder_id", t.id),
+        supabase.from("auction_proxy_bids")
+          .select("auction_id, max_amount, auction:auction_id(id, current_price, current_bidder_id, status)")
+          .eq("team_id", t.id),
+      ]);
+      const proxyMaxByAuction = {};
+      const proxyAuctions = [];
+      for (const p of proxiesRes.data || []) {
+        if (!["active", "extended"].includes(p.auction?.status)) continue;
+        proxyMaxByAuction[p.auction_id] = p.max_amount;
+        proxyAuctions.push(p.auction);
+      }
+      const seen = new Set();
+      const committedAuctions = [];
+      for (const a of [...(leadingRes.data || []), ...proxyAuctions]) {
+        if (!a?.id || seen.has(a.id)) continue;
+        seen.add(a.id);
+        committedAuctions.push({ ...a, myProxyMax: proxyMaxByAuction[a.id] || null });
+      }
+      setMyReservedBalance(computeWorstCaseReservation(committedAuctions, t.id));
+    }
   }
 
   // #254: Henter aktiv auktion på rytteren med ALLE felter bid-panelet skal bruge
@@ -1281,7 +1317,8 @@ export default function RiderStatsPage() {
             <RiderBidPanel
               auction={activeAuction}
               myTeamId={myTeamId}
-              myAvailableBalance={myBalance}
+              myBalance={myBalance}
+              reservedBalance={myReservedBalance}
               riderName={`${rider.firstname} ${rider.lastname}`}
               onBid={handleAuctionBid}
               onSetProxy={handleSetProxy}

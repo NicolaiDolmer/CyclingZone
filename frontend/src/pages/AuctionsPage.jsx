@@ -33,6 +33,7 @@ import {
   getAuctionLeaderId,
   getAuctionLeaderName,
   getAuctionSellerLabel,
+  computeWorstCaseReservation,
 } from "../lib/auctionLogic";
 import { useAuctionBidding } from "../lib/useAuctionBidding";
 import { formatNumber } from "../lib/intl";
@@ -129,7 +130,7 @@ function Countdown({ end, status }) {
 }
 
 // ── Auction table row ─────────────────────────────────────────────────────────
-function AuctionRow({ auction, myTeamId, myAvailableBalance, watchlist, onToggleWatchlist, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFirst, isFlashing, visibleStats, scouting }) {
+function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, watchlist, onToggleWatchlist, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFirst, isFlashing, visibleStats, scouting }) {
   const { t } = useTranslation(["auctions", "common"]);
   const r = auction.rider;
   const isMyRider = r?.team_id === myTeamId;
@@ -147,7 +148,7 @@ function AuctionRow({ auction, myTeamId, myAvailableBalance, watchlist, onToggle
     proxyStatus, proxyErrorText,
     handleBid, handleSaveProxy, handleRemoveProxy,
   } = useAuctionBidding({
-    auction, myAvailableBalance, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, riderName, t,
+    auction, myBalance, reservedBalance, myTeamId, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, riderName, t,
   });
 
   const age = r?.birthdate ? new Date().getFullYear() - new Date(r.birthdate).getFullYear() : null;
@@ -352,7 +353,7 @@ function AuctionRow({ auction, myTeamId, myAvailableBalance, watchlist, onToggle
   );
 }
 
-function AuctionCard({ auction, myTeamId, myAvailableBalance, watchlist, onToggleWatchlist, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFirst, isFlashing, visibleStats, scouting }) {
+function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, watchlist, onToggleWatchlist, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, isFirst, isFlashing, visibleStats, scouting }) {
   const { t } = useTranslation(["auctions", "common"]);
   const r = auction.rider;
   const isMyRider = r?.team_id === myTeamId;
@@ -371,7 +372,7 @@ function AuctionCard({ auction, myTeamId, myAvailableBalance, watchlist, onToggl
     proxyStatus, proxyErrorText,
     handleBid, handleSaveProxy, handleRemoveProxy,
   } = useAuctionBidding({
-    auction, myAvailableBalance, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, riderName, t,
+    auction, myBalance, reservedBalance, myTeamId, onBid, onSetProxy, onRemoveProxy, requestBidConfirm, riderName, t,
   });
 
   return (
@@ -998,23 +999,10 @@ export default function AuctionsPage() {
   const filteredRiderOrder = new Map(riderFilters.filtered.map((r, i) => [r.id, i]));
 
   const winningAuctions  = auctions.filter(a => getAuctionLeaderId(a) === myTeamId);
-  // #44: worst-case reservation = sum af MAX(current_price, eget proxy_max) for
-  // leading + sum af proxy_max for ikke-leading auktioner. Hvis alle proxies
-  // trigger fuldt og hver leading-auction finaliserer, er det her hvad manageren
-  // skylder. availableBalance = balance - reservation, klampet til 0.
-  const reservedBalance = (() => {
-    let total = 0;
-    const seenIds = new Set();
-    for (const a of winningAuctions) {
-      total += Math.max(a.current_price || 0, a.myProxyMax || 0);
-      seenIds.add(a.id);
-    }
-    for (const a of auctions) {
-      if (seenIds.has(a.id)) continue;
-      if (a.myProxyMax) total += a.myProxyMax;
-    }
-    return total;
-  })();
+  // #44: worst-case reservation — delt klient-spejl af backendens commitment-
+  // formel (auctionLogic.js / auctionRules.js). availableBalance vises i headeren;
+  // selve bid-gaten beregner pr.-auktion-available i useAuctionBidding (#1184).
+  const reservedBalance = computeWorstCaseReservation(auctions, myTeamId);
   const availableBalance = Math.max(0, myBalance - reservedBalance);
   const incomingCount    = winningAuctions.filter(a => a.rider?.team_id !== myTeamId).length;
   const outgoingCount    = auctions.filter(a => {
@@ -1272,7 +1260,8 @@ export default function AuctionsPage() {
             selling: mySellingAuctions.filter(a => (!a.rider || filteredRiderOrder.has(a.rider.id)) && passesAuctionPriceFilter(a) && passesWishlistFilter(a)),
           }}
           myTeamId={myTeamId}
-          availableBalance={availableBalance}
+          myBalance={myBalance}
+          reservedBalance={reservedBalance}
           watchlist={watchlist}
           toggleWatchlist={toggleWatchlist}
           handleBid={handleBid}
@@ -1359,7 +1348,8 @@ function AuctionList({ auctions, sectionId, sharedProps }) {
             key={a.id}
             auction={a}
             myTeamId={sharedProps.myTeamId}
-            myAvailableBalance={sharedProps.availableBalance}
+            myBalance={sharedProps.myBalance}
+            reservedBalance={sharedProps.reservedBalance}
             watchlist={sharedProps.watchlist}
             onToggleWatchlist={sharedProps.toggleWatchlist}
             onBid={sharedProps.handleBid}
@@ -1390,7 +1380,8 @@ function AuctionList({ auctions, sectionId, sharedProps }) {
                   key={a.id}
                   auction={a}
                   myTeamId={sharedProps.myTeamId}
-                  myAvailableBalance={sharedProps.availableBalance}
+                  myBalance={sharedProps.myBalance}
+                  reservedBalance={sharedProps.reservedBalance}
                   watchlist={sharedProps.watchlist}
                   onToggleWatchlist={sharedProps.toggleWatchlist}
                   onBid={sharedProps.handleBid}
