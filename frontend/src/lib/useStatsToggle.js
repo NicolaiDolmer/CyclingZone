@@ -1,32 +1,38 @@
 import { useEffect, useState, useCallback } from "react";
 import { STAT_KEYS } from "../components/RiderFilters";
 
-const STORAGE_KEY = "cz-auctions-visible-stats";
+// Default = auktionssidens oprindelige adfærd (ingen stats synlige før man
+// vælger nogle til). RidersPage bruger inverteret default: alle stats synlige,
+// man klikker dem FRA (Refs #1006).
+const DEFAULT_STORAGE_KEY = "cz-auctions-visible-stats";
 
-function readStored() {
-  if (typeof window === "undefined") return [];
+function readStored(storageKey, fallback) {
+  if (typeof window === "undefined") return fallback;
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
+    const raw = window.localStorage.getItem(storageKey);
+    if (!raw) return fallback;
     const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
+    if (!Array.isArray(parsed)) return fallback;
     return parsed.filter(k => STAT_KEYS.includes(k));
   } catch {
-    return [];
+    return fallback;
   }
 }
 
-export default function useStatsToggle() {
-  const [visibleStats, setVisibleStats] = useState(() => new Set(readStored()));
+export default function useStatsToggle({
+  storageKey = DEFAULT_STORAGE_KEY,
+  defaultVisible = [],
+} = {}) {
+  const [visibleStats, setVisibleStats] = useState(() => new Set(readStored(storageKey, defaultVisible)));
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify([...visibleStats]));
+      window.localStorage.setItem(storageKey, JSON.stringify([...visibleStats]));
     } catch {
       // localStorage kan være disabled (privacy mode); accepter tab af persistens
     }
-  }, [visibleStats]);
+  }, [visibleStats, storageKey]);
 
   const toggleStat = useCallback(key => {
     setVisibleStats(prev => {

@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { STAT_KEYS, STAT_LABELS_MAP } from "./RiderFilters";
 
 export default function StatsToggle({ visibleStats, onToggleStat, onShowAll, onHideAll }) {
+  // Delt på tværs af sider (auktioner + rytterdatabase) → common-namespace.
+  const { t } = useTranslation("common");
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
@@ -36,18 +39,18 @@ export default function StatsToggle({ visibleStats, onToggleStat, onShowAll, onH
             ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
             : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}
       >
-        Vis stats {count > 0 && <span className="text-[11px] font-mono ms-1">({count}/{total})</span>}
+        {t("controls.statsToggleButton")} {count > 0 && <span className="text-[11px] font-mono ms-1">({count}/{total})</span>}
       </button>
 
       {open && (
         <div className="absolute right-0 mt-2 z-30 w-72 max-w-[calc(100vw-2rem)] bg-cz-card border border-cz-border rounded-xl shadow-xl p-3">
           <div className="flex items-center justify-between mb-2">
-            <p className="text-cz-2 text-xs uppercase tracking-wider font-semibold">Stats</p>
+            <p className="text-cz-2 text-xs uppercase tracking-wider font-semibold">{t("controls.statsToggleHeading")}</p>
             <button
               onClick={allVisible ? onHideAll : onShowAll}
               className="text-xs text-cz-accent-t hover:text-cz-1 transition-colors"
             >
-              {allVisible ? "Skjul alle" : "Vis alle"}
+              {allVisible ? t("controls.statsToggleHideAll") : t("controls.statsToggleShowAll")}
             </button>
           </div>
           <div className="grid grid-cols-3 gap-1.5">
