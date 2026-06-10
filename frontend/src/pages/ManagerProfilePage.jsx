@@ -261,7 +261,15 @@ export default function ManagerProfilePage() {
               <tbody>
                 {season_history.map(s => (
                   <tr key={s.id} className="border-b border-cz-border last:border-0">
-                    <td className="px-4 py-3 text-cz-1 text-sm">{t("manager.seasonNumber", { n: s.season?.number })}</td>
+                    <td className="px-4 py-3 text-cz-1 text-sm">
+                      {t("manager.seasonNumber", { n: s.season?.number })}
+                      {/* #1095: markér igangværende sæson, så historik ikke forveksles med nutid */}
+                      {s.season?.status === "active" && (
+                        <span className="ms-2 text-[9px] uppercase bg-cz-success-bg text-cz-success px-1.5 py-0.5 rounded">
+                          {t("manager.seasonOngoing")}
+                        </span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-center text-cz-2 text-sm">{t("manager.divisionShort", { n: s.division })}</td>
                     <td className="px-4 py-3 text-right text-cz-accent-t font-mono text-sm">{formatNumber(s.total_points)}</td>
                     <td className="px-4 py-3 text-right">
