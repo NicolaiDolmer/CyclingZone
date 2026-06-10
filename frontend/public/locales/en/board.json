@@ -46,7 +46,7 @@
       "heading": "What they evaluate on",
       "results": {
         "label": "Results",
-        "text": "stage wins, top-N finishes, total wins"
+        "text": "stage wins, top placings, total wins"
       },
       "finance": {
         "label": "Finances",
@@ -80,6 +80,8 @@
     "star_signing": "Star signing"
   },
   "goal": {
+    "topNFinish": "Top {target} in the division",
+    "topNFinishPlanEnd": "Top {target} in the division at the end of the plan",
     "minNationalRiders": "Min. {target} riders from {country}",
     "signatureRider": "{count, plural, one {At least 1 high-renown rider} other {At least # high-renown riders}}",
     "required": "Required",
@@ -256,6 +258,8 @@
     "defaultTitle": "Team identity",
     "wizardTitle": "The board's reading of the team",
     "u25": "U25",
+    "u25Count": "{count, plural, one {1 rider} other {# riders}}",
+    "u25ShareSub": "{percent}% of squad",
     "primary": "Primary",
     "secondary": "Secondary",
     "competitive": "Competitive track",
@@ -400,6 +404,7 @@
     "multiRenewalBodyLast": "Last plan in the queue.",
     "singleRenewalHeading": "{plan} expired",
     "singleRenewalBody": "Negotiate a new {plan} with the board.",
+    "back": "← Back",
     "backToPlan": "← Back to {plan}",
     "backToOverview": "← Back to overview",
     "dialogAria": "Board plan negotiation"

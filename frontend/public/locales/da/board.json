@@ -46,7 +46,7 @@
       "heading": "Hvad de vurderer på",
       "results": {
         "label": "Resultater",
-        "text": "etapesejre, top-N-finish, samlede sejre"
+        "text": "etapesejre, topplaceringer, samlede sejre"
       },
       "finance": {
         "label": "Økonomi",
@@ -80,6 +80,8 @@
     "star_signing": "Stjernesignering"
   },
   "goal": {
+    "topNFinish": "Top {target} i divisionen",
+    "topNFinishPlanEnd": "Top {target} i divisionen ved planens afslutning",
     "minNationalRiders": "Min. {target} ryttere fra {country}",
     "signatureRider": "{count, plural, one {Mindst 1 rytter med højt omdømme} other {Mindst # ryttere med højt omdømme}}",
     "required": "Krav",
@@ -256,6 +258,8 @@
     "defaultTitle": "Holdidentitet",
     "wizardTitle": "Bestyrelsens læsning af holdet",
     "u25": "U25",
+    "u25Count": "{count, plural, one {1 rytter} other {# ryttere}}",
+    "u25ShareSub": "{percent}% af truppen",
     "primary": "Primær",
     "secondary": "Sekundær",
     "competitive": "Sportsligt spor",
@@ -400,6 +404,7 @@
     "multiRenewalBodyLast": "Sidste plan i køen.",
     "singleRenewalHeading": "{plan} udløbet",
     "singleRenewalBody": "Forhandl en ny {plan} med bestyrelsen.",
+    "back": "← Tilbage",
     "backToPlan": "← Tilbage til {plan}",
     "backToOverview": "← Tilbage til oversigt",
     "dialogAria": "Forhandling af bestyrelsesplan"
