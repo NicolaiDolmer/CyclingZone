@@ -50,6 +50,32 @@ export const BASE_CATEGORY_WEIGHTS = {
   ranking: 0.10,
 };
 
+// #1238 · Kanonisk race-kategori-hierarki for board-mål: Monuments er en
+// DELMÆNGDE af klassikerne. "Klassiker" = endagsløb på WorldTour-niveau:
+// Monuments-klassen er pr. definition endagsløb (uciRacePointDefaults.js:
+// type "Endagslob"), mens OtherWorldTour-klasserne blander endagsløb og etapeløb,
+// så race_type='single' afgør dér. Én mapping — boardGoalContext (DB-queries)
+// og boardGoals (evaluering/labels) peger begge her i stedet for at definere
+// hver sin liste (rod-årsagen bag #1238: arketype, policy-akse og
+// race-query var ude af sync).
+export const MONUMENT_RACE_CLASSES = ["Monuments"];
+export const CLASSIC_RACE_CLASSES = [
+  "Monuments",
+  "OtherWorldTourA",
+  "OtherWorldTourB",
+  "OtherWorldTourC",
+];
+
+export function isMonumentRace(race = {}) {
+  return MONUMENT_RACE_CLASSES.includes(race?.race_class);
+}
+
+export function isClassicRace(race = {}) {
+  if (!CLASSIC_RACE_CLASSES.includes(race?.race_class)) return false;
+  if (isMonumentRace(race)) return true;
+  return race?.race_type === "single";
+}
+
 export const GOAL_METADATA_BY_TYPE = {
   top_n_finish: { category: "ranking", importance: "required", weight: 1.0 },
   stage_wins: { category: "results", importance: "required", weight: 1.0 },

@@ -147,6 +147,9 @@ export function resolveBoardRequest({ board, requestType, team, standing, contex
       });
     }
 
+    // #1234 · buildNegotiatedGoal returnerer null når et mål ikke reelt kan
+    // lempes (target på sit gulv) — replaceGoal lader da målet stå uændret i
+    // stedet for den gamle no-op-rabat (samme target, halv penalty).
     if (rankingIndex >= 0) {
       updatedGoals = replaceGoal(updatedGoals, rankingIndex, buildNegotiatedGoal(updatedGoals[rankingIndex]), goalChanges, "relaxed");
     }
@@ -195,7 +198,10 @@ export function resolveBoardRequest({ board, requestType, team, standing, contex
     }
 
     if (resultsIndex >= 0 && youthResultsGoal) {
-      updatedGoals = replaceGoal(updatedGoals, resultsIndex, buildNegotiatedGoal(youthResultsGoal), goalChanges, "replaced");
+      // #1234 · Skift til ungdoms-målet skal ske selv når det ikke kan lempes
+      // (buildNegotiatedGoal → null): fald tilbage til template-målet som det
+      // er, i stedet for stille at beholde det gamle resultat-mål.
+      updatedGoals = replaceGoal(updatedGoals, resultsIndex, buildNegotiatedGoal(youthResultsGoal) ?? youthResultsGoal, goalChanges, "replaced");
     }
 
     if (rankingIndex >= 0) {
@@ -236,11 +242,14 @@ export function resolveBoardRequest({ board, requestType, team, standing, contex
       satisfaction,
     });
 
+    // #1234 · Balanced-bridge blødgør de nye mål via buildNegotiatedGoal; kan
+    // template-målet ikke lempes (null), bruges det som det er — skiftet til
+    // resultat-sporet skal stadig ske, bare uden rabat.
     if (rankingIndex >= 0 && resultsRankingGoal) {
       updatedGoals = replaceGoal(
         updatedGoals,
         rankingIndex,
-        usesBalancedBridge ? buildNegotiatedGoal(resultsRankingGoal) : resultsRankingGoal,
+        usesBalancedBridge ? (buildNegotiatedGoal(resultsRankingGoal) ?? resultsRankingGoal) : resultsRankingGoal,
         goalChanges,
         "tightened"
       );
@@ -250,7 +259,7 @@ export function resolveBoardRequest({ board, requestType, team, standing, contex
       updatedGoals = replaceGoal(
         updatedGoals,
         resultsIndex,
-        usesBalancedBridge ? buildNegotiatedGoal(resultsGoal) : resultsGoal,
+        usesBalancedBridge ? (buildNegotiatedGoal(resultsGoal) ?? resultsGoal) : resultsGoal,
         goalChanges,
         "replaced"
       );

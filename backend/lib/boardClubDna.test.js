@@ -263,6 +263,9 @@ test("buildBoardProposal injicerer DNA-tradition-mål i 5yr-forslag", () => {
   const traditionGoal = proposal.goals.find((g) => g.type === "monument_podium" && g.source === "club_dna");
   assert.ok(traditionGoal, "italiensk_klassiker skal injicere monument_podium tradition-mål");
   assert.equal(traditionGoal.dna_key, "italiensk_klassiker");
+  // #1238 · klassiker-orienteret DNA honorerer hele klassiker-kategorien
+  // (Monuments ⊂ klassikere) — målet evaluerer mod cumulativeClassicPodiums.
+  assert.equal(traditionGoal.race_scope, "classics");
 });
 
 test("buildBoardProposal duplikerer IKKE tradition-mål når base-pakken allerede har samme type", () => {
