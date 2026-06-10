@@ -16,7 +16,8 @@ const API = import.meta.env.VITE_API_URL;
 // rytter-/auktions-tabeller bruger den tilgængelige bredde (ingen klippede kolonner +
 // side-whitespace samtidig). Alle andre sider beholder den læsbare max-w-6xl.
 // Filter-paneler cappes per-side (max-w-[1600px]) så form-inputs ikke strækkes.
-const WIDE_CONTENT_ROUTES = new Set(["/riders", "/rider-rankings", "/watchlist", "/auctions"]);
+// "/team" tilføjet per #1186 — trup-tabellen (14 stat-kolonner) var klemt i max-w-5xl.
+const WIDE_CONTENT_ROUTES = new Set(["/riders", "/rider-rankings", "/watchlist", "/auctions", "/team"]);
 
 function buildBottomItems(t) {
   return [
@@ -356,8 +357,9 @@ export default function Layout() {
 
       {/* Main content */}
       <main className="flex-1 md:ms-52 min-h-screen">
-        {/* Mobile topbar */}
-        <div className="md:hidden flex items-center justify-between px-4 py-3 bg-cz-sidebar border-b border-cz-sidebar-border sticky top-0 z-20">
+        {/* Mobile topbar — bevidst IKKE sticky: den skal scrolle med indholdet
+            og ikke "følge med op" og stjæle plads på små skærme (#1007). */}
+        <div className="md:hidden flex items-center justify-between px-4 py-3 bg-cz-sidebar border-b border-cz-sidebar-border">
           <button onClick={() => setMobileOpen(true)} className="text-cz-sidebar-2 hover:text-cz-sidebar-1 text-xl">☰</button>
           <Link to="/dashboard" aria-label={t("nav.item.dashboard")} className="flex items-center gap-2 rounded hover:opacity-80 transition-opacity">
             <Monogram className="w-6 h-6" />

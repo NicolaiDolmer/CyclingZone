@@ -1,9 +1,10 @@
-// Intl-wrappers — Refs #410.
+// Intl-wrappers — Refs #410, #1104.
 //
 // Locale-aware formatering via standard `Intl`-API. Bruger i18next's
 // `language`-state som single source of truth. Eksempler:
 //
 //   formatCurrency(1500, 'DKK')  // da: "1.500,00 kr."  · en: "DKK 1,500.00"
+//   formatCurrency(6.57)         // da: "6,57 kr." (DKK) · en: "€6.57" (EUR)
 //   formatDate(new Date())       // da: "16. maj 2026"  · en: "May 16, 2026"
 //   formatNumber(1234.5)         // da: "1.234,5"       · en: "1,234.5"
 //
@@ -17,7 +18,13 @@ function currentLocale() {
   return i18n.language || "en";
 }
 
-export function formatCurrency(amount, currency = "DKK", options = {}) {
+// Locale-styret visningsvaluta (#1104): da → DKK, alle andre sprog → EUR.
+// EUR-beløb på EN er en visnings-omregning med FAST kurs — se lib/pricing.js.
+export function currencyForLocale(locale = currentLocale()) {
+  return String(locale).toLowerCase().startsWith("da") ? "DKK" : "EUR";
+}
+
+export function formatCurrency(amount, currency = currencyForLocale(), options = {}) {
   if (amount == null || Number.isNaN(amount)) return "";
   try {
     return new Intl.NumberFormat(currentLocale(), {

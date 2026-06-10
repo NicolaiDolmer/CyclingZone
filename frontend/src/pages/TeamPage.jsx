@@ -165,21 +165,26 @@ function RiderActionModal({ rider, scouting, onClose, onAction }) {
 
 function SquadTab({ riders, scouting, onSelectRider, windowOpen }) {
   const { t } = useTranslation("team");
-  const [showIncoming, setShowIncoming] = useState(true);
-  const [showOutgoing, setShowOutgoing] = useState(true);
+  // #1095: eksplicit "nuværende" vs "kommende" trup-visning i stedet for
+  // vis/skjul-toggles — spillere med ind-/udgående ryttere skal tydeligt
+  // kunne se begge tilstande.
+  const [squadView, setSquadView] = useState("current");
 
   // Incoming = riders with pending_team_id = myTeam but team_id != myTeam
   // Outgoing = riders with team_id = myTeam but pending different team
   const incomingRiders = riders.filter(r => r._isIncoming);
   const outgoingRiders = riders.filter(r => r._isOutgoing);
 
-  const displayRidersBase = [
-    ...riders.filter(r => !r._isIncoming && !r._isOutgoing),
-    ...(showIncoming ? incomingRiders : []),
-    ...(showOutgoing ? outgoingRiders : []),
+  // Nuværende = ryttere på holdet nu (inkl. udgående, ekskl. indgående).
+  // Kommende = truppen efter ventende transfers (uden udgående, med indgående).
+  const currentCount  = riders.filter(r => !r._isIncoming).length;
+  const upcomingCount = riders.filter(r => !r._isOutgoing).length;
+  const displayRidersBase = (squadView === "upcoming"
+    ? riders.filter(r => !r._isOutgoing)
+    : riders.filter(r => !r._isIncoming)
     // #1162: dekorér med estimat-midtpunktet så potentiale-kolonnen kan sorteres
     // uden den rå (server-skjulte) potentiale.
-  ].map(r => ({ ...r, _scoutMid: scoutSortValue(scouting.estimateFor(r.id)) }));
+  ).map(r => ({ ...r, _scoutMid: scoutSortValue(scouting.estimateFor(r.id)) }));
   const riderFilters = useClientRiderFilters(displayRidersBase);
   const displayRiders = riderFilters.filtered;
   const sort = riderFilters.filters.sort;
@@ -195,28 +200,24 @@ function SquadTab({ riders, scouting, onSelectRider, windowOpen }) {
 
   return (
     <div>
-      {/* FM-style toggle */}
+      {/* #1095: segmenteret nuværende/kommende-visning + loan-pills */}
       {hasTransfers && (
-        <div className="flex gap-2 mb-4 flex-wrap">
-          {incomingRiders.length > 0 && (
-            <button onClick={() => setShowIncoming(!showIncoming)}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all
-                ${showIncoming
-                  ? "bg-cz-success-bg text-cz-success border-cz-success/30"
-                  : "bg-cz-subtle text-cz-3 border-cz-border"}`}>
-              <span className="w-2 h-2 rounded-full bg-green-400" />
-              {t("squad.incomingTransfers", { count: incomingRiders.length })}
-            </button>
-          )}
-          {outgoingRiders.length > 0 && (
-            <button onClick={() => setShowOutgoing(!showOutgoing)}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all
-                ${showOutgoing
-                  ? "bg-cz-danger-bg text-cz-danger border-cz-danger/30"
-                  : "bg-cz-subtle text-cz-3 border-cz-border"}`}>
-              <span className="w-2 h-2 rounded-full bg-red-400" />
-              {t("squad.outgoingTransfers", { count: outgoingRiders.length })}
-            </button>
+        <div className="flex gap-2 mb-4 flex-wrap items-center">
+          {(incomingRiders.length > 0 || outgoingRiders.length > 0) && (
+            <div className="flex rounded-lg border border-cz-border overflow-hidden">
+              {[
+                { key: "current",  label: t("squad.view.current",  { count: currentCount }) },
+                { key: "upcoming", label: t("squad.view.upcoming", { count: upcomingCount }) },
+              ].map(v => (
+                <button key={v.key} onClick={() => setSquadView(v.key)}
+                  className={`px-3 py-1.5 text-xs font-medium transition-all
+                    ${squadView === v.key
+                      ? "bg-cz-accent/10 text-cz-accent-t"
+                      : "bg-cz-card text-cz-2 hover:text-cz-1"}`}>
+                  {v.label}
+                </button>
+              ))}
+            </div>
           )}
           {loanedInRiders.length > 0 && (
             <span className="flex items-center gap-2 px-3 py-1.5 text-xs bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded-lg">
@@ -238,6 +239,10 @@ function SquadTab({ riders, scouting, onSelectRider, windowOpen }) {
         </div>
       )}
 
+      {squadView === "upcoming" && (incomingRiders.length > 0 || outgoingRiders.length > 0) && (
+        <p className="text-cz-3 text-xs mb-3">{t("squad.view.upcomingHint")}</p>
+      )}
+
       {displayRiders.length === 0 ? (
         <div className="text-center py-16 text-cz-3">
           <p className="text-4xl mb-3">🚴</p>
@@ -249,7 +254,8 @@ function SquadTab({ riders, scouting, onSelectRider, windowOpen }) {
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-cz-border">
-                  <th className="px-2 py-3 text-left font-medium uppercase tracking-wider hidden sm:table-cell">{t("squad.headers.nation")}</th>
+                  {/* #1186: nation altid synlig (var skjult på mobil) — tabellen h-scroller allerede. */}
+                  <th className="px-2 py-3 text-left font-medium uppercase tracking-wider">{t("squad.headers.nation")}</th>
                   <SortTh sortKey="firstname" sort={sort} sortDir={sortDir} onSort={handleSort}
                     className="px-3 py-3 text-left font-medium uppercase tracking-wider sticky left-0 z-20 bg-cz-card border-r border-cz-border">{t("squad.headers.rider")}</SortTh>
                   <SortTh sortKey="value" sort={sort} sortDir={sortDir} onSort={handleSort}
@@ -272,7 +278,7 @@ function SquadTab({ riders, scouting, onSelectRider, windowOpen }) {
                         r._isOutgoing  ? "bg-cz-danger-bg0/3"    :
                         r._isLoanedIn  ? "bg-purple-500/3" :
                         r._isLoanedOut ? "bg-cz-warning/10" : ""}`}>
-                    <td className="px-2 py-2.5 hidden sm:table-cell">
+                    <td className="px-2 py-2.5">
                       <NationCell code={r.nationality_code} />
                     </td>
                     <td className="px-3 py-2.5 sticky-name-cell sticky left-0 z-10 border-r border-cz-border shadow-[10px_0_16px_-16px_rgba(0,0,0,0.5)]">
@@ -419,31 +425,34 @@ function EconomyTab({ team, riders, transactions }) {
         {transactions.length === 0 ? (
           <div className="text-center py-10 text-cz-3 text-sm">{t("economy.history.empty")}</div>
         ) : (
-          <table className="w-full text-sm">
-            <thead><tr className="border-b border-cz-border">
-              <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("economy.history.headers.date")}</th>
-              <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("economy.history.headers.type")}</th>
-              <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase hidden sm:table-cell">{t("economy.history.headers.description")}</th>
-              <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs uppercase">{t("economy.history.headers.amount")}</th>
-            </tr></thead>
-            <tbody>
-              {transactions.map(tx => (
-                <tr key={tx.id} className="border-b border-cz-border hover:bg-cz-subtle">
-                  <td className="px-4 py-2.5 text-cz-3 text-xs">{formatDate(tx.created_at, "short")}</td>
-                  <td className="px-4 py-2.5">
-                    <span className={`text-xs px-2 py-0.5 rounded uppercase
-                      ${typeColor[tx.type] ? typeColor[tx.type].replace("text-","bg-").replace("400","500/10") + " " + typeColor[tx.type] : "bg-cz-subtle text-cz-2"}`}>
-                      {typeLabel(tx.type)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2.5 text-cz-2 text-sm hidden sm:table-cell">{tx.description}</td>
-                  <td className={`px-4 py-2.5 text-right font-mono font-bold ${tx.amount > 0 ? "text-cz-success" : "text-cz-danger"}`}>
-                    {t("economy.amountSigned", { sign: tx.amount > 0 ? "+" : "", value: formatNumber(tx.amount ?? 0) })}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          // #1186: beskrivelse-kolonnen altid synlig (var skjult på mobil) — wrapper h-scroller i stedet.
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead><tr className="border-b border-cz-border">
+                <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("economy.history.headers.date")}</th>
+                <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("economy.history.headers.type")}</th>
+                <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("economy.history.headers.description")}</th>
+                <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs uppercase">{t("economy.history.headers.amount")}</th>
+              </tr></thead>
+              <tbody>
+                {transactions.map(tx => (
+                  <tr key={tx.id} className="border-b border-cz-border hover:bg-cz-subtle">
+                    <td className="px-4 py-2.5 text-cz-3 text-xs">{formatDate(tx.created_at, "short")}</td>
+                    <td className="px-4 py-2.5">
+                      <span className={`text-xs px-2 py-0.5 rounded uppercase
+                        ${typeColor[tx.type] ? typeColor[tx.type].replace("text-","bg-").replace("400","500/10") + " " + typeColor[tx.type] : "bg-cz-subtle text-cz-2"}`}>
+                        {typeLabel(tx.type)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 text-cz-2 text-sm">{tx.description}</td>
+                    <td className={`px-4 py-2.5 text-right font-mono font-bold ${tx.amount > 0 ? "text-cz-success" : "text-cz-danger"}`}>
+                      {t("economy.amountSigned", { sign: tx.amount > 0 ? "+" : "", value: formatNumber(tx.amount ?? 0) })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>
@@ -535,7 +544,9 @@ export function TeamPage() {
   ];
 
   return (
-    <div className="max-w-5xl mx-auto">
+    // #1186: fuld bredde på desktop — trup-tabellens 14 stat-kolonner var klemt i max-w-5xl.
+    // Layout.jsx' WIDE_CONTENT_ROUTES giver /team full-bleed wrapper (#1027-mønstret).
+    <div className="max-w-full">
       <div className="mb-5">
         <div className="flex items-center gap-3 flex-wrap">
           <h1 className="text-xl font-bold text-cz-1">{team?.name || t("page.fallbackTitle")}</h1>

@@ -301,13 +301,24 @@ function createSeasonEndSupabase({
               return {
                 eq(column, value) {
                   assert.equal(column, "board_id");
-                  return {
+                  // #1236 · loadGoalContextForBoard tilføjer .gte("season_number",
+                  // planStart) når boardet har plan_start_season_number sat —
+                  // mock'en spejler cyklus-filteret server-side.
+                  let minSeasonNumber = null;
+                  const chain = {
+                    gte(gteColumn, gteValue) {
+                      assert.equal(gteColumn, "season_number");
+                      minSeasonNumber = gteValue;
+                      return chain;
+                    },
                     order(orderColumn, orderOptions) {
                       assert.equal(orderColumn, "season_within_plan");
                       assert.deepEqual(orderOptions, { ascending: true });
                       return Promise.resolve({
                         data: clone(state.inserts.board_plan_snapshots)
                           .filter((row) => row.board_id === value)
+                          .filter((row) => minSeasonNumber == null
+                            || (row.season_number ?? 0) >= minSeasonNumber)
                           .map((row) => ({
                             season_id: row.season_id,
                             u25_stat_sum: row.u25_stat_sum ?? 0,
@@ -318,6 +329,7 @@ function createSeasonEndSupabase({
                       });
                     },
                   };
+                  return chain;
                 },
               };
             }
@@ -1301,7 +1313,14 @@ test("processSeasonEnd does NOT trigger sequential negotiation after season 5 (o
 
 // ─── S-02c / S-02d / S-02e regression: processTeamSeasonEnd new paths ─────────
 
-function makePlanCompleteSupabase({ seasonNumber = 5, planType = "1yr", seasonsCompleted = 0, riders = [] } = {}) {
+function makePlanCompleteSupabase({
+  seasonNumber = 5,
+  planType = "1yr",
+  seasonsCompleted = 0,
+  riders = [],
+  planStartSeasonNumber = null,
+  planEndSeasonNumber = null,
+} = {}) {
   return createSeasonEndSupabase({
     season: { id: "season-5", number: seasonNumber, status: "active" },
     team: {
@@ -1327,6 +1346,8 @@ function makePlanCompleteSupabase({ seasonNumber = 5, planType = "1yr", seasonsC
       cumulative_stage_wins: 0,
       cumulative_gc_wins: 0,
       plan_start_sponsor_income: 200,
+      plan_start_season_number: planStartSeasonNumber,
+      plan_end_season_number: planEndSeasonNumber,
     },
     standings: [
       {
@@ -1388,6 +1409,45 @@ test("processSeasonEnd sends mid-review notification and skips processReplacemen
     (n) => n.title === "Mid-plan review"
   );
   assert.ok(midReviewNotif, "mid-review notification must be sent for 3yr plan at season 1");
+});
+
+// #1236 · Plan-udløb skal rulle plan-vinduet frem til den nye cyklus. Uden
+// roll-forward pegede plan_start_season_number stadig på den udløbne plans
+// start-sæson efter sæsonskiftet, så /board/status' snapshot-filter
+// (season_number >= plan_start_season_number) talte forrige cyklus' sæsoner
+// med i den nye plan.
+test("processSeasonEnd rolls plan_start_season_number forward when the plan expires (#1236)", async () => {
+  // 1yr plan startet i sæson 5 udløber ved sæson 5's afslutning — den nye
+  // cyklus kører tidligst fra sæson 6 (sæson-transition er altid number+1;
+  // /board/sign og auto-accept overskriver med faktisk aktiv sæson ved signering).
+  const supabase = makePlanCompleteSupabase({
+    planType: "1yr",
+    planStartSeasonNumber: 5,
+    planEndSeasonNumber: 5,
+  });
+  await processSeasonEnd("season-5", { supabase, ...baseDeps() });
+
+  assert.equal(supabase.state.board.negotiation_status, "pending");
+  assert.equal(supabase.state.board.seasons_completed, 0);
+  assert.equal(supabase.state.board.plan_start_season_number, 6);
+  assert.equal(supabase.state.board.plan_end_season_number, 6);
+});
+
+// #1236 design-note: en plan der REELT startede i sæson N og stadig kører
+// skal blive ved med at huske sæson N — kun udløb må rulle vinduet frem.
+test("processSeasonEnd keeps plan_start_season_number for a still-running plan (#1236)", async () => {
+  // 3yr plan i sæson 1-af-3 (seasons_completed=0 → planIsComplete=false).
+  const supabase = makePlanCompleteSupabase({
+    planType: "3yr",
+    seasonsCompleted: 0,
+    planStartSeasonNumber: 5,
+    planEndSeasonNumber: 7,
+  });
+  await processSeasonEnd("season-5", { supabase, ...baseDeps() });
+
+  assert.equal(supabase.state.board.seasons_completed, 1);
+  assert.equal(supabase.state.board.plan_start_season_number, 5);
+  assert.equal(supabase.state.board.plan_end_season_number, 7);
 });
 
 test("processSeasonEnd sends replacement notification when processReplacementTrigger returns replaced=true", async () => {

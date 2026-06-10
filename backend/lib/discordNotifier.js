@@ -10,6 +10,9 @@ import { fileURLToPath } from "url";
 import { config } from "dotenv";
 import { resolveDmTargetFromInput } from "./discordDmTarget.js";
 import { assertDiscordWebhookUrl } from "./urlSafety.js";
+import { attemptDmDelivery } from "./discordDmDelivery.js";
+import { enqueueDm, processDmOutboxDrain } from "./discordDmOutbox.js";
+import { captureException as sentryCapture } from "./sentry.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 config({ path: join(__dirname, "../.env"), quiet: true });
@@ -184,6 +187,13 @@ async function postDm(channelId, botToken, payload) {
  * #449: silent return-pattern fjernet — vi logger nu hvorfor vi springer over
  * (mangler bot-token, mangler discord_id) så Railway-logs kan vise om DMs
  * fejler pga. config (token mangler/roteret) eller data (user uden discord_id).
+ *
+ * #1115: ét-forsøg-og-drop erstattet med retry + outbox. Rod-årsag 9/6: Discord
+ * 429'ede Railways delte egress-IP (token var gyldigt), og den gamle sendDM
+ * droppede DM'en permanent efter ét forsøg med kun console.error som spor.
+ * Nu: inline-retry (respekterer retry_after) → retryable fejl ender i
+ * discord_dm_outbox (drain-cron hvert 5. min, backoff op til ~27h) → permanent
+ * token-fejl alarmerer via Sentry i stedet for at fejle tavst.
  */
 export async function sendDM(discordId, payload) {
   const botToken = getBotToken();
@@ -195,12 +205,63 @@ export async function sendDM(discordId, payload) {
     console.warn("[discord-dm:skip] discordId mangler — DM ikke sendt");
     return;
   }
-  try {
-    const channelId = await openDmChannel(discordId, botToken);
-    await postDm(channelId, botToken, payload);
-  } catch (err) {
-    console.error("[discord-dm:error] sendDM failed", { discordId, error: err.message });
+
+  const result = await attemptDmDelivery({ discordId, payload, botToken });
+  if (result.ok) return;
+
+  if (result.failure?.kind === "retryable") {
+    console.warn("[discord-dm:outbox] DM kunne ikke leveres nu — lagt i outbox", {
+      discordId,
+      status: result.status,
+      reason: result.failure.reason,
+      attempts: result.attempts,
+    });
+    await enqueueDm({
+      supabase,
+      discordId,
+      payload,
+      lastStatus: result.status,
+      lastError: result.error,
+      captureExceptionFn: sentryCapture,
+    });
+    return;
   }
+
+  // Permanent fejl: 401 = infra (token roteret/ugyldigt) → alarm.
+  // 403/400/404 = data (modtager har lukket DMs / ugyldigt id) → log, ingen alarm-spam.
+  console.error("[discord-dm:error] sendDM failed permanent", {
+    discordId,
+    status: result.status,
+    reason: result.failure?.reason,
+    error: result.error,
+  });
+  if (result.failure?.reason === "token-invalid") {
+    sentryCapture(new Error(`Discord DM fejlede permanent (token-invalid): ${result.error}`), {
+      tags: { component: "discord-dm" },
+      extra: { status: result.status },
+    });
+  }
+}
+
+/**
+ * Drain af discord_dm_outbox — kaldes fra cron hvert 5. minut (#1115).
+ * Leverer forfaldne pending-DMs igen; markerer opgivne rækker 'dead' og
+ * alarmerer aggregeret via webhook + Sentry (forward-guard mod tavs DM-død).
+ */
+export async function drainDiscordDmOutbox({ now = new Date() } = {}) {
+  const botToken = getBotToken();
+  if (!botToken) {
+    // Token-mangel fanges allerede af runDiscordBotTokenCheck — skip stille her.
+    return { processed: 0, sent: 0, rescheduled: 0, dead: 0 };
+  }
+  return processDmOutboxDrain({
+    supabase,
+    deliverFn: ({ discordId, payload }) => attemptDmDelivery({ discordId, payload, botToken }),
+    sendWebhookFn: sendWebhook,
+    getDefaultWebhookFn: getDefaultWebhook,
+    captureExceptionFn: sentryCapture,
+    now,
+  });
 }
 
 /**

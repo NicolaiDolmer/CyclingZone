@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useTranslation, Trans } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { satisfactionToModifier, getPlanDuration, isBoardGoalAchieved } from "../lib/boardUtils";
+import { getBoardGoalLabel } from "../lib/boardGoalLabel";
+import { getWizardBackState, canResumeNegotiation } from "../lib/boardWizardNav";
 import { getCountryDisplay } from "../lib/countryUtils";
 import { formatNumber } from "../lib/intl";
 import { Flag } from "../components/Flag";
@@ -105,23 +107,8 @@ function getFocusLabel(t, focus) {
   return t(`focus.${focus}`, { defaultValue: focus });
 }
 
-function getBoardGoalLabel(t, goal) {
-  if (!goal) return "";
-  // #815 · "stjerne-rytter (popularity >= 75)" → "højt omdømme". Type-styret så
-  // ALLEREDE gemte planer (med den gamle label i DB) også omdøbes i visningen.
-  if (goal.type === "signature_rider") {
-    return t("goal.signatureRider", { count: goal.target ?? 1 });
-  }
-  if (goal.label_key) {
-    const translated = t(goal.label_key, { count: goal.target, target: goal.target, defaultValue: "" });
-    if (translated) return translated;
-  }
-  if (goal.type === "min_national_riders" && goal.nationality_code) {
-    const country = getCountryDisplay(goal.nationality_code);
-    return t("goal.minNationalRiders", { target: goal.target, country: country.name || country.code });
-  }
-  return goal.label || "";
-}
+// getBoardGoalLabel er flyttet til ../lib/boardGoalLabel.js (#1233) så den kan
+// unit-testes mod de rigtige locale-filer.
 
 // #102 · kort type-navn til "Hvad vægter dette board?"-panelet (DNA goal_weighting).
 function getGoalTypeLabel(t, type) {
@@ -251,7 +238,7 @@ function BoardMemberDialog({ member, onClose }) {
       onClick={e => e.target === e.currentTarget && onClose()}
     >
       <div ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="board-member-dialog-title"
-        className="w-full max-w-md bg-cz-card border border-cz-border rounded-2xl p-6 shadow-2xl">
+        className="w-full max-w-md bg-cz-card border border-cz-border rounded-2xl p-6 shadow-2xl max-h-[85vh] overflow-y-auto">
         <div className="flex items-start gap-3 mb-4">
           <div className={`relative w-12 h-12 rounded-full bg-cz-subtle border flex items-center justify-center text-2xl flex-shrink-0
             ${member.is_chairman ? "border-cz-accent/40" : "border-cz-border"}`}>
@@ -263,7 +250,7 @@ function BoardMemberDialog({ member, onClose }) {
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <p id="board-member-dialog-title" className="text-cz-1 font-semibold text-base leading-snug">{resolveMemberLabel(t, member)}</p>
+            <p id="board-member-dialog-title" className="text-cz-1 font-semibold text-base leading-snug break-words">{resolveMemberLabel(t, member)}</p>
             <p className={`text-xs uppercase tracking-wider mt-0.5 ${member.is_chairman ? "text-cz-accent-t font-semibold" : "text-cz-3"}`}>
               {roleLabel}
             </p>
@@ -273,8 +260,10 @@ function BoardMemberDialog({ member, onClose }) {
         {resolveMemberShortDescription(t, member) && (
           <p className="text-cz-2 text-sm leading-relaxed">{resolveMemberShortDescription(t, member)}</p>
         )}
+        {/* #1241 · text-cz-2 (før cz-3): lang brødtekst i modal skal være
+            kontrast-sikker i begge temaer; hierarki bæres af mt-spacing. */}
         {resolveMemberLongDescription(t, member) && (
-          <p className="text-cz-3 text-sm mt-3 leading-relaxed">{resolveMemberLongDescription(t, member)}</p>
+          <p className="text-cz-2 text-sm mt-3 leading-relaxed">{resolveMemberLongDescription(t, member)}</p>
         )}
       </div>
     </div>
@@ -447,7 +436,7 @@ function ClubDnaDialog({ dna, onClose }) {
       onClick={e => e.target === e.currentTarget && onClose()}
     >
       <div ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="club-dna-dialog-title"
-        className="w-full max-w-md bg-cz-card border border-cz-border rounded-2xl p-6 shadow-2xl">
+        className="w-full max-w-md bg-cz-card border border-cz-border rounded-2xl p-6 shadow-2xl max-h-[85vh] overflow-y-auto">
         <div className="flex items-start gap-3 mb-4">
           <div className="w-12 h-12 rounded-full bg-cz-subtle border border-cz-border
             flex items-center justify-center text-2xl flex-shrink-0">
@@ -689,14 +678,14 @@ function GoalMiniDialog({ goal, achieved, evaluation, cumulativeProgress, onClos
       onClick={e => e.target === e.currentTarget && onClose()}
     >
       <div ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="goal-mini-dialog-title"
-        className="w-full max-w-lg bg-cz-card border border-cz-border rounded-2xl p-6 shadow-2xl">
+        className="w-full max-w-lg bg-cz-card border border-cz-border rounded-2xl p-6 shadow-2xl max-h-[85vh] overflow-y-auto">
         <div className="flex items-start gap-3 mb-4">
           <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold ${iconCls}`}>
             <span aria-hidden="true">{iconContent}</span>
             <span className="sr-only">{getGoalStatusA11yLabel(t, { achieved, status })}</span>
           </div>
           <div className="flex-1">
-            <p id="goal-mini-dialog-title" className="text-cz-1 font-semibold text-base leading-snug">{getBoardGoalLabel(t, goal)}</p>
+            <p id="goal-mini-dialog-title" className="text-cz-1 font-semibold text-base leading-snug break-words">{getBoardGoalLabel(t, goal)}</p>
             {statusMeta?.label && (
               <p className={`text-sm mt-0.5 ${statusMeta.color}`}>{statusMeta.label}</p>
             )}
@@ -920,48 +909,63 @@ function BoardIdentityCard({ identityProfile, title }) {
   return (
     <div className="bg-cz-card border border-cz-border rounded-xl p-5 mt-4">
       <div className="flex items-start justify-between gap-4">
-        <div>
+        <div className="min-w-0">
           <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{resolvedTitle}</p>
-          <p className="text-cz-1 font-semibold text-sm">{identityProfile.primary_specialization_label}</p>
-          <p className="text-cz-2 text-sm mt-1">{formatBoardCopy(identityProfile.summary)}</p>
+          <p className="text-cz-1 font-semibold text-sm break-words">{identityProfile.primary_specialization_label}</p>
+          <p className="text-cz-2 text-sm mt-1 break-words">{formatBoardCopy(identityProfile.summary)}</p>
         </div>
+        {/* #1232 · U25-mål er et ANTAL — vis antallet som primær værdi; procent-
+            observationen bevares som sekundær baggrundsinfo (Discord 9/6, @jeppek). */}
         <div className="text-right flex-shrink-0">
           <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{t("identity.u25")}</p>
-          <p className="font-mono font-bold text-sm text-cz-info">{identityProfile.u25_share_pct ?? 0}%</p>
+          {typeof identityProfile.u25_count === "number" ? (
+            <>
+              <p className="font-mono font-bold text-sm text-cz-info">
+                {t("identity.u25Count", { count: identityProfile.u25_count })}
+              </p>
+              <p className="text-cz-3 text-xs mt-0.5">
+                {t("identity.u25ShareSub", { percent: identityProfile.u25_share_pct ?? 0 })}
+              </p>
+            </>
+          ) : (
+            <p className="font-mono font-bold text-sm text-cz-info">{identityProfile.u25_share_pct ?? 0}%</p>
+          )}
         </div>
       </div>
+      {/* #1241 · break-words på alle chip-værdier: lange enkeltord (fx
+          "Etapejaegerhold") clippede ud over chip-kanten i 6-kolonne-gridet. */}
       <div className="grid sm:grid-cols-3 xl:grid-cols-6 gap-3 mt-4">
-        <div className="bg-cz-subtle border border-cz-border rounded-lg p-3">
+        <div className="bg-cz-subtle border border-cz-border rounded-lg p-3 min-w-0">
           <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("identity.primary")}</p>
-          <p className="text-cz-1 text-sm font-medium mt-1">{identityProfile.primary_specialization_label}</p>
+          <p className="text-cz-1 text-sm font-medium mt-1 break-words">{identityProfile.primary_specialization_label}</p>
         </div>
-        <div className="bg-cz-subtle border border-cz-border rounded-lg p-3">
+        <div className="bg-cz-subtle border border-cz-border rounded-lg p-3 min-w-0">
           <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("identity.secondary")}</p>
-          <p className="text-cz-1 text-sm font-medium mt-1">{identityProfile.secondary_specialization_label}</p>
+          <p className="text-cz-1 text-sm font-medium mt-1 break-words">{identityProfile.secondary_specialization_label}</p>
         </div>
-        <div className="bg-cz-subtle border border-cz-border rounded-lg p-3">
+        <div className="bg-cz-subtle border border-cz-border rounded-lg p-3 min-w-0">
           <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("identity.competitive")}</p>
-          <p className="text-cz-1 text-sm font-medium mt-1">{identityProfile.competitive_tier_label}</p>
+          <p className="text-cz-1 text-sm font-medium mt-1 break-words">{identityProfile.competitive_tier_label}</p>
         </div>
-        <div className="bg-cz-subtle border border-cz-border rounded-lg p-3">
+        <div className="bg-cz-subtle border border-cz-border rounded-lg p-3 min-w-0">
           <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("identity.squad")}</p>
           <p className="text-cz-1 text-sm font-medium mt-1">
             {identityProfile.rider_count}/{identityProfile?.squad_limits?.max}
           </p>
-          <p className="text-cz-3 text-xs mt-1">{identityProfile.squad_status_label}</p>
+          <p className="text-cz-3 text-xs mt-1 break-words">{identityProfile.squad_status_label}</p>
         </div>
-        <div className="bg-cz-subtle border border-cz-border rounded-lg p-3">
+        <div className="bg-cz-subtle border border-cz-border rounded-lg p-3 min-w-0">
           <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("identity.nationalCore")}</p>
-          <p className="text-cz-1 text-sm font-medium mt-1 inline-flex items-center gap-1.5">
+          <p className="text-cz-1 text-sm font-medium mt-1 inline-flex items-center gap-1.5 break-words max-w-full">
             {nationalCore?.established && nationalCore?.code && <Flag code={nationalCore.code} />}
             {nationalCoreValue}
           </p>
-          <p className="text-cz-3 text-xs mt-1">{nationalCoreSub}</p>
+          <p className="text-cz-3 text-xs mt-1 break-words">{nationalCoreSub}</p>
         </div>
-        <div className="bg-cz-subtle border border-cz-border rounded-lg p-3">
+        <div className="bg-cz-subtle border border-cz-border rounded-lg p-3 min-w-0">
           <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("identity.starProfile")}</p>
-          <p className="text-cz-1 text-sm font-medium mt-1">{starProfileValue}</p>
-          <p className="text-cz-3 text-xs mt-1">{starProfileSub}</p>
+          <p className="text-cz-1 text-sm font-medium mt-1 break-words">{starProfileValue}</p>
+          <p className="text-cz-3 text-xs mt-1 break-words">{starProfileSub}</p>
         </div>
       </div>
     </div>
@@ -1545,7 +1549,7 @@ function WizardStep1({ identityProfile, focus, setFocus, planType, previewGoals,
             <label className="block text-cz-3 text-xs uppercase tracking-wider mb-2">{t("wizard.horizonLabel")}</label>
             <div className="bg-cz-accent/10 border border-cz-accent/30 rounded-lg px-3 py-3">
               <p className="text-cz-accent-t font-semibold text-sm">{getPlanLabel(t, planType)}</p>
-              <p className="text-cz-accent-t/60 text-xs mt-0.5">{t(`planDescriptions.${planType}`)}</p>
+              <p className="text-cz-accent-t text-xs mt-0.5">{t(`planDescriptions.${planType}`)}</p>
             </div>
           </div>
         </div>
@@ -1573,8 +1577,8 @@ function WizardStep1({ identityProfile, focus, setFocus, planType, previewGoals,
                   <span aria-hidden="true">○</span>
                   <span className="sr-only">{t("a11y.goalStatus.pending")}</span>
                 </div>
-                <div className="flex-1">
-                  <p className="text-cz-2 text-sm">{getBoardGoalLabel(t, g)}</p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-cz-2 text-sm break-words">{getBoardGoalLabel(t, g)}</p>
                   <div className="flex gap-3 mt-1">
                     {g.cumulative && <span className="text-xs text-cz-info/50">{t("goal.cumulative")}</span>}
                     {g.satisfaction_bonus > 0 && <span className="text-xs text-cz-success/60">+{g.satisfaction_bonus}</span>}
@@ -1604,7 +1608,7 @@ function WizardStep1({ identityProfile, focus, setFocus, planType, previewGoals,
   );
 }
 
-function WizardStep2({ goals, goalIdx, negotiated, negotiationOptions = [], pendingNegotiate, onAccept, onNegotiate, onAcceptNegotiated }) {
+function WizardStep2({ goals, goalIdx, negotiated, negotiationOptions = [], pendingNegotiate, onAccept, onNegotiate, onAcceptNegotiated, onBack }) {
   const { t } = useTranslation("board");
   const current = goals[goalIdx];
   const total = goals.length;
@@ -1620,6 +1624,13 @@ function WizardStep2({ goals, goalIdx, negotiated, negotiationOptions = [], pend
   return (
     <div>
       <div className="flex items-center gap-3 mb-6">
+        {/* #1240 · Tilbage uden at miste valg: forrige mål, eller trin 1 fra første mål. */}
+        {onBack && (
+          <button type="button" onClick={onBack}
+            className="text-cz-3 hover:text-cz-2 text-xs flex-shrink-0 transition-colors">
+            {t("wizard.back")}
+          </button>
+        )}
         <span className="text-cz-3 text-xs flex-shrink-0">{t("wizard.goalCounter", { current: goalIdx + 1, total })}</span>
         <div className="flex-1 bg-cz-subtle rounded-full h-1.5">
           <div className="h-1.5 rounded-full bg-cz-accent transition-all"
@@ -1638,8 +1649,8 @@ function WizardStep2({ goals, goalIdx, negotiated, negotiationOptions = [], pend
           ${current?.negotiated ? "bg-cz-info-bg0/5 border-cz-info/20" : "bg-cz-subtle border-cz-border"}`}>
           <div className="w-6 h-6 rounded-full bg-cz-accent/10 border border-cz-accent/30
             flex items-center justify-center flex-shrink-0 text-xs text-cz-accent-t" aria-hidden="true">◎</div>
-          <div className="flex-1">
-            <p className="text-cz-1 font-semibold">{getBoardGoalLabel(t, current)}</p>
+          <div className="flex-1 min-w-0">
+            <p className="text-cz-1 font-semibold break-words">{getBoardGoalLabel(t, current)}</p>
             <div className="flex flex-wrap gap-3 mt-2">
               {current?.importance === "required" && (
                 <span className="text-[10px] text-cz-3 uppercase tracking-wider">{t("wizard.obligatory")}</span>
@@ -1680,7 +1691,7 @@ function WizardStep2({ goals, goalIdx, negotiated, negotiationOptions = [], pend
         <div>
           <div className="bg-cz-info-bg0/10 border border-cz-info/20 rounded-xl p-4 mb-4">
             <p className="text-cz-info text-sm font-medium">{t("wizard.compromiseHeading")}</p>
-            <p className="text-cz-info/60 text-xs mt-1">{t("wizard.compromiseBody")}</p>
+            <p className="text-cz-info text-xs mt-1">{t("wizard.compromiseBody")}</p>
           </div>
           <button onClick={onAcceptNegotiated}
             className="w-full py-3 bg-cz-accent text-cz-on-accent font-bold rounded-xl text-sm hover:brightness-110 transition-all">
@@ -1696,11 +1707,18 @@ function WizardStep2({ goals, goalIdx, negotiated, negotiationOptions = [], pend
   );
 }
 
-function WizardStep3({ finalGoals, planType, onSign, saving }) {
+function WizardStep3({ finalGoals, planType, onSign, saving, onBack }) {
   const { t } = useTranslation("board");
   const duration = getPlanDuration(planType);
   return (
     <div>
+      {/* #1240 · Tilbage til forhandlingen (sidste mål) uden at miste valg. */}
+      {onBack && (
+        <button type="button" onClick={onBack}
+          className="text-cz-3 hover:text-cz-2 text-xs mb-4 transition-colors">
+          {t("wizard.back")}
+        </button>
+      )}
       <div className="text-center mb-8">
         <div className="w-14 h-14 rounded-full bg-cz-success-bg border border-cz-success/30
           flex items-center justify-center text-2xl mx-auto mb-4" aria-hidden="true">✍</div>
@@ -1721,8 +1739,8 @@ function WizardStep3({ finalGoals, planType, onSign, saving }) {
                 <span aria-hidden="true">○</span>
                 <span className="sr-only">{t("a11y.goalStatus.pending")}</span>
               </div>
-              <div className="flex-1">
-                <p className="text-cz-2 text-sm font-medium">{getBoardGoalLabel(t, g)}</p>
+              <div className="flex-1 min-w-0">
+                <p className="text-cz-2 text-sm font-medium break-words">{getBoardGoalLabel(t, g)}</p>
                 <div className="flex gap-3 mt-1">
                   {g.cumulative && <span className="text-xs text-cz-info/50">{t("goal.cumulative")}</span>}
                   {g.negotiated && <span className="text-xs text-cz-info/70">{t("goal.negotiated")}</span>}
@@ -1969,12 +1987,30 @@ export default function BoardPage() {
       setPreviewGoals(goals);
       setNegotiationOptions(nextNegotiationOptions);
     }
+    // #1240 · Gik brugeren tilbage til trin 1 uden at ændre strategi (samme
+    // proposal-reference), genoptages forhandlingen hvor den slap — valg bevares.
+    // Fokus-/planskifte refetcher proposal (ny reference) → frisk start nedenfor.
+    if (canResumeNegotiation({ proposedGoals, previewGoals: goals, finalGoals })) {
+      setPendingNegotiate(false);
+      setWizardStep(2);
+      return;
+    }
     setProposedGoals(goals);
     setFinalGoals(goals.map(goal => ({ ...goal })));
     setGoalIdx(0);
     setNegotiated({});
     setPendingNegotiate(false);
     setWizardStep(2);
+  }
+
+  // #1240 · Tilbage-knap i wizarden (trin 2/3). Ren state-logik i
+  // lib/boardWizardNav.js — rører aldrig finalGoals/negotiated, så valg bevares.
+  function handleWizardBack() {
+    const back = getWizardBackState({ step: wizardStep, goalIdx, pendingNegotiate });
+    if (!back) return;
+    setWizardStep(back.step);
+    setGoalIdx(back.goalIdx);
+    setPendingNegotiate(back.pendingNegotiate);
   }
 
   function acceptCurrentGoal() {
@@ -2350,17 +2386,23 @@ export default function BoardPage() {
       {/* S-02h · Wizard modal overlay — vises oven på dashboard (ikke full-page takeover) */}
       {wizardPlanType && (
         <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/70 backdrop-blur-sm overflow-y-auto py-6 px-4">
-          <div ref={wizardDialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={t("wizard.dialogAria")} className="w-full max-w-2xl">
+          {/* #1241 · Solid tema-flade (bg-cz-body) bag wizard-indholdet: overskrifter,
+              mål-tæller og knapper flød før direkte på den mørke overlay → tema-tokens
+              (text-cz-1/2/3) blev ulæselige i light-mode ("gennemsigtig tekst"). */}
+          <div ref={wizardDialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={t("wizard.dialogAria")}
+            className="w-full max-w-2xl bg-cz-body border border-cz-border rounded-2xl p-4 sm:p-6 shadow-2xl h-fit">
             {/* Onboarding-header (sæson 2 setup) */}
             {wizardIsSetup && (
               <div className="bg-cz-accent/10 border border-cz-accent/30 rounded-xl p-4 mb-6">
                 <p className="text-cz-accent-t text-sm font-semibold">
                   {t("wizard.setupHeading", { step: wizardSetupStep })}
                 </p>
-                <p className="text-cz-accent-t/60 text-xs mt-1">
+                {/* #1241 · solid accent-t (før /60 og /70 opacity): brødtekst på den
+                    tonede boks faldt under kontrast-kravet i light-mode. */}
+                <p className="text-cz-accent-t text-xs mt-1">
                   {t("wizard.setupBody", { plan: getPlanLabel(t, wizardPlanType) })}
                 </p>
-                <p className="text-cz-accent-t/70 text-xs mt-2">
+                <p className="text-cz-accent-t text-xs mt-2">
                   {t("wizard.setupSequence")}
                 </p>
               </div>
@@ -2372,7 +2414,7 @@ export default function BoardPage() {
                 <p className="text-cz-accent-t text-sm font-semibold">
                   {t("wizard.multiRenewalHeading", { current: renewalQueueIdx + 1, total: renewalQueue.length, plan: getPlanLabel(t, wizardPlanType) })}
                 </p>
-                <p className="text-cz-accent-t/60 text-xs mt-1">
+                <p className="text-cz-accent-t text-xs mt-1">
                   {renewalQueueIdx + 1 < renewalQueue.length
                     ? t("wizard.multiRenewalBodyNext", { next: getPlanLabel(t, renewalQueue[renewalQueueIdx + 1]) })
                     : t("wizard.multiRenewalBodyLast")}
@@ -2384,7 +2426,7 @@ export default function BoardPage() {
             {!wizardIsSetup && !isMultiRenewal && wizardExistingPlanData?.is_expired && (
               <div className="bg-cz-accent/10 border border-cz-accent/30 rounded-xl p-4 mb-6">
                 <p className="text-cz-accent-t text-sm font-semibold">{t("wizard.singleRenewalHeading", { plan: getPlanLabel(t, wizardPlanType) })}</p>
-                <p className="text-cz-accent-t/60 text-xs mt-1">{t("wizard.singleRenewalBody", { plan: getPlanLabel(t, wizardPlanType) })}</p>
+                <p className="text-cz-accent-t text-xs mt-1">{t("wizard.singleRenewalBody", { plan: getPlanLabel(t, wizardPlanType) })}</p>
               </div>
             )}
 
@@ -2446,6 +2488,7 @@ export default function BoardPage() {
                 onAccept={acceptCurrentGoal}
                 onNegotiate={negotiateCurrentGoal}
                 onAcceptNegotiated={acceptNegotiatedGoal}
+                onBack={handleWizardBack}
               />
             )}
             {wizardStep === 3 && (
@@ -2454,6 +2497,7 @@ export default function BoardPage() {
                 planType={wizardPlanType}
                 onSign={signContract}
                 saving={saving}
+                onBack={handleWizardBack}
               />
             )}
 

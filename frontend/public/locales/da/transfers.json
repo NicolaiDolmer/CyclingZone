@@ -145,7 +145,13 @@
     "removing": "Fjerner...",
     "removeAria": "Fjern {riderName} fra transferlisten",
     "removeConfirm": "Fjern {riderName} fra transferlisten?",
-    "ridersForSale": "rytter"
+    "ridersForSale": "rytter",
+    "editPrice": "✏️ Redigér pris",
+    "editPriceAria": "Redigér prisen på {riderName}",
+    "editPriceLabel": "Ny pris (CZ$)",
+    "savePrice": "Gem",
+    "cancel": "Annullér",
+    "confirmRemoveButton": "Ja, fjern"
   },
   "newSwap": {
     "title": "Foreslå byttehandel",
@@ -197,6 +203,20 @@
     "swapZero": "0 CZ$",
     "loadError": "Kunne ikke hente transferhistorik"
   },
+  "profit": {
+    "title": "Transfer-gevinst pr. rytter",
+    "subtitle": "Alle sæsoner. Salgspris mod købspris for ryttere holdet har solgt.",
+    "header": {
+      "rider": "Rytter",
+      "bought": "Købt",
+      "sold": "Solgt",
+      "profit": "Gevinst/tab"
+    },
+    "unknownBuy": "Ukendt",
+    "unknownBuyHint": "Intet køb fundet i holdets historik, fx start-trup eller bytte. Gevinst kan ikke beregnes.",
+    "total": "Samlet realiseret gevinst",
+    "totalExcluded": "{count, plural, one {# salg} other {# salg}} uden kendt købspris, tæller ikke med i totalen."
+  },
   "sections": {
     "archivedReceived": "Arkiverede modtagne tilbud",
     "archivedSent": "Arkiverede sendte tilbud",
@@ -241,7 +261,9 @@
     "loanActivated": "✅ Lejeaftale aktiveret",
     "loanRejected": "Lejeforslag afvist",
     "loanCancelled": "Lejeaftale annulleret",
-    "loanProposalSent": "✅ Lejeforslag sendt!"
+    "loanProposalSent": "✅ Lejeforslag sendt!",
+    "priceUpdated": "✅ Pris opdateret",
+    "priceUpdateFailed": "Kunne ikke opdatere prisen"
   },
   "celebration": {
     "transferDone": {
@@ -256,5 +278,11 @@
       "title": "Rytter købt! 🎉",
       "subtitle": "Købsoptionen er udnyttet"
     }
+  },
+  "marketSort": {
+    "label": "Sortering",
+    "newest": "Nyeste først",
+    "price_asc": "Pris: laveste først",
+    "price_desc": "Pris: højeste først"
   }
 }

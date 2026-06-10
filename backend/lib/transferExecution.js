@@ -184,6 +184,19 @@ export function getListingCancelIssue(listing, { teamId } = {}) {
   return null;
 }
 
+// #1185: inline pris-redigering på egen listing (PATCH /api/transfers/:id).
+// Genbruger ejerskabs-/status-reglerne fra getListingCancelIssue (ejer + åben/
+// negotiating) og validerer den nye pris: positivt heltal, matcher INTEGER
+// NOT NULL-kolonnen og min=1-semantikken i salgs-formularen på Min trup.
+export function getListingPriceUpdateIssue(listing, { teamId, askingPrice } = {}) {
+  const cancelIssue = getListingCancelIssue(listing, { teamId });
+  if (cancelIssue) return cancelIssue;
+  if (!Number.isInteger(askingPrice) || askingPrice <= 0) {
+    return { code: "invalid_price" };
+  }
+  return null;
+}
+
 async function withdrawTransferOffer(supabase, offerId) {
   await expectMutation(
     supabase.from("transfer_offers").update({ status: "withdrawn" }).eq("id", offerId)

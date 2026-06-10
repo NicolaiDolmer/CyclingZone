@@ -464,6 +464,164 @@ function DirectOfferButton({ rider }) {
   );
 }
 
+// #1185: sæt rytteren til salg på transferlisten direkte fra profilen — før
+// kun muligt via Min trup-modalen. Viser eksisterende åben listing (pris +
+// redigér + fjern) hvis rytteren allerede er til salg; ellers pris-form der
+// POSTer /api/transfers. Genbruger PATCH/DELETE /api/transfers/:id fra
+// transferlistens egne kort. Fjern bruger in-app confirm (ikke window.confirm
+// — upålidelig i mobile in-app-browsere).
+function TransferListButton({ rider }) {
+  const { t } = useTranslation("rider");
+  const [show, setShow]       = useState(false);
+  const [listing, setListing] = useState(null);
+  const [price, setPrice]     = useState(getRiderMarketValue(rider));
+  const [loading, setLoading] = useState(false);
+  const [result, setResult]   = useState(null);
+  const [confirmRemove, setConfirmRemove] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+        // GET /api/transfers returnerer åbne listings — find rytterens egen.
+        // Fejler kaldet, virker salgs-knappen stadig (POST svarer 409 hvis
+        // rytteren allerede er listet).
+        const res = await fetch(`${API}/api/transfers`, { headers: { Authorization: `Bearer ${session.access_token}` } });
+        const data = await res.json().catch(() => []);
+        if (!cancelled && Array.isArray(data)) {
+          const own = data.find(l => l.rider?.id === rider.id) || null;
+          setListing(own);
+          if (own) setPrice(own.asking_price);
+        }
+      } catch { /* bevidst stille — se kommentar ovenfor */ }
+    })();
+    return () => { cancelled = true; };
+  }, [rider.id]);
+
+  const priceInvalid = !Number.isInteger(price) || price <= 0;
+
+  function flashResult(ok, msg) {
+    setResult({ ok, msg });
+    setTimeout(() => setResult(null), 4000);
+  }
+
+  async function submit() {
+    setLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(
+        listing ? `${API}/api/transfers/${listing.id}` : `${API}/api/transfers`,
+        {
+          method: listing ? "PATCH" : "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+          body: JSON.stringify(listing ? { asking_price: price } : { rider_id: rider.id, asking_price: price }),
+        }
+      );
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setListing(listing ? { ...listing, asking_price: price } : data);
+        setShow(false);
+        flashResult(true, listing ? t("sellRider.toast.priceUpdated") : t("sellRider.toast.listed"));
+      } else {
+        flashResult(false, `${t("sellRider.toast.errorPrefix")} ${resolveApiError(data, t)}`);
+      }
+    } catch {
+      flashResult(false, t("auth:error.connectionFailed"));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function removeListing() {
+    setLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${API}/api/transfers/${listing.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setListing(null);
+        setPrice(getRiderMarketValue(rider));
+        setShow(false);
+        flashResult(true, t("sellRider.toast.removed"));
+      } else {
+        flashResult(false, `${t("sellRider.toast.errorPrefix")} ${resolveApiError(data, t)}`);
+      }
+    } catch {
+      flashResult(false, t("auth:error.connectionFailed"));
+    } finally {
+      setLoading(false);
+      setConfirmRemove(false);
+    }
+  }
+
+  return (
+    <div>
+      {result && (
+        <div className={`mb-2 px-3 py-2 rounded-lg text-sm border
+          ${result.ok ? "bg-cz-success-bg text-cz-success border-cz-success/30" : "bg-cz-danger-bg text-cz-danger border-cz-danger/30"}`}>
+          {result.msg}
+        </div>
+      )}
+      {listing ? (
+        <div className="rounded-xl border border-cz-border bg-cz-subtle p-3 flex flex-col gap-2">
+          <p className="text-cz-2 text-sm">
+            {t("sellRider.listedStatus", { amount: formatNumber(listing.asking_price) })}
+          </p>
+          {confirmRemove ? (
+            <div className="flex gap-2">
+              <button onClick={removeListing} disabled={loading}
+                className="flex-1 min-h-[44px] py-2 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-lg text-sm font-medium disabled:opacity-50 transition-all">
+                {loading ? "..." : t("sellRider.confirmRemove")}
+              </button>
+              <button onClick={() => setConfirmRemove(false)} disabled={loading}
+                className="flex-1 min-h-[44px] py-2 bg-cz-card text-cz-2 border border-cz-border rounded-lg text-sm hover:text-cz-1 disabled:opacity-50 transition-all">
+                {t("sellRider.cancel")}
+              </button>
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              <button onClick={() => setShow(!show)}
+                className="flex-1 min-h-[44px] py-2 bg-cz-card text-cz-2 border border-cz-border rounded-lg text-sm font-medium hover:text-cz-1 hover:border-cz-accent/40 transition-all">
+                {show ? t("sellRider.hideEdit") : t("sellRider.editPrice")}
+              </button>
+              <button onClick={() => { setShow(false); setConfirmRemove(true); }}
+                className="flex-1 min-h-[44px] py-2 bg-cz-card text-cz-2 border border-cz-border rounded-lg text-sm font-medium hover:bg-cz-danger-bg hover:text-cz-danger hover:border-cz-danger/30 transition-all">
+                {t("sellRider.remove")}
+              </button>
+            </div>
+          )}
+        </div>
+      ) : (
+        <button onClick={() => setShow(!show)}
+          className={`w-full min-h-[44px] py-2.5 rounded-xl text-sm font-bold transition-all border
+            ${show
+                ? "bg-cz-accent/10 text-cz-accent-t border-[#e8c547]/25"
+                : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle hover:text-cz-1"}`}>
+          {t("sellRider.buttonOpen")}
+        </button>
+      )}
+      {show && (
+        <div className="mt-3 flex flex-col gap-2">
+          <p className="text-cz-3 text-xs">{t("sellRider.description")}</p>
+          <input type="number" value={price} min={1}
+            onChange={e => { const v = parseInt(e.target.value, 10); setPrice(Number.isNaN(v) ? 0 : v); }}
+            placeholder={t("sellRider.pricePlaceholder")}
+            className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-base sm:text-sm focus:outline-none focus:border-cz-accent" />
+          <button onClick={submit} disabled={loading || priceInvalid}
+            className="w-full min-h-[44px] py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50 transition-all">
+            {loading ? t("sellRider.sending") : listing ? t("sellRider.submitUpdate") : t("sellRider.submit")}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // #254: Bid-panel på rytter-profil — Apple HIG sizing (≥44px), comfortable density
 // matching AuctionCard. Bruger samme useAuctionBidding-hook som AuctionRow + AuctionCard
 // så bid-flowet er identisk: balance-gate → confirm-modal → race-confirm ved 409.
@@ -1342,6 +1500,8 @@ export default function RiderStatsPage() {
               isFlashing={priceFlash}
             />
           )}
+          {/* #1185: egne ryttere kan sættes til salg på transferlisten direkte herfra */}
+          {isMyRider && !isPendingTransfer && !isRetired && <TransferListButton rider={rider} />}
           {canDirectOffer && <DirectOfferButton rider={rider} />}
           {canDirectOffer && <SwapOfferButton rider={rider} myTeamId={myTeamId} />}
           {canDirectOffer && <LoanOfferButton rider={rider} />}

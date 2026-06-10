@@ -62,6 +62,9 @@
     "ownerManager": "Manager-ejede",
     "ownerAi": "AI-ejede",
     "ownerFree": "Fri agenter",
+    "teamFilterLabel": "Filtrér på hold",
+    "teamFilterAll": "Alle hold",
+    "colRating": "Rating",
     "colPoints": "Point",
     "colTotalWins": "Sejre i alt",
     "colStageWins": "Etapesejre",
@@ -77,6 +80,7 @@
     "colGreenDays": "Grønne dage",
     "colPolkaDays": "Prikdage",
     "colWhiteDays": "Hvide dage",
+    "shortRating": "Rtg",
     "shortPoints": "Pt",
     "shortTotalWins": "Sejre",
     "shortStageWins": "Etape",
@@ -100,6 +104,7 @@
     "legendPcl": "PKL = pointklassement",
     "legendMtn": "Bjerg = bjergklassement",
     "legendU25": "U25 = ungdomsklassement",
+    "legendRating": "Rating = gennemsnit af rytterens stats",
     "legendSort": "Klik kolonne for at sortere"
   }
 }

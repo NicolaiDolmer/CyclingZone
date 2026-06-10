@@ -60,7 +60,7 @@
       },
       "clubDna": {
         "title": "Club DNA",
-        "text": "In season 2 you pick one of 5 club DNA archetypes before the board is assembled: 🌲 Scandinavian development team, 🪨 Italian classics traditionalist, ⚡ Sprint-focused commercial, ⛰️ French climber heritage, 🎯 British all-rounder. DNA affects three things: (1) 5-year plans get an extra tradition target (e.g. monuments for italian_classics), (2) targets matching DNA priorities get boosted satisfaction bonus and penalty, (3) board members and future chairman swaps tip towards matching archetypes."
+        "text": "In season 2 you pick one of 5 club DNA archetypes before the board is assembled: 🌲 Scandinavian development team, 🪨 Italian classics traditionalist, ⚡ Sprint-focused commercial, ⛰️ French climber heritage, 🎯 British all-rounder. DNA affects three things: (1) 5-year plans get an extra tradition target (e.g. a podium in a classic, incl. Monuments, for italian_classics), (2) targets matching DNA priorities get boosted satisfaction bonus and penalty, (3) board members and future chairman swaps tip towards matching archetypes."
       },
       "consequenceTiers": {
         "title": "Consequence tiers (6 layers)",
@@ -129,6 +129,10 @@
       "whatTransfers": {
         "title": "What is the transfer system?",
         "text": "The transfer system lets you negotiate directly with other managers to buy or sell riders, like in Football Manager. You can send an offer on any rider, whether listed for sale or not."
+      },
+      "sellOnTransferList": {
+        "title": "Sell via the transfer list",
+        "text": "You can list your own riders for sale at a fixed asking price, either from My Squad or directly from the rider's profile page. While a rider is listed, you can edit the asking price or remove the listing at any time, both from the Transfers page and from the rider's profile. Buyers can sort the market by price or by newest listings."
       },
       "sendOffer": {
         "title": "Send an offer",
@@ -566,7 +570,7 @@
     },
     "debtCeiling": {
       "q": "What is the debt ceiling, and when does it apply?",
-      "a": "Each division has a maximum debt amount: Division 1: 1,200,000 CZ$, Division 2: 900,000 CZ$, Division 3: 600,000 CZ$. The system rejects emergency loans that would exceed the ceiling. Loan interest is added at season start on top of existing debt (moved from season end in v3.78)."
+      "a": "Each division has a maximum debt amount: Division 1: 1,200,000 CZ$, Division 2: 900,000 CZ$, Division 3: 600,000 CZ$. New short-term and long-term loans are rejected if the loan plus its fee would push your total debt over the ceiling. The fee counts towards the cap, so the max you can borrow is a bit less than the room under the cap. The loan form on the Finances page shows your current max. Automatic emergency loans can exceed the ceiling, but you get a warning and must cut costs. Loan interest is added at season start on top of existing debt (moved from season end in v3.78)."
     },
     "prizeMoneyFaq": {
       "q": "What is prize money, and when is it paid out?",

@@ -6,6 +6,7 @@ import {
   confirmTransferOffer,
   flushWindowPendingOffers,
   getListingCancelIssue,
+  getListingPriceUpdateIssue,
   getLoanCancelIssue,
   getSwapCancelIssue,
   getSwapExecutionIssue,
@@ -331,6 +332,58 @@ test("getListingCancelIssue: ejer kan fjerne open/negotiating, fremmede afvises,
     getListingCancelIssue(
       { seller_team_id: "T1", status: "negotiating" },
       { teamId: "T1" }
+    ),
+    null
+  );
+});
+
+// #1185: inline pris-redigering — samme ejerskabs-/status-regler som cancel,
+// plus pris-validering (positivt heltal).
+test("getListingPriceUpdateIssue: ejer kan redigere pris på open/negotiating, ugyldig pris afvises", () => {
+  // genbruger cancel-reglerne: not_found / not_owner / already_closed
+  assert.equal(
+    getListingPriceUpdateIssue(null, { teamId: "T1", askingPrice: 100 })?.code,
+    "not_found"
+  );
+  assert.equal(
+    getListingPriceUpdateIssue(
+      { seller_team_id: "T2", status: "open" },
+      { teamId: "T1", askingPrice: 100 }
+    )?.code,
+    "not_owner"
+  );
+  assert.equal(
+    getListingPriceUpdateIssue(
+      { seller_team_id: "T1", status: "sold" },
+      { teamId: "T1", askingPrice: 100 }
+    )?.code,
+    "already_closed"
+  );
+
+  // pris-validering: 0, negativ, decimal og NaN afvises
+  for (const bad of [0, -5, 1.5, NaN, undefined]) {
+    assert.equal(
+      getListingPriceUpdateIssue(
+        { seller_team_id: "T1", status: "open" },
+        { teamId: "T1", askingPrice: bad }
+      )?.code,
+      "invalid_price",
+      `askingPrice=${bad} skal afvises`
+    );
+  }
+
+  // happy path — open og negotiating med gyldigt heltal
+  assert.equal(
+    getListingPriceUpdateIssue(
+      { seller_team_id: "T1", status: "open" },
+      { teamId: "T1", askingPrice: 250000 }
+    ),
+    null
+  );
+  assert.equal(
+    getListingPriceUpdateIssue(
+      { seller_team_id: "T1", status: "negotiating" },
+      { teamId: "T1", askingPrice: 1 }
     ),
     null
   );

@@ -198,14 +198,65 @@ test("buildBoardProposal exposes negotiated variants that can be finalized serve
   assert.equal(finalizedGoals[2].negotiated, true);
 });
 
+// #1234 · Binære/minimums-mål (no_outstanding_debt m.fl.) kunne "forhandles"
+// til et IDENTISK mål med halveret penalty (no-op-rabat). Nu: ingen option i
+// forslaget, finalize falder tilbage til originalen, og infer afviser payloads
+// der påstår forhandling af dem.
+test("#1234 · binary goals expose no negotiation option and cannot be discounted", () => {
+  const proposal = buildBoardProposal({
+    focus: "balanced",
+    planType: "1yr",
+  });
+
+  const debtIndex = proposal.goals.findIndex((goal) => goal.type === "no_outstanding_debt");
+  assert.ok(debtIndex >= 0, "balanced-pakken skal indeholde no_outstanding_debt");
+  assert.equal(proposal.negotiation_options[debtIndex], null);
+
+  // Råt negotiations-index direkte mod et binært mål → originalen bevares uændret.
+  const finalizedGoals = finalizeBoardGoals({
+    goals: proposal.goals,
+    negotiationIndexes: [debtIndex],
+  });
+  assert.equal(Boolean(finalizedGoals[debtIndex].negotiated), false);
+  assert.equal(
+    finalizedGoals[debtIndex].satisfaction_penalty,
+    proposal.goals[debtIndex].satisfaction_penalty
+  );
+
+  // Legacy goals-payload med den gamle no-op-rabat (samme target, halv penalty)
+  // afvises som tampering.
+  const noOpDiscountGoals = proposal.goals.map((goal, index) => (
+    index === debtIndex
+      ? {
+        ...goal,
+        satisfaction_penalty: Math.round(goal.satisfaction_penalty * 0.5),
+        negotiated: true,
+      }
+      : goal
+  ));
+  assert.throws(
+    () => inferNegotiationIndexesFromGoals({
+      goals: proposal.goals,
+      negotiationOptions: proposal.negotiation_options,
+      submittedGoals: noOpDiscountGoals,
+    }),
+    /Invalid goal payload/
+  );
+});
+
 test("inferNegotiationIndexesFromGoals accepts legacy goal payloads but rejects tampering", () => {
   const proposal = buildBoardProposal({
     focus: "star_signing",
     planType: "1yr",
   });
 
+  // #1234 · negotiation_options kan nu indeholde null (mål uden reel lempelse)
+  // — vælg et mål der faktisk har en option.
+  const negotiableIndex = proposal.negotiation_options.findIndex((option) => option != null);
+  assert.ok(negotiableIndex >= 0, "mindst ét mål skal have en negotiation-option");
+
   const legacySubmittedGoals = proposal.goals.map((goal, index) => (
-    index === 1 ? proposal.negotiation_options[index] : goal
+    index === negotiableIndex ? proposal.negotiation_options[index] : goal
   ));
 
   const inferredIndexes = inferNegotiationIndexesFromGoals({
@@ -214,7 +265,7 @@ test("inferNegotiationIndexesFromGoals accepts legacy goal payloads but rejects 
     submittedGoals: legacySubmittedGoals,
   });
 
-  assert.deepEqual(inferredIndexes, [1]);
+  assert.deepEqual(inferredIndexes, [negotiableIndex]);
 
   const tamperedGoals = proposal.goals.map((goal, index) => (
     index === 0

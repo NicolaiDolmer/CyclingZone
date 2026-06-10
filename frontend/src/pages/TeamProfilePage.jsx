@@ -35,8 +35,8 @@ export default function TeamProfilePage() {
   const [riders, setRiders] = useState([]);
   const [standing, setStanding] = useState(null);
   const [managerStatus, setManagerStatus] = useState({ isOnline: false, lastSeen: null });
-  const [showIncoming, setShowIncoming] = useState(true);
-  const [showOutgoing, setShowOutgoing] = useState(true);
+  // #1095: eksplicit "nuværende" vs "kommende" trup-visning i stedet for vis/skjul-toggles.
+  const [squadView, setSquadView] = useState("current");
   const [loading, setLoading] = useState(true);
   const [myTeamId, setMyTeamId] = useState(null);
   const [tableSort, setTableSort] = useState({ key: "market_value", dir: "desc" });
@@ -65,7 +65,9 @@ export default function TeamProfilePage() {
         .eq("pending_team_id", id)
         .order("market_value", { ascending: false }),
       supabase.from("season_standings")
-        .select("*").eq("team_id", id)
+        // #1095: join sæson-nummer + status, så "Sæsonresultater" kan vise HVILKEN
+        // sæson tallene gælder (igangværende vs afsluttet) i stedet for at ligne nutid.
+        .select("*, season:season_id(number, status)").eq("team_id", id)
         .order("updated_at", { ascending: false }).limit(1).single(),
     ]);
 
@@ -99,11 +101,13 @@ export default function TeamProfilePage() {
 
   // #1092: sortér værdi-kolonnen på den VISTE værdi (getRiderMarketValue),
   // som "Mit Hold" gør — aldrig på en rå/frossen kolonne direkte.
-  const displayRiders = sortRidersForTable([
-    ...riders.filter(r => !r._isIncoming && !r._isOutgoing),
-    ...(showIncoming ? incomingRiders : []),
-    ...(showOutgoing ? outgoingRiders : []),
-  ], tableSort);
+  // #1095: nuværende = på holdet nu (inkl. udgående); kommende = efter ventende transfers.
+  const upcomingCount = riders.filter(r => !r._isOutgoing).length;
+  const displayRiders = sortRidersForTable(
+    squadView === "upcoming"
+      ? riders.filter(r => !r._isOutgoing)
+      : riders.filter(r => !r._isIncoming),
+    tableSort);
 
   const hasTransfers = incomingRiders.length > 0 || outgoingRiders.length > 0;
   const totalValue = currentRiders.reduce((s, r) => s + getRiderMarketValue(r), 0);
@@ -152,7 +156,23 @@ export default function TeamProfilePage() {
       {/* Season standing */}
       {standing && (
         <div className="bg-cz-card border border-cz-border rounded-xl p-5 mb-4">
-          <h2 className="text-cz-1 font-semibold text-sm mb-3">{t("profile.seasonResults")}</h2>
+          <div className="flex items-center gap-2 mb-3 flex-wrap">
+            <h2 className="text-cz-1 font-semibold text-sm">{t("profile.seasonResults")}</h2>
+            {/* #1095: tydeliggør HVILKEN sæson resultaterne gælder + om den er afsluttet */}
+            {standing.season?.number != null && (
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-cz-subtle border border-cz-border text-cz-2">
+                {t("profile.seasonLabel", { n: standing.season.number })}
+              </span>
+            )}
+            {standing.season?.status && (
+              <span className={`text-[10px] px-2 py-0.5 rounded-full border ${
+                standing.season.status === "active"
+                  ? "bg-cz-success-bg text-cz-success border-cz-success/30"
+                  : "bg-cz-subtle text-cz-3 border-cz-border"}`}>
+                {standing.season.status === "active" ? t("profile.seasonOngoing") : t("profile.seasonFinished")}
+              </span>
+            )}
+          </div>
           <div className="grid grid-cols-3 gap-3">
             {[
               { label: t("profile.seasonPoints"), value: formatNumber(standing.total_points) || 0, color: "text-cz-accent-t" },
@@ -192,26 +212,25 @@ export default function TeamProfilePage() {
         <div className="px-5 py-4 border-b border-cz-border flex items-center justify-between flex-wrap gap-3">
           <h2 className="text-cz-1 font-semibold text-sm">{t("profile.squadTitle", { count: currentRiders.length })}</h2>
           {hasTransfers && (
-            <div className="flex gap-2 flex-wrap">
-              {incomingRiders.length > 0 && (
-                <button onClick={() => setShowIncoming(!showIncoming)}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition-all
-                    ${showIncoming ? "bg-cz-success-bg text-cz-success border-cz-success/30" : "bg-cz-subtle text-cz-3 border-cz-border"}`}>
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
-                  {t("profile.incomingToggle", { count: incomingRiders.length })}
+            <div className="flex rounded-lg border border-cz-border overflow-hidden">
+              {[
+                { key: "current",  label: t("profile.viewCurrent",  { count: currentRiders.length }) },
+                { key: "upcoming", label: t("profile.viewUpcoming", { count: upcomingCount }) },
+              ].map(v => (
+                <button key={v.key} onClick={() => setSquadView(v.key)}
+                  className={`px-2.5 py-1 text-xs font-medium transition-all
+                    ${squadView === v.key
+                      ? "bg-cz-accent/10 text-cz-accent-t"
+                      : "bg-cz-card text-cz-2 hover:text-cz-1"}`}>
+                  {v.label}
                 </button>
-              )}
-              {outgoingRiders.length > 0 && (
-                <button onClick={() => setShowOutgoing(!showOutgoing)}
-                  className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border transition-all
-                    ${showOutgoing ? "bg-cz-danger-bg text-cz-danger border-cz-danger/30" : "bg-cz-subtle text-cz-3 border-cz-border"}`}>
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
-                  {t("profile.outgoingToggle", { count: outgoingRiders.length })}
-                </button>
-              )}
+              ))}
             </div>
           )}
         </div>
+        {squadView === "upcoming" && hasTransfers && (
+          <p className="px-5 py-2 text-cz-3 text-xs border-b border-cz-border">{t("profile.viewUpcomingHint")}</p>
+        )}
         {displayRiders.length === 0 ? (
           <div className="text-center py-12 text-cz-3"><p>{t("profile.noRiders")}</p></div>
         ) : (

@@ -107,7 +107,12 @@ export const BOARD_CLUB_DNA = {
     tradition_goal: {
       type: "monument_podium",
       target: 1,
-      label: "Klub-DNA: mindst ét Monument-podie pr. plan-cyklus",
+      // #1238 · Klassiker-orienteret DNA honorerer hele klassiker-kategorien:
+      // race_scope "classics" tæller podier i alle WT-endagsløb (Monuments ⊂
+      // klassikere, kanonisk mapping i boardConstants.js) — en bestyrelse der
+      // er glad for monumenter, er også glad for klassikere generelt.
+      race_scope: "classics",
+      label: "Klub-DNA: mindst ét podie i en klassiker (inkl. Monuments) pr. plan-cyklus",
       label_key: "dna.italiensk_klassiker.traditionGoalLabel",
       satisfaction_bonus: 22,
       satisfaction_penalty: 12,
