@@ -128,7 +128,7 @@
     },
     "salary": {
       "title": "Løn til ryttere",
-      "body": "10% af rytterværdien pr. sæson (uci_points × 4000). Trækkes som engangsbeløb ved næste sæsons start, lige efter sponsor lander. Stjerneryttere er dyre at holde på."
+      "body": "10% af rytterens markedsværdi pr. sæson (baseværdi plus præmiebonus). Trækkes som engangsbeløb ved næste sæsons start, lige efter sponsor lander. Stjerneryttere er dyre at holde på."
     },
     "debt": {
       "title": "Gældsloft pr. division",

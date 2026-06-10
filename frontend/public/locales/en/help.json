@@ -425,7 +425,7 @@
       "label": "Riders",
       "valueAndPrice": {
         "title": "Value and price",
-        "text": "A rider's market value is the base value (minimum 5 UCI points × 4,000 CZ$) plus the average of the rider's prize money over the last up to 3 completed seasons. The starting price on an auction must at minimum equal the rider's Value."
+        "text": "A rider's market value is their base value (calculated from the rider's stats and rider type) plus the average of the rider's prize money over the most recent seasons (up to 3). The starting price on an auction must at minimum equal the rider's Value."
       },
       "salary": {
         "title": "Salary",
@@ -437,7 +437,7 @@
       },
       "development": {
         "title": "Development over time",
-        "text": "On a rider's stats page there's a 'Development' tab. Here you can see UCI points over time, pick one of the 14 stats and follow its development as a graph, plus see recent historical data points. If the tab is empty, no history from the weekly syncs has been gathered yet."
+        "text": "On a rider's stats page there's a 'Development' tab. Here you can pick one of the 14 stats, follow its development as a graph, and see recent historical data points. If the tab is empty, no history from the weekly syncs has been gathered yet."
       },
       "scouting": {
         "title": "Scouting potential",
@@ -550,7 +550,7 @@
     },
     "riderDevelopment": {
       "q": "Where can I see whether a rider is developing?",
-      "a": "Open the rider's stats page and pick the 'Development' tab. It shows historical UCI points, a selectable graph for each stat, and the latest data points from the sync history."
+      "a": "Open the rider's stats page and pick the 'Development' tab. It shows a selectable graph for each stat and the latest data points from the sync history."
     },
     "salaryShortfall": {
       "q": "What happens if I can't pay the salaries?",

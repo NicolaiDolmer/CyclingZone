@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.09",
+    date: "2026-06-10",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fixed · Help and finance texts",
+        items: [
+          "EN · The finance hint and the help pages no longer explain rider salary and market value with the retired UCI points formula. Salary is now described as 10% of the rider's market value (base value plus prize money bonus), the value guide matches the new valuation engine, and the Development tab description no longer mentions UCI points over time. Refs #1101.",
+          "DA · Finans-hintet og hjælpesiderne forklarer ikke længere rytterløn og markedsværdi med den udgåede UCI-point-formel. Lønnen beskrives nu som 10% af rytterens markedsværdi (baseværdi plus præmiebonus), værdi-guiden matcher den nye værdimotor, og beskrivelsen af Udviklings-fanen nævner ikke længere UCI-point over tid. Refs #1101.",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.08",
     date: "2026-06-10",
     label: "Beta",

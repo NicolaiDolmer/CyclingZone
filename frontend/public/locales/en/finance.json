@@ -128,7 +128,7 @@
     },
     "salary": {
       "title": "Rider salaries",
-      "body": "10% of rider value per season (uci_points × 4000). Deducted as a lump sum at the start of the next season, right after the sponsor lands. Star riders are expensive to keep."
+      "body": "10% of the rider's market value per season (base value plus prize money bonus). Deducted as a lump sum at the start of the next season, right after the sponsor lands. Star riders are expensive to keep."
     },
     "debt": {
       "title": "Debt cap per division",
