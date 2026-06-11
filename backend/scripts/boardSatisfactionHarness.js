@@ -719,7 +719,7 @@ function buildReport({ fixture, variants, todayBaseline, deterministic, seed, we
     const hits = result.checkpointHits.length
       ? result.checkpointHits.map((h) => `${h.checkpoint === "mid_season" ? "mid" : "slut"}: lag ${h.layers.join("+")} (${h.plan}, sat ${h.satisfaction})`).join("; ")
       : "—";
-    const safeName = String(result.teamName).replace(/\|/g, "\\|");
+    const safeName = String(result.teamName).replace(/\\/g, "\\\\").replace(/\|/g, "\\|");
     lines.push(`| ${safeName} | ${result.division} | ${result.archetype} | ${result.finalRank} | ${result.oneYear.trajectory.join(" → ")} | ${result.oneYear.target} | ${da(result.oneYear.modifier, 2)} | ${pct(result.deviationPct)} | ${hits} |`);
   }
   lines.push("");
