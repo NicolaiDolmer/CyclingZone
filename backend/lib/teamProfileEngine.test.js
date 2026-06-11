@@ -35,12 +35,18 @@ function matchesFilters(row, filters = []) {
   });
 }
 
-function createSupabaseDouble({ teams = [], boardProfiles = [] } = {}) {
+// insertErrors/updateErrors: { [table]: [{ error, seedRows? }, ...] } — kø der
+// forbruges pr. forsøg. Modellerer #1264-racet: applikations-precheck (select)
+// ser INTET, men DB'en afviser insert/update med 23505 fordi en samtidig
+// transaktion nåede at committe (seedRows = den samtidige vinders rækker).
+function createSupabaseDouble({ teams = [], boardProfiles = [], insertErrors = {}, updateErrors = {} } = {}) {
   const state = {
     teams: clone(teams),
     board_profiles: clone(boardProfiles),
     updates: [],
     inserts: [],
+    insertErrorQueues: clone(insertErrors),
+    updateErrorQueues: clone(updateErrors),
   };
 
   function createSelectQuery(table) {
@@ -87,10 +93,29 @@ function createSupabaseDouble({ teams = [], boardProfiles = [] } = {}) {
     return query;
   }
 
+  function consumeQueuedError(queues, table) {
+    const entry = (queues[table] || []).shift();
+    if (!entry) {
+      return null;
+    }
+
+    for (const row of entry.seedRows || []) {
+      state[table] = state[table] || [];
+      state[table].push(clone(row));
+    }
+
+    return { data: null, error: clone(entry.error) };
+  }
+
   function createUpdateQuery(table, payload) {
     const filters = [];
 
     const execute = () => {
+      const queued = consumeQueuedError(state.updateErrorQueues, table);
+      if (queued) {
+        return queued;
+      }
+
       const target = (state[table] || []).find((row) => matchesFilters(row, filters));
       if (!target) {
         return { data: null, error: { message: `${table} row not found` } };
@@ -124,6 +149,11 @@ function createSupabaseDouble({ teams = [], boardProfiles = [] } = {}) {
     const rows = Array.isArray(payload) ? payload : [payload];
 
     const execute = () => {
+      const queued = consumeQueuedError(state.insertErrorQueues, table);
+      if (queued) {
+        return queued;
+      }
+
       const insertedRows = rows.map((row, index) => {
         const nextIndex = (state[table] || []).length + index + 1;
         return {
@@ -456,5 +486,191 @@ test("upsertOwnTeamProfile validates manager and team name lengths", async () =>
       managerName: "A",
     }),
     (error) => error.statusCode === 400 && error.message.includes("Managernavn"),
+  );
+});
+
+// ── #1264 · Race-conditions: 23505-håndtering (empirisk bekræftet i load-testen) ──
+
+function uniqueViolation({ constraint, keyDetail }) {
+  return {
+    code: "23505",
+    message: `duplicate key value violates unique constraint "${constraint}"`,
+    details: `Key ${keyDetail} already exists.`,
+  };
+}
+
+const WINNER_TEAM = {
+  id: "team-winner",
+  user_id: "user-1",
+  name: "Team Nova",
+  manager_name: "Alex",
+  balance: INITIAL_BALANCE,
+  sponsor_income: SPONSOR_INCOME_BASE,
+  division: 1,
+  is_ai: false,
+  is_test_account: false,
+  is_frozen: false,
+};
+
+test("#1264 dobbelt-bootstrap: user_id-konflikt returnerer eksisterende hold idempotent (ikke 500)", async () => {
+  // To samtidige PUT /api/teams/my for samme bruger: vinderen committer mellem
+  // taberens precheck og insert → 23505 på teams_user_id_unique_idx.
+  const supabase = createSupabaseDouble({
+    insertErrors: {
+      teams: [{
+        error: uniqueViolation({ constraint: "teams_user_id_unique_idx", keyDetail: "(user_id)=(user-1)" }),
+        seedRows: [WINNER_TEAM],
+      }],
+    },
+  });
+
+  const result = await upsertOwnTeamProfile({
+    supabase,
+    userId: "user-1",
+    name: "Team Nova",
+    managerName: "Alex",
+  });
+
+  assert.equal(result.created, false);
+  assert.equal(result.team.id, "team-winner");
+  assert.equal(supabase.state.teams.length, 1);
+  // Selvhelende: taber-kaldet sikrer stadig board-profilen for vinder-holdet.
+  assert.equal(result.boardProfileCreated, true);
+  assert.equal(supabase.state.board_profiles.length, 1);
+  assert.equal(supabase.state.board_profiles[0].team_id, "team-winner");
+});
+
+test("#1264 navne-konflikt ved insert: bounded retry med suffiks giver holdet et nyt navn", async () => {
+  // To FORSKELLIGE brugere racer om samme navn: taberen får 23505 på
+  // teams_name_lower_unique_idx og skal ende med et fungerende hold (suffiks),
+  // ikke en hold-løs konto.
+  const supabase = createSupabaseDouble({
+    insertErrors: {
+      teams: [{
+        error: uniqueViolation({ constraint: "teams_name_lower_unique_idx", keyDetail: "(lower(name))=(team nova)" }),
+        seedRows: [WINNER_TEAM],
+      }],
+    },
+  });
+
+  const result = await upsertOwnTeamProfile({
+    supabase,
+    userId: "user-2",
+    name: "Team Nova",
+    managerName: "Bobby",
+  });
+
+  assert.equal(result.created, true);
+  assert.equal(result.team.name, "Team Nova 2");
+  assert.equal(result.team.user_id, "user-2");
+  assert.equal(supabase.state.teams.length, 2);
+});
+
+test("#1264 dobbelt-bootstrap med samme navn: navne-konflikt → retry → user_id-konflikt konvergerer idempotent", async () => {
+  // Postgres kan rapportere 23505 på navne-indexet FØR user_id-indexet for
+  // samme insert. Suffiks-retry skal derefter ramme user_id-konflikten og
+  // konvergere til vinderens hold — ingen uendelig løkke, ingen 500.
+  const supabase = createSupabaseDouble({
+    boardProfiles: [{ id: "board-1", team_id: "team-winner" }],
+    insertErrors: {
+      teams: [
+        {
+          error: uniqueViolation({ constraint: "teams_name_lower_unique_idx", keyDetail: "(lower(name))=(team nova)" }),
+          seedRows: [WINNER_TEAM],
+        },
+        {
+          error: uniqueViolation({ constraint: "teams_user_id_unique_idx", keyDetail: "(user_id)=(user-1)" }),
+        },
+      ],
+    },
+  });
+
+  const result = await upsertOwnTeamProfile({
+    supabase,
+    userId: "user-1",
+    name: "Team Nova",
+    managerName: "Alex",
+  });
+
+  assert.equal(result.created, false);
+  assert.equal(result.team.id, "team-winner");
+  assert.equal(result.boardProfileCreated, false);
+  assert.equal(supabase.state.teams.length, 1);
+});
+
+test("#1264 navne-konflikt: bounded retry opgiver med 409 efter alle forsøg", async () => {
+  const nameConflict = () => ({
+    error: uniqueViolation({ constraint: "teams_name_lower_unique_idx", keyDetail: "(lower(name))=(team nova)" }),
+  });
+  const supabase = createSupabaseDouble({
+    insertErrors: {
+      // 1 originalt forsøg + 3 retries — alle afvist.
+      teams: [nameConflict(), nameConflict(), nameConflict(), nameConflict()],
+    },
+  });
+
+  await assert.rejects(
+    () => upsertOwnTeamProfile({
+      supabase,
+      userId: "user-2",
+      name: "Team Nova",
+      managerName: "Bobby",
+    }),
+    (error) => error.statusCode === 409 && error.message.includes("allerede taget"),
+  );
+
+  assert.equal(supabase.state.teams.length, 0);
+});
+
+test("#1264 board-profil-konflikt (UNIQUE team_id+plan_type) behandles som allerede oprettet", async () => {
+  const supabase = createSupabaseDouble({
+    insertErrors: {
+      board_profiles: [{
+        error: uniqueViolation({ constraint: "board_profiles_team_id_plan_type_key", keyDetail: "(team_id, plan_type)=(teams-1, 1yr)" }),
+      }],
+    },
+  });
+
+  const result = await upsertOwnTeamProfile({
+    supabase,
+    userId: "user-1",
+    name: "Team Nova",
+    managerName: "Alex",
+  });
+
+  assert.equal(result.created, true);
+  assert.equal(result.boardProfileCreated, false);
+});
+
+test("#1264 rename til navn taget i race-vinduet giver 409 (ingen auto-suffiks på opdatering)", async () => {
+  const supabase = createSupabaseDouble({
+    teams: [
+      {
+        id: "team-mine",
+        user_id: "user-2",
+        name: "My Old Name",
+        manager_name: "Bobby",
+        balance: INITIAL_BALANCE,
+        sponsor_income: SPONSOR_INCOME_BASE,
+      },
+    ],
+    boardProfiles: [{ id: "board-1", team_id: "team-mine" }],
+    updateErrors: {
+      teams: [{
+        error: uniqueViolation({ constraint: "teams_name_lower_unique_idx", keyDetail: "(lower(name))=(team nova)" }),
+        seedRows: [WINNER_TEAM],
+      }],
+    },
+  });
+
+  await assert.rejects(
+    () => upsertOwnTeamProfile({
+      supabase,
+      userId: "user-2",
+      existingTeam: clone(supabase.state.teams[0]),
+      name: "Team Nova",
+      managerName: "Bobby",
+    }),
+    (error) => error.statusCode === 409 && error.message.includes("allerede taget"),
   );
 });
