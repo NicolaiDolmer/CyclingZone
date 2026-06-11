@@ -98,6 +98,29 @@ const RIDERS = [
   },
 ];
 
+// Roadmap-voting (#954): to godkendte items så /roadmap rendrer den DB-drevne
+// votable liste i stedet for det statiske i18n-fallback.
+export const ROADMAP_ITEMS = [
+  {
+    id: "rm-races-1",
+    engine: "races",
+    sort_order: 1,
+    title_en: "A race engine built for stories.",
+    title_da: "En løbsmotor bygget til historier.",
+    approved: true,
+    status: "active",
+  },
+  {
+    id: "rm-market-1",
+    engine: "market",
+    sort_order: 1,
+    title_en: "Deadline day drama.",
+    title_da: "Deadlineday-drama.",
+    approved: true,
+    status: "active",
+  },
+];
+
 const AUCTIONS = [
   {
     id: "auction-1",
@@ -168,6 +191,8 @@ function restRows(table, requestUrl = "") {
       return RIDERS;
     case "auctions":
       return AUCTIONS;
+    case "roadmap_items":
+      return ROADMAP_ITEMS;
     case "auction_proxy_bids":
     case "finance_transactions":
     case "loan_agreements":
@@ -176,6 +201,7 @@ function restRows(table, requestUrl = "") {
     case "race_results":
     case "races":
     case "rider_watchlist":
+    case "roadmap_votes":
     case "season_standings":
       return [];
     case "seasons":

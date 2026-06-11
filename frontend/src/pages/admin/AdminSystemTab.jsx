@@ -35,13 +35,23 @@ export default function AdminSystemTab() {
   function setLoad(k, v) { setLoading(l => ({ ...l, [k]: v })); }
 
   async function loadData() {
+    // #517/#1180: discord_settings ejes af backend (RLS-lockdown 2026-05-22) —
+    // frontend får kun maskerede URLs (webhook_url_masked), aldrig den rå secret.
+    const webhooksPromise = (async () => {
+      try {
+        const res = await fetch(`${API}/api/admin/discord-settings`, { headers: await getAuth() });
+        if (!res.ok) return { webhooks: [] };
+        return await res.json();
+      } catch { return { webhooks: [] }; }
+    })();
+
     const [w, al, ac] = await Promise.all([
-      supabase.from("discord_settings").select("*").order("created_at"),
+      webhooksPromise,
       supabase.from("admin_log").select("*, target_team:target_team_id(name)")
         .order("created_at", { ascending: false }).limit(50),
       supabase.from("auction_timing_config").select("*").eq("id", 1).single(),
     ]);
-    setWebhooks(w.data || []);
+    setWebhooks(w.webhooks || []);
     setAdminLogs(al.data || []);
     setMarketPause({
       level: ac.data?.market_pause_level || "none",
@@ -101,24 +111,34 @@ export default function AdminSystemTab() {
 
   async function addWebhook() {
     if (!newWebhook.webhook_name || !newWebhook.webhook_url) return;
-    const isFirst = webhooks.length === 0;
-    await supabase.from("discord_settings").insert({
-      webhook_name: newWebhook.webhook_name,
-      webhook_url: newWebhook.webhook_url,
-      webhook_type: newWebhook.webhook_type,
-      is_default: isFirst,
-    });
-    setNewWebhook({ webhook_name: "", webhook_url: "", webhook_type: "general" });
-    loadData();
-    showMsg("✅ Webhook tilføjet" + (isFirst ? " og sat som standard" : ""));
+    setLoad("webhook_add", true);
+    try {
+      const res = await fetch(`${API}/api/admin/discord-settings`, {
+        method: "POST", headers: await getAuth(),
+        body: JSON.stringify({
+          webhook_name: newWebhook.webhook_name,
+          webhook_url: newWebhook.webhook_url,
+          webhook_type: newWebhook.webhook_type,
+        }),
+      });
+      const data = await readAdminJson(res);
+      if (!res.ok) { showMsg(`❌ ${adminErrorMessage(data, res)}`, "error"); return; }
+      setNewWebhook({ webhook_name: "", webhook_url: "", webhook_type: "general" });
+      loadData();
+      showMsg("✅ Webhook tilføjet" + (data.is_default ? " og sat som standard" : ""));
+    } catch (e) {
+      showMsg(`❌ Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
+    } finally {
+      setLoad("webhook_add", false);
+    }
   }
 
   async function testWebhook(webhook) {
     setLoad(`test_${webhook.id}`, true);
     try {
-      const res = await fetch(`${API}/api/admin/discord/test`, {
+      // Test via gemt URL server-side — klienten kender ikke længere den rå webhook_url.
+      const res = await fetch(`${API}/api/admin/discord-settings/${webhook.id}/test`, {
         method: "POST", headers: await getAuth(),
-        body: JSON.stringify({ webhook_url: webhook.webhook_url }),
       });
       const data = await readAdminJson(res);
       setWebhookTestResults(prev => ({
@@ -150,14 +170,19 @@ export default function AdminSystemTab() {
   }
 
   async function setDefaultWebhook(id) {
-    await supabase.from("discord_settings").update({ is_default: false }).neq("id", id);
-    await supabase.from("discord_settings").update({ is_default: true }).eq("id", id);
+    const res = await fetch(`${API}/api/admin/discord-settings/${id}/default`, {
+      method: "PATCH", headers: await getAuth(),
+    });
+    if (!res.ok) { const d = await readAdminJson(res); showMsg(`❌ ${adminErrorMessage(d, res)}`, "error"); return; }
     loadData();
     showMsg("✅ Standard webhook opdateret");
   }
 
   async function deleteWebhook(id) {
-    await supabase.from("discord_settings").delete().eq("id", id);
+    const res = await fetch(`${API}/api/admin/discord-settings/${id}`, {
+      method: "DELETE", headers: await getAuth(),
+    });
+    if (!res.ok) { const d = await readAdminJson(res); showMsg(`❌ ${adminErrorMessage(d, res)}`, "error"); return; }
     loadData();
   }
 
@@ -210,7 +235,7 @@ export default function AdminSystemTab() {
                       <span className="text-cz-info text-xs border border-cz-info/30 px-1.5 py-0.5 rounded-full">{w.webhook_type}</span>
                     )}
                   </div>
-                  <p className="text-cz-3 text-xs font-mono truncate max-w-xs">{w.webhook_url?.slice(0, 40)}...</p>
+                  <p className="text-cz-3 text-xs font-mono truncate max-w-xs">{w.webhook_url_masked}</p>
                   {result && (
                     <p className={`text-xs font-mono mt-1 ${result.tone === "ok" ? "text-cz-accent-t" : "text-cz-danger"}`}>
                       {result.text}
@@ -245,9 +270,9 @@ export default function AdminSystemTab() {
             <option value="general">General</option>
             <option value="transfer_history">Transferhistorik</option>
           </select>
-          <button onClick={addWebhook}
-            className="px-4 py-2 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-sm hover:bg-cz-subtle hover:text-cz-1 transition-all">
-            Tilføj
+          <button onClick={addWebhook} disabled={loading.webhook_add}
+            className="px-4 py-2 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-sm hover:bg-cz-subtle hover:text-cz-1 transition-all disabled:opacity-50">
+            {loading.webhook_add ? "..." : "Tilføj"}
           </button>
         </div>
       </AdminSection>

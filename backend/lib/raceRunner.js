@@ -247,7 +247,8 @@ async function loadStageProfiles(supabase, raceId) {
 // ikke-pensionerede ryttere ejet af rigtige + AI-hold (ikke test/frosne). Skrives
 // til race_entries → "hvem startede" bliver autoritativt. NB: query'en re-grounds
 // når relaunch-populationen (#677/#669) lander; i dag findes feltet ikke endnu.
-async function autoFillEntries({ supabase, race }) {
+// persist=false (#1102 dryRun): beregner startfeltet i hukommelsen uden DB-insert.
+async function autoFillEntries({ supabase, race, persist = true }) {
   const { data: teams, error: teamErr } = await supabase
     .from("teams")
     .select("id, is_test_account, is_frozen")
@@ -264,7 +265,7 @@ async function autoFillEntries({ supabase, race }) {
   if (riderErr) throw new Error(`riders: ${riderErr.message}`);
 
   const rows = (riders || []).map((r) => ({ race_id: race.id, rider_id: r.id, team_id: r.team_id }));
-  if (rows.length) {
+  if (persist && rows.length) {
     const { error: insErr } = await supabase.from("race_entries").insert(rows);
     if (insErr) throw new Error(`race_entries insert: ${insErr.message}`);
   }
@@ -272,7 +273,8 @@ async function autoFillEntries({ supabase, race }) {
 }
 
 // Indlæs startfeltet (race_entries → auto-fill) beriget med navn, is_u25 + abilities.
-export async function loadEntrantsForRace({ supabase, race }) {
+// persist=false (#1102 dryRun): auto-fill beregnes i hukommelsen — ingen DB-insert.
+export async function loadEntrantsForRace({ supabase, race, persist = true }) {
   const { data: existing, error } = await supabase
     .from("race_entries")
     .select("rider_id, team_id")
@@ -280,7 +282,7 @@ export async function loadEntrantsForRace({ supabase, race }) {
   if (error) throw new Error(`race_entries: ${error.message}`);
 
   let entries = existing || [];
-  if (!entries.length) entries = await autoFillEntries({ supabase, race });
+  if (!entries.length) entries = await autoFillEntries({ supabase, race, persist });
   if (!entries.length) return [];
 
   const teamByRider = new Map(entries.map((e) => [e.rider_id, e.team_id]));
@@ -350,6 +352,7 @@ async function persistRuns({ supabase, race, runs }) {
 export async function simulateRace({
   supabase,
   race,
+  dryRun = false,
   applyRaceResults = applyRaceResultsShared,
   ensureSeasonStandings = async () => {},
   updateStandings = async () => {},
@@ -372,13 +375,30 @@ export async function simulateRace({
   const stages = await loadStageProfiles(supabase, race.id);
   if (!stages.length) throw new Error(`Ingen race_stage_profiles for løb ${race.id} — kør backfill`);
 
-  const entrants = await loadEntrantsForRace({ supabase, race });
+  const entrants = await loadEntrantsForRace({ supabase, race, persist: !dryRun });
   if (!entrants.length) throw new Error(`Intet startfelt for løb ${race.id}`);
 
   const racePoints = await loadRacePoints(supabase, race.race_class);
   const pointsLookup = buildRacePointsLookup({ racePoints, raceType: race.race_type });
 
   const { resultRows, runs } = buildRaceResults({ race, stages, entrants, pointsLookup });
+
+  // Dry-run-preview (#1102 runtime-wiring): alt loades og beregnes som ved en
+  // ægte afvikling, men INTET skrives — admin kan inspicere udfaldet før flip.
+  if (dryRun) {
+    const stageWinners = resultRows
+      .filter((r) => r.result_type === "stage" && r.rank === 1)
+      .map((r) => ({ stage: r.stage_number, rider: r.rider_name }));
+    const gcPodium = resultRows
+      .filter((r) => r.result_type === "gc" && r.rank <= 3)
+      .sort((a, b) => a.rank - b.rank)
+      .map((r) => ({ rank: r.rank, rider: r.rider_name }));
+    return {
+      dryRun: true,
+      rows: resultRows.length, stages: stages.length, entrants: entrants.length,
+      stageWinners, gcPodium,
+    };
+  }
 
   // Idempotent PR. ETAPE — spejler pcmResultsImport: slet kun de etaper denne
   // afvikling faktisk dækker, så en gen-afvikling ikke wiper andre etaper.

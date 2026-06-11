@@ -27,7 +27,7 @@ Acceptable variants **in their own domain only** (not player-facing copy):
 
 | Variant | Where it is allowed |
 |---|---|
-| `cycling-zone` | URL slug / domain (`cycling-zone.vercel.app`) — locked, do not change |
+| `cyclingzone` | Domain (`cyclingzone.org`, primary siden 2026-06-11 jf. #1296; `cycling-zone.vercel.app` redirecter) |
 | `CyclingZone` | Repo name, package names, code identifiers, code comments, test fixtures, internal AI-ops docs |
 | `Cycling Zones` | The physiology feature name (power curve / VO2max zones) on the rider profile — a **feature**, not the brand name |
 

@@ -316,3 +316,61 @@ test("simulateRace: processBoardWeekend-fejl vælter ikke afviklingen (#1187)", 
   });
   assert.ok(report.rowsImported > 0, "afviklingen skal fuldføre selv om board-wiring fejler");
 });
+
+// ── simulateRace dryRun (#1102) ───────────────────────────────────────────────
+test("simulateRace dryRun: returnerer preview uden DB-writes", async () => {
+  const supabase = makeSupabase({
+    race_stage_profiles: STAGES_3,
+    race_entries: ENTRANTS.map((e) => ({ rider_id: e.rider_id, team_id: e.team_id })),
+    riders: ENTRANTS.map((e) => ({ id: e.rider_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
+    rider_derived_abilities: ENTRANTS.map((e) => ({ rider_id: e.rider_id, ...e.abilities })),
+    race_points: [],
+    seasons: [{ id: STAGE_RACE.season_id, number: 2, status: "active", race_days_completed: 9, race_days_total: 60 }],
+  });
+  const result = await simulateRace({
+    supabase,
+    race: STAGE_RACE,
+    dryRun: true,
+    applyRaceResults: async () => { throw new Error("må ikke kaldes i dryRun"); },
+    recomputeRaceDays: async () => { throw new Error("må ikke kaldes i dryRun"); },
+    processBoardWeekend: async () => { throw new Error("må ikke kaldes i dryRun"); },
+  });
+  // Korrekt preview-form.
+  assert.equal(result.dryRun, true);
+  assert.ok(result.rows > 0, "rows skal være > 0");
+  assert.ok(Array.isArray(result.stageWinners) && result.stageWinners.length === 3, "3 etapevindere");
+  assert.ok(Array.isArray(result.gcPodium) && result.gcPodium.length === 3, "3 gc-podium");
+  assert.equal(result.gcPodium[0].rank, 1);
+  // NULPUNKT: ingen muterende DB-operationer (delete/insert/update).
+  const mutating = supabase.__writes.filter((w) => ["insert", "update", "delete"].includes(w.op));
+  assert.equal(mutating.length, 0, `dryRun må ikke skrive til DB — fandt: ${JSON.stringify(mutating)}`);
+});
+
+test("simulateRace dryRun: tomt startfelt auto-fills i hukommelse uden insert (#1102)", async () => {
+  const supabase = makeSupabase({
+    race_stage_profiles: STAGES_3,
+    race_entries: [], // tomt → auto-fill-sti
+    teams: [
+      { id: "T1", is_test_account: false, is_frozen: false },
+      { id: "T2", is_test_account: false, is_frozen: false },
+    ],
+    riders: ENTRANTS.map((e) => ({ id: e.rider_id, team_id: e.rider_id.startsWith("b") ? "T2" : "T1", firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
+    rider_derived_abilities: ENTRANTS.map((e) => ({ rider_id: e.rider_id, ...e.abilities })),
+    race_points: [],
+  });
+  const result = await simulateRace({
+    supabase,
+    race: STAGE_RACE,
+    dryRun: true,
+    applyRaceResults: async () => { throw new Error("må ikke kaldes i dryRun"); },
+    recomputeRaceDays: async () => { throw new Error("må ikke kaldes i dryRun"); },
+  });
+  assert.equal(result.dryRun, true);
+  assert.ok(result.rows > 0, "rows skal være > 0 selv med auto-fill");
+  // NULPUNKT: ingen race_entries insert — hverken auto-fill eller andet.
+  const inserts = supabase.__writes.filter((w) => w.table === "race_entries" && w.op === "insert");
+  assert.equal(inserts.length, 0, "dryRun må ikke indsætte i race_entries");
+  // Ingen muterende operationer overhovedet.
+  const mutating = supabase.__writes.filter((w) => ["insert", "update", "delete"].includes(w.op));
+  assert.equal(mutating.length, 0, `dryRun-auto-fill må ikke skrive til DB — fandt: ${JSON.stringify(mutating)}`);
+});

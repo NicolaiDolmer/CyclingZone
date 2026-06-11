@@ -7,6 +7,13 @@
     "today": "Hvor det er i dag",
     "next": "Hvor det er på vej hen"
   },
+  "voting": {
+    "intro": "Bedøm planerne herunder. Dine stemmer er med til at afgøre hvad der bliver bygget som det næste.",
+    "idea": "Hvor god en idé?",
+    "importance": "Hvor vigtigt er det for dig?",
+    "saved": "Gemt",
+    "error": "Din stemme blev ikke gemt. Prøv igen."
+  },
   "engines": {
     "races": {
       "title": "Løb",
@@ -42,6 +49,17 @@
         "Deadlineday: et fælles, dramatisk klimaks på hvert transfervindue.",
         "Dybere forhandling mellem managers.",
         "Et marked der fortæller historier: rygter, rivaliseringer og store handler hele verden taler om."
+      ]
+    },
+    "club": {
+      "title": "Klub & verden",
+      "today": "En krævende bestyrelse med ægte mål, klubøkonomi med lån og konsekvenser, og en fælles verden af managers.",
+      "next": [
+        "Optjen renommé: sejre, rekorder og historie der bygger din klubs omdømme i verden.",
+        "Vejkaptajner og mentorer: ryttere der løfter holdet omkring sig.",
+        "Byg din stab: sportsdirektører, trænere og læger der former hvordan din klub arbejder.",
+        "Et klubmuseum: mestre, legendariske ryttere og løbene folk stadig taler om.",
+        "Venner og følg-funktion: følg managers og ryttere på tværs af verden."
       ]
     }
   }

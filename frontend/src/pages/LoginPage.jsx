@@ -10,7 +10,7 @@ import { StackedMark } from "../components/Brand";
 const API = import.meta.env.VITE_API_URL;
 
 const PUBLIC_APP_URL =
-  import.meta.env.VITE_PUBLIC_APP_URL || "https://cycling-zone.vercel.app";
+  import.meta.env.VITE_PUBLIC_APP_URL || "https://cyclingzone.org";
 
 function getPasswordResetRedirectUrl() {
   return new URL("/reset-password", PUBLIC_APP_URL).toString();

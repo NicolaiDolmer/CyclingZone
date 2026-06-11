@@ -253,7 +253,7 @@ Baseret på afhængigheder, risiko og forretningsværdi foreslås følgende prio
 *   Opret de specificerede roller (`tester`, `founder`, `premium`, `dansk`, `english`).
 *   Konfigurer reaction-role-flow for `dansk`/`english`.
 *   Upload server-icon og banner, der matcher brand-minimum fra #671.
-*   Opdater landing page og footer på `cycling-zone.vercel.app` med Discord-link.
+*   Opdater landing page og footer på `cyclingzone.org` med Discord-link.
 
 **Verification path:**
 *   Alle 5 kanaler oprettet og dokumenteret i pinned post i `#general`.

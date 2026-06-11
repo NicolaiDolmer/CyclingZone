@@ -108,7 +108,7 @@ i18n
     supportedLngs: SUPPORTED,
     nonExplicitSupportedLngs: true,
     load: "languageOnly",
-    ns: ["common", "auth", "dashboard", "auctions", "transfers", "admin", "errors", "patchnotes", "banners", "help", "board", "rider", "riders", "riderFilters", "riderTypes", "notifications", "team", "finance", "backendMessages", "profile", "activity", "standings", "headtohead", "watchlist", "halloffame", "races", "results", "seasonEnd", "founder", "achievements"],
+    ns: ["common", "auth", "dashboard", "auctions", "transfers", "admin", "errors", "patchnotes", "banners", "help", "board", "rider", "riders", "riderFilters", "riderTypes", "notifications", "team", "finance", "backendMessages", "profile", "activity", "standings", "headtohead", "watchlist", "halloffame", "races", "results", "seasonEnd", "founder", "achievements", "roadmap"],
     defaultNS: "common",
     resources: {
       da: { common: commonDa, auth: authDa, errors: errorsDa, auctions: auctionsDa, transfers: transfersDa, dashboard: dashboardDa, banners: bannersDa, help: helpDa, board: boardDa, admin: adminDa, rider: riderDa, riders: ridersDa, riderFilters: riderFiltersDa, riderTypes: riderTypesDa, notifications: notificationsDa, team: teamDa, finance: financeDa, backendMessages: backendMessagesDa, profile: profileDa, activity: activityDa, standings: standingsDa, headtohead: headtoheadDa, watchlist: watchlistDa, halloffame: halloffameDa, races: racesDa, results: resultsDa, seasonEnd: seasonEndDa, founder: founderDa, achievements: achievementsDa, roadmap: roadmapDa },
