@@ -34,7 +34,7 @@
       "label": "Bestyrelse",
       "whatBoard": {
         "title": "Hvad gør bestyrelsen?",
-        "text": "Bestyrelsen sætter mål for dit hold og evaluerer dig ved sæsonens slutning. Tilfredsheden bestemmer din sponsor-modifier, dvs. hvor meget du får udbetalt af sponsorindtægten. Du kan ikke blive fyret; konsekvenserne er graduerede og altid forudsigelige."
+        "text": "Bestyrelsen sætter mål for dit hold og følger din sæson live: tilfredsheden opdateres nu efter hver løbsweekend (den flytter sig højst 5 point pr. weekend) mod det en fuld sæson-evaluering ville give. Tilfredsheden bestemmer din sponsor-modifier, dvs. hvor meget du får udbetalt af sponsorindtægten, og modifieren følger tilfredsheden live. Hårde konsekvenser (lønloft, signing-restriktion, tvunget salg) evalueres kun ved to forudsigelige checkpoints: mid-season og sæson-slut. Du kan ikke blive fyret; konsekvenserne er graduerede og altid forudsigelige."
       },
       "season1Baseline": {
         "title": "Sæson 1: Baseline, ingen krav",
@@ -80,7 +80,7 @@
       },
       "midSeasonCheck": {
         "title": "Mid-season check",
-        "text": "Midt i sæsonen (halvdelen af race-days gennemført) tjekker bestyrelsen automatisk din plan-status. Hvis tilfredshed <50% eller mindst halvdelen af målbare mål er 'behind', modtager du en 'Skal handles'-notif i Indbakken. Notiffen er informativ. Bestyrelsen handler ikke automatisk, men du bør reagere via board request eller de eksisterende økonomi-flows."
+        "text": "Midt i sæsonen (halvdelen af race-days gennemført) tjekker bestyrelsen automatisk din plan-status. Hvis tilfredshed <50% eller mindst halvdelen af målbare mål er 'behind', modtager du en 'Skal handles'-notif i Indbakken. Mid-season-punktet er også det første hårde checkpoint: er tilfredsheden faldet under konsekvens-tærsklerne på det tidspunkt, anvender bestyrelsen de tilsvarende konsekvens-lag (det andet checkpoint er sæson-slut). Mellem checkpoints bevæger tilfredsheden sig frit uden at udløse hårde konsekvenser."
       }
     },
     "auctions": {
@@ -602,7 +602,7 @@
     },
     "boardSatisfaction": {
       "q": "Hvad er bestyrelsestilfredshed?",
-      "a": "Bestyrelsen vurderer dig på de aftalte mål med en gradvis model, hvor resultater vægter mest, men økonomi, identitet og rangering også tæller. Nye planer bliver skaleret efter din division, din trupbredde og holdets afledte sportslige profil, så kravene passer bedre til virkeligheden. En nær-miss eller stærk fremgang kan derfor stadig give en acceptabel samlet vurdering. En tydelig national kerne giver også lidt identitetsværdi i bestyrelsens læsning af holdet, mens store profiler giver lidt sponsor/prestige men samtidig hæver forventningerne. Høj tilfredshed giver bonussponsorat, mens lav tilfredshed reducerer sponsorudbetalingen og kan føre til strammere krav i næste plan. Du kan ikke blive fyret af bestyrelsen i Cycling Zone."
+      "a": "Bestyrelsen vurderer dig på de aftalte mål med en gradvis model, hvor resultater vægter mest, men økonomi, identitet og rangering også tæller. Tilfredsheden lever i sæsonen: efter hver løbsweekend bevæger den sig mod det en fuld sæson-evaluering af din aktuelle placering ville give, højst 5 point pr. weekend, så en enkelt dårlig weekend kan aldrig alene udløse hårde konsekvenser. Sponsor-modifieren følger tilfredsheden live, mens hårde konsekvens-lag kun evalueres ved mid-season- og sæson-slut-checkpoints. Nye planer bliver skaleret efter din division, din trupbredde og holdets afledte sportslige profil, så kravene passer bedre til virkeligheden. En nær-miss eller stærk fremgang kan derfor stadig give en acceptabel samlet vurdering. En tydelig national kerne giver også lidt identitetsværdi i bestyrelsens læsning af holdet, mens store profiler giver lidt sponsor/prestige men samtidig hæver forventningerne. Høj tilfredshed giver bonussponsorat, mens lav tilfredshed reducerer sponsorudbetalingen og kan føre til strammere krav i næste plan. Du kan ikke blive fyret af bestyrelsen i Cycling Zone."
     },
     "boardNegotiation": {
       "q": "Kan jeg forhandle bestyrelsens krav?",

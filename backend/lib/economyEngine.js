@@ -831,8 +831,18 @@ export function buildSeasonEndPreviewRows({ teams = [], standings = [], loanData
     if (board && standing) {
       const planDuration = getPlanDuration(board.plan_type);
       const seasonsCompleted = (board.seasons_completed || 0) + 1;
+      // #1187: projicér fra sæson-start-ankeret når weekend-opdateringer har
+      // flyttet den løbende værdi (samme regel som processTeamSeasonEnd).
+      const previewAnchorValid =
+        standing.season_id != null &&
+        board.season_start_anchor_season_id === standing.season_id &&
+        Number.isFinite(Number(board.season_start_satisfaction)) &&
+        board.season_start_satisfaction !== null;
+      const previewAnchor = previewAnchorValid
+        ? Number(board.season_start_satisfaction)
+        : currentSatisfaction;
       const projected = evaluateBoardSeason({
-        board,
+        board: { ...board, satisfaction: previewAnchor },
         standing,
         team: { ...team, riders },
         context: {
@@ -908,6 +918,22 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
   for (const board of boards) {
     if (!board || !teamStanding) continue;
     if (board.is_baseline || board.plan_type === "baseline") continue;
+
+    // #1187 · Weekend-target-tracking flytter board.satisfaction LØBENDE i
+    // sæsonen (boardWeekendFinalization.js) mod præcis anker + sæson-delta.
+    // Sæson-slut-evalueringen skal derfor anke på sæson-START-værdien — ellers
+    // ville delta blive lagt oven i den allerede-konvergerede værdi (dobbelt-
+    // anvendelse). Uden gyldigt anker (ingen weekend-opdateringer kørt i denne
+    // sæson) er anchor = board.satisfaction → præcis dagens adfærd.
+    const weekendAnchorValid =
+      board.season_start_anchor_season_id === seasonId &&
+      board.season_start_satisfaction !== null &&
+      board.season_start_satisfaction !== undefined &&
+      Number.isFinite(Number(board.season_start_satisfaction));
+    const anchorSatisfaction = weekendAnchorValid
+      ? Number(board.season_start_satisfaction)
+      : (board.satisfaction ?? 50);
+
     const planDuration = getPlanDuration(board.plan_type);
     const seasonsCompleted = (board.seasons_completed || 0) + 1;
     const newCumulativeStageWins = (board.cumulative_stage_wins || 0) + (teamStanding.stage_wins || 0);
@@ -971,7 +997,10 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
       newSatisfaction,
       scoreBreakdown,
     } = evaluateBoardSeason({
-      board,
+      // #1187: evaluer fra sæson-start-ankeret → newSatisfaction = anker + delta,
+      // identisk med dagens resultat uanset hvor langt weekend-opdateringerne
+      // allerede har flyttet den løbende værdi.
+      board: { ...board, satisfaction: anchorSatisfaction },
       standing: teamStanding,
       team,
       context,
@@ -995,7 +1024,9 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
       stage_wins: teamStanding.stage_wins || 0,
       gc_wins: teamStanding.gc_wins || 0,
       division_rank: teamStanding.rank_in_division || null,
-      satisfaction_delta: newSatisfaction - board.satisfaction,
+      // #1187: delta måles fra sæson-start-ankeret (= hele sæsonens bevægelse),
+      // ikke fra den løbende weekend-værdi (ville være ~0 efter konvergens).
+      satisfaction_delta: newSatisfaction - anchorSatisfaction,
       goals_met: goalsMet,
       goals_total: goals.length,
       u25_stat_sum: u25StatSum,
@@ -1121,7 +1152,7 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
         );
       } else {
         const planLabelKey = planLabelKey_(board.plan_type);
-        const delta = newSatisfaction - board.satisfaction;
+        const delta = newSatisfaction - anchorSatisfaction;
         const planLabelEn = { "1yr": "1-year plan", "3yr": "3-year plan", "5yr": "5-year plan" }[board.plan_type] || "plan";
         await notifyManager(
           team.id,
@@ -1171,7 +1202,7 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
     }
 
     console.log(
-      `  📊 ${team.name}: satisfaction ${board.satisfaction}% → ${newSatisfaction}% `
+      `  📊 ${team.name}: satisfaction ${anchorSatisfaction}% → ${newSatisfaction}% `
       + `(season ${seasonsCompleted}/${planDuration}, score ${Math.round((scoreBreakdown.adjusted_overall_score || 0) * 100)}%)`
     );
   }

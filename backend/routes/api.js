@@ -3290,19 +3290,29 @@ router.get("/me/finance-forecast", requireAuth, async (req, res) => {
     const outboundLoanAgreements = outboundAgreementsRes.data || [];
 
     // Board-modifier = avg af completed plans (matcher economyEngine.processSeasonStart).
+    // #1187: budget_modifier følger nu satisfaction LIVE pr. løbsweekend, så
+    // forecastet afspejler altid den aktuelle modifier.
     const completedBoards = (boardsRes.data || []).filter(
       (b) => b.negotiation_status === "completed"
     );
-    const boardModifier =
+    const liveBoardModifier =
       completedBoards.length > 0
         ? completedBoards.reduce((sum, b) => sum + (b.budget_modifier ?? 1.0), 0) /
           completedBoards.length
         : 1.0;
 
+    // #805/#1187: board_test_mode fryser økonomi-effekten — processSeasonStart
+    // udbetaler med modifier 1.0 i test-mode, så forecastet skal vise det samme
+    // (satisfaction/modifier må gerne bevæge sig synligt på BoardPage).
+    const forecastBoardTestMode = await isBoardTestModeActive(supabase);
+    const boardModifier = forecastBoardTestMode ? 1.0 : liveBoardModifier;
+
     // Sponsor-pullout (lag 5) reducerer sponsor multiplikativt — én aktiv pullout
     // reducerer typisk med 10%. Tager den dybeste severity hvis flere er aktive.
-    const pulloutFactor =
-      (pulloutRes.data || []).length > 0
+    // Test-mode: processSeasonStart neutraliserer hele modifier-stakken → 1.0.
+    const pulloutFactor = forecastBoardTestMode
+      ? 1.0
+      : (pulloutRes.data || []).length > 0
         ? Math.min(
             ...pulloutRes.data.map((row) => (row.severity || 1000) / 1000)
           )

@@ -34,7 +34,7 @@
       "label": "Board",
       "whatBoard": {
         "title": "What does the board do?",
-        "text": "The board sets targets for your team and evaluates you at the end of each season. Satisfaction determines your sponsor modifier, i.e. how much of the sponsor income gets paid out. You cannot be fired; consequences are graduated and always predictable."
+        "text": "The board sets targets for your team and follows your season live: satisfaction now updates after every race weekend (it moves at most 5 points per weekend) towards what a full season evaluation would give. Satisfaction determines your sponsor modifier, i.e. how much of the sponsor income gets paid out, and the modifier follows satisfaction live. Hard consequences (salary cap, signing restriction, forced sale) are only evaluated at two predictable checkpoints: mid-season and season end. You cannot be fired; consequences are graduated and always predictable."
       },
       "season1Baseline": {
         "title": "Season 1: Baseline, no demands",
@@ -80,7 +80,7 @@
       },
       "midSeasonCheck": {
         "title": "Mid-season check",
-        "text": "Midway through the season (half of race days completed) the board automatically checks your plan status. If satisfaction is below 50% or at least half of measurable targets are 'behind', you get an 'Action required' notification in your inbox. The notification is informational. The board does not act automatically, but you should respond via a board request or the existing economy flows."
+        "text": "Midway through the season (half of race days completed) the board automatically checks your plan status. If satisfaction is below 50% or at least half of measurable targets are 'behind', you get an 'Action required' notification in your inbox. The mid-season point is also the first hard checkpoint: if satisfaction has dropped below the consequence thresholds by then, the board applies the matching consequence layers (the second checkpoint is season end). Between checkpoints satisfaction moves freely without triggering hard consequences."
       }
     },
     "auctions": {
@@ -602,7 +602,7 @@
     },
     "boardSatisfaction": {
       "q": "What is board satisfaction?",
-      "a": "The board evaluates you on the agreed targets with a gradual model where results weigh the most, but economy, identity and ranking also count. New plans get scaled by your division, your squad depth and the team's derived sporting profile, so the demands fit reality better. A near-miss or strong progress can therefore still give an acceptable overall rating. A clear national core also adds a bit of identity value to the board's read of the team, while big-profile riders add some sponsor/prestige but also raise expectations. High satisfaction gives bonus sponsorship, while low satisfaction reduces the sponsor payout and can lead to stricter demands in the next plan. You cannot be fired by the board in Cycling Zone."
+      "a": "The board evaluates you on the agreed targets with a gradual model where results weigh the most, but economy, identity and ranking also count. Satisfaction is alive during the season: after every race weekend it moves towards what a full season evaluation of your current standing would give, at most 5 points per weekend, so a single bad weekend can never alone trigger hard consequences. The sponsor modifier follows satisfaction live, while hard consequence layers are only evaluated at the mid-season and season-end checkpoints. New plans get scaled by your division, your squad depth and the team's derived sporting profile, so the demands fit reality better. A near-miss or strong progress can therefore still give an acceptable overall rating. A clear national core also adds a bit of identity value to the board's read of the team, while big-profile riders add some sponsor/prestige but also raise expectations. High satisfaction gives bonus sponsorship, while low satisfaction reduces the sponsor payout and can lead to stricter demands in the next plan. You cannot be fired by the board in Cycling Zone."
     },
     "boardNegotiation": {
       "q": "Can I negotiate the board's demands?",

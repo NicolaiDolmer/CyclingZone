@@ -2,6 +2,22 @@
 
 const PATCHES = [
   {
+    version: "5.21",
+    date: "2026-06-11",
+    label: "Beta",
+    changes: [
+      {
+        category: "New · Board",
+        items: [
+          "EN · Board satisfaction is now alive during the season: it updates after every race weekend and moves at most 5 points per weekend towards what a full season evaluation would give. The sponsor modifier follows satisfaction live, so the Board page and the finance forecast always reflect your current standing. Refs #1187.",
+          "DA · Bestyrelsens tilfredshed lever nu i sæsonen: den opdateres efter hver løbsweekend og flytter sig højst 5 point pr. weekend mod det en fuld sæson-evaluering ville give. Sponsor-modifieren følger tilfredsheden live, så Bestyrelse-siden og økonomi-prognosen altid afspejler din aktuelle placering. Refs #1187.",
+          "EN · Hard board consequences (salary cap, signing restriction, forced sale) are now evaluated at two predictable checkpoints, mid-season and season end, instead of only at season end. A single bad weekend can never alone trigger them. Refs #1187.",
+          "DA · Hårde bestyrelses-konsekvenser (lønloft, signing-restriktion, tvunget salg) evalueres nu ved to forudsigelige checkpoints, mid-season og sæson-slut, i stedet for kun ved sæson-slut. En enkelt dårlig weekend kan aldrig alene udløse dem. Refs #1187.",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.20",
     date: "2026-06-10",
     label: "Beta",

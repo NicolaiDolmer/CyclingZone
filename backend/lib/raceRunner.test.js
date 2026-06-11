@@ -272,3 +272,47 @@ test("simulateRace: bygger rækker, sletter idempotent pr. etape, kalder applyRa
   // run-snapshot persisteret.
   assert.ok(supabase.__writes.find((w) => w.table === "race_simulation_runs" && w.op === "insert"));
 });
+
+// #1187 · Board-weekend-wiring: simulateRace kalder processBoardWeekend med
+// race-days FØR (checkpoint-udgangspunkt) og EFTER (ny værdi fra recompute).
+test("simulateRace: kalder processBoardWeekend med prev/ny race-days (#1187)", async () => {
+  const supabase = makeSupabase({
+    race_stage_profiles: STAGES_3,
+    race_entries: ENTRANTS.map((e) => ({ rider_id: e.rider_id, team_id: e.team_id })),
+    riders: ENTRANTS.map((e) => ({ id: e.rider_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
+    rider_derived_abilities: ENTRANTS.map((e) => ({ rider_id: e.rider_id, ...e.abilities })),
+    race_points: [],
+    seasons: [{ id: STAGE_RACE.season_id, number: 2, status: "active", race_days_completed: 9, race_days_total: 60 }],
+  });
+  const boardCalls = [];
+  await simulateRace({
+    supabase,
+    race: STAGE_RACE,
+    applyRaceResults: async ({ resultRows }) => ({ rowsImported: resultRows.length }),
+    recomputeRaceDays: async () => 12,
+    processBoardWeekend: async (args) => { boardCalls.push(args); return { boards_updated: 1 }; },
+  });
+  assert.equal(boardCalls.length, 1, "processBoardWeekend skal kaldes når sæsonen findes");
+  assert.equal(boardCalls[0].previousRaceDaysCompleted, 9);
+  assert.equal(boardCalls[0].season.race_days_completed, 12, "ny værdi fra recompute");
+  assert.equal(boardCalls[0].season.id, STAGE_RACE.season_id);
+});
+
+test("simulateRace: processBoardWeekend-fejl vælter ikke afviklingen (#1187)", async () => {
+  const supabase = makeSupabase({
+    race_stage_profiles: STAGES_3,
+    race_entries: ENTRANTS.map((e) => ({ rider_id: e.rider_id, team_id: e.team_id })),
+    riders: ENTRANTS.map((e) => ({ id: e.rider_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
+    rider_derived_abilities: ENTRANTS.map((e) => ({ rider_id: e.rider_id, ...e.abilities })),
+    race_points: [],
+    seasons: [{ id: STAGE_RACE.season_id, number: 2, status: "active", race_days_completed: 9, race_days_total: 60 }],
+  });
+  const report = await simulateRace({
+    supabase,
+    race: STAGE_RACE,
+    applyRaceResults: async ({ resultRows }) => ({ rowsImported: resultRows.length }),
+    recomputeRaceDays: async () => 12,
+    processBoardWeekend: async () => { throw new Error("board boom"); },
+  });
+  assert.ok(report.rowsImported > 0, "afviklingen skal fuldføre selv om board-wiring fejler");
+});

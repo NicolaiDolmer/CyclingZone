@@ -41,6 +41,7 @@ import { parsePcmWorkbook, headerIndex } from "./pcmResultsParser.js";
 import { resolvePcmTeamName, PCM_TEAMS_WITHOUT_OWNER } from "./pcmTeamAliases.js";
 import { buildRiderMatcher, buildTeamMatcher } from "./pcmRiderMatcher.js";
 import { recomputeSeasonRaceDays } from "./seasonRaceDays.js";
+import { processBoardWeekendFinalization as processBoardWeekendFinalizationShared } from "./boardWeekendFinalization.js";
 
 // Normalisér løbsnavn til match mod DB-`races`.name. Folder accenter, sænker,
 // erstatter tegnsætning med mellemrum. "Hauts-de-France" == "Hauts de France".
@@ -360,6 +361,7 @@ export async function importPcmResults({
   updateStandings = async () => {},
   notifyDiscord = null,
   adminUserId = null,
+  processBoardWeekend = processBoardWeekendFinalizationShared,
 }) {
   if (!supabase?.from) throw new Error("supabase client kræves");
   if (!files.length) throw new Error("Ingen filer uploadet");
@@ -390,7 +392,9 @@ export async function importPcmResults({
   // 2) Aktiv sæson + dens løb.
   const { data: season, error: seasonErr } = await supabase
     .from("seasons")
-    .select("id, number")
+    // race_days_completed her = værdien FØR denne import (recompute sker til
+    // sidst) → bruges som checkpoint-udgangspunkt i board-weekend-wiring (#1187).
+    .select("id, number, status, race_days_completed, race_days_total")
     .eq("status", "active")
     .single();
   if (seasonErr || !season) {
@@ -497,7 +501,22 @@ export async function importPcmResults({
   if (!dryRun) {
     // #804 — opdatér seasons.race_days_completed nu hvor løb er sat completed.
     // Recompute (ikke increment) → idempotent ved re-import.
-    await recomputeSeasonRaceDays({ supabase, seasonId: season.id });
+    const newRaceDaysCompleted = await recomputeSeasonRaceDays({ supabase, seasonId: season.id });
+
+    // #1187 · Løbende bestyrelses-tilfredshed: én weekend-opdatering pr.
+    // import-batch (= løbsweekend). Fejl her må ikke vælte importen —
+    // resultaterne ER allerede skrevet.
+    if (totalRowsWritten > 0) {
+      try {
+        await processBoardWeekend({
+          supabase,
+          season: { ...season, race_days_completed: newRaceDaysCompleted },
+          previousRaceDaysCompleted: season.race_days_completed ?? null,
+        });
+      } catch (error) {
+        console.error("  ⚠️  board weekend update failed after PCM import:", error.message);
+      }
+    }
 
     await supabase.from("import_log").insert({
       import_type: "race_results_pcm",
