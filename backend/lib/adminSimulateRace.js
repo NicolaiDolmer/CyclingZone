@@ -121,9 +121,9 @@ export function buildRaceSimEmbed({ race, resultRows }) {
   return {
     title: `🏁 ${race.name} afviklet (race-motor V2)`,
     description: [
-      gcWinner ? `**Vinder:** ${gcWinner.rider_name}` : null,
+      gcWinner ? `**Vinder:** ${gcWinner.rider_name ?? "Ukendt rytter"}` : null,
       stageWinners.length > 1
-        ? `**Etapevindere:** ${stageWinners.map((r) => `${r.stage_number}. ${r.rider_name}`).join(" · ")}`
+        ? `**Etapevindere:** ${stageWinners.map((r) => `${r.stage_number}. ${r.rider_name ?? "Ukendt rytter"}`).join(" · ")}`
         : null,
     ]
       .filter(Boolean)

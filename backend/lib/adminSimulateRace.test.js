@@ -155,7 +155,8 @@ test("getRaceEngineStatus: aktiv sæson → korrekt form med profile_count/entry
   assert.ok("profile_count" in r, "profile_count mangler");
   assert.ok("entry_count" in r, "entry_count mangler");
   assert.ok("ready" in r, "ready mangler");
-  assert.equal(r.ready, r.profile_count > 0);
+  assert.equal(r.profile_count, 2, "profile_count skal være 2 (matcher mock: 2 race_stage_profiles)");
+  assert.equal(r.ready, true, "ready skal være true når profile_count > 0");
 });
 
 // Test 6b: ingen aktiv sæson → { enabled, season: null, races: [] }.
