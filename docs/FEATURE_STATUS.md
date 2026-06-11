@@ -184,6 +184,7 @@ _Udled fra kodebasen. Opdatér ved større ændringer._
 - Notification type-kontrakt er afstemt i schema/migration/test med runtime for transfer-interesse, watchlist-salg, watchlist-auktion og lånebeskeder
 - Achievement-sync fra live historiktabeller (bid, transfer, watchlist, hold, board)
 - Aktivitets-feed · Head-to-head sammenligning · Hall of Fame · Patch notes · Hjælpeside · Confetti modal
+- **Roadmap-voting (#954, v5.22, 2026-06-11):** `/roadmap` viser kuraterede items fra `roadmap_items` (EN+DA i samme row, `approved`-flag gater visning; fem kort: de fire motorer + Klub & verden) med dual-akse 1-6-stemmer i `roadmap_votes` (én pr. bruger pr. item via UNIQUE, spillere læser kun egen stemme). Founder styrings-score i `roadmap_item_scores`-view: Ø(vigtig)·0.6 + Ø(god)·0.4 ganget √(antal); security_invoker så kun admin ser den fulde score. Statisk i18n-fallback pr. kort indtil items findes. 22 ejer-godkendte items seedet 11/6.
 
 ### Discord & Integrationer
 - Discord webhooks: admin kan tilføje webhooks med navn, URL og type (general / transfer_history); pr. webhook-row vises Test-knap der returnerer struktureret status (✅ leveret + tidsstempel, eller ❌ med 404/401/403/429-diagnose) inline pr. webhook (v2.28, S-06 P0 lukket)

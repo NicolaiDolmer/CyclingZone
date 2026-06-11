@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.22",
+    date: "2026-06-11",
+    label: "Beta",
+    changes: [
+      {
+        category: "New · Roadmap",
+        items: [
+          "EN · You can now vote on the roadmap: rate every planned feature on two scales, how good an idea it is and how important it is to you. Your votes directly steer what gets built next. Refs #954.",
+          "DA · Du kan nu stemme på roadmappet: bedøm hver planlagt feature på to skalaer, hvor god en idé den er og hvor vigtig den er for dig. Dine stemmer er direkte med til at styre hvad der bliver bygget som det næste. Refs #954.",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.21",
     date: "2026-06-11",
     label: "Beta",
