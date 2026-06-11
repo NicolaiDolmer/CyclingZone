@@ -38,6 +38,20 @@
     "frontend-design@claude-plugins-official",
     "claude-code-setup@claude-plugins-official"
   ],
+  "drift_check": {
+    "description": "Verificér ved session-start (og efter Desktop-app-opdatering) at disse plugins ER FRAVÆRENDE i skills-listen. Fremkommer de → re-disable via .claude/settings.json (project-level). Se docs/AI_OPS_DISABLE_PLAYBOOK.md#desktop-kanal-drift.",
+    "should_be_absent": [
+      "code-modernization@claude-plugins-official",
+      "vercel@claude-plugins-official",
+      "product-management@claude-plugins-official",
+      "marketing@claude-plugins-official",
+      "design@claude-plugins-official",
+      "productivity@claude-plugins-official"
+    ],
+    "correct_disable_channel": "project-level .claude/settings.json (repo-committed) — vinder over Desktop-kanal og user-level settings",
+    "last_verified": "2026-05-15",
+    "issue_ref": "#1286"
+  },
   "total_harness_tokens": 14782,
   "executed_cuts_phase_b_2026_05_15": {
     "executed_by_user_in_browser": "2026-05-15",
