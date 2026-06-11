@@ -57,7 +57,8 @@ export async function getRaceEngineStatus({ supabase }) {
       ...race,
       profile_count: profileCount,
       entry_count: entries.count ?? 0, // 0 er OK — loadEntrantsForRace auto-fill'er
-      ready: profileCount > 0,
+      // ready: alle krævede stage-profiler er til stede (samme betingelse som runAdminSimulateRace).
+      ready: profileCount >= (race.stages || 1),
     });
   }
 
@@ -89,6 +90,17 @@ export async function runAdminSimulateRace({
       409,
       "Løbet er allerede afviklet — sæt status tilbage via løbs-redigering hvis gen-afvikling er bevidst",
     );
+  }
+
+  // Delvise profiler må ikke kunne simuleres — motoren ville stille afvikle
+  // færre etaper end løbet definerer (raceRunner kaster kun ved nul profiler).
+  const { count: profileCount } = await supabase
+    .from("race_stage_profiles")
+    .select("id", { count: "exact", head: true })
+    .eq("race_id", race.id);
+  const expectedStages = race.stages || 1;
+  if ((profileCount ?? 0) < expectedStages) {
+    throw httpError(409, `Delvise stage-profiles (${profileCount ?? 0}/${expectedStages}) — kør backfillRaceStageProfiles før afvikling`);
   }
 
   if (!dryRun) {

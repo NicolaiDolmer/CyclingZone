@@ -50,11 +50,13 @@ function makeSupabase(canned = {}) {
 
 // ── runAdminSimulateRace ──────────────────────────────────────────────────────
 
-// Test 1: flag OFF + dryRun=false → 409; simulateRace stub ikke kaldt.
+// Test 1: flag OFF + dryRun=false → 409 (fra flag-check); simulateRace stub ikke kaldt.
+// Giver fulde profiler (3/3) så profil-guard passeres og 409 stammer fra flag-check.
 test("runAdminSimulateRace: flag OFF + dryRun=false → 409, simulateRace ikke kaldt", async () => {
   const supabase = makeSupabase({
     app_config: [],   // tom → flag OFF
     races: [{ id: "r1", season_id: "s1", name: "Test GP", race_type: "stage_race", race_class: "ProSeries", stages: 3, edition_year: 2026, status: "scheduled" }],
+    race_stage_profiles: [{ id: "p1" }, { id: "p2" }, { id: "p3" }], // 3/3 profiler → profil-guard OK
   });
   let stubCalled = false;
   const stub = async () => { stubCalled = true; return {}; };
@@ -67,15 +69,18 @@ test("runAdminSimulateRace: flag OFF + dryRun=false → 409, simulateRace ikke k
   }
   assert.ok(err, "skal kaste");
   assert.equal(err.status, 409, `forventet 409, fik ${err.status}: ${err.message}`);
+  assert.ok(err.message.includes("RACE_ENGINE_V2_ENABLED"), `forventet flag-besked, fik: ${err.message}`);
   assert.equal(stubCalled, false, "simulateRace-stub må ikke kaldes når flag er OFF");
 });
 
 // Test 2: flag OFF + dryRun=true → tilladt; stub kaldt med dryRun:true + race.
+// Giver fulde profiler (3/3) så profil-guard passeres — dryRun springer flag-check over.
 test("runAdminSimulateRace: flag OFF + dryRun=true → tilladt, stub kaldt med dryRun:true", async () => {
   const race = { id: "r1", season_id: "s1", name: "Test GP", race_type: "stage_race", race_class: "ProSeries", stages: 3, edition_year: 2026, status: "scheduled" };
   const supabase = makeSupabase({
     app_config: [],   // flag OFF
     races: [race],
+    race_stage_profiles: [{ id: "p1" }, { id: "p2" }, { id: "p3" }], // 3/3 profiler → profil-guard OK
   });
   let capturedArgs = null;
   const stub = async (args) => { capturedArgs = args; return { dryRun: true, rows: 5 }; };
@@ -131,6 +136,51 @@ test("runAdminSimulateRace: manglende raceId → 400", async () => {
   assert.equal(err.status, 400);
 });
 
+// Test 6-ny-a: stages=3 men kun 1 profil → 409 "Delvise"; stub ikke kaldt (heller ikke ved dryRun=true).
+test("runAdminSimulateRace: delvise stage-profiler (1/3) → 409 Delvise, simulateRace ikke kaldt", async () => {
+  const supabase = makeSupabase({
+    app_config: [{ value: true }],   // flag ON — sikrer 409 kommer fra profil-guard, ikke flag
+    races: [{ id: "r1", season_id: "s1", name: "Test GP", race_type: "stage_race", race_class: "ProSeries", stages: 3, edition_year: 2026, status: "scheduled" }],
+    race_stage_profiles: [{ id: "p1" }], // kun 1 profil → 1/3 → delvis
+  });
+  let stubCalled = false;
+  const stub = async () => { stubCalled = true; return {}; };
+
+  // dryRun=true — profil-guard blokerer uanset dryRun
+  let err = null;
+  try {
+    await runAdminSimulateRace({ supabase, raceId: "r1", dryRun: true, simulateRace: stub });
+  } catch (e) {
+    err = e;
+  }
+  assert.ok(err, "skal kaste ved dryRun=true med delvise profiler");
+  assert.equal(err.status, 409, `forventet 409, fik ${err.status}: ${err.message}`);
+  assert.ok(err.message.includes("Delvise"), `forventet "Delvise" i besked, fik: ${err.message}`);
+  assert.equal(stubCalled, false, "simulateRace-stub må ikke kaldes ved delvise profiler");
+});
+
+// Test 6-ny-b: nul profiler (0/3) → 409 "Delvise"; simulateRace stub ikke kaldt.
+test("runAdminSimulateRace: nul stage-profiler (0/3) → 409 Delvise, simulateRace ikke kaldt", async () => {
+  const supabase = makeSupabase({
+    app_config: [{ value: true }],   // flag ON
+    races: [{ id: "r2", season_id: "s1", name: "Blank GP", race_type: "stage_race", race_class: "ProSeries", stages: 3, edition_year: 2026, status: "scheduled" }],
+    // race_stage_profiles ikke i canned → count = 0
+  });
+  let stubCalled = false;
+  const stub = async () => { stubCalled = true; return {}; };
+
+  let err = null;
+  try {
+    await runAdminSimulateRace({ supabase, raceId: "r2", dryRun: false, simulateRace: stub });
+  } catch (e) {
+    err = e;
+  }
+  assert.ok(err, "skal kaste");
+  assert.equal(err.status, 409);
+  assert.ok(err.message.includes("Delvise"), `forventet "Delvise" i besked, fik: ${err.message}`);
+  assert.equal(stubCalled, false, "simulateRace-stub må ikke kaldes ved nul profiler");
+});
+
 // ── getRaceEngineStatus ───────────────────────────────────────────────────────
 
 // Test 6a: aktiv sæson → enabled + races med profile_count/entry_count/ready.
@@ -141,7 +191,7 @@ test("getRaceEngineStatus: aktiv sæson → korrekt form med profile_count/entry
     races: [
       { id: "r1", name: "Alfa GP", race_type: "stage_race", race_class: "ProSeries", stages: 3, status: "scheduled" },
     ],
-    race_stage_profiles: [{ id: "p1" }, { id: "p2" }],   // 2 profiler → ready:true
+    race_stage_profiles: [{ id: "p1" }, { id: "p2" }, { id: "p3" }], // 3/3 profiler → ready:true (>= stages)
     race_entries: [{ rider_id: "rider1" }],               // 1 entry
   });
 
@@ -155,8 +205,8 @@ test("getRaceEngineStatus: aktiv sæson → korrekt form med profile_count/entry
   assert.ok("profile_count" in r, "profile_count mangler");
   assert.ok("entry_count" in r, "entry_count mangler");
   assert.ok("ready" in r, "ready mangler");
-  assert.equal(r.profile_count, 2, "profile_count skal være 2 (matcher mock: 2 race_stage_profiles)");
-  assert.equal(r.ready, true, "ready skal være true når profile_count > 0");
+  assert.equal(r.profile_count, 3, "profile_count skal være 3 (matcher mock: 3 race_stage_profiles)");
+  assert.equal(r.ready, true, "ready skal være true når profile_count >= stages (3/3)");
 });
 
 // Test 6b: ingen aktiv sæson → { enabled, season: null, races: [] }.
