@@ -119,7 +119,10 @@ export async function runRelaunchSeason1(supabase, {
   if (dryRun) {
     summary.season = { dryRun: true, plan: "insert sæson 0 (active) → transitionToNextSeason 0→1" };
   } else {
-    const s0 = await d.seedSeasonZero(supabase, { startDate });
+    // dryRun: false SKAL være eksplicit — seedSeasonZero defaulter til dry-run,
+    // og uden insert fejler transitionen på den deterministiske sæson-0-UUID
+    // (fundet i rehearsal #1191, 11/6).
+    const s0 = await d.seedSeasonZero(supabase, { startDate, dryRun: false });
     summary.season = await d.transitionToNextSeason({ supabase, fromSeasonId: s0.seasonId, transitionAt: startDate });
   }
 

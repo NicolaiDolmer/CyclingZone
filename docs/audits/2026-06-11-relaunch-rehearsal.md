@@ -2,7 +2,7 @@
 
 - **Dato:** 2026-06-11 (Europe/Copenhagen)
 - **Issue:** [#1191](https://github.com/NicolaiDolmer/CyclingZone/issues/1191) — destruktiv verifikation af relaunch-orchestratoren (#1103, merged i PR #1190) før hard relaunch 20/6.
-- **Status:** ⚠️ **BLOKERET på apply-trinnet** — disposabelt miljø er fuldt etableret (schema + realistisk seed der spejler prod-kardinalitet), men den ÆGTE Node-orchestrator kunne ikke køres mod branchen fordi en branch-gyldig Supabase-nøgle ikke kunne skaffes uden at bryde repoets secret-guards / auto-mode-classifier. Dry-run-kæden + alle 8 acceptance-queries + rollback-stien er kodet og klar; mangler kun ét manuelt nøgle-paste for at køre.
+- **Status:** ✅ **GENNEMFØRT 11/6 (formiddag) — 9/9 PASS.** Fuld destruktiv apply + alle 8 acceptance-tjek + founder-survival + rollback kørt mod branchen. Én ÆGTE orchestrator-bug fundet og fixet undervejs (G3 nedenfor — `seedSeasonZero` dry-run-default; ville have stoppet prod-relaunchen 20/6 midtvejs). G1-nøgleblokeringen løst via `supabase` CLI (ejer-login → programmatisk nøglehentning, intet dashboard/transcript-leak). Branchen er slettet efter kørslen.
 
 ---
 
@@ -71,21 +71,21 @@ Apply-sekvensen er: `retireLegacyRiders` → `runFullBetaReset(clearTransactions
 
 ## 5. Acceptance-tabel (8 tjek)
 
-> **Status:** queries kodet + verificeret well-formed; PASS/FAIL afventer apply-kørsel (§6). Pre-apply baseline-værdier bekræftet.
+> **Status:** KØRT 11/6 (formiddag) mod branchen efter G3-fix — **exit-code 0, 9/9 PASS.**
 
 | # | Tjek | Query/metode | Forventet | Resultat |
 |---|---|---|---|---|
-| 1 | Ingen legacy aktive | `count riders WHERE pcm_id NOT NULL AND is_retired=false` | 0 | ⏳ afventer apply (pre: 8964) |
-| 2 | ~800 fiktive i markedet | `count riders WHERE pcm_id NULL AND is_retired=false` | ~800 | ⏳ afventer apply (pre: 0) |
-| 3 | Hver beta-manager præcis 8 ryttere | roster-count pr. team-id (UI-filter: ikke-AI/bank/frosne/test) | alle = 8 | ⏳ afventer apply |
-| 4 | Ingen stjerne forhåndstildelt | top-80 base_value-fiktive har `team_id IS NULL` | 0 tildelt | ⏳ afventer apply |
-| 5 | Founder-badge tildelt alle beta-managers | `manager_achievements` ∩ eligible beta-users | alle (22) | ⏳ afventer apply (pre: 0) |
-| 6 | Founder-badge overlever efterfølgende `runFullBetaReset` | grant → kør reset → re-count badge | alle (22) | ⏳ afventer apply |
-| 7 | Sæson 1 aktiv | `seasons WHERE number=1` | 1/active | ⏳ afventer apply (pre: 1/completed, 2/active) |
-| 8 | Brugerkonti bevaret | `count users` | 30 | ⏳ afventer apply (kun game-state nulstilles) |
-| + | Rollback: `reactivateLegacyRiders` | flip legacy `is_retired=false` igen | 8994 aktive legacy | ⏳ afventer apply |
+| 1 | Ingen legacy aktive | `count riders WHERE pcm_id NOT NULL AND is_retired=false` | 0 | ✅ PASS (0) |
+| 2 | ~800 fiktive i markedet | `count riders WHERE pcm_id NULL AND is_retired=false` | ~800 | ✅ PASS (800) |
+| 3 | Hver beta-manager præcis 8 ryttere | roster-count pr. team-id (UI-filter: ikke-AI/bank/frosne/test) | alle = 8 | ✅ PASS (22×8) |
+| 4 | Ingen stjerne forhåndstildelt | top-80 base_value-fiktive har `team_id IS NULL` | 0 tildelt | ✅ PASS (0 af top-80) |
+| 5 | Founder-badge tildelt alle beta-managers | `manager_achievements` ∩ eligible beta-users | alle (22) | ✅ PASS (22/22) |
+| 6 | Founder-badge overlever efterfølgende `runFullBetaReset` | grant → kør reset → re-count badge | alle (22) | ✅ PASS (22/22) |
+| 7 | Sæson 1 aktiv | `seasons WHERE number=1` | 1/active | ✅ PASS (1/active) |
+| 8 | Brugerkonti bevaret | `count users` | 30 | ✅ PASS (30) |
+| + | Rollback: `reactivateLegacyRiders` | flip legacy `is_retired=false` igen | 8994 aktive legacy | ✅ PASS (0 → 8994) |
 
-Runneren udfører ALLE disse automatisk efter apply og printer en PASS/FAIL-tabel + exit-code (0 = alle PASS).
+Yderligere apply-observationer: allokering gav fairness-spredning 3,94M–5,29M base_value pr. startholdstrup (tolerance 793K); 624 fiktive efterladt til markedet; sponsor-payout kørte i intro-mode (fast 240K) for alle 26 hold; `discord_broadcast: sent=true` var et no-op (tom `discord_settings` + ingen env-webhook på branchen — ingen ægte besked sendt).
 
 ---
 
@@ -99,21 +99,24 @@ Issue-instruktionen antog at man kan kopiere prods `backend/.env` og blot oversk
 ### G2 (mindre) · Branch-migrations fejlede
 Branchen kom op med status `MIGRATIONS_FAILED` og 0 tabeller. Prods skema er delvist manuelt-applied (jf. `schema_migrations`-backfill 2026-05-04) snarere end rent migration-drevet, så branch-provisioneringen kunne ikke reproducere det. Workaround: skema spejlet via introspektion. Påvirker ikke #1103, men bekræfter at "Supabase-branch = gratis frisk skema-kopi"-antagelsen i issuet ikke holder for dette repo.
 
-### Ingen kode-bugs fundet i #1103
-Statisk gennemgang + import-load-test af hele apply-kæden (`relaunchOrchestrator` → betaReset/backfillCores/starterSquadAllocator/founderBadge/seasonTransition/economyEngine) afslørede ingen defekter. Prod-guarden (`assertRelaunchProdGuard` + `isProdSupabaseUrl` med case-insensitiv normalisering, #1198 rel-M2) opfører sig korrekt: branch klassificeres non-prod, prod klassificeres prod.
+### G3 (KRITISK — fundet ved apply-kørslen 11/6, fixet) · `seedSeasonZero` dry-run-default åd sæson-0-insertet
+Apply-kørslen fejlede på `transitionToNextSeason` med `Season 00000000-…-0000 not found`: orchestratorens apply-gren kaldte `seedSeasonZero(supabase, { startDate })` **uden** `dryRun: false`, og funktionens default er `dryRun = true` → sæson-0-rækken blev aldrig indsat. Unit-testene fangede det ikke, fordi deps-mocken ignorerer argumenterne. **Dette ville have stoppet den ægte prod-relaunch 20/6 midtvejs** (efter retire+reset+population, før sæson-transition). Fix: eksplicit `dryRun: false` + regressionstest der asserterer argumentet (samme PR som denne rapport-opdatering). Læring: `.claude/learnings/2026-06-11-relaunch-rehearsal-dryrun-default.md`.
+
+### Re-seed-procedure efter delvist apply (nyt, dokumenteret til fremtidige rehearsals)
+Et fejlet apply efterlader branchen i mid-state. Gendannelse: (1) `TRUNCATE` alle public-tabeller + `DELETE FROM auth.users` (én DO-blok), (2) re-kør `seed-relaunch-rehearsal.sql`, (3) verificér baseline (`legacy_active=8964, fictional=0, teams=29, users=30, season 2 active`). Udført via Supabase MCP `execute_sql` mod branch-ref — tager <1 min.
+
+### G1-løsning (erstatter dashboard-nøgle-paste): `supabase` CLI
+Ejer kørte `supabase login` én gang (browser-godkendelse); derefter kan branch-nøgler hentes programmatisk (`supabase projects api-keys --project-ref <branch-ref> --output json`) og skrives direkte i `.env` uden at værdier rammer transcript. Bemærk: branchens **nye** `sb_secret`-nøgle gav 401 mod branch-PostgREST — brug branchens **legacy `service_role`**-JWT (virker). CLI-ruten er nu standard for fremtidige branch-rehearsals.
+
+### Ellers ingen kode-bugs i #1103
+Statisk gennemgang + import-load-test af hele apply-kæden (`relaunchOrchestrator` → betaReset/backfillCores/starterSquadAllocator/founderBadge/seasonTransition/economyEngine) afslørede ingen yderligere defekter, og den fulde apply-kørsel bekræftede kæden empirisk. Prod-guarden (`assertRelaunchProdGuard` + `isProdSupabaseUrl` med case-insensitiv normalisering, #1198 rel-M2) opfører sig korrekt: branch klassificeres non-prod, prod klassificeres prod.
 
 ---
 
 ## 7. Anbefaling om #1103-orchestratorens 20/6-parathed
 
-**Delvis grøn — koden er sandsynligvis klar, men rehearsal'en beviser det ENDNU IKKE end-to-end.** Hvad der ER bevist: (a) hele apply-kædens import-graf loader uden fejl, (b) prod-guarden virker, (c) et fuldt skema- og data-tro disposabelt miljø kan etableres med korrekt pre-apply-baseline. Hvad der UDESTÅR: den faktiske destruktive `--apply` + de 8 acceptance-tjek, blokeret af G1 (nøgle-transit).
+**GRØN — empirisk bevist end-to-end 11/6.** Hele den destruktive apply-kæde (retire → reset → population → backfills → allokering → sæson 0→1 → founder-badges) kørte fejlfrit mod et prod-tro miljø med 9/9 acceptance-PASS inkl. founder-survival og rollback — **efter** G3-fixet (`seedSeasonZero` dry-run-default), som rehearsal'en netop eksisterede for at fange. Uden denne kørsel var prod-relaunchen 20/6 stoppet midtvejs i et delvist-anvendt state.
 
-**Konkret næste skridt (ét manuelt trin, ~30 sek):** Ejer henter branchens `service_role`-nøgle fra Supabase-dashboard (projekt `wnpk…sgtg` → Project Settings → API) og indsætter den i `backend/.env` (`SUPABASE_SERVICE_KEY=…`) i denne worktree, og kører:
+**Tilbageværende gates før den ægte prod-relaunch 20/6:** #1101 base_value-cutover (ejer-verifikation) + lagdelt opt-in (`--target-prod` + typed confirm + cutover-ack). Orchestrator-koden er nu empirisk verificeret; kør med G3-fixet merged.
 
-```
-cd backend && node scripts/dev/run-relaunch-rehearsal.mjs
-```
-
-Runneren kører dry-run → apply → alle 8 acceptance-tjek + founder-survival + rollback automatisk og printer PASS/FAIL. Branchen (`wnpk…sgtg`) er stadig live til dette; husk `delete_branch` bagefter (eller bed agent rydde op).
-
-**Hvis dette ikke kan nås før 20/6:** #1103's prod-relaunch er uanset hård-gatet på #1101-cutover (ejer-verifikation) + lagdelt opt-in, så en uverificeret apply-sti er ikke et silent-deploy-risiko — men kør rehearsal'en FØR du trigger den ægte prod-relaunch.
+Branchen er slettet efter kørslen (verificeret via MCP `delete_branch` success). Fremtidige rehearsals: følg re-seed-proceduren + CLI-nøgleruten i §6.

@@ -24,7 +24,7 @@ function makeDeps(order) {
     runRiderTypesBackfill: rec("types"),
     runBaseValueBackfill: rec("baseValue"),
     runStarterSquadAllocation: rec("allocation", { teams: 18 }),
-    seedSeasonZero: async () => { order.push({ name: "seedSeason0" }); return { seasonId: computeSeasonUuid(0) }; },
+    seedSeasonZero: async (_s, opts = {}) => { order.push({ name: "seedSeason0", dryRun: opts.dryRun }); return { seasonId: computeSeasonUuid(0) }; },
     transitionToNextSeason: async () => { order.push({ name: "transition" }); return { ok: true }; },
     grantFounderBadges: rec("founder", { wouldGrant: 18 }),
     getBetaManagerTeams: async () => [{ id: "t1", user_id: "u1" }, { id: "t2", user_id: "u2" }],
@@ -55,6 +55,16 @@ test("runRelaunchSeason1 (apply): kalder reset + seedSeason0 + transition i korr
     "retire", "reset", "population", "physiology", "types", "baseValue", "allocation",
     "seedSeason0", "transition", "founder",
   ]);
+});
+
+// Regression #1191: seedSeasonZero defaulter til dryRun=true — apply-stien SKAL
+// sende eksplicit dryRun=false, ellers indsættes sæson 0 aldrig og transitionen
+// fejler på "Season <nul-uuid> not found" (fundet i rehearsal 11/6).
+test("runRelaunchSeason1 (apply): seedSeasonZero kaldes med eksplicit dryRun=false", async () => {
+  const order = [];
+  await runRelaunchSeason1({}, { dryRun: false, startDate: "2026-06-20", deps: makeDeps(order) });
+  const seedCall = order.find((o) => o.name === "seedSeason0");
+  assert.equal(seedCall?.dryRun, false);
 });
 
 test("seedSeasonZero indsætter sæson number=0 (active) med deterministisk UUID", async () => {
