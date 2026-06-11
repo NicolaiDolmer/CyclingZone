@@ -57,7 +57,7 @@ A founder-led cycling manager MMO where strategy beats spending. Premium is opti
 
 **Current UI shows:** "Cycling Zone" (2 words, capital C and Z) — `Layout.jsx`
 **Repo/dev internal:** "CyclingZone" (1 word, camelCase)
-**Domain:** `cycling-zone.vercel.app` (hyphenated)
+**Domain:** `cyclingzone.org` (primary siden 2026-06-11 jf. #1296; legacy `cycling-zone.vercel.app` redirecter)
 
 **Four candidate wordmarks to evaluate visually:**
 1. `Cycling Zone` — 2 words, title case (current UI)

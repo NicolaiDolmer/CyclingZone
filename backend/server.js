@@ -30,11 +30,12 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
 
 app.use(helmet());
 const ALLOWED_ORIGINS = [
-  "https://cycling-zone.vercel.app",
-  // cyclingzone.org additivt tilføjet — virker side om side med .vercel.app
-  // indtil .org gøres til primary. Begge varianter (apex + www).
+  // cyclingzone.org = primary siden 11/6 (#1296); apex er canonical, www redirecter.
   "https://cyclingzone.org",
   "https://www.cyclingzone.org",
+  // Legacy beta-URL — redirecter til .org på Vercel-niveau, men beholdes i CORS
+  // som sikkerhedsnet for cachede SPA-bundles der stadig kalder API'et direkte.
+  "https://cycling-zone.vercel.app",
   process.env.FRONTEND_URL,
   "http://localhost:5173",
   "http://localhost:4173",

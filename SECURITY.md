@@ -28,7 +28,7 @@ Please include:
 
 **In scope**
 
-- The live site at https://cycling-zone.vercel.app
+- The live site at https://cyclingzone.org (formerly https://cycling-zone.vercel.app, which now redirects)
 - Source code on the `main` branch of this repository
 - Auth, authorization, RLS bypass, data exposure, injection, XSS, CSRF,
   business-logic flaws (e.g. economy/auction abuse, score manipulation)

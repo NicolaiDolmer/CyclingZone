@@ -2,7 +2,7 @@
 
 > _Browser-baseret multiplayer cykelmanager-spil. Bygget af én person, gratis at spille, åben for testere._
 >
-> **Spil her:** [cycling-zone.vercel.app](https://cycling-zone.vercel.app)
+> **Spil her:** [cyclingzone.org](https://cyclingzone.org)
 
 [![CI](https://github.com/NicolaiDolmer/CyclingZone/actions/workflows/ci.yml/badge.svg)](https://github.com/NicolaiDolmer/CyclingZone/actions/workflows/ci.yml)
 
@@ -12,7 +12,7 @@ Cycling Zone is a small, browser-based multiplayer cycling manager game. You sig
 
 I'm a solo founder building this in public. The game has been in **open beta since 2026-05-08**, with a small group of testers actively playing. I share the thinking and trade-offs as they happen, not after the fact.
 
-If you want to play, just sign up at [cycling-zone.vercel.app](https://cycling-zone.vercel.app).
+If you want to play, just sign up at [cyclingzone.org](https://cyclingzone.org).
 
 ## Tech stack
 
@@ -38,7 +38,7 @@ You can read the code, learn from it, and contribute back. You cannot fork, mirr
 
 ## Running it locally
 
-You don't need to run this locally to play, just go to [cycling-zone.vercel.app](https://cycling-zone.vercel.app). The steps below are for contributors who want to work on the code.
+You don't need to run this locally to play, just go to [cyclingzone.org](https://cyclingzone.org). The steps below are for contributors who want to work on the code.
 
 ### 1. Supabase
 

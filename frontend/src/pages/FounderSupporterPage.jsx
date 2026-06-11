@@ -173,7 +173,7 @@ export default function FounderSupporterPage() {
       canonical.rel = "canonical";
       document.head.appendChild(canonical);
     }
-    canonical.href = "https://cycling-zone.vercel.app/founder-supporter";
+    canonical.href = "https://cyclingzone.org/founder-supporter";
   }, [lang, t]);
 
   // Bevar useMemo så vi ikke regenererer ved hver render; recompute ved
