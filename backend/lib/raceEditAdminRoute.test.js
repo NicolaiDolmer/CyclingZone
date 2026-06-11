@@ -12,10 +12,12 @@ const apiSource = readFileSync(join(__dirname, "../routes/api.js"), "utf8");
 // ============================================================
 // #515 — admin race edit: route-ownership + audit-log contract
 // ------------------------------------------------------------
-// Rod-årsag: AdminPage.jsx skrev tidligere direkte til supabase.from("races")
+// Rod-årsag: admin-UI'et skrev tidligere direkte til supabase.from("races")
 // .update() — blev silent-blokeret af RLS (kun SELECT-policy findes på races).
 // Edition_year og andre race-edits blev aldrig gemt selvom UI viste success.
 // Backend PUT-endpoint erstatter den direkte supabase-skrivning.
+// Live UI-fil efter #529-tab-refactor + #1180-sletning af AdminPage.jsx:
+// frontend/src/pages/admin/AdminDataTab.jsx.
 // ============================================================
 
 function isolatePutHandler() {
@@ -76,16 +78,16 @@ test("ADMIN_ACTION_TYPE.RACE_EDITED eksisterer + matcher snake_case", () => {
   assert.equal(ADMIN_ACTION_TYPE.RACE_EDITED, "race_edited");
 });
 
-test("AdminPage.jsx bruger backend PUT-endpoint, ikke direkte supabase.update på races", () => {
+test("AdminDataTab.jsx bruger backend PUT-endpoint, ikke direkte supabase.update på races", () => {
   const adminPageSource = readFileSync(
-    join(__dirname, "../../frontend/src/pages/AdminPage.jsx"),
+    join(__dirname, "../../frontend/src/pages/admin/AdminDataTab.jsx"),
     "utf8",
   );
   // Find saveRaceEdit-funktionen
   const fnMatch = adminPageSource.match(
     /async function saveRaceEdit\(\)\s*\{[\s\S]*?\n\s{2}\}/,
   );
-  assert.ok(fnMatch, "Kunne ikke isolere saveRaceEdit i AdminPage.jsx");
+  assert.ok(fnMatch, "Kunne ikke isolere saveRaceEdit i AdminDataTab.jsx");
   const body = fnMatch[0];
   assert.doesNotMatch(
     body,

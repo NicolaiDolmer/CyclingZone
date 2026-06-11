@@ -30,7 +30,6 @@ const PAGES_DIR = join(ROOT, "frontend", "src", "pages");
 
 // Sider der LEGITIMT må indeholde dansk uden useTranslation. Tilføj med begrundelse.
 const EXEMPT = new Map([
-  ["AdminPage.jsx",              "Admin-only værktøj bag admin-guard — ikke player-facing."],
   ["AdminSprintMetricsPage.jsx", "Admin-only intern metrics-side — ikke player-facing."],
   ["AdminWaitlistPage.jsx",      "Admin-only waitlist-værktøj — ikke player-facing."],
   ["PrivacyPolicyPage.jsx",      "DA-udgaven i dual-page-mønster (separat PrivacyPolicyPageEn.jsx til EN)."],
