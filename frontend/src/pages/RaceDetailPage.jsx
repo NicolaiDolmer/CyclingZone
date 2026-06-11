@@ -7,6 +7,7 @@ import TeamLink from "../components/TeamLink";
 import { Flag } from "../components/Flag";
 import { formatNumber } from "../lib/intl";
 import { fetchAllRows } from "../lib/supabasePagination";
+import { logEvent } from "../lib/logEvent";
 
 // #959 Etape-resultater V1 — detaljeret pr.-etape-visning.
 //
@@ -85,6 +86,10 @@ export default function RaceDetailPage() {
   }, [raceId]);
 
   useEffect(() => { loadAll(); }, [loadAll]);
+
+  useEffect(() => {
+    if (race?.id) logEvent("race_viewed", { race_id: race.id });
+  }, [race?.id]);
 
   // Etaper med faktiske etape-data (result_type="stage"), sorteret.
   const stageNumbers = useMemo(() => {
