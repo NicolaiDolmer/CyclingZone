@@ -37,7 +37,7 @@ export default function PrivacyPolicyPage() {
             <li><strong>Spildata:</strong> dit holds økonomi, ryttere, auktioner, bestyrelses-status, sæsonresultater (alt skabt ved at spille).</li>
             <li><strong>Frivilligt:</strong> Discord-ID hvis du selv tilføjer det for at modtage DM-notifikationer.</li>
             <li><strong>Teknisk:</strong> IP-adresse i adgangslogs i op til 30 dage til drift og sikkerhed.</li>
-            <li><strong>Analyse (kun med dit samtykke):</strong> anonyme adfærdsdata via Microsoft Clarity (fx hvor brugere klikker forgæves eller skroller frustreret). Bruges udelukkende til at rette dårlig UX.</li>
+            <li><strong>Analyse (kun med dit samtykke):</strong> anonyme adfærdsdata via Microsoft Clarity (fx hvor brugere klikker forgæves eller skroller frustreret) og anonym trafik-/kildestatistik via Google Analytics (fx hvilken side du kom fra). Bruges udelukkende til at rette dårlig UX og forstå hvor spillere finder spillet.</li>
           </ul>
         </Section>
 
@@ -69,6 +69,7 @@ export default function PrivacyPolicyPage() {
             <li><strong>Vercel:</strong> hosting af frontend (EU/US edge). Vercel kan se IP i adgangslogs.</li>
             <li><strong>Railway:</strong> hosting af backend.</li>
             <li><strong>Microsoft Clarity:</strong> kun aktiveret hvis du har accepteret &quot;Analyse&quot;-kategorien.</li>
+            <li><strong>Google Analytics:</strong> kun aktiveret hvis du har accepteret &quot;Analyse&quot;-kategorien. Annonce-signaler er slået fra.</li>
             <li><strong>Discord (via Discord Inc.):</strong> kun hvis du frivilligt tilføjer dit Discord-ID, eller skriver til os på Discord. Discord er en selvstændig dataansvarlig for det indhold du sender til os der.</li>
           </ul>
           <p className="mt-2 text-cz-3 text-xs">
@@ -117,7 +118,7 @@ export default function PrivacyPolicyPage() {
             <li><strong>Samtykke-valg</strong> (<code className="text-xs">cz_consent_v1</code> i localStorage): så vi husker dine valg og ikke spørger igen.</li>
           </ul>
           <p className="mt-2">
-            Disse kræver ikke samtykke jf. ePrivacy-direktivet (strengt nødvendige). <strong>Microsoft Clarity</strong> indlæses kun hvis du aktivt har accepteret &quot;Analyse&quot;-kategorien. Du kan til enhver tid skifte valg her på siden.
+            Disse kræver ikke samtykke jf. ePrivacy-direktivet (strengt nødvendige). <strong>Microsoft Clarity</strong> og <strong>Google Analytics</strong> indlæses kun hvis du aktivt har accepteret &quot;Analyse&quot;-kategorien. Du kan til enhver tid skifte valg her på siden.
           </p>
         </Section>
 

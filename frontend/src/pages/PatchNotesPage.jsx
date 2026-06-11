@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.24",
+    date: "2026-06-11",
+    label: "Beta",
+    changes: [
+      {
+        category: "Improved · Privacy & analytics",
+        items: [
+          "EN · Google Analytics has been added to help us understand where players find the game. Like Microsoft Clarity, it only loads if you have accepted the Analytics cookie category, ad signals are turned off, and the privacy policy has been updated accordingly. Refs #1302.",
+          "DA · Google Analytics er tilføjet, så vi kan forstå hvor spillere finder spillet. Ligesom Microsoft Clarity indlæses det kun hvis du har accepteret Analyse-cookiekategorien, annonce-signaler er slået fra, og privatlivspolitikken er opdateret tilsvarende. Refs #1302.",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.23",
     date: "2026-06-11",
     label: "Beta",
