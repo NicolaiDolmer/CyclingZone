@@ -233,7 +233,7 @@ if (-not $SkipRedeploy) {
 
 Write-Banner "Faerdig - naeste skridt"
 Write-Host "  Naar redeploy er gennem:"
-Write-Host "  1. Aabn https://cycling-zone.vercel.app/?sentry-test=1 (URL-trigger merges af AI separat)"
+Write-Host "  1. Aabn https://cyclingzone.org/?sentry-test=1 (URL-trigger merges af AI separat)"
 Write-Host "  2. AI verificerer event i Sentry MCP"
 Write-Host "  3. AI fjerner trigger + commenterer paa #348"
 Write-Host ""
