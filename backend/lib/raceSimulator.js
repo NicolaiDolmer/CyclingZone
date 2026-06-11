@@ -39,7 +39,7 @@ const ABILITY_MAX = 99;
 // ligger i [0, 1], så denne skalar afgør hvor ofte stjerner slås (tunes via
 // distributions-testene → acceptance: "stjerner vinder oftest, men ikke 100%").
 // ÉT sted at tune varians-niveauet for hele motoren.
-export const NOISE_SD_SCALE = 0.20;
+export const NOISE_SD_SCALE = 0.16;
 
 // Per-terræn tids-gab-model (F3, ejer-besluttet 2026-06-07): omsætter score-deficit
 // (bag etapevinderen) til sekunder. bunch = deficit under tærsklen → samme tid

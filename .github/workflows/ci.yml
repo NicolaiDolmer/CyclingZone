@@ -40,6 +40,9 @@ jobs:
       - name: Lint backend
         run: npm run lint
 
+      - name: Race-engine launch-gate (#1102)
+        run: npm run race:gate
+
   frontend-build:
     runs-on: ubuntu-latest
     permissions:
