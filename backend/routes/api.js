@@ -196,6 +196,7 @@ import { adminImportUploadSingleFile, adminImportUploadMultipleFiles } from "../
 import { getDefaultWebhook, sendWebhook } from "../lib/discordNotifier.js";
 import { importPcmResults, buildPcmImportEmbed } from "../lib/pcmResultsImport.js";
 import { getRaceEngineStatus, runAdminSimulateRace, buildRaceSimEmbed } from "../lib/adminSimulateRace.js";
+import { generateRaceStageProfiles, GENERATOR_VERSION } from "../lib/raceStageProfileGenerator.js";
 import { checkAchievements } from "../lib/achievementEngine.js";
 import { captureException, setSentryUser } from "../lib/sentry.js";
 import { upsertOwnTeamProfile } from "../lib/teamProfileEngine.js";
@@ -4174,8 +4175,30 @@ router.post("/admin/races", requireAdmin, adminWriteLimiter, async (req, res) =>
     const { data: createdRace, error: createError } = await createRaceRecord(payload);
     if (createError) return res.status(500).json({ error: createError.message });
 
+    // #1102: nye løb får stage-profiles med det samme (motoren kræver dem;
+    // backfillRaceStageProfiles dækker historiske løb). Best-effort — en fejl
+    // må ikke vælte oprettelsen; motoren fejler højt og backfill reparerer.
+    let stageProfilesCreated = 0;
+    try {
+      const profiles = generateRaceStageProfiles(createdRace);
+      const rows = profiles.map((p) => ({
+        race_id: createdRace.id,
+        stage_number: p.stage_number,
+        profile_type: p.profile_type,
+        finale_type: p.finale_type,
+        demand_vector: p.demand_vector,
+        generator_version: GENERATOR_VERSION,
+        is_manual: false,
+      }));
+      const { error: profileError } = await supabase.from("race_stage_profiles").insert(rows);
+      if (profileError) throw new Error(profileError.message);
+      stageProfilesCreated = rows.length;
+    } catch (e) {
+      console.error("  ⚠️ stage-profiles ved løbs-oprettelse fejlede:", e.message);
+    }
+
     invalidateNamespace("races");
-    res.status(201).json(createdRace);
+    res.status(201).json({ ...createdRace, stage_profiles_created: stageProfilesCreated });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
