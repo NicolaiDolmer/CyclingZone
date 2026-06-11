@@ -27,6 +27,7 @@ Fuld doc-index: [`docs/META_DOCS_INDEX.md`](docs/META_DOCS_INDEX.md). Top-3 hits
 - `docs/GITHUB_WORKFLOW.md` — Workflow, agent-loops, close-protocol
 - `docs/AGENT_ARCHITECTURE.md` — Parallel-session safety, cross-agent failure-modes (auto-gen)
 - `docs/WORKTREE_WORKFLOW.md` — Parallelle Claude Code-sessioner via git worktrees (`scripts/new-worktree.ps1`)
+- `docs/NIGHT_WAVE_RUNBOOK.md` — Natbølge-pipeline: `scripts/preflight-night-wave.ps1 -Fix` (GO/NO-GO), launch i samme tur som ejer-go, launch-bevis, merge-protokol, recovery. Læs FØR enhver natbølge.
 - `docs/AI_CHANNEL_ROUTING.md` — Kanal-til-task-matrix (Code vs chat vs Cowork vs Dispatch); læs ved tvivl om hvilken AI-kanal en task hører til
 - `docs/VERDENSKLASSE_ROADMAP.md` — Konsolideret AI/Ops + skalerings-roadmap (Track A vs Epic #323); læs før du picker AI-ops/cross-PC/scaling-issues
 - `docs/AI_COUNCIL.md` — Rolle-matrix, SLA, fallback-protokol for Claude/Codex/Manus; læs ved tvivl om hvem der ejer en beslutning ([#564](https://github.com/NicolaiDolmer/CyclingZone/issues/564))

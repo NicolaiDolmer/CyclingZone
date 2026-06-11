@@ -125,6 +125,8 @@ SessionStart-hook cleaner `.claude/worktrees/` automatisk efter ship (per [AGENT
 | PC1 → PC2 (samme agent) | GitHub + OneDrive-context | Identisk m. session A→B. Lokale caches regenereres på modtagende PC |
 | Clarity → Claude/Codex | Ugentlig review-doc → ny slice | [Loop I](./AI_LOOPS.md) |
 
+**Natbølger (multiagent-fleet om natten):** protokol (preflight GO/NO-GO, launch-bevis, merge-rækkefølge) + recovery i [`NIGHT_WAVE_RUNBOOK.md`](./NIGHT_WAVE_RUNBOOK.md) — læs FØR enhver natbølge claims.
+
 ## Failure-mode katalog
 
 Auto-genereret fra `.claude/learnings/*.md`. **Regenerér med** `pwsh -File scripts/regenerate-agent-architecture.ps1`.
