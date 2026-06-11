@@ -7,6 +7,13 @@
     "today": "Hvor det er i dag",
     "next": "Hvor det er på vej hen"
   },
+  "voting": {
+    "intro": "Bedøm planerne herunder. Dine stemmer er med til at afgøre hvad der bliver bygget som det næste.",
+    "idea": "Hvor god en idé?",
+    "importance": "Hvor vigtigt er det for dig?",
+    "saved": "Gemt",
+    "error": "Din stemme blev ikke gemt. Prøv igen."
+  },
   "engines": {
     "races": {
       "title": "Løb",
