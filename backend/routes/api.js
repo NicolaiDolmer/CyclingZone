@@ -5611,15 +5611,6 @@ router.get("/admin/season-end-preview/:seasonId", requireAdmin, async (req, res)
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// POST /api/admin/discord/test — send testbesked til en webhook-URL
-// Returnerer struktureret status så frontend kan vise konkret diagnose pr. webhook.
-router.post("/admin/discord/test", requireAdmin, adminWriteLimiter, async (req, res) => {
-  const { webhook_url } = req.body;
-  if (!webhook_url) return res.status(400).json({ error: "webhook_url påkrævet" });
-  const result = await sendTestEmbed(webhook_url);
-  res.json({ ...result, timestamp: new Date().toISOString() });
-});
-
 // #517: discord_settings ejes nu af backend (service_role bypasser RLS, public-read
 // policy droppet 2026-05-22). Webhook URLs er secrets — masking sker server-side
 // så frontend kun ser sidste 8 tegn til UI-genkendelse, fuld URL aldrig sendes.

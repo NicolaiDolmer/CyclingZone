@@ -53,7 +53,7 @@
 /race-archive         → redirect → /races?tab=library
 /race-archive/:raceSlug → RaceHistoryPage
 /race-points          → RacePointsPage (alias for /races?tab=points)
-/admin                → AdminPage
+/admin                → AdminLayout (tabs: season · economy · users · data · system — pages/admin/*)
 ```
 
 ---
