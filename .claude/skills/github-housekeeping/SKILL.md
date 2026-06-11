@@ -143,6 +143,8 @@ _(Tidligere G "State-brud" fjernet 2026-05-20-pass2 — per workflow 2026-05-18 
 
 **Duplikat-detection:** grep titler for substrings ≥4 ord; tjek "lignende #N" / "forskellig fra #N"-referencer for begge-åbne tilfælde.
 
+**Supersede-close kræver kode-verify (lektion 2026-06-11):** Når et dublet-/supersede-forslag begrunder close med "arbejdet er allerede gjort andetsteds/i #N", skal påstanden kode-verificeres (grep/Read) FØR close — samme disciplin som K-kandidater. 2026-06-11 påstod en dublet-agent at #917's DA-leak allerede var nøglificeret via #1084-pakken; grep i boardEvaluation.js:389-499 viste at de hardcodede DA-headlines består. Uden manuel verify var et ægte åbent issue blevet lukket. Rene "samme arbejde beskrevet to gange"-dubletter (begge u-leverede) kræver kun body-læsning.
+
 **Bemærkning (lektion 2026-05-23):** 5 audits i træk = 0 EPIC-READY-TO-CLOSE-actions. Trinet behold som info-only (epic-count + dominans-fordeling er nyttigt for backlog-overblik), men under-prioriteres i præsentationen. Spring detail-print over hvis ingen action.
 
 ## Trin 6 — Præsentér (severity-sorted)
@@ -155,6 +157,8 @@ Tabel-format:
 ```
 
 Brug `[#N](https://github.com/NicolaiDolmer/CyclingZone/issues/N)` for alle issue-links.
+
+**Godkendelses-lister SKAL være synlige for ejeren (lektion 2026-06-11 — bidt 2x samme dag):** Chat-tekst mellem tool-kald vises IKKE pålideligt i ejerens UI. Enhver liste der skal godkendes (kill-liste, dublet-batch, priority-sweep) skal enten (a) embeddes kompakt i selve AskUserQuestion-`question`-teksten, eller (b) postes som kommentar på ledger #627 FØR spørgsmålet, med link i spørgsmålet. Ejeren svarede 2x "Jeg kan ikke se listen" på en kill-liste der kun stod i chat-teksten.
 
 **STRONG <24h-kandidater — eksplicit "vent til" timestamp (lektion 2026-05-24):** I Kategori B-sektion, for hver STRONG-kandidat med `hours_since_comment < 24`, print eksplicit `→ close-eligible efter [ISO-timestamp = comment_created + 24h] (= [HH:MM lokaltid])`. Næste audit kan checke "er klokken efter X?" uden at re-score hele issue-set. Eksempel: `#577 STRONG 6.1h → close-eligible efter 2026-05-25T01:38Z (= 03:38 Europe/Copenhagen)`. Sparer re-scoring i næste audit-kørsel hvis kun timing er ændret.
 
@@ -238,6 +242,20 @@ For afviste ændringer: append til `## Rejected suggestions` (med dato + grund).
 
 Output efter retro: 1 linje per accepted/rejected. Hvis ingen ændringer foreslået: "Skill kørte rent, ingen forbedringer denne gang."
 
+## Fuld-backlog-variant (2026-06-11-mønsteret — kvartalsvis / præ-milestone)
+
+Når ejeren beder om gennemgang af ALLE åbne issues (ikke kun done/K-pass), brug 7-gruppe-workflow-mønsteret fra 2026-06-11 (52 agenter, ~6,3M tokens, 345 issues — script gemmes automatisk under session-dir og kan genbruges som skabelon):
+
+1. **K-scope-verify + kalibreret refute** (pipeline pr. kandidat) — crossref.py-kandidater; close=hård refute, move_to_done=blød.
+2. **Lukket-ikke-lavet** — closed sidste 14d uden PR-omtale (beregn kandidater i main-loop, embed i script) → verify-agents → reopen-liste. _(2026-06-11: 8 kandidater, 0 reopens — dimensionen er billig og besvarer ejerens hyppigste bekymring.)_
+3. **Dublet-detektion** — 6 interval-agenter mod fuld titel-TSV; dedup rå par i main-loop (91→66); kode-verify på supersede-påstande (se Trin 5-lektion).
+4. **Klassifikation** — 12 chunk-agenter à ~29 issues (bodies pre-dumpet til $TEMP-chunk-filer, 2000 tegn cap) mod doctrine-brief: launch_kritisk/post_launch/kill_kandidat/ejer_beslutning + pri_rec + desc_quality + investigation-triage + question. Klassifikationen ER issuets eksistens-årsag.
+5. **Decision-briefs** — needs-decision-issues i grupper à 4: explainer i klar tekst + A/B + anbefaling (ejeren husker ikke issues ud fra numre).
+6. **NUA-reality-check** — én agent over alle needs-user-action.
+7. **Manglende-issues-sweep** — 3 agenter: NOW.md-parkerede · launch-/doctrine-docs · Discord-feedback (REST-script-workaround hvis MCP-login fejler).
+
+Output: batch-godkendelser pr. kategori (lister synlige! jf. Trin 6-lektion) + ejer-dashboard i `docs/audits/<dato>-ejer-dashboard.md` + artifact. Ejer-mandat indhentes FØR kørsel via AskUserQuestion: prioriterings-linse-hårdhed, done-batch-metode, token-scope, parallelle sessioners issues (ekskluderes).
+
 ## Routine integration — daily autonomous auto-close (#627)
 
 Denne skill bliver fyret **dagligt 05:00 UTC** (07:00 CEST / 06:00 CET) af scheduled CCR-routinen `cyclingzone-github-housekeeping-weekly` (navnet er historisk — den kører dagligt nu; trigger-id `trig_01S278iyGt4HtoydKb2JP3AR`, resolvable via `RemoteTrigger action=list`). Routine-prompten er **single source of truth** i [`routine-prompt.md`](routine-prompt.md) (git-tracked — flyttet 2026-05-29 fra gitignored `.codex.local/routines-tmp/housekeeping-prompt.md` så cloud-routine + begge PC'er læser samme fil). **Når `routine-prompt.md` ændres → det er nok at committe + pushe til `main`.** Routine-configens `message.content` er kun en bootstrap-pointer der `Read`er `routine-prompt.md` fra den friske klon ved hver kørsel — selve playbooken er IKKE embedded i config. Ingen `RemoteTrigger action=update` nødvendig (det beskrev et tidligere design hvor prompten lå i config; rettet 2026-05-31, jf. note i `routine-prompt.md` linje 5).
@@ -290,9 +308,12 @@ Denne skill bliver fyret **dagligt 05:00 UTC** (07:00 CEST / 06:00 CET) af sched
 - **Python UTF-8 på Windows (lektion 2026-05-20-pass2 + 2026-05-24):** Default `cp1252`-codec fejler på emojis/UTF-8 i `gh`-output OG i `print()`. Brug altid `open(path, encoding='utf-8')` for input, OG sæt `PYTHONUTF8=1` env-var ved hver `python`-call for at fixe stdout-encoding: `PYTHONUTF8=1 python script.py`. Bidt igen 2026-05-24 (orphans.py crashede på `→`-emoji i `print()` — `open(..., encoding='utf-8')` alene løser ikke print-side). Også: `subprocess.run(['gh', ...])` direkte fra Python på Windows returnerer typisk empty stdout — workaround er at skrive `gh`-output til fil via Bash først (`gh issue view N --json ... > /tmp/issue-N.json`) og læse fra fil i Python.
 - **Python TEMP-path på Windows (lektion 2026-05-22):** Bash-tool oversætter `/tmp/` → `C:\Users\<USER>\AppData\Local\Temp\` automatisk, men Python gør IKKE. `with open('/tmp/foo.json')` → `FileNotFoundError`. Brug `import os; TMP = os.environ.get('TEMP', '/tmp')` ELLER hardkod `r'C:/Users/emmas/AppData/Local/Temp'` i Python-scripts. Bidt 2 audits i træk.
 - **State-brud-detection deprecated (lektion 2026-05-20-pass2):** Kategori G fjernet fra Trin 4 — 2 audits i træk gav 0 actions (direct-close kanonisk per workflow 2026-05-18). Hvis pattern dukker op igen som relevant, re-introducer som ny kategori.
+- **Workflow-resume efter session-limit (lektion 2026-06-11):** Store audit-workflows kan miste agenter på session-limit ("You've hit your session limit · resets HH:MM"). Recovery: vent til reset-tidspunktet, relaunch med `Workflow({scriptPath, resumeFromRunId})` — alle færdige agenter returnerer cachet (gratis), kun fejlede/nye re-kører. 2026-06-11: 9 af 52 agenter døde på 11:10-limit; resume efter reset gav fuldt resultat uden at re-køre de 43 færdige.
 - **Persistent scoring-scripts (lektion 2026-05-25):** Scoring/cross-ref/label/stale Python-scripts ligger nu i `.claude/skills/github-housekeeping/scripts/*.py`. Brug dem direkte i stedet for at inline ~120 linjer Python hver audit. Workflow: `gh issue list ... > $TEMP/audit-done.json && PYTHONUTF8=1 python .claude/skills/github-housekeeping/scripts/score_done.py`. Scripts: `score_done.py`, `crossref.py`, `labelcheck.py`, `staleblocked.py`. Tune STRONG_PATTERNS/NEG_KEYWORDS direkte i script-fil ved retro.
 
 ## Changelog
+
+- **2026-06-11 — Fuld-backlog-audit retro (største kørsel til dato).** 14. kørsel: ejer bad om gennemgang af ALLE 345 åbne (done-status begge veje, dubletter, prioritering, rækkefølge, kill, manglende issues, ejer-handlinger). 52-agent workflow + Playwright/SQL-verify → **57 closes** (9 done-AI-verify + 2 K + 32 dubletter + 14 kill) + 2→done + 27 priority-flyt (high 62→31) + 12 nye issues (#1276–#1287) + ejer-dashboard-leverance. Lukket-ikke-lavet: 0 fund (alle 8 mistænkte legit). 4 accepterede edits: (A) Trin 6: godkendelses-lister skal embeddes i AskUserQuestion-tekst eller postes på #627 — chat-tekst usynlig for ejer, bidt 2x; (B) Trin 5: supersede-close-påstande kræver kode-verify — dublet-agent påstod fejlagtigt #917 fixet; (C) baked-in: Workflow-resume via resumeFromRunId efter session-limit (9 agenter reddet); (D) ny sektion: Fuld-backlog-variant med 7-gruppe-mønsteret som genbrugelig opskrift.
 
 - **2026-06-09 — Multiagent-audit retro.** 13. kørsel via 57-agent Workflow (35 K-kandidater scope-verify + adversarisk refute + 6 launch deep-dives). 2 closes (#1124/#1155), 11 → claude:done, 22 cache-markeret. 1 accepteret edit: **kalibrér adversarisk refute-styrke pr. handling** — uniform hård gate refuterede 13 verdikter, men ~10 var bare dev-færdige-afventer-ejer-verify (move-to-done), kun 2 ægte delvise (#165/#917). Refute for `move-to-done` skal kun afvise ved umødt/delvist AC, ikke ved normal ejer-verify-gate. Bonus-lektion (Workflow-tooling): `args` kan ankomme som string → indlejr data-lister direkte i scriptet frem for via `args`.
 
