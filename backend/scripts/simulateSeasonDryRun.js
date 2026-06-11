@@ -55,7 +55,7 @@ const model = JSON.parse(readFileSync(join(__dirname, "../lib/riderValuationMode
 // ── Ejer-besluttede gate-bånd (2026-06-11, jf. genre-benchmark-research) ──────
 // Interim-bånd nåelige med motor-tuning alene. FULDE mål (7/6) bevaret nedenfor;
 // hæves via population-berigelse (cobbles/hilly) + evne-system v2 #1122 (itt).
-//   Fulde mål: flat 90 · itt tt 85 · cobbles 90→80 (research) · hilly 50 · mountain 85.
+//   Fulde mål: flat 90 · itt tt 85 · cobbles 90 (interim-bånd 80, jf. research) · hilly 50 · mountain 85.
 const TARGETS = {
   flat:          { label: "sprinter ≥90%", types: ["sprinter"], pct: 0.90 },
   itt:           { label: "tt ≥60% (interim)", types: ["tt"], pct: 0.60 },

@@ -146,6 +146,7 @@ test("distribution: stjernen vinder oftest, men ikke 100% (varians findes)", () 
   }
   const rate = starWins / N;
   assert.ok(rate > 0.45, `stjernen for svag: vandt ${starWins}/${N}`);
+  // upper bound er defensiv: 400/400 = motorbrydende determinisme; balance-niveauet bevogtes af dry-run-gaten
   assert.ok(rate < 1.0, `stjernen vandt ALT (${starWins}/${N}) — ingen overraskelser`);
 });
 

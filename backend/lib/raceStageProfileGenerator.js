@@ -38,7 +38,7 @@ export const FINALE_TYPES = Object.freeze([
 export const DEMAND_VECTORS = Object.freeze({
   flat:          Object.freeze({ sprint: 0.62, acceleration: 0.18, positioning: 0.08, endurance: 0.04, randomness: 0.08 }),
   rolling:       Object.freeze({ endurance: 0.22, punch: 0.14, tactics: 0.12, positioning: 0.10, sprint: 0.10, climbing: 0.06, recovery: 0.06, randomness: 0.20 }),
-  hilly:         Object.freeze({ punch: 0.48, climbing: 0.06, acceleration: 0.10, endurance: 0.08, positioning: 0.06, sprint: 0.02, randomness: 0.20 }),
+  hilly:         Object.freeze({ punch: 0.48, climbing: 0.06, acceleration: 0.10, endurance: 0.08, positioning: 0.06, sprint: 0.02 /* næsten fjernet: sprint-nulstilling sikrer puncheur-terrain mod sprinter-kap */, randomness: 0.20 }),
   mountain:      Object.freeze({ climbing: 0.56, endurance: 0.16, punch: 0.04, recovery: 0.08, tactics: 0.04, positioning: 0.02, randomness: 0.10 }),
   high_mountain: Object.freeze({ climbing: 0.54, endurance: 0.20, punch: 0.04, recovery: 0.08, tactics: 0.04, randomness: 0.10 }),
   itt:           Object.freeze({ time_trial: 0.60, positioning: 0.28, randomness: 0.12 }),
