@@ -19,7 +19,7 @@ const DISABLE_FLAG = process.env.RATE_LIMIT_DISABLED === "1";
 // `trust proxy = 1` in server.js makes req.ip resolve to the first hop client.
 // ipKeyGenerator normalises IPv6 to a /64 subnet prefix, preventing subnet-
 // rotation bypass; IPv4 passes through unchanged.
-function userOrIpKey(req) {
+export function userOrIpKey(req) {
   if (req.user?.id) return `u:${req.user.id}`;
   return `ip:${ipKeyGenerator(req.ip)}`;
 }
