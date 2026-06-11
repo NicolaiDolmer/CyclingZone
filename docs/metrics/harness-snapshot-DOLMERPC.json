@@ -41,6 +41,20 @@
     "vercel": "DISABLED 2026-05-29 (#741) via ~/.claude/settings.json (enabledPlugins.vercel=false). Eksponerede ~30 vercel:* skills (Next.js/App-Router/AI-SDK-orienterede) — dødvægt på React+Vite/Express-stack. De få deploy/env-relevante dækkes af `vercel` CLI + Vercel MCP-connector. Re-enable med /plugin hvis stack senere migrerer til Next.js.",
     "project_level_disabled": "product-management, marketing, design, productivity disabled via .claude/settings.json (#356) — gælder alle PCs."
   },
+  "drift_check": {
+    "description": "Verificér ved session-start (og efter Desktop-app-opdatering) at disse plugins ER FRAVÆRENDE i skills-listen. Fremkommer de → re-disable via .claude/settings.json (project-level). Se docs/AI_OPS_DISABLE_PLAYBOOK.md#desktop-kanal-drift.",
+    "should_be_absent": [
+      "code-modernization@claude-plugins-official",
+      "vercel@claude-plugins-official",
+      "product-management@claude-plugins-official",
+      "marketing@claude-plugins-official",
+      "design@claude-plugins-official",
+      "productivity@claude-plugins-official"
+    ],
+    "correct_disable_channel": "project-level .claude/settings.json (repo-committed) — vinder over Desktop-kanal og user-level settings",
+    "last_verified": "2026-05-29",
+    "issue_ref": "#1286"
+  },
   "total_harness_tokens": 14948,
   "cross_pc_parity_vs_NicolaiPC": {
     "nicolaipc_total_harness_tokens": 14782,

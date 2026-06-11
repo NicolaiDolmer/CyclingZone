@@ -3,7 +3,9 @@
     "product-management@claude-plugins-official": false,
     "marketing@claude-plugins-official": false,
     "design@claude-plugins-official": false,
-    "productivity@claude-plugins-official": false
+    "productivity@claude-plugins-official": false,
+    "code-modernization@claude-plugins-official": false,
+    "vercel@claude-plugins-official": false
   },
   "permissions": {
     "additionalDirectories": [

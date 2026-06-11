@@ -6,6 +6,56 @@ Baseret på faktisk brug i 66 sessioner (data: `.codex.local/token-baseline-befo
 
 ---
 
+## Desktop-kanal drift — mekanisme og fix (#1286, fundet 11/6)
+
+**Problem:** Plugins installeret via Claude Code Desktop-kanalen har separat plugin-state der ignorerer `enabledPlugins`-nøgler i `~/.claude/settings.json` (user-level). Disablede plugins kan drifte tilbage og æde cold-start-tokens uden at det er synligt i settings-filen.
+
+### Kanal-hierarki (hvem vinder)
+
+| Kanal | Fil | Kan overrides? | Anbefalet til disables? |
+|---|---|---|---|
+| Desktop-app plugin-state | intern i Desktop-binæren | Vinder over user-level | Nej — drifter ved app-opdatering |
+| **Project-level settings** | `.claude/settings.json` (dette repo) | **Nej — repo-committed** | ✅ **Ja — brug denne** |
+| User-level settings | `~/.claude/settings.json` (OneDrive-synced) | Omgås af Desktop-kanal | Supplement, ikke garanti |
+
+**Konklusion: Alle `@claude-plugins-official`-disables skal stå i project-level `.claude/settings.json`.** User-level er backup, ikke primary. Desktop-kanal kan ikke override project-level settings.
+
+### Korrekt disable-procedure
+
+1. Tilføj plugin til `enabledPlugins`-map i `.claude/settings.json` (dette repo) med `false`
+2. Commit + push (disablet er nu gældende for alle PCs der kloner repo'et)
+3. Verificér ved næste session-start: plugin-skills må IKKE optræde i session-start system-reminder
+4. Opdatér `drift_check.last_verified` i `docs/metrics/harness-snapshot-<PC>.json`
+
+### Aktuelle projekt-level disables (`.claude/settings.json`)
+
+| Plugin | Status | Årsag |
+|---|---|---|
+| `product-management@claude-plugins-official` | ❌ disabled | Aldrig brugt, ~500 tok overhead |
+| `marketing@claude-plugins-official` | ❌ disabled | Aldrig brugt |
+| `design@claude-plugins-official` | ❌ disabled | Aldrig brugt |
+| `productivity@claude-plugins-official` | ❌ disabled | Aldrig brugt |
+| `code-modernization@claude-plugins-official` | ❌ disabled (#382, løftet til project-level #1286) | 7 skills aldrig brugt |
+| `vercel@claude-plugins-official` | ❌ disabled (#741, løftet til project-level #1286) | Next.js-skills unødvendige i Vite+React-stack |
+
+### Drift-check
+
+Kør ved session-start eller efter Desktop-app-opdatering:
+```
+# Verificér at ingen disabled plugins er synlige i skills-listen:
+# 1. Start ny Claude Code session i CyclingZone
+# 2. I session-start system-reminder — check at INGEN af disse prefix er til stede:
+#    code-modernization:*, vercel:*, product-management:*, marketing:*, design:*, productivity:*
+# 3. Opdatér drift_check.last_verified i docs/metrics/harness-snapshot-<PC>.json
+```
+
+Hvis et disabled plugin dukker op:
+1. Verificér at det stadig er `false` i `.claude/settings.json`
+2. Hvis ja → Desktop-kanal-drift bekræftet → disable igen via `/plugin` UI i Claude Code Desktop
+3. Rapportér til #605-epic-tråden
+
+---
+
 ## Phase 2 — Disable ubrugte MCP-connectors
 
 **Handling:** Åbn https://claude.ai/settings/connectors (eller Connectors-menu i Claude Code) og **disconnect** disse:
