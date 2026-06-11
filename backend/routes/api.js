@@ -195,6 +195,7 @@ import { createAdminImportResultsHandler } from "../lib/adminImportResultsHandle
 import { adminImportUploadSingleFile, adminImportUploadMultipleFiles } from "../lib/adminImportUpload.js";
 import { getDefaultWebhook, sendWebhook } from "../lib/discordNotifier.js";
 import { importPcmResults, buildPcmImportEmbed } from "../lib/pcmResultsImport.js";
+import { getRaceEngineStatus, runAdminSimulateRace, buildRaceSimEmbed } from "../lib/adminSimulateRace.js";
 import { checkAchievements } from "../lib/achievementEngine.js";
 import { captureException, setSentryUser } from "../lib/sentry.js";
 import { upsertOwnTeamProfile } from "../lib/teamProfileEngine.js";
@@ -5775,6 +5776,39 @@ router.post(
     }
   },
 );
+
+// GET /api/admin/race-engine-status — flag-state + scheduled løb med readiness (#1102)
+router.get("/admin/race-engine-status", requireAdmin, async (req, res) => {
+  try {
+    res.json(await getRaceEngineStatus({ supabase }));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/admin/simulate-race — afvikl ét løb via race-motoren (#1102).
+// body: { race_id, dry_run } — dry_run=true giver preview uden DB-writes (tilladt ved flag OFF).
+router.post("/admin/simulate-race", requireAdmin, adminWriteLimiter, async (req, res) => {
+  const dryRun = req.body?.dry_run === true || req.body?.dry_run === "true";
+  // Detaljeret Discord-notifikation (kun ved rigtig afvikling) — spejler PCM-importen.
+  const notifyDiscord = dryRun
+    ? null
+    : async ({ race, resultRows }) => {
+        const url = await getDefaultWebhook();
+        if (!url) return;
+        const embed = buildRaceSimEmbed({ race, resultRows });
+        await sendWebhook(url, { embeds: [{ ...embed, footer: { text: "Cycling Zone" } }] });
+      };
+  try {
+    const result = await runAdminSimulateRace({
+      supabase, raceId: req.body?.race_id, dryRun,
+      ensureSeasonStandings, updateStandings, notifyDiscord,
+    });
+    res.json(result);
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
+});
 
 // GET /api/admin/prize-payout-preview — vis betalte og udestående præmier for en sæson
 router.get("/admin/prize-payout-preview", requireAdmin, async (req, res) => {
