@@ -157,7 +157,7 @@ export default function RoadmapPage() {
                             {itemTitle(item, i18n.language)}
                           </span>
                         </div>
-                        <div className="mt-2 ml-3 flex flex-col gap-1.5">
+                        <div className="mt-2 ms-3 flex flex-col gap-1.5">
                           <VoteAxis
                             label={t("voting.idea")}
                             value={draft.idea}
