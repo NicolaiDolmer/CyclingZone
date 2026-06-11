@@ -16,6 +16,7 @@ const Layout = lazy(() => import("./components/Layout"));
 const ClarityIntegration = lazy(() => import("./lib/clarityIntegration.jsx"));
 const SpeedInsightsIntegration = lazy(() => import("./lib/speedInsightsIntegration.jsx"));
 const VercelAnalyticsIntegration = lazy(() => import("./lib/vercelAnalyticsIntegration.jsx"));
+const GaIntegration = lazy(() => import("./lib/gaIntegration.jsx"));
 
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
@@ -128,6 +129,7 @@ export default function App() {
         <ClarityIntegration />
         <SpeedInsightsIntegration />
         <VercelAnalyticsIntegration />
+        <GaIntegration />
       </Suspense>
       <Suspense fallback={<RouteFallback />}>
         <Routes>

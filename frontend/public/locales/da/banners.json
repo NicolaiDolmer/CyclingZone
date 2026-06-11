@@ -23,7 +23,7 @@
       },
       "analytics": {
         "label": "Analyse",
-        "desc": "Vi måler anonymt hvilke knapper der frustrerer brugere (fx via Microsoft Clarity), så vi kan rette dårlig UX."
+        "desc": "Vi måler anonymt hvordan spillet bruges: hvilke knapper der frustrerer (Microsoft Clarity) og hvor spillerne kommer fra (Google Analytics), så vi kan rette dårlig UX."
       },
       "marketing": {
         "label": "Marketing",
