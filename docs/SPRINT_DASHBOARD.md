@@ -49,7 +49,7 @@
 
 **Top 15 mest aktive spillere** (interview-DM-target-liste): `~/OneDrive/CyclingZone-context/sprint-validation/top-active-players-2026-05-18.md` — privat fil, indeholder emails. Tier 1 (top 5 m. Discord): Swatt Team / Visma / Chris Machines / Soudal Quick-Step / Decathlon CMA CGM.
 
-> **Live siden 2026-05-17** ([#365](https://github.com/NicolaiDolmer/CyclingZone/issues/365)): admin kan trække DAU/WAU/MAU/D7/avg-session/top-features fra [`/admin/sprint-metrics`](https://cycling-zone.vercel.app/admin/sprint-metrics) — klik **⬇ CSV** og paste ind her. Eller bed Claude opdatere via Supabase MCP.
+> **Live siden 2026-05-17** ([#365](https://github.com/NicolaiDolmer/CyclingZone/issues/365)): admin kan trække DAU/WAU/MAU/D7/avg-session/top-features fra [`/admin/sprint-metrics`](https://cyclingzone.org/admin/sprint-metrics) — klik **⬇ CSV** og paste ind her. Eller bed Claude opdatere via Supabase MCP.
 
 ## 📅 Uge-status (interaktive checkbox-tasks)
 

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Statisk sitemap: kun public (ikke-auth) routes. App-routes bag login medtages ikke. -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://cyclingzone.org/</loc>
+  </url>
+  <url>
+    <loc>https://cyclingzone.org/login</loc>
+  </url>
+  <url>
+    <loc>https://cyclingzone.org/founder-supporter</loc>
+  </url>
+  <url>
+    <loc>https://cyclingzone.org/privacy-policy</loc>
+  </url>
+  <url>
+    <loc>https://cyclingzone.org/privatlivspolitik</loc>
+  </url>
+</urlset>

@@ -18,7 +18,7 @@
 
 ## 2. Prod-checkliste (~10-15 min, lukker 11 done-issues)
 
-AI har allerede maskin-verificeret og lukket 9 i dag. Disse kan kun du se (data-afhængige sider, mock renderer tomt). Log ind på cycling-zone.vercel.app:
+AI har allerede maskin-verificeret og lukket 9 i dag. Disse kan kun du se (data-afhængige sider, mock renderer tomt). Log ind på cyclingzone.org:
 
 **Stop 1 — /board (ét besøg dækker 7):**
 - [ ] [#102](https://github.com/NicolaiDolmer/CyclingZone/issues/102) De 9 personlighedstyper er synlige/forklaret (transparens-panel)

@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.23",
+    date: "2026-06-11",
+    label: "Beta",
+    changes: [
+      {
+        category: "New · Domain",
+        items: [
+          "EN · Cycling Zone has a real home now: the game lives at cyclingzone.org. The old cycling-zone.vercel.app address redirects automatically, so existing links and bookmarks keep working. You may need to log in again the first time you land on the new domain. Refs #1296.",
+          "DA · Cycling Zone har fået et rigtigt hjem: spillet bor nu på cyclingzone.org. Den gamle cycling-zone.vercel.app-adresse redirecter automatisk, så eksisterende links og bogmærker virker stadig. Du skal muligvis logge ind igen første gang du lander på det nye domæne. Refs #1296.",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.22",
     date: "2026-06-11",
     label: "Beta",

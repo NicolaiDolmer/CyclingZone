@@ -101,7 +101,7 @@ jobs:
         run: |
           BACKEND_HEALTH=$(curl -s -o /dev/null -w "%{http_code}" https://cyclingzone-production.up.railway.app/health)
           BACKEND_AUTH=$(curl -s -o /dev/null -w "%{http_code}" https://cyclingzone-production.up.railway.app/api/auctions)
-          FRONTEND=$(curl -s -o /dev/null -w "%{http_code}" -L https://cycling-zone.vercel.app/)
+          FRONTEND=$(curl -s -o /dev/null -w "%{http_code}" -L https://cyclingzone.org/)
 
           {
             echo "backend_health=$BACKEND_HEALTH"
