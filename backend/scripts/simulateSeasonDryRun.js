@@ -52,14 +52,16 @@ const ENFORCE_TARGETS = !!arg("enforce-targets", false);
 const baseline = JSON.parse(readFileSync(join(__dirname, "../lib/riderTypesBaseline.json"), "utf8"));
 const model = JSON.parse(readFileSync(join(__dirname, "../lib/riderValuationModel.json"), "utf8"));
 
-// ── Ejer-definerede mål-vinderrater (2026-06-07) — "født-som"-arketype ────────
-// Motoren kalibreres til at en ÆGTE (genereret) sprinter vinder ~90% af flade løb osv.
-// mountain er en gruppe (primært gc + klatrere + fightere/baroudeur).
+// ── Ejer-besluttede gate-bånd (2026-06-11, jf. genre-benchmark-research) ──────
+// Interim-bånd nåelige med motor-tuning alene. FULDE mål (7/6) bevaret nedenfor;
+// hæves via population-berigelse (cobbles/hilly) + evne-system v2 #1122 (itt).
+//   Fulde mål: flat 90 · itt tt 85 · cobbles 90→80 (research) · hilly 50 · mountain 85.
 const TARGETS = {
   flat:          { label: "sprinter ≥90%", types: ["sprinter"], pct: 0.90 },
-  itt:           { label: "tt ≥85%", types: ["tt"], pct: 0.85 },
-  cobbles:       { label: "brostensrytter ≥90%", types: ["brostensrytter"], pct: 0.90 },
-  hilly:         { label: "puncheur ≥50%", types: ["puncheur"], pct: 0.50 },
+  itt:           { label: "tt ≥60% (interim)", types: ["tt"], pct: 0.60 },
+  itt_tempo:     { label: "tt+gc ≥95%", terrain: "itt", types: ["tt", "gc"], pct: 0.95 },
+  cobbles:       { label: "brostensrytter ≥80%", types: ["brostensrytter"], pct: 0.80 },
+  hilly:         { label: "puncheur ≥35% (interim)", types: ["puncheur"], pct: 0.35 },
   mountain:      { label: "gc+climber+baroudeur ≥85%", types: ["gc", "climber", "baroudeur"], pct: 0.85 },
   high_mountain: { label: "gc+climber+baroudeur ≥85%", types: ["gc", "climber", "baroudeur"], pct: 0.85 },
 };
@@ -185,12 +187,14 @@ for (const terrain of TERRAINS) {
 }
 
 // ── Scorecard vs ejer-mål (født-som = ægte type) ─────────────────────────────
-const scorecard = Object.entries(TARGETS).map(([terrain, t]) => {
+// t.terrain overstyr: itt_tempo er et ekstra bånd på samme terræn som itt.
+const scorecard = Object.entries(TARGETS).map(([key, t]) => {
+  const terrain = t.terrain ?? key;
   const tr = terrainResults.find((x) => x.terrain === terrain);
   const bornHit = t.types.reduce((s, ty) => s + (tr.bornHist[ty] || 0), 0);
   const derivedHit = t.types.reduce((s, ty) => s + (tr.derivedHist[ty] || 0), 0);
   const bornPct = bornHit / tr.races, derivedPct = derivedHit / tr.races;
-  return { terrain, label: t.label, targetPct: t.pct, bornPct, derivedPct, pass: bornPct >= t.pct };
+  return { terrain: key, label: t.label, targetPct: t.pct, bornPct, derivedPct, pass: bornPct >= t.pct };
 });
 
 console.log(`\n${"─".repeat(80)}`);
@@ -205,6 +209,15 @@ console.log(`\n   Motor belønner rigtig evne? (vinder ⌀nøgle-evne vs felt-me
 for (const tr of terrainResults) {
   console.log(`   ${padE(tr.terrain, 14)} ${padE(tr.keyAb, 12)} vinder ⌀${padS(tr.winnerKeyAvg, 2)} vs median ${padS(tr.fieldMedianKey, 2)}   ⌀rang ${tr.avgStrengthRank.toFixed(1)}   distinkt ${tr.distinct}/${tr.races}`);
 }
+
+// ── Udbruds-andel (rapport-only, ingen exit-kode) ────────────────────────────
+// Baroudeur/fighter = udbrudstyperne; irl vinder de ~40%+ af bjerg-etaper.
+// 0% er et rødt flag: motoren er for deterministisk (GC-ryttere dominerer blindt).
+const mtTerrains = terrainResults.filter((x) => x.terrain === "mountain" || x.terrain === "high_mountain");
+const breakawayWins = mtTerrains.reduce((s, tr) => s + (tr.bornHist["baroudeur"] || 0) + (tr.bornHist["fighter"] || 0), 0);
+const mtTotalWins = mtTerrains.reduce((s, tr) => s + tr.races, 0);
+const breakawayShare = pct1(breakawayWins, mtTotalWins);
+console.log(`\n   udbruds-andel (baroudeur/fighter) af bjergsejre: ${breakawayShare}% (irl ~40%; 0% = rød flag, rapport-only)`);
 
 // ── C. Grand Tour (fuld 21-etapers, til eyeball + HTML) ──────────────────────
 const GT_TEMPLATE = [
