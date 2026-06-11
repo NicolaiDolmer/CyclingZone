@@ -108,11 +108,11 @@ POST  /api/finance/loans/:id/repay { amount }
 
 ### Teams & Managers
 ```
-GET /api/teams/my
 PUT /api/teams/my                { name, manager_name }
 GET /api/teams/:id
 GET /api/managers/:teamId
 ```
+- `GET /api/teams/my` er fjernet (#1264) — den var død kode (skygget af `GET /api/teams/:id`, `:id="my"` → 404)
 
 ### Notifications
 ```

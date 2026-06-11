@@ -23,6 +23,114 @@ function createHttpError(statusCode, message) {
   return error;
 }
 
+// ── #1264 · DB-håndhævet unikhed ──────────────────────────────────────────────
+// Check-then-insert er racet under samtidige signups (empirisk bekræftet i
+// load-testen 2026-06-11): applikations-prechecket ser intet, men en samtidig
+// transaktion committer mellem precheck og insert. Autoriteten er derfor
+// Postgres-unique-indexes (migration 2026-06-11-teams-unique-user-and-name.sql),
+// og 23505-violations håndteres gracefully her.
+const UNIQUE_VIOLATION_CODE = "23505";
+const TEAMS_USER_ID_UNIQUE_INDEX = "teams_user_id_unique_idx";
+const TEAMS_NAME_UNIQUE_INDEX = "teams_name_lower_unique_idx";
+const NAME_CONFLICT_RETRY_LIMIT = 3;
+const NAME_TAKEN_MESSAGE = "Dette holdnavn er allerede taget — vælg et andet";
+
+function isUniqueViolation(error) {
+  return error?.code === UNIQUE_VIOLATION_CODE;
+}
+
+// Hvilket unique-index udløste 23505? PostgREST sender constraint-navnet i
+// message og nøglen i details — vi matcher begge som fallback for hinanden.
+function uniqueViolationTarget(error) {
+  const text = `${error?.message ?? ""} ${error?.details ?? ""}`;
+  if (text.includes(TEAMS_USER_ID_UNIQUE_INDEX) || text.includes("(user_id)")) {
+    return "user_id";
+  }
+  if (text.includes(TEAMS_NAME_UNIQUE_INDEX) || text.includes("lower(name)")) {
+    return "name";
+  }
+  return "unknown";
+}
+
+async function fetchTeamByUserId({ supabase, userId }) {
+  const { data: teams, error } = await supabase
+    .from("teams")
+    .select("*")
+    .eq("user_id", userId)
+    .limit(1);
+
+  if (error) {
+    throw createHttpError(500, error.message);
+  }
+
+  return (teams || [])[0] || null;
+}
+
+// Insert med 23505-håndtering:
+// - user_id-konflikt → et samtidigt bootstrap-kald vandt; returnér det
+//   eksisterende hold (idempotent svar, ikke 500 → kontoen er aldrig hold-løs).
+// - navne-konflikt → en anden bruger tog navnet i race-vinduet; bounded retry
+//   med talsuffiks ("Navn 2", "Navn 3", ...) så signup altid lander et
+//   funktionelt hold. Brugeren kan omdøbe bagefter via Min Profil.
+// Bemærk: ved dobbelt-bootstrap med SAMME navn kan Postgres rapportere navne-
+// indexet før user_id-indexet — suffiks-retryet rammer da user_id-konflikten i
+// næste forsøg og konvergerer stadig idempotent.
+async function insertTeamHandlingConflicts({
+  supabase,
+  userId,
+  normalizedName,
+  normalizedManagerName,
+  division,
+}) {
+  let nameAttempt = 0;
+
+  while (true) {
+    const candidateName = nameAttempt === 0
+      ? normalizedName
+      : `${normalizedName} ${nameAttempt + 1}`;
+
+    const { data: insertedTeam, error: insertError } = await supabase
+      .from("teams")
+      .insert({
+        user_id: userId,
+        name: candidateName,
+        manager_name: normalizedManagerName,
+        ...DEFAULT_TEAM_VALUES,
+        division,
+      })
+      .select("*")
+      .single();
+
+    if (!insertError) {
+      return { team: insertedTeam, created: true };
+    }
+
+    if (!isUniqueViolation(insertError)) {
+      throw createHttpError(500, insertError.message);
+    }
+
+    const target = uniqueViolationTarget(insertError);
+
+    if (target === "user_id") {
+      const existingTeam = await fetchTeamByUserId({ supabase, userId });
+      if (!existingTeam) {
+        throw createHttpError(500, "Holdoprettelsen ramte en user_id-konflikt, men holdet kunne ikke findes — prøv igen");
+      }
+      return { team: existingTeam, created: false };
+    }
+
+    if (target === "name") {
+      nameAttempt += 1;
+      if (nameAttempt > NAME_CONFLICT_RETRY_LIMIT) {
+        throw createHttpError(409, NAME_TAKEN_MESSAGE);
+      }
+      continue;
+    }
+
+    throw createHttpError(500, insertError.message);
+  }
+}
+
 function normalizeValue(value) {
   return String(value ?? "").trim();
 }
@@ -85,7 +193,7 @@ async function ensureUniqueTeamName({ supabase, normalizedName, existingTeamId =
 
   const conflictingTeam = (teams || []).find((team) => team.id !== existingTeamId);
   if (conflictingTeam) {
-    throw createHttpError(409, "Dette holdnavn er allerede taget — vælg et andet");
+    throw createHttpError(409, NAME_TAKEN_MESSAGE);
   }
 }
 
@@ -113,6 +221,11 @@ async function ensureBoardProfile({ supabase, team }) {
     }));
 
   if (boardInsertError) {
+    // #1264: et samtidigt bootstrap-kald vandt board-insertet
+    // (UNIQUE (team_id, plan_type)) — profilen findes, intet at reparere.
+    if (isUniqueViolation(boardInsertError)) {
+      return false;
+    }
     throw createHttpError(500, boardInsertError.message);
   }
 
@@ -167,30 +280,27 @@ export async function upsertOwnTeamProfile({
       .single();
 
     if (updateError) {
+      // #1264: en anden bruger tog navnet mellem precheck og update — ved en
+      // eksplicit omdøbning er det rigtige svar 409, ikke auto-suffiks.
+      if (isUniqueViolation(updateError) && uniqueViolationTarget(updateError) === "name") {
+        throw createHttpError(409, NAME_TAKEN_MESSAGE);
+      }
       throw createHttpError(500, updateError.message);
     }
 
     team = updatedTeam;
   } else {
     const division = await pickDivisionForNewTeam(supabase);
-    const { data: insertedTeam, error: insertError } = await supabase
-      .from("teams")
-      .insert({
-        user_id: userId,
-        name: normalizedName,
-        manager_name: normalizedManagerName,
-        ...DEFAULT_TEAM_VALUES,
-        division,
-      })
-      .select("*")
-      .single();
+    const insertResult = await insertTeamHandlingConflicts({
+      supabase,
+      userId,
+      normalizedName,
+      normalizedManagerName,
+      division,
+    });
 
-    if (insertError) {
-      throw createHttpError(500, insertError.message);
-    }
-
-    team = insertedTeam;
-    created = true;
+    team = insertResult.team;
+    created = insertResult.created;
   }
 
   const boardProfileCreated = await ensureBoardProfile({ supabase, team });

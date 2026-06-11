@@ -3121,10 +3121,10 @@ router.get("/teams/:id", requireAuth, async (req, res) => {
   res.json({ ...team, riders: riders || [] });
 });
 
-// GET /api/teams/my — current user's team
-router.get("/teams/my", requireAuth, async (req, res) => {
-  res.json(req.team);
-});
+// #1264: GET /teams/my er fjernet — den blev skygget af GET /teams/:id
+// (registreret først, :id="my" → 404) og var dermed død kode. Intet
+// frontend-kald bruger den; klienter læser holdet via PUT-responsen nedenfor
+// eller /api/me/onboarding-progress.
 
 // PUT /api/teams/my — create or update the current user's team profile
 router.put("/teams/my", requireAuth, marketWriteLimiter, async (req, res) => {
