@@ -115,6 +115,12 @@ const WHITELIST_EMPTY_TABLES = new Set([
   // fyldes når brugere scouter ryttere (slots/sæson). Skriv-path verificeret i
   // POST /api/scouting/:riderId. Fjern denne whitelist-entry når tabellen har rows.
   "scout_actions",
+  // Discord DM-retry-kø (#1115): rows enqueues KUN når en DM fejler og slettes
+  // igen når den leveres (processDmOutboxDrain). Tom = sund steady-state — alle
+  // DM'er leveret. Detector A's "write-but-no-data" mis-fyrer på dræn-til-tom-
+  // køer; fandt den 2026-06-11 efter outboxen var drænet. Skriv-path verificeret
+  // i discordDmOutbox.js (enqueueDm).
+  "discord_dm_outbox",
 ]);
 
 // Detector B: endpoints der er korrekt orphaned i frontend (cron, admin-curl, webhook)
