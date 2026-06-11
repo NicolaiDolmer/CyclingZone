@@ -1,8 +1,17 @@
 # CyclingZone Living World Product Doctrine
 
-Status: Owner-approved direction, pending written-spec review
+Status: Owner-approved direction; amended 2026-06-11 (see Amendments)
 Date: 2026-06-08
 Scope: Product direction, system priorities, backlog governance, and playtest hypotheses
+
+## Amendments (2026-06-11)
+
+Owner decisions from the core-systems design session ([2026-06-11-kernesystemer-design.md](2026-06-11-kernesystemer-design.md)) override this doctrine on four points:
+
+1. **Swaps are kept** (overrides "remove or strongly deprioritized" under Market and social world).
+2. **A daily training action is the game's daily hook.** Riders always follow their programs (the assistant executes); an active daily click grants a bonus (~+25%). "Daily visits rewarding but never mandatory" still holds — only the bonus is login-gated.
+3. **The youth auction runs continuously** inside the system auction waves, not as a separate scheduled event.
+4. **The academy MVP is a 20/6 launch deliverable** (intake + 8-slot academy + youth in daily training + continuous youth auctions), not a post-evidence layer.
 
 ## Purpose
 
