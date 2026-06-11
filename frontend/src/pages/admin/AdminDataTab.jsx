@@ -30,6 +30,9 @@ export default function AdminDataTab() {
   const [pcmFiles, setPcmFiles] = useState([]);
   const [pcmPreview, setPcmPreview] = useState(null);
   const [pcmResult, setPcmResult] = useState(null);
+  const [engineStatus, setEngineStatus] = useState(null);
+  const [simBusyId, setSimBusyId] = useState(null);
+  const [simPreview, setSimPreview] = useState(null);
   const [loading, setLoading] = useState({});
 
   function setLoad(k, v) { setLoading(l => ({ ...l, [k]: v })); }
@@ -45,7 +48,21 @@ export default function AdminDataTab() {
     setRacePool(rp.data || []);
   }
 
-  useEffect(() => { loadData(); }, []);
+  async function loadEngineStatus() {
+    try {
+      const res = await fetch(`${API}/api/admin/race-engine-status`, {
+        headers: await getAuth(),
+      });
+      const data = await readAdminJson(res);
+      if (res.ok) setEngineStatus(data);
+      else showMsg(`❌ Race-motor status: ${adminErrorMessage(data, res)}`, "error");
+    } catch (e) {
+      showMsg(`❌ Race-motor status fejlede: ${e.message || "ukendt"}`, "error");
+    }
+  }
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { loadData(); loadEngineStatus(); }, []);
 
   async function handleCreateRace(e) {
     e.preventDefault(); setLoad("race", true);
@@ -289,6 +306,36 @@ export default function AdminDataTab() {
   function handlePcmCancel() {
     setPcmPreview(null);
     showMsg("Forhåndsvisning annulleret", "info");
+  }
+
+  async function handleSimulate(race, dryRun) {
+    if (!dryRun) {
+      if (!window.confirm(`Afvikl "${race.name}" med race-motoren? Resultater skrives og bestyrelsen opdateres.`)) return;
+    }
+    setSimBusyId(race.id);
+    try {
+      const res = await fetch(`${API}/api/admin/simulate-race`, {
+        method: "POST",
+        headers: await getAuth(),
+        body: JSON.stringify({ race_id: race.id, dry_run: dryRun }),
+      });
+      const data = await readAdminJson(res);
+      if (!res.ok) {
+        showMsg(`❌ ${adminErrorMessage(data, res)}`, "error");
+        return;
+      }
+      if (dryRun) {
+        setSimPreview({ race, ...data });
+      } else {
+        setSimPreview(null); // ryd evt. stale dry-run panel med et andet resultat
+        showMsg(`✅ ${race.name}: ${data.rows} resultatrækker skrevet via motoren`);
+        loadEngineStatus();
+      }
+    } catch (e) {
+      showMsg(`❌ Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
+    } finally {
+      setSimBusyId(null);
+    }
   }
 
   return (
@@ -771,6 +818,116 @@ export default function AdminDataTab() {
             )}
             {sheetsResult.races_skipped.length > 0 && (
               <p className="text-cz-accent-t">Ikke matchet ({sheetsResult.races_skipped.length}): {sheetsResult.races_skipped.join(", ")}</p>
+            )}
+          </div>
+        )}
+      </AdminSection>
+
+      <AdminSection title="🏁 Race-motor V2 (#1102)">
+        <div className="flex items-center gap-3 flex-wrap mb-4">
+          <p className="text-cz-2 text-xs">
+            Flag:{" "}
+            {engineStatus == null
+              ? <span className="text-cz-3 italic">ikke hentet endnu</span>
+              : engineStatus.enabled
+                ? <span className="text-cz-success font-semibold">✅ ON</span>
+                : <span className="text-red-500 font-semibold">⛔ OFF <span className="text-cz-3 font-normal">(PCM-import er resultat-kilden)</span></span>
+            }
+          </p>
+          <p className="text-cz-3 text-xs italic">preview virker altid; ægte afvikling kræver flag ON</p>
+          <button
+            onClick={loadEngineStatus}
+            className="px-3 py-1.5 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-xs hover:bg-cz-subtle hover:text-cz-1 transition-all">
+            Genindlæs
+          </button>
+        </div>
+
+        {engineStatus?.races?.length > 0 && (
+          <div className="mb-4 overflow-hidden rounded-lg border border-cz-border">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-cz-border">
+                  <th className="px-3 py-2 text-left text-cz-3">Løb</th>
+                  <th className="px-3 py-2 text-left text-cz-3">Etaper</th>
+                  <th className="px-3 py-2 text-left text-cz-3">Profiler</th>
+                  <th className="px-3 py-2 text-left text-cz-3">Startfelt</th>
+                  <th className="px-3 py-2 text-right text-cz-3">Handlinger</th>
+                </tr>
+              </thead>
+              <tbody>
+                {engineStatus.races.map(race => {
+                  // ready er sat server-side i getRaceEngineStatus (og valideret i runAdminSimulateRace):
+                  // kræver at alle race.stages stage-profiler er til stede — single source of truth.
+                  return (
+                  <tr key={race.id} className="border-b border-cz-border hover:bg-cz-subtle">
+                    <td className="px-3 py-2.5">
+                      <p className="text-cz-1 font-medium">{race.name}</p>
+                      <p className="text-cz-3">{race.race_class || race.race_type}</p>
+                    </td>
+                    <td className="px-3 py-2.5 text-cz-2">{race.stages}</td>
+                    <td className="px-3 py-2.5">
+                      {race.ready
+                        ? <span className="text-cz-success">✅ {race.profile_count}</span>
+                        : <span className="text-cz-accent-t">❌ kør backfill</span>
+                      }
+                    </td>
+                    <td className="px-3 py-2.5 text-cz-2">
+                      {race.entry_count > 0 ? race.entry_count : <span className="text-cz-3 italic">auto-fill</span>}
+                    </td>
+                    <td className="px-3 py-2.5 text-right">
+                      <div className="flex gap-2 justify-end">
+                        <button
+                          onClick={() => handleSimulate(race, true)}
+                          disabled={!race.ready || simBusyId === race.id}
+                          className="px-2 py-1 bg-cz-subtle text-cz-2 border border-cz-border rounded text-xs hover:bg-cz-subtle hover:text-cz-1 disabled:opacity-50 transition-all">
+                          {simBusyId === race.id ? "..." : "Preview"}
+                        </button>
+                        <button
+                          onClick={() => handleSimulate(race, false)}
+                          disabled={!race.ready || !engineStatus.enabled || simBusyId === race.id}
+                          className="px-2 py-1 bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30 rounded text-xs hover:bg-cz-accent/20 disabled:opacity-50 transition-all">
+                          {simBusyId === race.id ? "..." : "Afvikl"}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {engineStatus != null && !engineStatus?.races?.length && (
+          <p className="text-cz-3 text-xs italic mb-4">Ingen løb fundet for aktiv sæson.</p>
+        )}
+
+        {simPreview && (
+          <div className="bg-cz-subtle border border-cz-border rounded-lg p-4 text-xs space-y-3 mb-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <p className="text-cz-1 font-semibold">
+                Preview — {simPreview.race.name}
+              </p>
+              <button
+                onClick={() => setSimPreview(null)}
+                className="px-3 py-1.5 bg-cz-subtle text-cz-3 border border-cz-border rounded-lg text-xs hover:text-cz-1">
+                Luk
+              </button>
+            </div>
+            <p className="text-cz-2">
+              {simPreview.entrants} ryttere · {simPreview.stages} etaper · {simPreview.rows} resultatrækker
+            </p>
+            {simPreview.gcPodium?.length > 0 && (
+              <div>
+                <p className="text-cz-3 uppercase tracking-wider text-xs mb-1 font-semibold">GC-podie</p>
+                <p className="text-cz-1">{simPreview.gcPodium.map(p => `${p.rank}. ${p.rider}`).join(" · ")}</p>
+              </div>
+            )}
+            {simPreview.stageWinners?.length > 0 && (
+              <div>
+                <p className="text-cz-3 uppercase tracking-wider text-xs mb-1 font-semibold">Etapevindere</p>
+                <p className="text-cz-1">{simPreview.stageWinners.map(w => `${w.stage}. ${w.rider}`).join(" · ")}</p>
+              </div>
             )}
           </div>
         )}

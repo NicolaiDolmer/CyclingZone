@@ -57,9 +57,10 @@ export const KNOWN_EVENTS = Object.freeze([
   "auction_bid_placed",
   "transfer_offer_sent",
   "notification_clicked",
-  // Pillar-event til go/no-go-funnellen (#1168): fyres når en træningsfokus
-  // sættes/ændres (useTraining.setPlan-success). race_viewed følger med #1102.
+  // Pillar-events til go/no-go-funnellen (#1168): training_focus_set (useTraining),
+  // race_viewed (RaceDetailPage, landede med #1102 runtime-wiring).
   "training_focus_set",
+  "race_viewed",
   // Feature-impressions — canaries der fanger "deployed feature med 0 brugere"
   // (samme klasse som slice 14 / #279). Detector E i audit-feature-liveness.js
   // alarmerer hvis nogen af disse har 0 events sidste 30 dage.
