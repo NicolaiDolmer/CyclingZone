@@ -66,19 +66,21 @@ const TARGETS = {
   high_mountain: { label: "gc+climber+baroudeur ≥85%", types: ["gc", "climber", "baroudeur"], pct: 0.85 },
 };
 
-// ── KALIBRERINGS-LOG (2026-06-07) — ejer-mål defineret, tuning IKKE committet ──
-// Baseline (launch-defaults i raceStageProfileGenerator.js): flat 62% · cobbles 61%
-//   · hilly 19% · mountain 91% ✓ · high_mountain 95% ✓ · itt tt 50%/gc 49%.
-// Kandidat-vægte afprøvet (gav flat ✓92%, cobbles 84%, hilly 29%) — afventer
-//   ejer-beslutning (sænk mål vs. berig population #669), derfor reverteret:
-//     flat:    { sprint:0.56, acceleration:0.22, positioning:0.10, endurance:0.04, randomness:0.08 }
-//     cobbles: { cobblestone:0.70, punch:0.08, positioning:0.08, endurance:0.06, randomness:0.08 }
-//     hilly:   { punch:0.42, climbing:0.10, acceleration:0.12, endurance:0.08, positioning:0.06, sprint:0.06, randomness:0.16 }
-// FUND: cobbles/hilly er INDHOLDS-bundne — brostensryttere/puncheurer er kun ~6% af
-//   feltet hver, så målene kan ikke nås uden flere/stærkere specialister (#669).
-//   itt: gc-ryttere er ægte tempo-ryttere (tt+gc=99%), så "ren tt 85%" konflikter
-//   med population-designet. Motoren selv er verificeret korrekt (vinder ⌀nøgle-evne
-//   ≫ felt-median på hvert terræn) — fordelings-skævhed = labels + population, ikke motor.
+// ── KALIBRERINGS-LOG (2026-06-11) — tuning COMMITTET, gate grøn på 3 seeds ────
+// NOISE_SD_SCALE 0.20→0.16 (raceSimulator.js). Strategi (genre-research): skærp
+// nøgle-evne-vægte + sænk støj — mål blev IKKE sænket. Endelige vægte: se
+// DEMAND_VECTORS i raceStageProfileGenerator.js (ÉT sted at tune).
+// Født-som pr. seed 2026/7/42 (bånd i parentes), alle ✓:
+//   flat 93/97/93 (≥90) · itt tt 66/65/62 (≥60) · itt tt+gc 100/100/100 (≥95)
+//   cobbles 98/100/100 (≥80) · hilly 82/82/47 (≥35) · mountain 93/93/99 (≥85)
+//   high_mountain 91/91/99 (≥85) · udbruds-andel 0% (rapport-only, uændret).
+// FUND: itt er population-bundet — tt-born overgår gc-born ALENE på time_trial
+//   (+1,5 PCM snit) og positioning (fl-boost); alle neutrale dimensioner favoriserer
+//   gc (+1,5 base-adjust). Deraf pos-tung itt-vektor; plateau ~62% på seed 42
+//   (binding seed, gc-tunge tt-ruller). Fuldt mål (tt 85%) kræver evne-system v2 #1122.
+// FUND: udbrud (baroudeur) på bjerg kan IKKE købes med vægte — tactics/positioning-
+//   skift gav 0 baroudeur-sejre men +12% puncheur (gruppen faldt 93→87%). Kræver
+//   ægte udbruds-mekanik i den fulde motor (#1021).
 const TERRAINS = ["flat", "rolling", "hilly", "mountain", "high_mountain", "itt", "cobbles", "classic"];
 
 // ── Hjælpere ──────────────────────────────────────────────────────────────────
@@ -213,6 +215,8 @@ for (const tr of terrainResults) {
 // ── Udbruds-andel (rapport-only, ingen exit-kode) ────────────────────────────
 // Baroudeur/fighter = udbrudstyperne; irl vinder de ~40%+ af bjerg-etaper.
 // 0% er et rødt flag: motoren er for deterministisk (GC-ryttere dominerer blindt).
+// NB: "fighter" er IKKE en nuværende generator-arketype (kun "baroudeur" findes i
+// fictionalRiderGenerator.js) — termen beholdes defensivt fra ejerens 7/6-vokabular.
 const mtTerrains = terrainResults.filter((x) => x.terrain === "mountain" || x.terrain === "high_mountain");
 const breakawayWins = mtTerrains.reduce((s, tr) => s + (tr.bornHist["baroudeur"] || 0) + (tr.bornHist["fighter"] || 0), 0);
 const mtTotalWins = mtTerrains.reduce((s, tr) => s + tr.races, 0);

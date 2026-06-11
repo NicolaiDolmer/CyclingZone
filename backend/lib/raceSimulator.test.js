@@ -131,9 +131,14 @@ test("golden: elite-klatrer slår ren sprinter på bjerg (flertal af seeds)", ()
 });
 
 test("distribution: stjernen vinder oftest, men ikke 100% (varians findes)", () => {
-  // 1 stjerne-sprinter + 9 jævne sprintere på flad → favorit men slåbar.
+  // 1 stjerne-sprinter + 9 top-sprintere på flad → favorit men slåbar.
+  // Rival-feltet ligger TÆT på stjernen (sprint 80-84 vs 86): efter #1102-
+  // kalibreringen (flad sprint-vægt 0.30→0.62, NOISE_SD_SCALE 0.20→0.16) er et
+  // 10-14-points sprint-gab bevidst nær-deterministisk — varians-egenskaben
+  // gælder blandt JÆVNBYRDIGE favoritter, som i den ægte population (dry-run:
+  // 24+ distinkte flad-vindere pr. sæson).
   const field = [rider("star", { sprint: 86, acceleration: 84, positioning: 80 })];
-  for (let i = 0; i < 9; i++) field.push(rider(`fld${i}`, { sprint: 72 + (i % 5), acceleration: 70, positioning: 70 }));
+  for (let i = 0; i < 9; i++) field.push(rider(`fld${i}`, { sprint: 80 + (i % 5), acceleration: 78, positioning: 74 }));
   let starWins = 0;
   const N = 400;
   for (let seed = 1; seed <= N; seed++) {
