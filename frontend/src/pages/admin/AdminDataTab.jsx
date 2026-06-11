@@ -854,7 +854,10 @@ export default function AdminDataTab() {
                 </tr>
               </thead>
               <tbody>
-                {engineStatus.races.map(race => (
+                {engineStatus.races.map(race => {
+                  // Delvise profiler må ikke kunne simuleres — motoren ville stille afvikle færre etaper end løbet definerer.
+                  const profilesReady = race.profile_count >= (race.stages || 1);
+                  return (
                   <tr key={race.id} className="border-b border-cz-border hover:bg-cz-subtle">
                     <td className="px-3 py-2.5">
                       <p className="text-cz-1 font-medium">{race.name}</p>
@@ -862,7 +865,7 @@ export default function AdminDataTab() {
                     </td>
                     <td className="px-3 py-2.5 text-cz-2">{race.stages}</td>
                     <td className="px-3 py-2.5">
-                      {race.profile_count >= race.stages
+                      {profilesReady
                         ? <span className="text-cz-success">✅ {race.profile_count}</span>
                         : <span className="text-cz-accent-t">❌ kør backfill</span>
                       }
@@ -874,20 +877,21 @@ export default function AdminDataTab() {
                       <div className="flex gap-2 justify-end">
                         <button
                           onClick={() => handleSimulate(race, true)}
-                          disabled={!race.ready || simBusyId === race.id}
+                          disabled={!profilesReady || simBusyId === race.id}
                           className="px-2 py-1 bg-cz-subtle text-cz-2 border border-cz-border rounded text-xs hover:bg-cz-subtle hover:text-cz-1 disabled:opacity-50 transition-all">
                           {simBusyId === race.id ? "..." : "Preview"}
                         </button>
                         <button
                           onClick={() => handleSimulate(race, false)}
-                          disabled={!race.ready || !engineStatus.enabled || simBusyId === race.id}
+                          disabled={!profilesReady || !engineStatus.enabled || simBusyId === race.id}
                           className="px-2 py-1 bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30 rounded text-xs hover:bg-cz-accent/20 disabled:opacity-50 transition-all">
                           {simBusyId === race.id ? "..." : "Afvikl"}
                         </button>
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
