@@ -31,9 +31,11 @@ test("groupItemsByEngine buckets by engine and sorts by sort_order", () => {
     { engine: "unknown-engine", sort_order: 1, title_en: "D" },
   ]);
   assert.deepEqual(Object.keys(grouped), ENGINE_ORDER);
+  assert.ok(ENGINE_ORDER.includes("club"));
   assert.deepEqual(grouped.market.map((i) => i.title_en), ["A", "B"]);
   assert.deepEqual(grouped.races.map((i) => i.title_en), ["C"]);
   assert.deepEqual(grouped.training, []);
+  assert.deepEqual(grouped.club, []);
   // Ukendte engines droppes frem for at vælte siden.
   assert.ok(!Object.values(grouped).flat().some((i) => i.title_en === "D"));
 });

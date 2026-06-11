@@ -50,6 +50,17 @@
         "Dybere forhandling mellem managers.",
         "Et marked der fortæller historier: rygter, rivaliseringer og store handler hele verden taler om."
       ]
+    },
+    "club": {
+      "title": "Klub & verden",
+      "today": "En krævende bestyrelse med ægte mål, klubøkonomi med lån og konsekvenser, og en fælles verden af managers.",
+      "next": [
+        "Optjen renommé: sejre, rekorder og historie der bygger din klubs omdømme i verden.",
+        "Vejkaptajner og mentorer: ryttere der løfter holdet omkring sig.",
+        "Byg din stab: sportsdirektører, trænere og læger der former hvordan din klub arbejder.",
+        "Et klubmuseum: mestre, legendariske ryttere og løbene folk stadig taler om.",
+        "Venner og følg-funktion: følg managers og ryttere på tværs af verden."
+      ]
     }
   }
 }

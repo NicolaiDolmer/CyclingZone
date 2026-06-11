@@ -22,6 +22,7 @@ const ENGINES = [
   { key: "training", icon: "📈" },
   { key: "youth", icon: "🌱" },
   { key: "market", icon: "⚡" },
+  { key: "club", icon: "🏛️" },
 ];
 
 function VoteAxis({ label, value, disabled, onSelect }) {

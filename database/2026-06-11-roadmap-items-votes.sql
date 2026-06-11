@@ -16,12 +16,13 @@
 --     ganget med sqrt(antal stemmer). Eksponeret via roadmap_item_scores
 --     (security_invoker-view): RLS på votes afgør hvad der aggregeres, så kun
 --     admin ser den fulde score — en alm. bruger aggregerer kun egne rows.
---   * INGEN seed her: items indsættes først når ejeren har godkendt teksterne
---     enkeltvist (seed følger som separat migration/admin-insert).
+--   * Seed: 2026-06-11-roadmap-voting-seed.sql (22 ejer-godkendte items, 11/6).
+--     'club' i engine-CHECK = 5. kort på siden (Klub & verden) ud over de fire
+--     doctrine-motorer — board/renommé/stab/museum/social bor dér.
 
 CREATE TABLE IF NOT EXISTS roadmap_items (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  engine TEXT NOT NULL CHECK (engine IN ('races', 'training', 'youth', 'market')),
+  engine TEXT NOT NULL CHECK (engine IN ('races', 'training', 'youth', 'market', 'club')),
   sort_order INTEGER NOT NULL DEFAULT 0,
   title_en TEXT NOT NULL,
   title_da TEXT NOT NULL,

@@ -2,7 +2,9 @@
 // RoadmapPage så den kan unit-testes med node:test (uden React/Supabase).
 // Dual-akse 1-6 uden neutralt midtpunkt — beslutning fra brainstorm 2/6.
 
-export const ENGINE_ORDER = ["races", "training", "youth", "market"];
+// 'club' = 5. kort (Klub & verden) ud over de fire doctrine-motorer — board,
+// renommé, stab, museum og social bor dér (ejer-godkendt 11/6).
+export const ENGINE_ORDER = ["races", "training", "youth", "market", "club"];
 
 export const SCORE_MIN = 1;
 export const SCORE_MAX = 6;

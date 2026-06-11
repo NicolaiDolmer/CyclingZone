@@ -50,6 +50,17 @@
         "Deeper negotiation between managers.",
         "A market that tells stories: rumors, rivalries and big moves the whole world talks about."
       ]
+    },
+    "club": {
+      "title": "Club & world",
+      "today": "A demanding board with real goals, club finances with loans and consequences, and a shared world of managers.",
+      "next": [
+        "Earn renown: wins, records and history that build your club's reputation in the world.",
+        "Road captains and mentors: riders who lift the team around them.",
+        "Build your staff: sports directors, coaches and doctors who shape how your club works.",
+        "A club museum: champions, legendary riders and the races people still talk about.",
+        "Friends and following: follow managers and riders across the world."
+      ]
     }
   }
 }
