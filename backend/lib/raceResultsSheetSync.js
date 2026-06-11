@@ -1,4 +1,5 @@
 import { applyRaceResults as applyRaceResultsShared, PRIZE_PER_POINT } from "./raceResultsEngine.js";
+import { processBoardWeekendFinalization as processBoardWeekendFinalizationShared } from "./boardWeekendFinalization.js";
 import { buildGoogleSheetCsvUrl, parseGoogleSheetUrl } from "./urlSafety.js";
 import { recomputeSeasonRaceDays } from "./seasonRaceDays.js";
 
@@ -115,6 +116,7 @@ export async function syncRaceResultsFromSheets({
   adminUserId,
   fetchCsvFn = fetchCsv,
   dryRun = false,
+  processBoardWeekend = processBoardWeekendFinalizationShared,
 }) {
   parseGoogleSheetUrl(spreadsheetUrl);
 
@@ -224,7 +226,10 @@ export async function syncRaceResultsFromSheets({
     // Find DB season
     const { data: season } = await supabase
       .from("seasons")
-      .select("id, number")
+      // status + race_days_* til board-weekend-wiring (#1187): kun den AKTIVE
+      // sæson får weekend-opdateringer; race_days_completed her = værdien FØR
+      // denne sync (recompute sker efter importen).
+      .select("id, number, status, race_days_completed, race_days_total")
       .eq("number", sæsonNum)
       .single();
     if (!season) {
@@ -375,7 +380,22 @@ export async function syncRaceResultsFromSheets({
 
     if (!dryRun) {
       // #804 — opdatér seasons.race_days_completed for denne sæson efter import.
-      await recomputeSeasonRaceDays({ supabase, seasonId: season.id });
+      const newRaceDaysCompleted = await recomputeSeasonRaceDays({ supabase, seasonId: season.id });
+
+      // #1187 · Løbende bestyrelses-tilfredshed: weekend-opdatering pr. sync.
+      // Wiring'en skipper selv ikke-aktive sæsoner (historiske re-imports).
+      // Fejl må ikke vælte syncen — resultaterne ER allerede skrevet.
+      if (seasonImported > 0) {
+        try {
+          await processBoardWeekend({
+            supabase,
+            season: { ...season, race_days_completed: newRaceDaysCompleted },
+            previousRaceDaysCompleted: season.race_days_completed ?? null,
+          });
+        } catch (error) {
+          console.error("  ⚠️  board weekend update failed after sheet sync:", error.message);
+        }
+      }
     }
 
     totalImported += seasonImported;

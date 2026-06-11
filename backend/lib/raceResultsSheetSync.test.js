@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 import { syncRaceResultsFromSheets } from "./raceResultsSheetSync.js";
 
-function createSheetSyncSupabase({ raceResultDeletes, raceUpdates, importLogs, pointRows = null }) {
+function createSheetSyncSupabase({ raceResultDeletes, raceUpdates, importLogs, pointRows = null, season = null }) {
   return {
     from(table) {
       if (table === "seasons") {
@@ -13,7 +13,7 @@ function createSheetSyncSupabase({ raceResultDeletes, raceUpdates, importLogs, p
               eq() {
                 return {
                   single() {
-                    return Promise.resolve({ data: { id: "season-1", number: 1 }, error: null });
+                    return Promise.resolve({ data: season ?? { id: "season-1", number: 1 }, error: null });
                   },
                 };
               },
@@ -157,6 +157,42 @@ test("syncRaceResultsFromSheets delegates writes through applyRaceResults", asyn
   assert.deepEqual(ensureCalls, ["season-1"]);
   assert.deepEqual(updateCalls, [["season-1", "race-1"]]);
   assert.equal(importLogs[0].rows_inserted, 1);
+});
+
+// #1187 · Board-weekend-wiring: efter skarp sync kaldes processBoardWeekend med
+// race-days FØR syncen + den nye recompute-værdi.
+test("syncRaceResultsFromSheets kalder processBoardWeekend efter skarp import (#1187)", async () => {
+  const raceResultDeletes = [];
+  const raceUpdates = [];
+  const importLogs = [];
+  const supabase = createSheetSyncSupabase({
+    raceResultDeletes,
+    raceUpdates,
+    importLogs,
+    season: { id: "season-1", number: 1, status: "active", race_days_completed: 0, race_days_total: 60 },
+  });
+  const csv = [
+    "Rank,Name,Team,Benævnelse,Løb,Sæson",
+    "1,Test Rider,Test Team,Etapeplacering,Test Race,1",
+  ].join("\n");
+
+  const boardCalls = [];
+  await syncRaceResultsFromSheets({
+    spreadsheetUrl: "https://docs.google.com/spreadsheets/d/sheet-id/edit#gid=0",
+    supabase,
+    fetchCsvFn: async () => csv,
+    applyRaceResults: async (payload) => ({ rowsImported: payload.resultRows.length }),
+    ensureSeasonStandings: async () => {},
+    updateStandings: async () => {},
+    adminUserId: "admin-1",
+    processBoardWeekend: async (args) => { boardCalls.push(args); return { boards_updated: 1 }; },
+  });
+
+  assert.equal(boardCalls.length, 1);
+  assert.equal(boardCalls[0].previousRaceDaysCompleted, 0, "udgangspunkt = race_days FØR syncen");
+  assert.equal(boardCalls[0].season.id, "season-1");
+  assert.equal(boardCalls[0].season.status, "active");
+  assert.equal(boardCalls[0].season.race_days_completed, 1, "ny værdi fra recompute (1 completed etape)");
 });
 
 test("syncRaceResultsFromSheets uses known team name from Name column for team results", async () => {

@@ -427,6 +427,49 @@ test("importPcmResults: genupload af én etape sletter KUN den etape, ikke hele 
   assert.equal(report.success, true);
 });
 
+// #1187 · Board-weekend-wiring: efter en skarp import kaldes processBoardWeekend
+// med race-days FØR importen (checkpoint-udgangspunkt) og den NYE recompute-værdi.
+test("importPcmResults: kalder processBoardWeekend efter skarp import (#1187)", async () => {
+  const season = { id: "s1", number: 2, status: "active", race_days_completed: 9, race_days_total: 60 };
+  const dbRaces = [{ id: "r1", name: "Test Tour", race_type: "stage_race", race_class: "ProSeries", season_id: "s1", stages: 5, status: "completed" }];
+  const deletes = [];
+  const supabase = spySupabase({ season, dbRaces, deletes });
+
+  const boardCalls = [];
+  const report = await importPcmResults({
+    supabase,
+    files: [{ filename: "stage2.xml", buffer: Buffer.from(pcmStageXml({ current: 2, total: 5 })) }],
+    dryRun: false,
+    applyRaceResults: async ({ resultRows }) => ({ rowsImported: resultRows.length }),
+    ensureSeasonStandings: async () => {},
+    updateStandings: async () => {},
+    processBoardWeekend: async (args) => { boardCalls.push(args); return { boards_updated: 1 }; },
+  });
+
+  assert.equal(report.success, true);
+  assert.equal(boardCalls.length, 1);
+  assert.equal(boardCalls[0].previousRaceDaysCompleted, 9, "udgangspunkt = race_days FØR importen");
+  assert.equal(boardCalls[0].season.id, "s1");
+  assert.equal(boardCalls[0].season.status, "active");
+});
+
+test("importPcmResults: dryRun kalder IKKE processBoardWeekend (#1187)", async () => {
+  const season = { id: "s1", number: 2, status: "active", race_days_completed: 9, race_days_total: 60 };
+  const dbRaces = [{ id: "r1", name: "Test Tour", race_type: "stage_race", race_class: "ProSeries", season_id: "s1", stages: 5, status: "completed" }];
+  const deletes = [];
+  const supabase = spySupabase({ season, dbRaces, deletes });
+
+  const boardCalls = [];
+  await importPcmResults({
+    supabase,
+    files: [{ filename: "stage2.xml", buffer: Buffer.from(pcmStageXml({ current: 2, total: 5 })) }],
+    dryRun: true,
+    applyRaceResults: async ({ resultRows }) => ({ rowsImported: resultRows.length }),
+    processBoardWeekend: async (args) => { boardCalls.push(args); return {}; },
+  });
+  assert.equal(boardCalls.length, 0, "dry-run må ikke flytte satisfaction");
+});
+
 // ── Discord-embed ─────────────────────────────────────────────────
 
 test("buildPcmImportEmbed laver felter pr. resultat-type", () => {

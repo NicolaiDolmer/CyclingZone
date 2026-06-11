@@ -1750,6 +1750,75 @@ test("buildSeasonEndPreviewRows projects board modifier on the same path as seas
   assert.equal(preview.board_goals_total, 1);
 });
 
+// #1187 · Weekend-target-tracking flytter satisfaction løbende. Sæson-slut-
+// previewet (og processTeamSeasonEnd, samme guard) skal anke på sæson-START-
+// værdien — ellers dobbelt-anvendes deltaet oven i den konvergerede værdi.
+test("buildSeasonEndPreviewRows anker på sæson-start-satisfaction når weekend-anker er sat (#1187)", () => {
+  const makeArgs = (boardOverrides) => ({
+    teams: [
+      {
+        id: "team-1",
+        name: "Anchor Testers",
+        division: 3,
+        balance: 500,
+        sponsor_income: 200,
+        riders: [
+          { id: "rider-1", salary: 80, stat_bj: 80, stat_sp: 60, stat_tt: 65, stat_fl: 70, is_u25: false },
+          { id: "rider-2", salary: 20, stat_bj: 72, stat_sp: 68, stat_tt: 62, stat_fl: 71, is_u25: true },
+        ],
+        board_profiles: [
+          {
+            id: "board-1",
+            team_id: "team-1",
+            plan_type: "1yr",
+            focus: "balanced",
+            satisfaction: 50,
+            budget_modifier: 1.0,
+            current_goals: [
+              { type: "top_n_finish", target: 2, label: "Top 2 i divisionen", satisfaction_bonus: 10, satisfaction_penalty: 5 },
+            ],
+            seasons_completed: 0,
+            cumulative_stage_wins: 0,
+            cumulative_gc_wins: 0,
+            plan_start_sponsor_income: 200,
+            ...boardOverrides,
+          },
+        ],
+      },
+    ],
+    standings: [
+      {
+        season_id: "season-1",
+        team_id: "team-1",
+        division: 3,
+        total_points: 150,
+        rank_in_division: 1,
+        stage_wins: 2,
+        gc_wins: 1,
+      },
+    ],
+    loanData: [],
+  });
+
+  // Weekend-opdateringerne har konvergeret den løbende værdi til 74 (= 50 + 24).
+  // Med gyldigt anker skal previewet stadig lande på 74 — IKKE 74 + 24 = 98.
+  const [anchored] = buildSeasonEndPreviewRows(makeArgs({
+    satisfaction: 74,
+    season_start_satisfaction: 50,
+    season_start_anchor_season_id: "season-1",
+  }));
+  assert.equal(anchored.current_board_satisfaction, 74, "viser den løbende værdi som nuværende");
+  assert.equal(anchored.board_satisfaction, 74, "projektion = anker + delta, intet ekstra spring");
+
+  // Anker fra en ANDEN sæson ignoreres → dagens adfærd (current + delta).
+  const [stale] = buildSeasonEndPreviewRows(makeArgs({
+    satisfaction: 50,
+    season_start_satisfaction: 10,
+    season_start_anchor_season_id: "season-0",
+  }));
+  assert.equal(stale.board_satisfaction, 74, "stale anker ændrer intet ift. dagens adfærd");
+});
+
 test("updateStandings stores division ranks and keeps zero-point teams in the canonical table", async () => {
   const supabase = createStandingsSupabase({
     teams: [

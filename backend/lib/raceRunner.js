@@ -27,6 +27,7 @@ import {
   PRIZE_PER_POINT,
 } from "./raceResultsEngine.js";
 import { recomputeSeasonRaceDays } from "./seasonRaceDays.js";
+import { processBoardWeekendFinalization as processBoardWeekendFinalizationShared } from "./boardWeekendFinalization.js";
 import { simulateStage, stableSeed, ENGINE_VERSION, ABILITY_KEYS } from "./raceSimulator.js";
 
 // Intern klassements-point (grøn/bjerg) — afgør KUN rækkefølgen i de respektive
@@ -353,10 +354,20 @@ export async function simulateRace({
   ensureSeasonStandings = async () => {},
   updateStandings = async () => {},
   recomputeRaceDays = recomputeSeasonRaceDays,
+  processBoardWeekend = processBoardWeekendFinalizationShared,
   notifyDiscord = null,
 }) {
   if (!supabase?.from) throw new Error("supabase client kræves");
   if (!race?.id || !race?.season_id) throw new Error("race {id, season_id} kræves");
+
+  // #1187 · race_days_completed FØR afviklingen — checkpoint-udgangspunkt for
+  // board-weekend-wiring nedenfor. Defensiv: manglende række → null (ingen
+  // checkpoint-evaluering, satisfaction opdateres stadig).
+  const { data: seasonBefore } = await supabase
+    .from("seasons")
+    .select("id, number, status, race_days_completed, race_days_total")
+    .eq("id", race.season_id)
+    .maybeSingle();
 
   const stages = await loadStageProfiles(supabase, race.id);
   if (!stages.length) throw new Error(`Ingen race_stage_profiles for løb ${race.id} — kør backfill`);
@@ -386,7 +397,26 @@ export async function simulateRace({
 
   await persistRuns({ supabase, race, runs });
   await supabase.from("races").update({ status: "completed" }).eq("id", race.id);
-  await recomputeRaceDays({ supabase, seasonId: race.season_id });
+  const newRaceDaysCompleted = await recomputeRaceDays({ supabase, seasonId: race.season_id });
+
+  // #1187 · Løbende bestyrelses-tilfredshed efter afviklet løb. Fejl må ikke
+  // vælte afviklingen — resultaterne ER allerede skrevet.
+  if (seasonBefore?.id) {
+    try {
+      await processBoardWeekend({
+        supabase,
+        season: {
+          ...seasonBefore,
+          race_days_completed: Number.isFinite(Number(newRaceDaysCompleted))
+            ? newRaceDaysCompleted
+            : seasonBefore.race_days_completed,
+        },
+        previousRaceDaysCompleted: seasonBefore.race_days_completed ?? null,
+      });
+    } catch (error) {
+      console.error("  ⚠️  board weekend update failed after race simulation:", error.message);
+    }
+  }
 
   if (notifyDiscord) {
     try {
