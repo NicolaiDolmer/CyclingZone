@@ -10,6 +10,7 @@
  */
 
 import express from "express";
+import rateLimit from "express-rate-limit";
 import { createClient } from "@supabase/supabase-js";
 import { config } from "dotenv";
 import { fileURLToPath } from "url";
@@ -233,6 +234,7 @@ import {
   boardWriteLimiter,
   marketWriteLimiter,
   presencePulseLimiter,
+  userOrIpKey,
 } from "../lib/rateLimiters.js";
 import {
   cached,
@@ -258,6 +260,33 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 config({ path: join(__dirname, "../.env"), quiet: true });
 
 const router = express.Router();
+
+// Grov DoS-guard på hele /admin-fladen, mountet FØR requireAdmin — nøglen er
+// derfor klient-IP, så uautoriseret hammering mod selve auth-laget også dæmpes.
+// Bevidst et direkte rateLimit()-kald og ikke buildLimiter-factory'en:
+// CodeQL's js/missing-rate-limiting kan ikke spore factory-byggede limitere
+// (alerts 130-162), og denne router-mount lukker reglen for alle nuværende og
+// fremtidige admin-ruter. De stramme per-rute-limitere (adminWriteLimiter
+// m.fl.) gælder uændret oveni; 600/min generer aldrig én legitim admin.
+const adminApiLimiter = rateLimit({
+  windowMs: 60_000,
+  limit: 600,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  keyGenerator: userOrIpKey,
+  skip: () => process.env.RATE_LIMIT_DISABLED === "1",
+  handler: (req, res) => {
+    res.set("Retry-After", "60");
+    res.status(429).json({
+      error: "For mange admin-forespørgsler på kort tid. Vent et øjeblik.",
+      errorCode: "rate_request",
+      code: "rate_limited",
+      limiter: "admin-api",
+      retry_after_seconds: 60,
+    });
+  },
+});
+router.use("/admin", adminApiLimiter);
 
 // #1101 rider-valuation model (committet JSON). Indlæses én gang ved opstart;
 // mangler den (fx før første fit), degraderer valuation-fladerne pænt (null).
