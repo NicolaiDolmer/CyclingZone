@@ -83,3 +83,11 @@ export async function assessTransitionReadiness({ supabase, fromSeasonId } = {})
 
   return { ready: failed_critical.length === 0, checks, failed_critical };
 }
+
+// Admin-vendte strenge samlet her — filen er EXEMPT i i18n-leak-guarden:
+// admin-UI er DA-only-konvention (ikke player-facing), og admin_log er internt.
+export const TRANSITION_BLOCKED_ERROR = "Sæson-transition blokeret: readiness-gaten er rød";
+
+export function formatForceOverrideDescription(failedCritical) {
+  return `Sæson-transition FORCED med rød readiness-gate (${failedCritical.join(", ")})`;
+}

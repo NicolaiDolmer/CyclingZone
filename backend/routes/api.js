@@ -55,7 +55,11 @@ import {
   resolveTransitionSourceSeason,
   transitionToNextSeason,
 } from "../lib/seasonTransition.js";
-import { assessTransitionReadiness } from "../lib/seasonTransitionReadiness.js";
+import {
+  assessTransitionReadiness,
+  formatForceOverrideDescription,
+  TRANSITION_BLOCKED_ERROR,
+} from "../lib/seasonTransitionReadiness.js";
 import { cancelAuctionByAdmin } from "../lib/auctionCancellation.js";
 import { fetchAllRows } from "../lib/supabasePagination.js";
 import { aggregateRiderViews } from "../lib/riderProfileViews.js";
@@ -5558,7 +5562,7 @@ router.post("/admin/season-transition", requireAdmin, adminWriteLimiter, async (
       const readiness = await assessTransitionReadiness({ supabase, fromSeasonId });
       if (!readiness.ready && !force) {
         return res.status(409).json({
-          error: "Sæson-transition blokeret: readiness-gaten er rød",
+          error: TRANSITION_BLOCKED_ERROR,
           readiness,
         });
       }
@@ -5566,7 +5570,7 @@ router.post("/admin/season-transition", requireAdmin, adminWriteLimiter, async (
         const { error: forceLogError } = await supabase.from("admin_log").insert({
           admin_user_id: req.user?.id ?? null,
           action_type: ADMIN_ACTION_TYPE.MANUAL_OVERRIDE,
-          description: `Sæson-transition FORCED med rød readiness-gate (${readiness.failed_critical.join(", ")})`,
+          description: formatForceOverrideDescription(readiness.failed_critical),
           target_team_id: null,
           meta: { source: "season_transition_force", failed_critical: readiness.failed_critical },
         });
