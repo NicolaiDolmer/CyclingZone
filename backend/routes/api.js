@@ -838,8 +838,17 @@ router.get("/riders/:id", requireAuth, async (req, res) => {
   res.json(data);
 });
 
+// Security-audit 2026-06-12: ruter der interpolerer URL-params ind i PostgREST
+// .or()-filterstrenge (riderHistory.js, teamTransferHistory.js) SKAL validere
+// param-formatet først — ellers kan en crafted :id injicere ekstra
+// filter-betingelser (fx "x,id.gt.<uuid>" → tværgående enumeration).
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 // GET /api/riders/:id/history — ejerskab og handelshistorik
 router.get("/riders/:id/history", requireAuth, async (req, res) => {
+  if (!UUID_RE.test(req.params.id)) {
+    return res.status(400).json({ error: "Ugyldigt rytter-id" });
+  }
   try {
     const events = await buildRiderHistory(supabase, req.params.id);
     res.json(events);
@@ -850,6 +859,9 @@ router.get("/riders/:id/history", requireAuth, async (req, res) => {
 
 // GET /api/teams/:id/transfer-history — komplet handelshistorik for ét hold (#25)
 router.get("/teams/:id/transfer-history", requireAuth, async (req, res) => {
+  if (!UUID_RE.test(req.params.id)) {
+    return res.status(400).json({ error: "Ugyldigt hold-id" });
+  }
   try {
     const events = await buildTeamTransferHistory(supabase, req.params.id);
     res.json(events);
