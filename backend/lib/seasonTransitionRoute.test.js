@@ -133,3 +133,9 @@ test("preview-handler returnerer readiness sammen med planen (#1346)", () => {
   assert.match(block, /assessTransitionReadiness\(/, "preview skal beregne samme readiness som udfør");
   assert.match(block, /readiness/, "preview-response skal indeholde readiness");
 });
+
+test("udfør-handler gater ikke dryRun og sender readiness med i 409-svaret (#1346)", () => {
+  const block = isolateExecuteHandler();
+  assert.match(block, /if\s*\(!dryRun\)/, "gaten skal kun køre for rigtige writes, ikke dry-runs");
+  assert.match(block, /status\(409\)\.json\(\{[\s\S]*?readiness/, "409-svaret skal bære readiness-payloaden til UI'et");
+});

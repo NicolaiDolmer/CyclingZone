@@ -5533,11 +5533,13 @@ router.get("/admin/season-transition/preview", requireAdmin, async (req, res) =>
 });
 
 // POST /api/admin/season-transition — udfør sæson-skifte
-// Body: { fromSeasonId? (default = aktiv sæson), transitionAt? (default = nu), dryRun? }
+// Body: { fromSeasonId? (default = aktiv sæson), transitionAt? (default = nu), dryRun?, force? (#1346: bypass readiness-gate, logges) }
 // dryRun=true: returnerer kun planen, ingen writes til DB.
 router.post("/admin/season-transition", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
-    const { fromSeasonId: bodyFromSeasonId, transitionAt, dryRun = false, force = false } = req.body || {};
+    const { fromSeasonId: bodyFromSeasonId, transitionAt, dryRun = false } = req.body || {};
+    // Strict === true: en string "false" må aldrig tælle som override.
+    const force = (req.body || {}).force === true;
     let fromSeasonId = bodyFromSeasonId;
     if (!fromSeasonId) {
       // #1166: samme fallback som preview-endpointet — seneste 'completed'
@@ -5561,13 +5563,17 @@ router.post("/admin/season-transition", requireAdmin, adminWriteLimiter, async (
         });
       }
       if (!readiness.ready && force) {
-        await supabase.from("admin_log").insert({
+        const { error: forceLogError } = await supabase.from("admin_log").insert({
           admin_user_id: req.user?.id ?? null,
           action_type: ADMIN_ACTION_TYPE.MANUAL_OVERRIDE,
           description: `Sæson-transition FORCED med rød readiness-gate (${readiness.failed_critical.join(", ")})`,
           target_team_id: null,
           meta: { source: "season_transition_force", failed_critical: readiness.failed_critical },
         });
+        if (forceLogError) {
+          // Fail-closed: uden audit-spor må en forced transition ikke køre.
+          return res.status(500).json({ error: `Force-log kunne ikke skrives: ${forceLogError.message}` });
+        }
       }
     }
 
