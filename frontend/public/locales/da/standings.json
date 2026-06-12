@@ -20,5 +20,12 @@
   "legendLeader": "Fører (nr. 1)",
   "legendPromotion": "Oprykningszone (top 2)",
   "legendRelegation": "Nedrykningszone (bund 2)",
-  "racesPlayed": "{count} løb spillet"
+  "racesPlayed": "{count} løb spillet",
+  "preview": {
+    "title": "Sæson Preview",
+    "subtitle": "Sæson {n}: holdstyrker og spådomme",
+    "strengthHeading": "Holdstyrker, baseret på samlet holdværdi",
+    "divisionRank": "Division {division} · #{rank} styrke",
+    "topStar": "Topstjerne:"
+  }
 }

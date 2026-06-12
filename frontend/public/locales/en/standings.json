@@ -20,5 +20,12 @@
   "legendLeader": "Leader (rank 1)",
   "legendPromotion": "Promotion zone (top 2)",
   "legendRelegation": "Relegation zone (bottom 2)",
-  "racesPlayed": "{count} races played"
+  "racesPlayed": "{count} races played",
+  "preview": {
+    "title": "Season Preview",
+    "subtitle": "Season {n}: team strengths and predictions",
+    "strengthHeading": "Team strengths, based on total squad value",
+    "divisionRank": "Division {division} · #{rank} strength",
+    "topStar": "Top star:"
+  }
 }
