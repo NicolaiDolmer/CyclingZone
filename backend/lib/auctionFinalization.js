@@ -3,7 +3,6 @@ import {
   ensureNoError,
   expectMaybeSingle,
   expectMutation,
-  expectSingle,
   getIncomingSquadViolation,
   getTeamMarketState,
   getTransferWindowOpen,
@@ -161,7 +160,7 @@ async function finalizeAuctionRecord({
   const {
     sellerOwned,
     actualSellerTeamId,
-    actualSeller,
+    actualSeller: _actualSeller,
     staleHumanOwner,
   } = await resolveAuctionSellerContext({
     supabase,

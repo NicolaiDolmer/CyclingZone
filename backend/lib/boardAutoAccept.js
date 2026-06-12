@@ -206,7 +206,7 @@ function findPendingPlanType(realBoards) {
 }
 
 async function sendT3InfoReminder({
-  team, activeSeason, planType, pendingBoard, notifyUser, now, raceDaysCompleted,
+  team, activeSeason: _activeSeason, planType, pendingBoard, notifyUser, now, raceDaysCompleted,
 }) {
   if (!team.user_id) return false;
 
@@ -231,7 +231,7 @@ async function sendT3InfoReminder({
 }
 
 async function sendT1CriticalReminder({
-  team, activeSeason, planType, pendingBoard, notifyUser, now, raceDaysCompleted,
+  team, activeSeason: _activeSeason, planType, pendingBoard, notifyUser, now, raceDaysCompleted,
 }) {
   if (!team.user_id) return false;
 

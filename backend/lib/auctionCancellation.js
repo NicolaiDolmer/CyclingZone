@@ -80,7 +80,7 @@ export async function cancelAuctionByAdmin({
         bidderMessage,
         auctionId
       );
-    } catch (_e) { /* best-effort — block ikke andre notifikationer */ }
+    } catch { /* best-effort — block ikke andre notifikationer */ }
   }
 
   // Notificér sælger (hvis sat og ikke allerede budgivet).
@@ -93,7 +93,7 @@ export async function cancelAuctionByAdmin({
         `Din auktion på ${riderName} er annulleret af en admin.`,
         auctionId
       );
-    } catch (_e) { /* best-effort */ }
+    } catch { /* best-effort */ }
   }
 
   await logActivity("auction_cancelled", {
