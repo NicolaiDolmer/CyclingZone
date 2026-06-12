@@ -107,6 +107,8 @@ import { SCOUTING_CONFIG, deriveScoutState, canScout, buildScoutEstimate } from 
 import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity } from "../lib/training.js";
 import { isDailyTrainingEnabled } from "../lib/dailyTrainingFlag.js";
 import { runTeamTrainingDay } from "../lib/dailyTrainingEngine.js";
+import { validateSelection, saveSelection, getSelectionContext } from "../lib/raceSelection.js";
+import { isRaceEngineV2Enabled } from "../lib/raceEngineFlag.js";
 import { injuryRisk } from "../lib/riderCondition.js";
 import { resolveProgram } from "../lib/dailyTraining.js";
 import { copenhagenDateString } from "../lib/copenhagenTime.js";
@@ -1159,6 +1161,67 @@ router.post("/training/run-today", requireAuth, marketWriteLimiter, async (req, 
     }
 
     res.json({ ok: true, tickDate: result.tickDate, report: result.report });
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ═══ #1307: HOLDUDTAGELSE ════════════════════════════════════════════════════
+
+// GET /api/races/:raceId/selection — kontekst for managerens egen udtagelse.
+// enabled=false (flag OFF) → UI skjuler panelet; resten af payload udelades.
+router.get("/races/:raceId/selection", requireAuth, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const enabled = await isRaceEngineV2Enabled(supabase);
+    const { data: race, error } = await supabase
+      .from("races")
+      .select("id, name, race_type, race_class, stages, status, season_id")
+      .eq("id", req.params.raceId)
+      .maybeSingle();
+    if (error) return res.status(500).json({ error: error.message });
+    if (!race) return res.status(404).json({ error: "race_not_found" });
+    if (!enabled) return res.json({ enabled: false, race: { id: race.id, status: race.status } });
+
+    const ctx = await getSelectionContext({ supabase, race, teamId: req.team.id });
+    res.json({ enabled: true, race, ...ctx });
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// PUT /api/races/:raceId/selection — gem managerens udtagelse (6-8 + roller).
+router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const enabled = await isRaceEngineV2Enabled(supabase);
+    if (!enabled) return res.status(409).json({ error: "selection_flag_disabled" });
+
+    const { data: race, error } = await supabase
+      .from("races")
+      .select("id, race_type, race_class, status")
+      .eq("id", req.params.raceId)
+      .maybeSingle();
+    if (error) return res.status(500).json({ error: error.message });
+    if (!race) return res.status(404).json({ error: "race_not_found" });
+    if (race.status !== "scheduled") return res.status(409).json({ error: "selection_race_not_open" });
+
+    const { rider_ids: riderIds = [], captain_id: captainId = null, sprint_captain_id: sprintCaptainId = null, hunter_id: hunterId = null } = req.body || {};
+
+    const ctx = await getSelectionContext({ supabase, race, teamId: req.team.id });
+    const result = validateSelection({
+      riderIds, captainId, sprintCaptainId, hunterId,
+      teamRiderIds: new Set(ctx.riders.map((r) => r.id)),
+      injuredRiderIds: new Set(ctx.riders.filter((r) => r.injured).map((r) => r.id)),
+      sizeRule: ctx.size,
+      availableCount: ctx.availableCount,
+    });
+    if (!result.ok) return res.status(400).json({ error: result.errors[0], errors: result.errors });
+
+    await saveSelection({ supabase, race, teamId: req.team.id, riderIds, captainId, sprintCaptainId, hunterId });
+    res.json({ ok: true });
   } catch (err) {
     captureException(err);
     res.status(500).json({ error: err.message });
