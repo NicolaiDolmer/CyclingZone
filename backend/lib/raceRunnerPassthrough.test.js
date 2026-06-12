@@ -3,7 +3,7 @@
 //   test 1: "z" (bundform) < "a" (topform) er falsk — "a" < "z" → a vinder tie → test PASSER tiebreak!
 //   For at garantere rød pre-fix bruger vi ids "z" (topform) vs "a" (bundform):
 //     "a" < "z" → a vinder tie → bundform slår topform → test 1 er RØD pre-fix.
-//   test 2: "zzz-cap" > "aaa-helper" > "mmm-solo" → solo/helper vinder tiebreak pre-fix → RØD pre-fix.
+//   test 2: localeCompare med bindestreg: mmm-solo < zzz-cap < aaa-hlp → mmm-solo vinder tiebreak pre-fix → RØD pre-fix.
 import test from "node:test";
 import assert from "node:assert/strict";
 import { buildRaceResults } from "./raceRunner.js";
@@ -31,7 +31,8 @@ test("form/fatigue påvirker resultatet gennem buildRaceResults (#1306-bugfix)",
 
 test("race_role når simulatoren: kaptajn med hjælper slår rolle-løs tvilling (#1307)", () => {
   // "zzz-cap" = kaptajn, "aaa-hlp" = hjælper, "mmm-solo" = rolle-løs.
-  // Pre-fix: race_role STRIPPES → ens abilities → alfabetisk: aaa < mmm < zzz → zzz-cap taber tiebreak → RØD.
+  // Pre-fix: race_role STRIPPES → ens abilities → localeCompare: mmm-solo < zzz-cap < aaa-hlp
+  // → mmm-solo vinder tiebreak (rank 1), zzz-cap er rank 2 → assert om rank 1 er RØD pre-fix.
   // Post-fix: kaptajn-boost fra hjælper sikrer zzz-cap #1 → GRØN.
   const entrants = [
     { rider_id: "zzz-cap", team_id: "t1", abilities: ab(50), race_role: "captain" },

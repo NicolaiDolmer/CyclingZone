@@ -30,5 +30,5 @@ Entrants uden disse felter producerer bitidentisk output (spread af tom).
 
 ## Guard fremover
 
-- `raceRunnerPassthrough.test.js` (ny) — to regression-tests der går **igennem `buildRaceResults`** og verificerer at form/fatigue og race_role faktisk påvirker rangordenen. Rider-id'er er valgt så tiebreak maskerer fejlen (alfabetisk sorterer favoritterne sidst) → testen er genuint rød pre-fix.
+- `raceRunnerPassthrough.test.js` (ny) — to regression-tests der går **igennem `buildRaceResults`** og verificerer at form/fatigue og race_role faktisk påvirker rangordenen. Rider-id'erne er valgt så favoritten IKKE vinder tiebreak pre-fix (mmm-solo vinder), så testen er garanteret rød.
 - Task 9 (gate-harness) vil køre condition-mode entrants gennem `buildRaceResults`-stien eksplicit.

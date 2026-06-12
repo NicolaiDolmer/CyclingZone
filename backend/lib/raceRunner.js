@@ -101,7 +101,7 @@ function teamClassification(entrants, cumTime) {
  * @param {{race, stages, entrants, pointsLookup}} args
  *   race: { id, race_type }  (race_type 'stage_race' ellers behandlet som endagsløb)
  *   stages: [{ stage_number, profile_type, demand_vector }]  (usorteret ok)
- *   entrants: [{ rider_id, team_id, rider_name?, is_u25?, abilities:{...10} }]
+ *   entrants: [{ rider_id, team_id, rider_name?, is_u25?, abilities:{...10}, form?, fatigue?, race_role? }]
  *   pointsLookup: fra buildRacePointsLookup (result_type__rank → point)
  * @returns {{ resultRows, runs }}
  */
