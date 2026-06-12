@@ -52,6 +52,7 @@ import {
   computeSeasonUuid,
   computeTransferWindowUuid,
   insertTransferWindowIfMissing,
+  resolveTransitionSourceSeason,
   transitionToNextSeason,
 } from "../lib/seasonTransition.js";
 import { cancelAuctionByAdmin } from "../lib/auctionCancellation.js";
@@ -5331,20 +5332,16 @@ router.post("/admin/market/resume", requireAdmin, adminWriteLimiter, async (req,
 // Slice 08 — sæson-cyklus
 // =======================
 // GET /api/admin/season-transition/preview — dry-run plan for næste transition
+// #1166: kildesæson via resolveTransitionSourceSeason — efter season-end er
+// sæsonen 'completed' (ingen 'active' findes), og engine'ns resume-sti (#578)
+// skal kunne nås fra admin-knappen i den korrekte season-end → transition-orden.
 router.get("/admin/season-transition/preview", requireAdmin, async (req, res) => {
   try {
-    const { data: activeSeason, error: seasonError } = await supabase
-      .from("seasons")
-      .select("id, number, status, start_date")
-      .eq("status", "active")
-      .order("number", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (seasonError) throw seasonError;
-    if (!activeSeason) {
-      return res.status(404).json({ error: "Ingen aktiv sæson fundet" });
+    const fromSeason = await resolveTransitionSourceSeason({ supabase });
+    if (!fromSeason) {
+      return res.status(404).json({ error: "Ingen aktiv eller afsluttet sæson fundet" });
     }
-    const plan = await buildTransitionPlan({ supabase, fromSeasonId: activeSeason.id });
+    const plan = await buildTransitionPlan({ supabase, fromSeasonId: fromSeason.id });
     res.json({ ok: true, plan });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -5357,18 +5354,13 @@ router.post("/admin/season-transition", requireAdmin, adminWriteLimiter, async (
     const { fromSeasonId: bodyFromSeasonId, transitionAt, dryRun = false } = req.body || {};
     let fromSeasonId = bodyFromSeasonId;
     if (!fromSeasonId) {
-      const { data: activeSeason, error: seasonError } = await supabase
-        .from("seasons")
-        .select("id")
-        .eq("status", "active")
-        .order("number", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (seasonError) throw seasonError;
-      if (!activeSeason) {
-        return res.status(404).json({ error: "Ingen aktiv sæson fundet" });
+      // #1166: samme fallback som preview-endpointet — seneste 'completed'
+      // sæson når ingen 'active' findes (resume-stien, #578).
+      const fromSeason = await resolveTransitionSourceSeason({ supabase });
+      if (!fromSeason) {
+        return res.status(404).json({ error: "Ingen aktiv eller afsluttet sæson fundet" });
       }
-      fromSeasonId = activeSeason.id;
+      fromSeasonId = fromSeason.id;
     }
 
     const result = await transitionToNextSeason({

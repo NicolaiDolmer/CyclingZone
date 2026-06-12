@@ -179,6 +179,51 @@ function buildSponsorPreviewRow(team, toSeasonNumber, sponsorStandingsContext) {
   };
 }
 
+// ─── Kildesæson-resolver (endpoint-helper) ────────────────────────────────────
+
+/**
+ * #1166 · Find kildesæsonen for season-transition-endpoints (preview + udfør).
+ *
+ * Korrekt operationel rækkefølge er season-end (sætter status='completed') →
+ * transition. Efter season-end findes der derfor INGEN 'active' sæson (næste
+ * er typisk 'upcoming'), og et rent `status='active'`-lookup giver 404 selvom
+ * engine'ns resume-sti (#578) sagtens kan gennemføre skiftet.
+ *
+ * Strategi:
+ *   1. Nyeste 'active' sæson (normal kørsel).
+ *   2. Fallback: nyeste 'completed' sæson. Vi er kun her når ingen 'active'
+ *      sæson findes, så ingen completed sæson kan have en aktiv efterfølger.
+ *      buildTransitionPlan's resume-guard validerer bagefter at næste sæson
+ *      faktisk eksisterer — completed UDEN efterfølger blokeres stadig med
+ *      en beskrivende fejl.
+ *
+ * @returns {Promise<{id: string, number: number, status: string, start_date: string|null}|null>}
+ *          null hvis hverken active eller completed sæson findes.
+ */
+export async function resolveTransitionSourceSeason({ supabase }) {
+  if (!supabase?.from) throw new Error("Supabase client required");
+
+  const { data: activeSeason, error: activeError } = await supabase
+    .from("seasons")
+    .select("id, number, status, start_date")
+    .eq("status", "active")
+    .order("number", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (activeError) throw new Error(`Could not load active season: ${activeError.message}`);
+  if (activeSeason) return activeSeason;
+
+  const { data: completedSeason, error: completedError } = await supabase
+    .from("seasons")
+    .select("id, number, status, start_date")
+    .eq("status", "completed")
+    .order("number", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (completedError) throw new Error(`Could not load completed season: ${completedError.message}`);
+  return completedSeason ?? null;
+}
+
 // ─── Idempotent fase-helpers ──────────────────────────────────────────────────
 
 async function insertSeasonIfMissing(supabase, seasonId, seasonNumber, transitionAtIso) {
