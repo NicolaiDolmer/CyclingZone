@@ -52,12 +52,17 @@ export async function buildRiderHistory(supabase, riderId) {
   const events = [];
 
   for (const a of auctionsRes.data || []) {
+    // #785: en gennemført auktion uden vinder (og uden garanteret AI-salg) er
+    // IKKE et salg — rytteren blev på holdet. current_price er bare den umødte
+    // startpris, så den udelades (price: null) for ikke at antyde en handel.
+    const noSale = !a.winner && !a.is_guaranteed_sale;
     events.push({
       type: "auction",
       date: a.actual_end || a.created_at,
-      price: a.current_price,
+      price: noSale ? null : a.current_price,
       seller: a.seller,
       buyer: a.winner,
+      no_sale: noSale,
       is_ai_sale: a.seller?.is_ai ?? false,
       is_guaranteed_sale: a.is_guaranteed_sale,
     });

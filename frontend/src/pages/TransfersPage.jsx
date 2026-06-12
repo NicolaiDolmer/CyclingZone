@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import RiderLink from "../components/RiderLink";
@@ -15,6 +16,23 @@ import { resolveApiError } from "../lib/apiError";
 import { sortListings, LISTING_SORT_OPTIONS } from "../lib/transferListingSort";
 
 const API = import.meta.env.VITE_API_URL;
+
+// #987: faner kan deep-linkes via ?tab= (fx /transfers?tab=market fra nav'ens
+// "Transferliste"-genvej). Ukendte værdier falder tilbage til "received".
+const VALID_TABS = ["received", "sent", "archive", "swaps", "loans", "market"];
+const DEFAULT_TAB = "received";
+
+// Samme 14 stats som rytterdatabasen (#987: transferlisten skal vise alle
+// stats, ikke kun BJ/SP/TT/FL). Labels matcher RidersPage/AuctionsPage.
+const LISTING_STATS = [
+  { key: "stat_fl", label: "FL" }, { key: "stat_bj", label: "BJ" },
+  { key: "stat_kb", label: "KB" }, { key: "stat_bk", label: "BK" },
+  { key: "stat_tt", label: "TT" }, { key: "stat_prl", label: "PRL" },
+  { key: "stat_bro", label: "Bro" }, { key: "stat_sp", label: "SP" },
+  { key: "stat_acc", label: "ACC" }, { key: "stat_ned", label: "NED" },
+  { key: "stat_udh", label: "UDH" }, { key: "stat_mod", label: "MOD" },
+  { key: "stat_res", label: "RES" }, { key: "stat_ftr", label: "FTR" },
+];
 
 function useTimeAgo() {
   const { t } = useTranslation("transfers");
@@ -1046,8 +1064,9 @@ function TransferCard({ listing, myTeamId, onOffer, onRemove, onUpdatePrice, win
         </div>
       </div>
 
-      <div className="flex gap-3 mb-3">
-        {[["BJ", "stat_bj"], ["SP", "stat_sp"], ["TT", "stat_tt"], ["FL", "stat_fl"]].map(([label, key]) => (
+      {/* #987: alle 14 stats som på rytterdatabasen — ikke kun BJ/SP/TT/FL */}
+      <div className="grid grid-cols-7 gap-x-1 gap-y-2 mb-3">
+        {LISTING_STATS.map(({ key, label }) => (
           <div key={key} className="text-center">
             <p className="text-cz-3 text-[9px] uppercase">{label}</p>
             <span className="inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded" style={statStyle(listing.rider?.[key] || 0)}>
@@ -1116,7 +1135,14 @@ function TransferCard({ listing, myTeamId, onOffer, onRemove, onUpdatePrice, win
 // ── Main page ────────────────────────────────────────────────────────────────
 export default function TransfersPage() {
   const { t } = useTranslation("transfers");
-  const [tab, setTab] = useState("received");
+  // #987: aktiv fane lever i URL'en (?tab=) så nav-genvejen "Transferliste"
+  // (/transfers?tab=market) og delte links lander på den rigtige fane.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const tab = VALID_TABS.includes(tabParam) ? tabParam : DEFAULT_TAB;
+  function setTab(key) {
+    setSearchParams(key === DEFAULT_TAB ? {} : { tab: key }, { replace: true });
+  }
   const [listings, setListings] = useState([]);
   const [sentOffers, setSentOffers] = useState([]);
   const [receivedOffers, setReceivedOffers] = useState([]);

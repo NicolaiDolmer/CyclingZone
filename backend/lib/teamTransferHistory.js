@@ -77,17 +77,22 @@ export async function buildTeamTransferHistory(supabase, teamId) {
   for (const a of auctionsRes.data || []) {
     const isSeller = a.seller_team_id === teamId;
     const date = a.actual_end || a.created_at;
+    // #785: gennemført auktion uden vinder (og uden garanteret AI-salg) = intet
+    // salg — rytteren blev på holdet. current_price er den umødte startpris og
+    // må hverken vises som beløb eller tælle som pengestrøm/profit-salg.
+    const noSale = !a.current_bidder_id && !a.is_guaranteed_sale;
     events.push({
       id: `auction:${a.id}`,
       type: "auction",
       direction: isSeller ? "out" : "in",
       // direction er rytter-centrisk; cash_flow er kontobevægelsen (#984):
       // salg = penge ind, køb = penge ud.
-      cash_flow: a.current_price > 0 ? (isSeller ? "in" : "out") : null,
+      cash_flow: !noSale && a.current_price > 0 ? (isSeller ? "in" : "out") : null,
       date,
       rider: a.rider,
       counterparty: isSeller ? a.winner : a.seller,
-      amount: a.current_price,
+      amount: noSale ? null : a.current_price,
+      no_sale: noSale,
       is_guaranteed_sale: a.is_guaranteed_sale,
       season_number: resolveSeason(date),
     });

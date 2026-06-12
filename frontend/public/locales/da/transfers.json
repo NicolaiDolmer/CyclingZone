@@ -44,7 +44,8 @@
   "direction": {
     "in": "Køb",
     "out": "Salg",
-    "swap": "Bytte"
+    "swap": "Bytte",
+    "noSale": "Intet salg"
   },
   "relativeTime": {
     "justNow": "Lige nu",
@@ -201,6 +202,7 @@
     "aiTag": "(AI)",
     "loanTag": "(lån)",
     "swapZero": "0 CZ$",
+    "noBids": "Ingen bud",
     "loadError": "Kunne ikke hente transferhistorik"
   },
   "profit": {

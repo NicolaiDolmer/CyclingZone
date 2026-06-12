@@ -44,7 +44,8 @@
   "direction": {
     "in": "Buy",
     "out": "Sell",
-    "swap": "Swap"
+    "swap": "Swap",
+    "noSale": "No sale"
   },
   "relativeTime": {
     "justNow": "Just now",
@@ -201,6 +202,7 @@
     "aiTag": "(AI)",
     "loanTag": "(loan)",
     "swapZero": "0 CZ$",
+    "noBids": "No bids",
     "loadError": "Could not load transfer history"
   },
   "profit": {
