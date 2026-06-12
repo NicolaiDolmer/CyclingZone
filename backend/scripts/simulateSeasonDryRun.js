@@ -357,9 +357,10 @@ if (failedTargets.length) {
 
 // ── B4: condition-mode sanity ─────────────────────────────────────────────────
 if (CONDITION_MODE) {
-  // ±3 % bound: formComponent ∈ [-0.03, +0.03], fatigueComponent ∈ [-0.03, 0].
-  // Teoretisk max total swing = +0.030 (peak form) + -(-0.030) = 0.060 point.
-  // Observerede grænser fra tildelinger:
+  // Reelle vægte fra raceSimulator: FORM_RACE_WEIGHT=0.012, FATIGUE_RACE_WEIGHT=0.008.
+  // formComponent  = ((form-50)/50)*0.012  → [30,90]-interval giver [-0.0048, +0.0096], swing 0.0144.
+  // fatigueComponent = (fatigue/100)*0.008 → [0,70]-interval giver [0, +0.0056], swing 0.0056.
+  // Kombineret max score-swing (condition-interval): 0.0144 + 0.0056 = 0.020.
   const forms    = field.map((r) => r.form    ?? 60);
   const fatigues = field.map((r) => r.fatigue ?? 0);
   const maxForm    = Math.max(...forms),    minForm    = Math.min(...forms);
@@ -369,7 +370,7 @@ if (CONDITION_MODE) {
   console.log(`\n   condition-mode sanity (B4 — felt=${field.length} ryttere):`);
   console.log(`   form    range [${minForm}, ${maxForm}] ·  mean ${meanForm}  (tilsigtet [30, 90])`);
   console.log(`   fatigue range [${minFatigue}, ${maxFatigue}] · mean ${meanFatigue} (tilsigtet [0, 70])`);
-  console.log(`   teoretisk max score-swing: ±0.030 pr. komponent → ±0.060 total (±3 % bound gælder)`);
+  console.log(`   max score-swing (condition-interval): form 0.0144 + fatigue 0.0056 = 0.020`);
 }
 
 // ── HTML-cockpit ──────────────────────────────────────────────────────────────
