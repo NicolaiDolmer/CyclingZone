@@ -1210,6 +1210,10 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
 
     const { rider_ids: riderIds = [], captain_id: captainId = null, sprint_captain_id: sprintCaptainId = null, hunter_id: hunterId = null } = req.body || {};
 
+    if (!Array.isArray(riderIds)) {
+      return res.status(400).json({ error: "selection_invalid_body" });
+    }
+
     const ctx = await getSelectionContext({ supabase, race, teamId: req.team.id });
     const result = validateSelection({
       riderIds, captainId, sprintCaptainId, hunterId,
