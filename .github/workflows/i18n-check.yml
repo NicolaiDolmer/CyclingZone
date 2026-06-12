@@ -15,6 +15,7 @@ on:
       - 'scripts/i18n-check-leaks.mjs'
       - 'scripts/i18n-leaks-baseline.json'
       - 'scripts/tone-check-em-dash.mjs'
+      - 'scripts/tone-check-em-dash.test.mjs'
       - '.github/workflows/i18n-check.yml'
   push:
     branches: [main]
@@ -31,6 +32,7 @@ on:
       - 'scripts/i18n-check-leaks.mjs'
       - 'scripts/i18n-leaks-baseline.json'
       - 'scripts/tone-check-em-dash.mjs'
+      - 'scripts/tone-check-em-dash.test.mjs'
   workflow_dispatch:
 
 permissions:
@@ -122,8 +124,8 @@ jobs:
     # REQUIRED (Refs #1170) — fanger danske string-literals i lib/ og
     # components/ (usynlige for page-untranslated som kun scanner pages/).
     # Bug-klassen: CookieBanner/formatBidWarning rendered ren dansk i EN-mode
-    # mens hele batteriet var grønt. KNOWN_TODO-listen i scriptet bærer de
-    # kendte slice-B-leaks (waitlist-form, sentry-boundary) uden at fejle.
+    # mens hele batteriet var grønt. KNOWN_TODO-listen er nu tom; legitime
+    # undtagelser er dokumenteret separat i EXEMPT_FILES.
     steps:
       - uses: actions/checkout@v6
 
@@ -176,6 +178,9 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: '24'
+
+      - name: Test tone em-dash guard
+        run: node --test scripts/tone-check-em-dash.test.mjs
 
       - name: Run tone em-dash guard
         run: node scripts/tone-check-em-dash.mjs

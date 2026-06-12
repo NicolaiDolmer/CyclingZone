@@ -54,9 +54,7 @@ const EXEMPT_FILES = new Map([
 // Kendte, endnu-ikke-konverterede player-facing leaks. Listet her så de er
 // SYNLIGE i guard-output i stedet for tavst at slippe igennem. Fjern
 // efterhånden som hver fil konverteres. Format: [sti, "#issue — begrundelse"].
-const KNOWN_TODO = new Map([
-  ["frontend/src/components/RiderDevelopmentTab.jsx", "#645 — udvikling-tab konverteres af parallel #645-agent; 2 danske JSX-tekst-linjer (empty-state + hint)."],
-]);
+const KNOWN_TODO = new Map([]);
 
 function stripComments(src) {
   return src

@@ -24,7 +24,7 @@
 //   node scripts/tone-check-em-dash.mjs
 
 import { readFileSync, readdirSync, statSync } from "node:fs";
-import { join, relative } from "node:path";
+import { join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = join(fileURLToPath(new URL(".", import.meta.url)), "..");
@@ -37,8 +37,6 @@ const PROSE_FILES = [
 
 const EM_DASH = "—";
 
-const violations = [];
-
 // ---------- 1. Locale-JSON ----------
 
 function walkJson(dir, out = []) {
@@ -50,21 +48,26 @@ function walkJson(dir, out = []) {
   return out;
 }
 
-function checkValue(value, path, file) {
+function checkValue(value, path, file, violations) {
   if (typeof value === "string") {
     if (value.includes(EM_DASH) && value.trim() !== EM_DASH) {
-      violations.push(`${file} → ${path}: ${JSON.stringify(value.slice(0, 80))}`);
+      violations.push(
+        `${file} → ${path}: ${JSON.stringify(value.slice(0, 80))}`,
+      );
     }
   } else if (Array.isArray(value)) {
-    value.forEach((v, i) => checkValue(v, `${path}[${i}]`, file));
+    value.forEach((v, i) => checkValue(v, `${path}[${i}]`, file, violations));
   } else if (value && typeof value === "object") {
-    for (const [k, v] of Object.entries(value)) checkValue(v, path ? `${path}.${k}` : k, file);
+    for (const [k, v] of Object.entries(value)) {
+      checkValue(v, path ? `${path}.${k}` : k, file, violations);
+    }
   }
 }
 
-for (const file of walkJson(join(ROOT, LOCALES_DIR))) {
-  const rel = relative(ROOT, file).replaceAll("\\", "/");
-  checkValue(JSON.parse(readFileSync(file, "utf8")), "", rel);
+export function findLocaleEmDashViolations(value, file) {
+  const violations = [];
+  checkValue(value, "", file, violations);
+  return violations;
 }
 
 // ---------- 2. Prosa-sider (string-literals, ikke kommentarer) ----------
@@ -75,8 +78,9 @@ function stripComments(src) {
     .replace(/(^|[^:])\/\/[^\n]*/g, "$1");
 }
 
-for (const relFile of PROSE_FILES) {
-  const src = stripComments(readFileSync(join(ROOT, relFile), "utf8"));
+export function findProseEmDashViolations(source, file) {
+  const violations = [];
+  const src = stripComments(source);
   src.split("\n").forEach((line, i) => {
     const literals = line.match(/"[^"]*"|'[^']*'|`[^`]*`/g) || [];
     for (const lit of literals) {
@@ -85,22 +89,58 @@ for (const relFile of PROSE_FILES) {
       // Fjern glyf-citationer ('—') før check — prosa der OMTALER glyffen er ok.
       const remaining = content.replaceAll(`'${EM_DASH}'`, "");
       if (remaining.includes(EM_DASH)) {
-        violations.push(`${relFile}:${i + 1}: ${lit.slice(0, 80)}`);
+        violations.push(`${file}:${i + 1}: ${lit.slice(0, 80)}`);
       }
     }
   });
+  return violations;
 }
 
 // ---------- Resultat ----------
 
-if (violations.length) {
-  console.error(`tone-check-em-dash: ${violations.length} em-dash-fund i player-facing copy:\n`);
-  for (const v of violations) console.error(`  ${v}`);
-  console.error(
-    "\nRegel: docs/TONE_OF_VOICE.md §Punktuation — brug komma, punktum, kolon" +
-      "\neller parentes. Enkeltstående `—` som tom-værdi-glyf er tilladt."
+function runToneCheck() {
+  const violations = [];
+
+  for (const file of walkJson(join(ROOT, LOCALES_DIR))) {
+    const rel = relative(ROOT, file).replaceAll("\\", "/");
+    violations.push(
+      ...findLocaleEmDashViolations(
+        JSON.parse(readFileSync(file, "utf8")),
+        rel,
+      ),
+    );
+  }
+
+  for (const relFile of PROSE_FILES) {
+    violations.push(
+      ...findProseEmDashViolations(
+        readFileSync(join(ROOT, relFile), "utf8"),
+        relFile,
+      ),
+    );
+  }
+
+  if (violations.length) {
+    console.error(
+      `tone-check-em-dash: ${violations.length} em-dash-fund i player-facing copy:\n`,
+    );
+    for (const v of violations) console.error(`  ${v}`);
+    console.error(
+      "\nRegel: docs/TONE_OF_VOICE.md §Punktuation — brug komma, punktum, kolon" +
+        "\neller parentes. Enkeltstående `—` som tom-værdi-glyf er tilladt.",
+    );
+    process.exitCode = 1;
+    return;
+  }
+
+  console.log(
+    "tone-check-em-dash: OK — ingen em-dash i player-facing copy (locales + prosa-sider).",
   );
-  process.exit(1);
 }
 
-console.log("tone-check-em-dash: OK — ingen em-dash i player-facing copy (locales + prosa-sider).");
+if (
+  process.argv[1] &&
+  resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+) {
+  runToneCheck();
+}
