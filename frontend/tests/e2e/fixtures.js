@@ -95,6 +95,10 @@ const RIDERS = [
     primary_type: "climber",
     secondary_type: "gc",
     team: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name },
+    // #950: parkeret handel → /riders viser "på vej til holdskifte"-chip
+    // (→ kommende holdnavn) under nuværende hold. Dækket af riders.png-snapshot.
+    pending_team_id: TEST_TEAM.id,
+    pending_team: { id: TEST_TEAM.id, name: TEST_TEAM.name },
   },
 ];
 
