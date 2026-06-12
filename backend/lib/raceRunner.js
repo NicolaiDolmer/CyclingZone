@@ -4,7 +4,8 @@
 //
 // Ansvar:
 //   1. Hent etape-profiler (race_stage_profiles) + startfelt (race_entries, med
-//      deterministisk auto-fill når tomt — F1=B, ejer-besluttet 2026-06-07).
+//      per-hold autopick for hold UDEN entries — F1=B-strategi udvidet i #1307;
+//      hold med manager-udtagne entries røres ikke).
 //   2. Simulér hver etape (seed = stableSeed(`${race.id}:${stage}`)).
 //   3. Aggregér på tværs af etaper: GC efter kumulativ tid (F3=B), + point/bjerg/
 //      ungdom/hold-klassementer. EMISSION matcher pcmResultsImport.js PRÆCIST:
@@ -246,6 +247,21 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
 
 // ── I/O: indlæsning ───────────────────────────────────────────────────────────
 
+// PostgREST .in() encoder id-listen i URL'en — ved relaunch-skala (600-800 UUID'er)
+// rammer det 414/proxy-grænser. Batch derfor alle id-opslag i bidder. (#1307-review)
+const IN_CHUNK_SIZE = 200;
+async function selectInChunks({ supabase, table, columns, inColumn, ids, extra = null }) {
+  const out = [];
+  for (let i = 0; i < ids.length; i += IN_CHUNK_SIZE) {
+    let q = supabase.from(table).select(columns).in(inColumn, ids.slice(i, i + IN_CHUNK_SIZE));
+    if (extra) q = extra(q);
+    const { data, error } = await q;
+    if (error) return { data: null, error };
+    out.push(...(data || []));
+  }
+  return { data: out, error: null };
+}
+
 async function loadStageProfiles(supabase, raceId) {
   const { data, error } = await supabase
     .from("race_stage_profiles")
@@ -272,11 +288,11 @@ async function fillMissingTeamEntries({ supabase, race, stages, existingEntries,
     .map((t) => t.id);
   if (!missingTeamIds.length) return [];
 
-  const { data: riders, error: riderErr } = await supabase
-    .from("riders")
-    .select("id, team_id")
-    .in("team_id", missingTeamIds)
-    .or("is_retired.is.null,is_retired.eq.false");
+  const { data: riders, error: riderErr } = await selectInChunks({
+    supabase, table: "riders", columns: "id, team_id",
+    inColumn: "team_id", ids: missingTeamIds,
+    extra: (q) => q.or("is_retired.is.null,is_retired.eq.false"),
+  });
   if (riderErr) throw new Error(`riders: ${riderErr.message}`);
 
   // Spec 6.5 (#1306): skadede ryttere (injured_until >= i dag) må ikke auto-fyldes i startfeltet.
@@ -292,19 +308,19 @@ async function fillMissingTeamEntries({ supabase, race, stages, existingEntries,
 
   const candidateIds = candidates.map((r) => r.id);
   const abilityCols = ["rider_id", ...ABILITY_KEYS].join(", ");
-  const { data: abilities, error: aErr } = await supabase
-    .from("rider_derived_abilities")
-    .select(abilityCols)
-    .in("rider_id", candidateIds);
+  const { data: abilities, error: aErr } = await selectInChunks({
+    supabase, table: "rider_derived_abilities", columns: abilityCols,
+    inColumn: "rider_id", ids: candidateIds,
+  });
   if (aErr) throw new Error(`rider_derived_abilities: ${aErr.message}`);
   const abilityByRider = new Map((abilities || []).map((a) => [a.rider_id, a]));
 
   // Træthed (let dæmpning i autopick) — degraderer til 0 ved fejl, mirror B2.
   let fatigueByRider = new Map();
-  const { data: conditions, error: condErr } = await supabase
-    .from("rider_condition")
-    .select("rider_id, fatigue")
-    .in("rider_id", candidateIds);
+  const { data: conditions, error: condErr } = await selectInChunks({
+    supabase, table: "rider_condition", columns: "rider_id, fatigue",
+    inColumn: "rider_id", ids: candidateIds,
+  });
   if (!condErr) fatigueByRider = new Map((conditions || []).map((c) => [c.rider_id, c.fatigue]));
 
   const sizeRule = selectionSizeForRace(race);
@@ -351,17 +367,17 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
   const roleByRider = new Map(entries.map((e) => [e.rider_id, e.race_role]));
   const riderIds = entries.map((e) => e.rider_id);
 
-  const { data: riders, error: rErr } = await supabase
-    .from("riders")
-    .select("id, firstname, lastname, is_u25")
-    .in("id", riderIds);
+  const { data: riders, error: rErr } = await selectInChunks({
+    supabase, table: "riders", columns: "id, firstname, lastname, is_u25",
+    inColumn: "id", ids: riderIds,
+  });
   if (rErr) throw new Error(`riders: ${rErr.message}`);
 
   const abilityCols = ["rider_id", ...ABILITY_KEYS].join(", ");
-  const { data: abilities, error: aErr } = await supabase
-    .from("rider_derived_abilities")
-    .select(abilityCols)
-    .in("rider_id", riderIds);
+  const { data: abilities, error: aErr } = await selectInChunks({
+    supabase, table: "rider_derived_abilities", columns: abilityCols,
+    inColumn: "rider_id", ids: riderIds,
+  });
   if (aErr) throw new Error(`rider_derived_abilities: ${aErr.message}`);
   const abilityByRider = new Map((abilities || []).map((a) => [a.rider_id, a]));
 
@@ -369,10 +385,10 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
   // Berigelsen er additiv: fejler opslaget, degraderer vi til neutral (undefined) frem for
   // at blokere race-finalization — modsat skade-eksklusionen i fillMissingTeamEntries, der SKAL fejle hårdt.
   let conditionByRider = new Map();
-  const { data: conditions, error: condErr } = await supabase
-    .from("rider_condition")
-    .select("rider_id, form, fatigue")
-    .in("rider_id", riderIds);
+  const { data: conditions, error: condErr } = await selectInChunks({
+    supabase, table: "rider_condition", columns: "rider_id, form, fatigue",
+    inColumn: "rider_id", ids: riderIds,
+  });
   if (condErr) {
     console.error(`rider_condition-berigelse fejlede (degraderer til neutral): ${condErr.message}`);
   } else {
