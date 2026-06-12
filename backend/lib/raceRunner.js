@@ -30,6 +30,7 @@ import { recomputeSeasonRaceDays } from "./seasonRaceDays.js";
 import { processBoardWeekendFinalization as processBoardWeekendFinalizationShared } from "./boardWeekendFinalization.js";
 import { simulateStage, stableSeed, ENGINE_VERSION, ABILITY_KEYS } from "./raceSimulator.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
+import { applyRaceFatigue } from "./raceFatigue.js";
 
 // Intern klassements-point (grøn/bjerg) — afgør KUN rækkefølgen i de respektive
 // trøje-konkurrencer; selve præmie-pointene kommer fra race_points via rank.
@@ -391,6 +392,7 @@ export async function simulateRace({
   recomputeRaceDays = recomputeSeasonRaceDays,
   processBoardWeekend = processBoardWeekendFinalizationShared,
   notifyDiscord = null,
+  applyFatigue = applyRaceFatigue,
 }) {
   if (!supabase?.from) throw new Error("supabase client kræves");
   if (!race?.id || !race?.season_id) throw new Error("race {id, season_id} kræves");
@@ -449,6 +451,20 @@ export async function simulateRace({
 
   await persistRuns({ supabase, race, runs });
   await supabase.from("races").update({ status: "completed" }).eq("id", race.id);
+
+  // #1306 spec 6.4: løbsdage bygger træthed — én batch pr. simuleret etape, kun ved
+  // persist (dry-run returnerer allerede ovenfor). Fejl sluges: træthed er additiv
+  // berigelse; et upsert-problem må ikke vælte finalization (mirror B2-beslutningen
+  // for condition-berigelse i loadEntrantsForRace).
+  const riderIds = entrants.map((e) => e.rider_id);
+  for (const stage of stages) {
+    try {
+      await applyFatigue({ supabase, riderIds, profileType: stage.profile_type });
+    } catch (err) {
+      console.error(`  ⚠️  race fatigue upsert fejlede (etape ${stage.stage_number}, ${stage.profile_type}): ${err.message}`);
+    }
+  }
+
   const newRaceDaysCompleted = await recomputeRaceDays({ supabase, seasonId: race.season_id });
 
   // #1187 · Løbende bestyrelses-tilfredshed efter afviklet løb. Fejl må ikke

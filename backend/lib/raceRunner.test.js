@@ -437,3 +437,76 @@ test("simulateRace dryRun: tomt startfelt auto-fills i hukommelse uden insert (#
   const mutating = supabase.__writes.filter((w) => ["insert", "update", "delete"].includes(w.op));
   assert.equal(mutating.length, 0, `dryRun-auto-fill må ikke skrive til DB — fandt: ${JSON.stringify(mutating)}`);
 });
+
+// ── simulateRace race fatigue (#1306 B3) ─────────────────────────────────────
+
+test("simulateRace: dryRun=true → applyFatigue kaldes IKKE", async () => {
+  const supabase = makeSupabase({
+    race_stage_profiles: STAGES_3,
+    race_entries: ENTRANTS.map((e) => ({ rider_id: e.rider_id, team_id: e.team_id })),
+    riders: ENTRANTS.map((e) => ({ id: e.rider_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
+    rider_derived_abilities: ENTRANTS.map((e) => ({ rider_id: e.rider_id, ...e.abilities })),
+    race_points: [],
+  });
+  let fatigueCalls = 0;
+  const result = await simulateRace({
+    supabase,
+    race: STAGE_RACE,
+    dryRun: true,
+    applyRaceResults: async () => { throw new Error("må ikke kaldes i dryRun"); },
+    recomputeRaceDays: async () => { throw new Error("må ikke kaldes i dryRun"); },
+    applyFatigue: async () => { fatigueCalls++; return { updated: 0 }; },
+  });
+  assert.equal(result.dryRun, true);
+  assert.equal(fatigueCalls, 0, "applyFatigue må ikke kaldes ved dryRun=true");
+});
+
+test("simulateRace: persisted run → applyFatigue kaldt én gang pr. etape med korrekt profileType", async () => {
+  const supabase = makeSupabase({
+    race_stage_profiles: STAGES_3,
+    race_entries: ENTRANTS.map((e) => ({ rider_id: e.rider_id, team_id: e.team_id })),
+    riders: ENTRANTS.map((e) => ({ id: e.rider_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
+    rider_derived_abilities: ENTRANTS.map((e) => ({ rider_id: e.rider_id, ...e.abilities })),
+    race_points: [],
+    seasons: [{ id: STAGE_RACE.season_id, number: 2, status: "active", race_days_completed: 5, race_days_total: 60 }],
+  });
+  const fatigueCalls = [];
+  await simulateRace({
+    supabase,
+    race: STAGE_RACE,
+    applyRaceResults: async ({ resultRows }) => ({ rowsImported: resultRows.length }),
+    recomputeRaceDays: async () => 8,
+    applyFatigue: async ({ riderIds, profileType }) => {
+      fatigueCalls.push({ riderIds: riderIds.slice().sort(), profileType });
+      return { updated: riderIds.length };
+    },
+  });
+  // Ét kald pr. etape (3 etaper i STAGES_3).
+  assert.equal(fatigueCalls.length, STAGES_3.length, `forventet ${STAGES_3.length} fatigue-kald, fik ${fatigueCalls.length}`);
+  // Profile-typer matcher STAGES_3 i rækkefølge.
+  const expectedProfiles = STAGES_3.map((s) => s.profile_type);
+  assert.deepEqual(fatigueCalls.map((c) => c.profileType), expectedProfiles);
+  // Alle entrant-ryttere er med i hvert kald.
+  const expectedIds = ENTRANTS.map((e) => e.rider_id).sort();
+  for (const call of fatigueCalls) {
+    assert.deepEqual(call.riderIds, expectedIds, "riderIds matcher ikke entrants");
+  }
+});
+
+test("simulateRace: applyFatigue-fejl vælter ikke afviklingen (#1306)", async () => {
+  const supabase = makeSupabase({
+    race_stage_profiles: STAGES_3,
+    race_entries: ENTRANTS.map((e) => ({ rider_id: e.rider_id, team_id: e.team_id })),
+    riders: ENTRANTS.map((e) => ({ id: e.rider_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
+    rider_derived_abilities: ENTRANTS.map((e) => ({ rider_id: e.rider_id, ...e.abilities })),
+    race_points: [],
+  });
+  const report = await simulateRace({
+    supabase,
+    race: STAGE_RACE,
+    applyRaceResults: async ({ resultRows }) => ({ rowsImported: resultRows.length }),
+    recomputeRaceDays: async () => 8,
+    applyFatigue: async () => { throw new Error("fatigue boom"); },
+  });
+  assert.ok(report.rowsImported > 0, "finalization skal fuldføre selv om applyFatigue kaster");
+});
