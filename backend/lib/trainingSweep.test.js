@@ -72,49 +72,9 @@ describe("teamsNeedingSweep", () => {
 
 // ── runTrainingSweep ─────────────────────────────────────────────────────────
 
-// Hjælper: byg minimal mock-supabase der returnerer forudkonfigurerede data.
-function makeMockSupabase({
-  configValue = true,  // daily_training_enabled
-  teams = [],
-  season = { id: "s1", number: 1 },
-  runs = [],
-} = {}) {
-  return {
-    from(table) {
-      return {
-        select() {
-          return this;
-        },
-        eq() {
-          return this;
-        },
-        maybeSingle() {
-          if (table === "app_config") {
-            return Promise.resolve({ data: { value: configValue }, error: null });
-          }
-          if (table === "seasons") {
-            return Promise.resolve({ data: season, error: null });
-          }
-          return Promise.resolve({ data: null, error: null });
-        },
-        // Chainable for .select().eq().eq().eq().eq() (teams-query returnerer array)
-        then(resolve) {
-          if (table === "teams") {
-            return resolve({ data: teams, error: null });
-          }
-          if (table === "training_day_runs") {
-            return resolve({ data: runs, error: null });
-          }
-          return resolve({ data: null, error: null });
-        },
-      };
-    },
-  };
-}
-
 // Supabase mock der implementerer Promise-protokol korrekt for begge query-mønstre
 // (.maybeSingle() + direkte await af query-builder via .then()).
-function makeChainMock({ table, resolveWith }) {
+function makeChainMock({ resolveWith }) {
   const obj = {
     select() { return this; },
     eq() { return this; },

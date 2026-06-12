@@ -74,7 +74,6 @@ const trainCfg = DAILY_TRAINING_CONFIG;
 const DAYS = trainCfg.daysPerSeason; // 28
 
 const padE = (s, n) => String(s).padEnd(n);
-const padS = (s, n) => String(s).padStart(n);
 const fmt1 = (n) => n.toFixed(1);
 
 console.log(`\n🚴  TRAINING-GATE — seed=${SEED} count=${COUNT} seasons=${SEASONS} dailyBudgetBoost=${trainCfg.dailyBudgetBoost} (in-memory, rører ikke prod)\n`);
@@ -262,7 +261,6 @@ function avgDaysPerPoint(age) {
       if (gap > bestGap) { bestGap = gap; bestAb = ab; }
     }
     if (!bestAb || bestGap <= 0) return null;
-    const current = p.abilities[bestAb] ?? 0;
     // Simpel delta: base = gap × growthFrac × boost / days (ingen condition/bonus — bare basis-raten)
     const { growthFractionByAge } = PROGRESSION_CONFIG;
     let frac = growthFractionByAge[growthFractionByAge.length - 1].frac;

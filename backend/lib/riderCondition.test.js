@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
-  CONDITION_CONFIG, nextFatigue, nextForm, conditionMultiplier,
+  nextFatigue, nextForm, conditionMultiplier,
   injuryRisk, rollInjury,
 } from "./riderCondition.js";
 

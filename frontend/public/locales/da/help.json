@@ -460,7 +460,7 @@
       "label": "Daglig træning",
       "whatDailyTraining": {
         "title": "Hvad er Daglig træning?",
-        "text": "Daglig træning lader dig udvikle dine ryttere hver dag i stedet for kun ved sæsonskifte. På siden Daglig træning sætter du et program for hver rytter — en fokus-retning og en intensitet — og systemet anvender det automatisk hver dag. Daglig træning aktiveres ved sæsonrelaunchen den 20. juni."
+        "text": "Daglig træning lader dig udvikle dine ryttere hver dag i stedet for kun ved sæsonskifte. På siden Daglig træning sætter du et program for hver rytter (en fokus-retning og en intensitet), og systemet anvender det automatisk hver dag. Daglig træning aktiveres ved sæsonrelaunchen den 20. juni."
       },
       "programs": {
         "title": "Sæt programmer",
@@ -469,12 +469,12 @@
           "Find en rytter og vælg et fokus: VO2max, Tærskel, Sprint, Udholdenhed, Teknik eller Aero.",
           "Vælg en intensitet: Hvile, Let, Normal eller Hård.",
           "Gem. Programmet kører hver dag indtil du ændrer det.",
-          "Der er ingen cap på hvor mange ryttere der kan have et program — du kan sætte ét for hele troppen."
+          "Der er ingen cap på hvor mange ryttere der kan have et program: du kan sætte ét for hele troppen."
         ]
       },
       "trainToday": {
         "title": "Træn i dag og +25%-boostet",
-        "text": "Klik 'Træn i dag' én gang om dagen for at køre alle aktive programmer med +25% træningsboost. Springer du knappen over, kører assistenten træningen automatisk efter kl. 22. Du mister aldrig en træningsdag — kun boostet går tabt, når du ikke klikker."
+        "text": "Klik 'Træn i dag' én gang om dagen for at køre alle aktive programmer med +25% træningsboost. Springer du knappen over, kører assistenten træningen automatisk efter kl. 22. Du mister aldrig en træningsdag. Kun boostet går tabt, når du ikke klikker."
       },
       "formFatigue": {
         "title": "Form og Træthed",
@@ -486,7 +486,7 @@
       },
       "progressBars": {
         "title": "Fremskridtslinjer og evnepoint",
-        "text": "Rytterprofiler viser en fremskridtslinje for hver evne der trænes. Linjen fylder op efterhånden som træning akkumuleres. Når linjen er fuld, stiger rytteren +1 i den evne. Fremskridtet bevares dag for dag — intet nulstilles midt i sæsonen."
+        "text": "Rytterprofiler viser en fremskridtslinje for hver evne der trænes. Linjen fylder op efterhånden som træning akkumuleres. Når linjen er fuld, stiger rytteren +1 i den evne. Fremskridtet bevares dag for dag. Intet nulstilles midt i sæsonen."
       },
       "longTermGrowth": {
         "title": "Langsigtet vækst",

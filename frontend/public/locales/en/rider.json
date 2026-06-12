@@ -417,7 +417,7 @@
   "condition": {
     "form": "Form",
     "fatigue": "Fatigue",
-    "injured": "Injured — {{days}}d left"
+    "injured": "Injured: {{days}}d left"
   },
   "training": {
     "title": "Training focus",

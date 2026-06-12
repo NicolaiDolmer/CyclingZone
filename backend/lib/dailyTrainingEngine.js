@@ -261,7 +261,7 @@ export async function runTeamTrainingDay({
         .delete()
         .eq("team_id", teamId)
         .eq("tick_date", tickDate);
-    } catch (_) { /* swallow — original fejl er vigtigst */ }
+    } catch { /* swallow — original fejl er vigtigst */ }
     throw phase1Err;
   }
 

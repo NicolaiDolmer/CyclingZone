@@ -460,7 +460,7 @@
       "label": "Daily Training",
       "whatDailyTraining": {
         "title": "What is Daily Training?",
-        "text": "Daily Training lets you develop your riders every day instead of only at season transitions. On the Daily Training page you set a program for each rider — a focus direction and an intensity — and the system applies it automatically each day. Daily Training activates at the season relaunch on 20 June."
+        "text": "Daily Training lets you develop your riders every day instead of only at season transitions. On the Daily Training page you set a program for each rider (a focus direction and an intensity), and the system applies it automatically each day. Daily Training activates at the season relaunch on 20 June."
       },
       "programs": {
         "title": "Setting programs",
@@ -469,12 +469,12 @@
           "Find a rider and choose a focus: VO2max, Threshold, Sprint, Endurance, Technique or Aero.",
           "Choose an intensity: Rest, Easy, Normal or Hard.",
           "Save. The program runs every day until you change it.",
-          "There is no cap on how many riders can have a program — you can set one for your entire squad."
+          "There is no cap on how many riders can have a program: you can set one for your entire squad."
         ]
       },
       "trainToday": {
         "title": "Train today and the +25% boost",
-        "text": "Click 'Train today' once per day to run all active programs with a +25% training boost. If you skip the button, the assistant runs training automatically after 22:00. You never lose a day of training — only the boost is missed when you don't click."
+        "text": "Click 'Train today' once per day to run all active programs with a +25% training boost. If you skip the button, the assistant runs training automatically after 22:00. You never lose a day of training. Only the boost is missed when you don't click."
       },
       "formFatigue": {
         "title": "Form and Fatigue",
@@ -486,7 +486,7 @@
       },
       "progressBars": {
         "title": "Progress bars and ability points",
-        "text": "Rider profiles show a progress bar for each ability being trained. The bar fills as training accumulates. When the bar reaches full, the rider gains +1 in that ability. Progress carries over day to day — nothing resets mid-season."
+        "text": "Rider profiles show a progress bar for each ability being trained. The bar fills as training accumulates. When the bar reaches full, the rider gains +1 in that ability. Progress carries over day to day. Nothing resets mid-season."
       },
       "longTermGrowth": {
         "title": "Long-term growth",
