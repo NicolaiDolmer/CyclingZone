@@ -136,6 +136,114 @@ test("pensionerede ryttere udvikles ikke (filtreret på is_retired)", async () =
   assert.equal(summary.developed, 0);
 });
 
+// ── Anti-double-dip: skipGrowth (#1305) ──────────────────────────────────────
+
+// Helpers til at bygge state med menneskelige og AI-holds
+function seedStateWithTeams({ riders, abilities, teams }) {
+  return {
+    riders: riders.map((r) => ({ ...r })),
+    rider_derived_abilities: abilities.map((a) => ({ ...ABILITY_DEFAULTS, ...a })),
+    rider_development_log: [],
+    teams: teams.map((t) => ({ ...t })),
+    app_config: [],
+  };
+}
+
+test("flag OFF → ingen teams-forespørgsel, alle vokser som normalt", async () => {
+  // dailyTrainingEnabled=false injiceres direkte → ren passiv L0-adfærd
+  const state = seedState({
+    riders: [{ id: "r1", primary_type: "climber", potentiale: 5, birthdate: "2005-01-01", base_value: 100000, is_u25: true, is_retired: false, team_id: "team-1", firstname: "A", lastname: "B" }],
+    abilities: [{ rider_id: "r1", climbing: 55, ability_caps: null }],
+  });
+  // Eksisterende seedState-mock har kun { id, user_id } i teams — vi behøver ikke rette den
+  // fordi teams ALDRIG bliver spurgt når flaget er OFF.
+  const supabase = createMockSupabase(state);
+  const summary = await developRidersForSeason({
+    supabase, seasonId: "s2", seasonNumber: 2, model: MODEL,
+    dailyTrainingEnabled: false,
+  });
+  assert.equal(summary.growth_skipped, 0, "ingen skippet vækst");
+  assert.equal(summary.developed, 1);
+  assert.ok(state.rider_derived_abilities[0].climbing > 55, "vokser normalt");
+});
+
+test("flag ON + menneskelig-hold rytter i vækstfase → abilities uændret, log skrevet, growth_skipped++", async () => {
+  const state = seedStateWithTeams({
+    riders: [{ id: "r1", primary_type: "climber", potentiale: 5, birthdate: "2005-01-01", base_value: 100000, is_u25: true, is_retired: false, team_id: "human-1", firstname: "Ung", lastname: "Talent" }],
+    abilities: [{ rider_id: "r1", climbing: 55, endurance: 55, ability_caps: null }],
+    teams: [{ id: "human-1", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false }],
+  });
+  const supabase = createMockSupabase(state);
+  const climbBefore = state.rider_derived_abilities[0].climbing;
+
+  const summary = await developRidersForSeason({
+    supabase, seasonId: "s2", seasonNumber: 2, model: MODEL,
+    dailyTrainingEnabled: true,
+  });
+
+  assert.equal(summary.growth_skipped, 1, "én rytters vækst springes over");
+  assert.equal(summary.developed, 1, "rytteren er stadig 'developed' (log + base_value + is_u25)");
+  assert.equal(state.rider_derived_abilities[0].climbing, climbBefore, "climbing uændret");
+  assert.equal(state.rider_development_log.length, 1, "log-row skrevet (idempotens bevaret)");
+});
+
+test("flag ON + AI-hold rytter → vokser fuldt ud (uberørt af skipGrowth)", async () => {
+  const state = seedStateWithTeams({
+    riders: [{ id: "r1", primary_type: "climber", potentiale: 5, birthdate: "2005-01-01", base_value: 100000, is_u25: true, is_retired: false, team_id: "ai-1", firstname: "AI", lastname: "Rider" }],
+    abilities: [{ rider_id: "r1", climbing: 55, endurance: 55, ability_caps: null }],
+    teams: [{ id: "ai-1", is_ai: true, is_bank: false, is_frozen: false, is_test_account: false }],
+  });
+  const supabase = createMockSupabase(state);
+
+  const summary = await developRidersForSeason({
+    supabase, seasonId: "s2", seasonNumber: 2, model: MODEL,
+    dailyTrainingEnabled: true,
+  });
+
+  assert.equal(summary.growth_skipped, 0, "AI-rytter springes IKKE over");
+  assert.ok(state.rider_derived_abilities[0].climbing > 55, "AI-rytter vokser normalt");
+});
+
+test("flag ON + menneskelig-hold fald-fase rytter → falder som normalt (decline bevares)", async () => {
+  // 34-årig — over peakAge (28) → decline-fasen kører selv med skipGrowth
+  const state = seedStateWithTeams({
+    riders: [{ id: "r1", primary_type: "sprinter", potentiale: 5, birthdate: "1993-01-01", base_value: 200000, is_u25: false, is_retired: false, team_id: "human-1", firstname: "Gml", lastname: "Rytter" }],
+    abilities: [{ rider_id: "r1", sprint: 80, acceleration: 75, ability_caps: null }],
+    teams: [{ id: "human-1", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false }],
+  });
+  const supabase = createMockSupabase(state);
+  const sprintBefore = state.rider_derived_abilities[0].sprint;
+
+  const summary = await developRidersForSeason({
+    supabase, seasonId: "s2", seasonNumber: 2, model: MODEL,
+    dailyTrainingEnabled: true,
+  });
+
+  // sæson 2 → alder = 2026 + 1 - 1993 = 34 (over peak)
+  // growth_skipped = 1: flagget sættes per hold (menneskelig), ikke per alder.
+  // Det er OK — i developRiderSeason kører decline-stien fordi age > peakAge.
+  assert.equal(summary.growth_skipped, 1, "flagget sættes for menneskelig-hold rytter uanset alder");
+  assert.ok(state.rider_derived_abilities[0].sprint < sprintBefore, "evne falder for fald-fase rytter");
+});
+
+test("flag ON + idempotens: anden kørsel med menneskelig hold skipper allerede-udviklede", async () => {
+  const state = seedStateWithTeams({
+    riders: [{ id: "r1", primary_type: "climber", potentiale: 5, birthdate: "2005-01-01", base_value: 100000, is_u25: true, is_retired: false, team_id: "human-1", firstname: "A", lastname: "B" }],
+    abilities: [{ rider_id: "r1", climbing: 55, ability_caps: null }],
+    teams: [{ id: "human-1", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false }],
+  });
+  const supabase = createMockSupabase(state);
+  await developRidersForSeason({ supabase, seasonId: "s2", seasonNumber: 2, model: MODEL, dailyTrainingEnabled: true });
+
+  const climbAfterFirst = state.rider_derived_abilities[0].climbing;
+  const summary2 = await developRidersForSeason({ supabase, seasonId: "s2", seasonNumber: 2, model: MODEL, dailyTrainingEnabled: true });
+
+  assert.equal(summary2.skipped_already_done, 1, "anden kørsel skipper");
+  assert.equal(summary2.developed, 0);
+  assert.equal(state.rider_derived_abilities[0].climbing, climbAfterFirst, "ability uændret ved re-run");
+  assert.equal(state.rider_development_log.length, 1, "ingen dublet log-row");
+});
+
 test("træningsfokus (#1163) biaser udvikling når trainingSeasonId er sat", async () => {
   const mkState = () => {
     const s = seedState({

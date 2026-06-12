@@ -158,17 +158,28 @@ export function retirementDecision(age, riderId, season, cfg = PROGRESSION_CONFI
 //   season    : sæson-nummer (seed-komponent)
 //   training  : bias-modifier fra training.resolveTrainingModifier(...) | null (#1163).
 //               { focusAbilities:Set, focusMult, offFocusMult } — biaser vækst pr. evne.
+//   options   : { skipGrowth?: boolean } — anti-double-dip (#1305): når daglig træning
+//               er aktiv for menneskelige hold spring VÆKST-fasen (age ≤ peakAge) over
+//               pr. evne. Fald (age > peakAge) og retirement kører ALTID uændret.
+//               Ingen effect på default-adfærd (options udeladt eller skipGrowth falsy).
 // Returnerer { next: {<ability>: value}, changed: [...], retirement: {...} }.
-export function developRiderSeason(rider, abilities, caps, season, cfg = PROGRESSION_CONFIG, training = null) {
+export function developRiderSeason(rider, abilities, caps, season, cfg = PROGRESSION_CONFIG, training = null, options = {}) {
   const age = Number(rider.age);
   const type = rider.primary_type;
   const peakAge = peakAgeForType(type, cfg);
+  const skipGrowth = options?.skipGrowth === true;
   const next = {};
   const changed = [];
 
   for (const ability of VISIBLE_ABILITIES) {
     const cur = abilities?.[ability];
     if (cur == null) continue;
+    // skipGrowth: vækst-fasen (age ≤ peakAge) springes over — evnen forbliver uændret.
+    // Fald-fasen (age > peakAge) kører som normalt — decline er sæsonbaseret for alle.
+    if (skipGrowth && age <= peakAge) {
+      next[ability] = Math.round(Number(cur));
+      continue;
+    }
     const isSig = signatureFactor(type, ability, cfg) >= 1.0;
     const cap = caps?.[ability] ?? abilityCap(cur, type, ability, rider.potentiale, cfg);
     const noiseUnit = seededUnit(`grow:${rider.id}:${season}:${ability}`);

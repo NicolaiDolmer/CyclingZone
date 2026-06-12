@@ -19,6 +19,7 @@ import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { developRiderSeason, buildCaps } from "./riderProgression.js";
 import { resolveTrainingModifier } from "./training.js";
 import { notifyTeamOwner } from "./notificationService.js";
+import { isDailyTrainingEnabled } from "./dailyTrainingFlag.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -59,12 +60,16 @@ async function runBatched(items, concurrency, fn) {
  * @param {object}  [args.model]        — base_value-model (default: riderValuationModel.json)
  * @param {boolean} [args.notify=true]  — send retirement-notifikationer
  * @param {Date}    [args.now]          — til notifikations-dedup (default new Date())
+ * @param {boolean} [args.dailyTrainingEnabled] — injiceret flag (test/orchestrator); udefineret →
+ *                  slår isDailyTrainingEnabled(supabase) op. Når true: menneskelige holds
+ *                  vækst-trin springes over (anti-double-dip #1305); AI-hold er upåvirket.
  * @returns {Promise<object>} summary
  */
 export async function developRidersForSeason({
   supabase, seasonId, seasonNumber, trainingSeasonId = null,
   model = defaultModel(), notify = true, now = new Date(),
   notifyTeamOwnerFn = notifyTeamOwner,
+  dailyTrainingEnabled: dailyTrainingEnabledArg,
 }) {
   if (!supabase?.from) throw new Error("Supabase client required");
   if (!seasonId) throw new Error("seasonId required");
@@ -73,6 +78,27 @@ export async function developRidersForSeason({
   const alreadyRows = await fetchAllRows(() =>
     supabase.from("rider_development_log").select("rider_id").eq("season_id", seasonId));
   const alreadyDeveloped = new Set(alreadyRows.map((r) => r.rider_id));
+
+  // ── Anti-double-dip (#1305): når daglig træning er aktiv springer menneskelige ──
+  //    holds vækst over (de vokser allerede via den daglige tick). Fald + retirement
+  //    kører sæsonbaseret for alle. AI-hold er upåvirket (full L0 som hidtil).
+  //    Flag-opslag: injiceret boolean fra caller (test/orchestrator), ellers live-lookup.
+  const dailyTrainingActive = dailyTrainingEnabledArg !== undefined
+    ? dailyTrainingEnabledArg
+    : await isDailyTrainingEnabled(supabase);
+
+  // Human-team id-sæt: kun nødvendig når flaget er aktivt (ingen forespørgsel ellers).
+  const humanTeamIds = new Set();
+  if (dailyTrainingActive) {
+    const teamRows = await fetchAllRows(() => supabase
+      .from("teams")
+      .select("id")
+      .eq("is_ai", false)
+      .eq("is_bank", false)
+      .eq("is_frozen", false)
+      .eq("is_test_account", false));
+    for (const t of teamRows) humanTeamIds.add(t.id);
+  }
 
   // ── Træningsfokus (#1163): planer fra den afsluttede sæson biaser udviklingen.
   //    Keyet (team,rider) så kun rytterens NUVÆRENDE holds plan tæller. Gated:
@@ -108,6 +134,7 @@ export async function developRidersForSeason({
     candidates: 0, skipped_already_done: 0, developed: 0,
     grew: 0, declined: 0, retired: 0, caps_initialised: 0,
     trained: 0, training_setbacks: 0,
+    growth_skipped: 0,  // ryttere hvis vækst-trin springes over (anti-double-dip #1305)
   };
 
   for (const r of riders) {
@@ -131,14 +158,21 @@ export async function developRidersForSeason({
       summary.caps_initialised++;
     }
 
+    // Anti-double-dip (#1305): menneskelige holds ryttere i vækstfasen spring over;
+    // AI/bank/frozen/test-hold + team_id=null kører fuld L0 som hidtil.
+    const skipGrowth = dailyTrainingActive && r.team_id != null && humanTeamIds.has(r.team_id);
+    if (skipGrowth) summary.growth_skipped++;
+
     // Træningsbias: rytterens nuværende holds plan fra den afsluttede sæson.
-    const plan = r.team_id ? trainingByTeamRider.get(`${r.team_id}:${r.id}`) : null;
+    // For skipGrowth-ryttere er den sæsonbaserede bias irrelevant (vækst hoppes over),
+    // så vi sætter training=undefined for at undgå en stille bias der intet gør.
+    const plan = (!skipGrowth && r.team_id) ? trainingByTeamRider.get(`${r.team_id}:${r.id}`) : null;
     const training = resolveTrainingModifier(plan, r.id, seasonNumber);
     if (training) { summary.trained++; if (training.setbackHit) summary.training_setbacks++; }
 
     const { next, retirement } = developRiderSeason(
       { id: r.id, primary_type: r.primary_type, potentiale: r.potentiale, age },
-      abilities, caps, seasonNumber, undefined, training
+      abilities, caps, seasonNumber, undefined, training, { skipGrowth }
     );
 
     // Vækst/fald-tælling (signaturen er den højeste evne-bevægelse).
