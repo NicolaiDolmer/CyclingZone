@@ -1012,7 +1012,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
       .eq("is_retired", false);
     const riderIds = (riders ?? []).map((r) => r.id);
 
-    // Today's run-row + condition + progress — batched (max 2 ekstra queries mod DB).
+    // Today's run-row + condition + progress — batched (max 3 ekstra queries mod DB).
     const todayDate = copenhagenDateString(new Date());
     const [todayRunResult, conditionResult, progressResult] = await Promise.all([
       activeSeasonId
