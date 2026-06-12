@@ -164,7 +164,16 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
     });
   };
 
-  const simEntrants = entrants.map((e) => ({ rider_id: e.rider_id, team_id: e.team_id, abilities: e.abilities }));
+  // #1306-fix + #1307: form/fatigue/race_role SKAL med ind i simulatoren — det er
+  // præcis condition-berigelsen og rollerne der adskiller prod-stien fra rå abilities.
+  const simEntrants = entrants.map((e) => ({
+    rider_id: e.rider_id,
+    team_id: e.team_id,
+    abilities: e.abilities,
+    ...(e.form != null ? { form: e.form } : {}),
+    ...(e.fatigue != null ? { fatigue: e.fatigue } : {}),
+    ...(e.race_role ? { race_role: e.race_role } : {}),
+  }));
 
   for (let i = 0; i < stagesSorted.length; i++) {
     const stage = stagesSorted[i];
@@ -180,6 +189,7 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
       entrant_snapshot: simEntrants.map((e) => e.rider_id).sort(),
       input_checksum: stableSeed(JSON.stringify({
         ids: simEntrants.map((e) => e.rider_id).sort(),
+        roles: simEntrants.filter((e) => e.race_role).map((e) => [e.rider_id, e.race_role]).sort(),
         demand: stage.demand_vector,
         profile: stage.profile_type,
       })),
