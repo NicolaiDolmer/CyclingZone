@@ -284,5 +284,25 @@
     "newest": "Newest first",
     "price_asc": "Price: lowest first",
     "price_desc": "Price: highest first"
+  },
+  "deadlineDay": {
+    "title": "Deadline Day",
+    "subtitle": "Every team's squad size vs. division minimum. Updates every 30 seconds.",
+    "fetchErrorTitle": "Could not load Deadline Day status",
+    "fetchErrorRetry": "Retrying in 30 seconds",
+    "inactiveTitle": "Deadline Day is only active when the transfer window is closing",
+    "inactiveSubtitle": "Check back when the transfer window approaches closing time",
+    "allOkTitle": "All teams are above minimum",
+    "allOkSubtitle": "No action required",
+    "sectionCritical": "Below minimum, {count, plural, one {1 team} other {# teams}}",
+    "sectionWarning": "Close to minimum, {count, plural, one {1 team} other {# teams}}",
+    "sectionOk": "OK, {count, plural, one {1 team} other {# teams}}",
+    "statusCritical": "Below minimum",
+    "statusWarning": "Close to minimum",
+    "statusOk": "OK",
+    "thTeam": "Team",
+    "thDivision": "Div",
+    "thMin": "Min",
+    "thStatus": "Status"
   }
 }

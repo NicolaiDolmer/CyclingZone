@@ -184,6 +184,12 @@
     "title": "You won the auction! 🏆",
     "subtitle": "The rider is now on your team"
   },
+  "priceChanged": {
+    "title": "Price changed",
+    "newPrice": "The price is now <strong>{amount} CZ$</strong>.",
+    "newMinBid": "The minimum bid is now <strong>{amount} CZ$</strong>. Do you still want to bid?",
+    "bidCta": "Bid {amount} CZ$"
+  },
   "error": {
     "bidFailed": "The bid could not be placed",
     "proxyFailed": "Failed to set auto-bid",

@@ -49,7 +49,7 @@ export default function ManagerProfilePage() {
   const { t: tCommon } = useTranslation("common");
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab]         = useState("overblik");
+  const [tab, setTab]         = useState("overview");
   const [myTeamId, setMyTeamId] = useState(null);
 
   const loadMyTeam = useCallback(async () => {
@@ -90,9 +90,9 @@ export default function ManagerProfilePage() {
   }, {});
 
   const TABS = [
-    { key: "overblik",     label: t("manager.tabOverview") },
-    { key: "ryttere",      label: t("manager.tabRiders", { count: riders.length }) },
-    { key: "sæson",        label: t("manager.tabSeason") },
+    { key: "overview",     label: t("manager.tabOverview") },
+    { key: "riders",       label: t("manager.tabRiders", { count: riders.length }) },
+    { key: "season",       label: t("manager.tabSeason") },
     { key: "achievements", label: t("manager.tabAchievements", { unlocked: unlockedCount, total: achievements.length }) },
   ];
 
@@ -162,7 +162,7 @@ export default function ManagerProfilePage() {
         ))}
       </div>
 
-      {tab === "overblik" && (
+      {tab === "overview" && (
         <div className="space-y-4">
           <div className="grid grid-cols-3 gap-3">
             <div className="bg-cz-card border border-cz-border rounded-xl p-4 text-center">
@@ -210,7 +210,7 @@ export default function ManagerProfilePage() {
         </div>
       )}
 
-      {tab === "ryttere" && (
+      {tab === "riders" && (
         <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
           {riders.length === 0 ? (
             <p className="text-cz-3 text-sm text-center py-8">{t("manager.noRiders")}</p>
@@ -246,7 +246,7 @@ export default function ManagerProfilePage() {
         </div>
       )}
 
-      {tab === "sæson" && (
+      {tab === "season" && (
         <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
           {season_history.length === 0 ? (
             <p className="text-cz-3 text-sm text-center py-8">{t("manager.noSeasonHistory")}</p>

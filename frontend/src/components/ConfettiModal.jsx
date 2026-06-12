@@ -1,7 +1,9 @@
 ﻿import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { formatNumber } from "../lib/intl";
 
 export function ConfettiModal({ show, onClose, title, subtitle, amount, icon = "🏆" }) {
+  const { t } = useTranslation("common");
   const [particles, setParticles] = useState([]);
 
   useEffect(() => {
@@ -66,7 +68,7 @@ export function ConfettiModal({ show, onClose, title, subtitle, amount, icon = "
             {formatNumber(amount)} CZ$
           </p>
         )}
-        <p className="text-cz-3 text-xs">Klik for at lukke</p>
+        <p className="text-cz-3 text-xs">{t("actions.clickToClose")}</p>
       </div>
 
       <style>{`
