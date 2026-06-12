@@ -19,8 +19,13 @@ export const TRAINING_CONFIG = Object.freeze({
   // — udledes pr. aktiv sæson, ingen reset-hook. Gratis (fair-premium).
   slotsPerSeason: 3,
 
+  // #1305: Daglig træning = ubegrænsede programmer (hele truppen). Slot-cap bevares
+  // for eventuel fremtidig brug (backward compat), men håndhæves ikke når dette er sat.
+  unlimitedSlots: true,
+
   // Gyldige intensiteter (display via i18n; nøgler er stabile).
-  intensities: Object.freeze(["easy", "normal", "hard"]),
+  // "rest" er nu gyldig — daglig intensitet, ingen vækst (håndteres i dailyTraining.js).
+  intensities: Object.freeze(["easy", "normal", "hard", "rest"]),
 
   // Vækst-multiplikator på FOKUS-evnernes gap-lukning mod cap, pr. intensitet.
   // Startgæt — dry-run'es mod population før un-gating af progression.
@@ -65,6 +70,7 @@ export function isValidIntensity(intensity, cfg = TRAINING_CONFIG) {
 //   activeSeasonId : den aktive sæsons id (slots + aktive planer tælles kun her)
 // Returnerer { slots:{total,used,remaining}, focuses:[...], intensities:[...],
 //   plans:{<rider_id>:{focus,intensity}} } hvor plans kun er den aktive sæsons.
+// Når cfg.unlimitedSlots=true: slots.total=null, slots.remaining=null (UI: ubegrænset).
 export function deriveTrainingState(rows, activeSeasonId, cfg = TRAINING_CONFIG) {
   const plans = {};
   let used = 0;
@@ -73,9 +79,11 @@ export function deriveTrainingState(rows, activeSeasonId, cfg = TRAINING_CONFIG)
     plans[row.rider_id] = { focus: row.focus, intensity: row.intensity };
     used++;
   }
-  const total = cfg.slotsPerSeason;
+  const unlimited = cfg.unlimitedSlots === true;
+  const total = unlimited ? null : cfg.slotsPerSeason;
+  const remaining = unlimited ? null : Math.max(0, cfg.slotsPerSeason - used);
   return {
-    slots: { total, used, remaining: Math.max(0, total - used) },
+    slots: { total, used, remaining },
     focuses: TRAINING_FOCUS_KEYS,
     intensities: cfg.intensities,
     plans,
@@ -84,11 +92,12 @@ export function deriveTrainingState(rows, activeSeasonId, cfg = TRAINING_CONFIG)
 
 // Må dette hold sætte/ændre en plan på denne rytter lige nu? Ren guard.
 //   hasPlan        : har holdet allerede en aktiv plan på rytteren i sæsonen?
-//   slotsRemaining : tilbageværende slots i sæsonen
+//   slotsRemaining : tilbageværende slots i sæsonen (null = ubegrænset)
 // Om-målretning af en eksisterende plan koster ikke et nyt slot; kun en NY plan gør.
 // Returnerer { ok, reason } hvor reason ∈ "no_slots" | null.
-export function canTrain(hasPlan, slotsRemaining) {
+export function canTrain(hasPlan, slotsRemaining, cfg = TRAINING_CONFIG) {
   if (hasPlan) return { ok: true, reason: null };
+  if (cfg.unlimitedSlots === true) return { ok: true, reason: null };
   if ((slotsRemaining ?? 0) <= 0) return { ok: false, reason: "no_slots" };
   return { ok: true, reason: null };
 }
@@ -103,8 +112,11 @@ export function canTrain(hasPlan, slotsRemaining) {
 export function resolveTrainingModifier(plan, riderId, seasonNumber, cfg = TRAINING_CONFIG) {
   if (!plan || !isValidFocus(plan.focus) || !isValidIntensity(plan.intensity, cfg)) return null;
   const focusAbilities = new Set(TRAINING_FOCUSES[plan.focus]);
-  const baseFocus = cfg.focusGrowthMult[plan.intensity] ?? 1;
-  const chance = cfg.setbackChance[plan.intensity] ?? 0;
+  // "rest" i den sæsonale sti behandles som "easy": ingen vækst-boost, aldrig setback.
+  // Den daglige sti (dailyTraining.js/abilityMult) håndterer rest-semantikken selvstændigt.
+  const effectiveIntensity = plan.intensity === "rest" ? "easy" : plan.intensity;
+  const baseFocus = cfg.focusGrowthMult[effectiveIntensity] ?? 1;
+  const chance = plan.intensity === "rest" ? 0 : (cfg.setbackChance[effectiveIntensity] ?? 0);
   const roll = seededUnit(`train:${riderId}:${seasonNumber}:${plan.focus}:${plan.intensity}`);
   const setbackHit = roll < chance;
   const dampen = setbackHit ? cfg.setbackGrowthMult : 1;
