@@ -227,7 +227,7 @@
       "sellerFallbackAi": "AI team",
       "sellerFallback": "Unknown",
       "noSaleTag": "No sale",
-      "noSaleBody": "received no bids — the rider was not sold"
+      "noSaleBody": "received no bids (the rider was not sold)"
     },
     "transfer": {
       "label": "Transfer",

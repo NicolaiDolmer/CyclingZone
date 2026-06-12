@@ -16,7 +16,7 @@
     "loanRepayment": "Loan installment paid",
     "loanRepaymentFinal": "Loan installment paid. Loan fully repaid! 🎉",
     "loanRepaymentRemaining": "Loan installment paid (remaining: {remaining} CZ$)",
-    "loanInterest": "Loan interest ({rate}%) — added to loan debt, not deducted from balance",
+    "loanInterest": "Loan interest ({rate}%): added to loan debt, not deducted from balance",
     "emergencyLoan": "Emergency loan opened automatically (fee: {feeRate}%, interest: {interestRate}%/season)",
     "loanFeePaid": "Loan fee: {riderName} (season {season})",
     "loanFeeReceived": "Loan fee received: {riderName} (season {season})",

@@ -227,7 +227,7 @@
       "sellerFallbackAi": "AI-hold",
       "sellerFallback": "Ukendt",
       "noSaleTag": "Intet salg",
-      "noSaleBody": "modtog ingen bud — rytteren blev ikke solgt"
+      "noSaleBody": "modtog ingen bud (rytteren blev ikke solgt)"
     },
     "transfer": {
       "label": "Transfer",
