@@ -96,11 +96,12 @@ function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
 // Hjælperkvalitet (terrain-score) × friskhed (1 − træthed-dæmpning) booster den
 // beskyttede leder: sprint_captain på flade etaper (fallback captain), ellers
 // captain. Hjælpere/hunters er score-neutrale (ingen straf i v1 — kalibrérbart).
-export const TEAM_RACE_WEIGHT = 0.010;       // max boost ved helperSupport = 1.0
+// max boost ved helperSupport = 1.0 (~1,5 % af typisk terrain-score ~0.65 — samme skala som FORM/FATIGUE-seams; kalibreres i race:gate)
+export const TEAM_RACE_WEIGHT = 0.010;
 export const HELPER_FATIGUE_DAMPING = 0.5;   // træthed 100 → hjælper bidrager 50 %
 const SPRINT_PROFILES = new Set(["flat"]);
 
-export function buildTeamContext({ entrants, terrainById, stageProfile }) {
+export function buildTeamContext({ entrants, terrainById }) {
   const byTeam = new Map();
   for (const e of entrants) {
     if (!e.team_id || !e.race_role) continue;
@@ -122,9 +123,10 @@ export function buildTeamContext({ entrants, terrainById, stageProfile }) {
         const freshness = 1 - (Number.isFinite(raw) ? clamp(raw, 0, 100) / 100 : 0) * HELPER_FATIGUE_DAMPING;
         sum += quality * freshness;
       }
+      // gennemsnit, ikke sum — flere middelmådige hjælpere fortynder boostet (kvalitet over kvantitet, naturligt bounded)
       support = clamp(sum / t.helpers.length, 0, 1);
     }
-    ctx.set(teamId, { ...t, helperSupport: support });
+    ctx.set(teamId, { captainId: t.captainId, sprintCaptainId: t.sprintCaptainId, helperSupport: support });
   }
   return ctx;
 }

@@ -28,7 +28,7 @@ test("kaptajn får boost af friske, gode hjælpere; hjælpere er neutrale", () =
   const helper = ranked.find((r) => r.rider_id === "a1");
   assert.ok(captain.components.team > 0, "kaptajn skal have positivt team-bidrag");
   assert.ok(captain.components.team <= TEAM_RACE_WEIGHT + 1e-9, "bounded af TEAM_RACE_WEIGHT");
-  assert.equal(helper.components.team, 0);
+  assert.equal(helper.components.team, 0, "hjælper må ikke selv få boost");
 });
 
 test("trætte hjælpere giver mindre boost end friske (acceptance: træthed indgår)", () => {
@@ -53,7 +53,7 @@ test("sprint_captain beskyttes på flade etaper, captain på øvrige", () => {
 test("hunter tæller som hjælper i boostet; hold uden roller er fuldt neutrale", () => {
   const withHunter = team("a", ["captain", "hunter"]);
   const r1 = simulateStage({ entrants: withHunter, stageProfile: profile, seed: 5 });
-  assert.ok(r1.ranked.find((r) => r.rider_id === "a0").components.team > 0);
+  assert.ok(r1.ranked.find((r) => r.rider_id === "a0").components.team > 0, "captain boostes af hunter som hjælper");
   const noRoles = team("b", [undefined, undefined, undefined]);
   const r2 = simulateStage({ entrants: noRoles, stageProfile: profile, seed: 5 });
   assert.ok(r2.ranked.every((r) => r.components.team === 0));
@@ -63,7 +63,16 @@ test("buildTeamContext: helperSupport ∈ [0,1], hold uden kaptajn udelades", ()
   const entrants = [...team("a", ["captain", "helper"]), ...team("b", ["helper", "helper"])];
   const terrainById = new Map(entrants.map((e) => [e.rider_id, 0.65]));
   const ctx = buildTeamContext({ entrants, terrainById, stageProfile: profile });
-  assert.ok(ctx.has("a") && !ctx.has("b"));
+  assert.ok(ctx.has("a"), "hold med kaptajn skal være i ctx");
+  assert.ok(!ctx.has("b"), "hold uden kaptajn må ikke være i ctx");
   const a = ctx.get("a");
   assert.ok(a.helperSupport >= 0 && a.helperSupport <= 1);
+});
+
+test("sprint_captain fallback: captain-only hold på flat etape får stadig boost", () => {
+  const entrants = team("a", ["captain", "helper"]);
+  const flatP = { profile_type: "flat", demand_vector: demand };
+  const { ranked } = simulateStage({ entrants, stageProfile: flatP, seed: 42 });
+  const captain = ranked.find((r) => r.rider_id === "a0");
+  assert.ok(captain.components.team > 0, "sprintCaptainId ?? captainId fallback: captain boostes på flat selv uden sprint_captain");
 });
