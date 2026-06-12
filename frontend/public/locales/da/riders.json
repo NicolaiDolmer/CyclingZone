@@ -14,7 +14,8 @@
     "salary": "Løn",
     "potential": "Potentiale",
     "compareTooltip": "Vælg til sammenligning",
-    "teamFree": "Fri"
+    "teamFree": "Fri",
+    "pendingTransfer": "Holdskifte på vej: skifter til {team}"
   },
   "pagination": {
     "showing": "Viser {from}-{to} af {total}",

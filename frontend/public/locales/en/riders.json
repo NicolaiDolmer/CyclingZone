@@ -14,7 +14,8 @@
     "salary": "Salary",
     "potential": "Potential",
     "compareTooltip": "Select for comparison",
-    "teamFree": "Free"
+    "teamFree": "Free",
+    "pendingTransfer": "Transfer pending: moving to {team}"
   },
   "pagination": {
     "showing": "Showing {from}-{to} of {total}",
