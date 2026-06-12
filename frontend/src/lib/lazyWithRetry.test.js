@@ -31,6 +31,34 @@ test("loadWithRetry — ét retry redder en transient chunk-fejl", async () => {
   assert.equal(calls, 2);
 });
 
+test("loadWithRetry — ét retry redder et resolved modul uden default export", async () => {
+  let calls = 0;
+  const mod = { default: "X" };
+  const result = await loadWithRetry(async () => {
+    calls += 1;
+    return calls === 1 ? { default: undefined, html: "<!doctype html>" } : mod;
+  });
+  assert.equal(result, mod);
+  assert.equal(calls, 2);
+});
+
+test("loadWithRetry — vedvarende resolved ugyldigt modul bliver en ChunkLoadError", async () => {
+  let calls = 0;
+  await assert.rejects(
+    () =>
+      loadWithRetry(async () => {
+        calls += 1;
+        return undefined;
+      }),
+    (err) => {
+      assert.equal(err.name, "ChunkLoadError");
+      assert.match(err.message, /invalid module/i);
+      return true;
+    },
+  );
+  assert.equal(calls, 2);
+});
+
 test("loadWithRetry — vedvarende chunk-fejl kastes som genkendelig ChunkLoadError", async () => {
   let calls = 0;
   await assert.rejects(
