@@ -363,3 +363,13 @@ test("#1306 integration: to seeds → identisk resultat (determinisme med condit
     simulateStage({ entrants, stageProfile: stage, seed: 999 }),
   );
 });
+
+test("#1306: null condition-data er neutral, ikke worst-form (review-fix B1)", () => {
+  const { ranked } = simulateStage({
+    entrants: [{ rider_id: "r1", abilities: Object.fromEntries(ABILITY_KEYS.map((k) => [k, 50])), form: null, fatigue: null }],
+    stageProfile: { profile_type: "flat", demand_vector: { sprint: 1.0 } },
+    seed: 1,
+  });
+  assert.equal(ranked[0].components.form, 0, "form=null skal være neutral, ikke -0.012");
+  assert.equal(ranked[0].components.fatigue, 0, "fatigue=null skal være neutral");
+});

@@ -73,14 +73,17 @@ export const FORM_RACE_WEIGHT = 0.012;     // form 0↔100 → ±0.012
 export const FATIGUE_RACE_WEIGHT = 0.008;  // træthed 100 → 0.008 (trækkes fra på call-site)
 
 function formComponent(entrant /* , stageProfile, rng */) {
-  const form = clamp(Number(entrant?.form), 0, 100);
-  if (!Number.isFinite(form)) return 0;
+  const raw = entrant?.form;
+  // null/undefined/NaN = ingen condition-data → neutral (IKKE worst-form 0).
+  if (raw == null || !Number.isFinite(Number(raw))) return 0;
+  const form = clamp(Number(raw), 0, 100);
   return ((form - 50) / 50) * FORM_RACE_WEIGHT;
 }
 
 function fatigueComponent(entrant /* , stageProfile */) {
-  const fatigue = clamp(Number(entrant?.fatigue), 0, 100);
-  if (!Number.isFinite(fatigue)) return 0;
+  const raw = entrant?.fatigue;
+  if (raw == null || !Number.isFinite(Number(raw))) return 0;
+  const fatigue = clamp(Number(raw), 0, 100);
   return (fatigue / 100) * FATIGUE_RACE_WEIGHT;
 }
 
