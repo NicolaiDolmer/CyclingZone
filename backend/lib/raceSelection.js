@@ -11,6 +11,7 @@ export function validateSelection({
   teamRiderIds, injuredRiderIds, sizeRule, availableCount,
 }) {
   const errors = [];
+  // Fejlrækkefølge (errors[0] vises til brugeren): duplikat → størrelse → fremmed → skadet → kaptajn → roller → overlap.
   const unique = new Set(riderIds);
   if (unique.size !== riderIds.length) errors.push("selection_duplicate_rider");
 
@@ -47,6 +48,9 @@ function roleFor(riderId, { captainId, sprintCaptainId, hunterId }) {
 // Gem udtagelsen: slet holdets eksisterende entries for løbet, indsæt de nye.
 // PK (race_id, rider_id) gør gen-kørsel ufarlig (delete-then-insert).
 export async function saveSelection({ supabase, race, teamId, riderIds, captainId, sprintCaptainId = null, hunterId = null }) {
+  // Deletes eksisterende entries og indsætter nye. Ingen transaktion:
+  // fejler insert → holdet har 0 entries → autopick fylder dem ved
+  // simuleringstid (race_entries.is_auto_filled = true). Accepteret degradering.
   const { error: delErr } = await supabase
     .from("race_entries").delete().eq("race_id", race.id).eq("team_id", teamId);
   if (delErr) throw new Error(`race_entries delete: ${delErr.message}`);
@@ -96,7 +100,7 @@ export async function getSelectionContext({ supabase, race, teamId }) {
     return {
       id: r.id,
       name: [r.firstname, r.lastname].filter(Boolean).join(" "),
-      suitability: ab ? Math.round(suitabilityScore(ab, stages) * 100) : null,
+      suitability: ab && stages.length ? Math.round(suitabilityScore(ab, stages) * 100) : null,
       form: cond?.form ?? null,
       fatigue: cond?.fatigue ?? null,
       injured: !!(cond?.injured_until && cond.injured_until >= todayStr),
