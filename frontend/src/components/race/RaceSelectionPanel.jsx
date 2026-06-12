@@ -29,9 +29,14 @@ export default function RaceSelectionPanel({ raceId }) {
   const [sel, setSel] = useState(EMPTY_SELECTION);
   const [status, setStatus] = useState("idle"); // idle | saving | saved | error
   const [errorKey, setErrorKey] = useState(null);
+  const [touched, setTouched] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+    setData(null);
+    setStatus("idle");
+    setErrorKey(null);
+    setTouched(false);
     (async () => {
       const headers = await authHeaders();
       if (!headers) return;
@@ -68,6 +73,7 @@ export default function RaceSelectionPanel({ raceId }) {
 
   function update(next) {
     setSel(next);
+    if (!touched) setTouched(true);
     if (status !== "idle") setStatus("idle");
     if (errorKey) setErrorKey(null);
   }
@@ -148,10 +154,10 @@ export default function RaceSelectionPanel({ raceId }) {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-cz-border">
-              <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("approve.thRider")}</th>
-              <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs uppercase">{t("selection.suitability")}</th>
-              <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs uppercase">{t("selection.form")}</th>
-              <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs uppercase">{t("selection.fatigue")}</th>
+              <th scope="col" className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("approve.thRider")}</th>
+              <th scope="col" className="px-4 py-3 text-right text-cz-3 font-medium text-xs uppercase">{t("selection.suitability")}</th>
+              <th scope="col" className="px-4 py-3 text-right text-cz-3 font-medium text-xs uppercase">{t("selection.form")}</th>
+              <th scope="col" className="px-4 py-3 text-right text-cz-3 font-medium text-xs uppercase">{t("selection.fatigue")}</th>
             </tr>
           </thead>
           <tbody>
@@ -218,7 +224,7 @@ export default function RaceSelectionPanel({ raceId }) {
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div className="space-y-0.5">
-            {clientErrors.map((code) => (
+            {touched && clientErrors.map((code) => (
               <p key={code} className="text-xs text-cz-warning">
                 {t(`selection.errors.${code}`, errParams)}
               </p>
