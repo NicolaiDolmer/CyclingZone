@@ -13,6 +13,7 @@
     "check:warnings": "node scripts/check-eslint-warning-budget.mjs",
     "check:i18n": "node scripts/i18n-check-keys.mjs && node scripts/i18n-check-namespace-inline.mjs && node scripts/i18n-check-nav-strings.mjs && node scripts/i18n-check-page-untranslated.mjs && node scripts/i18n-check-lib-strings.mjs && node scripts/i18n-check-leaks.mjs && node --test scripts/tone-check-em-dash.test.mjs && node scripts/tone-check-em-dash.mjs",
     "check:i18n-leaks": "node scripts/i18n-check-leaks.mjs",
+    "check:frontend-env": "node scripts/check-frontend-env-keys.mjs",
     "test:i18n-leaks": "node --test scripts/i18n-check-leaks.test.mjs",
     "test:tone-guard": "node --test scripts/tone-check-em-dash.test.mjs",
     "brand:export": "node scripts/brand-export.mjs",

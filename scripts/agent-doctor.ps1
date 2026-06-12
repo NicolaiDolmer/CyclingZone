@@ -240,6 +240,9 @@ Add-Check "local-hooks" ($(if ($hooksText -eq ".githooks") { "OK" } else { "WARN
 $trackedSecrets = Try-Run @("git", "ls-files", ".mcp.json", "*.env", ".codex.local/*")
 Add-Check "tracked-secrets" ($(if ([string]::IsNullOrWhiteSpace($trackedSecrets.Text)) { "OK" } else { "FAIL" })) ($(if ($trackedSecrets.Text) { $trackedSecrets.Text -replace "`n", ", " } else { "none" }))
 
+$frontendEnvKeys = Try-Run @("node", "scripts/check-frontend-env-keys.mjs")
+Add-Check "frontend-env-keys" ($(if ($frontendEnvKeys.Ok) { "OK" } else { "FAIL" })) (($frontendEnvKeys.Text -split "`n" | Where-Object { $_.Trim() }) -join " | ")
+
 # install-parity — fanger drift mellem package-lock.json og faktisk installed node_modules.
 # Bidt af #616 (express-rate-limit 7.5.1 vs lock 8.5.2 efter PR #579) og #618 (PC2's frontend var
 # 1-3 patches bagud lockfile mens `npm install` rapporterede "up to date"). Tjekker kun direct
