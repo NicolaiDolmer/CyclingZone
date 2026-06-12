@@ -129,3 +129,45 @@ test("assessTransitionReadiness — kræver supabase og fromSeasonId", async () 
   const supabase = createMockSupabase({ win: WRAPPED_WINDOW });
   await assert.rejects(() => assessTransitionReadiness({ supabase, fromSeasonId: null }));
 });
+
+test("assessTransitionReadiness — query-fejl på vinduet kaster (fail-closed, aldrig ready)", async () => {
+  const supabase = createMockSupabase({ win: WRAPPED_WINDOW });
+  const broken = {
+    from(table) {
+      if (table === "transfer_windows") {
+        const chain = {
+          eq: () => chain,
+          order: () => chain,
+          limit: () => chain,
+          maybeSingle: () => Promise.resolve({ data: null, error: { message: "boom" } }),
+        };
+        return { select: () => chain };
+      }
+      return supabase.from(table);
+    },
+  };
+  await assert.rejects(
+    () => assessTransitionReadiness({ supabase: broken, fromSeasonId: FROM_SEASON_ID }),
+    /Kunne ikke læse transfervindue/,
+  );
+});
+
+test("assessTransitionReadiness — query-fejl på auktions-count kaster (fail-closed)", async () => {
+  const supabase = createMockSupabase({ win: WRAPPED_WINDOW });
+  const broken = {
+    from(table) {
+      if (table === "auctions") {
+        return {
+          select: () => ({
+            in: () => ({ then: (resolve) => resolve({ data: null, count: null, error: { message: "boom" } }) }),
+          }),
+        };
+      }
+      return supabase.from(table);
+    },
+  };
+  await assert.rejects(
+    () => assessTransitionReadiness({ supabase: broken, fromSeasonId: FROM_SEASON_ID }),
+    /Kunne ikke tælle auktioner/,
+  );
+});
