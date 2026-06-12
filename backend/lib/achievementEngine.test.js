@@ -16,6 +16,7 @@ function createAchievementSupabase(initialState) {
     auctions: (initialState.auctions || []).map(row => ({ ...row })),
     transfer_offers: (initialState.transfer_offers || []).map(row => ({ ...row })),
     board_profiles: (initialState.board_profiles || []).map(row => ({ ...row })),
+    race_results: (initialState.race_results || []).map(row => ({ ...row })),
     inserts: [],
   };
 
@@ -30,6 +31,10 @@ function createAchievementSupabase(initialState) {
       in(column, values) {
         const allowed = new Set(values);
         filtered = filtered.filter(row => allowed.has(row[column]));
+        return query;
+      },
+      limit(count) {
+        filtered = filtered.slice(0, count);
         return query;
       },
       maybeSingle() {
@@ -239,6 +244,64 @@ test("checkAchievements tolerates parallel board plans and uses completed non-ba
     unlocked.map(achievement => achievement.id),
     ["season_board_100"]
   );
+});
+
+// #817: definitionen fandtes i prod-DB, men engine'en manglede unlock-logik.
+test("checkAchievements unlocks season_first_result when the team has a race result", async () => {
+  const supabase = createAchievementSupabase({
+    achievements: [
+      { id: "season_first_result" },
+    ],
+    teams: [{ id: "team-1", user_id: "user-1" }],
+    users: [{ id: "user-1", login_streak: 0 }],
+    rider_watchlist: [],
+    riders: [],
+    auction_bids: [],
+    auctions: [],
+    transfer_offers: [],
+    board_profiles: [],
+    race_results: [
+      { id: "result-1", team_id: "team-1", rank: 57 },
+      { id: "result-2", team_id: "team-1", rank: 12 },
+      { id: "result-other", team_id: "team-2", rank: 1 },
+    ],
+  });
+
+  const unlocked = await checkAchievements({
+    supabase,
+    userId: "user-1",
+  });
+
+  assert.deepEqual(
+    unlocked.map(achievement => achievement.id),
+    ["season_first_result"]
+  );
+});
+
+test("checkAchievements does not unlock season_first_result without a race result", async () => {
+  const supabase = createAchievementSupabase({
+    achievements: [
+      { id: "season_first_result" },
+    ],
+    teams: [{ id: "team-1", user_id: "user-1" }],
+    users: [{ id: "user-1", login_streak: 0 }],
+    rider_watchlist: [],
+    riders: [],
+    auction_bids: [],
+    auctions: [],
+    transfer_offers: [],
+    board_profiles: [],
+    race_results: [
+      { id: "result-other", team_id: "team-2", rank: 1 },
+    ],
+  });
+
+  const unlocked = await checkAchievements({
+    supabase,
+    userId: "user-1",
+  });
+
+  assert.deepEqual(unlocked, []);
 });
 
 test("checkAchievements tolerates missing public user row for login streak", async () => {

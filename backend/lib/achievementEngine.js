@@ -102,6 +102,9 @@ export function getAchievementUnlocks({
   });
   unlock("secret_watchlist_50", (stats.watchlistCount || 0) >= 50);
   unlock("season_board_100", (stats.boardSatisfaction || 0) >= 100);
+  // #817: definitionen fandtes i achievements-tabellen, men engine'en havde
+  // ingen unlock-logik — kunne aldrig tildeles.
+  unlock("season_first_result", Boolean(stats.hasRaceResult));
 
   // This meta-achievement should consider any achievements unlocked earlier in the same sync.
   unlock("team_5_achievements", unlockedIds.size >= 5);
@@ -258,13 +261,26 @@ async function loadTransferStats({ supabase, teamId }) {
   };
 }
 
+async function loadRaceResultStats({ supabase, teamId }) {
+  if (!teamId) {
+    return { hasRaceResult: false };
+  }
+
+  // Eksistens-tjek, ikke optælling — hold kan have mange hundrede resultater.
+  const rows = await readMany(
+    supabase.from("race_results").select("id").eq("team_id", teamId).limit(1)
+  );
+  return { hasRaceResult: rows.length > 0 };
+}
+
 async function loadAchievementStats({ supabase, userId, teamId }) {
-  const [watchlistCount, loginStreak, teamStats, auctionStats, transferStats] = await Promise.all([
+  const [watchlistCount, loginStreak, teamStats, auctionStats, transferStats, raceResultStats] = await Promise.all([
     loadWatchlistCount({ supabase, userId }),
     loadLoginStreak({ supabase, userId }),
     loadTeamStats({ supabase, teamId }),
     loadAuctionStats({ supabase, teamId }),
     loadTransferStats({ supabase, teamId }),
+    loadRaceResultStats({ supabase, teamId }),
   ]);
 
   return {
@@ -273,6 +289,7 @@ async function loadAchievementStats({ supabase, userId, teamId }) {
     ...teamStats,
     ...auctionStats,
     ...transferStats,
+    ...raceResultStats,
   };
 }
 
