@@ -2,6 +2,26 @@
 
 const PATCHES = [
   {
+    version: "5.26",
+    date: "2026-06-12",
+    label: "Beta",
+    changes: [
+      {
+        category: "New · Daily Training (activates at the season relaunch on 20 June)",
+        items: [
+          "EN · A new Daily Training page (nav: Daily Training) lets you set a program for every rider: pick a focus (VO2max, Threshold, Sprint, Endurance, Technique or Aero) and an intensity (Rest, Easy, Normal or Hard). There is no season cap on programs — you can set one for your entire squad. Refs #1305.",
+          "DA · En ny Daglig træning-side (nav: Daglig træning) lader dig sætte et program for hver rytter: vælg et fokus (VO2max, Tærskel, Sprint, Udholdenhed, Teknik eller Aero) og en intensitet (Hvile, Let, Normal eller Hård). Der er ingen sæson-cap på programmer — du kan sætte ét for hele troppen. Refs #1305.",
+          "EN · Click 'Train today' once a day to run all your programs with a +25% boost. Skip the click and the assistant trains the squad automatically after 22:00 — you never lose training, only the boost. Refs #1305.",
+          "DA · Klik 'Træn i dag' én gang om dagen for at køre alle programmer med +25% boost. Spring klikket over, og assistenten træner troppen automatisk efter kl. 22 — du mister aldrig træning, kun boostet. Refs #1305.",
+          "EN · Form and Fatigue (0-100) are now visible on every rider profile. Training and racing build fatigue, rest recovers it, and form follows the balance. Hard training combined with high fatigue shows a risk badge and may cause a mild injury (1-5 days out). Refs #1305.",
+          "DA · Form og Træthed (0-100) er nu synlige på alle rytterprofiler. Træning og løb opbygger træthed, hvile genopretter den, og form følger balancen. Hård træning kombineret med høj træthed viser et risikomærke og kan give en mild skade (1-5 dage ude). Refs #1305.",
+          "EN · A daily training report shows per-rider score, over- and underperformers, and ability points gained. Progress bars on rider profiles fill toward the next ability point — a full bar means +1. Refs #1305.",
+          "DA · En daglig træningsrapport viser per-rytter-score, over- og underpræsterende, og vundne evnepoint. Fremskridtslinjer på rytterprofiler fylder mod næste evnepoint — en fuld linje betyder +1. Refs #1305.",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.25",
     date: "2026-06-12",
     label: "Beta",

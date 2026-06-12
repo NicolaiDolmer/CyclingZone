@@ -456,6 +456,43 @@
         "text": "Ryttere under 25 og 23 år er markeret. Du kan filtrere på U25/U23 i rytterdatabasen og ønskelisten."
       }
     },
+    "dailytraining": {
+      "label": "Daglig træning",
+      "whatDailyTraining": {
+        "title": "Hvad er Daglig træning?",
+        "text": "Daglig træning lader dig udvikle dine ryttere hver dag i stedet for kun ved sæsonskifte. På siden Daglig træning sætter du et program for hver rytter — en fokus-retning og en intensitet — og systemet anvender det automatisk hver dag. Daglig træning aktiveres ved sæsonrelaunchen den 20. juni."
+      },
+      "programs": {
+        "title": "Sæt programmer",
+        "steps": [
+          "Gå til Daglig træning i navigationen.",
+          "Find en rytter og vælg et fokus: VO2max, Tærskel, Sprint, Udholdenhed, Teknik eller Aero.",
+          "Vælg en intensitet: Hvile, Let, Normal eller Hård.",
+          "Gem. Programmet kører hver dag indtil du ændrer det.",
+          "Der er ingen cap på hvor mange ryttere der kan have et program — du kan sætte ét for hele troppen."
+        ]
+      },
+      "trainToday": {
+        "title": "Træn i dag og +25%-boostet",
+        "text": "Klik 'Træn i dag' én gang om dagen for at køre alle aktive programmer med +25% træningsboost. Springer du knappen over, kører assistenten træningen automatisk efter kl. 22. Du mister aldrig en træningsdag — kun boostet går tabt, når du ikke klikker."
+      },
+      "formFatigue": {
+        "title": "Form og Træthed",
+        "text": "Alle ryttere har en Form-værdi og en Træthed-værdi, begge på en skala fra 0 til 100, synlige på rytterprofilen. Træning og løb opbygger Træthed. Hviledage og lette sessioner sænker den. Form følger balancen mellem de to: høj Træthed holder Form nede, mens en udhvilet rytters Form stiger. Begge værdier opdateres dagligt."
+      },
+      "injuryRisk": {
+        "title": "Skaderisiko",
+        "text": "At køre Hård intensitetstræning på en rytter der allerede har høj Træthed udløser en skaderisiko. Et risikomærke vises på rytteren inden træning kører. Hvis resultatet er uheldigt, pådrager rytteren sig en mild skade og er ude i 1-5 dage. At sænke intensiteten til Normal eller Hvile fjerner risikoen."
+      },
+      "progressBars": {
+        "title": "Fremskridtslinjer og evnepoint",
+        "text": "Rytterprofiler viser en fremskridtslinje for hver evne der trænes. Linjen fylder op efterhånden som træning akkumuleres. Når linjen er fuld, stiger rytteren +1 i den evne. Fremskridtet bevares dag for dag — intet nulstilles midt i sæsonen."
+      },
+      "longTermGrowth": {
+        "title": "Langsigtet vækst",
+        "text": "Daglig træning passer ind i den samme langsigtede vækstmodel som sæsonrunden: unge ryttere topper omkring 27-28 år og falder gradvist derefter. Daglig træning accelererer fremskridt mod hver evnes loft, men kan ikke skubbe en rytter ud over sit potentiale."
+      }
+    },
     "activityfeed": {
       "label": "Aktivitetsfeed",
       "whatActivityFeed": {
