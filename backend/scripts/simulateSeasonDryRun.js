@@ -48,6 +48,9 @@ const HTML_PATH = arg("html", join(__dirname, "out", "race-dry-run.html"));
 // brud). Kalibrerings-bånd (sektion B-scorecardet) håndhæves kun med dette flag,
 // da baseline-targets afventer ejer-beslutning (se kalibrerings-loggen nedenfor).
 const ENFORCE_TARGETS = !!arg("enforce-targets", false);
+// B4 (#1306): --condition=random tilsætter seeded form/træthed per rytter.
+// Neutral-mode (fraværende flag) er UÆNDRET — ingen ekstra rng-kald i den sti.
+const CONDITION_MODE = arg("condition", null) === "random";
 
 const baseline = JSON.parse(readFileSync(join(__dirname, "../lib/riderTypesBaseline.json"), "utf8"));
 const model = JSON.parse(readFileSync(join(__dirname, "../lib/riderValuationModel.json"), "utf8"));
@@ -111,7 +114,7 @@ function keyAbilityOf(demand) {
 }
 
 // ── 1. Generér + berig felt (hele værdi-kæden, in-memory) ────────────────────
-console.log(`\n🚴  RACE-ENGINE DRY-RUN — seed=${SEED} count=${COUNT} noise=${NOISE_SD_SCALE} (in-memory, rører ikke prod)\n`);
+console.log(`\n🚴  RACE-ENGINE DRY-RUN — seed=${SEED} count=${COUNT} noise=${NOISE_SD_SCALE}${CONDITION_MODE ? " condition=random" : ""} (in-memory, rører ikke prod)\n`);
 
 const { riders: raw } = generateFictionalRiders({ count: COUNT, seed: SEED, referenceYear: REFERENCE_YEAR });
 
@@ -133,6 +136,20 @@ const field = raw.map((r, i) => {
   };
 });
 const byId = new Map(field.map((r) => [r.id, r]));
+
+// B4: condition-mode — tildel seeded form/træthed per rytter.
+// Bruger en DEDIKERET RNG afledt af et XOR-scrambled seed, så den aldrig
+// konsumeres i neutral-mode og aldrig forskydes andre træk.
+if (CONDITION_MODE) {
+  const condRng = makeRng((stableSeed(`condition:${SEED}`) ^ 0xC04D1710) >>> 0);
+  for (const r of field) {
+    const u1 = condRng();
+    const u2 = condRng();
+    r.form    = Math.round(30 + u1 * 60); // [30, 90]
+    r.fatigue = Math.round(u2 * 70);      // [0, 70]
+  }
+}
+
 const fieldMedianAbility = (key) => {
   const s = field.map((r) => r.abilities[key]).sort((a, b) => a - b);
   return s[Math.floor(s.length / 2)];
@@ -168,7 +185,11 @@ for (const terrain of TERRAINS) {
 
   for (let i = 0; i < RACES; i++) {
     const sample = sampleField(rng, field, FIELD);
-    const entrants = sample.map((r) => ({ rider_id: r.id, team_id: r.id, abilities: r.abilities }));
+    const entrants = sample.map((r) => ({
+      rider_id: r.id, team_id: r.id, abilities: r.abilities,
+      ...(CONDITION_MODE && r.form    != null ? { form:    r.form }    : {}),
+      ...(CONDITION_MODE && r.fatigue != null ? { fatigue: r.fatigue } : {}),
+    }));
     const { ranked } = simulateStage({ entrants, stageProfile: { profile_type: terrain, demand_vector: demand }, seed: stableSeed(`${terrain}:${i}`) });
     const w = byId.get(ranked[0].rider_id);
     bornHist[w.bornAs] = (bornHist[w.bornAs] || 0) + 1;
@@ -240,7 +261,11 @@ const nTeams = Math.ceil(gtRiders.length / TEAM_SIZE);
 const gtEntrants = gtRiders.map((r, i) => {
   const round = Math.floor(i / nTeams), pos = i % nTeams;
   const teamIdx = round % 2 === 0 ? pos : nTeams - 1 - pos;
-  return { rider_id: r.id, team_id: `t${teamIdx}`, rider_name: r.name, is_u25: r.is_u25, abilities: r.abilities };
+  return {
+    rider_id: r.id, team_id: `t${teamIdx}`, rider_name: r.name, is_u25: r.is_u25, abilities: r.abilities,
+    ...(CONDITION_MODE && r.form    != null ? { form:    r.form }    : {}),
+    ...(CONDITION_MODE && r.fatigue != null ? { fatigue: r.fatigue } : {}),
+  };
 });
 
 const { resultRows } = buildRaceResults({
@@ -328,6 +353,23 @@ if (failedTargets.length) {
   } else {
     console.log(`   ⚠ ${failedTargets.length} kalibrerings-bånd under mål (rapport-only; håndhæv med --enforce-targets): ${failedTargets.map((s) => s.terrain).join(", ")}`);
   }
+}
+
+// ── B4: condition-mode sanity ─────────────────────────────────────────────────
+if (CONDITION_MODE) {
+  // ±3 % bound: formComponent ∈ [-0.03, +0.03], fatigueComponent ∈ [-0.03, 0].
+  // Teoretisk max total swing = +0.030 (peak form) + -(-0.030) = 0.060 point.
+  // Observerede grænser fra tildelinger:
+  const forms    = field.map((r) => r.form    ?? 60);
+  const fatigues = field.map((r) => r.fatigue ?? 0);
+  const maxForm    = Math.max(...forms),    minForm    = Math.min(...forms);
+  const maxFatigue = Math.max(...fatigues), minFatigue = Math.min(...fatigues);
+  const meanForm    = Math.round(forms.reduce((s, v) => s + v, 0) / forms.length);
+  const meanFatigue = Math.round(fatigues.reduce((s, v) => s + v, 0) / fatigues.length);
+  console.log(`\n   condition-mode sanity (B4 — felt=${field.length} ryttere):`);
+  console.log(`   form    range [${minForm}, ${maxForm}] ·  mean ${meanForm}  (tilsigtet [30, 90])`);
+  console.log(`   fatigue range [${minFatigue}, ${maxFatigue}] · mean ${meanFatigue} (tilsigtet [0, 70])`);
+  console.log(`   teoretisk max score-swing: ±0.030 pr. komponent → ±0.060 total (±3 % bound gælder)`);
 }
 
 // ── HTML-cockpit ──────────────────────────────────────────────────────────────
