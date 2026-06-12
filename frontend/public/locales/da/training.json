@@ -17,5 +17,9 @@
   "fatiqueChange": "Træthed {{sign}}{{delta}}",
   "gains": "+{{n}} {{ability}}",
   "noGains": "Ingen fremgang i dag",
-  "loading": "Henter…"
+  "loading": "Henter…",
+  "colRider": "Rytter",
+  "colScore": "Score",
+  "colGains": "Fremgang",
+  "colStatus": "Status"
 }

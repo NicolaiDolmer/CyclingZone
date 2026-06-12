@@ -17,5 +17,9 @@
   "fatiqueChange": "Fatigue {{sign}}{{delta}}",
   "gains": "+{{n}} {{ability}}",
   "noGains": "No gains today",
-  "loading": "Loading…"
+  "loading": "Loading…",
+  "colRider": "Rider",
+  "colScore": "Score",
+  "colGains": "Gains",
+  "colStatus": "Status"
 }

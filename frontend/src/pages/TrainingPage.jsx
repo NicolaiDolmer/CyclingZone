@@ -127,8 +127,7 @@ export default function TrainingPage() {
               <thead>
                 <tr className="border-b border-cz-border">
                   <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">
-                    {/* Rytter — ingen i18n-nøgle nødvendig; standard kolonne */}
-                    Rider
+                    {t("colRider")}
                   </th>
                   <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">
                     {tRider("training.focus")}
@@ -143,7 +142,7 @@ export default function TrainingPage() {
                     {t("fatigue")}
                   </th>
                   <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">
-                    Status
+                    {t("colStatus")}
                   </th>
                 </tr>
               </thead>
@@ -272,13 +271,13 @@ export default function TrainingPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-cz-border">
-                  <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">Rider</th>
+                  <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("colRider")}</th>
                   <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{tRider("training.focus")}</th>
                   <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{tRider("training.intensity")}</th>
-                  <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">Score</th>
-                  <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">Gains</th>
+                  <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("colScore")}</th>
+                  <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("colGains")}</th>
                   <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("fatigue")}</th>
-                  <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">Status</th>
+                  <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("colStatus")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -295,7 +294,9 @@ export default function TrainingPage() {
                         </RiderLink>
                         {row.injured && (
                           <span className="ms-2 text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400">
-                            Injured {row.injury_days}d
+                            {row.injury_days === 1
+                              ? t("injured", { days: row.injury_days })
+                              : t("injured_plural", { days: row.injury_days })}
                           </span>
                         )}
                       </td>
