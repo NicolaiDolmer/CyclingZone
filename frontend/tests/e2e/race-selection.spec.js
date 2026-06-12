@@ -109,12 +109,12 @@ test("manager kan udtage hold og gemme", async ({ page }) => {
   const panel = page.getByTestId("race-selection-panel");
   await expect(panel).toBeVisible();
 
-  // Skadet rytter (index 8) skal være disabled fra starten.
-  await expect(panel.getByRole("checkbox").nth(8)).toBeDisabled();
+  // Skadet rytter (Rider 8) skal være disabled fra starten.
+  await expect(panel.getByRole("checkbox", { name: /Rider 8/ })).toBeDisabled();
 
-  // Vælg 6 ryttere (index 0-5).
+  // Vælg 6 ryttere (Rider 0-5 — navn-bundne selectors, sorterings-robuste).
   for (let i = 0; i < 6; i++) {
-    await panel.getByRole("checkbox").nth(i).check();
+    await panel.getByRole("checkbox", { name: new RegExp(`Rider ${i}`) }).check();
   }
 
   // Tæller viser "6/8 udtaget" (DA-locale — stabilizePage sætter cz_lang=da).
