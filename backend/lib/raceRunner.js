@@ -31,6 +31,7 @@ import { processBoardWeekendFinalization as processBoardWeekendFinalizationShare
 import { simulateStage, stableSeed, ENGINE_VERSION, ABILITY_KEYS } from "./raceSimulator.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
 import { applyRaceFatigue } from "./raceFatigue.js";
+import { autopickTeamSelection, selectionSizeForRace } from "./raceAutopick.js";
 
 // Intern klassements-point (grøn/bjerg) — afgør KUN rækkefølgen i de respektive
 // trøje-konkurrencer; selve præmie-pointene kommer fra race_points via rank.
@@ -255,24 +256,26 @@ async function loadStageProfiles(supabase, raceId) {
   return data || [];
 }
 
-// Deterministisk auto-fill af startfeltet når race_entries er tomt (F1=B): alle
-// ikke-pensionerede ryttere ejet af rigtige + AI-hold (ikke test/frosne). Skrives
-// til race_entries → "hvem startede" bliver autoritativt. NB: query'en re-grounds
-// når relaunch-populationen (#677/#669) lander; i dag findes feltet ikke endnu.
-// persist=false (#1102 dryRun): beregner startfeltet i hukommelsen uden DB-insert.
-async function autoFillEntries({ supabase, race, persist = true }) {
+// #1307: per-hold autopick. For hvert egnet hold (ikke test/frosset) UDEN entries
+// for løbet: assistenten udtager 6-8 bedst egnede + kaptajn (spec 8.1 — "vælger du
+// ikke, vælger assistenten fornuftigt; ingen straf for fravær"). Hold MED entries
+// (manager-udtagne) røres ikke. Skadede (injured_until >= i dag) udelades (#1306 6.5).
+async function fillMissingTeamEntries({ supabase, race, stages, existingEntries, persist = true }) {
   const { data: teams, error: teamErr } = await supabase
     .from("teams")
     .select("id, is_test_account, is_frozen")
     .or("is_test_account.is.null,is_test_account.eq.false");
   if (teamErr) throw new Error(`teams: ${teamErr.message}`);
-  const eligibleTeamIds = (teams || []).filter((t) => !t.is_frozen).map((t) => t.id);
-  if (!eligibleTeamIds.length) return [];
+  const teamsWithEntries = new Set((existingEntries || []).map((e) => e.team_id));
+  const missingTeamIds = (teams || [])
+    .filter((t) => !t.is_frozen && !teamsWithEntries.has(t.id))
+    .map((t) => t.id);
+  if (!missingTeamIds.length) return [];
 
   const { data: riders, error: riderErr } = await supabase
     .from("riders")
     .select("id, team_id")
-    .in("team_id", eligibleTeamIds)
+    .in("team_id", missingTeamIds)
     .or("is_retired.is.null,is_retired.eq.false");
   if (riderErr) throw new Error(`riders: ${riderErr.message}`);
 
@@ -284,30 +287,68 @@ async function autoFillEntries({ supabase, race, persist = true }) {
     .gte("injured_until", todayStr);
   if (injErr) throw new Error(`rider_condition (injured): ${injErr.message}`);
   const injuredIds = new Set((injured || []).map((r) => r.rider_id));
+  const candidates = (riders || []).filter((r) => !injuredIds.has(r.id));
+  if (!candidates.length) return [];
 
-  const candidateRiders = (riders || []).filter((r) => !injuredIds.has(r.id));
-  const rows = candidateRiders.map((r) => ({ race_id: race.id, rider_id: r.id, team_id: r.team_id }));
+  const candidateIds = candidates.map((r) => r.id);
+  const abilityCols = ["rider_id", ...ABILITY_KEYS].join(", ");
+  const { data: abilities, error: aErr } = await supabase
+    .from("rider_derived_abilities")
+    .select(abilityCols)
+    .in("rider_id", candidateIds);
+  if (aErr) throw new Error(`rider_derived_abilities: ${aErr.message}`);
+  const abilityByRider = new Map((abilities || []).map((a) => [a.rider_id, a]));
+
+  // Træthed (let dæmpning i autopick) — degraderer til 0 ved fejl, mirror B2.
+  let fatigueByRider = new Map();
+  const { data: conditions, error: condErr } = await supabase
+    .from("rider_condition")
+    .select("rider_id, fatigue")
+    .in("rider_id", candidateIds);
+  if (!condErr) fatigueByRider = new Map((conditions || []).map((c) => [c.rider_id, c.fatigue]));
+
+  const sizeRule = selectionSizeForRace(race);
+  const rows = [];
+  const byTeam = new Map();
+  for (const r of candidates) {
+    const abRow = abilityByRider.get(r.id);
+    if (!abRow) continue; // uden abilities kan rytteren ikke scores (defensivt, som entrants)
+    if (!byTeam.has(r.team_id)) byTeam.set(r.team_id, []);
+    byTeam.get(r.team_id).push({ rider_id: r.id, abilities: abRow, fatigue: fatigueByRider.get(r.id) });
+  }
+  for (const [teamId, teamRiders] of byTeam) {
+    for (const pick of autopickTeamSelection({ riders: teamRiders, stages, sizeRule })) {
+      rows.push({ race_id: race.id, rider_id: pick.rider_id, team_id: teamId, race_role: pick.race_role, is_auto_filled: true });
+    }
+  }
+
   if (persist && rows.length) {
     const { error: insErr } = await supabase.from("race_entries").insert(rows);
     if (insErr) throw new Error(`race_entries insert: ${insErr.message}`);
   }
-  return rows.map((r) => ({ rider_id: r.rider_id, team_id: r.team_id }));
+  return rows.map((r) => ({ rider_id: r.rider_id, team_id: r.team_id, race_role: r.race_role }));
 }
 
-// Indlæs startfeltet (race_entries → auto-fill) beriget med navn, is_u25 + abilities.
+// Indlæs startfeltet (race_entries → per-hold autopick for hold UDEN entries) beriget
+// med navn, is_u25, abilities + race_role. Hold MED manager-udtagne entries røres ikke.
 // persist=false (#1102 dryRun): auto-fill beregnes i hukommelsen — ingen DB-insert.
-export async function loadEntrantsForRace({ supabase, race, persist = true }) {
+// stages bruges af autopick til egnethedsscore (suitabilityScore pr. terrain).
+export async function loadEntrantsForRace({ supabase, race, stages = [], persist = true }) {
   const { data: existing, error } = await supabase
     .from("race_entries")
-    .select("rider_id, team_id")
+    .select("rider_id, team_id, race_role")
     .eq("race_id", race.id);
   if (error) throw new Error(`race_entries: ${error.message}`);
 
-  let entries = existing || [];
-  if (!entries.length) entries = await autoFillEntries({ supabase, race, persist });
+  const existingEntries = existing || [];
+  // #1307: autopick for hold UDEN entries — ALTID kaldt (ikke kun når feltets tomt).
+  // Returnerer kun nyindsat; hold med eksisterende entries røres ikke.
+  const autopicked = await fillMissingTeamEntries({ supabase, race, stages, existingEntries, persist });
+  const entries = [...existingEntries, ...autopicked];
   if (!entries.length) return [];
 
   const teamByRider = new Map(entries.map((e) => [e.rider_id, e.team_id]));
+  const roleByRider = new Map(entries.map((e) => [e.rider_id, e.race_role]));
   const riderIds = entries.map((e) => e.rider_id);
 
   const { data: riders, error: rErr } = await supabase
@@ -326,7 +367,7 @@ export async function loadEntrantsForRace({ supabase, race, persist = true }) {
 
   // Berig entrants med form/træthed fra rider_condition i ét batched opslag (spec #1306 B2).
   // Berigelsen er additiv: fejler opslaget, degraderer vi til neutral (undefined) frem for
-  // at blokere race-finalization — modsat skade-eksklusionen i autoFillEntries, der SKAL fejle hårdt.
+  // at blokere race-finalization — modsat skade-eksklusionen i fillMissingTeamEntries, der SKAL fejle hårdt.
   let conditionByRider = new Map();
   const { data: conditions, error: condErr } = await supabase
     .from("rider_condition")
@@ -349,6 +390,8 @@ export async function loadEntrantsForRace({ supabase, race, persist = true }) {
       is_u25: !!r.is_u25,
       abilities: ab,
     };
+    const role = roleByRider.get(r.id);
+    if (role) entrant.race_role = role;
     const cond = conditionByRider.get(r.id);
     if (cond !== undefined) {
       entrant.form = cond.form;
@@ -419,7 +462,7 @@ export async function simulateRace({
   const stages = await loadStageProfiles(supabase, race.id);
   if (!stages.length) throw new Error(`Ingen race_stage_profiles for løb ${race.id} — kør backfill`);
 
-  const entrants = await loadEntrantsForRace({ supabase, race, persist: !dryRun });
+  const entrants = await loadEntrantsForRace({ supabase, race, stages, persist: !dryRun });
   if (!entrants.length) throw new Error(`Intet startfelt for løb ${race.id}`);
 
   const racePoints = await loadRacePoints(supabase, race.race_class);
