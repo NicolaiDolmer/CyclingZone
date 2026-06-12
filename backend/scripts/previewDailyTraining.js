@@ -16,8 +16,9 @@
 //    gang, deep-copy pr. kohort).
 //  • riderId til seeding: "human:<idx>" / "ai:<idx>" — stabile, ingen DB-id.
 //  • dateStr: "s<season>d<day>" — ingen reelle datoer.
-//  • Pensionerede ryttere fryses fra og med den sæson de trækker sig; de medtages
-//    IKKE i drift-snit efter pensionering (simplest korrekte valg).
+//  • Pensionerede ryttere fryses fra og med den sæson de trækker sig (sidst kendte
+//    ability-sum fastholdes) og MEDTAGES i drift-snittet som stabil observation —
+//    begge kohorter pensionerer ens (samme seeds), så driften forvrides ikke.
 //
 // KALIBRERING (2026-06-12):
 //  dailyBudgetBoost = 1.0 → seed 2026: median peak-alder 27 ✓  (n=17 debutanter)
