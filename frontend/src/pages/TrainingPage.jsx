@@ -169,6 +169,7 @@ export default function TrainingPage() {
                         <select
                           value={plan?.focus ?? ""}
                           disabled={busy}
+                          aria-label={`${tRider("training.focus")} — ${rider.firstname} ${rider.lastname}`}
                           onChange={(e) => {
                             const newFocus = e.target.value;
                             if (!newFocus) return;
@@ -197,7 +198,11 @@ export default function TrainingPage() {
                       {/* Intensitet */}
                       <td className="px-4 py-3">
                         {plan?.focus ? (
-                          <div className="inline-flex rounded border border-cz-border overflow-hidden">
+                          <div
+                            role="group"
+                            aria-label={`${tRider("training.intensity")} — ${rider.firstname} ${rider.lastname}`}
+                            className="inline-flex rounded border border-cz-border overflow-hidden"
+                          >
                             {TRAINING_INTENSITIES.map((k) => (
                               <button
                                 key={k}
