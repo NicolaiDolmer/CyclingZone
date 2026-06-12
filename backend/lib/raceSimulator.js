@@ -96,8 +96,13 @@ function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
 // Hjælperkvalitet (terrain-score) × friskhed (1 − træthed-dæmpning) booster den
 // beskyttede leder: sprint_captain på flade etaper (fallback captain), ellers
 // captain. Hjælpere/hunters er score-neutrale (ingen straf i v1 — kalibrérbart).
-// max boost ved helperSupport = 1.0 (~1,5 % af typisk terrain-score ~0.65 — samme skala som FORM/FATIGUE-seams; kalibreres i race:gate)
-export const TEAM_RACE_WEIGHT = 0.010;
+// Kalibreret i race:gate:roles (Task 9, 2026-06-12): 0.010 → 0.024. Max boost ved
+// helperSupport = 1.0 er ~3,7 % af typisk terrain-score (~0.65), men i pyramide-
+// populationen ligger helperSupport typisk ~0.3-0.4 → realiseret boost ~0.007-0.010,
+// dvs. samme skala som FORM/FATIGUE-seams. 0.024 er minimum der gør kaptajn-deltaet
+// (roles vs neutral, aggregeret over 8 terræner × 300 løb) positivt på alle 3
+// gate-seeds — ved 0.010-0.018 stjal hunter-udbruddene netto sejre fra kaptajnerne.
+export const TEAM_RACE_WEIGHT = 0.024;
 export const HELPER_FATIGUE_DAMPING = 0.5;   // træthed 100 → hjælper bidrager 50 %
 const SPRINT_PROFILES = new Set(["flat"]);
 
@@ -146,10 +151,24 @@ function teamComponent(entrant, stageProfile, teamContext) {
 // seeded) en chance-bonus. Dedikeret rng (XOR-scrambled seed) → noise-sekvensen
 // er UÆNDRET. Hunter-rollen: altid kandidat + HUNTER_WEIGHT_MULTIPLIER i vægt.
 // Bonus = maxBonus · u² (u uniform) → de fleste udbrud hentes, enkelte holder hjem.
-export const BREAKAWAY_PROFILES = Object.freeze({ flat: 0.10, rolling: 0.12, mountain: 0.16 });
-export const BREAKAWAY_TOP_EXCLUDED = 0.4;       // top-40 % (terrain) kan ikke eskapere
+//
+// KALIBRERET mod den ægte pyramide-population (Task 9, 2026-06-12, race:gate):
+// de oprindelige design-værdier (maxBonus 0.10/0.12/0.16, cut 0.4) gav 0,0 %
+// escapee-sejre i 140-rytter-felter — ved cut'et er terrain-gabet til feltets
+// bedste 0.33-0.55 score-point, så bonussen kunne MATEMATISK aldrig vinde.
+// Derfor: (a) maxBonus skal være sammenlignelig med felt-SPREDNINGEN (ikke
+// noise-skalaen) for at et udbrud nogensinde kan holde hjem; u²-formen sikrer
+// stadig at de fleste udbrud hentes. (b) cut 0.05 (i stedet for 0.4) lader
+// næst-lags-ryttere (p5-p10 på terrænet) eskapere — på flade etaper er det
+// netop sub-top-SPRINTERE, hvilket holder sprinter ≥90 %-målet kompatibelt
+// med udbruds-båndet. (c) hunter-vægt 3 → 2: ved ×3 stjal hunters så mange
+// sejre fra kaptajnerne at kaptajn-deltaet blev negativt og rolling røg over
+// bånd-loftet i roles-mode. Målte bånd-værdier pr. seed: se KALIBRERINGS-LOG
+// i scripts/simulateSeasonDryRun.js.
+export const BREAKAWAY_PROFILES = Object.freeze({ flat: 0.30, rolling: 0.17, mountain: 0.33 });
+export const BREAKAWAY_TOP_EXCLUDED = 0.05;      // top-5 % (terrain) kan ikke eskapere
 export const BREAKAWAY_MAX_RIDERS = 3;
-export const HUNTER_WEIGHT_MULTIPLIER = 3;
+export const HUNTER_WEIGHT_MULTIPLIER = 2;
 
 // Aggression = lyst/evne til at køre i udbrud, udledt af eksisterende abilities
 // (ingen ny stat i v1): taktik vejer tungest, dernæst motor og punch-acceleration.
