@@ -121,6 +121,17 @@ const WHITELIST_EMPTY_TABLES = new Set([
   // køer; fandt den 2026-06-11 efter outboxen var drænet. Skriv-path verificeret
   // i discordDmOutbox.js (enqueueDm).
   "discord_dm_outbox",
+  // Race-motor #1306: startfelt skrives af raceRunner.js (auto-fill når tomt) når
+  // RACE_ENGINE_V2_ENABLED er ON; flaget er seedet OFF indtil 20/6-relaunch
+  // (flag-flip = #1103-checklisten). Fjern når flag tændes + tabellen har rows.
+  "race_entries",
+  // Form/træthed #1306: raceFatigue.js skriver rytter-condition ved løbsafvikling
+  // bag samme RACE_ENGINE_V2_ENABLED-flag. Bevidst tom indtil 20/6-flag-flip (#1103).
+  "rider_condition",
+  // Daglig træning #1305 Fase A: dailyTrainingEngine.js skriver run-log pr.
+  // træningsdag, gated af isDailyTrainingEnabled (DB-flag, seedet OFF indtil
+  // 20/6-relaunch, #1103). Fjern når flag tændes + tabellen har rows.
+  "training_day_runs",
 ]);
 
 // Detector B: endpoints der er korrekt orphaned i frontend (cron, admin-curl, webhook)

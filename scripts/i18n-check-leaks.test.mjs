@@ -117,6 +117,8 @@ test("DANISH_CHARS sanity", () => {
 });
 
 test("stripComments bevarer URL'er (:// er ikke en kommentar)", () => {
+  // Fuld lighed (ikke .includes) — CodeQL læser substring-tjek på URL'er som
+  // saniterings-logik (js/incomplete-url-substring-sanitization, alert #163).
   const src = 'const url = "https://example.com/æøå";';
-  assert.ok(stripComments(src).includes("https://example.com"));
+  assert.equal(stripComments(src), src);
 });
