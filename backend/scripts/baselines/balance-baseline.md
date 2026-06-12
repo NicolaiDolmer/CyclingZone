@@ -26,29 +26,29 @@
 |---|---|---|--:|--:|---|
 | classic | endurance | 69 vs 29 | 41/300 | 32.3% | gc 39%, puncheur 38%, baroudeur 10% |
 | cobbles | cobblestone | 86 vs 21 | 27/300 | 2% | brostensrytter 98%, gc 2%, baroudeur 0% |
-| flat | sprint | 85 vs 18 | 24/300 | 1.3% | sprinter 93%, leadout 7% |
+| flat | sprint | 84 vs 18 | 29/300 | 1.7% | sprinter 91%, leadout 7%, tt 1% |
 | high_mountain | climbing | 90 vs 23 | 26/300 | 36.3% | gc 69%, climber 22%, puncheur 9% |
 | hilly | punch | 83 vs 26 | 38/300 | 4.7% | puncheur 82%, climber 5%, baroudeur 4% |
 | itt | time_trial | 90 vs 18 | 25/300 | 39.3% | tt 66%, gc 34% |
-| mountain | climbing | 91 vs 23 | 25/300 | 33.3% | gc 73%, climber 20%, puncheur 7% |
-| rolling | endurance | 70 vs 29 | 51/300 | 31% | gc 40%, baroudeur 27%, puncheur 25% |
+| mountain | climbing | 88 vs 23 | 51/300 | 30.7% | gc 69%, climber 21%, puncheur 9% |
+| rolling | endurance | 69 vs 29 | 72/300 | 28.7% | gc 38%, baroudeur 27%, puncheur 24% |
 
-Udbruds-andel af bjergsejre: 0%
+Udbruds-andel af bjergsejre: 0.5%
 
 ### Grand Tour (21 etaper)
 
 | # | Rytter | Født-som | Afledt | Tid |
 |--:|---|---|---|---|
 | 1 | Manuel Ferrara | gc | gc | +0:00 |
-| 2 | Matej Hribar | climber | climber | +6:34 |
-| 3 | Loïc Pichon | puncheur | puncheur | +9:57 |
-| 4 | Lachlan Foster | gc | gc | +10:32 |
-| 5 | Javier Aguilar | climber | gc | +13:31 |
-| 6 | Sebastian Bergström | gc | gc | +14:16 |
-| 7 | Adam Sokol | climber | climber | +17:11 |
-| 8 | Cody Ward | tt | tt | +17:42 |
-| 9 | Maarten Peeters | climber | climber | +18:21 |
-| 10 | Maxime Girard | climber | climber | +18:40 |
+| 2 | Matej Hribar | climber | climber | +6:35 |
+| 3 | Loïc Pichon | puncheur | puncheur | +9:58 |
+| 4 | Lachlan Foster | gc | gc | +10:33 |
+| 5 | Javier Aguilar | climber | gc | +13:32 |
+| 6 | Sebastian Bergström | gc | gc | +14:14 |
+| 7 | Adam Sokol | climber | climber | +17:12 |
+| 8 | Cody Ward | tt | tt | +17:43 |
+| 9 | Maarten Peeters | climber | climber | +18:22 |
+| 10 | Maxime Girard | climber | climber | +18:41 |
 
 Trøjer: 🟢 Loïc Pichon (puncheur) · ⛰️ Loïc Pichon (puncheur) · ⚪ Manuel Ferrara
 

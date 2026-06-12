@@ -12,7 +12,8 @@
 //     → simulateStage / buildRaceResults (UÆNDREDE rene funktioner)
 //
 //   node scripts/simulateSeasonDryRun.js [--seed=2026] [--count=800] \
-//        [--races=300] [--field=140] [--gtField=176] [--html=<sti>] [--no-html]
+//        [--races=300] [--field=140] [--gtField=176] [--html=<sti>] [--no-html] \
+//        [--condition=random] [--roles] [--enforce-targets]
 
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -23,7 +24,7 @@ import { deriveAbilities } from "../lib/abilityDerivation.js";
 import { computeRiderTypes } from "../lib/riderTypes.js";
 import { predictBaseValue, riderOverall, riderSpecialty } from "../lib/riderValuation.js";
 import { DEMAND_VECTORS } from "../lib/raceStageProfileGenerator.js";
-import { simulateStage, stableSeed, NOISE_SD_SCALE } from "../lib/raceSimulator.js";
+import { simulateStage, stableSeed, NOISE_SD_SCALE, aggressionScore, BREAKAWAY_PROFILES } from "../lib/raceSimulator.js";
 import { buildRaceResults } from "../lib/raceRunner.js";
 import { evaluateRaceStructuralOracles } from "../lib/raceDryRunOracles.js";
 
@@ -51,6 +52,11 @@ const ENFORCE_TARGETS = !!arg("enforce-targets", false);
 // B4 (#1306): --condition=random tilsætter seeded form/træthed per rytter.
 // Neutral-mode (fraværende flag) er UÆNDRET — ingen ekstra rng-kald i den sti.
 const CONDITION_MODE = arg("condition", null) === "random";
+// #1307: --roles snake-drafter hvert felt i hold af 8 og tildeler race_role
+// (captain/hunter/helper) → måler hold- og udbruds-mekanikken mod populationen.
+// Prøve-trækningen (sampleField) er UÆNDRET — roller udledes deterministisk af
+// prøven og konsumerer ingen rng, så felterne er identiske med neutral-mode.
+const ROLES_MODE = !!arg("roles", false);
 
 const baseline = JSON.parse(readFileSync(join(__dirname, "../lib/riderTypesBaseline.json"), "utf8"));
 const model = JSON.parse(readFileSync(join(__dirname, "../lib/riderValuationModel.json"), "utf8"));
@@ -84,7 +90,44 @@ const TARGETS = {
 // FUND: udbrud (baroudeur) på bjerg kan IKKE købes med vægte — tactics/positioning-
 //   skift gav 0 baroudeur-sejre men +12% puncheur (gruppen faldt 93→87%). Kræver
 //   ægte udbruds-mekanik i den fulde motor (#1021).
+//
+// ── KALIBRERINGS-LOG (2026-06-12, #1307 Task 9) — udbrud + roller, 3 seeds grønne ──
+// Endelige konstanter (raceSimulator.js): BREAKAWAY_PROFILES flat 0.30 / rolling
+//   0.17 / mountain 0.33 · BREAKAWAY_TOP_EXCLUDED 0.05 · HUNTER_WEIGHT_MULTIPLIER 2
+//   · TEAM_RACE_WEIGHT 0.024. BREAKAWAY_TARGETS-båndene blev IKKE justeret.
+// FUND: design-værdierne (0.10/0.12/0.16, cut 0.4) gav 0,0 % escapee-sejre overalt —
+//   pyramide-populationens terrain-gab ved cut'et (0.33-0.55) overstiger enhver
+//   "lille" bonus. Cut 0.05 + spread-skala bonusser løste det; på flat eskaperer
+//   sub-top-SPRINTERE (p5-p10), så sprinter ≥90 %-målet og udbruds-båndet er
+//   forenelige. Hunter-vægt ×3→×2 + TEAM 0.010→0.024 gjorde kaptajn-deltaet
+//   positivt (ved ×3 stjal hunters netto sejre fra kaptajnerne på alle seeds).
+// Udbruds-bånd (escapee-vinder-andel) pr. seed — neutral/condition/roles, alle ✓:
+//   seed 2026: flat 2.3/2.0/4.0 (bånd 1-10) · rolling 9.0/8.7/6.7 (2-12) · mountain 10.0/10.0/10.3 (5-25)
+//   seed 7  (roles): flat 6.0 · rolling 8.7 · mountain 10.3
+//   seed 42 (roles): flat 5.7 · rolling 6.3 · mountain 10.0
+// Roles-metrikker (roles vs neutral-tvilling, 8×300 løb): kaptajn-delta
+//   2026 +20 (2063/2043) · 7 +9 (2077/2068) · 42 +15 (2117/2102); hunter/helper-
+//   escapee-ratio 3.4 / 2.8 / 3.0 (krav >1.5).
+// Scorecard (født-som) holdt på alle 7 mål i alle 5 gate-kørsler; binding margin:
+//   flat sprinter 90 % (seed 42 roles + 2026 roles) — flat-bonus >0.30 vælter den.
 const TERRAINS = ["flat", "rolling", "hilly", "mountain", "high_mountain", "itt", "cobbles", "classic"];
+
+// ── Udbruds-gate-bånd (#1307, 2026-06-12) — escapee-VINDER-andel pr. terræn ───
+// Andel af sejre vundet af en rytter med aktiv udbruds-bonus
+// (components.breakaway > 0) — uafhængigt af født-som-type, modsat born-as-
+// linsen i "udbruds-andel"-rapporten nedenfor. Måles i ALLE modes; håndhæves
+// med --enforce-targets. Bånd til ejer-review i PR'en (irl-pejling: udbrud
+// holder sjældent hjem på flade sprinter-etaper, oftere i mellembjerg/bjerg).
+//
+// NB: high_mountain og øvrige profiler har BEVIDST intet bånd — spec 8.3 giver
+// kun udbruds-bonus på flad/rolling/medium-bjerg (BREAKAWAY_PROFILES), så
+// escapee-share dér er per konstruktion 0. Tilføj IKKE et high_mountain-bånd —
+// det ville fejle på 0% og stride mod design-kontrakten.
+const BREAKAWAY_TARGETS = {
+  flat:     { min: 0.01, max: 0.10 },
+  rolling:  { min: 0.02, max: 0.12 },
+  mountain: { min: 0.05, max: 0.25 },
+};
 
 // ── Hjælpere ──────────────────────────────────────────────────────────────────
 const padE = (s, n) => String(s).padEnd(n);
@@ -113,8 +156,87 @@ function keyAbilityOf(demand) {
   return Object.entries(demand).filter(([k]) => k !== "randomness").sort((a, b) => b[1] - a[1])[0][0];
 }
 
+// #1307 --roles: snake-draft prøven ind i hold af 8 efter overall (spejler GT'ens
+// snake-logik nedenfor), og tildel roller:
+//   captain = bedste overall pr. hold
+//   hunter  = på hvert ANDET hold (teamIdx % 2 === 0): højeste aggressionScore
+//             blandt ikke-kaptajner (stabil rider_id-tiebreak)
+//   helper  = alle øvrige
+// Deterministisk: ingen rng — udledes alene af prøven.
+const ROLES_TEAM_SIZE = 8;
+
+/**
+ * Fælles rolle-tildeler brugt af BÅDE terrain-sampleren (assignRoles) og
+ * GT-blokken — ét sted at vedligeholde logikken.
+ *
+ * @param {Map<*, Member[]>}  teamsMap   - Map(teamKey → members[])
+ * @param {(m: Member) => number}  getOverall  - henter overall fra et member
+ * @param {(m: Member) => string}  getId       - henter den stabile id (tiebreak)
+ * @param {(teamKey: *) => number} getTeamIdx  - konverterer teamKey til numerisk indeks
+ * @param {(m: Member) => object}  getAbilities - henter abilities-objektet
+ * @returns {Map<string, "captain"|"hunter"|"helper">}  roleById (keyed på getId(m))
+ */
+function assignRolesToTeams(teamsMap, { getOverall, getId, getTeamIdx, getAbilities }) {
+  const roleById = new Map();
+  for (const [teamKey, members] of teamsMap) {
+    // captain = højeste overall (stabil id-tiebreak: lavere streng vinder)
+    let captain = members[0];
+    for (const m of members) {
+      const mOvr = getOverall(m), cOvr = getOverall(captain);
+      if (mOvr > cOvr || (mOvr === cOvr && String(getId(m)) < String(getId(captain)))) {
+        captain = m;
+      }
+    }
+    roleById.set(getId(captain), "captain");
+    // hunter = kun på hvert andet hold (teamIdx % 2 === 0)
+    if (getTeamIdx(teamKey) % 2 === 0) {
+      let hunter = null;
+      let hunterScore = -Infinity;
+      for (const m of members) {
+        if (getId(m) === getId(captain)) continue;
+        const score = aggressionScore(getAbilities(m));
+        if (score > hunterScore ||
+            (score === hunterScore && hunter && String(getId(m)) < String(getId(hunter)))) {
+          hunter = m;
+          hunterScore = score;
+        }
+      }
+      if (hunter) roleById.set(getId(hunter), "hunter");
+    }
+    // helper = alle øvrige
+    for (const m of members) {
+      if (!roleById.has(getId(m))) roleById.set(getId(m), "helper");
+    }
+  }
+  return roleById;
+}
+
+function assignRoles(sample) {
+  const byOverall = [...sample].sort((a, b) =>
+    b.overall - a.overall || String(a.id).localeCompare(String(b.id))
+  );
+  const nTeams = Math.ceil(byOverall.length / ROLES_TEAM_SIZE);
+  const teamById = new Map();
+  const membersByTeam = new Map();
+  for (let i = 0; i < byOverall.length; i++) {
+    const round = Math.floor(i / nTeams);
+    const pos = i % nTeams;
+    const teamIdx = round % 2 === 0 ? pos : nTeams - 1 - pos;
+    teamById.set(byOverall[i].id, teamIdx);
+    if (!membersByTeam.has(teamIdx)) membersByTeam.set(teamIdx, []);
+    membersByTeam.get(teamIdx).push(byOverall[i]);
+  }
+  const roleById = assignRolesToTeams(membersByTeam, {
+    getOverall:   (r) => r.overall,
+    getId:        (r) => r.id,
+    getTeamIdx:   (teamIdx) => teamIdx,
+    getAbilities: (r) => r.abilities,
+  });
+  return { roleById, teamById };
+}
+
 // ── 1. Generér + berig felt (hele værdi-kæden, in-memory) ────────────────────
-console.log(`\n🚴  RACE-ENGINE DRY-RUN — seed=${SEED} count=${COUNT} noise=${NOISE_SD_SCALE}${CONDITION_MODE ? " condition=random" : ""} (in-memory, rører ikke prod)\n`);
+console.log(`\n🚴  RACE-ENGINE DRY-RUN — seed=${SEED} count=${COUNT} noise=${NOISE_SD_SCALE}${CONDITION_MODE ? " condition=random" : ""}${ROLES_MODE ? " roles" : ""} (in-memory, rører ikke prod)\n`);
 
 const { riders: raw } = generateFictionalRiders({ count: COUNT, seed: SEED, referenceYear: REFERENCE_YEAR });
 
@@ -182,15 +304,24 @@ for (const terrain of TERRAINS) {
   const bornHist = {}, derivedHist = {};
   const winners = new Set();
   let strongestWon = 0, overallRankSum = 0, winnerKeySum = 0;
+  // #1307: udbruds-vinder-tæller (ALLE modes) + roles-mode-metrikker.
+  let breakawayWinCount = 0;
+  let captainWinsRoles = 0, captainWinsNeutral = 0;
+  let hunterEscapes = 0, helperEscapes = 0, hunterExposures = 0, helperExposures = 0;
 
   for (let i = 0; i < RACES; i++) {
     const sample = sampleField(rng, field, FIELD);
+    const raceSeed = stableSeed(`${terrain}:${i}`);
+    const roles = ROLES_MODE ? assignRoles(sample) : null;
     const entrants = sample.map((r) => ({
-      rider_id: r.id, team_id: r.id, abilities: r.abilities,
+      rider_id: r.id,
+      team_id: ROLES_MODE ? `t${roles.teamById.get(r.id)}` : r.id,
+      abilities: r.abilities,
+      ...(ROLES_MODE ? { race_role: roles.roleById.get(r.id) } : {}),
       ...(CONDITION_MODE && r.form    != null ? { form:    r.form }    : {}),
       ...(CONDITION_MODE && r.fatigue != null ? { fatigue: r.fatigue } : {}),
     }));
-    const { ranked } = simulateStage({ entrants, stageProfile: { profile_type: terrain, demand_vector: demand }, seed: stableSeed(`${terrain}:${i}`) });
+    const { ranked } = simulateStage({ entrants, stageProfile: { profile_type: terrain, demand_vector: demand }, seed: raceSeed });
     const w = byId.get(ranked[0].rider_id);
     bornHist[w.bornAs] = (bornHist[w.bornAs] || 0) + 1;
     derivedHist[w.derived] = (derivedHist[w.derived] || 0) + 1;
@@ -200,12 +331,41 @@ for (const terrain of TERRAINS) {
     const rank = byOverall.findIndex((r) => r.id === w.id) + 1;
     overallRankSum += rank;
     if (rank === 1) strongestWon++;
+    if ((ranked[0].components.breakaway || 0) > 0) breakawayWinCount++;
+
+    if (ROLES_MODE) {
+      if (roles.roleById.get(ranked[0].rider_id) === "captain") captainWinsRoles++;
+      // Neutral tvilling: SAMME prøve + seed, men uden roller/hold (som neutral-
+      // mode) → måler om rolle-mekanikken netto gavner kaptajnerne.
+      const neutralEntrants = sample.map((r) => ({
+        rider_id: r.id, team_id: r.id, abilities: r.abilities,
+        ...(CONDITION_MODE && r.form    != null ? { form:    r.form }    : {}),
+        ...(CONDITION_MODE && r.fatigue != null ? { fatigue: r.fatigue } : {}),
+      }));
+      const neutral = simulateStage({ entrants: neutralEntrants, stageProfile: { profile_type: terrain, demand_vector: demand }, seed: raceSeed });
+      if (roles.roleById.get(neutral.ranked[0].rider_id) === "captain") captainWinsNeutral++;
+      // Escapee-deltagelse pr. rolle (kun udbruds-egnede terræner producerer escapees).
+      if (BREAKAWAY_PROFILES[terrain]) {
+        for (const r of ranked) {
+          const role = roles.roleById.get(r.rider_id);
+          if (role === "hunter") {
+            hunterExposures++;
+            if (r.components.breakaway > 0) hunterEscapes++;
+          } else if (role === "helper") {
+            helperExposures++;
+            if (r.components.breakaway > 0) helperEscapes++;
+          }
+        }
+      }
+    }
   }
   terrainResults.push({
     terrain, keyAb, races: RACES,
     winnerKeyAvg: Math.round(winnerKeySum / RACES), fieldMedianKey: fieldMedianAbility(keyAb),
     bornHist, derivedHist, distinct: winners.size,
     avgStrengthRank: overallRankSum / RACES, strongestWonPct: pct1(strongestWon, RACES),
+    breakawayWinShare: breakawayWinCount / RACES,
+    ...(ROLES_MODE ? { captainWinsRoles, captainWinsNeutral, hunterEscapes, helperEscapes, hunterExposures, helperExposures } : {}),
   });
 }
 
@@ -238,11 +398,50 @@ for (const tr of terrainResults) {
 // 0% er et rødt flag: motoren er for deterministisk (GC-ryttere dominerer blindt).
 // NB: "fighter" er IKKE en nuværende generator-arketype (kun "baroudeur" findes i
 // fictionalRiderGenerator.js) — termen beholdes defensivt fra ejerens 7/6-vokabular.
+// NB (#1307): dette er en ANDEN linse end udbruds-båndene nedenfor — her måles
+// hvor ofte en baroudeur-FØDT rytter vinder bjergsejre (type-linse); båndene
+// måler escapee-baserede sejre (components.breakaway > 0) uanset type.
 const mtTerrains = terrainResults.filter((x) => x.terrain === "mountain" || x.terrain === "high_mountain");
 const breakawayWins = mtTerrains.reduce((s, tr) => s + (tr.bornHist["baroudeur"] || 0) + (tr.bornHist["fighter"] || 0), 0);
 const mtTotalWins = mtTerrains.reduce((s, tr) => s + tr.races, 0);
 const breakawayShare = pct1(breakawayWins, mtTotalWins);
 console.log(`\n   udbruds-andel (baroudeur/fighter) af bjergsejre: ${breakawayShare}% (irl ~40%; 0% = rød flag, rapport-only)`);
+
+// ── Udbruds-bånd (#1307) — escapee-vinder-andel vs BREAKAWAY_TARGETS ─────────
+// Evalueres i ALLE modes; håndhæves (exit 1) kun med --enforce-targets.
+const breakawayBandFailures = [];
+console.log(`\n   UDBRUDS-BÅND (escapee-vinder-andel; håndhæves med --enforce-targets):`);
+for (const [terrain, band] of Object.entries(BREAKAWAY_TARGETS)) {
+  const tr = terrainResults.find((x) => x.terrain === terrain);
+  const share = tr.breakawayWinShare;
+  const ok = share >= band.min && share <= band.max;
+  if (!ok) breakawayBandFailures.push(`udbrud:${terrain} ${(share * 100).toFixed(1)}% udenfor [${(band.min * 100).toFixed(1)}%, ${(band.max * 100).toFixed(1)}%]`);
+  console.log(`   ${padE(terrain, 14)} ${padS((share * 100).toFixed(1), 5)}%   bånd [${padS((band.min * 100).toFixed(1), 4)}%, ${padS((band.max * 100).toFixed(1), 4)}%]   ${ok ? "✓" : "✗"}`);
+}
+
+// ── Roles-mode-metrikker (#1307) — kaptajn-delta + hunter-ratio ──────────────
+// captainWinsRoles ≥ captainWinsNeutral: rolle-mekanikken (team-boost + udbrud)
+// må ikke NETTO koste kaptajnerne sejre på tværs af terræner.
+// hunterEscapeRate > 1.5 × helperEscapeRate: hunter-rollen skal mærkes (pr.
+// rytter-løb, aggregeret over de tre udbruds-egnede terræner).
+const rolesFailures = [];
+if (ROLES_MODE) {
+  const capRoles = terrainResults.reduce((s, tr) => s + (tr.captainWinsRoles || 0), 0);
+  const capNeutral = terrainResults.reduce((s, tr) => s + (tr.captainWinsNeutral || 0), 0);
+  const hunterEsc = terrainResults.reduce((s, tr) => s + (tr.hunterEscapes || 0), 0);
+  const hunterN = terrainResults.reduce((s, tr) => s + (tr.hunterExposures || 0), 0);
+  const helperEsc = terrainResults.reduce((s, tr) => s + (tr.helperEscapes || 0), 0);
+  const helperN = terrainResults.reduce((s, tr) => s + (tr.helperExposures || 0), 0);
+  const hunterRate = hunterN ? hunterEsc / hunterN : 0;
+  const helperRate = helperN ? helperEsc / helperN : 0;
+  const capOk = capRoles >= capNeutral;
+  const huntOk = hunterRate > 1.5 * helperRate;
+  if (!capOk) rolesFailures.push(`kaptajn-delta: roles ${capRoles} < neutral ${capNeutral} sejre`);
+  if (!huntOk) rolesFailures.push(`hunter-ratio: ${(hunterRate * 100).toFixed(2)}% ≤ 1.5 × helper ${(helperRate * 100).toFixed(2)}%`);
+  console.log(`\n   ROLES-METRIKKER (håndhæves med --enforce-targets):`);
+  console.log(`   kaptajn-sejre  roles ${capRoles} vs neutral ${capNeutral} (over ${TERRAINS.length}×${RACES} løb)   ${capOk ? "✓" : "✗"}`);
+  console.log(`   escapee-rate   hunter ${(hunterRate * 100).toFixed(2)}% (${hunterEsc}/${hunterN}) vs helper ${(helperRate * 100).toFixed(2)}% (${helperEsc}/${helperN}) · ratio ${helperRate ? (hunterRate / helperRate).toFixed(1) : "∞"} (kræver >1.5)   ${huntOk ? "✓" : "✗"}`);
+}
 
 // ── C. Grand Tour (fuld 21-etapers, til eyeball + HTML) ──────────────────────
 const GT_TEMPLATE = [
@@ -267,6 +466,25 @@ const gtEntrants = gtRiders.map((r, i) => {
     ...(CONDITION_MODE && r.fatigue != null ? { fatigue: r.fatigue } : {}),
   };
 });
+
+// #1307 --roles: tildel roller INDEN FOR de eksisterende GT-hold via den
+// fælles assignRolesToTeams-helper (samme regler som terrain-sampleren).
+if (ROLES_MODE) {
+  const gtTeams = new Map();
+  for (const e of gtEntrants) {
+    if (!gtTeams.has(e.team_id)) gtTeams.set(e.team_id, []);
+    gtTeams.get(e.team_id).push(e);
+  }
+  const gtRoleById = assignRolesToTeams(gtTeams, {
+    getOverall:   (e) => byId.get(e.rider_id).overall,
+    getId:        (e) => e.rider_id,
+    getTeamIdx:   (teamId) => Number(teamId.slice(1)),
+    getAbilities: (e) => e.abilities,
+  });
+  for (const e of gtEntrants) {
+    e.race_role = gtRoleById.get(e.rider_id);
+  }
+}
 
 const { resultRows } = buildRaceResults({
   race: { id: "gt-dry", race_type: "stage_race" },
@@ -352,6 +570,16 @@ if (failedTargets.length) {
     process.exitCode = 1;
   } else {
     console.log(`   ⚠ ${failedTargets.length} kalibrerings-bånd under mål (rapport-only; håndhæv med --enforce-targets): ${failedTargets.map((s) => s.terrain).join(", ")}`);
+  }
+}
+// #1307: udbruds-bånd + roles-metrikker — samme håndhævelses-kontrakt som scorecardet.
+const breakawayGateFailures = [...breakawayBandFailures, ...rolesFailures];
+if (breakawayGateFailures.length) {
+  if (ENFORCE_TARGETS) {
+    console.log(`   ❌ ${breakawayGateFailures.length} udbruds-/roles-bånd brudt (--enforce-targets aktiv → exit 1): ${breakawayGateFailures.join(" · ")}`);
+    process.exitCode = 1;
+  } else {
+    console.log(`   ⚠ ${breakawayGateFailures.length} udbruds-/roles-bånd brudt (rapport-only; håndhæv med --enforce-targets): ${breakawayGateFailures.join(" · ")}`);
   }
 }
 

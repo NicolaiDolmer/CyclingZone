@@ -514,6 +514,25 @@
         "title": "Transferrygter",
         "text": "Hvis en manager kigger på en af dine ryttere, modtager du en anonym notifikation: 'En manager holder øje med din rytter X'. Du får maksimalt én notifikation per rytter per time for at undgå spam."
       }
+    },
+    "raceSelection": {
+      "label": "Holdudtagelse",
+      "what": {
+        "title": "Udtag din løbstrup",
+        "text": "Inden hvert løb vælger du 6-8 ryttere (Grand Tours bruger fulde trupper på 8). Gå til løbssiden og brug panelet Holdudtagelse. Vælger du ikke selv, stiller din assistent automatisk et fornuftigt hold, så du aldrig misser et løb."
+      },
+      "roles": {
+        "title": "Kaptajn, spurt-kaptajn og udbruds-jæger",
+        "text": "Din kaptajn beskyttes af holdet: stærke, friske hjælpere booster kaptajnens chancer. På flade etaper overtager spurt-kaptajnen (hvis sat) beskyttelsen. En udbruds-jæger har markant højere chance for at komme med i dagens udbrud."
+      },
+      "breakaway": {
+        "title": "Udbrud",
+        "text": "På flade, kuperede og mellembjergs-etaper får et lille udbrud chance for at holde hjem. De fleste bliver hentet, men indimellem holder bruddet. Aggressive ryttere og udpegede jægere kommer med i udbrud oftere."
+      },
+      "fatigue": {
+        "title": "Træthed betyder noget",
+        "text": "Trætte hjælpere støtter kaptajnen mindre, og løbsdage opbygger træthed. Roter din trup mellem løb for at holde dine stjerner friske til de dage der tæller."
+      }
     }
   },
   "faq": {

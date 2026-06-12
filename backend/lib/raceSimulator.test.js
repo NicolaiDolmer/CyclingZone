@@ -73,7 +73,7 @@ test("finalScore = summen af komponenterne (forklarlighed)", () => {
   const { ranked } = simulateStage({ entrants: [ELITE_SPRINTER, PURE_CLIMBER], stageProfile: MOUNTAIN, seed: 99 });
   for (const r of ranked) {
     const c = r.components;
-    const sum = c.terrain + c.noise + c.form - c.fatigue + c.team;
+    const sum = c.terrain + c.noise + c.form - c.fatigue + c.team + (c.breakaway ?? 0);
     assert.ok(Math.abs(sum - r.finalScore) < 1e-12, "finalScore matcher ikke komponenter");
   }
 });
@@ -141,6 +141,16 @@ test("distribution: stjernen vinder oftest, men ikke 100% (varians findes)", () 
   // 10-14-points sprint-gab bevidst nær-deterministisk — varians-egenskaben
   // gælder blandt JÆVNBYRDIGE favoritter, som i den ægte population (dry-run:
   // 24+ distinkte flad-vindere pr. sæson).
+  // Grænsen er justeret til 0.20 (#1307 Task 9-kalibrering): flat-profilen er
+  // breakaway-egnet, og gate-kalibreringen mod den ÆGTE pyramide-population
+  // landede på BREAKAWAY_TOP_EXCLUDED=0.05 + flat maxBonus=0.30. I DETTE lille
+  // 10-rytter-fixture er cut'et floor(10·0.05)=0 → ALLE ryttere (inkl. stjernen)
+  // er escapee-kandidater med op til +0.30 bonus, mens noise-sd kun er ~0.0128:
+  // i et lille felt forstørres udbruds-effekten massivt (målt: 0.255 ved N=400 —
+  // stadig 2,5× en jævnbyrdig rival). I en realistisk population (140 ryttere)
+  // er effekten langt mindre (flad escapee-vinder-andel 2-6 % i gaten).
+  // Balance-niveauet bevogtes af race:gate-kalibreringen (`npm run race:gate`);
+  // dette fixture tester kun "favorit oftest, men slåbar".
   const field = [rider("star", { sprint: 86, acceleration: 84, positioning: 80 })];
   for (let i = 0; i < 9; i++) field.push(rider(`fld${i}`, { sprint: 80 + (i % 5), acceleration: 78, positioning: 74 }));
   let starWins = 0;
@@ -149,7 +159,7 @@ test("distribution: stjernen vinder oftest, men ikke 100% (varians findes)", () 
     if (winnerOf(field, FLAT, seed) === "star") starWins++;
   }
   const rate = starWins / N;
-  assert.ok(rate > 0.45, `stjernen for svag: vandt ${starWins}/${N}`);
+  assert.ok(rate > 0.20, `stjernen for svag: vandt ${starWins}/${N}`);
   // upper bound er defensiv: 400/400 = motorbrydende determinisme; balance-niveauet bevogtes af dry-run-gaten
   assert.ok(rate < 1.0, `stjernen vandt ALT (${starWins}/${N}) — ingen overraskelser`);
 });
@@ -170,8 +180,13 @@ test("terrainScore ignorerer 'randomness' (ikke en ability) og manglende nøgler
 
 // ── Bunch-adfærd (F3 GC-feel) ─────────────────────────────────────────────────
 test("flad etape: feltet deler tid (flere gap=0), bjerg åbner gab", () => {
+  // #1307: flad bunch-egenskab testes på et <4-rytter-felt — udbrud kræver ≥4
+  // ryttere, så GAP_MODEL-adfærden måles isoleret fra breakaway-mekanikken (en
+  // vindende escapee åbner legitimt gab til feltet, præcis som irl, og ville
+  // gøre gap=0-tællingen afhængig af kalibrerings-konstanterne).
+  const tightTrio = Array.from({ length: 3 }, (_, i) => rider(`r${i}`, { sprint: 70 + (i % 3), positioning: 70 }));
   const tightField = Array.from({ length: 10 }, (_, i) => rider(`r${i}`, { sprint: 70 + (i % 3), positioning: 70 }));
-  const flat = simulateStage({ entrants: tightField, stageProfile: FLAT, seed: 11 }).ranked;
+  const flat = simulateStage({ entrants: tightTrio, stageProfile: FLAT, seed: 11 }).ranked;
   const mtn = simulateStage({ entrants: tightField, stageProfile: MOUNTAIN, seed: 11 }).ranked;
   const flatZeros = flat.filter((r) => r.stageGap === 0).length;
   const mtnMaxGap = Math.max(...mtn.map((r) => r.stageGap));

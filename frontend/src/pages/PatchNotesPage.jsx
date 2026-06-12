@@ -2,6 +2,22 @@
 
 const PATCHES = [
   {
+    version: "5.30",
+    date: "2026-06-12",
+    label: "Beta",
+    changes: [
+      {
+        category: "New · Race tactics",
+        items: [
+          "EN · Team selection: pick 6-8 riders per race with a captain, optional sprint captain and breakaway hunter. Your assistant picks automatically if you don't. Goes live with the season relaunch on 20 June.",
+          "DA · Holdudtagelse: udtag 6-8 ryttere pr. løb med kaptajn, valgfri spurt-kaptajn og udbruds-jæger. Assistenten vælger automatisk hvis du ikke gør. Aktiveres ved sæson-relaunchet 20. juni.",
+          "EN · Breakaways: on flat, rolling and medium mountain stages a breakaway can now stay away and win. Refs #1307",
+          "DA · Udbrud: på flade, kuperede og mellembjergs-etaper kan et udbrud nu holde hjem og vinde. Refs #1307",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.29",
     date: "2026-06-12",
     label: "Beta",

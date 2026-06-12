@@ -274,8 +274,8 @@ test("loadEntrantsForRace: form/fatigue merges fra rider_condition når rækker 
   assert.equal(r2.fatigue, undefined);
 });
 
-// ── autoFillEntries: skadefilter (B2 #1306) ───────────────────────────────────
-test("autoFillEntries: skadede ryttere (injured_until >= i dag) udelukkes fra auto-entry; udløbet skade + ingen condition inkluderes", async () => {
+// ── fillMissingTeamEntries: skadefilter (B2 #1306) ───────────────────────────────────
+test("fillMissingTeamEntries: skadede ryttere (injured_until >= i dag) udelukkes fra auto-entry; udløbet skade + ingen condition inkluderes", async () => {
   // Mocken returnerer rider_condition ufiltreret (gte simuleres ikke) — vi lægger
   // kun den aktive skade i canned for at simulere DB's gte-filter. r-injured udelades
   // fra rider_derived_abilities så auto-fill-eksklusionen er den eneste guard der

@@ -121,7 +121,7 @@ const WHITELIST_EMPTY_TABLES = new Set([
   // køer; fandt den 2026-06-11 efter outboxen var drænet. Skriv-path verificeret
   // i discordDmOutbox.js (enqueueDm).
   "discord_dm_outbox",
-  // Race-motor #1306: startfelt skrives af raceRunner.js (auto-fill når tomt) når
+  // Race-motor #1306/#1307: startfelt skrives af raceRunner.js (per-hold autopick, #1307) når
   // RACE_ENGINE_V2_ENABLED er ON; flaget er seedet OFF indtil 20/6-relaunch
   // (flag-flip = #1103-checklisten). Fjern når flag tændes + tabellen har rows.
   "race_entries",
