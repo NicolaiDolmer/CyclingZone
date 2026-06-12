@@ -191,6 +191,7 @@
     "fallbackDash": "-"
   },
   "development": {
+    "progressHint": "Progress toward next point",
     "empty": "No history yet. Data accumulates from the next weekly sync",
     "statsTitle": "Skill development",
     "statsSubtitle": "Pick a skill and see how it changes over time",
@@ -417,9 +418,6 @@
     "form": "Form",
     "fatigue": "Fatigue",
     "injured": "Injured — {{days}}d left"
-  },
-  "development": {
-    "progressHint": "Progress toward next point"
   },
   "training": {
     "title": "Training focus",

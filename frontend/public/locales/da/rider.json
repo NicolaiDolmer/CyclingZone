@@ -191,6 +191,7 @@
     "fallbackDash": "-"
   },
   "development": {
+    "progressHint": "Fremskridt mod næste point",
     "empty": "Ingen historik endnu. Data akkumuleres fra næste ugentlige sync",
     "statsTitle": "Stats-udvikling",
     "statsSubtitle": "Vælg evne og se ændringen over tid",
@@ -417,9 +418,6 @@
     "form": "Form",
     "fatigue": "Træthed",
     "injured": "Skadet — {{days}}d tilbage"
-  },
-  "development": {
-    "progressHint": "Fremskridt mod næste point"
   },
   "training": {
     "title": "Træningsfokus",
