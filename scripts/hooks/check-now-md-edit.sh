@@ -90,7 +90,7 @@ if [ -z "$RESULTING_LINES" ] || [ "$RESULTING_LINES" -le 0 ]; then
 fi
 
 if [ "$RESULTING_LINES" -gt 30 ]; then
-  echo "BLOCKED: docs/NOW.md vil blive ${RESULTING_LINES} linjer (maks 30 per CLAUDE.md). Arkivér ældre indhold til docs/archive/NOW-YYYY-MM-DD.md først, eller slet linjer i samme edit. Se docs/HOOKS.md (#76)." >&2
+  echo "BLOCKED: docs/NOW.md vil blive ${RESULTING_LINES} linjer (maks 30 per CLAUDE.md). Trim gamle close-out-blokke i SAMME edit — historik bevares i git-log + issue-tråde. Opret IKKE docs/archive/NOW-*.md (#750-beslutning; mappen er deny-beskyttet). Se docs/HOOKS.md (#76)." >&2
   exit 2
 fi
 
