@@ -7,6 +7,8 @@ import {
   stableSeed,
   ABILITY_KEYS,
   ENGINE_VERSION,
+  FORM_RACE_WEIGHT,
+  FATIGUE_RACE_WEIGHT,
 } from "./raceSimulator.js";
 import { DEMAND_VECTORS } from "./raceStageProfileGenerator.js";
 
@@ -76,7 +78,9 @@ test("finalScore = summen af komponenterne (forklarlighed)", () => {
   }
 });
 
-test("seams returnerer neutralt i v1 (form/fatigue/team = 0)", () => {
+// Neutral path: entrant uden form/fatigue-nøgler (flag-OFF / intet data i DB) →
+// team-seam er stadig 0 (#1307); form/fatigue returnerer 0 via NaN-guard.
+test("seams returnerer neutralt uden condition-data (form/fatigue/team = 0)", () => {
   const { ranked } = simulateStage({ entrants: [ELITE_SPRINTER], stageProfile: FLAT, seed: 1 });
   const c = ranked[0].components;
   assert.equal(c.form, 0);
@@ -185,4 +189,177 @@ test("stableSeed er deterministisk + 32-bit unsigned", () => {
   assert.equal(stableSeed("race-1:1"), stableSeed("race-1:1"));
   assert.notEqual(stableSeed("race-1:1"), stableSeed("race-1:2"));
   assert.ok(stableSeed("x") >= 0 && stableSeed("x") <= 0xffffffff);
+});
+
+// ── formComponent / fatigueComponent (#1306) ──────────────────────────────────
+
+// Hjælper: kør simulateStage med ét felt uden støj (randomness=0) og returnér
+// finalScore for rytteren med givet id.
+function scoreFor(id, form, fatigue, seed = 1) {
+  const entrants = [{ rider_id: id, abilities: Object.fromEntries(ABILITY_KEYS.map((k) => [k, 50])), form, fatigue }];
+  const stage = { profile_type: "flat", demand_vector: { sprint: 1.0 } }; // ingen randomness
+  return simulateStage({ entrants, stageProfile: stage, seed }).ranked[0].finalScore;
+}
+
+test("#1306 neutral: entrant uden form/fatigue → form=0, fatigue=0 (NaN-guard)", () => {
+  // ELITE_SPRINTER har ingen form/fatigue nøgler — backward compat.
+  const { ranked } = simulateStage({ entrants: [ELITE_SPRINTER], stageProfile: FLAT, seed: 1 });
+  const c = ranked[0].components;
+  assert.equal(c.form, 0, "form skal være 0 uden data");
+  assert.equal(c.fatigue, 0, "fatigue skal være 0 uden data");
+});
+
+test("#1306 neutral: form=50 → formComponent = 0 (midtpunkt)", () => {
+  // (50-50)/50 * FORM_RACE_WEIGHT = 0
+  const { ranked } = simulateStage({
+    entrants: [{ rider_id: "r1", abilities: Object.fromEntries(ABILITY_KEYS.map((k) => [k, 50])), form: 50, fatigue: 0 }],
+    stageProfile: FLAT,
+    seed: 1,
+  });
+  assert.ok(Math.abs(ranked[0].components.form) < 1e-12, "form=50 → formComponent ≈ 0");
+});
+
+test("#1306 form=100 → +FORM_RACE_WEIGHT (0.012)", () => {
+  const { ranked } = simulateStage({
+    entrants: [{ rider_id: "r1", abilities: Object.fromEntries(ABILITY_KEYS.map((k) => [k, 50])), form: 100, fatigue: 0 }],
+    stageProfile: { profile_type: "flat", demand_vector: { sprint: 1.0 } },
+    seed: 1,
+  });
+  assert.ok(Math.abs(ranked[0].components.form - FORM_RACE_WEIGHT) < 1e-12, `form=100 → ${ranked[0].components.form}`);
+});
+
+test("#1306 form=0 → -FORM_RACE_WEIGHT (-0.012)", () => {
+  const { ranked } = simulateStage({
+    entrants: [{ rider_id: "r1", abilities: Object.fromEntries(ABILITY_KEYS.map((k) => [k, 50])), form: 0, fatigue: 0 }],
+    stageProfile: { profile_type: "flat", demand_vector: { sprint: 1.0 } },
+    seed: 1,
+  });
+  assert.ok(Math.abs(ranked[0].components.form - (-FORM_RACE_WEIGHT)) < 1e-12, `form=0 → ${ranked[0].components.form}`);
+});
+
+test("#1306 fatigue=100 → +FATIGUE_RACE_WEIGHT positiv magnitude (0.008)", () => {
+  const { ranked } = simulateStage({
+    entrants: [{ rider_id: "r1", abilities: Object.fromEntries(ABILITY_KEYS.map((k) => [k, 50])), form: 50, fatigue: 100 }],
+    stageProfile: { profile_type: "flat", demand_vector: { sprint: 1.0 } },
+    seed: 1,
+  });
+  assert.ok(Math.abs(ranked[0].components.fatigue - FATIGUE_RACE_WEIGHT) < 1e-12, `fatigue=100 → ${ranked[0].components.fatigue}`);
+});
+
+test("#1306 fatigue=0 → fatigueComponent = 0", () => {
+  const { ranked } = simulateStage({
+    entrants: [{ rider_id: "r1", abilities: Object.fromEntries(ABILITY_KEYS.map((k) => [k, 50])), form: 50, fatigue: 0 }],
+    stageProfile: { profile_type: "flat", demand_vector: { sprint: 1.0 } },
+    seed: 1,
+  });
+  assert.equal(ranked[0].components.fatigue, 0);
+});
+
+test("#1306 clamp: form=200 → max +FORM_RACE_WEIGHT (ikke 0.036)", () => {
+  const { ranked } = simulateStage({
+    entrants: [{ rider_id: "r1", abilities: Object.fromEntries(ABILITY_KEYS.map((k) => [k, 50])), form: 200, fatigue: 0 }],
+    stageProfile: { profile_type: "flat", demand_vector: { sprint: 1.0 } },
+    seed: 1,
+  });
+  const f = ranked[0].components.form;
+  assert.ok(Math.abs(f - FORM_RACE_WEIGHT) < 1e-12, `form=200 clampet til 100 → ${f}`);
+});
+
+test("#1306 clamp: form=-50 → min -FORM_RACE_WEIGHT", () => {
+  const { ranked } = simulateStage({
+    entrants: [{ rider_id: "r1", abilities: Object.fromEntries(ABILITY_KEYS.map((k) => [k, 50])), form: -50, fatigue: 0 }],
+    stageProfile: { profile_type: "flat", demand_vector: { sprint: 1.0 } },
+    seed: 1,
+  });
+  const f = ranked[0].components.form;
+  assert.ok(Math.abs(f - (-FORM_RACE_WEIGHT)) < 1e-12, `form=-50 clampet til 0 → ${f}`);
+});
+
+test("#1306 clamp: fatigue=200 → max FATIGUE_RACE_WEIGHT (ikke 0.016)", () => {
+  const { ranked } = simulateStage({
+    entrants: [{ rider_id: "r1", abilities: Object.fromEntries(ABILITY_KEYS.map((k) => [k, 50])), form: 50, fatigue: 200 }],
+    stageProfile: { profile_type: "flat", demand_vector: { sprint: 1.0 } },
+    seed: 1,
+  });
+  const fat = ranked[0].components.fatigue;
+  assert.ok(Math.abs(fat - FATIGUE_RACE_WEIGHT) < 1e-12, `fatigue=200 clampet til 100 → ${fat}`);
+});
+
+test("#1306 garbage input (NaN/strings/undefined/{}) → neutralt 0", () => {
+  // null/[] konverterer til 0 via Number() → clamp → gyldigt tal (laveste form).
+  // Kun ægte ikke-numeriske værdier returnerer 0 via NaN-guard.
+  for (const bad of [NaN, "hej", undefined, {}]) {
+    const { ranked } = simulateStage({
+      entrants: [{ rider_id: "r1", abilities: Object.fromEntries(ABILITY_KEYS.map((k) => [k, 50])), form: bad, fatigue: bad }],
+      stageProfile: { profile_type: "flat", demand_vector: { sprint: 1.0 } },
+      seed: 1,
+    });
+    assert.equal(ranked[0].components.form, 0, `form garbage(${String(bad)}) → ikke 0`);
+    assert.equal(ranked[0].components.fatigue, 0, `fatigue garbage(${String(bad)}) → ikke 0`);
+  }
+});
+
+test("#1306 bounds: |formComponent| ≤ FORM_RACE_WEIGHT for alle gyldige inputs", () => {
+  const stage = { profile_type: "flat", demand_vector: { sprint: 1.0 } };
+  for (const form of [0, 25, 50, 75, 100]) {
+    const { ranked } = simulateStage({
+      entrants: [{ rider_id: "r1", abilities: Object.fromEntries(ABILITY_KEYS.map((k) => [k, 50])), form, fatigue: 0 }],
+      stageProfile: stage,
+      seed: 1,
+    });
+    const f = ranked[0].components.form;
+    assert.ok(Math.abs(f) <= FORM_RACE_WEIGHT + 1e-12, `form=${form} → |formComponent|=${Math.abs(f)} > ${FORM_RACE_WEIGHT}`);
+  }
+});
+
+test("#1306 bounds: fatigueComponent ∈ [0, FATIGUE_RACE_WEIGHT] for alle gyldige inputs", () => {
+  const stage = { profile_type: "flat", demand_vector: { sprint: 1.0 } };
+  for (const fatigue of [0, 25, 50, 75, 100]) {
+    const { ranked } = simulateStage({
+      entrants: [{ rider_id: "r1", abilities: Object.fromEntries(ABILITY_KEYS.map((k) => [k, 50])), form: 50, fatigue }],
+      stageProfile: stage,
+      seed: 1,
+    });
+    const fat = ranked[0].components.fatigue;
+    assert.ok(fat >= 0 && fat <= FATIGUE_RACE_WEIGHT + 1e-12,
+      `fatigue=${fatigue} → fatigueComponent=${fat} udenfor [0, ${FATIGUE_RACE_WEIGHT}]`);
+  }
+});
+
+test("#1306 relativ effekt ≤ ~3.5 % af typisk terrain-score", () => {
+  const TYPICAL_TERRAIN = 0.65;
+  const maxEffect = FORM_RACE_WEIGHT + FATIGUE_RACE_WEIGHT; // 0.012 + 0.008 = 0.020
+  assert.ok(maxEffect / TYPICAL_TERRAIN <= 0.035,
+    `max konditions-effekt = ${maxEffect / TYPICAL_TERRAIN * 100} % > 3.5 %`);
+});
+
+test("#1306 integration: form=100/fatigue=0 slår neutral med ≈FORM_RACE_WEIGHT (deterministisk)", () => {
+  // Ingen støj → score-delta er præcis 0.012.
+  const stage = { profile_type: "flat", demand_vector: { sprint: 1.0 } };
+  const abilities = Object.fromEntries(ABILITY_KEYS.map((k) => [k, 50]));
+  const neutral = simulateStage({
+    entrants: [{ rider_id: "r1", abilities }],
+    stageProfile: stage,
+    seed: 42,
+  }).ranked[0].finalScore;
+  const boosted = simulateStage({
+    entrants: [{ rider_id: "r1", abilities, form: 100, fatigue: 0 }],
+    stageProfile: stage,
+    seed: 42,
+  }).ranked[0].finalScore;
+  assert.ok(Math.abs((boosted - neutral) - FORM_RACE_WEIGHT) < 1e-12,
+    `forventet +${FORM_RACE_WEIGHT}, fik ${boosted - neutral}`);
+});
+
+test("#1306 integration: to seeds → identisk resultat (determinisme med condition)", () => {
+  const stage = { profile_type: "flat", demand_vector: { sprint: 1.0 } };
+  const abilities = Object.fromEntries(ABILITY_KEYS.map((k) => [k, 50]));
+  const entrants = [
+    { rider_id: "a", abilities, form: 80, fatigue: 30 },
+    { rider_id: "b", abilities, form: 40, fatigue: 70 },
+  ];
+  assert.deepEqual(
+    simulateStage({ entrants, stageProfile: stage, seed: 999 }),
+    simulateStage({ entrants, stageProfile: stage, seed: 999 }),
+  );
 });
