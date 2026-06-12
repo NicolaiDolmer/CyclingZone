@@ -18,35 +18,44 @@ export const CONDITION_CONFIG = Object.freeze({
 
 export function nextFatigue({ fatigue, intensity, recoveryAbility = 50, raceLoad = 0 }) {
   const cfg = CONDITION_CONFIG;
+  const f = Number(fatigue);
+  if (!Number.isFinite(f)) return 50; // korrupt input → neutral fallback
   const load = DAILY_TRAINING_CONFIG.fatigueLoad[intensity] ?? 0;
-  const recovery = cfg.recoveryBase + cfg.recoveryFromAbility * (Number(recoveryAbility) / 99);
-  const next = Number(fatigue) + load + raceLoad - recovery;
+  const recovery = cfg.recoveryBase + cfg.recoveryFromAbility * ((Number(recoveryAbility) || 0) / 99);
+  const next = f + load + Number(raceLoad || 0) - recovery;
   return Math.max(0, Math.min(100, Math.round(next)));
 }
 
 export function nextForm({ form, fatigue }) {
   const cfg = CONDITION_CONFIG;
+  const fo = Number(form);
+  const t = Number(fatigue);
+  if (!Number.isFinite(fo) || !Number.isFinite(t)) return 50; // korrupt input → neutral fallback
   let delta;
-  if (fatigue >= cfg.formSweetLo && fatigue <= cfg.formSweetHi) delta = cfg.formGain;
-  else if (fatigue > 80) delta = -cfg.formOverloadLoss;
-  else if (fatigue > cfg.formSweetHi) delta = -cfg.formHighLoss;
+  if (t >= cfg.formSweetLo && t <= cfg.formSweetHi) delta = cfg.formGain;
+  else if (t > 80) delta = -cfg.formOverloadLoss;
+  else if (t > cfg.formSweetHi) delta = -cfg.formHighLoss;
   else delta = cfg.formMildGain; // let belastning/hvile under sweet-zonen
-  return Math.max(0, Math.min(100, Math.round(Number(form) + delta)));
+  return Math.max(0, Math.min(100, Math.round(fo + delta)));
 }
 
 // Ganges på dagens trænings-score (spec 6.4: form/træthed påvirker dagseffekt let).
 export function conditionMultiplier({ form, fatigue }) {
   const cfg = CONDITION_CONFIG;
-  const formFactor = 1 + ((Number(form) - 50) / 50) * cfg.multFormSpan;
-  const fatiguePenalty = Math.max(0, Number(fatigue) - cfg.multFatiguePenaltyFrom) / 150;
+  const f = Number(form);
+  const t = Number(fatigue);
+  if (!Number.isFinite(f) || !Number.isFinite(t)) return 1.0; // korrupt input → neutral, aldrig NaN
+  const formFactor = 1 + ((f - 50) / 50) * cfg.multFormSpan;
+  const fatiguePenalty = Math.max(0, t - cfg.multFatiguePenaltyFrom) / 150;
   return Math.max(0.7, Math.min(1.2, formFactor * (1 - fatiguePenalty)));
 }
 
 // Synlig, forklarlig risiko (spec 6.5): KUN hård træning + høj træthed kan skade.
 export function injuryRisk({ intensity, fatigue }) {
   const cfg = CONDITION_CONFIG;
-  if (intensity !== "hard" || fatigue < cfg.injuryFatigueFloor) return 0;
-  return cfg.injuryBaseRisk + (fatigue - cfg.injuryFatigueFloor) * cfg.injuryRiskPerPoint;
+  const t = Number(fatigue);
+  if (!Number.isFinite(t) || intensity !== "hard" || t < cfg.injuryFatigueFloor) return 0;
+  return cfg.injuryBaseRisk + (t - cfg.injuryFatigueFloor) * cfg.injuryRiskPerPoint;
 }
 
 export function rollInjury({ riderId, dateStr, risk }) {

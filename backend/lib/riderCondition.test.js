@@ -55,3 +55,12 @@ test("rollInjury deterministisk + varighed 1-5 dage", () => {
   assert.ok(a.injured && a.days >= 1 && a.days <= 5);
   assert.equal(rollInjury({ riderId: "r1", dateStr: "2026-06-20", risk: 0 }).injured, false);
 });
+
+test("NaN/korrupt input falder neutralt tilbage — forgifter aldrig output", () => {
+  assert.equal(nextFatigue({ fatigue: NaN, intensity: "hard", recoveryAbility: 50 }), 50);
+  assert.equal(nextForm({ form: NaN, fatigue: 50 }), 50);
+  assert.equal(nextForm({ form: 50, fatigue: NaN }), 50);
+  assert.equal(injuryRisk({ intensity: "hard", fatigue: NaN }), 0);
+  assert.equal(conditionMultiplier({ form: NaN, fatigue: 50 }), 1.0);
+  assert.equal(conditionMultiplier({ form: 50, fatigue: NaN }), 1.0);
+});
