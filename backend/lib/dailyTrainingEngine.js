@@ -234,7 +234,7 @@ export async function runTeamTrainingDay({
       fatigue: newFatigue,
       injured_until: newInjuredUntil,
       injury_cause: newInjuryCause,
-      updated_at: new Date().toISOString(),
+      updated_at: now.toISOString(),
     });
 
     // Rapport-linje pr. rytter.

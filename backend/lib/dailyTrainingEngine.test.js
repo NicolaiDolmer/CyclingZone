@@ -235,6 +235,7 @@ test("skadet rytter: ingen gains, træthed falder, rapport marker injured=true",
   assert.deepEqual(rr.gains, {}, "ingen ability-gains for skadet rytter");
   assert.equal(rr.score, 0, "score = 0 for skadet rytter");
   assert.equal(rr.intensity, "rest", "intensitet tvunget til rest for skadet rytter");
+  assert.equal(result.report.bonus_applied, false, "assistant-run: bonus_applied=false");
 
   // Træthed bør falde (hvile-load er negativ).
   const cond = state.rider_condition.find((c) => c.rider_id === "r1");
@@ -358,4 +359,27 @@ test("rapport-form: alle påkrævede top-level + pr-rytter-felter til stede", as
   for (const field of ["rider_id", "name", "score", "gains", "status", "form", "fatigue", "fatigue_delta", "injured", "injury_days", "focus", "intensity"]) {
     assert.ok(field in rr, `rapport mangler felt: ${field}`);
   }
+});
+
+// ── Test 9: Rytter ved loft — ingen ability-write, condition opdateres stadig ──
+test("rytter ved loft: ingen ability-ændringer, kun condition opdateres", async () => {
+  const highAbilities = Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, 80]));
+  const caps80 = Object.fromEntries(VISIBLE_ABILITIES.map((k) => [k, 80]));
+  const state = seedState({
+    abilities: [makeAbilityRow("r1", { ...highAbilities, ability_caps: caps80, ability_progress: null })],
+    conditions: [makeCondition("r1", { fatigue: 5 })],
+  });
+  const supabase = createMockSupabase(state);
+
+  await runTeamTrainingDay({
+    supabase, teamId: TEAM_ID, seasonId: SEASON_ID, seasonNumber: SEASON_NUMBER,
+    executedBy: "manager", now: NOW,
+  });
+
+  const ab = state.rider_derived_abilities.find((a) => a.rider_id === "r1");
+  for (const k of VISIBLE_ABILITIES) {
+    assert.equal(ab[k], 80, `ability ${k} må ikke stige over loftet`);
+  }
+  const cond = state.rider_condition.find((c) => c.rider_id === "r1");
+  assert.ok(cond && typeof cond.fatigue === "number", "condition upserted selv ved cap");
 });
