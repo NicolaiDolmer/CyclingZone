@@ -66,8 +66,27 @@ const MAX_STAGE_GAP_SECONDS = 1800; // sikkerhedsloft (30 min)
 //   form    — seeded dagsform pr. rytter/etape.
 //   fatigue — akkumuleret træthed over et etapeløb (kræver cross-stage state → runner).
 //   team    — leadout/beskyttelse/holdstyrke.
-function formComponent(/* entrant, stageProfile, rng */) { return 0; }
-function fatigueComponent(/* entrant, stageProfile */) { return 0; }
+
+// Form/Træthed-seams (#1306): max ~±3 % af typisk terrain-score (~0.65) per spec 6.4.
+// Kalibreres i race:gate (B4); #1021 erstatter med fuld model i samme signaturer.
+export const FORM_RACE_WEIGHT = 0.012;     // form 0↔100 → ±0.012
+export const FATIGUE_RACE_WEIGHT = 0.008;  // træthed 100 → 0.008 (trækkes fra på call-site)
+
+function formComponent(entrant /* , stageProfile, rng */) {
+  const raw = entrant?.form;
+  // null/undefined/NaN = ingen condition-data → neutral (IKKE worst-form 0).
+  if (raw == null || !Number.isFinite(Number(raw))) return 0;
+  const form = clamp(Number(raw), 0, 100);
+  return ((form - 50) / 50) * FORM_RACE_WEIGHT;
+}
+
+function fatigueComponent(entrant /* , stageProfile */) {
+  const raw = entrant?.fatigue;
+  if (raw == null || !Number.isFinite(Number(raw))) return 0;
+  const fatigue = clamp(Number(raw), 0, 100);
+  return (fatigue / 100) * FATIGUE_RACE_WEIGHT;
+}
+
 function teamComponent(/* entrant, stageProfile, teamContext */) { return 0; }
 
 function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }

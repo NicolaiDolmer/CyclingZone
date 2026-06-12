@@ -478,7 +478,7 @@
       },
       "formFatigue": {
         "title": "Form og Træthed",
-        "text": "Alle ryttere har en Form-værdi og en Træthed-værdi, begge på en skala fra 0 til 100, synlige på rytterprofilen. Træning og løb opbygger Træthed. Hviledage og lette sessioner sænker den. Form følger balancen mellem de to: høj Træthed holder Form nede, mens en udhvilet rytters Form stiger. Begge værdier opdateres dagligt."
+        "text": "Alle ryttere har en Form-værdi og en Træthed-værdi, begge på en skala fra 0 til 100, synlige på rytterprofilen. Træning og løb opbygger Træthed. Hviledage og lette sessioner sænker den. Form følger balancen mellem de to: høj Træthed holder Form nede, mens en udhvilet rytters Form stiger. Begge værdier opdateres dagligt. I løb (aktivt fra sæsonrelaunchen den 20. juni) giver god form en lille scoringsfavour og høj træthed en lille straf, begrænset til ca. ±3% så favoritterne stadig vinder på evne. Løbsdage opbygger træthed efter etapeprofil: bjergetaper koster mest, flad etaper mindst. Skadede ryttere indmeldes ikke automatisk i løb."
       },
       "injuryRisk": {
         "title": "Skaderisiko",

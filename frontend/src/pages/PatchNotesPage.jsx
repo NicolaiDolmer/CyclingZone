@@ -2,6 +2,24 @@
 
 const PATCHES = [
   {
+    version: "5.27",
+    date: "2026-06-12",
+    label: "Beta",
+    changes: [
+      {
+        category: "New · Form and fatigue in racing (activates at the season relaunch on 20 June)",
+        items: [
+          "EN · A rider's form and fatigue now affect race scores: good form gives a small edge, high fatigue a small penalty, capped at about ±3% so favorites still win on ability. Refs #1306.",
+          "DA · En rytters form og træthed påvirker nu løbsscorer: god form giver en lille fordel, høj træthed en lille straf, begrænset til ca. ±3% så favoritterne stadig vinder på evne. Refs #1306.",
+          "EN · Race days build fatigue: mountain stages cost the most, flat stages the least. Riding harder races means your squad arrives at the next stage with less in the tank. Refs #1306.",
+          "DA · Løbsdage opbygger træthed: bjergeetaper koster mest, flad etaper mindst. Hårdere løb betyder at din trup ankommer til næste etape med færre kræfter. Refs #1306.",
+          "EN · Injured riders are not auto-entered into races. If a rider is injured, they sit out until they recover. Refs #1306.",
+          "DA · Skadede ryttere deltager ikke automatisk i løb. Er en rytter skadet, sidder de over til de er restituerede. Refs #1306.",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.26",
     date: "2026-06-12",
     label: "Beta",
