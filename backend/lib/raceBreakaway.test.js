@@ -58,6 +58,8 @@ test("udbrud: escapees kommer fra den lavere-rangerede del (uden hunter)", () =>
   const entrants = makeEntrants(40);
   const profile = { profile_type: "flat", demand_vector: demand };
   // Terrain-rang: r000 er stærkest. Escapee må ikke være blandt top-40 %.
+  // Med kalibreret cut (BREAKAWAY_TOP_EXCLUDED 0.05) udelukkes kun de absolut øverste — den reelle
+  // lavere-rank-garanti måles i race:gate-harness (escapee-pick-percentiler), ikke her.
   for (let seed = 1; seed <= 20; seed++) {
     const { ranked } = simulateStage({ entrants, stageProfile: profile, seed });
     for (const r of ranked.filter((x) => x.components.breakaway > 0)) {

@@ -97,11 +97,12 @@ function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
 // beskyttede leder: sprint_captain på flade etaper (fallback captain), ellers
 // captain. Hjælpere/hunters er score-neutrale (ingen straf i v1 — kalibrérbart).
 // Kalibreret i race:gate:roles (Task 9, 2026-06-12): 0.010 → 0.024. Max boost ved
-// helperSupport = 1.0 er ~3,7 % af typisk terrain-score (~0.65), men i pyramide-
-// populationen ligger helperSupport typisk ~0.3-0.4 → realiseret boost ~0.007-0.010,
-// dvs. samme skala som FORM/FATIGUE-seams. 0.024 er minimum der gør kaptajn-deltaet
-// (roles vs neutral, aggregeret over 8 terræner × 300 løb) positivt på alle 3
-// gate-seeds — ved 0.010-0.018 stjal hunter-udbruddene netto sejre fra kaptajnerne.
+// helperSupport = 1.0 er ~3,7 % af typisk terrain-score (~0.65), men gate-måling
+// i pyramide-populationen: helperSupport median 0.18-0.23 (p90 0.24-0.29, max 0.39)
+// → realiseret boost median ~0.0043-0.0054 (~0.7-0.8 % typisk terræn), max ~0.0095
+// (~1.45 %). 0.024 er minimum der gør kaptajn-deltaet (roles vs neutral, aggregeret
+// over 8 terræner × 300 løb) positivt på alle 3 gate-seeds — ved 0.010-0.018 stjal
+// hunter-udbruddene netto sejre fra kaptajnerne.
 export const TEAM_RACE_WEIGHT = 0.024;
 export const HELPER_FATIGUE_DAMPING = 0.5;   // træthed 100 → hjælper bidrager 50 %
 const SPRINT_PROFILES = new Set(["flat"]);
