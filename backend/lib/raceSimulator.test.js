@@ -73,7 +73,7 @@ test("finalScore = summen af komponenterne (forklarlighed)", () => {
   const { ranked } = simulateStage({ entrants: [ELITE_SPRINTER, PURE_CLIMBER], stageProfile: MOUNTAIN, seed: 99 });
   for (const r of ranked) {
     const c = r.components;
-    const sum = c.terrain + c.noise + c.form - c.fatigue + c.team;
+    const sum = c.terrain + c.noise + c.form - c.fatigue + c.team + (c.breakaway ?? 0);
     assert.ok(Math.abs(sum - r.finalScore) < 1e-12, "finalScore matcher ikke komponenter");
   }
 });
@@ -141,6 +141,8 @@ test("distribution: stjernen vinder oftest, men ikke 100% (varians findes)", () 
   // 10-14-points sprint-gab bevidst nær-deterministisk — varians-egenskaben
   // gælder blandt JÆVNBYRDIGE favoritter, som i den ægte population (dry-run:
   // 24+ distinkte flad-vindere pr. sæson).
+  // Grænsen er justeret til 0.40 (#1307): flat-profilen er nu breakaway-egnet,
+  // og lejligsvise escapees reducerer legitimt stjernens vind-rate ~2-3 pp.
   const field = [rider("star", { sprint: 86, acceleration: 84, positioning: 80 })];
   for (let i = 0; i < 9; i++) field.push(rider(`fld${i}`, { sprint: 80 + (i % 5), acceleration: 78, positioning: 74 }));
   let starWins = 0;
@@ -149,7 +151,7 @@ test("distribution: stjernen vinder oftest, men ikke 100% (varians findes)", () 
     if (winnerOf(field, FLAT, seed) === "star") starWins++;
   }
   const rate = starWins / N;
-  assert.ok(rate > 0.45, `stjernen for svag: vandt ${starWins}/${N}`);
+  assert.ok(rate > 0.40, `stjernen for svag: vandt ${starWins}/${N}`);
   // upper bound er defensiv: 400/400 = motorbrydende determinisme; balance-niveauet bevogtes af dry-run-gaten
   assert.ok(rate < 1.0, `stjernen vandt ALT (${starWins}/${N}) — ingen overraskelser`);
 });

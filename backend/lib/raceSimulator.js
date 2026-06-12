@@ -9,10 +9,11 @@
 // så light → fuld er et dybde-løft, ikke en omskrivning):
 //   simulateStage({ entrants, stageProfile, seed }) → { seed, ranked }
 //
-// Score-model (slice 2 "lean kerne + seams", ejer-besluttet 2026-06-07, F2=A):
-//   finalScore = terrain + noise + form(0) − fatigue(0) + team(0)
-//     terrain = Σ ability[k]/99 · demand[k]      (k ∈ de 10 abilities)
-//     noise   = gaussian(rng, 0, demand.randomness · NOISE_SD_SCALE)
+// Score-model (slice 2 + #1307 udbrud):
+//   finalScore = terrain + noise + form(0) − fatigue(0) + team(0) + breakaway
+//     terrain   = Σ ability[k]/99 · demand[k]      (k ∈ de 10 abilities)
+//     noise     = gaussian(rng, 0, demand.randomness · NOISE_SD_SCALE)
+//     breakaway = seeded chance-bonus til 1-3 lavere-rangerede ryttere på egnede profiler
 //   form/fatigue/team er ÆGTE seam-funktioner der returnerer neutralt i v1 og
 //   bærer præcis den signatur den fulde fysiologiske motor (#1021) fylder ud.
 //
@@ -91,6 +92,59 @@ function teamComponent(/* entrant, stageProfile, teamContext */) { return 0; }
 
 function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
 
+// ── Udbrud (#1307, spec 8.3) ──────────────────────────────────────────────────
+// På udbruds-egnede profiler får 1-3 lavere-rangerede ryttere (aggression-vægtet,
+// seeded) en chance-bonus. Dedikeret rng (XOR-scrambled seed) → noise-sekvensen
+// er UÆNDRET. Hunter-rollen: altid kandidat + HUNTER_WEIGHT_MULTIPLIER i vægt.
+// Bonus = maxBonus · u² (u uniform) → de fleste udbrud hentes, enkelte holder hjem.
+export const BREAKAWAY_PROFILES = Object.freeze({ flat: 0.10, rolling: 0.12, mountain: 0.16 });
+export const BREAKAWAY_TOP_EXCLUDED = 0.4;       // top-40 % (terrain) kan ikke eskapere
+export const BREAKAWAY_MAX_RIDERS = 3;
+export const HUNTER_WEIGHT_MULTIPLIER = 3;
+
+// Aggression = lyst/evne til at køre i udbrud, udledt af eksisterende abilities
+// (ingen ny stat i v1): taktik vejer tungest, dernæst motor og punch-acceleration.
+export function aggressionScore(abilities) {
+  const a = (k) => Number(abilities?.[k]) || 0;
+  return 0.5 * a("tactics") + 0.3 * a("endurance") + 0.2 * a("acceleration");
+}
+
+// → Map(rider_id → bonus) for de udvalgte escapees (tom Map hvis profil uegnet).
+function selectBreakawayBonuses({ ordered, terrainById, profileType, seed }) {
+  const bonuses = new Map();
+  const maxBonus = BREAKAWAY_PROFILES[profileType];
+  if (!maxBonus || ordered.length < 4) return bonuses;
+
+  const rng = makeRng((seed ^ 0xb4ea0ff5) >>> 0);
+
+  // Terræn-rang: stærkeste først. Kandidater = under top-cuttet, plus hunters (altid).
+  const byTerrain = [...ordered].sort((a, b) =>
+    (terrainById.get(b.rider_id) - terrainById.get(a.rider_id)) ||
+    String(a.rider_id).localeCompare(String(b.rider_id))
+  );
+  const cut = Math.floor(byTerrain.length * BREAKAWAY_TOP_EXCLUDED);
+  const candidates = byTerrain.filter((e, i) => i >= cut || e.race_role === "hunter");
+  if (!candidates.length) return bonuses;
+
+  const count = Math.min(1 + Math.floor(rng() * BREAKAWAY_MAX_RIDERS), candidates.length);
+
+  // Vægtet udvælgelse uden tilbagelægning (deterministisk over rider_id-stabil liste).
+  const pool = candidates.map((e) => ({
+    e,
+    w: Math.max(1, aggressionScore(e.abilities)) * (e.race_role === "hunter" ? HUNTER_WEIGHT_MULTIPLIER : 1),
+  }));
+  for (let k = 0; k < count && pool.length; k++) {
+    const total = pool.reduce((s, p) => s + p.w, 0);
+    let draw = rng() * total;
+    let idx = 0;
+    while (idx < pool.length - 1 && (draw -= pool[idx].w) > 0) idx++;
+    const [picked] = pool.splice(idx, 1);
+    const u = rng();
+    bonuses.set(picked.e.rider_id, maxBonus * u * u);
+  }
+  return bonuses;
+}
+
 // FNV-1a 32-bit → heltals-seed fra en streng. Eksporteret så raceRunner udleder
 // en stabil per-etape-seed (`${race.id}:${stage_number}`). Deterministisk.
 export function stableSeed(str) {
@@ -146,18 +200,26 @@ export function simulateStage({ entrants = [], stageProfile, seed } = {}) {
   );
   const rng = makeRng(seed >>> 0);
 
+  // Terræn forberegnes til breakaway-udvælgelse (dedikeret rng — påvirker IKKE
+  // main rng-sekvensen, så noise er bit-identisk på ikke-egnede profiler).
+  const terrainById = new Map(
+    ordered.map((e) => [e.rider_id, terrainScore(e.abilities, demand)])
+  );
+  const breakawayById = selectBreakawayBonuses({ ordered, terrainById, profileType, seed });
+
   const scored = ordered.map((e) => {
-    const terrain = terrainScore(e.abilities, demand);
+    const terrain = terrainById.get(e.rider_id);
     const noise = noiseSd > 0 ? gaussian(rng, 0, noiseSd) : 0;
     const form = formComponent(e, stageProfile, rng);
     const fatigue = fatigueComponent(e, stageProfile);
     const team = teamComponent(e, stageProfile);
-    const finalScore = terrain + noise + form - fatigue + team;
+    const breakaway = breakawayById.get(e.rider_id) || 0;
+    const finalScore = terrain + noise + form - fatigue + team + breakaway;
     return {
       rider_id: e.rider_id,
       team_id: e.team_id ?? null,
       finalScore,
-      components: { terrain, noise, form, fatigue, team },
+      components: { terrain, noise, form, fatigue, team, breakaway },
     };
   });
 
