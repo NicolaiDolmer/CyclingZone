@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import RiderLink from "../components/RiderLink";
 import { supabase } from "../lib/supabase";
@@ -12,6 +12,10 @@ import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 import { sortRidersForTable } from "../lib/riderTableSort";
 import { formatNumber } from "../lib/intl";
 import TeamTransferHistoryTab from "../components/TeamTransferHistoryTab";
+import TeamResultsTab from "../components/TeamResultsTab";
+
+// Gyldige tab-nøgler — ?tab= i URL'en (fx ranglistens holdnavn-link → results, #824).
+const TABS = ["squad", "results", "transfers"];
 
 const STATS = ["stat_fl","stat_bj","stat_kb","stat_bk","stat_tt","stat_prl",
   "stat_bro","stat_sp","stat_acc","stat_ned","stat_udh","stat_mod","stat_res","stat_ftr"];
@@ -30,6 +34,7 @@ function SortTh({ children, sortKey, sort, sortDir, onSort, className = "" }) {
 export default function TeamProfilePage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { t } = useTranslation("team");
   const [team, setTeam] = useState(null);
   const [riders, setRiders] = useState([]);
@@ -40,7 +45,11 @@ export default function TeamProfilePage() {
   const [loading, setLoading] = useState(true);
   const [myTeamId, setMyTeamId] = useState(null);
   const [tableSort, setTableSort] = useState({ key: "market_value", dir: "desc" });
-  const [activeTab, setActiveTab] = useState("squad");
+  // #824: ranglistens holdnavn-link åbner resultat-tabben direkte via ?tab=results.
+  const [activeTab, setActiveTab] = useState(() => {
+    const tab = searchParams.get("tab");
+    return TABS.includes(tab) ? tab : "squad";
+  });
 
   function handleSort(key) {
     setTableSort(s => ({ key, dir: s.key === key ? (s.dir === "desc" ? "asc" : "desc") : "desc" }));
@@ -192,6 +201,7 @@ export default function TeamProfilePage() {
       <div className="flex gap-2 mb-4">
         {[
           { key: "squad", label: t("profile.tabSquad", { count: currentRiders.length }) },
+          { key: "results", label: t("profile.tabResults") },
           { key: "transfers", label: t("profile.tabTransfers") },
         ].map(tab => (
           <button key={tab.key} onClick={() => setActiveTab(tab.key)}
@@ -201,6 +211,10 @@ export default function TeamProfilePage() {
           </button>
         ))}
       </div>
+
+      {activeTab === "results" && (
+        <TeamResultsTab teamId={id} />
+      )}
 
       {activeTab === "transfers" && (
         <TeamTransferHistoryTab teamId={id} />
@@ -238,7 +252,8 @@ export default function TeamProfilePage() {
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-cz-border">
-                  <th className="px-2 py-3 text-left font-medium uppercase hidden sm:table-cell">{t("profile.thNation")}</th>
+                  <SortTh sortKey="nationality_code" sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
+                    className="px-2 py-3 text-left font-medium uppercase hidden sm:table-cell">{t("profile.thNation")}</SortTh>
                   <SortTh sortKey="firstname" sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
                     className="px-4 py-3 text-left font-medium uppercase sticky left-0 z-20 bg-cz-card border-r border-cz-border">{t("profile.thRider")}</SortTh>
                   <th className="px-4 py-3 text-left font-medium uppercase hidden sm:table-cell">{t("profile.thBadges")}</th>

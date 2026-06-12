@@ -10,6 +10,7 @@ import RiderBadges from "../components/rider/RiderBadges";
 import { ageBadgeKey } from "../lib/riderAge";
 import { formatNumber } from "../lib/intl";
 import { STAT_KEYS, riderStatRating } from "../lib/riderRating";
+import { compareNationality } from "../lib/countryUtils";
 
 // Altid-synlige sejr-kolonner (kategori-sejre) — venstre→højre.
 const WIN_COLS = [
@@ -203,7 +204,10 @@ export default function RiderRankingsPage() {
       return `${r.firstname} ${r.lastname}`.toLowerCase().includes(search.toLowerCase());
     })
     .sort((a, b) => {
-      const diff = (b[sortKey] || 0) - (a[sortKey] || 0);
+      // Nation sorteres på den viste IOC-kode (#802) — øvrige kolonner er numeriske.
+      const diff = sortKey === "nationality_code"
+        ? compareNationality(b.nationality_code, a.nationality_code)
+        : (b[sortKey] || 0) - (a[sortKey] || 0);
       return sortAsc ? -diff : diff;
     });
 
@@ -321,7 +325,11 @@ export default function RiderRankingsPage() {
               <thead>
                 <tr className="border-b border-cz-border bg-cz-subtle">
                   <th className="px-3 py-3 text-left text-xs font-medium text-cz-3 w-8">#</th>
-                  <th className="px-2 py-3 text-left text-xs font-medium text-cz-3 hidden sm:table-cell">{t("rankings.thNation")}</th>
+                  {/* #802: nation sorterbar (IOC-kode) som på rytterdatabasen */}
+                  <SortHeader col={{ key: "nationality_code", labelKey: "rankings.thNation", shortKey: "rankings.thNation" }}
+                    sortKey={sortKey} sortAsc={sortAsc} onSort={handleSort} t={t}
+                    className="px-2 py-3 text-left hidden sm:table-cell" />
+
                   <th className="px-3 py-3 text-left text-xs font-medium text-cz-3 min-w-[120px] sticky left-0 z-20 bg-cz-subtle border-r border-cz-border">{t("rankings.thRider")}</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-cz-3 hidden sm:table-cell">{t("rankings.thBadges")}</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-cz-3 hidden md:table-cell">{t("rankings.thTeam")}</th>
@@ -421,11 +429,11 @@ export default function RiderRankingsPage() {
   );
 }
 
-function SortHeader({ col, sortKey, sortAsc, onSort, t }) {
+function SortHeader({ col, sortKey, sortAsc, onSort, t, className = "px-3 py-3 text-right" }) {
   return (
     <th
       onClick={() => onSort(col.key)}
-      className={`px-3 py-3 text-right text-xs font-medium cursor-pointer hover:text-cz-1 select-none transition-colors whitespace-nowrap
+      className={`${className} text-xs font-medium cursor-pointer hover:text-cz-1 select-none transition-colors whitespace-nowrap
         ${sortKey === col.key ? "text-cz-accent-t" : "text-cz-3"}`}>
       <span className="hidden lg:inline">{t(col.labelKey)}</span>
       <span className="lg:hidden">{t(col.shortKey)}</span>

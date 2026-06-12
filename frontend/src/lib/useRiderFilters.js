@@ -5,6 +5,7 @@ import { useState, useMemo } from "react";
 import { DEFAULT_FILTERS, STAT_KEYS } from "../components/RiderFilters";
 import { getRiderMarketValue } from "./marketValues";
 import { getRiderAge } from "./riderAge";
+import { compareNationality } from "./countryUtils";
 
 const CURRENT_YEAR = new Date().getFullYear();
 
@@ -81,6 +82,12 @@ export function useClientRiderFilters(riders = []) {
         const aName = `${a.lastname} ${a.firstname}`.toLowerCase();
         const bName = `${b.lastname} ${b.firstname}`.toLowerCase();
         return filters.sort_dir === "desc" ? bName.localeCompare(aName) : aName.localeCompare(bName);
+      }
+      // Nation sorteres på den viste IOC-kode (#802) — den generiske numeriske
+      // gren ville give NaN på strenge og dermed ustabil rækkefølge.
+      if (filters.sort === "nationality_code") {
+        const cmp = compareNationality(a.nationality_code, b.nationality_code);
+        return filters.sort_dir === "desc" ? -cmp : cmp;
       }
       let aVal, bVal;
       if (filters.sort === "birthdate") {

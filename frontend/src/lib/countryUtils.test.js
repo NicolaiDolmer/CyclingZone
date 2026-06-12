@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import i18n from "i18next";
 import {
+  compareNationality,
   getCountryCode3,
   getCountryDisplay,
   getCountryName,
@@ -105,6 +106,25 @@ test("getCountryDisplay — bygger locale-aware label", () => {
   });
 
   assert.equal(getCountryDisplay("DK", "da-DK").label, "🇩🇰 Danmark");
+});
+
+test("compareNationality — sorterer på vist IOC-kode, ikke rå ISO2 (#802)", () => {
+  // ISO2-orden ville give CH < DE < DK, men kolonnen viser SUI/GER/DEN.
+  const codes = ["ch", "de", "dk"];
+  codes.sort(compareNationality);
+  assert.deepEqual(codes.map(getCountryCode3), ["DEN", "GER", "SUI"]);
+});
+
+test("compareNationality — manglende/ugyldig kode sorterer sidst", () => {
+  const codes = ["", "fr", null, "dk"];
+  codes.sort(compareNationality);
+  assert.deepEqual(codes.slice(0, 2).map(getCountryCode3), ["DEN", "FRA"]);
+  assert.deepEqual(codes.slice(2).map(getCountryCode3), ["", ""]);
+});
+
+test("compareNationality — ens koder giver 0 (stabil sortering)", () => {
+  assert.equal(compareNationality("dk", "DK"), 0);
+  assert.equal(compareNationality(null, ""), 0);
 });
 
 test("getCountryDisplay — fallback-label for manglende kode er stabil", () => {

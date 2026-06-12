@@ -270,7 +270,8 @@ function SquadTab({ riders, scouting, onSelectRider, windowOpen }) {
               <thead>
                 <tr className="border-b border-cz-border">
                   {/* #1186: nation altid synlig (var skjult på mobil) — tabellen h-scroller allerede. */}
-                  <th className="px-2 py-3 text-left font-medium uppercase tracking-wider">{t("squad.headers.nation")}</th>
+                  <SortTh sortKey="nationality_code" sort={sort} sortDir={sortDir} onSort={handleSort}
+                    className="px-2 py-3 text-left font-medium uppercase tracking-wider">{t("squad.headers.nation")}</SortTh>
                   <SortTh sortKey="firstname" sort={sort} sortDir={sortDir} onSort={handleSort}
                     className="px-3 py-3 text-left font-medium uppercase tracking-wider sticky left-0 z-20 bg-cz-card border-r border-cz-border">{t("squad.headers.rider")}</SortTh>
                   <SortTh sortKey="value" sort={sort} sortDir={sortDir} onSort={handleSort}
