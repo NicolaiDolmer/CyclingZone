@@ -27,7 +27,7 @@ function SortTh({ children, sortKey, sort, sortDir, onSort, className = "" }) {
   );
 }
 
-function RiderActionModal({ rider, scouting, onClose, onAction }) {
+function RiderActionModal({ rider, scouting, onClose, onAction, ddActive }) {
   const { t } = useTranslation("team");
   const riderValue = getRiderMarketValue(rider);
   const [auctionPrice, setAuctionPrice] = useState(riderValue);
@@ -35,6 +35,9 @@ function RiderActionModal({ rider, scouting, onClose, onAction }) {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
   const [activeTab, setActiveTab] = useState("auction");
+  // #778: flash-auktion (30 min) på egne ryttere — kun synlig under aktivt
+  // Deadline Day (samme gating som RiderStatsPage's AuctionButton).
+  const [flash, setFlash] = useState(false);
 
   // Squad-fanen viser kun egne ryttere → auktion må sættes mellem 0 og Værdi (ikke over).
   const auctionPriceError = auctionPrice > riderValue || auctionPrice < 0;
@@ -46,7 +49,7 @@ function RiderActionModal({ rider, scouting, onClose, onAction }) {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auctions`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify({ rider_id: rider.id, starting_price: auctionPrice }),
+        body: JSON.stringify({ rider_id: rider.id, starting_price: auctionPrice, flash_auction: ddActive && flash }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) { setMsg(t("actionModal.auction.successMsg")); setTimeout(() => { onAction(); onClose(); }, 1500); }
@@ -126,14 +129,26 @@ function RiderActionModal({ rider, scouting, onClose, onAction }) {
           {activeTab === "auction" && (
             <div>
               <p className="text-cz-2 text-xs mb-3">{t("actionModal.auction.description")}</p>
+              {/* #778: flash-auktion på egne ryttere fra holdsiden — kun under Deadline Day */}
+              {ddActive && (
+                <label className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-3 cursor-pointer select-none">
+                  <div className="flex items-center gap-2">
+                    <input type="checkbox" checked={flash} onChange={e => setFlash(e.target.checked)}
+                      className="rounded accent-red-600" />
+                    <span className="text-sm text-cz-danger font-medium">{t("actionModal.auction.flashLabel")}</span>
+                  </div>
+                  <span className="text-xs text-cz-3 sm:ms-0 ms-6">{t("actionModal.auction.flashHint")}</span>
+                </label>
+              )}
               <div className="flex gap-2">
                 <input type="number" value={auctionPrice} min={0} max={riderValue}
                   onChange={e => { const v = parseInt(e.target.value, 10); setAuctionPrice(Number.isNaN(v) ? 0 : v); }}
                   className={`flex-1 bg-cz-subtle border rounded-lg px-3 py-2 text-cz-1 text-sm font-mono focus:outline-none
                     ${auctionPriceError ? "border-red-300 focus:border-red-400" : "border-cz-border focus:border-cz-accent"}`} />
                 <button onClick={startAuction} disabled={loading || auctionPriceError}
-                  className="px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50">
-                  {loading ? t("actionModal.loadingShort") : t("actionModal.auction.startButton")}
+                  className={`px-4 py-2 font-bold rounded-lg text-sm disabled:opacity-50 transition-all
+                    ${ddActive && flash ? "bg-red-600 text-white hover:bg-red-700" : "bg-cz-accent text-cz-on-accent hover:brightness-110"}`}>
+                  {loading ? t("actionModal.loadingShort") : (ddActive && flash) ? t("actionModal.auction.startFlashButton") : t("actionModal.auction.startButton")}
                 </button>
               </div>
               {auctionPriceError && (
@@ -469,8 +484,24 @@ export function TeamPage() {
   const [activeTab, setActiveTab] = useState("squad");
   const [selectedRider, setSelectedRider] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [ddActive, setDdActive] = useState(false);
 
-  useEffect(() => { loadAll(); }, []);
+  useEffect(() => { loadAll(); loadDdStatus(); }, []);
+
+  // #778: action-modal'en skal vide om Deadline Day er aktiv for at kunne
+  // tilbyde flash-auktion (30 min) — samme status-endpoint som RiderStatsPage.
+  async function loadDdStatus() {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/deadline-day/status`, {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setDdActive(data.active === true);
+      }
+    } catch { /* non-critical: flash-valget falder bare tilbage til skjult */ }
+  }
 
   async function loadAll() {
     setLoading(true);
@@ -592,7 +623,7 @@ export function TeamPage() {
       )}
 
       {selectedRider && (
-        <RiderActionModal rider={selectedRider} scouting={scouting} onClose={() => setSelectedRider(null)} onAction={loadAll} />
+        <RiderActionModal rider={selectedRider} scouting={scouting} onClose={() => setSelectedRider(null)} onAction={loadAll} ddActive={ddActive} />
       )}
     </div>
   );

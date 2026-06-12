@@ -95,6 +95,9 @@
     "auction": {
       "description": "Start auktion. Andre managers kan byde.",
       "startButton": "Start",
+      "startFlashButton": "⚡ Start Flash",
+      "flashLabel": "⚡ Flash Auktion (30 min)",
+      "flashHint": "Deadline Day: afsluttes præcis 30 min efter start",
       "successMsg": "✅ Auktion startet!",
       "priceError": "Startpris skal være mellem 0 og Værdi ({amount} CZ$)"
     },
