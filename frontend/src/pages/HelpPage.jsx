@@ -168,6 +168,16 @@ const SECTION_DEFS = [
       { id: "transferRumors", kind: "text" },
     ],
   },
+  {
+    key: "raceSelection",
+    icon: "🎽",
+    blocks: [
+      { id: "what", kind: "text" },
+      { id: "roles", kind: "text" },
+      { id: "breakaway", kind: "text" },
+      { id: "fatigue", kind: "text" },
+    ],
+  },
 ];
 
 const FAQ_KEYS = [

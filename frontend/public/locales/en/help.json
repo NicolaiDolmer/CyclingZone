@@ -514,6 +514,25 @@
         "title": "Transfer rumours",
         "text": "If a manager views one of your riders, you get an anonymous notification: 'A manager is watching your rider X'. You get at most one notification per rider per hour to avoid spam."
       }
+    },
+    "raceSelection": {
+      "label": "Team selection",
+      "what": {
+        "title": "Picking your race squad",
+        "text": "Before each race you pick 6-8 riders (Grand Tours use full squads of 8). Open the race page and use the Team selection panel. If you don't pick, your assistant fields a sensible team automatically, so you never miss a race."
+      },
+      "roles": {
+        "title": "Captain, sprint captain and breakaway hunter",
+        "text": "Your captain is protected by the team: strong, fresh helpers boost the captain's chances. On flat stages your sprint captain (if set) gets the protection instead. A breakaway hunter gets a much higher chance of making the day's breakaway."
+      },
+      "breakaway": {
+        "title": "Breakaways",
+        "text": "On flat, rolling and medium mountain stages a small breakaway gets a chance to stay away. Most get caught, but sometimes the break makes it. Aggressive riders and designated hunters join breaks more often."
+      },
+      "fatigue": {
+        "title": "Fatigue matters",
+        "text": "Tired helpers support their captain less, and racing builds fatigue. Rotating your squad between races keeps your stars fresh for the days that matter."
+      }
     }
   },
   "faq": {
