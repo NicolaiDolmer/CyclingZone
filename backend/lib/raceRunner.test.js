@@ -176,6 +176,7 @@ function makeSupabase(canned = {}) {
       in() { return b; },
       or() { return b; },
       order() { return b; },
+      gte() { return b; },
       maybeSingle() { return Promise.resolve({ data: (canned[table] || [])[0] ?? null, error: null }); },
       insert(rows) { writes.push({ table, op: "insert", rows }); return Promise.resolve({ error: null }); },
       update(obj) {
@@ -243,6 +244,68 @@ test("loadEntrantsForRace: tomt felt → auto-fill skriver race_entries", async 
   const inserted = supabase.__writes.find((w) => w.table === "race_entries" && w.op === "insert");
   assert.ok(inserted, "auto-fill skrev ikke race_entries");
   assert.ok(entrants.length >= 1);
+});
+
+// ── loadEntrantsForRace: condition-merge (B2 #1306) ──────────────────────────
+test("loadEntrantsForRace: form/fatigue merges fra rider_condition når rækker findes", async () => {
+  const supabase = makeSupabase({
+    race_entries: [{ rider_id: "r1", team_id: "T1" }, { rider_id: "r2", team_id: "T1" }],
+    riders: [
+      { id: "r1", firstname: "Anna", lastname: "Berg", is_u25: false },
+      { id: "r2", firstname: "Bo", lastname: "Dahl", is_u25: false },
+    ],
+    rider_derived_abilities: [
+      { rider_id: "r1", ...abil() },
+      { rider_id: "r2", ...abil() },
+    ],
+    rider_condition: [
+      { rider_id: "r1", form: 8, fatigue: 30 },
+      // r2 har ingen condition-række
+    ],
+  });
+  const entrants = await loadEntrantsForRace({ supabase, race: { id: "race-x" } });
+  const r1 = entrants.find((e) => e.rider_id === "r1");
+  const r2 = entrants.find((e) => e.rider_id === "r2");
+  // r1 får form/fatigue merged.
+  assert.equal(r1.form, 8);
+  assert.equal(r1.fatigue, 30);
+  // r2 mangler condition-række → form/fatigue sættes IKKE (undefined → neutral i simulatoren).
+  assert.equal(r2.form, undefined);
+  assert.equal(r2.fatigue, undefined);
+});
+
+// ── autoFillEntries: skadefilter (B2 #1306) ───────────────────────────────────
+test("autoFillEntries: skadede ryttere (injured_until >= i dag) udelukkes fra auto-entry; udløbet skade + ingen condition inkluderes", async () => {
+  // Mocken returnerer rider_condition ufiltreret (gte simuleres ikke) — vi lægger
+  // kun den aktive skade i canned for at simulere DB's gte-filter. r-injured udelades
+  // fra rider_derived_abilities så auto-fill-eksklusionen er den eneste guard der
+  // testes (ingen abilities-fallback der ville skjule eventuel fejl i eksklusionen).
+  const supabase = makeSupabase({
+    race_entries: [], // tomt → auto-fill
+    teams: [{ id: "T1", is_test_account: false, is_frozen: false }],
+    riders: [
+      { id: "r-injured", team_id: "T1" },
+      { id: "r-expired", team_id: "T1" },
+      { id: "r-none",    team_id: "T1" },
+    ],
+    rider_derived_abilities: [
+      // r-injured mangler abilities bevidst: er ekskluderet af injury-filter
+      // → bør aldrig nå enrichment-loop. Test ville stadig grønne via ab-guard,
+      // men det ville skjule en regressi i injury-eksklusionen.
+      { rider_id: "r-expired", ...abil() },
+      { rider_id: "r-none",    ...abil() },
+    ],
+    // Kun r-injured returneres fra gte-query (simulerer DB-filter med >= i dag).
+    rider_condition: [{ rider_id: "r-injured" }],
+  });
+  const entrants = await loadEntrantsForRace({ supabase, race: { id: "race-y" } });
+  const ids = entrants.map((e) => e.rider_id);
+  // Skadet rytter (returneret af gte-query) udelukkes fra auto-fill → ikke i startfeltet.
+  assert.ok(!ids.includes("r-injured"), "skadet rytter må ikke auto-fyldes");
+  // Rytter med udløbet skade (ikke i gte-resultatet) inkluderes.
+  assert.ok(ids.includes("r-expired"), "rytter med udløbet skade skal med");
+  // Rytter uden condition-række (ikke i gte-resultatet) inkluderes.
+  assert.ok(ids.includes("r-none"), "rytter uden condition skal med");
 });
 
 // ── simulateRace (I/O-orchestrator, smoke) ────────────────────────────────────

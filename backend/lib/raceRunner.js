@@ -29,6 +29,7 @@ import {
 import { recomputeSeasonRaceDays } from "./seasonRaceDays.js";
 import { processBoardWeekendFinalization as processBoardWeekendFinalizationShared } from "./boardWeekendFinalization.js";
 import { simulateStage, stableSeed, ENGINE_VERSION, ABILITY_KEYS } from "./raceSimulator.js";
+import { copenhagenDateString } from "./copenhagenTime.js";
 
 // Intern klassements-point (grøn/bjerg) — afgør KUN rækkefølgen i de respektive
 // trøje-konkurrencer; selve præmie-pointene kommer fra race_points via rank.
@@ -264,7 +265,17 @@ async function autoFillEntries({ supabase, race, persist = true }) {
     .or("is_retired.is.null,is_retired.eq.false");
   if (riderErr) throw new Error(`riders: ${riderErr.message}`);
 
-  const rows = (riders || []).map((r) => ({ race_id: race.id, rider_id: r.id, team_id: r.team_id }));
+  // Spec 6.5 (#1306): skadede ryttere (injured_until >= i dag) må ikke auto-fyldes i startfeltet.
+  const todayStr = copenhagenDateString();
+  const { data: injured, error: injErr } = await supabase
+    .from("rider_condition")
+    .select("rider_id")
+    .gte("injured_until", todayStr);
+  if (injErr) throw new Error(`rider_condition (injured): ${injErr.message}`);
+  const injuredIds = new Set((injured || []).map((r) => r.rider_id));
+
+  const candidateRiders = (riders || []).filter((r) => !injuredIds.has(r.id));
+  const rows = candidateRiders.map((r) => ({ race_id: race.id, rider_id: r.id, team_id: r.team_id }));
   if (persist && rows.length) {
     const { error: insErr } = await supabase.from("race_entries").insert(rows);
     if (insErr) throw new Error(`race_entries insert: ${insErr.message}`);
@@ -302,17 +313,32 @@ export async function loadEntrantsForRace({ supabase, race, persist = true }) {
   if (aErr) throw new Error(`rider_derived_abilities: ${aErr.message}`);
   const abilityByRider = new Map((abilities || []).map((a) => [a.rider_id, a]));
 
+  // Berig entrants med form/træthed fra rider_condition i ét batched opslag (spec #1306 B2).
+  const { data: conditions, error: condErr } = await supabase
+    .from("rider_condition")
+    .select("rider_id, form, fatigue")
+    .in("rider_id", riderIds);
+  if (condErr) throw new Error(`rider_condition: ${condErr.message}`);
+  const conditionByRider = new Map((conditions || []).map((c) => [c.rider_id, c]));
+
   const entrants = [];
   for (const r of riders || []) {
     const ab = abilityByRider.get(r.id);
     if (!ab) continue; // uden abilities kan rytteren ikke scores → udelad (defensivt)
-    entrants.push({
+    const entrant = {
       rider_id: r.id,
       team_id: teamByRider.get(r.id) ?? null,
       rider_name: [r.firstname, r.lastname].filter(Boolean).join(" ") || null,
       is_u25: !!r.is_u25,
       abilities: ab,
-    });
+    };
+    const cond = conditionByRider.get(r.id);
+    if (cond !== undefined) {
+      entrant.form = cond.form;
+      entrant.fatigue = cond.fatigue;
+    }
+    // Ryttere uden condition-række: form/fatigue sættes IKKE (undefined → neutral i simulatoren).
+    entrants.push(entrant);
   }
   return entrants;
 }
