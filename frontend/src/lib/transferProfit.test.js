@@ -115,6 +115,25 @@ test("#1107 · rytter afgivet via swap giver ingen profit-række og rydder købe
   assert.equal(bTrades[0].profit, null);
 });
 
+test("#785 · no_sale-auktion (amount null) bliver aldrig til et salgs-ben", () => {
+  // Backend sender no_sale: true + amount: null for auktioner uden bud —
+  // tidligere lå den umødte startpris i amount og kunne blive et fantom-salg.
+  const noSaleEvent = {
+    ...auctionEvent({ rider: RIDER_A, direction: "out", amount: 0, date: "2026-02-01T10:00:00Z" }),
+    amount: null,
+    no_sale: true,
+  };
+  const { trades, totals } = computeTransferProfit([
+    auctionEvent({ rider: RIDER_A, direction: "in", amount: 4_000_000, date: "2026-01-01T10:00:00Z" }),
+    noSaleEvent,
+    transferEvent({ rider: RIDER_A, direction: "out", amount: 6_000_000, date: "2026-03-01T10:00:00Z" }),
+  ]);
+  assert.equal(trades.length, 1, "no_sale-event må ikke skabe en handel");
+  assert.equal(trades[0].sellAmount, 6_000_000);
+  assert.equal(trades[0].profit, 2_000_000);
+  assert.equal(totals.tradeCount, 1);
+});
+
 test("#1107 · gennemført auktion uden bud (amount 0) er ikke et salg", () => {
   const { trades, totals } = computeTransferProfit([
     auctionEvent({ rider: RIDER_A, direction: "in", amount: 4_000_000, date: "2026-01-01T10:00:00Z" }),

@@ -48,6 +48,10 @@ export function computeTransferProfit(events) {
 
   for (const ev of events || []) {
     if (ev?.type === "loan") continue;
+    // #785: gennemført auktion uden bud = intet ejerskifte og ingen pengestrøm.
+    // Backend sender no_sale: true + amount: null; guarden her er eksplicit så
+    // sådanne events aldrig bliver til køb-/salgs-ben.
+    if (ev?.no_sale) continue;
 
     if (ev?.type === "swap") {
       // event.rider = modtaget rytter, event.rider_swapped = afgivet rytter
@@ -63,7 +67,8 @@ export function computeTransferProfit(events) {
     if (ev.direction === "in") {
       addLeg(ev.rider, { kind: "in", type: ev.type, amount, date: ev.date, seasonNumber: ev.season_number ?? null });
     } else if (ev.direction === "out") {
-      // Gennemført auktion uden bud (amount 0, ingen vinder) = intet salg.
+      // Belt-and-braces for ældre payloads uden no_sale-flag: auktion uden
+      // positivt beløb = intet salg.
       if (ev.type === "auction" && !(amount > 0)) continue;
       addLeg(ev.rider, { kind: "out", type: ev.type, amount, date: ev.date, seasonNumber: ev.season_number ?? null });
     }

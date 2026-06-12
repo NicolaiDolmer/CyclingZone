@@ -18,8 +18,10 @@ function SortTh({ children, sortKey, current, dir, onSort, align = "left" }) {
   );
 }
 
-function DirectionBadge({ direction }) {
+function DirectionBadge({ direction, noSale = false }) {
   const { t } = useTranslation("transfers");
+  // #785: auktion uden bud = intet ejerskifte — "Sælg" ville antyde et salg.
+  if (noSale) return <span className="text-cz-3 text-xs font-medium">{t("direction.noSale")}</span>;
   if (direction === "in") return <span className="text-cz-success text-xs font-medium">{t("direction.in")}</span>;
   if (direction === "out") return <span className="text-cz-danger text-xs font-medium">{t("direction.out")}</span>;
   return <span className="text-cz-info text-xs font-medium">{t("direction.swap")}</span>;
@@ -249,7 +251,7 @@ export default function TeamTransferHistoryTab({ teamId }) {
                     {ev.date ? formatDate(ev.date, "short") : "—"}
                   </td>
                   <td className="py-2 text-cz-2">{TYPE_LABEL_KEY[ev.type] ? t(TYPE_LABEL_KEY[ev.type]) : ev.type}</td>
-                  <td className="py-2"><DirectionBadge direction={ev.direction} /></td>
+                  <td className="py-2"><DirectionBadge direction={ev.direction} noSale={ev.no_sale} /></td>
                   <td className="py-2"><RiderCell event={ev} /></td>
                   <td className="py-2">
                     {ev.counterparty?.id ? (
@@ -257,7 +259,9 @@ export default function TeamTransferHistoryTab({ teamId }) {
                         {ev.counterparty.name}
                         {ev.counterparty.is_ai && <span className="ms-1 text-cz-3 text-[10px]">{t("history.aiTag")}</span>}
                       </TeamLink>
-                    ) : <span className="text-cz-3">—</span>}
+                    ) : (
+                      <span className="text-cz-3">{ev.no_sale ? t("history.noBids") : "—"}</span>
+                    )}
                   </td>
                   <td className="py-2 text-right font-mono whitespace-nowrap">
                     {/* Fortegn/farve følger kontobevægelsen (cash_flow), ikke rytter-retningen:
