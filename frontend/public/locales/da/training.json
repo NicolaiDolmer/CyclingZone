@@ -14,7 +14,6 @@
   "overperformed": "▲ Overperformede",
   "underperformed": "▼ Underperformede",
   "bonusApplied": "Konsistens-bonus aktiveret — +25% fremgang",
-  "fatiqueChange": "Træthed {{sign}}{{delta}}",
   "gains": "+{{n}} {{ability}}",
   "noGains": "Ingen fremgang i dag",
   "loading": "Henter…",

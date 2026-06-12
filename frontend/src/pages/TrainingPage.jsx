@@ -187,7 +187,7 @@ export default function TrainingPage() {
                             onClick={() => clearPlan(rider.id)}
                             disabled={busy}
                             className="ms-1 text-[10px] text-cz-3 hover:text-cz-danger disabled:opacity-40"
-                            title="Remove"
+                            title={tRider("training.remove")}
                           >
                             ×
                           </button>

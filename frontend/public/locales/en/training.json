@@ -14,7 +14,6 @@
   "overperformed": "▲ Overperformed",
   "underperformed": "▼ Underperformed",
   "bonusApplied": "Consistency bonus applied — +25% gains",
-  "fatiqueChange": "Fatigue {{sign}}{{delta}}",
   "gains": "+{{n}} {{ability}}",
   "noGains": "No gains today",
   "loading": "Loading…",
