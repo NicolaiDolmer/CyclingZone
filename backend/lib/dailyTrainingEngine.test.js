@@ -5,9 +5,11 @@ import { runTeamTrainingDay } from "./dailyTrainingEngine.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 
 // ── In-memory Supabase-mock ───────────────────────────────────────────────────
-// Understøtter: select/eq/in/update/insert/upsert — de operationer engine'n bruger.
+// Understøtter: select/eq/in/update/insert/upsert/delete — de operationer engine'n bruger.
 // insert returnerer { error: { code: "23505" } } for 2. kald på UNIQUE-nøgle
 // med simuleret unique-violation.
+// opts.injectRidersError = "message" → riders-select returnerer error med den besked.
+// opts.deleteCalls = [] → array der samler { table, filters } for hvert .delete()-kald.
 function createMockSupabase(state, opts = {}) {
   // opts.injectUniqueViolation = true → første INSERT på training_day_runs fejler 23505
 
@@ -33,6 +35,9 @@ function createMockSupabase(state, opts = {}) {
       },
       order() { return builder(table, op, filters, patch, inList); },
       update(p) { return builder(table, "update", filters, p, inList); },
+      delete() {
+        return builder(table, "delete", filters, patch, inList);
+      },
       insert(row) {
         state[table] ??= [];
         // Unique-violation simulation for training_day_runs.
@@ -73,9 +78,17 @@ function createMockSupabase(state, opts = {}) {
             if (matchRow(row)) Object.assign(row, patch);
           }
           result = { error: null };
+        } else if (op === "delete") {
+          if (opts.deleteCalls) opts.deleteCalls.push({ table, filters: [...filters] });
+          state[table] = state[table].filter((row) => !matchRow(row));
+          result = { error: null };
         } else {
-          // select
-          result = { data: state[table].filter(matchRow), error: null };
+          // select — injicér fejl hvis opts.injectRidersError matcher dette bord
+          if (opts.injectRidersError && table === "riders") {
+            result = { data: null, error: { message: opts.injectRidersError } };
+          } else {
+            result = { data: state[table].filter(matchRow), error: null };
+          }
         }
         return Promise.resolve(result).then(resolve);
       },
@@ -292,6 +305,36 @@ test("to kald i træk: 2. kald detekterer eksisterende run-row → alreadyRan", 
     executedBy: "assistant", now: NOW,
   });
   assert.equal(r2.alreadyRan, true, "2. kald returnerer alreadyRan=true");
+});
+
+// ── Test 8: Phase 1-fejl → reservation slettes → retry mulig ─────────────────
+test("phase1-fejl (riders-load): reservation slettes, funktion kaster, retry ville lykkes", async () => {
+  const deleteCalls = [];
+  const state = seedState();
+  const supabase = createMockSupabase(state, {
+    injectRidersError: "connection timeout",
+    deleteCalls,
+  });
+
+  // Funktionen skal kaste (original fejl videresendes).
+  await assert.rejects(
+    () => runTeamTrainingDay({
+      supabase, teamId: TEAM_ID, seasonId: SEASON_ID, seasonNumber: SEASON_NUMBER,
+      executedBy: "manager", now: NOW,
+    }),
+    /riders load: connection timeout/,
+    "original fejl propageres til caller"
+  );
+
+  // Reservationen skal være slettet (ét delete-kald på training_day_runs med korrekte filtre).
+  const tdrDeletes = deleteCalls.filter((c) => c.table === "training_day_runs");
+  assert.equal(tdrDeletes.length, 1, "ét delete-kald på training_day_runs");
+  const delFilters = Object.fromEntries(tdrDeletes[0].filters);
+  assert.equal(delFilters.team_id, TEAM_ID, "delete filtrerer på team_id");
+  assert.equal(delFilters.tick_date, "2026-06-12", "delete filtrerer på tick_date");
+
+  // Ingen rækker i training_day_runs (slettet efter fejl).
+  assert.equal(state.training_day_runs.length, 0, "reservation fjernet fra state — retry ville lykkes");
 });
 
 // ── Test 7: rapport indeholder alle påkrævede felter ─────────────────────────

@@ -15,7 +15,7 @@ import { copenhagenDateString } from "./copenhagenTime.js";
 import { resolveProgram, applyDailyTick } from "./dailyTraining.js";
 import { nextFatigue, nextForm, conditionMultiplier, injuryRisk, rollInjury } from "./riderCondition.js";
 import { buildCaps } from "./riderProgression.js";
-import { ageForSeason, LAUNCH_REFERENCE_YEAR } from "./riderProgressionEngine.js";
+import { ageForSeason } from "./riderProgressionEngine.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 
 // Batched async-runner (samme hjælper som riderProgressionEngine.js).
@@ -77,7 +77,11 @@ export async function runTeamTrainingDay({
     throw new Error(`training_day_runs insert: ${insertError.message}`);
   }
 
-  // ── 2) Load riders (ikke-pensionerede, dette hold) ────────────────────────────
+  // ── Phase 1: Loads + ren beregning (ingen writes) ────────────────────────────
+  // Ved fejl her slettes reservationen, så holdet kan retrye samme dag.
+  let abilityUpdates, conditionUpserts, reportRiders;
+  try {
+  // ── 2) Load riders (ikke-pensionerede, dette hold) ──────────────────────────
   const { data: riders, error: ridersError } = await supabase
     .from("riders")
     .select("id, primary_type, potentiale, birthdate, firstname, lastname, team_id")
@@ -118,9 +122,9 @@ export async function runTeamTrainingDay({
   const condByRider = new Map((conditionRows ?? []).map((c) => [c.rider_id, c]));
 
   // ── 4) Tick pr. rytter ────────────────────────────────────────────────────────
-  const abilityUpdates = []; // { riderId, patch }
-  const conditionUpserts = []; // { rider_id, form, fatigue, injured_until, injury_cause, updated_at }
-  const reportRiders = [];
+  abilityUpdates = []; // { riderId, patch }
+  conditionUpserts = []; // { rider_id, form, fatigue, injured_until, injury_cause, updated_at }
+  reportRiders = [];
 
   for (const rider of riders) {
     const abRow = abilityByRider.get(rider.id);
@@ -249,6 +253,21 @@ export async function runTeamTrainingDay({
       intensity: effectiveIntensity,
     });
   }
+
+  } catch (phase1Err) {
+    // Load/beregnings-fejl: slet reservationen så holdet kan retrye samme dag.
+    try {
+      await supabase.from("training_day_runs")
+        .delete()
+        .eq("team_id", teamId)
+        .eq("tick_date", tickDate);
+    } catch (_) { /* swallow — original fejl er vigtigst */ }
+    throw phase1Err;
+  }
+
+  // ── Phase 2: Writes ───────────────────────────────────────────────────────────
+  // Fra dette punkt er writes i gang: ved fejl bevares reservationen BEVIDST (blokeret dag er
+  // sikrere end dobbelt-tick efter delvise ability-writes). Manuel recovery: slet rækken.
 
   // ── 5) Persistér ─────────────────────────────────────────────────────────────
   // Ability-updates (gains + progress + evt. caps).
