@@ -85,6 +85,7 @@ export const EXEMPT_DIRS = [
   "frontend/src/pages/admin", // Admin-only tabs bag admin-guard — ikke player-facing.
 ];
 export const EXEMPT_FILES = new Map([
+  ["frontend/src/lib/legacyFinanceMessage.js", "Parser-only matching of Danish prose already stored in legacy finance rows; recognized text resolves to locale keys before display."],
   ["frontend/src/pages/AdminSprintMetricsPage.jsx", "Admin-only intern metrics-side."],
   ["frontend/src/pages/AdminWaitlistPage.jsx", "Admin-only waitlist-værktøj."],
   ["frontend/src/pages/PatchNotesPage.jsx", "Patch notes er bilingual i-side data (EN+DA pr. entry) — DA-strenge er by design."],

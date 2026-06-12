@@ -33,6 +33,12 @@ export function buildWarningPayload(step, closesAt) {
     type: "deadline_day_warning",
     title: step.title,
     message: messages[step.key],
+    metadata: {
+      titleCode: `notif.deadlineDay.${step.key}.title`,
+      titleParams: {},
+      messageCode: `notif.deadlineDay.${step.key}.message`,
+      messageParams: { closesAt },
+    },
   };
 }
 
@@ -79,7 +85,7 @@ export function computeFinalWhistleReport({
     }
   }
 
-  // Panik kræver seller-hold — ai-pool auctions (sellerTeamId=null) er pr.
+  // Panik kræver seller-hold. Ai-pool auctions (sellerTeamId=null) er pr.
   // definition ikke panik (ingen manager har solgt sig under min).
   const panicDeals = allDeals.filter(d => d.sellerTeamId && panicTeamIds.has(d.sellerTeamId));
 
@@ -208,7 +214,7 @@ async function loadFinalWhistleData({ supabase, window }) {
     }));
   const bidsForReport = (bids || []).map(b => ({ teamName: b.team?.name }));
 
-  // Filter null sellers (ai-pool auctions) — panic-lookup kræver et faktisk sælger-hold.
+  // Filter null sellers (ai-pool auctions). Panic-lookup kræver et faktisk sælger-hold.
   const sellerIds = [
     ...new Set([
       ...auctionDeals.map(d => d.sellerTeamId),
@@ -286,6 +292,7 @@ async function fireDeadlineWarnings({ supabase, window, notifyTeamOwnerFn, captu
           type: payload.type,
           title: payload.title,
           message: payload.message,
+          metadata: payload.metadata,
           relatedId: window.id,
           now,
         });

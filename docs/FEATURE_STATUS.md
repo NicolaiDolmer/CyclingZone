@@ -12,7 +12,7 @@ Last reviewed: 2026-06-12. GitHub issues are the source of truth for active work
 
 ## Live
 
-- **Core manager loop:** Supabase auth, manager/team setup, rider database, profiles, comparison, watchlist, notifications, and DA/EN localization.
+- **Core manager loop:** Supabase auth, manager/team setup, rider database, profiles, comparison, watchlist, notifications, and DA/EN localization. Finance legacy rows and Deadline Day countdown/warnings are locale-aware (#1352/#1353).
 - **Market:** auctions with proxy bidding and finalization, direct transfers, swaps, transfer listings, and rider loans. Confirmed closed-window transfers are queued for the next window.
 - **Squad and riders:** squad limits, contracts/salaries, dynamic market values, rider abilities, potential, retirement state, and rider popularity tracking.
 - **Economy:** 800K initial balance, 240K season-one sponsor, variable sponsor from season two, salary/interest/payroll processing, loans, finance ledger, forecast, and risk tiers.

@@ -30,6 +30,10 @@
     "closesIn": "Transfervinduet lukker om {h}t {m}m",
     "cta": "Gå til transfers →"
   },
+  "deadlineDayBanner": {
+    "title": "Deadline Day",
+    "countdownHours": "{h}t {m}m {s}s"
+  },
   "seasonBanner": {
     "title": "Sæson {number}",
     "status": {

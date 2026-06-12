@@ -30,6 +30,10 @@
     "closesIn": "Transfer window closes in {h}h {m}m",
     "cta": "Go to transfers →"
   },
+  "deadlineDayBanner": {
+    "title": "Deadline Day",
+    "countdownHours": "{h}h {m}m {s}s"
+  },
   "seasonBanner": {
     "title": "Season {number}",
     "status": {

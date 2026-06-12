@@ -39,12 +39,15 @@ test("getDueWarningSteps returns nothing once the window has closed", () => {
   assert.deepEqual(getDueWarningSteps(closesAt.toISOString(), after), []);
 });
 
-test("buildWarningPayload returns deadline_day_warning type", () => {
+test("buildWarningPayload returns localized metadata for every warning boundary", () => {
   const closesAt = new Date("2026-05-10T20:00:00Z").toISOString();
   for (const step of WARNING_STEPS) {
     const payload = buildWarningPayload(step, closesAt);
     assert.equal(payload.type, "deadline_day_warning");
-    assert.equal(payload.title, step.title);
+    assert.equal(payload.metadata.titleCode, `notif.deadlineDay.${step.key}.title`);
+    assert.equal(payload.metadata.messageCode, `notif.deadlineDay.${step.key}.message`);
+    assert.deepEqual(payload.metadata.titleParams, {});
+    assert.deepEqual(payload.metadata.messageParams, { closesAt });
     assert.match(payload.message, /transfervinduet/i);
   }
 });
@@ -250,6 +253,8 @@ test("processDeadlineDayCron sends warnings for due steps when window is open", 
   assert.equal(notified.length, 6);
   assert.ok(notified.every(n => n.type === "deadline_day_warning"));
   assert.ok(notified.every(n => n.relatedId === "w1"));
+  assert.ok(notified.every(n => n.metadata?.titleCode?.startsWith("notif.deadlineDay.")));
+  assert.ok(notified.every(n => n.metadata?.messageParams?.closesAt === closesAt));
 });
 
 test("processDeadlineDayCron: per-team fail kalder captureExceptionFn med teamId+windowId+step (Refs #614 P2-A)", async () => {

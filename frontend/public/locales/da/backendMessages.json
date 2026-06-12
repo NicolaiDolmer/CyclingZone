@@ -21,7 +21,21 @@
     "loanFeePaid": "Lejegebyr: {riderName} (sæson {season})",
     "loanFeeReceived": "Lejegebyr modtaget: {riderName} (sæson {season})",
     "squadFineSingle": "Trupstørrelse-bøde: {count} afvigende rytter × {amount} CZ$",
-    "squadFineMulti": "Trupstørrelse-bøde: {count} afvigende ryttere × {amount} CZ$"
+    "squadFineMulti": "Trupstørrelse-bøde: {count} afvigende ryttere × {amount} CZ$",
+    "legacy": {
+      "sponsor": "Sponsorindtægt · Sæson {season}",
+      "salary": "Løn · Sæson {season}",
+      "prize": "Præmiepenge · {raceName}",
+      "transferPurchase": "Rytterkøb · {detail}",
+      "transferSale": "Ryttersalg · {detail}",
+      "loanReceived": "Lån modtaget",
+      "loanRepayment": "Lånrate",
+      "loanInterest": "Lånerente",
+      "emergencyLoan": "Nødlån",
+      "bonus": "Divisionsbonus",
+      "interest": "Renter",
+      "adminAdjustment": "Admin justering"
+    }
   },
   "forecast": {
     "warning": {
@@ -115,6 +129,20 @@
     "debtWarning": {
       "title": "⚠️ Negativ saldo",
       "message": "Dit hold har negativ saldo. Tjek Økonomi-siden for detaljer."
+    },
+    "deadlineDay": {
+      "24h": {
+        "title": "Deadline Day om 24 timer",
+        "message": "Transfervinduet lukker om 24 timer. Sidste chance for at sætte ryttere på auktion eller acceptere tilbud."
+      },
+      "2h": {
+        "title": "Deadline Day om 2 timer",
+        "message": "Transfervinduet lukker om 2 timer. Flash-auktioner og hastebud er aktive."
+      },
+      "30min": {
+        "title": "Deadline Day om 30 minutter",
+        "message": "Sidste chance: transfervinduet lukker om 30 minutter."
+      }
     }
   },
   "error": {

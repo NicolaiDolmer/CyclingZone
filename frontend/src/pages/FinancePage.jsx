@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { formatNumber } from "../lib/intl";
 import { renderBackendMessage } from "../lib/backendMessage";
+import { resolveLegacyFinanceMessage } from "../lib/legacyFinanceMessage";
 import FinanceFirstVisitHint from "../components/FinanceFirstVisitHint";
 import FinanceForecastCard from "../components/FinanceForecastCard";
 import OnboardingTour from "../components/OnboardingTour";
@@ -628,13 +629,16 @@ export default function FinancePage() {
               const rowInner = (
                 <>
                   <div className="flex-1 min-w-0 pe-3">
-                    <p className="text-cz-2 text-xs truncate">{
-                      /* #666: nye rows har tx.metadata (renderes via i18n);
-                         legacy rows har tx.description (vises som DA fallback). */
-                      tx.metadata?.code
-                        ? renderBackendMessage(tx.metadata, tBackend, tx.description || txLabel(tx.type))
-                        : (tx.description || txLabel(tx.type))
-                    }</p>
+                    <p className="text-cz-2 text-xs truncate">{(() => {
+                      const resolved = resolveLegacyFinanceMessage(tx);
+                      if (resolved.code) {
+                        return renderBackendMessage(resolved, tBackend, txLabel(tx.type));
+                      }
+                      if (resolved.typeKey) {
+                        return t(resolved.typeKey, { defaultValue: txLabel(tx.type) });
+                      }
+                      return resolved.fallback || txLabel(tx.type);
+                    })()}</p>
                     <p className="text-cz-3 text-xs mt-0.5">{timeAgo(tx.created_at)}</p>
                   </div>
                   <p className={`font-mono text-sm font-bold flex-shrink-0 ${tx.amount >= 0 ? "text-cz-success" : "text-cz-danger"}`}>

@@ -21,7 +21,21 @@
     "loanFeePaid": "Loan fee: {riderName} (season {season})",
     "loanFeeReceived": "Loan fee received: {riderName} (season {season})",
     "squadFineSingle": "Squad-size fine: {count} excess rider × {amount} CZ$",
-    "squadFineMulti": "Squad-size fine: {count} excess riders × {amount} CZ$"
+    "squadFineMulti": "Squad-size fine: {count} excess riders × {amount} CZ$",
+    "legacy": {
+      "sponsor": "Sponsor income · Season {season}",
+      "salary": "Salaries · Season {season}",
+      "prize": "Prize money · {raceName}",
+      "transferPurchase": "Rider purchase · {detail}",
+      "transferSale": "Rider sale · {detail}",
+      "loanReceived": "Loan received",
+      "loanRepayment": "Loan installment",
+      "loanInterest": "Loan interest",
+      "emergencyLoan": "Emergency loan",
+      "bonus": "Division bonus",
+      "interest": "Interest",
+      "adminAdjustment": "Admin adjustment"
+    }
   },
   "forecast": {
     "warning": {
@@ -115,6 +129,20 @@
     "debtWarning": {
       "title": "⚠️ Negative balance",
       "message": "Your team has a negative balance. Check the Finances page for details."
+    },
+    "deadlineDay": {
+      "24h": {
+        "title": "Deadline Day in 24 hours",
+        "message": "The transfer window closes in 24 hours. Last chance to list riders for auction or accept offers."
+      },
+      "2h": {
+        "title": "Deadline Day in 2 hours",
+        "message": "The transfer window closes in 2 hours. Flash auctions and urgent bids are active."
+      },
+      "30min": {
+        "title": "Deadline Day in 30 minutes",
+        "message": "Last chance: the transfer window closes in 30 minutes."
+      }
     }
   },
   "error": {
