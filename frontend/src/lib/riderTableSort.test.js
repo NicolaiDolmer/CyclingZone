@@ -10,13 +10,13 @@ import { sortRidersForTable } from "./riderTableSort.js";
 // værdi-kolonnen.
 
 const riders = [
-  { id: "a", firstname: "Anna", lastname: "Zander", market_value: 50000, stat_sp: 70 },
-  { id: "b", firstname: "Bo", lastname: "Mikkelsen", market_value: 120000, stat_sp: 55 },
+  { id: "a", firstname: "Anna", lastname: "Zander", market_value: 50000, stat_sp: 70, nationality_code: "ch" },
+  { id: "b", firstname: "Bo", lastname: "Mikkelsen", market_value: 120000, stat_sp: 55, nationality_code: "dk" },
   // Ingen market_value fra DB → UI viser fallback base_value + bonus (65000).
   // Den gamle inline-sortering (`r.market_value || 0`) behandlede den som 0.
-  { id: "c", firstname: "Carl", lastname: "Astrup", base_value: 50000, prize_earnings_bonus: 15000, stat_sp: 80 },
+  { id: "c", firstname: "Carl", lastname: "Astrup", base_value: 50000, prize_earnings_bonus: 15000, stat_sp: 80, nationality_code: "de" },
   // Frossen uci_points må ALDRIG påvirke værdi-sortering (#1092 rod-årsag).
-  { id: "d", firstname: "Dan", lastname: "Quist", market_value: 1000, uci_points: 99999, stat_sp: 60 },
+  { id: "d", firstname: "Dan", lastname: "Quist", market_value: 1000, uci_points: 99999, stat_sp: 60, nationality_code: "fr" },
 ];
 
 test("market_value desc — sorterer på vist værdi, ikke rå kolonne", () => {
@@ -48,6 +48,21 @@ test("stat-kolonner — generisk numerisk sortering med 0-fallback", () => {
   assert.deepEqual(sorted.map(r => r.stat_sp), [80, 70, 60, 55]);
   const withMissing = sortRidersForTable([...riders, { id: "e", lastname: "X", firstname: "Y" }], { key: "stat_sp", dir: "asc" });
   assert.equal(withMissing[0].id, "e");
+});
+
+test("nationality_code — sorterer på vist IOC-kode, ikke rå ISO2 (#802)", () => {
+  // ISO2-orden ville give CH(a) < DE(c) < DK(b) < FR(d); IOC: DEN < FRA < GER < SUI.
+  const asc = sortRidersForTable(riders, { key: "nationality_code", dir: "asc" });
+  assert.deepEqual(asc.map(r => r.id), ["b", "d", "c", "a"]);
+  const desc = sortRidersForTable(riders, { key: "nationality_code", dir: "desc" });
+  assert.deepEqual(desc.map(r => r.id), ["a", "c", "d", "b"]);
+});
+
+test("nationality_code — rytter uden nation sorterer sidst i asc", () => {
+  const withMissing = sortRidersForTable(
+    [...riders, { id: "e", firstname: "Ed", lastname: "Nyt" }],
+    { key: "nationality_code", dir: "asc" });
+  assert.equal(withMissing[withMissing.length - 1].id, "e");
 });
 
 test("muterer ikke input-arrayet", () => {

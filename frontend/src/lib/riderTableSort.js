@@ -1,4 +1,5 @@
 import { getRiderMarketValue } from "./marketValues.js";
+import { compareNationality } from "./countryUtils.js";
 
 /**
  * riderTableSort — delt sorteringslogik for rytter-tabeller uden fuld
@@ -16,6 +17,11 @@ export function sortRidersForTable(riders, { key, dir } = {}) {
       const an = `${a.lastname} ${a.firstname}`.toLowerCase();
       const bn = `${b.lastname} ${b.firstname}`.toLowerCase();
       return dir === "desc" ? bn.localeCompare(an) : an.localeCompare(bn);
+    }
+    // Nation sorteres på den viste IOC-kode, ikke rå ISO2 (#802).
+    if (key === "nationality_code") {
+      const cmp = compareNationality(a.nationality_code, b.nationality_code);
+      return dir === "desc" ? -cmp : cmp;
     }
     let av, bv;
     if (key === "market_value") {

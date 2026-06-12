@@ -13,6 +13,18 @@ export function getCountryCode3(code) {
   return ISO2_TO_IOC[normalized.toLowerCase()] || normalized;
 }
 
+// Sortér nationer på den VISTE IOC-kode (fx DEN/GER/SUI), ikke rå ISO2 (#802).
+// ISO2-orden ville fx give CH(SUI) < DE(GER) < DK(DEN) — visuelt forkert når
+// kolonnen viser IOC-koder. Tom/ugyldig kode sorterer sidst i ascending.
+export function compareNationality(aCode, bCode) {
+  const a = getCountryCode3(aCode);
+  const b = getCountryCode3(bCode);
+  if (a === b) return 0;
+  if (!a) return 1;
+  if (!b) return -1;
+  return a.localeCompare(b);
+}
+
 function currentLocale(locale) {
   return locale || i18n.language || "da-DK";
 }
