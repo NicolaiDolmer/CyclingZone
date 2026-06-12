@@ -90,6 +90,7 @@ export const EXEMPT_FILES = new Map([
   ["frontend/src/pages/AdminWaitlistPage.jsx", "Admin-only waitlist-værktøj."],
   ["frontend/src/pages/PatchNotesPage.jsx", "Patch notes er bilingual i-side data (EN+DA pr. entry) — DA-strenge er by design."],
   ["frontend/src/pages/PrivacyPolicyPage.jsx", "DA-udgaven i dual-page-mønster (PrivacyPolicyPageEn.jsx er EN)."],
+  ["backend/lib/seasonTransitionReadiness.js", "Admin-only readiness-gate (#1346): detail-/fejl-strenge vises kun i admin-UI (DA-konvention) og admin_log."],
 ]);
 
 // ---------------------------------------------------------------------------
@@ -208,6 +209,7 @@ function scanBackend() {
   for (const dir of ["backend/routes", "backend/lib"]) {
     for (const file of walk(join(ROOT, dir))) {
       const rel = relative(ROOT, file).replaceAll("\\", "/");
+      if (EXEMPT_FILES.has(rel)) continue;
       const n = countBackendDanishLines(readFileSync(file, "utf8"));
       if (n > 0) counts[rel] = n;
     }

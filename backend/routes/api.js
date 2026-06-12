@@ -55,6 +55,11 @@ import {
   resolveTransitionSourceSeason,
   transitionToNextSeason,
 } from "../lib/seasonTransition.js";
+import {
+  assessTransitionReadiness,
+  formatForceOverrideDescription,
+  TRANSITION_BLOCKED_ERROR,
+} from "../lib/seasonTransitionReadiness.js";
 import { cancelAuctionByAdmin } from "../lib/auctionCancellation.js";
 import { fetchAllRows } from "../lib/supabasePagination.js";
 import { aggregateRiderViews } from "../lib/riderProfileViews.js";
@@ -5524,16 +5529,21 @@ router.get("/admin/season-transition/preview", requireAdmin, async (req, res) =>
       return res.status(404).json({ error: "Ingen aktiv eller afsluttet sæson fundet" });
     }
     const plan = await buildTransitionPlan({ supabase, fromSeasonId: fromSeason.id });
-    res.json({ ok: true, plan });
+    // #1346: samme readiness-beregning som udfør-endpointet, så UI'et kan
+    // disable knappen med konkrete årsager uden at drive fra server-gaten.
+    const readiness = await assessTransitionReadiness({ supabase, fromSeasonId: fromSeason.id });
+    res.json({ ok: true, plan, readiness });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // POST /api/admin/season-transition — udfør sæson-skifte
-// Body: { fromSeasonId? (default = aktiv sæson), transitionAt? (default = nu), dryRun? }
+// Body: { fromSeasonId? (default = aktiv sæson), transitionAt? (default = nu), dryRun?, force? (#1346: bypass readiness-gate, logges) }
 // dryRun=true: returnerer kun planen, ingen writes til DB.
 router.post("/admin/season-transition", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
     const { fromSeasonId: bodyFromSeasonId, transitionAt, dryRun = false } = req.body || {};
+    // Strict === true: en string "false" må aldrig tælle som override.
+    const force = (req.body || {}).force === true;
     let fromSeasonId = bodyFromSeasonId;
     if (!fromSeasonId) {
       // #1166: samme fallback som preview-endpointet — seneste 'completed'
@@ -5543,6 +5553,32 @@ router.post("/admin/season-transition", requireAdmin, adminWriteLimiter, async (
         return res.status(404).json({ error: "Ingen aktiv eller afsluttet sæson fundet" });
       }
       fromSeasonId = fromSeason.id;
+    }
+
+    // #1346: readiness-gate FØR enhver transition-write. dryRun gates ikke
+    // (ingen writes). Force er en bevidst, logget nødudgang (ejer-beslutning
+    // 12/6) til resume-edge-cases og bevidst tidlig sæsonlukning.
+    if (!dryRun) {
+      const readiness = await assessTransitionReadiness({ supabase, fromSeasonId });
+      if (!readiness.ready && !force) {
+        return res.status(409).json({
+          error: TRANSITION_BLOCKED_ERROR,
+          readiness,
+        });
+      }
+      if (!readiness.ready && force) {
+        const { error: forceLogError } = await supabase.from("admin_log").insert({
+          admin_user_id: req.user?.id ?? null,
+          action_type: ADMIN_ACTION_TYPE.MANUAL_OVERRIDE,
+          description: formatForceOverrideDescription(readiness.failed_critical),
+          target_team_id: null,
+          meta: { source: "season_transition_force", failed_critical: readiness.failed_critical },
+        });
+        if (forceLogError) {
+          // Fail-closed: uden audit-spor må en forced transition ikke køre.
+          return res.status(500).json({ error: `Force-log kunne ikke skrives: ${forceLogError.message}` });
+        }
+      }
     }
 
     const result = await transitionToNextSeason({

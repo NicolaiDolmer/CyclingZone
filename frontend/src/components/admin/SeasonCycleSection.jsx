@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { formatCz } from "../../lib/marketValues";
+import { summarizeTransitionReadiness } from "../../lib/seasonTransitionGate";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -20,6 +21,8 @@ export default function SeasonCycleSection({ getAuth, onMsg }) {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [executing, setExecuting] = useState(false);
+  const [readiness, setReadiness] = useState(null);
+  const [force, setForce] = useState(false);
 
   async function fetchPreview() {
     setLoading(true);
@@ -29,6 +32,7 @@ export default function SeasonCycleSection({ getAuth, onMsg }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Kunne ikke hente forhåndsvisning");
       setPreview(data.plan);
+      setReadiness(data.readiness ?? null);
     } catch (e) {
       onMsg(`❌ ${e.message}`, "error");
     } finally {
@@ -49,9 +53,16 @@ export default function SeasonCycleSection({ getAuth, onMsg }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const gate = summarizeTransitionReadiness(readiness);
+
   async function executeTransition() {
     if (!preview) return;
+    const forcing = gate.blocked && force;
     const confirmText =
+      (forcing
+        ? `⚠️ FORCE-OVERRIDE: readiness-gaten er RØD (${gate.failed.map((f) => f.label).join(", ")}).\n` +
+          `Handlingen logges i admin-loggen.\n\n`
+        : "") +
       `Du er ved at lukke sæson ${preview.from_season.number} og oprette sæson ${preview.to_season.number}.\n\n` +
       `Dette vil:\n` +
       `  • Markere sæson ${preview.from_season.number} som færdig\n` +
@@ -68,11 +79,17 @@ export default function SeasonCycleSection({ getAuth, onMsg }) {
       const res = await fetch(`${API}/api/admin/season-transition`, {
         method: "POST",
         headers,
-        body: JSON.stringify({}),
+        body: JSON.stringify({ force: forcing }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Sæsonskifte fejlede");
+      if (!res.ok) {
+        // #1346: 409 = readiness-gaten afviste server-side. Opdatér checklisten
+        // så admin ser de aktuelle årsager (preview kan være stale).
+        if (res.status === 409 && data.readiness) setReadiness(data.readiness);
+        throw new Error(data.error || "Sæsonskifte fejlede");
+      }
       setResult(data);
+      setForce(false);
       onMsg(`✅ Sæsonskifte udført — sæson ${preview.to_season.number} er nu aktiv`);
       // Refresh preview så UI viser ny state
       await fetchPreview();
@@ -174,6 +191,43 @@ export default function SeasonCycleSection({ getAuth, onMsg }) {
         </details>
       )}
 
+      {/* #1346: Readiness-gate — spejler server-gaten så admin ser årsager før klik */}
+      {gate.known && (
+        <div className="bg-cz-subtle rounded-xl p-4">
+          <p className="text-cz-2 font-medium text-sm mb-2">
+            Readiness-gate: {gate.blocked ? "🔴 blokeret" : "🟢 klar"}
+          </p>
+          <div className="space-y-1">
+            {gate.rows.map((row) => (
+              <div key={row.key} className="flex items-center gap-2 text-sm">
+                <span
+                  className={`w-2 h-2 rounded-full shrink-0 ${row.ok ? "bg-cz-success" : row.critical ? "bg-cz-danger" : "bg-cz-warning"}`}
+                />
+                <span className={row.ok ? "text-cz-2" : "text-cz-1 font-medium"}>{row.label}</span>
+                {!row.ok && row.detail && (
+                  <span className="text-cz-3 text-xs">({row.detail})</span>
+                )}
+              </div>
+            ))}
+          </div>
+          {gate.blocked && (
+            <label className="mt-3 flex items-start gap-2 p-3 bg-cz-danger-bg border border-cz-danger/30 rounded-lg text-xs text-cz-danger cursor-pointer">
+              <input
+                type="checkbox"
+                checked={force}
+                onChange={(e) => setForce(e.target.checked)}
+                className="mt-0.5"
+              />
+              <span>
+                <span className="font-bold">Force-override:</span> udfør sæsonskiftet selv om
+                gaten er rød. Handlingen logges i admin-loggen. Brug kun ved bevidst tidlig
+                sæsonlukning eller resume efter delvis fejl.
+              </span>
+            </label>
+          )}
+        </div>
+      )}
+
       {/* Knapper */}
       <div className="flex gap-2">
         <button
@@ -185,12 +239,14 @@ export default function SeasonCycleSection({ getAuth, onMsg }) {
         </button>
         <button
           onClick={executeTransition}
-          disabled={loading || executing}
+          disabled={loading || executing || (gate.blocked && !force)}
           className="flex-1 min-h-[44px] px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50"
         >
           {executing
             ? "Udfører…"
-            : `Udfør sæsonskifte (sæson ${preview.from_season.number} → ${preview.to_season.number})`}
+            : gate.blocked && !force
+              ? "Blokeret af readiness-gate (se checks ovenfor)"
+              : `Udfør sæsonskifte (sæson ${preview.from_season.number} → ${preview.to_season.number})`}
         </button>
       </div>
 

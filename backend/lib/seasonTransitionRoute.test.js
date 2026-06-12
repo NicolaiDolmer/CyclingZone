@@ -91,3 +91,51 @@ test("udfør-handler falder tilbage til resolveTransitionSourceSeason når fromS
     "eksplicit fromSeasonId i body skal stadig respekteres (bypass af resolveren)",
   );
 });
+
+// ============================================================
+// #1346 — server-side readiness-gate på manuel transition.
+// Endpointet må ikke kunne lukke en aktiv sæson med åbent
+// vindue/uafviklede løb ved et fejlklik. Force-override er
+// eksplicit og logges i admin_log (MANUAL_OVERRIDE, ikke
+// SEASON_TRANSITION som dailySeasonCountCheck tæller på).
+// ============================================================
+
+test("routes/api.js importerer assessTransitionReadiness fra seasonTransitionReadiness.js (#1346)", () => {
+  assert.match(
+    apiSource,
+    /import\s*\{[^}]*assessTransitionReadiness[^}]*\}\s*from\s*"\.\.\/lib\/seasonTransitionReadiness\.js"/,
+  );
+});
+
+test("udfør-handler kører readiness-gate FØR transitionToNextSeason og kan svare 409 (#1346)", () => {
+  const block = isolateExecuteHandler();
+  assert.match(block, /assessTransitionReadiness\(/, "POST skal beregne readiness");
+  assert.match(block, /status\(409\)/, "rød gate uden force skal afvises med 409");
+  assert.match(block, /force/, "force-flag fra body skal respekteres");
+  assert.ok(
+    block.indexOf("assessTransitionReadiness") < block.indexOf("transitionToNextSeason("),
+    "gaten skal stå FØR transition-kaldet, ellers er writes allerede sket",
+  );
+});
+
+test("udfør-handler logger force-override i admin_log med MANUAL_OVERRIDE (#1346)", () => {
+  const block = isolateExecuteHandler();
+  assert.match(block, /ADMIN_ACTION_TYPE\.MANUAL_OVERRIDE/, "force skal logges som manual_override");
+  assert.doesNotMatch(
+    block,
+    /action_type:\s*ADMIN_ACTION_TYPE\.SEASON_TRANSITION/,
+    "force-loggen må IKKE bruge season_transition (dobbelt-tælling i dailySeasonCountCheck)",
+  );
+});
+
+test("preview-handler returnerer readiness sammen med planen (#1346)", () => {
+  const block = isolatePreviewHandler();
+  assert.match(block, /assessTransitionReadiness\(/, "preview skal beregne samme readiness som udfør");
+  assert.match(block, /readiness/, "preview-response skal indeholde readiness");
+});
+
+test("udfør-handler gater ikke dryRun og sender readiness med i 409-svaret (#1346)", () => {
+  const block = isolateExecuteHandler();
+  assert.match(block, /if\s*\(!dryRun\)/, "gaten skal kun køre for rigtige writes, ikke dry-runs");
+  assert.match(block, /status\(409\)\.json\(\{[\s\S]*?readiness/, "409-svaret skal bære readiness-payloaden til UI'et");
+});
