@@ -21,7 +21,8 @@
   },
   "prizeList": {
     "title": "Race prizes",
-    "fallbackName": "Prize money"
+    "fallbackName": "Prize money",
+    "viewRace": "View race"
   },
   "loans": {
     "types": {

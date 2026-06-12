@@ -1,4 +1,5 @@
 ﻿import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import RiderLink from "../components/RiderLink";
 import { useClientRiderFilters } from "../lib/useRiderFilters";
@@ -17,10 +18,10 @@ const STATS = ["stat_fl","stat_bj","stat_kb","stat_bk","stat_tt","stat_prl",
   "stat_bro","stat_sp","stat_acc","stat_ned","stat_udh","stat_mod","stat_res","stat_ftr"];
 const STAT_LABELS = ["FL","BJ","KB","BK","TT","PRL","Bro","SP","ACC","NED","UDH","MOD","RES","FTR"];
 
-function SortTh({ children, sortKey, sort, sortDir, onSort, className = "" }) {
+function SortTh({ children, sortKey, sort, sortDir, onSort, className = "", title }) {
   const active = sort === sortKey;
   return (
-    <th onClick={() => onSort(sortKey)}
+    <th onClick={() => onSort(sortKey)} title={title}
       className={`cursor-pointer select-none transition-colors ${active ? "text-cz-accent-t/80" : "text-cz-3 hover:text-cz-2"} ${className}`}>
       {children}{active && <span className="ms-0.5 text-[10px]">{sortDir === "desc" ? "↓" : "↑"}</span>}
     </th>
@@ -180,6 +181,8 @@ function RiderActionModal({ rider, scouting, onClose, onAction, ddActive }) {
 
 function SquadTab({ riders, scouting, onSelectRider, windowOpen }) {
   const { t } = useTranslation("team");
+  // #1131: fulde stat-navne som native tooltip på de forkortede kolonne-headers.
+  const { t: tRider } = useTranslation("rider");
   // #1095: eksplicit "nuværende" vs "kommende" trup-visning i stedet for
   // vis/skjul-toggles — spillere med ind-/udgående ryttere skal tydeligt
   // kunne se begge tilstande.
@@ -275,11 +278,15 @@ function SquadTab({ riders, scouting, onSelectRider, windowOpen }) {
                     className="px-3 py-3 text-left font-medium uppercase tracking-wider sticky left-0 z-20 bg-cz-card border-r border-cz-border">{t("squad.headers.rider")}</SortTh>
                   <SortTh sortKey="value" sort={sort} sortDir={sortDir} onSort={handleSort}
                     className="px-3 py-3 text-right font-medium">{t("squad.headers.value")}</SortTh>
-                  <th className="px-3 py-3 text-right text-cz-3 font-medium">{t("squad.headers.salary")}</th>
+                  {/* #1131: Løn-kolonnen var eneste døde header i rækken (1.385 dead clicks
+                      i Clarity 5/6-12/6) — sortérbar nu, samme som på /riders. */}
+                  <SortTh sortKey="salary" sort={sort} sortDir={sortDir} onSort={handleSort}
+                    className="px-3 py-3 text-right font-medium">{t("squad.headers.salary")}</SortTh>
                   <SortTh sortKey="_scoutMid" sort={sort} sortDir={sortDir} onSort={handleSort}
                     className="px-3 py-3 text-left font-medium">{t("squad.headers.potential")}</SortTh>
                   {STATS.map((key, i) => (
                     <SortTh key={key} sortKey={key} sort={sort} sortDir={sortDir} onSort={handleSort}
+                      title={tRider(`skills.${key.replace("stat_", "")}.long`)}
                       className="px-1.5 py-3 text-center font-medium w-10">{STAT_LABELS[i]}</SortTh>
                   ))}
                   <th className="px-3 py-3 text-center text-cz-3 font-medium">{t("squad.headers.action")}</th>
@@ -390,7 +397,14 @@ function EconomyTab({ team, riders, transactions }) {
       </div>
 
       <div className="bg-cz-card border border-cz-border rounded-xl p-5">
-        <h3 className="text-cz-1 font-semibold text-sm mb-4">{t("economy.forecast.title")}</h3>
+        {/* #1131: "Netto"/"Sponsorindtægt"-rækkerne fik 450+ dead clicks (Clarity 5/6-12/6) —
+            spillere leder efter detaljer. Synlig vej til den fulde prognose på /finance. */}
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <h3 className="text-cz-1 font-semibold text-sm">{t("economy.forecast.title")}</h3>
+          <Link to="/finance" className="text-xs text-cz-3 hover:text-cz-accent-t underline underline-offset-2 transition-colors">
+            {t("economy.forecast.fullLink")}
+          </Link>
+        </div>
         <div className="space-y-2">
           {[
             { label: t("economy.forecast.sponsorIncome"), value: t("economy.amountSigned", { sign: "+", value: formatNumber(sponsorIncome) }), color: "text-cz-info" },

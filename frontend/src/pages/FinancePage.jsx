@@ -368,19 +368,34 @@ export default function FinancePage() {
         <div className="bg-cz-card border border-cz-border rounded-xl p-5 mb-4">
           <h2 className="text-cz-1 font-semibold text-sm mb-3">{t("prizeList.title")}</h2>
           <div className="flex flex-col divide-y divide-cz-border">
-            {prizeRows.map(tx => (
-              <div key={tx.id} className="flex items-center justify-between py-2">
-                <div className="flex-1 min-w-0 pe-3">
-                  <p className="text-cz-2 text-xs font-medium truncate">
-                    {tx.raceName || tx.description || t("prizeList.fallbackName")}
+            {/* #1131: løbsnavne fik 690+ dead clicks (Clarity 5/6-12/6) — spillere forventer
+                navigation. Hele rækken er ét klikmål til løbet når race_id findes. */}
+            {prizeRows.map(tx => {
+              const rowInner = (
+                <>
+                  <div className="flex-1 min-w-0 pe-3">
+                    <p className="text-cz-2 text-xs font-medium truncate">
+                      {tx.raceName || tx.description || t("prizeList.fallbackName")}
+                    </p>
+                    <p className="text-cz-3 text-xs mt-0.5">{timeAgo(tx.created_at)}</p>
+                  </div>
+                  <p className="font-mono text-sm font-bold text-cz-success flex-shrink-0">
+                    +{formatNumber(tx.amount || 0)} CZ$
                   </p>
-                  <p className="text-cz-3 text-xs mt-0.5">{timeAgo(tx.created_at)}</p>
+                </>
+              );
+              return tx.race_id ? (
+                <Link key={tx.id} to={`/races/${tx.race_id}`} title={t("prizeList.viewRace")}
+                  className="flex items-center justify-between py-2 group hover:bg-cz-subtle/60 transition-colors">
+                  {rowInner}
+                  <span aria-hidden className="text-cz-3 group-hover:text-cz-2 text-base ms-2 flex-shrink-0 transition-colors">›</span>
+                </Link>
+              ) : (
+                <div key={tx.id} className="flex items-center justify-between py-2">
+                  {rowInner}
                 </div>
-                <p className="font-mono text-sm font-bold text-cz-success flex-shrink-0">
-                  +{formatNumber(tx.amount || 0)} CZ$
-                </p>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -609,23 +624,38 @@ export default function FinancePage() {
           <p className="text-cz-3 text-sm">{t("transactions.history.empty")}</p>
         ) : (
           <div className="flex flex-col divide-y divide-cz-border">
-            {transactions.map(tx => (
-              <div key={tx.id} className="flex items-center justify-between py-2.5">
-                <div className="flex-1 min-w-0 pe-3">
-                  <p className="text-cz-2 text-xs truncate">{
-                    /* #666: nye rows har tx.metadata (renderes via i18n);
-                       legacy rows har tx.description (vises som DA fallback). */
-                    tx.metadata?.code
-                      ? renderBackendMessage(tx.metadata, tBackend, tx.description || txLabel(tx.type))
-                      : (tx.description || txLabel(tx.type))
-                  }</p>
-                  <p className="text-cz-3 text-xs mt-0.5">{timeAgo(tx.created_at)}</p>
+            {transactions.map(tx => {
+              const rowInner = (
+                <>
+                  <div className="flex-1 min-w-0 pe-3">
+                    <p className="text-cz-2 text-xs truncate">{
+                      /* #666: nye rows har tx.metadata (renderes via i18n);
+                         legacy rows har tx.description (vises som DA fallback). */
+                      tx.metadata?.code
+                        ? renderBackendMessage(tx.metadata, tBackend, tx.description || txLabel(tx.type))
+                        : (tx.description || txLabel(tx.type))
+                    }</p>
+                    <p className="text-cz-3 text-xs mt-0.5">{timeAgo(tx.created_at)}</p>
+                  </div>
+                  <p className={`font-mono text-sm font-bold flex-shrink-0 ${tx.amount >= 0 ? "text-cz-success" : "text-cz-danger"}`}>
+                    {tx.amount >= 0 ? "+" : ""}{formatNumber(tx.amount || 0)} CZ$
+                  </p>
+                </>
+              );
+              // #1131: samme klikmål-mønster som løbspræmie-listen — transaktioner
+              // med et tilknyttet løb navigerer til løbet.
+              return tx.race_id ? (
+                <Link key={tx.id} to={`/races/${tx.race_id}`} title={t("prizeList.viewRace")}
+                  className="flex items-center justify-between py-2.5 group hover:bg-cz-subtle/60 transition-colors">
+                  {rowInner}
+                  <span aria-hidden className="text-cz-3 group-hover:text-cz-2 text-base ms-2 flex-shrink-0 transition-colors">›</span>
+                </Link>
+              ) : (
+                <div key={tx.id} className="flex items-center justify-between py-2.5">
+                  {rowInner}
                 </div>
-                <p className={`font-mono text-sm font-bold flex-shrink-0 ${tx.amount >= 0 ? "text-cz-success" : "text-cz-danger"}`}>
-                  {tx.amount >= 0 ? "+" : ""}{formatNumber(tx.amount || 0)} CZ$
-                </p>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
