@@ -314,12 +314,18 @@ export async function loadEntrantsForRace({ supabase, race, persist = true }) {
   const abilityByRider = new Map((abilities || []).map((a) => [a.rider_id, a]));
 
   // Berig entrants med form/træthed fra rider_condition i ét batched opslag (spec #1306 B2).
+  // Berigelsen er additiv: fejler opslaget, degraderer vi til neutral (undefined) frem for
+  // at blokere race-finalization — modsat skade-eksklusionen i autoFillEntries, der SKAL fejle hårdt.
+  let conditionByRider = new Map();
   const { data: conditions, error: condErr } = await supabase
     .from("rider_condition")
     .select("rider_id, form, fatigue")
     .in("rider_id", riderIds);
-  if (condErr) throw new Error(`rider_condition: ${condErr.message}`);
-  const conditionByRider = new Map((conditions || []).map((c) => [c.rider_id, c]));
+  if (condErr) {
+    console.error(`rider_condition-berigelse fejlede (degraderer til neutral): ${condErr.message}`);
+  } else {
+    conditionByRider = new Map((conditions || []).map((c) => [c.rider_id, c]));
+  }
 
   const entrants = [];
   for (const r of riders || []) {
