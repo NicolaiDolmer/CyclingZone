@@ -259,6 +259,127 @@ test("computeFinanceForecast: risk-tier-grænser matcher spec'en", () => {
   assert.equal(debt80Plus.risk_tier, "red");
 });
 
+// ─── #981 · Realiseret sæson-præmie som gulv for prize-estimatet ──────────────
+
+test("computeFinanceForecast (#981): prize-prognosen kan ikke være lavere end realiseret sæson-præmie", () => {
+  const base = {
+    team: { sponsor_income: 240_000, balance: 500_000 },
+    riders: [{ salary: 10_000, prize_earnings_bonus: 833_197 }],
+    debtCeiling: 900_000,
+    currentSeasonNumber: 1,
+  };
+
+  // Issue-casen: rolling avg 833.197, men holdet har allerede tjent 1.347.000.
+  const floored = computeFinanceForecast({ ...base, realizedSeasonPrize: 1_347_000 });
+  assert.equal(floored.projected_prize, 1_347_000);
+  assert.equal(floored.inputs.prize_basis, "realized_season_floor");
+  assert.equal(floored.inputs.prize_rolling_avg, 833_197);
+  assert.equal(floored.inputs.realized_season_prize, 1_347_000);
+
+  // Realiseret < rolling → rolling avg er stadig estimatet.
+  const rolling = computeFinanceForecast({ ...base, realizedSeasonPrize: 100_000 });
+  assert.equal(rolling.projected_prize, 833_197);
+  assert.equal(rolling.inputs.prize_basis, "rolling_avg");
+
+  // Param udeladt = uændret legacy-adfærd.
+  const defaulted = computeFinanceForecast(base);
+  assert.equal(defaulted.projected_prize, 833_197);
+  assert.equal(defaulted.inputs.realized_season_prize, 0);
+});
+
+test("computeFinanceForecast (#981): negativ/ugyldig realizedSeasonPrize ignoreres", () => {
+  const base = {
+    team: { sponsor_income: 240_000 },
+    riders: [{ salary: 10_000, prize_earnings_bonus: 50_000 }],
+    debtCeiling: 900_000,
+  };
+  assert.equal(
+    computeFinanceForecast({ ...base, realizedSeasonPrize: -25_000 }).projected_prize,
+    50_000
+  );
+  assert.equal(
+    computeFinanceForecast({ ...base, realizedSeasonPrize: Number.NaN }).projected_prize,
+    50_000
+  );
+});
+
+// ─── #982 · Risk-tier skal respektere realiseret balance ──────────────────────
+
+test("computeFinanceForecast (#982): absorberbart underskud med stor kassebeholdning → gul, ikke rød", () => {
+  // Issue-arketypen: solvent hold med stor indtægt/kassebeholdning og dyr
+  // roster. Net er under -50K, men holdet er på ingen måde konkurs-truet.
+  const result = computeFinanceForecast({
+    team: { sponsor_income: 240_000, balance: 2_500_000 },
+    riders: Array.from({ length: 20 }, () => ({
+      salary: 25_000,
+      prize_earnings_bonus: 8_000,
+    })),
+    totalDebt: 0,
+    debtCeiling: 900_000,
+    currentSeasonNumber: 1,
+  });
+  // net = 240K + 160K - 500K = -100K → < -50K, men slutbalance 2,4M > 0 → gul.
+  assert.equal(result.projected_net, -100_000);
+  assert.equal(result.risk_tier, "yellow");
+  // Underskuddet er reelt — negative_net-warningen består.
+  assert.ok(result.warnings.find((w) => w.code === "negative_net"));
+});
+
+test("computeFinanceForecast (#982): samme underskud uden balance-buffer → stadig rød", () => {
+  const result = computeFinanceForecast({
+    team: { sponsor_income: 240_000, balance: 20_000 },
+    riders: Array.from({ length: 20 }, () => ({
+      salary: 25_000,
+      prize_earnings_bonus: 8_000,
+    })),
+    totalDebt: 0,
+    debtCeiling: 900_000,
+    currentSeasonNumber: 1,
+  });
+  // Slutbalance 20K - 100K = -80K < 0 → projiceret insolvens → rød.
+  assert.equal(result.risk_tier, "red");
+});
+
+test("computeFinanceForecast (#982): debt > 80% af loftet er stadig rød uanset kassebeholdning", () => {
+  const result = computeFinanceForecast({
+    team: { sponsor_income: 240_000, balance: 3_000_000 },
+    riders: [],
+    totalDebt: 800_000,
+    debtCeiling: 900_000,
+  });
+  assert.equal(result.risk_tier, "red");
+});
+
+test("computeFinanceForecast (#982): debt-trend lader underskud æde balance før ny gæld", () => {
+  const base = {
+    team: { sponsor_income: 240_000 },
+    riders: Array.from({ length: 10 }, () => ({
+      salary: 40_000,
+      prize_earnings_bonus: 0,
+    })),
+    totalDebt: 400_000,
+    debtCeiling: 600_000,
+    currentSeasonNumber: 1,
+  };
+
+  // net = 240K - 400K = -160K. Uden buffer: 400K + 320K = 720K > 600K → trend rød.
+  const noBuffer = computeFinanceForecast({
+    ...base,
+    team: { ...base.team, balance: 0 },
+  });
+  assert.equal(noBuffer.risk_tier, "red");
+  assert.ok(noBuffer.warnings.find((w) => w.code === "debt_trend"));
+
+  // 1M i kassen: 2 sæsoners underskud (320K) dækkes af balancen → ingen ny gæld,
+  // ingen trend-warning, gul (underskud + debt-ratio 67%).
+  const buffered = computeFinanceForecast({
+    ...base,
+    team: { ...base.team, balance: 1_000_000 },
+  });
+  assert.equal(buffered.risk_tier, "yellow");
+  assert.equal(buffered.warnings.find((w) => w.code === "debt_trend"), undefined);
+});
+
 // ─── Multi-sæson forecast (2026-05-21) ────────────────────────────────────────
 
 test("computeMultiSeasonForecast — seasonsAhead=1 returnerer ét forecast", () => {
@@ -337,6 +458,18 @@ test("computeMultiSeasonForecast — worst_risk_tier = max over alle sæsoner", 
     "green"
   );
   assert.equal(result.summary.worst_risk_tier, expectedWorst);
+});
+
+test("computeMultiSeasonForecast (#981): realizedSeasonPrize-gulvet gælder alle sæsoner", () => {
+  const result = computeMultiSeasonForecast({
+    ...ARCHETYPES.healthy,
+    realizedSeasonPrize: 500_000, // > rolling 18×6K = 108K
+    seasonsAhead: 3,
+  });
+  for (const f of result.forecasts) {
+    assert.equal(f.projected_prize, 500_000);
+    assert.equal(f.inputs.prize_basis, "realized_season_floor");
+  }
 });
 
 test("computeMultiSeasonForecast — alle warnings aggregeres med sæson-stempel", () => {

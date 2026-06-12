@@ -16,7 +16,7 @@
     "loanRepayment": "Lånrate betalt",
     "loanRepaymentFinal": "Lånrate betalt. Lån fuldt tilbagebetalt! 🎉",
     "loanRepaymentRemaining": "Lånrate betalt (resterende: {remaining} CZ$)",
-    "loanInterest": "Lånerenter tilskrevet ({rate}%)",
+    "loanInterest": "Lånerente ({rate}%) — lagt til lånegælden, ikke trukket fra saldoen",
     "emergencyLoan": "Nødlån oprettet automatisk (gebyr: {feeRate}%, rente: {interestRate}%/sæson)",
     "loanFeePaid": "Lejegebyr: {riderName} (sæson {season})",
     "loanFeeReceived": "Lejegebyr modtaget: {riderName} (sæson {season})",

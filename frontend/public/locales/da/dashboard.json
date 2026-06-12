@@ -166,6 +166,9 @@
       "intro": "Introsæson: variabel sponsor starter fra sæson 2",
       "fallback": "Fallback: mangler standings for forrige sæson"
     },
+    "prizeDetail": {
+      "realizedFloor": "Matcher hvad dit roster allerede har tjent i denne sæson"
+    },
     "footnote": "Prognose, ikke kontrakt. Tal kan ændre sig pga. salg, lån eller bestyrelsens nye plan.",
     "footnoteLink": "Hvordan beregnes prognosen?",
     "badge": {
