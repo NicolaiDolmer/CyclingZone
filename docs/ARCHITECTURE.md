@@ -11,8 +11,8 @@
 | Realtime sync | Cron (backend/cron.js, 60s interval) | Railway (via backend-processen) |
 | UCI sync (automatisk) | GitHub Actions cron (onsdag 06:17 UTC) → scripts/uci_scraper.py → ProCyclingStats → Google Sheets + Supabase | GitHub Actions |
 | UCI stale-data monitor | Daglig `backend/cron.js` safety-net → `rider_uci_history.synced_at` freshness alert (>8 dage) | Railway (via backend-processen) |
-| UCI sync (manuel) | Admin: POST /api/admin/sync-uci → sheetsSync.js → Google Sheets CSV | — |
-| Stats sync (dyn_cyclist) | Admin: POST /api/admin/sync-dyn-cyclist → dynCyclistSync.js → Google Sheets | — |
+| UCI sync (manuel) | Fjernet 2026-06-12 (#1207): sync-uci-endpoint + sheetsSync.js slettet — uci_points er frossen | — |
+| Stats sync (dyn_cyclist) | Fjernet 2026-06-12 (#1180 pkt 4): endpoint + dynCyclistSync.js slettet — spillet ejer selv stats efter #677 | — |
 
 `recharts` er installeret i frontend og bruges til rytterens `Udvikling`-tab.
 
@@ -162,11 +162,10 @@ POST /api/admin/race-pool/import-csv      multipart-CSV → seed/opdatér `race_
 GET  /api/admin/seasons/:id/race-selection/preview
 POST /api/admin/seasons/:id/race-selection  { pool_race_ids[], replace?: bool } — bind pool-løb til sæson
 GET  /api/races                           q, season, class, status (søgbar liste på tværs af sæsoner)
-POST /api/admin/import-results            multipart: file + race_id
+POST /api/admin/import-results-pcm        multipart: files[] (PCM-fallback, epic #1105)
 POST /api/admin/seasons/:id/start
 POST /api/admin/seasons/:id/end
 POST /api/admin/seasons/:id/rebuild-standings
-POST /api/admin/sync-uci
 POST /api/admin/override-rider
 POST /api/admin/approve-results
 POST /api/admin/finalize-expired-auctions
@@ -188,11 +187,11 @@ POST /api/admin/beta/full-reset           { clear_transactions?, reset_mode? }
 ```
 
 Season flow notes:
-- `POST /api/admin/import-results` og `POST /api/admin/approve-results` deler nu samme result-write path via `backend/lib/raceResultsEngine.js`
+- `POST /api/admin/import-results-pcm` og `POST /api/admin/approve-results` deler samme result-write path via `backend/lib/raceResultsEngine.js` (Excel-/Sheets-import + dyn_cyclist-/UCI-sync fjernet 2026-06-12, #1179/#1180/#1207)
 - Result-finalisering skriver `race_results`, bogfører prize-transaktioner med gyldig finance-type og recalculerer derefter `season_standings` fra persisted data
 - `POST /api/admin/seasons/:id/end` stopper hvis der stadig findes `pending_race_results` for løb i sæsonen
 - `POST /api/admin/seasons/:id/rebuild-standings` er repair-pathen for aktive/afsluttede sæsoner, hvis standings skal genopbygges fra persisted `race_results`
-- `backend/routes/api.js` er nu den kanoniske ejer af admin season/import-routes; `backend/server.js` monterer routeren, `sync-uci` og health-checks, men ejer ikke længere parallelle season/import handlers
+- `backend/routes/api.js` er nu den kanoniske ejer af ALLE admin-routes; `backend/server.js` monterer kun routeren og health-checks (sync-uci fjernet 2026-06-12, #1207)
 - Beta-reset endpoints delegerer til `backend/lib/betaResetService.js`, så del-reset og fuld reset bruger samme scope: aktive manager-hold (`is_ai=false`, `is_bank=false`, `is_frozen=false`) og aldrig AI-/bank-/frosne hold
 
 ---
@@ -207,7 +206,7 @@ Season flow notes:
 - Transfer window og squad limit håndhæves ved finalisering, ikke kun ved oprettelse eller bud
 
 ### Sæsonflow
-- Admin starter flowet via `POST /api/admin/seasons`, `POST /api/admin/races`, `POST /api/admin/seasons/:id/start`, derefter enten `POST /api/admin/import-results` eller `POST /api/admin/approve-results`, og til sidst `POST /api/admin/seasons/:id/end`
+- Admin starter flowet via `POST /api/admin/seasons`, `POST /api/admin/races`, `POST /api/admin/seasons/:id/start`, derefter race-motoren (`POST /api/admin/simulate-race`), `POST /api/admin/import-results-pcm` (fallback) eller `POST /api/admin/approve-results`, og til sidst `POST /api/admin/seasons/:id/end`
 - De admin-entrypoints ejes nu kun af `backend/routes/api.js`, så season-flowets guardrails ikke kan drive mellem router og bootstrap-server
 - Den kanoniske season engine ligger i `backend/lib/economyEngine.js`
 - `race_results` er persisted sandhed for standings; `season_standings` recalculeres derfra og persisterer også `rank_in_division`
@@ -271,7 +270,7 @@ Season flow notes:
   | `bidLimiter` | 60/min | `POST /api/auctions/:id/bid`, `PATCH /api/auctions/:id/proxy` |
   | `marketWriteLimiter` | 30/min | auctions create, transfers (create/cancel/offer/swaps), loans, finance/loans, team profile, discord-DM-toggle |
   | `boardWriteLimiter` | 15/min | board proposal/sign/request/renew/dna-choose, bonus accept/decline |
-  | `adminWriteLimiter` | 120/min | alle `/api/admin/*` writes inkl. season-start/end, beta-reset, sync-uci |
+  | `adminWriteLimiter` | 120/min | alle `/api/admin/*` writes inkl. season-start/end, beta-reset |
   | `presencePulseLimiter` | 120/min | presence, login-streak, achievements/check, rider/:id/view, notifications read/read-all |
 
 - 429-response: JSON `{ error, code:"rate_limited", limiter, retry_after_seconds }` + `Retry-After` header. Frontend skal vise `error`-strengen som toast.
@@ -304,13 +303,10 @@ Season flow notes:
 | `boardMidSeason.js` | `processMidSeasonReviewCron`, `evaluateMidSeasonTrigger` — mid-season banner + tradeoff-låsninger (S-02g) |
 | `notificationService.js` | `notifyUser`, `notifyTeamOwner` |
 | `auctionFinalization.js` | `finalizeAuctionById`, `finalizeExpiredAuctions`, `sellerOwnsAuctionRider` |
-| `adminImportResultsHandler.js` | `createAdminImportResultsHandler` |
 | `economyEngine.js` | `processSeasonStart`, `processSeasonEnd`, `updateStandings` |
 | `loanEngine.js` | `getLoanConfig`, `getTotalDebt`, `createLoan`, `createEmergencyLoan`, `repayLoan`, `processLoanInterest` |
 | `marketUtils.js` | `getTeamMarketState`, `getIncomingSquadViolation`, `getOutgoingSquadViolation`, `getTransferWindowOpen` |
 | `raceResultsEngine.js` | `buildRacePrizeLookup`, `buildRaceResultsFromPending`, `applyRaceResults` |
-| `sheetsSync.js` | `handleSyncRequest`, `syncUCIPoints` — logger også i `rider_uci_history` |
-| `dynCyclistSync.js` | `handleDynCyclistSyncRequest`, `syncDynCyclist` — logger også i `rider_stat_history` |
 | `teamProfileEngine.js` | `upsertOwnTeamProfile` |
 | `transferExecution.js` | `confirmTransferOffer`, `confirmSwapOffer`, `getTransferExecutionIssue`, `getSwapExecutionIssue` |
 | `discordNotifier.js` | `notifySeasonEvent` |
@@ -322,7 +318,7 @@ Season flow notes:
 ```
 rider_uci_history   id(uuid), rider_id(→riders), uci_points(int), synced_at(timestamptz)
                     INDEX: (rider_id, synced_at DESC)
-                    Populeres af: sheetsSync.js (manuel sync) + scripts/uci_scraper.py (automatisk ugentlig)
+                    Populeres af: scripts/uci_scraper.py (automatisk ugentlig — pensions-kandidat efter relaunch; sheetsSync.js slettet 2026-06-12, #1207)
 
 rider_stat_history  id(uuid), rider_id(→riders), synced_at(timestamptz),
                     stat_fl, stat_bj, stat_kb, stat_bk, stat_tt, stat_prl,

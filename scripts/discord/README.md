@@ -16,6 +16,8 @@ Bot-token læses fra `DISCORD_TOKEN` eller `DISCORD_BOT_TOKEN` i process environ
 | `discord-i18n-step-a-fix-emoji.sh` | Fix emojis der blev `??` ved single-quoted curl | Template ved unicode-issues |
 | `discord-i18n-step-c-dansk.sh` | Opret 🇩🇰 Dansk-kategori + 3 gated kanaler | Reference for sprog-gated zones |
 | `discord-i18n-step-d-roles.sh` | Opret `Speaks English` + `Speaks Danish` roller | Reference for sprog-role-pattern |
+| `sweep-pins-relaunch.mjs` | READ-ONLY: server-struktur + pins-dump med PCM-/rytter-markør-flag (#1180 pkt 7) | Genkørbar før launches/oprydninger — `infisical run --env=dev -- node ...` |
+| `sweep-webhook-channels.mjs` | READ-ONLY: seneste webhook-/bot-leverance pr. aktiv spil-kanal | Genkørbar webhook-sundhedstjek uden test-post |
 
 ## Køreksempel
 

@@ -27,8 +27,8 @@ Tjek mod `docs/GAME_INVARIANTS.md`:
 - Finalization-logik duplikeret i `backend/routes/api.js` eller `backend/cron.js`
   i stedet for delegeret til `backend/lib/auctionFinalization.js`
 - AI/bank/frozen managers får board-state (board features SKAL være manager-only)
-- `/api/admin/import-results` kontrakt brudt: multipart med `file`, `race_id`,
-  `stage_number` + 10MB memory-loft
+- `/api/admin/import-results-pcm` kontrakt brudt: multipart `files[]` (maks 30)
+  + 10MB memory-loft pr. fil (Excel-/Sheets-import fjernet 2026-06-12, #1179/#1180)
 
 ## Tier 2 — Symmetri & safety (P0–P1)
 Per learning `2026-05-08-auction-safety-bundled-fixes.md`:
@@ -69,7 +69,7 @@ Kerne-filer at læse FØR diff'en (minimum, ikke maksimum):
 - `backend/lib/sponsorEngine.js` + `backend/lib/prizePayoutEngine.js` — sponsor/præmie-credit
 - `backend/lib/seasonTransition.js` + `backend/lib/seasonFinanceReport.js` — sæson-finalization
 - `backend/lib/balanceRpc.js` + `backend/lib/economyConstants.js` + `backend/lib/economyInvariants.test.js`
-- `backend/routes/api.js` (route-laget, søg efter `/api/auctions`, `/api/loans`, `/api/admin/import-results`)
+- `backend/routes/api.js` (route-laget, søg efter `/api/auctions`, `/api/loans`, `/api/admin/import-results-pcm`)
 - `backend/cron.js` (finalization cron-jobs)
 - `docs/GAME_INVARIANTS.md`
 

@@ -46,12 +46,12 @@ Autoritativ beskrivelse af alle sæson- og markedshændelsers rækkefølge. Kild
 
 ## 2. Resultatimport og -godkendelse
 
-**Trigger:** `POST /api/admin/import-results` (XLSX) ELLER `POST /api/admin/approve-results`
+**Trigger:** `POST /api/admin/import-results-pcm` (PCM-fallback) ELLER `POST /api/admin/approve-results` (Excel-/Sheets-import fjernet 2026-06-12, #1179/#1180)
 
 ```
-1. Parsér XLSX-ark:
-   "stage results" → type='stage'
-   "general results" → type='gc'
+1. Parsér PCM-eksport (SpreadsheetML 2003):
+   etape-resultater → type='stage'
+   klassement (sidste etape) → type='gc'
    "points" / "mountain" / "young" / "team" → tilsvarende typer
 
 2. buildRacePrizeLookup()

@@ -7,15 +7,12 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 dotenv.config({ path: join(__dirname, ".env"), quiet: true });
 
-import { initSentry, setupSentryExpressErrorHandler, setSentryUser } from "./lib/sentry.js";
+import { initSentry, setupSentryExpressErrorHandler } from "./lib/sentry.js";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
-import { createClient } from "@supabase/supabase-js";
 import apiRoutes from "./routes/api.js";
 import { startCron, awaitCronsIdle, getCronInFlight } from "./cron.js";
-import { handleSyncRequest } from "./lib/sheetsSync.js";
-import { adminWriteLimiter } from "./lib/rateLimiters.js";
 
 initSentry();
 
@@ -25,8 +22,6 @@ const PORT = process.env.PORT || 3001;
 // Railway/Vercel terminate TLS upstream; trust the first proxy hop so req.ip
 // reflects the real client (X-Forwarded-For) for rate-limit key fallback.
 app.set("trust proxy", 1);
-
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
 
 app.use(helmet());
 const ALLOWED_ORIGINS = [
@@ -43,21 +38,11 @@ const ALLOWED_ORIGINS = [
 app.use(cors({ origin: (origin, cb) => cb(null, !origin || ALLOWED_ORIGINS.includes(origin)), credentials: true }));
 app.use(express.json({ limit: "10mb" }));
 
-async function requireAdmin(req, res, next) {
-  const token = req.headers.authorization?.replace("Bearer ", "");
-  if (!token) return res.status(401).json({ error: "Unauthorized" });
-  const { data: { user }, error } = await supabase.auth.getUser(token);
-  if (error || !user) return res.status(401).json({ error: "Invalid token" });
-  const { data: u } = await supabase.from("users").select("role").eq("id", user.id).single();
-  if (u?.role !== "admin") return res.status(403).json({ error: "Admin only" });
-  req.user = user;
-  // #621 item 2 — tag Sentry-events fra admin-endpoints med user.id.
-  setSentryUser(user.id);
-  next();
-}
-
 app.use("/api", apiRoutes);
-app.post("/api/admin/sync-uci", requireAdmin, adminWriteLimiter, handleSyncRequest);
+// POST /api/admin/sync-uci fjernet 2026-06-12 (#1207, ejer-Option A): UCI-sync er
+// pensioneret efter relaunch til fiktive ryttere — uci_points er frossen, og
+// sheetsSync.js + verify-scriptet er slettet (git-historik er revert-stien).
+// Routes må ikke genopstå her i server.js — backend/routes/api.js ejer admin-routes.
 
 app.get("/health", (_,res) => res.json({status:"ok",timestamp:new Date().toISOString()}));
 

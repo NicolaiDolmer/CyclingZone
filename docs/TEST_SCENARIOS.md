@@ -48,8 +48,7 @@
 - `POST /api/admin/seasons/:id/rebuild-standings` kan genopbygge standings for en aktiv eller afsluttet sæson ud fra persistede løbsresultater
 - Season end opdaterer alt
 - Season end bruger den delte board-engine og opdaterer `satisfaction` + `budget_modifier` konsistent
-- `POST /api/admin/import-results` recalculerer standings og prize-transaktioner via samme shared runtime-path som `POST /api/admin/approve-results`
-- `POST /api/admin/import-results-sheets` recalculerer standings og prize-transaktioner via `applyRaceResults`
+- `POST /api/admin/import-results-pcm` recalculerer standings og prize-transaktioner via samme shared runtime-path (`applyRaceResults`) som `POST /api/admin/approve-results` (Excel-/Sheets-import fjernet 2026-06-12, #1179/#1180)
 
 ### Board
 - `POST /api/board/proposal` må ikke generere `min_riders` uden for divisionens min/max-grænser
@@ -76,7 +75,7 @@
 - Frontend endpoint findes og matcher backend route
 - Public frontend-route `/reset-password` findes og bliver ikke slugt af login-redirects
 - `POST /api/admin/seasons`, `POST /api/admin/races`, `POST /api/admin/seasons/:id/start` og `POST /api/admin/seasons/:id/end` findes live og auth-gater korrekt
-- `backend/server.js` må ikke konkurrere med `backend/routes/api.js` om `POST /api/admin/import-results`, `POST /api/admin/seasons/:id/start` eller `POST /api/admin/seasons/:id/end`; kun én execution path må eje hvert route-path
+- `backend/server.js` må ikke eje admin-routes (fx `POST /api/admin/seasons/:id/start` eller `POST /api/admin/seasons/:id/end`); `backend/routes/api.js` er kanonisk ejer, kun én execution path må eje hvert route-path
 - Signup og Min Profil bruger den kanoniske backend-route `PUT /api/teams/my` til holdnavn/managernavn i stedet for direkte browser-writes til `teams`
 - `PUT /api/teams/my` kan både opdatere eksisterende hold og bootstrappe manglende `teams`- og `board_profiles`-rækker for managerens egen konto
 - Runtime writes bruger gyldige DB-typer og constraints
@@ -95,7 +94,7 @@
 - `GET /api/board/status` returnerer board-outlook/personality fra den delte board-engine
 - `GET /api/board/status` returnerer også `identity_profile`, så Board-siden ikke skal udlede holdspecialisering lokalt
 - `GET /api/board/status` returnerer også `request_status` og `request_options`, så Board-siden ikke bygger request-state lokalt
-- `approve-results` og `import-results` bruger samme finance-type (`prize`) og samme standings-recalculation
+- `approve-results` og `import-results-pcm` bruger samme finance-type (`prize`) og samme standings-recalculation
 - Shared notification-writer deduplikerer nylige identiske payloads, så samme event ikke indsættes igen ved cron/retries
 
 ---

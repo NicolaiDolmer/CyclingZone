@@ -19,14 +19,7 @@ export default function AdminDataTab() {
     race_class: "", stages: 21, edition_year: "",
   });
   const [editingRace, setEditingRace] = useState(null);
-  const [importRaceId, setImportRaceId] = useState("");
-  const [importStage, setImportStage] = useState(1);
   const [poolSearchOpen, setPoolSearchOpen] = useState(false);
-  const [dynCyclistUrl, setDynCyclistUrl] = useState("");
-  const [dynSyncResult, setDynSyncResult] = useState(null);
-  const [sheetsUrl, setSheetsUrl] = useState("");
-  const [sheetsResult, setSheetsResult] = useState(null);
-  const [sheetsPreview, setSheetsPreview] = useState(null);
   const [pcmFiles, setPcmFiles] = useState([]);
   const [pcmPreview, setPcmPreview] = useState(null);
   const [pcmResult, setPcmResult] = useState(null);
@@ -143,110 +136,9 @@ export default function AdminDataTab() {
     }
   }
 
-  async function handleImportResults(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!importRaceId) { showMsg("❌ Vælg et løb først", "error"); return; }
-    setLoad("import", true);
-    showMsg("⏳ Importerer...", "info");
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        showMsg("❌ Din session er udløbet — log ind igen og prøv import på ny", "error");
-        return;
-      }
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("race_id", importRaceId);
-      formData.append("stage_number", importStage);
-      const res = await fetch(`${API}/api/admin/import-results`, {
-        method: "POST", headers: { Authorization: `Bearer ${session.access_token}` }, body: formData,
-      });
-      const data = await readAdminJson(res);
-      if (res.ok) showMsg(`✅ ${data.records_imported} resultater importeret — ${data.teams_paid} holds fik præmiepenge`);
-      else showMsg(`❌ ${adminErrorMessage(data, res)}`, "error");
-    } catch (e) {
-      showMsg(`❌ Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
-    } finally {
-      setLoad("import", false);
-      e.target.value = "";
-    }
-  }
-
-  async function handleDynCyclistSync() {
-    if (!dynCyclistUrl) { showMsg("❌ Indsæt Google Sheets URL", "error"); return; }
-    setLoad("dyn_cyclist", true);
-    showMsg("⏳ Synkroniserer rytterstats...", "info");
-    try {
-      const res = await fetch(`${API}/api/admin/sync-dyn-cyclist`, {
-        method: "POST", headers: await getAuth(),
-        body: JSON.stringify({ spreadsheet_url: dynCyclistUrl }),
-      });
-      const data = await readAdminJson(res);
-      if (res.ok) { setDynSyncResult(data); showMsg(`✅ Sync fuldført — ${data.rows_matched} ryttere opdateret`); }
-      else showMsg(`❌ ${adminErrorMessage(data, res)}`, "error");
-    } catch (e) {
-      showMsg(`❌ Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
-    } finally {
-      setLoad("dyn_cyclist", false);
-    }
-  }
-
-  async function handleSheetsPreview() {
-    if (!sheetsUrl) { showMsg("❌ Indsæt Google Sheets URL", "error"); return; }
-    setLoad("sheets_preview", true);
-    setSheetsResult(null);
-    setSheetsPreview(null);
-    showMsg("⏳ Henter forhåndsvisning...", "info");
-    try {
-      const res = await fetch(`${API}/api/admin/import-results-sheets`, {
-        method: "POST", headers: await getAuth(),
-        body: JSON.stringify({ spreadsheet_url: sheetsUrl, dry_run: true }),
-      });
-      const data = await readAdminJson(res);
-      if (res.ok) {
-        setSheetsPreview(data);
-        const matchedRaces = data.preview?.length || 0;
-        const skipped = data.races_skipped?.length || 0;
-        showMsg(`✅ Forhåndsvisning klar — ${matchedRaces} løb matchet, ${skipped} skipped`);
-      } else {
-        showMsg(`❌ ${adminErrorMessage(data, res)}`, "error");
-      }
-    } catch (e) {
-      showMsg(`❌ Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
-    } finally {
-      setLoad("sheets_preview", false);
-    }
-  }
-
-  async function handleSheetsConfirm() {
-    if (!sheetsUrl || !sheetsPreview) return;
-    setLoad("sheets_import", true);
-    showMsg("⏳ Importerer løbsresultater...", "info");
-    try {
-      const res = await fetch(`${API}/api/admin/import-results-sheets`, {
-        method: "POST", headers: await getAuth(),
-        body: JSON.stringify({ spreadsheet_url: sheetsUrl }),
-      });
-      const data = await readAdminJson(res);
-      if (res.ok) {
-        setSheetsResult(data);
-        setSheetsPreview(null);
-        showMsg(`✅ Import fuldført — ${data.rows_imported} resultater fra ${data.races_imported.length} løb`);
-      } else {
-        showMsg(`❌ ${adminErrorMessage(data, res)}`, "error");
-      }
-    } catch (e) {
-      showMsg(`❌ Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
-    } finally {
-      setLoad("sheets_import", false);
-    }
-  }
-
-  function handleSheetsCancelPreview() {
-    setSheetsPreview(null);
-    showMsg("Forhåndsvisning annulleret", "info");
-  }
+  // Excel-/Sheets-resultatimport + dyn_cyclist-sync fjernet 2026-06-12 (#1180 pkt 3+4,
+  // jf. #1179-kill-listen): manuel resultat-upload døde med egen race-motor efter
+  // PCM-cuttet. PCM-importen nedenfor er bevidst bevaret som nød-fallback (epic #1105).
 
   // ── PCM-resultatimport (multi-fil pr. løb, SpreadsheetML 2003) ──────────────
   async function postPcm({ dryRun }) {
@@ -378,14 +270,6 @@ export default function AdminDataTab() {
                       </td>
                       <td className="px-3 py-2.5 text-right">
                         <div className="flex gap-2 justify-end">
-                          <button
-                            onClick={() => { setImportRaceId(r.id); showMsg(`✅ Valgt til import: ${r.name}`, "info"); }}
-                            className={`px-2 py-1 rounded text-xs border transition-all
-                              ${importRaceId === r.id
-                                ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
-                                : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle hover:text-cz-1"}`}>
-                            {importRaceId === r.id ? "✓ Valgt" : "Vælg"}
-                          </button>
                           <button
                             onClick={() => setEditingRace(editingRace?.id === r.id ? null : { ...r })}
                             className="px-2 py-1 bg-cz-subtle text-cz-2 border border-cz-border rounded text-xs hover:bg-cz-subtle hover:text-cz-1 transition-all">
@@ -577,35 +461,6 @@ export default function AdminDataTab() {
         <RacePointsAdminSection getAuth={getAuth} onMsg={showMsg} />
       </AdminSection>
 
-      <AdminSection title="Importer løbsresultater (Excel)">
-        <p className="text-cz-3 text-xs mb-4">Vælg løb i tabellen ovenfor, angiv etape og upload fil.</p>
-        <div className="flex gap-3 flex-wrap items-end">
-          <div>
-            <label className="block text-cz-3 text-xs mb-1">Valgt løb</label>
-            <p className="text-cz-1 text-sm px-3 py-2 bg-cz-subtle rounded-lg border border-cz-border">
-              {races.find(r => r.id === importRaceId)?.name || <span className="text-cz-3 italic">Intet valgt</span>}
-            </p>
-          </div>
-          <div>
-            <label className="block text-cz-3 text-xs mb-1">Etape #</label>
-            <input type="number" min={1} value={importStage}
-              onChange={e => setImportStage(parseInt(e.target.value))}
-              className="w-24 bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none" />
-          </div>
-          <div>
-            <label className="block text-cz-3 text-xs mb-1">Excel-fil</label>
-            <label className={`cursor-pointer px-4 py-2 rounded-lg text-sm font-bold border transition-all flex items-center gap-2
-              ${importRaceId
-                ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30 hover:bg-cz-accent/10"
-                : "bg-cz-subtle text-cz-3 border-cz-border cursor-not-allowed"}`}>
-              {loading.import ? "⏳ Importerer..." : "📁 Upload fil"}
-              <input type="file" accept=".xlsx,.xls,.csv" className="hidden"
-                onChange={handleImportResults} disabled={!importRaceId || loading.import} />
-            </label>
-          </div>
-        </div>
-      </AdminSection>
-
       <AdminSection title="Importer PCM-resultater (etape- + endagsløb)">
         <p className="text-cz-3 text-xs mb-4 leading-relaxed">
           Upload PCM-eksportfiler (<span className="font-mono text-cz-2">.xls</span>) for ÉT eller flere løb.
@@ -708,116 +563,6 @@ export default function AdminDataTab() {
             <p className="text-cz-success font-semibold">Import fuldført — {pcmResult.rows_written} rækker skrevet fra {pcmResult.races.length} løb (sæson {pcmResult.season})</p>
             {pcmResult.skipped.length > 0 && (
               <p className="text-cz-accent-t">Skipped ({pcmResult.skipped.length}): {pcmResult.skipped.map(s => s.race_name).join(", ")}</p>
-            )}
-          </div>
-        )}
-      </AdminSection>
-
-      <AdminSection title="Importer løbsresultater fra Google Sheets">
-        <p className="text-cz-3 text-xs mb-4 leading-relaxed">
-          Importerer resultater fra et Google Sheet med kolonnerne: <span className="font-mono text-cz-2">Rank, Name, Team, Benævnelse, Løb, Sæson</span>.
-          Sæson-kolonnen bestemmer hvilken sæson hvert resultat tilhører — arket kan indeholde flere sæsoner på én gang.
-          Løbene skal eksistere i databasen. Re-import sletter og erstatter eksisterende resultater.
-          <strong className="text-cz-1"> Forhåndsvis altid før du bekræfter</strong> — preview viser hvilke ryttere/hold der matcher, og hvilke der bliver droppet.
-        </p>
-        <div className="flex gap-2 flex-wrap items-end mb-3">
-          <div className="flex-1">
-            <label className="block text-cz-3 text-xs mb-1">Google Sheets URL</label>
-            <input type="text" value={sheetsUrl} onChange={e => { setSheetsUrl(e.target.value); setSheetsPreview(null); }}
-              placeholder="https://docs.google.com/spreadsheets/d/..."
-              className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none focus:border-cz-accent" />
-          </div>
-          <button onClick={handleSheetsPreview} disabled={loading.sheets_preview || loading.sheets_import || !sheetsUrl}
-            className="px-4 py-2 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-sm hover:bg-cz-subtle hover:text-cz-1 disabled:opacity-50 transition-all">
-            {loading.sheets_preview ? "Henter..." : "Forhåndsvis"}
-          </button>
-        </div>
-
-        {sheetsPreview && (
-          <div className="bg-cz-subtle border border-cz-border rounded-lg p-4 text-xs space-y-3 mb-3">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <p className="text-cz-1 font-semibold">
-                Forhåndsvisning — {sheetsPreview.preview.length} løb klar, {sheetsPreview.rows_imported} rækker, {sheetsPreview.races_skipped.length} skipped
-              </p>
-              <div className="flex gap-2">
-                <button onClick={handleSheetsCancelPreview} disabled={loading.sheets_import}
-                  className="px-3 py-1.5 bg-cz-subtle text-cz-3 border border-cz-border rounded-lg text-xs hover:text-cz-1 disabled:opacity-50">
-                  Annullér
-                </button>
-                <button onClick={handleSheetsConfirm} disabled={loading.sheets_import || sheetsPreview.preview.length === 0}
-                  className="px-3 py-1.5 bg-cz-success text-white border border-cz-success rounded-lg text-xs hover:opacity-90 disabled:opacity-50">
-                  {loading.sheets_import ? "Importerer..." : "Bekræft import"}
-                </button>
-              </div>
-            </div>
-
-            {sheetsPreview.races_skipped.length > 0 && (
-              <div className="bg-cz-accent-t-bg border border-cz-accent-t/30 rounded p-2">
-                <p className="text-cz-accent-t font-semibold mb-1">Skipped løb ({sheetsPreview.races_skipped.length}) — match ikke fundet i DB:</p>
-                <p className="text-cz-2">{sheetsPreview.races_skipped.join(", ")}</p>
-              </div>
-            )}
-
-            {sheetsPreview.preview.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="text-cz-3 border-b border-cz-border">
-                      <th className="text-left py-1 px-2">Sæson</th>
-                      <th className="text-left py-1 px-2">Sheet-navn</th>
-                      <th className="text-left py-1 px-2">DB-navn</th>
-                      <th className="text-right py-1 px-2">Rækker</th>
-                      <th className="text-right py-1 px-2">Ryttere ✓</th>
-                      <th className="text-right py-1 px-2">Ryttere ⚠</th>
-                      <th className="text-right py-1 px-2">Hold ✓</th>
-                      <th className="text-right py-1 px-2">Hold ⚠</th>
-                      <th className="text-right py-1 px-2">Total points</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sheetsPreview.preview.map((p, i) => (
-                      <tr key={i} className="border-b border-cz-border/50 align-top">
-                        <td className="py-1 px-2 text-cz-2">{p.season}</td>
-                        <td className="py-1 px-2 text-cz-1">{p.sheet_race_name}</td>
-                        <td className="py-1 px-2 text-cz-2">{p.db_race_name}</td>
-                        <td className="py-1 px-2 text-cz-1 text-right">{p.total_rows}</td>
-                        <td className="py-1 px-2 text-cz-success text-right">{p.matched_riders}</td>
-                        <td className="py-1 px-2 text-right" title={p.unmatched_riders.join(", ")}>
-                          <span className={p.unmatched_riders.length > 0 ? "text-cz-accent-t" : "text-cz-3"}>
-                            {p.unmatched_riders.length}
-                          </span>
-                        </td>
-                        <td className="py-1 px-2 text-cz-success text-right">{p.matched_teams}</td>
-                        <td className="py-1 px-2 text-right" title={p.unmatched_teams.join(", ")}>
-                          <span className={p.unmatched_teams.length > 0 ? "text-cz-accent-t" : "text-cz-3"}>
-                            {p.unmatched_teams.length}
-                          </span>
-                        </td>
-                        <td className="py-1 px-2 text-cz-1 text-right">{p.total_points.toLocaleString("da-DK")}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <p className="text-cz-3 text-xs mt-2 italic">Hover over ⚠-tal for at se navne på unmatched.</p>
-              </div>
-            ) : (
-              <p className="text-cz-accent-t">Ingen løb klar til import — alle blev skipped.</p>
-            )}
-          </div>
-        )}
-
-        {sheetsResult && (
-          <div className="bg-cz-success-bg border border-cz-success/30 rounded-lg px-4 py-3 text-xs space-y-2">
-            <p className="text-cz-success font-semibold">Import fuldført — {sheetsResult.rows_imported} resultater fra {sheetsResult.races_imported.length} løb</p>
-            {sheetsResult.seasons?.length > 0 && (
-              <div className="flex gap-4 text-green-600 flex-wrap">
-                {sheetsResult.seasons.map(s => (
-                  <span key={s.season}>Sæson {s.season}: <strong>{s.races}</strong> løb · <strong>{s.rows}</strong> rækker</span>
-                ))}
-              </div>
-            )}
-            {sheetsResult.races_skipped.length > 0 && (
-              <p className="text-cz-accent-t">Ikke matchet ({sheetsResult.races_skipped.length}): {sheetsResult.races_skipped.join(", ")}</p>
             )}
           </div>
         )}
@@ -929,35 +674,6 @@ export default function AdminDataTab() {
                 <p className="text-cz-1">{simPreview.stageWinners.map(w => `${w.stage}. ${w.rider}`).join(" · ")}</p>
               </div>
             )}
-          </div>
-        )}
-      </AdminSection>
-
-      <AdminSection title="dyn_cyclist stats sync">
-        <p className="text-cz-3 text-xs mb-4">
-          Opdaterer rytterstats fra PCM dyn_cyclist Google Sheet. Match sker på pcm_id (IDcyclist-kolonne).
-          Synkroniserer: FL, BJ, KB, BK, TT, PRL, BRO, SP, ACC, NED, UDH, MOD, RES, FTR, højde, vægt, popularitet.
-        </p>
-        <div className="flex gap-2 flex-wrap items-end mb-3">
-          <div className="flex-1">
-            <label className="block text-cz-3 text-xs mb-1">Google Sheets URL</label>
-            <input type="text" value={dynCyclistUrl} onChange={e => setDynCyclistUrl(e.target.value)}
-              placeholder="https://docs.google.com/spreadsheets/d/..."
-              className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none focus:border-cz-accent" />
-          </div>
-          <button onClick={handleDynCyclistSync} disabled={loading.dyn_cyclist || !dynCyclistUrl}
-            className="px-4 py-2 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-sm hover:bg-cz-subtle hover:text-cz-1 disabled:opacity-50 transition-all">
-            {loading.dyn_cyclist ? "Synkroniserer..." : "Synkroniser"}
-          </button>
-        </div>
-        {dynSyncResult && (
-          <div className="bg-cz-success-bg border border-cz-success/30 rounded-lg px-4 py-3 text-xs">
-            <p className="text-cz-success font-semibold mb-1">Sync fuldført</p>
-            <div className="flex gap-4 text-green-600">
-              <span>Rækker i ark: <strong>{dynSyncResult.rows_in_sheet}</strong></span>
-              <span>Opdateret: <strong>{dynSyncResult.rows_matched}</strong></span>
-              <span>Ikke fundet: <strong>{dynSyncResult.not_found}</strong></span>
-            </div>
           </div>
         )}
       </AdminSection>
