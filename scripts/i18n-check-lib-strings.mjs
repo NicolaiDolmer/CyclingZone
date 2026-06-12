@@ -42,6 +42,7 @@ const EXEMPT_DIRS = [
   "frontend/src/pages/admin",      // Admin-only tabs bag admin-guard — ikke player-facing.
 ];
 const EXEMPT_FILES = new Map([
+  ["frontend/src/lib/legacyFinanceMessage.js", "Parser-only matching of Danish prose already stored in legacy finance rows; recognized text resolves to locale keys before display."],
   ["frontend/src/lib/uciRaceClasses.js", "Bruges KUN af admin-sider (RacePoolSection/AdminDataTab/AdminPage)."],
   ["frontend/src/components/WaitlistConsentText.jsx", "Dual-sprog-komponent med eksplicit lang-prop — dansk gren er bevidst."],
   ["frontend/src/lib/sentry.jsx", "Error-boundary: statisk EN+DA med EN-default — må IKKE afhænge af i18n-runtime (kan være nede/uinitialiseret når boundary rammer). #1170 slice B-beslutning."],

@@ -1,5 +1,7 @@
 ﻿import { useState, useEffect, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import { formatDeadlineDayCountdown } from "../lib/deadlineDayCountdown";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -27,17 +29,8 @@ const PHASE = {
   },
 };
 
-function formatCountdown(secs) {
-  if (secs === null || secs <= 0) return null;
-  const h = Math.floor(secs / 3600);
-  const m = Math.floor((secs % 3600) / 60);
-  const s = Math.floor(secs % 60);
-  const pad = n => String(n).padStart(2, "0");
-  if (h > 0) return `${h}t ${pad(m)}m ${pad(s)}s`;
-  return `${pad(m)}:${pad(s)}`;
-}
-
 export default function DeadlineDayBanner() {
+  const { t } = useTranslation("dashboard");
   const [status, setStatus] = useState(null);
   const [secs, setSecs] = useState(null);
   const tickRef = useRef(null);
@@ -82,14 +75,14 @@ export default function DeadlineDayBanner() {
   if (!status?.active) return null;
 
   const cfg = PHASE[status.phase] || PHASE.pressure;
-  const countdown = formatCountdown(secs);
+  const countdown = formatDeadlineDayCountdown(secs, t);
 
   return (
     <div className={`border-b ${cfg.bar} px-4 py-2 flex items-center justify-between gap-4 min-h-[36px]`}>
       <div className="flex items-center gap-2.5">
         <span className={`w-2 h-2 rounded-full flex-shrink-0 ${cfg.dot}`} />
         <span className={`text-[10px] font-black tracking-[0.18em] uppercase ${cfg.label}`}>
-          Deadline Day
+          {t("deadlineDayBanner.title")}
         </span>
         {status.override === "on" && (
           <span className="text-[9px] text-cz-3 uppercase tracking-wider ms-1">TEST</span>

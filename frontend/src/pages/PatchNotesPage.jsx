@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.29",
+    date: "2026-06-12",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fixed · English translation",
+        items: [
+          "EN · Recognized older Finance transactions now use English labels instead of leaking Danish descriptions. Deadline Day's top countdown and its 24-hour, 2-hour and 30-minute inbox warnings now also follow your language setting. Refs #1352, #1353.",
+          "DA · Genkendte ældre finanstransaktioner bruger nu danske labels uden rå legacy-tekst. Deadline Days øverste nedtælling og indbakkevarslerne ved 24 timer, 2 timer og 30 minutter følger nu også dit sprogvalg. Refs #1352, #1353.",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.28",
     date: "2026-06-12",
     label: "Beta",
