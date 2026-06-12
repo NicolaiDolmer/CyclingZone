@@ -3,6 +3,10 @@
     "title": "Founding Manager",
     "description": "Here from the opening season. Permanent. Survives every reset."
   },
+  "season_first_result": {
+    "title": "First result",
+    "description": "Get your first race result recorded."
+  },
   "team_star": {
     "title": "Star team",
     "description": "Have a star rider on your team: a rider valued at 8,000,000 CZ$ or more."
