@@ -192,6 +192,37 @@
       "UngdomstrojeDag": { "label": "Young rider jersey (per day)", "desc": "Per day in the young rider jersey" }
     }
   },
+  "selection": {
+    "title": "Team selection",
+    "subtitle": "Pick {min}-{max} riders for this race. If you don't pick, your assistant fields a sensible team. No penalty.",
+    "count": "{count}/{max} selected",
+    "captain": "Captain",
+    "sprintCaptain": "Sprint captain (optional)",
+    "hunter": "Breakaway hunter (optional)",
+    "noRole": "None",
+    "suitability": "Suitability",
+    "form": "Form",
+    "fatigue": "Fatigue",
+    "injured": "Injured",
+    "autoPicked": "Assistant's pick. Adjust and save to take control.",
+    "save": "Save selection",
+    "saving": "Saving…",
+    "saved": "Selection saved.",
+    "errors": {
+      "selection_wrong_size": "Pick between {min} and {max} riders.",
+      "selection_captain_required": "Pick a captain among your selected riders.",
+      "selection_captain_not_selected": "Your captain must be one of the selected riders.",
+      "selection_role_not_selected": "Role riders must be part of the selection.",
+      "selection_role_overlap": "Captain, sprint captain and hunter must be different riders.",
+      "selection_rider_injured": "Injured riders can't be selected.",
+      "selection_rider_not_on_team": "You can only select your own riders.",
+      "selection_duplicate_rider": "Each rider can only be selected once.",
+      "selection_race_not_open": "Selection is closed for this race.",
+      "selection_flag_disabled": "Team selection isn't active yet.",
+      "selection_invalid_body": "Couldn't save the selection. Try again.",
+      "generic": "Couldn't save the selection. Try again."
+    }
+  },
   "detail": {
     "backToLibrary": "← Race library",
     "tabOverall": "Overall",

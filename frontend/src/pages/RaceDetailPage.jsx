@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabase";
 import { Link, useParams } from "react-router-dom";
 import RiderLink from "../components/RiderLink";
 import TeamLink from "../components/TeamLink";
+import RaceSelectionPanel from "../components/race/RaceSelectionPanel.jsx";
 import { Flag } from "../components/Flag";
 import { formatNumber } from "../lib/intl";
 import { fetchAllRows } from "../lib/supabasePagination";
@@ -154,6 +155,10 @@ export default function RaceDetailPage() {
           {race.pool_race?.date_text && ` · ${race.pool_race.date_text}`}
         </p>
       </div>
+
+      {/* #1307: holdudtagelse for kommende løb — panelet gater selv på
+          race-engine-flaget (renderer intet når backend siger enabled=false). */}
+      {race.status === "scheduled" && <RaceSelectionPanel raceId={race.id} />}
 
       {!hasAnyResults && (
         <div className="bg-cz-card border border-cz-border rounded-xl p-10 text-center text-cz-3">

@@ -192,6 +192,37 @@
       "UngdomstrojeDag": { "label": "Ungdomstrøje (pr. dag)", "desc": "Pr. dag i ungdomstrøjen" }
     }
   },
+  "selection": {
+    "title": "Holdudtagelse",
+    "subtitle": "Udtag {min}-{max} ryttere til løbet. Vælger du ikke, stiller assistenten et fornuftigt hold. Ingen straf.",
+    "count": "{count}/{max} udtaget",
+    "captain": "Kaptajn",
+    "sprintCaptain": "Spurt-kaptajn (valgfri)",
+    "hunter": "Udbruds-jæger (valgfri)",
+    "noRole": "Ingen",
+    "suitability": "Egnethed",
+    "form": "Form",
+    "fatigue": "Træthed",
+    "injured": "Skadet",
+    "autoPicked": "Assistentens valg. Justér og gem for selv at tage styringen.",
+    "save": "Gem udtagelse",
+    "saving": "Gemmer…",
+    "saved": "Udtagelsen er gemt.",
+    "errors": {
+      "selection_wrong_size": "Udtag mellem {min} og {max} ryttere.",
+      "selection_captain_required": "Vælg en kaptajn blandt de udtagne ryttere.",
+      "selection_captain_not_selected": "Kaptajnen skal være blandt de udtagne ryttere.",
+      "selection_role_not_selected": "Rolle-ryttere skal være en del af udtagelsen.",
+      "selection_role_overlap": "Kaptajn, spurt-kaptajn og jæger skal være forskellige ryttere.",
+      "selection_rider_injured": "Skadede ryttere kan ikke udtages.",
+      "selection_rider_not_on_team": "Du kan kun udtage dine egne ryttere.",
+      "selection_duplicate_rider": "Hver rytter kan kun udtages én gang.",
+      "selection_race_not_open": "Udtagelsen er lukket for dette løb.",
+      "selection_flag_disabled": "Holdudtagelse er ikke aktiv endnu.",
+      "selection_invalid_body": "Udtagelsen kunne ikke gemmes. Prøv igen.",
+      "generic": "Udtagelsen kunne ikke gemmes. Prøv igen."
+    }
+  },
   "detail": {
     "backToLibrary": "← Løbsbibliotek",
     "tabOverall": "Samlet",
