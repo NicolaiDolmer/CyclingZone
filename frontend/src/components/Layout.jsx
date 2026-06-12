@@ -35,6 +35,7 @@ function buildNavGroups(team, t) {
       items: [
         { to: "/dashboard",      label: t("nav.item.dashboard") },
         { to: "/team",           label: t("nav.item.team") },
+        { to: "/training",       label: t("nav.item.training") },
         { to: "/board",          label: t("nav.item.board") },
         { to: "/finance",        label: t("nav.item.finance") },
         { to: "/notifications",  label: t("nav.item.notifications"), badge: true },

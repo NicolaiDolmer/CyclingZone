@@ -9,7 +9,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   TRAINING_FOCUS_KEYS, TRAINING_INTENSITIES, TRAINING_SETBACK_PCT,
-} from "../../lib/training";
+} from "../../lib/training.js";
 
 export default function TrainingFocus({ rider, training }) {
   const { t } = useTranslation("rider");
@@ -37,9 +37,12 @@ export default function TrainingFocus({ rider, training }) {
     <div className="bg-cz-card border border-cz-border rounded-xl p-5 mb-4">
       <div className="flex items-center justify-between mb-1">
         <h3 className="text-sm font-semibold text-cz-1">🚴 {t("training.title")}</h3>
-        <span className="text-[11px] font-mono text-cz-3">
-          {t("training.slotsLeft", { remaining, total })}
-        </span>
+        {/* Slot-tæller skjules når slots.total === null (ubegrænsede pladser) */}
+        {total !== null && (
+          <span className="text-[11px] font-mono text-cz-3">
+            {t("training.slotsLeft", { remaining, total })}
+          </span>
+        )}
       </div>
       <p className="text-xs text-cz-3 mb-3">{t("training.intro")}</p>
 

@@ -86,6 +86,8 @@ import achievementsDa from "../../public/locales/da/achievements.json";
 import achievementsEn from "../../public/locales/en/achievements.json";
 import roadmapDa from "../../public/locales/da/roadmap.json";
 import roadmapEn from "../../public/locales/en/roadmap.json";
+import trainingDa from "../../public/locales/da/training.json";
+import trainingEn from "../../public/locales/en/training.json";
 
 const PSEUDO_ENABLED = (() => {
   if (typeof window === "undefined") return false;
@@ -108,11 +110,11 @@ i18n
     supportedLngs: SUPPORTED,
     nonExplicitSupportedLngs: true,
     load: "languageOnly",
-    ns: ["common", "auth", "dashboard", "auctions", "transfers", "admin", "errors", "patchnotes", "banners", "help", "board", "rider", "riders", "riderFilters", "riderTypes", "notifications", "team", "finance", "backendMessages", "profile", "activity", "standings", "headtohead", "watchlist", "halloffame", "races", "results", "seasonEnd", "founder", "achievements", "roadmap"],
+    ns: ["common", "auth", "dashboard", "auctions", "transfers", "admin", "errors", "patchnotes", "banners", "help", "board", "rider", "riders", "riderFilters", "riderTypes", "notifications", "team", "finance", "backendMessages", "profile", "activity", "standings", "headtohead", "watchlist", "halloffame", "races", "results", "seasonEnd", "founder", "achievements", "roadmap", "training"],
     defaultNS: "common",
     resources: {
-      da: { common: commonDa, auth: authDa, errors: errorsDa, auctions: auctionsDa, transfers: transfersDa, dashboard: dashboardDa, banners: bannersDa, help: helpDa, board: boardDa, admin: adminDa, rider: riderDa, riders: ridersDa, riderFilters: riderFiltersDa, riderTypes: riderTypesDa, notifications: notificationsDa, team: teamDa, finance: financeDa, backendMessages: backendMessagesDa, profile: profileDa, activity: activityDa, standings: standingsDa, headtohead: headtoheadDa, watchlist: watchlistDa, halloffame: halloffameDa, races: racesDa, results: resultsDa, seasonEnd: seasonEndDa, founder: founderDa, achievements: achievementsDa, roadmap: roadmapDa },
-      en: { common: commonEn, auth: authEn, errors: errorsEn, auctions: auctionsEn, transfers: transfersEn, dashboard: dashboardEn, banners: bannersEn, help: helpEn, board: boardEn, admin: adminEn, rider: riderEn, riders: ridersEn, riderFilters: riderFiltersEn, riderTypes: riderTypesEn, notifications: notificationsEn, team: teamEn, finance: financeEn, backendMessages: backendMessagesEn, profile: profileEn, activity: activityEn, standings: standingsEn, headtohead: headtoheadEn, watchlist: watchlistEn, halloffame: halloffameEn, races: racesEn, results: resultsEn, seasonEnd: seasonEndEn, founder: founderEn, achievements: achievementsEn, roadmap: roadmapEn },
+      da: { common: commonDa, auth: authDa, errors: errorsDa, auctions: auctionsDa, transfers: transfersDa, dashboard: dashboardDa, banners: bannersDa, help: helpDa, board: boardDa, admin: adminDa, rider: riderDa, riders: ridersDa, riderFilters: riderFiltersDa, riderTypes: riderTypesDa, notifications: notificationsDa, team: teamDa, finance: financeDa, backendMessages: backendMessagesDa, profile: profileDa, activity: activityDa, standings: standingsDa, headtohead: headtoheadDa, watchlist: watchlistDa, halloffame: halloffameDa, races: racesDa, results: resultsDa, seasonEnd: seasonEndDa, founder: founderDa, achievements: achievementsDa, roadmap: roadmapDa, training: trainingDa },
+      en: { common: commonEn, auth: authEn, errors: errorsEn, auctions: auctionsEn, transfers: transfersEn, dashboard: dashboardEn, banners: bannersEn, help: helpEn, board: boardEn, admin: adminEn, rider: riderEn, riders: ridersEn, riderFilters: riderFiltersEn, riderTypes: riderTypesEn, notifications: notificationsEn, team: teamEn, finance: financeEn, backendMessages: backendMessagesEn, profile: profileEn, activity: activityEn, standings: standingsEn, headtohead: headtoheadEn, watchlist: watchlistEn, halloffame: halloffameEn, races: racesEn, results: resultsEn, seasonEnd: seasonEndEn, founder: founderEn, achievements: achievementsEn, roadmap: roadmapEn, training: trainingEn },
     },
     detection: {
       order: ["localStorage", "navigator", "htmlTag"],

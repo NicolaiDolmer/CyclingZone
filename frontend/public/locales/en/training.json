@@ -1,0 +1,21 @@
+{
+  "title": "Daily Training",
+  "trainToday": "Train today (+25% boost)",
+  "trainedToday_you": "Trained today — by you ✓",
+  "trainedToday_assistant": "Trained today — by assistant ✓",
+  "disabledNote": "Daily training starts at the relaunch. Training programs can be set up now.",
+  "form": "Form",
+  "fatigue": "Fatigue",
+  "injuryRisk": "High injury risk",
+  "injured": "Injured — {{days}} day left",
+  "injured_plural": "Injured — {{days}} days left",
+  "noRiders": "No riders on your squad yet.",
+  "report": "Today's training report",
+  "overperformed": "▲ Overperformed",
+  "underperformed": "▼ Underperformed",
+  "bonusApplied": "Consistency bonus applied — +25% gains",
+  "fatiqueChange": "Fatigue {{sign}}{{delta}}",
+  "gains": "+{{n}} {{ability}}",
+  "noGains": "No gains today",
+  "loading": "Loading…"
+}
