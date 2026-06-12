@@ -236,3 +236,30 @@ describe("runTrainingSweep", () => {
     assert.equal("failed" in result, false);
   });
 });
+
+// ── Query-fejl: error-objekt skal kaste, ikke blive et stille no-op ────────────
+describe("runTrainingSweep query-fejl", () => {
+  it("teams-query-fejl kaster (ingen stille tom sweep)", async () => {
+    const afterWindow = new Date("2026-06-20T20:30:00Z"); // 22:30 CEST
+    const supabase = {
+      from(table) {
+        const b = {
+          select() { return b; },
+          eq() { return b; },
+          maybeSingle() { return Promise.resolve({ data: { value: true }, error: null }); },
+          then(resolve) {
+            if (table === "teams") {
+              return Promise.resolve({ data: null, error: { message: "permission denied" } }).then(resolve);
+            }
+            return Promise.resolve({ data: [], error: null }).then(resolve);
+          },
+        };
+        return b;
+      },
+    };
+    await assert.rejects(
+      () => runTrainingSweep({ supabase, now: afterWindow }),
+      /teams: permission denied/
+    );
+  });
+});

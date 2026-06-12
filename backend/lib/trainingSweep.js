@@ -89,6 +89,9 @@ export async function runTrainingSweep({
   if (teamsResult.error) throw new Error(`teams: ${teamsResult.error.message}`);
   if (seasonResult.error) throw new Error(`seasons: ${seasonResult.error.message}`);
   if (runsResult.error) throw new Error(`training_day_runs: ${runsResult.error.message}`);
+  // null data uden error må ikke blive et stille "swept: 0" — fail højlydt i trackedTick.
+  if (!teamsResult.data) throw new Error("teams query returned null (unexpected)");
+  if (!runsResult.data) throw new Error("training_day_runs query returned null (unexpected)");
 
   // ── Ingen aktiv sæson → skip ──────────────────────────────────────────────────
   if (!seasonResult.data) {
