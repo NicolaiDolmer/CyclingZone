@@ -7,6 +7,7 @@
 import { terrainScore } from "./raceSimulator.js";
 
 // Spec 8.1: 6-8 pr. løb, kategori-afhængigt. Grand Tours kører fulde hold på 8.
+// nøgler = race_class-værdier fra races-tabellen (DB-enum)
 export const SELECTION_SIZE = Object.freeze({
   default: Object.freeze({ min: 6, max: 8 }),
   TourFrance: Object.freeze({ min: 8, max: 8 }),
@@ -48,7 +49,8 @@ export function autopickTeamSelection({ riders = [], stages = [], sizeRule }) {
     .filter((r) => r?.rider_id && r.abilities)
     .map((r) => {
       const raw = Number(r.fatigue);
-      const freshness = 1 - (Number.isFinite(raw) ? Math.min(100, Math.max(0, raw)) / 100 : 0) * AUTOPICK_FATIGUE_DAMPING;
+      const clampedFatigue = Number.isFinite(raw) ? Math.min(100, Math.max(0, raw)) / 100 : 0;
+      const freshness = 1 - clampedFatigue * AUTOPICK_FATIGUE_DAMPING;
       return { rider_id: r.rider_id, abilities: r.abilities, score: suitabilityScore(r.abilities, stages) * freshness };
     })
     .sort((a, b) => b.score - a.score || String(a.rider_id).localeCompare(String(b.rider_id)));

@@ -49,6 +49,51 @@ test("autopick: lille trup → stiller alle; tom trup → tom liste; træthed ne
   assert.ok(!picks.some((p) => p.rider_id === "r00"), "udmattet rytter fravælges når ens alternativer findes");
 });
 
+test("autopick: fatigue-damping (0.3) er den afgørende faktor — udmattet topstjerne taber til frisk rival", () => {
+  // Flat race: sprint 0.8, endurance 0.2. ABILITY_MAX = 99.
+  // Tired star (sprint=90, fatigue=100):
+  //   terrainScore ≈ (90/99)×0.8 + (50/99)×0.2 ≈ 0.6828
+  //   freshness = 1 - (100/100)×0.3 = 0.7  → effective ≈ 0.4780
+  // Fresh rivals (sprint=70, fatigue=0):
+  //   terrainScore ≈ (70/99)×0.8 + (50/99)×0.2 ≈ 0.6667
+  //   freshness = 1.0                         → effective ≈ 0.6667
+  // 0.4780 < 0.6667 → star must drop out of top-8 (pool = 9, max=8)
+  const freshRivals = riders(8, () => ({ sprint: 70 }));
+  const tiredStar = { rider_id: "star", abilities: ab({ sprint: 90 }), fatigue: 100 };
+  const pool = [tiredStar, ...freshRivals];
+
+  // Variant A: tired star — should be excluded
+  const picksWithFatigue = autopickTeamSelection({ riders: pool, stages: [flatStage], sizeRule: { min: 6, max: 8 } });
+  assert.ok(!picksWithFatigue.some((p) => p.rider_id === "star"),
+    "udmattet topstjerne (fatigue=100) skal ekskluderes fra top-8 når fresh rivals scorer højere");
+
+  // Variant B (kontrol): same star with fatigue=0 — should be included and top scorer
+  const freshStar = { rider_id: "star", abilities: ab({ sprint: 90 }), fatigue: 0 };
+  const controlPool = [freshStar, ...freshRivals];
+  const picksWithoutFatigue = autopickTeamSelection({ riders: controlPool, stages: [flatStage], sizeRule: { min: 6, max: 8 } });
+  assert.ok(picksWithoutFatigue.some((p) => p.rider_id === "star"),
+    "frisk topstjerne (fatigue=0) skal inkluderes — damping er den afgørende forskel");
+});
+
+test("autopick: all-flat løb → én kaptajn (bedste sprinter), sprint_captain=null", () => {
+  // Kun flade etaper → gcStages() falder tilbage til alle stages (alle flat)
+  // → captain = bedste på flat stages = bedste sprinter
+  // → ingen separate non-flat stages → sprint_captain skal IKKE sættes
+  const pool = [
+    { rider_id: "best-sprinter", abilities: ab({ sprint: 95 }), fatigue: 0 },
+    { rider_id: "mid-sprinter",  abilities: ab({ sprint: 75 }), fatigue: 0 },
+    ...riders(6, () => ({ sprint: 60 })),
+  ];
+  const picks = autopickTeamSelection({ riders: pool, stages: [flatStage], sizeRule: { min: 6, max: 8 } });
+
+  const captains = picks.filter((p) => p.race_role === "captain");
+  const sprintCaptains = picks.filter((p) => p.race_role === "sprint_captain");
+
+  assert.equal(captains.length, 1, "præcis én kaptajn");
+  assert.equal(captains[0].rider_id, "best-sprinter", "kaptajn = bedste sprinter");
+  assert.equal(sprintCaptains.length, 0, "sprint_captain = null/ingen når kaptajn allerede er bedste sprinter");
+});
+
 test("autopick: deterministisk uafhængigt af input-rækkefølge", () => {
   const pool = riders(20, (i) => ({ climbing: (i * 7) % 40 + 40 }));
   const a = autopickTeamSelection({ riders: pool, stages: [mtnStage], sizeRule: { min: 6, max: 8 } });
