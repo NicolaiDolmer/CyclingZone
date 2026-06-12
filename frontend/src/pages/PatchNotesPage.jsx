@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.28",
+    date: "2026-06-12",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fixed · Updates and page loading",
+        items: [
+          "EN · Pages opened across a new deploy now recover cleanly when an old cached code file is no longer valid, instead of showing an error screen. Refs #906.",
+          "DA · Sider, der er åbne under en ny deploy, genindlæses nu korrekt, når en gammel cachet kodefil ikke længere er gyldig, i stedet for at vise en fejlskærm. Refs #906.",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.27",
     date: "2026-06-12",
     label: "Beta",

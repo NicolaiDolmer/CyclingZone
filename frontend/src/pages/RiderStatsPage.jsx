@@ -1,6 +1,7 @@
-import { lazy, Suspense, useState, useEffect, useRef } from "react";
+import { Suspense, useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { lazyWithRetry } from "../lib/lazyWithRetry.js";
 import { supabase } from "../lib/supabase";
 import { getCountryName } from "../lib/countryUtils";
 import { Flag } from "../components/Flag";
@@ -32,7 +33,7 @@ import TeamLink from "../components/TeamLink";
 import { aggregateRiderSeasons } from "../lib/riderSeasonStats";
 
 const API = import.meta.env.VITE_API_URL;
-const RiderDevelopmentTab = lazy(() => import("../components/RiderDevelopmentTab"));
+const RiderDevelopmentTab = lazyWithRetry(() => import("../components/RiderDevelopmentTab"));
 
 // Hent ALLE en rytters race_results (lette kolonner) til sæson-aggregeringen.
 // Pagineret fordi PostgREST capper ved 1000 rækker/side — uden det ville en

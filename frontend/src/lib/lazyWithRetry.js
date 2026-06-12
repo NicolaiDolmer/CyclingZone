@@ -13,15 +13,25 @@ import { isChunkLoadError } from "./chunkErrors.js";
 // Fix: fang import-fejlen i factory'en. Ét stille retry (dækker transiente netværks-blips
 // / mid-deploy races); ved vedvarende fejl kast en *genkendelig* ChunkLoadError, så
 // SentryBoundary + vite:preloadError-reload-stien engagerer korrekt.
+function validateModule(module) {
+  if (module?.default != null) return module;
+
+  const error = new Error(
+    "Failed to fetch dynamically imported module: resolved to an invalid module without a default export",
+  );
+  error.name = "ChunkLoadError";
+  return Promise.reject(error);
+}
+
 export async function loadWithRetry(importFn) {
   try {
-    return await importFn();
+    return await validateModule(await importFn());
   } catch (err) {
     if (!isChunkLoadError(err)) throw err;
     try {
       // Transient? Ét retry. Hjælper ikke hvis chunk-hash'en permanent er væk —
       // men så kaster vi nedenfor en genkendelig fejl der trigger reload (frisk index.html).
-      return await importFn();
+      return await validateModule(await importFn());
     } catch (retryErr) {
       const wrapped = new Error(
         `Failed to fetch dynamically imported module (chunk reload needed): ${retryErr?.message || retryErr}`,
