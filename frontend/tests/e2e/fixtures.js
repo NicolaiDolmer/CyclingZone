@@ -300,7 +300,9 @@ function apiResponse(pathname) {
   }
   if (pathname.endsWith("/api/me/discord-status")) return { enabled: false, connected: false };
   if (pathname.endsWith("/api/deadline-day/status")) return { active: false };
-  if (pathname.endsWith("/api/deadline-day/ticker")) return { items: [] };
+  // Backend returnerer et ARRAY af events (api.js: res.json(events.slice(0, 20))).
+  // Objekt-shape ({ items: [] }) crasher DeadlineDayTicker (events.map) når DD er aktiv (#778-probe).
+  if (pathname.endsWith("/api/deadline-day/ticker")) return [];
   if (pathname.endsWith("/api/race-pool")) return [];
   if (pathname.endsWith("/api/scouting/me")) {
     return { slots: { total: 3, used: 0, remaining: 3 }, maxLevel: 3, levels: {}, teamId: TEST_TEAM.id };

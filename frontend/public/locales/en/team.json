@@ -95,6 +95,9 @@
     "auction": {
       "description": "Start auction. Other managers can bid.",
       "startButton": "Start",
+      "startFlashButton": "⚡ Start Flash",
+      "flashLabel": "⚡ Flash auction (30 min)",
+      "flashHint": "Deadline Day: ends exactly 30 minutes after start",
       "successMsg": "✅ Auction started!",
       "priceError": "Start price must be between 0 and Value ({amount} CZ$)"
     },
