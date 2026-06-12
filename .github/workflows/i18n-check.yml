@@ -5,11 +5,15 @@ on:
     paths:
       - 'frontend/public/locales/**'
       - 'frontend/src/**'
+      - 'backend/routes/**'
+      - 'backend/lib/**'
       - 'scripts/i18n-check-keys.mjs'
       - 'scripts/i18n-check-namespace-inline.mjs'
       - 'scripts/i18n-check-nav-strings.mjs'
       - 'scripts/i18n-check-page-untranslated.mjs'
       - 'scripts/i18n-check-lib-strings.mjs'
+      - 'scripts/i18n-check-leaks.mjs'
+      - 'scripts/i18n-leaks-baseline.json'
       - 'scripts/tone-check-em-dash.mjs'
       - '.github/workflows/i18n-check.yml'
   push:
@@ -17,11 +21,15 @@ on:
     paths:
       - 'frontend/public/locales/**'
       - 'frontend/src/**'
+      - 'backend/routes/**'
+      - 'backend/lib/**'
       - 'scripts/i18n-check-keys.mjs'
       - 'scripts/i18n-check-namespace-inline.mjs'
       - 'scripts/i18n-check-nav-strings.mjs'
       - 'scripts/i18n-check-page-untranslated.mjs'
       - 'scripts/i18n-check-lib-strings.mjs'
+      - 'scripts/i18n-check-leaks.mjs'
+      - 'scripts/i18n-leaks-baseline.json'
       - 'scripts/tone-check-em-dash.mjs'
   workflow_dispatch:
 
@@ -126,6 +134,30 @@ jobs:
 
       - name: Run i18n lib-strings guard
         run: node scripts/i18n-check-lib-strings.mjs
+
+  leak-check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # REQUIRED (Refs #1068) — forward-guard for de to leak-mønstre #678 fandt
+    # mens key-coverage var grøn: (A) DA-tekst i EN-locale-VÆRDIER (æ/ø/å +
+    # danske stopord; identiske EN/DA-værdier er advisory), (B) hardcodet
+    # dansk i player-facing kode (frontend/src minus lib+components, som
+    # lib-strings dækker; backend error/message-strenge). Kendte leaks ligger
+    # i scripts/i18n-leaks-baseline.json (ratchet — må kun skrumpe), så jobbet
+    # er grønt på main og fejler KUN på NYE leaks. Fixes af kendte leaks
+    # fejler aldrig (stale baseline = info). Stram baselinen med:
+    #   node scripts/i18n-check-leaks.mjs --update-baseline
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+
+      - name: Run i18n leak guard
+        run: node scripts/i18n-check-leaks.mjs
 
   tone-em-dash:
     runs-on: ubuntu-latest
