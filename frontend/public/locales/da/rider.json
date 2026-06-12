@@ -401,6 +401,14 @@
     "noSlots": "Ingen scout-slots tilbage i denne sæson",
     "levelTitle": "Scout-niveau. Højere betyder et mere præcist estimat"
   },
+  "condition": {
+    "form": "Form",
+    "fatigue": "Træthed",
+    "injured": "Skadet — {{days}}d tilbage"
+  },
+  "development": {
+    "progressHint": "Fremskridt mod næste point"
+  },
   "training": {
     "title": "Træningsfokus",
     "intro": "Sæt et sæson-langt træningsfokus for denne nøglerytter. Det rykker de trænede evner hurtigere mod deres loft.",

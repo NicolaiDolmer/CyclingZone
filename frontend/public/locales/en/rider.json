@@ -401,6 +401,14 @@
     "noSlots": "No scout slots left this season",
     "levelTitle": "Scouting level. Higher means a more precise estimate"
   },
+  "condition": {
+    "form": "Form",
+    "fatigue": "Fatigue",
+    "injured": "Injured — {{days}}d left"
+  },
+  "development": {
+    "progressHint": "Progress toward next point"
+  },
   "training": {
     "title": "Training focus",
     "intro": "Set a season-long training focus for this key rider. It nudges the trained abilities faster toward their ceiling.",
