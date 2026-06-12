@@ -170,20 +170,34 @@ export default function AdminSystemTab() {
   }
 
   async function setDefaultWebhook(id) {
-    const res = await fetch(`${API}/api/admin/discord-settings/${id}/default`, {
-      method: "PATCH", headers: await getAuth(),
-    });
-    if (!res.ok) { const d = await readAdminJson(res); showMsg(`❌ ${adminErrorMessage(d, res)}`, "error"); return; }
-    loadData();
-    showMsg("✅ Standard webhook opdateret");
+    setLoad(`default_${id}`, true);
+    try {
+      const res = await fetch(`${API}/api/admin/discord-settings/${id}/default`, {
+        method: "PATCH", headers: await getAuth(),
+      });
+      if (!res.ok) { const d = await readAdminJson(res); showMsg(`❌ ${adminErrorMessage(d, res)}`, "error"); return; }
+      loadData();
+      showMsg("✅ Standard webhook opdateret");
+    } catch (e) {
+      showMsg(`❌ Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
+    } finally {
+      setLoad(`default_${id}`, false);
+    }
   }
 
   async function deleteWebhook(id) {
-    const res = await fetch(`${API}/api/admin/discord-settings/${id}`, {
-      method: "DELETE", headers: await getAuth(),
-    });
-    if (!res.ok) { const d = await readAdminJson(res); showMsg(`❌ ${adminErrorMessage(d, res)}`, "error"); return; }
-    loadData();
+    setLoad(`del_webhook_${id}`, true);
+    try {
+      const res = await fetch(`${API}/api/admin/discord-settings/${id}`, {
+        method: "DELETE", headers: await getAuth(),
+      });
+      if (!res.ok) { const d = await readAdminJson(res); showMsg(`❌ ${adminErrorMessage(d, res)}`, "error"); return; }
+      loadData();
+    } catch (e) {
+      showMsg(`❌ Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
+    } finally {
+      setLoad(`del_webhook_${id}`, false);
+    }
   }
 
   return (
@@ -249,8 +263,14 @@ export default function AdminSystemTab() {
                   </button>
                   {w.is_default
                     ? <span className="text-cz-accent-t text-xs border border-cz-accent/30 px-2 py-0.5 rounded-full">Standard</span>
-                    : <button onClick={() => setDefaultWebhook(w.id)} className="text-cz-3 text-xs hover:text-cz-1">Sæt standard</button>}
-                  <button onClick={() => deleteWebhook(w.id)} className="text-cz-danger/50 text-xs hover:text-cz-danger">Slet</button>
+                    : <button onClick={() => setDefaultWebhook(w.id)} disabled={loading[`default_${w.id}`]}
+                        className="text-cz-3 text-xs hover:text-cz-1 disabled:opacity-50">
+                        {loading[`default_${w.id}`] ? "..." : "Sæt standard"}
+                      </button>}
+                  <button onClick={() => deleteWebhook(w.id)} disabled={loading[`del_webhook_${w.id}`]}
+                    className="text-cz-danger/50 text-xs hover:text-cz-danger disabled:opacity-50">
+                    {loading[`del_webhook_${w.id}`] ? "..." : "Slet"}
+                  </button>
                 </div>
               </div>
               );
