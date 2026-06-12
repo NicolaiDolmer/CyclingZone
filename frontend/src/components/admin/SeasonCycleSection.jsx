@@ -46,6 +46,8 @@ export default function SeasonCycleSection({ getAuth, onMsg }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const gate = summarizeTransitionReadiness(readiness);
+
   async function executeTransition() {
     if (!preview) return;
     const forcing = gate.blocked && force;
@@ -70,7 +72,7 @@ export default function SeasonCycleSection({ getAuth, onMsg }) {
       const res = await fetch(`${API}/api/admin/season-transition`, {
         method: "POST",
         headers,
-        body: JSON.stringify({ force }),
+        body: JSON.stringify({ force: forcing }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -90,8 +92,6 @@ export default function SeasonCycleSection({ getAuth, onMsg }) {
       setExecuting(false);
     }
   }
-
-  const gate = summarizeTransitionReadiness(readiness);
 
   if (loading && !preview) {
     return <p className="text-cz-3 text-sm">Indlæser forhåndsvisning…</p>;
@@ -204,7 +204,7 @@ export default function SeasonCycleSection({ getAuth, onMsg }) {
             ))}
           </div>
           {gate.blocked && (
-            <label className="mt-3 flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-xs text-red-900 cursor-pointer">
+            <label className="mt-3 flex items-start gap-2 p-3 bg-cz-danger-bg border border-cz-danger/30 rounded-lg text-xs text-cz-danger cursor-pointer">
               <input
                 type="checkbox"
                 checked={force}
