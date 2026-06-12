@@ -19,11 +19,11 @@
 - Modify: `frontend/public/locales/en/backendMessages.json`
 - Modify: `frontend/public/locales/da/backendMessages.json`
 
-- [ ] Write fixture tests proving known Danish sponsor, salary, prize, transfer, loan, interest, bonus, emergency-loan, and admin rows resolve to stable codes and params.
-- [ ] Run `node --test src/lib/legacyFinanceMessage.test.js` from `frontend/` and verify the missing-module failure.
-- [ ] Implement `resolveLegacyFinanceMessage(tx)` with metadata-first resolution, recognized description patterns, type fallback, and raw fallback only for unknown types.
-- [ ] Wire the resolver into `FinancePage` before `renderBackendMessage`.
-- [ ] Add matching EN/DA `backendMessages` keys and rerun the focused test.
+- [x] Write fixture tests proving known Danish sponsor, salary, prize, transfer, loan, interest, bonus, emergency-loan, and admin rows resolve to stable codes and params.
+- [x] Run `node --test src/lib/legacyFinanceMessage.test.js` from `frontend/` and verify the missing-module failure.
+- [x] Implement `resolveLegacyFinanceMessage(tx)` with metadata-first resolution, recognized description patterns, type fallback, and raw fallback only for unknown types.
+- [x] Wire the resolver into `FinancePage` before `renderBackendMessage`.
+- [x] Add matching EN/DA `backendMessages` keys and rerun the focused test.
 
 ### Task 2: Localize the Deadline Day Banner
 
@@ -34,11 +34,11 @@
 - Modify: `frontend/public/locales/en/dashboard.json`
 - Modify: `frontend/public/locales/da/dashboard.json`
 
-- [ ] Write tests for English `1h 05m 09s`, Danish `1t 05m 09s`, and minute-only `05:09`.
-- [ ] Run `node --test src/lib/deadlineDayCountdown.test.js` from `frontend/` and verify the missing-module failure.
-- [ ] Implement the pure formatter using an injected `t` function.
-- [ ] Use `useTranslation("dashboard")` in the banner and replace hardcoded label/countdown units with locale keys.
-- [ ] Add matching EN/DA keys and rerun the focused test.
+- [x] Write tests for English `1h 05m 09s`, Danish `1t 05m 09s`, and minute-only `05:09`.
+- [x] Run `node --test src/lib/deadlineDayCountdown.test.js` from `frontend/` and verify the missing-module failure.
+- [x] Implement the pure formatter using an injected `t` function.
+- [x] Use `useTranslation("dashboard")` in the banner and replace hardcoded label/countdown units with locale keys.
+- [x] Add matching EN/DA keys and rerun the focused test.
 
 ### Task 3: Persist Structured Deadline Day Warning Metadata
 
@@ -48,21 +48,21 @@
 - Modify: `frontend/public/locales/en/backendMessages.json`
 - Modify: `frontend/public/locales/da/backendMessages.json`
 
-- [ ] Change tests to require `titleCode`, `messageCode`, and ISO `closesAt` params for 24h, 2h, and 30min payloads.
-- [ ] Run `node --test --import ./test-setup.js lib/deadlineDayReport.test.js` from `backend/` and verify the metadata assertions fail.
-- [ ] Implement stable warning codes/params and pass them as notification metadata while retaining Danish fallback title/message.
-- [ ] Add EN/DA warning translations and rerun the focused backend test.
-- [ ] Replace the issue-scoped em-dash constructions in `deadlineDayReport.js`.
+- [x] Change tests to require `titleCode`, `messageCode`, and ISO `closesAt` params for 24h, 2h, and 30min payloads.
+- [x] Run `node --test --import ./test-setup.js lib/deadlineDayReport.test.js` from `backend/` and verify the metadata assertions fail.
+- [x] Implement stable warning codes/params and pass them as notification metadata while retaining Danish fallback title/message.
+- [x] Add EN/DA warning translations and rerun the focused backend test.
+- [x] Replace the issue-scoped em-dash constructions in `deadlineDayReport.js`.
 
 ### Task 4: Player-Facing Documentation and Verification
 
 **Files:**
 - Modify: `frontend/src/pages/PatchNotesPage.jsx`
 
-- [ ] Add a bilingual patch-notes entry for #1352 and #1353; state that Help/FAQ is unchanged because mechanics are unchanged.
-- [ ] Run focused frontend and backend tests.
-- [ ] Run `npm run check:i18n` from the repo root.
-- [ ] Run `npm run build` from `frontend/`.
-- [ ] Run `git diff --check`.
-- [ ] Update `docs/NOW.md`, `docs/FEATURE_STATUS.md`, and issue status/comments for slice close-out.
-- [ ] Commit and push the complete implementation.
+- [x] Add a bilingual patch-notes entry for #1352 and #1353; state that Help/FAQ is unchanged because mechanics are unchanged.
+- [x] Run focused frontend and backend tests.
+- [x] Run `npm run check:i18n` from the repo root.
+- [x] Run `npm run build` from `frontend/`.
+- [x] Run `git diff --check`.
+- [x] Update `docs/NOW.md`, `docs/FEATURE_STATUS.md`, and issue status/comments for slice close-out.
+- [x] Commit and push the complete implementation.
