@@ -1,71 +1,25 @@
 #!/bin/bash
-# Stop-hook: close-out-reminder + NOW.md auto-archive ved session-stop.
-#  1) Auto-arkivér NOW.md hvis >30 linjer (ældste linjer ned i docs/archive/NOW-YYYY-MM-DD.md)
+# Stop-hook: close-out-reminder ved session-stop.
+#  1) Advarer hvis NOW.md er over budget (token primaer ~1.200, linjer sekundaer <=30)
 #  2) Advarer hvis CLAUDE.md eller MEMORY.md over budget
 #  3) Advarer hvis main har commits nyere end NOW.md (close-out glemt)
 #  4) Reminder hvis seneste main-commit har "Refs #N" men issue ikke har comment fra denne session
 #
-# Refs: GitHub issues #75, #76.
+# Refs: GitHub issues #75, #76, #750, #1097.
 
 WARNINGS=()
 
-# (1) NOW.md auto-archive ved >30 linjer
-# Protected section: "## Aktiv styring" + alt under den (🎯 Next action + 🤖 Working
-# agent, indført Session J via #558/#559) må ALDRIG arkiveres. Regression-incident:
-# commit dfcee56 (2026-05-22) hvor sidste-header-cut tog Aktiv styring som boundary.
+# (1) NOW.md budget-warning (token primaer jf. #1275; linjer sekundaer).
+# Auto-archive til docs/archive/NOW-*.md er FJERNET per #750 (ejer-beslutning):
+# historik bevares i git-log + issue-traade, og docs/archive/** er #684-deny-
+# beskyttet. Hooken muterer ALDRIG NOW.md — den minder kun om direkte trim.
+# Token-estimat = bytes/4 (let overestimat ved emoji; fint til en warn-gate).
 if [ -f "docs/NOW.md" ]; then
   L=$(wc -l < "docs/NOW.md")
-  if [ "$L" -gt 30 ]; then
-    ARCHIVE_DIR="docs/archive"
-    mkdir -p "$ARCHIVE_DIR" 2>/dev/null
-    DATE_TAG=$(date +%F)
-    ARCHIVE_FILE="$ARCHIVE_DIR/NOW-$DATE_TAG.md"
-
-    # Find "## Aktiv styring" — alt fra den linje og frem er PROTECTED (active state).
-    AKTIV_LINE=$(grep -n '^## Aktiv styring' "docs/NOW.md" | head -1 | cut -d: -f1)
-
-    if [ -n "$AKTIV_LINE" ]; then
-      # Find sidste "## " header FØR Aktiv styring som kandidat-cut.
-      CUT_LINE=$(head -n $((AKTIV_LINE - 1)) "docs/NOW.md" | grep -n '^## ' | tail -1 | cut -d: -f1)
-
-      if [ -z "$CUT_LINE" ] || [ "$CUT_LINE" -ge $((AKTIV_LINE - 1)) ]; then
-        # Ingen brugbar pre-Aktiv-styring header (eller header er klistret op ad
-        # Aktiv styring uden indhold imellem). Vi kan ikke auto-arkivere uden
-        # at risikere protected section — warn og skip.
-        WARNINGS+=("NOW.md er $L linjer men ingen brugbar '## '-header foer '## Aktiv styring' - skip auto-archive. Manuel trim af session-blockquotes kraevet.")
-      else
-        # Archive ONLY lines (CUT_LINE+1)..(AKTIV_LINE-1). Aktiv styring + alt under
-        # forbliver intakt i NOW.md.
-        {
-          echo ""
-          echo "## Auto-archived $(date -Iseconds)"
-          echo ""
-          sed -n "$((CUT_LINE + 1)),$((AKTIV_LINE - 1))p" "docs/NOW.md"
-        } >> "$ARCHIVE_FILE"
-
-        # Reconstruct NOW.md = lines 1..CUT_LINE + Aktiv styring og videre.
-        {
-          head -n "$CUT_LINE" "docs/NOW.md"
-          tail -n +"$AKTIV_LINE" "docs/NOW.md"
-        } > "docs/NOW.md.tmp" && mv "docs/NOW.md.tmp" "docs/NOW.md"
-
-        WARNINGS+=("NOW.md var $L linjer - auto-arkiverede linjer $((CUT_LINE + 1))..$((AKTIV_LINE - 1)) til $ARCHIVE_FILE (Aktiv styring bevaret)")
-      fi
-    else
-      # Legacy behavior (ingen Aktiv styring-sektion).
-      CUT_LINE=$(head -30 "docs/NOW.md" | grep -n '^## ' | tail -1 | cut -d: -f1)
-      if [ -z "$CUT_LINE" ] || [ "$CUT_LINE" -lt 5 ]; then
-        CUT_LINE=30
-      fi
-      {
-        echo ""
-        echo "## Auto-archived $(date -Iseconds)"
-        echo ""
-        tail -n +$((CUT_LINE + 1)) "docs/NOW.md"
-      } >> "$ARCHIVE_FILE"
-      head -n "$CUT_LINE" "docs/NOW.md" > "docs/NOW.md.tmp" && mv "docs/NOW.md.tmp" "docs/NOW.md"
-      WARNINGS+=("NOW.md var $L linjer - auto-arkiverede linjer >${CUT_LINE} til $ARCHIVE_FILE")
-    fi
+  BYTES=$(wc -c < "docs/NOW.md")
+  TOK=$((BYTES / 4))
+  if [ "$TOK" -gt 1200 ] || [ "$L" -gt 30 ]; then
+    WARNINGS+=("NOW.md er ~$TOK tok / $L linjer (budget ~1.200 tok primaer, <=30 linjer sekundaer, jf. CLAUDE.md close-out trin 2) - trim gamle close-out-blokke DIREKTE (historik bevares i git-log + issue-traade). Opret IKKE docs/archive/NOW-*.md (#750).")
   fi
 fi
 

@@ -34,17 +34,20 @@ MAX_COMMENTS="${SESSION_CONTEXT_MAX_COMMENTS:-1}"
 command -v gh >/dev/null 2>&1 || exit 0
 gh auth status >/dev/null 2>&1 || exit 0
 
-# 3. Find første GitHub-issue # i NOW.md.
+# 3. Find aktivt GitHub-issue # i NOW.md.
 # Regex-noter:
 #   - `(^|[^a-zA-Z0-9])` undgår Discord-tags som "Zone#8784" (# preceded by alnum)
-#   - Strategi: prøv først lines 1-25 (typisk "Aktiv slice" + status), fallback
-#     til hele filen. Brugeren styrer prioritering ved at placere det aktive
-#     #N højt i NOW.md.
+#   - Strategi (#1097-fix): "🎯 Next action"-linjen i "## Aktiv styring" er det
+#     kanoniske pointer til aktivt arbejde (CLAUDE.md Start trin 1). Den gamle
+#     første-#N-i-filen-heuristik blev brudt af permanente top-referencer
+#     (Produktkompas-linjen → prefetchede konsekvent #1145 i stedet for aktivt
+#     issue). Fallback-kæden bevarer gammel adfærd hvis Next action mangler.
 extract_issue() {
   local input="$1"
   echo "$input" | grep -oE '(^|[^a-zA-Z0-9])#[0-9]+' | head -1 | tr -dc '0-9'
 }
-ISSUE=$(extract_issue "$(head -25 "$NOW_MD")")
+ISSUE=$(extract_issue "$(grep -m1 -i 'Next action' "$NOW_MD")")
+[ -z "$ISSUE" ] && ISSUE=$(extract_issue "$(head -25 "$NOW_MD")")
 [ -z "$ISSUE" ] && ISSUE=$(extract_issue "$(cat "$NOW_MD")")
 [ -z "$ISSUE" ] && exit 0
 
@@ -242,7 +245,7 @@ cat > "$OUTPUT_FILE" <<EOF
 # Session context — auto-genereret $NOW
 
 > Genereret af \`scripts/session-prefetch-issue.sh\` (SessionStart hook).
-> Issue # udtrukket fra første \`#N\` i \`docs/NOW.md\`.
+> Issue # udtrukket fra "🎯 Next action"-linjen i \`docs/NOW.md\` (fallback: første \`#N\`).
 > Lokal cache only: varig context skal ligge i GitHub/OneDrive.
 
 $FORMATTED

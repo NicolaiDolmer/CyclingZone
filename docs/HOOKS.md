@@ -22,7 +22,7 @@ Dette repo har **tre lag** af Claude Code settings/hooks (per [#385](https://git
 
 ### `SessionStart` → `bash scripts/session-prefetch-issue.sh`
 
-**Hvad:** Læser `docs/NOW.md`, finder første `#N`-reference (med Discord-tag-filter), henter issue + comments via `gh`, og skriver et bounded struktureret resumé til `.codex.local/SESSION_CONTEXT.md`.
+**Hvad:** Læser `docs/NOW.md`, finder det aktive issue (`#N` i "🎯 Next action"-linjen, med Discord-tag-filter), henter issue + comments via `gh`, og skriver et bounded struktureret resumé til `.codex.local/SESSION_CONTEXT.md`.
 
 **Hvorfor:** Sparer en manuel `gh issue view` round-trip uden at lække hele issue-historikken ind i hver ny session. `CLAUDE.md` auto-loader filen, så outputtet skal være kort.
 
@@ -40,10 +40,11 @@ Dette repo har **tre lag** af Claude Code settings/hooks (per [#385](https://git
 - Discord-tag som `Cycling Zone#8784` → ignoreres (regex kræver non-alphanum før `#`)
 - Encoding: `PYTHONIOENCODING=utf-8` så æøå overlever Windows-python
 
-**Strategi for issue-valg:**
-1. Først 25 linjer af NOW.md (typisk "Aktiv slice" + status-sektion)
-2. Fallback: hele filen
-3. Brugeren styrer ved at placere det aktive `#N` højt i NOW.md
+**Strategi for issue-valg (#1097-fix):**
+1. Første `#N` i "🎯 Next action"-linjen (`## Aktiv styring`) — det kanoniske pointer til aktivt arbejde per CLAUDE.md Start trin 1
+2. Fallback: første `#N` i de første 25 linjer af NOW.md
+3. Fallback: hele filen
+4. Brugeren styrer ved at opdatere Next action-linjen (den gamle første-`#N`-heuristik blev brudt af permanente top-referencer som Produktkompas-linjen → prefetchede konsekvent forkert issue)
 
 **Verifikation:**
 ```bash
@@ -53,9 +54,9 @@ cat .codex.local/SESSION_CONTEXT.md
 
 ### `Stop` → `bash scripts/check-now-md.sh`
 
-**Hvad:** Close-out-reminder + NOW.md auto-archive ved session-stop. Funktioner:
+**Hvad:** Close-out-reminder ved session-stop. Funktioner:
 
-1. **Auto-arkivér NOW.md** hvis filen er >30 linjer — flytter linjer efter sidste `## `-header (eller linje 30, hvis ingen) til `docs/archive/NOW-YYYY-MM-DD.md` (append-mode). Bevarer markdown-struktur.
+1. **NOW.md budget-warning** hvis >~1.200 tok (primær gate, jf. #1275) eller >30 linjer — reminder om at trimme gamle close-out-blokke direkte. Auto-archive til `docs/archive/NOW-*.md` er FJERNET per #750 (ejer-beslutning: historik bevares i git-log + issue-tråde; mappen er #684-deny-beskyttet). Hooken muterer aldrig NOW.md.
 2. **CLAUDE.md / MEMORY.md budget**-warning hvis over linje-target.
 3. **Close-out-detektion** hvis `origin/main` har commits nyere end `docs/NOW.md` indenfor 30 min.
 4. **Refs #N reminder** (issue [#75](https://github.com/NicolaiDolmer/CyclingZone/issues/75)) — hvis seneste main-commit har `Refs #N` men det refererede issue ikke har en kommentar med commit-SHA, mind brugeren om manuel close-out.

@@ -44,7 +44,7 @@ Mål: Nicolai rører tastatur 2 gange (åbn issue, skriv `@claude`). Resten kør
 - `PULL_REQUEST_TEMPLATE.md` med `Refs #X`, test plan og risk/auto-merge check
 - 12 labels: `claude:{todo,in-progress,blocked,done}`, `priority:{high,med,low}`, `type:{bug,feature,refactor,docs,investigation}` _(`claude:done` er valgfri — bruger kan også lukke direkte; se Note nedenfor)_
 - `.claude/settings.json`: GitHub MCP read+write perms + `gh` CLI perms
-- `CLAUDE.md` step 0d: tjek `claude:todo` issues ved session-start
+- `CLAUDE.md` "Start (eksplicit)" trin 2: tjek `claude:todo` issues ved session-start
 - Demo-issue #3 oprettet (verificerer skriv-vej via `gh`)
 
 ## Health check først
@@ -146,7 +146,7 @@ Den anbefalede arbejdsgang er nu beskrevet i [`docs/AGENT_DISPATCH.md`](AGENT_DI
 - En PR = ét issue (med mindre flere er klart koblede — så `Closes #42, closes #43`)
 
 ## Session-start (Claude)
-Per `CLAUDE.md` step 0d: Claude tjekker `gh issue list --label "claude:todo" --state open --repo NicolaiDolmer/CyclingZone` ved session-start og foreslår at tage den top-prioriterede hvis brugeren ikke selv peger på en konkret opgave.
+Per `CLAUDE.md` "Start (eksplicit)" trin 2: Claude tjekker `gh issue list --label "claude:todo" --state open --repo NicolaiDolmer/CyclingZone` ved session-start og foreslår at tage den top-prioriterede hvis brugeren ikke selv peger på en konkret opgave.
 
 ## Cheatsheet
 ```bash
