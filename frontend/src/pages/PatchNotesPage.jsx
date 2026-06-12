@@ -2,6 +2,54 @@
 
 const PATCHES = [
   {
+    version: "5.25",
+    date: "2026-06-12",
+    label: "Beta",
+    changes: [
+      {
+        category: "New · Tables & team pages",
+        items: [
+          "EN · Clicking a team in the standings now opens a new Results tab on the team profile, showing the team's point-scoring results per rider with a season filter and sortable columns. The Nation column is now also sortable on the squad, watchlist and rider ranking tables. Refs #824, #802.",
+          "DA · Klik på et hold i ranglisten åbner nu en ny Resultater-fane på holdprofilen med holdets pointgivende resultater pr. rytter, sæsonfilter og sorterbare kolonner. Nation-kolonnen kan nu også sorteres på trup-, ønskeliste- og rytterrangliste-tabellerne. Refs #824, #802.",
+          "EN · The rider database now shows a transfer pending chip with the rider's upcoming team when a trade is waiting for the transfer window. Refs #950.",
+          "DA · Rytterdatabasen viser nu en chip med rytterens kommende hold, når en handel venter på transfervinduet. Refs #950.",
+        ],
+      },
+      {
+        category: "New · Market & Deadline Day",
+        items: [
+          "EN · You can now start a Flash auction (30 minutes) on your own riders directly from the My Team page during Deadline Day. Refs #778.",
+          "DA · Du kan nu starte en Flash-auktion (30 minutter) på dine egne ryttere direkte fra Mit Hold-siden under Deadline Day. Refs #778.",
+          "EN · The market got a Transfer list shortcut in the menu, transfer cards now show all 14 rider stats, and auctions that end without bids now show No sale in rider and team history instead of a confusing sold entry. Refs #987, #785.",
+          "DA · Markedet har fået en Transferliste-genvej i menuen, transferkortene viser nu alle 14 rytter-stats, og auktioner der slutter uden bud vises nu som Intet salg i rytter- og holdhistorik i stedet for en forvirrende solgt-post. Refs #987, #785.",
+        ],
+      },
+      {
+        category: "Fixed · Finance & achievements",
+        items: [
+          "EN · Finance fixes: the red bankruptcy warning now accounts for your cash balance, the prize money forecast can no longer show less than you have already earned this season, and loan interest entries now state clearly that interest is added to your loan debt, not deducted from your balance. Refs #982, #981, #788.",
+          "DA · Økonomi-rettelser: den røde konkurs-advarsel tager nu højde for din kassebeholdning, præmie-prognosen kan ikke længere vise mindre end du allerede har tjent i sæsonen, og rente-posteringer gør nu klart at renten lægges til lånegælden og ikke trækkes fra saldoen. Refs #982, #981, #788.",
+          "EN · The First result achievement is now actually awarded when your team records its first race result, including retroactively for existing teams. Refs #817.",
+          "DA · Achievementet Første resultat tildeles nu faktisk, når dit hold får sit første løbsresultat, også med tilbagevirkende kraft for eksisterende hold. Refs #817.",
+        ],
+      },
+      {
+        category: "Improved · English translation",
+        items: [
+          "EN · Big English completeness pass: the Deadline Day board, Season Preview, bid pop-ups, the rider Development tab and the entire Board page now follow your language setting fully instead of falling back to Danish. Refs #1170, #1084, #645.",
+          "DA · Stor engelsk-komplethedsrunde: Deadline Day-oversigten, Sæson Preview, bud-pop-ups, rytterens Udvikling-fane og hele Bestyrelse-siden følger nu dit sprogvalg fuldt ud i stedet for at falde tilbage til dansk. Refs #1170, #1084, #645.",
+        ],
+      },
+      {
+        category: "Improved · Team & Finance pages",
+        items: [
+          "EN · Polish on the Team and Finance pages: the salary column is now sortable, stat headers show full skill names on hover, the Economy tab links to the full forecast, and prize and transaction rows link straight to the race page. Refs #1131.",
+          "DA · Polish på Hold- og Finans-siderne: lønkolonnen kan nu sorteres, stat-headers viser fulde færdighedsnavne ved hover, Økonomi-fanen linker til den fulde prognose, og præmie- og transaktionsrækker linker direkte til løbssiden. Refs #1131.",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.24",
     date: "2026-06-11",
     label: "Beta",
