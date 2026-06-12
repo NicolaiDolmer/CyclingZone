@@ -23,7 +23,6 @@ export default function SeasonCycleSection({ getAuth, onMsg }) {
 
   async function fetchPreview() {
     setLoading(true);
-    setResult(null);
     try {
       const headers = await getAuth();
       const res = await fetch(`${API}/api/admin/season-transition/preview`, { headers });
@@ -37,8 +36,16 @@ export default function SeasonCycleSection({ getAuth, onMsg }) {
     }
   }
 
+  // Reload-stier (mount, "Forsøg igen", "Genindlæs") clearer gammelt resultat.
+  // Succes-stien i executeTransition må IKKE: React 18 batcher setResult(data)
+  // og setResult(null) i samme render-pass, så resultat-loggen aldrig vises.
+  function reloadPreview() {
+    setResult(null);
+    return fetchPreview();
+  }
+
   useEffect(() => {
-    fetchPreview();
+    reloadPreview();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -85,7 +92,7 @@ export default function SeasonCycleSection({ getAuth, onMsg }) {
       <div className="bg-cz-subtle rounded-xl p-4">
         <p className="text-cz-3 text-sm mb-3">Ingen forhåndsvisning tilgængelig.</p>
         <button
-          onClick={fetchPreview}
+          onClick={reloadPreview}
           className="px-3 py-2 bg-cz-info-bg text-cz-info border border-cz-info/30 rounded-lg text-sm font-medium hover:brightness-110"
         >
           Forsøg igen
@@ -170,7 +177,7 @@ export default function SeasonCycleSection({ getAuth, onMsg }) {
       {/* Knapper */}
       <div className="flex gap-2">
         <button
-          onClick={fetchPreview}
+          onClick={reloadPreview}
           disabled={loading || executing}
           className="px-4 py-2 bg-cz-card border border-cz-border text-cz-2 rounded-lg text-sm font-medium hover:bg-cz-subtle disabled:opacity-50"
         >
