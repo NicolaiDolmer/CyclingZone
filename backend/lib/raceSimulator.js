@@ -9,13 +9,15 @@
 // så light → fuld er et dybde-løft, ikke en omskrivning):
 //   simulateStage({ entrants, stageProfile, seed }) → { seed, ranked }
 //
-// Score-model (slice 2 + #1307 udbrud):
-//   finalScore = terrain + noise + form(0) − fatigue(0) + team(0) + breakaway
+// Score-model (slice 2 + #1307 udbrud + #1307 hold):
+//   finalScore = terrain + noise + form(0) − fatigue(0) + team + breakaway
 //     terrain   = Σ ability[k]/99 · demand[k]      (k ∈ de 10 abilities)
 //     noise     = gaussian(rng, 0, demand.randomness · NOISE_SD_SCALE)
 //     breakaway = seeded chance-bonus til 1-3 lavere-rangerede ryttere på egnede profiler
-//   form/fatigue/team er ÆGTE seam-funktioner der returnerer neutralt i v1 og
+//     team      = hjælperkvalitet × friskhed booster den beskyttede leder (#1307, spec 8.2)
+//   form/fatigue er ÆGTE seam-funktioner der returnerer neutralt (#1306-placeholder) og
 //   bærer præcis den signatur den fulde fysiologiske motor (#1021) fylder ud.
+//   team-seamen er aktiveret (#1307); #1021 kan uddybe modellen i samme signaturer.
 //
 // Determinisme: makeRng (mulberry32) + Box-Muller (gaussian), begge genbrugt fra
 //   fictionalRiderGenerator.js (issue-krav). Entrants scores i STABIL rider_id-
@@ -66,7 +68,7 @@ const MAX_STAGE_GAP_SECONDS = 1800; // sikkerhedsloft (30 min)
 // at ændre simulateStage's kontrakt: light → fuld = depth INDE i loopet.
 //   form    — seeded dagsform pr. rytter/etape.
 //   fatigue — akkumuleret træthed over et etapeløb (kræver cross-stage state → runner).
-//   team    — leadout/beskyttelse/holdstyrke.
+//   team    — leadout/beskyttelse/holdstyrke (AKTIVERET #1307, spec 8.2).
 
 // Form/Træthed-seams (#1306): max ~±3 % af typisk terrain-score (~0.65) per spec 6.4.
 // Kalibreres i race:gate (B4); #1021 erstatter med fuld model i samme signaturer.
@@ -88,9 +90,54 @@ function fatigueComponent(entrant /* , stageProfile */) {
   return (fatigue / 100) * FATIGUE_RACE_WEIGHT;
 }
 
-function teamComponent(/* entrant, stageProfile, teamContext */) { return 0; }
-
 function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
+
+// ── Hold-seam aktiveret (#1307, spec 8.2) ─────────────────────────────────────
+// Hjælperkvalitet (terrain-score) × friskhed (1 − træthed-dæmpning) booster den
+// beskyttede leder: sprint_captain på flade etaper (fallback captain), ellers
+// captain. Hjælpere/hunters er score-neutrale (ingen straf i v1 — kalibrérbart).
+export const TEAM_RACE_WEIGHT = 0.010;       // max boost ved helperSupport = 1.0
+export const HELPER_FATIGUE_DAMPING = 0.5;   // træthed 100 → hjælper bidrager 50 %
+const SPRINT_PROFILES = new Set(["flat"]);
+
+export function buildTeamContext({ entrants, terrainById, stageProfile }) {
+  const byTeam = new Map();
+  for (const e of entrants) {
+    if (!e.team_id || !e.race_role) continue;
+    if (!byTeam.has(e.team_id)) byTeam.set(e.team_id, { captainId: null, sprintCaptainId: null, helpers: [] });
+    const t = byTeam.get(e.team_id);
+    if (e.race_role === "captain") t.captainId = e.rider_id;
+    else if (e.race_role === "sprint_captain") t.sprintCaptainId = e.rider_id;
+    else t.helpers.push(e); // helper + hunter arbejder begge for lederen
+  }
+  const ctx = new Map();
+  for (const [teamId, t] of byTeam) {
+    if (!t.captainId && !t.sprintCaptainId) continue;
+    let support = 0;
+    if (t.helpers.length) {
+      let sum = 0;
+      for (const h of t.helpers) {
+        const quality = clamp(terrainById.get(h.rider_id) || 0, 0, 1);
+        const raw = Number(h.fatigue);
+        const freshness = 1 - (Number.isFinite(raw) ? clamp(raw, 0, 100) / 100 : 0) * HELPER_FATIGUE_DAMPING;
+        sum += quality * freshness;
+      }
+      support = clamp(sum / t.helpers.length, 0, 1);
+    }
+    ctx.set(teamId, { ...t, helperSupport: support });
+  }
+  return ctx;
+}
+
+function teamComponent(entrant, stageProfile, teamContext) {
+  if (!teamContext || !entrant?.team_id) return 0;
+  const t = teamContext.get(entrant.team_id);
+  if (!t) return 0;
+  const isSprintStage = SPRINT_PROFILES.has(stageProfile?.profile_type);
+  const protectedId = isSprintStage ? (t.sprintCaptainId ?? t.captainId) : t.captainId;
+  if (!protectedId || entrant.rider_id !== protectedId) return 0;
+  return TEAM_RACE_WEIGHT * t.helperSupport;
+}
 
 // ── Udbrud (#1307, spec 8.3) ──────────────────────────────────────────────────
 // På udbruds-egnede profiler får 1-3 lavere-rangerede ryttere (aggression-vægtet,
@@ -206,13 +253,14 @@ export function simulateStage({ entrants = [], stageProfile, seed } = {}) {
     ordered.map((e) => [e.rider_id, terrainScore(e.abilities, demand)])
   );
   const breakawayById = selectBreakawayBonuses({ ordered, terrainById, profileType, seed });
+  const teamCtx = buildTeamContext({ entrants: ordered, terrainById, stageProfile });
 
   const scored = ordered.map((e) => {
     const terrain = terrainById.get(e.rider_id);
     const noise = noiseSd > 0 ? gaussian(rng, 0, noiseSd) : 0;
     const form = formComponent(e, stageProfile, rng);
     const fatigue = fatigueComponent(e, stageProfile);
-    const team = teamComponent(e, stageProfile);
+    const team = teamComponent(e, stageProfile, teamCtx);
     const breakaway = breakawayById.get(e.rider_id) || 0;
     const finalScore = terrain + noise + form - fatigue + team + breakaway;
     return {
