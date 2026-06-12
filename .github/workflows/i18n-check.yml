@@ -1,22 +1,9 @@
 name: i18n · Key coverage
 
 on:
+  # Required jobs must report on every PR. A path-filtered required workflow
+  # leaves docs/config-only PRs waiting forever because no check run exists.
   pull_request:
-    paths:
-      - 'frontend/public/locales/**'
-      - 'frontend/src/**'
-      - 'backend/routes/**'
-      - 'backend/lib/**'
-      - 'scripts/i18n-check-keys.mjs'
-      - 'scripts/i18n-check-namespace-inline.mjs'
-      - 'scripts/i18n-check-nav-strings.mjs'
-      - 'scripts/i18n-check-page-untranslated.mjs'
-      - 'scripts/i18n-check-lib-strings.mjs'
-      - 'scripts/i18n-check-leaks.mjs'
-      - 'scripts/i18n-leaks-baseline.json'
-      - 'scripts/tone-check-em-dash.mjs'
-      - 'scripts/tone-check-em-dash.test.mjs'
-      - '.github/workflows/i18n-check.yml'
   push:
     branches: [main]
     paths:

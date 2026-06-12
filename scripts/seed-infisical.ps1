@@ -112,11 +112,20 @@ try {
     if (-not (Test-Path backend/.env))  { throw "backend/.env mangler" }
     if (-not (Test-Path frontend/.env)) { throw "frontend/.env mangler" }
 
+    $frontendGuardOutput = & node scripts/check-frontend-env-keys.mjs frontend/.env 2>&1
+    if ($LASTEXITCODE -ne 0) {
+      throw "frontend/.env indeholder server-only variabelnavne. Koer 'npm run check:frontend-env'. Fund: $($frontendGuardOutput -join ' | ')"
+    }
+
+    $devFrontendFiltered = Join-Path $TempDir "dev-frontend-filtered.env"
     Invoke-Step "infisical secrets set --env=dev --file=backend/.env" {
       $null = infisical secrets set --env=dev --file=backend/.env --silent 2>$null
     }
-    Invoke-Step "infisical secrets set --env=dev --file=frontend/.env" {
-      $null = infisical secrets set --env=dev --file=frontend/.env --silent 2>$null
+    Invoke-Step "filter frontend/.env to ADR allowlist" {
+      Filter-EnvFile -Source frontend/.env -Dest $devFrontendFiltered -AllowKeys $AllowedFrontendKeys
+    }
+    Invoke-Step "infisical secrets set --env=dev --file=<tmp> (frontend)" {
+      $null = infisical secrets set --env=dev --file=$devFrontendFiltered --silent 2>$null
     }
     Write-Host ""
   }
