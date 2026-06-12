@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { adminErrorMessage, readAdminJson } from "../shared/useAdminAuth";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -17,13 +18,14 @@ export default function BetaToolsSection({ getAuth, onMsg }) {
       const res = await fetch(`${API}/api/admin/beta/${endpoint}`, {
         method: "POST", headers: await getAuth(), body: JSON.stringify(body),
       });
-      const data = await res.json();
+      const data = await readAdminJson(res);
       if (res.ok) { setBetaResult({ endpoint, ...data }); onMsg(`✅ beta/${endpoint} udført`); }
-      else { onMsg(`❌ ${data.error}`, "error"); }
+      else { onMsg(`❌ ${adminErrorMessage(data, res)}`, "error"); }
     } catch (e) {
-      onMsg(`❌ Netværksfejl: ${e.message}`, "error");
+      onMsg(`❌ Netværksfejl: ${e.message || "ukendt"}`, "error");
+    } finally {
+      setLoad(`beta_${endpoint}`, false);
     }
-    setLoad(`beta_${endpoint}`, false);
   }
 
   return (

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { adminErrorMessage, readAdminJson } from "../shared/useAdminAuth";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -31,18 +32,19 @@ export default function BoardTestModeSection({ getAuth, onMsg }) {
       const res = await fetch(`${API}/api/admin/board/${action}`, {
         method: "POST", headers: await getAuth(), body: JSON.stringify({}),
       });
-      const data = await res.json();
+      const data = await readAdminJson(res);
       if (res.ok) {
         setResult({ action, ...data });
         setBoardTestMode(data.board_test_mode === true);
         onMsg(`✅ board/${action} udført`);
       } else {
-        onMsg(`❌ ${data.error}`, "error");
+        onMsg(`❌ ${adminErrorMessage(data, res)}`, "error");
       }
     } catch (e) {
-      onMsg(`❌ Netværksfejl: ${e.message}`, "error");
+      onMsg(`❌ Netværksfejl: ${e.message || "ukendt"}`, "error");
+    } finally {
+      setLoad(action, false);
     }
-    setLoad(action, false);
   }
 
   return (
