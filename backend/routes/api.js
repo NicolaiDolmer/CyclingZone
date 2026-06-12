@@ -3356,13 +3356,31 @@ router.get("/me/finance-forecast", requireAuth, async (req, res) => {
     const debtCeiling = configsRes.data?.[0]?.debt_ceiling ?? null;
     const currentSeasonNumber = activeSeasonRes.data?.number ?? null;
     let lastSeasonStandings = [];
+    let realizedSeasonPrize = 0;
     if (activeSeasonRes.data?.id) {
-      const { data: standingsData, error: standingsError } = await supabase
-        .from("season_standings")
-        .select("team_id, division, rank_in_division, total_points")
-        .eq("season_id", activeSeasonRes.data.id);
-      if (standingsError) throw standingsError;
-      lastSeasonStandings = standingsData || [];
+      const [standingsRes, prizeTxRes] = await Promise.all([
+        supabase
+          .from("season_standings")
+          .select("team_id, division, rank_in_division, total_points")
+          .eq("season_id", activeSeasonRes.data.id),
+        // #981: realiseret præmie+bonus i indeværende sæson — gulv for prize-
+        // estimatet i computeFinanceForecast. Samme type-filter som FinancePage's
+        // præmie-kort ("prize" + "bonus"). Rækkeantal pr. hold pr. sæson er
+        // bounded af antal løb — langt under PostgREST's 1000-cap.
+        supabase
+          .from("finance_transactions")
+          .select("amount")
+          .eq("team_id", teamId)
+          .eq("season_id", activeSeasonRes.data.id)
+          .in("type", ["prize", "bonus"]),
+      ]);
+      if (standingsRes.error) throw standingsRes.error;
+      lastSeasonStandings = standingsRes.data || [];
+      if (prizeTxRes.error) throw prizeTxRes.error;
+      realizedSeasonPrize = (prizeTxRes.data || []).reduce(
+        (sum, row) => sum + Math.max(0, row.amount || 0),
+        0
+      );
     }
 
     // 2026-05-21: seasonsAhead query-param (1-5, default 1). Returnerer multi-
@@ -3385,6 +3403,7 @@ router.get("/me/finance-forecast", requireAuth, async (req, res) => {
       debtCeiling,
       currentSeasonNumber,
       lastSeasonStandings,
+      realizedSeasonPrize,
       seasonsAhead,
     });
 
