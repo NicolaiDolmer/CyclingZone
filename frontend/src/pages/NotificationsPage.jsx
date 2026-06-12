@@ -190,7 +190,7 @@ export default function NotificationsPage() {
 
   useEffect(() => {
     if (tab === "ligaen" && !feedLoaded) loadFeed();
-  }, [tab]);
+  }, [tab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Realtime: personlige notifikationer
   useEffect(() => {
@@ -202,7 +202,7 @@ export default function NotificationsPage() {
       }, payload => setNotifications(prev => [payload.new, ...prev]))
       .subscribe();
     return () => supabase.removeChannel(channel);
-  }, [userIdRef.current]);
+  }, [userIdRef.current]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Realtime: aktivitetsfeed
   useEffect(() => {

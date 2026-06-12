@@ -1163,7 +1163,7 @@ export default function TransfersPage() {
   const [transferWindow, setTransferWindow] = useState({ open: true, status: "open" });
   const [listingSort, setListingSort] = useState("newest"); // #1185: market-tab sortering
 
-  useEffect(() => { loadAll(); }, []);
+  useEffect(() => { loadAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadAll() {
     setLoading(true);

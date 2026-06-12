@@ -49,7 +49,7 @@ export function useAuctionBidding({
 
   useEffect(() => {
     if (proxyExpanded) setProxyInput(myProxy || bidAmount || minBid);
-  }, [proxyExpanded]);
+  }, [proxyExpanded]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleBid() {
     const availableForBid = computeAvailableForBid({

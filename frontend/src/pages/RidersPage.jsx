@@ -255,7 +255,7 @@ export default function RidersPage() {
     setLoading(false);
   }
 
-  useEffect(() => { loadRiders(); }, [filters]);
+  useEffect(() => { loadRiders(); }, [filters]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // #916: realtime — opdatér listen når en rytter ændres (fx solgt til AI-hold →
   // team_id skifter), så TeamCell ikke bliver ved at vise "Fri" på stale data.

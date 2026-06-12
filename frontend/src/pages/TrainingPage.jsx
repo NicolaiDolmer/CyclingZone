@@ -34,7 +34,7 @@ export default function TrainingPage() {
 
   const training = useTraining();
   const {
-    plans, enabled, todayRun, condition, loading,
+    enabled, todayRun, condition, loading,
     savingId, running, setPlan, clearPlan, planFor, runToday,
   } = training;
 

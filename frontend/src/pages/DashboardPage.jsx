@@ -250,7 +250,7 @@ export default function DashboardPage() {
     }
   }
 
-  useEffect(() => { loadAll(); }, []);
+  useEffect(() => { loadAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useRealtimeRefetch("dashboard-live", REALTIME_TABLES, loadAll);
 
   // #1005: hent de to nye moduler fra deres aggregat-endpoints — kun når modulet

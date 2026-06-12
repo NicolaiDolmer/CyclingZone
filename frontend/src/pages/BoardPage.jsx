@@ -1871,7 +1871,7 @@ export default function BoardPage() {
 
     loadPreview();
     return () => { ignore = true; };
-  }, [wizardPlanType, wizardFocus, loading]);
+  }, [wizardPlanType, wizardFocus, loading]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadAll() {
     setLoading(true);

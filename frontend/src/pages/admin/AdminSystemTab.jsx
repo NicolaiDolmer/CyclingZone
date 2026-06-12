@@ -60,7 +60,7 @@ export default function AdminSystemTab() {
     });
   }
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => { loadData(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function pauseMarket(level) {
     const scopeText = level === "all" ? "HELE markedet (auktioner + transfers + bytter + lejeaftaler + bank-lån)" : "alle auktioner";

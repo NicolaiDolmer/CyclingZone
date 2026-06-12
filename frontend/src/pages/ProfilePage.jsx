@@ -26,7 +26,7 @@ export default function ProfilePage() {
   const { theme, setTheme } = useTheme();
   const { consent, openBanner } = useConsent();
 
-  useEffect(() => { loadProfile(); }, []);
+  useEffect(() => { loadProfile(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadProfile() {
     const { data: { user: authUser } } = await supabase.auth.getUser();

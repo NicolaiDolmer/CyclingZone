@@ -130,7 +130,7 @@ export default function AuctionHistoryPage() {
   }
 
   useEffect(() => { loadMyTeam(); }, []);
-  useEffect(() => { loadAuctions(); loadStats(); }, [filter, page, myTeamId]);
+  useEffect(() => { loadAuctions(); loadStats(); }, [filter, page, myTeamId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // #246: hold pagination-state synkron med filter — uden dette kunne man stå
   // på side 5 i "Alle" og skifte til "Købt" som kun har 1 side, og lande på

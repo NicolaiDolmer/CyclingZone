@@ -408,8 +408,6 @@ function DirectOfferButton({ rider }) {
   const [result, setResult]   = useState(null);
   const [windowOpen, setWindowOpen] = useState(true);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const API = import.meta.env.VITE_API_URL;
-
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) return;
@@ -1156,7 +1154,7 @@ export default function RiderStatsPage() {
     } catch { /* non-critical: deadline-day banner falls back to inactive */ }
   }
 
-  useEffect(() => { loadRider(); loadMyTeam(); loadWatchlistStatus(); loadHistory(); loadDevelopmentHistory(); loadDdStatus(); loadBidTimeline(); loadVisits(); }, [id]);
+  useEffect(() => { loadRider(); loadMyTeam(); loadWatchlistStatus(); loadHistory(); loadDevelopmentHistory(); loadDdStatus(); loadBidTimeline(); loadVisits(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function pushOverbidToast({ riderName, amount }) {
     const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -1229,7 +1227,7 @@ export default function RiderStatsPage() {
       })
       .subscribe();
     return () => supabase.removeChannel(channel);
-  }, [bidTimeline?.auction_id, bidTimeline?.status, rider]);
+  }, [bidTimeline?.auction_id, bidTimeline?.status, rider]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // #254: bid-handlers — POST /bid, PATCH /proxy, DELETE /proxy.
   // Re-bruger samme endpoints som AuctionsPage; #194 race-confirm modtages

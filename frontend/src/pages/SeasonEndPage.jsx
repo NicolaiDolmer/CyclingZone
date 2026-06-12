@@ -192,7 +192,7 @@ export default function SeasonEndPage() {
     if (urlSeasonId) target = seasons.find(s => s.id === urlSeasonId);
     if (!target) target = seasons.find(s => s.status === "active") || seasons[0];
     if (target && target.id !== selectedSeason?.id) loadSeason(target);
-  }, [urlSeasonId, seasons]);
+  }, [urlSeasonId, seasons]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const seasonExpectedTotal = useMemo(() => {
     if (!races.length || !racePoints.length) return 0;
