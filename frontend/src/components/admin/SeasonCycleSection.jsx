@@ -25,10 +25,8 @@ export default function SeasonCycleSection({ getAuth, onMsg }) {
     setLoading(true);
     setResult(null);
     try {
-      const auth = await getAuth();
-      const res = await fetch(`${API}/api/admin/season-transition/preview`, {
-        headers: { Authorization: `Bearer ${auth.token}` },
-      });
+      const headers = await getAuth();
+      const res = await fetch(`${API}/api/admin/season-transition/preview`, { headers });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Kunne ikke hente forhåndsvisning");
       setPreview(data.plan);
@@ -59,13 +57,10 @@ export default function SeasonCycleSection({ getAuth, onMsg }) {
 
     setExecuting(true);
     try {
-      const auth = await getAuth();
+      const headers = await getAuth();
       const res = await fetch(`${API}/api/admin/season-transition`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${auth.token}`,
-        },
+        headers,
         body: JSON.stringify({}),
       });
       const data = await res.json();
