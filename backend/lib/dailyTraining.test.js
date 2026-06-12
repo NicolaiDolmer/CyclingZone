@@ -57,6 +57,7 @@ test("applyDailyTick: fuld bar giver +1, remainder bevares, clamp ved cap, deter
     conditionMult: 1, bonus: true,
   };
   const out = applyDailyTick({ ...input, abilities: { ...input.abilities }, progress: { ...input.progress } });
+  // Robust for ALLE noise-værdier i [0.85, 1.15]: delta ∈ [0.2125, 0.2875] og bar=0.995+delta ⇒ præcis ét +1.
   assert.equal(out.abilities.sprint, 71);
   assert.equal(out.gains.sprint, 1);
   assert.ok(out.progress.sprint >= 0 && out.progress.sprint < 1);
@@ -76,4 +77,13 @@ test("applyDailyTick muterer ikke input", () => {
   });
   assert.equal(abilities.sprint, 70);
   assert.equal(progress.sprint, 0.5);
+});
+
+test("ukendt intensitet giver neutral multiplikator, aldrig NaN", () => {
+  const d = dailyAbilityDelta({
+    ability: "sprint", current: 70, cap: 80, age: 20,
+    program: { focus: "sprint", intensity: "extreme" },
+    conditionMult: 1, bonus: false, noise: 1,
+  });
+  assert.ok(Number.isFinite(d) && d > 0);
 });

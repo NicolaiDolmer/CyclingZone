@@ -19,6 +19,8 @@ export const DAILY_TRAINING_CONFIG = Object.freeze({
 export const DEFAULT_PROGRAM = Object.freeze({ focus: "endurance", intensity: "normal" });
 
 export function resolveProgram(plan) {
+  // "rest" er gyldig daglig intensitet, men indgår bevidst IKKE i training.js' sæson-validator
+  // (sæson-stien kender kun easy/normal/hard; A7 håndterer API-validering).
   if (!plan || !plan.focus || !plan.intensity) return DEFAULT_PROGRAM;
   return { focus: plan.focus, intensity: plan.intensity };
 }
@@ -54,6 +56,7 @@ export function dailyAbilityDelta({ ability, current, cap, age, program, conditi
 }
 
 // Ét dags-tick for én rytter. Muterer ikke input. Returnerer nye abilities/progress + rapportfelter.
+// caps er PÅKRÆVET: manglende evne-nøgle ⇒ nul vækst for den evne (konservativt, jf. L0's lazy-caps).
 export function applyDailyTick({ riderId, dateStr, age, abilities, caps, progress, program, conditionMult, bonus }) {
   const cfg = DAILY_TRAINING_CONFIG;
   const noise = 1 - cfg.noiseSpan + 2 * cfg.noiseSpan * seededUnit(`dtick:${riderId}:${dateStr}`);
@@ -64,6 +67,7 @@ export function applyDailyTick({ riderId, dateStr, age, abilities, caps, progres
 
   for (const ability of VISIBLE_ABILITIES) {
     const current = Number(nextAbilities[ability] ?? 0);
+    if (!Number.isFinite(current)) continue; // korrupt input må ikke forgifte score/progress
     const delta = dailyAbilityDelta({
       ability, current, cap: caps?.[ability], age, program, conditionMult, bonus, noise,
     });
