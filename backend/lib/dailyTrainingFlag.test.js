@@ -27,3 +27,8 @@ test("false ved false, manglende række eller DB-fejl (fail-safe)", async () => 
   assert.equal(await isDailyTrainingEnabled(fakeSupabase(undefined)), false);
   assert.equal(await isDailyTrainingEnabled(fakeSupabase(true, new Error("boom"))), false);
 });
+
+test("exception under query eller ugyldig client → false (fail-safe)", async () => {
+  assert.equal(await isDailyTrainingEnabled({ from: () => { throw new Error("network"); } }), false);
+  assert.equal(await isDailyTrainingEnabled(null), false);
+});
