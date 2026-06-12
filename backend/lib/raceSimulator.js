@@ -113,7 +113,7 @@ export function aggressionScore(abilities) {
 function selectBreakawayBonuses({ ordered, terrainById, profileType, seed }) {
   const bonuses = new Map();
   const maxBonus = BREAKAWAY_PROFILES[profileType];
-  if (!maxBonus || ordered.length < 4) return bonuses;
+  if (!maxBonus || ordered.length < 4) return bonuses; // under 4 ryttere → intet udbrud (ellers kan næsten hele feltet eskapere)
 
   const rng = makeRng((seed ^ 0xb4ea0ff5) >>> 0);
 

@@ -2,7 +2,7 @@
 // #1307: udbruds-mekanik — seeded, kun egnede profiler, 1-3 escapees, hunter-vægt.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { simulateStage, aggressionScore, BREAKAWAY_PROFILES } from "./raceSimulator.js";
+import { simulateStage, aggressionScore, BREAKAWAY_PROFILES, BREAKAWAY_TOP_EXCLUDED } from "./raceSimulator.js";
 
 const ab = (over = {}) => ({
   climbing: 50, time_trial: 50, sprint: 50, punch: 50, endurance: 50,
@@ -23,6 +23,15 @@ test("aggressionScore vægter tactics/endurance/acceleration", () => {
   const low = aggressionScore(ab({ tactics: 1, endurance: 1, acceleration: 1 }));
   assert.ok(high > low);
   assert.ok(high <= 99 && low >= 0);
+
+  // Relativ vægtning: tactics (0.5) vejer tungere end acceleration (0.2).
+  // En rytter med tactics=99 (resten 50) skal score højere end en med acceleration=99 (resten 50).
+  const highTactics = aggressionScore(ab({ tactics: 99 }));
+  const highAcceleration = aggressionScore(ab({ acceleration: 99 }));
+  assert.ok(
+    highTactics > highAcceleration,
+    `tactics-tung (${highTactics}) skal > acceleration-tung (${highAcceleration}) — tactics har 0.5 vs 0.2 vægt`,
+  );
 });
 
 test("udbrud: kun på egnede profiler", () => {
@@ -53,7 +62,7 @@ test("udbrud: escapees kommer fra den lavere-rangerede del (uden hunter)", () =>
     const { ranked } = simulateStage({ entrants, stageProfile: profile, seed });
     for (const r of ranked.filter((x) => x.components.breakaway > 0)) {
       const idx = Number(r.rider_id.slice(1));
-      assert.ok(idx >= Math.floor(40 * 0.4), `escapee ${r.rider_id} er i den beskyttede top`);
+      assert.ok(idx >= Math.floor(40 * BREAKAWAY_TOP_EXCLUDED), `escapee ${r.rider_id} er i den beskyttede top`);
     }
   }
 });

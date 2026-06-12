@@ -141,8 +141,14 @@ test("distribution: stjernen vinder oftest, men ikke 100% (varians findes)", () 
   // 10-14-points sprint-gab bevidst nær-deterministisk — varians-egenskaben
   // gælder blandt JÆVNBYRDIGE favoritter, som i den ægte population (dry-run:
   // 24+ distinkte flad-vindere pr. sæson).
-  // Grænsen er justeret til 0.40 (#1307): flat-profilen er nu breakaway-egnet,
-  // og lejligsvise escapees reducerer legitimt stjernens vind-rate ~2-3 pp.
+  // Grænsen er justeret til 0.40 (#1307): flat-profilen er nu breakaway-egnet.
+  // I DETTE lille 10-rytter-fixture falder stjernens vind-rate fra ~0.89 til ~0.45
+  // (målt: 0.448 ved N=400) — et fald på ~44 pp, ikke 2-3. Det skyldes at top-40 %-
+  // cuttet lader 6 af 10 ryttere være escapee-kandidater med op til +0.10 bonus, mens
+  // noise-sd kun er ~0.0128: i et lille felt forstørres udbruds-effekten markant.
+  // I en realistisk population (40+ ryttere) er effekten langt mindre. Balance-niveauet
+  // bevogtes af race:gate-kalibreringen (Task 9, `npm run race:gate`). Grænsen 0.40 er
+  // bevidst tynd margin i dette fixture (observeret 0.448).
   const field = [rider("star", { sprint: 86, acceleration: 84, positioning: 80 })];
   for (let i = 0; i < 9; i++) field.push(rider(`fld${i}`, { sprint: 80 + (i % 5), acceleration: 78, positioning: 74 }));
   let starWins = 0;
