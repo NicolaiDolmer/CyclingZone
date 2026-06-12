@@ -72,7 +72,7 @@ function createIdempotencySupabase({
       from(table) {
         if (table === "finance_transactions") {
           return {
-            select(columns) {
+            select(_columns) {
               const filters = {};
               const query = {
                 eq(col, val) {
@@ -159,7 +159,7 @@ function createIdempotencySupabase({
 
         if (table === "loans") {
           return {
-            select(columns) {
+            select(_columns) {
               const filters = {};
               const query = {
                 eq(col, val) {

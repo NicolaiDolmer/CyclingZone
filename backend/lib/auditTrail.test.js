@@ -132,7 +132,6 @@ test("Enum-objekter er Object.freeze'd (forhindrer runtime-mutation)", () => {
 // ============================================================
 
 import { processLoanAgreementSeasonFees, createEmergencyLoan, createLoan, repayLoan } from "./loanEngine.js";
-import { finalizeAuctionById } from "./auctionFinalization.js";
 import { paySeasonPrizesToDate } from "./prizePayoutEngine.js";
 
 function makeAuditCaptureClient({ teams = {}, loans = [], extras = {} } = {}) {
@@ -439,8 +438,6 @@ test("repayLoan respekterer api auditCtx", async () => {
 
 test("paySeasonPrizesToDate populerer admin auditCtx + idempotency_key", async () => {
   const captures = [];
-  const teamPrize = { team_id: "team-P", team_name: "P", prize: 5000 };
-  const race = { race_id: "race-1", race_name: "Race A", total_prize: 5000, by_team: [teamPrize] };
   const supabase = {
     rpc(name, params) {
       assert.equal(name, "increment_balance_with_audit");
@@ -451,7 +448,7 @@ test("paySeasonPrizesToDate populerer admin auditCtx + idempotency_key", async (
       if (table === "races") {
         return {
           select: () => ({
-            eq: (col1, val1) => ({
+            eq: (_col1, _val1) => ({
               eq: () => Promise.resolve({
                 data: [{ id: "race-1", name: "Race A", prize_paid_at: null, status: "completed" }],
                 error: null,
