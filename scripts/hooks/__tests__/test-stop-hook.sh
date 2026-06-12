@@ -1,158 +1,105 @@
 #!/bin/bash
-# Test Stop hook (scripts/check-now-md.sh) NOW.md auto-archive logic
-# without mutating the real file. Refs #75.
+# Test Stop hook (scripts/check-now-md.sh) NOW.md budget-warning logic
+# without mutating the real file.
+#
+# Kontrakt (efter #750/#1097): hooken må ALDRIG mutere NOW.md og ALDRIG
+# skrive til docs/archive/ — den emitter kun en warning om direkte trim
+# når NOW.md er over budget (token primaer ~1.200, linjer sekundaer <=30).
+# Refs #75, #750, #1097.
 
 set -u
 FAIL=0
 PASS=0
 
 WORK=$(mktemp -d)
-cp -r docs/NOW.md "$WORK/NOW.md.orig" 2>/dev/null || true
-
-# Snapshot ALL pre-existing archive files so we can restore them byte-for-byte.
-# Script appends to NOW-YYYY-MM-DD.md, so "remove what wasn't there" leaks test data.
-mkdir -p "$WORK/archive-snapshot"
-if [ -d "docs/archive" ]; then
-  cp -p docs/archive/NOW-*.md "$WORK/archive-snapshot/" 2>/dev/null || true
-fi
+cp docs/NOW.md "$WORK/NOW.md.orig" 2>/dev/null || true
 ARCHIVE_BEFORE_LIST=$(ls docs/archive 2>/dev/null | sort)
 
 cleanup() {
   if [ -f "$WORK/NOW.md.orig" ]; then
     cp "$WORK/NOW.md.orig" docs/NOW.md
   fi
-  # Restore pre-existing archive files byte-for-byte.
-  for snap in "$WORK/archive-snapshot/"NOW-*.md; do
-    [ -f "$snap" ] || continue
-    bn=$(basename "$snap")
-    cp -p "$snap" "docs/archive/$bn"
-  done
-  # Remove any NEW archive file that didn't exist before the test ran.
-  ARCHIVE_AFTER_LIST=$(ls docs/archive 2>/dev/null | sort)
-  comm -13 <(printf '%s\n' "$ARCHIVE_BEFORE_LIST") <(printf '%s\n' "$ARCHIVE_AFTER_LIST") | while read -r f; do
-    [ -n "$f" ] && rm -f "docs/archive/$f"
-  done
   rm -rf "$WORK"
 }
 trap cleanup EXIT
 
-ARCHIVE_BEFORE=$(ls docs/archive 2>/dev/null | wc -l)
+NOW_WARN_MARKER="Opret IKKE docs/archive/NOW-"
 
-# Test 1: legacy behavior (ingen Aktiv styring-sektion).
-{
-  echo "# NOW"
-  echo ""
-  echo "## Aktiv slice"
-  for i in $(seq 1 35); do echo "line $i"; done
-  echo "## Tail"
-  echo "tail content"
-} > docs/NOW.md
-
-ORIG_LINES=$(wc -l < docs/NOW.md)
-
-bash scripts/check-now-md.sh </dev/null >/dev/null 2>&1
-
-NEW_LINES=$(wc -l < docs/NOW.md)
-ARCHIVE_AFTER=$(ls docs/archive 2>/dev/null | wc -l)
-
-if [ "$NEW_LINES" -le 30 ]; then
-  PASS=$((PASS+1))
-  echo "PASS  Stop hook trims legacy NOW.md from $ORIG_LINES to $NEW_LINES lines"
-else
-  FAIL=$((FAIL+1))
-  echo "FAIL  Stop hook did NOT trim legacy file (still $NEW_LINES lines)"
-fi
-
-if [ "$ARCHIVE_AFTER" -ge "$ARCHIVE_BEFORE" ]; then
-  PASS=$((PASS+1))
-  echo "PASS  archive dir grew or stayed same ($ARCHIVE_BEFORE -> $ARCHIVE_AFTER)"
-fi
-
-# Test 2: Aktiv styring-protection MED en cut-point header til archivering.
-# Regression-guard mod dfcee56-incident 2026-05-22 (Aktiv styring arkiveret som
-# hvis det var historisk indhold).
+# Test 1: >30 linjer -> warning emitted, fil UROERT, ingen ny arkivfil.
 {
   echo "# NOW — Aktuel arbejdsstatus"
   echo ""
-  echo "## Recent sessions"
-  echo ""
-  for i in $(seq 1 25); do echo "> Session quote $i"; echo ""; done
   echo "## Aktiv styring"
   echo ""
   echo "> **🎯 Next action:** SENTINEL_NEXT_ACTION_KEEP"
-  echo ">"
-  echo "> _Format spec_"
-  echo ""
   echo "> **🤖 Working agent:** SENTINEL_WORKING_AGENT_KEEP"
-  echo ">"
-  echo "> _Format spec_"
+  for i in $(seq 1 35); do echo "line $i"; done
 } > docs/NOW.md
 
-bash scripts/check-now-md.sh </dev/null >/dev/null 2>&1
+SHA_BEFORE=$(md5sum docs/NOW.md | cut -d' ' -f1)
+OUT=$(bash scripts/check-now-md.sh </dev/null 2>/dev/null)
+SHA_AFTER=$(md5sum docs/NOW.md | cut -d' ' -f1)
 
-if grep -q "SENTINEL_NEXT_ACTION_KEEP" docs/NOW.md && grep -q "SENTINEL_WORKING_AGENT_KEEP" docs/NOW.md; then
+if [ "$SHA_BEFORE" = "$SHA_AFTER" ]; then
   PASS=$((PASS+1))
-  echo "PASS  Aktiv styring sentinels preserved in NOW.md after trim"
+  echo "PASS  Over-budget NOW.md left byte-for-byte untouched (no auto-archive/trim)"
 else
   FAIL=$((FAIL+1))
-  echo "FAIL  Aktiv styring sentinels lost (Next action / Working agent felter blev arkiveret)"
+  echo "FAIL  Hook mutated NOW.md (forbidden after #750)"
 fi
 
-if grep -q "^## Aktiv styring" docs/NOW.md; then
+if printf '%s' "$OUT" | grep -q "$NOW_WARN_MARKER"; then
   PASS=$((PASS+1))
-  echo "PASS  '## Aktiv styring' header still in NOW.md"
+  echo "PASS  Budget warning emitted for >30 lines"
 else
   FAIL=$((FAIL+1))
-  echo "FAIL  '## Aktiv styring' header missing from NOW.md after trim"
+  echo "FAIL  No budget warning emitted for >30 lines"
 fi
 
-# Sanity: gamle session-quotes MÅ være arkiveret (cut-header eksisterer).
-TODAY_ARCHIVE="docs/archive/NOW-$(date +%F).md"
-if [ -f "$TODAY_ARCHIVE" ] && grep -q "Session quote" "$TODAY_ARCHIVE"; then
+ARCHIVE_AFTER_LIST=$(ls docs/archive 2>/dev/null | sort)
+if [ "$ARCHIVE_BEFORE_LIST" = "$ARCHIVE_AFTER_LIST" ]; then
   PASS=$((PASS+1))
-  echo "PASS  Old session quotes were archived to $TODAY_ARCHIVE"
+  echo "PASS  No new files created in docs/archive/"
 else
   FAIL=$((FAIL+1))
-  echo "FAIL  Old session quotes NOT archived (expected at least one in $TODAY_ARCHIVE)"
+  echo "FAIL  docs/archive/ contents changed (hook wrote an archive file)"
 fi
 
-# Test 3: real-world layout — kun ÉN ## header (Aktiv styring), session-quotes er
-# blockquotes uden ## boundaries. Script må IKKE arkivere (ingen sikker cut) men
-# må heller IKKE ødelægge filen.
+# Test 2: faa linjer men >1.200 tok (taette lange linjer) -> token-primaer warning.
+LONGLINE=$(printf 'x%.0s' $(seq 1 1600))
+{
+  echo "# NOW — Aktuel arbejdsstatus"
+  echo "$LONGLINE"
+  echo "$LONGLINE"
+  echo "$LONGLINE"
+  echo "$LONGLINE"
+} > docs/NOW.md
+
+OUT=$(bash scripts/check-now-md.sh </dev/null 2>/dev/null)
+if printf '%s' "$OUT" | grep -q "$NOW_WARN_MARKER"; then
+  PASS=$((PASS+1))
+  echo "PASS  Token-primary warning fires on dense few-line file (>1.200 tok)"
+else
+  FAIL=$((FAIL+1))
+  echo "FAIL  Dense over-budget file slipped through (line-count blind spot)"
+fi
+
+# Test 3: lille compliant fil -> ingen NOW-budget-warning.
 {
   echo "# NOW — Aktuel arbejdsstatus"
   echo ""
-  echo "> Næste session-kandidater: noget"
-  echo ""
-  for i in $(seq 1 12); do echo "> Session quote $i — lang nok til at fylde linjen"; echo ""; done
   echo "## Aktiv styring"
   echo ""
-  echo "> **🎯 Next action:** SENTINEL_REAL_WORLD_NEXT"
-  echo ""
-  echo "> **🤖 Working agent:** SENTINEL_REAL_WORLD_WORKING"
+  echo "> **🎯 Next action:** kort og under budget"
 } > docs/NOW.md
 
-LINES_BEFORE=$(wc -l < docs/NOW.md)
-SHA_BEFORE=$(md5sum docs/NOW.md | cut -d' ' -f1)
-bash scripts/check-now-md.sh </dev/null >/dev/null 2>&1
-LINES_AFTER=$(wc -l < docs/NOW.md)
-SHA_AFTER=$(md5sum docs/NOW.md | cut -d' ' -f1)
-
-if grep -q "SENTINEL_REAL_WORLD_NEXT" docs/NOW.md && grep -q "SENTINEL_REAL_WORLD_WORKING" docs/NOW.md; then
-  PASS=$((PASS+1))
-  echo "PASS  Real-world layout: sentinels preserved"
-else
+OUT=$(bash scripts/check-now-md.sh </dev/null 2>/dev/null)
+if printf '%s' "$OUT" | grep -q "$NOW_WARN_MARKER"; then
   FAIL=$((FAIL+1))
-  echo "FAIL  Real-world layout: sentinels LOST (regression)"
-fi
-
-# Når der ingen pre-Aktiv-styring ## headers er, skal scriptet skip-archive — fil unchanged.
-if [ "$SHA_BEFORE" = "$SHA_AFTER" ]; then
-  PASS=$((PASS+1))
-  echo "PASS  Real-world layout: file unchanged when no safe cut exists (no destructive trim)"
+  echo "FAIL  Budget warning fired on compliant file (cry-wolf)"
 else
-  FAIL=$((FAIL+1))
-  echo "FAIL  Real-world layout: file modified despite no safe cut (lines $LINES_BEFORE -> $LINES_AFTER)"
+  PASS=$((PASS+1))
+  echo "PASS  No budget warning on compliant file"
 fi
 
 echo ""

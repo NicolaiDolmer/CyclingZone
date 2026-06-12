@@ -2,10 +2,11 @@
 // =============================================================================
 // Kobler den rene weekend-mekanik (boardWeekendUpdate.js, PR #1265 — scorecard
 // ejer-godkendt 11/6) på de eksisterende weekend-finalization-stier:
-//   - pcmResultsImport.importPcmResults   (PCM-upload, dagens primære sti)
-//   - raceResultsSheetSync                (Google Sheets-sync)
+//   - pcmResultsImport.importPcmResults   (PCM-upload, nød-fallback efter relaunch)
 //   - raceRunner.simulateRace             (egen race-motor, #1102 — relaunch 20/6)
-// Alle tre kalder processBoardWeekendFinalization efter recomputeSeasonRaceDays,
+//   (raceResultsSheetSync var tredje sti indtil Sheets-importen blev fjernet
+//    2026-06-12, #1180 pkt 3 / #1179.)
+// Begge kalder processBoardWeekendFinalization efter recomputeSeasonRaceDays,
 // dvs. én opdatering pr. finaliserings-event (typisk = én løbsweekend).
 //
 // Ejer-beslutninger 11/6 (issue #1187):

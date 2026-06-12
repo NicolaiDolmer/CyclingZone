@@ -47,7 +47,10 @@ function buildNavGroups(team, t) {
       items: [
         { to: "/riders",       label: t("nav.item.riders") },
         { to: "/auctions",     label: t("nav.item.auctions") },
-        { to: "/transfers",    label: t("nav.item.transfers") },
+        // #987: excludeQuery så "Transfers" ikke lyser op når man står på
+        // transferliste-genvejen (?tab=market) — kun én af de to er aktiv.
+        { to: "/transfers",    label: t("nav.item.transfers"), excludeQuery: "tab=market" },
+        { to: "/transfers?tab=market", label: t("nav.item.transferList") },
         { to: "/deadline-day", label: t("nav.item.deadlineDay") },
         { to: "/watchlist",    label: t("nav.item.watchlist") },
         { to: "/activity",     label: t("nav.item.activity") },
@@ -80,13 +83,32 @@ async function authHeaders() {
   return { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` };
 }
 
-function pathMatchesNavItem(pathname, to, exact = false) {
-  if (exact) return pathname === to;
-  return pathname === to || pathname.startsWith(`${to}/`);
+// #987: `to` kan indeholde en query (fx "/transfers?tab=market"). Aktiv kræver
+// at path matcher OG alle query-params i `to` findes i URL'en. `excludeQuery`
+// afaktiverer et item når en bestemt param-værdi ER sat (så søskende-genveje
+// til samme path ikke begge lyser op).
+function pathMatchesNavItem(location, to, exact = false, excludeQuery = null) {
+  const [toPath, toQuery] = to.split("?");
+  const pathOk = exact
+    ? location.pathname === toPath
+    : location.pathname === toPath || location.pathname.startsWith(`${toPath}/`);
+  if (!pathOk) return false;
+  const current = new URLSearchParams(location.search);
+  if (toQuery) {
+    for (const [k, v] of new URLSearchParams(toQuery)) {
+      if (current.get(k) !== v) return false;
+    }
+  }
+  if (excludeQuery) {
+    for (const [k, v] of new URLSearchParams(excludeQuery)) {
+      if (current.get(k) === v) return false;
+    }
+  }
+  return true;
 }
 
-function NavItem({ to, label, badge, onClick, location, unread, exact }) {
-  const isActive = pathMatchesNavItem(location.pathname, to, exact);
+function NavItem({ to, label, badge, onClick, location, unread, exact, excludeQuery }) {
+  const isActive = pathMatchesNavItem(location, to, exact, excludeQuery);
   const showBadge = badge && unread > 0;
   return (
     <NavLink to={to} onClick={onClick} aria-current={isActive ? "page" : undefined}
@@ -242,11 +264,11 @@ export default function Layout() {
       { to: "/admin/waitlist", label: t("nav.item.waitlist") },
       { to: "/admin/sprint-metrics", label: t("nav.item.sprintMetrics") },
     ] });
-    const activeGroup = groups.find(g => g.items.some(i => pathMatchesNavItem(path, i.to, i.exact)))
+    const activeGroup = groups.find(g => g.items.some(i => pathMatchesNavItem(location, i.to, i.exact, i.excludeQuery)))
       || (path.startsWith("/managers/") ? groups.find(g => g.key === "klubhus") : null);
     if (activeGroup) setOpenGroups(prev => ({ ...prev, [activeGroup.key]: true }));
     setMobileOpen(false);
-  }, [location.pathname, teamId, isAdmin, t]);
+  }, [location, teamId, isAdmin, t]);
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {

@@ -14,6 +14,8 @@
     "gates:mutation-audit": "node scripts/gateMutationAudit.js",
     "race:gate": "node scripts/simulateSeasonDryRun.js --enforce-targets --no-html --seed=2026",
     "training:gate": "node scripts/previewDailyTraining.js --seasons=12 --count=400 --seed=2026 --enforce-targets",
+    "balance:check": "node scripts/balanceBaseline.js --check",
+    "balance:baseline": "node scripts/balanceBaseline.js --write",
     "season:end:verify-repair": "node scripts/verifySeasonEndRepair.js",
     "board:repair-members-after-dna": "node scripts/repairBoardMembersAfterDna.js",
     "test": "node --test --import ./test-setup.js",

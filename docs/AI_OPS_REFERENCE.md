@@ -129,11 +129,11 @@ _AI'en skal proaktivt signalere session-tilstand. Brugeren behøver ikke selv hu
 Alle skal være ✅ før commit + push:
 1. Verification-path fra `docs/slices/<slug>.md` gennemført (tests grønne, manuel smoke kørt)
 2. `frontend/src/pages/PatchNotesPage.jsx` opdateret med ny version (eller eksplicit hvorfor ikke)
-3. `docs/NOW.md` opdateret: max 30 linjer, "Senest leveret" cappet til 5 entries à ≤2 sætninger, og token-count <900 (kør `pwsh -File scripts/check-agent-token-hygiene.ps1` ved tvivl — over 900 → trim før commit, detaljer hører til issue-kommentar)
+3. `docs/NOW.md` opdateret: budget **~1.200 tokens (primær gate, jf. #1275)**, ≤30 linjer sekundært; close-out-blokke cappet til 5 entries à ≤2 sætninger. Over budget → trim gamle blokke **direkte** før commit (historik bevares i git-log + issue-tråde; opret IKKE `docs/archive/NOW-*.md`, jf. #750). Kør `pwsh -File scripts/check-agent-token-hygiene.ps1` ved tvivl
 4. `docs/FEATURE_STATUS.md` opdateret hvis kontrakter/features ændret
 5. Relevante GitHub-issues lukket eller opdateret med kommentar (task-lag — backlog-fil arkiveret 2026-05-06)
 6. Hvis bug-fix: postmortem-entry i `.claude/learnings/<dato>-<slug>.md`
-7. Slice-doc i `docs/slices/` enten markeret done eller flyttet til `docs/archive/slices/`
+7. Slice-doc i `docs/slices/` markeret done (flyt IKKE filer til `docs/archive/` — mappen er #684-deny-beskyttet, jf. #750)
 8. Doc-drift sweep: nye env vars, deploy-targets, route-navne, tabel-navne afstemt mod ARCHITECTURE og åbne issues
 
 ### Tjekliste — planlægnings-/audit-session klar til close-out
@@ -171,14 +171,16 @@ I rækkefølge før jeg foreslår commit:
 - Læs kun `slice-doc + 2-3 kerne-filer` ved start — ikke hele FEATURE_STATUS
 - Brug `Explore`-subagent til store search/audit-tasks (75%+ token-besparelse)
 - Skriv NOW-update sidst, ikke undervejs
-- Hvis NOW.md kommer over 40 linjer: arkivér historik FØR push
+- Hvis NOW.md er over budget (~1.200 tok / 30 linjer): trim historik direkte FØR push — git-log + issue-tråde ER arkivet (#750)
 - Memory-filer læses kun ved første session eller eksplicit behov
 
 ### Cold-start-recipe (ny session)
 
 ```
 1. git rev-parse --show-toplevel  → bekræft repo
-2. Read AGENTS.md + GUARDRAILS_CORE.md + NOW.md (fast trio)
+2. Read AGENTS.md + NOW.md (fast par). GUARDRAILS_CORE.md KUN ved
+   needs-contract/shared-refactor-issues (samme regel som CLAUDE.md Start
+   trin 3 — ~80% af sessioner skipper og sparer ~1.100 tok)
 3. Hvis næste session-prioritet matcher en slice-doc:
    Read docs/slices/<slug>.md  (komplet kontrakt)
 4. Read 2-3 specifikke kode-filer slice-doc citerer

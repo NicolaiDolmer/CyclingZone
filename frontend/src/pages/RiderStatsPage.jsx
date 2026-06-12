@@ -1808,6 +1808,30 @@ function HistoryEvent({ event }) {
       : event.is_guaranteed_sale
         ? t("history.auction.labelGuaranteed")
         : t("history.auction.labelDefault");
+
+    // #785: auktion uden bud = intet salg. Vis det eksplicit i stedet for
+    // "Ukendt vandt af X" + umødt startpris, som antød et salg til ingen.
+    if (event.no_sale) {
+      return (
+        <div className="px-4 py-3 flex items-start gap-3">
+          <span className="text-cz-3 text-lg mt-0.5">◌</span>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs uppercase tracking-wider text-cz-3 font-medium">{typeLabel}</span>
+              <span className="text-[10px] uppercase px-1.5 py-0.5 rounded bg-cz-subtle text-cz-3 border border-cz-border font-medium">
+                {t("history.auction.noSaleTag")}
+              </span>
+              <span className="text-cz-3 text-xs">{date}</span>
+            </div>
+            <p className="text-cz-2 text-sm mt-0.5">
+              <TeamLink id={event.seller?.id} className="font-medium hover:text-cz-accent-t transition-colors">{event.seller?.name || t("history.auction.sellerFallback")}</TeamLink>
+              <span className="text-cz-3"> {t("history.auction.noSaleBody")}</span>
+            </p>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="px-4 py-3 flex items-start gap-3">
         <span className="text-cz-accent-t text-lg mt-0.5">🏆</span>

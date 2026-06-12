@@ -16,7 +16,7 @@ _Koordinerings-fil for AI-assistenter der arbejder i cycling-manager-repo'et. Si
 
 4. **Bliv ved med at stille spørgsmål når i tvivl.** 70-95% sikkerhed → spørg, antag ikke. Også for proaktive forbedringsforslag. AskUserQuestion-tool foretrækkes til strukturerede valg.
 
-5. **Patch notes er obligatoriske ved enhver brugerrettet ændring.** Opdatér `frontend/src/pages/PatchNotesPage.jsx` ELLER skriv eksplicit hvorfor det ikke er nødvendigt. Pre-push hook (loop B i AI_LOOPS.md) håndhæver dette. **Samme rutine for Hjælp/FAQ** (#1171): ændrer eller tilføjer slicen en spilmekanik spillere skal forstå, opdatér `frontend/public/locales/{en,da}/help.json` (+ `HelpPage.jsx` SECTION_DEFS/FAQ_KEYS ved nye blokke) eller skriv hvorfor ikke.
+5. **Patch notes er obligatoriske ved enhver brugerrettet ændring.** Opdatér `frontend/src/pages/PatchNotesPage.jsx` ELLER skriv eksplicit hvorfor det ikke er nødvendigt. Pre-push hook (loop B i AI_LOOPS.md) håndhæver dette. **Samme rutine for Hjælp/FAQ** (#1171): ændrer eller tilføjer slicen en spilmekanik spillere skal forstå, opdatér `frontend/public/locales/{en,da}/help.json` (+ `HelpPage.jsx` SECTION_DEFS/FAQ_KEYS ved nye blokke) eller skriv hvorfor ikke. **i18n leak-guard (#1068):** `scripts/i18n-check-leaks.mjs` (CI-job `leak-check` + pre-commit via lint-staged) blokerer NYE danske strenge i EN-locale-værdier og player-facing kode. Kendte leaks ligger i `scripts/i18n-leaks-baseline.json` — en ratchet der kun må skrumpe: fix leaks og stram med `node scripts/i18n-check-leaks.mjs --update-baseline` i en dedikeret commit; udvid den ALDRIG med nye leaks. Legitimt dansk (admin-flader, dual-page privacy, PatchNotes-data, brand-termer) tilføjes i stedet til LOCALE_ALLOWLIST/EXEMPT i scriptet med begrundelse.
 
 6. **Slice close-out kræver:**
    - `docs/NOW.md` opdateret + relevante GitHub-issues lukket eller opdateret med status (`gh issue comment N --body "..."` / `gh issue close N --reason completed`)
@@ -46,7 +46,7 @@ pwsh -File scripts/cross-pc-forensic-audit.ps1   # exit 1 = lokal-only state, fi
 1. Kør `git rev-parse --show-toplevel` — bekræft repo-root
 2. Kør `git fetch --prune origin && git status -sb` — hvis `[behind N]`, kør `git pull --ff-only` før edit (user-level SessionStart-hook gør dette automatisk hvis installeret)
 3. Læs `.codex.local/SESSION_CONTEXT.md` hvis den findes, men behandl den som regenererbar cache fra GitHub-issues — ikke som source of truth. Hvis den er stale/mangler, brug `docs/NOW.md` + `gh issue list/view`.
-4. Læs `docs/GUARDRAILS_CORE.md`
+4. Læs `docs/GUARDRAILS_CORE.md` KUN hvis issue-labels indeholder `needs-contract` eller `shared-refactor` (~80% af sessioner skipper — samme regel som CLAUDE.md "Start (eksplicit)" trin 3; alignet per #1097)
 5. Læs `docs/NOW.md`
 6. Aktivt issue: `gh issue list --label "claude:todo" --state open --limit 10` — første `#N` i NOW.md er typisk det aktive
 7. Hvis arbejde matcher en slice i `docs/slices/<slug>.md` → læs den slice-brief (komplet kontrakt på 30-50 linjer)

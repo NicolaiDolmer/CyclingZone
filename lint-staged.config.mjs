@@ -29,4 +29,11 @@ export default {
   // auto-migrate on ON_ERROR_STOP=1 (the #635 bug shape).
   "database/**/*.sql": (files) =>
     `node scripts/lint-sql-strings.mjs ${files.map(escape).join(" ")}`,
+  // #1068 forward-guard: i18n leak-check (DA-in-EN locale values + hardcoded
+  // Danish strings in player-facing code). The script always does a full-repo
+  // scan against scripts/i18n-leaks-baseline.json (ratchet) — the staged file
+  // args are passed per the lint-staged convention above but ignored, so the
+  // result is deterministic regardless of what is staged.
+  "{frontend/public/locales/**/*.json,frontend/src/**/*.js,frontend/src/**/*.jsx,backend/routes/**/*.js,backend/lib/**/*.js}":
+    (files) => `node scripts/i18n-check-leaks.mjs ${files.map(escape).join(" ")}`,
 };

@@ -125,28 +125,33 @@ export default function RacePointsAdminSection({ getAuth, onMsg }) {
     const dirty = Object.entries(edits);
     if (!dirty.length) return;
     setSaving(true);
-    const headers = await getAuth();
     let okCount = 0;
     let lastErr = null;
-    for (const [id, points] of dirty) {
-      try {
-        const res = await fetch(`${API}/api/admin/race-points/${id}`, {
-          method: "PUT",
-          headers,
-          body: JSON.stringify({ points }),
-        });
-        const data = await res.json();
-        if (!res.ok) { lastErr = data.error || "PUT failed"; continue; }
-        // Update local row
-        setRows((prev) => prev.map((r) => (r.id === id ? data.row : r)));
-        okCount++;
-      } catch (e) {
-        lastErr = e.message;
+    try {
+      const headers = await getAuth();
+      for (const [id, points] of dirty) {
+        try {
+          const res = await fetch(`${API}/api/admin/race-points/${id}`, {
+            method: "PUT",
+            headers,
+            body: JSON.stringify({ points }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) { lastErr = data.error || `HTTP ${res.status}`; continue; }
+          // Update local row
+          setRows((prev) => prev.map((r) => (r.id === id ? data.row : r)));
+          okCount++;
+        } catch (e) {
+          lastErr = e.message;
+        }
       }
+      setEdits({});
+      setEditingId(null);
+    } catch (e) {
+      lastErr = e.message || "ukendt";
+    } finally {
+      setSaving(false);
     }
-    setEdits({});
-    setEditingId(null);
-    setSaving(false);
     if (lastErr && okCount === 0) {
       onMsg(t("racePoints.saveError", { error: lastErr }), "error");
     } else if (lastErr) {

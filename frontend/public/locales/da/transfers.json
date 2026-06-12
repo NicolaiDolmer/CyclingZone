@@ -44,7 +44,8 @@
   "direction": {
     "in": "Køb",
     "out": "Salg",
-    "swap": "Bytte"
+    "swap": "Bytte",
+    "noSale": "Intet salg"
   },
   "relativeTime": {
     "justNow": "Lige nu",
@@ -201,6 +202,7 @@
     "aiTag": "(AI)",
     "loanTag": "(lån)",
     "swapZero": "0 CZ$",
+    "noBids": "Ingen bud",
     "loadError": "Kunne ikke hente transferhistorik"
   },
   "profit": {
@@ -284,5 +286,25 @@
     "newest": "Nyeste først",
     "price_asc": "Pris: laveste først",
     "price_desc": "Pris: højeste først"
+  },
+  "deadlineDay": {
+    "title": "Deadline Day",
+    "subtitle": "Alle holds truppestørrelse vs. divisions-minimum. Opdateres hvert 30. sekund.",
+    "fetchErrorTitle": "Kunne ikke hente Deadline Day-status",
+    "fetchErrorRetry": "Prøver igen om 30 sekunder",
+    "inactiveTitle": "Deadline Day er kun aktivt når transfervinduet lukker",
+    "inactiveSubtitle": "Vend tilbage når transfervinduet nærmer sig lukketid",
+    "allOkTitle": "Alle hold er over minimum",
+    "allOkSubtitle": "Ingen handling påkrævet",
+    "sectionCritical": "Under minimum, {count, plural, one {1 hold} other {# hold}}",
+    "sectionWarning": "Tæt på minimum, {count, plural, one {1 hold} other {# hold}}",
+    "sectionOk": "OK, {count, plural, one {1 hold} other {# hold}}",
+    "statusCritical": "Under minimum",
+    "statusWarning": "Tæt på minimum",
+    "statusOk": "OK",
+    "thTeam": "Hold",
+    "thDivision": "Div",
+    "thMin": "Min",
+    "thStatus": "Status"
   }
 }

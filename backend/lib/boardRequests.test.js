@@ -175,6 +175,14 @@ test("getBoardRequestDefinition returnerer null for ukendt request", () => {
   assert.equal(getBoardRequestDefinition("nope"), null);
 });
 
+// #1084 · i18n-kode-kontrakt: definitions emitterer keys ved siden af dansk råtekst.
+test("getBoardRequestDefinition emitterer label/description/tradeoffPreview-keys (#1084)", () => {
+  const def = getBoardRequestDefinition("more_youth_focus");
+  assert.equal(def.label_key, "requestDefs.more_youth_focus.label");
+  assert.equal(def.description_key, "requestDefs.more_youth_focus.description");
+  assert.equal(def.tradeoff_preview_key, "requestDefs.more_youth_focus.tradeoffPreview");
+});
+
 // =====================================================================
 // isMajorPivotRequest
 // =====================================================================
@@ -233,6 +241,9 @@ test("buildBoardRequestOptions disabler ALT i slutfase-vinduet (≤5 race-days)"
   });
   assert.ok(options.every((o) => o.disabled === true));
   assert.ok(options.every((o) => /slutfase/i.test(o.disabled_reason)));
+  // #1084 · disabled_reason har i18n-kode + params (frontend resolve-on-read).
+  assert.ok(options.every((o) => o.disabled_reason_key === "requestReason.windowBlocked"));
+  assert.ok(options.every((o) => o.disabled_reason_params.raceDays === REQUEST_WINDOW_BLOCK_RACE_DAYS_LEFT));
 });
 
 test("buildBoardRequestOptions disabler ALT naar saesonens request allerede er brugt", () => {
@@ -324,6 +335,26 @@ test("resolveBoardRequest returnerer rejected (uden updated_board) naar availabi
   assert.deepEqual(result.goal_changes, []);
   assert.equal(result.request_type, "lower_results_pressure");
   assert.equal(result.request_label, "Saenk resultatpresset");
+  // #1084 · rejected-resultater bærer i18n-koder (persisteres i request_payload).
+  assert.equal(result.title_code, "requestOutcome.rejectedTitle");
+  assert.equal(result.summary_code, "requestReason.planNotActive");
+  assert.equal(result.request_label_key, "requestDefs.lower_results_pressure.label");
+});
+
+// #1084 · approved/partial/tradeoff-resultater bærer title/summary/tradeoff-koder.
+test("resolveBoardRequest emitterer title_code/summary_code/tradeoff_summary_code (#1084)", () => {
+  const result = resolveBoardRequest({
+    board: readyBoard(),
+    requestType: "lower_results_pressure",
+    team: STRONG_TEAM,
+    standing: STRONG_STANDING,
+    context: openContext(),
+  });
+  assert.notEqual(result.outcome, "rejected");
+  assert.match(result.title_code, /^requestOutcome\.lowerResults\.title/);
+  assert.match(result.summary_code, /^requestOutcome\.lowerResults\.summary/);
+  assert.match(result.tradeoff_summary_code, /^requestOutcome\.lowerResults\.tradeoff/);
+  assert.equal(result.request_label_key, "requestDefs.lower_results_pressure.label");
 });
 
 // =====================================================================

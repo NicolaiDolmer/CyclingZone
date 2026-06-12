@@ -51,6 +51,13 @@ test("deriveTeamIdentityProfile reads a sprint-heavy squad and exposes board-fac
   assert.equal(profile.squad_limits.max, 10);
   assert.equal(profile.u25_share_pct, 38);
   assert.match(profile.summary, /sprinthold|trup/i);
+  // #1084 · i18n-koder ved siden af de danske labels (frontend resolve-on-read).
+  assert.equal(profile.primary_specialization_label_key, "specialization.sprint");
+  assert.equal(profile.competitive_tier_label_key, "competitiveTier.competitive");
+  assert.match(profile.squad_status_label_key, /^squadStatus\./);
+  assert.equal(profile.summary_key, "identitySummary.template");
+  assert.equal(profile.summary_params.primarySpecialization, "sprint");
+  assert.equal(profile.summary_params.squadStatus, profile.squad_status);
 });
 
 test("deriveTeamIdentityProfile exposes national core and star profile markers", () => {
@@ -84,6 +91,12 @@ test("deriveTeamIdentityProfile exposes national core and star profile markers",
   assert.equal(profile.national_core.share_pct, 63);
   assert.equal(profile.national_core.established, true);
   assert.equal(profile.star_profile.label, "Nationalt kendt");
+  // #1084 · label-koder: national kerne (med {country}-param) + stjerneprofil.
+  assert.equal(profile.national_core.label_key, "nationalCoreLabel.clearCore");
+  assert.deepEqual(profile.national_core.label_params, { country: "DK" });
+  assert.equal(profile.star_profile.label_key, "starProfileLevel.high");
+  assert.equal(profile.summary_params.nationalCoreCode, "DK");
+  assert.equal(profile.summary_params.starProfileLevel, "high");
 });
 
 test("buildBoardProposal keeps squad-size goals inside division limits", () => {

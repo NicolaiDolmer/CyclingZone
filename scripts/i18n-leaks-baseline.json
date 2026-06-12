@@ -1,0 +1,30 @@
+{
+  "$comment": "Kendte i18n-leaks (ratchet — må kun skrumpe). Genereret af scripts/i18n-check-leaks.mjs --update-baseline. Refs #1068/#678. Nye leaks må IKKE tilføjes her — fix dem, eller brug allowlist/EXEMPT i scriptet hvis de er legitimt danske.",
+  "locale": [],
+  "frontend": {},
+  "backend": {
+    "backend/lib/adminSimulateRace.js": 3,
+    "backend/lib/balanceRpc.js": 6,
+    "backend/lib/boardMembers.js": 1,
+    "backend/lib/dailySeasonCountCheck.js": 1,
+    "backend/lib/discordBotTokenCheck.js": 1,
+    "backend/lib/discordNotifier.js": 2,
+    "backend/lib/economyEngine.js": 1,
+    "backend/lib/fictionalRiderGenerator.js": 4,
+    "backend/lib/loanEngine.js": 3,
+    "backend/lib/pcmResultsImport.js": 4,
+    "backend/lib/prizePayoutEngine.js": 2,
+    "backend/lib/racePoolImport.js": 2,
+    "backend/lib/raceRunner.js": 5,
+    "backend/lib/raceSimulator.js": 2,
+    "backend/lib/raceStageProfileGenerator.js": 1,
+    "backend/lib/rateLimiters.js": 5,
+    "backend/lib/relaunchOrchestrator.js": 3,
+    "backend/lib/seasonRaceDays.js": 3,
+    "backend/lib/teamProfileEngine.js": 3,
+    "backend/lib/transferExecution.js": 8,
+    "backend/lib/uciStaleDataCheck.js": 1,
+    "backend/lib/urlSafety.js": 6,
+    "backend/routes/api.js": 111
+  }
+}

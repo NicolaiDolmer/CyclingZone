@@ -55,6 +55,7 @@ export function computeSeasonOneIdentity({ team = null, riders = [], seasonNumbe
     rider_count: profile.rider_count,
     primary_specialization: profile.primary_specialization,
     primary_specialization_label: profile.primary_specialization_label,
+    primary_specialization_label_key: profile.primary_specialization_label_key,
     secondary_specialization: profile.secondary_specialization,
     youth_share_pct: profile.u25_share_pct,
     youth_level: profile.youth_level,
@@ -118,6 +119,12 @@ export function deriveTeamIdentityProfile({ team = null, riders = [], standing =
     .sort((a, b) => b[1] - a[1]);
   const primarySpecialization = riderCount === 0 ? "balanced" : (primaryEntry?.[0] || "balanced");
   const secondarySpecialization = riderCount === 0 ? "youth" : (secondaryEntry?.[0] || "balanced");
+  // #1084 · i18n-koder ved siden af de danske labels (frontend resolver via
+  // board.json med dansk råtekst som fallback — samme mønster som #917/#694).
+  const squadStatusKey = SQUAD_STATUS_LABELS[squadStatus] ? squadStatus : "healthy";
+  const competitiveTierKey = COMPETITIVE_TIER_LABELS[competitiveTier] ? competitiveTier : "competitive";
+  const primarySpecializationKey = SPECIALIZATION_LABELS[primarySpecialization] ? primarySpecialization : "balanced";
+  const secondarySpecializationKey = SPECIALIZATION_LABELS[secondarySpecialization] ? secondarySpecialization : "balanced";
 
   return {
     division,
@@ -128,12 +135,16 @@ export function deriveTeamIdentityProfile({ team = null, riders = [], standing =
     youth_level: youthLevel,
     squad_status: squadStatus,
     squad_status_label: SQUAD_STATUS_LABELS[squadStatus] || SQUAD_STATUS_LABELS.healthy,
+    squad_status_label_key: `squadStatus.${squadStatusKey}`,
     competitive_tier: competitiveTier,
     competitive_tier_label: COMPETITIVE_TIER_LABELS[competitiveTier] || COMPETITIVE_TIER_LABELS.competitive,
+    competitive_tier_label_key: `competitiveTier.${competitiveTierKey}`,
     primary_specialization: primarySpecialization,
     primary_specialization_label: SPECIALIZATION_LABELS[primarySpecialization] || SPECIALIZATION_LABELS.balanced,
+    primary_specialization_label_key: `specialization.${primarySpecializationKey}`,
     secondary_specialization: secondarySpecialization,
     secondary_specialization_label: SPECIALIZATION_LABELS[secondarySpecialization] || SPECIALIZATION_LABELS.balanced,
+    secondary_specialization_label_key: `specialization.${secondarySpecializationKey}`,
     national_core: nationalCore,
     star_profile: starProfile,
     summary: buildIdentityProfileSummary({
@@ -144,6 +155,20 @@ export function deriveTeamIdentityProfile({ team = null, riders = [], standing =
       nationalCore,
       starProfile,
     }),
+    // #1084 · ICU-param-kontrakt: frontend komponerer summary-sætningen af
+    // fragment-keys (identitySummary.*) ud fra disse koder; den danske
+    // `summary` ovenfor er fallback for gamle klienter/manglende keys.
+    summary_key: "identitySummary.template",
+    summary_params: {
+      primarySpecialization: primarySpecializationKey,
+      secondarySpecialization: secondarySpecializationKey,
+      youthLevel: ["high", "medium", "low"].includes(youthLevel) ? youthLevel : "medium",
+      squadStatus: squadStatusKey,
+      nationalCoreEstablished: Boolean(nationalCore?.established && nationalCore?.code),
+      nationalCoreCode: nationalCore?.code || null,
+      nationalCoreSharePct: nationalCore?.share_pct ?? 0,
+      starProfileLevel: starProfile?.level || null,
+    },
   };
 }
 
@@ -238,6 +263,8 @@ function calculateNationalCore(riders = []) {
       strength: "none",
       established: false,
       label: "Blandet trup",
+      label_key: "nationalCoreLabel.mixed",
+      label_params: {},
     };
   }
 
@@ -261,6 +288,8 @@ function calculateNationalCore(riders = []) {
       strength: "none",
       established: false,
       label: "Blandet trup",
+      label_key: "nationalCoreLabel.mixed",
+      label_params: {},
     };
   }
 
@@ -279,6 +308,13 @@ function calculateNationalCore(riders = []) {
         ? `Tydelig ${code}-kerne`
         : `${code}-kerne`
       : "Blandet trup",
+    // #1084 · {country}-param resolves i frontend via getCountryDisplay(code).
+    label_key: established
+      ? strength === "high"
+        ? "nationalCoreLabel.clearCore"
+        : "nationalCoreLabel.core"
+      : "nationalCoreLabel.mixed",
+    label_params: established ? { country: code } : {},
   };
 }
 
@@ -287,6 +323,7 @@ function calculateStarProfile(riders = []) {
     return {
       level: "low",
       label: "Ukendt",
+      label_key: "starProfileLevel.low",
       headline_score: 0,
       star_rider_count: 0,
       share_pct: 0,
@@ -318,6 +355,7 @@ function calculateStarProfile(riders = []) {
       high: "Nationalt kendt",
       elite: "Verdenskendt",
     }[level] || "Ukendt",
+    label_key: `starProfileLevel.${["low", "medium", "high", "elite"].includes(level) ? level : "low"}`,
     headline_score: Math.round(headlineScore),
     star_rider_count: starRiderCount,
     share_pct: sharePct,

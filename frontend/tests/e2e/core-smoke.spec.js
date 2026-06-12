@@ -1,5 +1,14 @@
 import { expect, test } from "@playwright/test";
-import { installNetworkMocks, login, stabilizePage, corsHeaders, json, TEST_TEAM } from "./fixtures.js";
+import {
+  installNetworkMocks,
+  login,
+  stabilizePage,
+  corsHeaders,
+  json,
+  TEST_TEAM,
+  TEXT_MASK_SELECTOR,
+  waitForStableSnapshotTarget,
+} from "./fixtures.js";
 
 // i18n Fase 3+: oversatte sider skal bruge regex der matcher BÅDE DA + EN,
 // så testen ikke break'er afhængigt af LanguageDetector's valg (localStorage/
@@ -58,49 +67,8 @@ test("root path redirects to dashboard", async ({ page }) => {
 // Filtrér dem fra page-errors så vi stadig fanger ægte JS-exceptions.
 const WEBKIT_DEV_NOISE = [/Importing a module script failed/i, /due to access control checks/i];
 
-// Tekst-elementer maskeres i pixel-snapshots så testen fanger LAYOUT-regressions
-// (cards forsvinder, kolonner kollapser, billeder mangler) uden at fejle på copy-
-// eller i18n-ændringer. Indhold valideres via expect-assertions + i18n-key-coverage,
-// ikke pixel-diff. Forward-guard mod #412 i18n-snapshot-treadmill — se
-// `.claude/learnings/2026-05-17-visual-snapshots-layout-only.md`.
-const TEXT_MASK_SELECTOR =
-  "main :is(h1,h2,h3,h4,h5,h6,p,span,a,button,li,td,th,label,time,strong,em,dt,dd)";
-
-async function waitForStableSnapshotTarget(page) {
-  await page.evaluate(async () => {
-    if (document.fonts?.ready) await document.fonts.ready;
-  });
-
-  await page.waitForFunction(
-    async ({ maskSelector }) => {
-      const target = document.querySelector("main");
-      if (!target) return false;
-
-      const measure = () => {
-        const rect = target.getBoundingClientRect();
-        return [
-          Math.round(rect.width),
-          Math.round(rect.height),
-          document.querySelectorAll(maskSelector).length,
-        ].join(":");
-      };
-
-      let previous = measure();
-      let stableFrames = 0;
-      while (stableFrames < 4) {
-        await new Promise((resolve) => requestAnimationFrame(resolve));
-        const next = measure();
-        stableFrames = next === previous ? stableFrames + 1 : 0;
-        previous = next;
-      }
-
-      return true;
-    },
-    { maskSelector: TEXT_MASK_SELECTOR },
-    { timeout: 3000 }
-  );
-}
-
+// Snapshot-stabiliserings-helpers (TEXT_MASK_SELECTOR + waitForStableSnapshotTarget)
+// bor i fixtures.js (#1076) så board-interactive.spec.js kan genbruge dem.
 const TRANSLATED_PAGE_SMOKE = [
   {
     path: "/dashboard",

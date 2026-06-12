@@ -46,15 +46,8 @@ function handleUploadError(error, res) {
   });
 }
 
-export function adminImportUploadSingleFile(req, res, next) {
-  adminImportUpload.single("file")(req, res, (error) => {
-    if (!error) {
-      next();
-      return;
-    }
-    handleUploadError(error, res);
-  });
-}
+// adminImportUploadSingleFile (Excel-resultatimport, felt "file") fjernet 2026-06-12
+// (#1180 pkt 3, jf. #1179) — eneste tilbageværende upload-path er PCM-importen nedenfor.
 
 // Flere filer pr. løb (PCM-etaper). Felt-navn "files", maks 30 filer.
 export const ADMIN_IMPORT_MAX_FILES = 30;

@@ -190,6 +190,16 @@
     },
     "fallbackDash": "-"
   },
+  "development": {
+    "empty": "No history yet. Data accumulates from the next weekly sync",
+    "statsTitle": "Skill development",
+    "statsSubtitle": "Pick a skill and see how it changes over time",
+    "recentTitle": "Latest data points",
+    "table": {
+      "date": "Date"
+    },
+    "fallbackDash": "-"
+  },
   "bids": {
     "noAuction": "No current auction for this rider",
     "noBids": "No bids yet",
@@ -215,7 +225,9 @@
       "wonBy": "won from",
       "buyerFallback": "Unknown",
       "sellerFallbackAi": "AI team",
-      "sellerFallback": "Unknown"
+      "sellerFallback": "Unknown",
+      "noSaleTag": "No sale",
+      "noSaleBody": "received no bids (the rider was not sold)"
     },
     "transfer": {
       "label": "Transfer",

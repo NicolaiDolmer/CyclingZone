@@ -10,6 +10,7 @@ export default function SeasonPreviewPage() {
   // Alias `tCommon` — inner `.map(t => ...)` iterators bruger `t` som team-objekt
   // og ville shadow translation-hookets `t` (kender bug ved i18n sweep #678 followup).
   const { t: tCommon } = useTranslation("common");
+  const { t: tStandings } = useTranslation("standings");
   const [teams, setTeams] = useState([]);
   const [loading, setLoading] = useState(true);
   const [season, setSeason] = useState(null);
@@ -66,15 +67,15 @@ export default function SeasonPreviewPage() {
   return (
     <div className="max-w-4xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-xl font-bold text-cz-1">Sæson Preview</h1>
+        <h1 className="text-xl font-bold text-cz-1">{tStandings("preview.title")}</h1>
         <p className="text-cz-3 text-sm">
-          {season ? `Sæson ${season.number} — Hold styrker og spådomme` : "Ingen aktiv sæson"}
+          {season ? tStandings("preview.subtitle", { n: season.number }) : tStandings("noActiveSeason")}
         </p>
       </div>
 
       {/* Strength overview */}
       <div className="bg-cz-card border border-cz-border rounded-xl p-5 mb-5">
-        <h2 className="text-cz-1 font-semibold text-sm mb-4">Holdstyrker — baseret på samlet holdværdi</h2>
+        <h2 className="text-cz-1 font-semibold text-sm mb-4">{tStandings("preview.strengthHeading")}</h2>
         <div className="flex flex-col gap-3">
           {teams.map(t => {
             const isMe = t.id === myTeamId;
@@ -132,9 +133,9 @@ export default function SeasonPreviewPage() {
                 <div>
                   <div className="flex items-center gap-2">
                     <p className="font-bold text-sm text-cz-1">{t.name}</p>
-                    {isMe && <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "rgb(var(--me-badge-bg))", color: "rgb(var(--me-badge-fg))" }}>Dig</span>}
+                    {isMe && <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "rgb(var(--me-badge-bg))", color: "rgb(var(--me-badge-fg))" }}>{tStandings("youBadge")}</span>}
                   </div>
-                  <p className="text-xs mt-0.5" style={{ color: `${color}80` }}>Division {t.division} — #{t.rank} styrke</p>
+                  <p className="text-xs mt-0.5" style={{ color: `${color}80` }}>{tStandings("preview.divisionRank", { division: t.division, rank: t.rank })}</p>
                 </div>
                 <span className="text-2xl font-bold font-mono" style={{ color }}>#{t.rank}</span>
               </div>
@@ -156,7 +157,7 @@ export default function SeasonPreviewPage() {
 
               {t.topRider && (
                 <div className="flex items-center gap-2 bg-cz-subtle rounded-lg px-3 py-2">
-                  <span className="text-cz-3 text-xs">Topstjerne:</span>
+                  <span className="text-cz-3 text-xs">{tStandings("preview.topStar")}</span>
                   <span className="text-cz-1 text-xs font-medium">
                     {t.topRider.firstname} {t.topRider.lastname}
                   </span>

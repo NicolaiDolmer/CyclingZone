@@ -158,7 +158,7 @@ if ([string]::IsNullOrWhiteSpace(($status -join ""))) {
   $ok += "Main-checkout er rent"
   Write-Host "  [ok] main-checkout rent"
 } else {
-  $lines = @($status) | Where-Object { $_ }
+  $lines = @(@($status) | Where-Object { $_ })
   $warn += "Main-checkout har $($lines.Count) aendret/untracked fil(er) — bolge-agenter brancher fra origin/main, saa det blokerer ikke, men verificer at intet skal committes foerst."
   Write-Host "  [warn] $($lines.Count) aendret/untracked fil(er) i main-checkout:" -ForegroundColor Yellow
   $lines | Select-Object -First 5 | ForEach-Object { Write-Host "    $_" -ForegroundColor Yellow }

@@ -57,6 +57,7 @@
     },
     "forecast": {
       "title": "Season forecast",
+      "fullLink": "Full forecast and loans →",
       "sponsorIncome": "Sponsor income",
       "salaries": "Salaries ({count} riders)",
       "net": "Net (excl. prize money)",
@@ -95,6 +96,9 @@
     "auction": {
       "description": "Start auction. Other managers can bid.",
       "startButton": "Start",
+      "startFlashButton": "⚡ Start Flash",
+      "flashLabel": "⚡ Flash auction (30 min)",
+      "flashHint": "Deadline Day: ends exactly 30 minutes after start",
       "successMsg": "✅ Auction started!",
       "priceError": "Start price must be between 0 and Value ({amount} CZ$)"
     },
@@ -139,6 +143,7 @@
     "seasonStageWins": "Stage wins",
     "seasonGcWins": "GC wins",
     "tabSquad": "Squad ({count})",
+    "tabResults": "Results",
     "tabTransfers": "Transfer history",
     "squadTitle": "Squad ({count} riders)",
     "viewCurrent": "Current squad ({count})",
@@ -149,6 +154,39 @@
     "thRider": "Rider",
     "thBadges": "Status",
     "thValue": "Value"
+  },
+  "results": {
+    "title": "Race results",
+    "subtitle": "Point-scoring results for this team",
+    "seasonFilterAll": "All seasons",
+    "seasonFilterCurrent": "Season {n} (current)",
+    "seasonOption": "Season {n}",
+    "seasonRow": "Season {n}",
+    "loadError": "Could not load the results. Please try again.",
+    "emptyAll": "No point-scoring results yet",
+    "emptyFiltered": "No results in the selected season",
+    "thRace": "Race",
+    "thType": "Classification",
+    "thRank": "Rank",
+    "thRider": "Rider",
+    "thPoints": "Points",
+    "thPrize": "Prize",
+    "stageN": "Stage {n}",
+    "riderTeam": "Team",
+    "total": "Total · {count, plural, one {# result} other {# results}}",
+    "type": {
+      "stage": "Stage",
+      "gc": "Overall (GC)",
+      "oneday": "One-day result",
+      "points": "Points classification",
+      "mountain": "Mountains classification",
+      "young": "Young rider",
+      "team": "Team classification",
+      "leader": "Leader jersey (day)",
+      "points_day": "Points jersey (day)",
+      "mountain_day": "Mountains jersey (day)",
+      "young_day": "Youth jersey (day)"
+    }
   },
   "manager": {
     "back": "← Back",

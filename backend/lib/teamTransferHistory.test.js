@@ -59,14 +59,14 @@ function createSupabase({
   return { from(table) { return buildQuery(table); } };
 }
 
-function auctionRow({ id, seller, winner, price, date, sellerIsAi = false, winnerIsAi = false }) {
+function auctionRow({ id, seller, winner, price, date, sellerIsAi = false, winnerIsAi = false, guaranteed = false }) {
   return {
     id, status: "completed", current_price: price,
     actual_end: date, created_at: date,
-    is_guaranteed_sale: false,
-    seller_team_id: seller, current_bidder_id: winner,
+    is_guaranteed_sale: guaranteed,
+    seller_team_id: seller, current_bidder_id: winner ?? null,
     seller: { id: seller, name: `Team ${seller}`, is_ai: sellerIsAi },
-    winner: { id: winner, name: `Team ${winner}`, is_ai: winnerIsAi },
+    winner: winner ? { id: winner, name: `Team ${winner}`, is_ai: winnerIsAi } : null,
     rider: { id: RIDER, firstname: "A", lastname: "Rider" },
   };
 }
@@ -253,6 +253,32 @@ test("teamTransferHistory — grænsedag: salg samme dag som ny sæson starter h
   const byId = Object.fromEntries(events.map((e) => [e.id, e]));
   assert.equal(byId["auction:A-boundary"].season_number, 6, "grænsedags-salg → gammel sæson");
   assert.equal(byId["auction:A-next"].season_number, 7, "dagen efter → ny sæson");
+});
+
+test("teamTransferHistory — auktion uden bud markeres no_sale uden beløb/pengestrøm (#785)", async () => {
+  // current_price for en auktion uden bud = den umødte startpris (sat ved
+  // oprettelse) — den må ikke vises som beløb eller tælle som salg.
+  const supabase = createSupabase({
+    auctions: [
+      auctionRow({ id: "A-nobids", seller: TEAM, winner: null, price: 106000, date: "2026-05-13T00:00:00Z" }),
+      auctionRow({ id: "A-sold", seller: TEAM, winner: OTHER, price: 40000, date: "2026-05-02T00:00:00Z" }),
+      auctionRow({ id: "A-guaranteed", seller: TEAM, winner: null, price: 25000, date: "2026-05-03T00:00:00Z", guaranteed: true }),
+    ],
+  });
+  const events = await buildTeamTransferHistory(supabase, TEAM);
+  const byId = Object.fromEntries(events.map((e) => [e.id, e]));
+
+  assert.equal(byId["auction:A-nobids"].no_sale, true, "ingen bud → no_sale");
+  assert.equal(byId["auction:A-nobids"].amount, null, "umødt startpris må ikke vises som beløb");
+  assert.equal(byId["auction:A-nobids"].cash_flow, null, "intet salg = ingen pengestrøm");
+
+  assert.equal(byId["auction:A-sold"].no_sale, false);
+  assert.equal(byId["auction:A-sold"].amount, 40000);
+  assert.equal(byId["auction:A-sold"].cash_flow, "in");
+
+  // Garanteret AI-salg gennemføres uden current_bidder_id, men rytteren ER solgt.
+  assert.equal(byId["auction:A-guaranteed"].no_sale, false, "garanteret salg er et salg");
+  assert.equal(byId["auction:A-guaranteed"].amount, 25000);
 });
 
 test("teamTransferHistory — private statuses ekskluderes (#105 kontrakt)", async () => {

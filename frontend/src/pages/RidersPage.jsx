@@ -104,7 +104,11 @@ function RiderRow({ rider, statCols, onSelect, watchlist, onToggleWatchlist, isI
         <WatchlistStar active={watchlist.has(rider.id)} onToggle={() => onToggleWatchlist(rider.id)} />
       </td>
       <td className="px-3 py-2.5 hidden sm:table-cell">
-        <TeamCell team={rider.team} freeLabel={t("table.teamFree")} stopPropagation />
+        {/* #950: parkeret handel → vis kommende hold som "på vej til holdskifte"-chip */}
+        <TeamCell team={rider.team} freeLabel={t("table.teamFree")}
+          pendingTeam={rider.pending_team}
+          pendingTitle={rider.pending_team ? t("table.pendingTransfer", { team: rider.pending_team.name }) : ""}
+          stopPropagation />
       </td>
       <td className="px-3 py-2.5 hidden sm:table-cell">
         <div className="flex flex-wrap items-center gap-1">
@@ -236,7 +240,7 @@ export default function RidersPage() {
     let query = supabase
       .from("riders")
       .select(`id, firstname, lastname, birthdate, salary, market_value, prize_earnings_bonus, is_u25, nationality_code, primary_type, secondary_type,
-        ${statKeys}, team:team_id(id, name)`, { count: "exact" })
+        ${statKeys}, team:team_id(id, name), pending_team:pending_team_id(id, name)`, { count: "exact" })
       .range((filters.page - 1) * 50, filters.page * 50 - 1);
 
     query = buildSupabaseQuery(query, filters);

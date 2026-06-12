@@ -1,4 +1,5 @@
 ﻿import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   CartesianGrid,
   Line,
@@ -81,6 +82,7 @@ function DevelopmentChart({ title, subtitle, data, color }) {
 // #1101 cutover: UCI-point-grafen er fjernet — uci_points er afkoblet og må ikke
 // vises player-facing. Tab'en viser kun stats-udvikling (rider_stat_history).
 export default function RiderDevelopmentTab({ statHistory, stats }) {
+  const { t } = useTranslation("rider");
   const [selectedStat, setSelectedStat] = useState(stats[0].key);
 
   const selectedStatMeta = stats.find(s => s.key === selectedStat) || stats[0];
@@ -93,15 +95,15 @@ export default function RiderDevelopmentTab({ statHistory, stats }) {
   return (
     <div className="bg-cz-card border border-cz-border rounded-xl p-5">
       {statHistory.length === 0 ? (
-        <p className="text-cz-3 text-center py-8">Ingen historik endnu — data akkumuleres fra næste ugentlige sync</p>
+        <p className="text-cz-3 text-center py-8">{t("development.empty")}</p>
       ) : (
         <div className="space-y-6">
           {statHistory.length > 0 && (
             <section>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
                 <div>
-                  <h3 className="font-semibold text-cz-1 text-sm">Stats-udvikling</h3>
-                  <p className="text-cz-3 text-xs mt-0.5">Vælg evne og se ændringen over tid</p>
+                  <h3 className="font-semibold text-cz-1 text-sm">{t("development.statsTitle")}</h3>
+                  <p className="text-cz-3 text-xs mt-0.5">{t("development.statsSubtitle")}</p>
                 </div>
                 <select
                   value={selectedStat}
@@ -125,12 +127,12 @@ export default function RiderDevelopmentTab({ statHistory, stats }) {
           {recentDevelopmentRows.length > 0 && (
             <section className="border-t border-cz-border pt-4 overflow-x-auto">
               <div className="px-4 py-3 border-b border-cz-border">
-                <h3 className="font-semibold text-cz-1 text-sm">Seneste datapunkter</h3>
+                <h3 className="font-semibold text-cz-1 text-sm">{t("development.recentTitle")}</h3>
               </div>
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-cz-border">
-                    <th className="px-4 py-2 text-left text-cz-3 text-[10px] uppercase">Dato</th>
+                    <th className="px-4 py-2 text-left text-cz-3 text-[10px] uppercase">{t("development.table.date")}</th>
                     <th className="px-4 py-2 text-right text-cz-3 text-[10px] uppercase">{selectedStatMeta.label}</th>
                   </tr>
                 </thead>
@@ -138,7 +140,7 @@ export default function RiderDevelopmentTab({ statHistory, stats }) {
                   {recentDevelopmentRows.map(row => (
                     <tr key={row.synced_at} className="border-b border-cz-border last:border-0">
                       <td className="px-4 py-2 text-cz-2">{formatHistoryDate(row.synced_at, { day: "numeric", month: "short", year: "numeric" })}</td>
-                      <td className="px-4 py-2 text-right text-blue-500 font-mono">{row.stat_value ?? "—"}</td>
+                      <td className="px-4 py-2 text-right text-blue-500 font-mono">{row.stat_value ?? t("development.fallbackDash")}</td>
                     </tr>
                   ))}
                 </tbody>

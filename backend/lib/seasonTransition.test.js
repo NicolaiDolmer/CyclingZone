@@ -7,6 +7,7 @@ import {
   computeSeasonUuid,
   computeTransferWindowUuid,
   insertTransferWindowIfMissing,
+  resolveTransitionSourceSeason,
   transitionToNextSeason,
 } from "./seasonTransition.js";
 
@@ -564,6 +565,87 @@ test("buildTransitionPlan — completed UDEN toSeason kaster stadig (faktisk fej
     () => buildTransitionPlan({ supabase, fromSeasonId: "00000000-0000-0000-0000-000000000000" }),
     /must be 'active' or 'completed' with existing next season/
   );
+});
+
+// ─── resolveTransitionSourceSeason (#1166 — endpoint-resume) ──────────────────
+
+test("resolveTransitionSourceSeason — returnerer nyeste aktive sæson når en findes", async () => {
+  const supabase = createMockSupabase({
+    seasons: [
+      { id: "00000000-0000-0000-0000-000000000000", number: 0, status: "completed" },
+      { id: "00000000-0000-0000-0000-000000000001", number: 1, status: "active" },
+    ],
+  });
+  const season = await resolveTransitionSourceSeason({ supabase });
+  assert.equal(season.number, 1);
+  assert.equal(season.status, "active");
+});
+
+test("resolveTransitionSourceSeason — falder tilbage til seneste completed når ingen active (post season-end)", async () => {
+  // #1166-scenariet: season-end er kørt FØR transition (korrekt rækkefølge),
+  // så sæson 1 er 'completed' og sæson 2 'upcoming' — ingen 'active' findes.
+  const supabase = createMockSupabase({
+    seasons: [
+      { id: "00000000-0000-0000-0000-000000000000", number: 0, status: "completed" },
+      { id: "00000000-0000-0000-0000-000000000001", number: 1, status: "completed" },
+      { id: "00000000-0000-0000-0000-000000000002", number: 2, status: "upcoming" },
+    ],
+  });
+  const season = await resolveTransitionSourceSeason({ supabase });
+  assert.equal(season.number, 1, "seneste completed sæson (ikke sæson 0, ikke upcoming sæson 2)");
+  assert.equal(season.id, "00000000-0000-0000-0000-000000000001");
+});
+
+test("resolveTransitionSourceSeason — returnerer null når hverken active eller completed findes", async () => {
+  const supabase = createMockSupabase({
+    seasons: [{ id: "00000000-0000-0000-0000-000000000002", number: 2, status: "upcoming" }],
+  });
+  assert.equal(await resolveTransitionSourceSeason({ supabase }), null);
+});
+
+test("resolveTransitionSourceSeason → transitionToNextSeason — fuld resume fra completed sæson (#1166)", async () => {
+  // End-to-end for admin-knappens flow efter season-end: resolveren finder
+  // den completed sæson 1, engine'ns resume-sti (#578) accepterer den fordi
+  // sæson 2 eksisterer, og 'upcoming' promoveres til 'active'.
+  const transitionAt = "2026-06-09T06:00:00.000Z";
+  const supabase = createMockSupabase({
+    seasons: [
+      { id: "00000000-0000-0000-0000-000000000001", number: 1, status: "completed", end_date: transitionAt },
+      { id: "00000000-0000-0000-0000-000000000002", number: 2, status: "upcoming", start_date: null },
+    ],
+    transfer_windows: [
+      { id: "win-1", season_id: "00000000-0000-0000-0000-000000000001", status: "open", created_at: "2026-05-20" },
+    ],
+    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_frozen: false }],
+  });
+
+  const fromSeason = await resolveTransitionSourceSeason({ supabase });
+  assert.equal(fromSeason.number, 1);
+
+  const result = await transitionToNextSeason({
+    supabase,
+    fromSeasonId: fromSeason.id,
+    transitionAt: new Date(transitionAt),
+    deps: {
+      processSeasonStart: async () => ({ sponsor: [], payroll: null }),
+      notifySeasonEvent: async () => {},
+    },
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.log[0].phase, "insert_next_season");
+  assert.equal(result.log[0].updated, true, "sæson 2 promoveres upcoming → active");
+  assert.equal(result.log[1].phase, "mark_previous_completed");
+  assert.equal(result.log[1].skipped, true, "sæson 1 var allerede completed via season-end");
+
+  const sæson2 = supabase.__state.seasons.find((s) => s.number === 2);
+  assert.equal(sæson2.status, "active");
+  const sæson1Window = supabase.__state.transfer_windows.find((w) => w.id === "win-1");
+  assert.equal(sæson1Window.status, "closed", "sæson 1's window lukkes ved resume");
+});
+
+test("resolveTransitionSourceSeason — kaster uden supabase-client", async () => {
+  await assert.rejects(() => resolveTransitionSourceSeason({}), /Supabase client required/);
 });
 
 test("transitionToNextSeason — kaster fejl hvis fromSeasonId mangler", async () => {

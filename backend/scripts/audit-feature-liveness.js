@@ -127,11 +127,10 @@ const WHITELIST_EMPTY_TABLES = new Set([
 // Match-form: HTTP method + path-pattern (samme som routes-listen).
 const WHITELIST_ORPHANED_ENDPOINTS = new Set([
   // Cron / scheduled jobs (kaldes fra backend/cron.js eller eksterne hooks)
+  // sync-dyn-cyclist, import-results-sheets og sync-uci fjernet 2026-06-12
+  // (#1180 pkt 3-5 / #1179 / #1207) — ruterne eksisterer ikke længere.
   "POST /admin/finalize-expired-auctions",
-  "POST /admin/sync-dyn-cyclist",
-  "POST /admin/import-results-sheets",
   "POST /admin/pay-prizes-to-date",
-  "POST /admin/sync-uci",
   "POST /auctions/:id/finalize",
   // Health / probe
   "GET /health",

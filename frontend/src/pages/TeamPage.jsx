@@ -1,4 +1,5 @@
 ﻿import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import RiderLink from "../components/RiderLink";
 import { useClientRiderFilters } from "../lib/useRiderFilters";
@@ -17,17 +18,17 @@ const STATS = ["stat_fl","stat_bj","stat_kb","stat_bk","stat_tt","stat_prl",
   "stat_bro","stat_sp","stat_acc","stat_ned","stat_udh","stat_mod","stat_res","stat_ftr"];
 const STAT_LABELS = ["FL","BJ","KB","BK","TT","PRL","Bro","SP","ACC","NED","UDH","MOD","RES","FTR"];
 
-function SortTh({ children, sortKey, sort, sortDir, onSort, className = "" }) {
+function SortTh({ children, sortKey, sort, sortDir, onSort, className = "", title }) {
   const active = sort === sortKey;
   return (
-    <th onClick={() => onSort(sortKey)}
+    <th onClick={() => onSort(sortKey)} title={title}
       className={`cursor-pointer select-none transition-colors ${active ? "text-cz-accent-t/80" : "text-cz-3 hover:text-cz-2"} ${className}`}>
       {children}{active && <span className="ms-0.5 text-[10px]">{sortDir === "desc" ? "↓" : "↑"}</span>}
     </th>
   );
 }
 
-function RiderActionModal({ rider, scouting, onClose, onAction }) {
+function RiderActionModal({ rider, scouting, onClose, onAction, ddActive }) {
   const { t } = useTranslation("team");
   const riderValue = getRiderMarketValue(rider);
   const [auctionPrice, setAuctionPrice] = useState(riderValue);
@@ -35,6 +36,9 @@ function RiderActionModal({ rider, scouting, onClose, onAction }) {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
   const [activeTab, setActiveTab] = useState("auction");
+  // #778: flash-auktion (30 min) på egne ryttere — kun synlig under aktivt
+  // Deadline Day (samme gating som RiderStatsPage's AuctionButton).
+  const [flash, setFlash] = useState(false);
 
   // Squad-fanen viser kun egne ryttere → auktion må sættes mellem 0 og Værdi (ikke over).
   const auctionPriceError = auctionPrice > riderValue || auctionPrice < 0;
@@ -46,7 +50,7 @@ function RiderActionModal({ rider, scouting, onClose, onAction }) {
       const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auctions`, {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify({ rider_id: rider.id, starting_price: auctionPrice }),
+        body: JSON.stringify({ rider_id: rider.id, starting_price: auctionPrice, flash_auction: ddActive && flash }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) { setMsg(t("actionModal.auction.successMsg")); setTimeout(() => { onAction(); onClose(); }, 1500); }
@@ -126,14 +130,26 @@ function RiderActionModal({ rider, scouting, onClose, onAction }) {
           {activeTab === "auction" && (
             <div>
               <p className="text-cz-2 text-xs mb-3">{t("actionModal.auction.description")}</p>
+              {/* #778: flash-auktion på egne ryttere fra holdsiden — kun under Deadline Day */}
+              {ddActive && (
+                <label className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-3 cursor-pointer select-none">
+                  <div className="flex items-center gap-2">
+                    <input type="checkbox" checked={flash} onChange={e => setFlash(e.target.checked)}
+                      className="rounded accent-red-600" />
+                    <span className="text-sm text-cz-danger font-medium">{t("actionModal.auction.flashLabel")}</span>
+                  </div>
+                  <span className="text-xs text-cz-3 sm:ms-0 ms-6">{t("actionModal.auction.flashHint")}</span>
+                </label>
+              )}
               <div className="flex gap-2">
                 <input type="number" value={auctionPrice} min={0} max={riderValue}
                   onChange={e => { const v = parseInt(e.target.value, 10); setAuctionPrice(Number.isNaN(v) ? 0 : v); }}
                   className={`flex-1 bg-cz-subtle border rounded-lg px-3 py-2 text-cz-1 text-sm font-mono focus:outline-none
                     ${auctionPriceError ? "border-red-300 focus:border-red-400" : "border-cz-border focus:border-cz-accent"}`} />
                 <button onClick={startAuction} disabled={loading || auctionPriceError}
-                  className="px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50">
-                  {loading ? t("actionModal.loadingShort") : t("actionModal.auction.startButton")}
+                  className={`px-4 py-2 font-bold rounded-lg text-sm disabled:opacity-50 transition-all
+                    ${ddActive && flash ? "bg-red-600 text-white hover:bg-red-700" : "bg-cz-accent text-cz-on-accent hover:brightness-110"}`}>
+                  {loading ? t("actionModal.loadingShort") : (ddActive && flash) ? t("actionModal.auction.startFlashButton") : t("actionModal.auction.startButton")}
                 </button>
               </div>
               {auctionPriceError && (
@@ -165,6 +181,8 @@ function RiderActionModal({ rider, scouting, onClose, onAction }) {
 
 function SquadTab({ riders, scouting, onSelectRider, windowOpen }) {
   const { t } = useTranslation("team");
+  // #1131: fulde stat-navne som native tooltip på de forkortede kolonne-headers.
+  const { t: tRider } = useTranslation("rider");
   // #1095: eksplicit "nuværende" vs "kommende" trup-visning i stedet for
   // vis/skjul-toggles — spillere med ind-/udgående ryttere skal tydeligt
   // kunne se begge tilstande.
@@ -255,16 +273,21 @@ function SquadTab({ riders, scouting, onSelectRider, windowOpen }) {
               <thead>
                 <tr className="border-b border-cz-border">
                   {/* #1186: nation altid synlig (var skjult på mobil) — tabellen h-scroller allerede. */}
-                  <th className="px-2 py-3 text-left font-medium uppercase tracking-wider">{t("squad.headers.nation")}</th>
+                  <SortTh sortKey="nationality_code" sort={sort} sortDir={sortDir} onSort={handleSort}
+                    className="px-2 py-3 text-left font-medium uppercase tracking-wider">{t("squad.headers.nation")}</SortTh>
                   <SortTh sortKey="firstname" sort={sort} sortDir={sortDir} onSort={handleSort}
                     className="px-3 py-3 text-left font-medium uppercase tracking-wider sticky left-0 z-20 bg-cz-card border-r border-cz-border">{t("squad.headers.rider")}</SortTh>
                   <SortTh sortKey="value" sort={sort} sortDir={sortDir} onSort={handleSort}
                     className="px-3 py-3 text-right font-medium">{t("squad.headers.value")}</SortTh>
-                  <th className="px-3 py-3 text-right text-cz-3 font-medium">{t("squad.headers.salary")}</th>
+                  {/* #1131: Løn-kolonnen var eneste døde header i rækken (1.385 dead clicks
+                      i Clarity 5/6-12/6) — sortérbar nu, samme som på /riders. */}
+                  <SortTh sortKey="salary" sort={sort} sortDir={sortDir} onSort={handleSort}
+                    className="px-3 py-3 text-right font-medium">{t("squad.headers.salary")}</SortTh>
                   <SortTh sortKey="_scoutMid" sort={sort} sortDir={sortDir} onSort={handleSort}
                     className="px-3 py-3 text-left font-medium">{t("squad.headers.potential")}</SortTh>
                   {STATS.map((key, i) => (
                     <SortTh key={key} sortKey={key} sort={sort} sortDir={sortDir} onSort={handleSort}
+                      title={tRider(`skills.${key.replace("stat_", "")}.long`)}
                       className="px-1.5 py-3 text-center font-medium w-10">{STAT_LABELS[i]}</SortTh>
                   ))}
                   <th className="px-3 py-3 text-center text-cz-3 font-medium">{t("squad.headers.action")}</th>
@@ -375,7 +398,14 @@ function EconomyTab({ team, riders, transactions }) {
       </div>
 
       <div className="bg-cz-card border border-cz-border rounded-xl p-5">
-        <h3 className="text-cz-1 font-semibold text-sm mb-4">{t("economy.forecast.title")}</h3>
+        {/* #1131: "Netto"/"Sponsorindtægt"-rækkerne fik 450+ dead clicks (Clarity 5/6-12/6) —
+            spillere leder efter detaljer. Synlig vej til den fulde prognose på /finance. */}
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <h3 className="text-cz-1 font-semibold text-sm">{t("economy.forecast.title")}</h3>
+          <Link to="/finance" className="text-xs text-cz-3 hover:text-cz-accent-t underline underline-offset-2 transition-colors">
+            {t("economy.forecast.fullLink")}
+          </Link>
+        </div>
         <div className="space-y-2">
           {[
             { label: t("economy.forecast.sponsorIncome"), value: t("economy.amountSigned", { sign: "+", value: formatNumber(sponsorIncome) }), color: "text-cz-info" },
@@ -469,8 +499,24 @@ export function TeamPage() {
   const [activeTab, setActiveTab] = useState("squad");
   const [selectedRider, setSelectedRider] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [ddActive, setDdActive] = useState(false);
 
-  useEffect(() => { loadAll(); }, []);
+  useEffect(() => { loadAll(); loadDdStatus(); }, []);
+
+  // #778: action-modal'en skal vide om Deadline Day er aktiv for at kunne
+  // tilbyde flash-auktion (30 min) — samme status-endpoint som RiderStatsPage.
+  async function loadDdStatus() {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/deadline-day/status`, {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setDdActive(data.active === true);
+      }
+    } catch { /* non-critical: flash-valget falder bare tilbage til skjult */ }
+  }
 
   async function loadAll() {
     setLoading(true);
@@ -592,7 +638,7 @@ export function TeamPage() {
       )}
 
       {selectedRider && (
-        <RiderActionModal rider={selectedRider} scouting={scouting} onClose={() => setSelectedRider(null)} onAction={loadAll} />
+        <RiderActionModal rider={selectedRider} scouting={scouting} onClose={() => setSelectedRider(null)} onAction={loadAll} ddActive={ddActive} />
       )}
     </div>
   );

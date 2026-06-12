@@ -52,6 +52,7 @@ import {
   computeSeasonUuid,
   computeTransferWindowUuid,
   insertTransferWindowIfMissing,
+  resolveTransitionSourceSeason,
   transitionToNextSeason,
 } from "../lib/seasonTransition.js";
 import { cancelAuctionByAdmin } from "../lib/auctionCancellation.js";
@@ -109,7 +110,6 @@ import { runTeamTrainingDay } from "../lib/dailyTrainingEngine.js";
 import { injuryRisk } from "../lib/riderCondition.js";
 import { resolveProgram } from "../lib/dailyTraining.js";
 import { copenhagenDateString } from "../lib/copenhagenTime.js";
-import { handleDynCyclistSyncRequest } from "../lib/dynCyclistSync.js";
 import {
   computeDebtRatio,
   computeSustainabilityTier,
@@ -117,7 +117,6 @@ import {
 import { computeMultiSeasonForecast } from "../lib/financeForecast.js";
 import { buildSeasonFinanceReport } from "../lib/seasonFinanceReport.js";
 import { groupCronRuns } from "../lib/cronRunCorrelation.js";
-import { syncRaceResultsFromSheets } from "../lib/raceResultsSheetSync.js";
 import { getSeasonPrizePreview, paySeasonPrizesToDate } from "../lib/prizePayoutEngine.js";
 import {
   buildSeasonEndPreviewRows,
@@ -197,8 +196,7 @@ import {
   buildRaceResultsFromPending,
   rederiveSeasonRacePoints,
 } from "../lib/raceResultsEngine.js";
-import { createAdminImportResultsHandler } from "../lib/adminImportResultsHandler.js";
-import { adminImportUploadSingleFile, adminImportUploadMultipleFiles } from "../lib/adminImportUpload.js";
+import { adminImportUploadMultipleFiles } from "../lib/adminImportUpload.js";
 import { getDefaultWebhook, sendWebhook } from "../lib/discordNotifier.js";
 import { importPcmResults, buildPcmImportEmbed } from "../lib/pcmResultsImport.js";
 import { getRaceEngineStatus, runAdminSimulateRace, buildRaceSimEmbed } from "../lib/adminSimulateRace.js";
@@ -842,8 +840,17 @@ router.get("/riders/:id", requireAuth, async (req, res) => {
   res.json(data);
 });
 
+// Security-audit 2026-06-12: ruter der interpolerer URL-params ind i PostgREST
+// .or()-filterstrenge (riderHistory.js, teamTransferHistory.js) SKAL validere
+// param-formatet først — ellers kan en crafted :id injicere ekstra
+// filter-betingelser (fx "x,id.gt.<uuid>" → tværgående enumeration).
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 // GET /api/riders/:id/history — ejerskab og handelshistorik
 router.get("/riders/:id/history", requireAuth, async (req, res) => {
+  if (!UUID_RE.test(req.params.id)) {
+    return res.status(400).json({ error: "Ugyldigt rytter-id" });
+  }
   try {
     const events = await buildRiderHistory(supabase, req.params.id);
     res.json(events);
@@ -854,6 +861,9 @@ router.get("/riders/:id/history", requireAuth, async (req, res) => {
 
 // GET /api/teams/:id/transfer-history — komplet handelshistorik for ét hold (#25)
 router.get("/teams/:id/transfer-history", requireAuth, async (req, res) => {
+  if (!UUID_RE.test(req.params.id)) {
+    return res.status(400).json({ error: "Ugyldigt hold-id" });
+  }
   try {
     const events = await buildTeamTransferHistory(supabase, req.params.id);
     res.json(events);
@@ -3076,20 +3086,9 @@ router.post("/admin/riders/:id/retirement", requireAdmin, adminWriteLimiter, asy
   });
 });
 
-router.post(
-  "/admin/import-results",
-  requireAdmin,
-  adminWriteLimiter,
-  adminImportUploadSingleFile,
-  createAdminImportResultsHandler({
-    supabase,
-    buildRacePointsLookup,
-    applyRaceResults,
-    ensureSeasonStandings,
-    updateStandings,
-    logActivity,
-  }),
-);
+// POST /api/admin/import-results (Excel-upload) fjernet 2026-06-12 (#1180 pkt 3,
+// jf. #1179-kill-listen) — manuel resultat-upload døde med egen race-motor.
+// PCM-importen (/admin/import-results-pcm) er bevidst bevaret som nød-fallback.
 
 // POST /api/admin/approve-results — approve pending race result submission
 router.post("/admin/approve-results", requireAdmin, adminWriteLimiter, async (req, res) => {
@@ -3454,13 +3453,31 @@ router.get("/me/finance-forecast", requireAuth, async (req, res) => {
     const debtCeiling = configsRes.data?.[0]?.debt_ceiling ?? null;
     const currentSeasonNumber = activeSeasonRes.data?.number ?? null;
     let lastSeasonStandings = [];
+    let realizedSeasonPrize = 0;
     if (activeSeasonRes.data?.id) {
-      const { data: standingsData, error: standingsError } = await supabase
-        .from("season_standings")
-        .select("team_id, division, rank_in_division, total_points")
-        .eq("season_id", activeSeasonRes.data.id);
-      if (standingsError) throw standingsError;
-      lastSeasonStandings = standingsData || [];
+      const [standingsRes, prizeTxRes] = await Promise.all([
+        supabase
+          .from("season_standings")
+          .select("team_id, division, rank_in_division, total_points")
+          .eq("season_id", activeSeasonRes.data.id),
+        // #981: realiseret præmie+bonus i indeværende sæson — gulv for prize-
+        // estimatet i computeFinanceForecast. Samme type-filter som FinancePage's
+        // præmie-kort ("prize" + "bonus"). Rækkeantal pr. hold pr. sæson er
+        // bounded af antal løb — langt under PostgREST's 1000-cap.
+        supabase
+          .from("finance_transactions")
+          .select("amount")
+          .eq("team_id", teamId)
+          .eq("season_id", activeSeasonRes.data.id)
+          .in("type", ["prize", "bonus"]),
+      ]);
+      if (standingsRes.error) throw standingsRes.error;
+      lastSeasonStandings = standingsRes.data || [];
+      if (prizeTxRes.error) throw prizeTxRes.error;
+      realizedSeasonPrize = (prizeTxRes.data || []).reduce(
+        (sum, row) => sum + Math.max(0, row.amount || 0),
+        0
+      );
     }
 
     // 2026-05-21: seasonsAhead query-param (1-5, default 1). Returnerer multi-
@@ -3483,6 +3500,7 @@ router.get("/me/finance-forecast", requireAuth, async (req, res) => {
       debtCeiling,
       currentSeasonNumber,
       lastSeasonStandings,
+      realizedSeasonPrize,
       seasonsAhead,
     });
 
@@ -5429,20 +5447,16 @@ router.post("/admin/market/resume", requireAdmin, adminWriteLimiter, async (req,
 // Slice 08 — sæson-cyklus
 // =======================
 // GET /api/admin/season-transition/preview — dry-run plan for næste transition
+// #1166: kildesæson via resolveTransitionSourceSeason — efter season-end er
+// sæsonen 'completed' (ingen 'active' findes), og engine'ns resume-sti (#578)
+// skal kunne nås fra admin-knappen i den korrekte season-end → transition-orden.
 router.get("/admin/season-transition/preview", requireAdmin, async (req, res) => {
   try {
-    const { data: activeSeason, error: seasonError } = await supabase
-      .from("seasons")
-      .select("id, number, status, start_date")
-      .eq("status", "active")
-      .order("number", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (seasonError) throw seasonError;
-    if (!activeSeason) {
-      return res.status(404).json({ error: "Ingen aktiv sæson fundet" });
+    const fromSeason = await resolveTransitionSourceSeason({ supabase });
+    if (!fromSeason) {
+      return res.status(404).json({ error: "Ingen aktiv eller afsluttet sæson fundet" });
     }
-    const plan = await buildTransitionPlan({ supabase, fromSeasonId: activeSeason.id });
+    const plan = await buildTransitionPlan({ supabase, fromSeasonId: fromSeason.id });
     res.json({ ok: true, plan });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -5455,18 +5469,13 @@ router.post("/admin/season-transition", requireAdmin, adminWriteLimiter, async (
     const { fromSeasonId: bodyFromSeasonId, transitionAt, dryRun = false } = req.body || {};
     let fromSeasonId = bodyFromSeasonId;
     if (!fromSeasonId) {
-      const { data: activeSeason, error: seasonError } = await supabase
-        .from("seasons")
-        .select("id")
-        .eq("status", "active")
-        .order("number", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (seasonError) throw seasonError;
-      if (!activeSeason) {
-        return res.status(404).json({ error: "Ingen aktiv sæson fundet" });
+      // #1166: samme fallback som preview-endpointet — seneste 'completed'
+      // sæson når ingen 'active' findes (resume-stien, #578).
+      const fromSeason = await resolveTransitionSourceSeason({ supabase });
+      if (!fromSeason) {
+        return res.status(404).json({ error: "Ingen aktiv eller afsluttet sæson fundet" });
       }
-      fromSeasonId = activeSeason.id;
+      fromSeasonId = fromSeason.id;
     }
 
     const result = await transitionToNextSeason({
@@ -5858,29 +5867,10 @@ router.post("/admin/discord-settings/:id/test", requireAdmin, adminWriteLimiter,
   res.json({ ...result, timestamp: new Date().toISOString() });
 });
 
-// POST /api/admin/sync-dyn-cyclist — sync PCM stats fra Google Sheets
-router.post("/admin/sync-dyn-cyclist", requireAdmin, adminWriteLimiter, handleDynCyclistSyncRequest);
-
-// POST /api/admin/import-results-sheets — importer løbsresultater fra Google Sheets (dry_run for preview)
-router.post("/admin/import-results-sheets", requireAdmin, adminWriteLimiter, async (req, res) => {
-  const { spreadsheet_url, dry_run } = req.body;
-  if (!spreadsheet_url) {
-    return res.status(400).json({ error: "spreadsheet_url påkrævet" });
-  }
-  try {
-    const result = await syncRaceResultsFromSheets({
-      spreadsheetUrl: spreadsheet_url,
-      supabase,
-      ensureSeasonStandings,
-      updateStandings,
-      adminUserId: req.user.id,
-      dryRun: Boolean(dry_run),
-    });
-    res.json(result);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+// POST /api/admin/sync-dyn-cyclist + /api/admin/import-results-sheets fjernet
+// 2026-06-12 (#1180 pkt 3+4): dyn_cyclist-syncen kunne overskrive de fiktive
+// rytteres stats med et gammelt PCM-ark (spillet ejer selv stats efter #677),
+// og Sheets-resultatimport døde med egen race-motor jf. #1179-kill-listen.
 
 // POST /api/admin/import-results-pcm — importer PCM-resultatfiler (SpreadsheetML 2003).
 // Multi-fil pr. løb; body.dry_run="true" giver preview uden DB-writes. Felt-navn: "files".
@@ -6683,9 +6673,19 @@ function serializeBoardRequest(requestRow) {
 
   const definition = getBoardRequestDefinition(requestRow.request_type);
 
+  // #1084 · i18n-koder gemt i request_payload (JSONB) ved insert — løftes op på
+  // toppen af objektet så frontend kan resolve-on-read. Gamle log-rækker har
+  // ingen koder: request_label_key kan altid afledes fra request_type, mens
+  // title/summary/tradeoff falder tilbage til den frosne danske råtekst i
+  // title/summary/tradeoff_summary-kolonnerne (bevidst backfill-strategi).
   return {
     ...requestRow,
     request_label: requestRow.request_payload?.request_label || definition?.label || requestRow.request_type,
+    request_label_key: requestRow.request_payload?.request_label_key || definition?.label_key || null,
+    title_code: requestRow.request_payload?.title_code || null,
+    summary_code: requestRow.request_payload?.summary_code || null,
+    summary_params: requestRow.request_payload?.summary_params || null,
+    tradeoff_summary_code: requestRow.request_payload?.tradeoff_summary_code || null,
   };
 }
 
@@ -7515,6 +7515,13 @@ router.post("/board/request", requireAuth, boardWriteLimiter, async (req, res) =
         tradeoff_summary: requestResult.tradeoff_summary,
         request_payload: {
           request_label: requestResult.request_label,
+          // #1084 · i18n-koder persisteres her (JSONB) i stedet for nye kolonner,
+          // så frosset dansk i title/summary/tradeoff_summary kan resolve-on-read.
+          request_label_key: requestResult.request_label_key || null,
+          title_code: requestResult.title_code || null,
+          summary_code: requestResult.summary_code || null,
+          summary_params: requestResult.summary_params || null,
+          tradeoff_summary_code: requestResult.tradeoff_summary_code || null,
         },
         board_changes: {
           focus_before: board.focus,

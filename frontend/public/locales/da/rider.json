@@ -190,6 +190,16 @@
     },
     "fallbackDash": "-"
   },
+  "development": {
+    "empty": "Ingen historik endnu. Data akkumuleres fra næste ugentlige sync",
+    "statsTitle": "Stats-udvikling",
+    "statsSubtitle": "Vælg evne og se ændringen over tid",
+    "recentTitle": "Seneste datapunkter",
+    "table": {
+      "date": "Dato"
+    },
+    "fallbackDash": "-"
+  },
   "bids": {
     "noAuction": "Ingen aktuel auktion for denne rytter",
     "noBids": "Ingen bud endnu",
@@ -215,7 +225,9 @@
       "wonBy": "vandt af",
       "buyerFallback": "Ukendt",
       "sellerFallbackAi": "AI-hold",
-      "sellerFallback": "Ukendt"
+      "sellerFallback": "Ukendt",
+      "noSaleTag": "Intet salg",
+      "noSaleBody": "modtog ingen bud (rytteren blev ikke solgt)"
     },
     "transfer": {
       "label": "Transfer",

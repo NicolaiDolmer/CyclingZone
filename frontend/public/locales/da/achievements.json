@@ -3,6 +3,10 @@
     "title": "Grundlægger",
     "description": "Med fra åbningssæsonen. Permanent. Overlever alle resets."
   },
+  "season_first_result": {
+    "title": "Første resultat",
+    "description": "Få dit første løbsresultat registreret."
+  },
   "team_star": {
     "title": "Stjerneholdet",
     "description": "Hav en stjernerytter på holdet: en rytter med en værdi på mindst 8.000.000 CZ$."

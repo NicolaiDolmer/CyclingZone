@@ -153,6 +153,12 @@ export default function FinanceForecastCard({
           label={t("forecast.row.prize")}
           value={forecast.projected_prize}
           accent="text-cz-success"
+          detail={
+            /* #981: gulv = realiseret sæson-præmie når rolling avg er lavere */
+            forecast.inputs?.prize_basis === "realized_season_floor"
+              ? t("forecast.prizeDetail.realizedFloor")
+              : undefined
+          }
         />
         <Row
           label={t("forecast.row.salary")}

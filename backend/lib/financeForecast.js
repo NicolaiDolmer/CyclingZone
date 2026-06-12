@@ -34,6 +34,7 @@ export function computeFinanceForecast({
   targetSeasonNumber = null,
   lastSeasonStanding = null,
   lastSeasonStandings = [],
+  realizedSeasonPrize = 0,
 } = {}) {
   const seasonNumber = Number.isInteger(targetSeasonNumber)
     ? targetSeasonNumber
@@ -58,10 +59,17 @@ export function computeFinanceForecast({
   // Præmie-estimat = sum af riders.prize_earnings_bonus, som DB allerede beregner
   // som rolling avg over sidste 1-3 afsluttede sæsoner. Roster'ets "track record"
   // er den mest robuste prognose vi har for næste sæson.
-  const projectedPrize = (riders || []).reduce(
+  //
+  // #981: realiseret præmie+bonus i indeværende sæson er gulv for estimatet.
+  // Rolling avg halter efter et roster i fremgang, og en prognose der viser
+  // MINDRE end hvad samme roster allerede har tjent i år, er misvisende.
+  // Friskeste evidens for roster'ets indtjeningsevne vinder.
+  const rollingPrize = (riders || []).reduce(
     (sum, r) => sum + (r?.prize_earnings_bonus || 0),
     0
   );
+  const realizedPrize = Math.max(0, Math.round(Number(realizedSeasonPrize) || 0));
+  const projectedPrize = Math.max(rollingPrize, realizedPrize);
 
   // Løn = sum(rider.salary). DB-GENERATED column, holdt i sync med value+prize_bonus.
   const totalSalary = (riders || []).reduce((sum, r) => sum + (r?.salary || 0), 0);
@@ -102,14 +110,26 @@ export function computeFinanceForecast({
   const confidenceHigh = projectedNet + band;
 
   const debtRatio = debtCeiling && debtCeiling > 0 ? totalDebt / debtCeiling : 0;
+
+  // #982: risk-tier skal se på realiseret state (balance), ikke kun projicerede
+  // flows. Et solvent hold med stor kassebeholdning er ikke konkurs-truet af et
+  // sæson-underskud det nemt kan absorbere — underskud æder positiv balance FØR
+  // det bliver til ny gæld.
+  const startingBalance = Number.isFinite(team?.balance) ? team.balance : 0;
+  const projectedEndingBalance = startingBalance + projectedNet;
+  const deficitAfterBalance2Seasons = Math.max(
+    0,
+    Math.abs(projectedNet) * 2 - Math.max(0, startingBalance)
+  );
   const trendBreaches2Seasons =
     projectedNet < 0 &&
     debtCeiling !== null &&
     debtCeiling > 0 &&
-    totalDebt + Math.abs(projectedNet) * 2 > debtCeiling;
+    totalDebt + deficitAfterBalance2Seasons > debtCeiling;
 
   const riskTier = computeRiskTier({
     projectedNet,
+    projectedEndingBalance,
     debtRatio,
     trendBreaches2Seasons,
   });
@@ -144,6 +164,11 @@ export function computeFinanceForecast({
       sponsor_breakdown: sponsorBreakdown,
       board_modifier: boardModifier,
       pullout_factor: pulloutFactor,
+      // #981/#982: transparens om realiseret state der indgår i prognosen.
+      prize_rolling_avg: rollingPrize,
+      realized_season_prize: realizedPrize,
+      prize_basis: realizedPrize > rollingPrize ? "realized_season_floor" : "rolling_avg",
+      team_balance: startingBalance,
       total_salary: totalSalary,
       total_debt: totalDebt,
       debt_ceiling: debtCeiling,
@@ -176,11 +201,20 @@ function sumLoanFees(agreements, nextSeason) {
   }, 0);
 }
 
-function computeRiskTier({ projectedNet, debtRatio, trendBreaches2Seasons }) {
-  // Rød: net < -50K ELLER debt > 80% af ceiling ELLER trend rammer ceiling
-  // inden for 2 sæsoner.
+function computeRiskTier({
+  projectedNet,
+  projectedEndingBalance,
+  debtRatio,
+  trendBreaches2Seasons,
+}) {
+  // Rød: (net < -50K OG projiceret slutbalance < 0) ELLER debt > 80% af ceiling
+  // ELLER trend rammer ceiling inden for 2 sæsoner.
+  //
+  // #982: net-triggeren kræver nu at underskuddet faktisk gør holdet insolvent
+  // (slutbalance < 0). Et hold med stor kassebeholdning og et absorberbart
+  // underskud lander i gul (net < 50K-reglen nedenfor), ikke rød "konkurs-risiko".
   if (
-    projectedNet < RISK_NET_RED_THRESHOLD ||
+    (projectedNet < RISK_NET_RED_THRESHOLD && projectedEndingBalance < 0) ||
     debtRatio > RISK_DEBT_YELLOW_RATIO ||
     trendBreaches2Seasons
   ) {
@@ -309,6 +343,7 @@ export function computeMultiSeasonForecast({
   currentSeasonNumber = null,
   lastSeasonStanding = null,
   lastSeasonStandings = [],
+  realizedSeasonPrize = 0,
   seasonsAhead = 1,
 } = {}) {
   const clamped = Math.max(1, Math.min(MAX_SEASONS_AHEAD, Math.round(Number(seasonsAhead) || 1)));
@@ -342,6 +377,9 @@ export function computeMultiSeasonForecast({
       targetSeasonNumber,
       lastSeasonStanding: rollingLastStanding,
       lastSeasonStandings: rollingLastStandings,
+      // #981: gulvet gælder alle sæsoner — status-quo-antagelsen er at samme
+      // roster bevarer den indtjeningsevne den allerede har bevist i år.
+      realizedSeasonPrize,
     });
 
     const endingBalance = rollingBalance + forecast.projected_net;

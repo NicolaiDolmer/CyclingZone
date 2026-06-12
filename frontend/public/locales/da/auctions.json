@@ -184,6 +184,12 @@
     "title": "Du vandt auktionen! 🏆",
     "subtitle": "Rytteren er nu på dit hold"
   },
+  "priceChanged": {
+    "title": "Prisen er ændret",
+    "newPrice": "Prisen er nu <strong>{amount} CZ$</strong>.",
+    "newMinBid": "Minimumsbuddet er nu <strong>{amount} CZ$</strong>. Vil du stadig byde?",
+    "bidCta": "Byd {amount} CZ$"
+  },
   "error": {
     "bidFailed": "Buddet kunne ikke placeres",
     "proxyFailed": "Fejl ved sæt autobud",

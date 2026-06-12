@@ -1,0 +1,58 @@
+# Balance-baseline-check (#1197) — deterministisk balance-snapshot diffes mod
+# committet baseline ved PR'er der rører balance-følsomme stier.
+#
+# ADVISORY-fase: jobbet fejler ikke ved diff (--advisory → exit 0 + warning +
+# markdown-diff i job summary). Gate slås til ved at fjerne --advisory nedenfor
+# (issue #1197: "advisory først, gate senere").
+#
+# Baseline-bump: `npm run balance:baseline` (i backend/) + commit
+# backend/scripts/baselines/ i samme PR som balance-ændringen.
+
+name: Balance baseline
+
+on:
+  pull_request:
+    paths:
+      - "backend/lib/riderValuation.js"
+      - "backend/lib/riderValuationFit.js"
+      - "backend/lib/riderValuationModel.json"
+      - "backend/lib/riderValuationAnchors.json"
+      - "backend/lib/riderTypes.js"
+      - "backend/lib/riderTypesBaseline.json"
+      - "backend/lib/abilityDerivation.js"
+      - "backend/lib/fictionalRiderGenerator.js"
+      - "backend/lib/raceStageProfileGenerator.js"
+      - "backend/lib/raceSimulator.js"
+      - "backend/lib/raceRunner.js"
+      - "backend/lib/raceResultsEngine.js"
+      - "backend/lib/riderProgression.js"
+      - "backend/lib/balanceSnapshot.js"
+      - "backend/scripts/balanceBaseline.js"
+      - "backend/scripts/baselines/**"
+
+permissions:
+  contents: read
+
+jobs:
+  balance-baseline:
+    name: balance-baseline (advisory)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        run: npm ci
+
+      - name: Balance-snapshot diff mod committet baseline (#1197)
+        run: node scripts/balanceBaseline.js --check --advisory

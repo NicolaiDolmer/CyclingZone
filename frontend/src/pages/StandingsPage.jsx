@@ -240,7 +240,7 @@ export default function StandingsPage() {
                         </tr>
                       )}
                       <tr
-                        onClick={() => navigate(`/teams/${s.team_id}`)}
+                        onClick={() => navigate(`/teams/${s.team_id}?tab=results`)}
                         style={rowStyle}
                         className={`border-b border-cz-border last:border-0 cursor-pointer hover:bg-cz-subtle transition-colors
                           ${isLeader ? "bg-cz-accent/[0.08]" : isPromotion ? "bg-cz-success-bg" : isRelegation ? "bg-cz-danger-bg" : ""}`}>
@@ -252,7 +252,8 @@ export default function StandingsPage() {
                         </td>
                         <td className="px-4 py-3.5">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <TeamLink id={s.team_id} stopPropagation className="font-medium text-cz-1">{s.team?.name}</TeamLink>
+                            {/* #824: fra ranglisten forventer man holdets RESULTATER, ikke truppen */}
+                            <TeamLink id={s.team_id} tab="results" stopPropagation className="font-medium text-cz-1">{s.team?.name}</TeamLink>
                             {isLeader && <LeaderBadge />}
                             {isMe && <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "rgb(var(--me-badge-bg))", color: "rgb(var(--me-badge-fg))" }}>{t("youBadge")}</span>}
                             {isPromotion && <span className="text-[9px] bg-cz-success-bg text-cz-success px-1.5 py-0.5 rounded font-medium">{t("promotionBadge")}</span>}

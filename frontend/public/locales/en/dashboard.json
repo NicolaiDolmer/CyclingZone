@@ -166,6 +166,9 @@
       "intro": "Intro season: variable sponsor starts from season 2",
       "fallback": "Fallback: missing standings for the previous season"
     },
+    "prizeDetail": {
+      "realizedFloor": "Matches what your roster has already earned this season"
+    },
     "footnote": "Forecast, not a contract. Numbers may change due to sales, loans, or a new board plan.",
     "footnoteLink": "How is the forecast calculated?",
     "badge": {

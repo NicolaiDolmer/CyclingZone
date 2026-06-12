@@ -95,6 +95,10 @@ const RIDERS = [
     primary_type: "climber",
     secondary_type: "gc",
     team: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name },
+    // #950: parkeret handel → /riders viser "på vej til holdskifte"-chip
+    // (→ kommende holdnavn) under nuværende hold. Dækket af riders.png-snapshot.
+    pending_team_id: TEST_TEAM.id,
+    pending_team: { id: TEST_TEAM.id, name: TEST_TEAM.name },
   },
 ];
 
@@ -300,7 +304,9 @@ function apiResponse(pathname) {
   }
   if (pathname.endsWith("/api/me/discord-status")) return { enabled: false, connected: false };
   if (pathname.endsWith("/api/deadline-day/status")) return { active: false };
-  if (pathname.endsWith("/api/deadline-day/ticker")) return { items: [] };
+  // Backend returnerer et ARRAY af events (api.js: res.json(events.slice(0, 20))).
+  // Objekt-shape ({ items: [] }) crasher DeadlineDayTicker (events.map) når DD er aktiv (#778-probe).
+  if (pathname.endsWith("/api/deadline-day/ticker")) return [];
   if (pathname.endsWith("/api/race-pool")) return [];
   if (pathname.endsWith("/api/scouting/me")) {
     return { slots: { total: 3, used: 0, remaining: 3 }, maxLevel: 3, levels: {}, teamId: TEST_TEAM.id };
@@ -357,6 +363,149 @@ export async function installNetworkMocks(page) {
     if (request.method() !== "GET") return json(route, { ok: true });
 
     return json(route, apiResponse(url.pathname));
+  });
+}
+
+// Tekst-elementer maskeres i pixel-snapshots så testen fanger LAYOUT-regressions
+// (cards forsvinder, kolonner kollapser, billeder mangler) uden at fejle på copy-
+// eller i18n-ændringer. Indhold valideres via expect-assertions + i18n-key-coverage,
+// ikke pixel-diff. Forward-guard mod #412 i18n-snapshot-treadmill — se
+// `.claude/learnings/2026-05-17-visual-snapshots-layout-only.md`.
+export const TEXT_MASK_SELECTOR =
+  "main :is(h1,h2,h3,h4,h5,h6,p,span,a,button,li,td,th,label,time,strong,em,dt,dd)";
+
+export async function waitForStableSnapshotTarget(page) {
+  await page.evaluate(async () => {
+    if (document.fonts?.ready) await document.fonts.ready;
+  });
+
+  await page.waitForFunction(
+    async ({ maskSelector }) => {
+      const target = document.querySelector("main");
+      if (!target) return false;
+
+      const measure = () => {
+        const rect = target.getBoundingClientRect();
+        return [
+          Math.round(rect.width),
+          Math.round(rect.height),
+          document.querySelectorAll(maskSelector).length,
+        ].join(":");
+      };
+
+      let previous = measure();
+      let stableFrames = 0;
+      while (stableFrames < 4) {
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+        const next = measure();
+        stableFrames = next === previous ? stableFrames + 1 : 0;
+        previous = next;
+      }
+
+      return true;
+    },
+    { maskSelector: TEXT_MASK_SELECTOR },
+    { timeout: 3000 }
+  );
+}
+
+// ── #1076 · Genbrugelig non-baseline board-fixture ────────────────────────────
+// Standard-fixturen (apiResponse ovenfor) er baseline-fase → kun observations-
+// banneret rendres. Det interaktive board (plan-faner, medlems-grid, DNA,
+// konsekvenser, bonus-tilbud, wizard) kræver en non-baseline /api/board/status-
+// payload. Denne builder leverer en komplet payload med aktiv 5-årsplan +
+// medlemmer + DNA; override felter efter behov (fx active_consequences,
+// bonus_offer, auto_accept, plans). Bruges af board-*.spec.js.
+export function makeBoardStatus(overrides = {}) {
+  return {
+    is_baseline_phase: false,
+    setup_next_plan_type: null,
+    plans: {
+      "5yr": {
+        board: {
+          satisfaction: 72,
+          focus: "balanced",
+          current_goals: [
+            { type: "stage_wins_total", target: 3, label: "Win 3 stages", importance: "required" },
+            { type: "relative_rank", target: 5, label: "Top 5 in division" },
+          ],
+        },
+        plan_duration: 5,
+        seasons_remaining: 3,
+        seasons_completed: 2,
+        plan_progress_pct: 40,
+        cumulative_stats: { stage_wins: 1, gc_wins: 0 },
+        snapshots: [
+          { id: "snap-1", season_number: 1, season_within_plan: 1, division_rank: 4, stage_wins: 1, gc_wins: 0, goals_met: 1, goals_total: 2, satisfaction_delta: 5 },
+        ],
+        is_expired: false,
+        renew_locked: false,
+        outlook: { goal_evaluations: [{ status: "on_track", actual: 1, target: 3 }, { status: "watch" }] },
+        request_status: null,
+        request_options: [],
+      },
+      "3yr": null,
+      "1yr": null,
+    },
+    team: TEST_TEAM,
+    riders: RIDERS.filter(rider => rider.team_id === TEST_TEAM.id),
+    standing: { division_rank: 3, division_manager_count: 18 },
+    identity_profile: {
+      primary_specialization_label: "Climbers",
+      competitive_tier_label: "Contender",
+      summary: "A climbing-focused outfit.",
+      squad_limits: { max: 30 },
+      star_profile: { label: "One star", star_rider_count: 1 },
+    },
+    auto_accept: null,
+    active_loans_count: 0,
+    team_members: [
+      {
+        archetype_key: "sponsoraten", selection_kind: "identity", alignment_score: 8, is_chairman: true,
+        label: "Sponsoraten", emoji: "💰",
+        short_description: "Vogter sponsorforhold og økonomisk disciplin",
+        long_description: "En lang karakterbeskrivelse af formanden.",
+      },
+      {
+        archetype_key: "talentspejderen", selection_kind: "identity", alignment_score: 6, is_chairman: false,
+        label: "Talentspejderen", emoji: "🔭",
+        short_description: "Tror på langsigtet ungdomsudvikling",
+        long_description: "",
+      },
+      {
+        archetype_key: "gc_elsker", selection_kind: "wildcard", alignment_score: 4, is_chairman: false,
+        label: "GC-elsker", emoji: "⛰️",
+        short_description: "Tre uger eller intet, Tour er alt",
+        long_description: "",
+      },
+    ],
+    active_consequences: [],
+    bonus_offer: null,
+    team_dna: {
+      key: "skandinavisk_udvikling",
+      emoji: "🌱",
+      label: "Skandinavisk udviklingshold",
+      short_description: "Ungdom, balance og nordisk arv",
+      long_description: "Klubben bygger på unge ryttere og nordiske værdier.",
+      goal_weighting: { u25_development_delta: 1.4, min_national_riders: 1.2, signature_rider: 0.8 },
+    },
+    dna_suggestions: [],
+    ...overrides,
+  };
+}
+
+// Registrér en override for /api/board/status OVEN PÅ installNetworkMocks
+// (senest registrerede route vinder i Playwright). `status` kan være et objekt
+// eller en funktion — funktion gør det muligt at mutere payload mellem fetches
+// (fx bonus-accept → refetch uden bonus_offer).
+export async function installBoardStatusMock(page, status) {
+  await page.route("**/api/board/status**", route => {
+    const request = route.request();
+    if (request.method() === "OPTIONS") {
+      return route.fulfill({ status: 204, headers: corsHeaders(request) });
+    }
+    if (request.method() !== "GET") return route.fallback();
+    return json(route, typeof status === "function" ? status() : status);
   });
 }
 

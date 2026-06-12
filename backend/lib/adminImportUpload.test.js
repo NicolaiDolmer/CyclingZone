@@ -7,26 +7,27 @@ import express from "express";
 
 import {
   ADMIN_IMPORT_MAX_FILE_SIZE_BYTES,
-  adminImportUploadSingleFile,
+  adminImportUploadMultipleFiles,
   createAdminImportUpload,
   isAllowedAdminImportFile,
 } from "./adminImportUpload.js";
 
-async function withUploadServer(fn, { useSingleFileWrapper = false } = {}) {
+async function withUploadServer(fn, { useMultiFileWrapper = false } = {}) {
   const app = express();
   const upload = createAdminImportUpload();
-  const uploadMiddleware = useSingleFileWrapper
-    ? adminImportUploadSingleFile
+  const uploadMiddleware = useMultiFileWrapper
+    ? adminImportUploadMultipleFiles
     : upload.single("file");
 
   app.post("/upload", uploadMiddleware, (req, res) => {
+    const file = req.file || (req.files || [])[0] || null;
     res.json({
-      file: req.file
+      file: file
         ? {
-            originalname: req.file.originalname,
-            mimetype: req.file.mimetype,
-            size: req.file.size,
-            buffer: req.file.buffer.toString("utf8"),
+            originalname: file.originalname,
+            mimetype: file.mimetype,
+            size: file.size,
+            buffer: file.buffer.toString("utf8"),
           }
         : null,
       body: req.body,
@@ -108,7 +109,7 @@ test("admin import upload returns controlled JSON when file exceeds the 10 MB li
   await withUploadServer(async (baseUrl) => {
     const formData = new FormData();
     formData.append(
-      "file",
+      "files",
       new Blob([new Uint8Array(ADMIN_IMPORT_MAX_FILE_SIZE_BYTES + 1)], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       }),
@@ -127,5 +128,5 @@ test("admin import upload returns controlled JSON when file exceeds the 10 MB li
       code: "upload_file_too_large",
       max_file_size_bytes: ADMIN_IMPORT_MAX_FILE_SIZE_BYTES,
     });
-  }, { useSingleFileWrapper: true });
+  }, { useMultiFileWrapper: true });
 });
