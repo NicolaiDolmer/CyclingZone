@@ -105,7 +105,6 @@ import { buildTeamTransferHistory } from "../lib/teamTransferHistory.js";
 import { buildRiderBidTimeline } from "../lib/riderBidTimeline.js";
 import { SCOUTING_CONFIG, deriveScoutState, canScout, buildScoutEstimate } from "../lib/scouting.js";
 import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity } from "../lib/training.js";
-import { handleDynCyclistSyncRequest } from "../lib/dynCyclistSync.js";
 import {
   computeDebtRatio,
   computeSustainabilityTier,
@@ -113,7 +112,6 @@ import {
 import { computeMultiSeasonForecast } from "../lib/financeForecast.js";
 import { buildSeasonFinanceReport } from "../lib/seasonFinanceReport.js";
 import { groupCronRuns } from "../lib/cronRunCorrelation.js";
-import { syncRaceResultsFromSheets } from "../lib/raceResultsSheetSync.js";
 import { getSeasonPrizePreview, paySeasonPrizesToDate } from "../lib/prizePayoutEngine.js";
 import {
   buildSeasonEndPreviewRows,
@@ -193,8 +191,7 @@ import {
   buildRaceResultsFromPending,
   rederiveSeasonRacePoints,
 } from "../lib/raceResultsEngine.js";
-import { createAdminImportResultsHandler } from "../lib/adminImportResultsHandler.js";
-import { adminImportUploadSingleFile, adminImportUploadMultipleFiles } from "../lib/adminImportUpload.js";
+import { adminImportUploadMultipleFiles } from "../lib/adminImportUpload.js";
 import { getDefaultWebhook, sendWebhook } from "../lib/discordNotifier.js";
 import { importPcmResults, buildPcmImportEmbed } from "../lib/pcmResultsImport.js";
 import { getRaceEngineStatus, runAdminSimulateRace, buildRaceSimEmbed } from "../lib/adminSimulateRace.js";
@@ -2979,20 +2976,9 @@ router.post("/admin/riders/:id/retirement", requireAdmin, adminWriteLimiter, asy
   });
 });
 
-router.post(
-  "/admin/import-results",
-  requireAdmin,
-  adminWriteLimiter,
-  adminImportUploadSingleFile,
-  createAdminImportResultsHandler({
-    supabase,
-    buildRacePointsLookup,
-    applyRaceResults,
-    ensureSeasonStandings,
-    updateStandings,
-    logActivity,
-  }),
-);
+// POST /api/admin/import-results (Excel-upload) fjernet 2026-06-12 (#1180 pkt 3,
+// jf. #1179-kill-listen) — manuel resultat-upload døde med egen race-motor.
+// PCM-importen (/admin/import-results-pcm) er bevidst bevaret som nød-fallback.
 
 // POST /api/admin/approve-results — approve pending race result submission
 router.post("/admin/approve-results", requireAdmin, adminWriteLimiter, async (req, res) => {
@@ -5771,29 +5757,10 @@ router.post("/admin/discord-settings/:id/test", requireAdmin, adminWriteLimiter,
   res.json({ ...result, timestamp: new Date().toISOString() });
 });
 
-// POST /api/admin/sync-dyn-cyclist — sync PCM stats fra Google Sheets
-router.post("/admin/sync-dyn-cyclist", requireAdmin, adminWriteLimiter, handleDynCyclistSyncRequest);
-
-// POST /api/admin/import-results-sheets — importer løbsresultater fra Google Sheets (dry_run for preview)
-router.post("/admin/import-results-sheets", requireAdmin, adminWriteLimiter, async (req, res) => {
-  const { spreadsheet_url, dry_run } = req.body;
-  if (!spreadsheet_url) {
-    return res.status(400).json({ error: "spreadsheet_url påkrævet" });
-  }
-  try {
-    const result = await syncRaceResultsFromSheets({
-      spreadsheetUrl: spreadsheet_url,
-      supabase,
-      ensureSeasonStandings,
-      updateStandings,
-      adminUserId: req.user.id,
-      dryRun: Boolean(dry_run),
-    });
-    res.json(result);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
+// POST /api/admin/sync-dyn-cyclist + /api/admin/import-results-sheets fjernet
+// 2026-06-12 (#1180 pkt 3+4): dyn_cyclist-syncen kunne overskrive de fiktive
+// rytteres stats med et gammelt PCM-ark (spillet ejer selv stats efter #677),
+// og Sheets-resultatimport døde med egen race-motor jf. #1179-kill-listen.
 
 // POST /api/admin/import-results-pcm — importer PCM-resultatfiler (SpreadsheetML 2003).
 // Multi-fil pr. løb; body.dry_run="true" giver preview uden DB-writes. Felt-navn: "files".

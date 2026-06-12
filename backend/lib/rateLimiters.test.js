@@ -214,7 +214,7 @@ test("contract: api.js imports the rate limiters and mounts them on write routes
   );
 });
 
-test("contract: server.js sets trust proxy and limits /api/admin/sync-uci", async () => {
+test("contract: server.js sets trust proxy and owns no admin routes", async () => {
   const { readFileSync } = await import("node:fs");
   const { fileURLToPath } = await import("node:url");
   const { dirname, join } = await import("node:path");
@@ -225,8 +225,7 @@ test("contract: server.js sets trust proxy and limits /api/admin/sync-uci", asyn
   );
 
   assert.match(serverSource, /app\.set\("trust proxy",\s*1\)/);
-  assert.match(
-    serverSource,
-    /app\.post\("\/api\/admin\/sync-uci",\s*requireAdmin,\s*adminWriteLimiter,\s*handleSyncRequest\)/,
-  );
+  // /api/admin/sync-uci fjernet 2026-06-12 (#1207, ejer-Option A). server.js må
+  // ikke længere eje admin-routes — backend/routes/api.js er kanonisk ejer (#97).
+  assert.doesNotMatch(serverSource, /app\.post\("\/api\/admin\//);
 });
