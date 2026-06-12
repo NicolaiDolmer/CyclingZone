@@ -527,7 +527,6 @@ function TransactionsView({ getAuth, onMsg, initialFilters }) {
   useEffect(() => {
     // initialFilters er kun "live" ved første render — drill-down genmounter via key prop.
     refresh(0);
-    /* eslint-disable-line react-hooks/exhaustive-deps */
   }, []);
 
   function applyFilters() { refresh(0); }

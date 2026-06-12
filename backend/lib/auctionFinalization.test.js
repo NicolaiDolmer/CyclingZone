@@ -147,7 +147,7 @@ function createFinalizeAuctionSupabase({
 
       if (table === "teams") {
         return {
-          select(columns) {
+          select(_columns) {
             return {
               eq(column, value) {
                 let team = null;

@@ -736,7 +736,7 @@ export function evaluateGoal(goal, standing, team, context = {}) {
     activeLoanCount = 0,
     planStartSponsorIncome,
     currentSponsorIncome,
-    cumulativeStats,
+    cumulativeStats: _cumulativeStats,
     cumulativeMonumentPodiums,
     cumulativeJerseyWins,
     seasonJerseyWins,

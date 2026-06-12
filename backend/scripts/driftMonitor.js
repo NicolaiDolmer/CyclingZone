@@ -23,7 +23,7 @@ async function runAudit() {
   try {
     // 1. Tjek Salary-konsistens
     // Salary skal være 10% af (UCI points * 4000 + bonus), min 5 UCI points.
-    const { data: salaryDrift, error: salaryError } = await supabase.rpc('check_salary_drift');
+    const { error: salaryError } = await supabase.rpc('check_salary_drift');
     
     // Hvis RPC ikke findes endnu, bruger vi en rå query (fallback)
     if (salaryError) {

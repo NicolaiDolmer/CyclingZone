@@ -16,7 +16,6 @@ import assert from "node:assert/strict";
 import {
   applyTradeoffTighteningToGoals,
   buildBoardProposal,
-  evaluateGoalProgress,
   evaluateMidSeasonTrigger,
   isMajorPivotRequest,
   MAJOR_PIVOT_REQUEST_TYPES,

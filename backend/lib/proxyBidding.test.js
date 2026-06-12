@@ -925,7 +925,7 @@ test("#44: challenger med proxy > balance behandles som udmattet, næste challen
     bidTime: BID_TIME,
     bidCfg: { extension_minutes: 10 },
     notifyTeamOwner: async (...args) => { ownerCalls.push(args); },
-    canAffordAutoBidFn: async (_supabase, teamId, amount) => {
+    canAffordAutoBidFn: async (_supabase, teamId, _amount) => {
       if (teamId === "team-b") return false; // afvis B
       return true;
     },

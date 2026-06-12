@@ -23,7 +23,6 @@ import { fetchAllRows } from "../lib/supabasePagination.js";
 import { blendedOutput, meanAbilityScore, outputScore, predictBaseValue } from "../lib/riderValuation.js";
 import { checkAnchorOrdering } from "../lib/riderValuationFit.js";
 import {
-  DESIGN_PYRAMID,
   PYRAMID_BANDS,
   bandCounts,
   buildOutlierRows,
@@ -47,7 +46,6 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
 const model = JSON.parse(readFileSync(join(__dirname, "../lib/riderValuationModel.json"), "utf8"));
 const norm = (s) => (s || "").toLowerCase().normalize("NFD").replace(/\p{Diacritic}/gu, "").trim();
-const fmtM = (n) => (n / 1e6).toFixed(1) + "M";
 const today = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Copenhagen" }).format(new Date());
 
 async function main() {
