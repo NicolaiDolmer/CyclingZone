@@ -6,8 +6,12 @@ import i18next from "i18next";
 import ICU from "i18next-icu";
 
 import {
+  resolveBoardCopy,
   resolveBoardFeedbackHeadline,
   resolveBoardFeedbackSummary,
+  resolveBoardIdentitySummary,
+  resolveBoardIdentitySummaryFromParams,
+  resolveBoardPersonalitySummary,
   resolveReactionQuote,
   resolveMemberLabel,
   resolveCategoryLabel,
@@ -105,6 +109,140 @@ test("member label + category label resolve via keys with fallback", () => {
   assert.equal(resolveCategoryLabel(tEn, { label_key: "category.economy", label: "Okonomi" }), "Finances");
   // Ukendt nøgle → falder tilbage til den medsendte råtekst.
   assert.equal(resolveMemberLabel(tEn, { label_key: "archetypes.nope.label", label: "Fallback" }), "Fallback");
+});
+
+// ── #1084 · Identity-/personality-summaries + request-koder ───────────────────
+
+const IDENTITY_PARAMS = {
+  primarySpecialization: "gc",
+  secondarySpecialization: "sprint",
+  youthLevel: "high",
+  squadStatus: "healthy",
+  nationalCoreEstablished: true,
+  nationalCoreCode: "DK",
+  nationalCoreSharePct: 45,
+  starProfileLevel: "high",
+};
+
+test("identity summary composes EN fragments from codes (no Danish leak)", () => {
+  const summary = resolveBoardIdentitySummaryFromParams(tEn, IDENTITY_PARAMS, "dansk fallback");
+  assert.match(summary, /^GC team with a secondary sprint team direction/);
+  assert.match(summary, /a strong youth imprint/);
+  assert.match(summary, /a healthy squad/);
+  // Lande-koden bliver til lokaliseret landenavn, ikke rå "DK".
+  assert.match(summary, /(Denmark|Danmark) core at 45%/);
+  assert.match(summary, /star profile: nationally known\.$/);
+  assert.doesNotMatch(summary, /\bDK\b/);
+});
+
+test("identity summary composes DA fragments from codes", () => {
+  const summary = resolveBoardIdentitySummaryFromParams(tDa, IDENTITY_PARAMS, "");
+  assert.match(summary, /^GC-hold med sekundær sprinthold-retning/);
+  assert.match(summary, /stjerneprofil: nationalt kendt\.$/);
+});
+
+test("identity summary falls back to raw Danish without params", () => {
+  assert.equal(
+    resolveBoardIdentitySummary(tEn, { summary: "Raa dansk summary.", summary_params: null }),
+    "Raa dansk summary."
+  );
+  assert.equal(resolveBoardIdentitySummary(tEn, null), "");
+});
+
+test("personality summary resolves from codes in both languages", () => {
+  const personality = { sports_ambition: "medium", financial_risk: "balanced", identity_strength: "high" };
+  assert.equal(
+    resolveBoardPersonalitySummary(tEn, personality),
+    "Moderate sporting ambition, balanced financial risk appetite and strong identity strength."
+  );
+  assert.equal(
+    resolveBoardPersonalitySummary(tDa, personality),
+    "Moderat sportslig ambition, balanceret økonomisk risikovillighed og stærk identitetsstyrke."
+  );
+  // Manglende koder → fallback.
+  assert.equal(resolveBoardPersonalitySummary(tEn, { summary: "dansk" }, "fallback"), "fallback");
+});
+
+test("awaitingFirstMarkers prefers personality/identity codes over raw Danish params", () => {
+  const feedback = {
+    headline_key: "feedback.awaitingFirstMarkers.headline",
+    summary_key: "feedback.awaitingFirstMarkers.summary",
+    summary_params: {
+      personalitySummary: "moderat sportslig ambition (raa dansk)",
+      profileHint: " Holdet laeser de som raa dansk.",
+      personality: { sports_ambition: "medium", financial_risk: "cautious", identity_strength: "medium" },
+      identitySummaryParams: IDENTITY_PARAMS,
+    },
+    signal_hints: [],
+  };
+  const summary = resolveBoardFeedbackSummary(tEn, feedback);
+  assert.match(summary, /^Moderate sporting ambition, cautious financial risk appetite/);
+  assert.match(summary, /The board reads the team as: GC team/);
+  assert.doesNotMatch(summary, /raa dansk/);
+  assert.doesNotMatch(summary, /laeser/);
+});
+
+test("awaitingFirstMarkers keeps raw Danish fallback for old payloads without codes", () => {
+  const feedback = {
+    summary_key: "feedback.awaitingFirstMarkers.summary",
+    summary_params: {
+      personalitySummary: "moderat sportslig ambition",
+      profileHint: " Holdet laeser de som dansk.",
+    },
+  };
+  const summary = resolveBoardFeedbackSummary(tEn, feedback);
+  assert.match(summary, /^moderat sportslig ambition/);
+  assert.match(summary, /Holdet laeser de som dansk\./);
+});
+
+test("request reasons/outcome codes resolve with params (windowBlocked) and fallback", () => {
+  assert.equal(
+    resolveBoardCopy(tEn, "requestReason.windowBlocked", "dansk", { raceDays: 5 }),
+    "The season's final phase has begun. The board does not take requests in the last 5 race days."
+  );
+  assert.equal(
+    resolveBoardCopy(tEn, "requestReason.midCycleLocked", "dansk", { years: 5, percent: 50 }),
+    "The 5-year plan is too early in its cycle to be redirected. The board wants at least 50% of the plan completed or a major satisfaction swing before a re-orientation."
+  );
+  assert.equal(
+    resolveBoardCopy(tEn, "requestOutcome.lowerResults.titlePartial", "Bestyrelsen giver lidt luft"),
+    "The board gives a little slack"
+  );
+  assert.equal(
+    resolveBoardCopy(tEn, "requestDefs.more_youth_focus.label", "Mere ungdomsfokus"),
+    "More youth focus"
+  );
+  // Gamle log-rækker uden kode → rå dansk fallback.
+  assert.equal(resolveBoardCopy(tEn, null, "Frossen dansk titel"), "Frossen dansk titel");
+});
+
+test("every new #1084 key parses through ICU in both languages", () => {
+  const sections = ["specialization", "competitiveTier", "squadStatus", "starProfileLevel",
+    "nationalCoreLabel", "identitySummary", "personalitySummary", "requestDefs",
+    "requestReason", "requestOutcome"];
+  const sampleParams = {
+    country: "Denmark", percent: 45, label: "x", raceDays: 5, years: 5,
+    primary: "a", secondaryLower: "b", youth: "c", squad: "d", national: "e", star: "f",
+    ambition: "a", risk: "b", identity: "c", identitySummary: "x",
+  };
+  const walk = (obj, prefix) => {
+    for (const [k, v] of Object.entries(obj)) {
+      const key = `${prefix}.${k}`;
+      if (v && typeof v === "object") {
+        walk(v, key);
+      } else {
+        assert.doesNotThrow(() => tEn(key, sampleParams), `EN ${key} threw`);
+        assert.doesNotThrow(() => tDa(key, sampleParams), `DA ${key} threw`);
+        assert.notEqual(tEn(key, sampleParams), key, `EN ${key} did not resolve`);
+        assert.notEqual(tDa(key, sampleParams), key, `DA ${key} did not resolve`);
+      }
+    }
+  };
+  for (const section of sections) {
+    assert.ok(boardEn[section], `EN board.json mangler sektionen ${section}`);
+    assert.ok(boardDa[section], `DA board.json mangler sektionen ${section}`);
+    walk(boardEn[section], section);
+  }
 });
 
 test("every archetype reaction string parses through ICU without throwing", () => {

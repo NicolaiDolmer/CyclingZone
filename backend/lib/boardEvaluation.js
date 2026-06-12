@@ -434,10 +434,21 @@ function buildBoardFeedback({ scoreBreakdown, personality, identityProfile, cont
       headline_key: "feedback.awaitingFirstMarkers.headline",
       summary_key: "feedback.awaitingFirstMarkers.summary",
       summary_base: summaryBase,
-      // NB: personalitySummary + profileHint stammer fra boardIdentity.js (uden for
-      // denne slices scope) og forbliver dansk indtil opfølgnings-issuet. Den
-      // forbindende sætning + headline er fuldt oversat.
-      summary_params: { personalitySummary: personality.summary || "", profileHint },
+      // #1084 · personalitySummary + profileHint sendes nu BÅDE som rå dansk
+      // fallback OG som koder: frontend resolver `personality`-koderne via
+      // personalitySummary.* og `identitySummaryParams` via identitySummary.*
+      // (boardCopy.resolveBoardFeedbackSummary). Gamle klienter/manglende keys
+      // falder tilbage til de rå strenge.
+      summary_params: {
+        personalitySummary: personality.summary || "",
+        profileHint,
+        personality: {
+          sports_ambition: personality.sports_ambition || null,
+          financial_risk: personality.financial_risk || null,
+          identity_strength: personality.identity_strength || null,
+        },
+        identitySummaryParams: identityProfile?.summary_params || null,
+      },
       signal_hints: serializeSignalHints(signalHints),
     };
   }

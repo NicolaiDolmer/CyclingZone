@@ -464,7 +464,8 @@
     },
     "awaitingFirstMarkers": {
       "headline": "The board is waiting for the season's first markers",
-      "summary": "{personalitySummary} For now expectations are intact, but the sporting answers only come once the season takes shape.{profileHint}"
+      "summary": "{personalitySummary} For now expectations are intact, but the sporting answers only come once the season takes shape.{profileHint}",
+      "profileHint": "The board reads the team as: {identitySummary}"
     },
     "veryHappy": {
       "headline": "The board is very satisfied",
@@ -931,6 +932,174 @@
           "We lack a plan for where the star is going to come from."
         ]
       }
+    }
+  },
+  "specialization": {
+    "gc": "GC team",
+    "sprint": "Sprint team",
+    "classics": "Classics team",
+    "breakaway": "Stage-hunter team",
+    "youth": "Youth team",
+    "balanced": "Balanced team"
+  },
+  "competitiveTier": {
+    "contender": "Ready to contend",
+    "competitive": "Competitive",
+    "rebuilding": "Rebuilding"
+  },
+  "squadStatus": {
+    "thin": "Thin squad",
+    "healthy": "Healthy squad",
+    "full": "Broad squad"
+  },
+  "starProfileLevel": {
+    "low": "Unknown",
+    "medium": "Locally known",
+    "high": "Nationally known",
+    "elite": "World famous"
+  },
+  "nationalCoreLabel": {
+    "mixed": "Mixed squad",
+    "core": "{country} core",
+    "clearCore": "Clear {country} core"
+  },
+  "identitySummary": {
+    "template": "{primary} with a secondary {secondaryLower} direction, {youth}, {squad}, {national} and {star}.",
+    "youth": {
+      "high": "a strong youth imprint",
+      "medium": "a moderate youth share",
+      "low": "a low youth share"
+    },
+    "squad": {
+      "thin": "a thin squad",
+      "healthy": "a healthy squad",
+      "full": "a broad squad"
+    },
+    "national": {
+      "core": "a {country} core at {percent}%",
+      "mixed": "a mixed national profile"
+    },
+    "star": {
+      "profile": "star profile: {label}",
+      "none": "no clear star profile"
+    }
+  },
+  "personalitySummary": {
+    "template": "{ambition}, {risk} and {identity}.",
+    "ambition": {
+      "low": "Low sporting ambition",
+      "medium": "Moderate sporting ambition",
+      "high": "High sporting ambition"
+    },
+    "risk": {
+      "cautious": "cautious financial risk appetite",
+      "balanced": "balanced financial risk appetite",
+      "aggressive": "aggressive financial risk appetite"
+    },
+    "identity": {
+      "low": "weak identity strength",
+      "medium": "moderate identity strength",
+      "high": "strong identity strength"
+    }
+  },
+  "requestDefs": {
+    "lower_results_pressure": {
+      "label": "Lower the results pressure",
+      "description": "Ask the board for a little more breathing room in the sporting demands of the active plan.",
+      "tradeoffPreview": "If they say yes, they typically expect tighter financial discipline."
+    },
+    "more_youth_focus": {
+      "label": "More youth focus",
+      "description": "Push the plan in a clearer youth direction with more room for development.",
+      "tradeoffPreview": "If they say yes, the U25 identity becomes more central to the active plan."
+    },
+    "more_results_focus": {
+      "label": "More results focus now",
+      "description": "Ask the board to weight top results higher right away.",
+      "tradeoffPreview": "This does not make the plan easier - the sporting demands get sharper."
+    },
+    "ease_identity_requirements": {
+      "label": "Ease identity requirements",
+      "description": "Ask for a little more flexibility in squad composition and identity goals.",
+      "tradeoffPreview": "If they say yes, they typically turn up the sporting pressure instead."
+    }
+  },
+  "requestReason": {
+    "noActivePlan": "No active board plan.",
+    "planNotActive": "Negotiate a new plan before sending requests.",
+    "alreadyUsed": "You have already used this season's board request.",
+    "windowBlocked": "The season's final phase has begun. The board does not take requests in the last {raceDays} race days.",
+    "midCycleLocked": "The {years}-year plan is too early in its cycle to be redirected. The board wants at least {percent}% of the plan completed or a major satisfaction swing before a re-orientation.",
+    "majorPivotUsed": "The board has already accepted a MAJOR pivot in this plan cycle. Another big change of direction requires a fresh plan.",
+    "unknown": "Unknown board request.",
+    "fallback": "The board declines the request right now.",
+    "lowerResults": {
+      "noSportingGoals": "The plan has no sporting goals to ease.",
+      "tooUnhappy": "The board is too dissatisfied to ease the results demands.",
+      "needProgress": "The board wants to see more progress before easing the results demands.",
+      "starPressure": "Big profiles keep sponsor expectations high, so the board will not ease the results demands yet.",
+      "underEnoughPressure": "The board already feels the plan is under enough pressure and wants to see more progress before easing the demands.",
+      "starAmbitionLocked": "The board refuses to lower the ambition level for a team with clear star profiles, because sponsor expectations are already raised."
+    },
+    "moreYouth": {
+      "alreadyYouth": "The plan is already on a youth track.",
+      "noIdentityGoal": "The plan lacks an identity goal to redirect.",
+      "needStability": "The board wants to see more stability before switching focus now.",
+      "needYouthBase": "The board wants to see a clearer youth base in the squad before switching focus."
+    },
+    "moreResults": {
+      "alreadyResults": "The plan is already pushing for top results.",
+      "squadTooThin": "The board wants to see a broader squad before raising the ambition level further."
+    },
+    "easeIdentity": {
+      "noIdentityGoal": "The plan has no identity requirement to ease.",
+      "needTrust": "The board wants more trust before easing the identity requirement.",
+      "needSportingStability": "The board wants to see more sporting stability before easing the identity requirement.",
+      "nationalCoreCentral": "The board sees the national core as a vital part of the team's DNA and will not let it go yet.",
+      "youthCoreCentral": "The board sees the youth track as a core of the team's identity and will not let it go yet.",
+      "needStabilityFirst": "The board will not ease the identity requirements until the team stands more stable on the sporting side.",
+      "nationalCoreDna": "The board sees the national core as a vital part of the team's DNA and will not let it go yet."
+    }
+  },
+  "requestOutcome": {
+    "approvedTitle": "The board accepts the request",
+    "rejectedTitle": "The board declines the request",
+    "lowerResults": {
+      "titlePartial": "The board gives a little slack",
+      "titleTradeoff": "The board gives slack at a price",
+      "summaryStar": "The board only gives a little slack, because a team with big profiles is still held to high expectations.",
+      "summaryDefault": "The board slightly lowers the sporting pressure in the active plan.",
+      "tradeoffStar": "The profiles give the sponsor project weight, but they also mean the board tightens the financial demand instead of letting the ambitions go entirely.",
+      "tradeoffEconomy": "In return the financial demand gets sharper, so the team must be run with more discipline for the rest of the plan.",
+      "tradeoffPartial": "The board only grants a partial easing, because the plan still needs clear results."
+    },
+    "moreYouth": {
+      "titleBridge": "The board only accepts a gradual shift",
+      "titleDefault": "The board accepts a more youthful track",
+      "summaryBridge": "The board wants to see more development, but a team with clear star profiles cannot switch tracks all at once.",
+      "summaryYouthTrack": "The board already sees a youth track in the squad and turns the plan more clearly towards development.",
+      "summaryNationalCore": "The board sees a clear core in the squad and accepts turning the plan towards a more long-term development direction.",
+      "summaryDefault": "The plan is turned more towards development and long-term squad building.",
+      "tradeoffBridge": "The plan becomes more youth-oriented, but the board keeps the focus at a balanced waypoint and does not let go of the results pressure entirely yet.",
+      "tradeoffDefault": "In return the U25 identity is now a clearer and more lasting requirement in the active plan."
+    },
+    "moreResults": {
+      "titleBridge": "The board only accepts a gradual escalation",
+      "titleDefault": "The board raises the ambition",
+      "summaryBridge": "The board wants to see more results pressure, but a pronounced youth track is only moved gradually towards a more ambitious middle position.",
+      "summaryStar": "Big profiles and sponsor expectations make the board raise the ambition right away.",
+      "summarySpecialized": "The board reads the team as ready to chase bigger results and raises the ambition.",
+      "summaryDefault": "The plan now weights top results even more clearly than before.",
+      "tradeoffBridge": "The board holds on to part of the development track, so the team must prove the new ambition level over time.",
+      "tradeoffDefault": "You get a little more flexibility in the identity requirement, but the results goals have in return become sharper right away."
+    },
+    "easeIdentity": {
+      "titleCore": "The board only eases the identity requirement slightly",
+      "titleDefault": "The board eases the identity requirement",
+      "summaryCore": "The board still sees the national core as a vital part of the team's DNA and only gives a little more flexibility in the identity requirement.",
+      "summaryDefault": "The team gets a little more flexibility in squad building and the identity-bearing goals.",
+      "tradeoffCore": "The national identity is not let go entirely, and in return the board expects sharper sporting output for the rest of the plan.",
+      "tradeoffDefault": "In return the board expects sharper sporting output for the rest of the plan."
     }
   },
   "errors": {

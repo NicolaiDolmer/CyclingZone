@@ -15,8 +15,10 @@ import { logEvent } from "../lib/logEvent";
 import { resolveApiError } from "../lib/apiError";
 import { useModalA11y } from "../hooks/useModalA11y";
 import {
+  resolveBoardCopy,
   resolveBoardFeedbackHeadline,
   resolveBoardFeedbackSummary,
+  resolveBoardIdentitySummary,
   resolveMemberLabel,
   resolveMemberShortDescription,
   resolveMemberLongDescription,
@@ -901,18 +903,33 @@ function BoardIdentityCard({ identityProfile, title }) {
   const nationalCoreSub = nationalCore?.established
     ? t("identity.nationalCoreSub", { count: nationalCore.count, percent: nationalCore.share_pct })
     : t("identity.nationalCoreNone");
-  const starProfileValue = starProfile?.label || t("identity.starProfileUnknown");
+  // #1084 · label_key resolves via board.json (dansk råtekst = fallback for
+  // gamle payloads) — samme mønster som arketype-labels (#917/#694).
+  const starProfileValue = resolveBoardCopy(t, starProfile?.label_key, starProfile?.label)
+    || t("identity.starProfileUnknown");
   const starProfileSub = starProfile?.star_rider_count
     ? t("identity.starProfileSub", { count: starProfile.star_rider_count })
     : t("identity.starProfileNone");
+  const primarySpecializationLabel = resolveBoardCopy(
+    t, identityProfile.primary_specialization_label_key, identityProfile.primary_specialization_label
+  );
+  const secondarySpecializationLabel = resolveBoardCopy(
+    t, identityProfile.secondary_specialization_label_key, identityProfile.secondary_specialization_label
+  );
+  const competitiveTierLabel = resolveBoardCopy(
+    t, identityProfile.competitive_tier_label_key, identityProfile.competitive_tier_label
+  );
+  const squadStatusLabel = resolveBoardCopy(
+    t, identityProfile.squad_status_label_key, identityProfile.squad_status_label
+  );
 
   return (
     <div className="bg-cz-card border border-cz-border rounded-xl p-5 mt-4">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{resolvedTitle}</p>
-          <p className="text-cz-1 font-semibold text-sm break-words">{identityProfile.primary_specialization_label}</p>
-          <p className="text-cz-2 text-sm mt-1 break-words">{formatBoardCopy(identityProfile.summary)}</p>
+          <p className="text-cz-1 font-semibold text-sm break-words">{primarySpecializationLabel}</p>
+          <p className="text-cz-2 text-sm mt-1 break-words">{formatBoardCopy(resolveBoardIdentitySummary(t, identityProfile))}</p>
         </div>
         {/* #1232 · U25-mål er et ANTAL — vis antallet som primær værdi; procent-
             observationen bevares som sekundær baggrundsinfo (Discord 9/6, @jeppek). */}
@@ -937,22 +954,22 @@ function BoardIdentityCard({ identityProfile, title }) {
       <div className="grid sm:grid-cols-3 xl:grid-cols-6 gap-3 mt-4">
         <div className="bg-cz-subtle border border-cz-border rounded-lg p-3 min-w-0">
           <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("identity.primary")}</p>
-          <p className="text-cz-1 text-sm font-medium mt-1 break-words">{identityProfile.primary_specialization_label}</p>
+          <p className="text-cz-1 text-sm font-medium mt-1 break-words">{primarySpecializationLabel}</p>
         </div>
         <div className="bg-cz-subtle border border-cz-border rounded-lg p-3 min-w-0">
           <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("identity.secondary")}</p>
-          <p className="text-cz-1 text-sm font-medium mt-1 break-words">{identityProfile.secondary_specialization_label}</p>
+          <p className="text-cz-1 text-sm font-medium mt-1 break-words">{secondarySpecializationLabel}</p>
         </div>
         <div className="bg-cz-subtle border border-cz-border rounded-lg p-3 min-w-0">
           <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("identity.competitive")}</p>
-          <p className="text-cz-1 text-sm font-medium mt-1 break-words">{identityProfile.competitive_tier_label}</p>
+          <p className="text-cz-1 text-sm font-medium mt-1 break-words">{competitiveTierLabel}</p>
         </div>
         <div className="bg-cz-subtle border border-cz-border rounded-lg p-3 min-w-0">
           <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("identity.squad")}</p>
           <p className="text-cz-1 text-sm font-medium mt-1">
             {identityProfile.rider_count}/{identityProfile?.squad_limits?.max}
           </p>
-          <p className="text-cz-3 text-xs mt-1 break-words">{identityProfile.squad_status_label}</p>
+          <p className="text-cz-3 text-xs mt-1 break-words">{squadStatusLabel}</p>
         </div>
         <div className="bg-cz-subtle border border-cz-border rounded-lg p-3 min-w-0">
           <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("identity.nationalCore")}</p>
@@ -1015,16 +1032,22 @@ function BoardRequestPanel({ requestOptions, requestStatus, requestError, reques
         <div className={`rounded-xl border p-4 mt-4 ${latestStyle.box}`}>
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-cz-1 text-sm font-semibold">{latestRequest.title}</p>
-              <p className="text-cz-2 text-xs mt-1">{latestRequest.request_label}</p>
+              {/* #1084 · *_code resolves via board.json; gamle log-rækker uden koder
+                  falder tilbage til den frosne danske råtekst (resolve-on-read). */}
+              <p className="text-cz-1 text-sm font-semibold">{resolveBoardCopy(t, latestRequest.title_code, latestRequest.title)}</p>
+              <p className="text-cz-2 text-xs mt-1">{resolveBoardCopy(t, latestRequest.request_label_key, latestRequest.request_label)}</p>
             </div>
             <span className={`text-xs font-semibold uppercase tracking-wider ${latestStyle.accent}`}>
               {t(`outcome.${outcomeKey}`)}
             </span>
           </div>
-          <p className="text-cz-2 text-sm mt-2">{formatBoardCopy(latestRequest.summary)}</p>
+          <p className="text-cz-2 text-sm mt-2">
+            {formatBoardCopy(resolveBoardCopy(t, latestRequest.summary_code, latestRequest.summary, latestRequest.summary_params || {}))}
+          </p>
           {latestRequest.tradeoff_summary && (
-            <p className="text-cz-2 text-sm mt-2">{formatBoardCopy(latestRequest.tradeoff_summary)}</p>
+            <p className="text-cz-2 text-sm mt-2">
+              {formatBoardCopy(resolveBoardCopy(t, latestRequest.tradeoff_summary_code, latestRequest.tradeoff_summary))}
+            </p>
           )}
           {(focusChanged || goalChanges.length > 0) && (
             <div className="mt-4 pt-4 border-t border-cz-border">
@@ -1074,9 +1097,10 @@ function BoardRequestPanel({ requestOptions, requestStatus, requestError, reques
             const isBusy = requestingType === option.type;
             return (
               <div key={option.type} className="bg-cz-subtle border border-cz-border rounded-xl p-4">
-                <p className="text-cz-1 font-semibold text-sm">{option.label}</p>
-                <p className="text-cz-2 text-sm mt-1">{option.description}</p>
-                <p className="text-cz-3 text-xs mt-3">{option.tradeoff_preview}</p>
+                {/* #1084 · requestDefs-keys resolves via board.json (dansk = fallback). */}
+                <p className="text-cz-1 font-semibold text-sm">{resolveBoardCopy(t, option.label_key, option.label)}</p>
+                <p className="text-cz-2 text-sm mt-1">{resolveBoardCopy(t, option.description_key, option.description)}</p>
+                <p className="text-cz-3 text-xs mt-3">{resolveBoardCopy(t, option.tradeoff_preview_key, option.tradeoff_preview)}</p>
                 <button
                   onClick={() => onRequest(option.type)}
                   disabled={disabled || Boolean(requestingType)}
@@ -1087,7 +1111,9 @@ function BoardRequestPanel({ requestOptions, requestStatus, requestError, reques
                   {isBusy ? t("request.sending") : t("request.send")}
                 </button>
                 {disabled && option.disabled_reason && (
-                  <p className="text-cz-3 text-xs mt-2">{option.disabled_reason}</p>
+                  <p className="text-cz-3 text-xs mt-2">
+                    {resolveBoardCopy(t, option.disabled_reason_key, option.disabled_reason, option.disabled_reason_params || {})}
+                  </p>
                 )}
               </div>
             );

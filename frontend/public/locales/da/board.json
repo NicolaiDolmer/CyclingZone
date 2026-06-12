@@ -464,7 +464,8 @@
     },
     "awaitingFirstMarkers": {
       "headline": "Bestyrelsen afventer sæsonens første markører",
-      "summary": "{personalitySummary} Indtil videre er forventningerne intakte, men de sportslige svar kommer først når sæsonen tager form.{profileHint}"
+      "summary": "{personalitySummary} Indtil videre er forventningerne intakte, men de sportslige svar kommer først når sæsonen tager form.{profileHint}",
+      "profileHint": "Bestyrelsen læser holdet som: {identitySummary}"
     },
     "veryHappy": {
       "headline": "Bestyrelsen er meget tilfreds",
@@ -931,6 +932,174 @@
           "Vi mangler en plan for hvor stjernen skal komme fra."
         ]
       }
+    }
+  },
+  "specialization": {
+    "gc": "GC-hold",
+    "sprint": "Sprinthold",
+    "classics": "Klassikerhold",
+    "breakaway": "Etapejægerhold",
+    "youth": "Ungdomshold",
+    "balanced": "Balanceret hold"
+  },
+  "competitiveTier": {
+    "contender": "Resultatklar",
+    "competitive": "Konkurrencedygtig",
+    "rebuilding": "Under opbygning"
+  },
+  "squadStatus": {
+    "thin": "Tynd trup",
+    "healthy": "Sund trup",
+    "full": "Bred trup"
+  },
+  "starProfileLevel": {
+    "low": "Ukendt",
+    "medium": "Lokalkendt",
+    "high": "Nationalt kendt",
+    "elite": "Verdenskendt"
+  },
+  "nationalCoreLabel": {
+    "mixed": "Blandet trup",
+    "core": "{country}-kerne",
+    "clearCore": "Tydelig {country}-kerne"
+  },
+  "identitySummary": {
+    "template": "{primary} med sekundær {secondaryLower}-retning, {youth}, {squad}, {national} og {star}.",
+    "youth": {
+      "high": "stærkt ungdomsaftryk",
+      "medium": "moderat ungdomsandel",
+      "low": "lav ungdomsandel"
+    },
+    "squad": {
+      "thin": "en tynd trup",
+      "healthy": "en sund trup",
+      "full": "en bred trup"
+    },
+    "national": {
+      "core": "{country}-kerne på {percent}%",
+      "mixed": "blandet national profil"
+    },
+    "star": {
+      "profile": "stjerneprofil: {label}",
+      "none": "ingen tydelig stjerneprofil"
+    }
+  },
+  "personalitySummary": {
+    "template": "{ambition}, {risk} og {identity}.",
+    "ambition": {
+      "low": "Lav sportslig ambition",
+      "medium": "Moderat sportslig ambition",
+      "high": "Høj sportslig ambition"
+    },
+    "risk": {
+      "cautious": "forsigtig økonomisk risikovillighed",
+      "balanced": "balanceret økonomisk risikovillighed",
+      "aggressive": "aggressiv økonomisk risikovillighed"
+    },
+    "identity": {
+      "low": "svag identitetsstyrke",
+      "medium": "moderat identitetsstyrke",
+      "high": "stærk identitetsstyrke"
+    }
+  },
+  "requestDefs": {
+    "lower_results_pressure": {
+      "label": "Sænk resultatpresset",
+      "description": "Bed bestyrelsen om lidt mere luft i de sportslige krav i den aktive plan.",
+      "tradeoffPreview": "Hvis de siger ja, forventer de typisk strammere økonomisk disciplin."
+    },
+    "more_youth_focus": {
+      "label": "Mere ungdomsfokus",
+      "description": "Skub planen i en tydeligere ungdomsretning med mere plads til udvikling.",
+      "tradeoffPreview": "Hvis de siger ja, bliver U25-identiteten mere central i den aktive plan."
+    },
+    "more_results_focus": {
+      "label": "Mere resultatfokus nu",
+      "description": "Bed bestyrelsen om at vægte topresultater højere med det samme.",
+      "tradeoffPreview": "Det giver ikke en lettere plan - de sportslige krav bliver skarpere."
+    },
+    "ease_identity_requirements": {
+      "label": "Lemp identitetskrav",
+      "description": "Bed om lidt mere fleksibilitet i trupsammensætning og identitetsmål.",
+      "tradeoffPreview": "Hvis de siger ja, skruer de typisk op for det sportslige pres i stedet."
+    }
+  },
+  "requestReason": {
+    "noActivePlan": "Ingen aktiv bestyrelsesplan.",
+    "planNotActive": "Forhandl en ny plan, før du sender requests.",
+    "alreadyUsed": "Du har allerede brugt sæsonens board request.",
+    "windowBlocked": "Sæsonens slutfase er begyndt. Bestyrelsen tager ikke imod requests de sidste {raceDays} race-days.",
+    "midCycleLocked": "{years}-årsplanen er for tidligt i forløbet til at blive drejet. Bestyrelsen ønsker mindst {percent}% af planen gennemført eller en stor tilfredsheds-ændring før en re-orientering.",
+    "majorPivotUsed": "Bestyrelsen har allerede accepteret en MAJOR drejning i denne plan-livscyklus. En ny stor retnings-ændring kræver en frisk plan.",
+    "unknown": "Ukendt board request.",
+    "fallback": "Bestyrelsen afviser forespørgslen lige nu.",
+    "lowerResults": {
+      "noSportingGoals": "Planen har ingen sportslige mål at lempe.",
+      "tooUnhappy": "Bestyrelsen er for utilfreds til at lette resultatkravene.",
+      "needProgress": "Bestyrelsen vil se mere fremgang, før de letter resultatkravene.",
+      "starPressure": "Store profiler holder sponsorernes forventninger høje, så boardet letter ikke resultatkravene endnu.",
+      "underEnoughPressure": "Bestyrelsen synes allerede planen er under nok pres og vil se mere fremgang, før de letter kravene.",
+      "starAmbitionLocked": "Bestyrelsen afviser at sænke ambitionsniveauet for et hold med tydelige profiler, fordi sponsorernes forventninger allerede er skruet op."
+    },
+    "moreYouth": {
+      "alreadyYouth": "Planen er allerede i ungdomsretning.",
+      "noIdentityGoal": "Planen mangler et identitetsmål at dreje.",
+      "needStability": "Bestyrelsen vil se mere stabilitet, før de skifter fokus nu.",
+      "needYouthBase": "Bestyrelsen vil se en tydeligere ungdomsbase i truppen, før de skifter fokus."
+    },
+    "moreResults": {
+      "alreadyResults": "Planen presser allerede efter topresultater.",
+      "squadTooThin": "Bestyrelsen vil se en bredere trup, før de skruer yderligere op for ambitionsniveauet."
+    },
+    "easeIdentity": {
+      "noIdentityGoal": "Planen har intet identitetskrav at lempe.",
+      "needTrust": "Bestyrelsen vil have mere tillid, før de lemper identitetskravet.",
+      "needSportingStability": "Bestyrelsen vil se mere sportslig stabilitet, før de letter identitetskravet.",
+      "nationalCoreCentral": "Bestyrelsen ser den nationale kerne som en vigtig del af holdets DNA og slipper den ikke endnu.",
+      "youthCoreCentral": "Bestyrelsen ser ungdomssporet som en kerne af holdets identitet og slipper det ikke endnu.",
+      "needStabilityFirst": "Bestyrelsen vil ikke lempe identitetskravene, før holdet står mere stabilt sportsligt.",
+      "nationalCoreDna": "Bestyrelsen ser den nationale kerne som en vigtig del af holdets DNA og vil ikke slippe den endnu."
+    }
+  },
+  "requestOutcome": {
+    "approvedTitle": "Bestyrelsen accepterer forespørgslen",
+    "rejectedTitle": "Bestyrelsen afviser forespørgslen",
+    "lowerResults": {
+      "titlePartial": "Bestyrelsen giver lidt luft",
+      "titleTradeoff": "Bestyrelsen giver luft mod en pris",
+      "summaryStar": "Bestyrelsen giver kun lidt luft, fordi et hold med store profiler stadig bliver holdt op på høje forventninger.",
+      "summaryDefault": "Bestyrelsen sænker det sportslige pres en smule i den aktive plan.",
+      "tradeoffStar": "Profilerne giver sponsorprojektet tyngde, men de betyder også at boardet strammer økonomikravet i stedet for at slippe ambitionerne helt.",
+      "tradeoffEconomy": "Til gengæld bliver økonomikravet skarpere, så holdet skal drives mere disciplineret resten af planen.",
+      "tradeoffPartial": "Bestyrelsen giver kun en delvis lettelse, fordi planen stadig skal have tydelige resultater."
+    },
+    "moreYouth": {
+      "titleBridge": "Bestyrelsen accepterer kun en gradvis drejning",
+      "titleDefault": "Bestyrelsen accepterer et mere ungt spor",
+      "summaryBridge": "Bestyrelsen vil gerne se mere udvikling, men et hold med tydelige profiler kan ikke skifte helt spor på en gang.",
+      "summaryYouthTrack": "Bestyrelsen ser allerede et ungdomsspor i truppen og drejer planen tydeligere mod udvikling.",
+      "summaryNationalCore": "Bestyrelsen ser en tydelig kerne i truppen og accepterer at dreje planen mod en mere langsigtet udviklingsretning.",
+      "summaryDefault": "Planen drejes mere mod udvikling og langsigtet trupbygning.",
+      "tradeoffBridge": "Planen bliver mere ungdomsorienteret, men boardet holder fokus i en balanceret mellemstation og slipper ikke resultatpresset helt endnu.",
+      "tradeoffDefault": "Til gengæld bliver U25-identiteten nu et tydeligere og mere varigt krav i den aktive plan."
+    },
+    "moreResults": {
+      "titleBridge": "Bestyrelsen accepterer kun en gradvis optrapning",
+      "titleDefault": "Bestyrelsen skruer op for ambitionen",
+      "summaryBridge": "Bestyrelsen vil gerne se mere resultattryk, men et udtalt ungdomsspor bliver kun flyttet gradvist over mod en mere ambitiøs mellemposition.",
+      "summaryStar": "Store profiler og sponsorernes forventninger får bestyrelsen til at skrue op for ambitionen med det samme.",
+      "summarySpecialized": "Bestyrelsen læser holdet som klar til at jagte større resultater og skruer op for ambitionen.",
+      "summaryDefault": "Planen vægter nu topresultater endnu tydeligere end før.",
+      "tradeoffBridge": "Boardet holder fast i en del af udviklingssporet, så holdet må bevise det nye ambitionsniveau over tid.",
+      "tradeoffDefault": "Du får lidt mere fleksibilitet i identitetskravet, men resultatmålene er til gengæld blevet skarpere med det samme."
+    },
+    "easeIdentity": {
+      "titleCore": "Bestyrelsen letter kun identitetskravet lidt",
+      "titleDefault": "Bestyrelsen letter identitetskravet",
+      "summaryCore": "Bestyrelsen ser stadig den nationale kerne som en vigtig del af holdets DNA og giver kun lidt mere fleksibilitet i identitetskravet.",
+      "summaryDefault": "Holdet får lidt mere fleksibilitet i trupbygningen og de identitetsbærende mål.",
+      "tradeoffCore": "Den nationale identitet bliver ikke sluppet helt, og bestyrelsen forventer til gengæld et skarpere sportsligt output resten af planen.",
+      "tradeoffDefault": "Til gengæld forventer bestyrelsen et skarpere sportsligt output resten af planen."
     }
   },
   "errors": {
