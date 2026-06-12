@@ -57,6 +57,7 @@
     },
     "forecast": {
       "title": "Sæsonprognose",
+      "fullLink": "Fuld prognose og lån →",
       "sponsorIncome": "Sponsorindtægt",
       "salaries": "Lønninger ({count} ryttere)",
       "net": "Netto (ekskl. præmiepenge)",

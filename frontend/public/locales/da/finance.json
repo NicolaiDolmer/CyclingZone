@@ -21,7 +21,8 @@
   },
   "prizeList": {
     "title": "Løbspræmier",
-    "fallbackName": "Præmiepenge"
+    "fallbackName": "Præmiepenge",
+    "viewRace": "Se løbet"
   },
   "loans": {
     "types": {

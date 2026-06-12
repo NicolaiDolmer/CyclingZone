@@ -57,6 +57,7 @@
     },
     "forecast": {
       "title": "Season forecast",
+      "fullLink": "Full forecast and loans →",
       "sponsorIncome": "Sponsor income",
       "salaries": "Salaries ({count} riders)",
       "net": "Net (excl. prize money)",
