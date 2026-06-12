@@ -60,7 +60,17 @@ export function isValidBoardRequestType(requestType) {
 
 export function getBoardRequestDefinition(requestType) {
   const definition = BOARD_REQUEST_DEFINITIONS[requestType];
-  return definition ? { type: requestType, ...definition } : null;
+  if (!definition) return null;
+
+  // #1084 · i18n-koder ved siden af den danske råtekst (frontend resolver via
+  // board.json requestDefs.* med råteksten som fallback — mønster fra #917/#694).
+  return {
+    type: requestType,
+    ...definition,
+    label_key: `requestDefs.${requestType}.label`,
+    description_key: `requestDefs.${requestType}.description`,
+    tradeoff_preview_key: `requestDefs.${requestType}.tradeoffPreview`,
+  };
 }
 
 export function buildBoardRequestOptions({ board, context = {} } = {}) {
@@ -81,6 +91,8 @@ export function buildBoardRequestOptions({ board, context = {} } = {}) {
       ...definition,
       disabled: availability.disabled,
       disabled_reason: availability.reason,
+      disabled_reason_key: availability.reason_key || null,
+      disabled_reason_params: availability.reason_params || {},
     };
   });
 }
@@ -107,6 +119,8 @@ export function resolveBoardRequest({ board, requestType, team, standing, contex
     return buildRejectedBoardRequest({
       requestType,
       reason: availability.reason || "Bestyrelsen afviser foresporgslen lige nu.",
+      reasonKey: availability.reason_key || "requestReason.fallback",
+      reasonParams: availability.reason_params || {},
     });
   }
 
@@ -124,6 +138,11 @@ export function resolveBoardRequest({ board, requestType, team, standing, contex
   let title = "Bestyrelsen accepterer foresporgslen";
   let summary = definition?.description || "Bestyrelsen har justeret planen.";
   let tradeoffSummary = null;
+  // #1084 · i18n-koder parallelt med den danske råtekst — persisteres i
+  // board_request_log.request_payload og resolves on-read i frontend.
+  let titleCode = "requestOutcome.approvedTitle";
+  let summaryCode = definition?.description_key || null;
+  let tradeoffSummaryCode = null;
 
   const rankingIndex = findGoalIndexByCategory(currentGoals, "ranking");
   const resultsIndex = findGoalIndexByCategory(currentGoals, "results");
@@ -137,6 +156,7 @@ export function resolveBoardRequest({ board, requestType, team, standing, contex
       return buildRejectedBoardRequest({
         requestType,
         reason: "Bestyrelsen synes allerede planen er under nok pres og vil se mere fremgang, for de letter kravene.",
+        reasonKey: "requestReason.lowerResults.underEnoughPressure",
       });
     }
 
@@ -144,6 +164,7 @@ export function resolveBoardRequest({ board, requestType, team, standing, contex
       return buildRejectedBoardRequest({
         requestType,
         reason: "Bestyrelsen afviser at saenke ambitionsniveauet for et hold med tydelige profiler, fordi sponsorernes forventninger allerede er skruet op.",
+        reasonKey: "requestReason.lowerResults.starAmbitionLocked",
       });
     }
 
@@ -166,14 +187,25 @@ export function resolveBoardRequest({ board, requestType, team, standing, contex
     title = outcome === "partial"
       ? "Bestyrelsen giver lidt luft"
       : "Bestyrelsen giver luft mod en pris";
+    titleCode = outcome === "partial"
+      ? "requestOutcome.lowerResults.titlePartial"
+      : "requestOutcome.lowerResults.titleTradeoff";
     summary = strongStarProfile
       ? "Bestyrelsen giver kun lidt luft, fordi et hold med store profiler stadig bliver holdt op pa hoje forventninger."
       : "Bestyrelsen saenker det sportslige pres en smule i den aktive plan.";
+    summaryCode = strongStarProfile
+      ? "requestOutcome.lowerResults.summaryStar"
+      : "requestOutcome.lowerResults.summaryDefault";
     tradeoffSummary = economyIndex >= 0
       ? strongStarProfile
         ? "Profilerne giver sponsorprojektet tyngde, men de betyder ogsa at boardet strammer okonomikravet i stedet for at slippe ambitionerne helt."
         : "Til gaengald bliver okonomikravet skarpere, sa holdet skal drives mere disciplineret resten af planen."
       : "Bestyrelsen giver kun en delvis lettelse, fordi planen stadig skal have tydelige resultater.";
+    tradeoffSummaryCode = economyIndex >= 0
+      ? strongStarProfile
+        ? "requestOutcome.lowerResults.tradeoffStar"
+        : "requestOutcome.lowerResults.tradeoffEconomy"
+      : "requestOutcome.lowerResults.tradeoffPartial";
   }
 
   if (requestType === "more_youth_focus") {
@@ -213,6 +245,9 @@ export function resolveBoardRequest({ board, requestType, team, standing, contex
     title = usesBalancedBridge
       ? "Bestyrelsen accepterer kun en gradvis drejning"
       : "Bestyrelsen accepterer et mere ungt spor";
+    titleCode = usesBalancedBridge
+      ? "requestOutcome.moreYouth.titleBridge"
+      : "requestOutcome.moreYouth.titleDefault";
     summary = usesBalancedBridge
       ? "Bestyrelsen vil gerne se mere udvikling, men et hold med tydelige profiler kan ikke skifte helt spor pa en gang."
       : identityProfile?.youth_level === "high"
@@ -220,9 +255,19 @@ export function resolveBoardRequest({ board, requestType, team, standing, contex
         : strongNationalCore
           ? "Bestyrelsen ser en tydelig kerne i truppen og accepterer at dreje planen mod en mere langsigtet udviklingsretning."
           : "Planen drejes mere mod udvikling og langsigtet trupbygning.";
+    summaryCode = usesBalancedBridge
+      ? "requestOutcome.moreYouth.summaryBridge"
+      : identityProfile?.youth_level === "high"
+        ? "requestOutcome.moreYouth.summaryYouthTrack"
+        : strongNationalCore
+          ? "requestOutcome.moreYouth.summaryNationalCore"
+          : "requestOutcome.moreYouth.summaryDefault";
     tradeoffSummary = usesBalancedBridge
       ? "Planen bliver mere ungdomsorienteret, men boardet holder fokus i en balanceret mellemstation og slipper ikke resultatpresset helt endnu."
       : "Til gaengald bliver U25-identiteten nu et tydeligere og mere varigt krav i den aktive plan.";
+    tradeoffSummaryCode = usesBalancedBridge
+      ? "requestOutcome.moreYouth.tradeoffBridge"
+      : "requestOutcome.moreYouth.tradeoffDefault";
   }
 
   if (requestType === "more_results_focus") {
@@ -274,6 +319,9 @@ export function resolveBoardRequest({ board, requestType, team, standing, contex
     title = usesBalancedBridge
       ? "Bestyrelsen accepterer kun en gradvis optrapning"
       : "Bestyrelsen skruer op for ambitionen";
+    titleCode = usesBalancedBridge
+      ? "requestOutcome.moreResults.titleBridge"
+      : "requestOutcome.moreResults.titleDefault";
     summary = usesBalancedBridge
       ? "Bestyrelsen vil gerne se mere resultattryk, men et udtalt ungdomsspor bliver kun flyttet gradvist over mod en mere ambitiost mellemposition."
       : strongStarProfile
@@ -281,9 +329,19 @@ export function resolveBoardRequest({ board, requestType, team, standing, contex
         : ["gc", "sprint", "classics"].includes(identityProfile?.primary_specialization)
           ? "Bestyrelsen laeser holdet som klar til at jagte stoerre resultater og skruer op for ambitionen."
           : "Planen vaegter nu topresultater endnu tydeligere end for.";
+    summaryCode = usesBalancedBridge
+      ? "requestOutcome.moreResults.summaryBridge"
+      : strongStarProfile
+        ? "requestOutcome.moreResults.summaryStar"
+        : ["gc", "sprint", "classics"].includes(identityProfile?.primary_specialization)
+          ? "requestOutcome.moreResults.summarySpecialized"
+          : "requestOutcome.moreResults.summaryDefault";
     tradeoffSummary = usesBalancedBridge
       ? "Boardet holder fast i en del af udviklingssporet, sa holdet ma bevise det nye ambitionsniveau over tid."
       : "Du faar lidt mere fleksibilitet i identitetskravet, men resultatmaalene er til gengaeld blevet skarpere med det samme.";
+    tradeoffSummaryCode = usesBalancedBridge
+      ? "requestOutcome.moreResults.tradeoffBridge"
+      : "requestOutcome.moreResults.tradeoffDefault";
   }
 
   if (requestType === "ease_identity_requirements") {
@@ -291,6 +349,7 @@ export function resolveBoardRequest({ board, requestType, team, standing, contex
       return buildRejectedBoardRequest({
         requestType,
         reason: "Bestyrelsen vil ikke lempe identitetskravene, foer holdet staar mere stabilt sportsligt.",
+        reasonKey: "requestReason.easeIdentity.needStabilityFirst",
       });
     }
 
@@ -298,6 +357,7 @@ export function resolveBoardRequest({ board, requestType, team, standing, contex
       return buildRejectedBoardRequest({
         requestType,
         reason: "Bestyrelsen ser den nationale kerne som en vigtig del af holdets DNA og vil ikke slippe den endnu.",
+        reasonKey: "requestReason.easeIdentity.nationalCoreDna",
       });
     }
 
@@ -315,12 +375,21 @@ export function resolveBoardRequest({ board, requestType, team, standing, contex
     title = strongNationalCore
       ? "Bestyrelsen letter kun identitetskravet lidt"
       : "Bestyrelsen letter identitetskravet";
+    titleCode = strongNationalCore
+      ? "requestOutcome.easeIdentity.titleCore"
+      : "requestOutcome.easeIdentity.titleDefault";
     summary = strongNationalCore
       ? "Bestyrelsen ser stadig den nationale kerne som en vigtig del af holdets DNA og giver kun lidt mere fleksibilitet i identitetskravet."
       : "Holdet faar lidt mere fleksibilitet i trupbygningen og de identitetsbaerende mal.";
+    summaryCode = strongNationalCore
+      ? "requestOutcome.easeIdentity.summaryCore"
+      : "requestOutcome.easeIdentity.summaryDefault";
     tradeoffSummary = strongNationalCore
       ? "Den nationale identitet bliver ikke sluppet helt, og bestyrelsen forventer til gaengald et skarpere sportsligt output resten af planen."
       : "Til gaengald forventer bestyrelsen et skarpere sportsligt output resten af planen.";
+    tradeoffSummaryCode = strongNationalCore
+      ? "requestOutcome.easeIdentity.tradeoffCore"
+      : "requestOutcome.easeIdentity.tradeoffDefault";
   }
 
   // S-02g · F3 + F4: deferred tradeoff-stramning + MAJOR-pivot cool-down sat ved approval.
@@ -336,10 +405,15 @@ export function resolveBoardRequest({ board, requestType, team, standing, contex
   return {
     request_type: requestType,
     request_label: definition?.label || requestType,
+    request_label_key: definition?.label_key || null,
     outcome,
     title,
+    title_code: titleCode,
     summary,
+    summary_code: summaryCode,
+    summary_params: {},
     tradeoff_summary: tradeoffSummary,
+    tradeoff_summary_code: tradeoffSummary ? tradeoffSummaryCode : null,
     updated_board: {
       focus: nextFocus,
       current_goals: updatedGoals,
@@ -402,17 +476,24 @@ export function getBoardRenegotiationLock({ board, activeSeason } = {}) {
   return { locked: false };
 }
 
+// #1084 · Hver utilgængeligheds-grund bærer både dansk råtekst (fallback) og en
+// i18n-kode + params, så frontend kan vise EN uden leak. Bruges også som
+// summary på rejected-resultater (resolve-on-read i BoardRequestPanel).
+function unavailable(reason, reasonKey, reasonParams = {}) {
+  return { disabled: true, reason, reason_key: reasonKey, reason_params: reasonParams };
+}
+
 function getBoardRequestAvailability({ requestType, board, goals = [], context = {} } = {}) {
   if (!board) {
-    return { disabled: true, reason: "Ingen aktiv bestyrelsesplan." };
+    return unavailable("Ingen aktiv bestyrelsesplan.", "requestReason.noActivePlan");
   }
 
   if (board.negotiation_status !== "completed") {
-    return { disabled: true, reason: "Forhandl en ny plan, for du sender requests." };
+    return unavailable("Forhandl en ny plan, for du sender requests.", "requestReason.planNotActive");
   }
 
   if (context.requestUsedThisSeason) {
-    return { disabled: true, reason: "Du har allerede brugt saesonens board request." };
+    return unavailable("Du har allerede brugt saesonens board request.", "requestReason.alreadyUsed");
   }
 
   // S-02g F5 · Window-blokering: requests umulige i sidste 5 race-days
@@ -422,10 +503,11 @@ function getBoardRequestAvailability({ requestType, board, goals = [], context =
     context.raceDaysLeft != null
     && Number(context.raceDaysLeft) <= REQUEST_WINDOW_BLOCK_RACE_DAYS_LEFT
   ) {
-    return {
-      disabled: true,
-      reason: `Saesonens slutfase er begyndt. Bestyrelsen tager ikke imod requests de sidste ${REQUEST_WINDOW_BLOCK_RACE_DAYS_LEFT} race-days.`,
-    };
+    return unavailable(
+      `Saesonens slutfase er begyndt. Bestyrelsen tager ikke imod requests de sidste ${REQUEST_WINDOW_BLOCK_RACE_DAYS_LEFT} race-days.`,
+      "requestReason.windowBlocked",
+      { raceDays: REQUEST_WINDOW_BLOCK_RACE_DAYS_LEFT }
+    );
   }
 
   // S-02g F6 · Mid-cycle-låsning for 5yr/3yr-planer: kræver ≥50% plan-gennemført
@@ -443,10 +525,11 @@ function getBoardRequestAvailability({ requestType, board, goals = [], context =
 
     if (!progressMet && !deltaMet) {
       const planLabel = planType === "5yr" ? "5-aarsplanen" : "3-aarsplanen";
-      return {
-        disabled: true,
-        reason: `${planLabel} er for tidligt i forloebet til at blive drejet. Bestyrelsen oensker mindst ${MID_CYCLE_PROGRESS_THRESHOLD_PCT}% af planen gennemfoert eller en stor tilfredsheds-aendring foer en re-orientering.`,
-      };
+      return unavailable(
+        `${planLabel} er for tidligt i forloebet til at blive drejet. Bestyrelsen oensker mindst ${MID_CYCLE_PROGRESS_THRESHOLD_PCT}% af planen gennemfoert eller en stor tilfredsheds-aendring foer en re-orientering.`,
+        "requestReason.midCycleLocked",
+        { years: planType === "5yr" ? 5 : 3, percent: MID_CYCLE_PROGRESS_THRESHOLD_PCT }
+      );
     }
   }
 
@@ -456,10 +539,10 @@ function getBoardRequestAvailability({ requestType, board, goals = [], context =
     isMajorPivotRequest({ requestType, currentFocus: board.focus })
     && board.major_pivot_used_at
   ) {
-    return {
-      disabled: true,
-      reason: "Bestyrelsen har allerede accepteret en MAJOR drejning i denne plan-livscyklus. En ny stor retnings-aendring kraever en frisk plan.",
-    };
+    return unavailable(
+      "Bestyrelsen har allerede accepteret en MAJOR drejning i denne plan-livscyklus. En ny stor retnings-aendring kraever en frisk plan.",
+      "requestReason.majorPivotUsed"
+    );
   }
 
   const satisfaction = board.satisfaction ?? 50;
@@ -479,72 +562,77 @@ function getBoardRequestAvailability({ requestType, board, goals = [], context =
   switch (requestType) {
     case "lower_results_pressure":
       if (rankingIndex < 0 && resultsIndex < 0) {
-        return { disabled: true, reason: "Planen har ingen sportslige mal at lempe." };
+        return unavailable("Planen har ingen sportslige mal at lempe.", "requestReason.lowerResults.noSportingGoals");
       }
       if (satisfaction < 35) {
-        return { disabled: true, reason: "Bestyrelsen er for utilfreds til at lette resultatkravene." };
+        return unavailable("Bestyrelsen er for utilfreds til at lette resultatkravene.", "requestReason.lowerResults.tooUnhappy");
       }
       if (overallScore != null && overallScore < 0.52) {
-        return { disabled: true, reason: "Bestyrelsen vil se mere fremgang, for de letter resultatkravene." };
+        return unavailable("Bestyrelsen vil se mere fremgang, for de letter resultatkravene.", "requestReason.lowerResults.needProgress");
       }
       if (strongStarProfile && satisfaction < 60) {
-        return { disabled: true, reason: "Store profiler holder sponsorernes forventninger hoje, sa boardet letter ikke resultatkravene endnu." };
+        return unavailable("Store profiler holder sponsorernes forventninger hoje, sa boardet letter ikke resultatkravene endnu.", "requestReason.lowerResults.starPressure");
       }
       return { disabled: false, reason: null };
     case "more_youth_focus":
       if (board.focus === "youth_development") {
-        return { disabled: true, reason: "Planen er allerede i ungdomsretning." };
+        return unavailable("Planen er allerede i ungdomsretning.", "requestReason.moreYouth.alreadyYouth");
       }
       if (identityIndex < 0) {
-        return { disabled: true, reason: "Planen mangler et identitetsmal at dreje." };
+        return unavailable("Planen mangler et identitetsmal at dreje.", "requestReason.moreYouth.noIdentityGoal");
       }
       if (satisfaction < 30) {
-        return { disabled: true, reason: "Bestyrelsen vil se mere stabilitet, for de skifter fokus nu." };
+        return unavailable("Bestyrelsen vil se mere stabilitet, for de skifter fokus nu.", "requestReason.moreYouth.needStability");
       }
       if (identityProfile?.youth_level === "low" && satisfaction < 45) {
-        return { disabled: true, reason: "Bestyrelsen vil se en tydeligere ungdomsbase i truppen, for de skifter fokus." };
+        return unavailable("Bestyrelsen vil se en tydeligere ungdomsbase i truppen, for de skifter fokus.", "requestReason.moreYouth.needYouthBase");
       }
       return { disabled: false, reason: null };
     case "more_results_focus":
       if (board.focus === "star_signing") {
-        return { disabled: true, reason: "Planen presser allerede efter topresultater." };
+        return unavailable("Planen presser allerede efter topresultater.", "requestReason.moreResults.alreadyResults");
       }
       if (identityProfile?.squad_status === "thin" && satisfaction < 45) {
-        return { disabled: true, reason: "Bestyrelsen vil se en bredere trup, for de skruer yderligere op for ambitionsniveauet." };
+        return unavailable("Bestyrelsen vil se en bredere trup, for de skruer yderligere op for ambitionsniveauet.", "requestReason.moreResults.squadTooThin");
       }
       return { disabled: false, reason: null };
     case "ease_identity_requirements":
       if (identityIndex < 0) {
-        return { disabled: true, reason: "Planen har intet identitetskrav at lempe." };
+        return unavailable("Planen har intet identitetskrav at lempe.", "requestReason.easeIdentity.noIdentityGoal");
       }
       if (satisfaction < 40) {
-        return { disabled: true, reason: "Bestyrelsen vil have mere tillid, for de lemper identitetskravet." };
+        return unavailable("Bestyrelsen vil have mere tillid, for de lemper identitetskravet.", "requestReason.easeIdentity.needTrust");
       }
       if (overallScore != null && overallScore < 0.55) {
-        return { disabled: true, reason: "Bestyrelsen vil se mere sportslig stabilitet, for de letter identitetskravet." };
+        return unavailable("Bestyrelsen vil se mere sportslig stabilitet, for de letter identitetskravet.", "requestReason.easeIdentity.needSportingStability");
       }
       if (strongNationalCore && satisfaction < 65) {
-        return { disabled: true, reason: "Bestyrelsen ser den nationale kerne som en vigtig del af holdets DNA og slipper den ikke endnu." };
+        return unavailable("Bestyrelsen ser den nationale kerne som en vigtig del af holdets DNA og slipper den ikke endnu.", "requestReason.easeIdentity.nationalCoreCentral");
       }
       if (identityProfile?.primary_specialization === "youth" && identityProfile?.youth_level === "high" && satisfaction < 55) {
-        return { disabled: true, reason: "Bestyrelsen ser ungdomssporet som en kerne af holdets identitet og slipper det ikke endnu." };
+        return unavailable("Bestyrelsen ser ungdomssporet som en kerne af holdets identitet og slipper det ikke endnu.", "requestReason.easeIdentity.youthCoreCentral");
       }
       return { disabled: false, reason: null };
     default:
-      return { disabled: true, reason: "Ukendt board request." };
+      return unavailable("Ukendt board request.", "requestReason.unknown");
   }
 }
 
-function buildRejectedBoardRequest({ requestType, reason }) {
+function buildRejectedBoardRequest({ requestType, reason, reasonKey = null, reasonParams = {} }) {
   const definition = getBoardRequestDefinition(requestType);
 
   return {
     request_type: requestType,
     request_label: definition?.label || requestType,
+    request_label_key: definition?.label_key || null,
     outcome: "rejected",
     title: "Bestyrelsen afviser foresporgslen",
+    title_code: "requestOutcome.rejectedTitle",
     summary: reason || "Bestyrelsen afviser foresporgslen lige nu.",
+    summary_code: reasonKey || "requestReason.fallback",
+    summary_params: reasonParams || {},
     tradeoff_summary: null,
+    tradeoff_summary_code: null,
     updated_board: null,
     goal_changes: [],
   };

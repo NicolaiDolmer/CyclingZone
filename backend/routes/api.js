@@ -6596,9 +6596,19 @@ function serializeBoardRequest(requestRow) {
 
   const definition = getBoardRequestDefinition(requestRow.request_type);
 
+  // #1084 · i18n-koder gemt i request_payload (JSONB) ved insert — løftes op på
+  // toppen af objektet så frontend kan resolve-on-read. Gamle log-rækker har
+  // ingen koder: request_label_key kan altid afledes fra request_type, mens
+  // title/summary/tradeoff falder tilbage til den frosne danske råtekst i
+  // title/summary/tradeoff_summary-kolonnerne (bevidst backfill-strategi).
   return {
     ...requestRow,
     request_label: requestRow.request_payload?.request_label || definition?.label || requestRow.request_type,
+    request_label_key: requestRow.request_payload?.request_label_key || definition?.label_key || null,
+    title_code: requestRow.request_payload?.title_code || null,
+    summary_code: requestRow.request_payload?.summary_code || null,
+    summary_params: requestRow.request_payload?.summary_params || null,
+    tradeoff_summary_code: requestRow.request_payload?.tradeoff_summary_code || null,
   };
 }
 
@@ -7428,6 +7438,13 @@ router.post("/board/request", requireAuth, boardWriteLimiter, async (req, res) =
         tradeoff_summary: requestResult.tradeoff_summary,
         request_payload: {
           request_label: requestResult.request_label,
+          // #1084 · i18n-koder persisteres her (JSONB) i stedet for nye kolonner,
+          // så frosset dansk i title/summary/tradeoff_summary kan resolve-on-read.
+          request_label_key: requestResult.request_label_key || null,
+          title_code: requestResult.title_code || null,
+          summary_code: requestResult.summary_code || null,
+          summary_params: requestResult.summary_params || null,
+          tradeoff_summary_code: requestResult.tradeoff_summary_code || null,
         },
         board_changes: {
           focus_before: board.focus,
