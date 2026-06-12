@@ -10,6 +10,7 @@ Læs disse docs på behov — de auto-loader ikke. Indekset er flyttet hertil fr
 | `docs/ARCHITECTURE.md` | Cross-domain refactor |
 | `docs/DOMAIN_REFERENCE.md` | Domænegrænse-spørgsmål |
 | `docs/FEATURE_STATUS.md` | Runtime-state usikker |
+| `docs/archive/feature-status-slice-07a.md` … `feature-status-slice-07h.md` | Historisk implementationsdetail og acceptance-arkiv for Economy Overhaul slice 07a–07h |
 | `docs/CONVENTIONS.md` | Naming/style-spørgsmål |
 | `docs/GITHUB_WORKFLOW.md` | GitHub-workflow eller agent-loop spørgsmål |
 | `docs/GAME_INVARIANTS.md` | Game-balance konstanter (sponsor/balance/gældsloft/upload-grænser) |
