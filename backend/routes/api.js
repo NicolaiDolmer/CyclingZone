@@ -105,6 +105,11 @@ import { buildTeamTransferHistory } from "../lib/teamTransferHistory.js";
 import { buildRiderBidTimeline } from "../lib/riderBidTimeline.js";
 import { SCOUTING_CONFIG, deriveScoutState, canScout, buildScoutEstimate } from "../lib/scouting.js";
 import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity } from "../lib/training.js";
+import { isDailyTrainingEnabled } from "../lib/dailyTrainingFlag.js";
+import { runTeamTrainingDay } from "../lib/dailyTrainingEngine.js";
+import { injuryRisk } from "../lib/riderCondition.js";
+import { resolveProgram } from "../lib/dailyTraining.js";
+import { copenhagenDateString } from "../lib/copenhagenTime.js";
 import {
   computeDebtRatio,
   computeSustainabilityTier,
@@ -985,24 +990,87 @@ router.post("/scouting/:riderId", requireAuth, marketWriteLimiter, async (req, r
 // TRÆNING (#1163 — progression L2 teaser: sæson-granulær træningsfokus)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-// Hjælper: hent aktiv sæson-id + holdets træningsstate (ledger → slots + planer).
+// Hjælper: hent aktiv sæson (id + number) + holdets træningsstate (ledger → slots + planer).
 async function loadTrainingState(teamId) {
   const { data: season } = await supabase
-    .from("seasons").select("id").eq("status", "active").maybeSingle();
+    .from("seasons").select("id, number").eq("status", "active").maybeSingle();
   const activeSeasonId = season?.id ?? null;
+  const activeSeasonNumber = season?.number ?? null;
   const { data: rows, error } = await supabase
     .from("training_plans").select("rider_id, season_id, focus, intensity").eq("team_id", teamId);
   if (error) throw new Error(error.message);
-  return { activeSeasonId, state: deriveTrainingState(rows, activeSeasonId) };
+  return { activeSeasonId, activeSeasonNumber, state: deriveTrainingState(rows, activeSeasonId) };
 }
 
 // GET /api/training/me — holdets træningsstate: slots (total/used/remaining),
 // gyldige fokus/intensiteter og per-rytter aktiv plan (kun den aktive sæson).
+// #1305-udvidelse: + enabled-flag, todayRun, per-rytter condition+risk+progress.
 router.get("/training/me", requireAuth, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
-    const { state } = await loadTrainingState(req.team.id);
-    res.json({ ...state, teamId: req.team.id });
+    const teamId = req.team.id;
+    const [{ activeSeasonId, state }, enabled] = await Promise.all([
+      loadTrainingState(teamId),
+      isDailyTrainingEnabled(supabase),
+    ]);
+
+    // Hent ryttere for holdet (ikke-pensionerede) for at bygge condition/progress maps.
+    const { data: riders } = await supabase
+      .from("riders")
+      .select("id")
+      .eq("team_id", teamId)
+      .eq("is_retired", false);
+    const riderIds = (riders ?? []).map((r) => r.id);
+
+    // Today's run-row + condition + progress — batched (max 3 ekstra queries mod DB).
+    const todayDate = copenhagenDateString(new Date());
+    const [todayRunResult, conditionResult, progressResult] = await Promise.all([
+      activeSeasonId
+        ? supabase
+            .from("training_day_runs")
+            .select("executed_by, bonus_applied, report, tick_date")
+            .eq("team_id", teamId)
+            .eq("tick_date", todayDate)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+      riderIds.length
+        ? supabase
+            .from("rider_condition")
+            .select("rider_id, form, fatigue, injured_until")
+            .in("rider_id", riderIds)
+        : Promise.resolve({ data: [] }),
+      riderIds.length
+        ? supabase
+            .from("rider_derived_abilities")
+            .select("rider_id, ability_progress")
+            .in("rider_id", riderIds)
+        : Promise.resolve({ data: [] }),
+    ]);
+
+    const todayRun = todayRunResult.data ?? null;
+
+    // Byg condition-map: rider_id → { form, fatigue, injured_until, risk }
+    // risk = injuryRisk med planlagt intensitet for dagen.
+    const condition = {};
+    for (const row of conditionResult.data ?? []) {
+      const plan = state.plans[row.rider_id] ?? null;
+      const program = resolveProgram(plan);
+      const risk = injuryRisk({ intensity: program.intensity, fatigue: Number(row.fatigue ?? 0) });
+      condition[row.rider_id] = {
+        form: row.form,
+        fatigue: row.fatigue,
+        injured_until: row.injured_until ?? null,
+        risk,
+      };
+    }
+
+    // Byg progress-map: rider_id → ability_progress (null-safe).
+    const progress = {};
+    for (const row of progressResult.data ?? []) {
+      progress[row.rider_id] = row.ability_progress ?? {};
+    }
+
+    res.json({ ...state, teamId, enabled, todayRun, condition, progress });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1063,6 +1131,36 @@ router.delete("/training/:riderId", requireAuth, marketWriteLimiter, async (req,
     const { state: next } = await loadTrainingState(req.team.id);
     res.json({ ok: true, riderId, plan: null, slots: next.slots });
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/training/run-today — dagens ét-kliks-træning (#1305). Manager = +25 % bonus.
+// Idempotent: samme dag → 409 already_trained_today. Flag OFF → 409 daily_training_disabled.
+router.post("/training/run-today", requireAuth, marketWriteLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const enabled = await isDailyTrainingEnabled(supabase);
+    if (!enabled) return res.status(409).json({ error: "daily_training_disabled" });
+
+    const { activeSeasonId, activeSeasonNumber } = await loadTrainingState(req.team.id);
+    if (!activeSeasonId) return res.status(409).json({ error: "no_active_season" });
+
+    const result = await runTeamTrainingDay({
+      supabase,
+      teamId: req.team.id,
+      seasonId: activeSeasonId,
+      seasonNumber: activeSeasonNumber,
+      executedBy: "manager",
+    });
+
+    if (result.alreadyRan) {
+      return res.status(409).json({ error: "already_trained_today", tickDate: result.tickDate });
+    }
+
+    res.json({ ok: true, tickDate: result.tickDate, report: result.report });
+  } catch (err) {
+    captureException(err);
     res.status(500).json({ error: err.message });
   }
 });

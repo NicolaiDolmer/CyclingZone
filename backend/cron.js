@@ -38,6 +38,7 @@ import { processMidSeasonReviewCron } from "./lib/boardMidSeason.js";
 import { processDailySeasonCountCheck } from "./lib/dailySeasonCountCheck.js";
 import { processUciStaleDataCheck } from "./lib/uciStaleDataCheck.js";
 import { processDiscordBotTokenCheck } from "./lib/discordBotTokenCheck.js";
+import { runTrainingSweep } from "./lib/trainingSweep.js";
 import { captureException as sentryCapture } from "./lib/sentry.js";
 const __envdir = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__envdir, "../.env"), quiet: true });
@@ -377,6 +378,18 @@ async function runSquadEnforcementCron() {
   }
 }
 
+// ─── Daglig træning: assistent-sweep (#1305) ─────────────────────────────────
+
+async function runTrainingSweepCron() {
+  const result = await runTrainingSweep({ supabase, now: new Date() });
+  if (result.swept) {
+    console.log(`🚴 Trænings-sweep: ${result.swept} hold trænet af assistenten`);
+  }
+  if (result.failed) {
+    console.error(`❌ Trænings-sweep: ${result.failed} hold fejlede (per-team try/catch isolerede)`);
+  }
+}
+
 // ─── In-flight tracking for graceful shutdown ────────────────────────────────
 // SIGTERM (Railway-deploy) skal ikke afbryde en transition mid-tick. server.js
 // kalder awaitCronsIdle() i sin SIGTERM-handler så processen venter til ticks
@@ -462,6 +475,9 @@ export function startCron() {
 
   // Every 5 minutes: Discord DM-outbox drain (#1115 — retry af fejlede DMs).
   setInterval(trackedTick("discord dm-outbox drain", runDiscordDmOutboxDrain), 5 * 60 * 1000);
+
+  // Daglig træning: assistent-sweep efter kl. 22 dansk tid (#1305)
+  setInterval(trackedTick("training sweep", runTrainingSweepCron), 5 * 60 * 1000);
 
   // Run immediately on start
   trackedTick("auctions", finalizeExpiredAuctions)();

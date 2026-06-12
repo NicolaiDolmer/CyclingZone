@@ -191,6 +191,7 @@
     "fallbackDash": "-"
   },
   "development": {
+    "progressHint": "Fremskridt mod næste point",
     "empty": "Ingen historik endnu. Data akkumuleres fra næste ugentlige sync",
     "statsTitle": "Stats-udvikling",
     "statsSubtitle": "Vælg evne og se ændringen over tid",
@@ -413,6 +414,11 @@
     "noSlots": "Ingen scout-slots tilbage i denne sæson",
     "levelTitle": "Scout-niveau. Højere betyder et mere præcist estimat"
   },
+  "condition": {
+    "form": "Form",
+    "fatigue": "Træthed",
+    "injured": "Skadet: {{days}}d tilbage"
+  },
   "training": {
     "title": "Træningsfokus",
     "intro": "Sæt et sæson-langt træningsfokus for denne nøglerytter. Det rykker de trænede evner hurtigere mod deres loft.",
@@ -426,6 +432,7 @@
     "focus_endurance": "Udholdenhed (Zone 2)",
     "focus_technique": "Teknik",
     "focus_aero": "Aero",
+    "intensity_rest": "Hvile",
     "intensity_easy": "Let",
     "intensity_normal": "Normal",
     "intensity_hard": "Hård",

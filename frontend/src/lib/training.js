@@ -16,7 +16,8 @@ export const TRAINING_FOCUS_ABILITIES = Object.freeze({
 });
 export const TRAINING_FOCUS_KEYS = Object.freeze(Object.keys(TRAINING_FOCUS_ABILITIES));
 
-export const TRAINING_INTENSITIES = Object.freeze(["easy", "normal", "hard"]);
+// Alle gyldige intensiteter inkl. rest (bruges i daglig træning + TrainingFocus).
+export const TRAINING_INTENSITIES = Object.freeze(["rest", "easy", "normal", "hard"]);
 
 // Display-risiko pr. intensitet (spejler backend setbackChance, i procent).
 export const TRAINING_SETBACK_PCT = Object.freeze({ easy: 0, normal: 5, hard: 18 });
@@ -26,4 +27,15 @@ export function isValidFocus(focus) {
 }
 export function isValidIntensity(intensity) {
   return TRAINING_INTENSITIES.includes(intensity);
+}
+
+// Beregn antal dage til raskmelding givet en injured_until ISO-datostreng og dags dato.
+// Returnerer 0 hvis rask, positivt tal hvis skadet.
+// today er en Date (default = new Date()).
+export function injuryDaysLeft(injured_until, today = new Date()) {
+  if (!injured_until) return 0;
+  const until = new Date(injured_until);
+  // Kun dagsdato (ingen klokkeslæt) — normaliser begge til midnight UTC.
+  const diffMs = until.setHours(0, 0, 0, 0) - today.setHours(0, 0, 0, 0);
+  return diffMs > 0 ? Math.ceil(diffMs / 86_400_000) : 0;
 }

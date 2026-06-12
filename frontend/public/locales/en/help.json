@@ -456,6 +456,43 @@
         "text": "Riders under 25 and 23 years old are tagged. You can filter on U25/U23 in the rider database and watchlist."
       }
     },
+    "dailytraining": {
+      "label": "Daily Training",
+      "whatDailyTraining": {
+        "title": "What is Daily Training?",
+        "text": "Daily Training lets you develop your riders every day instead of only at season transitions. On the Daily Training page you set a program for each rider (a focus direction and an intensity), and the system applies it automatically each day. Daily Training activates at the season relaunch on 20 June."
+      },
+      "programs": {
+        "title": "Setting programs",
+        "steps": [
+          "Go to Daily Training in the navigation.",
+          "Find a rider and choose a focus: VO2max, Threshold, Sprint, Endurance, Technique or Aero.",
+          "Choose an intensity: Rest, Easy, Normal or Hard.",
+          "Save. The program runs every day until you change it.",
+          "There is no cap on how many riders can have a program: you can set one for your entire squad."
+        ]
+      },
+      "trainToday": {
+        "title": "Train today and the +25% boost",
+        "text": "Click 'Train today' once per day to run all active programs with a +25% training boost. If you skip the button, the assistant runs training automatically after 22:00. You never lose a day of training. Only the boost is missed when you don't click."
+      },
+      "formFatigue": {
+        "title": "Form and Fatigue",
+        "text": "Every rider has a Form value and a Fatigue value, both on a 0-100 scale, visible on the rider profile. Training and racing build Fatigue. Rest days and easy sessions lower it. Form follows the balance between the two: high Fatigue keeps Form low, while a well-rested rider's Form rises. Both values update daily."
+      },
+      "injuryRisk": {
+        "title": "Injury risk",
+        "text": "Running Hard intensity training on a rider who already has high Fatigue triggers an injury risk. A risk badge appears on the rider before training runs. If the roll is unlucky, the rider picks up a mild injury and is out for 1-5 days. Dropping intensity to Normal or Rest removes the risk."
+      },
+      "progressBars": {
+        "title": "Progress bars and ability points",
+        "text": "Rider profiles show a progress bar for each ability being trained. The bar fills as training accumulates. When the bar reaches full, the rider gains +1 in that ability. Progress carries over day to day. Nothing resets mid-season."
+      },
+      "longTermGrowth": {
+        "title": "Long-term growth",
+        "text": "Daily Training fits within the same long-term growth model as season transitions: young riders peak around age 27-28 and then gradually decline. Daily training accelerates progress toward each ability's ceiling but cannot push a rider beyond their potential."
+      }
+    },
     "activityfeed": {
       "label": "Activity feed",
       "whatActivityFeed": {

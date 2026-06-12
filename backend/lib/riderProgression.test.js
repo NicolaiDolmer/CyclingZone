@@ -200,3 +200,76 @@ test("developRiderSeason: ingen training-arg → identisk med før (bagudkompati
     developRiderSeason(rider, ab, caps, 2, undefined, null)
   );
 });
+
+// ── skipGrowth: anti-double-dip (#1305) ────────────────────────────────────────
+
+test("skipGrowth: vækst-fase rytter (age < peakAge) ændrer intet i abilities", () => {
+  const rider = { id: "r1", primary_type: "climber", potentiale: 5, age: 21 };
+  const ab = { climbing: 60, sprint: 40, endurance: 55 };
+  const caps = buildCaps(ab, "climber", 5);
+  const { next } = developRiderSeason(rider, ab, caps, 1, undefined, null, { skipGrowth: true });
+  // Alle abilities skal være uændrede (Math.round(current) — ingen vækst)
+  for (const [k, v] of Object.entries(ab)) {
+    if (next[k] != null) assert.equal(next[k], Math.round(v), `${k} skal være uændret`);
+  }
+});
+
+test("skipGrowth: changed-liste er tom for vækst-fase rytter", () => {
+  const rider = { id: "r1", primary_type: "sprinter", potentiale: 4, age: 24 };
+  const ab = { sprint: 70, acceleration: 65, flat: 60 };
+  const caps = buildCaps(ab, "sprinter", 4);
+  const { changed } = developRiderSeason(rider, ab, caps, 2, undefined, null, { skipGrowth: true });
+  assert.equal(changed.length, 0, "ingen ændringer for vækst-fase med skipGrowth");
+});
+
+test("skipGrowth: rytter PRÆCIS ved peakAge (age === peakAge) springes over", () => {
+  // age === peakAge er stadig vækst-fase (age <= peakAge i stepAbility)
+  const rider = { id: "r1", primary_type: "climber", potentiale: 5, age: PROGRESSION_CONFIG.peakAge };
+  const ab = { climbing: 70, endurance: 65 };
+  const caps = buildCaps(ab, "climber", 5);
+  const { next } = developRiderSeason(rider, ab, caps, 3, undefined, null, { skipGrowth: true });
+  for (const [k, v] of Object.entries(ab)) {
+    if (next[k] != null) assert.equal(next[k], Math.round(v), `${k} ved peakAge skal være uændret`);
+  }
+});
+
+test("skipGrowth: fald-fase rytter (age > peakAge) falder præcis som UDEN skipGrowth", () => {
+  const rider = { id: "r1", primary_type: "sprinter", potentiale: 5, age: 34 };
+  const ab = { sprint: 80, acceleration: 75, flat: 70 };
+  const caps = buildCaps(ab, "sprinter", 5);
+  const plain = developRiderSeason(rider, ab, caps, 4, undefined, null);
+  const skipped = developRiderSeason(rider, ab, caps, 4, undefined, null, { skipGrowth: true });
+  assert.deepEqual(plain.next, skipped.next, "fald er identisk med og uden skipGrowth");
+  // Kontrollér at der rent faktisk sker fald (testen giver mening)
+  const sumBefore = Object.values(ab).reduce((s, v) => s + v, 0);
+  const sumAfter = Object.values(plain.next).reduce((s, v) => s + v, 0);
+  assert.ok(sumAfter < sumBefore, "evner falder faktisk for 34-årig (kontrolcheck)");
+});
+
+test("skipGrowth: retirement-beslutning er uændret for vækst-fase rytter", () => {
+  const rider = { id: "r1", primary_type: "climber", potentiale: 3, age: 21 };
+  const ab = { climbing: 55, endurance: 55 };
+  const caps = buildCaps(ab, "climber", 3);
+  const plain = developRiderSeason(rider, ab, caps, 1);
+  const skipped = developRiderSeason(rider, ab, caps, 1, undefined, null, { skipGrowth: true });
+  assert.deepEqual(plain.retirement, skipped.retirement, "retirement er identisk uanset skipGrowth");
+});
+
+test("skipGrowth: retirement-beslutning er uændret for fald-fase rytter", () => {
+  // 38-årig — i retirement-vindue; seeded — bør give samme svar uanset skipGrowth
+  const rider = { id: "rX", primary_type: "gc", potentiale: 4, age: 38 };
+  const ab = { climbing: 65, time_trial: 70 };
+  const caps = buildCaps(ab, "gc", 4);
+  const plain = developRiderSeason(rider, ab, caps, 10);
+  const skipped = developRiderSeason(rider, ab, caps, 10, undefined, null, { skipGrowth: true });
+  assert.deepEqual(plain.retirement, skipped.retirement, "retirement ens for fald-fase rytter");
+});
+
+test("skipGrowth false/udeladt → identisk med default-adfærd (golden test)", () => {
+  const rider = { id: "r1", primary_type: "gc", potentiale: 5, age: 23 };
+  const ab = { climbing: 62, time_trial: 60, endurance: 64 };
+  const caps = buildCaps(ab, "gc", 5);
+  const reference = developRiderSeason(rider, ab, caps, 3);
+  assert.deepEqual(developRiderSeason(rider, ab, caps, 3, undefined, null, {}), reference, "tom options = uændret");
+  assert.deepEqual(developRiderSeason(rider, ab, caps, 3, undefined, null, { skipGrowth: false }), reference, "skipGrowth:false = uændret");
+});

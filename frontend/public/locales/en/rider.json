@@ -191,6 +191,7 @@
     "fallbackDash": "-"
   },
   "development": {
+    "progressHint": "Progress toward next point",
     "empty": "No history yet. Data accumulates from the next weekly sync",
     "statsTitle": "Skill development",
     "statsSubtitle": "Pick a skill and see how it changes over time",
@@ -413,6 +414,11 @@
     "noSlots": "No scout slots left this season",
     "levelTitle": "Scouting level. Higher means a more precise estimate"
   },
+  "condition": {
+    "form": "Form",
+    "fatigue": "Fatigue",
+    "injured": "Injured: {{days}}d left"
+  },
   "training": {
     "title": "Training focus",
     "intro": "Set a season-long training focus for this key rider. It nudges the trained abilities faster toward their ceiling.",
@@ -426,6 +432,7 @@
     "focus_endurance": "Endurance (Zone 2)",
     "focus_technique": "Technique",
     "focus_aero": "Aero",
+    "intensity_rest": "Rest",
     "intensity_easy": "Easy",
     "intensity_normal": "Normal",
     "intensity_hard": "Hard",

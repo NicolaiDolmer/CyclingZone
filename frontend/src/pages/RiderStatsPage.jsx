@@ -10,6 +10,7 @@ import { formatNumber, formatDate, formatDateTime } from "../lib/intl";
 import { resolveApiError } from "../lib/apiError";
 import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
 import TrainingFocus from "../components/rider/TrainingFocus";
+import ConditionChips from "../components/rider/ConditionChips.jsx";
 import { useScouting } from "../lib/useScouting";
 import { useTraining } from "../lib/useTraining";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge";
@@ -82,17 +83,34 @@ async function authHeaders() {
   return { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` };
 }
 
-function StatRow({ label, icon, value }) {
+// progressFraction: 0..1 tal fra ability_progress — vises kun hvis > 0.
+// Manglende/undefined = ingen progress bar (rytter ikke ticket endnu).
+function StatRow({ label, icon, value, progressFraction, progressHint }) {
   const pct = Math.round(((value || 0) / 99) * 100);
   const color = statColor(value);
+  const showProgress = progressFraction != null && progressFraction > 0;
   return (
-    <div className="flex items-center gap-3 py-2">
-      <span className="text-cz-3 w-4 text-center text-sm">{icon}</span>
-      <span className="text-cz-2 text-sm w-28 sm:w-36 flex-shrink-0">{label}</span>
-      <div className="flex-1 bg-cz-subtle rounded-full h-2">
-        <div className="h-2 rounded-full transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: color }} />
+    <div className="flex flex-col py-2">
+      <div className="flex items-center gap-3">
+        <span className="text-cz-3 w-4 text-center text-sm">{icon}</span>
+        <span className="text-cz-2 text-sm w-28 sm:w-36 flex-shrink-0">{label}</span>
+        <div className="flex-1 bg-cz-subtle rounded-full h-2">
+          <div className="h-2 rounded-full transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: color }} />
+        </div>
+        <span className="font-mono text-sm font-bold w-8 text-right flex-shrink-0" style={{ color }}>{value ?? "-"}</span>
       </div>
-      <span className="font-mono text-sm font-bold w-8 text-right flex-shrink-0" style={{ color }}>{value ?? "-"}</span>
+      {showProgress && (
+        <div className="flex items-center gap-3 mt-0.5 pl-7">
+          <span className="text-cz-3 text-sm w-28 sm:w-36 flex-shrink-0" />
+          <div className="flex-1 bg-cz-subtle rounded-full h-1" title={progressHint}>
+            <div
+              className="h-1 rounded-full bg-cz-accent/60 transition-all duration-500"
+              style={{ width: `${Math.round(progressFraction * 100)}%` }}
+            />
+          </div>
+          <span className="w-8 flex-shrink-0" />
+        </div>
+      )}
     </div>
   );
 }
@@ -139,7 +157,9 @@ function PowerStat({ label, value, unit }) {
 // tydeligt mærket som beta. Påvirker ikke resultater (PCM kører sæson 2). Data fra
 // GET /api/riders/:id (physiology/abilities) — null indtil backfill er kørt, så
 // rendres komponenten slet ikke før fundamentet findes.
-function RacePhysiologyPreview({ physiology, abilities }) {
+// abilityProgress: optional { <ability>: 0..1 } fra useTraining().progress[riderId]
+// for egne ryttere. undefined/null = ingen progress bars.
+function RacePhysiologyPreview({ physiology, abilities, abilityProgress }) {
   const { t } = useTranslation("rider");
   if (!physiology && !abilities) return null;
   return (
@@ -171,9 +191,19 @@ function RacePhysiologyPreview({ physiology, abilities }) {
       {abilities && (
         <div>
           <h4 className="text-cz-2 text-xs uppercase tracking-wide mb-2">{t("racePreview.derivedAbilities")}</h4>
-          {DERIVED_ABILITIES.map((a) => (
-            <StatRow key={a.key} label={t(`racePreview.derived.${a.key}`)} icon={a.icon} value={abilities[a.key]} />
-          ))}
+          {DERIVED_ABILITIES.map((a) => {
+            const frac = abilityProgress?.[a.key];
+            return (
+              <StatRow
+                key={a.key}
+                label={t(`racePreview.derived.${a.key}`)}
+                icon={a.icon}
+                value={abilities[a.key]}
+                progressFraction={frac != null ? frac : undefined}
+                progressHint={frac != null ? t("development.progressHint") : undefined}
+              />
+            );
+          })}
         </div>
       )}
     </div>
@@ -871,6 +901,7 @@ export default function RiderStatsPage() {
   const scouting = useScouting();
   const training = useTraining();
   const [rider, setRider]                   = useState(null);
+  const [riderCondition, setRiderCondition] = useState(null);
   const [onWatchlist, setOnWatchlist]       = useState(false);
   const [watchlistId, setWatchlistId]       = useState(null);
   const [watchlistCount, setWatchlistCount] = useState(0);
@@ -1087,6 +1118,19 @@ export default function RiderStatsPage() {
       : riderRes.data);
     setResults(resultsRes.data || []);
     setSeasonRows(seasonRowsAll);
+
+    // Condition (form/træthed/skade) — transparent per spildesign, vises for alle ryttere.
+    // SELECT-for-authenticated RLS: en simpel maybeSingle() er nok.
+    // Manglende rad = neutral defaults — komponent håndterer null.
+    if (riderRes.data?.id) {
+      try {
+        const { data: condData } = await safe(
+          supabase.from("rider_condition").select("form, fatigue, injured_until").eq("rider_id", riderRes.data.id).maybeSingle()
+        );
+        setRiderCondition(condData ?? null);
+      } catch { /* non-critical — chips vises med neutrale defaults */ }
+    }
+
     await loadActiveAuctionFull(riderRes.data);
     setLoading(false);
     loadWatchlistCount();
@@ -1427,6 +1471,14 @@ export default function RiderStatsPage() {
               {rider.height && <span className="text-cz-3 text-sm">{t("header.heightCm", { height: rider.height })}</span>}
               {rider.weight && <span className="text-cz-3 text-sm">{t("header.weightKg", { weight: rider.weight })}</span>}
             </div>
+            {/* Condition-chips: form/træthed/skade — transparent for alle ryttere.
+                Egne ryttere: bruger training.condition (allerede hentet).
+                Andre ryttere: bruger riderCondition fra direkte fetch ovenfor. */}
+            {(() => {
+              const ownCond = isMyRider ? (training.condition?.[rider.id] ?? null) : null;
+              const shownCond = ownCond ?? riderCondition;
+              return <ConditionChips condition={shownCond} />;
+            })()}
             {scouting.estimateFor(rider.id) !== null && (
               <div className="flex items-center gap-2 mt-2">
                 <span className="text-cz-3 text-xs uppercase tracking-wider">{t("header.potential")}</span>
@@ -1540,7 +1592,11 @@ export default function RiderStatsPage() {
             )}
             {localizedSkills.map(s => <StatRow key={s.key} label={s.label} icon={s.icon} value={rider[s.key]} />)}
           </div>
-          <RacePhysiologyPreview physiology={rider.physiology} abilities={rider.abilities} />
+          <RacePhysiologyPreview
+            physiology={rider.physiology}
+            abilities={rider.abilities}
+            abilityProgress={isMyRider ? (training.progress?.[rider.id] ?? undefined) : undefined}
+          />
         </>
       )}
 
