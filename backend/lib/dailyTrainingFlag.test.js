@@ -32,3 +32,10 @@ test("exception under query eller ugyldig client → false (fail-safe)", async (
   assert.equal(await isDailyTrainingEnabled({ from: () => { throw new Error("network"); } }), false);
   assert.equal(await isDailyTrainingEnabled(null), false);
 });
+
+test("isDailyTrainingEnabled: beta-stage kun for beta-testere", async () => {
+  const betaClient = { from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { value: "beta" }, error: null }) }) }) }) };
+  assert.equal(await isDailyTrainingEnabled(betaClient, { isBetaTester: true }), true);
+  assert.equal(await isDailyTrainingEnabled(betaClient, { isBetaTester: false }), false);
+  assert.equal(await isDailyTrainingEnabled(betaClient), false);
+});

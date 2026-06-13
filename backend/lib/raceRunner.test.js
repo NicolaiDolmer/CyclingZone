@@ -211,6 +211,11 @@ test("flag: DB-fejl → false (fail-safe)", async () => {
   assert.equal(await isRaceEngineV2Enabled(errMock), false);
 });
 
+test("flag: beta-stage kun for beta-testere", async () => {
+  assert.equal(await isRaceEngineV2Enabled(makeSupabase({ app_config: [{ value: "beta" }] }), { isBetaTester: true }), true);
+  assert.equal(await isRaceEngineV2Enabled(makeSupabase({ app_config: [{ value: "beta" }] })), false);
+});
+
 // ── loadEntrantsForRace ───────────────────────────────────────────────────────
 test("loadEntrantsForRace: beriger entries med navn, is_u25 + abilities", async () => {
   const supabase = makeSupabase({
