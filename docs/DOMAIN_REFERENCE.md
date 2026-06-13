@@ -149,6 +149,7 @@ Præmie-/pointskalaen er seedet med moderne herre-UCI-kategorier i `race_points`
 ### Finance transaction types
 - Contract-audit mod live DB/schema kræves før nye finance-writes.
 - Kendte runtime-typer inkluderer sponsor, salary, prize, interest, transfer_in/out samt finance-loan typer som `loan_received`, `emergency_loan`, `loan_interest` og `loan_repayment`.
+- **Akademi-typer (#1308):** `academy_signing` (éngangs-signeringsgebyr ved akademi-indskrivning) og `academy_drift` (løbende driftsomkostning pr. akademi-slot pr. sæson, idempotent pr. sæson+hold).
 
 ---
 

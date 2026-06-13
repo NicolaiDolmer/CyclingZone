@@ -534,6 +534,38 @@
         "text": "Free agents har ingen løn, før et hold signerer dem. Rytterprofilen og auktionssiden viser en estimeret løn (ca. 10% af aktuel markedsværdi) så du kan planlægge dit budget inden du byder. Den faktiske løn fastsættes først i det øjeblik rytteren signeres."
       }
     },
+    "academy": {
+      "label": "Akademi",
+      "whatAcademy": {
+        "title": "Hvad er Akademiet?",
+        "text": "Akademiet lader dig udvikle dine egne unge talenter i stedet for kun at købe etablerede ryttere på det åbne marked. Hvert sæson modtager din klub et kuld af unge talenter ved sæsonstart. Du gennemgår kuldet, signerer 0-2 ind i dit Akademi og udvikler dem in-house. Akademiet er adskilt fra din seniorgruppe og aktiveres ved sæsonrelaunchen den 20. juni."
+      },
+      "intakeCohort": {
+        "title": "Sæsonens indtagelseskuld",
+        "text": "Ved starten af hver sæson genererer systemet et lille kuld unge talenter til din klub. Du kan gennemse deres stats og potentiale og derefter beslutte, hvor mange du vil signere. Du er aldrig tvunget til at signere nogen."
+      },
+      "signingProspects": {
+        "title": "Signering af talenter",
+        "steps": [
+          "Gå til Akademi i navigationen.",
+          "Gennemse dit indtagelseskuld for sæsonen.",
+          "Signér 0-2 talenter. Hver signering koster et éngangs-signeringsgebyr og forpligter dig til en ungdomsløn.",
+          "Talenter du ikke signerer frigives. Ungdomsauktioner og direkte signering af fri-agents kommer i en senere opdatering."
+        ]
+      },
+      "academySize": {
+        "title": "Akademistørrelse (8 pladser)",
+        "text": "Dit Akademi rummer op til 8 ryttere. Disse 8 pladser er fuldstændig adskilt fra din seniorgruppe på maks. 30. Akademiryttere tæller aldrig med i din seniorgruppegrænse og er ikke berettiget til løb."
+      },
+      "dailyTrainingBoost": {
+        "title": "Daglig træning og ungdomsboost",
+        "text": "Akademiryttere træner hver dag side om side med din seniorgruppe, men de har glæde af en ungdomsmultiplikator der gør dem hurtigere at udvikle. De samme regler for Daglig træning gælder: sæt et fokus og en intensitet for hver rytter, og fremskridt akkumuleres dag for dag."
+      },
+      "upkeepCost": {
+        "title": "Akademiomkostninger",
+        "text": "Det koster et driftsgebyr per besat plads at drive Akademiet. Gebyret trækkes automatisk ved sæsonlønkørslen side om side med dine seniorlønninger. Planlæg dit budget derefter: et fuldt Akademi med 8 ryttere har en mærkbar løbende omkostning hver sæson."
+      }
+    },
     "raceSelection": {
       "label": "Holdudtagelse",
       "what": {

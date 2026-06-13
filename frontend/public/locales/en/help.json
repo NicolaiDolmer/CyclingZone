@@ -534,6 +534,38 @@
         "text": "Free agents have no salary until a team signs them. The rider profile and auction page show an estimated salary (roughly 10% of current market value) so you can plan your budget before bidding. The actual salary is set only at the moment of signing."
       }
     },
+    "academy": {
+      "label": "Academy",
+      "whatAcademy": {
+        "title": "What is the Academy?",
+        "text": "The Academy lets you develop your own young talent instead of buying established riders on the open market. Each season your club receives a cohort of prospects at the start of the season. You review them, sign 0-2 into your Academy, and develop them in-house. The Academy is separate from your senior squad and activates at the season relaunch on 20 June."
+      },
+      "intakeCohort": {
+        "title": "Season intake cohort",
+        "text": "At the start of each season the system generates a small cohort of prospects for your club. You can review their stats and potential, then decide how many (if any) to sign. You are never forced to sign anyone."
+      },
+      "signingProspects": {
+        "title": "Signing prospects",
+        "steps": [
+          "Go to Academy in the navigation.",
+          "Review your intake cohort for the season.",
+          "Sign 0-2 prospects. Each signing costs a one-time signing fee and commits you to a youth salary.",
+          "Prospects you do not sign are released. Youth auctions and free-agent direct signing arrive in a later update."
+        ]
+      },
+      "academySize": {
+        "title": "Academy size (8 places)",
+        "text": "Your Academy holds up to 8 riders. These 8 places are completely separate from your senior squad cap of 30. Academy riders never count toward your senior squad limit and are not eligible for races."
+      },
+      "dailyTrainingBoost": {
+        "title": "Daily training and the youth boost",
+        "text": "Academy riders train every day alongside your senior squad, but they benefit from a youth multiplier that makes them develop faster. The same Daily Training rules apply: set a focus and intensity for each rider, and gains accumulate day by day."
+      },
+      "upkeepCost": {
+        "title": "Academy upkeep",
+        "text": "Running the Academy costs an upkeep fee per occupied slot, charged automatically at season payroll alongside your senior salaries. Plan your budget accordingly: a full Academy of 8 riders carries a noticeable running cost each season."
+      }
+    },
     "raceSelection": {
       "label": "Team selection",
       "what": {
