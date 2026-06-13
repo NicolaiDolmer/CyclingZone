@@ -1,0 +1,27 @@
+{
+  "title": "Akademi",
+  "slots": "Akademi: {used} / {max} pladser",
+  "disabledNote": "Akademiet kommer snart. Hold dig opdateret.",
+  "intakeHeading": "Intake-kandidater",
+  "rosterHeading": "Akademihold",
+  "emptyIntake": "Ingen intake-kandidater i øjeblikket. Tjek igen efter naeste scouting-cyklus.",
+  "emptyRoster": "Ingen ryttere signeret til akademiet endnu.",
+  "seriousBadge": "Serioes kandidat",
+  "potential": "Potentiale",
+  "ageLabel": "{age} ar",
+  "signBtn": "Signer",
+  "rejectBtn": "Afvis",
+  "loading": "...",
+  "fullTooltip": "Akademiet er fuldt (8/8). Frigiv en plads forst.",
+  "fullNote": "Akademiet er fuldt. Signer kun nar en plads aabner.",
+  "contractUntil": "Til saeson {season}",
+  "colRider": "Rytter",
+  "colAge": "Alder",
+  "colSalary": "Loen",
+  "colContract": "Kontrakt",
+  "error": {
+    "academyFull": "Akademiet er fuldt (8/8). Kan ikke signere endnu en rytter.",
+    "notOffered": "Denne rytter har ikke faet tilbudt en plads.",
+    "generic": "Noget gik galt. Proev igen."
+  }
+}

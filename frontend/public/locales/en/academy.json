@@ -1,0 +1,27 @@
+{
+  "title": "Academy",
+  "slots": "Academy: {used} / {max} places",
+  "disabledNote": "The Academy is coming soon. Stay tuned.",
+  "intakeHeading": "Intake candidates",
+  "rosterHeading": "Academy roster",
+  "emptyIntake": "No intake candidates right now. Check back after the next scouting cycle.",
+  "emptyRoster": "No riders signed to the academy yet.",
+  "seriousBadge": "Serious prospect",
+  "potential": "Potential",
+  "ageLabel": "{age} y/o",
+  "signBtn": "Sign",
+  "rejectBtn": "Reject",
+  "loading": "...",
+  "fullTooltip": "Academy is full (8/8). Release a rider first.",
+  "fullNote": "Academy is full. Sign only after a spot opens.",
+  "contractUntil": "Until season {season}",
+  "colRider": "Rider",
+  "colAge": "Age",
+  "colSalary": "Salary",
+  "colContract": "Contract",
+  "error": {
+    "academyFull": "Academy is full (8/8). Cannot sign another rider.",
+    "notOffered": "This rider has not been offered a place.",
+    "generic": "Something went wrong. Please try again."
+  }
+}
