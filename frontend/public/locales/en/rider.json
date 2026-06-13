@@ -48,7 +48,6 @@
     "activeAuctionBadge": "⚡ Active auction",
     "highestBidLabel": "Highest bid: {amount} CZ$",
     "valueLabel": "Value CZ$",
-    "contractLabel": "Contract",
     "contractSalary": "Salary CZ$",
     "contractLength": "{count, plural, one {1 season} other {# seasons}}",
     "contractExpires": "Expires after season {season}",

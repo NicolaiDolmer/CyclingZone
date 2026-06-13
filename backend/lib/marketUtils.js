@@ -86,6 +86,7 @@ export function calculateRiderMarketValue(rider = {}) {
   return base + (Number(rider.prize_earnings_bonus) || 0);
 }
 
+// Backend parity-twin af frontend getRiderSalary. Bruges af #1310-markeds-pakken (system-bølge-listings / prospektiv løn). Behold.
 // #1309: frossen kontrakt-løn hvis sat; ellers estimat (10% af market_value) til
 // VISNING af free agents. Ejede ryttere har altid salary != null (seed +
 // on-acquire), så for dem returneres den frosne løn uændret. salary:0 er en
