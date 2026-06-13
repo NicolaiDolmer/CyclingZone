@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url";
 
 import { generateLaunchPopulation } from "../lib/fictionalLaunchPopulation.js";
 import { deriveAbilities, VISIBLE_ABILITIES } from "../lib/abilityDerivation.js";
-import { computeRiderTypes, NEUTRAL_BASELINE } from "../lib/riderTypes.js";
+import { computeRiderTypes } from "../lib/riderTypes.js";
 import { predictBaseValue } from "../lib/riderValuation.js";
 import { buildCaps, developRiderSeason } from "../lib/riderProgression.js";
 import { ACADEMY } from "../lib/academyFlag.js";
@@ -25,6 +25,9 @@ const SEASONS = (() => {
 })();
 
 const model = JSON.parse(readFileSync(join(__dirname, "../lib/riderValuationModel.json"), "utf8"));
+// Fittet type-baseline — SAMME som riderValueRefresh/backfillCores/previewFictionalPopulation,
+// så scorecardet afspejler præcis det live-systemet vil beregne (ikke NEUTRAL_BASELINE).
+const baseline = JSON.parse(readFileSync(join(__dirname, "../lib/riderTypesBaseline.json"), "utf8"));
 
 const fmt = (n) => (n == null ? "—" : Math.round(n).toLocaleString("da-DK"));
 const pct = (s, p) => (s.length ? s[Math.min(s.length - 1, Math.floor(p * s.length))] : null);
@@ -37,8 +40,8 @@ function main() {
     const r = riders[i];
     // deriveAbilities(physiology, riderRow, { asOfYear }) — riderRow har stat_* + birthdate osv.
     const abilities = deriveAbilities({}, { ...r, id: `fic-${i}` }, { asOfYear: REFERENCE_YEAR });
-    // computeRiderTypes(abilities, baseline) — baseline er NEUTRAL_BASELINE, ikke en JSON-fil
-    const { primary } = computeRiderTypes(abilities, NEUTRAL_BASELINE);
+    // computeRiderTypes(abilities, baseline) — fittet baseline (matcher live-systemet)
+    const { primary } = computeRiderTypes(abilities, baseline);
     const age = r._meta?.age ?? (REFERENCE_YEAR - new Date(r.birthdate).getFullYear());
 
     // Filtrer abilities til kun VISIBLE_ABILITIES (som developRiderSeason forventer)
