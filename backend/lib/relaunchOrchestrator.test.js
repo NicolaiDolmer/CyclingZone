@@ -26,6 +26,7 @@ function makeDeps(order) {
     runStarterSquadAllocation: rec("allocation", { teams: 18 }),
     seedSeasonZero: async (_s, opts = {}) => { order.push({ name: "seedSeason0", dryRun: opts.dryRun }); return { seasonId: computeSeasonUuid(0) }; },
     transitionToNextSeason: async () => { order.push({ name: "transition" }); return { ok: true }; },
+    runContractSeed: rec("contracts", { seeded: 144 }),
     grantFounderBadges: rec("founder", { wouldGrant: 18 }),
     getBetaManagerTeams: async () => [{ id: "t1", user_id: "u1" }, { id: "t2", user_id: "u2" }],
   };
@@ -37,11 +38,11 @@ test("runRelaunchSeason1 (dryRun): sekvens + dryRun-prop, INGEN reset/sæson-tra
   assert.equal(summary.dryRun, true);
   const names = order.map((o) => o.name);
   // reset, seedSeason0 og transition kaldes IKKE i dry-run (kan ikke simuleres uden writes)
-  assert.deepEqual(names, ["retire", "population", "physiology", "types", "baseValue", "allocation", "founder"]);
+  assert.deepEqual(names, ["retire", "population", "physiology", "types", "baseValue", "allocation", "contracts", "founder"]);
   // dryRun propagerer til alle byggeklodser der modtager opts
   assert.ok(order.filter((o) => "dryRun" in o && o.dryRun !== undefined).every((o) => o.dryRun === true));
   // summary har en nøgle pr. fase
-  for (const k of ["retireLegacy", "reset", "population", "backfills", "allocation", "season", "founderBadge"]) {
+  for (const k of ["retireLegacy", "reset", "population", "backfills", "allocation", "season", "contracts", "founderBadge"]) {
     assert.ok(k in summary, `summary mangler ${k}`);
   }
 });
@@ -53,7 +54,7 @@ test("runRelaunchSeason1 (apply): kalder reset + seedSeason0 + transition i korr
   const names = order.map((o) => o.name);
   assert.deepEqual(names, [
     "retire", "reset", "population", "physiology", "types", "baseValue", "allocation",
-    "seedSeason0", "transition", "founder",
+    "seedSeason0", "transition", "contracts", "founder",
   ]);
 });
 

@@ -6,6 +6,7 @@ import {
   computeFrozenSalary,
   pickContractLength,
   computeContractEndSeason,
+  runContractSeed,
 } from "./contractSeed.js";
 import { makeRng } from "./fictionalRiderGenerator.js";
 
@@ -40,4 +41,115 @@ test("CONTRACT-konstanter", () => {
   assert.equal(CONTRACT.FOUNDER_LENGTH, 2);
   assert.equal(CONTRACT.DEFAULT_ACQUIRE_LENGTH, 2);
   assert.equal(CONTRACT.SALARY_RATE, 0.10);
+});
+
+// ── runContractSeed wrapper-tests ──────────────────────────────────────────────
+// Supabase-mock spejler starterSquadAllocator.test.js: range() returnerer hele
+// listen (fetchAllRows kalder .range() for paginering). update-calls optages.
+
+function makeContractSupabase({ owned, activeSeasonNumber = 1 }) {
+  const updates = [];
+  const supabase = {
+    from(table) {
+      if (table === "seasons") {
+        const api = {
+          select() { return api; },
+          eq() { return api; },
+          maybeSingle() { return Promise.resolve({ data: { number: activeSeasonNumber }, error: null }); },
+        };
+        return api;
+      }
+      // riders table
+      const api = {
+        select() { return api; },
+        not() { return api; },
+        order() { return api; },
+        range() { return Promise.resolve({ data: owned, error: null }); },
+        update(patch) {
+          return {
+            eq(_col, id) {
+              updates.push({ id, patch });
+              return Promise.resolve({ error: null });
+            },
+          };
+        },
+      };
+      return api;
+    },
+    _updates: updates,
+  };
+  return supabase;
+}
+
+test("runContractSeed: founders → 2 sæsoner, andre ejede → 1-3, free agents urørt", async () => {
+  const owned = [
+    { id: "r1", team_id: "founder1", base_value: 1_000_000, prize_earnings_bonus: 0 },
+    { id: "r2", team_id: "founder1", base_value: 200_000,   prize_earnings_bonus: 0 },
+    { id: "r3", team_id: "ai1",      base_value: 500_000,   prize_earnings_bonus: 0 },
+  ];
+  const supabase = makeContractSupabase({ owned, activeSeasonNumber: 1 });
+
+  const res = await runContractSeed(supabase, {
+    dryRun: false,
+    seed: 2026,
+    getManagerTeams: async () => [{ id: "founder1" }],
+  });
+
+  assert.equal(res.dryRun, false);
+  assert.equal(res.seeded, 3);
+  assert.equal(res.founders, 1);
+  assert.equal(res.startSeason, 1);
+
+  const byId = Object.fromEntries(supabase._updates.map((u) => [u.id, u.patch]));
+
+  // Founder r1: length=2, end=2, salary=100_000
+  assert.equal(byId.r1.contract_length, 2);
+  assert.equal(byId.r1.contract_end_season, 2);
+  assert.equal(byId.r1.salary, 100_000);
+
+  // Founder r2: length=2, end=2, salary=20_000
+  assert.equal(byId.r2.contract_length, 2);
+  assert.equal(byId.r2.contract_end_season, 2);
+  assert.equal(byId.r2.salary, 20_000);
+
+  // Non-founder r3: length 1-3, end = 1 + length - 1, salary=50_000
+  assert.ok(byId.r3.contract_length >= 1 && byId.r3.contract_length <= 3,
+    `r3 length=${byId.r3.contract_length} ude af 1-3`);
+  assert.equal(byId.r3.contract_end_season, byId.r3.contract_length); // = 1 + length - 1
+  assert.equal(byId.r3.salary, 50_000);
+});
+
+test("runContractSeed (dryRun): ingen writes, kun preview-count", async () => {
+  const owned = [
+    { id: "r1", team_id: "founder1", base_value: 800_000, prize_earnings_bonus: 0 },
+  ];
+  const supabase = makeContractSupabase({ owned, activeSeasonNumber: 1 });
+
+  const res = await runContractSeed(supabase, {
+    dryRun: true,
+    seed: 2026,
+    getManagerTeams: async () => [{ id: "founder1" }],
+  });
+
+  assert.equal(res.dryRun, true);
+  assert.equal(res.toSeed, 1);
+  assert.equal(supabase._updates.length, 0, "dryRun må ikke skrive");
+});
+
+test("runContractSeed: ingen ejede ryttere → seeded=0", async () => {
+  const supabase = makeContractSupabase({ owned: [], activeSeasonNumber: 1 });
+  const res = await runContractSeed(supabase, {
+    dryRun: false,
+    seed: 2026,
+    getManagerTeams: async () => [],
+  });
+  assert.equal(res.seeded, 0);
+  assert.equal(supabase._updates.length, 0);
+});
+
+test("runContractSeed: kaster uden supabase-client", async () => {
+  await assert.rejects(
+    () => runContractSeed(null, { getManagerTeams: async () => [] }),
+    /Supabase client required/,
+  );
 });

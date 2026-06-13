@@ -20,6 +20,7 @@ import { retireLegacyRiders } from "./legacyRiderRetirement.js";
 import { runFullBetaReset, getBetaManagerTeams } from "./betaResetService.js";
 import { runPhysiologyBackfill, runRiderTypesBackfill, runBaseValueBackfill } from "./backfillCores.js";
 import { runStarterSquadAllocation } from "./starterSquadAllocator.js";
+import { runContractSeed } from "./contractSeed.js";
 import { grantFounderBadges } from "./founderBadge.js";
 import { transitionToNextSeason, computeSeasonUuid } from "./seasonTransition.js";
 
@@ -81,6 +82,7 @@ const DEFAULT_DEPS = {
   runStarterSquadAllocation,
   seedSeasonZero,
   transitionToNextSeason,
+  runContractSeed,
   grantFounderBadges,
   getBetaManagerTeams,
 };
@@ -125,6 +127,11 @@ export async function runRelaunchSeason1(supabase, {
     const s0 = await d.seedSeasonZero(supabase, { startDate, dryRun: false });
     summary.season = await d.transitionToNextSeason({ supabase, fromSeasonId: s0.seasonId, transitionAt: startDate });
   }
+
+  // 6.5 Kontrakt-seed: frossen løn + længde + udløb på ejede ryttere.
+  // Kører efter sæson-transition så aktiv sæson-number (= 1) er kendt.
+  // I dry-run previewer den mod nuværende DB (ingen writes).
+  summary.contracts = await d.runContractSeed(supabase, { dryRun, seed });
 
   // 7. Founder-badges (grant sikrer også def'en; overlever fremtidige resets).
   const teams = await d.getBetaManagerTeams(supabase);

@@ -5,6 +5,9 @@
 // Beslutninger (ejer 13/6): kontrakter kun på ejede ryttere (free agents = NULL);
 // founders 2 sæsoner; andre ejede blandet 1-3.
 
+import { makeRng } from "./fictionalRiderGenerator.js";
+import { fetchAllRows } from "./supabasePagination.js";
+
 export const CONTRACT = Object.freeze({
   FOUNDER_LENGTH: 2,          // founder-hold: stabil trup i 2 sæsoner
   DEFAULT_ACQUIRE_LENGTH: 2,  // auto-kontrakt ved erhvervelse (create-if-missing)
@@ -30,4 +33,64 @@ export function pickContractLength(rng) {
 // Sidste aktive sæson = startSeason + length - 1.
 export function computeContractEndSeason(startSeasonNumber, length) {
   return startSeasonNumber + length - 1;
+}
+
+const WRITE_CONCURRENCY = 25;
+
+// DB-wrapper: sæt kontrakt på alle ejede ryttere. Founders → 2 sæsoner; andre
+// ejede → blandet 1-3 (seeded). Free agents (team_id NULL) røres ALDRIG.
+// Kører i orchestratoren EFTER allocation + sæson-transition (kender sæson-number).
+export async function runContractSeed(supabase, {
+  dryRun = true,
+  seed = 2026,
+  getManagerTeams,
+} = {}) {
+  if (!supabase?.from) throw new Error("Supabase client required");
+
+  let founderTeams;
+  if (getManagerTeams) {
+    founderTeams = await getManagerTeams(supabase);
+  } else {
+    const { getBetaManagerTeams } = await import("./betaResetService.js");
+    founderTeams = await getBetaManagerTeams(supabase);
+  }
+  const founderIds = new Set(founderTeams.map((t) => t.id).filter(Boolean));
+
+  const seasonRes = await supabase.from("seasons").select("number").eq("status", "active").maybeSingle();
+  if (seasonRes?.error) throw new Error(`runContractSeed sæson: ${seasonRes.error.message}`);
+  const startSeason = seasonRes?.data?.number ?? 1;
+
+  const owned = await fetchAllRows(() =>
+    supabase.from("riders")
+      .select("id, team_id, base_value, prize_earnings_bonus")
+      .not("team_id", "is", null)
+      .order("id"));
+
+  const rng = makeRng(seed);
+  const patches = owned.map((r) => {
+    const length = founderIds.has(r.team_id) ? CONTRACT.FOUNDER_LENGTH : pickContractLength(rng);
+    return {
+      id: r.id,
+      patch: {
+        salary: computeFrozenSalary(r),
+        contract_length: length,
+        contract_end_season: computeContractEndSeason(startSeason, length),
+      },
+    };
+  });
+
+  if (dryRun) {
+    return { dryRun: true, toSeed: patches.length, founders: founderIds.size, startSeason };
+  }
+
+  let seeded = 0;
+  for (let i = 0; i < patches.length; i += WRITE_CONCURRENCY) {
+    const batch = patches.slice(i, i + WRITE_CONCURRENCY);
+    await Promise.all(batch.map(({ id, patch }) =>
+      supabase.from("riders").update(patch).eq("id", id).then(({ error }) => {
+        if (error) throw new Error(`contract seed ${id}: ${error.message}`);
+      })));
+    seeded += batch.length;
+  }
+  return { dryRun: false, seeded, founders: founderIds.size, startSeason };
 }
