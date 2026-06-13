@@ -60,12 +60,14 @@ CREATE TABLE riders (
   -- til 1000 (bundskala; spejles i marketUtils.RIDER_BASE_VALUE_FALLBACK).
   base_value INTEGER,
   market_value INTEGER GENERATED ALWAYS AS (COALESCE(base_value, 1000) + prize_earnings_bonus) STORED,
-  -- salary: 10% af market_value, beregnes automatisk af DB. Kan ikke skrives fra applikationskode.
-  salary INTEGER GENERATED ALWAYS AS (
-    GREATEST(1, ROUND(
-      (COALESCE(base_value, 1000) + prize_earnings_bonus) * 0.10
-    ))::INTEGER
-  ) STORED,
+  -- salary: FROSSEN kontrakt-løn (#1309). Var GENERATED (10% af market_value);
+  -- nu sat ved signering og fast til udløb. Skrives af runContractSeed +
+  -- finalization (create-if-missing). NULL = free agent (UI estimerer).
+  salary INTEGER,
+  -- Kontrakt (#1309): længde 1-3 sæsoner + sidste aktive sæson-number.
+  -- NULL for free agents (kontrakt kræver et hold).
+  contract_length INTEGER CHECK (contract_length IS NULL OR contract_length BETWEEN 1 AND 3),
+  contract_end_season INTEGER CHECK (contract_end_season IS NULL OR contract_end_season >= 1),
   -- Current owner
   team_id UUID REFERENCES teams(id) ON DELETE SET NULL,
   ai_team_id UUID REFERENCES teams(id) ON DELETE SET NULL, -- original AI team
