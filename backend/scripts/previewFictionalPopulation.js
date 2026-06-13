@@ -15,11 +15,8 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { generateFictionalRiders } from "../lib/fictionalRiderGenerator.js";
-import { deriveAbilities } from "../lib/abilityDerivation.js";
-import { computeRiderTypes } from "../lib/riderTypes.js";
-import { predictBaseValue } from "../lib/riderValuation.js";
 import { LAUNCH_POPULATION, LAUNCH_VALUE_BANDS, checkLaunchTypeMix } from "../lib/fictionalLaunchPopulation.js";
+import { buildFictionalPopulationPreview } from "../lib/fictionalPopulationPreview.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -49,20 +46,8 @@ function bandOf(v) {
 }
 
 function main() {
-  const { riders, coverage } = generateFictionalRiders({
-    seed: SEED,
-    count: COUNT,
-    referenceYear: REFERENCE_YEAR,
-  });
-
-  const rows = riders.map((r, i) => {
-    const id = `fic-${SEED}-${i}`;
-    const riderRow = { ...r, id };
-    const abilities = deriveAbilities({}, riderRow, { asOfYear: REFERENCE_YEAR });
-    const { primary, secondary } = computeRiderTypes(abilities, baseline);
-    const withType = { ...riderRow, primary_type: primary.key, secondary_type: secondary.key };
-    const base_value = predictBaseValue(withType, abilities, model);
-    return { ...withType, abilities, base_value, _meta: r._meta };
+  const { riders: rows, coverage } = buildFictionalPopulationPreview({
+    count: COUNT, seed: SEED, referenceYear: REFERENCE_YEAR, baseline, model,
   });
 
   const values = rows.map((r) => r.base_value).sort((a, b) => a - b);
