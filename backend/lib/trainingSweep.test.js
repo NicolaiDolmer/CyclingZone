@@ -195,6 +195,25 @@ describe("runTrainingSweep", () => {
     assert.equal(result.swept, 1);
     assert.equal("failed" in result, false);
   });
+
+  it("kalder value-refresh efter sweep (enabled + teams)", async () => {
+    const teams = [{ id: "t1" }];
+    const runs = [];
+    const supabase = makeFullMockSupabase({ teams, runs });
+    let refreshCalled = 0;
+    const runDay = async () => ({ alreadyRan: false });
+    const refreshValues = async () => { refreshCalled++; return { scanned: 1, changed: 0, written: 0 }; };
+    await runTrainingSweep({ supabase, now: afterWindow, runDay, refreshValues });
+    assert.equal(refreshCalled, 1);
+  });
+
+  it("kalder IKKE value-refresh når flag er slukket (flag_off early-return)", async () => {
+    const supabase = makeFullMockSupabase({ configValue: false });
+    let refreshCalled = 0;
+    const refreshValues = async () => { refreshCalled++; return { scanned: 0, changed: 0, written: 0 }; };
+    await runTrainingSweep({ supabase, now: afterWindow, refreshValues });
+    assert.equal(refreshCalled, 0);
+  });
 });
 
 // ── Query-fejl: error-objekt skal kaste, ikke blive et stille no-op ────────────

@@ -113,6 +113,7 @@ import { SCOUTING_CONFIG, deriveScoutState, canScout, buildScoutEstimate, estima
 import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity } from "../lib/training.js";
 import { isDailyTrainingEnabled } from "../lib/dailyTrainingFlag.js";
 import { runTeamTrainingDay } from "../lib/dailyTrainingEngine.js";
+import { refreshChangedRiderValues } from "../lib/riderValueRefresh.js";
 import { validateSelection, saveSelection, getSelectionContext } from "../lib/raceSelection.js";
 import { isRaceEngineV2Enabled } from "../lib/raceEngineFlag.js";
 import { injuryRisk } from "../lib/riderCondition.js";
@@ -1173,6 +1174,10 @@ router.post("/training/run-today", requireAuth, marketWriteLimiter, async (req, 
     if (result.alreadyRan) {
       return res.status(409).json({ error: "already_trained_today", tickDate: result.tickDate });
     }
+
+    // #1364: opdatér base_value for holdets ryttere hvis træningen hævede en evne.
+    try { await refreshChangedRiderValues(supabase, { teamId: req.team.id }); }
+    catch (err) { captureException(err); } // feedback-only — må ikke vælte træningen
 
     res.json({ ok: true, tickDate: result.tickDate, report: result.report });
   } catch (err) {
