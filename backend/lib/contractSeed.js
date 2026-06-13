@@ -74,7 +74,7 @@ export async function runContractSeed(supabase, {
   const founderIds = new Set(founderTeams.map((t) => t.id).filter(Boolean));
 
   const seasonRes = await supabase.from("seasons").select("number").eq("status", "active").maybeSingle();
-  if (seasonRes?.error) throw new Error(`runContractSeed sæson: ${seasonRes.error.message}`);
+  if (seasonRes?.error) throw new Error(`runContractSeed season lookup: ${seasonRes.error.message}`);
   const startSeason = seasonRes?.data?.number ?? 1;
 
   const owned = await fetchAllRows(() =>

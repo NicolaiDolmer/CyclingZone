@@ -51,7 +51,7 @@
     "contractSalary": "Løn CZ$",
     "contractLength": "{count, plural, one {1 sæson} other {# sæsoner}}",
     "contractExpires": "Udløber efter sæson {season}",
-    "noContract": "Free agent — ingen kontrakt",
+    "noContract": "Free agent (ingen kontrakt)",
     "estSalary": "Anslået løn CZ$",
     "bestStat": "Bedste: {label} ({value})",
     "typeDefault": "Allround",

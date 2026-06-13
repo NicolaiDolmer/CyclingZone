@@ -51,7 +51,7 @@
     "contractSalary": "Salary CZ$",
     "contractLength": "{count, plural, one {1 season} other {# seasons}}",
     "contractExpires": "Expires after season {season}",
-    "noContract": "Free agent — no contract",
+    "noContract": "Free agent (no contract)",
     "estSalary": "Est. salary CZ$",
     "bestStat": "Best: {label} ({value})",
     "typeDefault": "All-rounder",

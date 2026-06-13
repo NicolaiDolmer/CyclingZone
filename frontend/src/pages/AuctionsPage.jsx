@@ -238,7 +238,7 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, watchlist, 
       <td className="px-2 py-1.5 text-right text-cz-2 font-mono text-xs whitespace-nowrap">
         {formatNumber(getRiderSalary(r))}
         {r?.contract_length != null && (
-          <span className="ml-1 text-cz-3 text-[10px]">{t("auctions:card.contractExpires", { season: r.contract_end_season })}</span>
+          <span className="ms-1 text-cz-3 text-[10px]">{t("auctions:card.contractExpires", { season: r.contract_end_season })}</span>
         )}
       </td>
 
