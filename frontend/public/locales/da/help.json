@@ -515,6 +515,25 @@
         "text": "Hvis en manager kigger på en af dine ryttere, modtager du en anonym notifikation: 'En manager holder øje med din rytter X'. Du får maksimalt én notifikation per rytter per time for at undgå spam."
       }
     },
+    "contracts": {
+      "label": "Kontrakter",
+      "whatContract": {
+        "title": "Hvad er en rytterkontrakt?",
+        "text": "Alle ejede ryttere har en kontrakt: en frossen løn, en længde (1 til 3 sæsoner) og en udløbssæson. Lønnen låses fast i det øjeblik rytteren signeres og ændrer sig ikke automatisk efterhånden som rytteren udvikler sig. Free agents (ryttere uden hold) har ingen kontrakt, før de signeres."
+      },
+      "frozenSalary": {
+        "title": "Hvorfor lønnen er frossen (guldkontrakter og byrder)",
+        "text": "Fordi lønnen låses ved signering, bliver en ung rytter der udvikler sig til en stærkere spiller et røverkøb: du betaler en tidlig-karriere-løn for en nu-stærkere rytter. Det er en 'guldkontrakt'. Det modsatte gælder også: en falmende stjerne signeret på toppens løn forbliver på høj løn selv om evnerne falder, og bliver en økonomisk byrde. At spotte disse situationer tidligt er en central del af holdledelsen."
+      },
+      "contractOnTrade": {
+        "title": "Kontrakter følger rytteren",
+        "text": "Når en rytter handles, overføres kontrakten uændret til det nye hold. Køber overtager den eksisterende løn og den resterende kontraktlængde. Kontrakten nulstilles eller genforhandles aldrig ved handel."
+      },
+      "freeAgents": {
+        "title": "Free agents",
+        "text": "Free agents har ingen løn, før et hold signerer dem. Rytterprofilen og auktionssiden viser en estimeret løn (ca. 10% af aktuel markedsværdi) så du kan planlægge dit budget inden du byder. Den faktiske løn fastsættes først i det øjeblik rytteren signeres."
+      }
+    },
     "raceSelection": {
       "label": "Holdudtagelse",
       "what": {

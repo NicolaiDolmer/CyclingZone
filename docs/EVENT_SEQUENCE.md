@@ -118,8 +118,8 @@ Autoritativ beskrivelse af alle sæson- og markedshændelsers rækkefølge. Kild
          └─ INSERT board_plan_snapshot
             UPDATE board satisfaction + budget_modifier
 
-   D) updateRiderValues() — recalc prize_earnings_bonus (3-sæson avg) → trigger
-      DB-side recompute af riders.salary (GENERATED column, v2.25)
+   D) updateRiderValues() — recalc prize_earnings_bonus (3-sæson avg) → opdater market_value
+      (riders.salary er FROSSEN ved signering og genberegnes IKKE her — #1309)
 
 4. UPDATE seasons SET status='completed'
 
@@ -167,7 +167,7 @@ For each auction WHERE status IN ('active','extended') AND calculated_end < now:
   3. Udfør transfer:
      ├─ Transfervindue åbent: rider.team_id = vinder
      └─ Vindue lukket: rider.pending_team_id = vinder
-     (rider.salary opdateres IKKE — kolonnen er GENERATED og beregnes af DB fra uci_points + prize_earnings_bonus, v2.25)
+     (rider.salary opdateres IKKE — den er frossen ved signering og arves uændret ved handel, #1309)
   4. Debiter køber; kredit sælger (hvis menneske)
   5. Log finance transactions (type: 'transfer_out', 'transfer_in')
   6. XP: køber +15 (auction_won), sælger +10 (auction_sold)

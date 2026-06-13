@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.31",
+    date: "2026-06-13",
+    label: "Beta",
+    changes: [
+      {
+        category: "New · Rider contracts",
+        items: [
+          "EN · Riders now have contracts: a frozen salary, a length (1 to 3 seasons) and an expiry. Salary is locked in at signing, so a young rider who develops becomes a bargain (a 'gold contract'), while a fading star on a high salary becomes a burden. Contracts are shown on the rider profile, in auctions and in transfer offers, and follow the rider when traded. Free agents have no contract until signed. Refs #1309",
+          "DA · Ryttere har nu kontrakter: en frossen løn, en længde (1 til 3 sæsoner) og et udløb. Lønnen låses ved signering, så en ung rytter der udvikler sig bliver et røverkøb (en 'guldkontrakt'), mens en falmende stjerne på høj løn bliver en byrde. Kontrakter vises på rytterprofilen, på auktioner og i transfertilbud, og følger rytteren ved handel. Free agents har ingen kontrakt før de signes. Refs #1309",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.30",
     date: "2026-06-12",
     label: "Beta",

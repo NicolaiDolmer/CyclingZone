@@ -515,6 +515,25 @@
         "text": "If a manager views one of your riders, you get an anonymous notification: 'A manager is watching your rider X'. You get at most one notification per rider per hour to avoid spam."
       }
     },
+    "contracts": {
+      "label": "Contracts",
+      "whatContract": {
+        "title": "What is a rider contract?",
+        "text": "Every owned rider has a contract: a frozen salary, a length (1 to 3 seasons) and an expiry season. The salary is locked in at the moment of signing and does not change automatically as the rider develops. Free agents (riders without a team) have no contract until they are signed."
+      },
+      "frozenSalary": {
+        "title": "Why salary is frozen (gold contracts and burdens)",
+        "text": "Because salary is locked at signing, a young rider who develops into a better player becomes a bargain: you are paying an early-career rate for a now-stronger rider. This is a 'gold contract'. The opposite is also true: a fading star signed at peak value remains on a high salary even as their ability drops, becoming a financial burden. Spotting these situations early is a core part of squad management."
+      },
+      "contractOnTrade": {
+        "title": "Contracts follow the rider",
+        "text": "When a rider is traded, their contract transfers unchanged to the new team. The buyer inherits the existing salary and the remaining contract length. The contract is never reset or renegotiated on trade."
+      },
+      "freeAgents": {
+        "title": "Free agents",
+        "text": "Free agents have no salary until a team signs them. The rider profile and auction page show an estimated salary (roughly 10% of current market value) so you can plan your budget before bidding. The actual salary is set only at the moment of signing."
+      }
+    },
     "raceSelection": {
       "label": "Team selection",
       "what": {
