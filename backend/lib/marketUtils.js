@@ -117,26 +117,32 @@ export async function getTeamMarketState(supabase, teamId) {
   );
 
   const [riderCount, pendingCount, outgoingCount, activeLoanCount] = await Promise.all([
+    // #1308: akademiryttere tæller ikke mod senior-cap
     expectCount(
       supabase
         .from("riders")
         .select("id", { count: "exact", head: true })
         .eq("team_id", teamId)
+        .eq("is_academy", false)
     ),
+    // #1308: akademiryttere tæller ikke mod senior-cap
     expectCount(
       supabase
         .from("riders")
         .select("id", { count: "exact", head: true })
         .eq("pending_team_id", teamId)
+        .eq("is_academy", false)
     ),
     // #268: ryttere på vej VÆK fra holdet — ejet (team_id = mit) men med
     // pending_team_id sat til et andet hold (eller bank/AI). Disse skal
     // trækkes fra current-count for at få "fremtidens hold-størrelse".
+    // #1308: akademiryttere tæller ikke mod senior-cap
     expectCount(
       supabase
         .from("riders")
         .select("id", { count: "exact", head: true })
         .eq("team_id", teamId)
+        .eq("is_academy", false)
         .not("pending_team_id", "is", null)
         .neq("pending_team_id", teamId)
     ),

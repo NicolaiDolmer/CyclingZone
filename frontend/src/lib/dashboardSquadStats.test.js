@@ -279,9 +279,10 @@ test("fetchSquadCountInputs — pending-in inkluderer ryttere med team_id = NULL
     riderQuery.filters,
     [
       ["eq", "pending_team_id", ME],
+      ["eq", "is_academy", false], // #1308: akademiryttere tæller ikke mod senior-cap
       ["or", `team_id.is.null,team_id.neq.${ME}`],
     ],
-    "pending-in-filteret skal inkludere NULL-team_id og ekskludere self-pending"
+    "pending-in-filteret skal inkludere NULL-team_id og ekskludere self-pending og akademiryttere"
   );
   assert.equal(inputs.pendingIncomingCount, 3);
 });
@@ -291,6 +292,23 @@ test("fetchSquadCountInputs — null counts falder tilbage til 0", async () => {
   const inputs = await fetchSquadCountInputs(stub, ME);
   assert.equal(inputs.pendingIncomingCount, 0);
   assert.equal(inputs.incomingLoanCount, 0);
+});
+
+// #1308: pending-incoming-query skal ekskludere akademiryttere
+test("#1308: fetchSquadCountInputs — pending-incoming ekskluderer akademiryttere (is_academy=false)", async () => {
+  const stub = createSupabaseStub({ riders: 5, loan_agreements: 0 });
+  await fetchSquadCountInputs(stub, ME);
+
+  const riderQuery = stub.queries.find((q) => q.table === "riders");
+  assert.ok(riderQuery, "skal query'e riders");
+
+  const academyFilter = riderQuery.filters.find(
+    ([op, col, val]) => op === "eq" && col === "is_academy" && val === false
+  );
+  assert.ok(
+    academyFilter,
+    `pending-incoming query mangler is_academy=false filter (aktuelle filtre: ${JSON.stringify(riderQuery.filters)})`
+  );
 });
 
 test("#1090 end-to-end: window_pending-lån + pending-in udløser over-cap-warning", async () => {

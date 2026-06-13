@@ -721,7 +721,8 @@ export default function AuctionsPage() {
         .order("calculated_end", { ascending: true }),
       team ? supabase.from("auction_bids").select("auction_id, amount").eq("team_id", team.id)
            : Promise.resolve({ data: [] }),
-      team ? supabase.from("riders").select("id", { count: "exact", head: true }).eq("team_id", team.id)
+      // #1308: akademiryttere tæller ikke mod senior-cap
+      team ? supabase.from("riders").select("id", { count: "exact", head: true }).eq("team_id", team.id).eq("is_academy", false)
            : Promise.resolve({ count: 0 }),
       team ? supabase.from("auction_proxy_bids").select("auction_id, max_amount").eq("team_id", team.id)
            : Promise.resolve({ data: [] }),

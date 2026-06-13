@@ -70,10 +70,12 @@ async function getSquadSnapshot(supabase, teamId) {
       .eq("id", teamId)
   );
 
+  // #1308: akademiryttere tæller ikke mod senior-cap og må aldrig auto-sælges
   const { data: ownedRiders, error: ownedError } = await supabase
     .from("riders")
     .select("id, firstname, lastname, ai_team_id, market_value, acquired_at, created_at")
-    .eq("team_id", teamId);
+    .eq("team_id", teamId)
+    .eq("is_academy", false);
   ensureNoError(ownedError);
 
   const { data: activeLoans, error: loanError } = await supabase

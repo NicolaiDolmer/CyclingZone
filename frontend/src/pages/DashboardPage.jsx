@@ -125,8 +125,10 @@ export default function DashboardPage() {
         .eq("is_test_account", false)
         .order("division")
         .order("name"),
+      // #1308: akademiryttere tæller ikke mod senior-cap
       supabase.from("riders").select("id, salary, is_u25, pending_team_id")
-        .eq("team_id", teamData.id),
+        .eq("team_id", teamData.id)
+        .eq("is_academy", false),
       // #1090: pending-in + indgående lån (inkl. window_pending) hentes med
       // samme diskriminatorer som backend getTeamMarketState — se
       // fetchSquadCountInputs i lib/dashboardSquadStats.js.

@@ -135,7 +135,9 @@ function createMockSupabase(initialState) {
                 const col = k.slice(3);
                 if (!v.includes(r[col])) return false;
               } else {
-                if (r[k] !== v) return false;
+                // #1308: is_academy defaults to false når feltet ikke er sat på test-ryttere
+                const rVal = (k === "is_academy" && r[k] === undefined) ? false : r[k];
+                if (rVal !== v) return false;
               }
             }
             return true;
@@ -1142,6 +1144,67 @@ test("#1309: auto-køb fallback til sæson 1 hvis ingen aktiv sæson", async () 
   assert.ok(fa1.salary != null, "salary sættes selv uden aktiv sæson");
   // contract_end_season = 1 (fallback) + 2 - 1 = 2
   assert.equal(fa1.contract_end_season, 2, "fallback sæson 1 → contract_end_season = 2");
+});
+
+// #1308: akademiryttere må ALDRIG auto-sælges ved transfervindue-luk.
+// Scenarie: hold har 30 senior-ryttere + 3 akademiryttere → 33 i alt.
+// Senior-cap = 30, så effectiveCount = 30 (akademiryttere er ekskluderet).
+// Resultat: code = "within_limits", 0 auto-salg, 0 bøder.
+test("#1308: akademiryttere tæller ikke mod senior-cap (0 auto-salg ved 30 senior + 3 akademi)", async () => {
+  const supabase = createMockSupabase({
+    teams: [{ id: "t1", name: "Senior+Akademi", balance: 1_000_000, division: 3, user_id: "u1", is_ai: false, is_bank: false }],
+    riders: [
+      // 30 senior-ryttere (is_academy udeladt = defaults til false via mock)
+      ...Array.from({ length: 30 }, (_, i) => ({
+        id: `senior-${i}`,
+        firstname: "Senior",
+        lastname: `R${i}`,
+        team_id: "t1",
+        market_value: 100_000,
+        ai_team_id: null,
+        acquired_at: `2026-01-01T00:${String(i).padStart(2, "0")}:00Z`,
+        created_at: "2026-01-01",
+        // is_academy ikke sat → defaults til false i mock (#1308)
+      })),
+      // 3 akademiryttere
+      ...Array.from({ length: 3 }, (_, i) => ({
+        id: `academy-${i}`,
+        firstname: "Akademi",
+        lastname: `Y${i}`,
+        team_id: "t1",
+        market_value: 30_000,
+        ai_team_id: null,
+        acquired_at: "2026-06-01T00:00:00Z",
+        created_at: "2026-06-01",
+        is_academy: true,
+      })),
+    ],
+  });
+
+  const result = await enforceTeamSquadCompliance({
+    supabase,
+    teamId: "t1",
+    seasonId: null,
+    notifyTeamOwner: async () => { throw new Error("Ingen notifikation forventet — holdet er inden for limits"); },
+    createEmergencyLoanFn: async () => {},
+    now: new Date("2026-06-13T12:00:00Z"),
+    // ingen limitsOverride → division-default (max=30, min=0)
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.code, "within_limits",
+    "hold med 30 senior + 3 akademi skal være within_limits (akademi tæller ikke)");
+  assert.equal(result.totalCount, 30,
+    "effectiveCount = 30 (kun seniorer tæller)");
+  assert.equal(supabase.state.riderUpdates.length, 0, "ingen akademiryttere må auto-sælges");
+  assert.equal(supabase.state.financeTransactions.length, 0, "ingen bøde");
+
+  // Forward-guard: ingen af de tre akademiryttere har fået ændret team_id
+  for (let i = 0; i < 3; i++) {
+    const academyRider = supabase.state.riders.find(r => r.id === `academy-${i}`);
+    assert.equal(academyRider.team_id, "t1",
+      `akademiryetter academy-${i} må ikke flyttes ved squad-enforcement`);
+  }
 });
 
 test("processSquadEnforcementCron: per-team fail kalder captureExceptionFn med teamId+windowId+seasonId (Refs #614 P2-A)", async () => {

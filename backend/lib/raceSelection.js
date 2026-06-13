@@ -71,8 +71,9 @@ export async function saveSelection({ supabase, race, teamId, riderIds, captainI
 // (ingen chunking nødvendig — i modsætning til raceRunner's full-field-opslag).
 export async function getSelectionContext({ supabase, race, teamId }) {
   const [ridersRes, profilesRes, entriesRes] = await Promise.all([
+    // #1307/#1308: akademiryttere er ikke løbs-berettigede
     supabase.from("riders").select("id, firstname, lastname")
-      .eq("team_id", teamId).or("is_retired.is.null,is_retired.eq.false"),
+      .eq("team_id", teamId).eq("is_academy", false).or("is_retired.is.null,is_retired.eq.false"),
     supabase.from("race_stage_profiles").select("stage_number, profile_type, demand_vector")
       .eq("race_id", race.id).order("stage_number", { ascending: true }),
     supabase.from("race_entries").select("rider_id, race_role, is_auto_filled")

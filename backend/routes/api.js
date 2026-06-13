@@ -743,7 +743,8 @@ router.get("/deadline-day/squads", requireAuth, async (req, res) => {
         .eq("is_frozen", false)
         .not("user_id", "is", null)
         .order("division").order("name"),
-      supabase.from("riders").select("team_id").not("team_id", "is", null),
+      // #1308: akademiryttere tæller ikke mod senior-cap i Panic Board
+      supabase.from("riders").select("team_id").not("team_id", "is", null).eq("is_academy", false),
     ]);
     if (!teams || !riders) throw new Error("data missing");
 
@@ -5787,7 +5788,8 @@ router.get("/admin/deadline-readiness", requireAdmin, async (req, res) => {
         .select("id", { count: "exact", head: true }).eq("status", "active"),
       supabase.from("teams")
         .select("id, name, division").eq("is_bank", false).eq("is_ai", false).not("user_id", "is", null),
-      supabase.from("riders").select("team_id").not("team_id", "is", null),
+      // #1308: akademiryttere tæller ikke mod senior-cap i squad-violations-check
+      supabase.from("riders").select("team_id").not("team_id", "is", null).eq("is_academy", false),
       supabase.from("seasons")
         .select("id, number, status").order("number", { ascending: false }).limit(2),
     ]);
