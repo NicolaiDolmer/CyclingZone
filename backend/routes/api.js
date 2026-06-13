@@ -115,7 +115,7 @@ import { isDailyTrainingEnabled, DAILY_TRAINING_FLAG_KEY } from "../lib/dailyTra
 import { readFlagStage, evaluateFlagStage } from "../lib/featureStage.js";
 import { runTeamTrainingDay } from "../lib/dailyTrainingEngine.js";
 import { validateSelection, saveSelection, getSelectionContext } from "../lib/raceSelection.js";
-import { isRaceEngineV2Enabled, RACE_ENGINE_V2_FLAG_KEY } from "../lib/raceEngineFlag.js";
+import { isRaceEngineV2Enabled } from "../lib/raceEngineFlag.js";
 import { injuryRisk } from "../lib/riderCondition.js";
 import { resolveProgram } from "../lib/dailyTraining.js";
 import { copenhagenDateString } from "../lib/copenhagenTime.js";
@@ -1206,7 +1206,7 @@ router.get("/races/:raceId/selection", requireAuth, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
     const isBetaTester = await isViewerBetaTester(req);
-    const enabled = evaluateFlagStage(await readFlagStage(supabase, RACE_ENGINE_V2_FLAG_KEY), { isBetaTester });
+    const enabled = await isRaceEngineV2Enabled(supabase, { isBetaTester });
     const { data: race, error } = await supabase
       .from("races")
       .select("id, name, race_type, race_class, stages, status, season_id")
