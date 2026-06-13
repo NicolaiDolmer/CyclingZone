@@ -15,7 +15,7 @@ export function buildFictionalPopulationPreview({
   model,
 } = {}) {
   if (!baseline || !model) {
-    throw new Error("buildFictionalPopulationPreview kræver baseline + model");
+    throw new Error("buildFictionalPopulationPreview requires baseline + model");
   }
   const { riders, coverage } = generateFictionalRiders({ seed, count, referenceYear });
   const rows = riders.map((r, i) => {
