@@ -84,7 +84,7 @@ export async function runTeamTrainingDay({
   // ── 2) Load riders (ikke-pensionerede, dette hold) ──────────────────────────
   const { data: riders, error: ridersError } = await supabase
     .from("riders")
-    .select("id, primary_type, potentiale, birthdate, firstname, lastname, team_id")
+    .select("id, primary_type, potentiale, birthdate, firstname, lastname, team_id, is_academy")
     .eq("team_id", teamId)
     .eq("is_retired", false);
   if (ridersError) throw new Error(`riders load: ${ridersError.message}`);
