@@ -3,6 +3,8 @@
 // SIGNING_FEE_RATE) kalibreres i sim-harness (academyEconomySimulation.js) og
 // godkendes af ejer før flag-flip — placeholders her er sim-startpunkter.
 
+import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
+
 export const ACADEMY = Object.freeze({
   FLAG_KEY: "academy_enabled",
   SLOTS: 8,                 // pladser pr. akademi (hård cap)
@@ -35,14 +37,6 @@ export function youthMultiplier(age) {
   return ACADEMY.YOUTH_MULT - (ACADEMY.YOUTH_MULT - 1.0) * t;
 }
 
-export async function isAcademyEnabled(supabase) {
-  if (!supabase?.from) return false;
-  try {
-    const { data, error } = await supabase
-      .from("app_config").select("value").eq("key", ACADEMY.FLAG_KEY).maybeSingle();
-    if (error) return false;
-    return data?.value === true;
-  } catch {
-    return false;
-  }
+export async function isAcademyEnabled(supabase, opts = {}) {
+  return evaluateFlagStage(await readFlagStage(supabase, ACADEMY.FLAG_KEY), opts);
 }

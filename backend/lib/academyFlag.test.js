@@ -29,3 +29,10 @@ test("isAcademyEnabled: fail-safe false ved fejl/fravær", async () => {
   const onClient = { from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { value: true }, error: null }) }) }) }) };
   assert.equal(await isAcademyEnabled(onClient), true);
 });
+
+test("isAcademyEnabled: beta-stage kun for beta-testere", async () => {
+  const betaClient = { from: () => ({ select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { value: "beta" }, error: null }) }) }) }) };
+  assert.equal(await isAcademyEnabled(betaClient, { isBetaTester: true }), true);
+  assert.equal(await isAcademyEnabled(betaClient, { isBetaTester: false }), false);
+  assert.equal(await isAcademyEnabled(betaClient), false);
+});

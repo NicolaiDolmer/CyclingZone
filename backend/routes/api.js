@@ -111,7 +111,8 @@ import { buildTeamTransferHistory } from "../lib/teamTransferHistory.js";
 import { buildRiderBidTimeline } from "../lib/riderBidTimeline.js";
 import { SCOUTING_CONFIG, deriveScoutState, canScout, buildScoutEstimate, estimatePotentialRange } from "../lib/scouting.js";
 import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity } from "../lib/training.js";
-import { isDailyTrainingEnabled } from "../lib/dailyTrainingFlag.js";
+import { isDailyTrainingEnabled, DAILY_TRAINING_FLAG_KEY } from "../lib/dailyTrainingFlag.js";
+import { readFlagStage, evaluateFlagStage } from "../lib/featureStage.js";
 import { runTeamTrainingDay } from "../lib/dailyTrainingEngine.js";
 import { refreshChangedRiderValues } from "../lib/riderValueRefresh.js";
 import { validateSelection, saveSelection, getSelectionContext } from "../lib/raceSelection.js";
@@ -120,6 +121,7 @@ import { injuryRisk } from "../lib/riderCondition.js";
 import { resolveProgram } from "../lib/dailyTraining.js";
 import { copenhagenDateString } from "../lib/copenhagenTime.js";
 import { ACADEMY, isAcademyEnabled } from "../lib/academyFlag.js";
+import { buildFictionalPopulationPreview } from "../lib/fictionalPopulationPreview.js";
 import {
   getTeamAcademyCount,
   signAcademyCandidate,
@@ -318,6 +320,15 @@ try {
   VALUATION_MODEL = null;
 }
 
+let RIDER_TYPES_BASELINE = null;
+try {
+  RIDER_TYPES_BASELINE = JSON.parse(
+    readFileSync(join(__dirname, "../lib/riderTypesBaseline.json"), "utf8")
+  );
+} catch {
+  RIDER_TYPES_BASELINE = null;
+}
+
 // Log to public activity feed
 async function logActivity(type, data = {}) {
   try {
@@ -508,6 +519,19 @@ async function isViewerAdmin(req) {
     .eq("id", req.user.id)
     .single();
   return u?.role === "admin";
+}
+
+// Beta-status for den aktuelle viewer (admin ELLER users.is_beta_tester). Bruges
+// til at gate beta-funktioner per-bruger uden at eksponere dem for alle. Spejler
+// isViewerAdmin. Ét opslag pr. request — beregn én gang og send til flag-kald.
+async function isViewerBetaTester(req) {
+  if (!req.user?.id) return false;
+  const { data: u } = await supabase
+    .from("users")
+    .select("role, is_beta_tester")
+    .eq("id", req.user.id)
+    .single();
+  return u?.role === "admin" || u?.is_beta_tester === true;
 }
 
 // ── Auction config helper ─────────────────────────────────────────────────────
@@ -1026,10 +1050,12 @@ router.get("/training/me", requireAuth, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
     const teamId = req.team.id;
-    const [{ activeSeasonId, state }, enabled] = await Promise.all([
+    const [{ activeSeasonId, state }, isBetaTester, stage] = await Promise.all([
       loadTrainingState(teamId),
-      isDailyTrainingEnabled(supabase),
+      isViewerBetaTester(req),
+      readFlagStage(supabase, DAILY_TRAINING_FLAG_KEY),
     ]);
+    const enabled = evaluateFlagStage(stage, { isBetaTester });
 
     // Hent ryttere for holdet (ikke-pensionerede) for at bygge condition/progress maps.
     const { data: riders } = await supabase
@@ -1087,7 +1113,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
       progress[row.rider_id] = row.ability_progress ?? {};
     }
 
-    res.json({ ...state, teamId, enabled, todayRun, condition, progress });
+    res.json({ ...state, teamId, enabled, betaTester: isBetaTester, todayRun, condition, progress });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1157,7 +1183,8 @@ router.delete("/training/:riderId", requireAuth, marketWriteLimiter, async (req,
 router.post("/training/run-today", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
-    const enabled = await isDailyTrainingEnabled(supabase);
+    const isBetaTester = await isViewerBetaTester(req);
+    const enabled = await isDailyTrainingEnabled(supabase, { isBetaTester });
     if (!enabled) return res.status(409).json({ error: "daily_training_disabled" });
 
     const { activeSeasonId, activeSeasonNumber } = await loadTrainingState(req.team.id);
@@ -1193,7 +1220,8 @@ router.post("/training/run-today", requireAuth, marketWriteLimiter, async (req, 
 router.get("/races/:raceId/selection", requireAuth, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
-    const enabled = await isRaceEngineV2Enabled(supabase);
+    const isBetaTester = await isViewerBetaTester(req);
+    const enabled = await isRaceEngineV2Enabled(supabase, { isBetaTester });
     const { data: race, error } = await supabase
       .from("races")
       .select("id, name, race_type, race_class, stages, status, season_id")
@@ -1215,7 +1243,8 @@ router.get("/races/:raceId/selection", requireAuth, async (req, res) => {
 router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
-    const enabled = await isRaceEngineV2Enabled(supabase);
+    const isBetaTester = await isViewerBetaTester(req);
+    const enabled = await isRaceEngineV2Enabled(supabase, { isBetaTester });
     if (!enabled) return res.status(409).json({ error: "selection_flag_disabled" });
 
     const { data: race, error } = await supabase
@@ -3826,6 +3855,28 @@ router.get("/admin/rider-valuation-preview", requireAdmin, async (req, res) => {
     distribution,
     riders: rows,
   });
+});
+
+// GET /api/admin/fictional-rider-preview — read-only preview af de 800 fiktive
+// relaunch-ryttere kørt gennem hele værdi-kæden. Rører INTET i DB. (#1364-enabler)
+router.get("/admin/fictional-rider-preview", requireAdmin, async (req, res) => {
+  if (!VALUATION_MODEL) return res.status(503).json({ error: "Valuation model not fitted yet" });
+  try {
+    const { riders } = buildFictionalPopulationPreview({
+      baseline: RIDER_TYPES_BASELINE,
+      model: VALUATION_MODEL,
+    });
+    const values = riders.map((r) => r.base_value).sort((a, b) => a - b);
+    const pctile = (p) => (values.length ? values[Math.min(values.length - 1, Math.floor(p * values.length))] : null);
+    res.json({
+      count: riders.length,
+      distribution: { p10: pctile(0.1), median: pctile(0.5), p90: pctile(0.9), max: values.length ? values[values.length - 1] : null },
+      riders,
+    });
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // POST /api/admin/auctions/:id/cancel — annuller aktiv auktion
@@ -7932,7 +7983,8 @@ router.post("/admin/beta/full-reset", requireAdmin, adminWriteLimiter, async (re
 router.get("/academy/me", requireAuth, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
-    const enabled = await isAcademyEnabled(supabase);
+    const isBetaTester = await isViewerBetaTester(req);
+    const enabled = await isAcademyEnabled(supabase, { isBetaTester });
     if (!enabled) return res.status(409).json({ error: "academy_disabled" });
 
     const teamId = req.team.id;
@@ -8060,7 +8112,8 @@ router.get("/academy/me", requireAuth, async (req, res) => {
 router.post("/academy/sign", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
-    const enabled = await isAcademyEnabled(supabase);
+    const isBetaTester = await isViewerBetaTester(req);
+    const enabled = await isAcademyEnabled(supabase, { isBetaTester });
     if (!enabled) return res.status(409).json({ error: "academy_disabled" });
 
     const { riderId } = req.body || {};
@@ -8095,7 +8148,8 @@ router.post("/academy/sign", requireAuth, marketWriteLimiter, async (req, res) =
 router.post("/academy/reject", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
-    const enabled = await isAcademyEnabled(supabase);
+    const isBetaTester = await isViewerBetaTester(req);
+    const enabled = await isAcademyEnabled(supabase, { isBetaTester });
     if (!enabled) return res.status(409).json({ error: "academy_disabled" });
 
     const { riderId } = req.body || {};
@@ -8120,7 +8174,8 @@ router.post("/academy/reject", requireAuth, marketWriteLimiter, async (req, res)
 router.post("/academy/free-agent/sign", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
-    const enabled = await isAcademyEnabled(supabase);
+    const isBetaTester = await isViewerBetaTester(req);
+    const enabled = await isAcademyEnabled(supabase, { isBetaTester });
     if (!enabled) return res.status(409).json({ error: "academy_disabled" });
 
     const { riderId } = req.body || {};

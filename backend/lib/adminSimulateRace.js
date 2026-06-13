@@ -19,7 +19,8 @@ function httpError(status, message) {
 }
 
 export async function getRaceEngineStatus({ supabase }) {
-  const enabled = await isRaceEngineV2Enabled(supabase);
+  // Admin-only sti (requireAdmin): admins er implicit beta → beta-stage tæller som ON.
+  const enabled = await isRaceEngineV2Enabled(supabase, { isBetaTester: true });
 
   const { data: season } = await supabase
     .from("seasons")
@@ -104,7 +105,7 @@ export async function runAdminSimulateRace({
   }
 
   if (!dryRun) {
-    const enabled = await isRaceEngineV2Enabled(supabase);
+    const enabled = await isRaceEngineV2Enabled(supabase, { isBetaTester: true });
     if (!enabled) {
       throw httpError(
         409,
