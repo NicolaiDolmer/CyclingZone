@@ -10,6 +10,14 @@ export function getRiderMarketValue(rider = {}) {
   return base + (Number(rider?.prize_earnings_bonus) || 0);
 }
 
+// #1309: frossen kontrakt-løn hvis sat; ellers estimat (10% af market_value) til
+// VISNING af free agents. Spejler backend's resolveRiderSalary i marketUtils.js.
+// salary:0 er en gyldig (gratis) kontrakt og bevares som 0.
+export function getRiderSalary(rider = {}) {
+  if (rider && rider.salary != null) return Number(rider.salary);
+  return Math.max(1, Math.round(getRiderMarketValue(rider) * 0.10));
+}
+
 export function formatCz(value) {
   if (value == null || Number.isNaN(Number(value))) return "-";
   return `${formatNumber(Number(value))} CZ$`;

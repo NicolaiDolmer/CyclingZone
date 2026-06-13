@@ -14,7 +14,7 @@ Last reviewed: 2026-06-12. GitHub issues are the source of truth for active work
 
 - **Core manager loop:** Supabase auth, manager/team setup, rider database, profiles, comparison, watchlist, notifications, and DA/EN localization. Finance legacy rows and Deadline Day countdown/warnings are locale-aware (#1352/#1353).
 - **Market:** auctions with proxy bidding and finalization, direct transfers, swaps, transfer listings, and rider loans. Confirmed closed-window transfers are queued for the next window.
-- **Squad and riders:** squad limits, contracts/salaries, dynamic market values, rider abilities, potential, retirement state, and rider popularity tracking.
+- **Squad and riders:** squad limits, dynamic market values, rider abilities, potential, retirement state, and rider popularity tracking. **Rider contracts (#1309):** `riders.salary` is now frozen at signing (no longer a generated column); `contract_length` (1-3 seasons) and `contract_end_season` are set at acquisition and carried unchanged on trade. Owned riders always have a contract; free agents show an estimated salary until signed. Contract flows (renewal, expiry-to-auction, release, re-signing formula) are fast-follow in the market package (#1310).
 - **Economy:** 800K initial balance, 240K season-one sponsor, variable sponsor from season two, salary/interest/payroll processing, loans, finance ledger, forecast, and risk tiers.
 - **Season and competition:** season lifecycle, race catalogue/import, standings, prize payouts, board goals, season snapshots, and admin transition tooling.
 - **Operations:** Sentry/Clarity instrumentation, player events, admin tools, migration automation, CI guards, and reproducible race-engine calibration gates.
@@ -40,8 +40,9 @@ Last reviewed: 2026-06-12. GitHub issues are the source of truth for active work
 ## Deferred or not yet live
 
 - Full race-engine depth from [#676](https://github.com/NicolaiDolmer/CyclingZone/issues/676), including richer tactics and breakaway behavior.
-- Academy MVP [#1308](https://github.com/NicolaiDolmer/CyclingZone/issues/1308) and contract data seed [#1309](https://github.com/NicolaiDolmer/CyclingZone/issues/1309).
-- Market follow-up package [#1310](https://github.com/NicolaiDolmer/CyclingZone/issues/1310) and season recaps [#1311](https://github.com/NicolaiDolmer/CyclingZone/issues/1311).
+- Academy MVP [#1308](https://github.com/NicolaiDolmer/CyclingZone/issues/1308).
+- Contract flows (renewal, expiry-to-auction, release, re-signing salary formula): market package [#1310](https://github.com/NicolaiDolmer/CyclingZone/issues/1310).
+- Season recaps [#1311](https://github.com/NicolaiDolmer/CyclingZone/issues/1311).
 - Hall of Fame and manager XP/login-streak power effects are planned for reduction under [#1139](https://github.com/NicolaiDolmer/CyclingZone/issues/1139).
 - Admin economy dashboard phase-B conveniences remain deferred; see the [07e archive](archive/feature-status-slice-07e.md).
 
@@ -63,7 +64,7 @@ Snapshot: 2026-06-12. Ordered by priority, then recency among open `type:bug` is
 ## Next-up pipeline
 
 1. Ship team selection, captain, and breakaway controls: [#1307](https://github.com/NicolaiDolmer/CyclingZone/issues/1307).
-2. Ship contract data seed as part of relaunch orchestration: [#1309](https://github.com/NicolaiDolmer/CyclingZone/issues/1309) and [#1103](https://github.com/NicolaiDolmer/CyclingZone/issues/1103).
+2. Contract data seed delivered (#1309). Contract flows (renewal, expiry, release) are fast-follow in [#1310](https://github.com/NicolaiDolmer/CyclingZone/issues/1310).
 3. Complete academy MVP: [#1308](https://github.com/NicolaiDolmer/CyclingZone/issues/1308).
 4. Finish relaunch verification and flag activation for the 2026-06-20 target: [#1105](https://github.com/NicolaiDolmer/CyclingZone/issues/1105).
 5. Continue the market and recap fast-follow work after the relaunch-critical path: [#1310](https://github.com/NicolaiDolmer/CyclingZone/issues/1310) and [#1311](https://github.com/NicolaiDolmer/CyclingZone/issues/1311).

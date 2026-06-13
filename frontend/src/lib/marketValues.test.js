@@ -4,6 +4,7 @@ import i18n from "i18next";
 import {
   formatCz,
   getRiderMarketValue,
+  getRiderSalary,
 } from "./marketValues.js";
 
 async function setLanguage(language) {
@@ -56,4 +57,23 @@ test("getRiderMarketValue — base_value + bonus som fallback", () => {
 
 test("getRiderMarketValue — uci_points indgår aldrig", () => {
   assert.equal(getRiderMarketValue({ uci_points: 500 }), 1000);
+});
+
+// #1309: frossen kontrakt-løn vinder; ellers estimat (10% af market_value).
+test("getRiderSalary — frossen salary vinder over estimat", () => {
+  assert.equal(getRiderSalary({ salary: 12345, base_value: 1000000 }), 12345);
+});
+
+test("getRiderSalary — NULL salary → 10% af market_value", () => {
+  assert.equal(getRiderSalary({ salary: null, market_value: 500000 }), 50000);
+  assert.equal(getRiderSalary({ salary: null, base_value: 50000, prize_earnings_bonus: 5000 }), 5500);
+});
+
+test("getRiderSalary — salary 0 bevares (gratis kontrakt)", () => {
+  assert.equal(getRiderSalary({ salary: 0, base_value: 1000000 }), 0);
+});
+
+test("getRiderSalary — NULL salary + NULL base_value → fallback 1000 → 100", () => {
+  assert.equal(getRiderSalary({ salary: null, base_value: null }), 100);
+  assert.equal(getRiderSalary({}), 100);
 });

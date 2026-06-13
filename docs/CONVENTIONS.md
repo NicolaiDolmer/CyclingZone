@@ -156,12 +156,5 @@ Listen skal holdes lille og audit-godkendt; ukendte navne må ikke gættes.
 der genberegnes automatisk. Re-import med nyt UCI-CSV overskriver `uci_points` for alle
 matchede ryttere — SQL-migrationer er midlertidige patches, erstattes ved re-import.
 
-### ⚠️ Invariant — pris og løn opdateres ALTID sammen
-`salary` er IKKE en generated column. Enhver ændring af `uci_points` SKAL efterfølges af:
-```sql
-SET salary = uci_points * 400
-```
-Formlen: `salary = price × SALARY_RATE = uci_points × 4000 × 0.10 = uci_points × 400`
-
-Gælder ved: SQL-migrationer, import-script, admin-override, UCI-sync og enhver direkte DB-ændring.
-`recalculateRiderSalaries.js` håndterer dette automatisk efter GitHub Actions UCI-sync.
+### ⚠️ Invariant — løn er FROSSEN ved signering (#1309, 2026-06-13)
+`salary` er IKKE en generated column og beregnes IKKE automatisk. Den skrives én gang ved erhvervelse (auktion-win, transfer-accept, seed) som `max(1, round(market_value × 0.10))` og ændres ikke bagefter — heller ikke ved UCI-sync eller sæsonslut-opdateringer. Free agents har NULL salary (UI estimerer). Se `docs/GAME_INVARIANTS.md` for fuld kontrakt-invariant.

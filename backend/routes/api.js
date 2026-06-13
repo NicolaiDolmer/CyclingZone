@@ -98,6 +98,7 @@ import {
   getBotToken,
 } from "../lib/discordNotifier.js";
 import { getPendingInboxItems } from "../lib/inboxPending.js";
+import { contractOnAcquirePatch } from "../lib/contractSeed.js";
 import {
   getLoanAgreementAcceptedStatus,
   getLoanBuyoutRiderUpdate,
@@ -2222,14 +2223,14 @@ router.get("/transfers/my-offers", requireAuth, async (req, res) => {
   const [sentRes, receivedRes] = await Promise.all([
     supabase.from("transfer_offers")
       .select(`id, offer_amount, counter_amount, status, round, message, buyer_confirmed, seller_confirmed, created_at, updated_at,
-        rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, nationality_code, stat_bj, stat_sp, stat_tt, stat_fl),
+        rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, nationality_code, salary, contract_length, contract_end_season, stat_bj, stat_sp, stat_tt, stat_fl),
         seller:seller_team_id(id, name)`)
       .eq("buyer_team_id", req.team.id)
       .is("buyer_archived_at", null)
       .order("updated_at", { ascending: false }),
     supabase.from("transfer_offers")
       .select(`id, offer_amount, counter_amount, status, round, message, buyer_confirmed, seller_confirmed, created_at, updated_at,
-        rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, nationality_code, stat_bj, stat_sp, stat_tt, stat_fl),
+        rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, nationality_code, salary, contract_length, contract_end_season, stat_bj, stat_sp, stat_tt, stat_fl),
         buyer:buyer_team_id(id, name)`)
       .eq("seller_team_id", req.team.id)
       .is("seller_archived_at", null)
@@ -2238,14 +2239,14 @@ router.get("/transfers/my-offers", requireAuth, async (req, res) => {
   const [archivedSentRes, archivedReceivedRes] = await Promise.all([
     supabase.from("transfer_offers")
       .select(`id, offer_amount, counter_amount, status, round, message, buyer_confirmed, seller_confirmed, created_at, updated_at,
-        rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, nationality_code, stat_bj, stat_sp, stat_tt, stat_fl),
+        rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, nationality_code, salary, contract_length, contract_end_season, stat_bj, stat_sp, stat_tt, stat_fl),
         seller:seller_team_id(id, name)`)
       .eq("buyer_team_id", req.team.id)
       .not("buyer_archived_at", "is", null)
       .order("buyer_archived_at", { ascending: false }),
     supabase.from("transfer_offers")
       .select(`id, offer_amount, counter_amount, status, round, message, buyer_confirmed, seller_confirmed, created_at, updated_at,
-        rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, nationality_code, stat_bj, stat_sp, stat_tt, stat_fl),
+        rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, nationality_code, salary, contract_length, contract_end_season, stat_bj, stat_sp, stat_tt, stat_fl),
         buyer:buyer_team_id(id, name)`)
       .eq("seller_team_id", req.team.id)
       .not("seller_archived_at", "is", null)
@@ -2902,7 +2903,9 @@ router.patch("/loans/:id", requireAuth, marketWriteLimiter, async (req, res) => 
 
   const { data: loan } = await supabase
     .from("loan_agreements")
-    .select(`*, rider:rider_id(id, firstname, lastname, team_id)`)
+    // #1309: salary/base_value/prize_earnings_bonus med så buyout's contract-on-
+    // acquire kan afgøre create-if-missing vs. inherit-if-present.
+    .select(`*, rider:rider_id(id, firstname, lastname, team_id, salary, base_value, prize_earnings_bonus)`)
     .eq("id", req.params.id).single();
   if (!loan) return res.status(404).json({ error: "Lejeaftale ikke fundet", errorCode: "loan_not_found" });
 
@@ -3051,8 +3054,21 @@ router.patch("/loans/:id", requireAuth, marketWriteLimiter, async (req, res) => 
     // debiting. Open window → ownership moves now; closed → pending_team_id parks
     // (status "buyout_pending", flushed at window-open).
     const boughtAt = new Date().toISOString();
+    // #1309 kontrakt-on-acquire: lejeren erhverver rytteren permanent via
+    // købsoption → opret standard-kontrakt hvis kontraktløs (salary == null);
+    // ellers arves den uændret. Skrives både ved åbent vindue (team_id nu) og
+    // lukket vindue (pending_team_id parkeres), fordi den generiske pending-flush
+    // ved vindue-åbning kun flytter team_id og IKKE rører kontraktfelterne.
+    // Slå aktiv sæson op ÉN gang: number → contract_end_season, id → season_id-stamp.
+    const { data: buyoutSeason } = await supabase.from("seasons").select("id, number").eq("status", "active").maybeSingle();
+    const buyoutSeasonId = buyoutSeason?.id ?? null;
+    const buyoutSeasonNumber = buyoutSeason?.number ?? 1;
+    const buyoutContractPatch = contractOnAcquirePatch(loan.rider, buyoutSeasonNumber);
     const { data: claimedRider, error: claimErr } = await supabase.from("riders")
-      .update(getLoanBuyoutRiderUpdate({ windowOpen: open, borrowerTeamId: req.team.id, timestamp: boughtAt }))
+      .update({
+        ...getLoanBuyoutRiderUpdate({ windowOpen: open, borrowerTeamId: req.team.id, timestamp: boughtAt }),
+        ...buyoutContractPatch,
+      })
       .eq("id", loan.rider_id)
       .eq("team_id", loan.from_team_id)
       .is("pending_team_id", null)
@@ -3063,9 +3079,7 @@ router.patch("/loans/:id", requireAuth, marketWriteLimiter, async (req, res) => 
 
     // Slice 07c: balance + finance_transactions atomic via RPC.
     // 07d Fase B / #240: borrower aktiverer købsoption → req.user.id = køber.
-    // season_id sættes eksplicit fra activeSeason.
-    const { data: buyoutSeason } = await supabase.from("seasons").select("id").eq("status", "active").maybeSingle();
-    const buyoutSeasonId = buyoutSeason?.id ?? null;
+    // season_id sættes eksplicit fra activeSeason (slået op ovenfor).
     await incrementBalanceWithAudit(supabase, {
       teamId: req.team.id,
       delta: -price,
@@ -3119,10 +3133,17 @@ router.patch("/loans/:id", requireAuth, marketWriteLimiter, async (req, res) => 
 router.post("/admin/override-rider", requireAdmin, adminWriteLimiter, async (req, res) => {
   const { rider_id, team_id } = req.body;
   if (!rider_id) return res.status(400).json({ error: "rider_id required" });
-  const { data: rider } = await supabase.from("riders").select("firstname, lastname").eq("id", rider_id).single();
+  const { data: rider } = await supabase.from("riders").select("firstname, lastname, salary, base_value, prize_earnings_bonus").eq("id", rider_id).single();
   if (!rider) return res.status(404).json({ error: "Rytter ikke fundet" });
+  // #1309: kontrakt-on-acquire — ved admin-tildeling til et hold sættes kontrakt
+  // hvis rytteren er kontraktløs (salary=null), så invarianten "ejede har altid løn" holdes.
+  let contractPatch = {};
+  if (team_id) {
+    const { data: activeSeason } = await supabase.from("seasons").select("number").eq("status", "active").maybeSingle();
+    contractPatch = contractOnAcquirePatch(rider, activeSeason?.number ?? 1);
+  }
   const { error } = await supabase.from("riders")
-    .update({ team_id: team_id || null, pending_team_id: null, acquired_at: team_id ? new Date().toISOString() : null }).eq("id", rider_id);
+    .update({ team_id: team_id || null, pending_team_id: null, acquired_at: team_id ? new Date().toISOString() : null, ...contractPatch }).eq("id", rider_id);
   if (error) return res.status(500).json({ error: error.message });
   const teamRes = team_id ? await supabase.from("teams").select("name").eq("id", team_id).single() : null;
   const teamName = teamRes?.data?.name || "fri agent";

@@ -16,7 +16,7 @@ import RiderBadges from "../components/rider/RiderBadges";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge";
 import TeamCell from "../components/rider/TeamCell";
 import { ageBadgeKey } from "../lib/riderAge";
-import { getRiderMarketValue } from "../lib/marketValues";
+import { getRiderMarketValue, getRiderSalary } from "../lib/marketValues.js";
 import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
 import { useScouting } from "../lib/useScouting";
 import RidersEmptyState from "../components/RidersEmptyState";
@@ -123,7 +123,7 @@ function RiderRow({ rider, statCols, onSelect, watchlist, onToggleWatchlist, isI
       </td>
       <td className="px-3 py-2.5 text-right">
         <span className="text-cz-2 font-mono text-sm">
-          {rider.salary ? formatNumber(rider.salary) : "-"}
+          {formatNumber(getRiderSalary(rider))}
         </span>
       </td>
       <td className="px-3 py-2.5">

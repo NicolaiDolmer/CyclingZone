@@ -10,7 +10,7 @@ import RiderBadges from "../components/rider/RiderBadges";
 import TeamCell from "../components/rider/TeamCell";
 import { ageBadgeKey } from "../lib/riderAge";
 import { statStyle } from "../lib/statColor";
-import { formatCz, getRiderMarketValue } from "../lib/marketValues";
+import { formatCz, getRiderMarketValue, getRiderSalary } from "../lib/marketValues.js";
 import { formatNumber } from "../lib/intl";
 import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
 import { useScouting } from "../lib/useScouting";
@@ -261,7 +261,7 @@ export default function WatchlistPage() {
                           {formatCz(getRiderMarketValue(r)).replace(" CZ$", "")}
                         </td>
                         <td className="px-3 py-2.5 text-right text-cz-2 font-mono">
-                          {r.salary ? formatNumber(r.salary) : "—"}
+                          {formatNumber(getRiderSalary(r))}
                         </td>
                         <td className="px-3 py-2.5">
                           <ScoutablePotentiale rider={r} scouting={scouting} />

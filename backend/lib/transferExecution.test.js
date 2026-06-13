@@ -606,3 +606,109 @@ test("#19: confirmSwapOffer parkerer begge ryttere når vinduet er lukket", asyn
   assert.equal(db.riders.find((r) => r.id === "req-rider").team_id, "buyer");
   assert.equal(db.swap_offers[0].status, "window_pending");
 });
+
+// ── #1309 kontrakt-on-acquire (transfer + swap) ──────────────────────────────
+
+// Kontraktløs rytter (salary == null) der erhverves via transfer → standard-
+// kontrakt oprettes i samme rider-update som ejerskabsskiftet.
+test("#1309: confirmTransferOffer opretter standard-kontrakt for kontraktløs rytter", async () => {
+  const db = baseDb({ windowStatus: "open" });
+  // Erstat rider-1 med en kontraktløs free-agent-lignende rytter (salary null).
+  const rider = db.riders.find((r) => r.id === "rider-1");
+  rider.salary = null;
+  rider.base_value = 1_000_000;
+  rider.prize_earnings_bonus = 0;
+  rider.contract_length = null;
+  rider.contract_end_season = null;
+  db.transfer_offers.push({
+    id: "offer-c1", rider_id: "rider-1", seller_team_id: "seller", buyer_team_id: "buyer",
+    offer_amount: 200, counter_amount: null, status: "awaiting_confirmation",
+    buyer_confirmed: false, seller_confirmed: true,
+  });
+  const supabase = makeSupabase(db);
+
+  const result = await confirmTransferOffer({
+    supabase, offerId: "offer-c1", confirmingTeamId: "buyer", notifyTeamOwner: async () => {},
+  });
+
+  assert.equal(result.action, "accepted");
+  const moved = db.riders.find((r) => r.id === "rider-1");
+  assert.equal(moved.team_id, "buyer");
+  assert.equal(moved.salary, 100_000, "salary = 10% af base_value 1_000_000");
+  assert.equal(moved.contract_length, 2);
+  assert.equal(moved.contract_end_season, 2, "aktiv sæson 1 + 2 - 1");
+});
+
+// Rytter MED kontrakt (salary != null) → ejerskab skifter, men kontrakten arves
+// UÆNDRET (salary/contract_length/contract_end_season røres ikke).
+test("#1309: confirmTransferOffer arver eksisterende kontrakt uændret", async () => {
+  const db = baseDb({ windowStatus: "open" });
+  const rider = db.riders.find((r) => r.id === "rider-1");
+  rider.salary = 42_000; // eksisterende kontrakt
+  rider.base_value = 1_000_000;
+  rider.prize_earnings_bonus = 0;
+  rider.contract_length = 3;
+  rider.contract_end_season = 4;
+  db.transfer_offers.push({
+    id: "offer-c2", rider_id: "rider-1", seller_team_id: "seller", buyer_team_id: "buyer",
+    offer_amount: 200, counter_amount: null, status: "awaiting_confirmation",
+    buyer_confirmed: false, seller_confirmed: true,
+  });
+  const supabase = makeSupabase(db);
+
+  const result = await confirmTransferOffer({
+    supabase, offerId: "offer-c2", confirmingTeamId: "buyer", notifyTeamOwner: async () => {},
+  });
+
+  assert.equal(result.action, "accepted");
+  const moved = db.riders.find((r) => r.id === "rider-1");
+  assert.equal(moved.team_id, "buyer", "ejerskab skifter");
+  // Kontrakt UÆNDRET — aldrig regenereret.
+  assert.equal(moved.salary, 42_000);
+  assert.equal(moved.contract_length, 3);
+  assert.equal(moved.contract_end_season, 4);
+});
+
+// Swap: en kontraktløs rytter får kontrakt ved erhvervelse; en rytter med
+// kontrakt arver uændret.
+test("#1309: confirmSwapOffer create-if-missing / inherit-if-present pr. rytter", async () => {
+  const db = baseDb({ windowStatus: "open" });
+  // Modtager-hold (buyer) skal kunne afgive en rytter.
+  for (let i = 0; i < 9; i++) {
+    db.riders.push({ id: `r-rider-${i}`, firstname: "R", lastname: `${i}`, team_id: "buyer", pending_team_id: null, salary: 10 });
+  }
+  // offered (rider-1) = kontraktløs; requested (req-rider) = har kontrakt.
+  const offered = db.riders.find((r) => r.id === "rider-1");
+  offered.salary = null;
+  offered.base_value = 500_000;
+  offered.prize_earnings_bonus = 0;
+  db.riders.push({
+    id: "req-rider", firstname: "Req", lastname: "Star", team_id: "buyer", pending_team_id: null,
+    salary: 7_500, base_value: 999_999, prize_earnings_bonus: 0, contract_length: 1, contract_end_season: 1,
+  });
+  db.swap_offers.push({
+    id: "swap-c1", offered_rider_id: "rider-1", requested_rider_id: "req-rider",
+    proposing_team_id: "seller", receiving_team_id: "buyer",
+    cash_adjustment: 0, counter_cash: null, status: "awaiting_confirmation",
+    proposing_confirmed: true, receiving_confirmed: false,
+  });
+  const supabase = makeSupabase(db);
+
+  const result = await confirmSwapOffer({
+    supabase, swapId: "swap-c1", confirmingTeamId: "buyer", notifyTeamOwner: async () => {},
+  });
+
+  assert.equal(result.action, "accepted");
+  // offered (kontraktløs) → ny kontrakt, nu på buyer
+  const movedOffered = db.riders.find((r) => r.id === "rider-1");
+  assert.equal(movedOffered.team_id, "buyer");
+  assert.equal(movedOffered.salary, 50_000, "10% af 500_000");
+  assert.equal(movedOffered.contract_length, 2);
+  assert.equal(movedOffered.contract_end_season, 2);
+  // requested (har kontrakt) → uændret, nu på seller
+  const movedRequested = db.riders.find((r) => r.id === "req-rider");
+  assert.equal(movedRequested.team_id, "seller");
+  assert.equal(movedRequested.salary, 7_500);
+  assert.equal(movedRequested.contract_length, 1);
+  assert.equal(movedRequested.contract_end_season, 1);
+});

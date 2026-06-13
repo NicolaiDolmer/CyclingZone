@@ -5,7 +5,7 @@ import { lazyWithRetry } from "../lib/lazyWithRetry.js";
 import { supabase } from "../lib/supabase";
 import { getCountryName } from "../lib/countryUtils";
 import { Flag } from "../components/Flag";
-import { formatCz, getRiderMarketValue } from "../lib/marketValues";
+import { formatCz, getRiderMarketValue, getRiderSalary } from "../lib/marketValues.js";
 import { statColor } from "../lib/statColor";
 import { formatNumber, formatDate, formatDateTime } from "../lib/intl";
 import { resolveApiError } from "../lib/apiError";
@@ -1090,7 +1090,7 @@ export default function RiderStatsPage() {
       // column-privilege-migrationen (potentiale er server-skjult; klienter får
       // kun det maskerede estimat via POST /api/scouting/estimates).
       supabase.from("riders").select(`id, pcm_id, firstname, lastname, birthdate, height, weight,
-        market_value, base_value, prize_earnings_bonus, salary, is_u25, is_retired, pending_team_id,
+        market_value, base_value, prize_earnings_bonus, salary, contract_length, contract_end_season, is_u25, is_retired, pending_team_id,
         nationality_code, primary_type, secondary_type, team_id, acquired_at,
         stat_fl, stat_bj, stat_kb, stat_bk, stat_tt, stat_prl, stat_bro, stat_sp,
         stat_acc, stat_ned, stat_udh, stat_mod, stat_res, stat_ftr,
@@ -1518,6 +1518,20 @@ export default function RiderStatsPage() {
               </p>
             )}
             {bestStat && <p className="text-cz-2 text-xs mt-2">{t("header.bestStat", { label: bestStat.label, value: rider[bestStat.key] })}</p>}
+            {/* #1309: kontrakt-info */}
+            <div className="mt-2 pt-2 border-t border-cz-border/50">
+              {rider.contract_length != null ? (
+                <>
+                  <p className="text-cz-accent-t font-mono font-semibold text-sm">{formatNumber(rider.salary)} <span className="text-cz-3 text-xs font-normal">{t("header.contractSalary")}</span></p>
+                  <p className="text-cz-3 text-xs mt-0.5">{t("header.contractLength", { count: rider.contract_length })} · {t("header.contractExpires", { season: rider.contract_end_season })}</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-cz-2 font-mono text-sm">{formatNumber(getRiderSalary(rider))} <span className="text-cz-3 text-xs font-normal">{t("header.estSalary")}</span></p>
+                  <p className="text-cz-3 text-xs mt-0.5">{t("header.noContract")}</p>
+                </>
+              )}
+            </div>
           </div>
         </div>
         {auctionError && (

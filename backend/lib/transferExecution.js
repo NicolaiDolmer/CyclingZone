@@ -11,6 +11,7 @@ import {
   TRANSFER_WINDOW_SOFT_CAP_BUFFER,
 } from "./marketUtils.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
+import { contractOnAcquirePatch } from "./contractSeed.js";
 import {
   FINANCE_ACTOR_TYPE,
   FINANCE_REASON,
@@ -56,6 +57,19 @@ async function fetchActiveSeasonId(supabase) {
     .limit(1)
     .maybeSingle();
   return data?.id ?? null;
+}
+
+// #1309 kontrakt-on-acquire: aktiv sæson-number til contract_end_season-beregning.
+// Default 1 hvis ingen aktiv sæson er registreret (edge-case).
+async function fetchActiveSeasonNumber(supabase) {
+  const { data } = await supabase
+    .from("seasons")
+    .select("number")
+    .eq("status", "active")
+    .order("number", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data?.number ?? 1;
 }
 
 function success(payload) {
@@ -320,10 +334,12 @@ function describeSwapIssue(issue, { offered, requested }) {
 // åbent) flytter team_id med det samme som hidtil.
 async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notifyTeamOwner = NOOP, notifyDiscordHistory = NOOP, auditCtx = null, deferRegistration = false }) {
   const price = getTransferPrice(offer);
+  // #1309: salary/base_value/prize_earnings_bonus med så contract-on-acquire kan
+  // afgøre create-if-missing vs. inherit-if-present.
   const rider = await expectSingle(
     supabase
       .from("riders")
-      .select("id, firstname, lastname, team_id, salary, prize_earnings_bonus")
+      .select("id, firstname, lastname, team_id, salary, base_value, prize_earnings_bonus")
       .eq("id", offer.rider_id)
   );
   const [buyerState, sellerState, buyerCommitment] = await Promise.all([
@@ -352,13 +368,19 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
     return failure(400, message.error, issue.code, message.errorParams ? { errorParams: message.errorParams } : {});
   }
 
+  // #1309 kontrakt-on-acquire: køber erhverver rytteren → opret standard-kontrakt
+  // hvis kontraktløs (salary == null); ellers arves den uændret. Skrives både ved
+  // parkering (lukket vindue) og direkte registrering (åbent vindue), fordi den
+  // generiske pending-flush ved vindue-åbning kun flytter team_id.
+  const transferContractPatch = contractOnAcquirePatch(rider, await fetchActiveSeasonNumber(supabase));
+
   // #19: parkér = sæt pending_team_id (kræver at rytteren ikke allerede er
   // reserveret til en anden handel); registrér = flyt team_id direkte.
   const movedRider = deferRegistration
     ? await expectMaybeSingle(
         supabase
           .from("riders")
-          .update({ pending_team_id: offer.buyer_team_id })
+          .update({ pending_team_id: offer.buyer_team_id, ...transferContractPatch })
           .eq("id", rider.id)
           .eq("team_id", offer.seller_team_id)
           .is("pending_team_id", null)
@@ -371,6 +393,7 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
             team_id: offer.buyer_team_id,
             pending_team_id: null,
             acquired_at: new Date().toISOString(),
+            ...transferContractPatch,
           })
           .eq("id", rider.id)
           .eq("team_id", offer.seller_team_id)
@@ -480,12 +503,14 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
 // pending_team_id; den generiske pending-flush registrerer dem ved vindue-åbning.
 async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notifyDiscordHistory = NOOP, auditCtx = null, deferRegistration = false }) {
   const cash = getSwapCash(swap);
+  // #1309: salary/base_value/prize_earnings_bonus med så contract-on-acquire kan
+  // afgøre create-if-missing vs. inherit-if-present for BEGGE ryttere.
   const [offered, requested] = await Promise.all([
     expectSingle(
-      supabase.from("riders").select("id, firstname, lastname, team_id").eq("id", swap.offered_rider_id)
+      supabase.from("riders").select("id, firstname, lastname, team_id, salary, base_value, prize_earnings_bonus").eq("id", swap.offered_rider_id)
     ),
     expectSingle(
-      supabase.from("riders").select("id, firstname, lastname, team_id").eq("id", swap.requested_rider_id)
+      supabase.from("riders").select("id, firstname, lastname, team_id, salary, base_value, prize_earnings_bonus").eq("id", swap.requested_rider_id)
     ),
   ]);
   const [proposingState, receivingState, proposingCommitment, receivingCommitment] = await Promise.all([
@@ -515,13 +540,22 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
   }
 
   const swapTimestamp = new Date().toISOString();
+  // #1309 kontrakt-on-acquire: hver rytter erhverves af modparten → opret
+  // standard-kontrakt hvis kontraktløs; ellers arves den uændret. Ejede swap-
+  // ryttere har normalt allerede en kontrakt (→ {}), men patchen er korrekt og
+  // sikker for et evt. kontraktløst tilfælde. Skrives både ved parkering og
+  // direkte registrering (pending-flush flytter kun team_id).
+  const swapSeasonNumber = await fetchActiveSeasonNumber(supabase);
+  const offeredContractPatch = contractOnAcquirePatch(offered, swapSeasonNumber);
+  const requestedContractPatch = contractOnAcquirePatch(requested, swapSeasonNumber);
+
   // #19: parkér = sæt pending_team_id på begge ryttere (kræver at ingen af dem
   // allerede er reserveret til en anden handel); registrér = flyt team_id direkte.
   const movedOffered = deferRegistration
     ? await expectMaybeSingle(
         supabase
           .from("riders")
-          .update({ pending_team_id: swap.receiving_team_id })
+          .update({ pending_team_id: swap.receiving_team_id, ...offeredContractPatch })
           .eq("id", offered.id)
           .eq("team_id", swap.proposing_team_id)
           .is("pending_team_id", null)
@@ -530,7 +564,7 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
     : await expectMaybeSingle(
         supabase
           .from("riders")
-          .update({ team_id: swap.receiving_team_id, pending_team_id: null, acquired_at: swapTimestamp })
+          .update({ team_id: swap.receiving_team_id, pending_team_id: null, acquired_at: swapTimestamp, ...offeredContractPatch })
           .eq("id", offered.id)
           .eq("team_id", swap.proposing_team_id)
           .select("id")
@@ -549,7 +583,7 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
     ? await expectMaybeSingle(
         supabase
           .from("riders")
-          .update({ pending_team_id: swap.proposing_team_id })
+          .update({ pending_team_id: swap.proposing_team_id, ...requestedContractPatch })
           .eq("id", requested.id)
           .eq("team_id", swap.receiving_team_id)
           .is("pending_team_id", null)
@@ -558,7 +592,7 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
     : await expectMaybeSingle(
         supabase
           .from("riders")
-          .update({ team_id: swap.proposing_team_id, pending_team_id: null, acquired_at: swapTimestamp })
+          .update({ team_id: swap.proposing_team_id, pending_team_id: null, acquired_at: swapTimestamp, ...requestedContractPatch })
           .eq("id", requested.id)
           .eq("team_id", swap.receiving_team_id)
           .select("id")

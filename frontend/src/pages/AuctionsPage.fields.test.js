@@ -21,7 +21,7 @@ const riderSelect = auctionsPageSource.match(/rider:rider_id\(([^)]*)\)/);
 test("AuctionsPage rider-select indeholder felter brugt i UI (#231)", () => {
   assert.ok(riderSelect, "rider:rider_id(...) select-list skal kunne findes");
   const fields = riderSelect[1];
-  for (const required of ["salary", "birthdate", "nationality_code"]) {
+  for (const required of ["salary", "contract_length", "contract_end_season", "birthdate", "nationality_code"]) {
     assert.match(
       fields,
       new RegExp(`\\b${required}\\b`),

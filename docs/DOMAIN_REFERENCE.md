@@ -110,11 +110,13 @@ Beregning: round(sponsor_income × budget_modifier)
 budget_modifier: se Bestyrelse nedenfor
 ```
 
-### Løn
+### Løn og kontrakt
 ```
-Beregning: 10% af markedsværdi (`market_value`)
-Genberegnes: Efter UCI-sync og ved season-end `updateRiderValues`
-Minimum: 1 CZ$
+Beregning: max(1, round(market_value × 0.10)) — beregnes KUN ved erhvervelse (signering)
+Frosset: salary ændres IKKE automatisk efter signering (#1309, 2026-06-13)
+Kontraktfelter: contract_length (1-3 sæsoner), contract_end_season (INTEGER)
+Free agents: salary = NULL; UI estimerer ~10% af market_value til visning
+Arves ved handel: køber overtager kontrakt uændret
 Trækkes: Sæsonslut (alle ryttere på holdet)
 Shortfall: Auto-nødlån oprettes
 ```
