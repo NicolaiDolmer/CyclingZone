@@ -109,7 +109,7 @@ import {
 import { buildRiderHistory } from "../lib/riderHistory.js";
 import { buildTeamTransferHistory } from "../lib/teamTransferHistory.js";
 import { buildRiderBidTimeline } from "../lib/riderBidTimeline.js";
-import { SCOUTING_CONFIG, deriveScoutState, canScout, buildScoutEstimate } from "../lib/scouting.js";
+import { SCOUTING_CONFIG, deriveScoutState, canScout, buildScoutEstimate, estimatePotentialRange } from "../lib/scouting.js";
 import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity } from "../lib/training.js";
 import { isDailyTrainingEnabled } from "../lib/dailyTrainingFlag.js";
 import { runTeamTrainingDay } from "../lib/dailyTrainingEngine.js";
@@ -118,6 +118,12 @@ import { isRaceEngineV2Enabled } from "../lib/raceEngineFlag.js";
 import { injuryRisk } from "../lib/riderCondition.js";
 import { resolveProgram } from "../lib/dailyTraining.js";
 import { copenhagenDateString } from "../lib/copenhagenTime.js";
+import { ACADEMY, isAcademyEnabled } from "../lib/academyFlag.js";
+import {
+  getTeamAcademyCount,
+  signAcademyCandidate,
+  rejectAcademyCandidate,
+} from "../lib/academyIntake.js";
 import {
   computeDebtRatio,
   computeSustainabilityTier,
@@ -7908,6 +7914,157 @@ router.post("/admin/beta/full-reset", requireAdmin, adminWriteLimiter, async (re
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+// ═══ #1308: AKADEMI ══════════════════════════════════════════════════════════
+
+// GET /api/academy/me — holdets akademi-state: pladser, aktive akademiryttere,
+// og tilbudte intake-kandidater med potentiale-estimat (aldrig raw potentiale, #1162).
+router.get("/academy/me", requireAuth, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const enabled = await isAcademyEnabled(supabase);
+    if (!enabled) return res.status(409).json({ error: "academy_disabled" });
+
+    const teamId = req.team.id;
+    const currentYear = new Date().getFullYear();
+
+    // Akademi-ryttere (ejede, is_academy=true)
+    const { data: rosterRaw, error: rosterErr } = await supabase
+      .from("riders")
+      .select("id, firstname, lastname, birthdate, nationality, team_id, is_academy, salary, contract_length, contract_end_season")
+      .eq("team_id", teamId)
+      .eq("is_academy", true);
+    if (rosterErr) throw new Error(rosterErr.message);
+
+    // Tilbudte intake-kandidater for dette hold (display-safe felter, INGEN potentiale i join).
+    const { data: intakeRows, error: intakeErr } = await supabase
+      .from("academy_intake")
+      .select("id, rider_id, is_serious, status, created_at, riders(id, firstname, lastname, birthdate, nationality, base_value, market_value, prize_earnings_bonus, team_id)")
+      .eq("team_id", teamId)
+      .eq("status", "offered");
+    if (intakeErr) throw new Error(intakeErr.message);
+
+    // Antal brugte akademi-pladser
+    const used = await getTeamAcademyCount(supabase, teamId);
+
+    // Hent potentiale-værdier separat til estimat-beregning (#1162 whitelist: id, potentiale, birthdate, team_id).
+    const candidateIds = (intakeRows ?? []).map((r) => r.rider_id).filter(Boolean);
+    let potentialeByRider = {};
+    if (candidateIds.length > 0) {
+      const { data: potRows } = await supabase
+        .from("riders")
+        .select("id, potentiale, birthdate, team_id")
+        .in("id", candidateIds);
+      for (const r of potRows ?? []) {
+        potentialeByRider[r.id] = r;
+      }
+    }
+
+    // Byg intake-payload: potentiale-estimat (maxLevel → eksakt, men aldrig raw potentiale).
+    const intake = (intakeRows ?? []).map((row) => {
+      const rider = row.riders ?? {};
+      const potRow = potentialeByRider[row.rider_id] ?? {};
+      const age = (potRow.birthdate ?? rider.birthdate)
+        ? currentYear - new Date(potRow.birthdate ?? rider.birthdate).getFullYear()
+        : null;
+      // Akademi-klubben ejer kandidaten — fuldt indblik (maxLevel) = eksakt estimat.
+      const potentialEstimate = estimatePotentialRange(
+        potRow.potentiale,
+        SCOUTING_CONFIG.maxLevel,
+        age,
+        row.rider_id,
+        teamId,
+        SCOUTING_CONFIG.maxLevel,
+      );
+      return {
+        intakeId: row.id,
+        riderId: row.rider_id,
+        is_serious: row.is_serious,
+        status: row.status,
+        created_at: row.created_at,
+        rider, // display-safe, ingen potentiale
+        potentialEstimate,
+      };
+    });
+
+    // Roster: defensivt strip af eventuel potentiale.
+    const roster = (rosterRaw ?? []).map((r) => {
+      const safe = { ...r };
+      delete safe.potentiale;
+      return safe;
+    });
+
+    res.json({
+      enabled: true,
+      slots: { used, max: ACADEMY.SLOTS },
+      roster,
+      intake,
+    });
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/academy/sign — signer en tilbudt akademi-kandidat.
+// Body: { riderId }
+router.post("/academy/sign", requireAuth, marketWriteLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const enabled = await isAcademyEnabled(supabase);
+    if (!enabled) return res.status(409).json({ error: "academy_disabled" });
+
+    const { riderId } = req.body || {};
+    if (!riderId) return res.status(400).json({ error: "riderId påkrævet" });
+
+    // Aktiv sæson-nummer til kontrakt-beregning.
+    const { data: season } = await supabase
+      .from("seasons")
+      .select("number")
+      .eq("status", "active")
+      .maybeSingle();
+    const seasonNumber = season?.number ?? 1;
+
+    const result = await signAcademyCandidate(supabase, {
+      teamId: req.team.id,
+      riderId,
+      seasonNumber,
+    });
+
+    res.json(result);
+  } catch (err) {
+    const msg = err?.message ?? "";
+    if (msg === "academy_full") return res.status(409).json({ error: "academy_full" });
+    if (msg === "not_offered") return res.status(409).json({ error: "not_offered" });
+    captureException(err);
+    res.status(500).json({ error: msg });
+  }
+});
+
+// POST /api/academy/reject — afvis en tilbudt akademi-kandidat.
+// Body: { riderId }
+router.post("/academy/reject", requireAuth, marketWriteLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const enabled = await isAcademyEnabled(supabase);
+    if (!enabled) return res.status(409).json({ error: "academy_disabled" });
+
+    const { riderId } = req.body || {};
+    if (!riderId) return res.status(400).json({ error: "riderId påkrævet" });
+
+    const result = await rejectAcademyCandidate(supabase, {
+      teamId: req.team.id,
+      riderId,
+    });
+
+    res.json(result);
+  } catch (err) {
+    const msg = err?.message ?? "";
+    if (msg === "not_offered") return res.status(409).json({ error: "not_offered" });
+    captureException(err);
+    res.status(500).json({ error: msg });
   }
 });
 

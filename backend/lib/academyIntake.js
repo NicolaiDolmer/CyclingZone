@@ -8,6 +8,10 @@ import { generateAcademyCandidates } from "./academyGenerator.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { foldNameNordic } from "./pcmRiderMatcher.js";
 import { makeRng } from "./fictionalRiderGenerator.js";
+import { ACADEMY } from "./academyFlag.js";
+import { calculateRiderMarketValue } from "./marketUtils.js";
+import { incrementBalanceWithAudit } from "./balanceRpc.js";
+import { notifyTeamOwner } from "./notificationService.js";
 
 /**
  * Returnerer antal ryttere med is_academy=true for et givet hold.
@@ -148,4 +152,123 @@ export async function runAcademyIntake(supabase, {
   }
 
   return { dryRun, teams: totalTeams, candidates: totalCandidates };
+}
+
+/**
+ * Signer en akademi-kandidat til holdet.
+ *
+ * Rækkefølge-garanti: validering (offered-check + cap-check) sker FØR enhver write.
+ * Ingen debit hvis sign-betingelserne ikke er opfyldt.
+ *
+ * @param {object} supabase
+ * @param {object} opts
+ * @param {string} opts.teamId
+ * @param {string} opts.riderId
+ * @param {number} opts.seasonNumber   — aktiv sæsons nummer (bruges til contract_end_season)
+ * @returns {Promise<{riderId, salary, fee, contractEndSeason}>}
+ * @throws {Error} 'not_offered' | 'academy_full'
+ */
+export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNumber }) {
+  // 1. Hent academy_intake-rækken — skal eksistere og have status 'offered'.
+  const { data: intakeRow, error: intakeErr } = await supabase
+    .from("academy_intake")
+    .select("id, status")
+    .eq("team_id", teamId)
+    .eq("rider_id", riderId)
+    .maybeSingle();
+  if (intakeErr) throw new Error(`signAcademyCandidate intake lookup: ${intakeErr.message}`);
+  if (!intakeRow || intakeRow.status !== "offered") throw new Error("not_offered");
+
+  // 2. Cap-check FØR enhver write.
+  const currentCount = await getTeamAcademyCount(supabase, teamId);
+  if (currentCount >= ACADEMY.SLOTS) throw new Error("academy_full");
+
+  // 3. Hent rytterens markedsværdi og beregn løn + signing-fee.
+  const { data: rider, error: riderErr } = await supabase
+    .from("riders")
+    .select("id, market_value, base_value, prize_earnings_bonus")
+    .eq("id", riderId)
+    .maybeSingle();
+  if (riderErr) throw new Error(`signAcademyCandidate rider lookup: ${riderErr.message}`);
+  if (!rider) throw new Error(`signAcademyCandidate: rytter ${riderId} ikke fundet`);
+
+  const value = calculateRiderMarketValue(rider);
+  const salary = Math.max(1, Math.round(value * ACADEMY.SALARY_RATE));
+  const fee = Math.round(value * ACADEMY.SIGNING_FEE_RATE);
+  const contractEndSeason = seasonNumber + ACADEMY.CONTRACT_LENGTH - 1;
+
+  // 4. Opdatér rytter: is_academy=true, team_id, løn, kontrakt.
+  const { error: riderUpdateErr } = await supabase
+    .from("riders")
+    .update({
+      is_academy: true,
+      team_id: teamId,
+      salary,
+      contract_length: ACADEMY.CONTRACT_LENGTH,
+      contract_end_season: contractEndSeason,
+    })
+    .eq("id", riderId);
+  if (riderUpdateErr) throw new Error(`signAcademyCandidate rider update: ${riderUpdateErr.message}`);
+
+  // 5. Debitér signing-fee atomisk via RPC.
+  await incrementBalanceWithAudit(supabase, {
+    teamId,
+    delta: -fee,
+    payload: {
+      type: "academy_signing",
+      amount: -fee,
+      description: `Akademi-signing af rytter ${riderId}`,
+    },
+  }, { allowDuplicate: true });
+
+  // 6. Opdatér academy_intake → signed.
+  const { error: intakeUpdateErr } = await supabase
+    .from("academy_intake")
+    .update({ status: "signed", resolved_at: new Date().toISOString() })
+    .eq("id", intakeRow.id);
+  if (intakeUpdateErr) throw new Error(`signAcademyCandidate intake update: ${intakeUpdateErr.message}`);
+
+  // 7. Notifikation til hold-ejeren. notifyTeamOwner henter user_id selv.
+  await notifyTeamOwner({
+    supabase,
+    teamId,
+    type: "academy_signed",
+    title: "Akademi-signing gennemført",
+    message: `Din akademikandidat (${riderId}) er nu en del af akademiet.`,
+    relatedId: riderId,
+  });
+
+  return { riderId, salary, fee, contractEndSeason };
+}
+
+/**
+ * Afvis en akademi-kandidat (Fase A: rider forbliver team_id=NULL, ingen auktion endnu).
+ *
+ * @param {object} supabase
+ * @param {object} opts
+ * @param {string} opts.teamId
+ * @param {string} opts.riderId
+ * @returns {Promise<{riderId, status:'rejected'}>}
+ * @throws {Error} 'not_offered'
+ */
+export async function rejectAcademyCandidate(supabase, { teamId, riderId }) {
+  // Verificér at der eksisterer en 'offered' intake-række for (teamId, riderId).
+  const { data: intakeRow, error: intakeErr } = await supabase
+    .from("academy_intake")
+    .select("id, status")
+    .eq("team_id", teamId)
+    .eq("rider_id", riderId)
+    .maybeSingle();
+  if (intakeErr) throw new Error(`rejectAcademyCandidate intake lookup: ${intakeErr.message}`);
+  if (!intakeRow || intakeRow.status !== "offered") throw new Error("not_offered");
+
+  // Opdatér status → rejected.
+  const { error: updateErr } = await supabase
+    .from("academy_intake")
+    .update({ status: "rejected", resolved_at: new Date().toISOString() })
+    .eq("id", intakeRow.id);
+  if (updateErr) throw new Error(`rejectAcademyCandidate update: ${updateErr.message}`);
+
+  // Fase A: rider forbliver team_id=NULL (ingen ungdomsauktion endnu — Fase B task 12).
+  return { riderId, status: "rejected" };
 }
