@@ -1633,3 +1633,205 @@ test("finalizeAuctionById inherits an existing contract unchanged on a won aucti
     acquired_at: "2026-06-13T11:00:00.000Z",
   }]);
 });
+
+// ─── #1308 Fase B: ungdomsauktion-finalization ────────────────────────────────
+// En youth-auktion (is_youth=true) har INGEN sælger (seller_team_id=NULL) og
+// rytteren er fri (team_id=NULL). Vinderen placeres i sit akademi (is_academy=true,
+// 8-plads-cap), betaler sit bud som academy_signing (sink, ingen seller-payout).
+// Ingen bud → rytteren forbliver fri ungdom.
+
+function makeYouthFinalizeSupabase({ auction, buyerBalance = 1_000_000, academyCount = 0 }) {
+  const riderUpdates = [];
+  const auctionUpdates = [];
+  const financeInserts = [];
+  const notifications = [];
+
+  const buyer = { id: auction.current_bidder_id, name: "Buyer FC", balance: buyerBalance };
+
+  const supabase = {
+    rpc(name, params) {
+      assert.equal(name, "increment_balance_with_audit");
+      financeInserts.push({ team_id: params.p_team_id, delta: params.p_delta, ...params.p_finance_payload });
+      return Promise.resolve({ data: buyerBalance + params.p_delta, error: null });
+    },
+    from(table) {
+      if (table === "auctions") {
+        return {
+          select(cols) {
+            assert.equal(cols, "*, rider:rider_id(*)");
+            return { eq: () => ({ maybeSingle: () => Promise.resolve({ data: auction, error: null }) }) };
+          },
+          update(payload) {
+            return { eq: () => { auctionUpdates.push(payload); return Promise.resolve({ error: null }); } };
+          },
+        };
+      }
+      if (table === "seasons") {
+        return {
+          select: () => ({
+            eq: () => ({
+              order: () => ({
+                limit: () => ({
+                  maybeSingle: () => Promise.resolve({ data: { id: "season-1", number: 1 }, error: null }),
+                }),
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === "teams") {
+        return {
+          select: () => ({
+            eq: () => ({
+              maybeSingle: () => Promise.resolve({ data: buyer, error: null }),
+              single: () => Promise.resolve({ data: buyer, error: null }),
+            }),
+          }),
+        };
+      }
+      if (table === "riders") {
+        return {
+          // getTeamAcademyCount: .select("id",{count,head}).eq("team_id").eq("is_academy") → awaited
+          select() {
+            const api = { eq() { return api; }, then(res) { return Promise.resolve({ count: academyCount, error: null }).then(res); } };
+            return api;
+          },
+          update(payload) {
+            return { eq: () => { riderUpdates.push(payload); return Promise.resolve({ error: null }); } };
+          },
+        };
+      }
+      if (table === "transfer_listings") {
+        return { update: () => ({ in: () => ({ in: () => Promise.resolve({ error: null }) }) }) };
+      }
+      throw new Error(`Unexpected table: ${table}`);
+    },
+    _riderUpdates: riderUpdates,
+    _auctionUpdates: auctionUpdates,
+    _financeInserts: financeInserts,
+    _notifications: notifications,
+  };
+  return supabase;
+}
+
+const YOUTH_RIDER = {
+  id: "youth-rider",
+  firstname: "Tadej",
+  lastname: "Ungdom",
+  base_value: 100000,
+  market_value: 100000,
+  prize_earnings_bonus: 0,
+  team_id: null,
+};
+
+test("youth-auktion MED bud + plads + balance: vinder får rytteren i akademiet (is_academy=true, kontrakt), betaler academy_signing, ingen seller-payout", async () => {
+  const auction = {
+    id: "youth-auc-1",
+    status: "active",
+    is_youth: true,
+    seller_team_id: null,
+    current_bidder_id: "buyer-team",
+    current_price: 25000,
+    rider: { ...YOUTH_RIDER },
+  };
+  const supabase = makeYouthFinalizeSupabase({ auction, buyerBalance: 500000, academyCount: 0 });
+  const result = await finalizeAuctionById({
+    supabase,
+    notifyTeamOwner: async (...args) => supabase._notifications.push(args),
+    now: new Date("2026-06-20T12:00:00Z"),
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.code, "youth_completed");
+
+  // Rytter placeret i akademiet med kontrakt
+  assert.equal(supabase._riderUpdates.length, 1, "præcis én rider-update (placering)");
+  const upd = supabase._riderUpdates[0];
+  assert.equal(upd.is_academy, true);
+  assert.equal(upd.team_id, "buyer-team");
+  assert.equal(upd.pending_team_id, null, "akademiryttere bypasser transfervindue-pending");
+  assert.equal(upd.contract_length, 3);
+  assert.equal(upd.contract_end_season, 3, "1 + 3 - 1");
+  assert.ok(typeof upd.salary === "number" && upd.salary >= 1);
+  assert.ok(upd.acquired_at, "acquired_at sat");
+
+  // Finance: vinder debiteret academy_signing = -bud, INGEN seller-credit
+  assert.equal(supabase._financeInserts.length, 1, "kun vinder-debit, ingen seller-payout");
+  const fin = supabase._financeInserts[0];
+  assert.equal(fin.team_id, "buyer-team");
+  assert.equal(fin.type, "academy_signing");
+  assert.equal(fin.delta, -25000, "betaler sit bud");
+  assert.ok(fin.idempotency_key, "idempotency_key sat (cron-sikkerhed)");
+
+  // Auktion lukket completed
+  assert.ok(supabase._auctionUpdates.some((u) => u.status === "completed"));
+});
+
+test("youth-auktion MED bud men akademi fyldt (8): annulleres, ingen placering, ingen debit", async () => {
+  const auction = {
+    id: "youth-auc-2",
+    status: "active",
+    is_youth: true,
+    seller_team_id: null,
+    current_bidder_id: "buyer-team",
+    current_price: 25000,
+    rider: { ...YOUTH_RIDER },
+  };
+  const supabase = makeYouthFinalizeSupabase({ auction, buyerBalance: 500000, academyCount: 8 });
+  const result = await finalizeAuctionById({
+    supabase,
+    notifyTeamOwner: async (...args) => supabase._notifications.push(args),
+    now: new Date("2026-06-20T12:00:00Z"),
+  });
+
+  assert.equal(result.code, "academy_full");
+  assert.equal(supabase._riderUpdates.length, 0, "ingen placering når fyldt");
+  assert.equal(supabase._financeInserts.length, 0, "ingen debit når fyldt");
+  assert.ok(supabase._auctionUpdates.some((u) => u.status === "cancelled"));
+});
+
+test("youth-auktion MED bud men utilstrækkelig balance: annulleres, ingen placering, ingen debit", async () => {
+  const auction = {
+    id: "youth-auc-3",
+    status: "active",
+    is_youth: true,
+    seller_team_id: null,
+    current_bidder_id: "buyer-team",
+    current_price: 25000,
+    rider: { ...YOUTH_RIDER },
+  };
+  const supabase = makeYouthFinalizeSupabase({ auction, buyerBalance: 100, academyCount: 0 });
+  const result = await finalizeAuctionById({
+    supabase,
+    notifyTeamOwner: async (...args) => supabase._notifications.push(args),
+    now: new Date("2026-06-20T12:00:00Z"),
+  });
+
+  assert.equal(result.code, "cancelled_insufficient_balance");
+  assert.equal(supabase._riderUpdates.length, 0);
+  assert.equal(supabase._financeInserts.length, 0);
+  assert.ok(supabase._auctionUpdates.some((u) => u.status === "cancelled"));
+});
+
+test("youth-auktion UDEN bud: rytter forbliver fri ungdom, auktion completed, ingen debit", async () => {
+  const auction = {
+    id: "youth-auc-4",
+    status: "active",
+    is_youth: true,
+    seller_team_id: null,
+    current_bidder_id: null,
+    current_price: 25000,
+    rider: { ...YOUTH_RIDER },
+  };
+  const supabase = makeYouthFinalizeSupabase({ auction, buyerBalance: 0, academyCount: 0 });
+  const result = await finalizeAuctionById({
+    supabase,
+    notifyTeamOwner: async (...args) => supabase._notifications.push(args),
+    now: new Date("2026-06-20T12:00:00Z"),
+  });
+
+  assert.equal(result.code, "youth_no_bids");
+  assert.equal(supabase._riderUpdates.length, 0, "rytter er allerede fri — ingen ejerskabsændring");
+  assert.equal(supabase._financeInserts.length, 0, "ingen debit uden bud");
+  assert.ok(supabase._auctionUpdates.some((u) => u.status === "completed"));
+});

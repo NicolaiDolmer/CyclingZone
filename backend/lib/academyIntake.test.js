@@ -430,21 +430,44 @@ test("signAcademyCandidate: kaster 'not_offered' når intake-status er 'signed' 
 
 // ─── rejectAcademyCandidate ───────────────────────────────────────────────────
 
-test("rejectAcademyCandidate: opdaterer intake → rejected, ingen rytter-ejerskabsændring", async () => {
+test("rejectAcademyCandidate: opdaterer intake → rejected + lister ungdomsauktion, ingen rytter-ejerskabsændring", async () => {
   const supabase = makeSignRejectSupabase({ intakeExists: true, intakeStatus: "offered" });
-  const result = await rejectAcademyCandidate(supabase, { teamId: "team-A", riderId: "rider-X" });
+  const listed = [];
+  const result = await rejectAcademyCandidate(supabase, {
+    teamId: "team-A",
+    riderId: "rider-X",
+    listYouthAuction: async (_sb, riderId) => { listed.push(riderId); return { id: "youth-auction-9" }; },
+  });
 
   assert.equal(result.riderId, "rider-X");
   assert.equal(result.status, "rejected");
+  assert.equal(result.auctionId, "youth-auction-9", "ungdomsauktionens id returneres");
 
   // Intake opdateret → rejected
   assert.equal(supabase._intakeUpdates.length, 1, "præcis én intake-update");
   assert.equal(supabase._intakeUpdates[0].status, "rejected");
   assert.ok(supabase._intakeUpdates[0].resolved_at, "resolved_at sat");
 
-  // Ingen rider-ejerskabsændring
+  // Fase B: ungdomsauktion oprettet for den afviste rytter
+  assert.deepEqual(listed, ["rider-X"], "listYouthAuction kaldt med riderId");
+
+  // Ingen rider-ejerskabsændring (auktionen ændrer ikke team_id endnu)
   assert.equal(supabase._riderUpdates.length, 0, "ingen rider-update ved reject");
   assert.equal(supabase._rpcCalls.length, 0, "ingen finance-kald ved reject");
+});
+
+test("rejectAcademyCandidate: lister IKKE ungdomsauktion når kandidaten ikke er offered", async () => {
+  const supabase = makeSignRejectSupabase({ intakeExists: true, intakeStatus: "signed" });
+  let called = false;
+  await assert.rejects(
+    () => rejectAcademyCandidate(supabase, {
+      teamId: "team-A",
+      riderId: "rider-X",
+      listYouthAuction: async () => { called = true; return { id: "x" }; },
+    }),
+    /not_offered/,
+  );
+  assert.equal(called, false, "ingen auktion oprettet ved ugyldig reject");
 });
 
 test("rejectAcademyCandidate: kaster 'not_offered' når ingen offered-række eksisterer", async () => {
