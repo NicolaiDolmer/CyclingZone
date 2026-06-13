@@ -13,8 +13,11 @@ export const ACADEMY = Object.freeze({
   SERIOUS_MIN: 1,           // "seriøse" (høj potentiale) pr. kuld
   SERIOUS_MAX: 3,
   YOUTH_MULT: 1.5,          // ungdoms-multiplikator ved MIN_AGE (aftager mod 1.0 ved 22)
-  DRIFT_PER_SEASON: 15_000, // SIM-STARTPUNKT — kalibreres + ejer-godkendes (Task 9)
-  SIGNING_FEE_RATE: 0.25,   // signing-fee = rate × market_value. SIM-STARTPUNKT (Task 9)
+  DRIFT_PER_SEASON: 5_000,  // pr. plads pr. sæson. EJER-GODKENDT 13/6 (Task 9-sim): youth-værdi
+                            // er empirisk ~11k (base_value vægter kun current stats), så drift er
+                            // den dominerende cost. 5k/plads → delvist akademi (3-4) trygt bæreligt
+                            // i alle divisioner; fuldt 8-plads (~40k drift) = bevidst tung satsning.
+  SIGNING_FEE_RATE: 0.25,   // signing-fee = rate × market_value (marginal ved lav youth-værdi)
   SALARY_RATE: 0.10,        // ungdoms-løn = 10% af market_value (spejler kontrakt-seed)
   CONTRACT_LENGTH: 3,       // akademi-kontrakt-længde (sæsoner)
 });
