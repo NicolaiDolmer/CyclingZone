@@ -28,7 +28,7 @@ function buildBottomItems(t) {
   ];
 }
 
-function buildNavGroups(team, t) {
+function buildNavGroups(team, t, academyEnabled = false) {
   return [
     {
       key: "klubhus", label: t("nav.group.klubhus"),
@@ -36,6 +36,7 @@ function buildNavGroups(team, t) {
         { to: "/dashboard",      label: t("nav.item.dashboard") },
         { to: "/team",           label: t("nav.item.team") },
         { to: "/training",       label: t("nav.item.training") },
+        ...(academyEnabled ? [{ to: "/academy", label: t("nav.item.academy") }] : []),
         { to: "/board",          label: t("nav.item.board") },
         { to: "/finance",        label: t("nav.item.finance") },
         { to: "/notifications",  label: t("nav.item.notifications"), badge: true },
@@ -232,16 +233,17 @@ export default function Layout() {
   const { t } = useTranslation("common");
   const navigate = useNavigate();
   const location = useLocation();
-  const [session, setSession]             = useState(null);
-  const [team, setTeam]                   = useState(null);
-  const [balance, setBalance]             = useState(null);
-  const [notifications, setNotifications] = useState([]);
-  const [isAdmin, setIsAdmin]             = useState(false);
-  const [mobileOpen, setMobileOpen]       = useState(false);
-  const [openGroups, setOpenGroups]       = useState({});
-  const [onlineCount, setOnlineCount]     = useState(0);
-  const [teamLoaded, setTeamLoaded]       = useState(false);
-  const [tickerActive, setTickerActive]   = useState(false);
+  const [session, setSession]               = useState(null);
+  const [team, setTeam]                     = useState(null);
+  const [balance, setBalance]               = useState(null);
+  const [notifications, setNotifications]   = useState([]);
+  const [isAdmin, setIsAdmin]               = useState(false);
+  const [mobileOpen, setMobileOpen]         = useState(false);
+  const [openGroups, setOpenGroups]         = useState({});
+  const [onlineCount, setOnlineCount]       = useState(0);
+  const [teamLoaded, setTeamLoaded]         = useState(false);
+  const [tickerActive, setTickerActive]     = useState(false);
+  const [academyEnabled, setAcademyEnabled] = useState(false);
   const heartbeatRef = useRef(null);
   const teamId = team?.id;
   const isWideContent = WIDE_CONTENT_ROUTES.has(location.pathname);
@@ -258,7 +260,7 @@ export default function Layout() {
 
   useEffect(() => {
     const path = location.pathname;
-    const groups = buildNavGroups(teamId ? { id: teamId } : null, t);
+    const groups = buildNavGroups(teamId ? { id: teamId } : null, t, academyEnabled);
     if (isAdmin) groups.push({ key: "admin", label: t("nav.group.admin"), items: [
       { to: "/admin", label: t("nav.item.admin"), exact: true },
       { to: "/admin/waitlist", label: t("nav.item.waitlist") },
@@ -268,7 +270,7 @@ export default function Layout() {
       || (path.startsWith("/managers/") ? groups.find(g => g.key === "klubhus") : null);
     if (activeGroup) setOpenGroups(prev => ({ ...prev, [activeGroup.key]: true }));
     setMobileOpen(false);
-  }, [location, teamId, isAdmin, t]);
+  }, [location, teamId, isAdmin, t, academyEnabled]);
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -286,6 +288,11 @@ export default function Layout() {
 
       if (!API) { console.error("VITE_API_URL is not set — presence/streak calls skipped"); return; }
       const h = await authHeaders();
+      // Akademi-flag (#1308): let fetch for at bestemme om nav-item vises.
+      fetch(`${API}/api/academy/me`, { headers: h })
+        .then(res => res.ok ? res.json() : null)
+        .then(data => { if (data?.enabled) setAcademyEnabled(true); })
+        .catch(() => {});
       fetch(`${API}/api/presence`,     { method: "POST", headers: h }).catch(e => console.error("presence:", e));
       fetch(`${API}/api/login-streak`, { method: "POST", headers: h })
         .catch(e => console.error("login-streak:", e))
@@ -348,7 +355,7 @@ export default function Layout() {
   }
 
   const unread = notifications.length;
-  const baseGroups = buildNavGroups(team, t);
+  const baseGroups = buildNavGroups(team, t, academyEnabled);
   const navGroups = isAdmin
     ? [...baseGroups, { key: "admin", label: t("nav.group.admin"), items: [
         { to: "/admin", label: t("nav.item.admin") },

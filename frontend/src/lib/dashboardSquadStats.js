@@ -43,10 +43,12 @@ export function getSquadLimits(division) {
 //     for trupstørrelse-advarslen.
 export async function fetchSquadCountInputs(supabase, teamId) {
   const [pendingIncomingRes, loansInRes] = await Promise.all([
+    // #1308: akademiryttere tæller ikke mod senior-cap
     supabase
       .from("riders")
       .select("id", { count: "exact", head: true })
       .eq("pending_team_id", teamId)
+      .eq("is_academy", false)
       .or(`team_id.is.null,team_id.neq.${teamId}`),
     supabase
       .from("loan_agreements")

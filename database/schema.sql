@@ -90,6 +90,7 @@ CREATE TABLE riders (
   -- Flags
   is_u25 BOOLEAN DEFAULT FALSE,
   is_retired BOOLEAN NOT NULL DEFAULT FALSE,
+  is_academy BOOLEAN NOT NULL DEFAULT FALSE, -- akademi-rytter (#1308): ekskluderet fra senior-cap i runtime
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -172,6 +173,7 @@ CREATE TABLE auctions (
   is_guaranteed_sale BOOLEAN DEFAULT FALSE,
   guaranteed_price INTEGER,
   is_flash BOOLEAN NOT NULL DEFAULT FALSE,
+  is_youth BOOLEAN NOT NULL DEFAULT FALSE, -- ungdomsauktion (#1308): afvist akademi-kandidat
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -193,6 +195,32 @@ CREATE TABLE auction_proxy_bids (
   created_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(auction_id, team_id)
 );
+
+-- ============================================================
+-- AKADEMI (#1308)
+-- ============================================================
+
+CREATE TABLE academy_intake (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  rider_id UUID NOT NULL REFERENCES riders(id) ON DELETE CASCADE,
+  season_id UUID NOT NULL REFERENCES seasons(id),
+  is_serious BOOLEAN NOT NULL DEFAULT false,
+  status TEXT NOT NULL DEFAULT 'offered'
+    CHECK (status IN ('offered','signed','rejected','expired')),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  resolved_at TIMESTAMPTZ,
+  UNIQUE (team_id, rider_id)
+);
+COMMENT ON TABLE academy_intake IS
+  'Akademi-intake-kuld (#1308): kandidater tilbudt et hold ved sæsonstart. status offered->signed/rejected/expired.';
+CREATE INDEX IF NOT EXISTS idx_academy_intake_team_status ON academy_intake(team_id, status);
+
+ALTER TABLE academy_intake ENABLE ROW LEVEL SECURITY;
+-- Hold-ejeren kan læse eget kuld. Skrivning sker service-role (backend), ingen client-write-policy.
+CREATE POLICY academy_intake_owner_read ON academy_intake
+  FOR SELECT TO authenticated
+  USING (team_id IN (SELECT id FROM teams WHERE user_id = auth.uid()));
 
 -- ============================================================
 -- TRANSFER LISTINGS & OFFERS
@@ -354,7 +382,9 @@ CREATE TABLE finance_transactions (
   team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
   type TEXT NOT NULL CHECK (type IN (
     'sponsor','prize','salary','transfer_in','transfer_out','interest','bonus','starting_budget',
-    'loan_received','loan_repayment','loan_interest','emergency_loan','admin_adjustment'
+    'loan_received','loan_repayment','loan_interest','emergency_loan','admin_adjustment',
+    'auto_squad_purchase','auto_squad_sale','squad_violation_fine',
+    'academy_signing','academy_drift'
   )),
   amount BIGINT NOT NULL, -- positive = income, negative = expense
   description TEXT,
@@ -407,13 +437,14 @@ CREATE TABLE notifications (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   type TEXT NOT NULL CHECK (type IN (
-    'bid_received','bid_placed','auction_won','auction_lost','auction_outbid',
+    'bid_received','bid_placed','auction_won','auction_lost','auction_outbid','auction_proxy_outbid',
     'transfer_offer_received','transfer_offer_accepted','transfer_offer_rejected','transfer_counter',
     'transfer_offer_withdrawn','transfer_interest',
     'new_race','race_results_imported','season_started','season_ended',
     'board_update','board_critical','salary_paid','sponsor_paid',
     'watchlist_rider_listed','watchlist_rider_auction','loan_created','emergency_loan','loan_paid_off',
-    'deadline_day_warning','auction_cancelled','squad_enforced'
+    'deadline_day_warning','auction_cancelled','squad_enforced','rider_retired',
+    'academy_intake_ready','academy_signed','academy_rejected'
   )),
   title TEXT NOT NULL,
   message TEXT NOT NULL,
@@ -465,6 +496,7 @@ CREATE INDEX idx_riders_team ON riders(team_id);
 CREATE INDEX idx_riders_uci ON riders(uci_points DESC);
 CREATE INDEX idx_riders_u25 ON riders(is_u25);
 CREATE INDEX idx_riders_pcm_id ON riders(pcm_id);
+CREATE INDEX idx_riders_team_academy ON riders(team_id, is_academy); -- akademi-filter (#1308)
 CREATE INDEX idx_auctions_status ON auctions(status);
 CREATE INDEX idx_auctions_end ON auctions(calculated_end);
 -- DB-level guard: max én aktiv auktion per rytter. Blokkerer TOCTOU-race i POST /api/auctions.

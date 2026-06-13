@@ -830,18 +830,35 @@ test("processTeamSeasonPayroll er idempotent for negative-interest — gentaget 
       return Promise.resolve({ data: teamState.balance, error: null });
     },
     from(table) {
-      if (table !== "teams") throw new Error(`Unexpected table: ${table}`);
-      return {
-        select() {
-          return {
-            eq() {
+      if (table === "teams") {
+        return {
+          select() {
+            return {
+              eq() {
+                return {
+                  single: () => Promise.resolve({ data: { balance: teamState.balance }, error: null }),
+                };
+              },
+            };
+          },
+        };
+      }
+      if (table === "riders") {
+        // Ingen akademi-ryttere i denne test → count=0
+        return {
+          select(_cols, opts) {
+            if (opts && opts.count === "exact" && opts.head === true) {
               return {
-                single: () => Promise.resolve({ data: { balance: teamState.balance }, error: null }),
+                eq(_col, _val) {
+                  return { eq(_c, _v) { return Promise.resolve({ count: 0, error: null }); } };
+                },
               };
-            },
-          };
-        },
-      };
+            }
+            return { in(_col, _vals) { return Promise.resolve({ data: [], error: null }); } };
+          },
+        };
+      }
+      throw new Error(`Unexpected table: ${table}`);
     },
   };
 
@@ -974,6 +991,21 @@ test("payroll-summary counts matcher antal finance_transactions rows skrevet (#5
         const noop = { eq: () => noop, gte: () => noop, is: () => noop, order: () => noop, limit: () => Promise.resolve({ data: [], error: null }) };
         return { select: () => noop, insert: () => Promise.resolve({ error: null }) };
       }
+      if (table === "riders") {
+        // Ingen akademi-ryttere i denne test → count=0
+        return {
+          select(_cols, opts) {
+            if (opts && opts.count === "exact" && opts.head === true) {
+              return {
+                eq(_col, _val) {
+                  return { eq(_c, _v) { return Promise.resolve({ count: 0, error: null }); } };
+                },
+              };
+            }
+            return { in(_col, _vals) { return Promise.resolve({ data: [], error: null }); } };
+          },
+        };
+      }
       throw new Error(`Unexpected table: ${table}`);
     },
   };
@@ -1077,6 +1109,21 @@ test("payroll-summary: skipped (idempotent-retry) loan_interest tæller IKKE i c
             }
             financeRows.push(row);
             return Promise.resolve({ error: null });
+          },
+        };
+      }
+      if (table === "riders") {
+        // Ingen akademi-ryttere i denne test → count=0
+        return {
+          select(_cols, opts) {
+            if (opts && opts.count === "exact" && opts.head === true) {
+              return {
+                eq(_col, _val) {
+                  return { eq(_c, _v) { return Promise.resolve({ count: 0, error: null }); } };
+                },
+              };
+            }
+            return { in(_col, _vals) { return Promise.resolve({ data: [], error: null }); } };
           },
         };
       }

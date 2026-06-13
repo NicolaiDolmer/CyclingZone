@@ -40,14 +40,18 @@ test("POST /scouting/estimates er registreret FØR POST /scouting/:riderId (#116
 });
 
 test("kun scouting-interne selects i api.js læser potentiale-kolonnen (#1162)", () => {
-  // Whitelist: de to interne reads der føder buildScoutEstimate (sendes aldrig
-  // videre rå). Dukker en tredje select med potentiale op, skal den reviewes
-  // bevidst — den må ikke ende i et klient-response.
+  // Whitelist: de tre interne reads der føder estimat-beregningen (sendes aldrig
+  // videre rå til klienten):
+  //   1. POST /scouting/estimates — batch-estimater
+  //   2. POST /scouting/:riderId   — enkelt-rytter scout
+  //   3. GET  /academy/me          — akademi-kandidat potentiale-fetch (#1308)
+  // Dukker en fjerde select med potentiale op, skal den reviewes bevidst —
+  // den må ikke ende i et klient-response.
   const matches = apiSource.match(/\.select\([^)]*\bpotentiale\b[^)]*\)/g) ?? [];
   assert.equal(
     matches.length,
-    2,
-    `forventede præcis 2 scouting-interne potentiale-selects i api.js, fandt ${matches.length}: ${matches.join(" | ")}`,
+    3,
+    `forventede præcis 3 scouting-interne potentiale-selects i api.js, fandt ${matches.length}: ${matches.join(" | ")}`,
   );
   for (const m of matches) {
     assert.match(m, /id,\s*(team_id,\s*potentiale|potentiale)/, `uventet potentiale-select: ${m}`);

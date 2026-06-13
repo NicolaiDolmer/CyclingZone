@@ -244,6 +244,28 @@ test("flag ON + idempotens: anden kørsel med menneskelig hold skipper allerede-
   assert.equal(state.rider_development_log.length, 1, "ingen dublet log-row");
 });
 
+// ── Akademi: skipGrowth for akademi-ryttere på menneskelige hold (#1308) ────────
+
+test("flag ON + akademi-rytter (is_academy=true) på menneskelig hold → skipGrowth (abilities uændret)", async () => {
+  // Akademi-ryttere er på et menneske-hold → humanTeamIds.has(team_id) = true →
+  // skipGrowth = true. Ingen kodeændring nødvendig; denne test låser adfærden fast.
+  const state = seedStateWithTeams({
+    riders: [{ id: "r1", primary_type: "climber", potentiale: 5, birthdate: "2008-01-01", base_value: 50000, is_u25: true, is_retired: false, team_id: "human-1", is_academy: true, firstname: "Ung", lastname: "Akademist" }],
+    abilities: [{ rider_id: "r1", climbing: 40, endurance: 40, ability_caps: null }],
+    teams: [{ id: "human-1", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false }],
+  });
+  const supabase = createMockSupabase(state);
+  const climbBefore = state.rider_derived_abilities[0].climbing;
+
+  const summary = await developRidersForSeason({
+    supabase, seasonId: "s2", seasonNumber: 2, model: MODEL,
+    dailyTrainingEnabled: true,
+  });
+
+  assert.equal(summary.growth_skipped, 1, "akademi-rytter på menneskelig hold får skipGrowth");
+  assert.equal(state.rider_derived_abilities[0].climbing, climbBefore, "akademi-rytters abilities uændret (daglig træning håndterer vækst)");
+});
+
 test("træningsfokus (#1163) biaser udvikling når trainingSeasonId er sat", async () => {
   const mkState = () => {
     const s = seedState({

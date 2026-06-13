@@ -36,11 +36,12 @@ Last reviewed: 2026-06-12. GitHub issues are the source of truth for active work
 - **Daily training, form, fatigue, and injuries:** development phases are merged behind launch controls; relaunch orchestration and production verification remain.
 - **Board and progression additions:** several post-season and progression surfaces are live but still have owner-verification issues before broad reliance.
 - **Analytics-backed validation:** newer gameplay and funnel events need enough live traffic before product conclusions are stable.
+- **Academy MVP — Fase A ([#1308](https://github.com/NicolaiDolmer/CyclingZone/issues/1308)):** Core pipeline delivered and flag-gated (`academy_enabled`, OFF until relaunch). Covers: season-intake cohort generation (`academy_intake` table), sign/reject flow (0-2 prospects per human team, 8-place cap separate from senior 30-cap, `riders.is_academy`), daily training with youth multiplier, and season upkeep drift (`academy_drift` finance type, 5 000 CZ$/slot/season at payroll). Notification types `academy_intake_ready`, `academy_signed`, `academy_rejected` wired. Youth auctions and free-agent direct signing are **Fase B** — not yet built (see below).
 
 ## Deferred or not yet live
 
 - Full race-engine depth from [#676](https://github.com/NicolaiDolmer/CyclingZone/issues/676), including richer tactics and breakaway behavior.
-- Academy MVP [#1308](https://github.com/NicolaiDolmer/CyclingZone/issues/1308).
+- **Academy Fase B:** youth auctions (`auctions.is_youth`) and free-agent direct-sign route — fast-follow after relaunch ([#1308](https://github.com/NicolaiDolmer/CyclingZone/issues/1308) Fase B tasks #12–#14).
 - Contract flows (renewal, expiry-to-auction, release, re-signing salary formula): market package [#1310](https://github.com/NicolaiDolmer/CyclingZone/issues/1310).
 - Season recaps [#1311](https://github.com/NicolaiDolmer/CyclingZone/issues/1311).
 - Hall of Fame and manager XP/login-streak power effects are planned for reduction under [#1139](https://github.com/NicolaiDolmer/CyclingZone/issues/1139).

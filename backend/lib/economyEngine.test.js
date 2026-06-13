@@ -9,6 +9,8 @@ const {
   payDivisionBonuses,
   processDivisionEnd,
   processSeasonEnd,
+  processSeasonStart,
+  processTeamSeasonPayroll,
   rebalanceDivisions,
   repairSeasonEndFinanceAndBoard,
   updateRiderValues,
@@ -16,6 +18,7 @@ const {
 } = await import("./economyEngine.js");
 
 const { DIVISION_CAPACITY } = await import("./economyConstants.js");
+const { ACADEMY } = await import("./academyFlag.js");
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -2252,4 +2255,236 @@ test("rebalanceDivisions makes no moves when top divisions are already full (sof
 
   assert.equal(supabase.updates.length, 0);
   assert.deepEqual(result.moved, []);
+});
+
+// ─── Akademi-drift (#1308) ────────────────────────────────────────────────────
+
+function createPayrollWithAcademySupabase({ teamId, balance, academyRiderCount, seasonId }) {
+  const academyRiders = [];
+  for (let i = 0; i < academyRiderCount; i++) {
+    academyRiders.push({ id: `academy-rider-${i}`, team_id: teamId, salary: 0, is_academy: true });
+  }
+
+  const state = {
+    balance,
+    financeRows: [],
+    academyRiderCount,
+  };
+
+  return {
+    state,
+    rpc(name, params) {
+      assert.equal(name, "increment_balance_with_audit");
+      state.balance += params.p_delta;
+      state.financeRows.push({
+        team_id: params.p_team_id,
+        ...params.p_finance_payload,
+      });
+      return Promise.resolve({ data: state.balance, error: null });
+    },
+    from(table) {
+      if (table === "teams") {
+        return {
+          select(columns) {
+            return {
+              eq(column, value) {
+                assert.equal(column, "id");
+                assert.equal(value, teamId);
+                return {
+                  single() {
+                    return Promise.resolve({ data: { balance: state.balance }, error: null });
+                  },
+                };
+              },
+            };
+          },
+        };
+      }
+
+      if (table === "riders") {
+        return {
+          select(_columns) {
+            return {
+              eq(col, val) {
+                assert.equal(col, "team_id");
+                assert.equal(val, teamId);
+                return {
+                  eq(col2, val2) {
+                    assert.equal(col2, "is_academy");
+                    assert.equal(val2, true);
+                    return {
+                      select(_cols2, opts) {
+                        assert.deepEqual(opts, { count: "exact", head: true });
+                        return Promise.resolve({ count: state.academyRiderCount, error: null });
+                      },
+                    };
+                  },
+                };
+              },
+            };
+          },
+        };
+      }
+
+      throw new Error(`Unexpected table in academy-drift mock: ${table}`);
+    },
+  };
+}
+
+test("processTeamSeasonPayroll debits N * DRIFT_PER_SEASON as academy_drift for a team with N academy riders", async () => {
+  const ACADEMY_COUNT = 3;
+  const seasonId = "season-drift-1";
+  const teamId = "team-academy";
+
+  const financeRows = [];
+  const supabase = {
+    rpc(name, params) {
+      assert.equal(name, "increment_balance_with_audit");
+      financeRows.push({ team_id: params.p_team_id, ...params.p_finance_payload });
+      return Promise.resolve({ data: 0, error: null });
+    },
+    from(table) {
+      if (table === "teams") {
+        return {
+          select(_cols) {
+            return {
+              eq(_col, _val) {
+                return {
+                  single() {
+                    return Promise.resolve({ data: { balance: 999_999 }, error: null });
+                  },
+                };
+              },
+            };
+          },
+        };
+      }
+
+      if (table === "riders") {
+        // is_academy count-query: .select("id", {count:"exact",head:true}).eq("team_id",X).eq("is_academy",true)
+        return {
+          select(_cols, opts) {
+            if (opts && opts.count === "exact" && opts.head === true) {
+              return {
+                eq(_col, _val) {
+                  return {
+                    eq(_col2, _val2) {
+                      return Promise.resolve({ count: ACADEMY_COUNT, error: null });
+                    },
+                  };
+                },
+              };
+            }
+            // rider-select for salary (team_id + salary columns) — no academy riders have salary
+            return {
+              in(_col, _vals) {
+                return Promise.resolve({ data: [], error: null });
+              },
+            };
+          },
+        };
+      }
+
+      throw new Error(`Unexpected table: ${table}`);
+    },
+  };
+
+  const team = {
+    id: teamId,
+    name: "Academy FC",
+    balance: 999_999,
+    riders: [], // salary-riders (academyRiders have salary=0, not included here)
+  };
+
+  await processTeamSeasonPayroll(team, seasonId, {
+    supabase,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => {},
+  });
+
+  const driftRows = financeRows.filter(r => r.type === "academy_drift");
+  assert.equal(driftRows.length, 1, "Præcis én academy_drift-transaktion skal skrives");
+
+  const drift = driftRows[0];
+  const expectedAmount = -(ACADEMY_COUNT * ACADEMY.DRIFT_PER_SEASON);
+  assert.equal(drift.amount, expectedAmount, `Beløb skal være ${expectedAmount} (negativt)`);
+  assert.equal(drift.team_id, teamId);
+
+  // Idempotency-nøgle skal indeholde sæson + hold
+  assert.ok(
+    drift.idempotency_key && drift.idempotency_key.includes(seasonId) && drift.idempotency_key.includes(teamId),
+    `Idempotency-nøgle skal indeholde sæson og hold: ${drift.idempotency_key}`
+  );
+});
+
+test("processTeamSeasonPayroll skips academy_drift entirely for a team with 0 academy riders", async () => {
+  const seasonId = "season-no-drift";
+  const teamId = "team-no-academy";
+
+  const financeRows = [];
+  const supabase = {
+    rpc(name, params) {
+      assert.equal(name, "increment_balance_with_audit");
+      financeRows.push({ team_id: params.p_team_id, ...params.p_finance_payload });
+      return Promise.resolve({ data: 0, error: null });
+    },
+    from(table) {
+      if (table === "teams") {
+        return {
+          select(_cols) {
+            return {
+              eq(_col, _val) {
+                return {
+                  single() {
+                    return Promise.resolve({ data: { balance: 500_000 }, error: null });
+                  },
+                };
+              },
+            };
+          },
+        };
+      }
+
+      if (table === "riders") {
+        return {
+          select(_cols, opts) {
+            if (opts && opts.count === "exact" && opts.head === true) {
+              return {
+                eq(_col, _val) {
+                  return {
+                    eq(_col2, _val2) {
+                      return Promise.resolve({ count: 0, error: null });
+                    },
+                  };
+                },
+              };
+            }
+            return {
+              in(_col, _vals) {
+                return Promise.resolve({ data: [], error: null });
+              },
+            };
+          },
+        };
+      }
+
+      throw new Error(`Unexpected table: ${table}`);
+    },
+  };
+
+  const team = {
+    id: teamId,
+    name: "No Academy FC",
+    balance: 500_000,
+    riders: [],
+  };
+
+  await processTeamSeasonPayroll(team, seasonId, {
+    supabase,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => {},
+  });
+
+  const driftRows = financeRows.filter(r => r.type === "academy_drift");
+  assert.equal(driftRows.length, 0, "Hold uden akademi-ryttere: ingen academy_drift-transaktion");
 });

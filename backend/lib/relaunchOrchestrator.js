@@ -21,6 +21,8 @@ import { runFullBetaReset, getBetaManagerTeams } from "./betaResetService.js";
 import { runPhysiologyBackfill, runRiderTypesBackfill, runBaseValueBackfill } from "./backfillCores.js";
 import { runStarterSquadAllocation } from "./starterSquadAllocator.js";
 import { runContractSeed } from "./contractSeed.js";
+import { runAcademyIntake } from "./academyIntake.js";
+import { isAcademyEnabled } from "./academyFlag.js";
 import { grantFounderBadges } from "./founderBadge.js";
 import { transitionToNextSeason, computeSeasonUuid } from "./seasonTransition.js";
 
@@ -82,6 +84,7 @@ const DEFAULT_DEPS = {
   runStarterSquadAllocation,
   seedSeasonZero,
   transitionToNextSeason,
+  runAcademyIntake,
   runContractSeed,
   grantFounderBadges,
   getBetaManagerTeams,
@@ -127,6 +130,12 @@ export async function runRelaunchSeason1(supabase, {
     const s0 = await d.seedSeasonZero(supabase, { startDate, dryRun: false });
     summary.season = await d.transitionToNextSeason({ supabase, fromSeasonId: s0.seasonId, transitionAt: startDate });
   }
+
+  // 6.4 Akademi-intake: kandidat-kuld pr. menneske-hold (efter sæson-transition,
+  // så aktiv sæson = 1). No-op når academy_enabled=false.
+  summary.academy = (await isAcademyEnabled(supabase))
+    ? await d.runAcademyIntake(supabase, { dryRun, seed })
+    : { skipped: "academy_enabled=false" };
 
   // 6.5 Kontrakt-seed: frossen løn + længde + udløb på ejede ryttere.
   // Kører efter sæson-transition så aktiv sæson-number (= 1) er kendt.

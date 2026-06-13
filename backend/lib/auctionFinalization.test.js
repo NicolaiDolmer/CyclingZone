@@ -196,15 +196,26 @@ function createFinalizeAuctionSupabase({
             assert.equal(columns, "id");
             assert.deepEqual(options, { count: "exact", head: true });
 
-            // #268: getTeamMarketState's outgoing-query chains .eq().not().neq()
-            // — match med en chainable builder der dispatcher counts efter filtre.
+            // #268/#1308: getTeamMarketState's count-queries chains:
+            //   riderCount:   .eq("team_id",X).eq("is_academy",false)
+            //   pendingCount: .eq("pending_team_id",X).eq("is_academy",false)
+            //   outgoing:     .eq("team_id",X).eq("is_academy",false).not(...).neq(...)
+            // Gøres chainbare: .eq() returnerer altid et objekt der kan tage
+            // en ekstra .eq() (is_academy-filtret). Korrekt count dispatches efter
+            // den samlede kæde.
             return {
               eq(column, value) {
                 const counts = teamMarketCounts[value] || {};
 
                 if (column === "team_id") {
                   const teamId = value;
-                  return {
+                  // Builder til team_id-grenen — håndterer riderCount + outgoingCount.
+                  const teamIdBuilder = {
+                    eq(_col, _val) {
+                      // Ekstra filter (f.eks. is_academy=false) — ignorer værdien,
+                      // returner det SAMME builder-objekt så .not()/.then() stadig virker.
+                      return teamIdBuilder;
+                    },
                     not(col, op, val) {
                       assert.equal(col, "pending_team_id");
                       assert.equal(op, "is");
@@ -221,10 +232,21 @@ function createFinalizeAuctionSupabase({
                       return Promise.resolve({ count: counts.riderCount || 0, error: null }).then(resolve, reject);
                     },
                   };
+                  return teamIdBuilder;
                 }
 
                 if (column === "pending_team_id") {
-                  return Promise.resolve({ count: counts.pendingCount || 0, error: null });
+                  // Builder til pending_team_id-grenen — håndterer pendingCount.
+                  const pendingBuilder = {
+                    eq(_col, _val) {
+                      // Ekstra filter (f.eks. is_academy=false) — returner sig selv.
+                      return pendingBuilder;
+                    },
+                    then(resolve, reject) {
+                      return Promise.resolve({ count: counts.pendingCount || 0, error: null }).then(resolve, reject);
+                    },
+                  };
+                  return pendingBuilder;
                 }
 
                 throw new Error(`Unexpected riders column: ${column}`);

@@ -113,6 +113,10 @@
       "title": "The board is waiting for your {planLabel}",
       "message": "You have {raceDaysLeft} race days left to negotiate your {planLabel}. If you don't act, the board will decide."
     },
+    "academySigned": {
+      "title": "Academy signing complete",
+      "message": "Your academy prospect has joined your academy."
+    },
     "boardT1Reminder": {
       "title": "Last chance: {planLabel}",
       "messageSingle": "The board takes over in {raceDaysLeft} race day. Open the Board page and negotiate your {planLabel} now.",

@@ -2,9 +2,10 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   DAILY_TRAINING_CONFIG, DEFAULT_PROGRAM, resolveProgram,
-  growthFractionForAge, dailyAbilityDelta, applyDailyTick,
+  growthFractionForAge, abilityMult, dailyAbilityDelta, applyDailyTick,
 } from "./dailyTraining.js";
 import { TRAINING_CONFIG } from "./training.js";
+import { youthMultiplier } from "./academyFlag.js";
 
 test("default-program bruges når plan mangler (spec 6.3: følger ALTID program)", () => {
   assert.deepEqual(resolveProgram(null), DEFAULT_PROGRAM);
@@ -86,4 +87,31 @@ test("ukendt intensitet giver neutral multiplikator, aldrig NaN", () => {
     conditionMult: 1, bonus: false, noise: 1,
   });
   assert.ok(Number.isFinite(d) && d > 0);
+});
+
+// ── Akademi: ungdoms-multiplikator (#1308) ────────────────────────────────────
+
+test("dailyAbilityDelta: akademi-alder (17) får youthMultiplier som faktor", () => {
+  const program = { focus: "sprint", intensity: "normal" };
+  const args = { ability: "sprint", current: 50, cap: 85, age: 17, program, conditionMult: 1, bonus: false, noise: 1 };
+  const cfg = DAILY_TRAINING_CONFIG;
+  const gap = 85 - 50;
+  const base = (gap * growthFractionForAge(17) * cfg.dailyBudgetBoost) / cfg.daysPerSeason;
+  const mult = abilityMult("sprint", program);
+  const expected = base * mult * 1 * youthMultiplier(17) * 1;
+  const got = dailyAbilityDelta(args);
+  assert.ok(Math.abs(got - expected) < 1e-9, `got ${got}, expected ${expected}`);
+});
+
+test("dailyAbilityDelta: senior (age 27) uændret — youthMultiplier(27)===1.0", () => {
+  assert.equal(youthMultiplier(27), 1.0);
+  const program = { focus: "sprint", intensity: "normal" };
+  const args = { ability: "sprint", current: 50, cap: 85, age: 27, program, conditionMult: 1, bonus: false, noise: 1 };
+  const cfg = DAILY_TRAINING_CONFIG;
+  const gap = 85 - 50;
+  const base = (gap * growthFractionForAge(27) * cfg.dailyBudgetBoost) / cfg.daysPerSeason;
+  const mult = abilityMult("sprint", program);
+  const expected = base * mult * 1 * 1 * 1; // youthMultiplier=1.0 for seniorer
+  const got = dailyAbilityDelta(args);
+  assert.ok(Math.abs(got - expected) < 1e-9, `senior delta: got ${got}, expected ${expected}`);
 });

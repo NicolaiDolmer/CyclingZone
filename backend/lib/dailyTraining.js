@@ -5,6 +5,7 @@
 import { PROGRESSION_CONFIG, seededUnit } from "./riderProgression.js";
 import { TRAINING_CONFIG, TRAINING_FOCUSES } from "./training.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
+import { youthMultiplier } from "./academyFlag.js";
 
 export const DAILY_TRAINING_CONFIG = Object.freeze({
   daysPerSeason: 28,        // budget-konvertering; kalibreres i sim (Task A10)
@@ -37,7 +38,7 @@ export function growthFractionForAge(age) {
 
 // Multiplikator pr. evne: fokus-evner får intensitetens focusGrowthMult, resten offFocusMult.
 // "rest" → 0 (ingen progress på hviledage).
-function abilityMult(ability, program) {
+export function abilityMult(ability, program) {
   if (program.intensity === "rest") return 0;
   const focusAbilities = TRAINING_FOCUSES[program.focus] ?? [];
   return focusAbilities.includes(ability)
@@ -52,7 +53,7 @@ export function dailyAbilityDelta({ ability, current, cap, age, program, conditi
   if (mult === 0) return 0;
   const cfg = DAILY_TRAINING_CONFIG;
   const base = (gap * growthFractionForAge(age) * cfg.dailyBudgetBoost) / cfg.daysPerSeason;
-  return base * mult * conditionMult * (bonus ? cfg.bonusMult : 1) * noise;
+  return base * mult * conditionMult * youthMultiplier(age) * (bonus ? cfg.bonusMult : 1) * noise;
 }
 
 // Ét dags-tick for én rytter. Muterer ikke input. Returnerer nye abilities/progress + rapportfelter.

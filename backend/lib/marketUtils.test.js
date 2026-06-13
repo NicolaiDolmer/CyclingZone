@@ -353,3 +353,109 @@ test("resolveRiderSalary: NULL salary + NULL base_value → fallback 1000 → 10
   // undefined salary behandles som free agent (== null loose)
   assert.equal(resolveRiderSalary({}), 100);
 });
+
+// #1308: akademiryttere tæller IKKE mod senior-cap i getTeamMarketState.
+// Scenarie: 30 senior-ryttere + 5 akademiryttere → rider_count skal være 30,
+// future_count 30 (ingen pending/outgoing/lån), og cap-tjek triggeres ved +1 ny.
+test("#1308: getTeamMarketState — akademiryttere udelades fra alle tre tælle-queries", async () => {
+  const TEAM_ID = "team-academy";
+  const SENIOR_COUNT = 30;
+  const ACADEMY_COUNT = 5; // skal aldrig bidrage til rider_count
+
+  // Assertiv mock: verificerer at is_academy=false ER i eq-filtrene.
+  function createAcademyAwareSupabase() {
+    function ridersQuery() {
+      const eqFilters = {};
+      const notIsNullCols = new Set();
+      const neqFilters = {};
+      const builder = {
+        eq(col, val) { eqFilters[col] = val; return promiseOrBuilder(); },
+        not(col, op, val) {
+          if (op === "is" && val === null) notIsNullCols.add(col);
+          return promiseOrBuilder();
+        },
+        neq(col, val) { neqFilters[col] = val; return promiseOrBuilder(); },
+        then(resolve, reject) { return resolveCount().then(resolve, reject); },
+      };
+      function promiseOrBuilder() {
+        return new Proxy(builder, {
+          get(target, prop) {
+            if (prop === "then") return (res, rej) => resolveCount().then(res, rej);
+            return target[prop];
+          },
+        });
+      }
+      function resolveCount() {
+        // #1308 guard: is_academy filter MÅ ALTID være sat til false på cap-queries
+        assert.equal(eqFilters.is_academy, false,
+          `is_academy=false mangler på riders-query (eqFilters=${JSON.stringify(eqFilters)})`);
+
+        const isOutgoing = notIsNullCols.has("pending_team_id") && "pending_team_id" in neqFilters;
+        if (isOutgoing && eqFilters.team_id === TEAM_ID) {
+          return Promise.resolve({ count: 0, error: null }); // ingen outgoing
+        }
+        if (eqFilters.team_id === TEAM_ID) {
+          return Promise.resolve({ count: SENIOR_COUNT, error: null }); // kun seniorer
+        }
+        if (eqFilters.pending_team_id === TEAM_ID) {
+          return Promise.resolve({ count: 0, error: null }); // ingen pending-in
+        }
+        throw new Error(`Unexpected riders filter: ${JSON.stringify({ eqFilters, notIsNullCols: [...notIsNullCols], neqFilters })}`);
+      }
+      return builder;
+    }
+
+    return {
+      from(table) {
+        if (table === "teams") {
+          return {
+            select() {
+              return {
+                eq() {
+                  return {
+                    single: () => Promise.resolve({
+                      data: { id: TEAM_ID, name: "T", balance: 1000000, division: 3, user_id: "u1" },
+                      error: null,
+                    }),
+                  };
+                },
+              };
+            },
+          };
+        }
+        if (table === "riders") {
+          return {
+            select(_cols, _opts) { return ridersQuery(); },
+          };
+        }
+        if (table === "loan_agreements") {
+          return {
+            select() {
+              return {
+                eq() {
+                  return { in() { return Promise.resolve({ count: 0, error: null }); } };
+                },
+              };
+            },
+          };
+        }
+        throw new Error(`Unexpected table: ${table}`);
+      },
+    };
+  }
+
+  const state = await getTeamMarketState(createAcademyAwareSupabase(), TEAM_ID);
+
+  // rider_count = kun seniorer (ACADEMY_COUNT er udeladt af mock)
+  assert.equal(state.rider_count, SENIOR_COUNT, "rider_count skal kun tælle senior-ryttere");
+  assert.equal(state.future_count, SENIOR_COUNT, "future_count = 30 (ingen pending/outgoing/lån)");
+
+  // Med 30 senior-ryttere og ingen lån/pending skal getIncomingSquadViolation trigge ved +1 ny rytter
+  const violation = getIncomingSquadViolation({
+    division: 3,
+    future_count: state.future_count,
+    squad_limits: state.squad_limits,
+  }, { softCapBuffer: 0 });
+  assert.ok(violation !== null, "cap-violation skal trigges ved future_count=30 og incomingCount=1");
+  assert.equal(violation.totalAfter, 31, "totalAfter = 30 + 1 = 31 (akademiryttere tæller IKKE)");
+});

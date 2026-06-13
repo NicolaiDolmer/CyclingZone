@@ -397,6 +397,12 @@ test("getListingPriceUpdateIssue: ejer kan redigere pris på open/negotiating, u
 
 function rowsFor(db, table) {
   if (!db[table]) db[table] = [];
+  // #1308: riders.is_academy er NOT NULL DEFAULT false i DB. Squad-cap-queries
+  // filtrerer nu .eq("is_academy", false); fixtures uden feltet ville ellers
+  // blive ekskluderet (undefined !== false). Default'er feltet ved læsning.
+  if (table === "riders") {
+    for (const r of db[table]) if (r.is_academy === undefined) r.is_academy = false;
+  }
   return db[table];
 }
 

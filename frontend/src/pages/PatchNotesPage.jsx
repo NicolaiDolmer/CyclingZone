@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.32",
+    date: "2026-06-13",
+    label: "Beta",
+    changes: [
+      {
+        category: "New · Academy",
+        items: [
+          "EN · The Academy is live (flag-gated, launches with the relaunch). Sign young prospects from your intake list, see their potential range, and track the 8-place squad. Reject a candidate to pass on them. Refs #1308",
+          "DA · Akademiet er klar (flag-gated, lanceres ved relaunch). Signer unge kandidater fra dit intake, se deres potentiale-interval og hold overblik over de 8 pladser. Afvis en kandidat for at sende dem videre. Refs #1308",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.31",
     date: "2026-06-13",
     label: "Beta",

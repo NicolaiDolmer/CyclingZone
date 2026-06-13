@@ -333,7 +333,7 @@ teams            id, user_id, name, is_ai, division(1-3), balance, sponsor_incom
 riders           id, pcm_id, firstname, lastname, full_name(gen), birthdate,
                  nationality_code, height, weight, popularity, uci_points,
                  price(gen), salary, team_id, pending_team_id, ai_team_id, is_u25,
-                 is_retired,
+                 is_retired, is_academy(bool, default false),
                  stat_fl, stat_bj, stat_kb, stat_bk, stat_tt, stat_prl,
                  stat_bro, stat_sp, stat_acc, stat_ned, stat_udh, stat_mod,
                  stat_res, stat_ftr
@@ -372,6 +372,10 @@ swap_offers        id, offered_rider_id, requested_rider_id, proposing_team_id,
 loan_agreements    id, rider_id, from_team_id, to_team_id, loan_fee, start_season,
                    end_season, buy_option_price,
                    status(pending|active|window_pending|completed|rejected|cancelled|buyout)
+academy_intake     id(uuid), team_id(→teams), season_id(→seasons), rider_id(→riders),
+                   status(pending|signed|rejected), signing_fee, created_at
+                   — genereret pr. menneske-hold ved sæsonstart (max 2 per hold per sæson)
+                   — UNIQUE(team_id, rider_id, season_id); gated bag academy_enabled-flag
 board_profiles     id, team_id, plan_type(1yr|3yr|5yr|baseline), UNIQUE(team_id, plan_type),
                    focus(youth_development|star_signing|balanced), satisfaction(0-100),
                    budget_modifier, current_goals(JSONB), season_id,
@@ -402,8 +406,10 @@ teams              (udvidet): season_1_identity_basis(JSONB), team_dna_key(FK te
                    consecutive_low_satisfaction_expirations(int)    (S-02b/S-02c/S-02f)
 transfer_windows   (udvidet): board_negotiation_state(locked|pending_5yr|pending_3yr|pending_1yr|complete)  (S-02a)
 finance_transactions  id, team_id, type(sponsor|prize|salary|transfer_in|transfer_out|
-                      interest|bonus|starting_budget), amount, description,
-                      season_id, race_id
+                      interest|bonus|starting_budget|academy_signing|academy_drift),
+                      amount, description, season_id, race_id
+                      — academy_signing: éngangs-signeringsgebyr ved akademi-indskrivning
+                      — academy_drift: løbende akademi-driftsomkostning pr. slot pr. sæson
 season_standings   id, season_id, team_id, division, rank_in_division, total_points,
                    races_completed, stage_wins, gc_wins  (unique: season_id + team_id)
 notifications      id, user_id, type(...), title, message, is_read, related_id
