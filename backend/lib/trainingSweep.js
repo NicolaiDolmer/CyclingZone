@@ -45,7 +45,7 @@ export function teamsNeedingSweep(teams, todaysRuns, tickDate) {
  * @param {object} args.supabase     — service-role Supabase-client
  * @param {Date}   [args.now]        — referencetid (default new Date())
  * @param {Function} [args.runDay]   — DI-hook til test; default runTeamTrainingDay
- * @returns {Promise<{swept: number, failed?: number, skipped?: string}>}
+ * @returns {Promise<{swept: number, failed?: number, skipped?: string, valueRefresh?: {scanned: number, changed: number, written: number}}>}
  */
 export async function runTrainingSweep({
   supabase,
