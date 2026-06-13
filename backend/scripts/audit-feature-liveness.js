@@ -132,6 +132,11 @@ const WHITELIST_EMPTY_TABLES = new Set([
   // træningsdag, gated af isDailyTrainingEnabled (DB-flag, seedet OFF indtil
   // 20/6-relaunch, #1103). Fjern når flag tændes + tabellen har rows.
   "training_day_runs",
+  // Akademi-MVP #1308: academyIntake.js skriver intake-kuld (runAcademyIntake) gated
+  // af academy_enabled (DB-flag, seedet OFF indtil 20/6-relaunch, #1103). Tabellen blev
+  // oprettet ved Fase A-merge (migration anvendt), men fyldes først når flaget flippes
+  // ved relaunch. Skriv-path verificeret i academyIntake.js. Fjern når flag tændes + rows.
+  "academy_intake",
 ]);
 
 // Detector B: endpoints der er korrekt orphaned i frontend (cron, admin-curl, webhook)
