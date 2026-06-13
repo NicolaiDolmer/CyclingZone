@@ -421,7 +421,7 @@ test("processDeadlineDayCron skips warnings when window is closed and fires Fina
         return {
           select: () => ({
             eq: () => ({
-              single: () => Promise.resolve({ data: { season_number: 7 }, error: null }),
+              single: () => Promise.resolve({ data: { number: 7 }, error: null }),
             }),
           }),
         };
@@ -548,7 +548,7 @@ test("processDeadlineDayCron: auto-closes window AND fires Final Whistle in same
         };
       }
       if (table === "seasons") {
-        return { select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: { season_number: 0 }, error: null }) }) }) };
+        return { select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: { number: 0 }, error: null }) }) }) };
       }
       return emptyQueryBuilder();
     },

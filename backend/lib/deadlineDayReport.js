@@ -328,8 +328,8 @@ async function fireFinalWhistle({ supabase, window, sendDiscordWebhookFn, getDef
 
   let seasonNumber = null;
   if (window.season_id) {
-    const { data: season } = await supabase.from("seasons").select("season_number").eq("id", window.season_id).single();
-    seasonNumber = season?.season_number ?? null;
+    const { data: season } = await supabase.from("seasons").select("number").eq("id", window.season_id).single();
+    seasonNumber = season?.number ?? null;
   }
 
   const webhookUrl = await getDefaultWebhookFn();
