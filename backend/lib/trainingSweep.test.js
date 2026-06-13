@@ -119,19 +119,19 @@ describe("runTrainingSweep", () => {
 
   it("returnerer before_window når det er for tidligt", async () => {
     const supabase = makeFullMockSupabase();
-    const result = await runTrainingSweep({ supabase, now: beforeWindow });
+    const result = await runTrainingSweep({ supabase, now: beforeWindow, refreshValues: async () => null });
     assert.deepEqual(result, { swept: 0, skipped: "before_window" });
   });
 
   it("returnerer flag_off når feature-flaget er slukket", async () => {
     const supabase = makeFullMockSupabase({ configValue: false });
-    const result = await runTrainingSweep({ supabase, now: afterWindow });
+    const result = await runTrainingSweep({ supabase, now: afterWindow, refreshValues: async () => null });
     assert.deepEqual(result, { swept: 0, skipped: "flag_off" });
   });
 
   it("returnerer no_active_season når der ikke er en aktiv sæson", async () => {
     const supabase = makeFullMockSupabase({ season: null });
-    const result = await runTrainingSweep({ supabase, now: afterWindow });
+    const result = await runTrainingSweep({ supabase, now: afterWindow, refreshValues: async () => null });
     assert.deepEqual(result, { swept: 0, skipped: "no_active_season" });
   });
 
@@ -145,7 +145,7 @@ describe("runTrainingSweep", () => {
     const supabase = makeFullMockSupabase({ teams, runs });
     let callCount = 0;
     const runDay = async () => { callCount++; return { alreadyRan: false }; };
-    const result = await runTrainingSweep({ supabase, now: afterWindow, runDay });
+    const result = await runTrainingSweep({ supabase, now: afterWindow, runDay, refreshValues: async () => null });
     assert.equal(callCount, 0);
     assert.deepEqual(result, { swept: 0 });
   });
@@ -156,7 +156,7 @@ describe("runTrainingSweep", () => {
     const supabase = makeFullMockSupabase({ teams, runs });
     const called = [];
     const runDay = async ({ teamId }) => { called.push(teamId); return { alreadyRan: false }; };
-    const result = await runTrainingSweep({ supabase, now: afterWindow, runDay });
+    const result = await runTrainingSweep({ supabase, now: afterWindow, runDay, refreshValues: async () => null });
     assert.deepEqual(called, ["t2"]);
     assert.deepEqual(result, { swept: 1 });
   });
@@ -166,7 +166,7 @@ describe("runTrainingSweep", () => {
     const runs = []; // ingen kørsler endnu (engine vil rapportere alreadyRan)
     const supabase = makeFullMockSupabase({ teams, runs });
     const runDay = async () => ({ alreadyRan: true });
-    const result = await runTrainingSweep({ supabase, now: afterWindow, runDay });
+    const result = await runTrainingSweep({ supabase, now: afterWindow, runDay, refreshValues: async () => null });
     assert.deepEqual(result, { swept: 0 });
   });
 
@@ -180,7 +180,7 @@ describe("runTrainingSweep", () => {
       if (teamId === "t2") throw new Error("riders load fejl");
       return { alreadyRan: false };
     };
-    const result = await runTrainingSweep({ supabase, now: afterWindow, runDay });
+    const result = await runTrainingSweep({ supabase, now: afterWindow, runDay, refreshValues: async () => null });
     assert.deepEqual(called, ["t1", "t2", "t3"]);
     assert.equal(result.swept, 2);
     assert.equal(result.failed, 1);
@@ -191,9 +191,28 @@ describe("runTrainingSweep", () => {
     const runs = [];
     const supabase = makeFullMockSupabase({ teams, runs });
     const runDay = async () => ({ alreadyRan: false });
-    const result = await runTrainingSweep({ supabase, now: afterWindow, runDay });
+    const result = await runTrainingSweep({ supabase, now: afterWindow, runDay, refreshValues: async () => null });
     assert.equal(result.swept, 1);
     assert.equal("failed" in result, false);
+  });
+
+  it("kalder value-refresh efter sweep (enabled + teams)", async () => {
+    const teams = [{ id: "t1" }];
+    const runs = [];
+    const supabase = makeFullMockSupabase({ teams, runs });
+    let refreshCalled = 0;
+    const runDay = async () => ({ alreadyRan: false });
+    const refreshValues = async () => { refreshCalled++; return { scanned: 1, changed: 0, written: 0 }; };
+    await runTrainingSweep({ supabase, now: afterWindow, runDay, refreshValues });
+    assert.equal(refreshCalled, 1);
+  });
+
+  it("kalder IKKE value-refresh når flag er slukket (flag_off early-return)", async () => {
+    const supabase = makeFullMockSupabase({ configValue: false });
+    let refreshCalled = 0;
+    const refreshValues = async () => { refreshCalled++; return { scanned: 0, changed: 0, written: 0 }; };
+    await runTrainingSweep({ supabase, now: afterWindow, refreshValues });
+    assert.equal(refreshCalled, 0);
   });
 });
 
@@ -218,7 +237,7 @@ describe("runTrainingSweep query-fejl", () => {
       },
     };
     await assert.rejects(
-      () => runTrainingSweep({ supabase, now: afterWindow }),
+      () => runTrainingSweep({ supabase, now: afterWindow, refreshValues: async () => null }),
       /teams: permission denied/
     );
   });

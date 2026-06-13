@@ -9,6 +9,7 @@
 import { copenhagenHour, copenhagenDateString } from "./copenhagenTime.js";
 import { isDailyTrainingEnabled } from "./dailyTrainingFlag.js";
 import { runTeamTrainingDay } from "./dailyTrainingEngine.js";
+import { refreshChangedRiderValues } from "./riderValueRefresh.js";
 
 export const SWEEP_FROM_HOUR = 22;
 
@@ -44,12 +45,13 @@ export function teamsNeedingSweep(teams, todaysRuns, tickDate) {
  * @param {object} args.supabase     — service-role Supabase-client
  * @param {Date}   [args.now]        — referencetid (default new Date())
  * @param {Function} [args.runDay]   — DI-hook til test; default runTeamTrainingDay
- * @returns {Promise<{swept: number, failed?: number, skipped?: string}>}
+ * @returns {Promise<{swept: number, failed?: number, skipped?: string, valueRefresh?: {scanned: number, changed: number, written: number}}>}
  */
 export async function runTrainingSweep({
   supabase,
   now = new Date(),
   runDay = runTeamTrainingDay,
+  refreshValues = refreshChangedRiderValues,
 } = {}) {
   // ── Tidsvindue ────────────────────────────────────────────────────────────────
   if (!shouldSweepNow(now)) {
@@ -129,5 +131,15 @@ export async function runTrainingSweep({
     }
   }
 
-  return failed > 0 ? { swept, failed } : { swept };
+  // #1364: efter sweep — base_value følger nu udviklede evner. Fuld refresh
+  // (skriver kun ændrede) fungerer samtidig som sikkerhedsnet/reconcile.
+  let valueRefresh = null;
+  try {
+    valueRefresh = await refreshValues(supabase, { log: (m) => console.log(`  ${m}`) });
+  } catch (err) {
+    console.error("  ❌ value-refresh efter sweep fejlede:", err.message);
+  }
+
+  const base = failed > 0 ? { swept, failed } : { swept };
+  return valueRefresh ? { ...base, valueRefresh } : base;
 }
