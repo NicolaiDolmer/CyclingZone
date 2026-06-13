@@ -71,13 +71,15 @@ export default function ClarityIntegration() {
 
       const { data: season } = await supabase
         .from("seasons")
-        .select("season_number")
+        .select("number")
         .eq("status", "active")
-        .order("season_number", { ascending: false })
+        .order("number", { ascending: false })
         .limit(1)
         .maybeSingle();
       if (cancelled) return;
-      if (season) setClarityTag("season_number", season.season_number);
+      // Tag-key stays "season_number" (analytics convention); the value reads
+      // the real column seasons.number (the table has no season_number column).
+      if (season) setClarityTag("season_number", season.number);
     }
 
     tagFromSession();
