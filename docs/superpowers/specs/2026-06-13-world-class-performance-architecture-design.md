@@ -10,7 +10,7 @@
 
 **Review requested from:** Claude or another independent engineering reviewer before implementation planning
 
-> **Sequencing (added in review, 2026-06-13):** None of the work in this document is pre-launch. The 2026-06-20 fresh-season relaunch takes priority, and every phase below is sequenced *after* it — do not start a data-layer refactor during launch week. Execution is tracked in [#1375](https://github.com/NicolaiDolmer/CyclingZone/issues/1375).
+> **Sequencing (added in review, 2026-06-13):** None of the work in this document is pre-launch. The 2026-06-20 fresh-season relaunch takes priority, and every phase below is sequenced *after* it; do not start a data-layer refactor during launch week. Execution is tracked in [#1375](https://github.com/NicolaiDolmer/CyclingZone/issues/1375).
 >
 > **Review verification (2026-06-13):** the four load-bearing premises were checked against the code and all hold: no shared client cache (`frontend/package.json`), the `loadAll` broad-refetch pattern appears 62 times across 17 pages, rate limiting is an in-process memory store (`backend/lib/rateLimiters.js`), and cron shares the web process (`server.js` imports `startCron`). The diagnosis is verified, not assumed.
 
