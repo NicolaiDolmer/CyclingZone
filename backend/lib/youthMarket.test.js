@@ -131,6 +131,8 @@ function makeFreeAgentSupabase({
     prize_earnings_bonus: 0,
   },
   academyCount = 0,
+  offeredIntake = false,   // rytteren ligger som 'offered' i et intake-kuld
+  activeAuction = false,   // rytteren ligger på en aktiv ungdomsauktion
 } = {}) {
   const riderUpdates = [];
   const rpcCalls = [];
@@ -151,6 +153,23 @@ function makeFreeAgentSupabase({
             return { eq() { riderUpdates.push(payload); return Promise.resolve({ error: null }); } };
           },
         };
+      }
+      if (table === "academy_intake") {
+        const api = {
+          select() { return api; },
+          eq() { return api; },
+          maybeSingle() { return Promise.resolve({ data: offeredIntake ? { id: "intake-1" } : null, error: null }); },
+        };
+        return api;
+      }
+      if (table === "auctions") {
+        const api = {
+          select() { return api; },
+          eq() { return api; },
+          in() { return api; },
+          maybeSingle() { return Promise.resolve({ data: activeAuction ? { id: "auc-1" } : null, error: null }); },
+        };
+        return api;
       }
       return {};
     },
@@ -211,4 +230,22 @@ test("signFreeAgentYouth: afviser når akademi fyldt (8) → academy_full", asyn
     /academy_full/,
   );
   assert.equal(supabase._riderUpdates.length, 0);
+});
+
+test("signFreeAgentYouth: afviser rytter der er 'offered' i et intake-kuld → not_free_agent", async () => {
+  const supabase = makeFreeAgentSupabase({ offeredIntake: true });
+  await assert.rejects(
+    () => signFreeAgentYouth(supabase, { teamId: "team-A", riderId: "fa-rider", seasonNumber: 1, now: NOW_2026 }),
+    /not_free_agent/,
+  );
+  assert.equal(supabase._riderUpdates.length, 0, "ingen sign når kandidaten tilhører et intake-kuld");
+});
+
+test("signFreeAgentYouth: afviser rytter på aktiv ungdomsauktion → not_free_agent (ingen auktions-bypass)", async () => {
+  const supabase = makeFreeAgentSupabase({ activeAuction: true });
+  await assert.rejects(
+    () => signFreeAgentYouth(supabase, { teamId: "team-A", riderId: "fa-rider", seasonNumber: 1, now: NOW_2026 }),
+    /not_free_agent/,
+  );
+  assert.equal(supabase._riderUpdates.length, 0, "auktionen må ikke kunne bypasses via direct-sign");
 });

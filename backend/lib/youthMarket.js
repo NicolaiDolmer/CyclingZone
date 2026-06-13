@@ -111,6 +111,26 @@ export async function signFreeAgentYouth(supabase, { teamId, riderId, seasonNumb
   // Skal være en fri rytter (ingen ejer, ikke allerede akademi).
   if (rider.team_id || rider.is_academy) throw new Error("not_free_agent");
 
+  // Må IKKE være tilbudt i et intake-kuld (tilhører et bestemt holds intake) eller
+  // ligge på en aktiv ungdomsauktion (ellers bypasser man auktionen og henter en
+  // rytter andre byder på, gratis til minimumsløn). Begge har team_id=NULL +
+  // is_academy=false, så de passerer free-agent-grundkriterierne uden disse tjek.
+  const { data: offeredIntake } = await supabase
+    .from("academy_intake")
+    .select("id")
+    .eq("rider_id", riderId)
+    .eq("status", "offered")
+    .maybeSingle();
+  if (offeredIntake) throw new Error("not_free_agent");
+
+  const { data: activeAuction } = await supabase
+    .from("auctions")
+    .select("id")
+    .eq("rider_id", riderId)
+    .in("status", ["active", "extended"])
+    .maybeSingle();
+  if (activeAuction) throw new Error("not_free_agent");
+
   // Skal være i akademi-alder (16-21).
   const age = rider.birthdate ? now.getFullYear() - new Date(rider.birthdate).getFullYear() : null;
   if (!isAcademyAge(age)) throw new Error("not_academy_age");

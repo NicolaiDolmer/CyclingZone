@@ -8003,23 +8003,39 @@ router.get("/academy/me", requireAuth, async (req, res) => {
     // NULL, ikke akademi, i akademi-alder (16-21). Display-safe (INGEN potentiale, da
     // klubben ikke ejer/scouter dem endnu). Birthdate-range bounder forespørgslen;
     // præcis alders-filtrering sker i JS. Capped (discovery-liste).
-    const minBirth = `${currentYear - ACADEMY.MAX_AGE - 1}-01-01`;
+    //
+    // VIGTIGT: ekskludér ryttere der er 'offered' i ET intake-kuld eller ligger på en
+    // AKTIV ungdomsauktion — de har samme team_id=NULL/is_academy=false/alder, men er
+    // IKKE frie: at signe dem direkte ville stjæle et andet holds intake-kandidat eller
+    // bypasse en kørende auktion (signFreeAgentYouth afviser dem også backend-side).
+    const minBirth = `${currentYear - ACADEMY.MAX_AGE}-01-01`;
     const maxBirth = `${currentYear - ACADEMY.MIN_AGE}-12-31`;
-    const { data: faRaw, error: faErr } = await supabase
-      .from("riders")
-      .select("id, firstname, lastname, nationality_code, birthdate, market_value")
-      .is("team_id", null)
-      .eq("is_academy", false)
-      .gte("birthdate", minBirth)
-      .lte("birthdate", maxBirth)
-      .order("market_value", { ascending: false })
-      .limit(30);
-    if (faErr) throw new Error(faErr.message);
-    const freeAgents = (faRaw ?? []).filter((r) => {
-      if (!r.birthdate) return false;
-      const age = currentYear - new Date(r.birthdate).getFullYear();
-      return age >= ACADEMY.MIN_AGE && age <= ACADEMY.MAX_AGE;
-    });
+    const [offeredRes, youthAucRes, faRes] = await Promise.all([
+      supabase.from("academy_intake").select("rider_id").eq("status", "offered"),
+      supabase.from("auctions").select("rider_id").eq("is_youth", true).in("status", ["active", "extended"]),
+      supabase
+        .from("riders")
+        .select("id, firstname, lastname, nationality_code, birthdate, market_value")
+        .is("team_id", null)
+        .eq("is_academy", false)
+        .gte("birthdate", minBirth)
+        .lte("birthdate", maxBirth)
+        .order("market_value", { ascending: false })
+        .limit(300),
+    ]);
+    if (faRes.error) throw new Error(faRes.error.message);
+    const excludedIds = new Set([
+      ...((offeredRes.data ?? []).map((r) => r.rider_id)),
+      ...((youthAucRes.data ?? []).map((r) => r.rider_id)),
+    ]);
+    const freeAgents = (faRes.data ?? [])
+      .filter((r) => {
+        if (!r.birthdate) return false;
+        const age = currentYear - new Date(r.birthdate).getFullYear();
+        return age >= ACADEMY.MIN_AGE && age <= ACADEMY.MAX_AGE;
+      })
+      .filter((r) => !excludedIds.has(r.id))
+      .slice(0, 30);
 
     res.json({
       enabled: true,
