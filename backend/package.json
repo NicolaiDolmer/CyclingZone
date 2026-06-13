@@ -12,6 +12,7 @@
     "seed:uci-race-points": "node scripts/seedUciMenRacePoints.js",
     "economy:baseline": "node scripts/economyBaselineSimulation.js",
     "sim:contracts": "node scripts/economyContractSimulation.js --markdown",
+    "sim:academy": "node scripts/academyEconomySimulation.js --markdown",
     "gates:mutation-audit": "node scripts/gateMutationAudit.js",
     "race:gate": "node scripts/simulateSeasonDryRun.js --enforce-targets --no-html --seed=2026",
     "race:gate:condition": "node scripts/simulateSeasonDryRun.js --enforce-targets --no-html --seed=2026 --condition=random",
