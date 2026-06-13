@@ -456,6 +456,66 @@ test("rejectAcademyCandidate: opdaterer intake → rejected + lister ungdomsaukt
   assert.equal(supabase._rpcCalls.length, 0, "ingen finance-kald ved reject");
 });
 
+// Default-wiring (uden DI): bekræfter at den faktiske dynamiske import-bro til
+// youthMarket.listRejectedAsYouthAuction kører end-to-end og opretter en auktion.
+function makeDefaultRejectSupabase() {
+  const auctionInserts = [];
+  const intakeUpdates = [];
+  const supabase = {
+    from(table) {
+      if (table === "academy_intake") {
+        const api = {
+          select() { return api; },
+          eq() { return api; },
+          maybeSingle() { return Promise.resolve({ data: { id: "intake-1", status: "offered" }, error: null }); },
+          update(data) { intakeUpdates.push(data); return { eq() { return Promise.resolve({ error: null }); } }; },
+        };
+        return api;
+      }
+      if (table === "riders") {
+        const api = {
+          select() { return api; },
+          eq() { return api; },
+          maybeSingle() {
+            return Promise.resolve({
+              data: { id: "rider-X", firstname: "A", lastname: "B", base_value: 100000, market_value: 100000, prize_earnings_bonus: 0, team_id: null },
+              error: null,
+            });
+          },
+        };
+        return api;
+      }
+      if (table === "auction_timing_config") {
+        // null → resolveAuctionConfig falder tilbage til DEFAULT_AUCTION_CONFIG
+        return { select() { return { eq() { return { single() { return Promise.resolve({ data: null, error: null }); } }; } }; } };
+      }
+      if (table === "auctions") {
+        return {
+          insert(row) {
+            auctionInserts.push(row);
+            return { select() { return { single() { return Promise.resolve({ data: { id: "youth-auction-default", ...row }, error: null }); } }; } };
+          },
+        };
+      }
+      return {};
+    },
+    _auctionInserts: auctionInserts,
+    _intakeUpdates: intakeUpdates,
+  };
+  return supabase;
+}
+
+test("rejectAcademyCandidate: default-wiring opretter reelt en ungdomsauktion (dynamisk import-bro)", async () => {
+  const supabase = makeDefaultRejectSupabase();
+  const result = await rejectAcademyCandidate(supabase, { teamId: "team-A", riderId: "rider-X" });
+
+  assert.equal(result.status, "rejected");
+  assert.equal(result.auctionId, "youth-auction-default");
+  assert.equal(supabase._auctionInserts.length, 1, "ungdomsauktion oprettet via default-stien");
+  assert.equal(supabase._auctionInserts[0].is_youth, true);
+  assert.equal(supabase._auctionInserts[0].seller_team_id, null);
+});
+
 test("rejectAcademyCandidate: lister IKKE ungdomsauktion når kandidaten ikke er offered", async () => {
   const supabase = makeSignRejectSupabase({ intakeExists: true, intakeStatus: "signed" });
   let called = false;

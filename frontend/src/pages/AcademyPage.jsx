@@ -30,7 +30,7 @@ function formatSalary(salary) {
 
 export default function AcademyPage() {
   const { t } = useTranslation("academy");
-  const { enabled, slots, roster, intake, loading, signCandidate, rejectCandidate } = useAcademy();
+  const { enabled, slots, roster, intake, freeAgents, loading, signCandidate, rejectCandidate, signFreeAgent } = useAcademy();
 
   // Per-kandidat in-flight state + fejlbeskeder.
   const [actionState, setActionState] = useState({}); // { [riderId]: "signing"|"rejecting"|null }
@@ -59,6 +59,23 @@ export default function AcademyPage() {
     const result = await rejectCandidate(riderId);
     if (!result.ok) {
       setActionErrors(prev => ({ ...prev, [riderId]: t("error.generic") }));
+    }
+    setActionState(prev => ({ ...prev, [riderId]: null }));
+  }
+
+  async function handleSignFreeAgent(riderId) {
+    setActionState(prev => ({ ...prev, [riderId]: "signing" }));
+    setActionErrors(prev => ({ ...prev, [riderId]: null }));
+    const result = await signFreeAgent(riderId);
+    if (!result.ok) {
+      const msg = result.error === "academy_full"
+        ? t("error.academyFull")
+        : result.error === "not_academy_age"
+          ? t("error.notAcademyAge")
+          : result.error === "not_free_agent"
+            ? t("error.notFreeAgent")
+            : t("error.generic");
+      setActionErrors(prev => ({ ...prev, [riderId]: msg }));
     }
     setActionState(prev => ({ ...prev, [riderId]: null }));
   }
@@ -241,6 +258,59 @@ export default function AcademyPage() {
                 </tbody>
               </table>
             </div>
+          </div>
+        )}
+      </section>
+
+      {/* FREE-AGENT-sektion (#1308 Fase B) — usolgte ungdomsryttere fra ungdomsauktioner. */}
+      <section>
+        <h2 className="text-sm font-semibold text-cz-3 uppercase tracking-wide mb-3">{t("freeAgentsHeading")}</h2>
+
+        {freeAgents.length === 0 ? (
+          <div className="bg-cz-card border border-cz-border rounded-xl px-6 py-8 text-center">
+            <p className="text-cz-3 text-sm">{t("emptyFreeAgents")}</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {freeAgents.map((rider) => {
+              const age = calcAge(rider.birthdate);
+              const busy = actionState[rider.id] != null;
+              const err = actionErrors[rider.id];
+              return (
+                <div key={rider.id} className="bg-cz-card border border-cz-border rounded-xl p-4 flex flex-col gap-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="font-semibold text-cz-1 text-sm leading-snug">
+                        {rider.firstname} {rider.lastname}
+                      </p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        {rider.nationality_code && (
+                          <Flag code={rider.nationality_code} className="text-sm" />
+                        )}
+                        {age != null && (
+                          <span className="text-xs text-cz-3">{t("ageLabel", { age })}</span>
+                        )}
+                      </div>
+                    </div>
+                    <span className="flex-shrink-0 text-xs font-mono text-cz-2">
+                      {formatSalary(rider.market_value)} CZ$
+                    </span>
+                  </div>
+
+                  {err && <p className="text-xs text-cz-danger">{err}</p>}
+
+                  <button
+                    type="button"
+                    onClick={() => handleSignFreeAgent(rider.id)}
+                    disabled={busy || isFull}
+                    title={isFull ? t("fullTooltip") : undefined}
+                    className="mt-auto px-3 py-1.5 rounded-lg bg-cz-accent text-white text-xs font-semibold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+                  >
+                    {actionState[rider.id] === "signing" ? t("loading") : t("signFreeAgentBtn")}
+                  </button>
+                </div>
+              );
+            })}
           </div>
         )}
       </section>

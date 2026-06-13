@@ -26,7 +26,7 @@ test("academy page renders intake candidates, slot counter, and roster", async (
   await expect(page.locator("main")).toContainText(/Intake|intake/i);
 
   // Serious prospect-badge (Emil Kristiansen er is_serious=true)
-  await expect(page.locator("main")).toContainText(/Serious|Serioes/i);
+  await expect(page.locator("main")).toContainText(/Serious|Seriøs/i);
 
   // Sign + Reject-knapper (mindst én af hvert)
   await expect(page.getByRole("button", { name: /Sign|Signer/i }).first()).toBeVisible();
@@ -34,6 +34,11 @@ test("academy page renders intake candidates, slot counter, and roster", async (
 
   // Roster-sektion — Jonas Svensson + Luca Morel
   await expect(page.locator("main")).toContainText(/Roster|roster|Akademihold/i);
+
+  // Free-agent-sektion (#1308 Fase B) — frie ungdomsryttere + "Sign to academy"-knap
+  await expect(page.locator("main")).toContainText(/Free youth agents|Frie ungdomsryttere/i);
+  await expect(page.locator("main")).toContainText(/Noah Berg/i);
+  await expect(page.getByRole("button", { name: /Sign to academy|Signér til akademi/i }).first()).toBeVisible();
 });
 
 test("academy page shows disabled state gracefully when flag is off", async ({ page }) => {

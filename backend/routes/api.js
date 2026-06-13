@@ -7999,11 +7999,34 @@ router.get("/academy/me", requireAuth, async (req, res) => {
       return safe;
     });
 
+    // Frie ungdoms-free-agents (#1308 Fase B): usolgte fra ungdomsauktioner — team_id
+    // NULL, ikke akademi, i akademi-alder (16-21). Display-safe (INGEN potentiale, da
+    // klubben ikke ejer/scouter dem endnu). Birthdate-range bounder forespørgslen;
+    // præcis alders-filtrering sker i JS. Capped (discovery-liste).
+    const minBirth = `${currentYear - ACADEMY.MAX_AGE - 1}-01-01`;
+    const maxBirth = `${currentYear - ACADEMY.MIN_AGE}-12-31`;
+    const { data: faRaw, error: faErr } = await supabase
+      .from("riders")
+      .select("id, firstname, lastname, nationality_code, birthdate, market_value")
+      .is("team_id", null)
+      .eq("is_academy", false)
+      .gte("birthdate", minBirth)
+      .lte("birthdate", maxBirth)
+      .order("market_value", { ascending: false })
+      .limit(30);
+    if (faErr) throw new Error(faErr.message);
+    const freeAgents = (faRaw ?? []).filter((r) => {
+      if (!r.birthdate) return false;
+      const age = currentYear - new Date(r.birthdate).getFullYear();
+      return age >= ACADEMY.MIN_AGE && age <= ACADEMY.MAX_AGE;
+    });
+
     res.json({
       enabled: true,
       slots: { used, max: ACADEMY.SLOTS },
       roster,
       intake,
+      freeAgents,
     });
   } catch (err) {
     captureException(err);

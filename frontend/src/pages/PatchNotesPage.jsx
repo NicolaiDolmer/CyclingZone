@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.33",
+    date: "2026-06-13",
+    label: "Beta",
+    changes: [
+      {
+        category: "New · Academy",
+        items: [
+          "EN · Youth auctions are live (flag-gated). When you reject an intake candidate, they go up for auction as a youth prospect that any club can bid on. Win one and they join your academy (8-place cap applies). A prospect nobody bids on becomes a free youth agent, and you can sign them straight into your academy at minimum salary from the new Free youth agents list. Refs #1308",
+          "DA · Ungdomsauktioner er klar (flag-gated). Når du afviser en intake-kandidat, ryger de på auktion som et ungdomsprospekt, som ethvert hold kan byde på. Vinder du en, kommer de i dit akademi (8-pladsers loft gælder). Et prospekt ingen byder på bliver en fri ungdomsrytter, og du kan signere dem direkte ind i dit akademi til minimumsløn fra den nye liste over frie ungdomsryttere. Refs #1308",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.32",
     date: "2026-06-13",
     label: "Beta",

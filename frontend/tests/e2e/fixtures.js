@@ -405,6 +405,24 @@ function apiResponse(pathname) {
           potentialEstimate: { lo: 3.0, hi: 3.0, exact: true, scoutLevel: 3 },
         },
       ],
+      freeAgents: [
+        {
+          id: "fa-1",
+          firstname: "Noah",
+          lastname: "Berg",
+          nationality_code: "no",
+          birthdate: "2007-04-12",
+          market_value: 95000,
+        },
+        {
+          id: "fa-2",
+          firstname: "Lukas",
+          lastname: "Meyer",
+          nationality_code: "de",
+          birthdate: "2009-11-03",
+          market_value: 72000,
+        },
+      ],
     };
   }
 
