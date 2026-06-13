@@ -57,11 +57,23 @@ const MARKDOWN = args.includes("--markdown");
 const SIM_SEASONS = 10;
 const SIM_SEED = 1308; // deterministisk; matcher issue-nummeret
 
-// Repræsentativ ungdomsrytter market_value (base_value → market_value via modellen).
-// Ungdomsryttere (16-21) ligger i bunden af værdiskalaen.
-// Fra contractSeed.js: salary = 0.10 × market_value.
-// Ungdomsrytter med base_value ~80.000 → market_value ~160.000 (midterste bånd).
-const YOUTH_MARKET_VALUE_REP = 160_000;
+// Repræsentativ ungdomsrytter base_value — empirisk beregnet (IKKE gættet).
+//
+// Kilde: scripts/dev/computeYouthBaseValue.js kørte den ÆGTE pipeline
+// (generateAcademyCandidates → seedPhysiologyFromLegacy → deriveAbilities →
+//  computeRiderTypes → predictBaseValue, model v3) på 201 raw youths (50 kuld,
+//  seeds 1308+). Resultater:
+//   Alle raw youths  16-21: median=11.312  p25=6.414   p75=19.731
+//   Serious (pot 4.5-6.0): median=20.325  p25=12.507  p75=39.129
+//   Non-serious (pot 2-4.5): median=6.698  p25=4.783   p75=9.767
+//
+// Vi bruger den blandede median (11.312 CZ$) som repræsentativ value.
+// Denne er base_value = market_value for akademi-ryttere (pre-cutover, ingen
+// market_value-differentiering endnu). Salary = SALARY_RATE × base_value.
+//
+// NB: 11.312 er ~14× lavere end det tidligere gæt (160.000). Akademiets
+// salary-last er langt lavere end antaget; SIGNING_FEE_RATE er den primære cost.
+const YOUTH_MARKET_VALUE_REP = 11_312;
 
 // Nye signeringer pr. sæson (ud af 8 slots; CONTRACT_LENGTH=3 → ~2-3 fornyes/sæson).
 const INTAKE_PER_SEASON = 2;
