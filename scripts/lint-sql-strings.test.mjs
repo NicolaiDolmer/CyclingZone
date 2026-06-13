@@ -166,32 +166,45 @@ test('matches reference file with correctly escaped Manageren\'\'s', () => {
   assert.equal(findings.length, 0, "reference Manageren''s file should be clean");
 });
 
-// ----- Option D: audit-on-push workflow integration (acceptance #4) -----
-test('feature-liveness-audit.yml has push-to-main trigger with --skip=A,B,D,E', () => {
+// ----- Race-fix #790: audit-on-workflow_run integration (acceptance #4) -----
+// feature-liveness-audit.yml previously triggered on push-to-main, but that
+// RACED auto-migrate's ~3-min deploy-delay: Detector C read schema_migrations
+// before auto-migrate had written the row, falsely flagging every just-merged
+// migration as "committed men ikke applied" (#790 churned on every merge). The
+// trigger now keys off the Auto-migrate workflow COMPLETING instead, so the
+// audit runs only once the migration is actually applied.
+test('feature-liveness-audit.yml triggers on workflow_run(Auto-migrate) with --skip=A,B,D,E', () => {
   const yml = readFileSync(
     join(HERE, '..', '.github', 'workflows', 'feature-liveness-audit.yml'),
     'utf8'
   );
 
-  // push trigger present
+  // workflow_run trigger keyed off Auto-migrate completing on main
   assert.match(
     yml,
-    /push:\s*\n\s*branches:\s*\[main\]/,
-    'workflow should trigger on push to main'
+    /workflow_run:\s*\n\s*workflows:\s*\['Auto-migrate'\]\s*\n\s*types:\s*\[completed\]\s*\n\s*branches:\s*\[main\]/,
+    'workflow should trigger on Auto-migrate workflow_run completing on main'
   );
 
-  // Detector C-only when push
-  assert.match(
+  // no lingering push-to-main trigger (the racy shape #790 removed)
+  assert.doesNotMatch(
     yml,
-    /github\.event_name.*['"]push['"][^]*--skip=A,B,D,E/,
-    'push runs should skip detectors A, B, D, E (only C runs)'
+    /^\s*push:\s*\n\s*branches:\s*\[main\]/m,
+    'push-to-main trigger should be gone (raced auto-migrate, #790)'
   );
 
-  // tracking-issue step expanded to push
+  // Detector C-only when workflow_run (post-migration runs skip A, B, D, E)
   assert.match(
     yml,
-    /github\.event_name == 'schedule' \|\| github\.event_name == 'push'/,
-    'tracking-issue step should fire on push too'
+    /github\.event_name.*['"]workflow_run['"][^]*--skip=A,B,D,E/,
+    'workflow_run runs should skip detectors A, B, D, E (only C runs)'
+  );
+
+  // tracking-issue step fires on schedule OR workflow_run
+  assert.match(
+    yml,
+    /github\.event_name == 'schedule' \|\| github\.event_name == 'workflow_run'/,
+    'tracking-issue step should fire on schedule and workflow_run'
   );
 
   // sanity: top-level YAML structure intact
