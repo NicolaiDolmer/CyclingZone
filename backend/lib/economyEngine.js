@@ -47,6 +47,7 @@ import {
   SPONSOR_INCOME_BASE,
 } from "./economyConstants.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
+import { ACADEMY } from "./academyFlag.js";
 import {
   buildSponsorStandingsContext,
   computeSponsorForSeason,
@@ -531,6 +532,41 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
       }
     );
     console.log(`  💸 ${team.name}: -${negativeInterestCharged} pts interest on negative balance`);
+  }
+
+  // 4. Akademi-drift — pr. akademi-plads (is_academy=true) debiteres ACADEMY.DRIFT_PER_SEASON.
+  //    Gated på count > 0: hold uden akademi springer over (isAcademyEnabled-flag irrelevant —
+  //    ingen akademi-ryttere = ingen drift, uanset flag). Idempotent pr. sæson+hold.
+  const { count: academyCount, error: academyCountError } = await supabaseClient
+    .from("riders")
+    .select("id", { count: "exact", head: true })
+    .eq("team_id", team.id)
+    .eq("is_academy", true);
+  throwIfSupabaseError(academyCountError, `Could not count academy riders for ${team.name}`);
+  const academyDriftCharged = (academyCount || 0) > 0
+    ? (academyCount || 0) * ACADEMY.DRIFT_PER_SEASON
+    : 0;
+  if (academyDriftCharged > 0) {
+    await debitTeam(
+      team.id,
+      academyDriftCharged,
+      "academy_drift",
+      null,
+      seasonId,
+      supabaseClient,
+      {
+        idempotent: true,
+        metadata: {
+          code: "tx.academyDrift",
+          params: { count: academyCount || 0, drift_per_slot: ACADEMY.DRIFT_PER_SEASON },
+        },
+        audit: {
+          sourcePath: "economyEngine.processSeasonStart.academyDrift",
+          idempotencyKey: `academy_drift:${team.id}:${seasonId}`,
+        },
+      }
+    );
+    console.log(`  🎓 ${team.name}: -${academyDriftCharged} pts akademi-drift (${academyCount} pladser × ${ACADEMY.DRIFT_PER_SEASON})`);
   }
 
   return {
