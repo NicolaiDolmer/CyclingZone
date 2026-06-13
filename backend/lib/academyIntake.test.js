@@ -430,21 +430,104 @@ test("signAcademyCandidate: kaster 'not_offered' når intake-status er 'signed' 
 
 // ─── rejectAcademyCandidate ───────────────────────────────────────────────────
 
-test("rejectAcademyCandidate: opdaterer intake → rejected, ingen rytter-ejerskabsændring", async () => {
+test("rejectAcademyCandidate: opdaterer intake → rejected + lister ungdomsauktion, ingen rytter-ejerskabsændring", async () => {
   const supabase = makeSignRejectSupabase({ intakeExists: true, intakeStatus: "offered" });
-  const result = await rejectAcademyCandidate(supabase, { teamId: "team-A", riderId: "rider-X" });
+  const listed = [];
+  const result = await rejectAcademyCandidate(supabase, {
+    teamId: "team-A",
+    riderId: "rider-X",
+    listYouthAuction: async (_sb, riderId) => { listed.push(riderId); return { id: "youth-auction-9" }; },
+  });
 
   assert.equal(result.riderId, "rider-X");
   assert.equal(result.status, "rejected");
+  assert.equal(result.auctionId, "youth-auction-9", "ungdomsauktionens id returneres");
 
   // Intake opdateret → rejected
   assert.equal(supabase._intakeUpdates.length, 1, "præcis én intake-update");
   assert.equal(supabase._intakeUpdates[0].status, "rejected");
   assert.ok(supabase._intakeUpdates[0].resolved_at, "resolved_at sat");
 
-  // Ingen rider-ejerskabsændring
+  // Fase B: ungdomsauktion oprettet for den afviste rytter
+  assert.deepEqual(listed, ["rider-X"], "listYouthAuction kaldt med riderId");
+
+  // Ingen rider-ejerskabsændring (auktionen ændrer ikke team_id endnu)
   assert.equal(supabase._riderUpdates.length, 0, "ingen rider-update ved reject");
   assert.equal(supabase._rpcCalls.length, 0, "ingen finance-kald ved reject");
+});
+
+// Default-wiring (uden DI): bekræfter at den faktiske dynamiske import-bro til
+// youthMarket.listRejectedAsYouthAuction kører end-to-end og opretter en auktion.
+function makeDefaultRejectSupabase() {
+  const auctionInserts = [];
+  const intakeUpdates = [];
+  const supabase = {
+    from(table) {
+      if (table === "academy_intake") {
+        const api = {
+          select() { return api; },
+          eq() { return api; },
+          maybeSingle() { return Promise.resolve({ data: { id: "intake-1", status: "offered" }, error: null }); },
+          update(data) { intakeUpdates.push(data); return { eq() { return Promise.resolve({ error: null }); } }; },
+        };
+        return api;
+      }
+      if (table === "riders") {
+        const api = {
+          select() { return api; },
+          eq() { return api; },
+          maybeSingle() {
+            return Promise.resolve({
+              data: { id: "rider-X", firstname: "A", lastname: "B", base_value: 100000, market_value: 100000, prize_earnings_bonus: 0, team_id: null },
+              error: null,
+            });
+          },
+        };
+        return api;
+      }
+      if (table === "auction_timing_config") {
+        // null → resolveAuctionConfig falder tilbage til DEFAULT_AUCTION_CONFIG
+        return { select() { return { eq() { return { single() { return Promise.resolve({ data: null, error: null }); } }; } }; } };
+      }
+      if (table === "auctions") {
+        return {
+          insert(row) {
+            auctionInserts.push(row);
+            return { select() { return { single() { return Promise.resolve({ data: { id: "youth-auction-default", ...row }, error: null }); } }; } };
+          },
+        };
+      }
+      return {};
+    },
+    _auctionInserts: auctionInserts,
+    _intakeUpdates: intakeUpdates,
+  };
+  return supabase;
+}
+
+test("rejectAcademyCandidate: default-wiring opretter reelt en ungdomsauktion (dynamisk import-bro)", async () => {
+  const supabase = makeDefaultRejectSupabase();
+  const result = await rejectAcademyCandidate(supabase, { teamId: "team-A", riderId: "rider-X" });
+
+  assert.equal(result.status, "rejected");
+  assert.equal(result.auctionId, "youth-auction-default");
+  assert.equal(supabase._auctionInserts.length, 1, "ungdomsauktion oprettet via default-stien");
+  assert.equal(supabase._auctionInserts[0].is_youth, true);
+  assert.equal(supabase._auctionInserts[0].seller_team_id, null);
+});
+
+test("rejectAcademyCandidate: lister IKKE ungdomsauktion når kandidaten ikke er offered", async () => {
+  const supabase = makeSignRejectSupabase({ intakeExists: true, intakeStatus: "signed" });
+  let called = false;
+  await assert.rejects(
+    () => rejectAcademyCandidate(supabase, {
+      teamId: "team-A",
+      riderId: "rider-X",
+      listYouthAuction: async () => { called = true; return { id: "x" }; },
+    }),
+    /not_offered/,
+  );
+  assert.equal(called, false, "ingen auktion oprettet ved ugyldig reject");
 });
 
 test("rejectAcademyCandidate: kaster 'not_offered' når ingen offered-række eksisterer", async () => {

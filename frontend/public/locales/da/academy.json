@@ -4,12 +4,15 @@
   "disabledNote": "Akademiet kommer snart. Hold dig opdateret.",
   "intakeHeading": "Intake-kandidater",
   "rosterHeading": "Akademihold",
+  "freeAgentsHeading": "Frie ungdomsryttere",
   "emptyIntake": "Ingen intake-kandidater i øjeblikket. Tjek igen efter næste scouting-cyklus.",
   "emptyRoster": "Ingen ryttere signeret til akademiet endnu.",
+  "emptyFreeAgents": "Ingen frie ungdomsryttere tilgængelige lige nu.",
   "seriousBadge": "Seriøs kandidat",
   "potential": "Potentiale",
   "ageLabel": "{age} år",
   "signBtn": "Signér",
+  "signFreeAgentBtn": "Signér til akademi",
   "rejectBtn": "Afvis",
   "loading": "...",
   "fullTooltip": "Akademiet er fuldt (8/8). Frigiv en plads først.",
@@ -22,6 +25,8 @@
   "error": {
     "academyFull": "Akademiet er fuldt (8/8). Kan ikke signere endnu en rytter.",
     "notOffered": "Denne rytter har ikke fået tilbudt en plads.",
+    "notFreeAgent": "Denne rytter er ikke længere en free agent.",
+    "notAcademyAge": "Denne rytter er uden for akademi-alderen (16-21).",
     "generic": "Noget gik galt. Prøv igen."
   }
 }

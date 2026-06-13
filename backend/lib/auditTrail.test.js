@@ -531,6 +531,7 @@ const IDEMPOTENT_LITERAL_SOURCE_PATHS = new Set([
   "auctionFinalization.finalizeAuctionRecord.buyer",
   "auctionFinalization.finalizeAuctionRecord.seller",
   "auctionFinalization.finalizeAuctionRecord.guaranteedBankSale",
+  "auctionFinalization.finalizeYouthAuctionRecord.winner",
 ]);
 
 const CALLSITE_FILES = [
@@ -540,7 +541,7 @@ const CALLSITE_FILES = [
   { rel: "./prizePayoutEngine.js", expectedCalls: 1 },
   { rel: "./loanEngine.js", expectedCalls: 5 },
   { rel: "./economyEngine.js", expectedCalls: 2 },
-  { rel: "./auctionFinalization.js", expectedCalls: 3 },
+  { rel: "./auctionFinalization.js", expectedCalls: 4 },
 ];
 
 function extractIncrementCalls(source) {

@@ -248,16 +248,28 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
 }
 
 /**
- * Afvis en akademi-kandidat (Fase A: rider forbliver team_id=NULL, ingen auktion endnu).
+ * Default youth-auktion-lister: dynamisk import af youthMarket bryder den
+ * statiske import-cyklus (youthMarket → academyIntake.getTeamAcademyCount).
+ */
+async function defaultListYouthAuction(supabase, riderId) {
+  const { listRejectedAsYouthAuction } = await import("./youthMarket.js");
+  return listRejectedAsYouthAuction(supabase, { riderId });
+}
+
+/**
+ * Afvis en akademi-kandidat. Fase B: den afviste kandidat listes straks som en
+ * individuel ungdomsauktion (auctions.is_youth=true, ingen sælger). Får den ingen
+ * bud, forbliver rytteren en fri ungdom (auctionFinalization-grenen).
  *
  * @param {object} supabase
  * @param {object} opts
  * @param {string} opts.teamId
  * @param {string} opts.riderId
- * @returns {Promise<{riderId, status:'rejected'}>}
+ * @param {Function} [opts.listYouthAuction]  DI-hook (test): (supabase, riderId) => auction
+ * @returns {Promise<{riderId, status:'rejected', auctionId: string|null}>}
  * @throws {Error} 'not_offered'
  */
-export async function rejectAcademyCandidate(supabase, { teamId, riderId }) {
+export async function rejectAcademyCandidate(supabase, { teamId, riderId, listYouthAuction = defaultListYouthAuction } = {}) {
   // Verificér at der eksisterer en 'offered' intake-række for (teamId, riderId).
   const { data: intakeRow, error: intakeErr } = await supabase
     .from("academy_intake")
@@ -275,6 +287,9 @@ export async function rejectAcademyCandidate(supabase, { teamId, riderId }) {
     .eq("id", intakeRow.id);
   if (updateErr) throw new Error(`rejectAcademyCandidate update: ${updateErr.message}`);
 
-  // Fase A: rider forbliver team_id=NULL (ingen ungdomsauktion endnu — Fase B task 12).
-  return { riderId, status: "rejected" };
+  // Fase B: list rytteren som ungdomsauktion. Ejerskabet ændres ikke her —
+  // rytteren forbliver team_id=NULL indtil en auktionsvinder optager ham i sit
+  // akademi (auctionFinalization). Usolgt → fortsat fri ungdom.
+  const auction = await listYouthAuction(supabase, riderId);
+  return { riderId, status: "rejected", auctionId: auction?.id ?? null };
 }

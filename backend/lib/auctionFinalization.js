@@ -1,4 +1,5 @@
 import {
+  calculateRiderMarketValue,
   closeTransferListingsForRiders,
   ensureNoError,
   expectMaybeSingle,
@@ -11,6 +12,8 @@ import {
 } from "./marketUtils.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
 import { contractOnAcquirePatch } from "./contractSeed.js";
+import { getTeamAcademyCount } from "./academyIntake.js";
+import { ACADEMY } from "./academyFlag.js";
 import {
   FINANCE_ACTOR_TYPE,
   FINANCE_REASON,
@@ -126,6 +129,136 @@ function getEffectiveAuctionBidderId(auction, sellerOwned) {
   return null;
 }
 
+// #1308 Fase B: finalisér en ungdomsauktion. Ingen sælger (seller_team_id=NULL),
+// rytteren er fri (team_id=NULL). Vinder → placeres i akademiet (is_academy=true)
+// med 8-plads-cap og ungdomskontrakt; betaler sit bud som academy_signing (sink —
+// der er ingen sælger at betale ud til). Ingen bud → rytteren forbliver fri ungdom.
+// Akademiryttere bypasser senior-30-cap'en og transfervindue-pending (de tæller
+// ikke mod senior-truppen), så ingen squad-violation-/pending-logik her.
+async function finalizeYouthAuctionRecord({
+  supabase,
+  auction,
+  notifyTeamOwner,
+  logActivity = NOOP,
+  awardXP = NOOP,
+  actualEnd,
+  activeSeasonId,
+  activeSeasonNumber,
+}) {
+  const rider = auction.rider;
+  const bidderId = auction.current_bidder_id || null;
+
+  // Ingen bud → rytteren forbliver fri ungdom (allerede team_id=NULL,
+  // is_academy=false). Ingen ejerskabsændring nødvendig; bare luk auktionen.
+  if (!bidderId) {
+    await closeAuction({ supabase, auction, status: "completed", actualEnd, sellerOwned: false });
+    return { ok: true, code: "youth_no_bids", auction_id: auction.id };
+  }
+
+  const price = auction.current_price;
+
+  // Balance-tjek (spejler senior-stien: balance før kapacitet).
+  const buyer = await expectMaybeSingle(
+    supabase.from("teams").select("id, name, balance").eq("id", bidderId)
+  );
+  if (!buyer || buyer.balance < price) {
+    await closeAuction({ supabase, auction, status: "cancelled", actualEnd, sellerOwned: false });
+    await notifyTeamOwner(
+      bidderId,
+      "auction_lost",
+      "Auktion annulleret",
+      `Du havde ikke råd til ${rider.firstname} ${rider.lastname}. Saldo: ${buyer?.balance || 0} pts`,
+      auction.id
+    );
+    return { ok: true, code: "cancelled_insufficient_balance", auction_id: auction.id };
+  }
+
+  // 8-plads akademi-cap (hård, ingen buffer). Fyldt → annullér; rytteren forbliver
+  // fri ungdom og kan stadig signes direkte via signFreeAgentYouth.
+  const academyCount = await getTeamAcademyCount(supabase, bidderId);
+  if (academyCount >= ACADEMY.SLOTS) {
+    await closeAuction({ supabase, auction, status: "cancelled", actualEnd, sellerOwned: false });
+    await notifyTeamOwner(
+      bidderId,
+      "auction_lost",
+      "Auktion annulleret — akademi fuldt",
+      `Dit akademi er fuldt (${ACADEMY.SLOTS} pladser). ${rider.firstname} ${rider.lastname} kunne ikke optages.`,
+      auction.id
+    );
+    return { ok: true, code: "academy_full", auction_id: auction.id };
+  }
+
+  // Placér i akademiet med ungdomskontrakt (samme løn-/kontrakt-model som
+  // signAcademyCandidate; akademiryttere bypasser senior-cap + transfervindue).
+  const value = Math.max(1, calculateRiderMarketValue(rider));
+  const salary = Math.max(1, Math.round(value * ACADEMY.SALARY_RATE));
+  const contractEndSeason = activeSeasonNumber + ACADEMY.CONTRACT_LENGTH - 1;
+
+  await expectMutation(
+    supabase
+      .from("riders")
+      .update({
+        team_id: bidderId,
+        is_academy: true,
+        pending_team_id: null,
+        acquired_at: actualEnd,
+        salary,
+        contract_length: ACADEMY.CONTRACT_LENGTH,
+        contract_end_season: contractEndSeason,
+      })
+      .eq("id", rider.id)
+  );
+
+  // Defensivt: luk evt. åbne transfer_listings (en fri ungdom bør ikke have nogen).
+  await closeTransferListingsForRiders(supabase, [rider.id], "sold");
+
+  // Vinder betaler sit bud som academy_signing (sink — ingen sælger). idempotency_key
+  // gør cron-retries sikre mod dobbelt-debit (spejler senior-stien).
+  await incrementBalanceWithAudit(supabase, {
+    teamId: bidderId,
+    delta: -price,
+    payload: {
+      type: "academy_signing",
+      amount: -price,
+      description: `Vandt ungdomsrytter ${rider.firstname} ${rider.lastname} på auktion`,
+      season_id: activeSeasonId,
+      actor_type: FINANCE_ACTOR_TYPE.CRON,
+      actor_id: null,
+      source_path: "auctionFinalization.finalizeYouthAuctionRecord.winner",
+      reason_code: FINANCE_REASON.AUCTION_WINNER_PAYMENT,
+      related_entity_type: FINANCE_RELATED_ENTITY.AUCTION,
+      related_entity_id: auction.id,
+      idempotency_key: `youth_auction_winner:${auction.id}`,
+    },
+  }, { allowDuplicate: true });
+
+  await awardXP(bidderId, "auction_won");
+  await notifyTeamOwner(
+    bidderId,
+    "auction_won",
+    "Du vandt ungdomsauktionen! 🎉",
+    `${rider.firstname} ${rider.lastname} er nu i dit akademi for ${price} pts`,
+    auction.id
+  );
+  await logActivity("auction_won", {
+    team_id: bidderId,
+    rider_id: rider.id,
+    rider_name: `${rider.firstname} ${rider.lastname}`,
+    amount: price,
+  });
+
+  await closeAuction({
+    supabase,
+    auction,
+    status: "completed",
+    actualEnd,
+    sellerOwned: false,
+    currentBidderId: auction.current_bidder_id ? null : bidderId,
+  });
+
+  return { ok: true, code: "youth_completed", auction_id: auction.id, academy: true };
+}
+
 async function finalizeAuctionRecord({
   supabase,
   auction,
@@ -161,6 +294,24 @@ async function finalizeAuctionRecord({
   // #1309 kontrakt-on-acquire: aktiv sæson-number til contract_end_season-beregning.
   // Default 1 hvis ingen aktiv sæson er registreret (edge-case).
   const activeSeasonNumber = activeSeason?.number ?? 1;
+
+  // #1308 Fase B: ungdomsauktioner (is_youth) har ingen sælger og placerer
+  // vinderen i akademiet (8-plads-cap) frem for senior-truppen. Håndteres i en
+  // dedikeret gren, så seller-resolution / squad-cap / transfervindue-pending
+  // (ren senior-semantik) ikke forvansker youth-flowet.
+  if (auction.is_youth) {
+    return finalizeYouthAuctionRecord({
+      supabase,
+      auction,
+      notifyTeamOwner,
+      logActivity,
+      awardXP,
+      actualEnd,
+      activeSeasonId,
+      activeSeasonNumber,
+    });
+  }
+
   const {
     sellerOwned,
     actualSellerTeamId,

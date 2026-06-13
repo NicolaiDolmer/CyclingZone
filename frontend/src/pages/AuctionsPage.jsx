@@ -204,6 +204,9 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, watchlist, 
               {r?.is_u25 && (
                 <span className="text-[9px] uppercase bg-cz-subtle text-cz-3 px-1.5 py-0.5 rounded">{t("auctions:badge.u25")}</span>
               )}
+              {auction.is_youth && (
+                <span className="text-[9px] uppercase bg-cz-accent/15 text-cz-accent-t px-1.5 py-0.5 rounded">{t("auctions:badge.youth")}</span>
+              )}
             </div>
           </div>
         </div>
@@ -403,6 +406,7 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, watchlist,
               {auction.status === "extended" && <span className="text-[9px] uppercase bg-cz-warning-bg text-cz-warning px-1.5 py-0.5 rounded">{t("auctions:badge.extended")}</span>}
               {auction.is_flash && <span className="text-[9px] uppercase bg-cz-danger-bg text-cz-danger px-1.5 py-0.5 rounded">{t("auctions:badge.flash")}</span>}
               {r?.is_u25 && <span className="text-[9px] uppercase bg-cz-subtle text-cz-2 px-1.5 py-0.5 rounded">{t("auctions:badge.u25")}</span>}
+              {auction.is_youth && <span className="text-[9px] uppercase bg-cz-accent/15 text-cz-accent-t px-1.5 py-0.5 rounded">{t("auctions:badge.youth")}</span>}
               {age && <span className="text-cz-3 text-xs">{t("auctions:card.ageYears", { age })}</span>}
             </div>
           </div>
@@ -711,7 +715,7 @@ export default function AuctionsPage() {
 
     const [auctionsRes, myBidsRes, riderCountRes, myProxiesRes] = await Promise.all([
       supabase.from("auctions")
-        .select(`id, current_price, min_increment, calculated_end, status, is_guaranteed_sale, is_flash,
+        .select(`id, current_price, min_increment, calculated_end, status, is_guaranteed_sale, is_flash, is_youth,
           seller_team_id, current_bidder_id,
           rider:rider_id(id, firstname, lastname, market_value, is_u25, team_id, birthdate, nationality_code,
             prize_earnings_bonus, salary, contract_length, contract_end_season, ${STATS.join(", ")}),

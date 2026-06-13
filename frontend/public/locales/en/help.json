@@ -550,7 +550,7 @@
           "Go to Academy in the navigation.",
           "Review your intake cohort for the season.",
           "Sign 0-2 prospects. Each signing costs a one-time signing fee and commits you to a youth salary.",
-          "Prospects you do not sign are released. Youth auctions and free-agent direct signing arrive in a later update."
+          "Prospects you do not sign are put up for auction as youth prospects (see Youth auctions below)."
         ]
       },
       "academySize": {
@@ -560,6 +560,10 @@
       "dailyTrainingBoost": {
         "title": "Daily training and the youth boost",
         "text": "Academy riders train every day alongside your senior squad, but they benefit from a youth multiplier that makes them develop faster. The same Daily Training rules apply: set a focus and intensity for each rider, and gains accumulate day by day."
+      },
+      "youthAuctions": {
+        "title": "Youth auctions and free agents",
+        "text": "When you reject an intake prospect, they go up for a youth auction (marked Youth) that any club can bid on. The winning club takes the prospect into its Academy, paying the winning bid and using one of its 8 places. A prospect nobody bids on becomes a free youth agent: you can sign them straight into your Academy at minimum salary from the Free youth agents list on the Academy page. No real money is ever involved, only in-game points."
       },
       "upkeepCost": {
         "title": "Academy upkeep",

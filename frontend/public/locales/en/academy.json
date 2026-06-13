@@ -4,12 +4,15 @@
   "disabledNote": "The Academy is coming soon. Stay tuned.",
   "intakeHeading": "Intake candidates",
   "rosterHeading": "Academy roster",
+  "freeAgentsHeading": "Free youth agents",
   "emptyIntake": "No intake candidates right now. Check back after the next scouting cycle.",
   "emptyRoster": "No riders signed to the academy yet.",
+  "emptyFreeAgents": "No free youth agents available right now.",
   "seriousBadge": "Serious prospect",
   "potential": "Potential",
   "ageLabel": "{age} y/o",
   "signBtn": "Sign",
+  "signFreeAgentBtn": "Sign to academy",
   "rejectBtn": "Reject",
   "loading": "...",
   "fullTooltip": "Academy is full (8/8). Release a rider first.",
@@ -22,6 +25,8 @@
   "error": {
     "academyFull": "Academy is full (8/8). Cannot sign another rider.",
     "notOffered": "This rider has not been offered a place.",
+    "notFreeAgent": "This rider is no longer a free agent.",
+    "notAcademyAge": "This rider is outside the academy age range (16-21).",
     "generic": "Something went wrong. Please try again."
   }
 }

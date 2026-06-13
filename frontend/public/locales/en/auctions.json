@@ -108,7 +108,8 @@
     "mine": "Mine",
     "extended": "⚡ Ext",
     "flash": "⚡ Flash",
-    "u25": "U25"
+    "u25": "U25",
+    "youth": "🎓 Youth"
   },
   "bid": {
     "minBid": "Min. {amount} CZ$",
