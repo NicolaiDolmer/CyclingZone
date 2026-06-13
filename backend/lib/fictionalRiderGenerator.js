@@ -30,11 +30,11 @@ function intBetween(rng, min, max) {
   return min + Math.floor(rng() * (max - min + 1));
 }
 
-function pick(rng, arr) {
+export function pick(rng, arr) {
   return arr[Math.floor(rng() * arr.length)];
 }
 
-function weightedPick(rng, items) {
+export function weightedPick(rng, items) {
   const total = items.reduce((s, it) => s + it.weight, 0);
   let r = rng() * total;
   for (const it of items) {
@@ -149,7 +149,7 @@ const ENSURE_MIN_TYPES = { gc: 30, sprinter: 40 };
 // Default-nationalitetsvægte: afspejler prod-feltet (2026-05-31) + garanteret
 // repræsentation af ikke-vestlige nationer (se GUARANTEED) for at teste hybrid-
 // navnepools' svageste punkt. Vægt ≈ relativ tilstedeværelse i feltet.
-const DEFAULT_NATIONALITY_WEIGHTS = [
+export const DEFAULT_NATIONALITY_WEIGHTS = [
   { value: "FR", weight: 54 }, { value: "IT", weight: 53 }, { value: "BE", weight: 50 },
   { value: "ES", weight: 37 }, { value: "NL", weight: 36 }, { value: "CO", weight: 30 },
   { value: "CN", weight: 27 }, { value: "GB", weight: 27 }, { value: "US", weight: 23 },
@@ -226,7 +226,7 @@ function buildDemographics(rng, tier, archetype, referenceYear) {
   return { birthdate, is_u25, height, weight, potentiale: pot, age };
 }
 
-function makeUniqueName(rng, cluster, usedFolded) {
+export function makeUniqueName(rng, cluster, usedFolded) {
   // Forsøg simple first+last; ved kollision re-sample. Efter mange forsøg
   // (lille pool ift. count) tilføj mellem-initial for at tvinge unikhed.
   for (let attempt = 0; attempt < 40; attempt++) {
