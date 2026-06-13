@@ -120,6 +120,7 @@ import { injuryRisk } from "../lib/riderCondition.js";
 import { resolveProgram } from "../lib/dailyTraining.js";
 import { copenhagenDateString } from "../lib/copenhagenTime.js";
 import { ACADEMY, isAcademyEnabled } from "../lib/academyFlag.js";
+import { buildFictionalPopulationPreview } from "../lib/fictionalPopulationPreview.js";
 import {
   getTeamAcademyCount,
   signAcademyCandidate,
@@ -316,6 +317,15 @@ try {
   );
 } catch {
   VALUATION_MODEL = null;
+}
+
+let RIDER_TYPES_BASELINE = null;
+try {
+  RIDER_TYPES_BASELINE = JSON.parse(
+    readFileSync(join(__dirname, "../lib/riderTypesBaseline.json"), "utf8")
+  );
+} catch {
+  RIDER_TYPES_BASELINE = null;
 }
 
 // Log to public activity feed
@@ -3840,6 +3850,28 @@ router.get("/admin/rider-valuation-preview", requireAdmin, async (req, res) => {
     distribution,
     riders: rows,
   });
+});
+
+// GET /api/admin/fictional-rider-preview — read-only preview af de 800 fiktive
+// relaunch-ryttere kørt gennem hele værdi-kæden. Rører INTET i DB. (#1364-enabler)
+router.get("/admin/fictional-rider-preview", requireAdmin, async (req, res) => {
+  if (!VALUATION_MODEL) return res.status(503).json({ error: "Valuation model not fitted yet" });
+  try {
+    const { riders } = buildFictionalPopulationPreview({
+      baseline: RIDER_TYPES_BASELINE,
+      model: VALUATION_MODEL,
+    });
+    const values = riders.map((r) => r.base_value).sort((a, b) => a - b);
+    const pctile = (p) => (values.length ? values[Math.min(values.length - 1, Math.floor(p * values.length))] : null);
+    res.json({
+      count: riders.length,
+      distribution: { p10: pctile(0.1), median: pctile(0.5), p90: pctile(0.9), max: values.length ? values[values.length - 1] : null },
+      riders,
+    });
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // POST /api/admin/auctions/:id/cancel — annuller aktiv auktion
