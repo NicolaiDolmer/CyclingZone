@@ -2223,14 +2223,14 @@ router.get("/transfers/my-offers", requireAuth, async (req, res) => {
   const [sentRes, receivedRes] = await Promise.all([
     supabase.from("transfer_offers")
       .select(`id, offer_amount, counter_amount, status, round, message, buyer_confirmed, seller_confirmed, created_at, updated_at,
-        rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, nationality_code, stat_bj, stat_sp, stat_tt, stat_fl),
+        rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, nationality_code, salary, contract_length, contract_end_season, stat_bj, stat_sp, stat_tt, stat_fl),
         seller:seller_team_id(id, name)`)
       .eq("buyer_team_id", req.team.id)
       .is("buyer_archived_at", null)
       .order("updated_at", { ascending: false }),
     supabase.from("transfer_offers")
       .select(`id, offer_amount, counter_amount, status, round, message, buyer_confirmed, seller_confirmed, created_at, updated_at,
-        rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, nationality_code, stat_bj, stat_sp, stat_tt, stat_fl),
+        rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, nationality_code, salary, contract_length, contract_end_season, stat_bj, stat_sp, stat_tt, stat_fl),
         buyer:buyer_team_id(id, name)`)
       .eq("seller_team_id", req.team.id)
       .is("seller_archived_at", null)
@@ -2239,14 +2239,14 @@ router.get("/transfers/my-offers", requireAuth, async (req, res) => {
   const [archivedSentRes, archivedReceivedRes] = await Promise.all([
     supabase.from("transfer_offers")
       .select(`id, offer_amount, counter_amount, status, round, message, buyer_confirmed, seller_confirmed, created_at, updated_at,
-        rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, nationality_code, stat_bj, stat_sp, stat_tt, stat_fl),
+        rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, nationality_code, salary, contract_length, contract_end_season, stat_bj, stat_sp, stat_tt, stat_fl),
         seller:seller_team_id(id, name)`)
       .eq("buyer_team_id", req.team.id)
       .not("buyer_archived_at", "is", null)
       .order("buyer_archived_at", { ascending: false }),
     supabase.from("transfer_offers")
       .select(`id, offer_amount, counter_amount, status, round, message, buyer_confirmed, seller_confirmed, created_at, updated_at,
-        rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, nationality_code, stat_bj, stat_sp, stat_tt, stat_fl),
+        rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, nationality_code, salary, contract_length, contract_end_season, stat_bj, stat_sp, stat_tt, stat_fl),
         buyer:buyer_team_id(id, name)`)
       .eq("seller_team_id", req.team.id)
       .not("seller_archived_at", "is", null)

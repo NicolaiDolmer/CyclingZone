@@ -89,6 +89,9 @@
     "time": "Time",
     "highestBid": "Highest bid",
     "salary": "Salary",
+    "estSalary": "Est. salary",
+    "contractRemaining": "{count, plural, one {1 season} other {# seasons}}",
+    "contractExpires": "Exp. after s.{season}",
     "seller": "Seller",
     "potential": "Potential",
     "ageYears": "{age} yrs"

@@ -89,6 +89,9 @@
     "time": "Tid",
     "highestBid": "Højeste bud",
     "salary": "Løn",
+    "estSalary": "Ansl. løn",
+    "contractRemaining": "{count, plural, one {1 sæson} other {# sæsoner}}",
+    "contractExpires": "Udl. efter s.{season}",
     "seller": "Sælger",
     "potential": "Potentiale",
     "ageYears": "{age} år"

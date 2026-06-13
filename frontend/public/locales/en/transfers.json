@@ -64,6 +64,11 @@
     "counterLabel": "Your counter",
     "yourBidLabel": "Your bid",
     "value": "Value",
+    "salary": "Salary",
+    "estSalary": "Est. salary",
+    "contractRemaining": "{count, plural, one {1 season} other {# seasons}}",
+    "contractExpires": "Exp. after season {season}",
+    "noContract": "Free agent",
     "buttons": {
       "accept": "✓ Accept",
       "counter": "↔ Counter",

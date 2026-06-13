@@ -64,6 +64,11 @@
     "counterLabel": "Dit modbud",
     "yourBidLabel": "Dit bud",
     "value": "Værdi",
+    "salary": "Løn",
+    "estSalary": "Ansl. løn",
+    "contractRemaining": "{count, plural, one {1 sæson} other {# sæsoner}}",
+    "contractExpires": "Udl. efter sæson {season}",
+    "noContract": "Free agent",
     "buttons": {
       "accept": "✓ Accepter",
       "counter": "↔ Modbud",

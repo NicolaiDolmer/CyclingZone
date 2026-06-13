@@ -10,7 +10,7 @@ import { statStyle } from "../lib/statColor";
 import { ConfettiModal } from "../components/ConfettiModal";
 import { BidConfirmModal } from "../components/BidConfirmModal";
 import { Flag } from "../components/Flag";
-import { formatCz, getRiderMarketValue } from "../lib/marketValues";
+import { formatCz, getRiderMarketValue, getRiderSalary } from "../lib/marketValues.js";
 import { formatNumber, formatDate } from "../lib/intl";
 import { resolveApiError } from "../lib/apiError";
 import { sortListings, LISTING_SORT_OPTIONS } from "../lib/transferListingSort";
@@ -137,6 +137,15 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
         <div className="sm:text-right">
           <p className="text-cz-3 text-xs">{t("offerCard.value")}</p>
           <p className="text-cz-2 font-mono text-sm">{formatCz(getRiderMarketValue(offer.rider))}</p>
+          <p className="text-cz-3 text-xs mt-1">
+            {offer.rider?.contract_length != null ? t("offerCard.salary") : t("offerCard.estSalary")}:{" "}
+            <span className="text-cz-2 font-mono">{formatCz(getRiderSalary(offer.rider))}</span>
+          </p>
+          {offer.rider?.contract_length != null ? (
+            <p className="text-cz-3 text-[10px]">{t("offerCard.contractExpires", { season: offer.rider.contract_end_season })}</p>
+          ) : (
+            <p className="text-cz-3 text-[10px]">{t("offerCard.noContract")}</p>
+          )}
         </div>
       </div>
 

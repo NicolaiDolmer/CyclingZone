@@ -39,6 +39,7 @@ import {
 import { useAuctionBidding } from "../lib/useAuctionBidding";
 import { formatNumber } from "../lib/intl";
 import { resolveApiError } from "../lib/apiError";
+import { getRiderSalary } from "../lib/marketValues.js";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -235,7 +236,10 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, watchlist, 
 
       {/* Løn */}
       <td className="px-2 py-1.5 text-right text-cz-2 font-mono text-xs whitespace-nowrap">
-        {r?.salary ? formatNumber(r.salary) : "—"}
+        {formatNumber(getRiderSalary(r))}
+        {r?.contract_length != null && (
+          <span className="ml-1 text-cz-3 text-[10px]">{t("auctions:card.contractExpires", { season: r.contract_end_season })}</span>
+        )}
       </td>
 
       {/* Potentiale */}
@@ -420,10 +424,15 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, watchlist,
           )}
         </div>
         <div className="bg-cz-subtle rounded-lg px-3 py-2">
-          <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("auctions:card.salary")}</p>
-          <p className="text-cz-2 font-mono text-sm font-medium">
-            {r?.salary ? `${formatNumber(r.salary)} CZ$` : "—"}
+          <p className="text-cz-3 text-[10px] uppercase tracking-wider">
+            {r?.contract_length != null ? t("auctions:card.salary") : t("auctions:card.estSalary")}
           </p>
+          <p className="text-cz-2 font-mono text-sm font-medium">
+            {formatNumber(getRiderSalary(r))} CZ$
+          </p>
+          {r?.contract_length != null && (
+            <p className="text-cz-3 text-[10px] mt-0.5">{t("auctions:card.contractExpires", { season: r.contract_end_season })}</p>
+          )}
         </div>
         <div className="bg-cz-subtle rounded-lg px-3 py-2">
           <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("auctions:card.seller")}</p>
@@ -705,7 +714,7 @@ export default function AuctionsPage() {
         .select(`id, current_price, min_increment, calculated_end, status, is_guaranteed_sale, is_flash,
           seller_team_id, current_bidder_id,
           rider:rider_id(id, firstname, lastname, market_value, is_u25, team_id, birthdate, nationality_code,
-            prize_earnings_bonus, salary, ${STATS.join(", ")}),
+            prize_earnings_bonus, salary, contract_length, contract_end_season, ${STATS.join(", ")}),
           seller:seller_team_id(id, name),
           current_bidder:current_bidder_id(id, name)`)
         .in("status", ["active", "extended"])
