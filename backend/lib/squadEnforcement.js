@@ -40,6 +40,20 @@ import {
   FINANCE_REASON,
   FINANCE_RELATED_ENTITY,
 } from "./economyConstants.js";
+import { contractOnAcquirePatch } from "./contractSeed.js";
+
+// #1309: aktiv sæson-number til contract_end_season-beregning.
+// Spejler transferExecution.fetchActiveSeasonNumber — default 1 som edge-case.
+async function fetchActiveSeasonNumber(supabase) {
+  const { data } = await supabase
+    .from("seasons")
+    .select("number")
+    .eq("status", "active")
+    .order("number", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data?.number ?? 1;
+}
 
 const NOOP = async () => {};
 export const SQUAD_FINE_AMOUNT = 100000;
@@ -105,7 +119,7 @@ async function findCheapestAvailableRiders(supabase, count, excludedTeamIds) {
   // (SQUAD_PURCHASE_MARKUP), #1205. uci_points er frosset/afkoblet (#1101).
   const { data: freeAgents, error: faError } = await supabase
     .from("riders")
-    .select("id, firstname, lastname, team_id, ai_team_id, market_value")
+    .select("id, firstname, lastname, team_id, ai_team_id, market_value, salary, base_value, prize_earnings_bonus")
     .is("team_id", null)
     .order("market_value", { ascending: true })
     .limit(limit);
@@ -116,7 +130,7 @@ async function findCheapestAvailableRiders(supabase, count, excludedTeamIds) {
   if (pool.length < count && aiTeamIds.size > 0) {
     const { data: aiOwned, error: aiOwnedError } = await supabase
       .from("riders")
-      .select("id, firstname, lastname, team_id, ai_team_id, market_value")
+      .select("id, firstname, lastname, team_id, ai_team_id, market_value, salary, base_value, prize_earnings_bonus")
       .in("team_id", [...aiTeamIds])
       .order("market_value", { ascending: true })
       .limit(limit);
@@ -169,6 +183,12 @@ async function executeAutoPurchase({
     },
   });
 
+  // #1309: kontrakt-on-acquire — fri agents har salary=null efter relaunch.
+  // fetchActiveSeasonNumber giver korrekt contract_end_season; rider-objektet har
+  // salary/base_value/prize_earnings_bonus fra candidate-SELECT (tilføjet i #1309).
+  const activeSeasonNumber = await fetchActiveSeasonNumber(supabase);
+  const contractPatch = contractOnAcquirePatch(rider, activeSeasonNumber);
+
   await expectMutation(
     supabase
       .from("riders")
@@ -176,6 +196,7 @@ async function executeAutoPurchase({
         team_id: team.id,
         pending_team_id: null,
         acquired_at: now.toISOString(),
+        ...contractPatch,
       })
       .eq("id", rider.id)
   );

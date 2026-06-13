@@ -3133,10 +3133,17 @@ router.patch("/loans/:id", requireAuth, marketWriteLimiter, async (req, res) => 
 router.post("/admin/override-rider", requireAdmin, adminWriteLimiter, async (req, res) => {
   const { rider_id, team_id } = req.body;
   if (!rider_id) return res.status(400).json({ error: "rider_id required" });
-  const { data: rider } = await supabase.from("riders").select("firstname, lastname").eq("id", rider_id).single();
+  const { data: rider } = await supabase.from("riders").select("firstname, lastname, salary, base_value, prize_earnings_bonus").eq("id", rider_id).single();
   if (!rider) return res.status(404).json({ error: "Rytter ikke fundet" });
+  // #1309: kontrakt-on-acquire — ved admin-tildeling til et hold sættes kontrakt
+  // hvis rytteren er kontraktløs (salary=null), så invarianten "ejede har altid løn" holdes.
+  let contractPatch = {};
+  if (team_id) {
+    const { data: activeSeason } = await supabase.from("seasons").select("number").eq("status", "active").maybeSingle();
+    contractPatch = contractOnAcquirePatch(rider, activeSeason?.number ?? 1);
+  }
   const { error } = await supabase.from("riders")
-    .update({ team_id: team_id || null, pending_team_id: null, acquired_at: team_id ? new Date().toISOString() : null }).eq("id", rider_id);
+    .update({ team_id: team_id || null, pending_team_id: null, acquired_at: team_id ? new Date().toISOString() : null, ...contractPatch }).eq("id", rider_id);
   if (error) return res.status(500).json({ error: error.message });
   const teamRes = team_id ? await supabase.from("teams").select("name").eq("id", team_id).single() : null;
   const teamName = teamRes?.data?.name || "fri agent";

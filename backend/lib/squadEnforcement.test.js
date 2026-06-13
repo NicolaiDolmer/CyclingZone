@@ -23,6 +23,7 @@ function createMockSupabase(initialState) {
     seasonStandings: [...(initialState.seasonStandings || [])],
     transferWindows: [...(initialState.transferWindows || [])],
     transferListings: [...(initialState.transferListings || [])],
+    seasons: [...(initialState.seasons || [])],
     financeTransactions: [],
     notifications: [],
     riderUpdates: [],
@@ -48,6 +49,7 @@ function createMockSupabase(initialState) {
     if (table === "transfer_listings") return transferListingsTable();
     if (table === "finance_transactions") return financeTransactionsTable();
     if (table === "notifications") return notificationsTable();
+    if (table === "seasons") return seasonsTable();
     throw new Error(`Unexpected table: ${table}`);
   }
 
@@ -333,6 +335,23 @@ function createMockSupabase(initialState) {
         return builder;
       },
     };
+  }
+
+  // #1309: fetchActiveSeasonNumber bruger .select().eq().order().limit().maybeSingle()
+  function seasonsTable() {
+    const filters = {};
+    let limitN = null;
+    const builder = {
+      select(_cols) { return builder; },
+      eq(col, val) { filters[col] = val; return builder; },
+      order() { return builder; },
+      limit(n) { limitN = n; return builder; },
+      maybeSingle: () => {
+        const row = state.seasons.find(s => Object.entries(filters).every(([k, v]) => s[k] === v));
+        return Promise.resolve({ data: row || null, error: null });
+      },
+    };
+    return builder;
   }
 
   function financeTransactionsTable() {
@@ -984,6 +1003,145 @@ test("processSquadEnforcementCron: replay med samme windowId → fines er idempo
 
   // Penalty_points må ikke være double-incremented
   assert.equal(supabase.state.seasonStandings[0].penalty_points, 600, "penalty_points må ikke double-incremente ved replay");
+});
+
+// ─── #1309 kontrakt-on-acquire regression tests ──────────────────────────────
+
+test("#1309: auto-køb af kontraktløs free agent sætter kontrakt (salary, contract_length, contract_end_season)", async () => {
+  // Reproducerer den fundne gap: cron auto-køber en free agent der har salary=null
+  // (efter relaunch). Invarianten "ejede ryttere har altid salary != null" skal holde.
+  const supabase = createMockSupabase({
+    teams: [{ id: "t1", name: "Test", balance: 5_000_000, division: 3, user_id: "u1", is_ai: false, is_bank: false }],
+    riders: [
+      ...Array.from({ length: 7 }, (_, i) => ({
+        id: `r${i}`, firstname: "Owned", lastname: `R${i}`, team_id: "t1",
+        market_value: 50_000, ai_team_id: null, acquired_at: null, created_at: "2026-01-01",
+        salary: 100, base_value: 1000, prize_earnings_bonus: 0,
+      })),
+      // Free agent: kontraktløs (salary=null) — post-relaunch state
+      {
+        id: "fa1", firstname: "Free", lastname: "Agent", team_id: null,
+        market_value: 20_000, ai_team_id: null,
+        salary: null, base_value: 5000, prize_earnings_bonus: 200,
+      },
+    ],
+    seasons: [{ id: "season-1", number: 3, status: "active" }],
+    seasonStandings: [
+      { id: "s1", season_id: "season-1", team_id: "t1", division: 3, total_points: 1000, penalty_points: 0 },
+    ],
+  });
+
+  const result = await enforceTeamSquadCompliance({
+    supabase,
+    teamId: "t1",
+    seasonId: "season-1",
+    notifyTeamOwner: async () => {},
+    createEmergencyLoanFn: async () => {},
+    now: new Date("2026-05-04T12:00:00Z"),
+    limitsOverride: { min: 8, max: 10 },
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.code, "auto_purchased");
+  assert.equal(result.purchases.length, 1);
+
+  const fa1 = supabase.state.riders.find(r => r.id === "fa1");
+  assert.equal(fa1.team_id, "t1", "free agent skal have fået nyt team_id");
+
+  // Kontrakt-invarianten: salary != null efter auto-køb
+  assert.ok(fa1.salary != null, "salary må ikke være null efter auto-køb");
+
+  // computeFrozenSalary({ base_value: 5000, prize_earnings_bonus: 200 })
+  // = Math.max(1, Math.round((5000 + 200) * 0.10)) = Math.max(1, 520) = 520
+  assert.equal(fa1.salary, 520, "salary = computeFrozenSalary(base_value=5000, prize_earnings_bonus=200)");
+  assert.equal(fa1.contract_length, 2, "DEFAULT_ACQUIRE_LENGTH = 2");
+  // contract_end_season = startSeason + length - 1 = 3 + 2 - 1 = 4
+  assert.equal(fa1.contract_end_season, 4, "contract_end_season = activeSeasonNumber(3) + length(2) - 1 = 4");
+});
+
+test("#1309: auto-køb af allerede-kontrakteret rytter (AI-ejet) arver eksisterende kontrakt uændret", async () => {
+  // Rytter ejet af et AI-hold med eksisterende kontrakt: contractOnAcquirePatch({salary != null})
+  // returnerer {} → ingen kontrakt-override.
+  const supabase = createMockSupabase({
+    teams: [
+      { id: "t1", name: "Human", balance: 5_000_000, division: 3, user_id: "u1", is_ai: false, is_bank: false },
+      { id: "ai-team", name: "AI", balance: 0, division: 3, user_id: null, is_ai: true, is_bank: false },
+    ],
+    riders: [
+      ...Array.from({ length: 7 }, (_, i) => ({
+        id: `r${i}`, firstname: "Owned", lastname: `R${i}`, team_id: "t1",
+        market_value: 50_000, ai_team_id: null, acquired_at: null, created_at: "2026-01-01",
+        salary: 100, base_value: 1000, prize_earnings_bonus: 0,
+      })),
+      // AI-ejet rytter med eksisterende kontrakt
+      {
+        id: "ai-rider", firstname: "AI", lastname: "Rider", team_id: "ai-team",
+        ai_team_id: "ai-team", market_value: 20_000,
+        salary: 999, base_value: 9000, prize_earnings_bonus: 900,
+        contract_length: 3, contract_end_season: 7,
+      },
+    ],
+    seasons: [{ id: "season-1", number: 3, status: "active" }],
+    seasonStandings: [
+      { id: "s1", season_id: "season-1", team_id: "t1", division: 3, total_points: 1000, penalty_points: 0 },
+    ],
+  });
+
+  await enforceTeamSquadCompliance({
+    supabase,
+    teamId: "t1",
+    seasonId: "season-1",
+    notifyTeamOwner: async () => {},
+    createEmergencyLoanFn: async () => {},
+    now: new Date("2026-05-04T12:00:00Z"),
+    limitsOverride: { min: 8, max: 10 },
+  });
+
+  const aiRider = supabase.state.riders.find(r => r.id === "ai-rider");
+  assert.equal(aiRider.team_id, "t1", "AI-ejet rytter skal have fået nyt team_id");
+  // Eksisterende kontrakt arves uændret (contractOnAcquirePatch returnerer {} ved salary != null)
+  assert.equal(aiRider.salary, 999, "eksisterende salary arves uændret");
+  assert.equal(aiRider.contract_length, 3, "eksisterende contract_length arves uændret");
+  assert.equal(aiRider.contract_end_season, 7, "eksisterende contract_end_season arves uændret");
+});
+
+test("#1309: auto-køb fallback til sæson 1 hvis ingen aktiv sæson", async () => {
+  // Edge-case: ingen aktiv sæson i DB → fetchActiveSeasonNumber returnerer 1 som default.
+  const supabase = createMockSupabase({
+    teams: [{ id: "t1", name: "Test", balance: 5_000_000, division: 3, user_id: "u1", is_ai: false, is_bank: false }],
+    riders: [
+      ...Array.from({ length: 7 }, (_, i) => ({
+        id: `r${i}`, firstname: "Owned", lastname: `R${i}`, team_id: "t1",
+        market_value: 50_000, ai_team_id: null, acquired_at: null, created_at: "2026-01-01",
+        salary: 100, base_value: 1000, prize_earnings_bonus: 0,
+      })),
+      {
+        id: "fa1", firstname: "Free", lastname: "Agent", team_id: null,
+        market_value: 20_000, ai_team_id: null,
+        salary: null, base_value: 1000, prize_earnings_bonus: 0,
+      },
+    ],
+    seasons: [], // ingen aktiv sæson
+    seasonStandings: [
+      { id: "s1", season_id: "season-1", team_id: "t1", division: 3, total_points: 1000, penalty_points: 0 },
+    ],
+  });
+
+  const result = await enforceTeamSquadCompliance({
+    supabase,
+    teamId: "t1",
+    seasonId: "season-1",
+    notifyTeamOwner: async () => {},
+    createEmergencyLoanFn: async () => {},
+    now: new Date("2026-05-04T12:00:00Z"),
+    limitsOverride: { min: 8, max: 10 },
+  });
+
+  assert.equal(result.ok, true);
+  const fa1 = supabase.state.riders.find(r => r.id === "fa1");
+  assert.ok(fa1.salary != null, "salary sættes selv uden aktiv sæson");
+  // contract_end_season = 1 (fallback) + 2 - 1 = 2
+  assert.equal(fa1.contract_end_season, 2, "fallback sæson 1 → contract_end_season = 2");
 });
 
 test("processSquadEnforcementCron: per-team fail kalder captureExceptionFn med teamId+windowId+seasonId (Refs #614 P2-A)", async () => {
