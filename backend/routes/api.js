@@ -8019,7 +8019,7 @@ router.post("/academy/sign", requireAuth, marketWriteLimiter, async (req, res) =
     if (!enabled) return res.status(409).json({ error: "academy_disabled" });
 
     const { riderId } = req.body || {};
-    if (!riderId) return res.status(400).json({ error: "riderId påkrævet" });
+    if (!riderId) return res.status(400).json({ error: "riderId required" });
 
     // Aktiv sæson-nummer til kontrakt-beregning.
     const { data: season } = await supabase
@@ -8054,7 +8054,7 @@ router.post("/academy/reject", requireAuth, marketWriteLimiter, async (req, res)
     if (!enabled) return res.status(409).json({ error: "academy_disabled" });
 
     const { riderId } = req.body || {};
-    if (!riderId) return res.status(400).json({ error: "riderId påkrævet" });
+    if (!riderId) return res.status(400).json({ error: "riderId required" });
 
     const result = await rejectAcademyCandidate(supabase, {
       teamId: req.team.id,

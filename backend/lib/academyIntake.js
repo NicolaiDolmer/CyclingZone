@@ -88,7 +88,7 @@ export async function runAcademyIntake(supabase, {
     if (dryRun) {
       return { dryRun: true, teams: 0, candidates: 0, note: "no active season in preview" };
     }
-    throw new Error("runAcademyIntake: no active season — kør efter sæson-transition");
+    throw new Error("runAcademyIntake: no active season - run after season transition");
   }
 
   const referenceYear = parseInt(String(season.start_date).slice(0, 4), 10) || 2026;
@@ -233,9 +233,15 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
     supabase,
     teamId,
     type: "academy_signed",
-    title: "Akademi-signing gennemført",
-    message: `Din akademikandidat (${riderId}) er nu en del af akademiet.`,
+    // EN-first fallback (#1068 i18n-leak: ingen rå dansk i backend); locale-aware
+    // rendering via backendMessages-koderne nedenfor (#666).
+    title: "Academy signing complete",
+    message: "Your academy prospect has joined your academy.",
     relatedId: riderId,
+    metadata: {
+      titleCode: "notif.academySigned.title",
+      messageCode: "notif.academySigned.message",
+    },
   });
 
   return { riderId, salary, fee, contractEndSeason };
