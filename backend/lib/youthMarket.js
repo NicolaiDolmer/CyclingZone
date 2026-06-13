@@ -6,6 +6,8 @@
 
 import { calculateAuctionEnd, DEFAULT_AUCTION_CONFIG } from "./auctionEngine.js";
 import { calculateRiderMarketValue } from "./marketUtils.js";
+import { getTeamAcademyCount } from "./academyIntake.js";
+import { ACADEMY, isAcademyAge } from "./academyFlag.js";
 
 // Startpris for en ungdomsauktion = lav andel af markedsværdi. Afviste prospekter
 // skal være billige at samle op, men ikke gratis. Gulv 1.
@@ -73,4 +75,66 @@ export async function listRejectedAsYouthAuction(supabase, { riderId, now = new 
     .single();
   if (insErr) throw new Error(`listRejectedAsYouthAuction insert: ${insErr.message}`);
   return auction;
+}
+
+/**
+ * Direct-sign en fri ungdoms-free-agent ind i holdets akademi til minimumsløn.
+ *
+ * En usolgt ungdomsauktion efterlader rytteren som fri ungdom (team_id=NULL);
+ * denne rute lader et hold optage ham direkte. Ingen signing-fee (gratis fra
+ * free-agent-pool) — kun den løbende minimumsløn (= SALARY_RATE × markedsværdi)
+ * og akademi-drift belaster økonomien. 8-plads-cap gælder.
+ *
+ * Rækkefølge-garanti: al validering (free-agent + alder + cap) sker FØR write.
+ *
+ * @param {object} supabase
+ * @param {object} opts
+ * @param {string} opts.teamId
+ * @param {string} opts.riderId
+ * @param {number} opts.seasonNumber  — aktiv sæsons nummer (contract_end_season)
+ * @param {Date}   [opts.now=new Date()]
+ * @returns {Promise<{riderId, salary, contractEndSeason}>}
+ * @throws {Error} 'not_free_agent' | 'not_academy_age' | 'academy_full'
+ */
+export async function signFreeAgentYouth(supabase, { teamId, riderId, seasonNumber, now = new Date() } = {}) {
+  if (!supabase?.from) throw new Error("Supabase client required");
+  if (!teamId || !riderId) throw new Error("signFreeAgentYouth: teamId + riderId required");
+
+  const { data: rider, error } = await supabase
+    .from("riders")
+    .select("id, team_id, is_academy, birthdate, base_value, market_value, prize_earnings_bonus")
+    .eq("id", riderId)
+    .maybeSingle();
+  if (error) throw new Error(`signFreeAgentYouth rider lookup: ${error.message}`);
+  if (!rider) throw new Error(`signFreeAgentYouth: rider ${riderId} not found`);
+
+  // Skal være en fri rytter (ingen ejer, ikke allerede akademi).
+  if (rider.team_id || rider.is_academy) throw new Error("not_free_agent");
+
+  // Skal være i akademi-alder (16-21).
+  const age = rider.birthdate ? now.getFullYear() - new Date(rider.birthdate).getFullYear() : null;
+  if (!isAcademyAge(age)) throw new Error("not_academy_age");
+
+  // 8-plads akademi-cap.
+  const count = await getTeamAcademyCount(supabase, teamId);
+  if (count >= ACADEMY.SLOTS) throw new Error("academy_full");
+
+  const value = Math.max(1, calculateRiderMarketValue(rider));
+  const salary = Math.max(1, Math.round(value * ACADEMY.SALARY_RATE));
+  const contractEndSeason = seasonNumber + ACADEMY.CONTRACT_LENGTH - 1;
+
+  const { error: upErr } = await supabase
+    .from("riders")
+    .update({
+      is_academy: true,
+      team_id: teamId,
+      acquired_at: now.toISOString(),
+      salary,
+      contract_length: ACADEMY.CONTRACT_LENGTH,
+      contract_end_season: contractEndSeason,
+    })
+    .eq("id", riderId);
+  if (upErr) throw new Error(`signFreeAgentYouth update: ${upErr.message}`);
+
+  return { riderId, salary, contractEndSeason };
 }

@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { DEFAULT_AUCTION_CONFIG } from "./auctionEngine.js";
-import { listRejectedAsYouthAuction, YOUTH_AUCTION_START_RATE } from "./youthMarket.js";
+import { listRejectedAsYouthAuction, signFreeAgentYouth, YOUTH_AUCTION_START_RATE } from "./youthMarket.js";
 
 // ─── Mock-supabase ────────────────────────────────────────────────────────────
 
@@ -116,4 +116,99 @@ test("listRejectedAsYouthAuction: kaster når riderId mangler", async () => {
     () => listRejectedAsYouthAuction(supabase, { auctionConfig: DEFAULT_AUCTION_CONFIG }),
     /riderId required/,
   );
+});
+
+// ─── signFreeAgentYouth (Task 13) ─────────────────────────────────────────────
+
+function makeFreeAgentSupabase({
+  rider = {
+    id: "fa-rider",
+    team_id: null,
+    is_academy: false,
+    birthdate: "2008-06-15", // 18 ved 2026
+    base_value: 80000,
+    market_value: 80000,
+    prize_earnings_bonus: 0,
+  },
+  academyCount = 0,
+} = {}) {
+  const riderUpdates = [];
+  const rpcCalls = [];
+  const supabase = {
+    rpc(name, args) { rpcCalls.push({ name, args }); return Promise.resolve({ data: 0, error: null }); },
+    from(table) {
+      if (table === "riders") {
+        return {
+          select(_cols, opts) {
+            if (opts?.count === "exact" && opts?.head === true) {
+              const api = { eq() { return api; }, then(res) { return Promise.resolve({ count: academyCount, error: null }).then(res); } };
+              return api;
+            }
+            const readApi = { eq() { return readApi; }, maybeSingle() { return Promise.resolve({ data: rider, error: null }); } };
+            return readApi;
+          },
+          update(payload) {
+            return { eq() { riderUpdates.push(payload); return Promise.resolve({ error: null }); } };
+          },
+        };
+      }
+      return {};
+    },
+    _riderUpdates: riderUpdates,
+    _rpcCalls: rpcCalls,
+  };
+  return supabase;
+}
+
+const NOW_2026 = new Date("2026-06-20T12:00:00Z");
+
+test("signFreeAgentYouth: signer fri ungdom til minimumsløn ind i akademiet (is_academy=true, kontrakt), ingen signing-fee", async () => {
+  const supabase = makeFreeAgentSupabase({ academyCount: 0 });
+  const result = await signFreeAgentYouth(supabase, { teamId: "team-A", riderId: "fa-rider", seasonNumber: 1, now: NOW_2026 });
+
+  assert.equal(result.riderId, "fa-rider");
+  assert.ok(result.salary >= 1, "minimumsløn >= 1");
+  assert.equal(result.contractEndSeason, 3);
+
+  assert.equal(supabase._riderUpdates.length, 1);
+  const upd = supabase._riderUpdates[0];
+  assert.equal(upd.is_academy, true);
+  assert.equal(upd.team_id, "team-A");
+  assert.equal(upd.contract_length, 3);
+  assert.equal(upd.contract_end_season, 3);
+  assert.ok(upd.salary >= 1);
+
+  // Ingen finance-fee ved free-agent-sign (kun løbende løn)
+  assert.equal(supabase._rpcCalls.length, 0, "ingen signing-fee-debit");
+});
+
+test("signFreeAgentYouth: afviser ikke-free-agent (team_id sat) → not_free_agent", async () => {
+  const supabase = makeFreeAgentSupabase({
+    rider: { id: "fa-rider", team_id: "team-Z", is_academy: false, birthdate: "2008-06-15", base_value: 80000, market_value: 80000, prize_earnings_bonus: 0 },
+  });
+  await assert.rejects(
+    () => signFreeAgentYouth(supabase, { teamId: "team-A", riderId: "fa-rider", seasonNumber: 1, now: NOW_2026 }),
+    /not_free_agent/,
+  );
+  assert.equal(supabase._riderUpdates.length, 0);
+});
+
+test("signFreeAgentYouth: afviser rytter uden for akademi-alder (22) → not_academy_age", async () => {
+  const supabase = makeFreeAgentSupabase({
+    rider: { id: "fa-rider", team_id: null, is_academy: false, birthdate: "2004-06-15", base_value: 80000, market_value: 80000, prize_earnings_bonus: 0 },
+  });
+  await assert.rejects(
+    () => signFreeAgentYouth(supabase, { teamId: "team-A", riderId: "fa-rider", seasonNumber: 1, now: NOW_2026 }),
+    /not_academy_age/,
+  );
+  assert.equal(supabase._riderUpdates.length, 0);
+});
+
+test("signFreeAgentYouth: afviser når akademi fyldt (8) → academy_full", async () => {
+  const supabase = makeFreeAgentSupabase({ academyCount: 8 });
+  await assert.rejects(
+    () => signFreeAgentYouth(supabase, { teamId: "team-A", riderId: "fa-rider", seasonNumber: 1, now: NOW_2026 }),
+    /academy_full/,
+  );
+  assert.equal(supabase._riderUpdates.length, 0);
 });

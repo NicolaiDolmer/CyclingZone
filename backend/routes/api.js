@@ -124,6 +124,7 @@ import {
   signAcademyCandidate,
   rejectAcademyCandidate,
 } from "../lib/academyIntake.js";
+import { signFreeAgentYouth } from "../lib/youthMarket.js";
 import {
   computeDebtRatio,
   computeSustainabilityTier,
@@ -8065,6 +8066,41 @@ router.post("/academy/reject", requireAuth, marketWriteLimiter, async (req, res)
   } catch (err) {
     const msg = err?.message ?? "";
     if (msg === "not_offered") return res.status(409).json({ error: "not_offered" });
+    captureException(err);
+    res.status(500).json({ error: msg });
+  }
+});
+
+// POST /api/academy/free-agent/sign — direct-sign en fri ungdoms-free-agent til
+// minimumsløn ind i holdets akademi (#1308 Fase B). Body: { riderId }
+router.post("/academy/free-agent/sign", requireAuth, marketWriteLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const enabled = await isAcademyEnabled(supabase);
+    if (!enabled) return res.status(409).json({ error: "academy_disabled" });
+
+    const { riderId } = req.body || {};
+    if (!riderId) return res.status(400).json({ error: "riderId required" });
+
+    const { data: season } = await supabase
+      .from("seasons")
+      .select("number")
+      .eq("status", "active")
+      .maybeSingle();
+    const seasonNumber = season?.number ?? 1;
+
+    const result = await signFreeAgentYouth(supabase, {
+      teamId: req.team.id,
+      riderId,
+      seasonNumber,
+    });
+
+    res.json(result);
+  } catch (err) {
+    const msg = err?.message ?? "";
+    if (msg === "academy_full") return res.status(409).json({ error: "academy_full" });
+    if (msg === "not_free_agent") return res.status(409).json({ error: "not_free_agent" });
+    if (msg === "not_academy_age") return res.status(409).json({ error: "not_academy_age" });
     captureException(err);
     res.status(500).json({ error: msg });
   }
