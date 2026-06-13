@@ -15,7 +15,7 @@
 - **Sæson 1→2 skifte UDFØRT + VERIFICERET ([#1155](https://github.com/NicolaiDolmer/CyclingZone/issues/1155)).** Alle gates holdt. Bestyrelsen åbnet.
 - **Relaunch-spor (20/6):** Epic #1136 progression — L1 scouting #1138 live, L2 træning teaser #1163 live. **20/6 = hard relaunch til frisk sæson 1** (epic #1105). **Launch-scope udvidet 11/6** (spec `2026-06-11-kernesystemer-design.md`): + daglig træning/form-spine, holdudtagelse/kaptajn/udbrud, akademi-MVP, kontrakt-data-seed.
 - **Sikkerhed:** [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) SUPABASE_SERVICE_KEY-rotation åben.
-- **Skalering (ikke launch-blocker):** infra bærer 100 aktive managers; Supabase Pro købt 10/6 (#1181). Oprydning #1182 (Railway Postgres+Redis) efter launch.
+- **Skalering (ikke launch-blocker):** infra bærer 100 aktive managers; Supabase Pro købt 10/6 (#1181). Oprydning #1182 (Railway Postgres+Redis) efter launch. Perf-arkitektur-spec (13/6) merged → tracker #1375 (frontend-cache #1373, Realtime-invalidering #1374), alt post-launch.
 - **TdF launch-prep:** [#676](https://github.com/NicolaiDolmer/CyclingZone/issues/676) Race Engine V1 · [#672](https://github.com/NicolaiDolmer/CyclingZone/issues/672) landing page · [#671](https://github.com/NicolaiDolmer/CyclingZone/issues/671) brand.
 
 _Trimmet 11/6 aften jf. #1275 (token-gate primær, budget ~1.200 tok); fuld historik i git-log + issue-tråde._
