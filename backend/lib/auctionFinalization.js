@@ -10,6 +10,7 @@ import {
   TRANSFER_WINDOW_SOFT_CAP_BUFFER,
 } from "./marketUtils.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
+import { contractOnAcquirePatch } from "./contractSeed.js";
 import {
   FINANCE_ACTOR_TYPE,
   FINANCE_REASON,
@@ -151,12 +152,15 @@ async function finalizeAuctionRecord({
   // i edge-cases (ingen aktiv sæson registreret) — lad triggeren tage over.
   const { data: activeSeason } = await supabase
     .from("seasons")
-    .select("id")
+    .select("id, number")
     .eq("status", "active")
     .order("number", { ascending: false })
     .limit(1)
     .maybeSingle();
   const activeSeasonId = activeSeason?.id ?? null;
+  // #1309 kontrakt-on-acquire: aktiv sæson-number til contract_end_season-beregning.
+  // Default 1 hvis ingen aktiv sæson er registreret (edge-case).
+  const activeSeasonNumber = activeSeason?.number ?? 1;
   const {
     sellerOwned,
     actualSellerTeamId,
@@ -295,6 +299,12 @@ async function finalizeAuctionRecord({
       };
     }
 
+    // #1309 kontrakt-on-acquire: vinderen erhverver rytteren → opret standard-
+    // kontrakt hvis kontraktløs (salary == null); ellers arves den uændret.
+    // Skrives både ved åbent vindue (team_id nu) og lukket vindue (pending_team_id),
+    // fordi den generiske pending-flush ved vindue-åbning kun flytter team_id og
+    // IKKE rører kontraktfelterne.
+    const winnerContractPatch = contractOnAcquirePatch(auction.rider, activeSeasonNumber);
     await expectMutation(
       supabase
         .from("riders")
@@ -304,9 +314,11 @@ async function finalizeAuctionRecord({
                 team_id: effectiveBidderId,
                 pending_team_id: null,
                 acquired_at: actualEnd,
+                ...winnerContractPatch,
               }
             : {
                 pending_team_id: effectiveBidderId,
+                ...winnerContractPatch,
               }
         )
         .eq("id", auction.rider.id)
@@ -427,6 +439,10 @@ async function finalizeAuctionRecord({
   if (auction.is_guaranteed_sale && sellerOwned && bankTeam) {
     const salePrice = auction.guaranteed_price;
 
+    // #1309 kontrakt-on-acquire: banken erhverver den usolgte rytter → giv også
+    // bank-holdte ryttere en kontrakt hvis kontraktløs, så "ejede ryttere har
+    // altid salary != null" holder for ALLE ejede (også bankens), og en senere
+    // gen-auktion/handel arver kontrakten uændret.
     await expectMutation(
       supabase
         .from("riders")
@@ -434,6 +450,7 @@ async function finalizeAuctionRecord({
           team_id: bankTeam.id,
           pending_team_id: null,
           acquired_at: actualEnd,
+          ...contractOnAcquirePatch(auction.rider, activeSeasonNumber),
         })
         .eq("id", auction.rider.id)
     );

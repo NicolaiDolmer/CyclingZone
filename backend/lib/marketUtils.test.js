@@ -8,6 +8,7 @@ import {
   getTeamMarketState,
   MARKET_SQUAD_LIMITS,
   RIDER_BASE_VALUE_FALLBACK,
+  resolveRiderSalary,
   TRANSFER_WINDOW_SOFT_CAP_BUFFER,
 } from "./marketUtils.js";
 
@@ -328,4 +329,27 @@ test("calculateRiderMarketValue falder tilbage til base_value + bonus", () => {
 
 test("calculateRiderMarketValue uden base_value bruger fallback (aldrig uci_points)", () => {
   assert.equal(calculateRiderMarketValue({ uci_points: 500, prize_earnings_bonus: 0 }), RIDER_BASE_VALUE_FALLBACK);
+});
+
+// #1309: frossen kontrakt-løn vinder; ellers estimat (10% af market_value) til
+// VISNING af free agents.
+test("resolveRiderSalary: frossen salary vinder over estimat", () => {
+  assert.equal(resolveRiderSalary({ salary: 12345, base_value: 1_000_000 }), 12345);
+});
+
+test("resolveRiderSalary: NULL salary → 10% af market_value", () => {
+  // market_value vinder: 10% af 500_000 = 50_000
+  assert.equal(resolveRiderSalary({ salary: null, market_value: 500_000 }), 50_000);
+  // fallback til base_value + bonus: 10% af (50_000 + 5_000) = 5_500
+  assert.equal(resolveRiderSalary({ salary: null, base_value: 50_000, prize_earnings_bonus: 5_000 }), 5_500);
+});
+
+test("resolveRiderSalary: salary 0 bevares (gratis kontrakt, ikke estimat)", () => {
+  assert.equal(resolveRiderSalary({ salary: 0, base_value: 1_000_000 }), 0);
+});
+
+test("resolveRiderSalary: NULL salary + NULL base_value → fallback 1000 → 100", () => {
+  assert.equal(resolveRiderSalary({ salary: null, base_value: null }), 100);
+  // undefined salary behandles som free agent (== null loose)
+  assert.equal(resolveRiderSalary({}), 100);
 });

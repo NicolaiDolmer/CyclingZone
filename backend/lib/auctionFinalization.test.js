@@ -535,10 +535,14 @@ test("finalizeAuctionById allows winner +1 over hard-cap during open window", as
 
   assert.equal(result.ok, true);
   assert.equal(result.code, "completed");
+  // #1309: kontraktløs vinder-rytter (ingen salary i mock) får standard-kontrakt.
   assert.deepEqual(riderUpdates, [{
     team_id: "buyer-team",
     pending_team_id: null,
     acquired_at: "2026-05-09T17:20:00.000Z",
+    salary: 100,
+    contract_length: 2,
+    contract_end_season: 2,
   }]);
   assert.equal(financeInserts.length, 2);
   assert.equal(financeInserts[0].team_id, "buyer-team");
@@ -631,6 +635,9 @@ test("finalizeAuctionById pays the actual AI owner instead of the initiator", as
     team_id: "buyer-team",
     pending_team_id: null,
     acquired_at: "2026-04-22T08:00:00.000Z",
+    salary: 100,
+    contract_length: 2,
+    contract_end_season: 2,
   }]);
   assert.deepEqual(financeInserts, [
     {
@@ -820,6 +827,9 @@ test("finalizeAuctionById still pays the human seller for a normal owned-rider a
     team_id: "buyer-team",
     pending_team_id: null,
     acquired_at: "2026-04-22T10:00:00.000Z",
+    salary: 100,
+    contract_length: 2,
+    contract_end_season: 2,
   }]);
   assert.deepEqual(financeInserts, [
     {
@@ -918,6 +928,9 @@ test("finalizeAuctionById closes open transfer listings when the rider is sold a
     team_id: "buyer-team",
     pending_team_id: null,
     acquired_at: "2026-06-10T10:00:00.000Z",
+    salary: 100,
+    contract_length: 2,
+    contract_end_season: 2,
   }]);
   assert.deepEqual(listingUpdates, [{
     payload: { status: "sold" },
@@ -984,7 +997,14 @@ test("finalizeAuctionById closes open transfer listings even when the window is 
 
   assert.equal(result.ok, true);
   assert.equal(result.code, "completed");
-  assert.deepEqual(riderUpdates, [{ pending_team_id: "buyer-team" }]);
+  // #1309: kontrakt skrives også på den parkerede (lukket-vindue) rytter, fordi
+  // den generiske pending-flush ved vindue-åbning kun flytter team_id.
+  assert.deepEqual(riderUpdates, [{
+    pending_team_id: "buyer-team",
+    salary: 100,
+    contract_length: 2,
+    contract_end_season: 2,
+  }]);
   assert.deepEqual(listingUpdates, [{
     payload: { status: "sold" },
     riderIds: ["rider-listed-cw"],
@@ -1051,10 +1071,14 @@ test("finalizeAuctionById closes open transfer listings on guaranteed sale to th
 
   assert.equal(result.ok, true);
   assert.equal(result.code, "guaranteed_sale");
+  // #1309: banken erhverver den usolgte rytter → kontraktløs rytter får kontrakt.
   assert.deepEqual(riderUpdates, [{
     team_id: "bank",
     pending_team_id: null,
     acquired_at: "2026-06-10T12:00:00.000Z",
+    salary: 100,
+    contract_length: 2,
+    contract_end_season: 2,
   }]);
   assert.deepEqual(listingUpdates, [{
     payload: { status: "sold" },
@@ -1226,6 +1250,9 @@ test("finalizeAuctionById completes when the initiator is the sole bidder on an 
     team_id: "initiator-team",
     pending_team_id: null,
     acquired_at: "2026-04-25T10:00:00.000Z",
+    salary: 100,
+    contract_length: 2,
+    contract_end_season: 2,
   }]);
   assert.deepEqual(financeInserts, [
     {
@@ -1336,6 +1363,9 @@ test("finalizeAuctionById completes when the initiator is the sole bidder on a f
     team_id: "initiator-team",
     pending_team_id: null,
     acquired_at: "2026-04-25T10:00:00.000Z",
+    salary: 100,
+    contract_length: 2,
+    contract_end_season: 2,
   }]);
   assert.deepEqual(financeInserts, [
     {
@@ -1429,6 +1459,9 @@ test("finalizeAuctionById treats legacy non-owned auctions without current_bidde
     team_id: "initiator-team",
     pending_team_id: null,
     acquired_at: "2026-04-29T17:00:00.000Z",
+    salary: 100,
+    contract_length: 2,
+    contract_end_season: 2,
   }]);
   assert.deepEqual(financeInserts, [{
     team_id: "initiator-team",
@@ -1446,4 +1479,135 @@ test("finalizeAuctionById treats legacy non-owned auctions without current_bidde
   }]);
   assert.equal(notifications[0].teamId, "initiator-team");
   assert.match(notifications[0].title, /vandt/i);
+});
+
+// ── #1309 kontrakt-on-acquire ────────────────────────────────────────────────
+
+// Kontraktløs vinder (salary == null) → standard-kontrakt oprettes i samme
+// rider-update som ejerskabsskiftet (salary fra base_value/bonus, length 2,
+// end = aktiv sæson + 1).
+test("finalizeAuctionById creates a default contract for a contractless winner (#1309)", async () => {
+  const auctionUpdates = [];
+  const riderUpdates = [];
+
+  const result = await finalizeAuctionById({
+    supabase: createFinalizeAuctionSupabase({
+      auction: {
+        id: "auction-contract-create",
+        status: "active",
+        current_bidder_id: "buyer-team",
+        current_price: 100,
+        seller_team_id: "seller-team",
+        rider: {
+          id: "rider-free-contract",
+          firstname: "Free",
+          lastname: "Contract",
+          team_id: "seller-team",
+          salary: null, // kontraktløs free agent
+          base_value: 1_000_000,
+          prize_earnings_bonus: 0,
+        },
+      },
+      teams: {
+        "buyer-team": {
+          id: "buyer-team",
+          name: "Buyer",
+          balance: 500000,
+          division: 3,
+          user_id: "user-buyer",
+        },
+        "seller-team": {
+          id: "seller-team",
+          name: "Seller",
+          balance: 250,
+          division: 3,
+          user_id: "user-seller",
+          is_ai: false,
+        },
+      },
+      teamMarketCounts: {
+        "buyer-team": { riderCount: 6, pendingCount: 0, activeLoanCount: 0 },
+      },
+      auctionUpdates,
+      riderUpdates,
+    }),
+    auctionId: "auction-contract-create",
+    notifyTeamOwner: async () => {},
+    now: new Date("2026-06-13T10:00:00.000Z"),
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.code, "completed");
+  assert.deepEqual(riderUpdates, [{
+    team_id: "buyer-team",
+    pending_team_id: null,
+    acquired_at: "2026-06-13T10:00:00.000Z",
+    salary: 100_000, // 10% af 1_000_000
+    contract_length: 2,
+    contract_end_season: 2, // aktiv sæson 1 + 2 - 1
+  }]);
+});
+
+// Vinder MED eksisterende kontrakt (salary != null) → ejerskab skifter, men
+// kontrakten arves UÆNDRET (salary/contract_length/contract_end_season røres ikke).
+test("finalizeAuctionById inherits an existing contract unchanged on a won auction (#1309)", async () => {
+  const auctionUpdates = [];
+  const riderUpdates = [];
+
+  const result = await finalizeAuctionById({
+    supabase: createFinalizeAuctionSupabase({
+      auction: {
+        id: "auction-contract-inherit",
+        status: "active",
+        current_bidder_id: "buyer-team",
+        current_price: 100,
+        seller_team_id: "seller-team",
+        rider: {
+          id: "rider-has-contract",
+          firstname: "Has",
+          lastname: "Contract",
+          team_id: "seller-team",
+          salary: 42_000, // eksisterende kontrakt
+          contract_length: 3,
+          contract_end_season: 4,
+          base_value: 1_000_000,
+          prize_earnings_bonus: 0,
+        },
+      },
+      teams: {
+        "buyer-team": {
+          id: "buyer-team",
+          name: "Buyer",
+          balance: 500000,
+          division: 3,
+          user_id: "user-buyer",
+        },
+        "seller-team": {
+          id: "seller-team",
+          name: "Seller",
+          balance: 250,
+          division: 3,
+          user_id: "user-seller",
+          is_ai: false,
+        },
+      },
+      teamMarketCounts: {
+        "buyer-team": { riderCount: 6, pendingCount: 0, activeLoanCount: 0 },
+      },
+      auctionUpdates,
+      riderUpdates,
+    }),
+    auctionId: "auction-contract-inherit",
+    notifyTeamOwner: async () => {},
+    now: new Date("2026-06-13T11:00:00.000Z"),
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.code, "completed");
+  // Kun ejerskabsfelter — INGEN salary/contract_length/contract_end_season i patch.
+  assert.deepEqual(riderUpdates, [{
+    team_id: "buyer-team",
+    pending_team_id: null,
+    acquired_at: "2026-06-13T11:00:00.000Z",
+  }]);
 });

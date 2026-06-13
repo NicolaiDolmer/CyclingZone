@@ -6,6 +6,7 @@ import {
   computeFrozenSalary,
   pickContractLength,
   computeContractEndSeason,
+  contractOnAcquirePatch,
   runContractSeed,
 } from "./contractSeed.js";
 import { makeRng } from "./fictionalRiderGenerator.js";
@@ -41,6 +42,41 @@ test("CONTRACT-konstanter", () => {
   assert.equal(CONTRACT.FOUNDER_LENGTH, 2);
   assert.equal(CONTRACT.DEFAULT_ACQUIRE_LENGTH, 2);
   assert.equal(CONTRACT.SALARY_RATE, 0.10);
+});
+
+// ── contractOnAcquirePatch ──────────────────────────────────────────────────
+// Create-if-missing / inherit-if-present: kontraktløse ryttere får standard-
+// kontrakt; ryttere med kontrakt (salary != null) arver uændret ({}).
+
+test("contractOnAcquirePatch: rytter MED kontrakt → {} (arves uændret, regenereres ALDRIG)", () => {
+  // salary != null → tom patch uanset base_value/length/end
+  assert.deepEqual(
+    contractOnAcquirePatch({ salary: 42_000, base_value: 1_000_000, contract_length: 3, contract_end_season: 9 }, 5),
+    {}
+  );
+  // salary 0 er en gyldig (gratis) kontrakt → arves også uændret
+  assert.deepEqual(contractOnAcquirePatch({ salary: 0, base_value: 1_000_000 }, 5), {});
+});
+
+test("contractOnAcquirePatch: kontraktløs rytter → standard-kontrakt (length 2, frossen salary, korrekt end)", () => {
+  const patch = contractOnAcquirePatch({ salary: null, base_value: 1_000_000, prize_earnings_bonus: 0 }, 1);
+  assert.equal(patch.contract_length, 2);
+  assert.equal(patch.salary, 100_000); // 10% af 1_000_000
+  assert.equal(patch.contract_end_season, 2); // 1 + 2 - 1
+});
+
+test("contractOnAcquirePatch: undefined salary behandles som kontraktløs (free agent)", () => {
+  const patch = contractOnAcquirePatch({ base_value: 50_000, prize_earnings_bonus: 5_000 }, 3);
+  assert.equal(patch.contract_length, 2);
+  assert.equal(patch.salary, 5_500); // 10% af (50_000 + 5_000)
+  assert.equal(patch.contract_end_season, 4); // 3 + 2 - 1
+});
+
+test("contractOnAcquirePatch: kontraktløs + NULL base_value → fallback salary 100", () => {
+  const patch = contractOnAcquirePatch({ salary: null, base_value: null }, 1);
+  assert.equal(patch.salary, 100);
+  assert.equal(patch.contract_length, 2);
+  assert.equal(patch.contract_end_season, 2);
 });
 
 // ── runContractSeed wrapper-tests ──────────────────────────────────────────────

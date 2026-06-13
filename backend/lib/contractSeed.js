@@ -35,6 +35,23 @@ export function computeContractEndSeason(startSeasonNumber, length) {
   return startSeasonNumber + length - 1;
 }
 
+// #1309 kontrakt-on-acquire: returnér et patch der opretter en standard-kontrakt
+// HVIS rytteren er kontraktløs (salary == null); ellers {} (eksisterende kontrakt
+// arves UÆNDRET — regenerér ALDRIG). Bruges af alle erhvervelses-paths (auktion,
+// transfer, swap, lån-buyout) så "ejede ryttere har altid salary != null" holder.
+// currentSeasonNumber = aktiv sæson-number (default-håndteres af kalderen).
+// NB: undefined salary behandles som kontraktløs (== null loose) — det er det
+// ønskede for free agents der aldrig har haft en kontrakt.
+export function contractOnAcquirePatch(rider, currentSeasonNumber) {
+  if (rider && rider.salary != null) return {};
+  const length = CONTRACT.DEFAULT_ACQUIRE_LENGTH;
+  return {
+    salary: computeFrozenSalary(rider),
+    contract_length: length,
+    contract_end_season: computeContractEndSeason(currentSeasonNumber, length),
+  };
+}
+
 const WRITE_CONCURRENCY = 25;
 
 // DB-wrapper: sæt kontrakt på alle ejede ryttere. Founders → 2 sæsoner; andre

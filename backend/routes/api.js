@@ -98,6 +98,7 @@ import {
   getBotToken,
 } from "../lib/discordNotifier.js";
 import { getPendingInboxItems } from "../lib/inboxPending.js";
+import { contractOnAcquirePatch } from "../lib/contractSeed.js";
 import {
   getLoanAgreementAcceptedStatus,
   getLoanBuyoutRiderUpdate,
@@ -2902,7 +2903,9 @@ router.patch("/loans/:id", requireAuth, marketWriteLimiter, async (req, res) => 
 
   const { data: loan } = await supabase
     .from("loan_agreements")
-    .select(`*, rider:rider_id(id, firstname, lastname, team_id)`)
+    // #1309: salary/base_value/prize_earnings_bonus med så buyout's contract-on-
+    // acquire kan afgøre create-if-missing vs. inherit-if-present.
+    .select(`*, rider:rider_id(id, firstname, lastname, team_id, salary, base_value, prize_earnings_bonus)`)
     .eq("id", req.params.id).single();
   if (!loan) return res.status(404).json({ error: "Lejeaftale ikke fundet", errorCode: "loan_not_found" });
 
@@ -3051,8 +3054,21 @@ router.patch("/loans/:id", requireAuth, marketWriteLimiter, async (req, res) => 
     // debiting. Open window → ownership moves now; closed → pending_team_id parks
     // (status "buyout_pending", flushed at window-open).
     const boughtAt = new Date().toISOString();
+    // #1309 kontrakt-on-acquire: lejeren erhverver rytteren permanent via
+    // købsoption → opret standard-kontrakt hvis kontraktløs (salary == null);
+    // ellers arves den uændret. Skrives både ved åbent vindue (team_id nu) og
+    // lukket vindue (pending_team_id parkeres), fordi den generiske pending-flush
+    // ved vindue-åbning kun flytter team_id og IKKE rører kontraktfelterne.
+    // Slå aktiv sæson op ÉN gang: number → contract_end_season, id → season_id-stamp.
+    const { data: buyoutSeason } = await supabase.from("seasons").select("id, number").eq("status", "active").maybeSingle();
+    const buyoutSeasonId = buyoutSeason?.id ?? null;
+    const buyoutSeasonNumber = buyoutSeason?.number ?? 1;
+    const buyoutContractPatch = contractOnAcquirePatch(loan.rider, buyoutSeasonNumber);
     const { data: claimedRider, error: claimErr } = await supabase.from("riders")
-      .update(getLoanBuyoutRiderUpdate({ windowOpen: open, borrowerTeamId: req.team.id, timestamp: boughtAt }))
+      .update({
+        ...getLoanBuyoutRiderUpdate({ windowOpen: open, borrowerTeamId: req.team.id, timestamp: boughtAt }),
+        ...buyoutContractPatch,
+      })
       .eq("id", loan.rider_id)
       .eq("team_id", loan.from_team_id)
       .is("pending_team_id", null)
@@ -3063,9 +3079,7 @@ router.patch("/loans/:id", requireAuth, marketWriteLimiter, async (req, res) => 
 
     // Slice 07c: balance + finance_transactions atomic via RPC.
     // 07d Fase B / #240: borrower aktiverer købsoption → req.user.id = køber.
-    // season_id sættes eksplicit fra activeSeason.
-    const { data: buyoutSeason } = await supabase.from("seasons").select("id").eq("status", "active").maybeSingle();
-    const buyoutSeasonId = buyoutSeason?.id ?? null;
+    // season_id sættes eksplicit fra activeSeason (slået op ovenfor).
     await incrementBalanceWithAudit(supabase, {
       teamId: req.team.id,
       delta: -price,
