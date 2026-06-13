@@ -26,6 +26,7 @@ function makeDeps(order) {
     runStarterSquadAllocation: rec("allocation", { teams: 18 }),
     seedSeasonZero: async (_s, opts = {}) => { order.push({ name: "seedSeason0", dryRun: opts.dryRun }); return { seasonId: computeSeasonUuid(0) }; },
     transitionToNextSeason: async () => { order.push({ name: "transition" }); return { ok: true }; },
+    runAcademyIntake: rec("academy", { teams: 2, candidates: 8 }),
     runContractSeed: rec("contracts", { seeded: 144 }),
     grantFounderBadges: rec("founder", { wouldGrant: 18 }),
     getBetaManagerTeams: async () => [{ id: "t1", user_id: "u1" }, { id: "t2", user_id: "u2" }],
@@ -42,9 +43,11 @@ test("runRelaunchSeason1 (dryRun): sekvens + dryRun-prop, INGEN reset/sæson-tra
   // dryRun propagerer til alle byggeklodser der modtager opts
   assert.ok(order.filter((o) => "dryRun" in o && o.dryRun !== undefined).every((o) => o.dryRun === true));
   // summary har en nøgle pr. fase
-  for (const k of ["retireLegacy", "reset", "population", "backfills", "allocation", "season", "contracts", "founderBadge"]) {
+  for (const k of ["retireLegacy", "reset", "population", "backfills", "allocation", "season", "academy", "contracts", "founderBadge"]) {
     assert.ok(k in summary, `summary mangler ${k}`);
   }
+  // academy-trinet er flag-gated; uden academy_enabled=true i mock → skipped-form
+  assert.ok("skipped" in summary.academy || "teams" in summary.academy, "summary.academy skal have skipped eller teams");
 });
 
 test("runRelaunchSeason1 (apply): kalder reset + seedSeason0 + transition i korrekt rækkefølge", async () => {
