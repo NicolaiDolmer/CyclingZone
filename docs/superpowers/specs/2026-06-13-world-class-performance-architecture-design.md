@@ -10,6 +10,10 @@
 
 **Review requested from:** Claude or another independent engineering reviewer before implementation planning
 
+> **Sequencing (added in review, 2026-06-13):** None of the work in this document is pre-launch. The 2026-06-20 fresh-season relaunch takes priority, and every phase below is sequenced *after* it — do not start a data-layer refactor during launch week. Execution is tracked in [#1375](https://github.com/NicolaiDolmer/CyclingZone/issues/1375).
+>
+> **Review verification (2026-06-13):** the four load-bearing premises were checked against the code and all hold — no shared client cache (`frontend/package.json`), the `loadAll` broad-refetch pattern appears 62 times across 17 pages, rate limiting is an in-process memory store (`backend/lib/rateLimiters.js`), and cron shares the web process (`server.js` imports `startCron`). The diagnosis is verified, not assumed.
+
 ## 1. Context and goals
 
 CyclingZone currently uses:
@@ -20,6 +24,13 @@ CyclingZone currently uses:
 - Sentry, Vercel Speed Insights, GA4, and Microsoft Clarity
 
 The near-term target is a polished experience for 100-500 concurrent managers. The longer-term expectation is 5,000-35,000 monthly active players. The infrastructure budget at 500 concurrent managers should remain below approximately DKK 1,000 per month.
+
+**Current measured baseline (must be filled before these targets are treated as gaps):**
+
+- Current peak concurrent managers: *not yet measured* — establish in Phase 0 ([#1375](https://github.com/NicolaiDolmer/CyclingZone/issues/1375)). The app is in open beta with a small tester group; infrastructure is currently rated for roughly 100 active managers, not 500.
+- Total verified monthly infrastructure spend: *not yet measured*. The only known fixed component is Supabase Pro (~$25/month, [#1181](https://github.com/NicolaiDolmer/CyclingZone/issues/1181)); Railway and Vercel are usage-based, and a possibly-unused Railway Postgres + Redis project may still be billing ([#1182](https://github.com/NicolaiDolmer/CyclingZone/issues/1182)).
+
+Until these two numbers exist, the 100-500 concurrent target and the DKK 1,000/month ceiling are aspirational, not measured headroom. Do not treat estimated capacity as verified capacity.
 
 The primary product goal is not merely low server response time. Navigation and interactions should feel immediate:
 
@@ -279,6 +290,8 @@ Measure production separately by device class, browser, geography, and important
 Review performance monthly and after major releases. Production traffic determines priority, while a mid-range mobile device on 4G remains the regression safety profile.
 
 ## 10. Capacity verification
+
+**Realtime is the most likely first capacity bottleneck for this game, not database CPU.** CyclingZone is a live-auction product. Supabase Realtime connection and message limits, combined with the current broad-refetch pattern — a single Realtime event triggering a page-wide reload — are more likely to bind first. The `loadAll` pattern is present 62 times across 17 pages as of 2026-06-13. Treat Realtime connection counts, message rates, and refetch fan-out as first-class load-test outputs, not secondary metrics. Replacing broad refetches with targeted invalidation (auctions first) is tracked in [#1374](https://github.com/NicolaiDolmer/CyclingZone/issues/1374).
 
 Capacity claims must be tested through representative scenarios rather than a single synthetic endpoint.
 
