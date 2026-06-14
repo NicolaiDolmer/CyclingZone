@@ -169,6 +169,16 @@ body {
   font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
 }
 
+/* Global tastatur-fokus (#671). :focus-visible = kun tastatur, aldrig museklik.
+   2px outline + 1px offset; outline (ikke box-shadow) overlever hoej-kontrast-mode;
+   accent-t er tema-bevidst (dyb guld light / lys guld dark). Generaliserer den
+   tidligere board-only regel til hele sitet. */
+:where(a, button, input, select, textarea, [tabindex="0"], [role="button"]):focus-visible {
+  outline: 2px solid rgb(var(--accent-t));
+  outline-offset: 1px;
+  border-radius: var(--radius-sm);
+}
+
 select option {
   background-color: var(--bg-card);
   color: var(--text-1);
