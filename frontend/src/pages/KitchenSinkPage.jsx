@@ -1,4 +1,10 @@
-import { Button, StatusBadge, CategoryTag, Card, SearchIcon, ChevronRightIcon, TrophyIcon } from "../components/ui/index.js";
+import {
+  Button, StatusBadge, CategoryTag, Card,
+  Field, Input, Textarea, Select, Checkbox, Radio, Toggle,
+  Table, Tr, Th, Td, JerseyDot,
+  EmptyState, ErrorState, Skeleton, Spinner, Divider, Link,
+  SearchIcon, ChevronRightIcon, TrophyIcon, InboxIcon,
+} from "../components/ui/index.js";
 
 function Section({ title, children }) {
   return (
@@ -62,6 +68,104 @@ export default function KitchenSinkPage() {
         <SearchIcon className="text-cz-2" />
         <ChevronRightIcon className="text-cz-2" />
         <TrophyIcon className="text-cz-accent" />
+      </Section>
+
+      <Section title="Form fields">
+        <Field label="Team name" htmlFor="ks-name" helper="Shown on the standings." className="w-64">
+          <Input id="ks-name" placeholder="E2E Racing" />
+        </Field>
+        <Field label="Strategy" htmlFor="ks-strat" className="w-64">
+          <Select id="ks-strat" defaultValue="gc">
+            <option value="gc">General classification</option>
+            <option value="sprint">Sprint</option>
+            <option value="break">Breakaway</option>
+          </Select>
+        </Field>
+        <Field label="Budget" htmlFor="ks-budget" error="Exceeds remaining balance." className="w-64">
+          <Input id="ks-budget" defaultValue="1,400,000" error />
+        </Field>
+        <Field label="Note" htmlFor="ks-note" className="w-64">
+          <Textarea id="ks-note" rows={3} placeholder="Tactics for the day…" />
+        </Field>
+      </Section>
+
+      <Section title="Choices">
+        <Checkbox id="ks-cap" label="Captain" defaultChecked />
+        <Checkbox id="ks-dom" label="Domestique" />
+        <Radio id="ks-r1" name="ks-role" label="Leader" defaultChecked />
+        <Radio id="ks-r2" name="ks-role" label="Support" />
+        <Toggle id="ks-auto" label="Auto-bid" defaultChecked />
+        <Toggle id="ks-notify" label="Notifications" />
+      </Section>
+
+      <Section title="Table">
+        <Table className="w-full">
+          <thead>
+            <Tr>
+              <Th sticky>Rider</Th>
+              <Th>Type</Th>
+              <Th numeric>Value</Th>
+              <Th numeric>Form</Th>
+            </Tr>
+          </thead>
+          <tbody>
+            <Tr>
+              <Td sticky>
+                <span className="inline-flex items-center gap-2">
+                  <JerseyDot color="#e8c547" title="Maillot jaune" /> Ada Pedersen
+                </span>
+              </Td>
+              <Td><CategoryTag>GC</CategoryTag></Td>
+              <Td numeric>€1.68M</Td>
+              <Td numeric>+4</Td>
+            </Tr>
+            <Tr>
+              <Td sticky>
+                <span className="inline-flex items-center gap-2">
+                  <JerseyDot color="#1a47c0" title="Team kit" /> Bo Nielsen
+                </span>
+              </Td>
+              <Td><CategoryTag>Sprinter</CategoryTag></Td>
+              <Td numeric>€0.94M</Td>
+              <Td numeric>−1</Td>
+            </Tr>
+          </tbody>
+        </Table>
+      </Section>
+
+      <Section title="States">
+        <EmptyState
+          className="w-72"
+          icon={<InboxIcon size={28} />}
+          title="No riders yet"
+          description="Draft your first rider in the live auction."
+          action={<Button size="sm">Open auction</Button>}
+        />
+        <ErrorState
+          className="w-72"
+          title="Couldn't load riders"
+          description="The request timed out."
+          action={<Button size="sm" variant="secondary">Retry</Button>}
+        />
+        <Card className="w-72 p-4">
+          <Skeleton className="mb-3 h-5 w-2/3" />
+          <Skeleton className="mb-2 h-4 w-full" />
+          <Skeleton className="h-4 w-4/5" />
+        </Card>
+        <div className="flex items-center gap-3">
+          <Spinner />
+          <span className="text-sm text-cz-2">Loading…</span>
+        </div>
+      </Section>
+
+      <Section title="Dividers & links">
+        <div className="w-72">
+          <p className="text-sm text-cz-2">
+            Read the <Link href="#">tactics guide</Link> before the stage.
+          </p>
+          <Divider className="my-4" />
+          <Divider label="or" />
+        </div>
       </Section>
     </main>
   );
