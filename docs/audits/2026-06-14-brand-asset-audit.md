@@ -13,13 +13,13 @@
 
 **Én ægte slop-rest:** banner + OG-billede bruger to diagonale gradient-glow-blobs i baggrunden — det generiske "ambient SaaS-hero"-mønster. Subtilt (0.16 opacity), men det er den eneste rest af generisk æstetik i et ellers stramt sæt. Resten af findings er trivielle konsistens-punkter.
 
-**Launch-relevans:** favicon, wordmark og OG er det første kold TdF-trafik (20/6) og landing #672 (deadline 16/6) møder. Marks selv er ship-bare. **Men auditen afdækkede ét reelt launch-problem — F5: OG-billedet serveres som SVG, og sociale scrapers understøtter typisk ikke SVG → link-previews er sandsynligvis brudte ved deling.** Det er separat fra blob-fixet og bør tages som egen opgave før 20/6.
+**Launch-relevans:** favicon, wordmark og OG er det første kold TdF-trafik (20/6) og landing #672 (deadline 16/6) møder. Marks selv er ship-bare. **Men auditen afdækkede ét reelt launch-problem — F5: OG-billedet serveres som SVG, og sociale scrapers understøtter typisk ikke SVG → link-previews er sandsynligvis brudte ved deling.** Det er separat fra blob-fixet og bør tages som egen opgave før 20/6. **(✅ FIXED 2026-06-14 — se Udført-sektionen + F5-rækken.)**
 
 ## Udført 2026-06-14 (ejer-godkendt)
 
 - **F1 + F4 FIXED.** De to glow-blobs fjernet i `discord-banner.svg` + `og-cycling-zone.svg` (inkl. ubrugt `radialGradient#glow`-def); banner+OG canvas-gradient normaliseret til `#161824`. `discord-banner.png` regenereret (960×540, sharp). OG'en er SVG → SVG-edit'en er selve fixet (ingen raster at regenerere). Verificeret visuelt (rent, fladt navy) + XML-velformet + 0 `url(#glow)`-rester.
 - **F2/F3 udskudt** (post-launch polish, ingen synlig effekt).
-- **F5 åben** — kræver egen beslutning/opgave (OG-raster-pipeline + wiring).
+- **F5 FIXED** (2026-06-14, egen PR efter PR #1389): OG-rasteren `frontend/public/og-cycling-zone.png` (1200×630, flad opaque, ingen alpha) eksporteres deterministisk fra den rene outlined SVG-master via `npm run brand:export:og` (sharp, `density:200` supersample + `.flatten('#0e0f15')`). `index.html` peger nu `og:image` + `twitter:image` på PNG'en med `og:image:type image/png` (+ ny `og:image:alt`); SVG'en er ikke længere refereret som og:image (ét entydigt raster så scrapers ikke kan plukke den ikke-understøttede form). Verificeret visuelt: rent navy canvas, stacked mark + wordmark + tagline + promise-band, ingen glow-blobs. Eksport-pipelinen lever i `scripts/brand-export.mjs` (`exportOg()` + `og`-subkommando).
 
 ---
 
@@ -42,7 +42,7 @@
 | **F2** | 🟢 Minor | Tile-corner-radius inkonsistent: `monogram-cz` rx=5/32 = **15.6%** vs `favicon-stacked` rx=7/64 = **10.9%**. Monogram læser proportionelt rundere end stacked når de ses sammen. | Vælg ét ratio (fx ~12.5%: monogram rx=4, stacked rx=8). Lav-prioritet polish. |
 | **F3** | 🟢 Minor | Udokumenteret grå `#8b8d93` i OG-prose (3×). Ligger mellem dark text-2 `#9da0b3` og text-3 `#888ba0` — matcher intet token. | Align mod text-2/text-3-token for systemkonsistens. Trivielt, kun OG. |
 | **F4** | 🟢 Minor | Banner-canvas-gradient slutter på `#171a26` (udokumenteret; tæt på dark card `#161824`). | Normalisér til `#161824` eller behold bevidst. Trivielt; fold ind i F1-regenerering hvis F1 godkendes. |
-| **F5** | 🔴 Kritisk (launch) | **OG-billedet serveres som SVG** (`og:image` → `og-cycling-zone.svg`, `og:image:type image/svg+xml`); ingen raster findes. De fleste sociale scrapers (Facebook, LinkedIn, X/Twitter) **understøtter ikke SVG som `og:image`** og kræver PNG/JPG → link-previews er sandsynligvis tomme/brudte ved deling. Ingen evidens fra live scrape-test, men SVG-`og:image`-uunderstøttelse er bredt dokumenteret. Rammer kold TdF-trafik der deler links. | Eksportér en `og-cycling-zone.png` (1200×630) fra den rettede SVG og peg `og:image` + `twitter:image` på PNG'en (behold SVG som progressive fallback). **Separat fra blob-scope — egen opgave/issue.** |
+| **F5** | ✅ **FIXED** (var 🔴 launch) | **OG-billedet serveres som SVG** (`og:image` → `og-cycling-zone.svg`, `og:image:type image/svg+xml`); ingen raster findes. De fleste sociale scrapers (Facebook, LinkedIn, X/Twitter) **understøtter ikke SVG som `og:image`** og kræver PNG/JPG → link-previews er sandsynligvis tomme/brudte ved deling. Ingen evidens fra live scrape-test, men SVG-`og:image`-uunderstøttelse er bredt dokumenteret. Rammer kold TdF-trafik der deler links. | **Fixed 2026-06-14:** `og-cycling-zone.png` (1200×630, flad opaque) eksporteret fra den rettede SVG via `npm run brand:export:og`; `og:image` + `twitter:image` peger på PNG'en (`image/png`). SVG droppet som og:image (ét entydigt raster). Se "Udført"-sektionen ovenfor. |
 
 ### Noter (ikke findings)
 
