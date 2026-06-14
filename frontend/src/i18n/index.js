@@ -141,8 +141,11 @@ if (PSEUDO_ENABLED) {
 
 // Dev-only debug-handle — gør i18next inspectable fra DevTools så
 // `window.__i18n.t("dashboard:stats.balance")` kan verificere namespace-loading
-// uden at skulle gennem fuld login-flow. Eksisterer ikke i prod-bundle (import.meta.env.DEV).
-if (typeof window !== "undefined" && import.meta.env.DEV) {
+// uden at skulle gennem fuld login-flow. Eksisterer ikke i den rigtige prod-bundle.
+// VITE_E2E sættes KUN af Playwrights webServer.env (#1342: e2e kører nu mod en
+// statisk preview-build, hvor import.meta.env.DEV er false) — Vercel-prod-deploy
+// sætter den aldrig, så handlen lækker ikke til rigtige brugere.
+if (typeof window !== "undefined" && (import.meta.env.DEV || import.meta.env.VITE_E2E)) {
   window.__i18n = i18n;
 }
 
