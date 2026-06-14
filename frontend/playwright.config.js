@@ -50,13 +50,22 @@ export default defineConfig({
     },
   ],
   webServer: {
+    // #1342: e2e kører mod en statisk preview-build, ikke vite dev-server.
+    // Dev-serverens on-demand dep-reoptimering gav ChunkLoadError midt i et run,
+    // og HMR-websockets efterlod åbne handles → webkit-worker'en (3. projekt)
+    // kunne ikke exit'e på Windows og blev force-killed efter 300s (exit 1
+    // selvom alle tests bestod). Preview er statisk: ingen HMR, ingen
+    // reoptimering → deterministisk teardown. Reproduceret + verificeret lokalt.
     // --strictPort: hellere højlydt bind-fejl end at vite hopper til nabo-port
     // mens baseURL stadig peger på den fremmede server.
-    command: `npm run dev -- --host 127.0.0.1 --port ${PORT} --strictPort`,
+    command: `npm run build && npm run preview -- --host 127.0.0.1 --port ${PORT} --strictPort`,
     url: `http://127.0.0.1:${PORT}`,
     reuseExistingServer: !process.env.CI,
-    timeout: 120000,
+    timeout: 180000,
     env: {
+      // #1342: eksponér window.__i18n i preview-build (import.meta.env.DEV er
+      // false her) så core-smoke's sprog-skift-helper virker. Kun e2e, ikke prod.
+      VITE_E2E: "1",
       VITE_API_URL: `http://127.0.0.1:${PORT}`,
       VITE_SUPABASE_URL: "https://cycling-zone-e2e.supabase.co",
       VITE_SUPABASE_ANON_KEY: "e2e-anon-key",
