@@ -1,8 +1,11 @@
+import { useState } from "react";
 import {
   Button, StatusBadge, CategoryTag, Card,
   Field, Input, Textarea, Select, Checkbox, Radio, Toggle,
   Table, Tr, Th, Td, JerseyDot,
   EmptyState, ErrorState, Skeleton, Spinner, Divider, Link,
+  Modal, DialogSurface, Dropdown, MenuItem, Tooltip, Toast,
+  Tabs, TabList, Tab, TabPanel,
   SearchIcon, ChevronRightIcon, TrophyIcon, InboxIcon,
 } from "../components/ui/index.js";
 
@@ -18,6 +21,8 @@ function Section({ title, children }) {
 }
 
 export default function KitchenSinkPage() {
+  const [modalOpen, setModalOpen] = useState(false);
+  const [tab, setTab] = useState("roster");
   return (
     <main className="mx-auto max-w-5xl px-10 py-12">
       <p className="mb-2 font-data text-xs font-semibold uppercase tracking-[.18em] text-cz-accent">
@@ -166,6 +171,92 @@ export default function KitchenSinkPage() {
           <Divider className="my-4" />
           <Divider label="or" />
         </div>
+      </Section>
+
+      <Section title="Tabs">
+        <div className="w-full">
+          <Tabs value={tab} onChange={setTab}>
+            <TabList label="Team views">
+              <Tab value="roster">Roster</Tab>
+              <Tab value="tactics">Tactics</Tab>
+              <Tab value="finance">Finance</Tab>
+            </TabList>
+            <TabPanel value="roster"><p className="pt-4 text-sm text-cz-2">Roster panel</p></TabPanel>
+            <TabPanel value="tactics"><p className="pt-4 text-sm text-cz-2">Tactics panel</p></TabPanel>
+            <TabPanel value="finance"><p className="pt-4 text-sm text-cz-2">Finance panel</p></TabPanel>
+          </Tabs>
+        </div>
+      </Section>
+
+      <Section title="Tooltip">
+        <Tooltip label="Watch this rider" open>
+          <Button variant="secondary" size="sm">Hover me</Button>
+        </Tooltip>
+      </Section>
+
+      <Section title="Toast">
+        <Toast
+          className="w-72"
+          tone="danger"
+          title="You've been outbid"
+          description="Ada Pedersen — new price €1.72M"
+          onClose={() => {}}
+        />
+        <Toast
+          className="w-72"
+          tone="success"
+          title="Bid placed"
+          description="You lead the auction."
+          onClose={() => {}}
+        />
+      </Section>
+
+      <Section title="Dialog">
+        <Button variant="primary" size="sm" onClick={() => setModalOpen(true)}>Open dialog</Button>
+        <DialogSurface
+          size="sm"
+          title="Release rider?"
+          titleId="ks-dialog-preview"
+          description="This frees up cap space but cannot be undone this stage."
+          onClose={() => {}}
+          footer={
+            <>
+              <Button variant="ghost" size="sm">Cancel</Button>
+              <Button variant="danger" size="sm">Release</Button>
+            </>
+          }
+        >
+          <p className="text-sm text-cz-2">Ada Pedersen will return to the free-agent pool.</p>
+        </DialogSurface>
+        <Modal
+          open={modalOpen}
+          onClose={() => setModalOpen(false)}
+          title="Release rider?"
+          description="This frees up cap space but cannot be undone this stage."
+          footer={
+            <>
+              <Button variant="ghost" size="sm" onClick={() => setModalOpen(false)}>Cancel</Button>
+              <Button variant="danger" size="sm" onClick={() => setModalOpen(false)}>Release</Button>
+            </>
+          }
+        >
+          <p className="text-sm text-cz-2">Ada Pedersen will return to the free-agent pool.</p>
+        </Modal>
+      </Section>
+
+      <Section title="Dropdown menu">
+        <Dropdown
+          defaultOpen
+          trigger={({ open, toggle }) => (
+            <Button variant="secondary" size="sm" onClick={toggle} aria-haspopup="menu" aria-expanded={open}>
+              Customize
+            </Button>
+          )}
+        >
+          <MenuItem>Show team value</MenuItem>
+          <MenuItem active>Show form</MenuItem>
+          <MenuItem danger>Reset layout</MenuItem>
+        </Dropdown>
       </Section>
     </main>
   );
