@@ -11,6 +11,8 @@ test("kitchen-sink renders all primitives", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Kitchen sink" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Place bid" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Open auction" })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "Roster" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Open dialog" })).toBeVisible();
   await expect(page).toHaveScreenshot("kitchen-sink.png", {
     animations: "disabled",
     caret: "hide",
