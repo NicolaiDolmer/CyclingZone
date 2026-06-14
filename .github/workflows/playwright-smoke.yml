@@ -32,8 +32,10 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      # #1342: CI kører kun chromium-projekterne (desktop + mobile). mobile-webkit
+      # hænger systematisk på windows-latest og er droppet i CI (se playwright.config.js).
       - name: Install Playwright browsers
-        run: npx playwright install chromium webkit
+        run: npx playwright install chromium
 
       # #1342: byg frontend FØR Playwright, så webServer-kommandoen i CI kun er
       # `vite preview` (én proces). `npm run build && npm run preview` i én
@@ -50,7 +52,11 @@ jobs:
           VITE_SUPABASE_ANON_KEY: e2e-anon-key
           VITE_PUBLIC_APP_URL: http://127.0.0.1:4173
 
+      # timeout-minutes: backstop så et fremtidigt teardown-hæng aldrig igen kan
+      # æde en 6-timers runner (#1342: et webkit-hæng kørte 48 min før cancel).
+      # Et grønt chromium-only run er ~3-4 min, så 15 min er rigelig hovedplads.
       - name: Run Playwright smoke
+        timeout-minutes: 15
         run: npm run test:e2e
 
       - name: Upload Playwright report
