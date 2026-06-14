@@ -36,4 +36,10 @@ export default {
   // result is deterministic regardless of what is staged.
   "{frontend/public/locales/**/*.json,frontend/src/**/*.js,frontend/src/**/*.jsx,backend/routes/**/*.js,backend/lib/**/*.js}":
     (files) => `node scripts/i18n-check-leaks.mjs ${files.map(escape).join(" ")}`,
+  // #671 Plan 3 forward-guard: UI anti-drift (raa hex + slop-tells + emoji-som-
+  // ikon i frontend/src). Scriptet laver altid en fuld-repo-scan mod
+  // scripts/ui-slop-baseline.json (ratchet) — staged-args passeres per
+  // lint-staged-konventionen men ignoreres, saa resultatet er deterministisk.
+  "frontend/src/**/*.{js,jsx,css}": (files) =>
+    `node scripts/lint-ui-slop.mjs ${files.map(escape).join(" ")}`,
 };

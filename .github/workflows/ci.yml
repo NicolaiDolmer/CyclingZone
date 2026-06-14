@@ -107,3 +107,26 @@ jobs:
 
       - name: Check lint warning budgets
         run: node scripts/check-eslint-warning-budget.mjs
+
+  ui-anti-drift:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # #671 Plan 3 (spec DEL-C C1): forward-guard mod slop-drift i frontend/src.
+    # Fejler KUN paa NYE raa hex / slop-tells (rounded-xl/2xl/3xl, glow,
+    # backdrop-blur, blob-blur) / emoji-som-ikon ud over scripts/ui-slop-baseline.json
+    # (ratchet — maa kun skrumpe). Kendte callsites + emoji er Plan 4's job.
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Test anti-drift guard
+        run: node --test scripts/lint-ui-slop.test.mjs
+
+      - name: Run anti-drift guard
+        run: node scripts/lint-ui-slop.mjs
