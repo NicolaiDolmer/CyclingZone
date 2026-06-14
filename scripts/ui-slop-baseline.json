@@ -1,0 +1,485 @@
+{
+  "$comment": "Kendte UI-anti-drift-overtraedelser (ratchet — maa kun skrumpe). Genereret af scripts/lint-ui-slop.mjs --update-baseline. Refs #671 Plan 3. Nye overtraedelser maa IKKE tilfoejes her — brug ui/-primitiver + tokens, eller (legitimt) udvid EXEMPT_FILES i scriptet med begrundelse. Plan 4 skrumper denne ved at konvertere callsites + emoji.",
+  "files": {
+    "frontend/src/components/AuctionsFirstBidHint.jsx": {
+      "hex": 0,
+      "slop": 1,
+      "emoji": 1
+    },
+    "frontend/src/components/AuctionsSidebarFeed.jsx": {
+      "hex": 0,
+      "slop": 1,
+      "emoji": 0
+    },
+    "frontend/src/components/BidConfirmModal.jsx": {
+      "hex": 0,
+      "slop": 2,
+      "emoji": 0
+    },
+    "frontend/src/components/BoardEmptyState.jsx": {
+      "hex": 0,
+      "slop": 1,
+      "emoji": 1
+    },
+    "frontend/src/components/Brand.jsx": {
+      "hex": 0,
+      "slop": 1,
+      "emoji": 0
+    },
+    "frontend/src/components/CompareSelection.jsx": {
+      "hex": 0,
+      "slop": 1,
+      "emoji": 0
+    },
+    "frontend/src/components/ConfettiModal.jsx": {
+      "hex": 5,
+      "slop": 2,
+      "emoji": 1
+    },
+    "frontend/src/components/CookieBanner.jsx": {
+      "hex": 0,
+      "slop": 1,
+      "emoji": 0
+    },
+    "frontend/src/components/DeadlineDayBanner.jsx": {
+      "hex": 1,
+      "slop": 0,
+      "emoji": 0
+    },
+    "frontend/src/components/DeadlineDayTicker.jsx": {
+      "hex": 3,
+      "slop": 0,
+      "emoji": 0
+    },
+    "frontend/src/components/FinanceFirstVisitHint.jsx": {
+      "hex": 0,
+      "slop": 1,
+      "emoji": 5
+    },
+    "frontend/src/components/FinanceForecastCard.jsx": {
+      "hex": 0,
+      "slop": 3,
+      "emoji": 4
+    },
+    "frontend/src/components/Layout.jsx": {
+      "hex": 0,
+      "slop": 0,
+      "emoji": 1
+    },
+    "frontend/src/components/LeaderBadge.jsx": {
+      "hex": 2,
+      "slop": 0,
+      "emoji": 0
+    },
+    "frontend/src/components/NextActionsCard.jsx": {
+      "hex": 0,
+      "slop": 1,
+      "emoji": 3
+    },
+    "frontend/src/components/OnboardingCompletionCard.jsx": {
+      "hex": 0,
+      "slop": 1,
+      "emoji": 4
+    },
+    "frontend/src/components/OnboardingModal.jsx": {
+      "hex": 0,
+      "slop": 2,
+      "emoji": 3
+    },
+    "frontend/src/components/OnboardingProgressCard.jsx": {
+      "hex": 0,
+      "slop": 1,
+      "emoji": 1
+    },
+    "frontend/src/components/OnboardingTour.jsx": {
+      "hex": 0,
+      "slop": 2,
+      "emoji": 0
+    },
+    "frontend/src/components/OnlineBadge.jsx": {
+      "hex": 0,
+      "slop": 1,
+      "emoji": 0
+    },
+    "frontend/src/components/OverbidToast.jsx": {
+      "hex": 0,
+      "slop": 1,
+      "emoji": 1
+    },
+    "frontend/src/components/PotentialeStars.jsx": {
+      "hex": 5,
+      "slop": 0,
+      "emoji": 0
+    },
+    "frontend/src/components/RacePriceModal.jsx": {
+      "hex": 0,
+      "slop": 2,
+      "emoji": 1
+    },
+    "frontend/src/components/RiderDevelopmentTab.jsx": {
+      "hex": 5,
+      "slop": 1,
+      "emoji": 0
+    },
+    "frontend/src/components/RiderFilters.jsx": {
+      "hex": 0,
+      "slop": 1,
+      "emoji": 1
+    },
+    "frontend/src/components/RidersEmptyState.jsx": {
+      "hex": 0,
+      "slop": 1,
+      "emoji": 1
+    },
+    "frontend/src/components/SetupWizardModal.jsx": {
+      "hex": 0,
+      "slop": 2,
+      "emoji": 0
+    },
+    "frontend/src/components/StatsToggle.jsx": {
+      "hex": 0,
+      "slop": 1,
+      "emoji": 0
+    },
+    "frontend/src/components/SurveyBanner.jsx": {
+      "hex": 0,
+      "slop": 1,
+      "emoji": 1
+    },
+    "frontend/src/components/TeamResultsTab.jsx": {
+      "hex": 0,
+      "slop": 2,
+      "emoji": 0
+    },
+    "frontend/src/components/TeamTransferHistoryTab.jsx": {
+      "hex": 0,
+      "slop": 3,
+      "emoji": 1
+    },
+    "frontend/src/components/admin/DeadlineReadinessSection.jsx": {
+      "hex": 0,
+      "slop": 5,
+      "emoji": 8
+    },
+    "frontend/src/components/admin/EconomyAdminSection.jsx": {
+      "hex": 0,
+      "slop": 4,
+      "emoji": 14
+    },
+    "frontend/src/components/admin/RacePoolSection.jsx": {
+      "hex": 0,
+      "slop": 4,
+      "emoji": 10
+    },
+    "frontend/src/components/admin/RiderExplorerSection.jsx": {
+      "hex": 0,
+      "slop": 0,
+      "emoji": 2
+    },
+    "frontend/src/components/admin/SeasonCycleSection.jsx": {
+      "hex": 0,
+      "slop": 6,
+      "emoji": 12
+    },
+    "frontend/src/components/admin/ValuationPreviewSection.jsx": {
+      "hex": 0,
+      "slop": 0,
+      "emoji": 2
+    },
+    "frontend/src/components/admin/sections/BetaToolsSection.jsx": {
+      "hex": 0,
+      "slop": 0,
+      "emoji": 4
+    },
+    "frontend/src/components/admin/sections/BoardTestModeSection.jsx": {
+      "hex": 0,
+      "slop": 0,
+      "emoji": 3
+    },
+    "frontend/src/components/admin/shared/AdminMessageBanner.jsx": {
+      "hex": 0,
+      "slop": 1,
+      "emoji": 0
+    },
+    "frontend/src/components/admin/shared/AdminSection.jsx": {
+      "hex": 0,
+      "slop": 1,
+      "emoji": 0
+    },
+    "frontend/src/components/admin/shared/AdminTabs.jsx": {
+      "hex": 0,
+      "slop": 0,
+      "emoji": 5
+    },
+    "frontend/src/components/race/RaceSelectionPanel.jsx": {
+      "hex": 0,
+      "slop": 1,
+      "emoji": 0
+    },
+    "frontend/src/components/rider/ScoutablePotentiale.jsx": {
+      "hex": 0,
+      "slop": 0,
+      "emoji": 1
+    },
+    "frontend/src/components/rider/TrainingFocus.jsx": {
+      "hex": 0,
+      "slop": 1,
+      "emoji": 1
+    },
+    "frontend/src/components/waitlist/FounderSupporterWaitlistForm.jsx": {
+      "hex": 0,
+      "slop": 2,
+      "emoji": 1
+    },
+    "frontend/src/lib/statColor.js": {
+      "hex": 2,
+      "slop": 0,
+      "emoji": 0
+    },
+    "frontend/src/pages/AcademyPage.jsx": {
+      "hex": 0,
+      "slop": 7,
+      "emoji": 0
+    },
+    "frontend/src/pages/ActivityPage.jsx": {
+      "hex": 0,
+      "slop": 13,
+      "emoji": 3
+    },
+    "frontend/src/pages/AdminSprintMetricsPage.jsx": {
+      "hex": 0,
+      "slop": 4,
+      "emoji": 3
+    },
+    "frontend/src/pages/AdminWaitlistPage.jsx": {
+      "hex": 0,
+      "slop": 4,
+      "emoji": 2
+    },
+    "frontend/src/pages/AuctionHistoryPage.jsx": {
+      "hex": 0,
+      "slop": 2,
+      "emoji": 0
+    },
+    "frontend/src/pages/AuctionsPage.jsx": {
+      "hex": 0,
+      "slop": 8,
+      "emoji": 3
+    },
+    "frontend/src/pages/BoardPage.jsx": {
+      "hex": 0,
+      "slop": 45,
+      "emoji": 10
+    },
+    "frontend/src/pages/DashboardPage.jsx": {
+      "hex": 5,
+      "slop": 11,
+      "emoji": 2
+    },
+    "frontend/src/pages/DeadlineDayBoard.jsx": {
+      "hex": 0,
+      "slop": 2,
+      "emoji": 3
+    },
+    "frontend/src/pages/FinancePage.jsx": {
+      "hex": 0,
+      "slop": 11,
+      "emoji": 1
+    },
+    "frontend/src/pages/FounderSupporterPage.jsx": {
+      "hex": 0,
+      "slop": 9,
+      "emoji": 0
+    },
+    "frontend/src/pages/HallOfFamePage.jsx": {
+      "hex": 13,
+      "slop": 3,
+      "emoji": 3
+    },
+    "frontend/src/pages/HeadToHeadPage.jsx": {
+      "hex": 2,
+      "slop": 7,
+      "emoji": 1
+    },
+    "frontend/src/pages/HelpPage.jsx": {
+      "hex": 0,
+      "slop": 5,
+      "emoji": 11
+    },
+    "frontend/src/pages/KitchenSinkPage.jsx": {
+      "hex": 2,
+      "slop": 0,
+      "emoji": 0
+    },
+    "frontend/src/pages/LoginPage.jsx": {
+      "hex": 0,
+      "slop": 2,
+      "emoji": 2
+    },
+    "frontend/src/pages/ManagerProfilePage.jsx": {
+      "hex": 0,
+      "slop": 12,
+      "emoji": 4
+    },
+    "frontend/src/pages/NotificationsPage.jsx": {
+      "hex": 6,
+      "slop": 4,
+      "emoji": 34
+    },
+    "frontend/src/pages/PatchNotesPage.jsx": {
+      "hex": 3,
+      "slop": 1,
+      "emoji": 68
+    },
+    "frontend/src/pages/PrivacyPolicyPage.jsx": {
+      "hex": 0,
+      "slop": 1,
+      "emoji": 0
+    },
+    "frontend/src/pages/PrivacyPolicyPageEn.jsx": {
+      "hex": 0,
+      "slop": 1,
+      "emoji": 0
+    },
+    "frontend/src/pages/ProfilePage.jsx": {
+      "hex": 7,
+      "slop": 5,
+      "emoji": 19
+    },
+    "frontend/src/pages/RaceDetailPage.jsx": {
+      "hex": 8,
+      "slop": 4,
+      "emoji": 2
+    },
+    "frontend/src/pages/RaceHistoryPage.jsx": {
+      "hex": 4,
+      "slop": 3,
+      "emoji": 1
+    },
+    "frontend/src/pages/RacePointsPage.jsx": {
+      "hex": 0,
+      "slop": 3,
+      "emoji": 1
+    },
+    "frontend/src/pages/RacesPage.jsx": {
+      "hex": 0,
+      "slop": 13,
+      "emoji": 5
+    },
+    "frontend/src/pages/ResetPasswordPage.jsx": {
+      "hex": 0,
+      "slop": 3,
+      "emoji": 2
+    },
+    "frontend/src/pages/ResultaterPage.jsx": {
+      "hex": 0,
+      "slop": 3,
+      "emoji": 6
+    },
+    "frontend/src/pages/RiderComparePage.jsx": {
+      "hex": 0,
+      "slop": 3,
+      "emoji": 3
+    },
+    "frontend/src/pages/RiderRankingsPage.jsx": {
+      "hex": 0,
+      "slop": 1,
+      "emoji": 0
+    },
+    "frontend/src/pages/RiderStatsPage.jsx": {
+      "hex": 4,
+      "slop": 16,
+      "emoji": 13
+    },
+    "frontend/src/pages/RidersPage.jsx": {
+      "hex": 0,
+      "slop": 1,
+      "emoji": 0
+    },
+    "frontend/src/pages/RoadmapPage.jsx": {
+      "hex": 0,
+      "slop": 1,
+      "emoji": 5
+    },
+    "frontend/src/pages/SeasonEndPage.jsx": {
+      "hex": 8,
+      "slop": 4,
+      "emoji": 5
+    },
+    "frontend/src/pages/SeasonFinanceReport.jsx": {
+      "hex": 9,
+      "slop": 7,
+      "emoji": 0
+    },
+    "frontend/src/pages/SeasonPreviewPage.jsx": {
+      "hex": 8,
+      "slop": 2,
+      "emoji": 0
+    },
+    "frontend/src/pages/StandingsPage.jsx": {
+      "hex": 7,
+      "slop": 1,
+      "emoji": 0
+    },
+    "frontend/src/pages/TeamPage.jsx": {
+      "hex": 0,
+      "slop": 6,
+      "emoji": 2
+    },
+    "frontend/src/pages/TeamProfilePage.jsx": {
+      "hex": 0,
+      "slop": 3,
+      "emoji": 0
+    },
+    "frontend/src/pages/TeamsPage.jsx": {
+      "hex": 3,
+      "slop": 2,
+      "emoji": 0
+    },
+    "frontend/src/pages/TrainingPage.jsx": {
+      "hex": 0,
+      "slop": 2,
+      "emoji": 0
+    },
+    "frontend/src/pages/TransfersPage.jsx": {
+      "hex": 2,
+      "slop": 11,
+      "emoji": 17
+    },
+    "frontend/src/pages/WatchlistPage.jsx": {
+      "hex": 0,
+      "slop": 1,
+      "emoji": 1
+    },
+    "frontend/src/pages/admin/AdminDataTab.jsx": {
+      "hex": 1,
+      "slop": 0,
+      "emoji": 32
+    },
+    "frontend/src/pages/admin/AdminEconomyTab.jsx": {
+      "hex": 0,
+      "slop": 0,
+      "emoji": 20
+    },
+    "frontend/src/pages/admin/AdminLayout.jsx": {
+      "hex": 0,
+      "slop": 1,
+      "emoji": 1
+    },
+    "frontend/src/pages/admin/AdminSeasonTab.jsx": {
+      "hex": 1,
+      "slop": 3,
+      "emoji": 37
+    },
+    "frontend/src/pages/admin/AdminSystemTab.jsx": {
+      "hex": 0,
+      "slop": 0,
+      "emoji": 24
+    },
+    "frontend/src/pages/admin/AdminUsersTab.jsx": {
+      "hex": 0,
+      "slop": 0,
+      "emoji": 12
+    }
+  }
+}

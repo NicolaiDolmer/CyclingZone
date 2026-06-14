@@ -1,6 +1,10 @@
 import * as Sentry from "@sentry/react";
 import { useEffect } from "react";
 import { isChunkLoadError, shouldAttemptChunkReload } from "./chunkErrors.js";
+// Direkte imports (IKKE barrel) — saa main-bundlen kun traekker ErrorState +
+// Button (+ deres ikon/styles) ind, ikke hele ui-laget (#479). #671 Plan 3.
+import ErrorState from "../components/ui/ErrorState.jsx";
+import Button from "../components/ui/Button.jsx";
 
 const DSN = import.meta.env.VITE_SENTRY_DSN;
 const ENABLED = import.meta.env.PROD && Boolean(DSN);
@@ -39,7 +43,10 @@ export function initSentry() {
 }
 
 export function SentryBoundary({ children }) {
-  if (!ENABLED) return children;
+  // Altid-aktiv: Sentry.ErrorBoundary fungerer som en almindelig React-
+  // error-boundary selv uden init (captureException er en no-op uden client),
+  // saa render-fejl fanges OGSAA i dev/preview/uden DSN -> branded fallback i
+  // stedet for white-screen (#671 Plan 3). Rapportering sker kun naar ENABLED.
   return (
     <Sentry.ErrorBoundary
       beforeCapture={(scope, error) => {
@@ -72,7 +79,6 @@ function AppErrorFallback({ error, eventId, resetError }) {
   const lang = getPreferredLanguage().toLowerCase().startsWith("da") ? "da" : "en";
   const copy = lang === "da"
     ? {
-        eyebrow: chunkError ? "Ny version klar" : "Noget gik galt",
         title: chunkError ? "Cycling Zone er opdateret" : "Siden kunne ikke vises",
         body: chunkError
           ? "Din browser havde en ældre version af siden åben. Vi prøver at genindlæse den nye version automatisk."
@@ -82,7 +88,6 @@ function AppErrorFallback({ error, eventId, resetError }) {
         event: "Fejl-id",
       }
     : {
-        eyebrow: chunkError ? "New version ready" : "Something went wrong",
         title: chunkError ? "Cycling Zone was updated" : "The page could not be shown",
         body: chunkError
           ? "Your browser had an older version of the page open. We are trying to reload the new version automatically."
@@ -104,36 +109,38 @@ function AppErrorFallback({ error, eventId, resetError }) {
     }
   }, [error]);
 
+  // On-spec branded fallback paa ErrorState + Button (#671 Plan 3). Statisk
+  // copy bevaret (#1170); eventId vises kun naar ENABLED (deterministisk +
+  // meningsfuldt — vi viser kun et id vi faktisk har rapporteret).
   return (
-    <main className="min-h-screen bg-cz-body text-cz-1 flex items-center justify-center px-4 py-10">
-      <section className="w-full max-w-lg bg-cz-card border border-cz-border rounded-lg p-6 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-wider text-cz-accent-t mb-2">{copy.eyebrow}</p>
-        <h1 className="text-2xl font-bold mb-3">{copy.title}</h1>
-        <p className="text-cz-2 text-sm leading-6 mb-5">{copy.body}</p>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 rounded-lg bg-cz-accent text-cz-on-accent text-sm font-bold hover:brightness-105"
-          >
-            {copy.reload}
-          </button>
-          {!chunkError && (
-            <button
-              type="button"
-              onClick={() => resetError?.()}
-              className="px-4 py-2 rounded-lg border border-cz-border bg-cz-subtle text-cz-1 text-sm font-medium hover:bg-cz-body"
-            >
-              {copy.retry}
-            </button>
-          )}
-        </div>
-        {eventId && (
-          <p className="mt-4 text-[11px] text-cz-3 font-mono">
-            {copy.event}: {eventId}
-          </p>
-        )}
-      </section>
+    // role="alert" -> skaermlaesere annoncerer fejlen assertivt naar fallback'en
+    // mountes (ErrorState's titel er en <p>, ikke en heading — alert-regionen
+    // bevarer a11y for en fuld-skaerms crash). #671 Plan 3.
+    <main role="alert" className="flex min-h-screen items-center justify-center bg-cz-body px-4 py-10 text-cz-1">
+      <ErrorState
+        className="w-full max-w-lg"
+        title={copy.title}
+        description={copy.body}
+        action={
+          <div className="flex flex-col items-center gap-3">
+            <div className="flex flex-wrap justify-center gap-2">
+              <Button variant="primary" size="sm" onClick={() => window.location.reload()}>
+                {copy.reload}
+              </Button>
+              {!chunkError && (
+                <Button variant="secondary" size="sm" onClick={() => resetError?.()}>
+                  {copy.retry}
+                </Button>
+              )}
+            </div>
+            {ENABLED && eventId && (
+              <p className="font-mono text-[11px] text-cz-3">
+                {copy.event}: {eventId}
+              </p>
+            )}
+          </div>
+        }
+      />
     </main>
   );
 }
