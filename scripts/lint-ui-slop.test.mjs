@@ -4,7 +4,17 @@
 // Run: node --test scripts/lint-ui-slop.test.mjs
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { countHex, countSlop, countEmoji, scanSource } from "./lint-ui-slop.mjs";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import {
+  countHex,
+  countSlop,
+  countEmoji,
+  scanSource,
+  scanRepo,
+  compareAgainstBaseline,
+} from "./lint-ui-slop.mjs";
 
 test("countHex flags raw hex colors (3/4/6/8-digit)", () => {
   assert.equal(countHex("color: #e8c547;"), 1);
@@ -21,6 +31,13 @@ test("countHex does not false-positive on non-color text", () => {
   assert.equal(countHex("const x = 12;"), 0);
   assert.equal(countHex('href="#section"'), 0); // #section is not hex-shaped
   assert.equal(countHex("rgb(var(--accent))"), 0);
+});
+
+test("countHex does not flag issue references (#1357 / #671)", () => {
+  assert.equal(countHex("Refs #1357, #1347"), 0); // 4-digit decimal = issue refs
+  assert.equal(countHex("see #671 and #481"), 0); // 3-digit decimal = issue refs
+  assert.equal(countHex("#123456 og #000000"), 2); // 6-digit decimal = colors
+  assert.equal(countHex("#1a47c0"), 1); // has letters = color even at 6
 });
 
 test("countSlop flags rounded-xl/2xl/3xl, glow, backdrop-blur, blob-blur", () => {
@@ -47,4 +64,33 @@ test("countEmoji flags emoji used as icons but not text symbols", () => {
 test("scanSource returns per-category counts", () => {
   const r = scanSource('<div className="rounded-2xl" style={{color:"#fff"}}>🏁</div>');
   assert.deepEqual(r, { hex: 1, slop: 1, emoji: 1 });
+});
+
+test("compareAgainstBaseline only flags increases over baseline", () => {
+  const findings = { "a.jsx": { hex: 2, slop: 0, emoji: 1 } };
+  const baseline = { files: { "a.jsx": { hex: 2, slop: 0, emoji: 0 } } };
+  const { newViolations } = compareAgainstBaseline(findings, baseline);
+  assert.equal(newViolations.length, 1); // emoji 1 > 0
+  assert.match(newViolations[0], /a\.jsx/);
+  assert.match(newViolations[0], /emoji/);
+});
+
+test("compareAgainstBaseline reports stale baseline when violations shrink", () => {
+  const findings = { "a.jsx": { hex: 1, slop: 0, emoji: 0 } };
+  const baseline = { files: { "a.jsx": { hex: 2, slop: 0, emoji: 0 } } };
+  const { newViolations, stale } = compareAgainstBaseline(findings, baseline);
+  assert.equal(newViolations.length, 0);
+  assert.ok(stale.length >= 1);
+});
+
+test("nul NYE anti-drift-fund paa nuvaerende traae mod committet baseline", () => {
+  const here = dirname(fileURLToPath(import.meta.url));
+  const baseline = JSON.parse(readFileSync(join(here, "ui-slop-baseline.json"), "utf8"));
+  const findings = scanRepo();
+  const { newViolations } = compareAgainstBaseline(findings, baseline);
+  assert.equal(
+    newViolations.length,
+    0,
+    `Nye anti-drift-overtraedelser (kør \`node scripts/lint-ui-slop.mjs\` for detaljer):\n${newViolations.join("\n")}`
+  );
 });

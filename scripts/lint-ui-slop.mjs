@@ -39,8 +39,18 @@ export const EXEMPT_FILES = new Set(["frontend/src/index.css"]);
 // --- Detektorer (rene funktioner paa kildestrenge) ------------------------
 
 // Raa hex: #RGB / #RGBA / #RRGGBB / #RRGGBBAA, ikke efterfulgt af endnu et
-// hex-tegn (saa #ffff0 / #section ikke fejl-matcher).
-const HEX_RE = /#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{4}|[0-9a-fA-F]{3})(?![0-9a-fA-F])/g;
+// hex-tegn (saa #ffff0 / #section ikke fejl-matcher). Vi fanger token'et og
+// filtrerer i isHexColor: et rent-decimalt #1234 (1-4 cifre) er en
+// issue-reference (Refs #1357), IKKE en farve — kun cifre-med-bogstav ELLER
+// 6/8-cifrede tokens er farver (issue-numre naar ikke 6 cifre).
+const HEX_TOKEN_RE = /#([0-9a-fA-F]{3,8})(?![0-9a-fA-F])/g;
+
+function isHexColor(digits) {
+  const len = digits.length;
+  if (len !== 3 && len !== 4 && len !== 6 && len !== 8) return false; // 5/7 = ugyldig
+  if (/[a-fA-F]/.test(digits)) return true; // indeholder hex-bogstav -> farve
+  return len === 6 || len === 8; // rent-decimalt: kun 6/8 cifre er en farve
+}
 
 // Slop-tells (navngivne saa fejlbeskeden er handlingsbar).
 export const SLOP_PATTERNS = [
@@ -64,7 +74,14 @@ export function stripComments(src) {
 }
 
 export function countHex(src) {
-  return (stripComments(src).match(HEX_RE) ?? []).length;
+  const clean = stripComments(src);
+  let n = 0;
+  let m;
+  HEX_TOKEN_RE.lastIndex = 0;
+  while ((m = HEX_TOKEN_RE.exec(clean)) !== null) {
+    if (isHexColor(m[1])) n++;
+  }
+  return n;
 }
 
 export function countSlop(src) {
@@ -82,3 +99,117 @@ export function countEmoji(src) {
 export function scanSource(src) {
   return { hex: countHex(src), slop: countSlop(src), emoji: countEmoji(src) };
 }
+
+// --- Fuld-repo-scan (frontend/src) ----------------------------------------
+
+function walk(dir, out = []) {
+  for (const f of readdirSync(dir)) {
+    const p = join(dir, f);
+    if (statSync(p).isDirectory()) {
+      walk(p, out);
+    } else if (/\.(jsx?|css)$/.test(f) && !/\.test\.(jsx?|mjs)$/.test(f)) {
+      out.push(p);
+    }
+  }
+  return out;
+}
+
+// Returnér { "<rel-sti>": {hex, slop, emoji} } for filer med >0 i mindst én kategori.
+export function scanRepo() {
+  const counts = {};
+  for (const file of walk(SRC_DIR)) {
+    const rel = relative(ROOT, file).replaceAll("\\", "/");
+    if (EXEMPT_FILES.has(rel)) continue;
+    const r = scanSource(readFileSync(file, "utf8"));
+    if (r.hex || r.slop || r.emoji) counts[rel] = r;
+  }
+  return counts;
+}
+
+// --- Baseline-ratchet (kun stigninger fejler) -----------------------------
+
+const CATS = ["hex", "slop", "emoji"];
+
+export function compareAgainstBaseline(findings, baseline) {
+  const base = baseline.files || {};
+  const newViolations = [];
+  const stale = [];
+
+  for (const [file, counts] of Object.entries(findings)) {
+    const allowed = base[file] || { hex: 0, slop: 0, emoji: 0 };
+    for (const cat of CATS) {
+      const cur = counts[cat] || 0;
+      const max = allowed[cat] || 0;
+      if (cur > max) {
+        newViolations.push(`${file} — ${cat}: ${cur} (baseline tillader ${max}, +${cur - max} ny(e))`);
+      }
+    }
+  }
+  for (const [file, allowed] of Object.entries(base)) {
+    const cur = findings[file] || { hex: 0, slop: 0, emoji: 0 };
+    for (const cat of CATS) {
+      if ((cur[cat] || 0) < (allowed[cat] || 0)) {
+        stale.push(`${file} — ${cat}: ${cur[cat] || 0}/${allowed[cat] || 0} tilbage (baseline kan strammes)`);
+      }
+    }
+  }
+  return { newViolations, stale };
+}
+
+function buildBaseline(findings) {
+  const files = {};
+  for (const file of Object.keys(findings).sort()) files[file] = findings[file];
+  return {
+    $comment:
+      "Kendte UI-anti-drift-overtraedelser (ratchet — maa kun skrumpe). Genereret af scripts/lint-ui-slop.mjs --update-baseline. Refs #671 Plan 3. Nye overtraedelser maa IKKE tilfoejes her — brug ui/-primitiver + tokens, eller (legitimt) udvid EXEMPT_FILES i scriptet med begrundelse. Plan 4 skrumper denne ved at konvertere callsites + emoji.",
+    files,
+  };
+}
+
+// --- Main -----------------------------------------------------------------
+
+function main() {
+  const updateBaseline = process.argv.includes("--update-baseline");
+  const findings = scanRepo();
+
+  if (updateBaseline) {
+    writeFileSync(BASELINE_PATH, JSON.stringify(buildBaseline(findings), null, 2) + "\n");
+    const total = Object.values(findings).reduce((s, c) => s + c.hex + c.slop + c.emoji, 0);
+    console.log(`✅ Baseline skrevet til scripts/ui-slop-baseline.json (${Object.keys(findings).length} filer, ${total} overtraedelser).`);
+    return;
+  }
+
+  let baseline = { files: {} };
+  if (existsSync(BASELINE_PATH)) baseline = JSON.parse(readFileSync(BASELINE_PATH, "utf8"));
+
+  const { newViolations, stale } = compareAgainstBaseline(findings, baseline);
+
+  if (stale.length) {
+    console.log(`ℹ️  ${stale.length} baseline-entr${stale.length === 1 ? "y" : "ies"} skrumpet (fixet) — stram ratchet'en i en dedikeret commit:`);
+    for (const s of stale.slice(0, 12)) console.log(`   - ${s}`);
+    console.log("   → node scripts/lint-ui-slop.mjs --update-baseline");
+  }
+
+  if (newViolations.length) {
+    console.error(`\n❌ ${newViolations.length} NY(E) UI-anti-drift-overtraedelse(r) (ikke i baseline):`);
+    for (const v of newViolations) console.error(`   - ${v}`);
+    console.error(`
+Fix:
+  - Raa hex  → brug en design-token (cz-*-farve / CSS-var i index.css), ikke #rrggbb.
+  - Slop-tell → brug rounded-cz/rounded-cz-pill + hairline-border + shadow-overlay;
+               ingen rounded-xl/2xl/3xl, glow (shadow-[0_0...]), backdrop-blur, blur-2xl/3xl.
+  - Emoji     → brug et ui/icons/-ikon i stedet for emoji-tegn.
+  - Legitim undtagelse? → udvid EXEMPT_FILES i scripts/lint-ui-slop.mjs med begrundelse.
+Baseline maa IKKE udvides med nye overtraedelser (ratchet, Refs #671).`);
+    process.exit(1);
+  }
+
+  const knownFiles = Object.keys(baseline.files || {}).length;
+  console.log(`\n✅ UI anti-drift-guard: ingen nye overtraedelser (${knownFiles} kendte baseline-filer).`);
+}
+
+function isMain() {
+  return Boolean(process.argv[1]) && import.meta.url === pathToFileURL(process.argv[1]).href;
+}
+
+if (isMain()) main();
