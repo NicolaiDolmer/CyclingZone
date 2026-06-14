@@ -32,6 +32,7 @@ import {
   computeSponsorForSeason,
   FIRST_VARIABLE_SPONSOR_SEASON,
 } from "./sponsorEngine.js";
+import { notifyUser } from "./notificationService.js";
 
 let processSeasonStartImpl;
 async function getProcessSeasonStart() {
@@ -39,6 +40,69 @@ async function getProcessSeasonStart() {
     processSeasonStartImpl = (await import("./economyEngine.js")).processSeasonStart;
   }
   return processSeasonStartImpl;
+}
+
+// EN-first fallback (#1068: ingen rå dansk i backend). Locale-aware rendering
+// sker via backendMessages-koderne i metadata (#666).
+const SEASON_STARTED_FALLBACK_MESSAGE =
+  "A new season has begun. Check your dashboard for your board's goals and your squad for the season ahead.";
+
+/**
+ * #1357 · Indsæt in-app season_started-notifikationer til alle berettigede
+ * menneske-managers (humanTeams = is_ai=false, is_frozen=false). Idempotent:
+ * notifyUser dedup'er på (type, title, message, related_id) inden for 24t, og
+ * related_id = toSeason.id gør dedup per manager+sæson, så retries/genoptagne
+ * transitions ikke dublerer. Fejl pr. manager isoleres (tælles, stopper ikke
+ * resten). `notify` er injicerbar for test.
+ */
+export async function emitSeasonStartedNotifications({
+  supabase,
+  toSeason,
+  humanTeams = null,
+  notify = notifyUser,
+}) {
+  const seasonNumber = toSeason.number;
+  const stats = { delivered: 0, deduped: 0, failed: 0 };
+  // Samme menneske-manager-diskriminator som resten af motoren (is_ai=false,
+  // is_frozen=false) — AI/test/frosne hold skal ikke have inbox-notifikationer.
+  let managers = humanTeams;
+  if (!managers) {
+    const { data, error } = await supabase
+      .from("teams")
+      .select("user_id")
+      .eq("is_ai", false)
+      .eq("is_frozen", false);
+    if (error) {
+      throw new Error(
+        `Could not load managers for season_started notifications: ${error.message}`,
+      );
+    }
+    managers = data;
+  }
+  const eligible = (managers || []).filter((team) => team.user_id);
+  for (const team of eligible) {
+    try {
+      const res = await notify({
+        supabase,
+        userId: team.user_id,
+        type: "season_started",
+        title: `Season ${seasonNumber} has started`,
+        message: SEASON_STARTED_FALLBACK_MESSAGE,
+        relatedId: toSeason.id,
+        metadata: {
+          titleCode: "notif.seasonStarted.title",
+          titleParams: { number: seasonNumber },
+          messageCode: "notif.seasonStarted.message",
+          messageParams: { number: seasonNumber },
+        },
+      });
+      if (res?.delivered) stats.delivered += 1;
+      else if (res?.deduped) stats.deduped += 1;
+    } catch {
+      stats.failed += 1;
+    }
+  }
+  return { eligible: eligible.length, ...stats };
 }
 
 // #805 · lazy import (betaResetService → economyEngine; samme cyklus-undgåelse
@@ -550,6 +614,19 @@ export async function transitionToNextSeason({
   } catch (err) {
     log.push({ phase: "discord_broadcast", sent: false, error: err.message });
   }
+
+  // Phase 7b: in-app season_started-notifikationer til menneske-managers (#1357).
+  // Tidligere fik managers KUN en Discord-broadcast; transition-motoren indsatte
+  // ingen notification-rows, så in-app-inboxen var tom ved sæsonstart.
+  const emitSeasonStarted =
+    deps.emitSeasonStartedNotifications ?? emitSeasonStartedNotifications;
+  log.push({
+    phase: "season_started_notifications",
+    ...(await emitSeasonStarted({
+      supabase,
+      toSeason: plan.to_season,
+    })),
+  });
 
   return { ok: true, dryRun: false, plan, log };
 }

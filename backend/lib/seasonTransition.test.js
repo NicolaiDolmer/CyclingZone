@@ -44,12 +44,22 @@ function createMockSupabase(initialState = {}) {
     teams: initialState.teams ? [...initialState.teams] : [],
     season_standings: initialState.season_standings ? [...initialState.season_standings] : [],
     admin_log: initialState.admin_log ? [...initialState.admin_log] : [],
+    notifications: initialState.notifications ? [...initialState.notifications] : [],
   };
   const calls = { inserts: [], updates: [] };
 
   function chain(table, filters = {}, orderBy = null, limit = null) {
     return {
       eq(col, val) {
+        return chain(table, { ...filters, [col]: val }, orderBy, limit);
+      },
+      // gte er en no-op i mocken (created_at-vindue findes ikke for in-memory
+      // rows) — dedup matcher derfor på user/type/title/message/related_id, hvilket
+      // er nok til at teste notifyUser-stien fra emitSeasonStartedNotifications.
+      gte() {
+        return chain(table, filters, orderBy, limit);
+      },
+      is(col, val) {
         return chain(table, { ...filters, [col]: val }, orderBy, limit);
       },
       order(col, opts) {
@@ -303,8 +313,8 @@ test("transitionToNextSeason — real run udfører alle 6 faser", async () => {
 
   assert.equal(result.ok, true);
   assert.equal(result.dryRun, false);
-  // #535: 8 faser nu (season_payroll tilføjet mellem sponsor_payout og admin_log)
-  assert.equal(result.log.length, 8);
+  // #535: 8 faser; #1357: +season_started_notifications efter discord_broadcast = 9
+  assert.equal(result.log.length, 9);
   assert.equal(result.log[0].phase, "insert_next_season");
   assert.equal(result.log[0].inserted, true);
   assert.equal(result.log[1].phase, "mark_previous_completed");
@@ -322,6 +332,7 @@ test("transitionToNextSeason — real run udfører alle 6 faser", async () => {
   assert.equal(result.log[6].inserted, true);
   assert.equal(result.log[7].phase, "discord_broadcast");
   assert.equal(result.log[7].sent, true);
+  assert.equal(result.log[8].phase, "season_started_notifications");
 
   assert.deepEqual(sponsorCalls, ["00000000-0000-0000-0000-000000000001"]);
 
