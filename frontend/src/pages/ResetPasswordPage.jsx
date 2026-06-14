@@ -97,6 +97,13 @@ export default function ResetPasswordPage({ session }) {
       setSuccess(t("auth:success.passwordUpdatedTitle"));
       setPassword("");
       setConfirmPassword("");
+    } catch (err) {
+      // #1348 — updateUser brugte try/finally uden catch: et rejected kald
+      // (offline/dropped connection) clearede loading men efterlod formularen
+      // uden fejlbesked. Map fejlen (netværk → connection-error-copy) i stedet
+      // for at sluge den.
+      console.error("[auth] password-reset fejlede", err);
+      setError(mapSupabaseAuthError(err, t));
     } finally {
       setLoading(false);
     }
@@ -147,11 +154,11 @@ export default function ResetPasswordPage({ session }) {
 
         <div className="bg-cz-card border border-cz-border rounded-2xl p-6">
           {checking ? (
-            <div className="py-10 flex justify-center">
+            <div className="py-10 flex justify-center" role="status" aria-label={t("auth:resetPassword.title")}>
               <div className="w-7 h-7 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
             </div>
           ) : success ? (
-            <div className="text-center py-4">
+            <div className="text-center py-4" role="status">
               <div className="text-4xl mb-4">✅</div>
               <p className="text-cz-success text-sm font-medium">{success}</p>
               <p className="text-cz-3 text-xs mt-3">
@@ -168,38 +175,52 @@ export default function ResetPasswordPage({ session }) {
           ) : hasRecoverySession ? (
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               <div>
-                <label className="block text-xs font-medium text-cz-2 uppercase tracking-wider mb-1.5">
+                <label htmlFor="reset-new-password" className="block text-xs font-medium text-cz-2 uppercase tracking-wider mb-1.5">
                   {t("auth:field.newPassword.label")}
                 </label>
                 <input
+                  id="reset-new-password"
                   type="password"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   placeholder="••••••••"
                   required
                   minLength={6}
+                  aria-invalid={error ? true : undefined}
+                  aria-describedby={
+                    ["reset-new-password-help", error ? "reset-error" : null]
+                      .filter(Boolean)
+                      .join(" ")
+                  }
                   className={inputClass}
                 />
-                <p className="text-cz-3 text-xs mt-1">{t("auth:field.newPassword.help")}</p>
+                <p id="reset-new-password-help" className="text-cz-3 text-xs mt-1">{t("auth:field.newPassword.help")}</p>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-cz-2 uppercase tracking-wider mb-1.5">
+                <label htmlFor="reset-confirm-password" className="block text-xs font-medium text-cz-2 uppercase tracking-wider mb-1.5">
                   {t("auth:field.confirmPassword.label")}
                 </label>
                 <input
+                  id="reset-confirm-password"
                   type="password"
                   value={confirmPassword}
                   onChange={e => setConfirmPassword(e.target.value)}
                   placeholder="••••••••"
                   required
                   minLength={6}
+                  aria-invalid={error ? true : undefined}
+                  aria-describedby={error ? "reset-error" : undefined}
                   className={inputClass}
                 />
               </div>
 
               {error && (
-                <div className="bg-cz-danger-bg border border-cz-danger/30 rounded-lg px-4 py-2.5 text-cz-danger text-sm">
+                <div
+                  id="reset-error"
+                  role="alert"
+                  className="bg-cz-danger-bg border border-cz-danger/30 rounded-lg px-4 py-2.5 text-cz-danger text-sm"
+                >
                   {error}
                 </div>
               )}
@@ -213,7 +234,7 @@ export default function ResetPasswordPage({ session }) {
               </button>
             </form>
           ) : (
-            <div className="text-center py-4">
+            <div className="text-center py-4" role="alert">
               <div className="text-4xl mb-4">⚠️</div>
               <p className="text-cz-danger text-sm font-medium">
                 {t("auth:error.resetLinkInactive")}

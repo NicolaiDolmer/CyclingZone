@@ -100,6 +100,14 @@ export default function App() {
         setSentryUser(session.user?.id);
         logEvent("session_started");
       }
+    }).catch((err) => {
+      // #1347 — getSession() kan reject ved offline/network-fejl eller en
+      // malformed/udløbet gemt session. Uden denne catch forblev session
+      // === undefined og fullscreen-loaderen hang for evigt. Vi falder
+      // tilbage til en terminal unauthenticated-state (null) så appen render
+      // login-flowet i stedet for at strande på en uendelig spinner.
+      console.warn("[auth] initial getSession() fejlede — falder tilbage til unauthenticated", err);
+      setSession(null);
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
