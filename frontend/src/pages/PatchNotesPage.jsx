@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.35",
+    date: "2026-06-14",
+    label: "Beta",
+    changes: [
+      {
+        category: "New · Notifications",
+        items: [
+          "EN · When a new season starts, you now get an in-app notification (not just on Discord), so you can jump straight to your dashboard and your board's goals for the season. Refs #1357",
+          "DA · Når en ny sæson starter, får du nu en in-app-notifikation (ikke kun på Discord), så du kan gå direkte til dit dashboard og bestyrelsens mål for sæsonen. Refs #1357",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.34",
     date: "2026-06-14",
     label: "Beta",
