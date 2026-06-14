@@ -56,9 +56,18 @@ export default defineConfig({
     // kunne ikke exit'e på Windows og blev force-killed efter 300s (exit 1
     // selvom alle tests bestod). Preview er statisk: ingen HMR, ingen
     // reoptimering → deterministisk teardown. Reproduceret + verificeret lokalt.
+    //
+    // CI vs. lokalt: `npm run build && npm run preview` startede en CHILD-shell
+    // der kørte build, derefter preview — på windows-runneren efterlod den en
+    // forældreløs preview-proces Playwright ikke kunne dræbe → jobbet hang 48 min
+    // (#1342, draft-fix-forsøg 1). I CI bygges frontend i et separat
+    // workflow-step FØR Playwright, så webServer-kommandoen er ÉN dræbelig proces
+    // (`vite preview`). Lokalt beholder vi `build && preview` for bekvemmelighed.
     // --strictPort: hellere højlydt bind-fejl end at vite hopper til nabo-port
     // mens baseURL stadig peger på den fremmede server.
-    command: `npm run build && npm run preview -- --host 127.0.0.1 --port ${PORT} --strictPort`,
+    command: process.env.CI
+      ? `npm run preview -- --host 127.0.0.1 --port ${PORT} --strictPort`
+      : `npm run build && npm run preview -- --host 127.0.0.1 --port ${PORT} --strictPort`,
     url: `http://127.0.0.1:${PORT}`,
     reuseExistingServer: !process.env.CI,
     timeout: 180000,
