@@ -52,6 +52,7 @@ const RoadmapPage = lazy(() => import("./pages/RoadmapPage"));
 const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicyPage"));
 const PrivacyPolicyPageEn = lazy(() => import("./pages/PrivacyPolicyPageEn"));
 const FounderSupporterPage = lazy(() => import("./pages/FounderSupporterPage"));
+const KitchenSinkPage = lazy(() => import("./pages/KitchenSinkPage"));
 const RacesPage = lazy(() => import("./pages/RacesPage"));
 const SeasonEndPage = lazy(() => import("./pages/SeasonEndPage"));
 const ResultaterPage = lazy(() => import("./pages/ResultaterPage"));
@@ -148,6 +149,7 @@ export default function App() {
           <Route path="/privatlivspolitik" element={<PrivacyPolicyPage />} />
           <Route path="/privacy-policy" element={<PrivacyPolicyPageEn />} />
           <Route path="/founder-supporter" element={<FounderSupporterPage />} />
+          <Route path="/ui" element={<KitchenSinkPage />} />
           <Route path="/" element={
             <ProtectedRoute session={session}><Layout /></ProtectedRoute>
           }>
