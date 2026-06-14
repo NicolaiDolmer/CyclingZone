@@ -643,7 +643,9 @@ test("buildBoardProposal raises the bar for star-led teams with clear profile ri
   assert.equal(proposal.identity_profile.star_profile.level, "elite");
   assert.equal(proposal.goals.find((goal) => goal.type === "top_n_finish")?.target, 3);
   assert.equal(proposal.goals.find((goal) => goal.type === "gc_wins")?.target, 2);
-  assert.equal(proposal.goals.find((goal) => goal.type === "sponsor_growth")?.target, 15);
+  // #1267 · sponsor_growth er fjernet fra 1yr-planer (uvindbar i én sæson) —
+  // bar-hævningen sker nu via top_n_finish/gc_wins, ikke sponsor-målet.
+  assert.equal(proposal.goals.find((goal) => goal.type === "sponsor_growth"), undefined);
 });
 
 test("board outlook turns national core and star profile into visible runtime signals", () => {

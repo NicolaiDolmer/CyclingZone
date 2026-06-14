@@ -37,7 +37,7 @@ import {
   getConsequenceCheckpoint,
   resolveWeekendEconomyModifier,
 } from "../lib/boardWeekendUpdate.js";
-import { getPlanDuration } from "../lib/boardGoals.js";
+import { generateBoardGoals, getPlanDuration } from "../lib/boardGoals.js";
 import { CONSEQUENCE_CONSTANTS, getLayerLabel } from "../lib/boardConsequences.js";
 import { BOARD_IDENTITY_RIDER_SELECT } from "../lib/boardConstants.js";
 
@@ -60,6 +60,7 @@ const SEED = Number(argValue("--seed", "1187")) || 1187;
 const WEEKENDS = Math.min(6, Math.max(4, Number(argValue("--weekends", "5")) || 5));
 const OUT_PATH = argValue("--out", null);
 const FIXTURE_PATH = argValue("--fixture", DEFAULT_FIXTURE_PATH);
+const REGEN_GOALS = args.includes("--regen-goals");
 
 // ─── Fixture-refresh (READ-ONLY SELECTs) ──────────────────────────────────────
 
@@ -155,6 +156,36 @@ async function refreshFixture() {
   const boardCount = fixture.teams.reduce((sum, t) => sum + t.boards.length, 0);
   console.log(`✅ Fixture skrevet: ${FIXTURE_PATH}`);
   console.log(`   ${fixture.teams.length} aktive human-hold · ${boardCount} aktive planer · sæson ${season?.number ?? "?"}`);
+}
+
+// ─── #1267 · Regenerér mål fra den NUVÆRENDE generering (relaunch-gate) ───────
+// Erstatter hvert boards gemte (PCM-æra-kalibrerede) current_goals med dem
+// generateBoardGoals FAKTISK ville producere ved relaunch. Lader harnesset gate
+// relaunch-mål-kalibreringen mod en realistisk trup-population i stedet for de
+// historiske mål. standing=null spejler relaunch, hvor friske hold endnu ikke
+// har en sæson-placering, så kun trup/division-baserede targets sættes.
+function regenerateFixtureGoals(fixture) {
+  return {
+    ...fixture,
+    teams: fixture.teams.map((team) => ({
+      ...team,
+      boards: (team.boards || []).map((board) => ({
+        ...board,
+        current_goals: generateBoardGoals({
+          focus: board.focus,
+          planType: board.plan_type,
+          team: {
+            division: team.division,
+            sponsor_income: team.sponsor_income,
+            balance: team.balance,
+            riders: team.riders || [],
+          },
+          riders: team.riders || [],
+          standing: null,
+        }),
+      })),
+    })),
+  };
 }
 
 // ─── Seedet RNG (mulberry32 + Box-Muller) ─────────────────────────────────────
@@ -611,7 +642,7 @@ function gateRow(name, target, measured, status) {
   return `| ${name} | ${target} | ${measured} | ${status} |`;
 }
 
-function buildReport({ fixture, variants, todayBaseline, deterministic, seed, weekends, today }) {
+function buildReport({ fixture, variants, todayBaseline, deterministic, seed, weekends, today, regenGoals = false }) {
   const main = variants.find((v) => v.clampLimit === WEEKEND_SATISFACTION_CLAMP);
   const s = main.summary;
   const lines = [];
@@ -622,6 +653,9 @@ function buildReport({ fixture, variants, todayBaseline, deterministic, seed, we
   lines.push(`> Genereret ${today} af \`node backend/scripts/boardSatisfactionHarness.js --seed ${seed} --weekends ${weekends}\` · Refs #1187, #805, #1147 · simulér-før-ship (ejer-accepteret 7/6)`);
   lines.push(`> Population: ${fixture.teams.length} aktive human-hold · ${boardCount} aktive planer (1yr/3yr/5yr) · fixture hentet ${fixture.fetched_at} (READ-ONLY, sæson ${fixture.season?.number ?? "?"})`);
   lines.push(`> Mekanik: \`lib/boardWeekendUpdate.js\` — target-tracking mod \`evaluateBoardSeason\` (genbrug 1:1), clamp ±${WEEKEND_SATISFACTION_CLAMP}/weekend, modifier live via \`satisfactionToModifier\`, hårde lag kun ved checkpoints (mid + slut).`);
+  if (regenGoals) {
+    lines.push(`> **#1267 · \`--regen-goals\`:** mål er REGENERERET fra \`generateBoardGoals\` (relaunch-mål-kalibrering), IKKE de gemte prod-mål. Gate'r de mål relaunch faktisk ville sætte mod den realistiske trup-population (standing=null = friske hold).`);
+  }
   lines.push("");
 
   lines.push(`## 0. Metode + antagelser`);
@@ -777,7 +811,8 @@ async function main() {
     return;
   }
 
-  const fixture = JSON.parse(readFileSync(FIXTURE_PATH, "utf8"));
+  const rawFixture = JSON.parse(readFileSync(FIXTURE_PATH, "utf8"));
+  const fixture = REGEN_GOALS ? regenerateFixtureGoals(rawFixture) : rawFixture;
   const today = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Copenhagen" }).format(new Date());
 
   const variants = runOnce({ fixture, seed: SEED, weekends: WEEKENDS });
@@ -787,7 +822,7 @@ async function main() {
   const baselineTimeline = buildPerformanceTimeline({ fixture, seed: SEED, weekends: WEEKENDS });
   const todayBaseline = simulateTodayBaseline({ fixture, timelineData: baselineTimeline, weekends: WEEKENDS });
 
-  const { lines } = buildReport({ fixture, variants, todayBaseline, deterministic, seed: SEED, weekends: WEEKENDS, today });
+  const { lines } = buildReport({ fixture, variants, todayBaseline, deterministic, seed: SEED, weekends: WEEKENDS, today, regenGoals: REGEN_GOALS });
   const report = lines.join("\n") + "\n";
 
   if (OUT_PATH) {

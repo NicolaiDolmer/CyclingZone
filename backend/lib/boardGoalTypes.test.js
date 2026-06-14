@@ -7,6 +7,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  DIVISION_SQUAD_LIMITS,
   GOAL_METADATA_BY_TYPE,
 } from "./boardConstants.js";
 import {
@@ -430,12 +431,53 @@ test("#57 · generateBoardGoals youth_development 1yr ekskluderer u25_developmen
   assert.equal(goals.length, 4, "1yr youth = 4 mål (uden u25_development_delta)");
 });
 
-test("generateBoardGoals star_signing includes signature_rider as 5th goal", () => {
+test("generateBoardGoals star_signing includes signature_rider", () => {
   const goals = generateBoardGoals({ focus: "star_signing", planType: "1yr" });
-  assert.equal(goals.length, 5);
   const types = goals.map((g) => g.type);
   assert.ok(types.includes("signature_rider"),
     `star_signing should include signature_rider, got: ${types.join(",")}`);
+});
+
+// #1267 · sponsor_growth kan ikke påvirkes inden for én sæson (sponsor_income
+// ændres kun ved sæson-skift → vækst = 0 % hele 1yr-planen → målet scorer altid
+// 0). Ekskluderet fra 1yr-pakker; beholdt på multi-year hvor det reelt kan vokse.
+test("#1267 · generateBoardGoals star_signing 1yr ekskluderer sponsor_growth", () => {
+  const goals = generateBoardGoals({ focus: "star_signing", planType: "1yr" });
+  const types = goals.map((g) => g.type);
+  assert.ok(!types.includes("sponsor_growth"),
+    `1yr star må ikke indeholde sponsor_growth (uvindbar i én sæson), got: ${types.join(",")}`);
+  assert.equal(goals.length, 4, "1yr star = 4 mål (uden sponsor_growth)");
+});
+
+test("#1267 · generateBoardGoals star_signing multi-year beholder sponsor_growth", () => {
+  const goals = generateBoardGoals({ focus: "star_signing", planType: "3yr" });
+  const types = goals.map((g) => g.type);
+  assert.ok(types.includes("sponsor_growth"),
+    `3yr star skal beholde sponsor_growth (kan vokse over sæsoner), got: ${types.join(",")}`);
+});
+
+// #1267 · DIVISION_SQUAD_LIMITS re-kalibreret til launch-skala (8-rytter-start +
+// auktionsvækst, reelle trupper 8-17). Tidligere div-1/div-2-værdier (20-30/14-20)
+// gjorde min_riders strukturelt umuligt. Verificér at den øvre grænse er launch-
+// realistisk, og at min_riders-målet kan nås af en realistisk div-1-trup.
+test("#1267 · DIVISION_SQUAD_LIMITS er launch-kalibreret (div 1/2 ≤ 16/13, div 3 uændret)", () => {
+  assert.ok(DIVISION_SQUAD_LIMITS[1].max <= 16, `div 1 max skal være launch-skala, fik ${DIVISION_SQUAD_LIMITS[1].max}`);
+  assert.ok(DIVISION_SQUAD_LIMITS[2].max <= 16, `div 2 max skal være launch-skala, fik ${DIVISION_SQUAD_LIMITS[2].max}`);
+  assert.deepEqual(DIVISION_SQUAD_LIMITS[3], { min: 8, max: 10 }, "div 3 var allerede launch-passende og bevares");
+});
+
+test("#1267 · min_riders-målet er opnåeligt for en realistisk div-1-trup (ikke 22-24)", () => {
+  const riders = Array.from({ length: 13 }, (_, i) => ({ is_u25: i < 4, nationality_code: "FR" }));
+  const team = { division: 1, sponsor_income: 240000, riders };
+  for (const focus of ["star_signing", "balanced"]) {
+    const goals = generateBoardGoals({ focus, planType: "1yr", team, riders, standing: null });
+    const minRiders = goals.find((g) => g.type === "min_riders");
+    if (!minRiders) continue; // balanced kan erstatte med national-identity-mål
+    assert.ok(minRiders.target <= DIVISION_SQUAD_LIMITS[1].max,
+      `${focus}: min_riders ${minRiders.target} skal være ≤ div-1 max ${DIVISION_SQUAD_LIMITS[1].max}`);
+    assert.ok(minRiders.target < 20,
+      `${focus}: min_riders ${minRiders.target} skal være under den gamle umulige 20-24-zone`);
+  }
 });
 
 test("generateBoardGoals balanced includes relative_rank as 5th goal", () => {
