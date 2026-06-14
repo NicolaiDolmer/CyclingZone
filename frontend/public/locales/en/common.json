@@ -91,5 +91,9 @@
   "race": {
     "editionYear": "{year} edition"
   },
+  "deadlineTicker": {
+    "pause": "Pause ticker",
+    "resume": "Resume ticker"
+  },
   "leaderBadge": "Leader"
 }
