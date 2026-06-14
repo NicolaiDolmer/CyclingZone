@@ -57,6 +57,10 @@ pip install fonttools brotli
 
 The generator script (`gen_brand.py`) is kept out of the repo (throwaway tooling); the geometry it encodes is the locked spec in `DECISIONS_LOG.md` + the hero/favicon SVGs in `logo-explorations.html`. Re-run only if a locked decision changes.
 
+## Brand-asset-audit 2026-06-14 (#481)
+
+Full audit of the produced set against the anti-slop standard + the locked #671 token foundation: [`docs/audits/2026-06-14-brand-asset-audit.md`](../audits/2026-06-14-brand-asset-audit.md). Verdict: disciplined, slop-free marks. Owner-approved fix applied: the two decorative gradient-glow **blobs were removed** from `discord-banner.svg` + `og-cycling-zone.svg` (generic SaaS-hero pattern, off the editorial line); canvas-gradient normalized to `#161824`; `discord-banner.png` regenerated. **Open launch finding (F5): the OG image is served as SVG** (`og:image:type image/svg+xml`) with no raster — most social scrapers don't render SVG `og:image`, so link previews are likely broken. Needs its own raster-export + wiring fix before 20/6.
+
 ## Follow-ups (not in this slice)
 
 - **PNG / `.ico` raster set** — DONE 2026-06-04 via `scripts/brand-export.mjs` (sharp + png-to-ico, reconciled onto main in #1036). Shipped: `frontend/public/favicon.ico` (CZ monogram 16/32/48), `apple-touch-icon.png` (stacked 180), `brand/icon-192.png` + `brand/icon-512.png` (stacked, for PWA manifest / Discord / social). Wired into `index.html` (`alternate icon` + `apple-touch-icon`).
