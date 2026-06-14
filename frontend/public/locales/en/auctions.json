@@ -3,6 +3,13 @@
     "title": "Auctions",
     "loadingAria": "Loading auctions"
   },
+  "loadError": {
+    "message": "Could not load the auctions. Please try again.",
+    "retry": "Try again"
+  },
+  "watchlist": {
+    "toggleFailed": "Could not update your watchlist. Please try again."
+  },
   "tour": {
     "placeBid": {
       "title": "Place a bid",
