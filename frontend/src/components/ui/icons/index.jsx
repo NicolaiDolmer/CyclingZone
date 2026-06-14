@@ -357,8 +357,8 @@ export function BikeIcon(props) {
 export function RoadIcon(props) {
   return (
     <IconBase {...props}>
-      <path d="M9 21L11 3h2l2 18z" />
-      <path d="M12 7v2.5M12 13v2.5" />
+      <path d="M5 21L9 3h6l4 18z" />
+      <path d="M12 7v3M12 14v3" />
     </IconBase>
   );
 }
