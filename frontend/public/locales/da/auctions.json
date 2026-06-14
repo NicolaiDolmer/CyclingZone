@@ -3,6 +3,13 @@
     "title": "Auktioner",
     "loadingAria": "Indlæser auktioner"
   },
+  "loadError": {
+    "message": "Kunne ikke hente auktionerne. Prøv igen.",
+    "retry": "Prøv igen"
+  },
+  "watchlist": {
+    "toggleFailed": "Kunne ikke opdatere din ønskeliste. Prøv igen."
+  },
   "tour": {
     "placeBid": {
       "title": "Afgiv et bud",

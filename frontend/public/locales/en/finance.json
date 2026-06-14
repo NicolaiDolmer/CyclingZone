@@ -2,7 +2,12 @@
   "page": {
     "title": "Finance",
     "subtitle": "Balance, loans, and transaction history",
-    "seasonReport": "Season report"
+    "seasonReport": "Season report",
+    "loadingAria": "Loading finances"
+  },
+  "loadError": {
+    "message": "Could not load your finances. Please try again.",
+    "retry": "Try again"
   },
   "balance": {
     "label": "Balance",

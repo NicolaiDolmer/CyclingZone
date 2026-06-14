@@ -581,6 +581,12 @@ export default function AuctionsPage() {
   const [myBalance, setMyBalance] = useState(0);
   const [currentRiderCount, setCurrentRiderCount] = useState(null);
   const [loading, setLoading] = useState(true);
+  // #1350: terminal load-fejl-state — uden den kunne en rejected request efterlade
+  // en evig spinner, og en Supabase-fejl ligne et tomt auktionsmarked.
+  const [loadError, setLoadError] = useState(false);
+  // #1351: lokaliseret feedback når en optimistisk watchlist-toggle rulles tilbage
+  // efter en fejlet Supabase-write. { text } | null, auto-dismisses.
+  const [watchlistError, setWatchlistError] = useState(null);
   const [filter, setFilter] = useState("my-situation");
   // Ønskeliste-filter — toggle der viser kun auktioner på ryttere i manager's wishlist.
   // Kombineres oven på den aktive filter-tab (my-situation/all/other).
@@ -703,6 +709,8 @@ export default function AuctionsPage() {
   }
 
   async function loadAll() {
+    setLoadError(false);
+    try {
     const { data: { user } } = await supabase.auth.getUser();
     if (user?.id) setUserId(user.id);
     const { data: team } = await supabase.from("teams").select("id, balance, division").eq("user_id", user.id).single();
@@ -731,6 +739,14 @@ export default function AuctionsPage() {
       team ? supabase.from("auction_proxy_bids").select("auction_id, max_amount").eq("team_id", team.id)
            : Promise.resolve({ data: [] }),
     ]);
+
+    // #1350: en Supabase-fejl returnerer { data: null, error } i stedet for at
+    // reject — uden denne guard ville et fejlet auktions-kald ligne et tomt marked.
+    // Behandl det som en (retry-bar) load-fejl.
+    if (auctionsRes.error) {
+      setLoadError(true);
+      return;
+    }
 
     if (riderCountRes.count !== null) setCurrentRiderCount(riderCountRes.count);
 
@@ -783,7 +799,14 @@ export default function AuctionsPage() {
         }
       }
     }
-    setLoading(false);
+    } catch (e) {
+      // #1350: rejected request (netværk/auth) — vis retry-bar fejl i stedet for
+      // en evig spinner.
+      console.error("AuctionsPage loadAll failed", e);
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
   }
 
   // Onboarding v2 Slice 1b — vis first-bid hint indtil manager har afgivet et bud (eller dismissed)
@@ -982,6 +1005,14 @@ export default function AuctionsPage() {
     loadAll();
   }
 
+  function showWatchlistError() {
+    setWatchlistError({ text: t("auctions:watchlist.toggleFailed") });
+    setTimeout(() => setWatchlistError(null), 4000);
+  }
+
+  // #1351: optimistisk toggle der ruller tilbage hvis Supabase-write fejler.
+  // Tidligere ignorerede vi insert/delete-error → stjernen blev hængende i
+  // forkert state indtil reload. Nu genskabes forrige state + lokaliseret feedback.
   async function toggleWatchlist(riderId) {
     if (!userId) return;
     const inList = watchlist.has(riderId);
@@ -991,10 +1022,25 @@ export default function AuctionsPage() {
       if (inList) next.delete(riderId); else next.add(riderId);
       return next;
     });
-    if (inList) {
-      await supabase.from("rider_watchlist").delete().eq("user_id", userId).eq("rider_id", riderId);
-    } else {
-      await supabase.from("rider_watchlist").insert({ user_id: userId, rider_id: riderId });
+
+    function rollback() {
+      setWatchlist(prev => {
+        const next = new Set(prev);
+        // Genskab den FORRIGE tilstand uafhængigt af eventuelle mellemliggende toggles.
+        if (inList) next.add(riderId); else next.delete(riderId);
+        return next;
+      });
+      showWatchlistError();
+    }
+
+    try {
+      const { error } = inList
+        ? await supabase.from("rider_watchlist").delete().eq("user_id", userId).eq("rider_id", riderId)
+        : await supabase.from("rider_watchlist").insert({ user_id: userId, rider_id: riderId });
+      if (error) rollback();
+    } catch {
+      // Netværks-/uventet fejl — behandl som fejlet write.
+      rollback();
     }
   }
 
@@ -1123,6 +1169,16 @@ export default function AuctionsPage() {
       />
 
       <OverbidToast toasts={toasts} onDismiss={dismissToast} />
+
+      {/* #1351: feedback når en watchlist-toggle blev rullet tilbage. */}
+      {watchlistError && (
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="mb-4 px-4 py-3 rounded-xl text-sm border bg-cz-danger-bg text-cz-danger border-cz-danger/30">
+          {watchlistError.text}
+        </div>
+      )}
 
       <div className="mb-5">
         <div className="flex items-baseline justify-between gap-4 mb-3">
@@ -1269,6 +1325,17 @@ export default function AuctionsPage() {
       {loading ? (
         <div className="flex justify-center py-16" role="status" aria-label={t("auctions:page.loadingAria")}>
           <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
+        </div>
+      ) : loadError ? (
+        // #1350: terminal, retry-bar fejl — aldrig en evig spinner og aldrig en
+        // tom-state der ligner "ingen aktive auktioner".
+        <div className="bg-cz-danger-bg border border-cz-danger/30 rounded-xl p-4 flex items-center justify-between gap-3"
+          role="alert">
+          <p className="text-cz-danger text-sm">{t("auctions:loadError.message")}</p>
+          <button onClick={loadAll}
+            className="px-3 py-1.5 text-xs text-cz-1 bg-cz-card hover:bg-cz-subtle border border-cz-border rounded-lg transition-all">
+            {t("auctions:loadError.retry")}
+          </button>
         </div>
       ) : (
         <AuctionsContent

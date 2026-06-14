@@ -2,7 +2,12 @@
   "page": {
     "title": "Finanser",
     "subtitle": "Balance, lån og transaktionshistorik",
-    "seasonReport": "Sæsonsrapport"
+    "seasonReport": "Sæsonsrapport",
+    "loadingAria": "Henter finanser"
+  },
+  "loadError": {
+    "message": "Kunne ikke hente dine finanser. Prøv igen.",
+    "retry": "Prøv igen"
   },
   "balance": {
     "label": "Balance",

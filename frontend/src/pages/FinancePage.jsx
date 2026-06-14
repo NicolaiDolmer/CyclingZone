@@ -84,6 +84,9 @@ export default function FinancePage() {
   }
   const [activeSeasonId, setActiveSeasonId] = useState(null);
   const [loading, setLoading] = useState(true);
+  // #1350: terminal error-state for initial load — uden den kunne en rejected
+  // request efterlade en permanent spinner. Settle altid loading i finally.
+  const [loadError, setLoadError] = useState(false);
   const [msg, setMsg] = useState({ text: "", type: "" });
 
   // Optag lån
@@ -115,10 +118,12 @@ export default function FinancePage() {
 
   async function loadAll() {
     setLoading(true);
+    setLoadError(false);
+    try {
     const { data: { user } } = await supabase.auth.getUser();
     const { data: teamData } = await supabase.from("teams")
       .select("id, name, balance, division").eq("user_id", user.id).single();
-    if (!teamData) { setLoading(false); return; }
+    if (!teamData) { return; }
     setTeam(teamData);
 
     const { data: { session } } = await supabase.auth.getSession();
@@ -144,6 +149,15 @@ export default function FinancePage() {
       // Slice 07h: aktiv sæson — bruges som default for "Sæsonsrapport"-link.
       supabase.from("seasons").select("id").eq("status", "active").order("number", { ascending: false }).limit(1).maybeSingle(),
     ]);
+
+    // #1350: en Supabase-fejl returnerer { data: null, error } i stedet for at
+    // reject — uden denne guard ville et fejlet transaktions-kald ligne et tomt
+    // finans-overblik. Behandl det som en (retry-bar) load-fejl.
+    if (txRes.error || prizeTxRes.error) {
+      setLoadError(true);
+      return;
+    }
+
     setActiveSeasonId(seasonRes?.data?.id || null);
 
     if (loanRes.ok) setLoanData(await loanRes.json());
@@ -152,7 +166,6 @@ export default function FinancePage() {
     } else {
       setForecast(null);
     }
-    setForecastLoading(false);
     setTransactions(txRes.data || []);
 
     // #44: worst-case commitment = MAX(current_price, my_proxy_max) for leading
@@ -187,8 +200,15 @@ export default function FinancePage() {
     } else {
       setPrizeRows(allPrizeTxs);
     }
-
-    setLoading(false);
+    } catch (e) {
+      // #1350: rejected request (netværk/auth) — vis retry-bar fejl i stedet for
+      // at lade spinneren hænge for evigt.
+      console.error("FinancePage loadAll failed", e);
+      setLoadError(true);
+    } finally {
+      setForecastLoading(false);
+      setLoading(false);
+    }
   }
 
   function showMsg(text, type = "success") {
@@ -264,8 +284,23 @@ export default function FinancePage() {
   }
 
   if (loading) return (
-    <div className="flex justify-center py-16">
+    <div className="flex justify-center py-16" role="status" aria-label={t("page.loadingAria")}>
       <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
+    </div>
+  );
+
+  // #1350: terminal, retry-bar fejl ved fejlet initial load — aldrig en evig
+  // spinner og aldrig en tom-state der ligner "ingen finansdata".
+  if (loadError) return (
+    <div className="max-w-3xl mx-auto py-16">
+      <div className="bg-cz-danger-bg border border-cz-danger/30 rounded-xl p-4 flex items-center justify-between gap-3"
+        role="alert">
+        <p className="text-cz-danger text-sm">{t("loadError.message")}</p>
+        <button onClick={loadAll}
+          className="px-3 py-1.5 text-xs text-cz-1 bg-cz-card hover:bg-cz-subtle border border-cz-border rounded-lg transition-all">
+          {t("loadError.retry")}
+        </button>
+      </div>
     </div>
   );
 
@@ -303,7 +338,12 @@ export default function FinancePage() {
       </div>
 
       {msg.text && (
-        <div className={`mb-4 px-4 py-3 rounded-xl text-sm border
+        // #1349 (WCAG 4.1.3): mutation-feedback annonceres til skærmlæsere.
+        // Fejl = assertiv (role=alert), succes = høflig (role=status/aria-live).
+        <div
+          role={msg.type === "error" ? "alert" : "status"}
+          aria-live={msg.type === "error" ? "assertive" : "polite"}
+          className={`mb-4 px-4 py-3 rounded-xl text-sm border
           ${msg.type === "error"
             ? "bg-cz-danger-bg text-cz-danger border-cz-danger/30"
             : "bg-cz-success-bg text-cz-success border-cz-success/30"}`}>
