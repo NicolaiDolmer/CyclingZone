@@ -117,6 +117,10 @@
       "title": "Akademi-signing gennemført",
       "message": "Din akademikandidat er nu en del af dit akademi."
     },
+    "seasonStarted": {
+      "title": "Sæson {number} er begyndt",
+      "message": "En ny sæson er begyndt. Tjek dit dashboard for bestyrelsens mål og din trup til den kommende sæson."
+    },
     "boardT1Reminder": {
       "title": "Sidste chance: {planLabel}",
       "messageSingle": "Bestyrelsen tager over om {raceDaysLeft} race-day. Åbn Bestyrelse-siden og forhandl din {planLabel} nu.",
