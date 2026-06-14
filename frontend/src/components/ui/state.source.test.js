@@ -22,3 +22,16 @@ test("ErrorState bruger AlertTriangle + danger-tone + retry-slot", () => {
   assert.match(src, /text-cz-danger/);
   assert.match(src, /\{action\}/);
 });
+
+test("Skeleton bruger cz-skeleton-klassen og er aria-hidden", () => {
+  const src = read("Skeleton.jsx");
+  assert.match(src, /cz-skeleton/);
+  assert.match(src, /aria-hidden/);
+});
+
+test("Spinner genbruger .spinner + animate-spin og melder status", () => {
+  const src = read("Spinner.jsx");
+  assert.match(src, /"spinner|spinner /);
+  assert.match(src, /animate-spin/);
+  assert.match(src, /role="status"/);
+});
