@@ -19,6 +19,8 @@
 //                    uden producent-kode, men inkluderet for fremtidig brug)
 //     - "buyout":    borrower udnyttede købsoption, permanent ejerskifte
 
+import { assertNoSupabaseError } from "./supabaseResultGuard.js";
+
 export const PUBLIC_LOAN_STATUSES = ["active", "window_pending", "buyout_pending", "completed", "buyout"];
 export const PUBLIC_OFFER_STATUSES = ["accepted", "window_pending"];
 
@@ -48,6 +50,17 @@ export async function buildRiderHistory(supabase, riderId) {
       .in("status", PUBLIC_LOAN_STATUSES)
       .order("created_at", { ascending: false }),
   ]);
+
+  // Security-audit 2026-06-12 (P3, #1338): Supabase-fejl må ikke sluges stille.
+  // Tidligere brugte hver løkke `res.data || []`, så en query-fejl (RLS, timeout,
+  // mistet forbindelse) returnerede en tom historik der lignede "ingen handler".
+  // Kast i stedet — rutens eksisterende try/catch overflader det som 500.
+  assertNoSupabaseError({
+    auctions: auctionsRes,
+    transfer_offers: offersRes,
+    swap_offers: swapsRes,
+    loan_agreements: loansRes,
+  }, "buildRiderHistory");
 
   const events = [];
 

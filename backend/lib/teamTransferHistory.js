@@ -6,6 +6,7 @@
 // Pending/afviste/annullerede forhandlinger må aldrig eksponeres.
 
 import { PUBLIC_LOAN_STATUSES, PUBLIC_OFFER_STATUSES } from "./riderHistory.js";
+import { assertNoSupabaseError } from "./supabaseResultGuard.js";
 
 export { PUBLIC_LOAN_STATUSES, PUBLIC_OFFER_STATUSES };
 
@@ -70,6 +71,16 @@ export async function buildTeamTransferHistory(supabase, teamId) {
       .select("id, number, start_date, end_date")
       .order("number", { ascending: true }),
   ]);
+
+  // Security-audit 2026-06-12 (P3, #1338): se supabaseResultGuard.js — en slugt
+  // query-fejl returnerede tidligere en falsk tom handelshistorik (HTTP 200).
+  assertNoSupabaseError({
+    auctions: auctionsRes,
+    transfer_offers: offersRes,
+    swap_offers: swapsRes,
+    loan_agreements: loansRes,
+    seasons: seasonsRes,
+  }, "buildTeamTransferHistory");
 
   const resolveSeason = buildSeasonResolver(seasonsRes.data || []);
   const events = [];
