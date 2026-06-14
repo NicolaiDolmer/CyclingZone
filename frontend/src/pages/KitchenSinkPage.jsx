@@ -189,9 +189,11 @@ export default function KitchenSinkPage() {
       </Section>
 
       <Section title="Tooltip">
-        <Tooltip label="Watch this rider" open>
-          <Button variant="secondary" size="sm">Hover me</Button>
-        </Tooltip>
+        <div className="pt-8">
+          <Tooltip label="Watch this rider" open>
+            <Button variant="secondary" size="sm">Hover me</Button>
+          </Tooltip>
+        </div>
       </Section>
 
       <Section title="Toast">
@@ -199,7 +201,7 @@ export default function KitchenSinkPage() {
           className="w-72"
           tone="danger"
           title="You've been outbid"
-          description="Ada Pedersen — new price €1.72M"
+          description="Ada Pedersen, new price €1.72M"
           onClose={() => {}}
         />
         <Toast
