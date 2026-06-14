@@ -281,6 +281,13 @@ tr:hover .sticky-name-cell {
   .cz-tooltip { transition: none; }
 }
 
+/* ProgressMeter-fyld (#671 Plan 2c). Glidende bredde-overgang; INGEN glow.
+   prefers-reduced-motion slaar overgangen fra (spec A6, hard krav). */
+.cz-progress-fill { transition: width var(--dur-slow) var(--ease); }
+@media (prefers-reduced-motion: reduce) {
+  .cz-progress-fill { transition: none; }
+}
+
 /* Inter Tight is the data font (font-mono is redefined to it in tailwind.config;
    font-data is the explicit alias). Keep numeric columns aligned the way the old
    monospace stack did — tabular figures are a no-op on non-digit text. */
