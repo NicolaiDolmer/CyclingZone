@@ -2,17 +2,11 @@
   <defs>
     <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#0e0f15"/>
-      <stop offset="100%" stop-color="#171a26"/>
+      <stop offset="100%" stop-color="#161824"/>
     </linearGradient>
-    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
-      <stop offset="0%" stop-color="#e8c547" stop-opacity="0.16"/>
-      <stop offset="100%" stop-color="#e8c547" stop-opacity="0"/>
-    </radialGradient>
   </defs>
 
   <rect width="1200" height="630" fill="url(#bg)"/>
-  <circle cx="980" cy="160" r="340" fill="url(#glow)"/>
-  <circle cx="160" cy="520" r="280" fill="url(#glow)"/>
 
   <!-- Brand lockup: stacked mark + Bebas wordmark -->
   <svg x="80" y="78" width="96" height="96" viewBox="0 0 64 64">
