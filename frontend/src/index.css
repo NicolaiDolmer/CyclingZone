@@ -232,6 +232,28 @@ tr:hover .sticky-name-cell {
   background-color: var(--bg-subtle);
 }
 
+/* Skeleton-shimmer (#671 Plan 2a). Sweep i diskret accent-t; INGEN glow.
+   prefers-reduced-motion slaar sweepet fra (spec A6, hard krav). */
+@keyframes cz-shimmer {
+  100% { transform: translateX(100%); }
+}
+.cz-skeleton {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--bg-subtle);
+}
+.cz-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgb(var(--accent-t) / 0.08), transparent);
+  animation: cz-shimmer 1.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cz-skeleton::after { animation: none; }
+}
+
 /* Inter Tight is the data font (font-mono is redefined to it in tailwind.config;
    font-data is the explicit alias). Keep numeric columns aligned the way the old
    monospace stack did — tabular figures are a no-op on non-digit text. */
