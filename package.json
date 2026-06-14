@@ -17,6 +17,7 @@
     "test:i18n-leaks": "node --test scripts/i18n-check-leaks.test.mjs",
     "test:tone-guard": "node --test scripts/tone-check-em-dash.test.mjs",
     "brand:export": "node scripts/brand-export.mjs",
+    "brand:export:og": "node scripts/brand-export.mjs og frontend/public/og-cycling-zone.svg frontend/public/og-cycling-zone.png",
     "lint:sql": "node scripts/lint-sql-strings.mjs",
     "test:lint-sql": "node --test scripts/lint-sql-strings.test.mjs",
     "test:setup": "node scripts/setup-test-accounts.mjs",

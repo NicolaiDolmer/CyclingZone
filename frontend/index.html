@@ -17,17 +17,21 @@
     <meta property="og:url" content="https://cyclingzone.org/founder-supporter" />
     <meta property="og:title" content="Cycling Zone · Fair Cycling Manager" />
     <meta property="og:description" content="Build your cycling team. Race the world. Back a fair cycling manager. Premium will never buy stronger riders or competitive advantages." />
-    <meta property="og:image" content="https://cyclingzone.org/og-cycling-zone.svg" />
-    <meta property="og:image:type" content="image/svg+xml" />
+    <!-- og:image MUST be a raster (PNG/JPG): Facebook, LinkedIn and X/Twitter do
+         NOT render SVG og:image, so an SVG previews as broken/empty (#481-F5).
+         Regenerate from the outlined master via `npm run brand:export:og`. -->
+    <meta property="og:image" content="https://cyclingzone.org/og-cycling-zone.png" />
+    <meta property="og:image:type" content="image/png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Cycling Zone. Build your team. Race the world. A fair cycling manager MMO." />
     <meta property="og:locale" content="en_US" />
     <meta property="og:locale:alternate" content="da_DK" />
 
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="Cycling Zone · Fair Cycling Manager" />
     <meta name="twitter:description" content="Build your cycling team. Race the world. Back a fair cycling manager. No pay-to-win." />
-    <meta name="twitter:image" content="https://cyclingzone.org/og-cycling-zone.svg" />
+    <meta name="twitter:image" content="https://cyclingzone.org/og-cycling-zone.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,900;1,9..40,400&display=swap" rel="stylesheet" />
