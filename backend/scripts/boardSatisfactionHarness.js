@@ -320,7 +320,7 @@ function buildPerformanceTimeline({ fixture, seed, weekends }) {
 
 // ─── Mekanik-simulering for én clamp-variant ──────────────────────────────────
 
-function buildBoardContext({ board, team, snapshot, divisionManagerCount }) {
+function buildBoardContext({ board, team, snapshot, divisionManagerCount, divisionTeamCount = null }) {
   const planDuration = getPlanDuration(board.plan_type);
   const seasonsCompleted = (board.seasons_completed || 0) + 1;
   return {
@@ -337,6 +337,9 @@ function buildBoardContext({ board, team, snapshot, divisionManagerCount }) {
       gcWins: (board.cumulative_gc_wins || 0) + snapshot.gcWins,
     },
     divisionManagerCount,
+    // #1267 · fuld divisions-størrelse (inkl. AI-fyld) til results-konkurrencedygtigheds-
+    // gulvet — rank_in_division er mod hele feltet, så gulvet skal normaliseres mod det.
+    divisionTeamCount,
     cumulativeMonumentPodiums: snapshot.monumentPodiums,
     cumulativeClassicPodiums: snapshot.classicPodiums,
     cumulativeJerseyWins: snapshot.jerseyWins,
@@ -401,6 +404,7 @@ function simulateMechanic({ fixture, timelineData, clampLimit, weekends }) {
           team,
           snapshot,
           divisionManagerCount: divisionManagerCounts.get(team.division) || null,
+          divisionTeamCount: fixture.division_team_counts?.[team.division] ?? null,
         });
         const update = computeWeekendSatisfactionUpdate({
           board: { ...state.board, satisfaction: state.satisfaction },
@@ -564,7 +568,7 @@ function runRecoveryScenario({ fixture, clampLimit }) {
       stage_wins: cumulative.stageWins,
       gc_wins: cumulative.gcWins,
     };
-    const context = buildBoardContext({ board, team, snapshot, divisionManagerCount });
+    const context = buildBoardContext({ board, team, snapshot, divisionManagerCount, divisionTeamCount: divisionSize });
     const update = computeWeekendSatisfactionUpdate({
       board: { ...board, satisfaction },
       standing,

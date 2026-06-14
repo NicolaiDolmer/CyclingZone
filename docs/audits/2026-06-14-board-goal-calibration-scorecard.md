@@ -19,26 +19,26 @@
 
 | Gate | Mål | Målt | Status |
 |---|---|---|:--:|
-| Spredning (IQR, 1yr-slutsatisfaction) | ≥ 15 point | 26,5 point (p25 28,0 → p75 54,5) | ✅ PASS |
-| Konsekvens-rate (hårde lag ved checkpoints) | ≤ ~10 % af hold | 45,5 % (10/22 hold) | ❌ FAIL |
+| Spredning (IQR, 1yr-slutsatisfaction) | ≥ 15 point | 18,3 point (p25 43,5 → p75 61,8) | ✅ PASS |
+| Konsekvens-rate (hårde lag ved checkpoints) | ≤ ~10 % af hold | 18,2 % (4/22 hold) | ❌ FAIL |
 | Ingen dødsspiral (tilbage over 50) | ≤ 3 gode weekender | 3 gode weekender (bund 35, slut 50) | ✅ PASS |
-| Økonomisk bånd (sponsor vs 1,0-baseline) | ejer fastsætter grænse | p10 -6,0 % · p50 -1,7 % · p90 +7,3 % | 🟡 TIL-EJER |
+| Økonomisk bånd (sponsor vs 1,0-baseline) | ejer fastsætter grænse | p10 -4,0 % · p50 +0,0 % · p90 +8,0 % | 🟡 TIL-EJER |
 | Determinisme (samme seed → samme rapport) | identisk output | to fulde kørsler byte-identiske | ✅ PASS |
 
-Slut-satisfaction-fordeling (1yr-planer): min 25,0 · p10 25,0 · p25 28,0 · p50 42,5 · p75 54,5 · p90 61,9 · max 74,0. Alle planer (1+3+5yr): IQR 27,8, median 45,0.
+Slut-satisfaction-fordeling (1yr-planer): min 25,0 · p10 32,8 · p25 43,5 · p50 52,0 · p75 61,8 · p90 65,9 · max 74,0. Alle planer (1+3+5yr): IQR 19,8, median 53,0.
 
-**Vigtig kontekst til konsekvens-gaten:** dagens mekanik (ét uclamped sæson-slut-spring, ingen weekend-opdatering) giver på SAMME sæsonforløb en konsekvens-rate på 45,5 % (10/22 hold) med 1yr-slutspænd 18–74. Raten over 10 % skyldes altså den eksisterende sæson-evaluering mod populationens faktiske mål (typisk min_riders 22-24 mod reelle trupper på 8-17 + sponsor_growth uden vækst i sæsonen) — ikke weekend-mekanikken, som tværtimod blødgør landingen (gulv ved 50 − 5·5 = 25 efter en hel katastrofesæson, og INGEN hold når under 40 ved mid-checkpointet fra en 50-start).
+**Vigtig kontekst til konsekvens-gaten:** dagens mekanik (ét uclamped sæson-slut-spring, ingen weekend-opdatering) giver på SAMME sæsonforløb en konsekvens-rate på 31,8 % (7/22 hold) med 1yr-slutspænd 18–74. Raten over 10 % skyldes altså den eksisterende sæson-evaluering mod populationens faktiske mål (typisk min_riders 22-24 mod reelle trupper på 8-17 + sponsor_growth uden vækst i sæsonen) — ikke weekend-mekanikken, som tværtimod blødgør landingen (gulv ved 50 − 5·5 = 25 efter en hel katastrofesæson, og INGEN hold når under 40 ved mid-checkpointet fra en 50-start).
 
-Checkpoint-fordeling af hårde hits (clamp ±5): mid-season 0 hold · sæson-slut 10 hold.
+Checkpoint-fordeling af hårde hits (clamp ±5): mid-season 0 hold · sæson-slut 4 hold.
 
 ## 2. Clamp-følsomhed (±3 / ±5 / ±10 — samme sæsonforløb)
 
 | Clamp | IQR (1yr) | Spænd (min–max) | Konsekvens-rate | Hits mid/slut | Recovery (gode weekender) | Økonomi p10/p50/p90 |
 |---|---|---|---|---|---|---|
-| ±3 | 18,0 | 35–65 | 45,5 % | 0/10 | 3 | -4,0 % / +0,0 % / +4,0 % |
-| ±5 **(valgt)** | 26,5 | 25–74 | 45,5 % | 0/10 | 3 | -6,0 % / -1,7 % / +7,3 % |
-| ±10 | 26,5 | 18–74 | 68,2 % | 15/10 | 3 | -11,6 % / -4,0 % / +8,0 % |
-| Dagens mekanik (uclamped sæson-slut) | 27,8 | 18–74 | 45,5 % | 0/10 | n/a (ingen mellem-trin) | 0 % (modifier låst hele sæsonen) |
+| ±3 | 18,0 | 35–65 | 18,2 % | 0/4 | 3 | -2,7 % / +0,0 % / +4,0 % |
+| ±5 **(valgt)** | 18,3 | 25–74 | 18,2 % | 0/4 | 3 | -4,0 % / +0,0 % / +8,0 % |
+| ±10 | 18,3 | 18–74 | 40,9 % | 9/4 | 3 | -6,0 % / +0,0 % / +10,0 % |
+| Dagens mekanik (uclamped sæson-slut) | 23,3 | 18–74 | 31,8 % | 0/7 | n/a (ingen mellem-trin) | 0 % (modifier låst hele sæsonen) |
 
 Recovery-trajektorier (3 katastrofe- + 3 top-weekender, start 50):
 - ±3: 50 → 47 → 44 → 41 → 44 → 47 → 50
@@ -51,11 +51,11 @@ Sponsor-flow over sæsonen vs. fast 1,0-baseline. Negativt = bestyrelsen holder 
 
 | Percentil | Afvigelse |
 |---|--:|
-| p10 | -6,0 % |
-| p25 | -6,0 % |
-| p50 | -1,7 % |
-| p75 | +0,5 % |
-| p90 | +7,3 % |
+| p10 | -4,0 % |
+| p25 | -1,8 % |
+| p50 | +0,0 % |
+| p75 | +7,3 % |
+| p90 | +8,0 % |
 
 Teoretisk maks-bånd pr. modifier-trin: 0,80–1,20 → ±20 % hvis et hold lå i yderbåndet HELE sæsonen. Clampen gør yderbåndet uopnåeligt tidligt i sæsonen — derfor er de målte afvigelser smallere.
 
@@ -64,27 +64,27 @@ Teoretisk maks-bånd pr. modifier-trin: 0,80–1,20 → ±20 % hvis et hold lå 
 | Hold | Div | Arketype | Slutrank | Satisfaction-forløb (start 50) | Target | Modifier | Økonomi | Hårde lag ved checkpoints |
 |---|--:|---|--:|---|--:|--:|--:|---|
 | Hopplà Team | 1 | stærk | 2 | 50 → 55 → 60 → 65 → 70 → 74 | 74 | 1,10 | +8,0 % | — |
+| Vega - Vitalcare - Dynatek | 1 | stærk | 1 | 50 → 55 → 60 → 65 → 70 → 70 | 70 | 1,10 | +8,0 % | — |
 | Camp Cycling Team | 1 | middel | 11 | 50 → 51 → 56 → 61 → 66 → 66 | 66 | 1,10 | +7,3 % | — |
+| Team UKYO | 1 | stærk | 5 | 50 → 55 → 60 → 65 → 65 → 65 | 65 | 1,10 | +8,0 % | — |
+| Above & Beyond Cancer Cycling | 1 | stærk | 4 | 50 → 55 → 54 → 59 → 63 → 63 | 63 | 1,10 | +4,7 % | — |
 | Ardennaise Pro Cycling Team | 2 | stærk | 1 | 50 → 55 → 60 → 62 → 62 → 62 | 62 | 1,10 | +8,0 % | — |
 | Kemphanen Cycling Team | 2 | svag | 2 | 50 → 55 → 60 → 61 → 61 → 61 | 61 | 1,10 | +7,3 % | — |
-| Red Bull - BORA-Hansgrohe | 1 | middel | 10 | 50 → 45 → 48 → 53 → 57 → 56 | 56 | 1,00 | +2,7 % | — |
+| Team Visma \| Lease a Bike | 1 | stærk | 3 | 50 → 55 → 60 → 61 → 61 → 59 | 59 | 1,00 | +7,3 % | — |
+| Red Bull - BORA-Hansgrohe | 1 | middel | 10 | 50 → 48 → 48 → 53 → 57 → 56 | 56 | 1,00 | +3,3 % | — |
 | Solution Tech NIPPO Rali | 1 | svag | 24 | 50 → 45 → 40 → 45 → 50 → 55 | 55 | 1,00 | +0,0 % | — |
-| Soudal Quick-Step | 1 | middel | 14 | 50 → 45 → 50 → 53 → 53 → 53 | 53 | 1,00 | +0,7 % | — |
-| Above & Beyond Cancer Cycling | 1 | stærk | 4 | 50 → 45 → 40 → 38 → 43 → 48 | 52 | 1,00 | -1,3 % | — |
-| Vega - Vitalcare - Dynatek | 1 | stærk | 1 | 50 → 45 → 43 → 43 → 43 → 48 | 60 | 1,00 | +0,0 % | — |
+| Soudal Quick-Step | 1 | middel | 14 | 50 → 55 → 59 → 62 → 57 → 53 | 53 | 1,00 | +3,3 % | — |
+| Team WolkerWessels | 1 | middel | 9 | 50 → 52 → 56 → 51 → 51 → 51 | 51 | 1,00 | +0,0 % | — |
+| Modern Adventure Pro Cycling | 1 | middel | 6 | 50 → 45 → 40 → 44 → 49 → 49 | 49 | 1,00 | -1,3 % | — |
+| Chris Machines | 1 | middel | 18 | 50 → 46 → 44 → 46 → 46 → 46 | 46 | 1,00 | +0,0 % | — |
+| Bahrain Victorious | 1 | middel | 7 | 50 → 45 → 44 → 43 → 44 → 46 | 46 | 1,00 | -2,7 % | — |
 | TestHoldet | 1 | svag | 25 | 50 → 45 → 40 → 35 → 40 → 45 | 53 | 1,00 | -2,0 % | — |
-| Team Visma \| Lease a Bike | 1 | stærk | 3 | 50 → 45 → 40 → 44 → 44 → 44 | 44 | 1,00 | +0,0 % | — |
-| Team UKYO | 1 | stærk | 5 | 50 → 45 → 42 → 42 → 41 → 41 | 41 | 1,00 | +0,0 % | — |
-| Chris Machines | 1 | middel | 18 | 50 → 45 → 40 → 37 → 37 → 37 | 37 | 0,90 | -4,0 % | slut: lag 2 (1yr, sat 37); slut: lag 2 (3yr, sat 39) |
-| Decathlon CMA CGM Team | 1 | middel | 19 | 50 → 45 → 40 → 35 → 32 → 32 | 32 | 0,90 | -6,0 % | slut: lag 2 (5yr, sat 33); slut: lag 2 (3yr, sat 36); slut: lag 2 (1yr, sat 32) |
-| Team WolkerWessels | 1 | middel | 9 | 50 → 45 → 40 → 35 → 31 → 31 | 31 | 0,90 | -6,0 % | slut: lag 2 (3yr, sat 34); slut: lag 2 (1yr, sat 31); slut: lag 2 (5yr, sat 35) |
-| Krapouchi Cycling Team | 1 | middel | 13 | 50 → 45 → 40 → 35 → 30 → 28 | 28 | 0,90 | -6,0 % | slut: lag 2 (5yr, sat 30); slut: lag 2 (3yr, sat 30); slut: lag 2+3 (1yr, sat 28) |
-| Swatt Team | 1 | middel | 17 | 50 → 45 → 40 → 35 → 30 → 28 | 28 | 0,90 | -6,0 % | slut: lag 2+3 (3yr, sat 26); slut: lag 2+3 (5yr, sat 27); slut: lag 2+3 (1yr, sat 28) |
+| Krapouchi Cycling Team | 1 | middel | 13 | 50 → 45 → 50 → 45 → 43 → 43 | 43 | 1,00 | +0,0 % | — |
+| Decathlon CMA CGM Team | 1 | middel | 19 | 50 → 45 → 40 → 39 → 40 → 40 | 40 | 1,00 | -1,3 % | — |
+| Swatt Team | 1 | middel | 17 | 50 → 45 → 40 → 40 → 40 → 40 | 40 | 1,00 | -4,0 % | slut: lag 2 (3yr, sat 36); slut: lag 2 (5yr, sat 37) |
+| Equipo Kern Pharma | 1 | middel | 16 | 50 → 45 → 40 → 35 → 32 → 32 | 32 | 0,90 | -6,0 % | slut: lag 2+3 (5yr, sat 29); slut: lag 2+3 (3yr, sat 29); slut: lag 2 (1yr, sat 32) |
+| Groupama-FDJ United | 1 | middel | 21 | 50 → 45 → 40 → 35 → 30 → 27 | 27 | 0,90 | -4,0 % | slut: lag 2+3 (1yr, sat 27); slut: lag 2+3 (3yr, sat 25) |
 | Trululu La Guacamaya | 1 | svag | 26 | 50 → 45 → 40 → 35 → 30 → 25 | 18 | 0,90 | -6,0 % | slut: lag 2+3 (1yr, sat 25); slut: lag 2+3 (5yr, sat 25); slut: lag 2+3 (3yr, sat 25) |
-| Bahrain Victorious | 1 | middel | 7 | 50 → 45 → 40 → 35 → 30 → 25 | 19 | 0,90 | -6,0 % | slut: lag 2+3 (5yr, sat 25); slut: lag 2+3 (1yr, sat 25); slut: lag 2+3 (3yr, sat 25) |
-| Equipo Kern Pharma | 1 | middel | 16 | 50 → 45 → 40 → 35 → 30 → 25 | 18 | 0,90 | -6,0 % | slut: lag 2+3 (5yr, sat 25); slut: lag 2+3 (3yr, sat 25); slut: lag 2+3 (1yr, sat 25) |
-| Modern Adventure Pro Cycling | 1 | middel | 6 | 50 → 45 → 40 → 35 → 30 → 25 | 21 | 0,90 | -6,0 % | slut: lag 2+3 (3yr, sat 25); slut: lag 2+3 (5yr, sat 25); slut: lag 2+3 (1yr, sat 25) |
-| Groupama-FDJ United | 1 | middel | 21 | 50 → 45 → 40 → 35 → 30 → 25 | 20 | 0,90 | -4,0 % | slut: lag 2+3 (1yr, sat 25); slut: lag 2+3 (3yr, sat 25) |
 
 Konsekvens-lag: 2=Salary cap · 3=Signing restriction · 4=Forced listing · 5=Sponsor pullout.
 
@@ -93,12 +93,12 @@ Konsekvens-lag: 2=Salary cap · 3=Signing restriction · 4=Forced listing · 5=S
 **±5 ser rigtig ud.** Begrundelse mod alternativerne på identisk sæsonforløb:
 
 - **±3** dæmper spredningen til IQR 18,0 (tæt på gate-grænsen 15) og gør tallet trægt — en hel sæson kan maksimalt flytte 15 point.
-- **±5** giver sund spredning (IQR 26,5), INGEN hold under salary-cap-tærsklen ved mid-checkpointet fra en 50-start (en enkelt dårlig halvsæson kan ikke udløse hårde lag), recovery på 3 gode weekender og et moderat økonomisk bånd (p50 -1,7 %).
-- **±10** genindfører chok-effekten: 15 hold rammer hårde lag allerede ved mid-season, og det økonomiske bånd vokser til p10 -11,6 %.
+- **±5** giver sund spredning (IQR 18,3), INGEN hold under salary-cap-tærsklen ved mid-checkpointet fra en 50-start (en enkelt dårlig halvsæson kan ikke udløse hårde lag), recovery på 3 gode weekender og et moderat økonomisk bånd (p50 +0,0 %).
+- **±10** genindfører chok-effekten: 9 hold rammer hårde lag allerede ved mid-season, og det økonomiske bånd vokser til p10 -6,0 %.
 
-**Konsekvens-rate-gaten fejler — men det er IKKE weekend-mekanikkens skyld.** Dagens uclamped sæson-slut-mekanik giver præcis samme rate (45,5 %) på samme forløb. Driveren er den eksisterende sæson-evaluering mod populationens faktiske mål: min_riders-mål på 22-24 mod reelle trupper på 8-17 og sponsor_growth der pr. definition er 0 % midt i en sæson. Ingen clamp-værdi kan bringe raten under 10 % — det kræver en separat mål-kalibrerings-beslutning (fx pro-rate sponsor_growth/min_riders i in-season-evaluering, eller re-kalibrér targets ved relaunch-forhandlingerne 20/6).
+**Konsekvens-rate-gaten fejler — men det er IKKE weekend-mekanikkens skyld.** Dagens uclamped sæson-slut-mekanik giver præcis samme rate (31,8 %) på samme forløb. Driveren er den eksisterende sæson-evaluering mod populationens faktiske mål: min_riders-mål på 22-24 mod reelle trupper på 8-17 og sponsor_growth der pr. definition er 0 % midt i en sæson. Ingen clamp-værdi kan bringe raten under 10 % — det kræver en separat mål-kalibrerings-beslutning (fx pro-rate sponsor_growth/min_riders i in-season-evaluering, eller re-kalibrér targets ved relaunch-forhandlingerne 20/6).
 
 **Observation til live-wiring:** næsten alle hold dipper de første 2-3 weekender, fordi sejrs-mål ser "behind" ud før resultaterne akkumulerer. Det er narrativt acceptabelt ("vis os noget"), men hvis det føles for hårdt player-facing, kan in-season-evalueringen pro-rate sæson-mål med andelen af afviklede weekender — separat beslutning, ikke en del af denne mekanik.
 
-**Klar til live-wiring?** Mekanikken (modul + clamp ±5 + checkpoints + live modifier + test-mode-frys) er verificeret og deterministisk. Før wiring skal ejeren tage stilling til: (a) økonomisk bånd-grænse X (målt p10/p50/p90: -6,0 % / -1,7 % / +7,3 %), (b) om konsekvens-rate-driveren håndteres via mål-kalibrering nu eller efter relaunch.
+**Klar til live-wiring?** Mekanikken (modul + clamp ±5 + checkpoints + live modifier + test-mode-frys) er verificeret og deterministisk. Før wiring skal ejeren tage stilling til: (a) økonomisk bånd-grænse X (målt p10/p50/p90: -4,0 % / +0,0 % / +8,0 %), (b) om konsekvens-rate-driveren håndteres via mål-kalibrering nu eller efter relaunch.
 

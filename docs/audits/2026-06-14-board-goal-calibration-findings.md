@@ -81,3 +81,34 @@ hvordan board-tilfredshed reagerer på det iboende-almindelige "vandt få/ingen 
 
 Konsekvens-mekanikken er bag flag OFF, så denne PR (struktur-fix + verifikations-
 infrastruktur) er launch-sikker uafhængigt af beslutningen.
+
+## Option A implementeret (14/6) — results-konkurrencedygtigheds-gulv
+
+Ejer valgte **A**. Implementeret i `boardEvaluation.js`: results-kategorien får et
+**gulv proportionalt med divisions-placeringen** (`computeResultsCompetitivenessFloor`).
+Et hold der slutter højt krediteres konkurrencedygtighed selv uden etapesejre; kun et
+hold der reelt slutter i bunden falder igennem til hårde lag. Gulvet løfter KUN results,
+sænker aldrig. `RESULTS_COMPETITIVENESS_FLOOR_SCALE` (default 1.0) er leniency-knappen.
+rank_in_division normaliseres mod den FULDE divisions-størrelse (inkl. AI-fyld) via et
+nyt `divisionTeamCount`-context-felt, så harness + live er konsistente.
+
+**Effekt (harness --regen-goals, lineært gulv ×1.0, konsekvens-rate):**
+
+| | seed 1187 | seed 7 | seed 42 |
+|---|---|---|---|
+| Kun struktur-fix (intet gulv) | 45,5 % | — | — |
+| + results-gulv | **18,2 %** | 31,8 % | 40,9 % |
+
+**≤10% nås IKKE robust af gulvet alene.** Raten er stærkt sæson-afhængig (hvor mange
+hold der tilfældigt slutter lavt+vinderløst svinger), og mange hold ligger nær
+satisfaction-tærsklen. Gulvet halverer raten på gode sæsoner og krediterer nu
+konkurrencedygtighed korrekt. Robust ≤10% kræver enten et MEGET generøst gulv (hæv SCALE
+eller konkav kurve → results bliver ~irrelevant for de fleste, reel designomkostning)
+eller en lille option-B-justering (sænk hård-lag-tærskel/expectation).
+
+**Kerne-tensionen (design-fund):** results = 50 % af board-tilfredsheden + sejre er
+strukturelt knappe + hårde konsekvenser skal være sjældne (≤10 %) er gensidigt
+modstridende — man kan vælge to af tre. Option A gør det fair (placering beskytter),
+men den fulde ≤10%-gate kræver et eksplicit leniency-valg via ÉN konstant:
+(a) hæv SCALE / konkav kurve (mod ≤10 %, men results betyder mindre), (b) kombinér med en
+lille option-B-tærskel-justering, eller (c) accepter ~20-30 % som den reelle (nu fair) rate.
