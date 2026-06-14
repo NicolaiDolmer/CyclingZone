@@ -6,6 +6,7 @@ import {
   MIN_DIVISION,
   SPONSOR_INCOME_BASE,
 } from "./economyConstants.js";
+import { likeEscape } from "./likeEscape.js";
 
 const DEFAULT_TEAM_VALUES = {
   balance: INITIAL_BALANCE,
@@ -182,10 +183,13 @@ async function pickDivisionForNewTeam(supabase) {
 }
 
 async function ensureUniqueTeamName({ supabase, normalizedName, existingTeamId = null }) {
+  // Security-audit 2026-06-12 (P4, #1338): dette er et EXACT-match unikheds-check,
+  // ikke en søgning. Uden escaping ville et holdnavn som "%" eller "Te_m" virke
+  // som LIKE-wildcards og matche fremmede hold (falsk 409 / utilsigtet kollision).
   const { data: teams, error } = await supabase
     .from("teams")
     .select("id")
-    .ilike("name", normalizedName);
+    .ilike("name", likeEscape(normalizedName));
 
   if (error) {
     throw createHttpError(500, error.message);
