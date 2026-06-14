@@ -14,6 +14,19 @@ import * as Icons from "../components/ui/icons/index.jsx";
 // Hele ikon-saettet, alfabetisk (module-namespace -> sorterede noegler = stabilt snapshot).
 const ICON_ENTRIES = Object.entries(Icons).filter(([name]) => name.endsWith("Icon"));
 
+// #671 Plan 3 — gated forced-error-trigger til error-boundary-demo/-test.
+// Kun naar `?boom=1` OG (dev eller e2e): aldrig i prod, og default-/ui
+// (snapshot-target) er upaavirket. En render der kaster -> top-niveau-
+// SentryBoundary fanger -> branded fallback.
+const BOOM_ENABLED = import.meta.env.DEV || import.meta.env.VITE_E2E === "1";
+function boomRequested() {
+  if (typeof window === "undefined") return false;
+  return new URLSearchParams(window.location.search).get("boom") === "1";
+}
+function Boom() {
+  throw new Error("Kitchen-sink forced render error (error-boundary demo)");
+}
+
 function Section({ title, children }) {
   return (
     <section className="mb-12">
@@ -28,6 +41,7 @@ function Section({ title, children }) {
 export default function KitchenSinkPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [tab, setTab] = useState("roster");
+  const [boom, setBoom] = useState(false);
   return (
     <main className="mx-auto max-w-5xl px-10 py-12">
       <p className="mb-2 font-data text-xs font-semibold uppercase tracking-[.18em] text-cz-accent">
@@ -291,6 +305,15 @@ export default function KitchenSinkPage() {
           <MenuItem danger>Reset layout</MenuItem>
         </Dropdown>
       </Section>
+
+      {BOOM_ENABLED && boomRequested() && (
+        <Section title="Error boundary (dev/e2e)">
+          <Button variant="danger" size="sm" onClick={() => setBoom(true)}>
+            Trigger render error
+          </Button>
+          {boom && <Boom />}
+        </Section>
+      )}
     </main>
   );
 }
