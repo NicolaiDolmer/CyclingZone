@@ -254,6 +254,33 @@ tr:hover .sticky-name-cell {
   .cz-skeleton::after { animation: none; }
 }
 
+/* Overlay-reveals (#671 Plan 2b). Diskret fade/pop/slide; INGEN glow.
+   prefers-reduced-motion slaar alle reveals fra (spec A6, hard krav). */
+@keyframes cz-overlay-fade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes cz-overlay-pop {
+  from { opacity: 0; transform: translateY(4px) scale(.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes cz-toast-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.cz-overlay-backdrop { animation: cz-overlay-fade var(--dur) var(--ease); }
+.cz-overlay-panel    { animation: cz-overlay-pop var(--dur-slow) var(--ease); }
+.cz-menu-panel       { animation: cz-overlay-pop var(--dur-fast) var(--ease); }
+.cz-toast-item       { animation: cz-toast-in var(--dur) var(--ease); }
+.cz-tooltip          { transition: opacity var(--dur) var(--ease); }
+@media (prefers-reduced-motion: reduce) {
+  .cz-overlay-backdrop,
+  .cz-overlay-panel,
+  .cz-menu-panel,
+  .cz-toast-item { animation: none; }
+  .cz-tooltip { transition: none; }
+}
+
 /* Inter Tight is the data font (font-mono is redefined to it in tailwind.config;
    font-data is the explicit alias). Keep numeric columns aligned the way the old
    monospace stack did — tabular figures are a no-op on non-digit text. */
