@@ -176,6 +176,14 @@ export default function LoginPage() {
         kind: "signup",
         message: t("auth:success.signupComplete", { teamName: bootstrapData.team?.name || teamName.trim() }),
       });
+    } catch (err) {
+      // #1348 — login/signup/forgot brugte try/finally uden catch: et rejected
+      // Supabase-kald (offline/dropped connection) clearede loading men
+      // efterlod formularen UDEN fejlbesked. Vi mapper nu fejlen til en
+      // handlingsanvisende besked (netværk → connection-error-copy, ellers
+      // den kendte Supabase-mapping) i stedet for at sluge den.
+      console.error("[auth] submit fejlede", err);
+      setError(mapSupabaseAuthError(err, t));
     } finally {
       setLoading(false);
     }
@@ -236,7 +244,7 @@ export default function LoginPage() {
 
         <div className="bg-cz-card border border-cz-border rounded-2xl p-6">
           {success ? (
-            <div className="text-center py-4">
+            <div className="text-center py-4" role="status">
               <div className="text-4xl mb-4">{success.kind === "signup" ? "🎉" : "✉️"}</div>
               <p className="text-cz-success text-sm font-medium">{success.message}</p>
               <p className="text-cz-3 text-xs mt-3">
@@ -264,10 +272,11 @@ export default function LoginPage() {
               {isSignupMode && (
                 <>
                   <div>
-                    <label className="block text-xs font-medium text-cz-2 uppercase tracking-wider mb-1.5">
+                    <label htmlFor="auth-team-name" className="block text-xs font-medium text-cz-2 uppercase tracking-wider mb-1.5">
                       {t("auth:field.teamName.label")}
                     </label>
                     <input
+                      id="auth-team-name"
                       type="text"
                       value={teamName}
                       onChange={e => setTeamName(e.target.value)}
@@ -275,15 +284,17 @@ export default function LoginPage() {
                       required
                       minLength={3}
                       maxLength={30}
+                      aria-describedby="auth-team-name-help"
                       className={inputClass}
                     />
-                    <p className="text-cz-3 text-xs mt-1">{t("auth:field.teamName.help")}</p>
+                    <p id="auth-team-name-help" className="text-cz-3 text-xs mt-1">{t("auth:field.teamName.help")}</p>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-cz-2 uppercase tracking-wider mb-1.5">
+                    <label htmlFor="auth-manager-name" className="block text-xs font-medium text-cz-2 uppercase tracking-wider mb-1.5">
                       {t("auth:field.managerName.label")}
                     </label>
                     <input
+                      id="auth-manager-name"
                       type="text"
                       value={managerName}
                       onChange={e => setManagerName(e.target.value)}
@@ -291,27 +302,35 @@ export default function LoginPage() {
                       required
                       minLength={2}
                       maxLength={50}
+                      aria-describedby="auth-manager-name-help"
                       className={inputClass}
                     />
-                    <p className="text-cz-3 text-xs mt-1">{t("auth:field.managerName.help")}</p>
+                    <p id="auth-manager-name-help" className="text-cz-3 text-xs mt-1">{t("auth:field.managerName.help")}</p>
                   </div>
                 </>
               )}
 
               <div>
-                <label className="block text-xs font-medium text-cz-2 uppercase tracking-wider mb-1.5">
+                <label htmlFor="auth-email" className="block text-xs font-medium text-cz-2 uppercase tracking-wider mb-1.5">
                   {t("auth:field.email.label")}
                 </label>
                 <input
+                  id="auth-email"
                   type="email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   placeholder={t("auth:field.email.placeholder")}
                   required
+                  aria-invalid={error ? true : undefined}
+                  aria-describedby={
+                    [isForgotMode ? "auth-email-help" : null, error ? "auth-error" : null]
+                      .filter(Boolean)
+                      .join(" ") || undefined
+                  }
                   className={inputClass}
                 />
                 {isForgotMode && (
-                  <p className="text-cz-3 text-xs mt-1">
+                  <p id="auth-email-help" className="text-cz-3 text-xs mt-1">
                     {t("auth:field.email.forgotHelp")}
                   </p>
                 )}
@@ -319,26 +338,37 @@ export default function LoginPage() {
 
               {!isForgotMode && (
                 <div>
-                  <label className="block text-xs font-medium text-cz-2 uppercase tracking-wider mb-1.5">
+                  <label htmlFor="auth-password" className="block text-xs font-medium text-cz-2 uppercase tracking-wider mb-1.5">
                     {t("auth:field.password.label")}
                   </label>
                   <input
+                    id="auth-password"
                     type="password"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     placeholder="••••••••"
                     required
                     minLength={6}
+                    aria-invalid={error ? true : undefined}
+                    aria-describedby={
+                      [isSignupMode ? "auth-password-help" : null, error ? "auth-error" : null]
+                        .filter(Boolean)
+                        .join(" ") || undefined
+                    }
                     className={inputClass}
                   />
                   {isSignupMode && (
-                    <p className="text-cz-3 text-xs mt-1">{t("auth:field.password.help")}</p>
+                    <p id="auth-password-help" className="text-cz-3 text-xs mt-1">{t("auth:field.password.help")}</p>
                   )}
                 </div>
               )}
 
               {error && (
-                <div className="bg-cz-danger-bg border border-cz-danger/30 rounded-lg px-4 py-2.5 text-cz-danger text-sm">
+                <div
+                  id="auth-error"
+                  role="alert"
+                  className="bg-cz-danger-bg border border-cz-danger/30 rounded-lg px-4 py-2.5 text-cz-danger text-sm"
+                >
                   {error}
                 </div>
               )}
