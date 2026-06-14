@@ -23,4 +23,7 @@ export { Menu, MenuItem, Dropdown } from "./Menu.jsx";
 export { default as Tooltip } from "./Tooltip.jsx";
 export { Toast, ToastViewport } from "./Toast.jsx";
 export { Tabs, TabList, Tab, TabPanel } from "./Tabs.jsx";
+export { default as Chip } from "./Chip.jsx";
+export { default as Avatar } from "./Avatar.jsx";
+export { default as ProgressMeter } from "./ProgressMeter.jsx";
 export * from "./icons/index.jsx";

@@ -6,8 +6,13 @@ import {
   EmptyState, ErrorState, Skeleton, Spinner, Divider, Link,
   Modal, DialogSurface, Dropdown, MenuItem, Tooltip, Toast,
   Tabs, TabList, Tab, TabPanel,
-  SearchIcon, ChevronRightIcon, TrophyIcon, InboxIcon,
+  Chip, Avatar, ProgressMeter,
+  ChevronRightIcon, TrophyIcon, InboxIcon,
 } from "../components/ui/index.js";
+import * as Icons from "../components/ui/icons/index.jsx";
+
+// Hele ikon-saettet, alfabetisk (module-namespace -> sorterede noegler = stabilt snapshot).
+const ICON_ENTRIES = Object.entries(Icons).filter(([name]) => name.endsWith("Icon"));
 
 function Section({ title, children }) {
   return (
@@ -69,10 +74,17 @@ export default function KitchenSinkPage() {
         </Card>
       </Section>
 
-      <Section title="Icons">
-        <SearchIcon className="text-cz-2" />
-        <ChevronRightIcon className="text-cz-2" />
-        <TrophyIcon className="text-cz-accent" />
+      <Section title="Icon set">
+        <div className="grid w-full grid-cols-6 gap-px overflow-hidden rounded-cz border border-cz-border bg-cz-border sm:grid-cols-8">
+          {ICON_ENTRIES.map(([name, Icon]) => (
+            <div key={name} className="flex flex-col items-center gap-2 bg-cz-card px-2 py-3">
+              <Icon size={20} className="text-cz-2" />
+              <span className="font-data text-[9px] uppercase tracking-[.05em] text-cz-3">
+                {name.replace(/Icon$/, "")}
+              </span>
+            </div>
+          ))}
+        </div>
       </Section>
 
       <Section title="Form fields">
@@ -170,6 +182,25 @@ export default function KitchenSinkPage() {
           </p>
           <Divider className="my-4" />
           <Divider label="or" />
+        </div>
+      </Section>
+
+      <Section title="Chip (marketing)">
+        <Chip>Open beta · Free to play</Chip>
+        <Chip icon={<TrophyIcon size={13} className="text-cz-2" />}>Season 1 · Live</Chip>
+      </Section>
+
+      <Section title="Avatar">
+        <Avatar name="Ada Pedersen" size="sm" />
+        <Avatar name="Bo Nielsen" />
+        <Avatar name="Casper Vingegaard" size="lg" />
+      </Section>
+
+      <Section title="Progress">
+        <div className="w-72 space-y-4">
+          <ProgressMeter label="Season form" value={72} showValue />
+          <ProgressMeter label="Cap used" tone="danger" value={94} showValue />
+          <ProgressMeter value={40} ariaLabel="Stage completion" />
         </div>
       </Section>
 
