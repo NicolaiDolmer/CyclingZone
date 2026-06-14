@@ -149,7 +149,8 @@ export function calculateBoardPerformance({ board, standing, team, context = {} 
   });
 
   const goalEvaluations = goals.map((goal) => evaluateGoalProgress(goal, standing, team, context));
-  const scoreBreakdown = calculatePerformanceBreakdown(goalEvaluations, personality, identityProfile);
+  const resultsFloor = computeResultsCompetitivenessFloor(standing, context);
+  const scoreBreakdown = calculatePerformanceBreakdown(goalEvaluations, personality, identityProfile, resultsFloor);
   const historyAdjustment = applyBoardMemory(scoreBreakdown.overall_score, context.recentSnapshots || []);
   const adjustedOverallScore = clamp(historyAdjustment.adjusted_score, 0, 1.15);
   const feedback = buildBoardFeedback({
@@ -180,7 +181,34 @@ export function calculateBoardPerformance({ board, standing, team, context = {} 
   };
 }
 
-function calculatePerformanceBreakdown(goalEvaluations, personality, identityProfile = null) {
+// #1267 · Hvor meget en konkurrencedygtig divisions-placering kan løfte results-
+// kategorien. Sejre er strukturelt knappe (winner-take-all + stejl talent-pyramide
+// → ~halvdelen af alle hold vinder 0 etaper pr. sæson, verificeret mod den ægte
+// race-motor). Uden dette gulv scorer results (50 % vægt) 0 for ethvert vinderløst
+// hold → hårde konsekvenser for ~halvdelen, uanset hvor konkurrencedygtigt de kørte.
+// Gulvet belønner konkurrencedygtighed (placering), ikke kun sejre: et hold der
+// slutter i toppen af divisionen får ~fuldt results-gulv, et bundhold får ~0, så
+// kun hold der reelt slutter sidst falder gennem til hårde lag. Kalibreret mod
+// boardSatisfactionHarness.js --regen-goals (≤10 % konsekvens-rate).
+export const RESULTS_COMPETITIVENESS_FLOOR_SCALE = 1.0;
+
+// → results-gulv i [0, SCALE] ud fra divisions-placering. 0 når data mangler
+// (intet gulv → uændret adfærd, fx pre-sæson uden standing).
+export function computeResultsCompetitivenessFloor(standing, context = {}) {
+  const rank = standing?.rank_in_division;
+  // rank_in_division er mod HELE divisionen (inkl. AI) → normalisér mod den fulde
+  // divisions-størrelse. Falder tilbage til human-tællingen hvis den fulde mangler.
+  const divCount = context?.divisionTeamCount ?? context?.divisionManagerCount;
+  if (rank == null || !Number.isFinite(Number(rank)) || !divCount || divCount <= 1) return 0;
+  // Lineært gulv ∝ divisions-placering: results-beskyttelse svarer til hvor højt
+  // holdet sluttede. Bevarer at results stadig diskriminerer (modsat et meget
+  // generøst gulv der ville gøre results irrelevant for de fleste). SCALE er
+  // leniency-knappen (hvor sjældne hårde konsekvenser skal være).
+  const competitiveness = clamp(1 - (Number(rank) - 1) / (divCount - 1), 0, 1);
+  return roundNumber(competitiveness * RESULTS_COMPETITIVENESS_FLOOR_SCALE);
+}
+
+function calculatePerformanceBreakdown(goalEvaluations, personality, identityProfile = null, resultsFloor = 0) {
   const weights = getAdjustedCategoryWeights(personality);
   const categoryEntries = Object.entries(CATEGORY_LABELS).map(([key, label]) => {
     const categoryGoals = goalEvaluations.filter((goal) => goal.category === key);
@@ -209,6 +237,20 @@ function calculatePerformanceBreakdown(goalEvaluations, personality, identityPro
     goalEvaluations,
     identityProfile,
   });
+
+  // #1267 · Konkurrencedygtigheds-gulv på results: et hold der slutter højt i
+  // divisionen får krediteret konkurrencedygtighed selv uden etapesejre (sejre er
+  // strukturelt knappe). Løfter KUN results, aldrig sænker; kun når et reelt
+  // results-mål findes (ellers ville gulvet skabe en results-kategori ud af ingenting).
+  if (resultsFloor > 0 && categories.results && categories.results.score < resultsFloor) {
+    categories.results = {
+      ...categories.results,
+      score: roundNumber(resultsFloor),
+      score_pct: Math.round(resultsFloor * 100),
+      competitiveness_floored: true,
+    };
+  }
+
   const availableWeight = Object.values(categories).reduce((sum, category) => sum + category.weight, 0);
   const weightedScore = availableWeight > 0
     ? Object.values(categories).reduce((sum, category) => sum + (category.score * category.weight), 0) / availableWeight

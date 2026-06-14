@@ -302,7 +302,14 @@ export function generateBoardGoals({
     // plan_start_avg) / seasons_completed), men en 1yr-plan (= 1 sæson) har aldrig
     // et tidligere snapshot → målet returnerer altid awaiting_data. Hold det ude
     // af 1yr-pakker (kun multi-year, hvor en baseline findes).
-    .filter((goal) => isMultiYear || goal.type !== "u25_development_delta");
+    .filter((goal) => isMultiYear || goal.type !== "u25_development_delta")
+    // #1267 · sponsor_growth kan ikke påvirkes inden for én sæson: sponsor_income
+    // ændres kun ved sæson-skift (via budget_modifier), så plan_start ==
+    // current hele 1yr-planen → vækst = 0 % → målet scorer altid 0 og nuller
+    // economy-kategorien (eneste economy-mål i star_signing). Det var den anden
+    // strukturelle driver bag den høje konsekvens-rate (#1187-B). Beholdes på
+    // multi-year-planer, hvor sponsor-indkomsten reelt kan vokse over sæsoner.
+    .filter((goal) => isMultiYear || goal.type !== "sponsor_growth");
   return selectedGoals.map((goal) => addGoalMetadata({
     ...goal,
     satisfaction_penalty: Math.round(goal.satisfaction_penalty * penaltyModifier),

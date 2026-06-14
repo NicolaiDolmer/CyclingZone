@@ -30,9 +30,18 @@ export const PLAN_PENALTY_MODIFIERS = {
 // hårde roster-floor — den blev fjernet 2026-06-05 i MARKET_SQUAD_LIMITS
 // (marketUtils.js, min=0). Bestyrelsens squad-størrelse-mål er opt-in mod
 // belønning og tvinger intet, så disse værdier bevares bevidst.
+//
+// #1267 · Re-kalibreret til den fiktive relaunch-økonomi (8-rytter-starthold +
+// auktionsvækst). De gamle div-1/div-2-værdier (20-30 / 14-20) stammede fra
+// PCM-æraens fulde imports og gjorde min_riders-målet strukturelt umuligt:
+// reelle trupper er 8-17 (median 13), så et star_signing-target på 24 kunne
+// ALDRIG nås og trak bestyrelses-tilfredsheden ned uden spiller-indflydelse
+// (driver bag den 50 % konsekvens-rate, #1187-B-scorecardet). Div 3 (8-10) var
+// allerede launch-passende og bevares. Empirisk verificeret via
+// boardSatisfactionHarness.js --regen-goals (simulér-før-ship).
 export const DIVISION_SQUAD_LIMITS = {
-  1: { min: 20, max: 30 },
-  2: { min: 14, max: 20 },
+  1: { min: 10, max: 16 },
+  2: { min: 9, max: 13 },
   3: { min: 8, max: 10 },
 };
 
