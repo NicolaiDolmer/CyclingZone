@@ -118,7 +118,7 @@ function AppErrorFallback({ error, eventId, resetError }) {
     // bevarer a11y for en fuld-skaerms crash). #671 Plan 3.
     <main role="alert" className="flex min-h-screen items-center justify-center bg-cz-body px-4 py-10 text-cz-1">
       <ErrorState
-        className="w-full max-w-lg border-cz-border bg-cz-card"
+        className="w-full max-w-lg"
         title={copy.title}
         description={copy.body}
         action={
