@@ -2,6 +2,35 @@
 
 const PATCHES = [
   {
+    version: "5.34",
+    date: "2026-06-14",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fixed · Reliability",
+        items: [
+          "EN · Login, signup and password reset now show a clear error if the network fails, instead of silently doing nothing. The app no longer gets stuck on a loading spinner when your session can't be restored. Refs #1347, #1348",
+          "DA · Login, signup og nulstilling af adgangskode viser nu en tydelig fejl hvis netværket svigter, i stedet for at gøre ingenting. Appen sætter sig ikke længere fast på en spinner når din session ikke kan genoprettes. Refs #1347, #1348",
+          "EN · Finance and Auctions now show a retry button if they fail to load, instead of an endless spinner or a page that looks empty. Refs #1350",
+          "DA · Finans og Auktioner viser nu en prøv-igen-knap hvis de ikke kan loade, i stedet for en uendelig spinner eller en side der ser tom ud. Refs #1350",
+          "EN · The auction watchlist star now reverts and tells you if saving fails, instead of staying in the wrong state until reload. Refs #1351",
+          "DA · Stjernen på auktions-ønskelisten ruller nu tilbage og giver besked hvis den ikke kan gemmes, i stedet for at blive hængende i forkert tilstand til genindlæsning. Refs #1351",
+          "EN · Rider and team history now surfaces a clear error if it can't load, instead of appearing as an empty history. Refs #1338",
+          "DA · Rytter- og holdhistorik viser nu en tydelig fejl hvis den ikke kan loade, i stedet for at fremstå som tom historik. Refs #1338",
+        ],
+      },
+      {
+        category: "Fixed · Accessibility",
+        items: [
+          "EN · The Deadline Day ticker now has a pause/resume button and respects your reduced-motion setting. Refs #1355",
+          "DA · Deadline Day-tickeren har nu en pause/genoptag-knap og respekterer din indstilling for reduceret bevægelse. Refs #1355",
+          "EN · Login, password and Finance forms now announce errors and bind their labels correctly for screen readers. Refs #1349",
+          "DA · Login-, adgangskode- og Finans-formularer annoncerer nu fejl og binder deres labels korrekt for skærmlæsere. Refs #1349",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.33",
     date: "2026-06-13",
     label: "Beta",
