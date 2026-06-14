@@ -88,6 +88,17 @@
   --accent-t:    160 120 0;
   --on-accent:   #1a1f38;
 
+  /* Fundament-tokens (#671 design system) */
+  --radius-none: 0px;
+  --radius-sm: 5px;
+  --radius-pill: 9999px;
+  --dur-fast: 120ms;
+  --dur: 150ms;
+  --dur-slow: 240ms;
+  --ease: cubic-bezier(.2,.7,.2,1);
+  --shadow-overlay: 0 12px 28px -10px rgba(14,15,21,.18);
+  --z-base: 0; --z-dropdown: 1000; --z-sticky: 1100; --z-overlay: 1200; --z-modal: 1300; --z-toast: 1400;
+
   /* "You" marker (#481 PR-3) — neutral, NOT gold (gold now = the leader).
      Navy on the light canvas; channel format so /<alpha> works. */
   --me-ring:      26 31 56;     /* navy #1a1f38 */
@@ -128,6 +139,9 @@
   --accent:      232 197 71;
   --accent-t:    255 217 102;
   --on-accent:   #1a1f38;
+
+  /* Fundament: moerkere overlay-skygge (#671) */
+  --shadow-overlay: 0 12px 30px -8px rgba(0,0,0,.6);
 
   /* "You" marker (#481 PR-3) — neutral light, since navy is unusable on the
      navy canvas. Mirrors the light-mode tokens above, inverted. */

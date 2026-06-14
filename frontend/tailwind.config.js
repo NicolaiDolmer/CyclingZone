@@ -70,6 +70,16 @@ export default {
         "cz-warning-bg0": "rgb(var(--warning) / <alpha-value>)",
         "cz-info-bg0":    "rgb(var(--info) / <alpha-value>)",
       },
+      borderRadius: {
+        cz: "var(--radius-sm)",
+        "cz-pill": "var(--radius-pill)",
+      },
+      boxShadow: {
+        overlay: "var(--shadow-overlay)",
+      },
+      zIndex: {
+        dropdown: "1000", sticky: "1100", overlay: "1200", modal: "1300", toast: "1400",
+      },
     },
   },
   plugins: [],
