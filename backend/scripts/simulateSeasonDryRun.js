@@ -247,7 +247,9 @@ const { riders: raw } = generateFictionalRiders({ count: COUNT, seed: SEED, refe
 
 const field = raw.map((r, i) => {
   const id = `r${i}`;
-  const abilities = deriveAbilities({}, { ...r, id }, { asOfYear: REFERENCE_YEAR });
+  // Plan 2 (#1122): evner afledes nu af den arketype-skæve fysiologi (faldt til {}
+  // = PCM-fallback hvis profilen mangler). Se abilityDerivation.js (FORMULA_VERSION=3).
+  const abilities = deriveAbilities(r._meta?.physiology ?? {}, { ...r, id }, { asOfYear: REFERENCE_YEAR });
   const derived = computeRiderTypes(abilities, baseline).primary?.key ?? "?";
   return {
     id, team_id: null,
