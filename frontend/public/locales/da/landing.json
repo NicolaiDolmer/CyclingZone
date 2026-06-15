@@ -1,0 +1,147 @@
+{
+  "meta": {
+    "title": "Cycling Zone · cykel-manageren i browseren hvor strategi slår penge",
+    "description": "Saml et hold, byd på ryttere i live-auktioner, læg din taktik og kør en hel sæson. Et gratis cykel-manager-spil i browseren. Ingen pay-to-win."
+  },
+  "nav": {
+    "discordLabel": "Discord",
+    "languageLabel": "Sprog",
+    "skipToContent": "Spring til indhold"
+  },
+  "hero": {
+    "badge": "Open beta · Gratis at spille",
+    "title": "Kør en sæson. Tænk feltet ud.",
+    "subtitle": "Cycling Zone er en cykel-manager i browseren. Saml dit hold, byd på ryttere i live-auktioner, læg taktikken og jagt resultater gennem en hel sæsonkalender.",
+    "ctaDiscord": "Kom med på Discord",
+    "ctaEmail": "Få launch-mailen",
+    "trustFree": "Gratis at spille",
+    "trustNoCard": "Intet betalingskort",
+    "trustBrowser": "Kører i din browser"
+  },
+  "signature": {
+    "kicker": "Inde i spillet",
+    "stageTitle": "Etape 14 · Bjergfinale",
+    "distanceLabel": "Distance",
+    "distanceValue": "182 km",
+    "climbLabel": "Sidste stigning",
+    "climbValue": "HC · 14,2 km med 7,8%",
+    "classificationTitle": "Samlet stilling",
+    "gapHeader": "Gab",
+    "jerseyYellow": "Fører",
+    "jerseyGreen": "Pointfører",
+    "jerseyPolka": "Bjergfører",
+    "sampleNote": "Eksempeldata. Stillingen opdateres mens løbet kører."
+  },
+  "how": {
+    "kicker": "Sådan spiller du",
+    "title": "Fire valg, én sæson",
+    "rows": [
+      {
+        "no": "01",
+        "title": "Saml dit hold",
+        "body": "Vælg en trup der passer din plan. Klatrere til bjergene, spurtere til det flade, en kaptajn at bygge omkring.",
+        "data": "Ryttere med ægte, læsbare ratings"
+      },
+      {
+        "no": "02",
+        "title": "Byd i live-auktioner",
+        "body": "Konkurrér om ryttere i realtids-auktioner mod andre managere. Læs feltet, tim dit bud, betal ikke over.",
+        "data": "Live budgivning, manager mod manager"
+      },
+      {
+        "no": "03",
+        "title": "Læg din taktik",
+        "body": "Udnævn din kaptajn, planlæg udbruddet, bestem hvem der jager og hvem der gemmer benene til finalen.",
+        "data": "Taktik der ændrer resultatet"
+      },
+      {
+        "no": "04",
+        "title": "Kør kalenderen",
+        "body": "Følg dit hold gennem etaper og endagsløb over en hel sæson, og byg så videre til den næste.",
+        "data": "En hel sæson af resultater"
+      }
+    ]
+  },
+  "different": {
+    "kicker": "Ikke det sædvanlige manager-spil",
+    "title": "Bygget på ét løfte",
+    "fairness": "Spillet skal være lige for alle. Du kan ikke betale dig til bedre ryttere, hurtigere træning eller bedre resultater.",
+    "cards": [
+      {
+        "title": "Strategi over penge",
+        "body": "Resultater kommer fra dine valg, ikke din pengepung. Den bedste manager vinder, ikke den der bruger mest."
+      },
+      {
+        "title": "Gratis at spille",
+        "body": "Hele spillet er gratis. Tilmeld dig, saml et hold og konkurrér uden at betale for noget der påvirker udfaldet."
+      },
+      {
+        "title": "Ingen installation",
+        "body": "Det kører i din browser, på din telefon eller din computer. Intet at downloade, intet at opdatere."
+      }
+    ]
+  },
+  "discord": {
+    "kicker": "Vær med",
+    "title": "Spillet bygges i det åbne",
+    "body": "Jeg bygger Cycling Zone som solo-udvikler, i det åbne. Discord er der hvor jeg deler hvad jeg arbejder på, hvor nye managere finder fodfæste, og hvor din feedback former hvad der bliver bygget næst.",
+    "cta": "Åbn Discord"
+  },
+  "waitlist": {
+    "kicker": "Foretrækker du mail?",
+    "title": "Få launch-mailen",
+    "body": "Læg din mail, så sender jeg én besked når den nye sæson åbner. Intet nyhedsbrev, ingen støj.",
+    "emailLabel": "Mail",
+    "emailPlaceholder": "dig@eksempel.dk",
+    "nameLabel": "Fornavn",
+    "nameOptional": "valgfrit",
+    "namePlaceholder": "Hvad skal jeg kalde dig?",
+    "consentBefore": "Jeg accepterer at blive kontaktet om launch og godkender ",
+    "consentLink": "privatlivspolitikken",
+    "consentAfter": ".",
+    "privacyPath": "/privatlivspolitik",
+    "submit": "Giv mig besked ved launch",
+    "submitting": "Tilføjer dig til listen...",
+    "disclaimer": "Én mail ved launch. Afmeld når som helst.",
+    "successTitle": "Du er på listen",
+    "successBody": "Tak. Jeg sender dig én mail når den nye sæson åbner. Indtil da er Discord det bedste sted at følge med.",
+    "successDiscord": "Kom med på Discord",
+    "errors": {
+      "emailRequired": "Skriv din mail.",
+      "emailInvalid": "Den mail ser ikke rigtig ud.",
+      "consent": "Godkend privatlivspolitikken for at fortsætte.",
+      "duplicate": "Du er allerede på listen.",
+      "rls": "Noget blokerede tilmeldingen. Prøv igen.",
+      "network": "Netværksfejl. Tjek din forbindelse og prøv igen.",
+      "unknown": "Noget gik galt. Prøv igen."
+    }
+  },
+  "faq": {
+    "kicker": "Spørgsmål",
+    "title": "Godt at vide",
+    "items": [
+      {
+        "q": "Er det virkelig gratis?",
+        "a": "Ja. Hele spillet er gratis at spille. Du kan tilmelde dig, samle et hold og konkurrere i en hel sæson uden at betale for noget."
+      },
+      {
+        "q": "Er det pay-to-win?",
+        "a": "Nej. Spillet skal være lige for alle. Du kan ikke betale dig til bedre ryttere, hurtigere træning eller bedre resultater."
+      },
+      {
+        "q": "Hvornår starter sæsonen?",
+        "a": "Cycling Zone er i open beta nu, og en frisk sæson åbner snart. Kom med på Discord eller læg din mail, så giver jeg besked i det øjeblik den starter."
+      },
+      {
+        "q": "Skal jeg installere noget?",
+        "a": "Nej. Det kører i din browser på computer og mobil. Der er intet at downloade."
+      }
+    ]
+  },
+  "footer": {
+    "tagline": "En cykel-manager i browseren.",
+    "privacy": "Privatliv",
+    "discord": "Discord",
+    "rights": "Cycling Zone"
+  }
+}

@@ -53,6 +53,7 @@ const RoadmapPage = lazy(() => import("./pages/RoadmapPage"));
 const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicyPage"));
 const PrivacyPolicyPageEn = lazy(() => import("./pages/PrivacyPolicyPageEn"));
 const FounderSupporterPage = lazy(() => import("./pages/FounderSupporterPage"));
+const LandingPage = lazy(() => import("./pages/LandingPage"));
 const KitchenSinkPage = lazy(() => import("./pages/KitchenSinkPage"));
 const RacesPage = lazy(() => import("./pages/RacesPage"));
 const SeasonEndPage = lazy(() => import("./pages/SeasonEndPage"));
@@ -151,11 +152,15 @@ export default function App() {
           <Route path="/privacy-policy" element={<PrivacyPolicyPageEn />} />
           <Route path="/founder-supporter" element={<FounderSupporterPage />} />
           <Route path="/ui" element={<KitchenSinkPage />} />
-          <Route path="/" element={
+          {/* Bart domæne (#672): ikke-loggede-ind ser den offentlige landing,
+              loggede-ind ryger til appen. */}
+          <Route path="/" element={session ? <Navigate to="/dashboard" replace /> : <LandingPage />} />
+
+          {/* App-flader: pathless protected layout-route — URL'erne (/dashboard, /riders ...)
+              er uændrede, men "/" er ikke længere forælder, så landing kan eje roden. */}
+          <Route element={
             <ProtectedRoute session={session}><Layout /></ProtectedRoute>
           }>
-            <Route index element={<Navigate to="/dashboard" replace />} />
-
             <Route path="dashboard" element={<DashboardPage />} />
             <Route path="riders" element={<RidersPage />} />
             <Route path="riders/:id" element={<RiderStatsPage />} />
