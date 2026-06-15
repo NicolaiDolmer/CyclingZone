@@ -6,6 +6,7 @@
 
 import { useTranslation } from "react-i18next";
 import { formatNumber } from "../lib/intl";
+import { AlertTriangleIcon } from "./ui";
 
 export default function OverbidToast({ toasts, onDismiss }) {
   const { t } = useTranslation(["auctions", "common"]);
@@ -21,9 +22,9 @@ export default function OverbidToast({ toasts, onDismiss }) {
           key={toast.id}
           role="status"
           className="pointer-events-auto bg-cz-card border border-cz-danger/40 shadow-lg
-            rounded-xl px-4 py-3 flex items-start gap-3"
+            rounded-cz px-4 py-3 flex items-start gap-3"
         >
-          <span className="text-cz-danger text-lg leading-none mt-0.5">⚠</span>
+          <AlertTriangleIcon size={18} className="text-cz-danger flex-shrink-0 mt-0.5" />
           <div className="min-w-0 flex-1">
             <p className="text-cz-1 text-sm font-medium leading-snug">
               {t("auctions:toast.overbidMessage", { riderName: toast.riderName })}

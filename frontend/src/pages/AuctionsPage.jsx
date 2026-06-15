@@ -40,6 +40,7 @@ import { useAuctionBidding } from "../lib/useAuctionBidding";
 import { formatNumber } from "../lib/intl";
 import { resolveApiError } from "../lib/apiError";
 import { getRiderSalary } from "../lib/marketValues.js";
+import { Card, TagIcon, EyeIcon, StarIcon } from "../components/ui";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -384,7 +385,7 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, watchlist,
   });
 
   return (
-    <div className={`bg-cz-card border rounded-xl p-4 transition-all ${imWinning ? "border-cz-accent/40 bg-cz-accent/10/40" : "border-cz-border"}`}>
+    <Card className={`p-4 transition-all ${imWinning ? "border-cz-accent/40 bg-cz-accent/10/40" : ""}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-2 min-w-0">
           {r?.id && (
@@ -563,7 +564,7 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, watchlist,
           <p className="text-cz-3 text-xs text-center py-1">{isSeller ? t("auctions:bid.sellerLabel") : "—"}</p>
         )}
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -1148,7 +1149,6 @@ export default function AuctionsPage() {
         title={celebration?.title || ""}
         subtitle={celebration?.subtitle}
         amount={celebration?.amount}
-        icon="🏆"
       />
       <RacePriceModal
         show={!!raceConfirm}
@@ -1175,7 +1175,7 @@ export default function AuctionsPage() {
         <div
           role="alert"
           aria-live="assertive"
-          className="mb-4 px-4 py-3 rounded-xl text-sm border bg-cz-danger-bg text-cz-danger border-cz-danger/30">
+          className="mb-4 px-4 py-3 rounded-cz text-sm border bg-cz-danger-bg text-cz-danger border-cz-danger/30">
           {watchlistError.text}
         </div>
       )}
@@ -1214,7 +1214,7 @@ export default function AuctionsPage() {
 
       {!loading && myTeamId && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5 max-w-[1600px]">
-          <div className="bg-cz-card border border-cz-border rounded-xl px-4 py-3">
+          <Card className="px-4 py-3">
             <p className="text-[10px] uppercase tracking-widest text-cz-3 mb-0.5">{t("auctions:stats.balance")}</p>
             <p className="text-cz-accent-t font-mono font-bold text-sm leading-tight">
               {formatNumber(myBalance)} CZ$
@@ -1224,8 +1224,8 @@ export default function AuctionsPage() {
                 {t("auctions:stats.balanceAvailable", { amount: formatNumber(availableBalance) })}
               </p>
             )}
-          </div>
-          <div className="bg-cz-card border border-cz-border rounded-xl px-4 py-3">
+          </Card>
+          <Card className="px-4 py-3">
             <p className="text-[10px] uppercase tracking-widest text-cz-3 mb-0.5">{t("auctions:stats.reserved")}</p>
             <p className="text-cz-1 font-mono font-bold text-sm leading-tight">
               {formatNumber(reservedBalance)} CZ$
@@ -1233,14 +1233,14 @@ export default function AuctionsPage() {
             {winningAuctions.length > 0 && (
               <p className="text-cz-3 text-[10px] mt-0.5">{t("auctions:stats.auctionsLeading", { count: winningAuctions.length })}</p>
             )}
-          </div>
-          <div className="bg-cz-card border border-cz-border rounded-xl px-4 py-3">
+          </Card>
+          <Card className="px-4 py-3">
             <p className="text-[10px] uppercase tracking-widest text-cz-3 mb-0.5">{t("auctions:stats.ridersNow")}</p>
             <p className="text-cz-1 font-mono font-bold text-sm leading-tight">
               {currentRiderCount ?? "—"}
             </p>
-          </div>
-          <div className="bg-cz-card border border-cz-border rounded-xl px-4 py-3">
+          </Card>
+          <Card className="px-4 py-3">
             <p className="text-[10px] uppercase tracking-widest text-cz-3 mb-0.5">{t("auctions:stats.projection")}</p>
             <p className="text-cz-1 font-mono font-bold text-sm leading-tight">
               {projectedRiderCount ?? "—"}
@@ -1257,7 +1257,7 @@ export default function AuctionsPage() {
                 {outgoingCount > 0 && t("auctions:stats.outgoing", { count: outgoingCount })}
               </p>
             )}
-          </div>
+          </Card>
         </div>
       )}
 
@@ -1299,7 +1299,7 @@ export default function AuctionsPage() {
               ${showFeed
                 ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
                 : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
-            <span className={showFeed ? "text-cz-accent-t" : "text-cz-3"}>📡</span>
+            <EyeIcon size={14} className={showFeed ? "text-cz-accent-t" : "text-cz-3"} />
             {t("auctions:filter.feedButton")}
           </button>
         </div>
@@ -1329,7 +1329,7 @@ export default function AuctionsPage() {
       ) : loadError ? (
         // #1350: terminal, retry-bar fejl — aldrig en evig spinner og aldrig en
         // tom-state der ligner "ingen aktive auktioner".
-        <div className="bg-cz-danger-bg border border-cz-danger/30 rounded-xl p-4 flex items-center justify-between gap-3"
+        <div className="bg-cz-danger-bg border border-cz-danger/30 rounded-cz p-4 flex items-center justify-between gap-3"
           role="alert">
           <p className="text-cz-danger text-sm">{t("auctions:loadError.message")}</p>
           <button onClick={loadAll}
@@ -1452,7 +1452,7 @@ function AuctionList({ auctions, sectionId, sharedProps }) {
           />
         ))}
       </div>
-      <div className="hidden md:block bg-cz-card border border-cz-border rounded-xl overflow-hidden min-w-0">
+      <Card className="hidden md:block overflow-hidden min-w-0">
         <div className="overflow-auto max-h-[calc(100vh-220px)]">
           <table className="w-full text-xs">
             <AuctionTableHead
@@ -1486,7 +1486,7 @@ function AuctionList({ auctions, sectionId, sharedProps }) {
             </tbody>
           </table>
         </div>
-      </div>
+      </Card>
     </>
   );
 }
@@ -1523,7 +1523,11 @@ function AuctionsContent(props) {
       <div className="min-w-0">
         {isEmpty ? (
           <div className="text-center py-16 text-cz-3">
-            <p className="text-4xl mb-3">{wishlistOnly ? "★" : "⚡"}</p>
+            <div className="flex justify-center mb-3" aria-hidden="true">
+              {wishlistOnly
+                ? <StarIcon size={36} className="text-cz-3" />
+                : <TagIcon size={36} className="text-cz-3" />}
+            </div>
             <p>
               {wishlistOnly
                 ? t("empty.wishlistNoResults")

@@ -1,21 +1,6 @@
 {
   "$comment": "Kendte UI-anti-drift-overtraedelser (ratchet — maa kun skrumpe). Genereret af scripts/lint-ui-slop.mjs --update-baseline. Refs #671 Plan 3. Nye overtraedelser maa IKKE tilfoejes her — brug ui/-primitiver + tokens, eller (legitimt) udvid EXEMPT_FILES i scriptet med begrundelse. Plan 4 skrumper denne ved at konvertere callsites + emoji.",
   "files": {
-    "frontend/src/components/AuctionsFirstBidHint.jsx": {
-      "hex": 0,
-      "slop": 1,
-      "emoji": 1
-    },
-    "frontend/src/components/AuctionsSidebarFeed.jsx": {
-      "hex": 0,
-      "slop": 1,
-      "emoji": 0
-    },
-    "frontend/src/components/BidConfirmModal.jsx": {
-      "hex": 0,
-      "slop": 2,
-      "emoji": 0
-    },
     "frontend/src/components/BoardEmptyState.jsx": {
       "hex": 0,
       "slop": 1,
@@ -33,8 +18,8 @@
     },
     "frontend/src/components/ConfettiModal.jsx": {
       "hex": 5,
-      "slop": 2,
-      "emoji": 1
+      "slop": 0,
+      "emoji": 0
     },
     "frontend/src/components/CookieBanner.jsx": {
       "hex": 0,
@@ -96,30 +81,15 @@
       "slop": 1,
       "emoji": 0
     },
-    "frontend/src/components/OverbidToast.jsx": {
-      "hex": 0,
-      "slop": 1,
-      "emoji": 1
-    },
     "frontend/src/components/PotentialeStars.jsx": {
       "hex": 5,
       "slop": 0,
       "emoji": 0
     },
-    "frontend/src/components/RacePriceModal.jsx": {
-      "hex": 0,
-      "slop": 2,
-      "emoji": 1
-    },
     "frontend/src/components/RiderDevelopmentTab.jsx": {
       "hex": 5,
       "slop": 1,
       "emoji": 0
-    },
-    "frontend/src/components/RiderFilters.jsx": {
-      "hex": 0,
-      "slop": 1,
-      "emoji": 1
     },
     "frontend/src/components/RidersEmptyState.jsx": {
       "hex": 0,
@@ -129,11 +99,6 @@
     "frontend/src/components/SetupWizardModal.jsx": {
       "hex": 0,
       "slop": 2,
-      "emoji": 0
-    },
-    "frontend/src/components/StatsToggle.jsx": {
-      "hex": 0,
-      "slop": 1,
       "emoji": 0
     },
     "frontend/src/components/TeamResultsTab.jsx": {
@@ -201,11 +166,6 @@
       "slop": 1,
       "emoji": 0
     },
-    "frontend/src/components/rider/ScoutablePotentiale.jsx": {
-      "hex": 0,
-      "slop": 0,
-      "emoji": 1
-    },
     "frontend/src/components/rider/TrainingFocus.jsx": {
       "hex": 0,
       "slop": 1,
@@ -245,11 +205,6 @@
       "hex": 0,
       "slop": 2,
       "emoji": 0
-    },
-    "frontend/src/pages/AuctionsPage.jsx": {
-      "hex": 0,
-      "slop": 8,
-      "emoji": 3
     },
     "frontend/src/pages/BoardPage.jsx": {
       "hex": 0,
