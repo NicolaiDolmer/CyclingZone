@@ -5,7 +5,9 @@ import { supabase } from "../lib/supabase";
 import { useLanguage } from "../lib/language";
 import { mapSupabaseAuthError } from "../lib/authErrors";
 import LanguageSwitcher from "../components/LanguageSwitcher";
-import { StackedMark } from "../components/Brand";
+import { Wordmark } from "../components/Brand";
+import { Card, Button, Input, CheckIcon, InboxIcon } from "../components/ui";
+import { labelClass, helperClass } from "../components/ui/fieldStyles.js";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -189,11 +191,6 @@ export default function LoginPage() {
     }
   }
 
-  const inputClass =
-    "w-full bg-cz-subtle border border-cz-border rounded-lg " +
-    "px-4 py-2.5 text-cz-1 text-sm placeholder-cz-3 " +
-    "focus:outline-none focus:border-cz-accent transition-all";
-
   const subtitle = isLoginMode
     ? t("auth:page.subtitle.login")
     : isSignupMode
@@ -213,47 +210,43 @@ export default function LoginPage() {
         : t("auth:submit.login.idle");
 
   return (
-    <div className="min-h-screen bg-cz-body flex items-center justify-center p-4 relative overflow-hidden">
-      <div
-        className="absolute inset-0 opacity-[0.03]"
-        style={{
-          backgroundImage: "linear-gradient(rgb(var(--accent)) 1px, transparent 1px), linear-gradient(90deg, rgb(var(--accent)) 1px, transparent 1px)",
-          backgroundSize: "60px 60px",
-        }}
-      />
-
-      <div
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
-          w-[500px] h-[500px] rounded-full opacity-10 blur-[120px] bg-cz-accent pointer-events-none"
-      />
-
-      <div className="absolute top-4 right-4 z-20">
+    <div className="relative flex min-h-screen items-center justify-center bg-cz-body p-4">
+      <div className="absolute right-4 top-4">
         <LanguageSwitcher />
       </div>
 
-      <div className="relative z-10 w-full max-w-sm">
-        <div className="text-center mb-10">
-          {/* #481: real stacked CYCLING/ZONE brand mark (replaces the placeholder "C" tile). */}
-          <StackedMark className="w-16 h-16 mb-5 shadow-[0_0_40px_rgba(232,197,71,0.3)]" />
-
-          <h1 className="text-2xl font-bold text-cz-1 tracking-tight">
-            {t("auth:page.title")}
+      <div className="w-full max-w-sm">
+        <div className="mb-10 text-center">
+          {/* #671/#481: wordmark = the primary brand mark (BRAND_BRIEF: website
+              header / marketing). The theme-aware logotype carries the brand name,
+              so it doubles as the page heading — no redundant text title. */}
+          <h1>
+            <Wordmark className="mx-auto h-9 w-auto" />
           </h1>
-          <p className="text-cz-2 text-sm mt-1">{subtitle}</p>
+          <p className="mt-4 text-sm text-cz-2">{subtitle}</p>
         </div>
 
-        <div className="bg-cz-card border border-cz-border rounded-2xl p-6">
+        <Card className="p-6">
           {success ? (
-            <div className="text-center py-4" role="status">
-              <div className="text-4xl mb-4">{success.kind === "signup" ? "🎉" : "✉️"}</div>
-              <p className="text-cz-success text-sm font-medium">{success.message}</p>
-              <p className="text-cz-3 text-xs mt-3">
+            <div className="py-4 text-center" role="status">
+              <div className="mb-4 flex justify-center">
+                {success.kind === "signup" ? (
+                  <CheckIcon size={32} className="text-cz-success" />
+                ) : (
+                  <InboxIcon size={32} className="text-cz-accent" />
+                )}
+              </div>
+              <p className="text-sm font-medium text-cz-success">{success.message}</p>
+              <p className="mt-3 text-xs text-cz-3">
                 {success.kind === "signup"
                   ? t("auth:success.signupBody")
                   : t("auth:success.forgotBody")}
               </p>
-              <button
+              <Button
                 type="button"
+                variant="primary"
+                fullWidth
+                className="mt-4"
                 onClick={() => {
                   setMode("login");
                   setSuccess(null);
@@ -261,21 +254,19 @@ export default function LoginPage() {
                   setManagerName("");
                   setPassword("");
                 }}
-                className="mt-4 w-full bg-cz-accent text-cz-on-accent font-bold rounded-lg
-                  py-2.5 text-sm hover:brightness-110 transition-all"
               >
                 {t("auth:success.signupCta")}
-              </button>
+              </Button>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               {isSignupMode && (
                 <>
                   <div>
-                    <label htmlFor="auth-team-name" className="block text-xs font-medium text-cz-2 uppercase tracking-wider mb-1.5">
+                    <label htmlFor="auth-team-name" className={labelClass()}>
                       {t("auth:field.teamName.label")}
                     </label>
-                    <input
+                    <Input
                       id="auth-team-name"
                       type="text"
                       value={teamName}
@@ -285,15 +276,14 @@ export default function LoginPage() {
                       minLength={3}
                       maxLength={30}
                       aria-describedby="auth-team-name-help"
-                      className={inputClass}
                     />
-                    <p id="auth-team-name-help" className="text-cz-3 text-xs mt-1">{t("auth:field.teamName.help")}</p>
+                    <p id="auth-team-name-help" className={helperClass()}>{t("auth:field.teamName.help")}</p>
                   </div>
                   <div>
-                    <label htmlFor="auth-manager-name" className="block text-xs font-medium text-cz-2 uppercase tracking-wider mb-1.5">
+                    <label htmlFor="auth-manager-name" className={labelClass()}>
                       {t("auth:field.managerName.label")}
                     </label>
-                    <input
+                    <Input
                       id="auth-manager-name"
                       type="text"
                       value={managerName}
@@ -303,34 +293,32 @@ export default function LoginPage() {
                       minLength={2}
                       maxLength={50}
                       aria-describedby="auth-manager-name-help"
-                      className={inputClass}
                     />
-                    <p id="auth-manager-name-help" className="text-cz-3 text-xs mt-1">{t("auth:field.managerName.help")}</p>
+                    <p id="auth-manager-name-help" className={helperClass()}>{t("auth:field.managerName.help")}</p>
                   </div>
                 </>
               )}
 
               <div>
-                <label htmlFor="auth-email" className="block text-xs font-medium text-cz-2 uppercase tracking-wider mb-1.5">
+                <label htmlFor="auth-email" className={labelClass()}>
                   {t("auth:field.email.label")}
                 </label>
-                <input
+                <Input
                   id="auth-email"
                   type="email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   placeholder={t("auth:field.email.placeholder")}
                   required
-                  aria-invalid={error ? true : undefined}
+                  error={Boolean(error)}
                   aria-describedby={
                     [isForgotMode ? "auth-email-help" : null, error ? "auth-error" : null]
                       .filter(Boolean)
                       .join(" ") || undefined
                   }
-                  className={inputClass}
                 />
                 {isForgotMode && (
-                  <p id="auth-email-help" className="text-cz-3 text-xs mt-1">
+                  <p id="auth-email-help" className={helperClass()}>
                     {t("auth:field.email.forgotHelp")}
                   </p>
                 )}
@@ -338,10 +326,10 @@ export default function LoginPage() {
 
               {!isForgotMode && (
                 <div>
-                  <label htmlFor="auth-password" className="block text-xs font-medium text-cz-2 uppercase tracking-wider mb-1.5">
+                  <label htmlFor="auth-password" className={labelClass()}>
                     {t("auth:field.password.label")}
                   </label>
-                  <input
+                  <Input
                     id="auth-password"
                     type="password"
                     value={password}
@@ -349,16 +337,15 @@ export default function LoginPage() {
                     placeholder="••••••••"
                     required
                     minLength={6}
-                    aria-invalid={error ? true : undefined}
+                    error={Boolean(error)}
                     aria-describedby={
                       [isSignupMode ? "auth-password-help" : null, error ? "auth-error" : null]
                         .filter(Boolean)
                         .join(" ") || undefined
                     }
-                    className={inputClass}
                   />
                   {isSignupMode && (
-                    <p id="auth-password-help" className="text-cz-3 text-xs mt-1">{t("auth:field.password.help")}</p>
+                    <p id="auth-password-help" className={helperClass()}>{t("auth:field.password.help")}</p>
                   )}
                 </div>
               )}
@@ -367,22 +354,15 @@ export default function LoginPage() {
                 <div
                   id="auth-error"
                   role="alert"
-                  className="bg-cz-danger-bg border border-cz-danger/30 rounded-lg px-4 py-2.5 text-cz-danger text-sm"
+                  className="rounded-cz border border-cz-danger/30 bg-cz-danger-bg px-4 py-2.5 text-sm text-cz-danger"
                 >
                   {error}
                 </div>
               )}
 
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-cz-accent text-cz-on-accent font-bold rounded-lg
-                  py-2.5 text-sm tracking-wide hover:brightness-110 transition-all
-                  disabled:opacity-50 disabled:cursor-not-allowed
-                  shadow-[0_4px_20px_rgba(232,197,71,0.2)]"
-              >
+              <Button type="submit" variant="primary" fullWidth loading={loading}>
                 {submitLabel}
-              </button>
+              </Button>
             </form>
           )}
 
@@ -390,51 +370,35 @@ export default function LoginPage() {
             <div className="mt-4 flex flex-col gap-2 text-center">
               {isLoginMode && (
                 <>
-                  <button
-                    type="button"
-                    onClick={() => switchMode("forgot")}
-                    className="text-sm text-cz-2 hover:text-cz-1 transition-colors"
-                  >
+                  <Button type="button" variant="ghost" size="sm" onClick={() => switchMode("forgot")}>
                     {t("auth:switch.forgot")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => switchMode("signup")}
-                    className="text-sm text-cz-2 hover:text-cz-1 transition-colors"
-                  >
+                  </Button>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => switchMode("signup")}>
                     {t("auth:switch.signup")}
-                  </button>
+                  </Button>
                 </>
               )}
 
               {isSignupMode && (
-                <button
-                  type="button"
-                  onClick={() => switchMode("login")}
-                  className="text-sm text-cz-2 hover:text-cz-1 transition-colors"
-                >
+                <Button type="button" variant="ghost" size="sm" onClick={() => switchMode("login")}>
                   {t("auth:switch.login")}
-                </button>
+                </Button>
               )}
 
               {isForgotMode && (
-                <button
-                  type="button"
-                  onClick={() => switchMode("login")}
-                  className="text-sm text-cz-2 hover:text-cz-1 transition-colors"
-                >
+                <Button type="button" variant="ghost" size="sm" onClick={() => switchMode("login")}>
                   {t("auth:switch.backToLogin")}
-                </button>
+                </Button>
               )}
             </div>
           )}
-        </div>
+        </Card>
 
-        <p className="text-center text-cz-3 text-xs mt-6">
+        <p className="mt-6 text-center text-xs text-cz-3">
           {t("auth:page.tagline")}
         </p>
-        <p className="text-center text-cz-3 text-xs mt-2">
-          <Link to={language === "en" ? "/privacy-policy" : "/privatlivspolitik"} className="hover:text-cz-1 underline">
+        <p className="mt-2 text-center text-xs text-cz-3">
+          <Link to={language === "en" ? "/privacy-policy" : "/privatlivspolitik"} className="underline hover:text-cz-1">
             {t("auth:footer.privacyPolicy")}
           </Link>
         </p>

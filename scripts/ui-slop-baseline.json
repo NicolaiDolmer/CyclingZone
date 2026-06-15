@@ -311,11 +311,6 @@
       "slop": 0,
       "emoji": 0
     },
-    "frontend/src/pages/LoginPage.jsx": {
-      "hex": 0,
-      "slop": 2,
-      "emoji": 2
-    },
     "frontend/src/pages/ManagerProfilePage.jsx": {
       "hex": 0,
       "slop": 12,
@@ -365,11 +360,6 @@
       "hex": 0,
       "slop": 13,
       "emoji": 5
-    },
-    "frontend/src/pages/ResetPasswordPage.jsx": {
-      "hex": 0,
-      "slop": 3,
-      "emoji": 2
     },
     "frontend/src/pages/ResultaterPage.jsx": {
       "hex": 0,
