@@ -452,6 +452,13 @@ test("#1122 descending giver bonus PÅ descent-finale, intet ellers", () => {
   }).ranked[0].components.finale;
   assert.ok(comp("descent") > 0, "god nedkører skal få bonus på descent-finale");
   assert.equal(comp("long_climb"), 0, "ingen descending-effekt uden descent-finale");
+  // descending=99 → maksimal bonus = DESCENDING_FINALE_WEIGHT (centreret om 50).
+  const maxBonus = simulateStage({
+    entrants: [{ rider_id: "r1", abilities: { ...base, descending: 99 } }],
+    stageProfile: { profile_type: "mountain", demand_vector: { climbing: 1.0 }, finale_type: "descent" },
+    seed: 1,
+  }).ranked[0].components.finale;
+  assert.ok(Math.abs(maxBonus - DESCENDING_FINALE_WEIGHT) < 1e-12, `descending=99 → ${maxBonus}, forventet ${DESCENDING_FINALE_WEIGHT}`);
 });
 
 test("#1122 dårlig nedkører taber på descent-finale (centreret om 50)", () => {
