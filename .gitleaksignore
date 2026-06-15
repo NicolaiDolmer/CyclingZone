@@ -14,3 +14,9 @@
 bc9204d620ee1ce448d96a98b64bbbf0464e7ca8:setup.py:jwt:27
 bc9204d620ee1ce448d96a98b64bbbf0464e7ca8:setup.py:jwt:26
 bc9204d620ee1ce448d96a98b64bbbf0464e7ca8:backend/.env:jwt:2
+#
+# Falsk-positiv (#679/#1403): localStorage-nøglenavn "cz_attribution_v1" i
+# attribution-libens FØRSTE commit. Hed `const KEY = ...` → matchede generic-api-key.
+# Rettet til STORAGE_KEY + gitleaks:allow i en senere commit, men gitleaks scanner
+# HELE PR-historikken, så den oprindelige commit skal allowlistes (ikke en secret):
+4f96ee265b37c038cf9fb86696ac2062148e7b9e:frontend/src/lib/attribution.js:generic-api-key:8

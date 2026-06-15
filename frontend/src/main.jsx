@@ -7,6 +7,7 @@ import { ConsentProvider } from "./lib/consent.jsx";
 import { LanguageProvider } from "./lib/language.jsx";
 import { initSentry, SentryBoundary } from "./lib/sentry.jsx";
 import { getChunkReloadKey } from "./lib/chunkErrors.js";
+import { captureFirstTouch } from "./lib/attribution.js";
 import i18n from "./i18n";
 import "./index.css";
 import "flag-icons/css/flag-icons.min.css";
@@ -28,6 +29,10 @@ window.addEventListener("vite:preloadError", (event) => {
 });
 
 initSentry();
+
+// #679: snapshot first-touch acquisition source as early as possible — before any
+// SPA navigation changes document.referrer. First visit wins; persisted at signup.
+captureFirstTouch();
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
