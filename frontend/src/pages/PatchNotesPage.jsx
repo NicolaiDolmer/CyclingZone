@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.39",
+    date: "2026-06-15",
+    label: "Beta",
+    changes: [
+      {
+        category: "Changed · Design",
+        items: [
+          "EN · The Riders, Auctions, Team and Races pages now use the same refreshed design system as the rest of the app: cleaner cards and tables, sharper corners and crisp icons in place of emoji, consistent across light and dark mode. No gameplay changes. Refs #671",
+          "DA · Riders-, Auktions-, Team- og Race-siderne bruger nu samme opfriskede designsystem som resten af appen: renere kort og tabeller, skarpere hjørner og rene ikoner i stedet for emoji, konsistent i lyst og mørkt tema. Ingen ændringer i gameplay. Refs #671",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.38",
     date: "2026-06-15",
     label: "Beta",
