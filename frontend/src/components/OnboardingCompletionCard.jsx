@@ -16,7 +16,7 @@ export default function OnboardingCompletionCard({ onDismiss }) {
   const { t } = useTranslation("dashboard");
 
   return (
-    <div className="mb-4 px-5 py-4 bg-cz-card border border-cz-success/30 rounded-xl">
+    <div className="mb-4 px-5 py-4 bg-cz-card border border-cz-success/30 rounded-cz">
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="flex items-start gap-3 flex-1 min-w-0">
           <span className="text-2xl flex-shrink-0">🎉</span>

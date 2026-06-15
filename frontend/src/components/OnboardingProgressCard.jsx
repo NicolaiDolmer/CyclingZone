@@ -26,7 +26,7 @@ export default function OnboardingProgressCard({ progress, onDismiss }) {
   }
 
   return (
-    <div className="mb-4 px-4 py-3 bg-cz-card border border-cz-accent/30 rounded-xl">
+    <div className="mb-4 px-4 py-3 bg-cz-card border border-cz-accent/30 rounded-cz">
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-2">

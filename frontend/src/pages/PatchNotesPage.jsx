@@ -11,6 +11,8 @@ const PATCHES = [
         items: [
           "EN · Your dashboard now uses the new design system too: cleaner cards, sharper corners and crisp icons in place of emoji, consistent across light and dark mode. Refs #671",
           "DA · Dit dashboard bruger nu også det nye designsystem: renere kort, skarpere hjørner og rene ikoner i stedet for emoji, konsistent i både lyst og mørkt tema. Refs #671",
+          "EN · The sidebar header is cleaner: the brand wordmark now stands on its own next to your team name, without the duplicate logo tile. Refs #671",
+          "DA · Sidebjælkens header er renere: brand-wordmarket står nu alene ved siden af dit holdnavn, uden den dublerede logo-flise. Refs #671",
         ],
       },
     ],

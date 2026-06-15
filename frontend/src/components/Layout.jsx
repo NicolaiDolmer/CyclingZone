@@ -8,7 +8,7 @@ import DeadlineDayBanner from "./DeadlineDayBanner";
 import DeadlineDayTicker from "./DeadlineDayTicker";
 import MobileQuickNav from "./MobileQuickNav";
 import LanguageSwitcher from "./LanguageSwitcher";
-import { Wordmark, Monogram } from "./Brand";
+import { Wordmark } from "./Brand";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -148,9 +148,10 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
         onClick={() => navigate("/dashboard")}
         aria-label="Cycling Zone"
         className="flex items-center gap-2.5 px-4 py-4 border-b border-cz-sidebar-border w-full text-left hover:bg-cz-sidebar-hover transition-colors">
-        {/* #481: locked brand lockup — CZ monogram + outlined wordmark (with twin
-            movement-lines). Sidebar canvas is always navy → forceDark wordmark. */}
-        <Monogram className="w-7 h-7" />
+        {/* #671 Slice B: wordmark = primaer brand-mark (BRAND_BRIEF). Det redundante
+            CZ-monogram er fjernet — monogram + wordmark + team-navn var tre identitets-
+            elementer i samme hjoerne. Sidebar-canvas altid navy → forceDark wordmark.
+            Bredere nav-header/IA-restructure spores i #1027. */}
         <div className="min-w-0">
           <Wordmark forceDark className="h-5 w-auto" alt="" />
           <p className="text-cz-sidebar-3 text-[10px] truncate mt-1">{team?.name || "…"}</p>
@@ -392,7 +393,6 @@ export default function Layout() {
         <div className="md:hidden flex items-center justify-between px-4 py-3 bg-cz-sidebar border-b border-cz-sidebar-border">
           <button onClick={() => setMobileOpen(true)} className="text-cz-sidebar-2 hover:text-cz-sidebar-1 text-xl">☰</button>
           <Link to="/dashboard" aria-label={t("nav.item.dashboard")} className="flex items-center gap-2 rounded hover:opacity-80 transition-opacity">
-            <Monogram className="w-6 h-6" />
             <Wordmark forceDark className="h-5 w-auto" alt="" />
           </Link>
           <div className="flex items-center gap-2">

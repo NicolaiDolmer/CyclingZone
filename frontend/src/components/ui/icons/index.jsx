@@ -393,3 +393,23 @@ export function FlagIcon(props) {
     </IconBase>
   );
 }
+
+// To-vejs udveksling (transfers/swaps — markeds-handler). Top-pil hoejre, bund-pil venstre.
+export function ExchangeIcon(props) {
+  return (
+    <IconBase {...props}>
+      <path d="M4 9h13M14 6l3 3-3 3" />
+      <path d="M20 15H7M10 12l-3 3 3 3" />
+    </IconBase>
+  );
+}
+
+// Clipboard (survey/feedback). Board + clip; rect/path arver fill=none fra IconBase.
+export function ClipboardIcon(props) {
+  return (
+    <IconBase {...props}>
+      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+      <rect x="8" y="2" width="8" height="4" rx="1" />
+    </IconBase>
+  );
+}

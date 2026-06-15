@@ -57,3 +57,20 @@ Første side i Slice B; resten af kerne-fladerne følger som egne per-side-PR'er
 - **Snapshots**: `dashboard.png` (masket layout-guard) består på alle 3 projekter — radius-diff under tolerance → ingen PNG-refresh. Umasket begge-tema-verify (Playwright-mocks) bekræftede Card-migration + ikon/token-skift.
 
 Baseline ratchet: 94 → 93 filer (DashboardPage helt fjernet). Patch note 5.37.
+
+### Udvidet til hele fladen + arbejdsmodel (ejer-beslutning 15/6)
+
+Ejeren påpegede at en snæver *per-fil*-migration efterlod fladen visuelt inkonsistent (DashboardPage-kortene blev skarpe, men child-komponenterne ovenpå beholdt `rounded-xl`) + at sidebar-headeren viste **tre** identitets-elementer (monogram + wordmark + team-navn). Begge bekræftet. **Fast arbejdsmodel vedtaget:**
+
+1. **Migrér per FLADE, ikke per fil** — siden + alle dens child-komponenter i samme PR (ingen halv-færdig inkonsistens).
+2. **GitHub-sweep før hver side** — find planlagte UI/UX-reworks. Ligger der et **strukturelt rework**, fold migrationen *ind i* det rework frem for en kosmetisk éngangs-omgang. Primitiv-skift er ikke spildt (reworket bygger på primitiverne); det spildte er bespoke kosmetik + emoji-valg et rework omgør.
+
+**Denne PR (#1396) udvidet til hele dashboard-fladen:**
+- **Fuldt migreret** (primitiv + ikon): `SurveyBanner` (📋→ClipboardIcon), `NextActionsCard` (⇄/↔/⏱/🔨/✓ → Exchange/Clock/Tag/Check + Card). +2 nye ikoner: `ExchangeIcon`, `ClipboardIcon`.
+- **Konsistens-fix** (rounded-cz, emoji *deferret til rework*): `FinanceForecastCard` (delt m. Finance → [#986](https://github.com/NicolaiDolmer/CyclingZone/issues/986)), `OnboardingProgressCard`/`OnboardingCompletionCard`/`OnboardingModal` (onboarding-konsolidering → [#1140](https://github.com/NicolaiDolmer/CyclingZone/issues/1140)).
+- **Sidebar/header**: fjernet redundant `Monogram` (desktop + mobil) → kun wordmark + team-navn ([#1027](https://github.com/NicolaiDolmer/CyclingZone/issues/1027) ejer den bredere nav-IA).
+- **[#1031](https://github.com/NicolaiDolmer/CyclingZone/issues/1031) hele-kort-klik**: sweep viste fundene allerede løst i live kode (balance/række/header = `<Link>`; auktions/transfer-rækker = `onClick navigate`) → verificeret + lukkes, ikke gen-implementeret.
+
+**Sweep-fund pr. flade (til kommende sider):** Finance → #986 (struktur-rework: fold migration ind). Dashboard-IA → #977 (konsolidér "Næste træk"), #1140 (onboarding). Nav → #1027.
+
+Baseline efter flade-rework: 93 → 91 filer. Patch note 5.37 udvidet (header-oprydning).

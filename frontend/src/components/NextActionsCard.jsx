@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { Card, ExchangeIcon, ClockIcon, TagIcon, CheckIcon } from "./ui";
 
 /**
  * "Næste træk" — prioriteret liste over hvad der venter på manageren, samlet
@@ -23,16 +24,16 @@ export default function NextActionsCard({ pending, urgentAuctionCount = 0, loadi
 
   const items = [];
   if (counts.transfer_offers > 0)
-    items.push({ key: "transfers", icon: "⇄", label: t("nextActions.transferOffers", { count: counts.transfer_offers }), to: "/transfers" });
+    items.push({ key: "transfers", Icon: ExchangeIcon, label: t("nextActions.transferOffers", { count: counts.transfer_offers }), to: "/transfers" });
   if (counts.swap_offers > 0)
-    items.push({ key: "swaps", icon: "↔", label: t("nextActions.swapOffers", { count: counts.swap_offers }), to: "/transfers" });
+    items.push({ key: "swaps", Icon: ExchangeIcon, label: t("nextActions.swapOffers", { count: counts.swap_offers }), to: "/transfers" });
   if (counts.loan_offers > 0)
-    items.push({ key: "loans", icon: "⏱", label: t("nextActions.loanRequests", { count: counts.loan_offers }), to: "/transfers" });
+    items.push({ key: "loans", Icon: ClockIcon, label: t("nextActions.loanRequests", { count: counts.loan_offers }), to: "/transfers" });
   if (urgentAuctionCount > 0)
-    items.push({ key: "auctions", icon: "🔨", label: t("nextActions.urgentAuctions", { count: urgentAuctionCount }), to: "/auctions" });
+    items.push({ key: "auctions", Icon: TagIcon, label: t("nextActions.urgentAuctions", { count: urgentAuctionCount }), to: "/auctions" });
 
   return (
-    <div className="mb-4 bg-cz-card border border-cz-border rounded-xl p-4">
+    <Card className="mb-4 p-4">
       <div className="flex items-center justify-between mb-3">
         <h2 className="font-semibold text-cz-1 text-sm">{t("nextActions.title")}</h2>
         {items.length > 0 && (
@@ -46,7 +47,7 @@ export default function NextActionsCard({ pending, urgentAuctionCount = 0, loadi
         <p className="text-cz-3 text-sm">{t("nextActions.loading")}</p>
       ) : items.length === 0 ? (
         <p className="text-cz-3 text-sm flex items-center gap-2">
-          <span className="text-cz-success">✓</span>
+          <CheckIcon size={14} className="text-cz-success" />
           {t("nextActions.allClear")}
         </p>
       ) : (
@@ -57,7 +58,7 @@ export default function NextActionsCard({ pending, urgentAuctionCount = 0, loadi
                 to={item.to}
                 className="flex items-center gap-3 px-3 py-2 rounded-lg bg-cz-subtle border border-cz-border
                   hover:bg-cz-accent/10 hover:border-cz-accent/30 transition-colors group">
-                <span className="text-base flex-shrink-0" aria-hidden="true">{item.icon}</span>
+                <item.Icon size={16} className="flex-shrink-0 text-cz-2" />
                 <span className="text-cz-1 text-sm flex-1">{item.label}</span>
                 <span className="text-cz-3 group-hover:text-cz-accent-t transition-colors flex-shrink-0">→</span>
               </Link>
@@ -65,6 +66,6 @@ export default function NextActionsCard({ pending, urgentAuctionCount = 0, loadi
           ))}
         </ul>
       )}
-    </div>
+    </Card>
   );
 }

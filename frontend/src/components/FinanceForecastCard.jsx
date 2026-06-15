@@ -60,7 +60,7 @@ export default function FinanceForecastCard({
 
   if (loading) {
     return (
-      <div className="bg-cz-card border border-cz-border rounded-xl p-5 mb-4">
+      <div className="bg-cz-card border border-cz-border rounded-cz p-5 mb-4">
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
           <p className="text-cz-3 text-sm">{t("forecast.loading")}</p>
@@ -86,7 +86,7 @@ export default function FinanceForecastCard({
       : t("forecast.sponsorDetail.fallback");
 
   return (
-    <div className="bg-cz-card border border-cz-border rounded-xl p-5 mb-4">
+    <div className="bg-cz-card border border-cz-border rounded-cz p-5 mb-4">
       <div className="flex items-start justify-between mb-4 gap-3">
         <div>
           <h2 className="text-cz-1 font-semibold text-sm">{t("forecast.title")}</h2>
@@ -325,7 +325,7 @@ export function FinanceForecastBadge({ forecast, compact = false }) {
   return (
     <Link
       to="/finance"
-      className="block bg-cz-card border border-cz-border rounded-xl px-4 py-3 hover:bg-cz-subtle transition-all"
+      className="block bg-cz-card border border-cz-border rounded-cz px-4 py-3 hover:bg-cz-subtle transition-all"
     >
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
