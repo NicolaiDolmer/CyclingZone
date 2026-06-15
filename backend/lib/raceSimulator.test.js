@@ -10,6 +10,7 @@ import {
   ENGINE_VERSION,
   FORM_RACE_WEIGHT,
   FATIGUE_RACE_WEIGHT,
+  DURABILITY_FATIGUE_DAMPING,
 } from "./raceSimulator.js";
 import { DEMAND_VECTORS } from "./raceStageProfileGenerator.js";
 
@@ -256,7 +257,8 @@ test("#1306 form=0 → -FORM_RACE_WEIGHT (-0.012)", () => {
 
 test("#1306 fatigue=100 → +FATIGUE_RACE_WEIGHT positiv magnitude (0.008)", () => {
   const { ranked } = simulateStage({
-    entrants: [{ rider_id: "r1", abilities: Object.fromEntries(ABILITY_KEYS.map((k) => [k, 50])), form: 50, fatigue: 100 }],
+    // durability:0 → fuld straf (damp=1), så denne test isolerer fatigue-VÆGTEN (#1122).
+    entrants: [{ rider_id: "r1", abilities: { ...Object.fromEntries(ABILITY_KEYS.map((k) => [k, 50])), durability: 0 }, form: 50, fatigue: 100 }],
     stageProfile: { profile_type: "flat", demand_vector: { sprint: 1.0 } },
     seed: 1,
   });
@@ -294,7 +296,8 @@ test("#1306 clamp: form=-50 → min -FORM_RACE_WEIGHT", () => {
 
 test("#1306 clamp: fatigue=200 → max FATIGUE_RACE_WEIGHT (ikke 0.016)", () => {
   const { ranked } = simulateStage({
-    entrants: [{ rider_id: "r1", abilities: Object.fromEntries(ABILITY_KEYS.map((k) => [k, 50])), form: 50, fatigue: 200 }],
+    // durability:0 → fuld straf (damp=1); clamp-testen isolerer fatigue-VÆGTEN (#1122).
+    entrants: [{ rider_id: "r1", abilities: { ...Object.fromEntries(ABILITY_KEYS.map((k) => [k, 50])), durability: 0 }, form: 50, fatigue: 200 }],
     stageProfile: { profile_type: "flat", demand_vector: { sprint: 1.0 } },
     seed: 1,
   });
@@ -406,4 +409,33 @@ test("#1122 aggressionScore falder tilbage til proxy uden aggression-data", () =
 
 test("#1122 aggression er i ABILITY_KEYS (loades af loadEntrantsForRace)", () => {
   assert.ok(ABILITY_KEYS.includes("aggression"));
+});
+
+// ── #1122 Plan 1: durability dæmper fatigue-seamen ────────────────────────────
+test("#1122 durability dæmper trætheds-straffen (kun under træthed)", () => {
+  const base = Object.fromEntries(ABILITY_KEYS.map((k) => [k, 50]));
+  const stage = { profile_type: "flat", demand_vector: { sprint: 1.0 } }; // ingen støj
+  const lowDur  = { ...base, durability: 10 };
+  const highDur = { ...base, durability: 90 };
+  const score = (ab) => simulateStage({
+    entrants: [{ rider_id: "r1", abilities: ab, form: 50, fatigue: 80 }],
+    stageProfile: stage, seed: 1,
+  }).ranked[0].components.fatigue;
+  // højere durability → MINDRE trætheds-straf (komponenten er mindre).
+  assert.ok(score(highDur) < score(lowDur), "høj durability skal dæmpe fatigue-komponenten");
+});
+
+test("#1122 durability har INGEN effekt uden træthed (neutral)", () => {
+  const base = Object.fromEntries(ABILITY_KEYS.map((k) => [k, 50]));
+  const stage = { profile_type: "flat", demand_vector: { sprint: 1.0 } };
+  const f = (dur) => simulateStage({
+    entrants: [{ rider_id: "r1", abilities: { ...base, durability: dur } }], // ingen fatigue
+    stageProfile: stage, seed: 1,
+  }).ranked[0].components.fatigue;
+  assert.equal(f(10), 0);
+  assert.equal(f(90), 0);
+});
+
+test("#1122 DURABILITY_FATIGUE_DAMPING ∈ (0,1]", () => {
+  assert.ok(DURABILITY_FATIGUE_DAMPING > 0 && DURABILITY_FATIGUE_DAMPING <= 1);
 });

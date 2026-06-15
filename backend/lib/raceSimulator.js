@@ -78,6 +78,10 @@ const MAX_STAGE_GAP_SECONDS = 1800; // sikkerhedsloft (30 min)
 // Kalibreres i race:gate (B4); #1021 erstatter med fuld model i samme signaturer.
 export const FORM_RACE_WEIGHT = 0.012;     // form 0↔100 → ±0.012
 export const FATIGUE_RACE_WEIGHT = 0.008;  // træthed 100 → 0.008 (trækkes fra på call-site)
+// Plan 1 (#1122): durability-evnen dæmper trætheds-straffen (fade sent i hårde
+// løb). durability 99 → halv straf, durability 0 → fuld straf. Effekten findes
+// kun når der ER træthed (condition-mode / #1021), ikke i neutral-mode.
+export const DURABILITY_FATIGUE_DAMPING = 0.5;
 
 function formComponent(entrant /* , stageProfile, rng */) {
   const raw = entrant?.form;
@@ -91,7 +95,10 @@ function fatigueComponent(entrant /* , stageProfile */) {
   const raw = entrant?.fatigue;
   if (raw == null || !Number.isFinite(Number(raw))) return 0;
   const fatigue = clamp(Number(raw), 0, 100);
-  return (fatigue / 100) * FATIGUE_RACE_WEIGHT;
+  // Plan 1 (#1122): durability dæmper straffen (fade sent). Manglende durability → fuld straf.
+  const dur = Number(entrant?.abilities?.durability);
+  const damp = Number.isFinite(dur) ? 1 - (clamp(dur, 0, 99) / 99) * DURABILITY_FATIGUE_DAMPING : 1;
+  return (fatigue / 100) * FATIGUE_RACE_WEIGHT * damp;
 }
 
 function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
