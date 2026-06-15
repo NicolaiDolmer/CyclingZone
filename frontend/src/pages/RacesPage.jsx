@@ -7,6 +7,24 @@ import RacePointsPage from "./RacePointsPage";
 import { dateTextToDayOfYear } from "../lib/raceCalendar";
 import { computeExpectedRacePrize, formatExpectedPrize } from "../lib/expectedPrizeCalculator";
 import { formatDateTime } from "../lib/intl";
+import {
+  Card,
+  Button,
+  Input,
+  Select,
+  Table,
+  Tr,
+  Th,
+  Td,
+  Tabs,
+  TabList,
+  Tab,
+  EmptyState,
+  Spinner,
+  FlagIcon,
+  CheckIcon,
+} from "../components/ui";
+import { labelClass } from "../components/ui/fieldStyles.js";
 
 // Labels resolves via t() ved render — se races-namespacet (resultType.*, classOption.*, status.*).
 const RESULT_TYPES = [
@@ -68,6 +86,11 @@ export default function RacesPage() {
   const [pending, setPending] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [submitMsg, setSubmitMsg] = useState("");
+  // submitMsgOk styrer banner-farven (success vs error). Tidligere udledt af om
+  // den oversatte besked startede med "✅" — nu eksplicit flag, så kilden ikke
+  // bærer et emoji-tegn (#671 anti-drift). Adfærd uændret: copy-strengene i
+  // races.json beholder deres ✅/❌-præfiks.
+  const [submitMsgOk, setSubmitMsgOk] = useState(false);
 
   // Upload state
   const [uploadRaceId, setUploadRaceId] = useState("");
@@ -238,9 +261,10 @@ export default function RacesPage() {
   }
 
   async function submitResults() {
-    if (!uploadRaceId) { setSubmitMsg(t("submit.msgSelectRace")); return; }
+    if (!uploadRaceId) { setSubmitMsgOk(false); setSubmitMsg(t("submit.msgSelectRace")); return; }
     const unmatched = editingRows.filter(r => !r.rider_id);
     if (unmatched.length > 0) {
+      setSubmitMsgOk(false);
       setSubmitMsg(t("submit.msgUnmatched", { count: unmatched.length }));
       return;
     }
@@ -256,10 +280,12 @@ export default function RacesPage() {
       p_rows: rows,
     });
     if (error) {
+      setSubmitMsgOk(false);
       setSubmitMsg(t("submit.msgError", { message: error.message }));
       setSubmitting(false);
       return;
     }
+    setSubmitMsgOk(true);
     setSubmitMsg(t("submit.msgSubmitted"));
     setEditingRows([]);
     loadAll();
@@ -299,7 +325,7 @@ export default function RacesPage() {
 
   if (loading) return (
     <div className="flex justify-center py-16">
-      <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
+      <Spinner size={24} />
     </div>
   );
 
@@ -321,22 +347,20 @@ export default function RacesPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-5 flex-wrap">
-        {[
-          { key: "calendar", label: t("tabs.calendar") },
-          { key: "library", label: t("tabs.library") },
-          { key: "world", label: t("tabs.world") },
-          { key: "points", label: t("tabs.points") },
-          { key: "submit", label: t("tabs.submit") },
-          ...(isAdmin ? [{ key: "approve", label: t("tabs.approve", { count: pending.filter(p => p.status === "pending").length }) }] : []),
-        ].map(tb => (
-          <button key={tb.key} onClick={() => changeTab(tb.key)}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
-              ${tab === tb.key ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
-            {tb.label}
-          </button>
-        ))}
-      </div>
+      <Tabs value={tab} onChange={changeTab} className="mb-5">
+        <TabList label={t("title")}>
+          {[
+            { key: "calendar", label: t("tabs.calendar") },
+            { key: "library", label: t("tabs.library") },
+            { key: "world", label: t("tabs.world") },
+            { key: "points", label: t("tabs.points") },
+            { key: "submit", label: t("tabs.submit") },
+            ...(isAdmin ? [{ key: "approve", label: t("tabs.approve", { count: pending.filter(p => p.status === "pending").length }) }] : []),
+          ].map(tb => (
+            <Tab key={tb.key} value={tb.key}>{tb.label}</Tab>
+          ))}
+        </TabList>
+      </Tabs>
 
       {/* Calendar tab */}
       {tab === "calendar" && (
@@ -355,9 +379,8 @@ export default function RacesPage() {
                       racePoints,
                     });
                     return (
-                    <div key={race.id}
-                      className={`bg-cz-card border rounded-xl p-4 cursor-pointer transition-all
-                        ${selectedRace?.id === race.id ? "border-cz-accent/40" : "border-cz-border hover:border-cz-border"}`}
+                    <Card key={race.id} interactive
+                      className={`p-4 cursor-pointer ${selectedRace?.id === race.id ? "border-cz-accent/40" : ""}`}
                       onClick={() => handleRaceClick(race)}>
                       <div className="flex items-start justify-between">
                         <div>
@@ -380,7 +403,7 @@ export default function RacesPage() {
                           )}
                         </div>
                       </div>
-                    </div>
+                    </Card>
                     );
                   })}
                 </div>
@@ -393,9 +416,8 @@ export default function RacesPage() {
                 <h2 className="text-cz-2 text-xs uppercase tracking-wider mb-3 font-semibold">{t("calendar.completed")}</h2>
                 <div className="flex flex-col gap-2">
                   {racesByStatus.completed.map(race => (
-                    <div key={race.id}
-                      className={`bg-cz-card border rounded-xl p-4 cursor-pointer transition-all
-                        ${selectedRace?.id === race.id ? "border-cz-accent/40" : "border-cz-border hover:border-cz-border"}`}
+                    <Card key={race.id} interactive
+                      className={`p-4 cursor-pointer ${selectedRace?.id === race.id ? "border-cz-accent/40" : ""}`}
                       onClick={() => handleRaceClick(race)}>
                       <div className="flex items-start justify-between">
                         <div>
@@ -408,25 +430,25 @@ export default function RacesPage() {
                           {t("status.completed")}
                         </span>
                       </div>
-                    </div>
+                    </Card>
                   ))}
                 </div>
               </div>
             )}
 
             {races.length === 0 && (
-              <div className="text-center py-16 text-cz-3">
-                <p className="text-4xl mb-3">🏁</p>
-                <p>{t("empty.noRacesSeason")}</p>
-                {isAdmin && <p className="text-xs mt-2">{t("empty.addRaceAdmin")}</p>}
-              </div>
+              <EmptyState
+                icon={<FlagIcon size={28} />}
+                title={t("empty.noRacesSeason")}
+                description={isAdmin ? t("empty.addRaceAdmin") : null}
+              />
             )}
           </div>
 
           {/* Race detail panel */}
           <div>
             {selectedRace ? (
-              <div className="bg-cz-card border border-cz-border rounded-xl p-5 sticky top-4">
+              <Card className="p-5 sticky top-4">
                 <h2 className="text-cz-1 font-bold text-base mb-1">{selectedRace.name}</h2>
                 <p className="text-cz-3 text-xs mb-1">
                   {selectedRace.race_type === "stage_race" ? t("raceType.stages", { count: selectedRace.stages }) : t("raceType.oneDay")}
@@ -449,7 +471,7 @@ export default function RacesPage() {
 
                 {selectedRace.loading && (
                   <div className="flex justify-center py-8">
-                    <div className="w-5 h-5 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
+                    <Spinner size={20} />
                   </div>
                 )}
 
@@ -499,12 +521,12 @@ export default function RacesPage() {
                     })}
                   </div>
                 )}
-              </div>
+              </Card>
             ) : (
-              <div className="bg-cz-card border border-cz-border rounded-xl p-8 text-center text-cz-3 sticky top-4">
-                <p className="text-3xl mb-2">🏁</p>
+              <Card className="p-8 text-center text-cz-3 sticky top-4">
+                <FlagIcon size={24} className="mx-auto mb-2 text-cz-3" />
                 <p className="text-sm">{t("calendar.selectPrompt")}</p>
-              </div>
+              </Card>
             )}
           </div>
         </div>
@@ -514,17 +536,15 @@ export default function RacesPage() {
       {tab === "library" && (
         <div>
           {/* Filter bar */}
-          <div className="bg-cz-card border border-cz-border rounded-xl p-4 mb-4 grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <Card className="p-4 mb-4 grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div>
-              <label className="block text-cz-3 text-xs mb-1">{t("library.searchLabel")}</label>
-              <input type="text" value={libSearch} onChange={e => setLibSearch(e.target.value)}
-                placeholder={t("library.searchPlaceholder")}
-                className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none focus:border-cz-accent/40" />
+              <label htmlFor="lib-search" className={labelClass()}>{t("library.searchLabel")}</label>
+              <Input id="lib-search" type="text" value={libSearch} onChange={e => setLibSearch(e.target.value)}
+                placeholder={t("library.searchPlaceholder")} />
             </div>
             <div>
-              <label className="block text-cz-3 text-xs mb-1">{t("library.seasonLabel")}</label>
-              <select value={libFilterSeason} onChange={e => setLibFilterSeason(e.target.value)}
-                className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none">
+              <label htmlFor="lib-season" className={labelClass()}>{t("library.seasonLabel")}</label>
+              <Select id="lib-season" value={libFilterSeason} onChange={e => setLibFilterSeason(e.target.value)}>
                 <option value="">{t("library.allSeasons")}</option>
                 {libSeasons.map(s => (
                   <option key={s.id} value={s.id}>
@@ -533,29 +553,27 @@ export default function RacesPage() {
                       : t("library.seasonOption", { number: s.number })}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div>
-              <label className="block text-cz-3 text-xs mb-1">{t("library.classLabel")}</label>
-              <select value={libFilterClass} onChange={e => setLibFilterClass(e.target.value)}
-                className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none">
+              <label htmlFor="lib-class" className={labelClass()}>{t("library.classLabel")}</label>
+              <Select id="lib-class" value={libFilterClass} onChange={e => setLibFilterClass(e.target.value)}>
                 <option value="">{t("library.allClasses")}</option>
                 {RACE_CLASS_OPTIONS.map(c => (
                   <option key={c.value} value={c.value}>{t(`classOption.${c.value}`)}</option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div>
-              <label className="block text-cz-3 text-xs mb-1">{t("library.statusLabel")}</label>
-              <select value={libFilterStatus} onChange={e => setLibFilterStatus(e.target.value)}
-                className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none">
+              <label htmlFor="lib-status" className={labelClass()}>{t("library.statusLabel")}</label>
+              <Select id="lib-status" value={libFilterStatus} onChange={e => setLibFilterStatus(e.target.value)}>
                 <option value="">{t("library.allStatuses")}</option>
                 {RACE_STATUS_OPTIONS.map(s => (
                   <option key={s.value} value={s.value}>{t(`status.${s.value}`)}</option>
                 ))}
-              </select>
+              </Select>
             </div>
-          </div>
+          </Card>
 
           {(libFilterSeason || libFilterClass || libFilterStatus || libSearch) && (
             <div className="flex items-center justify-between mb-3 px-1">
@@ -574,69 +592,64 @@ export default function RacesPage() {
 
           {libLoading ? (
             <div className="flex justify-center py-16">
-              <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
+              <Spinner size={24} />
             </div>
           ) : filteredLibRaces.length === 0 ? (
-            <div className="text-center py-16 text-cz-3">
-              <p className="text-4xl mb-3">🏁</p>
-              <p>{t("empty.noRacesMatch")}</p>
-            </div>
+            <EmptyState icon={<FlagIcon size={28} />} title={t("empty.noRacesMatch")} />
           ) : (
-            <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-cz-subtle">
-                    <tr className="border-b border-cz-border text-left">
-                      <th className="px-4 py-2 font-medium text-cz-2 text-xs">{t("library.thRace")}</th>
-                      <th className="px-4 py-2 font-medium text-cz-2 text-xs">{t("library.thSeason")}</th>
-                      <th className="px-4 py-2 font-medium text-cz-2 text-xs">{t("library.thClass")}</th>
-                      <th className="px-4 py-2 font-medium text-cz-2 text-xs">{t("library.thType")}</th>
-                      <th className="px-4 py-2 font-medium text-cz-2 text-xs">{t("library.thDate")}</th>
-                      <th className="px-4 py-2 font-medium text-cz-2 text-xs">{t("library.thStatus")}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-cz-border">
-                    {filteredLibRaces.map(r => {
-                      const classMeta = RACE_CLASS_OPTIONS.find(c => c.value === r.race_class);
-                      const statusMeta = RACE_STATUS_OPTIONS.find(s => s.value === r.status);
-                      return (
-                        <tr key={r.id}
-                          onClick={() => navigate(`/race-archive/${encodeURIComponent(r.name)}`)}
-                          className="hover:bg-cz-subtle cursor-pointer transition-colors">
-                          <td className="px-4 py-2.5 text-cz-1 font-medium">{r.name}</td>
-                          <td className="px-4 py-2.5 text-cz-2 text-xs">
-                            {r.season ? (
-                              <button
-                                onClick={(e) => { e.stopPropagation(); navigate(`/seasons/${r.season.id}`); }}
-                                className="text-cz-accent-t hover:underline">
-                                {t("library.seasonLink", { number: r.season.number })}
-                              </button>
-                            ) : "—"}
-                          </td>
-                          <td className="px-4 py-2.5 text-cz-2 text-xs">
-                            {classMeta ? t(`classOption.${r.race_class}`) : (r.race_class ?? "—")}
-                          </td>
-                          <td className="px-4 py-2.5 text-cz-2 text-xs">
-                            {r.race_type === "stage_race" ? t("raceType.stageRaceParen", { count: r.stages }) : t("raceType.oneDayShort")}
-                          </td>
-                          <td className="px-4 py-2.5 text-cz-2 text-xs">
-                            {r.edition_year ? t("common.edition", { year: r.edition_year }) : "—"}
-                          </td>
-                          <td className="px-4 py-2.5 text-xs">
-                            <span className={`inline-block px-2 py-0.5 rounded-full border text-[10px] uppercase
-                              ${r.status === "completed" ? "bg-cz-success-bg text-cz-success border-cz-success/30"
-                                : r.status === "active" ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
-                                : "bg-cz-subtle text-cz-3 border-cz-border"}`}>
-                              {statusMeta ? t(`status.${r.status}`) : r.status}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+            <Card className="overflow-hidden">
+              <Table className="text-sm">
+                <thead>
+                  <Tr className="hover:bg-transparent">
+                    <Th>{t("library.thRace")}</Th>
+                    <Th>{t("library.thSeason")}</Th>
+                    <Th>{t("library.thClass")}</Th>
+                    <Th>{t("library.thType")}</Th>
+                    <Th>{t("library.thDate")}</Th>
+                    <Th>{t("library.thStatus")}</Th>
+                  </Tr>
+                </thead>
+                <tbody>
+                  {filteredLibRaces.map(r => {
+                    const classMeta = RACE_CLASS_OPTIONS.find(c => c.value === r.race_class);
+                    const statusMeta = RACE_STATUS_OPTIONS.find(s => s.value === r.status);
+                    return (
+                      <Tr key={r.id}
+                        onClick={() => navigate(`/race-archive/${encodeURIComponent(r.name)}`)}
+                        className="cursor-pointer">
+                        <Td className="text-cz-1 font-medium">{r.name}</Td>
+                        <Td className="text-cz-2 text-xs">
+                          {r.season ? (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); navigate(`/seasons/${r.season.id}`); }}
+                              className="text-cz-accent-t hover:underline">
+                              {t("library.seasonLink", { number: r.season.number })}
+                            </button>
+                          ) : "—"}
+                        </Td>
+                        <Td className="text-cz-2 text-xs">
+                          {classMeta ? t(`classOption.${r.race_class}`) : (r.race_class ?? "—")}
+                        </Td>
+                        <Td className="text-cz-2 text-xs">
+                          {r.race_type === "stage_race" ? t("raceType.stageRaceParen", { count: r.stages }) : t("raceType.oneDayShort")}
+                        </Td>
+                        <Td className="text-cz-2 text-xs">
+                          {r.edition_year ? t("common.edition", { year: r.edition_year }) : "—"}
+                        </Td>
+                        <Td className="text-xs">
+                          <span className={`inline-block px-2 py-0.5 rounded-full border text-[10px] uppercase
+                            ${r.status === "completed" ? "bg-cz-success-bg text-cz-success border-cz-success/30"
+                              : r.status === "active" ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
+                              : "bg-cz-subtle text-cz-3 border-cz-border"}`}>
+                            {statusMeta ? t(`status.${r.status}`) : r.status}
+                          </span>
+                        </Td>
+                      </Tr>
+                    );
+                  })}
+                </tbody>
+              </Table>
+            </Card>
           )}
         </div>
       )}
@@ -647,7 +660,7 @@ export default function RacesPage() {
           {worldLoading && <p className="text-cz-3 text-sm">{t("world.loading")}</p>}
           {!worldLoading && (
             <>
-              <div className="bg-cz-card border border-cz-border rounded-xl p-4 mb-4">
+              <Card className="p-4 mb-4">
                 <p className="text-cz-2 font-medium text-sm mb-3">
                   {t("world.totalRaces", { count: worldPool.length })}
                 </p>
@@ -680,36 +693,34 @@ export default function RacesPage() {
                     </button>
                   </p>
                 )}
-              </div>
+              </Card>
 
-              <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="bg-cz-subtle text-cz-3 text-xs">
-                      <tr>
-                        <th className="text-left px-3 py-2">{t("world.thRace")}</th>
-                        <th className="text-left px-3 py-2">{t("world.thClass")}</th>
-                        <th className="text-left px-3 py-2">{t("world.thType")}</th>
-                        <th className="text-right px-3 py-2">{t("world.thStages")}</th>
-                        <th className="text-left px-3 py-2">{t("world.thDate")}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {worldPool
-                        .filter(r => !worldFilterClass || r.race_class === worldFilterClass)
-                        .map(r => (
-                          <tr key={r.id} className="border-t border-cz-border hover:bg-cz-subtle/50">
-                            <td className="px-3 py-2 text-cz-1">{r.name}</td>
-                            <td className="px-3 py-2 text-cz-2">{r.race_class}</td>
-                            <td className="px-3 py-2 text-cz-2">{r.race_type === "single" ? t("raceType.oneDayShort") : t("resultType.stage")}</td>
-                            <td className="px-3 py-2 text-right text-cz-2">{r.stages}</td>
-                            <td className="px-3 py-2 text-cz-3">{r.date_text || "—"}</td>
-                          </tr>
-                        ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+              <Card className="overflow-hidden">
+                <Table className="text-sm">
+                  <thead>
+                    <Tr className="hover:bg-transparent">
+                      <Th>{t("world.thRace")}</Th>
+                      <Th>{t("world.thClass")}</Th>
+                      <Th>{t("world.thType")}</Th>
+                      <Th numeric>{t("world.thStages")}</Th>
+                      <Th>{t("world.thDate")}</Th>
+                    </Tr>
+                  </thead>
+                  <tbody>
+                    {worldPool
+                      .filter(r => !worldFilterClass || r.race_class === worldFilterClass)
+                      .map(r => (
+                        <Tr key={r.id}>
+                          <Td className="text-cz-1">{r.name}</Td>
+                          <Td className="text-cz-2">{r.race_class}</Td>
+                          <Td className="text-cz-2">{r.race_type === "single" ? t("raceType.oneDayShort") : t("resultType.stage")}</Td>
+                          <Td numeric className="text-cz-2">{r.stages}</Td>
+                          <Td className="text-cz-3">{r.date_text || "—"}</Td>
+                        </Tr>
+                      ))}
+                  </tbody>
+                </Table>
+              </Card>
             </>
           )}
         </div>
@@ -725,7 +736,7 @@ export default function RacesPage() {
       {/* Submit results tab */}
       {tab === "submit" && (
         <div className="max-w-2xl">
-          <div className="bg-cz-card border border-cz-border rounded-xl p-5 mb-4">
+          <Card className="p-5 mb-4">
             <h2 className="text-cz-1 font-semibold text-sm mb-4">{t("submit.heading")}</h2>
             <p className="text-cz-3 text-xs mb-5 leading-relaxed">
               {t("submit.introBefore")} <span className="text-cz-2 font-mono">{t("submit.columnsHint")}</span>. {t("submit.introAfter")}
@@ -733,30 +744,27 @@ export default function RacesPage() {
 
             <div className="grid grid-cols-3 gap-3 mb-4">
               <div>
-                <label className="block text-cz-3 text-xs mb-1">{t("submit.raceLabel")}</label>
-                <select value={uploadRaceId} onChange={e => setUploadRaceId(e.target.value)}
-                  className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none">
+                <label htmlFor="submit-race" className={labelClass()}>{t("submit.raceLabel")}</label>
+                <Select id="submit-race" value={uploadRaceId} onChange={e => setUploadRaceId(e.target.value)}>
                   {races.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
-                </select>
+                </Select>
               </div>
               <div>
-                <label className="block text-cz-3 text-xs mb-1">{t("submit.stageLabel")}</label>
-                <input type="number" min={1} value={uploadStage}
-                  onChange={e => setUploadStage(parseInt(e.target.value))}
-                  className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none" />
+                <label htmlFor="submit-stage" className={labelClass()}>{t("submit.stageLabel")}</label>
+                <Input id="submit-stage" type="number" min={1} value={uploadStage}
+                  onChange={e => setUploadStage(parseInt(e.target.value))} />
               </div>
               <div>
-                <label className="block text-cz-3 text-xs mb-1">{t("submit.typeLabel")}</label>
-                <select value={uploadResultType} onChange={e => setUploadResultType(e.target.value)}
-                  className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none">
+                <label htmlFor="submit-type" className={labelClass()}>{t("submit.typeLabel")}</label>
+                <Select id="submit-type" value={uploadResultType} onChange={e => setUploadResultType(e.target.value)}>
                   {RESULT_TYPES.map(rt => <option key={rt.key} value={rt.key}>{t(`resultType.${rt.key}`)}</option>)}
-                </select>
+                </Select>
               </div>
             </div>
 
             <label className="block cursor-pointer mb-4">
               <div className="border-2 border-dashed border-cz-border hover:border-cz-accent/40
-                rounded-xl p-6 text-center transition-all">
+                rounded-cz p-6 text-center transition-all">
                 <p className="text-cz-3 text-sm">{t("submit.dropTitle")}</p>
                 <p className="text-cz-3 text-xs mt-1">{t("submit.dropFormat")}</p>
               </div>
@@ -773,7 +781,7 @@ export default function RacesPage() {
                   </button>
                 </div>
 
-                <div className="bg-cz-subtle rounded-xl overflow-hidden mb-4 max-h-80 overflow-y-auto">
+                <div className="bg-cz-subtle rounded-cz overflow-hidden mb-4 max-h-80 overflow-y-auto">
                   <table className="w-full text-xs">
                     <thead className="sticky top-0 bg-cz-card">
                       <tr className="border-b border-cz-border">
@@ -789,7 +797,9 @@ export default function RacesPage() {
                           <td className="px-3 py-2 text-cz-2">{row.rider_name}</td>
                           <td className="px-3 py-2">
                             {row.matched ? (
-                              <span className="text-cz-success text-xs">✓ {row.matched_name}</span>
+                              <span className="text-cz-success text-xs inline-flex items-center gap-1">
+                                <CheckIcon size={12} /> {row.matched_name}
+                              </span>
                             ) : (
                               <span className="text-cz-danger text-xs">{t("submit.notMatched")}</span>
                             )}
@@ -801,24 +811,22 @@ export default function RacesPage() {
                 </div>
 
                 {submitMsg && (
-                  <div className={`mb-3 px-4 py-2.5 rounded-lg text-sm border
-                    ${submitMsg.startsWith("✅") ? "bg-cz-success-bg text-cz-success border-cz-success/30" : "bg-cz-danger-bg text-cz-danger border-cz-danger/30"}`}>
+                  <div role="status" className={`mb-3 px-4 py-2.5 rounded-cz text-sm border
+                    ${submitMsgOk ? "bg-cz-success-bg text-cz-success border-cz-success/30" : "bg-cz-danger-bg text-cz-danger border-cz-danger/30"}`}>
                     {submitMsg}
                   </div>
                 )}
 
-                <button onClick={submitResults} disabled={submitting}
-                  className="w-full py-2.5 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm
-                    hover:brightness-110 disabled:opacity-50 transition-all">
+                <Button variant="primary" fullWidth loading={submitting} onClick={submitResults}>
                   {submitting ? t("submit.submitting") : t("submit.submitCta")}
-                </button>
+                </Button>
               </div>
             )}
-          </div>
+          </Card>
 
           {/* My past submissions */}
           {pending.filter(p => p.submitted_by === userId).length > 0 && (
-            <div className="bg-cz-card border border-cz-border rounded-xl p-5">
+            <Card className="p-5">
               <h3 className="text-cz-1 font-semibold text-sm mb-3">{t("submit.mySubmissions")}</h3>
               <div className="flex flex-col gap-2">
                 {pending.filter(p => p.submitted_by === userId).map(p => (
@@ -836,7 +844,7 @@ export default function RacesPage() {
                   </div>
                 ))}
               </div>
-            </div>
+            </Card>
           )}
         </div>
       )}
@@ -845,10 +853,7 @@ export default function RacesPage() {
       {tab === "approve" && isAdmin && (
         <div className="max-w-3xl">
           {pending.filter(p => p.status === "pending").length === 0 ? (
-            <div className="text-center py-16 text-cz-3">
-              <p className="text-4xl mb-3">✅</p>
-              <p>{t("approve.nonePending")}</p>
-            </div>
+            <EmptyState icon={<CheckIcon size={28} />} title={t("approve.nonePending")} />
           ) : (
             <div className="flex flex-col gap-4">
               {pending.filter(p => p.status === "pending").map(p => (
@@ -880,7 +885,7 @@ function PendingSubmission({ submission, onApprove, onReject }) {
   }, [submission.id]);
 
   return (
-    <div className="bg-cz-card border border-cz-border rounded-xl p-5">
+    <Card className="p-5">
       <div className="flex items-start justify-between mb-4">
         <div>
           <p className="text-cz-1 font-semibold">{submission.race?.name}</p>
@@ -902,13 +907,13 @@ function PendingSubmission({ submission, onApprove, onReject }) {
 
       {showReject && (
         <div className="flex gap-2 mb-4">
-          <input type="text" value={rejectNote} onChange={e => setRejectNote(e.target.value)}
+          <Input type="text" value={rejectNote} onChange={e => setRejectNote(e.target.value)}
             placeholder={t("approve.rejectPlaceholder")}
-            className="flex-1 bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none" />
-          <button onClick={() => onReject(rejectNote)}
-            className="px-3 py-2 bg-cz-danger-bg text-cz-danger rounded-lg text-sm">
+            aria-label={t("approve.rejectPlaceholder")}
+            className="flex-1" />
+          <Button variant="danger" onClick={() => onReject(rejectNote)}>
             {t("approve.send")}
-          </button>
+          </Button>
         </div>
       )}
 
@@ -934,6 +939,6 @@ function PendingSubmission({ submission, onApprove, onReject }) {
           </table>
         </div>
       )}
-    </div>
+    </Card>
   );
 }

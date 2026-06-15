@@ -331,16 +331,6 @@
       "slop": 3,
       "emoji": 1
     },
-    "frontend/src/pages/RacePointsPage.jsx": {
-      "hex": 0,
-      "slop": 3,
-      "emoji": 1
-    },
-    "frontend/src/pages/RacesPage.jsx": {
-      "hex": 0,
-      "slop": 13,
-      "emoji": 5
-    },
     "frontend/src/pages/ResultaterPage.jsx": {
       "hex": 0,
       "slop": 3,

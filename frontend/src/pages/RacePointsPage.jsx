@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { formatNumber } from "../lib/intl";
+import { Card, Spinner, CoinIcon } from "../components/ui";
 // Frontend single source of truth for PRIZE_PER_POINT (mirrors backend economyConstants.js).
 import { PRIZE_PER_POINT } from "../lib/expectedPrizeCalculator";
 
@@ -85,7 +86,7 @@ export default function RacePointsPage() {
 
   if (loading) return (
     <div className="flex justify-center py-16">
-      <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
+      <Spinner size={24} />
     </div>
   );
 
@@ -110,9 +111,9 @@ export default function RacePointsPage() {
       </div>
 
       {/* Prize formula */}
-      <div className="bg-cz-accent/10 border border-cz-accent/30 rounded-xl p-4 space-y-3">
+      <div className="bg-cz-accent/10 border border-cz-accent/30 rounded-cz p-4 space-y-3">
         <div className="flex items-center gap-2">
-          <span className="text-lg">💰</span>
+          <CoinIcon size={18} className="text-cz-accent-t flex-shrink-0" />
           <span className="font-semibold text-cz-1">{t("points.formula", { amount: fmt(PRIZE_PER_POINT) })}</span>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -169,7 +170,7 @@ export default function RacePointsPage() {
             if (PER_DAY_JERSEY_TYPES.has(rType) && rows.length === 1) {
               const pt = rows[0].points;
               return (
-                <div key={rType} className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+                <Card key={rType} className="overflow-hidden">
                   <div className="px-4 py-3 border-b border-cz-border flex items-center justify-between">
                     <div>
                       <h3 className="font-semibold text-cz-1 text-sm">{label}</h3>
@@ -183,12 +184,12 @@ export default function RacePointsPage() {
                       <p className="text-xs text-cz-3">{fmtPrize(pt)}</p>
                     </div>
                   </div>
-                </div>
+                </Card>
               );
             }
 
             return (
-              <div key={rType} className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+              <Card key={rType} className="overflow-hidden">
                 <div className="px-4 py-3 border-b border-cz-border">
                   <h3 className="font-semibold text-cz-1 text-sm">{label}</h3>
                   <p className="text-xs text-cz-3">{desc}</p>
@@ -232,7 +233,7 @@ export default function RacePointsPage() {
                     </button>
                   </div>
                 )}
-              </div>
+              </Card>
             );
           })}
         </div>
