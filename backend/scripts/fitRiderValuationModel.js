@@ -136,6 +136,10 @@ async function main() {
     // Ekstrapolations-guard: predictBaseValue klamper output OPAD til den højeste
     // anchors output — kurven er udokumenteret derover (Harry Ward-fundet, 10/6).
     output_max: Number(Math.max(...anchors.map((an) => an.output)).toFixed(1)),
+    // #1231 hard-band: ingen rytter må overstige top-anchorens forudsagte værdi.
+    // predictBaseValue klamper til value_cap (belt-and-suspenders mod typer der
+    // ekstrapolerer over toppen, fx anchor-løse). = højeste anchor-forudsigelse.
+    value_cap: Math.round(Math.max(...anchors.map((an) => predict(an)))),
     a: Number(fit.a.toFixed(6)),
     b: Number(fit.b.toFixed(6)),
     c: Number(fit.c.toExponential(6)),

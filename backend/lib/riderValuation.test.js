@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import {
   ABILITY_KEYS,
@@ -42,10 +43,10 @@ test("predictBaseValue = exp(a + b·output + offset[type])", () => {
 });
 
 test("predictBaseValue applies the type-offset", () => {
-  const model = { a: Math.log(1000), b: 0, offset: { gc: Math.log(2) } };
+  const model = { a: Math.log(1000), b: 0, offset: { gc: Math.log(2), puncheur: Math.log(0.5) } };
   assert.equal(predictBaseValue({ primary_type: "gc" }, abilities(50), model), 2000);
-  // Type uden offset → neutral (offset 0).
-  assert.equal(predictBaseValue({ primary_type: "sprinter" }, abilities(50), model), 1000);
+  // #1231: type uden offset arver den LAVESTE fittede offset (billigste tier), ikke 0.
+  assert.equal(predictBaseValue({ primary_type: "sprinter" }, abilities(50), model), 500);
 });
 
 test("predictBaseValue rises with output when b>0", () => {
@@ -132,6 +133,37 @@ test("predictBaseValue uden output_max er uklampet (bagudkompatibel)", () => {
   const hi = predictBaseValue({ primary_type: "gc" }, abilities(99), model);
   const lower = predictBaseValue({ primary_type: "gc" }, abilities(80), model);
   assert.ok(hi > lower, `uden output_max skal kurven fortsætte (${hi} > ${lower})`);
+});
+
+test("predictBaseValue: anchor-løs type arver den LAVESTE fittede offset, ikke 0 (#1231)", () => {
+  // offset 0 gjorde en anchor-løs type de facto dyrest (baroudeur-hullet: max-stats
+  // baroudeur ~189M > Pogačar). Den skal i stedet falde tilbage til billigste tier.
+  const model = { a: Math.log(1000), b: 0, offset: { gc: -0.1, puncheur: -0.7, sprinter: 1.0 } };
+  const baroudeur = predictBaseValue({ primary_type: "baroudeur" }, abilities(50), model);
+  const gc = predictBaseValue({ primary_type: "gc" }, abilities(50), model);
+  assert.equal(baroudeur, Math.round(1000 * Math.exp(-0.7)));
+  assert.ok(baroudeur < gc, `anchor-løs baroudeur (${baroudeur}) skal være billigere end gc (${gc})`);
+});
+
+test("predictBaseValue: value_cap klamper værdien til top-stjernen (#1231 hard-band)", () => {
+  const model = { a: Math.log(1000), b: 0, offset: { gc: Math.log(500) }, value_cap: 200000 };
+  // exp(log(1000)+log(500)) = 500.000, men hard-band cappes til 200.000.
+  assert.equal(predictBaseValue({ primary_type: "gc" }, abilities(50), model), 200000);
+});
+
+test("predictBaseValue: uden value_cap er værdien uklampet (bagudkompatibel)", () => {
+  const model = { a: Math.log(1000), b: 0, offset: { gc: Math.log(500) } };
+  assert.equal(predictBaseValue({ primary_type: "gc" }, abilities(50), model), 500000);
+});
+
+test("#1231 regression: max-stats baroudeur overstiger ikke top-stjernen i den ægte model", () => {
+  const realModel = JSON.parse(readFileSync(new URL("./riderValuationModel.json", import.meta.url)));
+  const maxGc = predictBaseValue({ primary_type: "gc" }, abilities(99), realModel);
+  const maxBaroudeur = predictBaseValue({ primary_type: "baroudeur" }, abilities(99), realModel);
+  assert.ok(
+    maxBaroudeur < maxGc,
+    `max-stats baroudeur (${maxBaroudeur}) må aldrig slå top-gc (${maxGc})`,
+  );
 });
 
 test("v3 med alpha<1 værdsætter alsidighed: bred elite slår smal specialist", () => {
