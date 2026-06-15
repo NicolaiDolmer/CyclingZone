@@ -71,7 +71,7 @@ export default function OnboardingTour({ pageKey, steps }) {
   // Fallback: tour aktiv, men target ikke fundet (fx 0 aktive auktioner) — vis kun escape-knap
   if (!rect) {
     return (
-      <div className="fixed bottom-4 right-4 z-50 bg-cz-card border border-cz-accent/40 rounded-xl shadow-xl p-3 max-w-xs">
+      <div className="fixed bottom-4 right-4 z-50 bg-cz-card border border-cz-accent/40 rounded-cz shadow-xl p-3 max-w-xs">
         <p className="text-cz-2 text-xs mb-2">
           {t("onboardingTour.fallback")}
         </p>
@@ -107,7 +107,7 @@ export default function OnboardingTour({ pageKey, steps }) {
       {/* Highlight-ring omkring target */}
       <div
         aria-hidden="true"
-        className="fixed pointer-events-none z-40 rounded-lg ring-2 ring-cz-accent transition-all"
+        className="fixed pointer-events-none z-40 rounded-cz ring-2 ring-cz-accent transition-all"
         style={{
           top: rect.top - 4,
           left: rect.left - 4,
@@ -135,7 +135,7 @@ export default function OnboardingTour({ pageKey, steps }) {
       <div
         role="dialog"
         aria-label={t("onboardingTour.ariaLabel")}
-        className="fixed z-50 bg-cz-card border border-cz-accent/40 rounded-xl shadow-xl p-4 pointer-events-auto"
+        className="fixed z-50 bg-cz-card border border-cz-accent/40 rounded-cz shadow-xl p-4 pointer-events-auto"
         style={{ top: tooltipTop, left: tooltipLeft, width: tooltipWidth }}
       >
         <div className="flex items-start justify-between gap-2 mb-2">
@@ -157,7 +157,7 @@ export default function OnboardingTour({ pageKey, steps }) {
           </button>
           <button
             onClick={handleNext}
-            className="bg-cz-accent text-cz-on-accent px-3 py-1.5 rounded-lg text-xs font-bold hover:brightness-110 transition-all"
+            className="bg-cz-accent text-cz-on-accent px-3 py-1.5 rounded-cz text-xs font-bold hover:brightness-110 transition-all"
           >
             {isLast ? t("onboardingTour.done") : t("onboardingTour.next")}
           </button>

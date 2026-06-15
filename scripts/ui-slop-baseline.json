@@ -11,11 +11,6 @@
       "slop": 1,
       "emoji": 0
     },
-    "frontend/src/components/CompareSelection.jsx": {
-      "hex": 0,
-      "slop": 1,
-      "emoji": 0
-    },
     "frontend/src/components/ConfettiModal.jsx": {
       "hex": 5,
       "slop": 0,
@@ -71,11 +66,6 @@
       "slop": 0,
       "emoji": 1
     },
-    "frontend/src/components/OnboardingTour.jsx": {
-      "hex": 0,
-      "slop": 2,
-      "emoji": 0
-    },
     "frontend/src/components/OnlineBadge.jsx": {
       "hex": 0,
       "slop": 1,
@@ -90,11 +80,6 @@
       "hex": 5,
       "slop": 1,
       "emoji": 0
-    },
-    "frontend/src/components/RidersEmptyState.jsx": {
-      "hex": 0,
-      "slop": 1,
-      "emoji": 1
     },
     "frontend/src/components/SetupWizardModal.jsx": {
       "hex": 0,
@@ -305,11 +290,6 @@
       "hex": 4,
       "slop": 16,
       "emoji": 13
-    },
-    "frontend/src/pages/RidersPage.jsx": {
-      "hex": 0,
-      "slop": 1,
-      "emoji": 0
     },
     "frontend/src/pages/RoadmapPage.jsx": {
       "hex": 0,

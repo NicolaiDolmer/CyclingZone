@@ -27,6 +27,7 @@ import StatsToggle from "../components/StatsToggle";
 import useStatsToggle from "../lib/useStatsToggle";
 import { startTour } from "../lib/onboardingTour";
 import { formatNumber } from "../lib/intl";
+import { Card, ExchangeIcon } from "../components/ui";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -312,7 +313,7 @@ export default function RidersPage() {
           />
           <Link to="/watchlist" data-tour="riders-watchlist"
             className="flex-1 sm:flex-none text-center px-3 py-1.5 bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30
-              rounded-lg text-xs font-medium hover:bg-cz-accent/10 transition-all">
+              rounded-cz text-xs font-medium hover:bg-cz-accent/10 transition-all">
             {t("page.watchlistLink", { count: watchlist.size })}
           </Link>
         </div>
@@ -335,7 +336,7 @@ export default function RidersPage() {
           <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
         </div>
       ) : (
-        <div data-tour="riders-list" className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+        <Card data-tour="riders-list" className="overflow-hidden">
           <div className="overflow-auto max-h-[calc(100vh-220px)]">
             <table className="w-full text-xs">
               <thead className="sticky top-0 z-20 bg-cz-card shadow-sm">
@@ -344,7 +345,9 @@ export default function RidersPage() {
                     className="px-2 py-3 text-left font-medium uppercase tracking-wider w-12 hidden sm:table-cell">{t("table.nation")}</SortTh>
                   <SortTh sortKey="firstname" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
                     className="px-3 py-3 text-left font-medium uppercase tracking-wider w-40 sticky left-0 z-30 bg-cz-card border-r border-cz-border">{t("table.rider")}</SortTh>
-                  <th className="px-1 py-3 w-8 text-cz-3" title={t("table.compareTooltip")}>⇄</th>
+                  <th className="px-1 py-3 w-8 text-cz-3" title={t("table.compareTooltip")}>
+                    <ExchangeIcon size={14} className="mx-auto" aria-hidden="true" />
+                  </th>
                   <th className="px-2 py-3 w-8" />
                   <th className="px-3 py-3 text-left font-medium uppercase tracking-wider text-cz-3 cursor-default hidden sm:table-cell">{t("table.team")}</th>
                   <th className="px-3 py-3 text-left font-medium uppercase tracking-wider text-cz-3 cursor-default hidden sm:table-cell">{t("table.badges")}</th>
@@ -368,7 +371,7 @@ export default function RidersPage() {
                       <p className="text-cz-3 text-sm">{tCommon("controls.noFilterResults")}</p>
                       <button onClick={onReset}
                         className="mt-3 px-3 py-1.5 bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30
-                          rounded-lg text-xs font-medium hover:bg-cz-accent/10 transition-all">
+                          rounded-cz text-xs font-medium hover:bg-cz-accent/10 transition-all">
                         {tCommon("controls.clearFilters")}
                       </button>
                     </td>
@@ -389,7 +392,7 @@ export default function RidersPage() {
               </tbody>
             </table>
           </div>
-        </div>
+        </Card>
       )}
 
       {/* Pagination */}
@@ -404,13 +407,13 @@ export default function RidersPage() {
         <div className="grid grid-cols-2 gap-2 w-full sm:w-auto">
           <button disabled={filters.page <= 1}
             onClick={() => setFilters(f => ({ ...f, page: f.page - 1 }))}
-            className="px-3 py-1.5 bg-cz-subtle rounded text-cz-2 text-xs
+            className="px-3 py-1.5 bg-cz-subtle rounded-cz text-cz-2 text-xs
               hover:opacity-80 disabled:opacity-30 disabled:cursor-not-allowed">
             {t("pagination.prev")}
           </button>
           <button disabled={filters.page * 50 >= total}
             onClick={() => setFilters(f => ({ ...f, page: f.page + 1 }))}
-            className="px-3 py-1.5 bg-cz-subtle rounded text-cz-2 text-xs
+            className="px-3 py-1.5 bg-cz-subtle rounded-cz text-cz-2 text-xs
               hover:opacity-80 disabled:opacity-30 disabled:cursor-not-allowed">
             {t("pagination.next")}
           </button>

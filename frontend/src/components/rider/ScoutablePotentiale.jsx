@@ -13,8 +13,8 @@
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import PotentialeStars from "../PotentialeStars";
-import { potentialLabelKey } from "../../lib/scouting";
 import { SearchIcon } from "../ui";
+import { potentialLabelKey } from "../../lib/scouting";
 
 export default function ScoutablePotentiale({ rider, scouting, showScout = false, large = false }) {
   const { t } = useTranslation();
@@ -66,13 +66,13 @@ export default function ScoutablePotentiale({ rider, scouting, showScout = false
           onClick={handleScout}
           disabled={!canScout}
           title={remaining <= 0 ? t("rider:scouting.noSlots") : t("rider:scouting.scoutTitle")}
-          className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded border border-cz-border text-cz-2 hover:bg-cz-subtle disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+          className="inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-cz border border-cz-border text-cz-2 hover:bg-cz-subtle disabled:opacity-40 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
         >
           {busy ? (
             t("rider:scouting.scouting")
           ) : (
             <>
-              <SearchIcon size={12} className="flex-shrink-0" />
+              <SearchIcon size={11} aria-hidden="true" className="flex-shrink-0" />
               {level > 0 ? t("rider:scouting.rescout") : t("rider:scouting.scout")}
             </>
           )}
