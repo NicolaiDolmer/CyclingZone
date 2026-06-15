@@ -27,7 +27,7 @@ import { DEMAND_VECTORS } from "./raceStageProfileGenerator.js";
 import { simulateStage, stableSeed, NOISE_SD_SCALE } from "./raceSimulator.js";
 import { buildRaceResults } from "./raceRunner.js";
 import { buildCaps, developRiderSeason } from "./riderProgression.js";
-import { abilityRankSensitivity } from "./raceSensitivity.js";
+import { abilityRankSensitivity, breakawayParticipationGapByAggression } from "./raceSensitivity.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -265,13 +265,14 @@ export function buildBalanceSnapshot(options = {}) {
   // Evne-liveness (#1122): committet ⌀rank-gevinst pr. probe → ENHVER fremtidig
   // ændring der dræber en evne dukker op som en diff. Samme probe-matrix som
   // dry-run-cockpittets sektion E (delmængde for determinisme/hastighed).
+  // Rank-drevne evner: per-rytter rank-følsomhed. aggression måles separat
+  // (deltagelses-gap) — den driver udbruds-chancen, ikke rank direkte.
   const SENS_PROBES = [
-    { ability: "sprint", terrain: "flat", mode: "neutral" },
-    { ability: "climbing", terrain: "mountain", mode: "neutral" },
-    { ability: "flat", terrain: "rolling", mode: "neutral" },
-    { ability: "tempo", terrain: "mountain", mode: "neutral" },
-    { ability: "aggression", terrain: "flat", mode: "breakaway" },
-    { ability: "descending", terrain: "mountain", mode: "finale", finaleType: "descent" },
+    { ability: "sprint", terrain: "flat" },
+    { ability: "climbing", terrain: "mountain" },
+    { ability: "flat", terrain: "rolling" },
+    { ability: "tempo", terrain: "mountain" },
+    { ability: "descending", terrain: "mountain", finaleType: "descent" },
   ];
   const sensField = field.map((r) => ({ id: r.id, overall: r.overall, abilities: r.abilities }));
   const abilitySensitivity = {};
@@ -283,6 +284,11 @@ export function buildBalanceSnapshot(options = {}) {
         samples: 120, fieldSize: 80, seed,
       }), 2);
   }
+  abilitySensitivity["aggression@mountain-bwgap"] = round(
+    breakawayParticipationGapByAggression({
+      field: sensField, profileType: "mountain", demandVector: DEMAND_VECTORS.mountain,
+      races, fieldSize, seed,
+    }), 3);
   race.abilitySensitivity = sortKeys(abilitySensitivity);
 
   // 4. Progression: N sæsoner passiv udvikling på samme population (deterministisk

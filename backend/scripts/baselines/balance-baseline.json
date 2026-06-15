@@ -105,26 +105,26 @@
       "classic": {
         "keyAbility": "endurance",
         "races": 300,
-        "winnerKeyAvg": 69,
+        "winnerKeyAvg": 68,
         "fieldMedianKey": 29,
-        "distinctWinners": 41,
-        "strongestWonPct": 32.3,
-        "avgWinnerStrengthRank": 4.5,
+        "distinctWinners": 40,
+        "strongestWonPct": 39.7,
+        "avgWinnerStrengthRank": 3.8,
         "winnersBornAs": {
-          "baroudeur": 29,
-          "brostensrytter": 18,
-          "climber": 21,
-          "gc": 118,
-          "puncheur": 114
+          "baroudeur": 24,
+          "brostensrytter": 13,
+          "climber": 13,
+          "gc": 141,
+          "puncheur": 109
         },
         "winnersDerived": {
-          "baroudeur": 12,
-          "brostensrytter": 18,
-          "climber": 58,
-          "gc": 81,
-          "puncheur": 75,
-          "rouleur": 17,
-          "tt": 39
+          "baroudeur": 9,
+          "brostensrytter": 13,
+          "climber": 41,
+          "gc": 95,
+          "puncheur": 78,
+          "rouleur": 15,
+          "tt": 49
         }
       },
       "cobbles": {
@@ -132,19 +132,20 @@
         "races": 300,
         "winnerKeyAvg": 86,
         "fieldMedianKey": 21,
-        "distinctWinners": 27,
-        "strongestWonPct": 2,
-        "avgWinnerStrengthRank": 15.9,
+        "distinctWinners": 25,
+        "strongestWonPct": 2.7,
+        "avgWinnerStrengthRank": 15.4,
         "winnersBornAs": {
           "baroudeur": 1,
-          "brostensrytter": 294,
-          "gc": 5
+          "brostensrytter": 291,
+          "gc": 7,
+          "rouleur": 1
         },
         "winnersDerived": {
-          "brostensrytter": 294,
-          "gc": 2,
+          "brostensrytter": 291,
+          "gc": 4,
           "rouleur": 1,
-          "tt": 3
+          "tt": 4
         }
       },
       "flat": {
@@ -152,20 +153,22 @@
         "races": 300,
         "winnerKeyAvg": 84,
         "fieldMedianKey": 18,
-        "distinctWinners": 29,
-        "strongestWonPct": 1.7,
-        "avgWinnerStrengthRank": 15.8,
+        "distinctWinners": 32,
+        "strongestWonPct": 2,
+        "avgWinnerStrengthRank": 15.9,
         "winnersBornAs": {
-          "baroudeur": 1,
+          "baroudeur": 3,
           "gc": 1,
-          "leadout": 22,
-          "sprinter": 274,
-          "tt": 2
+          "leadout": 23,
+          "rouleur": 1,
+          "sprinter": 271,
+          "tt": 1
         },
         "winnersDerived": {
-          "leadout": 36,
+          "baroudeur": 2,
+          "leadout": 37,
           "rouleur": 1,
-          "sprinter": 260,
+          "sprinter": 257,
           "tt": 3
         }
       },
@@ -174,46 +177,46 @@
         "races": 300,
         "winnerKeyAvg": 90,
         "fieldMedianKey": 23,
-        "distinctWinners": 26,
-        "strongestWonPct": 36.3,
-        "avgWinnerStrengthRank": 5.7,
+        "distinctWinners": 27,
+        "strongestWonPct": 41,
+        "avgWinnerStrengthRank": 4.9,
         "winnersBornAs": {
-          "climber": 65,
-          "gc": 207,
-          "puncheur": 28
+          "climber": 63,
+          "gc": 215,
+          "puncheur": 22
         },
         "winnersDerived": {
-          "climber": 87,
-          "gc": 152,
-          "puncheur": 6,
-          "tt": 55
+          "climber": 80,
+          "gc": 150,
+          "puncheur": 4,
+          "tt": 66
         }
       },
       "hilly": {
         "keyAbility": "punch",
         "races": 300,
-        "winnerKeyAvg": 83,
+        "winnerKeyAvg": 82,
         "fieldMedianKey": 26,
-        "distinctWinners": 38,
-        "strongestWonPct": 4.7,
+        "distinctWinners": 42,
+        "strongestWonPct": 6.3,
         "avgWinnerStrengthRank": 8.7,
         "winnersBornAs": {
-          "baroudeur": 13,
-          "brostensrytter": 12,
-          "climber": 14,
-          "gc": 13,
-          "leadout": 3,
-          "puncheur": 245
+          "baroudeur": 6,
+          "brostensrytter": 4,
+          "climber": 19,
+          "gc": 20,
+          "leadout": 2,
+          "puncheur": 249
         },
         "winnersDerived": {
-          "baroudeur": 10,
-          "brostensrytter": 12,
-          "climber": 62,
-          "gc": 12,
-          "leadout": 3,
-          "puncheur": 197,
+          "baroudeur": 3,
+          "brostensrytter": 4,
+          "climber": 61,
+          "gc": 18,
+          "leadout": 2,
+          "puncheur": 207,
           "rouleur": 3,
-          "tt": 1
+          "tt": 2
         }
       },
       "itt": {
@@ -222,38 +225,38 @@
         "winnerKeyAvg": 90,
         "fieldMedianKey": 18,
         "distinctWinners": 25,
-        "strongestWonPct": 39.3,
-        "avgWinnerStrengthRank": 4.3,
+        "strongestWonPct": 37.3,
+        "avgWinnerStrengthRank": 4.2,
         "winnersBornAs": {
-          "gc": 103,
-          "tt": 197
+          "gc": 99,
+          "tt": 201
         },
         "winnersDerived": {
-          "gc": 39,
-          "tt": 261
+          "gc": 40,
+          "tt": 260
         }
       },
       "mountain": {
         "keyAbility": "climbing",
         "races": 300,
-        "winnerKeyAvg": 88,
+        "winnerKeyAvg": 87,
         "fieldMedianKey": 23,
-        "distinctWinners": 51,
-        "strongestWonPct": 30.7,
-        "avgWinnerStrengthRank": 7,
+        "distinctWinners": 53,
+        "strongestWonPct": 35.7,
+        "avgWinnerStrengthRank": 6.6,
         "winnersBornAs": {
-          "baroudeur": 3,
-          "climber": 63,
-          "gc": 207,
-          "puncheur": 27
+          "baroudeur": 1,
+          "climber": 61,
+          "gc": 208,
+          "puncheur": 28,
+          "rouleur": 2
         },
         "winnersDerived": {
-          "baroudeur": 2,
-          "climber": 80,
-          "gc": 153,
-          "puncheur": 10,
+          "climber": 78,
+          "gc": 148,
+          "puncheur": 11,
           "rouleur": 1,
-          "tt": 54
+          "tt": 62
         }
       },
       "rolling": {
@@ -261,34 +264,34 @@
         "races": 300,
         "winnerKeyAvg": 69,
         "fieldMedianKey": 29,
-        "distinctWinners": 72,
-        "strongestWonPct": 28.7,
-        "avgWinnerStrengthRank": 6.3,
+        "distinctWinners": 66,
+        "strongestWonPct": 37,
+        "avgWinnerStrengthRank": 5,
         "winnersBornAs": {
-          "baroudeur": 80,
-          "brostensrytter": 7,
-          "climber": 12,
-          "gc": 113,
+          "baroudeur": 67,
+          "brostensrytter": 6,
+          "climber": 3,
+          "gc": 143,
           "leadout": 3,
-          "puncheur": 73,
-          "rouleur": 5,
-          "sprinter": 5,
-          "tt": 2
+          "puncheur": 64,
+          "rouleur": 7,
+          "sprinter": 2,
+          "tt": 5
         },
         "winnersDerived": {
-          "baroudeur": 54,
+          "baroudeur": 40,
           "brostensrytter": 7,
-          "climber": 43,
-          "gc": 75,
-          "leadout": 4,
-          "puncheur": 41,
-          "rouleur": 29,
-          "sprinter": 4,
-          "tt": 43
+          "climber": 23,
+          "gc": 99,
+          "leadout": 3,
+          "puncheur": 44,
+          "rouleur": 28,
+          "sprinter": 2,
+          "tt": 54
         }
       }
     },
-    "breakawayMountainSharePct": 0.5,
+    "breakawayMountainSharePct": 0.2,
     "grandTour": {
       "gcTop10": [
         {
@@ -303,63 +306,63 @@
           "name": "Matej Hribar",
           "bornAs": "climber",
           "derived": "climber",
-          "time": "+6:35"
+          "time": "+6:25"
         },
         {
           "rank": 3,
           "name": "Loïc Pichon",
           "bornAs": "puncheur",
           "derived": "puncheur",
-          "time": "+9:58"
+          "time": "+8:33"
         },
         {
           "rank": 4,
           "name": "Lachlan Foster",
           "bornAs": "gc",
           "derived": "gc",
-          "time": "+10:33"
+          "time": "+10:08"
         },
         {
           "rank": 5,
           "name": "Javier Aguilar",
           "bornAs": "climber",
           "derived": "gc",
-          "time": "+13:32"
+          "time": "+11:31"
         },
         {
           "rank": 6,
           "name": "Sebastian Bergström",
           "bornAs": "gc",
           "derived": "gc",
-          "time": "+14:14"
+          "time": "+14:20"
         },
         {
           "rank": 7,
           "name": "Adam Sokol",
           "bornAs": "climber",
           "derived": "climber",
-          "time": "+17:12"
+          "time": "+14:46"
         },
         {
           "rank": 8,
           "name": "Cody Ward",
           "bornAs": "tt",
           "derived": "tt",
-          "time": "+17:43"
+          "time": "+16:55"
         },
         {
           "rank": 9,
-          "name": "Maarten Peeters",
-          "bornAs": "climber",
-          "derived": "climber",
-          "time": "+18:22"
-        },
-        {
-          "rank": 10,
           "name": "Maxime Girard",
           "bornAs": "climber",
           "derived": "climber",
-          "time": "+18:41"
+          "time": "+17:24"
+        },
+        {
+          "rank": 10,
+          "name": "Maarten Peeters",
+          "bornAs": "climber",
+          "derived": "climber",
+          "time": "+17:34"
         }
       ],
       "jerseys": {
@@ -384,12 +387,12 @@
       }
     },
     "abilitySensitivity": {
-      "aggression@flat": 0,
-      "climbing@mountain": 10.26,
-      "descending@mountain": 0,
-      "flat@rolling": 0,
-      "sprint@flat": 12.08,
-      "tempo@mountain": 0
+      "aggression@mountain-bwgap": 0.018,
+      "climbing@mountain": 9.48,
+      "descending@mountain": 1.43,
+      "flat@rolling": 3.49,
+      "sprint@flat": 10.99,
+      "tempo@mountain": 2.53
     }
   },
   "progression": {
