@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { useLanguage } from "../lib/language";
@@ -23,7 +23,12 @@ function getPasswordResetRedirectUrl() {
 export default function LoginPage() {
   const { t } = useTranslation(["auth", "errors"]);
   const { language } = useLanguage();
-  const [mode, setMode] = useState("login");
+  // #672: landing kan deep-linke til signup-mode via ?mode=signup (Opret bruger-CTA).
+  const [searchParams] = useSearchParams();
+  const [mode, setMode] = useState(() => {
+    const requested = searchParams.get("mode");
+    return requested === "signup" || requested === "forgot" ? requested : "login";
+  });
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [teamName, setTeamName] = useState("");

@@ -6,6 +6,8 @@
   "nav": {
     "discordLabel": "Discord",
     "languageLabel": "Sprog",
+    "login": "Log ind",
+    "signup": "Opret bruger",
     "skipToContent": "Spring til indhold"
   },
   "hero": {

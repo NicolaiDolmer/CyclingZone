@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "../lib/language.jsx";
 import { Wordmark } from "../components/Brand.jsx";
@@ -126,17 +127,16 @@ export default function LandingPage() {
       <header className="sticky top-0 z-sticky border-b border-cz-border bg-cz-body/95">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3.5 sm:px-8">
           <Wordmark className="h-7 sm:h-8" />
-          <div className="flex items-center gap-2 sm:gap-3">
-            <LanguageToggle />
-            <a
-              href={DISCORD_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={buttonClass({ variant: "secondary", size: "sm" })}
-            >
-              <DiscordGlyph size={15} className="text-cz-discord" />
-              <span className="hidden sm:inline">{t("nav.discordLabel")}</span>
-            </a>
+          <div className="flex items-center gap-1.5 sm:gap-3">
+            <div className="hidden sm:flex">
+              <LanguageToggle />
+            </div>
+            <Link to="/login" className={`${buttonClass({ variant: "ghost", size: "sm" })} whitespace-nowrap`}>
+              {t("nav.login")}
+            </Link>
+            <Link to="/login?mode=signup" className={`${buttonClass({ variant: "secondary", size: "sm" })} whitespace-nowrap`}>
+              {t("nav.signup")}
+            </Link>
           </div>
         </div>
       </header>
@@ -303,7 +303,8 @@ export default function LandingPage() {
             <Wordmark className="h-4" />
             <span className="text-xs text-cz-3">{t("footer.tagline")}</span>
           </div>
-          <nav className="flex items-center gap-5 text-sm">
+          <nav className="flex flex-wrap items-center gap-4 text-sm sm:gap-5">
+            <LanguageToggle />
             <a href={t("waitlist.privacyPath")} className="text-cz-2 hover:text-cz-1">{t("footer.privacy")}</a>
             <a href={DISCORD_URL} target="_blank" rel="noopener noreferrer" className="text-cz-2 hover:text-cz-1">
               {t("footer.discord")}
