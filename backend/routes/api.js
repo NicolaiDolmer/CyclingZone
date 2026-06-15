@@ -223,6 +223,7 @@ import { checkAchievements } from "../lib/achievementEngine.js";
 import { captureException, setSentryUser } from "../lib/sentry.js";
 import { upsertOwnTeamProfile } from "../lib/teamProfileEngine.js";
 import { buildAttributionRow } from "../lib/signupAttribution.js";
+import { aggregateAttribution } from "../lib/attributionDashboard.js";
 import { parseRacePoolCsv, summarizePool, WORLD_TOUR_CLASSES } from "../lib/racePoolImport.js";
 import {
   UCI_MEN_RACE_CLASSES,
@@ -3420,6 +3421,59 @@ router.put("/teams/my", requireAuth, marketWriteLimiter, async (req, res) => {
     res.status(result.created ? 201 : 200).json(result);
   } catch (error) {
     res.status(error.statusCode || 500).json({ error: error.message || "Kunne ikke gemme holdprofil" });
+  }
+});
+
+// GET /api/admin/attribution — read-only acquisition dashboard for #679. The
+// signup_attribution table is service_role-only (RLS, no policies), so the client
+// can't read it directly — this admin endpoint is the only door. Returns channel
+// aggregates over ALL signups plus a paginated, newest-first detail list with the
+// team name joined in (no FK signup_attribution → teams, so we map via user_id).
+router.get("/admin/attribution", requireAdmin, async (req, res) => {
+  try {
+    const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 100, 1), 500);
+    const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
+
+    // Aggregates cover the whole table; pull only the channel columns to keep it
+    // light. The detail table below is paginated independently.
+    const { data: allRows, error: aggErr } = await supabase
+      .from("signup_attribution")
+      .select("utm_source, utm_medium, referrer");
+    if (aggErr) throw aggErr;
+    const aggregates = aggregateAttribution(allRows || []);
+
+    const { data: rows, error: rowsErr } = await supabase
+      .from("signup_attribution")
+      .select(
+        "user_id, utm_source, utm_medium, utm_campaign, utm_term, utm_content, referrer, landing_path, first_seen_at, signed_up_at"
+      )
+      .order("signed_up_at", { ascending: false })
+      .range(offset, offset + limit - 1);
+    if (rowsErr) throw rowsErr;
+
+    const userIds = (rows || []).map(r => r.user_id);
+    let teamByUser = {};
+    if (userIds.length) {
+      const { data: teams } = await supabase
+        .from("teams")
+        .select("user_id, name, manager_name, division")
+        .in("user_id", userIds);
+      teamByUser = Object.fromEntries((teams || []).map(t => [t.user_id, t]));
+    }
+
+    const detail = (rows || []).map(r => {
+      const team = teamByUser[r.user_id] || null;
+      return {
+        ...r,
+        team_name: team?.name || null,
+        manager_name: team?.manager_name || null,
+        division: team?.division ?? null,
+      };
+    });
+
+    res.json({ rows: detail, total: aggregates.total, limit, offset, aggregates });
+  } catch (error) {
+    res.status(500).json({ error: error.message || "Kunne ikke hente attribution-data" });
   }
 });
 
