@@ -22,6 +22,7 @@ import {
   resolveCategoryLabel,
 } from "../lib/boardCopy";
 import DashboardCustomizeMenu from "../components/DashboardCustomizeMenu";
+import { Card, AlertTriangleIcon, BellIcon } from "../components/ui";
 
 const API = import.meta.env.VITE_API_URL;
 // Realtime: sæson-fremskridt (race_days_completed) + resultat-afledte tal skal
@@ -380,11 +381,11 @@ export default function DashboardPage() {
 
       {/* Squad warning */}
       {squadWarning && (
-        <div className={`mb-4 px-4 py-3 rounded-xl text-sm border flex items-center gap-2
+        <div className={`mb-4 px-4 py-3 rounded-cz text-sm border flex items-center gap-2
           ${squadWarning.color === "red"
             ? "bg-cz-danger-bg text-cz-danger border-cz-danger/30"
             : "bg-cz-warning-bg text-cz-warning border-cz-warning/30"}`}>
-          <span>⚠️</span>
+          <AlertTriangleIcon size={16} className="flex-shrink-0" />
           <span>{t(`dashboard:squadWarning.${squadWarning.type}`, {
             count: squadWarning.count,
             limit: squadWarning.limit,
@@ -414,9 +415,9 @@ export default function DashboardPage() {
 
       {/* Discord DM nudge */}
       {showDiscordNudge && (
-        <div className="mb-4 px-4 py-3 bg-cz-card border border-[#5865F2]/30 rounded-xl flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-[#5865F2]/20 flex items-center justify-center flex-shrink-0">
-            <span className="text-[#5865F2] text-sm font-bold">D</span>
+        <div className="mb-4 px-4 py-3 bg-cz-card border border-cz-discord/30 rounded-cz flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-cz-discord/20 flex items-center justify-center flex-shrink-0">
+            <span className="text-cz-discord text-sm font-bold">D</span>
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-cz-1 text-sm font-medium">{t("dashboard:discordNudge.title")}</p>
@@ -424,7 +425,7 @@ export default function DashboardPage() {
           </div>
           <Link
             to="/profile"
-            className="px-3 py-1.5 bg-[#5865F2] text-white rounded-lg text-xs font-bold hover:bg-[#4752c4] transition-all flex-shrink-0">
+            className="px-3 py-1.5 bg-cz-discord text-white rounded-lg text-xs font-bold hover:bg-cz-discord-hover transition-all flex-shrink-0">
             {t("dashboard:discordNudge.cta")}
           </Link>
           <button
@@ -445,10 +446,10 @@ export default function DashboardPage() {
         const h = Math.floor(diff / 3600000);
         const m = Math.floor((diff % 3600000) / 60000);
         return (
-          <div className="mb-4 px-4 py-3 bg-cz-danger-bg border border-cz-danger/30 rounded-xl
+          <div className="mb-4 px-4 py-3 bg-cz-danger-bg border border-cz-danger/30 rounded-cz
             flex items-center justify-between animate-pulse">
             <div className="flex items-center gap-2">
-              <span className="text-cz-danger text-lg">🔔</span>
+              <BellIcon size={18} className="text-cz-danger flex-shrink-0" />
               <div>
                 <p className="text-cz-danger font-bold text-sm">{t("dashboard:deadlineDay.title")}</p>
                 <p className="text-cz-danger/70 text-xs">{t("dashboard:deadlineDay.closesIn", { h, m })}</p>
@@ -472,7 +473,7 @@ export default function DashboardPage() {
 
       {/* Season Status Banner */}
       {seasonInfo && (
-        <div className="mb-5 bg-cz-card border border-cz-border rounded-xl px-5 py-3.5 flex flex-wrap items-center gap-x-5 gap-y-2">
+        <Card className="mb-5 px-5 py-3.5 flex flex-wrap items-center gap-x-5 gap-y-2">
           <div className="flex items-center gap-2">
             <span className="font-semibold text-cz-1 text-sm">{t("dashboard:seasonBanner.title", { number: seasonInfo.number })}</span>
             <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium border
@@ -519,7 +520,7 @@ export default function DashboardPage() {
                 : t("dashboard:seasonBanner.transferWindow.closed")}
             </span>
           )}
-        </div>
+        </Card>
       )}
 
       {/* Main grid */}
@@ -527,7 +528,7 @@ export default function DashboardPage() {
 
         {/* My auctions + winning */}
         {isVisible("auctions") && (
-        <div className="bg-cz-card border border-cz-border rounded-xl p-5">
+        <Card className="p-5">
           <Link to="/auctions" className="flex items-center justify-between mb-4 group">
             <h2 className="font-semibold text-cz-1 text-sm group-hover:text-cz-accent-t transition-colors">{t("dashboard:cards.auctions.title")}</h2>
             <span className="text-xs text-cz-accent-t group-hover:underline">{t("dashboard:cards.auctions.linkAll")}</span>
@@ -568,12 +569,12 @@ export default function DashboardPage() {
                 })}
             </div>
           )}
-        </div>
+        </Card>
         )}
 
         {/* Pending transfers + offers */}
         {isVisible("transfers") && (
-        <div className="bg-cz-card border border-cz-border rounded-xl p-5">
+        <Card className="p-5">
           <Link to="/transfers" className="flex items-center justify-between mb-4 group">
             <h2 className="font-semibold text-cz-1 text-sm group-hover:text-cz-accent-t transition-colors">{t("dashboard:cards.transfers.title")}</h2>
             <span className="text-xs text-cz-accent-t group-hover:underline">{t("dashboard:cards.transfers.linkAll")}</span>
@@ -617,12 +618,12 @@ export default function DashboardPage() {
               })}
             </div>
           )}
-        </div>
+        </Card>
         )}
 
         {/* Upcoming races */}
         {isVisible("races") && (
-        <div className="bg-cz-card border border-cz-border rounded-xl p-5">
+        <Card className="p-5">
           <Link to="/races" className="flex items-center justify-between mb-4 group">
             <h2 className="font-semibold text-cz-1 text-sm group-hover:text-cz-accent-t transition-colors">{t("dashboard:cards.races.title")}</h2>
             <span className="text-xs text-cz-accent-t group-hover:underline">{t("dashboard:cards.races.linkAll")}</span>
@@ -654,12 +655,12 @@ export default function DashboardPage() {
               ))}
             </div>
           )}
-        </div>
+        </Card>
         )}
 
         {/* My division standings */}
         {isVisible("divStandings") && (
-        <div className="bg-cz-card border border-cz-border rounded-xl p-5">
+        <Card className="p-5">
           <Link to="/standings" className="flex items-center justify-between mb-4 group">
             <h2 className="font-semibold text-cz-1 text-sm group-hover:text-cz-accent-t transition-colors">{t("dashboard:cards.standings.title", { division: team?.division })}</h2>
             <span className="text-xs text-cz-accent-t group-hover:underline">{t("dashboard:cards.standings.linkAll")}</span>
@@ -686,12 +687,12 @@ export default function DashboardPage() {
               })}
             </div>
           )}
-        </div>
+        </Card>
         )}
 
         {/* Board status */}
         {isVisible("board") && (
-        <div className="bg-cz-card border border-cz-border rounded-xl p-5 lg:col-span-2">
+        <Card className="p-5 lg:col-span-2">
           <Link to="/board" className="flex items-center justify-between mb-4 group">
             <h2 className="font-semibold text-cz-1 text-sm group-hover:text-cz-accent-t transition-colors">{t("dashboard:cards.board.title")}</h2>
             <span className="text-xs text-cz-accent-t group-hover:underline">{t("dashboard:cards.board.linkAll")}</span>
@@ -757,12 +758,12 @@ export default function DashboardPage() {
               )}
             </div>
           )}
-        </div>
+        </Card>
         )}
 
         {/* Recent results (#1005) */}
         {isVisible("recentResults") && (
-        <div className="bg-cz-card border border-cz-border rounded-xl p-5">
+        <Card className="p-5">
           <Link to="/resultater" className="flex items-center justify-between mb-4 group">
             <h2 className="font-semibold text-cz-1 text-sm group-hover:text-cz-accent-t transition-colors">{t("dashboard:cards.recentResults.title")}</h2>
             <span className="text-xs text-cz-accent-t group-hover:underline">{t("dashboard:cards.recentResults.linkAll")}</span>
@@ -798,12 +799,12 @@ export default function DashboardPage() {
               ))}
             </div>
           )}
-        </div>
+        </Card>
         )}
 
         {/* Rider ranking (#1005) */}
         {isVisible("riderRanking") && (
-        <div className="bg-cz-card border border-cz-border rounded-xl p-5">
+        <Card className="p-5">
           <Link to="/rider-rankings" className="flex items-center justify-between mb-4 group">
             <h2 className="font-semibold text-cz-1 text-sm group-hover:text-cz-accent-t transition-colors">{t("dashboard:cards.riderRanking.title")}</h2>
             <span className="text-xs text-cz-accent-t group-hover:underline">{t("dashboard:cards.riderRanking.linkAll")}</span>
@@ -832,7 +833,7 @@ export default function DashboardPage() {
               ))}
             </div>
           )}
-        </div>
+        </Card>
         )}
 
       </div>

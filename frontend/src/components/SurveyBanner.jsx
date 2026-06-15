@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { logEvent } from "../lib/logEvent";
+import { ClipboardIcon } from "./ui";
 
 const DISMISS_KEY = "cz_survey_banner_dismissed_at";
 const CLICK_KEY = "cz_survey_banner_clicked_at";
@@ -117,11 +118,11 @@ export default function SurveyBanner() {
     <div
       role="region"
       aria-label={t("survey.regionAriaLabel")}
-      className="mb-4 rounded-xl border border-cz-accent/40 bg-cz-accent/10 px-4 py-3"
+      className="mb-4 rounded-cz border border-cz-accent/40 bg-cz-accent/10 px-4 py-3"
     >
       <div className="flex flex-wrap items-center gap-3">
         <p className="flex-1 min-w-0 text-sm text-cz-1">
-          <span className="me-1" aria-hidden="true">📋</span>
+          <ClipboardIcon size={14} className="me-1 inline-block align-text-bottom text-cz-accent-t" />
           {t("survey.message")}
           {isAdminPreview && (
             <span className="ms-2 text-xs text-cz-3 italic">{t("survey.adminPreviewHint")}</span>

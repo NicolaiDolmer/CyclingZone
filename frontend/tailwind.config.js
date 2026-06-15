@@ -69,6 +69,10 @@ export default {
         "cz-danger-bg0":  "rgb(var(--danger) / <alpha-value>)",
         "cz-warning-bg0": "rgb(var(--warning) / <alpha-value>)",
         "cz-info-bg0":    "rgb(var(--info) / <alpha-value>)",
+
+        // Discord brand (Blurple) — ekstern brand-farve til Discord-CTA'er.
+        "cz-discord":       "rgb(var(--discord) / <alpha-value>)",
+        "cz-discord-hover": "rgb(var(--discord-hover) / <alpha-value>)",
       },
       borderRadius: {
         cz: "var(--radius-sm)",

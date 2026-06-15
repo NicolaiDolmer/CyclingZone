@@ -12,8 +12,8 @@
 
 | Slice | Flader | Baseline-gæld (slop/emoji) | Status |
 |---|---|---|---|
-| **A — Auth (front door)** | `LoginPage`, `ResetPasswordPage` | 5 / 4 | **denne PR** |
-| **B — Kerne-spiller-flader** | Dashboard, Auctions, Riders, Team, Finance, Races (+ tilhørende components) | tungest: `BoardPage` 45/10, `FinancePage` 11/1, `RacesPage` 13/5 | TODO |
+| **A — Auth (front door)** | `LoginPage`, `ResetPasswordPage` | 5 / 4 | **MERGED** (PR #1395) |
+| **B — Kerne-spiller-flader** | Dashboard, Auctions, Riders, Team, Finance, Races (+ tilhørende components) | tungest: `BoardPage` 45/10, `FinancePage` 11/1, `RacesPage` 13/5 | **delt per side** (reviewbar visuel diff, spec C2): `DashboardPage` (5 hex/11 slop/2 emoji) ✓ denne PR · resten TODO |
 | **C — Profil/notifikationer/admin** | Profile, Notifications, Transfers, alle `admin/*`-tabs | tungest emoji: `AdminSeasonTab` 37, `AdminDataTab` 32, `NotificationsPage` 34 | TODO |
 | **(særskilt beslutning)** | `PatchNotesPage` (68 emoji, bevidst dekorativt) | 68 emoji | kræver ejer-beslutning: behold dekorativ-emoji (EXEMPT_FILES) vs. konvertér |
 
@@ -42,3 +42,35 @@ Begge auth-sider dup-kopierer `inputClass`/`primaryBtnClass` inline + bærer spe
 
 ### Patch notes
 Brugerrettet (login-flade redesignes visuelt) → **ja**, kort "Changed/Improved · brand"-linje. Help/FAQ: N/A (ingen spilmekanik).
+
+---
+
+## Slice B — DashboardPage (post-login-landing)
+
+Første side i Slice B; resten af kerne-fladerne følger som egne per-side-PR'er (spec C2: reviewbar visuel diff pr. PR). 18 overtrædelser (5 hex / 11 slop / 2 emoji) → 0.
+
+- **7 neutrale kort + season-banner → `Card`-primitiv** (`bg-cz-card border border-cz-border rounded-cz`). Fjerner den duplikerede inline-kort-kopi — kernen i Plan 4. 11× `rounded-xl` (12px) → `rounded-cz` (5px).
+- **3 farve-bannere bevares bespoke** (squad-warning, Discord-nudge, deadline-day): `rounded-xl` → `rounded-cz` inline. `Card` tvinger `bg-cz-card`+`border-cz-border` → passer ikke til de semantiske farve-bannere (`bg-cz-danger-bg`/`bg-cz-warning-bg` + Discord-border). Samme pragmatik som Slice A's delte fejl-region.
+- **Emoji → ikoner**: squad-warning ⚠️ → `AlertTriangleIcon` (arver banner-farven via `currentColor` — bedre end emoji, der ignorerede tema), deadline 🔔 → `BellIcon` (`text-cz-danger`).
+- **Discord-hex tokeniseres** (de 5 hex): `#5865F2`/`#4752c4` (Blurple + hover) → `--discord`/`--discord-hover` i `index.css` + `cz-discord`/`cz-discord-hover` i `tailwind.config`. Ekstern brand-farve på en Discord-CTA → legitim som token (samme i begge temaer); bevarer farven præcist, fjerner rå hex per anti-drift-reglen.
+- **Ingen DashboardPage-source/a11y-test** → ingen pinned JSX at evolvere (modsat auth-siderne).
+- **Snapshots**: `dashboard.png` (masket layout-guard) består på alle 3 projekter — radius-diff under tolerance → ingen PNG-refresh. Umasket begge-tema-verify (Playwright-mocks) bekræftede Card-migration + ikon/token-skift.
+
+Baseline ratchet: 94 → 93 filer (DashboardPage helt fjernet). Patch note 5.37.
+
+### Udvidet til hele fladen + arbejdsmodel (ejer-beslutning 15/6)
+
+Ejeren påpegede at en snæver *per-fil*-migration efterlod fladen visuelt inkonsistent (DashboardPage-kortene blev skarpe, men child-komponenterne ovenpå beholdt `rounded-xl`) + at sidebar-headeren viste **tre** identitets-elementer (monogram + wordmark + team-navn). Begge bekræftet. **Fast arbejdsmodel vedtaget:**
+
+1. **Migrér per FLADE, ikke per fil** — siden + alle dens child-komponenter i samme PR (ingen halv-færdig inkonsistens).
+2. **GitHub-sweep før hver side** — find planlagte UI/UX-reworks. Ligger der et **strukturelt rework**, fold migrationen *ind i* det rework frem for en kosmetisk éngangs-omgang. Primitiv-skift er ikke spildt (reworket bygger på primitiverne); det spildte er bespoke kosmetik + emoji-valg et rework omgør.
+
+**Denne PR (#1396) udvidet til hele dashboard-fladen:**
+- **Fuldt migreret** (primitiv + ikon): `SurveyBanner` (📋→ClipboardIcon), `NextActionsCard` (⇄/↔/⏱/🔨/✓ → Exchange/Clock/Tag/Check + Card). +2 nye ikoner: `ExchangeIcon`, `ClipboardIcon`.
+- **Konsistens-fix** (rounded-cz, emoji *deferret til rework*): `FinanceForecastCard` (delt m. Finance → [#986](https://github.com/NicolaiDolmer/CyclingZone/issues/986)), `OnboardingProgressCard`/`OnboardingCompletionCard`/`OnboardingModal` (onboarding-konsolidering → [#1140](https://github.com/NicolaiDolmer/CyclingZone/issues/1140)).
+- **Sidebar/header**: fjernet redundant `Monogram` (desktop + mobil) → kun wordmark + team-navn ([#1027](https://github.com/NicolaiDolmer/CyclingZone/issues/1027) ejer den bredere nav-IA).
+- **[#1031](https://github.com/NicolaiDolmer/CyclingZone/issues/1031) hele-kort-klik**: sweep viste fundene allerede løst i live kode (balance/række/header = `<Link>`; auktions/transfer-rækker = `onClick navigate`) → verificeret + lukkes, ikke gen-implementeret.
+
+**Sweep-fund pr. flade (til kommende sider):** Finance → #986 (struktur-rework: fold migration ind). Dashboard-IA → #977 (konsolidér "Næste træk"), #1140 (onboarding). Nav → #1027.
+
+Baseline efter flade-rework: 93 → 91 filer. Patch note 5.37 udvidet (header-oprydning).

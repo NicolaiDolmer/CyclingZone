@@ -25,7 +25,7 @@ export default function OnboardingModal({ onClose }) {
       onClick={onClose}
     >
       <div
-        className="bg-cz-card rounded-2xl shadow-2xl max-w-lg w-full p-6 my-auto relative"
+        className="bg-cz-card rounded-cz shadow-2xl max-w-lg w-full p-6 my-auto relative"
         onClick={e => e.stopPropagation()}
       >
         <button
@@ -45,7 +45,7 @@ export default function OnboardingModal({ onClose }) {
 
         <div className="grid gap-3 mb-5">
           {CARDS.map(card => (
-            <div key={card.id} className="flex items-start gap-3 bg-cz-subtle border border-cz-border rounded-xl p-4">
+            <div key={card.id} className="flex items-start gap-3 bg-cz-subtle border border-cz-border rounded-cz p-4">
               <span className="text-2xl flex-shrink-0 mt-0.5">{card.icon}</span>
               <div className="min-w-0">
                 <p className="text-cz-1 font-semibold text-sm">{t(`onboardingModal.cards.${card.id}.title`)}</p>

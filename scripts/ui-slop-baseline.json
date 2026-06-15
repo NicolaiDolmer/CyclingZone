@@ -58,7 +58,7 @@
     },
     "frontend/src/components/FinanceForecastCard.jsx": {
       "hex": 0,
-      "slop": 3,
+      "slop": 0,
       "emoji": 4
     },
     "frontend/src/components/Layout.jsx": {
@@ -71,24 +71,19 @@
       "slop": 0,
       "emoji": 0
     },
-    "frontend/src/components/NextActionsCard.jsx": {
-      "hex": 0,
-      "slop": 1,
-      "emoji": 3
-    },
     "frontend/src/components/OnboardingCompletionCard.jsx": {
       "hex": 0,
-      "slop": 1,
+      "slop": 0,
       "emoji": 4
     },
     "frontend/src/components/OnboardingModal.jsx": {
       "hex": 0,
-      "slop": 2,
+      "slop": 0,
       "emoji": 3
     },
     "frontend/src/components/OnboardingProgressCard.jsx": {
       "hex": 0,
-      "slop": 1,
+      "slop": 0,
       "emoji": 1
     },
     "frontend/src/components/OnboardingTour.jsx": {
@@ -140,11 +135,6 @@
       "hex": 0,
       "slop": 1,
       "emoji": 0
-    },
-    "frontend/src/components/SurveyBanner.jsx": {
-      "hex": 0,
-      "slop": 1,
-      "emoji": 1
     },
     "frontend/src/components/TeamResultsTab.jsx": {
       "hex": 0,
@@ -270,11 +260,6 @@
       "hex": 0,
       "slop": 45,
       "emoji": 10
-    },
-    "frontend/src/pages/DashboardPage.jsx": {
-      "hex": 5,
-      "slop": 11,
-      "emoji": 2
     },
     "frontend/src/pages/DeadlineDayBoard.jsx": {
       "hex": 0,
