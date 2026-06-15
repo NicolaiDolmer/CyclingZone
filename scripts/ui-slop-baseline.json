@@ -106,11 +106,6 @@
       "slop": 2,
       "emoji": 0
     },
-    "frontend/src/components/TeamTransferHistoryTab.jsx": {
-      "hex": 0,
-      "slop": 3,
-      "emoji": 1
-    },
     "frontend/src/components/admin/DeadlineReadinessSection.jsx": {
       "hex": 0,
       "slop": 5,
@@ -291,16 +286,6 @@
       "slop": 3,
       "emoji": 1
     },
-    "frontend/src/pages/RacePointsPage.jsx": {
-      "hex": 0,
-      "slop": 3,
-      "emoji": 1
-    },
-    "frontend/src/pages/RacesPage.jsx": {
-      "hex": 0,
-      "slop": 13,
-      "emoji": 5
-    },
     "frontend/src/pages/ResultaterPage.jsx": {
       "hex": 0,
       "slop": 3,
@@ -350,11 +335,6 @@
       "hex": 7,
       "slop": 1,
       "emoji": 0
-    },
-    "frontend/src/pages/TeamPage.jsx": {
-      "hex": 0,
-      "slop": 6,
-      "emoji": 2
     },
     "frontend/src/pages/TeamProfilePage.jsx": {
       "hex": 0,
