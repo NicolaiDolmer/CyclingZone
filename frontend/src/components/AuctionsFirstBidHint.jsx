@@ -5,13 +5,14 @@
 // i18n: Fase 3b — Refs #412.
 
 import { useTranslation } from "react-i18next";
+import { InfoIcon } from "./ui";
 
 export default function AuctionsFirstBidHint({ onDismiss, onStartTour }) {
   const { t } = useTranslation(["auctions", "common"]);
   return (
-    <div className="mb-4 px-4 py-3 bg-cz-card border border-cz-accent/30 rounded-xl">
+    <div className="mb-4 px-4 py-3 bg-cz-card border border-cz-accent/30 rounded-cz">
       <div className="flex items-start gap-3">
-        <span className="text-cz-accent-t text-base flex-shrink-0">💡</span>
+        <InfoIcon size={18} className="text-cz-accent-t flex-shrink-0 mt-0.5" />
         <div className="flex-1 min-w-0">
           <p className="text-cz-1 text-sm font-semibold mb-1">{t("auctions:hint.title")}</p>
           <ul className="text-cz-2 text-xs space-y-1">

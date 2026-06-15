@@ -74,3 +74,18 @@ Ejeren påpegede at en snæver *per-fil*-migration efterlod fladen visuelt inkon
 **Sweep-fund pr. flade (til kommende sider):** Finance → #986 (struktur-rework: fold migration ind). Dashboard-IA → #977 (konsolidér "Næste træk"), #1140 (onboarding). Nav → #1027.
 
 Baseline efter flade-rework: 93 → 91 filer. Patch note 5.37 udvidet (header-oprydning).
+
+---
+
+## Slice B — Team-fladen (hele fladen, per arbejdsmodel)
+
+Flade = `TeamPage.jsx` (squad/økonomi/transfers-faner + `RiderActionModal`) + child-komponenten `TeamTransferHistoryTab.jsx`. GitHub-sweep: INGEN planlagt struktur-rework på Team → ren kosmetisk migration er korrekt (modsat Finance → #986). 9 overtrædelser (6 slop / 2 emoji i `TeamPage`, 3 slop / 1 emoji i `TeamTransferHistoryTab`) → 0. (`TeamResultsTab.jsx` hører til `TeamProfilePage` — IKKE denne flade — udskudt til den side.)
+
+- **Neutrale kort/paneler → `Card`-primitiv** (`rounded-cz` hairline): squad-tabel-wrapper, 4 økonomi-KPI-kort, prognose-/breakdown-/historik-kortene + `TransferProfitPanel`. Fjerner den duplikerede `bg-cz-card border border-cz-border rounded-xl`-kopi (kernen i Plan 4).
+- **`RiderActionModal` bevares bespoke overlay** (som Slice A's delte fejl-region): `rounded-2xl` → `rounded-cz`; inputs → `Input` (med `error`-prop på auktions-feltet); knapper → `Button` (flash-state = `!bg-cz-danger` i stedet for rå `bg-red-600`); inder-faner + sidens faner + segment-toggle/loan-pills: `rounded-lg` → `rounded-cz`. Modal'ens flash-auktions-kontrakt (#778, source-pinnet test) er uændret.
+- **Emoji → ikoner/state**: empty-state 🚴 → `BikeIcon`; swap-separator ↔ → `ExchangeIcon`; modal-besked-farve udledtes af `msg.startsWith("✅")` (emoji-som-state) → eksplicit `msgOk`-boolean, så `✅`-literalet i JSX forsvinder. `✅/❌` i `team.json`-copy er locale-strings (uden for slop-scannen, uden for scope).
+- **Semantiske farve-bannere/pills bevares bespoke** (`rounded-cz` inline): netto-negativ-advarsel, transfer-historik-fejlbanner, loan-in/out-pills (lilla/gul palette-farver — ikke rå hex, intet `cz-`-token findes; semantisk konsistent med tabel-rækkernes tinting).
+- **Ingen TeamPage-source/a11y-test at evolvere**; `TeamPage.flashAuction.test.js` (source-pin #778) består uændret — POST-body + `ddActive`-gating bevaret eksakt.
+- **Snapshots**: `team.png` (masket layout-guard) består på alle 3 projekter — radius-diff under tolerance → ingen PNG-refresh.
+
+Baseline ratchet: 91 → 89 filer (begge Team-flade-filer helt fjernet). Patch note: master konsoliderer.

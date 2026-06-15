@@ -9,6 +9,7 @@ import DeadlineDayTicker from "./DeadlineDayTicker";
 import MobileQuickNav from "./MobileQuickNav";
 import LanguageSwitcher from "./LanguageSwitcher";
 import { Wordmark } from "./Brand";
+import DiscordJoinLink from "./DiscordJoinLink";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -215,6 +216,9 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
         {bottomItems.map(item => (
           <NavItem key={item.to} {...item} onClick={onNav} location={location} unread={unread} />
         ))}
+
+        {/* #679: fast Discord-join-link mod community-serveren (ekstern). */}
+        <DiscordJoinLink variant="sidebar" label={t("sidebar.joinDiscord")} onClick={onNav} className="mt-1" />
       </nav>
 
       {/* Footer */}
