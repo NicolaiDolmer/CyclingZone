@@ -86,13 +86,25 @@ export const PHYS_ANCHORS = Object.freeze({
 });
 
 const normPhys = (phys, key) => {
-  const [lo, hi] = PHYS_ANCHORS[key];
+  const anchor = PHYS_ANCHORS[key];
+  if (!anchor) return 0; // ukendt key → degradér blødt (letter debug ved fremtidig tastefejl)
+  const [lo, hi] = anchor;
   const v = Number(phys?.[key]);
   if (!Number.isFinite(v)) return 0;
-  return clamp((v - lo) / (hi - lo), 0, 1);
+  const frac = clamp((v - lo) / (hi - lo), 0, 1);
+  return Number.isFinite(frac) ? frac : 0; // guard mod degenereret anker (hi==lo → NaN)
 };
 
-const hasPhysiology = (phys) => phys && Number.isFinite(Number(phys.ftp_wkg));
+// v3 kræver en KOMPLET v2-profil (arketype-seedet via archetypePhysiology.js): den har
+// bl.a. `aero` (+ power_2m_wkg/power_10m_wkg). En gammel v1-profil (seedPhysiologyFromLegacy)
+// mangler disse → falder BEVIDST tilbage til PCM-stat-derivationen i stedet for at
+// underestimere time_trial/flat/punch/tempo (normPhys→0 for manglende metrics). Task D2
+// re-seeder PCM-ryttere til v2 FØR previewDerivedAbilities re-derives dem. `!= null`
+// afviser eksplicit DB-NULL (Number(null)=0 er finit men ikke en gyldig profil).
+const hasPhysiology = (phys) =>
+  phys != null &&
+  phys.ftp_wkg != null && Number.isFinite(Number(phys.ftp_wkg)) &&
+  phys.aero != null && Number.isFinite(Number(phys.aero));
 
 // physiology: rider_physiology_profiles-række (driver fysiske evner i v3).
 // riderRow:   stat_*-felter + birthdate + potentiale + id (tekniske/mentale + fallback).

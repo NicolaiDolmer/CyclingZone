@@ -165,3 +165,20 @@ test("ældre rytter har højere tactics; yngre har højere hidden_potential", ()
   assert.ok(old.tactics > young.tactics, `tactics: old ${old.tactics} ikke > young ${young.tactics}`);
   assert.ok(young.hidden_potential > old.hidden_potential, `hidden: young ${young.hidden_potential} ikke > old ${old.hidden_potential}`);
 });
+
+// ── v1-profil (ufuldstændig) skal IKKE bruge fysiologi-stien (#1122 review-fund) ──
+
+test("#1122 v3 hasPhysiology: v1-profil (ftp_wkg men ingen aero) falder til PCM-fallback", () => {
+  // seedPhysiologyFromLegacy (v1) har ftp_wkg men mangler aero/power_2m/power_10m. Hvis
+  // den slap ind i fysiologi-stien ville normPhys→0 underestimere time_trial/flat/punch.
+  // Forventet: hasPhysiology=false → PCM-fallback → climbing følger stat_bj (=85 → 99).
+  const v1 = { rider_id: "pcm1", ftp_wkg: 6.5, vo2max_power_wkg: 7.0, pmax_watts: 1500 }; // ingen aero
+  const a = deriveAbilities(v1, rider(85));
+  assert.equal(a.climbing, 99, `v1-profil skal bruge fallback (climbing ${a.climbing}, forventet 99)`);
+});
+
+test("#1122 v3 hasPhysiology: DB-NULL felter afvises (falder til fallback)", () => {
+  const nullish = { rider_id: "x", ftp_wkg: null, aero: null };
+  const a = deriveAbilities(nullish, rider(85));
+  assert.equal(a.climbing, 99, "null-profil skal bruge fallback");
+});
