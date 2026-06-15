@@ -5,6 +5,7 @@ import RiderLink from "./RiderLink";
 import TeamLink from "./TeamLink";
 import { formatNumber, formatDate } from "../lib/intl";
 import { computeTransferProfit } from "../lib/transferProfit.js";
+import { Card, Select, ExchangeIcon } from "./ui";
 
 const TYPE_LABEL_KEY = { auction: "type.auction", transfer: "type.transfer", swap: "type.swap", loan: "type.loan" };
 
@@ -37,9 +38,9 @@ function RiderCell({ event }) {
   );
   if (event.type === "swap" && event.rider_swapped) {
     return (
-      <span className="text-cz-2">
+      <span className="inline-flex items-center gap-1 text-cz-2">
         {primary}
-        <span className="text-cz-3 mx-1">↔</span>
+        <ExchangeIcon size={14} className="mx-0.5 text-cz-3 flex-shrink-0" />
         <RiderLink id={event.rider_swapped.id} className="text-cz-1 hover:text-cz-accent-t">
           {event.rider_swapped.firstname} {event.rider_swapped.lastname}
         </RiderLink>
@@ -79,7 +80,7 @@ function TransferProfitPanel({ trades, totals }) {
   if (trades.length === 0) return null;
   const unknownCount = totals.tradeCount - totals.knownTradeCount;
   return (
-    <div className="bg-cz-card border border-cz-border rounded-xl p-5">
+    <Card className="p-5">
       <div className="mb-1">
         <h2 className="text-cz-1 font-semibold text-sm">{t("profit.title")}</h2>
         <p className="text-cz-3 text-xs mt-0.5">{t("profit.subtitle")}</p>
@@ -119,7 +120,7 @@ function TransferProfitPanel({ trades, totals }) {
       {unknownCount > 0 && (
         <p className="text-cz-3 text-[11px] mt-2">{t("profit.totalExcluded", { count: unknownCount })}</p>
       )}
-    </div>
+    </Card>
   );
 }
 
@@ -198,7 +199,7 @@ export default function TeamTransferHistoryTab({ teamId }) {
     </div>
   );
   if (error) return (
-    <div className="bg-cz-danger-bg border border-cz-danger/30 rounded-xl p-4">
+    <div className="bg-cz-danger-bg border border-cz-danger/30 rounded-cz p-4">
       <p className="text-cz-danger text-sm">{error}</p>
     </div>
   );
@@ -208,11 +209,10 @@ export default function TeamTransferHistoryTab({ teamId }) {
 
   return (
     <div className="space-y-4">
-    <div className="bg-cz-card border border-cz-border rounded-xl p-5">
+    <Card className="p-5">
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <h2 className="text-cz-1 font-semibold text-sm">{t("history.title")}</h2>
-        <select value={seasonFilter} onChange={(e) => setSeasonFilter(e.target.value)}
-          className="bg-cz-subtle border border-cz-border rounded-lg px-3 py-1.5 text-cz-1 text-sm focus:outline-none focus:border-cz-accent">
+        <Select value={seasonFilter} onChange={(e) => setSeasonFilter(e.target.value)} size="sm">
           <option value="all">{t("history.seasonFilterAll")}</option>
           {currentSeason != null && (
             <option value="current">{t("history.seasonFilterCurrent", { n: currentSeason })}</option>
@@ -220,7 +220,7 @@ export default function TeamTransferHistoryTab({ teamId }) {
           {availableSeasons.filter((n) => n !== currentSeason).map((n) => (
             <option key={n} value={n}>{t("history.seasonOption", { n })}</option>
           ))}
-        </select>
+        </Select>
       </div>
 
       {noResults && (
@@ -279,7 +279,7 @@ export default function TeamTransferHistoryTab({ teamId }) {
           </table>
         </div>
       )}
-    </div>
+    </Card>
 
     <TransferProfitPanel trades={profit.trades} totals={profit.totals} />
     </div>
