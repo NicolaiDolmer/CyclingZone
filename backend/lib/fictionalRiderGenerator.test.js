@@ -5,6 +5,7 @@ import {
   generateFictionalRiders,
   makeRng,
   STAT_KEYS,
+  toInsertPayload,
 } from "./fictionalRiderGenerator.js";
 import { foldNameNordic } from "./pcmRiderMatcher.js";
 
@@ -224,4 +225,32 @@ test("coverage rapporterer cluster-fordeling og evt. fallback", () => {
   const totalByCluster = Object.values(coverage.byCluster).reduce((s, n) => s + n, 0);
   assert.equal(totalByCluster, 100);
   assert.equal(typeof coverage.fallbackNationalities, "object");
+});
+
+// ── A3: Arketype-skæv fysiologi på hver rytter (#1122) ───────────────────────
+
+test("#1122 hver rytter får en arketype-konsistent _meta.physiology (deterministisk)", () => {
+  const a = generateFictionalRiders({ seed: 2026, count: 60, referenceYear: 2026 });
+  const b = generateFictionalRiders({ seed: 2026, count: 60, referenceYear: 2026 });
+  assert.deepEqual(a.riders.map((r) => r._meta.physiology), b.riders.map((r) => r._meta.physiology));
+  for (const r of a.riders) {
+    assert.ok(r._meta.physiology && Number.isFinite(r._meta.physiology.ftp_wkg), `mangler physiology for ${r._meta.archetype}`);
+    assert.ok(Number.isFinite(r._meta.physiology.aero), "mangler aero-metric");
+  }
+});
+
+test("#1122 climber-arketyper har i snit højere ftp_wkg end sprinter-arketyper", () => {
+  const { riders } = generateFictionalRiders({ seed: 2026, count: 800, referenceYear: 2026 });
+  const avg = (type) => {
+    const xs = riders.filter((r) => r._meta.archetype === type).map((r) => r._meta.physiology.ftp_wkg);
+    return xs.reduce((s, x) => s + x, 0) / xs.length;
+  };
+  assert.ok(avg("climber") > avg("sprinter"), `climber ftp_wkg ${avg("climber").toFixed(2)} ikke > sprinter ${avg("sprinter").toFixed(2)}`);
+});
+
+test("#1122 _meta.physiology fjernes af toInsertPayload (ikke en riders-kolonne)", () => {
+  const { riders } = generateFictionalRiders({ seed: 1, count: 5, referenceYear: 2026 });
+  for (const row of toInsertPayload(riders)) {
+    assert.ok(!("physiology" in row) && !("_meta" in row), "physiology/_meta lækkede ind i INSERT-payload");
+  }
 });
