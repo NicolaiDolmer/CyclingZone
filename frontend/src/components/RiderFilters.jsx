@@ -19,6 +19,7 @@ import { getCountryName } from "../lib/countryUtils";
 import { Flag } from "./Flag";
 import { formatNumber } from "../lib/intl";
 import { RIDER_TYPE_KEYS } from "../lib/riderTypeKeys";
+import { ChevronRightIcon } from "./ui";
 // Kanonisk nøgleliste bor i lib/riderRating.js (ren .js → node --test-venlig).
 // Re-eksporteres her for bagudkompatibilitet med eksisterende imports.
 import { STAT_KEYS } from "../lib/riderRating";
@@ -145,7 +146,7 @@ export default function RiderFilters({
   return (
     <>
       {/* ── Filter panel ── */}
-      <div className="bg-cz-card border border-cz-border rounded-xl p-4 mb-3">
+      <div className="bg-cz-card border border-cz-border rounded-cz p-4 mb-3">
         <div className="flex items-center justify-between gap-3 mb-3">
           <p className="text-cz-2 text-xs uppercase tracking-wider font-semibold">{t("panel.label")}</p>
           {/* #960: altid synlig så brugeren lærer den findes; deaktiveret/grå
@@ -298,7 +299,7 @@ export default function RiderFilters({
         <div className="mt-3 pt-3 border-t border-cz-border">
           <button onClick={() => setStatsOpen(o => !o)}
             className="flex items-center gap-2 text-cz-3 hover:text-cz-2 text-xs transition-colors">
-            <span className={`transition-transform duration-150 inline-block ${statsOpen ? "rotate-90" : ""}`}>▶</span>
+            <ChevronRightIcon size={14} className={`transition-transform duration-150 ${statsOpen ? "rotate-90" : ""}`} />
             <span className="uppercase tracking-wider font-medium">{t("stats.section")}</span>
             {hasActiveStats && (
               <span className="bg-cz-accent/10 text-cz-accent-t text-[10px] px-1.5 py-0.5 rounded-full">

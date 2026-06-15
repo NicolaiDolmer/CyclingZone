@@ -1,5 +1,6 @@
 import { Trans, useTranslation } from "react-i18next";
 import { formatNumber } from "../lib/intl";
+import { AlertTriangleIcon } from "./ui";
 
 // #194 race-confirm-modal: vises når server returnerer 409 price_changed —
 // dvs. prisen er steget mellem manager's fetch og POST. Manager kan annullere
@@ -9,14 +10,16 @@ export function RacePriceModal({ show, newPrice, newMinBid, onCancel, onConfirm 
   if (!show) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onCancel}>
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/70" />
       <div
-        className="relative z-10 bg-cz-card border border-cz-border rounded-2xl p-6
+        className="relative z-10 bg-cz-card border border-cz-border rounded-cz p-6
           text-center max-w-sm w-full mx-4 shadow-2xl"
         style={{ animation: "raceScaleIn 0.25s ease-out" }}
         onClick={e => e.stopPropagation()}
       >
-        <div className="text-4xl mb-3">⚠️</div>
+        <div className="mb-3 flex justify-center" aria-hidden="true">
+          <AlertTriangleIcon size={32} className="text-cz-warning" />
+        </div>
         <h2 className="text-cz-1 font-bold text-lg mb-2">{t("priceChanged.title")}</h2>
         <p className="text-cz-2 text-sm mb-1">
           <Trans

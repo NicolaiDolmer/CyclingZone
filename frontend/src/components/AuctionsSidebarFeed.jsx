@@ -22,7 +22,7 @@ export default function AuctionsSidebarFeed({ events, auctionsById, myTeamId, no
   return (
     <aside
       data-testid="auctions-sidebar-feed"
-      className="flex flex-col bg-cz-card border border-cz-border rounded-xl overflow-hidden mt-4 md:mt-0"
+      className="flex flex-col bg-cz-card border border-cz-border rounded-cz overflow-hidden mt-4 md:mt-0"
     >
       <div className="px-4 py-3 border-b border-cz-border bg-cz-subtle">
         <h3 className="text-[11px] uppercase tracking-widest text-cz-3 font-medium">

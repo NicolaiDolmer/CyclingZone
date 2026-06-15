@@ -43,7 +43,7 @@ export default function StatsToggle({ visibleStats, onToggleStat, onShowAll, onH
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 z-30 w-72 max-w-[calc(100vw-2rem)] bg-cz-card border border-cz-border rounded-xl shadow-xl p-3">
+        <div className="absolute right-0 mt-2 z-30 w-72 max-w-[calc(100vw-2rem)] bg-cz-card border border-cz-border rounded-cz shadow-xl p-3">
           <div className="flex items-center justify-between mb-2">
             <p className="text-cz-2 text-xs uppercase tracking-wider font-semibold">{t("controls.statsToggleHeading")}</p>
             <button
