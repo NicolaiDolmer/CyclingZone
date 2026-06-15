@@ -121,12 +121,12 @@ export function deriveAbilities(physiology = {}, riderRow = {}, { asOfYear = CAL
   // ── Fysiske evner ← fysiologi (§0.1 Beslutning 3). KANDIDAT-vægte (Task C1). ──
   if (hasPhysiology(physiology)) {
     const P = (k) => normPhys(physiology, k);
-    out.sprint       = scoreFrac(0.45 * P("pmax_watts") + 0.35 * P("power_5s_wkg") + 0.20 * P("power_15s_wkg"));
-    out.acceleration = scoreFrac(0.60 * P("pmax_watts") + 0.40 * P("power_5s_wkg"));
-    out.punch        = scoreFrac(0.55 * P("power_1m_wkg") + 0.45 * P("power_2m_wkg"));
+    out.sprint       = scoreFrac(0.25 * P("pmax_watts") + 0.45 * P("power_5s_wkg") + 0.30 * P("power_15s_wkg"));
+    out.acceleration = scoreFrac(0.40 * P("pmax_watts") + 0.60 * P("power_5s_wkg"));
+    out.punch        = scoreFrac(0.65 * P("power_1m_wkg") + 0.35 * P("power_2m_wkg"));
     out.tempo        = scoreFrac(0.45 * P("vo2max_power_wkg") + 0.35 * P("power_10m_wkg") + 0.20 * P("zone2_power_wkg"));
-    out.climbing     = scoreFrac(0.65 * P("ftp_wkg") + 0.35 * P("vo2max_power_wkg")); // VO2-loft
-    out.time_trial   = scoreFrac(0.55 * P("ftp_wkg") + 0.30 * P("aero") + 0.15 * P("zone2_power_wkg"));
+    out.climbing     = scoreFrac(0.50 * P("ftp_wkg") + 0.50 * P("vo2max_power_wkg")); // VO2-loft separerer klatrer fra tt
+    out.time_trial   = scoreFrac(0.30 * P("ftp_wkg") + 0.55 * P("aero") + 0.15 * P("zone2_power_wkg")); // aero separerer tt fra gc på flad ITT
     out.flat         = scoreFrac(0.45 * P("ftp_wkg") + 0.30 * P("aero") + 0.25 * P("zone2_power_wkg"));
     out.endurance    = scoreFrac(0.40 * P("zone2_power_wkg") + 0.35 * P("time_to_exhaustion_ftp_min") + 0.25 * P("fatigue_resistance"));
     out.recovery     = scoreFrac(P("recovery_rate"));
