@@ -222,6 +222,7 @@ import { generateRaceStageProfiles, GENERATOR_VERSION } from "../lib/raceStagePr
 import { checkAchievements } from "../lib/achievementEngine.js";
 import { captureException, setSentryUser } from "../lib/sentry.js";
 import { upsertOwnTeamProfile } from "../lib/teamProfileEngine.js";
+import { buildAttributionRow } from "../lib/signupAttribution.js";
 import { parseRacePoolCsv, summarizePool, WORLD_TOUR_CLASSES } from "../lib/racePoolImport.js";
 import {
   UCI_MEN_RACE_CLASSES,
@@ -3401,6 +3402,20 @@ router.put("/teams/my", requireAuth, marketWriteLimiter, async (req, res) => {
     });
 
     req.team = result.team;
+
+    // #679: persist first-touch acquisition source on the FIRST team-create
+    // (signup). Best-effort + fire-and-forget — must never block or fail signup.
+    if (result.created) {
+      const attributionRow = buildAttributionRow(req.user.id, req.body?.attribution);
+      if (attributionRow) {
+        supabase
+          .from("signup_attribution")
+          .upsert(attributionRow, { onConflict: "user_id", ignoreDuplicates: true })
+          .then(({ error }) => {
+            if (error) console.error("[attribution] persist fejlede:", error.message);
+          });
+      }
+    }
 
     res.status(result.created ? 201 : 200).json(result);
   } catch (error) {

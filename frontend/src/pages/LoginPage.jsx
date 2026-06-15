@@ -8,6 +8,7 @@ import LanguageSwitcher from "../components/LanguageSwitcher";
 import { Wordmark } from "../components/Brand";
 import { Card, Button, Input, CheckIcon, InboxIcon } from "../components/ui";
 import { labelClass, helperClass } from "../components/ui/fieldStyles.js";
+import { getAttribution } from "../lib/attribution";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -159,6 +160,7 @@ export default function LoginPage() {
         body: JSON.stringify({
           name: teamName.trim(),
           manager_name: managerName.trim(),
+          attribution: getAttribution(),
         }),
       });
       let bootstrapData = {};
