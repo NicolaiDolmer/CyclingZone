@@ -6,11 +6,11 @@
 
 ## Population
 
-800 ryttere · overall p50 19 (p90 49, max 71) · base_value p50 25024 (p99 13116779, max 24124549)
+800 ryttere · overall p50 19 (p90 49, max 71) · base_value p50 23961 (p99 13116779, max 24124549)
 
 | Type | Antal | base_value p50 | p90 | max |
 |---|--:|--:|--:|--:|
-| baroudeur | 80 | 24737 | 734441 | 7806827 |
+| baroudeur | 80 | 12747 | 378472 | 4023015 |
 | brostensrytter | 54 | 38339 | 1995148 | 7264517 |
 | climber | 220 | 25085 | 853508 | 8685025 |
 | gc | 33 | 852518 | 7071022 | 18129767 |
@@ -24,31 +24,42 @@
 
 | Terræn | Nøgle-evne | Vinder ⌀ vs median | Distinkte | Stærkeste vandt | Top-vindertyper (født-som) |
 |---|---|---|--:|--:|---|
-| classic | endurance | 69 vs 29 | 41/300 | 32.3% | gc 39%, puncheur 38%, baroudeur 10% |
-| cobbles | cobblestone | 86 vs 21 | 27/300 | 2% | brostensrytter 98%, gc 2%, baroudeur 0% |
-| flat | sprint | 84 vs 18 | 29/300 | 1.7% | sprinter 91%, leadout 7%, tt 1% |
-| high_mountain | climbing | 90 vs 23 | 26/300 | 36.3% | gc 69%, climber 22%, puncheur 9% |
-| hilly | punch | 83 vs 26 | 38/300 | 4.7% | puncheur 82%, climber 5%, baroudeur 4% |
-| itt | time_trial | 90 vs 18 | 25/300 | 39.3% | tt 66%, gc 34% |
-| mountain | climbing | 88 vs 23 | 51/300 | 30.7% | gc 69%, climber 21%, puncheur 9% |
-| rolling | endurance | 69 vs 29 | 72/300 | 28.7% | gc 38%, baroudeur 27%, puncheur 24% |
+| classic | endurance | 68 vs 29 | 40/300 | 39.7% | gc 47%, puncheur 36%, baroudeur 8% |
+| cobbles | cobblestone | 86 vs 21 | 25/300 | 2.7% | brostensrytter 97%, gc 2%, baroudeur 0% |
+| flat | sprint | 84 vs 18 | 32/300 | 2% | sprinter 90%, leadout 8%, baroudeur 1% |
+| high_mountain | climbing | 90 vs 23 | 27/300 | 41% | gc 72%, climber 21%, puncheur 7% |
+| hilly | punch | 82 vs 26 | 42/300 | 6.3% | puncheur 83%, gc 7%, climber 6% |
+| itt | time_trial | 90 vs 18 | 25/300 | 37.3% | tt 67%, gc 33% |
+| mountain | climbing | 87 vs 23 | 53/300 | 35.7% | gc 69%, climber 20%, puncheur 9% |
+| rolling | endurance | 69 vs 29 | 66/300 | 37% | gc 48%, baroudeur 22%, puncheur 21% |
 
-Udbruds-andel af bjergsejre: 0.5%
+Udbruds-andel af bjergsejre: 0.2%
+
+### Evne-liveness (⌀rank-gevinst pr. probe)
+
+| Probe | ⌀rank-gevinst |
+|---|--:|
+| aggression@mountain-bwgap | 0.018 |
+| climbing@mountain | 9.48 |
+| descending@mountain | 1.43 |
+| flat@rolling | 3.49 |
+| sprint@flat | 10.99 |
+| tempo@mountain | 2.53 |
 
 ### Grand Tour (21 etaper)
 
 | # | Rytter | Født-som | Afledt | Tid |
 |--:|---|---|---|---|
 | 1 | Manuel Ferrara | gc | gc | +0:00 |
-| 2 | Matej Hribar | climber | climber | +6:35 |
-| 3 | Loïc Pichon | puncheur | puncheur | +9:58 |
-| 4 | Lachlan Foster | gc | gc | +10:33 |
-| 5 | Javier Aguilar | climber | gc | +13:32 |
-| 6 | Sebastian Bergström | gc | gc | +14:14 |
-| 7 | Adam Sokol | climber | climber | +17:12 |
-| 8 | Cody Ward | tt | tt | +17:43 |
-| 9 | Maarten Peeters | climber | climber | +18:22 |
-| 10 | Maxime Girard | climber | climber | +18:41 |
+| 2 | Matej Hribar | climber | climber | +6:25 |
+| 3 | Loïc Pichon | puncheur | puncheur | +8:33 |
+| 4 | Lachlan Foster | gc | gc | +10:08 |
+| 5 | Javier Aguilar | climber | gc | +11:31 |
+| 6 | Sebastian Bergström | gc | gc | +14:20 |
+| 7 | Adam Sokol | climber | climber | +14:46 |
+| 8 | Cody Ward | tt | tt | +16:55 |
+| 9 | Maxime Girard | climber | climber | +17:24 |
+| 10 | Maarten Peeters | climber | climber | +17:34 |
 
 Trøjer: 🟢 Loïc Pichon (puncheur) · ⛰️ Loïc Pichon (puncheur) · ⚪ Manuel Ferrara
 

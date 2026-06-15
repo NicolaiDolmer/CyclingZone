@@ -34,6 +34,10 @@ export const ENGINE_VERSION = 1;
 export const ABILITY_KEYS = Object.freeze([
   "climbing", "time_trial", "sprint", "punch", "endurance",
   "cobblestone", "acceleration", "recovery", "tactics", "positioning",
+  // Plan 1 (#1122): aktiverede evner — flat/tempo er terræn-kraft (vægtes i
+  // DEMAND_VECTORS), durability/aggression/descending er seam/dynamik/modifier
+  // (loades, men vægtes ikke i terrain-scoren).
+  "flat", "tempo", "durability", "aggression", "descending",
 ]);
 
 const ABILITY_MAX = 99;
@@ -74,6 +78,10 @@ const MAX_STAGE_GAP_SECONDS = 1800; // sikkerhedsloft (30 min)
 // Kalibreres i race:gate (B4); #1021 erstatter med fuld model i samme signaturer.
 export const FORM_RACE_WEIGHT = 0.012;     // form 0↔100 → ±0.012
 export const FATIGUE_RACE_WEIGHT = 0.008;  // træthed 100 → 0.008 (trækkes fra på call-site)
+// Plan 1 (#1122): durability-evnen dæmper trætheds-straffen (fade sent i hårde
+// løb). durability 99 → halv straf, durability 0 → fuld straf. Effekten findes
+// kun når der ER træthed (condition-mode / #1021), ikke i neutral-mode.
+export const DURABILITY_FATIGUE_DAMPING = 0.5;
 
 function formComponent(entrant /* , stageProfile, rng */) {
   const raw = entrant?.form;
@@ -87,7 +95,10 @@ function fatigueComponent(entrant /* , stageProfile */) {
   const raw = entrant?.fatigue;
   if (raw == null || !Number.isFinite(Number(raw))) return 0;
   const fatigue = clamp(Number(raw), 0, 100);
-  return (fatigue / 100) * FATIGUE_RACE_WEIGHT;
+  // Plan 1 (#1122): durability dæmper straffen (fade sent). Manglende durability → fuld straf.
+  const dur = Number(entrant?.abilities?.durability);
+  const damp = Number.isFinite(dur) ? 1 - (clamp(dur, 0, 99) / 99) * DURABILITY_FATIGUE_DAMPING : 1;
+  return (fatigue / 100) * FATIGUE_RACE_WEIGHT * damp;
 }
 
 function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
@@ -106,6 +117,19 @@ function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
 export const TEAM_RACE_WEIGHT = 0.024;
 export const HELPER_FATIGUE_DAMPING = 0.5;   // træthed 100 → hjælper bidrager 50 %
 const SPRINT_PROFILES = new Set(["flat"]);
+
+// Plan 1 (#1122): descending som finale-modifier — på descent-finaler får gode
+// nedkørere en bonus, dårlige taber (centreret om 50). Lille terræn-bjerg-vægt
+// (descending i bjerg-demand) kan tilføjes separat i DEMAND_VECTORS hvis ønsket.
+export const DESCENDING_FINALE_WEIGHT = 0.04;
+const DESCENT_FINALES = new Set(["descent"]);
+
+function finaleModifier(entrant, stageProfile) {
+  if (!DESCENT_FINALES.has(stageProfile?.finale_type)) return 0;
+  const d = Number(entrant?.abilities?.descending);
+  if (!Number.isFinite(d)) return 0;
+  return ((clamp(d, 0, 99) - 50) / 49) * DESCENDING_FINALE_WEIGHT;
+}
 
 export function buildTeamContext({ entrants, terrainById }) {
   const byTeam = new Map();
@@ -171,10 +195,14 @@ export const BREAKAWAY_TOP_EXCLUDED = 0.05;      // top-5 % (terrain) kan ikke e
 export const BREAKAWAY_MAX_RIDERS = 3;
 export const HUNTER_WEIGHT_MULTIPLIER = 2;
 
-// Aggression = lyst/evne til at køre i udbrud, udledt af eksisterende abilities
-// (ingen ny stat i v1): taktik vejer tungest, dernæst motor og punch-acceleration.
+// Aggression = lyst/evne til at køre i udbrud. Plan 1 (#1122): læser den ÆGTE
+// aggression-evne (driver udbruds-CHANCEN, jf. rider-ability-system-v2.md §0.1).
+// Fallback til den gamle proxy (tactics/endurance/acceleration) når aggression
+// mangler — bevarer flag-off / pre-v2-data-adfærd.
 export function aggressionScore(abilities) {
   const a = (k) => Number(abilities?.[k]) || 0;
+  const aggr = a("aggression");
+  if (aggr > 0) return aggr;
   return 0.5 * a("tactics") + 0.3 * a("endurance") + 0.2 * a("acceleration");
 }
 
@@ -284,12 +312,13 @@ export function simulateStage({ entrants = [], stageProfile, seed } = {}) {
     const fatigue = fatigueComponent(e, stageProfile);
     const team = teamComponent(e, stageProfile, teamCtx);
     const breakaway = breakawayById.get(e.rider_id) || 0;
-    const finalScore = terrain + noise + form - fatigue + team + breakaway;
+    const finale = finaleModifier(e, stageProfile);
+    const finalScore = terrain + noise + form - fatigue + team + breakaway + finale;
     return {
       rider_id: e.rider_id,
       team_id: e.team_id ?? null,
       finalScore,
-      components: { terrain, noise, form, fatigue, team, breakaway },
+      components: { terrain, noise, form, fatigue, team, breakaway, finale },
     };
   });
 

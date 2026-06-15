@@ -23,6 +23,10 @@ export const GENERATOR_VERSION = 1;
 export const ABILITY_DIMENSIONS = Object.freeze([
   "climbing", "time_trial", "sprint", "punch", "endurance",
   "cobblestone", "acceleration", "recovery", "tactics", "positioning",
+  // Plan 1 (#1122): matcher ABILITY_KEYS i raceSimulator.js. flat/tempo vægtes
+  // i DEMAND_VECTORS nedenfor; durability/aggression/descending loades men
+  // vægtes ikke i terrain-scoren (seam/dynamik/finale-modifier).
+  "flat", "tempo", "durability", "aggression", "descending",
 ]);
 
 export const PROFILE_TYPES = Object.freeze([
@@ -35,16 +39,20 @@ export const FINALE_TYPES = Object.freeze([
 
 // Normaliserede demand-vektorer pr. terræn (ability-vægte + randomness, sum 1.0).
 // Launch-defaults — tunes HER. Nøgler ⊆ ABILITY_DIMENSIONS ∪ {randomness}.
+// Plan 1 (#1122) kandidat-vektorer: tilføjer flat (rouleur/bunch-kraft) + tempo
+// (Mid-mountain, 5-15 min) som terræn-kraft, re-normaliseret til sum 1.0. flat
+// forbliver underordnet sprint på flad (sprinter ≥90%-mål); tempo underordnet
+// climbing i bjerg. Endelig kalibrering låses i race:gate (Plan 1 Task C1).
 export const DEMAND_VECTORS = Object.freeze({
-  flat:          Object.freeze({ sprint: 0.62, acceleration: 0.18, positioning: 0.08, endurance: 0.04, randomness: 0.08 }),
-  rolling:       Object.freeze({ endurance: 0.22, punch: 0.14, tactics: 0.12, positioning: 0.10, sprint: 0.10, climbing: 0.06, recovery: 0.06, randomness: 0.20 }),
-  hilly:         Object.freeze({ punch: 0.48, climbing: 0.06, acceleration: 0.10, endurance: 0.08, positioning: 0.06, sprint: 0.02 /* næsten fjernet: sprint-nulstilling sikrer puncheur-terrain mod sprinter-kap */, randomness: 0.20 }),
-  mountain:      Object.freeze({ climbing: 0.56, endurance: 0.16, punch: 0.04, recovery: 0.08, tactics: 0.04, positioning: 0.02, randomness: 0.10 }),
-  high_mountain: Object.freeze({ climbing: 0.54, endurance: 0.20, punch: 0.04, recovery: 0.08, tactics: 0.04, randomness: 0.10 }),
-  itt:           Object.freeze({ time_trial: 0.60, positioning: 0.28, randomness: 0.12 }),
+  flat:          Object.freeze({ sprint: 0.61, acceleration: 0.15, flat: 0.06, positioning: 0.08, endurance: 0.02, randomness: 0.08 }),
+  rolling:       Object.freeze({ endurance: 0.18, flat: 0.12, punch: 0.12, tempo: 0.08, positioning: 0.08, sprint: 0.08, tactics: 0.06, climbing: 0.04, recovery: 0.04, randomness: 0.20 }),
+  hilly:         Object.freeze({ punch: 0.44, tempo: 0.10, acceleration: 0.08, climbing: 0.06, endurance: 0.06, positioning: 0.04, sprint: 0.02, randomness: 0.20 }),
+  mountain:      Object.freeze({ climbing: 0.50, tempo: 0.12, endurance: 0.14, recovery: 0.06, punch: 0.04, tactics: 0.02, positioning: 0.02, randomness: 0.10 }),
+  high_mountain: Object.freeze({ climbing: 0.52, endurance: 0.18, tempo: 0.08, recovery: 0.06, punch: 0.04, tactics: 0.02, randomness: 0.10 }),
+  itt:           Object.freeze({ time_trial: 0.58, positioning: 0.24, flat: 0.06, randomness: 0.12 }),
   ttt:           Object.freeze({ time_trial: 0.50, tactics: 0.18, positioning: 0.14, endurance: 0.12, randomness: 0.06 }),
-  cobbles:       Object.freeze({ cobblestone: 0.70, punch: 0.08, positioning: 0.08, endurance: 0.06, randomness: 0.08 }),
-  classic:       Object.freeze({ endurance: 0.20, punch: 0.18, climbing: 0.14, cobblestone: 0.12, positioning: 0.08, tactics: 0.06, sprint: 0.04, randomness: 0.18 }),
+  cobbles:       Object.freeze({ cobblestone: 0.66, flat: 0.08, punch: 0.06, positioning: 0.06, endurance: 0.06, randomness: 0.08 }),
+  classic:       Object.freeze({ endurance: 0.18, punch: 0.16, climbing: 0.12, cobblestone: 0.10, tempo: 0.06, flat: 0.06, positioning: 0.06, tactics: 0.04, sprint: 0.04, randomness: 0.18 }),
 });
 
 // Plausible finale-typer pr. terræn (display + senere modifier). Første = mest typisk.

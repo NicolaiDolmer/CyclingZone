@@ -26,7 +26,8 @@ import { predictBaseValue, riderOverall, riderSpecialty } from "../lib/riderValu
 import { DEMAND_VECTORS } from "../lib/raceStageProfileGenerator.js";
 import { simulateStage, stableSeed, NOISE_SD_SCALE, aggressionScore, BREAKAWAY_PROFILES } from "../lib/raceSimulator.js";
 import { buildRaceResults } from "../lib/raceRunner.js";
-import { evaluateRaceStructuralOracles } from "../lib/raceDryRunOracles.js";
+import { evaluateRaceStructuralOracles, evaluateAbilityLivenessOracle } from "../lib/raceDryRunOracles.js";
+import { abilityRankSensitivity, breakawayParticipationGapByAggression, SENSITIVITY_DELTA } from "../lib/raceSensitivity.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -57,6 +58,10 @@ const CONDITION_MODE = arg("condition", null) === "random";
 // Prøve-trækningen (sampleField) er UÆNDRET — roller udledes deterministisk af
 // prøven og konsumerer ingen rng, så felterne er identiske med neutral-mode.
 const ROLES_MODE = !!arg("roles", false);
+// Plan 1 (#1122): --enforce-liveness gør evne-liveness-scorecardet (sektion E) til
+// en hard gate (exit 1). Default off, så Phase A's race:gate forbliver grøn mens
+// instrumentet bygges; tilføjes race:gate-scriptet i Phase C når motoren er grøn.
+const ENFORCE_LIVENESS = !!arg("enforce-liveness", false);
 
 const baseline = JSON.parse(readFileSync(join(__dirname, "../lib/riderTypesBaseline.json"), "utf8"));
 const model = JSON.parse(readFileSync(join(__dirname, "../lib/riderValuationModel.json"), "utf8"));
@@ -580,6 +585,87 @@ if (breakawayGateFailures.length) {
     process.exitCode = 1;
   } else {
     console.log(`   ⚠ ${breakawayGateFailures.length} udbruds-/roles-bånd brudt (rapport-only; håndhæv med --enforce-targets): ${breakawayGateFailures.join(" · ")}`);
+  }
+}
+
+// ── E. EVNE-LIVENESS (#1122) — rykker hver evne faktisk placeringen? ──────────
+// Probe-matrix: (evne, terræn, mode). Terræn-kraft testes neutralt; seam/dynamik-
+// evner i deres mode (aggression: udbruds-egnet terræn; durability: condition;
+// descending: descent-finale). Gulvet er bevidst lavt (0.05 ⌀rank) — vi tester
+// "påvirker den OVERHOVEDET", ikke kalibrerings-styrke (det er scorecardet i B).
+// Rapport-only; håndhæves (exit 1) med --enforce-liveness (tilføjes race:gate i Phase C).
+const LIVENESS_PROBES = [
+  // Allerede-levende terræn-kraft (sanity — skal være grønne fra start):
+  { ability: "sprint",      terrain: "flat",          mode: "neutral" },
+  { ability: "climbing",    terrain: "mountain",      mode: "neutral" },
+  { ability: "time_trial",  terrain: "itt",           mode: "neutral" },
+  { ability: "cobblestone", terrain: "cobbles",       mode: "neutral" },
+  { ability: "punch",       terrain: "hilly",         mode: "neutral" },
+  { ability: "endurance",   terrain: "high_mountain", mode: "neutral" },
+  // Plan 1-aktiverede (RØDE i Phase A, GRØNNE efter Phase B):
+  { ability: "flat",        terrain: "rolling",       mode: "neutral" },
+  { ability: "tempo",       terrain: "mountain",      mode: "neutral" },
+  { ability: "durability",  terrain: "high_mountain", mode: "condition" },
+  { ability: "descending",  terrain: "mountain",      mode: "finale", finaleType: "descent" },
+  // aggression måles separat (deltagelses-gap, ikke rank) — se nedenfor.
+];
+const LIVENESS_FLOOR = 0.05;
+// Plan 1 (#1122, ejer-valgt C1): seam/dynamik-evner har lavere gulv end terræn-
+// kraft — de virker gennem mindre seams (durability via placeholder-fatigue til
+// #1021, aggression via udbruds-chance, descending via finale-modifier), så et
+// lavere "læses-overhovedet"-gulv er korrekt. Terræn-kraft (neutral) beholder 0.05.
+const SEAM_FLOOR = 0.02;          // durability/descending (rank-metrik, subtile seams)
+const BREAKAWAY_GAP_FLOOR = 0.01; // aggression (deltagelses-gap-metrik — anden skala)
+const SEAM_MODES = { breakaway: BREAKAWAY_GAP_FLOOR, condition: SEAM_FLOOR, finale: SEAM_FLOOR };
+const floorFor = (mode) => SEAM_MODES[mode] ?? LIVENESS_FLOOR;
+
+// Felt med condition til durability-proben (genbrug condition-felter hvis sat,
+// ellers seeded form/fatigue lokalt så proben er reproducerbar uafhængigt af flag).
+const livenessField = field.map((r) => {
+  if (r.form != null || r.fatigue != null) return r;
+  const lr = makeRng((stableSeed(`liveness:${SEED}:${r.id}`) ^ 0x5eed1135) >>> 0);
+  return { ...r, form: Math.round(30 + lr() * 60), fatigue: Math.round(30 + lr() * 50) };
+});
+
+// Rank-drevne evner (terræn-kraft + durability/descending-seams): per-rytter rank-følsomhed.
+const livenessResults = LIVENESS_PROBES.map((p) => {
+  const rankGain = abilityRankSensitivity({
+    field: p.mode === "condition" ? livenessField : field,
+    profileType: p.terrain,
+    demandVector: DEMAND_VECTORS[p.terrain],
+    ability: p.ability,
+    finaleType: p.finaleType ?? null,
+    withCondition: p.mode === "condition",
+    samples: 150, fieldSize: 80, seed: SEED,
+  });
+  return { ...p, rankGain, metric: "rank" };
+});
+
+// Aggression driver udbruds-CHANCEN (ikke rank): aggregat deltagelses-gap mellem
+// top- og bund-aggression-tercil på et udbruds-egnet terræn (mountain). Robust
+// signal — beviser at aggression-EVNEN (ikke den gamle proxy) styrer udvælgelsen.
+const aggressionGap = breakawayParticipationGapByAggression({
+  field, profileType: "mountain", demandVector: DEMAND_VECTORS.mountain,
+  races: RACES, fieldSize: FIELD, seed: SEED,
+});
+livenessResults.push({ ability: "aggression", terrain: "mountain", mode: "breakaway", rankGain: aggressionGap, metric: "bw-gap" });
+
+const livenessFailures = evaluateAbilityLivenessOracle(livenessResults, { floor: LIVENESS_FLOOR, floorByMode: SEAM_MODES });
+
+console.log(`\n${"─".repeat(80)}`);
+console.log(`E. EVNE-LIVENESS (terræn-kraft: ⌀rank ved +${SENSITIVITY_DELTA}, gulv ${LIVENESS_FLOOR}; seam rank-gulv ${SEAM_FLOOR}; aggression: udbruds-deltagelses-gap, gulv ${BREAKAWAY_GAP_FLOOR})\n`);
+for (const r of livenessResults) {
+  const ok = r.rankGain >= floorFor(r.mode);
+  const label = r.metric === "bw-gap" ? "bw-gap" : "⌀rank ";
+  console.log(`   ${padE(r.ability, 13)} ${padE(r.terrain, 14)} ${padE(r.mode, 10)} ${label} ${padS(r.rankGain.toFixed(2), 6)}   ${ok ? "✓" : "✗ DØDVÆGT"}`);
+}
+if (livenessFailures.length) {
+  if (ENFORCE_LIVENESS) {
+    console.log(`   ❌ ${livenessFailures.length} evne(r) er dødvægt (--enforce-liveness aktiv → exit 1):`);
+    for (const f of livenessFailures) console.log(`   - ${f}`);
+    process.exitCode = 1;
+  } else {
+    console.log(`   ⚠ ${livenessFailures.length} evne(r) er dødvægt (rapport-only; håndhæv med --enforce-liveness): ${livenessResults.filter((r) => r.rankGain < floorFor(r.mode)).map((r) => r.ability).join(", ")}`);
   }
 }
 

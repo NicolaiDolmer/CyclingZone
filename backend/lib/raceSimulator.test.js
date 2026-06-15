@@ -5,10 +5,13 @@ import {
   simulateStage,
   terrainScore,
   stableSeed,
+  aggressionScore,
   ABILITY_KEYS,
   ENGINE_VERSION,
   FORM_RACE_WEIGHT,
   FATIGUE_RACE_WEIGHT,
+  DURABILITY_FATIGUE_DAMPING,
+  DESCENDING_FINALE_WEIGHT,
 } from "./raceSimulator.js";
 import { DEMAND_VECTORS } from "./raceStageProfileGenerator.js";
 
@@ -41,12 +44,13 @@ function rankOf(ranked, id) {
 }
 
 // ── Kontrakt / sundhed ────────────────────────────────────────────────────────
-test("ENGINE_VERSION + ABILITY_KEYS = de 10 forventede", () => {
+test("ENGINE_VERSION + ABILITY_KEYS = de 15 forventede (Plan 1 #1122)", () => {
   assert.equal(ENGINE_VERSION, 1);
-  assert.equal(ABILITY_KEYS.length, 10);
+  assert.equal(ABILITY_KEYS.length, 15);
   assert.deepEqual([...ABILITY_KEYS].sort(), [
-    "acceleration", "climbing", "cobblestone", "endurance", "positioning",
-    "punch", "recovery", "sprint", "tactics", "time_trial",
+    "acceleration", "aggression", "climbing", "cobblestone", "descending",
+    "durability", "endurance", "flat", "positioning", "punch",
+    "recovery", "sprint", "tactics", "tempo", "time_trial",
   ]);
 });
 
@@ -73,7 +77,7 @@ test("finalScore = summen af komponenterne (forklarlighed)", () => {
   const { ranked } = simulateStage({ entrants: [ELITE_SPRINTER, PURE_CLIMBER], stageProfile: MOUNTAIN, seed: 99 });
   for (const r of ranked) {
     const c = r.components;
-    const sum = c.terrain + c.noise + c.form - c.fatigue + c.team + (c.breakaway ?? 0);
+    const sum = c.terrain + c.noise + c.form - c.fatigue + c.team + (c.breakaway ?? 0) + (c.finale ?? 0);
     assert.ok(Math.abs(sum - r.finalScore) < 1e-12, "finalScore matcher ikke komponenter");
   }
 });
@@ -254,7 +258,8 @@ test("#1306 form=0 → -FORM_RACE_WEIGHT (-0.012)", () => {
 
 test("#1306 fatigue=100 → +FATIGUE_RACE_WEIGHT positiv magnitude (0.008)", () => {
   const { ranked } = simulateStage({
-    entrants: [{ rider_id: "r1", abilities: Object.fromEntries(ABILITY_KEYS.map((k) => [k, 50])), form: 50, fatigue: 100 }],
+    // durability:0 → fuld straf (damp=1), så denne test isolerer fatigue-VÆGTEN (#1122).
+    entrants: [{ rider_id: "r1", abilities: { ...Object.fromEntries(ABILITY_KEYS.map((k) => [k, 50])), durability: 0 }, form: 50, fatigue: 100 }],
     stageProfile: { profile_type: "flat", demand_vector: { sprint: 1.0 } },
     seed: 1,
   });
@@ -292,7 +297,8 @@ test("#1306 clamp: form=-50 → min -FORM_RACE_WEIGHT", () => {
 
 test("#1306 clamp: fatigue=200 → max FATIGUE_RACE_WEIGHT (ikke 0.016)", () => {
   const { ranked } = simulateStage({
-    entrants: [{ rider_id: "r1", abilities: Object.fromEntries(ABILITY_KEYS.map((k) => [k, 50])), form: 50, fatigue: 200 }],
+    // durability:0 → fuld straf (damp=1); clamp-testen isolerer fatigue-VÆGTEN (#1122).
+    entrants: [{ rider_id: "r1", abilities: { ...Object.fromEntries(ABILITY_KEYS.map((k) => [k, 50])), durability: 0 }, form: 50, fatigue: 200 }],
     stageProfile: { profile_type: "flat", demand_vector: { sprint: 1.0 } },
     seed: 1,
   });
@@ -387,4 +393,90 @@ test("#1306: null condition-data er neutral, ikke worst-form (review-fix B1)", (
   });
   assert.equal(ranked[0].components.form, 0, "form=null skal være neutral, ikke -0.012");
   assert.equal(ranked[0].components.fatigue, 0, "fatigue=null skal være neutral");
+});
+
+// ── #1122 Plan 1: aggression driver breakaway ─────────────────────────────────
+test("#1122 aggressionScore læser aggression-evnen (ikke proxy)", () => {
+  const high = { aggression: 90, tactics: 10, endurance: 10, acceleration: 10 };
+  const low  = { aggression: 10, tactics: 90, endurance: 90, acceleration: 90 };
+  assert.ok(aggressionScore(high) > aggressionScore(low), "høj aggression skal slå høj proxy-sum");
+  assert.equal(aggressionScore(high), 90);
+});
+
+test("#1122 aggressionScore falder tilbage til proxy uden aggression-data", () => {
+  const r = { tactics: 80, endurance: 60, acceleration: 40 };
+  assert.equal(aggressionScore(r), 0.5 * 80 + 0.3 * 60 + 0.2 * 40);
+});
+
+test("#1122 aggression er i ABILITY_KEYS (loades af loadEntrantsForRace)", () => {
+  assert.ok(ABILITY_KEYS.includes("aggression"));
+});
+
+// ── #1122 Plan 1: durability dæmper fatigue-seamen ────────────────────────────
+test("#1122 durability dæmper trætheds-straffen (kun under træthed)", () => {
+  const base = Object.fromEntries(ABILITY_KEYS.map((k) => [k, 50]));
+  const stage = { profile_type: "flat", demand_vector: { sprint: 1.0 } }; // ingen støj
+  const lowDur  = { ...base, durability: 10 };
+  const highDur = { ...base, durability: 90 };
+  const score = (ab) => simulateStage({
+    entrants: [{ rider_id: "r1", abilities: ab, form: 50, fatigue: 80 }],
+    stageProfile: stage, seed: 1,
+  }).ranked[0].components.fatigue;
+  // højere durability → MINDRE trætheds-straf (komponenten er mindre).
+  assert.ok(score(highDur) < score(lowDur), "høj durability skal dæmpe fatigue-komponenten");
+});
+
+test("#1122 durability har INGEN effekt uden træthed (neutral)", () => {
+  const base = Object.fromEntries(ABILITY_KEYS.map((k) => [k, 50]));
+  const stage = { profile_type: "flat", demand_vector: { sprint: 1.0 } };
+  const f = (dur) => simulateStage({
+    entrants: [{ rider_id: "r1", abilities: { ...base, durability: dur } }], // ingen fatigue
+    stageProfile: stage, seed: 1,
+  }).ranked[0].components.fatigue;
+  assert.equal(f(10), 0);
+  assert.equal(f(90), 0);
+});
+
+test("#1122 DURABILITY_FATIGUE_DAMPING ∈ (0,1]", () => {
+  assert.ok(DURABILITY_FATIGUE_DAMPING > 0 && DURABILITY_FATIGUE_DAMPING <= 1);
+});
+
+// ── #1122 Plan 1: descending finale-modifier ──────────────────────────────────
+test("#1122 descending giver bonus PÅ descent-finale, intet ellers", () => {
+  const base = Object.fromEntries(ABILITY_KEYS.map((k) => [k, 50]));
+  const goodDesc = { ...base, descending: 95 };
+  const comp = (finale_type) => simulateStage({
+    entrants: [{ rider_id: "r1", abilities: goodDesc }],
+    stageProfile: { profile_type: "mountain", demand_vector: { climbing: 1.0 }, finale_type },
+    seed: 1,
+  }).ranked[0].components.finale;
+  assert.ok(comp("descent") > 0, "god nedkører skal få bonus på descent-finale");
+  assert.equal(comp("long_climb"), 0, "ingen descending-effekt uden descent-finale");
+  // descending=99 → maksimal bonus = DESCENDING_FINALE_WEIGHT (centreret om 50).
+  const maxBonus = simulateStage({
+    entrants: [{ rider_id: "r1", abilities: { ...base, descending: 99 } }],
+    stageProfile: { profile_type: "mountain", demand_vector: { climbing: 1.0 }, finale_type: "descent" },
+    seed: 1,
+  }).ranked[0].components.finale;
+  assert.ok(Math.abs(maxBonus - DESCENDING_FINALE_WEIGHT) < 1e-12, `descending=99 → ${maxBonus}, forventet ${DESCENDING_FINALE_WEIGHT}`);
+});
+
+test("#1122 dårlig nedkører taber på descent-finale (centreret om 50)", () => {
+  const base = Object.fromEntries(ABILITY_KEYS.map((k) => [k, 50]));
+  const c = (dsc) => simulateStage({
+    entrants: [{ rider_id: "r1", abilities: { ...base, descending: dsc } }],
+    stageProfile: { profile_type: "mountain", demand_vector: { climbing: 1.0 }, finale_type: "descent" },
+    seed: 1,
+  }).ranked[0].components.finale;
+  assert.ok(c(95) > 0 && c(10) < 0, "descending centreres om 50: >50 vinder, <50 taber");
+});
+
+test("#1122 finalScore inkluderer finale-komponenten (forklarlighed)", () => {
+  const { ranked } = simulateStage({
+    entrants: [{ rider_id: "r1", abilities: Object.fromEntries(ABILITY_KEYS.map((k) => [k, 50])) }],
+    stageProfile: { profile_type: "mountain", demand_vector: { climbing: 1.0 }, finale_type: "descent" }, seed: 1,
+  });
+  const c = ranked[0].components;
+  const sum = c.terrain + c.noise + c.form - c.fatigue + c.team + (c.breakaway ?? 0) + (c.finale ?? 0);
+  assert.ok(Math.abs(sum - ranked[0].finalScore) < 1e-12);
 });
