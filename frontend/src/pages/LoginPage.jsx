@@ -5,7 +5,7 @@ import { supabase } from "../lib/supabase";
 import { useLanguage } from "../lib/language";
 import { mapSupabaseAuthError } from "../lib/authErrors";
 import LanguageSwitcher from "../components/LanguageSwitcher";
-import { StackedMark } from "../components/Brand";
+import { Wordmark } from "../components/Brand";
 import { Card, Button, Input, CheckIcon, InboxIcon } from "../components/ui";
 import { labelClass, helperClass } from "../components/ui/fieldStyles.js";
 
@@ -217,13 +217,13 @@ export default function LoginPage() {
 
       <div className="w-full max-w-sm">
         <div className="mb-10 text-center">
-          {/* #481: real stacked CYCLING/ZONE brand mark. */}
-          <StackedMark className="mx-auto mb-5 h-16 w-16" />
-
-          <h1 className="text-2xl font-bold tracking-tight text-cz-1">
-            {t("auth:page.title")}
+          {/* #671/#481: wordmark = the primary brand mark (BRAND_BRIEF: website
+              header / marketing). The theme-aware logotype carries the brand name,
+              so it doubles as the page heading — no redundant text title. */}
+          <h1>
+            <Wordmark className="mx-auto h-9 w-auto" />
           </h1>
-          <p className="mt-1 text-sm text-cz-2">{subtitle}</p>
+          <p className="mt-4 text-sm text-cz-2">{subtitle}</p>
         </div>
 
         <Card className="p-6">

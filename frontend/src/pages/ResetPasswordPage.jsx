@@ -5,7 +5,7 @@ import { supabase } from "../lib/supabase";
 import { useLanguage } from "../lib/language";
 import { mapSupabaseAuthError } from "../lib/authErrors";
 import LanguageSwitcher from "../components/LanguageSwitcher";
-import { StackedMark } from "../components/Brand";
+import { Wordmark } from "../components/Brand";
 import { Card, Button, Input, CheckIcon, AlertTriangleIcon } from "../components/ui";
 import { labelClass, helperClass } from "../components/ui/fieldStyles.js";
 
@@ -120,7 +120,9 @@ export default function ResetPasswordPage({ session }) {
 
       <div className="w-full max-w-sm">
         <div className="mb-10 text-center">
-          <StackedMark className="mx-auto mb-5 h-16 w-16" />
+          {/* #671: wordmark = primary brand mark (BRAND_BRIEF). Here it sits above
+              the contextual "Reset password" heading rather than replacing it. */}
+          <Wordmark className="mx-auto mb-6 h-8 w-auto" alt="" />
           <h1 className="text-2xl font-bold tracking-tight text-cz-1">
             {t("auth:resetPassword.title")}
           </h1>
