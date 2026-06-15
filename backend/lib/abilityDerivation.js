@@ -1,24 +1,15 @@
-// Evne-system v2 (#1122 / #1101-kæden) — udled 0-99 game-abilities fra de legacy
-// PCM-stats. Designet: docs/decisions/rider-ability-system-v2.md (source of truth).
+// Evne-system v3 (#1122 / #1101-kæden) — fysiske evner afledes nu fra fysiologi-profiler
+// (rider_physiology_profiles); tekniske/mentale forbliver skill-stat-drevne.
+// prolog FJERNET (merged ind i time_trial, §0.1 Beslutning 2).
+// Fallback til v2 PCM-stat-derivation når fysiologi mangler.
+// Designet: docs/decisions/rider-ability-system-v2.md (source of truth).
 //
-// KALIBRERINGS-MODEL (ejer-besluttet 2026-06-07, i tuning-løkken):
-//   Hver disciplin-evne afledes DIREKTE af sin primære PCM-stat, lineært remappet
-//   fra PCM-skalaen [50,85] → spil [1,99]. PCM 50 → 1, PCM 85 → 99.
-//   Konsekvenser (alle ønskede, verificeret mod prod 2026-06-07):
-//   • §1.1 Specialisering er GRATIS: PCM-stats er allerede skæve pr. rytter (en
-//     sprinter har lav stat_bj, høj stat_sp), så climbing≪sprint falder ud af sig
-//     selv — ingen kunstig kontrast-mekanik.
-//   • §1.2 Top-tung af konstruktion: kun ~0-3 ryttere har en stat ≥85 (→ 99), snit-
-//     statten ~60 → evne ~29. Toppen er sjælden uden en separat kurve.
-//   • §1.3 Døde evner væk: hver evne spredes over hele 1-99 fordi stat-spredningen
-//     remappes lineært (ikke klumpet om 60).
-//   • acceleration ≠ flad sprint: stat_acc (kan accelerere/angribe, også opad) er en
-//     ANDEN stat end stat_sp (flad spurt) — en klatrer beholder ok acceleration.
-//
-// Ren + deterministisk. physiology-parametren beholdes i signaturen (rider_id +
-// race-engine-kompat) men driver IKKE længere evnerne — abilities ← stats.
+// KALIBRERINGS-MODEL (§0.1 Beslutning 3 — KANDIDAT-koefficienter, tunes i Task C1):
+//   Fysiske evner ← normaliserede fysiologi-metrics (PHYS_ANCHORS), lineært kombineret.
+//   Tekniske/mentale ← skill-stats (50-85 → 1-99), uændret kilde fra v2.
+//   Fallback (ingen fysiologi): v2 PCM-stat-derivation (PCM 50 → 1, PCM 85 → 99).
 
-export const FORMULA_VERSION = 2;
+export const FORMULA_VERSION = 3;
 
 // ── Kalibrerings-ankre (§6) — ejer tuner her ──────────────────────────────────
 export const CALIBRATION = Object.freeze({
@@ -27,10 +18,11 @@ export const CALIBRATION = Object.freeze({
   asOfYear: 2026, // alder = asOfYear − fødselsår (til aggression/tactics/hidden)
 });
 
-// 16 synlige evner i 4 kategorier (§3). Rækkefølge = visnings-/lagrings-orden.
+// 15 synlige evner i 4 kategorier (§3). prolog merged ind i time_trial (§0.1 Beslutning 2).
+// Rækkefølge = visnings-/lagrings-orden.
 export const VISIBLE_ABILITIES = Object.freeze([
-  // Fysiske (11)
-  "climbing", "time_trial", "prolog", "flat", "tempo", "sprint", "acceleration",
+  // Fysiske (10) — prolog merged ind i time_trial (§0.1 Beslutning 2)
+  "climbing", "time_trial", "flat", "tempo", "sprint", "acceleration",
   "punch", "endurance", "recovery", "durability",
   // Tekniske (3)
   "descending", "cobblestone", "positioning",
@@ -44,11 +36,10 @@ export const HIDDEN_ABILITIES = Object.freeze(["hidden_potential"]);
 
 export const ALL_ABILITY_KEYS = Object.freeze([...VISIBLE_ABILITIES, ...HIDDEN_ABILITIES]);
 
-// Disciplin-evne → primær PCM-stat (§3 "Kilde"). Ren 50-85 → 1-99-mapping, så
-// specialisering er indbygget (skæve PCM-stats pr. rytter). aggression er IKKE her:
-// den har et ungdoms-tilt og beregnes separat. positioning/tactics/hidden er afledte.
+// Disciplin-evne → primær PCM-stat (§3 "Kilde"). Bruges kun i FALLBACK-stien
+// (ingen fysiologi). prolog FJERNET. Ren 50-85 → 1-99-mapping.
 export const PRIMARY_STAT = Object.freeze({
-  climbing: "stat_bj", time_trial: "stat_tt", prolog: "stat_prl", flat: "stat_fl",
+  climbing: "stat_bj", time_trial: "stat_tt", flat: "stat_fl",
   tempo: "stat_kb", sprint: "stat_sp", acceleration: "stat_acc", punch: "stat_bk",
   endurance: "stat_udh", recovery: "stat_res", durability: "stat_mod",
   descending: "stat_ned", cobblestone: "stat_bro",
@@ -84,11 +75,29 @@ function ageFrom(birthdate, asOfYear) {
   return clamp(asOfYear - year, 16, 45);
 }
 
-// physiology: rider_physiology_profiles-række (kun til rider_id-fallback).
-// riderRow:   legacy stat_*-felter + birthdate + potentiale + id.
-// opts.pool:   accepteres for bagudkompat (v1) men ignoreres — v2 bruger ingen pool.
+// Fysiologi-ankre (§0.1 Beslutning 3) — [lav, høj] pr. metric → normaliseres [0,1].
+// Lav = peloton-bund (≈evne 1), høj = elite-loft (≈evne 99). Tuning-flade (Task C1).
+export const PHYS_ANCHORS = Object.freeze({
+  ftp_wkg: [3.6, 6.6], vo2max_power_wkg: [4.6, 7.4], zone2_power_wkg: [2.3, 4.8],
+  pmax_watts: [900, 1900], power_5s_wkg: [14, 21], power_15s_wkg: [10, 16.5],
+  power_1m_wkg: [7.2, 11.2], power_2m_wkg: [6.2, 9.3], power_10m_wkg: [4.7, 6.9],
+  high_intensity_energy_kj: [12, 28], time_to_exhaustion_ftp_min: [33, 72],
+  fatigue_resistance: [0.45, 0.93], recovery_rate: [0.45, 0.93], aero: [0.45, 0.93],
+});
+
+const normPhys = (phys, key) => {
+  const [lo, hi] = PHYS_ANCHORS[key];
+  const v = Number(phys?.[key]);
+  if (!Number.isFinite(v)) return 0;
+  return clamp((v - lo) / (hi - lo), 0, 1);
+};
+
+const hasPhysiology = (phys) => phys && Number.isFinite(Number(phys.ftp_wkg));
+
+// physiology: rider_physiology_profiles-række (driver fysiske evner i v3).
+// riderRow:   stat_*-felter + birthdate + potentiale + id (tekniske/mentale + fallback).
+// opts.pool:   accepteres for bagudkompat (v1/v2) men ignoreres.
 export function deriveAbilities(physiology = {}, riderRow = {}, { asOfYear = CALIBRATION.asOfYear } = {}) {
-  // Alders-/potentiale-afledte komponenter (til afledte evner).
   const age = ageFrom(riderRow.birthdate, asOfYear);
   const youth = clamp((32 - age) / (32 - 21), 0, 1);       // 21→1, 32→0
   const experience = clamp((age - 20) / (31 - 20), 0, 1);  // 20→0, 31+→1
@@ -97,21 +106,40 @@ export function deriveAbilities(physiology = {}, riderRow = {}, { asOfYear = CAL
 
   const out = { rider_id: physiology.rider_id ?? riderRow.id, formula_version: FORMULA_VERSION };
 
-  // ── Direkte disciplin-evner: primær PCM-stat, 50-85 → 1-99 ────────────────────
-  for (const [ability, stat] of Object.entries(PRIMARY_STAT)) {
-    out[ability] = scoreFrac(pcmFrac(riderRow[stat]));
+  // ── Fysiske evner ← fysiologi (§0.1 Beslutning 3). KANDIDAT-vægte (Task C1). ──
+  if (hasPhysiology(physiology)) {
+    const P = (k) => normPhys(physiology, k);
+    out.sprint       = scoreFrac(0.45 * P("pmax_watts") + 0.35 * P("power_5s_wkg") + 0.20 * P("power_15s_wkg"));
+    out.acceleration = scoreFrac(0.60 * P("pmax_watts") + 0.40 * P("power_5s_wkg"));
+    out.punch        = scoreFrac(0.55 * P("power_1m_wkg") + 0.45 * P("power_2m_wkg"));
+    out.tempo        = scoreFrac(0.45 * P("vo2max_power_wkg") + 0.35 * P("power_10m_wkg") + 0.20 * P("zone2_power_wkg"));
+    out.climbing     = scoreFrac(0.65 * P("ftp_wkg") + 0.35 * P("vo2max_power_wkg")); // VO2-loft
+    out.time_trial   = scoreFrac(0.55 * P("ftp_wkg") + 0.30 * P("aero") + 0.15 * P("zone2_power_wkg"));
+    out.flat         = scoreFrac(0.45 * P("ftp_wkg") + 0.30 * P("aero") + 0.25 * P("zone2_power_wkg"));
+    out.endurance    = scoreFrac(0.40 * P("zone2_power_wkg") + 0.35 * P("time_to_exhaustion_ftp_min") + 0.25 * P("fatigue_resistance"));
+    out.recovery     = scoreFrac(P("recovery_rate"));
+    out.durability   = scoreFrac(0.65 * P("fatigue_resistance") + 0.35 * P("high_intensity_energy_kj"));
+  } else {
+    // Fallback (PCM-ryttere uden profil / pre-v3): v2 PCM-stat-derivation.
+    out.sprint       = scoreFrac(pcmFrac(riderRow.stat_sp));
+    out.acceleration = scoreFrac(pcmFrac(riderRow.stat_acc));
+    out.punch        = scoreFrac(pcmFrac(riderRow.stat_bk));
+    out.tempo        = scoreFrac(pcmFrac(riderRow.stat_kb));
+    out.climbing     = scoreFrac(pcmFrac(riderRow.stat_bj));
+    out.time_trial   = scoreFrac(Math.max(pcmFrac(riderRow.stat_tt), pcmFrac(riderRow.stat_prl))); // prolog merged
+    out.flat         = scoreFrac(pcmFrac(riderRow.stat_fl));
+    out.endurance    = scoreFrac(pcmFrac(riderRow.stat_udh));
+    out.recovery     = scoreFrac(pcmFrac(riderRow.stat_res));
+    out.durability   = scoreFrac(pcmFrac(riderRow.stat_mod));
   }
 
-  // aggression får et let ungdoms-tilt (unge ryttere angriber oftere) oven på ftr.
+  // ── Tekniske/mentale ← skill-stats (skæv pr. arketype, §0.1 Beslutning 1) ────
   const aggressionFrac = 0.85 * pcmFrac(riderRow.stat_ftr) + 0.15 * youth;
-  out.aggression = scoreFrac(aggressionFrac);
-
-  // ── Afledte evner (ingen egen disciplin-stat) ─────────────────────────────────
-  // positioning: flad-placering + nedkørsel + offensiv vej-fornemmelse (§3).
+  out.aggression  = scoreFrac(aggressionFrac);
+  out.descending  = scoreFrac(pcmFrac(riderRow.stat_ned));
+  out.cobblestone = scoreFrac(0.85 * pcmFrac(riderRow.stat_bro) + 0.15 * (out.durability / 99));
   out.positioning = scoreFrac(0.50 * pcmFrac(riderRow.stat_fl) + 0.30 * pcmFrac(riderRow.stat_ned) + 0.20 * pcmFrac(riderRow.stat_ftr));
-  // tactics: erfaring (alder) + angrebsiver (§3 — Mod bruges IKKE, nu durability).
-  out.tactics = scoreFrac(0.55 * experience + 0.45 * aggressionFrac);
-  // hidden_potential: potentiale + ungdom + seeded støj (delvist ukendt per design).
+  out.tactics     = scoreFrac(0.55 * experience + 0.45 * aggressionFrac);
   out.hidden_potential = scoreFrac(0.60 * potential + 0.25 * youth + 0.15 * hashNoise(riderRow.id ?? physiology.rider_id));
 
   return out;
