@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { evaluateRaceStructuralOracles, minDistinctWinners } from "./raceDryRunOracles.js";
+import { evaluateRaceStructuralOracles, minDistinctWinners, evaluateAbilityLivenessOracle } from "./raceDryRunOracles.js";
 
 const healthyTerrain = (over = {}) => ({
   terrain: "flat", keyAb: "sprint", races: 300,
@@ -71,4 +71,27 @@ test("flad/inverteret værdimodel fanges: top-decil ikke dyrere end bund-decil (
     value: { topDecileMedian: 1000, bottomDecileMedian: 1000 },
   });
   assert.equal(flat.length, 1);
+});
+
+test("liveness-oracle: levende evner (gevinst ≥ gulv) giver ingen brud", () => {
+  const failures = evaluateAbilityLivenessOracle([
+    { ability: "sprint", terrain: "flat", mode: "neutral", rankGain: 1.8 },
+    { ability: "climbing", terrain: "mountain", mode: "neutral", rankGain: 2.4 },
+  ]);
+  assert.deepEqual(failures, []);
+});
+
+test("liveness-oracle: en dødvægt-evne (gevinst < gulv) fanges (#1122)", () => {
+  const failures = evaluateAbilityLivenessOracle([
+    { ability: "tempo", terrain: "mountain", mode: "neutral", rankGain: 0.01 },
+  ]);
+  assert.equal(failures.length, 1);
+  assert.match(failures[0], /dødvægt/);
+});
+
+test("liveness-oracle: gulvet er konfigurerbart", () => {
+  const ok = evaluateAbilityLivenessOracle([{ ability: "durability", terrain: "mountain", mode: "condition", rankGain: 0.2 }], { floor: 0.1 });
+  assert.deepEqual(ok, []);
+  const bad = evaluateAbilityLivenessOracle([{ ability: "durability", terrain: "mountain", mode: "condition", rankGain: 0.2 }], { floor: 0.5 });
+  assert.equal(bad.length, 1);
 });

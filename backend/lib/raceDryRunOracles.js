@@ -74,3 +74,23 @@ export function evaluateRaceStructuralOracles({ terrainResults = [], gc = null, 
 
   return failures;
 }
+
+// Ability-liveness (#1122): hver evne motoren PÅSTÅR den scorer, skal måles til at
+// rykke slutplaceringen. ⌀rank-gevinst under gulvet = dødvægt. Adskilt fra de
+// strukturelle oracles, fordi den fodres med sensitivitets-måling (raceSensitivity.js)
+// og håndhæves bag --enforce-liveness (jf. simulateSeasonDryRun.js).
+//
+// @param {Array<{ability,terrain,mode,rankGain}>} sensitivities
+// @param {{floor?:number}} opts  gulv for ⌀rank-gevinst (default 0.05)
+// @returns {string[]} brud (tom = OK)
+export function evaluateAbilityLivenessOracle(sensitivities = [], { floor = 0.05 } = {}) {
+  const failures = [];
+  for (const s of sensitivities) {
+    if (!(Number(s.rankGain) >= floor)) {
+      failures.push(
+        `evne '${s.ability}' på ${s.terrain} (${s.mode}): ⌀rank-gevinst ${Number(s.rankGain).toFixed(2)} < gulv ${floor} — evnen påvirker ikke resultatet (dødvægt)`
+      );
+    }
+  }
+  return failures;
+}
