@@ -95,3 +95,14 @@ test("liveness-oracle: gulvet er konfigurerbart", () => {
   const bad = evaluateAbilityLivenessOracle([{ ability: "durability", terrain: "mountain", mode: "condition", rankGain: 0.2 }], { floor: 0.5 });
   assert.equal(bad.length, 1);
 });
+
+test("liveness-oracle: mode-bevidst gulv (seam-modes lavere) (#1122)", () => {
+  const sens = [{ ability: "durability", terrain: "mountain", mode: "condition", rankGain: 0.04 }];
+  // default-gulv 0.05 → fanges som dødvægt
+  assert.equal(evaluateAbilityLivenessOracle(sens).length, 1);
+  // seam-gulv 0.02 for condition → levende
+  assert.deepEqual(evaluateAbilityLivenessOracle(sens, { floorByMode: { condition: 0.02 } }), []);
+  // terræn-kraft (neutral) påvirkes ikke af condition-gulvet
+  const neutral = [{ ability: "tempo", terrain: "mountain", mode: "neutral", rankGain: 0.04 }];
+  assert.equal(evaluateAbilityLivenessOracle(neutral, { floorByMode: { condition: 0.02 } }).length, 1);
+});

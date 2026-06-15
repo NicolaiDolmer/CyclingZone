@@ -80,15 +80,20 @@ export function evaluateRaceStructuralOracles({ terrainResults = [], gc = null, 
 // strukturelle oracles, fordi den fodres med sensitivitets-måling (raceSensitivity.js)
 // og håndhæves bag --enforce-liveness (jf. simulateSeasonDryRun.js).
 //
+// Mode-bevidst gulv (#1122, ejer-valgt C1): terræn-kraft-evner (neutral mode)
+// holdes mod `floor`; seam/dynamik-evner (breakaway/condition/finale) virker
+// gennem mindre seams og holdes mod `floorByMode[mode]` — gulvet tester "læses
+// evnen overhovedet", ikke kalibrerings-styrke.
 // @param {Array<{ability,terrain,mode,rankGain}>} sensitivities
-// @param {{floor?:number}} opts  gulv for ⌀rank-gevinst (default 0.05)
+// @param {{floor?:number, floorByMode?:Record<string,number>}} opts  default-gulv 0.05
 // @returns {string[]} brud (tom = OK)
-export function evaluateAbilityLivenessOracle(sensitivities = [], { floor = 0.05 } = {}) {
+export function evaluateAbilityLivenessOracle(sensitivities = [], { floor = 0.05, floorByMode = {} } = {}) {
   const failures = [];
   for (const s of sensitivities) {
-    if (!(Number(s.rankGain) >= floor)) {
+    const f = floorByMode[s.mode] ?? floor;
+    if (!(Number(s.rankGain) >= f)) {
       failures.push(
-        `evne '${s.ability}' på ${s.terrain} (${s.mode}): ⌀rank-gevinst ${Number(s.rankGain).toFixed(2)} < gulv ${floor} — evnen påvirker ikke resultatet (dødvægt)`
+        `evne '${s.ability}' på ${s.terrain} (${s.mode}): ⌀rank-gevinst ${Number(s.rankGain).toFixed(2)} < gulv ${f} — evnen påvirker ikke resultatet (dødvægt)`
       );
     }
   }

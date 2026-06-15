@@ -44,7 +44,7 @@ export const FINALE_TYPES = Object.freeze([
 // forbliver underordnet sprint på flad (sprinter ≥90%-mål); tempo underordnet
 // climbing i bjerg. Endelig kalibrering låses i race:gate (Plan 1 Task C1).
 export const DEMAND_VECTORS = Object.freeze({
-  flat:          Object.freeze({ sprint: 0.55, acceleration: 0.15, flat: 0.12, positioning: 0.08, endurance: 0.02, randomness: 0.08 }),
+  flat:          Object.freeze({ sprint: 0.61, acceleration: 0.15, flat: 0.06, positioning: 0.08, endurance: 0.02, randomness: 0.08 }),
   rolling:       Object.freeze({ endurance: 0.18, flat: 0.12, punch: 0.12, tempo: 0.08, positioning: 0.08, sprint: 0.08, tactics: 0.06, climbing: 0.04, recovery: 0.04, randomness: 0.20 }),
   hilly:         Object.freeze({ punch: 0.44, tempo: 0.10, acceleration: 0.08, climbing: 0.06, endurance: 0.06, positioning: 0.04, sprint: 0.02, randomness: 0.20 }),
   mountain:      Object.freeze({ climbing: 0.50, tempo: 0.12, endurance: 0.14, recovery: 0.06, punch: 0.04, tactics: 0.02, positioning: 0.02, randomness: 0.10 }),

@@ -68,3 +68,41 @@ export function abilityRankSensitivity({
   }
   return n ? gainSum / n : 0;
 }
+
+/**
+ * Aggression driver udbruds-CHANCEN (ikke rank direkte), så en enkelt-rytter
+ * rank-probe er for støjende. Robust aggregat: kør feltet over `races` på et
+ * udbruds-egnet terræn og mål forskellen i udbruds-DELTAGELSES-rate
+ * (components.breakaway > 0) mellem top- og bund-aggression-tercilen.
+ * Aggression-EVNEN driver udvælgelsen ⇒ klart positiv forskel; proxy/død ⇒ ~0.
+ * @returns {number} top-tercil-deltagelsesrate − bund-tercil-deltagelsesrate
+ */
+export function breakawayParticipationGapByAggression({
+  field, profileType, demandVector, races = 300, fieldSize = 140, seed = 2026,
+}) {
+  const rng = makeRng(stableSeed(`bwgap:${seed}:${profileType}`));
+  const rec = new Map(field.map((r) => [r.id, { agg: Number(r.abilities?.aggression) || 0, hits: 0, starts: 0 }]));
+  for (let i = 0; i < races; i++) {
+    const sample = sampleField(rng, field, fieldSize);
+    if (sample.length < 4) continue;
+    const entrants = sample.map((r) => ({ rider_id: r.id, team_id: r.id, abilities: r.abilities }));
+    const { ranked } = simulateStage({
+      entrants,
+      stageProfile: { profile_type: profileType, demand_vector: demandVector },
+      seed: stableSeed(`${profileType}:bwgap:${i}`),
+    });
+    for (const r of ranked) {
+      const e = rec.get(r.rider_id);
+      e.starts++;
+      if (r.components.breakaway > 0) e.hits++;
+    }
+  }
+  const recs = [...rec.values()].filter((r) => r.starts > 0).sort((a, b) => a.agg - b.agg);
+  if (recs.length < 6) return 0;
+  const t = Math.floor(recs.length / 3);
+  const rate = (arr) => {
+    const s = arr.reduce((a, r) => a + r.starts, 0);
+    return s ? arr.reduce((a, r) => a + r.hits, 0) / s : 0;
+  };
+  return rate(recs.slice(-t)) - rate(recs.slice(0, t));
+}
