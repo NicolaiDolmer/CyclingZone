@@ -34,6 +34,7 @@ const AdminDataTab = lazy(() => import("./pages/admin/AdminDataTab"));
 const AdminSystemTab = lazy(() => import("./pages/admin/AdminSystemTab"));
 const AdminWaitlistPage = lazy(() => import("./pages/AdminWaitlistPage"));
 const AdminSprintMetricsPage = lazy(() => import("./pages/AdminSprintMetricsPage"));
+const AdminAttributionPage = lazy(() => import("./pages/AdminAttributionPage"));
 const StandingsPage = lazy(() => import("./pages/StandingsPage"));
 const BoardPage = lazy(() => import("./pages/BoardPage"));
 const RiderStatsPage = lazy(() => import("./pages/RiderStatsPage"));
@@ -202,6 +203,7 @@ export default function App() {
             </Route>
             <Route path="admin/waitlist" element={<AdminWaitlistPage />} />
             <Route path="admin/sprint-metrics" element={<AdminSprintMetricsPage />} />
+            <Route path="admin/attribution" element={<AdminAttributionPage />} />
             <Route path="training" element={<TrainingPage />} />
             <Route path="academy" element={<AcademyPage />} />
             <Route path="deadline-day" element={<DeadlineDayBoard />} />

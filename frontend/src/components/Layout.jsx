@@ -266,6 +266,7 @@ export default function Layout() {
       { to: "/admin", label: t("nav.item.admin"), exact: true },
       { to: "/admin/waitlist", label: t("nav.item.waitlist") },
       { to: "/admin/sprint-metrics", label: t("nav.item.sprintMetrics") },
+      { to: "/admin/attribution", label: t("nav.item.attribution") },
     ] });
     const activeGroup = groups.find(g => g.items.some(i => pathMatchesNavItem(location, i.to, i.exact, i.excludeQuery)))
       || (path.startsWith("/managers/") ? groups.find(g => g.key === "klubhus") : null);
@@ -362,6 +363,7 @@ export default function Layout() {
         { to: "/admin", label: t("nav.item.admin") },
         { to: "/admin/waitlist", label: t("nav.item.waitlist") },
         { to: "/admin/sprint-metrics", label: t("nav.item.sprintMetrics") },
+        { to: "/admin/attribution", label: t("nav.item.attribution") },
       ] }]
     : baseGroups;
   const bottomItems = buildBottomItems(t);

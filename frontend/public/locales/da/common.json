@@ -40,7 +40,8 @@
       "seasonPreview": "Sæson Preview",
       "admin": "Admin",
       "waitlist": "Waitlist",
-      "sprintMetrics": "Sprint-metrics"
+      "sprintMetrics": "Sprint-metrics",
+      "attribution": "Attribution"
     }
   },
   "sidebar": {
