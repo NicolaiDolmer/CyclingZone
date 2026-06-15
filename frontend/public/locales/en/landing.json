@@ -6,6 +6,8 @@
   "nav": {
     "discordLabel": "Discord",
     "languageLabel": "Language",
+    "login": "Log in",
+    "signup": "Sign up",
     "skipToContent": "Skip to content"
   },
   "hero": {
