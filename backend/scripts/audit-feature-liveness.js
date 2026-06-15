@@ -137,6 +137,15 @@ const WHITELIST_EMPTY_TABLES = new Set([
   // oprettet ved Fase A-merge (migration anvendt), men fyldes først når flaget flippes
   // ved relaunch. Skriv-path verificeret i academyIntake.js. Fjern når flag tændes + rows.
   "academy_intake",
+  // Signup-attribution (#679/#1403/#1408): fire-and-forget upsert kører på FØRSTE
+  // team-create (signup-bootstrap) i PUT /api/teams/my, men KUN når klienten sender en
+  // attribution-payload med et signal (utm_*/referrer/landing_path) — direkte signups
+  // uden UTM/referrer skriver ingen row (buildAttributionRow returnerer null). Featuren
+  // blev lige shippet (#1408 merged 2026-06-14, landing-page #1409/#1410 14/6), så tabellen
+  // er bevidst tom indtil de første attriburede signups akkumulerer efter TdF-launch (20/6).
+  // Skriv-path verificeret i backend/routes/api.js (PUT /teams/my) + backend/lib/signupAttribution.js.
+  // TODO(2026-06-27): fjern denne entry når tabellen har rows (tjek ~1 uge efter launch).
+  "signup_attribution",
 ]);
 
 // Detector B: endpoints der er korrekt orphaned i frontend (cron, admin-curl, webhook)
