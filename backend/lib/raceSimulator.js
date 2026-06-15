@@ -34,6 +34,10 @@ export const ENGINE_VERSION = 1;
 export const ABILITY_KEYS = Object.freeze([
   "climbing", "time_trial", "sprint", "punch", "endurance",
   "cobblestone", "acceleration", "recovery", "tactics", "positioning",
+  // Plan 1 (#1122): aktiverede evner — flat/tempo er terræn-kraft (vægtes i
+  // DEMAND_VECTORS), durability/aggression/descending er seam/dynamik/modifier
+  // (loades, men vægtes ikke i terrain-scoren).
+  "flat", "tempo", "durability", "aggression", "descending",
 ]);
 
 const ABILITY_MAX = 99;
@@ -171,10 +175,14 @@ export const BREAKAWAY_TOP_EXCLUDED = 0.05;      // top-5 % (terrain) kan ikke e
 export const BREAKAWAY_MAX_RIDERS = 3;
 export const HUNTER_WEIGHT_MULTIPLIER = 2;
 
-// Aggression = lyst/evne til at køre i udbrud, udledt af eksisterende abilities
-// (ingen ny stat i v1): taktik vejer tungest, dernæst motor og punch-acceleration.
+// Aggression = lyst/evne til at køre i udbrud. Plan 1 (#1122): læser den ÆGTE
+// aggression-evne (driver udbruds-CHANCEN, jf. rider-ability-system-v2.md §0.1).
+// Fallback til den gamle proxy (tactics/endurance/acceleration) når aggression
+// mangler — bevarer flag-off / pre-v2-data-adfærd.
 export function aggressionScore(abilities) {
   const a = (k) => Number(abilities?.[k]) || 0;
+  const aggr = a("aggression");
+  if (aggr > 0) return aggr;
   return 0.5 * a("tactics") + 0.3 * a("endurance") + 0.2 * a("acceleration");
 }
 

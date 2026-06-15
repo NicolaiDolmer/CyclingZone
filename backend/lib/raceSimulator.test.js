@@ -5,6 +5,7 @@ import {
   simulateStage,
   terrainScore,
   stableSeed,
+  aggressionScore,
   ABILITY_KEYS,
   ENGINE_VERSION,
   FORM_RACE_WEIGHT,
@@ -41,12 +42,13 @@ function rankOf(ranked, id) {
 }
 
 // ── Kontrakt / sundhed ────────────────────────────────────────────────────────
-test("ENGINE_VERSION + ABILITY_KEYS = de 10 forventede", () => {
+test("ENGINE_VERSION + ABILITY_KEYS = de 15 forventede (Plan 1 #1122)", () => {
   assert.equal(ENGINE_VERSION, 1);
-  assert.equal(ABILITY_KEYS.length, 10);
+  assert.equal(ABILITY_KEYS.length, 15);
   assert.deepEqual([...ABILITY_KEYS].sort(), [
-    "acceleration", "climbing", "cobblestone", "endurance", "positioning",
-    "punch", "recovery", "sprint", "tactics", "time_trial",
+    "acceleration", "aggression", "climbing", "cobblestone", "descending",
+    "durability", "endurance", "flat", "positioning", "punch",
+    "recovery", "sprint", "tactics", "tempo", "time_trial",
   ]);
 });
 
@@ -387,4 +389,21 @@ test("#1306: null condition-data er neutral, ikke worst-form (review-fix B1)", (
   });
   assert.equal(ranked[0].components.form, 0, "form=null skal være neutral, ikke -0.012");
   assert.equal(ranked[0].components.fatigue, 0, "fatigue=null skal være neutral");
+});
+
+// ── #1122 Plan 1: aggression driver breakaway ─────────────────────────────────
+test("#1122 aggressionScore læser aggression-evnen (ikke proxy)", () => {
+  const high = { aggression: 90, tactics: 10, endurance: 10, acceleration: 10 };
+  const low  = { aggression: 10, tactics: 90, endurance: 90, acceleration: 90 };
+  assert.ok(aggressionScore(high) > aggressionScore(low), "høj aggression skal slå høj proxy-sum");
+  assert.equal(aggressionScore(high), 90);
+});
+
+test("#1122 aggressionScore falder tilbage til proxy uden aggression-data", () => {
+  const r = { tactics: 80, endurance: 60, acceleration: 40 };
+  assert.equal(aggressionScore(r), 0.5 * 80 + 0.3 * 60 + 0.2 * 40);
+});
+
+test("#1122 aggression er i ABILITY_KEYS (loades af loadEntrantsForRace)", () => {
+  assert.ok(ABILITY_KEYS.includes("aggression"));
 });
