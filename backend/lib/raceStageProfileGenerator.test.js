@@ -9,6 +9,7 @@ import {
   FINALE_TYPES,
   GENERATOR_VERSION,
 } from "./raceStageProfileGenerator.js";
+import { ABILITY_KEYS } from "./raceSimulator.js";
 
 const ALLOWED_DEMAND_KEYS = new Set([...ABILITY_DIMENSIONS, "randomness"]);
 const SPRINT_FRIENDLY = new Set(["flat", "rolling"]);
@@ -120,4 +121,15 @@ test("manglende race.id kaster", () => {
 test("ukendt race_type behandles som endagsløb", () => {
   const profiles = generateRaceStageProfiles({ id: "x", race_type: "weird", stages: 5 });
   assert.equal(profiles.length, 1);
+});
+
+// ── #1122 Plan 1: motor-vokabular udvidet med flat + tempo ────────────────────
+test("#1122 ABILITY_DIMENSIONS matcher ABILITY_KEYS (motor-paritet)", () => {
+  assert.deepEqual([...ABILITY_DIMENSIONS].sort(), [...ABILITY_KEYS].sort());
+});
+
+test("#1122 flat og tempo har vægt i mindst ét terræn (ikke døde)", () => {
+  const hasWeight = (ab) => Object.values(DEMAND_VECTORS).some((v) => (v[ab] || 0) > 0);
+  assert.ok(hasWeight("flat"), "flat skal vægtes et sted");
+  assert.ok(hasWeight("tempo"), "tempo skal vægtes et sted");
 });
