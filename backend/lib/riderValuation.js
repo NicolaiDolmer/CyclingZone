@@ -85,9 +85,22 @@ export function predictBaseValue(rider, abilities, model /*, opts */) {
   // bunden må fortsat ekstrapolere frit (ingen bund, ejer-direktiv 7/6).
   const oMax = Number(model.output_max);
   if (Number.isFinite(oMax) && O > oMax) O = oMax;
-  const offset = model.offset?.[type] ?? 0;
+  // #1231: en type UDEN kalibreret offset må ikke arve 0 — 0 er højere end de
+  // fleste fittede offsets, så en anchor-løs type (fx baroudeur) bliver de facto
+  // dyrest og kan skride over top-stjernen (~189M > Pogačar). Fald i stedet
+  // tilbage til det LAVESTE fittede offset (billigste tier) som konservativt default.
+  const offsets = model.offset
+    ? Object.values(model.offset).map(Number).filter(Number.isFinite)
+    : [];
+  const offsetFloor = offsets.length ? Math.min(...offsets) : 0;
+  const offset = model.offset?.[type] ?? offsetFloor;
   const c = Number.isFinite(Number(model.c)) ? Number(model.c) : 0;
-  const value = Math.exp(model.a + model.b * O + c * O * O + offset);
+  let value = Math.exp(model.a + model.b * O + c * O * O + offset);
+  // #1231 hard-band: ingen rytter må overstige top-anchorens forudsagte værdi
+  // (value_cap i model-JSON). Belt-and-suspenders mod enhver type/offset-kombination
+  // der ekstrapolerer over toppen. Bagudkompatibel: intet value_cap = ingen klamp.
+  const cap = Number(model.value_cap);
+  if (Number.isFinite(cap) && cap > 0 && value > cap) value = cap;
 
   if (!Number.isFinite(value) || value <= 0) return null;
   return Math.max(1, Math.round(value));
