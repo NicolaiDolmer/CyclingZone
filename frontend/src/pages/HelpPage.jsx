@@ -320,7 +320,7 @@ export default function HelpPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={t("page.searchPlaceholder")}
-          className="w-full bg-cz-subtle border border-cz-border rounded-xl px-4 py-3 text-cz-1 text-sm
+          className="w-full bg-cz-subtle border border-cz-border rounded-cz px-4 py-3 text-cz-1 text-sm
             placeholder-cz-3 focus:outline-none focus:border-cz-accent/40"
         />
       </div>
@@ -340,7 +340,7 @@ export default function HelpPage() {
                     setSearch("");
                     setActiveSection(s.key);
                   }}
-                  className="w-full text-left bg-cz-card border border-cz-border rounded-xl px-4 py-3 mb-2
+                  className="w-full text-left bg-cz-card border border-cz-border rounded-cz px-4 py-3 mb-2
                     hover:border-cz-border transition-all"
                 >
                   <p className="text-cz-1 text-sm">
@@ -358,7 +358,7 @@ export default function HelpPage() {
               {filteredFAQ.map((f) => (
                 <div
                   key={f.id}
-                  className="bg-cz-card border border-cz-border rounded-xl px-4 py-3 mb-2"
+                  className="bg-cz-card border border-cz-border rounded-cz px-4 py-3 mb-2"
                 >
                   <p className="text-cz-1 text-sm font-medium mb-1">{f.q}</p>
                   <p className="text-cz-2 text-sm">{f.a}</p>
@@ -412,7 +412,7 @@ export default function HelpPage() {
                   {faq.map((f, i) => (
                     <div
                       key={f.id}
-                      className="bg-cz-card border border-cz-border rounded-xl overflow-hidden"
+                      className="bg-cz-card border border-cz-border rounded-cz overflow-hidden"
                     >
                       <button
                         onClick={() => setFaqOpen(faqOpen === i ? null : i)}
@@ -445,7 +445,7 @@ export default function HelpPage() {
                   {currentSection.content.map((block, i) => (
                     <div
                       key={i}
-                      className="bg-cz-card border border-cz-border rounded-xl p-4"
+                      className="bg-cz-card border border-cz-border rounded-cz p-4"
                     >
                       <h3 className="text-cz-1 font-semibold text-sm mb-2">{block.title}</h3>
                       {block.text && (

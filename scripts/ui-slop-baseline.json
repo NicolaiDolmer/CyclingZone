@@ -16,11 +16,6 @@
       "slop": 0,
       "emoji": 0
     },
-    "frontend/src/components/CookieBanner.jsx": {
-      "hex": 0,
-      "slop": 1,
-      "emoji": 0
-    },
     "frontend/src/components/DeadlineDayBanner.jsx": {
       "hex": 1,
       "slop": 0,
@@ -65,11 +60,6 @@
       "hex": 0,
       "slop": 0,
       "emoji": 1
-    },
-    "frontend/src/components/OnlineBadge.jsx": {
-      "hex": 0,
-      "slop": 1,
-      "emoji": 0
     },
     "frontend/src/components/PotentialeStars.jsx": {
       "hex": 5,
@@ -216,14 +206,9 @@
       "slop": 3,
       "emoji": 3
     },
-    "frontend/src/pages/HeadToHeadPage.jsx": {
-      "hex": 2,
-      "slop": 7,
-      "emoji": 1
-    },
     "frontend/src/pages/HelpPage.jsx": {
       "hex": 0,
-      "slop": 5,
+      "slop": 0,
       "emoji": 11
     },
     "frontend/src/pages/KitchenSinkPage.jsx": {
@@ -278,7 +263,7 @@
     },
     "frontend/src/pages/RiderComparePage.jsx": {
       "hex": 0,
-      "slop": 3,
+      "slop": 0,
       "emoji": 3
     },
     "frontend/src/pages/RiderRankingsPage.jsx": {
@@ -308,7 +293,7 @@
     },
     "frontend/src/pages/SeasonPreviewPage.jsx": {
       "hex": 8,
-      "slop": 2,
+      "slop": 0,
       "emoji": 0
     },
     "frontend/src/pages/StandingsPage.jsx": {
@@ -335,11 +320,6 @@
       "hex": 2,
       "slop": 11,
       "emoji": 17
-    },
-    "frontend/src/pages/WatchlistPage.jsx": {
-      "hex": 0,
-      "slop": 1,
-      "emoji": 1
     },
     "frontend/src/pages/admin/AdminDataTab.jsx": {
       "hex": 1,
