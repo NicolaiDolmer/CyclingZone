@@ -271,11 +271,6 @@
       "slop": 45,
       "emoji": 10
     },
-    "frontend/src/pages/DashboardPage.jsx": {
-      "hex": 5,
-      "slop": 11,
-      "emoji": 2
-    },
     "frontend/src/pages/DeadlineDayBoard.jsx": {
       "hex": 0,
       "slop": 2,

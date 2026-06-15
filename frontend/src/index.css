@@ -123,6 +123,13 @@
   --warning-bg: #fef3c7;
   --info:       26 71 192;     /* #1a47c0 */
   --info-bg:    #dbeafe;
+
+  /* Discord brand (Blurple) — ekstern brand-farve til Discord-CTA'er (dashboard
+     DM-nudge). Defineres som token her så callsites ikke baerer raa hex (#671
+     anti-drift). Samme i begge temaer (brand-farve), saa kun i :root. Channel-
+     format for <alpha-value>-support. */
+  --discord:       88 101 242;   /* #5865F2 */
+  --discord-hover: 71 82 196;    /* #4752c4 */
 }
 
 [data-theme="dark"] {

@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.37",
+    date: "2026-06-15",
+    label: "Beta",
+    changes: [
+      {
+        category: "Changed · Design",
+        items: [
+          "EN · Your dashboard now uses the new design system too: cleaner cards, sharper corners and crisp icons in place of emoji, consistent across light and dark mode. Refs #671",
+          "DA · Dit dashboard bruger nu også det nye designsystem: renere kort, skarpere hjørner og rene ikoner i stedet for emoji, konsistent i både lyst og mørkt tema. Refs #671",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.36",
     date: "2026-06-15",
     label: "Beta",
