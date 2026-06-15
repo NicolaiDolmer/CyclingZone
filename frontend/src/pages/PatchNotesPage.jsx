@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.36",
+    date: "2026-06-15",
+    label: "Beta",
+    changes: [
+      {
+        category: "Changed · Design",
+        items: [
+          "EN · The login, signup and password-reset screens have a cleaner, more consistent look built on our new design system, with sharper inputs, buttons and icons across both light and dark mode. Refs #671",
+          "DA · Login-, signup- og nulstil-adgangskode-skærmene har fået et renere og mere konsistent look bygget på vores nye designsystem, med skarpere felter, knapper og ikoner i både lyst og mørkt tema. Refs #671",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.35",
     date: "2026-06-14",
     label: "Beta",

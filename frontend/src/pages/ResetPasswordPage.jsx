@@ -5,6 +5,9 @@ import { supabase } from "../lib/supabase";
 import { useLanguage } from "../lib/language";
 import { mapSupabaseAuthError } from "../lib/authErrors";
 import LanguageSwitcher from "../components/LanguageSwitcher";
+import { StackedMark } from "../components/Brand";
+import { Card, Button, Input, CheckIcon, AlertTriangleIcon } from "../components/ui";
+import { labelClass, helperClass } from "../components/ui/fieldStyles.js";
 
 export default function ResetPasswordPage({ session }) {
   const navigate = useNavigate();
@@ -109,76 +112,54 @@ export default function ResetPasswordPage({ session }) {
     }
   }
 
-  const inputClass =
-    "w-full bg-cz-subtle border border-cz-border rounded-lg " +
-    "px-4 py-2.5 text-cz-1 text-sm placeholder-cz-3 " +
-    "focus:outline-none focus:border-cz-accent transition-all";
-  const primaryBtnClass =
-    "w-full bg-cz-accent text-cz-on-accent font-bold rounded-lg " +
-    "py-2.5 text-sm hover:brightness-110 transition-all";
-
   return (
-    <div className="min-h-screen bg-cz-body flex items-center justify-center p-4 relative overflow-hidden">
-      <div
-        className="absolute inset-0 opacity-[0.03]"
-        style={{
-          backgroundImage: "linear-gradient(rgb(var(--accent)) 1px, transparent 1px), linear-gradient(90deg, rgb(var(--accent)) 1px, transparent 1px)",
-          backgroundSize: "60px 60px",
-        }}
-      />
-
-      <div
-        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2
-          w-[500px] h-[500px] rounded-full opacity-10 blur-[120px] bg-cz-accent pointer-events-none"
-      />
-
-      <div className="absolute top-4 right-4 z-20">
+    <div className="relative flex min-h-screen items-center justify-center bg-cz-body p-4">
+      <div className="absolute right-4 top-4">
         <LanguageSwitcher />
       </div>
 
-      <div className="relative z-10 w-full max-w-sm">
-        <div className="text-center mb-10">
-          <div
-            className="inline-flex items-center justify-center w-16 h-16
-              rounded-2xl bg-cz-accent mb-5 shadow-[0_0_40px_rgba(232,197,71,0.3)]"
-          >
-            <span className="text-cz-on-accent font-black text-3xl">C</span>
-          </div>
-          <h1 className="text-2xl font-bold text-cz-1 tracking-tight">
+      <div className="w-full max-w-sm">
+        <div className="mb-10 text-center">
+          <StackedMark className="mx-auto mb-5 h-16 w-16" />
+          <h1 className="text-2xl font-bold tracking-tight text-cz-1">
             {t("auth:resetPassword.title")}
           </h1>
-          <p className="text-cz-2 text-sm mt-1">
+          <p className="mt-1 text-sm text-cz-2">
             {t("auth:resetPassword.subtitle")}
           </p>
         </div>
 
-        <div className="bg-cz-card border border-cz-border rounded-2xl p-6">
+        <Card className="p-6">
           {checking ? (
-            <div className="py-10 flex justify-center" role="status" aria-label={t("auth:resetPassword.title")}>
-              <div className="w-7 h-7 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
+            <div className="flex justify-center py-10" role="status" aria-label={t("auth:resetPassword.title")}>
+              <div className="h-7 w-7 animate-spin rounded-full border-2 border-cz-border border-t-cz-accent" />
             </div>
           ) : success ? (
-            <div className="text-center py-4" role="status">
-              <div className="text-4xl mb-4">✅</div>
-              <p className="text-cz-success text-sm font-medium">{success}</p>
-              <p className="text-cz-3 text-xs mt-3">
+            <div className="py-4 text-center" role="status">
+              <div className="mb-4 flex justify-center">
+                <CheckIcon size={32} className="text-cz-success" />
+              </div>
+              <p className="text-sm font-medium text-cz-success">{success}</p>
+              <p className="mt-3 text-xs text-cz-3">
                 {t("auth:success.passwordUpdatedBody")}
               </p>
-              <button
+              <Button
                 type="button"
+                variant="primary"
+                fullWidth
+                className="mt-4"
                 onClick={() => navigate("/dashboard", { replace: true })}
-                className={`mt-4 ${primaryBtnClass}`}
               >
                 {t("auth:success.passwordUpdatedCta")}
-              </button>
+              </Button>
             </div>
           ) : hasRecoverySession ? (
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
               <div>
-                <label htmlFor="reset-new-password" className="block text-xs font-medium text-cz-2 uppercase tracking-wider mb-1.5">
+                <label htmlFor="reset-new-password" className={labelClass()}>
                   {t("auth:field.newPassword.label")}
                 </label>
-                <input
+                <Input
                   id="reset-new-password"
                   type="password"
                   value={password}
@@ -186,22 +167,21 @@ export default function ResetPasswordPage({ session }) {
                   placeholder="••••••••"
                   required
                   minLength={6}
-                  aria-invalid={error ? true : undefined}
+                  error={Boolean(error)}
                   aria-describedby={
                     ["reset-new-password-help", error ? "reset-error" : null]
                       .filter(Boolean)
                       .join(" ")
                   }
-                  className={inputClass}
                 />
-                <p id="reset-new-password-help" className="text-cz-3 text-xs mt-1">{t("auth:field.newPassword.help")}</p>
+                <p id="reset-new-password-help" className={helperClass()}>{t("auth:field.newPassword.help")}</p>
               </div>
 
               <div>
-                <label htmlFor="reset-confirm-password" className="block text-xs font-medium text-cz-2 uppercase tracking-wider mb-1.5">
+                <label htmlFor="reset-confirm-password" className={labelClass()}>
                   {t("auth:field.confirmPassword.label")}
                 </label>
-                <input
+                <Input
                   id="reset-confirm-password"
                   type="password"
                   value={confirmPassword}
@@ -209,9 +189,8 @@ export default function ResetPasswordPage({ session }) {
                   placeholder="••••••••"
                   required
                   minLength={6}
-                  aria-invalid={error ? true : undefined}
+                  error={Boolean(error)}
                   aria-describedby={error ? "reset-error" : undefined}
-                  className={inputClass}
                 />
               </div>
 
@@ -219,45 +198,45 @@ export default function ResetPasswordPage({ session }) {
                 <div
                   id="reset-error"
                   role="alert"
-                  className="bg-cz-danger-bg border border-cz-danger/30 rounded-lg px-4 py-2.5 text-cz-danger text-sm"
+                  className="rounded-cz border border-cz-danger/30 bg-cz-danger-bg px-4 py-2.5 text-sm text-cz-danger"
                 >
                   {error}
                 </div>
               )}
 
-              <button
-                type="submit"
-                disabled={loading}
-                className={`${primaryBtnClass} tracking-wide disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_4px_20px_rgba(232,197,71,0.2)]`}
-              >
+              <Button type="submit" variant="primary" fullWidth loading={loading}>
                 {loading ? t("auth:submit.savePassword.loading") : t("auth:submit.savePassword.idle")}
-              </button>
+              </Button>
             </form>
           ) : (
-            <div className="text-center py-4" role="alert">
-              <div className="text-4xl mb-4">⚠️</div>
-              <p className="text-cz-danger text-sm font-medium">
+            <div className="py-4 text-center" role="alert">
+              <div className="mb-4 flex justify-center">
+                <AlertTriangleIcon size={32} className="text-cz-danger" />
+              </div>
+              <p className="text-sm font-medium text-cz-danger">
                 {t("auth:error.resetLinkInactive")}
               </p>
-              <p className="text-cz-3 text-xs mt-3">
+              <p className="mt-3 text-xs text-cz-3">
                 {t("auth:resetPassword.linkExpiredHelp")}
               </p>
-              <button
+              <Button
                 type="button"
+                variant="primary"
+                fullWidth
+                className="mt-4"
                 onClick={() => navigate("/login", { replace: true })}
-                className={`mt-4 ${primaryBtnClass}`}
               >
                 {t("auth:switch.backToLogin")}
-              </button>
+              </Button>
             </div>
           )}
-        </div>
+        </Card>
 
-        <p className="text-center text-cz-3 text-xs mt-6">
+        <p className="mt-6 text-center text-xs text-cz-3">
           {t("auth:page.tagline")}
         </p>
-        <p className="text-center text-cz-3 text-xs mt-2">
-          <Link to={language === "en" ? "/privacy-policy" : "/privatlivspolitik"} className="hover:text-cz-1 underline">
+        <p className="mt-2 text-center text-xs text-cz-3">
+          <Link to={language === "en" ? "/privacy-policy" : "/privatlivspolitik"} className="underline hover:text-cz-1">
             {t("auth:footer.privacyPolicy")}
           </Link>
         </p>

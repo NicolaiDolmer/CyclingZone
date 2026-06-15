@@ -35,7 +35,11 @@ test("fejlblokken er en role=alert live-region med stabilt id (#1349)", () => {
 });
 
 test("inputs får aria-invalid og aria-describedby peger på fejlen ved error (#1349)", () => {
-  assert.match(src, /aria-invalid=\{error \? true : undefined\}/, "felter mangler aria-invalid ved fejl");
+  // UI-fundament Plan 4 (#671): felterne bruger <Input error={…}>-primitiven, der
+  // internt sætter aria-invalid={error || undefined} (testet i field.source.test.js).
+  // Her asserter vi at fejl-tilstanden trådes til felterne + at aria-describedby
+  // binder til fejl-id'et.
+  assert.match(src, /error=\{Boolean\(error\)\}/, "felter mangler error-prop (driver aria-invalid i Input-primitiven) ved fejl");
   // mindst ét felt skal kunne binde til fejl-id'et via aria-describedby
   assert.match(src, /error \? "auth-error" : null/, "aria-describedby binder ikke til fejlblokken");
 });
