@@ -27,6 +27,7 @@ import { DEMAND_VECTORS } from "./raceStageProfileGenerator.js";
 import { simulateStage, stableSeed, NOISE_SD_SCALE } from "./raceSimulator.js";
 import { buildRaceResults } from "./raceRunner.js";
 import { buildCaps, developRiderSeason } from "./riderProgression.js";
+import { abilityRankSensitivity } from "./raceSensitivity.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -261,6 +262,29 @@ export function buildBalanceSnapshot(options = {}) {
     grandTour,
   };
 
+  // Evne-liveness (#1122): committet ⌀rank-gevinst pr. probe → ENHVER fremtidig
+  // ændring der dræber en evne dukker op som en diff. Samme probe-matrix som
+  // dry-run-cockpittets sektion E (delmængde for determinisme/hastighed).
+  const SENS_PROBES = [
+    { ability: "sprint", terrain: "flat", mode: "neutral" },
+    { ability: "climbing", terrain: "mountain", mode: "neutral" },
+    { ability: "flat", terrain: "rolling", mode: "neutral" },
+    { ability: "tempo", terrain: "mountain", mode: "neutral" },
+    { ability: "aggression", terrain: "flat", mode: "breakaway" },
+    { ability: "descending", terrain: "mountain", mode: "finale", finaleType: "descent" },
+  ];
+  const sensField = field.map((r) => ({ id: r.id, overall: r.overall, abilities: r.abilities }));
+  const abilitySensitivity = {};
+  for (const p of SENS_PROBES) {
+    abilitySensitivity[`${p.ability}@${p.terrain}`] = round(
+      abilityRankSensitivity({
+        field: sensField, profileType: p.terrain, demandVector: DEMAND_VECTORS[p.terrain],
+        ability: p.ability, finaleType: p.finaleType ?? null,
+        samples: 120, fieldSize: 80, seed,
+      }), 2);
+  }
+  race.abilitySensitivity = sortKeys(abilitySensitivity);
+
   // 4. Progression: N sæsoner passiv udvikling på samme population (deterministisk
   //    FNV-seeded støj i riderProgression.js — KØRES uændret).
   const pop = field
@@ -411,6 +435,14 @@ export function renderSnapshotMarkdown(snap) {
   }
   L.push("");
   L.push(`Udbruds-andel af bjergsejre: ${snap.race.breakawayMountainSharePct}%`);
+  L.push("");
+  L.push("### Evne-liveness (⌀rank-gevinst pr. probe)");
+  L.push("");
+  L.push("| Probe | ⌀rank-gevinst |");
+  L.push("|---|--:|");
+  for (const [probe, gain] of Object.entries(snap.race.abilitySensitivity || {})) {
+    L.push(`| ${probe} | ${fmtVal(gain)} |`);
+  }
   L.push("");
   L.push("### Grand Tour (21 etaper)");
   L.push("");

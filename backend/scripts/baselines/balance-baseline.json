@@ -35,20 +35,20 @@
       "max": 71
     },
     "baseValue": {
-      "p10": 8899,
-      "p25": 13744,
-      "p50": 25024,
-      "p75": 459940,
-      "p90": 1043564,
+      "p10": 8070,
+      "p25": 12115,
+      "p50": 23961,
+      "p75": 411679,
+      "p90": 964546,
       "p99": 13116779,
       "max": 24124549
     },
     "baseValueByType": {
       "baroudeur": {
         "n": 80,
-        "p50": 24737,
-        "p90": 734441,
-        "max": 7806827
+        "p50": 12747,
+        "p90": 378472,
+        "max": 4023015
       },
       "brostensrytter": {
         "n": 54,
@@ -382,6 +382,14 @@
           "derived": "gc"
         }
       }
+    },
+    "abilitySensitivity": {
+      "aggression@flat": 0,
+      "climbing@mountain": 10.26,
+      "descending@mountain": 0,
+      "flat@rolling": 0,
+      "sprint@flat": 12.08,
+      "tempo@mountain": 0
     }
   },
   "progression": {

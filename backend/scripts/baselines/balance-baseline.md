@@ -6,11 +6,11 @@
 
 ## Population
 
-800 ryttere · overall p50 19 (p90 49, max 71) · base_value p50 25024 (p99 13116779, max 24124549)
+800 ryttere · overall p50 19 (p90 49, max 71) · base_value p50 23961 (p99 13116779, max 24124549)
 
 | Type | Antal | base_value p50 | p90 | max |
 |---|--:|--:|--:|--:|
-| baroudeur | 80 | 24737 | 734441 | 7806827 |
+| baroudeur | 80 | 12747 | 378472 | 4023015 |
 | brostensrytter | 54 | 38339 | 1995148 | 7264517 |
 | climber | 220 | 25085 | 853508 | 8685025 |
 | gc | 33 | 852518 | 7071022 | 18129767 |
@@ -34,6 +34,17 @@
 | rolling | endurance | 69 vs 29 | 72/300 | 28.7% | gc 38%, baroudeur 27%, puncheur 24% |
 
 Udbruds-andel af bjergsejre: 0.5%
+
+### Evne-liveness (⌀rank-gevinst pr. probe)
+
+| Probe | ⌀rank-gevinst |
+|---|--:|
+| aggression@flat | 0 |
+| climbing@mountain | 10.26 |
+| descending@mountain | 0 |
+| flat@rolling | 0 |
+| sprint@flat | 12.08 |
+| tempo@mountain | 0 |
 
 ### Grand Tour (21 etaper)
 
