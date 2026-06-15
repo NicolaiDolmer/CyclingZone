@@ -8,6 +8,28 @@
 > ryttertype-fase-1 (`backend/lib/riderTypes.js`, legacy-stat z-score). Forudsætning for
 > at #1101-værdisystemet bliver realistisk.
 
+## 0. Låste arkitektur-beslutninger (2026-06-15, ejer-session)
+
+Disse beslutninger låser §5/§6/§8's åbne punkter på arkitektur-niveau. Den detaljerede design (fuld evne-liste, fysiologi-metric-sæt, derivations-formler, kalibrerings-ankre, endelig type-liste) færdiggøres i en **fokuseret evne-design-session** (se "Pending" nedenfor) før implementering.
+
+1. **Fysiologi er FUNDAMENTET (ikke deferred).** Omgør den tidligere "ability-first, fysiologi senere". Vi seeder **fysiologi** skævt pr. arketype (§5 mulighed A) → udleder evnerne fra fysiologien → viser **både** de rå metrics OG spil-evnerne. Fysiologi-metrics (best practice, TrainingPeaks/Strava/Zwift/WKO): **højde, vægt, FTP (watt + w/kg), VO2max, power-kurve (15s/30s/1m/2m/5m/10m/20min…), zone2, W′/HIE** + flere fastlægges i evne-design-sessionen.
+2. **Specialisering = STÆRK.** Specialister er tydeligt svage i modsatte discipliner (sprinter climbing ~32, klatrer sprint ~28) — ikke karikatur. Kommer fra den skæve fysiologi-seeding pr. arketype. Løser §1.1.
+3. **Kalibrering = TOP-TUNG.** Kun ~top 2% i et speciale rammer 90+; elite-specialist ~88-95, kontinental topper ~68-74. Eksakte ankre fastlægges når vi ser fordelingen. Løser §1.2.
+4. **Evne-kategorier = Mental / Teknisk / Fysisk (3)** + et **separat skjult-lag** (potentiale, hidden_potential) afsløret via scouting (#1138) — vises IKKE i de 3 kategorier. **Taktiske evner (tactics, aggression) → Mental.**
+5. **Hver evne skal eksistere af en årsag** og kunne forklares: enten hvad den gør i **race engine** eller hvad den gør i **manager-spillet**. Gennemgås evne-for-evne i evne-design-sessionen (ejer-ønske 15/6).
+6. **Ryttertyper VISES ved launch**, udledt fra de nye evner. Type-listen skal låses: **allrounder UD** (jf. `docs/research/genre-benchmark-june-2026.md`: all-rounder/domestique/goat = holdfunktion, ikke draftbart), goat/domestique allerede ude (§2). NB: "domestique" lever videre som **kvalitets-tier / startholds-rolle** (relaunch-orchestrator), IKKE som draftbar type — de to betydninger blandes ikke.
+7. **PCM-stats fjernes fra hjemmesiden FØRST når det nye fysiologi+evne-view er klar** (ren overgang, intet tomt mellemtrin). Repo-data/navne-fjernelse (#1276 legal) er et separat spor.
+
+### Pending → evne-design-session (fokuseret, før implementering)
+
+- Fuld evne-liste pr. kategori (Mental/Teknisk/Fysisk + skjult) med årsag + race-engine-rolle + manager-spil-rolle for HVER evne.
+- Endeligt fysiologi-metric-sæt (best practice).
+- Derivations-formler (fysiologi → evne) — §3-formlerne rettes her (var "RETTES SENERE").
+- Specialiserings-mekanik konkret: skæv fysiologi-seeding pr. arketype.
+- Kalibrerings-ankre (elite = X, kontinental = Y).
+- Endelig type-liste + type-formler (vægtet evne-gennemsnit, §4 minus allrounder).
+- Derefter: implementerings-plan (writing-plans) → byg → skift PCM-view ud.
+
 ## 1. Problem (verificeret mod prod 2026-06-07, 8.994 ryttere)
 
 Tre rod-årsager til at evnerne er "ramt dårligt og urealistisk":
