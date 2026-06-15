@@ -5,7 +5,7 @@
 // basis: legitimate interest (documented in the privacy policy). Independent of
 // the analytics-consent gate by design: first-touch happens before the cookie
 // banner is answered, and nothing is persisted until the user creates an account.
-const KEY = "cz_attribution_v1";
+const STORAGE_KEY = "cz_attribution_v1"; // gitleaks:allow — localStorage-nøglenavn, ikke en secret
 const UTM_KEYS = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"];
 
 // Runs on every load but writes ONCE — the first visit wins. Args are injectable
@@ -18,7 +18,7 @@ export function captureFirstTouch({
   now = () => new Date().toISOString(),
 } = {}) {
   try {
-    if (storage.getItem(KEY)) return; // first-touch wins — never overwrite
+    if (storage.getItem(STORAGE_KEY)) return; // first-touch wins — never overwrite
     const params = new URLSearchParams(search || "");
     const record = { first_seen_at: now() };
     for (const k of UTM_KEYS) {
@@ -27,7 +27,7 @@ export function captureFirstTouch({
     }
     record.referrer = referrer ? String(referrer).slice(0, 500) : null;
     record.landing_path = path ? String(path).slice(0, 200) : null;
-    storage.setItem(KEY, JSON.stringify(record));
+    storage.setItem(STORAGE_KEY, JSON.stringify(record));
   } catch {
     // localStorage unavailable (private mode / blocked) — attribution is best-effort.
   }
@@ -35,7 +35,7 @@ export function captureFirstTouch({
 
 export function getAttribution(storage = window.localStorage) {
   try {
-    const raw = storage.getItem(KEY);
+    const raw = storage.getItem(STORAGE_KEY);
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
