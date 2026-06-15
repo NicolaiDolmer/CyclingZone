@@ -1,8 +1,9 @@
 ﻿import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { formatNumber } from "../lib/intl";
+import { TrophyIcon } from "./ui";
 
-export function ConfettiModal({ show, onClose, title, subtitle, amount, icon = "🏆" }) {
+export function ConfettiModal({ show, onClose, title, subtitle, amount, icon }) {
   const { t } = useTranslation("common");
   const [particles, setParticles] = useState([]);
 
@@ -33,7 +34,7 @@ export function ConfettiModal({ show, onClose, title, subtitle, amount, icon = "
     <div className="fixed inset-0 z-50 flex items-center justify-center"
       onClick={onClose}>
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/70" />
 
       {/* Confetti particles */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -56,11 +57,13 @@ export function ConfettiModal({ show, onClose, title, subtitle, amount, icon = "
       </div>
 
       {/* Modal */}
-      <div className="relative z-10 bg-cz-card border border-cz-border rounded-2xl p-8
+      <div className="relative z-10 bg-cz-card border border-cz-border rounded-cz p-8
         text-center max-w-sm w-full mx-4 shadow-2xl"
         style={{ animation: "scaleIn 0.3s ease-out" }}>
 
-        <div className="text-6xl mb-4">{icon}</div>
+        <div className="mb-4 flex justify-center" aria-hidden="true">
+          {icon ?? <TrophyIcon size={56} className="text-cz-accent-t" />}
+        </div>
         <h2 className="text-cz-1 font-bold text-2xl mb-2">{title}</h2>
         {subtitle && <p className="text-cz-2 text-sm mb-3">{subtitle}</p>}
         {amount > 0 && (

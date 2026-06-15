@@ -6,15 +6,16 @@
 
 import { Trans, useTranslation } from "react-i18next";
 import { formatNumber } from "../lib/intl";
+import { BikeIcon } from "./ui";
 
 export default function RidersEmptyState({ balance, onFilterByBudget, onStartTour }) {
   const { t } = useTranslation("riders");
   const balanceLabel = formatNumber(balance ?? 0);
 
   return (
-    <div className="mb-4 px-4 py-4 bg-cz-card border border-cz-accent/30 rounded-xl">
+    <div className="mb-4 px-4 py-4 bg-cz-card border border-cz-accent/30 rounded-cz">
       <div className="flex items-start gap-2 mb-3">
-        <span className="text-cz-accent-t text-base">🚴</span>
+        <BikeIcon size={16} className="text-cz-accent-t flex-shrink-0 mt-0.5" aria-hidden="true" />
         <div className="flex-1 min-w-0">
           <p className="text-cz-1 text-sm font-semibold">{t("emptyState.title")}</p>
           <p className="text-cz-2 text-xs mt-0.5">
@@ -24,7 +25,7 @@ export default function RidersEmptyState({ balance, onFilterByBudget, onStartTou
       </div>
 
       <div className="mb-3">
-        <div className="bg-cz-subtle rounded-lg px-3 py-2 border border-cz-border">
+        <div className="bg-cz-subtle rounded-cz px-3 py-2 border border-cz-border">
           <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("emptyState.balance")}</p>
           <p className="text-cz-accent-t font-mono font-bold text-sm mt-0.5">{balanceLabel} CZ$</p>
         </div>
@@ -60,7 +61,7 @@ export default function RidersEmptyState({ balance, onFilterByBudget, onStartTou
       <div className="flex flex-wrap items-center gap-2">
         <button
           onClick={onFilterByBudget}
-          className="w-full sm:w-auto bg-cz-accent text-cz-on-accent px-4 py-2 rounded-lg text-xs font-bold hover:brightness-110 transition-all"
+          className="w-full sm:w-auto bg-cz-accent text-cz-on-accent px-4 py-2 rounded-cz text-xs font-bold hover:brightness-110 transition-all"
         >
           {t("emptyState.ctaFindFirst", { balance: balanceLabel })}
         </button>

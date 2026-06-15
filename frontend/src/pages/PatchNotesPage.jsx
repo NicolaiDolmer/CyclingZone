@@ -2,6 +2,34 @@
 
 const PATCHES = [
   {
+    version: "5.39",
+    date: "2026-06-15",
+    label: "Beta",
+    changes: [
+      {
+        category: "Changed · Design",
+        items: [
+          "EN · The Riders, Auctions, Team and Races pages now use the same refreshed design system as the rest of the app: cleaner cards and tables, sharper corners and crisp icons in place of emoji, consistent across light and dark mode. No gameplay changes. Refs #671",
+          "DA · Riders-, Auktions-, Team- og Race-siderne bruger nu samme opfriskede designsystem som resten af appen: renere kort og tabeller, skarpere hjørner og rene ikoner i stedet for emoji, konsistent i lyst og mørkt tema. Ingen ændringer i gameplay. Refs #671",
+        ],
+      },
+    ],
+  },
+  {
+    version: "5.38",
+    date: "2026-06-15",
+    label: "Beta",
+    changes: [
+      {
+        category: "Added · Community",
+        items: [
+          "EN · There's now a clear Join Discord link in the sidebar, and new managers are invited to our Discord right after signing up. Come say hi, ask questions and follow development. Refs #679",
+          "DA · Der er nu et tydeligt Join Discord-link i sidebjælken, og nye managere bliver inviteret ind på vores Discord lige efter tilmelding. Kom og sig hej, stil spørgsmål og følg udviklingen. Refs #679",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.37",
     date: "2026-06-15",
     label: "Beta",

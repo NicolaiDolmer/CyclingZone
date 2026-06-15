@@ -13,6 +13,7 @@ import { useScouting } from "../lib/useScouting";
 import { scoutSortValue } from "../lib/scouting";
 import TeamTransferHistoryTab from "../components/TeamTransferHistoryTab";
 import { resolveApiError } from "../lib/apiError";
+import { Card, Button, Input, BikeIcon } from "../components/ui";
 
 const STATS = ["stat_fl","stat_bj","stat_kb","stat_bk","stat_tt","stat_prl",
   "stat_bro","stat_sp","stat_acc","stat_ned","stat_udh","stat_mod","stat_res","stat_ftr"];
@@ -35,6 +36,9 @@ function RiderActionModal({ rider, scouting, onClose, onAction, ddActive }) {
   const [transferPrice, setTransferPrice] = useState(riderValue);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
+  // #671: success/fejl-farven blev tidligere udledt af om msg startede med
+  // "✅" (emoji-som-state). Eksplicit boolean i stedet — ingen emoji i JSX.
+  const [msgOk, setMsgOk] = useState(false);
   const [activeTab, setActiveTab] = useState("auction");
   // #778: flash-auktion (30 min) på egne ryttere — kun synlig under aktivt
   // Deadline Day (samme gating som RiderStatsPage's AuctionButton).
@@ -53,10 +57,10 @@ function RiderActionModal({ rider, scouting, onClose, onAction, ddActive }) {
         body: JSON.stringify({ rider_id: rider.id, starting_price: auctionPrice, flash_auction: ddActive && flash }),
       });
       const data = await res.json().catch(() => ({}));
-      if (res.ok) { setMsg(t("actionModal.auction.successMsg")); setTimeout(() => { onAction(); onClose(); }, 1500); }
-      else setMsg(`${t("actionModal.errorPrefix")}${resolveApiError(data, t)}`);
+      if (res.ok) { setMsgOk(true); setMsg(t("actionModal.auction.successMsg")); setTimeout(() => { onAction(); onClose(); }, 1500); }
+      else { setMsgOk(false); setMsg(`${t("actionModal.errorPrefix")}${resolveApiError(data, t)}`); }
     } catch {
-      setMsg(t("auth:error.connectionFailed"));
+      setMsgOk(false); setMsg(t("auth:error.connectionFailed"));
     } finally {
       setLoading(false);
     }
@@ -72,10 +76,10 @@ function RiderActionModal({ rider, scouting, onClose, onAction, ddActive }) {
         body: JSON.stringify({ rider_id: rider.id, asking_price: transferPrice }),
       });
       const data = await res.json().catch(() => ({}));
-      if (res.ok) { setMsg(t("actionModal.transfer.successMsg")); setTimeout(() => { onAction(); onClose(); }, 1500); }
-      else setMsg(`${t("actionModal.errorPrefix")}${resolveApiError(data, t)}`);
+      if (res.ok) { setMsgOk(true); setMsg(t("actionModal.transfer.successMsg")); setTimeout(() => { onAction(); onClose(); }, 1500); }
+      else { setMsgOk(false); setMsg(`${t("actionModal.errorPrefix")}${resolveApiError(data, t)}`); }
     } catch {
-      setMsg(t("auth:error.connectionFailed"));
+      setMsgOk(false); setMsg(t("auth:error.connectionFailed"));
     } finally {
       setLoading(false);
     }
@@ -89,7 +93,7 @@ function RiderActionModal({ rider, scouting, onClose, onAction, ddActive }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/70" onClick={onClose} />
-      <div className="relative bg-cz-card border border-cz-border rounded-2xl w-full max-w-md">
+      <div className="relative bg-cz-card border border-cz-border rounded-cz w-full max-w-md">
         <div className="flex items-start justify-between p-5 border-b border-cz-border">
           <div>
             <h2 className="text-cz-1 font-bold text-lg">{rider.firstname} {rider.lastname}</h2>
@@ -121,7 +125,7 @@ function RiderActionModal({ rider, scouting, onClose, onAction, ddActive }) {
           <div className="flex gap-2 mb-4 flex-wrap">
             {["auction","transfer"].map(tab => (
               <button key={tab} onClick={() => setActiveTab(tab)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
+                className={`px-3 py-1.5 rounded-cz text-sm font-medium transition-all border
                   ${activeTab === tab ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "text-cz-2 border-cz-border hover:text-cz-1"}`}>
                 {tabLabels[tab]}
               </button>
@@ -142,18 +146,17 @@ function RiderActionModal({ rider, scouting, onClose, onAction, ddActive }) {
                 </label>
               )}
               <div className="flex gap-2">
-                <input type="number" value={auctionPrice} min={0} max={riderValue}
+                <Input type="number" value={auctionPrice} min={0} max={riderValue}
+                  error={auctionPriceError}
                   onChange={e => { const v = parseInt(e.target.value, 10); setAuctionPrice(Number.isNaN(v) ? 0 : v); }}
-                  className={`flex-1 bg-cz-subtle border rounded-lg px-3 py-2 text-cz-1 text-sm font-mono focus:outline-none
-                    ${auctionPriceError ? "border-red-300 focus:border-red-400" : "border-cz-border focus:border-cz-accent"}`} />
-                <button onClick={startAuction} disabled={loading || auctionPriceError}
-                  className={`px-4 py-2 font-bold rounded-lg text-sm disabled:opacity-50 transition-all
-                    ${ddActive && flash ? "bg-red-600 text-white hover:bg-red-700" : "bg-cz-accent text-cz-on-accent hover:brightness-110"}`}>
+                  className="flex-1 font-mono" />
+                <Button onClick={startAuction} disabled={loading || auctionPriceError}
+                  className={ddActive && flash ? "!bg-cz-danger !text-white hover:brightness-110" : ""}>
                   {loading ? t("actionModal.loadingShort") : (ddActive && flash) ? t("actionModal.auction.startFlashButton") : t("actionModal.auction.startButton")}
-                </button>
+                </Button>
               </div>
               {auctionPriceError && (
-                <p className="text-red-500 text-xs mt-1.5">
+                <p className="text-cz-danger text-xs mt-1.5">
                   {t("actionModal.auction.priceError", { amount: formatNumber(riderValue) })}
                 </p>
               )}
@@ -163,16 +166,16 @@ function RiderActionModal({ rider, scouting, onClose, onAction, ddActive }) {
             <div>
               <p className="text-cz-2 text-xs mb-3">{t("actionModal.transfer.description")}</p>
               <div className="flex gap-2">
-                <input type="number" value={transferPrice} min={1} onChange={e => setTransferPrice(parseInt(e.target.value))}
-                  className="flex-1 bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm font-mono focus:outline-none focus:border-cz-accent" />
-                <button onClick={listTransfer} disabled={loading}
-                  className="px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50">
+                <Input type="number" value={transferPrice} min={1}
+                  onChange={e => setTransferPrice(parseInt(e.target.value))}
+                  className="flex-1 font-mono" />
+                <Button onClick={listTransfer} disabled={loading}>
                   {loading ? t("actionModal.loadingShort") : t("actionModal.transfer.listButton")}
-                </button>
+                </Button>
               </div>
             </div>
           )}
-          {msg && <p className={`text-sm mt-3 ${msg.startsWith("✅") ? "text-cz-success" : "text-cz-danger"}`}>{msg}</p>}
+          {msg && <p className={`text-sm mt-3 ${msgOk ? "text-cz-success" : "text-cz-danger"}`}>{msg}</p>}
         </div>
       </div>
     </div>
@@ -222,7 +225,7 @@ function SquadTab({ riders, scouting, onSelectRider, windowOpen }) {
       {hasTransfers && (
         <div className="flex gap-2 mb-4 flex-wrap items-center">
           {(incomingRiders.length > 0 || outgoingRiders.length > 0) && (
-            <div className="flex rounded-lg border border-cz-border overflow-hidden">
+            <div className="flex rounded-cz border border-cz-border overflow-hidden">
               {[
                 { key: "current",  label: t("squad.view.current",  { count: currentCount }) },
                 { key: "upcoming", label: t("squad.view.upcoming", { count: upcomingCount }) },
@@ -238,19 +241,19 @@ function SquadTab({ riders, scouting, onSelectRider, windowOpen }) {
             </div>
           )}
           {loanedInRiders.length > 0 && (
-            <span className="flex items-center gap-2 px-3 py-1.5 text-xs bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded-lg">
+            <span className="flex items-center gap-2 px-3 py-1.5 text-xs bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded-cz">
               <span className="w-2 h-2 rounded-full bg-purple-400" />
               {t("squad.loanedIn", { count: loanedInRiders.length })}
             </span>
           )}
           {loanedOutRiders.length > 0 && (
-            <span className="flex items-center gap-2 px-3 py-1.5 text-xs bg-cz-warning/10 text-cz-warning border border-cz-warning/20 rounded-lg">
+            <span className="flex items-center gap-2 px-3 py-1.5 text-xs bg-cz-warning/10 text-cz-warning border border-cz-warning/20 rounded-cz">
               <span className="w-2 h-2 rounded-full bg-yellow-400" />
               {t("squad.loanedOut", { count: loanedOutRiders.length })}
             </span>
           )}
           {!windowOpen && (
-            <span className="px-3 py-1.5 text-xs text-cz-3 bg-cz-subtle border border-cz-border rounded-lg">
+            <span className="px-3 py-1.5 text-xs text-cz-3 bg-cz-subtle border border-cz-border rounded-cz">
               {t("squad.windowClosedHint")}
             </span>
           )}
@@ -263,11 +266,11 @@ function SquadTab({ riders, scouting, onSelectRider, windowOpen }) {
 
       {displayRiders.length === 0 ? (
         <div className="text-center py-16 text-cz-3">
-          <p className="text-4xl mb-3">🚴</p>
+          <BikeIcon size={40} className="mx-auto mb-3 text-cz-3" />
           <p>{t("squad.emptyState")}</p>
         </div>
       ) : (
-        <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+        <Card className="overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
@@ -358,7 +361,7 @@ function SquadTab({ riders, scouting, onSelectRider, windowOpen }) {
               </tbody>
             </table>
           </div>
-        </div>
+        </Card>
       )}
     </div>
   );
@@ -390,14 +393,14 @@ function EconomyTab({ team, riders, transactions }) {
           { label: t("economy.kpi.salaryPerSeason"), value: t("economy.amount", { value: formatNumber(totalSalary) }), color: "text-cz-warning" },
           { label: t("economy.kpi.sponsorPerSeason"), value: t("economy.amount", { value: formatNumber(sponsorIncome) }), color: "text-cz-info" },
         ].map(s => (
-          <div key={s.label} className="bg-cz-card border border-cz-border rounded-xl p-4">
+          <Card key={s.label} className="p-4">
             <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{s.label}</p>
             <p className={`font-mono font-bold text-sm ${s.color}`}>{s.value}</p>
-          </div>
+          </Card>
         ))}
       </div>
 
-      <div className="bg-cz-card border border-cz-border rounded-xl p-5">
+      <Card className="p-5">
         {/* #1131: "Netto"/"Sponsorindtægt"-rækkerne fik 450+ dead clicks (Clarity 5/6-12/6) —
             spillere leder efter detaljer. Synlig vej til den fulde prognose på /finance. */}
         <div className="flex items-center justify-between gap-3 mb-4">
@@ -416,7 +419,7 @@ function EconomyTab({ team, riders, transactions }) {
               <span className={`font-mono font-bold ${s.color}`}>{s.value}</span>
             </div>
           ))}
-          <div className="flex justify-between items-center py-2 bg-cz-subtle rounded-lg px-3 mt-1">
+          <div className="flex justify-between items-center py-2 bg-cz-subtle rounded-cz px-3 mt-1">
             <span className={`text-sm font-semibold ${netPerSeason >= 0 ? "text-cz-1" : "text-cz-danger"}`}>
               {t("economy.forecast.net")}
             </span>
@@ -426,14 +429,14 @@ function EconomyTab({ team, riders, transactions }) {
           </div>
         </div>
         {netPerSeason < 0 && (
-          <div className="mt-3 bg-cz-danger-bg border border-cz-danger/30 rounded-lg px-4 py-2.5">
+          <div className="mt-3 bg-cz-danger-bg border border-cz-danger/30 rounded-cz px-4 py-2.5">
             <p className="text-cz-danger text-xs">{t("economy.forecast.warning")}</p>
           </div>
         )}
-      </div>
+      </Card>
 
       {Object.keys(breakdown).length > 0 && (
-        <div className="bg-cz-card border border-cz-border rounded-xl p-5">
+        <Card className="p-5">
           <h3 className="text-cz-1 font-semibold text-sm mb-4">{t("economy.breakdown.title")}</h3>
           <div className="space-y-2">
             {Object.entries(breakdown).sort((a,b) => b[1]-a[1]).map(([type, amount]) => (
@@ -445,10 +448,10 @@ function EconomyTab({ team, riders, transactions }) {
               </div>
             ))}
           </div>
-        </div>
+        </Card>
       )}
 
-      <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+      <Card className="overflow-hidden">
         <div className="px-5 py-4 border-b border-cz-border">
           <h3 className="text-cz-1 font-semibold text-sm">{t("economy.history.title")}</h3>
         </div>
@@ -484,7 +487,7 @@ function EconomyTab({ team, riders, transactions }) {
             </table>
           </div>
         )}
-      </div>
+      </Card>
     </div>
   );
 }
@@ -620,7 +623,7 @@ export function TeamPage() {
       <div className="flex gap-2 mb-5">
         {tabs.map(tab => (
           <button key={tab.key} onClick={() => setActiveTab(tab.key)}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
+            className={`px-3 py-1.5 rounded-cz text-sm font-medium transition-all border
               ${activeTab === tab.key ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
             {tab.label}
           </button>
