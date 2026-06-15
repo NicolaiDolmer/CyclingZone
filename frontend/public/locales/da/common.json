@@ -46,7 +46,8 @@
   "sidebar": {
     "balance": "Balance",
     "division": "Division {division}",
-    "onlineNow": "{count} online nu"
+    "onlineNow": "{count} online nu",
+    "joinDiscord": "Join Discord"
   },
   "language": {
     "label": "Sprog",

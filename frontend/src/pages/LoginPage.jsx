@@ -6,6 +6,7 @@ import { useLanguage } from "../lib/language";
 import { mapSupabaseAuthError } from "../lib/authErrors";
 import LanguageSwitcher from "../components/LanguageSwitcher";
 import { Wordmark } from "../components/Brand";
+import DiscordJoinLink from "../components/DiscordJoinLink";
 import { Card, Button, Input, CheckIcon, InboxIcon } from "../components/ui";
 import { labelClass, helperClass } from "../components/ui/fieldStyles.js";
 
@@ -257,6 +258,12 @@ export default function LoginPage() {
               >
                 {t("auth:success.signupCta")}
               </Button>
+              {success.kind === "signup" && (
+                <div className="mt-4 border-t border-cz-border pt-4">
+                  <p className="mb-2 text-xs text-cz-3">{t("auth:success.joinDiscord")}</p>
+                  <DiscordJoinLink variant="button" label={t("auth:success.joinDiscordCta")} />
+                </div>
+              )}
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
