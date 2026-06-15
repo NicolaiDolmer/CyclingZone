@@ -11,6 +11,7 @@ import {
   FORM_RACE_WEIGHT,
   FATIGUE_RACE_WEIGHT,
   DURABILITY_FATIGUE_DAMPING,
+  DESCENDING_FINALE_WEIGHT,
 } from "./raceSimulator.js";
 import { DEMAND_VECTORS } from "./raceStageProfileGenerator.js";
 
@@ -76,7 +77,7 @@ test("finalScore = summen af komponenterne (forklarlighed)", () => {
   const { ranked } = simulateStage({ entrants: [ELITE_SPRINTER, PURE_CLIMBER], stageProfile: MOUNTAIN, seed: 99 });
   for (const r of ranked) {
     const c = r.components;
-    const sum = c.terrain + c.noise + c.form - c.fatigue + c.team + (c.breakaway ?? 0);
+    const sum = c.terrain + c.noise + c.form - c.fatigue + c.team + (c.breakaway ?? 0) + (c.finale ?? 0);
     assert.ok(Math.abs(sum - r.finalScore) < 1e-12, "finalScore matcher ikke komponenter");
   }
 });
@@ -438,4 +439,37 @@ test("#1122 durability har INGEN effekt uden træthed (neutral)", () => {
 
 test("#1122 DURABILITY_FATIGUE_DAMPING ∈ (0,1]", () => {
   assert.ok(DURABILITY_FATIGUE_DAMPING > 0 && DURABILITY_FATIGUE_DAMPING <= 1);
+});
+
+// ── #1122 Plan 1: descending finale-modifier ──────────────────────────────────
+test("#1122 descending giver bonus PÅ descent-finale, intet ellers", () => {
+  const base = Object.fromEntries(ABILITY_KEYS.map((k) => [k, 50]));
+  const goodDesc = { ...base, descending: 95 };
+  const comp = (finale_type) => simulateStage({
+    entrants: [{ rider_id: "r1", abilities: goodDesc }],
+    stageProfile: { profile_type: "mountain", demand_vector: { climbing: 1.0 }, finale_type },
+    seed: 1,
+  }).ranked[0].components.finale;
+  assert.ok(comp("descent") > 0, "god nedkører skal få bonus på descent-finale");
+  assert.equal(comp("long_climb"), 0, "ingen descending-effekt uden descent-finale");
+});
+
+test("#1122 dårlig nedkører taber på descent-finale (centreret om 50)", () => {
+  const base = Object.fromEntries(ABILITY_KEYS.map((k) => [k, 50]));
+  const c = (dsc) => simulateStage({
+    entrants: [{ rider_id: "r1", abilities: { ...base, descending: dsc } }],
+    stageProfile: { profile_type: "mountain", demand_vector: { climbing: 1.0 }, finale_type: "descent" },
+    seed: 1,
+  }).ranked[0].components.finale;
+  assert.ok(c(95) > 0 && c(10) < 0, "descending centreres om 50: >50 vinder, <50 taber");
+});
+
+test("#1122 finalScore inkluderer finale-komponenten (forklarlighed)", () => {
+  const { ranked } = simulateStage({
+    entrants: [{ rider_id: "r1", abilities: Object.fromEntries(ABILITY_KEYS.map((k) => [k, 50])) }],
+    stageProfile: { profile_type: "mountain", demand_vector: { climbing: 1.0 }, finale_type: "descent" }, seed: 1,
+  });
+  const c = ranked[0].components;
+  const sum = c.terrain + c.noise + c.form - c.fatigue + c.team + (c.breakaway ?? 0) + (c.finale ?? 0);
+  assert.ok(Math.abs(sum - ranked[0].finalScore) < 1e-12);
 });

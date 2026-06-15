@@ -118,6 +118,19 @@ export const TEAM_RACE_WEIGHT = 0.024;
 export const HELPER_FATIGUE_DAMPING = 0.5;   // træthed 100 → hjælper bidrager 50 %
 const SPRINT_PROFILES = new Set(["flat"]);
 
+// Plan 1 (#1122): descending som finale-modifier — på descent-finaler får gode
+// nedkørere en bonus, dårlige taber (centreret om 50). Lille terræn-bjerg-vægt
+// (descending i bjerg-demand) kan tilføjes separat i DEMAND_VECTORS hvis ønsket.
+export const DESCENDING_FINALE_WEIGHT = 0.04;
+const DESCENT_FINALES = new Set(["descent"]);
+
+function finaleModifier(entrant, stageProfile) {
+  if (!DESCENT_FINALES.has(stageProfile?.finale_type)) return 0;
+  const d = Number(entrant?.abilities?.descending);
+  if (!Number.isFinite(d)) return 0;
+  return ((clamp(d, 0, 99) - 50) / 49) * DESCENDING_FINALE_WEIGHT;
+}
+
 export function buildTeamContext({ entrants, terrainById }) {
   const byTeam = new Map();
   for (const e of entrants) {
@@ -299,12 +312,13 @@ export function simulateStage({ entrants = [], stageProfile, seed } = {}) {
     const fatigue = fatigueComponent(e, stageProfile);
     const team = teamComponent(e, stageProfile, teamCtx);
     const breakaway = breakawayById.get(e.rider_id) || 0;
-    const finalScore = terrain + noise + form - fatigue + team + breakaway;
+    const finale = finaleModifier(e, stageProfile);
+    const finalScore = terrain + noise + form - fatigue + team + breakaway + finale;
     return {
       rider_id: e.rider_id,
       team_id: e.team_id ?? null,
       finalScore,
-      components: { terrain, noise, form, fatigue, team, breakaway },
+      components: { terrain, noise, form, fatigue, team, breakaway, finale },
     };
   });
 
