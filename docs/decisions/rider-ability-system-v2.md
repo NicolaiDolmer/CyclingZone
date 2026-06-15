@@ -30,6 +30,54 @@ Disse beslutninger låser §5/§6/§8's åbne punkter på arkitektur-niveau. Den
 - Endelig type-liste + type-formler (vægtet evne-gennemsnit, §4 minus allrounder).
 - Derefter: implementerings-plan (writing-plans) → byg → skift PCM-view ud.
 
+## 0.1 Evne-design-session (2026-06-15, ejer-session 2) — låste beslutninger
+
+Færdiggør §0's "Pending". Disse er ejer-godkendt i live-dialog (sess 2, 15/6) og er nu SSOT. **Ved konflikt vinder §0.1 over §3–§9** (historisk forslag fra 7/6, bevaret som kontekst — fx 16+2 evner, 10 typer m. allrounder, "RETTES SENERE"-formler er superseded her).
+
+**Beslutning 0 — motor-input = A′.** Motoren scorer fortsat **evnerne** (den frosne `simulateStage`-kontrakt bevares). Fysiologi er fundamentet der ① **genererer evnerne** (kilden til specialisering) og ② **driver form/træthed/durability/recovery i de eksisterende seams** (#1021). Fravalgt: B = motor scorer fysiologi direkte (= motor-omskrivning, smider den kalibrerede motor væk; benchmarken validerer vægtet-sum-af-evner). Konsekvens: en evnes "race-rolle" = enten dens **vægt i terræn-demand-vektoren** (terræn-kraft) ELLER at den **driver en seam** (dynamik).
+
+**Beslutning 2 — evne-liste = 15 synlige + 1 skjult (rig + retfærdiggjort).** Hver evne har en rolle via **to-rolle-modellen**: terræn-kraft (demand-vægt) eller dynamik-seam.
+- **Fysisk:** `sprint`, `acceleration`, `punch` (=Hills, 1–2 min), `tempo` (=Mid-mountain, 5–15 min), `climbing` (=High-mountain, 25 min+), `time_trial` (flad solo, watt+aero — `prolog` merged ind), `flat` (rouleur/bunch-kraft), `endurance`, `recovery` (seam: genopretning mellem efforts/dage), `durability` (seam: fade sent i hårde lange løb).
+- **Teknisk:** `cobblestone`, `positioning`, `descending` (finale-modifier på descent-finaler + lille bjerg-vægt).
+- **Mental:** `aggression` (driver udbruds-CHANCEN), `tactics` (udførelse/beslutning: udbruds-/echelon-valg, troskab mod managerens hold-instrukser, kaptajn→hjælper-koordinering, lille energi-effektivitet).
+- **Skjult:** `hidden_potential`.
+- **`prolog` FJERNES** (merged i `time_trial`).
+- **Klatre-trioen = power-duration-kurven** udtrykt som stignings-varighed. Visnings-navne: **Hills / Mid-mountain / High-mountain** (EN-first; DA: Bakker / Mellembjerg / Bjerg). Interne kolonne-nøgler forbliver `punch` / `tempo` / `climbing`.
+
+**ITT-model:** ÉN `time_trial`-evne, men kort vs. lang aptitude er **inferbar fra rytterens profil** via terræn-split: `itt_short` (prolog/≤~8 km) = `time_trial + punch + acceleration`; `itt_long` (≥~25 km) = `time_trial + endurance + durability + aero`. Ingen separat prolog-evne.
+
+**Motor-vokabular udvides (følger af A′ + §2-listen):** `ABILITY_DIMENSIONS`/`DEMAND_VECTORS` skal udvides med `flat` + `tempo`; nye terræn-typer `medium_mountain` + `itt_short`/`itt_long`; `descending` som finale-modifier; **`aggression`-evnen skal læses af breakaway-mekanikken** (i dag regner den sin egen af tactics/endurance/acceleration — bug); `durability`/`recovery` driver trætheds-/genopretnings-seam.
+
+**Beslutning 1 — fysiologi-metric-sæt.** Behold de 14 nuværende (højde, vægt, FTP w/kg+watt, VO2max-power, zone2, pmax, power 5s/15s/1m/5m, W′/HIE, TTE@FTP, fatigue_resistance, recovery_rate) + **tilføj `power_2m_wkg`, `power_10m_wkg`, `aero`**. **Drop** de gamle §3-placeholders `lightness` + `weight_stability` (w/kg dækker lethed; cobblestone-handling dækker stabilitet). **Vigtig split:** fysiologi afleder kun de **fysiske** evner + driver durability/recovery-seams; **tekniske/mentale** evner (`descending`, `positioning`, handling-delen af `cobblestone`, `tactics`, `aggression`) seedes som **skills** (skæv pr. arketype), IKKE fra fysiologi (ingen power-kurve-basis).
+
+**Beslutning 3 — derivations-mapping + VO2max-trekant.** Hver evne aflæses fra sin power-duration-bøtte (koefficienterne er en tuning-flade sat i dry-run, ikke gættet):
+- sprint / acceleration ← pmax, power_5s, power_15s
+- punch (Hills) ← power_1m, power_2m
+- tempo (Mid-mountain) ← power_5m, power_10m, VO2max
+- climbing (High-mountain) ← FTP w/kg **+ VO2max-loft-led** (en monster-VO2max-rytter er stærk på begge klatre-længder)
+- time_trial ← FTP watt + aero · flat ← FTP watt + aero + endurance
+- endurance ← zone2, TTE, fatigue_resistance
+- durability *(seam)* ← fatigue_resistance, W′ · recovery *(seam)* ← recovery_rate
+- cobblestone ← handling-skill + FTP watt/power_1m/durability · positioning/descending/tactics/aggression = rene skill-seeds
+
+**VO2max-trekant** (aflæselig af spilleren, realisme-anker): VO2max = motor-størrelse (Mid-mountain + loftet for klatring; de bedste VO2max/kg-ryttere ER klatrere/GC); FTP w/kg = den *holdbare brøkdel* (High-mountain + lang TT); durability/TTE = hvor højt og hvor *længe* brøkdelen holdes. → komplet klatrer (høj VO2max + høj brøk) vs. Mid-mountain-puncheur (høj VO2max, lav brøk) vs. diesel-grinder (lavere VO2max, meget høj brøk + durability).
+
+**Beslutning 4 — specialisering = (A) direkte arketype-skew.** Seed fysiologien skævt pr. arketype (born-in specialisering); seeding-arketyperne ≈ de viste typer (en seeded climber klassificeres som climber). Afløser dagens "skæve legacy-stats → generisk seed". (B) per-rytter kontrast-forstærkning ikke nødvendig for 100% fiktiv sæson 1.
+
+**Beslutning 6 — 8 typer, z-score + kontrast.** **leadout SKÅRET** (benchmark: næsten-død uden leadout-tog-modellering; foldes i sprinter/rouleur). allrounder/goat/domestique allerede ude. Endelige 8: **sprinter, tt, climber, puncheur, brostensrytter, baroudeur, rouleur, gc.** Metode = shippet **z-score + kontrast** med guards (ikke doc §4's vægtede gennemsnit); re-fit baseline efter re-derivation. Start-vægte (tunes i dry-run; positiv = definerer, negativ = anti-type):
+- sprinter: {sprint:3, acceleration:2, flat:1, positioning:1, climbing:−2, endurance:−1}
+- tt: {time_trial:3, flat:1, endurance:1, durability:1, positioning:1, sprint:−1, punch:−1}
+- climber: {climbing:3, tempo:2, endurance:1, recovery:1, durability:1, sprint:−2, flat:−1}
+- puncheur: {punch:3, tempo:2, acceleration:1, climbing:−1, endurance:−1, sprint:−1}
+- brostensrytter: {cobblestone:3, flat:1, durability:1, punch:1, positioning:1, climbing:−1}
+- baroudeur: {aggression:3, endurance:1, durability:1, tactics:1, flat:1, punch:1, sprint:−1}
+- rouleur: {flat:3, endurance:1, time_trial:1, durability:1, climbing:−1, punch:−1}
+- gc: {climbing:3, time_trial:2, tempo:1, recovery:1, durability:1, endurance:1, sprint:−2}
+
+**Beslutning 5 — kalibrering = top-tung, ankre mod dry-run-fordeling (simulér-før-ship).** Kun ~top 2% i et speciale rammer 90+; provisorisk: elite-specialist ~88-95, kontinental ~68-74 (bekræftes når vi ser den genererede fordeling).
+
+**Tilbage (empirisk, i implementeringen — IKKE gættet i design):** derivations-koefficienter + kalibrerings-ankre sættes via **dry-run-harness mod genereret fiktiv population + mål-scorecard FØR live** (`race:gate`). Implementerings-rækkefølge: writing-plans → migration (fysiologi +3 kolonner m. GRANT SELECT, evne-kolonner: fjern prolog; motor-vokabular +flat/tempo + terræn medium_mountain/itt_short/itt_long) → skæv arketype-seeding → re-derive → tune mod scorecard → re-fit type-baseline → re-backfill typer (8) → motor: udvid ABILITY_DIMENSIONS + demand-vektorer + aggression-i-breakaway + durability/recovery-seams → frontend fysiologi+evne-view → skift PCM-stats ud (ren overgang).
+
 ## 1. Problem (verificeret mod prod 2026-06-07, 8.994 ryttere)
 
 Tre rod-årsager til at evnerne er "ramt dårligt og urealistisk":
