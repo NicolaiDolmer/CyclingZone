@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.40",
+    date: "2026-06-15",
+    label: "Beta",
+    changes: [
+      {
+        category: "Added · Site",
+        items: [
+          "EN · There's now a proper landing page at cyclingzone.org for visitors who aren't signed in yet. It shows what the game is, links to the Discord, and lets you leave your email for the launch. Signed-in players still go straight to the app as before. Refs #672",
+          "DA · Der er nu en rigtig landing page på cyclingzone.org til besøgende der ikke er logget ind endnu. Den viser hvad spillet er, linker til Discord, og lader dig lægge din mail til launch. Indloggede spillere ryger stadig direkte til appen som før. Refs #672",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.39",
     date: "2026-06-15",
     label: "Beta",

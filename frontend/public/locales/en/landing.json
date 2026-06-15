@@ -1,0 +1,147 @@
+{
+  "meta": {
+    "title": "Cycling Zone · the browser cycling manager where strategy beats spending",
+    "description": "Draft a team, bid for riders in live auctions, set your tactics, and race a full season. A free, browser-based cycling manager game. No pay-to-win."
+  },
+  "nav": {
+    "discordLabel": "Discord",
+    "languageLabel": "Language",
+    "skipToContent": "Skip to content"
+  },
+  "hero": {
+    "badge": "Open beta · Free to play",
+    "title": "Race a season. Outthink the field.",
+    "subtitle": "Cycling Zone is a browser-based cycling manager. Draft your team, bid for riders in live auctions, set the tactics, and chase results across a full season calendar.",
+    "ctaDiscord": "Join the Discord",
+    "ctaEmail": "Get the launch email",
+    "trustFree": "Free to play",
+    "trustNoCard": "No credit card",
+    "trustBrowser": "Runs in your browser"
+  },
+  "signature": {
+    "kicker": "Inside the game",
+    "stageTitle": "Stage 14 · Summit finish",
+    "distanceLabel": "Distance",
+    "distanceValue": "182 km",
+    "climbLabel": "Final climb",
+    "climbValue": "HC · 14.2 km at 7.8%",
+    "classificationTitle": "General classification",
+    "gapHeader": "Gap",
+    "jerseyYellow": "Race leader",
+    "jerseyGreen": "Points leader",
+    "jerseyPolka": "Mountains leader",
+    "sampleNote": "Sample data. Live standings update as the race unfolds."
+  },
+  "how": {
+    "kicker": "How you play",
+    "title": "Four decisions, one season",
+    "rows": [
+      {
+        "no": "01",
+        "title": "Draft your squad",
+        "body": "Pick a roster that fits your plan. Climbers for the mountains, sprinters for the flat, a captain to build around.",
+        "data": "Riders with real, readable ratings"
+      },
+      {
+        "no": "02",
+        "title": "Bid in live auctions",
+        "body": "Compete for riders in real-time auctions against other managers. Read the room, time your bid, do not overpay.",
+        "data": "Live, manager-versus-manager bidding"
+      },
+      {
+        "no": "03",
+        "title": "Set your tactics",
+        "body": "Name your captain, plan the breakaway, decide who chases and who saves their legs for the finish.",
+        "data": "Tactics that change the result"
+      },
+      {
+        "no": "04",
+        "title": "Race the calendar",
+        "body": "Follow your team through stages and one-day races across a full season, then build for the next one.",
+        "data": "A full season of results"
+      }
+    ]
+  },
+  "different": {
+    "kicker": "Not your usual manager game",
+    "title": "Built on one promise",
+    "fairness": "The game must be fair for everyone. You cannot pay for better riders, faster training, or better results.",
+    "cards": [
+      {
+        "title": "Strategy over spending",
+        "body": "Results come from your decisions, not your wallet. The best manager wins, not the biggest spender."
+      },
+      {
+        "title": "Free to play",
+        "body": "The full game is free. Sign up, draft a team, and compete without paying for anything that affects the outcome."
+      },
+      {
+        "title": "No install",
+        "body": "It runs in your browser, on your phone or your laptop. Nothing to download, nothing to update."
+      }
+    ]
+  },
+  "discord": {
+    "kicker": "Join in",
+    "title": "The game is built in the open",
+    "body": "I am building Cycling Zone as a solo developer, in public. The Discord is where I share what I am working on, where new managers find their feet, and where your feedback shapes what gets built next.",
+    "cta": "Open the Discord"
+  },
+  "waitlist": {
+    "kicker": "Prefer email?",
+    "title": "Get the launch email",
+    "body": "Leave your email and I will send one message when the new season opens. No newsletter, no noise.",
+    "emailLabel": "Email",
+    "emailPlaceholder": "you@example.com",
+    "nameLabel": "First name",
+    "nameOptional": "optional",
+    "namePlaceholder": "What should I call you?",
+    "consentBefore": "I agree to be contacted about the launch and accept the ",
+    "consentLink": "privacy policy",
+    "consentAfter": ".",
+    "privacyPath": "/privacy-policy",
+    "submit": "Notify me at launch",
+    "submitting": "Adding you to the list...",
+    "disclaimer": "One email at launch. Unsubscribe any time.",
+    "successTitle": "You are on the list",
+    "successBody": "Thanks. I will email you once when the new season opens. In the meantime, the Discord is the best place to follow along.",
+    "successDiscord": "Join the Discord",
+    "errors": {
+      "emailRequired": "Please enter your email.",
+      "emailInvalid": "That email does not look right.",
+      "consent": "Please accept the privacy policy to continue.",
+      "duplicate": "You are already on the list.",
+      "rls": "Something blocked the sign-up. Please try again.",
+      "network": "Network error. Please check your connection and try again.",
+      "unknown": "Something went wrong. Please try again."
+    }
+  },
+  "faq": {
+    "kicker": "Questions",
+    "title": "Good to know",
+    "items": [
+      {
+        "q": "Is it really free?",
+        "a": "Yes. The full game is free to play. You can sign up, draft a team, and compete in a full season without paying for anything."
+      },
+      {
+        "q": "Is it pay-to-win?",
+        "a": "No. The game must be fair for everyone. You cannot pay for better riders, faster training, or better results."
+      },
+      {
+        "q": "When does the season start?",
+        "a": "Cycling Zone is in open beta now, with a fresh season opening soon. Join the Discord or leave your email and I will let you know the moment it starts."
+      },
+      {
+        "q": "Do I need to install anything?",
+        "a": "No. It runs in your browser on desktop and mobile. There is nothing to download."
+      }
+    ]
+  },
+  "footer": {
+    "tagline": "A browser-based cycling manager.",
+    "privacy": "Privacy",
+    "discord": "Discord",
+    "rights": "Cycling Zone"
+  }
+}
