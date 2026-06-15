@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.38",
+    date: "2026-06-15",
+    label: "Beta",
+    changes: [
+      {
+        category: "Added · Community",
+        items: [
+          "EN · There's now a clear Join Discord link in the sidebar, and new managers are invited to our Discord right after signing up. Come say hi, ask questions and follow development. Refs #679",
+          "DA · Der er nu et tydeligt Join Discord-link i sidebjælken, og nye managere bliver inviteret ind på vores Discord lige efter tilmelding. Kom og sig hej, stil spørgsmål og følg udviklingen. Refs #679",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.37",
     date: "2026-06-15",
     label: "Beta",
