@@ -314,6 +314,16 @@ export default function SeasonFinanceReportPanel({ seasonId, teamId, onBack }) {
 
   if (!report) return null;
 
+  // Defensiv: en delvis/uventet rapport-shape må aldrig crashe fanen (#1350-filosofi).
+  // I prod leverer endpointet altid den fulde shape; default'ene degraderer pænt.
+  const hero = report.hero || {};
+  const season = report.season || {};
+  const donutIncome = report.donuts?.income || [];
+  const donutExpense = report.donuts?.expense || [];
+  const topIn = report.top?.top_in || [];
+  const topOut = report.top?.top_out || [];
+  const loans = report.loans || [];
+
   return (
     <div className="space-y-4">
       {onBack && (
@@ -331,17 +341,17 @@ export default function SeasonFinanceReportPanel({ seasonId, teamId, onBack }) {
         </div>
       )}
 
-      <HeroCard hero={report.hero} season={report.season} />
+      <HeroCard hero={hero} season={season} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Donut
           title={t("report.donutIncomeTitle")}
-          data={report.donuts.income}
+          data={donutIncome}
           emptyLabel={t("report.donutIncomeEmpty")}
         />
         <Donut
           title={t("report.donutExpenseTitle")}
-          data={report.donuts.expense}
+          data={donutExpense}
           emptyLabel={t("report.donutExpenseEmpty")}
         />
       </div>
@@ -349,19 +359,19 @@ export default function SeasonFinanceReportPanel({ seasonId, teamId, onBack }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <TopTransactionsCard
           title={t("report.topInTitle")}
-          items={report.top.top_in}
+          items={topIn}
           emptyLabel={t("report.topInEmpty")}
           isPositive={true}
         />
         <TopTransactionsCard
           title={t("report.topOutTitle")}
-          items={report.top.top_out}
+          items={topOut}
           emptyLabel={t("report.topOutEmpty")}
           isPositive={false}
         />
       </div>
 
-      <LoanPortfolioCard loans={report.loans} />
+      <LoanPortfolioCard loans={loans} />
 
       {/* Sponsor-modifier-kurve: tilgængelig når board_plan_snapshots populeres
           (sæson 2 og frem). Eksplicit placeholder, ikke vildledende tom-data. */}
