@@ -310,5 +310,23 @@
     "thDivision": "Div",
     "thMin": "Min",
     "thStatus": "Status"
+  },
+  "finalWhistle": {
+    "subtitle": "The transfer window has closed. Here is the Final Whistle summary of the last Deadline Day.",
+    "heading": "Final Whistle",
+    "seasonLabel": "Season {{number}}",
+    "seasonFallback": "Season",
+    "noDeals": "No deals went through during this Deadline Day.",
+    "statDeals": "Deals",
+    "statVolume": "Volume",
+    "statPanic": "Panic moves",
+    "dealsBreakdown": "{{auctions}} auctions · {{transfers}} transfers",
+    "biggestAuction": "Biggest auction",
+    "biggestTransfer": "Biggest transfer",
+    "mostActive": "Most active",
+    "bidCount": "{count, plural, one {1 bid} other {# bids}}",
+    "panicMoves": "Panic moves",
+    "panicLabel": "Panic",
+    "freePool": "free pool"
   }
 }

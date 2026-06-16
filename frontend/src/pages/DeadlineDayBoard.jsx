@@ -12,6 +12,120 @@ const STATUS = {
   ok:       { labelKey: "deadlineDay.statusOk",       cls: "text-cz-success", dot: "bg-cz-success" },
 };
 
+// CZ$ formatter — matcher Discord-embed'et (afrundet til hele tusinder).
+const fmtCz = n => `${Math.round((n || 0) / 1000).toLocaleString("en-US")}K CZ$`;
+
+function StatCell({ label, value }) {
+  return (
+    <div className="rounded-cz border border-cz-border bg-cz-subtle px-4 py-3">
+      <p className="text-[10px] uppercase tracking-[0.15em] text-cz-3 font-medium">{label}</p>
+      <p className="mt-1 text-lg font-mono font-bold text-cz-1 tabular-nums">{value}</p>
+    </div>
+  );
+}
+
+function HighlightRow({ label, riderName, detail }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 border-b border-cz-border py-2.5 last:border-0">
+      <span className="text-[10px] uppercase tracking-[0.15em] text-cz-3 font-medium shrink-0">{label}</span>
+      <span className="text-right text-sm text-cz-1">
+        <span className="font-semibold">{riderName}</span>
+        {detail && <span className="text-cz-3"> · {detail}</span>}
+      </span>
+    </div>
+  );
+}
+
+function FinalWhistleReport({ data }) {
+  const { t } = useTranslation("transfers");
+  const { report, seasonNumber } = data;
+  const seasonLabel = seasonNumber != null
+    ? t("finalWhistle.seasonLabel", { number: seasonNumber })
+    : t("finalWhistle.seasonFallback");
+
+  return (
+    <section className="space-y-4" aria-labelledby="fw-heading">
+      <div className="flex items-baseline justify-between gap-3 border-b border-cz-border pb-2">
+        <h2 id="fw-heading" className="text-[11px] font-bold tracking-[0.2em] uppercase text-cz-2">
+          {t("finalWhistle.heading")}
+        </h2>
+        <span className="text-[10px] uppercase tracking-[0.15em] text-cz-3">{seasonLabel}</span>
+      </div>
+
+      {report.totalDeals === 0 ? (
+        <p className="text-sm text-cz-3">{t("finalWhistle.noDeals")}</p>
+      ) : (
+        <>
+          <div className="grid grid-cols-3 gap-2">
+            <StatCell
+              label={t("finalWhistle.statDeals")}
+              value={report.totalDeals}
+            />
+            <StatCell
+              label={t("finalWhistle.statVolume")}
+              value={fmtCz(report.totalSpent)}
+            />
+            <StatCell
+              label={t("finalWhistle.statPanic")}
+              value={report.panicCount}
+            />
+          </div>
+          {(report.totalAuctions != null && report.totalTransfers != null) && (
+            <p className="text-xs text-cz-3">
+              {t("finalWhistle.dealsBreakdown", {
+                auctions: report.totalAuctions,
+                transfers: report.totalTransfers,
+              })}
+            </p>
+          )}
+
+          <div className="rounded-cz border border-cz-border px-4 py-1">
+            {report.biggestAuction && (
+              <HighlightRow
+                label={t("finalWhistle.biggestAuction")}
+                riderName={report.biggestAuction.riderName}
+                detail={`${report.biggestAuction.sellerName && report.biggestAuction.sellerName !== "–"
+                  ? report.biggestAuction.sellerName
+                  : t("finalWhistle.freePool")} → ${report.biggestAuction.buyerName ?? "–"} · ${fmtCz(report.biggestAuction.amount)}`}
+              />
+            )}
+            {report.biggestTransfer && (
+              <HighlightRow
+                label={t("finalWhistle.biggestTransfer")}
+                riderName={report.biggestTransfer.riderName}
+                detail={`${report.biggestTransfer.sellerName ?? "–"} → ${report.biggestTransfer.buyerName ?? "–"} · ${fmtCz(report.biggestTransfer.amount)}`}
+              />
+            )}
+            {report.mostActiveManager && (
+              <HighlightRow
+                label={t("finalWhistle.mostActive")}
+                riderName={report.mostActiveManager.teamName}
+                detail={t("finalWhistle.bidCount", { count: report.mostActiveManager.bidCount })}
+              />
+            )}
+          </div>
+
+          {report.panicSamples?.length > 0 && (
+            <div className="rounded-cz border border-cz-border px-4 py-1">
+              <p className="py-2.5 text-[10px] uppercase tracking-[0.15em] text-cz-danger font-medium">
+                {t("finalWhistle.panicMoves")}
+              </p>
+              {report.panicSamples.map((d, i) => (
+                <HighlightRow
+                  key={i}
+                  label={t("finalWhistle.panicLabel")}
+                  riderName={d.riderName}
+                  detail={`${d.sellerName} → ${d.buyerName ?? "–"} · ${fmtCz(d.amount)}`}
+                />
+              ))}
+            </div>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
 function SquadTable({ rows, dimmed, captionId }) {
   const { t } = useTranslation("transfers");
   return (
@@ -58,6 +172,7 @@ export default function DeadlineDayBoard() {
   const { t } = useTranslation("transfers");
   const [squads, setSquads] = useState(null);
   const [ddActive, setDdActive] = useState(null);
+  const [finalWhistle, setFinalWhistle] = useState(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(false);
 
@@ -71,9 +186,10 @@ export default function DeadlineDayBoard() {
         if (!token) { if (!cancelled) setLoading(false); return; }
 
         const headers = { Authorization: `Bearer ${token}` };
-        const [statusRes, squadsRes] = await Promise.all([
+        const [statusRes, squadsRes, fwRes] = await Promise.all([
           fetch(`${API}/api/deadline-day/status`, { headers }),
           fetch(`${API}/api/deadline-day/squads`, { headers }),
+          fetch(`${API}/api/deadline-day/final-whistle`, { headers }),
         ]);
         if (cancelled) return;
         if (!statusRes.ok || !squadsRes.ok) {
@@ -84,6 +200,12 @@ export default function DeadlineDayBoard() {
         setFetchError(false);
         setDdActive((await statusRes.json()).active);
         setSquads(await squadsRes.json());
+        // Final Whistle er en valgfri overbygning — en fejl her må ikke vælte
+        // hele siden. Behold seneste rapport hvis fetch fejler.
+        if (fwRes.ok) {
+          const fw = await fwRes.json();
+          setFinalWhistle(fw?.available ? fw : null);
+        }
         setLoading(false);
       } catch {
         if (!cancelled) { setFetchError(true); setLoading(false); }
@@ -114,6 +236,19 @@ export default function DeadlineDayBoard() {
   }
 
   if (!ddActive) {
+    // Vinduet er ikke aktivt. Hvis den seneste Deadline Day er afsluttet, viser vi
+    // Final Whistle-rapporten i stedet for den bare "inaktiv"-besked (#1354).
+    if (finalWhistle) {
+      return (
+        <div className="max-w-3xl mx-auto space-y-6">
+          <div>
+            <h1 className="text-xl font-bold text-cz-1 tracking-tight">{t("deadlineDay.title")}</h1>
+            <p className="text-sm text-cz-3 mt-0.5">{t("finalWhistle.subtitle")}</p>
+          </div>
+          <FinalWhistleReport data={finalWhistle} />
+        </div>
+      );
+    }
     return (
       <div className="max-w-xl mx-auto text-center py-20 space-y-3">
         <p className="text-4xl">🕐</p>
