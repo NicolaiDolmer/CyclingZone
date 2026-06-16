@@ -189,12 +189,12 @@ const GATES = [
         patches: [
           {
             file: "lib/raceStageProfileGenerator.js",
-            find: "  rolling:       Object.freeze({ endurance: 0.22, punch: 0.14, tactics: 0.12, positioning: 0.10, sprint: 0.10, climbing: 0.06, recovery: 0.06, randomness: 0.20 }),",
+            find: "  rolling:       Object.freeze({ endurance: 0.18, flat: 0.12, punch: 0.12, tempo: 0.08, positioning: 0.08, sprint: 0.08, tactics: 0.06, climbing: 0.04, recovery: 0.04, randomness: 0.20 }),",
             replace: "  rolling:       Object.freeze({ sprint: 0.60, acceleration: 0.20, positioning: 0.12, randomness: 0.08 }),",
           },
           {
             file: "lib/raceStageProfileGenerator.js",
-            find: "  classic:       Object.freeze({ endurance: 0.20, punch: 0.18, climbing: 0.14, cobblestone: 0.12, positioning: 0.08, tactics: 0.06, sprint: 0.04, randomness: 0.18 }),",
+            find: "  classic:       Object.freeze({ endurance: 0.18, punch: 0.16, climbing: 0.12, cobblestone: 0.10, tempo: 0.06, flat: 0.06, positioning: 0.06, tactics: 0.04, sprint: 0.04, randomness: 0.18 }),",
             replace: "  classic:       Object.freeze({ sprint: 0.60, acceleration: 0.20, positioning: 0.12, randomness: 0.08 }),",
           },
         ],
