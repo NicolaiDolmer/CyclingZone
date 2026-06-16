@@ -214,7 +214,7 @@ test("stableSeed er deterministisk + 32-bit unsigned", () => {
 
 // Hjælper: kør simulateStage med ét felt uden støj (randomness=0) og returnér
 // finalScore for rytteren med givet id.
-function scoreFor(id, form, fatigue, seed = 1) {
+function _scoreFor(id, form, fatigue, seed = 1) {
   const entrants = [{ rider_id: id, abilities: Object.fromEntries(ABILITY_KEYS.map((k) => [k, 50])), form, fatigue }];
   const stage = { profile_type: "flat", demand_vector: { sprint: 1.0 } }; // ingen randomness
   return simulateStage({ entrants, stageProfile: stage, seed }).ranked[0].finalScore;

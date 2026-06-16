@@ -27,8 +27,6 @@ import {
 import { processReplacementTrigger } from "./boardMembers.js";
 import {
   evaluateAndApplyConsequences,
-  expireSeasonScopedConsequences,
-  getActiveSponsorPulloutFactor,
 } from "./boardConsequences.js";
 import { notifyTeamOwner as notifyTeamOwnerShared } from "./notificationService.js";
 import { isBoardTestModeActive } from "./boardTestMode.js";
@@ -86,22 +84,6 @@ const DIVISION_BONUSES = {
   1: [300_000, 200_000, 100_000, 50_000],
   2: [150_000, 100_000, 50_000, 25_000],
   3: [75_000, 50_000, 25_000],
-};
-
-// Board satisfaction thresholds
-const SATISFACTION_RANGES = {
-  sponsor_bonus: {
-    high: { threshold: 80, modifier: 1.20 },   // +20% sponsor income
-    mid:  { threshold: 50, modifier: 1.00 },   // Normal
-    low:  { threshold: 0,  modifier: 0.80 },   // -20% sponsor income
-  },
-};
-
-// Division requirements (min riders)
-const DIVISION_MIN_RIDERS = {
-  1: 20,
-  2: 15,
-  3: 8,
 };
 
 function throwIfSupabaseError(error, message) {

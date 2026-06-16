@@ -28,8 +28,6 @@
  * npm run: "sim:academy": "node scripts/academyEconomySimulation.js --markdown"
  */
 
-import { fileURLToPath } from "node:url";
-import path from "node:path";
 import { ACADEMY, youthMultiplier } from "../lib/academyFlag.js";
 import {
   SPONSOR_INCOME_BASE,
@@ -38,7 +36,6 @@ import {
 } from "../lib/economyConstants.js";
 import {
   dailyAbilityDelta,
-  growthFractionForAge,
   DAILY_TRAINING_CONFIG,
 } from "../lib/dailyTraining.js";
 import {
@@ -289,7 +286,6 @@ function simulateYouthUplift() {
 
   for (let d = 0; d < days; d++) {
     const currentWith = UPLIFT_BENCH_CURRENT + totalWithMult; // approx. (vi akkumulerer)
-    const currentWithout = UPLIFT_BENCH_CURRENT + totalWithoutMult;
 
     const deltaWith = dailyAbilityDelta({
       ability: UPLIFT_BENCH_ABILITY,
@@ -810,7 +806,7 @@ async function main() {
     process.stdout.write(markdown);
   } else {
     // JSON summary
-    const { divResults, partialCost, fullCost } = solvency;
+    const { divResults } = solvency;
     const summary = {
       gate: "partial-4-slot-solvency-10-seasons",
       solvency: divResults.map((d) => ({

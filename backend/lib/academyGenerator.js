@@ -7,7 +7,6 @@
 import {
   gaussian,
   STAT_KEYS,
-  pick,
   weightedPick,
   makeUniqueName,
   DEFAULT_NATIONALITY_WEIGHTS,

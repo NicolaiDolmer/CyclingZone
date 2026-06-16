@@ -76,7 +76,6 @@ test("riderHistory — rejected loan_agreements ekskluderes fra public history (
   });
 
   const events = await buildRiderHistory(supabase, RIDER);
-  const loanIds = events.filter((e) => e.type === "loan").map((e) => e.id ?? e.status);
 
   assert.equal(events.filter((e) => e.type === "loan" && e.status === "rejected").length, 0,
     "rejected loan må ikke vises i public history");

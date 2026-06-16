@@ -43,7 +43,7 @@ test("autopick: lille trup → stiller alle; tom trup → tom liste; træthed ne
   assert.ok(small.some((p) => p.race_role === "captain"));
   assert.deepEqual(autopickTeamSelection({ riders: [], stages: [flatStage], sizeRule: { min: 6, max: 8 } }), []);
 
-  const tired = riders(10, (i) => ({ sprint: 70 }));
+  const tired = riders(10, (_i) => ({ sprint: 70 }));
   tired[0].fatigue = 100; // ellers identisk med resten → skal fravælges først
   const picks = autopickTeamSelection({ riders: tired, stages: [flatStage], sizeRule: { min: 6, max: 8 } });
   assert.ok(!picks.some((p) => p.rider_id === "r00"), "udmattet rytter fravælges når ens alternativer findes");

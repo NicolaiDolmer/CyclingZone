@@ -359,7 +359,6 @@ export async function enforceTeamSquadCompliance({
   let purchases = [];
   let sales = [];
   let deviatingCount = 0;
-  let creditedFromSales = 0;
 
   if (effectiveCount < limits.min) {
     deviatingCount = limits.min - effectiveCount;
@@ -404,7 +403,6 @@ export async function enforceTeamSquadCompliance({
         seasonId,
       });
       sales.push(result);
-      creditedFromSales += result.credit;
     }
   } else {
     return { ok: true, code: "within_limits", teamId, totalCount: effectiveCount };

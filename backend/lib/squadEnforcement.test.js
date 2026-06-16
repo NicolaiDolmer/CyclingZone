@@ -36,7 +36,7 @@ function createMockSupabase(initialState) {
     return state.teams.find(t => t.id === id);
   }
 
-  function ridersByTeamId(id) {
+  function _ridersByTeamId(id) {
     return state.riders.filter(r => r.team_id === id);
   }
 
@@ -174,7 +174,7 @@ function createMockSupabase(initialState) {
 
   function loanAgreementsTable() {
     return {
-      select(_cols, opts = {}) {
+      select(_cols, _opts = {}) {
         const filters = {};
         const builder = {
           eq(col, val) { filters[col] = val; return builder; },
@@ -342,12 +342,11 @@ function createMockSupabase(initialState) {
   // #1309: fetchActiveSeasonNumber bruger .select().eq().order().limit().maybeSingle()
   function seasonsTable() {
     const filters = {};
-    let limitN = null;
     const builder = {
       select(_cols) { return builder; },
       eq(col, val) { filters[col] = val; return builder; },
       order() { return builder; },
-      limit(n) { limitN = n; return builder; },
+      limit() { return builder; },
       maybeSingle: () => {
         const row = state.seasons.find(s => Object.entries(filters).every(([k, v]) => s[k] === v));
         return Promise.resolve({ data: row || null, error: null });
