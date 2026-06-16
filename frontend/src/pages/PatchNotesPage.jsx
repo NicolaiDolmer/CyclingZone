@@ -2,7 +2,7 @@
 
 const PATCHES = [
   {
-    version: "5.45",
+    version: "5.46",
     date: "2026-06-16",
     label: "Beta",
     changes: [
@@ -11,6 +11,20 @@ const PATCHES = [
         items: [
           "EN · A rider's profile now shows both their current team and the team they're joining next season when they've been transferred ahead. Before, the profile only showed the current team, which was confusing once a deal was done. The rider list already showed this; now the profile matches. No gameplay changes. Refs #1287",
           "DA · En rytters profil viser nu både det nuværende hold og det hold rytteren skifter til næste sæson, når handlen allerede er lavet. Før viste profilen kun det nuværende hold, hvilket var forvirrende når en handel var faldet på plads. Rytter-listen viste det allerede; nu matcher profilen. Ingen ændringer i gameplay. Refs #1287",
+        ],
+      },
+    ],
+  },
+  {
+    version: "5.45",
+    date: "2026-06-16",
+    label: "Beta",
+    changes: [
+      {
+        category: "Added · Transfers",
+        items: [
+          "EN · After the transfer window closes, the Final Whistle report now shows up right on the Deadline Day page in-app. It covers total deals, volume, the biggest auction and transfer, the most active manager and any panic moves. Until now this summary only went to Discord. Refs #1354",
+          "DA · Når transfervinduet lukker, vises Final Whistle-rapporten nu direkte på Deadline Day-siden i appen. Den dækker antal handler, volumen, den største auktion og transfer, den mest aktive manager og eventuelle panikhandler. Indtil nu gik denne opsummering kun til Discord. Refs #1354",
         ],
       },
     ],

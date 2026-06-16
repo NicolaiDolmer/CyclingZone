@@ -122,6 +122,7 @@ import { resolveProgram } from "../lib/dailyTraining.js";
 import { copenhagenDateString } from "../lib/copenhagenTime.js";
 import { ACADEMY, isAcademyEnabled } from "../lib/academyFlag.js";
 import { buildFictionalPopulationPreview } from "../lib/fictionalPopulationPreview.js";
+import { getFinalWhistleReport } from "../lib/deadlineDayReport.js";
 import {
   getTeamAcademyCount,
   signAcademyCandidate,
@@ -786,6 +787,16 @@ router.get("/deadline-day/squads", requireAuth, async (req, res) => {
       return { id: t.id, name: t.name, division: t.division, riders: count, min, max, status };
     });
     res.json(squads);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/deadline-day/final-whistle — read-only Final Whistle-rapport (#1354)
+// Genberegner samme payload som Discord-embed'et. Returnerer { available: false }
+// indtil transfervinduet faktisk er lukket, så frontend kan vise en empty-state.
+router.get("/deadline-day/final-whistle", requireAuth, async (req, res) => {
+  try {
+    const result = await getFinalWhistleReport({ supabase });
+    res.json(result);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
