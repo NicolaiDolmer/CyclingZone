@@ -20,6 +20,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { generateFictionalRiders, makeRng } from "../lib/fictionalRiderGenerator.js";
+import { resolveMix } from "../lib/fictionalRiderMixPresets.js";
 import { deriveAbilities } from "../lib/abilityDerivation.js";
 import { computeRiderTypes } from "../lib/riderTypes.js";
 import { predictBaseValue, riderOverall, riderSpecialty } from "../lib/riderValuation.js";
@@ -45,7 +46,10 @@ const FIELD = parseInt(arg("field", "140"), 10);
 const GT_FIELD = parseInt(arg("gtField", "176"), 10);
 const REFERENCE_YEAR = 2026;
 const WRITE_HTML = !arg("no-html", false);
-const HTML_PATH = arg("html", join(__dirname, "out", "race-dry-run.html"));
+// #1420: --mix=<preset> varierer rytter-blandingen (default = uændret population).
+// resolveMix kaster ved ukendt navn (fail fast med listen over gyldige presets).
+const MIX = arg("mix", "default");
+const mixOverride = resolveMix(MIX);
 // #1198/#1144: strukturelle motor-oracles (sektion D) håndhæves ALTID (exit 1 ved
 // brud). Kalibrerings-bånd (sektion B-scorecardet) håndhæves kun med dette flag,
 // da baseline-targets afventer ejer-beslutning (se kalibrerings-loggen nedenfor).
@@ -62,6 +66,13 @@ const ROLES_MODE = !!arg("roles", false);
 // en hard gate (exit 1). Default off, så Phase A's race:gate forbliver grøn mens
 // instrumentet bygges; tilføjes race:gate-scriptet i Phase C når motoren er grøn.
 const ENFORCE_LIVENESS = !!arg("enforce-liveness", false);
+// #1420: per-run default HTML-sti, så reruns med forskellige parametre kan
+// holdes åbne side om side (gitignored out/). --html=<sti> overstyrer. Defineres
+// her, fordi navnet afhænger af CONDITION_MODE/ROLES_MODE/MIX ovenfor.
+const HTML_PATH = arg("html", join(
+  __dirname, "out",
+  `cockpit-${MIX}-${SEED}${CONDITION_MODE ? "-cond" : ""}${ROLES_MODE ? "-roles" : ""}.html`,
+));
 
 const baseline = JSON.parse(readFileSync(join(__dirname, "../lib/riderTypesBaseline.json"), "utf8"));
 const model = JSON.parse(readFileSync(join(__dirname, "../lib/riderValuationModel.json"), "utf8"));
@@ -247,9 +258,9 @@ function assignRoles(sample) {
 }
 
 // ── 1. Generér + berig felt (hele værdi-kæden, in-memory) ────────────────────
-console.log(`\n🚴  RACE-ENGINE DRY-RUN — seed=${SEED} count=${COUNT} noise=${NOISE_SD_SCALE}${CONDITION_MODE ? " condition=random" : ""}${ROLES_MODE ? " roles" : ""} (in-memory, rører ikke prod)\n`);
+console.log(`\n🚴  RACE-ENGINE DRY-RUN — seed=${SEED} count=${COUNT} mix=${MIX} noise=${NOISE_SD_SCALE}${CONDITION_MODE ? " condition=random" : ""}${ROLES_MODE ? " roles" : ""} (in-memory, rører ikke prod)\n`);
 
-const { riders: raw } = generateFictionalRiders({ count: COUNT, seed: SEED, referenceYear: REFERENCE_YEAR });
+const { riders: raw } = generateFictionalRiders({ count: COUNT, seed: SEED, referenceYear: REFERENCE_YEAR, ...mixOverride });
 
 const field = raw.map((r, i) => {
   const id = `r${i}`;
@@ -775,7 +786,7 @@ details{background:var(--panel);border:1px solid var(--line);border-radius:8px;m
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}@media(max-width:820px){.grid2{grid-template-columns:1fr}}
 </style></head><body><div class="wrap">
 <h1>🚴 Race-engine kalibrerings-cockpit</h1>
-<p class="sub">seed ${SEED} · ${COUNT} ryttere · noise ${NOISE_SD_SCALE} · ${RACES} løb/terræn · in-memory (rører ikke prod)</p>
+<p class="sub">seed ${SEED} · ${COUNT} ryttere · mix <b>${esc(MIX)}</b> · noise ${NOISE_SD_SCALE} · ${RACES} løb/terræn · in-memory (rører ikke prod)</p>
 
 <h2>Mål-scorecard <span class="muted" style="font-weight:400">— født-som = ægte rytter-type · afledt = spillets label</span></h2>
 <table><thead><tr><th>Terræn</th><th>Mål</th><th class="num">Født-som</th><th class="num">Afledt</th><th class="num">Mål%</th><th>Status</th></tr></thead><tbody>${scorecardRows}</tbody></table>
