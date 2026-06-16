@@ -460,18 +460,19 @@ function SwapCard({ swap, myTeamId, onAction }) {
           { label: isProposing ? t("swapCard.youOffer") : t("swapCard.theyOffer"), rider: swap.offered },
           { label: isProposing ? t("swapCard.youWant")  : t("swapCard.theyWant"),  rider: swap.requested },
         ].map(({ label, rider }) => (
-          <div key={rider?.id} className="bg-cz-subtle rounded-lg px-3 py-2">
+          <RiderLink key={rider?.id} id={rider?.id}
+            aria-label={rider ? `${rider.firstname} ${rider.lastname}` : undefined}
+            className="group block bg-cz-subtle rounded-lg px-3 py-2 transition-colors hover:ring-1 hover:ring-cz-accent/30 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cz-accent/40">
             <p className="text-cz-3 text-[10px] uppercase tracking-wider mb-1">{label}</p>
-            <RiderLink id={rider?.id}
-              className="text-cz-1 text-sm font-semibold hover:text-cz-accent-t transition-colors block">
+            <p className="text-cz-1 text-sm font-semibold transition-colors group-hover:text-cz-accent-t">
               {rider?.firstname} {rider?.lastname}
-            </RiderLink>
+            </p>
             <div className="flex gap-2 mt-1">
               {[["BJ", "stat_bj"], ["SP", "stat_sp"], ["TT", "stat_tt"], ["FL", "stat_fl"]].map(([l, k]) => (
                 <span key={k} className="text-[10px] text-cz-3">{l}<span className="text-cz-2 ms-0.5">{rider?.[k] ?? "—"}</span></span>
               ))}
             </div>
-          </div>
+          </RiderLink>
         ))}
       </div>
 
@@ -1073,17 +1074,21 @@ function TransferCard({ listing, myTeamId, onOffer, onRemove, onUpdatePrice, win
         </div>
       </div>
 
-      {/* #987: alle 14 stats som på rytterdatabasen — ikke kun BJ/SP/TT/FL */}
-      <div className="grid grid-cols-7 gap-x-1 gap-y-2 mb-3">
-        {LISTING_STATS.map(({ key, label }) => (
-          <div key={key} className="text-center">
-            <p className="text-cz-3 text-[9px] uppercase">{label}</p>
-            <span className="inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded" style={statStyle(listing.rider?.[key] || 0)}>
-              {listing.rider?.[key] || "—"}
-            </span>
-          </div>
-        ))}
-      </div>
+      {/* #987: alle 14 stats som på rytterdatabasen — ikke kun BJ/SP/TT/FL.
+          #1421: hele stats-arealet er ét klikmål → rytterprofil (dead-click-fix). */}
+      <RiderLink id={listing.rider?.id} aria-label={listing.rider ? riderName : undefined}
+        className="block rounded-lg py-1 mb-3 transition-colors hover:bg-cz-subtle/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cz-accent/40">
+        <div className="grid grid-cols-7 gap-x-1 gap-y-2">
+          {LISTING_STATS.map(({ key, label }) => (
+            <div key={key} className="text-center">
+              <p className="text-cz-3 text-[9px] uppercase">{label}</p>
+              <span className="inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded" style={statStyle(listing.rider?.[key] || 0)}>
+                {listing.rider?.[key] || "—"}
+              </span>
+            </div>
+          ))}
+        </div>
+      </RiderLink>
 
       {!isOwn && (
         <div>
