@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.48",
+    date: "2026-06-16",
+    label: "Beta",
+    changes: [
+      {
+        category: "Changed · Riders",
+        items: [
+          "EN · Rider types are now classified more accurately. The system was mis-labelling complete stage racers (strong in both time-trial and climbing) as pure time-trial specialists, so very few riders showed up as GC. Now complete stage racers correctly show as GC, pure time-trial specialists stay TT, and explosive puncheurs no longer slip into the GC group. Types are for display and filtering only and do not affect the economy. No gameplay changes. Refs #1122",
+          "DA · Ryttertyper klassificeres nu mere præcist. Systemet fejlmærkede komplette etape-ryttere (stærke i både enkeltstart og bjerge) som rene enkeltstart-specialister, så meget få ryttere optrådte som GC. Nu vises komplette etape-ryttere korrekt som GC, rene enkeltstart-specialister forbliver TT, og eksplosive puncheurs sniger sig ikke længere ind i GC-gruppen. Typerne bruges kun til visning og filtrering og påvirker ikke økonomien. Ingen ændringer i gameplay. Refs #1122",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.47",
     date: "2026-06-16",
     label: "Beta",
