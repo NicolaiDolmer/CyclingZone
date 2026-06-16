@@ -105,7 +105,11 @@
       },
       "autoBidCap": {
         "title": "Auto-bid cap",
-        "text": "Auto-bid cap lets you set your private maximum. If you're not already leading the auction, the auto-bid places the minimum bid for you at the same time, so you can take the lead without bidding manually first. The system then keeps bidding automatically up to your cap if other managers outbid you."
+        "text": "Auto-bid cap lets you set your private maximum. If you're not already leading, the auto-bid places the minimum bid for you straight away so you take the lead. After that it bids for you automatically each time someone outbids you, raising your bid 1 CZ$ at a time and never above your cap. You stay in front until another manager goes higher than your cap, and only then are you outbid. Your cap is private, so other managers never see it. If your balance can no longer cover your cap, the auto-bid stops until you free up funds."
+      },
+      "tieRule": {
+        "title": "Ties on equal bids",
+        "text": "If another manager bids exactly your auto-bid cap, you keep the lead at that same price with no increase. When two bids match, the manager who reached that amount first holds the lead. Setting a cap therefore also defends your lead against anyone who only matches it."
       },
       "whenExpires": {
         "title": "When does an auction expire?",
