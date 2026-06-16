@@ -69,8 +69,8 @@ test("hele værdi-kæden giver den godkendte launch-pyramide", () => {
   assert.ok(domestique >= 450 && domestique <= 650, `domestikker=${domestique} uden for [450,650]`);
   // v3-gevinst bevaret: ingen urealistiske outliers over toppen af design-skalaen.
   assert.ok(maxValue <= 40_000_000, `max base_value=${maxValue} over 40M-loftet`);
-  // Alle 9 typer skal emergere fra kæden (etape-variation).
-  assert.equal(typeSet.size, 9, `kun ${typeSet.size}/9 typer emergerede: ${[...typeSet].join(",")}`);
+  // Alle 8 typer skal emergere fra kæden (etape-variation).
+  assert.equal(typeSet.size, 8, `kun ${typeSet.size}/8 typer emergerede: ${[...typeSet].join(",")}`);
 });
 
 // ── #1198 pop-MUT-4: bånd-grænse og spil-diskriminator må ALDRIG drifte ───────

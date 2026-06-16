@@ -9,7 +9,6 @@
   },
   "types": {
     "sprinter": "Sprinter",
-    "leadout": "Lead-out",
     "tt": "Time-trialist",
     "climber": "Climber",
     "puncheur": "Puncheur",

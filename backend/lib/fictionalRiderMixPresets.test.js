@@ -79,7 +79,7 @@ test("balanced flader vægtene (alle typer i en tier lige)", () => {
     assert.ok(vals.length > 0);
     assert.ok(vals.every((w) => w === vals[0]), "alle vægte i en tier skal være lige");
   }
-  // Bevarer per-tier type-sættet (ingen leadout i superstar-tieren).
+  // Bevarer per-tier type-sættet (superstar-tieren har det smalleste type-sæt).
   assert.deepEqual(
     Object.keys(tierTypeWeights.superstar).sort(),
     Object.keys(DEFAULT_TIER_TYPE_WEIGHTS.superstar).sort(),

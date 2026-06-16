@@ -15,7 +15,9 @@
 // død gc (median-skævhed); percentil mætter i toppen (alle stjerner ~99 → kan ikke
 // skelnes). z-score+kontrast løser begge. Verificeret mod 8.989 prod-ryttere.
 //
-// 9 typer (goat, domestique, allrounder fjernet — sidstnævnte "for ligegyldig", ejer).
+// 8 typer (goat, domestique, allrounder OG leadout fjernet). leadout skåret per
+// §0.1 Beslutning 6 (design-session 2, 15/6): benchmark viste den næsten-død uden
+// leadout-tog-modellering, og den foldes i sprinter/rouleur.
 //
 // Baseline (mean/std pr. evne) gives som PARAMETER (ren funktion — ingen fs/JSON her).
 // Produktion: backfillRiderTypes.js loader riderTypesBaseline.json (fittet af
@@ -33,7 +35,6 @@ export const ABILITY_KEYS = Object.freeze([
 // cobblestone vægtet højt (brostensrytter) + time_trial højt (gc) per ejer-feedback.
 export const RIDER_TYPES = Object.freeze([
   { key: "sprinter",       weights: { acceleration: 3, sprint: 2, flat: 1, durability: 1, climbing: -2, endurance: -1 } },
-  { key: "leadout",        weights: { sprint: 3, acceleration: 2, flat: 1, durability: 1, climbing: -2 } },
   { key: "tt",             weights: { time_trial: 3, climbing: -2, sprint: -1, punch: -1 } }, // prolog merged ind i time_trial (§0.1 Besl. 2). climbing:-2 (#1122): en ren tidskører er IKKE bjergrytter — uden den vandt tt-scoren for komplette gc-ryttere (høj tt OG climbing) → gc deriverede kun ~21 mod ejer-gulv ≥30
   { key: "climber",        weights: { climbing: 3, tempo: 2, punch: 1, endurance: 1, sprint: -2, acceleration: -1, flat: -1 } },
   { key: "puncheur",       weights: { punch: 3, tempo: 2, climbing: 1, endurance: 1, time_trial: -1, sprint: -1 } },
@@ -48,7 +49,7 @@ export const RIDER_TYPE_KEYS = Object.freeze(RIDER_TYPES.map((t) => t.key));
 // Guard-tærskler i ABILITY-enheder (0-99), mappet fra ejer's PCM-tærskler via samme
 // lineære skala som abilityDerivation (PCM 50-85 → 1-99): PCM 78→79, 70→57, 65→43.
 export const GUARDS = Object.freeze({
-  highSpeciality: 79,  // PCM 78: ≥ → ikke leadout (egen spurt) / ikke rouleur (har speciale)
+  highSpeciality: 79,  // PCM 78: ≥ → ikke rouleur (har et reelt speciale, er ikke hjælperytter)
   gcClimbing: 57,      // PCM 70
   gcTimeTrial: 43,     // PCM 65
   gcRecovery: 43,      // PCM 65
@@ -91,8 +92,6 @@ export function scoreRiderType(abilities = {}, weights = {}, baseline = NEUTRAL_
 // Hvilke typer er udelukket for denne rytter (ejer-guards). Returnerer et Set af keys.
 function guardedOut(abilities) {
   const out = new Set();
-  // sprint ≥ tærskel → ikke leadout (rytteren ER spurteren, ikke hjælperen)
-  if (num(abilities.sprint) >= GUARDS.highSpeciality) out.add("leadout");
   // ≥ tærskel i et reelt speciale → ikke rouleur (hjælperytter): du har et speciale
   if (SPECIALITY_ABILITIES.some((a) => num(abilities[a]) >= GUARDS.highSpeciality)) out.add("rouleur");
   // sprint > brosten → ikke brostensrytter (en ægte spurter er ikke brostensrytter)

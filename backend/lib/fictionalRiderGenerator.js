@@ -72,7 +72,7 @@ export function toInsertPayload(riders) {
   return riders.map(({ _meta, ...row }) => row);
 }
 
-// ── Type-arketyper: sigter de 9 AFLEDTE ryttertyper direkte (#669/#677-launch) ─
+// ── Type-arketyper: sigter de 8 AFLEDTE ryttertyper direkte (#669/#677-launch) ─
 // Hver arketype svarer til en type i riderTypes.js og booster de stats, der via
 // abilityDerivation.js driver den types POSITIV-vægtede abilities, og dæmper off-
 // type-stats (rolle-svaghed ON, ejer-beslutning). Det gør den afledte type
@@ -82,11 +82,10 @@ export function toInsertPayload(riders) {
 //   • minStats: hårdt gulv så type-GUARDS i riderTypes.js opfyldes ved ALLE tiers
 //       (gc kræver climbing/tt/recovery samtidigt høje; mapping PCM→ability: 72→63,
 //       67→49 ≥ guard-tærskler 57/43).
-//   • capSprint/capSpeciality: loft så leadout (sprint<79) / rouleur (intet
-//       speciale ≥79) ikke guardes ud (ability 79 ↔ PCM ~78).
+//   • capSpeciality: loft så rouleur (intet speciale ≥79) ikke guardes ud
+//       (ability 79 ↔ PCM ~78).
 const ARCHETYPES = [
   { type: "sprinter",       boost: { stat_sp: 12, stat_acc: 9, stat_fl: 6 },                                   damp: ["stat_bj", "stat_kb", "stat_udh"], heightMean: 182, bmi: 22.8 },
-  { type: "leadout",        boost: { stat_sp: 7,  stat_acc: 8, stat_fl: 7,  stat_mod: 5 },                     damp: ["stat_bj", "stat_kb"],             heightMean: 181, bmi: 22.5, capSprint: 76 },
   { type: "tt",             boost: { stat_tt: 12, stat_prl: 10, stat_fl: 5 },                                  damp: ["stat_sp", "stat_bk", "stat_bj"],  heightMean: 185, bmi: 22.2 },
   { type: "climber",        boost: { stat_bj: 12, stat_kb: 8, stat_bk: 5,  stat_udh: 5 },                      damp: ["stat_sp", "stat_acc", "stat_fl"], heightMean: 173, bmi: 19.5 },
   { type: "puncheur",       boost: { stat_bk: 11, stat_kb: 8, stat_bj: 6,  stat_udh: 5 },                      damp: ["stat_tt", "stat_sp"],             heightMean: 176, bmi: 21.0 },
@@ -138,19 +137,19 @@ export const DEFAULT_TIER_FRACTIONS = Object.fromEntries(
 // puncheur/rouleur når aldrig deres tier-bånd. Justerer tier-basen (stat-point)
 // pr. arketype; empirisk tunet mod preview-harnessen.
 const TYPE_MEAN_ADJUST = {
-  sprinter: -1.5, climber: -0.5, leadout: 0, brostensrytter: 0, baroudeur: 0.5,
+  sprinter: -1.5, climber: -0.5, brostensrytter: 0, baroudeur: 0.5,
   gc: 0.5, tt: -1, rouleur: 1.5, puncheur: 1.5,
 };
 
 // Tier-aware type-fordeling (vægte) — realistisk peloton: ledere (gc/klatrer/
-// sprinter/tt/puncheur/brosten) i toppen, hjælpere (rouleur/leadout/baroudeur)
+// sprinter/tt/puncheur/brosten) i toppen, hjælpere (rouleur/baroudeur)
 // i bunden. Sikrer også at GUARD-tunge typer (gc) kun lander hvor de kan opfylde
 // guarden. Gulv på sjældne typer håndhæves efter sampling (ENSURE_MIN_TYPES).
 const TIER_TYPE_WEIGHTS = {
   superstar:  { gc: 3, climber: 3, sprinter: 2, tt: 2, puncheur: 1, brostensrytter: 2 },
-  star:       { gc: 3, climber: 4, sprinter: 3, tt: 3, puncheur: 2, brostensrytter: 2, baroudeur: 1, leadout: 1 },
-  solid:      { gc: 2, climber: 4, sprinter: 2, tt: 3, puncheur: 2, brostensrytter: 2, baroudeur: 3, leadout: 2, rouleur: 2 },
-  domestique: { climber: 4, sprinter: 1, tt: 2, puncheur: 2, brostensrytter: 1, baroudeur: 4, leadout: 4, rouleur: 4 },
+  star:       { gc: 3, climber: 4, sprinter: 4, tt: 3, puncheur: 2, brostensrytter: 2, baroudeur: 1 },
+  solid:      { gc: 2, climber: 4, sprinter: 4, tt: 3, puncheur: 2, brostensrytter: 2, baroudeur: 3, rouleur: 2 },
+  domestique: { climber: 4, sprinter: 3, tt: 2, puncheur: 2, brostensrytter: 1, baroudeur: 4, rouleur: 6 },
 };
 
 // #1420: alias-eksport til mix-presets (resolveMix bygger skews oven på disse).
@@ -211,8 +210,7 @@ function buildStats(rng, tier, archetype) {
       if (stats[key] < floor) stats[key] = Math.round(clamp(floor, STAT_FLOOR, STAT_CEIL));
     }
   }
-  // Loft → undgå at leadout/rouleur guardes ud (sprint/speciale < 79 ability ↔ PCM ~78).
-  if (archetype.capSprint != null) stats.stat_sp = Math.min(stats.stat_sp, archetype.capSprint);
+  // Loft → undgå at rouleur guardes ud (speciale < 79 ability ↔ PCM ~78).
   if (archetype.capSpeciality != null) {
     for (const key of SPECIALITY_STATS) stats[key] = Math.min(stats[key], archetype.capSpeciality);
   }

@@ -5,6 +5,6 @@
 //
 // Rækkefølgen matcher backend (tie-break-prioritet) og bruges som dropdown-orden.
 export const RIDER_TYPE_KEYS = Object.freeze([
-  "sprinter", "leadout", "tt", "climber", "puncheur",
+  "sprinter", "tt", "climber", "puncheur",
   "brostensrytter", "baroudeur", "rouleur", "gc",
 ]);

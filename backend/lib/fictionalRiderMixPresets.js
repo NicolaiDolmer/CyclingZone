@@ -44,8 +44,8 @@ export const MIX_PRESETS = {
     resolve: () => ({}),
   },
   "sprint-heavy": {
-    label: "Sprint-heavy — flere sprintere + leadouts (dybe flade/sprint-felter)",
-    resolve: () => ({ tierTypeWeights: multiplyWeights({ sprinter: 3, leadout: 2 }) }),
+    label: "Sprint-heavy — flere sprintere + rouleurs (dybe flade/sprint-felter)",
+    resolve: () => ({ tierTypeWeights: multiplyWeights({ sprinter: 3, rouleur: 2 }) }),
   },
   "climb-heavy": {
     label: "Climb-heavy — flere klatrere/GC/baroudeurs (dybe bjerg-felter)",

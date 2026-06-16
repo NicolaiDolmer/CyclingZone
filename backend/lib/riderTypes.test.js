@@ -21,16 +21,16 @@ const BASELINE = {
 const rider = (over = {}, base = 30) =>
   Object.fromEntries(ABILITY_KEYS.map((a) => [a, over[a] ?? base]));
 
-test("RIDER_TYPES indeholder de 9 forventede typer i tie-break-rækkefølge", () => {
-  assert.equal(RIDER_TYPES.length, 9);
+test("RIDER_TYPES indeholder de 8 forventede typer i tie-break-rækkefølge", () => {
+  assert.equal(RIDER_TYPES.length, 8);
   assert.deepEqual(RIDER_TYPE_KEYS, [
-    "sprinter", "leadout", "tt", "climber", "puncheur",
+    "sprinter", "tt", "climber", "puncheur",
     "brostensrytter", "baroudeur", "rouleur", "gc",
   ]);
 });
 
-test("goat, domestique og allrounder er fjernet som typer", () => {
-  for (const k of ["goat", "domestique", "allrounder", "classics"]) {
+test("goat, domestique, allrounder og leadout er fjernet som typer", () => {
+  for (const k of ["goat", "domestique", "allrounder", "classics", "leadout"]) {
     assert.ok(!RIDER_TYPE_KEYS.includes(k), `${k} bør være fjernet`);
   }
 });
@@ -59,20 +59,14 @@ test("scoreRiderType: kun positive vægte → ingen negativ-straf", () => {
 });
 
 // ── Guards ────────────────────────────────────────────────────────────────────
-test("guard: sprint ≥ tærskel → aldrig leadout", () => {
-  const r = rider({ sprint: GUARDS.highSpeciality, acceleration: 90, flat: 80 });
+test("leadout er skåret (§0.1 Besl. 6) → en sprint-tog-profil foldes i sprinter/rouleur", () => {
+  // Moderat sprint uden eget speciale = den tidligere leadout-profil. Typen findes
+  // ikke længere, så den må aldrig dukke op og skal lande i sprinter/rouleur.
+  const r = rider({ sprint: GUARDS.highSpeciality - 5, acceleration: 60, flat: 60, durability: 50 });
   const { primary, secondary } = computeRiderTypes(r, BASELINE);
   assert.notEqual(primary.key, "leadout");
   assert.notEqual(secondary.key, "leadout");
-});
-
-test("guard: høj sprint (<tærskel) tillader stadig leadout", () => {
-  const r = rider({ sprint: GUARDS.highSpeciality - 5, acceleration: 60, flat: 60, durability: 50 });
-  const keys = RIDER_TYPES.filter((t) => !["leadout"].includes(t.key)); // sanity
-  assert.ok(keys.length > 0);
-  // leadout må optræde (ikke garanteret primær, men ikke guarded væk)
-  const out = computeRiderTypes(r, BASELINE);
-  assert.ok(out.primary && out.secondary);
+  assert.ok(["sprinter", "rouleur"].includes(primary.key), `forventede sprinter/rouleur, fik ${primary.key}`);
 });
 
 test("guard: ≥ tærskel i et speciale → aldrig rouleur", () => {

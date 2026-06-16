@@ -214,8 +214,8 @@ test("sjældne typer holder globalt gulv (gc≥30, sprinter≥40 @ 800)", () => 
   for (const r of riders) byType[r._meta.archetype] = (byType[r._meta.archetype] || 0) + 1;
   assert.ok(byType.gc >= 30, `gc=${byType.gc} under gulv 30`);
   assert.ok(byType.sprinter >= 40, `sprinter=${byType.sprinter} under gulv 40`);
-  // Alle 9 typer skal være repræsenteret (dybde i hver disciplin).
-  for (const t of ["sprinter", "leadout", "tt", "climber", "puncheur", "brostensrytter", "baroudeur", "rouleur", "gc"]) {
+  // Alle 8 typer skal være repræsenteret (dybde i hver disciplin).
+  for (const t of ["sprinter", "tt", "climber", "puncheur", "brostensrytter", "baroudeur", "rouleur", "gc"]) {
     assert.ok((byType[t] || 0) > 0, `type ${t} mangler helt`);
   }
 });
