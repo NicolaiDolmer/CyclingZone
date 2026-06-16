@@ -76,7 +76,9 @@ const TARGETS = {
   itt_tempo:     { label: "tt+gc ≥95%", terrain: "itt", types: ["tt", "gc"], pct: 0.95 },
   cobbles:       { label: "brostensrytter ≥80%", types: ["brostensrytter"], pct: 0.80 },
   hilly:         { label: "puncheur ≥35% (interim)", types: ["puncheur"], pct: 0.35 },
-  mountain:      { label: "gc+climber+baroudeur ≥85%", types: ["gc", "climber", "baroudeur"], pct: 0.85 },
+  // #1021: mellembjerg er udbruds-bevidst (~17-25% af etaperne vindes realistisk fra
+  // udbrud → bredere vinderfelt). high_mountain (summit, favoritterne afgør) forbliver strengt.
+  mountain:      { label: "gc+climber+baroudeur ≥82% (udbruds-bevidst, #1021)", types: ["gc", "climber", "baroudeur"], pct: 0.82 },
   high_mountain: { label: "gc+climber+baroudeur ≥85%", types: ["gc", "climber", "baroudeur"], pct: 0.85 },
 };
 

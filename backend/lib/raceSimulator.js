@@ -202,12 +202,12 @@ export const HUNTER_WEIGHT_MULTIPLIER = 2;
 // KANDIDAT-værdier — tunes i race:gate (plan Task 5). Grundet i virkelige data
 // 2026-06-16 (docs/superpowers/plans/2026-06-16-breakaway-feature-aware-phase1.md).
 export const BREAKAWAY_BONUS = Object.freeze({
-  flat:          Object.freeze({ bunch_sprint: 0.30, reduced_sprint: 0.34, breakaway: 0.40, _default: 0.30 }),
-  rolling:       Object.freeze({ breakaway: 0.30, reduced_sprint: 0.24, bunch_sprint: 0.18, _default: 0.22 }),
+  flat:          Object.freeze({ bunch_sprint: 0.30, reduced_sprint: 0.30, _default: 0.30 }), // ≤0.30: flat-bonus >0.30 vælter sprinter ≥90% i roles (#1307-fund)
+  rolling:       Object.freeze({ breakaway: 0.20, reduced_sprint: 0.17, bunch_sprint: 0.15, _default: 0.17 }),
   hilly:         Object.freeze({ punch: 0.42, reduced_sprint: 0.40, breakaway: 0.46, _default: 0.42 }),
   mountain:      Object.freeze({ descent: 0.50, breakaway: 0.50, long_climb: 0.06, _default: 0.45 }),
   high_mountain: Object.freeze({ descent: 0.42, long_climb: 0.05, _default: 0.08 }),
-  cobbles:       Object.freeze({ reduced_sprint: 0.22, breakaway: 0.28, _default: 0.20 }),
+  cobbles:       Object.freeze({ reduced_sprint: 0.30, breakaway: 0.36, _default: 0.28 }),
 });
 
 // → maxBonus for en (profil, finale). Manglende finale → profilens _default.
@@ -251,6 +251,10 @@ function selectBreakawayBonuses({ ordered, terrainById, profileType, finaleType,
   const count = Math.min(1 + Math.floor(rng() * BREAKAWAY_MAX_RIDERS), candidates.length);
 
   // Vægtet udvælgelse uden tilbagelægning (deterministisk over rider_id-stabil liste).
+  // Selve win-scoren (terræn + bonus) gør allerede at vinderen af et bjergudbrud er den
+  // mest klatre-egnede af de undslupne — derfor er selektionen aggression-drevet (lyst
+  // til at angribe), ikke terræn-drevet (#1021: global terræn-vægtning testet + forkastet,
+  // den skadede flad uden at flytte bjerg-born-as).
   const pool = candidates.map((e) => ({
     e,
     w: Math.max(1, aggressionScore(e.abilities)) * (e.race_role === "hunter" ? HUNTER_WEIGHT_MULTIPLIER : 1),

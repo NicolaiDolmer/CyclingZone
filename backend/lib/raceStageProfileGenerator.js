@@ -56,15 +56,16 @@ export const DEMAND_VECTORS = Object.freeze({
 });
 
 // Plausible finale-typer pr. terræn (display + senere modifier). Første = mest typisk.
-// #1021 Fase 1: udvidet finale-variation, så finale_type kan drive udbruds-bonussen.
-// hilly/mountain får et breakaway-finale-alternativ; high_mountain kan ramme en
-// descent (= lang bjergdag der IKKE slutter opad) ud over den dominerende summit.
-// finaleFor vægter første element ~60% → high_mountain forbliver summit-domineret.
+// #1021 Fase 1: finale_type driver udbruds-bonussen. mellembjerg (mountain) er
+// descent-domineret (transition/nedkørsels-finish = udbruds-venlig; de store summit-
+// finaler hører til high_mountain); hilly får et breakaway-alternativ; high_mountain
+// er summit-domineret men kan ramme en descent (lang bjergdag der ikke slutter opad).
+// finaleFor vægter første element ~60%.
 const FINALE_BY_PROFILE = Object.freeze({
   flat:          ["bunch_sprint", "reduced_sprint"],
   rolling:       ["breakaway", "reduced_sprint", "bunch_sprint"],
   hilly:         ["punch", "reduced_sprint", "breakaway"],
-  mountain:      ["long_climb", "descent", "breakaway"],
+  mountain:      ["descent", "breakaway", "long_climb"],
   high_mountain: ["long_climb", "long_climb", "descent"],
   itt:           ["solo_tt"],
   ttt:           ["solo_tt"],
