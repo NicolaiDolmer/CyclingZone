@@ -1,9 +1,20 @@
 import { Link } from "react-router-dom";
 import { useConsent } from "../lib/consent.jsx";
 import { formatDateTime } from "../lib/intl";
+import { useDocumentHead } from "../hooks/useDocumentHead.js";
 
 export default function PrivacyPolicyPage() {
   const { openBanner, consent } = useConsent();
+
+  // Per-route head (#1404/#1301). DA-udgaven i dual-page-mønsteret — hardkodet
+  // dansk copy (siden er EXEMPT i i18n-page-untranslated-guarden).
+  useDocumentHead({
+    title: "Privatlivspolitik · Cycling Zone",
+    description:
+      "Sådan behandler Cycling Zone dine data: så lidt som muligt, EU-hostet og du bestemmer selv hvad vi må måle.",
+    canonical: "https://cyclingzone.org/privatlivspolitik",
+    lang: "da",
+  });
 
   return (
     <div className="min-h-screen bg-cz-body py-10 px-4 sm:px-6">

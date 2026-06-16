@@ -1,7 +1,7 @@
-import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "../lib/language.jsx";
+import { useDocumentHead, useJsonLd } from "../hooks/useDocumentHead.js";
 import { Wordmark } from "../components/Brand.jsx";
 import { buttonClass } from "../components/ui/buttonStyles.js";
 import RaceSignature from "../components/landing/RaceSignature.jsx";
@@ -87,28 +87,37 @@ function FaqItem({ q, a, defaultOpen }) {
 }
 
 export default function LandingPage() {
-  const { t } = useTranslation("landing");
+  const { t, i18n } = useTranslation("landing");
+  const lang = i18n.language?.startsWith("da") ? "da" : "en";
 
-  // Klient-side SEO (#1301): titel + meta description for den indekserbare /-rute.
-  useEffect(() => {
-    const prevTitle = document.title;
-    document.title = t("meta.title");
-    let meta = document.querySelector('meta[name="description"]');
-    let created = false;
-    if (!meta) {
-      meta = document.createElement("meta");
-      meta.setAttribute("name", "description");
-      document.head.appendChild(meta);
-      created = true;
-    }
-    const prevDesc = meta.getAttribute("content");
-    meta.setAttribute("content", t("meta.description"));
-    return () => {
-      document.title = prevTitle;
-      if (created) meta.remove();
-      else if (prevDesc !== null) meta.setAttribute("content", prevDesc);
-    };
-  }, [t]);
+  // Klient-side SEO (#1404/#1301): per-route titel + meta description + canonical
+  // + <html lang> for den indekserbare /-rute. Canonical defaulter til
+  // origin + pathname; her er pathname "/", så det rammer cyclingzone.org/.
+  useDocumentHead({
+    title: t("meta.title"),
+    description: t("meta.description"),
+    lang,
+  });
+
+  // #1405: VideoGame JSON-LD injiceres KUN på forsiden (Organization + WebSite
+  // ligger statisk i index.html). offers.price 0 = free-to-play / open beta.
+  useJsonLd("videogame", {
+    "@context": "https://schema.org",
+    "@type": "VideoGame",
+    name: "Cycling Zone",
+    url: "https://cyclingzone.org/",
+    description: t("meta.description"),
+    genre: "Sports/Manager",
+    gamePlatform: "Web browser",
+    applicationCategory: "GameApplication",
+    operatingSystem: "Any (web browser)",
+    offers: {
+      "@type": "Offer",
+      price: 0,
+      priceCurrency: "EUR",
+      availability: "https://schema.org/InStock",
+    },
+  });
 
   const howRows = t("how.rows", { returnObjects: true });
   const diffCards = t("different.cards", { returnObjects: true });
