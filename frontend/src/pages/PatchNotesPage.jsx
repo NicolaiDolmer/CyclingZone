@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.41",
+    date: "2026-06-16",
+    label: "Beta",
+    changes: [
+      {
+        category: "Changed · Finance",
+        items: [
+          "EN · The Finance page is now organised into tabs (Overview, Loans, History), so everything about your economy lives in one place. The per-season finance report and transaction history moved under History with a season picker, loans got their own tab, and the page picked up the refreshed design system (cleaner cards, sharper corners, crisp icons in place of emoji). The separate Economy tab on My Team is gone, since it duplicated this. No gameplay changes. Refs #986, #671",
+          "DA · Økonomisiden er nu delt op i faner (Overblik, Lån, Historik), så alt om din økonomi bor ét sted. Sæson-finansrapporten og transaktionshistorikken er flyttet ind under Historik med en sæsonvælger, lån har fået deres egen fane, og siden har fået det opfriskede designsystem (renere kort, skarpere hjørner, rene ikoner i stedet for emoji). Den separate Økonomi-fane under Mit Hold er væk, da den duplikerede dette. Ingen ændringer i gameplay. Refs #986, #671",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.40",
     date: "2026-06-15",
     label: "Beta",
