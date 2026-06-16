@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   generateRaceStageProfiles,
+  finaleFor,
   DEMAND_VECTORS,
   ABILITY_DIMENSIONS,
   PROFILE_TYPES,
@@ -10,6 +11,7 @@ import {
   GENERATOR_VERSION,
 } from "./raceStageProfileGenerator.js";
 import { ABILITY_KEYS } from "./raceSimulator.js";
+import { makeRng } from "./fictionalRiderGenerator.js";
 
 const ALLOWED_DEMAND_KEYS = new Set([...ABILITY_DIMENSIONS, "randomness"]);
 const SPRINT_FRIENDLY = new Set(["flat", "rolling"]);
@@ -132,4 +134,16 @@ test("#1122 flat og tempo har vægt i mindst ét terræn (ikke døde)", () => {
   const hasWeight = (ab) => Object.values(DEMAND_VECTORS).some((v) => (v[ab] || 0) > 0);
   assert.ok(hasWeight("flat"), "flat skal vægtes et sted");
   assert.ok(hasWeight("tempo"), "tempo skal vægtes et sted");
+});
+
+// ── #1021 Fase 1: finale-variation (driver udbruds-bonussen) ─────────────────
+test("#1021 high_mountain kan slutte på descent (ikke-summit dag), ikke kun long_climb", () => {
+  const seen = new Set();
+  for (let s = 1; s <= 300; s++) seen.add(finaleFor(makeRng(s), "high_mountain"));
+  assert.ok(seen.has("long_climb"), "high_mountain skal stadig oftest være summit");
+  assert.ok(seen.has("descent"), "high_mountain skal nogle gange slutte på descent");
+});
+
+test("#1021 finaleFor er eksporteret og deterministisk", () => {
+  assert.equal(finaleFor(makeRng(42), "flat"), finaleFor(makeRng(42), "flat"));
 });

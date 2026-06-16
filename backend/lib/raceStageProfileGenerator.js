@@ -56,12 +56,16 @@ export const DEMAND_VECTORS = Object.freeze({
 });
 
 // Plausible finale-typer pr. terræn (display + senere modifier). Første = mest typisk.
+// #1021 Fase 1: udvidet finale-variation, så finale_type kan drive udbruds-bonussen.
+// hilly/mountain får et breakaway-finale-alternativ; high_mountain kan ramme en
+// descent (= lang bjergdag der IKKE slutter opad) ud over den dominerende summit.
+// finaleFor vægter første element ~60% → high_mountain forbliver summit-domineret.
 const FINALE_BY_PROFILE = Object.freeze({
   flat:          ["bunch_sprint", "reduced_sprint"],
   rolling:       ["breakaway", "reduced_sprint", "bunch_sprint"],
-  hilly:         ["punch", "reduced_sprint"],
-  mountain:      ["long_climb", "descent"],
-  high_mountain: ["long_climb"],
+  hilly:         ["punch", "reduced_sprint", "breakaway"],
+  mountain:      ["long_climb", "descent", "breakaway"],
+  high_mountain: ["long_climb", "long_climb", "descent"],
   itt:           ["solo_tt"],
   ttt:           ["solo_tt"],
   cobbles:       ["reduced_sprint", "breakaway"],
@@ -119,7 +123,7 @@ function demandVectorFor(profileType) {
   return { ...DEMAND_VECTORS[profileType] };
 }
 
-function finaleFor(rng, profileType) {
+export function finaleFor(rng, profileType) {
   const options = FINALE_BY_PROFILE[profileType] || [];
   if (!options.length) return null;
   // Vægt mod den mest typiske (første): ~60% første, ellers uniformt blandt resten.
