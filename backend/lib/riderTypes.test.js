@@ -45,10 +45,10 @@ test("type-formler refererer kun evner i ABILITY_KEYS", () => {
 });
 
 test("scoreRiderType: kontrast = snit(positive z) − snit(negative z) (hånd-regnet)", () => {
-  // tt = { time_trial:3, prolog:2, sprint:-1, punch:-1 }. Neutral baseline → z = rå.
-  // pos = (3·90 + 2·60)/5 = 390/5 = 78. neg = (1·10 + 1·20)/2 = 15. score = 78 − 15 = 63.
-  const ab = { time_trial: 90, prolog: 60, sprint: 10, punch: 20 };
-  assert.equal(scoreRiderType(ab, RIDER_TYPES.find((t) => t.key === "tt").weights, NEUTRAL_BASELINE), 63);
+  // tt = { time_trial:5, sprint:-1, punch:-1 } (prolog-vægt foldet ind i time_trial). Neutral baseline → z = rå.
+  // pos = (5·90)/5 = 90. neg = (1·10 + 1·20)/2 = 15. score = 90 − 15 = 75.
+  const ab = { time_trial: 90, sprint: 10, punch: 20 };
+  assert.equal(scoreRiderType(ab, RIDER_TYPES.find((t) => t.key === "tt").weights, NEUTRAL_BASELINE), 75);
 });
 
 test("scoreRiderType: kun positive vægte → ingen negativ-straf", () => {

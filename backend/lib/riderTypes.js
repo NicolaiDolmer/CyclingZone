@@ -24,7 +24,7 @@
 
 // De evner type-formlerne + guards kan referere (kolonner i rider_derived_abilities).
 export const ABILITY_KEYS = Object.freeze([
-  "climbing", "time_trial", "prolog", "flat", "tempo", "sprint", "acceleration",
+  "climbing", "time_trial", "flat", "tempo", "sprint", "acceleration",
   "punch", "endurance", "recovery", "durability", "descending", "cobblestone", "aggression",
 ]);
 
@@ -34,7 +34,7 @@ export const ABILITY_KEYS = Object.freeze([
 export const RIDER_TYPES = Object.freeze([
   { key: "sprinter",       weights: { acceleration: 3, sprint: 2, flat: 1, durability: 1, climbing: -2, endurance: -1 } },
   { key: "leadout",        weights: { sprint: 3, acceleration: 2, flat: 1, durability: 1, climbing: -2 } },
-  { key: "tt",             weights: { time_trial: 3, prolog: 2, sprint: -1, punch: -1 } },
+  { key: "tt",             weights: { time_trial: 3, sprint: -1, punch: -1 } }, // prolog merged ind i time_trial (§0.1 Besl. 2); magnituden er moot (eneste positive evne = skala-invariant)
   { key: "climber",        weights: { climbing: 3, tempo: 2, punch: 1, endurance: 1, sprint: -2, acceleration: -1, flat: -1 } },
   { key: "puncheur",       weights: { punch: 3, tempo: 2, climbing: 1, endurance: 1, time_trial: -1, sprint: -1 } },
   { key: "brostensrytter", weights: { cobblestone: 5, flat: 2, endurance: 1, punch: 1, climbing: -2 } },

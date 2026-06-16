@@ -86,8 +86,8 @@ test("riderOverall is the mean of abilities, clamped 0-99", () => {
 
 test("meanAbilityScore er det uafrundede snit af alle abilities", () => {
   assert.equal(meanAbilityScore(abilities(50)), 50);
-  // 13 evner på 40 + climbing 95 → 615/14 (uafrundet, modsat riderOverall).
-  assert.equal(meanAbilityScore(abilities(40, { climbing: 95 })), 615 / 14);
+  // 12 evner på 40 + climbing 95 → 575/13 (uafrundet, modsat riderOverall).
+  assert.equal(meanAbilityScore(abilities(40, { climbing: 95 })), 575 / 13);
 });
 
 test("blendedOutput: alpha=1 → ren speciale-score, alpha=0 → snit af alt, 0.5 → midt imellem", () => {

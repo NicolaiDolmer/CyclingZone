@@ -8,11 +8,11 @@
 // Fokus-nøgle → evner det skubber mod cap (matcher backend TRAINING_FOCUSES).
 export const TRAINING_FOCUS_ABILITIES = Object.freeze({
   vo2max:    Object.freeze(["climbing", "punch", "tempo"]),
-  threshold: Object.freeze(["time_trial", "tempo", "prolog"]),
+  threshold: Object.freeze(["time_trial", "tempo"]),
   sprint:    Object.freeze(["sprint", "acceleration"]),
   endurance: Object.freeze(["endurance", "recovery", "durability"]),
   technique: Object.freeze(["descending", "positioning", "cobblestone"]),
-  aero:      Object.freeze(["time_trial", "flat", "prolog"]),
+  aero:      Object.freeze(["time_trial", "flat"]),
 });
 export const TRAINING_FOCUS_KEYS = Object.freeze(Object.keys(TRAINING_FOCUS_ABILITIES));
 
