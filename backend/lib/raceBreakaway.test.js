@@ -2,7 +2,7 @@
 // #1307: udbruds-mekanik — seeded, kun egnede profiler, 1-3 escapees, hunter-vægt.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { simulateStage, aggressionScore, breakawayMaxBonus, BREAKAWAY_PROFILES, BREAKAWAY_TOP_EXCLUDED } from "./raceSimulator.js";
+import { simulateStage, aggressionScore, breakawayMaxBonus, BREAKAWAY_BONUS, BREAKAWAY_TOP_EXCLUDED } from "./raceSimulator.js";
 
 const ab = (over = {}) => ({
   climbing: 50, time_trial: 50, sprint: 50, punch: 50, endurance: 50,
@@ -82,8 +82,14 @@ test("hunter: markant forhøjet escapee-chance", () => {
   assert.ok(hunterPicked > samePicked * 1.5, `hunter ${hunterPicked} vs uden ${samePicked}`);
 });
 
-test("BREAKAWAY_PROFILES indeholder præcis flat/rolling/mountain", () => {
-  assert.deepEqual(Object.keys(BREAKAWAY_PROFILES).sort(), ["flat", "mountain", "rolling"]);
+test("BREAKAWAY_BONUS dækker de udbruds-egnede terræner (ikke itt/ttt/classic)", () => {
+  assert.deepEqual(
+    Object.keys(BREAKAWAY_BONUS).sort(),
+    ["cobbles", "flat", "high_mountain", "hilly", "mountain", "rolling"],
+  );
+  for (const t of ["itt", "ttt", "classic"]) {
+    assert.equal(breakawayMaxBonus(t, "solo_tt"), 0, `${t} må ikke have udbrud`);
+  }
 });
 
 // ── #1021 Fase 1: finale-gradient-bevidst bonus ──────────────────────────────

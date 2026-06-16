@@ -23,8 +23,8 @@ import { generateFictionalRiders, makeRng } from "../lib/fictionalRiderGenerator
 import { deriveAbilities } from "../lib/abilityDerivation.js";
 import { computeRiderTypes } from "../lib/riderTypes.js";
 import { predictBaseValue, riderOverall, riderSpecialty } from "../lib/riderValuation.js";
-import { DEMAND_VECTORS } from "../lib/raceStageProfileGenerator.js";
-import { simulateStage, stableSeed, NOISE_SD_SCALE, aggressionScore, BREAKAWAY_PROFILES } from "../lib/raceSimulator.js";
+import { DEMAND_VECTORS, finaleFor } from "../lib/raceStageProfileGenerator.js";
+import { simulateStage, stableSeed, NOISE_SD_SCALE, aggressionScore, BREAKAWAY_BONUS } from "../lib/raceSimulator.js";
 import { buildRaceResults } from "../lib/raceRunner.js";
 import { evaluateRaceStructuralOracles, evaluateAbilityLivenessOracle } from "../lib/raceDryRunOracles.js";
 import { abilityRankSensitivity, breakawayParticipationGapByAggression, SENSITIVITY_DELTA } from "../lib/raceSensitivity.js";
@@ -124,14 +124,18 @@ const TERRAINS = ["flat", "rolling", "hilly", "mountain", "high_mountain", "itt"
 // med --enforce-targets. Bånd til ejer-review i PR'en (irl-pejling: udbrud
 // holder sjældent hjem på flade sprinter-etaper, oftere i mellembjerg/bjerg).
 //
-// NB: high_mountain og øvrige profiler har BEVIDST intet bånd — spec 8.3 giver
-// kun udbruds-bonus på flad/rolling/medium-bjerg (BREAKAWAY_PROFILES), så
-// escapee-share dér er per konstruktion 0. Tilføj IKKE et high_mountain-bånd —
-// det ville fejle på 0% og stride mod design-kontrakten.
+// #1021 Fase 1: bånd pr. terræn, grundet i virkelige data (2026-06-16). Bonus er nu
+// finale-gradient-bevidst (BREAKAWAY_BONUS), så hilly/high_mountain/cobbles er IKKE
+// længere konstruktions-0. high_mountain er summit-domineret → lavt bånd (de få ikke-
+// summit-dage løfter det lidt). mountain-båndet er bredt: det blander summit (~0) +
+// descent (~40%). KANDIDAT-bånd — verificeres grøn på tværs af seeds (plan Task 5).
 const BREAKAWAY_TARGETS = {
-  flat:     { min: 0.01, max: 0.10 },
-  rolling:  { min: 0.02, max: 0.12 },
-  mountain: { min: 0.05, max: 0.25 },
+  flat:          { min: 0.01, max: 0.07 },
+  rolling:       { min: 0.04, max: 0.15 },
+  hilly:         { min: 0.18, max: 0.45 },
+  mountain:      { min: 0.15, max: 0.50 },
+  high_mountain: { min: 0.00, max: 0.15 },
+  cobbles:       { min: 0.02, max: 0.15 },
 };
 
 // ── Hjælpere ──────────────────────────────────────────────────────────────────
@@ -306,17 +310,21 @@ for (const terrain of TERRAINS) {
   const demand = DEMAND_VECTORS[terrain];
   const keyAb = keyAbilityOf(demand);
   const rng = makeRng(stableSeed(`dryrun:${SEED}:${terrain}`));
+  // #1021: dedikeret finale-rng → field-sampling-sekvensen (rng) er uændret.
+  const finaleRng = makeRng(stableSeed(`dryrun:${SEED}:${terrain}:finale`));
   const bornHist = {}, derivedHist = {};
   const winners = new Set();
   let strongestWon = 0, overallRankSum = 0, winnerKeySum = 0;
   // #1307: udbruds-vinder-tæller (ALLE modes) + roles-mode-metrikker.
   let breakawayWinCount = 0;
+  const finaleSplit = {}; // #1021: escapee-share pr. finale (bimodale terræner)
   let captainWinsRoles = 0, captainWinsNeutral = 0;
   let hunterEscapes = 0, helperEscapes = 0, hunterExposures = 0, helperExposures = 0;
 
   for (let i = 0; i < RACES; i++) {
     const sample = sampleField(rng, field, FIELD);
     const raceSeed = stableSeed(`${terrain}:${i}`);
+    const finaleType = finaleFor(finaleRng, terrain); // #1021: driver udbruds-bonussen
     const roles = ROLES_MODE ? assignRoles(sample) : null;
     const entrants = sample.map((r) => ({
       rider_id: r.id,
@@ -326,7 +334,7 @@ for (const terrain of TERRAINS) {
       ...(CONDITION_MODE && r.form    != null ? { form:    r.form }    : {}),
       ...(CONDITION_MODE && r.fatigue != null ? { fatigue: r.fatigue } : {}),
     }));
-    const { ranked } = simulateStage({ entrants, stageProfile: { profile_type: terrain, demand_vector: demand }, seed: raceSeed });
+    const { ranked } = simulateStage({ entrants, stageProfile: { profile_type: terrain, finale_type: finaleType, demand_vector: demand }, seed: raceSeed });
     const w = byId.get(ranked[0].rider_id);
     bornHist[w.bornAs] = (bornHist[w.bornAs] || 0) + 1;
     derivedHist[w.derived] = (derivedHist[w.derived] || 0) + 1;
@@ -337,6 +345,10 @@ for (const terrain of TERRAINS) {
     overallRankSum += rank;
     if (rank === 1) strongestWon++;
     if ((ranked[0].components.breakaway || 0) > 0) breakawayWinCount++;
+    const fkey = finaleType || "none";
+    finaleSplit[fkey] = finaleSplit[fkey] || { races: 0, bw: 0 };
+    finaleSplit[fkey].races++;
+    if ((ranked[0].components.breakaway || 0) > 0) finaleSplit[fkey].bw++;
 
     if (ROLES_MODE) {
       if (roles.roleById.get(ranked[0].rider_id) === "captain") captainWinsRoles++;
@@ -347,10 +359,10 @@ for (const terrain of TERRAINS) {
         ...(CONDITION_MODE && r.form    != null ? { form:    r.form }    : {}),
         ...(CONDITION_MODE && r.fatigue != null ? { fatigue: r.fatigue } : {}),
       }));
-      const neutral = simulateStage({ entrants: neutralEntrants, stageProfile: { profile_type: terrain, demand_vector: demand }, seed: raceSeed });
+      const neutral = simulateStage({ entrants: neutralEntrants, stageProfile: { profile_type: terrain, finale_type: finaleType, demand_vector: demand }, seed: raceSeed });
       if (roles.roleById.get(neutral.ranked[0].rider_id) === "captain") captainWinsNeutral++;
       // Escapee-deltagelse pr. rolle (kun udbruds-egnede terræner producerer escapees).
-      if (BREAKAWAY_PROFILES[terrain]) {
+      if (BREAKAWAY_BONUS[terrain]) {
         for (const r of ranked) {
           const role = roles.roleById.get(r.rider_id);
           if (role === "hunter") {
@@ -370,6 +382,7 @@ for (const terrain of TERRAINS) {
     bornHist, derivedHist, distinct: winners.size,
     avgStrengthRank: overallRankSum / RACES, strongestWonPct: pct1(strongestWon, RACES),
     breakawayWinShare: breakawayWinCount / RACES,
+    finaleSplit,
     ...(ROLES_MODE ? { captainWinsRoles, captainWinsNeutral, hunterEscapes, helperEscapes, hunterExposures, helperExposures } : {}),
   });
 }

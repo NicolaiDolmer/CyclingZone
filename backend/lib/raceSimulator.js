@@ -189,8 +189,7 @@ function teamComponent(entrant, stageProfile, teamContext) {
 // med udbruds-båndet. (c) hunter-vægt 3 → 2: ved ×3 stjal hunters så mange
 // sejre fra kaptajnerne at kaptajn-deltaet blev negativt og rolling røg over
 // bånd-loftet i roles-mode. Målte bånd-værdier pr. seed: se KALIBRERINGS-LOG
-// i scripts/simulateSeasonDryRun.js.
-export const BREAKAWAY_PROFILES = Object.freeze({ flat: 0.30, rolling: 0.17, mountain: 0.33 });
+// i scripts/simulateSeasonDryRun.js. (BREAKAWAY_PROFILES superseded af BREAKAWAY_BONUS, #1021.)
 export const BREAKAWAY_TOP_EXCLUDED = 0.05;      // top-5 % (terrain) kan ikke eskapere
 export const BREAKAWAY_MAX_RIDERS = 3;
 export const HUNTER_WEIGHT_MULTIPLIER = 2;
