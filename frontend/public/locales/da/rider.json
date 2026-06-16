@@ -45,6 +45,8 @@
     "potential": "Potentiale",
     "teamPrefix": "Hold:",
     "freeAgent": "Fri agent",
+    "nextSeasonPrefix": "Næste sæson:",
+    "pendingTransfer": "Skifter til {team} næste sæson",
     "activeAuctionBadge": "⚡ Aktiv auktion",
     "highestBidLabel": "Højeste bud: {amount} CZ$",
     "valueLabel": "Værdi CZ$",
