@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.50",
+    date: "2026-06-16",
+    label: "Beta",
+    changes: [
+      {
+        category: "Changed · Riders",
+        items: [
+          "EN · Rider values have been recalibrated to match the corrected rider types. With the lead-out type removed, the valuation model was re-fit on the eight types, so riders who changed type now show a value that fits their type. Top riders are unchanged and the overall scale is the same. This feeds auction minimums and transfer prices. Refs #1101, #1122",
+          "DA · Rytter-værdierne er rekalibreret så de matcher de korrigerede ryttertyper. Med lead-out-typen fjernet er værdimodellen re-fittet på de otte typer, så ryttere der skiftede type nu viser en værdi der passer til deres type. Toprytterne er uændrede og den samlede skala er den samme. Det fodrer auktions-minimum og transfer-priser. Refs #1101, #1122",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.49",
     date: "2026-06-16",
     label: "Beta",

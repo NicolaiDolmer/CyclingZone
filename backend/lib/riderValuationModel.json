@@ -1,207 +1,206 @@
 {
   "version": 3,
   "method": "log-linear: ln(value)=a+b*O+c*O^2+offset[primary_type], O=alpha*speciale+(1-alpha)*snit (anchor-calibrated)",
-  "fitted_at": "2026-06-09",
+  "fitted_at": "2026-06-16",
   "n_anchor": 26,
-  "r2_log": 0.9716,
+  "r2_log": 0.9589,
   "alpha": 0.5,
-  "output_max": 86.8,
-  "value_cap": 163513422,
-  "a": 8.028773,
-  "b": 0.048374,
-  "c": 0.0009064216,
+  "output_max": 91,
+  "value_cap": 189086195,
+  "a": 7.533301,
+  "b": 0.069396,
+  "c": 0.0006805313,
   "offset": {
-    "gc": -0.140288,
-    "brostensrytter": -0.000276,
-    "tt": -0.339574,
-    "sprinter": 1.059889,
-    "rouleur": -0.63132,
-    "puncheur": -0.662967,
-    "climber": 0.220552,
-    "leadout": 0.079558
+    "climber": -0.419737,
+    "brostensrytter": 0.199317,
+    "tt": -0.052941,
+    "sprinter": 0.84866,
+    "rouleur": -0.54232,
+    "gc": 0.519742,
+    "puncheur": -1.002726
   },
   "anchors_fit": [
     {
       "name": "Tadej Pogacar",
-      "type": "gc",
-      "output": 86.8,
+      "type": "climber",
+      "output": 91,
       "target": 125000000,
-      "predicted": 163513422
+      "predicted": 189086195
     },
     {
       "name": "Mathieu van der Poel",
       "type": "brostensrytter",
-      "output": 84.2,
+      "output": 84.3,
       "target": 95000000,
-      "predicted": 110300786
+      "predicted": 99023636
     },
     {
       "name": "Jasper Philipsen",
       "type": "sprinter",
-      "output": 76.1,
+      "output": 76.4,
       "target": 65000000,
-      "predicted": 66578924
+      "predicted": 46692856
     },
     {
       "name": "Filippo Ganna",
       "type": "tt",
-      "output": 80.6,
+      "output": 80.5,
       "target": 50000000,
-      "predicted": 38742146
+      "predicted": 39178511
     },
     {
       "name": "Jonathan Milan",
       "type": "sprinter",
-      "output": 74.1,
+      "output": 73.6,
       "target": 45000000,
-      "predicted": 46338753
+      "predicted": 28849353
     },
     {
       "name": "Tim Merlier",
       "type": "sprinter",
-      "output": 70.8,
+      "output": 71.1,
       "target": 30000000,
-      "predicted": 25510507
+      "predicted": 18805803
     },
     {
       "name": "Paul Magnier",
       "type": "sprinter",
-      "output": 71.3,
+      "output": 71.5,
       "target": 25000000,
-      "predicted": 27873206
+      "predicted": 20381820
     },
     {
       "name": "Michael Matthews",
       "type": "brostensrytter",
-      "output": 70.8,
+      "output": 70.9,
       "target": 13000000,
-      "predicted": 8917747
+      "predicted": 9575251
     },
     {
       "name": "Toms Skujins",
       "type": "rouleur",
-      "output": 71.7,
+      "output": 72.1,
       "target": 8000000,
-      "predicted": 5532366
+      "predicted": 5520377
     },
     {
       "name": "Quinn Simmons",
       "type": "rouleur",
-      "output": 73.2,
+      "output": 73.4,
       "target": 8000000,
-      "predicted": 7181968
+      "predicted": 6939849
     },
     {
       "name": "Florian Vermeersch",
       "type": "brostensrytter",
-      "output": 71.5,
+      "output": 71.4,
       "target": 8000000,
-      "predicted": 10044381
+      "predicted": 10420005
     },
     {
       "name": "Kévin Vauquelin",
-      "type": "gc",
-      "output": 68.6,
+      "type": "climber",
+      "output": 71.8,
       "target": 7000000,
-      "predicted": 5277269
+      "predicted": 6013161
     },
     {
       "name": "Magnus Sheffield",
-      "type": "tt",
-      "output": 69.4,
+      "type": "gc",
+      "output": 65.6,
       "target": 6000000,
-      "predicted": 4911303
+      "predicted": 5575502
     },
     {
       "name": "Mathys Rondel",
-      "type": "gc",
-      "output": 63.4,
+      "type": "climber",
+      "output": 67.9,
       "target": 6000000,
-      "predicted": 2175575
+      "predicted": 3151098
     },
     {
       "name": "Jonas Abrahamsen",
       "type": "rouleur",
-      "output": 73.8,
+      "output": 74.5,
       "target": 5000000,
-      "predicted": 8053702
+      "predicted": 8352784
     },
     {
       "name": "Antonio Tiberi",
-      "type": "gc",
-      "output": 69.4,
+      "type": "climber",
+      "output": 71.1,
       "target": 5000000,
-      "predicted": 5985704
+      "predicted": 5313933
     },
     {
       "name": "Andreas Leknessund",
       "type": "gc",
       "output": 65.4,
       "target": 5000000,
-      "predicted": 3050636
+      "predicted": 5380682
     },
     {
       "name": "Marc Soler",
-      "type": "gc",
-      "output": 66.7,
+      "type": "climber",
+      "output": 68.5,
       "target": 3500000,
-      "predicted": 3763911
+      "predicted": 3454040
     },
     {
       "name": "Clément Champoussin",
       "type": "puncheur",
-      "output": 68.4,
+      "output": 68.7,
       "target": 3000000,
-      "predicted": 3000000
+      "predicted": 1996563
     },
     {
       "name": "Ethan Hayter",
       "type": "tt",
-      "output": 68.1,
+      "output": 66.5,
       "target": 2500000,
-      "predicted": 3941675
+      "predicted": 3629759
     },
     {
       "name": "Diego Uriarte",
       "type": "climber",
-      "output": 55.4,
+      "output": 55.7,
       "target": 900000,
-      "predicted": 900000
+      "predicted": 483665
     },
     {
       "name": "Luca Vergallito",
-      "type": "gc",
-      "output": 57.6,
+      "type": "climber",
+      "output": 62.3,
       "target": 500000,
-      "predicted": 881687
+      "predicted": 1299862
     },
     {
       "name": "Krists Neilands",
-      "type": "gc",
-      "output": 58.5,
+      "type": "puncheur",
+      "output": 62.5,
       "target": 500000,
-      "predicted": 1009512
+      "predicted": 751291
     },
     {
       "name": "Guillaume Seye",
-      "type": "leadout",
-      "output": 45.8,
+      "type": "tt",
+      "output": 45.7,
       "target": 200000,
-      "predicted": 202531
+      "predicted": 175798
     },
     {
       "name": "Ian Kimpe",
-      "type": "leadout",
-      "output": 35,
+      "type": "sprinter",
+      "output": 35.3,
       "target": 60000,
-      "predicted": 55039
+      "predicted": 117489
     },
     {
       "name": "D'Arcy Sanders",
-      "type": "leadout",
+      "type": "sprinter",
       "output": 30.1,
       "target": 30000,
-      "predicted": 32295
+      "predicted": 65094
     }
   ],
   "notes": "Eget data-drevet base_value, v3 (alsidigheds-blend + krumning, 9/6). SHADOW — styrer ikke økonomi før cutover (#1101 slice 2). INGEN bund. Fase 2: simulations-drevet (efter #1102). Fase 3: markeds-glidning."
