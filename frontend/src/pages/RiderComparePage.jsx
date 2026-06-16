@@ -72,7 +72,7 @@ function RiderSearch({ onSelect, excluded }) {
       />
       {(results.length > 0 || loading) && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-cz-card border border-cz-border
-          rounded-xl shadow-2xl z-20 overflow-hidden">
+          rounded-cz shadow-2xl z-20 overflow-hidden">
           {loading ? (
             <div className="p-3 text-center text-cz-3 text-sm">{t("compare.searching")}</div>
           ) : (
@@ -181,7 +181,7 @@ export default function RiderComparePage() {
           <div className="grid gap-3 mb-5" style={{ gridTemplateColumns: `200px repeat(${fullRiders.length}, 1fr)` }}>
             <div /> {/* Empty cell for label column */}
             {fullRiders.map((r) => (
-              <div key={r.id} className="bg-cz-card border border-cz-border rounded-xl p-4 text-center">
+              <div key={r.id} className="bg-cz-card border border-cz-border rounded-cz p-4 text-center">
                 <button
                   onClick={() => removeRider(r.id)}
                   className="float-right text-cz-3 hover:text-cz-2 text-sm -mt-1 -me-1">×</button>
@@ -204,7 +204,7 @@ export default function RiderComparePage() {
           </div>
 
           {/* Stats comparison */}
-          <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+          <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
             {/* Potentiale row */}
             {fullRiders.some(r => scouting.estimateFor(r.id) !== null) && (
               <div className="grid items-center py-3 px-4 border-b border-cz-border bg-cz-accent/10/30"

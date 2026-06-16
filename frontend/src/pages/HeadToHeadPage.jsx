@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import RiderLink from "../components/RiderLink";
 import { Flag } from "../components/Flag";
 import { formatNumber } from "../lib/intl";
+import { TeamIcon } from "../components/ui";
 
 function TeamSearch({ label, onSelect, excluded, autoSuggest = false }) {
   const { t } = useTranslation("headtohead");
@@ -44,11 +45,11 @@ function TeamSearch({ label, onSelect, excluded, autoSuggest = false }) {
       <input type="text" value={q} onChange={e => setQ(e.target.value)}
         onFocus={handleFocus} onBlur={handleBlur}
         placeholder={t("searchPlaceholder")}
-        className="w-full bg-cz-card border border-cz-border rounded-xl px-4 py-3
+        className="w-full bg-cz-card border border-cz-border rounded-cz px-4 py-3
           text-cz-1 placeholder-cz-3 focus:outline-none focus:border-cz-accent" />
       {results.length > 0 && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-cz-card border border-cz-border
-          rounded-xl z-20 overflow-y-auto max-h-72 shadow-2xl">
+          rounded-cz z-20 overflow-y-auto max-h-72 shadow-2xl">
           {results.map(team => (
             <div key={team.id}
               className="px-4 py-3 hover:bg-cz-subtle cursor-pointer border-b border-cz-border last:border-0"
@@ -61,7 +62,7 @@ function TeamSearch({ label, onSelect, excluded, autoSuggest = false }) {
       )}
       {showEmpty && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-cz-card border border-cz-border
-          rounded-xl z-20 overflow-hidden shadow-2xl px-4 py-3">
+          rounded-cz z-20 overflow-hidden shadow-2xl px-4 py-3">
           <p className="text-cz-3 text-sm">{t("noTeamsFound", { q })}</p>
         </div>
       )}
@@ -223,7 +224,7 @@ export default function HeadToHeadPage() {
       )}
 
       {!loading && error && (
-        <div className="bg-cz-danger-bg border border-cz-danger/30 rounded-xl p-4 mb-4 flex items-center justify-between gap-3">
+        <div className="bg-cz-danger-bg border border-cz-danger/30 rounded-cz p-4 mb-4 flex items-center justify-between gap-3">
           <p className="text-cz-danger text-sm">{error}</p>
           <button onClick={loadStats}
             className="px-3 py-1.5 text-xs text-cz-1 bg-cz-card hover:bg-cz-subtle border border-cz-border rounded-lg transition-all">
@@ -235,7 +236,7 @@ export default function HeadToHeadPage() {
       {!loading && !error && stats && (
         <div className="flex flex-col gap-4">
           {/* Stat comparison */}
-          <div className="bg-cz-card border border-cz-border rounded-xl p-5">
+          <div className="bg-cz-card border border-cz-border rounded-cz p-5">
             <h2 className="text-cz-1 font-semibold text-sm mb-4">{t("seasonStats")}</h2>
             <StatCompare labelA={t("statPoints")} valueA={stats.totalPointsA} valueB={stats.totalPointsB} />
             <StatCompare labelA={t("statStageWins")} valueA={stats.stageWinsA} valueB={stats.stageWinsB} />
@@ -245,7 +246,7 @@ export default function HeadToHeadPage() {
 
           {/* Transfer history between them */}
           {(stats.aBoughtFromB.length > 0 || stats.bBoughtFromA.length > 0) && (
-            <div className="bg-cz-card border border-cz-border rounded-xl p-5">
+            <div className="bg-cz-card border border-cz-border rounded-cz p-5">
               <h2 className="text-cz-1 font-semibold text-sm mb-4">{t("transferHistory")}</h2>
               {stats.aBoughtFromB.length > 0 && (
                 <div className="mb-3">
@@ -275,10 +276,10 @@ export default function HeadToHeadPage() {
           {/* Current squads */}
           <div className="grid sm:grid-cols-2 gap-4">
             {[
-              { team: teamA, riders: stats.topRidersA, color: "#e8c547" },
-              { team: teamB, riders: stats.topRidersB, color: "#60a5fa" },
+              { team: teamA, riders: stats.topRidersA, color: "rgb(var(--accent-t))" },
+              { team: teamB, riders: stats.topRidersB, color: "rgb(var(--info))" },
             ].map(({ team, riders, color }) => (
-              <div key={team.id} className="bg-cz-card border border-cz-border rounded-xl p-4">
+              <div key={team.id} className="bg-cz-card border border-cz-border rounded-cz p-4">
                 <h3 className="font-semibold text-sm mb-3 cursor-pointer hover:underline"
                   style={{ color }} onClick={() => navigate(`/teams/${team.id}`)}>
                   {t("topFive", { team: team.name })}
@@ -306,7 +307,7 @@ export default function HeadToHeadPage() {
 
       {!loading && !stats && teamA && !teamB && (
         <div className="text-center py-16 text-cz-3">
-          <p className="text-4xl mb-3">⚔</p>
+          <TeamIcon className="w-10 h-10 mx-auto mb-3 text-cz-3" />
           <p>{t("selectOther")}</p>
         </div>
       )}

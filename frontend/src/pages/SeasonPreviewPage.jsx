@@ -74,7 +74,7 @@ export default function SeasonPreviewPage() {
       </div>
 
       {/* Strength overview */}
-      <div className="bg-cz-card border border-cz-border rounded-xl p-5 mb-5">
+      <div className="bg-cz-card border border-cz-border rounded-cz p-5 mb-5">
         <h2 className="text-cz-1 font-semibold text-sm mb-4">{tStandings("preview.strengthHeading")}</h2>
         <div className="flex flex-col gap-3">
           {teams.map(t => {
@@ -127,7 +127,7 @@ export default function SeasonPreviewPage() {
           return (
             <div key={t.id}
               style={isMe ? { boxShadow: "inset 0 0 0 1.5px rgb(var(--me-ring) / 0.5)" } : undefined}
-              className="bg-cz-card border border-cz-border rounded-xl p-5 cursor-pointer hover:border-cz-border transition-all"
+              className="bg-cz-card border border-cz-border rounded-cz p-5 cursor-pointer hover:border-cz-border transition-all"
               onClick={() => navigate(`/teams/${t.id}`)}>
               <div className="flex items-start justify-between mb-4">
                 <div>
