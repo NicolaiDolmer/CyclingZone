@@ -111,3 +111,19 @@ test("breakawayMaxBonus: ukendt profil → 0; manglende finale → profil-defaul
   assert.equal(breakawayMaxBonus("nonsense", "whatever"), 0);
   assert.ok(breakawayMaxBonus("mountain", undefined) > 0); // _default-sti
 });
+
+test("#1021: mountain descent-finale giver flere escapee-sejre end summit-finale", () => {
+  const mtDemand = { climbing: 0.5, tempo: 0.12, endurance: 0.14, randomness: 0.1 };
+  const entrants = Array.from({ length: 60 }, (_, i) => ({
+    rider_id: `r${String(i).padStart(3, "0")}`,
+    abilities: ab({ climbing: 90 - i, endurance: 50, tempo: 50 }),
+  }));
+  let descentBreak = 0, summitBreak = 0;
+  for (let s = 1; s <= 200; s++) {
+    const d = simulateStage({ entrants, stageProfile: { profile_type: "mountain", finale_type: "descent", demand_vector: mtDemand }, seed: s });
+    const m = simulateStage({ entrants, stageProfile: { profile_type: "mountain", finale_type: "long_climb", demand_vector: mtDemand }, seed: s });
+    if ((d.ranked[0].components.breakaway || 0) > 0) descentBreak++;
+    if ((m.ranked[0].components.breakaway || 0) > 0) summitBreak++;
+  }
+  assert.ok(descentBreak > summitBreak, `descent ${descentBreak} skal slå summit ${summitBreak}`);
+});

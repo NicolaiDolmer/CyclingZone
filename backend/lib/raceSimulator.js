@@ -233,9 +233,9 @@ export function aggressionScore(abilities) {
 }
 
 // → Map(rider_id → bonus) for de udvalgte escapees (tom Map hvis profil uegnet).
-function selectBreakawayBonuses({ ordered, terrainById, profileType, seed }) {
+function selectBreakawayBonuses({ ordered, terrainById, profileType, finaleType, seed }) {
   const bonuses = new Map();
-  const maxBonus = BREAKAWAY_PROFILES[profileType];
+  const maxBonus = breakawayMaxBonus(profileType, finaleType);
   if (!maxBonus || ordered.length < 4) return bonuses; // under 4 ryttere → intet udbrud (ellers kan næsten hele feltet eskapere)
 
   const rng = makeRng((seed ^ 0xb4ea0ff5) >>> 0);
@@ -328,7 +328,7 @@ export function simulateStage({ entrants = [], stageProfile, seed } = {}) {
   const terrainById = new Map(
     ordered.map((e) => [e.rider_id, terrainScore(e.abilities, demand)])
   );
-  const breakawayById = selectBreakawayBonuses({ ordered, terrainById, profileType, seed });
+  const breakawayById = selectBreakawayBonuses({ ordered, terrainById, profileType, finaleType: stageProfile.finale_type, seed });
   const teamCtx = buildTeamContext({ entrants: ordered, terrainById, stageProfile });
 
   const scored = ordered.map((e) => {
