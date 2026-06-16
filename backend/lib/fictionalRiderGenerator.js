@@ -13,6 +13,7 @@
 
 import { foldNameNordic } from "./pcmRiderMatcher.js";
 import { NAME_CLUSTERS, clusterForNationality } from "./fictionalRiderNames.js";
+import { seedArchetypePhysiology } from "./archetypePhysiology.js";
 
 // ── Seeded PRNG (mulberry32) ──────────────────────────────────────────────────
 export function makeRng(seed) {
@@ -120,6 +121,10 @@ const TIERS = [
   { value: "solid",      fraction: 230 / 800, statMean: 63.75, dampScale: 0.75, sd: 2.75, uci: [120, 700],   potential: [2.0, 5.0], popularity: [10, 50] },
   { value: "domestique", fraction: null,      statMean: 53,   dampScale: 1,    sd: 3.5,  uci: [1, 120],     potential: [1.0, 4.0], popularity: [0, 18] }, // rest
 ];
+
+// Plan 2 (#1122): tier → fysiologi-NIVEAU (0..1) til arketype-skæv seeding.
+// Spejler værdi-pyramiden: superstjerner kører tæt på elite-loftet.
+const TIER_PHYSIOLOGY_LEVEL = { superstar: 0.92, star: 0.75, solid: 0.55, domestique: 0.30 };
 
 // #1420: eksponér default-fraktionerne (afledt af TIERS) så mix-presets kan bygge
 // skews oven på dem uden at duplikere tallene. domestique udelades (er rest).
@@ -368,6 +373,13 @@ export function generateFictionalRiders({
     const { firstname, lastname } = makeUniqueName(rng, cluster, usedFolded);
     const stats = buildStats(rng, tier, archetype);
     const demo = buildDemographics(rng, tier, archetype, referenceYear);
+    const physiology = seedArchetypePhysiology({
+      archetype: archetype.type,
+      tierLevel: TIER_PHYSIOLOGY_LEVEL[tier.value] ?? 0.5,
+      height_cm: demo.height,
+      weight_kg: demo.weight,
+      rng, // samme seeded rng — forbruger deterministisk efter demografi
+    });
     const uci_points = intBetween(rng, tier.uci[0], tier.uci[1]);
     const popularity = intBetween(rng, tier.popularity[0], tier.popularity[1]);
 
@@ -387,7 +399,7 @@ export function generateFictionalRiders({
       // Bevidst udeladt (DB udleder/defaulter, backfill ejer base_value): id, base_value, market_value, salary,
       // team_id, ai_team_id, pending_team_id, prize_earnings_bonus, is_retired,
       // created_at, updated_at, acquired_at.
-      _meta: { tier: tier.value, archetype: archetype.type, age: demo.age, cluster: clusterKey },
+      _meta: { tier: tier.value, archetype: archetype.type, age: demo.age, cluster: clusterKey, physiology },
     });
   }
 

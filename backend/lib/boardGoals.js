@@ -842,7 +842,7 @@ export function evaluateGoal(goal, standing, team, context = {}) {
 // skiftet er bagudkompatibelt. Før #1137 var stats statiske → delta altid 0 →
 // board-ungdomsmålet (#813) var uopfyldeligt; abilities ændrer sig nu over sæsoner.
 export const U25_ABILITY_KEYS = [
-  "climbing", "time_trial", "prolog", "flat", "tempo", "sprint", "acceleration",
+  "climbing", "time_trial", "flat", "tempo", "sprint", "acceleration",
   "punch", "endurance", "recovery", "durability", "descending", "cobblestone", "positioning", "aggression",
 ];
 const U25_STAT_KEYS = [

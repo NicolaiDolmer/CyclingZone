@@ -50,11 +50,11 @@ export const TRAINING_CONFIG = Object.freeze({
 // Træningssprog der overlever ind i den fulde epic (sessions-kataloget).
 export const TRAINING_FOCUSES = Object.freeze({
   vo2max:    Object.freeze(["climbing", "punch", "tempo"]),
-  threshold: Object.freeze(["time_trial", "tempo", "prolog"]),
+  threshold: Object.freeze(["time_trial", "tempo"]),
   sprint:    Object.freeze(["sprint", "acceleration"]),
   endurance: Object.freeze(["endurance", "recovery", "durability"]),
   technique: Object.freeze(["descending", "positioning", "cobblestone"]),
-  aero:      Object.freeze(["time_trial", "flat", "prolog"]),
+  aero:      Object.freeze(["time_trial", "flat"]),
 });
 export const TRAINING_FOCUS_KEYS = Object.freeze(Object.keys(TRAINING_FOCUSES));
 

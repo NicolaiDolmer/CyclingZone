@@ -131,7 +131,7 @@ function main() {
   }
 
   // ── Per-type showcase: median-værdi-rytter pr. afledt type + top-3 abilities ──
-  const ABIL = ["climbing", "time_trial", "prolog", "flat", "tempo", "sprint", "acceleration", "punch", "endurance", "recovery", "durability", "descending", "cobblestone"];
+  const ABIL = ["climbing", "time_trial", "flat", "tempo", "sprint", "acceleration", "punch", "endurance", "recovery", "durability", "descending", "cobblestone"];
   console.log("\nPer-type showcase (median-værdi-rytter pr. type — er typen realistisk?):");
   console.log("  type            navn                   base_value   top-3 abilities");
   const byType = {};

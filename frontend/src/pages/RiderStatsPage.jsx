@@ -116,14 +116,13 @@ function StatRow({ label, icon, value, progressFraction, progressHint }) {
   );
 }
 
-// Evne-system v2 (#1122) — 16 synlige evner i 4 kategorier (fysiske/tekniske/
+// Evne-system v2 (#1122) — 15 synlige evner i 4 kategorier (fysiske/tekniske/
 // taktisk-mentale). hidden_potential er skjult per design. Ikoner genbruger samme
 // visuelle sprog som de traditionelle skills (STATS ovenfor).
 const DERIVED_ABILITIES = [
   // Fysiske
   { key: "climbing",     icon: "▲" },
   { key: "time_trial",   icon: "⏱" },
-  { key: "prolog",       icon: "⧗" },
   { key: "flat",         icon: "▬" },
   { key: "tempo",        icon: "◈" },
   { key: "sprint",       icon: "⚡" },
@@ -1107,9 +1106,9 @@ export default function RiderStatsPage() {
       // #1162: eksplicit kolonneliste — hidden_potential er server-skjult (eksakt
       // invertérbar til potentiale: ungdom + seeded støj kan begge beregnes i
       // klienten), og select=* afvises efter column-privilege-migrationen.
-      // Kun de 16 synlige evner (DERIVED_ABILITIES) + metadata bruges i UI'et.
+      // Kun de 15 synlige evner (DERIVED_ABILITIES) + metadata bruges i UI'et.
       safe(supabase.from("rider_derived_abilities").select(`rider_id, formula_version,
-        climbing, time_trial, prolog, flat, tempo, sprint, acceleration, punch,
+        climbing, time_trial, flat, tempo, sprint, acceleration, punch,
         endurance, recovery, durability, descending, cobblestone, positioning,
         aggression, tactics`).eq("rider_id", id).maybeSingle()),
     ]);

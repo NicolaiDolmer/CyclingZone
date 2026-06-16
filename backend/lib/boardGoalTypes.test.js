@@ -185,20 +185,20 @@ test("computeU25StatSum sums stats for U25-riders only", () => {
 });
 
 test("computeU25StatSum prefers joined abilities over PCM-stats (#1137)", () => {
-  const FIFTEEN_ABILITIES = {
-    climbing: 4, time_trial: 4, prolog: 4, flat: 4, tempo: 4, sprint: 4, acceleration: 4,
+  const FOURTEEN_ABILITIES = {
+    climbing: 4, time_trial: 4, flat: 4, tempo: 4, sprint: 4, acceleration: 4,
     punch: 4, endurance: 4, recovery: 4, durability: 4, descending: 4, cobblestone: 4, positioning: 4, aggression: 4,
   };
   const riders = [
-    // U25 med abilities-join → summer 15 abilities (15*4=60), ignorér de høje stats
-    { is_u25: true, stat_fl: 99, stat_bj: 99, rider_derived_abilities: FIFTEEN_ABILITIES },
+    // U25 med abilities-join → summer 14 abilities (14*4=56), ignorér de høje stats
+    { is_u25: true, stat_fl: 99, stat_bj: 99, rider_derived_abilities: FOURTEEN_ABILITIES },
     // U25 uden join → fallback til 12 stats (12*10=120)
     {
       is_u25: true, stat_fl: 10, stat_bj: 10, stat_kb: 10, stat_bk: 10, stat_tt: 10, stat_bro: 10,
       stat_sp: 10, stat_acc: 10, stat_udh: 10, stat_mod: 10, stat_res: 10, stat_ftr: 10,
     },
   ];
-  assert.equal(computeU25StatSum(riders), 60 + 120);
+  assert.equal(computeU25StatSum(riders), 56 + 120);
 });
 
 test("computeU25StatSum handles PostgREST array-embed of abilities (#1137)", () => {
