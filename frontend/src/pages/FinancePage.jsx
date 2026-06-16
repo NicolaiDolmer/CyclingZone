@@ -97,7 +97,6 @@ export default function FinancePage() {
       setForecastLoading(false);
     }
   }
-  const [activeSeasonId, setActiveSeasonId] = useState(null);
   const [seasons, setSeasons] = useState([]);
   // #986: valgt sæson i Historik-fanen (default = aktiv, eller ?season=).
   const [historySeasonId, setHistorySeasonId] = useState(null);
@@ -180,7 +179,6 @@ export default function FinancePage() {
     const allSeasons = seasonsRes.data || [];
     setSeasons(allSeasons);
     const active = allSeasons.find((s) => s.status === "active");
-    setActiveSeasonId(active?.id || null);
     // Default Historik-sæson: behold eksisterende valg (loadAll kaldes igen efter
     // lån-handlinger), ellers ?season= hvis gyldig, ellers aktiv/seneste.
     const seasonParam = searchParams.get("season");

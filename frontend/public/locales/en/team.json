@@ -14,7 +14,6 @@
   },
   "tabs": {
     "squad": "Squad ({count})",
-    "economy": "Economy",
     "transfers": "Transfer history"
   },
   "squad": {
@@ -47,45 +46,6 @@
       "loanedTo": "Loaned to {team} · season {start}–{end}"
     },
     "actionButton": "Sell / Auction"
-  },
-  "economy": {
-    "kpi": {
-      "balance": "Balance",
-      "teamValue": "Team value",
-      "salaryPerSeason": "Salary/season",
-      "sponsorPerSeason": "Sponsor/season"
-    },
-    "forecast": {
-      "title": "Season forecast",
-      "fullLink": "Full forecast and loans →",
-      "sponsorIncome": "Sponsor income",
-      "salaries": "Salaries ({count} riders)",
-      "net": "Net (excl. prize money)",
-      "warning": "⚠️ Salaries exceed sponsor income. You depend on prize money."
-    },
-    "breakdown": {
-      "title": "Breakdown this season"
-    },
-    "history": {
-      "title": "Transaction history",
-      "empty": "No transactions yet",
-      "headers": {
-        "date": "Date",
-        "type": "Type",
-        "description": "Description",
-        "amount": "Amount"
-      }
-    },
-    "txType": {
-      "prize": "Prize money",
-      "sponsor": "Sponsor income",
-      "transfer_in": "Sale",
-      "transfer_out": "Purchase",
-      "salary": "Salaries",
-      "interest": "Interest"
-    },
-    "amount": "{value} CZ$",
-    "amountSigned": "{sign}{value} CZ$"
   },
   "actionModal": {
     "potentialLabel": "Potential",
