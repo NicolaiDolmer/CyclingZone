@@ -2,7 +2,7 @@
 // #1307: udbruds-mekanik — seeded, kun egnede profiler, 1-3 escapees, hunter-vægt.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { simulateStage, aggressionScore, BREAKAWAY_PROFILES, BREAKAWAY_TOP_EXCLUDED } from "./raceSimulator.js";
+import { simulateStage, aggressionScore, breakawayMaxBonus, BREAKAWAY_PROFILES, BREAKAWAY_TOP_EXCLUDED } from "./raceSimulator.js";
 
 const ab = (over = {}) => ({
   climbing: 50, time_trial: 50, sprint: 50, punch: 50, endurance: 50,
@@ -84,4 +84,30 @@ test("hunter: markant forhøjet escapee-chance", () => {
 
 test("BREAKAWAY_PROFILES indeholder præcis flat/rolling/mountain", () => {
   assert.deepEqual(Object.keys(BREAKAWAY_PROFILES).sort(), ["flat", "mountain", "rolling"]);
+});
+
+// ── #1021 Fase 1: finale-gradient-bevidst bonus ──────────────────────────────
+test("breakawayMaxBonus: summit-finale undertrykker udbruddet (favoritterne afgør)", () => {
+  assert.ok(breakawayMaxBonus("mountain", "long_climb") <= 0.08);
+  assert.ok(breakawayMaxBonus("high_mountain", "long_climb") <= 0.08);
+});
+
+test("breakawayMaxBonus: descent-finale beskytter udbruddet", () => {
+  assert.ok(breakawayMaxBonus("mountain", "descent") >= 0.40);
+  assert.ok(breakawayMaxBonus("high_mountain", "descent") >= 0.30);
+});
+
+test("breakawayMaxBonus: hilly er udbruds-venlig (var hård 0)", () => {
+  assert.ok(breakawayMaxBonus("hilly", "punch") >= 0.30);
+});
+
+test("breakawayMaxBonus: flad lav; itt/ttt giver intet udbrud", () => {
+  assert.ok(breakawayMaxBonus("flat", "bunch_sprint") <= 0.32);
+  assert.equal(breakawayMaxBonus("itt", "solo_tt"), 0);
+  assert.equal(breakawayMaxBonus("ttt", "solo_tt"), 0);
+});
+
+test("breakawayMaxBonus: ukendt profil → 0; manglende finale → profil-default", () => {
+  assert.equal(breakawayMaxBonus("nonsense", "whatever"), 0);
+  assert.ok(breakawayMaxBonus("mountain", undefined) > 0); // _default-sti
 });

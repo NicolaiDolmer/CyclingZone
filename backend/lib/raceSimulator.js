@@ -195,6 +195,32 @@ export const BREAKAWAY_TOP_EXCLUDED = 0.05;      // top-5 % (terrain) kan ikke e
 export const BREAKAWAY_MAX_RIDERS = 3;
 export const HUNTER_WEIGHT_MULTIPLIER = 2;
 
+// ── Finale-gradient-bevidst udbruds-bonus (#1021 Fase 1) ──────────────────────
+// Afløser den flade BREAKAWAY_PROFILES-skalar: maxBonus afhænger nu af BÅDE
+// profil OG finale_type. finale_type = proxy for finale-gradienten (den vigtigste
+// virkelige faktor): long_climb (summit) → favoritterne afgør (~0); descent/flad
+// efter sidste stigning → udbruddet holder hjem. itt/ttt/classic: intet udbrud.
+// KANDIDAT-værdier — tunes i race:gate (plan Task 5). Grundet i virkelige data
+// 2026-06-16 (docs/superpowers/plans/2026-06-16-breakaway-feature-aware-phase1.md).
+export const BREAKAWAY_BONUS = Object.freeze({
+  flat:          Object.freeze({ bunch_sprint: 0.30, reduced_sprint: 0.34, breakaway: 0.40, _default: 0.30 }),
+  rolling:       Object.freeze({ breakaway: 0.30, reduced_sprint: 0.24, bunch_sprint: 0.18, _default: 0.22 }),
+  hilly:         Object.freeze({ punch: 0.42, reduced_sprint: 0.40, breakaway: 0.46, _default: 0.42 }),
+  mountain:      Object.freeze({ descent: 0.50, breakaway: 0.50, long_climb: 0.06, _default: 0.45 }),
+  high_mountain: Object.freeze({ descent: 0.42, long_climb: 0.05, _default: 0.08 }),
+  cobbles:       Object.freeze({ reduced_sprint: 0.22, breakaway: 0.28, _default: 0.20 }),
+});
+
+// → maxBonus for en (profil, finale). Manglende finale → profilens _default.
+// Manglende profil (itt/ttt/classic + ukendte) → 0. Bevarer den frosne
+// selectBreakawayBonuses-kontrakt: returnerer en skalar, ikke en ny mekanik.
+export function breakawayMaxBonus(profileType, finaleType) {
+  const p = BREAKAWAY_BONUS[profileType];
+  if (!p) return 0;
+  const v = (finaleType != null && finaleType in p) ? p[finaleType] : p._default;
+  return Number.isFinite(v) ? v : 0;
+}
+
 // Aggression = lyst/evne til at køre i udbrud. Plan 1 (#1122): læser den ÆGTE
 // aggression-evne (driver udbruds-CHANCEN, jf. rider-ability-system-v2.md §0.1).
 // Fallback til den gamle proxy (tactics/endurance/acceleration) når aggression
