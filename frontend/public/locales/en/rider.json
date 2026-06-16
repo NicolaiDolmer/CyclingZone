@@ -45,6 +45,8 @@
     "potential": "Potential",
     "teamPrefix": "Team:",
     "freeAgent": "Free agent",
+    "nextSeasonPrefix": "Next season:",
+    "pendingTransfer": "Joining {team} next season",
     "activeAuctionBadge": "⚡ Active auction",
     "highestBidLabel": "Highest bid: {amount} CZ$",
     "valueLabel": "Value CZ$",
