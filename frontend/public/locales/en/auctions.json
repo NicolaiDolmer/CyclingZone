@@ -130,6 +130,7 @@
     "sellerLabel": "You're selling",
     "proxy": {
       "display": "Auto-bid: max {amount} CZ$",
+      "help": "We bid up to this for you, 1 CZ$ at a time. You only lose the lead if someone goes above your cap. Your cap stays private.",
       "set": "Set auto-bid limit",
       "edit": "Change auto-bid limit",
       "remove": "Remove auto-bid",

@@ -130,6 +130,7 @@
     "sellerLabel": "Du sælger",
     "proxy": {
       "display": "Autobud: max {amount} CZ$",
+      "help": "Vi byder op til dette for dig, 1 CZ$ ad gangen. Du mister kun føringen hvis nogen går over dit loft. Dit loft forbliver privat.",
       "set": "Sæt autobud-loft",
       "edit": "Ændr autobud-loft",
       "remove": "Fjern autobud",

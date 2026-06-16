@@ -343,6 +343,7 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, watchlist, 
                   </button>
                   <button onClick={() => setProxyExpanded(false)} aria-label={t("auctions:bid.proxy.cancel")} className="text-[9px] text-cz-3 hover:text-cz-2">✕</button>
                 </div>
+                <p className="text-[9px] text-cz-3 max-w-[180px] leading-tight">{t("auctions:bid.proxy.help")}</p>
                 {proxyStatus === "error" && proxyErrorText && (
                   <p className="text-[10px] text-cz-danger max-w-[160px] leading-tight">{proxyErrorText}</p>
                 )}
@@ -553,6 +554,7 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, watchlist,
                       ✕
                     </button>
                   </div>
+                  <p className="text-[11px] text-cz-3 leading-tight">{t("auctions:bid.proxy.help")}</p>
                   {proxyStatus === "error" && proxyErrorText && (
                     <p className="text-[11px] text-cz-danger leading-tight">{proxyErrorText}</p>
                   )}

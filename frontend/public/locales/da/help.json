@@ -105,7 +105,11 @@
       },
       "autoBidCap": {
         "title": "Autobud loft",
-        "text": "Autobud loft lader dig sætte dit private maksimum. Hvis du ikke allerede fører auktionen, placerer autobud samtidig minimumsbuddet for dig, så du kan tage føringen uden først at byde manuelt. Systemet byder derefter automatisk videre op til dit loft, hvis andre managers overbyder."
+        "text": "Autobud loft lader dig sætte dit private maksimum. Hvis du ikke allerede fører, placerer autobud minimumsbuddet for dig med det samme, så du tager føringen. Derefter byder det automatisk for dig hver gang nogen overbyder dig, og hæver dit bud 1 CZ$ ad gangen, aldrig over dit loft. Du bliver ved med at føre, indtil en anden manager går højere end dit loft, og først dér er du overbudt. Dit loft er privat, så andre managers ser det aldrig. Hvis din balance ikke længere kan dække dit loft, stopper autobuddet, indtil du frigør midler."
+      },
+      "tieRule": {
+        "title": "Uafgjort ved ens bud",
+        "text": "Byder en anden manager præcis dit autobud-loft, beholder du føringen til samme pris uden stigning. Når to bud er ens, beholder den manager der nåede beløbet først føringen. At sætte et loft forsvarer derfor også din føring mod nogen der kun matcher det."
       },
       "whenExpires": {
         "title": "Hvornår udløber en auktion?",

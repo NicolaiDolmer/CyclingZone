@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.47",
+    date: "2026-06-16",
+    label: "Beta",
+    changes: [
+      {
+        category: "Changed · Auctions",
+        items: [
+          "EN · The auctions page and Help now explain how auto-bid works in plain terms: we raise your bid for you 1 CZ$ at a time up to your private cap, you are only outbid when someone goes above that cap, and on an exactly equal bid the manager who got there first keeps the lead. A short note now also appears right under the auto-bid field. No gameplay changes. Refs #1280",
+          "DA · Auktionssiden og Hjælp forklarer nu i klar tekst hvordan autobud virker: vi hæver dit bud for dig 1 CZ$ ad gangen op til dit private loft, du bliver kun overbudt når nogen går over det loft, og ved præcis ens bud beholder den manager der nåede beløbet først føringen. En kort note vises nu også lige under autobud-feltet. Ingen ændringer i gameplay. Refs #1280",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.46",
     date: "2026-06-16",
     label: "Beta",

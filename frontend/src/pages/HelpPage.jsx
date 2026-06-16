@@ -34,6 +34,7 @@ const SECTION_DEFS = [
       { id: "howToStart", kind: "steps" },
       { id: "bidding", kind: "text" },
       { id: "autoBidCap", kind: "text" },
+      { id: "tieRule", kind: "text" },
       { id: "whenExpires", kind: "text" },
       { id: "flashAuction", kind: "text" },
       { id: "tenMinExtend", kind: "text" },
