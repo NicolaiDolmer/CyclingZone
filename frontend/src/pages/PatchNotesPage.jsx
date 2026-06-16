@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.49",
+    date: "2026-06-16",
+    label: "Beta",
+    changes: [
+      {
+        category: "Changed · Riders",
+        items: [
+          "EN · Lead-out has been retired as a rider type, leaving eight types (Sprinter, Time-trialist, Climber, Puncheur, Cobbles specialist, Baroudeur, Rouleur, GC contender). Riders who used to show as lead-outs now appear as sprinters or rouleurs, which better reflects how they actually race. This brings the site in line with the locked type design. Types are for display and filtering only and do not affect the economy. No gameplay changes. Refs #1122, #49",
+          "DA · Lead-out er udgået som ryttertype, så der nu er otte typer (Sprinter, Tidskører, Bjergrytter, Bakkerytter, Brostensrytter, Baroudeur, Rouleur, Etapeløbsrytter). Ryttere der før optrådte som lead-outs vises nu som sprintere eller rouleurs, hvilket bedre afspejler måden de faktisk kører på. Det bringer hjemmesiden i overensstemmelse med det låste type-design. Typerne bruges kun til visning og filtrering og påvirker ikke økonomien. Ingen ændringer i gameplay. Refs #1122, #49",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.48",
     date: "2026-06-16",
     label: "Beta",

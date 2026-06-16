@@ -14,8 +14,8 @@ test("determinisme: samme arketype+tier+krop+seed → identisk profil", () => {
   assert.deepEqual(a, b);
 });
 
-test("alle 9 arketyper har en skew-profil", () => {
-  for (const a of ["sprinter","leadout","tt","climber","puncheur","brostensrytter","baroudeur","rouleur","gc"]) {
+test("alle 8 arketyper har en skew-profil", () => {
+  for (const a of ["sprinter","tt","climber","puncheur","brostensrytter","baroudeur","rouleur","gc"]) {
     assert.ok(PHYSIOLOGY_ARCHETYPES[a], `mangler ${a}`);
   }
 });

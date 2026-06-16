@@ -16,7 +16,7 @@
 //   superstjerne ~12  (≥8M)     ·  stjerne  ~60  (1–8M)
 //   solid        ~230 (200k–1M) ·  domestik ~500 (<200k)
 // Faktisk ved seed 2026: 12/68/203/517, max ~24M (ingen urealistiske outliers).
-// Type-mix: alle 9 repræsenteret (gulv gc≥30, sprinter≥40); klatrer/tt tungest,
+// Type-mix: alle 8 repræsenteret (gulv gc≥30, sprinter≥40); klatrer/tt tungest,
 // realistisk peloton-form. Detaljer: docs/slices/669-fictional-riders.md.
 
 import { generateFictionalRiders } from "./fictionalRiderGenerator.js";
@@ -41,13 +41,13 @@ export const LAUNCH_VALUE_BANDS = Object.freeze([
   Object.freeze({ key: "domestik", lo: 0, hi: 200_000, target: 500 }),
 ]);
 
-// Ejer-gulve for type-mixet ved launch ("alle 9 repræsenteret, gulv gc≥30,
+// Ejer-gulve for type-mixet ved launch ("alle 8 repræsenteret, gulv gc≥30,
 // sprinter≥40"). Generatorens ENSURE_MIN_TYPES er MEKANISMEN — dette er ORAKLET
 // (uafhængig dobbelt-bogføring som preview-gaten håndhæver, #1198 pop-MUT-6).
 export const LAUNCH_TYPE_FLOORS = Object.freeze({ gc: 30, sprinter: 40 });
 
 /**
- * Oracle for launch-type-mixet (#1198): alle 9 typer repræsenteret + ejer-gulve.
+ * Oracle for launch-type-mixet (#1198): alle 8 typer repræsenteret + ejer-gulve.
  * @param {Record<string, number>} typeCounts afledt primary_type → antal
  * @returns {string[]} liste af brud (tom = OK)
  */
@@ -55,7 +55,7 @@ export function checkLaunchTypeMix(typeCounts = {}) {
   const failures = [];
   for (const key of RIDER_TYPE_KEYS) {
     if (!((typeCounts[key] || 0) >= 1)) {
-      failures.push(`type '${key}' er slet ikke repræsenteret i populationen (launch-krav: alle 9 typer)`);
+      failures.push(`type '${key}' er slet ikke repræsenteret i populationen (launch-krav: alle 8 typer)`);
     }
   }
   for (const [key, min] of Object.entries(LAUNCH_TYPE_FLOORS)) {

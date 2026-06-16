@@ -27,7 +27,6 @@ const round = (x, dp) => { const f = 10 ** dp; return Math.round(x * f) / f; };
 // recovery. Positiv = arketypens styrke; negativ = bevidst svaghed (specialisering ON).
 export const PHYSIOLOGY_ARCHETYPES = Object.freeze({
   sprinter:       { aerob: -0.22, sprint_power: 0.62, punch_power: -0.14, vo2_ceiling: -0.18, aero: 0.06, durability: -0.12, recovery: 0.04 },
-  leadout:        { aerob: -0.10, sprint_power: 0.04, punch_power: -0.06, vo2_ceiling: -0.10, aero: 0.10, durability: 0.10, recovery: 0.04 },
   tt:             { aerob: 0.12,  sprint_power: -0.34, punch_power: -0.20, vo2_ceiling: -0.08, aero: 0.44, durability: 0.12, recovery: 0.02 },
   climber:        { aerob: 0.30,  sprint_power: -0.38, punch_power: -0.24, vo2_ceiling: 0.34, aero: -0.20, durability: 0.06, recovery: 0.08 },
   puncheur:       { aerob: -0.04, sprint_power: -0.14, punch_power: 0.80, vo2_ceiling: 0.12, aero: -0.16, durability: -0.16, recovery: 0.04 },

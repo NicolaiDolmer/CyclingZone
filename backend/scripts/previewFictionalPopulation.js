@@ -87,7 +87,7 @@ function main() {
   }
 
   // ── Type-mix-oracle (#1198 pop-MUT-6) — håndhævet ved launch-skala ─────────
-  // Ejer-gulve (alle 9 typer + gc≥30/sprinter≥40) gælder den certificerede
+  // Ejer-gulve (alle 8 typer + gc≥30/sprinter≥40) gælder den certificerede
   // launch-population (count=800). Ved andre counts rapporteres kun.
   // Pyramide-bånd-afvigelser er fortsat rapport-only: tolerance pr. bånd er en
   // ejer-beslutning (dokumenteret i docs/GATE_MUTATION_AUDIT.md, mutant pop-MUT-1).
@@ -99,7 +99,7 @@ function main() {
       for (const f of oracleFailures) console.log(`  - ${f}`);
       process.exitCode = 1;
     } else {
-      console.log("\n✅ Type-mix-oracle: alle 9 typer repræsenteret, ejer-gulve (gc≥30, sprinter≥40) holder.");
+      console.log("\n✅ Type-mix-oracle: alle 8 typer repræsenteret, ejer-gulve (gc≥30, sprinter≥40) holder.");
     }
   } else {
     console.log(`\n(type-mix-oracle springes over: count=${COUNT} ≠ launch-count ${LAUNCH_POPULATION.count})`);
