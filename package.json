@@ -10,6 +10,7 @@
     "codex:doctor": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/codex-session-start.ps1",
     "cleanup:worktrees": "pwsh -File scripts/prune-merged-worktrees.ps1",
     "cleanup:worktrees:run": "pwsh -File scripts/prune-merged-worktrees.ps1 -Execute",
+    "race:cockpit": "pwsh -File scripts/race-cockpit.ps1",
     "check:warnings": "node scripts/check-eslint-warning-budget.mjs",
     "check:i18n": "node scripts/i18n-check-keys.mjs && node scripts/i18n-check-namespace-inline.mjs && node scripts/i18n-check-nav-strings.mjs && node scripts/i18n-check-page-untranslated.mjs && node scripts/i18n-check-lib-strings.mjs && node scripts/i18n-check-leaks.mjs && node --test scripts/tone-check-em-dash.test.mjs && node scripts/tone-check-em-dash.mjs",
     "check:i18n-leaks": "node scripts/i18n-check-leaks.mjs",
