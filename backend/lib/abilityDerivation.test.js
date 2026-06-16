@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
-  deriveAbilities, FORMULA_VERSION, CALIBRATION,
+  deriveAbilities, FORMULA_VERSION, CALIBRATION, CONTRAST,
   VISIBLE_ABILITIES, ALL_ABILITY_KEYS, PRIMARY_STAT,
 } from "./abilityDerivation.js";
 import { seedArchetypePhysiology } from "./archetypePhysiology.js";
@@ -43,6 +43,59 @@ test("#1122 v3 fysiologi-drevet specialisering: climber climbing ≫ sprint; spr
   const spr = deriveAbilities(physFor("sprinter"), rider(60));
   assert.ok(clb.climbing - clb.sprint > 25, `climber climbing(${clb.climbing}) ikke ≫ sprint(${clb.sprint})`);
   assert.ok(spr.sprint - spr.climbing > 25, `sprinter sprint(${spr.sprint}) ikke ≫ climbing(${spr.climbing})`);
+});
+
+// ── §5-B KONTRAST-FORSTÆRKNING (#1122 "A+B") ──────────────────────────────────
+
+test("#1122 §5-B kontrast: TIER-UAFHÆNGIG — superstar-klatrer er tydeligt svag i NEUROMUSKULÆRE off-discipliner", () => {
+  // Mætnings-problemet: en superstar (tierLevel 0.95) er ellers "god til alt".
+  // Kontrasten skal skubbe superstar-klatrerens neuromuskulære evner (sprint/
+  // acceleration) KLART under climbing — den deciderede off-disciplin-akse.
+  // (time_trial/tempo drives også af ftp/vo2, så de forbliver høje for en monster-
+  // aerob klatrer; det er KORREKT — adskillelsen mod born-tt afgøres i dry-run-
+  // scorecardet, hvor aero-skewen sænker klatrerens time_trial relativt til tt.)
+  const star = deriveAbilities(physFor("climber", 0.95), rider(60));
+  assert.ok(star.climbing - star.sprint > 40,
+    `superstar-klatrer climbing(${star.climbing}) ikke klart > sprint(${star.sprint}) — mætning ikke brudt`);
+  assert.ok(star.climbing - star.acceleration > 40,
+    `superstar-klatrer climbing(${star.climbing}) ikke klart > acceleration(${star.acceleration})`);
+});
+
+test("#1122 §5-B kontrast: forstærker spidskompetence-gap vs rå (k>1 spreder om egen median)", () => {
+  // Sammenlign disciplin-spread ved k=1 (ingen kontrast) vs det tunede k via en
+  // direkte median-beregning. En sprinters sprint-vs-svageste-gap skal vokse med k.
+  const spr = deriveAbilities(physFor("sprinter", 0.85), rider(60));
+  const weakest = Math.min(spr.climbing, spr.time_trial, spr.tempo);
+  assert.ok(spr.sprint - weakest > 40,
+    `sprinter sprint(${spr.sprint}) − svageste(${weakest}) = ${spr.sprint - weakest}, forventet stort gap efter kontrast`);
+});
+
+test("#1122 §5-B kontrast: FLOOR forhindrer karikatur — svageste evne ≥ CONTRAST.floor", () => {
+  for (const arch of ["sprinter", "climber", "tt", "puncheur", "brostensrytter"]) {
+    const a = deriveAbilities(physFor(arch, 0.9), rider(60));
+    const physMin = Math.min(a.climbing, a.time_trial, a.flat, a.tempo, a.sprint,
+      a.acceleration, a.punch, a.endurance, a.recovery, a.durability);
+    assert.ok(physMin >= CONTRAST.floor, `${arch} har fysisk evne ${physMin} under floor ${CONTRAST.floor}`);
+  }
+});
+
+test("#1122 §5-B kontrast: tekniske/mentale evner røres IKKE af kontrasten", () => {
+  // descending afledes rent af stat_ned (uden for kontrast-sættet) → uændret af
+  // kontrast-trinnet uanset rytterens fysiske profil. Verificér mod ren stat-mapping.
+  const a = deriveAbilities(physFor("climber"), rider(55, { stat_ned: 70 }));
+  const b = deriveAbilities(physFor("sprinter"), rider(55, { stat_ned: 70 }));
+  assert.equal(a.descending, b.descending, "descending må ikke afhænge af den fysiske profil/kontrast");
+});
+
+test("#1122 §5-B kontrast anvendes KUN på fysiologi-stien (IKKE PCM-fallback)", () => {
+  // Fallback-stien er en ren lineær stat-remap uden mætning; value-modellen er fittet
+  // mod den. Kontrast her ville inflatere base_value. En PCM-rytter med ÉN høj stat
+  // skal give præcis den lineære mapping (stat 84 → ~96), ikke en kontrast-spredt værdi.
+  const a = deriveAbilities({}, rider(50, { stat_bj: 84 }));
+  // climbing = scoreFrac(pcmFrac(84)) = 1 + round((84-50)/35 * 98) = 96; uændret af kontrast.
+  assert.equal(a.climbing, 96, `fallback climbing ved stat_bj 84 = ${a.climbing}, forventet 96 (ren v2-mapping)`);
+  // De øvrige (stat 50) forbliver 1 — IKKE løftet af en median-kontrast.
+  assert.equal(a.sprint, 1, `fallback sprint ved stat 50 = ${a.sprint}, forventet 1 (ingen kontrast)`);
 });
 
 test("#1122 v3 VO2max-trekant: monster-aerob climber stærk på BÅDE tempo og climbing", () => {
@@ -97,8 +150,11 @@ test("producerer alle 15 synlige + hidden_potential", () => {
 
 // ── Ankre: fallback-sti (PCM 50 → spil 1, PCM 85 → spil 99) ─────────────────
 // Disse tests kører MED tomt fysiologi-objekt for at aktivere fallback-stien.
+// #1122 §5-B: kontrasten anvendes KUN på fysiologi-stien (mætning eksisterer kun
+// dér + value-modellen er fittet mod fallback-fordelingen). Fallback-ankrene er
+// derfor UÆNDREDE fra v2: PCM 50 → 1, PCM 85 → 99.
 
-test("fallback: alle disciplin-evner = 1 ved stat = pcmFloor (50)", () => {
+test("fallback: alle disciplin-evner = 1 ved stat = pcmFloor (50) — kontrast rører IKKE fallback", () => {
   const a = deriveAbilities({}, rider(CALIBRATION.pcmFloor));
   for (const ability of Object.keys(PRIMARY_STAT)) {
     assert.equal(a[ability], 1, `${ability} ved stat 50 = ${a[ability]}, forventet 1`);

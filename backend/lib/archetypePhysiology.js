@@ -27,14 +27,14 @@ const round = (x, dp) => { const f = 10 ** dp; return Math.round(x * f) / f; };
 // recovery. Positiv = arketypens styrke; negativ = bevidst svaghed (specialisering ON).
 export const PHYSIOLOGY_ARCHETYPES = Object.freeze({
   sprinter:       { aerob: -0.22, sprint_power: 0.62, punch_power: -0.14, vo2_ceiling: -0.18, aero: 0.06, durability: -0.12, recovery: 0.04 },
-  leadout:        { aerob: -0.12, sprint_power: 0.10, punch_power: -0.06, vo2_ceiling: -0.10, aero: 0.08, durability: 0.06, recovery: 0.04 },
+  leadout:        { aerob: -0.10, sprint_power: 0.04, punch_power: -0.06, vo2_ceiling: -0.10, aero: 0.10, durability: 0.10, recovery: 0.04 },
   tt:             { aerob: 0.12,  sprint_power: -0.34, punch_power: -0.20, vo2_ceiling: -0.08, aero: 0.44, durability: 0.12, recovery: 0.02 },
-  climber:        { aerob: 0.30,  sprint_power: -0.38, punch_power: -0.24, vo2_ceiling: 0.34, aero: -0.10, durability: 0.06, recovery: 0.08 },
-  puncheur:       { aerob: 0.04,  sprint_power: -0.14, punch_power: 0.80, vo2_ceiling: 0.16, aero: -0.06, durability: -0.16, recovery: 0.04 },
-  brostensrytter: { aerob: 0.08,  sprint_power: -0.12, punch_power: 0.08, vo2_ceiling: -0.08, aero: 0.04, durability: 0.24, recovery: 0.02 },
-  baroudeur:      { aerob: 0.12,  sprint_power: -0.16, punch_power: 0.00, vo2_ceiling: 0.06, aero: 0.02, durability: 0.26, recovery: 0.12 },
+  climber:        { aerob: 0.30,  sprint_power: -0.38, punch_power: -0.24, vo2_ceiling: 0.34, aero: -0.20, durability: 0.06, recovery: 0.08 },
+  puncheur:       { aerob: -0.04, sprint_power: -0.14, punch_power: 0.80, vo2_ceiling: 0.12, aero: -0.16, durability: -0.16, recovery: 0.04 },
+  brostensrytter: { aerob: -0.10, sprint_power: -0.20, punch_power: 0.08, vo2_ceiling: -0.22, aero: -0.10, durability: 0.30, recovery: 0.02 },
+  baroudeur:      { aerob: 0.10,  sprint_power: -0.16, punch_power: 0.00, vo2_ceiling: 0.06, aero: -0.10, durability: 0.26, recovery: 0.12 },
   rouleur:        { aerob: 0.10,  sprint_power: -0.22, punch_power: -0.10, vo2_ceiling: -0.12, aero: 0.14, durability: 0.12, recovery: 0.04 },
-  gc:             { aerob: 0.26,  sprint_power: -0.34, punch_power: -0.22, vo2_ceiling: 0.32, aero: 0.00, durability: 0.16, recovery: 0.16 },
+  gc:             { aerob: 0.26,  sprint_power: -0.34, punch_power: -0.22, vo2_ceiling: 0.32, aero: 0.14, durability: 0.16, recovery: 0.16 },
 });
 
 const SKEW_DEFAULT = Object.freeze({ aerob: 0, sprint_power: 0, punch_power: 0, vo2_ceiling: 0, aero: 0, durability: 0, recovery: 0 });

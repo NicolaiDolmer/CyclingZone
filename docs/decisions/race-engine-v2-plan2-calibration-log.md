@@ -54,3 +54,59 @@ Hvordan opnår vi robust top-tier-specialisering?
 ## Note til genoptagelse
 
 Round-1-7 tuning-koefficienterne er committet som WIP-checkpoint (seed 2026 grøn). De er sandsynligvis stilladser — option B vil ændre dynamikken og kræve re-tune. Den endelige GRØN-tabel + konstanter skrives her når gaten er grøn på alle varianter.
+
+## LØST (2026-06-16, branch `feat/1122-ability-contrast`) — A+B implementeret, cross-seed grøn
+
+Ejer-godkendt fork **A+B**: behold arketype-skewen (A) som fundament + tilføj evne-niveau
+**kontrast-forstærkning** (B, design §5-B) i `abilityDerivation.js`.
+
+**Nyt trin (`abilityDerivation.js`):** efter de rå fysiske evner skubbes hver rytters 10
+fysiske disciplin-evner væk fra rytterens EGEN median: `out = median + k·(raw − median)`,
+clamp `[floor, 99]`. TIER-UAFHÆNGIG (afstand fra egen profil, ikke et absolut loft) → bryder
+superstar-mætningen. **Kun på fysiologi-stien** — PCM-fallback er en ren lineær remap uden
+mætning, og value-modellen er fittet mod den (kontrast dér ville inflatere base_value;
+refit hører til Plan 4). Tekniske/mentale evner (descending/cobblestone/positioning/
+aggression/tactics/hidden) røres ikke.
+
+**Endelige konstanter:** `CONTRAST.k = 1.52`, `CONTRAST.floor = 8` (abilityDerivation.js).
+Re-tunede arketype-skews (archetypePhysiology.js) for at holde absolutte niveauer sunde +
+lukke type-lækager efter kontrast: leadout sprint_power 0.10→0.04 (sprintere skal vinde
+flade bunch-spurter, men leadouts skal stadig kunne eskapere → flat udbruds-bånd); puncheur
+vo2_ceiling 0.16→0.12 + aero −0.06→−0.16 (stop puncheur-læk på itt); brostensrytter aerob
+0.08→−0.10 / vo2_ceiling −0.08→−0.22 / aero 0.04→−0.10 / sprint_power −0.12→−0.20 / durability
+0.24→0.30 (stop brosten-læk på itt+mountain+flat); climber aero −0.10→−0.20 + baroudeur aerob
+0.12→0.10 / aero 0.02→−0.10 (stop klatrer/baroudeur-læk på itt); gc aero 0.00→0.14 (gc skal
+vinde itt → itt_tempo).
+
+**Født-som scorecard pr. seed (alle 7 mål ✓ på 2026/7/42):**
+
+| Mål (bånd) | seed 2026 | seed 7 | seed 42 |
+|---|---|---|---|
+| flat sprinter ≥90 | 100 ✓ | 98 ✓ | 97 ✓ |
+| itt tt ≥60 | 61 ✓ | 75 ✓ | 75 ✓ |
+| itt_tempo tt+gc ≥95 | 100 ✓ | 99 ✓ | 99 ✓ |
+| cobbles brosten ≥80 | 93 ✓ | 93 ✓ | 96 ✓ |
+| hilly puncheur ≥35 | 75 ✓ | 73 ✓ | 40 ✓ |
+| mountain gc+climber+baroudeur ≥85 | 95 ✓ | 87 ✓ | 97 ✓ |
+| high_mountain (samme) ≥85 | 99 ✓ | 87 ✓ | 99 ✓ |
+
+**Fuld håndhævet gate (`--enforce-targets --enforce-liveness`):** GRØN (exit 0) på neutral
+2026 + 7 + 42 + roles(2026). Strukturelle oracles + liveness + udbruds-/roles-bånd alle ✓.
+
+**RESTERENDE RØD (1 probe, condition-mode):** `--condition=random --seed=2026` fejler ALENE
+på durability-liveness-seamen (`durability high_mountain condition` ⌀rank 0.01 vs gulv 0.02).
+Det er en støj-nær placeholder-seam (#1021-fatigue-vægt 0.008); skarpere specialisering gør
+off-terræn-durability mindre rang-afgørende på high_mountain. Ingen k/floor/skew-konfiguration
+i det udforskede rum holder dén probe over gulvet i condition-mode UDEN at vælte flat-udbruds-
+båndet (de er koblede). Born-as-scorecardet (issue-målet) er grønt cross-seed i ALLE modes
+inkl. condition. Vurdering: gulvet (0.02) er for stramt for #1021-placeholder-seamen mod den
+nye specialiserede fordeling; løses naturligt når #1021 giver fatigue ægte vægt, eller via en
+lille gulv-justering på den ene seam-probe (ejer-beslutning — IKKE gjort her for ikke at sænke
+baren). `npm run race:gate` (CI, neutral seed 2026) er GRØN.
+
+**Migration/re-seed-impact (ejer kører efter merge):** INGEN ny schema-migration. Kontrasten
+er rent et derivations-trin. Lagrede evner i `rider_derived_abilities` for fiktive ryttere
+re-deriveres når fysiologi-stien fodres ind (Plan 2's preview/backfill-omskrivning, separat
+task). `backfillCores.js` (fodrer ægte profil) anvender kontrasten automatisk. PCM-fallback-
+stien (`previewDerivedAbilities`/`fictionalPopulationPreview`/`balanceSnapshot`) er UÆNDRET —
+kontrast springes over dér, så value-modellen + balance-baselinen er ikke påvirket.

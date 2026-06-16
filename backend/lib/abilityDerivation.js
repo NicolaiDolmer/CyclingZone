@@ -18,6 +18,60 @@ export const CALIBRATION = Object.freeze({
   asOfYear: 2026, // alder = asOfYear − fødselsår (til aggression/tactics/hidden)
 });
 
+// ── Evne-niveau KONTRAST-FORSTÆRKNING (§5-B, #1122 — "A+B") ───────────────────
+// Den additive arketype-skew (A) i archetypePhysiology.js METTER ved superstar-tier
+// (frac = clamp01(tierLevel≈0.92 + skew + støj)): en superstar-klatrer med aero-skew
+// −0.10 får stadig aero ≈ 0.82 → høj time_trial → "god til alt". Resultat: hvilken
+// FØDT-SOM-type der vinder afhænger af det tilfældige arketype-lotteri blandt de 12
+// superstars pr. seed → seed 2026 grøn, 7/42 røde (calibration-log 15/6).
+//
+// REMEDIEN (design §5-B): efter de rå fysiske evner, skub HVER rytters fysiske evner
+// væk fra rytterens EGEN evne-median: out = median + k·(raw − median), clamp [floor,99].
+// TIER-UAFHÆNGIG (måler afstand fra rytterens egen profil, ikke et absolut loft) → selv
+// superstars bliver tydeligt svage off-disciplin uden at bunden bliver karikatur (floor).
+//
+// NB: dette er IKKE riderTypes.js' z-score-kontrast (den er TYPE-niveau, mod populationen);
+// dette er et nyt EVNE-niveau-trin på den enkelte rytters fysiske profil.
+export const CONTRAST = Object.freeze({
+  k: 1.52,    // forstærknings-faktor (1 = ingen kontrast); tunet cross-seed (#1122)
+  floor: 8,   // domestique-gulv: en specialists svageste evne ikke clampet til karikatur
+});
+
+// De 10 FYSISKE evner kontrasten opererer på (median-basis OG forstærkede). De er de
+// fysiologi-mættende disciplin-evner der driver demand-vektor-scoringen + born-as.
+// Tekniske/mentale (descending/cobblestone/positioning/aggression/tactics/hidden) er
+// skill-stat-drevne, IKKE en del af mætnings-problemet, og holdes helt uden for kontrasten.
+//
+// NB: `durability` ER med — selvom intet terræn har en stærk durability-demand (den virker
+// gennem condition/fatigue-seamen, #1021-placeholder), spreder forstærkningen durabilitys
+// felt-fordeling, hvilket HOLDER durability-liveness-seamen over gulvet (dryrun sektion E).
+// Udeladelse komprimerede tværtimod durability mod hver rytters median → seam under gulv.
+export const CONTRAST_ABILITIES = Object.freeze([
+  "climbing", "time_trial", "flat", "tempo", "sprint",
+  "acceleration", "punch", "endurance", "recovery", "durability",
+]);
+
+// Median af de fysiske evner for ÉN rytter (rytterens egen profil-midte).
+function ownPhysicalMedian(out) {
+  const vals = CONTRAST_ABILITIES.map((k) => out[k]).filter((v) => Number.isFinite(v)).sort((a, b) => a - b);
+  if (!vals.length) return 50;
+  const mid = vals.length >> 1;
+  return vals.length % 2 ? vals[mid] : (vals[mid - 1] + vals[mid]) / 2;
+}
+
+// Skub de fysiske evner væk fra rytterens egen median (in-place på out). Tier-uafhængig:
+// superstars beholder deres høje median men spredes; domestiques spredes om en lav median
+// men gulvet (CONTRAST.floor) forhindrer karikatur. Tekniske/mentale røres ikke.
+function applyContrast(out, { k = CONTRAST.k, floor = CONTRAST.floor } = {}) {
+  const median = ownPhysicalMedian(out);
+  for (const ab of CONTRAST_ABILITIES) {
+    const raw = out[ab];
+    if (!Number.isFinite(raw)) continue;
+    out[ab] = clamp(Math.round(median + k * (raw - median)), floor, 99);
+  }
+  return out;
+}
+
 // 15 synlige evner i 4 kategorier (§3). prolog merged ind i time_trial (§0.1 Beslutning 2).
 // Rækkefølge = visnings-/lagrings-orden.
 export const VISIBLE_ABILITIES = Object.freeze([
@@ -119,7 +173,8 @@ export function deriveAbilities(physiology = {}, riderRow = {}, { asOfYear = CAL
   const out = { rider_id: physiology.rider_id ?? riderRow.id, formula_version: FORMULA_VERSION };
 
   // ── Fysiske evner ← fysiologi (§0.1 Beslutning 3). KANDIDAT-vægte (Task C1). ──
-  if (hasPhysiology(physiology)) {
+  const fromPhysiology = hasPhysiology(physiology);
+  if (fromPhysiology) {
     const P = (k) => normPhys(physiology, k);
     out.sprint       = scoreFrac(0.25 * P("pmax_watts") + 0.45 * P("power_5s_wkg") + 0.30 * P("power_15s_wkg"));
     out.acceleration = scoreFrac(0.40 * P("pmax_watts") + 0.60 * P("power_5s_wkg"));
@@ -144,6 +199,15 @@ export function deriveAbilities(physiology = {}, riderRow = {}, { asOfYear = CAL
     out.recovery     = scoreFrac(pcmFrac(riderRow.stat_res));
     out.durability   = scoreFrac(pcmFrac(riderRow.stat_mod));
   }
+
+  // ── §5-B KONTRAST: skub de fysiske evner væk fra rytterens egen median ────────
+  // KUN på fysiologi-stien. Mætnings-problemet (additiv arketype-skew mætter ved
+  // superstar-tier) eksisterer KUN i fysiologi-derivationen; PCM-fallback er en ren
+  // lineær stat-remap uden mætning. Kontrast på fallback-stien ville desuden forskyde
+  // value-modellen (riderValuationModel.json fittet mod PRE-kontrast-fordelingen →
+  // superstjerne-tælling springer) — den refit hører til Plan 4, ikke her. KØRES FØR
+  // cobblestone, der afleder af den (evt. kontrast-justerede) durability.
+  if (fromPhysiology) applyContrast(out);
 
   // ── Tekniske/mentale ← skill-stats (skæv pr. arketype, §0.1 Beslutning 1) ────
   const aggressionFrac = 0.85 * pcmFrac(riderRow.stat_ftr) + 0.15 * youth;
