@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.42",
+    date: "2026-06-16",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fixed · Reliability",
+        items: [
+          "EN · When a new version of the site is deployed while you have it open, the app now recovers on its own instead of showing an error screen. We catch the stale-file load that used to slip through, reload the new version once automatically, and keep a safety net that prevents reload loops. Result: fewer crashes right after an update. Refs #906",
+          "DA · Når en ny version af siden bliver deployet mens du har den åben, henter appen sig nu selv ind i stedet for at vise en fejlskærm. Vi fanger den forældede fil-indlæsning der før slap igennem, genindlæser den nye version automatisk én gang, og beholder et sikkerhedsnet der forhindrer genindlæsnings-loops. Resultat: færre crashes lige efter en opdatering. Refs #906",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.41",
     date: "2026-06-16",
     label: "Beta",
