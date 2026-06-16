@@ -326,7 +326,6 @@ test("createEmergencyLoan tags the finance transaction with the season id", asyn
 });
 
 function createCeilingSupabase({
-  teamId = "team-1",
   division = 3,
   balance = 0,
   existingDebt = 0,

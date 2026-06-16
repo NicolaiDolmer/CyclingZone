@@ -21,7 +21,7 @@ import { predictBaseValue } from "../lib/riderValuation.js";
 import { VISIBLE_ABILITIES } from "../lib/abilityDerivation.js";
 import { RIDER_TYPES } from "../lib/riderTypes.js";
 import {
-  PROGRESSION_CONFIG, buildCaps, developRiderSeason, peakAgeForType, signatureFactor,
+  PROGRESSION_CONFIG, buildCaps, developRiderSeason, peakAgeForType,
 } from "../lib/riderProgression.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -46,7 +46,6 @@ const WEIGHTS_BY_TYPE = Object.fromEntries(RIDER_TYPES.map((t) => [t.key, t.weig
 const fmt = (n) => (n == null ? "—" : Math.round(n).toLocaleString("da-DK"));
 const pct = (sortedAsc, p) => sortedAsc.length
   ? sortedAsc[Math.min(sortedAsc.length - 1, Math.floor(p * sortedAsc.length))] : null;
-const median = (arr) => { const s = [...arr].sort((a, b) => a - b); return pct(s, 0.5); };
 
 // 12 board-stat-ækvivalente signatur-evner til #813-proxy (positiv type-vægt = speciale).
 function abilitySum(abilities, keys) {

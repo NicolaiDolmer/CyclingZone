@@ -205,7 +205,6 @@ import { openBoardTestMode, openBoardLive, closeBoardTestMode } from "../lib/boa
 import {
   getIncomingSquadViolation,
   getTeamMarketState,
-  MIN_RIDERS_FOR_RACE,
   TRANSFER_WINDOW_SOFT_CAP_BUFFER,
 } from "../lib/marketUtils.js";
 import {
@@ -343,7 +342,7 @@ async function logActivity(type, data = {}) {
       amount: data.amount || null,
       meta: data.meta || {},
     });
-  } catch (e) { /* silent — never block main flow */ }
+  } catch { /* silent — never block main flow */ }
 }
 
 // XP amounts for different actions
@@ -366,7 +365,7 @@ async function awardXP(userId, action) {
     const newLevel = Math.min(50, Math.floor(newXp / 100) + 1);
     await supabase.from("users").update({ xp: newXp, level: newLevel }).eq("id", userId);
     await supabase.from("xp_log").insert({ user_id: userId, amount, reason: action });
-  } catch (e) { /* silent fail */ }
+  } catch { /* silent fail */ }
 }
 
 async function fetchOwnProxiesByAuctionId(supabaseClient, teamId, auctionIds) {

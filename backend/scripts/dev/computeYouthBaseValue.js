@@ -111,12 +111,6 @@ console.log("NON-SERIOUS (is_serious=false, potentiale 2.0-4.5, statMean=52):");
 console.log(`  n=${nonStats.n}  min=${fmt(nonStats.min)}  p25=${fmt(nonStats.p25)}  median=${fmt(nonStats.median)}  p75=${fmt(nonStats.p75)}  p90=${fmt(nonStats.p90)}  max=${fmt(nonStats.max)}  mean=${fmt(nonStats.mean)}`);
 console.log();
 
-// Vigtigt: primary_type-fordeling
-const typeCount = {};
-for (const { is_serious, base_value } of allResults) {
-  // (vi har ikke type gemt — det gør vi ikke brug af her)
-}
-
 console.log("OUTPUT (til brug i academyEconomySimulation.js):");
 console.log(`  ALLE:          median = ${fmt(allStats.median)}  (p25=${fmt(allStats.p25)}, p75=${fmt(allStats.p75)})`);
 console.log(`  SERIOUS:       median = ${fmt(serStats.median)}`);
