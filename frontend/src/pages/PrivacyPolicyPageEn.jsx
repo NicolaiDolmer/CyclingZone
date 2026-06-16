@@ -1,8 +1,18 @@
 import { Link } from "react-router-dom";
 import { useConsent } from "../lib/consent.jsx";
+import { useDocumentHead } from "../hooks/useDocumentHead.js";
 
 export default function PrivacyPolicyPageEn() {
   const { openBanner, consent } = useConsent();
+
+  // Per-route head (#1404/#1301). EN-udgaven i dual-page-mønsteret.
+  useDocumentHead({
+    title: "Privacy policy · Cycling Zone",
+    description:
+      "How Cycling Zone handles your data: as little as possible, EU-hosted, and you decide what we may measure.",
+    canonical: "https://cyclingzone.org/privacy-policy",
+    lang: "en",
+  });
 
   return (
     <div className="min-h-screen bg-cz-body py-10 px-4 sm:px-6">

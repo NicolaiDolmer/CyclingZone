@@ -32,6 +32,34 @@
     <meta name="twitter:title" content="Cycling Zone · Fair Cycling Manager" />
     <meta name="twitter:description" content="Build your cycling team. Race the world. Back a fair cycling manager. No pay-to-win." />
     <meta name="twitter:image" content="https://cyclingzone.org/og-cycling-zone.png" />
+
+    <!-- #1405: statisk JSON-LD @graph (Organization + WebSite). Ligger i den
+         server-leverede index.html så også ikke-JS-crawlere ser den. VideoGame
+         injiceres dynamisk kun på / via useJsonLd-hooket (frontend/src/hooks/
+         useDocumentHead.js). -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://cyclingzone.org/#organization",
+          "name": "Cycling Zone",
+          "url": "https://cyclingzone.org",
+          "logo": "https://cyclingzone.org/brand/icon-512.png",
+          "sameAs": ["https://discord.gg/ykysBrWUyC"]
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://cyclingzone.org/#website",
+          "name": "Cycling Zone",
+          "url": "https://cyclingzone.org",
+          "publisher": { "@id": "https://cyclingzone.org/#organization" }
+        }
+      ]
+    }
+    </script>
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;0,9..40,900;1,9..40,400&display=swap" rel="stylesheet" />

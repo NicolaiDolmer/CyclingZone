@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.44",
+    date: "2026-06-16",
+    label: "Beta",
+    changes: [
+      {
+        category: "Changed · Site",
+        items: [
+          "EN · The public pages (landing, login, founder waitlist, privacy policy) now each get their own page title, description and canonical link, plus structured data that tells search engines what Cycling Zone is. This makes the game easier to find and share. No gameplay changes. Refs #1404, #1405",
+          "DA · De offentlige sider (landing, login, founder-waitlist, privatlivspolitik) får nu hver deres egen sidetitel, beskrivelse og canonical-link, plus strukturerede data der fortæller søgemaskiner hvad Cycling Zone er. Det gør spillet lettere at finde og dele. Ingen ændringer i gameplay. Refs #1404, #1405",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.43",
     date: "2026-06-16",
     label: "Beta",

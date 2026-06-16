@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { useLanguage } from "../lib/language";
+import { useDocumentHead } from "../hooks/useDocumentHead.js";
 import { mapSupabaseAuthError } from "../lib/authErrors";
 import LanguageSwitcher from "../components/LanguageSwitcher";
 import { Wordmark } from "../components/Brand";
@@ -36,6 +37,14 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(null);
+
+  // Per-route head for den public /login-rute (#1404/#1301).
+  useDocumentHead({
+    title: t("auth:meta.title"),
+    description: t("auth:meta.description"),
+    canonical: "https://cyclingzone.org/login",
+    lang: language === "da" ? "da" : "en",
+  });
 
   const isLoginMode = mode === "login";
   const isSignupMode = mode === "signup";

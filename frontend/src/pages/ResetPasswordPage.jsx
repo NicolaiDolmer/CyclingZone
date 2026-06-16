@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { useLanguage } from "../lib/language";
+import { useDocumentHead } from "../hooks/useDocumentHead.js";
 import { mapSupabaseAuthError } from "../lib/authErrors";
 import LanguageSwitcher from "../components/LanguageSwitcher";
 import { Wordmark } from "../components/Brand";
@@ -20,6 +21,14 @@ export default function ResetPasswordPage({ session }) {
   const [hasRecoverySession, setHasRecoverySession] = useState(Boolean(session));
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  // #1404: /reset-password er public-reachable men IKKE i sitemap'et og bærer en
+  // engangs-recovery-token i URL'en. noindex → ingen rod-canonical, ingen indeksering.
+  useDocumentHead({
+    title: `${t("auth:resetPassword.title")} · Cycling Zone`,
+    lang: language === "da" ? "da" : "en",
+    noindex: true,
+  });
 
   useEffect(() => {
     let active = true;

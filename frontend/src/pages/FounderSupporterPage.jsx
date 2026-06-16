@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "../lib/language.jsx";
+import { useDocumentHead } from "../hooks/useDocumentHead.js";
 import FounderSupporterWaitlistForm from "../components/waitlist/FounderSupporterWaitlistForm.jsx";
 import { Wordmark, Monogram } from "../components/Brand.jsx";
 import { formatCurrency, currencyForLocale } from "../lib/intl.js";
@@ -163,18 +164,16 @@ export default function FounderSupporterPage() {
     setSearchParams(params, { replace: true });
   }
 
-  // Opdater <html lang=...> + <title> + canonical dynamisk for accessibility + SEO.
-  useEffect(() => {
-    document.documentElement.lang = lang;
-    document.title = t("metaTitle");
-    let canonical = document.querySelector('link[rel="canonical"]');
-    if (!canonical) {
-      canonical = document.createElement("link");
-      canonical.rel = "canonical";
-      document.head.appendChild(canonical);
-    }
-    canonical.href = "https://cyclingzone.org/founder-supporter";
-  }, [lang, t]);
+  // Per-route head: <html lang> + <title> + description + canonical (#1404/#1301).
+  // Tidligere satte denne side canonical uden at gendanne den ved unmount, så en
+  // hook-løs rute kunne arve /founder-supporter-canonical; useDocumentHead's
+  // cleanup gendanner nu den oprindelige state. Description manglede også før.
+  useDocumentHead({
+    title: t("metaTitle"),
+    description: t("metaDescription"),
+    canonical: "https://cyclingzone.org/founder-supporter",
+    lang,
+  });
 
   // Bevar useMemo så vi ikke regenererer ved hver render; recompute ved
   // sprogskift (t + currency skifter sammen med lang) og variantskift
