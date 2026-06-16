@@ -1,5 +1,4 @@
 ﻿import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import RiderLink from "../components/RiderLink";
 import { useClientRiderFilters } from "../lib/useRiderFilters";
@@ -7,7 +6,7 @@ import { supabase } from "../lib/supabase";
 import { statStyle } from "../lib/statColor";
 import NationCell from "../components/rider/NationCell";
 import { getRiderMarketValue } from "../lib/marketValues";
-import { formatNumber, formatDate } from "../lib/intl";
+import { formatNumber } from "../lib/intl";
 import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
 import { useScouting } from "../lib/useScouting";
 import { scoutSortValue } from "../lib/scouting";
@@ -367,137 +366,11 @@ function SquadTab({ riders, scouting, onSelectRider, windowOpen }) {
   );
 }
 
-function EconomyTab({ team, riders, transactions }) {
-  const { t } = useTranslation("team");
-  const totalSalary = riders.filter(r => !r._isIncoming).reduce((s, r) => s + (r.salary || 0), 0);
-  const totalValue  = riders.filter(r => !r._isIncoming).reduce((s, r) => s + getRiderMarketValue(r), 0);
-  const activeRiderCount = riders.filter(r => !r._isIncoming).length;
-  const sponsorIncome = team?.sponsor_income || 100;
-  const netPerSeason  = sponsorIncome - totalSalary;
-  const typeLabel = (type) => t(`economy.txType.${type}`, { defaultValue: type });
-  const typeColor = {
-    prize:"text-cz-success", sponsor:"text-cz-info", transfer_in:"text-cz-accent-t",
-    transfer_out:"text-cz-danger", salary:"text-cz-warning", interest:"text-cz-danger",
-  };
-  const breakdown = transactions.reduce((acc, tx) => {
-    acc[tx.type] = (acc[tx.type] || 0) + (tx.amount || 0);
-    return acc;
-  }, {});
-
-  return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {[
-          { label: t("economy.kpi.balance"), value: t("economy.amount", { value: formatNumber(team?.balance ?? 0) }), color: team?.balance >= 0 ? "text-cz-accent-t" : "text-cz-danger" },
-          { label: t("economy.kpi.teamValue"), value: t("economy.amount", { value: formatNumber(totalValue) }), color: "text-cz-1" },
-          { label: t("economy.kpi.salaryPerSeason"), value: t("economy.amount", { value: formatNumber(totalSalary) }), color: "text-cz-warning" },
-          { label: t("economy.kpi.sponsorPerSeason"), value: t("economy.amount", { value: formatNumber(sponsorIncome) }), color: "text-cz-info" },
-        ].map(s => (
-          <Card key={s.label} className="p-4">
-            <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{s.label}</p>
-            <p className={`font-mono font-bold text-sm ${s.color}`}>{s.value}</p>
-          </Card>
-        ))}
-      </div>
-
-      <Card className="p-5">
-        {/* #1131: "Netto"/"Sponsorindtægt"-rækkerne fik 450+ dead clicks (Clarity 5/6-12/6) —
-            spillere leder efter detaljer. Synlig vej til den fulde prognose på /finance. */}
-        <div className="flex items-center justify-between gap-3 mb-4">
-          <h3 className="text-cz-1 font-semibold text-sm">{t("economy.forecast.title")}</h3>
-          <Link to="/finance" className="text-xs text-cz-3 hover:text-cz-accent-t underline underline-offset-2 transition-colors">
-            {t("economy.forecast.fullLink")}
-          </Link>
-        </div>
-        <div className="space-y-2">
-          {[
-            { label: t("economy.forecast.sponsorIncome"), value: t("economy.amountSigned", { sign: "+", value: formatNumber(sponsorIncome) }), color: "text-cz-info" },
-            { label: t("economy.forecast.salaries", { count: activeRiderCount }), value: t("economy.amountSigned", { sign: "-", value: formatNumber(totalSalary) }), color: "text-cz-warning" },
-          ].map(s => (
-            <div key={s.label} className="flex justify-between items-center py-2 border-b border-cz-border">
-              <span className="text-cz-2 text-sm">{s.label}</span>
-              <span className={`font-mono font-bold ${s.color}`}>{s.value}</span>
-            </div>
-          ))}
-          <div className="flex justify-between items-center py-2 bg-cz-subtle rounded-cz px-3 mt-1">
-            <span className={`text-sm font-semibold ${netPerSeason >= 0 ? "text-cz-1" : "text-cz-danger"}`}>
-              {t("economy.forecast.net")}
-            </span>
-            <span className={`font-mono font-bold ${netPerSeason >= 0 ? "text-cz-success" : "text-cz-danger"}`}>
-              {t("economy.amountSigned", { sign: netPerSeason >= 0 ? "+" : "", value: formatNumber(netPerSeason) })}
-            </span>
-          </div>
-        </div>
-        {netPerSeason < 0 && (
-          <div className="mt-3 bg-cz-danger-bg border border-cz-danger/30 rounded-cz px-4 py-2.5">
-            <p className="text-cz-danger text-xs">{t("economy.forecast.warning")}</p>
-          </div>
-        )}
-      </Card>
-
-      {Object.keys(breakdown).length > 0 && (
-        <Card className="p-5">
-          <h3 className="text-cz-1 font-semibold text-sm mb-4">{t("economy.breakdown.title")}</h3>
-          <div className="space-y-2">
-            {Object.entries(breakdown).sort((a,b) => b[1]-a[1]).map(([type, amount]) => (
-              <div key={type} className="flex justify-between items-center py-2 border-b border-cz-border last:border-0">
-                <span className="text-cz-2 text-sm">{typeLabel(type)}</span>
-                <span className={`font-mono font-bold text-sm ${typeColor[type] || (amount >= 0 ? "text-cz-success" : "text-cz-danger")}`}>
-                  {t("economy.amountSigned", { sign: amount >= 0 ? "+" : "", value: formatNumber(amount) })}
-                </span>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
-
-      <Card className="overflow-hidden">
-        <div className="px-5 py-4 border-b border-cz-border">
-          <h3 className="text-cz-1 font-semibold text-sm">{t("economy.history.title")}</h3>
-        </div>
-        {transactions.length === 0 ? (
-          <div className="text-center py-10 text-cz-3 text-sm">{t("economy.history.empty")}</div>
-        ) : (
-          // #1186: beskrivelse-kolonnen altid synlig (var skjult på mobil) — wrapper h-scroller i stedet.
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead><tr className="border-b border-cz-border">
-                <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("economy.history.headers.date")}</th>
-                <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("economy.history.headers.type")}</th>
-                <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("economy.history.headers.description")}</th>
-                <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs uppercase">{t("economy.history.headers.amount")}</th>
-              </tr></thead>
-              <tbody>
-                {transactions.map(tx => (
-                  <tr key={tx.id} className="border-b border-cz-border hover:bg-cz-subtle">
-                    <td className="px-4 py-2.5 text-cz-3 text-xs">{formatDate(tx.created_at, "short")}</td>
-                    <td className="px-4 py-2.5">
-                      <span className={`text-xs px-2 py-0.5 rounded uppercase
-                        ${typeColor[tx.type] ? typeColor[tx.type].replace("text-","bg-").replace("400","500/10") + " " + typeColor[tx.type] : "bg-cz-subtle text-cz-2"}`}>
-                        {typeLabel(tx.type)}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2.5 text-cz-2 text-sm">{tx.description}</td>
-                    <td className={`px-4 py-2.5 text-right font-mono font-bold ${tx.amount > 0 ? "text-cz-success" : "text-cz-danger"}`}>
-                      {t("economy.amountSigned", { sign: tx.amount > 0 ? "+" : "", value: formatNumber(tx.amount ?? 0) })}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
-    </div>
-  );
-}
-
 export function TeamPage() {
   const { t } = useTranslation("team");
   const scouting = useScouting();
   const [team, setTeam] = useState(null);
   const [riders, setRiders] = useState([]);
-  const [transactions, setTransactions] = useState([]);
   const [windowOpen, setWindowOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("squad");
   const [selectedRider, setSelectedRider] = useState(null);
@@ -528,7 +401,7 @@ export function TeamPage() {
     if (!myTeam) { setLoading(false); return; }
     setTeam(myTeam);
 
-    const [ridersRes, pendingRes, finRes, windowRes, loansOutRes, loansInRes] = await Promise.all([
+    const [ridersRes, pendingRes, windowRes, loansOutRes, loansInRes] = await Promise.all([
       supabase.from("riders")
         .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, ${STATS.join(", ")}`)
         .eq("team_id", myTeam.id)
@@ -537,9 +410,6 @@ export function TeamPage() {
         .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, ${STATS.join(", ")}`)
         .eq("pending_team_id", myTeam.id)
         .order("market_value", { ascending: false }),
-      supabase.from("finance_transactions")
-        .select("*").eq("team_id", myTeam.id)
-        .order("created_at", { ascending: false }).limit(100),
       supabase.from("transfer_windows")
         .select("status").order("created_at", { ascending: false }).limit(1).single(),
       // Riders we're lending out
@@ -569,7 +439,6 @@ export function TeamPage() {
     }));
 
     setRiders([...currentRiders, ...incomingRiders, ...loanedInRiders]);
-    setTransactions(finRes.data || []);
     setWindowOpen(windowRes.data?.status === "open");
     setLoading(false);
   }
@@ -588,7 +457,6 @@ export function TeamPage() {
 
   const tabs = [
     { key: "squad", label: t("tabs.squad", { count: currentRiders.length }) },
-    { key: "economy", label: t("tabs.economy") },
     { key: "transfers", label: t("tabs.transfers") },
   ];
 
@@ -632,9 +500,6 @@ export function TeamPage() {
 
       {activeTab === "squad" && (
         <SquadTab riders={riders} scouting={scouting} onSelectRider={setSelectedRider} windowOpen={windowOpen} />
-      )}
-      {activeTab === "economy" && (
-        <EconomyTab team={team} riders={riders} transactions={transactions} />
       )}
       {activeTab === "transfers" && team?.id && (
         <TeamTransferHistoryTab teamId={team.id} />

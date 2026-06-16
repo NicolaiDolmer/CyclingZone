@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { formatNumber } from "../lib/intl";
@@ -7,11 +7,19 @@ import { renderBackendMessage } from "../lib/backendMessage";
 import { resolveLegacyFinanceMessage } from "../lib/legacyFinanceMessage";
 import FinanceFirstVisitHint from "../components/FinanceFirstVisitHint";
 import FinanceForecastCard from "../components/FinanceForecastCard";
+import SeasonFinanceReportPanel from "../components/SeasonFinanceReportPanel";
 import OnboardingTour from "../components/OnboardingTour";
 import { startTour } from "../lib/onboardingTour";
 import { logEvent } from "../lib/logEvent";
+import {
+  Tabs, TabList, Tab, TabPanel,
+  Card, Button, Input, Select, ProgressMeter, Spinner,
+  ChevronRightIcon, XIcon,
+} from "../components/ui";
 
 const API = import.meta.env.VITE_API_URL;
+
+const FINANCE_TABS = ["overview", "loans", "history"];
 
 function useTimeAgo(t) {
   return (d) => {
@@ -33,6 +41,17 @@ export default function FinancePage() {
   const { t: tBackend } = useTranslation("backendMessages");
   const timeAgo = useTimeAgo(t);
 
+  // #986: faner (Overblik/Lån/Historik) synkroniseret til ?tab= så dyb-links
+  // og repointede sæsonrapport-knapper lander rigtigt.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeTab = FINANCE_TABS.includes(searchParams.get("tab")) ? searchParams.get("tab") : "overview";
+  const setTab = (tab) =>
+    setSearchParams((prev) => {
+      const p = new URLSearchParams(prev);
+      p.set("tab", tab);
+      return p;
+    }, { replace: true });
+
   const [loanData, setLoanData] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [team, setTeam] = useState(null);
@@ -44,7 +63,8 @@ export default function FinancePage() {
   const [seasonsAhead, setSeasonsAhead] = useState(1);
 
   // Onboarding v2 Slice 3 — tour-trin på /finance (aktiveres fra FinanceFirstVisitHint
-  // "Vis mig rundt"-knap). Pegger på balance-grid, gældsloft og transaktionshistorik.
+  // "Vis mig rundt"-knap). #986: tour peger nu på Overblik-fanens elementer
+  // (balance-grid + gældsloft); transaktionshistorik flyttede til Historik-fanen.
   const tourSteps = useMemo(() => [
     {
       target: "[data-tour='finance-balance']",
@@ -55,11 +75,6 @@ export default function FinancePage() {
       target: "[data-tour='finance-debt-ceiling']",
       title: t("tour.debtCeiling.title"),
       body: t("tour.debtCeiling.body"),
-    },
-    {
-      target: "[data-tour='finance-tx-history']",
-      title: t("tour.txHistory.title"),
-      body: t("tour.txHistory.body"),
     },
   ], [t]);
 
@@ -82,7 +97,9 @@ export default function FinancePage() {
       setForecastLoading(false);
     }
   }
-  const [activeSeasonId, setActiveSeasonId] = useState(null);
+  const [seasons, setSeasons] = useState([]);
+  // #986: valgt sæson i Historik-fanen (default = aktiv, eller ?season=).
+  const [historySeasonId, setHistorySeasonId] = useState(null);
   const [loading, setLoading] = useState(true);
   // #1350: terminal error-state for initial load — uden den kunne en rejected
   // request efterlade en permanent spinner. Settle altid loading i finally.
@@ -128,7 +145,7 @@ export default function FinancePage() {
 
     const { data: { session } } = await supabase.auth.getSession();
     const authHeaders = { Authorization: `Bearer ${session.access_token}` };
-    const [loanRes, forecastRes, txRes, prizeTxRes, leadingRes, proxiesRes, seasonRes] = await Promise.all([
+    const [loanRes, forecastRes, txRes, prizeTxRes, leadingRes, proxiesRes, seasonsRes] = await Promise.all([
       fetch(`${API}/api/finance/loans`, { headers: authHeaders }),
       fetch(`${API}/api/me/finance-forecast`, { headers: authHeaders }),
       supabase.from("finance_transactions").select("*")
@@ -146,8 +163,9 @@ export default function FinancePage() {
       supabase.from("auction_proxy_bids")
         .select("auction_id, max_amount, auction:auction_id(status)")
         .eq("team_id", teamData.id),
-      // Slice 07h: aktiv sæson — bruges som default for "Sæsonsrapport"-link.
-      supabase.from("seasons").select("id").eq("status", "active").order("number", { ascending: false }).limit(1).maybeSingle(),
+      // #986: alle holdets sæsoner til Historik-fanens sæsonvælger (erstatter det
+      // tidligere statiske "aktiv sæson"-opslag til sæsonrapport-linket).
+      supabase.from("seasons").select("id, number, status").order("number", { ascending: false }),
     ]);
 
     // #1350: en Supabase-fejl returnerer { data: null, error } i stedet for at
@@ -158,7 +176,19 @@ export default function FinancePage() {
       return;
     }
 
-    setActiveSeasonId(seasonRes?.data?.id || null);
+    const allSeasons = seasonsRes.data || [];
+    setSeasons(allSeasons);
+    const active = allSeasons.find((s) => s.status === "active");
+    // Default Historik-sæson: behold eksisterende valg (loadAll kaldes igen efter
+    // lån-handlinger), ellers ?season= hvis gyldig, ellers aktiv/seneste.
+    const seasonParam = searchParams.get("season");
+    setHistorySeasonId((prev) =>
+      prev
+        || (seasonParam && allSeasons.some((s) => s.id === seasonParam) ? seasonParam : null)
+        || active?.id
+        || allSeasons[0]?.id
+        || null,
+    );
 
     if (loanRes.ok) setLoanData(await loanRes.json());
     if (forecastRes.ok) {
@@ -285,7 +315,7 @@ export default function FinancePage() {
 
   if (loading) return (
     <div className="flex justify-center py-16" role="status" aria-label={t("page.loadingAria")}>
-      <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
+      <Spinner />
     </div>
   );
 
@@ -293,13 +323,10 @@ export default function FinancePage() {
   // spinner og aldrig en tom-state der ligner "ingen finansdata".
   if (loadError) return (
     <div className="max-w-3xl mx-auto py-16">
-      <div className="bg-cz-danger-bg border border-cz-danger/30 rounded-xl p-4 flex items-center justify-between gap-3"
+      <div className="bg-cz-danger-bg border border-cz-danger/30 rounded-cz p-4 flex items-center justify-between gap-3"
         role="alert">
         <p className="text-cz-danger text-sm">{t("loadError.message")}</p>
-        <button onClick={loadAll}
-          className="px-3 py-1.5 text-xs text-cz-1 bg-cz-card hover:bg-cz-subtle border border-cz-border rounded-lg transition-all">
-          {t("loadError.retry")}
-        </button>
+        <Button variant="secondary" size="sm" onClick={loadAll}>{t("loadError.retry")}</Button>
       </div>
     </div>
   );
@@ -322,19 +349,9 @@ export default function FinancePage() {
     <div className="max-w-3xl mx-auto">
       <OnboardingTour pageKey="finance" steps={tourSteps} />
 
-      <div className="mb-5 flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="text-xl font-bold text-cz-1">{t("page.title")}</h1>
-          <p className="text-cz-3 text-sm">{t("page.subtitle")}</p>
-        </div>
-        {activeSeasonId && team?.id && (
-          <Link
-            to={`/seasons/${activeSeasonId}/finance/${team.id}`}
-            className="text-sm bg-cz-card border border-cz-border hover:border-cz-accent rounded-lg px-3 py-2 text-cz-2 hover:text-cz-1 transition-colors"
-          >
-            📊 {t("page.seasonReport")}
-          </Link>
-        )}
+      <div className="mb-5">
+        <h1 className="text-xl font-bold text-cz-1">{t("page.title")}</h1>
+        <p className="text-cz-3 text-sm">{t("page.subtitle")}</p>
       </div>
 
       {msg.text && (
@@ -343,7 +360,7 @@ export default function FinancePage() {
         <div
           role={msg.type === "error" ? "alert" : "status"}
           aria-live={msg.type === "error" ? "assertive" : "polite"}
-          className={`mb-4 px-4 py-3 rounded-xl text-sm border
+          className={`mb-4 px-4 py-3 rounded-cz text-sm border
           ${msg.type === "error"
             ? "bg-cz-danger-bg text-cz-danger border-cz-danger/30"
             : "bg-cz-success-bg text-cz-success border-cz-success/30"}`}>
@@ -353,356 +370,397 @@ export default function FinancePage() {
 
       {showHint && <FinanceFirstVisitHint onDismiss={dismissHint} onStartTour={handleStartTour} />}
 
-      {/* Balance + gæld + præmier */}
-      <div data-tour="finance-balance" className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
-        <div className="bg-cz-card border border-cz-border rounded-xl p-5">
-          <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{t("balance.label")}</p>
-          <p className={`font-mono font-bold text-2xl ${(team?.balance || 0) >= 0 ? "text-cz-accent-t" : "text-cz-danger"}`}>
-            {formatNumber(team?.balance || 0)} CZ$
-          </p>
-          <p className="text-cz-3 text-xs mt-1">{t("balance.division", { division: team?.division })}</p>
-          {reservedBalance > 0 && (
-            <p className="text-cz-3 text-xs mt-2 leading-snug">
-              {t("balance.available", { value: formatNumber(Math.max(0, (team?.balance || 0) - reservedBalance)) })}<br />
-              <span className="text-cz-3/70">{t("balance.lockedInBids", { value: formatNumber(reservedBalance) })}</span>
-            </p>
-          )}
-        </div>
-        <div data-tour="finance-debt-ceiling" className="bg-cz-card border border-cz-border rounded-xl p-5">
-          <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{t("debt.label")}</p>
-          <p className={`font-mono font-bold text-2xl ${(loanData?.total_debt || 0) > 0 ? "text-cz-danger" : "text-cz-3"}`}>
-            {formatNumber(loanData?.total_debt || 0)} CZ$
-          </p>
-          {loanData?.debt_ceiling && (
-            <p className="text-cz-3 text-xs mt-1">
-              {t("debt.ceiling", { value: formatNumber(loanData.debt_ceiling) })}
-            </p>
-          )}
-          {debtHeadroom != null && (
-            <p className="text-cz-3 text-xs mt-2 leading-snug">
-              {t("debt.headroom", { value: formatNumber(debtHeadroom) })}
-            </p>
-          )}
-        </div>
-        <div className="col-span-2 md:col-span-1 bg-cz-card border border-cz-border rounded-xl p-5">
-          <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{t("prize.label")}</p>
-          <p className={`font-mono font-bold text-2xl ${prizeTotal > 0 ? "text-cz-success" : "text-cz-3"}`}>
-            {prizeTotal > 0 ? "+" : ""}{formatNumber(prizeTotal)} CZ$
-          </p>
-          <p className="text-cz-3 text-xs mt-1">{t("prize.raceCount", { count: prizeRows.length })}</p>
-        </div>
-      </div>
+      <Tabs value={activeTab} onChange={setTab} className="mt-1">
+        <TabList label={t("page.title")} className="mb-4">
+          <Tab value="overview">{t("tabs.overview")}</Tab>
+          <Tab value="loans">{t("tabs.loans")}</Tab>
+          <Tab value="history">{t("tabs.history")}</Tab>
+        </TabList>
 
-      {/* Slice 07g · Næste sæsons forecast + risk-tier */}
-      <FinanceForecastCard
-        forecast={forecast}
-        loading={forecastLoading}
-        seasonsAhead={seasonsAhead}
-        onSeasonsAheadChange={(value) => {
-          setSeasonsAhead(value);
-          refetchForecast(value);
-        }}
-      />
-
-      {/* Løbspræmier */}
-      {prizeRows.length > 0 && (
-        <div className="bg-cz-card border border-cz-border rounded-xl p-5 mb-4">
-          <h2 className="text-cz-1 font-semibold text-sm mb-3">{t("prizeList.title")}</h2>
-          <div className="flex flex-col divide-y divide-cz-border">
-            {/* #1131: løbsnavne fik 690+ dead clicks (Clarity 5/6-12/6) — spillere forventer
-                navigation. Hele rækken er ét klikmål til løbet når race_id findes. */}
-            {prizeRows.map(tx => {
-              const rowInner = (
-                <>
-                  <div className="flex-1 min-w-0 pe-3">
-                    <p className="text-cz-2 text-xs font-medium truncate">
-                      {tx.raceName || tx.description || t("prizeList.fallbackName")}
-                    </p>
-                    <p className="text-cz-3 text-xs mt-0.5">{timeAgo(tx.created_at)}</p>
-                  </div>
-                  <p className="font-mono text-sm font-bold text-cz-success flex-shrink-0">
-                    +{formatNumber(tx.amount || 0)} CZ$
-                  </p>
-                </>
-              );
-              return tx.race_id ? (
-                <Link key={tx.id} to={`/races/${tx.race_id}`} title={t("prizeList.viewRace")}
-                  className="flex items-center justify-between py-2 group hover:bg-cz-subtle/60 transition-colors">
-                  {rowInner}
-                  <span aria-hidden className="text-cz-3 group-hover:text-cz-2 text-base ms-2 flex-shrink-0 transition-colors">›</span>
-                </Link>
-              ) : (
-                <div key={tx.id} className="flex items-center justify-between py-2">
-                  {rowInner}
-                </div>
-              );
-            })}
+        {/* ───────────────────────────── Overblik ───────────────────────────── */}
+        <TabPanel value="overview">
+          {/* Balance + gæld + præmier */}
+          <div data-tour="finance-balance" className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
+            <Card className="p-5">
+              <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{t("balance.label")}</p>
+              <p className={`font-mono font-bold text-2xl ${(team?.balance || 0) >= 0 ? "text-cz-accent-t" : "text-cz-danger"}`}>
+                {formatNumber(team?.balance || 0)} CZ$
+              </p>
+              <p className="text-cz-3 text-xs mt-1">{t("balance.division", { division: team?.division })}</p>
+              {reservedBalance > 0 && (
+                <p className="text-cz-3 text-xs mt-2 leading-snug">
+                  {t("balance.available", { value: formatNumber(Math.max(0, (team?.balance || 0) - reservedBalance)) })}<br />
+                  <span className="text-cz-3/70">{t("balance.lockedInBids", { value: formatNumber(reservedBalance) })}</span>
+                </p>
+              )}
+            </Card>
+            <Card data-tour="finance-debt-ceiling" className="p-5">
+              <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{t("debt.label")}</p>
+              <p className={`font-mono font-bold text-2xl ${(loanData?.total_debt || 0) > 0 ? "text-cz-danger" : "text-cz-3"}`}>
+                {formatNumber(loanData?.total_debt || 0)} CZ$
+              </p>
+              {loanData?.debt_ceiling && (
+                <p className="text-cz-3 text-xs mt-1">
+                  {t("debt.ceiling", { value: formatNumber(loanData.debt_ceiling) })}
+                </p>
+              )}
+              {debtHeadroom != null && (
+                <p className="text-cz-3 text-xs mt-2 leading-snug">
+                  {t("debt.headroom", { value: formatNumber(debtHeadroom) })}
+                </p>
+              )}
+            </Card>
+            <Card className="col-span-2 md:col-span-1 p-5">
+              <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{t("prize.label")}</p>
+              <p className={`font-mono font-bold text-2xl ${prizeTotal > 0 ? "text-cz-success" : "text-cz-3"}`}>
+                {prizeTotal > 0 ? "+" : ""}{formatNumber(prizeTotal)} CZ$
+              </p>
+              <p className="text-cz-3 text-xs mt-1">{t("prize.raceCount", { count: prizeRows.length })}</p>
+            </Card>
           </div>
-        </div>
-      )}
 
-      {/* Aktive lån */}
-      <div className="bg-cz-card border border-cz-border rounded-xl p-5 mb-4">
-        <h2 className="text-cz-1 font-semibold text-sm mb-4">{t("loans.active.title")}</h2>
-        {activeLoans.length === 0 ? (
-          <p className="text-cz-3 text-sm">{t("loans.active.empty")}</p>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {activeLoans.map(loan => {
-              // #44: maxRepay = MIN(available_balance, amount_remaining). Penge låst i
-              // bud kan ikke bruges til at betale gæld (ellers ville auktioner kunne
-              // gå i minus ved finalization).
-              const availableBalance = Math.max(0, (team?.balance || 0) - reservedBalance);
-              const maxRepay = Math.min(availableBalance, loan.amount_remaining);
-              return (
-                <div key={loan.id} className="bg-cz-subtle rounded-xl border border-cz-border p-4">
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <p className="text-cz-1 font-medium text-sm">
-                        {loanLabel(loan.loan_type)}
+          {/* #986: én-linjes lån-resumé — fuld lån-administration på Lån-fanen */}
+          <Card className="p-4 mb-4 flex items-center justify-between gap-3">
+            <p className="text-cz-2 text-sm">
+              {activeLoans.length === 0
+                ? t("loanSummary.none")
+                : `${t("loanSummary.active", { count: activeLoans.length })} · ${t("loanSummary.owed", { value: formatNumber(loanData?.total_debt || 0) })}`}
+            </p>
+            {activeLoans.length > 0 && (
+              <Button variant="ghost" size="sm" onClick={() => setTab("loans")}>{t("loanSummary.view")}</Button>
+            )}
+          </Card>
+
+          {/* Slice 07g · Næste sæsons forecast + risk-tier */}
+          <FinanceForecastCard
+            forecast={forecast}
+            loading={forecastLoading}
+            seasonsAhead={seasonsAhead}
+            onSeasonsAheadChange={(value) => {
+              setSeasonsAhead(value);
+              refetchForecast(value);
+            }}
+          />
+
+          {/* Løbspræmier */}
+          {prizeRows.length > 0 && (
+            <Card className="p-5 mb-4">
+              <h2 className="text-cz-1 font-semibold text-sm mb-3">{t("prizeList.title")}</h2>
+              <div className="flex flex-col divide-y divide-cz-border">
+                {/* #1131: løbsnavne fik 690+ dead clicks (Clarity 5/6-12/6) — spillere forventer
+                    navigation. Hele rækken er ét klikmål til løbet når race_id findes. */}
+                {prizeRows.map(tx => {
+                  const rowInner = (
+                    <>
+                      <div className="flex-1 min-w-0 pe-3">
+                        <p className="text-cz-2 text-xs font-medium truncate">
+                          {tx.raceName || tx.description || t("prizeList.fallbackName")}
+                        </p>
+                        <p className="text-cz-3 text-xs mt-0.5">{timeAgo(tx.created_at)}</p>
+                      </div>
+                      <p className="font-mono text-sm font-bold text-cz-success flex-shrink-0">
+                        +{formatNumber(tx.amount || 0)} CZ$
                       </p>
-                      <p className="text-cz-3 text-xs mt-0.5">{t("loans.active.createdAt", { when: timeAgo(loan.created_at) })}</p>
+                    </>
+                  );
+                  return tx.race_id ? (
+                    <Link key={tx.id} to={`/races/${tx.race_id}`} title={t("prizeList.viewRace")}
+                      className="flex items-center justify-between py-2 group hover:bg-cz-subtle/60 transition-colors">
+                      {rowInner}
+                      <ChevronRightIcon size={16} aria-hidden className="text-cz-3 group-hover:text-cz-2 ms-2 flex-shrink-0 transition-colors" />
+                    </Link>
+                  ) : (
+                    <div key={tx.id} className="flex items-center justify-between py-2">
+                      {rowInner}
                     </div>
-                    <div className="text-right">
-                      <p className="text-cz-danger font-mono font-bold text-sm">
-                        {formatNumber(loan.amount_remaining || 0)} CZ$
+                  );
+                })}
+              </div>
+            </Card>
+          )}
+        </TabPanel>
+
+        {/* ───────────────────────────── Lån ───────────────────────────── */}
+        <TabPanel value="loans">
+          {/* Aktive lån */}
+          <Card className="p-5 mb-4">
+            <h2 className="text-cz-1 font-semibold text-sm mb-4">{t("loans.active.title")}</h2>
+            {activeLoans.length === 0 ? (
+              <p className="text-cz-3 text-sm">{t("loans.active.empty")}</p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {activeLoans.map(loan => {
+                  // #44: maxRepay = MIN(available_balance, amount_remaining). Penge låst i
+                  // bud kan ikke bruges til at betale gæld (ellers ville auktioner kunne
+                  // gå i minus ved finalization).
+                  const availableBalance = Math.max(0, (team?.balance || 0) - reservedBalance);
+                  const maxRepay = Math.min(availableBalance, loan.amount_remaining);
+                  const repayPct = Math.min(100, Math.round((loan.amount_remaining / ((loan.principal || 1) + (loan.origination_fee || 0))) * 100));
+                  return (
+                    <Card key={loan.id} className="bg-cz-subtle p-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <p className="text-cz-1 font-medium text-sm">
+                            {loanLabel(loan.loan_type)}
+                          </p>
+                          <p className="text-cz-3 text-xs mt-0.5">{t("loans.active.createdAt", { when: timeAgo(loan.created_at) })}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-cz-danger font-mono font-bold text-sm">
+                            {formatNumber(loan.amount_remaining || 0)} CZ$
+                          </p>
+                          <p className="text-cz-3 text-xs">{t("loans.active.remaining")}</p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2 mb-3 text-center">
+                        <div>
+                          <p className="text-cz-2 font-mono text-xs">{formatNumber(loan.principal || 0)}</p>
+                          <p className="text-cz-3 text-xs">{t("loans.active.principal")}</p>
+                        </div>
+                        <div>
+                          <p className="text-cz-2 font-mono text-xs">{(loan.interest_rate * 100).toFixed(0)}%</p>
+                          <p className="text-cz-3 text-xs">{t("loans.active.interestPerSeason")}</p>
+                        </div>
+                        <div>
+                          <p className="text-cz-2 font-mono text-xs">{loan.seasons_remaining}</p>
+                          <p className="text-cz-3 text-xs">{t("loans.active.seasonsRemaining")}</p>
+                        </div>
+                      </div>
+
+                      {/* Progress bar — andel restgæld */}
+                      <div className="mb-3">
+                        <ProgressMeter value={repayPct} tone="danger" ariaLabel={t("loans.active.remaining")} />
+                      </div>
+
+                      {repayId === loan.id ? (
+                        <div className="flex gap-2">
+                          <Input type="number" value={repayAmount}
+                            onChange={e => setRepayAmount(e.target.value)}
+                            placeholder={maxRepay > 0
+                              ? t("loans.active.startRepayMaxPlaceholder", { value: formatNumber(maxRepay) })
+                              : t("loans.active.repayPlaceholder")}
+                            size="sm" className="flex-1" />
+                          <Button variant="primary" size="sm" onClick={() => handleRepay(loan.id, repayAmount)}
+                            disabled={repaying || !repayAmount || parseInt(repayAmount) < 1}>
+                            {repaying ? t("loans.active.repayingBtn") : t("loans.active.repayBtn")}
+                          </Button>
+                          <Button variant="ghost" size="sm"
+                            onClick={() => { setRepayId(null); setRepayAmount(""); }}
+                            aria-label={t("loans.active.cancelRepayAria")}>
+                            <XIcon size={14} aria-hidden />
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button variant="secondary" size="sm" fullWidth
+                          onClick={() => { setRepayId(loan.id); setRepayAmount(maxRepay > 0 ? maxRepay.toString() : ""); }}
+                          disabled={maxRepay <= 0}>
+                          {t("loans.active.startRepay")}
+                        </Button>
+                      )}
+                    </Card>
+                  );
+                })}
+              </div>
+            )}
+          </Card>
+
+          {/* Optag lån */}
+          <Card className="p-5 mb-4">
+            <h2 className="text-cz-1 font-semibold text-sm mb-4">{t("loans.take.title")}</h2>
+            {configs.length === 0 ? (
+              <p className="text-cz-3 text-sm">{t("loans.take.noConfig", { division: team?.division })}</p>
+            ) : (
+              <form onSubmit={handleTakeLoan}>
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <div>
+                    <label className="block text-cz-3 text-xs mb-1">{t("loans.take.typeLabel")}</label>
+                    <Select value={loanType} onChange={e => setLoanType(e.target.value)} className="w-full">
+                      {configs.map(c => (
+                        <option key={c.loan_type} value={c.loan_type}>{loanLabel(c.loan_type)}</option>
+                      ))}
+                    </Select>
+                  </div>
+                  <div>
+                    <label className="block text-cz-3 text-xs mb-1">{t("loans.take.amountLabel")}</label>
+                    <Input type="number" required min={1} value={loanAmount}
+                      onChange={e => setLoanAmount(e.target.value)}
+                      placeholder={t("loans.take.amountPlaceholder")}
+                      className="w-full" />
+                  </div>
+                </div>
+
+                {/* #1012: max lånbart lige nu (gebyr-inkl.) — tal fra serverens egen formel */}
+                {maxPrincipal != null && (
+                  maxPrincipal > 0 ? (
+                    <div className="flex items-center justify-between gap-2 -mt-2 mb-4">
+                      <p className="text-cz-3 text-xs leading-snug">
+                        {t("loans.take.maxBorrowable", { value: formatNumber(maxPrincipal) })}
+                        <br />
+                        <span className="text-cz-3/70">
+                          {t("loans.take.maxBorrowableDetail", {
+                            fee: formatNumber(selectedConfig.max_fee || 0),
+                            total: formatNumber(selectedConfig.max_total_debt || 0),
+                            ceiling: formatNumber(selectedConfig.debt_ceiling || 0),
+                          })}
+                        </span>
                       </p>
-                      <p className="text-cz-3 text-xs">{t("loans.active.remaining")}</p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-2 mb-3 text-center">
-                    <div>
-                      <p className="text-cz-2 font-mono text-xs">{formatNumber(loan.principal || 0)}</p>
-                      <p className="text-cz-3 text-xs">{t("loans.active.principal")}</p>
-                    </div>
-                    <div>
-                      <p className="text-cz-2 font-mono text-xs">{(loan.interest_rate * 100).toFixed(0)}%</p>
-                      <p className="text-cz-3 text-xs">{t("loans.active.interestPerSeason")}</p>
-                    </div>
-                    <div>
-                      <p className="text-cz-2 font-mono text-xs">{loan.seasons_remaining}</p>
-                      <p className="text-cz-3 text-xs">{t("loans.active.seasonsRemaining")}</p>
-                    </div>
-                  </div>
-
-                  {/* Progress bar */}
-                  <div className="bg-cz-subtle rounded-full h-1.5 mb-3">
-                    <div className="h-1.5 rounded-full bg-cz-danger/50 transition-all"
-                      style={{ width: `${Math.min(100, Math.round((loan.amount_remaining / ((loan.principal || 1) + (loan.origination_fee || 0))) * 100))}%` }} />
-                  </div>
-
-                  {repayId === loan.id ? (
-                    <div className="flex gap-2">
-                      <input type="number" value={repayAmount}
-                        onChange={e => setRepayAmount(e.target.value)}
-                        placeholder={maxRepay > 0
-                          ? t("loans.active.startRepayMaxPlaceholder", { value: formatNumber(maxRepay) })
-                          : t("loans.active.repayPlaceholder")}
-                        className="flex-1 bg-cz-subtle border border-cz-border rounded-lg px-3 py-1.5
-                          text-cz-1 text-sm focus:outline-none focus:border-cz-accent" />
-                      <button onClick={() => handleRepay(loan.id, repayAmount)}
-                        disabled={repaying || !repayAmount || parseInt(repayAmount) < 1}
-                        className="px-3 py-1.5 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-xs
-                          hover:brightness-110 disabled:opacity-50">
-                        {repaying ? t("loans.active.repayingBtn") : t("loans.active.repayBtn")}
-                      </button>
-                      <button onClick={() => { setRepayId(null); setRepayAmount(""); }}
-                        aria-label={t("loans.active.cancelRepayAria")}
-                        className="px-3 py-1.5 bg-cz-subtle text-cz-2 rounded-lg text-xs hover:bg-cz-subtle">
-                        ✕
-                      </button>
+                      <Button type="button" variant="secondary" size="sm"
+                        onClick={() => setLoanAmount(String(maxPrincipal))}
+                        className="flex-shrink-0">
+                        {t("loans.take.useMax")}
+                      </Button>
                     </div>
                   ) : (
-                    <button
-                      onClick={() => { setRepayId(loan.id); setRepayAmount(maxRepay > 0 ? maxRepay.toString() : ""); }}
-                      disabled={maxRepay <= 0}
-                      className="w-full py-1.5 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg
-                        text-xs hover:bg-cz-subtle hover:text-cz-1 transition-all disabled:opacity-30">
-                      {t("loans.active.startRepay")}
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Optag lån */}
-      <div className="bg-cz-card border border-cz-border rounded-xl p-5 mb-4">
-        <h2 className="text-cz-1 font-semibold text-sm mb-4">{t("loans.take.title")}</h2>
-        {configs.length === 0 ? (
-          <p className="text-cz-3 text-sm">{t("loans.take.noConfig", { division: team?.division })}</p>
-        ) : (
-          <form onSubmit={handleTakeLoan}>
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              <div>
-                <label className="block text-cz-3 text-xs mb-1">{t("loans.take.typeLabel")}</label>
-                <select value={loanType} onChange={e => setLoanType(e.target.value)}
-                  className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2
-                    text-cz-1 text-sm focus:outline-none">
-                  {configs.map(c => (
-                    <option key={c.loan_type} value={c.loan_type}>{loanLabel(c.loan_type)}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-cz-3 text-xs mb-1">{t("loans.take.amountLabel")}</label>
-                <input type="number" required min={1} value={loanAmount}
-                  onChange={e => setLoanAmount(e.target.value)}
-                  placeholder={t("loans.take.amountPlaceholder")}
-                  className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2
-                    text-cz-1 text-sm focus:outline-none" />
-              </div>
-            </div>
-
-            {/* #1012: max lånbart lige nu (gebyr-inkl.) — tal fra serverens egen formel */}
-            {maxPrincipal != null && (
-              maxPrincipal > 0 ? (
-                <div className="flex items-center justify-between gap-2 -mt-2 mb-4">
-                  <p className="text-cz-3 text-xs leading-snug">
-                    {t("loans.take.maxBorrowable", { value: formatNumber(maxPrincipal) })}
-                    <br />
-                    <span className="text-cz-3/70">
-                      {t("loans.take.maxBorrowableDetail", {
-                        fee: formatNumber(selectedConfig.max_fee || 0),
-                        total: formatNumber(selectedConfig.max_total_debt || 0),
-                        ceiling: formatNumber(selectedConfig.debt_ceiling || 0),
-                      })}
-                    </span>
-                  </p>
-                  <button type="button"
-                    onClick={() => setLoanAmount(String(maxPrincipal))}
-                    className="px-3 py-1.5 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg
-                      text-xs hover:text-cz-1 hover:border-cz-accent transition-all flex-shrink-0">
-                    {t("loans.take.useMax")}
-                  </button>
-                </div>
-              ) : (
-                <p className="text-cz-danger text-xs -mt-2 mb-4 leading-snug">
-                  {t("loans.take.maxZero", { ceiling: formatNumber(selectedConfig.debt_ceiling || 0) })}
-                </p>
-              )
-            )}
-
-            {selectedConfig && loanAmountNum > 0 && (
-              <div className="bg-cz-subtle border border-cz-border rounded-lg p-3 mb-4">
-                <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                  <div>
-                    <p className="text-cz-3">{t("loans.take.feeLabel", { pct: (selectedConfig.origination_fee_pct * 100).toFixed(0) })}</p>
-                    <p className="text-cz-2 font-mono mt-0.5">
-                      {t("loans.take.feeValue", { value: formatNumber(Math.round(loanAmountNum * selectedConfig.origination_fee_pct)) })}
+                    <p className="text-cz-danger text-xs -mt-2 mb-4 leading-snug">
+                      {t("loans.take.maxZero", { ceiling: formatNumber(selectedConfig.debt_ceiling || 0) })}
                     </p>
-                  </div>
-                  <div>
-                    <p className="text-cz-3">{t("loans.take.interestLabel")}</p>
-                    <p className="text-cz-2 font-mono mt-0.5">{t("loans.take.interestValue", { pct: (selectedConfig.interest_rate_pct * 100).toFixed(0) })}</p>
-                  </div>
-                  <div>
-                    <p className="text-cz-3">{t("loans.take.totalLabel")}</p>
-                    <p className="text-cz-accent-t font-mono mt-0.5">
-                      {t("loans.take.totalValue", { value: formatNumber(loanAmountNum + Math.round(loanAmountNum * selectedConfig.origination_fee_pct)) })}
-                    </p>
-                  </div>
-                </div>
-                {exceedsMax && (
-                  <p className="text-cz-danger text-xs mt-2 text-center leading-snug">
-                    {t("loans.take.exceedsMax", { value: formatNumber(maxPrincipal) })}
-                  </p>
+                  )
                 )}
+
+                {selectedConfig && loanAmountNum > 0 && (
+                  <div className="bg-cz-subtle border border-cz-border rounded-cz p-3 mb-4">
+                    <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                      <div>
+                        <p className="text-cz-3">{t("loans.take.feeLabel", { pct: (selectedConfig.origination_fee_pct * 100).toFixed(0) })}</p>
+                        <p className="text-cz-2 font-mono mt-0.5">
+                          {t("loans.take.feeValue", { value: formatNumber(Math.round(loanAmountNum * selectedConfig.origination_fee_pct)) })}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-cz-3">{t("loans.take.interestLabel")}</p>
+                        <p className="text-cz-2 font-mono mt-0.5">{t("loans.take.interestValue", { pct: (selectedConfig.interest_rate_pct * 100).toFixed(0) })}</p>
+                      </div>
+                      <div>
+                        <p className="text-cz-3">{t("loans.take.totalLabel")}</p>
+                        <p className="text-cz-accent-t font-mono mt-0.5">
+                          {t("loans.take.totalValue", { value: formatNumber(loanAmountNum + Math.round(loanAmountNum * selectedConfig.origination_fee_pct)) })}
+                        </p>
+                      </div>
+                    </div>
+                    {exceedsMax && (
+                      <p className="text-cz-danger text-xs mt-2 text-center leading-snug">
+                        {t("loans.take.exceedsMax", { value: formatNumber(maxPrincipal) })}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                <Button type="submit" variant="primary" fullWidth
+                  disabled={takingLoan || !loanAmount || exceedsMax}>
+                  {takingLoan ? t("loans.take.processing") : t("loans.take.submit")}
+                </Button>
+              </form>
+            )}
+          </Card>
+
+          {/* Lånebetingelser */}
+          {loanData?.configs?.length > 0 && (
+            <Card className="p-5 mb-4">
+              <h2 className="text-cz-1 font-semibold text-sm mb-3">
+                {t("loans.terms.title", { division: team?.division })}
+              </h2>
+              <div className="overflow-hidden rounded-cz border border-cz-border">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-cz-border">
+                      <th className="px-3 py-2 text-start text-cz-3">{t("loans.terms.headers.type")}</th>
+                      <th className="px-3 py-2 text-end text-cz-3">{t("loans.terms.headers.fee")}</th>
+                      <th className="px-3 py-2 text-end text-cz-3">{t("loans.terms.headers.interest")}</th>
+                      <th className="px-3 py-2 text-end text-cz-3">{t("loans.terms.headers.seasons")}</th>
+                      <th className="px-3 py-2 text-end text-cz-3">{t("loans.terms.headers.debtCeiling")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {loanData.configs.map(c => (
+                      <tr key={`${c.division}-${c.loan_type}`} className="border-b border-cz-border">
+                        <td className="px-3 py-2 text-cz-1 font-medium">{loanLabel(c.loan_type)}</td>
+                        <td className="px-3 py-2 text-end text-cz-2">{(c.origination_fee_pct * 100).toFixed(0)}%</td>
+                        <td className="px-3 py-2 text-end text-cz-2">{(c.interest_rate_pct * 100).toFixed(0)}%</td>
+                        <td className="px-3 py-2 text-end text-cz-2">{c.seasons}</td>
+                        <td className="px-3 py-2 text-end text-cz-accent-t font-mono">
+                          {formatNumber(c.debt_ceiling || 0)} CZ$
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          )}
+        </TabPanel>
+
+        {/* ───────────────────────────── Historik ───────────────────────────── */}
+        <TabPanel value="history">
+          {seasons.length > 0 && (
+            <div className="mb-4 flex items-center gap-2">
+              <label htmlFor="finance-history-season" className="text-cz-3 text-xs">{t("history.seasonPicker")}</label>
+              <Select id="finance-history-season" size="sm" value={historySeasonId || ""}
+                onChange={e => setHistorySeasonId(e.target.value)} className="w-auto">
+                {seasons.map(s => (
+                  <option key={s.id} value={s.id}>
+                    {s.status === "active"
+                      ? t("history.optionActive", { number: s.number })
+                      : t("history.option", { number: s.number })}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          )}
+
+          {historySeasonId && team?.id && (
+            <div className="mb-4">
+              <SeasonFinanceReportPanel seasonId={historySeasonId} teamId={team.id} />
+            </div>
+          )}
+
+          {/* Transaktionshistorik (alle typer, seneste 30) */}
+          <Card data-tour="finance-tx-history" className="p-5">
+            <h2 className="text-cz-1 font-semibold text-sm mb-4">{t("transactions.history.title")}</h2>
+            {transactions.length === 0 ? (
+              <p className="text-cz-3 text-sm">{t("transactions.history.empty")}</p>
+            ) : (
+              <div className="flex flex-col divide-y divide-cz-border">
+                {transactions.map(tx => {
+                  const rowInner = (
+                    <>
+                      <div className="flex-1 min-w-0 pe-3">
+                        <p className="text-cz-2 text-xs truncate">{(() => {
+                          const resolved = resolveLegacyFinanceMessage(tx);
+                          if (resolved.code) {
+                            return renderBackendMessage(resolved, tBackend, txLabel(tx.type));
+                          }
+                          if (resolved.typeKey) {
+                            return t(resolved.typeKey, { defaultValue: txLabel(tx.type) });
+                          }
+                          return resolved.fallback || txLabel(tx.type);
+                        })()}</p>
+                        <p className="text-cz-3 text-xs mt-0.5">{timeAgo(tx.created_at)}</p>
+                      </div>
+                      <p className={`font-mono text-sm font-bold flex-shrink-0 ${tx.amount >= 0 ? "text-cz-success" : "text-cz-danger"}`}>
+                        {tx.amount >= 0 ? "+" : ""}{formatNumber(tx.amount || 0)} CZ$
+                      </p>
+                    </>
+                  );
+                  // #1131: samme klikmål-mønster som løbspræmie-listen — transaktioner
+                  // med et tilknyttet løb navigerer til løbet.
+                  return tx.race_id ? (
+                    <Link key={tx.id} to={`/races/${tx.race_id}`} title={t("prizeList.viewRace")}
+                      className="flex items-center justify-between py-2.5 group hover:bg-cz-subtle/60 transition-colors">
+                      {rowInner}
+                      <ChevronRightIcon size={16} aria-hidden className="text-cz-3 group-hover:text-cz-2 ms-2 flex-shrink-0 transition-colors" />
+                    </Link>
+                  ) : (
+                    <div key={tx.id} className="flex items-center justify-between py-2.5">
+                      {rowInner}
+                    </div>
+                  );
+                })}
               </div>
             )}
-
-            <button type="submit" disabled={takingLoan || !loanAmount || exceedsMax}
-              className="w-full py-2.5 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm
-                hover:brightness-110 disabled:opacity-50 transition-all">
-              {takingLoan ? t("loans.take.processing") : t("loans.take.submit")}
-            </button>
-          </form>
-        )}
-      </div>
-
-      {/* Lånebetingelser */}
-      {loanData?.configs?.length > 0 && (
-        <div className="bg-cz-card border border-cz-border rounded-xl p-5 mb-4">
-          <h2 className="text-cz-1 font-semibold text-sm mb-3">
-            {t("loans.terms.title", { division: team?.division })}
-          </h2>
-          <div className="overflow-hidden rounded-lg border border-cz-border">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-cz-border">
-                  <th className="px-3 py-2 text-start text-cz-3">{t("loans.terms.headers.type")}</th>
-                  <th className="px-3 py-2 text-end text-cz-3">{t("loans.terms.headers.fee")}</th>
-                  <th className="px-3 py-2 text-end text-cz-3">{t("loans.terms.headers.interest")}</th>
-                  <th className="px-3 py-2 text-end text-cz-3">{t("loans.terms.headers.seasons")}</th>
-                  <th className="px-3 py-2 text-end text-cz-3">{t("loans.terms.headers.debtCeiling")}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loanData.configs.map(c => (
-                  <tr key={`${c.division}-${c.loan_type}`} className="border-b border-cz-border">
-                    <td className="px-3 py-2 text-cz-1 font-medium">{loanLabel(c.loan_type)}</td>
-                    <td className="px-3 py-2 text-end text-cz-2">{(c.origination_fee_pct * 100).toFixed(0)}%</td>
-                    <td className="px-3 py-2 text-end text-cz-2">{(c.interest_rate_pct * 100).toFixed(0)}%</td>
-                    <td className="px-3 py-2 text-end text-cz-2">{c.seasons}</td>
-                    <td className="px-3 py-2 text-end text-cz-accent-t font-mono">
-                      {formatNumber(c.debt_ceiling || 0)} CZ$
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Transaktionshistorik */}
-      <div data-tour="finance-tx-history" className="bg-cz-card border border-cz-border rounded-xl p-5">
-        <h2 className="text-cz-1 font-semibold text-sm mb-4">{t("transactions.history.title")}</h2>
-        {transactions.length === 0 ? (
-          <p className="text-cz-3 text-sm">{t("transactions.history.empty")}</p>
-        ) : (
-          <div className="flex flex-col divide-y divide-cz-border">
-            {transactions.map(tx => {
-              const rowInner = (
-                <>
-                  <div className="flex-1 min-w-0 pe-3">
-                    <p className="text-cz-2 text-xs truncate">{(() => {
-                      const resolved = resolveLegacyFinanceMessage(tx);
-                      if (resolved.code) {
-                        return renderBackendMessage(resolved, tBackend, txLabel(tx.type));
-                      }
-                      if (resolved.typeKey) {
-                        return t(resolved.typeKey, { defaultValue: txLabel(tx.type) });
-                      }
-                      return resolved.fallback || txLabel(tx.type);
-                    })()}</p>
-                    <p className="text-cz-3 text-xs mt-0.5">{timeAgo(tx.created_at)}</p>
-                  </div>
-                  <p className={`font-mono text-sm font-bold flex-shrink-0 ${tx.amount >= 0 ? "text-cz-success" : "text-cz-danger"}`}>
-                    {tx.amount >= 0 ? "+" : ""}{formatNumber(tx.amount || 0)} CZ$
-                  </p>
-                </>
-              );
-              // #1131: samme klikmål-mønster som løbspræmie-listen — transaktioner
-              // med et tilknyttet løb navigerer til løbet.
-              return tx.race_id ? (
-                <Link key={tx.id} to={`/races/${tx.race_id}`} title={t("prizeList.viewRace")}
-                  className="flex items-center justify-between py-2.5 group hover:bg-cz-subtle/60 transition-colors">
-                  {rowInner}
-                  <span aria-hidden className="text-cz-3 group-hover:text-cz-2 text-base ms-2 flex-shrink-0 transition-colors">›</span>
-                </Link>
-              ) : (
-                <div key={tx.id} className="flex items-center justify-between py-2.5">
-                  {rowInner}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+          </Card>
+        </TabPanel>
+      </Tabs>
     </div>
   );
 }

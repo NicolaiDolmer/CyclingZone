@@ -6,6 +6,21 @@
   box-sizing: border-box;
 }
 
+/* Categorical chart palette (#986 finance donuts) — RGB triplets, theme-agnostic
+   (dark theme does not override these). Used via rgb(var(--cz-chart-N)); see
+   frontend/src/lib/chartPalette.js. Values were the former hardcoded donut hex. */
+:root {
+  --cz-chart-1:  96 165 250;  /* blue    (was #60a5fa) */
+  --cz-chart-2: 167 139 250;  /* violet  (was #a78bfa) */
+  --cz-chart-3:  52 211 153;  /* emerald (was #34d399) */
+  --cz-chart-4: 251 191  36;  /* amber   (was #fbbf24) */
+  --cz-chart-5: 248 113 113;  /* red     (was #f87171) */
+  --cz-chart-6:  34 211 238;  /* cyan    (was #22d3ee) */
+  --cz-chart-7: 244 114 182;  /* pink    (was #f472b6) */
+  --cz-chart-8: 250 204  21;  /* yellow  (was #facc15) */
+  --cz-chart-9: 148 163 184;  /* slate   (was #94a3b8) */
+}
+
 /* ──────────────────────────────────────────────────────────────────────────
    Self-hosted brand fonts (#481 Phase 4 · PF1)
    woff2 + font-display:swap + size-adjusted fallback metrics. Deliberately NOT

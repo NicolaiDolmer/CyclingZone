@@ -5,6 +5,22 @@
     "seasonReport": "Sæsonsrapport",
     "loadingAria": "Henter finanser"
   },
+  "tabs": {
+    "overview": "Overblik",
+    "loans": "Lån",
+    "history": "Historik"
+  },
+  "loanSummary": {
+    "active": "{count, plural, one {1 aktivt lån} other {# aktive lån}}",
+    "owed": "{value} CZ$ tilbage",
+    "none": "Ingen aktive lån",
+    "view": "Administrér lån"
+  },
+  "history": {
+    "seasonPicker": "Sæson",
+    "option": "Sæson {number}",
+    "optionActive": "Sæson {number} (igangværende)"
+  },
   "loadError": {
     "message": "Kunne ikke hente dine finanser. Prøv igen.",
     "retry": "Prøv igen"

@@ -14,7 +14,6 @@
   },
   "tabs": {
     "squad": "Trup ({count})",
-    "economy": "Økonomi",
     "transfers": "Transferhistorik"
   },
   "squad": {
@@ -47,45 +46,6 @@
       "loanedTo": "Udlejet til {team} · sæson {start}–{end}"
     },
     "actionButton": "Sælg / Auktion"
-  },
-  "economy": {
-    "kpi": {
-      "balance": "Balance",
-      "teamValue": "Holdværdi",
-      "salaryPerSeason": "Løn/sæson",
-      "sponsorPerSeason": "Sponsor/sæson"
-    },
-    "forecast": {
-      "title": "Sæsonprognose",
-      "fullLink": "Fuld prognose og lån →",
-      "sponsorIncome": "Sponsorindtægt",
-      "salaries": "Lønninger ({count} ryttere)",
-      "net": "Netto (ekskl. præmiepenge)",
-      "warning": "⚠️ Lønninger overstiger sponsorindtægten. Du er afhængig af præmiepenge."
-    },
-    "breakdown": {
-      "title": "Fordeling denne sæson"
-    },
-    "history": {
-      "title": "Transaktionshistorik",
-      "empty": "Ingen transaktioner endnu",
-      "headers": {
-        "date": "Dato",
-        "type": "Type",
-        "description": "Beskrivelse",
-        "amount": "Beløb"
-      }
-    },
-    "txType": {
-      "prize": "Præmiepenge",
-      "sponsor": "Sponsorindtægt",
-      "transfer_in": "Salg",
-      "transfer_out": "Køb",
-      "salary": "Lønninger",
-      "interest": "Renter"
-    },
-    "amount": "{value} CZ$",
-    "amountSigned": "{sign}{value} CZ$"
   },
   "actionModal": {
     "potentialLabel": "Potentiale",

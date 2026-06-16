@@ -26,16 +26,6 @@
       "slop": 0,
       "emoji": 0
     },
-    "frontend/src/components/FinanceFirstVisitHint.jsx": {
-      "hex": 0,
-      "slop": 1,
-      "emoji": 5
-    },
-    "frontend/src/components/FinanceForecastCard.jsx": {
-      "hex": 0,
-      "slop": 0,
-      "emoji": 4
-    },
     "frontend/src/components/Layout.jsx": {
       "hex": 0,
       "slop": 0,
@@ -191,11 +181,6 @@
       "slop": 2,
       "emoji": 3
     },
-    "frontend/src/pages/FinancePage.jsx": {
-      "hex": 0,
-      "slop": 11,
-      "emoji": 1
-    },
     "frontend/src/pages/FounderSupporterPage.jsx": {
       "hex": 0,
       "slop": 9,
@@ -285,11 +270,6 @@
       "hex": 8,
       "slop": 4,
       "emoji": 5
-    },
-    "frontend/src/pages/SeasonFinanceReport.jsx": {
-      "hex": 9,
-      "slop": 7,
-      "emoji": 0
     },
     "frontend/src/pages/SeasonPreviewPage.jsx": {
       "hex": 8,
