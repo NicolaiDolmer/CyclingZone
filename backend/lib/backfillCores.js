@@ -93,14 +93,16 @@ export async function runPhysiologyBackfill(supabase, { dryRun = true, physiolog
 // ── Ryttertyper (fra backfillRiderTypes.js) ───────────────────────────────────
 export async function runRiderTypesBackfill(supabase, { dryRun = true, baseline, log = noop } = {}) {
   const model = baseline || JSON.parse(readFileSync(TYPES_BASELINE_PATH, "utf8"));
-  // Inner-join til riders for at matche UI-filteret (kun aktive, ikke-retired).
+  // Alle ryttere med abilities — også retired. Retired ryttere vises stadig på
+  // profiler + Hall of Fame, så de skal have en gyldig type; ellers efterlader en
+  // type-fjernelse (fx leadout) dem med et tomt badge. Matcher base_value-backfill,
+  // der også dækker alle riders. Inner-join holder orphan-abilities ude.
   const rows = await fetchAllRows(() =>
     supabase
       .from("rider_derived_abilities")
-      .select(`rider_id, ${ABILITY_KEYS.join(", ")}, riders!inner(is_retired)`)
-      .eq("riders.is_retired", false)
+      .select(`rider_id, ${ABILITY_KEYS.join(", ")}, riders!inner(id)`)
       .order("rider_id"));
-  log(`types: ${rows.length} ryttere (aktive, med abilities)`);
+  log(`types: ${rows.length} ryttere (med abilities, inkl. retired)`);
 
   const dist = Object.fromEntries(RIDER_TYPE_KEYS.map((k) => [k, 0]));
   const updates = rows.map((r) => {
