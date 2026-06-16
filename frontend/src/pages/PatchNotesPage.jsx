@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.43",
+    date: "2026-06-16",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fixed · Transfers",
+        items: [
+          "EN · On the Transfers page, the whole rider stat block on a market listing and the whole rider card in a swap offer are now clickable, not just the rider's name. Clicking anywhere on those areas opens that rider's profile, so clicks landing next to the name no longer do nothing. Refs #1421",
+          "DA · På Transfer-siden er hele rytter-statblokken på en markedsannonce og hele rytter-kortet i en byttehandel nu klikbare, ikke kun rytterens navn. Klik et vilkårligt sted på de områder åbner rytterens profil, så klik der lander ved siden af navnet ikke længere gør ingenting. Refs #1421",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.42",
     date: "2026-06-16",
     label: "Beta",
