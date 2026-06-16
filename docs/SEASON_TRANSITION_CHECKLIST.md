@@ -21,10 +21,10 @@
 
 **API (de fire der bruges i denne checklist):**
 
-- `PUT /api/admin/transfer-window/closes-at` (defineret i [api.js:5928](backend/routes/api.js)). Body: `{ "closes_at": "<ISO-timestamp>" }`.
-- `GET /api/admin/season-transition/preview` ([api.js:5610](backend/routes/api.js)) — plan + readiness-gate til UI'et.
-- `POST /api/admin/season-transition` ([api.js:5627](backend/routes/api.js)). Body: `{ dryRun?, force? }`. `dryRun:true` → kun plan, ingen writes. Udelad `dryRun` for at udføre skiftet manuelt.
-- `GET /api/admin/deadline-readiness` ([api.js:5812](backend/routes/api.js)) — "Klar til deadline?"-overblikket.
+- `PUT /api/admin/transfer-window/closes-at` (defineret i [api.js:5997](backend/routes/api.js)). Body: `{ "closes_at": "<ISO-timestamp>" }`.
+- `GET /api/admin/season-transition/preview` ([api.js:5679](backend/routes/api.js)) — plan + readiness-gate til UI'et.
+- `POST /api/admin/season-transition` ([api.js:5696](backend/routes/api.js)). Body: `{ dryRun?, force? }`. `dryRun:true` → kun plan, ingen writes. Udelad `dryRun` for at udføre skiftet manuelt.
+- `GET /api/admin/deadline-readiness` ([api.js:5881](backend/routes/api.js)) — "Klar til deadline?"-overblikket.
 
 > **To veje til sæsonskifte:** (a) **Manuel** via "Udfør sæsonskifte"-knappen i Sæson-cyklus — anbefalet ved et planlagt/styret skifte (fx relaunchet), fordi du ser readiness-gaten og dry-run'en før klik. (b) **Automatisk** via cron-chain når `closes_at` på transfervinduet passeres (se Trin 2B nedenfor) — den vej kører af sig selv uden admin-klik. Begge kalder samme `transitionToNextSeason`-orchestrator og logger ens.
 
