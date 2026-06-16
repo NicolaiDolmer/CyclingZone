@@ -189,11 +189,36 @@ function teamComponent(entrant, stageProfile, teamContext) {
 // med udbruds-båndet. (c) hunter-vægt 3 → 2: ved ×3 stjal hunters så mange
 // sejre fra kaptajnerne at kaptajn-deltaet blev negativt og rolling røg over
 // bånd-loftet i roles-mode. Målte bånd-værdier pr. seed: se KALIBRERINGS-LOG
-// i scripts/simulateSeasonDryRun.js.
-export const BREAKAWAY_PROFILES = Object.freeze({ flat: 0.30, rolling: 0.17, mountain: 0.33 });
+// i scripts/simulateSeasonDryRun.js. (BREAKAWAY_PROFILES superseded af BREAKAWAY_BONUS, #1021.)
 export const BREAKAWAY_TOP_EXCLUDED = 0.05;      // top-5 % (terrain) kan ikke eskapere
 export const BREAKAWAY_MAX_RIDERS = 3;
 export const HUNTER_WEIGHT_MULTIPLIER = 2;
+
+// ── Finale-gradient-bevidst udbruds-bonus (#1021 Fase 1) ──────────────────────
+// Afløser den flade BREAKAWAY_PROFILES-skalar: maxBonus afhænger nu af BÅDE
+// profil OG finale_type. finale_type = proxy for finale-gradienten (den vigtigste
+// virkelige faktor): long_climb (summit) → favoritterne afgør (~0); descent/flad
+// efter sidste stigning → udbruddet holder hjem. itt/ttt/classic: intet udbrud.
+// KANDIDAT-værdier — tunes i race:gate (plan Task 5). Grundet i virkelige data
+// 2026-06-16 (docs/superpowers/plans/2026-06-16-breakaway-feature-aware-phase1.md).
+export const BREAKAWAY_BONUS = Object.freeze({
+  flat:          Object.freeze({ bunch_sprint: 0.30, reduced_sprint: 0.30, _default: 0.30 }), // ≤0.30: flat-bonus >0.30 vælter sprinter ≥90% i roles (#1307-fund)
+  rolling:       Object.freeze({ breakaway: 0.20, reduced_sprint: 0.17, bunch_sprint: 0.15, _default: 0.17 }),
+  hilly:         Object.freeze({ punch: 0.42, reduced_sprint: 0.40, breakaway: 0.46, _default: 0.42 }),
+  mountain:      Object.freeze({ descent: 0.50, breakaway: 0.50, long_climb: 0.06, _default: 0.45 }),
+  high_mountain: Object.freeze({ descent: 0.42, long_climb: 0.05, _default: 0.08 }),
+  cobbles:       Object.freeze({ reduced_sprint: 0.30, breakaway: 0.36, _default: 0.28 }),
+});
+
+// → maxBonus for en (profil, finale). Manglende finale → profilens _default.
+// Manglende profil (itt/ttt/classic + ukendte) → 0. Bevarer den frosne
+// selectBreakawayBonuses-kontrakt: returnerer en skalar, ikke en ny mekanik.
+export function breakawayMaxBonus(profileType, finaleType) {
+  const p = BREAKAWAY_BONUS[profileType];
+  if (!p) return 0;
+  const v = (finaleType != null && finaleType in p) ? p[finaleType] : p._default;
+  return Number.isFinite(v) ? v : 0;
+}
 
 // Aggression = lyst/evne til at køre i udbrud. Plan 1 (#1122): læser den ÆGTE
 // aggression-evne (driver udbruds-CHANCEN, jf. rider-ability-system-v2.md §0.1).
@@ -207,9 +232,9 @@ export function aggressionScore(abilities) {
 }
 
 // → Map(rider_id → bonus) for de udvalgte escapees (tom Map hvis profil uegnet).
-function selectBreakawayBonuses({ ordered, terrainById, profileType, seed }) {
+function selectBreakawayBonuses({ ordered, terrainById, profileType, finaleType, seed }) {
   const bonuses = new Map();
-  const maxBonus = BREAKAWAY_PROFILES[profileType];
+  const maxBonus = breakawayMaxBonus(profileType, finaleType);
   if (!maxBonus || ordered.length < 4) return bonuses; // under 4 ryttere → intet udbrud (ellers kan næsten hele feltet eskapere)
 
   const rng = makeRng((seed ^ 0xb4ea0ff5) >>> 0);
@@ -226,6 +251,10 @@ function selectBreakawayBonuses({ ordered, terrainById, profileType, seed }) {
   const count = Math.min(1 + Math.floor(rng() * BREAKAWAY_MAX_RIDERS), candidates.length);
 
   // Vægtet udvælgelse uden tilbagelægning (deterministisk over rider_id-stabil liste).
+  // Selve win-scoren (terræn + bonus) gør allerede at vinderen af et bjergudbrud er den
+  // mest klatre-egnede af de undslupne — derfor er selektionen aggression-drevet (lyst
+  // til at angribe), ikke terræn-drevet (#1021: global terræn-vægtning testet + forkastet,
+  // den skadede flad uden at flytte bjerg-born-as).
   const pool = candidates.map((e) => ({
     e,
     w: Math.max(1, aggressionScore(e.abilities)) * (e.race_role === "hunter" ? HUNTER_WEIGHT_MULTIPLIER : 1),
@@ -302,7 +331,7 @@ export function simulateStage({ entrants = [], stageProfile, seed } = {}) {
   const terrainById = new Map(
     ordered.map((e) => [e.rider_id, terrainScore(e.abilities, demand)])
   );
-  const breakawayById = selectBreakawayBonuses({ ordered, terrainById, profileType, seed });
+  const breakawayById = selectBreakawayBonuses({ ordered, terrainById, profileType, finaleType: stageProfile.finale_type, seed });
   const teamCtx = buildTeamContext({ entrants: ordered, terrainById, stageProfile });
 
   const scored = ordered.map((e) => {
