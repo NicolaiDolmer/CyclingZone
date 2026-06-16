@@ -34,7 +34,7 @@ export const ABILITY_KEYS = Object.freeze([
 export const RIDER_TYPES = Object.freeze([
   { key: "sprinter",       weights: { acceleration: 3, sprint: 2, flat: 1, durability: 1, climbing: -2, endurance: -1 } },
   { key: "leadout",        weights: { sprint: 3, acceleration: 2, flat: 1, durability: 1, climbing: -2 } },
-  { key: "tt",             weights: { time_trial: 3, sprint: -1, punch: -1 } }, // prolog merged ind i time_trial (§0.1 Besl. 2); magnituden er moot (eneste positive evne = skala-invariant)
+  { key: "tt",             weights: { time_trial: 3, climbing: -2, sprint: -1, punch: -1 } }, // prolog merged ind i time_trial (§0.1 Besl. 2). climbing:-2 (#1122): en ren tidskører er IKKE bjergrytter — uden den vandt tt-scoren for komplette gc-ryttere (høj tt OG climbing) → gc deriverede kun ~21 mod ejer-gulv ≥30
   { key: "climber",        weights: { climbing: 3, tempo: 2, punch: 1, endurance: 1, sprint: -2, acceleration: -1, flat: -1 } },
   { key: "puncheur",       weights: { punch: 3, tempo: 2, climbing: 1, endurance: 1, time_trial: -1, sprint: -1 } },
   { key: "brostensrytter", weights: { cobblestone: 5, flat: 2, endurance: 1, punch: 1, climbing: -2 } },
@@ -97,10 +97,14 @@ function guardedOut(abilities) {
   if (SPECIALITY_ABILITIES.some((a) => num(abilities[a]) >= GUARDS.highSpeciality)) out.add("rouleur");
   // sprint > brosten → ikke brostensrytter (en ægte spurter er ikke brostensrytter)
   if (num(abilities.sprint) > num(abilities.cobblestone)) out.add("brostensrytter");
-  // gc kun for ægte etapeløbsryttere: bjerg + tt + recovery alle høje samtidig
+  // gc kun for ægte etapeløbsryttere: bjerg + tt + recovery alle høje samtidig,
+  // OG stærkere på enkeltstart end på korte stigninger (punch ≤ tt). Den sidste
+  // betingelse skiller punch-tunge puncheurs/baroudeurs ud, der ellers sniger sig
+  // gennem score-snittet som "gc" trods en eksplosiv (ikke etape-) profil (#1122).
   const isGc = num(abilities.climbing) >= GUARDS.gcClimbing
     && num(abilities.time_trial) >= GUARDS.gcTimeTrial
-    && num(abilities.recovery) >= GUARDS.gcRecovery;
+    && num(abilities.recovery) >= GUARDS.gcRecovery
+    && num(abilities.punch) <= num(abilities.time_trial);
   if (!isGc) out.add("gc");
   return out;
 }

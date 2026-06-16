@@ -60,7 +60,10 @@ test("hele værdi-kæden giver den godkendte launch-pyramide", () => {
   // Smal top: ~12 superstjerner (ikke 0, ikke et helt felt).
   assert.ok(superstar >= 8 && superstar <= 18, `superstjerner=${superstar} uden for [8,18]`);
   // Midten skal bære auktioner og starthold (var hhv. 22/84 før #1194-re-tune).
-  assert.ok(star >= 40 && star <= 90, `stjerner=${star} uden for [40,90]`);
+  // #1122 gc-type-rekalibrering (tt climbing:-2 + gc-sniger-guard) flyttede ~8 fra
+  // superstjerne/solid op i stjerne (superstjerne nu på target 12); øvre sanity → 100.
+  // Stjerne-vs-target(60)-kalibreringen forbliver et separat værdimodel-spørgsmål (#1101).
+  assert.ok(star >= 40 && star <= 100, `stjerner=${star} uden for [40,100]`);
   assert.ok(solid >= 160 && solid <= 280, `solide=${solid} uden for [160,280]`);
   // Bred bund: størstedelen er domestikker (<200k).
   assert.ok(domestique >= 450 && domestique <= 650, `domestikker=${domestique} uden for [450,650]`);
