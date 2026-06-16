@@ -625,7 +625,7 @@
     },
     "transferWindowNotifications": {
       "q": "Får jeg besked før transfervinduet lukker?",
-      "a": "Ja. Når Deadline Day er aktivt, sender systemet automatiske notifikationer 24 timer, 2 timer og 30 minutter før vinduet lukker. Når vinduet lukker, sendes en Final Whistle-rapport til Discord med dagens største handel, mest aktive manager og antal panikhandler."
+      "a": "Ja. Når Deadline Day er aktivt, sender systemet automatiske notifikationer 24 timer, 2 timer og 30 minutter før vinduet lukker. Når vinduet lukker, vises en Final Whistle-rapport på Deadline Day-siden i appen (og sendes også til Discord) med dagens største handel, mest aktive manager og antal panikhandler."
     },
     "minBidAmount": {
       "q": "Hvor meget skal jeg byde over i en auktion?",
@@ -809,7 +809,7 @@
     },
     "deadlineTimelineFaq": {
       "q": "Hvad sker der præcist når transfervinduet lukker?",
-      "a": "Forventet tidslinje når lukketiden rammer: (1) inden for 5 minutter låses vinduet automatisk, og der kan ikke længere placeres bud eller accepteres tilbud. (2) En Final Whistle-rapport poster i Discord med dagens største handler, mest aktive managers og panik-handler. (3) Squad enforcement kører: hold der er udenfor minimum/maksimum for deres division får auto-køb eller auto-salg + bøde. (4) Cirka 10-15 minutter efter lukketiden går sæson 1 i gang, og sponsorpenge lander på alle holds konti. Du får besked i Indbakken når sponsor er udbetalt."
+      "a": "Forventet tidslinje når lukketiden rammer: (1) inden for 5 minutter låses vinduet automatisk, og der kan ikke længere placeres bud eller accepteres tilbud. (2) En Final Whistle-rapport vises på Deadline Day-siden i appen og poster i Discord med dagens største handler, mest aktive managers og panik-handler. (3) Squad enforcement kører: hold der er udenfor minimum/maksimum for deres division får auto-køb eller auto-salg + bøde. (4) Cirka 10-15 minutter efter lukketiden går sæson 1 i gang, og sponsorpenge lander på alle holds konti. Du får besked i Indbakken når sponsor er udbetalt."
     },
     "squadEnforcementFaq": {
       "q": "Hvad sker der hvis jeg er under min eller over max ryttere ved deadline?",

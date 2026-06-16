@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.45",
+    date: "2026-06-16",
+    label: "Beta",
+    changes: [
+      {
+        category: "Added · Transfers",
+        items: [
+          "EN · After the transfer window closes, the Final Whistle report now shows up right on the Deadline Day page in-app. It covers total deals, volume, the biggest auction and transfer, the most active manager and any panic moves. Until now this summary only went to Discord. Refs #1354",
+          "DA · Når transfervinduet lukker, vises Final Whistle-rapporten nu direkte på Deadline Day-siden i appen. Den dækker antal handler, volumen, den største auktion og transfer, den mest aktive manager og eventuelle panikhandler. Indtil nu gik denne opsummering kun til Discord. Refs #1354",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.44",
     date: "2026-06-16",
     label: "Beta",

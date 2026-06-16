@@ -8,6 +8,7 @@ import {
   fireAutoCloseIfDue,
   formatFinalWhistleEmbed,
   getDueWarningSteps,
+  getFinalWhistleReport,
   processDeadlineDayCron,
 } from "./deadlineDayReport.js";
 
@@ -649,4 +650,74 @@ test("processDeadlineDayCron skips Final Whistle when already claimed", async ()
 
   assert.equal(result.whistleSent, false);
   assert.equal(sentCount, 0);
+});
+
+// ── getFinalWhistleReport — read-only in-app rapport (#1354) ─────────────────
+
+function finalWhistleSupabase({ window, seasonNumber = null }) {
+  return {
+    from(table) {
+      if (table === "transfer_windows") {
+        return {
+          select: () => ({
+            order: () => ({
+              limit: () => ({
+                single: () => Promise.resolve({ data: window, error: null }),
+              }),
+            }),
+          }),
+        };
+      }
+      if (table === "seasons") {
+        return {
+          select: () => ({
+            eq: () => ({
+              single: () => Promise.resolve({ data: { number: seasonNumber }, error: null }),
+            }),
+          }),
+        };
+      }
+      // auctions / transfer_offers / auction_bids / teams / riders — alle tomme.
+      return emptyQueryBuilder();
+    },
+  };
+}
+
+test("getFinalWhistleReport: available=false når intet vindue findes", async () => {
+  const supabase = finalWhistleSupabase({ window: null });
+  const result = await getFinalWhistleReport({ supabase });
+  assert.deepEqual(result, { available: false });
+});
+
+test("getFinalWhistleReport: available=false for racing-window (closes_at=null + closed_at=null)", async () => {
+  const supabase = finalWhistleSupabase({
+    window: { id: "racing", season_id: "s2", status: "closed", closes_at: null, closed_at: null, created_at: new Date().toISOString() },
+  });
+  const result = await getFinalWhistleReport({ supabase });
+  assert.deepEqual(result, { available: false });
+});
+
+test("getFinalWhistleReport: available=false når vinduet stadig er åbent", async () => {
+  const supabase = finalWhistleSupabase({
+    window: { id: "w1", season_id: "s1", status: "open", closes_at: new Date(Date.now() + HOUR).toISOString(), closed_at: null, created_at: new Date().toISOString() },
+  });
+  const result = await getFinalWhistleReport({ supabase });
+  assert.deepEqual(result, { available: false });
+});
+
+test("getFinalWhistleReport: available=true med tom rapport for lukket vindue uden handler", async () => {
+  const closedAt = new Date(Date.now() - HOUR).toISOString();
+  const supabase = finalWhistleSupabase({
+    window: { id: "w1", season_id: "s1", status: "closed", closes_at: closedAt, closed_at: closedAt, created_at: new Date(Date.now() - 25 * HOUR).toISOString() },
+    seasonNumber: 7,
+  });
+  const result = await getFinalWhistleReport({ supabase });
+  assert.equal(result.available, true);
+  assert.equal(result.seasonNumber, 7);
+  assert.equal(result.closedAt, closedAt);
+  assert.equal(result.report.totalDeals, 0);
+  assert.equal(result.report.totalSpent, 0);
+  assert.equal(result.report.biggestAuction, null);
+  assert.equal(result.report.mostActiveManager, null);
+  assert.deepEqual(result.report.panicSamples, []);
 });

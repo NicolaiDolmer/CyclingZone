@@ -625,7 +625,7 @@
     },
     "transferWindowNotifications": {
       "q": "Do I get notified before the transfer window closes?",
-      "a": "Yes. When Deadline Day is active, the system sends automatic notifications 24 hours, 2 hours and 30 minutes before the window closes. When the window closes, a Final Whistle report is sent to Discord with the day's biggest deal, most active manager and the count of panic moves."
+      "a": "Yes. When Deadline Day is active, the system sends automatic notifications 24 hours, 2 hours and 30 minutes before the window closes. When the window closes, a Final Whistle report appears on the Deadline Day page in-app (and is also posted to Discord) with the day's biggest deal, most active manager and the count of panic moves."
     },
     "minBidAmount": {
       "q": "How much do I need to bid above the current price?",
@@ -809,7 +809,7 @@
     },
     "deadlineTimelineFaq": {
       "q": "What exactly happens when the transfer window closes?",
-      "a": "Expected timeline once the close time hits: (1) within 5 minutes the window is automatically locked and no more bids or accepted offers go through. (2) A Final Whistle report posts in Discord with the day's biggest deals, most active managers and panic moves. (3) Squad enforcement runs: teams outside their division's minimum/maximum get an auto-buy or auto-sell + fine. (4) About 10-15 minutes after the close time, season 1 starts and sponsor money lands on every team. You get an inbox notification when sponsor has been paid."
+      "a": "Expected timeline once the close time hits: (1) within 5 minutes the window is automatically locked and no more bids or accepted offers go through. (2) A Final Whistle report appears on the Deadline Day page in-app and posts in Discord with the day's biggest deals, most active managers and panic moves. (3) Squad enforcement runs: teams outside their division's minimum/maximum get an auto-buy or auto-sell + fine. (4) About 10-15 minutes after the close time, season 1 starts and sponsor money lands on every team. You get an inbox notification when sponsor has been paid."
     },
     "squadEnforcementFaq": {
       "q": "What happens if I'm under min or over max riders at deadline?",
