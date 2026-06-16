@@ -10,6 +10,7 @@ import {
   ChevronRightIcon, TrophyIcon, InboxIcon,
 } from "../components/ui/index.js";
 import * as Icons from "../components/ui/icons/index.jsx";
+import { useDocumentHead } from "../hooks/useDocumentHead.js";
 
 // Hele ikon-saettet, alfabetisk (module-namespace -> sorterede noegler = stabilt snapshot).
 const ICON_ENTRIES = Object.entries(Icons).filter(([name]) => name.endsWith("Icon"));
@@ -42,6 +43,12 @@ export default function KitchenSinkPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [tab, setTab] = useState("roster");
   const [boom, setBoom] = useState(false);
+  // #1404: /ui er en intern komponent-demo, public-reachable men ikke i sitemap.
+  // noindex → ingen rod-canonical, holdes ude af søgeindekset.
+  useDocumentHead({
+    title: "UI kitchen sink · Cycling Zone",
+    noindex: true,
+  });
   return (
     <main className="mx-auto max-w-5xl px-10 py-12">
       <p className="mb-2 font-data text-xs font-semibold uppercase tracking-[.18em] text-cz-accent">

@@ -360,7 +360,7 @@ test("resolveRiderSalary: NULL salary + NULL base_value → fallback 1000 → 10
 test("#1308: getTeamMarketState — akademiryttere udelades fra alle tre tælle-queries", async () => {
   const TEAM_ID = "team-academy";
   const SENIOR_COUNT = 30;
-  const ACADEMY_COUNT = 5; // skal aldrig bidrage til rider_count
+  const _ACADEMY_COUNT = 5; // skal aldrig bidrage til rider_count
 
   // Assertiv mock: verificerer at is_academy=false ER i eq-filtrene.
   function createAcademyAwareSupabase() {

@@ -190,7 +190,7 @@ async function logActivity(type, data = {}) {
       amount: data.amount || null,
       meta: data.meta || {},
     });
-  } catch (error) {
+  } catch {
     // Activity feed must never block auction finalization.
   }
 }

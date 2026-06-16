@@ -48,7 +48,7 @@ export default function CookieBanner() {
       aria-labelledby="cookie-banner-title"
       className="fixed inset-x-0 bottom-0 z-50 px-3 pb-3 sm:px-6 sm:pb-6"
     >
-      <div className="mx-auto max-w-3xl bg-cz-card rounded-2xl shadow-2xl border border-cz-border p-5 sm:p-6">
+      <div className="mx-auto max-w-3xl bg-cz-card rounded-cz shadow-2xl border border-cz-border p-5 sm:p-6">
         <div className="flex items-start justify-between gap-3 mb-3">
           <div>
             <h2 id="cookie-banner-title" className="text-cz-1 font-bold text-base sm:text-lg">

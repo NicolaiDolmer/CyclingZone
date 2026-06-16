@@ -89,3 +89,20 @@ Flade = `TeamPage.jsx` (squad/økonomi/transfers-faner + `RiderActionModal`) + c
 - **Snapshots**: `team.png` (masket layout-guard) består på alle 3 projekter — radius-diff under tolerance → ingen PNG-refresh.
 
 Baseline ratchet: 91 → 89 filer (begge Team-flade-filer helt fjernet). Patch note: master konsoliderer.
+
+---
+
+## Slice B — Finance-fladen (konsolidering + #986 fold-in, 16/6)
+
+Flade = `FinancePage.jsx` + `FinanceForecastCard` + `FinanceFirstVisitHint` + ny `SeasonFinanceReportPanel`. GitHub-sweep (workflow, 16/6) afslørede [#986](https://github.com/NicolaiDolmer/CyclingZone/issues/986) (struktur-rework: faner/forecast/lån/sæson-historik) som ægte strukturelt rework → **foldet ind** per arbejdsmodellen. Ejer-direktiv 16/6: **alt økonomi findbart under /finance, intet spredt.** Plan: [`2026-06-16-finance-consolidation.md`](2026-06-16-finance-consolidation.md).
+
+Verificeret mod live kode: #986's forecast var allerede leveret (`FinanceForecastCard` viser sponsor/præmie/løn/net + risk-tier); TeamPage's `EconomyTab` + dens forecast-kort var **redundante**. De eneste unikke ting uden for /finance var holdværdi (lever allerede i TeamPage-headeren) + sæson-cashflow/donuts (`SeasonFinanceReport`). → konsolidering blev **frontend + i18n only** (ingen backend/migration).
+
+- **3 faner (`Tabs`-primitiv, synket til `?tab=`):** Overblik (balance/gæld/præmie-grid + én-linjes lån-resumé + `FinanceForecastCard` + præmieliste) · Lån (aktive lån + optag + betingelser) · Historik (sæsonvælger → `SeasonFinanceReportPanel` + transaktionshistorik).
+- **`SeasonFinanceReport` → genbrugs-panel:** body + fetch udtrukket til `SeasonFinanceReportPanel` (`{seasonId, teamId, onBack}`); ruten `/seasons/:id/finance/:teamId` bevaret til admin cross-team + dyb-links; SeasonEndPage-knappen repointet til Historik-fanen. Panel hardened mod partiel respons (#1350-filosofi: aldrig crash — fanget via Playwright-mock-verify).
+- **TeamPage `EconomyTab` fjernet** (squad + transfers tilbage) — ren duplikat. Holdværdi/løn/sponsor lever allerede i TeamPage-headeren. Døde `team:economy.*`-keys + `transactions`/`finRes`-query ryddet.
+- **Donut-palette tokeniseret:** 9 rå recharts-hex → `--cz-chart-1..9` (`lib/chartPalette.js` + `index.css`). Risk-tier 🟢🟡🔴 → tokeniserede tone-dots (tema-korrekte); hint-emoji (💰📈📉⚠️🏦) → Coin/ArrowUp/ArrowDown/AlertTriangle-ikoner. NB: `FinanceForecastCard` rendres også på Dashboard.
+- **Semantisk accent-bordet hint-card bevaret bespoke** (Card hardkoder neutral border) — kun radius → `rounded-cz`. Lån-tabeller forblev rå `<table>` i Card-wrap (ikke slop).
+- **Snapshots:** `finance.png` refreshet på alle 3 projekter (fane-restrukturering); `team.png`/`dashboard.png` under tolerance → ikke rørt.
+
+Baseline ratchet: hele finance-fladen → 0 slop/hex/emoji. 70 → 66 filer. Patch note 5.41.

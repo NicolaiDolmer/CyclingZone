@@ -5,6 +5,22 @@
     "seasonReport": "Season report",
     "loadingAria": "Loading finances"
   },
+  "tabs": {
+    "overview": "Overview",
+    "loans": "Loans",
+    "history": "History"
+  },
+  "loanSummary": {
+    "active": "{count, plural, one {1 active loan} other {# active loans}}",
+    "owed": "{value} CZ$ remaining",
+    "none": "No active loans",
+    "view": "Manage loans"
+  },
+  "history": {
+    "seasonPicker": "Season",
+    "option": "Season {number}",
+    "optionActive": "Season {number} (ongoing)"
+  },
   "loadError": {
     "message": "Could not load your finances. Please try again.",
     "retry": "Try again"

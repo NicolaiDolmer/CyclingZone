@@ -20,11 +20,12 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { generateFictionalRiders, makeRng } from "../lib/fictionalRiderGenerator.js";
+import { resolveMix } from "../lib/fictionalRiderMixPresets.js";
 import { deriveAbilities } from "../lib/abilityDerivation.js";
 import { computeRiderTypes } from "../lib/riderTypes.js";
 import { predictBaseValue, riderOverall, riderSpecialty } from "../lib/riderValuation.js";
-import { DEMAND_VECTORS } from "../lib/raceStageProfileGenerator.js";
-import { simulateStage, stableSeed, NOISE_SD_SCALE, aggressionScore, BREAKAWAY_PROFILES } from "../lib/raceSimulator.js";
+import { DEMAND_VECTORS, finaleFor } from "../lib/raceStageProfileGenerator.js";
+import { simulateStage, stableSeed, NOISE_SD_SCALE, aggressionScore, BREAKAWAY_BONUS } from "../lib/raceSimulator.js";
 import { buildRaceResults } from "../lib/raceRunner.js";
 import { evaluateRaceStructuralOracles, evaluateAbilityLivenessOracle } from "../lib/raceDryRunOracles.js";
 import { abilityRankSensitivity, breakawayParticipationGapByAggression, SENSITIVITY_DELTA } from "../lib/raceSensitivity.js";
@@ -45,7 +46,10 @@ const FIELD = parseInt(arg("field", "140"), 10);
 const GT_FIELD = parseInt(arg("gtField", "176"), 10);
 const REFERENCE_YEAR = 2026;
 const WRITE_HTML = !arg("no-html", false);
-const HTML_PATH = arg("html", join(__dirname, "out", "race-dry-run.html"));
+// #1420: --mix=<preset> varierer rytter-blandingen (default = uændret population).
+// resolveMix kaster ved ukendt navn (fail fast med listen over gyldige presets).
+const MIX = arg("mix", "default");
+const mixOverride = resolveMix(MIX);
 // #1198/#1144: strukturelle motor-oracles (sektion D) håndhæves ALTID (exit 1 ved
 // brud). Kalibrerings-bånd (sektion B-scorecardet) håndhæves kun med dette flag,
 // da baseline-targets afventer ejer-beslutning (se kalibrerings-loggen nedenfor).
@@ -62,6 +66,13 @@ const ROLES_MODE = !!arg("roles", false);
 // en hard gate (exit 1). Default off, så Phase A's race:gate forbliver grøn mens
 // instrumentet bygges; tilføjes race:gate-scriptet i Phase C når motoren er grøn.
 const ENFORCE_LIVENESS = !!arg("enforce-liveness", false);
+// #1420: per-run default HTML-sti, så reruns med forskellige parametre kan
+// holdes åbne side om side (gitignored out/). --html=<sti> overstyrer. Defineres
+// her, fordi navnet afhænger af CONDITION_MODE/ROLES_MODE/MIX ovenfor.
+const HTML_PATH = arg("html", join(
+  __dirname, "out",
+  `cockpit-${MIX}-${SEED}${CONDITION_MODE ? "-cond" : ""}${ROLES_MODE ? "-roles" : ""}.html`,
+));
 
 const baseline = JSON.parse(readFileSync(join(__dirname, "../lib/riderTypesBaseline.json"), "utf8"));
 const model = JSON.parse(readFileSync(join(__dirname, "../lib/riderValuationModel.json"), "utf8"));
@@ -76,7 +87,9 @@ const TARGETS = {
   itt_tempo:     { label: "tt+gc ≥95%", terrain: "itt", types: ["tt", "gc"], pct: 0.95 },
   cobbles:       { label: "brostensrytter ≥80%", types: ["brostensrytter"], pct: 0.80 },
   hilly:         { label: "puncheur ≥35% (interim)", types: ["puncheur"], pct: 0.35 },
-  mountain:      { label: "gc+climber+baroudeur ≥85%", types: ["gc", "climber", "baroudeur"], pct: 0.85 },
+  // #1021: mellembjerg er udbruds-bevidst (~17-25% af etaperne vindes realistisk fra
+  // udbrud → bredere vinderfelt). high_mountain (summit, favoritterne afgør) forbliver strengt.
+  mountain:      { label: "gc+climber+baroudeur ≥82% (udbruds-bevidst, #1021)", types: ["gc", "climber", "baroudeur"], pct: 0.82 },
   high_mountain: { label: "gc+climber+baroudeur ≥85%", types: ["gc", "climber", "baroudeur"], pct: 0.85 },
 };
 
@@ -124,14 +137,18 @@ const TERRAINS = ["flat", "rolling", "hilly", "mountain", "high_mountain", "itt"
 // med --enforce-targets. Bånd til ejer-review i PR'en (irl-pejling: udbrud
 // holder sjældent hjem på flade sprinter-etaper, oftere i mellembjerg/bjerg).
 //
-// NB: high_mountain og øvrige profiler har BEVIDST intet bånd — spec 8.3 giver
-// kun udbruds-bonus på flad/rolling/medium-bjerg (BREAKAWAY_PROFILES), så
-// escapee-share dér er per konstruktion 0. Tilføj IKKE et high_mountain-bånd —
-// det ville fejle på 0% og stride mod design-kontrakten.
+// #1021 Fase 1: bånd pr. terræn, grundet i virkelige data (2026-06-16). Bonus er nu
+// finale-gradient-bevidst (BREAKAWAY_BONUS), så hilly/high_mountain/cobbles er IKKE
+// længere konstruktions-0. high_mountain er summit-domineret → lavt bånd (de få ikke-
+// summit-dage løfter det lidt). mountain-båndet er bredt: det blander summit (~0) +
+// descent (~40%). KANDIDAT-bånd — verificeres grøn på tværs af seeds (plan Task 5).
 const BREAKAWAY_TARGETS = {
-  flat:     { min: 0.01, max: 0.10 },
-  rolling:  { min: 0.02, max: 0.12 },
-  mountain: { min: 0.05, max: 0.25 },
+  flat:          { min: 0.01, max: 0.07 },
+  rolling:       { min: 0.04, max: 0.15 },
+  hilly:         { min: 0.18, max: 0.45 },
+  mountain:      { min: 0.15, max: 0.50 },
+  high_mountain: { min: 0.00, max: 0.15 },
+  cobbles:       { min: 0.02, max: 0.15 },
 };
 
 // ── Hjælpere ──────────────────────────────────────────────────────────────────
@@ -241,9 +258,9 @@ function assignRoles(sample) {
 }
 
 // ── 1. Generér + berig felt (hele værdi-kæden, in-memory) ────────────────────
-console.log(`\n🚴  RACE-ENGINE DRY-RUN — seed=${SEED} count=${COUNT} noise=${NOISE_SD_SCALE}${CONDITION_MODE ? " condition=random" : ""}${ROLES_MODE ? " roles" : ""} (in-memory, rører ikke prod)\n`);
+console.log(`\n🚴  RACE-ENGINE DRY-RUN — seed=${SEED} count=${COUNT} mix=${MIX} noise=${NOISE_SD_SCALE}${CONDITION_MODE ? " condition=random" : ""}${ROLES_MODE ? " roles" : ""} (in-memory, rører ikke prod)\n`);
 
-const { riders: raw } = generateFictionalRiders({ count: COUNT, seed: SEED, referenceYear: REFERENCE_YEAR });
+const { riders: raw } = generateFictionalRiders({ count: COUNT, seed: SEED, referenceYear: REFERENCE_YEAR, ...mixOverride });
 
 const field = raw.map((r, i) => {
   const id = `r${i}`;
@@ -308,17 +325,21 @@ for (const terrain of TERRAINS) {
   const demand = DEMAND_VECTORS[terrain];
   const keyAb = keyAbilityOf(demand);
   const rng = makeRng(stableSeed(`dryrun:${SEED}:${terrain}`));
+  // #1021: dedikeret finale-rng → field-sampling-sekvensen (rng) er uændret.
+  const finaleRng = makeRng(stableSeed(`dryrun:${SEED}:${terrain}:finale`));
   const bornHist = {}, derivedHist = {};
   const winners = new Set();
   let strongestWon = 0, overallRankSum = 0, winnerKeySum = 0;
   // #1307: udbruds-vinder-tæller (ALLE modes) + roles-mode-metrikker.
   let breakawayWinCount = 0;
+  const finaleSplit = {}; // #1021: escapee-share pr. finale (bimodale terræner)
   let captainWinsRoles = 0, captainWinsNeutral = 0;
   let hunterEscapes = 0, helperEscapes = 0, hunterExposures = 0, helperExposures = 0;
 
   for (let i = 0; i < RACES; i++) {
     const sample = sampleField(rng, field, FIELD);
     const raceSeed = stableSeed(`${terrain}:${i}`);
+    const finaleType = finaleFor(finaleRng, terrain); // #1021: driver udbruds-bonussen
     const roles = ROLES_MODE ? assignRoles(sample) : null;
     const entrants = sample.map((r) => ({
       rider_id: r.id,
@@ -328,7 +349,7 @@ for (const terrain of TERRAINS) {
       ...(CONDITION_MODE && r.form    != null ? { form:    r.form }    : {}),
       ...(CONDITION_MODE && r.fatigue != null ? { fatigue: r.fatigue } : {}),
     }));
-    const { ranked } = simulateStage({ entrants, stageProfile: { profile_type: terrain, demand_vector: demand }, seed: raceSeed });
+    const { ranked } = simulateStage({ entrants, stageProfile: { profile_type: terrain, finale_type: finaleType, demand_vector: demand }, seed: raceSeed });
     const w = byId.get(ranked[0].rider_id);
     bornHist[w.bornAs] = (bornHist[w.bornAs] || 0) + 1;
     derivedHist[w.derived] = (derivedHist[w.derived] || 0) + 1;
@@ -339,6 +360,10 @@ for (const terrain of TERRAINS) {
     overallRankSum += rank;
     if (rank === 1) strongestWon++;
     if ((ranked[0].components.breakaway || 0) > 0) breakawayWinCount++;
+    const fkey = finaleType || "none";
+    finaleSplit[fkey] = finaleSplit[fkey] || { races: 0, bw: 0 };
+    finaleSplit[fkey].races++;
+    if ((ranked[0].components.breakaway || 0) > 0) finaleSplit[fkey].bw++;
 
     if (ROLES_MODE) {
       if (roles.roleById.get(ranked[0].rider_id) === "captain") captainWinsRoles++;
@@ -349,10 +374,10 @@ for (const terrain of TERRAINS) {
         ...(CONDITION_MODE && r.form    != null ? { form:    r.form }    : {}),
         ...(CONDITION_MODE && r.fatigue != null ? { fatigue: r.fatigue } : {}),
       }));
-      const neutral = simulateStage({ entrants: neutralEntrants, stageProfile: { profile_type: terrain, demand_vector: demand }, seed: raceSeed });
+      const neutral = simulateStage({ entrants: neutralEntrants, stageProfile: { profile_type: terrain, finale_type: finaleType, demand_vector: demand }, seed: raceSeed });
       if (roles.roleById.get(neutral.ranked[0].rider_id) === "captain") captainWinsNeutral++;
       // Escapee-deltagelse pr. rolle (kun udbruds-egnede terræner producerer escapees).
-      if (BREAKAWAY_PROFILES[terrain]) {
+      if (BREAKAWAY_BONUS[terrain]) {
         for (const r of ranked) {
           const role = roles.roleById.get(r.rider_id);
           if (role === "hunter") {
@@ -372,6 +397,7 @@ for (const terrain of TERRAINS) {
     bornHist, derivedHist, distinct: winners.size,
     avgStrengthRank: overallRankSum / RACES, strongestWonPct: pct1(strongestWon, RACES),
     breakawayWinShare: breakawayWinCount / RACES,
+    finaleSplit,
     ...(ROLES_MODE ? { captainWinsRoles, captainWinsNeutral, hunterEscapes, helperEscapes, hunterExposures, helperExposures } : {}),
   });
 }
@@ -762,7 +788,7 @@ details{background:var(--panel);border:1px solid var(--line);border-radius:8px;m
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}@media(max-width:820px){.grid2{grid-template-columns:1fr}}
 </style></head><body><div class="wrap">
 <h1>🚴 Race-engine kalibrerings-cockpit</h1>
-<p class="sub">seed ${SEED} · ${COUNT} ryttere · noise ${NOISE_SD_SCALE} · ${RACES} løb/terræn · in-memory (rører ikke prod)</p>
+<p class="sub">seed ${SEED} · ${COUNT} ryttere · mix <b>${esc(MIX)}</b> · noise ${NOISE_SD_SCALE} · ${RACES} løb/terræn · in-memory (rører ikke prod)</p>
 
 <h2>Mål-scorecard <span class="muted" style="font-weight:400">— født-som = ægte rytter-type · afledt = spillets label</span></h2>
 <table><thead><tr><th>Terræn</th><th>Mål</th><th class="num">Født-som</th><th class="num">Afledt</th><th class="num">Mål%</th><th>Status</th></tr></thead><tbody>${scorecardRows}</tbody></table>

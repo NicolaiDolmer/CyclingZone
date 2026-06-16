@@ -12,6 +12,7 @@ import { ageBadgeKey } from "../lib/riderAge";
 import { statStyle } from "../lib/statColor";
 import { formatCz, getRiderMarketValue, getRiderSalary } from "../lib/marketValues.js";
 import { formatNumber } from "../lib/intl";
+import { StarIcon } from "../components/ui";
 import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
 import { useScouting } from "../lib/useScouting";
 import { scoutSortValue } from "../lib/scouting";
@@ -173,7 +174,7 @@ export default function WatchlistPage() {
 
       {entries.length === 0 ? (
         <div className="text-center py-20 text-cz-3">
-          <p className="text-5xl mb-4">⭐</p>
+          <StarIcon className="w-14 h-14 mx-auto mb-4 text-cz-3" />
           <p className="text-lg font-medium text-cz-3">{t("emptyTitle")}</p>
           <p className="text-sm mt-2">{t("emptyBody")}</p>
           <button onClick={() => navigate("/riders")}
@@ -188,7 +189,7 @@ export default function WatchlistPage() {
           </div>
 
           {/* Table */}
-          <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+          <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
             <div className="overflow-auto max-h-[calc(100vh-220px)]">
               <table className="w-full text-xs">
                 <thead className="sticky top-0 z-20 bg-cz-card shadow-sm">

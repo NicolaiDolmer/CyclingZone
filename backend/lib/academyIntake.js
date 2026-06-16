@@ -3,7 +3,6 @@
 // opkalderen (relaunchOrchestrator) checker flaget FØR kald. Idempotent
 // pr. sæson: hold allerede i academy_intake springes over.
 
-import { getBetaManagerTeams } from "./betaResetService.js";
 import { generateAcademyCandidates } from "./academyGenerator.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { foldNameNordic } from "./pcmRiderMatcher.js";

@@ -19,7 +19,6 @@ import { fileURLToPath } from "node:url";
 import { runRelaunchSeason1, isProdSupabaseUrl } from "../../lib/relaunchOrchestrator.js";
 import { reactivateLegacyRiders, retireLegacyRiders } from "../../lib/legacyRiderRetirement.js";
 import { runFullBetaReset } from "../../lib/betaResetService.js";
-import { grantFounderBadges } from "../../lib/founderBadge.js";
 import { fetchAllRows } from "../../lib/supabasePagination.js";
 
 const START_DATE = "2026-06-20";

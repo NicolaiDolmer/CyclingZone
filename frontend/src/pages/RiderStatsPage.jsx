@@ -1094,7 +1094,8 @@ export default function RiderStatsPage() {
         nationality_code, primary_type, secondary_type, team_id, acquired_at,
         stat_fl, stat_bj, stat_kb, stat_bk, stat_tt, stat_prl, stat_bro, stat_sp,
         stat_acc, stat_ned, stat_udh, stat_mod, stat_res, stat_ftr,
-        team:team_id(id, name, is_ai, is_bank)`).eq("id", id).single(),
+        team:team_id(id, name, is_ai, is_bank),
+        pending_team:pending_team_id(id, name)`).eq("id", id).single(),
       // Seneste 20 til "Løbsresultater"-listen (visning).
       supabase.from("race_results")
         .select(`*, race:race_id(name, race_type, season:season_id(number))`)
@@ -1489,6 +1490,21 @@ export default function RiderStatsPage() {
                 ? <span>{t("header.teamPrefix")} <TeamLink id={rider.team.id} className="hover:text-cz-accent-t transition-colors">{rider.team.name}</TeamLink></span>
                 : t("header.freeAgent")}
             </p>
+            {/* #1287: handlet til næste sæson → vis kommende hold under det nuværende.
+                Self-pending (intern handel, pending == nuværende hold) er ikke et
+                holdskifte og vises ikke — samme guard som TeamCell (#950). */}
+            {rider.pending_team?.name && rider.pending_team.id !== rider.team?.id && (
+              <p className="text-cz-2 text-sm mt-1">
+                <span
+                  className="inline-flex items-center gap-1.5 rounded bg-cz-accent/15 px-2 py-0.5 text-xs text-cz-accent-t"
+                  title={t("header.pendingTransfer", { team: rider.pending_team.name })}
+                >
+                  <span aria-hidden="true">→</span>
+                  <span>{t("header.nextSeasonPrefix")}</span>
+                  <TeamLink id={rider.pending_team.id} className="font-semibold hover:underline">{rider.pending_team.name}</TeamLink>
+                </span>
+              </p>
+            )}
             {activeAuction && (
               <div className="mt-2 flex items-center gap-2">
                 <span className="text-xs bg-cz-accent/15 text-cz-accent-t px-2 py-0.5 rounded font-medium">

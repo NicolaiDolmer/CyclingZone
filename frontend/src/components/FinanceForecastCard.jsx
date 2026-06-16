@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { formatNumber } from "../lib/intl";
 import { renderBackendMessage } from "../lib/backendMessage";
+import { AlertTriangleIcon } from "./ui";
 
 const TIER_BADGE_CLASS = {
   green: "bg-cz-success-bg text-cz-success border-cz-success/30",
@@ -9,10 +10,12 @@ const TIER_BADGE_CLASS = {
   red: "bg-cz-danger-bg text-cz-danger border-cz-danger/30",
 };
 
-const TIER_ICON = {
-  green: "🟢",
-  yellow: "🟡",
-  red: "🔴",
+// #986: tone-dot erstatter de tidligere risiko-emoji. Tokeniseret, så farven
+// følger temaet (emoji ignorerer dark mode) og rammer anti-slop-smagen.
+const TIER_DOT_CLASS = {
+  green: "bg-cz-success",
+  yellow: "bg-cz-warning",
+  red: "bg-cz-danger",
 };
 
 function getTierMeta(t, riskTier) {
@@ -22,7 +25,7 @@ function getTierMeta(t, riskTier) {
     label: t(`forecast.tier.${tier}.label`),
     headline: t(`forecast.tier.${tier}.headline`),
     summary: t(`forecast.tier.${tier}.summary`),
-    icon: TIER_ICON[tier],
+    dot: TIER_DOT_CLASS[tier],
     badge: TIER_BADGE_CLASS[tier],
   };
 }
@@ -95,7 +98,7 @@ export default function FinanceForecastCard({
         <span
           className={`px-2.5 py-1 rounded-full border text-xs font-medium flex items-center gap-1.5 ${tier.badge}`}
         >
-          <span aria-hidden="true">{tier.icon}</span>
+          <span aria-hidden="true" className={`inline-block w-2 h-2 rounded-full ${tier.dot}`} />
           <span>{tier.label}</span>
         </span>
       </div>
@@ -107,7 +110,7 @@ export default function FinanceForecastCard({
           <select
             value={seasonsAhead}
             onChange={(e) => onSeasonsAheadChange(Number.parseInt(e.target.value, 10))}
-            className="bg-cz-subtle border border-cz-border text-cz-1 text-xs rounded-md px-2 py-1"
+            className="bg-cz-subtle border border-cz-border text-cz-1 text-xs rounded-cz px-2 py-1"
           >
             {[1, 2, 3, 4, 5].map((n) => (
               <option key={n} value={n}>{t("forecast.horizon.option", { count: n })}</option>
@@ -124,7 +127,7 @@ export default function FinanceForecastCard({
         </div>
       )}
 
-      <div className="bg-cz-subtle border border-cz-border rounded-lg p-4 mb-4">
+      <div className="bg-cz-subtle border border-cz-border rounded-cz p-4 mb-4">
         <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">
           {t("forecast.projectedLabel")}
         </p>
@@ -189,7 +192,7 @@ export default function FinanceForecastCard({
       </div>
 
       {multiSeason && (
-        <div className="bg-cz-subtle border border-cz-border rounded-lg p-3 mb-3">
+        <div className="bg-cz-subtle border border-cz-border rounded-cz p-3 mb-3">
           <p className="text-cz-2 font-medium text-xs mb-2">
             {t("forecast.multiSeason.title", { from: forecast.forecasts[1]?.season_number ?? "?" })}
           </p>
@@ -237,7 +240,8 @@ export default function FinanceForecastCard({
                         {formatNumber(row.ending_balance)} CZ$
                       </td>
                       <td className="py-1 ps-2 text-end" title={rowTier.summary}>
-                        {rowTier.icon}
+                        <span aria-hidden="true" className={`inline-block w-2.5 h-2.5 rounded-full ${rowTier.dot}`} />
+                        <span className="sr-only">{rowTier.label}</span>
                       </td>
                     </tr>
                   );
@@ -254,7 +258,7 @@ export default function FinanceForecastCard({
                     {formatNumber(forecast.summary?.ending_balance ?? 0)} CZ$
                   </td>
                   <td className="py-1 ps-2 text-end">
-                    {getTierMeta(t, forecast.summary?.worst_risk_tier).icon}
+                    <span aria-hidden="true" className={`inline-block w-2.5 h-2.5 rounded-full ${getTierMeta(t, forecast.summary?.worst_risk_tier).dot}`} />
                   </td>
                 </tr>
               </tfoot>
@@ -279,12 +283,12 @@ export default function FinanceForecastCard({
             return (
               <div
                 key={warn.code}
-                className={`px-3 py-2 rounded-lg text-xs leading-snug border
+                className={`px-3 py-2 rounded-cz text-xs leading-snug border
                   ${warn.severity === "high"
                     ? "bg-cz-danger-bg text-cz-danger border-cz-danger/30"
                     : "bg-cz-warning-bg text-cz-warning border-cz-warning/30"}`}
               >
-                <span className="font-medium">⚠️ </span>
+                <AlertTriangleIcon size={13} aria-hidden="true" className="inline-block me-1 -mt-0.5" />
                 {text}
               </div>
             );
@@ -316,7 +320,7 @@ export function FinanceForecastBadge({ forecast, compact = false }) {
         className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[10px] font-medium ${tier.badge}`}
         title={tier.summary}
       >
-        <span aria-hidden="true">{tier.icon}</span>
+        <span aria-hidden="true" className={`inline-block w-1.5 h-1.5 rounded-full ${tier.dot}`} />
         <span className="font-mono">{formatSigned(forecast.projected_net)}</span>
       </span>
     );
@@ -339,7 +343,7 @@ export function FinanceForecastBadge({ forecast, compact = false }) {
         <span
           className={`px-2.5 py-1 rounded-full border text-xs font-medium flex items-center gap-1.5 flex-shrink-0 ${tier.badge}`}
         >
-          <span aria-hidden="true">{tier.icon}</span>
+          <span aria-hidden="true" className={`inline-block w-2 h-2 rounded-full ${tier.dot}`} />
           <span>{tier.label}</span>
         </span>
       </div>

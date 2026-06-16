@@ -6,6 +6,8 @@ import {
   makeRng,
   STAT_KEYS,
   toInsertPayload,
+  DEFAULT_TIER_FRACTIONS,
+  DEFAULT_TIER_TYPE_WEIGHTS,
 } from "./fictionalRiderGenerator.js";
 import { foldNameNordic } from "./pcmRiderMatcher.js";
 
@@ -252,5 +254,94 @@ test("#1122 _meta.physiology fjernes af toInsertPayload (ikke en riders-kolonne)
   const { riders } = generateFictionalRiders({ seed: 1, count: 5, referenceYear: 2026 });
   for (const row of toInsertPayload(riders)) {
     assert.ok(!("physiology" in row) && !("_meta" in row), "physiology/_meta lækkede ind i INSERT-payload");
+  }
+});
+
+// ── Komposition-override (#1420 mix-presets) ──────────────────────────────────
+// generateFictionalRiders skal kunne tage tierFractions + tierTypeWeights, så
+// dev-tooling kan variere feltets blanding. Default (ingen override) = uændret.
+
+const countByArchetype = (riders) => {
+  const by = {};
+  for (const r of riders) by[r._meta.archetype] = (by[r._meta.archetype] || 0) + 1;
+  return by;
+};
+const countByTier = (riders) => {
+  const by = {};
+  for (const r of riders) by[r._meta.tier] = (by[r._meta.tier] || 0) + 1;
+  return by;
+};
+
+test("default-konstanter er eksporteret med forventet form", () => {
+  // Brugt af presets-modulet til at bygge skews oven på.
+  assert.equal(typeof DEFAULT_TIER_FRACTIONS.superstar, "number");
+  assert.equal(DEFAULT_TIER_FRACTIONS.superstar, 12 / 800);
+  assert.equal(DEFAULT_TIER_FRACTIONS.star, 60 / 800);
+  assert.equal(DEFAULT_TIER_FRACTIONS.solid, 230 / 800);
+  assert.equal(DEFAULT_TIER_FRACTIONS.domestique, undefined, "domestique er rest, ikke en fraktion");
+  assert.ok(DEFAULT_TIER_TYPE_WEIGHTS.superstar, "tier-type-vægte eksporteret");
+  assert.equal(typeof DEFAULT_TIER_TYPE_WEIGHTS.superstar.gc, "number");
+});
+
+test("eksplicit default-override === ingen override (byte-identisk determinisme)", () => {
+  const plain = generateFictionalRiders({ seed: 2026, count: 800, referenceYear: REF_YEAR });
+  const explicit = generateFictionalRiders({
+    seed: 2026, count: 800, referenceYear: REF_YEAR,
+    tierFractions: DEFAULT_TIER_FRACTIONS,
+    tierTypeWeights: DEFAULT_TIER_TYPE_WEIGHTS,
+  });
+  assert.deepEqual(explicit.riders, plain.riders);
+});
+
+test("skewet tierTypeWeights flytter realiseret type-fordeling (sprinter op)", () => {
+  const base = generateFictionalRiders({ seed: 2026, count: 800, referenceYear: REF_YEAR });
+  const sprintHeavy = {};
+  for (const [tier, weights] of Object.entries(DEFAULT_TIER_TYPE_WEIGHTS)) {
+    sprintHeavy[tier] = { ...weights, sprinter: (weights.sprinter ?? 1) * 5 };
+  }
+  const skewed = generateFictionalRiders({
+    seed: 2026, count: 800, referenceYear: REF_YEAR, tierTypeWeights: sprintHeavy,
+  });
+  const baseSprint = countByArchetype(base.riders).sprinter || 0;
+  const skewSprint = countByArchetype(skewed.riders).sprinter || 0;
+  assert.ok(skewSprint > baseSprint + 50,
+    `forventede markant flere sprintere ved skew (base ${baseSprint} → skew ${skewSprint})`);
+});
+
+test("tierFractions override ændrer tier-kvoterne (elite-dense)", () => {
+  const base = countByTier(
+    generateFictionalRiders({ seed: 2026, count: 800, referenceYear: REF_YEAR }).riders,
+  );
+  const dense = countByTier(
+    generateFictionalRiders({
+      seed: 2026, count: 800, referenceYear: REF_YEAR,
+      tierFractions: { superstar: 0.06, star: 0.16, solid: 0.35 },
+    }).riders,
+  );
+  assert.ok(dense.superstar > base.superstar * 2,
+    `elite-dense skal have markant flere superstars (base ${base.superstar} → ${dense.superstar})`);
+  assert.equal(dense.superstar, Math.round(0.06 * 800));
+  // Stadig en gyldig population: summerer til count.
+  const total = Object.values(dense).reduce((s, n) => s + n, 0);
+  assert.equal(total, 800);
+});
+
+test("override bevarer kontrakten (stats i [50,85], pcm_id null)", () => {
+  const { riders } = generateFictionalRiders({
+    seed: 7, count: 400, referenceYear: REF_YEAR,
+    tierFractions: { superstar: 0.06, star: 0.16, solid: 0.35 },
+    tierTypeWeights: (() => {
+      const w = {};
+      for (const [tier, weights] of Object.entries(DEFAULT_TIER_TYPE_WEIGHTS)) {
+        w[tier] = { ...weights, climber: (weights.climber ?? 1) * 2 };
+      }
+      return w;
+    })(),
+  });
+  for (const r of riders) {
+    assert.equal(r.pcm_id, null);
+    for (const key of STAT_KEYS) {
+      assert.ok(r[key] >= 50 && r[key] <= 85, `${key}=${r[key]} uden for [50,85]`);
+    }
   }
 });

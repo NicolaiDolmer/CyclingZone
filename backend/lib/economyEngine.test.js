@@ -9,7 +9,6 @@ const {
   payDivisionBonuses,
   processDivisionEnd,
   processSeasonEnd,
-  processSeasonStart,
   processTeamSeasonPayroll,
   rebalanceDivisions,
   repairSeasonEndFinanceAndBoard,
@@ -2259,7 +2258,7 @@ test("rebalanceDivisions makes no moves when top divisions are already full (sof
 
 // ─── Akademi-drift (#1308) ────────────────────────────────────────────────────
 
-function createPayrollWithAcademySupabase({ teamId, balance, academyRiderCount, seasonId }) {
+function _createPayrollWithAcademySupabase({ teamId, balance, academyRiderCount, seasonId: _seasonId }) {
   const academyRiders = [];
   for (let i = 0; i < academyRiderCount; i++) {
     academyRiders.push({ id: `academy-rider-${i}`, team_id: teamId, salary: 0, is_academy: true });
@@ -2285,7 +2284,7 @@ function createPayrollWithAcademySupabase({ teamId, balance, academyRiderCount, 
     from(table) {
       if (table === "teams") {
         return {
-          select(columns) {
+          select(_columns) {
             return {
               eq(column, value) {
                 assert.equal(column, "id");

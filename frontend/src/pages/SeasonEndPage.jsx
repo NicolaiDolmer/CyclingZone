@@ -232,7 +232,7 @@ export default function SeasonEndPage() {
         <div className="flex items-center gap-2 flex-wrap">
           {selectedSeason && myTeamId && (
             <button
-              onClick={() => navigate(`/seasons/${selectedSeason.id}/finance/${myTeamId}`)}
+              onClick={() => navigate(`/finance?tab=history&season=${selectedSeason.id}`)}
               className="text-sm bg-cz-card border border-cz-border hover:border-cz-accent rounded-lg px-3 py-2 text-cz-2 hover:text-cz-1 transition-colors">
               {t("financeReport")}
             </button>

@@ -424,8 +424,8 @@ function evaluateTargets(solvencyByDiv, multiSeason) {
 // Markdown builder
 // ---------------------------------------------------------------------------
 
-function buildMarkdown({ solvencyByDiv, multiSeason, targets, liveData, dataSource }) {
-  const { hardResults, infoResults, anyHardFail, medianAdvantage, inBand } = targets;
+function buildMarkdown({ solvencyByDiv, multiSeason, targets, liveData }) {
+  const { hardResults, infoResults, anyHardFail } = targets;
 
   const lines = [
     "# Contract Economy Scorecard — 2026-06-13",

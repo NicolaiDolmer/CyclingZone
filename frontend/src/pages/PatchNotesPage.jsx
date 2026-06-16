@@ -2,6 +2,90 @@
 
 const PATCHES = [
   {
+    version: "5.46",
+    date: "2026-06-16",
+    label: "Beta",
+    changes: [
+      {
+        category: "Changed · Riders",
+        items: [
+          "EN · A rider's profile now shows both their current team and the team they're joining next season when they've been transferred ahead. Before, the profile only showed the current team, which was confusing once a deal was done. The rider list already showed this; now the profile matches. No gameplay changes. Refs #1287",
+          "DA · En rytters profil viser nu både det nuværende hold og det hold rytteren skifter til næste sæson, når handlen allerede er lavet. Før viste profilen kun det nuværende hold, hvilket var forvirrende når en handel var faldet på plads. Rytter-listen viste det allerede; nu matcher profilen. Ingen ændringer i gameplay. Refs #1287",
+        ],
+      },
+    ],
+  },
+  {
+    version: "5.45",
+    date: "2026-06-16",
+    label: "Beta",
+    changes: [
+      {
+        category: "Added · Transfers",
+        items: [
+          "EN · After the transfer window closes, the Final Whistle report now shows up right on the Deadline Day page in-app. It covers total deals, volume, the biggest auction and transfer, the most active manager and any panic moves. Until now this summary only went to Discord. Refs #1354",
+          "DA · Når transfervinduet lukker, vises Final Whistle-rapporten nu direkte på Deadline Day-siden i appen. Den dækker antal handler, volumen, den største auktion og transfer, den mest aktive manager og eventuelle panikhandler. Indtil nu gik denne opsummering kun til Discord. Refs #1354",
+        ],
+      },
+    ],
+  },
+  {
+    version: "5.44",
+    date: "2026-06-16",
+    label: "Beta",
+    changes: [
+      {
+        category: "Changed · Site",
+        items: [
+          "EN · The public pages (landing, login, founder waitlist, privacy policy) now each get their own page title, description and canonical link, plus structured data that tells search engines what Cycling Zone is. This makes the game easier to find and share. No gameplay changes. Refs #1404, #1405",
+          "DA · De offentlige sider (landing, login, founder-waitlist, privatlivspolitik) får nu hver deres egen sidetitel, beskrivelse og canonical-link, plus strukturerede data der fortæller søgemaskiner hvad Cycling Zone er. Det gør spillet lettere at finde og dele. Ingen ændringer i gameplay. Refs #1404, #1405",
+        ],
+      },
+    ],
+  },
+  {
+    version: "5.43",
+    date: "2026-06-16",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fixed · Transfers",
+        items: [
+          "EN · On the Transfers page, the whole rider stat block on a market listing and the whole rider card in a swap offer are now clickable, not just the rider's name. Clicking anywhere on those areas opens that rider's profile, so clicks landing next to the name no longer do nothing. Refs #1421",
+          "DA · På Transfer-siden er hele rytter-statblokken på en markedsannonce og hele rytter-kortet i en byttehandel nu klikbare, ikke kun rytterens navn. Klik et vilkårligt sted på de områder åbner rytterens profil, så klik der lander ved siden af navnet ikke længere gør ingenting. Refs #1421",
+        ],
+      },
+    ],
+  },
+  {
+    version: "5.42",
+    date: "2026-06-16",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fixed · Reliability",
+        items: [
+          "EN · When a new version of the site is deployed while you have it open, the app now recovers on its own instead of showing an error screen. We catch the stale-file load that used to slip through, reload the new version once automatically, and keep a safety net that prevents reload loops. Result: fewer crashes right after an update. Refs #906",
+          "DA · Når en ny version af siden bliver deployet mens du har den åben, henter appen sig nu selv ind i stedet for at vise en fejlskærm. Vi fanger den forældede fil-indlæsning der før slap igennem, genindlæser den nye version automatisk én gang, og beholder et sikkerhedsnet der forhindrer genindlæsnings-loops. Resultat: færre crashes lige efter en opdatering. Refs #906",
+        ],
+      },
+    ],
+  },
+  {
+    version: "5.41",
+    date: "2026-06-16",
+    label: "Beta",
+    changes: [
+      {
+        category: "Changed · Finance",
+        items: [
+          "EN · The Finance page is now organised into tabs (Overview, Loans, History), so everything about your economy lives in one place. The per-season finance report and transaction history moved under History with a season picker, loans got their own tab, and the page picked up the refreshed design system (cleaner cards, sharper corners, crisp icons in place of emoji). The separate Economy tab on My Team is gone, since it duplicated this. No gameplay changes. Refs #986, #671",
+          "DA · Økonomisiden er nu delt op i faner (Overblik, Lån, Historik), så alt om din økonomi bor ét sted. Sæson-finansrapporten og transaktionshistorikken er flyttet ind under Historik med en sæsonvælger, lån har fået deres egen fane, og siden har fået det opfriskede designsystem (renere kort, skarpere hjørner, rene ikoner i stedet for emoji). Den separate Økonomi-fane under Mit Hold er væk, da den duplikerede dette. Ingen ændringer i gameplay. Refs #986, #671",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.40",
     date: "2026-06-15",
     label: "Beta",

@@ -126,6 +126,12 @@ const TIERS = [
 // Spejler værdi-pyramiden: superstjerner kører tæt på elite-loftet.
 const TIER_PHYSIOLOGY_LEVEL = { superstar: 0.92, star: 0.75, solid: 0.55, domestique: 0.30 };
 
+// #1420: eksponér default-fraktionerne (afledt af TIERS) så mix-presets kan bygge
+// skews oven på dem uden at duplikere tallene. domestique udelades (er rest).
+export const DEFAULT_TIER_FRACTIONS = Object.fromEntries(
+  TIERS.filter((t) => t.fraction != null).map((t) => [t.value, t.fraction]),
+);
+
 // v3-værdi-udligning (#1194): værdimodellens type-offsets (riderValuationModel.json:
 // sprinter +1.06 … puncheur −0.66) flytter bånd-grænserne flere O-enheder pr. type.
 // Uden modvægt eksploderer sprinter-toppen (~4× en tt-profil ved samme stats) og
@@ -146,6 +152,9 @@ const TIER_TYPE_WEIGHTS = {
   solid:      { gc: 2, climber: 4, sprinter: 2, tt: 3, puncheur: 2, brostensrytter: 2, baroudeur: 3, leadout: 2, rouleur: 2 },
   domestique: { climber: 4, sprinter: 1, tt: 2, puncheur: 2, brostensrytter: 1, baroudeur: 4, leadout: 4, rouleur: 4 },
 };
+
+// #1420: alias-eksport til mix-presets (resolveMix bygger skews oven på disse).
+export const DEFAULT_TIER_TYPE_WEIGHTS = TIER_TYPE_WEIGHTS;
 
 // Globalt gulv på sjældne typer (ejer-spec: etape-variation kræver dybde i alle
 // discipliner). Håndhæves ved at promovere de billigste over-repræsenterede typer.
@@ -266,6 +275,10 @@ export function makeUniqueName(rng, cluster, usedFolded) {
  * @param {number} opts.referenceYear      år som alder/U25 beregnes mod
  * @param {Set<string>} [opts.existingFoldedNames]  foldNameNordic af alle eksisterende DB-navne
  * @param {Array<{value,weight}>} [opts.nationalityWeights]  override af default-fordeling
+ * @param {Object<string,number>} [opts.tierFractions]  override af tier-andele (#1420 mix-presets);
+ *        map tier→andel (superstar/star/solid); domestique er altid rest. null = DEFAULT_TIER_FRACTIONS.
+ * @param {Object<string,Object<string,number>>} [opts.tierTypeWeights]  override af per-tier
+ *        arketype-vægte (#1420); null = DEFAULT_TIER_TYPE_WEIGHTS. Default på begge → uændret adfærd.
  * @returns {{ riders: object[], coverage: object, seed: number }}
  */
 export function generateFictionalRiders({
@@ -274,6 +287,8 @@ export function generateFictionalRiders({
   referenceYear,
   existingFoldedNames = new Set(),
   nationalityWeights = DEFAULT_NATIONALITY_WEIGHTS,
+  tierFractions = null,
+  tierTypeWeights = null,
 }) {
   if (!Number.isInteger(seed)) throw new Error("seed skal være et heltal");
   if (!Number.isInteger(count) || count < 1) throw new Error("count skal være et positivt heltal");
@@ -282,10 +297,22 @@ export function generateFictionalRiders({
   const rng = makeRng(seed);
   const usedFolded = new Set(existingFoldedNames);
 
+  // #1420: komposition-override (mix-presets). null = modul-konstanten → samme
+  // reference/værdier → identisk rng-forbrug → byte-identisk determinisme.
+  // domestique-tieren (fraction == null) er altid rest og kan ikke overrides.
+  const tiers = tierFractions
+    ? TIERS.map((t) =>
+        t.fraction != null && tierFractions[t.value] != null
+          ? { ...t, fraction: tierFractions[t.value] }
+          : t,
+      )
+    : TIERS;
+  const typeWeights = tierTypeWeights ?? TIER_TYPE_WEIGHTS;
+
   // ── Tier-sekvens via eksakt kvote (ikke Poisson-sampling) ───────────────────
   const tierSeq = [];
-  const domestiqueTier = TIERS.find((t) => t.fraction == null);
-  for (const t of TIERS) {
+  const domestiqueTier = tiers.find((t) => t.fraction == null);
+  for (const t of tiers) {
     if (t.fraction == null) continue;
     const n = Math.min(Math.round(t.fraction * count), count - tierSeq.length);
     for (let k = 0; k < n; k++) tierSeq.push(t);
@@ -299,13 +326,13 @@ export function generateFictionalRiders({
 
   // ── Type-sekvens: tier-aware vægtet pick + gulv på sjældne typer ─────────────
   const typeSeq = tierSeq.map((t) => {
-    const weights = TIER_TYPE_WEIGHTS[t.value];
+    const weights = typeWeights[t.value];
     return weightedPick(rng, Object.entries(weights).map(([value, weight]) => ({ value, weight })));
   });
   for (const [type, min] of Object.entries(ENSURE_MIN_TYPES)) {
     let have = typeSeq.filter((x) => x === type).length;
     for (let i = 0; i < typeSeq.length && have < min; i++) {
-      if (TIER_TYPE_WEIGHTS[tierSeq[i].value][type] == null) continue; // tier tillader ikke typen
+      if (typeWeights[tierSeq[i].value][type] == null) continue; // tier tillader ikke typen
       if (typeSeq[i] === type || ENSURE_MIN_TYPES[typeSeq[i]]) continue; // stjæl ikke fra andet gulv
       typeSeq[i] = type;
       have++;

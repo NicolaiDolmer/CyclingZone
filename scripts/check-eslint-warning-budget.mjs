@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 import process from "node:process";
 
 const budgets = [
-  { name: "backend", cwd: "backend", maxWarnings: 38 },
+  { name: "backend", cwd: "backend", maxWarnings: 0 },
   { name: "frontend", cwd: "frontend", maxWarnings: 26 },
 ];
 
