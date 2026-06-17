@@ -1,6 +1,7 @@
 # Relaunch sæson 1 — hybrid race-motor + spiller-vendt holdudtagelse (design)
 
-**Dato:** 2026-06-17 · **Status:** design (afventer ejer-review af spec) · **Slice:** `slice:tdf-launch`
+**Dato:** 2026-06-17 · **Status:** UNDER EKSEKVERING · **Slice:** `slice:tdf-launch`
+**Fase-tracker:** Fase A ✅ (doc-drift + gate-baseline) · Fase B trin 4 ✅ (hybrid-fatigue, PR #1443 merged) · **⏭ NÆSTE = Fase B trin 5: backup/PITR (beslutning ②, §4 P3 — hård pre-req før Fase C)** · Fase C (orchestrator-verify → prod-relaunch → flag-flip) ⬜ · Fase D (post-launch: #1021, PCM-oprydning, #1310) ⬜. Følg §5 i rækkefølge.
 **Relaterede issues:** #1105 (relaunch-epic) · #1103 (orchestrator/founder-badge) · #1102/#1122/#1428 (race engine v2) · #1307 (holdudtagelse/kaptajn/udbrud, CLOSED/done) · #1136/#1137 (daglig træning/progression) · #1101 (værdimodel, hard-gate) · #1438/#1442 (økonomi E2 + anti-inflation Fase 1) · #677 (fiktive stats — OPEN, mulig blocker) · #1346 (season-transition readiness-gate) · #1021 (fuld fysiologi — POST-launch) · #97 (hård gældsbund).
 
 > Verificeret mod kode **og** live prod (`ghwvkxzhsbbltzfnuhhz`) 2026-06-17. To workflow-kortlægninger + direkte prod-queries. Hvor docs (især `PLAN.md`) modsiger koden, vinder koden — se §2.
