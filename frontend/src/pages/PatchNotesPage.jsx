@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.53",
+    date: "2026-06-17",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fixed · Help",
+        items: [
+          "EN · The help FAQ now shows the correct season 2+ sponsor base. The answers to \"When is sponsor money paid out?\" and \"How is the forecast for next season computed?\" said the season 2+ base was 200,000 CZ$, but the game has used a 2,500,000 CZ$ base for a while, so the text now matches the game. The 0-150,000 CZ$ variable share added on top, based on last season's points and placing, is unchanged. Refs #1439",
+          "DA · Hjælp-FAQ'en viser nu den korrekte sæson 2+ sponsor-base. Svarene på \"Hvornår udbetales sponsorpenge?\" og \"Hvordan beregnes prognosen for næste sæson?\" sagde at sæson 2+-basen var 200.000 CZ$, men spillet har brugt en 2.500.000 CZ$ base i et stykke tid, så teksten matcher nu spillet. Den variable andel på 0-150.000 CZ$ ovenpå, baseret på sidste sæsons point og placering, er uændret. Refs #1439",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.52",
     date: "2026-06-17",
     label: "Beta",
