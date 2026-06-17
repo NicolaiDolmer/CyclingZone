@@ -101,18 +101,20 @@ async function main() {
   // skjuler pcm_id NULL fra ikke-admins. Efter relaunch er HELE bestanden pcm_id NULL,
   // så uden denne assertion kan markedet + eget hold være TOMT for rigtige brugere
   // mens rehearsal viser grønt. Kræver branchens anon-nøgle i backend/.env.
+  // Anon ser via RLS (USING(true)) ALLE aktive pcm_id-null rækker — inkl. academy-
+  // kandidaterne — så sammenlign mod fictionalActiveTotal (ikke fictionalMarket).
   const anonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
   if (!anonKey) {
     add("Fiktive synlige via anon (RLS-sti, ikke kun service-role)", false,
-      "SUPABASE_ANON_KEY mangler i backend/.env — RLS-sti UVERIFICERET", `anon === ${fictionalActive}`);
+      "SUPABASE_ANON_KEY mangler i backend/.env — RLS-sti UVERIFICERET", `anon === ${fictionalActiveTotal}`);
   } else {
     const anonClient = createClient(SUPABASE_URL, anonKey);
     const { count: anonFictional, error: anonErr } = await anonClient.from("riders")
       .select("id", { count: "exact", head: true }).is("pcm_id", null).eq("is_retired", false);
     add("Fiktive synlige via anon (RLS-sti, ikke kun service-role)",
-      !anonErr && anonFictional === fictionalActive && fictionalActive > 0,
-      anonErr ? `anon-query fejl: ${anonErr.message}` : `anon=${anonFictional} vs service=${fictionalActive}`,
-      `anon === service (${fictionalActive})`);
+      !anonErr && anonFictional === fictionalActiveTotal && fictionalActiveTotal > 0,
+      anonErr ? `anon-query fejl: ${anonErr.message}` : `anon=${anonFictional} vs service=${fictionalActiveTotal}`,
+      `anon === service (${fictionalActiveTotal})`);
   }
 
   // 8 ryttere pr. beta-manager
