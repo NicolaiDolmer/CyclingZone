@@ -562,7 +562,7 @@ test("finalizeAuctionById allows winner +1 over hard-cap during open window", as
     team_id: "buyer-team",
     pending_team_id: null,
     acquired_at: "2026-05-09T17:20:00.000Z",
-    salary: 100,
+    salary: 67,
     contract_length: 2,
     contract_end_season: 2,
   }]);
@@ -657,7 +657,7 @@ test("finalizeAuctionById pays the actual AI owner instead of the initiator", as
     team_id: "buyer-team",
     pending_team_id: null,
     acquired_at: "2026-04-22T08:00:00.000Z",
-    salary: 100,
+    salary: 67,
     contract_length: 2,
     contract_end_season: 2,
   }]);
@@ -849,7 +849,7 @@ test("finalizeAuctionById still pays the human seller for a normal owned-rider a
     team_id: "buyer-team",
     pending_team_id: null,
     acquired_at: "2026-04-22T10:00:00.000Z",
-    salary: 100,
+    salary: 67,
     contract_length: 2,
     contract_end_season: 2,
   }]);
@@ -950,7 +950,7 @@ test("finalizeAuctionById closes open transfer listings when the rider is sold a
     team_id: "buyer-team",
     pending_team_id: null,
     acquired_at: "2026-06-10T10:00:00.000Z",
-    salary: 100,
+    salary: 67,
     contract_length: 2,
     contract_end_season: 2,
   }]);
@@ -1023,7 +1023,7 @@ test("finalizeAuctionById closes open transfer listings even when the window is 
   // den generiske pending-flush ved vindue-åbning kun flytter team_id.
   assert.deepEqual(riderUpdates, [{
     pending_team_id: "buyer-team",
-    salary: 100,
+    salary: 67,
     contract_length: 2,
     contract_end_season: 2,
   }]);
@@ -1098,7 +1098,7 @@ test("finalizeAuctionById closes open transfer listings on guaranteed sale to th
     team_id: "bank",
     pending_team_id: null,
     acquired_at: "2026-06-10T12:00:00.000Z",
-    salary: 100,
+    salary: 67,
     contract_length: 2,
     contract_end_season: 2,
   }]);
@@ -1272,7 +1272,7 @@ test("finalizeAuctionById completes when the initiator is the sole bidder on an 
     team_id: "initiator-team",
     pending_team_id: null,
     acquired_at: "2026-04-25T10:00:00.000Z",
-    salary: 100,
+    salary: 67,
     contract_length: 2,
     contract_end_season: 2,
   }]);
@@ -1385,7 +1385,7 @@ test("finalizeAuctionById completes when the initiator is the sole bidder on a f
     team_id: "initiator-team",
     pending_team_id: null,
     acquired_at: "2026-04-25T10:00:00.000Z",
-    salary: 100,
+    salary: 67,
     contract_length: 2,
     contract_end_season: 2,
   }]);
@@ -1481,7 +1481,7 @@ test("finalizeAuctionById treats legacy non-owned auctions without current_bidde
     team_id: "initiator-team",
     pending_team_id: null,
     acquired_at: "2026-04-29T17:00:00.000Z",
-    salary: 100,
+    salary: 67,
     contract_length: 2,
     contract_end_season: 2,
   }]);
@@ -1564,7 +1564,7 @@ test("finalizeAuctionById creates a default contract for a contractless winner (
     team_id: "buyer-team",
     pending_team_id: null,
     acquired_at: "2026-06-13T10:00:00.000Z",
-    salary: 100_000, // 10% af 1_000_000
+    salary: 67_000, // 6.7% af 1_000_000
     contract_length: 2,
     contract_end_season: 2, // aktiv sæson 1 + 2 - 1
   }]);

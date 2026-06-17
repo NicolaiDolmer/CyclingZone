@@ -640,7 +640,7 @@ test("#1309: confirmTransferOffer opretter standard-kontrakt for kontraktløs ry
   assert.equal(result.action, "accepted");
   const moved = db.riders.find((r) => r.id === "rider-1");
   assert.equal(moved.team_id, "buyer");
-  assert.equal(moved.salary, 100_000, "salary = 10% af base_value 1_000_000");
+  assert.equal(moved.salary, 67_000, "salary = 6.7% af base_value 1_000_000");
   assert.equal(moved.contract_length, 2);
   assert.equal(moved.contract_end_season, 2, "aktiv sæson 1 + 2 - 1");
 });
@@ -708,7 +708,7 @@ test("#1309: confirmSwapOffer create-if-missing / inherit-if-present pr. rytter"
   // offered (kontraktløs) → ny kontrakt, nu på buyer
   const movedOffered = db.riders.find((r) => r.id === "rider-1");
   assert.equal(movedOffered.team_id, "buyer");
-  assert.equal(movedOffered.salary, 50_000, "10% af 500_000");
+  assert.equal(movedOffered.salary, 33_500, "6.7% af 500_000");
   assert.equal(movedOffered.contract_length, 2);
   assert.equal(movedOffered.contract_end_season, 2);
   // requested (har kontrakt) → uændret, nu på seller

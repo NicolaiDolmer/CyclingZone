@@ -150,13 +150,13 @@
     "dismissAria": "Skjul",
     "sponsor": {
       "title": "Sponsor-indkomst",
-      "before": "Base 240.000 CZ$ pr. sæson × din ",
+      "before": "Skaleret efter division (D1 600.000 · D2 400.000 · D3 260.000 CZ$) pr. sæson × din ",
       "linkText": "bestyrelses-modifier",
       "after": ". Udbetales som engangsbeløb ved sæsonstart."
     },
     "salary": {
       "title": "Løn til ryttere",
-      "body": "10% af rytterens markedsværdi pr. sæson (baseværdi plus præmiebonus). Trækkes som engangsbeløb ved næste sæsons start, lige efter sponsor lander. Stjerneryttere er dyre at holde på."
+      "body": "6,7% af rytterens markedsværdi pr. sæson (baseværdi plus præmiebonus). Trækkes som engangsbeløb ved næste sæsons start, lige efter sponsor lander. Stjerneryttere er dyre at holde på."
     },
     "debt": {
       "title": "Gældsloft pr. division",

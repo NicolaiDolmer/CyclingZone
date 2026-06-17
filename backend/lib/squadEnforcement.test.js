@@ -1053,8 +1053,8 @@ test("#1309: auto-køb af kontraktløs free agent sætter kontrakt (salary, cont
   assert.ok(fa1.salary != null, "salary må ikke være null efter auto-køb");
 
   // computeFrozenSalary({ base_value: 5000, prize_earnings_bonus: 200 })
-  // = Math.max(1, Math.round((5000 + 200) * 0.10)) = Math.max(1, 520) = 520
-  assert.equal(fa1.salary, 520, "salary = computeFrozenSalary(base_value=5000, prize_earnings_bonus=200)");
+  // = Math.max(1, Math.round((5000 + 200) * 0.067)) = Math.max(1, 348) = 348
+  assert.equal(fa1.salary, 348, "salary = computeFrozenSalary(base_value=5000, prize_earnings_bonus=200)");
   assert.equal(fa1.contract_length, 2, "DEFAULT_ACQUIRE_LENGTH = 2");
   // contract_end_season = startSeason + length - 1 = 3 + 2 - 1 = 4
   assert.equal(fa1.contract_end_season, 4, "contract_end_season = activeSeasonNumber(3) + length(2) - 1 = 4");

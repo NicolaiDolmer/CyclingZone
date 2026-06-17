@@ -1,4 +1,4 @@
-import { SPONSOR_INCOME_BASE } from "./economyConstants.js";
+import { SPONSOR_INCOME_BASE, SPONSOR_INCOME_BY_DIVISION } from "./economyConstants.js";
 
 export const FIRST_VARIABLE_SPONSOR_SEASON = 2;
 // Sæson 2+ sponsor-base (ejer-beslutning 2026-06-08: hævet 200k → 2,5M). Den
@@ -85,16 +85,21 @@ export function computeSponsorForSeason({
   divisionStandings = [],
 } = {}) {
   const legacySponsor = team?.sponsor_income ?? SPONSOR_INCOME_BASE;
+  // E2 (strict_fair_v1): sæson-1/intro-sponsor er division-skaleret (D1 600k / D2
+  // 400k / D3 260k). Division-kortet er AUTORITATIVT — relaunch-reset tvinger alle
+  // hold til div 3 med stored sponsor_income=240k, så den stale kolonneværdi må
+  // ikke vinde. Ukendt division → fald tilbage til stored/legacy-gulv.
+  const introSponsor = SPONSOR_INCOME_BY_DIVISION[team?.division] ?? legacySponsor;
 
   if (!Number.isInteger(seasonNumber) || seasonNumber < FIRST_VARIABLE_SPONSOR_SEASON) {
     return {
       mode: "intro",
       season_number: seasonNumber,
-      base: legacySponsor,
+      base: introSponsor,
       variable: 0,
-      gross_sponsor: legacySponsor,
+      gross_sponsor: introSponsor,
       capped: false,
-      explanation: "Sæson 1/introsæson: fast sponsor.",
+      explanation: "Sæson 1/introsæson: division-skaleret sponsor.",
     };
   }
 

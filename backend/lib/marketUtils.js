@@ -1,3 +1,5 @@
+import { SALARY_RATE } from "./economyConstants.js";
+
 // #838: ét fælles roster-loft for alle divisioner. Max er ensrettet til 30.
 // Roster-FLOOR fjernet 2026-06-05: ingen division kræver længere et minimum
 // antal ryttere — en manager kan sælge/afgive helt ned til 0. Hard-cap'en
@@ -87,13 +89,14 @@ export function calculateRiderMarketValue(rider = {}) {
 }
 
 // Backend parity-twin af frontend getRiderSalary. Bruges af #1310-markeds-pakken (system-bølge-listings / prospektiv løn). Behold.
-// #1309: frossen kontrakt-løn hvis sat; ellers estimat (10% af market_value) til
-// VISNING af free agents. Ejede ryttere har altid salary != null (seed +
+// #1309: frossen kontrakt-løn hvis sat; ellers estimat (SALARY_RATE af market_value)
+// til VISNING af free agents. Ejede ryttere har altid salary != null (seed +
 // on-acquire), så for dem returneres den frosne løn uændret. salary:0 er en
-// gyldig (gratis) kontrakt og bevares som 0.
+// gyldig (gratis) kontrakt og bevares som 0. SALARY_RATE = samme rate som signering
+// (contractSeed) → estimatet matcher det rytteren faktisk fryses til ved erhvervelse.
 export function resolveRiderSalary(rider = {}) {
   if (rider && rider.salary != null) return Number(rider.salary);
-  return Math.max(1, Math.round(calculateRiderMarketValue(rider) * 0.10));
+  return Math.max(1, Math.round(calculateRiderMarketValue(rider) * SALARY_RATE));
 }
 
 export async function getTransferWindowOpen(supabase) {

@@ -3,7 +3,16 @@
 // Ændring her kræver tilsvarende migration mod prod (se docs/CONVENTIONS.md).
 
 // teams.sponsor_income DEFAULT i database/schema.sql + 2026-04-25-economy-retuning.sql.
+// E2 (strict_fair_v1): nu kun LEGACY fallback-gulv — sæson-1 sponsor er division-
+// skaleret via SPONSOR_INCOME_BY_DIVISION (computeSponsorForSeason intro-gren).
 export const SPONSOR_INCOME_BASE = 240000;
+
+// E2 balance-retune (strict_fair_v1, ejer-valgt 2026-06-15): sæson-1/intro-sponsor
+// skaleres med division, så et kompetent hold er bæredygtigt (D1 ~break-even, D2/D3
+// overskud) i stedet for at tabe ~750k/sæson på flad 240k. Autoritativ for intro-
+// sæsonen i sponsorEngine.computeSponsorForSeason — den stored teams.sponsor_income-
+// kolonne er kun fallback. Sæson-2+ bruger den separate variable-model (sponsorEngine).
+export const SPONSOR_INCOME_BY_DIVISION = { 1: 600000, 2: 400000, 3: 260000 };
 
 // teams.balance DEFAULT i database/schema.sql + 2026-04-25-economy-retuning.sql.
 // Også brugt som DEFAULT_BETA_BALANCE i betaResetService.js.
@@ -75,9 +84,13 @@ export const SEASON_VALUE_RECALC_ENABLED = false;
 // koerer developRidersForSeason som foer.
 export const SEASON_RIDER_PROGRESSION_ENABLED = false;
 
-// SALARY_RATE = 0.10 lever i database/2026-06-10-value-cutover-base-value.sql som
-// GENERATED-formel (fra base_value) og kan ikke skrives fra applikationskode. Info-only.
-export const SALARY_RATE_INFO = 0.10;
+// Senior-kontrakt løn-rate. E2 (strict_fair_v1): sænket 0.10 → 0.067 (×0.67) så
+// lønbyrden matcher den division-skalerede sponsor. Løn er FROSSEN ved signering
+// (#1309: salary er en plain INTEGER, ikke længere GENERATED) — denne rate bruges
+// af contractSeed.computeFrozenSalary (seed + on-acquire) og marketUtils.resolveRiderSalary
+// (free-agent-estimat). Ungdoms-/akademi-løn har sin EGEN rate (academyFlag.ACADEMY.SALARY_RATE)
+// og er IKKE påvirket. Ændring her → opdatér frontend-spejl marketValues.getRiderSalary.
+export const SALARY_RATE = 0.067;
 
 // ============================================================
 // 07d Fase A: audit-trail enums.

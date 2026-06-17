@@ -6,7 +6,22 @@ import {
   computeVariableSponsor,
 } from "./sponsorEngine.js";
 
-test("computeSponsorForSeason keeps season 1 on intro sponsor", () => {
+test("computeSponsorForSeason season 1 = division-skaleret intro-sponsor (E2 strict_fair_v1)", () => {
+  // Division-kortet er autoritativt: D1 600k / D2 400k / D3 260k.
+  const d1 = computeSponsorForSeason({ seasonNumber: 1, team: { division: 1, sponsor_income: 240_000 } });
+  const d2 = computeSponsorForSeason({ seasonNumber: 1, team: { division: 2, sponsor_income: 240_000 } });
+  const d3 = computeSponsorForSeason({ seasonNumber: 1, team: { division: 3, sponsor_income: 240_000 } });
+
+  assert.equal(d1.mode, "intro");
+  assert.equal(d1.gross_sponsor, 600_000);
+  assert.equal(d2.gross_sponsor, 400_000);
+  assert.equal(d3.gross_sponsor, 260_000);
+  // Stored sponsor_income=240k må IKKE vinde over division-kortet.
+  assert.equal(d1.base, 600_000);
+  assert.equal(d1.variable, 0);
+});
+
+test("computeSponsorForSeason season 1 falls back to stored/legacy when division unknown", () => {
   const result = computeSponsorForSeason({
     seasonNumber: 1,
     team: { sponsor_income: 240_000 },

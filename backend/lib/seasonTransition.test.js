@@ -154,7 +154,7 @@ function createMockSupabase(initialState = {}) {
 
 // ─── Plan-builder tests ───────────────────────────────────────────────────────
 
-test("buildTransitionPlan — sæson 0 → 1 plan med 22 humans, sponsor 240K hver", async () => {
+test("buildTransitionPlan — sæson 0 → 1 plan med 22 humans, sponsor 260K hver (D3 intro-skaleret, E2)", async () => {
   const supabase = createMockSupabase({
     seasons: [{ id: "00000000-0000-0000-0000-000000000000", number: 0, status: "active", start_date: "2026-05-08", end_date: null }],
     transfer_windows: [],
@@ -178,7 +178,7 @@ test("buildTransitionPlan — sæson 0 → 1 plan med 22 humans, sponsor 240K hv
   assert.equal(plan.to_season.id, "00000000-0000-0000-0000-000000000001");
   assert.equal(plan.to_season.transfer_window_id, "00000000-0000-0000-0000-00000001aaaa");
   assert.equal(plan.teams_affected, 22);
-  assert.equal(plan.sponsor_base_total, 22 * 240000);
+  assert.equal(plan.sponsor_base_total, 22 * 260000);
   assert.equal(plan.already_transitioned, false);
 });
 

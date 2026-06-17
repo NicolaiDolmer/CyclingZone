@@ -150,13 +150,13 @@
     "dismissAria": "Hide",
     "sponsor": {
       "title": "Sponsor income",
-      "before": "Base 240,000 CZ$ per season × your ",
+      "before": "Scaled by division (D1 600,000 · D2 400,000 · D3 260,000 CZ$) per season × your ",
       "linkText": "board modifier",
       "after": ". Paid as a lump sum at season start."
     },
     "salary": {
       "title": "Rider salaries",
-      "body": "10% of the rider's market value per season (base value plus prize money bonus). Deducted as a lump sum at the start of the next season, right after the sponsor lands. Star riders are expensive to keep."
+      "body": "6.7% of the rider's market value per season (base value plus prize money bonus). Deducted as a lump sum at the start of the next season, right after the sponsor lands. Star riders are expensive to keep."
     },
     "debt": {
       "title": "Debt cap per division",

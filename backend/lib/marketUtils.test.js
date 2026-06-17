@@ -337,21 +337,21 @@ test("resolveRiderSalary: frossen salary vinder over estimat", () => {
   assert.equal(resolveRiderSalary({ salary: 12345, base_value: 1_000_000 }), 12345);
 });
 
-test("resolveRiderSalary: NULL salary → 10% af market_value", () => {
-  // market_value vinder: 10% af 500_000 = 50_000
-  assert.equal(resolveRiderSalary({ salary: null, market_value: 500_000 }), 50_000);
-  // fallback til base_value + bonus: 10% af (50_000 + 5_000) = 5_500
-  assert.equal(resolveRiderSalary({ salary: null, base_value: 50_000, prize_earnings_bonus: 5_000 }), 5_500);
+test("resolveRiderSalary: NULL salary → 6.7% af market_value (E2 strict_fair_v1)", () => {
+  // market_value vinder: 6.7% af 500_000 = 33_500
+  assert.equal(resolveRiderSalary({ salary: null, market_value: 500_000 }), 33_500);
+  // fallback til base_value + bonus: 6.7% af (50_000 + 5_000) = 3_685
+  assert.equal(resolveRiderSalary({ salary: null, base_value: 50_000, prize_earnings_bonus: 5_000 }), 3_685);
 });
 
 test("resolveRiderSalary: salary 0 bevares (gratis kontrakt, ikke estimat)", () => {
   assert.equal(resolveRiderSalary({ salary: 0, base_value: 1_000_000 }), 0);
 });
 
-test("resolveRiderSalary: NULL salary + NULL base_value → fallback 1000 → 100", () => {
-  assert.equal(resolveRiderSalary({ salary: null, base_value: null }), 100);
+test("resolveRiderSalary: NULL salary + NULL base_value → fallback 1000 → 67", () => {
+  assert.equal(resolveRiderSalary({ salary: null, base_value: null }), 67);
   // undefined salary behandles som free agent (== null loose)
-  assert.equal(resolveRiderSalary({}), 100);
+  assert.equal(resolveRiderSalary({}), 67);
 });
 
 // #1308: akademiryttere tæller IKKE mod senior-cap i getTeamMarketState.

@@ -11,12 +11,12 @@ import {
 } from "./contractSeed.js";
 import { makeRng } from "./fictionalRiderGenerator.js";
 
-test("computeFrozenSalary spejler den gamle generated formel", () => {
-  // GREATEST(1, ROUND((COALESCE(base_value,1000)+prize)*0.10))
-  assert.equal(computeFrozenSalary({ base_value: 1_000_000, prize_earnings_bonus: 0 }), 100_000);
-  assert.equal(computeFrozenSalary({ base_value: 50_000, prize_earnings_bonus: 5_000 }), 5_500);
-  // NULL/0 base_value → fallback 1000 → salary 100
-  assert.equal(computeFrozenSalary({ base_value: null, prize_earnings_bonus: 0 }), 100);
+test("computeFrozenSalary = strict_fair_v1 rate (0.067)", () => {
+  // E2: GREATEST(1, ROUND((COALESCE(base_value,1000)+prize)*0.067))
+  assert.equal(computeFrozenSalary({ base_value: 1_000_000, prize_earnings_bonus: 0 }), 67_000);
+  assert.equal(computeFrozenSalary({ base_value: 50_000, prize_earnings_bonus: 5_000 }), 3_685);
+  // NULL/0 base_value → fallback 1000 → salary 67
+  assert.equal(computeFrozenSalary({ base_value: null, prize_earnings_bonus: 0 }), 67);
   // bundgrænse 1
   assert.equal(computeFrozenSalary({ base_value: 1, prize_earnings_bonus: 0 }), 1);
 });
@@ -41,7 +41,7 @@ test("computeContractEndSeason = start + length - 1", () => {
 test("CONTRACT-konstanter", () => {
   assert.equal(CONTRACT.FOUNDER_LENGTH, 2);
   assert.equal(CONTRACT.DEFAULT_ACQUIRE_LENGTH, 2);
-  assert.equal(CONTRACT.SALARY_RATE, 0.10);
+  assert.equal(CONTRACT.SALARY_RATE, 0.067);
 });
 
 // ── contractOnAcquirePatch ──────────────────────────────────────────────────
@@ -61,20 +61,20 @@ test("contractOnAcquirePatch: rytter MED kontrakt → {} (arves uændret, regene
 test("contractOnAcquirePatch: kontraktløs rytter → standard-kontrakt (length 2, frossen salary, korrekt end)", () => {
   const patch = contractOnAcquirePatch({ salary: null, base_value: 1_000_000, prize_earnings_bonus: 0 }, 1);
   assert.equal(patch.contract_length, 2);
-  assert.equal(patch.salary, 100_000); // 10% af 1_000_000
+  assert.equal(patch.salary, 67_000); // 6.7% af 1_000_000
   assert.equal(patch.contract_end_season, 2); // 1 + 2 - 1
 });
 
 test("contractOnAcquirePatch: undefined salary behandles som kontraktløs (free agent)", () => {
   const patch = contractOnAcquirePatch({ base_value: 50_000, prize_earnings_bonus: 5_000 }, 3);
   assert.equal(patch.contract_length, 2);
-  assert.equal(patch.salary, 5_500); // 10% af (50_000 + 5_000)
+  assert.equal(patch.salary, 3_685); // 6.7% af (50_000 + 5_000)
   assert.equal(patch.contract_end_season, 4); // 3 + 2 - 1
 });
 
 test("contractOnAcquirePatch: kontraktløs + NULL base_value → fallback salary 100", () => {
   const patch = contractOnAcquirePatch({ salary: null, base_value: null }, 1);
-  assert.equal(patch.salary, 100);
+  assert.equal(patch.salary, 67);
   assert.equal(patch.contract_length, 2);
   assert.equal(patch.contract_end_season, 2);
 });
@@ -138,21 +138,21 @@ test("runContractSeed: founders → 2 sæsoner, andre ejede → 1-3, free agents
 
   const byId = Object.fromEntries(supabase._updates.map((u) => [u.id, u.patch]));
 
-  // Founder r1: length=2, end=2, salary=100_000
+  // Founder r1: length=2, end=2, salary=67_000 (6.7% af 1_000_000)
   assert.equal(byId.r1.contract_length, 2);
   assert.equal(byId.r1.contract_end_season, 2);
-  assert.equal(byId.r1.salary, 100_000);
+  assert.equal(byId.r1.salary, 67_000);
 
-  // Founder r2: length=2, end=2, salary=20_000
+  // Founder r2: length=2, end=2, salary=13_400 (6.7% af 200_000)
   assert.equal(byId.r2.contract_length, 2);
   assert.equal(byId.r2.contract_end_season, 2);
-  assert.equal(byId.r2.salary, 20_000);
+  assert.equal(byId.r2.salary, 13_400);
 
-  // Non-founder r3: length 1-3, end = 1 + length - 1, salary=50_000
+  // Non-founder r3: length 1-3, end = 1 + length - 1, salary=33_500 (6.7% af 500_000)
   assert.ok(byId.r3.contract_length >= 1 && byId.r3.contract_length <= 3,
     `r3 length=${byId.r3.contract_length} ude af 1-3`);
   assert.equal(byId.r3.contract_end_season, byId.r3.contract_length); // = 1 + length - 1
-  assert.equal(byId.r3.salary, 50_000);
+  assert.equal(byId.r3.salary, 33_500);
 });
 
 test("runContractSeed (dryRun): ingen writes, kun preview-count", async () => {

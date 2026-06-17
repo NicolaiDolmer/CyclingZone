@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.52",
+    date: "2026-06-17",
+    label: "Beta",
+    changes: [
+      {
+        category: "Changed · Finances",
+        items: [
+          "EN · The economy has been rebalanced for the fresh season. Rider salaries are now 6.7% of a rider's market value per season, down from 10%, so running a squad costs less. The estimated salary shown for free agents before you sign them uses the new rate. Sponsor income for season 1 now scales with your division (D1 600,000 · D2 400,000 · D3 260,000 CZ$), so a competitive squad stays sustainable instead of bleeding money. Refs #1105",
+          "DA · Økonomien er rebalanceret til den friske sæson. Rytterløn er nu 6,7% af en rytters markedsværdi pr. sæson, ned fra 10%, så det koster mindre at drive et hold. Den estimerede løn der vises for free agents inden du signerer dem bruger den nye sats. Sponsor-indkomst for sæson 1 skaleres nu efter din division (D1 600.000 · D2 400.000 · D3 260.000 CZ$), så et konkurrencedygtigt hold forbliver bæredygtigt i stedet for at bløde penge. Refs #1105",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.51",
     date: "2026-06-17",
     label: "Beta",

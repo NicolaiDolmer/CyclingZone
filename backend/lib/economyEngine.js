@@ -66,8 +66,9 @@ async function getDefaultSupabaseClient() {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-// SALARY_RATE (0.10) lever nu i database/2026-05-04-salary-generated-column.sql
-// som GENERATED-formel og kan ikke længere overskrives fra applikationskode.
+// Løn er FROSSEN ved signering (#1309: salary er en plain INTEGER, ikke længere
+// GENERATED). Raten lever i economyConstants.SALARY_RATE (E2: 0.067) og bruges af
+// contractSeed/marketUtils — IKKE her. Sæson-slut læser den stored rider.salary.
 const INTEREST_RATE = 0.10;        // 10% interest on negative balance per season
 const PROMOTION_SLOTS = 2;         // Top 2 promote
 const RELEGATION_SLOTS = 2;        // Bottom 2 relegate
