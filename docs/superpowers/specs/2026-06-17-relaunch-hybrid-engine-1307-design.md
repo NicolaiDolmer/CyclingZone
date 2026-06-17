@@ -62,7 +62,7 @@ Prod kører en **levende sæson 2** (8.964 aktive ryttere, 23 menneske-managers,
 | # | Pre-req | Status | Verify / handling |
 |---|---|---|---|
 | P1 | Økonomi E2 + Fase 1 deployet + migreret | ✅ **Verificeret** (kolonner findes, konstanter på main, Railway-deploy) | — |
-| P2 | race_engine_v2 grøn mod **nuværende** population | ⚠️ Grøn ved merge-tid 12/6; ikke gen-kørt | `node backend/scripts/raceGate.js --condition --roles` (Fase A) |
+| P2 | race_engine_v2 grøn mod **nuværende** population | ✅ **Base-gate gen-kørt grøn 17/6** (`raceGate.js`, 3/3 seeds 2026/7/42). Advisory `--condition --roles` fejler seed 2026 på 2 KENDTE post-launch-seams (itt 59% vs 60% = roles-itt triaget separat; flat-udbrud 7.7% vs 7.0% = #1021-rekalibrering 17/6, fejler 18/20 seeds) — IKKE hard-gate | base `raceGate.js` (hard) grøn; condition/roles re-kalibreres post-launch |
 | P3 | Verificerbar DB-backup/PITR før prod-apply | ⚠️ **Tooling bygget + lokalt-verificeret** (`scripts/db-backup.mjs` + `db-verify-restore.mjs`, commit `893fed13`); mangler kun `SUPABASE_DB_URL` i prod-Infisical + ét prod-run | Ejer: tilføj `SUPABASE_DB_URL` (Supabase→Connect→Session pooler) → `npm run db:backup` + `db:verify-restore` |
 | P4 | Orchestrator grøn ejer-verify mod preview-branch | ❌ Kode-komplet, aldrig kørt apply | `run-relaunch-rehearsal.mjs`, 8 acceptance + rollback PASS (Fase C) |
 | P5 | #1101 base_value-shadow-cutover kvitteret | ❌ Hard-gate (`RELAUNCH_1101_CUTOVER_ACK=true`) | Ejer-kvittering (Fase C) |
@@ -74,7 +74,7 @@ Prod kører en **levende sæson 2** (8.964 aktive ryttere, 23 menneske-managers,
 
 ### Fase A — no-regret (kan startes straks, ingen prod-effekt)
 1. **Ret `PLAN.md` doc-drift** (§2). Docs-only. Effort **S**. Beslutninger må ikke træffes ud fra et forkert risikobillede.
-2. **Kør kalibrerings-gaten** mod nuværende population: `raceGate.js --condition --roles`. Read-only. Effort **S** (M hvis re-tune). Dette er simulér-før-ship for #1307-delen (P2).
+2. ✅ **Kørt 17/6 (P2):** base `raceGate.js` grøn 3/3 seeds. `--condition --roles` advisory-fail på 2 kendte post-launch-seams (itt 59/60, flat-udbrud 7.7/7.0 = #1021) — ikke hard-gate. Read-only. Effort **S** (M hvis re-tune). Simulér-før-ship for #1307-delen.
 3. ✅ Deploy-verify (P1) — gjort.
 
 ### Fase B — lille byg (parallelt; separate worktrees, forskellige moduler)
