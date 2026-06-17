@@ -31,7 +31,10 @@
     "dev:backend": "npm --prefix backend run dev",
     "audit:rls": "infisical run --env=dev -- node backend/scripts/audit-rls-coverage.js",
     "audit:liveness": "infisical run --env=dev -- node backend/scripts/audit-feature-liveness.js",
-    "audit:sentry": "infisical run --env=dev -- node scripts/sentry-issues.mjs"
+    "audit:sentry": "infisical run --env=dev -- node scripts/sentry-issues.mjs",
+    "db:backup": "infisical run --env=prod -- node scripts/db-backup.mjs",
+    "db:verify-restore": "node scripts/db-verify-restore.mjs",
+    "db:selftest": "node scripts/db-selftest.mjs"
   },
   "devDependencies": {
     "lint-staged": "^17.0.7",

@@ -76,3 +76,7 @@ docs/WEEKLY_PLANNING_GUIDE.md
 # Playwright MCP tool artifacts (browser-nav snapshots/logs)
 .playwright-mcp/
 .superpowers/
+
+# Local DB backup artifacts (scripts/db-backup.mjs default output). Real prod
+# backups must NEVER be committed — point BACKUP_DIR at OneDrive for off-site.
+/.backups/
