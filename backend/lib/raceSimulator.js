@@ -77,7 +77,7 @@ const MAX_STAGE_GAP_SECONDS = 1800; // sikkerhedsloft (30 min)
 // Form/Træthed-seams (#1306): max ~±3 % af typisk terrain-score (~0.65) per spec 6.4.
 // Kalibreres i race:gate (B4); #1021 erstatter med fuld model i samme signaturer.
 export const FORM_RACE_WEIGHT = 0.012;     // form 0↔100 → ±0.012
-export const FATIGUE_RACE_WEIGHT = 0.008;  // træthed 100 → 0.008 (trækkes fra på call-site)
+export const FATIGUE_RACE_WEIGHT = 0.030;  // #1021: træthed 100 → 0.030 (kalibreret via race:gate:condition — durability levende; trækkes fra på call-site)
 // Plan 1 (#1122): durability-evnen dæmper trætheds-straffen (fade sent i hårde
 // løb). durability 99 → halv straf, durability 0 → fuld straf. Effekten findes
 // kun når der ER træthed (condition-mode / #1021), ikke i neutral-mode.
