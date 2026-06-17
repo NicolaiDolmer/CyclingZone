@@ -551,13 +551,14 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
             },
           });
 
-          await supabaseClient
+          const { error: riderUpdateError } = await supabaseClient
             .from("riders")
             .update({
               team_id: rider.ai_team_id || null,
               pending_team_id: null,
             })
             .eq("id", rider.id);
+          throwIfSupabaseError(riderUpdateError, `Could not move rider ${rider.id} after forced debt sale`);
 
           await closeTransferListingsForRiders(supabaseClient, [rider.id], "sold");
 
@@ -575,10 +576,11 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
       transferFrozen = false;
     }
 
-    await supabaseClient
+    const { error: breachUpdateError } = await supabaseClient
       .from("teams")
       .update({ debt_breach_streak: breachStreak, transfer_frozen: transferFrozen })
       .eq("id", team.id);
+    throwIfSupabaseError(breachUpdateError, `Could not update debt_breach_streak/transfer_frozen for team ${team.id}`);
 
     console.log(`  📊 ${team.name}: debt_breach_streak=${breachStreak}, transfer_frozen=${transferFrozen}`);
   }
