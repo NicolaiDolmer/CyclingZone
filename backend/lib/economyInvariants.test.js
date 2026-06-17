@@ -13,7 +13,7 @@ process.env.SUPABASE_URL ??= "https://example.supabase.co";
 process.env.SUPABASE_SERVICE_KEY ??= "test-service-key";
 
 const { payDivisionBonuses, processSeasonStart, processTeamSeasonPayroll } = await import("./economyEngine.js");
-const { createEmergencyLoan, processLoanInterest } = await import("./loanEngine.js");
+const { createEmergencyLoan, processLoanInterest, computeMaxLoanPrincipal } = await import("./loanEngine.js");
 
 // ── Test fixture: in-memory finance_transactions with optional unique-violation ───
 
@@ -379,8 +379,11 @@ test("createEmergencyLoan HARD clamp: clamper principal og sender breach-notif (
   const newLoan = supabase.state.loans.find((l) => l.id !== "loan-old");
   assert.ok(newLoan, "ny emergency-loan-row skal insertes");
 
-  // Principal er clamped: < 100K OG total gæld <= 600K.
-  assert.ok(newLoan.principal < 100_000, `principal=${newLoan.principal} skal være clamped < 100000`);
+  // Principal er clamped til præcis det maksimale der passer under loftet.
+  // computeMaxLoanPrincipal({currentDebt:580000, debtCeiling:600000, originationFeePct:0.15})
+  // => headroom=20000; P=floor(20000/1.15)=17391; fee=round(17391*0.15)=2609; total=20000 ✓
+  const expectedPrincipal = computeMaxLoanPrincipal({ currentDebt: 580_000, debtCeiling: 600_000, originationFeePct: 0.15 }).principal;
+  assert.equal(newLoan.principal, expectedPrincipal, `principal=${newLoan.principal} skal være præcis ${expectedPrincipal} (clamped til loft)`);
   assert.ok(
     580_000 + newLoan.amount_remaining <= 600_000,
     `total gæld ${580_000 + newLoan.amount_remaining} overstiger loft 600K`

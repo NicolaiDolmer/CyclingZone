@@ -360,15 +360,12 @@ export async function createEmergencyLoan(teamId, amountNeeded, supabaseClient =
       if (rpcError.code !== "PGRST202" && !/function .* does not exist/i.test(rpcError.message || "")) {
         throw rpcError;
       }
-    } else {
+    } else if (rpcLoan) {
       // RPC returnerer NULL når 0 headroom — afspejl det.
-      loan = rpcLoan ? (Array.isArray(rpcLoan) ? rpcLoan[0] : rpcLoan) : null;
-      if (rpcLoan !== undefined) {
-        // RPC-sti lykkedes (ingen fejl) — men null = ingen headroom.
-        if (loan === null) return null;
-        // RPC-sti: fall through to balance-credit + notifications below.
-        // issuedPrincipal = loan.principal (sat af RPC).
-      }
+      loan = Array.isArray(rpcLoan) ? rpcLoan[0] : rpcLoan;
+    } else {
+      // RPC-sti lykkedes men returnerede null = ingen headroom.
+      return null;
     }
   }
 
@@ -392,18 +389,15 @@ export async function createEmergencyLoan(teamId, amountNeeded, supabaseClient =
 
     if (issuedPrincipal <= 0) return null;
 
-    const issuedFee = computeLoanFee(issuedPrincipal, feeRate);
-    const issuedTotalOwed = issuedPrincipal + issuedFee;
-
     const { data: insertedLoan, error } = await client.from("loans").insert({
       team_id: teamId,
       loan_type: "emergency",
       principal: issuedPrincipal,
-      origination_fee: issuedFee,
+      origination_fee: computeLoanFee(issuedPrincipal, feeRate),
       interest_rate: interestRate,
       seasons_total: 1,
       seasons_remaining: 1,
-      amount_remaining: issuedTotalOwed,
+      amount_remaining: issuedPrincipal + computeLoanFee(issuedPrincipal, feeRate),
       status: "active",
     }).select().single();
 
