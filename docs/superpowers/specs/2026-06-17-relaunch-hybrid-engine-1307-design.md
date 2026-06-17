@@ -66,7 +66,7 @@ Prod kører en **levende sæson 2** (8.964 aktive ryttere, 23 menneske-managers,
 | P3 | Verificerbar DB-backup/PITR før prod-apply | ⚠️ **Tooling bygget + lokalt-verificeret** (`scripts/db-backup.mjs` + `db-verify-restore.mjs`, commit `893fed13`); mangler kun `SUPABASE_DB_URL` i prod-Infisical + ét prod-run | Ejer: tilføj `SUPABASE_DB_URL` (Supabase→Connect→Session pooler) → `npm run db:backup` + `db:verify-restore` |
 | P4 | Orchestrator grøn ejer-verify mod preview-branch | ❌ Kode-komplet, aldrig kørt apply | `run-relaunch-rehearsal.mjs`, 8 acceptance + rollback PASS (Fase C) |
 | P5 | #1101 base_value-shadow-cutover kvitteret | ❌ Hard-gate (`RELAUNCH_1101_CUTOVER_ACK=true`) | Ejer-kvittering (Fase C) |
-| P6 | #677 (fiktive stats via ability-model) afklaret | ⚠️ OPEN/claude:todo | Beslutning ④ — er det dækket af orchestrator-backfill, eller en kvalitets-blocker? |
+| P6 | #677 (fiktive stats via ability-model) afklaret | ✅ **Afklaret 17/6** — IKKE blocker. Backfill-kæden (`relaunchOrchestrator.js:113-118` → `backfillCores.js`) dækker launch; preview seed 2026 exit 0. #677-fysiologi (ground-truth W/kg, VO2max) forbliver post-launch m. #1021 | Beslutning ④ lukket — se #677-kommentar 17/6 |
 
 ---
 
@@ -126,7 +126,7 @@ Per reglen: balance-følsomme systemer får empirisk dry-run mod ægte populatio
 - **① Træthed-niveau** — ✅ **AFGJORT: ægte hybrid** (cross-stage akkumulering).
 - **② Backup-strategi** (P3) — ✅ **AFGJORT: verificeret logisk pg_dump-backup** (`scripts/db-backup.mjs` + `db-verify-restore.mjs`, commit `893fed13`, lokalt-grøn). En frisk restore-testet dump slår både den 24t-gamle daglige backup og en ubetestet PITR; PITR valgfri oveni. Reverse-DELETE-undo forkastet (dækker ikke sæson/race/finance). MCP-stramning (read-only/scope) bevidst FORKASTET — ejer vil maks autonomi; backuppen er det der gør bred adgang sikker. Resterer: `SUPABASE_DB_URL` i prod-Infisical + ét prod-run (i morgen).
 - **③ Academy i seed-kørslen** (Fase C trin 9) — skal hver menneske-trup have et kandidat-kuld på relaunch-dag 1, eller staged efter? Afgøres lige før `--apply`.
-- **④ #677-status** (P6) — er fiktive stats dækket af orchestratorens backfill-kæde (physiology→abilities→base_value), eller er #677 en reel kvalitets-blocker? Kræver kort undersøgelse.
+- **④ #677-status** (P6) — ✅ **AFGJORT 17/6: dækket af backfill-kæden, IKKE en blocker.** physiology→abilities→types→base_value kører ved seed (`relaunchOrchestrator.js:113-118`); preview seed 2026 = exit 0, alle 8 typer, pyramide rapport-only. #677-fysiologi (ground-truth W/kg, VO2max) post-launch m. #1021. Detaljer: #677-kommentar 17/6.
 - **⑤ PCM-kode-oprydning timing** + approve-results/`pending_race_results`-stiens skæbne (ingen kode skriver tabellen i dag — vestigial). **Anbefaling: post-launch (Fase D)** — ikke en relaunch-blocker.
 
 ---
