@@ -12,7 +12,30 @@ export const SPONSOR_INCOME_BASE = 240000;
 // overskud) i stedet for at tabe ~750k/sæson på flad 240k. Autoritativ for intro-
 // sæsonen i sponsorEngine.computeSponsorForSeason — den stored teams.sponsor_income-
 // kolonne er kun fallback. Sæson-2+ bruger den separate variable-model (sponsorEngine).
-export const SPONSOR_INCOME_BY_DIVISION = { 1: 600000, 2: 400000, 3: 260000 };
+//
+// #1441 A6-kalibrering (2026-06-17): D3 hævet 260k → 340k. Den friske relaunch-
+// population giver HVER trup 8 ryttere (starterSquadAllocator.SQUAD_SIZE, division-
+// blind snake-draft) med en frossen lønbyrde ≈ 316k/hold i ALLE divisioner. D3-sponsoren
+// (260k) lå under lønbyrden, så D3-net var negativ selv ved upkeep=0 → §4.1 kilde-re-tune
+// var påkrævet for at lukke D3-loopet (spec §3.2/§4.1). Verificeret af moneySupplyScorecard
+// (syntetisk fresh-population-projektion, --synthetic).
+export const SPONSOR_INCOME_BY_DIVISION = { 1: 600000, 2: 400000, 3: 340000 };
+
+// #1441 Fase 1 — løbende upkeep (gold sink). Division-tier-skaleret, IKKE live
+// roster-værdi (undgår auto-eskalerende feedback-loop).
+//
+// A6-KALIBRERET (2026-06-17) mod syntetisk fresh-population (ikke de gamle frosne
+// live-lønninger): D1 250k→440k, D2 110k→140k, D3 30k→40k. Konveks "blød bund" (§3.1):
+// den stejle top (D1) bærer anti-inflations-lasten. Mod en fresh roster-lønbyrde ≈ 316k/hold
+// + repræsentativ præmie (D1 160k/D2 70k/D3 25k) rammer nettoen: D1 ≈ +3,6k (break-even,
+// |net|≤30k ✅), D2 ≈ +13,6k ✅, D3 ≈ +8,6k ✅ (alle i §2.2 net-mål). Låst af
+// moneySupplyScorecard --synthetic. Præmie er det blødeste input — se scorecard-noten.
+export const UPKEEP_BY_DIVISION = { 1: 440000, 2: 140000, 3: 40000 };
+
+// #1441 Fase 1 — FINAL sponsor-payout-loft (post board_modifier × pullout).
+// S2+ = D1 750k gross × 1.2 = 900k; S1/intro = D1 600k gross × 1.2 = 720k.
+// Forward-guard mod board-modifier-bypass; ingen DB-default spejler dette.
+export const FINAL_SPONSOR_PAYOUT_CEILING = Object.freeze({ S1: 720000, S2_PLUS: 900000 });
 
 // teams.balance DEFAULT i database/schema.sql + 2026-04-25-economy-retuning.sql.
 // Også brugt som DEFAULT_BETA_BALANCE i betaResetService.js.
@@ -158,6 +181,7 @@ export const FINANCE_RELATED_ENTITY = Object.freeze({
 export const FINANCE_REASON = Object.freeze({
   // Sæson-baserede payouts (cron)
   SEASON_START_SPONSOR: "season_start_sponsor",
+  SEASON_START_UPKEEP: "season_start_upkeep",
   SEASON_END_SALARY: "season_end_salary",
   SEASON_END_DIVISION_BONUS: "season_end_division_bonus",
   SEASON_END_NEGATIVE_INTEREST: "season_end_negative_interest",

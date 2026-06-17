@@ -9,6 +9,7 @@
       "seasonStartFallbackPullout": "Sponsorindtægt · Sæson start (fallback {amount} ×{modifier} · sponsor-pullout aktiv)"
     },
     "salary": "Sæsonlønninger · {count} ryttere",
+    "upkeep": "Drift og vedligehold · Division {division}",
     "interest": "Renter på gæld (10% af {amount} pts)",
     "bonus": "Divisionsbonus · Division {division}, plads {rank}",
     "loanReceivedShort": "Kort lån optaget (gebyr: {fee} CZ$)",

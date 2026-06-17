@@ -120,6 +120,7 @@
     "board_unavailable": "Board features aren't available yet",
     "dna_requires_season_1": "You must finish season 1 before choosing your club DNA",
     "dna_already_chosen": "Your club DNA is already set and can't be changed yet",
-    "invalid_asking_price": "The asking price must be a positive whole number"
+    "invalid_asking_price": "The asking price must be a positive whole number",
+    "team_transfer_frozen": "Your team is frozen because its debt is over the division ceiling. Reduce your debt before trading."
   }
 }

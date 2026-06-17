@@ -9,6 +9,7 @@ const {
   payDivisionBonuses,
   processDivisionEnd,
   processSeasonEnd,
+  processSeasonStart,
   processTeamSeasonPayroll,
   rebalanceDivisions,
   repairSeasonEndFinanceAndBoard,
@@ -16,7 +17,7 @@ const {
   updateStandings,
 } = await import("./economyEngine.js");
 
-const { DIVISION_CAPACITY } = await import("./economyConstants.js");
+const { DIVISION_CAPACITY, FINAL_SPONSOR_PAYOUT_CEILING } = await import("./economyConstants.js");
 const { ACADEMY } = await import("./academyFlag.js");
 
 function clone(value) {
@@ -1739,11 +1740,13 @@ test("buildSeasonEndPreviewRows projects board modifier on the same path as seas
 
   assert.equal(preview.salary_deduction, 100);
   assert.equal(preview.loan_interest, 10);
-  // v3.78: balance_after følger processSeasonStart-rækkefølgen
-  // balance + sponsor − renter − løn = 500 + 220 − 10 − 100 = 610
-  assert.equal(preview.balance_after, 610);
-  assert.equal(preview.needs_emergency_loan, false);
-  assert.equal(preview.emergency_loan_amount, 0);
+  assert.equal(preview.upkeep, 40000);
+  // v3.78/A3 + #1441 A6: balance_after følger processSeasonStart-rækkefølgen inkl. upkeep
+  // (D3 upkeep kalibreret 30000 → 40000).
+  // balance + sponsor − renter − løn − upkeep = 500 + 220 − 10 − 100 − 40000 = −39390
+  assert.equal(preview.balance_after, -39390);
+  assert.equal(preview.needs_emergency_loan, true);
+  assert.equal(preview.emergency_loan_amount, 39390);
   assert.equal(preview.current_board_satisfaction, 50);
   assert.equal(preview.board_satisfaction, 74);
   assert.equal(preview.sponsor_modifier, 1.1);
@@ -2486,4 +2489,632 @@ test("processTeamSeasonPayroll skips academy_drift entirely for a team with 0 ac
 
   const driftRows = financeRows.filter(r => r.type === "academy_drift");
   assert.equal(driftRows.length, 0, "Hold uden akademi-ryttere: ingen academy_drift-transaktion");
+});
+
+// ─── processSeasonStart — FINAL sponsor-payout-clamp (#1441) ─────────────────
+
+/**
+ * Minimal fake supabase til processSeasonStart.
+ *
+ * Dækker tabellerne som processSeasonStart + loadSponsorStandingsContextForSeason
+ * kalder:
+ *   seasons           — sæson-nummer + forrige sæsons id
+ *   season_standings  — forrige sæsons standings (tom → ingen lastSeasonStanding)
+ *   teams             — hold med board_profiles embedded
+ *   board_consequences — aktive sponsor-pullouts (ingen her)
+ *   transfer_windows  — board_test_mode (returnerer false)
+ *   rpc               — increment_balance_with_audit (fanger finance-payload)
+ *   board_profiles    — insert af manglende plantyper
+ *
+ * processLoanAgreementSeasonFees + runSeasonPayroll injiceres som no-op stubs.
+ */
+function createSeasonStartSupabase({ season, team, prevSeasonId = null, prevStandings = [] } = {}) {
+  const state = {
+    season: clone(season),
+    team: clone(team),
+    financeRows: [],
+  };
+
+  // Embed board_profiles direkte på holdet (som processSeasonStart forventer)
+  state.team.board_profiles = state.team.board_profiles || [];
+
+  return {
+    state,
+    rpc(name, params) {
+      assert.equal(name, "increment_balance_with_audit");
+      state.financeRows.push({ ...params.p_finance_payload, team_id: params.p_team_id });
+      return Promise.resolve({ data: (state.team.balance ?? 0) + params.p_delta, error: null });
+    },
+    from(table) {
+      if (table === "seasons") {
+        return {
+          select(columns) {
+            // processSeasonStart: .select("number").eq("id", seasonId).single()
+            if (columns === "number") {
+              return {
+                eq(col, val) {
+                  assert.equal(col, "id");
+                  assert.equal(val, state.season.id);
+                  return {
+                    single() {
+                      return Promise.resolve({ data: { number: state.season.number }, error: null });
+                    },
+                  };
+                },
+              };
+            }
+            // loadSponsorStandingsContextForSeason: .select("id").eq("number", N-1).maybeSingle()
+            if (columns === "id") {
+              return {
+                eq(col, val) {
+                  assert.equal(col, "number");
+                  return {
+                    maybeSingle() {
+                      const id = prevSeasonId && val === state.season.number - 1 ? prevSeasonId : null;
+                      return Promise.resolve({ data: id ? { id } : null, error: null });
+                    },
+                  };
+                },
+              };
+            }
+            throw new Error(`seasons.select("${columns}") ikke mocket`);
+          },
+        };
+      }
+
+      if (table === "season_standings") {
+        return {
+          select() {
+            return {
+              eq(col, val) {
+                assert.equal(col, "season_id");
+                const rows = val === prevSeasonId ? clone(prevStandings) : [];
+                return Promise.resolve({ data: rows, error: null });
+              },
+            };
+          },
+        };
+      }
+
+      if (table === "teams") {
+        return {
+          select(columns) {
+            assert.equal(columns, "*, board_profiles(*)");
+            // Returnerer en thenable der svarer til .eq("is_ai", false).eq("is_frozen", false)
+            const result = { data: [clone(state.team)], error: null };
+            const chain = Object.assign(Promise.resolve(result), {
+              eq(_col, _val) { return chain; },
+            });
+            return chain;
+          },
+        };
+      }
+
+      if (table === "board_consequences") {
+        return {
+          select(columns) {
+            assert.equal(columns, "team_id, severity, id");
+            return {
+              eq(_col, _val) {
+                return {
+                  eq(_col2, _val2) {
+                    return Promise.resolve({ data: [], error: null });
+                  },
+                };
+              },
+            };
+          },
+          update(_payload) {
+            return {
+              eq(_col, _val) {
+                return {
+                  eq(_col2, _val2) {
+                    return Promise.resolve({ error: null });
+                  },
+                };
+              },
+            };
+          },
+        };
+      }
+
+      if (table === "transfer_windows") {
+        // isBoardTestModeActive: .select("board_test_mode").order(...).limit(1).maybeSingle()
+        return {
+          select(_cols) {
+            return {
+              order(_col, _opts) {
+                return {
+                  limit(_n) {
+                    return {
+                      maybeSingle() {
+                        return Promise.resolve({ data: { board_test_mode: false }, error: null });
+                      },
+                    };
+                  },
+                };
+              },
+            };
+          },
+        };
+      }
+
+      if (table === "board_profiles") {
+        // createInitialBoardProfile-insert for manglende plantyper
+        return {
+          insert(_payload) {
+            return Promise.resolve({ error: null });
+          },
+        };
+      }
+
+      throw new Error(`createSeasonStartSupabase: uventet tabel "${table}"`);
+    },
+  };
+}
+
+test("processSeasonStart clamps FINAL sponsor payout til S2_PLUS ceiling (900k)", async () => {
+  // Scenarie: D1-hold i sæson 2 (S2+), gross_sponsor = 750k,
+  // board budget_modifier = 1.5 → uden clamp ville payout = 1.125M.
+  // Med clamp skal resultatet være 900k (FINAL_SPONSOR_PAYOUT_CEILING.S2_PLUS).
+
+  const seasonId = "season-2";
+
+  const supabase = createSeasonStartSupabase({
+    season: { id: seasonId, number: 2 },
+    prevSeasonId: "season-1",
+    prevStandings: [
+      // forrige sæson: holdet lå i division 1, rank 3 — giver gross_sponsor > ceiling
+      {
+        team_id: "team-clamp",
+        division: 1,
+        rank_in_division: 3,
+        total_points: 200,
+      },
+    ],
+    team: {
+      id: "team-clamp",
+      name: "Clamp Test CF",
+      is_ai: false,
+      is_frozen: false,
+      division: 1,
+      balance: 500_000,
+      sponsor_income: 600_000,  // D1 intro-base — bruges som fallback i sponsorEngine
+      board_profiles: [
+        {
+          id: "board-clamp",
+          team_id: "team-clamp",
+          plan_type: "1yr",
+          negotiation_status: "completed",
+          budget_modifier: 1.5,  // modifier = 1.5 → 750k × 1.5 = 1.125M uden clamp
+        },
+      ],
+    },
+  });
+
+  await processSeasonStart(seasonId, {
+    supabase,
+    processLoanAgreementSeasonFees: async () => [],
+    runSeasonPayroll: async () => ({ results: [], summary: {} }),
+  });
+
+  const sponsorRow = supabase.state.financeRows.find(r => r.type === "sponsor");
+  assert.ok(sponsorRow, "Ingen sponsor finance-row fundet");
+  assert.equal(
+    sponsorRow.amount,
+    FINAL_SPONSOR_PAYOUT_CEILING.S2_PLUS,
+    `Sponsor payout skal clamp'es til ${FINAL_SPONSOR_PAYOUT_CEILING.S2_PLUS} — fik ${sponsorRow.amount}`
+  );
+});
+
+// ─── Løbende upkeep-debit (#1441) ────────────────────────────────────────────
+
+test("processTeamSeasonPayroll debits 140000 as upkeep for a D2 team (#1441)", async () => {
+  const seasonId = "season-upkeep-1";
+  const teamId = "team-upkeep-d2";
+
+  const financeRows = [];
+  const supabase = {
+    rpc(name, params) {
+      assert.equal(name, "increment_balance_with_audit");
+      financeRows.push({ team_id: params.p_team_id, ...params.p_finance_payload });
+      return Promise.resolve({ data: 0, error: null });
+    },
+    from(table) {
+      if (table === "teams") {
+        return {
+          select(_cols) {
+            return {
+              eq(_col, _val) {
+                return {
+                  single() {
+                    return Promise.resolve({ data: { balance: 999_999 }, error: null });
+                  },
+                };
+              },
+            };
+          },
+          update(_payload) {
+            return {
+              eq(_col, _val) {
+                return Promise.resolve({ error: null });
+              },
+            };
+          },
+        };
+      }
+
+      if (table === "riders") {
+        return {
+          select(_cols, opts) {
+            if (opts && opts.count === "exact" && opts.head === true) {
+              return {
+                eq(_col, _val) {
+                  return {
+                    eq(_col2, _val2) {
+                      return Promise.resolve({ count: 0, error: null });
+                    },
+                  };
+                },
+              };
+            }
+            return {
+              in(_col, _vals) {
+                return Promise.resolve({ data: [], error: null });
+              },
+            };
+          },
+        };
+      }
+
+      throw new Error(`Unexpected table in upkeep test: ${table}`);
+    },
+  };
+
+  const team = {
+    id: teamId,
+    name: "D2 Upkeep FC",
+    division: 2,
+    balance: 999_999,
+    riders: [],
+  };
+
+  await processTeamSeasonPayroll(team, seasonId, {
+    supabase,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => {},
+    getTotalDebt: async () => 0, // B3: stub — under ceiling, ingen breach
+  });
+
+  const upkeepRows = financeRows.filter(r => r.type === "upkeep");
+  assert.equal(upkeepRows.length, 1, "Præcis én upkeep-transaktion skal skrives for D2-hold");
+
+  const upkeep = upkeepRows[0];
+  assert.equal(upkeep.amount, -140000, "Upkeep-beløb skal være -140000 for division 2 (#1441 A6-kalibreret)");
+  assert.equal(upkeep.team_id, teamId);
+
+  // Idempotency-nøgle skal indeholde sæson + hold
+  assert.ok(
+    upkeep.idempotency_key &&
+    upkeep.idempotency_key.includes(seasonId) &&
+    upkeep.idempotency_key.includes(teamId),
+    `Idempotency-nøgle skal indeholde sæson og hold: ${upkeep.idempotency_key}`
+  );
+});
+
+test("processTeamSeasonPayroll skips upkeep entirely for a team with unknown division (#1441)", async () => {
+  const seasonId = "season-upkeep-skip";
+  const teamId = "team-upkeep-unknown";
+
+  const financeRows = [];
+  const supabase = {
+    rpc(name, params) {
+      assert.equal(name, "increment_balance_with_audit");
+      financeRows.push({ team_id: params.p_team_id, ...params.p_finance_payload });
+      return Promise.resolve({ data: 0, error: null });
+    },
+    from(table) {
+      if (table === "teams") {
+        return {
+          select(_cols) {
+            return {
+              eq(_col, _val) {
+                return {
+                  single() {
+                    return Promise.resolve({ data: { balance: 500_000 }, error: null });
+                  },
+                };
+              },
+            };
+          },
+        };
+      }
+
+      if (table === "riders") {
+        return {
+          select(_cols, opts) {
+            if (opts && opts.count === "exact" && opts.head === true) {
+              return {
+                eq(_col, _val) {
+                  return {
+                    eq(_col2, _val2) {
+                      return Promise.resolve({ count: 0, error: null });
+                    },
+                  };
+                },
+              };
+            }
+            return {
+              in(_col, _vals) {
+                return Promise.resolve({ data: [], error: null });
+              },
+            };
+          },
+        };
+      }
+
+      throw new Error(`Unexpected table in upkeep-skip test: ${table}`);
+    },
+  };
+
+  const team = {
+    id: teamId,
+    name: "Unknown Division FC",
+    division: 9, // ikke i UPKEEP_BY_DIVISION
+    balance: 500_000,
+    riders: [],
+  };
+
+  await processTeamSeasonPayroll(team, seasonId, {
+    supabase,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => {},
+  });
+
+  const upkeepRows = financeRows.filter(r => r.type === "upkeep");
+  assert.equal(upkeepRows.length, 0, "Hold med ukendt division: ingen upkeep-transaktion");
+});
+
+// ─── B3: Eskalerende transfer-fryse + tvunget salg (#1441/#97) ────────────────
+
+test("processTeamSeasonPayroll: breach-streak >= 2 fryser transfer + tvinger salg (D3, debt over ceiling) (#1441/#97)", async () => {
+  const seasonId = "season-breach-1";
+  const teamId = "team-breach-d3";
+  const riderId = "rider-expensive-1";
+
+  const financeRows = [];
+  const teamUpdates = [];
+  const riderUpdates = [];
+
+  // Fake supabase der tracker teams.update + riders.update + finance via rpc
+  const supabase = {
+    rpc(name, params) {
+      assert.equal(name, "increment_balance_with_audit");
+      financeRows.push({ team_id: params.p_team_id, ...params.p_finance_payload });
+      return Promise.resolve({ data: 0, error: null });
+    },
+    from(table) {
+      if (table === "teams") {
+        return {
+          select(_cols) {
+            return {
+              eq(_col, _val) {
+                return {
+                  single() {
+                    return Promise.resolve({ data: { balance: 999_999 }, error: null });
+                  },
+                };
+              },
+            };
+          },
+          update(payload) {
+            return {
+              eq(col, val) {
+                assert.equal(col, "id");
+                teamUpdates.push({ id: val, payload: { ...payload } });
+                return Promise.resolve({ error: null });
+              },
+            };
+          },
+        };
+      }
+
+      if (table === "riders") {
+        return {
+          select(_cols, opts) {
+            if (opts && opts.count === "exact" && opts.head === true) {
+              return {
+                eq(_col, _val) {
+                  return {
+                    eq(_col2, _val2) {
+                      return Promise.resolve({ count: 0, error: null });
+                    },
+                  };
+                },
+              };
+            }
+            return {
+              in(_col, _vals) {
+                return Promise.resolve({ data: [], error: null });
+              },
+            };
+          },
+          update(payload) {
+            return {
+              eq(col, val) {
+                assert.equal(col, "id");
+                riderUpdates.push({ id: val, payload: { ...payload } });
+                return Promise.resolve({ error: null });
+              },
+            };
+          },
+        };
+      }
+
+      if (table === "transfer_listings") {
+        return {
+          update(_payload) {
+            return {
+              in(_col, _vals) {
+                return {
+                  in(_col2, _vals2) {
+                    return Promise.resolve({ error: null });
+                  },
+                };
+              },
+            };
+          },
+        };
+      }
+
+      throw new Error(`Unexpected table in breach test: ${table}`);
+    },
+  };
+
+  // D3 team: debt_breach_streak = 1 (allerede ét brud), over ceiling (600k)
+  const team = {
+    id: teamId,
+    name: "Broke Riders D3",
+    division: 3,
+    balance: 0,
+    debt_breach_streak: 1,   // B1-kolonner
+    transfer_frozen: false,
+    riders: [
+      {
+        id: riderId,
+        firstname: "Rico",
+        lastname: "Vendido",
+        market_value: 500_000,
+        salary: 0,
+        ai_team_id: "ai-team-99",
+        team_id: teamId,
+      },
+    ],
+  };
+
+  await processTeamSeasonPayroll(team, seasonId, {
+    supabase,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => {},
+    getTotalDebt: async (_teamId, _client) => 700_000, // over D3 ceiling (600k)
+  });
+
+  // (a) teams.update skal kalde med transfer_frozen:true + debt_breach_streak:2
+  const breachUpdate = teamUpdates.find(u =>
+    u.id === teamId &&
+    "debt_breach_streak" in u.payload
+  );
+  assert.ok(breachUpdate, "teams.update med breach-payload skal være kaldt");
+  assert.equal(breachUpdate.payload.debt_breach_streak, 2, "breach-streak skal incremente til 2");
+  assert.equal(breachUpdate.payload.transfer_frozen, true, "transfer_frozen skal sættes til true");
+
+  // (b) tvunget salg: finance-row af typen "forced_debt_sale" skal eksistere
+  const forcedSaleRows = financeRows.filter(r => r.type === "forced_debt_sale");
+  assert.equal(forcedSaleRows.length, 1, "Præcis én forced_debt_sale finance-row skal oprettes");
+  assert.equal(forcedSaleRows[0].amount, 500_000, "Kredit = market_value (500k)");
+  assert.equal(forcedSaleRows[0].team_id, teamId);
+
+  // (c) rider-disposition: riders.update til ai_team_id || null
+  const riderDisposed = riderUpdates.find(u => u.id === riderId);
+  assert.ok(riderDisposed, "riders.update skal kalde for den solgte rytter");
+  assert.equal(riderDisposed.payload.team_id, "ai-team-99", "Rytter skal sættes til ai_team_id");
+  assert.equal(riderDisposed.payload.pending_team_id, null);
+});
+
+test("processTeamSeasonPayroll: team under ceiling nulstiller breach-streak + fjerner freeze (#1441/#97)", async () => {
+  const seasonId = "season-breach-2";
+  const teamId = "team-recovered";
+
+  const financeRows = [];
+  const teamUpdates = [];
+
+  const supabase = {
+    rpc(name, params) {
+      assert.equal(name, "increment_balance_with_audit");
+      financeRows.push({ team_id: params.p_team_id, ...params.p_finance_payload });
+      return Promise.resolve({ data: 0, error: null });
+    },
+    from(table) {
+      if (table === "teams") {
+        return {
+          select(_cols) {
+            return {
+              eq(_col, _val) {
+                return {
+                  single() {
+                    return Promise.resolve({ data: { balance: 999_999 }, error: null });
+                  },
+                };
+              },
+            };
+          },
+          update(payload) {
+            return {
+              eq(col, val) {
+                assert.equal(col, "id");
+                teamUpdates.push({ id: val, payload: { ...payload } });
+                return Promise.resolve({ error: null });
+              },
+            };
+          },
+        };
+      }
+
+      if (table === "riders") {
+        return {
+          select(_cols, opts) {
+            if (opts && opts.count === "exact" && opts.head === true) {
+              return {
+                eq(_col, _val) {
+                  return {
+                    eq(_col2, _val2) {
+                      return Promise.resolve({ count: 0, error: null });
+                    },
+                  };
+                },
+              };
+            }
+            return {
+              in(_col, _vals) {
+                return Promise.resolve({ data: [], error: null });
+              },
+            };
+          },
+        };
+      }
+
+      throw new Error(`Unexpected table in recovery test: ${table}`);
+    },
+  };
+
+  // D3 team med breach_streak = 1 men NU under ceiling (100k < 600k)
+  const team = {
+    id: teamId,
+    name: "Recovered Team D3",
+    division: 3,
+    balance: 500_000,
+    debt_breach_streak: 1,
+    transfer_frozen: true,
+    riders: [],
+  };
+
+  await processTeamSeasonPayroll(team, seasonId, {
+    supabase,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => {},
+    getTotalDebt: async (_teamId, _client) => 100_000, // UNDER D3 ceiling (600k)
+  });
+
+  // teams.update med debt_breach_streak: 0 + transfer_frozen: false
+  const resetUpdate = teamUpdates.find(u =>
+    u.id === teamId &&
+    "debt_breach_streak" in u.payload
+  );
+  assert.ok(resetUpdate, "teams.update med reset-payload skal være kaldt");
+  assert.equal(resetUpdate.payload.debt_breach_streak, 0, "breach-streak skal nulstilles til 0");
+  assert.equal(resetUpdate.payload.transfer_frozen, false, "transfer_frozen skal sættes til false");
+
+  // Ingen forced_debt_sale
+  const forcedSaleRows = financeRows.filter(r => r.type === "forced_debt_sale");
+  assert.equal(forcedSaleRows.length, 0, "Ingen forced_debt_sale ved recovery");
 });

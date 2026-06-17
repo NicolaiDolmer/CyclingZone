@@ -90,8 +90,8 @@ export function computeSponsorForSeason({
   divisionStandings = [],
 } = {}) {
   const legacySponsor = team?.sponsor_income ?? SPONSOR_INCOME_BASE;
-  // Division-skaleret base (E2 + #1439): sponsor skalerer med den division holdet
-  // konkurrerer i (D1 600k / D2 400k / D3 260k) — IKKE en flad, auto-eskalerende
+  // Division-skaleret base (E2 + #1439 + #1441 A6): sponsor skalerer med den division
+  // holdet konkurrerer i (D1 600k / D2 400k / D3 340k) — IKKE en flad, auto-eskalerende
   // base. Division-kortet er AUTORITATIVT: relaunch-reset tvinger alle hold til
   // div 3 med stored sponsor_income=240k, så den stale kolonneværdi må ikke vinde.
   // team.division er primær; ved sæson 2+ uden current division bruges sidste

@@ -11,7 +11,7 @@ const DEFAULT_READONLY_ENV = path.resolve(SCRIPT_DIR, "../../.codex.local/supaba
 const TARGET_SCENARIOS = [
   {
     name: "local_competent_current_rules",
-    description: "Competent active managers with sensible rosters under current economy rules. Prize money is live: race_points × 15.000 CZ$ per result.",
+    description: "Competent active managers with sensible rosters under current economy rules. Prize money is live: race_points × 1.500 CZ$ per result.",
     salaryMultiplier: 1,
     prizeMultiplier: 1,
     sponsorByDivision: { 1: 240000, 2: 240000, 3: 240000 },
@@ -194,7 +194,7 @@ function buildMarkdown(report) {
     "",
     `Live data source: season ${report.live.sourceSeason.number} for results, season ${report.live.activeSeason.number} for current teams/loans.`,
     "",
-    "Note: Prize money is live since S4 (race_points × 15.000 CZ$). Live rows show actual earned prizes; local scenario rows use fixed representative estimates.",
+    "Note: Prize money is live since S4 (race_points × 1.500 CZ$). Live rows show actual earned prizes; local scenario rows use fixed representative estimates.",
     "",
     "## Live Current Rules",
     "",

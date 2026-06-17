@@ -14,6 +14,7 @@ import {
   processLoanAgreementSeasonFees,
   processLoanInterest,
   createEmergencyLoan,
+  getTotalDebt,
 } from "./loanEngine.js";
 import {
   BOARD_IDENTITY_RIDER_SELECT,
@@ -33,18 +34,22 @@ import { isBoardTestModeActive } from "./boardTestMode.js";
 import { developRidersForSeason } from "./riderProgressionEngine.js";
 import { U25_ABILITY_KEYS } from "./boardGoals.js";
 import {
+  DEBT_CEILING_BY_DIVISION,
   DIVISION_CAPACITY,
   FINANCE_ACTOR_TYPE,
   FINANCE_REASON,
   FINANCE_RELATED_ENTITY,
+  FINAL_SPONSOR_PAYOUT_CEILING,
   FIRST_PROMOTION_RELEGATION_SEASON,
   MAX_DIVISION,
   MIN_DIVISION,
   SEASON_RIDER_PROGRESSION_ENABLED,
   SEASON_VALUE_RECALC_ENABLED,
   SPONSOR_INCOME_BASE,
+  UPKEEP_BY_DIVISION,
 } from "./economyConstants.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
+import { closeTransferListingsForRiders } from "./marketUtils.js";
 import { ACADEMY } from "./academyFlag.js";
 import {
   buildSponsorStandingsContext,
@@ -227,7 +232,10 @@ export async function processSeasonStart(seasonId, deps = {}) {
         ? sponsorStandingsContext.divisionStandingsByDivision.get(lastSeasonStanding.division) || []
         : [],
     });
-    const sponsorPayout = Math.round(sponsorBreakdown.gross_sponsor * modifier);
+    const finalCeiling = (Number.isInteger(seasonNumber) && seasonNumber >= FIRST_VARIABLE_SPONSOR_SEASON)
+      ? FINAL_SPONSOR_PAYOUT_CEILING.S2_PLUS
+      : FINAL_SPONSOR_PAYOUT_CEILING.S1;
+    const sponsorPayout = Math.min(finalCeiling, Math.round(sponsorBreakdown.gross_sponsor * modifier));
 
     // #666: description holdes null for nye rows — frontend renderer fra
     // metadata via backendMessages-i18n. Legacy rows beholder DA-description
@@ -404,6 +412,10 @@ async function defaultRunSeasonPayroll(supabaseClient, seasonId, deps = {}) {
     acc.emergency_loan_total += p.emergency_loan_amount || 0;
     acc.negative_balance_interest_count += p.negative_balance_interest_count || 0;
     acc.negative_balance_interest_total += p.negative_balance_interest || 0;
+    acc.upkeep_total += (p.upkeep_total || 0);
+    acc.upkeep_count += (p.upkeep_count || 0);
+    acc.forced_sale_count += (p.forced_sale_count || 0);
+    acc.forced_sale_total += (p.forced_sale_total || 0);
     return acc;
   }, {
     teams_processed: results.length,
@@ -415,6 +427,10 @@ async function defaultRunSeasonPayroll(supabaseClient, seasonId, deps = {}) {
     emergency_loan_total: 0,
     negative_balance_interest_count: 0,
     negative_balance_interest_total: 0,
+    upkeep_total: 0,
+    upkeep_count: 0,
+    forced_sale_count: 0,
+    forced_sale_total: 0,
   });
 
   return { results, summary };
@@ -437,6 +453,7 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
   const supabaseClient = deps.supabase ?? await getDefaultSupabaseClient();
   const processLoanInterestFn = deps.processLoanInterest ?? processLoanInterest;
   const createEmergencyLoanFn = deps.createEmergencyLoan ?? createEmergencyLoan;
+  const getTotalDebtFn = deps.getTotalDebt ?? getTotalDebt;
 
   // 1. Lånerenter på alle aktive lån. processLoanInterest returnerer
   //    { charged: [{ loan_id, interest, skipped }] } så vi kan aggregere
@@ -485,6 +502,87 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
         },
       }
     );
+  }
+
+  // 2b. B3-eskalering: debt-breach-streak + transfer-fryse + tvunget salg (#1441/#97).
+  //     Kører EFTER emergency-lån (gæld er nu finaliseret for sæsonen).
+  //     Bruger DEBT_CEILING_BY_DIVISION (economyConstants) som kanonisk kilde.
+  //     Springer over hold med ukendt division (ingen ceiling = ingen eskalering).
+  let forcedSaleCount = 0;
+  let forcedSaleTotal = 0;
+  const debtCeiling = DEBT_CEILING_BY_DIVISION[team.division] ?? null;
+  if (debtCeiling != null) {
+    const currentDebt = await getTotalDebtFn(team.id, supabaseClient);
+
+    let breachStreak = team.debt_breach_streak || 0;
+    let transferFrozen = team.transfer_frozen || false;
+
+    if (currentDebt > debtCeiling) {
+      breachStreak += 1;
+      transferFrozen = true; // streak >= 1 → fryser transfer
+
+      if (breachStreak >= 2) {
+        // Tvunget salg: sælg højeste-market_value rytter(e) indtil gæld <= ceiling
+        // eller ingen ryttere tilbage. Spejler squadEnforcement.executeAutoSale:
+        //   1. credit market_value til holdet via incrementBalanceWithAudit
+        //   2. sæt rider.team_id = rider.ai_team_id || null (disposition)
+        //   3. luk åbne transfer_listings for rytteren
+        const sortedRiders = [...(team.riders || [])]
+          .sort((a, b) => (b.market_value || 0) - (a.market_value || 0));
+        let runningDebt = currentDebt;
+        for (const rider of sortedRiders) {
+          if (runningDebt <= debtCeiling) break;
+          const credit = rider.market_value || 0;
+
+          await creditTeam(
+            team.id,
+            credit,
+            "forced_debt_sale",
+            `Tvunget salg (gælds-loft): ${rider.firstname} ${rider.lastname}`,
+            seasonId,
+            supabaseClient,
+            {
+              audit: {
+                sourcePath: "economyEngine.processTeamSeasonPayroll.forcedDebtSale",
+                reasonCode: FINANCE_REASON.SQUAD_AUTO_SALE,
+                relatedEntityType: FINANCE_RELATED_ENTITY.SEASON,
+                relatedEntityId: seasonId || null,
+              },
+            }
+          );
+
+          const { error: riderUpdateError } = await supabaseClient
+            .from("riders")
+            .update({
+              team_id: rider.ai_team_id || null,
+              pending_team_id: null,
+            })
+            .eq("id", rider.id);
+          throwIfSupabaseError(riderUpdateError, `Could not move rider ${rider.id} after forced debt sale`);
+
+          await closeTransferListingsForRiders(supabaseClient, [rider.id], "sold");
+
+          forcedSaleCount += 1;
+          forcedSaleTotal += credit;
+          // Optimistisk: antag at credit reducerer gæld proportionelt (estimat)
+          runningDebt = Math.max(0, runningDebt - credit);
+
+          console.log(`  🔴 ${team.name}: tvunget salg af ${rider.firstname} ${rider.lastname} (${credit} pts) — gæld-brud streak ${breachStreak}`);
+        }
+      }
+    } else {
+      // Under ceiling → nulstil streak + ophæv freeze
+      breachStreak = 0;
+      transferFrozen = false;
+    }
+
+    const { error: breachUpdateError } = await supabaseClient
+      .from("teams")
+      .update({ debt_breach_streak: breachStreak, transfer_frozen: transferFrozen })
+      .eq("id", team.id);
+    throwIfSupabaseError(breachUpdateError, `Could not update debt_breach_streak/transfer_frozen for team ${team.id}`);
+
+    console.log(`  📊 ${team.name}: debt_breach_streak=${breachStreak}, transfer_frozen=${transferFrozen}`);
   }
 
   // 3. Negativ-balance-rente (safety net hvis emergency-lån ikke dækkede)
@@ -552,6 +650,25 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
     console.log(`  🎓 ${team.name}: -${academyDriftCharged} pts akademi-drift (${academyCount} pladser × ${ACADEMY.DRIFT_PER_SEASON})`);
   }
 
+  // 5. Løbende upkeep (#1441) — division-tier-skaleret operating cost (gold sink).
+  //    Flad pr. division (IKKE modifier-skaleret), idempotent pr. sæson+hold.
+  const upkeepCharged = UPKEEP_BY_DIVISION[team.division] || 0;
+  if (upkeepCharged > 0) {
+    await debitTeam(
+      team.id, upkeepCharged, "upkeep", null, seasonId, supabaseClient,
+      {
+        idempotent: true,
+        metadata: { code: "tx.upkeep", params: { division: team.division } },
+        audit: {
+          sourcePath: "economyEngine.processSeasonStart.upkeep",
+          reasonCode: FINANCE_REASON.SEASON_START_UPKEEP,
+          idempotencyKey: `upkeep:${team.id}:${seasonId}`,
+        },
+      }
+    );
+    console.log(`  🏭 ${team.name}: -${upkeepCharged} pts upkeep (div ${team.division})`);
+  }
+
   return {
     team: team.name,
     team_id: team.id,
@@ -570,6 +687,11 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
     emergency_loan_count: emergencyLoanAmount > 0 ? 1 : 0,
     negative_balance_interest: negativeInterestCharged,
     negative_balance_interest_count: negativeInterestCharged > 0 ? 1 : 0,
+    upkeep_total: upkeepCharged,
+    upkeep_count: upkeepCharged > 0 ? 1 : 0,
+    // B3: tvunget salg + breach-streak-eskalering (#1441/#97)
+    forced_sale_count: forcedSaleCount,
+    forced_sale_total: forcedSaleTotal,
   };
 }
 
@@ -891,8 +1013,9 @@ export function buildSeasonEndPreviewRows({ teams = [], standings = [], loanData
       .sort((a, b) => (b.total_points || 0) - (a.total_points || 0));
     const rank = divStandings.findIndex(s => s.team_id === team.id) + 1;
     const nextSeasonSponsor = Math.round((team.sponsor_income || 0) * sponsorModifier);
-    // Følger processSeasonStart-rækkefølgen: +sponsor → −renter → −løn.
-    const balanceAfter = (team.balance || 0) + nextSeasonSponsor - totalInterest - totalSalary;
+    const upkeep = UPKEEP_BY_DIVISION[team.division] || 0;
+    // Følger processSeasonStart-rækkefølgen: +sponsor → −renter → −løn → −upkeep.
+    const balanceAfter = (team.balance || 0) + nextSeasonSponsor - totalInterest - totalSalary - upkeep;
 
     return {
       team_id: team.id,
@@ -901,6 +1024,7 @@ export function buildSeasonEndPreviewRows({ teams = [], standings = [], loanData
       current_balance: team.balance || 0,
       salary_deduction: totalSalary,
       loan_interest: totalInterest,
+      upkeep,
       balance_after: balanceAfter,
       needs_emergency_loan: balanceAfter < 0,
       emergency_loan_amount: balanceAfter < 0 ? Math.abs(balanceAfter) : 0,

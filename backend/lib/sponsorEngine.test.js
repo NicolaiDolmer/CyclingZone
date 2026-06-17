@@ -7,7 +7,7 @@ import {
 } from "./sponsorEngine.js";
 
 test("computeSponsorForSeason season 1 = division-skaleret intro-sponsor (E2 strict_fair_v1)", () => {
-  // Division-kortet er autoritativt: D1 600k / D2 400k / D3 260k.
+  // Division-kortet er autoritativt: D1 600k / D2 400k / D3 340k (#1441 A6: D3 260k→340k).
   const d1 = computeSponsorForSeason({ seasonNumber: 1, team: { division: 1, sponsor_income: 240_000 } });
   const d2 = computeSponsorForSeason({ seasonNumber: 1, team: { division: 2, sponsor_income: 240_000 } });
   const d3 = computeSponsorForSeason({ seasonNumber: 1, team: { division: 3, sponsor_income: 240_000 } });
@@ -15,7 +15,7 @@ test("computeSponsorForSeason season 1 = division-skaleret intro-sponsor (E2 str
   assert.equal(d1.mode, "intro");
   assert.equal(d1.gross_sponsor, 600_000);
   assert.equal(d2.gross_sponsor, 400_000);
-  assert.equal(d3.gross_sponsor, 260_000);
+  assert.equal(d3.gross_sponsor, 340_000);
   // Stored sponsor_income=240k må IKKE vinde over division-kortet.
   assert.equal(d1.base, 600_000);
   assert.equal(d1.variable, 0);
@@ -72,10 +72,11 @@ test("computeSponsorForSeason uses division-relative points and rank from previo
   });
 
   assert.equal(result.mode, "variable");
-  // team-2 er i division 3 (fra lastSeasonStanding) → base 260k, ikke flad 2,5M (#1439).
-  assert.equal(result.base, 260_000);
+  // team-2 er i division 3 (fra lastSeasonStanding) → base 340k (#1441 A6: 260k→340k),
+  // ikke flad 2,5M (#1439). Variabel-komponenten (75k) er uændret.
+  assert.equal(result.base, 340_000);
   assert.equal(result.variable, 75_000);
-  assert.equal(result.gross_sponsor, 335_000);
+  assert.equal(result.gross_sponsor, 415_000);
   assert.equal(result.last_season_rank, 2);
   assert.equal(result.median_points, 120);
 });

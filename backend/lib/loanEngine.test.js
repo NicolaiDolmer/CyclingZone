@@ -192,7 +192,11 @@ function createEmergencyLoanSupabase({
     state,
     client: {
       // Slice 07c: balance + finance_transactions atomic via RPC.
+      // B2: create_emergency_loan_atomic returnerer PGRST202 → tvinger JS-fallback.
       rpc(name, params) {
+        if (name === "create_emergency_loan_atomic") {
+          return Promise.resolve({ data: null, error: { code: "PGRST202", message: "function not exposed in mock" } });
+        }
         assert.equal(name, "increment_balance_with_audit");
         assert.equal(params.p_team_id, teamId);
         state.balance = state.balance + params.p_delta;
@@ -543,4 +547,153 @@ test("createEmergencyLoan kaster hvis loan_config mangler emergency-row (DB-seed
   );
   assert.equal(supabase.state.loans.length, 0);
   assert.equal(supabase.state.financeRows.length, 0);
+});
+
+// ── B2: HARD nødlåns-clamp — gæld + principal + gebyr <= divisionsloft ────────
+
+/**
+ * Hjælper: multiple loan_config-rækker (short + long + emergency) så
+ * createEmergencyLoan kan hente effectiveCeiling fra short/long-rækken.
+ * create_emergency_loan_atomic returnerer PGRST202 → tvinger JS-fallback.
+ * Eksisterende gæld simuleres via én aktiv loan-row.
+ */
+function createCeilingEmergencySupabase({
+  _teamId = "t1",
+  division = 3,
+  existingDebt = 0,
+  configs = [
+    { loan_type: "short",     origination_fee_pct: 0.10, interest_rate_pct: 0.12, seasons: 2, debt_ceiling: 600_000 },
+    { loan_type: "long",      origination_fee_pct: 0.05, interest_rate_pct: 0.10, seasons: 5, debt_ceiling: 600_000 },
+    { loan_type: "emergency", origination_fee_pct: 0.15, interest_rate_pct: 0.15, seasons: 1, debt_ceiling: 600_000 },
+  ],
+} = {}) {
+  const state = { balance: 0, loans: [], financeRows: [], notifications: [] };
+
+  return {
+    state,
+    client: {
+      rpc(name, params) {
+        // Alle atomiske RPC'er returnerer PGRST202 → app-kode falder til JS-fallback.
+        if (name === "create_emergency_loan_atomic" || name === "create_loan_atomic") {
+          return Promise.resolve({ data: null, error: { code: "PGRST202", message: "function not exposed in mock" } });
+        }
+        if (name === "increment_balance_with_audit") {
+          state.balance += params.p_delta;
+          state.financeRows.push({ team_id: params.p_team_id, ...params.p_finance_payload });
+          return Promise.resolve({ data: state.balance, error: null });
+        }
+        throw new Error(`Unexpected rpc: ${name}`);
+      },
+      from(table) {
+        if (table === "teams") {
+          return {
+            select(columns) {
+              return {
+                eq() {
+                  return {
+                    single() {
+                      if (columns === "division") return Promise.resolve({ data: { division }, error: null });
+                      if (columns === "user_id") return Promise.resolve({ data: { user_id: "user-1" }, error: null });
+                      throw new Error(`Unexpected teams.select columns: ${columns}`);
+                    },
+                  };
+                },
+              };
+            },
+          };
+        }
+        if (table === "loan_config") {
+          return {
+            select() {
+              return { eq() { return Promise.resolve({ data: configs, error: null }); } };
+            },
+          };
+        }
+        if (table === "loans") {
+          return {
+            select() {
+              return {
+                eq() {
+                  return {
+                    eq() {
+                      return Promise.resolve({
+                        data: existingDebt > 0 ? [{ amount_remaining: existingDebt }] : [],
+                        error: null,
+                      });
+                    },
+                  };
+                },
+              };
+            },
+            insert(row) {
+              state.loans.push(row);
+              return {
+                select() {
+                  return {
+                    single() {
+                      return Promise.resolve({ data: { id: "loan-new", ...row }, error: null });
+                    },
+                  };
+                },
+              };
+            },
+          };
+        }
+        if (table === "notifications") {
+          const q = {
+            eq() { return q; }, gte() { return q; }, order() { return q; },
+            is() { return q; }, limit() { return Promise.resolve({ data: [], error: null }); },
+          };
+          return {
+            select() { return q; },
+            insert(row) { state.notifications.push(row); return Promise.resolve({ data: row, error: null }); },
+          };
+        }
+        throw new Error(`Unexpected table: ${table}`);
+      },
+    },
+  };
+}
+
+test("createEmergencyLoan HARD clamp: udsteder højst det der passer under divisionsloftet (B2)", async () => {
+  // D3 ceiling 600K via short/long-config-rækker. Eksisterende gæld 550K.
+  // Anmodning: 200K → ville give 550K + 200K*1.15 = 550K + 230K = 780K >> 600K.
+  // Forventet: udstedt principal < 200K OG total aktiv gæld <= 600K.
+  //
+  // Headroom = 600K - 550K = 50K. Med 15% gebyr: max principal P hvor P + round(P*0.15) <= 50K.
+  // computeMaxLoanPrincipal({currentDebt:550000, debtCeiling:600000, originationFeePct:0.15})
+  // → P = 43478, fee = round(43478*0.15)=6522, total=50000 ≤ 50000. P+1=43479+6522=50001>50000.
+  const supabase = createCeilingEmergencySupabase({ existingDebt: 550_000 });
+
+  const loan = await createEmergencyLoan("t1", 200_000, supabase.client, "s5");
+
+  // Lån udstedt (ikke null) — der er stadig headroom
+  assert.ok(loan !== null, "loan skal returneres når der er headroom");
+
+  // Principal skal være clamped til < 200K
+  const issuedPrincipal = supabase.state.loans[0]?.principal ?? 0;
+  assert.ok(issuedPrincipal < 200_000, `issuedPrincipal=${issuedPrincipal} skal være < 200000`);
+  assert.ok(issuedPrincipal > 0, "issuedPrincipal skal være > 0 (der er headroom)");
+
+  // Total aktiv gæld (eksisterende + issued amount_remaining) <= 600K
+  const issuedAmountRemaining = supabase.state.loans[0]?.amount_remaining ?? 0;
+  assert.ok(
+    550_000 + issuedAmountRemaining <= 600_000,
+    `total gæld ${550_000 + issuedAmountRemaining} overstiger loft 600K`
+  );
+
+  // incrementBalanceWithAudit krediterer den FAKTISK udstedte principal (ikke 200K)
+  const creditedDelta = supabase.state.financeRows[0]?.amount ?? 0;
+  assert.equal(creditedDelta, issuedPrincipal, "krediteret delta skal matche issued principal");
+});
+
+test("createEmergencyLoan HARD clamp: returnerer null når gæld allerede er fyldt op (B2)", async () => {
+  // Eksisterende gæld = 600K = loftet. Ingen headroom → null returneres.
+  const supabase = createCeilingEmergencySupabase({ existingDebt: 600_000 });
+
+  const loan = await createEmergencyLoan("t1", 50_000, supabase.client, "s5");
+
+  assert.equal(loan, null, "null når ingen headroom");
+  assert.equal(supabase.state.loans.length, 0, "ingen loan-insert ved 0 headroom");
+  assert.equal(supabase.state.financeRows.length, 0, "ingen financeRow ved 0 headroom");
 });
