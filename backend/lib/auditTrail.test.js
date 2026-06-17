@@ -237,6 +237,10 @@ function makeLoanEngineCaptureClient({ rpcOverride } = {}) {
         const override = rpcOverride(name, params);
         if (override) return override;
       }
+      if (name === "create_emergency_loan_atomic" || name === "create_loan_atomic") {
+        // Simulér "function not exposed" → tvinger JS-fallback i loanEngine.
+        return Promise.resolve({ data: null, error: { code: "PGRST202", message: "function not exposed in mock" } });
+      }
       assert.equal(name, "increment_balance_with_audit");
       captures.push(params.p_finance_payload);
       return Promise.resolve({ data: 0, error: null });

@@ -954,6 +954,10 @@ test("payroll-summary counts matcher antal finance_transactions rows skrevet (#5
               },
             };
           },
+          update(_payload) {
+            // B3: debt_breach_streak + transfer_frozen opdatering — ingen sideeffekt nødvendig i test.
+            return { eq: (_col, _val) => Promise.resolve({ error: null }) };
+          },
         };
       }
       if (table === "loans") {

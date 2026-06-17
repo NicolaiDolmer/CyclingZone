@@ -38,6 +38,7 @@ export const REASON_LABEL = Object.freeze({
   [FINANCE_REASON.ADMIN_BALANCE_ADJUSTMENT]: "Admin-justering",
   [FINANCE_REASON.ADMIN_FORCE_PRIZE]: "Admin-præmie-tildeling",
   [FINANCE_REASON.ADMIN_BETA_RESET]: "Beta-reset",
+  [FINANCE_REASON.SEASON_START_UPKEEP]: "Drift og vedligehold",
 });
 
 const FALLBACK_LABEL = "Andet";

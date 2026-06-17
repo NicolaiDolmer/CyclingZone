@@ -534,22 +534,22 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
           if (runningDebt <= debtCeiling) break;
           const credit = rider.market_value || 0;
 
-          await incrementBalanceWithAudit(supabaseClient, {
-            teamId: team.id,
-            delta: credit,
-            payload: {
-              type: "forced_debt_sale",
-              amount: credit,
-              description: `Tvunget salg (gælds-loft): ${rider.firstname} ${rider.lastname}`,
-              season_id: seasonId,
-              actor_type: FINANCE_ACTOR_TYPE.CRON,
-              actor_id: null,
-              source_path: "economyEngine.processTeamSeasonPayroll.forcedDebtSale",
-              reason_code: FINANCE_REASON.SQUAD_AUTO_SALE,
-              related_entity_type: FINANCE_RELATED_ENTITY.SEASON,
-              related_entity_id: seasonId || null,
-            },
-          });
+          await creditTeam(
+            team.id,
+            credit,
+            "forced_debt_sale",
+            `Tvunget salg (gælds-loft): ${rider.firstname} ${rider.lastname}`,
+            seasonId,
+            supabaseClient,
+            {
+              audit: {
+                sourcePath: "economyEngine.processTeamSeasonPayroll.forcedDebtSale",
+                reasonCode: FINANCE_REASON.SQUAD_AUTO_SALE,
+                relatedEntityType: FINANCE_RELATED_ENTITY.SEASON,
+                relatedEntityId: seasonId || null,
+              },
+            }
+          );
 
           const { error: riderUpdateError } = await supabaseClient
             .from("riders")
