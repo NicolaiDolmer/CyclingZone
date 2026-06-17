@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.55",
+    date: "2026-06-17",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fixed · Watchlist",
+        items: [
+          "EN · Your watchlist now shows an \"In auction\" badge when a rider is already in an active auction, and the \"Start auction\" button is hidden for those riders, so you no longer click it only to get an error. Refs #251",
+          "DA · Din ønskeliste viser nu et \"I auktion\"-mærke når en rytter allerede er i en aktiv auktion, og \"Start auktion\"-knappen skjules for de ryttere, så du ikke længere klikker den og først bagefter får en fejl. Refs #251",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.54",
     date: "2026-06-17",
     label: "Beta",
