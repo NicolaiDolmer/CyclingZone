@@ -27,6 +27,30 @@ export function raceFatigueLoad(profileType) {
 }
 
 /**
+ * Intra-løb trætheds-akkumulering (#1021-hybrid, ejer-valgt 2026-06-17).
+ * Givet en rytters start-træthed (rider_condition.fatigue ved løbsstart, eller 0
+ * hvis ingen condition-data) og etapeprofilerne i rækkefølge: returnér den træthed
+ * rytteren GÅR IND TIL hver etape med. Etape i's belastning lægges til EFTER etape i
+ * (rammer i+1, i+2 ...), så etape 1 køres på start-træthed og en 21-etapers tour
+ * bliver en udmattelseskamp. Clamp 0–100. Ren + deterministisk.
+ *
+ * @param {number|null|undefined} startFatigue
+ * @param {string[]} profileTypes  etapeprofiler i etape-rækkefølge
+ * @returns {number[]} træthed ved START af hver etape (samme længde som profileTypes)
+ */
+export function stageEnteringFatigues(startFatigue, profileTypes) {
+  let f = Number.isFinite(Number(startFatigue))
+    ? Math.max(0, Math.min(100, Number(startFatigue)))
+    : 0;
+  const out = [];
+  for (const p of profileTypes) {
+    out.push(f);
+    f = Math.min(100, f + raceFatigueLoad(p));
+  }
+  return out;
+}
+
+/**
  * Skriv løbsdags-træthed til rider_condition for alle deltagere.
  *
  * Læs-modificér-skriv i ét batch; clamp 0–100. Ryttere uden eksisterende

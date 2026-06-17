@@ -25,7 +25,7 @@ import { deriveAbilities } from "../lib/abilityDerivation.js";
 import { computeRiderTypes } from "../lib/riderTypes.js";
 import { predictBaseValue, riderOverall, riderSpecialty } from "../lib/riderValuation.js";
 import { DEMAND_VECTORS, finaleFor } from "../lib/raceStageProfileGenerator.js";
-import { simulateStage, stableSeed, NOISE_SD_SCALE, aggressionScore, BREAKAWAY_BONUS } from "../lib/raceSimulator.js";
+import { simulateStage, stableSeed, NOISE_SD_SCALE, aggressionScore, BREAKAWAY_BONUS, FORM_RACE_WEIGHT, FATIGUE_RACE_WEIGHT } from "../lib/raceSimulator.js";
 import { buildRaceResults } from "../lib/raceRunner.js";
 import { evaluateRaceStructuralOracles, evaluateAbilityLivenessOracle } from "../lib/raceDryRunOracles.js";
 import { abilityRankSensitivity, breakawayParticipationGapByAggression, SENSITIVITY_DELTA } from "../lib/raceSensitivity.js";
@@ -721,20 +721,21 @@ if (livenessFailures.length) {
 
 // ── B4: condition-mode sanity ─────────────────────────────────────────────────
 if (CONDITION_MODE) {
-  // Reelle vægte fra raceSimulator: FORM_RACE_WEIGHT=0.012, FATIGUE_RACE_WEIGHT=0.008.
-  // formComponent  = ((form-50)/50)*0.012  → [30,90]-interval giver [-0.0048, +0.0096], swing 0.0144.
-  // fatigueComponent = (fatigue/100)*0.008 → [0,70]-interval giver [0, +0.0056], swing 0.0056.
-  // Kombineret max score-swing (condition-interval): 0.0144 + 0.0056 = 0.020.
+  // Score-swing AFLEDES af de faktiske vægte fra raceSimulator (ingen stale tal):
+  //   formComponent  = ((form-50)/50)*FORM_RACE_WEIGHT     → [30,90]-interval
+  //   fatigueComponent = (fatigue/100)*FATIGUE_RACE_WEIGHT → [0,70]-interval
   const forms    = field.map((r) => r.form    ?? 60);
   const fatigues = field.map((r) => r.fatigue ?? 0);
   const maxForm    = Math.max(...forms),    minForm    = Math.min(...forms);
   const maxFatigue = Math.max(...fatigues), minFatigue = Math.min(...fatigues);
   const meanForm    = Math.round(forms.reduce((s, v) => s + v, 0) / forms.length);
   const meanFatigue = Math.round(fatigues.reduce((s, v) => s + v, 0) / fatigues.length);
+  const formSwing    = ((90 - 30) / 50) * FORM_RACE_WEIGHT;   // [30,90]-interval
+  const fatigueSwing = (70 / 100) * FATIGUE_RACE_WEIGHT;      // [0,70]-interval
   console.log(`\n   condition-mode sanity (B4 — felt=${field.length} ryttere):`);
   console.log(`   form    range [${minForm}, ${maxForm}] ·  mean ${meanForm}  (tilsigtet [30, 90])`);
   console.log(`   fatigue range [${minFatigue}, ${maxFatigue}] · mean ${meanFatigue} (tilsigtet [0, 70])`);
-  console.log(`   max score-swing (condition-interval): form 0.0144 + fatigue 0.0056 = 0.020`);
+  console.log(`   max score-swing (condition-interval): form ${formSwing.toFixed(4)} + fatigue ${fatigueSwing.toFixed(4)} = ${(formSwing + fatigueSwing).toFixed(4)}`);
 }
 
 // ── HTML-cockpit ──────────────────────────────────────────────────────────────

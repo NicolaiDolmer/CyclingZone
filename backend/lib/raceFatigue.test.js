@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { raceFatigueLoad, applyRaceFatigue } from "./raceFatigue.js";
+import { raceFatigueLoad, applyRaceFatigue, stageEnteringFatigues } from "./raceFatigue.js";
 
 // ── raceFatigueLoad ───────────────────────────────────────────────────────────
 
@@ -127,4 +127,33 @@ test("applyRaceFatigue: onConflict sat til rider_id i upsert-opts", async () => 
   await applyRaceFatigue({ supabase, riderIds: ["r1"], profileType: "flat" });
   const upserted = supabase.__calls.find((c) => c.op === "upsert");
   assert.equal(upserted.opts?.onConflict, "rider_id");
+});
+
+// ── stageEnteringFatigues (#1021-hybrid: intra-løb akkumulering) ───────────────
+
+test("stageEnteringFatigues: load lægges til EFTER hver etape, så etape 1 køres frisk", () => {
+  // flat=10, mountain=18, high_mountain=20. Start 0.
+  // Entering hver etape = [0, 0+10, 10+18] = [0, 10, 28].
+  assert.deepEqual(stageEnteringFatigues(0, ["flat", "mountain", "high_mountain"]), [0, 10, 28]);
+});
+
+test("stageEnteringFatigues: start-træthed bæres med ind i etape 1", () => {
+  assert.deepEqual(stageEnteringFatigues(40, ["flat", "flat"]), [40, 50]);
+});
+
+test("stageEnteringFatigues: null/undefined/NaN start → 0 (neutral, ikke worst-case)", () => {
+  assert.deepEqual(stageEnteringFatigues(null, ["mountain"]), [0]);
+  assert.deepEqual(stageEnteringFatigues(undefined, ["flat"]), [0]);
+  assert.deepEqual(stageEnteringFatigues("x", ["flat"]), [0]);
+});
+
+test("stageEnteringFatigues: clamp ved 100 over en lang tour", () => {
+  const seq = stageEnteringFatigues(0, Array(21).fill("high_mountain")); // load 20/etape
+  assert.equal(seq[0], 0);
+  assert.equal(seq[5], 100); // 0,20,40,60,80,100,...
+  assert.ok(seq.every((v) => v >= 0 && v <= 100));
+});
+
+test("stageEnteringFatigues: tom etape-liste → tom sekvens", () => {
+  assert.deepEqual(stageEnteringFatigues(50, []), []);
 });

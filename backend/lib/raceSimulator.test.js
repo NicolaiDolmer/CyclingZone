@@ -256,7 +256,7 @@ test("#1306 form=0 → -FORM_RACE_WEIGHT (-0.012)", () => {
   assert.ok(Math.abs(ranked[0].components.form - (-FORM_RACE_WEIGHT)) < 1e-12, `form=0 → ${ranked[0].components.form}`);
 });
 
-test("#1306 fatigue=100 → +FATIGUE_RACE_WEIGHT positiv magnitude (0.008)", () => {
+test("#1306 fatigue=100 → +FATIGUE_RACE_WEIGHT positiv magnitude (= vægt-konstanten)", () => {
   const { ranked } = simulateStage({
     // durability:0 → fuld straf (damp=1), så denne test isolerer fatigue-VÆGTEN (#1122).
     entrants: [{ rider_id: "r1", abilities: { ...Object.fromEntries(ABILITY_KEYS.map((k) => [k, 50])), durability: 0 }, form: 50, fatigue: 100 }],
@@ -295,7 +295,7 @@ test("#1306 clamp: form=-50 → min -FORM_RACE_WEIGHT", () => {
   assert.ok(Math.abs(f - (-FORM_RACE_WEIGHT)) < 1e-12, `form=-50 clampet til 0 → ${f}`);
 });
 
-test("#1306 clamp: fatigue=200 → max FATIGUE_RACE_WEIGHT (ikke 0.016)", () => {
+test("#1306 clamp: fatigue=200 → max FATIGUE_RACE_WEIGHT (ikke 2×vægten)", () => {
   const { ranked } = simulateStage({
     // durability:0 → fuld straf (damp=1); clamp-testen isolerer fatigue-VÆGTEN (#1122).
     entrants: [{ rider_id: "r1", abilities: { ...Object.fromEntries(ABILITY_KEYS.map((k) => [k, 50])), durability: 0 }, form: 50, fatigue: 200 }],
@@ -347,11 +347,15 @@ test("#1306 bounds: fatigueComponent ∈ [0, FATIGUE_RACE_WEIGHT] for alle gyldi
   }
 });
 
-test("#1306 relativ effekt ≤ ~3.5 % af typisk terrain-score", () => {
+test("#1306/#1021 relativ effekt ≤ ~7 % af typisk terrain-score (form+fatigue forbliver modifier)", () => {
   const TYPICAL_TERRAIN = 0.65;
-  const maxEffect = FORM_RACE_WEIGHT + FATIGUE_RACE_WEIGHT; // 0.012 + 0.008 = 0.020
-  assert.ok(maxEffect / TYPICAL_TERRAIN <= 0.035,
-    `max konditions-effekt = ${maxEffect / TYPICAL_TERRAIN * 100} % > 3.5 %`);
+  const maxEffect = FORM_RACE_WEIGHT + FATIGUE_RACE_WEIGHT; // 0.012 + 0.030 = 0.042
+  // #1021-hybrid (ejer-valgt 2026-06-17): fatigue-vægt hævet 0.008→0.030 så durability
+  // ikke længere er dødvægt og kondition tæller i tredje uge af en tour. Combined max
+  // ~6,5 % af terræn — stadig en modifier; evner dominerer. Den EMPIRISKE "stjerner
+  // vinder oftest"-garanti er race:gate (ikke denne statiske øvre bound).
+  assert.ok(maxEffect / TYPICAL_TERRAIN <= 0.07,
+    `max konditions-effekt = ${(maxEffect / TYPICAL_TERRAIN * 100).toFixed(1)} % > 7 %`);
 });
 
 test("#1306 integration: form=100/fatigue=0 slår neutral med ≈FORM_RACE_WEIGHT (deterministisk)", () => {
