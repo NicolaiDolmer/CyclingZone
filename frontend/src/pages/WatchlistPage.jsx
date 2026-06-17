@@ -47,6 +47,7 @@ export default function WatchlistPage() {
   const [page, setPage] = useState(1);
   const [compareIds, setCompareIds] = useState([]);
   const [actionError, setActionError] = useState("");
+  const [auctionRiderIds, setAuctionRiderIds] = useState(() => new Set());
 
   function toggleCompare(riderId) {
     setCompareIds(prev => {
@@ -68,7 +69,23 @@ export default function WatchlistPage() {
           team:team_id(id, name))`)
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
-    setEntries(data || []);
+    const list = data || [];
+    setEntries(list);
+
+    // #251: markér ryttere der allerede er i en aktiv auktion, så vi kan vise
+    // status-badge + undgå at tilbyde "Start auktion" (ellers fejler backend
+    // med en sen in-app fejl-popup). Auktioner er læsbare for alle (auktionshus).
+    const riderIds = list.map(e => e.rider?.id).filter(Boolean);
+    if (riderIds.length) {
+      const { data: auctions } = await supabase
+        .from("auctions")
+        .select("rider_id")
+        .in("status", ["active", "extended"])
+        .in("rider_id", riderIds);
+      setAuctionRiderIds(new Set((auctions || []).map(a => a.rider_id)));
+    } else {
+      setAuctionRiderIds(new Set());
+    }
     setLoading(false);
   }
 
@@ -232,6 +249,7 @@ export default function WatchlistPage() {
                   {visible.map(entry => {
                     const r = entry.rider;
                     const isFree = !r.team_id;
+                    const inAuction = auctionRiderIds.has(r.id);
                     const compareActive = compareIds.includes(r.id);
                     return (
                       <tr key={entry.id} className={`border-b border-cz-border hover:bg-cz-subtle ${compareActive ? "bg-cz-accent/[0.04]" : ""}`}>
@@ -294,7 +312,12 @@ export default function WatchlistPage() {
                         </td>
                         <td className="px-3 py-2.5">
                           <div className="flex items-center justify-center gap-1.5">
-                            {isFree ? (
+                            {inAuction ? (
+                              <span className="text-[10px] px-2 py-0.5 rounded-full border font-medium uppercase
+                                bg-cz-accent/10 text-cz-accent-t border-cz-accent/30 whitespace-nowrap">
+                                {t("inAuction")}
+                              </span>
+                            ) : isFree ? (
                               <button onClick={() => startAuction(r)}
                                 className="px-2 py-1 bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30
                                   rounded text-xs hover:bg-cz-accent/10 transition-all whitespace-nowrap">
