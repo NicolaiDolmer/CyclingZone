@@ -9,6 +9,7 @@ const {
   payDivisionBonuses,
   processDivisionEnd,
   processSeasonEnd,
+  processSeasonStart,
   processTeamSeasonPayroll,
   rebalanceDivisions,
   repairSeasonEndFinanceAndBoard,
@@ -16,7 +17,7 @@ const {
   updateStandings,
 } = await import("./economyEngine.js");
 
-const { DIVISION_CAPACITY } = await import("./economyConstants.js");
+const { DIVISION_CAPACITY, FINAL_SPONSOR_PAYOUT_CEILING } = await import("./economyConstants.js");
 const { ACADEMY } = await import("./academyFlag.js");
 
 function clone(value) {
@@ -2486,4 +2487,220 @@ test("processTeamSeasonPayroll skips academy_drift entirely for a team with 0 ac
 
   const driftRows = financeRows.filter(r => r.type === "academy_drift");
   assert.equal(driftRows.length, 0, "Hold uden akademi-ryttere: ingen academy_drift-transaktion");
+});
+
+// ─── processSeasonStart — FINAL sponsor-payout-clamp (#1441) ─────────────────
+
+/**
+ * Minimal fake supabase til processSeasonStart.
+ *
+ * Dækker tabellerne som processSeasonStart + loadSponsorStandingsContextForSeason
+ * kalder:
+ *   seasons           — sæson-nummer + forrige sæsons id
+ *   season_standings  — forrige sæsons standings (tom → ingen lastSeasonStanding)
+ *   teams             — hold med board_profiles embedded
+ *   board_consequences — aktive sponsor-pullouts (ingen her)
+ *   transfer_windows  — board_test_mode (returnerer false)
+ *   rpc               — increment_balance_with_audit (fanger finance-payload)
+ *   board_profiles    — insert af manglende plantyper
+ *
+ * processLoanAgreementSeasonFees + runSeasonPayroll injiceres som no-op stubs.
+ */
+function createSeasonStartSupabase({ season, team, prevSeasonId = null, prevStandings = [] } = {}) {
+  const state = {
+    season: clone(season),
+    team: clone(team),
+    financeRows: [],
+  };
+
+  // Embed board_profiles direkte på holdet (som processSeasonStart forventer)
+  state.team.board_profiles = state.team.board_profiles || [];
+
+  return {
+    state,
+    rpc(name, params) {
+      assert.equal(name, "increment_balance_with_audit");
+      state.financeRows.push({ ...params.p_finance_payload, team_id: params.p_team_id });
+      return Promise.resolve({ data: (state.team.balance ?? 0) + params.p_delta, error: null });
+    },
+    from(table) {
+      if (table === "seasons") {
+        return {
+          select(columns) {
+            // processSeasonStart: .select("number").eq("id", seasonId).single()
+            if (columns === "number") {
+              return {
+                eq(col, val) {
+                  assert.equal(col, "id");
+                  assert.equal(val, state.season.id);
+                  return {
+                    single() {
+                      return Promise.resolve({ data: { number: state.season.number }, error: null });
+                    },
+                  };
+                },
+              };
+            }
+            // loadSponsorStandingsContextForSeason: .select("id").eq("number", N-1).maybeSingle()
+            if (columns === "id") {
+              return {
+                eq(col, val) {
+                  assert.equal(col, "number");
+                  return {
+                    maybeSingle() {
+                      const id = prevSeasonId && val === state.season.number - 1 ? prevSeasonId : null;
+                      return Promise.resolve({ data: id ? { id } : null, error: null });
+                    },
+                  };
+                },
+              };
+            }
+            throw new Error(`seasons.select("${columns}") ikke mocket`);
+          },
+        };
+      }
+
+      if (table === "season_standings") {
+        return {
+          select() {
+            return {
+              eq(col, val) {
+                assert.equal(col, "season_id");
+                const rows = val === prevSeasonId ? clone(prevStandings) : [];
+                return Promise.resolve({ data: rows, error: null });
+              },
+            };
+          },
+        };
+      }
+
+      if (table === "teams") {
+        return {
+          select(columns) {
+            assert.equal(columns, "*, board_profiles(*)");
+            // Returnerer en thenable der svarer til .eq("is_ai", false).eq("is_frozen", false)
+            const result = { data: [clone(state.team)], error: null };
+            const chain = Object.assign(Promise.resolve(result), {
+              eq(_col, _val) { return chain; },
+            });
+            return chain;
+          },
+        };
+      }
+
+      if (table === "board_consequences") {
+        return {
+          select(columns) {
+            assert.equal(columns, "team_id, severity, id");
+            return {
+              eq(col, _val) {
+                return {
+                  eq(_col2, _val2) {
+                    return Promise.resolve({ data: [], error: null });
+                  },
+                };
+              },
+            };
+          },
+          update(_payload) {
+            return {
+              eq(_col, _val) {
+                return {
+                  eq(_col2, _val2) {
+                    return Promise.resolve({ error: null });
+                  },
+                };
+              },
+            };
+          },
+        };
+      }
+
+      if (table === "transfer_windows") {
+        // isBoardTestModeActive: .select("board_test_mode").order(...).limit(1).maybeSingle()
+        return {
+          select(_cols) {
+            return {
+              order(_col, _opts) {
+                return {
+                  limit(_n) {
+                    return {
+                      maybeSingle() {
+                        return Promise.resolve({ data: { board_test_mode: false }, error: null });
+                      },
+                    };
+                  },
+                };
+              },
+            };
+          },
+        };
+      }
+
+      if (table === "board_profiles") {
+        // createInitialBoardProfile-insert for manglende plantyper
+        return {
+          insert(_payload) {
+            return Promise.resolve({ error: null });
+          },
+        };
+      }
+
+      throw new Error(`createSeasonStartSupabase: uventet tabel "${table}"`);
+    },
+  };
+}
+
+test("processSeasonStart clamps FINAL sponsor payout til S2_PLUS ceiling (900k)", async () => {
+  // Scenarie: D1-hold i sæson 2 (S2+), gross_sponsor = 750k,
+  // board budget_modifier = 1.5 → uden clamp ville payout = 1.125M.
+  // Med clamp skal resultatet være 900k (FINAL_SPONSOR_PAYOUT_CEILING.S2_PLUS).
+
+  const seasonId = "season-2";
+
+  const supabase = createSeasonStartSupabase({
+    season: { id: seasonId, number: 2 },
+    prevSeasonId: "season-1",
+    prevStandings: [
+      // forrige sæson: holdet lå i division 1, rank 3 — giver gross_sponsor > ceiling
+      {
+        team_id: "team-clamp",
+        division: 1,
+        rank_in_division: 3,
+        total_points: 200,
+      },
+    ],
+    team: {
+      id: "team-clamp",
+      name: "Clamp Test CF",
+      is_ai: false,
+      is_frozen: false,
+      division: 1,
+      balance: 500_000,
+      sponsor_income: 600_000,  // D1 intro-base — bruges som fallback i sponsorEngine
+      board_profiles: [
+        {
+          id: "board-clamp",
+          team_id: "team-clamp",
+          plan_type: "1yr",
+          negotiation_status: "completed",
+          budget_modifier: 1.5,  // modifier = 1.5 → 750k × 1.5 = 1.125M uden clamp
+        },
+      ],
+    },
+  });
+
+  await processSeasonStart(seasonId, {
+    supabase,
+    processLoanAgreementSeasonFees: async () => [],
+    runSeasonPayroll: async () => ({ results: [], summary: {} }),
+  });
+
+  const sponsorRow = supabase.state.financeRows.find(r => r.type === "sponsor");
+  assert.ok(sponsorRow, "Ingen sponsor finance-row fundet");
+  assert.equal(
+    sponsorRow.amount,
+    FINAL_SPONSOR_PAYOUT_CEILING.S2_PLUS,
+    `Sponsor payout skal clamp'es til ${FINAL_SPONSOR_PAYOUT_CEILING.S2_PLUS} — fik ${sponsorRow.amount}`
+  );
 });

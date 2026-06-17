@@ -37,6 +37,7 @@ import {
   FINANCE_ACTOR_TYPE,
   FINANCE_REASON,
   FINANCE_RELATED_ENTITY,
+  FINAL_SPONSOR_PAYOUT_CEILING,
   FIRST_PROMOTION_RELEGATION_SEASON,
   MAX_DIVISION,
   MIN_DIVISION,
@@ -227,7 +228,10 @@ export async function processSeasonStart(seasonId, deps = {}) {
         ? sponsorStandingsContext.divisionStandingsByDivision.get(lastSeasonStanding.division) || []
         : [],
     });
-    const sponsorPayout = Math.round(sponsorBreakdown.gross_sponsor * modifier);
+    const finalCeiling = (Number.isInteger(seasonNumber) && seasonNumber >= FIRST_VARIABLE_SPONSOR_SEASON)
+      ? FINAL_SPONSOR_PAYOUT_CEILING.S2_PLUS
+      : FINAL_SPONSOR_PAYOUT_CEILING.S1;
+    const sponsorPayout = Math.min(finalCeiling, Math.round(sponsorBreakdown.gross_sponsor * modifier));
 
     // #666: description holdes null for nye rows — frontend renderer fra
     // metadata via backendMessages-i18n. Legacy rows beholder DA-description
