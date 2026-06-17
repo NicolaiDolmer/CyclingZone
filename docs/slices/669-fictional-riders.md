@@ -200,7 +200,9 @@ Mål: lade fiktive ryttere "leve" i prod til en realistisk test, **uden at teste
 
 **Tests:** `fictionalRidersAdminGate.test.js` (PGlite) fastlåser NULL-filter-semantikken. Route-branching verificeret via prod-impersonation (repoet har ingen route-test-infra).
 
-**Reversibelt:** RLS tilbage til `USING (true)` (ét `ALTER`) + slet fiktive (`DELETE WHERE pcm_id IS NULL`). Midlertidigt test-/udrulnings-gate; fjernes når fiktive skal vises for alle (#676).
+**Reversibelt:** RLS tilbage til `USING (true)` (ét `ALTER`) + slet fiktive (`DELETE WHERE pcm_id IS NULL`). Midlertidigt test-/udrulnings-gate.
+
+> **REVERTERET ved relaunch-cutover (#1447 / PR #1448, 2026-06-17):** begge gates fjernet — RLS tilbage til `USING (true)`, de 3 api.js-guards fjernet, `fictionalRidersAdminGate.test.js` slettet. Ved relaunch er hele bestanden `pcm_id NULL`, så gaten ville gøre spillet tomt for ikke-admins. (NB: den oprindelige "fjernes ved #676"-note var en fejl-reference — #676 var race-engine V1, ikke et RLS-cutover-task.)
 
 ## Beslutnings-log
 
