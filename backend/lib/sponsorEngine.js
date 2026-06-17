@@ -1,10 +1,13 @@
 import { SPONSOR_INCOME_BASE, SPONSOR_INCOME_BY_DIVISION } from "./economyConstants.js";
 
 export const FIRST_VARIABLE_SPONSOR_SEASON = 2;
-// Sæson 2+ sponsor-base (ejer-beslutning 2026-06-08: hævet 200k → 2,5M). Den
-// performance-baserede pulje (VARIABLE_SPONSOR_POOL) lægges oveni, og board-
-// modifier + pullout-faktor anvendes på gross_sponsor i economyEngine.
-export const VARIABLE_SPONSOR_BASE = 2_500_000;
+// Sæson 2+ sponsor: division-skaleret base (samme SPONSOR_INCOME_BY_DIVISION som
+// sæson-1/intro) + en performance-baseret pulje (VARIABLE_SPONSOR_POOL) ovenpå.
+// Board-modifier + pullout-faktor anvendes på gross_sponsor i economyEngine.
+// Den tidligere flade base på 2,5M (band-aid fra open-beta lønkrisen, ejer 8/6)
+// er fjernet 2026-06-17 (#1439): rod-årsagen blev løst af E2 (#1438), så den var
+// ren inflation. Ingen auto-eskalering; intet hold modtager 2,5M. Det fulde
+// økonomi-redesign (gold sinks, rigtige sponsorer) spores i epic #1441.
 export const VARIABLE_SPONSOR_POOL = 150_000;
 
 function clamp(value, min, max) {
@@ -40,11 +43,13 @@ export function buildSponsorStandingsContext(standings = []) {
 }
 
 export function computeVariableSponsor({
+  base = 0,
   lastSeasonPoints = 0,
   lastSeasonRank = null,
   divisionPoints = [],
   divisionSize = null,
 } = {}) {
+  const resolvedBase = Number.isFinite(Number(base)) ? Number(base) : 0;
   const points = Math.max(0, Number(lastSeasonPoints) || 0);
   const size = Number.isInteger(divisionSize) && divisionSize > 0
     ? divisionSize
@@ -66,9 +71,9 @@ export function computeVariableSponsor({
   const variable = Math.round(clamp(performanceScore * VARIABLE_SPONSOR_POOL, 0, VARIABLE_SPONSOR_POOL));
 
   return {
-    base: VARIABLE_SPONSOR_BASE,
+    base: resolvedBase,
     variable,
-    total: VARIABLE_SPONSOR_BASE + variable,
+    total: resolvedBase + variable,
     variable_pool: VARIABLE_SPONSOR_POOL,
     performance_score: performanceScore,
     rank_factor: rankFactor,
@@ -85,19 +90,22 @@ export function computeSponsorForSeason({
   divisionStandings = [],
 } = {}) {
   const legacySponsor = team?.sponsor_income ?? SPONSOR_INCOME_BASE;
-  // E2 (strict_fair_v1): sæson-1/intro-sponsor er division-skaleret (D1 600k / D2
-  // 400k / D3 260k). Division-kortet er AUTORITATIVT — relaunch-reset tvinger alle
-  // hold til div 3 med stored sponsor_income=240k, så den stale kolonneværdi må
-  // ikke vinde. Ukendt division → fald tilbage til stored/legacy-gulv.
-  const introSponsor = SPONSOR_INCOME_BY_DIVISION[team?.division] ?? legacySponsor;
+  // Division-skaleret base (E2 + #1439): sponsor skalerer med den division holdet
+  // konkurrerer i (D1 600k / D2 400k / D3 260k) — IKKE en flad, auto-eskalerende
+  // base. Division-kortet er AUTORITATIVT: relaunch-reset tvinger alle hold til
+  // div 3 med stored sponsor_income=240k, så den stale kolonneværdi må ikke vinde.
+  // team.division er primær; ved sæson 2+ uden current division bruges sidste
+  // sæsons division; ukendt division → stored/legacy-gulv.
+  const baseDivision = team?.division ?? lastSeasonStanding?.division ?? null;
+  const divisionBase = SPONSOR_INCOME_BY_DIVISION[baseDivision] ?? legacySponsor;
 
   if (!Number.isInteger(seasonNumber) || seasonNumber < FIRST_VARIABLE_SPONSOR_SEASON) {
     return {
       mode: "intro",
       season_number: seasonNumber,
-      base: introSponsor,
+      base: divisionBase,
       variable: 0,
-      gross_sponsor: introSponsor,
+      gross_sponsor: divisionBase,
       capped: false,
       explanation: "Sæson 1/introsæson: division-skaleret sponsor.",
     };
@@ -117,6 +125,7 @@ export function computeSponsorForSeason({
 
   const divisionPoints = (divisionStandings || []).map((standing) => standing.total_points || 0);
   const computed = computeVariableSponsor({
+    base: divisionBase,
     lastSeasonPoints: lastSeasonStanding.total_points || 0,
     lastSeasonRank: lastSeasonStanding.rank_in_division ?? null,
     divisionPoints,

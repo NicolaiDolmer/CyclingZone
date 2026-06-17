@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.53",
+    date: "2026-06-17",
+    label: "Beta",
+    changes: [
+      {
+        category: "Changed · Finances",
+        items: [
+          "EN · Season 2 sponsor income is now scaled by division, the same as season 1 (D1 600,000 · D2 400,000 · D3 260,000 CZ$), with a 0-150,000 CZ$ performance bonus added on top from last season's points and placing. This replaces a flat high base that was a temporary fix from the beta and was inflating the economy, so no team's sponsor jumps to a large flat amount in season 2 anymore. The help FAQ has been updated to match. Refs #1439, #1441",
+          "DA · Sponsor-indkomst i sæson 2 skaleres nu efter division, ligesom sæson 1 (D1 600.000 · D2 400.000 · D3 260.000 CZ$), med en performance-bonus på 0-150.000 CZ$ oveni ud fra sidste sæsons point og placering. Det erstatter en flad høj base, der var en midlertidig løsning fra betaen og inflaterede økonomien, så intet holds sponsor springer længere til et stort fladt beløb i sæson 2. Hjælp-FAQ'en er opdateret så den matcher. Refs #1439, #1441",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.52",
     date: "2026-06-17",
     label: "Beta",
