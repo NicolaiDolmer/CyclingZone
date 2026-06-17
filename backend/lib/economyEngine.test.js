@@ -1740,11 +1740,12 @@ test("buildSeasonEndPreviewRows projects board modifier on the same path as seas
 
   assert.equal(preview.salary_deduction, 100);
   assert.equal(preview.loan_interest, 10);
-  // v3.78: balance_after følger processSeasonStart-rækkefølgen
-  // balance + sponsor − renter − løn = 500 + 220 − 10 − 100 = 610
-  assert.equal(preview.balance_after, 610);
-  assert.equal(preview.needs_emergency_loan, false);
-  assert.equal(preview.emergency_loan_amount, 0);
+  assert.equal(preview.upkeep, 30000);
+  // v3.78/A3: balance_after følger processSeasonStart-rækkefølgen inkl. upkeep
+  // balance + sponsor − renter − løn − upkeep = 500 + 220 − 10 − 100 − 30000 = −29390
+  assert.equal(preview.balance_after, -29390);
+  assert.equal(preview.needs_emergency_loan, true);
+  assert.equal(preview.emergency_loan_amount, 29390);
   assert.equal(preview.current_board_satisfaction, 50);
   assert.equal(preview.board_satisfaction, 74);
   assert.equal(preview.sponsor_modifier, 1.1);
@@ -2703,4 +2704,164 @@ test("processSeasonStart clamps FINAL sponsor payout til S2_PLUS ceiling (900k)"
     FINAL_SPONSOR_PAYOUT_CEILING.S2_PLUS,
     `Sponsor payout skal clamp'es til ${FINAL_SPONSOR_PAYOUT_CEILING.S2_PLUS} — fik ${sponsorRow.amount}`
   );
+});
+
+// ─── Løbende upkeep-debit (#1441) ────────────────────────────────────────────
+
+test("processTeamSeasonPayroll debits 110000 as upkeep for a D2 team (#1441)", async () => {
+  const seasonId = "season-upkeep-1";
+  const teamId = "team-upkeep-d2";
+
+  const financeRows = [];
+  const supabase = {
+    rpc(name, params) {
+      assert.equal(name, "increment_balance_with_audit");
+      financeRows.push({ team_id: params.p_team_id, ...params.p_finance_payload });
+      return Promise.resolve({ data: 0, error: null });
+    },
+    from(table) {
+      if (table === "teams") {
+        return {
+          select(_cols) {
+            return {
+              eq(_col, _val) {
+                return {
+                  single() {
+                    return Promise.resolve({ data: { balance: 999_999 }, error: null });
+                  },
+                };
+              },
+            };
+          },
+        };
+      }
+
+      if (table === "riders") {
+        return {
+          select(_cols, opts) {
+            if (opts && opts.count === "exact" && opts.head === true) {
+              return {
+                eq(_col, _val) {
+                  return {
+                    eq(_col2, _val2) {
+                      return Promise.resolve({ count: 0, error: null });
+                    },
+                  };
+                },
+              };
+            }
+            return {
+              in(_col, _vals) {
+                return Promise.resolve({ data: [], error: null });
+              },
+            };
+          },
+        };
+      }
+
+      throw new Error(`Unexpected table in upkeep test: ${table}`);
+    },
+  };
+
+  const team = {
+    id: teamId,
+    name: "D2 Upkeep FC",
+    division: 2,
+    balance: 999_999,
+    riders: [],
+  };
+
+  await processTeamSeasonPayroll(team, seasonId, {
+    supabase,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => {},
+  });
+
+  const upkeepRows = financeRows.filter(r => r.type === "upkeep");
+  assert.equal(upkeepRows.length, 1, "Præcis én upkeep-transaktion skal skrives for D2-hold");
+
+  const upkeep = upkeepRows[0];
+  assert.equal(upkeep.amount, -110000, "Upkeep-beløb skal være -110000 for division 2");
+  assert.equal(upkeep.team_id, teamId);
+
+  // Idempotency-nøgle skal indeholde sæson + hold
+  assert.ok(
+    upkeep.idempotency_key &&
+    upkeep.idempotency_key.includes(seasonId) &&
+    upkeep.idempotency_key.includes(teamId),
+    `Idempotency-nøgle skal indeholde sæson og hold: ${upkeep.idempotency_key}`
+  );
+});
+
+test("processTeamSeasonPayroll skips upkeep entirely for a team with unknown division (#1441)", async () => {
+  const seasonId = "season-upkeep-skip";
+  const teamId = "team-upkeep-unknown";
+
+  const financeRows = [];
+  const supabase = {
+    rpc(name, params) {
+      assert.equal(name, "increment_balance_with_audit");
+      financeRows.push({ team_id: params.p_team_id, ...params.p_finance_payload });
+      return Promise.resolve({ data: 0, error: null });
+    },
+    from(table) {
+      if (table === "teams") {
+        return {
+          select(_cols) {
+            return {
+              eq(_col, _val) {
+                return {
+                  single() {
+                    return Promise.resolve({ data: { balance: 500_000 }, error: null });
+                  },
+                };
+              },
+            };
+          },
+        };
+      }
+
+      if (table === "riders") {
+        return {
+          select(_cols, opts) {
+            if (opts && opts.count === "exact" && opts.head === true) {
+              return {
+                eq(_col, _val) {
+                  return {
+                    eq(_col2, _val2) {
+                      return Promise.resolve({ count: 0, error: null });
+                    },
+                  };
+                },
+              };
+            }
+            return {
+              in(_col, _vals) {
+                return Promise.resolve({ data: [], error: null });
+              },
+            };
+          },
+        };
+      }
+
+      throw new Error(`Unexpected table in upkeep-skip test: ${table}`);
+    },
+  };
+
+  const team = {
+    id: teamId,
+    name: "Unknown Division FC",
+    division: 9, // ikke i UPKEEP_BY_DIVISION
+    balance: 500_000,
+    riders: [],
+  };
+
+  await processTeamSeasonPayroll(team, seasonId, {
+    supabase,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => {},
+  });
+
+  const upkeepRows = financeRows.filter(r => r.type === "upkeep");
+  assert.equal(upkeepRows.length, 0, "Hold med ukendt division: ingen upkeep-transaktion");
 });

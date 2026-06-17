@@ -44,6 +44,7 @@ import {
   SEASON_RIDER_PROGRESSION_ENABLED,
   SEASON_VALUE_RECALC_ENABLED,
   SPONSOR_INCOME_BASE,
+  UPKEEP_BY_DIVISION,
 } from "./economyConstants.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
 import { ACADEMY } from "./academyFlag.js";
@@ -408,6 +409,8 @@ async function defaultRunSeasonPayroll(supabaseClient, seasonId, deps = {}) {
     acc.emergency_loan_total += p.emergency_loan_amount || 0;
     acc.negative_balance_interest_count += p.negative_balance_interest_count || 0;
     acc.negative_balance_interest_total += p.negative_balance_interest || 0;
+    acc.upkeep_total += (p.upkeep_total || 0);
+    acc.upkeep_count += (p.upkeep_count || 0);
     return acc;
   }, {
     teams_processed: results.length,
@@ -419,6 +422,8 @@ async function defaultRunSeasonPayroll(supabaseClient, seasonId, deps = {}) {
     emergency_loan_total: 0,
     negative_balance_interest_count: 0,
     negative_balance_interest_total: 0,
+    upkeep_total: 0,
+    upkeep_count: 0,
   });
 
   return { results, summary };
@@ -556,6 +561,25 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
     console.log(`  🎓 ${team.name}: -${academyDriftCharged} pts akademi-drift (${academyCount} pladser × ${ACADEMY.DRIFT_PER_SEASON})`);
   }
 
+  // 5. Løbende upkeep (#1441) — division-tier-skaleret operating cost (gold sink).
+  //    Flad pr. division (IKKE modifier-skaleret), idempotent pr. sæson+hold.
+  const upkeepCharged = UPKEEP_BY_DIVISION[team.division] || 0;
+  if (upkeepCharged > 0) {
+    await debitTeam(
+      team.id, upkeepCharged, "upkeep", null, seasonId, supabaseClient,
+      {
+        idempotent: true,
+        metadata: { code: "tx.upkeep", params: { division: team.division } },
+        audit: {
+          sourcePath: "economyEngine.processSeasonStart.upkeep",
+          reasonCode: FINANCE_REASON.SEASON_START_UPKEEP,
+          idempotencyKey: `upkeep:${team.id}:${seasonId}`,
+        },
+      }
+    );
+    console.log(`  🏭 ${team.name}: -${upkeepCharged} pts upkeep (div ${team.division})`);
+  }
+
   return {
     team: team.name,
     team_id: team.id,
@@ -574,6 +598,8 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
     emergency_loan_count: emergencyLoanAmount > 0 ? 1 : 0,
     negative_balance_interest: negativeInterestCharged,
     negative_balance_interest_count: negativeInterestCharged > 0 ? 1 : 0,
+    upkeep_total: upkeepCharged,
+    upkeep_count: upkeepCharged > 0 ? 1 : 0,
   };
 }
 
@@ -895,8 +921,9 @@ export function buildSeasonEndPreviewRows({ teams = [], standings = [], loanData
       .sort((a, b) => (b.total_points || 0) - (a.total_points || 0));
     const rank = divStandings.findIndex(s => s.team_id === team.id) + 1;
     const nextSeasonSponsor = Math.round((team.sponsor_income || 0) * sponsorModifier);
-    // Følger processSeasonStart-rækkefølgen: +sponsor → −renter → −løn.
-    const balanceAfter = (team.balance || 0) + nextSeasonSponsor - totalInterest - totalSalary;
+    const upkeep = UPKEEP_BY_DIVISION[team.division] || 0;
+    // Følger processSeasonStart-rækkefølgen: +sponsor → −renter → −løn → −upkeep.
+    const balanceAfter = (team.balance || 0) + nextSeasonSponsor - totalInterest - totalSalary - upkeep;
 
     return {
       team_id: team.id,
@@ -905,6 +932,7 @@ export function buildSeasonEndPreviewRows({ teams = [], standings = [], loanData
       current_balance: team.balance || 0,
       salary_deduction: totalSalary,
       loan_interest: totalInterest,
+      upkeep,
       balance_after: balanceAfter,
       needs_emergency_loan: balanceAfter < 0,
       emergency_loan_amount: balanceAfter < 0 ? Math.abs(balanceAfter) : 0,
