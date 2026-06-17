@@ -2733,6 +2733,13 @@ test("processTeamSeasonPayroll debits 110000 as upkeep for a D2 team (#1441)", a
               },
             };
           },
+          update(_payload) {
+            return {
+              eq(_col, _val) {
+                return Promise.resolve({ error: null });
+              },
+            };
+          },
         };
       }
 
@@ -2775,6 +2782,7 @@ test("processTeamSeasonPayroll debits 110000 as upkeep for a D2 team (#1441)", a
     supabase,
     processLoanInterest: async () => ({ charged: [] }),
     createEmergencyLoan: async () => {},
+    getTotalDebt: async () => 0, // B3: stub — under ceiling, ingen breach
   });
 
   const upkeepRows = financeRows.filter(r => r.type === "upkeep");
@@ -2864,4 +2872,248 @@ test("processTeamSeasonPayroll skips upkeep entirely for a team with unknown div
 
   const upkeepRows = financeRows.filter(r => r.type === "upkeep");
   assert.equal(upkeepRows.length, 0, "Hold med ukendt division: ingen upkeep-transaktion");
+});
+
+// ─── B3: Eskalerende transfer-fryse + tvunget salg (#1441/#97) ────────────────
+
+test("processTeamSeasonPayroll: breach-streak >= 2 fryser transfer + tvinger salg (D3, debt over ceiling) (#1441/#97)", async () => {
+  const seasonId = "season-breach-1";
+  const teamId = "team-breach-d3";
+  const riderId = "rider-expensive-1";
+
+  const financeRows = [];
+  const teamUpdates = [];
+  const riderUpdates = [];
+
+  // Fake supabase der tracker teams.update + riders.update + finance via rpc
+  const supabase = {
+    rpc(name, params) {
+      assert.equal(name, "increment_balance_with_audit");
+      financeRows.push({ team_id: params.p_team_id, ...params.p_finance_payload });
+      return Promise.resolve({ data: 0, error: null });
+    },
+    from(table) {
+      if (table === "teams") {
+        return {
+          select(_cols) {
+            return {
+              eq(_col, _val) {
+                return {
+                  single() {
+                    return Promise.resolve({ data: { balance: 999_999 }, error: null });
+                  },
+                };
+              },
+            };
+          },
+          update(payload) {
+            return {
+              eq(col, val) {
+                assert.equal(col, "id");
+                teamUpdates.push({ id: val, payload: { ...payload } });
+                return Promise.resolve({ error: null });
+              },
+            };
+          },
+        };
+      }
+
+      if (table === "riders") {
+        return {
+          select(_cols, opts) {
+            if (opts && opts.count === "exact" && opts.head === true) {
+              return {
+                eq(_col, _val) {
+                  return {
+                    eq(_col2, _val2) {
+                      return Promise.resolve({ count: 0, error: null });
+                    },
+                  };
+                },
+              };
+            }
+            return {
+              in(_col, _vals) {
+                return Promise.resolve({ data: [], error: null });
+              },
+            };
+          },
+          update(payload) {
+            return {
+              eq(col, val) {
+                assert.equal(col, "id");
+                riderUpdates.push({ id: val, payload: { ...payload } });
+                return Promise.resolve({ error: null });
+              },
+            };
+          },
+        };
+      }
+
+      if (table === "transfer_listings") {
+        return {
+          update(_payload) {
+            return {
+              in(_col, _vals) {
+                return {
+                  in(_col2, _vals2) {
+                    return Promise.resolve({ error: null });
+                  },
+                };
+              },
+            };
+          },
+        };
+      }
+
+      throw new Error(`Unexpected table in breach test: ${table}`);
+    },
+  };
+
+  // D3 team: debt_breach_streak = 1 (allerede ét brud), over ceiling (600k)
+  const team = {
+    id: teamId,
+    name: "Broke Riders D3",
+    division: 3,
+    balance: 0,
+    debt_breach_streak: 1,   // B1-kolonner
+    transfer_frozen: false,
+    riders: [
+      {
+        id: riderId,
+        firstname: "Rico",
+        lastname: "Vendido",
+        market_value: 500_000,
+        salary: 0,
+        ai_team_id: "ai-team-99",
+        team_id: teamId,
+      },
+    ],
+  };
+
+  await processTeamSeasonPayroll(team, seasonId, {
+    supabase,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => {},
+    getTotalDebt: async (_teamId, _client) => 700_000, // over D3 ceiling (600k)
+  });
+
+  // (a) teams.update skal kalde med transfer_frozen:true + debt_breach_streak:2
+  const breachUpdate = teamUpdates.find(u =>
+    u.id === teamId &&
+    "debt_breach_streak" in u.payload
+  );
+  assert.ok(breachUpdate, "teams.update med breach-payload skal være kaldt");
+  assert.equal(breachUpdate.payload.debt_breach_streak, 2, "breach-streak skal incremente til 2");
+  assert.equal(breachUpdate.payload.transfer_frozen, true, "transfer_frozen skal sættes til true");
+
+  // (b) tvunget salg: finance-row af typen "forced_debt_sale" skal eksistere
+  const forcedSaleRows = financeRows.filter(r => r.type === "forced_debt_sale");
+  assert.equal(forcedSaleRows.length, 1, "Præcis én forced_debt_sale finance-row skal oprettes");
+  assert.equal(forcedSaleRows[0].amount, 500_000, "Kredit = market_value (500k)");
+  assert.equal(forcedSaleRows[0].team_id, teamId);
+
+  // (c) rider-disposition: riders.update til ai_team_id || null
+  const riderDisposed = riderUpdates.find(u => u.id === riderId);
+  assert.ok(riderDisposed, "riders.update skal kalde for den solgte rytter");
+  assert.equal(riderDisposed.payload.team_id, "ai-team-99", "Rytter skal sættes til ai_team_id");
+  assert.equal(riderDisposed.payload.pending_team_id, null);
+});
+
+test("processTeamSeasonPayroll: team under ceiling nulstiller breach-streak + fjerner freeze (#1441/#97)", async () => {
+  const seasonId = "season-breach-2";
+  const teamId = "team-recovered";
+
+  const financeRows = [];
+  const teamUpdates = [];
+
+  const supabase = {
+    rpc(name, params) {
+      assert.equal(name, "increment_balance_with_audit");
+      financeRows.push({ team_id: params.p_team_id, ...params.p_finance_payload });
+      return Promise.resolve({ data: 0, error: null });
+    },
+    from(table) {
+      if (table === "teams") {
+        return {
+          select(_cols) {
+            return {
+              eq(_col, _val) {
+                return {
+                  single() {
+                    return Promise.resolve({ data: { balance: 999_999 }, error: null });
+                  },
+                };
+              },
+            };
+          },
+          update(payload) {
+            return {
+              eq(col, val) {
+                assert.equal(col, "id");
+                teamUpdates.push({ id: val, payload: { ...payload } });
+                return Promise.resolve({ error: null });
+              },
+            };
+          },
+        };
+      }
+
+      if (table === "riders") {
+        return {
+          select(_cols, opts) {
+            if (opts && opts.count === "exact" && opts.head === true) {
+              return {
+                eq(_col, _val) {
+                  return {
+                    eq(_col2, _val2) {
+                      return Promise.resolve({ count: 0, error: null });
+                    },
+                  };
+                },
+              };
+            }
+            return {
+              in(_col, _vals) {
+                return Promise.resolve({ data: [], error: null });
+              },
+            };
+          },
+        };
+      }
+
+      throw new Error(`Unexpected table in recovery test: ${table}`);
+    },
+  };
+
+  // D3 team med breach_streak = 1 men NU under ceiling (100k < 600k)
+  const team = {
+    id: teamId,
+    name: "Recovered Team D3",
+    division: 3,
+    balance: 500_000,
+    debt_breach_streak: 1,
+    transfer_frozen: true,
+    riders: [],
+  };
+
+  await processTeamSeasonPayroll(team, seasonId, {
+    supabase,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => {},
+    getTotalDebt: async (_teamId, _client) => 100_000, // UNDER D3 ceiling (600k)
+  });
+
+  // teams.update med debt_breach_streak: 0 + transfer_frozen: false
+  const resetUpdate = teamUpdates.find(u =>
+    u.id === teamId &&
+    "debt_breach_streak" in u.payload
+  );
+  assert.ok(resetUpdate, "teams.update med reset-payload skal være kaldt");
+  assert.equal(resetUpdate.payload.debt_breach_streak, 0, "breach-streak skal nulstilles til 0");
+  assert.equal(resetUpdate.payload.transfer_frozen, false, "transfer_frozen skal sættes til false");
+
+  // Ingen forced_debt_sale
+  const forcedSaleRows = financeRows.filter(r => r.type === "forced_debt_sale");
+  assert.equal(forcedSaleRows.length, 0, "Ingen forced_debt_sale ved recovery");
 });
