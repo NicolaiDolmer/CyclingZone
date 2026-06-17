@@ -19,6 +19,7 @@ import { fileURLToPath } from "node:url";
 import { runRelaunchSeason1, isProdSupabaseUrl } from "../../lib/relaunchOrchestrator.js";
 import { reactivateLegacyRiders, retireLegacyRiders } from "../../lib/legacyRiderRetirement.js";
 import { runFullBetaReset } from "../../lib/betaResetService.js";
+import { runAcademyIntake } from "../../lib/academyIntake.js";
 import { fetchAllRows } from "../../lib/supabasePagination.js";
 
 const START_DATE = "2026-06-20";
@@ -54,6 +55,16 @@ async function main() {
   const dry = await runRelaunchSeason1(supabase, { dryRun: true, startDate: START_DATE });
   console.log(JSON.stringify(dry, null, 2));
 
+  // ── COHORT-ON-DAY-1 (#1308 beslutning ③, ejer-besluttet 17/6) ───────────────
+  // Sæt academy_enabled='on' FØR apply så orchestrator-trin 6.4 genererer
+  // kandidat-kuld ved seed. Rehearsal skal afspejle den besluttede prod-plan
+  // (academy live på relaunch-dag 1). app_config.value er JSONB → 'on' lagres "on".
+  await supabase.from("app_config").upsert(
+    { key: "academy_enabled", value: "on" },
+    { onConflict: "key" }
+  );
+  console.log("▶ academy_enabled='on' sat (cohort-on-day-1, #1308 ③)\n");
+
   // ── APPLY ────────────────────────────────────────────────────────────────
   console.log("\n=== APPLY (non-prod) ===");
   const applied = await runRelaunchSeason1(supabase, { dryRun: false, startDate: START_DATE });
@@ -70,8 +81,17 @@ async function main() {
   const legacyActive = await countRiders([["not", "pcm_id", "is", null], ["is", "is_retired", false]]);
   add("Ingen legacy aktive", legacyActive === 0, legacyActive, "0");
 
-  const fictionalActive = await countRiders([["is", "pcm_id", null], ["is", "is_retired", false]]);
-  add("~800 fiktive i markedet", fictionalActive >= 780 && fictionalActive <= 820, fictionalActive, "~800");
+  // Academy-kandidater (academy_intake) er pcm_id-null + ikke-retiret, men hører
+  // til private hold-tilbud — IKKE det åbne fiktive marked. Træk dem fra så
+  // markeds-båndet (780-820) ikke falsk-fejler med cohort-on-day-1 (#1308).
+  const intakeRiderRows = await fetchAllRows(() =>
+    supabase.from("academy_intake").select("rider_id").order("rider_id")
+  );
+  const academyRiderIds = new Set(intakeRiderRows.map((r) => r.rider_id));
+  const fictionalActiveTotal = await countRiders([["is", "pcm_id", null], ["is", "is_retired", false]]);
+  const fictionalMarket = fictionalActiveTotal - academyRiderIds.size;
+  add("~800 fiktive i markedet", fictionalMarket >= 780 && fictionalMarket <= 820,
+    `${fictionalMarket} (total ${fictionalActiveTotal} − ${academyRiderIds.size} academy)`, "~800");
 
   // 8 ryttere pr. beta-manager
   const { data: betaTeams } = await supabase.from("teams").select("id")
@@ -84,10 +104,16 @@ async function main() {
   const all8 = counts.length > 0 && counts.every((c) => c === 8);
   add("Hver beta-manager præcis 8 ryttere", all8, `[${counts.join(",")}]`, "alle = 8");
 
-  // Ingen stjerne forhåndstildelt: top base_value-rytter har team_id IS NULL
-  const { data: topRiders } = await supabase.from("riders").select("team_id, base_value")
-    .is("pcm_id", null).eq("is_retired", false).order("base_value", { ascending: false }).limit(80);
-  const assignedStars = (topRiders || []).filter((r) => r.team_id !== null).length;
+  // Ingen stjerne forhåndstildelt: top base_value-rytter har team_id IS NULL.
+  // Ekskludér academy-kandidater (lav/NULL base_value, intake EFTER base_value-
+  // backfill) så top-80-vinduet måler de RIGTIGE stjerner og ikke pollueres af
+  // kuld-ryttere (#1308). nullsFirst:false holder NULL-base_value ude af toppen.
+  const { data: topRidersRaw } = await supabase.from("riders").select("id, team_id, base_value")
+    .is("pcm_id", null).eq("is_retired", false)
+    .order("base_value", { ascending: false, nullsFirst: false })
+    .limit(80 + academyRiderIds.size);
+  const topRiders = (topRidersRaw || []).filter((r) => !academyRiderIds.has(r.id)).slice(0, 80);
+  const assignedStars = topRiders.filter((r) => r.team_id !== null).length;
   add("Ingen stjerne forhåndstildelt (top 10%)", assignedStars === 0, `${assignedStars} af top80 tildelt`, "0");
 
   // Founder-badge tildelt alle beta-managers
@@ -107,6 +133,25 @@ async function main() {
   // Brugerkonti bevaret
   const { count: userCount } = await supabase.from("users").select("id", { count: "exact", head: true });
   add("Brugerkonti bevaret", userCount === 30, userCount, "30");
+
+  // Academy-kuld (#1308 ③ cohort-on-day-1): hvert menneske-hold skal have et kuld
+  // på 3-5 offered-kandidater (academyGenerator INTAKE_MIN..MAX). teamIds er de
+  // samme beta-manager-hold som academyIntake selv resolver (samme filter).
+  const offeredRows = await fetchAllRows(() =>
+    supabase.from("academy_intake").select("team_id, status").eq("status", "offered").order("team_id")
+  );
+  const offeredByTeam = {};
+  for (const r of offeredRows) offeredByTeam[r.team_id] = (offeredByTeam[r.team_id] || 0) + 1;
+  const cohortCounts = teamIds.map((id) => offeredByTeam[id] || 0);
+  const allCohorts = cohortCounts.length > 0 && cohortCounts.every((c) => c >= 3 && c <= 5);
+  add("Hvert hold har academy-kuld (3-5 offered)", allCohorts, `[${cohortCounts.join(",")}]`, "alle 3-5");
+
+  // Academy-intake idempotent: en gentaget intake mod den seedede branch må IKKE
+  // generere nye kuld (hold allerede i academy_intake springes over).
+  const reIntake = await runAcademyIntake(supabase, { dryRun: false });
+  add("Academy-intake idempotent (re-run = 0 nye)",
+    reIntake.teams === 0 && reIntake.candidates === 0,
+    `teams=${reIntake.teams} candidates=${reIntake.candidates}`, "0/0");
 
   // Founder-badge overlever en efterfølgende runFullBetaReset
   console.log("\n-- Kører efterfølgende runFullBetaReset (founder-badge survival-tjek) --");
