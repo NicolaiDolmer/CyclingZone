@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 // Rehearsal-runner (#1191) — kører den ÆGTE relaunch-orchestrator (#1103) mod en
-// DISPOSABEL Supabase-branch og verificerer alle 8 acceptance-tjek + rollback.
+// DISPOSABEL Supabase-branch og verificerer alle acceptance-tjek + rollback —
+// inkl. #1447 anon-RLS-synlighed (fiktive ryttere skal være synlige for ikke-admins).
 //
 // KØRES KUN mod branch-projektet (ref starter IKKE med prod-ref). Scriptet
 // nægter at køre hvis isProdSupabaseUrl(SUPABASE_URL) er true (#1103-guard).
 //
 // Brug:
-//   1. Sæt SUPABASE_URL + SUPABASE_SERVICE_KEY i backend/.env til BRANCHEN.
+//   1. Sæt SUPABASE_URL + SUPABASE_SERVICE_KEY + SUPABASE_ANON_KEY i backend/.env
+//      til BRANCHEN (anon-nøglen kræves til #1447 RLS-sti-tjekket).
 //   2. node scripts/dev/run-relaunch-rehearsal.mjs
 //
 // Output: dry-run-summary, apply-summary, acceptance-tabel (PASS/FAIL), rollback-tjek.
@@ -92,6 +94,26 @@ async function main() {
   const fictionalMarket = fictionalActiveTotal - academyRiderIds.size;
   add("~800 fiktive i markedet", fictionalMarket >= 780 && fictionalMarket <= 820,
     `${fictionalMarket} (total ${fictionalActiveTotal} − ${academyRiderIds.size} academy)`, "~800");
+
+  // #1447: VERIFICÉR via ANON-nøgle (RLS-sti), ikke kun service-role. Tjekket ovenfor
+  // tæller via service_role-klienten, der BYPASSER RLS — og var derfor blind for
+  // #669-gaten ("Public read riders" USING (pcm_id IS NOT NULL OR is_admin())), der
+  // skjuler pcm_id NULL fra ikke-admins. Efter relaunch er HELE bestanden pcm_id NULL,
+  // så uden denne assertion kan markedet + eget hold være TOMT for rigtige brugere
+  // mens rehearsal viser grønt. Kræver branchens anon-nøgle i backend/.env.
+  const anonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+  if (!anonKey) {
+    add("Fiktive synlige via anon (RLS-sti, ikke kun service-role)", false,
+      "SUPABASE_ANON_KEY mangler i backend/.env — RLS-sti UVERIFICERET", `anon === ${fictionalActive}`);
+  } else {
+    const anonClient = createClient(SUPABASE_URL, anonKey);
+    const { count: anonFictional, error: anonErr } = await anonClient.from("riders")
+      .select("id", { count: "exact", head: true }).is("pcm_id", null).eq("is_retired", false);
+    add("Fiktive synlige via anon (RLS-sti, ikke kun service-role)",
+      !anonErr && anonFictional === fictionalActive && fictionalActive > 0,
+      anonErr ? `anon-query fejl: ${anonErr.message}` : `anon=${anonFictional} vs service=${fictionalActive}`,
+      `anon === service (${fictionalActive})`);
+  }
 
   // 8 ryttere pr. beta-manager
   const { data: betaTeams } = await supabase.from("teams").select("id")

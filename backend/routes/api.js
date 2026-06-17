@@ -510,9 +510,9 @@ async function requireAdmin(req, res, next) {
 }
 
 // Lightweight admin-check til endpoints der betjener BÅDE admin og ikke-admin
-// (modsat requireAdmin, som blokerer ikke-admin helt). Bruges til at gate fiktive
-// ryttere (#669, pcm_id IS NULL): kun synlige/auktionerbare for admin under
-// test/gradvis udrulning, så testere ikke ser eller kan handle dem.
+// (modsat requireAdmin, som blokerer ikke-admin helt). Bruges nu til at maskere
+// rytter-potentiale for ikke-admins (#1162) i GET /riders/:id. (#669-fiktiv-gaten
+// brugte den også, men er reverteret ved relaunch-cutover — #1447.)
 async function isViewerAdmin(req) {
   if (!req.user?.id) return false;
   const { data: u } = await supabase
@@ -841,9 +841,8 @@ router.get("/riders", requireAuth, cached({ namespace: "riders", ttlMs: CACHE_TT
     `, { count: "exact" })
     .eq("is_retired", false);
 
-  // #669: fiktive ryttere (pcm_id NULL) er admin-only under test — skjult fra den
-  // brugervendte database. Admin inspicerer dem via GET /admin/riders.
-  query = query.not("pcm_id", "is", null);
+  // #1447: ingen pcm_id-filter — efter relaunch (#1105) er fiktive ryttere (pcm_id
+  // NULL) den aktive bestand og skal være synlige for alle. #669-gaten reverteret.
 
   if (q) {
     query = query.or(
@@ -881,11 +880,9 @@ router.get("/riders/:id", requireAuth, async (req, res) => {
     .single();
 
   if (error || !data) return res.status(404).json({ error: "Rider not found" });
+  // #1447: #669-gaten fjernet — fiktive ryttere (pcm_id NULL) er synlige for alle
+  // efter relaunch (#1105). viewerIsAdmin bruges stadig til potentiale-maskering (#1162).
   const viewerIsAdmin = await isViewerAdmin(req);
-  // #669: en fiktiv rytter (pcm_id NULL) findes kun for admin under test.
-  if (data.pcm_id === null && !viewerIsAdmin) {
-    return res.status(404).json({ error: "Rider not found" });
-  }
 
   // #1162: den sande potentiale forlader aldrig serveren for ikke-admins —
   // klienter får KUN det viewer-maskerede estimat via POST /scouting/estimates.
@@ -1362,17 +1359,14 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
   // Verify rider belongs to this team
   const { data: rider } = await supabase
     .from("riders")
-    .select("id, firstname, lastname, team_id, pending_team_id, is_retired, market_value, pcm_id")
+    .select("id, firstname, lastname, team_id, pending_team_id, is_retired, market_value")
     .eq("id", rider_id)
     .single();
 
   if (!rider) return res.status(404).json({ error: "Rider not found" });
 
-  // #669: fiktive ryttere (pcm_id NULL) kan kun auktioneres af admin under test —
-  // forhindrer at en tester trækker en endnu-ukalibreret rytter i spil økonomisk.
-  if (rider.pcm_id === null && !(await isViewerAdmin(req))) {
-    return res.status(403).json({ error: "Rytteren er ikke tilgængelig", errorCode: "rider_unavailable" });
-  }
+  // #1447: #669-auktions-gaten fjernet — efter relaunch (#1105) er fiktive ryttere
+  // den aktive bestand og skal kunne auktioneres/handles af alle managere.
 
   // Block: rider awaits transfer to a previous auction winner.
   const auctionStartIssue = getAuctionStartIssue({ rider });
