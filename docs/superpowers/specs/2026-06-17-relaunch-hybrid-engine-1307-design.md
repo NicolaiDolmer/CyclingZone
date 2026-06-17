@@ -77,7 +77,7 @@ Prod kører en **levende sæson 2** (8.964 aktive ryttere, 23 menneske-managers,
 3. ✅ Deploy-verify (P1) — gjort.
 
 ### Fase B — lille byg (parallelt; separate worktrees, forskellige moduler)
-4. **In-race-træthed: cross-stage akkumulering** (ejer-valgt: ægte hybrid). Før en muterbar fatigue-map gennem etape-loopet i `buildRaceResults` (`raceRunner.js` ~180-205), læg `raceFatigueLoad(stage.profile_type)` (`raceFatigue.js:25`) til efter hver etape, genberegn `simEntrant.fatigue` før næste `simulateStage`. Genbruger eksisterende tabel — ingen ny model. Effort **M** (~20-40 linjer + determinisme-unit-test: samme seed = samme resultat). Kode-deploy. **Balance-følsom → obligatorisk re-kør race:gate efter (§6).**
+4. ✅ **In-race-træthed: cross-stage akkumulering — IMPLEMENTERET** (branch `feat/hybrid-race-fatigue-1021`, plan `plans/2026-06-17-hybrid-race-fatigue.md`). Ren helper `stageEnteringFatigues` (`raceFatigue.js`) wired ind i `buildRaceResults` (`raceRunner.js`); træthed akkumulerer mellem etaper + start = `rider_condition.fatigue`. **Kalibrering ejer-valgt: `FATIGUE_RACE_WEIGHT 0.008→0.030`** (4,6% af terræn). **Acceptance MET:** `race:gate` grøn · `race:gate:condition` exit 0 (durability ⌀rank 0.01→**0.07**, ikke længere dødvægt) · `race:gate:roles` kaptajn-delta positiv (2137 vs 2114) · fuld suite 1740/1740. Sanity-udskrift + spec-6.4-bound-test afledt af konstanterne (ingen stale tal). Pre-eksisterende `race:gate:roles` itt-bånd uændret (uden for scope).
 5. **Backup/PITR-sti** (P3). Effort **L** (men PITR-verifikation << at bygge reverse-DELETE). Se beslutning ②.
 6. ~~E2-økonomi byg~~ — **udgår, allerede gjort** (P1).
 7. **#1307** — **nul byg.** Aktiveres af flag-flippet i Fase C.
