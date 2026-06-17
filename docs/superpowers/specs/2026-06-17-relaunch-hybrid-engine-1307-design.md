@@ -1,7 +1,7 @@
 # Relaunch sæson 1 — hybrid race-motor + spiller-vendt holdudtagelse (design)
 
 **Dato:** 2026-06-17 · **Status:** UNDER EKSEKVERING · **Slice:** `slice:tdf-launch`
-**Fase-tracker:** Fase A ✅ (doc-drift + gate-baseline) · Fase B trin 4 ✅ (hybrid-fatigue, PR #1443 merged) · **⏭ NÆSTE = Fase B trin 5: backup/PITR (beslutning ②, §4 P3 — hård pre-req før Fase C)** · Fase C (orchestrator-verify → prod-relaunch → flag-flip) ⬜ · Fase D (post-launch: #1021, PCM-oprydning, #1310) ⬜. Følg §5 i rækkefølge.
+**Fase-tracker:** Fase A ✅ · Fase B trin 4 ✅ (hybrid-fatigue, PR #1443 merged) · Fase B trin 5 — **tooling ✅** (backup + verify-restore bygget + lokalt-grøn, commit `893fed13`; `scripts/db-backup.mjs`/`db-verify-restore.mjs`/`db-selftest.mjs` + `scripts/db-README.md`). **⏭ NÆSTE = ejer lægger `SUPABASE_DB_URL` (session-pooler) i prod-Infisical → `npm run db:backup`+`db:verify-restore` mod prod → P3 opfyldt** · Fase C (orchestrator-verify → prod-relaunch → flag-flip) ⬜ · Fase D (post-launch: #1021, PCM-oprydning, #1310) ⬜. Følg §5 i rækkefølge.
 **Relaterede issues:** #1105 (relaunch-epic) · #1103 (orchestrator/founder-badge) · #1102/#1122/#1428 (race engine v2) · #1307 (holdudtagelse/kaptajn/udbrud, CLOSED/done) · #1136/#1137 (daglig træning/progression) · #1101 (værdimodel, hard-gate) · #1438/#1442 (økonomi E2 + anti-inflation Fase 1) · #677 (fiktive stats — OPEN, mulig blocker) · #1346 (season-transition readiness-gate) · #1021 (fuld fysiologi — POST-launch) · #97 (hård gældsbund).
 
 > Verificeret mod kode **og** live prod (`ghwvkxzhsbbltzfnuhhz`) 2026-06-17. To workflow-kortlægninger + direkte prod-queries. Hvor docs (især `PLAN.md`) modsiger koden, vinder koden — se §2.
@@ -63,7 +63,7 @@ Prod kører en **levende sæson 2** (8.964 aktive ryttere, 23 menneske-managers,
 |---|---|---|---|
 | P1 | Økonomi E2 + Fase 1 deployet + migreret | ✅ **Verificeret** (kolonner findes, konstanter på main, Railway-deploy) | — |
 | P2 | race_engine_v2 grøn mod **nuværende** population | ⚠️ Grøn ved merge-tid 12/6; ikke gen-kørt | `node backend/scripts/raceGate.js --condition --roles` (Fase A) |
-| P3 | Verificerbar DB-backup/PITR før prod-apply | ❌ **Mangler** — ingen undo | Beslutning ② + opsætning (Fase B) |
+| P3 | Verificerbar DB-backup/PITR før prod-apply | ⚠️ **Tooling bygget + lokalt-verificeret** (`scripts/db-backup.mjs` + `db-verify-restore.mjs`, commit `893fed13`); mangler kun `SUPABASE_DB_URL` i prod-Infisical + ét prod-run | Ejer: tilføj `SUPABASE_DB_URL` (Supabase→Connect→Session pooler) → `npm run db:backup` + `db:verify-restore` |
 | P4 | Orchestrator grøn ejer-verify mod preview-branch | ❌ Kode-komplet, aldrig kørt apply | `run-relaunch-rehearsal.mjs`, 8 acceptance + rollback PASS (Fase C) |
 | P5 | #1101 base_value-shadow-cutover kvitteret | ❌ Hard-gate (`RELAUNCH_1101_CUTOVER_ACK=true`) | Ejer-kvittering (Fase C) |
 | P6 | #677 (fiktive stats via ability-model) afklaret | ⚠️ OPEN/claude:todo | Beslutning ④ — er det dækket af orchestrator-backfill, eller en kvalitets-blocker? |
@@ -124,7 +124,7 @@ Per reglen: balance-følsomme systemer får empirisk dry-run mod ægte populatio
 ## 8. Åbne ejer-beslutninger (prioriteret; tages én ad gangen i denne rækkefølge)
 
 - **① Træthed-niveau** — ✅ **AFGJORT: ægte hybrid** (cross-stage akkumulering).
-- **② Backup-strategi** (P3) — verificerbar Supabase-PITR/snapshot **vs.** byg egentlig undo for `runFullBetaReset`. **Anbefaling: PITR/snapshot** (lavere kompleksitet end reverse-DELETE; reactivateLegacyRiders dækker ikke sæson/race/finance).
+- **② Backup-strategi** (P3) — ✅ **AFGJORT: verificeret logisk pg_dump-backup** (`scripts/db-backup.mjs` + `db-verify-restore.mjs`, commit `893fed13`, lokalt-grøn). En frisk restore-testet dump slår både den 24t-gamle daglige backup og en ubetestet PITR; PITR valgfri oveni. Reverse-DELETE-undo forkastet (dækker ikke sæson/race/finance). MCP-stramning (read-only/scope) bevidst FORKASTET — ejer vil maks autonomi; backuppen er det der gør bred adgang sikker. Resterer: `SUPABASE_DB_URL` i prod-Infisical + ét prod-run (i morgen).
 - **③ Academy i seed-kørslen** (Fase C trin 9) — skal hver menneske-trup have et kandidat-kuld på relaunch-dag 1, eller staged efter? Afgøres lige før `--apply`.
 - **④ #677-status** (P6) — er fiktive stats dækket af orchestratorens backfill-kæde (physiology→abilities→base_value), eller er #677 en reel kvalitets-blocker? Kræver kort undersøgelse.
 - **⑤ PCM-kode-oprydning timing** + approve-results/`pending_race_results`-stiens skæbne (ingen kode skriver tabellen i dag — vestigial). **Anbefaling: post-launch (Fase D)** — ikke en relaunch-blocker.
