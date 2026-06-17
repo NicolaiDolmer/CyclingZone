@@ -560,6 +560,21 @@ async function assertMarketOpen(req, res, scope) {
   return true;
 }
 
+// ── Transfer-freeze guard ─────────────────────────────────────────────────────
+// Returns true if the request is allowed; if false the response (403) has already
+// been sent. Callers: `if (!assertTeamNotTransferFrozen(req, res)) return;`
+// Exported for unit-testing (api.test.js).
+export function assertTeamNotTransferFrozen(req, res) {
+  if (req.team?.transfer_frozen) {
+    res.status(403).json({
+      error: "Dit hold er fastfrosset pga. gæld over loftet. Reducér gæld før du handler.",
+      errorCode: "team_transfer_frozen",
+    });
+    return false;
+  }
+  return true;
+}
+
 // ── Notification helper ───────────────────────────────────────────────────────
 
 async function notify(userId, type, title, message, relatedId = null) {
@@ -1553,6 +1568,7 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
 router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   if (!(await assertMarketOpen(req, res, "auction"))) return;
+  if (!assertTeamNotTransferFrozen(req, res)) return;
 
   const { amount, proxy_max } = req.body;
   if (!amount) return res.status(400).json({ error: "amount required" });
@@ -1801,6 +1817,7 @@ router.get("/auctions/:id/proxy", requireAuth, async (req, res) => {
 router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   if (!(await assertMarketOpen(req, res, "auction"))) return;
+  if (!assertTeamNotTransferFrozen(req, res)) return;
 
   const numericMax = Number(req.body.max_amount);
   if (!Number.isFinite(numericMax) || numericMax <= 0) {
@@ -2063,6 +2080,7 @@ router.get("/transfers", requireAuth, async (req, res) => {
 // (køb/accept) flyttes pengemæssigt ved aftale, men rytter-registreringen sker
 // først ved vindue-åbning (se transferExecution.js deferRegistration).
 router.post("/transfers", requireAuth, marketWriteLimiter, async (req, res) => {
+  if (!assertTeamNotTransferFrozen(req, res)) return;
   const { rider_id, asking_price } = req.body;
   const { data: rider } = await supabase
     .from("riders").select("id, team_id, firstname, lastname, is_retired").eq("id", rider_id).single();
@@ -2193,6 +2211,7 @@ router.patch("/transfers/:id", requireAuth, marketWriteLimiter, async (req, res)
 // det samme, men rytter-registreringen udskydes til vinduet åbner (lukket vindue).
 router.post("/transfers/offer", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!(await assertMarketOpen(req, res, "market"))) return;
+  if (!assertTeamNotTransferFrozen(req, res)) return;
   const { open } = await getTransferWindowStatus();
 
   const { rider_id, offer_amount, message } = req.body;
@@ -2630,6 +2649,7 @@ router.get("/transfers/swaps", requireAuth, async (req, res) => {
 // aftale, registrér rytterskiftet ved vindue-åbning).
 router.post("/transfers/swaps", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!(await assertMarketOpen(req, res, "market"))) return;
+  if (!assertTeamNotTransferFrozen(req, res)) return;
 
   const { offered_rider_id, requested_rider_id, cash_adjustment = 0, message } = req.body;
   if (!offered_rider_id || !requested_rider_id)
@@ -2887,6 +2907,7 @@ router.get("/loans", requireAuth, async (req, res) => {
 // POST /api/loans — propose a loan (borrowing team initiates)
 router.post("/loans", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!(await assertMarketOpen(req, res, "market"))) return;
+  if (!assertTeamNotTransferFrozen(req, res)) return;
   const { open } = await getTransferWindowStatus();
 
   const { rider_id, loan_fee = 0, start_season, end_season, buy_option_price } = req.body;
@@ -5482,6 +5503,7 @@ router.post("/finance/loans", requireAuth, marketWriteLimiter, async (req, res) 
   try {
     if (!req.team) return res.status(400).json({ error: "No team found" });
     if (!(await assertMarketOpen(req, res, "market"))) return;
+    if (!assertTeamNotTransferFrozen(req, res)) return;
     const { loan_type, amount } = req.body;
     if (!["short", "long"].includes(loan_type))
       return res.status(400).json({ error: "Ugyldig låntype — brug short eller long" });
