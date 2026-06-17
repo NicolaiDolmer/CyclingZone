@@ -21,12 +21,12 @@ function rider(id, first, last) {
   return { id, firstname: first, lastname: last, nationality_code: "dk", team: { id: "team-x", name: "Team X" } };
 }
 
-function row(id, stage_number, result_type, rank, r, points = 0) {
+function row(id, stage_number, result_type, rank, r, points = 0, finish_time = null) {
   return {
     id, stage_number, result_type, rank,
     rider_id: r.id, rider_name: `${r.firstname} ${r.lastname}`,
     team_id: r.team.id, team_name: r.team.name,
-    points_earned: points, prize_money: 0, rider: r,
+    finish_time, points_earned: points, prize_money: 0, rider: r,
   };
 }
 
@@ -34,20 +34,20 @@ const ADA = rider("rider-1", "Ada", "Pedersen");
 const MIK = rider("rider-2", "Mikkel", "Hansen");
 
 const RESULTS = [
-  // Etape 1 målrækkefølge
-  row("r1", 1, "stage", 1, ADA, 100),
-  row("r2", 1, "stage", 2, MIK, 80),
-  // Etape 1 trøjebærere
+  // Etape 1 målrækkefølge (Race Engine v2 skriver pr.-etape-gab i finish_time)
+  row("r1", 1, "stage", 1, ADA, 100, "+0:00"),
+  row("r2", 1, "stage", 2, MIK, 80, "+0:23"),
+  // Etape 1 trøjebærere (ingen finish_time)
   row("j1", 1, "leader", 1, ADA, 0),
   row("j2", 1, "points_day", 1, MIK, 0),
   row("j3", 1, "mountain_day", 1, ADA, 0),
   row("j4", 1, "young_day", 1, ADA, 0),
   // Etape 2 målrækkefølge
-  row("r3", 2, "stage", 1, MIK, 100),
-  row("r4", 2, "stage", 2, ADA, 80),
-  // Endelige klassementer (sidste etape)
-  row("g1", 2, "gc", 1, ADA, 0),
-  row("g2", 2, "gc", 2, MIK, 0),
+  row("r3", 2, "stage", 1, MIK, 100, "+0:00"),
+  row("r4", 2, "stage", 2, ADA, 80, "+0:14"),
+  // Endelige klassementer (sidste etape) — gc har kumulativt gab
+  row("g1", 2, "gc", 1, ADA, 0, "+0:00"),
+  row("g2", 2, "gc", 2, MIK, 0, "+0:09"),
   row("p1", 2, "points", 1, MIK, 0),
   row("m1", 2, "mountain", 1, ADA, 0),
   row("y1", 2, "young", 1, ADA, 0),
@@ -74,16 +74,18 @@ test("race detail page renders stage tabs, jerseys and overall classifications",
   await expect(page.getByRole("button", { name: "Etape 1" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Etape 2" })).toBeVisible();
 
-  // Samlet-fane (default): alle 5 klassementer
+  // Samlet-fane (default): alle 5 klassementer + kumulativt GC-gab (#959 gaps)
   await expect(page.getByText("Samlet (GC)")).toBeVisible();
   await expect(page.getByText("Pointkonkurrence")).toBeVisible();
   await expect(page.getByText("Bjergkonkurrence")).toBeVisible();
   await expect(page.getByText("Holdkonkurrence")).toBeVisible();
+  await expect(page.getByText("+0:09")).toBeVisible();
 
-  // Etape 1: trøje-badges + målrækkefølge
+  // Etape 1: trøje-badges + målrækkefølge + pr.-etape-gab (#959 gaps)
   await page.getByRole("button", { name: "Etape 1" }).click();
   await expect(page.getByText("Trøjer efter etapen")).toBeVisible();
   await expect(page.getByText("Fører", { exact: true })).toBeVisible();
   await expect(page.getByText("Bjerg", { exact: true })).toBeVisible();
   await expect(page.getByText("Etape 1 · målrækkefølge")).toBeVisible();
+  await expect(page.getByText("+0:23")).toBeVisible();
 });
