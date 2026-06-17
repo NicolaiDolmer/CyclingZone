@@ -140,6 +140,19 @@ test("determinisme: samme input → identiske resultRows + runs", () => {
   assert.deepEqual(a.runs, b.runs);
 });
 
+test("træthed akkumulerer over etaper: finalFatigue afspejler entering sidste etape (#1021-hybrid)", () => {
+  const { finalFatigue } = buildRaceResults({ race: STAGE_RACE, stages: STAGES_3, entrants: ENTRANTS, pointsLookup: POINTS });
+  // STAGES_3 = flat(10), mountain(18), high_mountain(20). Frisk rytter (ingen condition):
+  // entering sidste etape (idx 2) = 0 + load(flat=10) + load(mountain=18) = 28.
+  for (const e of ENTRANTS) assert.equal(finalFatigue[e.rider_id], 28);
+});
+
+test("akkumulering bevarer determinisme: finalFatigue identisk på tværs af kald", () => {
+  const a = buildRaceResults({ race: STAGE_RACE, stages: STAGES_3, entrants: ENTRANTS, pointsLookup: POINTS });
+  const b = buildRaceResults({ race: STAGE_RACE, stages: STAGES_3, entrants: ENTRANTS, pointsLookup: POINTS });
+  assert.deepEqual(a.finalFatigue, b.finalFatigue);
+});
+
 test("runs: én pr. etape med seed + entrant-snapshot", () => {
   const { runs } = buildRaceResults({ race: STAGE_RACE, stages: STAGES_3, entrants: ENTRANTS, pointsLookup: POINTS });
   assert.equal(runs.length, 3);

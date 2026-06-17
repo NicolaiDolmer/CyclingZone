@@ -31,7 +31,7 @@ import { recomputeSeasonRaceDays } from "./seasonRaceDays.js";
 import { processBoardWeekendFinalization as processBoardWeekendFinalizationShared } from "./boardWeekendFinalization.js";
 import { simulateStage, stableSeed, ENGINE_VERSION, ABILITY_KEYS } from "./raceSimulator.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
-import { applyRaceFatigue } from "./raceFatigue.js";
+import { applyRaceFatigue, stageEnteringFatigues } from "./raceFatigue.js";
 import { autopickTeamSelection, selectionSizeForRace } from "./raceAutopick.js";
 
 // Intern klassements-point (grøn/bjerg) — afgør KUN rækkefølgen i de respektive
@@ -168,17 +168,29 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
 
   // #1306-fix + #1307: form/fatigue/race_role SKAL med ind i simulatoren — det er
   // præcis condition-berigelsen og rollerne der adskiller prod-stien fra rå abilities.
+  // #1021-hybrid (ejer-valgt 2026-06-17): træthed AKKUMULERER mellem etaper — en
+  // 21-etapers tour bliver en udmattelseskamp. Hver rytters start-træthed
+  // (rider_condition.fatigue, eller 0) + summen af tidligere etapers belastning.
+  // Fylder seamen raceSimulator.js:74 beskriver, uden at røre simulateStage-kontrakten.
+  const stageProfiles = stagesSorted.map((s) => s.profile_type);
+  const fatigueSeqById = new Map(
+    entrants.map((e) => [e.rider_id, stageEnteringFatigues(e.fatigue, stageProfiles)])
+  );
+
   const simEntrants = entrants.map((e) => ({
     rider_id: e.rider_id,
     team_id: e.team_id,
     abilities: e.abilities,
     ...(e.form != null ? { form: e.form } : {}),
-    ...(e.fatigue != null ? { fatigue: e.fatigue } : {}),
+    // fatigue sættes per etape i loopet (akkumulerende); start = etape 0's entering.
+    fatigue: fatigueSeqById.get(e.rider_id)[0],
     ...(e.race_role ? { race_role: e.race_role } : {}),
   }));
 
   for (let i = 0; i < stagesSorted.length; i++) {
     const stage = stagesSorted[i];
+    // Akkumuleret træthed gående ind til DENNE etape (idx i).
+    for (const se of simEntrants) se.fatigue = fatigueSeqById.get(se.rider_id)[i];
     const stageNumber = stage.stage_number || 1;
     const isFinal = i === stagesSorted.length - 1;
     const seed = stableSeed(`${race.id}:${stageNumber}`);
@@ -242,7 +254,14 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
     }
   }
 
-  return { resultRows, runs };
+  // Træthed ved start af sidste etape pr. rytter (peak de reelt kørte på) — in-memory
+  // observability + simulér-før-ship-verifikation. Persisteres ikke (intet DB-skema rørt).
+  const lastIdx = stagesSorted.length - 1;
+  const finalFatigue = Object.fromEntries(
+    entrants.map((e) => [e.rider_id, fatigueSeqById.get(e.rider_id)[lastIdx]])
+  );
+
+  return { resultRows, runs, finalFatigue };
 }
 
 // ── I/O: indlæsning ───────────────────────────────────────────────────────────
