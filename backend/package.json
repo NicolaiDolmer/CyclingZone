@@ -14,7 +14,7 @@
     "sim:contracts": "node scripts/economyContractSimulation.js --markdown",
     "sim:academy": "node scripts/academyEconomySimulation.js --markdown",
     "gates:mutation-audit": "node scripts/gateMutationAudit.js",
-    "race:gate": "node scripts/simulateSeasonDryRun.js --enforce-targets --enforce-liveness --no-html --seed=2026",
+    "race:gate": "node scripts/raceGate.js --seeds=2026,7,42",
     "race:gate:condition": "node scripts/simulateSeasonDryRun.js --enforce-targets --enforce-liveness --no-html --seed=2026 --condition=random",
     "race:gate:roles": "node scripts/simulateSeasonDryRun.js --enforce-targets --enforce-liveness --no-html --seed=2026 --roles",
     "training:gate": "node scripts/previewDailyTraining.js --seasons=12 --count=400 --seed=2026 --enforce-targets",

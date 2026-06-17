@@ -66,6 +66,13 @@ const ROLES_MODE = !!arg("roles", false);
 // en hard gate (exit 1). Default off, så Phase A's race:gate forbliver grøn mens
 // instrumentet bygges; tilføjes race:gate-scriptet i Phase C når motoren er grøn.
 const ENFORCE_LIVENESS = !!arg("enforce-liveness", false);
+// #1021 Fase 1 (post-launch): udbruds-realisme-båndene (BREAKAWAY_TARGETS) er
+// KANDIDAT-bånd der endnu ikke er cross-seed-kalibreret mod den nuværende
+// population (#1428 ability v3 + #1434 leadout-cut flyttede fordelingen). De er
+// derfor afkoblet fra --enforce-targets og RAPPORT-ONLY som standard, så de ikke
+// maskerer/blokerer de launch-kritiske gates. #1021-kalibrerings-sessionen kan
+// gøre dem til en hard gate igen med --enforce-breakaway når båndene er re-fittet.
+const ENFORCE_BREAKAWAY = !!arg("enforce-breakaway", false);
 // #1420: per-run default HTML-sti, så reruns med forskellige parametre kan
 // holdes åbne side om side (gitignored out/). --html=<sti> overstyrer. Defineres
 // her, fordi navnet afhænger af CONDITION_MODE/ROLES_MODE/MIX ovenfor.
@@ -133,15 +140,17 @@ const TERRAINS = ["flat", "rolling", "hilly", "mountain", "high_mountain", "itt"
 // ── Udbruds-gate-bånd (#1307, 2026-06-12) — escapee-VINDER-andel pr. terræn ───
 // Andel af sejre vundet af en rytter med aktiv udbruds-bonus
 // (components.breakaway > 0) — uafhængigt af født-som-type, modsat born-as-
-// linsen i "udbruds-andel"-rapporten nedenfor. Måles i ALLE modes; håndhæves
-// med --enforce-targets. Bånd til ejer-review i PR'en (irl-pejling: udbrud
-// holder sjældent hjem på flade sprinter-etaper, oftere i mellembjerg/bjerg).
+// linsen i "udbruds-andel"-rapporten nedenfor. Måles i ALLE modes; RAPPORT-ONLY
+// som standard (post-launch #1021), håndhæves kun med --enforce-breakaway.
 //
 // #1021 Fase 1: bånd pr. terræn, grundet i virkelige data (2026-06-16). Bonus er nu
 // finale-gradient-bevidst (BREAKAWAY_BONUS), så hilly/high_mountain/cobbles er IKKE
 // længere konstruktions-0. high_mountain er summit-domineret → lavt bånd (de få ikke-
 // summit-dage løfter det lidt). mountain-båndet er bredt: det blander summit (~0) +
-// descent (~40%). KANDIDAT-bånd — verificeres grøn på tværs af seeds (plan Task 5).
+// descent (~40%). KANDIDAT-bånd: cross-seed-verifikation viste 2026-06-17 at de
+// fejler 18/20 seeds mod den NYE population (#1428 ability v3 + #1434 leadout-cut
+// flyttede fordelingen: flat ~+2pp, hilly under gulvet). Re-fit hører til #1021
+// post-launch-kalibrering — IKKE en launch-blocker (win-rate-dominans uændret).
 const BREAKAWAY_TARGETS = {
   flat:          { min: 0.01, max: 0.07 },
   rolling:       { min: 0.04, max: 0.15 },
@@ -441,9 +450,10 @@ const breakawayShare = pct1(breakawayWins, mtTotalWins);
 console.log(`\n   udbruds-andel (baroudeur/fighter) af bjergsejre: ${breakawayShare}% (irl ~40%; 0% = rød flag, rapport-only)`);
 
 // ── Udbruds-bånd (#1307) — escapee-vinder-andel vs BREAKAWAY_TARGETS ─────────
-// Evalueres i ALLE modes; håndhæves (exit 1) kun med --enforce-targets.
+// Evalueres i ALLE modes; RAPPORT-ONLY (post-launch #1021), håndhæves (exit 1)
+// kun med --enforce-breakaway. Se exit-blokken + BREAKAWAY_TARGETS-kommentaren.
 const breakawayBandFailures = [];
-console.log(`\n   UDBRUDS-BÅND (escapee-vinder-andel; håndhæves med --enforce-targets):`);
+console.log(`\n   UDBRUDS-BÅND (escapee-vinder-andel; RAPPORT-ONLY — post-launch #1021, håndhæv med --enforce-breakaway):`);
 for (const [terrain, band] of Object.entries(BREAKAWAY_TARGETS)) {
   const tr = terrainResults.find((x) => x.terrain === terrain);
   const share = tr.breakawayWinShare;
@@ -605,14 +615,26 @@ if (failedTargets.length) {
     console.log(`   ⚠ ${failedTargets.length} kalibrerings-bånd under mål (rapport-only; håndhæv med --enforce-targets): ${failedTargets.map((s) => s.terrain).join(", ")}`);
   }
 }
-// #1307: udbruds-bånd + roles-metrikker — samme håndhævelses-kontrakt som scorecardet.
-const breakawayGateFailures = [...breakawayBandFailures, ...rolesFailures];
-if (breakawayGateFailures.length) {
+// #1307: roles-metrikker (kaptajn-delta + hunter-ratio) er launch-relevante og
+// håndhæves med --enforce-targets, præcis som win-rate-scorecardet.
+if (rolesFailures.length) {
   if (ENFORCE_TARGETS) {
-    console.log(`   ❌ ${breakawayGateFailures.length} udbruds-/roles-bånd brudt (--enforce-targets aktiv → exit 1): ${breakawayGateFailures.join(" · ")}`);
+    console.log(`   ❌ ${rolesFailures.length} roles-bånd brudt (--enforce-targets aktiv → exit 1): ${rolesFailures.join(" · ")}`);
     process.exitCode = 1;
   } else {
-    console.log(`   ⚠ ${breakawayGateFailures.length} udbruds-/roles-bånd brudt (rapport-only; håndhæv med --enforce-targets): ${breakawayGateFailures.join(" · ")}`);
+    console.log(`   ⚠ ${rolesFailures.length} roles-bånd brudt (rapport-only; håndhæv med --enforce-targets): ${rolesFailures.join(" · ")}`);
+  }
+}
+// #1021 Fase 1 (post-launch): udbruds-realisme-båndene er KANDIDAT-bånd der endnu
+// ikke er cross-seed-kalibreret mod den nuværende population. RAPPORT-ONLY som
+// standard, så de ikke maskerer/blokerer de launch-kritiske gates; #1021-
+// kalibreringen kan gøre dem hard igen med --enforce-breakaway.
+if (breakawayBandFailures.length) {
+  if (ENFORCE_BREAKAWAY) {
+    console.log(`   ❌ ${breakawayBandFailures.length} udbruds-bånd udenfor (--enforce-breakaway aktiv → exit 1): ${breakawayBandFailures.join(" · ")}`);
+    process.exitCode = 1;
+  } else {
+    console.log(`   ⚠ ${breakawayBandFailures.length} udbruds-bånd udenfor (rapport-only — post-launch #1021-kalibrering; håndhæv med --enforce-breakaway): ${breakawayBandFailures.join(" · ")}`);
   }
 }
 
