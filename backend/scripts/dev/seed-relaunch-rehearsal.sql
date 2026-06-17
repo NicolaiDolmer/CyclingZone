@@ -73,9 +73,9 @@ SELECT gen_random_uuid(), s.id, 'closed', s.start_date::timestamptz,
        COALESCE(s.end_date::timestamptz, now()), 'complete'
 FROM public.seasons s WHERE s.number IN (0, 1, 2);
 
--- ── A7 · loan_config (kopi af prod-værdier) + auction_timing_config ──────────
+-- ── A7 · loan_config (strict_fair_v1 short/long-loft 1.2M/900k/600k; emergency 1.5M) + auction_timing_config ──
 INSERT INTO public.loan_config (division, loan_type, origination_fee_pct, interest_rate_pct, seasons, debt_ceiling) VALUES
-  (1, 'short', 0.03, 0.08, 3, 1500000), (1, 'long', 0.05, 0.12, 5, 1500000), (1, 'emergency', 0.10, 0.20, 1, 1500000),
+  (1, 'short', 0.03, 0.08, 3, 1200000), (1, 'long', 0.05, 0.12, 5, 1200000), (1, 'emergency', 0.10, 0.20, 1, 1500000),
   (2, 'short', 0.03, 0.08, 3, 900000),  (2, 'long', 0.05, 0.12, 5, 900000),  (2, 'emergency', 0.10, 0.20, 1, 1500000),
   (3, 'short', 0.03, 0.08, 3, 600000),  (3, 'long', 0.05, 0.12, 5, 600000),  (3, 'emergency', 0.10, 0.20, 1, 1500000);
 INSERT INTO public.auction_timing_config (id) VALUES (1);

@@ -7,18 +7,19 @@
 
 import { makeRng } from "./fictionalRiderGenerator.js";
 import { fetchAllRows } from "./supabasePagination.js";
+import { SALARY_RATE } from "./economyConstants.js";
 
 export const CONTRACT = Object.freeze({
   FOUNDER_LENGTH: 2,          // founder-hold: stabil trup i 2 sæsoner
   DEFAULT_ACQUIRE_LENGTH: 2,  // auto-kontrakt ved erhvervelse (create-if-missing)
   MIN_LENGTH: 1,
   MAX_LENGTH: 3,
-  SALARY_RATE: 0.10,          // = den gamle generated-formel
+  SALARY_RATE,                // E2 strict_fair_v1: 0.067 (delt SSOT i economyConstants)
   BASE_VALUE_FALLBACK: 1000,  // spejler RIDER_BASE_VALUE_FALLBACK
 });
 
-// Spejler den gamle generated kolonne EKSAKT:
-// GREATEST(1, ROUND((COALESCE(base_value,1000)+prize_earnings_bonus)*0.10))
+// Frossen løn (#1309): GREATEST(1, ROUND((COALESCE(base_value,1000)+prize_earnings_bonus)*SALARY_RATE)).
+// SALARY_RATE = 0.067 efter E2-retunen (var 0.10 = den gamle generated-formel).
 export function computeFrozenSalary({ base_value, prize_earnings_bonus } = {}) {
   const base = Number(base_value) > 0 ? Number(base_value) : CONTRACT.BASE_VALUE_FALLBACK;
   const mv = base + (Number(prize_earnings_bonus) || 0);

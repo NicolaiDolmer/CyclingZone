@@ -51,12 +51,10 @@ CREATE TABLE IF NOT EXISTS public.riders (
   -- #1101 cutover 2026-06-10: base_value (model v3) driver økonomien; uci_points er afkoblet.
   base_value INTEGER,
   market_value INTEGER GENERATED ALWAYS AS (COALESCE(base_value, 1000) + prize_earnings_bonus) STORED,
-  -- salary: 10% af market_value, beregnes automatisk af DB. Kan ikke skrives fra applikationskode.
-  salary INTEGER GENERATED ALWAYS AS (
-    GREATEST(1, ROUND(
-      (COALESCE(base_value, 1000) + prize_earnings_bonus) * 0.10
-    ))::INTEGER
-  ) STORED,
+  -- salary: FROSSEN kontrakt-løn (#1309). Var GENERATED (10% af market_value);
+  -- nu sat ved signering og fast til udløb (E2 strict_fair_v1: 6,7%). Skrives af
+  -- runContractSeed + finalization (create-if-missing). NULL = free agent (UI estimerer).
+  salary INTEGER,
   team_id UUID REFERENCES public.teams(id) ON DELETE SET NULL,
   ai_team_id UUID REFERENCES public.teams(id) ON DELETE SET NULL,
   stat_fl  INTEGER,
