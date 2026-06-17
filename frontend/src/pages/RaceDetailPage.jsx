@@ -12,12 +12,17 @@ import { logEvent } from "../lib/logEvent";
 
 // #959 Etape-resultater V1 — detaljeret pr.-etape-visning.
 //
-// Data-virkelighed (verificeret mod prod 2026-06-03): race_results gemmer kun
-// PR. ETAPE: result_type="stage" (fuld målrækkefølge) + de daglige trøjebærere
-// (leader/points_day/mountain_day/young_day, én række pr. etape). De samlede
-// klassementer (gc/points/mountain/young/team) gemmes KUN ved sidste etape =
-// det endelige resultat. finish_time er tom overalt → ingen tider/gaps i V1.
-// V2 (efter launch) udvider importen så pr.-etape-klassementer + tider gemmes.
+// Data-virkelighed: race_results gemmer pr. ETAPE: result_type="stage" (fuld
+// målrækkefølge) + de daglige trøjebærere (leader/points_day/mountain_day/
+// young_day, én række pr. etape). De samlede klassementer (gc/points/mountain/
+// young/team) gemmes ved sidste etape = det endelige resultat.
+//
+// Gaps (#959 V1, ejer-valgt 2026-06-17): Race Engine v2 (#1102) skriver nu
+// finish_time som et "+M:SS"-gab — pr.-etape-gab på "stage"-rækker og kumulativt
+// GC-gab på "gc"-rækker (de øvrige klassementer har det ikke). Bunch-finish giver
+// korrekt "+0:00" for hele feltet (s.t.). Gamle PCM-importerede løb har tom
+// finish_time → gap-kolonnen vises kun når data findes. (V2 efter launch: pr.-
+// etape-klassement-snapshots + bonussekunder.)
 
 // De endelige klassementer ("Samlet"-fanen), i visnings-rækkefølge.
 // Label kommer fra t(`detail.classification.${key}`).
@@ -76,7 +81,7 @@ export default function RaceDetailPage() {
     const rows = await fetchAllRows(() =>
       supabase
         .from("race_results")
-        .select("id, stage_number, result_type, rank, rider_id, rider_name, team_id, team_name, points_earned, prize_money, rider:rider_id(id, firstname, lastname, nationality_code, team:team_id(id, name))")
+        .select("id, stage_number, result_type, rank, rider_id, rider_name, team_id, team_name, finish_time, points_earned, prize_money, rider:rider_id(id, firstname, lastname, nationality_code, team:team_id(id, name))")
         .eq("race_id", raceId)
         .order("id")
     );
@@ -277,6 +282,9 @@ function StageTab({ stage, results }) {
 function ResultTable({ title, rows }) {
   const { t } = useTranslation("races");
   const showPoints = rows.some(r => (r.points_earned ?? 0) > 0);
+  // Gap-kolonne kun når motoren har skrevet tider (stage/gc fra Race Engine v2);
+  // gamle PCM-løb og point/bjerg/ungdom/hold-klassementer har tom finish_time.
+  const showTime = rows.some(r => r.finish_time);
   return (
     <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
       <div className="px-4 py-3 border-b border-cz-border">
@@ -306,6 +314,11 @@ function ResultTable({ title, rows }) {
                     {r.rider?.team?.name || r.team_name || t("common.free")}
                   </TeamLink>
                 </td>
+                {showTime && (
+                  <td className="px-3 py-2 text-right text-cz-2 font-mono text-xs whitespace-nowrap tabular-nums">
+                    {r.finish_time || ""}
+                  </td>
+                )}
                 {showPoints && (
                   <td className="px-4 py-2 text-right text-cz-accent-t font-mono text-xs whitespace-nowrap">
                     {(r.points_earned ?? 0) > 0 ? `${formatNumber(r.points_earned)} pt` : ""}

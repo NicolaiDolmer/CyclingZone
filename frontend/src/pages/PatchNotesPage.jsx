@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.51",
+    date: "2026-06-17",
+    label: "Beta",
+    changes: [
+      {
+        category: "Added · Results",
+        items: [
+          "EN · Stage and overall results now show the time gap to the stage winner and the overall leader. Open a race from the race library, and each stage tab and the general classification now list the gap next to each rider, so you can read how the race split apart. Gaps appear for races run on the new race engine. Refs #959, #1102",
+          "DA · Etape- og samlede resultater viser nu tidsgabet til etapevinderen og den samlede fører. Åbn et løb fra løbsbiblioteket, og hver etape-fane og det samlede klassement viser nu gabet ud for hver rytter, så du kan aflæse hvordan løbet blev splittet. Gabene vises for løb kørt på den nye race-motor. Refs #959, #1102",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.50",
     date: "2026-06-16",
     label: "Beta",
