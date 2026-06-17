@@ -334,44 +334,95 @@ export async function createEmergencyLoan(teamId, amountNeeded, supabaseClient =
   const feeRate = config.origination_fee_pct;
   const interestRate = config.interest_rate_pct;
 
-  const fee = computeLoanFee(amountNeeded, feeRate);
-  const totalOwed = amountNeeded + fee;
+  // B2: HARD clamp — divisionsloft afledt robust fra short/long-rækken (post-B1
+  // er emergency-rækken aligned, men short/long er primær SSOT for loftet).
+  // Clamp-not-throw: nødlån udstedes automatisk af cron til løndækning — et kast
+  // ville crashe payroll. Udsted hvad der passer, eller null (0 headroom).
+  const effectiveCeiling =
+    configs.find(c => c.loan_type === "short")?.debt_ceiling ??
+    configs.find(c => c.loan_type === "long")?.debt_ceiling ??
+    config.debt_ceiling;
 
-  // Slice 07b · SOFT debt_ceiling-tjek (besluttet 2026-05-07).
-  // Emergency-lån må overstige loftet, men managere skal advares så de kan
-  // sælge ryttere eller reducere aktivitet før konkursspiral. Hard-enforcement
-  // overvejes som follow-up (07i) hvis live-data viser at SOFT er utilstrækkeligt.
-  let breachAmount = 0;
-  if (config.debt_ceiling) {
-    const currentDebt = await getTotalDebt(teamId, client);
-    if (currentDebt + totalOwed > config.debt_ceiling) {
-      breachAmount = currentDebt + totalOwed - config.debt_ceiling;
-      console.warn(
-        `[economy] team ${teamId}: emergency-lån presser gæld ${breachAmount} CZ$ over loft ${config.debt_ceiling} CZ$ — fortsætter SOFT`
-      );
+  // Prøv atomisk RPC først (serialiserer concurrent calls via pg_advisory_xact_lock).
+  // RPC returnerer clamped loans-row, eller NULL hvis ingen headroom.
+  // Falder tilbage til JS-clamp ved PGRST202 / "function does not exist" (legacy/test-mocks).
+  let loan;
+  if (typeof client.rpc === "function") {
+    const { data: rpcLoan, error: rpcError } = await client.rpc("create_emergency_loan_atomic", {
+      p_team_id: teamId,
+      p_amount_needed: amountNeeded,
+      p_origination_fee_pct: feeRate,
+      p_interest_rate: interestRate,
+      p_debt_ceiling: effectiveCeiling ?? null,
+    });
+    if (rpcError) {
+      // PGRST202 = funktion ikke eksponeret (migration ikke kørt / test-mock) → JS-fallback.
+      if (rpcError.code !== "PGRST202" && !/function .* does not exist/i.test(rpcError.message || "")) {
+        throw rpcError;
+      }
+    } else {
+      // RPC returnerer NULL når 0 headroom — afspejl det.
+      loan = rpcLoan ? (Array.isArray(rpcLoan) ? rpcLoan[0] : rpcLoan) : null;
+      if (rpcLoan !== undefined) {
+        // RPC-sti lykkedes (ingen fejl) — men null = ingen headroom.
+        if (loan === null) return null;
+        // RPC-sti: fall through to balance-credit + notifications below.
+        // issuedPrincipal = loan.principal (sat af RPC).
+      }
     }
   }
 
-  const { data: loan, error } = await client.from("loans").insert({
-    team_id: teamId,
-    loan_type: "emergency",
-    principal: amountNeeded,
-    origination_fee: fee,
-    interest_rate: interestRate,
-    seasons_total: 1,
-    seasons_remaining: 1,
-    amount_remaining: totalOwed,
-    status: "active",
-  }).select().single();
+  // JS-fallback clamp (RPC ikke tilgængelig).
+  let issuedPrincipal;
+  if (!loan) {
+    if (effectiveCeiling != null) {
+      const currentDebt = await getTotalDebt(teamId, client);
+      const maxResult = computeMaxLoanPrincipal({
+        currentDebt,
+        debtCeiling: effectiveCeiling,
+        originationFeePct: feeRate,
+      });
+      // maxResult er null hvis intet loft — ubegrænset.
+      issuedPrincipal = maxResult != null
+        ? Math.min(amountNeeded, maxResult.principal)
+        : amountNeeded;
+    } else {
+      issuedPrincipal = amountNeeded;
+    }
 
-  if (error) throw error;
+    if (issuedPrincipal <= 0) return null;
+
+    const issuedFee = computeLoanFee(issuedPrincipal, feeRate);
+    const issuedTotalOwed = issuedPrincipal + issuedFee;
+
+    const { data: insertedLoan, error } = await client.from("loans").insert({
+      team_id: teamId,
+      loan_type: "emergency",
+      principal: issuedPrincipal,
+      origination_fee: issuedFee,
+      interest_rate: interestRate,
+      seasons_total: 1,
+      seasons_remaining: 1,
+      amount_remaining: issuedTotalOwed,
+      status: "active",
+    }).select().single();
+
+    if (error) throw error;
+    loan = insertedLoan;
+  } else {
+    issuedPrincipal = loan.principal;
+  }
+
+  const issuedFee = computeLoanFee(issuedPrincipal, feeRate);
+  const issuedTotalOwed = issuedPrincipal + issuedFee;
+  const residual = amountNeeded - issuedPrincipal; // >= 0; > 0 = løn delvist udækket
 
   await incrementBalanceWithAudit(client, {
     teamId,
-    delta: amountNeeded,
+    delta: issuedPrincipal,
     payload: {
       type: "emergency_loan",
-      amount: amountNeeded,
+      amount: issuedPrincipal,
       description: null,
       season_id: seasonId,
       actor_type: auditCtx?.actorType || FINANCE_ACTOR_TYPE.CRON,
@@ -392,31 +443,33 @@ export async function createEmergencyLoan(teamId, amountNeeded, supabaseClient =
 
   await notifyManager(teamId, "emergency_loan",
     "⚠️ Emergency loan opened",
-    `Your team couldn't cover wages. An emergency loan of ${amountNeeded} CZ$ was opened automatically with a ${(feeRate * 100).toFixed(0)}% fee and ${(interestRate * 100).toFixed(0)}% interest. Total debt: ${totalOwed} CZ$.`,
+    `Your team couldn't cover wages. An emergency loan of ${issuedPrincipal} CZ$ was opened automatically with a ${(feeRate * 100).toFixed(0)}% fee and ${(interestRate * 100).toFixed(0)}% interest. Total debt: ${issuedTotalOwed} CZ$.`,
     client,
     {
       titleCode: "notif.emergencyLoan.title",
       titleParams: {},
       messageCode: "notif.emergencyLoan.message",
       messageParams: {
-        amount: amountNeeded,
+        amount: issuedPrincipal,
         feeRate: Math.round(feeRate * 100),
         interestRate: Math.round(interestRate * 100),
-        totalOwed,
+        totalOwed: issuedTotalOwed,
       },
     }
   );
 
-  if (breachAmount > 0) {
+  // residual > 0 = lønnen er delvist udækket (hård clamp nåede loftet).
+  // B3-escalation opdager dette via getTotalDebt — men manageren adviseres nu.
+  if (residual > 0) {
     await notifyManager(teamId, "emergency_loan_breach",
-      "🚨 Debt cap exceeded",
-      `Your emergency loan pushes the team's debt ${breachAmount} CZ$ over the division cap of ${config.debt_ceiling} CZ$. You can keep operating, but you MUST cut costs (sell riders, drop star contracts) before the next season ends to avoid a debt spiral.`,
+      "🚨 Wages partially uncovered — debt cap reached",
+      `Your emergency loan was capped at ${issuedPrincipal} CZ$ (division ceiling ${effectiveCeiling} CZ$ reached). ${residual} CZ$ of wages could not be covered. Sell riders or reduce costs immediately.`,
       client,
       {
         titleCode: "notif.emergencyLoanBreach.title",
         titleParams: {},
         messageCode: "notif.emergencyLoanBreach.message",
-        messageParams: { breachAmount, ceiling: config.debt_ceiling },
+        messageParams: { breachAmount: residual, ceiling: effectiveCeiling },
       }
     );
   }

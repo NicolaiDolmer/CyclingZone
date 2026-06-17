@@ -48,8 +48,8 @@ function createIdempotencySupabase({
       // og respekterer uniqueViolations på finance_transactions så samme idempotency-
       // tests kører uændret post-RPC-refactor.
       rpc(name, params) {
-        if (name === "create_loan_atomic") {
-          // Lad app-koden falde tilbage til app-niveau debt-ceiling tjek + INSERT.
+        if (name === "create_loan_atomic" || name === "create_emergency_loan_atomic") {
+          // Lad app-koden falde tilbage til JS-niveau clamp + INSERT.
           return Promise.resolve({ data: null, error: { code: "PGRST202", message: "function not exposed in mock" } });
         }
         if (name === "increment_balance_with_audit") {
@@ -344,13 +344,13 @@ test("processLoanInterest sender related_loan_id i finance_transactions row (pos
 });
 
 // ───────────────────────────────────────────────────────────────────────────────
-// 4. createEmergencyLoan — SOFT debt_ceiling-tjek (FAIL i current code)
+// 4. createEmergencyLoan — HARD clamp (B2, erstatter SOFT-tests fra 2026-05-07)
 //
-// Per beslutning 2026-05-07: ingen hard-block. Hvis (currentDebt + totalOwed)
-// > ceiling, fortsæt MEN log advarsel + send board_critical-notif.
+// SOFT-beslutningen fra 2026-05-07 er ophævet: lån clampes nu til det der
+// passer under divisionsloftet. Clamp-not-throw fordi cron må ikke crashe.
 // ───────────────────────────────────────────────────────────────────────────────
 
-test("createEmergencyLoan logger advarsel + sender board_critical-notif når ceiling overskrides (SOFT)", async () => {
+test("createEmergencyLoan HARD clamp: clamper principal og sender breach-notif (B2)", async () => {
   const config = {
     loan_type: "emergency",
     origination_fee_pct: 0.15,
@@ -358,7 +358,10 @@ test("createEmergencyLoan logger advarsel + sender board_critical-notif når cei
     debt_ceiling: 600_000,
   };
 
-  // Eksisterende debt 580K, ny lånetotal = 100K + 15K fee = 115K → 695K > 600K
+  // Eksisterende debt 580K, headroom = 20K.
+  // Max principal P: P + round(P*0.15) <= 20K → P=17391, fee=round(2608.65)=2609 → 19K... lad os sige
+  // computeMaxLoanPrincipal({currentDebt:580000, debtCeiling:600000, originationFeePct:0.15})
+  // Headroom=20000; P=floor(20000/1.15)=17391; 17391+round(17391*0.15)=17391+2609=20000 ✓
   const existingLoan = { id: "loan-old", team_id: "team-1", amount_remaining: 580_000, status: "active" };
 
   const supabase = createIdempotencySupabase({
@@ -367,25 +370,33 @@ test("createEmergencyLoan logger advarsel + sender board_critical-notif når cei
     loanConfig: config,
   });
 
-  // Skal ikke kaste — SOFT, ikke hard-block.
-  await createEmergencyLoan("team-1", 100_000, supabase.client, "season-1");
+  // Anmoder om 100K men kun ~17K passer under loftet.
+  const loan = await createEmergencyLoan("team-1", 100_000, supabase.client, "season-1");
 
-  // Lånet skal være oprettet (status quo).
+  // Lånet skal være oprettet — der er headroom.
+  assert.ok(loan !== null, "loan skal returneres når der er headroom");
+
   const newLoan = supabase.state.loans.find((l) => l.id !== "loan-old");
-  assert.ok(newLoan, "emergency loan skal oprettes selv ved breach (SOFT)");
-  assert.equal(newLoan.amount_remaining, 115_000);
+  assert.ok(newLoan, "ny emergency-loan-row skal insertes");
 
-  // Mindst én board_critical-notif skal sendes.
-  const criticalNotifs = supabase.state.insertedNotifications.filter(
-    (n) => n.type === "board_critical" || n.type === "emergency_loan_breach"
+  // Principal er clamped: < 100K OG total gæld <= 600K.
+  assert.ok(newLoan.principal < 100_000, `principal=${newLoan.principal} skal være clamped < 100000`);
+  assert.ok(
+    580_000 + newLoan.amount_remaining <= 600_000,
+    `total gæld ${580_000 + newLoan.amount_remaining} overstiger loft 600K`
+  );
+
+  // breach-notif sendes fordi residual > 0 (løn delvist udækket).
+  const breachNotifs = supabase.state.insertedNotifications.filter(
+    (n) => n.type === "emergency_loan_breach"
   );
   assert.ok(
-    criticalNotifs.length >= 1,
-    `forventet board_critical/emergency_loan_breach notif, fik: ${JSON.stringify(supabase.state.insertedNotifications.map((n) => n.type))}`
+    breachNotifs.length >= 1,
+    `forventet emergency_loan_breach notif, fik: ${JSON.stringify(supabase.state.insertedNotifications.map((n) => n.type))}`
   );
 });
 
-test("createEmergencyLoan opfører sig som før når ceiling ikke overskrides", async () => {
+test("createEmergencyLoan ingen breach-notif når fuld anmodning passer under loftet", async () => {
   const config = {
     loan_type: "emergency",
     origination_fee_pct: 0.15,
@@ -393,6 +404,7 @@ test("createEmergencyLoan opfører sig som før når ceiling ikke overskrides", 
     debt_ceiling: 600_000,
   };
 
+  // Ingen eksisterende gæld → 100K + 15K fee = 115K << 600K, ingen clamp.
   const supabase = createIdempotencySupabase({
     teams: [{ id: "team-1", balance: 0, division: 3, user_id: "user-1" }],
     loans: [],
@@ -402,9 +414,9 @@ test("createEmergencyLoan opfører sig som før når ceiling ikke overskrides", 
   await createEmergencyLoan("team-1", 100_000, supabase.client, "season-1");
 
   const breachNotifs = supabase.state.insertedNotifications.filter(
-    (n) => n.type === "board_critical" || n.type === "emergency_loan_breach"
+    (n) => n.type === "emergency_loan_breach"
   );
-  assert.equal(breachNotifs.length, 0, "ingen breach-notif når ceiling ikke ramt");
+  assert.equal(breachNotifs.length, 0, "ingen breach-notif når fuld anmodning passer");
 });
 
 // ───────────────────────────────────────────────────────────────────────────────
@@ -911,6 +923,9 @@ test("payroll-summary counts matcher antal finance_transactions rows skrevet (#5
 
   const mockSupabase = {
     rpc(name, params) {
+      if (name === "create_emergency_loan_atomic" || name === "create_loan_atomic") {
+        return Promise.resolve({ data: null, error: { code: "PGRST202", message: "function not exposed in mock" } });
+      }
       if (name !== "increment_balance_with_audit") throw new Error(`Unexpected rpc: ${name}`);
       const row = { team_id: params.p_team_id, ...params.p_finance_payload };
       // Idempotency-respekt: skip dupe-rows på idempotency_key
