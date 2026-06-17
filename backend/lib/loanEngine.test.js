@@ -558,7 +558,7 @@ test("createEmergencyLoan kaster hvis loan_config mangler emergency-row (DB-seed
  * Eksisterende gæld simuleres via én aktiv loan-row.
  */
 function createCeilingEmergencySupabase({
-  teamId = "t1",
+  _teamId = "t1",
   division = 3,
   existingDebt = 0,
   configs = [

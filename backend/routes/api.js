@@ -567,7 +567,7 @@ async function assertMarketOpen(req, res, scope) {
 export function assertTeamNotTransferFrozen(req, res) {
   if (req.team?.transfer_frozen) {
     res.status(403).json({
-      error: "Dit hold er fastfrosset pga. gæld over loftet. Reducér gæld før du handler.",
+      error: "Your team is frozen because its debt is over the division ceiling. Reduce your debt before trading.",
       errorCode: "team_transfer_frozen",
     });
     return false;

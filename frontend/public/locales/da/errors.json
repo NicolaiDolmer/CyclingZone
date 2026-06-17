@@ -120,6 +120,7 @@
     "board_unavailable": "Bestyrelsesfunktioner er ikke tilgængelige endnu",
     "dna_requires_season_1": "Du skal afslutte sæson 1 før DNA kan vælges",
     "dna_already_chosen": "Klub-DNA er allerede valgt og kan ikke skiftes (drift kommer i senere slice)",
-    "invalid_asking_price": "Prisen skal være et positivt heltal"
+    "invalid_asking_price": "Prisen skal være et positivt heltal",
+    "team_transfer_frozen": "Dit hold er fastfrosset, fordi gælden er over divisions-loftet. Reducér gælden før du handler."
   }
 }

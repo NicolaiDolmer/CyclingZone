@@ -2595,7 +2595,7 @@ function createSeasonStartSupabase({ season, team, prevSeasonId = null, prevStan
           select(columns) {
             assert.equal(columns, "team_id, severity, id");
             return {
-              eq(col, _val) {
+              eq(_col, _val) {
                 return {
                   eq(_col2, _val2) {
                     return Promise.resolve({ data: [], error: null });
