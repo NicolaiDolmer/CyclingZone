@@ -14,6 +14,16 @@ export const SPONSOR_INCOME_BASE = 240000;
 // kolonne er kun fallback. Sæson-2+ bruger den separate variable-model (sponsorEngine).
 export const SPONSOR_INCOME_BY_DIVISION = { 1: 600000, 2: 400000, 3: 260000 };
 
+// #1441 Fase 1 — løbende upkeep (gold sink). Division-tier-skaleret, IKKE live
+// roster-værdi (undgår auto-eskalerende feedback-loop). START-KANDIDAT — låses af
+// moneySupplyScorecard (D1 net=0±5%, D3 net∈[0,+30k] i no-engangs-konfig).
+export const UPKEEP_BY_DIVISION = { 1: 250000, 2: 110000, 3: 30000 };
+
+// #1441 Fase 1 — FINAL sponsor-payout-loft (post board_modifier × pullout).
+// S2+ = D1 750k gross × 1.2 = 900k; S1/intro = D1 600k gross × 1.2 = 720k.
+// Forward-guard mod board-modifier-bypass; ingen DB-default spejler dette.
+export const FINAL_SPONSOR_PAYOUT_CEILING = Object.freeze({ S1: 720000, S2_PLUS: 900000 });
+
 // teams.balance DEFAULT i database/schema.sql + 2026-04-25-economy-retuning.sql.
 // Også brugt som DEFAULT_BETA_BALANCE i betaResetService.js.
 export const INITIAL_BALANCE = 800000;
@@ -158,6 +168,7 @@ export const FINANCE_RELATED_ENTITY = Object.freeze({
 export const FINANCE_REASON = Object.freeze({
   // Sæson-baserede payouts (cron)
   SEASON_START_SPONSOR: "season_start_sponsor",
+  SEASON_START_UPKEEP: "season_start_upkeep",
   SEASON_END_SALARY: "season_end_salary",
   SEASON_END_DIVISION_BONUS: "season_end_division_bonus",
   SEASON_END_NEGATIVE_INTEREST: "season_end_negative_interest",
