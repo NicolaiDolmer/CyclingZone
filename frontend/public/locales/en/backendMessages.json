@@ -9,6 +9,7 @@
       "seasonStartFallbackPullout": "Sponsor income · Season start (fallback {amount} ×{modifier} · sponsor pullout active)"
     },
     "salary": "Season salaries · {count} riders",
+    "upkeep": "Upkeep (operating costs) · Division {division}",
     "interest": "Interest on debt (10% of {amount} pts)",
     "bonus": "Division bonus · Division {division}, rank {rank}",
     "loanReceivedShort": "Short-term loan taken out (fee: {fee} CZ$)",

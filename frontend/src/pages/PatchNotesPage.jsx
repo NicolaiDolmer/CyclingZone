@@ -2,6 +2,27 @@
 
 const PATCHES = [
   {
+    version: "5.54",
+    date: "2026-06-17",
+    label: "Beta",
+    changes: [
+      {
+        category: "Changed · Finances",
+        items: [
+          "EN · Teams now pay a seasonal operating cost (upkeep) at the start of each season: Division 1 pays 440,000 CZ$, Division 2 pays 140,000 CZ$, and Division 3 pays 40,000 CZ$. This is a fixed cost that does not scale with your board modifier. The Division 3 sponsor base has also been raised from 260,000 to 340,000 CZ$ to keep Division 3 teams sustainable. Sponsor income is now capped at a maximum payout of 900,000 CZ$ per season (720,000 CZ$ in season 1), applied after your board modifier and any sponsor pullout. Refs #1441",
+          "DA · Hold betaler nu en løbende driftsomkostning (upkeep) ved starten af hver sæson: Division 1 betaler 440.000 CZ$, Division 2 betaler 140.000 CZ$ og Division 3 betaler 40.000 CZ$. Det er en fast omkostning der ikke skaleres med din bestyrelsesmodifikator. D3-sponsorbasen er hævet fra 260.000 til 340.000 CZ$ for at holde Division 3-hold bæredygtige. Sponsor-indkomst er nu begrænset til maks. 900.000 CZ$ pr. sæson (720.000 CZ$ i sæson 1), beregnet efter din bestyrelsesmodifikator og evt. sponsor-pullout. Refs #1441",
+        ],
+      },
+      {
+        category: "Changed · Debt enforcement",
+        items: [
+          "EN · The emergency loan debt ceiling is now the division ceiling (Division 1: 1,200,000 CZ$, Division 2: 900,000 CZ$, Division 3: 600,000 CZ$) instead of a flat amount. You cannot borrow past that ceiling. If your total debt stays above your division ceiling after a season ends, your transfers are frozen (no bids, no transfers, no swaps, no new loans). If the debt remains above the ceiling for a second consecutive season, your highest-value rider is force-sold to bring the debt down. Refs #1441",
+          "DA · Nødlåns-gældsgrænsen er nu lig divisions-loftet (Division 1: 1.200.000 CZ$, Division 2: 900.000 CZ$, Division 3: 600.000 CZ$) i stedet for et fladt beløb. Du kan ikke låne dig forbi det loft. Holder din samlede gæld sig over dit divisions-loft efter en sæsons afslutning, fryses dine transferaktiviteter (ingen bud, ingen transfers, ingen swaps, ingen nye lån). Forbliver gælden over loftet endnu en sæson, sælges din dyreste rytter tvungent for at nedbringe gælden. Refs #1441",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.53",
     date: "2026-06-17",
     label: "Beta",
