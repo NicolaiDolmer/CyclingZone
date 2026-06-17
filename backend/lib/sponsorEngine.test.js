@@ -35,22 +35,25 @@ test("computeSponsorForSeason season 1 falls back to stored/legacy when division
 test("computeVariableSponsor gives top team max variable and bottom team base only", () => {
   const divisionPoints = [300, 200, 100, 0];
 
+  // Division-skaleret base (D1 = 600k) + 0-150k performance-pulje (#1439).
   const top = computeVariableSponsor({
+    base: 600_000,
     lastSeasonPoints: 300,
     lastSeasonRank: 1,
     divisionPoints,
     divisionSize: 4,
   });
   const bottom = computeVariableSponsor({
+    base: 600_000,
     lastSeasonPoints: 0,
     lastSeasonRank: 4,
     divisionPoints,
     divisionSize: 4,
   });
 
-  assert.equal(top.total, 2_650_000);
+  assert.equal(top.total, 750_000);
   assert.equal(top.variable, 150_000);
-  assert.equal(bottom.total, 2_500_000);
+  assert.equal(bottom.total, 600_000);
   assert.equal(bottom.variable, 0);
 });
 
@@ -69,9 +72,10 @@ test("computeSponsorForSeason uses division-relative points and rank from previo
   });
 
   assert.equal(result.mode, "variable");
-  assert.equal(result.base, 2_500_000);
+  // team-2 er i division 3 (fra lastSeasonStanding) → base 260k, ikke flad 2,5M (#1439).
+  assert.equal(result.base, 260_000);
   assert.equal(result.variable, 75_000);
-  assert.equal(result.gross_sponsor, 2_575_000);
+  assert.equal(result.gross_sponsor, 335_000);
   assert.equal(result.last_season_rank, 2);
   assert.equal(result.median_points, 120);
 });

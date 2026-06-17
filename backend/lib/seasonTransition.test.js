@@ -203,11 +203,13 @@ test("buildTransitionPlan — sæson 1 → 2 preview viser variabel sponsor", as
   });
 
   assert.equal(plan.to_season.number, 2);
-  assert.equal(plan.sponsor_breakdown[0].sponsor_base, 2_650_000);
+  // Alle tre hold er i division 3 → base 260k + performance-variabel (#1439, ikke flad 2,5M).
+  // Top (rank 1) = 260k + 150k; mid (rank 2) = 260k + 75k; bund (rank 3) = 260k + 0.
+  assert.equal(plan.sponsor_breakdown[0].sponsor_base, 410_000);
   assert.equal(plan.sponsor_breakdown[0].sponsor_mode, "variable");
-  assert.equal(plan.sponsor_breakdown[1].sponsor_base, 2_575_000);
-  assert.equal(plan.sponsor_breakdown[2].sponsor_base, 2_500_000);
-  assert.equal(plan.sponsor_base_total, 7_725_000);
+  assert.equal(plan.sponsor_breakdown[1].sponsor_base, 335_000);
+  assert.equal(plan.sponsor_breakdown[2].sponsor_base, 260_000);
+  assert.equal(plan.sponsor_base_total, 1_005_000);
 });
 
 test("buildTransitionPlan — already_transitioned=true når sæson 1 allerede eksisterer", async () => {

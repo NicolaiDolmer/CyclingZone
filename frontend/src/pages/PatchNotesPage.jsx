@@ -7,10 +7,10 @@ const PATCHES = [
     label: "Beta",
     changes: [
       {
-        category: "Fixed · Help",
+        category: "Changed · Finances",
         items: [
-          "EN · The help FAQ now shows the correct season 2+ sponsor base. The answers to \"When is sponsor money paid out?\" and \"How is the forecast for next season computed?\" said the season 2+ base was 200,000 CZ$, but the game has used a 2,500,000 CZ$ base for a while, so the text now matches the game. The 0-150,000 CZ$ variable share added on top, based on last season's points and placing, is unchanged. Refs #1439",
-          "DA · Hjælp-FAQ'en viser nu den korrekte sæson 2+ sponsor-base. Svarene på \"Hvornår udbetales sponsorpenge?\" og \"Hvordan beregnes prognosen for næste sæson?\" sagde at sæson 2+-basen var 200.000 CZ$, men spillet har brugt en 2.500.000 CZ$ base i et stykke tid, så teksten matcher nu spillet. Den variable andel på 0-150.000 CZ$ ovenpå, baseret på sidste sæsons point og placering, er uændret. Refs #1439",
+          "EN · Season 2 sponsor income is now scaled by division, the same as season 1 (D1 600,000 · D2 400,000 · D3 260,000 CZ$), with a 0-150,000 CZ$ performance bonus added on top from last season's points and placing. This replaces a flat high base that was a temporary fix from the beta and was inflating the economy, so no team's sponsor jumps to a large flat amount in season 2 anymore. The help FAQ has been updated to match. Refs #1439, #1441",
+          "DA · Sponsor-indkomst i sæson 2 skaleres nu efter division, ligesom sæson 1 (D1 600.000 · D2 400.000 · D3 260.000 CZ$), med en performance-bonus på 0-150.000 CZ$ oveni ud fra sidste sæsons point og placering. Det erstatter en flad høj base, der var en midlertidig løsning fra betaen og inflaterede økonomien, så intet holds sponsor springer længere til et stort fladt beløb i sæson 2. Hjælp-FAQ'en er opdateret så den matcher. Refs #1439, #1441",
         ],
       },
     ],
