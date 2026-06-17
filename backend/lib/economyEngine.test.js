@@ -1740,12 +1740,13 @@ test("buildSeasonEndPreviewRows projects board modifier on the same path as seas
 
   assert.equal(preview.salary_deduction, 100);
   assert.equal(preview.loan_interest, 10);
-  assert.equal(preview.upkeep, 30000);
-  // v3.78/A3: balance_after følger processSeasonStart-rækkefølgen inkl. upkeep
-  // balance + sponsor − renter − løn − upkeep = 500 + 220 − 10 − 100 − 30000 = −29390
-  assert.equal(preview.balance_after, -29390);
+  assert.equal(preview.upkeep, 40000);
+  // v3.78/A3 + #1441 A6: balance_after følger processSeasonStart-rækkefølgen inkl. upkeep
+  // (D3 upkeep kalibreret 30000 → 40000).
+  // balance + sponsor − renter − løn − upkeep = 500 + 220 − 10 − 100 − 40000 = −39390
+  assert.equal(preview.balance_after, -39390);
   assert.equal(preview.needs_emergency_loan, true);
-  assert.equal(preview.emergency_loan_amount, 29390);
+  assert.equal(preview.emergency_loan_amount, 39390);
   assert.equal(preview.current_board_satisfaction, 50);
   assert.equal(preview.board_satisfaction, 74);
   assert.equal(preview.sponsor_modifier, 1.1);
@@ -2708,7 +2709,7 @@ test("processSeasonStart clamps FINAL sponsor payout til S2_PLUS ceiling (900k)"
 
 // ─── Løbende upkeep-debit (#1441) ────────────────────────────────────────────
 
-test("processTeamSeasonPayroll debits 110000 as upkeep for a D2 team (#1441)", async () => {
+test("processTeamSeasonPayroll debits 140000 as upkeep for a D2 team (#1441)", async () => {
   const seasonId = "season-upkeep-1";
   const teamId = "team-upkeep-d2";
 
@@ -2789,7 +2790,7 @@ test("processTeamSeasonPayroll debits 110000 as upkeep for a D2 team (#1441)", a
   assert.equal(upkeepRows.length, 1, "Præcis én upkeep-transaktion skal skrives for D2-hold");
 
   const upkeep = upkeepRows[0];
-  assert.equal(upkeep.amount, -110000, "Upkeep-beløb skal være -110000 for division 2");
+  assert.equal(upkeep.amount, -140000, "Upkeep-beløb skal være -140000 for division 2 (#1441 A6-kalibreret)");
   assert.equal(upkeep.team_id, teamId);
 
   // Idempotency-nøgle skal indeholde sæson + hold

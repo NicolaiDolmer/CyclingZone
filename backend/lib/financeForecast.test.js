@@ -200,8 +200,8 @@ test("computeFinanceForecast: sæson 2 forecast bruger variabel sponsor fra stan
     debtCeiling: 900_000,
   });
 
-  // team-2 i division 3 → base 260k + variabel 75k = 335k (#1439, ikke flad 2,5M).
-  assert.equal(result.projected_sponsor, 335_000);
+  // team-2 i division 3 → base 340k + variabel 75k = 415k (#1441 A6: D3 260k→340k; ikke flad 2,5M).
+  assert.equal(result.projected_sponsor, 415_000);
   assert.equal(result.inputs.sponsor_mode, "variable");
   assert.equal(result.inputs.sponsor_variable, 75_000);
   assert.equal(result.inputs.sponsor_breakdown.last_season_rank, 2);
