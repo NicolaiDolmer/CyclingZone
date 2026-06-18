@@ -90,6 +90,12 @@ export function generateAcademyCandidates({
     }
     const potentiale = Math.round(pot * 2) / 2;
 
+    // Krop: spred højde/vægt så physiology-seedingen ikke defaulter alle til
+    // 180cm/70kg (#1478). Neutralt WorldTour-range; weight afledt af plausibel BMI.
+    const height = Math.round(clamp(gaussian(rng, 180, 5), 165, 196));
+    const bmi = clamp(gaussian(rng, 21.5, 1.0), 18.5, 24.5);
+    const weight = Math.round(bmi * (height / 100) ** 2);
+
     candidates.push({
       is_serious,
       rider: {
@@ -101,6 +107,8 @@ export function generateAcademyCandidates({
         is_academy: false,
         team_id: null,
         potentiale,
+        height,
+        weight,
         ...stats,
       },
     });

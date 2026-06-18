@@ -8182,6 +8182,10 @@ router.get("/academy/me", requireAuth, async (req, res) => {
         .select("id, firstname, lastname, nationality_code, birthdate, market_value")
         .is("team_id", null)
         .eq("is_academy", false)
+        // KUN fiktive ryttere (pcm_id IS NULL). Ægte PCM-ryttere (pcm_id NOT NULL)
+        // der tilfældigvis er frie agenter i akademi-alder må ikke kunne hentes
+        // gratis (#1478 bug #1). pcm_id=null er fiktiv-vs-ægte-markøren.
+        .is("pcm_id", null)
         .gte("birthdate", minBirth)
         .lte("birthdate", maxBirth)
         .order("market_value", { ascending: false })

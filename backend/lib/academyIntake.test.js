@@ -57,7 +57,8 @@ function makeIntakeSupabase({
       }
 
       if (table === "riders") {
-        // Understøtter: count/head query (getTeamAcademyCount) + select+order (fetchAllRows) + insert
+        // Understøtter: count/head query (getTeamAcademyCount) + select+order
+        // (fetchAllRows) + select+in (deriveForRiderIds) + insert + update.
         return {
           select(_cols, opts) {
             if (opts?.count === "exact" && opts?.head === true) {
@@ -70,10 +71,22 @@ function makeIntakeSupabase({
               };
               return countApi;
             }
-            // fetchAllRows (existingNames)
+            // select+in (deriveForRiderIds henter de nyindsatte ryttere): returnér
+            // de tidligere insertede payloads tilbage med deres id'er.
             const readApi = {
+              _inIds: null,
+              in(_col, ids) { readApi._inIds = ids; return readApi; },
               order() { return readApi; },
               range() {
+                if (readApi._inIds) {
+                  const byId = new Map(riderInserts.map((r) => [r._mockId, r]));
+                  const rows = readApi._inIds
+                    .map((id) => byId.get(id))
+                    .filter(Boolean)
+                    .map((r) => ({ ...r, id: r._mockId }));
+                  return Promise.resolve({ data: rows, error: null });
+                }
+                // fetchAllRows (existingNames)
                 return Promise.resolve({ data: existingRiders, error: null });
               },
             };
@@ -81,18 +94,37 @@ function makeIntakeSupabase({
           },
           insert(rows) {
             const inserted = Array.isArray(rows) ? rows : [rows];
-            riderInserts.push(...inserted);
+            // Tildel stabile mock-id'er så derive-stien kan slå dem op igen.
+            const withIds = inserted.map((r, i) => {
+              const _mockId = `new-rider-${riderInserts.length + i}`;
+              return { ...r, _mockId };
+            });
+            riderInserts.push(...withIds);
             // .select('id') returnerer de indsatte rækker med fake id'er
             return {
               select() {
                 return Promise.resolve({
-                  data: inserted.map((r, i) => ({ ...r, id: `new-rider-${i}` })),
+                  data: withIds.map((r) => ({ id: r._mockId })),
                   error: null,
                 });
               },
             };
           },
+          update(_patch) {
+            const upApi = {
+              eq() { return upApi; },
+              then(resolve) { return Promise.resolve({ error: null }).then(resolve); },
+            };
+            return upApi;
+          },
         };
+      }
+
+      if (table === "rider_physiology_profiles" || table === "rider_derived_abilities") {
+        const api = {
+          upsert() { return Promise.resolve({ error: null }); },
+        };
+        return api;
       }
 
       return {};
@@ -179,6 +211,60 @@ test("runAcademyIntake (apply): indsætter ryttere (pcm_id null, is_academy fals
     assert.ok(row.rider_id, "rider_id påkrævet");
     assert.ok(typeof row.is_serious === "boolean", "is_serious skal være boolean");
   }
+});
+
+// ─── Afled-pipeline ved intake (#1478 bug #2/#3/#4) ───────────────────────────
+
+test("runAcademyIntake (apply): kører afled-pipeline for ALLE nyindsatte akademi-ryttere", async () => {
+  const supabase = makeIntakeSupabase({
+    activeSeason: { id: "season-1", number: 1, start_date: "2026-06-20" },
+    academyIntakeTeamIds: [],
+    existingRiders: [],
+  });
+
+  const deriveCalls = [];
+  const res = await runAcademyIntake(supabase, {
+    dryRun: false,
+    seed: 2026,
+    getManagerTeams: async () => TWO_MANAGER_TEAMS,
+    deriveRiders: async (_sb, ids, opts) => {
+      deriveCalls.push({ ids, opts });
+      return { riders: ids.length };
+    },
+  });
+
+  // Præcis ét derive-kald med alle nyindsatte rider-id'er (physiology + abilities
+  // + type + base_value). Uden dette mangler akademiryttere abilities (springes i
+  // træning), type og base_value.
+  assert.equal(deriveCalls.length, 1, "afled-pipeline skal køres præcis én gang");
+  assert.equal(deriveCalls[0].opts.dryRun, false, "afled skal køre i apply-mode");
+  assert.equal(
+    deriveCalls[0].ids.length,
+    res.candidates,
+    "afled skal dække alle nyindsatte ryttere",
+  );
+  // id'erne svarer til de mock-id'er insert returnerer
+  for (const id of deriveCalls[0].ids) {
+    assert.ok(typeof id === "string" && id.startsWith("new-rider-"), `uventet id: ${id}`);
+  }
+});
+
+test("runAcademyIntake (dryRun): afled-pipeline kører IKKE (ingen writes i preview)", async () => {
+  const supabase = makeIntakeSupabase({
+    activeSeason: { id: "season-1", number: 1, start_date: "2026-06-20" },
+    academyIntakeTeamIds: [],
+    existingRiders: [],
+  });
+
+  let derived = false;
+  await runAcademyIntake(supabase, {
+    dryRun: true,
+    seed: 2026,
+    getManagerTeams: async () => TWO_MANAGER_TEAMS,
+    deriveRiders: async () => { derived = true; },
+  });
+
+  assert.equal(derived, false, "dryRun: ingen afled-writes");
 });
 
 // ─── Idempotens ───────────────────────────────────────────────────────────────

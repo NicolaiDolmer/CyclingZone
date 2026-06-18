@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { runPhysiologyBackfill, runRiderTypesBackfill, runBaseValueBackfill } from "./backfillCores.js";
+import { runPhysiologyBackfill, runRiderTypesBackfill, runBaseValueBackfill, deriveForRiderIds } from "./backfillCores.js";
 import { STAT_KEYS } from "./fictionalRiderGenerator.js";
 import { ABILITY_KEYS } from "./riderTypes.js";
 
@@ -14,6 +14,7 @@ function makeMockSupabase(tables) {
     const api = {
       select() { return api; },
       eq() { return api; },
+      in() { return api; },
       order() { return api; },
       range() { return Promise.resolve({ data: tables[table] ?? [], error: null }); },
       upsert(rows, opts) { writes.upserts.push({ table, rows, opts }); return Promise.resolve({ error: null }); },
@@ -105,5 +106,50 @@ test("runBaseValueBackfill (dryRun) skriver intet men rapporterer valued>0", asy
   const res = await runBaseValueBackfill(supabase, { dryRun: true });
   assert.equal(res.valued, 1);
   assert.equal(res.written, 0);
+  assert.equal(supabase.writes.updates.length, 0);
+});
+
+// ─── deriveForRiderIds (#1478): scoped afled-pipeline for nye ryttere ──────────
+
+test("deriveForRiderIds (apply) upserter physiology + abilities OG sætter type + base_value", async () => {
+  const supabase = makeMockSupabase({ riders: [makeRider("r1"), makeRider("r2")] });
+  const res = await deriveForRiderIds(supabase, ["r1", "r2"], { dryRun: false });
+
+  assert.equal(res.riders, 2);
+  assert.equal(res.profiles, 2);
+  assert.equal(res.abilities, 2);
+  assert.equal(res.typed, 2, "begge ryttere får en type");
+  assert.equal(res.valued, 2, "begge ryttere får base_value");
+
+  // physiology + abilities upsertes
+  const upsertTables = supabase.writes.upserts.map((u) => u.table).sort();
+  assert.deepEqual(upsertTables, ["rider_derived_abilities", "rider_physiology_profiles"]);
+
+  // riders opdateres med primary_type/secondary_type + base_value
+  assert.equal(supabase.writes.updates.length, 2, "én rider-update pr. rytter");
+  for (const u of supabase.writes.updates) {
+    assert.equal(u.col, "id");
+    assert.ok(u.patch.primary_type, "primary_type sat");
+    assert.ok(u.patch.secondary_type, "secondary_type sat");
+    assert.ok(Number.isInteger(u.patch.base_value), "base_value er heltal");
+    assert.ok(u.patch.base_value >= 1);
+  }
+});
+
+test("deriveForRiderIds (dryRun) skriver intet men rapporterer beregningerne", async () => {
+  const supabase = makeMockSupabase({ riders: [makeRider("r1")] });
+  const res = await deriveForRiderIds(supabase, ["r1"], { dryRun: true });
+  assert.equal(res.dryRun, true);
+  assert.equal(res.profiles, 1);
+  assert.equal(res.abilities, 1);
+  assert.equal(supabase.writes.upserts.length, 0);
+  assert.equal(supabase.writes.updates.length, 0);
+});
+
+test("deriveForRiderIds (tom liste) er no-op", async () => {
+  const supabase = makeMockSupabase({ riders: [] });
+  const res = await deriveForRiderIds(supabase, [], { dryRun: false });
+  assert.equal(res.riders, 0);
+  assert.equal(supabase.writes.upserts.length, 0);
   assert.equal(supabase.writes.updates.length, 0);
 });
