@@ -180,6 +180,9 @@ test("løb-for-løb tilfredsheds-timeline viser retning, % og hvorfor (#1451)", 
   await expect(panel.getByText("-2%")).toBeVisible();
   // Flad-event renderes også (sammenhængende kurve).
   await expect(panel.getByText("Vuelta a Burgos")).toBeVisible();
+  // ICU-interpolation: mål-tælleren skal vise faktiske tal, IKKE rå {met}/{total}-placeholder (#1451-fix).
+  await expect(panel.getByText("2/3 mål nået").first()).toBeVisible();
+  await expect(panel.getByText(/\{met\}|\{total\}/)).toHaveCount(0);
   // Sparkline (den løbende kurve) renderes over historikken.
   await expect(panel.getByTestId("board-satisfaction-sparkline")).toBeVisible();
 });
