@@ -21,6 +21,7 @@ scripts/__pycache__/
 scripts/out/
 audit-output/
 backend/scripts/out/
+backend/out/
 .codex.local/
 .codex/
 .agents/
