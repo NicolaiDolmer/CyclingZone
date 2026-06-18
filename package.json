@@ -43,7 +43,7 @@
     "sharp": "^0.35.1"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.108.1",
+    "@supabase/supabase-js": "^2.108.2",
     "dotenv": "^16.4.5"
   }
 }
