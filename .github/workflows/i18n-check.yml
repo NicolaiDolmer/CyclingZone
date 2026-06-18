@@ -35,7 +35,7 @@ jobs:
     # keys ud over `common.json`.
     continue-on-error: true
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -54,7 +54,7 @@ jobs:
     # (Refs #470, postmortem 2026-05-17). Med useSuspense: false er dette en
     # USER-VISIBLE regression, ikke en advisory.
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -74,7 +74,7 @@ jobs:
     # parallelle nav-strukturer drifter ud af sync når kun den ene migreres
     # til i18n (#689, postmortem 2026-05-26).
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -94,7 +94,7 @@ jobs:
     # blev konverteret; KNOWN_TODO-listen er nu tom, så jobbet er promoted til
     # required — en ny uoversat player-facing side blokerer nu PR'en.
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -114,7 +114,7 @@ jobs:
     # mens hele batteriet var grønt. KNOWN_TODO-listen er nu tom; legitime
     # undtagelser er dokumenteret separat i EXEMPT_FILES.
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -138,7 +138,7 @@ jobs:
     # fejler aldrig (stale baseline = info). Stram baselinen med:
     #   node scripts/i18n-check-leaks.mjs --update-baseline
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -159,7 +159,7 @@ jobs:
     # Tilladt undtagelse: enkeltstående `—` som tom-værdi-glyf (TONE_OF_VOICE
     # §Punktuation).
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
