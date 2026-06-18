@@ -568,6 +568,7 @@ export async function simulateRace({
             : seasonBefore.race_days_completed,
         },
         previousRaceDaysCompleted: seasonBefore.race_days_completed ?? null,
+        race: { id: race.id, name: race.name },
       });
     } catch (error) {
       console.error("  ⚠️  board weekend update failed after race simulation:", error.message);
