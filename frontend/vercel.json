@@ -3,5 +3,17 @@
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "X-XSS-Protection", "value": "0" },
+        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=(), browsing-topics=()" }
+      ]
+    }
+  ],
   "ignoreCommand": "case $VERCEL_GIT_COMMIT_REF in dependabot/*) echo 'skip dependabot preview (#178 hardening)'; exit 0;; esac; if git diff --quiet HEAD^ HEAD -- .; then echo 'skip: no frontend/ changes in HEAD^..HEAD (deploy-quota guard)'; exit 0; fi; exit 1"
 }
