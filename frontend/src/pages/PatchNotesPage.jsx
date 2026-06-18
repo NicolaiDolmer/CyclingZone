@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.59",
+    date: "2026-06-18",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fixed · Transfers",
+        items: [
+          "EN · The Final Whistle summary on Deadline Day now shows the season number and the deals breakdown correctly (for example 'Season 2' and '3 auctions · 1 transfers') instead of raw placeholder text. Fixed a text-rendering bug across a few labels. Refs #1305",
+          "DA · Final Whistle-opsummeringen på Deadline Day viser nu sæsonnummer og handels-fordelingen korrekt (for eksempel 'Sæson 2' og '3 auktioner · 1 transfers') i stedet for rå pladsholder-tekst. Rettede en tekst-rendering-fejl i et par labels. Refs #1305",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.58",
     date: "2026-06-18",
     label: "Beta",

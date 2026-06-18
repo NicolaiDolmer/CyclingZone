@@ -424,7 +424,7 @@
   "condition": {
     "form": "Form",
     "fatigue": "Træthed",
-    "injured": "Skadet: {{days}}d tilbage"
+    "injured": "Skadet: {days}d tilbage"
   },
   "training": {
     "title": "Træningsfokus",
