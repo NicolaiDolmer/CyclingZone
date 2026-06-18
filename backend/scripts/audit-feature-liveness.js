@@ -145,6 +145,12 @@ const WHITELIST_EMPTY_TABLES = new Set([
   // oprettet ved Fase A-merge (migration anvendt), men fyldes først når flaget flippes
   // ved relaunch. Skriv-path verificeret i academyIntake.js. Fjern når flag tændes + rows.
   "academy_intake",
+  // Akademi promotion-flow #932 (#1467, merged 18/6): academyGraduation.js skriver
+  // graduation-rows (detectGraduates insert) når akademiryttere fylder 22, del af
+  // det academy_enabled-gatede flow (DB-flag, seedet OFF indtil 20/6-relaunch, #1103).
+  // Samme flag-gated mønster som academy_intake ovenfor; tabellen fyldes først ved
+  // relaunch. Skriv-path verificeret i academyGraduation.js. Fjern når flag tændes + rows.
+  "academy_graduation",
   // Signup-attribution (#679/#1403/#1408): fire-and-forget upsert kører på FØRSTE
   // team-create (signup-bootstrap) i PUT /api/teams/my, men KUN når klienten sender en
   // attribution-payload med et signal (utm_*/referrer/landing_path) — direkte signups
