@@ -36,7 +36,6 @@ import { createEmergencyLoan } from "./lib/loanEngine.js";
 import { processBoardAutoAcceptCron } from "./lib/boardAutoAccept.js";
 import { processMidSeasonReviewCron } from "./lib/boardMidSeason.js";
 import { processDailySeasonCountCheck } from "./lib/dailySeasonCountCheck.js";
-import { processUciStaleDataCheck } from "./lib/uciStaleDataCheck.js";
 import { processDiscordBotTokenCheck } from "./lib/discordBotTokenCheck.js";
 import { runTrainingSweep } from "./lib/trainingSweep.js";
 import { captureException as sentryCapture } from "./lib/sentry.js";
@@ -305,26 +304,6 @@ async function runDailySeasonCountCheck() {
   }
 }
 
-// ─── Daily UCI Stale-Data Safety-Net ─────────────────────────────────────────
-// GitHub Actions scheduled UCI syncs can be skipped/delayed. This monitor checks
-// the latest rider_uci_history.synced_at and alerts after 8 days without a sync.
-// Pure read + notify; backup/secondary sync trigger lives in a separate slice.
-
-async function runUciStaleDataCheck() {
-  const result = await processUciStaleDataCheck({
-    supabase,
-    now: new Date(),
-    sendWebhookFn: sendWebhook,
-    getDefaultWebhookFn: getDefaultWebhook,
-    captureExceptionFn: sentryCapture,
-  });
-  if (result.alerted) {
-    console.error(
-      `🚨 UCI stale-data check: latest synced_at=${result.latestSyncedAt || "none"} (>8d alert fired)`
-    );
-  }
-}
-
 // ─── Daily Discord bot-token safety-net ──────────────────────────────────────
 // Person-rettede DMs sendes via bot-token, der kan rotere/komme ud af sync uden
 // at nogen opdager det (2026-06-03: alle DMs fejlede tavst med openDm 401).
@@ -467,9 +446,6 @@ export function startCron() {
     24 * 60 * 60 * 1000
   );
 
-  // Every 24 hours: UCI stale-data safety-net (forward-guard mod skipped GitHub Actions schedule).
-  setInterval(trackedTick("uci stale-data check", runUciStaleDataCheck), 24 * 60 * 60 * 1000);
-
   // Every 24 hours: Discord bot-token safety-net (forward-guard mod tavs token-drift).
   setInterval(trackedTick("discord bot-token check", runDiscordBotTokenCheck), 24 * 60 * 60 * 1000);
 
@@ -484,7 +460,6 @@ export function startCron() {
   trackedTick("board auto-accept", runBoardAutoAcceptCron)();
   trackedTick("board mid-season", runMidSeasonReviewCron)();
   trackedTick("daily season-count check", runDailySeasonCountCheck)();
-  trackedTick("uci stale-data check", runUciStaleDataCheck)();
   trackedTick("discord bot-token check", runDiscordBotTokenCheck)();
   trackedTick("discord dm-outbox drain", runDiscordDmOutboxDrain)();
 }
