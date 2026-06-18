@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.56",
+    date: "2026-06-18",
+    label: "Beta",
+    changes: [
+      {
+        category: "Added · Board",
+        items: [
+          "EN · Your board's satisfaction now shows how it moved race by race. Open the plan details on the Board page to see a weekend-by-weekend history: each race weekend shows whether satisfaction went up or down, by how much, and which goal area drove it (results, finances, identity, or ranking). The trend arrow on the plan also reflects the latest race weekend during the season now, not just the end-of-season result. Refs #1451",
+          "DA · Din bestyrelses tilfredshed viser nu hvordan den flyttede sig løb for løb. Åbn plan-detaljerne på Bestyrelses-siden for at se en weekend-for-weekend-historik: hver løbsweekend viser om tilfredsheden gik op eller ned, hvor meget, og hvilket målområde der drev det (resultater, økonomi, identitet eller rangering). Trend-pilen på planen afspejler nu også den seneste løbsweekend i løbet af sæsonen, ikke kun sæson-slut-resultatet. Refs #1451",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.55",
     date: "2026-06-17",
     label: "Beta",
