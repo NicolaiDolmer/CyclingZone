@@ -36,7 +36,7 @@ function FocusProgress({ info, emptyLabel, tRider, toGoLabel }) {
     return <span className="text-cz-3 text-xs">{emptyLabel}</span>;
   }
   const near = info.pct >= NEAR_BREAKTHROUGH * 100;
-  const abilityLabel = tRider(`derived.${info.ability}`);
+  const abilityLabel = tRider(`racePreview.derived.${info.ability}`);
   return (
     <div className="min-w-[96px]" title={toGoLabel({ pct: 100 - info.pct, ability: abilityLabel })}>
       <div className="flex items-center justify-between gap-2 mb-1">
@@ -391,8 +391,8 @@ export default function TrainingPage() {
                           <span className="text-cz-success text-xs font-medium">
                             {jumps.map((j) => (
                               j.from != null && j.to != null
-                                ? t("gainJump", { from: j.from, to: j.to, ability: tRider(`derived.${j.ability}`) })
-                                : t("gains", { n: j.n, ability: tRider(`derived.${j.ability}`) })
+                                ? t("gainJump", { from: j.from, to: j.to, ability: tRider(`racePreview.derived.${j.ability}`) })
+                                : t("gains", { n: j.n, ability: tRider(`racePreview.derived.${j.ability}`) })
                             )).join(", ")}
                           </span>
                         ) : (
