@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.58",
+    date: "2026-06-18",
+    label: "Beta",
+    changes: [
+      {
+        category: "Improved · Daily Training",
+        items: [
+          "EN · The daily training report now makes progress visible. A day summary at the top shows how many riders trained, how many had a breakthrough, and how many are in peak form. Every rider, both in the roster and the report, has a progress bar toward their focus ability's next +1 (it turns green when a breakthrough is close), and a breakthrough is now highlighted with the actual jump, for example 71 to 72, instead of a flat +1. The raw score has been removed in favour of these clearer results. Refs #1305",
+          "DA · Den daglige træningsrapport gør nu fremskridt synligt. En dags-opsummering øverst viser hvor mange ryttere der trænede, hvor mange der fik et gennembrud, og hvor mange der er i topform. Hver rytter, både i rosteret og rapporten, har en fremskridtslinje mod fokus-evnens næste +1 (den bliver grøn når et gennembrud er tæt på), og et gennembrud fremhæves nu med det faktiske spring, for eksempel 71 til 72, i stedet for et fladt +1. Den rå score er fjernet til fordel for disse tydeligere resultater. Refs #1305",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.57",
     date: "2026-06-18",
     label: "Beta",

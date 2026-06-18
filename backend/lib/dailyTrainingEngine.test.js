@@ -356,7 +356,7 @@ test("rapport-form: alle påkrævede top-level + pr-rytter-felter til stede", as
 
   // Per-rytter
   const rr = report.riders[0];
-  for (const field of ["rider_id", "name", "score", "gains", "status", "form", "fatigue", "fatigue_delta", "injured", "injury_days", "focus", "intensity"]) {
+  for (const field of ["rider_id", "name", "score", "gains", "gains_detail", "status", "form", "fatigue", "fatigue_delta", "injured", "injury_days", "focus", "intensity"]) {
     assert.ok(field in rr, `rapport mangler felt: ${field}`);
   }
 });
@@ -382,4 +382,30 @@ test("rytter ved loft: ingen ability-ændringer, kun condition opdateres", async
   }
   const cond = state.rider_condition.find((c) => c.rider_id === "r1");
   assert.ok(cond && typeof cond.fatigue === "number", "condition upserted selv ved cap");
+});
+
+// ── Test 10: gains_detail giver faktisk tal-spring pr. gevinst (#1305 polish) ──
+test("rapport-række inkluderer gains_detail med from/to pr. gevinst", async () => {
+  // Rytter med climbing-progress 0.999 + vo2max/hard → climbing rammer +1 i dag.
+  const state = seedState({
+    abilities: [makeAbilityRow("r1", { ability_progress: { climbing: 0.999 } })],
+    plans: [{ rider_id: "r1", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" }],
+  });
+  const supabase = createMockSupabase(state);
+
+  const result = await runTeamTrainingDay({
+    supabase, teamId: TEAM_ID, seasonId: SEASON_ID, seasonNumber: SEASON_NUMBER,
+    executedBy: "manager", now: NOW,
+  });
+
+  const rr = result.report.riders[0];
+  assert.ok(rr.gains.climbing >= 1, "climbing fik mindst +1");
+  assert.ok(rr.gains_detail, "gains_detail tilstede");
+  const jump = rr.gains_detail.climbing;
+  assert.ok(jump, "climbing-spring tilstede");
+  assert.equal(jump.from, 50, "from = pre-tick værdi");
+  assert.equal(jump.to, 50 + rr.gains.climbing, "to = pre-tick + gevinst");
+  // Kun evner med gevinst er i gains_detail.
+  const positiveGains = Object.keys(rr.gains).filter((k) => rr.gains[k] > 0).length;
+  assert.equal(Object.keys(rr.gains_detail).length, positiveGains, "gains_detail dækker netop de positive gevinster");
 });

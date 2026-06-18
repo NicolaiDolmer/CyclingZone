@@ -495,6 +495,10 @@
       "longTermGrowth": {
         "title": "Langsigtet vækst",
         "text": "Daglig træning passer ind i den samme langsigtede vækstmodel som sæsonrunden: unge ryttere topper omkring 27-28 år og falder gradvist derefter. Daglig træning accelererer fremskridt mod hver evnes loft, men kan ikke skubbe en rytter ud over sit potentiale."
+      },
+      "readingReport": {
+        "title": "Sådan læser du træningsrapporten",
+        "text": "Når træningen er kørt, åbner rapporten med en dags-opsummering: hvor mange ryttere der trænede, hvor mange der fik et gennembrud (en evne steg +1), og hvor mange der er i topform. Hver række viser fokus-evnens vej mod næste +1, og et gennembrud fremhæves med det faktiske spring, for eksempel 71 til 72. Rosterbordet viser den samme fremskridtslinje, så du kan styre et fokus mod en rytter tæt på et gennembrud."
       }
     },
     "activityfeed": {

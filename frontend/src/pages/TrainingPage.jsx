@@ -11,6 +11,7 @@ import { supabase } from "../lib/supabase";
 import RiderLink from "../components/RiderLink.jsx";
 import { useTraining } from "../lib/useTraining.js";
 import { TRAINING_FOCUS_KEYS, TRAINING_INTENSITIES, injuryDaysLeft } from "../lib/training.js";
+import { focusProgress, daySummary, breakthroughJumps, isBreakthrough, NEAR_BREAKTHROUGH } from "../lib/trainingReport.js";
 
 // Bred side — samme mønster som TeamPage / RidersPage.
 // (Layout WIDE_CONTENT_ROUTES håndterer kun specific paths — vi bruger inline max-w)
@@ -28,13 +29,37 @@ function MiniBar({ value, color, label }) {
   );
 }
 
+// Progress mod næste +1 for en fokus-evne (anticipation). Baren bliver grøn ved
+// NEAR_BREAKTHROUGH+ ("tæt på gennembrud"). info = { ability, pct } eller null (tom-tilstand).
+function FocusProgress({ info, emptyLabel, tRider, toGoLabel }) {
+  if (!info) {
+    return <span className="text-cz-3 text-xs">{emptyLabel}</span>;
+  }
+  const near = info.pct >= NEAR_BREAKTHROUGH * 100;
+  const abilityLabel = tRider(`racePreview.derived.${info.ability}`);
+  return (
+    <div className="min-w-[96px]" title={toGoLabel({ pct: 100 - info.pct, ability: abilityLabel })}>
+      <div className="flex items-center justify-between gap-2 mb-1">
+        <span className="text-[11px] text-cz-2 truncate">{abilityLabel}</span>
+        <span className={`text-[10px] font-mono ${near ? "text-cz-success" : "text-cz-3"}`}>{info.pct}%</span>
+      </div>
+      <div className="h-1.5 bg-cz-subtle rounded-cz overflow-hidden">
+        <div
+          className={`h-full rounded-cz transition-all ${near ? "bg-cz-success" : "bg-cz-accent"}`}
+          style={{ width: `${info.pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 export default function TrainingPage() {
   const { t } = useTranslation("training");
   const tRider = useTranslation("rider").t;
 
   const training = useTraining();
   const {
-    enabled, todayRun, condition, loading,
+    enabled, todayRun, condition, progress, loading,
     savingId, running, setPlan, clearPlan, planFor, runToday,
   } = training;
 
@@ -87,6 +112,9 @@ export default function TrainingPage() {
 
   const isLoading = loading || ridersLoading;
 
+  // Dags-opsummering til rapportens payoff-stribe (trænede / gennembrud / topform).
+  const summary = todayRun?.report ? daySummary(todayRun.report.riders) : null;
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -114,7 +142,7 @@ export default function TrainingPage() {
       )}
 
       {/* Rosterbord */}
-      <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+      <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <div className="w-6 h-6 border-2 border-cz-accent border-t-transparent rounded-full animate-spin" />
@@ -134,6 +162,9 @@ export default function TrainingPage() {
                   </th>
                   <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">
                     {tRider("training.intensity")}
+                  </th>
+                  <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">
+                    {t("colNextUp")}
                   </th>
                   <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">
                     {t("form")}
@@ -225,6 +256,16 @@ export default function TrainingPage() {
                         )}
                       </td>
 
+                      {/* Progress mod næste +1 (anticipation) */}
+                      <td className="px-4 py-3">
+                        <FocusProgress
+                          info={focusProgress(plan?.focus, progress[rider.id])}
+                          emptyLabel={t("noFocus")}
+                          tRider={tRider}
+                          toGoLabel={(o) => t("toGo", o)}
+                        />
+                      </td>
+
                       {/* Form */}
                       <td className="px-4 py-3">
                         <MiniBar value={cond.form} color="bg-blue-400" label={t("form")} />
@@ -263,15 +304,36 @@ export default function TrainingPage() {
 
       {/* Rapport fra seneste kørsel */}
       {todayRun?.report && (
-        <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+        <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
           <div className="px-5 py-4 border-b border-cz-border flex items-center justify-between">
             <h2 className="text-sm font-semibold text-cz-1">{t("report")}</h2>
             {todayRun.bonus_applied && (
-              <span className="text-xs px-2 py-0.5 rounded-full bg-cz-accent/10 text-cz-accent border border-cz-accent/30">
+              <span className="text-xs px-2 py-0.5 rounded-cz bg-cz-accent/10 text-cz-accent border border-cz-accent/30">
                 {t("bonusApplied")}
               </span>
             )}
           </div>
+
+          {/* Dags-opsummering (payoff, holdniveau) */}
+          <div className="grid grid-cols-3 divide-x divide-cz-border border-b border-cz-border">
+            <div className="px-5 py-3">
+              <div className="text-lg font-bold text-cz-1">
+                {summary.trained}<span className="text-cz-3 text-sm font-normal"> / {summary.total}</span>
+              </div>
+              <div className="text-[11px] uppercase tracking-wide text-cz-3">{t("summaryTrained")}</div>
+            </div>
+            <div className="px-5 py-3">
+              <div className={`text-lg font-bold ${summary.breakthroughs > 0 ? "text-cz-success" : "text-cz-1"}`}>
+                {summary.breakthroughs}
+              </div>
+              <div className="text-[11px] uppercase tracking-wide text-cz-3">{t("summaryBreakthroughs")}</div>
+            </div>
+            <div className="px-5 py-3">
+              <div className="text-lg font-bold text-cz-1">{summary.peakForm}</div>
+              <div className="text-[11px] uppercase tracking-wide text-cz-3">{t("summaryPeakForm")}</div>
+            </div>
+          </div>
+
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -279,20 +341,23 @@ export default function TrainingPage() {
                   <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("colRider")}</th>
                   <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{tRider("training.focus")}</th>
                   <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{tRider("training.intensity")}</th>
-                  <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("colScore")}</th>
+                  <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("colNextUp")}</th>
                   <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("colGains")}</th>
-                  <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("fatigue")}</th>
-                  <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("colStatus")}</th>
+                  <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("colResult")}</th>
                 </tr>
               </thead>
               <tbody>
                 {(todayRun.report.riders ?? []).map((row) => {
-                  const gainEntries = row.gains
-                    ? Object.entries(row.gains).filter(([, n]) => n > 0)
-                    : [];
+                  const jumps = breakthroughJumps(row);
+                  const breakthrough = isBreakthrough(row);
                   const fatigueDelta = row.fatigue_delta ?? 0;
+                  const fatigueSign = fatigueDelta > 0 ? "+" : "";
+                  const prog = focusProgress(row.focus, progress[row.rider_id]);
                   return (
-                    <tr key={row.rider_id} className="border-b border-cz-border last:border-0 hover:bg-cz-subtle">
+                    <tr
+                      key={row.rider_id}
+                      className={`border-b border-cz-border last:border-0 hover:bg-cz-subtle ${breakthrough ? "bg-cz-success-bg border-l-2 border-l-cz-success" : ""}`}
+                    >
                       <td className="px-4 py-2.5">
                         <RiderLink id={row.rider_id} className="text-cz-1 font-medium hover:text-cz-accent transition-colors">
                           {row.name}
@@ -311,28 +376,42 @@ export default function TrainingPage() {
                       <td className="px-4 py-2.5 text-cz-2">
                         {row.intensity ? tRider(`training.intensity_${row.intensity}`) : "—"}
                       </td>
-                      <td className="px-4 py-2.5 font-mono text-cz-2">{row.score ?? "—"}</td>
+                      {/* Progress mod næste +1 (anticipation efter kørsel) */}
                       <td className="px-4 py-2.5">
-                        {gainEntries.length > 0 ? (
-                          <span className="text-cz-success text-xs">
-                            {gainEntries.map(([ability, n]) => t("gains", { n, ability })).join(", ")}
+                        <FocusProgress
+                          info={prog}
+                          emptyLabel={t("noFocus")}
+                          tRider={tRider}
+                          toGoLabel={(o) => t("toGo", o)}
+                        />
+                      </td>
+                      {/* Gevinster — gennembrud vist som faktisk tal-spring */}
+                      <td className="px-4 py-2.5">
+                        {jumps.length > 0 ? (
+                          <span className="text-cz-success text-xs font-medium">
+                            {jumps.map((j) => (
+                              j.from != null && j.to != null
+                                ? t("gainJump", { from: j.from, to: j.to, ability: tRider(`racePreview.derived.${j.ability}`) })
+                                : t("gains", { n: j.n, ability: tRider(`racePreview.derived.${j.ability}`) })
+                            )).join(", ")}
                           </span>
                         ) : (
                           <span className="text-cz-3 text-xs">{t("noGains")}</span>
                         )}
                       </td>
-                      <td className="px-4 py-2.5 text-xs font-mono">
-                        <span className={fatigueDelta > 0 ? "text-orange-400" : fatigueDelta < 0 ? "text-cz-success" : "text-cz-3"}>
-                          {fatigueDelta > 0 ? "+" : ""}{fatigueDelta}
-                        </span>
-                      </td>
+                      {/* Result — dagsform + trætheds-delta (erstatter rå score) */}
                       <td className="px-4 py-2.5">
-                        {row.status === "over" && (
-                          <span className="text-cz-success text-xs">{t("overperformed")}</span>
-                        )}
-                        {row.status === "under" && (
-                          <span className="text-cz-danger text-xs">{t("underperformed")}</span>
-                        )}
+                        <div className="flex flex-col gap-0.5">
+                          {row.status === "over" && (
+                            <span className="text-cz-success text-xs">{t("sharpDay")}</span>
+                          )}
+                          {row.status === "under" && (
+                            <span className="text-cz-danger text-xs">{t("flatDay")}</span>
+                          )}
+                          <span className={`text-[11px] font-mono ${fatigueDelta > 0 ? "text-orange-400" : fatigueDelta < 0 ? "text-cz-success" : "text-cz-3"}`}>
+                            {t("fatigueChange", { delta: `${fatigueSign}${fatigueDelta}` })}
+                          </span>
+                        </div>
                       </td>
                     </tr>
                   );
