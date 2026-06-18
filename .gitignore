@@ -24,6 +24,8 @@ backend/scripts/out/
 .codex.local/
 .codex/
 .agents/
+# supabase CLI lokal-state (repoet bruger database/*.sql til migrationer, ikke CLI-scaffold)
+supabase/
 # npx-skills junctions (peger ind i gitignored .agents/; re-installeres fra skills-lock.json)
 .claude/skills/supabase/
 .claude/skills/supabase-postgres-best-practices/

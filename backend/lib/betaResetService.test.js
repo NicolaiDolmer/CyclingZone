@@ -180,6 +180,10 @@ function createInitialState() {
     ],
     board_plan_snapshots: [{ id: "snap-1", team_id: "team-1" }, { id: "snap-ai", team_id: "team-ai" }],
     board_request_log: [{ id: "request-1", team_id: "team-1" }, { id: "request-ai", team_id: "team-ai" }],
+    academy_intake: [
+      { id: "intake-1", team_id: "team-1", rider_id: "rider-free", season_id: "season-1", status: "offered" },
+      { id: "intake-ai", team_id: "team-ai", rider_id: "rider-ai-owned", season_id: "season-1", status: "offered" },
+    ],
   };
 }
 
@@ -303,6 +307,20 @@ test("resetBetaSeasons nuller finance_transactions.season_id for ALLE hold (ogs�
   for (const tx of supabase.state.finance_transactions) {
     assert.equal(tx.season_id, null, `tx ${tx.id} har stadig season_id sat`);
   }
+});
+
+test("resetBetaSeasons sletter academy_intake før season-delete (NOT NULL FK, #1308)", async () => {
+  // Regression: academy_intake.season_id -> seasons har ingen ON DELETE-klausul, så kuld-rows
+  // blokerede DELETE FROM seasons efter academy-intake havde kørt. Fundet i relaunch-rehearsal 18/6
+  // (founder-survival-sub-testen kører en betaReset EFTER intake-kuld var oprettet).
+  const supabase = createBetaResetSupabase(createInitialState());
+  assert.equal(supabase.state.academy_intake.length, 2, "precondition: kuld findes");
+
+  const result = await resetBetaSeasons(supabase);
+
+  assert.equal(result.seasons, 1);
+  assert.deepEqual(supabase.state.seasons, [], "sæsoner slettet");
+  assert.deepEqual(supabase.state.academy_intake, [], "academy_intake ryddet før season-delete");
 });
 
 test("runFullBetaReset completes the full test reset suite without touching AI or frozen manager data", async () => {

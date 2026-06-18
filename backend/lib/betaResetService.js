@@ -362,6 +362,10 @@ export async function resetBetaSeasons(supabase) {
   assertSupabase(supabase);
   // board_plan_snapshots: NOT NULL FK til seasons — skal slettes før sæsoner
   ensureOk(await supabase.from("board_plan_snapshots").delete().not("id", "is", null));
+  // academy_intake: NOT NULL FK til seasons (#1308, ingen ON DELETE) — kuld hører til den
+  // sæson der nu wipes og kan ikke nulles, så slet dem før sæson-delete. Uden dette fejler
+  // enhver beta-reset efter academy-intake har kørt (fundet i relaunch-rehearsal 18/6).
+  ensureOk(await supabase.from("academy_intake").delete().not("id", "is", null));
   // board_profiles: nullable FK til seasons uden ON DELETE SET NULL — null det ud
   ensureOk(await supabase.from("board_profiles").update({ season_id: null }).not("id", "is", null));
   // finance_transactions: nullable FK til seasons med ON DELETE NO ACTION — null det ud
