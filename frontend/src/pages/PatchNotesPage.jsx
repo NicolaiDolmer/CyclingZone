@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.57",
+    date: "2026-06-18",
+    label: "Beta",
+    changes: [
+      {
+        category: "New · Academy",
+        items: [
+          "EN · Academy riders now graduate when they turn 22 (flag-gated, launches with the relaunch). For each one you decide: promote them into your senior squad on a senior contract, sell them on the transfer market, or release them. If you do not decide before the deadline, the club makes a sensible default for you (promote when there is room, otherwise sell). Refs #932",
+          "DA · Akademiryttere forlader nu akademiet når de fylder 22 (flag-gated, lanceres ved relaunch). For hver enkelt bestemmer du: ryk dem op i din senior-trup på en senior-kontrakt, sælg dem på transfermarkedet, eller slip dem. Beslutter du ikke inden fristen, vælger klubben et fornuftigt standardvalg for dig (ryk op når der er plads, ellers sælg). Refs #932",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.56",
     date: "2026-06-18",
     label: "Beta",

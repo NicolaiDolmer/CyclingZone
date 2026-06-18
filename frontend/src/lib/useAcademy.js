@@ -22,6 +22,7 @@ export function useAcademy() {
   const [roster, setRoster]     = useState([]);
   const [intake, setIntake]     = useState([]);
   const [freeAgents, setFreeAgents] = useState([]);
+  const [graduations, setGraduations] = useState([]);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState(null);
 
@@ -51,6 +52,7 @@ export function useAcademy() {
       setRoster(data.roster ?? []);
       setIntake(data.intake ?? []);
       setFreeAgents(data.freeAgents ?? []);
+      setGraduations(data.graduations ?? []);
       setError(null);
     } catch {
       /* netværk — behold tidligere state */
@@ -122,5 +124,25 @@ export function useAcademy() {
     }
   }, [refresh]);
 
-  return { enabled, slots, roster, intake, freeAgents, loading, error, signCandidate, rejectCandidate, signFreeAgent, refresh };
+  // Resolvér en graduate (#932). action ∈ promote|sell|release. Returnerer { ok, error? }.
+  const resolveGraduate = useCallback(async (riderId, action) => {
+    const headers = await authHeaders();
+    if (!headers) return { ok: false, error: "auth" };
+    try {
+      const res = await fetch(`${API}/api/academy/graduate`, {
+        method: "POST", headers, body: JSON.stringify({ riderId, action }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return { ok: false, error: data.error || "failed" };
+      }
+      logEvent("academy_graduate", { riderId, action });
+      await refresh();
+      return { ok: true };
+    } catch {
+      return { ok: false, error: "network" };
+    }
+  }, [refresh]);
+
+  return { enabled, slots, roster, intake, freeAgents, graduations, loading, error, signCandidate, rejectCandidate, signFreeAgent, resolveGraduate, refresh };
 }

@@ -211,7 +211,7 @@ test("defaultResolveGraduate: sælger når trup fuld", async () => {
 });
 
 test("defaultResolveGraduate: sælger når hold i gæld (konservativ auto-default)", async () => {
-  const { supabase, rec } = makeSupabase({ gradRow: PENDING_GRAD, rider: RIDER });
+  const { supabase } = makeSupabase({ gradRow: PENDING_GRAD, rider: RIDER });
   const getMarketState = async () => ({ squad_limits: { max: 30 }, future_count: 10, balance: -2000 });
   const res = await defaultResolveGraduate(supabase, { teamId: "t1", riderId: "r1", seasonNumber: 1, getMarketState, auctionConfig: DEFAULT_AUCTION_CONFIG, notify: spyNotify() });
   assert.equal(res.action, "sold");

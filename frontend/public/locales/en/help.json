@@ -572,6 +572,10 @@
       "upkeepCost": {
         "title": "Academy upkeep",
         "text": "Running the Academy costs an upkeep fee per occupied slot, charged automatically at season payroll alongside your senior salaries. Plan your budget accordingly: a full Academy of 8 riders carries a noticeable running cost each season."
+      },
+      "graduation": {
+        "title": "Graduating at 22",
+        "text": "When an academy rider turns 22 they age out of the Academy and you make a choice for each one: promote them into your senior squad (needs a free senior place and gives them a senior contract), sell them on the transfer market, or release them as a free agent. You get a window to decide; if you do not act in time, the club picks a sensible default for you (promote when there is room, otherwise sell). This gives home-grown talent a clear path to your senior team."
       }
     },
     "raceSelection": {
