@@ -227,6 +227,17 @@ export async function runTeamTrainingDay({
       abilityUpdates.push({ riderId: rider.id, patch: abilityPatch });
     }
 
+    // Gennembruds-detalje (#1305 polish): faktisk tal-spring pr. gevinst, så
+    // rapporten kan vise "71 → 72" frem for flad "+1". from = pre-tick, to = post-tick.
+    const gainsDetail = {};
+    if (tickResult) {
+      for (const [ability, n] of Object.entries(tickResult.gains)) {
+        if (n > 0) {
+          gainsDetail[ability] = { from: abilities[ability] ?? 0, to: tickResult.abilities[ability] };
+        }
+      }
+    }
+
     // Condition upsert (altid — fatigue/form ændrer sig selv på hviledage).
     conditionUpserts.push({
       rider_id: rider.id,
@@ -243,6 +254,7 @@ export async function runTeamTrainingDay({
       name: `${rider.firstname ?? ""} ${rider.lastname ?? ""}`.trim(),
       score: tickResult?.score ?? 0,
       gains: tickResult?.gains ?? {},
+      gains_detail: gainsDetail,
       status: tickResult?.status ?? "rest",
       form: newForm,
       fatigue: newFatigue,
