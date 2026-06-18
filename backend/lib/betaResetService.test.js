@@ -11,6 +11,7 @@ import {
   resetBetaRiderHistory,
   resetBetaRosters,
   resetBetaSeasons,
+  resetBetaWishlist,
   runFullBetaReset,
 } from "./betaResetService.js";
 import { FOUNDER_BADGE_KEY } from "./founderBadge.js";
@@ -172,6 +173,13 @@ function createInitialState() {
       { id: "rider-ai", team_id: "team-1", ai_team_id: "team-ai", pending_team_id: "team-2" },
       { id: "rider-free", team_id: "team-1", ai_team_id: null, pending_team_id: "team-2" },
       { id: "rider-ai-owned", team_id: "team-ai", ai_team_id: "team-ai", pending_team_id: null },
+      // BUG 1 (#1481): parkeret indkommende handel — rytteren står stadig fysisk på
+      // sælgeren (AI-holdet), men er købt af manager-holdet via pending_team_id.
+      // team_id ligger uden for manager-sættet, så team_id-filteret fanger den ikke.
+      { id: "rider-incoming", team_id: "team-ai", ai_team_id: "team-ai", pending_team_id: "team-1" },
+      // Negativ kontrol: parkeret handel der peger på et ikke-manager-hold (team-2) —
+      // dens pending_team_id må IKKE røres af reset.
+      { id: "rider-incoming-nonmanager", team_id: "team-ai", ai_team_id: "team-ai", pending_team_id: "team-2" },
     ],
     auctions: [{ id: "auction-1", status: "active" }],
     transfer_listings: [{ id: "listing-1", status: "open" }],
@@ -236,10 +244,37 @@ test("resetBetaRosters returns manager riders to ai_team_id or free agency and c
 
   const result = await resetBetaRosters(supabase);
 
-  assert.deepEqual(result, { moved: 2, to_ai: 1, to_null: 1 });
+  // moved/to_ai/to_null tæller kun ryttere der FYSISK står på et manager-hold (team-1):
+  // rider-ai + rider-free. rider-incoming* står på team-ai → tælles ikke i moved.
+  assert.equal(result.moved, 2);
+  assert.equal(result.to_ai, 1);
+  assert.equal(result.to_null, 1);
   assert.equal(supabase.state.riders.find((rider) => rider.id === "rider-ai").team_id, "team-ai");
   assert.equal(supabase.state.riders.find((rider) => rider.id === "rider-ai").pending_team_id, null);
   assert.equal(supabase.state.riders.find((rider) => rider.id === "rider-free").team_id, null);
+});
+
+test("resetBetaRosters clears pending_team_id for incoming transfers parked on a manager team (BUG 1, #1481)", async () => {
+  const supabase = createBetaResetSupabase(createInitialState());
+
+  const result = await resetBetaRosters(supabase);
+
+  // pending_cleared dækker ALLE ryttere hvis pending_team_id peger på et manager-hold:
+  // rider-ai + rider-free (team_id=team-1, pending→team-2? nej — peger på team-2, ikke manager)
+  // Manager-team i fixturen = team-1. pending→team-1: kun rider-incoming.
+  // rider-ai/rider-free får pending nullet via team_id-stien (de står på team-1).
+  const incoming = supabase.state.riders.find((rider) => rider.id === "rider-incoming");
+  assert.equal(incoming.pending_team_id, null, "indkommende handel på manager-hold skal nulstilles");
+  assert.equal(incoming.team_id, "team-ai", "rytterens fysiske team_id (sælger) skal IKKE flyttes");
+  assert.equal(result.pending_cleared, 1, "kun rider-incoming peger på et manager-hold via pending_team_id");
+
+  // Negativ kontrol: handel der peger på ikke-manager-hold (team-2) bevares.
+  const nonManager = supabase.state.riders.find((rider) => rider.id === "rider-incoming-nonmanager");
+  assert.equal(nonManager.pending_team_id, "team-2", "handel mod ikke-manager-hold må ikke røres");
+
+  // 0 hængende pending-transfers mod manager-hold efter reset.
+  const stillPendingToManager = supabase.state.riders.filter((rider) => rider.pending_team_id === "team-1");
+  assert.equal(stillPendingToManager.length, 0);
 });
 
 test("resetBetaBalances touches only active manager teams and can clear only their finance rows", async () => {
@@ -315,9 +350,10 @@ test("resetBetaRiderHistory wipes alle 6 historik-tabeller men bevarer rider_wat
   assert.deepEqual(supabase.state.swap_offers, []);
   assert.deepEqual(supabase.state.loan_agreements, []);
 
-  // KRITISK: ønskelister, ryttere, hold og økonomi bevares
-  assert.equal(supabase.state.rider_watchlist.length, 2, "ønskelister må ikke røres");
-  assert.equal(supabase.state.riders.length, 3, "ryttere bevares");
+  // KRITISK: rider-history rører IKKE ønskelister (det gør resetBetaWishlist separat),
+  // ryttere, hold og økonomi bevares
+  assert.equal(supabase.state.rider_watchlist.length, 2, "rider-history må ikke røre ønskelister");
+  assert.equal(supabase.state.riders.length, 5, "ryttere bevares");
   assert.equal(supabase.state.teams.length, 4, "hold bevares");
   assert.equal(supabase.state.finance_transactions.length, 2, "finance-historik bevares");
   assert.equal(supabase.state.seasons.length, 1, "sæson bevares");
@@ -353,7 +389,13 @@ test("resetBetaSeasons sletter academy_intake før season-delete (NOT NULL FK, #
 });
 
 test("runFullBetaReset completes the full test reset suite without touching AI or frozen manager data", async () => {
-  const supabase = createBetaResetSupabase(createInitialState());
+  const initialState = createInitialState();
+  // #1481: ønskeliste + parkeret indkommende handel skal begge ryddes af full-reset.
+  initialState.rider_watchlist = [
+    { id: "wl-1", user_id: "user-1", rider_id: "rider-ai" },
+    { id: "wl-frozen", user_id: "user-frozen", rider_id: "rider-ai" },
+  ];
+  const supabase = createBetaResetSupabase(initialState);
 
   const result = await runFullBetaReset(supabase, { clearTransactions: true, resetMode: "test" });
 
@@ -364,6 +406,9 @@ test("runFullBetaReset completes the full test reset suite without touching AI o
   assert.equal(result.manager_progress.users, 1);
   assert.equal(result.achievements.manager_achievements, 1);
   assert.ok(result.rider_history, "rider_history skal være med i full-reset");
+  // #1481: nye felter i summary.
+  assert.equal(result.wishlist.rider_watchlist, 1, "manager-ønskeliste ryddet i full-reset");
+  assert.equal(result.rosters.pending_cleared, 1, "indkommende manager-handel ryddet i full-reset");
   assert.deepEqual(supabase.state.auctions, []);
   assert.deepEqual(supabase.state.loan_agreements, []);
   assert.equal(supabase.state.teams.find((team) => team.id === "team-1").division, 3);
@@ -374,6 +419,9 @@ test("runFullBetaReset completes the full test reset suite without touching AI o
   assert.deepEqual(supabase.state.seasons, []);
   // founder_badge overlever (ma-founder); ma-1 slettet; frozen-bruger urørt.
   assert.deepEqual(supabase.state.manager_achievements.map((row) => row.id).sort(), ["ma-founder", "ma-frozen"]);
+  // #1481: 0 hængende manager-ønskelister + 0 hængende indkommende handler mod manager.
+  assert.deepEqual(supabase.state.rider_watchlist.map((row) => row.id), ["wl-frozen"], "kun frozen-bruger ønskeliste tilbage");
+  assert.equal(supabase.state.riders.filter((r) => r.pending_team_id === "team-1").length, 0);
 });
 
 test("resetBetaAchievements sletter alle manager-achievements UNDTAGEN founder_badge", async () => {
@@ -385,6 +433,27 @@ test("resetBetaAchievements sletter alle manager-achievements UNDTAGEN founder_b
   assert.equal(result.manager_achievements, 1);
   assert.deepEqual(supabase.state.manager_achievements.map((row) => row.id).sort(), ["ma-founder", "ma-frozen"]);
   assert.equal(FOUNDER_BADGE_KEY, "founder_badge");
+});
+
+test("resetBetaWishlist sletter manager-brugeres rider_watchlist men ikke AI/frozen/ingen-bruger-rows (BUG 2, #1481)", async () => {
+  const initialState = createInitialState();
+  initialState.rider_watchlist = [
+    { id: "wl-1", user_id: "user-1", rider_id: "rider-ai" },        // manager → slettes
+    { id: "wl-2", user_id: "user-1", rider_id: "rider-free" },      // manager → slettes
+    { id: "wl-frozen", user_id: "user-frozen", rider_id: "rider-ai" }, // frozen-manager ekskluderet → bevares
+    { id: "wl-none", user_id: null, rider_id: "rider-ai" },         // ingen bruger → bevares
+  ];
+  const supabase = createBetaResetSupabase(initialState);
+
+  const result = await resetBetaWishlist(supabase);
+
+  // Kun user-1 er aktiv beta-manager (frozen ekskluderet i managerTeamQuery).
+  assert.equal(result.rider_watchlist, 2);
+  assert.deepEqual(
+    supabase.state.rider_watchlist.map((row) => row.id).sort(),
+    ["wl-frozen", "wl-none"],
+    "kun manager-brugeres ønskelister slettes",
+  );
 });
 
 // --- Forward-guard: NO ACTION FK-crashes i beta-reset (#1471, relaunch 18/6) -------------
