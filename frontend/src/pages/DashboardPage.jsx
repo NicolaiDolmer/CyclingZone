@@ -690,17 +690,16 @@ export default function DashboardPage() {
         </Card>
         )}
 
-        {/* Board status */}
-        {isVisible("board") && (
+        {/* Board status — skjul kortet helt indtil bestyrelsen er etableret (#1488).
+            board er kun non-null naar en 1yr/3yr/5yr-plan findes; under saeson-1
+            baseline-fasen er alle plans=null, saa kortet skal ikke vises endnu. */}
+        {isVisible("board") && board && (
         <Card className="p-5 lg:col-span-2">
           <Link to="/board" className="flex items-center justify-between mb-4 group">
             <h2 className="font-semibold text-cz-1 text-sm group-hover:text-cz-accent-t transition-colors">{t("dashboard:cards.board.title")}</h2>
             <span className="text-xs text-cz-accent-t group-hover:underline">{t("dashboard:cards.board.linkAll")}</span>
           </Link>
-          {!board ? (
-            <p className="text-cz-3 text-sm text-center py-4">{t("dashboard:cards.board.empty")}</p>
-          ) : (
-            <div>
+          <div>
               <div className="grid sm:grid-cols-3 gap-4">
                 <div>
                   <p className="text-cz-3 text-xs uppercase tracking-wider mb-2">{t("dashboard:cards.board.satisfaction")}</p>
@@ -757,7 +756,6 @@ export default function DashboardPage() {
                 </div>
               )}
             </div>
-          )}
         </Card>
         )}
 
