@@ -24,6 +24,51 @@ test("resolveLegacyFinanceMessage maps recognized Danish legacy rows to stable c
   }
 });
 
+// #1483: auktions-/akademi-rows blev skrevet med rytternavn i description men
+// uden metadata.code → faldt tilbage til den generiske "Transfer (bought)"-label.
+// Disse retro-mønstre udtrækker rytternavnet så Historik-fanen viser det.
+const auctionCases = [
+  [
+    { type: "transfer_out", description: "Købt Test Rider på auktion" },
+    "tx.auctionBuy",
+    { riderName: "Test Rider" },
+  ],
+  [
+    { type: "transfer_in", description: "Solgt Test Rider på auktion" },
+    "tx.auctionSell",
+    { riderName: "Test Rider" },
+  ],
+  [
+    { type: "transfer_in", description: "Garanteret AI-salg: Test Rider" },
+    "tx.guaranteedAiSale",
+    { riderName: "Test Rider" },
+  ],
+  [
+    { type: "academy_signing", description: "Vandt ungdomsrytter Test Rider på auktion" },
+    "tx.youthAuctionWin",
+    { riderName: "Test Rider" },
+  ],
+  [
+    { type: "academy_signing", description: "Akademi-signing af Test Rider" },
+    "tx.academySigning",
+    { riderName: "Test Rider" },
+  ],
+];
+
+test("resolveLegacyFinanceMessage extracts rider name from auction/academy legacy rows (#1483)", () => {
+  for (const [tx, code, params] of auctionCases) {
+    assert.deepEqual(resolveLegacyFinanceMessage(tx), { code, params });
+  }
+});
+
+test("resolveLegacyFinanceMessage falls back to legacy transfer-detail when not an auction row", () => {
+  // Ikke-auktions-køb/salg matcher stadig den eksisterende "Køb af"-detail-sti.
+  assert.deepEqual(
+    resolveLegacyFinanceMessage({ type: "transfer_out", description: "Køb af Other Rider" }),
+    { code: "tx.legacy.transferPurchase", params: { detail: "Other Rider" } },
+  );
+});
+
 test("resolveLegacyFinanceMessage preserves existing structured metadata", () => {
   const metadata = { code: "tx.salary", params: { count: 8 } };
   assert.equal(resolveLegacyFinanceMessage({

@@ -23,6 +23,11 @@
     "loanFeeReceived": "Loan fee received: {riderName} (season {season})",
     "squadFineSingle": "Squad-size fine: {count} excess rider × {amount} CZ$",
     "squadFineMulti": "Squad-size fine: {count} excess riders × {amount} CZ$",
+    "auctionBuy": "Bought {riderName} at auction",
+    "auctionSell": "Sold {riderName} at auction",
+    "guaranteedAiSale": "Guaranteed AI sale: {riderName}",
+    "youthAuctionWin": "Won youth rider {riderName} at auction",
+    "academySigning": "Academy signing: {riderName}",
     "legacy": {
       "sponsor": "Sponsor income · Season {season}",
       "salary": "Salaries · Season {season}",

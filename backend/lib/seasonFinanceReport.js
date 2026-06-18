@@ -129,6 +129,9 @@ function toPublicTx(tx) {
     type: tx.type,
     amount: Number(tx.amount) || 0,
     description: tx.description || "",
+    // #1483: medsend struktureret metadata { code, params } så UI kan rendere
+    // locale-aware (rytternavn) i stedet for den rå danske description.
+    metadata: tx.metadata || null,
     reason_code: tx.reason_code || null,
     label: labelFor(tx.reason_code),
     created_at: tx.created_at,

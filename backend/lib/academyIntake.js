@@ -185,7 +185,7 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
   // 3. Hent rytterens markedsværdi og beregn løn + signing-fee.
   const { data: rider, error: riderErr } = await supabase
     .from("riders")
-    .select("id, market_value, base_value, prize_earnings_bonus")
+    .select("id, firstname, lastname, market_value, base_value, prize_earnings_bonus")
     .eq("id", riderId)
     .maybeSingle();
   if (riderErr) throw new Error(`signAcademyCandidate rider lookup: ${riderErr.message}`);
@@ -209,14 +209,23 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
     .eq("id", riderId);
   if (riderUpdateErr) throw new Error(`signAcademyCandidate rider update: ${riderUpdateErr.message}`);
 
-  // 5. Debitér signing-fee atomisk via RPC.
+  // 5. Debitér signing-fee atomisk via RPC. #1483: struktureret metadata så
+  // Historik-fanen renderer rytternavnet via backendMessages-i18n i stedet for
+  // den rå UUID i description-fallbacken.
+  const riderName = `${rider.firstname ?? ""} ${rider.lastname ?? ""}`.trim();
   await incrementBalanceWithAudit(supabase, {
     teamId,
     delta: -fee,
     payload: {
       type: "academy_signing",
       amount: -fee,
-      description: `Akademi-signing af rytter ${riderId}`,
+      description: riderName
+        ? `Akademi-signing af ${riderName}`
+        : `Akademi-signing af rytter ${riderId}`,
+      metadata: {
+        code: "tx.academySigning",
+        params: { riderName: riderName || riderId },
+      },
     },
   }, { allowDuplicate: true });
 

@@ -114,7 +114,8 @@
       "prize": "Præmiepenge",
       "bonus": "Divisionsbonus",
       "admin_adjustment": "Admin justering",
-      "interest": "Renter"
+      "interest": "Renter",
+      "academy_signing": "Akademi-signing"
     }
   },
   "timeAgo": {

@@ -23,6 +23,11 @@
     "loanFeeReceived": "Lejegebyr modtaget: {riderName} (sæson {season})",
     "squadFineSingle": "Trupstørrelse-bøde: {count} afvigende rytter × {amount} CZ$",
     "squadFineMulti": "Trupstørrelse-bøde: {count} afvigende ryttere × {amount} CZ$",
+    "auctionBuy": "Købte {riderName} på auktion",
+    "auctionSell": "Solgte {riderName} på auktion",
+    "guaranteedAiSale": "Garanteret AI-salg: {riderName}",
+    "youthAuctionWin": "Vandt ungdomsrytter {riderName} på auktion",
+    "academySigning": "Akademi-signing: {riderName}",
     "legacy": {
       "sponsor": "Sponsorindtægt · Sæson {season}",
       "salary": "Løn · Sæson {season}",

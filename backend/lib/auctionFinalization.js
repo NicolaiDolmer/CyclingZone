@@ -221,6 +221,10 @@ async function finalizeYouthAuctionRecord({
       type: "academy_signing",
       amount: -price,
       description: `Vandt ungdomsrytter ${rider.firstname} ${rider.lastname} på auktion`,
+      metadata: {
+        code: "tx.youthAuctionWin",
+        params: { riderName: `${rider.firstname} ${rider.lastname}` },
+      },
       season_id: activeSeasonId,
       actor_type: FINANCE_ACTOR_TYPE.CRON,
       actor_id: null,
@@ -496,6 +500,10 @@ async function finalizeAuctionRecord({
         type: "transfer_out",
         amount: -price,
         description: `Købt ${auction.rider.firstname} ${auction.rider.lastname} på auktion`,
+        metadata: {
+          code: "tx.auctionBuy",
+          params: { riderName: `${auction.rider.firstname} ${auction.rider.lastname}` },
+        },
         season_id: activeSeasonId,
         actor_type: FINANCE_ACTOR_TYPE.CRON,
         actor_id: null,
@@ -515,6 +523,10 @@ async function finalizeAuctionRecord({
           type: "transfer_in",
           amount: price,
           description: `Solgt ${auction.rider.firstname} ${auction.rider.lastname} på auktion`,
+          metadata: {
+            code: "tx.auctionSell",
+            params: { riderName: `${auction.rider.firstname} ${auction.rider.lastname}` },
+          },
           season_id: activeSeasonId,
           actor_type: FINANCE_ACTOR_TYPE.CRON,
           actor_id: null,
@@ -624,6 +636,10 @@ async function finalizeAuctionRecord({
         type: "transfer_in",
         amount: salePrice,
         description: `Garanteret AI-salg: ${auction.rider.firstname} ${auction.rider.lastname}`,
+        metadata: {
+          code: "tx.guaranteedAiSale",
+          params: { riderName: `${auction.rider.firstname} ${auction.rider.lastname}` },
+        },
         season_id: activeSeasonId,
         actor_type: FINANCE_ACTOR_TYPE.CRON,
         actor_id: null,
