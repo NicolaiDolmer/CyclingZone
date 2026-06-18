@@ -447,6 +447,12 @@
     "identity": "Identity",
     "ranking": "Ranking"
   },
+  "satisfactionTimeline": {
+    "heading": "Weekend by weekend",
+    "goals": "{{met}}/{{total}} goals met",
+    "flat": "no change",
+    "unknownRace": "Race weekend"
+  },
   "overallStatus": {
     "veryStrong": "Very strong",
     "onTrack": "On track",

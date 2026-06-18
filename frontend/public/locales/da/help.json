@@ -34,7 +34,7 @@
       "label": "Bestyrelse",
       "whatBoard": {
         "title": "Hvad gør bestyrelsen?",
-        "text": "Bestyrelsen sætter mål for dit hold og følger din sæson live: tilfredsheden opdateres nu efter hver løbsweekend (den flytter sig højst 5 point pr. weekend) mod det en fuld sæson-evaluering ville give. Tilfredsheden bestemmer din sponsor-modifier, dvs. hvor meget du får udbetalt af sponsorindtægten, og modifieren følger tilfredsheden live. Hårde konsekvenser (lønloft, signing-restriktion, tvunget salg) evalueres kun ved to forudsigelige checkpoints: mid-season og sæson-slut. Du kan ikke blive fyret; konsekvenserne er graduerede og altid forudsigelige."
+        "text": "Bestyrelsen sætter mål for dit hold og følger din sæson live: tilfredsheden opdateres nu efter hver løbsweekend (den flytter sig højst 5 point pr. weekend) mod det en fuld sæson-evaluering ville give. Tilfredsheden bestemmer din sponsor-modifier, dvs. hvor meget du får udbetalt af sponsorindtægten, og modifieren følger tilfredsheden live. Hårde konsekvenser (lønloft, signing-restriktion, tvunget salg) evalueres kun ved to forudsigelige checkpoints: mid-season og sæson-slut. Du kan ikke blive fyret; konsekvenserne er graduerede og altid forudsigelige. Du kan følge det løb for løb i plan-detaljerne på Bestyrelses-siden, hvor en weekend-for-weekend-historik viser om tilfredsheden gik op eller ned og hvilket målområde der drev det."
       },
       "season1Baseline": {
         "title": "Sæson 1: Baseline, ingen krav",

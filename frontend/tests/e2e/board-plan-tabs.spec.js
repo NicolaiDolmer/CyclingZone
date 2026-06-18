@@ -27,6 +27,12 @@ const plan5yr = {
     { id: "s1", season_number: 1, season_within_plan: 1, division_rank: 4, stage_wins: 1, gc_wins: 0, goals_met: 1, goals_total: 2, satisfaction_delta: 5 },
     { id: "s2", season_number: 2, season_within_plan: 2, division_rank: 3, stage_wins: 0, gc_wins: 0, goals_met: 1, goals_total: 2, satisfaction_delta: 4 },
   ],
+  // #1451 · løb-for-løb tilfredsheds-events → BoardSatisfactionTimeline (op/ned/flad).
+  satisfaction_events: [
+    { id: "ev1", race_name: "Critérium du Dauphiné", race_days_completed: 18, satisfaction_before: 47, satisfaction_after: 50, satisfaction_delta: 3, goals_met: 2, goals_total: 3, reason_category: "results", created_at: "2026-06-18T10:00:00Z" },
+    { id: "ev2", race_name: "Tour de Romandie", race_days_completed: 12, satisfaction_before: 52, satisfaction_after: 50, satisfaction_delta: -2, goals_met: 1, goals_total: 3, reason_category: "identity", created_at: "2026-06-11T10:00:00Z" },
+    { id: "ev3", race_name: "Vuelta a Burgos", race_days_completed: 9, satisfaction_before: 50, satisfaction_after: 50, satisfaction_delta: 0, goals_met: 2, goals_total: 2, reason_category: null, created_at: "2026-06-04T10:00:00Z" },
+  ],
   is_expired: false,
   renew_locked: false,
   outlook: { goal_evaluations: [{ status: "on_track", actual: 1, target: 3 }, { status: "watch" }, { status: "behind", actual: 0, target: 1 }] },
@@ -146,4 +152,34 @@ test("signature_rider-mål vises som 'højt omdømme', ikke 'popularity'/'stjern
   await expect(panel.getByText("Mindst 1 rytter med højt omdømme")).toBeVisible();
   await expect(panel.getByText(/popularity/i)).toHaveCount(0);
   await expect(panel.getByText(/stjerne-rytter/i)).toHaveCount(0);
+});
+
+test("løb-for-løb tilfredsheds-timeline viser retning, % og hvorfor (#1451)", async ({ page }) => {
+  await stabilizePage(page);
+  await installNetworkMocks(page);
+  await page.route("**/api/board/status", route =>
+    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(NON_BASELINE_BOARD) }));
+
+  await login(page);
+  // mobile-webkit kan afbryde page.goto med en post-login redirect til /dashboard
+  // → retry indtil /board-navigationen sidder fast.
+  await expect(async () => {
+    await page.goto("/board");
+    expect(page.url()).toMatch(/\/board$/);
+  }).toPass({ timeout: 15000 });
+
+  // 5-årsplan er default → åbn detalje-panelet hvor historikken bor.
+  const panel = page.getByRole("tabpanel");
+  await panel.getByText("Vis detaljer").click();
+  await expect(panel.getByText("Weekend for weekend")).toBeVisible();
+  // Op-event: løbsnavn + +3% (sorteret nyest først).
+  await expect(panel.getByText("Critérium du Dauphiné")).toBeVisible();
+  await expect(panel.getByText("+3%")).toBeVisible();
+  // Ned-event: -2%.
+  await expect(panel.getByText("Tour de Romandie")).toBeVisible();
+  await expect(panel.getByText("-2%")).toBeVisible();
+  // Flad-event renderes også (sammenhængende kurve).
+  await expect(panel.getByText("Vuelta a Burgos")).toBeVisible();
+  // Sparkline (den løbende kurve) renderes over historikken.
+  await expect(panel.getByTestId("board-satisfaction-sparkline")).toBeVisible();
 });

@@ -34,7 +34,7 @@
       "label": "Board",
       "whatBoard": {
         "title": "What does the board do?",
-        "text": "The board sets targets for your team and follows your season live: satisfaction now updates after every race weekend (it moves at most 5 points per weekend) towards what a full season evaluation would give. Satisfaction determines your sponsor modifier, i.e. how much of the sponsor income gets paid out, and the modifier follows satisfaction live. Hard consequences (salary cap, signing restriction, forced sale) are only evaluated at two predictable checkpoints: mid-season and season end. You cannot be fired; consequences are graduated and always predictable."
+        "text": "The board sets targets for your team and follows your season live: satisfaction now updates after every race weekend (it moves at most 5 points per weekend) towards what a full season evaluation would give. Satisfaction determines your sponsor modifier, i.e. how much of the sponsor income gets paid out, and the modifier follows satisfaction live. Hard consequences (salary cap, signing restriction, forced sale) are only evaluated at two predictable checkpoints: mid-season and season end. You cannot be fired; consequences are graduated and always predictable. You can follow this race by race in the plan details on the Board page, where a weekend-by-weekend history shows whether satisfaction went up or down and which goal area drove it."
       },
       "season1Baseline": {
         "title": "Season 1: Baseline, no demands",

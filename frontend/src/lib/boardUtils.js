@@ -8,6 +8,21 @@ export function getPlanDuration(planType) {
   return { "1yr": 1, "3yr": 3, "5yr": 5 }[planType] ?? 1;
 }
 
+/**
+ * #1451 · Trend-pil fra det seneste løbs-event (in-season, modsat den
+ * sæson-slut-baserede getSatisfactionTrend i BoardPage). Returnerer null når
+ * ingen events. Glyfferne/farverne matcher getSatisfactionTrend.
+ */
+export function getEventSatisfactionTrend(events) {
+  if (!events?.length) return null;
+  const latest = events.reduce((a, b) =>
+    (b.created_at ?? "") > (a.created_at ?? "") ? b : a);
+  const delta = latest?.satisfaction_delta ?? 0;
+  if (delta > 0) return { glyph: "▲", color: "text-cz-success", key: "up", delta };
+  if (delta < 0) return { glyph: "▼", color: "text-cz-danger", key: "down", delta };
+  return { glyph: "→", color: "text-cz-3", key: "flat", delta: 0 };
+}
+
 export function satisfactionToModifier(satisfaction) {
   if (satisfaction >= 80) return 1.20;
   if (satisfaction >= 60) return 1.10;

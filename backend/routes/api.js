@@ -7054,15 +7054,20 @@ router.get("/board/status", requireAuth, async (req, res) => {
     const boardIds = allBoards.map(b => b.id);
     let allSnapshots = [];
     let allRequestLogs = [];
+    let allEvents = [];
     let boardRequestsSupported = true;
 
     if (boardIds.length > 0) {
-      const [snapshotsRes, requestsRes] = await Promise.all([
+      const [snapshotsRes, requestsRes, eventsRes] = await Promise.all([
         supabase.from("board_plan_snapshots").select("*")
           .in("board_id", boardIds)
           .order("season_within_plan", { ascending: true }),
         supabase.from("board_request_log")
           .select("id, board_id, request_type, outcome, title, summary, tradeoff_summary, request_payload, board_changes, season_number, created_at")
+          .in("board_id", boardIds)
+          .order("created_at", { ascending: false }),
+        supabase.from("board_satisfaction_events")
+          .select("id, board_id, race_name, race_days_completed, satisfaction_before, satisfaction_after, satisfaction_delta, goals_met, goals_total, reason_category, created_at")
           .in("board_id", boardIds)
           .order("created_at", { ascending: false }),
       ]);
@@ -7073,6 +7078,10 @@ router.get("/board/status", requireAuth, async (req, res) => {
 
       allSnapshots = snapshotsRes.data || [];
       allRequestLogs = boardRequestsSupported ? (requestsRes.data || []) : [];
+
+      const eventsSupported = !isMissingTable(eventsRes.error, "board_satisfaction_events");
+      if (eventsRes.error && eventsSupported) return res.status(500).json({ error: eventsRes.error.message });
+      allEvents = eventsSupported ? (eventsRes.data || []) : [];
     }
 
     // S-02a: Sæson 1 baseline = window 'locked' og kun baseline-rows i board_profiles.
@@ -7108,6 +7117,7 @@ router.get("/board/status", requireAuth, async (req, res) => {
 
       const boardRequests = allRequestLogs.filter(r => r.board_id === board.id);
       const latestRequest = boardRequests[0] || null;
+      const boardEvents = allEvents.filter((e) => e.board_id === board.id).slice(0, 10);
       const requestUsedThisSeason = Boolean(
         boardRequestsSupported && activeSeason?.number != null && latestRequest?.season_number === activeSeason.number
       );
@@ -7199,6 +7209,7 @@ router.get("/board/status", requireAuth, async (req, res) => {
           gc_wins: cumulativeGcWins,
         },
         snapshots: boardSnapshots,
+        satisfaction_events: boardEvents,
         is_expired: isExpired,
         // #915 · Gen-forhandling låst når sæsonen er for langt fremme — frontend
         // skjuler "Forny"-knappen så låsen ikke kun håndhæves server-side.

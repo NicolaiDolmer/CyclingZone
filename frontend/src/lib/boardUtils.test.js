@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { isBoardGoalAchieved, satisfactionToModifier, getPlanDuration } from "./boardUtils.js";
+import { isBoardGoalAchieved, satisfactionToModifier, getPlanDuration, getEventSatisfactionTrend } from "./boardUtils.js";
 
 // #55 · De 7 nye S-02d-måltyper faldt før til default:false i frontendens egen
 // evaluator, så header-tæller + top-3-ikoner undertalte opnåede mål. Fixet
@@ -122,4 +122,17 @@ test("getPlanDuration · 1/3/5", () => {
   assert.equal(getPlanDuration("1yr"), 1);
   assert.equal(getPlanDuration("3yr"), 3);
   assert.equal(getPlanDuration("5yr"), 5);
+});
+
+// #1451 · In-season trend-pil fra seneste løbs-event (modsat den sæson-slut-
+// baserede getSatisfactionTrend). Seneste event (nyeste created_at) styrer pilen.
+test("getEventSatisfactionTrend: seneste event styrer pilen", () => {
+  const events = [
+    { created_at: "2026-06-18T10:00:00Z", satisfaction_delta: 3 },
+    { created_at: "2026-06-17T10:00:00Z", satisfaction_delta: -2 },
+  ];
+  assert.equal(getEventSatisfactionTrend(events).key, "up");
+});
+test("getEventSatisfactionTrend: tom liste → null", () => {
+  assert.equal(getEventSatisfactionTrend([]), null);
 });

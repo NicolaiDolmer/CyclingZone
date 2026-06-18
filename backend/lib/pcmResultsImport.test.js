@@ -451,6 +451,9 @@ test("importPcmResults: kalder processBoardWeekend efter skarp import (#1187)", 
   assert.equal(boardCalls[0].previousRaceDaysCompleted, 9, "udgangspunkt = race_days FØR importen");
   assert.equal(boardCalls[0].season.id, "s1");
   assert.equal(boardCalls[0].season.status, "active");
+  // #1451 · race-kontekst til event-loggen = det skarpt importerede løb.
+  assert.equal(boardCalls[0].race.id, "r1");
+  assert.equal(boardCalls[0].race.name, "Test Tour");
 });
 
 test("importPcmResults: dryRun kalder IKKE processBoardWeekend (#1187)", async () => {

@@ -427,6 +427,11 @@ export async function importPcmResults({
   const perRace = [];
   const skipped = [];
   let totalRowsWritten = 0;
+  // #1451 · race-kontekst til weekend-event-loggen. En import-batch kan dække
+  // flere løb, men weekend-opdateringen kører ÉN gang efter loopet — vi
+  // attribuerer eventet til det senest skarpt importerede løb (race-variablen
+  // er for...of-block-scopet, så vi fanger {id, name} her i loopet).
+  let lastImportedRace = null;
 
   for (const [raceName, raceFiles] of groups) {
     const { race, status } = matchRaceName(raceName, dbRaces || []);
@@ -487,6 +492,7 @@ export async function importPcmResults({
       });
       totalRowsWritten += applied.rowsImported;
       await supabase.from("races").update({ status: "completed" }).eq("id", race.id);
+      lastImportedRace = { id: race.id, name: race.name };
 
       if (notifyDiscord) {
         try {
@@ -512,6 +518,7 @@ export async function importPcmResults({
           supabase,
           season: { ...season, race_days_completed: newRaceDaysCompleted },
           previousRaceDaysCompleted: season.race_days_completed ?? null,
+          race: lastImportedRace,
         });
       } catch (error) {
         console.error("  ⚠️  board weekend update failed after PCM import:", error.message);

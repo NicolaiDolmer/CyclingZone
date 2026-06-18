@@ -377,6 +377,8 @@ test("simulateRace: kalder processBoardWeekend med prev/ny race-days (#1187)", a
   assert.equal(boardCalls[0].previousRaceDaysCompleted, 9);
   assert.equal(boardCalls[0].season.race_days_completed, 12, "ny værdi fra recompute");
   assert.equal(boardCalls[0].season.id, STAGE_RACE.season_id);
+  // #1451 · race-kontekst til event-loggen.
+  assert.equal(boardCalls[0].race.id, STAGE_RACE.id);
 });
 
 test("simulateRace: processBoardWeekend-fejl vælter ikke afviklingen (#1187)", async () => {

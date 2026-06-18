@@ -43,6 +43,7 @@
 
 import {
   computeWeekendSatisfactionUpdate,
+  resolveReasonCategory,
   CHECKPOINT_KINDS,
 } from "./boardWeekendUpdate.js";
 import { evaluateAndApplyConsequences as evaluateAndApplyConsequencesShared } from "./boardConsequences.js";
@@ -102,6 +103,7 @@ export async function processBoardWeekendFinalization({
   supabase,
   season,
   previousRaceDaysCompleted = null,
+  race = null,
   now = new Date(),
   captureExceptionFn = null,
   deps = {},
@@ -114,6 +116,7 @@ export async function processBoardWeekendFinalization({
     boards_updated: 0,
     checkpoint: null,
     consequences_applied: 0,
+    events_written: 0,
     errors: 0,
     skipped_reason: null,
   };
@@ -301,6 +304,41 @@ export async function processBoardWeekendFinalization({
           .eq("id", board.id);
         if (updateError) throw new Error(updateError.message);
         summary.boards_updated += 1;
+
+        // #1451 · Løb-for-løb event-log (visnings-only). Idempotent pr.
+        // (board_id, race_id) via onConflict-upsert → re-import overskriver
+        // i stedet for at duplikere. Fejl her må ALDRIG vælte satisfaction-
+        // opdateringen (mekanikken er allerede persisteret ovenfor).
+        if (race?.id) {
+          const { error: eventError } = await supabase
+            .from("board_satisfaction_events")
+            .upsert({
+              board_id: board.id,
+              team_id: team.id,
+              season_id: season.id,
+              race_id: race.id,
+              race_name: race.name ?? null,
+              race_days_completed: season.race_days_completed ?? null,
+              satisfaction_before: update.previousSatisfaction,
+              satisfaction_after: update.newSatisfaction,
+              satisfaction_delta: update.appliedDelta,
+              goals_met: update.goalsMet,
+              goals_total: update.goalsTotal,
+              reason_category: resolveReasonCategory({
+                evaluation: update.evaluation,
+                satisfactionDelta: update.appliedDelta,
+              }),
+            }, { onConflict: "board_id,race_id" });
+          if (eventError) {
+            // Bevidst console-only (ingen captureExceptionFn til Sentry): før
+            // migrationen er anvendt i prod fejler upsert'en for HVERT board ved
+            // HVER finalisering — det ville spamme Sentry. Loggen er nok til at se det.
+            summary.errors += 1;
+            console.error(`  ⚠️  board satisfaction event failed for ${team.name}:`, eventError.message);
+          } else {
+            summary.events_written += 1;
+          }
+        }
 
         // Hårde konsekvens-lag KUN ved mid-season-checkpoint (beslutning 3).
         // Sæson-slut-checkpointet kører uændret i processTeamSeasonEnd.
