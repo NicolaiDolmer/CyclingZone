@@ -15,7 +15,7 @@ jobs:
     # Skip issues oprettet af claude[bot] (undgå rekursive triage-loops)
     if: github.event.issue.user.login != 'claude[bot]'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Apply deterministic labels first
         id: labels

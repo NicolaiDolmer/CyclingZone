@@ -20,7 +20,7 @@ jobs:
     # Skip drafts og pure docs-PRs (advisory review giver lille værdi der)
     if: github.event.pull_request.draft == false
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - id: claude_review
         # advisory (#877/2A): review må IKKE blokere merge. De hårde gates er de
         # deterministiske checks (backend-tests, frontend-build, dependency-review).

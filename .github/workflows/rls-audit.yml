@@ -38,7 +38,7 @@ jobs:
 
       - name: Check out repository
         if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Set up Node.js
         if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
