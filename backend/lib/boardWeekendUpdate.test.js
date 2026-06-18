@@ -10,6 +10,7 @@ import {
   computeWeekendSatisfactionUpdate,
   getConsequenceCheckpoint,
   isConsequenceCheckpoint,
+  resolveReasonCategory,
   resolveWeekendEconomyModifier,
 } from "./boardWeekendUpdate.js";
 import { satisfactionToModifier } from "./boardEvaluation.js";
@@ -204,4 +205,19 @@ test("checkpoints ligger ved mid-season og sæson-slut", () => {
 
   assert.equal(isConsequenceCheckpoint({ completedWeekends: 2, totalWeekends: 5 }), true);
   assert.equal(isConsequenceCheckpoint({ completedWeekends: 3, totalWeekends: 5 }), false);
+});
+
+// ─── resolveReasonCategory (#1451 · "hvorfor"-kategori pr. weekend-event) ──────
+
+test("resolveReasonCategory: positiv delta → strongest_category", () => {
+  const evaluation = { feedback: { strongest_category: "results", weakest_category: "identity" } };
+  assert.equal(resolveReasonCategory({ evaluation, satisfactionDelta: 3 }), "results");
+});
+test("resolveReasonCategory: negativ delta → weakest_category", () => {
+  const evaluation = { feedback: { strongest_category: "results", weakest_category: "identity" } };
+  assert.equal(resolveReasonCategory({ evaluation, satisfactionDelta: -2 }), "identity");
+});
+test("resolveReasonCategory: delta 0 eller manglende feedback → null", () => {
+  assert.equal(resolveReasonCategory({ evaluation: { feedback: { strongest_category: "results" } }, satisfactionDelta: 0 }), null);
+  assert.equal(resolveReasonCategory({ evaluation: null, satisfactionDelta: 3 }), null);
 });

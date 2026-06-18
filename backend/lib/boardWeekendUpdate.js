@@ -33,6 +33,19 @@ import { clamp, clampSatisfaction } from "./boardUtils.js";
 // Ejer-beslutning 11/6: ±5 point pr. løbsweekend.
 export const WEEKEND_SATISFACTION_CLAMP = 5;
 
+/**
+ * #1451 · "Hvorfor"-kategori for et weekend-event. Positiv bevægelse drives af
+ * den stærkeste kategori, negativ af den svageste; flad bevægelse har ingen grund.
+ * Ren funktion — ingen DB. Bruges af weekend-finalization-loggen + UI'et.
+ */
+export function resolveReasonCategory({ evaluation, satisfactionDelta } = {}) {
+  const feedback = evaluation?.feedback;
+  if (!feedback) return null;
+  if (satisfactionDelta > 0) return feedback.strongest_category ?? null;
+  if (satisfactionDelta < 0) return feedback.weakest_category ?? null;
+  return null;
+}
+
 export const CHECKPOINT_KINDS = {
   MID_SEASON: "mid_season",
   SEASON_END: "season_end",
