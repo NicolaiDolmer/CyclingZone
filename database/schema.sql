@@ -222,6 +222,30 @@ CREATE POLICY academy_intake_owner_read ON academy_intake
   FOR SELECT TO authenticated
   USING (team_id IN (SELECT id FROM teams WHERE user_id = auth.uid()));
 
+-- Akademi-graduering (#932): akademiryttere der har passeret 21 og afventer
+-- promover/sælg/slip. Mens pending beholder rytteren is_academy=true (uden for cap).
+CREATE TABLE academy_graduation (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  rider_id UUID NOT NULL REFERENCES riders(id) ON DELETE CASCADE,
+  season_id UUID NOT NULL REFERENCES seasons(id),
+  status TEXT NOT NULL DEFAULT 'pending'
+    CHECK (status IN ('pending','promoted','sold','released','expired')),
+  deadline TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  resolved_at TIMESTAMPTZ,
+  UNIQUE (rider_id, season_id)
+);
+COMMENT ON TABLE academy_graduation IS
+  'Akademi-graduering (#932): akademiryttere der har passeret 21 og afventer promover/sælg/slip. status pending->promoted/sold/released/expired.';
+CREATE INDEX IF NOT EXISTS idx_academy_graduation_team_status ON academy_graduation(team_id, status);
+
+ALTER TABLE academy_graduation ENABLE ROW LEVEL SECURITY;
+-- Hold-ejeren kan læse eget; skrivning sker service-role (backend).
+CREATE POLICY academy_graduation_owner_read ON academy_graduation
+  FOR SELECT TO authenticated
+  USING (team_id IN (SELECT id FROM teams WHERE user_id = auth.uid()));
+
 -- ============================================================
 -- TRANSFER LISTINGS & OFFERS
 -- ============================================================
@@ -444,7 +468,8 @@ CREATE TABLE notifications (
     'board_update','board_critical','salary_paid','sponsor_paid',
     'watchlist_rider_listed','watchlist_rider_auction','loan_created','emergency_loan','loan_paid_off',
     'deadline_day_warning','auction_cancelled','squad_enforced','rider_retired',
-    'academy_intake_ready','academy_signed','academy_rejected'
+    'academy_intake_ready','academy_signed','academy_rejected',
+    'academy_graduation_ready','academy_graduated'
   )),
   title TEXT NOT NULL,
   message TEXT NOT NULL,
