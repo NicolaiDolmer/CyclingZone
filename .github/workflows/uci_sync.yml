@@ -1,8 +1,13 @@
 name: UCI Rankings Sync
 
+# PENSIONERET 2026-06-18: #1101-cutover afkoblede økonomien fra uci_points →
+# base_value, og uci_points/rider_uci_history vises ikke længere player-facing
+# (se RiderStatsPage.jsx + RiderDevelopmentTab.jsx). PCS strammede samtidig sin
+# Cloudflare-beskyttelse, så cloudscraper-1.2.71 ikke længere kan scrape.
+# Det ugentlige schedule er fjernet for at stoppe falske fejl-alarmer. Beholder
+# workflow_dispatch så syncen kan genoplives manuelt hvis en real-rytter-sæson
+# vender tilbage (kræver da en moderne Cloudflare-bypass, fx curl_cffi).
 on:
-  schedule:
-    - cron: '17 6 * * 3'  # Hver onsdag kl. 06:17 UTC (undgå GitHub Actions top-of-hour load)
   workflow_dispatch:        # Manuel kørsel fra GitHub Actions-siden
 
 permissions:
