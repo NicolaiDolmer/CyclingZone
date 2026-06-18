@@ -13,7 +13,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const teamPageSource = readFileSync(join(__dirname, "TeamPage.jsx"), "utf8");
 
 // De felter de nye kolonner (RiderTypeBadge + kontraktudløb) er afhængige af.
-const REQUIRED = ["primary_type", "secondary_type", "contract_length", "contract_end_season"];
+const REQUIRED = ["primary_type", "secondary_type", "contract_end_season"];
 
 // Trup- + pending-select: riders.select(`id, firstname, ...`)
 const directSelects = [...teamPageSource.matchAll(/\.from\("riders"\)\s*\.select\(`([^`]*)`\)/g)];
@@ -52,4 +52,17 @@ test("TeamPage riders-selects må IKKE indeholde potentiale (#1162)", () => {
       "potentiale er server-skjult (column privilege) — et select på den fejler HELE kaldet i PostgREST",
     );
   }
+});
+
+// #1482 — Type-kolonnen er sortérbar (sortKey="primary_type"). useRiderFilters
+// SKAL sortere den som en streng (localeCompare); den generiske numeriske gren
+// (bVal - aVal) giver NaN på strenge, så pilen toggler uden at sortere.
+const filtersSource = readFileSync(join(__dirname, "..", "lib", "useRiderFilters.js"), "utf8");
+
+test("useRiderFilters sorterer primary_type som streng, ikke numerisk (#1482)", () => {
+  assert.match(
+    filtersSource,
+    /filters\.sort === "primary_type"[\s\S]{0,200}?localeCompare/,
+    "primary_type-sort skal bruge localeCompare (streng) — ellers NaN i den numeriske gren",
+  );
 });

@@ -428,11 +428,11 @@ export function TeamPage() {
 
     const [ridersRes, pendingRes, windowRes, loansOutRes, loansInRes] = await Promise.all([
       supabase.from("riders")
-        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, primary_type, secondary_type, contract_length, contract_end_season, ${STATS.join(", ")}`)
+        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, primary_type, secondary_type, contract_end_season, ${STATS.join(", ")}`)
         .eq("team_id", myTeam.id)
         .order("market_value", { ascending: false }),
       supabase.from("riders")
-        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, primary_type, secondary_type, contract_length, contract_end_season, ${STATS.join(", ")}`)
+        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, primary_type, secondary_type, contract_end_season, ${STATS.join(", ")}`)
         .eq("pending_team_id", myTeam.id)
         .order("market_value", { ascending: false }),
       supabase.from("transfer_windows")
@@ -443,7 +443,7 @@ export function TeamPage() {
         .eq("from_team_id", myTeam.id).eq("status", "active"),
       // Riders we're borrowing
       supabase.from("loan_agreements")
-        .select(`rider:rider_id(id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, nationality_code, primary_type, secondary_type, contract_length, contract_end_season, ${STATS.join(", ")}), from_team:from_team_id(name), start_season, end_season, buy_option_price`)
+        .select(`rider:rider_id(id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, nationality_code, primary_type, secondary_type, contract_end_season, ${STATS.join(", ")}), from_team:from_team_id(name), start_season, end_season, buy_option_price`)
         .eq("to_team_id", myTeam.id).eq("status", "active"),
     ]);
 

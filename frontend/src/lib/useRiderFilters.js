@@ -89,6 +89,13 @@ export function useClientRiderFilters(riders = []) {
         const cmp = compareNationality(a.nationality_code, b.nationality_code);
         return filters.sort_dir === "desc" ? -cmp : cmp;
       }
+      // Ryttertype (#1482) sorteres alfabetisk på den primære type — samme fælde
+      // som nationality_code: strenge i den numeriske gren nedenfor ville give NaN.
+      // Ryttere uden type ("") samles i hver sin ende afhængigt af retning.
+      if (filters.sort === "primary_type") {
+        const cmp = (a.primary_type || "").localeCompare(b.primary_type || "");
+        return filters.sort_dir === "desc" ? -cmp : cmp;
+      }
       let aVal, bVal;
       if (filters.sort === "birthdate") {
         aVal = a.birthdate ? new Date(a.birthdate).getFullYear() : 1970;
