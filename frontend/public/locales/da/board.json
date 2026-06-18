@@ -447,6 +447,12 @@
     "identity": "Identitet",
     "ranking": "Rangering"
   },
+  "satisfactionTimeline": {
+    "heading": "Weekend for weekend",
+    "goals": "{{met}}/{{total}} mål nået",
+    "flat": "ingen ændring",
+    "unknownRace": "Løbsweekend"
+  },
   "overallStatus": {
     "veryStrong": "Meget stærkt",
     "onTrack": "På sporet",

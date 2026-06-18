@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useTranslation, Trans } from "react-i18next";
 import { supabase } from "../lib/supabase";
-import { satisfactionToModifier, getPlanDuration, isBoardGoalAchieved } from "../lib/boardUtils";
+import { satisfactionToModifier, getPlanDuration, isBoardGoalAchieved, getEventSatisfactionTrend } from "../lib/boardUtils";
 import { getBoardGoalLabel } from "../lib/boardGoalLabel";
 import { getWizardBackState, canResumeNegotiation } from "../lib/boardWizardNav";
 import { getCountryDisplay } from "../lib/countryUtils";
@@ -9,6 +9,7 @@ import { formatNumber } from "../lib/intl";
 import { Flag } from "../components/Flag";
 import { Link } from "react-router-dom";
 import BoardEmptyState from "../components/BoardEmptyState";
+import BoardSatisfactionTimeline from "../components/BoardSatisfactionTimeline";
 import OnboardingTour from "../components/OnboardingTour";
 import { startTour } from "../lib/onboardingTour";
 import { logEvent } from "../lib/logEvent";
@@ -1343,7 +1344,7 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
   }
 
   const { board, plan_duration, seasons_remaining, seasons_completed, plan_progress_pct,
-    cumulative_stats, snapshots, is_expired, renew_locked, outlook, request_status, request_options } = planData;
+    cumulative_stats, snapshots, satisfaction_events, is_expired, renew_locked, outlook, request_status, request_options } = planData;
 
   const goals = typeof board.current_goals === "string"
     ? JSON.parse(board.current_goals) : (board.current_goals || []);
@@ -1364,7 +1365,10 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
   const satColor = board.satisfaction >= 70 ? "text-cz-success"
     : board.satisfaction >= 40 ? "text-cz-accent-t" : "text-cz-danger";
   const benchmark = getBenchmarkMeta(t, board.satisfaction);
-  const trend = getSatisfactionTrend(snapshots);
+  // #1451 · Foretræk in-season-event-trenden (løb-for-løb); fald tilbage til den
+  // sæson-slut-baserede trend når der endnu ingen events er.
+  const events = satisfaction_events ?? [];
+  const trend = getEventSatisfactionTrend(events) ?? getSatisfactionTrend(snapshots);
   const showMidReviewBanner = plan_duration > 1
     && seasons_completed === Math.floor(plan_duration / 2);
 
@@ -1492,6 +1496,9 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
           {plan_duration > 1 && snapshots?.length > 0 && (
             <SeasonSnapshotGrid snapshots={snapshots} />
           )}
+
+          {/* #1451 · Løb-for-løb tilfredshedshistorik (visnings-only; tom → render intet) */}
+          <BoardSatisfactionTimeline events={events} />
 
           {outlook?.feedback && (
             <div className="bg-cz-subtle border border-cz-border rounded-xl p-4">
