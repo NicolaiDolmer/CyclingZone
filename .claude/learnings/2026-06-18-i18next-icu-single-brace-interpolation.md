@@ -17,7 +17,13 @@ Projektet bruger **i18next-icu** (`frontend/src/i18n/index.js:108 .use(ICU)`) �
 ## Forward-guards
 1. **Når du tilføjer i18n-nøgler i dette repo: brug ICU enkelt-klamme `{x}`, aldrig `{{x}}`.** Tjek en nabo-nøgle i samme namespace.
 2. **Test/Playwright for tekst med interpolation SKAL assertere det interpolerede output** (de faktiske tal/værdier), ikke kun de statiske dele. Tilføj en guard mod rå `{...}`-placeholder.
-3. Overvej en lille lint-regel: fejl hvis en `public/locales/**/*.json`-værdi indeholder `{{` (dobbelt-klamme) — fanger dette ved commit i stedet for i prod.
+3. ✅ **GJORT (#1305-followup):** lint-regel `scripts/i18n-check-icu-braces.mjs` (kørt i `check:i18n` + unit-testet) fejler hvis en `public/locales/**/*.json`-værdi har `{{ident}}`-antipattern (værdier med inline ICU plural/select undtages). Fanger nu klassen ved commit i stedet for i prod.
+
+## Recurrence + class-fix (2026-06-18, #1305-followup)
+Bug-klassen genopstod SAMME dag i `training.json` (#1305: `{{from}} → {{to}}`, `{{delta}} fatigue`), fundet via Playwright UI-verify (samme metode som afslørede #1455). En backwards-sweep af ALLE locales fandt yderligere fund som forward-guard #1/#2 ikke havde fanget:
+- `transfers.json` `finalWhistle.seasonLabel` ("Season {{number}}") + `dealsBreakdown` — **live** (Final Whistle, `DeadlineDayBoard.jsx`).
+- `rider.json` `condition.injured` ("Injured: {{days}}d left") — latent (skade-flag-gated).
+Alle rettet til enkelt-klamme + forward-guard #3 implementeret som CI-gate. **Lære: en learning alene forhindrer ikke recurrence — den maskinelle guard gør.**
 
 ## Beslægtet (samme session, samme tema "merged ≠ live")
 - #1454: Auto-migrate fejlede stille på stale `DB_URL`-secret — migration anvendt manuelt.
