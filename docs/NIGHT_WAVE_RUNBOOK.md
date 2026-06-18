@@ -34,6 +34,7 @@
 - **gh-retry:** alle gh-kald i 4-5× retry-loop (3-4s pause); GraphQL rammes hårdere end REST.
 - **frontend-smoke-fejl klassificeres pr. PR:** `did not exit` = teardown-flake (advisory) vs `pixels`/`toHaveScreenshot` = ægte diff → refresh ALLE 3 playwright-projekter.
 - **Semantiske kryds-PR-konflikter** (to agenter redesigner samme modul) løses centralt af orkestrator: MERGE intentionerne, vælg ikke side.
+- **Verify/review-agenter: brug `gh pr diff <url>` — ALDRIG `git checkout` i hoved-checkoutet** (eller giv dem også worktree-isolation). Natbølge 19/6: en verify-agent uden isolation checkede en `review/*`-branch ud i hoved-checkoutet og efterlod det dér, så orkestratoren måtte gendanne `main`. Read-only diff-review kræver ingen lokal branch-switch.
 
 ## Recovery (workflow dør med parent-session)
 
