@@ -25,8 +25,22 @@
   "summaryPeakForm": "I topform",
   "loading": "Henter…",
   "colRider": "Rytter",
+  "colType": "Type",
   "colNextUp": "Næste +1",
   "colGains": "Fremgang",
   "colResult": "Resultat",
-  "colStatus": "Status"
+  "colStatus": "Status",
+  "groupByType": "Gruppér efter type",
+  "untypedGroup": "Ingen type endnu",
+  "groupCount": "{n, plural, one {# rytter} other {# ryttere}}",
+  "selectAll": "Vælg alle",
+  "selected": "{n, plural, one {# valgt} other {# valgt}}",
+  "bulkSetFocus": "Sæt fokus for valgte",
+  "bulkIntensity": "Intensitet",
+  "bulkApply": "Anvend på {n} valgte",
+  "bulkApplying": "Anvender…",
+  "bulkClear": "Ryd valg",
+  "bulkApplied": "{n, plural, one {Opdaterede # rytter.} other {Opdaterede # ryttere.}}",
+  "bulkPartial": "Opdaterede {applied} af {total}. {failed} kunne ikke gemmes - prøv igen om lidt.",
+  "bulkPickFocus": "Vælg et fokus at anvende."
 }

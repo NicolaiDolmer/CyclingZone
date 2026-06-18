@@ -5,12 +5,14 @@
 // Rytterliste hentes fra Supabase (samme kilde som TeamPage) da det er holdets
 // egne ryttere vi træner. Condition/progress/todayRun serveres fra useTraining.
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Fragment } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import RiderLink from "../components/RiderLink.jsx";
+import RiderTypeBadge from "../components/rider/RiderTypeBadge.jsx";
 import { useTraining } from "../lib/useTraining.js";
 import { TRAINING_FOCUS_KEYS, TRAINING_INTENSITIES, injuryDaysLeft } from "../lib/training.js";
+import { groupRidersByType, UNTYPED_KEY } from "../lib/trainingRoster.js";
 import { focusProgress, daySummary, breakthroughJumps, isBreakthrough, NEAR_BREAKTHROUGH } from "../lib/trainingReport.js";
 
 // Bred side — samme mønster som TeamPage / RidersPage.
@@ -57,15 +59,24 @@ export default function TrainingPage() {
   const { t } = useTranslation("training");
   const tRider = useTranslation("rider").t;
 
+  const tTypes = useTranslation("riderTypes").t;
+
   const training = useTraining();
   const {
     enabled, todayRun, condition, progress, loading,
-    savingId, running, setPlan, clearPlan, planFor, runToday,
+    savingId, running, bulkApplying, setPlan, setPlanBulk, clearPlan, planFor, runToday,
   } = training;
 
   const [riders, setRiders] = useState([]);
   const [ridersLoading, setRidersLoading] = useState(true);
   const [runError, setRunError] = useState(null);
+
+  // Gruppering + multi-select + bulk-apply (#1480).
+  const [groupByType, setGroupByType] = useState(false);
+  const [selected, setSelected] = useState(() => new Set()); // valgte rider-id'er
+  const [bulkFocus, setBulkFocus] = useState("");
+  const [bulkIntensity, setBulkIntensity] = useState("normal");
+  const [bulkMsg, setBulkMsg] = useState(null); // { type: "ok" | "partial" | "warn", text }
 
   // Hent egne ryttere fra Supabase — samme mønster som TeamPage.
   useEffect(() => {
@@ -82,7 +93,7 @@ export default function TrainingPage() {
         if (!myTeam) return;
         const { data } = await supabase
           .from("riders")
-          .select("id, firstname, lastname")
+          .select("id, firstname, lastname, primary_type, secondary_type")
           .eq("team_id", myTeam.id)
           .order("lastname");
         setRiders(data || []);
@@ -115,6 +126,198 @@ export default function TrainingPage() {
   // Dags-opsummering til rapportens payoff-stribe (trænede / gennembrud / topform).
   const summary = todayRun?.report ? daySummary(todayRun.report.riders) : null;
 
+  // --- Gruppering + multi-select (#1480) ---
+  // Antal kolonner i roster-tabellen (select + type + 7 oprindelige) — bruges til
+  // colSpan på gruppe-header-rækker.
+  const ROSTER_COLS = 9;
+
+  // Vis enten flade rækker eller type-grupper. Begge bruger samme allerede-hentede
+  // riders-array (ingen ny query).
+  const groups = groupByType ? groupRidersByType(riders) : null;
+
+  const allSelected = riders.length > 0 && selected.size === riders.length;
+
+  function toggleSelect(riderId) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(riderId)) next.delete(riderId);
+      else next.add(riderId);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    setSelected((prev) => (prev.size === riders.length ? new Set() : new Set(riders.map((r) => r.id))));
+  }
+
+  function clearSelection() {
+    setSelected(new Set());
+    setBulkMsg(null);
+  }
+
+  function groupLabel(type) {
+    return type === UNTYPED_KEY ? t("untypedGroup") : tTypes(`types.${type}`);
+  }
+
+  // Én roster-række (genbruges af både flad liste og type-grupperet visning).
+  function renderRosterRow(rider) {
+    const plan = planFor(rider.id);
+    const cond = condition[rider.id] ?? {};
+    const daysLeft = injuryDaysLeft(cond.injured_until, today);
+    const injured = daysLeft > 0;
+    const highRisk = !injured && (cond.risk ?? 0) >= 0.05;
+    const busy = savingId === rider.id || bulkApplying;
+    const isSelected = selected.has(rider.id);
+
+    return (
+      <tr key={rider.id} className={`border-b border-cz-border last:border-0 hover:bg-cz-subtle ${isSelected ? "bg-cz-accent/5" : ""}`}>
+        {/* Multi-select */}
+        <td className="px-4 py-3 w-8">
+          <input
+            type="checkbox"
+            checked={isSelected}
+            onChange={() => toggleSelect(rider.id)}
+            aria-label={`${t("selectAll")} — ${rider.firstname} ${rider.lastname}`}
+            className="accent-cz-accent"
+          />
+        </td>
+
+        {/* Navn */}
+        <td className="px-4 py-3">
+          <RiderLink id={rider.id} className="text-cz-1 font-medium hover:text-cz-accent transition-colors">
+            {rider.firstname} {rider.lastname}
+          </RiderLink>
+        </td>
+
+        {/* Ryttertype */}
+        <td className="px-4 py-3">
+          <RiderTypeBadge primaryType={rider.primary_type} secondaryType={rider.secondary_type} />
+        </td>
+
+        {/* Fokus */}
+        <td className="px-4 py-3">
+          <select
+            value={plan?.focus ?? ""}
+            disabled={busy}
+            aria-label={`${tRider("training.focus")} — ${rider.firstname} ${rider.lastname}`}
+            onChange={(e) => {
+              const newFocus = e.target.value;
+              if (!newFocus) return;
+              setPlan(rider.id, newFocus, plan?.intensity ?? "normal");
+            }}
+            className="bg-cz-subtle border border-cz-border rounded px-2 py-1 text-xs text-cz-1 disabled:opacity-50 max-w-[130px]"
+          >
+            <option value="">—</option>
+            {TRAINING_FOCUS_KEYS.map((k) => (
+              <option key={k} value={k}>{tRider(`training.focus_${k}`)}</option>
+            ))}
+          </select>
+          {plan?.focus && (
+            <button
+              type="button"
+              onClick={() => clearPlan(rider.id)}
+              disabled={busy}
+              className="ms-1 text-[10px] text-cz-3 hover:text-cz-danger disabled:opacity-40"
+              title={tRider("training.remove")}
+            >
+              ×
+            </button>
+          )}
+        </td>
+
+        {/* Intensitet */}
+        <td className="px-4 py-3">
+          {plan?.focus ? (
+            <div
+              role="group"
+              aria-label={`${tRider("training.intensity")} — ${rider.firstname} ${rider.lastname}`}
+              className="inline-flex rounded border border-cz-border overflow-hidden"
+            >
+              {TRAINING_INTENSITIES.map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  disabled={busy}
+                  onClick={() => setPlan(rider.id, plan.focus, k)}
+                  aria-pressed={plan.intensity === k}
+                  className={`text-xs px-2 py-1 transition-colors disabled:opacity-50 ${
+                    plan.intensity === k
+                      ? "bg-cz-accent text-white"
+                      : "text-cz-2 hover:bg-cz-subtle"
+                  }`}
+                >
+                  {tRider(`training.intensity_${k}`)}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <span className="text-cz-3 text-xs">—</span>
+          )}
+        </td>
+
+        {/* Progress mod næste +1 (anticipation) */}
+        <td className="px-4 py-3">
+          <FocusProgress
+            info={focusProgress(plan?.focus, progress[rider.id])}
+            emptyLabel={t("noFocus")}
+            tRider={tRider}
+            toGoLabel={(o) => t("toGo", o)}
+          />
+        </td>
+
+        {/* Form */}
+        <td className="px-4 py-3">
+          <MiniBar value={cond.form} color="bg-blue-400" label={t("form")} />
+        </td>
+
+        {/* Træthed */}
+        <td className="px-4 py-3">
+          <MiniBar value={cond.fatigue} color="bg-orange-400" label={t("fatigue")} />
+        </td>
+
+        {/* Status: skadet / høj risiko */}
+        <td className="px-4 py-3">
+          <div className="flex flex-wrap gap-1">
+            {injured && (
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20">
+                {daysLeft === 1
+                  ? t("injured", { days: daysLeft })
+                  : t("injured_plural", { days: daysLeft })}
+              </span>
+            )}
+            {highRisk && (
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-cz-warning/10 text-cz-warning border border-cz-warning/20">
+                {t("injuryRisk")}
+              </span>
+            )}
+          </div>
+        </td>
+      </tr>
+    );
+  }
+
+  async function handleBulkApply() {
+    setBulkMsg(null);
+    if (!bulkFocus) {
+      setBulkMsg({ type: "warn", text: t("bulkPickFocus") });
+      return;
+    }
+    const ids = [...selected];
+    if (ids.length === 0) return;
+    const result = await setPlanBulk(ids, bulkFocus, bulkIntensity);
+    if (result.failed.length === 0) {
+      setBulkMsg({ type: "ok", text: t("bulkApplied", { n: result.applied }) });
+      setSelected(new Set());
+    } else {
+      setBulkMsg({
+        type: "partial",
+        text: t("bulkPartial", { applied: result.applied, total: ids.length, failed: result.failed.length }),
+      });
+      // Behold de fejlede valgte, så brugeren kan prøve igen.
+      setSelected(new Set(result.failed.map((f) => f.riderId)));
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -141,6 +344,86 @@ export default function TrainingPage() {
         <p className="text-cz-danger text-sm">{runError}</p>
       )}
 
+      {/* Roster-værktøjslinje: gruppér-toggle (#1480) */}
+      {!isLoading && riders.length > 0 && (
+        <div className="flex flex-wrap items-center justify-end gap-3">
+          <label className="inline-flex items-center gap-2 text-xs text-cz-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={groupByType}
+              onChange={(e) => setGroupByType(e.target.checked)}
+              className="accent-cz-accent"
+            />
+            {t("groupByType")}
+          </label>
+        </div>
+      )}
+
+      {/* Bulk-apply bjælke — vises kun når ryttere er valgt (#1480) */}
+      {!isLoading && selected.size > 0 && (
+        <div className="bg-cz-card border border-cz-border rounded-cz px-4 py-3 flex flex-wrap items-center gap-3">
+          <span className="text-sm font-medium text-cz-1">{t("selected", { n: selected.size })}</span>
+
+          <select
+            value={bulkFocus}
+            disabled={bulkApplying}
+            aria-label={t("bulkSetFocus")}
+            onChange={(e) => setBulkFocus(e.target.value)}
+            className="bg-cz-subtle border border-cz-border rounded px-2 py-1 text-xs text-cz-1 disabled:opacity-50"
+          >
+            <option value="">{t("bulkSetFocus")}</option>
+            {TRAINING_FOCUS_KEYS.map((k) => (
+              <option key={k} value={k}>{tRider(`training.focus_${k}`)}</option>
+            ))}
+          </select>
+
+          <div role="group" aria-label={t("bulkIntensity")} className="inline-flex rounded border border-cz-border overflow-hidden">
+            {TRAINING_INTENSITIES.map((k) => (
+              <button
+                key={k}
+                type="button"
+                disabled={bulkApplying}
+                onClick={() => setBulkIntensity(k)}
+                aria-pressed={bulkIntensity === k}
+                className={`text-xs px-2 py-1 transition-colors disabled:opacity-50 ${
+                  bulkIntensity === k ? "bg-cz-accent text-white" : "text-cz-2 hover:bg-cz-subtle"
+                }`}
+              >
+                {tRider(`training.intensity_${k}`)}
+              </button>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={handleBulkApply}
+            disabled={bulkApplying || !bulkFocus}
+            className="px-3 py-1.5 rounded-lg bg-cz-accent text-white text-xs font-semibold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+          >
+            {bulkApplying ? t("bulkApplying") : t("bulkApply", { n: selected.size })}
+          </button>
+
+          <button
+            type="button"
+            onClick={clearSelection}
+            disabled={bulkApplying}
+            className="text-xs text-cz-3 hover:text-cz-1 disabled:opacity-40"
+          >
+            {t("bulkClear")}
+          </button>
+
+          {bulkMsg && (
+            <span
+              className={`text-xs ${
+                bulkMsg.type === "ok" ? "text-cz-success" : bulkMsg.type === "partial" ? "text-cz-warning" : "text-cz-danger"
+              }`}
+            >
+              {bulkMsg.text}
+            </span>
+          )}
+        </div>
+      )}
+
       {/* Rosterbord */}
       <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
         {isLoading ? (
@@ -154,8 +437,20 @@ export default function TrainingPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-cz-border">
+                  <th className="px-4 py-3 text-left w-8">
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      onChange={toggleSelectAll}
+                      aria-label={t("selectAll")}
+                      className="accent-cz-accent"
+                    />
+                  </th>
                   <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">
                     {t("colRider")}
+                  </th>
+                  <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">
+                    {t("colType")}
                   </th>
                   <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">
                     {tRider("training.focus")}
@@ -178,124 +473,23 @@ export default function TrainingPage() {
                 </tr>
               </thead>
               <tbody>
-                {riders.map((rider) => {
-                  const plan = planFor(rider.id);
-                  const cond = condition[rider.id] ?? {};
-                  const daysLeft = injuryDaysLeft(cond.injured_until, today);
-                  const injured = daysLeft > 0;
-                  const highRisk = !injured && (cond.risk ?? 0) >= 0.05;
-                  const busy = savingId === rider.id;
-
-                  return (
-                    <tr key={rider.id} className="border-b border-cz-border last:border-0 hover:bg-cz-subtle">
-                      {/* Navn */}
-                      <td className="px-4 py-3">
-                        <RiderLink id={rider.id} className="text-cz-1 font-medium hover:text-cz-accent transition-colors">
-                          {rider.firstname} {rider.lastname}
-                        </RiderLink>
-                      </td>
-
-                      {/* Fokus */}
-                      <td className="px-4 py-3">
-                        <select
-                          value={plan?.focus ?? ""}
-                          disabled={busy}
-                          aria-label={`${tRider("training.focus")} — ${rider.firstname} ${rider.lastname}`}
-                          onChange={(e) => {
-                            const newFocus = e.target.value;
-                            if (!newFocus) return;
-                            setPlan(rider.id, newFocus, plan?.intensity ?? "normal");
-                          }}
-                          className="bg-cz-subtle border border-cz-border rounded px-2 py-1 text-xs text-cz-1 disabled:opacity-50 max-w-[130px]"
-                        >
-                          <option value="">—</option>
-                          {TRAINING_FOCUS_KEYS.map((k) => (
-                            <option key={k} value={k}>{tRider(`training.focus_${k}`)}</option>
-                          ))}
-                        </select>
-                        {plan?.focus && (
-                          <button
-                            type="button"
-                            onClick={() => clearPlan(rider.id)}
-                            disabled={busy}
-                            className="ms-1 text-[10px] text-cz-3 hover:text-cz-danger disabled:opacity-40"
-                            title={tRider("training.remove")}
-                          >
-                            ×
-                          </button>
-                        )}
-                      </td>
-
-                      {/* Intensitet */}
-                      <td className="px-4 py-3">
-                        {plan?.focus ? (
-                          <div
-                            role="group"
-                            aria-label={`${tRider("training.intensity")} — ${rider.firstname} ${rider.lastname}`}
-                            className="inline-flex rounded border border-cz-border overflow-hidden"
-                          >
-                            {TRAINING_INTENSITIES.map((k) => (
-                              <button
-                                key={k}
-                                type="button"
-                                disabled={busy}
-                                onClick={() => setPlan(rider.id, plan.focus, k)}
-                                aria-pressed={plan.intensity === k}
-                                className={`text-xs px-2 py-1 transition-colors disabled:opacity-50 ${
-                                  plan.intensity === k
-                                    ? "bg-cz-accent text-white"
-                                    : "text-cz-2 hover:bg-cz-subtle"
-                                }`}
-                              >
-                                {tRider(`training.intensity_${k}`)}
-                              </button>
-                            ))}
-                          </div>
-                        ) : (
-                          <span className="text-cz-3 text-xs">—</span>
-                        )}
-                      </td>
-
-                      {/* Progress mod næste +1 (anticipation) */}
-                      <td className="px-4 py-3">
-                        <FocusProgress
-                          info={focusProgress(plan?.focus, progress[rider.id])}
-                          emptyLabel={t("noFocus")}
-                          tRider={tRider}
-                          toGoLabel={(o) => t("toGo", o)}
-                        />
-                      </td>
-
-                      {/* Form */}
-                      <td className="px-4 py-3">
-                        <MiniBar value={cond.form} color="bg-blue-400" label={t("form")} />
-                      </td>
-
-                      {/* Træthed */}
-                      <td className="px-4 py-3">
-                        <MiniBar value={cond.fatigue} color="bg-orange-400" label={t("fatigue")} />
-                      </td>
-
-                      {/* Status: skadet / høj risiko */}
-                      <td className="px-4 py-3">
-                        <div className="flex flex-wrap gap-1">
-                          {injured && (
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20">
-                              {daysLeft === 1
-                                ? t("injured", { days: daysLeft })
-                                : t("injured_plural", { days: daysLeft })}
+                {groupByType
+                  ? groups.map((group) => (
+                      <Fragment key={group.type}>
+                        <tr className="bg-cz-subtle/60 border-b border-cz-border">
+                          <td colSpan={ROSTER_COLS} className="px-4 py-2">
+                            <span className="text-xs font-semibold uppercase tracking-wide text-cz-2">
+                              {groupLabel(group.type)}
                             </span>
-                          )}
-                          {highRisk && (
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-cz-warning/10 text-cz-warning border border-cz-warning/20">
-                              {t("injuryRisk")}
+                            <span className="ms-2 text-[11px] text-cz-3">
+                              {t("groupCount", { n: group.riders.length })}
                             </span>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                          </td>
+                        </tr>
+                        {group.riders.map((rider) => renderRosterRow(rider))}
+                      </Fragment>
+                    ))
+                  : riders.map((rider) => renderRosterRow(rider))}
               </tbody>
             </table>
           </div>
