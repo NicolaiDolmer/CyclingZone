@@ -20,6 +20,8 @@ import { developRiderSeason, buildCaps } from "./riderProgression.js";
 import { resolveTrainingModifier } from "./training.js";
 import { notifyTeamOwner } from "./notificationService.js";
 import { isDailyTrainingEnabled } from "./dailyTrainingFlag.js";
+import { isAcademyEnabled } from "./academyFlag.js";
+import { detectGraduates } from "./academyGraduation.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -70,6 +72,7 @@ export async function developRidersForSeason({
   model = defaultModel(), notify = true, now = new Date(),
   notifyTeamOwnerFn = notifyTeamOwner,
   dailyTrainingEnabled: dailyTrainingEnabledArg,
+  detectGraduatesFn = detectGraduates,
 }) {
   if (!supabase?.from) throw new Error("Supabase client required");
   if (!seasonId) throw new Error("seasonId required");
@@ -235,6 +238,13 @@ export async function developRidersForSeason({
           messageParams: { name, age },
         },
       }).catch(() => { /* notifikation må aldrig vælte transitionen */ }));
+  }
+
+  // ── Akademi-graduering (#932): akademiryttere der har passeret 21 sættes i
+  //    pending-valg (promover/sælg/slip). Gated på academy_enabled (no-op uden
+  //    akademi). Kører efter aldring så ageForSeason afspejler den nye sæson.
+  if (await isAcademyEnabled(supabase)) {
+    await detectGraduatesFn(supabase, { seasonId, seasonNumber, now });
   }
 
   return summary;

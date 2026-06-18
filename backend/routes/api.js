@@ -121,6 +121,7 @@ import { injuryRisk } from "../lib/riderCondition.js";
 import { resolveProgram } from "../lib/dailyTraining.js";
 import { copenhagenDateString } from "../lib/copenhagenTime.js";
 import { ACADEMY, isAcademyEnabled } from "../lib/academyFlag.js";
+import { resolveGraduation } from "../lib/academyGraduation.js";
 import { buildFictionalPopulationPreview } from "../lib/fictionalPopulationPreview.js";
 import { getFinalWhistleReport } from "../lib/deadlineDayReport.js";
 import {
@@ -8200,12 +8201,31 @@ router.get("/academy/me", requireAuth, async (req, res) => {
       .filter((r) => !excludedIds.has(r.id))
       .slice(0, 30);
 
+    // Pending graduates (#932): akademiryttere der har passeret 21 og afventer
+    // promover/sælg/slip-valg inden override-vinduets (deadline) udløb.
+    const { data: gradRows } = await supabase
+      .from("academy_graduation")
+      .select("rider_id, deadline, status, riders(firstname, lastname, birthdate)")
+      .eq("team_id", teamId)
+      .eq("status", "pending");
+    const graduations = (gradRows ?? []).map((g) => {
+      const r = g.riders ?? {};
+      const age = r.birthdate ? currentYear - new Date(r.birthdate).getFullYear() : null;
+      return {
+        riderId: g.rider_id,
+        name: `${r.firstname ?? ""} ${r.lastname ?? ""}`.trim(),
+        age,
+        deadline: g.deadline,
+      };
+    });
+
     res.json({
       enabled: true,
       slots: { used, max: ACADEMY.SLOTS },
       roster,
       intake,
       freeAgents,
+      graduations,
     });
   } catch (err) {
     captureException(err);
@@ -8244,6 +8264,43 @@ router.post("/academy/sign", requireAuth, marketWriteLimiter, async (req, res) =
     const msg = err?.message ?? "";
     if (msg === "academy_full") return res.status(409).json({ error: "academy_full" });
     if (msg === "not_offered") return res.status(409).json({ error: "not_offered" });
+    captureException(err);
+    res.status(500).json({ error: msg });
+  }
+});
+
+// POST /api/academy/graduate — resolvér en akademirytter der har passeret 21.
+// Body: { riderId, action } hvor action ∈ promote|sell|release (#932).
+router.post("/academy/graduate", requireAuth, marketWriteLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const isBetaTester = await isViewerBetaTester(req);
+    const enabled = await isAcademyEnabled(supabase, { isBetaTester });
+    if (!enabled) return res.status(409).json({ error: "academy_disabled" });
+
+    const { riderId, action } = req.body || {};
+    if (!riderId || !action) return res.status(400).json({ error: "riderId and action required" });
+
+    const { data: season } = await supabase
+      .from("seasons")
+      .select("number")
+      .eq("status", "active")
+      .maybeSingle();
+    const seasonNumber = season?.number ?? 1;
+
+    const result = await resolveGraduation(supabase, {
+      teamId: req.team.id,
+      riderId,
+      action,
+      seasonNumber,
+    });
+
+    res.json(result);
+  } catch (err) {
+    const msg = err?.message ?? "";
+    if (["not_pending", "squad_cap_violation", "invalid_action", "rider_not_found"].includes(msg)) {
+      return res.status(409).json({ error: msg });
+    }
     captureException(err);
     res.status(500).json({ error: msg });
   }

@@ -2,6 +2,7 @@
   "title": "Akademi",
   "slots": "Akademi: {used} / {max} pladser",
   "disabledNote": "Akademiet kommer snart. Hold dig opdateret.",
+  "graduationHeading": "Ryttere der forlader akademiet",
   "intakeHeading": "Intake-kandidater",
   "rosterHeading": "Akademihold",
   "freeAgentsHeading": "Frie ungdomsryttere",
@@ -14,6 +15,10 @@
   "signBtn": "Signér",
   "signFreeAgentBtn": "Signér til akademi",
   "rejectBtn": "Afvis",
+  "promoteBtn": "Ryk op",
+  "sellBtn": "Sælg",
+  "releaseBtn": "Slip",
+  "graduationDeadline": "{days}d tilbage",
   "loading": "...",
   "fullTooltip": "Akademiet er fuldt (8/8). Frigiv en plads først.",
   "fullNote": "Akademiet er fuldt. Signér kun når en plads åbner.",
@@ -27,6 +32,7 @@
     "notOffered": "Denne rytter har ikke fået tilbudt en plads.",
     "notFreeAgent": "Denne rytter er ikke længere en free agent.",
     "notAcademyAge": "Denne rytter er uden for akademi-alderen (16-21).",
+    "squadFull": "Senior-truppen er fuld. Frigør en plads for at rykke op, eller sælg eller slip i stedet.",
     "generic": "Noget gik galt. Prøv igen."
   }
 }

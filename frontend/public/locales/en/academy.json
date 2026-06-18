@@ -2,6 +2,7 @@
   "title": "Academy",
   "slots": "Academy: {used} / {max} places",
   "disabledNote": "The Academy is coming soon. Stay tuned.",
+  "graduationHeading": "Graduating riders",
   "intakeHeading": "Intake candidates",
   "rosterHeading": "Academy roster",
   "freeAgentsHeading": "Free youth agents",
@@ -14,6 +15,10 @@
   "signBtn": "Sign",
   "signFreeAgentBtn": "Sign to academy",
   "rejectBtn": "Reject",
+  "promoteBtn": "Promote",
+  "sellBtn": "Sell",
+  "releaseBtn": "Release",
+  "graduationDeadline": "{days}d to decide",
   "loading": "...",
   "fullTooltip": "Academy is full (8/8). Release a rider first.",
   "fullNote": "Academy is full. Sign only after a spot opens.",
@@ -27,6 +32,7 @@
     "notOffered": "This rider has not been offered a place.",
     "notFreeAgent": "This rider is no longer a free agent.",
     "notAcademyAge": "This rider is outside the academy age range (16-21).",
+    "squadFull": "Senior squad is full. Free a spot to promote, or sell or release instead.",
     "generic": "Something went wrong. Please try again."
   }
 }

@@ -28,9 +28,15 @@ function formatSalary(salary) {
   return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(salary);
 }
 
+function daysUntil(deadline) {
+  if (!deadline) return null;
+  const ms = new Date(deadline).getTime() - Date.now();
+  return Math.max(0, Math.ceil(ms / 86_400_000));
+}
+
 export default function AcademyPage() {
   const { t } = useTranslation("academy");
-  const { enabled, slots, roster, intake, freeAgents, loading, signCandidate, rejectCandidate, signFreeAgent } = useAcademy();
+  const { enabled, slots, roster, intake, freeAgents, graduations, loading, signCandidate, rejectCandidate, signFreeAgent, resolveGraduate } = useAcademy();
 
   // Per-kandidat in-flight state + fejlbeskeder.
   const [actionState, setActionState] = useState({}); // { [riderId]: "signing"|"rejecting"|null }
@@ -59,6 +65,19 @@ export default function AcademyPage() {
     const result = await rejectCandidate(riderId);
     if (!result.ok) {
       setActionErrors(prev => ({ ...prev, [riderId]: t("error.generic") }));
+    }
+    setActionState(prev => ({ ...prev, [riderId]: null }));
+  }
+
+  async function handleGraduate(riderId, action) {
+    setActionState(prev => ({ ...prev, [riderId]: action }));
+    setActionErrors(prev => ({ ...prev, [riderId]: null }));
+    const result = await resolveGraduate(riderId, action);
+    if (!result.ok) {
+      const msg = result.error === "squad_cap_violation"
+        ? t("error.squadFull")
+        : t("error.generic");
+      setActionErrors(prev => ({ ...prev, [riderId]: msg }));
     }
     setActionState(prev => ({ ...prev, [riderId]: null }));
   }
@@ -110,6 +129,68 @@ export default function AcademyPage() {
           {t("slots", { used: slots.used, max: slots.max })}
         </span>
       </div>
+
+      {/* GRADUERINGS-sektion (#932) — akademiryttere der har passeret 21 og skal
+          promoveres/sælges/slippes inden override-vinduets udløb. Vises kun når der
+          er pending graduates (call-to-action, ikke permanent tom-tilstand). */}
+      {graduations.length > 0 && (
+        <section>
+          <h2 className="text-sm font-semibold text-cz-3 uppercase tracking-wide mb-3">{t("graduationHeading")}</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {graduations.map((g) => {
+              const busy = actionState[g.riderId] != null;
+              const err = actionErrors[g.riderId];
+              const days = daysUntil(g.deadline);
+              return (
+                <div key={g.riderId} className="bg-cz-card border border-cz-border rounded-cz p-4 flex flex-col gap-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <p className="font-semibold text-cz-1 text-sm leading-snug">{g.name}</p>
+                      {g.age != null && (
+                        <span className="text-xs text-cz-3">{t("ageLabel", { age: g.age })}</span>
+                      )}
+                    </div>
+                    {days != null && (
+                      <span className="flex-shrink-0 text-[10px] px-2 py-0.5 rounded-full bg-cz-warning/10 text-cz-warning border border-cz-warning/30 font-medium">
+                        {t("graduationDeadline", { days })}
+                      </span>
+                    )}
+                  </div>
+
+                  {err && <p className="text-xs text-cz-danger">{err}</p>}
+
+                  <div className="flex gap-2 mt-auto pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleGraduate(g.riderId, "promote")}
+                      disabled={busy}
+                      className="flex-1 px-2.5 py-1.5 rounded-lg bg-cz-accent text-white text-xs font-semibold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+                    >
+                      {actionState[g.riderId] === "promote" ? t("loading") : t("promoteBtn")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleGraduate(g.riderId, "sell")}
+                      disabled={busy}
+                      className="flex-1 px-2.5 py-1.5 rounded-lg border border-cz-border text-cz-2 text-xs font-medium hover:bg-cz-subtle disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {actionState[g.riderId] === "sell" ? t("loading") : t("sellBtn")}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleGraduate(g.riderId, "release")}
+                      disabled={busy}
+                      className="flex-1 px-2.5 py-1.5 rounded-lg border border-cz-border text-cz-3 text-xs font-medium hover:bg-cz-subtle hover:text-cz-danger disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {actionState[g.riderId] === "release" ? t("loading") : t("releaseBtn")}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {/* INTAKE-sektion */}
       <section>
