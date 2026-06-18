@@ -456,6 +456,9 @@ async function finalizeAuctionRecord({
     // fordi den generiske pending-flush ved vindue-åbning kun flytter team_id og
     // IKKE rører kontraktfelterne.
     const winnerContractPatch = contractOnAcquirePatch(auction.rider, activeSeasonNumber);
+    // #932: en graduate-salgs-auktion (akademirytter solgt af sit eget hold) skal
+    // lande hos vinderen som SENIOR — ikke i vinderens akademi. Flip is_academy=false.
+    const graduatePatch = auction.rider?.is_academy ? { is_academy: false } : {};
     await expectMutation(
       supabase
         .from("riders")
@@ -466,10 +469,12 @@ async function finalizeAuctionRecord({
                 pending_team_id: null,
                 acquired_at: actualEnd,
                 ...winnerContractPatch,
+                ...graduatePatch,
               }
             : {
                 pending_team_id: effectiveBidderId,
                 ...winnerContractPatch,
+                ...graduatePatch,
               }
         )
         .eq("id", auction.rider.id)
