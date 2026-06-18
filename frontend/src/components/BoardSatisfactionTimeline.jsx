@@ -8,9 +8,33 @@ export default function BoardSatisfactionTimeline({ events = [] }) {
   if (!events.length) return null;
   const rows = [...events].sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""));
 
+  // Sparkline: den løbende tilfredshed (satisfaction_after) ældst → nyest, så
+  // bevægelsen ses som en sammenhængende kurve (#1451 "glat bevægelse").
+  const sparkValues = [...rows].reverse().map((e) => e.satisfaction_after ?? 50);
+  let sparkPoints = null;
+  if (sparkValues.length >= 2) {
+    const min = Math.min(...sparkValues);
+    const max = Math.max(...sparkValues);
+    const span = Math.max(1, max - min);
+    sparkPoints = sparkValues
+      .map((v, i) => {
+        const x = (i / (sparkValues.length - 1)) * 100;
+        const y = 20 - ((v - min) / span) * 16;
+        return `${x.toFixed(1)},${y.toFixed(1)}`;
+      })
+      .join(" ");
+  }
+
   return (
     <div className="mt-4">
       <p className="text-cz-3 text-xs uppercase tracking-wider mb-2">{t("satisfactionTimeline.heading")}</p>
+      {sparkPoints && (
+        <svg viewBox="0 0 100 22" preserveAspectRatio="none" aria-hidden="true"
+          data-testid="board-satisfaction-sparkline" className="w-full h-6 text-cz-2 mb-3">
+          <polyline points={sparkPoints} fill="none" stroke="currentColor"
+            strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+        </svg>
+      )}
       <div className="divide-y divide-cz-border">
         {rows.map((e) => {
           const delta = e.satisfaction_delta ?? 0;
