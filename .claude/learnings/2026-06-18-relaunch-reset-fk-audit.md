@@ -39,10 +39,17 @@ Destruktionen var jo ønsket. Så i stedet for restore → **fix forlæns**:
 - **Dry-run fanger ikke FK-fejl** (den skriver ikke), så preview-grøn ≠ apply-sikker.
 
 ## Opfølgning
-- Forward-guard unit-test: mock supabase med loans+finance_transactions-linkage der ville have
-  fanget dette (udvid `betaResetService.test.js`).
-- Generaliser: et lille script/test der kører FK-audit-queryen i CI og fejler ved ny uhåndteret
-  NO ACTION-FK på en reset-target (jf. #1464 forward-guard-sporet).
+- ✅ **Forward-guard unit-test (leveret):** `betaResetService.test.js` har nu en FK-håndhævende
+  mock (NO ACTION blokerer parent-delete præcis som Postgres). Tre tests dækker resetBetaLoans/
+  resetBetaRaceCalendar/resetBetaSeasons; verificeret ved at reverte hvert fix → hver test fejler
+  med den nøjagtige FK-violation fra 18/6 (`finance_transactions_related_loan_id_fkey` m.fl.).
+- ✅ **CI FK-audit (leveret):** RPC `audit_foreign_keys()` (`database/2026-06-18-audit-foreign-keys-helper.sql`)
+  + `backend/scripts/audit-reset-fk-coverage.js` + workflow `reset-fk-audit.yml` kører FK-audit-queryen
+  mod det LIVE prod-skema og fejler ved ny NO ACTION/RESTRICT-FK mod en reset-target der ikke er i
+  `BLOCKING_FK_BASELINE` (betaResetService.js). Pure classifier i `lib/resetFkAudit.js` unit-testet.
+  Knyttet til forward-guard-sporet #1464. **Bevis for prod>statisk:** statisk parsing ville fejlagtigt
+  flage `board_profiles.tradeoff_active_until_season_id` (NO ACTION i dumps, SET NULL i prod) — live-
+  auditen adjudicerer mod prod-skemaet, præcis postmortem-læringen.
 - Straggler-oprydning: ~32 præ-eksisterende fiktive ryttere (test-data) overlevede; vurdér sletning.
 
 Refs #1103 #1105 #1471

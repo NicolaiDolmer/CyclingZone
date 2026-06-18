@@ -6,6 +6,8 @@ import {
   resetBetaAchievements,
   resetBetaBalances,
   resetBetaBoardProfiles,
+  resetBetaLoans,
+  resetBetaRaceCalendar,
   resetBetaRiderHistory,
   resetBetaRosters,
   resetBetaSeasons,
@@ -17,7 +19,12 @@ function clone(value) {
   return JSON.parse(JSON.stringify(value));
 }
 
-function createBetaResetSupabase(initialState) {
+// fkConstraints: [{ child, column, parent }] — modellerer NO ACTION/RESTRICT-FK'er.
+// Når enforcement er slået til, blokerer en DELETE på `parent` (præcis som Postgres)
+// hvis en overlevende row i `child` stadig peger på en slettet parent-row via `column`.
+// Dermed FEJLER en reset-funktion der sletter parent FØR den nuller/sletter child —
+// det er præcis FK-crash-klassen fra relaunch 18/6 (#1471).
+function createBetaResetSupabase(initialState, fkConstraints = []) {
   const state = Object.fromEntries(
     Object.entries(initialState).map(([table, rows]) => [table, clone(rows)])
   );
@@ -25,6 +32,24 @@ function createBetaResetSupabase(initialState) {
   function ensureTable(table) {
     if (!state[table]) state[table] = [];
     return state[table];
+  }
+
+  // Returnér en Postgres-lignende fejl-besked hvis et NO ACTION-FK ville blokere delete.
+  function noActionFkViolation(parent, deletedRows) {
+    if (!fkConstraints.length || !deletedRows.length) return null;
+    const deletedIds = new Set(deletedRows.map((row) => row.id));
+    for (const fk of fkConstraints) {
+      if (fk.parent !== parent) continue;
+      const childRows = state[fk.child] || [];
+      const stillReferencing = childRows.some(
+        (row) => row[fk.column] != null && deletedIds.has(row[fk.column])
+      );
+      if (stillReferencing) {
+        return `update or delete on table "${parent}" violates foreign key constraint `
+          + `"${fk.child}_${fk.column}_fkey" on table "${fk.child}"`;
+      }
+    }
+    return null;
   }
 
   function createQuery(table, action, payload = null) {
@@ -60,6 +85,10 @@ function createBetaResetSupabase(initialState) {
 
       if (action === "delete") {
         const deleted = rows.filter(matches);
+        const violation = noActionFkViolation(table, deleted);
+        if (violation) {
+          return Promise.resolve({ data: null, error: { message: violation } });
+        }
         state[table] = rows.filter((row) => !matches(row));
         return Promise.resolve({ data: clone(deleted), error: null });
       }
@@ -356,4 +385,95 @@ test("resetBetaAchievements sletter alle manager-achievements UNDTAGEN founder_b
   assert.equal(result.manager_achievements, 1);
   assert.deepEqual(supabase.state.manager_achievements.map((row) => row.id).sort(), ["ma-founder", "ma-frozen"]);
   assert.equal(FOUNDER_BADGE_KEY, "founder_badge");
+});
+
+// --- Forward-guard: NO ACTION FK-crashes i beta-reset (#1471, relaunch 18/6) -------------
+//
+// Den oprindelige relaunch-apply crashede fordi reset slettede en parent-row (loans/races/
+// seasons) mens en finance_transactions/board_profiles/academy-row stadig pegede på den via
+// en ON DELETE NO ACTION-FK. Mock'en herunder håndhæver netop de FK'er, så enhver fremtidig
+// ændring der genindfører parent-delete-FØR-child-håndtering fejler her i stedet for midt i
+// en uigenkaldelig prod-apply. Sættet spejler de FK'er FK-auditen fandt 18/6.
+const RESET_NO_ACTION_FKS = [
+  { child: "finance_transactions", column: "related_loan_id", parent: "loans" },
+  { child: "finance_transactions", column: "race_id", parent: "races" },
+  { child: "finance_transactions", column: "season_id", parent: "seasons" },
+  { child: "board_profiles", column: "season_id", parent: "seasons" },
+  { child: "board_profiles", column: "season_start_anchor_season_id", parent: "seasons" },
+  { child: "board_plan_snapshots", column: "season_id", parent: "seasons" },
+  { child: "academy_intake", column: "season_id", parent: "seasons" },
+  { child: "academy_graduation", column: "season_id", parent: "seasons" },
+];
+
+// Udvider createInitialState med faktiske child→parent-referencer, så NO ACTION-FK'erne
+// faktisk er "armerede" (uden referencer ville en parent-delete aldrig blokere).
+function createLinkedState() {
+  const state = createInitialState();
+  state.loans = [
+    { id: "loan-team1", team_id: "team-1" },
+    { id: "loan-ai", team_id: "team-ai" },
+  ];
+  state.finance_transactions = [
+    { id: "tx-1", team_id: "team-1", season_id: "season-1", race_id: "race-1", related_loan_id: "loan-team1" },
+    { id: "tx-ai", team_id: "team-ai", season_id: "season-1", race_id: "race-1", related_loan_id: "loan-ai" },
+  ];
+  state.board_profiles = [
+    { id: "board-1", team_id: "team-1", season_id: "season-1", season_start_anchor_season_id: "season-1", plan_type: "1yr" },
+  ];
+  state.board_plan_snapshots = [{ id: "snap-1", team_id: "team-1", season_id: "season-1" }];
+  state.academy_intake = [
+    { id: "intake-1", team_id: "team-1", rider_id: "rider-free", season_id: "season-1", status: "offered" },
+  ];
+  // Latent 18/6: 0 rækker i prod nu, men FK'en er der — én row her armerer guarden.
+  state.academy_graduation = [{ id: "grad-1", team_id: "team-1", rider_id: "rider-free", season_id: "season-1" }];
+  return state;
+}
+
+test("resetBetaLoans nuller finance_transactions.related_loan_id FØR loans slettes (NO ACTION FK, #1471)", async () => {
+  const supabase = createBetaResetSupabase(createLinkedState(), RESET_NO_ACTION_FKS);
+
+  // Må IKKE kaste: en delete-før-null ville udløse FK-violation i mock'en (som i prod 18/6).
+  const result = await resetBetaLoans(supabase);
+
+  assert.equal(result.loans, 1, "kun manager-loan slettes (AI-loan urørt)");
+  assert.deepEqual(supabase.state.loans.map((row) => row.id), ["loan-ai"]);
+  // Manager-rytterens fin_tx skal være afkoblet fra den slettede loan.
+  const tx1 = supabase.state.finance_transactions.find((row) => row.id === "tx-1");
+  assert.equal(tx1.related_loan_id, null, "related_loan_id nullet før loan-delete");
+});
+
+test("resetBetaRaceCalendar nuller finance_transactions.race_id FØR races slettes (NO ACTION FK, #1471)", async () => {
+  const supabase = createBetaResetSupabase(createLinkedState(), RESET_NO_ACTION_FKS);
+
+  const result = await resetBetaRaceCalendar(supabase);
+
+  assert.equal(result.races, 1);
+  assert.deepEqual(supabase.state.races, []);
+  // ALLE fin_tx (også AI/bank) skal være afkoblet fra races før delete.
+  for (const tx of supabase.state.finance_transactions) {
+    assert.equal(tx.race_id, null, `tx ${tx.id} har stadig race_id sat`);
+  }
+});
+
+test("resetBetaSeasons håndterer ALLE NO ACTION season-FK'er (board-anchor + academy_graduation) før delete (#1471)", async () => {
+  const supabase = createBetaResetSupabase(createLinkedState(), RESET_NO_ACTION_FKS);
+  // Preconditions: alle fire latente FK-stier er armerede.
+  assert.equal(supabase.state.academy_graduation.length, 1, "precondition: graduation-row findes");
+  assert.equal(supabase.state.board_profiles[0].season_start_anchor_season_id, "season-1");
+
+  const result = await resetBetaSeasons(supabase);
+
+  assert.equal(result.seasons, 1);
+  assert.deepEqual(supabase.state.seasons, [], "sæsoner slettet uden FK-crash");
+  // board_profiles.season_id + anchor nullet (board_profiles selv bevares til baseline-reset).
+  assert.equal(supabase.state.board_profiles[0].season_id, null);
+  assert.equal(supabase.state.board_profiles[0].season_start_anchor_season_id, null);
+  // finance_transactions.season_id nullet for alle hold.
+  for (const tx of supabase.state.finance_transactions) {
+    assert.equal(tx.season_id, null, `tx ${tx.id} har stadig season_id sat`);
+  }
+  // academy_graduation + academy_intake + board_plan_snapshots slettet før season-delete.
+  assert.deepEqual(supabase.state.academy_graduation, [], "academy_graduation ryddet før season-delete");
+  assert.deepEqual(supabase.state.academy_intake, [], "academy_intake ryddet før season-delete");
+  assert.deepEqual(supabase.state.board_plan_snapshots, [], "board_plan_snapshots ryddet før season-delete");
 });

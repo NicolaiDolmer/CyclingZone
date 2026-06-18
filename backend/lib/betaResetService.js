@@ -5,6 +5,56 @@ import { FOUNDER_BADGE_KEY } from "./founderBadge.js";
 export const DEFAULT_BETA_BALANCE = 800000;
 export const DEFAULT_BETA_DIVISION = 3;
 
+// --- FK-forward-guard-manifest (#1471 relaunch 18/6 · #1464 forward-guard-spor) ----------
+//
+// RESET_DELETE_TARGETS: de tabeller hvor beta-reset SLETTER rækker (ikke kun update'er).
+// En FK med ON DELETE NO ACTION/RESTRICT der peger på en af disse blokerer reset-deleten
+// medmindre child-referencen nulles/slettes FØRST — det var præcis crash-klassen 18/6.
+// scripts/audit-reset-fk-coverage.js krydstjekker det live prod-skema mod denne liste +
+// BLOCKING_FK_BASELINE og fejler CI hvis en NY uhåndteret blocking-FK dukker op.
+// Hold denne liste i sync med delete()-kaldene nedenfor.
+export const RESET_DELETE_TARGETS = Object.freeze([
+  // rytter-/markeds-historik (resetBetaRiderHistory / resetBetaTransferArchive)
+  "auction_bids", "auctions", "transfer_offers", "transfer_listings", "swap_offers", "loan_agreements",
+  // økonomi (resetBetaLoans / resetBetaBalances)
+  "loans", "finance_transactions",
+  // notifikationer (resetBetaNotifications)
+  "notifications",
+  // løbskalender + children (resetBetaRaceCalendar)
+  "pending_race_results", "race_results", "season_standings", "races",
+  // sæsoner + children (resetBetaSeasons)
+  "board_plan_snapshots", "academy_intake", "academy_graduation", "seasons",
+  // bestyrelse (resetBetaBoardProfiles)
+  "board_request_log", "team_board_members", "board_consequences", "board_profiles",
+  // manager-progression (resetBetaManagerProgress / resetBetaAchievements)
+  "xp_log", "manager_achievements",
+]);
+
+// BLOCKING_FK_BASELINE: hver NO ACTION/RESTRICT-FK der peger på en RESET_DELETE_TARGET og
+// som reset BEVIDST neutraliserer før parent-delete. `strategy` dokumenterer hvordan:
+//   - "null-before-delete": child-kolonnen nulles før parenten slettes
+//   - "delete-child-first": child-rækkerne slettes før parenten (child er selv en target)
+// Markér en entry `unhandled: true` hvis FK'en kendes men IKKE er håndteret (kendt gap →
+// auditen holder den rød). Format matcher RPC audit_foreign_keys()-rækkerne. Når auditen
+// finder en NY blocking-FK: håndtér child-referencen i den relevante resetBeta*-funktion
+// FØR parent-delete, og tilføj så en entry her (kør `npm run audit:reset-fk` mod prod for
+// den paste-klare linje). Aldrig auto-bless — registrering skal være bevidst.
+export const BLOCKING_FK_BASELINE = Object.freeze([
+  { child: "finance_transactions", column: "related_loan_id", parent: "loans", strategy: "null-before-delete", handled_by: "resetBetaLoans" },
+  { child: "finance_transactions", column: "race_id", parent: "races", strategy: "null-before-delete", handled_by: "resetBetaRaceCalendar" },
+  { child: "finance_transactions", column: "season_id", parent: "seasons", strategy: "null-before-delete", handled_by: "resetBetaSeasons" },
+  { child: "board_profiles", column: "season_id", parent: "seasons", strategy: "null-before-delete", handled_by: "resetBetaSeasons" },
+  { child: "board_profiles", column: "season_start_anchor_season_id", parent: "seasons", strategy: "null-before-delete", handled_by: "resetBetaSeasons" },
+  { child: "board_plan_snapshots", column: "season_id", parent: "seasons", strategy: "delete-child-first", handled_by: "resetBetaSeasons" },
+  { child: "academy_intake", column: "season_id", parent: "seasons", strategy: "delete-child-first", handled_by: "resetBetaSeasons" },
+  { child: "academy_graduation", column: "season_id", parent: "seasons", strategy: "delete-child-first", handled_by: "resetBetaSeasons" },
+]);
+// NB: board_profiles.tradeoff_active_until_season_id -> seasons står som NO ACTION i de
+// statiske dumps (schema.sql/supabase_setup.sql) men er SET NULL i prod (2026-05-05-board-
+// tradeoff-pivot.sql; 18/6-prod-auditen flagede den IKKE selvom den medtog tomme NO ACTION-
+// FK'er som academy_graduation). Den er derfor bevidst UDELADT — den live-audit adjudicerer
+// mod prod-skemaet. Tilføj IKKE en entry her ud fra dump-filerne.
+
 const MARKET_RESET_STATUSES = {
   auctions: ["active", "extended"],
   transfer_listings: ["open", "negotiating"],

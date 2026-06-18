@@ -1,0 +1,161 @@
+name: Reset FK audit
+
+# Forward-guard mod relaunch-reset FK-crash-klassen (#1471, relaunch 18/6 · spor #1464).
+#
+# Finder FK'er med ON DELETE NO ACTION/RESTRICT der peger på en tabel beta-reset SLETTER
+# rækker fra, og fejler hvis en ny en mangler i BLOCKING_FK_BASELINE (backend/lib/
+# betaResetService.js). Sådan en FK crasher først midt i en uigenkaldelig destruktiv
+# prod-reset — dry-run/preview fanger den ikke. Auditen kører mod det LIVE prod-skema
+# (statiske migrations driver — det var præcis fælden 18/6).
+#
+# Triggers:
+#   - PR der rører beta-reset-koden, FK-helper-RPC'en, audit-scriptet eller workflowet
+#     → blokerer merge hvis en uhåndteret blocking-FK dukker op
+#   - Ugentlig cron (mandage 05:10 UTC, lige efter RLS-auditen) → fanger Studio-drift
+#   - Manuel workflow_dispatch
+
+on:
+  pull_request:
+    paths:
+      - 'database/**'
+      - 'backend/lib/betaResetService.js'
+      - 'backend/lib/resetFkAudit.js'
+      - 'backend/scripts/audit-reset-fk-coverage.js'
+      - '.github/workflows/reset-fk-audit.yml'
+  schedule:
+    - cron: '10 5 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skip secret-backed audit for Dependabot PRs
+        if: github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]'
+        run: echo "Skipping reset-FK audit for Dependabot PR because repository secrets are unavailable to Dependabot-triggered pull_request workflows."
+
+      - name: Check out repository
+        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install backend dependencies
+        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
+        run: npm ci
+        working-directory: backend
+
+      - name: Run reset-FK audit
+        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
+        id: audit
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          SUPABASE_URL=$(printf '%s' "$SUPABASE_URL" | tr -d '[:space:]')
+          SUPABASE_SERVICE_KEY=$(printf '%s' "$SUPABASE_SERVICE_KEY" | tr -d '[:space:]')
+          export SUPABASE_URL SUPABASE_SERVICE_KEY
+          node backend/scripts/audit-reset-fk-coverage.js --json > reset-fk-audit.json
+          node backend/scripts/audit-reset-fk-coverage.js | tee reset-fk-audit.txt
+          critical=$(node -e "const d=require('./reset-fk-audit.json');console.log(d.critical_count)")
+          echo "critical=$critical" >> "$GITHUB_OUTPUT"
+
+      - name: Upload report
+        if: github.event_name != 'pull_request' || github.event.pull_request.user.login != 'dependabot[bot]'
+        uses: actions/upload-artifact@v7
+        with:
+          name: reset-fk-audit-report
+          path: |
+            reset-fk-audit.json
+            reset-fk-audit.txt
+
+      - name: Comment on PR if findings (PR runs only)
+        if: github.event_name == 'pull_request' && steps.audit.outputs.critical != '0'
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require('fs');
+            const report = fs.readFileSync('reset-fk-audit.txt', 'utf8');
+            const body = [
+              '## ❌ Reset-FK-audit fandt uhåndterede blocking-FK(er)',
+              '',
+              'En FK med `ON DELETE NO ACTION/RESTRICT` peger på en tabel `betaReset` sletter rækker fra,',
+              'uden at child-referencen nulles/slettes først. Den crasher først **midt i en uigenkaldelig**',
+              '**prod-reset** (dry-run fanger den ikke — som relaunch 18/6, [#1471](https://github.com/${{ github.repository }}/issues/1471)).',
+              '',
+              '```',
+              report.trim(),
+              '```',
+              '',
+              'Fix: null/slet child-referencen før parent-delete i `backend/lib/betaResetService.js`, og registrér',
+              'hver FK i `BLOCKING_FK_BASELINE`. Forward-guard-spor: [#1464](https://github.com/${{ github.repository }}/issues/1464).',
+            ].join('\n');
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body,
+            });
+
+      - name: Open or update tracking issue (scheduled runs only)
+        if: github.event_name == 'schedule' && steps.audit.outputs.critical != '0'
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require('fs');
+            const data = JSON.parse(fs.readFileSync('reset-fk-audit.json', 'utf8'));
+            const report = fs.readFileSync('reset-fk-audit.txt', 'utf8');
+            const title = `[bot] Reset-FK-audit fandt ${data.critical_count} uhåndteret blocking-FK(er)`;
+            const body = [
+              '## Reset-FK-audit drift detected',
+              '',
+              `Ugentligt cron-run fandt **${data.critical_count}** FK(er) med ON DELETE NO ACTION/RESTRICT mod en beta-reset-target der ikke er registreret som håndteret.`,
+              '',
+              'Mest sandsynligt: en ny migration (eller Studio-ændring) tilføjede en FK til en reset-target uden at `betaResetService.js` nuller/sletter child-referencen før parent-delete.',
+              '',
+              '```',
+              report.trim(),
+              '```',
+              '',
+              'Run-link: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}',
+            ].join('\n');
+            const { data: existing } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'reset-fk-audit',
+            });
+            if (existing.length > 0) {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: existing[0].number,
+                title,
+                body,
+              });
+            } else {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title,
+                body,
+                labels: ['reset-fk-audit', 'priority:high', 'type:bug', 'claude:todo'],
+              });
+            }
+
+      - name: Fail if critical findings
+        if: steps.audit.outputs.critical != '0'
+        run: |
+          echo "::error::Reset-FK audit found ${{ steps.audit.outputs.critical }} unhandled blocking FK(s). See report artifact."
+          exit 1
