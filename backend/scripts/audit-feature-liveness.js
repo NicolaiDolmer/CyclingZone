@@ -97,6 +97,14 @@ const WHITELIST_EMPTY_TABLES = new Set([
   "board_consequences",
   "board_request_log",
   "team_board_members",
+  // Løbende bestyrelses-tilfredshed event-log (#1451/#1187): boardWeekendFinalization.js
+  // upserter én row pr. (board, race) ved board-weekend-finalization — wired ind i begge
+  // finalization-stier (raceRunner.simulateRace + pcmResultsImport.importPcmResults), "én
+  // opdatering pr. finaliserings-event (typisk = én løbsweekend)". Samme milestone-gating
+  // som board-tabellerne ovenfor: bevidst tom indtil første weekend-finalization med et race
+  // fylder den (race-motoren er gated bag RACE_ENGINE_V2_ENABLED indtil 20/6-relaunch, #1103).
+  // Skriv-path verificeret i boardWeekendFinalization.js. Fjern denne entry når tabellen har rows.
+  "board_satisfaction_events",
   // Besøgs-log (#963) — bevidst tom ved oprettelse. Fyldes når PR #992-koden er
   // deployet og rigtige brugere åbner rytter-profiler; hele pointen er at BEGYNDE
   // at opsamle nu, så popularitet (#957) har historik. Skriv-path verificeret i
