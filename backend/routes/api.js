@@ -1144,6 +1144,44 @@ router.get("/training/me", requireAuth, async (req, res) => {
   }
 });
 
+// POST /api/training/run-today — dagens ét-kliks-træning (#1305). Manager = +25 % bonus.
+// Idempotent: samme dag → 409 already_trained_today. Flag OFF → 409 daily_training_disabled.
+// NB (#1479): SKAL stå FØR POST /training/:riderId — ellers matcher Express den
+// statiske "run-today"-sti som et :riderId, kalder isValidFocus(undefined) og
+// returnerer "invalid_focus", hvilket blokerer "Træn i dag"-knappen helt.
+router.post("/training/run-today", requireAuth, marketWriteLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const isBetaTester = await isViewerBetaTester(req);
+    const enabled = await isDailyTrainingEnabled(supabase, { isBetaTester });
+    if (!enabled) return res.status(409).json({ error: "daily_training_disabled" });
+
+    const { activeSeasonId, activeSeasonNumber } = await loadTrainingState(req.team.id);
+    if (!activeSeasonId) return res.status(409).json({ error: "no_active_season" });
+
+    const result = await runTeamTrainingDay({
+      supabase,
+      teamId: req.team.id,
+      seasonId: activeSeasonId,
+      seasonNumber: activeSeasonNumber,
+      executedBy: "manager",
+    });
+
+    if (result.alreadyRan) {
+      return res.status(409).json({ error: "already_trained_today", tickDate: result.tickDate });
+    }
+
+    // #1364: opdatér base_value for holdets ryttere hvis træningen hævede en evne.
+    try { await refreshChangedRiderValues(supabase, { teamId: req.team.id }); }
+    catch (err) { captureException(err); } // feedback-only — må ikke vælte træningen
+
+    res.json({ ok: true, tickDate: result.tickDate, report: result.report });
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /api/training/:riderId — sæt/ændr en træningsfokus på en EGEN rytter.
 // Body: { focus, intensity }. Ny plan forbruger ét slot; om-målretning af en
 // eksisterende plan koster ikke et nyt slot (upsert på (team,rider,season)).
@@ -1199,41 +1237,6 @@ router.delete("/training/:riderId", requireAuth, marketWriteLimiter, async (req,
     const { state: next } = await loadTrainingState(req.team.id);
     res.json({ ok: true, riderId, plan: null, slots: next.slots });
   } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// POST /api/training/run-today — dagens ét-kliks-træning (#1305). Manager = +25 % bonus.
-// Idempotent: samme dag → 409 already_trained_today. Flag OFF → 409 daily_training_disabled.
-router.post("/training/run-today", requireAuth, marketWriteLimiter, async (req, res) => {
-  if (!req.team) return res.status(400).json({ error: "No team found" });
-  try {
-    const isBetaTester = await isViewerBetaTester(req);
-    const enabled = await isDailyTrainingEnabled(supabase, { isBetaTester });
-    if (!enabled) return res.status(409).json({ error: "daily_training_disabled" });
-
-    const { activeSeasonId, activeSeasonNumber } = await loadTrainingState(req.team.id);
-    if (!activeSeasonId) return res.status(409).json({ error: "no_active_season" });
-
-    const result = await runTeamTrainingDay({
-      supabase,
-      teamId: req.team.id,
-      seasonId: activeSeasonId,
-      seasonNumber: activeSeasonNumber,
-      executedBy: "manager",
-    });
-
-    if (result.alreadyRan) {
-      return res.status(409).json({ error: "already_trained_today", tickDate: result.tickDate });
-    }
-
-    // #1364: opdatér base_value for holdets ryttere hvis træningen hævede en evne.
-    try { await refreshChangedRiderValues(supabase, { teamId: req.team.id }); }
-    catch (err) { captureException(err); } // feedback-only — må ikke vælte træningen
-
-    res.json({ ok: true, tickDate: result.tickDate, report: result.report });
-  } catch (err) {
-    captureException(err);
     res.status(500).json({ error: err.message });
   }
 });

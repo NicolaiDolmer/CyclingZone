@@ -5,7 +5,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { assertTeamNotTransferFrozen } from "./api.js";
+import router, { assertTeamNotTransferFrozen } from "./api.js";
 
 // Minimal fake res der opfanger status + json
 function fakeRes() {
@@ -63,4 +63,27 @@ test("assertTeamNotTransferFrozen — returnerer true og svarer IKKE når req.te
   assert.equal(result, true, "null team = ikke frosset (eksisterende guard håndterer det)");
   assert.equal(res.code, null);
   assert.equal(res.body, null);
+});
+
+// ── Route-rækkefølge: statiske stier før parametriserede (#1479) ──────────────
+// Express matcher routes i registrerings-rækkefølge. Hvis POST /training/:riderId
+// står FØR POST /training/run-today, fanger :riderId-routen "run-today" som et
+// rytter-id, kalder isValidFocus(undefined) → "invalid_focus" og blokerer "Træn
+// i dag"-knappen helt. Denne test låser rækkefølgen fast.
+function postRouteIndex(path) {
+  return router.stack.findIndex(
+    (layer) => layer.route?.path === path && layer.route?.methods?.post,
+  );
+}
+
+test("POST /training/run-today registreres FØR POST /training/:riderId (#1479)", () => {
+  const runTodayIdx = postRouteIndex("/training/run-today");
+  const riderIdIdx = postRouteIndex("/training/:riderId");
+
+  assert.notEqual(runTodayIdx, -1, "run-today POST-route skal være registreret");
+  assert.notEqual(riderIdIdx, -1, ":riderId POST-route skal være registreret");
+  assert.ok(
+    runTodayIdx < riderIdIdx,
+    `run-today (idx ${runTodayIdx}) skal stå før :riderId (idx ${riderIdIdx}) — ellers blokeres træning af invalid_focus`,
+  );
 });
