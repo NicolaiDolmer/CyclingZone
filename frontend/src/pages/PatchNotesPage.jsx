@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.60",
+    date: "2026-06-18",
+    label: "Beta",
+    changes: [
+      {
+        category: "New · Season 1 relaunch",
+        items: [
+          "EN · Cycling Zone has relaunched onto its own foundation with a fresh, independent Season 1. The previous rider field, based on real-world data, has retired, and the world is now a brand-new set of fictional riders with their own abilities and values. Results are simulated by our own race engine instead of the old system, so rider abilities actually decide the race. Every manager starts over equally with a fresh 8-rider squad and a starting budget of 800,000 CZ$; balances, transfers and any purchases made for a future season do not carry over. New systems are live: daily training (your riders develop over the season), a youth academy (a candidate intake on day one), and an own dynamic value model for the transfer market. Every manager who played before the reset keeps a permanent Founder badge. Refs #1105 #1103",
+          "DA · Cycling Zone er relanceret på sit eget fundament med en frisk, uafhængig sæson 1. Det tidligere rytterfelt, baseret på data fra den virkelige verden, er pensioneret, og feltet er nu et helt nyt sæt fiktive ryttere med egne evner og værdier. Resultater simuleres af vores egen race-motor i stedet for det gamle system, så rytternes evner faktisk afgør løbet. Hver manager starter forfra på lige fod med et frisk 8-rytters hold og en startkapital på 800.000 CZ$; saldi, transfers og køb lavet til en fremtidig sæson føres ikke med over. Nye systemer er live: daglig træning (dine ryttere udvikler sig hen over sæsonen), et ungdomsakademi (et kandidat-kuld på dag ét) og en egen dynamisk værdimodel for transfermarkedet. Hver manager der spillede før resettet beholder et permanent Founder-badge. Refs #1105 #1103",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.59",
     date: "2026-06-18",
     label: "Beta",
