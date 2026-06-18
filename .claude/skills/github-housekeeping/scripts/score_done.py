@@ -7,7 +7,9 @@ Usage:
 Reads $TEMP/audit-done.json (produced by `gh issue list --state open --label "claude:done" --json number,title,labels,comments,updatedAt`).
 
 Output (print): per-issue table with score, hours since last comment, author, flags, evidence.
-Output (--json): list of dicts incl. score + tier + auto_close_candidate + needs_xverify + blockers + reason.
+Output (--json): list of dicts incl. score + tier + auto_close_candidate + needs_xverify + blockers + reason + keep_done_gated.
+  keep_done_gated=True ⇒ issue har en aktiv launch-slice-label (ACTIVE_LAUNCH_SLICE_LABELS): behold claude:done
+  (sporer fremtidig flag-flip/relaunch), luk IKKE — adskiller "behold-gated" fra close-eligible backend-fixes.
 
 **Tier-klassifikation er FORELØBIG.** Scriptet ser kun issue-tekst + labels — det ved IKKE om en PR er
 merged eller om en commit er på main. Et issue markeret `auto_close_candidate: true` har bestået alle
@@ -78,6 +80,13 @@ BACKEND_LABELS = ('cat:infra','cat:ai-ops','type:docs','type:ci','backend-only',
 # epic:* håndteres separat via prefix-check. auto-close-veto = issue reopenet efter tidligere auto-close.
 FORBIDDEN_LABELS = ('needs-user-action', 'manual:user', 'needs-decision', 'manual-review', 'auto-close-veto')
 
+# Aktive launch-/relaunch-slice-labels: et claude:done-issue med en af disse er typisk
+# "dev-done men flag-gated" og sporer en fremtidig dateret begivenhed (relaunch). Det skal
+# BEHOLDES claude:done (ikke hard-closes) til flag-flippet, jf. lektion 2026-06-13/2026-06-18.
+# keep_done_gated adskiller dem fra close-eligible backend-fixes i output, så manuel triage
+# ikke skal re-udlede gated-listen fra forrige audit hver gang. Tune ved næste launch-cyklus.
+ACTIVE_LAUNCH_SLICE_LABELS = ('slice:tdf-launch',)
+
 STRONG_MIN_HOURS = 24
 
 
@@ -136,6 +145,7 @@ def score_issue(issue):
     is_user_feature = 'cat:user-feature' in labels
     is_nua = 'needs-user-action' in labels
     is_epic = any(l.startswith('epic:') for l in labels)
+    is_gated = any(l in labels for l in ACTIVE_LAUNCH_SLICE_LABELS)
     forbidden = next((l for l in labels if l in FORBIDDEN_LABELS), None) or ('epic' if is_epic else None)
 
     if not comments:
@@ -146,6 +156,7 @@ def score_issue(issue):
             'labels': labels, 'score': 'NO_COMMENTS', 'hours': None,
             'author': None, 'evidence': '(0 comments)',
             'backend': is_backend, 'user_feature': is_user_feature, 'nua': is_nua,
+            'keep_done_gated': is_gated,
             'neg': None, 'work_pending': False,
             'tier': tier, 'auto_close_candidate': cand, 'needs_xverify': xverify,
             'blockers': blockers, 'reason': reason,
@@ -176,6 +187,7 @@ def score_issue(issue):
         'labels': labels, 'score': score, 'hours': hours,
         'author': author, 'evidence': body[:200].replace('\n',' '),
         'backend': is_backend, 'user_feature': is_user_feature, 'nua': is_nua,
+        'keep_done_gated': is_gated,
         'neg': neg_match, 'work_pending': has_work_pending,
         'tier': tier, 'auto_close_candidate': cand, 'needs_xverify': xverify,
         'blockers': blockers, 'reason': reason,
@@ -194,6 +206,7 @@ else:
         if r['user_feature']: flags.append('user')
         if r['backend']: flags.append('backend')
         if r['nua']: flags.append('NUA')
+        if r.get('keep_done_gated'): flags.append('GATED-KEEP')
         if r['neg']: flags.append(f"NEG:{r['neg'][:20]}")
         if r['work_pending']: flags.append('PEND')
         author = r['author'] or 'NONE'
