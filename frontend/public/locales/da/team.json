@@ -32,12 +32,13 @@
       "value": "Værdi",
       "salary": "Løn",
       "potential": "Potentiale",
+      "badges": "Status",
+      "type": "Type",
+      "contract": "Kontrakt",
+      "contractValue": "Til S{season}",
       "action": "Handling"
     },
     "tags": {
-      "u25": "U25",
-      "incoming": "Indgående",
-      "outgoing": "Udgående",
       "loanedIn": "På leje",
       "loanedOut": "Udlejet"
     },

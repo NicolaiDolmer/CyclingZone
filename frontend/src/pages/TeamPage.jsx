@@ -5,6 +5,9 @@ import { useClientRiderFilters } from "../lib/useRiderFilters";
 import { supabase } from "../lib/supabase";
 import { statStyle } from "../lib/statColor";
 import NationCell from "../components/rider/NationCell";
+import RiderBadges from "../components/rider/RiderBadges";
+import RiderTypeBadge from "../components/rider/RiderTypeBadge";
+import { ageBadgeKey } from "../lib/riderAge";
 import { getRiderMarketValue } from "../lib/marketValues";
 import { formatNumber } from "../lib/intl";
 import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
@@ -287,6 +290,13 @@ function SquadTab({ riders, scouting, onSelectRider, windowOpen }) {
                     className="px-3 py-3 text-right font-medium">{t("squad.headers.salary")}</SortTh>
                   <SortTh sortKey="_scoutMid" sort={sort} sortDir={sortDir} onSort={handleSort}
                     className="px-3 py-3 text-left font-medium">{t("squad.headers.potential")}</SortTh>
+                  {/* #1482: status/badges, ryttertype og kontraktudløb som egne
+                      kolonner (Discord-feedback) — U25/ind/ud flyttet ud af navne-cellen. */}
+                  <th className="px-3 py-3 text-left text-cz-3 font-medium">{t("squad.headers.badges")}</th>
+                  <SortTh sortKey="primary_type" sort={sort} sortDir={sortDir} onSort={handleSort}
+                    className="px-3 py-3 text-left font-medium">{t("squad.headers.type")}</SortTh>
+                  <SortTh sortKey="contract_end_season" sort={sort} sortDir={sortDir} onSort={handleSort}
+                    className="px-3 py-3 text-left font-medium">{t("squad.headers.contract")}</SortTh>
                   {STATS.map((key, i) => (
                     <SortTh key={key} sortKey={key} sort={sort} sortDir={sortDir} onSort={handleSort}
                       title={tRider(`skills.${key.replace("stat_", "")}.long`)}
@@ -316,9 +326,8 @@ function SquadTab({ riders, scouting, onSelectRider, windowOpen }) {
                           className="text-cz-1 text-sm font-medium hover:text-cz-accent-t transition-colors">
                           {r.firstname} {r.lastname}
                         </RiderLink>
-                        {r.is_u25       && <span className="text-[9px] uppercase bg-cz-info-bg0/20 text-cz-info px-1.5 py-0.5 rounded">{t("squad.tags.u25")}</span>}
-                        {r._isIncoming  && <span className="text-[9px] uppercase bg-cz-success-bg text-cz-success px-1.5 py-0.5 rounded">{t("squad.tags.incoming")}</span>}
-                        {r._isOutgoing  && <span className="text-[9px] uppercase bg-cz-danger-bg text-cz-danger px-1.5 py-0.5 rounded">{t("squad.tags.outgoing")}</span>}
+                        {/* #1482: U25/ind/ud-pills flyttet til Status-kolonnen.
+                            Loan-pills bliver i navne-cellen (de bærer team/sæson-tooltip). */}
                         {r._isLoanedIn  && (
                           <span className="text-[9px] uppercase bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded"
                             title={t("squad.tooltips.loanedFrom", { team: r._loanInInfo?.from_team?.name, start: r._loanInInfo?.start_season, end: r._loanInInfo?.end_season })}>
@@ -339,6 +348,22 @@ function SquadTab({ riders, scouting, onSelectRider, windowOpen }) {
                     <td className="px-3 py-2.5 text-right text-cz-2 font-mono text-xs">{r.salary || 0}</td>
                     <td className="px-3 py-2.5">
                       <ScoutablePotentiale rider={r} scouting={scouting} />
+                    </td>
+                    {/* #1482: Status — alder + ind-/udgående som skanbare badges. */}
+                    <td className="px-3 py-2.5">
+                      <div className="flex flex-wrap items-center gap-1">
+                        <RiderBadges badges={[ageBadgeKey(r), r._isIncoming && "incoming", r._isOutgoing && "outgoing"]} />
+                      </div>
+                    </td>
+                    {/* #1482: Ryttertype i egen kolonne (returnerer null uden type-data). */}
+                    <td className="px-3 py-2.5">
+                      <RiderTypeBadge primaryType={r.primary_type} secondaryType={r.secondary_type} />
+                    </td>
+                    {/* #1482: Kontraktudløb i egen kolonne (sæson-number, "—" hvis ukendt). */}
+                    <td className="px-3 py-2.5 text-cz-2 text-xs whitespace-nowrap">
+                      {r.contract_end_season != null
+                        ? t("squad.headers.contractValue", { season: r.contract_end_season })
+                        : "—"}
                     </td>
                     {STATS.map(key => (
                       <td key={key} className="px-1.5 py-2.5 text-center">
@@ -403,11 +428,11 @@ export function TeamPage() {
 
     const [ridersRes, pendingRes, windowRes, loansOutRes, loansInRes] = await Promise.all([
       supabase.from("riders")
-        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, ${STATS.join(", ")}`)
+        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, primary_type, secondary_type, contract_length, contract_end_season, ${STATS.join(", ")}`)
         .eq("team_id", myTeam.id)
         .order("market_value", { ascending: false }),
       supabase.from("riders")
-        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, ${STATS.join(", ")}`)
+        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, primary_type, secondary_type, contract_length, contract_end_season, ${STATS.join(", ")}`)
         .eq("pending_team_id", myTeam.id)
         .order("market_value", { ascending: false }),
       supabase.from("transfer_windows")
@@ -418,7 +443,7 @@ export function TeamPage() {
         .eq("from_team_id", myTeam.id).eq("status", "active"),
       // Riders we're borrowing
       supabase.from("loan_agreements")
-        .select(`rider:rider_id(id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, nationality_code, ${STATS.join(", ")}), from_team:from_team_id(name), start_season, end_season, buy_option_price`)
+        .select(`rider:rider_id(id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, nationality_code, primary_type, secondary_type, contract_length, contract_end_season, ${STATS.join(", ")}), from_team:from_team_id(name), start_season, end_season, buy_option_price`)
         .eq("to_team_id", myTeam.id).eq("status", "active"),
     ]);
 
