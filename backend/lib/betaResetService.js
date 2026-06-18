@@ -256,6 +256,10 @@ export async function resetBetaRaceCalendar(supabase) {
   ]);
   [pending, results, standings].forEach(ensureOk);
 
+  // finance_transactions.race_id: NO ACTION FK til races — null for alle hold (også
+  // AI/bank), ellers blokerer FK-constraint races-delete (FK-audit, relaunch 18/6).
+  ensureOk(await supabase.from("finance_transactions").update({ race_id: null }).not("race_id", "is", null));
+
   const races = ensureOk(await supabase.from("races").delete().not("id", "is", null).select("id"));
 
   // prize_earnings_bonus er koblet til løbsresultater — nulstil for alle ryttere
@@ -334,6 +338,19 @@ export async function resetBetaLoans(supabase) {
   const teamIds = managerTeams.map((team) => team.id);
   if (teamIds.length === 0) return { loans: 0 };
 
+  // finance_transactions.related_loan_id: NO ACTION FK til loans — null referencerne
+  // for de loans der slettes FØR delete, ellers blokerer FK-constraint loan-delete
+  // (fundet i relaunch 18/6 + FK-audit). Beta-teams fin_tx slettes alligevel i
+  // resetBetaBalances(clearTransactions), men FK blokerer på delete-tidspunktet her.
+  const loanRows = ensureOk(await supabase.from("loans").select("id").in("team_id", teamIds));
+  const loanIds = (loanRows.data || []).map((row) => row.id);
+  if (loanIds.length > 0) {
+    ensureOk(await supabase
+      .from("finance_transactions")
+      .update({ related_loan_id: null })
+      .in("related_loan_id", loanIds));
+  }
+
   const loans = ensureOk(await supabase
     .from("loans")
     .delete()
@@ -362,12 +379,16 @@ export async function resetBetaSeasons(supabase) {
   assertSupabase(supabase);
   // board_plan_snapshots: NOT NULL FK til seasons — skal slettes før sæsoner
   ensureOk(await supabase.from("board_plan_snapshots").delete().not("id", "is", null));
-  // academy_intake: NOT NULL FK til seasons (#1308, ingen ON DELETE) — kuld hører til den
-  // sæson der nu wipes og kan ikke nulles, så slet dem før sæson-delete. Uden dette fejler
-  // enhver beta-reset efter academy-intake har kørt (fundet i relaunch-rehearsal 18/6).
+  // academy_intake + academy_graduation: NO ACTION FK til seasons (#1308/#932) — kuld
+  // og gradueringer hører til den sæson der nu wipes og kan ikke nulles, så slet dem før
+  // sæson-delete. Uden dette fejler enhver beta-reset efter academy har kørt (rehearsal
+  // 18/6 fangede academy_intake; FK-audit 18/6 tilføjede academy_graduation).
   ensureOk(await supabase.from("academy_intake").delete().not("id", "is", null));
-  // board_profiles: nullable FK til seasons uden ON DELETE SET NULL — null det ud
+  ensureOk(await supabase.from("academy_graduation").delete().not("id", "is", null));
+  // board_profiles: TO nullable NO ACTION FK til seasons (season_id + season_start_anchor_
+  // season_id) — null BEGGE, ellers blokerer anchor-FK sæson-delete (FK-audit 18/6).
   ensureOk(await supabase.from("board_profiles").update({ season_id: null }).not("id", "is", null));
+  ensureOk(await supabase.from("board_profiles").update({ season_start_anchor_season_id: null }).not("season_start_anchor_season_id", "is", null));
   // finance_transactions: nullable FK til seasons med ON DELETE NO ACTION — null det ud
   // for alle hold (også AI/bank), ellers blokerer FK-constraint sæson-delete.
   ensureOk(await supabase.from("finance_transactions").update({ season_id: null }).not("season_id", "is", null));
