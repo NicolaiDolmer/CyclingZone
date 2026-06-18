@@ -58,7 +58,7 @@ scripts/discord/.candidates.md
 scripts/discord/.thread-dump.md
 scripts/discord/.thread-dumps.txt
 scripts/discord/.gh-err.txt
-scripts/discord/.new-threads.md
+scripts/discord/.new-threads*.md
 scripts/discord/.channels.md
 scripts/discord/.recent-threads.md
 scripts/discord/.channel-dump.md
