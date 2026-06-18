@@ -449,7 +449,7 @@
   },
   "satisfactionTimeline": {
     "heading": "Weekend for weekend",
-    "goals": "{{met}}/{{total}} mål nået",
+    "goals": "{met}/{total} mål nået",
     "flat": "ingen ændring",
     "unknownRace": "Løbsweekend"
   },

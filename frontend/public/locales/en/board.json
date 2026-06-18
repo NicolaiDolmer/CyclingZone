@@ -449,7 +449,7 @@
   },
   "satisfactionTimeline": {
     "heading": "Weekend by weekend",
-    "goals": "{{met}}/{{total}} goals met",
+    "goals": "{met}/{total} goals met",
     "flat": "no change",
     "unknownRace": "Race weekend"
   },
