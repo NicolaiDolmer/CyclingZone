@@ -330,6 +330,9 @@ export async function processBoardWeekendFinalization({
               }),
             }, { onConflict: "board_id,race_id" });
           if (eventError) {
+            // Bevidst console-only (ingen captureExceptionFn til Sentry): før
+            // migrationen er anvendt i prod fejler upsert'en for HVERT board ved
+            // HVER finalisering — det ville spamme Sentry. Loggen er nok til at se det.
             summary.errors += 1;
             console.error(`  ⚠️  board satisfaction event failed for ${team.name}:`, eventError.message);
           } else {

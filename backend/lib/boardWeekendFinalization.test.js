@@ -25,7 +25,7 @@ import { CHECKPOINT_KINDS } from "./boardWeekendUpdate.js";
 
 // ─── Fake supabase (select/in/eq/order/limit + update.eq) ─────────────────────
 
-function makeFakeSupabase(state) {
+function makeFakeSupabase(state, opts = {}) {
   const updates = []; // { table, payload, filters }
   function clone(value) { return JSON.parse(JSON.stringify(value)); }
   function tableRows(table) {
@@ -69,6 +69,9 @@ function makeFakeSupabase(state) {
         return Promise.resolve({ data: clone(hit), error: null });
       }
       if (action === "upsert") {
+        if (opts.errorTables?.[table]) {
+          return Promise.resolve({ data: null, error: { message: opts.errorTables[table] } });
+        }
         const payloadArr = Array.isArray(payload) ? payload : [payload];
         for (const row of payloadArr) rows.push(clone(row));
         updates.push({ table, action: "upsert", payload: clone(payload) });
@@ -503,4 +506,33 @@ test("skriver IKKE event når race mangler", async () => {
     },
   });
   assert.equal(state.board_satisfaction_events.length, 0);
+});
+
+test("event-skrive-fejl tæller i errors uden at vælte mekanikken", async () => {
+  const season = { id: "s2", number: 2, status: "active", race_days_completed: 10, race_days_total: 40 };
+  const state = {
+    teams: [{ id: "t1", user_id: "u1", name: "Alpha", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false }],
+    board_profiles: [{ id: "b1", team_id: "t1", plan_type: "1yr", is_baseline: false, negotiation_status: "completed", satisfaction: 50, seasons_completed: 0 }],
+    season_standings: [{ team_id: "t1", season_id: "s2", division: 1, stage_wins: 1, gc_wins: 0 }],
+    riders: [], loans: [], board_plan_snapshots: [], board_satisfaction_events: [],
+  };
+  const supabase = makeFakeSupabase(state, { errorTables: { board_satisfaction_events: "boom" } });
+  const summary = await processBoardWeekendFinalization({
+    supabase, season, previousRaceDaysCompleted: 8,
+    race: { id: "r9", name: "Critérium du Dauphiné" },
+    deps: {
+      isBoardTestModeActive: async () => false,
+      loadGoalContext: async () => ({}),
+      computeWeekendUpdate: () => ({
+        previousSatisfaction: 50, newSatisfaction: 53, appliedDelta: 3,
+        newModifier: 1.0, goalsMet: 2, goalsTotal: 3,
+        evaluation: { feedback: { strongest_category: "results" } },
+      }),
+    },
+  });
+  // Sikkerheds-egenskaben: en event-skrive-fejl må aldrig vælte eller ændre mekanikken.
+  assert.ok(summary.errors >= 1, "event-fejl tælles i summary.errors");
+  assert.equal(summary.boards_updated, 1, "satisfaction-opdateringen lykkedes stadig");
+  assert.equal(state.board_profiles[0].satisfaction, 53, "satisfaction blev persisteret trods event-fejl");
+  assert.equal(state.board_satisfaction_events.length, 0, "intet event-row blev skrevet på fejl");
 });
