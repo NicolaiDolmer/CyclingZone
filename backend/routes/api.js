@@ -7067,7 +7067,7 @@ router.get("/board/status", requireAuth, async (req, res) => {
           .in("board_id", boardIds)
           .order("created_at", { ascending: false }),
         supabase.from("board_satisfaction_events")
-          .select("board_id, race_name, race_days_completed, satisfaction_before, satisfaction_after, satisfaction_delta, goals_met, goals_total, reason_category, created_at")
+          .select("id, board_id, race_name, race_days_completed, satisfaction_before, satisfaction_after, satisfaction_delta, goals_met, goals_total, reason_category, created_at")
           .in("board_id", boardIds)
           .order("created_at", { ascending: false }),
       ]);
