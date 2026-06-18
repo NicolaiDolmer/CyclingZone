@@ -603,6 +603,22 @@
     }
   },
   "faq": {
+    "relaunchTeamMoney": {
+      "q": "Hvad skete der med mit hold og mine penge ved sæson 1-relaunchen?",
+      "a": "Ved relaunchen starter alt forfra. Dit tidligere hold, din saldo og dine transfers føres ikke med over i den nye sæson 1. Du får et frisk 8-rytters hold og en startkapital på 800.000 CZ$, præcis som alle andre managers."
+    },
+    "relaunchRiderNames": {
+      "q": "Hvorfor er rytternavnene anderledes efter relaunchen?",
+      "a": "Cycling Zone kører nu på sin egen verden af fiktive ryttere med egne værdier og sin egen race-motor, så spillet ikke længere afhænger af eksterne data fra den virkelige verden."
+    },
+    "relaunchFounderBadge": {
+      "q": "Hvad er Founder-badget?",
+      "a": "Et permanent mærke på din profil, der anerkender at du spillede i beta, før sæson 1-relaunchen."
+    },
+    "relaunchNextSeasonBuys": {
+      "q": "Jeg købte ryttere til næste sæson før relaunchen. Hvad skete der med dem?",
+      "a": "Den tidligere to-sæsoners-plan blev ændret. Relaunchen nulstiller alle hold, så ryttere købt til en fremtidig sæson føres ikke med over. Alle starter forfra på lige fod med et frisk hold."
+    },
     "balanceVisibility": {
       "q": "Kan andre se min balance?",
       "a": "Nej. Din balance er kun synlig for dig selv."

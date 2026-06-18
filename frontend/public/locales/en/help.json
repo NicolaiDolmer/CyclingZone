@@ -603,6 +603,22 @@
     }
   },
   "faq": {
+    "relaunchTeamMoney": {
+      "q": "What happened to my team and money in the Season 1 relaunch?",
+      "a": "At the relaunch everything starts over. Your previous squad, balance and transfers do not carry into the new Season 1. You receive a fresh 8-rider squad and a starting budget of 800,000 CZ$, the same as every other manager."
+    },
+    "relaunchRiderNames": {
+      "q": "Why are the rider names different after the relaunch?",
+      "a": "Cycling Zone now runs on its own world of fictional riders with their own values and its own race engine, so the game no longer depends on external real-world data."
+    },
+    "relaunchFounderBadge": {
+      "q": "What is the Founder badge?",
+      "a": "A permanent mark on your profile that recognises you played during the beta, before the Season 1 relaunch."
+    },
+    "relaunchNextSeasonBuys": {
+      "q": "I bought riders for next season before the relaunch. What happened to them?",
+      "a": "The earlier two-season plan changed. The relaunch resets all teams, so riders bought for a future season do not carry over. Everyone restarts equally with a fresh squad."
+    },
     "balanceVisibility": {
       "q": "Can others see my balance?",
       "a": "No. Your balance is only visible to you."
