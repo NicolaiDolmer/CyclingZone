@@ -160,53 +160,25 @@ function PowerStat({ label, value, unit }) {
 // rendres komponenten slet ikke før fundamentet findes.
 // abilityProgress: optional { <ability>: 0..1 } fra useTraining().progress[riderId]
 // for egne ryttere. undefined/null = ingen progress bars.
-function RacePhysiologyPreview({ physiology, abilities, abilityProgress }) {
+// Power-profil (race-engine v2): watt/W·kg-nøgletal. Vises kun når fysiologi findes.
+// #1529: tidligere et "beta"-preview der OGSÅ wrappede de udledte evner — evnerne er nu
+// hoved-visningen på stats-fanen, og denne sektion er ren (de-beta'et) power-profil.
+function RacePhysiologyPreview({ physiology }) {
   const { t } = useTranslation("rider");
-  if (!physiology && !abilities) return null;
+  if (!physiology) return null;
   return (
     <div className="bg-cz-card border border-cz-border rounded-xl p-5 mt-4">
-      <div className="flex items-center gap-2 mb-1">
-        <h3 className="text-cz-1 font-semibold">{t("racePreview.title")}</h3>
-        <span className="text-[10px] uppercase font-bold tracking-wide px-1.5 py-0.5 rounded bg-cz-accent/15 text-cz-accent border border-cz-accent/30">
-          {t("racePreview.beta")}
-        </span>
+      <h3 className="text-cz-1 font-semibold mb-3">{t("racePreview.powerProfile")}</h3>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <PowerStat label={t("racePreview.zones.zone2")}  value={physiology.zone2_power_wkg}  unit="W/kg" />
+        <PowerStat label={t("racePreview.zones.ftp")}    value={physiology.ftp_wkg}          unit="W/kg" />
+        <PowerStat label={t("racePreview.zones.vo2max")} value={physiology.vo2max_power_wkg} unit="W/kg" />
+        <PowerStat label={t("racePreview.zones.pmax")}   value={physiology.pmax_watts}       unit="W" />
+        <PowerStat label={t("racePreview.curve.p5s")}    value={physiology.power_5s_wkg}     unit="W/kg" />
+        <PowerStat label={t("racePreview.curve.p15s")}   value={physiology.power_15s_wkg}    unit="W/kg" />
+        <PowerStat label={t("racePreview.curve.p1m")}    value={physiology.power_1m_wkg}     unit="W/kg" />
+        <PowerStat label={t("racePreview.curve.p5m")}    value={physiology.power_5m_wkg}     unit="W/kg" />
       </div>
-      <p className="text-cz-3 text-xs mb-4">{t("racePreview.disclaimer")}</p>
-
-      {physiology && (
-        <div className="mb-5">
-          <h4 className="text-cz-2 text-xs uppercase tracking-wide mb-2">{t("racePreview.powerProfile")}</h4>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <PowerStat label={t("racePreview.zones.zone2")}  value={physiology.zone2_power_wkg}  unit="W/kg" />
-            <PowerStat label={t("racePreview.zones.ftp")}    value={physiology.ftp_wkg}          unit="W/kg" />
-            <PowerStat label={t("racePreview.zones.vo2max")} value={physiology.vo2max_power_wkg} unit="W/kg" />
-            <PowerStat label={t("racePreview.zones.pmax")}   value={physiology.pmax_watts}       unit="W" />
-            <PowerStat label={t("racePreview.curve.p5s")}    value={physiology.power_5s_wkg}     unit="W/kg" />
-            <PowerStat label={t("racePreview.curve.p15s")}   value={physiology.power_15s_wkg}    unit="W/kg" />
-            <PowerStat label={t("racePreview.curve.p1m")}    value={physiology.power_1m_wkg}     unit="W/kg" />
-            <PowerStat label={t("racePreview.curve.p5m")}    value={physiology.power_5m_wkg}     unit="W/kg" />
-          </div>
-        </div>
-      )}
-
-      {abilities && (
-        <div>
-          <h4 className="text-cz-2 text-xs uppercase tracking-wide mb-2">{t("racePreview.derivedAbilities")}</h4>
-          {DERIVED_ABILITIES.map((a) => {
-            const frac = abilityProgress?.[a.key];
-            return (
-              <StatRow
-                key={a.key}
-                label={t(`racePreview.derived.${a.key}`)}
-                icon={a.icon}
-                value={abilities[a.key]}
-                progressFraction={frac != null ? frac : undefined}
-                progressHint={frac != null ? t("development.progressHint") : undefined}
-              />
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }
@@ -1627,13 +1599,25 @@ export default function RiderStatsPage() {
                 <ScoutablePotentiale rider={rider} scouting={scouting} />
               </div>
             )}
-            {localizedSkills.map(s => <StatRow key={s.key} label={s.label} icon={s.icon} value={rider[s.key]} />)}
+            {/* #1529: de 15 CZ-evner er nu den primære stat-visning (var PCM stat_*).
+                PCM beholdes kun internt til bestStat/typeLabel-afledningen. */}
+            {rider.abilities
+              ? DERIVED_ABILITIES.map((a) => {
+                  const frac = isMyRider ? training.progress?.[rider.id]?.[a.key] : undefined;
+                  return (
+                    <StatRow
+                      key={a.key}
+                      label={t(`racePreview.derived.${a.key}`)}
+                      icon={a.icon}
+                      value={rider.abilities[a.key]}
+                      progressFraction={frac != null ? frac : undefined}
+                      progressHint={frac != null ? t("development.progressHint") : undefined}
+                    />
+                  );
+                })
+              : <p className="text-cz-3 text-sm py-2">{t("stats.abilitiesPending")}</p>}
           </div>
-          <RacePhysiologyPreview
-            physiology={rider.physiology}
-            abilities={rider.abilities}
-            abilityProgress={isMyRider ? (training.progress?.[rider.id] ?? undefined) : undefined}
-          />
+          <RacePhysiologyPreview physiology={rider.physiology} />
         </>
       )}
 

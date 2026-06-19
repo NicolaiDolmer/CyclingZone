@@ -42,7 +42,7 @@ function buildSeasonResolver(seasons) {
 }
 
 export async function buildTeamTransferHistory(supabase, teamId) {
-  const [auctionsRes, offersRes, swapsRes, loansRes, seasonsRes] = await Promise.all([
+  const [auctionsRes, offersRes, swapsRes, loansRes, seasonsRes, academyRes] = await Promise.all([
     supabase.from("auctions")
       .select("id, current_price, actual_end, created_at, is_guaranteed_sale, seller_team_id, current_bidder_id, seller:seller_team_id(id, name, is_ai), winner:current_bidder_id(id, name, is_ai), rider:rider_id(id, firstname, lastname)")
       .eq("status", "completed")
@@ -70,6 +70,16 @@ export async function buildTeamTransferHistory(supabase, teamId) {
     supabase.from("seasons")
       .select("id, number, start_date, end_date")
       .order("number", { ascending: true }),
+
+    // #1525: akademi-intake = forfremmelse af egen akademirytter til førsteholdet.
+    // Vises som tilgang ("Academy"-kilde, ingen pris). Kun status='promoted' — solgte
+    // akademiryttere optræder via deres auktion, frigivne er ingen tilgang. Service-role
+    // (api.js) bypasser RLS, så posten vises også på ANDRE holds historik (#1525).
+    supabase.from("academy_graduation")
+      .select("id, status, resolved_at, created_at, rider:rider_id(id, firstname, lastname)")
+      .eq("team_id", teamId)
+      .eq("status", "promoted")
+      .order("resolved_at", { ascending: false }),
   ]);
 
   // Security-audit 2026-06-12 (P3, #1338): se supabaseResultGuard.js — en slugt
@@ -80,6 +90,7 @@ export async function buildTeamTransferHistory(supabase, teamId) {
     swap_offers: swapsRes,
     loan_agreements: loansRes,
     seasons: seasonsRes,
+    academy_graduation: academyRes,
   }, "buildTeamTransferHistory");
 
   const resolveSeason = buildSeasonResolver(seasonsRes.data || []);
@@ -170,6 +181,22 @@ export async function buildTeamTransferHistory(supabase, teamId) {
       end_season: l.end_season,
       loan_status: l.status,
       season_number: resolveSeason(l.created_at),
+    });
+  }
+
+  // #1525: akademi-intake (forfremmelse til førsteholdet) som tilgang uden pris.
+  for (const g of academyRes.data || []) {
+    const date = g.resolved_at || g.created_at;
+    events.push({
+      id: `academy:${g.id}`,
+      type: "academy",
+      direction: "in", // intern forfremmelse = tilgang til truppen
+      cash_flow: null, // akademi-intake har ingen købspris
+      date,
+      rider: g.rider,
+      counterparty: null, // kilde = akademiet, ikke et modpartshold
+      amount: null,
+      season_number: resolveSeason(date),
     });
   }
 

@@ -7,11 +7,18 @@ import { getRiderMarketValue } from "./marketValues";
 import { getRiderAge } from "./riderAge";
 import { compareNationality } from "./countryUtils";
 import { applyNameSearch } from "./riderNameSearch";
+import {
+  ABILITY_KEYS, ABILITY_SELECT, ABILITY_SELECT_INNER, ABILITY_TABLE, flattenAbilities,
+} from "./abilities";
 
 const CURRENT_YEAR = new Date().getFullYear();
 
-const STAT_MIN_DEFAULT = 50;
-const STAT_MAX_DEFAULT = 85;
+// Evner spænder 1-99 (mod PCM's klumpede 50-85). Et evne-filter er kun "aktivt"
+// når en grænse afviger fra fuld skala.
+const STAT_MIN_DEFAULT = 0;
+const STAT_MAX_DEFAULT = 99;
+
+const ABILITY_SET = new Set(ABILITY_KEYS);
 
 export function useClientRiderFilters(riders = []) {
   const [filters, setFilters] = useState({ ...DEFAULT_FILTERS });
@@ -125,64 +132,116 @@ export function useClientRiderFilters(riders = []) {
   return { filters, onChange, onReset, filtered, nationalities };
 }
 
-export function buildSupabaseQuery(query, filters) {
-  query = query.eq("is_retired", false);
-  query = applyNameSearch(query, filters.q); // #47: token-set match (fornavn + efternavn)
-  if (filters.min_value) query = query.gte("market_value", parseInt(filters.min_value));
-  if (filters.max_value) query = query.lte("market_value", parseInt(filters.max_value));
-  if (filters.min_salary) query = query.gte("salary", parseInt(filters.min_salary));
-  if (filters.max_salary) query = query.lte("salary", parseInt(filters.max_salary));
-  if (filters.u25) query = query.eq("is_u25", true);
-  if (filters.free_agent) query = query.is("team_id", null);
-  if (filters.team_id) query = query.eq("team_id", filters.team_id);
-  if (filters.nationality_code) query = query.eq("nationality_code", filters.nationality_code);
+function anyAbilityFilterActive(filters) {
+  return ABILITY_KEYS.some((key) => {
+    const minVal = parseInt(filters[`${key}_min`]);
+    const maxVal = parseInt(filters[`${key}_max`]);
+    return (Number.isFinite(minVal) && minVal > STAT_MIN_DEFAULT)
+      || (Number.isFinite(maxVal) && maxVal < STAT_MAX_DEFAULT);
+  });
+}
 
-  // Ryttertype (#49): match primær ELLER sekundær. Egen .or() AND'es med øvrige
-  // filtre (inkl. navne-.or() ovenfor) af PostgREST. rider_type er en kontrolleret
-  // nøgle (RIDER_TYPE_KEYS), så ingen injection i or-strengen.
+// Riders-kolonne-filtre. prefix=""/ref=null når vi driver fra riders; prefix="riders."
+// + ref="riders" når riders er embedded (drevet fra rider_derived_abilities ved evne-sort).
+function applyRiderColumnFilters(query, filters, { prefix = "", ref = null } = {}) {
+  const col = (c) => `${prefix}${c}`;
+  query = query.eq(col("is_retired"), false);
+  query = applyNameSearch(query, filters.q, ref ? { referencedTable: ref } : undefined); // #47 token-set
+  if (filters.min_value) query = query.gte(col("market_value"), parseInt(filters.min_value));
+  if (filters.max_value) query = query.lte(col("market_value"), parseInt(filters.max_value));
+  if (filters.min_salary) query = query.gte(col("salary"), parseInt(filters.min_salary));
+  if (filters.max_salary) query = query.lte(col("salary"), parseInt(filters.max_salary));
+  if (filters.u25) query = query.eq(col("is_u25"), true);
+  if (filters.free_agent) query = query.is(col("team_id"), null);
+  if (filters.team_id) query = query.eq(col("team_id"), filters.team_id);
+  if (filters.nationality_code) query = query.eq(col("nationality_code"), filters.nationality_code);
+
+  // Ryttertype (#49): primær ELLER sekundær. Kontrolleret nøgle (RIDER_TYPE_KEYS) → ingen injection.
   if (filters.rider_type) {
-    query = query.or(`primary_type.eq.${filters.rider_type},secondary_type.eq.${filters.rider_type}`);
+    const orStr = `primary_type.eq.${filters.rider_type},secondary_type.eq.${filters.rider_type}`;
+    query = ref ? query.or(orStr, { referencedTable: ref }) : query.or(orStr);
   }
 
-  // #1162: INGEN filter/order på potentiale — kolonnen er ikke klient-læsbar
-  // (column privilege), og et server-filter på den ville være en oracle-lækage.
+  // #1162: INGEN filter/order på potentiale — ikke klient-læsbar (oracle-lækage).
 
   if (filters.min_age) {
     const maxBirth = new Date(`${CURRENT_YEAR - parseInt(filters.min_age)}-12-31`).toISOString().split("T")[0];
-    query = query.lte("birthdate", maxBirth);
+    query = query.lte(col("birthdate"), maxBirth);
   }
   if (filters.max_age) {
     const minBirth = new Date(`${CURRENT_YEAR - parseInt(filters.max_age)}-01-01`).toISOString().split("T")[0];
-    query = query.gte("birthdate", minBirth);
+    query = query.gte(col("birthdate"), minBirth);
   }
   if (filters.u23) {
     const minBirth = new Date(`${CURRENT_YEAR - 23}-01-01`).toISOString().split("T")[0];
-    query = query.gte("birthdate", minBirth);
+    query = query.gte(col("birthdate"), minBirth);
   }
-
-  // Stat range filters
-  for (const key of STAT_KEYS) {
-    const minVal = parseInt(filters[`${key}_min`]) ?? STAT_MIN_DEFAULT;
-    const maxVal = parseInt(filters[`${key}_max`]) ?? STAT_MAX_DEFAULT;
-    if (minVal > STAT_MIN_DEFAULT) query = query.gte(key, minVal);
-    if (maxVal < STAT_MAX_DEFAULT) query = query.lte(key, maxVal);
-  }
-
-  // Sort
-  if (filters.sort === "firstname") {
-    const asc = filters.sort_dir === "asc";
-    query = query.order("lastname", { ascending: asc, nullsFirst: false });
-  } else if (filters.sort === "value" || filters.sort === "potentiale" || filters.sort === "_scoutMid") {
-    // potentiale/_scoutMid: stale URL/sessionStorage kan stadig bære den gamle
-    // sort-nøgle — kolonnen er ikke klient-læsbar (#1162), så ORDER BY ville
-    // fejle hele kaldet. Fald tilbage til værdi-sortering.
-    query = query.order("market_value", { ascending: filters.sort_dir === "asc", nullsFirst: false });
-  } else {
-    const sortAsc = filters.sort === "birthdate"
-      ? filters.sort_dir === "desc"
-      : filters.sort_dir === "asc";
-    query = query.order(filters.sort, { ascending: sortAsc, nullsFirst: false });
-  }
-
   return query;
+}
+
+// Evne-range-filtre. prefix="" når abilities er top-level (drevet fra rider_derived_abilities);
+// prefix="rider_derived_abilities." når abilities er embedded (drevet fra riders — kræver !inner).
+function applyAbilityFilters(query, filters, { prefix = "" } = {}) {
+  for (const key of ABILITY_KEYS) {
+    const minVal = parseInt(filters[`${key}_min`]);
+    const maxVal = parseInt(filters[`${key}_max`]);
+    if (Number.isFinite(minVal) && minVal > STAT_MIN_DEFAULT) query = query.gte(`${prefix}${key}`, minVal);
+    if (Number.isFinite(maxVal) && maxVal < STAT_MAX_DEFAULT) query = query.lte(`${prefix}${key}`, maxVal);
+  }
+  return query;
+}
+
+function applyRiderColumnSort(query, filters) {
+  if (filters.sort === "firstname") {
+    return query.order("lastname", { ascending: filters.sort_dir === "asc", nullsFirst: false });
+  }
+  if (filters.sort === "value" || filters.sort === "potentiale" || filters.sort === "_scoutMid") {
+    // potentiale/_scoutMid: stale URL/sessionStorage kan bære den gamle sort-nøgle —
+    // ikke klient-læsbar (#1162). Fald tilbage til værdi-sortering.
+    return query.order("market_value", { ascending: filters.sort_dir === "asc", nullsFirst: false });
+  }
+  const sortAsc = filters.sort === "birthdate" ? filters.sort_dir === "desc" : filters.sort_dir === "asc";
+  return query.order(filters.sort, { ascending: sortAsc, nullsFirst: false });
+}
+
+// Henter én side af rytter-DB'en (server-pagineret). Sortering på en EVNE-kolonne
+// driver fra rider_derived_abilities (native order — PostgREST kan IKKE re-ordne
+// parent-rækker via et embedded to-one; verificeret 2026-06-19) med riders som
+// !inner-embed og riders-filtrene anvendt embedded. Al anden sortering driver fra
+// riders med abilities embedded (!inner kun når et evne-filter er aktivt, ellers
+// left join så evne-løse ryttere stadig vises). Evnerne flades op på rytter-objektet
+// (rider.climbing osv.) så render + klient-sort virker uændret.
+export async function fetchRidersPage(supabase, { filters, page, pageSize = 50, riderSelect }) {
+  const from = (page - 1) * pageSize;
+  const to = page * pageSize - 1;
+
+  if (ABILITY_SET.has(filters.sort)) {
+    let q = supabase
+      .from(ABILITY_TABLE)
+      .select(`${ABILITY_KEYS.join(", ")}, riders!inner(${riderSelect})`, { count: "exact" })
+      .range(from, to);
+    q = applyRiderColumnFilters(q, filters, { prefix: "riders.", ref: "riders" });
+    q = applyAbilityFilters(q, filters, { prefix: "" });
+    q = q.order(filters.sort, { ascending: filters.sort_dir === "asc", nullsFirst: false });
+    const { data, count, error } = await q;
+    if (error) throw error;
+    const rows = (data || []).map((row) => {
+      const abil = {};
+      for (const k of ABILITY_KEYS) abil[k] = row[k];
+      return { ...(row.riders || {}), ...abil, abilities: abil };
+    });
+    return { rows, count: count || 0 };
+  }
+
+  const abilSelect = anyAbilityFilterActive(filters) ? ABILITY_SELECT_INNER : ABILITY_SELECT;
+  let q = supabase
+    .from("riders")
+    .select(`${riderSelect}, ${abilSelect}`, { count: "exact" })
+    .range(from, to);
+  q = applyRiderColumnFilters(q, filters, { prefix: "" });
+  q = applyAbilityFilters(q, filters, { prefix: `${ABILITY_TABLE}.` });
+  q = applyRiderColumnSort(q, filters);
+  const { data, count, error } = await q;
+  if (error) throw error;
+  return { rows: (data || []).map(flattenAbilities), count: count || 0 };
 }

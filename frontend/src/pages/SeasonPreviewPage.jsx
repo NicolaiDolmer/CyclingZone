@@ -4,6 +4,14 @@ import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 import { formatNumber } from "../lib/intl";
+import { ABILITY_SELECT, ABILITY_SHORT, flattenAbilities } from "../lib/abilities";
+
+// #1529: holdstyrke-aggregaterne vises nu via de nye CZ-evner i stedet for de
+// gamle 14 PCM stat_*-kolonner. Vi mapper de tre tidligere viste aggregater til
+// de matchende evner: stat_bj→climbing, stat_sp→sprint, stat_tt→time_trial.
+// Evne-skalaen er lavere (gns. ~40) end PCM-skalaen (gns. ~62), så den gamle
+// >=75 "stærk"-tærskel ville stort set aldrig udløse — sænket til 55 (se PR-noter).
+const STRONG_THRESHOLD = 55;
 
 export default function SeasonPreviewPage() {
   const navigate = useNavigate();
@@ -24,12 +32,13 @@ export default function SeasonPreviewPage() {
 
     const [teamsRes, ridersRes, seasonRes] = await Promise.all([
       supabase.from("teams").select("id, name, division, sponsor_income").eq("is_ai", false).eq("is_test_account", false).eq("is_frozen", false).order("division").order("name"),
-      supabase.from("riders").select("id, team_id, market_value, is_u25, stat_bj, stat_sp, stat_tt, stat_fl").not("team_id", "is", null),
+      supabase.from("riders").select(`id, team_id, market_value, is_u25, ${ABILITY_SELECT}`).not("team_id", "is", null),
       supabase.from("seasons").select("*").eq("status", "active").single(),
     ]);
 
     const ridersByTeam = {};
-    (ridersRes.data || []).forEach(r => {
+    (ridersRes.data || []).forEach(raw => {
+      const r = flattenAbilities(raw);
       if (!ridersByTeam[r.team_id]) ridersByTeam[r.team_id] = [];
       ridersByTeam[r.team_id].push(r);
     });
@@ -37,9 +46,9 @@ export default function SeasonPreviewPage() {
     const enriched = (teamsRes.data || []).map(t => {
       const riders = ridersByTeam[t.id] || [];
       const totalValue = riders.reduce((s, r) => s + getRiderMarketValue(r), 0);
-      const avgBj = riders.length ? Math.round(riders.reduce((s, r) => s + (r.stat_bj || 0), 0) / riders.length) : 0;
-      const avgSp = riders.length ? Math.round(riders.reduce((s, r) => s + (r.stat_sp || 0), 0) / riders.length) : 0;
-      const avgTt = riders.length ? Math.round(riders.reduce((s, r) => s + (r.stat_tt || 0), 0) / riders.length) : 0;
+      const avgBj = riders.length ? Math.round(riders.reduce((s, r) => s + (r.climbing || 0), 0) / riders.length) : 0;
+      const avgSp = riders.length ? Math.round(riders.reduce((s, r) => s + (r.sprint || 0), 0) / riders.length) : 0;
+      const avgTt = riders.length ? Math.round(riders.reduce((s, r) => s + (r.time_trial || 0), 0) / riders.length) : 0;
       const u25Count = riders.filter(r => r.is_u25).length;
       const topRider = riders.sort((a, b) => getRiderMarketValue(b) - getRiderMarketValue(a))[0];
       return { ...t, riders, totalValue, avgBj, avgSp, avgTt, u25Count, topRider, riderCount: riders.length };
@@ -103,13 +112,13 @@ export default function SeasonPreviewPage() {
                 </div>
                 <div className="hidden sm:flex gap-3 flex-shrink-0 text-center">
                   {[
-                    { label: "BJ", value: t.avgBj },
-                    { label: "SP", value: t.avgSp },
-                    { label: "TT", value: t.avgTt },
+                    { label: ABILITY_SHORT.climbing, value: t.avgBj },
+                    { label: ABILITY_SHORT.sprint, value: t.avgSp },
+                    { label: ABILITY_SHORT.time_trial, value: t.avgTt },
                   ].map(s => (
                     <div key={s.label} className="w-10">
                       <p className="text-[9px] text-cz-3 uppercase">{s.label}</p>
-                      <p className={`font-mono text-xs font-bold ${s.value >= 75 ? "text-cz-accent-t" : "text-cz-2"}`}>{s.value}</p>
+                      <p className={`font-mono text-xs font-bold ${s.value >= STRONG_THRESHOLD ? "text-cz-accent-t" : "text-cz-2"}`}>{s.value}</p>
                     </div>
                   ))}
                 </div>
@@ -144,8 +153,8 @@ export default function SeasonPreviewPage() {
                 {[
                   { label: tCommon("nav.item.riders"), value: t.riderCount },
                   { label: "U25", value: t.u25Count, color: "#60a5fa" },
-                  { label: "Avg BJ", value: t.avgBj, color: t.avgBj >= 75 ? "#e8c547" : undefined },
-                  { label: "Avg SP", value: t.avgSp, color: t.avgSp >= 75 ? "#e8c547" : undefined },
+                  { label: `Avg ${ABILITY_SHORT.climbing}`, value: t.avgBj, color: t.avgBj >= STRONG_THRESHOLD ? "#e8c547" : undefined },
+                  { label: `Avg ${ABILITY_SHORT.sprint}`, value: t.avgSp, color: t.avgSp >= STRONG_THRESHOLD ? "#e8c547" : undefined },
                 ].map(s => (
                   <div key={s.label} className="bg-cz-subtle rounded-lg p-2 text-center">
                     <p className="text-[9px] text-cz-3 uppercase tracking-wider mb-0.5">{s.label}</p>

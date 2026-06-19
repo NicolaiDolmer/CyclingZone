@@ -10,33 +10,21 @@ import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
 import { useScouting } from "../lib/useScouting";
 import { statColor, statStyle } from "../lib/statColor";
+import { ABILITY_STATS, ABILITY_SELECT, flattenAbilities } from "../lib/abilities";
 
 const MAX_COMPARE = 3;
 
 // #1162: riders-kolonner er klient-læsbare via eksplicit kolonne-GRANT (potentiale
 // er server-skjult) — `select=*` afvises af PostgREST, så listen skal være eksplicit.
+// #1529: de 14 PCM stat_* er fjernet fra visningen — evnerne hentes via ABILITY_SELECT
+// (rider_derived_abilities-join) og flades op på rytter-objektet med flattenAbilities.
 const COMPARE_RIDER_COLUMNS = `id, firstname, lastname, birthdate, market_value, base_value,
-  prize_earnings_bonus, salary, is_u25, nationality_code, team_id, primary_type, secondary_type,
-  stat_fl, stat_bj, stat_kb, stat_bk, stat_tt, stat_prl, stat_bro, stat_sp, stat_acc, stat_ned,
-  stat_udh, stat_mod, stat_res, stat_ftr`;
+  prize_earnings_bonus, salary, is_u25, nationality_code, team_id, primary_type, secondary_type`;
 
-// Skill labels reuse the shared rider:skills.{slug}.long translations (same as RiderStatsPage).
-const STATS = [
-  { key: "stat_fl",  slug: "fl",  icon: "═" },
-  { key: "stat_bj",  slug: "bj",  icon: "▲" },
-  { key: "stat_kb",  slug: "kb",  icon: "△" },
-  { key: "stat_bk",  slug: "bk",  icon: "∧" },
-  { key: "stat_tt",  slug: "tt",  icon: "⏱" },
-  { key: "stat_prl", slug: "prl", icon: "◷" },
-  { key: "stat_bro", slug: "bro", icon: "⬡" },
-  { key: "stat_sp",  slug: "sp",  icon: "⚡" },
-  { key: "stat_acc", slug: "acc", icon: "▶" },
-  { key: "stat_ned", slug: "ned", icon: "↓" },
-  { key: "stat_udh", slug: "udh", icon: "◎" },
-  { key: "stat_mod", slug: "mod", icon: "◈" },
-  { key: "stat_res", slug: "res", icon: "↺" },
-  { key: "stat_ftr", slug: "ftr", icon: "★" },
-];
+// Stat-rækker = de 15 CZ-evner (delt config lib/abilities.js). Korte labels (CLM/TT/…)
+// kommer fra ABILITY_SHORT via ABILITY_STATS; fulde navne via rider:racePreview.derived.<key>.
+// #1529: erstattede de 14 PCM stat_*-rækker.
+const STATS = ABILITY_STATS;
 
 function RiderSearch({ onSelect, excluded }) {
   const { t } = useTranslation("rider");
@@ -116,10 +104,13 @@ export default function RiderComparePage() {
     (async () => {
       const { data } = await supabase
         .from("riders")
-        .select(`${COMPARE_RIDER_COLUMNS}, team:team_id(id, name)`)
+        .select(`${COMPARE_RIDER_COLUMNS}, team:team_id(id, name), ${ABILITY_SELECT}`)
         .in("id", ids);
       if (cancelled || !data) return;
-      const ordered = ids.map(id => data.find(r => r.id === id)).filter(Boolean);
+      const ordered = ids
+        .map(id => data.find(r => r.id === id))
+        .filter(Boolean)
+        .map(flattenAbilities);
       setFullRiders(ordered);
     })();
     return () => { cancelled = true; };
@@ -141,10 +132,10 @@ export default function RiderComparePage() {
 
     const { data } = await supabase
       .from("riders")
-      .select(`${COMPARE_RIDER_COLUMNS}, team:team_id(id, name)`)
+      .select(`${COMPARE_RIDER_COLUMNS}, team:team_id(id, name), ${ABILITY_SELECT}`)
       .eq("id", rider.id)
       .single();
-    if (data) setFullRiders(prev => [...prev, data]);
+    if (data) setFullRiders(prev => [...prev, flattenAbilities(data)]);
   }
 
   function removeRider(id) {
@@ -230,8 +221,8 @@ export default function RiderComparePage() {
                     ${idx % 2 === 0 ? "bg-transparent" : ""}`}
                   style={{ gridTemplateColumns: `200px repeat(${fullRiders.length}, 1fr)` }}>
                   <div className="flex items-center gap-2">
-                    <span className="text-cz-3 w-4 text-center">{stat.icon}</span>
-                    <span className="text-cz-2 text-sm">{t(`skills.${stat.slug}.long`)}</span>
+                    <span className="text-cz-3 font-mono text-[10px] w-9 text-center">{stat.label}</span>
+                    <span className="text-cz-2 text-sm">{t(`racePreview.derived.${stat.key}`)}</span>
                   </div>
                   {fullRiders.map((r) => {
                     const val = r[stat.key];

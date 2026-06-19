@@ -9,7 +9,8 @@ import RiderNameCell from "../components/rider/RiderNameCell";
 import RiderBadges from "../components/rider/RiderBadges";
 import { ageBadgeKey } from "../lib/riderAge";
 import { formatNumber } from "../lib/intl";
-import { STAT_KEYS, riderStatRating } from "../lib/riderRating";
+import { riderStatRating } from "../lib/riderRating";
+import { ABILITY_SELECT, flattenAbilities } from "../lib/abilities";
 import { compareNationality } from "../lib/countryUtils";
 
 // Altid-synlige sejr-kolonner (kategori-sejre) — venstre→højre.
@@ -93,10 +94,12 @@ export default function RiderRankingsPage() {
     const raceIds = racesData.map(r => r.id);
     // Paginér: PostgREST capper ved 1000 (også .range(0,9999)) → ellers
     // underberegnes ranglisten for sæsoner med >1000 resultatrækker.
-    // #1009: stats hentes som separat parallel query (i stedet for at blæse
-    // 14 ekstra felter ind i rider-embed'et pr. resultatrække). Best-effort:
-    // fejler stats-fetch, viser ranglisten stadig (rating = 0).
-    const [results, statRows] = await Promise.all([
+    // #1009: rating-grundlaget hentes som separat parallel query (i stedet for at
+    // blæse evne-felter ind i rider-embed'et pr. resultatrække). #1529: rating er nu
+    // snittet af de 15 CZ-evner (rider_derived_abilities-join), ikke PCM stat_*.
+    // Hver række flades op (rider.climbing osv.) før riderStatRating. Best-effort:
+    // fejler abilities-fetch, viser ranglisten stadig (rating = 0).
+    const [results, abilityRows] = await Promise.all([
       fetchAllRows(() => supabase
         .from("race_results")
         .select("rider_id, result_type, rank, points_earned, prize_money, race:race_id(race_type), rider:rider_id(id, firstname, lastname, birthdate, nationality_code, is_u25, is_retired, team:team_id(id, name, is_ai))")
@@ -105,13 +108,15 @@ export default function RiderRankingsPage() {
         .order("id", { ascending: true })),
       fetchAllRows(() => supabase
         .from("riders")
-        .select(`id, ${STAT_KEYS.join(", ")}`)
+        .select(`id, ${ABILITY_SELECT}`)
         .eq("is_retired", false)
         .order("id", { ascending: true }))
         .catch(() => []),
     ]);
 
-    const ratingByRider = new Map((statRows || []).map(r => [r.id, riderStatRating(r)]));
+    const ratingByRider = new Map(
+      (abilityRows || []).map(r => [r.id, riderStatRating(flattenAbilities(r))]),
+    );
 
     const agg = {};
     (results || []).forEach(r => {

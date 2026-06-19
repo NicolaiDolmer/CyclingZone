@@ -13,7 +13,15 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const teamPageSource = readFileSync(join(__dirname, "TeamPage.jsx"), "utf8");
 
 // De felter de nye kolonner (RiderTypeBadge + kontraktudløb) er afhængige af.
-const REQUIRED = ["primary_type", "secondary_type", "contract_end_season"];
+// #1529: evne-kolonnerne hentes nu via det delte ABILITY_SELECT-fragment
+// (rider_derived_abilities(...)) i stedet for de gamle 14 PCM stat_*-felter.
+const REQUIRED = ["primary_type", "secondary_type", "contract_end_season", "ABILITY_SELECT"];
+
+// Gamle PCM stat_*-felter må ikke længere selectes til visning (#1529).
+const FORBIDDEN_PCM_STATS = [
+  "stat_fl", "stat_bj", "stat_kb", "stat_bk", "stat_tt", "stat_prl", "stat_bro",
+  "stat_sp", "stat_acc", "stat_ned", "stat_udh", "stat_mod", "stat_res", "stat_ftr",
+];
 
 // Trup- + pending-select: riders.select(`id, firstname, ...`)
 const directSelects = [...teamPageSource.matchAll(/\.from\("riders"\)\s*\.select\(`([^`]*)`\)/g)];
@@ -50,6 +58,26 @@ test("TeamPage riders-selects må IKKE indeholde potentiale (#1162)", () => {
       m[1],
       /\bpotentiale\b/,
       "potentiale er server-skjult (column privilege) — et select på den fejler HELE kaldet i PostgREST",
+    );
+  }
+});
+
+test("TeamPage selects må IKKE selecte gamle PCM stat_*-felter (#1529)", () => {
+  for (const m of directSelects) {
+    for (const field of FORBIDDEN_PCM_STATS) {
+      assert.doesNotMatch(
+        m[1],
+        new RegExp(`\\b${field}\\b`),
+        `riders-select indeholder stadig PCM-feltet '${field}' — visningen skal bruge ABILITY_SELECT (rider_derived_abilities)`,
+      );
+    }
+  }
+  assert.ok(loanSelect, "rider:rider_id(...) loan-select skal kunne findes");
+  for (const field of FORBIDDEN_PCM_STATS) {
+    assert.doesNotMatch(
+      loanSelect[1],
+      new RegExp(`\\b${field}\\b`),
+      `loan-in rider-select indeholder stadig PCM-feltet '${field}'`,
     );
   }
 });

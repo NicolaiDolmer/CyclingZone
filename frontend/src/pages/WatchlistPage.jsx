@@ -2,6 +2,7 @@
 import { useTranslation } from "react-i18next";
 import RiderFilters from "../components/RiderFilters";
 import { useClientRiderFilters } from "../lib/useRiderFilters";
+import { ABILITY_STATS as STATS, ABILITY_SELECT, flattenAbilities } from "../lib/abilities";
 import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 import NationCell from "../components/rider/NationCell";
@@ -19,9 +20,8 @@ import { scoutSortValue } from "../lib/scouting";
 import WatchlistStar from "../components/WatchlistStar";
 import { CompareToggle, CompareBar, MAX_COMPARE } from "../components/CompareSelection";
 
-const STATS = ["stat_fl","stat_bj","stat_kb","stat_bk","stat_tt","stat_prl",
-  "stat_bro","stat_sp","stat_acc","stat_ned","stat_udh","stat_mod","stat_res","stat_ftr"];
-const STAT_LABELS = ["FL","BJ","KB","BK","TT","PRL","Bro","SP","ACC","NED","UDH","MOD","RES","FTR"];
+// Stat-kolonner = de 15 CZ-evner (delt config lib/abilities.js, importeret som STATS).
+// #1529: erstattede de 14 PCM stat_*-kolonner — visningen viser nu evner.
 
 function SortTh({ children, sortKey, sort, sortDir, onSort, className = "" }) {
   const active = sort === sortKey;
@@ -65,11 +65,13 @@ export default function WatchlistPage() {
       .from("rider_watchlist")
       .select(`id, note, created_at,
         rider:rider_id(id, firstname, lastname, birthdate, market_value, is_u25,
-          salary, team_id, nationality_code, prize_earnings_bonus, ${STATS.join(", ")},
+          salary, team_id, nationality_code, prize_earnings_bonus, ${ABILITY_SELECT},
           team:team_id(id, name))`)
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
-    const list = data || [];
+    // Evnerne joines via rider_derived_abilities + flades op på rytter-objektet
+    // (rider.climbing osv.) så render + klient-sort virker uændret (#1529).
+    const list = (data || []).map(e => ({ ...e, rider: flattenAbilities(e.rider) }));
     setEntries(list);
 
     // #251: markér ryttere der allerede er i en aktiv auktion, så vi kan vise
@@ -225,9 +227,9 @@ export default function WatchlistPage() {
                       className="px-3 py-3 text-right font-medium">{t("thSalary")}</SortTh>
                     <SortTh sortKey="_scoutMid" sort={sort} sortDir={sortDir} onSort={handleSort}
                       className="px-3 py-3 text-left font-medium">{t("thPotential")}</SortTh>
-                    {STATS.map((key, i) => (
+                    {STATS.map(({ key, label }) => (
                       <SortTh key={key} sortKey={key} sort={sort} sortDir={sortDir} onSort={handleSort}
-                        className="px-1.5 py-3 text-center font-medium w-10">{STAT_LABELS[i]}</SortTh>
+                        className="px-1.5 py-3 text-center font-medium w-10">{label}</SortTh>
                     ))}
                     <th className="px-3 py-3 text-center text-cz-3">{t("thNote")}</th>
                     <th className="px-3 py-3 text-center text-cz-3">{t("thAction")}</th>
@@ -285,7 +287,7 @@ export default function WatchlistPage() {
                         <td className="px-3 py-2.5">
                           <ScoutablePotentiale rider={r} scouting={scouting} />
                         </td>
-                        {STATS.map(key => (
+                        {STATS.map(({ key }) => (
                           <td key={key} className="px-1.5 py-2.5 text-center">
                             <span className="inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded" style={statStyle(r[key] || 0)}>
                               {r[key] || "—"}

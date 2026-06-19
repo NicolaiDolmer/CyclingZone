@@ -12,11 +12,19 @@ const FULL_STATS = {
   stat_res: 67, stat_ftr: 75,
 };
 
+// #1529: visningen bruger nu CZ-evner (kort flatten'er rider.rider_derived_abilities,
+// men direkte evne-keys på rytter-objektet bevares også → her lagt direkte på).
+const ABILITIES = {
+  climbing: 78, time_trial: 66, flat: 71, tempo: 64, sprint: 80, acceleration: 78,
+  punch: 72, endurance: 70, recovery: 67, durability: 69, descending: 62,
+  cobblestone: 58, positioning: 73, aggression: 55, tactics: 71,
+};
+
 const SALE_RIDER = {
   id: "rider-sale", firstname: "Tobias", lastname: "Lund", nationality_code: "dk",
   birthdate: "2000-03-10", base_value: 1200000, market_value: 1200000, salary: 90000,
   contract_length: 2, contract_end_season: 4, primary_type: "sprinter", secondary_type: "leadout",
-  team: { id: "team-rival", name: "Regression VC" }, ...FULL_STATS,
+  team: { id: "team-rival", name: "Regression VC" }, ...FULL_STATS, ...ABILITIES,
 };
 
 const LISTING = {
@@ -26,11 +34,11 @@ const LISTING = {
 
 const SWAP_OFFERED = {
   id: "rider-offered", firstname: "Sander", lastname: "Vik", nationality_code: "no",
-  base_value: 820000, market_value: 820000, ...FULL_STATS,
+  base_value: 820000, market_value: 820000, ...FULL_STATS, ...ABILITIES,
 };
 const SWAP_REQUESTED = {
   id: "rider-requested", firstname: "Ada", lastname: "Pedersen", nationality_code: "dk",
-  base_value: 1680000, market_value: 1680000, ...FULL_STATS,
+  base_value: 1680000, market_value: 1680000, ...FULL_STATS, ...ABILITIES,
 };
 
 const SWAP = {
@@ -63,8 +71,8 @@ test("TransferCard stats-grid navigerer til rytterprofil (#1421)", async ({ page
   await login(page);
   await page.goto("/transfers?tab=market");
 
-  // To links peger på rytteren: navnet (header) og det nye stats-grid (har 'FL').
-  const statsLink = page.locator('a[href="/riders/rider-sale"]').filter({ hasText: "FL" });
+  // To links peger på rytteren: navnet (header) og det nye evne-grid (har 'FLT').
+  const statsLink = page.locator('a[href="/riders/rider-sale"]').filter({ hasText: "FLT" });
   await expect(statsLink).toBeVisible();
   await statsLink.hover();
 
@@ -79,9 +87,9 @@ test("SwapCard rytter-celle navigerer til rytterprofil (#1421)", async ({ page }
   await login(page);
   await page.goto("/transfers?tab=swaps");
 
-  // Hele rytter-cellen (label + navn + BJ/SP/TT/FL) er ét link med rytternavnet
-  // som aria-label; 'BJ' findes kun i celle-stats, ikke i navne-linket.
-  const swapCell = page.locator('a[href="/riders/rider-offered"]').filter({ hasText: "BJ" });
+  // Hele rytter-cellen (label + navn + CLM/SPR/TT/FLT-evner) er ét link med rytternavnet
+  // som aria-label; 'CLM' findes kun i celle-evnerne, ikke i navne-linket.
+  const swapCell = page.locator('a[href="/riders/rider-offered"]').filter({ hasText: "CLM" });
   await expect(swapCell).toBeVisible();
   await swapCell.hover();
 

@@ -6,6 +6,8 @@ import { supabase } from "../lib/supabase";
 import { ageBadgeKey } from "../lib/riderAge";
 import OnlineBadge from "../components/OnlineBadge";
 import { formatNumber, formatDate } from "../lib/intl";
+import { ABILITY_STATS, ABILITY_SHORT, flattenAbilities } from "../lib/abilities";
+import { statStyle } from "../lib/statColor";
 import {
   Card,
   CategoryTag,
@@ -106,7 +108,10 @@ export default function ManagerProfilePage() {
     </div>
   );
 
-  const { team, user, riders, season_history, achievements, transfer_activity } = data;
+  const { team, user, riders: rawRiders, season_history, achievements, transfer_activity } = data;
+  // #1529: backend leverer rytteren med nested rider_derived_abilities — flad evnerne
+  // op på rytter-objektet så r.climbing osv. virker i render-cellerne nedenfor.
+  const riders = (rawRiders || []).map(flattenAbilities);
   const unlockedCount = achievements.filter(a => a.unlocked).length;
   const isOwnProfile  = team.id === myTeamId;
 
@@ -243,9 +248,11 @@ export default function ManagerProfilePage() {
                 <thead><tr>
                   <Th>{t("manager.thRider")}</Th>
                   <Th numeric>{t("manager.thValue")}</Th>
-                  <Th numeric className="hidden sm:table-cell">BJ</Th>
-                  <Th numeric className="hidden sm:table-cell">SP</Th>
-                  <Th numeric className="hidden sm:table-cell">TT</Th>
+                  {/* #1529: de 15 CZ-evner (delt config lib/abilities.js) erstatter de
+                      hardkodede 3 PCM-stats (BJ/SP/TT). Korte labels = ingen i18n (#487). */}
+                  {ABILITY_STATS.map(({ key }) => (
+                    <Th key={key} numeric className="hidden sm:table-cell px-1.5">{ABILITY_SHORT[key]}</Th>
+                  ))}
                 </tr></thead>
                 <tbody>
                   {riders.map(r => (
@@ -265,9 +272,14 @@ export default function ManagerProfilePage() {
                         })()}
                       </Td>
                       <Td numeric className="text-cz-accent-t">{formatNumber(r.market_value)}</Td>
-                      <Td numeric className="text-cz-2 hidden sm:table-cell">{r.stat_bj || "—"}</Td>
-                      <Td numeric className="text-cz-2 hidden sm:table-cell">{r.stat_sp || "—"}</Td>
-                      <Td numeric className="text-cz-2 hidden sm:table-cell">{r.stat_tt || "—"}</Td>
+                      {ABILITY_STATS.map(({ key }) => (
+                        <Td key={key} numeric className="hidden sm:table-cell px-1.5">
+                          <span className="inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded"
+                            style={statStyle(r[key] ?? 0)}>
+                            {r[key] ?? "—"}
+                          </span>
+                        </Td>
+                      ))}
                     </Tr>
                   ))}
                 </tbody>
