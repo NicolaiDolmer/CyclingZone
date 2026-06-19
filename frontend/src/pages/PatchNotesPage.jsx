@@ -2,6 +2,48 @@
 
 const PATCHES = [
   {
+    version: "5.62",
+    date: "2026-06-19",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fixed · Rider search",
+        items: [
+          "EN · Searching riders now matches the full name. Typing a first name plus the start of a last name (for example 'Tadej Pog') finds the rider, instead of returning nothing. Refs #47",
+          "DA · Ryttersøgning matcher nu det fulde navn. At skrive et fornavn plus starten af et efternavn (for eksempel 'Tadej Pog') finder nu rytteren i stedet for at give nul resultater. Refs #47",
+        ],
+      },
+      {
+        category: "Fixed · Auctions",
+        items: [
+          "EN · In the 'My situation' tab you can now sort by ability and stat columns, not just price. On desktop the 'Remove auto-bid' control is now a clear labelled button instead of a bare cross. Refs #248 #265",
+          "DA · I fanen 'Min situation' kan du nu sortere på evne- og stat-kolonner, ikke kun pris. På desktop er 'Fjern autobud' nu en tydelig knap med tekst i stedet for et bart kryds. Refs #248 #265",
+        ],
+      },
+      {
+        category: "Fixed · Riders list",
+        items: [
+          "EN · Changing page in the rider list now scrolls back to the top. The ability sliders no longer make the list jump while you drag; the filter applies when you release. A rider's profile now shows the correct age badge (U23 for under 23, U25 for 23 to 24). Refs #229 #164 #42",
+          "DA · Skift af side i rytteroversigten scroller nu tilbage til toppen. Evne-skyderne får ikke længere listen til at hoppe mens du trækker; filteret slår til når du slipper. En rytters profil viser nu det rigtige alders-badge (U23 for under 23, U25 for 23 til 24). Refs #229 #164 #42",
+        ],
+      },
+      {
+        category: "Fixed · Notifications",
+        items: [
+          "EN · The notification badge now correctly shows '9+' when you have more than nine unread notifications, instead of stopping at 9. Refs #64",
+          "DA · Notifikations-badgen viser nu korrekt '9+' når du har mere end ni ulæste notifikationer i stedet for at stoppe ved 9. Refs #64",
+        ],
+      },
+      {
+        category: "Improved · Team results",
+        items: [
+          "EN · On a team's results page you can now click a race name to open that race, and stage results link straight to the right stage. Refs #1500",
+          "DA · På et holds resultatside kan du nu klikke på et løbsnavn for at åbne løbet, og etape-resultater linker direkte til den rigtige etape. Refs #1500",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.61",
     date: "2026-06-19",
     label: "Beta",
