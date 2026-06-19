@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { fetchAllRows } from "../lib/supabasePagination";
 import RiderLink from "./RiderLink";
@@ -165,7 +166,19 @@ export default function TeamResultsTab({ teamId }) {
               {filtered.map((r) => (
                 <tr key={r.id} className="border-b border-cz-border last:border-0 hover:bg-cz-subtle/40">
                   <td className="py-2 pe-3">
-                    <p className="text-cz-1">{r.race?.name || "—"}</p>
+                    {/* #1500: løbsnavn linker til løbet — og direkte til den rigtige
+                        etape for stage-rækker (?stage=N). Gamle PCM-løb uden race.id
+                        falder tilbage til ren tekst. */}
+                    {r.race?.id ? (
+                      <Link
+                        to={`/races/${r.race.id}${r.result_type === "stage" && r.stage_number != null ? `?stage=${r.stage_number}` : ""}`}
+                        className="text-cz-1 hover:text-cz-accent-t transition-colors"
+                      >
+                        {r.race.name || "—"}
+                      </Link>
+                    ) : (
+                      <p className="text-cz-1">{r.race?.name || "—"}</p>
+                    )}
                     {seasonFilter === "all" && r.race?.season?.number != null && (
                       <p className="text-cz-3 text-[10px]">{t("results.seasonRow", { n: r.race.season.number })}</p>
                     )}
