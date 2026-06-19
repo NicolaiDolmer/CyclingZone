@@ -8,8 +8,18 @@ import LeaderBadge from "../components/LeaderBadge";
 import { formatNumber } from "../lib/intl";
 import { countTeamPodiums } from "../lib/standingsPodiums";
 import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch";
+import { Card, EmptyState, Spinner } from "../components/ui";
 
-const DIV_COLORS = { 1: "#e8c547", 2: "#60a5fa", 3: "#a78bfa" };
+// Division-farver via design-tokens (theme-agnostiske chart-vars + brand-guld),
+// så ranglistens kategori-accent matcher resten af UI'et: div 1 = guld (--accent),
+// div 2 = blå (--cz-chart-1), div 3 = violet (--cz-chart-2). Vi gemmer selve
+// CSS-var-navnet og bygger rgb()-strenge med alpha via divColor() — så vi undgår
+// hex-alpha-konkatenering (#rrggbbNN) og holder farverne token-drevne.
+const DIV_VARS = { 1: "--accent", 2: "--cz-chart-1", 3: "--cz-chart-2" };
+const divColor = (div, alpha = 1) => {
+  const v = DIV_VARS[div] || DIV_VARS[1];
+  return alpha >= 1 ? `rgb(var(${v}))` : `rgb(var(${v}) / ${alpha})`;
+};
 // Realtime: opdatér ranglisten live når en resultat-import skriver nye rækker (#783).
 const REALTIME_TABLES = ["season_standings", "race_results"];
 
@@ -145,7 +155,8 @@ export default function StandingsPage() {
     .sort((a, b) => effectivePts(b) - effectivePts(a));
 
   const maxPts = effectivePts(divStandings[0]) || 1;
-  const color = DIV_COLORS[divTab] || "#e8c547";
+  const color = divColor(divTab);
+  const colorSoft = divColor(divTab, 0.38); // svarer til den tidligere hex-alpha "60"
   const canPromote = divTab > 1;
   const canRelegate = divTab < 3;
   const divCounts = [1, 2, 3].map(d => ({
@@ -155,7 +166,7 @@ export default function StandingsPage() {
 
   if (loading) return (
     <div className="flex justify-center py-16">
-      <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
+      <Spinner size={24} />
     </div>
   );
 
@@ -174,11 +185,11 @@ export default function StandingsPage() {
       <div className="flex gap-2 mb-5">
         {divCounts.map(({ div, count }) => (
           <button key={div} onClick={() => setDivTab(div)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all border
+            className={`px-4 py-2 rounded-cz text-sm font-medium transition-all border
               ${divTab === div
                 ? "border-opacity-30 text-cz-1"
                 : "bg-cz-card text-cz-2 border-cz-border hover:text-cz-1"}`}
-            style={divTab === div ? { backgroundColor: `${DIV_COLORS[div]}15`, borderColor: `${DIV_COLORS[div]}40`, color: DIV_COLORS[div] } : {}}>
+            style={divTab === div ? { backgroundColor: divColor(div, 0.08), borderColor: divColor(div, 0.25), color: divColor(div) } : {}}>
             {t("division", { n: div })}
             <span className="ms-2 text-[10px] opacity-60">({count})</span>
           </button>
@@ -186,12 +197,12 @@ export default function StandingsPage() {
       </div>
 
       {divStandings.length === 0 ? (
-        <div className="text-center py-16 text-cz-3">
-          <p className="text-4xl mb-3">◉</p>
-          <p>{t("noData", { n: divTab })}</p>
-        </div>
+        <EmptyState
+          icon={<span aria-hidden="true" className="text-4xl">◉</span>}
+          title={t("noData", { n: divTab })}
+        />
       ) : (
-        <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+        <Card className="overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -225,8 +236,8 @@ export default function StandingsPage() {
                   // Zone bar (green/red) + the neutral "you" ring can co-exist; gold
                   // never overrides a zone bar — the leader signal is the chip (PF2 B).
                   const bars = [];
-                  if (isPromotion) bars.push("inset 3px 0 0 #4ade80");
-                  else if (isRelegation) bars.push("inset 3px 0 0 #f87171");
+                  if (isPromotion) bars.push("inset 3px 0 0 rgb(var(--success))");
+                  else if (isRelegation) bars.push("inset 3px 0 0 rgb(var(--danger))");
                   if (isMe) bars.push("inset 0 0 0 1.5px rgb(var(--me-ring) / 0.5)");
                   const rowStyle = bars.length ? { boxShadow: bars.join(", ") } : {};
                   return (
@@ -261,7 +272,7 @@ export default function StandingsPage() {
                           </div>
                           {/* Mini progress bar */}
                           <div className="mt-1.5 bg-cz-subtle rounded-full h-1 w-full max-w-32">
-                            <div className="h-1 rounded-full" style={{ width: `${ptsWidth}%`, backgroundColor: `${color}60` }} />
+                            <div className="h-1 rounded-full" style={{ width: `${ptsWidth}%`, backgroundColor: colorSoft }} />
                           </div>
                         </td>
                         <td className="px-4 py-3.5 text-right text-cz-2 hidden sm:table-cell font-mono">{s.stage_wins || 0}</td>
@@ -305,7 +316,7 @@ export default function StandingsPage() {
           {/* Legend */}
           <div className="px-4 py-3 border-t border-cz-border flex items-center gap-4 flex-wrap">
             <div className="flex items-center gap-1.5 text-xs text-cz-accent-t">
-              <span className="w-2 h-2 rounded-sm" style={{ backgroundColor: "#e8c547" }} />
+              <span className="w-2 h-2 rounded-sm bg-cz-accent" />
               {t("legendLeader")}
             </div>
             <div className="flex items-center gap-1.5 text-xs text-cz-success/70">
@@ -322,7 +333,7 @@ export default function StandingsPage() {
               {t("racesPlayed", { count: races.length })}
             </div>
           </div>
-        </div>
+        </Card>
       )}
     </div>
   );
