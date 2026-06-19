@@ -19,8 +19,8 @@
   },
   "mobileSort": {
     "label": "Sort by",
-    "ascAria": "Sorting ascending — tap for descending",
-    "descAria": "Sorting descending — tap for ascending"
+    "ascAria": "Sorting ascending, tap for descending",
+    "descAria": "Sorting descending, tap for ascending"
   },
   "pagination": {
     "showing": "Showing {from}-{to} of {total}",

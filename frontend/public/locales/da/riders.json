@@ -19,8 +19,8 @@
   },
   "mobileSort": {
     "label": "Sortér efter",
-    "ascAria": "Sorterer stigende — tryk for faldende",
-    "descAria": "Sorterer faldende — tryk for stigende"
+    "ascAria": "Sorterer stigende, tryk for faldende",
+    "descAria": "Sorterer faldende, tryk for stigende"
   },
   "pagination": {
     "showing": "Viser {from}-{to} af {total}",
