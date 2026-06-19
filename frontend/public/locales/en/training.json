@@ -25,8 +25,22 @@
   "summaryPeakForm": "In peak form",
   "loading": "Loading…",
   "colRider": "Rider",
+  "colType": "Type",
   "colNextUp": "Next +1",
   "colGains": "Gains",
   "colResult": "Result",
-  "colStatus": "Status"
+  "colStatus": "Status",
+  "groupByType": "Group by type",
+  "untypedGroup": "No type yet",
+  "groupCount": "{n, plural, one {# rider} other {# riders}}",
+  "selectAll": "Select all",
+  "selected": "{n, plural, one {# selected} other {# selected}}",
+  "bulkSetFocus": "Set focus for selected",
+  "bulkIntensity": "Intensity",
+  "bulkApply": "Apply to {n} selected",
+  "bulkApplying": "Applying…",
+  "bulkClear": "Clear selection",
+  "bulkApplied": "{n, plural, one {Updated # rider.} other {Updated # riders.}}",
+  "bulkPartial": "Updated {applied} of {total}. {failed} could not be saved - try again in a moment.",
+  "bulkPickFocus": "Pick a focus to apply."
 }
