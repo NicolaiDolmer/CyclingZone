@@ -2,6 +2,48 @@
 
 const PATCHES = [
   {
+    version: "5.66",
+    date: "2026-06-19",
+    label: "Beta",
+    changes: [
+      {
+        category: "Changed · Rider database",
+        items: [
+          "EN · Rider Database: you can now sort by Team and by Status, rider type has its own column instead of sharing the status badges, and the Potential column is gone (a rider's potential stays hidden and is scouted on the rider page). Refs #1537",
+          "DA · Rytterdatabase: du kan nu sortere på Hold og Status, ryttertype har sin egen kolonne i stedet for at dele plads med status-badges, og Potentiale-kolonnen er væk (en rytters potentiale forbliver skjult og scoutes på ryttersiden). Refs #1537",
+        ],
+      },
+      {
+        category: "Improved · Transfer list",
+        items: [
+          "EN · Transfer list: the Market tab now shows riders in rows like the rider page, with the same ability columns and colour badges, instead of cards. Refs #1523",
+          "DA · Transferliste: Market-fanen viser nu ryttere i rækker som ryttersiden, med de samme evne-kolonner og farve-badges, i stedet for kort. Refs #1523",
+        ],
+      },
+      {
+        category: "Improved · Injuries",
+        items: [
+          "EN · Injured riders now show a clear 'Injured' badge in the status column, both on your own squad and on other teams' squads, not just on the rider profile. Refs #1531",
+          "DA · Skadede ryttere viser nu et tydeligt 'Skadet'-badge i status-kolonnen, både på din egen trup og på andres hold, ikke kun på rytterprofilen. Refs #1531",
+        ],
+      },
+      {
+        category: "Improved · Dashboard",
+        items: [
+          "EN · Dashboard: you can now hide 'Next move' and the finance forecast, just like the other modules. Use the Customize button (top right) to toggle them. Refs #1536",
+          "DA · Dashboard: du kan nu skjule 'Næste træk' og det økonomiske forecast, ligesom de øvrige moduler. Brug Tilpas-knappen (øverst til højre) til at slå dem til og fra. Refs #1536",
+        ],
+      },
+      {
+        category: "Improved · Manager profile",
+        items: [
+          "EN · Manager profile: the wordy edit-name text on your own profile is now a discreet Settings link. Refs #1534",
+          "DA · Managerprofil: den lange rediger-navn-tekst på din egen profil er nu et diskret Indstillinger-link. Refs #1534",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.65",
     date: "2026-06-19",
     label: "Beta",
