@@ -66,7 +66,6 @@ function buildNavGroups(team, t, academyEnabled = false) {
         { to: "/rider-rankings", label: t("nav.item.riderRankings") },
         { to: "/races",          label: t("nav.item.races") },
         { to: "/seasons",        label: t("nav.item.seasons") },
-        { to: "/hall-of-fame",   label: t("nav.item.hallOfFame") },
       ],
     },
     {
@@ -311,15 +310,13 @@ export default function Layout() {
         .then(data => { if (data?.enabled) setAcademyEnabled(true); })
         .catch(() => {});
       fetch(`${API}/api/presence`,     { method: "POST", headers: h }).catch(e => console.error("presence:", e));
-      fetch(`${API}/api/login-streak`, { method: "POST", headers: h })
-        .catch(e => console.error("login-streak:", e))
-        .finally(() => {
-          fetch(`${API}/api/achievements/check`, {
-            method: "POST",
-            headers: h,
-            body: JSON.stringify({ context: "team_update", data: {} }),
-          }).catch(() => {});
-        });
+      // Login-streak power-mekanik fjernet (#1139) — ingen daglig login-tvang.
+      // Achievements-check kører fortsat (kosmetiske unlocks), uafhængigt af streak.
+      fetch(`${API}/api/achievements/check`, {
+        method: "POST",
+        headers: h,
+        body: JSON.stringify({ context: "team_update", data: {} }),
+      }).catch(() => {});
       fetchOnlineCount(h);
     });
   }, []);

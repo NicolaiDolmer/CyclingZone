@@ -20,7 +20,6 @@ import {
   Tr,
   Th,
   Td,
-  FlameIcon,
   TrophyIcon,
   LockIcon,
   ChevronLeftIcon,
@@ -156,11 +155,7 @@ export default function ManagerProfilePage() {
             )}
           </div>
           <div className="flex gap-3 ms-4">
-            <div className="bg-cz-subtle border border-cz-border rounded-cz px-4 py-3 text-center">
-              <FlameIcon size={20} className="mx-auto text-cz-accent" />
-              <p className="text-cz-1 font-bold text-sm mt-1">{user.login_streak || 0}</p>
-              <p className="text-cz-3 text-[10px]">{t("manager.streak")}</p>
-            </div>
+            {/* Login-streak (🔥) skjult per #1139 — ingen daglig login-tvang. Kosmetisk achievements bevares. */}
             <div className="bg-cz-subtle border border-cz-border rounded-cz px-4 py-3 text-center">
               <TrophyIcon size={20} className="mx-auto text-cz-accent" />
               <p className="text-cz-1 font-bold text-sm mt-1">{unlockedCount}</p>

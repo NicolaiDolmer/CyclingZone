@@ -207,14 +207,6 @@
         "title": "Managers online count",
         "text": "On the Dashboard you can see how many managers are active in the game right now. This updates automatically."
       },
-      "loginStreak": {
-        "title": "Login streak",
-        "text": "Your 🔥 streak counts how many consecutive days you've logged in. The streak resets if you skip a day. High streaks unlock secret achievements. You can see your streak on your manager profile."
-      },
-      "xpAndLevel": {
-        "title": "XP and level",
-        "text": "You earn XP for activity in the game: bidding on auctions, winning auctions, completing transfers and so on. When you accumulate enough XP you level up from Rookie to Legend. Your level is shown in the Hall of Fame."
-      },
       "headToHead": {
         "title": "Head-to-Head",
         "text": "Under League, Head-to-Head you can compare two teams' history directly: season points, stage and GC wins, transfer history between the teams and both teams' current top-5 riders. Team A is automatically your own team. Click the Team B field to see suggestions immediately. No typing required."
@@ -625,7 +617,7 @@
     },
     "ridersOffline": {
       "q": "What happens to my riders if I don't log in?",
-      "a": "Your riders stay on your team. You will lose your login streak if you skip a day, though."
+      "a": "Your riders stay on your team. Cycling Zone does not punish you for skipping a day, so play at your own pace."
     },
     "passwordReset": {
       "q": "How do I reset my password?",
@@ -678,10 +670,6 @@
     "onlineStatusFaq": {
       "q": "What is online status?",
       "a": "A green dot next to a manager's name means they've been active within the last 5 minutes. You can see this everywhere in the game."
-    },
-    "loginStreakFaq": {
-      "q": "What is the login streak?",
-      "a": "Your 🔥 streak counts how many consecutive days you've logged in. It resets if you skip a day."
     },
     "watchlistCounterFaq": {
       "q": "What does the watchlist counter on a rider page mean?",
