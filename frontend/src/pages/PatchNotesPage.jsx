@@ -2,6 +2,27 @@
 
 const PATCHES = [
   {
+    version: "5.63",
+    date: "2026-06-19",
+    label: "Beta",
+    changes: [
+      {
+        category: "Improved · Design",
+        items: [
+          "EN · A wave of pages now use the new design system for a cleaner, more consistent look: Transfers, Notifications, Profile, Manager profile, Results, Standings, Teams and Auction history. Cards, buttons, badges and icons are unified and flatter. No data or behaviour changed. Refs #671",
+          "DA · En stribe sider bruger nu det nye design-system for et renere og mere ensartet udtryk: Transfers, Notifikationer, Profil, Manager-profil, Resultater, Stilling, Hold og Auktionshistorik. Kort, knapper, badges og ikoner er forenede og fladere. Ingen data eller funktion er ændret. Refs #671",
+        ],
+      },
+      {
+        category: "Changed · Hall of Fame and streak",
+        items: [
+          "EN · Hall of Fame, the daily login streak and the manager XP display have been removed from the interface. There is no daily login pressure, and your achievements are unaffected. Refs #1139",
+          "DA · Hall of Fame, den daglige login-streak og manager-XP-visningen er fjernet fra brugerfladen. Der er ingen daglig login-tvang, og dine achievements er uberørte. Refs #1139",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.62",
     date: "2026-06-19",
     label: "Beta",
