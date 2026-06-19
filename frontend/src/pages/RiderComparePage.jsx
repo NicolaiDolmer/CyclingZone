@@ -62,7 +62,7 @@ function RiderSearch({ onSelect, excluded }) {
       />
       {(results.length > 0 || loading) && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-cz-card border border-cz-border
-          rounded-cz shadow-2xl z-20 overflow-hidden">
+          rounded-cz shadow-overlay z-20 overflow-hidden">
           {loading ? (
             <div className="p-3 text-center text-cz-3 text-sm">{t("compare.searching")}</div>
           ) : (

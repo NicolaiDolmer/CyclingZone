@@ -63,7 +63,7 @@
     },
     "frontend/src/components/SetupWizardModal.jsx": {
       "hex": 0,
-      "slop": 2,
+      "slop": 1,
       "emoji": 0
     },
     "frontend/src/components/TeamResultsTab.jsx": {
@@ -178,7 +178,7 @@
     },
     "frontend/src/pages/FounderSupporterPage.jsx": {
       "hex": 0,
-      "slop": 9,
+      "slop": 5,
       "emoji": 0
     },
     "frontend/src/pages/HallOfFamePage.jsx": {
@@ -189,7 +189,7 @@
     "frontend/src/pages/HelpPage.jsx": {
       "hex": 0,
       "slop": 0,
-      "emoji": 11
+      "emoji": 10
     },
     "frontend/src/pages/KitchenSinkPage.jsx": {
       "hex": 2,
@@ -220,11 +220,6 @@
       "hex": 4,
       "slop": 3,
       "emoji": 1
-    },
-    "frontend/src/pages/RiderComparePage.jsx": {
-      "hex": 0,
-      "slop": 0,
-      "emoji": 3
     },
     "frontend/src/pages/RiderRankingsPage.jsx": {
       "hex": 0,

@@ -241,7 +241,7 @@ function BoardMemberDialog({ member, onClose }) {
       onClick={e => e.target === e.currentTarget && onClose()}
     >
       <div ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="board-member-dialog-title"
-        className="w-full max-w-md bg-cz-card border border-cz-border rounded-2xl p-6 shadow-2xl max-h-[85vh] overflow-y-auto">
+        className="w-full max-w-md bg-cz-card border border-cz-border rounded-2xl p-6 shadow-overlay max-h-[85vh] overflow-y-auto">
         <div className="flex items-start gap-3 mb-4">
           <div className={`relative w-12 h-12 rounded-full bg-cz-subtle border flex items-center justify-center text-2xl flex-shrink-0
             ${member.is_chairman ? "border-cz-accent/40" : "border-cz-border"}`}>
@@ -439,7 +439,7 @@ function ClubDnaDialog({ dna, onClose }) {
       onClick={e => e.target === e.currentTarget && onClose()}
     >
       <div ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="club-dna-dialog-title"
-        className="w-full max-w-md bg-cz-card border border-cz-border rounded-2xl p-6 shadow-2xl max-h-[85vh] overflow-y-auto">
+        className="w-full max-w-md bg-cz-card border border-cz-border rounded-2xl p-6 shadow-overlay max-h-[85vh] overflow-y-auto">
         <div className="flex items-start gap-3 mb-4">
           <div className="w-12 h-12 rounded-full bg-cz-subtle border border-cz-border
             flex items-center justify-center text-2xl flex-shrink-0">
@@ -681,7 +681,7 @@ function GoalMiniDialog({ goal, achieved, evaluation, cumulativeProgress, onClos
       onClick={e => e.target === e.currentTarget && onClose()}
     >
       <div ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="goal-mini-dialog-title"
-        className="w-full max-w-lg bg-cz-card border border-cz-border rounded-2xl p-6 shadow-2xl max-h-[85vh] overflow-y-auto">
+        className="w-full max-w-lg bg-cz-card border border-cz-border rounded-2xl p-6 shadow-overlay max-h-[85vh] overflow-y-auto">
         <div className="flex items-start gap-3 mb-4">
           <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold ${iconCls}`}>
             <span aria-hidden="true">{iconContent}</span>

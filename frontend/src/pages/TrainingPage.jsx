@@ -279,7 +279,7 @@ export default function TrainingPage() {
         <td className="px-4 py-3">
           <div className="flex flex-wrap gap-1">
             {injured && (
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20">
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-cz-danger-bg text-cz-danger border border-cz-danger/30">
                 {daysLeft === 1
                   ? t("injured", { days: daysLeft })
                   : t("injured_plural", { days: daysLeft })}
@@ -557,7 +557,7 @@ export default function TrainingPage() {
                           {row.name}
                         </RiderLink>
                         {row.injured && (
-                          <span className="ms-2 text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400">
+                          <span className="ms-2 text-[10px] px-1.5 py-0.5 rounded bg-cz-danger-bg text-cz-danger">
                             {row.injury_days === 1
                               ? t("injured", { days: row.injury_days })
                               : t("injured_plural", { days: row.injury_days })}
