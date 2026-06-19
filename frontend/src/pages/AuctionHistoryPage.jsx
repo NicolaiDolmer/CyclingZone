@@ -8,6 +8,7 @@ import NationCell from "../components/rider/NationCell";
 import RiderBadges from "../components/rider/RiderBadges";
 import { ageBadgeKey } from "../lib/riderAge";
 import { formatNumber, formatDate } from "../lib/intl";
+import { Card, Button, EmptyState, Spinner } from "../components/ui";
 
 function timeAgo(dateStr, t) {
   if (!dateStr) return "—";
@@ -171,10 +172,10 @@ export default function AuctionHistoryPage() {
           { label: t("history.statSpent"), value: `${formatNumber(totalSpent)} CZ$`, color: "text-cz-danger" },
           { label: t("history.statEarned"), value: `${formatNumber(totalEarned)} CZ$`, color: "text-cz-success" },
         ].map(s => (
-          <div key={s.label} className="bg-cz-card border border-cz-border rounded-xl p-3 text-center">
+          <Card key={s.label} className="p-3 text-center">
             <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{s.label}</p>
             <p className={`font-mono font-bold text-sm ${s.color}`}>{s.value}</p>
-          </div>
+          </Card>
         ))}
       </div>
 
@@ -197,20 +198,20 @@ export default function AuctionHistoryPage() {
 
       {loading ? (
         <div className="flex justify-center py-16">
-          <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
+          <Spinner size={24} />
         </div>
       ) : auctions.length === 0 ? (
-        <div className="text-center py-16 text-cz-3">
-          <p className="text-4xl mb-3">◈</p>
-          <p>
-            {filter === "won" ? t("history.emptyWon")
+        <EmptyState
+          icon={<span className="text-4xl leading-none" aria-hidden="true">◈</span>}
+          title={
+            filter === "won" ? t("history.emptyWon")
               : filter === "sold" ? t("history.emptySold")
               : filter === "lost" ? t("history.emptyLost")
-              : t("history.emptyAll")}
-          </p>
-        </div>
+              : t("history.emptyAll")
+          }
+        />
       ) : (
-        <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+        <Card className="overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-cz-border">
@@ -298,20 +299,16 @@ export default function AuctionHistoryPage() {
                 {t("history.pageOf", { page, total: Math.ceil(total / PER_PAGE) })}
               </span>
               <div className="flex gap-2">
-                <button disabled={page <= 1} onClick={() => setPage(p => p - 1)}
-                  className="px-3 py-1.5 bg-cz-subtle rounded text-cz-2 text-xs
-                    hover:bg-cz-subtle disabled:opacity-30 disabled:cursor-not-allowed">
+                <Button variant="secondary" size="sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>
                   ← {t("history.prev")}
-                </button>
-                <button disabled={page * PER_PAGE >= total} onClick={() => setPage(p => p + 1)}
-                  className="px-3 py-1.5 bg-cz-subtle rounded text-cz-2 text-xs
-                    hover:bg-cz-subtle disabled:opacity-30 disabled:cursor-not-allowed">
+                </Button>
+                <Button variant="secondary" size="sm" disabled={page * PER_PAGE >= total} onClick={() => setPage(p => p + 1)}>
                   {t("history.next")} →
-                </button>
+                </Button>
               </div>
             </div>
           )}
-        </div>
+        </Card>
       )}
     </div>
   );
