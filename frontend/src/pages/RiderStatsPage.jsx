@@ -6,6 +6,7 @@ import { supabase } from "../lib/supabase";
 import { getCountryName } from "../lib/countryUtils";
 import { Flag } from "../components/Flag";
 import { formatCz, getRiderMarketValue, getRiderSalary } from "../lib/marketValues.js";
+import { ageBadgeKey } from "../lib/riderAge";
 import { statColor } from "../lib/statColor";
 import { formatNumber, formatDate, formatDateTime } from "../lib/intl";
 import { resolveApiError } from "../lib/apiError";
@@ -1456,7 +1457,15 @@ export default function RiderStatsPage() {
               </p>
             )}
             <div className="flex items-center gap-2 mt-2 flex-wrap">
-              {rider.is_u25 && <span className="text-xs uppercase bg-cz-info-bg0/20 text-cz-info px-2 py-0.5 rounded">{t("header.u25")}</span>}
+              {/* #42: alders-badge afledes fra alder (single source of truth, #837):
+                  <23 → U23, 23-24 → U25, ≥25 → ingen. Tidligere brugt rå is_u25, der
+                  også er true for U23-ryttere, så detalje-siden viste "U25" på en U23. */}
+              {(() => {
+                const ageTier = ageBadgeKey(rider);
+                return ageTier ? (
+                  <span className="text-xs uppercase bg-cz-info-bg0/20 text-cz-info px-2 py-0.5 rounded">{t(`header.${ageTier}`)}</span>
+                ) : null;
+              })()}
               {isRetired && <span className="text-xs uppercase bg-cz-danger-bg0/20 text-cz-danger px-2 py-0.5 rounded">{t("header.retired")}</span>}
               {rider.primary_type
                 ? <RiderTypeBadge primaryType={rider.primary_type} secondaryType={rider.secondary_type} size="md" />
