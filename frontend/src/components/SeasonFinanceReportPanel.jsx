@@ -26,6 +26,16 @@ function formatCZ(amount) {
   return `${formatNumber(n)} CZ$`;
 }
 
+// #1483 (del 2): backend leverer en rå dansk `label` per reason_code (i18n-leak
+// for EN-spillere). Slå labelen op locale-aware via report.reasonCode.<code> og
+// fald tilbage til backendens label hvis koden mangler en oversættelse.
+function reasonCodeLabel(t, reasonCode, fallbackLabel) {
+  if (!reasonCode) return fallbackLabel ?? "";
+  const key = `report.reasonCode.${reasonCode}`;
+  const translated = t(key);
+  return translated === key ? fallbackLabel ?? reasonCode : translated;
+}
+
 function formatDate(iso) {
   if (!iso) return "—";
   return formatDateIntl(iso, null, {
@@ -49,8 +59,11 @@ function DonutTooltip({ active, payload, total }) {
   );
 }
 
-function Donut({ title, data, emptyLabel }) {
+function Donut({ title, data: rawData, emptyLabel }) {
   const { t } = useTranslation("finance");
+  // #1483: oversæt backendens rå danske reason_code-label før render, så både
+  // donut-tooltip (nameKey="label") og legenden viser locale-aware tekst.
+  const data = rawData.map((d) => ({ ...d, label: reasonCodeLabel(t, d.reason_code, d.label) }));
   const total = data.reduce((sum, d) => sum + d.value, 0);
   if (!data.length) {
     return (
@@ -167,6 +180,7 @@ function TopTransactionsCard({ title, items, emptyLabel, isPositive }) {
   // Historik-fanen, så rytternavnet vises locale-aware i stedet for den rå
   // danske description (i18n-leak). Falder tilbage til tx.label ved ukendt row.
   const { t: tBackend } = useTranslation("backendMessages");
+  const { t } = useTranslation("finance");
   const resolveDescription = (tx) => {
     const resolved = resolveLegacyFinanceMessage(tx);
     if (resolved.code) {
@@ -186,7 +200,7 @@ function TopTransactionsCard({ title, items, emptyLabel, isPositive }) {
               <div className="min-w-0">
                 <p className="text-cz-1 text-sm truncate">{resolveDescription(tx)}</p>
                 <p className="text-cz-3 text-xs">
-                  {tx.label} · {formatDate(tx.created_at)}
+                  {reasonCodeLabel(t, tx.reason_code, tx.label)} · {formatDate(tx.created_at)}
                 </p>
               </div>
               <p

@@ -145,6 +145,7 @@ export async function resolveProxyBids({
             "Dit autobud er stoppet",
             `Dit autobud på ${riderName} stoppede pga. utilstrækkelig balance — sørg for at have penge på kontoen for at byde igen`,
             auctionId,
+            { riderId: auction.rider_id },
           ).catch((e) => console.error("[proxy-balance-reject] notif failed", { auctionId, e }));
         }
         continue;
@@ -183,6 +184,7 @@ export async function resolveProxyBids({
           "Du er blevet overbudt!",
           `${leaderName}'s autobud matchede dit bud på ${riderName} og beholder føringen ved identisk bud`,
           auctionId,
+          { riderId: auction.rider_id },
         ).catch((e) => console.error("[proxy-notif] failed", { auctionId, e }));
       }
       // Ingen sælger-notif her: prisen steg ikke, og sælgeren fik allerede
@@ -272,6 +274,7 @@ export async function resolveProxyBids({
           "Dit autobud er stoppet",
           `Dit autobud på ${riderName} stoppede pga. utilstrækkelig balance — sørg for at have penge på kontoen for at byde igen`,
           auctionId,
+          { riderId: auction.rider_id },
         ).catch((e) => console.error("[proxy-balance-reject] notif failed", { auctionId, e }));
       }
       // Ingen bid-insert; loop fortsætter med næste challenger.
@@ -321,7 +324,8 @@ export async function resolveProxyBids({
           "auction_proxy_outbid",
           "Dit autobud er stoppet",
           `Dit autobud på ${riderName} nåede sit max-loft og er overbudt af ${bidderName}`,
-          auctionId
+          auctionId,
+          { riderId: auction.rider_id }
         ).catch((e) => console.error("[proxy-notif] failed", { auctionId, e }));
       } else if (autoBidder !== currentWinner && currentWinner) {
         // Challenger took over, current winner had no proxy (normal outbid via proxy)
@@ -330,7 +334,8 @@ export async function resolveProxyBids({
           "auction_outbid",
           "Du er blevet overbudt!",
           `${bidderName}'s autobud overbød dig på ${riderName}`,
-          auctionId
+          auctionId,
+          { riderId: auction.rider_id }
         ).catch((e) => console.error("[proxy-notif] failed", { auctionId, e }));
       }
 
@@ -343,6 +348,7 @@ export async function resolveProxyBids({
           `${bidderName}'s autobid placed ${autoBidAmount} CZ$ on ${riderName}`,
           auctionId,
           {
+            riderId: auction.rider_id,
             titleCode: "notif.autoBidPlaced.title",
             titleParams: {},
             messageCode: "notif.autoBidPlaced.message",

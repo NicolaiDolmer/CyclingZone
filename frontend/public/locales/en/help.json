@@ -329,13 +329,13 @@
         "steps": [
           "Admin closes the transfer window and starts a new season.",
           "At season start: pending transfers are processed, sponsor money is paid out first, then loan interest and salaries are deducted (salaries follow the current market value). An emergency loan is created only if sponsor + balance can't cover the shortfall.",
-          "Races are run in Pro Cycling Manager and results are reported by a manager and approved by admin.",
+          "Races are run by the Cycling Zone race engine, which simulates each stage and writes the results automatically.",
           "At season end: points are tallied, division bonus is paid out, promotion/relegation is decided (from season 3 onwards), and board plans are evaluated. Salaries and interest are no longer deducted at season end. They moved to the next season's start (v3.78)."
         ]
       },
       "racesAndResults": {
         "title": "Races and results",
-        "text": "All managers can report race results from PCM via Season & Results, Races, Submit results. Upload an Excel file, match names and submit for admin approval. Prize money is computed automatically when admin finalises the results, and the season standings update through the same backend path whether admin approves a pending submission or imports results directly."
+        "text": "Races are run by the Cycling Zone race engine. It simulates each stage from rider abilities, form and tactics, then writes the standings and prize money automatically. Prize money lands on your team balance as soon as a race is finalised. You can follow every result under Season & Results, Races."
       },
       "prizeMoney": {
         "title": "Prize money from races",

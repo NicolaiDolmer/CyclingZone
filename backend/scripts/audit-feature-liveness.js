@@ -208,6 +208,12 @@ const WHITELIST_ORPHANED_ENDPOINTS = new Set([
   // + login_streak-kolonnen bevares bevidst intakt indtil world-history-erstatningen
   // (#1106/#1112/#1145) er designet, så det er intentional orphaned, ikke drift.
   "POST /login-streak",
+  // PCM-resultatindberetning: frontend-UI (submit/approve-tabs + admin PCM-import)
+  // fjernet i #1532 (PCM udfases). Backend-endpoints bevares bevidst indtil
+  // forever-relaunch-vinduet — legacyRiderRetirement + adminRouteOwnership.test.js
+  // afhænger af dem. Intentional orphaned, ikke drift; slettes i WS2-followup.
+  "POST /admin/approve-results",
+  "POST /admin/import-results-pcm",
 ]);
 
 // Detector C: schema-files der er committed men IKKE migrations (pre-workflow dumps).

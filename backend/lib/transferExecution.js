@@ -363,8 +363,8 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
   if (issue) {
     const message = describeTransferIssue(issue, { rider, buyerState, sellerState });
     await withdrawTransferOffer(supabase, offer.id);
-    await notifyTeamOwner(offer.buyer_team_id, "transfer_offer_rejected", message.notificationTitle, message.notificationMessage, offer.id);
-    await notifyTeamOwner(offer.seller_team_id, "transfer_offer_rejected", message.notificationTitle, message.notificationMessage, offer.id);
+    await notifyTeamOwner(offer.buyer_team_id, "transfer_offer_rejected", message.notificationTitle, message.notificationMessage, offer.id, { riderId: rider.id });
+    await notifyTeamOwner(offer.seller_team_id, "transfer_offer_rejected", message.notificationTitle, message.notificationMessage, offer.id, { riderId: rider.id });
     return failure(400, message.error, issue.code, message.errorParams ? { errorParams: message.errorParams } : {});
   }
 
@@ -403,9 +403,9 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
   if (!movedRider) {
     await withdrawTransferOffer(supabase, offer.id);
     await notifyTeamOwner(offer.buyer_team_id, "transfer_offer_rejected", "Transfer annulleret",
-      `${rider.firstname} ${rider.lastname} kunne ikke gennemføres, fordi rytteren skiftede status under bekræftelsen.`, offer.id);
+      `${rider.firstname} ${rider.lastname} kunne ikke gennemføres, fordi rytteren skiftede status under bekræftelsen.`, offer.id, { riderId: rider.id });
     await notifyTeamOwner(offer.seller_team_id, "transfer_offer_rejected", "Transfer annulleret",
-      `${rider.firstname} ${rider.lastname} kunne ikke gennemføres, fordi rytteren skiftede status under bekræftelsen.`, offer.id);
+      `${rider.firstname} ${rider.lastname} kunne ikke gennemføres, fordi rytteren skiftede status under bekræftelsen.`, offer.id, { riderId: rider.id });
     return failure(409, "Rytteren skiftede status under bekræftelsen — handlen er annulleret", "stale_rider_state");
   }
 
@@ -424,6 +424,10 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
       type: "transfer_out",
       amount: -price,
       description: `Købt ${rider.firstname} ${rider.lastname} via transfer`,
+      metadata: {
+        code: "tx.transferBuy",
+        params: { riderName: `${rider.firstname} ${rider.lastname}` },
+      },
       season_id: transferSeasonId,
       actor_type: actorType,
       actor_id: actorId,
@@ -441,6 +445,10 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
       type: "transfer_in",
       amount: price,
       description: `Solgt ${rider.firstname} ${rider.lastname} via transfer`,
+      metadata: {
+        code: "tx.transferSell",
+        params: { riderName: `${rider.firstname} ${rider.lastname}` },
+      },
       season_id: transferSeasonId,
       actor_type: actorType,
       actor_id: actorId,
@@ -464,8 +472,8 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
       supabase.from("transfer_offers").update({ status: "window_pending" }).eq("id", offer.id)
     );
     const parkMsg = `Handlen på ${rider.firstname} ${rider.lastname} er aftalt og betalt — rytteren skifter hold, så snart transfervinduet åbner igen.`;
-    await notifyTeamOwner(offer.buyer_team_id, "transfer_offer_accepted", "Handel parkeret", parkMsg, offer.id);
-    await notifyTeamOwner(offer.seller_team_id, "transfer_offer_accepted", "Handel parkeret", parkMsg, offer.id);
+    await notifyTeamOwner(offer.buyer_team_id, "transfer_offer_accepted", "Handel parkeret", parkMsg, offer.id, { riderId: rider.id });
+    await notifyTeamOwner(offer.seller_team_id, "transfer_offer_accepted", "Handel parkeret", parkMsg, offer.id, { riderId: rider.id });
     return success({ action: "window_pending", price });
   }
 
@@ -482,9 +490,9 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
   });
 
   await notifyTeamOwner(offer.buyer_team_id, "transfer_offer_accepted", "Transfer gennemført!",
-    `${rider.firstname} ${rider.lastname} skifter hold for ${price.toLocaleString()} CZ$`, offer.id);
+    `${rider.firstname} ${rider.lastname} skifter hold for ${price.toLocaleString()} CZ$`, offer.id, { riderId: rider.id });
   await notifyTeamOwner(offer.seller_team_id, "transfer_offer_accepted", "Transfer gennemført!",
-    `${rider.firstname} ${rider.lastname} skifter hold for ${price.toLocaleString()} CZ$`, offer.id);
+    `${rider.firstname} ${rider.lastname} skifter hold for ${price.toLocaleString()} CZ$`, offer.id, { riderId: rider.id });
 
   await notifyDiscordHistory({
     riderName: `${rider.firstname} ${rider.lastname}`,
@@ -622,6 +630,13 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
     // 07d Fase B / #240: actor via auditCtx (api/cron afhængigt af caller),
     // season_id eksplicit fra activeSeason.
     const swapDescription = `Byttehandel kontantbetaling: ${offered.firstname} ${offered.lastname} ↔ ${requested.firstname} ${requested.lastname}`;
+    const swapMetadata = {
+      code: "tx.swapCash",
+      params: {
+        offeredName: `${offered.firstname} ${offered.lastname}`,
+        requestedName: `${requested.firstname} ${requested.lastname}`,
+      },
+    };
     const payerId = cash > 0 ? swap.proposing_team_id : swap.receiving_team_id;
     const receiverId = cash > 0 ? swap.receiving_team_id : swap.proposing_team_id;
     const absCash = Math.abs(cash);
@@ -636,6 +651,7 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
         type: "transfer_out",
         amount: -absCash,
         description: swapDescription,
+        metadata: swapMetadata,
         season_id: swapSeasonId,
         actor_type: swapActorType,
         actor_id: swapActorId,
@@ -653,6 +669,7 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
         type: "transfer_in",
         amount: absCash,
         description: swapDescription,
+        metadata: swapMetadata,
         season_id: swapSeasonId,
         actor_type: swapActorType,
         actor_id: swapActorId,
@@ -761,7 +778,8 @@ export async function confirmTransferOffer({
       "transfer_offer_accepted",
       "Handlen afventer din bekræftelse",
       `${isSeller ? "Sælger" : "Køber"} har bekræftet handlen på ${offer.rider.firstname} ${offer.rider.lastname}. Bekræft for at gennemføre.`,
-      offer.id
+      offer.id,
+      { riderId: offer.rider.id }
     );
 
     return success({ action: "confirmed_partial" });

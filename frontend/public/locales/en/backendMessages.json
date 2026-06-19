@@ -28,6 +28,9 @@
     "guaranteedAiSale": "Guaranteed AI sale: {riderName}",
     "youthAuctionWin": "Won youth rider {riderName} at auction",
     "academySigning": "Academy signing: {riderName}",
+    "transferBuy": "Bought {riderName} via transfer",
+    "transferSell": "Sold {riderName} via transfer",
+    "swapCash": "Swap cash settlement: {offeredName} ↔ {requestedName}",
     "legacy": {
       "sponsor": "Sponsor income · Season {season}",
       "salary": "Salaries · Season {season}",

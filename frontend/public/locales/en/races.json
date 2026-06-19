@@ -11,9 +11,7 @@
     "calendar": "📅 Calendar",
     "library": "📚 Library",
     "world": "🌍 World calendar",
-    "points": "💰 Points & prizes",
-    "submit": "📤 Submit results",
-    "approve": "⚙ Approve ({count})"
+    "points": "💰 Points & prizes"
   },
   "raceType": {
     "stageRace": "Stage race",
@@ -45,22 +43,12 @@
     "active": "Live",
     "scheduled": "Upcoming"
   },
-  "submission": {
-    "pending": "Pending",
-    "approved": "Approved",
-    "rejected": "Rejected"
-  },
   "common": {
     "free": "Free",
     "dash": "—",
     "edition": "{year} edition",
     "loading": "Loading…",
     "points": "{count} pt"
-  },
-  "timeAgo": {
-    "days": "{count}d ago",
-    "hours": "{count}h ago",
-    "now": "Just now"
   },
   "empty": {
     "icon": "🏁",
@@ -79,7 +67,6 @@
     "expectedPoolTooltip": "Live-calculated expected pool based on race class × race type × stages",
     "selectPrompt": "Select a race to see details",
     "noResultsYet": "No results imported yet",
-    "submitCta": "Submit results →",
     "viewFull": "View full results →",
     "viewFullWithStages": "View full results + all stages →"
   },
@@ -116,47 +103,12 @@
     "thStages": "Stages",
     "thDate": "Date"
   },
-  "submit": {
-    "heading": "Submit race results",
-    "introBefore": "Upload an Excel file with results from PCM. Columns:",
-    "introAfter": "You can correct the name matching before submitting. An admin approves before the results become official.",
-    "columnsHint": "Rank | Rider name",
-    "raceLabel": "Race",
-    "stageLabel": "Stage",
-    "typeLabel": "Type",
-    "dropTitle": "📁 Click to upload PCM Excel file (.xlsx, .xls)",
-    "dropFormat": "Expected format: Rank in column A, Rider name in column B",
-    "uploadedCount": "{count} riders uploaded",
-    "autoMatch": "Auto-match names",
-    "thFromPcm": "From PCM",
-    "thMatchedTo": "Matched to",
-    "notMatched": "⚠ Not matched",
-    "submitting": "Submitting…",
-    "submitCta": "Submit for approval",
-    "mySubmissions": "My submissions",
-    "msgSelectRace": "❌ Select a race",
-    "msgUnmatched": "❌ {count} riders are not matched. Fix them manually",
-    "msgSubmitted": "✅ Results submitted · awaiting admin approval",
-    "msgError": "❌ {message}"
-  },
   "resultType": {
     "stage": "Stage",
     "gc": "Overall",
     "points": "Points",
     "mountain": "Mountains",
     "young": "Youth"
-  },
-  "approve": {
-    "nonePending": "No pending submissions",
-    "submittedBy": "Submitted by {user} · {date}",
-    "approve": "✓ Approve",
-    "reject": "✕ Reject",
-    "rejectPlaceholder": "Reason for rejection…",
-    "send": "Send",
-    "thRider": "Rider",
-    "thTeam": "Team",
-    "thType": "Type",
-    "errorGeneric": "Could not approve the submission. Please try again."
   },
   "points": {
     "title": "Points & prize overview",

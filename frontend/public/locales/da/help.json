@@ -329,13 +329,13 @@
         "steps": [
           "Admin lukker transfervinduet og starter ny sæson.",
           "Ved sæsonstart: ventende transfers behandles, sponsorpenge udbetales først, dernæst trækkes lånerenter og lønninger (følger den aktuelle markedsværdi). Nødlån oprettes kun hvis sponsor+balance ikke kan dække.",
-          "Løb køres i Pro Cycling Manager og resultaterne indberettes af en manager og godkendes af admin.",
+          "Løb afvikles af Cycling Zones race-motor, der simulerer hver etape og skriver resultaterne automatisk.",
           "Ved sæsonafslutning: point tælles op, divisionsbonus udbetales, op/nedrykning afgøres (fra sæson 3 og frem), og bestyrelsesplaner evalueres. Løn og renter trækkes IKKE ved sæsonslut længere. Det er flyttet til næste sæsons start (v3.78)."
         ]
       },
       "racesAndResults": {
         "title": "Løb og resultater",
-        "text": "Alle managers kan indberette løbsresultater fra PCM via Sæson & Resultater, Løb, Indberét resultater. Upload en Excel-fil, match navne og indsend til admin-godkendelse. Præmiepenge beregnes automatisk når admin finaliserer resultaterne, og sæsonstillingen opdateres gennem den samme backend-path uanset om admin godkender en pending submission eller importerer resultater direkte."
+        "text": "Løb afvikles af Cycling Zones race-motor. Den simulerer hver etape ud fra rytternes evner, form og taktik, og skriver derefter stillingen og præmiepengene automatisk. Præmiepengene lander på dit holds balance, så snart et løb er finaliseret. Du kan følge alle resultater under Sæson & Resultater, Løb."
       },
       "prizeMoney": {
         "title": "Præmiepenge fra løb",
