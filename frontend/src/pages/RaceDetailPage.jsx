@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import RiderLink from "../components/RiderLink";
 import TeamLink from "../components/TeamLink";
 import RaceSelectionPanel from "../components/race/RaceSelectionPanel.jsx";
@@ -60,7 +60,23 @@ export default function RaceDetailPage() {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
-  const [activeTab, setActiveTab] = useState("samlet");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(() => {
+    const s = searchParams.get("stage");
+    return s ? `stage-${s}` : "samlet";
+  });
+
+  // #1500: deep-link til en bestemt etape via ?stage=N. Hold activeTab og URL i
+  // sync, så et link fra holdresultater åbner den rigtige etape — og fanen kan
+  // deles/bogmærkes. Validerings-effekten nedenfor falder tilbage til "samlet"
+  // hvis etapen ikke findes når data er hentet.
+  const changeTab = useCallback((tab) => {
+    setActiveTab(tab);
+    const next = new URLSearchParams(searchParams);
+    if (tab.startsWith("stage-")) next.set("stage", tab.slice("stage-".length));
+    else next.delete("stage");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
@@ -176,11 +192,11 @@ export default function RaceDetailPage() {
         <>
           {/* Tabs: Samlet + Etape 1..N */}
           <div className="flex gap-2 flex-wrap">
-            <TabButton active={activeTab === "samlet"} onClick={() => setActiveTab("samlet")}>
+            <TabButton active={activeTab === "samlet"} onClick={() => changeTab("samlet")}>
               {t("detail.tabOverall")}
             </TabButton>
             {stageNumbers.map(n => (
-              <TabButton key={n} active={activeTab === `stage-${n}`} onClick={() => setActiveTab(`stage-${n}`)}>
+              <TabButton key={n} active={activeTab === `stage-${n}`} onClick={() => changeTab(`stage-${n}`)}>
                 {t("detail.tabStage", { number: n })}
               </TabButton>
             ))}
