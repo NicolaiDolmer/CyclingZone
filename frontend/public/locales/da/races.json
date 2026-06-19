@@ -11,9 +11,7 @@
     "calendar": "📅 Kalender",
     "library": "📚 Bibliotek",
     "world": "🌍 Verdens-kalender",
-    "points": "💰 Point & præmier",
-    "submit": "📤 Indberét resultater",
-    "approve": "⚙ Godkend ({count})"
+    "points": "💰 Point & præmier"
   },
   "raceType": {
     "stageRace": "Etapeløb",
@@ -45,22 +43,12 @@
     "active": "Igang",
     "scheduled": "Kommende"
   },
-  "submission": {
-    "pending": "Afventer",
-    "approved": "Godkendt",
-    "rejected": "Afvist"
-  },
   "common": {
     "free": "Fri",
     "dash": "—",
     "edition": "{year}-udgave",
     "loading": "Indlæser…",
     "points": "{count} pt"
-  },
-  "timeAgo": {
-    "days": "{count}d siden",
-    "hours": "{count}t siden",
-    "now": "Lige nu"
   },
   "empty": {
     "icon": "🏁",
@@ -79,7 +67,6 @@
     "expectedPoolTooltip": "Live-beregnet forventet pulje baseret på race-class × race-type × etaper",
     "selectPrompt": "Vælg et løb for at se detaljer",
     "noResultsYet": "Ingen resultater importeret endnu",
-    "submitCta": "Indberét resultater →",
     "viewFull": "Se fulde resultater →",
     "viewFullWithStages": "Se fulde resultater + alle etaper →"
   },
@@ -116,47 +103,12 @@
     "thStages": "Etaper",
     "thDate": "Dato"
   },
-  "submit": {
-    "heading": "Indberét løbsresultater",
-    "introBefore": "Upload en Excel-fil med resultater fra PCM. Kolonner:",
-    "introAfter": "Du kan efterfølgende rette navnematching inden du indsender. Admin godkender inden resultaterne er officielle.",
-    "columnsHint": "Placering | Rytternavn",
-    "raceLabel": "Løb",
-    "stageLabel": "Etape",
-    "typeLabel": "Type",
-    "dropTitle": "📁 Klik for at uploade PCM Excel-fil (.xlsx, .xls)",
-    "dropFormat": "Forventet format: Placering i kolonne A, Rytternavn i kolonne B",
-    "uploadedCount": "{count} ryttere uploadet",
-    "autoMatch": "Auto-match navne",
-    "thFromPcm": "Fra PCM",
-    "thMatchedTo": "Matchet til",
-    "notMatched": "⚠ Ikke matchet",
-    "submitting": "Indsender…",
-    "submitCta": "Indsend til godkendelse",
-    "mySubmissions": "Mine indberetninger",
-    "msgSelectRace": "❌ Vælg et løb",
-    "msgUnmatched": "❌ {count} ryttere er ikke matchet. Ret dem manuelt",
-    "msgSubmitted": "✅ Resultater indsendt · afventer godkendelse fra admin",
-    "msgError": "❌ {message}"
-  },
   "resultType": {
     "stage": "Etape",
     "gc": "Samlet",
     "points": "Point",
     "mountain": "Bjerg",
     "young": "Unge"
-  },
-  "approve": {
-    "nonePending": "Ingen afventende indberetninger",
-    "submittedBy": "Indsendt af {user} · {date}",
-    "approve": "✓ Godkend",
-    "reject": "✕ Afvis",
-    "rejectPlaceholder": "Årsag til afvisning…",
-    "send": "Send",
-    "thRider": "Rytter",
-    "thTeam": "Hold",
-    "thType": "Type",
-    "errorGeneric": "Kunne ikke godkende indberetningen. Prøv igen."
   },
   "points": {
     "title": "Point- og præmieoversigt",
