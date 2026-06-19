@@ -337,6 +337,10 @@
         "title": "Races and results",
         "text": "All managers can report race results from PCM via Season & Results, Races, Submit results. Upload an Excel file, match names and submit for admin approval. Prize money is computed automatically when admin finalises the results, and the season standings update through the same backend path whether admin approves a pending submission or imports results directly."
       },
+      "stageProfile": {
+        "title": "Terrain on a result",
+        "text": "When you open a result, each stage shows a small terrain badge with a schematic silhouette (flat, hilly, mountain, time trial and so on) plus the likely finale. This is an indicative terrain category, not a measured elevation profile with distance and climbing metres. Full route profiles arrive with a later update."
+      },
       "prizeMoney": {
         "title": "Prize money from races",
         "text": "Each result for a rider on your team generates prize money: points for the placing × 1,500 CZ$. Prize money is paid automatically to your team balance when admin finalises the results and shows as a 'prize' transaction in your finance log. Points for the season leaderboard and prize money are computed separately: points decide the leaderboard, while the CZ$ prize only affects your balance. Races without a race class generate no prize money. See the full points table under Season & Results, Races, Points & prizes."
