@@ -32,12 +32,13 @@
       "value": "Value",
       "salary": "Salary",
       "potential": "Potential",
+      "badges": "Status",
+      "type": "Type",
+      "contract": "Contract",
+      "contractValue": "Until S{season}",
       "action": "Action"
     },
     "tags": {
-      "u25": "U25",
-      "incoming": "Incoming",
-      "outgoing": "Outgoing",
       "loanedIn": "On loan",
       "loanedOut": "Loaned out"
     },
