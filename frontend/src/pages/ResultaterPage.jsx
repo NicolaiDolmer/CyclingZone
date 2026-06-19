@@ -15,7 +15,6 @@ import {
   BikeIcon,
   BookOpenIcon,
   CalendarIcon,
-  CrownIcon,
   CoinIcon,
 } from "../components/ui";
 
@@ -28,7 +27,6 @@ const HUB_LINKS = [
   { to: "/rider-rankings",     key: "riderRankings",  Icon: BikeIcon },
   { to: "/races?tab=library",  key: "library",        Icon: BookOpenIcon },
   { to: "/seasons",            key: "seasonSnapshot", Icon: CalendarIcon },
-  { to: "/hall-of-fame",       key: "hallOfFame",     Icon: CrownIcon },
   { to: "/races?tab=points",   key: "points",         Icon: CoinIcon },
 ];
 

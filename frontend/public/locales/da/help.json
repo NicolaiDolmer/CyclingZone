@@ -207,14 +207,6 @@
         "title": "Antal managers online",
         "text": "På Dashboard kan du se hvor mange managers der er aktive i spillet lige nu. Dette opdateres automatisk."
       },
-      "loginStreak": {
-        "title": "Login-streak",
-        "text": "Din 🔥 streak tæller hvor mange dage i træk du har logget ind. Streaken nulstilles hvis du springer en dag over. Høje streaks låser hemmelige achievements op. Du kan se din streak på din manager-profil."
-      },
-      "xpAndLevel": {
-        "title": "XP og niveau",
-        "text": "Du optjener XP for aktivitet i spillet: byde på auktioner, vinde auktioner, gennemføre transfers osv. Når du samler nok XP stiger du i niveau fra Rookie til Legende. Dit niveau vises i Hall of Fame."
-      },
       "headToHead": {
         "title": "Head-to-Head",
         "text": "Under Liga, Head-to-Head kan du sammenligne to holds historik direkte: sæsonpoint, etape- og GC-sejre, transferhistorik imellem holdene og begges nuværende top-5 ryttere. Hold A er automatisk dit eget hold. Klik i Hold B-feltet for at se forslag med det samme. Ingen typing nødvendig."
@@ -625,7 +617,7 @@
     },
     "ridersOffline": {
       "q": "Hvad sker der med mine ryttere hvis jeg ikke logger ind?",
-      "a": "Dine ryttere forbliver på dit hold. Du mister dog din login-streak hvis du springer en dag over."
+      "a": "Dine ryttere forbliver på dit hold. Cycling Zone straffer dig ikke for at springe en dag over, så spil i dit eget tempo."
     },
     "passwordReset": {
       "q": "Hvordan nulstiller jeg min adgangskode?",
@@ -678,10 +670,6 @@
     "onlineStatusFaq": {
       "q": "Hvad er online status?",
       "a": "En grøn prik ved en managers navn betyder de har været aktive inden for de sidste 5 minutter. Du kan se dette overalt i spillet."
-    },
-    "loginStreakFaq": {
-      "q": "Hvad er login-streak?",
-      "a": "Din 🔥 streak tæller hvor mange dage i træk du har logget ind. Den nulstilles hvis du springer en dag over."
     },
     "watchlistCounterFaq": {
       "q": "Hvad betyder watchlist-tælleren på en rytterside?",
