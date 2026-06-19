@@ -97,5 +97,13 @@
     "pause": "Pause ticker",
     "resume": "Genoptag ticker"
   },
+  "a11y": {
+    "openMenu": "Åbn menu",
+    "openNotifications": "Indbakke",
+    "removeFromComparison": "Fjern fra sammenligning",
+    "saveNote": "Gem note",
+    "searchHelp": "Søg i hjælp og FAQ",
+    "selectSeason": "Vælg sæson"
+  },
   "leaderBadge": "Fører"
 }

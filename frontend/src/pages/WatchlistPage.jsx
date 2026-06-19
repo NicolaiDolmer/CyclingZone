@@ -301,9 +301,9 @@ export default function WatchlistPage() {
                                 onKeyDown={e => e.key === "Enter" && saveNote(entry.id)}
                                 className="flex-1 bg-cz-subtle border border-cz-border rounded px-2 py-1
                                   text-cz-1 text-xs focus:outline-none focus:border-cz-accent w-20"
-                                autoFocus placeholder={t("notePlaceholder")} />
-                              <button onClick={() => saveNote(entry.id)}
-                                className="text-cz-success text-xs px-1">✓</button>
+                                autoFocus placeholder={t("notePlaceholder")} aria-label={t("notePlaceholder")} />
+                              <button onClick={() => saveNote(entry.id)} aria-label={t("common:a11y.saveNote")}
+                                className="text-cz-success text-xs px-1"><span aria-hidden="true">✓</span></button>
                             </div>
                           ) : (
                             <button onClick={() => { setEditingNote(entry.id); setNoteText(entry.note || ""); }}

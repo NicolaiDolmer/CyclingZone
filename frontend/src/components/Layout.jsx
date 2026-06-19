@@ -402,14 +402,14 @@ export default function Layout() {
         {/* Mobile topbar — bevidst IKKE sticky: den skal scrolle med indholdet
             og ikke "følge med op" og stjæle plads på små skærme (#1007). */}
         <div className="md:hidden flex items-center justify-between px-4 py-3 bg-cz-sidebar border-b border-cz-sidebar-border">
-          <button onClick={() => setMobileOpen(true)} className="text-cz-sidebar-2 hover:text-cz-sidebar-1 text-xl">☰</button>
+          <button onClick={() => setMobileOpen(true)} aria-label={t("a11y.openMenu")} className="text-cz-sidebar-2 hover:text-cz-sidebar-1 text-xl"><span aria-hidden="true">☰</span></button>
           <Link to="/dashboard" aria-label={t("nav.item.dashboard")} className="flex items-center gap-2 rounded hover:opacity-80 transition-opacity">
             <Wordmark forceDark className="h-5 w-auto" alt="" />
           </Link>
           <div className="flex items-center gap-2">
             <LanguageSwitcher />
-            <NavLink to="/notifications" className="relative">
-              <span className="text-cz-sidebar-2 hover:text-cz-sidebar-1 text-lg">🔔</span>
+            <NavLink to="/notifications" aria-label={t("a11y.openNotifications")} className="relative">
+              <span aria-hidden="true" className="text-cz-sidebar-2 hover:text-cz-sidebar-1 text-lg">🔔</span>
               {unread > 0 && (
                 <span className="absolute -top-1 -right-1 bg-cz-accent text-cz-on-accent text-[8px] font-black min-w-3.5 h-3.5 px-0.5 rounded-full flex items-center justify-center leading-none">
                   {unread > 9 ? "9+" : unread}

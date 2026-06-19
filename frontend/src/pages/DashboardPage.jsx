@@ -594,7 +594,7 @@ export default function DashboardPage() {
             <div className="flex flex-col gap-2">
               {pendingIncoming > 0 && (
                 <div className="flex items-center gap-3 py-2 border-b border-cz-border">
-                  <span className="text-cz-success text-lg">↓</span>
+                  <span aria-hidden="true" className="text-cz-success text-lg">↓</span>
                   <p className="text-cz-1 text-sm">{t("dashboard:cards.transfers.incomingCount", { count: pendingIncoming })}</p>
                   <span className="ms-auto text-[9px] bg-cz-success-bg text-cz-success border border-cz-success/30 px-2 py-0.5 rounded-full">{t("dashboard:cards.transfers.awaitingWindow")}</span>
                 </div>
