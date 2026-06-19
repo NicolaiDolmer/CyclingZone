@@ -26,6 +26,7 @@ import {
   LockIcon,
   ChevronLeftIcon,
   InboxIcon,
+  SettingsIcon,
 } from "../components/ui";
 
 const API = import.meta.env.VITE_API_URL;
@@ -154,8 +155,8 @@ export default function ManagerProfilePage() {
             {isOwnProfile && (
               <Link
                 to="/profile"
-                className="inline-flex mt-3 text-xs font-medium text-cz-accent-t hover:text-cz-accent-t">
-                {t("manager.editLink")}
+                className="inline-flex items-center gap-1 mt-3 text-xs font-medium text-cz-3 hover:text-cz-1 transition-colors">
+                <SettingsIcon size={13} />{t("manager.settingsLink")}
               </Link>
             )}
           </div>
