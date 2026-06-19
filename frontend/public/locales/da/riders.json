@@ -10,9 +10,9 @@
     "rider": "Rytter",
     "team": "Hold",
     "badges": "Status",
+    "type": "Type",
     "value": "Værdi",
     "salary": "Løn",
-    "potential": "Potentiale",
     "compareTooltip": "Vælg til sammenligning",
     "teamFree": "Fri",
     "pendingTransfer": "Holdskifte på vej: skifter til {team}"

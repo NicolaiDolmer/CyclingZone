@@ -18,8 +18,6 @@ import RiderTypeBadge from "../components/rider/RiderTypeBadge";
 import TeamCell from "../components/rider/TeamCell";
 import { ageBadgeKey } from "../lib/riderAge";
 import { getRiderMarketValue, getRiderSalary } from "../lib/marketValues.js";
-import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
-import { useScouting } from "../lib/useScouting";
 import RidersEmptyState from "../components/RidersEmptyState";
 import OnboardingTour from "../components/OnboardingTour";
 import WatchlistStar from "../components/WatchlistStar";
@@ -79,7 +77,7 @@ function StatBar({ value }) {
   );
 }
 
-function RiderRow({ rider, statCols, onSelect, watchlist, onToggleWatchlist, isInAuction, compareActive, compareDisabled, onToggleCompare, scouting, t }) {
+function RiderRow({ rider, statCols, onSelect, watchlist, onToggleWatchlist, isInAuction, compareActive, compareDisabled, onToggleCompare, t }) {
   // #1029 affordance: hele rækken er ét klikmål (navigerer til rytter-detalje).
   // Data-cellerne (stjerner, stat-bjælker) er rent display — kun de eksplicitte
   // knapper (Compare/Watchlist) + interne links (navn/hold) stopper propagation.
@@ -105,11 +103,15 @@ function RiderRow({ rider, statCols, onSelect, watchlist, onToggleWatchlist, isI
           pendingTitle={rider.pending_team ? t("table.pendingTransfer", { team: rider.pending_team.name }) : ""}
           stopPropagation />
       </td>
+      {/* #1537: Status (badges) og ryttertype delt i hver sin kolonne — som
+          holdsiden (#1482), så begge kan sorteres uafhængigt. */}
       <td className="px-3 py-2.5 hidden sm:table-cell">
         <div className="flex flex-wrap items-center gap-1">
           <RiderBadges badges={[ageBadgeKey(rider), isInAuction && "auction"]} />
-          <RiderTypeBadge primaryType={rider.primary_type} secondaryType={rider.secondary_type} />
         </div>
+      </td>
+      <td className="px-3 py-2.5 hidden sm:table-cell">
+        <RiderTypeBadge primaryType={rider.primary_type} secondaryType={rider.secondary_type} />
       </td>
       <td className="px-3 py-2.5 text-right">
         <span className="text-cz-accent-t font-mono text-sm font-bold">
@@ -120,9 +122,6 @@ function RiderRow({ rider, statCols, onSelect, watchlist, onToggleWatchlist, isI
         <span className="text-cz-2 font-mono text-sm">
           {formatNumber(getRiderSalary(rider))}
         </span>
-      </td>
-      <td className="px-3 py-2.5">
-        <ScoutablePotentiale rider={rider} scouting={scouting} />
       </td>
       {statCols.map(({ key }) => (
         <td key={key} className="px-1.5 py-2.5 w-14">
@@ -149,7 +148,6 @@ export default function RidersPage() {
   );
   const [nationalities, setNationalities] = useState([]);
   const [myTeam, setMyTeam] = useState(null);
-  const scouting = useScouting();
   const [showEmptyState, setShowEmptyState] = useState(false);
   const [compareIds, setCompareIds] = useState([]);
 
@@ -349,15 +347,22 @@ export default function RidersPage() {
                     <ExchangeIcon size={14} className="mx-auto" aria-hidden="true" />
                   </th>
                   <th className="px-2 py-3 w-8" />
-                  <th className="px-3 py-3 text-left font-medium uppercase tracking-wider text-cz-3 cursor-default hidden sm:table-cell">{t("table.team")}</th>
-                  <th className="px-3 py-3 text-left font-medium uppercase tracking-wider text-cz-3 cursor-default hidden sm:table-cell">{t("table.badges")}</th>
+                  {/* #1537: Hold sortérbar (grupperer ryttere pr. hold; fri agenter
+                      i den ene ende) — var en død header før. */}
+                  <SortTh sortKey="team_id" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
+                    className="px-3 py-3 text-left font-medium uppercase tracking-wider hidden sm:table-cell">{t("table.team")}</SortTh>
+                  {/* #1537: Status sortérbar på alders-tier (U25-talenter samles) +
+                      ryttertype som egen sortérbar kolonne (delt fra Status). */}
+                  <SortTh sortKey="is_u25" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
+                    className="px-3 py-3 text-left font-medium uppercase tracking-wider hidden sm:table-cell">{t("table.badges")}</SortTh>
+                  <SortTh sortKey="primary_type" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
+                    className="px-3 py-3 text-left font-medium uppercase tracking-wider hidden sm:table-cell">{t("table.type")}</SortTh>
                   <SortTh sortKey="value" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
                     className="px-3 py-3 text-right font-medium uppercase tracking-wider w-20">{t("table.value")}</SortTh>
                   <SortTh sortKey="salary" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
                     className="px-3 py-3 text-right font-medium uppercase tracking-wider w-20">{t("table.salary")}</SortTh>
-                  {/* #1162: potentiale er server-skjult — listen er server-pagineret,
-                      så sortering på det scoutede estimat er ikke meningsfuld her. */}
-                  <th className="px-3 py-3 text-left font-medium uppercase tracking-wider w-24 text-cz-3 cursor-default">{t("table.potential")}</th>
+                  {/* #1537: Potentiale-kolonnen fjernet — potentiale skjules helt i
+                      visningen (doctrine #1138). */}
                   {visibleStatCols.map(({ key, label }) => (
                     <SortTh key={key} sortKey={key} sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
                       className="px-1.5 py-3 text-center font-medium w-14">{label}</SortTh>
@@ -386,7 +391,6 @@ export default function RidersPage() {
                     compareActive={compareIds.includes(r.id)}
                     compareDisabled={compareIds.length >= MAX_COMPARE}
                     onToggleCompare={toggleCompare}
-                    scouting={scouting}
                     t={t} />
                 ))}
               </tbody>
