@@ -401,7 +401,7 @@ export default function SeasonEndPage() {
                           {isCompleted && i === divStandings.length - 2 && div > 1 && divStandings.length > 4 && (
                             <tr aria-hidden="true">
                               <td colSpan={5} style={{ padding: 0, lineHeight: 0, border: 0 }}>
-                                <div style={{ height: 2, background: "linear-gradient(to right, #fca5a5 40%, transparent)" }} />
+                                <div className="border-t border-cz-danger/30" />
                               </td>
                             </tr>
                           )}
@@ -443,7 +443,7 @@ export default function SeasonEndPage() {
                           {isCompleted && i === 1 && div < 3 && divStandings.length > 2 && (
                             <tr aria-hidden="true">
                               <td colSpan={5} style={{ padding: 0, lineHeight: 0, border: 0 }}>
-                                <div style={{ height: 2, background: "linear-gradient(to right, #86efac 40%, transparent)" }} />
+                                <div className="border-t border-cz-success/30" />
                               </td>
                             </tr>
                           )}

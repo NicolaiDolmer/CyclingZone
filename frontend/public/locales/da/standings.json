@@ -1,6 +1,7 @@
 {
   "title": "Rangliste",
   "season": "Sæson {n}",
+  "seasonTooltip": "Nuværende sæson. Ranglisten nulstilles hver sæson.",
   "noActiveSeason": "Ingen aktiv sæson",
   "division": "Division {n}",
   "noData": "Ingen data for Division {n} endnu",

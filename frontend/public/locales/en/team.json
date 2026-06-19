@@ -8,6 +8,7 @@
     "incomingCount": "+{count} incoming",
     "outgoingCount": "-{count} outgoing",
     "salaryPerSeason": "Salary/season: {value} CZ$",
+    "salaryPerSeasonTooltip": "Total salary your squad earns per season",
     "teamValue": "Team value: {value} CZ$",
     "division": "Division {n}",
     "balance": "{value} CZ$"
