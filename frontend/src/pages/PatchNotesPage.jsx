@@ -2,6 +2,62 @@
 
 const PATCHES = [
   {
+    version: "5.61",
+    date: "2026-06-19",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fixed · Daily training",
+        items: [
+          "EN · Daily training works again. The 'Train today' button was blocked by an error and would not run; it now trains your squad as expected. Refs #1479",
+          "DA · Daglig træning virker igen. 'Træn i dag'-knappen blev blokeret af en fejl og ville ikke køre; den træner nu dit hold som forventet. Refs #1479",
+        ],
+      },
+      {
+        category: "Fixed · Academy",
+        items: [
+          "EN · Fixed four academy issues: real riders and stars no longer show up as free academy signings, academy riders now get a rider type and the new ability stats instead of old data, and academy riders now train together with the rest of your squad during automatic training. Refs #1478",
+          "DA · Rettede fire akademi-fejl: rigtige ryttere og stjerner optræder ikke længere som gratis akademi-signinger, akademiryttere får nu en ryttertype og de nye evne-stats i stedet for gamle data, og akademiryttere træner nu sammen med resten af holdet ved automatisk træning. Refs #1478",
+        ],
+      },
+      {
+        category: "Fixed · Finance",
+        items: [
+          "EN · The finance history now shows the rider's name on transfer, auction and academy transactions, instead of a generic 'Transfer' label. Refs #1483",
+          "DA · Økonomi-historikken viser nu rytterens navn på transfer-, auktions- og akademi-transaktioner i stedet for en generisk 'Transfer'-label. Refs #1483",
+        ],
+      },
+      {
+        category: "Fixed · Dashboard",
+        items: [
+          "EN · The dashboard no longer shows the board card before your board has been set up. Refs #1488",
+          "DA · Dashboardet viser ikke længere bestyrelses-kortet, før din bestyrelse er oprettet. Refs #1488",
+        ],
+      },
+      {
+        category: "Improved · Team page",
+        items: [
+          "EN · The squad table now has its own columns for status badges, rider type and contract end, and you can sort by rider type and contract. Refs #1482",
+          "DA · Trup-tabellen har nu egne kolonner for status-badges, ryttertype og kontraktudløb, og du kan sortere på ryttertype og kontrakt. Refs #1482",
+        ],
+      },
+      {
+        category: "Improved · Daily training",
+        items: [
+          "EN · The training page now shows each rider's type, lets you group the roster by type, and lets you set a focus and intensity for several riders at once. Refs #1480",
+          "DA · Træningssiden viser nu hver rytters type, lader dig gruppere truppen efter type, og lader dig sætte fokus og intensitet på flere ryttere ad gangen. Refs #1480",
+        ],
+      },
+      {
+        category: "Fixed · Season relaunch",
+        items: [
+          "EN · When a season is relaunched, incoming transfers and watchlists are now cleared along with the rest of the reset, so no stale entries carry over. Refs #1481",
+          "DA · Når en sæson relanceres, ryddes indkommende transfers og ønskelister nu sammen med resten af nulstillingen, så ingen gamle poster føres med over. Refs #1481",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.60",
     date: "2026-06-18",
     label: "Beta",
