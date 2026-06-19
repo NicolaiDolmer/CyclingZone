@@ -201,11 +201,6 @@
       "slop": 12,
       "emoji": 4
     },
-    "frontend/src/pages/NotificationsPage.jsx": {
-      "hex": 6,
-      "slop": 4,
-      "emoji": 34
-    },
     "frontend/src/pages/PatchNotesPage.jsx": {
       "hex": 3,
       "slop": 1,
