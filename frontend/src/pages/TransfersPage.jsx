@@ -16,6 +16,9 @@ import { resolveApiError } from "../lib/apiError";
 import { sortListings, LISTING_SORT_OPTIONS } from "../lib/transferListingSort";
 import { Card, EmptyState, ExchangeIcon, ClipboardIcon } from "../components/ui";
 import { ABILITY_STATS as LISTING_STATS, flattenAbilities } from "../lib/abilities";
+import NationCell from "../components/rider/NationCell";
+import RiderNameCell from "../components/rider/RiderNameCell";
+import TeamCell from "../components/rider/TeamCell";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -1025,23 +1028,35 @@ function OwnListingActions({ listing, riderName, onRemove, onUpdatePrice }) {
   );
 }
 
-// ── Transfer market listing card ─────────────────────────────────────────────
-function TransferCard({ listing, myTeamId, onOffer, onRemove, onUpdatePrice, windowOpen = true }) {
+// ── Market række-layout (#1523) ──────────────────────────────────────────────
+// Transferlistens market-fane vises nu som rækker på linje med ryttersiden
+// (RidersPage), så stats kan sammenlignes på tværs af rytteroversigterne.
+// Samme byggeklodser (NationCell/RiderNameCell/TeamCell + statStyle-badges) +
+// samme tabel-struktur (sticky navn-kolonne, evne-kolonner). Den transferliste-
+// specifikke funktionalitet (pris, status, bud, redigér/fjern) bor i en
+// expander-række under selve rytterrækken, så tabel-overblikket bevares.
+
+function MarketStatBar({ value }) {
+  return (
+    <span className="inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded" style={statStyle(value ?? 0)}>
+      {value ?? "—"}
+    </span>
+  );
+}
+
+// Bud-form (ikke-egen listing) — samme felter/validering som TransferCard.
+function MarketOfferForm({ listing, windowOpen, onOffer }) {
   const { t } = useTranslation("transfers");
   const [offerAmt, setOfferAmt] = useState(listing.asking_price || 0);
   const [msg, setMsg] = useState("");
-  const [showOffer, setShowOffer] = useState(false);
   const [loading, setLoading] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
-
-  const isOwn = listing.seller?.id === myTeamId;
   const riderName = listing.rider ? `${listing.rider.firstname} ${listing.rider.lastname}` : t("transferCard.ridersForSale");
 
   async function performSendOffer() {
     setLoading(true);
     try {
       await onOffer(listing.rider?.id, offerAmt, msg);
-      setShowOffer(false);
       setConfirmOpen(false);
     } finally {
       setLoading(false);
@@ -1049,88 +1064,27 @@ function TransferCard({ listing, myTeamId, onOffer, onRemove, onUpdatePrice, win
   }
 
   return (
-    <Card className="p-4">
-      <div className="flex items-start justify-between mb-3">
-        <div>
-          <RiderLink id={listing.rider?.id} className="cursor-pointer block">
-            <p className="text-cz-1 font-semibold hover:text-cz-accent-t transition-colors">
-              {listing.rider?.nationality_code && <Flag code={listing.rider.nationality_code} className="me-1" />}{listing.rider?.firstname} {listing.rider?.lastname}
-            </p>
-          </RiderLink>
-          <p className="text-cz-3 text-xs mt-0.5">
-            <TeamLink id={listing.seller?.id} className="hover:text-cz-accent-t transition-colors">{listing.seller?.name || "—"}</TeamLink>
-          </p>
-          {listing.created_at && (
-            <p className="text-cz-3 text-xs mt-0.5">
-              {t("transferCard.listedSince", { date: formatDate(listing.created_at, null, { day: "numeric", month: "short" }) })}
-            </p>
-          )}
-        </div>
-        <div className="text-right">
-          <p className="text-cz-accent-t font-mono font-bold text-lg">{formatNumber(listing.asking_price)} CZ$</p>
-      <p className="text-cz-3 text-xs">{t("transferCard.valueLabel", { value: formatCz(getRiderMarketValue(listing.rider)) })}</p>
-        </div>
+    <div className="flex flex-col gap-2">
+      {!windowOpen && (
+        <p className="rounded-lg border border-cz-border bg-cz-card px-3 py-2 text-xs text-cz-2">
+          {t("transferCard.windowPendingHint")}
+        </p>
+      )}
+      <div className="flex flex-col sm:flex-row gap-2">
+        <input type="number" value={offerAmt}
+          onChange={e => setOfferAmt(parseInt(e.target.value) || 0)}
+          aria-label={t("offerCard.form.newOfferLabel")}
+          className="min-w-0 flex-1 min-h-[44px] bg-cz-card border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-sm focus:outline-none focus:border-cz-accent" />
+        <button
+          onClick={() => { if (offerAmt > 0) setConfirmOpen(true); }}
+          disabled={loading || offerAmt <= 0}
+          className="min-h-[44px] px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50">
+          {loading ? "..." : t("transferCard.send")}
+        </button>
       </div>
-
-      {/* #987: alle 14 stats som på rytterdatabasen — ikke kun BJ/SP/TT/FL.
-          #1421: hele stats-arealet er ét klikmål → rytterprofil (dead-click-fix). */}
-      <RiderLink id={listing.rider?.id} aria-label={listing.rider ? riderName : undefined}
-        className="block rounded-lg py-1 mb-3 transition-colors hover:bg-cz-subtle/50 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-cz-accent/40">
-        <div className="grid grid-cols-7 gap-x-1 gap-y-2">
-          {LISTING_STATS.map(({ key, label }) => (
-            <div key={key} className="text-center">
-              <p className="text-cz-3 text-[9px] uppercase">{label}</p>
-              <span className="inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded" style={statStyle(listing.rider?.[key] || 0)}>
-                {listing.rider?.[key] || "—"}
-              </span>
-            </div>
-          ))}
-        </div>
-      </RiderLink>
-
-      {!isOwn && (
-        <div>
-          <button onClick={() => setShowOffer(!showOffer)}
-            className={`w-full py-2 rounded-lg text-sm font-medium transition-all border
-              ${showOffer
-                  ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/25"
-                  : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle hover:text-cz-1"}`}>
-            {showOffer ? t("transferCard.hide") : t("transferCard.sendOffer")}
-          </button>
-
-          {showOffer && (
-            <div className="mt-2 flex flex-col gap-2">
-              {!windowOpen && (
-                <p className="rounded-lg border border-cz-border bg-cz-subtle px-3 py-2 text-xs text-cz-2">
-                  {t("transferCard.windowPendingHint")}
-                </p>
-              )}
-              <div className="flex gap-2">
-                <input type="number" value={offerAmt}
-                  onChange={e => setOfferAmt(parseInt(e.target.value) || 0)}
-                  className="flex-1 bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-sm focus:outline-none focus:border-cz-accent" />
-                <button
-                  onClick={() => { if (offerAmt > 0) setConfirmOpen(true); }}
-                  disabled={loading || offerAmt <= 0}
-                  className="px-4 py-2 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 disabled:opacity-50">
-                  {loading ? "..." : t("transferCard.send")}
-                </button>
-              </div>
-              <input type="text" value={msg} onChange={e => setMsg(e.target.value)}
-                placeholder={t("transferCard.messagePlaceholder")}
-                className="bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-xs focus:outline-none" />
-            </div>
-          )}
-        </div>
-      )}
-      {isOwn && (
-        <OwnListingActions
-          listing={listing}
-          riderName={riderName}
-          onRemove={onRemove}
-          onUpdatePrice={onUpdatePrice}
-        />
-      )}
+      <input type="text" value={msg} onChange={e => setMsg(e.target.value)}
+        placeholder={t("transferCard.messagePlaceholder")}
+        className="bg-cz-card border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-xs focus:outline-none focus:border-cz-accent" />
       <BidConfirmModal
         show={confirmOpen}
         mode="transfer"
@@ -1140,7 +1094,82 @@ function TransferCard({ listing, myTeamId, onOffer, onRemove, onUpdatePrice, win
         onCancel={() => { if (!loading) setConfirmOpen(false); }}
         onConfirm={performSendOffer}
       />
-    </Card>
+    </div>
+  );
+}
+
+// Én listing = én rytterrække (+ optionel action-expander-række under).
+function MarketRow({ listing, myTeamId, statCols, expanded, onToggleExpand, onOffer, onRemove, onUpdatePrice, windowOpen }) {
+  const { t } = useTranslation("transfers");
+  const rider = listing.rider;
+  const isOwn = listing.seller?.id === myTeamId;
+  const riderName = rider ? `${rider.firstname} ${rider.lastname}` : t("transferCard.ridersForSale");
+
+  return (
+    <>
+      <tr className={`border-b border-cz-border transition-colors ${expanded ? "bg-cz-subtle" : "hover:bg-cz-subtle"}`}>
+        <td className="px-2 py-2.5 w-12 hidden sm:table-cell">
+          <NationCell code={rider?.nationality_code} />
+        </td>
+        <td className="px-3 py-2.5 sticky-name-cell sticky left-0 z-10 border-r border-cz-border shadow-[10px_0_16px_-16px_rgba(0,0,0,0.5)]">
+          <RiderNameCell id={rider?.id} firstname={rider?.firstname} lastname={rider?.lastname} />
+        </td>
+        <td className="px-3 py-2.5 hidden sm:table-cell">
+          <TeamCell team={listing.seller} freeLabel="—" />
+        </td>
+        <td className="px-3 py-2.5 hidden md:table-cell">
+          <span className="text-cz-3 text-xs whitespace-nowrap">
+            {listing.created_at ? formatDate(listing.created_at, null, { day: "numeric", month: "short" }) : "—"}
+          </span>
+        </td>
+        <td className="px-3 py-2.5 text-right">
+          <span className="text-cz-2 font-mono text-sm">{formatCz(getRiderMarketValue(rider))}</span>
+        </td>
+        <td className="px-3 py-2.5 text-right hidden sm:table-cell">
+          <span className="text-cz-2 font-mono text-sm">{formatCz(getRiderSalary(rider))}</span>
+        </td>
+        <td className="px-3 py-2.5 text-right">
+          <span className="text-cz-accent-t font-mono text-sm font-bold whitespace-nowrap">
+            {formatNumber(listing.asking_price)} CZ$
+          </span>
+        </td>
+        {statCols.map(({ key }) => (
+          <td key={key} className="px-1.5 py-2.5 w-14 text-center">
+            <MarketStatBar value={rider?.[key]} />
+          </td>
+        ))}
+        <td className="px-3 py-2.5 text-right w-28">
+          <button
+            onClick={() => onToggleExpand(listing.id)}
+            aria-expanded={expanded}
+            aria-label={isOwn ? t("marketRow.manageAria", { riderName }) : t("marketRow.offerAria", { riderName })}
+            className={`min-h-[36px] px-3 py-1.5 rounded-lg text-xs font-medium transition-all border whitespace-nowrap
+              ${expanded
+                ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/25"
+                : "bg-cz-card text-cz-2 border-cz-border hover:text-cz-1 hover:border-cz-accent/40"}`}>
+            {expanded ? t("marketRow.close") : isOwn ? t("marketRow.manage") : t("marketRow.offer")}
+          </button>
+        </td>
+      </tr>
+      {expanded && (
+        <tr className="border-b border-cz-border bg-cz-subtle">
+          <td colSpan={7 + statCols.length + 1} className="px-3 pb-4 pt-1">
+            <div className="max-w-xl rounded-lg border border-cz-border bg-cz-card p-3">
+              {isOwn ? (
+                <OwnListingActions
+                  listing={listing}
+                  riderName={riderName}
+                  onRemove={onRemove}
+                  onUpdatePrice={onUpdatePrice}
+                />
+              ) : (
+                <MarketOfferForm listing={listing} windowOpen={windowOpen} onOffer={onOffer} />
+              )}
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
   );
 }
 
@@ -1174,6 +1203,11 @@ export default function TransfersPage() {
   const [msg, setMsg] = useState({ text: "", type: "success" });
   const [transferWindow, setTransferWindow] = useState({ open: true, status: "open" });
   const [listingSort, setListingSort] = useState("newest"); // #1185: market-tab sortering
+  const [expandedListingId, setExpandedListingId] = useState(null); // #1523: åben action-række i market-tabellen
+
+  function toggleExpandedListing(id) {
+    setExpandedListingId(prev => (prev === id ? null : id));
+  }
 
   useEffect(() => { loadAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1706,19 +1740,46 @@ export default function TransfersPage() {
                   title={listings.length === 0 ? t("empty.marketNoListings") : t("empty.marketNoMatches")}
                 />
               ) : (
-                <div className="grid sm:grid-cols-2 gap-3">
-                  {filteredListings.map(l => (
-                    <TransferCard
-                      key={l.id}
-                      listing={l}
-                      myTeamId={myTeamId}
-                      onOffer={(riderId, amt, msg) => handleOffer(riderId, amt, msg)}
-                      onRemove={handleRemoveListing}
-                      onUpdatePrice={handleUpdateListingPrice}
-                      windowOpen={transferWindow.open}
-                    />
-                  ))}
-                </div>
+                /* #1523: rækkelayout på linje med ryttersiden (RidersPage) — bedre
+                   overblik + samme evne-kolonner. Sticky navn-kolonne + vandret
+                   scroll til evnerne; pris/status/bud i en expander-række. */
+                <Card className="overflow-hidden">
+                  <div className="overflow-auto max-h-[calc(100vh-260px)]">
+                    <table className="w-full text-xs">
+                      <thead className="sticky top-0 z-20 bg-cz-card shadow-sm">
+                        <tr className="border-b border-cz-border">
+                          <th className="px-2 py-3 text-left font-medium uppercase tracking-wider text-cz-3 w-12 hidden sm:table-cell">{t("marketRow.nation")}</th>
+                          <th className="px-3 py-3 text-left font-medium uppercase tracking-wider text-cz-3 w-40 sticky left-0 z-30 bg-cz-card border-r border-cz-border">{t("marketRow.rider")}</th>
+                          <th className="px-3 py-3 text-left font-medium uppercase tracking-wider text-cz-3 hidden sm:table-cell">{t("marketRow.seller")}</th>
+                          <th className="px-3 py-3 text-left font-medium uppercase tracking-wider text-cz-3 hidden md:table-cell">{t("marketRow.listed")}</th>
+                          <th className="px-3 py-3 text-right font-medium uppercase tracking-wider text-cz-3 w-20">{t("marketRow.value")}</th>
+                          <th className="px-3 py-3 text-right font-medium uppercase tracking-wider text-cz-3 w-20 hidden sm:table-cell">{t("marketRow.salary")}</th>
+                          <th className="px-3 py-3 text-right font-medium uppercase tracking-wider text-cz-3 w-24">{t("marketRow.price")}</th>
+                          {LISTING_STATS.map(({ key, label }) => (
+                            <th key={key} className="px-1.5 py-3 text-center font-medium text-cz-3 w-14">{label}</th>
+                          ))}
+                          <th className="px-3 py-3 text-right font-medium uppercase tracking-wider text-cz-3 w-28">{t("marketRow.action")}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredListings.map(l => (
+                          <MarketRow
+                            key={l.id}
+                            listing={l}
+                            myTeamId={myTeamId}
+                            statCols={LISTING_STATS}
+                            expanded={expandedListingId === l.id}
+                            onToggleExpand={toggleExpandedListing}
+                            onOffer={(riderId, amt, msg) => handleOffer(riderId, amt, msg)}
+                            onRemove={handleRemoveListing}
+                            onUpdatePrice={handleUpdateListingPrice}
+                            windowOpen={transferWindow.open}
+                          />
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </Card>
               )}
             </div>
           )}
