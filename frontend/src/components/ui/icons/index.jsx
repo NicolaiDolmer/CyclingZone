@@ -452,3 +452,24 @@ export function FlameIcon(props) {
     </IconBase>
   );
 }
+
+// Crown (Hall of Fame). Tre takker + basisbjælke.
+export function CrownIcon(props) {
+  return (
+    <IconBase {...props}>
+      <path d="M3 7l4 4 5-7 5 7 4-4-2 12H5z" />
+      <path d="M5 20h14" />
+    </IconBase>
+  );
+}
+
+// Open book (race-library/regelbog). To sider + ryg.
+export function BookOpenIcon(props) {
+  return (
+    <IconBase {...props}>
+      <path d="M12 5v15" />
+      <path d="M12 5a4 4 0 0 0-4-2H3v14h5a4 4 0 0 1 4 2" />
+      <path d="M12 5a4 4 0 0 1 4-2h5v14h-5a4 4 0 0 0-4 2" />
+    </IconBase>
+  );
+}

@@ -7,18 +7,29 @@ import RiderLink from "../components/RiderLink";
 import { Flag } from "../components/Flag";
 import { formatNumber } from "../lib/intl";
 import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch";
+import {
+  Card,
+  Spinner,
+  EmptyState,
+  TrophyIcon,
+  BikeIcon,
+  BookOpenIcon,
+  CalendarIcon,
+  CrownIcon,
+  CoinIcon,
+} from "../components/ui";
 
 // Realtime: opdatér top-hold/-ryttere live efter en resultat-import (#783).
 const REALTIME_TABLES = ["season_standings", "race_results"];
 
 // Label + desc resolves via t() ved render — se results-namespacet (hub.*).
 const HUB_LINKS = [
-  { to: "/standings",          key: "standings",      icon: "🏆" },
-  { to: "/rider-rankings",     key: "riderRankings",  icon: "🚴" },
-  { to: "/races?tab=library",  key: "library",        icon: "📖" },
-  { to: "/seasons",            key: "seasonSnapshot", icon: "📅" },
-  { to: "/hall-of-fame",       key: "hallOfFame",     icon: "👑" },
-  { to: "/races?tab=points",   key: "points",         icon: "💰" },
+  { to: "/standings",          key: "standings",      Icon: TrophyIcon },
+  { to: "/rider-rankings",     key: "riderRankings",  Icon: BikeIcon },
+  { to: "/races?tab=library",  key: "library",        Icon: BookOpenIcon },
+  { to: "/seasons",            key: "seasonSnapshot", Icon: CalendarIcon },
+  { to: "/hall-of-fame",       key: "hallOfFame",     Icon: CrownIcon },
+  { to: "/races?tab=points",   key: "points",         Icon: CoinIcon },
 ];
 
 export default function ResultaterPage() {
@@ -85,8 +96,8 @@ export default function ResultaterPage() {
   useRealtimeRefetch("resultater-live", REALTIME_TABLES, loadAll);
 
   if (loading) return (
-    <div className="flex justify-center py-16">
-      <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
+    <div className="flex justify-center py-16" role="status" aria-label={t("loadingAria")}>
+      <Spinner size={24} />
     </div>
   );
 
@@ -101,28 +112,28 @@ export default function ResultaterPage() {
 
       {/* Hub navigation */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        {HUB_LINKS.map(link => (
-          <Link key={link.to} to={link.to}
-            className="bg-cz-card border border-cz-border rounded-xl p-4 hover:border-cz-accent/30 hover:shadow-sm transition-all group text-center">
-            <div className="text-2xl mb-2">{link.icon}</div>
+        {HUB_LINKS.map(({ to, key, Icon }) => (
+          <Link key={to} to={to}
+            className="rounded-cz border border-cz-border bg-cz-card p-4 transition-colors duration-150 hover:border-cz-3 group text-center">
+            <Icon size={22} className="mx-auto mb-2 text-cz-3 transition-colors group-hover:text-cz-accent-t" />
             <p className="font-semibold text-cz-1 text-sm group-hover:text-cz-accent-t transition-colors">
-              {t(`hub.${link.key}.label`)}
+              {t(`hub.${key}.label`)}
             </p>
-            <p className="text-cz-3 text-xs mt-0.5 leading-snug">{t(`hub.${link.key}.desc`)}</p>
+            <p className="text-cz-3 text-xs mt-0.5 leading-snug">{t(`hub.${key}.desc`)}</p>
           </Link>
         ))}
       </div>
 
       {!season ? (
-        <div className="text-center py-16 text-cz-3">
-          <p className="text-4xl mb-3">◉</p>
-          <p>{t("emptyNoSeason")}</p>
-        </div>
+        <EmptyState
+          icon={<span className="text-4xl leading-none" aria-hidden="true">◉</span>}
+          title={t("emptyNoSeason")}
+        />
       ) : (
         <div className="grid md:grid-cols-2 gap-4">
           {/* Tophold */}
           {topTeams.length > 0 && (
-            <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+            <Card className="overflow-hidden">
               <div className="px-4 py-3 border-b border-cz-border">
                 <h2 className="font-semibold text-cz-1 text-sm">{t("topTeams", { number: season.number })}</h2>
               </div>
@@ -150,12 +161,12 @@ export default function ResultaterPage() {
               <div className="px-4 py-2 border-t border-cz-border">
                 <Link to="/standings" className="text-xs text-cz-accent-t hover:underline">{t("seeAllStandings")}</Link>
               </div>
-            </div>
+            </Card>
           )}
 
           {/* Topscorere */}
           {topRiders.length > 0 && (
-            <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+            <Card className="overflow-hidden">
               <div className="px-4 py-3 border-b border-cz-border">
                 <h2 className="font-semibold text-cz-1 text-sm">{t("topScorers", { number: season.number })}</h2>
               </div>
@@ -189,14 +200,15 @@ export default function ResultaterPage() {
               <div className="px-4 py-2 border-t border-cz-border">
                 <Link to="/rider-rankings" className="text-xs text-cz-accent-t hover:underline">{t("seeAllRiders")}</Link>
               </div>
-            </div>
+            </Card>
           )}
 
           {topTeams.length === 0 && topRiders.length === 0 && (
-            <div className="md:col-span-2 text-center py-12 text-cz-3">
-              <p className="text-4xl mb-3">◉</p>
-              <p>{t("emptyNoResults")}</p>
-            </div>
+            <EmptyState
+              className="md:col-span-2"
+              icon={<span className="text-4xl leading-none" aria-hidden="true">◉</span>}
+              title={t("emptyNoResults")}
+            />
           )}
         </div>
       )}
