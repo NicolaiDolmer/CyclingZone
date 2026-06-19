@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.68",
+    date: "2026-06-20",
+    label: "Beta",
+    changes: [
+      {
+        category: "Improved · Accessibility",
+        items: [
+          "EN · Accessibility improvements: screen readers now skip decorative icons and read meaningful names on icon-only buttons, the page language is announced correctly, and search and filter fields have proper labels. No visual change.",
+          "DA · Tilgængelighedsforbedringer: skærmlæsere springer nu dekorative ikoner over og læser meningsfulde navne på ikon-knapper, sidens sprog annonceres korrekt, og søge- og filterfelter har korrekte etiketter. Ingen visuel ændring.",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.67",
     date: "2026-06-20",
     label: "Beta",
