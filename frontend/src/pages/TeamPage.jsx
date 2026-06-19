@@ -513,7 +513,7 @@ export function TeamPage() {
           <span className="text-cz-3">{t("page.ridersCount", { count: currentRiders.length })}</span>
           {incomingCount > 0 && <span className="text-cz-success text-xs">{t("page.incomingCount", { count: incomingCount })}</span>}
           {outgoingCount > 0 && <span className="text-cz-danger text-xs">{t("page.outgoingCount", { count: outgoingCount })}</span>}
-          <span className="text-cz-3">{t("page.salaryPerSeason", { value: formatNumber(totalSalary) })}</span>
+          <span className="text-cz-3" title={t("page.salaryPerSeasonTooltip")}>{t("page.salaryPerSeason", { value: formatNumber(totalSalary) })}</span>
           <span className="text-cz-3">{t("page.teamValue", { value: formatNumber(totalValue) })}</span>
         </div>
       </div>

@@ -44,6 +44,7 @@
     "ended": "Sæsonslut passeret",
     "daysLeftSuffix": "dage til sæsonslut",
     "raceDays": "{completed}/{total} løbsdage",
+    "viewCalendar": "Se kalender →",
     "transferWindow": {
       "open": "✓ Transfervindue åbent",
       "closed": "✗ Transfervindue lukket"

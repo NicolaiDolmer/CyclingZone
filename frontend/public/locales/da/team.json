@@ -8,6 +8,7 @@
     "incomingCount": "+{count} indgående",
     "outgoingCount": "-{count} udgående",
     "salaryPerSeason": "Løn/sæson: {value} CZ$",
+    "salaryPerSeasonTooltip": "Samlet sæsonløn for din trup",
     "teamValue": "Holdværdi: {value} CZ$",
     "division": "Division {n}",
     "balance": "{value} CZ$"

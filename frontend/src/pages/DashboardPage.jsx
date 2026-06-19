@@ -475,11 +475,12 @@ export default function DashboardPage() {
         }} />
       )}
 
-      {/* Season Status Banner */}
+      {/* Season Status Banner — links to the race calendar (#1421: was a dead Card) */}
       {seasonInfo && (
-        <Card className="mb-5 px-5 py-3.5 flex flex-wrap items-center gap-x-5 gap-y-2">
+        <Link to="/races" className="group block">
+        <Card className="mb-5 px-5 py-3.5 flex flex-wrap items-center gap-x-5 gap-y-2 group-hover:border-cz-accent/30 transition-colors">
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-cz-1 text-sm">{t("dashboard:seasonBanner.title", { number: seasonInfo.number })}</span>
+            <span className="font-semibold text-cz-1 text-sm group-hover:text-cz-accent-t transition-colors">{t("dashboard:seasonBanner.title", { number: seasonInfo.number })}</span>
             <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium border
               ${seasonInfo.status === "active" ? "bg-cz-success-bg text-cz-success border-cz-success/30"
               : seasonInfo.status === "upcoming" ? "bg-cz-info-bg text-cz-info border-cz-info/30"
@@ -514,17 +515,21 @@ export default function DashboardPage() {
             </div>
           )}
 
-          {transferWindow && (
-            <span className={`ms-auto text-[10px] px-2 py-1 rounded-full border font-medium
-              ${transferWindow.status === "open"
-                ? "bg-cz-success-bg text-cz-success border-cz-success/30"
-                : "bg-cz-subtle text-cz-2 border-cz-border"}`}>
-              {transferWindow.status === "open"
-                ? t("dashboard:seasonBanner.transferWindow.open")
-                : t("dashboard:seasonBanner.transferWindow.closed")}
-            </span>
-          )}
+          <div className="ms-auto flex items-center gap-3">
+            {transferWindow && (
+              <span className={`text-[10px] px-2 py-1 rounded-full border font-medium
+                ${transferWindow.status === "open"
+                  ? "bg-cz-success-bg text-cz-success border-cz-success/30"
+                  : "bg-cz-subtle text-cz-2 border-cz-border"}`}>
+                {transferWindow.status === "open"
+                  ? t("dashboard:seasonBanner.transferWindow.open")
+                  : t("dashboard:seasonBanner.transferWindow.closed")}
+              </span>
+            )}
+            <span className="text-xs text-cz-accent-t group-hover:underline whitespace-nowrap">{t("dashboard:seasonBanner.viewCalendar")}</span>
+          </div>
         </Card>
+        </Link>
       )}
 
       {/* Main grid */}

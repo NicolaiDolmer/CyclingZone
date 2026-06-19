@@ -175,7 +175,7 @@ export default function StandingsPage() {
       <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="text-xl font-bold text-cz-1">{t("title")}</h1>
-          <p className="text-cz-3 text-sm">
+          <p className="text-cz-3 text-sm" title={season ? t("seasonTooltip") : undefined}>
             {season ? t("season", { n: season.number }) : t("noActiveSeason")}
           </p>
         </div>
@@ -246,7 +246,7 @@ export default function StandingsPage() {
                       {i === divStandings.length - 2 && canRelegate && divStandings.length > 4 && (
                         <tr aria-hidden="true">
                           <td colSpan={8} style={{ padding: 0, lineHeight: 0, border: 0 }}>
-                            <div style={{ height: 2, background: "linear-gradient(to right, rgb(var(--danger) / 0.6) 40%, transparent)" }} />
+                            <div className="border-t border-cz-danger/30" />
                           </td>
                         </tr>
                       )}
@@ -302,7 +302,7 @@ export default function StandingsPage() {
                       {i === 1 && canPromote && divStandings.length > 2 && (
                         <tr aria-hidden="true">
                           <td colSpan={8} style={{ padding: 0, lineHeight: 0, border: 0 }}>
-                            <div style={{ height: 2, background: "linear-gradient(to right, rgb(var(--success) / 0.6) 40%, transparent)" }} />
+                            <div className="border-t border-cz-success/30" />
                           </td>
                         </tr>
                       )}

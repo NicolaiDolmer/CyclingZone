@@ -1,6 +1,7 @@
 {
   "title": "Standings",
   "season": "Season {n}",
+  "seasonTooltip": "Current season. Standings reset each season.",
   "noActiveSeason": "No active season",
   "division": "Division {n}",
   "noData": "No data for Division {n} yet",

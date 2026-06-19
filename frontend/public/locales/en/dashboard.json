@@ -44,6 +44,7 @@
     "ended": "Season has ended",
     "daysLeftSuffix": "days until season ends",
     "raceDays": "{completed}/{total} race days",
+    "viewCalendar": "View calendar →",
     "transferWindow": {
       "open": "✓ Transfer window open",
       "closed": "✗ Transfer window closed"
