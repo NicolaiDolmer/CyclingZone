@@ -407,6 +407,11 @@ export async function processDeadlineDayCron({
   // closes_at=null + closed_at=null) er aldrig en "deadline day" — markedet var
   // aldrig åbent på dem. Spring helt over så fireFinalWhistle ikke claimer dem og
   // dermed bidrager til sæson-loop-bug'en (rettet 2026-05-21).
+  //
+  // Lag 1 (kode-filter) i 3-lags forsvar-i-dybden mod racing-windows: denne guard +
+  // DB CHECK (2026-05-22-transfer-window-racing-guard.sql, strukturelt — final_whistle
+  // kræver closed_at) + kilde-guard i admin-close-endpoint'et (#544: sætter altid
+  // closed_at). Se seasonAutoTransition.js for fuld kæde-beskrivelse.
   if (!window.closes_at && !window.closed_at) {
     return { warnings: 0, errors: 0, whistleSent: false, autoClosed: false };
   }
