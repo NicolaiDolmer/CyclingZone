@@ -118,6 +118,8 @@
     "heading": "Vis moduler",
     "reset": "Nulstil til standard",
     "modules": {
+      "nextActions": "Næste træk",
+      "forecast": "Økonomisk forecast",
       "auctions": "Aktive auktioner",
       "transfers": "Transfers & tilbud",
       "races": "Kommende løb",

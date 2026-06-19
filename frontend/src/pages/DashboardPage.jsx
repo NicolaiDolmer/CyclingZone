@@ -376,8 +376,11 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Næste træk — prioriteret action-overblik (#271 Slice B) */}
-      <NextActionsCard pending={actionSummary} urgentAuctionCount={urgentAuctionCount} loading={actionLoading} />
+      {/* Næste træk — prioriteret action-overblik (#271 Slice B).
+          Valgfri via customize (#1536). */}
+      {isVisible("nextActions") && (
+        <NextActionsCard pending={actionSummary} urgentAuctionCount={urgentAuctionCount} loading={actionLoading} />
+      )}
 
       {/* Squad warning */}
       {squadWarning && (
@@ -396,8 +399,9 @@ export default function DashboardPage() {
       )}
 
       {/* Slice 07g · Finance forecast widget — synlig altid (også grøn), så manageren
-          får et stabilt blik på kommende sæsons cashflow inden FinancePage. */}
-      {forecast && (
+          får et stabilt blik på kommende sæsons cashflow inden FinancePage.
+          Valgfri via customize (#1536). */}
+      {isVisible("forecast") && forecast && (
         <div className="mb-4">
           <FinanceForecastBadge forecast={forecast} />
         </div>
