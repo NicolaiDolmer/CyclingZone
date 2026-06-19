@@ -2,9 +2,12 @@ import { useState, useCallback } from "react";
 
 // Toggleable dashboard-moduler (#1005). Rækkefølgen styrer customize-panelets
 // checkbox-rækkefølge. defaultVisible = synlig for nye/eksisterende brugere indtil
-// de aktivt skjuler modulet. De 4 StatCards, NextActionsCard og alle kontekstuelle
-// banners/nudges holdes UDENFOR customize i v1 (allerede conditional/dismissible).
+// de aktivt skjuler modulet. De 4 StatCards og alle kontekstuelle banners/nudges
+// holdes UDENFOR customize (allerede conditional/dismissible).
+// #1536: "Næste træk" (nextActions) + forecast gjort valgfrie efter Discord-feedback.
 export const DASHBOARD_MODULES = [
+  { id: "nextActions",   defaultVisible: true },
+  { id: "forecast",      defaultVisible: true },
   { id: "auctions",      defaultVisible: true },
   { id: "transfers",     defaultVisible: true },
   { id: "races",         defaultVisible: true },

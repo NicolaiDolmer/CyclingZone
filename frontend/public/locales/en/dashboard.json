@@ -118,6 +118,8 @@
     "heading": "Show modules",
     "reset": "Reset to default",
     "modules": {
+      "nextActions": "Next move",
+      "forecast": "Finance forecast",
       "auctions": "Active auctions",
       "transfers": "Transfers & offers",
       "races": "Upcoming races",
