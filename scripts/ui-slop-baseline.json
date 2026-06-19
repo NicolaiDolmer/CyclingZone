@@ -166,11 +166,6 @@
       "slop": 4,
       "emoji": 2
     },
-    "frontend/src/pages/AuctionHistoryPage.jsx": {
-      "hex": 0,
-      "slop": 2,
-      "emoji": 0
-    },
     "frontend/src/pages/BoardPage.jsx": {
       "hex": 0,
       "slop": 45,
