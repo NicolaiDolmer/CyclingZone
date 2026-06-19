@@ -442,30 +442,28 @@ test("processSeasonStart fanger unique_violation på sponsor (team, season)", as
   const baseFrom = supabase.client.from.bind(supabase.client);
   supabase.client.from = (table) => {
     if (table === "teams") {
+      // #1077 · processSeasonStart chainer nu is_ai.is_bank.is_frozen (3 eq) —
+      // mocken understøtter vilkårlig længde via en self-chainende thenable.
+      const teamsResult = {
+        data: [{
+          id: "team-1",
+          name: "Test",
+          balance: 0,
+          sponsor_income: 240_000,
+          board_profiles: [],
+          is_frozen: false,
+        }],
+        error: null,
+      };
+      const makeTeamsChain = () => Object.assign(Promise.resolve(teamsResult), {
+        eq() { return makeTeamsChain(); },
+        single() {
+          return Promise.resolve({ data: { balance: 0 }, error: null });
+        },
+      });
       return {
         select() {
-          return {
-            eq() {
-              return {
-                eq() {
-                  return Promise.resolve({
-                    data: [{
-                      id: "team-1",
-                      name: "Test",
-                      balance: 0,
-                      sponsor_income: 240_000,
-                      board_profiles: [],
-                      is_frozen: false,
-                    }],
-                    error: null,
-                  });
-                },
-                single() {
-                  return Promise.resolve({ data: { balance: 0 }, error: null });
-                },
-              };
-            },
-          };
+          return { eq() { return makeTeamsChain(); } };
         },
         update() {
           return { eq() { return Promise.resolve({ error: null }); } };
@@ -594,27 +592,24 @@ test("processSeasonStart bruger variabel sponsor fra forrige sæsons standings f
         };
       }
       if (table === "teams") {
+        // #1077 · is_ai.is_bank.is_frozen (3 eq) — self-chainende thenable.
+        const teamsResult = {
+          data: [{
+            id: "team-1",
+            name: "Variable Test",
+            balance: 0,
+            sponsor_income: 240_000,
+            board_profiles: [],
+            is_frozen: false,
+          }],
+          error: null,
+        };
+        const makeTeamsChain = () => Object.assign(Promise.resolve(teamsResult), {
+          eq() { return makeTeamsChain(); },
+        });
         return {
           select() {
-            return {
-              eq() {
-                return {
-                  eq() {
-                    return Promise.resolve({
-                      data: [{
-                        id: "team-1",
-                        name: "Variable Test",
-                        balance: 0,
-                        sponsor_income: 240_000,
-                        board_profiles: [],
-                        is_frozen: false,
-                      }],
-                      error: null,
-                    });
-                  },
-                };
-              },
-            };
+            return { eq() { return makeTeamsChain(); } };
           },
         };
       }
@@ -684,17 +679,20 @@ test("processSeasonStart tvinger sponsor-modifier til 1.0 i board test-mode", as
           return { select() { return { eq() { return { single: () => Promise.resolve({ data: { number: 1 }, error: null }) }; } }; } };
         }
         if (table === "teams") {
+          // #1077 · is_ai.is_bank.is_frozen (3 eq) — self-chainende thenable.
+          const teamsResult = {
+            data: [{
+              id: "team-1", name: "TestMode Team", balance: 0, sponsor_income: 240_000,
+              board_profiles: [{ negotiation_status: "completed", budget_modifier: budgetModifier }],
+              is_frozen: false,
+            }],
+            error: null,
+          };
+          const makeTeamsChain = () => Object.assign(Promise.resolve(teamsResult), {
+            eq() { return makeTeamsChain(); },
+          });
           return {
-            select() {
-              return { eq() { return { eq() { return Promise.resolve({
-                data: [{
-                  id: "team-1", name: "TestMode Team", balance: 0, sponsor_income: 240_000,
-                  board_profiles: [{ negotiation_status: "completed", budget_modifier: budgetModifier }],
-                  is_frozen: false,
-                }],
-                error: null,
-              }); } }; } };
-            },
+            select() { return { eq() { return makeTeamsChain(); } }; },
           };
         }
         if (table === "board_consequences") {
@@ -765,15 +763,13 @@ test("processSeasonStart krediterer sponsor til ALLE hold før runSeasonPayroll 
         };
       }
       if (table === "teams") {
+        // #1077 · is_ai.is_bank.is_frozen (3 eq) — self-chainende thenable.
+        const makeTeamsChain = () => Object.assign(Promise.resolve({ data: teams, error: null }), {
+          eq() { return makeTeamsChain(); },
+        });
         return {
           select() {
-            return {
-              eq(_col, _val) {
-                return {
-                  eq() { return Promise.resolve({ data: teams, error: null }); },
-                };
-              },
-            };
+            return { eq() { return makeTeamsChain(); } };
           },
         };
       }

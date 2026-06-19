@@ -7007,6 +7007,10 @@ router.get("/board/status", requireAuth, async (req, res) => {
   try {
     const teamId = req.team?.id;
     if (!teamId) return res.status(404).json({ error: "No team" });
+    // #1077 · bestyrelsen er kun for manager-hold — bank/AI/frosne hold afvises.
+    if (req.team?.is_ai || req.team?.is_bank || req.team?.is_frozen) {
+      return res.status(403).json({ error: "Bestyrelsen er kun for manager-hold" });
+    }
 
     const [seasonRes, boardsRes, teamRes, ridersRes, standingRes, loansRes, windowRes, membersRes] = await Promise.all([
       supabase.from("seasons").select("id, number, race_days_completed, race_days_total").eq("status", "active").single(),
@@ -7555,6 +7559,10 @@ router.post("/board/sign", requireAuth, boardWriteLimiter, async (req, res) => {
   try {
     const teamId = req.team?.id;
     if (!teamId) return res.status(404).json({ error: "No team" });
+    // #1077 · bestyrelsen er kun for manager-hold — bank/AI/frosne hold afvises.
+    if (req.team?.is_ai || req.team?.is_bank || req.team?.is_frozen) {
+      return res.status(403).json({ error: "Bestyrelsen er kun for manager-hold" });
+    }
 
     const { focus, plan_type, goals, negotiations } = req.body || {};
     if (!focus || !plan_type) return res.status(400).json({ error: "Missing fields" });
@@ -7675,6 +7683,10 @@ router.post("/board/request", requireAuth, boardWriteLimiter, async (req, res) =
   try {
     const teamId = req.team?.id;
     if (!teamId) return res.status(404).json({ error: "No team" });
+    // #1077 · bestyrelsen er kun for manager-hold — bank/AI/frosne hold afvises.
+    if (req.team?.is_ai || req.team?.is_bank || req.team?.is_frozen) {
+      return res.status(403).json({ error: "Bestyrelsen er kun for manager-hold" });
+    }
 
     const { plan_type, request_type } = req.body || {};
     if (!isValidBoardPlanType(plan_type)) {
@@ -7872,6 +7884,10 @@ router.post("/board/renew", requireAuth, boardWriteLimiter, async (req, res) => 
   try {
     const teamId = req.team?.id;
     if (!teamId) return res.status(404).json({ error: "No team" });
+    // #1077 · bestyrelsen er kun for manager-hold — bank/AI/frosne hold afvises.
+    if (req.team?.is_ai || req.team?.is_bank || req.team?.is_frozen) {
+      return res.status(403).json({ error: "Bestyrelsen er kun for manager-hold" });
+    }
 
     const { plan_type } = req.body || {};
     if (!isValidBoardPlanType(plan_type)) {
