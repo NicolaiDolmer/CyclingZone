@@ -32,6 +32,14 @@ test("teams/:id/transfer-history UUID-validerer param før .or()-interpolation",
   assert.match(block, /UUID_RE\.test\(req\.params\.id\)/);
 });
 
+// Security-hardening (2026-06-20): /managers/:teamId interpolerer teamId i en
+// .or()-filterstreng (transfer_activity-query). Guarden bruger den destrukturerede
+// `teamId`, ikke req.params.id, så vi matcher UUID_RE.test(teamId).
+test("managers/:teamId UUID-validerer param før .or()-interpolation", () => {
+  const block = routeBlock("/managers/:teamId");
+  assert.match(block, /UUID_RE\.test\(teamId\)/);
+});
+
 test("UUID_RE-guarden er defineret i api.js og matcher kun rigtige UUID'er", () => {
   const m = apiSource.match(/const UUID_RE = (\/.*\/i);/);
   assert.ok(m, "UUID_RE-definition mangler i api.js");
