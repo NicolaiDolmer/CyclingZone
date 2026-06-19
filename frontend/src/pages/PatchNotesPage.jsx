@@ -2,6 +2,76 @@
 
 const PATCHES = [
   {
+    version: "5.67",
+    date: "2026-06-20",
+    label: "Beta",
+    changes: [
+      {
+        category: "Added · Race results",
+        items: [
+          "EN · Race results now show a terrain badge per stage: a schematic silhouette (flat, hilly, mountain, time trial and so on) plus the likely finale. It is an indicative terrain category, not a measured elevation profile; full route profiles come later. Refs #1484",
+          "DA · Løbsresultater viser nu et terræn-badge pr. etape: en skematisk silhuet (fladt, kuperet, bjerge, enkeltstart osv.) plus den sandsynlige finale. Det er en vejledende terrænkategori, ikke en målt højdeprofil; fulde ruteprofiler kommer senere. Refs #1484",
+        ],
+      },
+      {
+        category: "Improved · Rider database",
+        items: [
+          "EN · Mobile sorting: you can now sort the rider list on mobile by any column (Nation, Team, Status, Type, Value, Salary, Rider and stats) via a new 'Sort by' control above the list. Previously several sort options were only reachable on desktop. Refs #9",
+          "DA · Mobil-sortering: du kan nu sortere rytterlisten på mobil efter alle kolonner (Nation, Hold, Status, Type, Værdi, Løn, Rytter og evner) via en ny 'Sortér efter'-kontrol over listen. Tidligere var flere sorteringsvalg kun tilgængelige på desktop. Refs #9",
+        ],
+      },
+      {
+        category: "Fixed · Rider database",
+        items: [
+          "EN · The U23 rider filter now matches the U23 badge exactly. Riders who are 23 carry the U25 badge and no longer show up in U23 searches. Refs #42",
+          "DA · U23-rytterfilteret matcher nu U23-badgen præcist. Ryttere på 23 år bærer U25-badgen og dukker ikke længere op i U23-søgninger. Refs #42",
+        ],
+      },
+      {
+        category: "Improved · Inbox",
+        items: [
+          "EN · Rider notifications now link to the rider. Notifications about a rider (new bid, outbid, transfer offer, loan request and more) link straight to the rider's profile. Older notifications keep working as before. Refs #1486",
+          "DA · Rytter-notifikationer linker nu til rytteren. Beskeder om en rytter (nyt bud, overbudt, transfertilbud, lejeforslag med mere) linker direkte til rytterprofilen. Ældre notifikationer virker som før. Refs #1486",
+        ],
+      },
+      {
+        category: "Fixed · Finance",
+        items: [
+          "EN · Finance history now shows the rider's name on transfer-window and swap transactions (previously only auction deals named the rider). Finance report charts now show their category labels in your selected language. Refs #1483",
+          "DA · Finans-historikken viser nu rytterens navn på transfer-vindue- og byttehandler (før var det kun auktionshandler der navngav rytteren). Finans-rapportens grafer viser nu deres kategori-labels på dit valgte sprog. Refs #1483",
+        ],
+      },
+      {
+        category: "Improved · Auctions",
+        items: [
+          "EN · Bid history now sorts auctions that end at the same time by highest bid first. Refs #249",
+          "DA · Bud-historikken sorterer nu auktioner med samme sluttidspunkt efter højeste bud først. Refs #249",
+        ],
+      },
+      {
+        category: "Improved · Usability",
+        items: [
+          "EN · Cleaner clicks: a few elements that looked clickable but were not are now fixed. The salary and season totals and the standings season label show a short explanation on hover, and the dashboard season banner now links straight to the race calendar. Promotion and relegation divider lines now render correctly in dark mode. Refs #1421",
+          "DA · Renere klik: et par elementer der så klikbare ud men ikke var det er nu rettet. Løn- og sæson-tallene og rangliste-sæsonen viser en kort forklaring ved hover, og dashboardets sæson-banner linker nu direkte til løbskalenderen. Skillelinjerne ved op- og nedrykning vises nu korrekt i dark mode. Refs #1421",
+        ],
+      },
+      {
+        category: "Improved · Design",
+        items: [
+          "EN · Design polish across several pages: removed gold glow effects, aligned status badges to theme-aware colours, and swapped a couple of stray glyphs for proper icons. No behaviour changed. Refs #671",
+          "DA · Design-finpudsning på tværs af flere sider: fjernede gold-glow-effekter, rettede status-badges til tema-bevidste farver, og udskiftede et par løse tegn med rigtige ikoner. Ingen funktion ændret. Refs #671",
+        ],
+      },
+      {
+        category: "Changed · Race results",
+        items: [
+          "EN · Removed the PCM result-reporting interface (the 'Submit results' and 'Approve' tabs and the admin PCM import panel). Races are run by the Cycling Zone race engine, which writes results automatically. Refs #1532",
+          "DA · Fjernet PCM-resultatindberetning fra brugerfladen ('Indberét resultater'- og 'Godkend'-fanerne samt admin-PCM-import-panelet). Løb afvikles af Cycling Zones race-motor, der skriver resultaterne automatisk. Refs #1532",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.66",
     date: "2026-06-19",
     label: "Beta",
