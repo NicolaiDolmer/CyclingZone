@@ -6,6 +6,7 @@ import { DEFAULT_FILTERS, STAT_KEYS } from "../components/RiderFilters";
 import { getRiderMarketValue } from "./marketValues";
 import { getRiderAge } from "./riderAge";
 import { compareNationality } from "./countryUtils";
+import { applyNameSearch } from "./riderNameSearch";
 
 const CURRENT_YEAR = new Date().getFullYear();
 
@@ -126,7 +127,7 @@ export function useClientRiderFilters(riders = []) {
 
 export function buildSupabaseQuery(query, filters) {
   query = query.eq("is_retired", false);
-  if (filters.q) query = query.or(`firstname.ilike.%${filters.q}%,lastname.ilike.%${filters.q}%`);
+  query = applyNameSearch(query, filters.q); // #47: token-set match (fornavn + efternavn)
   if (filters.min_value) query = query.gte("market_value", parseInt(filters.min_value));
   if (filters.max_value) query = query.lte("market_value", parseInt(filters.max_value));
   if (filters.min_salary) query = query.gte("salary", parseInt(filters.min_salary));

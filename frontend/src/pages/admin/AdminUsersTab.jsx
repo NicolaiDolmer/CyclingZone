@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "../../lib/supabase";
+import { applyNameSearch } from "../../lib/riderNameSearch";
 import { formatCz, getRiderMarketValue } from "../../lib/marketValues";
 import AdminSection from "../../components/admin/shared/AdminSection";
 import AdminMessageBanner from "../../components/admin/shared/AdminMessageBanner";
@@ -17,10 +18,11 @@ function ManualOverride({ getAuth, onMsg, onRefresh, teams }) {
   async function searchRiders(q) {
     setQuery(q);
     if (q.length < 2) { setRiderResults([]); return; }
-    const { data } = await supabase.from("riders")
+    let query = supabase.from("riders")
       .select("id, firstname, lastname, uci_points, market_value, prize_earnings_bonus, is_retired, team:team_id(name)")
-      .or(`firstname.ilike.%${q}%,lastname.ilike.%${q}%`)
       .limit(5);
+    query = applyNameSearch(query, q); // #47: token-set match (fornavn + efternavn)
+    const { data } = await query;
     setRiderResults(data || []);
   }
 

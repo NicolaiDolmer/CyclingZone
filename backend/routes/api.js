@@ -23,6 +23,7 @@ import {
   applyLeaderShiftExtension,
   DEFAULT_AUCTION_CONFIG,
 } from "../lib/auctionEngine.js";
+import { applyNameSearch } from "../lib/riderNameSearch.js";
 import {
   ACTIVE_AUCTION_STATUSES,
   OPEN_SWAP_STATUSES,
@@ -845,11 +846,7 @@ router.get("/riders", requireAuth, cached({ namespace: "riders", ttlMs: CACHE_TT
   // #1447: ingen pcm_id-filter — efter relaunch (#1105) er fiktive ryttere (pcm_id
   // NULL) den aktive bestand og skal være synlige for alle. #669-gaten reverteret.
 
-  if (q) {
-    query = query.or(
-      `firstname.ilike.%${q}%,lastname.ilike.%${q}%`
-    );
-  }
+  query = applyNameSearch(query, q); // #47: token-set match (fornavn + efternavn)
   if (team_id) query = query.eq("team_id", team_id);
   if (free_agent === "true") query = query.is("team_id", null);
   if (u25 === "true") query = query.eq("is_u25", true);
