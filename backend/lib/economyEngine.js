@@ -102,7 +102,10 @@ export async function loadHumanSeasonEndTeams(supabaseClient) {
   const { data: teams, error: teamsError } = await supabaseClient
     .from("teams")
     .select("*")
+    // #1077 · ekskludér bank-pseudo-holdet (is_ai:false, is_bank:true) fra
+    // økonomi-processering — samme diskriminator som cron.js:89 og /deadline-day.
     .eq("is_ai", false)
+    .eq("is_bank", false)
     .eq("is_frozen", false);
   throwIfSupabaseError(teamsError, "Could not load human teams for season end");
 
@@ -190,7 +193,9 @@ export async function processSeasonStart(seasonId, deps = {}) {
   const { data: teams } = await supabaseClient
     .from("teams")
     .select("*, board_profiles(*)")
+    // #1077 · ekskludér bank-pseudo-holdet fra sæson-start-økonomi (sponsor/payroll).
     .eq("is_ai", false)
+    .eq("is_bank", false)
     .eq("is_frozen", false);
 
   // S-02e · Lag 5 sponsor-pullout: load aktive pullouts FØR vi expirer dem.

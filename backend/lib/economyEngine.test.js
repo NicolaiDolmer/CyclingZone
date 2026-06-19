@@ -146,9 +146,10 @@ function createSeasonEndSupabase({
                 if (column === "is_ai") {
                   assert.equal(value, false);
                   assert.equal(columns.includes("riders("), false);
-                  // loadHumanSeasonEndTeams chainer .eq("is_frozen") efter .eq("is_ai").
+                  // loadHumanSeasonEndTeams + processSeasonStart chainer
+                  // .eq("is_bank").eq("is_frozen") efter .eq("is_ai") (#1077).
                   // rebalanceDivisions (#962) chainer .eq("is_test_account").eq("is_frozen").
-                  // Mocken understøtter vilkårlig længde af is_test_account/is_frozen-led
+                  // Mocken understøtter vilkårlig længde af is_test_account/is_bank/is_frozen-led
                   // (samt legacy direkte-Promise single-eq callers).
                   const teamsResult = {
                     data: [clone(state.team)],
@@ -157,7 +158,7 @@ function createSeasonEndSupabase({
                   const makeChain = () => Object.assign(Promise.resolve(teamsResult), {
                     eq(innerCol, innerVal) {
                       assert.equal(
-                        ["is_test_account", "is_frozen"].includes(innerCol),
+                        ["is_test_account", "is_bank", "is_frozen"].includes(innerCol),
                         true,
                         `uventet eq-kolonne i teams-chain: ${innerCol}`
                       );
