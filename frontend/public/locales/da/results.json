@@ -12,6 +12,7 @@
     "hallOfFame": { "label": "Hall of Fame", "desc": "Rekorder og manager-rangliste" },
     "points": { "label": "Point & præmier", "desc": "Point og præmieformler pr. løbsklasse" }
   },
+  "loadingAria": "Indlæser resultater",
   "emptyNoSeason": "Ingen aktiv sæson. Resultater vises her når sæsonen er i gang",
   "topTeams": "Tophold · Sæson {number}",
   "topScorers": "Topscorere · Sæson {number}",
