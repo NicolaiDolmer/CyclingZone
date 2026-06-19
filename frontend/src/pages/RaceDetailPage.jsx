@@ -9,6 +9,7 @@ import { Flag } from "../components/Flag";
 import { formatNumber } from "../lib/intl";
 import { fetchAllRows } from "../lib/supabasePagination";
 import { logEvent } from "../lib/logEvent";
+import { profileShape, profileLabelKey, finaleLabelKey } from "../lib/stageProfileConfig";
 
 // #959 Etape-resultater V1 — detaljeret pr.-etape-visning.
 //
@@ -58,6 +59,7 @@ export default function RaceDetailPage() {
 
   const [race, setRace] = useState(null);
   const [results, setResults] = useState([]);
+  const [stageProfiles, setStageProfiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -102,8 +104,18 @@ export default function RaceDetailPage() {
         .order("id")
     );
 
+    // #1484 Stiliseret terræn-indikator. race_stage_profiles er læsbar for
+    // authenticated (siden er auth-gated via ProtectedRoute). Degraderer pænt:
+    // en fejl/tom tabel → ingen profil-badges, ingen fejl-UI.
+    const { data: profiles } = await supabase
+      .from("race_stage_profiles")
+      .select("stage_number, profile_type, finale_type")
+      .eq("race_id", raceId)
+      .order("stage_number");
+
     setRace(raceRow);
     setResults(rows);
+    setStageProfiles(profiles ?? []);
     setLoading(false);
   }, [raceId]);
 
@@ -122,6 +134,13 @@ export default function RaceDetailPage() {
   }, [results]);
 
   const isStageRace = race?.race_type === "stage_race" && stageNumbers.length > 0;
+
+  // stage_number → { profile_type, finale_type } for terræn-indikatoren (#1484).
+  const profileByStage = useMemo(() => {
+    const out = {};
+    for (const p of stageProfiles) out[p.stage_number ?? 1] = p;
+    return out;
+  }, [stageProfiles]);
 
   // Endeligt klassement pr. type = rækkerne ved højeste etape-nummer for den type
   // (robust mod fremtidige pr.-etape-snapshots; i dag findes kun det endelige).
@@ -204,7 +223,7 @@ export default function RaceDetailPage() {
 
           {activeTab === "samlet" && <OverallTab finalByType={finalByType} />}
           {stageNumbers.map(n => activeTab === `stage-${n}` && (
-            <StageTab key={n} stage={n} results={results} />
+            <StageTab key={n} stage={n} results={results} profile={profileByStage[n]} />
           ))}
         </>
       )}
@@ -212,6 +231,7 @@ export default function RaceDetailPage() {
       {/* Enkeltdagsløb — ingen faner, bare måltavlen (+ holdklassement hvis det findes) */}
       {hasAnyResults && !isStageRace && (
         <div className="space-y-5">
+          <StageProfileCard profile={profileByStage[1]} />
           <ResultTable
             title={t("detail.tableResult")}
             rows={(finalByType.gc?.length ? finalByType.gc : results.filter(r => r.result_type === "stage").sort(byRank))}
@@ -254,7 +274,7 @@ function OverallTab({ finalByType }) {
   );
 }
 
-function StageTab({ stage, results }) {
+function StageTab({ stage, results, profile }) {
   const { t } = useTranslation("races");
   const rows = results
     .filter(r => r.result_type === "stage" && (r.stage_number ?? 1) === stage)
@@ -266,6 +286,7 @@ function StageTab({ stage, results }) {
 
   return (
     <div className="space-y-5">
+      <StageProfileCard profile={profile} />
       {jerseys.length > 0 && (
         <div className="bg-cz-card border border-cz-border rounded-xl p-4">
           <p className="text-cz-2 text-xs uppercase tracking-wider mb-3 font-semibold">{t("detail.jerseysAfterStage")}</p>
@@ -292,6 +313,57 @@ function StageTab({ stage, results }) {
 
       <ResultTable title={t("detail.stageFinishOrder", { number: stage })} rows={rows} />
     </div>
+  );
+}
+
+// #1484 — stiliseret terræn-indikator pr. etape. ÆRLIG: kategori-piktogram fra
+// race_stage_profiles.profile_type, IKKE en målt højdeprofil (#1021). Degraderer
+// til intet hvis profil mangler eller terrænet er ukendt — ingen tom/falsk visning.
+function StageProfileCard({ profile }) {
+  const { t } = useTranslation("races");
+  const labelKey = profile && profileLabelKey(profile.profile_type);
+  if (!labelKey) return null;
+
+  const finaleKey = finaleLabelKey(profile.finale_type);
+
+  return (
+    <div className="bg-cz-card border border-cz-border rounded-cz p-4 flex items-center gap-4">
+      <StageProfileSilhouette profileType={profile.profile_type} />
+      <div className="min-w-0">
+        <p className="text-cz-3 text-[10px] uppercase tracking-wider font-semibold">
+          {t("detail.stageProfile.label")}
+        </p>
+        <p className="text-cz-1 text-sm font-semibold leading-tight">
+          {t(`detail.${labelKey}`)}
+          {finaleKey && (
+            <span className="text-cz-3 font-normal"> · {t(`detail.${finaleKey}`)}</span>
+          )}
+        </p>
+        <p className="text-cz-3 text-[11px] mt-0.5">{t("detail.stageProfile.note")}</p>
+      </div>
+    </div>
+  );
+}
+
+// Lille deterministisk silhuet (sparkline) — currentColor + cz-tokens, ingen slop.
+function StageProfileSilhouette({ profileType }) {
+  const { points, baseY, width, height } = profileShape(profileType);
+  return (
+    <svg
+      viewBox={`0 0 ${width} ${height}`}
+      className="w-14 h-7 shrink-0 text-cz-accent-t"
+      role="presentation"
+      aria-hidden="true"
+      preserveAspectRatio="none"
+    >
+      {/* Havniveau-hårlinje */}
+      <line x1="0" y1={baseY} x2={width} y2={baseY}
+        stroke="currentColor" strokeOpacity="0.25" strokeWidth="0.75" />
+      {/* Terræn-silhuet */}
+      <polyline points={points}
+        fill="none" stroke="currentColor" strokeWidth="1.5"
+        strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
   );
 }
 

@@ -196,6 +196,30 @@
       "points_day": "Point",
       "mountain_day": "Bjerg",
       "young_day": "Ungdom"
+    },
+    "stageProfile": {
+      "label": "Terræn",
+      "note": "Vejledende terrænkategori. Fulde højdeprofiler kommer senere."
+    },
+    "profileType": {
+      "flat": "Fladt",
+      "rolling": "Bølget",
+      "hilly": "Kuperet",
+      "mountain": "Bjerge",
+      "high_mountain": "Højbjerge",
+      "itt": "Enkeltstart",
+      "ttt": "Holdtidskørsel",
+      "cobbles": "Brosten",
+      "classic": "Klassiker"
+    },
+    "finaleType": {
+      "bunch_sprint": "Massespurt",
+      "reduced_sprint": "Reduceret spurt",
+      "punch": "Stikfinale",
+      "long_climb": "Bjergfinale",
+      "descent": "Nedkørselsfinale",
+      "solo_tt": "Soloenkeltstart",
+      "breakaway": "Udbrud"
     }
   },
   "history": {

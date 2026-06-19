@@ -196,6 +196,30 @@
       "points_day": "Points",
       "mountain_day": "Mountains",
       "young_day": "Youth"
+    },
+    "stageProfile": {
+      "label": "Terrain",
+      "note": "Indicative terrain category. Full elevation profiles arrive later."
+    },
+    "profileType": {
+      "flat": "Flat",
+      "rolling": "Rolling",
+      "hilly": "Hilly",
+      "mountain": "Mountain",
+      "high_mountain": "High mountain",
+      "itt": "Time trial",
+      "ttt": "Team time trial",
+      "cobbles": "Cobbles",
+      "classic": "Classic"
+    },
+    "finaleType": {
+      "bunch_sprint": "Bunch sprint",
+      "reduced_sprint": "Reduced sprint",
+      "punch": "Punchy finish",
+      "long_climb": "Summit finish",
+      "descent": "Downhill finish",
+      "solo_tt": "Solo time trial",
+      "breakaway": "Breakaway"
     }
   },
   "history": {
