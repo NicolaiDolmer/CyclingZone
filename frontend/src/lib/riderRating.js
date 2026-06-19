@@ -1,16 +1,15 @@
-// Display-rating 0-99 for en rytter: simpelt, uvægtet snit af de 14 synlige
-// stat_*-kolonner (Refs #1009). Frontend-pendant til backend `riderOverall`
-// (backend/lib/riderValuation.js), som arbejder på derived abilities — denne
-// her bruger de stats spilleren faktisk kan se i rytter-tabellerne, indtil
-// 1-100-evnesystemet (#1101) overtager.
+// Display-rating 0-99 for en rytter: simpelt, uvægtet snit af de 15 synlige
+// CZ-evner (#1529). Frontend-pendant til backend `riderOverall`
+// (backend/lib/riderValuation.js), som også arbejder på derived abilities.
 //
-// STAT_KEYS er kanonisk her (ren .js uden JSX-imports, så `node --test` kan
-// loade filen). components/RiderFilters.jsx re-eksporterer den.
-export const STAT_KEYS = [
-  "stat_fl", "stat_bj", "stat_kb", "stat_bk", "stat_tt", "stat_prl",
-  "stat_bro", "stat_sp", "stat_acc", "stat_ned", "stat_udh", "stat_mod",
-  "stat_res", "stat_ftr",
-];
+// STAT_KEYS = de 15 evne-keys (delt config i ./abilities.js). Migreret 2026-06-19
+// (#1529) fra de 14 PCM stat_*-kolonner — visningen viser nu evner. components/
+// RiderFilters.jsx re-eksporterer den. ./abilities.js er ren .js uden JSX-imports,
+// så `node --test` kan stadig loade denne fil. Rytter-objektet skal have evnerne
+// fladet op (rider.climbing osv.) via flattenAbilities() før rating beregnes.
+import { ABILITY_KEYS } from "./abilities.js";
+
+export const STAT_KEYS = ABILITY_KEYS;
 
 // Snit af de stats der findes på rækken (manglende/ikke-numeriske ignoreres).
 // Ingen stats overhovedet → 0 (sorterer nederst, viser tomt-agtig værdi).

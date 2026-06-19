@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import RiderFilters, { DEFAULT_FILTERS } from "../components/RiderFilters";
-import { buildSupabaseQuery } from "../lib/useRiderFilters";
+import { fetchRidersPage } from "../lib/useRiderFilters";
+import { ABILITY_STATS as STATS } from "../lib/abilities";
 import {
   filtersToSearchParams,
   initialFiltersFromUrlOrSession,
@@ -57,15 +58,8 @@ function buildRidersTourSteps(t) {
   ];
 }
 
-const STATS = [
-  { key: "stat_fl", label: "FL" }, { key: "stat_bj", label: "BJ" },
-  { key: "stat_kb", label: "KB" }, { key: "stat_bk", label: "BK" },
-  { key: "stat_tt", label: "TT" }, { key: "stat_prl", label: "PRL" },
-  { key: "stat_bro", label: "Bro" }, { key: "stat_sp", label: "SP" },
-  { key: "stat_acc", label: "ACC" }, { key: "stat_ned", label: "NED" },
-  { key: "stat_udh", label: "UDH" }, { key: "stat_mod", label: "MOD" },
-  { key: "stat_res", label: "RES" }, { key: "stat_ftr", label: "FTR" },
-];
+// Stat-kolonner = de 15 CZ-evner (delt config lib/abilities.js, importeret som STATS).
+// #1529: erstattede de 14 PCM stat_*-kolonner — visningen viser nu evner.
 
 function SortTh({ children, sortKey, sort, sortDir, onSort, className = "" }) {
   const active = sort === sortKey;
@@ -237,23 +231,23 @@ export default function RidersPage() {
 
   async function loadRiders({ silent = false } = {}) {
     if (!silent) setLoading(true);
-    const statKeys = STATS.map(s => s.key).join(", ");
-    let query = supabase
-      .from("riders")
-      .select(`id, firstname, lastname, birthdate, salary, market_value, prize_earnings_bonus, is_u25, nationality_code, primary_type, secondary_type,
-        ${statKeys}, team:team_id(id, name), pending_team:pending_team_id(id, name)`, { count: "exact" })
-      .range((filters.page - 1) * 50, filters.page * 50 - 1);
-
-    query = buildSupabaseQuery(query, filters);
-
-    const [{ data, count }, { data: auctionData }] = await Promise.all([
-      query,
-      supabase.from("auctions").select("rider_id").in("status", ["active", "extended"]),
-    ]);
-    setRiders(data || []);
-    setTotal(count || 0);
-    setActiveAuctionRiders(new Set((auctionData || []).map(a => a.rider_id)));
-    setLoading(false);
+    // Evnerne hentes via join + flades op på rytter-objektet i fetchRidersPage (#1529).
+    const riderSelect = "id, firstname, lastname, birthdate, salary, market_value, prize_earnings_bonus, is_u25, nationality_code, primary_type, secondary_type, team:team_id(id, name), pending_team:pending_team_id(id, name)";
+    try {
+      const [{ rows, count }, { data: auctionData }] = await Promise.all([
+        fetchRidersPage(supabase, { filters, page: filters.page, pageSize: 50, riderSelect }),
+        supabase.from("auctions").select("rider_id").in("status", ["active", "extended"]),
+      ]);
+      setRiders(rows);
+      setTotal(count);
+      setActiveAuctionRiders(new Set((auctionData || []).map(a => a.rider_id)));
+    } catch (err) {
+      console.error("loadRiders failed:", err.message);
+      setRiders([]);
+      setTotal(0);
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => { loadRiders(); }, [filters]); // eslint-disable-line react-hooks/exhaustive-deps

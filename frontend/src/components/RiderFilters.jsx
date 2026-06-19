@@ -20,20 +20,21 @@ import { Flag } from "./Flag";
 import { Card, ChevronRightIcon } from "./ui";
 import { formatNumber } from "../lib/intl";
 import { RIDER_TYPE_KEYS } from "../lib/riderTypeKeys";
-// Kanonisk nøgleliste bor i lib/riderRating.js (ren .js → node --test-venlig).
+// Kanonisk nøgleliste bor i lib/riderRating.js (ren .js → node --test-venlig),
+// som nu re-eksporterer de 15 CZ-evne-keys fra lib/abilities.js (#1529).
 // Re-eksporteres her for bagudkompatibilitet med eksisterende imports.
 import { STAT_KEYS } from "../lib/riderRating";
+import { ABILITY_SHORT } from "../lib/abilities";
 
 export { STAT_KEYS };
 
-export const STAT_LABELS_MAP = {
-  stat_fl:"FL", stat_bj:"BJ", stat_kb:"KB", stat_bk:"BAK", stat_tt:"TT",
-  stat_prl:"PRL", stat_bro:"BRO", stat_sp:"SP", stat_acc:"ACC",
-  stat_ned:"NED", stat_udh:"UDH", stat_mod:"MOD", stat_res:"RES", stat_ftr:"FTR",
-};
+// Korte slider-/kolonne-labels pr. evne (CLM/TT/...). Internationale forkortelser
+// — oversættes ikke (#487).
+export const STAT_LABELS_MAP = ABILITY_SHORT;
 
-const STAT_DEFAULT_MIN = 50;
-const STAT_DEFAULT_MAX = 85;
+// Evner spænder 1-99 (vs PCM's klumpede 50-85). Slider-baseline = fuld skala.
+const STAT_DEFAULT_MIN = 0;
+const STAT_DEFAULT_MAX = 99;
 
 function makeStatDefaults() {
   const d = {};
@@ -112,7 +113,7 @@ function DualStatSlider({ statKey, label, filters, onChange }) {
       </div>
       <div className="flex flex-col gap-1">
         <input
-          type="range" min={50} max={85} step={1} value={localMin}
+          type="range" min={0} max={99} step={1} value={localMin}
           onChange={e => setLocalMin(Math.min(parseInt(e.target.value), localMax))}
           onMouseUp={e => commitMin(Math.min(parseInt(e.target.value), localMax))}
           onTouchEnd={e => commitMin(Math.min(parseInt(e.target.value), localMax))}
@@ -120,7 +121,7 @@ function DualStatSlider({ statKey, label, filters, onChange }) {
           className="w-full cursor-pointer accent-cz-3"
         />
         <input
-          type="range" min={50} max={85} step={1} value={localMax}
+          type="range" min={0} max={99} step={1} value={localMax}
           onChange={e => setLocalMax(Math.max(parseInt(e.target.value), localMin))}
           onMouseUp={e => commitMax(Math.max(parseInt(e.target.value), localMin))}
           onTouchEnd={e => commitMax(Math.max(parseInt(e.target.value), localMin))}

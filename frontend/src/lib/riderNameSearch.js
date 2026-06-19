@@ -31,9 +31,13 @@ export function nameSearchTokens(q) {
 // Anvender token-set navnesøgning på en supabase-query. Tom / kun-whitespace /
 // kun-metakarakter-q tilføjer intet filter (falder tilbage til ingen navne-
 // begrænsning).
-export function applyNameSearch(query, q) {
+// referencedTable: når navne-søgningen skal anvendes på en EMBEDDED riders-relation
+// (fx når rytter-DB'en drives fra rider_derived_abilities ved evne-sortering), så
+// .or() rammer det embeddede niveau i stedet for top-level. Udeladt = top-level.
+export function applyNameSearch(query, q, { referencedTable } = {}) {
   for (const token of nameSearchTokens(q)) {
-    query = query.or(`firstname.ilike.%${token}%,lastname.ilike.%${token}%`);
+    const orStr = `firstname.ilike.%${token}%,lastname.ilike.%${token}%`;
+    query = referencedTable ? query.or(orStr, { referencedTable }) : query.or(orStr);
   }
   return query;
 }

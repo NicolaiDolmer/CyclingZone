@@ -1,23 +1,25 @@
 // Ensartet evne-farve-gradient — én kilde til sandhed for ALLE rytter-evne-visninger
 // (tal-badges i lister/oversigter + bjælker på ryttersiden).
 //
-// Godkendt hybrid (ejer, 31. maj, issue #855): blødt gradient-forløb hvor PCM's eksakt
-// målte farver er låst som anker-knæk, lineær interpolation imellem, og dybere rød i
-// toppen (86–99) til elite-ryttere. Samme værdi → samme farve overalt.
+// Godkendt hybrid (ejer, 31. maj, issue #855): blødt gradient-forløb med #855's
+// eksakt målte farver låst som anker-knæk, lineær interpolation imellem, dybere rød i
+// toppen til elite-ryttere. Samme værdi → samme farve overalt.
 //
-// PCM-målte ankre: 71→#33fc96 (grøn), 77→#fde447 (gul), 84→#fd3263 (pink/rød).
-// Orange opstår naturligt i guld→pink-overgangen (~81–83).
+// RE-ANKRET 2026-06-19 til CZ-evne-skalaen (#1122/#1529): visningen skiftede fra
+// PCM-stats (snit ~62, klumpet 50-82) til derived abilities (snit ~40, spænder 1-99).
+// SAMME #855-farver — kun ankerVÆRDIERNE er flyttet ned, så median→strong→elite får en
+// meningsfuld farvekurve i stedet for "næsten alt grå". Nye ankre: grøn 42, gul 55,
+// guld 64, pink/rød 74. (Tidligere PCM-ankre: grøn 71, gul 77, rød 84.)
 
 const KNOTS = [
   [0, [0x56, 0x59, 0x69]], // floor: dæmpet grå
-  [50, [0x6f, 0x72, 0x85]], // lav grå
-  [62, [0xae, 0xb1, 0xc0]], // grå stigende
-  [68, [0xce, 0xd1, 0xd2]], // PCM grå        (<70-bånd)
-  [71, [0x33, 0xfc, 0x96]], // PCM grøn       (anker)
-  [77, [0xfd, 0xe4, 0x47]], // PCM gul        (anker)
-  [80, [0xfd, 0xc0, 0x32]], // PCM guld
-  [84, [0xfd, 0x32, 0x63]], // PCM pink/rød   (anker)
-  [90, [0xe2, 0x10, 0x4c]], // dybere rød
+  [20, [0x6f, 0x72, 0x85]], // lav grå
+  [33, [0xae, 0xb1, 0xc0]], // grå stigende (under median)
+  [42, [0x33, 0xfc, 0x96]], // grøn      (anker — solid/median+)
+  [55, [0xfd, 0xe4, 0x47]], // gul       (anker — stærk)
+  [64, [0xfd, 0xc0, 0x32]], // guld      (~p90)
+  [74, [0xfd, 0x32, 0x63]], // pink/rød  (anker — meget stærk)
+  [85, [0xe2, 0x10, 0x4c]], // dybere rød
   [99, [0xa8, 0x08, 0x2f]], // dybeste rød (elite)
 ];
 

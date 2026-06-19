@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { STAT_KEYS, riderStatRating } from "./riderRating.js";
 
-test("riderStatRating: snit af alle 14 stats, afrundet (#1009)", () => {
+test("riderStatRating: snit af alle 15 evner, afrundet (#1009/#1529)", () => {
   const rider = {};
   STAT_KEYS.forEach((k, i) => {
     rider[k] = 60 + (i % 3); // 60/61/62-mønster
@@ -13,12 +13,12 @@ test("riderStatRating: snit af alle 14 stats, afrundet (#1009)", () => {
   assert.equal(riderStatRating(rider), expected);
 });
 
-test("riderStatRating: manglende/ikke-numeriske stats ignoreres i snittet", () => {
-  const rider = { stat_fl: 80, stat_bj: 70, stat_sp: null, stat_tt: "abc" };
+test("riderStatRating: manglende/ikke-numeriske evner ignoreres i snittet", () => {
+  const rider = { climbing: 80, sprint: 70, time_trial: null, flat: "abc" };
   assert.equal(riderStatRating(rider), 75);
 });
 
-test("riderStatRating: ingen stats -> 0 (sorterer nederst)", () => {
+test("riderStatRating: ingen evner -> 0 (sorterer nederst)", () => {
   assert.equal(riderStatRating({}), 0);
   assert.equal(riderStatRating(null), 0);
   assert.equal(riderStatRating(undefined), 0);
@@ -31,8 +31,8 @@ test("riderStatRating: klampes til 0-99", () => {
   assert.equal(riderStatRating(negative), 0);
 });
 
-test("STAT_KEYS: 14 unikke stat-noegler", () => {
-  assert.equal(STAT_KEYS.length, 14);
-  assert.equal(new Set(STAT_KEYS).size, 14);
-  for (const k of STAT_KEYS) assert.match(k, /^stat_[a-z]+$/);
+test("STAT_KEYS: 15 unikke CZ-evne-noegler (#1529)", () => {
+  assert.equal(STAT_KEYS.length, 15);
+  assert.equal(new Set(STAT_KEYS).size, 15);
+  for (const k of STAT_KEYS) assert.match(k, /^[a-z][a-z_]+$/);
 });
