@@ -2216,8 +2216,14 @@ router.post("/transfers/offer", requireAuth, marketWriteLimiter, async (req, res
   if (!assertTeamNotTransferFrozen(req, res)) return;
   const { open } = await getTransferWindowStatus();
 
-  const { rider_id, offer_amount, message } = req.body;
-  if (!rider_id || !offer_amount) return res.status(400).json({ error: "rider_id og offer_amount kræves" });
+  const { rider_id, message } = req.body;
+  // Security-hardening (2026-06-20): parsér beløbet til et heltal FØR validering.
+  // Tidligere blev offer_amount brugt råt; en streng/decimal slap igennem `!offer_amount`
+  // og gav ustabile sammenligninger (`> balance`). Vi normaliserer til et positivt heltal.
+  const offer_amount = Number.parseInt(req.body.offer_amount, 10);
+  if (!rider_id) return res.status(400).json({ error: "rider_id og offer_amount kræves" });
+  if (!Number.isInteger(offer_amount) || offer_amount < 1)
+    return res.status(400).json({ error: "Ugyldigt beløb", errorCode: "invalid_offer_amount" });
 
   const { data: rider } = await supabase
     .from("riders").select("id, team_id, firstname, lastname, is_retired").eq("id", rider_id).single();
@@ -5534,9 +5540,12 @@ router.post("/finance/loans", requireAuth, marketWriteLimiter, async (req, res) 
 router.post("/finance/loans/:id/repay", requireAuth, marketWriteLimiter, async (req, res) => {
   try {
     if (!req.team) return res.status(400).json({ error: "No team found" });
-    const { amount } = req.body;
-    if (!amount || amount < 1) return res.status(400).json({ error: "Ugyldigt beløb" });
-    const result = await repayLoan(req.params.id, req.team.id, parseInt(amount), null, {
+    // Security-hardening (2026-06-20): parsér FØR validering. Tidligere ramte
+    // `!amount || amount < 1` den rå body-værdi, så en ikke-numerisk streng slap
+    // forbi og gav NaN i parseInt(amount) nedenfor.
+    const amount = Number.parseInt(req.body.amount, 10);
+    if (!Number.isInteger(amount) || amount < 1) return res.status(400).json({ error: "Ugyldigt beløb" });
+    const result = await repayLoan(req.params.id, req.team.id, amount, null, {
       actorType: FINANCE_ACTOR_TYPE.API,
       actorId: req.user.id,
     });
@@ -6797,6 +6806,12 @@ router.post("/achievements/check", requireAuth, presencePulseLimiter, async (req
 // GET /api/managers/:teamId — fuld manager-profil
 router.get("/managers/:teamId", requireAuth, async (req, res) => {
   const { teamId } = req.params;
+  // Security-hardening (2026-06-20): teamId interpoleres i en PostgREST .or()-filterstreng
+  // nedenfor (transfer_activity), så vi UUID-validerer FØR DB-opslag — samme guard som
+  // /riders/:id/history og /teams/:id/transfer-history (se UUID_RE).
+  if (!UUID_RE.test(teamId)) {
+    return res.status(400).json({ error: "Ugyldigt hold-id" });
+  }
   const { data: team } = await supabase.from("teams")
     .select("id, name, division, balance, user_id").eq("id", teamId).single();
   if (!team) return res.status(404).json({ error: "Hold ikke fundet" });

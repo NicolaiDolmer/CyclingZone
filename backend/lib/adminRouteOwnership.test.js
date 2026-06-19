@@ -33,3 +33,38 @@ test("pensionerede import-/sync-routes må ikke genopstå (#1179/#1207)", () => 
   // PCM-fallback skal bestå indtil #1021 (fuld motor) er modnet post-launch.
   assert.match(apiSource, /router\.post\(\s*"\/admin\/import-results-pcm"/);
 });
+
+// Security-hardening (2026-06-20, security-audit): forward-guard mod en fremtidig
+// regression hvor en /admin/*-rute registreres uden requireAdmin (fx kun requireAuth
+// eller helt ugated). Enumererer ALLE /admin/*-route-registreringer i api.js og
+// kræver at requireAdmin står som middleware i hver registrerings-header. Audit'en
+// (2026-06-20) bekræftede at alle ~87 admin-ruter ER gated — testen skal være grøn.
+test("alle /admin/*-ruter har requireAdmin-middleware (#security-audit forward-guard)", () => {
+  // Match både single-line (router.post("/admin/x", requireAdmin, ...)) og multi-line
+  // (router.post(\n  "/admin/x",\n  requireAdmin,\n ...)) registreringer. Vi fanger
+  // selve router.<verb>(-kaldet og kigger på alt frem til handler-funktionen.
+  const ROUTE_RE = /router\.(get|post|put|patch|delete)\(\s*(["'])(\/admin\/[^"']*)\2([\s\S]*?)(?:async\s*\(|\(req)/g;
+
+  const adminRoutes = [];
+  let m;
+  while ((m = ROUTE_RE.exec(apiSource)) !== null) {
+    const [, verb, , routePath, middlewareSegment] = m;
+    adminRoutes.push({ verb, routePath, middlewareSegment });
+  }
+
+  // Sanity: vi forventer et betydeligt antal admin-ruter. Falder dette til ~0 er
+  // regex'en (ikke koden) brudt — fang det eksplicit frem for en falsk grøn test.
+  assert.ok(
+    adminRoutes.length >= 80,
+    `forventede mange /admin/*-ruter, fandt kun ${adminRoutes.length} — regex sandsynligvis brudt`,
+  );
+
+  const ungated = adminRoutes.filter(
+    (r) => !/\brequireAdmin\b/.test(r.middlewareSegment),
+  );
+  assert.deepEqual(
+    ungated.map((r) => `${r.verb.toUpperCase()} ${r.routePath}`),
+    [],
+    "fandt /admin/*-rute(r) uden requireAdmin-middleware",
+  );
+});

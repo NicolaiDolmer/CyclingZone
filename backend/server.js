@@ -23,7 +23,10 @@ const PORT = process.env.PORT || 3001;
 // reflects the real client (X-Forwarded-For) for rate-limit key fallback.
 app.set("trust proxy", 1);
 
-app.use(helmet());
+// Security-hardening (2026-06-20): eksplicit HSTS bag Railway/Vercel-TLS. Defense-in-depth
+// — instruerer browsere til at tvinge HTTPS i 1 år (inkl. subdomæner) selv hvis et
+// proxy-led skulle fejle. maxAge i sekunder (31536000 = 365 dage).
+app.use(helmet({ hsts: { maxAge: 31536000, includeSubDomains: true } }));
 const ALLOWED_ORIGINS = [
   // cyclingzone.org = primary siden 11/6 (#1296); apex er canonical, www redirecter.
   "https://cyclingzone.org",
