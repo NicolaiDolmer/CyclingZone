@@ -19,8 +19,7 @@ function createSupabase({ auctions = [], bids = [] } = {}) {
 
   function buildQuery(table) {
     const filters = { eq: [], in: null };
-    let orderCol = null;
-    let orderDesc = false;
+    const orders = [];
     let limit = null;
 
     function applyFilters(rows) {
@@ -37,12 +36,16 @@ function createSupabase({ auctions = [], bids = [] } = {}) {
 
     function executeAndSort() {
       let rows = applyFilters(tableData[table]);
-      if (orderCol) {
+      if (orders.length > 0) {
+        // Multi-key sort der spejler supabase-js: hver .order()-nøgle anvendes i
+        // rækkefølge, så sekundære nøgler bryder ties på de foregående (#249).
         rows = [...rows].sort((a, b) => {
-          const av = a[orderCol] ?? "";
-          const bv = b[orderCol] ?? "";
-          if (av < bv) return orderDesc ? 1 : -1;
-          if (av > bv) return orderDesc ? -1 : 1;
+          for (const { col, desc } of orders) {
+            const av = a[col] ?? "";
+            const bv = b[col] ?? "";
+            if (av < bv) return desc ? 1 : -1;
+            if (av > bv) return desc ? -1 : 1;
+          }
           return 0;
         });
       }
@@ -55,8 +58,7 @@ function createSupabase({ auctions = [], bids = [] } = {}) {
       eq(column, value) { filters.eq.push({ column, value }); return chain; },
       in(column, values) { filters.in = { column, values }; return chain; },
       order(col, opts = {}) {
-        orderCol = col;
-        orderDesc = opts.ascending === false;
+        orders.push({ col, desc: opts.ascending === false });
         return chain;
       },
       limit(n) { limit = n; return chain; },
@@ -117,6 +119,41 @@ test("riderBidTimeline — aktiv auktion returnerer bud-timeline med korrekt sha
 
   const second = result.bid_timeline[1];
   assert.equal(second.is_proxy, true, "proxy-bud skal være markeret med is_proxy=true");
+});
+
+test("riderBidTimeline — bud med samme bid_time tie-brydes på beløb (stigende) (#249)", async () => {
+  // Et manuelt bud og det cascade-proxy-bud det udløser deler ÉT bid_time.
+  // Uden sekundær sortering er rækkefølgen ikke-deterministisk; med .order(amount asc)
+  // skal de komme i beløbs-rækkefølge inden for samme tidsstempel.
+  const SAME = "2026-05-08T10:10:00Z";
+  const supabase = createSupabase({
+    auctions: [
+      {
+        id: AUCTION,
+        rider_id: RIDER,
+        status: "active",
+        current_price: 150000,
+        calculated_end: "2026-05-09T18:00:00Z",
+        actual_end: null,
+        created_at: "2026-05-08T10:00:00Z",
+        seller: SELLER,
+        winner: BUYER,
+      },
+    ],
+    bids: [
+      // Bevidst indsat i "forkert" rækkefølge (højest først) for at bevise at sorten virker.
+      { auction_id: AUCTION, amount: 150000, bid_time: SAME, is_proxy: true, team: { id: "team-other", name: "Anden Manager" } },
+      { auction_id: AUCTION, amount: 120000, bid_time: SAME, is_proxy: false, team: BUYER },
+      { auction_id: AUCTION, amount: 90000, bid_time: "2026-05-08T10:05:00Z", is_proxy: false, team: BUYER },
+    ],
+  });
+
+  const result = await buildRiderBidTimeline(supabase, RIDER);
+  const amounts = result.bid_timeline.map(b => b.amount);
+
+  // Primær: bid_time stigende (90k først). Sekundær: beløb stigende inden for samme tidsstempel.
+  assert.deepEqual(amounts, [90000, 120000, 150000],
+    "timeline skal sortere på bid_time, derefter beløb stigende ved tie");
 });
 
 test("riderBidTimeline — completed auktion returnerer KUN final + vinder + sælger + tid", async () => {

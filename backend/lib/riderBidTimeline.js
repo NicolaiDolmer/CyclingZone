@@ -89,7 +89,11 @@ export async function buildRiderBidTimeline(supabase, riderId) {
     .from("auction_bids")
     .select("amount, bid_time, is_proxy, team:team_id(id, name)")
     .eq("auction_id", auction.id)
-    .order("bid_time", { ascending: true });
+    .order("bid_time", { ascending: true })
+    // #249: stabil tie-break når flere bud deler ét bid_time (et manuelt bud og de
+    // proxy/cascade-bud det udløser får samme timestamp). amount stigende her →
+    // frontend reverser timelinen til visning → højeste bud øverst ved tie.
+    .order("amount", { ascending: true });
 
   const timeline = (bids || []).map(pickTimelineBid);
   for (const entry of timeline) {
