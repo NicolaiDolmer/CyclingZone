@@ -3,8 +3,15 @@ import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { formatNumber } from "../lib/intl";
+import { Card, Input, Spinner, EmptyState } from "../components/ui";
 
-const DIV_COLORS = { 1: "#e8c547", 2: "#60a5fa", 3: "#a78bfa" };
+// Divisions-farver via design-tokens (ingen raa hex): D1 = accent-guld,
+// D2 = chart-1 (blaa), D3 = chart-2 (violet). Brugt inline til prik + label.
+const DIV_COLORS = {
+  1: "rgb(var(--accent))",
+  2: "rgb(var(--cz-chart-1))",
+  3: "rgb(var(--cz-chart-2))",
+};
 
 export default function TeamsPage() {
   const navigate = useNavigate();
@@ -70,7 +77,7 @@ export default function TeamsPage() {
 
   if (loading) return (
     <div className="flex justify-center py-16">
-      <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
+      <Spinner />
     </div>
   );
 
@@ -83,14 +90,12 @@ export default function TeamsPage() {
 
       {/* Filters */}
       <div className="flex gap-2 mb-5 flex-wrap">
-        <input type="text" placeholder={t("list.searchPlaceholder")} value={search}
+        <Input type="text" placeholder={t("list.searchPlaceholder")} value={search}
           onChange={e => setSearch(e.target.value)}
-          className="bg-cz-card border border-cz-border rounded-lg px-3 py-2
-            text-cz-1 text-sm placeholder-cz-3 w-48
-            focus:outline-none focus:border-cz-accent" />
+          className="w-48" />
         {["all","1","2","3"].map(d => (
           <button key={d} onClick={() => setDivFilter(d)}
-            className={`px-3 py-2 rounded-lg text-sm font-medium transition-all border
+            className={`px-3 py-2 rounded-cz text-sm font-medium transition-all border
               ${divFilter === d
                 ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/40"
                 : "bg-cz-card text-cz-2 border-cz-border hover:text-cz-1"}`}>
@@ -106,7 +111,7 @@ export default function TeamsPage() {
         return (
           <div key={div} className="mb-6">
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-2 h-2 rounded-full" style={{ background: DIV_COLORS[div] }} />
+              <div className="w-2 h-2 rounded-cz-pill" style={{ background: DIV_COLORS[div] }} />
               <span className="text-xs uppercase tracking-widest font-medium"
                 style={{ color: DIV_COLORS[div] }}>
                 {t("list.divisionName", { n: div })}
@@ -121,11 +126,10 @@ export default function TeamsPage() {
                 const lastSeen = team.user?.last_seen;
                 const isOnline = lastSeen && (Date.now() - new Date(lastSeen).getTime()) < 5 * 60 * 1000;
                 return (
-                  <div key={team.id}
+                  <Card key={team.id} interactive
                     onClick={() => navigate(`/teams/${team.id}`)}
                     style={isMe ? { boxShadow: "inset 0 0 0 1.5px rgb(var(--me-ring) / 0.5)" } : undefined}
-                    className={`bg-cz-card border border-cz-border rounded-xl p-4 cursor-pointer
-                      hover:border-cz-border transition-all group`}>
+                    className="p-4 cursor-pointer group">
 
                     {/* Header */}
                     <div className="flex items-start justify-between mb-3">
@@ -135,7 +139,7 @@ export default function TeamsPage() {
                             {team.name}
                           </p>
                           {isMe && (
-                            <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full"
+                            <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-cz-pill"
                               style={{ backgroundColor: "rgb(var(--me-badge-bg))", color: "rgb(var(--me-badge-fg))" }}>{t("list.youBadge")}</span>
                           )}
                         </div>
@@ -143,35 +147,35 @@ export default function TeamsPage() {
                           <p className="text-cz-2 text-xs mt-0.5">{team.manager_name}</p>
                         )}
                         <div className="flex items-center gap-1.5 mt-0.5">
-                          <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isOnline ? "bg-green-400 shadow-[0_0_4px_rgba(74,222,128,0.8)]" : "bg-cz-subtle"}`} />
+                          <span className={`w-1.5 h-1.5 rounded-cz-pill flex-shrink-0 ${isOnline ? "bg-cz-success" : "bg-cz-subtle"}`} />
                           <p className="text-cz-3 text-xs">{t("list.ridersCount", { count: riderCount })}</p>
                         </div>
                       </div>
-            
+
                     </div>
 
                     {/* Stats */}
                     <div className="grid grid-cols-3 gap-2">
-                      <div className="bg-cz-subtle rounded-lg p-2 text-center">
+                      <div className="bg-cz-subtle rounded-cz p-2 text-center">
                         <p className="text-cz-3 text-[9px] uppercase tracking-wider">{t("list.statPoints")}</p>
                         <p className="text-cz-1 font-mono font-bold text-xs mt-0.5">
                           {formatNumber(standing?.total_points) || 0}
                         </p>
                       </div>
-                      <div className="bg-cz-subtle rounded-lg p-2 text-center">
+                      <div className="bg-cz-subtle rounded-cz p-2 text-center">
                         <p className="text-cz-3 text-[9px] uppercase tracking-wider">{t("list.statStageWins")}</p>
                         <p className="text-cz-1 font-mono font-bold text-xs mt-0.5">
                           {standing?.stage_wins || 0}
                         </p>
                       </div>
-                      <div className="bg-cz-subtle rounded-lg p-2 text-center">
+                      <div className="bg-cz-subtle rounded-cz p-2 text-center">
                         <p className="text-cz-3 text-[9px] uppercase tracking-wider">{t("list.statGcWins")}</p>
                         <p className="text-cz-1 font-mono font-bold text-xs mt-0.5">
                           {standing?.gc_wins || 0}
                         </p>
                       </div>
                     </div>
-                  </div>
+                  </Card>
                 );
               })}
             </div>
@@ -180,10 +184,10 @@ export default function TeamsPage() {
       })}
 
       {filtered.length === 0 && (
-        <div className="text-center py-16 text-cz-3">
-          <p className="text-4xl mb-3">◈</p>
-          <p>{t("list.noMatch")}</p>
-        </div>
+        <EmptyState
+          icon={<span aria-hidden="true" className="text-3xl text-cz-3">◈</span>}
+          title={t("list.noMatch")}
+        />
       )}
     </div>
   );
