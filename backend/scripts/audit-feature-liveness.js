@@ -86,6 +86,14 @@ const WHITELIST_EMPTY_TABLES = new Set([
   // Reset af beta-state tømmer disse — de fyldes når sæson 1 + transfer-window kører
   "transfer_offers",
   "swap_offers",
+  // loan_agreements (rytter-lejeaftaler) er søsterbord til transfer_offers/swap_offers
+  // ovenfor: rytter-markeds-state der tømmes af beta-reset (RESET_DELETE_TARGETS i
+  // betaResetService.js). Skriv-path verificeret: POST /api/loans (api.js) →
+  // insert({status:"pending"}) med fejl surfacet (ingen stilfærdig rollback); frontend
+  // når den via TransfersPage NewLoanForm + RiderStatsPage. 0 rows fordi ingen rytter-
+  // leje er oprettet endnu i frisk sæson 1 (relaunch 2026-06-18) — ikke broken. Bemærk:
+  // lån-bugs #45/#97 er FINANSIELLE lån (loans-tabellen), ikke denne. Fjern når rows.
+  "loan_agreements",
   "race_results",
   "season_standings",
   "hall_of_fame",
