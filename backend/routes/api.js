@@ -3784,7 +3784,7 @@ router.get("/teams/:teamId/finance-report", requireAuth, async (req, res) => {
         .single(),
       supabase
         .from("finance_transactions")
-        .select("id, type, amount, description, reason_code, created_at")
+        .select("id, type, amount, description, reason_code, metadata, created_at")
         .eq("team_id", teamId)
         .eq("season_id", seasonId)
         .order("created_at", { ascending: false }),

@@ -5,6 +5,8 @@ import { supabase } from "../lib/supabase";
 import { formatNumber, formatDate as formatDateIntl } from "../lib/intl";
 import { Card, Button, Spinner } from "./ui";
 import { chartColor } from "../lib/chartPalette";
+import { renderBackendMessage } from "../lib/backendMessage";
+import { resolveLegacyFinanceMessage } from "../lib/legacyFinanceMessage";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -161,6 +163,17 @@ function HeroCard({ hero, season }) {
 }
 
 function TopTransactionsCard({ title, items, emptyLabel, isPositive }) {
+  // #1483: render via samme resolve/renderBackendMessage-kæde som FinancePage
+  // Historik-fanen, så rytternavnet vises locale-aware i stedet for den rå
+  // danske description (i18n-leak). Falder tilbage til tx.label ved ukendt row.
+  const { t: tBackend } = useTranslation("backendMessages");
+  const resolveDescription = (tx) => {
+    const resolved = resolveLegacyFinanceMessage(tx);
+    if (resolved.code) {
+      return renderBackendMessage(resolved, tBackend, tx.description || tx.label);
+    }
+    return resolved.fallback || tx.description || tx.label;
+  };
   return (
     <Card className="p-6">
       <h3 className="text-cz-1 font-semibold mb-4">{title}</h3>
@@ -171,7 +184,7 @@ function TopTransactionsCard({ title, items, emptyLabel, isPositive }) {
           {items.map((tx) => (
             <li key={tx.id} className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <p className="text-cz-1 text-sm truncate">{tx.description || tx.label}</p>
+                <p className="text-cz-1 text-sm truncate">{resolveDescription(tx)}</p>
                 <p className="text-cz-3 text-xs">
                   {tx.label} · {formatDate(tx.created_at)}
                 </p>

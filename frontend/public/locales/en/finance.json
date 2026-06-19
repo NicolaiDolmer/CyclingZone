@@ -114,7 +114,8 @@
       "prize": "Prize money",
       "bonus": "Division bonus",
       "admin_adjustment": "Admin adjustment",
-      "interest": "Interest"
+      "interest": "Interest",
+      "academy_signing": "Academy signing"
     }
   },
   "timeAgo": {

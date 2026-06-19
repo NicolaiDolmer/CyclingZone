@@ -385,7 +385,7 @@ function makeSignRejectSupabase({
               eq() { return readApi; },
               maybeSingle() {
                 return Promise.resolve({
-                  data: { id: "rider-X", market_value: riderBaseValue, base_value: riderBaseValue, prize_earnings_bonus: 0 },
+                  data: { id: "rider-X", firstname: "Sander", lastname: "Akademi", market_value: riderBaseValue, base_value: riderBaseValue, prize_earnings_bonus: 0 },
                   error: null,
                 });
               },
@@ -472,6 +472,16 @@ test("signAcademyCandidate: opdaterer rytter med is_academy=true, team_id, salar
   assert.equal(rpcCall._args.p_team_id, "team-A");
   assert.ok(rpcCall._args.p_delta < 0, "delta er negativ (debit)");
   assert.equal(rpcCall._args.p_finance_payload.type, "academy_signing");
+  // #1483: struktureret metadata med rytternavn så Historik-fanen viser navnet
+  // i stedet for den rå UUID.
+  assert.deepEqual(rpcCall._args.p_finance_payload.metadata, {
+    code: "tx.academySigning",
+    params: { riderName: "Sander Akademi" },
+  });
+  assert.equal(
+    rpcCall._args.p_finance_payload.description,
+    "Akademi-signing af Sander Akademi",
+  );
 
   // Intake opdateret → signed
   assert.equal(supabase._intakeUpdates.length, 1, "præcis én intake-update");

@@ -11,6 +11,7 @@ const KNOWN_TYPES = new Set([
   "bonus",
   "admin_adjustment",
   "interest",
+  "academy_signing",
 ]);
 
 const SIMPLE_CODES = {
@@ -47,12 +48,29 @@ export function resolveLegacyFinanceMessage(tx) {
     if (params) return { code: "tx.legacy.prize", params };
   }
   if (type === "transfer_out") {
+    // #1483: auktions-køb skrev "Købt <navn> på auktion" uden metadata → fald
+    // tilbage til regex-udtræk så retro-rows også viser rytternavnet.
+    const auctionBuy = capturedParam(description, /^Købt\s+(.+?)\s+på auktion$/i, "riderName");
+    if (auctionBuy) return { code: "tx.auctionBuy", params: auctionBuy };
     const params = capturedParam(description, /^(?:Køb af|Transfer-køb\s*[-—·:]?)\s*(.+)$/i, "detail");
     if (params) return { code: "tx.legacy.transferPurchase", params };
   }
   if (type === "transfer_in") {
+    // #1483: auktions-salg + garanteret AI-salg.
+    const auctionSell = capturedParam(description, /^Solgt\s+(.+?)\s+på auktion$/i, "riderName");
+    if (auctionSell) return { code: "tx.auctionSell", params: auctionSell };
+    const aiSale = capturedParam(description, /^Garanteret AI-salg:\s*(.+)$/i, "riderName");
+    if (aiSale) return { code: "tx.guaranteedAiSale", params: aiSale };
     const params = capturedParam(description, /^(?:Salg af|Transfer-salg\s*[-—·:]?)\s*(.+)$/i, "detail");
     if (params) return { code: "tx.legacy.transferSale", params };
+  }
+  if (type === "academy_signing") {
+    // #1483: ungdomsauktions-vinder + akademi-signing skrev rytternavn (eller
+    // rå UUID) i description; udtræk så Historik-fanen viser navnet.
+    const youthWin = capturedParam(description, /^Vandt ungdomsrytter\s+(.+?)\s+på auktion$/i, "riderName");
+    if (youthWin) return { code: "tx.youthAuctionWin", params: youthWin };
+    const signing = capturedParam(description, /^Akademi-signing af\s+(.+)$/i, "riderName");
+    if (signing) return { code: "tx.academySigning", params: signing };
   }
   if (SIMPLE_CODES[type] && description) {
     return { code: SIMPLE_CODES[type], params: {} };

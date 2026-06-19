@@ -667,6 +667,7 @@ test("finalizeAuctionById pays the actual AI owner instead of the initiator", as
       type: "transfer_out",
       amount: -120,
       description: "Købt AI Owner på auktion",
+      metadata: { code: "tx.auctionBuy", params: { riderName: "AI Owner" } },
       season_id: "season-active-mock",
       actor_type: "cron",
       actor_id: null,
@@ -681,6 +682,7 @@ test("finalizeAuctionById pays the actual AI owner instead of the initiator", as
       type: "transfer_in",
       amount: 120,
       description: "Solgt AI Owner på auktion",
+      metadata: { code: "tx.auctionSell", params: { riderName: "AI Owner" } },
       season_id: "season-active-mock",
       actor_type: "cron",
       actor_id: null,
@@ -859,6 +861,7 @@ test("finalizeAuctionById still pays the human seller for a normal owned-rider a
       type: "transfer_out",
       amount: -150,
       description: "Købt Owned Seller på auktion",
+      metadata: { code: "tx.auctionBuy", params: { riderName: "Owned Seller" } },
       season_id: "season-active-mock",
       actor_type: "cron",
       actor_id: null,
@@ -873,6 +876,7 @@ test("finalizeAuctionById still pays the human seller for a normal owned-rider a
       type: "transfer_in",
       amount: 150,
       description: "Solgt Owned Seller på auktion",
+      metadata: { code: "tx.auctionSell", params: { riderName: "Owned Seller" } },
       season_id: "season-active-mock",
       actor_type: "cron",
       actor_id: null,
@@ -1110,6 +1114,11 @@ test("finalizeAuctionById closes open transfer listings on guaranteed sale to th
   assert.equal(financeInserts.length, 1);
   assert.equal(financeInserts[0].team_id, "seller-team");
   assert.equal(financeInserts[0].amount, 50);
+  // #1483: garanteret AI-salg får struktureret metadata med rytternavn.
+  assert.deepEqual(financeInserts[0].metadata, {
+    code: "tx.guaranteedAiSale",
+    params: { riderName: "Guaranteed Owned" },
+  });
 });
 
 test("finalizeAuctionById keeps guaranteed sale on non-owned riders payout-free and history-safe", async () => {
@@ -1282,6 +1291,7 @@ test("finalizeAuctionById completes when the initiator is the sole bidder on an 
       type: "transfer_out",
       amount: -120,
       description: "Købt AI SelfBid på auktion",
+      metadata: { code: "tx.auctionBuy", params: { riderName: "AI SelfBid" } },
       season_id: "season-active-mock",
       actor_type: "cron",
       actor_id: null,
@@ -1296,6 +1306,7 @@ test("finalizeAuctionById completes when the initiator is the sole bidder on an 
       type: "transfer_in",
       amount: 120,
       description: "Solgt AI SelfBid på auktion",
+      metadata: { code: "tx.auctionSell", params: { riderName: "AI SelfBid" } },
       season_id: "season-active-mock",
       actor_type: "cron",
       actor_id: null,
@@ -1395,6 +1406,7 @@ test("finalizeAuctionById completes when the initiator is the sole bidder on a f
       type: "transfer_out",
       amount: -80,
       description: "Købt Free Agent på auktion",
+      metadata: { code: "tx.auctionBuy", params: { riderName: "Free Agent" } },
       season_id: "season-active-mock",
       actor_type: "cron",
       actor_id: null,
@@ -1490,6 +1502,7 @@ test("finalizeAuctionById treats legacy non-owned auctions without current_bidde
     type: "transfer_out",
     amount: -48,
     description: "Købt Legacy Free på auktion",
+    metadata: { code: "tx.auctionBuy", params: { riderName: "Legacy Free" } },
     season_id: "season-active-mock",
     actor_type: "cron",
     actor_id: null,
@@ -1762,6 +1775,11 @@ test("youth-auktion MED bud + plads + balance: vinder får rytteren i akademiet 
   assert.equal(fin.type, "academy_signing");
   assert.equal(fin.delta, -25000, "betaler sit bud");
   assert.ok(fin.idempotency_key, "idempotency_key sat (cron-sikkerhed)");
+  // #1483: struktureret metadata med rytternavn til Historik-fanen.
+  assert.deepEqual(fin.metadata, {
+    code: "tx.youthAuctionWin",
+    params: { riderName: "Tadej Ungdom" },
+  });
 
   // Auktion lukket completed
   assert.ok(supabase._auctionUpdates.some((u) => u.status === "completed"));
