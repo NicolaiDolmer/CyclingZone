@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import RiderLink from "../components/RiderLink";
 import { supabase } from "../lib/supabase";
+import { ageBadgeKey } from "../lib/riderAge";
 import OnlineBadge from "../components/OnlineBadge";
 import { formatNumber, formatDate } from "../lib/intl";
 
@@ -47,6 +48,7 @@ export default function ManagerProfilePage() {
   const navigate   = useNavigate();
   const { t } = useTranslation("team");
   const { t: tCommon } = useTranslation("common");
+  const { t: tRider } = useTranslation("rider");
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab]         = useState("overview");
@@ -232,7 +234,14 @@ export default function ManagerProfilePage() {
                         className="text-cz-1 text-sm hover:text-cz-accent-t transition-colors block">
                         {r.firstname} {r.lastname}
                       </RiderLink>
-                      {r.is_u25 && <span className="text-[9px] bg-cz-info-bg0/20 text-cz-info px-1.5 py-0.5 rounded">U25</span>}
+                      {/* #42: alders-badge afledt af alder (U23 <23, U25 23-24, ingen ≥25)
+                          via ageBadgeKey — ikke rå is_u25, der også er true for U23. */}
+                      {(() => {
+                        const ageTier = ageBadgeKey(r);
+                        return ageTier ? (
+                          <span className="text-[9px] bg-cz-info-bg0/20 text-cz-info px-1.5 py-0.5 rounded">{tRider(`header.${ageTier}`)}</span>
+                        ) : null;
+                      })()}
                     </td>
                     <td className="px-4 py-3 text-right text-cz-accent-t font-mono text-sm">{formatNumber(r.market_value)}</td>
                     <td className="px-4 py-3 text-right text-cz-2 text-sm hidden sm:table-cell">{r.stat_bj || "—"}</td>
