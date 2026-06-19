@@ -11,6 +11,7 @@ import { ACADEMY } from "./academyFlag.js";
 import { calculateRiderMarketValue } from "./marketUtils.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
 import { notifyTeamOwner } from "./notificationService.js";
+import { deriveForRiderIds } from "./backfillCores.js";
 
 /**
  * Returnerer antal ryttere med is_academy=true for et givet hold.
@@ -39,12 +40,14 @@ export async function getTeamAcademyCount(supabase, teamId) {
  * @param {boolean} [opts.dryRun=true]
  * @param {number}  [opts.seed=2026]
  * @param {Function} [opts.getManagerTeams]  DI-hook til tests (returnerer hold med season_1_identity_basis)
+ * @param {Function} [opts.deriveRiders]     DI-hook til tests; default deriveForRiderIds (afled-pipeline)
  * @returns {Promise<{dryRun, teams, candidates} | {dryRun, teams, candidates, note}>}
  */
 export async function runAcademyIntake(supabase, {
   dryRun = true,
   seed = 2026,
   getManagerTeams,
+  deriveRiders = deriveForRiderIds,
 } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
 
@@ -112,6 +115,7 @@ export async function runAcademyIntake(supabase, {
   // ── Per-hold kandidat-generering ─────────────────────────────────────────────
   let totalTeams = 0;
   let totalCandidates = 0;
+  const insertedRiderIds = []; // alle nyindsatte akademi-ryttere (til afled-pipeline)
 
   for (const team of teams) {
     if (seededTeamIds.has(team.id)) continue; // allerede behandlet
@@ -148,6 +152,18 @@ export async function runAcademyIntake(supabase, {
       .from("academy_intake")
       .insert(intakeRows);
     if (intakeErr) throw new Error(`runAcademyIntake intake insert (team ${team.id}): ${intakeErr.message}`);
+
+    for (const r of insertedRiders) insertedRiderIds.push(r.id);
+  }
+
+  // ── Afled-pipeline for de nyindsatte akademi-ryttere (#1478) ─────────────────
+  // Akademiryttere oprettes EFTER den globale backfill-kæde (relaunch trin 4 vs
+  // 6.4) og uden for relaunch slet ikke — så uden dette får de aldrig physiology,
+  // rider_derived_abilities, primary/secondary_type eller base_value. Konsekvens:
+  // de springes over i træning-engine (#1478 bug #3), mangler ryttertype (#bug 2)
+  // og viser rå PCM-stats i stedet for de nye afledte evner (#bug 4).
+  if (!dryRun && insertedRiderIds.length > 0) {
+    await deriveRiders(supabase, insertedRiderIds, { dryRun: false });
   }
 
   return { dryRun, teams: totalTeams, candidates: totalCandidates };

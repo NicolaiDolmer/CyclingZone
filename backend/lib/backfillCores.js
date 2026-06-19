@@ -120,6 +120,80 @@ export async function runRiderTypesBackfill(supabase, { dryRun = true, baseline,
   return { riders: rows.length, written };
 }
 
+// ── Scoped derive-pipeline for NYE ryttere (#1478) ────────────────────────────
+// Kører hele afled-kæden (physiology → abilities → primary/secondary_type →
+// base_value) for et eksplicit sæt rider-id'er. Bruges ved runtime-intake
+// (akademi-kuld) hvor ryttere oprettes EFTER den globale backfill-kæde og derfor
+// ellers aldrig får physiology/abilities/type/base_value. Uden dette springes de
+// over i træning-engine (mangler rider_derived_abilities) og viser rå PCM-stats.
+//
+// Genbruger de samme rene kerner (seedPhysiologyFromLegacy + deriveAbilities +
+// computeRiderTypes + predictBaseValue) som den globale backfill — ÉN sandhed.
+export async function deriveForRiderIds(supabase, riderIds, {
+  dryRun = false,
+  typesBaseline,
+  valuationModel,
+  now,
+  log = noop,
+} = {}) {
+  const ids = Array.from(new Set((riderIds || []).filter((id) => id != null)));
+  if (ids.length === 0) {
+    return { riders: 0, profiles: 0, abilities: 0, typed: 0, valued: 0, dryRun };
+  }
+  const stamp = now || new Date().toISOString();
+  const typesModel = typesBaseline || JSON.parse(readFileSync(TYPES_BASELINE_PATH, "utf8"));
+  const valModel = valuationModel || JSON.parse(readFileSync(VALUATION_MODEL_PATH, "utf8"));
+
+  // Hent de berørte ryttere (legacy stat-felter + krop til physiology-seed).
+  const select = ["id", "height", "weight", "birthdate", "potentiale", ...STAT_KEYS].join(", ");
+  const riders = await fetchAllRows(() =>
+    supabase.from("riders").select(select).in("id", ids).order("id", { ascending: true }));
+  log(`deriveForRiderIds: ${riders.length}/${ids.length} ryttere fundet`);
+
+  // 1) Physiology + abilities (rene transformationer).
+  const profiles = riders.map((r) => ({ ...seedPhysiologyFromLegacy(r), updated_at: stamp }));
+  const abilities = profiles.map((p, i) => ({ ...deriveAbilities(p, riders[i]), generated_at: stamp }));
+
+  // 2) Ryttertyper (udledt af abilities).
+  const typeByRider = new Map();
+  for (const a of abilities) {
+    const { primary, secondary } = computeRiderTypes(a, typesModel);
+    typeByRider.set(a.rider_id, { primary_type: primary.key, secondary_type: secondary.key });
+  }
+
+  // 3) base_value (kræver primary_type + abilities).
+  const abilityByRider = new Map(abilities.map((a) => [a.rider_id, a]));
+  const riderUpdates = riders.map((r) => {
+    const t = typeByRider.get(r.id) || { primary_type: null, secondary_type: null };
+    const bv = predictBaseValue({ ...r, primary_type: t.primary_type }, abilityByRider.get(r.id), valModel);
+    return { id: r.id, ...t, ...(bv != null ? { base_value: bv } : {}) };
+  });
+
+  if (dryRun) {
+    return {
+      riders: riders.length,
+      profiles: profiles.length,
+      abilities: abilities.length,
+      typed: typeByRider.size,
+      valued: riderUpdates.filter((u) => u.base_value != null).length,
+      dryRun: true,
+    };
+  }
+
+  await upsertBatched(supabase, "rider_physiology_profiles", profiles, "rider_id");
+  await upsertBatched(supabase, "rider_derived_abilities", abilities, "rider_id");
+  const typedWritten = await updateRidersConcurrent(supabase, riderUpdates);
+
+  return {
+    riders: riders.length,
+    profiles: profiles.length,
+    abilities: abilities.length,
+    typed: typeByRider.size,
+    valued: riderUpdates.filter((u) => u.base_value != null).length,
+    written: typedWritten,
+  };
+}
+
 // ── base_value SHADOW (fra backfillRiderBaseValue.js) ─────────────────────────
 export async function runBaseValueBackfill(supabase, { dryRun = true, model, log = noop } = {}) {
   const m = model || JSON.parse(readFileSync(VALUATION_MODEL_PATH, "utf8"));

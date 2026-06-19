@@ -241,6 +241,28 @@ test("signFreeAgentYouth: afviser rytter der er 'offered' i et intake-kuld → n
   assert.equal(supabase._riderUpdates.length, 0, "ingen sign når kandidaten tilhører et intake-kuld");
 });
 
+test("signFreeAgentYouth: afviser ÆGTE PCM-rytter (pcm_id != null) → not_free_agent (#1478 bug #1)", async () => {
+  // En ægte rytter der tilfældigvis er fri agent i akademi-alder må ikke kunne
+  // hentes gratis. pcm_id=null er fiktiv-vs-ægte-markøren.
+  const supabase = makeFreeAgentSupabase({
+    rider: { id: "fa-rider", team_id: null, is_academy: false, pcm_id: 4242, birthdate: "2008-06-15", base_value: 80000, market_value: 80000, prize_earnings_bonus: 0 },
+  });
+  await assert.rejects(
+    () => signFreeAgentYouth(supabase, { teamId: "team-A", riderId: "fa-rider", seasonNumber: 1, now: NOW_2026 }),
+    /not_free_agent/,
+  );
+  assert.equal(supabase._riderUpdates.length, 0, "ægte rytter må ikke kunne signes gratis");
+});
+
+test("signFreeAgentYouth: tillader stadig FIKTIV fri ungdom (pcm_id null) — kontrol-case", async () => {
+  const supabase = makeFreeAgentSupabase({
+    rider: { id: "fa-rider", team_id: null, is_academy: false, pcm_id: null, birthdate: "2008-06-15", base_value: 80000, market_value: 80000, prize_earnings_bonus: 0 },
+  });
+  const result = await signFreeAgentYouth(supabase, { teamId: "team-A", riderId: "fa-rider", seasonNumber: 1, now: NOW_2026 });
+  assert.equal(result.riderId, "fa-rider");
+  assert.equal(supabase._riderUpdates.length, 1, "fiktiv fri ungdom kan stadig signes");
+});
+
 test("signFreeAgentYouth: afviser rytter på aktiv ungdomsauktion → not_free_agent (ingen auktions-bypass)", async () => {
   const supabase = makeFreeAgentSupabase({ activeAuction: true });
   await assert.rejects(

@@ -290,6 +290,32 @@ test("rytter uden abilities-row springes stille over, rapport er tom", async () 
   assert.equal(result.report.riders.length, 0, "ingen ryttere i rapporten — alle sprunget over");
 });
 
+// ── Test 6: Akademirytter MED abilities-row trænes (#1478 bug #3) ─────────────
+// Rod-årsagen til bug #3 var at akademiryttere blev oprettet UDEN en
+// rider_derived_abilities-række og derfor sprunget over her (Test 5). Fixet
+// (deriveForRiderIds ved intake) giver dem en abilities-række. Denne test
+// forward-guard'er at en akademirytter MED abilities faktisk får et tick.
+test("akademirytter med abilities-row trænes (ikke sprunget over) — #1478 bug #3", async () => {
+  const state = seedState({
+    riders: [makeRider({ id: "ar1", is_academy: true, potentiale: 5, birthdate: "2007-01-01" })], // 19 år, vækstfase
+    abilities: [makeAbilityRow("ar1", { climbing: 45, ability_caps: null })],
+    conditions: [makeCondition("ar1", { fatigue: 10, form: 50 })],
+    plans: [{ rider_id: "ar1", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" }],
+  });
+  const supabase = createMockSupabase(state);
+
+  const result = await runTeamTrainingDay({
+    supabase, teamId: TEAM_ID, seasonId: SEASON_ID, seasonNumber: SEASON_NUMBER,
+    executedBy: "manager", now: NOW,
+  });
+
+  assert.equal(result.alreadyRan, false);
+  assert.equal(result.report.riders.length, 1, "akademirytter optræder i rapporten (ikke sprunget over)");
+  const rr = result.report.riders[0];
+  assert.equal(rr.rider_id, "ar1");
+  assert.ok(rr.score > 0, `akademirytter får et tick med progress (score=${rr.score})`);
+});
+
 // ── Test 6: to på hinanden følgende runs (2. kald → alreadyRan via state) ────
 test("to kald i træk: 2. kald detekterer eksisterende run-row → alreadyRan", async () => {
   const state = seedState();
