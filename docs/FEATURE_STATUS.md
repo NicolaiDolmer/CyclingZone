@@ -32,7 +32,7 @@ Last reviewed: 2026-06-17 (audit-pass — race v2 + value-model status). GitHub 
 
 ## Beta or feature-flagged
 
-- **Race engine v2 (light motor):** deterministic simulator, stage profiles, race entries, multi-seed calibration gate (`race:gate` over {2026,7,42} since #1436), and admin dry-run are implemented behind `RACE_ENGINE_V2_ENABLED`; go-live code + physiology schema + ability v2 merged (#1428), but the legacy PCM path stays authoritative until the flag flips at relaunch. **Abilities decide outcomes; `form`/`fatigue` are still neutral 0-stubs** — full physiology depth (#1021) is post-launch.
+- **Race engine v2 (light motor):** deterministic simulator, stage profiles, race entries, multi-seed calibration gate (`race:gate` over {2026,7,42} since #1436), and admin dry-run are implemented behind `RACE_ENGINE_V2_ENABLED`; go-live code + physiology schema + ability v2 merged (#1428). The `RACE_ENGINE_V2_ENABLED` flag flipped **on** at the 2026-06-18 relaunch (verified `on` in prod `app_config` 2026-06-20), so the race engine is now authoritative; the legacy PCM result path is retained only as a backend fallback and its result-reporting UI was removed in #1532. **Abilities decide outcomes; `form`/`fatigue` are still neutral 0-stubs** — full physiology depth (#1021) is post-launch.
 - **Daily training, form, fatigue, and injuries:** development phases are merged behind launch controls; relaunch orchestration and production verification remain.
 - **Board and progression additions:** several post-season and progression surfaces are live but still have owner-verification issues before broad reliance.
 - **Analytics-backed validation:** newer gameplay and funnel events need enough live traffic before product conclusions are stable.
