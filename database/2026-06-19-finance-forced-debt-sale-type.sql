@@ -1,4 +1,4 @@
--- DRAFT — DO NOT AUTO-APPLY / DO NOT MERGE-TO-DEPLOY (ejer applier manuelt).
+-- Reviewet + ejer-godkendt til apply (dag-boelge close-out 2026-06-19). Auto-applies ved merge til main.
 --
 -- #1465 backwards-check (twin af 'upkeep'-bug'en fra #1463 / 2026-06-18-finance-upkeep-type.sql):
 -- tilføj 'forced_debt_sale' til finance_transactions_type_check.
