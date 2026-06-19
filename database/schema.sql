@@ -1,6 +1,18 @@
 -- ============================================================
 -- CYCLING ZONE MANAGER — Full Database Schema
 -- ============================================================
+--
+-- ⚠️  IKKE SOURCE-OF-TRUTH — REFERENCE-DUMP, KAN VÆRE STALE.
+-- Sandheden om prod-skemaet (især RLS-policies, GRANTs og constraints)
+-- er de daterede migrations i database/*.sql + den faktiske prod-DB.
+-- Denne fil er et bekvemt overblik, men RLS/policies her kan halte bagefter
+-- migrationerne (fx blev permissive policies strammet i
+-- 2026-05-22-rls-permissive-policy-lockdown.sql uden at denne fil blev
+-- opdateret). VERIFICÉR altid RLS/privilegier mod prod (Supabase advisor /
+-- execute_sql mod pg_policies/pg_proc) før du konkluderer på sikkerhed.
+-- Audit-noten her indført 2026-06-20 efter en security-audit blev vildledt af
+-- stale RLS i denne fil.
+-- ============================================================
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
