@@ -137,7 +137,7 @@ export async function resetBetaRosters(supabase) {
   const managerTeams = await getBetaManagerTeams(supabase);
   const teamIds = managerTeams.map((team) => team.id);
   if (teamIds.length === 0) {
-    return { moved: 0, to_ai: 0, to_null: 0 };
+    return { moved: 0, to_ai: 0, to_null: 0, pending_cleared: 0 };
   }
 
   const ridersResult = ensureOk(await supabase
@@ -146,9 +146,6 @@ export async function resetBetaRosters(supabase) {
     .in("team_id", teamIds));
 
   const riders = ridersResult.data || [];
-  if (riders.length === 0) {
-    return { moved: 0, to_ai: 0, to_null: 0 };
-  }
 
   const withoutAi = riders.filter((rider) => !rider.ai_team_id).map((rider) => rider.id);
   const updates = riders
@@ -167,12 +164,26 @@ export async function resetBetaRosters(supabase) {
     );
   }
 
+  // BUG 1 (#1481): Nuller team_id-baserede rosters fanger IKKE parkerede indkommende
+  // handler. "Betal nu, registrér ved vindue-åbning"-floweet (#19) sætter
+  // riders.pending_team_id = køber-hold men beholder team_id på SÆLGEREN (ofte
+  // AI-hold/bank), så rytteren ligger uden for manager-team_id-sættet ovenfor og
+  // dens pending_team_id ville overleve reset/relaunch. Nul derfor ALLE
+  // pending_team_id der peger på et manager-hold, uafhængigt af rytterens nuværende
+  // team_id. cancelBetaMarket flipper kun offer-statuses og rører aldrig riders.
+  const pendingCleared = ensureOk(await supabase
+    .from("riders")
+    .update({ pending_team_id: null })
+    .in("pending_team_id", teamIds)
+    .select("id"));
+
   (await Promise.all(updates)).forEach(ensureOk);
 
   return {
     moved: riders.length,
     to_ai: riders.length - withoutAi.length,
     to_null: withoutAi.length,
+    pending_cleared: countRows(pendingCleared),
   };
 }
 
@@ -359,7 +370,8 @@ export async function resetBetaTransferArchive(supabase) {
 
 // #104 · Sletter ALL public-facing rytter-historik (auctions, transfers, swaps, leje-aftaler)
 // så spillet kan starte fra ren tavle uden alpha-støj på rytter-profiler.
-// Bevarer rider_watchlist, riders, teams, balancer, sæsoner, race-resultater m.m.
+// Bevarer riders, teams, balancer, sæsoner, race-resultater m.m.
+// rider_watchlist (ønskelister) ryddes separat af resetBetaWishlist (#1481) — IKKE her.
 // Sletter child-tabeller før parent-tabeller for at få korrekte counts (i stedet for
 // at lade ON DELETE CASCADE wipe dem stille).
 export async function resetBetaRiderHistory(supabase) {
@@ -425,6 +437,26 @@ export async function resetBetaNotifications(supabase) {
   return { notifications: countRows(notifications) };
 }
 
+// BUG 2 (#1481): rider_watchlist (ønskelister) blev bevidst aldrig nulstillet, så
+// hver manager beholdt sin gamle ønskeliste på tværs af reset/relaunch. Efter en
+// relaunch peger de rows på pensionerede legacy-ryttere (retireLegacyRiders). Tabellen
+// er per-bruger (user_id, rider_id) → scopes via manager-user_ids, præcis som
+// resetBetaNotifications, så AI/ingen-bruger-rows ikke berøres.
+export async function resetBetaWishlist(supabase) {
+  assertSupabase(supabase);
+  const managerTeams = await getBetaManagerTeams(supabase);
+  const userIds = [...new Set(managerTeams.map((team) => team.user_id).filter(Boolean))];
+  if (userIds.length === 0) return { rider_watchlist: 0 };
+
+  const watchlist = ensureOk(await supabase
+    .from("rider_watchlist")
+    .delete()
+    .in("user_id", userIds)
+    .select("id"));
+
+  return { rider_watchlist: countRows(watchlist) };
+}
+
 export async function resetBetaSeasons(supabase) {
   assertSupabase(supabase);
   // board_plan_snapshots: NOT NULL FK til seasons — skal slettes før sæsoner
@@ -487,6 +519,7 @@ export async function runFullBetaReset(supabase, options = {}) {
   const transfer_archive = await resetBetaTransferArchive(supabase);
   const loans = await resetBetaLoans(supabase);
   const notifications = await resetBetaNotifications(supabase);
+  const wishlist = await resetBetaWishlist(supabase);
   const rosters = await resetBetaRosters(supabase);
   const balances = await resetBetaBalances(supabase, {
     clearTransactions: Boolean(options.clearTransactions),
@@ -505,6 +538,7 @@ export async function runFullBetaReset(supabase, options = {}) {
     transfer_archive,
     loans,
     notifications,
+    wishlist,
     rosters,
     balances,
     divisions,
