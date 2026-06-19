@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import { applyNameSearch } from "../lib/riderNameSearch";
 import RiderLink from "../components/RiderLink";
 import TeamLink from "../components/TeamLink";
 import { Flag } from "../components/Flag";
@@ -47,13 +48,14 @@ function RiderSearch({ onSelect, excluded }) {
     if (q.length < 2) { setResults([]); return; }
     const timeout = setTimeout(async () => {
       setLoading(true);
-      const { data } = await supabase
+      let query = supabase
         .from("riders")
         .select("id, firstname, lastname, market_value, team:team_id(name)")
-        .or(`firstname.ilike.%${q}%,lastname.ilike.%${q}%`)
         .eq("is_retired", false)
         .order("market_value", { ascending: false })
         .limit(8);
+      query = applyNameSearch(query, q); // #47: token-set match (fornavn + efternavn)
+      const { data } = await query;
       setResults((data || []).filter(r => !excluded.includes(r.id)));
       setLoading(false);
     }, 300);
