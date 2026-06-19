@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.64",
+    date: "2026-06-19",
+    label: "Beta",
+    changes: [
+      {
+        category: "Improved · Academy",
+        items: [
+          "EN · Academy riders are now clickable. Open any rider on the Academy page (squad, intake, free agents and graduates) to view their full profile and stats, just like first-team riders. Refs #1524",
+          "DA · Akademiryttere er nu klikbare. Åbn enhver rytter på Akademi-siden (trup, intake, frie agenter og graduerede) for at se deres fulde profil og stats, præcis som førsteholdsryttere. Refs #1524",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.63",
     date: "2026-06-19",
     label: "Beta",

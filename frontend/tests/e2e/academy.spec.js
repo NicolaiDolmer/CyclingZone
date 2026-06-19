@@ -35,6 +35,11 @@ test("academy page renders intake candidates, slot counter, and roster", async (
   // Roster-sektion — Jonas Svensson + Luca Morel
   await expect(page.locator("main")).toContainText(/Roster|roster|Akademihold/i);
 
+  // #1524: akademiryttere er klikbare → rytterprofil (samme som førsteholdet).
+  const riderLink = page.getByRole("link", { name: /Jonas Svensson/i });
+  await expect(riderLink).toBeVisible();
+  await expect(riderLink).toHaveAttribute("href", /\/riders\//);
+
   // Free-agent-sektion (#1308 Fase B) — frie ungdomsryttere + "Sign to academy"-knap
   await expect(page.locator("main")).toContainText(/Free youth agents|Frie ungdomsryttere/i);
   await expect(page.locator("main")).toContainText(/Noah Berg/i);
