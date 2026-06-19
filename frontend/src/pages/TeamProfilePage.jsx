@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import RiderLink from "../components/RiderLink";
 import { supabase } from "../lib/supabase";
 import { statStyle } from "../lib/statColor";
+import { ABILITY_STATS as STATS, ABILITY_SELECT, flattenAbilities } from "../lib/abilities";
 import NationCell from "../components/rider/NationCell";
 import RiderBadges from "../components/rider/RiderBadges";
 import { ageBadgeKey } from "../lib/riderAge";
@@ -17,9 +18,9 @@ import TeamResultsTab from "../components/TeamResultsTab";
 // Gyldige tab-nøgler — ?tab= i URL'en (fx ranglistens holdnavn-link → results, #824).
 const TABS = ["squad", "results", "transfers"];
 
-const STATS = ["stat_fl","stat_bj","stat_kb","stat_bk","stat_tt","stat_prl",
-  "stat_bro","stat_sp","stat_acc","stat_ned","stat_udh","stat_mod","stat_res","stat_ftr"];
-const STAT_LABELS = ["FL","BJ","KB","BK","TT","PRL","Bro","SP","ACC","NED","UDH","MOD","RES","FTR"];
+// Stat-kolonner = de 15 CZ-evner (delt config lib/abilities.js, importeret som STATS).
+// #1529: erstattede de 14 PCM stat_*-kolonner — visningen viser nu evner. Korte
+// labels = STATS[i].label (ABILITY_SHORT, oversættes ikke, jf. #487).
 
 function SortTh({ children, sortKey, sort, sortDir, onSort, className = "" }) {
   const active = sort === sortKey;
@@ -64,13 +65,15 @@ export default function TeamProfilePage() {
     const [teamRes, ridersRes, pendingRes, standingRes] = await Promise.all([
       supabase.from("teams").select("*, manager:user_id(last_seen)").eq("id", id).single(),
       supabase.from("riders")
-        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, ${STATS.join(", ")}`)
+        // #1529: evnerne hentes via join (ABILITY_SELECT) + flades op på rytter-objektet
+        // med flattenAbilities, så rider.climbing osv. virker i render/sort.
+        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, ${ABILITY_SELECT}`)
         .eq("team_id", id)
         .order("market_value", { ascending: false }),
       supabase.from("riders")
         // #922: incoming-ryttere manglede nationality_code (var med for current på
         // linje 57), så NationCell fik undefined → intet flag på "se andet hold"-siden.
-        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, ${STATS.join(", ")}`)
+        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, ${ABILITY_SELECT}`)
         .eq("pending_team_id", id)
         .order("market_value", { ascending: false }),
       supabase.from("season_standings")
@@ -85,9 +88,9 @@ export default function TeamProfilePage() {
     const isOnline = lastSeen ? (Date.now() - new Date(lastSeen).getTime()) < 5 * 60 * 1000 : false;
     setManagerStatus({ isOnline, lastSeen });
     const current = (ridersRes.data || []).map(r => ({
-      ...r, _isOutgoing: r.pending_team_id && r.pending_team_id !== id,
+      ...flattenAbilities(r), _isOutgoing: r.pending_team_id && r.pending_team_id !== id,
     }));
-    const incoming = (pendingRes.data || []).map(r => ({ ...r, _isIncoming: true }));
+    const incoming = (pendingRes.data || []).map(r => ({ ...flattenAbilities(r), _isIncoming: true }));
     setRiders([...current, ...incoming]);
     setStanding(standingRes.data);
     setLoading(false);
@@ -259,9 +262,9 @@ export default function TeamProfilePage() {
                   <th className="px-4 py-3 text-left font-medium uppercase hidden sm:table-cell">{t("profile.thBadges")}</th>
                   <SortTh sortKey="market_value" sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
                     className="px-4 py-3 text-right font-medium">{t("profile.thValue")}</SortTh>
-                  {STATS.map((key, i) => (
+                  {STATS.map(({ key, label }) => (
                     <SortTh key={key} sortKey={key} sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
-                      className="px-1.5 py-3 text-center font-medium w-10">{STAT_LABELS[i]}</SortTh>
+                      className="px-1.5 py-3 text-center font-medium w-10">{label}</SortTh>
                   ))}
                 </tr>
               </thead>
@@ -288,7 +291,7 @@ export default function TeamProfilePage() {
                     <td className="px-4 py-2.5 text-right text-cz-accent-t font-mono font-bold">
                       {formatCz(getRiderMarketValue(r)).replace(" CZ$", "")}
                     </td>
-                    {STATS.map(key => (
+                    {STATS.map(({ key }) => (
                       <td key={key} className="px-1.5 py-2.5 text-center">
                         <span className="inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded" style={statStyle(r[key] || 0)}>
                           {r[key] || "—"}

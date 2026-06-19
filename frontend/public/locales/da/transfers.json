@@ -39,7 +39,8 @@
     "auction": "Auktion",
     "transfer": "Transfer",
     "swap": "Swap",
-    "loan": "Lån"
+    "loan": "Lån",
+    "academy": "Akademi"
   },
   "direction": {
     "in": "Køb",
@@ -207,6 +208,7 @@
     "loanTag": "(lån)",
     "swapZero": "0 CZ$",
     "noBids": "Ingen bud",
+    "academySource": "Akademi",
     "loadError": "Kunne ikke hente transferhistorik"
   },
   "profit": {

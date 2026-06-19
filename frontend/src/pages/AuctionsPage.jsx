@@ -5,6 +5,7 @@ import { NavLink } from "react-router-dom";
 import RiderLink from "../components/RiderLink";
 import RiderFilters from "../components/RiderFilters";
 import { useClientRiderFilters } from "../lib/useRiderFilters";
+import { ABILITY_STATS, ABILITY_SHORT, ABILITY_SELECT, flattenAbilities } from "../lib/abilities";
 import { statStyle } from "../lib/statColor";
 import { ConfettiModal } from "../components/ConfettiModal";
 import { RacePriceModal } from "../components/RacePriceModal";
@@ -49,13 +50,11 @@ const API = import.meta.env.VITE_API_URL;
 // "de seneste bud" over en brugbar periode, ikke kun de sidste sekunder.
 const BID_FEED_WINDOW_MS = 15 * 60 * 1000;
 
-const STATS = ["stat_fl","stat_bj","stat_kb","stat_bk","stat_tt","stat_prl",
-  "stat_bro","stat_sp","stat_acc","stat_ned","stat_udh","stat_mod","stat_res","stat_ftr"];
-const STAT_LABEL_BY_KEY = {
-  stat_fl: "FL", stat_bj: "BJ", stat_kb: "KB", stat_bk: "BK", stat_tt: "TT",
-  stat_prl: "PRL", stat_bro: "Bro", stat_sp: "SP", stat_acc: "ACC",
-  stat_ned: "NED", stat_udh: "UDH", stat_mod: "MOD", stat_res: "RES", stat_ftr: "FTR",
-};
+// Stat-kolonner = de 15 CZ-evner (delt config lib/abilities.js). #1529: erstattede
+// de 14 PCM stat_*-kolonner — visningen viser nu evner. STATS = de bare evne-keys
+// (til visibleStats-filter + join-select), labels via ABILITY_SHORT.
+const STATS = ABILITY_STATS.map(s => s.key);
+const STAT_LABEL_BY_KEY = ABILITY_SHORT;
 
 // Onboarding v2 Slice 1b — tour-trin på /auctions (aktiveres fra Dashboard "Vis mig hvordan").
 // i18n Fase 3b: konstrueres via t() ved render-tid så sproget følger user's locale.
@@ -729,7 +728,7 @@ export default function AuctionsPage() {
         .select(`id, current_price, min_increment, calculated_end, status, is_guaranteed_sale, is_flash, is_youth,
           seller_team_id, current_bidder_id,
           rider:rider_id(id, firstname, lastname, market_value, is_u25, team_id, birthdate, nationality_code,
-            prize_earnings_bonus, salary, contract_length, contract_end_season, ${STATS.join(", ")}),
+            prize_earnings_bonus, salary, contract_length, contract_end_season, ${ABILITY_SELECT}),
           seller:seller_team_id(id, name),
           current_bidder:current_bidder_id(id, name)`)
         .in("status", ["active", "extended"])
@@ -769,6 +768,9 @@ export default function AuctionsPage() {
       });
       setAuctions(auctionsRes.data.map(a => ({
         ...a,
+        // #1529: løft de joinede rider_derived_abilities-felter op på rider, så
+        // rider.climbing osv. virker direkte i render/sort/klient-filter.
+        rider: flattenAbilities(a.rider),
         myHighestBid: myBidMap[a.id] || null,
         myProxyMax: myProxyMap[a.id] || null,
       })));

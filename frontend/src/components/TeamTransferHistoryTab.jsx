@@ -7,7 +7,7 @@ import { formatNumber, formatDate } from "../lib/intl";
 import { computeTransferProfit } from "../lib/transferProfit.js";
 import { Card, Select, ExchangeIcon } from "./ui";
 
-const TYPE_LABEL_KEY = { auction: "type.auction", transfer: "type.transfer", swap: "type.swap", loan: "type.loan" };
+const TYPE_LABEL_KEY = { auction: "type.auction", transfer: "type.transfer", swap: "type.swap", loan: "type.loan", academy: "type.academy" };
 
 function SortTh({ children, sortKey, current, dir, onSort, align = "left" }) {
   const active = current === sortKey;
@@ -259,6 +259,9 @@ export default function TeamTransferHistoryTab({ teamId }) {
                         {ev.counterparty.name}
                         {ev.counterparty.is_ai && <span className="ms-1 text-cz-3 text-[10px]">{t("history.aiTag")}</span>}
                       </TeamLink>
+                    ) : ev.type === "academy" ? (
+                      // #1525: akademi-intake har ingen modpart — kilden er akademiet.
+                      <span className="text-cz-2">{t("history.academySource")}</span>
                     ) : (
                       <span className="text-cz-3">{ev.no_sale ? t("history.noBids") : "—"}</span>
                     )}

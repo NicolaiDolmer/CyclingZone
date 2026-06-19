@@ -5,8 +5,8 @@
 //
 // Rækkefølge = RiderStatsPage DERIVED_ABILITIES (fysiske → tekniske → taktisk/mentale).
 // `prolog` er udeladt (merget i time_trial per abilityDerivation). Korte labels =
-// kolonne-overskrifter (oversættes ikke, jf. #487); fulde navne via i18n rider.json
-// skills.derived.<key>.
+// kolonne-overskrifter (oversættes ikke, jf. #487); fulde navne via i18n
+// rider.json racePreview.derived.<key>.
 
 export const ABILITY_KEYS = [
   // Fysiske

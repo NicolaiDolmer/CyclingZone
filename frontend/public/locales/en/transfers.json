@@ -39,7 +39,8 @@
     "auction": "Auction",
     "transfer": "Transfer",
     "swap": "Swap",
-    "loan": "Loan"
+    "loan": "Loan",
+    "academy": "Academy"
   },
   "direction": {
     "in": "Buy",
@@ -207,6 +208,7 @@
     "loanTag": "(loan)",
     "swapZero": "0 CZ$",
     "noBids": "No bids",
+    "academySource": "Academy",
     "loadError": "Could not load transfer history"
   },
   "profit": {

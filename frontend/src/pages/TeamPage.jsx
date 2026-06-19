@@ -2,6 +2,7 @@
 import { useTranslation } from "react-i18next";
 import RiderLink from "../components/RiderLink";
 import { useClientRiderFilters } from "../lib/useRiderFilters";
+import { ABILITY_STATS as STATS, ABILITY_SELECT, flattenAbilities } from "../lib/abilities";
 import { supabase } from "../lib/supabase";
 import { statStyle } from "../lib/statColor";
 import NationCell from "../components/rider/NationCell";
@@ -17,9 +18,8 @@ import TeamTransferHistoryTab from "../components/TeamTransferHistoryTab";
 import { resolveApiError } from "../lib/apiError";
 import { Card, Button, Input, BikeIcon } from "../components/ui";
 
-const STATS = ["stat_fl","stat_bj","stat_kb","stat_bk","stat_tt","stat_prl",
-  "stat_bro","stat_sp","stat_acc","stat_ned","stat_udh","stat_mod","stat_res","stat_ftr"];
-const STAT_LABELS = ["FL","BJ","KB","BK","TT","PRL","Bro","SP","ACC","NED","UDH","MOD","RES","FTR"];
+// Stat-kolonner = de 15 CZ-evner (delt config lib/abilities.js, importeret som STATS).
+// #1529: erstattede de 14 PCM stat_*-kolonner — visningen viser nu evner.
 
 function SortTh({ children, sortKey, sort, sortDir, onSort, className = "", title }) {
   const active = sort === sortKey;
@@ -113,9 +113,9 @@ function RiderActionModal({ rider, scouting, onClose, onAction, ddActive }) {
             </div>
           )}
           <div className="grid grid-cols-2 gap-x-6 gap-y-1.5">
-            {STATS.map((key, i) => (
+            {STATS.map(({ key, label }) => (
               <div key={key} className="flex items-center justify-between">
-                <span className="text-cz-3 text-xs">{STAT_LABELS[i]}</span>
+                <span className="text-cz-3 text-xs">{label}</span>
                 <span className="inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded" style={statStyle(rider[key] || 0)}>
                   {rider[key] || "-"}
                 </span>
@@ -297,10 +297,10 @@ function SquadTab({ riders, scouting, onSelectRider, windowOpen }) {
                     className="px-3 py-3 text-left font-medium">{t("squad.headers.type")}</SortTh>
                   <SortTh sortKey="contract_end_season" sort={sort} sortDir={sortDir} onSort={handleSort}
                     className="px-3 py-3 text-left font-medium">{t("squad.headers.contract")}</SortTh>
-                  {STATS.map((key, i) => (
+                  {STATS.map(({ key, label }) => (
                     <SortTh key={key} sortKey={key} sort={sort} sortDir={sortDir} onSort={handleSort}
-                      title={tRider(`skills.${key.replace("stat_", "")}.long`)}
-                      className="px-1.5 py-3 text-center font-medium w-10">{STAT_LABELS[i]}</SortTh>
+                      title={tRider(`racePreview.derived.${key}`)}
+                      className="px-1.5 py-3 text-center font-medium w-10">{label}</SortTh>
                   ))}
                   <th className="px-3 py-3 text-center text-cz-3 font-medium">{t("squad.headers.action")}</th>
                 </tr>
@@ -365,7 +365,7 @@ function SquadTab({ riders, scouting, onSelectRider, windowOpen }) {
                         ? t("squad.headers.contractValue", { season: r.contract_end_season })
                         : "—"}
                     </td>
-                    {STATS.map(key => (
+                    {STATS.map(({ key }) => (
                       <td key={key} className="px-1.5 py-2.5 text-center">
                         <span className="inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded" style={statStyle(r[key] || 0)}>
                           {r[key] || "-"}
@@ -428,11 +428,11 @@ export function TeamPage() {
 
     const [ridersRes, pendingRes, windowRes, loansOutRes, loansInRes] = await Promise.all([
       supabase.from("riders")
-        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, primary_type, secondary_type, contract_end_season, ${STATS.join(", ")}`)
+        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, primary_type, secondary_type, contract_end_season, ${ABILITY_SELECT}`)
         .eq("team_id", myTeam.id)
         .order("market_value", { ascending: false }),
       supabase.from("riders")
-        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, primary_type, secondary_type, contract_end_season, ${STATS.join(", ")}`)
+        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, primary_type, secondary_type, contract_end_season, ${ABILITY_SELECT}`)
         .eq("pending_team_id", myTeam.id)
         .order("market_value", { ascending: false }),
       supabase.from("transfer_windows")
@@ -443,22 +443,24 @@ export function TeamPage() {
         .eq("from_team_id", myTeam.id).eq("status", "active"),
       // Riders we're borrowing
       supabase.from("loan_agreements")
-        .select(`rider:rider_id(id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, nationality_code, primary_type, secondary_type, contract_end_season, ${STATS.join(", ")}), from_team:from_team_id(name), start_season, end_season, buy_option_price`)
+        .select(`rider:rider_id(id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, nationality_code, primary_type, secondary_type, contract_end_season, ${ABILITY_SELECT}), from_team:from_team_id(name), start_season, end_season, buy_option_price`)
         .eq("to_team_id", myTeam.id).eq("status", "active"),
     ]);
 
     const loanedOutIds = new Set((loansOutRes.data || []).map(l => l.rider_id));
     const loanedOutMap = Object.fromEntries((loansOutRes.data || []).map(l => [l.rider_id, l]));
 
+    // #1529: evnerne kommer som joinet rider_derived_abilities-embed; flattenAbilities
+    // løfter rider.climbing osv. op på rytter-objektet så render/sort virker uændret.
     const currentRiders = (ridersRes.data || []).map(r => ({
-      ...r,
+      ...flattenAbilities(r),
       _isOutgoing:  r.pending_team_id && r.pending_team_id !== myTeam.id,
       _isLoanedOut: loanedOutIds.has(r.id),
       _loanOutInfo: loanedOutMap[r.id] || null,
     }));
-    const incomingRiders = (pendingRes.data || []).map(r => ({ ...r, _isIncoming: true }));
+    const incomingRiders = (pendingRes.data || []).map(r => ({ ...flattenAbilities(r), _isIncoming: true }));
     const loanedInRiders = (loansInRes.data || []).map(l => ({
-      ...l.rider,
+      ...flattenAbilities(l.rider),
       _isLoanedIn:  true,
       _loanInInfo:  { from_team: l.from_team, start_season: l.start_season, end_season: l.end_season, buy_option_price: l.buy_option_price },
     }));
@@ -486,7 +488,7 @@ export function TeamPage() {
   ];
 
   return (
-    // #1186: fuld bredde på desktop — trup-tabellens 14 stat-kolonner var klemt i max-w-5xl.
+    // #1186: fuld bredde på desktop — trup-tabellens 15 evne-kolonner var klemt i max-w-5xl.
     // Layout.jsx' WIDE_CONTENT_ROUTES giver /team full-bleed wrapper (#1027-mønstret).
     <div className="max-w-full">
       <div className="mb-5">
