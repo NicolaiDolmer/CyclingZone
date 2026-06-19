@@ -2,6 +2,27 @@
 
 const PATCHES = [
   {
+    version: "5.65",
+    date: "2026-06-19",
+    label: "Beta",
+    changes: [
+      {
+        category: "Changed · Rider abilities",
+        items: [
+          "EN · Rider ratings across the whole game now use the new ability system (climbing, time trial, sprint, endurance and more) instead of the old stat set. The rider database, auctions, transfer list, squad views, comparison and rankings all show the same abilities, and you can sort and filter by them. Refs #1529",
+          "DA · Rytter-ratings i hele spillet bruger nu det nye evne-system (klatring, enkeltstart, sprint, udholdenhed med flere) i stedet for det gamle stat-sæt. Rytterdatabasen, auktioner, transferlisten, trup-visninger, sammenligning og ranglister viser alle de samme evner, og du kan sortere og filtrere på dem. Refs #1529",
+        ],
+      },
+      {
+        category: "Improved · Transfer history",
+        items: [
+          "EN · Academy riders promoted to the first team now appear in transfer history as an 'Academy' source with no fee, on both your own and other teams' history. Refs #1525",
+          "DA · Akademiryttere der rykkes op på førsteholdet fremgår nu af transferhistorikken som 'Academy'-kilde uden beløb, på både dit eget og andre holds historik. Refs #1525",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.64",
     date: "2026-06-19",
     label: "Beta",
