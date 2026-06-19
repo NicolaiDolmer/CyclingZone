@@ -31,7 +31,7 @@
 - **PR-body:** `## Brugerverifikation` med mindst ét `- [x]` ELLER `backend-only`/`docs-only`-label — ellers fejler PR-checket.
 - **PatchNotes:** agenter rører IKKE `PatchNotesPage.jsx`; orkestrator laver én konsolideret entry til sidst (undgår merge-konflikter).
 - **Relaterede bugs (samme rod-domæne) = ÉN agent** — tjek fil-overlap før fan-out.
-- **gh-retry:** alle gh-kald i 4-5× retry-loop (3-4s pause); GraphQL rammes hårdere end REST.
+- **gh-retry:** alle gh-kald i 4-5× retry-loop (3-4s pause); GraphQL rammes hårdere end REST. Brug den delte wrapper i stedet for copy-paste (#1285): bash → `source scripts/lib/gh-retry.sh` + `gh_with_retry <args>`; PowerShell → `. scripts/lib/gh-retry.ps1` + `Invoke-GhWithRetry @('issue','comment','42','--body','...')`. Defaults: 5 forsøg, 3s pause (override via `GH_RETRY_ATTEMPTS`/`GH_RETRY_DELAY` i bash eller `-Attempts`/`-DelaySeconds` i PS). Preflight flagger desuden degraderet gh-auth som WARN (ikke NO-GO).
 - **frontend-smoke-fejl klassificeres pr. PR:** `did not exit` = teardown-flake (advisory) vs `pixels`/`toHaveScreenshot` = ægte diff → refresh ALLE 3 playwright-projekter.
 - **Semantiske kryds-PR-konflikter** (to agenter redesigner samme modul) løses centralt af orkestrator: MERGE intentionerne, vælg ikke side.
 - **Verify/review-agenter: brug `gh pr diff <url>` — ALDRIG `git checkout` i hoved-checkoutet** (eller giv dem også worktree-isolation). Natbølge 19/6: en verify-agent uden isolation checkede en `review/*`-branch ud i hoved-checkoutet og efterlod det dér, så orkestratoren måtte gendanne `main`. Read-only diff-review kræver ingen lokal branch-switch.

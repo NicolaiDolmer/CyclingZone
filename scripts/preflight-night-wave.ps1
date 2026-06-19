@@ -33,6 +33,10 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+# Delt gh-retry-wrapper (#1285) — GraphQL-proben genbruger Test-GhGraphqlWithRetry
+# i stedet for et inline retry-loop her.
+. (Join-Path $PSScriptRoot 'lib\gh-retry.ps1')
+
 $ok = @()
 $warn = @()
 $fail = @()
@@ -117,21 +121,33 @@ Write-Section "gh auth + GraphQL-probe (kendt ~40% 401-rate)"
 
 $ghOk = $false
 $ghProbeSucceededAt = 0
-& gh auth status 2>&1 | Out-Null
+$ghAuthRaw = & gh auth status 2>&1
 if ($LASTEXITCODE -ne 0) {
   $fail += "gh auth status fejlede. Koer 'gh auth login' / 'gh auth refresh' foer bolgen."
   Write-Host "  [NO-GO] gh auth status fejlede" -ForegroundColor Red
 } else {
-  for ($i = 1; $i -le $GhProbeAttempts; $i++) {
-    & gh api graphql -f query='query{viewer{login}}' 2>&1 | Out-Null
-    if ($LASTEXITCODE -eq 0) { $ghOk = $true; $ghProbeSucceededAt = $i; break }
-    if ($i -lt $GhProbeAttempts) { Start-Sleep -Seconds 3 }
+  # gh-auth-WARN (#1285): degraderet auth er IKKE NO-GO (proben afgoer faktisk
+  # naabarhed), men flag det saa ejeren kan koere 'gh auth refresh' proaktivt.
+  # Heuristik paa 'gh auth status'-output — ingen token-vaerdier laeses/dumpes.
+  $ghAuthText = ($ghAuthRaw | Out-String)
+  if ($ghAuthText -match '(?im)^\s*-?\s*Token scopes:\s*$' -or
+      $ghAuthText -notmatch '(?i)Token scopes:') {
+    $warn += "gh auth-token mangler synlige scopes (muligt fine-grained/ufuldstaendigt token) — koer 'gh auth refresh -s repo,read:org' hvis bolgen rammer 401-stoej."
+    Write-Host "  [warn] gh auth-token uden synlige scopes — overvej 'gh auth refresh'" -ForegroundColor Yellow
   }
+  if ($ghAuthText -match '(?i)Token:\s*gho_') {
+    $warn += "gh bruger et OAuth-token (gho_) som historisk har flaket med 401 under last (#1285) — 'gh auth refresh' eller et PAT er mere stabilt til natboelger."
+    Write-Host "  [warn] gh bruger OAuth-token (gho_) — historisk 401-flake under last" -ForegroundColor Yellow
+  }
+
+  $probe = Test-GhGraphqlWithRetry -Attempts $GhProbeAttempts -DelaySeconds 3
+  $ghOk = $probe.Ok
+  $ghProbeSucceededAt = $probe.Attempt
   if ($ghOk) {
     $ok += "gh GraphQL-probe ok (forsoeg $ghProbeSucceededAt/$GhProbeAttempts)"
     Write-Host "  [ok] GraphQL svarer (forsoeg $ghProbeSucceededAt af $GhProbeAttempts)"
     if ($ghProbeSucceededAt -gt 1) {
-      $warn += "gh GraphQL kraevede $ghProbeSucceededAt forsoeg — forvent 401-stoej i bolgen; agenter SKAL bruge retry-wrapper."
+      $warn += "gh GraphQL kraevede $ghProbeSucceededAt forsoeg — forvent 401-stoej i bolgen; agenter SKAL bruge retry-wrapper (scripts/lib/gh-retry.{sh,ps1})."
     }
   } else {
     $fail += "gh GraphQL fejlede alle $GhProbeAttempts forsoeg. Koer 'gh auth refresh' og proev igen."
