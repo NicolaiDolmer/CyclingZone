@@ -10,9 +10,9 @@
     "rider": "Rider",
     "team": "Team",
     "badges": "Status",
+    "type": "Type",
     "value": "Value",
     "salary": "Salary",
-    "potential": "Potential",
     "compareTooltip": "Select for comparison",
     "teamFree": "Free",
     "pendingTransfer": "Transfer pending: moving to {team}"
