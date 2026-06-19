@@ -81,6 +81,13 @@ const RIDERS = [
     primary_type: "sprinter",
     secondary_type: "leadout",
     team: { id: TEST_TEAM.id, name: TEST_TEAM.name },
+    // #1529: visningen viser nu CZ-evner — embeddet rider_derived_abilities flades
+    // op på rytteren (flattenAbilities) i de migrerede sider. Sprinter-profil.
+    rider_derived_abilities: {
+      climbing: 52, time_trial: 60, flat: 78, tempo: 64, sprint: 84, acceleration: 80,
+      punch: 70, endurance: 66, recovery: 68, durability: 71, descending: 62,
+      cobblestone: 58, positioning: 74, aggression: 60, tactics: 67,
+    },
   },
   {
     id: "rider-2",
@@ -103,6 +110,12 @@ const RIDERS = [
     // (→ kommende holdnavn) under nuværende hold. Dækket af riders.png-snapshot.
     pending_team_id: TEST_TEAM.id,
     pending_team: { id: TEST_TEAM.id, name: TEST_TEAM.name },
+    // #1529: klatrer-profil (modsat rider-1's sprinter).
+    rider_derived_abilities: {
+      climbing: 86, time_trial: 72, flat: 55, tempo: 70, sprint: 40, acceleration: 58,
+      punch: 74, endurance: 82, recovery: 75, durability: 70, descending: 68,
+      cobblestone: 50, positioning: 66, aggression: 64, tactics: 73,
+    },
   },
 ];
 

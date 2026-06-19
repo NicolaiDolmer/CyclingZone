@@ -1,9 +1,10 @@
 import { test, expect } from "@playwright/test";
 import { installNetworkMocks, login, stabilizePage, json } from "./fixtures.js";
 
-// Race Engine V1 (#676) — renderer-regression for physiology/abilities-preview på
-// rytter-profilen (/riders/:id, fanen "Evner"). Mocker fundamentet for rider-1 (Ada,
-// fra fixturen) og verificerer beta-badge, effektprofil-tal og udledte evner.
+// Race Engine (#676) — renderer-regression for evner + power-profil på rytter-profilen
+// (/riders/:id, stats-fanen). #1529: de udledte CZ-evner er nu den PRIMÆRE stat-visning
+// (var PCM-stats), og power-profilen er en ren sektion uden "beta"-mærke. Mocker
+// fundamentet for rider-1 og verificerer evne-label, effektprofil-tal + at beta er væk.
 
 const PHYS = {
   rider_id: "rider-1",
@@ -15,8 +16,9 @@ const PHYS = {
 };
 const ABIL = {
   rider_id: "rider-1", formula_version: 1,
-  climbing: 78, time_trial: 66, sprint: 81, punch: 72, endurance: 70,
-  cobble_classics: 58, acceleration: 84, recovery: 67, tactics: 71, positioning: 73,
+  climbing: 78, time_trial: 66, flat: 64, tempo: 60, sprint: 81, acceleration: 84,
+  punch: 72, endurance: 70, recovery: 67, durability: 69, descending: 62,
+  cobblestone: 58, positioning: 73, aggression: 55, tactics: 71,
 };
 
 function objectRoute(data) {
@@ -37,16 +39,16 @@ test("rider profile shows race-engine physiology + abilities preview", async ({ 
   await login(page);
   await page.goto("/riders/rider-1");
 
-  // Stats-fanen er default → preview-sektionen vises direkte.
-  await expect(page.getByRole("heading", { name: "Cycling Zones" })).toBeVisible();
-  await expect(page.getByText("Beta", { exact: true })).toBeVisible();
-  await expect(page.getByText("Effektprofil")).toBeVisible();
-  await expect(page.getByText("Udledte evner")).toBeVisible();
-
-  // Physiology-tal + en udledt evne renderer.
+  // Stats-fanen er default. #1529: de udledte evner er nu den PRIMÆRE visning i
+  // hoved-kortet, og power-profilen er en ren sektion uden "beta".
+  await expect(page.getByText("Klatring")).toBeVisible(); // climbing-evne-label (DA), primær visning
+  await expect(page.getByText("Effektprofil")).toBeVisible(); // power-profil-sektion (de-beta'et)
   await expect(page.getByText("5.42")).toBeVisible();   // FTP W/kg
-  await expect(page.getByText("Klatring")).toBeVisible(); // climbing-label (DA)
 
-  await page.getByRole("heading", { name: "Cycling Zones" }).scrollIntoViewIfNeeded();
+  // "beta"-mærket + "Udledte evner"-underoverskrift er fjernet (#1529).
+  await expect(page.getByText("Beta", { exact: true })).toHaveCount(0);
+  await expect(page.getByText("Udledte evner")).toHaveCount(0);
+
+  await page.getByText("Effektprofil").scrollIntoViewIfNeeded();
   await page.screenshot({ path: "C:/Users/Nicolai/AppData/Local/Temp/race-preview.png", fullPage: true });
 });
