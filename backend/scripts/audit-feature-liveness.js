@@ -203,6 +203,11 @@ const WHITELIST_ORPHANED_ENDPOINTS = new Set([
   // Board DNA-suggestions: backend-route findes, men frontend wiring afventer
   // board-feature-rollout (milestone-gated, samme spor som board_consequences).
   "GET /board/dna-suggestions",
+  // Login-streak: frontend-kaldet fjernet i #1139 (Living World Product Doctrine
+  // 2026-06-08) — login-streak er ikke længere et power-/pres-system. Endpointet
+  // + login_streak-kolonnen bevares bevidst intakt indtil world-history-erstatningen
+  // (#1106/#1112/#1145) er designet, så det er intentional orphaned, ikke drift.
+  "POST /login-streak",
 ]);
 
 // Detector C: schema-files der er committed men IKKE migrations (pre-workflow dumps).
