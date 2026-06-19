@@ -184,6 +184,34 @@ Bruges efter smoke-test til at verificere runtime-effekter (logging, DM-routing)
 - Forventet: én får 200, én får 409 + `{ error: "price_changed", currentPrice, minimumBid }`
 - Pre-fix: ingen 409 — begge bud kunne lande
 
+## E2E snapshot-readiness — `waitForPageReady` (#1272)
+
+Snapshot-/visual-flakes i `core-smoke.spec.js` koster 10-20 min pr. hændelse (5+
+postmortems i maj: `2026-05-26-auctions-mobile-smoke-flake`,
+`2026-05-28-auctions-snapshot-mask-race`, `2026-05-17-visual-snapshots-layout-only`).
+Rod-årsag: generiske readiness-gates (heading synlig / `networkidle`) rammer
+race-vinduer på data-drevne sider — `toHaveScreenshot` kan lande mid-render
+(loader stadig synlig, default-filter ikke sat, font/mask-target endnu ustabilt).
+
+**Mønster (brug fra start i nye visual-specs):** ét kald til
+`waitForPageReady(page, spec)` ([`frontend/tests/e2e/fixtures.js`](../frontend/tests/e2e/fixtures.js))
+EFTER `page.goto(spec.path)` og FØR `toHaveScreenshot`. Det samler tre trin:
+
+1. **Generisk surface-gate** — `spec.heading` synlig, `<main>` synlig, ingen
+   `VITE_API_URL is not set`-fejl.
+2. **Route-specifik gate** — venter på den brugerobserverbare sluttilstand som
+   fixture-data forventer (loader væk, data loaded, default-filter sat, tom-state
+   synlig). Defineres i `ROUTE_READINESS[path]` (delt på tværs af alle 3
+   playwright-projekter), eller ad-hoc via `spec.ready(page)` (vinder over
+   registry-nøglen). De kendt-flaky routes (auktioner desktop+mobile, #646/#512)
+   bruger `ROUTE_READINESS["/auctions"]`.
+3. **Snapshot-overflade-stabilisering** — `waitForStableSnapshotTarget`:
+   `document.fonts.ready` + stabil `main`-geometri + stabil `TEXT_MASK_SELECTOR`
+   element-count over flere animation-frames.
+
+Tilføj en `ROUTE_READINESS`-entry når en ny data-drevet route adopteres af
+core-smoke — IKKE spredte inline-waits. Test-infra only; ingen app-adfærdsændring.
+
 ## Risiko-noter
 
 - **Test-seller får midlertidigt ejerskab** af 1-3 free-agent ryttere under smoke-test. Cleanup setter dem tilbage til `team_id=null`. Hvis script crasher mellem setup og cleanup: kør `scripts/smoke-test-prod.mjs --test=all` igen — pre-cleanup nulstiller alle test-auktioner.
