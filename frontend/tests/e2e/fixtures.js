@@ -523,6 +523,65 @@ export async function waitForStableSnapshotTarget(page) {
   );
 }
 
+// ── #1272 · Central waitForPageReady-util + per-route readiness-gates ─────────
+// Rod-årsag bag snapshot-flakes (postmortems 2026-05-26 + 2026-05-28): generisk
+// "heading synlig + main synlig" gate rammer race-vinduer på data-drevne sider —
+// screenshot kan lande mid-render (loader stadig synlig, default-filter ikke sat,
+// font/mask-target endnu ikke stabilt). waitForPageReady samler ALLE readiness-
+// trin ét sted, så nye specs ikke skal genopfinde ad-hoc-waits:
+//
+//   1. Generisk surface-gate: heading synlig, <main> synlig, ingen VITE-fejl.
+//   2. Route-specifik gate (ROUTE_READINESS) for data-drevne sider — venter på
+//      den BRUGEROBSERVERBARE sluttilstand fixture-data forventer (loader væk,
+//      data loaded, default-filter sat, tom-state synlig).
+//   3. Snapshot-overflade-stabilisering (waitForStableSnapshotTarget): fonts.ready
+//      + stabil main-geometri + stabil TEXT_MASK_SELECTOR element-count.
+//
+// Brug: kald waitForPageReady(page, spec) EFTER page.goto(spec.path), FØR
+// toHaveScreenshot. `spec.heading` er påkrævet; `spec.ready` (funktion) eller
+// `spec.route` (nøgle i ROUTE_READINESS) er valgfri route-specifikke gates.
+
+// Per-route readiness-definitioner. Nøgle = route-path. Hver gate venter på den
+// deterministiske mock-sluttilstand for netop den side. Tilføj en entry her når
+// en ny data-drevet route adopteres af core-smoke — IKKE spredte inline-waits.
+export const ROUTE_READINESS = {
+  // #646 + #512: de 2 kendt-flaky routes. Auktioner (desktop + mobile) havde
+  // 103k-pixel-diffs fordi snapshot kunne ramme før loader-væk / default-filter.
+  "/auctions": async (page) => {
+    // Loader væk.
+    await expect(page.locator('[role="status"]')).toHaveCount(0);
+    // Tab-data loaded ("Aktive (1)" afspejler den ene mockede auktion).
+    await expect(page.getByRole("link", { name: /^(Aktive|Active) \(1\)$/ })).toBeVisible();
+    // Default-filter sat ("Min situation (0)").
+    await expect(
+      page.getByRole("button", { name: /^(Min situation|My situation) \(0\)$/ })
+    ).toBeVisible();
+    // Tom-state for "min situation" synlig — den endelige render-tilstand.
+    await expect(
+      page.getByText(/Du er ikke involveret|not involved in any active auctions/i)
+    ).toBeVisible();
+  },
+};
+
+// Samlet readiness-entry. Erstatter den spredte sekvens
+// (goto → heading → main → VITE-check → ad-hoc ready → waitForStableSnapshotTarget)
+// med ét kald, så snapshot-overfladen er deterministisk inden toHaveScreenshot.
+export async function waitForPageReady(page, spec) {
+  // 1. Generisk surface-gate.
+  if (spec.heading) {
+    await expect(page.getByRole("heading", { name: spec.heading }).first()).toBeVisible();
+  }
+  await expect(page.locator("main")).toBeVisible();
+  await expect(page.locator("body")).not.toContainText("VITE_API_URL is not set");
+
+  // 2. Route-specifik gate (inline spec.ready vinder over ROUTE_READINESS-nøglen).
+  const routeGate = spec.ready ?? ROUTE_READINESS[spec.route ?? spec.path];
+  if (routeGate) await routeGate(page);
+
+  // 3. Snapshot-overflade-stabilisering.
+  await waitForStableSnapshotTarget(page);
+}
+
 // ── #1076 · Genbrugelig non-baseline board-fixture ────────────────────────────
 // Standard-fixturen (apiResponse ovenfor) er baseline-fase → kun observations-
 // banneret rendres. Det interaktive board (plan-faner, medlems-grid, DNA,
