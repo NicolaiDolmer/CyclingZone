@@ -61,6 +61,37 @@ test("resolveLegacyFinanceMessage extracts rider name from auction/academy legac
   }
 });
 
+// #1483 (del 1): transfer-vindue-køb/salg + byttehandel-kontant skrev rytternavn
+// i description men uden metadata.code → faldt tilbage til navnløs label.
+const transferSwapCases = [
+  [
+    { type: "transfer_out", description: "Købt Test Rider via transfer" },
+    "tx.transferBuy",
+    { riderName: "Test Rider" },
+  ],
+  [
+    { type: "transfer_in", description: "Solgt Test Rider via transfer" },
+    "tx.transferSell",
+    { riderName: "Test Rider" },
+  ],
+  [
+    { type: "transfer_out", description: "Byttehandel kontantbetaling: A One ↔ B Two" },
+    "tx.swapCash",
+    { offeredName: "A One", requestedName: "B Two" },
+  ],
+  [
+    { type: "transfer_in", description: "Byttehandel kontantbetaling: A One ↔ B Two" },
+    "tx.swapCash",
+    { offeredName: "A One", requestedName: "B Two" },
+  ],
+];
+
+test("resolveLegacyFinanceMessage extracts names from transfer/swap legacy rows (#1483)", () => {
+  for (const [tx, code, params] of transferSwapCases) {
+    assert.deepEqual(resolveLegacyFinanceMessage(tx), { code, params });
+  }
+});
+
 test("resolveLegacyFinanceMessage falls back to legacy transfer-detail when not an auction row", () => {
   // Ikke-auktions-køb/salg matcher stadig den eksisterende "Køb af"-detail-sti.
   assert.deepEqual(
