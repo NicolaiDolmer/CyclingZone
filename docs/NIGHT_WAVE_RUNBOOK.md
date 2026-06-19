@@ -49,6 +49,13 @@ Detektion: `git worktree list` + `gh pr list --head <branch>` pr. spor. Genopret
 
 `resumeFromRunId` virker kun med uændret agent-rækkefølge — fortsættelser i worktrees er mere robuste.
 
+## Vercel deploy-rate-limit (høj-tempo-bølger)
+
+Vercel **hobby-tier** rate-limiter deploys ("retry in 24 hours") når en bølge laver mange merges + preview-builds hurtigt (ramt 2026-06-20 efter ~13 merges). Konsekvens: **frontend-prod fryser på sidste gode deploy**; merged kode er i git men ikke live før reset/Pro/manuel re-deploy. **Railway (backend) er upåvirket** — backend-PR'er går live uanset.
+- **Forebyg:** batch frontend-merges, ELLER opgrad Vercel Pro før en stor bølge.
+- **Detektér:** `gh api repos/<repo>/commits/main/status --jq '.statuses[]|select(.context|test("Vercel"))|.state+" | "+.description'` → "rate limited".
+- **Håndtér:** bloker IKKE merges på Vercel-checken (advisory) — verificér frontend via CI `frontend-build` (required) i stedet. Prioritér backend-arbejde (Railway-deploybart) under lockout. Notér tydeligt i close-out at frontend venter deploy.
+
 ## Bølge-artifact-template (`docs/audits/night-wave-YYYY-MM-DD.md`)
 
 ```markdown
