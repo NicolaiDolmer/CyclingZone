@@ -363,8 +363,8 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
   if (issue) {
     const message = describeTransferIssue(issue, { rider, buyerState, sellerState });
     await withdrawTransferOffer(supabase, offer.id);
-    await notifyTeamOwner(offer.buyer_team_id, "transfer_offer_rejected", message.notificationTitle, message.notificationMessage, offer.id);
-    await notifyTeamOwner(offer.seller_team_id, "transfer_offer_rejected", message.notificationTitle, message.notificationMessage, offer.id);
+    await notifyTeamOwner(offer.buyer_team_id, "transfer_offer_rejected", message.notificationTitle, message.notificationMessage, offer.id, { riderId: rider.id });
+    await notifyTeamOwner(offer.seller_team_id, "transfer_offer_rejected", message.notificationTitle, message.notificationMessage, offer.id, { riderId: rider.id });
     return failure(400, message.error, issue.code, message.errorParams ? { errorParams: message.errorParams } : {});
   }
 
@@ -403,9 +403,9 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
   if (!movedRider) {
     await withdrawTransferOffer(supabase, offer.id);
     await notifyTeamOwner(offer.buyer_team_id, "transfer_offer_rejected", "Transfer annulleret",
-      `${rider.firstname} ${rider.lastname} kunne ikke gennemføres, fordi rytteren skiftede status under bekræftelsen.`, offer.id);
+      `${rider.firstname} ${rider.lastname} kunne ikke gennemføres, fordi rytteren skiftede status under bekræftelsen.`, offer.id, { riderId: rider.id });
     await notifyTeamOwner(offer.seller_team_id, "transfer_offer_rejected", "Transfer annulleret",
-      `${rider.firstname} ${rider.lastname} kunne ikke gennemføres, fordi rytteren skiftede status under bekræftelsen.`, offer.id);
+      `${rider.firstname} ${rider.lastname} kunne ikke gennemføres, fordi rytteren skiftede status under bekræftelsen.`, offer.id, { riderId: rider.id });
     return failure(409, "Rytteren skiftede status under bekræftelsen — handlen er annulleret", "stale_rider_state");
   }
 
@@ -472,8 +472,8 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
       supabase.from("transfer_offers").update({ status: "window_pending" }).eq("id", offer.id)
     );
     const parkMsg = `Handlen på ${rider.firstname} ${rider.lastname} er aftalt og betalt — rytteren skifter hold, så snart transfervinduet åbner igen.`;
-    await notifyTeamOwner(offer.buyer_team_id, "transfer_offer_accepted", "Handel parkeret", parkMsg, offer.id);
-    await notifyTeamOwner(offer.seller_team_id, "transfer_offer_accepted", "Handel parkeret", parkMsg, offer.id);
+    await notifyTeamOwner(offer.buyer_team_id, "transfer_offer_accepted", "Handel parkeret", parkMsg, offer.id, { riderId: rider.id });
+    await notifyTeamOwner(offer.seller_team_id, "transfer_offer_accepted", "Handel parkeret", parkMsg, offer.id, { riderId: rider.id });
     return success({ action: "window_pending", price });
   }
 
@@ -490,9 +490,9 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
   });
 
   await notifyTeamOwner(offer.buyer_team_id, "transfer_offer_accepted", "Transfer gennemført!",
-    `${rider.firstname} ${rider.lastname} skifter hold for ${price.toLocaleString()} CZ$`, offer.id);
+    `${rider.firstname} ${rider.lastname} skifter hold for ${price.toLocaleString()} CZ$`, offer.id, { riderId: rider.id });
   await notifyTeamOwner(offer.seller_team_id, "transfer_offer_accepted", "Transfer gennemført!",
-    `${rider.firstname} ${rider.lastname} skifter hold for ${price.toLocaleString()} CZ$`, offer.id);
+    `${rider.firstname} ${rider.lastname} skifter hold for ${price.toLocaleString()} CZ$`, offer.id, { riderId: rider.id });
 
   await notifyDiscordHistory({
     riderName: `${rider.firstname} ${rider.lastname}`,
@@ -778,7 +778,8 @@ export async function confirmTransferOffer({
       "transfer_offer_accepted",
       "Handlen afventer din bekræftelse",
       `${isSeller ? "Sælger" : "Køber"} har bekræftet handlen på ${offer.rider.firstname} ${offer.rider.lastname}. Bekræft for at gennemføre.`,
-      offer.id
+      offer.id,
+      { riderId: offer.rider.id }
     );
 
     return success({ action: "confirmed_partial" });

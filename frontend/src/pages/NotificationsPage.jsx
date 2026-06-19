@@ -468,11 +468,15 @@ export default function NotificationsPage() {
                           : config.bg}`}
                       onClick={() => {
                         if (!n.is_read) markRead(n.id);
-                        // #921: "Transferrygte" (nogen kigger på din rytter) deep-linker
-                        // til rytteren via related_id i stedet for den generiske /transfers.
-                        const link = n.type === "transfer_interest" && n.related_id
-                          ? `/riders/${n.related_id}`
-                          : config.link;
+                        // #1486: rytter-centrerede notifikationer bærer riderId i metadata
+                        // og deep-linker direkte til rytterprofilen. #921: legacy
+                        // "Transferrygte" bruger related_id (ingen metadata). Begge falder
+                        // ellers tilbage til den generiske config.link.
+                        const link = n.metadata?.riderId
+                          ? `/riders/${n.metadata.riderId}`
+                          : n.type === "transfer_interest" && n.related_id
+                            ? `/riders/${n.related_id}`
+                            : config.link;
                         if (link) navigate(link);
                       }}>
                       <div className={`w-9 h-9 rounded-cz bg-cz-subtle flex items-center justify-center
@@ -483,7 +487,15 @@ export default function NotificationsPage() {
                         <p className={`text-sm font-medium ${n.is_read ? "text-cz-2" : "text-cz-1"}`}>
                           {renderNotificationTitle(n, tBackend)}
                         </p>
-                        <p className="text-cz-2 text-xs mt-0.5 leading-relaxed">{renderNotificationMessage(n, tBackend)}</p>
+                        <p className="text-cz-2 text-xs mt-0.5 leading-relaxed">
+                          {/* #1486: rytter-notifikationer linker beskeden til rytterprofilen
+                              når metadata.riderId findes; RiderLink falder selv tilbage til
+                              ren tekst for legacy-rækker uden riderId. */}
+                          <RiderLink id={n.metadata?.riderId} stopPropagation
+                            className={n.metadata?.riderId ? "hover:text-cz-accent-t transition-colors" : ""}>
+                            {renderNotificationMessage(n, tBackend)}
+                          </RiderLink>
+                        </p>
                         <p className="text-cz-3 text-xs mt-1.5">{timeAgo(n.created_at)}</p>
                       </div>
                       <div className="flex flex-col sm:flex-row items-center gap-2 flex-shrink-0">
@@ -555,7 +567,13 @@ export default function NotificationsPage() {
                           {entry.items.map(item => (
                             <li key={item.id} className="flex items-start gap-2 text-xs">
                               <span className="text-cz-3 whitespace-nowrap min-w-[5rem]">{timeAgo(item.created_at)}</span>
-                              <span className="text-cz-2 flex-1">{renderNotificationMessage(item, tBackend)}</span>
+                              <span className="text-cz-2 flex-1">
+                                {/* #1486: link til rytterprofil når riderId findes i metadata */}
+                                <RiderLink id={item.metadata?.riderId} stopPropagation
+                                  className={item.metadata?.riderId ? "hover:text-cz-accent-t transition-colors" : ""}>
+                                  {renderNotificationMessage(item, tBackend)}
+                                </RiderLink>
+                              </span>
                             </li>
                           ))}
                         </ul>

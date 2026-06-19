@@ -579,7 +579,7 @@ export function assertTeamNotTransferFrozen(req, res) {
 
 // ── Notification helper ───────────────────────────────────────────────────────
 
-async function notify(userId, type, title, message, relatedId = null) {
+async function notify(userId, type, title, message, relatedId = null, metadata = null) {
   await notifyUserShared({
     supabase,
     userId,
@@ -587,10 +587,11 @@ async function notify(userId, type, title, message, relatedId = null) {
     title,
     message,
     relatedId,
+    metadata,
   });
 }
 
-async function notifyTeamOwner(teamId, type, title, message, relatedId = null) {
+async function notifyTeamOwner(teamId, type, title, message, relatedId = null, metadata = null) {
   await notifyTeamOwnerShared({
     supabase,
     teamId,
@@ -598,6 +599,7 @@ async function notifyTeamOwner(teamId, type, title, message, relatedId = null) {
     title,
     message,
     relatedId,
+    metadata,
   });
 }
 
@@ -641,16 +643,20 @@ async function flushWindowPendingLoans() {
     if (nextStatus === "buyout") {
       await supabase.from("loan_agreements").update({ status: "buyout", updated_at: new Date().toISOString() }).eq("id", loan.id);
       await notifyTeamOwner(loan.from_team_id, "transfer_offer_accepted", "Købsoption gennemført",
-        `${riderName} er nu skiftet permanent til ${loan.to_team?.name || "lejerholdet"}.`, loan.id);
+        `${riderName} er nu skiftet permanent til ${loan.to_team?.name || "lejerholdet"}.`, loan.id,
+        { riderId: loan.rider?.id });
       await notifyTeamOwner(loan.to_team_id, "transfer_offer_accepted", "Købsoption gennemført",
-        `${riderName} er nu registreret permanent hos dit hold.`, loan.id);
+        `${riderName} er nu registreret permanent hos dit hold.`, loan.id,
+        { riderId: loan.rider?.id });
       loanBuyoutsProcessed++;
     } else {
       await supabase.from("loan_agreements").update({ status: "active", updated_at: new Date().toISOString() }).eq("id", loan.id);
       await notifyTeamOwner(loan.from_team_id, "transfer_offer_accepted", "Lejeaftale aktiveret",
-        `${riderName} er nu registreret som udlejet til ${loan.to_team?.name || "lejerholdet"}.`, loan.id);
+        `${riderName} er nu registreret som udlejet til ${loan.to_team?.name || "lejerholdet"}.`, loan.id,
+        { riderId: loan.rider?.id });
       await notifyTeamOwner(loan.to_team_id, "transfer_offer_accepted", "Lejeaftale aktiveret",
-        `${riderName} er nu registreret som lejet af dit hold.`, loan.id);
+        `${riderName} er nu registreret som lejet af dit hold.`, loan.id,
+        { riderId: loan.rider?.id });
       loansProcessed++;
     }
   }
@@ -1545,7 +1551,7 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
       await Promise.all(watchers.map(w =>
         notify(w.user_id, "watchlist_rider_auction", "Ønskeliste-rytter til auktion",
           `${riderFullName} er sat til auktion (startpris ${price.toLocaleString("da-DK")} CZ$)`,
-          auction.id).catch(() => {})
+          auction.id, { riderId: rider_id }).catch(() => {})
       ));
     }
   })().catch(() => {});
@@ -1715,7 +1721,8 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
       "auction_outbid",
       "Du er blevet overbudt!",
       `${req.team.name} bød ${amount} på ${auction.rider.firstname} ${auction.rider.lastname}`,
-      auction.id
+      auction.id,
+      { riderId: auction.rider_id }
     );
     notifyOutbid({
       riderName: `${auction.rider.firstname} ${auction.rider.lastname}`,
@@ -1733,7 +1740,8 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
       "bid_received",
       "Nyt bud modtaget",
       `${req.team.name} bød ${amount.toLocaleString()} CZ$ på ${auction.rider.firstname} ${auction.rider.lastname}`,
-      auction.id
+      auction.id,
+      { riderId: auction.rider_id }
     );
   }
 
@@ -1950,6 +1958,7 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
         "Du er blevet overbudt!",
         `${req.team.name}'s autobud bød ${openingBidAmount.toLocaleString("da-DK")} CZ$ på ${riderName}`,
         auction.id,
+        { riderId: auction.rider_id },
       );
     }
     if (auction.rider?.team_id === auction.seller_team_id && auction.seller_team_id !== req.team.id) {
@@ -1959,6 +1968,7 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
         "Nyt bud modtaget",
         `${req.team.name}'s autobud bød ${openingBidAmount.toLocaleString("da-DK")} CZ$ på ${riderName}`,
         auction.id,
+        { riderId: auction.rider_id },
       );
     }
     awardXP(req.user.id, "bid_placed").catch(() => {});
@@ -2118,7 +2128,7 @@ router.post("/transfers", requireAuth, marketWriteLimiter, async (req, res) => {
       await Promise.all(watchers.map(w =>
         notify(w.user_id, "watchlist_rider_listed", "Ønskeliste-rytter til salg",
           `${riderFullName} er sat til salg (${asking_price?.toLocaleString("da-DK")} CZ$)`,
-          listingId).catch(() => {})
+          listingId, { riderId: rider_id }).catch(() => {})
       ));
     }
   })().catch(() => {});
@@ -2269,7 +2279,7 @@ router.post("/transfers/offer", requireAuth, marketWriteLimiter, async (req, res
   await notifyTeamOwner(rider.team_id, "transfer_offer_received",
     "Nyt transfertilbud modtaget",
     `${req.team.name} tilbyder ${offer_amount.toLocaleString()} CZ$ for ${rider.firstname} ${rider.lastname}`,
-    data.id);
+    data.id, { riderId: rider.id });
 
   notifyTransferOffer({
     riderName: `${rider.firstname} ${rider.lastname}`,
@@ -2396,7 +2406,7 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
     await notifyTeamOwner(offer.buyer_team_id, "transfer_offer_accepted",
       "Tilbud accepteret — bekræft handlen",
       `${req.team.name} har accepteret dit tilbud på ${offer.rider.firstname} ${offer.rider.lastname} for ${price.toLocaleString()} CZ$. Bekræft for at gennemføre handlen.`,
-      offer.id);
+      offer.id, { riderId: offer.rider.id });
 
     notifyTransferResponse({
       riderName: `${offer.rider.firstname} ${offer.rider.lastname}`,
@@ -2412,7 +2422,8 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
     await supabase.from("transfer_offers").update({ status: "rejected" }).eq("id", offer.id);
     await notifyTeamOwner(offer.buyer_team_id, "transfer_offer_rejected",
       "Transfertilbud afvist",
-      `Dit tilbud på ${offer.rider.firstname} ${offer.rider.lastname} blev afvist`, offer.id);
+      `Dit tilbud på ${offer.rider.firstname} ${offer.rider.lastname} blev afvist`, offer.id,
+      { riderId: offer.rider.id });
     notifyTransferResponse({
       riderName: `${offer.rider.firstname} ${offer.rider.lastname}`,
       accepted: false,
@@ -2432,7 +2443,7 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
     await notifyTeamOwner(offer.buyer_team_id, "transfer_counter",
       "Modbud modtaget",
       `${req.team.name} sender modbud på ${offer.rider.firstname} ${offer.rider.lastname}: ${counter_amount.toLocaleString()} CZ$`,
-      offer.id);
+      offer.id, { riderId: offer.rider.id });
     notifyTransferResponse({
       riderName: `${offer.rider.firstname} ${offer.rider.lastname}`,
       accepted: false,
@@ -2470,7 +2481,7 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
     await notifyTeamOwner(offer.seller_team_id, "transfer_offer_accepted",
       "Modbud accepteret — bekræft handlen",
       `${req.team.name} har accepteret dit modbud på ${offer.rider.firstname} ${offer.rider.lastname} for ${price.toLocaleString()} CZ$. Bekræft for at gennemføre handlen.`,
-      offer.id);
+      offer.id, { riderId: offer.rider.id });
 
     return res.json({ success: true, action: "awaiting_confirmation", price });
   }
@@ -2522,7 +2533,7 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
     await notifyTeamOwner(otherTeamId, "transfer_offer_rejected",
       "Transfer annulleret",
       `${req.team.name} har trukket sig fra handlen på ${offer.rider.firstname} ${offer.rider.lastname}.`,
-      offer.id);
+      offer.id, { riderId: offer.rider.id });
     return res.json({ success: true, action: "cancelled" });
   }
   if (action === "cancel" && getTransferCancelIssue(offer)) {
@@ -2541,7 +2552,7 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
     await notifyTeamOwner(offer.seller_team_id, "transfer_offer_received",
       "Nyt bud modtaget",
       `${req.team.name} byder nu ${counter_amount.toLocaleString()} CZ$ for ${offer.rider.firstname} ${offer.rider.lastname}`,
-      offer.id);
+      offer.id, { riderId: offer.rider.id });
     return res.json({ success: true, action: "new_offer", offer_amount: counter_amount });
   }
 
@@ -2551,7 +2562,7 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
     await notifyTeamOwner(offer.seller_team_id, "transfer_offer_withdrawn",
       "Tilbud trukket tilbage",
       `${req.team.name} har trukket deres tilbud på ${offer.rider.firstname} ${offer.rider.lastname} tilbage`,
-      offer.id);
+      offer.id, { riderId: offer.rider.id });
     return res.json({ success: true, action: "withdrawn" });
   }
 
@@ -2605,7 +2616,7 @@ router.post("/transfers/:id/offer", requireAuth, marketWriteLimiter, async (req,
   await notifyTeamOwner(listing.seller_team_id, "transfer_offer_received",
     "Nyt transfertilbud",
     `${req.team.name} tilbyder ${offer_amount.toLocaleString()} CZ$ for ${listing.rider.firstname} ${listing.rider.lastname}`,
-    data.id);
+    data.id, { riderId: listing.rider.id });
   res.status(201).json(data);
 });
 
@@ -2714,7 +2725,7 @@ router.post("/transfers/swaps", requireAuth, marketWriteLimiter, async (req, res
   await notifyTeamOwner(requested.team_id, "transfer_offer_received",
     "Byttehandel foreslået",
     `${req.team.name} tilbyder ${offered.firstname} ${offered.lastname} for ${requested.firstname} ${requested.lastname}${cashStr}`,
-    data.id);
+    data.id, { riderId: requested.id });
 
   res.status(201).json(data);
 });
@@ -2954,7 +2965,7 @@ router.post("/loans", requireAuth, marketWriteLimiter, async (req, res) => {
   await notifyTeamOwner(rider.team_id, "transfer_offer_received",
     "Lejeforslag modtaget",
     `${req.team.name} ønsker at leje ${rider.firstname} ${rider.lastname} (${seasons}, ${loan_fee.toLocaleString()} CZ$/sæson${buyStr})`,
-    data.id);
+    data.id, { riderId: rider.id });
 
   res.status(201).json(data);
 });
@@ -3061,7 +3072,7 @@ router.patch("/loans/:id", requireAuth, marketWriteLimiter, async (req, res) => 
       : `${req.team.name} har accepteret og betalt din lejeforespørgsel på ${loan.rider.firstname} ${loan.rider.lastname}. Rytteren bliver registreret som lejet, når transfervinduet åbner.`;
     await notifyTeamOwner(loan.to_team_id, "transfer_offer_accepted",
       title,
-      message, loan.id);
+      message, loan.id, { riderId: loan.rider.id });
     return res.json({ success: true, action: nextStatus });
   }
 
@@ -3070,7 +3081,8 @@ router.patch("/loans/:id", requireAuth, marketWriteLimiter, async (req, res) => 
     await supabase.from("loan_agreements").update({ status: "rejected" }).eq("id", loan.id);
     await notifyTeamOwner(loan.to_team_id, "transfer_offer_rejected",
       "Lejeforespørgsel afvist",
-      `${req.team.name} afslog dit lejeforslag på ${loan.rider.firstname} ${loan.rider.lastname}`, loan.id);
+      `${req.team.name} afslog dit lejeforslag på ${loan.rider.firstname} ${loan.rider.lastname}`, loan.id,
+      { riderId: loan.rider.id });
     return res.json({ success: true, action: "rejected" });
   }
 
@@ -3082,7 +3094,8 @@ router.patch("/loans/:id", requireAuth, marketWriteLimiter, async (req, res) => 
     const otherTeamId = isLender ? loan.to_team_id : loan.from_team_id;
     await notifyTeamOwner(otherTeamId, "transfer_offer_rejected",
       "Lejeaftale annulleret",
-      `${req.team.name} har annulleret lejeaftalen på ${loan.rider.firstname} ${loan.rider.lastname}`, loan.id);
+      `${req.team.name} har annulleret lejeaftalen på ${loan.rider.firstname} ${loan.rider.lastname}`, loan.id,
+      { riderId: loan.rider.id });
     return res.json({ success: true, action: "cancelled" });
   }
   if (action === "cancel" && getLoanCancelIssue(loan)) {
@@ -6881,7 +6894,7 @@ router.post("/riders/:id/view", requireAuth, presencePulseLimiter, async (req, r
     await notifyTeamOwner(rider.team_id, "transfer_interest",
       "Transferrygte 👀",
       `En manager kigger på ${rider.firstname} ${rider.lastname}`,
-      rider.id);
+      rider.id, { riderId: rider.id });
   }
   res.json({ ok: true });
 });
