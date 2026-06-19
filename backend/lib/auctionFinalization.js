@@ -168,7 +168,8 @@ async function finalizeYouthAuctionRecord({
       "auction_lost",
       "Auktion annulleret",
       `Du havde ikke råd til ${rider.firstname} ${rider.lastname}. Saldo: ${buyer?.balance || 0} pts`,
-      auction.id
+      auction.id,
+      { riderId: rider.id }
     );
     return { ok: true, code: "cancelled_insufficient_balance", auction_id: auction.id };
   }
@@ -183,7 +184,8 @@ async function finalizeYouthAuctionRecord({
       "auction_lost",
       "Auktion annulleret — akademi fuldt",
       `Dit akademi er fuldt (${ACADEMY.SLOTS} pladser). ${rider.firstname} ${rider.lastname} kunne ikke optages.`,
-      auction.id
+      auction.id,
+      { riderId: rider.id }
     );
     return { ok: true, code: "academy_full", auction_id: auction.id };
   }
@@ -242,7 +244,8 @@ async function finalizeYouthAuctionRecord({
     "auction_won",
     "Du vandt ungdomsauktionen! 🎉",
     `${rider.firstname} ${rider.lastname} er nu i dit akademi for ${price} pts`,
-    auction.id
+    auction.id,
+    { riderId: rider.id }
   );
   await logActivity("auction_won", {
     team_id: bidderId,
@@ -341,7 +344,8 @@ async function finalizeAuctionRecord({
         "auction_lost",
         "Auktion annulleret",
         `${auction.rider.firstname} ${auction.rider.lastname} kunne ikke overdrages, fordi rytteren nu tilhører en anden manager.`,
-        auction.id
+        auction.id,
+        { riderId: auction.rider.id }
       );
     }
 
@@ -351,7 +355,8 @@ async function finalizeAuctionRecord({
         "auction_lost",
         "Auktion annulleret",
         `${auction.rider.firstname} ${auction.rider.lastname} står ikke længere på dit hold. Auktionen blev derfor annulleret.`,
-        auction.id
+        auction.id,
+        { riderId: auction.rider.id }
       );
     }
 
@@ -387,7 +392,8 @@ async function finalizeAuctionRecord({
         "auction_lost",
         "Auktion annulleret",
         `Du havde ikke råd til ${auction.rider.firstname} ${auction.rider.lastname}. Saldo: ${buyer?.balance || 0} pts`,
-        auction.id
+        auction.id,
+        { riderId: auction.rider.id }
       );
 
       if (auction.seller_team_id) {
@@ -396,7 +402,8 @@ async function finalizeAuctionRecord({
           "auction_lost",
           "Auktion annulleret",
           `Køber manglede balance. ${auction.rider.firstname} ${auction.rider.lastname} blev ikke overdraget.`,
-          auction.id
+          auction.id,
+          { riderId: auction.rider.id }
         );
       }
 
@@ -434,7 +441,8 @@ async function finalizeAuctionRecord({
         "auction_lost",
         "Auktion annulleret — hold fuldt",
         buyerMessage,
-        auction.id
+        auction.id,
+        { riderId: auction.rider.id }
       );
 
       if (auction.seller_team_id) {
@@ -443,7 +451,8 @@ async function finalizeAuctionRecord({
           "auction_lost",
           "Auktion annulleret",
           `${auction.rider.firstname} ${auction.rider.lastname} kunne ikke overdrages, fordi vinderens hold var fuldt.`,
-          auction.id
+          auction.id,
+          { riderId: auction.rider.id }
         );
       }
 
@@ -549,7 +558,8 @@ async function finalizeAuctionRecord({
       "auction_won",
       "Du vandt auktionen! 🎉",
       `${auction.rider.firstname} ${auction.rider.lastname} er nu på dit hold for ${price} pts`,
-      auction.id
+      auction.id,
+      { riderId: auction.rider.id }
     );
 
     discordNotify({
@@ -566,7 +576,8 @@ async function finalizeAuctionRecord({
         sellerOwned
           ? `${auction.rider.firstname} ${auction.rider.lastname} solgt for ${price} pts`
           : `${auction.rider.firstname} ${auction.rider.lastname} blev købt for ${price} pts`,
-        auction.id
+        auction.id,
+        { riderId: auction.rider.id }
       );
     }
 
@@ -656,7 +667,8 @@ async function finalizeAuctionRecord({
       "auction_won",
       "Rytter solgt til AI",
       `${auction.rider.firstname} ${auction.rider.lastname} er solgt til AI for ${salePrice} CZ$ (garanteret pris)`,
-      auction.id
+      auction.id,
+      { riderId: auction.rider.id }
     );
   } else if (auction.seller_team_id) {
     await notifyTeamOwner(
@@ -664,7 +676,8 @@ async function finalizeAuctionRecord({
       "auction_lost",
       "Auktion udløb uden bud",
       `Ingen bød på ${auction.rider.firstname} ${auction.rider.lastname}`,
-      auction.id
+      auction.id,
+      { riderId: auction.rider.id }
     );
   }
 
