@@ -168,7 +168,7 @@ if ([string]::IsNullOrWhiteSpace(($status -join ""))) {
 Write-Section "Worktree-hygiejne + disk"
 
 $worktreeLines = & git -C $repoRoot worktree list --porcelain 2>$null
-$worktreeCount = (@($worktreeLines) | Where-Object { $_ -like "worktree *" }).Count
+$worktreeCount = @($worktreeLines | Where-Object { $_ -like "worktree *" }).Count
 Write-Host "  [info] $worktreeCount aktive worktrees"
 
 if (-not $SkipPrune) {
