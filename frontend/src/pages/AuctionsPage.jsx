@@ -308,7 +308,7 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, watchlist, 
                   {t("auctions:bid.proxy.display", { amount: formatNumber(myProxy) })}
                 </span>
                 <button onClick={() => setProxyExpanded(true)} aria-label={t("auctions:bid.proxy.edit")} className="text-[9px] text-cz-3 hover:text-cz-2">{t("auctions:bid.proxy.editButton")}</button>
-                <button onClick={handleRemoveProxy} aria-label={t("auctions:bid.proxy.remove")} className="text-[9px] text-cz-3 hover:text-cz-danger">✕</button>
+                <button onClick={handleRemoveProxy} aria-label={t("auctions:bid.proxy.remove")} className="text-[9px] text-cz-3 hover:text-cz-danger">{t("auctions:bid.proxy.removeButton")}</button>
               </div>
             ) : !proxyExpanded ? (
               <button
@@ -1114,8 +1114,18 @@ export default function AuctionsPage() {
     return Boolean(a.rider?.id && watchlist.has(a.rider.id));
   }
 
-  const filtered = auctions
-    .filter(a => {
+  // #248: sortér efter rytter-filterets rækkefølge (evne/stat/navn/løn/potentiale).
+  // Genbruges af både hoved-listen og "Min situation"-bucketsene, så evne-kolonner
+  // også sorterer i de tre bucket-sektioner — ikke kun current_price/calculated_end,
+  // som applyAuctionSort håndterer inde i AuctionList.
+  const sortByRiderOrder = list => list.sort((a, b) => {
+    const ai = a.rider ? (filteredRiderOrder.get(a.rider.id) ?? Infinity) : Infinity;
+    const bi = b.rider ? (filteredRiderOrder.get(b.rider.id) ?? Infinity) : Infinity;
+    return ai - bi;
+  });
+
+  const filtered = sortByRiderOrder(
+    auctions.filter(a => {
       if (a.rider && !filteredRiderOrder.has(a.rider.id)) return false;
       if (!passesAuctionPriceFilter(a)) return false;
       if (!passesWishlistFilter(a)) return false;
@@ -1123,11 +1133,7 @@ export default function AuctionsPage() {
       if (filter === "other")        return a.rider?.team_id && a.rider.team_id !== myTeamId;
       return true;
     })
-    .sort((a, b) => {
-      const ai = a.rider ? (filteredRiderOrder.get(a.rider.id) ?? Infinity) : Infinity;
-      const bi = b.rider ? (filteredRiderOrder.get(b.rider.id) ?? Infinity) : Infinity;
-      return ai - bi;
-    });
+  );
 
   const FILTER_TABS = [
     { key: "my-situation", label: t("auctions:filter.mySituation", { count: mySituationCount }) },
@@ -1346,9 +1352,9 @@ export default function AuctionsPage() {
           scouting={scouting}
           wishlistOnly={wishlistOnly}
           mySituationBuckets={{
-            leading: myLeadingAuctions.filter(a => (!a.rider || filteredRiderOrder.has(a.rider.id)) && passesAuctionPriceFilter(a) && passesWishlistFilter(a)),
-            overbid: myOverbidAuctions.filter(a => (!a.rider || filteredRiderOrder.has(a.rider.id)) && passesAuctionPriceFilter(a) && passesWishlistFilter(a)),
-            selling: mySellingAuctions.filter(a => (!a.rider || filteredRiderOrder.has(a.rider.id)) && passesAuctionPriceFilter(a) && passesWishlistFilter(a)),
+            leading: sortByRiderOrder(myLeadingAuctions.filter(a => (!a.rider || filteredRiderOrder.has(a.rider.id)) && passesAuctionPriceFilter(a) && passesWishlistFilter(a))),
+            overbid: sortByRiderOrder(myOverbidAuctions.filter(a => (!a.rider || filteredRiderOrder.has(a.rider.id)) && passesAuctionPriceFilter(a) && passesWishlistFilter(a))),
+            selling: sortByRiderOrder(mySellingAuctions.filter(a => (!a.rider || filteredRiderOrder.has(a.rider.id)) && passesAuctionPriceFilter(a) && passesWishlistFilter(a))),
           }}
           myTeamId={myTeamId}
           myBalance={myBalance}
