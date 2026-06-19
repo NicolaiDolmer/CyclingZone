@@ -140,10 +140,6 @@
     "bindingNote": "Active loans are binding and can only be cancelled by an admin."
   },
   "transferCard": {
-    "listedSince": "Listed since {date}",
-    "valueLabel": "Value: {value}",
-    "sendOffer": "Send offer",
-    "hide": "Hide",
     "windowPendingHint": "The window is closed: You can send the offer now, and an agreed deal completes when the window opens.",
     "send": "Send",
     "messagePlaceholder": "Message (optional)...",
@@ -292,6 +288,21 @@
     "newest": "Newest first",
     "price_asc": "Price: lowest first",
     "price_desc": "Price: highest first"
+  },
+  "marketRow": {
+    "nation": "Nation",
+    "rider": "Rider",
+    "seller": "Seller",
+    "listed": "Listed",
+    "value": "Value",
+    "salary": "Salary",
+    "price": "Asking price",
+    "action": "Action",
+    "offer": "Send offer",
+    "manage": "Manage",
+    "close": "Close",
+    "offerAria": "Send offer on {riderName}",
+    "manageAria": "Manage listing for {riderName}"
   },
   "deadlineDay": {
     "title": "Deadline Day",

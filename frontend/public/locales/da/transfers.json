@@ -140,10 +140,6 @@
     "bindingNote": "Aktive lejeaftaler er bindende og kan kun annulleres af en admin."
   },
   "transferCard": {
-    "listedSince": "Til salg siden {date}",
-    "valueLabel": "Værdi: {value}",
-    "sendOffer": "Send tilbud",
-    "hide": "Skjul",
     "windowPendingHint": "Vinduet er lukket: Tilbuddet kan sendes nu, og en aftalt handel gennemføres når vinduet åbner.",
     "send": "Send",
     "messagePlaceholder": "Besked (valgfri)...",
@@ -292,6 +288,21 @@
     "newest": "Nyeste først",
     "price_asc": "Pris: laveste først",
     "price_desc": "Pris: højeste først"
+  },
+  "marketRow": {
+    "nation": "Nation",
+    "rider": "Rytter",
+    "seller": "Sælger",
+    "listed": "Til salg",
+    "value": "Værdi",
+    "salary": "Løn",
+    "price": "Udbudspris",
+    "action": "Handling",
+    "offer": "Send tilbud",
+    "manage": "Administrér",
+    "close": "Luk",
+    "offerAria": "Send tilbud på {riderName}",
+    "manageAria": "Administrér annonce for {riderName}"
   },
   "deadlineDay": {
     "title": "Deadline Day",
