@@ -29,6 +29,15 @@ function capturedParam(description, pattern, paramName) {
   return match ? { [paramName]: match[1].trim() } : null;
 }
 
+// #1483: byttehandel-kontant skrev "Byttehandel kontantbetaling: A ↔ B" uden
+// metadata på begge ben (payer=transfer_out, receiver=transfer_in) → udtræk
+// begge navne så retro-rows også viser dem.
+function swapCashParams(description) {
+  const match = description.match(/^Byttehandel kontantbetaling:\s*(.+?)\s*↔\s*(.+)$/i);
+  if (!match) return null;
+  return { code: "tx.swapCash", params: { offeredName: match[1].trim(), requestedName: match[2].trim() } };
+}
+
 export function resolveLegacyFinanceMessage(tx) {
   if (tx?.metadata?.code) return tx.metadata;
 
@@ -52,6 +61,11 @@ export function resolveLegacyFinanceMessage(tx) {
     // tilbage til regex-udtræk så retro-rows også viser rytternavnet.
     const auctionBuy = capturedParam(description, /^Købt\s+(.+?)\s+på auktion$/i, "riderName");
     if (auctionBuy) return { code: "tx.auctionBuy", params: auctionBuy };
+    // #1483: transfer-vindue-køb skrev "Købt <navn> via transfer" uden metadata.
+    const transferBuy = capturedParam(description, /^Købt\s+(.+?)\s+via transfer$/i, "riderName");
+    if (transferBuy) return { code: "tx.transferBuy", params: transferBuy };
+    const swapCash = swapCashParams(description);
+    if (swapCash) return swapCash;
     const params = capturedParam(description, /^(?:Køb af|Transfer-køb\s*[-—·:]?)\s*(.+)$/i, "detail");
     if (params) return { code: "tx.legacy.transferPurchase", params };
   }
@@ -59,6 +73,11 @@ export function resolveLegacyFinanceMessage(tx) {
     // #1483: auktions-salg + garanteret AI-salg.
     const auctionSell = capturedParam(description, /^Solgt\s+(.+?)\s+på auktion$/i, "riderName");
     if (auctionSell) return { code: "tx.auctionSell", params: auctionSell };
+    // #1483: transfer-vindue-salg skrev "Solgt <navn> via transfer" uden metadata.
+    const transferSell = capturedParam(description, /^Solgt\s+(.+?)\s+via transfer$/i, "riderName");
+    if (transferSell) return { code: "tx.transferSell", params: transferSell };
+    const swapCash = swapCashParams(description);
+    if (swapCash) return swapCash;
     const aiSale = capturedParam(description, /^Garanteret AI-salg:\s*(.+)$/i, "riderName");
     if (aiSale) return { code: "tx.guaranteedAiSale", params: aiSale };
     const params = capturedParam(description, /^(?:Salg af|Transfer-salg\s*[-—·:]?)\s*(.+)$/i, "detail");

@@ -424,6 +424,10 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
       type: "transfer_out",
       amount: -price,
       description: `Købt ${rider.firstname} ${rider.lastname} via transfer`,
+      metadata: {
+        code: "tx.transferBuy",
+        params: { riderName: `${rider.firstname} ${rider.lastname}` },
+      },
       season_id: transferSeasonId,
       actor_type: actorType,
       actor_id: actorId,
@@ -441,6 +445,10 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
       type: "transfer_in",
       amount: price,
       description: `Solgt ${rider.firstname} ${rider.lastname} via transfer`,
+      metadata: {
+        code: "tx.transferSell",
+        params: { riderName: `${rider.firstname} ${rider.lastname}` },
+      },
       season_id: transferSeasonId,
       actor_type: actorType,
       actor_id: actorId,
@@ -622,6 +630,13 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
     // 07d Fase B / #240: actor via auditCtx (api/cron afhængigt af caller),
     // season_id eksplicit fra activeSeason.
     const swapDescription = `Byttehandel kontantbetaling: ${offered.firstname} ${offered.lastname} ↔ ${requested.firstname} ${requested.lastname}`;
+    const swapMetadata = {
+      code: "tx.swapCash",
+      params: {
+        offeredName: `${offered.firstname} ${offered.lastname}`,
+        requestedName: `${requested.firstname} ${requested.lastname}`,
+      },
+    };
     const payerId = cash > 0 ? swap.proposing_team_id : swap.receiving_team_id;
     const receiverId = cash > 0 ? swap.receiving_team_id : swap.proposing_team_id;
     const absCash = Math.abs(cash);
@@ -636,6 +651,7 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
         type: "transfer_out",
         amount: -absCash,
         description: swapDescription,
+        metadata: swapMetadata,
         season_id: swapSeasonId,
         actor_type: swapActorType,
         actor_id: swapActorId,
@@ -653,6 +669,7 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
         type: "transfer_in",
         amount: absCash,
         description: swapDescription,
+        metadata: swapMetadata,
         season_id: swapSeasonId,
         actor_type: swapActorType,
         actor_id: swapActorId,

@@ -28,6 +28,9 @@
     "guaranteedAiSale": "Garanteret AI-salg: {riderName}",
     "youthAuctionWin": "Vandt ungdomsrytter {riderName} på auktion",
     "academySigning": "Akademi-signing: {riderName}",
+    "transferBuy": "Købt {riderName} via transfer",
+    "transferSell": "Solgt {riderName} via transfer",
+    "swapCash": "Byttehandel kontantbetaling: {offeredName} ↔ {requestedName}",
     "legacy": {
       "sponsor": "Sponsorindtægt · Sæson {season}",
       "salary": "Løn · Sæson {season}",
