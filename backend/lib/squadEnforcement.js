@@ -477,6 +477,11 @@ export async function processSquadEnforcementCron({
   // (oprettet via transitionToNextSeason med status='closed' men closed_at=null).
   // Uden dette filter ville squad enforcement fyre på det nyfødte racing-window
   // og dermed bidrage til sæson-loop-bug'en (rettet 2026-05-21).
+  //
+  // Lag 1 (kode-filter) i 3-lags forsvar-i-dybden: dette filter + DB CHECK
+  // (2026-05-22-transfer-window-racing-guard.sql, strukturelt) + kilde-guard i
+  // admin-close-endpoint'et (#544: sætter altid closed_at). Se seasonAutoTransition.js
+  // for fuld kæde-beskrivelse.
   const window = await expectMaybeSingle(
     supabase
       .from("transfer_windows")
