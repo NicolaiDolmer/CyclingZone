@@ -5515,12 +5515,16 @@ router.post("/finance/loans", requireAuth, marketWriteLimiter, async (req, res) 
     if (!req.team) return res.status(400).json({ error: "No team found" });
     if (!(await assertMarketOpen(req, res, "market"))) return;
     if (!assertTeamNotTransferFrozen(req, res)) return;
-    const { loan_type, amount } = req.body;
+    const { loan_type } = req.body;
     if (!["short", "long"].includes(loan_type))
       return res.status(400).json({ error: "Ugyldig låntype — brug short eller long" });
-    if (!amount || amount < 1)
-      return res.status(400).json({ error: "Ugyldigt beløb" });
-    const loan = await createLoan(req.team.id, loan_type, parseInt(amount), null, {
+    // Security-hardening (2026-06-20): parsér beløbet til et heltal FØR validering
+    // (følger #1554). Tidligere ramte `!amount || amount < 1` den rå body-værdi, så en
+    // ikke-numerisk streng eller decimal slap forbi og gav NaN i parseInt(amount) nedenfor.
+    const amount = Number.parseInt(req.body.amount, 10);
+    if (!Number.isInteger(amount) || amount < 1)
+      return res.status(400).json({ error: "Ugyldigt beløb", errorCode: "invalid_loan_amount" });
+    const loan = await createLoan(req.team.id, loan_type, amount, null, {
       actorType: FINANCE_ACTOR_TYPE.API,
       actorId: req.user.id,
     });
