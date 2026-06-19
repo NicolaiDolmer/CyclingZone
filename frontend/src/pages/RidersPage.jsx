@@ -26,7 +26,7 @@ import StatsToggle from "../components/StatsToggle";
 import useStatsToggle from "../lib/useStatsToggle";
 import { startTour } from "../lib/onboardingTour";
 import { formatNumber } from "../lib/intl";
-import { Card, ExchangeIcon } from "../components/ui";
+import { Card, ExchangeIcon, Select, ArrowUpIcon, ArrowDownIcon } from "../components/ui";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -66,6 +66,53 @@ function SortTh({ children, sortKey, sort, sortDir, onSort, className = "" }) {
       className={`cursor-pointer select-none transition-colors ${active ? "text-cz-accent-t/80" : "text-cz-3 hover:text-cz-2"} ${className}`}>
       {children}{active && <span className="ms-0.5 text-[10px]">{sortDir === "desc" ? "↓" : "↑"}</span>}
     </th>
+  );
+}
+
+// Mobil-sorterings-kontrol (#9): på mobil er de fleste sortérbare kolonne-headers
+// skjult (`hidden sm:table-cell`), så Nation/Hold/Status/Type ikke kan sorteres.
+// Denne select + retnings-toggle eksponerer NØJAGTIG de samme sort-nøgler som
+// desktop-SortTh'erne og skriver til samme filters.sort/sort_dir via handleSort —
+// ingen ny sort-logik. Synlig kun under sm-breakpointet (`sm:hidden`).
+function MobileSortControl({ sort, sortDir, onSort, statCols, t }) {
+  // Samme nøgler + rækkefølge som desktop-headers (RidersPage tabel-thead).
+  // Labels genbruger table.*-nøglerne; stat-options bruger de internationale
+  // korte evne-labels (oversættes ikke, jf. #487).
+  const baseOptions = [
+    { key: "firstname", label: t("table.rider") },
+    { key: "nationality_code", label: t("table.nation") },
+    { key: "team_id", label: t("table.team") },
+    { key: "is_u25", label: t("table.badges") },
+    { key: "primary_type", label: t("table.type") },
+    { key: "value", label: t("table.value") },
+    { key: "salary", label: t("table.salary") },
+  ];
+  const options = [...baseOptions, ...statCols.map(({ key, label }) => ({ key, label }))];
+  const dirAria = sortDir === "desc" ? t("mobileSort.descAria") : t("mobileSort.ascAria");
+
+  return (
+    <div className="sm:hidden flex items-end gap-2 mb-3">
+      <label className="flex-1 min-w-0">
+        <span className="block text-cz-3 text-[10px] uppercase tracking-wider mb-1">{t("mobileSort.label")}</span>
+        <Select size="sm" value={sort} onChange={e => onSort(e.target.value)} className="w-full">
+          {options.map(({ key, label }) => (
+            <option key={key} value={key}>{label}</option>
+          ))}
+        </Select>
+      </label>
+      <button
+        type="button"
+        onClick={() => onSort(sort)}
+        aria-label={dirAria}
+        title={dirAria}
+        className="flex-shrink-0 flex items-center justify-center px-3 py-[7px] rounded-cz border border-cz-border
+          bg-cz-subtle text-cz-2 hover:text-cz-1 transition-colors"
+      >
+        {sortDir === "desc"
+          ? <ArrowDownIcon size={16} aria-hidden="true" />
+          : <ArrowUpIcon size={16} aria-hidden="true" />}
+      </button>
+    </div>
   );
 }
 
@@ -334,6 +381,16 @@ export default function RidersPage() {
           <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
         </div>
       ) : (
+        <>
+          {/* #9: mobil-sortering — desktop sorterer via kolonne-headers, men de
+              fleste er skjult på mobil. Denne kontrol eksponerer samme sort-nøgler. */}
+          <MobileSortControl
+            sort={filters.sort}
+            sortDir={filters.sort_dir}
+            onSort={handleSort}
+            statCols={visibleStatCols}
+            t={t}
+          />
         <Card data-tour="riders-list" className="overflow-hidden">
           <div className="overflow-auto max-h-[calc(100vh-220px)]">
             <table className="w-full text-xs">
@@ -397,6 +454,7 @@ export default function RidersPage() {
             </table>
           </div>
         </Card>
+        </>
       )}
 
       {/* Pagination */}

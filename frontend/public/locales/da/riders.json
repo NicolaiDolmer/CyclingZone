@@ -17,6 +17,11 @@
     "teamFree": "Fri",
     "pendingTransfer": "Holdskifte på vej: skifter til {team}"
   },
+  "mobileSort": {
+    "label": "Sortér efter",
+    "ascAria": "Sorterer stigende — tryk for faldende",
+    "descAria": "Sorterer faldende — tryk for stigende"
+  },
   "pagination": {
     "showing": "Viser {from}-{to} af {total}",
     "prev": "← Forrige",
