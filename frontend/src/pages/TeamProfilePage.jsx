@@ -5,6 +5,7 @@ import RiderLink from "../components/RiderLink";
 import { supabase } from "../lib/supabase";
 import { statStyle } from "../lib/statColor";
 import { ABILITY_STATS as STATS, ABILITY_SELECT, flattenAbilities } from "../lib/abilities";
+import { CONDITION_SELECT, flattenCondition, isRiderInjured } from "../lib/training.js";
 import NationCell from "../components/rider/NationCell";
 import RiderBadges from "../components/rider/RiderBadges";
 import { ageBadgeKey } from "../lib/riderAge";
@@ -67,13 +68,14 @@ export default function TeamProfilePage() {
       supabase.from("riders")
         // #1529: evnerne hentes via join (ABILITY_SELECT) + flades op på rytter-objektet
         // med flattenAbilities, så rider.climbing osv. virker i render/sort.
-        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, ${ABILITY_SELECT}`)
+        // #1531: rider_condition(injured_until) embeddes til skade-badget (RLS: alle authenticated).
+        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, ${ABILITY_SELECT}, ${CONDITION_SELECT}`)
         .eq("team_id", id)
         .order("market_value", { ascending: false }),
       supabase.from("riders")
         // #922: incoming-ryttere manglede nationality_code (var med for current på
         // linje 57), så NationCell fik undefined → intet flag på "se andet hold"-siden.
-        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, ${ABILITY_SELECT}`)
+        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, ${ABILITY_SELECT}, ${CONDITION_SELECT}`)
         .eq("pending_team_id", id)
         .order("market_value", { ascending: false }),
       supabase.from("season_standings")
@@ -87,10 +89,11 @@ export default function TeamProfilePage() {
     const lastSeen = teamRes.data?.manager?.last_seen || null;
     const isOnline = lastSeen ? (Date.now() - new Date(lastSeen).getTime()) < 5 * 60 * 1000 : false;
     setManagerStatus({ isOnline, lastSeen });
+    // #1531: flattenCondition løfter rider_condition.injured_until op til skade-badget.
     const current = (ridersRes.data || []).map(r => ({
-      ...flattenAbilities(r), _isOutgoing: r.pending_team_id && r.pending_team_id !== id,
+      ...flattenCondition(flattenAbilities(r)), _isOutgoing: r.pending_team_id && r.pending_team_id !== id,
     }));
-    const incoming = (pendingRes.data || []).map(r => ({ ...flattenAbilities(r), _isIncoming: true }));
+    const incoming = (pendingRes.data || []).map(r => ({ ...flattenCondition(flattenAbilities(r)), _isIncoming: true }));
     setRiders([...current, ...incoming]);
     setStanding(standingRes.data);
     setLoading(false);
@@ -278,14 +281,23 @@ export default function TeamProfilePage() {
                       <NationCell code={r.nationality_code} />
                     </td>
                     <td className="px-4 py-2.5 sticky-name-cell sticky left-0 z-10 border-r border-cz-border shadow-[10px_0_16px_-16px_rgba(0,0,0,0.5)]">
-                      <RiderLink id={r.id} stopPropagation
-                        className="text-cz-1 font-medium hover:text-cz-accent-t transition-colors">
-                        {r.firstname} {r.lastname}
-                      </RiderLink>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <RiderLink id={r.id} stopPropagation
+                          className="text-cz-1 font-medium hover:text-cz-accent-t transition-colors">
+                          {r.firstname} {r.lastname}
+                        </RiderLink>
+                        {/* #1531: skade-badge inline på mobil (Status-kolonnen er skjult <sm). */}
+                        {isRiderInjured(r.injured_until) && (
+                          <span className="sm:hidden">
+                            <RiderBadges badges={["injured"]} />
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-2.5 hidden sm:table-cell">
                       <div className="flex flex-wrap items-center gap-1">
-                        <RiderBadges badges={[ageBadgeKey(r), r._isIncoming && "incoming", r._isOutgoing && "outgoing"]} />
+                        {/* #1531: skade-badge først i Status-rækken når rytteren er skadet. */}
+                        <RiderBadges badges={[isRiderInjured(r.injured_until) && "injured", ageBadgeKey(r), r._isIncoming && "incoming", r._isOutgoing && "outgoing"]} />
                       </div>
                     </td>
                     <td className="px-4 py-2.5 text-right text-cz-accent-t font-mono font-bold">

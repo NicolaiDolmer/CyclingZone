@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import RiderLink from "../components/RiderLink";
 import { useClientRiderFilters } from "../lib/useRiderFilters";
 import { ABILITY_STATS as STATS, ABILITY_SELECT, flattenAbilities } from "../lib/abilities";
+import { CONDITION_SELECT, flattenCondition, isRiderInjured } from "../lib/training.js";
 import { supabase } from "../lib/supabase";
 import { statStyle } from "../lib/statColor";
 import NationCell from "../components/rider/NationCell";
@@ -349,10 +350,11 @@ function SquadTab({ riders, scouting, onSelectRider, windowOpen }) {
                     <td className="px-3 py-2.5">
                       <ScoutablePotentiale rider={r} scouting={scouting} />
                     </td>
-                    {/* #1482: Status — alder + ind-/udgående som skanbare badges. */}
+                    {/* #1482: Status — alder + ind-/udgående som skanbare badges.
+                        #1531: skade-badge når rytteren er skadet (injured_until i fremtiden). */}
                     <td className="px-3 py-2.5">
                       <div className="flex flex-wrap items-center gap-1">
-                        <RiderBadges badges={[ageBadgeKey(r), r._isIncoming && "incoming", r._isOutgoing && "outgoing"]} />
+                        <RiderBadges badges={[isRiderInjured(r.injured_until) && "injured", ageBadgeKey(r), r._isIncoming && "incoming", r._isOutgoing && "outgoing"]} />
                       </div>
                     </td>
                     {/* #1482: Ryttertype i egen kolonne (returnerer null uden type-data). */}
@@ -428,11 +430,11 @@ export function TeamPage() {
 
     const [ridersRes, pendingRes, windowRes, loansOutRes, loansInRes] = await Promise.all([
       supabase.from("riders")
-        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, primary_type, secondary_type, contract_end_season, ${ABILITY_SELECT}`)
+        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, primary_type, secondary_type, contract_end_season, ${ABILITY_SELECT}, ${CONDITION_SELECT}`)
         .eq("team_id", myTeam.id)
         .order("market_value", { ascending: false }),
       supabase.from("riders")
-        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, primary_type, secondary_type, contract_end_season, ${ABILITY_SELECT}`)
+        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, primary_type, secondary_type, contract_end_season, ${ABILITY_SELECT}, ${CONDITION_SELECT}`)
         .eq("pending_team_id", myTeam.id)
         .order("market_value", { ascending: false }),
       supabase.from("transfer_windows")
@@ -443,7 +445,7 @@ export function TeamPage() {
         .eq("from_team_id", myTeam.id).eq("status", "active"),
       // Riders we're borrowing
       supabase.from("loan_agreements")
-        .select(`rider:rider_id(id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, nationality_code, primary_type, secondary_type, contract_end_season, ${ABILITY_SELECT}), from_team:from_team_id(name), start_season, end_season, buy_option_price`)
+        .select(`rider:rider_id(id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, nationality_code, primary_type, secondary_type, contract_end_season, ${ABILITY_SELECT}, ${CONDITION_SELECT}), from_team:from_team_id(name), start_season, end_season, buy_option_price`)
         .eq("to_team_id", myTeam.id).eq("status", "active"),
     ]);
 
@@ -452,15 +454,16 @@ export function TeamPage() {
 
     // #1529: evnerne kommer som joinet rider_derived_abilities-embed; flattenAbilities
     // løfter rider.climbing osv. op på rytter-objektet så render/sort virker uændret.
+    // #1531: flattenCondition løfter rider_condition.injured_until op til skade-badget.
     const currentRiders = (ridersRes.data || []).map(r => ({
-      ...flattenAbilities(r),
+      ...flattenCondition(flattenAbilities(r)),
       _isOutgoing:  r.pending_team_id && r.pending_team_id !== myTeam.id,
       _isLoanedOut: loanedOutIds.has(r.id),
       _loanOutInfo: loanedOutMap[r.id] || null,
     }));
-    const incomingRiders = (pendingRes.data || []).map(r => ({ ...flattenAbilities(r), _isIncoming: true }));
+    const incomingRiders = (pendingRes.data || []).map(r => ({ ...flattenCondition(flattenAbilities(r)), _isIncoming: true }));
     const loanedInRiders = (loansInRes.data || []).map(l => ({
-      ...flattenAbilities(l.rider),
+      ...flattenCondition(flattenAbilities(l.rider)),
       _isLoanedIn:  true,
       _loanInInfo:  { from_team: l.from_team, start_season: l.start_season, end_season: l.end_season, buy_option_price: l.buy_option_price },
     }));
