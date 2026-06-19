@@ -76,6 +76,7 @@
   },
   "stats": {
     "potentialRow": "Potentiale",
+    "abilitiesPending": "Evner endnu ikke beregnet",
     "loadingDevelopment": "Indlæser udvikling..."
   },
   "racePreview": {

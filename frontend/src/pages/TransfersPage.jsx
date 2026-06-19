@@ -15,6 +15,7 @@ import { formatNumber, formatDate } from "../lib/intl";
 import { resolveApiError } from "../lib/apiError";
 import { sortListings, LISTING_SORT_OPTIONS } from "../lib/transferListingSort";
 import { Card, EmptyState, ExchangeIcon, ClipboardIcon } from "../components/ui";
+import { ABILITY_STATS as LISTING_STATS, flattenAbilities } from "../lib/abilities";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -23,16 +24,12 @@ const API = import.meta.env.VITE_API_URL;
 const VALID_TABS = ["received", "sent", "archive", "swaps", "loans", "market"];
 const DEFAULT_TAB = "received";
 
-// Samme 14 stats som rytterdatabasen (#987: transferlisten skal vise alle
-// stats, ikke kun BJ/SP/TT/FL). Labels matcher RidersPage/AuctionsPage.
-const LISTING_STATS = [
-  { key: "stat_fl", label: "FL" }, { key: "stat_bj", label: "BJ" },
-  { key: "stat_kb", label: "KB" }, { key: "stat_bk", label: "BK" },
-  { key: "stat_tt", label: "TT" }, { key: "stat_prl", label: "PRL" },
-  { key: "stat_bro", label: "Bro" }, { key: "stat_sp", label: "SP" },
-  { key: "stat_acc", label: "ACC" }, { key: "stat_ned", label: "NED" },
-  { key: "stat_udh", label: "UDH" }, { key: "stat_mod", label: "MOD" },
-  { key: "stat_res", label: "RES" }, { key: "stat_ftr", label: "FTR" },
+// #1529: stat-kolonnerne = de 15 CZ-evner (delt config, importeret som LISTING_STATS).
+// Erstattede de 14 PCM stat_*. Backend /api/transfers (+ my-offers/swaps) leverer
+// rider_derived_abilities, som flades op på rytter-objektet (flattenAbilities) ved load.
+// SwapCard's hurtig-preview (4 evner):
+const SWAP_PREVIEW = [
+  ["CLM", "climbing"], ["SPR", "sprint"], ["TT", "time_trial"], ["FLT", "flat"],
 ];
 
 function useTimeAgo() {
@@ -469,7 +466,7 @@ function SwapCard({ swap, myTeamId, onAction }) {
               {rider?.firstname} {rider?.lastname}
             </p>
             <div className="flex gap-2 mt-1">
-              {[["BJ", "stat_bj"], ["SP", "stat_sp"], ["TT", "stat_tt"], ["FL", "stat_fl"]].map(([l, k]) => (
+              {SWAP_PREVIEW.map(([l, k]) => (
                 <span key={k} className="text-[10px] text-cz-3">{l}<span className="text-cz-2 ms-0.5">{rider?.[k] ?? "—"}</span></span>
               ))}
             </div>
@@ -1201,15 +1198,19 @@ export default function TransfersPage() {
         fetch(`${API}/api/transfer-window`, { headers }).then(r => r.json()),
       ]);
 
-      setListings(Array.isArray(listingsRes) ? listingsRes : []);
-      setSentOffers(offersRes.sent || []);
-      setReceivedOffers(offersRes.received || []);
-      setArchivedSentOffers(offersRes.archivedSent || []);
-      setArchivedReceivedOffers(offersRes.archivedReceived || []);
-      setSentSwaps(swapsRes.sent || []);
-      setReceivedSwaps(swapsRes.received || []);
-      setLendingLoans(loansRes.lending || []);
-      setBorrowingLoans(loansRes.borrowing || []);
+      // #1529: backend leverer rider.rider_derived_abilities (nested) — flad evnerne op
+      // på rytter-objektet så ${key}-opslag i kortene virker som med de gamle stat_*.
+      const flatRider = (o) => (o && o.rider ? { ...o, rider: flattenAbilities(o.rider) } : o);
+      const flatSwap = (s) => (s ? { ...s, offered: flattenAbilities(s.offered), requested: flattenAbilities(s.requested) } : s);
+      setListings(Array.isArray(listingsRes) ? listingsRes.map(flatRider) : []);
+      setSentOffers((offersRes.sent || []).map(flatRider));
+      setReceivedOffers((offersRes.received || []).map(flatRider));
+      setArchivedSentOffers((offersRes.archivedSent || []).map(flatRider));
+      setArchivedReceivedOffers((offersRes.archivedReceived || []).map(flatRider));
+      setSentSwaps((swapsRes.sent || []).map(flatSwap));
+      setReceivedSwaps((swapsRes.received || []).map(flatSwap));
+      setLendingLoans((loansRes.lending || []).map(flatRider));
+      setBorrowingLoans((loansRes.borrowing || []).map(flatRider));
       setMyRiders(ridersRes.data || []);
       setTransferWindow(windowRes?.open !== undefined ? windowRes : { open: true, status: "open" });
     } catch {
