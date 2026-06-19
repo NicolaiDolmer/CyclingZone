@@ -298,73 +298,73 @@
       "gcTop10": [
         {
           "rank": 1,
-          "name": "Pieter Dekker",
-          "bornAs": "climber",
-          "derived": "climber",
+          "name": "Manuel Fontana",
+          "bornAs": "gc",
+          "derived": "gc",
           "time": "+0:00"
         },
         {
           "rank": 2,
-          "name": "Manuel Fontana",
-          "bornAs": "gc",
-          "derived": "gc",
-          "time": "+0:19"
+          "name": "Pieter Dekker",
+          "bornAs": "climber",
+          "derived": "climber",
+          "time": "+0:10"
         },
         {
           "rank": 3,
           "name": "Andrea Sorrentino",
           "bornAs": "puncheur",
           "derived": "climber",
-          "time": "+6:06"
+          "time": "+6:12"
         },
         {
           "rank": 4,
           "name": "Ethan Whitfield",
           "bornAs": "gc",
           "derived": "gc",
-          "time": "+6:53"
+          "time": "+6:56"
         },
         {
           "rank": 5,
           "name": "Óscar López",
           "bornAs": "climber",
           "derived": "climber",
-          "time": "+7:01"
+          "time": "+7:12"
         },
         {
           "rank": 6,
-          "name": "Patryk Kovač",
-          "bornAs": "climber",
-          "derived": "climber",
-          "time": "+7:17"
-        },
-        {
-          "rank": 7,
           "name": "Kamil Zupan",
           "bornAs": "climber",
           "derived": "climber",
-          "time": "+7:27"
+          "time": "+7:22"
+        },
+        {
+          "rank": 7,
+          "name": "Patryk Kovač",
+          "bornAs": "climber",
+          "derived": "climber",
+          "time": "+7:36"
         },
         {
           "rank": 8,
           "name": "Sebastian Holmberg",
           "bornAs": "climber",
           "derived": "climber",
-          "time": "+11:18"
+          "time": "+11:39"
         },
         {
           "rank": 9,
           "name": "Pieter Claes",
           "bornAs": "gc",
           "derived": "gc",
-          "time": "+11:45"
+          "time": "+11:49"
         },
         {
           "rank": 10,
           "name": "George Carter",
           "bornAs": "tt",
           "derived": "tt",
-          "time": "+12:05"
+          "time": "+11:54"
         }
       ],
       "jerseys": {

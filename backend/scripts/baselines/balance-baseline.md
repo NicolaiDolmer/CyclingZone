@@ -49,16 +49,16 @@ Udbruds-andel af bjergsejre: 1.2%
 
 | # | Rytter | Født-som | Afledt | Tid |
 |--:|---|---|---|---|
-| 1 | Pieter Dekker | climber | climber | +0:00 |
-| 2 | Manuel Fontana | gc | gc | +0:19 |
-| 3 | Andrea Sorrentino | puncheur | climber | +6:06 |
-| 4 | Ethan Whitfield | gc | gc | +6:53 |
-| 5 | Óscar López | climber | climber | +7:01 |
-| 6 | Patryk Kovač | climber | climber | +7:17 |
-| 7 | Kamil Zupan | climber | climber | +7:27 |
-| 8 | Sebastian Holmberg | climber | climber | +11:18 |
-| 9 | Pieter Claes | gc | gc | +11:45 |
-| 10 | George Carter | tt | tt | +12:05 |
+| 1 | Manuel Fontana | gc | gc | +0:00 |
+| 2 | Pieter Dekker | climber | climber | +0:10 |
+| 3 | Andrea Sorrentino | puncheur | climber | +6:12 |
+| 4 | Ethan Whitfield | gc | gc | +6:56 |
+| 5 | Óscar López | climber | climber | +7:12 |
+| 6 | Kamil Zupan | climber | climber | +7:22 |
+| 7 | Patryk Kovač | climber | climber | +7:36 |
+| 8 | Sebastian Holmberg | climber | climber | +11:39 |
+| 9 | Pieter Claes | gc | gc | +11:49 |
+| 10 | George Carter | tt | tt | +11:54 |
 
 Trøjer: 🟢 Manuel Fontana (gc) · ⛰️ Pieter Dekker (climber) · ⚪ George Carter
 
