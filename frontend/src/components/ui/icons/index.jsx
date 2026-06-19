@@ -443,3 +443,12 @@ export function RocketIcon(props) {
     </IconBase>
   );
 }
+
+// Flame (login-streak). Stroke-only flamme + indre kerne. Erstatter 🔥-emoji (Plan 4).
+export function FlameIcon(props) {
+  return (
+    <IconBase {...props}>
+      <path d="M12 3c1 3-1.5 4-1.5 7a3 3 0 0 0 6 0c0-1-.5-2-1-2.5C16 11 17 13 17 15a5 5 0 0 1-10 0c0-4 3-5 5-12z" />
+    </IconBase>
+  );
+}
