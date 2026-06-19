@@ -283,6 +283,12 @@ export default function RidersPage() {
     saveFiltersToSession(filters);
   }, [filters, setSearchParams]);
 
+  // #229: scroll til toppen ved side-skift, så en ny side ikke starter i bunden
+  // (window er scroll-containeren — <main> i Layout er ikke en overflow-scroll-boks).
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [filters.page]);
+
   function setFilter(key, value) {
     setFilters(f => ({ ...f, [key]: value, page: 1 }));
   }

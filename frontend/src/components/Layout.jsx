@@ -109,6 +109,18 @@ function pathMatchesNavItem(location, to, exact = false, excludeQuery = null) {
   return true;
 }
 
+// #64: tæl ulæste notifikationer via head-count (ingen rows hentet) i stedet for
+// at hente op til 9 rows og bruge .length — så badgen kan vise "9+" ved 10+ ulæste
+// (før kappede limit(9) tællingen, så "9+"-grenen aldrig blev ramt).
+async function fetchUnreadCount(userId) {
+  const { count } = await supabase
+    .from("notifications")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("is_read", false);
+  return count || 0;
+}
+
 function NavItem({ to, label, badge, onClick, location, unread, exact, excludeQuery }) {
   const isActive = pathMatchesNavItem(location, to, exact, excludeQuery);
   const showBadge = badge && unread > 0;
@@ -241,7 +253,7 @@ export default function Layout() {
   const [session, setSession]               = useState(null);
   const [team, setTeam]                     = useState(null);
   const [balance, setBalance]               = useState(null);
-  const [notifications, setNotifications]   = useState([]);
+  const [unread, setUnread]   = useState(0);
   const [isAdmin, setIsAdmin]               = useState(false);
   const [mobileOpen, setMobileOpen]         = useState(false);
   const [openGroups, setOpenGroups]         = useState({});
@@ -289,8 +301,7 @@ export default function Layout() {
       const { data: teamData } = await supabase.from("teams").select("id, name, balance, division, manager_name").eq("user_id", session.user.id).single();
       if (teamData) { setTeam(teamData); setBalance(teamData.balance); }
       setTeamLoaded(true);
-      const { data: notifs } = await supabase.from("notifications").select("id").eq("user_id", session.user.id).eq("is_read", false).limit(9);
-      setNotifications(notifs || []);
+      setUnread(await fetchUnreadCount(session.user.id));
 
       if (!API) { console.error("VITE_API_URL is not set — presence/streak calls skipped"); return; }
       const h = await authHeaders();
@@ -318,8 +329,7 @@ export default function Layout() {
     const channel = supabase.channel("layout-notifs-v2")
       .on("postgres_changes", { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${session.user.id}` },
         async () => {
-          const { data } = await supabase.from("notifications").select("id").eq("user_id", session.user.id).eq("is_read", false).limit(9);
-          setNotifications(data || []);
+          setUnread(await fetchUnreadCount(session.user.id));
           const { data: t } = await supabase.from("teams").select("balance").eq("user_id", session.user.id).single();
           if (t) setBalance(t.balance);
         }).subscribe();
@@ -330,8 +340,7 @@ export default function Layout() {
   useEffect(() => {
     if (!session) return;
     async function handleNotifDeleted() {
-      const { data } = await supabase.from("notifications").select("id").eq("user_id", session.user.id).eq("is_read", false).limit(9);
-      setNotifications(data || []);
+      setUnread(await fetchUnreadCount(session.user.id));
     }
     window.addEventListener("cz:notif-deleted", handleNotifDeleted);
     return () => window.removeEventListener("cz:notif-deleted", handleNotifDeleted);
@@ -360,7 +369,6 @@ export default function Layout() {
     setBalance(updatedTeam.balance);
   }
 
-  const unread = notifications.length;
   const baseGroups = buildNavGroups(team, t, academyEnabled);
   const navGroups = isAdmin
     ? [...baseGroups, { key: "admin", label: t("nav.group.admin"), items: [

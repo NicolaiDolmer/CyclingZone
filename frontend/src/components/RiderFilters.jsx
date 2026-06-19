@@ -13,7 +13,7 @@
  * Stat-labels (FL/BJ/...) er internationale forkortelser — oversættes ikke.
  * Refs #487.
  */
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { getCountryName } from "../lib/countryUtils";
 import { Flag } from "./Flag";
@@ -84,27 +84,47 @@ function isStatActive(filters, key) {
 function DualStatSlider({ statKey, label, filters, onChange }) {
   const minKey = `${statKey}_min`;
   const maxKey = `${statKey}_max`;
-  const valMin = parseInt(filters[minKey]) ?? STAT_DEFAULT_MIN;
-  const valMax = parseInt(filters[maxKey]) ?? STAT_DEFAULT_MAX;
-  const active = valMin > STAT_DEFAULT_MIN || valMax < STAT_DEFAULT_MAX;
+  const propMin = parseInt(filters[minKey]) ?? STAT_DEFAULT_MIN;
+  const propMax = parseInt(filters[maxKey]) ?? STAT_DEFAULT_MAX;
+
+  // #164: hold lokal thumb-state under drag, så slideren følger glat uden at
+  // trigge en fetch pr. tick (RidersPage re-fetcher på hvert filter-skift, så
+  // listen "hoppede" mens man trak). Parent-onChange kaldes FØRST ved release
+  // (pointer-up / touch-end / key-up) — svarer til MUI's onChangeCommitted.
+  // Synkronisér fra props når de ændres udefra (fx Nulstil-knappen).
+  const [localMin, setLocalMin] = useState(propMin);
+  const [localMax, setLocalMax] = useState(propMax);
+  useEffect(() => { setLocalMin(propMin); }, [propMin]);
+  useEffect(() => { setLocalMax(propMax); }, [propMax]);
+
+  const active = localMin > STAT_DEFAULT_MIN || localMax < STAT_DEFAULT_MAX;
+
+  const commitMin = v => { if (v !== propMin) onChange(minKey, v); };
+  const commitMax = v => { if (v !== propMax) onChange(maxKey, v); };
 
   return (
     <div>
       <div className="flex items-center justify-between mb-1.5">
         <label className="text-cz-3 text-[10px] uppercase tracking-wider">{label}</label>
         <span className={`text-[10px] font-mono font-bold ${active ? "text-cz-accent-t" : "text-cz-3"}`}>
-          {valMin}-{valMax}
+          {localMin}-{localMax}
         </span>
       </div>
       <div className="flex flex-col gap-1">
         <input
-          type="range" min={50} max={85} step={1} value={valMin}
-          onChange={e => onChange(minKey, Math.min(parseInt(e.target.value), valMax))}
+          type="range" min={50} max={85} step={1} value={localMin}
+          onChange={e => setLocalMin(Math.min(parseInt(e.target.value), localMax))}
+          onMouseUp={e => commitMin(Math.min(parseInt(e.target.value), localMax))}
+          onTouchEnd={e => commitMin(Math.min(parseInt(e.target.value), localMax))}
+          onKeyUp={e => commitMin(Math.min(parseInt(e.target.value), localMax))}
           className="w-full cursor-pointer accent-cz-3"
         />
         <input
-          type="range" min={50} max={85} step={1} value={valMax}
-          onChange={e => onChange(maxKey, Math.max(parseInt(e.target.value), valMin))}
+          type="range" min={50} max={85} step={1} value={localMax}
+          onChange={e => setLocalMax(Math.max(parseInt(e.target.value), localMin))}
+          onMouseUp={e => commitMax(Math.max(parseInt(e.target.value), localMin))}
+          onTouchEnd={e => commitMax(Math.max(parseInt(e.target.value), localMin))}
+          onKeyUp={e => commitMax(Math.max(parseInt(e.target.value), localMin))}
           className="w-full cursor-pointer accent-amber-500"
         />
       </div>
