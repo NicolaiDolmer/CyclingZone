@@ -9,8 +9,8 @@ const PATCHES = [
       {
         category: "Improved · Academy",
         items: [
-          "EN · Academy riders are now clickable — open any rider on the Academy page (squad, intake, free agents and graduates) to view their full profile and stats, just like first-team riders. Refs #1524",
-          "DA · Akademiryttere er nu klikbare — åbn enhver rytter på Akademi-siden (trup, intake, frie agenter og graduerede) for at se deres fulde profil og stats, præcis som førsteholdsryttere. Refs #1524",
+          "EN · Academy riders are now clickable. Open any rider on the Academy page (squad, intake, free agents and graduates) to view their full profile and stats, just like first-team riders. Refs #1524",
+          "DA · Akademiryttere er nu klikbare. Åbn enhver rytter på Akademi-siden (trup, intake, frie agenter og graduerede) for at se deres fulde profil og stats, præcis som førsteholdsryttere. Refs #1524",
         ],
       },
     ],
