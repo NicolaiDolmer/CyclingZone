@@ -32,6 +32,9 @@ const BADGE_DEFS = {
   self: { tone: "neutral" },
   bought: { tone: "success" },
   sold: { tone: "info" },
+  // #1531: skade-badge — samme danger-tone som skade-chippen på rytterprofilen
+  // (ConditionChips). Synlig i Status-kolonnen på eget hold + andres hold.
+  injured: { tone: "danger" },
 };
 
 export default function RiderBadges({ badges = [], className = "" }) {

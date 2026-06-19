@@ -9,6 +9,7 @@
     "self": "Internal trade (own team)",
     "bought": "You bought this rider",
     "sold": "You sold this rider",
+    "injured": "Injured",
     "label": {
       "u23": "U23",
       "u25": "U25",
@@ -18,7 +19,8 @@
       "outgoing": "OUT",
       "self": "OWN",
       "bought": "BUY",
-      "sold": "SOLD"
+      "sold": "SOLD",
+      "injured": "INJ"
     }
   },
   "page": {

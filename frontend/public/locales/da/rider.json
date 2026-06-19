@@ -9,6 +9,7 @@
     "self": "Intern handel (eget hold)",
     "bought": "Du købte denne rytter",
     "sold": "Du solgte denne rytter",
+    "injured": "Skadet",
     "label": {
       "u23": "U23",
       "u25": "U25",
@@ -18,7 +19,8 @@
       "outgoing": "UD",
       "self": "EGEN",
       "bought": "KØBT",
-      "sold": "SOLGT"
+      "sold": "SOLGT",
+      "injured": "SKD"
     }
   },
   "page": {
