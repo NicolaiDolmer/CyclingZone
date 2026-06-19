@@ -243,6 +243,7 @@ export default function SeasonEndPage() {
               const s = seasons.find(s => s.id === e.target.value);
               changeSeason(s);
             }}
+            aria-label={t("common:a11y.selectSeason")}
             className="bg-cz-card border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none">
             {seasons.map(s => (
               <option key={s.id} value={s.id}>
@@ -255,7 +256,7 @@ export default function SeasonEndPage() {
 
       {standings.length === 0 ? (
         <div className="text-center py-20 text-cz-3">
-          <p className="text-5xl mb-4">🏁</p>
+          <p className="text-5xl mb-4" aria-hidden="true">🏁</p>
           <p className="text-lg font-medium text-cz-3">{t("empty.title")}</p>
           <p className="text-sm mt-2">{t("empty.body")}</p>
         </div>
@@ -481,7 +482,7 @@ function WinnerCard({ icon, title, primary, secondary, onClick, hasData }) {
         hasData ? "hover:border-cz-accent/30 cursor-pointer" : "cursor-default"
       }`}>
       <div className="flex items-center gap-1.5 mb-1.5">
-        <span className="text-base leading-none">{icon}</span>
+        <span aria-hidden="true" className="text-base leading-none">{icon}</span>
         <span className="text-cz-3 text-[10px] uppercase tracking-wider font-semibold">{title}</span>
       </div>
       <p className="text-cz-1 font-bold text-sm truncate">{primary}</p>

@@ -319,6 +319,7 @@ export default function HelpPage() {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={t("page.searchPlaceholder")}
+          aria-label={t("common:a11y.searchHelp")}
           className="w-full bg-cz-subtle border border-cz-border rounded-cz px-4 py-3 text-cz-1 text-sm
             placeholder-cz-3 focus:outline-none focus:border-cz-accent/40"
         />
@@ -343,7 +344,7 @@ export default function HelpPage() {
                     hover:border-cz-border transition-all"
                 >
                   <p className="text-cz-1 text-sm">
-                    {s.icon} {s.label}
+                    <span aria-hidden="true">{s.icon}</span> {s.label}
                   </p>
                 </button>
               ))}
@@ -382,7 +383,7 @@ export default function HelpPage() {
                         : "text-cz-2 hover:text-cz-1 hover:bg-cz-subtle"
                     }`}
                 >
-                  <span>{s.icon}</span>
+                  <span aria-hidden="true">{s.icon}</span>
                   <span>{s.label}</span>
                 </button>
               ))}
@@ -419,6 +420,7 @@ export default function HelpPage() {
                       >
                         <p className="text-cz-1 text-sm font-medium">{f.q}</p>
                         <span
+                          aria-hidden="true"
                           className={`text-cz-3 text-xs ms-3 flex-shrink-0 transition-transform ${
                             faqOpen === i ? "rotate-180" : ""
                           }`}
@@ -438,7 +440,7 @@ export default function HelpPage() {
             ) : currentSection ? (
               <div>
                 <h2 className="text-cz-1 font-bold text-base mb-4">
-                  {currentSection.icon} {currentSection.label}
+                  <span aria-hidden="true">{currentSection.icon}</span> {currentSection.label}
                 </h2>
                 <div className="flex flex-col gap-4">
                   {currentSection.content.map((block, i) => (

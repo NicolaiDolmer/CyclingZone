@@ -177,7 +177,8 @@ export default function RiderComparePage() {
               <div key={r.id} className="bg-cz-card border border-cz-border rounded-cz p-4 text-center">
                 <button
                   onClick={() => removeRider(r.id)}
-                  className="float-right text-cz-3 hover:text-cz-2 text-sm -mt-1 -me-1">×</button>
+                  aria-label={t("common:a11y.removeFromComparison")}
+                  className="float-right text-cz-3 hover:text-cz-2 text-sm -mt-1 -me-1"><span aria-hidden="true">×</span></button>
                 <RiderLink id={r.id}
                   className="font-bold text-cz-1 text-sm cursor-pointer hover:text-cz-accent-t block">
                   {r.nationality_code && <Flag code={r.nationality_code} className="me-1" />}{r.firstname} {r.lastname}

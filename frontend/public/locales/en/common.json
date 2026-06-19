@@ -97,5 +97,13 @@
     "pause": "Pause ticker",
     "resume": "Resume ticker"
   },
+  "a11y": {
+    "openMenu": "Open menu",
+    "openNotifications": "Inbox",
+    "removeFromComparison": "Remove from comparison",
+    "saveNote": "Save note",
+    "searchHelp": "Search help and FAQ",
+    "selectSeason": "Select season"
+  },
   "leaderBadge": "Leader"
 }

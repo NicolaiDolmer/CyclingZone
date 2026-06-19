@@ -78,7 +78,7 @@ function SortTh({ children, sortKey, sort, sortDir, onSort, className = "" }) {
   return (
     <th onClick={() => onSort(sortKey)}
       className={`cursor-pointer select-none transition-colors ${active ? "text-cz-accent-t/80" : "text-cz-3 hover:text-cz-2"} ${className}`}>
-      {children}{active && <span className="ms-0.5 text-[10px]">{sortDir === "desc" ? "↓" : "↑"}</span>}
+      {children}{active && <span aria-hidden="true" className="ms-0.5 text-[10px]">{sortDir === "desc" ? "↓" : "↑"}</span>}
     </th>
   );
 }
@@ -340,7 +340,7 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, watchlist, 
                       disabled:opacity-50`}>
                     {proxyStatus === "loading" ? t("common:actions.loadingShort") : proxyStatus === "error" ? t("auctions:bid.buttonError") : proxyStatus === "saved" ? t("common:actions.success") : t("auctions:bid.proxy.saveButton")}
                   </button>
-                  <button onClick={() => setProxyExpanded(false)} aria-label={t("auctions:bid.proxy.cancel")} className="text-[9px] text-cz-3 hover:text-cz-2">✕</button>
+                  <button onClick={() => setProxyExpanded(false)} aria-label={t("auctions:bid.proxy.cancel")} className="text-[9px] text-cz-3 hover:text-cz-2"><span aria-hidden="true">✕</span></button>
                 </div>
                 <p className="text-[9px] text-cz-3 max-w-[180px] leading-tight">{t("auctions:bid.proxy.help")}</p>
                 {proxyStatus === "error" && proxyErrorText && (

@@ -102,7 +102,7 @@ function RiderActionModal({ rider, scouting, onClose, onAction, ddActive }) {
             <h2 className="text-cz-1 font-bold text-lg">{rider.firstname} {rider.lastname}</h2>
             <p className="text-cz-accent-t font-mono text-sm mt-0.5">{formatNumber(riderValue)} CZ$</p>
           </div>
-          <button onClick={onClose} className="text-cz-3 hover:text-cz-1 text-xl">×</button>
+          <button onClick={onClose} aria-label={t("common:actions.close")} className="text-cz-3 hover:text-cz-1 text-xl"><span aria-hidden="true">×</span></button>
         </div>
         <div className="p-5 border-b border-cz-border">
           {/* #1242: samme kvalitative scouting-præsentation som alle andre flader —
