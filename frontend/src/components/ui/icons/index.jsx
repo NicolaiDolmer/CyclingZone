@@ -413,3 +413,33 @@ export function ClipboardIcon(props) {
     </IconBase>
   );
 }
+
+// Lyn (bud/auktions-aktivitet). Erstatter ⚡-emoji som ikon (#671 Plan 4).
+export function LightningIcon(props) {
+  return (
+    <IconBase {...props}>
+      <path d="M13 2L4 14h7l-1 8 9-12h-7z" />
+    </IconBase>
+  );
+}
+
+// Retur-pil (tabt auktion / tilbagetrukket tilbud). Erstatter ↩-emoji.
+export function UndoIcon(props) {
+  return (
+    <IconBase {...props}>
+      <path d="M9 14L4 9l5-5" />
+      <path d="M4 9h11a5 5 0 0 1 0 10h-3" />
+    </IconBase>
+  );
+}
+
+// Raket (sæson startet). Erstatter 🚀-emoji som linje-ikon.
+export function RocketIcon(props) {
+  return (
+    <IconBase {...props}>
+      <path d="M12 3c3 1.5 5 4.5 5 9l-2.5 2.5h-5L7 12c0-4.5 2-7.5 5-9z" />
+      <circle cx="12" cy="9.5" r="1.5" />
+      <path d="M9.5 14.5L7 17M14.5 14.5L17 17M11 17v3" />
+    </IconBase>
+  );
+}
