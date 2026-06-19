@@ -4,7 +4,7 @@
 import { useState, useMemo } from "react";
 import { DEFAULT_FILTERS, STAT_KEYS } from "../components/RiderFilters";
 import { getRiderMarketValue } from "./marketValues";
-import { getRiderAge } from "./riderAge";
+import { getRiderAge, isU23 } from "./riderAge";
 import { compareNationality } from "./countryUtils";
 import { applyNameSearch } from "./riderNameSearch";
 import {
@@ -55,10 +55,10 @@ export function useClientRiderFilters(riders = []) {
     }
 
     if (filters.u25) result = result.filter(r => r.is_u25);
-    if (filters.u23) result = result.filter(r => {
-      const age = getRiderAge(r.birthdate);
-      return age != null && age <= 23;
-    });
+    // U23 = samme grænse som u23-badge (isU23: alder < 23, dvs. ≤22 år) — delt
+    // helper så filter + badge aldrig divergerer. En 23-årig bærer u25-badge og
+    // må derfor IKKE matche U23-filteret (#42).
+    if (filters.u23) result = result.filter(r => isU23(r.birthdate));
 
     if (filters.free_agent) result = result.filter(r => !r.team_id);
     if (filters.team_id) result = result.filter(r => r.team_id === filters.team_id);
@@ -173,7 +173,10 @@ function applyRiderColumnFilters(query, filters, { prefix = "", ref = null } = {
     query = query.gte(col("birthdate"), minBirth);
   }
   if (filters.u23) {
-    const minBirth = new Date(`${CURRENT_YEAR - 23}-01-01`).toISOString().split("T")[0];
+    // Match u23-badge-grænsen (riderAge.js: alder < 23, dvs. ≤22 år). Yngste
+    // 23-årige er født CURRENT_YEAR-23 og bærer u25-badge — de skal ekskluderes,
+    // så nedre fødselsår-grænse er CURRENT_YEAR-22 (≤22 år), ikke -23 (#42).
+    const minBirth = new Date(`${CURRENT_YEAR - 22}-01-01`).toISOString().split("T")[0];
     query = query.gte(col("birthdate"), minBirth);
   }
   return query;

@@ -14,6 +14,16 @@ export function getRiderAge(birthdate, now = new Date()) {
   return now.getFullYear() - new Date(birthdate).getFullYear();
 }
 
+// U23-grænse som ÉN kilde til sandhed (#42): en rytter er U23 ved alder < 23
+// (dvs. ≤22 år) — præcis samme grænse som u23-badge nedenfor. Bruges af
+// rytter-filtrene (useRiderFilters) så filter + badge aldrig divergerer; en
+// 23-årig bærer u25-badge og må derfor ikke matche U23. Returnerer false ved
+// manglende fødselsdato (kan ikke bekræftes som U23).
+export function isU23(birthdate, now = new Date()) {
+  const age = getRiderAge(birthdate, now);
+  return age != null && age < 23;
+}
+
 // Returnér badge-nøglen for rytterens alders-tier, eller null. Nøglen er en
 // gyldig RiderBadges-key ("u23"/"u25"), så kaldersiden kan sætte den direkte
 // ind i badges-arrayet: badges={[ageBadgeKey(rider), ...]}.
