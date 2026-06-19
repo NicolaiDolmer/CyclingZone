@@ -6,6 +6,26 @@ import { supabase } from "../lib/supabase";
 import { ageBadgeKey } from "../lib/riderAge";
 import OnlineBadge from "../components/OnlineBadge";
 import { formatNumber, formatDate } from "../lib/intl";
+import {
+  Card,
+  CategoryTag,
+  StatusBadge,
+  EmptyState,
+  Spinner,
+  Tabs,
+  TabList,
+  Tab,
+  TabPanel,
+  Table,
+  Tr,
+  Th,
+  Td,
+  FlameIcon,
+  TrophyIcon,
+  LockIcon,
+  ChevronLeftIcon,
+  InboxIcon,
+} from "../components/ui";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -23,11 +43,13 @@ function AchievementBadge({ achievement }) {
   const description = t(`${achievement.id}.description`, { defaultValue: achievement.description });
   return (
     <div className="group relative">
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-all text-lg
+      <div className={`w-10 h-10 rounded-cz flex items-center justify-center border transition-all text-lg
         ${isLocked ? "bg-cz-subtle border-cz-border opacity-40 grayscale" : "bg-cz-accent/10 border-cz-accent/30"}`}>
-        <span>{isLocked && achievement.is_secret ? "🔒" : achievement.icon}</span>
+        {isLocked && achievement.is_secret
+          ? <LockIcon size={16} className="text-cz-3" />
+          : <span>{achievement.icon}</span>}
       </div>
-      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 w-44
+      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 w-44
         opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
         <p className="text-cz-1 text-xs font-bold">{isLocked && achievement.is_secret ? "???" : title}</p>
         {(!isLocked || !achievement.is_secret) && (
@@ -76,10 +98,14 @@ export default function ManagerProfilePage() {
 
   if (loading) return (
     <div className="flex justify-center py-16">
-      <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
+      <Spinner size={24} className="border-cz-border border-t-cz-accent" />
     </div>
   );
-  if (!data) return <div className="text-center py-16 text-cz-3">{t("manager.notFound")}</div>;
+  if (!data) return (
+    <div className="max-w-3xl mx-auto py-8">
+      <EmptyState icon={<InboxIcon size={32} />} title={t("manager.notFound")} />
+    </div>
+  );
 
   const { team, user, riders, season_history, achievements, transfer_activity } = data;
   const unlockedCount = achievements.filter(a => a.unlocked).length;
@@ -100,16 +126,20 @@ export default function ManagerProfilePage() {
 
   return (
     <div className="max-w-3xl mx-auto">
-      <button onClick={() => navigate(-1)} className="text-cz-3 hover:text-cz-1 text-sm mb-4 flex items-center gap-1">{t("manager.back")}</button>
+      <button
+        onClick={() => navigate(-1)}
+        className="text-cz-3 hover:text-cz-1 text-sm mb-4 inline-flex items-center gap-1 transition-colors">
+        <ChevronLeftIcon size={16} />{t("manager.back")}
+      </button>
 
       {/* Header */}
-      <div className="bg-cz-card border border-cz-border rounded-xl p-5 mb-4">
+      <Card className="p-5 mb-4">
         <div className="flex items-start justify-between">
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-1">
               <h1 className="text-xl font-bold text-cz-1">{team.name}</h1>
               {isOwnProfile && (
-                <span className="text-[10px] bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30 px-2 py-0.5 rounded-full">{t("manager.yourTeam")}</span>
+                <CategoryTag className="text-cz-accent-t border-cz-accent/30 bg-cz-accent/10">{t("manager.yourTeam")}</CategoryTag>
               )}
             </div>
             <p className="text-cz-2 text-sm mb-3">
@@ -126,14 +156,14 @@ export default function ManagerProfilePage() {
             )}
           </div>
           <div className="flex gap-3 ms-4">
-            <div className="bg-cz-subtle border border-cz-border rounded-xl px-4 py-3 text-center">
-              <p className="text-lg">🔥</p>
-              <p className="text-cz-1 font-bold text-sm">{user.login_streak || 0}</p>
+            <div className="bg-cz-subtle border border-cz-border rounded-cz px-4 py-3 text-center">
+              <FlameIcon size={20} className="mx-auto text-cz-accent" />
+              <p className="text-cz-1 font-bold text-sm mt-1">{user.login_streak || 0}</p>
               <p className="text-cz-3 text-[10px]">{t("manager.streak")}</p>
             </div>
-            <div className="bg-cz-subtle border border-cz-border rounded-xl px-4 py-3 text-center">
-              <p className="text-lg">🏆</p>
-              <p className="text-cz-1 font-bold text-sm">{unlockedCount}</p>
+            <div className="bg-cz-subtle border border-cz-border rounded-cz px-4 py-3 text-center">
+              <TrophyIcon size={20} className="mx-auto text-cz-accent" />
+              <p className="text-cz-1 font-bold text-sm mt-1">{unlockedCount}</p>
               <p className="text-cz-3 text-[10px]">{t("manager.achievements")}</p>
             </div>
           </div>
@@ -151,164 +181,161 @@ export default function ManagerProfilePage() {
             </div>
           </div>
         )}
-      </div>
+      </Card>
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-4 bg-cz-subtle p-1 rounded-xl border border-cz-border">
-        {TABS.map(tabItem => (
-          <button key={tabItem.key} onClick={() => setTab(tabItem.key)}
-            className={`flex-1 py-2 text-xs font-medium rounded-lg transition-all
-              ${tab === tabItem.key ? "bg-cz-accent text-cz-on-accent" : "text-cz-2 hover:text-cz-2"}`}>
-            {tabItem.label}
-          </button>
-        ))}
-      </div>
-
-      {tab === "overview" && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-3 gap-3">
-            <div className="bg-cz-card border border-cz-border rounded-xl p-4 text-center">
-              <p className="text-cz-3 text-[10px] uppercase tracking-wider mb-1">{tCommon("nav.item.riders")}</p>
-              <p className="text-cz-1 font-bold text-xl">{riders.length}</p>
-            </div>
-            <div className="bg-cz-card border border-cz-border rounded-xl p-4 text-center">
-              <p className="text-cz-3 text-[10px] uppercase tracking-wider mb-1">{t("manager.statSeasons")}</p>
-              <p className="text-cz-1 font-bold text-xl">{season_history.length}</p>
-            </div>
-            <div className="bg-cz-card border border-cz-border rounded-xl p-4 text-center">
-              <p className="text-cz-3 text-[10px] uppercase tracking-wider mb-1">{t("manager.statTransfers")}</p>
-              <p className="text-cz-1 font-bold text-xl">{transfer_activity.length}</p>
-            </div>
-          </div>
-          <div className="bg-cz-card border border-cz-border rounded-xl p-5">
-            <h2 className="text-cz-1 font-semibold text-sm mb-4">{t("manager.recentTransfers")}</h2>
-            {transfer_activity.length === 0 ? (
-              <p className="text-cz-3 text-sm text-center py-4">{t("manager.noTransfers")}</p>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {transfer_activity.map(tx => {
-                  const isBuyer = tx.buyer_team?.id === teamId;
-                  return (
-                    <div key={tx.id} className="flex items-center justify-between py-2 border-b border-cz-border last:border-0">
-                      <div>
-                        <p className="text-cz-1 text-sm">{tx.rider?.firstname} {tx.rider?.lastname}</p>
-                        <p className="text-cz-3 text-xs">
-                          {isBuyer ? t("manager.boughtFrom") : t("manager.soldTo")}{" "}
-                          <Link to={`/managers/${isBuyer ? tx.seller_team?.id : tx.buyer_team?.id}`}
-                            className="text-cz-accent-t/70 hover:text-cz-accent-t">
-                            {isBuyer ? tx.seller_team?.name : tx.buyer_team?.name}
-                          </Link>
-                        </p>
-                      </div>
-                      <span className={`font-mono font-bold text-sm ${isBuyer ? "text-cz-danger" : "text-cz-success"}`}>
-                        {isBuyer ? "-" : "+"}{formatNumber(tx.offer_amount)} CZ$
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {tab === "riders" && (
-        <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
-          {riders.length === 0 ? (
-            <p className="text-cz-3 text-sm text-center py-8">{t("manager.noRiders")}</p>
-          ) : (
-            <table className="w-full">
-              <thead><tr className="border-b border-cz-border">
-                <th className="px-4 py-3 text-left text-cz-3 text-[10px] uppercase">{t("manager.thRider")}</th>
-                <th className="px-4 py-3 text-right text-cz-3 text-[10px] uppercase">{t("manager.thValue")}</th>
-                <th className="px-4 py-3 text-right text-cz-3 text-[10px] uppercase hidden sm:table-cell">BJ</th>
-                <th className="px-4 py-3 text-right text-cz-3 text-[10px] uppercase hidden sm:table-cell">SP</th>
-                <th className="px-4 py-3 text-right text-cz-3 text-[10px] uppercase hidden sm:table-cell">TT</th>
-              </tr></thead>
-              <tbody>
-                {riders.map(r => (
-                  <tr key={r.id} onClick={() => navigate(`/riders/${r.id}`)}
-                    className="border-b border-cz-border last:border-0 hover:bg-cz-subtle cursor-pointer transition-all">
-                    <td className="px-4 py-3">
-                      <RiderLink id={r.id} stopPropagation
-                        className="text-cz-1 text-sm hover:text-cz-accent-t transition-colors block">
-                        {r.firstname} {r.lastname}
-                      </RiderLink>
-                      {/* #42: alders-badge afledt af alder (U23 <23, U25 23-24, ingen ≥25)
-                          via ageBadgeKey — ikke rå is_u25, der også er true for U23. */}
-                      {(() => {
-                        const ageTier = ageBadgeKey(r);
-                        return ageTier ? (
-                          <span className="text-[9px] bg-cz-info-bg0/20 text-cz-info px-1.5 py-0.5 rounded">{tRider(`header.${ageTier}`)}</span>
-                        ) : null;
-                      })()}
-                    </td>
-                    <td className="px-4 py-3 text-right text-cz-accent-t font-mono text-sm">{formatNumber(r.market_value)}</td>
-                    <td className="px-4 py-3 text-right text-cz-2 text-sm hidden sm:table-cell">{r.stat_bj || "—"}</td>
-                    <td className="px-4 py-3 text-right text-cz-2 text-sm hidden sm:table-cell">{r.stat_sp || "—"}</td>
-                    <td className="px-4 py-3 text-right text-cz-2 text-sm hidden sm:table-cell">{r.stat_tt || "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      )}
-
-      {tab === "season" && (
-        <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
-          {season_history.length === 0 ? (
-            <p className="text-cz-3 text-sm text-center py-8">{t("manager.noSeasonHistory")}</p>
-          ) : (
-            <table className="w-full">
-              <thead><tr className="border-b border-cz-border">
-                <th className="px-4 py-3 text-left text-cz-3 text-[10px] uppercase">{t("manager.thSeason")}</th>
-                <th className="px-4 py-3 text-center text-cz-3 text-[10px] uppercase">{t("manager.thDivision")}</th>
-                <th className="px-4 py-3 text-right text-cz-3 text-[10px] uppercase">{t("manager.thPoints")}</th>
-                <th className="px-4 py-3 text-right text-cz-3 text-[10px] uppercase">{t("manager.thRank")}</th>
-              </tr></thead>
-              <tbody>
-                {season_history.map(s => (
-                  <tr key={s.id} className="border-b border-cz-border last:border-0">
-                    <td className="px-4 py-3 text-cz-1 text-sm">
-                      {t("manager.seasonNumber", { n: s.season?.number })}
-                      {/* #1095: markér igangværende sæson, så historik ikke forveksles med nutid */}
-                      {s.season?.status === "active" && (
-                        <span className="ms-2 text-[9px] uppercase bg-cz-success-bg text-cz-success px-1.5 py-0.5 rounded">
-                          {t("manager.seasonOngoing")}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-center text-cz-2 text-sm">{t("manager.divisionShort", { n: s.division })}</td>
-                    <td className="px-4 py-3 text-right text-cz-accent-t font-mono text-sm">{formatNumber(s.total_points)}</td>
-                    <td className="px-4 py-3 text-right">
-                      {s.final_rank === 1
-                        ? <span className="text-cz-accent-t font-bold text-sm">🏆 #1</span>
-                        : <span className="text-cz-2 text-sm">#{s.final_rank || "—"}</span>}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      )}
-
-      {tab === "achievements" && (
-        <div className="space-y-4">
-          {Object.entries(achByCategory).map(([cat, achs]) => (
-            <div key={cat} className="bg-cz-card border border-cz-border rounded-xl p-5">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-cz-1 font-semibold text-sm capitalize">{cat}</h2>
-                <span className="text-cz-3 text-xs">{achs.filter(a => a.unlocked).length}/{achs.length}</span>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {achs.map(a => <AchievementBadge key={a.id} achievement={a} />)}
-              </div>
-            </div>
+      <Tabs value={tab} onChange={setTab}>
+        <TabList label={team.name} className="mb-4">
+          {TABS.map(tabItem => (
+            <Tab key={tabItem.key} value={tabItem.key}>{tabItem.label}</Tab>
           ))}
-        </div>
-      )}
+        </TabList>
+
+        <TabPanel value="overview">
+          <div className="space-y-4">
+            <div className="grid grid-cols-3 gap-3">
+              <Card className="p-4 text-center">
+                <p className="text-cz-3 text-[10px] uppercase tracking-wider mb-1">{tCommon("nav.item.riders")}</p>
+                <p className="text-cz-1 font-bold text-xl">{riders.length}</p>
+              </Card>
+              <Card className="p-4 text-center">
+                <p className="text-cz-3 text-[10px] uppercase tracking-wider mb-1">{t("manager.statSeasons")}</p>
+                <p className="text-cz-1 font-bold text-xl">{season_history.length}</p>
+              </Card>
+              <Card className="p-4 text-center">
+                <p className="text-cz-3 text-[10px] uppercase tracking-wider mb-1">{t("manager.statTransfers")}</p>
+                <p className="text-cz-1 font-bold text-xl">{transfer_activity.length}</p>
+              </Card>
+            </div>
+            <Card className="p-5">
+              <h2 className="text-cz-1 font-semibold text-sm mb-4">{t("manager.recentTransfers")}</h2>
+              {transfer_activity.length === 0 ? (
+                <p className="text-cz-3 text-sm text-center py-4">{t("manager.noTransfers")}</p>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {transfer_activity.map(tx => {
+                    const isBuyer = tx.buyer_team?.id === teamId;
+                    return (
+                      <div key={tx.id} className="flex items-center justify-between py-2 border-b border-cz-border last:border-0">
+                        <div>
+                          <p className="text-cz-1 text-sm">{tx.rider?.firstname} {tx.rider?.lastname}</p>
+                          <p className="text-cz-3 text-xs">
+                            {isBuyer ? t("manager.boughtFrom") : t("manager.soldTo")}{" "}
+                            <Link to={`/managers/${isBuyer ? tx.seller_team?.id : tx.buyer_team?.id}`}
+                              className="text-cz-accent-t/70 hover:text-cz-accent-t">
+                              {isBuyer ? tx.seller_team?.name : tx.buyer_team?.name}
+                            </Link>
+                          </p>
+                        </div>
+                        <span className={`font-mono font-bold text-sm ${isBuyer ? "text-cz-danger" : "text-cz-success"}`}>
+                          {isBuyer ? "-" : "+"}{formatNumber(tx.offer_amount)} CZ$
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </Card>
+          </div>
+        </TabPanel>
+
+        <TabPanel value="riders">
+          {riders.length === 0 ? (
+            <EmptyState icon={<InboxIcon size={32} />} title={t("manager.noRiders")} />
+          ) : (
+            <Card className="overflow-hidden">
+              <Table>
+                <thead><tr>
+                  <Th>{t("manager.thRider")}</Th>
+                  <Th numeric>{t("manager.thValue")}</Th>
+                  <Th numeric className="hidden sm:table-cell">BJ</Th>
+                  <Th numeric className="hidden sm:table-cell">SP</Th>
+                  <Th numeric className="hidden sm:table-cell">TT</Th>
+                </tr></thead>
+                <tbody>
+                  {riders.map(r => (
+                    <Tr key={r.id} onClick={() => navigate(`/riders/${r.id}`)} className="cursor-pointer">
+                      <Td>
+                        <RiderLink id={r.id} stopPropagation
+                          className="text-cz-1 text-sm hover:text-cz-accent-t transition-colors block">
+                          {r.firstname} {r.lastname}
+                        </RiderLink>
+                        {/* #42: alders-badge afledt af alder (U23 <23, U25 23-24, ingen ≥25)
+                            via ageBadgeKey — ikke rå is_u25, der også er true for U23. */}
+                        {(() => {
+                          const ageTier = ageBadgeKey(r);
+                          return ageTier ? (
+                            <span className="text-[9px] bg-cz-info-bg0/20 text-cz-info px-1.5 py-0.5 rounded-cz">{tRider(`header.${ageTier}`)}</span>
+                          ) : null;
+                        })()}
+                      </Td>
+                      <Td numeric className="text-cz-accent-t">{formatNumber(r.market_value)}</Td>
+                      <Td numeric className="text-cz-2 hidden sm:table-cell">{r.stat_bj || "—"}</Td>
+                      <Td numeric className="text-cz-2 hidden sm:table-cell">{r.stat_sp || "—"}</Td>
+                      <Td numeric className="text-cz-2 hidden sm:table-cell">{r.stat_tt || "—"}</Td>
+                    </Tr>
+                  ))}
+                </tbody>
+              </Table>
+            </Card>
+          )}
+        </TabPanel>
+
+        <TabPanel value="season">
+          {season_history.length === 0 ? (
+            <EmptyState icon={<InboxIcon size={32} />} title={t("manager.noSeasonHistory")} />
+          ) : (
+            <Card className="overflow-hidden">
+              <Table>
+                <thead><tr>
+                  <Th>{t("manager.thSeason")}</Th>
+                  <Th className="text-center">{t("manager.thDivision")}</Th>
+                  <Th numeric>{t("manager.thPoints")}</Th>
+                  <Th numeric>{t("manager.thRank")}</Th>
+                </tr></thead>
+                <tbody>
+                  {season_history.map(s => (
+                    <Tr key={s.id}>
+                      <Td>
+                        {t("manager.seasonNumber", { n: s.season?.number })}
+                        {/* #1095: markér igangværende sæson, så historik ikke forveksles med nutid */}
+                        {s.season?.status === "active" && (
+                          <StatusBadge state="live" emphasis className="ms-2">
+                            {t("manager.seasonOngoing")}
+                          </StatusBadge>
+                        )}
+                      </Td>
+                      <Td className="text-center text-cz-2">{t("manager.divisionShort", { n: s.division })}</Td>
+                      <Td numeric className="text-cz-accent-t">{formatNumber(s.total_points)}</Td>
+                      <Td numeric>
+                        {s.final_rank === 1
+                          ? <span className="inline-flex items-center justify-end gap-1 text-cz-accent-t font-bold"><TrophyIcon size={14} />#1</span>
+                          : <span className="text-cz-2">#{s.final_rank || "—"}</span>}
+                      </Td>
+                    </Tr>
+                  ))}
+                </tbody>
+              </Table>
+            </Card>
+          )}
+        </TabPanel>
+
+        <TabPanel value="achievements">
+          <div className="space-y-4">
+            {Object.entries(achByCategory).map(([cat, achs]) => (
+              <Card key={cat} className="p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-cz-1 font-semibold text-sm capitalize">{cat}</h2>
+                  <span className="text-cz-3 text-xs">{achs.filter(a => a.unlocked).length}/{achs.length}</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {achs.map(a => <AchievementBadge key={a.id} achievement={a} />)}
+                </div>
+              </Card>
+            ))}
+          </div>
+        </TabPanel>
+      </Tabs>
     </div>
   );
 }
