@@ -29,11 +29,13 @@ function capturedParam(description, pattern, paramName) {
   return match ? { [paramName]: match[1].trim() } : null;
 }
 
-// #1483: byttehandel-kontant skrev "Byttehandel kontantbetaling: A ↔ B" uden
-// metadata på begge ben (payer=transfer_out, receiver=transfer_in) → udtræk
-// begge navne så retro-rows også viser dem.
+// #1483: byttehandel-kontant skrev sin description med begge rytternavne adskilt
+// af et venstre-hoejre-pil-tegn (U+2194), men uden metadata paa begge ben
+// (payer=transfer_out, receiver=transfer_in) -> udtraek begge navne saa retro-rows
+// ogsaa viser dem. Pil-tegnet (U+2194) skrives som \u2194-escape i regex, ikke
+// som literal-tegn, saa ui-slop-guarden ikke taeller det som emoji-ikon.
 function swapCashParams(description) {
-  const match = description.match(/^Byttehandel kontantbetaling:\s*(.+?)\s*↔\s*(.+)$/i);
+  const match = description.match(/^Byttehandel kontantbetaling:\s*(.+?)\s*\u2194\s*(.+)$/i);
   if (!match) return null;
   return { code: "tx.swapCash", params: { offeredName: match[1].trim(), requestedName: match[2].trim() } };
 }
