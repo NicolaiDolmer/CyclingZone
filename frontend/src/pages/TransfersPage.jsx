@@ -14,6 +14,7 @@ import { formatCz, getRiderMarketValue, getRiderSalary } from "../lib/marketValu
 import { formatNumber, formatDate } from "../lib/intl";
 import { resolveApiError } from "../lib/apiError";
 import { sortListings, LISTING_SORT_OPTIONS } from "../lib/transferListingSort";
+import { Card, EmptyState, ExchangeIcon, ClipboardIcon } from "../components/ui";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -103,7 +104,7 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
   }
 
   return (
-    <div className={`bg-cz-card border rounded-xl p-5 transition-all
+    <div className={`bg-cz-card border rounded-cz p-5 transition-all
       ${isAwaiting ? "border-blue-500/30" : isWindowPending ? "border-violet-300" : isPending ? "border-cz-accent/30" : "border-cz-border opacity-70"}`}>
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-3">
         <div className="min-w-0">
@@ -273,7 +274,7 @@ function SentOfferCard({ offer, onAction, showArchive = true }) {
   }
 
   return (
-    <div className={`bg-cz-card border rounded-xl p-5 transition-all
+    <div className={`bg-cz-card border rounded-cz p-5 transition-all
       ${isAwaiting ? "border-blue-500/30" : isWindowPending ? "border-violet-300" : isCountered ? "border-cz-warning/30" : isActive ? "border-cz-border" : "border-cz-border opacity-60"}`}>
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-3">
         <div className="min-w-0">
@@ -441,7 +442,7 @@ function SwapCard({ swap, myTeamId, onAction }) {
   }
 
   return (
-    <div className={`bg-cz-card border rounded-xl p-5 transition-all
+    <div className={`bg-cz-card border rounded-cz p-5 transition-all
       ${isAwaiting ? "border-blue-500/30" : isWindowPending ? "border-violet-300" : isCountered ? "border-cz-warning/30" : isPending ? "border-cz-border" : "border-cz-border opacity-60"}`}>
 
       <div className="flex items-start justify-between mb-3">
@@ -647,7 +648,7 @@ function NewSwapForm({ myRiders, onSubmit, onCancel }) {
   }
 
   return (
-    <div className="bg-cz-card border border-cz-border rounded-xl p-5 flex flex-col gap-4">
+    <Card className="p-5 flex flex-col gap-4">
       <h3 className="text-cz-1 font-semibold">{t("newSwap.title")}</h3>
 
       <div>
@@ -711,7 +712,7 @@ function NewSwapForm({ myRiders, onSubmit, onCancel }) {
           {t("newSwap.cancel")}
         </button>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -756,7 +757,7 @@ function LoanCard({ loan, myTeamId, onAction }) {
     : t("loanCard.seasonsRange", { start: loan.start_season, end: loan.end_season });
 
   return (
-    <div className={`bg-cz-card border rounded-xl p-5 transition-all
+    <div className={`bg-cz-card border rounded-cz p-5 transition-all
       ${loan.status === "active" ? "border-purple-500/20" : loan.status === "pending" ? "border-cz-accent/30" : "border-cz-border opacity-70"}`}>
 
       <div className="flex items-start justify-between mb-3">
@@ -871,7 +872,7 @@ function NewLoanForm({ myTeamId, onSubmit, onCancel }) {
   }
 
   return (
-    <div className="bg-cz-card border border-cz-border rounded-xl p-5 flex flex-col gap-4">
+    <Card className="p-5 flex flex-col gap-4">
       <h3 className="text-cz-1 font-semibold">{t("newLoan.title")}</h3>
 
       <div>
@@ -929,7 +930,7 @@ function NewLoanForm({ myTeamId, onSubmit, onCancel }) {
           {t("newLoan.cancel")}
         </button>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -1051,7 +1052,7 @@ function TransferCard({ listing, myTeamId, onOffer, onRemove, onUpdatePrice, win
   }
 
   return (
-    <div className="bg-cz-card border border-cz-border hover:border-cz-border rounded-xl p-4 transition-all">
+    <Card className="p-4">
       <div className="flex items-start justify-between mb-3">
         <div>
           <RiderLink id={listing.rider?.id} className="cursor-pointer block">
@@ -1095,7 +1096,7 @@ function TransferCard({ listing, myTeamId, onOffer, onRemove, onUpdatePrice, win
           <button onClick={() => setShowOffer(!showOffer)}
             className={`w-full py-2 rounded-lg text-sm font-medium transition-all border
               ${showOffer
-                  ? "bg-cz-accent/10 text-cz-accent-t border-[#e8c547]/25"
+                  ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/25"
                   : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle hover:text-cz-1"}`}>
             {showOffer ? t("transferCard.hide") : t("transferCard.sendOffer")}
           </button>
@@ -1142,7 +1143,7 @@ function TransferCard({ listing, myTeamId, onOffer, onRemove, onUpdatePrice, win
         onCancel={() => { if (!loading) setConfirmOpen(false); }}
         onConfirm={performSendOffer}
       />
-    </div>
+    </Card>
   );
 }
 
@@ -1237,7 +1238,7 @@ export default function TransfersPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) { showMsg(t("toast.offerSent")); loadAll(); setTab("sent"); }
-      else showMsg(`❌ ${resolveApiError(data, t)}`, "error");
+      else showMsg(resolveApiError(data, t), "error");
     } catch {
       showMsg(t("auth:error.connectionFailed"), "error");
     }
@@ -1254,7 +1255,7 @@ export default function TransfersPage() {
         showMsg(t("toast.listingRemoved"));
         loadAll();
       } else {
-        showMsg(`❌ ${resolveApiError(data, t, t("toast.listingRemoveFailed"))}`, "error");
+        showMsg(resolveApiError(data, t, t("toast.listingRemoveFailed")), "error");
       }
     } catch {
       showMsg(t("auth:error.connectionFailed"), "error");
@@ -1276,7 +1277,7 @@ export default function TransfersPage() {
         loadAll();
         return true;
       }
-      showMsg(`❌ ${resolveApiError(data, t, t("toast.priceUpdateFailed"))}`, "error");
+      showMsg(resolveApiError(data, t, t("toast.priceUpdateFailed")), "error");
       return false;
     } catch {
       showMsg(t("auth:error.connectionFailed"), "error");
@@ -1298,7 +1299,7 @@ export default function TransfersPage() {
             title: t("celebration.transferDone.title"),
             subtitle: t("celebration.transferDone.subtitle"),
             amount: data.price || 0,
-            icon: "↔",
+            icon: <ExchangeIcon size={56} className="text-cz-accent-t" aria-hidden="true" />,
           });
           fetch(`${API}/api/achievements/check`, {
             method: "POST",
@@ -1321,7 +1322,7 @@ export default function TransfersPage() {
         }
         loadAll();
       } else {
-        showMsg(`❌ ${resolveApiError(data, t)}`, "error");
+        showMsg(resolveApiError(data, t), "error");
       }
     } catch {
       showMsg(t("auth:error.connectionFailed"), "error");
@@ -1342,7 +1343,7 @@ export default function TransfersPage() {
             title: t("celebration.swapDone.title"),
             subtitle: t("celebration.swapDone.subtitle"),
             amount: 0,
-            icon: "↔",
+            icon: <ExchangeIcon size={56} className="text-cz-accent-t" aria-hidden="true" />,
           });
         } else {
           const msgs = {
@@ -1358,7 +1359,7 @@ export default function TransfersPage() {
         }
         loadAll();
       } else {
-        showMsg(`❌ ${resolveApiError(data, t)}`, "error");
+        showMsg(resolveApiError(data, t), "error");
       }
     } catch {
       showMsg(t("auth:error.connectionFailed"), "error");
@@ -1378,7 +1379,7 @@ export default function TransfersPage() {
         setShowNewSwap(false);
         loadAll();
       } else {
-        showMsg(`❌ ${resolveApiError(data, t)}`, "error");
+        showMsg(resolveApiError(data, t), "error");
       }
     } catch {
       showMsg(t("auth:error.connectionFailed"), "error");
@@ -1395,14 +1396,14 @@ export default function TransfersPage() {
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
         if (action === "buyout") {
-          setCelebration({ title: t("celebration.buyoutDone.title"), subtitle: t("celebration.buyoutDone.subtitle"), amount: data.price || 0, icon: "📋" });
+          setCelebration({ title: t("celebration.buyoutDone.title"), subtitle: t("celebration.buyoutDone.subtitle"), amount: data.price || 0, icon: <ClipboardIcon size={56} className="text-cz-accent-t" aria-hidden="true" /> });
         } else {
           const msgs = { accept: t("toast.loanActivated"), reject: t("toast.loanRejected"), cancel: t("toast.loanCancelled") };
           showMsg(msgs[action] || t("toast.updated"));
         }
         loadAll();
       } else {
-        showMsg(`❌ ${resolveApiError(data, t)}`, "error");
+        showMsg(resolveApiError(data, t), "error");
       }
     } catch {
       showMsg(t("auth:error.connectionFailed"), "error");
@@ -1418,7 +1419,7 @@ export default function TransfersPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) { showMsg(t("toast.loanProposalSent")); setShowNewLoan(false); loadAll(); }
-      else showMsg(`❌ ${resolveApiError(data, t)}`, "error");
+      else showMsg(resolveApiError(data, t), "error");
     } catch {
       showMsg(t("auth:error.connectionFailed"), "error");
     }
@@ -1453,7 +1454,7 @@ export default function TransfersPage() {
         title={celebration?.title || ""}
         subtitle={celebration?.subtitle}
         amount={celebration?.amount}
-        icon={celebration?.icon || "🎉"}
+        icon={celebration?.icon}
       />
 
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
@@ -1467,7 +1468,7 @@ export default function TransfersPage() {
         </div>
       </div>
 
-      <div className={`mb-4 px-4 py-3 rounded-xl text-sm border flex items-center gap-2
+      <div className={`mb-4 px-4 py-3 rounded-cz text-sm border flex items-center gap-2
         ${transferWindow.open
           ? "bg-cz-success-bg0/8 text-cz-success border-cz-success/30"
           : "bg-cz-danger-bg text-cz-danger border-cz-danger/30"}`}>
@@ -1476,7 +1477,7 @@ export default function TransfersPage() {
       </div>
 
       {msg.text && (
-        <div className={`mb-4 px-4 py-3 rounded-xl text-sm border
+        <div className={`mb-4 px-4 py-3 rounded-cz text-sm border
           ${msg.type === "error"
             ? "bg-cz-danger-bg text-cz-danger border-cz-danger/30"
             : "bg-cz-success-bg text-cz-success border-cz-success/30"}`}>
@@ -1517,11 +1518,11 @@ export default function TransfersPage() {
           {tab === "received" && (
             <div className="flex flex-col gap-3">
               {receivedOffers.length === 0 ? (
-                <div className="text-center py-16 text-cz-3">
-                  <p className="text-4xl mb-3">↔</p>
-                  <p>{t("empty.received")}</p>
-                  <p className="text-xs mt-2">{t("empty.receivedHint")}</p>
-                </div>
+                <EmptyState
+                  icon={<ExchangeIcon size={28} aria-hidden="true" />}
+                  title={t("empty.received")}
+                  description={t("empty.receivedHint")}
+                />
               ) : (
                 receivedOffers.map(o => (
                   <ReceivedOfferCard key={o.id} offer={o} onAction={handleOfferAction} />
@@ -1533,11 +1534,11 @@ export default function TransfersPage() {
           {tab === "sent" && (
             <div className="flex flex-col gap-3">
               {sentOffers.length === 0 ? (
-                <div className="text-center py-16 text-cz-3">
-                  <p className="text-4xl mb-3">↔</p>
-                  <p>{t("empty.sent")}</p>
-                  <p className="text-xs mt-2">{t("empty.sentHint")}</p>
-                </div>
+                <EmptyState
+                  icon={<ExchangeIcon size={28} aria-hidden="true" />}
+                  title={t("empty.sent")}
+                  description={t("empty.sentHint")}
+                />
               ) : (
                 sentOffers.map(o => (
                   <SentOfferCard key={o.id} offer={o} onAction={handleOfferAction} />
@@ -1549,10 +1550,10 @@ export default function TransfersPage() {
           {tab === "archive" && (
             <div className="flex flex-col gap-4">
               {archivedReceivedOffers.length + archivedSentOffers.length === 0 ? (
-                <div className="text-center py-16 text-cz-3">
-                  <p className="text-4xl mb-3">◎</p>
-                  <p>{t("empty.archive")}</p>
-                </div>
+                <EmptyState
+                  icon={<span className="text-2xl leading-none" aria-hidden="true">◎</span>}
+                  title={t("empty.archive")}
+                />
               ) : (
                 <>
                   {archivedReceivedOffers.length > 0 && (
@@ -1590,7 +1591,7 @@ export default function TransfersPage() {
                 />
               ) : (
                 <button onClick={() => setShowNewSwap(true)}
-                  className="w-full py-2.5 bg-cz-accent/10 text-cz-accent-t/80 border border-[#e8c547]/15 rounded-xl text-sm font-medium
+                  className="w-full py-2.5 bg-cz-accent/10 text-cz-accent-t/80 border border-cz-accent/15 rounded-cz text-sm font-medium
                     hover:bg-cz-accent/10 hover:text-cz-accent-t transition-all">
                   {t("newSwap.newButton")}
                 </button>
@@ -1619,11 +1620,11 @@ export default function TransfersPage() {
               )}
 
               {receivedSwaps.length === 0 && sentSwaps.length === 0 && !showNewSwap && (
-                <div className="text-center py-16 text-cz-3">
-                  <p className="text-4xl mb-3">↔</p>
-                  <p>{t("empty.swaps")}</p>
-                  <p className="text-xs mt-2">{t("empty.swapsHint")}</p>
-                </div>
+                <EmptyState
+                  icon={<ExchangeIcon size={28} aria-hidden="true" />}
+                  title={t("empty.swaps")}
+                  description={t("empty.swapsHint")}
+                />
               )}
             </div>
           )}
@@ -1638,7 +1639,7 @@ export default function TransfersPage() {
                 />
               ) : (
                 <button onClick={() => setShowNewLoan(true)}
-                  className="w-full py-2.5 bg-purple-500/8 text-purple-400/80 border border-purple-500/15 rounded-xl text-sm font-medium
+                  className="w-full py-2.5 bg-purple-500/8 text-purple-400/80 border border-purple-500/15 rounded-cz text-sm font-medium
                     hover:bg-purple-500/15 hover:text-purple-400 transition-all">
                   {t("newLoan.newButton")}
                 </button>
@@ -1667,11 +1668,11 @@ export default function TransfersPage() {
               )}
 
               {lendingLoans.length === 0 && borrowingLoans.length === 0 && !showNewLoan && (
-                <div className="text-center py-16 text-cz-3">
-                  <p className="text-4xl mb-3">📋</p>
-                  <p>{t("empty.loans")}</p>
-                  <p className="text-xs mt-2">{t("empty.loansHint")}</p>
-                </div>
+                <EmptyState
+                  icon={<ClipboardIcon size={28} aria-hidden="true" />}
+                  title={t("empty.loans")}
+                  description={t("empty.loansHint")}
+                />
               )}
             </div>
           )}
@@ -1699,10 +1700,10 @@ export default function TransfersPage() {
                 ))}
               </div>
               {filteredListings.length === 0 ? (
-                <div className="text-center py-16 text-cz-3">
-                  <p className="text-4xl mb-3">↔</p>
-                  <p>{listings.length === 0 ? t("empty.marketNoListings") : t("empty.marketNoMatches")}</p>
-                </div>
+                <EmptyState
+                  icon={<ExchangeIcon size={28} aria-hidden="true" />}
+                  title={listings.length === 0 ? t("empty.marketNoListings") : t("empty.marketNoMatches")}
+                />
               ) : (
                 <div className="grid sm:grid-cols-2 gap-3">
                   {filteredListings.map(l => (
