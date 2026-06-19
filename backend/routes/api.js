@@ -5891,7 +5891,17 @@ router.post("/admin/transfer-window/close", requireAdmin, adminWriteLimiter, asy
     const { data: tw } = await supabase.from("transfer_windows")
       .select("id").order("created_at", { ascending: false }).limit(1).single();
     if (!tw) return res.status(404).json({ error: "Intet aktivt transfervindue fundet" });
-    await supabase.from("transfer_windows").update({ status: "closed" }).eq("id", tw.id);
+    // #544: sæt ALTID closed_at sammen med status='closed'. Et manuelt admin-close
+    // må aldrig efterlade en hybrid (status='closed' + closed_at=null) — det er
+    // signaturen på et "racing-window", som deadlineDay/squadEnforcement/season-
+    // transition-cron'erne filtrerer fra via `.not("closed_at","is",null)`. Matcher
+    // de kanoniske close-paths (deadlineDayReport.fireAutoCloseIfDue +
+    // seasonTransition.closePrevTransferWindow), der begge sætter closed_at.
+    // DB CHECK-constraints (2026-05-22-transfer-window-racing-guard.sql) er det
+    // strukturelle sikkerhedsnet; dette er kode-laget i samme forsvar-i-dybden.
+    await supabase.from("transfer_windows")
+      .update({ status: "closed", closed_at: new Date().toISOString() })
+      .eq("id", tw.id);
     res.json({ success: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
