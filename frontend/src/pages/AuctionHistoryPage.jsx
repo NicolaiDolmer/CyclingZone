@@ -88,8 +88,11 @@ export default function AuctionHistoryPage() {
       query = query.neq("current_bidder_id", myTeamId).neq("seller_team_id", myTeamId);
     }
 
+    // #249: sekundær sortering på beløb (faldende) så auktioner med samme
+    // sluttidspunkt vises med højeste bud først.
     query = query
       .order("actual_end", { ascending: false })
+      .order("current_price", { ascending: false })
       .range((page - 1) * PER_PAGE, page * PER_PAGE - 1);
 
     const { data, count } = await query;
