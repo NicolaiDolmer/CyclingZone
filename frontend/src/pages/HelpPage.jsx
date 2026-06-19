@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { InfoIcon } from "../components/ui/icons/index.jsx";
 
 const SECTION_DEFS = [
   {
@@ -395,7 +396,7 @@ export default function HelpPage() {
                       : "text-cz-2 hover:text-cz-1 hover:bg-cz-subtle"
                   }`}
               >
-                <span>❓</span>
+                <InfoIcon className="w-4 h-4 flex-shrink-0" />
                 <span>{t("page.faqLabel")}</span>
               </button>
             </div>

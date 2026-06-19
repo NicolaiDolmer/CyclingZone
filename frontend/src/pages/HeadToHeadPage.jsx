@@ -49,7 +49,7 @@ function TeamSearch({ label, onSelect, excluded, autoSuggest = false }) {
           text-cz-1 placeholder-cz-3 focus:outline-none focus:border-cz-accent" />
       {results.length > 0 && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-cz-card border border-cz-border
-          rounded-cz z-20 overflow-y-auto max-h-72 shadow-2xl">
+          rounded-cz z-20 overflow-y-auto max-h-72 shadow-overlay">
           {results.map(team => (
             <div key={team.id}
               className="px-4 py-3 hover:bg-cz-subtle cursor-pointer border-b border-cz-border last:border-0"
@@ -62,7 +62,7 @@ function TeamSearch({ label, onSelect, excluded, autoSuggest = false }) {
       )}
       {showEmpty && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-cz-card border border-cz-border
-          rounded-cz z-20 overflow-hidden shadow-2xl px-4 py-3">
+          rounded-cz z-20 overflow-hidden shadow-overlay px-4 py-3">
           <p className="text-cz-3 text-sm">{t("noTeamsFound", { q })}</p>
         </div>
       )}
@@ -91,7 +91,7 @@ function StatCompare({ labelA, valueA, valueB, labelB, unit = "", higherIsBetter
             style={{ width: `${(valueA / maxVal) * 100}%` }} />
         </div>
         <div className="flex-1 bg-cz-subtle rounded-r-full overflow-hidden">
-          <div className="h-2 rounded-r-full bg-blue-300 transition-all"
+          <div className="h-2 rounded-r-full bg-cz-info transition-all"
             style={{ width: `${(valueB / maxVal) * 100}%` }} />
         </div>
       </div>

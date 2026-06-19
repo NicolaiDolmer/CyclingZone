@@ -5,6 +5,7 @@ import { useLanguage } from "../lib/language.jsx";
 import { useDocumentHead } from "../hooks/useDocumentHead.js";
 import FounderSupporterWaitlistForm from "../components/waitlist/FounderSupporterWaitlistForm.jsx";
 import { Wordmark, Monogram } from "../components/Brand.jsx";
+import { CheckIcon, XIcon } from "../components/ui/icons/index.jsx";
 import { formatCurrency, currencyForLocale } from "../lib/intl.js";
 import {
   TIER_PRICES_DKK,
@@ -75,9 +76,9 @@ function TierCard({ tier, highlighted = false }) {
   return (
     <div
       className={
-        "flex flex-col gap-3 rounded-2xl border p-5 transition-all " +
+        "flex flex-col gap-3 rounded-cz border p-5 transition-all " +
         (highlighted
-          ? "border-cz-accent bg-cz-accent/5 shadow-[0_4px_30px_rgba(232,197,71,0.15)]"
+          ? "border-cz-accent bg-cz-accent/5"
           : "border-cz-border bg-cz-card")
       }
     >
@@ -220,7 +221,7 @@ export default function FounderSupporterPage() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
           <Link to="/" aria-label="Cycling Zone" className="flex items-center gap-2.5 group">
             {/* #481: locked monogram + theme-aware outlined wordmark (with twin lines). */}
-            <Monogram className="w-9 h-9 shadow-[0_0_20px_rgba(232,197,71,0.3)]" />
+            <Monogram className="w-9 h-9" />
             <Wordmark className="h-5 w-auto hidden sm:block" alt="" />
           </Link>
           <LanguageToggle language={lang} onChange={handleLangChange} label={t("languageLabel")} />
@@ -245,7 +246,7 @@ export default function FounderSupporterPage() {
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
               <a
                 href="#waitlist"
-                className="inline-flex items-center justify-center px-6 py-3 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm shadow-[0_4px_20px_rgba(232,197,71,0.3)] hover:brightness-110 transition-all"
+                className="inline-flex items-center justify-center px-6 py-3 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 transition-all"
               >
                 {t("ctaPrimary")}
               </a>
@@ -277,9 +278,9 @@ export default function FounderSupporterPage() {
         {/* ----- Fair Premium Promise ----- */}
         <section id="promise" className="px-4 sm:px-6 py-12 sm:py-16 bg-cz-subtle/40 border-y border-cz-border">
           <div className="max-w-3xl mx-auto">
-            <div className="bg-cz-card border-2 border-cz-accent/40 rounded-2xl p-6 sm:p-8 shadow-[0_4px_40px_rgba(232,197,71,0.1)]">
+            <div className="bg-cz-card border-2 border-cz-accent/40 rounded-cz p-6 sm:p-8">
               <h2 className="text-cz-1 text-2xl sm:text-3xl font-bold mb-3 flex items-center gap-2">
-                <span className="text-cz-accent">✓</span>
+                <CheckIcon className="w-6 h-6 text-cz-success flex-shrink-0" />
                 {t("promiseTitle")}
               </h2>
               <p className="text-cz-1 text-base sm:text-lg leading-relaxed">{t("promiseBody")}</p>
@@ -330,13 +331,13 @@ export default function FounderSupporterPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-cz-card border border-cz-border rounded-xl p-5">
                 <h3 className="text-cz-1 text-base font-semibold mb-3 flex items-center gap-2">
-                  <span className="text-emerald-500">✓</span>
+                  <CheckIcon className="w-4 h-4 text-cz-success flex-shrink-0" />
                   {t("soldCol")}
                 </h3>
                 <ul className="flex flex-col gap-2">
                   {t("sold", { returnObjects: true }).map((item, i) => (
                     <li key={i} className="text-cz-2 text-sm flex items-start gap-2">
-                      <span className="text-emerald-500 mt-0.5">·</span>
+                      <span className="text-cz-success mt-0.5">·</span>
                       <span>{item}</span>
                     </li>
                   ))}
@@ -345,7 +346,7 @@ export default function FounderSupporterPage() {
 
               <div className="bg-cz-card border border-cz-danger/30 rounded-xl p-5">
                 <h3 className="text-cz-1 text-base font-semibold mb-3 flex items-center gap-2">
-                  <span className="text-cz-danger">✗</span>
+                  <XIcon className="w-4 h-4 text-cz-danger flex-shrink-0" />
                   {t("notSoldCol")}
                 </h3>
                 <ul className="flex flex-col gap-2">
@@ -394,7 +395,7 @@ export default function FounderSupporterPage() {
         <section className="px-4 sm:px-6 py-12 sm:py-16">
           <div className="max-w-3xl mx-auto">
             <h2 className="text-cz-1 text-2xl sm:text-3xl font-bold text-center mb-8">{t("faqTitle")}</h2>
-            <div className="bg-cz-card border border-cz-border rounded-2xl px-5 sm:px-6">
+            <div className="bg-cz-card border border-cz-border rounded-cz px-5 sm:px-6">
               {t("faqItems", { returnObjects: true }).map((item, i) => (
                 <FaqItem key={i} idx={i} q={item.q} a={item.a} />
               ))}
