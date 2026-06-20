@@ -1,85 +1,52 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { formatNumber } from "../lib/intl";
 import { TrophyIcon } from "./ui";
 
+// Restrained, on-brand celebration (#1588 WP3). The old version rained 32
+// animate-bounce particles in 5 off-palette colours (pink/violet/blue): a
+// party-popper that broke the refined/restrained brand DNA. Replaced with a
+// quiet reveal: a single TrophyIcon in a gold ring, a Bebas display title, and
+// the amount in Inter Tight tabular, on the shared flat overlay tokens (no
+// rainbow, no bounce, no coloured glow). API (show/onClose/title/subtitle/
+// amount/icon) is unchanged so the three call sites need no edits.
 export function ConfettiModal({ show, onClose, title, subtitle, amount, icon }) {
   const { t } = useTranslation("common");
-  const [particles, setParticles] = useState([]);
 
   useEffect(() => {
     if (!show) return;
-    // Generate confetti particles
-    const colors = ["#e8c547", "#4ade80", "#60a5fa", "#f472b6", "#a78bfa"];
-    setParticles(
-      Array.from({ length: 32 }, (_, i) => ({
-        id: i,
-        color: colors[i % colors.length],
-        x: Math.random() * 100,
-        delay: Math.random() * 0.5,
-        duration: 0.8 + Math.random() * 0.6,
-        size: 4 + Math.random() * 6,
-        rotate: Math.random() * 360,
-        radius: Math.random() > 0.5 ? "50%" : "2px",
-      }))
-    );
-    // Auto-close after 4 seconds
-    const t = setTimeout(onClose, 4000);
-    return () => clearTimeout(t);
+    // Auto-close after 4 seconds (unchanged behaviour).
+    const timer = setTimeout(onClose, 4000);
+    return () => clearTimeout(timer);
   }, [show, onClose]);
 
   if (!show) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center"
-      onClick={onClose}>
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/70" />
+    <div
+      className="fixed inset-0 z-modal flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div className="cz-overlay-backdrop absolute inset-0 bg-black/60" aria-hidden="true" />
 
-      {/* Confetti particles */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {particles.map(p => (
-          <div key={p.id}
-            className="absolute animate-bounce"
-            style={{
-              left: `${p.x}%`,
-              top: "-10px",
-              width: p.size,
-              height: p.size,
-              backgroundColor: p.color,
-              borderRadius: p.radius,
-              animationDelay: `${p.delay}s`,
-              animationDuration: `${p.duration}s`,
-              transform: `rotate(${p.rotate}deg)`,
-            }}
-          />
-        ))}
-      </div>
-
-      {/* Modal */}
-      <div className="relative z-10 bg-cz-card border border-cz-border rounded-cz p-8
-        text-center max-w-sm w-full mx-4 shadow-2xl"
-        style={{ animation: "scaleIn 0.3s ease-out" }}>
-
+      <div
+        className="cz-overlay-panel relative z-10 w-full max-w-sm rounded-cz border border-cz-border
+          bg-cz-card p-8 text-center shadow-overlay"
+      >
         <div className="mb-4 flex justify-center" aria-hidden="true">
-          {icon ?? <TrophyIcon size={56} className="text-cz-accent-t" />}
+          <span className="inline-flex h-16 w-16 items-center justify-center rounded-cz-pill border border-cz-accent/40 bg-cz-accent/10 text-cz-accent-t">
+            {icon ?? <TrophyIcon size={32} />}
+          </span>
         </div>
-        <h2 className="text-cz-1 font-bold text-2xl mb-2">{title}</h2>
-        {subtitle && <p className="text-cz-2 text-sm mb-3">{subtitle}</p>}
+        <h2 className="text-cz-1 font-display text-3xl tracking-tight leading-none">{title}</h2>
+        {subtitle && <p className="text-cz-2 text-sm mt-2">{subtitle}</p>}
         {amount > 0 && (
-          <p className="text-cz-accent-t font-mono font-bold text-xl mb-4">
+          <p className="text-cz-accent-t font-data font-bold text-2xl tabular-nums mt-4">
             {formatNumber(amount)} CZ$
           </p>
         )}
-        <p className="text-cz-3 text-xs">{t("actions.clickToClose")}</p>
+        <p className="text-cz-3 text-xs mt-5">{t("actions.clickToClose")}</p>
       </div>
-
-      <style>{`
-        @keyframes scaleIn {
-          from { transform: scale(0.5); opacity: 0; }
-          to   { transform: scale(1);   opacity: 1; }
-        }
-      `}</style>
     </div>
   );
 }
