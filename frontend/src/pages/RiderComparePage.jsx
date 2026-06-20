@@ -169,9 +169,9 @@ export default function RiderComparePage() {
           <p>{t("compare.empty")}</p>
         </div>
       ) : (
-        <>
+        <div className="overflow-x-auto pb-1">
           {/* Rider headers */}
-          <div className="grid gap-3 mb-5" style={{ gridTemplateColumns: `200px repeat(${fullRiders.length}, 1fr)` }}>
+          <div className="grid gap-3 mb-5" style={{ gridTemplateColumns: `200px repeat(${fullRiders.length}, minmax(120px, 1fr))` }}>
             <div /> {/* Empty cell for label column */}
             {fullRiders.map((r) => (
               <div key={r.id} className="bg-cz-card border border-cz-border rounded-cz p-4 text-center">
@@ -202,7 +202,7 @@ export default function RiderComparePage() {
             {/* Potentiale row */}
             {fullRiders.some(r => scouting.estimateFor(r.id) !== null) && (
               <div className="grid items-center py-3 px-4 border-b border-cz-border bg-cz-accent/10"
-                style={{ gridTemplateColumns: `200px repeat(${fullRiders.length}, 1fr)` }}>
+                style={{ gridTemplateColumns: `200px repeat(${fullRiders.length}, minmax(120px, 1fr))` }}>
                 <div className="flex items-center gap-2">
                   <span className="text-cz-3 w-4 text-center">◆</span>
                   <span className="text-cz-2 text-sm font-medium">{t("compare.potential")}</span>
@@ -220,7 +220,7 @@ export default function RiderComparePage() {
                 <div key={stat.key}
                   className={`grid items-center py-3 px-4 border-b border-cz-border last:border-0
                     ${idx % 2 === 0 ? "bg-transparent" : ""}`}
-                  style={{ gridTemplateColumns: `200px repeat(${fullRiders.length}, 1fr)` }}>
+                  style={{ gridTemplateColumns: `200px repeat(${fullRiders.length}, minmax(120px, 1fr))` }}>
                   <div className="flex items-center gap-2">
                     <span className="text-cz-3 font-mono text-[10px] w-9 text-center">{stat.label}</span>
                     <span className="text-cz-2 text-sm">{t(`racePreview.derived.${stat.key}`)}</span>
@@ -258,7 +258,7 @@ export default function RiderComparePage() {
               );
             })}
           </div>
-        </>
+        </div>
       )}
     </div>
   );

@@ -660,8 +660,8 @@ export default function FinancePage() {
               <h2 className="text-cz-1 font-semibold text-sm mb-3">
                 {t("loans.terms.title", { division: team?.division })}
               </h2>
-              <div className="overflow-hidden rounded-cz border border-cz-border">
-                <table className="w-full text-xs">
+              <div className="overflow-x-auto rounded-cz border border-cz-border">
+                <table className="w-full min-w-[480px] text-xs">
                   <thead>
                     <tr className="border-b border-cz-border">
                       <th className="px-3 py-2 text-start text-cz-3">{t("loans.terms.headers.type")}</th>
