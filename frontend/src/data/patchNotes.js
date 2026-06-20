@@ -13,11 +13,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Getting started",
         "en": {
-          "title": "Getting started",
+          "title": "Tooltips explain CZ$, Division, Deadline Day",
           "body": "Plain-language tooltips now explain the shorthand a new manager meets first. Hover the sidebar balance to learn that CZ$ is the in-game currency (earned by playing, never bought with real money), hover Division to see it is your league tier, and hover the Deadline Day menu item to learn it is a transfer window with 30-minute flash auctions. The same balance and division tooltips appear on your team header."
         },
         "da": {
-          "title": "Getting started",
+          "title": "Tooltips forklarer CZ$, Division, Deadline Day",
           "body": "Tooltips i klar tale forklarer nu de forkortelser en ny manager møder først. Hold musen over saldoen i sidebaren for at lære at CZ$ er spillets valuta (tjent ved at spille, aldrig købt for rigtige penge), hold musen over Division for at se at det er dit ligatrin, og hold musen over Deadline Day-menupunktet for at lære at det er et transfervindue med 30-minutters flash-auktioner. De samme saldo- og division-tooltips findes på dit hold-header."
         },
         "refs": [
@@ -36,11 +36,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Getting started",
         "en": {
-          "title": "Getting started",
+          "title": "Rider stat codes now explained",
           "body": "The rider database now explains its 15 ability codes. Hover any stat column to see its full name, and a new \"What do the codes mean?\" key under the filters lists every code (CLM = Climbing, TT = Time trial, and so on), so a new manager can read the table and pick their first rider with confidence."
         },
         "da": {
-          "title": "Getting started",
+          "title": "Rytterdatabasens evne-koder forklaret",
           "body": "Rytterdatabasen forklarer nu sine 15 evne-koder. Hold musen over en stat-kolonne for at se det fulde navn, og en ny \"Hvad betyder koderne?\"-forklaring under filtrene viser alle koderne (CLM = Klatring, TT = Enkeltstart osv.), så en ny manager kan læse tabellen og vælge sin første rytter med tillid."
         },
         "refs": [
@@ -59,11 +59,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Mobile",
         "en": {
-          "title": "Mobile",
+          "title": "Wide tables readable on phones",
           "body": "Two tables no longer clip on narrow phones: the rider comparison now scrolls sideways instead of squeezing each rider into an unreadable column, and the loan-terms table on the finance page can reach its last column."
         },
         "da": {
-          "title": "Mobile",
+          "title": "Brede tabeller læsbare på telefon",
           "body": "To tabeller klipper ikke længere på smalle telefoner: rytter-sammenligningen scroller nu vandret i stedet for at klemme hver rytter ned i en ulæselig kolonne, og lånebetingelses-tabellen på økonomi-siden kan nå sin sidste kolonne."
         },
         "refs": [
@@ -83,11 +83,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Balance",
         "en": {
-          "title": "Balance",
+          "title": "Header balance updates live",
           "body": "Your balance in the header now updates live. After winning a bid, selling a rider or taking a loan, the figure refreshes instantly instead of staying stale until you reload the page."
         },
         "da": {
-          "title": "Balance",
+          "title": "Saldoen i headeren opdateres live",
           "body": "Din saldo i headeren opdateres nu live. Efter en vundet auktion, et salg eller et lån opdateres tallet med det samme i stedet for at stå forældet, indtil du genindlæser siden."
         },
         "refs": [
@@ -106,11 +106,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Getting started",
         "en": {
-          "title": "Getting started",
+          "title": "Smoother first session",
           "body": "First-session polish: the \"Get started\" guide on your dashboard no longer disappears for good if you close it by accident, your empty squad now points you straight to the market to sign your first riders, and the welcome dialog is cleaner. The filter hint on the riders page now names real abilities instead of old codes."
         },
         "da": {
-          "title": "Getting started",
+          "title": "Glattere første session",
           "body": "First-session-polish: \"Kom i gang\"-guiden på dit dashboard forsvinder ikke længere for altid, hvis du lukker den ved et uheld, din tomme trup peger nu direkte mod markedet, så du kan skrive dine første ryttere, og velkomstdialogen er renere. Filter-tippet på rytter-siden nævner nu rigtige evner i stedet for gamle koder."
         },
         "refs": [
@@ -129,11 +129,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Getting started",
         "en": {
-          "title": "Getting started",
+          "title": "Homepage leads with Create your team",
           "body": "The homepage now leads with a clear \"Create your team\" button, so you can jump straight into the game. Discord and the launch email are still there as secondary options."
         },
         "da": {
-          "title": "Getting started",
+          "title": "Forsiden fører med Opret dit hold",
           "body": "Forsiden fører nu med en tydelig \"Opret dit hold\"-knap, så du kan hoppe direkte ind i spillet. Discord og launch-mailen er der stadig som sekundære valg."
         },
         "refs": [
@@ -145,11 +145,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Sign-up",
         "en": {
-          "title": "Sign-up",
+          "title": "Clearer sign-up and login messages",
           "body": "The sign-up flow is clearer: when your account is ready you go straight to your team, and if email confirmation is needed you get one clear message showing exactly which address to check. Trying to log in before confirming now explains why, instead of looking like a wrong password."
         },
         "da": {
-          "title": "Sign-up",
+          "title": "Tydeligere opret-bruger og login",
           "body": "Opret-bruger-flowet er tydeligere: når din konto er klar ryger du direkte ind til dit hold, og hvis email-bekræftelse kræves får du én klar besked med præcis hvilken adresse du skal tjekke. At logge ind før bekræftelse forklarer nu hvorfor, i stedet for at ligne en forkert adgangskode."
         },
         "refs": [
@@ -168,11 +168,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Academy",
         "en": {
-          "title": "Academy",
+          "title": "Academy signings can't charge without delivering",
           "body": "Youth-academy acquisitions are now fully atomic. A rare timing window where an auction win or a signing could charge a team without delivering the rider, or push the academy past its 8-rider cap, is now closed."
         },
         "da": {
-          "title": "Academy",
+          "title": "Akademi-signeringer debiterer ikke uden levering",
           "body": "Ungdomsakademi-optagelser er nu fuldt atomiske. Et sjældent timing-vindue, hvor en auktionsgevinst eller en signering kunne debitere et hold uden at levere rytteren, eller skubbe akademiet forbi 8-rytter-loftet, er nu lukket."
         },
         "refs": [
@@ -184,11 +184,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Onboarding",
         "en": {
-          "title": "Onboarding",
+          "title": "New teams get a squad instantly",
           "body": "New teams now receive their starting squad automatically when created, so a team is ready to race from the start."
         },
         "da": {
-          "title": "Onboarding",
+          "title": "Nye hold får trup med det samme",
           "body": "Nye hold får nu automatisk deres start-trup ved oprettelse, så holdet er klar til at køre løb fra start."
         },
         "refs": [
@@ -207,11 +207,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Accessibility",
         "en": {
-          "title": "Accessibility",
+          "title": "Better screen reader support",
           "body": "Accessibility improvements: screen readers now skip decorative icons and read meaningful names on icon-only buttons, the page language is announced correctly, and search and filter fields have proper labels. No visual change."
         },
         "da": {
-          "title": "Accessibility",
+          "title": "Bedre understøttelse af skærmlæsere",
           "body": "Tilgængelighedsforbedringer: skærmlæsere springer nu dekorative ikoner over og læser meningsfulde navne på ikon-knapper, sidens sprog annonceres korrekt, og søge- og filterfelter har korrekte etiketter. Ingen visuel ændring."
         }
       }
@@ -227,11 +227,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Race results",
         "en": {
-          "title": "Race results",
+          "title": "Stages now show a terrain badge",
           "body": "Race results now show a terrain badge per stage: a schematic silhouette (flat, hilly, mountain, time trial and so on) plus the likely finale. It is an indicative terrain category, not a measured elevation profile; full route profiles come later."
         },
         "da": {
-          "title": "Race results",
+          "title": "Etaper viser nu et terræn-badge",
           "body": "Løbsresultater viser nu et terræn-badge pr. etape: en skematisk silhuet (fladt, kuperet, bjerge, enkeltstart osv.) plus den sandsynlige finale. Det er en vejledende terrænkategori, ikke en målt højdeprofil; fulde ruteprofiler kommer senere."
         },
         "refs": [
@@ -243,11 +243,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Rider database",
         "en": {
-          "title": "Rider database",
+          "title": "Sort the rider list on mobile",
           "body": "Mobile sorting: you can now sort the rider list on mobile by any column (Nation, Team, Status, Type, Value, Salary, Rider and stats) via a new 'Sort by' control above the list. Previously several sort options were only reachable on desktop."
         },
         "da": {
-          "title": "Rider database",
+          "title": "Sortér rytterlisten på mobil",
           "body": "Mobil-sortering: du kan nu sortere rytterlisten på mobil efter alle kolonner (Nation, Hold, Status, Type, Værdi, Løn, Rytter og evner) via en ny 'Sortér efter'-kontrol over listen. Tidligere var flere sorteringsvalg kun tilgængelige på desktop."
         },
         "refs": [
@@ -259,11 +259,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Rider database",
         "en": {
-          "title": "Rider database",
+          "title": "U23 filter now matches the badge",
           "body": "The U23 rider filter now matches the U23 badge exactly. Riders who are 23 carry the U25 badge and no longer show up in U23 searches."
         },
         "da": {
-          "title": "Rider database",
+          "title": "U23-filter matcher nu badgen",
           "body": "U23-rytterfilteret matcher nu U23-badgen præcist. Ryttere på 23 år bærer U25-badgen og dukker ikke længere op i U23-søgninger."
         },
         "refs": [
@@ -275,11 +275,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Inbox",
         "en": {
-          "title": "Inbox",
+          "title": "Notifications link to the rider",
           "body": "Rider notifications now link to the rider. Notifications about a rider (new bid, outbid, transfer offer, loan request and more) link straight to the rider's profile. Older notifications keep working as before."
         },
         "da": {
-          "title": "Inbox",
+          "title": "Notifikationer linker til rytteren",
           "body": "Rytter-notifikationer linker nu til rytteren. Beskeder om en rytter (nyt bud, overbudt, transfertilbud, lejeforslag med mere) linker direkte til rytterprofilen. Ældre notifikationer virker som før."
         },
         "refs": [
@@ -291,11 +291,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Finance",
         "en": {
-          "title": "Finance",
+          "title": "Rider names on more finance entries",
           "body": "Finance history now shows the rider's name on transfer-window and swap transactions (previously only auction deals named the rider). Finance report charts now show their category labels in your selected language."
         },
         "da": {
-          "title": "Finance",
+          "title": "Rytternavne på flere finans-poster",
           "body": "Finans-historikken viser nu rytterens navn på transfer-vindue- og byttehandler (før var det kun auktionshandler der navngav rytteren). Finans-rapportens grafer viser nu deres kategori-labels på dit valgte sprog."
         },
         "refs": [
@@ -307,11 +307,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Auctions",
         "en": {
-          "title": "Auctions",
+          "title": "Tied auctions sort by highest bid",
           "body": "Bid history now sorts auctions that end at the same time by highest bid first."
         },
         "da": {
-          "title": "Auctions",
+          "title": "Samtidige auktioner sorteres efter højeste bud",
           "body": "Bud-historikken sorterer nu auktioner med samme sluttidspunkt efter højeste bud først."
         },
         "refs": [
@@ -323,11 +323,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Usability",
         "en": {
-          "title": "Usability",
+          "title": "Fewer fake-clickable elements",
           "body": "Cleaner clicks: a few elements that looked clickable but were not are now fixed. The salary and season totals and the standings season label show a short explanation on hover, and the dashboard season banner now links straight to the race calendar. Promotion and relegation divider lines now render correctly in dark mode."
         },
         "da": {
-          "title": "Usability",
+          "title": "Færre falsk-klikbare elementer",
           "body": "Renere klik: et par elementer der så klikbare ud men ikke var det er nu rettet. Løn- og sæson-tallene og rangliste-sæsonen viser en kort forklaring ved hover, og dashboardets sæson-banner linker nu direkte til løbskalenderen. Skillelinjerne ved op- og nedrykning vises nu korrekt i dark mode."
         },
         "refs": [
@@ -339,11 +339,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Design",
         "en": {
-          "title": "Design",
+          "title": "Cleaner badges and icons",
           "body": "Design polish across several pages: removed gold glow effects, aligned status badges to theme-aware colours, and swapped a couple of stray glyphs for proper icons. No behaviour changed."
         },
         "da": {
-          "title": "Design",
+          "title": "Renere badges og ikoner",
           "body": "Design-finpudsning på tværs af flere sider: fjernede gold-glow-effekter, rettede status-badges til tema-bevidste farver, og udskiftede et par løse tegn med rigtige ikoner. Ingen funktion ændret."
         },
         "refs": [
@@ -355,11 +355,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Race results",
         "en": {
-          "title": "Race results",
+          "title": "PCM result entry removed",
           "body": "Removed the PCM result-reporting interface (the 'Submit results' and 'Approve' tabs and the admin PCM import panel). Races are run by the Cycling Zone race engine, which writes results automatically."
         },
         "da": {
-          "title": "Race results",
+          "title": "PCM-resultatindberetning fjernet",
           "body": "Fjernet PCM-resultatindberetning fra brugerfladen ('Indberét resultater'- og 'Godkend'-fanerne samt admin-PCM-import-panelet). Løb afvikles af Cycling Zones race-motor, der skriver resultaterne automatisk."
         },
         "refs": [
@@ -378,11 +378,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Rider database",
         "en": {
-          "title": "Rider database",
+          "title": "Sort the rider database your way",
           "body": "Rider Database: you can now sort by Team and by Status, rider type has its own column instead of sharing the status badges, and the Potential column is gone (a rider's potential stays hidden and is scouted on the rider page)."
         },
         "da": {
-          "title": "Rider database",
+          "title": "Sortér rytterdatabasen som du vil",
           "body": "Rytterdatabase: du kan nu sortere på Hold og Status, ryttertype har sin egen kolonne i stedet for at dele plads med status-badges, og Potentiale-kolonnen er væk (en rytters potentiale forbliver skjult og scoutes på ryttersiden)."
         },
         "refs": [
@@ -394,11 +394,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Transfer list",
         "en": {
-          "title": "Transfer list",
+          "title": "Transfer market now in clean rows",
           "body": "Transfer list: the Market tab now shows riders in rows like the rider page, with the same ability columns and colour badges, instead of cards."
         },
         "da": {
-          "title": "Transfer list",
+          "title": "Transfermarkedet vises nu i rækker",
           "body": "Transferliste: Market-fanen viser nu ryttere i rækker som ryttersiden, med de samme evne-kolonner og farve-badges, i stedet for kort."
         },
         "refs": [
@@ -410,11 +410,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Injuries",
         "en": {
-          "title": "Injuries",
+          "title": "Injured badge on every squad",
           "body": "Injured riders now show a clear 'Injured' badge in the status column, both on your own squad and on other teams' squads, not just on the rider profile."
         },
         "da": {
-          "title": "Injuries",
+          "title": "Skadet-badge på alle hold",
           "body": "Skadede ryttere viser nu et tydeligt 'Skadet'-badge i status-kolonnen, både på din egen trup og på andres hold, ikke kun på rytterprofilen."
         },
         "refs": [
@@ -426,11 +426,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Dashboard",
         "en": {
-          "title": "Dashboard",
+          "title": "Hide more dashboard modules",
           "body": "Dashboard: you can now hide 'Next move' and the finance forecast, just like the other modules. Use the Customize button (top right) to toggle them."
         },
         "da": {
-          "title": "Dashboard",
+          "title": "Skjul flere dashboard-moduler",
           "body": "Dashboard: du kan nu skjule 'Næste træk' og det økonomiske forecast, ligesom de øvrige moduler. Brug Tilpas-knappen (øverst til højre) til at slå dem til og fra."
         },
         "refs": [
@@ -442,11 +442,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Manager profile",
         "en": {
-          "title": "Manager profile",
+          "title": "Cleaner name editing on your profile",
           "body": "Manager profile: the wordy edit-name text on your own profile is now a discreet Settings link."
         },
         "da": {
-          "title": "Manager profile",
+          "title": "Renere navneredigering på din profil",
           "body": "Managerprofil: den lange rediger-navn-tekst på din egen profil er nu et diskret Indstillinger-link."
         },
         "refs": [
@@ -465,11 +465,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Rider abilities",
         "en": {
-          "title": "Rider abilities",
+          "title": "New ability system everywhere",
           "body": "Rider ratings across the whole game now use the new ability system (climbing, time trial, sprint, endurance and more) instead of the old stat set. The rider database, auctions, transfer list, squad views, comparison and rankings all show the same abilities, and you can sort and filter by them."
         },
         "da": {
-          "title": "Rider abilities",
+          "title": "Nyt evne-system overalt",
           "body": "Rytter-ratings i hele spillet bruger nu det nye evne-system (klatring, enkeltstart, sprint, udholdenhed med flere) i stedet for det gamle stat-sæt. Rytterdatabasen, auktioner, transferlisten, trup-visninger, sammenligning og ranglister viser alle de samme evner, og du kan sortere og filtrere på dem."
         },
         "refs": [
@@ -481,11 +481,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Transfer history",
         "en": {
-          "title": "Transfer history",
+          "title": "Academy call-ups in transfer history",
           "body": "Academy riders promoted to the first team now appear in transfer history as an 'Academy' source with no fee, on both your own and other teams' history."
         },
         "da": {
-          "title": "Transfer history",
+          "title": "Akademi-oprykninger i transferhistorikken",
           "body": "Akademiryttere der rykkes op på førsteholdet fremgår nu af transferhistorikken som 'Academy'-kilde uden beløb, på både dit eget og andre holds historik."
         },
         "refs": [
@@ -504,11 +504,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Academy",
         "en": {
-          "title": "Academy",
+          "title": "Open any academy rider's profile",
           "body": "Academy riders are now clickable. Open any rider on the Academy page (squad, intake, free agents and graduates) to view their full profile and stats, just like first-team riders."
         },
         "da": {
-          "title": "Academy",
+          "title": "Åbn enhver akademirytters profil",
           "body": "Akademiryttere er nu klikbare. Åbn enhver rytter på Akademi-siden (trup, intake, frie agenter og graduerede) for at se deres fulde profil og stats, præcis som førsteholdsryttere."
         },
         "refs": [
@@ -527,11 +527,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Design",
         "en": {
-          "title": "Design",
+          "title": "Fresh look across many pages",
           "body": "A wave of pages now use the new design system for a cleaner, more consistent look: Transfers, Notifications, Profile, Manager profile, Results, Standings, Teams and Auction history. Cards, buttons, badges and icons are unified and flatter. No data or behaviour changed."
         },
         "da": {
-          "title": "Design",
+          "title": "Friskt look på mange sider",
           "body": "En stribe sider bruger nu det nye design-system for et renere og mere ensartet udtryk: Transfers, Notifikationer, Profil, Manager-profil, Resultater, Stilling, Hold og Auktionshistorik. Kort, knapper, badges og ikoner er forenede og fladere. Ingen data eller funktion er ændret."
         },
         "refs": [
@@ -543,11 +543,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Hall of Fame and streak",
         "en": {
-          "title": "Hall of Fame and streak",
+          "title": "No more daily login streak",
           "body": "Hall of Fame, the daily login streak and the manager XP display have been removed from the interface. There is no daily login pressure, and your achievements are unaffected."
         },
         "da": {
-          "title": "Hall of Fame and streak",
+          "title": "Slut med daglig login-streak",
           "body": "Hall of Fame, den daglige login-streak og manager-XP-visningen er fjernet fra brugerfladen. Der er ingen daglig login-tvang, og dine achievements er uberørte."
         },
         "refs": [
@@ -566,11 +566,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Rider search",
         "en": {
-          "title": "Rider search",
+          "title": "Search now matches full names",
           "body": "Searching riders now matches the full name. Typing a first name plus the start of a last name (for example 'Tadej Pog') finds the rider, instead of returning nothing."
         },
         "da": {
-          "title": "Rider search",
+          "title": "Søgning matcher nu fulde navne",
           "body": "Ryttersøgning matcher nu det fulde navn. At skrive et fornavn plus starten af et efternavn (for eksempel 'Tadej Pog') finder nu rytteren i stedet for at give nul resultater."
         },
         "refs": [
@@ -582,11 +582,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Auctions",
         "en": {
-          "title": "Auctions",
+          "title": "Sort auctions by ability",
           "body": "In the 'My situation' tab you can now sort by ability and stat columns, not just price. On desktop the 'Remove auto-bid' control is now a clear labelled button instead of a bare cross."
         },
         "da": {
-          "title": "Auctions",
+          "title": "Sortér auktioner efter evne",
           "body": "I fanen 'Min situation' kan du nu sortere på evne- og stat-kolonner, ikke kun pris. På desktop er 'Fjern autobud' nu en tydelig knap med tekst i stedet for et bart kryds."
         },
         "refs": [
@@ -599,11 +599,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Riders list",
         "en": {
-          "title": "Riders list",
+          "title": "Smoother rider list browsing",
           "body": "Changing page in the rider list now scrolls back to the top. The ability sliders no longer make the list jump while you drag; the filter applies when you release. A rider's profile now shows the correct age badge (U23 for under 23, U25 for 23 to 24)."
         },
         "da": {
-          "title": "Riders list",
+          "title": "Mere flydende rytteroversigt",
           "body": "Skift af side i rytteroversigten scroller nu tilbage til toppen. Evne-skyderne får ikke længere listen til at hoppe mens du trækker; filteret slår til når du slipper. En rytters profil viser nu det rigtige alders-badge (U23 for under 23, U25 for 23 til 24)."
         },
         "refs": [
@@ -617,11 +617,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Notifications",
         "en": {
-          "title": "Notifications",
+          "title": "Notification badge shows 9+",
           "body": "The notification badge now correctly shows '9+' when you have more than nine unread notifications, instead of stopping at 9."
         },
         "da": {
-          "title": "Notifications",
+          "title": "Notifikations-badge viser 9+",
           "body": "Notifikations-badgen viser nu korrekt '9+' når du har mere end ni ulæste notifikationer i stedet for at stoppe ved 9."
         },
         "refs": [
@@ -633,11 +633,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Team results",
         "en": {
-          "title": "Team results",
+          "title": "Click into races from team results",
           "body": "On a team's results page you can now click a race name to open that race, and stage results link straight to the right stage."
         },
         "da": {
-          "title": "Team results",
+          "title": "Klik ind i løb fra holdresultater",
           "body": "På et holds resultatside kan du nu klikke på et løbsnavn for at åbne løbet, og etape-resultater linker direkte til den rigtige etape."
         },
         "refs": [
@@ -656,11 +656,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Daily training",
         "en": {
-          "title": "Daily training",
+          "title": "Daily training works again",
           "body": "Daily training works again. The 'Train today' button was blocked by an error and would not run; it now trains your squad as expected."
         },
         "da": {
-          "title": "Daily training",
+          "title": "Daglig træning virker igen",
           "body": "Daglig træning virker igen. 'Træn i dag'-knappen blev blokeret af en fejl og ville ikke køre; den træner nu dit hold som forventet."
         },
         "refs": [
@@ -672,11 +672,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Academy",
         "en": {
-          "title": "Academy",
+          "title": "Four academy bugs fixed",
           "body": "Fixed four academy issues: real riders and stars no longer show up as free academy signings, academy riders now get a rider type and the new ability stats instead of old data, and academy riders now train together with the rest of your squad during automatic training."
         },
         "da": {
-          "title": "Academy",
+          "title": "Fire akademi-fejl rettet",
           "body": "Rettede fire akademi-fejl: rigtige ryttere og stjerner optræder ikke længere som gratis akademi-signinger, akademiryttere får nu en ryttertype og de nye evne-stats i stedet for gamle data, og akademiryttere træner nu sammen med resten af holdet ved automatisk træning."
         },
         "refs": [
@@ -688,11 +688,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Finance",
         "en": {
-          "title": "Finance",
+          "title": "Rider names in finance history",
           "body": "The finance history now shows the rider's name on transfer, auction and academy transactions, instead of a generic 'Transfer' label."
         },
         "da": {
-          "title": "Finance",
+          "title": "Rytternavne i økonomi-historikken",
           "body": "Økonomi-historikken viser nu rytterens navn på transfer-, auktions- og akademi-transaktioner i stedet for en generisk 'Transfer'-label."
         },
         "refs": [
@@ -704,11 +704,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Dashboard",
         "en": {
-          "title": "Dashboard",
+          "title": "Board card hidden until set up",
           "body": "The dashboard no longer shows the board card before your board has been set up."
         },
         "da": {
-          "title": "Dashboard",
+          "title": "Bestyrelses-kort skjult til oprettelse",
           "body": "Dashboardet viser ikke længere bestyrelses-kortet, før din bestyrelse er oprettet."
         },
         "refs": [
@@ -720,11 +720,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Team page",
         "en": {
-          "title": "Team page",
+          "title": "Sortable squad table columns",
           "body": "The squad table now has its own columns for status badges, rider type and contract end, and you can sort by rider type and contract."
         },
         "da": {
-          "title": "Team page",
+          "title": "Sortérbare kolonner i trup-tabellen",
           "body": "Trup-tabellen har nu egne kolonner for status-badges, ryttertype og kontraktudløb, og du kan sortere på ryttertype og kontrakt."
         },
         "refs": [
@@ -736,11 +736,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Daily training",
         "en": {
-          "title": "Daily training",
+          "title": "Train several riders at once",
           "body": "The training page now shows each rider's type, lets you group the roster by type, and lets you set a focus and intensity for several riders at once."
         },
         "da": {
-          "title": "Daily training",
+          "title": "Træn flere ryttere ad gangen",
           "body": "Træningssiden viser nu hver rytters type, lader dig gruppere truppen efter type, og lader dig sætte fokus og intensitet på flere ryttere ad gangen."
         },
         "refs": [
@@ -752,11 +752,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Season relaunch",
         "en": {
-          "title": "Season relaunch",
+          "title": "Cleaner season relaunch reset",
           "body": "When a season is relaunched, incoming transfers and watchlists are now cleared along with the rest of the reset, so no stale entries carry over."
         },
         "da": {
-          "title": "Season relaunch",
+          "title": "Renere nulstilling ved sæson-relancering",
           "body": "Når en sæson relanceres, ryddes indkommende transfers og ønskelister nu sammen med resten af nulstillingen, så ingen gamle poster føres med over."
         },
         "refs": [
@@ -775,11 +775,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Season 1 relaunch",
         "en": {
-          "title": "Season 1 relaunch",
+          "title": "Season 1 relaunch on fresh foundation",
           "body": "Cycling Zone has relaunched onto its own foundation with a fresh, independent Season 1. The previous rider field, based on real-world data, has retired, and the world is now a brand-new set of fictional riders with their own abilities and values. Results are simulated by our own race engine instead of the old system, so rider abilities actually decide the race. Every manager starts over equally with a fresh 8-rider squad and a starting budget of 800,000 CZ$; balances, transfers and any purchases made for a future season do not carry over. New systems are live: daily training (your riders develop over the season), a youth academy (a candidate intake on day one), and an own dynamic value model for the transfer market. Every manager who played before the reset keeps a permanent Founder badge."
         },
         "da": {
-          "title": "Season 1 relaunch",
+          "title": "Sæson 1 relanceret på nyt fundament",
           "body": "Cycling Zone er relanceret på sit eget fundament med en frisk, uafhængig sæson 1. Det tidligere rytterfelt, baseret på data fra den virkelige verden, er pensioneret, og feltet er nu et helt nyt sæt fiktive ryttere med egne evner og værdier. Resultater simuleres af vores egen race-motor i stedet for det gamle system, så rytternes evner faktisk afgør løbet. Hver manager starter forfra på lige fod med et frisk 8-rytters hold og en startkapital på 800.000 CZ$; saldi, transfers og køb lavet til en fremtidig sæson føres ikke med over. Nye systemer er live: daglig træning (dine ryttere udvikler sig hen over sæsonen), et ungdomsakademi (et kandidat-kuld på dag ét) og en egen dynamisk værdimodel for transfermarkedet. Hver manager der spillede før resettet beholder et permanent Founder-badge."
         },
         "refs": [
@@ -799,11 +799,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Transfers",
         "en": {
-          "title": "Transfers",
+          "title": "Deadline Day summary reads correctly now",
           "body": "The Final Whistle summary on Deadline Day now shows the season number and the deals breakdown correctly (for example 'Season 2' and '3 auctions · 1 transfers') instead of raw placeholder text. Fixed a text-rendering bug across a few labels."
         },
         "da": {
-          "title": "Transfers",
+          "title": "Final Whistle viser nu korrekt tekst",
           "body": "Final Whistle-opsummeringen på Deadline Day viser nu sæsonnummer og handels-fordelingen korrekt (for eksempel 'Sæson 2' og '3 auktioner · 1 transfers') i stedet for rå pladsholder-tekst. Rettede en tekst-rendering-fejl i et par labels."
         },
         "refs": [
@@ -822,11 +822,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Daily Training",
         "en": {
-          "title": "Daily Training",
+          "title": "Training report shows real progress",
           "body": "The daily training report now makes progress visible. A day summary at the top shows how many riders trained, how many had a breakthrough, and how many are in peak form. Every rider, both in the roster and the report, has a progress bar toward their focus ability's next +1 (it turns green when a breakthrough is close), and a breakthrough is now highlighted with the actual jump, for example 71 to 72, instead of a flat +1. The raw score has been removed in favour of these clearer results."
         },
         "da": {
-          "title": "Daily Training",
+          "title": "Træningsrapport viser nu ægte fremgang",
           "body": "Den daglige træningsrapport gør nu fremskridt synligt. En dags-opsummering øverst viser hvor mange ryttere der trænede, hvor mange der fik et gennembrud, og hvor mange der er i topform. Hver rytter, både i rosteret og rapporten, har en fremskridtslinje mod fokus-evnens næste +1 (den bliver grøn når et gennembrud er tæt på), og et gennembrud fremhæves nu med det faktiske spring, for eksempel 71 til 72, i stedet for et fladt +1. Den rå score er fjernet til fordel for disse tydeligere resultater."
         },
         "refs": [
@@ -845,11 +845,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Academy",
         "en": {
-          "title": "Academy",
+          "title": "Academy riders graduate at 22",
           "body": "Academy riders now graduate when they turn 22 (flag-gated, launches with the relaunch). For each one you decide: promote them into your senior squad on a senior contract, sell them on the transfer market, or release them. If you do not decide before the deadline, the club makes a sensible default for you (promote when there is room, otherwise sell)."
         },
         "da": {
-          "title": "Academy",
+          "title": "Akademiryttere forlader akademiet ved 22",
           "body": "Akademiryttere forlader nu akademiet når de fylder 22 (flag-gated, lanceres ved relaunch). For hver enkelt bestemmer du: ryk dem op i din senior-trup på en senior-kontrakt, sælg dem på transfermarkedet, eller slip dem. Beslutter du ikke inden fristen, vælger klubben et fornuftigt standardvalg for dig (ryk op når der er plads, ellers sælg)."
         },
         "refs": [
@@ -868,11 +868,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Board",
         "en": {
-          "title": "Board",
+          "title": "Track board satisfaction race by race",
           "body": "Your board's satisfaction now shows how it moved race by race. Open the plan details on the Board page to see a weekend-by-weekend history: each race weekend shows whether satisfaction went up or down, by how much, and which goal area drove it (results, finances, identity, or ranking). The trend arrow on the plan also reflects the latest race weekend during the season now, not just the end-of-season result."
         },
         "da": {
-          "title": "Board",
+          "title": "Følg bestyrelsens tilfredshed løb for løb",
           "body": "Din bestyrelses tilfredshed viser nu hvordan den flyttede sig løb for løb. Åbn plan-detaljerne på Bestyrelses-siden for at se en weekend-for-weekend-historik: hver løbsweekend viser om tilfredsheden gik op eller ned, hvor meget, og hvilket målområde der drev det (resultater, økonomi, identitet eller rangering). Trend-pilen på planen afspejler nu også den seneste løbsweekend i løbet af sæsonen, ikke kun sæson-slut-resultatet."
         },
         "refs": [
@@ -891,11 +891,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Watchlist",
         "en": {
-          "title": "Watchlist",
+          "title": "Watchlist flags riders already in auction",
           "body": "Your watchlist now shows an \"In auction\" badge when a rider is already in an active auction, and the \"Start auction\" button is hidden for those riders, so you no longer click it only to get an error."
         },
         "da": {
-          "title": "Watchlist",
+          "title": "Ønskeliste viser ryttere i auktion",
           "body": "Din ønskeliste viser nu et \"I auktion\"-mærke når en rytter allerede er i en aktiv auktion, og \"Start auktion\"-knappen skjules for de ryttere, så du ikke længere klikker den og først bagefter får en fejl."
         },
         "refs": [
@@ -914,11 +914,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Finances",
         "en": {
-          "title": "Finances",
+          "title": "Seasonal upkeep cost per division",
           "body": "Teams now pay a seasonal operating cost (upkeep) at the start of each season: Division 1 pays 440,000 CZ$, Division 2 pays 140,000 CZ$, and Division 3 pays 40,000 CZ$. This is a fixed cost that does not scale with your board modifier. The Division 3 sponsor base has also been raised from 260,000 to 340,000 CZ$ to keep Division 3 teams sustainable. Sponsor income is now capped at a maximum payout of 900,000 CZ$ per season (720,000 CZ$ in season 1), applied after your board modifier and any sponsor pullout."
         },
         "da": {
-          "title": "Finances",
+          "title": "Sæsonbestemt driftsomkostning pr. division",
           "body": "Hold betaler nu en løbende driftsomkostning (upkeep) ved starten af hver sæson: Division 1 betaler 440.000 CZ$, Division 2 betaler 140.000 CZ$ og Division 3 betaler 40.000 CZ$. Det er en fast omkostning der ikke skaleres med din bestyrelsesmodifikator. D3-sponsorbasen er hævet fra 260.000 til 340.000 CZ$ for at holde Division 3-hold bæredygtige. Sponsor-indkomst er nu begrænset til maks. 900.000 CZ$ pr. sæson (720.000 CZ$ i sæson 1), beregnet efter din bestyrelsesmodifikator og evt. sponsor-pullout."
         },
         "refs": [
@@ -930,11 +930,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Debt enforcement",
         "en": {
-          "title": "Debt enforcement",
+          "title": "Debt now capped at division ceiling",
           "body": "The emergency loan debt ceiling is now the division ceiling (Division 1: 1,200,000 CZ$, Division 2: 900,000 CZ$, Division 3: 600,000 CZ$) instead of a flat amount. You cannot borrow past that ceiling. If your total debt stays above your division ceiling after a season ends, your transfers are frozen (no bids, no transfers, no swaps, no new loans). If the debt remains above the ceiling for a second consecutive season, your highest-value rider is force-sold to bring the debt down."
         },
         "da": {
-          "title": "Debt enforcement",
+          "title": "Gæld loftes nu efter division",
           "body": "Nødlåns-gældsgrænsen er nu lig divisions-loftet (Division 1: 1.200.000 CZ$, Division 2: 900.000 CZ$, Division 3: 600.000 CZ$) i stedet for et fladt beløb. Du kan ikke låne dig forbi det loft. Holder din samlede gæld sig over dit divisions-loft efter en sæsons afslutning, fryses dine transferaktiviteter (ingen bud, ingen transfers, ingen swaps, ingen nye lån). Forbliver gælden over loftet endnu en sæson, sælges din dyreste rytter tvungent for at nedbringe gælden."
         },
         "refs": [
@@ -953,11 +953,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Finances",
         "en": {
-          "title": "Finances",
+          "title": "Season 2 sponsor income scales by division",
           "body": "Season 2 sponsor income is now scaled by division, the same as season 1 (D1 600,000 · D2 400,000 · D3 260,000 CZ$), with a 0-150,000 CZ$ performance bonus added on top from last season's points and placing. This replaces a flat high base that was a temporary fix from the beta and was inflating the economy, so no team's sponsor jumps to a large flat amount in season 2 anymore. The help FAQ has been updated to match. Refs #1439,"
         },
         "da": {
-          "title": "Finances",
+          "title": "Sæson 2-sponsor skaleres efter division",
           "body": "Sponsor-indkomst i sæson 2 skaleres nu efter division, ligesom sæson 1 (D1 600.000 · D2 400.000 · D3 260.000 CZ$), med en performance-bonus på 0-150.000 CZ$ oveni ud fra sidste sæsons point og placering. Det erstatter en flad høj base, der var en midlertidig løsning fra betaen og inflaterede økonomien, så intet holds sponsor springer længere til et stort fladt beløb i sæson 2. Hjælp-FAQ'en er opdateret så den matcher. Refs #1439,"
         },
         "refs": [
@@ -977,11 +977,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Finances",
         "en": {
-          "title": "Finances",
+          "title": "Lower salaries, division-scaled sponsors",
           "body": "The economy has been rebalanced for the fresh season. Rider salaries are now 6.7% of a rider's market value per season, down from 10%, so running a squad costs less. The estimated salary shown for free agents before you sign them uses the new rate. Sponsor income for season 1 now scales with your division (D1 600,000 · D2 400,000 · D3 260,000 CZ$), so a competitive squad stays sustainable instead of bleeding money."
         },
         "da": {
-          "title": "Finances",
+          "title": "Lavere løn, sponsor efter division",
           "body": "Økonomien er rebalanceret til den friske sæson. Rytterløn er nu 6,7% af en rytters markedsværdi pr. sæson, ned fra 10%, så det koster mindre at drive et hold. Den estimerede løn der vises for free agents inden du signerer dem bruger den nye sats. Sponsor-indkomst for sæson 1 skaleres nu efter din division (D1 600.000 · D2 400.000 · D3 260.000 CZ$), så et konkurrencedygtigt hold forbliver bæredygtigt i stedet for at bløde penge."
         },
         "refs": [
@@ -1000,11 +1000,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Results",
         "en": {
-          "title": "Results",
+          "title": "Results now show time gaps",
           "body": "Stage and overall results now show the time gap to the stage winner and the overall leader. Open a race from the race library, and each stage tab and the general classification now list the gap next to each rider, so you can read how the race split apart. Gaps appear for races run on the new race engine. Refs #959,"
         },
         "da": {
-          "title": "Results",
+          "title": "Resultater viser nu tidsgab",
           "body": "Etape- og samlede resultater viser nu tidsgabet til etapevinderen og den samlede fører. Åbn et løb fra løbsbiblioteket, og hver etape-fane og det samlede klassement viser nu gabet ud for hver rytter, så du kan aflæse hvordan løbet blev splittet. Gabene vises for løb kørt på den nye race-motor. Refs #959,"
         },
         "refs": [
@@ -1024,11 +1024,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Riders",
         "en": {
-          "title": "Riders",
+          "title": "Rider values recalibrated for new types",
           "body": "Rider values have been recalibrated to match the corrected rider types. With the lead-out type removed, the valuation model was re-fit on the eight types, so riders who changed type now show a value that fits their type. Top riders are unchanged and the overall scale is the same. This feeds auction minimums and transfer prices. Refs #1101,"
         },
         "da": {
-          "title": "Riders",
+          "title": "Rytter-værdier rekalibreret efter typer",
           "body": "Rytter-værdierne er rekalibreret så de matcher de korrigerede ryttertyper. Med lead-out-typen fjernet er værdimodellen re-fittet på de otte typer, så ryttere der skiftede type nu viser en værdi der passer til deres type. Toprytterne er uændrede og den samlede skala er den samme. Det fodrer auktions-minimum og transfer-priser. Refs #1101,"
         },
         "refs": [
@@ -1048,11 +1048,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Riders",
         "en": {
-          "title": "Riders",
+          "title": "Lead-out retired, eight rider types remain",
           "body": "Lead-out has been retired as a rider type, leaving eight types (Sprinter, Time-trialist, Climber, Puncheur, Cobbles specialist, Baroudeur, Rouleur, GC contender). Riders who used to show as lead-outs now appear as sprinters or rouleurs, which better reflects how they actually race. This brings the site in line with the locked type design. Types are for display and filtering only and do not affect the economy. No gameplay changes. Refs #1122,"
         },
         "da": {
-          "title": "Riders",
+          "title": "Lead-out udgået, otte ryttertyper tilbage",
           "body": "Lead-out er udgået som ryttertype, så der nu er otte typer (Sprinter, Tidskører, Bjergrytter, Bakkerytter, Brostensrytter, Baroudeur, Rouleur, Etapeløbsrytter). Ryttere der før optrådte som lead-outs vises nu som sprintere eller rouleurs, hvilket bedre afspejler måden de faktisk kører på. Det bringer hjemmesiden i overensstemmelse med det låste type-design. Typerne bruges kun til visning og filtrering og påvirker ikke økonomien. Ingen ændringer i gameplay. Refs #1122,"
         },
         "refs": [
@@ -1072,11 +1072,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Riders",
         "en": {
-          "title": "Riders",
+          "title": "More accurate GC rider classification",
           "body": "Rider types are now classified more accurately. The system was mis-labelling complete stage racers (strong in both time-trial and climbing) as pure time-trial specialists, so very few riders showed up as GC. Now complete stage racers correctly show as GC, pure time-trial specialists stay TT, and explosive puncheurs no longer slip into the GC group. Types are for display and filtering only and do not affect the economy. No gameplay changes."
         },
         "da": {
-          "title": "Riders",
+          "title": "Mere præcis GC-klassificering af ryttere",
           "body": "Ryttertyper klassificeres nu mere præcist. Systemet fejlmærkede komplette etape-ryttere (stærke i både enkeltstart og bjerge) som rene enkeltstart-specialister, så meget få ryttere optrådte som GC. Nu vises komplette etape-ryttere korrekt som GC, rene enkeltstart-specialister forbliver TT, og eksplosive puncheurs sniger sig ikke længere ind i GC-gruppen. Typerne bruges kun til visning og filtrering og påvirker ikke økonomien. Ingen ændringer i gameplay."
         },
         "refs": [
@@ -1095,11 +1095,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Auctions",
         "en": {
-          "title": "Auctions",
+          "title": "Auto-bid now explained in plain terms",
           "body": "The auctions page and Help now explain how auto-bid works in plain terms: we raise your bid for you 1 CZ$ at a time up to your private cap, you are only outbid when someone goes above that cap, and on an exactly equal bid the manager who got there first keeps the lead. A short note now also appears right under the auto-bid field. No gameplay changes."
         },
         "da": {
-          "title": "Auctions",
+          "title": "Autobud forklaret i klar tekst",
           "body": "Auktionssiden og Hjælp forklarer nu i klar tekst hvordan autobud virker: vi hæver dit bud for dig 1 CZ$ ad gangen op til dit private loft, du bliver kun overbudt når nogen går over det loft, og ved præcis ens bud beholder den manager der nåede beløbet først føringen. En kort note vises nu også lige under autobud-feltet. Ingen ændringer i gameplay."
         },
         "refs": [
@@ -1118,11 +1118,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Riders",
         "en": {
-          "title": "Riders",
+          "title": "Profiles show next season's team",
           "body": "A rider's profile now shows both their current team and the team they're joining next season when they've been transferred ahead. Before, the profile only showed the current team, which was confusing once a deal was done. The rider list already showed this; now the profile matches. No gameplay changes."
         },
         "da": {
-          "title": "Riders",
+          "title": "Profiler viser næste sæsons hold",
           "body": "En rytters profil viser nu både det nuværende hold og det hold rytteren skifter til næste sæson, når handlen allerede er lavet. Før viste profilen kun det nuværende hold, hvilket var forvirrende når en handel var faldet på plads. Rytter-listen viste det allerede; nu matcher profilen. Ingen ændringer i gameplay."
         },
         "refs": [
@@ -1141,11 +1141,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Transfers",
         "en": {
-          "title": "Transfers",
+          "title": "Final Whistle report now in-app",
           "body": "After the transfer window closes, the Final Whistle report now shows up right on the Deadline Day page in-app. It covers total deals, volume, the biggest auction and transfer, the most active manager and any panic moves. Until now this summary only went to Discord."
         },
         "da": {
-          "title": "Transfers",
+          "title": "Final Whistle-rapport nu i appen",
           "body": "Når transfervinduet lukker, vises Final Whistle-rapporten nu direkte på Deadline Day-siden i appen. Den dækker antal handler, volumen, den største auktion og transfer, den mest aktive manager og eventuelle panikhandler. Indtil nu gik denne opsummering kun til Discord."
         },
         "refs": [
@@ -1164,11 +1164,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Site",
         "en": {
-          "title": "Site",
+          "title": "Public pages easier to find, share",
           "body": "The public pages (landing, login, founder waitlist, privacy policy) now each get their own page title, description and canonical link, plus structured data that tells search engines what Cycling Zone is. This makes the game easier to find and share. No gameplay changes. Refs #1404,"
         },
         "da": {
-          "title": "Site",
+          "title": "Offentlige sider lettere at finde",
           "body": "De offentlige sider (landing, login, founder-waitlist, privatlivspolitik) får nu hver deres egen sidetitel, beskrivelse og canonical-link, plus strukturerede data der fortæller søgemaskiner hvad Cycling Zone er. Det gør spillet lettere at finde og dele. Ingen ændringer i gameplay. Refs #1404,"
         },
         "refs": [
@@ -1188,11 +1188,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Transfers",
         "en": {
-          "title": "Transfers",
+          "title": "Whole rider card now clickable",
           "body": "On the Transfers page, the whole rider stat block on a market listing and the whole rider card in a swap offer are now clickable, not just the rider's name. Clicking anywhere on those areas opens that rider's profile, so clicks landing next to the name no longer do nothing."
         },
         "da": {
-          "title": "Transfers",
+          "title": "Hele rytter-kortet er nu klikbart",
           "body": "På Transfer-siden er hele rytter-statblokken på en markedsannonce og hele rytter-kortet i en byttehandel nu klikbare, ikke kun rytterens navn. Klik et vilkårligt sted på de områder åbner rytterens profil, så klik der lander ved siden af navnet ikke længere gør ingenting."
         },
         "refs": [
@@ -1211,11 +1211,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Reliability",
         "en": {
-          "title": "Reliability",
+          "title": "No more crashes after updates",
           "body": "When a new version of the site is deployed while you have it open, the app now recovers on its own instead of showing an error screen. We catch the stale-file load that used to slip through, reload the new version once automatically, and keep a safety net that prevents reload loops. Result: fewer crashes right after an update."
         },
         "da": {
-          "title": "Reliability",
+          "title": "Færre crashes efter opdateringer",
           "body": "Når en ny version af siden bliver deployet mens du har den åben, henter appen sig nu selv ind i stedet for at vise en fejlskærm. Vi fanger den forældede fil-indlæsning der før slap igennem, genindlæser den nye version automatisk én gang, og beholder et sikkerhedsnet der forhindrer genindlæsnings-loops. Resultat: færre crashes lige efter en opdatering."
         },
         "refs": [
@@ -1234,11 +1234,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Finance",
         "en": {
-          "title": "Finance",
+          "title": "Finance page reorganised into tabs",
           "body": "The Finance page is now organised into tabs (Overview, Loans, History), so everything about your economy lives in one place. The per-season finance report and transaction history moved under History with a season picker, loans got their own tab, and the page picked up the refreshed design system (cleaner cards, sharper corners, crisp icons in place of emoji). The separate Economy tab on My Team is gone, since it duplicated this. No gameplay changes. Refs #986,"
         },
         "da": {
-          "title": "Finance",
+          "title": "Økonomisiden delt op i faner",
           "body": "Økonomisiden er nu delt op i faner (Overblik, Lån, Historik), så alt om din økonomi bor ét sted. Sæson-finansrapporten og transaktionshistorikken er flyttet ind under Historik med en sæsonvælger, lån har fået deres egen fane, og siden har fået det opfriskede designsystem (renere kort, skarpere hjørner, rene ikoner i stedet for emoji). Den separate Økonomi-fane under Mit Hold er væk, da den duplikerede dette. Ingen ændringer i gameplay. Refs #986,"
         },
         "refs": [
@@ -1258,11 +1258,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Site",
         "en": {
-          "title": "Site",
+          "title": "New landing page for visitors",
           "body": "There's now a proper landing page at cyclingzone.org for visitors who aren't signed in yet. It shows what the game is, links to the Discord, and lets you leave your email for the launch. Signed-in players still go straight to the app as before."
         },
         "da": {
-          "title": "Site",
+          "title": "Ny landing page for besøgende",
           "body": "Der er nu en rigtig landing page på cyclingzone.org til besøgende der ikke er logget ind endnu. Den viser hvad spillet er, linker til Discord, og lader dig lægge din mail til launch. Indloggede spillere ryger stadig direkte til appen som før."
         },
         "refs": [
@@ -1281,11 +1281,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Design",
         "en": {
-          "title": "Design",
+          "title": "Fresh look for Riders and Races",
           "body": "The Riders, Auctions, Team and Races pages now use the same refreshed design system as the rest of the app: cleaner cards and tables, sharper corners and crisp icons in place of emoji, consistent across light and dark mode. No gameplay changes."
         },
         "da": {
-          "title": "Design",
+          "title": "Nyt look til Riders og Race",
           "body": "Riders-, Auktions-, Team- og Race-siderne bruger nu samme opfriskede designsystem som resten af appen: renere kort og tabeller, skarpere hjørner og rene ikoner i stedet for emoji, konsistent i lyst og mørkt tema. Ingen ændringer i gameplay."
         },
         "refs": [
@@ -1304,11 +1304,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Community",
         "en": {
-          "title": "Community",
+          "title": "Join our Discord from the sidebar",
           "body": "There's now a clear Join Discord link in the sidebar, and new managers are invited to our Discord right after signing up. Come say hi, ask questions and follow development."
         },
         "da": {
-          "title": "Community",
+          "title": "Find vores Discord i sidebjælken",
           "body": "Der er nu et tydeligt Join Discord-link i sidebjælken, og nye managere bliver inviteret ind på vores Discord lige efter tilmelding. Kom og sig hej, stil spørgsmål og følg udviklingen."
         },
         "refs": [
@@ -1327,11 +1327,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Design",
         "en": {
-          "title": "Design",
+          "title": "Refreshed dashboard design",
           "body": "Your dashboard now uses the new design system too: cleaner cards, sharper corners and crisp icons in place of emoji, consistent across light and dark mode."
         },
         "da": {
-          "title": "Design",
+          "title": "Opfrisket dashboard-design",
           "body": "Dit dashboard bruger nu også det nye designsystem: renere kort, skarpere hjørner og rene ikoner i stedet for emoji, konsistent i både lyst og mørkt tema."
         },
         "refs": [
@@ -1343,11 +1343,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Design",
         "en": {
-          "title": "Design",
+          "title": "Cleaner sidebar header",
           "body": "The sidebar header is cleaner: the brand wordmark now stands on its own next to your team name, without the duplicate logo tile."
         },
         "da": {
-          "title": "Design",
+          "title": "Renere header i sidebjælken",
           "body": "Sidebjælkens header er renere: brand-wordmarket står nu alene ved siden af dit holdnavn, uden den dublerede logo-flise."
         },
         "refs": [
@@ -1366,11 +1366,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Design",
         "en": {
-          "title": "Design",
+          "title": "Polished login and signup screens",
           "body": "The login, signup and password-reset screens have a cleaner, more consistent look built on our new design system, with sharper inputs, buttons and icons across both light and dark mode."
         },
         "da": {
-          "title": "Design",
+          "title": "Pudsede login- og signup-skærme",
           "body": "Login-, signup- og nulstil-adgangskode-skærmene har fået et renere og mere konsistent look bygget på vores nye designsystem, med skarpere felter, knapper og ikoner i både lyst og mørkt tema."
         },
         "refs": [
@@ -1389,11 +1389,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Notifications",
         "en": {
-          "title": "Notifications",
+          "title": "Season-start alerts now in-app",
           "body": "When a new season starts, you now get an in-app notification (not just on Discord), so you can jump straight to your dashboard and your board's goals for the season."
         },
         "da": {
-          "title": "Notifications",
+          "title": "Sæsonstart varsles nu i appen",
           "body": "Når en ny sæson starter, får du nu en in-app-notifikation (ikke kun på Discord), så du kan gå direkte til dit dashboard og bestyrelsens mål for sæsonen."
         },
         "refs": [
@@ -1412,11 +1412,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Reliability",
         "en": {
-          "title": "Reliability",
+          "title": "Clear errors on login network failures",
           "body": "Login, signup and password reset now show a clear error if the network fails, instead of silently doing nothing. The app no longer gets stuck on a loading spinner when your session can't be restored. Refs #1347,"
         },
         "da": {
-          "title": "Reliability",
+          "title": "Tydelige fejl ved login-netværksfejl",
           "body": "Login, signup og nulstilling af adgangskode viser nu en tydelig fejl hvis netværket svigter, i stedet for at gøre ingenting. Appen sætter sig ikke længere fast på en spinner når din session ikke kan genoprettes. Refs #1347,"
         },
         "refs": [
@@ -1429,11 +1429,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Reliability",
         "en": {
-          "title": "Reliability",
+          "title": "Retry button when Finance or Auctions fail",
           "body": "Finance and Auctions now show a retry button if they fail to load, instead of an endless spinner or a page that looks empty."
         },
         "da": {
-          "title": "Reliability",
+          "title": "Prøv-igen-knap når Finans og Auktioner fejler",
           "body": "Finans og Auktioner viser nu en prøv-igen-knap hvis de ikke kan loade, i stedet for en uendelig spinner eller en side der ser tom ud."
         },
         "refs": [
@@ -1445,11 +1445,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Reliability",
         "en": {
-          "title": "Reliability",
+          "title": "Watchlist star warns when saving fails",
           "body": "The auction watchlist star now reverts and tells you if saving fails, instead of staying in the wrong state until reload."
         },
         "da": {
-          "title": "Reliability",
+          "title": "Ønskeliste-stjerne advarer ved gem-fejl",
           "body": "Stjernen på auktions-ønskelisten ruller nu tilbage og giver besked hvis den ikke kan gemmes, i stedet for at blive hængende i forkert tilstand til genindlæsning."
         },
         "refs": [
@@ -1461,11 +1461,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Reliability",
         "en": {
-          "title": "Reliability",
+          "title": "History shows errors, not blank pages",
           "body": "Rider and team history now surfaces a clear error if it can't load, instead of appearing as an empty history."
         },
         "da": {
-          "title": "Reliability",
+          "title": "Historik viser fejl i stedet for tomhed",
           "body": "Rytter- og holdhistorik viser nu en tydelig fejl hvis den ikke kan loade, i stedet for at fremstå som tom historik."
         },
         "refs": [
@@ -1477,11 +1477,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Accessibility",
         "en": {
-          "title": "Accessibility",
+          "title": "Pause the Deadline Day ticker",
           "body": "The Deadline Day ticker now has a pause/resume button and respects your reduced-motion setting."
         },
         "da": {
-          "title": "Accessibility",
+          "title": "Sæt Deadline Day-tickeren på pause",
           "body": "Deadline Day-tickeren har nu en pause/genoptag-knap og respekterer din indstilling for reduceret bevægelse."
         },
         "refs": [
@@ -1493,11 +1493,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Accessibility",
         "en": {
-          "title": "Accessibility",
+          "title": "Better screen-reader support on forms",
           "body": "Login, password and Finance forms now announce errors and bind their labels correctly for screen readers."
         },
         "da": {
-          "title": "Accessibility",
+          "title": "Bedre skærmlæser-støtte i formularer",
           "body": "Login-, adgangskode- og Finans-formularer annoncerer nu fejl og binder deres labels korrekt for skærmlæsere."
         },
         "refs": [
@@ -1516,11 +1516,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Academy",
         "en": {
-          "title": "Academy",
+          "title": "Bid on youth prospects at auction",
           "body": "Youth auctions are live (flag-gated). When you reject an intake candidate, they go up for auction as a youth prospect that any club can bid on. Win one and they join your academy (8-place cap applies). A prospect nobody bids on becomes a free youth agent, and you can sign them straight into your academy at minimum salary from the new Free youth agents list."
         },
         "da": {
-          "title": "Academy",
+          "title": "Byd på ungdomsprospekter på auktion",
           "body": "Ungdomsauktioner er klar (flag-gated). Når du afviser en intake-kandidat, ryger de på auktion som et ungdomsprospekt, som ethvert hold kan byde på. Vinder du en, kommer de i dit akademi (8-pladsers loft gælder). Et prospekt ingen byder på bliver en fri ungdomsrytter, og du kan signere dem direkte ind i dit akademi til minimumsløn fra den nye liste over frie ungdomsryttere."
         },
         "refs": [
@@ -1539,11 +1539,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Academy",
         "en": {
-          "title": "Academy",
+          "title": "The Academy opens for young prospects",
           "body": "The Academy is live (flag-gated, launches with the relaunch). Sign young prospects from your intake list, see their potential range, and track the 8-place squad. Reject a candidate to pass on them."
         },
         "da": {
-          "title": "Academy",
+          "title": "Akademiet åbner for unge talenter",
           "body": "Akademiet er klar (flag-gated, lanceres ved relaunch). Signer unge kandidater fra dit intake, se deres potentiale-interval og hold overblik over de 8 pladser. Afvis en kandidat for at sende dem videre."
         },
         "refs": [
@@ -1562,11 +1562,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Rider contracts",
         "en": {
-          "title": "Rider contracts",
+          "title": "Riders now sign real contracts",
           "body": "Riders now have contracts: a frozen salary, a length (1 to 3 seasons) and an expiry. Salary is locked in at signing, so a young rider who develops becomes a bargain (a 'gold contract'), while a fading star on a high salary becomes a burden. Contracts are shown on the rider profile, in auctions and in transfer offers, and follow the rider when traded. Free agents have no contract until signed."
         },
         "da": {
-          "title": "Rider contracts",
+          "title": "Ryttere har nu rigtige kontrakter",
           "body": "Ryttere har nu kontrakter: en frossen løn, en længde (1 til 3 sæsoner) og et udløb. Lønnen låses ved signering, så en ung rytter der udvikler sig bliver et røverkøb (en 'guldkontrakt'), mens en falmende stjerne på høj løn bliver en byrde. Kontrakter vises på rytterprofilen, på auktioner og i transfertilbud, og følger rytteren ved handel. Free agents har ingen kontrakt før de signes."
         },
         "refs": [
@@ -1585,11 +1585,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Race tactics",
         "en": {
-          "title": "Race tactics",
+          "title": "Pick your race squad and captains",
           "body": "Team selection: pick 6-8 riders per race with a captain, optional sprint captain and breakaway hunter. Your assistant picks automatically if you don't. Goes live with the season relaunch on 20 June."
         },
         "da": {
-          "title": "Race tactics",
+          "title": "Udtag holdet og dine kaptajner",
           "body": "Holdudtagelse: udtag 6-8 ryttere pr. løb med kaptajn, valgfri spurt-kaptajn og udbruds-jæger. Assistenten vælger automatisk hvis du ikke gør. Aktiveres ved sæson-relaunchet 20. juni."
         }
       },
@@ -1598,11 +1598,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Race tactics",
         "en": {
-          "title": "Race tactics",
+          "title": "Breakaways can now stay away",
           "body": "Breakaways: on flat, rolling and medium mountain stages a breakaway can now stay away and win."
         },
         "da": {
-          "title": "Race tactics",
+          "title": "Udbrud kan nu holde hjem",
           "body": "Udbrud: på flade, kuperede og mellembjergs-etaper kan et udbrud nu holde hjem og vinde."
         },
         "refs": [
@@ -1621,11 +1621,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "English translation",
         "en": {
-          "title": "English translation",
+          "title": "Finance and Deadline Day in English",
           "body": "Recognized older Finance transactions now use English labels instead of leaking Danish descriptions. Deadline Day's top countdown and its 24-hour, 2-hour and 30-minute inbox warnings now also follow your language setting. Refs #1352,"
         },
         "da": {
-          "title": "English translation",
+          "title": "Finans og Deadline Day på dit sprog",
           "body": "Genkendte ældre finanstransaktioner bruger nu danske labels uden rå legacy-tekst. Deadline Days øverste nedtælling og indbakkevarslerne ved 24 timer, 2 timer og 30 minutter følger nu også dit sprogvalg. Refs #1352,"
         },
         "refs": [
@@ -1645,11 +1645,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Updates and page loading",
         "en": {
-          "title": "Updates and page loading",
+          "title": "Pages recover smoothly after updates",
           "body": "Pages opened across a new deploy now recover cleanly when an old cached code file is no longer valid, instead of showing an error screen."
         },
         "da": {
-          "title": "Updates and page loading",
+          "title": "Sider genindlæses pænt efter opdatering",
           "body": "Sider, der er åbne under en ny deploy, genindlæses nu korrekt, når en gammel cachet kodefil ikke længere er gyldig, i stedet for at vise en fejlskærm."
         },
         "refs": [
@@ -1668,11 +1668,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Form and fatigue in racing (activates at the season relaunch on 20 June)",
         "en": {
-          "title": "A rider's form and fatigue now affect race scores",
+          "title": "Form and fatigue tweak race scores",
           "body": "A rider's form and fatigue now affect race scores: good form gives a small edge, high fatigue a small penalty, capped at about ±3% so favorites still win on ability."
         },
         "da": {
-          "title": "En rytters form og træthed påvirker nu løbsscorer",
+          "title": "Form og træthed påvirker løbsscoren",
           "body": "En rytters form og træthed påvirker nu løbsscorer: god form giver en lille fordel, høj træthed en lille straf, begrænset til ca. ±3% så favoritterne stadig vinder på evne."
         },
         "refs": [
@@ -1684,11 +1684,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Form and fatigue in racing (activates at the season relaunch on 20 June)",
         "en": {
-          "title": "Race days build fatigue",
+          "title": "Tough races drain your squad",
           "body": "Race days build fatigue: mountain stages cost the most, flat stages the least. Riding harder races means your squad arrives at the next stage with less in the tank."
         },
         "da": {
-          "title": "Løbsdage opbygger træthed",
+          "title": "Hårde løb dræner din trup",
           "body": "Løbsdage opbygger træthed: bjergeetaper koster mest, flad etaper mindst. Hårdere løb betyder at din trup ankommer til næste etape med færre kræfter."
         },
         "refs": [
@@ -1700,11 +1700,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Form and fatigue in racing (activates at the season relaunch on 20 June)",
         "en": {
-          "title": "Injured riders are not auto-entered into races.",
+          "title": "Injured riders sit races out",
           "body": "Injured riders are not auto-entered into races. If a rider is injured, they sit out until they recover."
         },
         "da": {
-          "title": "Skadede ryttere deltager ikke automatisk i løb.",
+          "title": "Skadede ryttere sidder løb over",
           "body": "Skadede ryttere deltager ikke automatisk i løb. Er en rytter skadet, sidder de over til de er restituerede."
         },
         "refs": [
@@ -1723,11 +1723,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Daily Training (activates at the season relaunch on 20 June)",
         "en": {
-          "title": "A new Daily Training page (nav",
+          "title": "New Daily Training page for everyone",
           "body": "A new Daily Training page (nav: Daily Training) lets you set a program for every rider: pick a focus (VO2max, Threshold, Sprint, Endurance, Technique or Aero) and an intensity (Rest, Easy, Normal or Hard). There is no season cap on programs: you can set one for your entire squad."
         },
         "da": {
-          "title": "En ny Daglig træning-side (nav",
+          "title": "Ny Daglig træning-side til alle",
           "body": "En ny Daglig træning-side (nav: Daglig træning) lader dig sætte et program for hver rytter: vælg et fokus (VO2max, Tærskel, Sprint, Udholdenhed, Teknik eller Aero) og en intensitet (Hvile, Let, Normal eller Hård). Der er ingen sæson-cap på programmer: du kan sætte ét for hele troppen."
         },
         "refs": [
@@ -1739,11 +1739,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Daily Training (activates at the season relaunch on 20 June)",
         "en": {
-          "title": "Click 'Train today' once a day to run all your progra…",
+          "title": "Train today for a +25% boost",
           "body": "Click 'Train today' once a day to run all your programs with a +25% boost. Skip the click and the assistant trains the squad automatically after 22:00. You never lose training, only the boost."
         },
         "da": {
-          "title": "Klik 'Træn i dag' én gang om dagen for at køre alle p…",
+          "title": "Træn i dag for +25% boost",
           "body": "Klik 'Træn i dag' én gang om dagen for at køre alle programmer med +25% boost. Spring klikket over, og assistenten træner troppen automatisk efter kl. 22. Du mister aldrig træning, kun boostet."
         },
         "refs": [
@@ -1755,11 +1755,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Daily Training (activates at the season relaunch on 20 June)",
         "en": {
-          "title": "Form and Fatigue (0-100) are now visible on every rid…",
+          "title": "Form and fatigue on every profile",
           "body": "Form and Fatigue (0-100) are now visible on every rider profile. Training and racing build fatigue, rest recovers it, and form follows the balance. Hard training combined with high fatigue shows a risk badge and may cause a mild injury (1-5 days out)."
         },
         "da": {
-          "title": "Form og Træthed (0-100) er nu synlige på alle rytterp…",
+          "title": "Form og træthed på hver profil",
           "body": "Form og Træthed (0-100) er nu synlige på alle rytterprofiler. Træning og løb opbygger træthed, hvile genopretter den, og form følger balancen. Hård træning kombineret med høj træthed viser et risikomærke og kan give en mild skade (1-5 dage ude)."
         },
         "refs": [
@@ -1771,11 +1771,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Daily Training (activates at the season relaunch on 20 June)",
         "en": {
-          "title": "A daily training report shows per-rider score",
+          "title": "Daily report tracks training gains",
           "body": "A daily training report shows per-rider score, over- and underperformers, and ability points gained. Progress bars on rider profiles fill toward the next ability point. A full bar means +1."
         },
         "da": {
-          "title": "En daglig træningsrapport viser per-rytter-score",
+          "title": "Daglig rapport viser træningsfremskridt",
           "body": "En daglig træningsrapport viser per-rytter-score, over- og underpræsterende, og vundne evnepoint. Fremskridtslinjer på rytterprofiler fylder mod næste evnepoint. En fuld linje betyder +1."
         },
         "refs": [
@@ -1794,11 +1794,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Tables & team pages",
         "en": {
-          "title": "Tables & team pages",
+          "title": "New team Results tab and sortable nations",
           "body": "Clicking a team in the standings now opens a new Results tab on the team profile, showing the team's point-scoring results per rider with a season filter and sortable columns. The Nation column is now also sortable on the squad, watchlist and rider ranking tables. Refs #824,"
         },
         "da": {
-          "title": "Tables & team pages",
+          "title": "Ny Resultater-fane og sorterbar nation",
           "body": "Klik på et hold i ranglisten åbner nu en ny Resultater-fane på holdprofilen med holdets pointgivende resultater pr. rytter, sæsonfilter og sorterbare kolonner. Nation-kolonnen kan nu også sorteres på trup-, ønskeliste- og rytterrangliste-tabellerne. Refs #824,"
         },
         "refs": [
@@ -1811,11 +1811,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Tables & team pages",
         "en": {
-          "title": "Tables & team pages",
+          "title": "See pending transfers in the database",
           "body": "The rider database now shows a transfer pending chip with the rider's upcoming team when a trade is waiting for the transfer window."
         },
         "da": {
-          "title": "Tables & team pages",
+          "title": "Se ventende handler i databasen",
           "body": "Rytterdatabasen viser nu en chip med rytterens kommende hold, når en handel venter på transfervinduet."
         },
         "refs": [
@@ -1827,11 +1827,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Market & Deadline Day",
         "en": {
-          "title": "Market & Deadline Day",
+          "title": "Start Flash auctions from My Team",
           "body": "You can now start a Flash auction (30 minutes) on your own riders directly from the My Team page during Deadline Day."
         },
         "da": {
-          "title": "Market & Deadline Day",
+          "title": "Start Flash-auktioner fra Mit Hold",
           "body": "Du kan nu starte en Flash-auktion (30 minutter) på dine egne ryttere direkte fra Mit Hold-siden under Deadline Day."
         },
         "refs": [
@@ -1843,11 +1843,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Market & Deadline Day",
         "en": {
-          "title": "Market & Deadline Day",
+          "title": "Transfer list shortcut and clearer auctions",
           "body": "The market got a Transfer list shortcut in the menu, transfer cards now show all 14 rider stats, and auctions that end without bids now show No sale in rider and team history instead of a confusing sold entry. Refs #987,"
         },
         "da": {
-          "title": "Market & Deadline Day",
+          "title": "Transferliste-genvej og klarere auktioner",
           "body": "Markedet har fået en Transferliste-genvej i menuen, transferkortene viser nu alle 14 rytter-stats, og auktioner der slutter uden bud vises nu som Intet salg i rytter- og holdhistorik i stedet for en forvirrende solgt-post. Refs #987,"
         },
         "refs": [
@@ -1860,11 +1860,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Finance & achievements",
         "en": {
-          "title": "Finance & achievements",
+          "title": "Clearer bankruptcy, prize and loan figures",
           "body": "Finance fixes: the red bankruptcy warning now accounts for your cash balance, the prize money forecast can no longer show less than you have already earned this season, and loan interest entries now state clearly that interest is added to your loan debt, not deducted from your balance. Refs #982, #981,"
         },
         "da": {
-          "title": "Finance & achievements",
+          "title": "Klarere konkurs-, præmie- og lånetal",
           "body": "Økonomi-rettelser: den røde konkurs-advarsel tager nu højde for din kassebeholdning, præmie-prognosen kan ikke længere vise mindre end du allerede har tjent i sæsonen, og rente-posteringer gør nu klart at renten lægges til lånegælden og ikke trækkes fra saldoen. Refs #982, #981,"
         },
         "refs": [
@@ -1878,11 +1878,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Finance & achievements",
         "en": {
-          "title": "Finance & achievements",
+          "title": "First result achievement now awards correctly",
           "body": "The First result achievement is now actually awarded when your team records its first race result, including retroactively for existing teams."
         },
         "da": {
-          "title": "Finance & achievements",
+          "title": "Første resultat-achievement tildeles nu korrekt",
           "body": "Achievementet Første resultat tildeles nu faktisk, når dit hold får sit første løbsresultat, også med tilbagevirkende kraft for eksisterende hold."
         },
         "refs": [
@@ -1894,11 +1894,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "English translation",
         "en": {
-          "title": "English translation",
+          "title": "More pages fully translated to English",
           "body": "Big English completeness pass: the Deadline Day board, Season Preview, bid pop-ups, the rider Development tab and the entire Board page now follow your language setting fully instead of falling back to Danish. Refs #1170, #1084,"
         },
         "da": {
-          "title": "English translation",
+          "title": "Flere sider følger nu dit sprogvalg",
           "body": "Stor engelsk-komplethedsrunde: Deadline Day-oversigten, Sæson Preview, bud-pop-ups, rytterens Udvikling-fane og hele Bestyrelse-siden følger nu dit sprogvalg fuldt ud i stedet for at falde tilbage til dansk. Refs #1170, #1084,"
         },
         "refs": [
@@ -1912,11 +1912,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Team & Finance pages",
         "en": {
-          "title": "Team & Finance pages",
+          "title": "Sortable salaries and quick race links",
           "body": "Polish on the Team and Finance pages: the salary column is now sortable, stat headers show full skill names on hover, the Economy tab links to the full forecast, and prize and transaction rows link straight to the race page."
         },
         "da": {
-          "title": "Team & Finance pages",
+          "title": "Sorterbar løn og hurtige løbslinks",
           "body": "Polish på Hold- og Finans-siderne: lønkolonnen kan nu sorteres, stat-headers viser fulde færdighedsnavne ved hover, Økonomi-fanen linker til den fulde prognose, og præmie- og transaktionsrækker linker direkte til løbssiden."
         },
         "refs": [
@@ -1935,11 +1935,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Privacy & analytics",
         "en": {
-          "title": "Privacy & analytics",
+          "title": "Analytics added, gated by your cookie consent",
           "body": "Google Analytics has been added to help us understand where players find the game. Like Microsoft Clarity, it only loads if you have accepted the Analytics cookie category, ad signals are turned off, and the privacy policy has been updated accordingly."
         },
         "da": {
-          "title": "Privacy & analytics",
+          "title": "Analytics tilføjet, styret af dit cookie-samtykke",
           "body": "Google Analytics er tilføjet, så vi kan forstå hvor spillere finder spillet. Ligesom Microsoft Clarity indlæses det kun hvis du har accepteret Analyse-cookiekategorien, annonce-signaler er slået fra, og privatlivspolitikken er opdateret tilsvarende."
         },
         "refs": [
@@ -1958,11 +1958,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Domain",
         "en": {
-          "title": "Domain",
+          "title": "We moved to cyclingzone.org",
           "body": "Cycling Zone has a real home now: the game lives at cyclingzone.org. The old cycling-zone.vercel.app address redirects automatically, so existing links and bookmarks keep working. You may need to log in again the first time you land on the new domain."
         },
         "da": {
-          "title": "Domain",
+          "title": "Vi er flyttet til cyclingzone.org",
           "body": "Cycling Zone har fået et rigtigt hjem: spillet bor nu på cyclingzone.org. Den gamle cycling-zone.vercel.app-adresse redirecter automatisk, så eksisterende links og bogmærker virker stadig. Du skal muligvis logge ind igen første gang du lander på det nye domæne."
         },
         "refs": [
@@ -1981,11 +1981,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Roadmap",
         "en": {
-          "title": "Roadmap",
+          "title": "Vote on the roadmap",
           "body": "You can now vote on the roadmap: rate every planned feature on two scales, how good an idea it is and how important it is to you. Your votes directly steer what gets built next."
         },
         "da": {
-          "title": "Roadmap",
+          "title": "Stem på roadmappet",
           "body": "Du kan nu stemme på roadmappet: bedøm hver planlagt feature på to skalaer, hvor god en idé den er og hvor vigtig den er for dig. Dine stemmer er direkte med til at styre hvad der bliver bygget som det næste."
         },
         "refs": [
@@ -2004,11 +2004,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Board",
         "en": {
-          "title": "Board",
+          "title": "Board mood now updates every weekend",
           "body": "Board satisfaction is now alive during the season: it updates after every race weekend and moves at most 5 points per weekend towards what a full season evaluation would give. The sponsor modifier follows satisfaction live, so the Board page and the finance forecast always reflect your current standing."
         },
         "da": {
-          "title": "Board",
+          "title": "Bestyrelsens humør opdateres nu hver weekend",
           "body": "Bestyrelsens tilfredshed lever nu i sæsonen: den opdateres efter hver løbsweekend og flytter sig højst 5 point pr. weekend mod det en fuld sæson-evaluering ville give. Sponsor-modifieren følger tilfredsheden live, så Bestyrelse-siden og økonomi-prognosen altid afspejler din aktuelle placering."
         },
         "refs": [
@@ -2020,11 +2020,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Board",
         "en": {
-          "title": "Board",
+          "title": "Board penalties limited to fixed checkpoints",
           "body": "Hard board consequences (salary cap, signing restriction, forced sale) are now evaluated at two predictable checkpoints, mid-season and season end, instead of only at season end. A single bad weekend can never alone trigger them."
         },
         "da": {
-          "title": "Board",
+          "title": "Bestyrelses-straffe kun ved faste checkpoints",
           "body": "Hårde bestyrelses-konsekvenser (lønloft, signing-restriktion, tvunget salg) evalueres nu ved to forudsigelige checkpoints, mid-season og sæson-slut, i stedet for kun ved sæson-slut. En enkelt dårlig weekend kan aldrig alene udløse dem."
         },
         "refs": [
@@ -2043,11 +2043,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Scouting & potential",
         "en": {
-          "title": "Scouting & potential",
+          "title": "Cheat-proof scouting, clearer potential",
           "body": "Scouting is now cheat-proof: a rider's true potential never leaves the server, so it cannot be read in browser devtools. Your own riders show exact stars plus a verdict instead of a raw number, matching how all other riders are shown. The potential min-max filter is removed, you cannot filter on what you have not scouted. Refs #1162,"
         },
         "da": {
-          "title": "Scouting & potential",
+          "title": "Snydesikker scouting og tydeligt potentiale",
           "body": "Scouting er nu snydesikker: en rytters sande potentiale forlader aldrig serveren og kan ikke læses i browserens devtools. Dine egne ryttere viser eksakte stjerner plus en vurdering i stedet for et råt tal, præcis som alle andre ryttere vises. Potentiale-min/max-filteret er fjernet, man kan ikke filtrere på noget man ikke har scoutet. Refs #1162,"
         },
         "refs": [
@@ -2060,11 +2060,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Riders list",
         "en": {
-          "title": "Riders list",
+          "title": "Filter and sort the rider rankings",
           "body": "The riders ranking can now be filtered by a specific team, sorted by overall rating, and you can show or hide individual stat columns just like on the auction page. Refs #1004, #1009,"
         },
         "da": {
-          "title": "Riders list",
+          "title": "Filtrér og sortér rytterranglisten",
           "body": "Rytterranglisten kan nu filtreres på et konkret hold, sorteres efter samlet rating, og du kan vise eller skjule enkelte stat-kolonner ligesom på auktionssiden. Refs #1004, #1009,"
         },
         "refs": [
@@ -2078,11 +2078,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Team page",
         "en": {
-          "title": "Team page",
+          "title": "Wider My Team with future squad view",
           "body": "My Team now uses the full width of the screen and shows more columns, and a new switcher lets you view both your current squad and the upcoming squad after pending transfers. Refs #1186,"
         },
         "da": {
-          "title": "Team page",
+          "title": "Bredere Mit Hold med kommende trup",
           "body": "Mit Hold bruger nu hele skærmens bredde og viser flere kolonner, og en ny vælger lader dig se både din nuværende trup og den kommende trup efter ventende transfers. Refs #1186,"
         },
         "refs": [
@@ -2095,11 +2095,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Transfer market",
         "en": {
-          "title": "Transfer market",
+          "title": "Easier transfer listing and sorting",
           "body": "Transfer list upgrade: edit the asking price inline, list riders for sale straight from their profile page, remove listings on mobile, and sort the market by price."
         },
         "da": {
-          "title": "Transfer market",
+          "title": "Nemmere salg og sortering på transferlisten",
           "body": "Transferlisten er opgraderet: redigér prisen direkte på listen, sæt ryttere til salg fra deres profilside, fjern annoncer på mobil, og sortér markedet efter pris."
         },
         "refs": [
@@ -2111,11 +2111,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Transfer market",
         "en": {
-          "title": "Transfer market",
+          "title": "See your profit per sold rider",
           "body": "A new transfer profit panel under the transfer history shows purchase price, sale price and your gain or loss per sold rider, plus the total realised profit."
         },
         "da": {
-          "title": "Transfer market",
+          "title": "Se din gevinst pr. solgt rytter",
           "body": "Et nyt transfer-profit-panel under transferhistorikken viser købspris, salgspris og din gevinst eller dit tab pr. solgt rytter, plus den samlede realiserede gevinst."
         },
         "refs": [
@@ -2127,11 +2127,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Finances",
         "en": {
-          "title": "Finances",
+          "title": "Borrow your max with one click",
           "body": "The loan form now shows the max you can borrow right now, fee included, with a Use max button. The debt card shows your room under the cap, and loan errors are now properly translated."
         },
         "da": {
-          "title": "Finances",
+          "title": "Lån dit maksimum med ét klik",
           "body": "Låneformularen viser nu det maksimale du kan låne lige nu, inkl. gebyr, med en Brug max-knap. Gældskortet viser din plads under loftet, og lånefejl oversættes nu korrekt."
         },
         "refs": [
@@ -2143,11 +2143,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Board",
         "en": {
-          "title": "Board",
+          "title": "Fairer board goals and classics DNA",
           "body": "Goals that cannot genuinely be lowered (such as No outstanding debt) no longer offer a negotiation that only halved the penalty, and the Italian classics club DNA now also counts podiums in all WorldTour one-day classics, not only Monuments. Refs #1234,"
         },
         "da": {
-          "title": "Board",
+          "title": "Mere fair mål og klassiker-DNA",
           "body": "Mål der ikke reelt kan lempes (fx Ingen gæld) tilbyder ikke længere en forhandling der kun halverede straffen, og italiensk klassiker-DNA tæller nu også podier i alle WorldTour-endagsklassikere, ikke kun Monuments. Refs #1234,"
         },
         "refs": [
@@ -2160,11 +2160,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Board",
         "en": {
-          "title": "Board",
+          "title": "Clearer, tidier board negotiations",
           "body": "The negotiation wizard has a back button, goal labels show the actual number instead of Top n finish, U25 goals show the rider count, and board modals no longer have overflowing or hard-to-read text. Refs #1240, #1233, #1232,"
         },
         "da": {
-          "title": "Board",
+          "title": "Klarere og pænere bestyrelses-forhandlinger",
           "body": "Forhandlings-wizarden har fået en tilbageknap, mål-tekster viser det faktiske tal i stedet for Top n finish, U25-mål viser antallet af ryttere, og board-modaler har ikke længere tekst der flyder over eller er svær at læse. Refs #1240, #1233, #1232,"
         },
         "refs": [
@@ -2179,11 +2179,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Board",
         "en": {
-          "title": "Board",
+          "title": "Board plan seasons now count correctly",
           "body": "A new board plan cycle no longer counts seasons from the previous plan. Existing affected plans were corrected."
         },
         "da": {
-          "title": "Board",
+          "title": "Bestyrelsesplanens sæsoner tælles rigtigt",
           "body": "En ny bestyrelsesplan-cyklus tæller ikke længere sæsoner med fra den forrige plan. Eksisterende berørte planer er rettet."
         },
         "refs": [
@@ -2195,11 +2195,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Dashboard",
         "en": {
-          "title": "Dashboard",
+          "title": "Squad warning counts next-season moves",
           "body": "The squad size warning now counts riders joining or leaving next season, including loan deals waiting for the transfer window."
         },
         "da": {
-          "title": "Dashboard",
+          "title": "Trup-advarsel tæller næste sæsons skift",
           "body": "Advarslen om trupstørrelse tæller nu ryttere på vej ind eller ud til næste sæson, inklusive lejeaftaler der venter på transfervinduet."
         },
         "refs": [
@@ -2211,11 +2211,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Notifications",
         "en": {
-          "title": "Notifications",
+          "title": "Discord alerts no longer go missing",
           "body": "Discord DMs for outbids, auction wins and transfer offers are now retried automatically if Discord is temporarily unavailable. Notifications no longer get lost silently."
         },
         "da": {
-          "title": "Notifications",
+          "title": "Discord-beskeder går ikke længere tabt",
           "body": "Discord-DM'er ved overbud, vundne auktioner og transfertilbud bliver nu automatisk forsøgt igen, hvis Discord midlertidigt afviser dem. Notifikationer går ikke længere tabt i stilhed."
         },
         "refs": [
@@ -2227,11 +2227,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Mobile & speed",
         "en": {
-          "title": "Mobile & speed",
+          "title": "Faster navigation, more room on mobile",
           "body": "The mobile top bar no longer sticks to the screen while you scroll, leaving more room for content, and the app responds instantly when you click a sidebar link, even on heavy pages. Refs #1007,"
         },
         "da": {
-          "title": "Mobile & speed",
+          "title": "Hurtigere navigation og mere plads på mobil",
           "body": "Topbjælken på mobil følger ikke længere med når du scroller, så der er mere plads til indholdet, og appen reagerer med det samme når du klikker på et link i sidemenuen, også på tunge sider. Refs #1007,"
         },
         "refs": [
@@ -2244,11 +2244,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Language & landing",
         "en": {
-          "title": "Language & landing",
+          "title": "Waitlist form fully translated",
           "body": "The Founder waitlist form now fully follows your language setting, with all labels, options and error messages translated in both languages."
         },
         "da": {
-          "title": "Language & landing",
+          "title": "Waitlist-formular fuldt oversat",
           "body": "Founder-waitlist-formularen følger nu dit sprogvalg fuldt ud, med alle labels, valgmuligheder og fejlbeskeder oversat på begge sprog."
         },
         "refs": [
@@ -2260,11 +2260,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Language & landing",
         "en": {
-          "title": "Language & landing",
+          "title": "Founder prices shown in euro",
           "body": "The founder landing page shows prices in euro on the English version, with an approximate price per day next to the monthly price. The Danish version still shows DKK."
         },
         "da": {
-          "title": "Language & landing",
+          "title": "Founder-priser vises i euro",
           "body": "Founder-landingssiden viser priser i euro på den engelske version, med en cirkapris pr. dag ved siden af månedsprisen. Den danske version viser fortsat DKK."
         },
         "refs": [
@@ -2283,11 +2283,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Auctions & bidding",
         "en": {
-          "title": "Auctions & bidding",
+          "title": "Tied bids no longer steal the lead",
           "body": "When a bid exactly matches the auction leader's auto-bid limit, the leader now keeps the lead instead of being overtaken by the identical bid."
         },
         "da": {
-          "title": "Auctions & bidding",
+          "title": "Lige bud overhaler ikke længere føreren",
           "body": "Når et bud rammer auktionsførerens autobud-loft præcist, beholder føreren nu føringen i stedet for at blive overhalet af det identiske bud."
         },
         "refs": [
@@ -2299,11 +2299,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Transfer market",
         "en": {
-          "title": "Transfer market",
+          "title": "No more ghost transfer listings",
           "body": "Riders sold at auction, bought by the bank or auto-sold no longer linger as ghost listings on the transfer market. Existing outdated listings were cleaned up. Refs #776,"
         },
         "da": {
-          "title": "Transfer market",
+          "title": "Slut med spøgelses-annoncer",
           "body": "Ryttere solgt på auktion, opkøbt af banken eller auto-solgt står ikke længere tilbage som spøgelses-annoncer på transfermarkedet. Eksisterende forældede annoncer er ryddet op. Refs #776,"
         },
         "refs": [
@@ -2316,11 +2316,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Transfer market",
         "en": {
-          "title": "Transfer market",
+          "title": "Riders can't be in auction and swap",
           "body": "A rider in an active auction can no longer be offered in a swap, and a rider offered in an open swap can no longer be put up for auction at the same time."
         },
         "da": {
-          "title": "Transfer market",
+          "title": "Rytter kan ikke være på auktion og byt samtidig",
           "body": "En rytter på aktiv auktion kan ikke længere tilbydes i en byttehandel, og en rytter i et åbent byttetilbud kan ikke længere sættes på auktion samtidig."
         },
         "refs": [
@@ -2332,11 +2332,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Team page",
         "en": {
-          "title": "Team page",
+          "title": "Transfer history signs now match account",
           "body": "Transfer history now shows purchases with a minus and sales with a plus, matching the account movement, and transfers on a season boundary day land in the correct season."
         },
         "da": {
-          "title": "Team page",
+          "title": "Transferhistorik matcher nu kontobevægelser",
           "body": "Transferhistorikken viser nu køb med minus og salg med plus, så det matcher kontobevægelsen, og transfers på en sæsongrænse-dag lander i den rigtige sæson."
         },
         "refs": [
@@ -2348,11 +2348,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Team page",
         "en": {
-          "title": "Team page",
+          "title": "Squad value sorting now correct",
           "body": "Sorting another team's squad by value now follows the value column shown in the table."
         },
         "da": {
-          "title": "Team page",
+          "title": "Sortering efter trupværdi virker korrekt",
           "body": "Sortering af et andet holds trup efter værdi følger nu værdi-kolonnen som vist i tabellen."
         },
         "refs": [
@@ -2364,11 +2364,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Standings",
         "en": {
-          "title": "Standings",
+          "title": "Podiums column now counts properly",
           "body": "The Podiums column in the standings now counts top 3 results on stages and in classifications."
         },
         "da": {
-          "title": "Standings",
+          "title": "Podie-kolonnen tæller nu rigtigt",
           "body": "Podie-kolonnen i ranglisten tæller nu top 3-resultater på etaper og i klassementer."
         },
         "refs": [
@@ -2387,11 +2387,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Roadmap",
         "en": {
-          "title": "Roadmap",
+          "title": "New Roadmap page in the sidebar",
           "body": "New Roadmap page in the sidebar: where Cycling Zone is heading across the four engines (races, training, youth development, transfers & auctions). Direction and ambition, no fixed dates."
         },
         "da": {
-          "title": "Roadmap",
+          "title": "Ny Roadmap-side i sidemenuen",
           "body": "Ny Roadmap-side i sidebaren: hvor Cycling Zone er på vej hen på tværs af de fire motorer (løb, træning, ungdomsudvikling, transfers & auktioner). Retning og ambition, ingen faste datoer."
         },
         "refs": [
@@ -2410,11 +2410,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Star riders",
         "en": {
-          "title": "Star riders",
+          "title": "Star rider threshold raised to 8M CZ$",
           "body": "A star rider is now a rider valued at 8,000,000 CZ$ or more (was 5,000,000). The threshold is recalibrated to the new rider generation so roughly the top 1.5% count as stars. Stars are protected from the board's forced sale, and the Star team achievement follows the new amount."
         },
         "da": {
-          "title": "Star riders",
+          "title": "Stjernegrænse hævet til 8 mio. CZ$",
           "body": "En stjernerytter er nu en rytter med en værdi på mindst 8.000.000 CZ$ (før 5.000.000). Grænsen er re-kalibreret til den nye rytter-generation, så cirka top 1,5 % tæller som stjerner. Stjerner er beskyttet mod bestyrelsens tvangssalg, og Stjernehold-achievementet følger det nye beløb."
         }
       }
@@ -2430,11 +2430,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Help & FAQ",
         "en": {
-          "title": "Help & FAQ",
+          "title": "Help now explains training focus",
           "body": "The Help page now explains Training focus: how to set a season-long focus and intensity on your own riders, the 3 focus slots per season, and the setback risk at higher intensity. A new FAQ answers \"How do I train a rider?\". Outdated references to the old weekly data syncs in the rider development texts are rewritten, and the prize table disclaimer no longer points at season 1."
         },
         "da": {
-          "title": "Help & FAQ",
+          "title": "Hjælp forklarer nu træningsfokus",
           "body": "Hjælp-siden forklarer nu Træningsfokus: hvordan du sætter et sæson-langt fokus og intensitet på dine egne ryttere, de 3 fokus-slots pr. sæson, og risikoen for tilbageslag ved højere intensitet. En ny FAQ svarer på \"Hvordan træner jeg en rytter?\". Forældede referencer til de gamle ugentlige data-syncs i rytterudviklings-teksterne er omskrevet, og præmietabellens forbehold peger ikke længere på sæson 1."
         },
         "refs": [
@@ -2453,11 +2453,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "English completeness",
         "en": {
-          "title": "English completeness",
+          "title": "Cookie banner follows your language",
           "body": "The cookie consent banner is now fully in English when playing in English (it was Danish-only for everyone). The squad warning when leading many auctions and the auto-bid error fallback are also translated. Part of the full-site English audit."
         },
         "da": {
-          "title": "English completeness",
+          "title": "Cookie-banner følger dit sprog",
           "body": "Cookie-samtykke-banneret følger nu dit sprogvalg (det var kun på dansk for alle). Trup-advarslen når du leder mange auktioner og autobud-fejlbeskeden er også oversat. Del af den fulde engelsk-audit af sitet."
         },
         "refs": [
@@ -2476,11 +2476,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Dashboard",
         "en": {
-          "title": "Dashboard",
+          "title": "One-day races labelled simply Winner",
           "body": "One-day race winners on the dashboard's Recent results are now labelled \"Winner\" instead of \"Overall winner\". A one-day race has no general classification, so the old label was misleading. Stage races keep the \"Overall winner\" label."
         },
         "da": {
-          "title": "Dashboard",
+          "title": "Endagsløb hedder nu bare Vinder",
           "body": "Vindere af endagsløb på dashboardets Seneste resultater hedder nu \"Vinder\" i stedet for \"Samlet vinder\". Et endagsløb har intet samlet klassement, så den gamle label var misvisende. Etapeløb beholder \"Samlet vinder\"."
         },
         "refs": [
@@ -2499,11 +2499,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Auction bidding",
         "en": {
-          "title": "Auction bidding",
+          "title": "Profile bids check your real budget",
           "body": "Bid validation on the rider profile now checks your available balance (balance minus money committed to auctions you lead and autobid caps) instead of your raw balance, matching the auctions page and the server. A bug that could silently swallow the error message on the rider profile is fixed, so an over-budget bid now always shows a clear error. Raising your own leading bid no longer counts your existing bid twice."
         },
         "da": {
-          "title": "Auction bidding",
+          "title": "Profil-bud tjekker din reelle saldo",
           "body": "Bud-validering på rytterprofilen tjekker nu din tilgængelige saldo (saldo minus penge bundet i auktioner du fører og autobud-lofter) i stedet for din rå saldo, så den matcher auktionssiden og serveren. En fejl der kunne sluge fejlbeskeden på rytterprofilen er rettet, så et bud over budgettet nu altid viser en klar fejl. Når du hæver dit eget førende bud, tæller dit eksisterende bud ikke længere dobbelt."
         },
         "refs": [
@@ -2522,11 +2522,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Star riders and achievements",
         "en": {
-          "title": "Star riders and achievements",
+          "title": "Unlockable star achievements fixed",
           "body": "Star riders are now defined by their Value: a rider valued at 5,000,000 CZ$ or more counts as a star. This fixes two achievements that were impossible to unlock: Star team (previously tied to an unreachable UCI points threshold) now unlocks when you have a star rider on your team, and The Steal now unlocks when you buy a rider for less than half his value. The board's forced-sale protection uses the same star definition, and the squad auto-purchase after a window closes now picks the genuinely cheapest fillers by Value."
         },
         "da": {
-          "title": "Star riders and achievements",
+          "title": "Stjerne-achievements kan nu låses op",
           "body": "Stjerneryttere defineres nu ud fra deres Værdi: en rytter med en værdi på mindst 5.000.000 CZ$ tæller som stjerne. Det fikser to achievements der var umulige at låse op: Stjerneholdet (før bundet til en uopnåelig UCI-point-tærskel) låses nu op når du har en stjernerytter på holdet, og Kuppet låses nu op når du køber en rytter for under halvdelen af hans værdi. Bestyrelsens tvangssalgs-beskyttelse bruger samme stjerne-definition, og squad-autokøbet efter vindueslukning vælger nu de reelt billigste fillers efter Værdi."
         },
         "refs": [
@@ -2545,11 +2545,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Race points naming",
         "en": {
-          "title": "Race points naming",
+          "title": "Race scoring renamed to points",
           "body": "Race scoring is now simply called points everywhere in the game. The points and prizes pages, help sections and table headers no longer use the UCI name, as part of making Cycling Zone's world fully independent of real-world cycling bodies. Nothing changes functionally: the points tables, the leaderboard and the prize formula (1 point = 1,500 CZ$) are exactly as before."
         },
         "da": {
-          "title": "Race points naming",
+          "title": "Løbsscoring hedder nu bare point",
           "body": "Løbsscoring hedder nu bare point overalt i spillet. Point- og præmiesiderne, hjælpesektionerne og tabel-headers bruger ikke længere UCI-navnet, som led i at gøre Cycling Zones verden fuldt uafhængig af virkelighedens cykelforbund. Intet ændrer sig funktionelt: pointtabellerne, ranglisten og præmieformlen (1 point = 1.500 CZ$) er præcis som før."
         },
         "refs": [
@@ -2568,11 +2568,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Help and finance texts",
         "en": {
-          "title": "Help and finance texts",
+          "title": "Help texts use the new value formula",
           "body": "The finance hint and the help pages no longer explain rider salary and market value with the retired UCI points formula. Salary is now described as 10% of the rider's market value (base value plus prize money bonus), the value guide matches the new valuation engine, and the Development tab description no longer mentions UCI points over time."
         },
         "da": {
-          "title": "Help and finance texts",
+          "title": "Hjælpetekster bruger ny værdiformel",
           "body": "Finans-hintet og hjælpesiderne forklarer ikke længere rytterløn og markedsværdi med den udgåede UCI-point-formel. Lønnen beskrives nu som 10% af rytterens markedsværdi (baseværdi plus præmiebonus), værdi-guiden matcher den nye værdimotor, og beskrivelsen af Udviklings-fanen nævner ikke længere UCI-point over tid."
         },
         "refs": [
@@ -2591,11 +2591,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Rider values",
         "en": {
-          "title": "Rider values",
+          "title": "Rider values now built on in-game ability",
           "body": "Rider values and salaries now run on Cycling Zone's own valuation engine instead of real-world UCI points. A rider's value is driven by their actual in-game abilities, with versatile all-round stars valued highest, and salary remains 10% of value. Values and salaries across the game have shifted as a result: the very best riders are now markedly more expensive, while the broad mid-field is cheaper. UCI points are no longer shown anywhere in the game; the rider database, team pages and auction history now show Value instead. Your balance and existing contracts are untouched."
         },
         "da": {
-          "title": "Rider values",
+          "title": "Rytterværdier bygger nu på evner i spillet",
           "body": "Rytter-værdier og lønninger drives nu af Cycling Zones egen værdimotor i stedet for virkelighedens UCI-point. En rytters værdi bestemmes af de faktiske evner i spillet, hvor alsidige all-round-stjerner værdisættes højest, og lønnen er fortsat 10% af værdien. Værdier og lønninger i hele spillet har derfor flyttet sig: de allerbedste ryttere er nu markant dyrere, mens det brede midterfelt er billigere. UCI-point vises ikke længere nogen steder i spillet; rytterdatabasen, holdsider og auktionshistorik viser nu Værdi i stedet. Din saldo og eksisterende kontrakter er urørte."
         },
         "refs": [
@@ -2614,11 +2614,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Brand identity",
         "en": {
-          "title": "Brand identity",
+          "title": "Login tagline matches the wordmark",
           "body": "The login screen tagline now reads \"Cycling Zone · Multiplayer Edition\" with a middot separator instead of a dash, matching the wordmark style already used in the browser tab and on shared links. Refs #481,"
         },
         "da": {
-          "title": "Brand identity",
+          "title": "Login-tagline matcher nu wordmarket",
           "body": "Tagline på login-skærmen står nu som \"Cycling Zone · Multiplayer Edition\" med en middot-separator i stedet for en streg, så den matcher wordmark-stilen der allerede bruges i browser-fanen og på delte links. Refs #481,"
         },
         "refs": [
@@ -2638,11 +2638,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Brand identity",
         "en": {
-          "title": "Brand identity",
+          "title": "New Cycling Zone logo goes live",
           "body": "The new Cycling Zone logo is now live across the site. The real outlined wordmark (with its twin movement-lines) and the CZ monogram now appear in the sidebar, on the login screen and on the landing page, replacing the old placeholder letter-tiles. It is the same identity you already see in the browser tab and on shared links, now carried through the whole product. Refs #481,"
         },
         "da": {
-          "title": "Brand identity",
+          "title": "Nyt Cycling Zone-logo er live",
           "body": "Det nye Cycling Zone-logo er nu live på hele siden. Det rigtige outlinede wordmark (med dets twin movement-lines) og CZ-monogrammet vises nu i sidebaren, på login-skærmen og på landingssiden, og erstatter de gamle placeholder-bogstavsfliser. Det er den samme identitet, du allerede ser i browser-fanen og på delte links, nu ført igennem hele produktet. Refs #481,"
         },
         "refs": [
@@ -2662,11 +2662,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Rider stats",
         "en": {
-          "title": "Rider stats",
+          "title": "Cleaner ability values in rider database",
           "body": "The rider database no longer shows a redundant colored dot next to every ability value. The color-coded ability number remains unchanged."
         },
         "da": {
-          "title": "Rider stats",
+          "title": "Renere evnetal i rytterdatabasen",
           "body": "Rytterdatabasen viser ikke længere en overflødig farvet prik ud for hver evneværdi. Det farvekodede evnetal er uændret."
         },
         "refs": [
@@ -2685,11 +2685,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Season 2 and your board",
         "en": {
-          "title": "Season 2 and your board",
+          "title": "Season 2 begins, pick your Club DNA",
           "body": "Season 2 has begun. Your sponsor income for the new season has been paid out, and the board is now open. Go to the Board page to choose your Club DNA, a lasting identity for your team that shapes which board members you get and what they expect of you. After choosing your DNA you negotiate your board's plans (the 5-year first, then the 3-year, then the 1-year). The earlier test setup has been cleared, so every manager starts fresh and picks their own DNA."
         },
         "da": {
-          "title": "Season 2 and your board",
+          "title": "Sæson 2 starter, vælg dit Klub-DNA",
           "body": "Sæson 2 er begyndt. Din sponsorindtægt for den nye sæson er udbetalt, og bestyrelsen er nu åben. Gå til Bestyrelse-siden for at vælge dit Klub-DNA, en blivende identitet for dit hold der former hvilke bestyrelsesmedlemmer du får, og hvad de forventer af dig. Når du har valgt dit DNA, forhandler du bestyrelsens planer (først den 5-årige, så den 3-årige, så den 1-årige). Den tidligere test-opsætning er ryddet, så hver manager starter på en frisk tavle og vælger sit eget DNA."
         },
         "refs": [
@@ -2708,11 +2708,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Training focus",
         "en": {
-          "title": "Training focus",
+          "title": "Set a training focus for riders",
           "body": "You can now set a training focus for your key riders. On your own rider's Development tab, pick a focus (such as VO2max, Threshold, Sprint, Endurance, Technique or Aero) and an intensity (Easy, Normal or Hard). The focus pushes the trained abilities faster toward that rider's ceiling, while other abilities grow a little slower, so you are choosing what to specialise in. Harder training grows faster but carries a risk of a setback that costs part of the season's gains. You have a limited number of focus slots each season, so you cannot train everyone at maximum, and it is free. Training shapes permanent ability and its effect lands at the season change. This is the first layer of a deeper training system."
         },
         "da": {
-          "title": "Training focus",
+          "title": "Sæt et træningsfokus for ryttere",
           "body": "Du kan nu sætte et træningsfokus for dine nøgleryttere. På din egen rytters Udvikling-fane vælger du et fokus (som VO2max, Tærskel, Spurt, Udholdenhed, Teknik eller Aero) og en intensitet (Let, Normal eller Hård). Fokus skubber de trænede evner hurtigere mod rytterens loft, mens andre evner vokser en anelse langsommere, så du vælger hvad der skal specialiseres i. Hårdere træning vokser hurtigere, men har en risiko for et tilbageslag der koster en del af sæsonens fremgang. Du har et begrænset antal fokus-slots hver sæson, så du kan ikke træne alle på maks, og det er gratis. Træning former permanent evne, og effekten slår igennem ved sæson-skiftet. Dette er det første lag af et dybere træningssystem."
         },
         "refs": [
@@ -2731,11 +2731,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Scouting",
         "en": {
-          "title": "Scouting",
+          "title": "Scout riders to reveal potential",
           "body": "A rider's potential is no longer shown as an exact star rating until you have scouted them. Unscouted riders now display an uncertain estimate (a star range plus a short verdict like \"High ceiling\"), widest for young, unproven talents and narrower for established riders. You have a limited number of scout slots each season; spending one on a rider tightens your estimate, and scouting fully reveals the exact potential. Estimates are personal to your team, so two managers can read the same talent differently. Your own riders are always shown exactly. Scouting is free and does not cost money."
         },
         "da": {
-          "title": "Scouting",
+          "title": "Scout ryttere for at se potentiale",
           "body": "En rytters potentiale vises ikke længere som et eksakt stjerne-tal før du har scoutet rytteren. Uscoutede ryttere viser nu et usikkert estimat (et stjerne-interval plus en kort vurdering som \"Højt loft\"), bredest for unge, uafprøvede talenter og smallere for etablerede ryttere. Du har et begrænset antal scout-slots hver sæson; bruger du et på en rytter, strammes dit estimat, og fuld scouting afslører det eksakte potentiale. Estimater er personlige for dit hold, så to managere kan vurdere samme talent forskelligt. Dine egne ryttere vises altid eksakt. Scouting er gratis og koster ikke penge."
         },
         "refs": [
@@ -2754,11 +2754,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Rider values",
         "en": {
-          "title": "Rider values",
+          "title": "Rider values build over three seasons",
           "body": "Rider values now build up over three seasons. A rider's results-based value is the average of their prize money across a rolling three-season window, with seasons not yet raced counting as zero. Values therefore start lower in season one (one third of the season's prize money) and grow over the first three seasons, instead of reacting fully to a single season. Riders with strong rankings stay anchored by their ranking, and salaries follow values as usual."
         },
         "da": {
-          "title": "Rider values",
+          "title": "Rytterværdier bygges over tre sæsoner",
           "body": "Rytterværdier bygger nu op over tre sæsoner. En rytters resultat-baserede værdi er gennemsnittet af dens præmiepenge over et rullende tre-sæsons-vindue, hvor sæsoner der endnu ikke er kørt tæller som nul. Værdier starter derfor lavere i sæson 1 (en tredjedel af sæsonens præmiepenge) og vokser over de første tre sæsoner, i stedet for at reagere fuldt på en enkelt sæson. Ryttere med stærke ranglister forbliver forankret af deres rangering, og lønninger følger værdierne som altid."
         },
         "refs": [
@@ -2777,11 +2777,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Rider development",
         "en": {
-          "title": "Rider development",
+          "title": "Riders now grow and decline",
           "body": "Riders now develop over time. A new progression engine means riders are no longer frozen. Young riders with high potential grow toward their ceiling each season (fastest in their early twenties), peak around age 28, then gradually decline, while veterans retire automatically with a notification. Development is strongest in a rider's specialty, and a rider's value rises and falls with their abilities. This is the foundation and it begins working from season two. A dedicated Development tab to chart each rider's journey will follow."
         },
         "da": {
-          "title": "Rider development",
+          "title": "Ryttere udvikler sig over tid",
           "body": "Ryttere udvikler sig nu over tid. En ny udviklings-motor betyder at ryttere ikke længere er statiske. Unge ryttere med højt potentiale vokser mod deres loft hver sæson (hurtigst i start-tyverne), topper omkring 28-årsalderen og falder derefter gradvist, mens veteraner trækker sig automatisk med en notifikation. Udviklingen er størst i rytterens speciale, og en rytters værdi stiger og falder med dens evner. Dette er fundamentet, og det træder i kraft fra sæson to. En dedikeret Udvikling-fane der tegner hver rytters rejse følger."
         },
         "refs": [
@@ -2800,11 +2800,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Rider types",
         "en": {
-          "title": "Rider types",
+          "title": "Sharper, more realistic rider types",
           "body": "Rider types have been reworked. Each rider now gets a primary and secondary type derived from the new ability system, with sharper, more realistic classifications: pure sprinters are now classed as sprinters (not lead-outs), cobble specialists as cobbled-classics riders, and the GC label is reserved for true stage-race contenders (high climbing, time-trial and recovery). The \"GOAT\", \"domestique\" and \"all-rounder\" labels have been retired."
         },
         "da": {
-          "title": "Rider types",
+          "title": "Skarpere og mere realistiske ryttertyper",
           "body": "Ryttertyperne er omarbejdet. Hver rytter får nu en primær og sekundær type udledt af det nye evne-system, med skarpere og mere realistiske klassifikationer: rene spurtere klassificeres nu som sprintere (ikke lead-outs), brostensspecialister som brostensryttere, og Etapeløbsrytter-mærket er forbeholdt ægte klassementryttere (høj bjerg, enkeltstart og restitution). Mærkerne \"GOAT\", \"hjælperytter\" og \"allrounder\" er udgået."
         },
         "refs": [
@@ -2823,11 +2823,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "English results, season & founder pages",
         "en": {
-          "title": "English results, season & founder pages",
+          "title": "Results and season pages now in English",
           "body": "Three more pages now display fully in English when your language is set to English: the Results hub, the Season snapshot (calendar, final standings and season winners) and the public Founder waitlist landing page. They previously showed Danish regardless of your language setting. The Founder page now also follows your chosen app language instead of always opening in Danish."
         },
         "da": {
-          "title": "English results, season & founder pages",
+          "title": "Resultater og sæson nu på engelsk",
           "body": "Tre sider mere vises nu fuldt på engelsk når dit sprog er sat til engelsk: Resultater-hubben, Sæson-snapshot (kalender, slutstilling og sæsonens vindere) og den offentlige Founder-waitlist-landingsside. Tidligere viste de dansk uanset sprogvalg. Founder-siden følger nu også dit valgte sprog i appen i stedet for altid at åbne på dansk."
         },
         "refs": [
@@ -2846,11 +2846,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "English race pages",
         "en": {
-          "title": "English race pages",
+          "title": "Race pages now in English",
           "body": "The race pages (calendar, library, world calendar, points & prizes, result submission and per-race results) now display fully in English when your language is set to English. They previously showed Danish regardless of your language setting. Result classifications and jerseys now use consistent English names (general classification, points jersey, mountains jersey, young rider jersey). A raw server error that could pop up when approving a submission is now a friendly message."
         },
         "da": {
-          "title": "English race pages",
+          "title": "Løbssider nu på engelsk",
           "body": "Løbssiderne (kalender, bibliotek, verdens-kalender, point & præmier, resultat-indberetning og resultater pr. løb) vises nu fuldt på engelsk når dit sprog er sat til engelsk. Tidligere viste de dansk uanset sprogvalg. Klassementer og trøjer bruger nu konsistente navne, og en rå server-fejl ved godkendelse af en indberetning er nu en venlig besked."
         },
         "refs": [
@@ -2869,11 +2869,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Board negotiation",
         "en": {
-          "title": "Board negotiation",
+          "title": "Board negotiate button no longer dead",
           "body": "In the board plan negotiation, the \"Negotiate down\" button no longer does nothing when a target can't be lowered. It's now clearly disabled and labelled \"Can't be negotiated\" instead of silently ignoring your click."
         },
         "da": {
-          "title": "Board negotiation",
+          "title": "Forhandl ned-knap virker tydeligt nu",
           "body": "I bestyrelsens planforhandling gør \"Forhandl ned\"-knappen ikke længere ingenting når et mål ikke kan sænkes. Den er nu tydeligt deaktiveret og mærket \"Kan ikke forhandles\" i stedet for tavst at ignorere dit klik."
         },
         "refs": [
@@ -2892,11 +2892,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Rider abilities",
         "en": {
-          "title": "Rider abilities",
+          "title": "16 sharper rider abilities (beta)",
           "body": "The beta ability preview on rider profiles is rebuilt and expanded from 10 to 16 abilities, grouped into physical, technical and tactical. New ones include prologue, flat, tempo, durability, descending and aggression, and \"cobbles\" is now its own ability separate from climbing-style classics. Abilities now read more directly from a rider's stats, so specialists stand out: a pure sprinter is genuinely weak in the mountains, while a climber keeps the acceleration to attack uphill without having a flat sprint. Still beta and being tuned, and it does not affect race results yet."
         },
         "da": {
-          "title": "Rider abilities",
+          "title": "16 skarpere rytterevner (beta)",
           "body": "Beta-evnerne på rytterprofiler er bygget om og udvidet fra 10 til 16 evner, grupperet i fysiske, tekniske og taktiske. Nye er bl.a. prolog, fladt, tempo, modstandskraft, nedkørsel og angrebslyst, og \"brosten\" er nu sin egen evne adskilt fra klatre-prægede klassikere. Evnerne aflæses nu mere direkte af rytterens stats, så specialister træder frem: en ren sprinter er reelt svag i bjergene, mens en klatrer beholder accelerationen til at angribe opad uden at have en flad spurt. Stadig beta og under justering, og det påvirker endnu ikke resultater."
         },
         "refs": [
@@ -2915,11 +2915,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Rider types",
         "en": {
-          "title": "Rider types",
+          "title": "Rider types reveal each rider's strengths",
           "body": "Riders now show a rider type (their two strongest roles, like \"Sprinter / Lead-out\" or \"Climber / GC contender\") on the rider profile and in the rider list. The type is read from a rider's stats relative to the whole field (so it reflects what they're genuinely good at, not just high numbers), across 12 roles: Sprinter, Lead-out, Climber, Puncheur, Time-trialist, Classics specialist, GC contender, GOAT, All-rounder, Rouleur, Baroudeur and Domestique. You can also filter the rider list by type. Refs #49,"
         },
         "da": {
-          "title": "Rider types",
+          "title": "Ryttertyper viser hver rytters styrker",
           "body": "Ryttere viser nu en ryttertype (deres to stærkeste roller, fx \"Sprinter / Lead-out\" eller \"Bjergrytter / Etapeløbsrytter\") på rytterprofilen og i rytterlisten. Typen aflæses af rytterens stats i forhold til hele feltet (så den afspejler hvad de reelt er gode til, ikke bare høje tal), på tværs af 12 roller: Sprinter, Lead-out, Bjergrytter, Bakkerytter, Tidskører, Brostensrytter, Etapeløbsrytter, GOAT, Allrounder, Rouleur, Baroudeur og Hjælperytter. Du kan også filtrere rytterlisten på type. Refs #49,"
         },
         "refs": [
@@ -2939,11 +2939,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Rider value",
         "en": {
-          "title": "Rider value",
+          "title": "Preview a rider's new value",
           "body": "Rider profiles now show a \"New value (beta)\" chip next to the current value. It previews an upcoming valuation that's learned from what managers actually pay in auctions (abilities, age and more) instead of IRL UCI points. It does not affect buying, selling or salary yet. It's there so we can verify the new numbers before switching over."
         },
         "da": {
-          "title": "Rider value",
+          "title": "Forhåndsvis rytterens nye værdi",
           "body": "Rytterprofiler viser nu en \"Ny værdi (beta)\"-chip ved siden af den nuværende værdi. Den forhåndsviser et kommende værdisystem, der er lært af hvad managers faktisk betaler i auktioner (evner, alder m.m.) i stedet for IRL UCI-point. Den påvirker endnu ikke køb, salg eller løn. Den er der, så vi kan verificere de nye tal før vi skifter over."
         },
         "refs": [
@@ -2962,11 +2962,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "The board",
         "en": {
-          "title": "The board",
+          "title": "See what drives your board",
           "body": "New \"What drives this board?\" panel on the board page: a single overall-satisfaction bar (averaged across your 5/3/1-year plans) with a plain-language label, plus the two-to-three goal types your club's DNA weights most. So you can see at a glance what moves the board. Refs #102,"
         },
         "da": {
-          "title": "The board",
+          "title": "Se hvad der rykker dit board",
           "body": "Nyt \"Hvad vægter dette board?\"-panel på bestyrelsessiden: én samlet tilfredsheds-bar (gennemsnit på tværs af dine 5/3/1-årsplaner) med en label i klar tale, plus de to-tre måltyper din klubs DNA vægter højest. Så du med ét blik kan se, hvad der rykker bestyrelsen. Refs #102,"
         },
         "refs": [
@@ -2979,11 +2979,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "The board",
         "en": {
-          "title": "The board",
+          "title": "Star-rider goal becomes high-renown",
           "body": "The board's \"sign a star rider\" goal is renamed to \"high-renown rider\". The old wording clashed with the potential-star rating you see on riders. It now shows your progress (e.g. 0/1) and a \"How is this measured?\" note explaining the threshold. A fuller earned-renown system (rising with results, wins and honours) is coming."
         },
         "da": {
-          "title": "The board",
+          "title": "Stjernemål bliver til højt omdømme",
           "body": "Bestyrelsens \"signér en stjerne-rytter\"-mål er omdøbt til \"rytter med højt omdømme\". Den gamle formulering kolliderede med potentiale-stjernerne du ser på ryttere. Det viser nu din fremgang (fx 0/1) og en \"Hvordan måles dette?\"-note der forklarer tærsklen. Et fuldt optjent omdømme-system (stiger med resultater, sejre og titler) er på vej."
         },
         "refs": [
@@ -2995,11 +2995,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "The board",
         "en": {
-          "title": "The board",
+          "title": "Board goals explain how they're measured",
           "body": "The 3-year \"top X in division\" goal and the U25 development goal now each carry a short \"How is this measured?\" note, clarifying that the ranking is judged on the plan's final season and that U25 development means average stat-points gained per young rider per season. Refs #989,"
         },
         "da": {
-          "title": "The board",
+          "title": "Bestyrelsesmål forklarer hvordan de måles",
           "body": "3-årsplanens \"top X i divisionen\"-mål og U25-udviklingsmålet har nu hver en kort \"Hvordan måles dette?\"-note, der gør klart at placeringen vurderes på planens sidste sæson, og at U25-udvikling betyder gennemsnitlige stat-points pr. ung rytter pr. sæson. Refs #989,"
         },
         "refs": [
@@ -3019,11 +3019,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Standings",
         "en": {
-          "title": "Standings",
+          "title": "Gold jersey now marks the leader",
           "body": "Gold now means one thing: the leader. The rank-1 team in a division carries a gold \"Leader\" jersey badge across the standings, season-end results and your dashboard. Sitting alongside the green/red promotion and relegation markers, never replacing them. Your own team, which used to be gold (clashing with that signal), now stands out with a clean neutral highlight instead."
         },
         "da": {
-          "title": "Standings",
+          "title": "Guldtrøje markerer nu føreren",
           "body": "Guld betyder nu én ting: føreren. Det førende hold i en division får et guld-\"Fører\"-trøjemærke på ranglisten, sæson-resultaterne og dit dashboard. Ved siden af de grønne/røde op- og nedryknings-markører, aldrig i stedet for dem. Dit eget hold, der før var guld (og kolliderede med det signal), fremhæves nu i stedet med en ren, neutral markering."
         },
         "refs": [
@@ -3042,11 +3042,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "The board",
         "en": {
-          "title": "The board",
+          "title": "Board plans split into clear tabs",
           "body": "The board's 5, 3 and 1-year plans are now shown as tabs, one plan at a time in full width, instead of three cramped columns. Each plan leads with a plain-language standing (Below par / On track / Good / Great / Outstanding) plus a trend arrow, lists all of its targets without truncation, and a short note explains that plans are negotiated longest-first (5 to 3 to 1 years). Refs #955, #818, #816,"
         },
         "da": {
-          "title": "The board",
+          "title": "Bestyrelsesplaner opdelt i klare faner",
           "body": "Bestyrelsens 5-, 3- og 1-årsplaner vises nu som faner, én plan ad gangen i fuld bredde, i stedet for tre sammenpressede kolonner. Hver plan indledes med en status i klar tale (Under niveau / På sporet / God / Stærk / Fremragende) plus en trend-pil, viser alle sine mål uden afkortning, og en kort note forklarer at planer forhandles længst først (5 til 3 til 1 år). Refs #955, #818, #816,"
         },
         "refs": [
@@ -3068,11 +3068,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "The board",
         "en": {
-          "title": "The board",
+          "title": "Board dialogs now keyboard and screen-reader friendly",
           "body": "The board's pop-up dialogs (board member portraits, your club DNA, and the plan-negotiation steps) can now be used fully with a keyboard and screen reader: focus stays inside the open dialog, Escape closes it, the close buttons are properly labelled, and the goal status icons now read out their meaning."
         },
         "da": {
-          "title": "The board",
+          "title": "Bestyrelsens dialoger virker nu med tastatur",
           "body": "Bestyrelsens pop op-dialoger (portrætter af bestyrelsesmedlemmer, dit klub-DNA og trinene i plan-forhandlingen) kan nu bruges fuldt ud med tastatur og skærmlæser: fokus bliver inde i den åbne dialog, Escape lukker den, luk-knapperne er korrekt mærket, og mål-status-ikonerne læses nu op med deres betydning."
         },
         "refs": [
@@ -3084,11 +3084,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "The board",
         "en": {
-          "title": "The board",
+          "title": "Board page styling matches the app",
           "body": "The board page now matches the rest of the app's look: the satisfaction figure uses readable, theme-correct colors (fixing a hard-to-read gold on the light theme), numbers line up neatly, and the division leader is highlighted in gold in your season history."
         },
         "da": {
-          "title": "The board",
+          "title": "Bestyrelsessiden følger appens udseende",
           "body": "Bestyrelsessiden følger nu resten af appens udseende: tilfredsheds-tallet bruger læsbare, tema-korrekte farver (retter en svært læselig guld på det lyse tema), tal står pænt på linje, og division-føreren fremhæves med guld i din sæson-historik."
         },
         "refs": [
@@ -3100,11 +3100,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Profiles",
         "en": {
-          "title": "Profiles",
+          "title": "Offline dot now visible on profiles",
           "body": "The offline indicator dot on manager and team profile pages was invisible due to a missing color. Offline managers now show a clear grey dot next to their last-seen time."
         },
         "da": {
-          "title": "Profiles",
+          "title": "Offline-prik er nu synlig på profiler",
           "body": "Den grå offline-prik på manager- og holdprofiler var usynlig på grund af en manglende farve. Offline-managere viser nu en tydelig grå prik ved siden af deres sidst set-tidspunkt."
         },
         "refs": [
@@ -3123,11 +3123,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "The board",
         "en": {
-          "title": "The board",
+          "title": "Board members now read in English",
           "body": "In English, large parts of the board still showed up in Danish: your named board members' titles and descriptions, their reactions to your plans and goals, and the board's overall assessment headlines and summaries. These are now fully translated, so the board reads in English when you play in English. Refs #917,"
         },
         "da": {
-          "title": "The board",
+          "title": "Bestyrelsesmedlemmer oversat til engelsk",
           "body": "På engelsk blev store dele af bestyrelsen stadig vist på dansk: dine navngivne bestyrelsesmedlemmers titler og beskrivelser, deres reaktioner på dine planer og mål, samt bestyrelsens overordnede vurderings-overskrifter og -opsummeringer. De er nu fuldt oversat, så bestyrelsen læses på engelsk når du spiller på engelsk. Refs #917,"
         },
         "refs": [
@@ -3147,11 +3147,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "The board",
         "en": {
-          "title": "The board",
+          "title": "All goal types now count toward plans",
           "body": "On your board plans, newer goal types (signing a star rider, developing your U25 riders, or finishing ahead of rival managers in your division) were not counted in your \"goals met\" tally or the goal status icons on the plan panels, even after you had achieved them; only the older goal types were. Every goal type now counts correctly, so your plan progress reflects what you have actually accomplished."
         },
         "da": {
-          "title": "The board",
+          "title": "Alle måltyper tælles nu med",
           "body": "På dine bestyrelses-planer blev nyere måltyper (at signere en stjernerytter, udvikle dine U25-ryttere eller slutte foran rival-managere i din division) ikke talt med i din \"mål opfyldt\"-optælling eller mål-status-ikonerne på plan-panelerne, selv efter du havde opnået dem; kun de ældre måltyper gjorde. Alle måltyper tælles nu korrekt, så din plan-fremgang afspejler det, du faktisk har opnået."
         },
         "refs": [
@@ -3170,11 +3170,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "The board",
         "en": {
-          "title": "The board",
+          "title": "This season's wins count toward long-term goals",
           "body": "On your three-year and five-year plan, the cumulative stage-win and GC-win goals counted from zero until the season ended, even when your team had already won stages this season. They now include the current season's wins as you earn them, so the progress toward those long-term goals updates straight away."
         },
         "da": {
-          "title": "The board",
+          "title": "Sæsonens sejre tæller mod langsigtede mål",
           "body": "På din tre-årige og fem-årige plan talte de samlede etapesejr- og GC-sejr-mål fra nul indtil sæsonen sluttede, selv når dit hold allerede havde vundet etaper i denne sæson. De medregner nu den indeværende sæsons sejre, efterhånden som du vinder dem, så fremgangen mod de langsigtede mål opdateres med det samme."
         },
         "refs": [
@@ -3193,11 +3193,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "The board",
         "en": {
-          "title": "The board",
+          "title": "Tap board cards for instant details",
           "body": "The board page is more interactive. Board members and your club DNA can now be tapped to open a detail card, plan goals open the same goal card whether you see them in the compact panel or the full list, the \"+N more\" goals link expands the details, and tapping a satisfaction figure jumps to the explanation of what satisfaction means."
         },
         "da": {
-          "title": "The board",
+          "title": "Tryk på bestyrelses-kort for detaljer",
           "body": "Bestyrelses-siden er mere interaktiv. Bestyrelsesmedlemmer og klubbens DNA kan nu trykkes på for at åbne et detalje-kort, plan-mål åbner det samme mål-kort, uanset om du ser dem i det kompakte panel eller den fulde liste, \"+N mål mere\"-linket folder detaljerne ud, og et tryk på et tilfredsheds-tal hopper ned til forklaringen af hvad tilfredshed betyder."
         },
         "refs": [
@@ -3216,11 +3216,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "The board",
         "en": {
-          "title": "The board",
+          "title": "The board opens for everyone",
           "body": "The board is now open for everyone. You can negotiate your club's long-term plan (five-year, then three-year, then one-year), choose your club DNA, and agree on goals with the board. Your season is judged against those goals, with real consequences for the club's finances."
         },
         "da": {
-          "title": "The board",
+          "title": "Bestyrelsen er nu åben for alle",
           "body": "Bestyrelsen er nu åben for alle. Du kan forhandle din klubs langsigtede plan (femårig, så treårig, så etårig), vælge din klubs DNA og aftale mål med bestyrelsen. Din sæson bedømmes op mod de mål, med rigtige konsekvenser for klubbens økonomi."
         },
         "refs": [
@@ -3239,11 +3239,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Squad size",
         "en": {
-          "title": "Squad size",
+          "title": "Squad minimum removed, sell freely",
           "body": "There is no longer a minimum squad size. You can now sell, release, or transfer riders all the way down to an empty roster, and when the transfer window closes the game no longer auto-buys riders or fines you for having too few. The squad cap of 30 riders still applies, and the dashboard no longer shows a \"below minimum\" warning."
         },
         "da": {
-          "title": "Squad size",
+          "title": "Intet trup-minimum mere, sælg frit",
           "body": "Der er ikke længere et minimum for trup-størrelsen. Du kan nu sælge, frigive eller bytte ryttere helt ned til en tom trup, og når transfervinduet lukker, auto-køber spillet ikke længere ryttere eller giver dig bøde for at have for få. Loftet på 30 ryttere gælder stadig, og dashboardet viser ikke længere en \"under minimum\"-advarsel."
         }
       }
@@ -3259,11 +3259,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Dashboard",
         "en": {
-          "title": "Dashboard",
+          "title": "Dashboard cards are now clickable",
           "body": "The dashboard is now clickable where you would expect. Each card heading (Auctions, Transfers, Races, Standings, Board, Results, Rider ranking) is a single link to its full page, your balance in the top corner links to Finance, and the division standings and upcoming races rows now open their pages just like the auction and transfer rows already did. The race edition year (e.g. \"2024 edition\") also showed in Danish for English players and is now translated."
         },
         "da": {
-          "title": "Dashboard",
+          "title": "Dashboard-kort er nu klikbare",
           "body": "Dashboardet er nu klikbart der hvor du forventer det. Hver kort-overskrift (Auktioner, Transfers, Løb, Stilling, Bestyrelse, Resultater, Rytterrangliste) er ét link til sin fulde side, din saldo i øverste hjørne linker til Økonomi, og divisions-stilling- og kommende løb-rækkerne åbner nu deres sider ligesom auktions- og transfer-rækkerne allerede gjorde. Løbsudgavens årstal (fx \"2024-udgave\") blev også vist på dansk for engelske spillere og er nu oversat."
         },
         "refs": [
@@ -3283,11 +3283,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Riders",
         "en": {
-          "title": "Riders",
+          "title": "Whole rider row now clickable",
           "body": "On the Rider Database, the whole row is now a single click target. Clicking anywhere on a rider, including the potential stars and stat bars, opens that rider's profile. Column headers that cannot be sorted (Team, Status, Compare) no longer look interactive, so it is clearer what you can actually click."
         },
         "da": {
-          "title": "Riders",
+          "title": "Hele rytter-rækken er nu klikbar",
           "body": "På Rytterdatabasen er hele rækken nu ét klikmål. Klik hvor som helst på en rytter, inklusive potentiale-stjerner og stat-bjælker, åbner rytterens profil. Kolonne-overskrifter der ikke kan sorteres (Hold, Status, Sammenlign) ser ikke længere klikbare ud, så det er tydeligere hvad du kan klikke på."
         },
         "refs": [
@@ -3306,11 +3306,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Auctions",
         "en": {
-          "title": "Auctions",
+          "title": "Auction history now reads in English",
           "body": "The auction history page now appears in English for English players. Tabs, the Bought/Sold/Spent/Earned summary, filters, table headers and pagination previously stayed in Danish even in English mode. They are now fully localised, with amounts formatted to your language."
         },
         "da": {
-          "title": "Auctions",
+          "title": "Auktionshistorik oversat til engelsk",
           "body": "Auktionshistorik-siden vises stadig på dansk for danske spillere uden ændringer, men engelske spillere så tidligere dansk tekst i faner, Købt/Solgt/Brugt/Tjent-oversigten, filtre, tabel-overskrifter og sideskift. Det er nu fuldt oversat, med beløb formateret efter dit sprog."
         },
         "refs": [
@@ -3329,11 +3329,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Board",
         "en": {
-          "title": "Board",
+          "title": "Board messages now read in English",
           "body": "Board messages now appear in English for English players. Choosing your club DNA, negotiating or signing a board plan, and the mid-season renegotiation lock previously fell back to Danish even in English mode. They are now fully localised. A negative-balance notification also showed up in Danish for English players and is now translated too."
         },
         "da": {
-          "title": "Board",
+          "title": "Bestyrelses-beskeder oversat til engelsk",
           "body": "Bestyrelses-beskeder vises stadig på dansk for danske spillere uden ændringer. Men engelske spillere så tidligere dansk tekst ved DNA-valg, forhandling/signering af bestyrelsesplaner og midt-sæson-låsen. Det er nu fuldt oversat. En notifikation om negativ saldo blev også vist på dansk for engelske spillere og er nu oversat."
         },
         "refs": [
@@ -3352,11 +3352,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Transfers",
         "en": {
-          "title": "Transfers",
+          "title": "Transfer errors now read in English",
           "body": "Error messages across transfers, swaps and loans now appear in English for English players. Listing a rider, sending offers and counter-offers, proposing swaps, and creating or accepting loans previously fell back to Danish even in English mode. Including squad-full warnings and \"can't afford\" notices. They are now fully localised, with amounts formatted to your language."
         },
         "da": {
-          "title": "Transfers",
+          "title": "Transfer-fejlbeskeder oversat til engelsk",
           "body": "Fejlbeskeder på tværs af transfers, byttehandler og lejeaftaler vises stadig på dansk for danske spillere uden ændringer. Men engelske spillere så tidligere dansk tekst ved salg, tilbud, modbud, byttehandler og lejeaftaler. Det er nu fuldt oversat, med beløb formateret efter dit sprog."
         },
         "refs": [
@@ -3375,11 +3375,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Auctions",
         "en": {
-          "title": "Auctions",
+          "title": "Auction errors now read in English",
           "body": "Error messages in the auction flow now appear in English for English players. Bidding, auto-bids and the \"too many actions\" rate-limit notices previously fell back to Danish even in English mode. They are now fully localised, with amounts formatted to your language."
         },
         "da": {
-          "title": "Auctions",
+          "title": "Auktions-fejlbeskeder oversat til engelsk",
           "body": "Fejlbeskeder i auktions-flowet vises nu på dansk for danske spillere uden ændringer. Men engelske spillere så tidligere dansk tekst ved bud, autobud og \"for mange handlinger\"-beskeder. Det er nu fuldt oversat, med beløb formateret efter dit sprog."
         },
         "refs": [
@@ -3398,11 +3398,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Brand",
         "en": {
-          "title": "Brand",
+          "title": "Gold dots mark your place in nav",
           "body": "The sidebar navigation now marks each item with a small gold dot (solid gold for the page you are currently on, dimmed for the rest) and hovering an item slides in a short gold accent line borrowed from the brand wordmark. Together they make it clearer where you are and what you are about to open."
         },
         "da": {
-          "title": "Brand",
+          "title": "Guld-prikker viser hvor du er",
           "body": "Sidebar-navigationen markerer nu hvert punkt med en lille guld-prik (solid guld for den side, du er på, dæmpet for resten) og når du holder musen over et punkt, glider en kort guld-accent-streg ind, lånt fra brand-wordmark'et. Tilsammen gør de det tydeligere, hvor du er, og hvad du er ved at åbne."
         },
         "refs": [
@@ -3421,11 +3421,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Brand",
         "en": {
-          "title": "Brand",
+          "title": "New brand fonts and refined colours",
           "body": "Cycling Zone now renders in its own brand typefaces (a condensed display font for the wordmark and a dedicated font for numbers, stats and prices) together with a refined colour palette: a warmer off-white light mode, cleaner dark surfaces, and status colours (success, warning, error, info) retuned so \"warning\" no longer clashes with the brand gold. Faint text in dark mode is now easier to read. The fonts are self-hosted, so the page no longer shifts around while they load."
         },
         "da": {
-          "title": "Brand",
+          "title": "Nye brand-skrifttyper og forfinet farvepalet",
           "body": "Cycling Zone vises nu med sine egne brand-skrifttyper (en kondenseret display-font til wordmark'et og en dedikeret font til tal, statistik og priser) sammen med en forfinet farvepalet: en varmere off-white lys-tilstand, renere mørke flader, og status-farver (succes, advarsel, fejl, info) justeret så \"advarsel\" ikke længere kolliderer med brand-guld. Svag tekst i mørk tilstand er nemmere at læse nu. Skrifttyperne hostes lokalt, så siden ikke længere hopper rundt mens de indlæses."
         },
         "refs": [
@@ -3444,11 +3444,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Brand",
         "en": {
-          "title": "Brand",
+          "title": "Shared links show the real logo",
           "body": "The preview image shown when you share Cycling Zone on social media or Discord now uses the real brand logo and wordmark instead of an old placeholder mark, so a shared link looks like the actual product."
         },
         "da": {
-          "title": "Brand",
+          "title": "Delte links viser det rigtige logo",
           "body": "Forhåndsvisnings-billedet, der vises når du deler Cycling Zone på sociale medier eller Discord, bruger nu det rigtige brand-logo og wordmark i stedet for et gammelt placeholder-mærke, så et delt link ligner det faktiske produkt."
         },
         "refs": [
@@ -3467,11 +3467,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Navigation",
         "en": {
-          "title": "Navigation",
+          "title": "Mobile logo links to your dashboard",
           "body": "The Cycling Zone logo in the mobile top bar now links to your dashboard, matching the desktop sidebar and the usual web convention. The navigation item for the page you are already on is now marked as the current page and no longer looks clickable, so it is clear where you are. Based on click-data from the UI audit."
         },
         "da": {
-          "title": "Navigation",
+          "title": "Mobil-logo linker til dit dashboard",
           "body": "Cycling Zone-logoet i den mobile topbar linker nu til dit dashboard, så det matcher desktop-sidebaren og den almindelige web-konvention. Nav-punktet for den side, du allerede er på, markeres nu som den aktuelle side og ser ikke længere klikbart ud, så det er tydeligt, hvor du befinder dig. Baseret på klikdata fra UI-auditten."
         },
         "refs": [
@@ -3490,11 +3490,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Auctions & lists",
         "en": {
-          "title": "Auctions & lists",
+          "title": "Clearer auction and filter messages",
           "body": "When a bid exceeded your available balance, the auction showed a raw internal text instead of a readable message. It now reads \"Bid exceeds your available balance\". Filtering the Rider Database, Watchlist or Rider Rankings down to zero matches now shows a clear message with a \"Clear all filters\" button instead of a blank table. The watchlist star and compare controls are now translated, and a failed \"Start auction\" no longer shows a raw browser pop-up. Based on click-data from the UI audit. Refs #864,"
         },
         "da": {
-          "title": "Auctions & lists",
+          "title": "Tydeligere auktions- og filter-beskeder",
           "body": "Når et bud oversteg din tilgængelige saldo, viste auktionen en rå intern tekst i stedet for en læsbar besked. Der står nu \"Buddet overstiger din tilgængelige saldo\". Filtrerer du Rytterdatabasen, Ønskelisten eller Rytterranglisten ned til nul match, vises nu en tydelig besked med en \"Ryd alle filtre\"-knap i stedet for en tom tabel. Ønskeliste-stjernen og sammenlign-knapperne er nu oversat, og en fejlet \"Start auktion\" viser ikke længere en rå browser-popup. Baseret på klikdata fra UI-auditten. Refs #864,"
         },
         "refs": [
@@ -3514,11 +3514,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Layout",
         "en": {
-          "title": "Layout",
+          "title": "Big tables now use full screen width",
           "body": "Data-heavy pages (Rider Database, Auctions, Rider rankings, Watchlist) now use the full width of wide screens. The big tables previously had their right-hand columns cut off behind a scrollbar while empty side-margins sat unused. Now the table fills the available space, so all columns are visible without scrolling on a normal desktop. Filter panels stay at a comfortable width so the input fields don't stretch. Refs #1027,"
         },
         "da": {
-          "title": "Layout",
+          "title": "Store tabeller bruger nu hele bredden",
           "body": "Data-tunge sider (Rytterdatabase, Auktioner, Rytterrangliste, Ønskeliste) bruger nu hele bredden på brede skærme. De store tabeller fik før deres højre kolonner klippet væk bag en scrollbar, mens tomme side-margener stod ubrugte. Nu fylder tabellen den tilgængelige plads, så alle kolonner er synlige uden at scrolle på en normal desktop. Filter-paneler holder en behagelig bredde, så inputfelterne ikke strækkes. Refs #1027,"
         },
         "refs": [
@@ -3538,11 +3538,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Brand",
         "en": {
-          "title": "Brand",
+          "title": "New monogram in the browser tab",
           "body": "The browser-tab icon is now the new Cycling Zone monogram, replacing the old placeholder. It is the first piece of the refreshed brand identity. Refs #481,"
         },
         "da": {
-          "title": "Brand",
+          "title": "Nyt monogram i browser-fanen",
           "body": "Browser-fanens ikon er nu det nye Cycling Zone-monogram, der erstatter den gamle placeholder. Det er første del af den opdaterede brand-identitet. Refs #481,"
         },
         "refs": [
@@ -3562,11 +3562,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Rider profiles",
         "en": {
-          "title": "Rider profiles",
+          "title": "Power numbers on rider profiles (beta)",
           "body": "Rider profiles now show a Cycling Zones preview (beta): physiological power numbers (FTP, VO2max, Zone 2, peak power and a 5s/15s/1min/5min power curve) plus derived abilities like climbing, sprint and time trial. It is calculated from current skills and does not affect race results yet."
         },
         "da": {
-          "title": "Rider profiles",
+          "title": "Effekttal på rytterprofiler (beta)",
           "body": "Rytterprofiler viser nu et Cycling Zones-preview (beta): fysiologiske effekttal (FTP, VO2max, Zone 2, maksimal effekt og en 5s/15s/1min/5min effektkurve) plus udledte evner som klatring, sprint og enkeltstart. Det er beregnet ud fra nuværende evner og påvirker endnu ikke løbsresultater."
         },
         "refs": [
@@ -3608,11 +3608,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Privacy",
         "en": {
-          "title": "Privacy",
+          "title": "Privacy policy names the data controller",
           "body": "The privacy policy now lists the registered data controller: Dolmer Digital (Danish CVR 46524861), the company behind Cycling Zone."
         },
         "da": {
-          "title": "Privacy",
+          "title": "Privatlivspolitik angiver den dataansvarlige",
           "body": "Privatlivspolitikken angiver nu den registrerede dataansvarlige: Dolmer Digital (CVR 46524861), virksomheden bag Cycling Zone."
         }
       }
@@ -3628,11 +3628,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Dashboard",
         "en": {
-          "title": "Dashboard",
+          "title": "Tidied up the dashboard top",
           "body": "Cleaned up the top of the dashboard. The four summary cards (balance, riders, active auctions, board satisfaction) are gone, since that information already appears in the header and in the cards below."
         },
         "da": {
-          "title": "Dashboard",
+          "title": "Ryddet op i toppen af dashboardet",
           "body": "Ryddet op i toppen af dashboardet. De fire oversigtskort (saldo, ryttere, aktive auktioner, bestyrelsestilfredshed) er fjernet, da den information allerede vises i headeren og i kortene nedenunder."
         }
       },
@@ -3641,11 +3641,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Dashboard",
         "en": {
-          "title": "Dashboard",
+          "title": "Customize button now a gear icon",
           "body": "The Customize button moved to the top-right corner as a gear icon, so it is easier to find."
         },
         "da": {
-          "title": "Dashboard",
+          "title": "Tilpas-knap er nu et tandhjul",
           "body": "Tilpas-knappen er flyttet op i øverste højre hjørne som et tandhjuls-ikon, så den er lettere at finde."
         }
       }
@@ -3661,11 +3661,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Dashboard",
         "en": {
-          "title": "Dashboard",
+          "title": "Customize which dashboard modules show",
           "body": "You can now customize your dashboard. A new Customize button lets you show or hide each module (auctions, transfers, races, standings, board) and your choice is remembered on this device."
         },
         "da": {
-          "title": "Dashboard",
+          "title": "Tilpas hvilke dashboard-moduler du ser",
           "body": "Du kan nu tilpasse dit dashboard. En ny Tilpas-knap lader dig vise eller skjule hvert modul (auktioner, transfers, løb, rangliste, bestyrelse), og dit valg huskes på denne enhed."
         }
       },
@@ -3674,11 +3674,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Dashboard",
         "en": {
-          "title": "Dashboard",
+          "title": "New recent results and rider ranking modules",
           "body": "Two new dashboard modules: Recent results (the latest finished races and their winners) and Rider ranking (this season's top scorers)."
         },
         "da": {
-          "title": "Dashboard",
+          "title": "Nye moduler: resultater og rytterrangliste",
           "body": "To nye dashboard-moduler: Seneste resultater (de senest afsluttede løb og deres vindere) og Rytterrangliste (sæsonens topscorere)."
         }
       }
@@ -3694,11 +3694,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Riders",
         "en": {
-          "title": "Riders",
+          "title": "See how many managers view a rider",
           "body": "Each rider profile now shows how many unique managers have visited it in the last 24 hours and the last 7 days. Once enough history has built up, a trend arrow shows whether interest is rising or falling."
         },
         "da": {
-          "title": "Riders",
+          "title": "Se hvor mange kigger på en rytter",
           "body": "Hver rytterprofil viser nu hvor mange unikke managers der har besøgt den de seneste 24 timer og de seneste 7 dage. Når der er nok historik, viser en trend-pil om interessen stiger eller falder."
         }
       }
@@ -3714,11 +3714,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Notifications",
         "en": {
-          "title": "Notifications",
+          "title": "Discord notifications working again",
           "body": "Discord direct messages are working again. Notifications for outbids, won auctions, and transfer offers had quietly stopped sending; they now arrive as expected for managers who have linked their Discord."
         },
         "da": {
-          "title": "Notifications",
+          "title": "Discord-beskeder virker igen",
           "body": "Discord-beskeder virker igen. Notifikationer ved overbud, vundne auktioner og transfertilbud var holdt op med at blive sendt; de leveres nu som forventet til managers der har forbundet deres Discord."
         }
       }
@@ -3734,11 +3734,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Auctions",
         "en": {
-          "title": "Auctions",
+          "title": "Leading bidder updates live",
           "body": "On the auctions page, the leading team now updates live the moment someone places a higher bid. Before, you had to reload the page to see who was in front."
         },
         "da": {
-          "title": "Auctions",
+          "title": "Ledende byder opdateres live",
           "body": "På auktionssiden opdateres det ledende hold nu live i samme øjeblik nogen byder højere. Før skulle du genindlæse siden for at se hvem der førte."
         }
       },
@@ -3747,11 +3747,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Auctions",
         "en": {
-          "title": "Auctions",
+          "title": "List your riders below their Value",
           "body": "You can now list one of your own riders below their Value. Set any starting price between 0 and the rider's Value. Listing above Value is no longer possible."
         },
         "da": {
-          "title": "Auctions",
+          "title": "Sælg ryttere under deres Værdi",
           "body": "Du kan nu sætte en af dine egne ryttere til auktion under deres Værdi. Vælg en hvilken som helst startpris mellem 0 og rytterens Værdi. Det er ikke længere muligt at starte over Værdi."
         }
       },
@@ -3760,11 +3760,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Auctions",
         "en": {
-          "title": "Auctions",
+          "title": "Hide live bids, longer bid history",
           "body": "The live bids panel on the auctions page can now be hidden, and the bids it shows now cover a much longer window than the previous 30 seconds."
         },
         "da": {
-          "title": "Auctions",
+          "title": "Skjul live bud, længere bud-historik",
           "body": "Live bud-panelet på auktionssiden kan nu skjules, og de viste bud dækker nu en meget længere periode end de tidligere 30 sekunder."
         }
       }
@@ -3780,11 +3780,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Rider values",
         "en": {
-          "title": "Rider values",
+          "title": "Rider values no longer dragged down",
           "body": "Rider market values are a rolling average of prize money earned across seasons. An empty placeholder season was being counted in that average, which dragged every rider's prize bonus down. It no longer counts, so values reflect the seasons that were actually raced."
         },
         "da": {
-          "title": "Rider values",
+          "title": "Rytterværdier trækkes ikke længere ned",
           "body": "Rytternes markedsværdi er et løbende gennemsnit af optjente præmiepenge på tværs af sæsoner. En tom placeholder-sæson blev talt med i det gennemsnit og trak alle rytteres præmie-bonus ned. Den tæller ikke længere med, så værdierne afspejler de sæsoner der faktisk blev kørt."
         }
       }
@@ -3800,11 +3800,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Prize money",
         "en": {
-          "title": "Prize money",
+          "title": "Standings now show prize money",
           "body": "The Standings page now shows a Prize money column, so you can see at a glance how much every team has earned this season. And stands to be paid out."
         },
         "da": {
-          "title": "Prize money",
+          "title": "Ranglisten viser nu præmiepenge",
           "body": "Ranglisten viser nu en Præmiepenge-kolonne, så du med ét blik kan se hvor meget hvert hold har tjent i denne sæson. Og står til at få udbetalt."
         }
       },
@@ -3813,11 +3813,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Prize money",
         "en": {
-          "title": "Prize money",
+          "title": "Rider values refresh with new points",
           "body": "Re-applying a season's ranking points from the current setup now also refreshes rider market values right away, so a rider's value reflects the latest prize money the moment the points are updated. Not only at payout or season end."
         },
         "da": {
-          "title": "Prize money",
+          "title": "Rytterværdier opdateres med nye point",
           "body": "Når en sæsons ranking-point slås igennem fra den aktuelle opsætning, opdateres rytternes markedsværdi nu samtidig, så en rytters værdi afspejler de nyeste præmiepenge i samme øjeblik pointene opdateres. Ikke først ved udbetaling eller sæson-slut."
         }
       }
@@ -3833,11 +3833,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Rankings",
         "en": {
-          "title": "Rankings",
+          "title": "Apply updated points to past results",
           "body": "When we adjusted the ranking points awarded for a race class, the change only applied to races imported afterwards, so the points and prize money already shown on the rankings stayed on the old values. Admins can now apply updated points to a season's existing results in one step, so the rankings and prize totals match the current point setup. Races whose prizes have already been paid out are left untouched."
         },
         "da": {
-          "title": "Rankings",
+          "title": "Slå nye point igennem på gamle resultater",
           "body": "Når vi justerede ranking-pointene for en løbsklasse, slog ændringen kun igennem på løb der blev importeret bagefter, så de point og præmiepenge der allerede stod på ranglisten blev på de gamle værdier. Admins kan nu slå opdaterede point igennem på en sæsons eksisterende resultater i ét trin, så ranglisten og præmiesummerne passer med den aktuelle pointopsætning. Løb hvor præmierne allerede er udbetalt, røres ikke."
         }
       }
@@ -3853,11 +3853,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Rankings",
         "en": {
-          "title": "Rankings",
+          "title": "Richer rider rankings with new columns",
           "body": "The rider rankings now break wins into clear categories. One-day classic wins get their own \"Classic wins\" column instead of being counted as overall (GC) wins, and \"Total wins\" now adds up every win type (stage, GC, classic, points, mountain and youth), shown to the right. There are new columns for prize money earned, Top 3 and Top 10 finishes, plus optional \"days in jersey\" columns (yellow, green, polka, white). Use the new \"Columns\" button to show or hide the optional columns, and your choice is remembered. Refs #781, #782, #924,"
         },
         "da": {
-          "title": "Rankings",
+          "title": "Rigere rytterrangliste med nye kolonner",
           "body": "Rytterranglisten deler nu sejre op i tydelige kategorier. Sejre i endagsløb får deres egen \"Klassikersejre\"-kolonne i stedet for at tælle som samlede (GC) sejre, og \"Sejre i alt\" lægger nu alle sejrstyper sammen (etape, GC, klassiker, point, bjerg og ungdom), vist til højre. Der er nye kolonner for tjent præmie, Top 3 og Top 10, samt valgfrie \"dage i trøje\"-kolonner (gul, grøn, prik, hvid). Brug den nye \"Kolonner\"-knap til at vise eller skjule de valgfrie kolonner, og dit valg huskes. Refs #781, #782, #924,"
         },
         "refs": [
@@ -3872,11 +3872,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Standings",
         "en": {
-          "title": "Standings",
+          "title": "Team classification now on standings",
           "body": "The team standings now have a \"Team classification\" column showing how many team-classification wins each team has taken this season, so the team competition is finally visible on the list."
         },
         "da": {
-          "title": "Standings",
+          "title": "Holdkonkurrence nu på holdranglisten",
           "body": "Holdranglisten har nu en \"Holdkonkurrence\"-kolonne, der viser hvor mange holdkonkurrence-sejre hvert hold har taget i sæsonen, så holdkonkurrencen endelig er synlig på listen."
         }
       },
@@ -3885,11 +3885,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Points and prizes",
         "en": {
-          "title": "Points and prizes",
+          "title": "Daily rates for every jersey shown",
           "body": "The points and prize overview only listed the daily rate for the leader's (yellow) jersey. It now also shows the daily rate for the points, mountain and youth jerseys, so it is clear what you earn for holding each jersey per stage."
         },
         "da": {
-          "title": "Points and prizes",
+          "title": "Daglig sats for hver trøje vises",
           "body": "Point- og præmieoversigten viste kun den daglige sats for førertrøjen (gul). Den viser nu også den daglige sats for point-, bjerg- og ungdomstrøjen, så det er tydeligt hvad du tjener for at holde hver trøje pr. etape."
         }
       }
@@ -3905,11 +3905,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Season Preview",
         "en": {
-          "title": "Season Preview",
+          "title": "Team card stats readable in light mode",
           "body": "On the Season Preview, the stat boxes on each team card (riders, U25, Avg BJ, Avg SP) were showing white numbers on a light background in light mode, which made them unreadable. The numbers now use the theme's text colour, so they're clear in both light and dark mode."
         },
         "da": {
-          "title": "Season Preview",
+          "title": "Holdkort-tal læselige i lyst tema",
           "body": "På Sæson Preview viste stat-boksene på hvert holdkort (ryttere, U25, Avg BJ, Avg SP) hvide tal på lys baggrund i lyst tema, så de var ulæselige. Tallene bruger nu temaets tekstfarve og er tydelige i både lyst og mørkt tema."
         },
         "refs": [
@@ -3928,11 +3928,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Race results",
         "en": {
-          "title": "Race results",
+          "title": "Full results page for every race",
           "body": "Every race now has a full results page you can open with \"See full results\" from the race calendar. For stage races you can click between each stage to see the full finishing order, plus badges showing who wore the leader's, points, mountain and youth jerseys after that stage. And a \"Overall\" tab with the final classifications (GC, points, mountain, youth, teams). One-day races show the finishing order directly."
         },
         "da": {
-          "title": "Race results",
+          "title": "Fuld resultatside for hvert løb",
           "body": "Hvert løb har nu en fuld resultatside du kan åbne med \"Se fulde resultater\" fra løbskalenderen. For etapeløb kan du klikke rundt mellem hver etape og se den fulde målrækkefølge, plus badges der viser hvem der bar fører-, point-, bjerg- og ungdomstrøjen efter etapen. Og en \"Samlet\"-fane med de endelige klassementer (GC, point, bjerg, ungdom, hold). Enkeltdagsløb viser målrækkefølgen direkte."
         },
         "refs": [
@@ -3951,11 +3951,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Dashboard",
         "en": {
-          "title": "Dashboard",
+          "title": "Active auctions counts only yours",
           "body": "The \"Active auctions\" stat on the dashboard now counts only the auctions you're actually in (selling or leading), matching the list below it. Before it showed the whole market's count, which didn't line up. The auctions card also shows \"No active auctions\" correctly when you have none. And the board satisfaction card is now hidden until you've negotiated a board plan, instead of sitting empty with \"No data\"."
         },
         "da": {
-          "title": "Dashboard",
+          "title": "Aktive auktioner tæller kun dine",
           "body": "\"Aktive auktioner\"-tallet på dashboardet tæller nu kun de auktioner du faktisk er med i (sælger eller fører), så det passer med listen nedenunder. Før viste det hele markedets antal, hvilket ikke stemte. Auktions-kortet viser også korrekt \"Ingen aktive auktioner\" når du ingen har. Og bestyrelsestilfredsheds-kortet er nu skjult indtil du har forhandlet en bestyrelsesplan, i stedet for at stå tomt med \"Ingen data\"."
         },
         "refs": [
@@ -3974,11 +3974,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Dashboard",
         "en": {
-          "title": "Dashboard",
+          "title": "New Next move panel on dashboard",
           "body": "The dashboard now opens with a \"Next move\" panel at the top that gathers what's waiting for your decision (transfer offers, swap proposals, loan requests and auctions ending within the hour) each linking straight to where you act. When nothing needs you, it simply says you're all caught up."
         },
         "da": {
-          "title": "Dashboard",
+          "title": "Nyt Næste træk-panel på dashboardet",
           "body": "Dashboardet åbner nu med et \"Næste træk\"-panel øverst der samler det der venter på din beslutning (transfertilbud, bytteforslag, leje-anmodninger og auktioner der slutter inden for en time) hver med direkte link til hvor du handler. Når intet kræver dig, står der bare at du er på forkant."
         },
         "refs": [
@@ -3997,11 +3997,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Inbox",
         "en": {
-          "title": "Inbox",
+          "title": "Loan requests reach the rider's owner",
           "body": "Pending loan requests now appear in the inbox \"To handle\" tab of the rider's owner. The manager who actually has to accept or reject them. Before, they were shown to the requesting team (who could only wait) and were missing for the owner, so requests were easy to overlook. The action counts in the inbox, My Activity and Transfers now come from one shared source so they always agree."
         },
         "da": {
-          "title": "Inbox",
+          "title": "Leje-anmodninger når frem til ejeren",
           "body": "Afventende leje-anmodninger vises nu i \"Skal handles\"-fanen i indbakken hos rytterens ejer. Den manager der faktisk skal acceptere eller afvise dem. Før blev de vist til det anmodende hold (som kun kunne vente) og manglede hos ejeren, så anmodninger var nemme at overse. Handlings-tallene i indbakke, Min Aktivitet og Transfers kommer nu fra én fælles kilde, så de altid stemmer overens."
         },
         "refs": [
@@ -4020,11 +4020,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Board",
         "en": {
-          "title": "Board",
+          "title": "Board scores cap at 100% with Exceeded",
           "body": "Your board's category scores could show above 100% (for example 112%), which looked like a glitch. A score can pass 100% when you beat a goal by more than the board asked for, so the number now stops at 100% and shows a green \"Exceeded\" badge instead, making it clear you over-delivered."
         },
         "da": {
-          "title": "Board",
+          "title": "Bestyrelses-score stopper ved 100% med Overget",
           "body": "Bestyrelsens kategori-scorer kunne vise over 100% (for eksempel 112%), hvilket lignede en fejl. En score kan passere 100% når du slår et mål med mere end bestyrelsen bad om, så tallet stopper nu ved 100% og viser i stedet en grøn \"Overget\"-badge, så det er tydeligt at du leverede over forventning."
         },
         "refs": [
@@ -4043,11 +4043,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Language menu",
         "en": {
-          "title": "Language menu",
+          "title": "Language menu no longer cut off",
           "body": "The language menu could be cut off at the bottom of the screen, so you couldn't see or pick the other language. It now always opens fully on screen and flips upward when there isn't room below."
         },
         "da": {
-          "title": "Language menu",
+          "title": "Sprog-menuen bliver ikke skåret af",
           "body": "Sprog-menuen kunne blive skåret af i bunden af skærmen, så du ikke kunne se eller vælge det andet sprog. Den åbner nu altid helt på skærmen og vender opad når der ikke er plads nedenunder."
         },
         "refs": [
@@ -4066,11 +4066,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Divisions",
         "en": {
-          "title": "Divisions",
+          "title": "Test accounts no longer fill division slots",
           "body": "Test accounts no longer take up division slots. They are hidden from the standings, but were still counting towards a division's capacity, which pushed real teams down a division. Capacity now counts only the real teams you see on the standings."
         },
         "da": {
-          "title": "Divisions",
+          "title": "Testkonti optager ikke divisions-pladser",
           "body": "Testkonti optager ikke længere pladser i en division. De er skjult på ranglisten, men talte alligevel med i en divisions kapacitet, hvilket skubbede rigtige hold en division ned. Kapaciteten tæller nu kun de rigtige hold du ser på ranglisten."
         },
         "refs": [
@@ -4089,11 +4089,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Divisions",
         "en": {
-          "title": "Divisions",
+          "title": "New teams start in the top division",
           "body": "New teams now fill the highest division with room first (Division 1, then 2, then 3) instead of all starting in Division 3, so the early field meets at the top and the game feels alive from day one. Existing teams have been moved up to match."
         },
         "da": {
-          "title": "Divisions",
+          "title": "Nye hold starter i toppen",
           "body": "Nye hold fylder nu den højeste division med ledig plads først (Division 1, så 2, så 3) i stedet for at alle starter i Division 3, så det tidlige felt mødes i toppen og spillet føles levende fra dag ét. Eksisterende hold er rykket op tilsvarende."
         },
         "refs": [
@@ -4112,11 +4112,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Filters",
         "en": {
-          "title": "Filters",
+          "title": "Filter reset always visible with count",
           "body": "The filter reset button is now always visible (greyed out until you set a filter) and shows how many filters are active, for example \"Reset all (3)\". You no longer have to discover it only after you have already filtered."
         },
         "da": {
-          "title": "Filters",
+          "title": "Nulstil-knap altid synlig med antal",
           "body": "Nulstil-knappen i filtre er nu altid synlig (grå indtil du sætter et filter) og viser hvor mange filtre der er aktive, for eksempel \"Nulstil alt (3)\". Du skal ikke længere opdage den først efter du allerede har filtreret."
         },
         "refs": [
@@ -4135,11 +4135,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Loans and transfers",
         "en": {
-          "title": "Loans and transfers",
+          "title": "Loan buyout no longer double-counts squad",
           "body": "Buying out a loaned rider while the transfer window is closed no longer counts that rider twice against your squad size. Teams that did this could be wrongly blocked from agreeing further loans or transfers until the window reopened."
         },
         "da": {
-          "title": "Loans and transfers",
+          "title": "Købsoption tæller ikke truppen dobbelt",
           "body": "At udnytte købsoptionen på en lejet rytter mens transfervinduet er lukket tæller ikke længere rytteren dobbelt mod din trupstørrelse. Hold der gjorde dette kunne fejlagtigt blive blokeret fra at indgå flere lejeaftaler eller handler indtil vinduet åbnede igen."
         },
         "refs": [
@@ -4158,11 +4158,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Dashboard and board plans",
         "en": {
-          "title": "Dashboard and board plans",
+          "title": "Upcoming races show current season only",
           "body": "The dashboard's Upcoming races list now only shows races from the current season. Races from other seasons no longer leak into the list."
         },
         "da": {
-          "title": "Dashboard and board plans",
+          "title": "Kommende løb kun fra nuværende sæson",
           "body": "Dashboardets Kommende løb viser nu kun løb fra den nuværende sæson. Løb fra andre sæsoner lækker ikke længere ind på listen."
         },
         "refs": [
@@ -4174,11 +4174,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Dashboard and board plans",
         "en": {
-          "title": "Dashboard and board plans",
+          "title": "Board plans lock late in season",
           "body": "Board plans can no longer be renegotiated once the season is more than halfway through, or in its final five race-days. You can still adjust a plan early in the season, but the option locks for the rest of the season so you cannot switch to easier targets right before the board's review."
         },
         "da": {
-          "title": "Dashboard and board plans",
+          "title": "Bestyrelsesplaner låses sent på sæsonen",
           "body": "Bestyrelsesplaner kan ikke længere genforhandles når sæsonen er mere end halvvejs, eller i de sidste fem race-days. Du kan stadig justere en plan tidligt i sæsonen, men muligheden låses resten af sæsonen, så du ikke kan skifte til lettere mål lige før bestyrelsens evaluering."
         },
         "refs": [
@@ -4197,11 +4197,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "UI and notifications",
         "en": {
-          "title": "UI and notifications",
+          "title": "Rider list updates team changes live",
           "body": "The rider list now updates live when a rider changes team. When a rider is sold to an AI team, the list no longer keeps showing them as Free until you reload."
         },
         "da": {
-          "title": "UI and notifications",
+          "title": "Rytterlisten opdaterer holdskift live",
           "body": "Rytterlisten opdateres nu live når en rytter skifter hold. Når en rytter sælges til et AI-hold, viser listen ikke længere rytteren som Fri indtil du genindlæser."
         },
         "refs": [
@@ -4213,11 +4213,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "UI and notifications",
         "en": {
-          "title": "UI and notifications",
+          "title": "Rumor alert opens the rider's profile",
           "body": "A rumor notification (someone is looking at one of your riders) now takes you to that rider's profile when you click it, instead of the general transfers page."
         },
         "da": {
-          "title": "UI and notifications",
+          "title": "Rygte-besked åbner rytterens profil",
           "body": "En transferrygte-besked (nogen kigger på en af dine ryttere) fører dig nu til rytterens profil når du klikker, i stedet for den generelle transfer-side."
         },
         "refs": [
@@ -4229,11 +4229,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "UI and notifications",
         "en": {
-          "title": "UI and notifications",
+          "title": "Head-to-Head search lists every team",
           "body": "Head-to-Head team search now lists every matching team with a scrollable dropdown, instead of stopping at the first six."
         },
         "da": {
-          "title": "UI and notifications",
+          "title": "Head-to-Head-søgning viser alle hold",
           "body": "Holdsøgningen i Head-to-Head viser nu alle hold der matcher i en dropdown du kan scrolle i, i stedet for at stoppe ved de første seks."
         },
         "refs": [
@@ -4245,11 +4245,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "UI and notifications",
         "en": {
-          "title": "UI and notifications",
+          "title": "Five-year timeline fits narrow screens",
           "body": "The five-year plan timeline circles now stay inside their card on narrow screens and scroll sideways if the plan is long."
         },
         "da": {
-          "title": "UI and notifications",
+          "title": "Femårs-tidslinje passer smalle skærme",
           "body": "De fem cirkler i femårsplanens tidslinje bliver nu inde i kortet på smalle skærme og kan scrolles sidelæns hvis planen er lang."
         },
         "refs": [
@@ -4261,11 +4261,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "UI and notifications",
         "en": {
-          "title": "UI and notifications",
+          "title": "Bell badge shows 9+ for many unread",
           "body": "The bell badge now consistently shows 9+ when you have ten or more unread messages."
         },
         "da": {
-          "title": "UI and notifications",
+          "title": "Klokke-badge viser 9+ ved mange ulæste",
           "body": "Klokke-badget viser nu konsekvent 9+ når du har ti eller flere ulæste beskeder."
         },
         "refs": [
@@ -4277,11 +4277,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "UI and notifications",
         "en": {
-          "title": "UI and notifications",
+          "title": "Incoming riders show nationality flags",
           "body": "Incoming riders now show their nationality flag when you view another team's squad, the same as the current riders."
         },
         "da": {
-          "title": "UI and notifications",
+          "title": "Indkommende ryttere viser nationalitetsflag",
           "body": "Indkommende ryttere viser nu deres nationalitetsflag når du ser et andet holds trup, ligesom de nuværende ryttere."
         },
         "refs": [
@@ -4300,11 +4300,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Rider values update when prize money is paid",
         "en": {
-          "title": "Rider values and salaries used to only refresh at the…",
+          "title": "Rider values update on prize payouts",
           "body": "Rider values and salaries used to only refresh at the end of a season. Now they also recalculate the moment prize money is paid out, so this season's race prizes feed into a rider's value while the season is still running. Value stays a rolling average across the last few seasons: a finished season counts in full, and the active season counts by how far it has progressed, so values rise smoothly instead of jumping when a new season starts."
         },
         "da": {
-          "title": "Rytter-værdier og lønninger blev før kun opdateret ve…",
+          "title": "Rytterværdier opdateres ved præmieudbetaling",
           "body": "Rytter-værdier og lønninger blev før kun opdateret ved sæson-slut. Nu genberegnes de også i samme øjeblik præmiepengene udbetales, så denne sæsons løbspræmier tæller med i en rytters værdi mens sæsonen stadig kører. Værdien er stadig et rullende gennemsnit over de seneste sæsoner: en afsluttet sæson tæller fuldt, og den aktive sæson tæller efter hvor langt den er nået, så værdier stiger jævnt i stedet for at hoppe når en ny sæson starter."
         },
         "refs": [
@@ -4346,11 +4346,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Loan agreements work while the window is closed",
         "en": {
-          "title": "Rider loan proposals",
+          "title": "Agree loans while window is closed",
           "body": "Rider loan proposals, loan acceptances and buy-option exercises now follow the same closed-window model as transfers: managers can agree the deal while the transfer window is closed, money moves immediately, and the loan or permanent rider registration is completed when the window opens."
         },
         "da": {
-          "title": "Rytter-lejeforslag",
+          "title": "Aftal lejehandler mens vinduet er lukket",
           "body": "Rytter-lejeforslag, accept af lejeaftaler og udnyttelse af købsoption følger nu samme model som transfers udenfor vinduet: Managere kan aftale handlen mens transfervinduet er lukket, pengene flyttes med det samme, og lejen eller det permanente rytterskift registreres når vinduet åbner."
         },
         "refs": [
@@ -4369,11 +4369,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Offers work while the window is closed",
         "en": {
-          "title": "Offers work while the window is closed",
+          "title": "Negotiate offers with the window closed",
           "body": "Direct transfer offers, listed-rider offers and swap proposals are no longer hidden behind a disabled 'transfer window closed' button. You can negotiate now; if both sides agree while the window is closed, the rider move is parked until the next opening. Loan agreements remain locked until the loan follow-up lands."
         },
         "da": {
-          "title": "Offers work while the window is closed",
+          "title": "Forhandl tilbud mens vinduet er lukket",
           "body": "Direkte transfertilbud, tilbud på transferlistede ryttere og bytteforslag er ikke længere gemt bag en deaktiveret 'transfervindue lukket'-knap. Du kan forhandle nu; hvis begge parter bliver enige mens vinduet er lukket, parkeres rytterskiftet til næste åbning. Lejeaftaler er stadig låst indtil loan-opfølgningen er leveret."
         },
         "refs": [
@@ -4382,14 +4382,14 @@ export const PATCHES = [
       },
       {
         "category": "improved",
-        "audience": "player",
+        "audience": "internal",
         "topic": "AI-Autopilot Phase 2: Mandatory AI Review",
         "en": {
-          "title": "AI-Autopilot Phase 2 is now live.",
+          "title": "AI review now required on every PR",
           "body": "AI-Autopilot Phase 2 is now live. Loop D (Auto-PR-review) is upgraded from advisory to mandatory: every pull request must pass an automated AI review before merging. This ensures no code ships without checking for contract violations, secret leaks, and release hygiene. Loop F (Subagent-orchestration) is established for strategic coordination of large features."
         },
         "da": {
-          "title": "AI-Autopilot Fase 2 er nu live.",
+          "title": "AI-review nu obligatorisk på hver PR",
           "body": "AI-Autopilot Fase 2 er nu live. Loop D (Auto-PR-review) er opgraderet fra rådgivende til obligatorisk: hver pull request skal passere et automatiseret AI-review før merge. Dette sikrer, at ingen kode udgives uden tjek for kontrakt-overtrædelser, secret-leaks og udgivelses-hygiejne. Loop F (Subagent-orkestrering) er etableret til strategisk koordinering af store features."
         },
         "refs": [
@@ -4401,11 +4401,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Club DNA now comes before board members",
         "en": {
-          "title": "Club DNA now comes before board members",
+          "title": "Pick Club DNA before your board",
           "body": "After season 1, Club DNA is now the required first step before board members appear or the first board plan can be negotiated. Board members are assigned from both your season-1 identity snapshot and chosen DNA, so voices like the Classics Purist only become a strong fit when your club direction supports it. If auto-accept has to step in, it now picks the best-matching DNA first."
         },
         "da": {
-          "title": "Club DNA now comes before board members",
+          "title": "Vælg Klub-DNA før din bestyrelse",
           "body": "Efter sæson 1 er Klub-DNA nu det obligatoriske første trin, før bestyrelsesmedlemmer vises, eller den første bestyrelsesplan kan forhandles. Bestyrelsen sammensættes ud fra både dit sæson-1 identity-snapshot og dit valgte DNA, så stemmer som Klassiker-purist kun bliver et stærkt match når klubretningen understøtter det. Hvis auto-accept må tage over, vælger den nu først det bedst matchede DNA."
         },
         "refs": [
@@ -4417,11 +4417,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Choosing Club DNA can no longer lock you out",
         "en": {
-          "title": "Choosing your Club DNA is now safe even if something…",
+          "title": "Club DNA choice can't lock you out",
           "body": "Choosing your Club DNA is now safe even if something fails halfway through. Previously, a hiccup while building your board could leave you marked as having chosen a DNA but with no board members and no way to retry. The step is now atomic and self-healing: if board setup fails it rolls back so you can choose again, and if a club was already stuck it automatically rebuilds the board on your next attempt."
         },
         "da": {
-          "title": "Det er nu sikkert at vælge dit Klub-DNA",
+          "title": "Klub-DNA-valg kan ikke låse dig ude",
           "body": "Det er nu sikkert at vælge dit Klub-DNA, selv hvis noget fejler undervejs. Før kunne en fejl midt i opbygningen af din bestyrelse efterlade dig som havende valgt DNA, men uden bestyrelsesmedlemmer og uden mulighed for at prøve igen. Trinnet er nu atomisk og selv-helende: fejler opsætningen, rulles den tilbage så du kan vælge igen, og var en klub allerede låst fast, genopbygges bestyrelsen automatisk ved næste forsøg."
         },
         "refs": [
@@ -4463,11 +4463,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Season history now counts wins correctly",
         "en": {
-          "title": "Season history now counts wins correctly",
+          "title": "Season history counts wins correctly",
           "body": "A rider's Season history tab now counts wins correctly. It used to read only the rider's 20 most recently imported result rows, so season totals were off, and it counted every first place as a win, including days when a rider merely held a jersey. Wins now appear in their own columns (stage wins, GC wins, one-day wins, points jersey, mountain jersey) and are counted across the rider's full season. The 'Season {n}' label that showed a raw placeholder is fixed too."
         },
         "da": {
-          "title": "Season history now counts wins correctly",
+          "title": "Sæsonhistorik tæller sejre korrekt",
           "body": "En rytters Sæsonhistorik-fane tæller nu sejre korrekt. Den læste før kun rytterens 20 senest importerede resultat-rækker, så sæson-totalerne var forkerte, og den talte hver førsteplads som en sejr, også dage hvor rytteren bare bar en trøje. Sejre vises nu i egne kolonner (etapesejre, GC-sejre, klassikersejre, pointtrøje, bjergtrøje) og tælles på tværs af hele rytterens sæson. 'Sæson {n}'-mærkaten, der viste en rå placeholder, er også rettet."
         },
         "refs": [
@@ -4479,11 +4479,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Spring stage races now show every stage",
         "en": {
-          "title": "Spring stage races now show every stage",
+          "title": "Stage races show every stage",
           "body": "A few stage races used to show only their final stage, so the intermediate stages' results, points and jersey-leader days were missing. Every stage is now imported, and rider and team season totals include them."
         },
         "da": {
-          "title": "Spring stage races now show every stage",
+          "title": "Etapeløb viser alle etaper",
           "body": "Nogle få etapeløb viste før kun deres sidste etape, så mellem-etapernes resultater, point og trøje-leder-dage manglede. Alle etaper er nu importeret, og rytter- og hold-sæson-totaler tæller dem med."
         },
         "refs": [
@@ -4502,11 +4502,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "First meeting sequence is clearer",
         "en": {
-          "title": "First meeting sequence is clearer",
+          "title": "Clearer order for your first board meeting",
           "body": "The board setup wizard now states the first meeting order directly: 5-year plan first, then 3-year plan and finally 1-year plan."
         },
         "da": {
-          "title": "First meeting sequence is clearer",
+          "title": "Tydeligere rækkefølge på første bestyrelsesmøde",
           "body": "Bestyrelses-wizard'en siger nu direkte, hvilken rækkefølge første møde følger: først 5-årsplan, derefter 3-årsplan og til sidst 1-årsplan."
         },
         "refs": [
@@ -4525,11 +4525,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Buttons no longer get stuck if the connection drops",
         "en": {
-          "title": "Across the game",
+          "title": "Buttons recover when connection drops",
           "body": "Across the game, buttons and forms that talk to the server (transfer offers, swaps and loans, board contracts and requests, taking and repaying loans, sending rider offers, and the manager and season finance screens) no longer get stuck on \"Working…\" if your connection drops or the server returns an unexpected response. They now reset and show a clear \"Connection failed. Check your internet and try again.\" message so you can try again."
         },
         "da": {
-          "title": "I hele spillet kan knapper og formularer",
+          "title": "Knapper genopretter når forbindelsen ryger",
           "body": "I hele spillet kan knapper og formularer, der taler med serveren (transfertilbud, bytter og lejeaftaler, bestyrelseskontrakter og -anmodninger, optag og tilbagebetaling af lån, afsendelse af ryttertilbud samt manager- og sæson-finansskærmene), ikke længere hænge fast på \"Arbejder…\", hvis forbindelsen ryger, eller serveren svarer uventet. De nulstiller nu og viser en tydelig \"Forbindelsen fejlede. Tjek din internetforbindelse og prøv igen.\"-besked, så du kan prøve igen."
         },
         "refs": [
@@ -4548,11 +4548,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Create-team step no longer hangs on a connection error",
         "en": {
-          "title": "When you set up your team for the first time",
+          "title": "Create-team button no longer hangs",
           "body": "When you set up your team for the first time, the 'Create team and start' button could get stuck on 'Saving…' with no message if the request failed to reach the server (for example on a flaky connection). It now shows a clear error and lets you try again instead of hanging."
         },
         "da": {
-          "title": "Når du opretter dit hold første gang",
+          "title": "Opret hold-knappen hænger ikke længere",
           "body": "Når du opretter dit hold første gang, kunne 'Opret hold og start'-knappen sætte sig fast på 'Gemmer…' uden besked, hvis forespørgslen ikke nåede frem til serveren (for eksempel på en ustabil forbindelse). Den viser nu en tydelig fejl og lader dig prøve igen i stedet for at gå i stå."
         },
         "refs": [
@@ -4571,11 +4571,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Squad lists now show points riders earned racing",
         "en": {
-          "title": "In the Head-to-Head team comparison",
+          "title": "Head-to-Head shows real earned points",
           "body": "In the Head-to-Head team comparison, the number next to each rider in the Top 5 squad lists now shows the race points that rider has actually earned across all seasons, instead of their static UCI strength rating. Earlier a rider who had raced and scored could still show 0, because the column was reading a fixed strength attribute that never updates from in-game results. The Top 5 is now ranked by those earned points (with the strength rating as a tie-breaker before any races have run)."
         },
         "da": {
-          "title": "I Head-to-Head-holdsammenligningen viser tallet ud fo…",
+          "title": "Head-to-Head viser optjente løb-point",
           "body": "I Head-to-Head-holdsammenligningen viser tallet ud for hver rytter i Top 5-truplisterne nu de løb-point, rytteren faktisk har optjent på tværs af alle sæsoner, i stedet for sin statiske UCI-styrkerating. Før kunne en rytter, der havde kørt og scoret, stadig stå med 0, fordi kolonnen læste et fast styrke-attribut, der aldrig opdateres fra resultater i spillet. Top 5 rangeres nu efter de optjente point (med styrkeratingen som tie-breaker, før der er kørt nogen løb)."
         },
         "refs": [
@@ -4594,11 +4594,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Clear status labels in their own column",
         "en": {
-          "title": "Clear status labels in their own column",
+          "title": "Readable status labels in own column",
           "body": "Rider status now shows as short, readable text labels (U23, U25, AI, IN, OUT) in their own dedicated column, instead of the emoji icons used before. The labels are easy to scan down a list: U23 and U25 show a rider's age group (only the youngest one that applies), AI marks AI-run teams, and IN and OUT mark riders moving in or out on a transfer. The auction history also shows whether you bought, sold or kept a rider. Hover any label for the full description."
         },
         "da": {
-          "title": "Clear status labels in their own column",
+          "title": "Læsbare status-labels i egen kolonne",
           "body": "Rytter-status vises nu som korte, læsbare tekst-labels (U23, U25, AI, IND, UD) i deres egen kolonne, i stedet for de emoji-ikoner der blev brugt før. Labelsene er nemme at skanne ned gennem en liste: U23 og U25 viser rytterens aldersgruppe (kun den yngste der gælder), AI markerer AI-styrede hold, og IND og UD markerer ryttere på vej ind eller ud i en transfer. Auktionshistorikken viser også, om du købte, solgte eller beholdt en rytter. Hold musen over et label for den fulde beskrivelse."
         },
         "refs": [
@@ -4617,11 +4617,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "One consistent colour scale for abilities everywhere",
         "en": {
-          "title": "Rider abilities now use one consistent colour scale e…",
+          "title": "One colour scale for abilities everywhere",
           "body": "Rider abilities now use one consistent colour scale everywhere you see them: rider lists, squad views, auctions, the transfer market, the watchlist, the rider page and the rider comparison. Each value gets the same colour wherever it appears, shifting smoothly from grey for low values through green, yellow and gold up to red for elite abilities. In the comparison the best rider for each ability is now highlighted as a bold, filled tag instead of being told apart by colour. Earlier the colours differed from page to page (and the rider page used a blue scale), so the same number could look different in two places."
         },
         "da": {
-          "title": "Rytter-evner bruger nu én ensartet farveskala alle st…",
+          "title": "Én farveskala for evner overalt",
           "body": "Rytter-evner bruger nu én ensartet farveskala alle steder du ser dem: rytterlister, trup-visninger, auktioner, transfermarkedet, overvågningslisten, rytter-siden og rytter-sammenligningen. Hver værdi får samme farve uanset hvor den vises, og skifter blødt fra grå for lave værdier gennem grøn, gul og guld op til rød for elite-evner. I sammenligningen fremhæves den bedste rytter for hver evne nu som et fedt, fyldt mærke i stedet for at blive skelnet på farve. Før var farverne forskellige fra side til side (og rytter-siden brugte en blå skala), så det samme tal kunne se forskelligt ud to steder."
         },
         "refs": [
@@ -4644,7 +4644,7 @@ export const PATCHES = [
           "body": "You can now send and accept transfer offers, swaps and sale listings even when the transfer window is closed. The money moves as soon as both managers agree, but the rider only switches teams once the window opens again. Until then the deal is locked in and the rider is reserved. Direct loans still wait for the window to open, and that is coming in a follow-up."
         },
         "da": {
-          "title": "Trade while the window is closed",
+          "title": "Handl mens vinduet er lukket",
           "body": "Du kan nu sende og acceptere transfertilbud, byttehandler og salgs-listinger, selvom transfervinduet er lukket. Pengene flyttes, så snart begge managere er enige, men rytteren skifter først hold, når vinduet åbner igen. Indtil da er handlen låst, og rytteren er reserveret. Lejeaftaler venter stadig på, at vinduet åbner, og det følger i en senere opdatering."
         },
         "refs": [
@@ -4663,11 +4663,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "One shared roster cap of 30 for all divisions",
         "en": {
-          "title": "The maximum squad size is now 30 riders in every divi…",
+          "title": "30-rider roster cap in every division",
           "body": "The maximum squad size is now 30 riders in every division. Previously the cap depended on your division (Division 1 allowed 30, Division 2 allowed 20, Division 3 allowed 10). The minimum squad sizes are unchanged (20 / 14 / 8), so Division 2 and 3 teams now have much more room to build a deeper squad."
         },
         "da": {
-          "title": "Det maksimale antal ryttere på holdet er nu 30 i alle…",
+          "title": "Trupgrænse på 30 i alle divisioner",
           "body": "Det maksimale antal ryttere på holdet er nu 30 i alle divisioner. Før afhang loftet af din division (Division 1 tillod 30, Division 2 tillod 20, Division 3 tillod 10). Minimumsgrænserne er uændrede (20 / 14 / 8), så hold i Division 2 og 3 har nu markant mere plads til at bygge en dybere trup."
         },
         "refs": [
@@ -4686,11 +4686,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Guaranteed 50% sale has been removed",
         "en": {
-          "title": "Guaranteed 50% sale has been removed",
+          "title": "Guaranteed 50% sale removed",
           "body": "You can no longer start a guaranteed sale: an auction with the starting price locked to 50% of a rider's Value, where the AI bought the rider if no manager bid higher. The option has been removed from the rider page and the squad action menu, so a normal auction is now the way to put your own rider up for sale. Guaranteed sales you made earlier still show correctly in your auction history."
         },
         "da": {
-          "title": "Guaranteed 50% sale has been removed",
+          "title": "Garanteret 50%-salg fjernet",
           "body": "Du kan ikke længere starte et garanteret salg: en auktion med startprisen låst til 50% af en rytters Værdi, hvor AI'en købte rytteren hvis ingen manager bød højere. Muligheden er fjernet fra rytter-siden og holdets handlingsmenu, så en normal auktion er nu vejen til at sætte din egen rytter til salg. Garanterede salg du har lavet tidligere vises stadig korrekt i din auktionshistorik."
         },
         "refs": [
@@ -4709,11 +4709,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Better colour contrast in light and dark mode",
         "en": {
-          "title": "On the standings the promotion zone (top rows) and th…",
+          "title": "Standings colours adapt to your theme",
           "body": "On the standings the promotion zone (top rows) and the gold highlight for your own team used fixed colours that didn't adapt to the theme. Leaving a harsh bright band on the runner-up rows in dark mode and a washed-out, hard-to-read gold in light mode. They now use the theme's own colours, so the promotion zone is subtle in dark mode (matching the relegation zone) and your team's gold stays legible in both modes."
         },
         "da": {
-          "title": "På ranglisten brugte promotion-zonen (de øverste rækk…",
+          "title": "Rangliste-farver tilpasser sig dit tema",
           "body": "På ranglisten brugte promotion-zonen (de øverste rækker) og guld-fremhævningen af dit eget hold faste farver, der ikke tilpassede sig temaet. Det gav et grelt lyst bånd på de næstbedste rækker i dark mode og en udvasket, sværtlæselig guld i light mode. De bruger nu temaets egne farver, så promotion-zonen er afdæmpet i dark mode (som nedrykningszonen), og dit holds guld forbliver læsbar i begge temaer."
         },
         "refs": [
@@ -4732,11 +4732,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Calendar is now sorted by date",
         "en": {
-          "title": "Calendar is now sorted by date",
+          "title": "Calendar now sorted by date",
           "body": "The race calendar on the Season Snapshot page was sorted alphabetically by race name. It is now sorted chronologically by race date, so the season reads top-to-bottom in the order the races are run. Your team's point-progression chart follows the same chronological order."
         },
         "da": {
-          "title": "Calendar is now sorted by date",
+          "title": "Kalender sorteret efter dato",
           "body": "Løbskalenderen på Sæson Snapshot-siden var sorteret alfabetisk efter løbsnavn. Den er nu sorteret kronologisk efter løbsdato, så sæsonen kan læses oppefra og ned i den rækkefølge løbene køres. Dit holds pointudviklings-graf følger den samme kronologiske rækkefølge."
         },
         "refs": [
@@ -4755,11 +4755,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Owner filter now separates free agents from managed teams",
         "en": {
-          "title": "On the rider rankings",
+          "title": "New free agents ranking filter",
           "body": "On the rider rankings, the \"Manager-owned\" filter used to also include free agents (riders with no team). It now shows only riders on human-managed teams, and there is a new \"Free agents\" filter so unsigned riders have their own category alongside AI-owned."
         },
         "da": {
-          "title": "På rytterranglisten tog \"Manager-ejede\"-filteret før…",
+          "title": "Nyt filter for fri agenter",
           "body": "På rytterranglisten tog \"Manager-ejede\"-filteret før også fri-agenter med (ryttere uden hold). Det viser nu kun ryttere på menneske-managede hold, og der er et nyt \"Fri agenter\"-filter, så ryttere uden kontrakt har deres egen kategori ved siden af AI-ejede."
         },
         "refs": [
@@ -4778,11 +4778,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Status badges are now compact icons with tooltips",
         "en": {
-          "title": "The small labels next to a rider's name (U25",
+          "title": "Status badges are compact icons now",
           "body": "The small labels next to a rider's name (U25, auction, AI team, incoming/outgoing transfer, and the bought/sold/internal markers in your auction history) are now compact icons instead of words. Hover or focus an icon to see what it means, and screen readers announce the full label. This keeps the name column clean and uniform now that nation and team have their own columns."
         },
         "da": {
-          "title": "De små mærkater ved siden af en rytters navn (U25",
+          "title": "Status-mærker er nu kompakte ikoner",
           "body": "De små mærkater ved siden af en rytters navn (U25, auktion, AI-hold, indgående/udgående transfer og købt/solgt/intern-markeringerne i din auktionshistorik) er nu kompakte ikoner i stedet for ord. Hold musen over eller fokusér et ikon for at se, hvad det betyder, og skærmlæsere læser den fulde tekst op. Det holder navne-kolonnen ren og ensartet, nu hvor nation og hold har deres egne kolonner."
         },
         "refs": [
@@ -4801,11 +4801,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Rider name stays visible while scrolling wide tables",
         "en": {
-          "title": "On the stat-heavy rider tables (rider database",
+          "title": "Rider name stays pinned while scrolling",
           "body": "On the stat-heavy rider tables (rider database, your squad, other squads, watchlist and the rider rankings) the name column now stays pinned to the left edge while you scroll sideways through the stat columns. You no longer lose track of which rider a value belongs to when a table is wider than the screen."
         },
         "da": {
-          "title": "På de stat-tunge rytter-tabeller (rytterdatabase",
+          "title": "Rytternavn bliver fastlåst ved scroll",
           "body": "På de stat-tunge rytter-tabeller (rytterdatabase, dit hold, andres hold, ønskeliste og rytterranglisten) bliver navne-kolonnen nu stående i venstre kant, mens du scroller vandret gennem stat-kolonnerne. Du mister ikke længere overblikket over, hvilken rytter en værdi hører til, når en tabel er bredere end skærmen."
         },
         "refs": [
@@ -4824,11 +4824,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Open for testing with a frozen economy",
         "en": {
-          "title": "Open for testing with a frozen economy",
+          "title": "Try the boardroom, economy frozen",
           "body": "The board (\"bestyrelsen\") is now open for everyone to try. You can negotiate and sign your multi-year plans (5yr, then 3yr, then 1yr), make requests, and see goals and consequences play out. Exactly as it will work in production. During this test period the board's effect on your economy is frozen: sponsor income is unaffected, bonus offers pay nothing real, and forced sales and sponsor pull-outs are held back, so you can explore freely without real financial consequences. The board's hard limits (salary cap and signing restrictions) do still apply on real transfers. The test data is cleared automatically at the next season change."
         },
         "da": {
-          "title": "Open for testing with a frozen economy",
+          "title": "Prøv bestyrelsen med frossen økonomi",
           "body": "Bestyrelsen er nu åben for alle at prøve. Du kan forhandle og underskrive dine flerårsplaner (5 år, så 3 år, så 1 år), sende forespørgsler og se mål og konsekvenser udspille sig. Præcis som det kommer til at fungere i drift. I denne testperiode er bestyrelsens effekt på din økonomi frosset: sponsorindtægten påvirkes ikke, bonustilbud udbetaler ingen rigtige penge, og tvangssalg og sponsorexit holdes tilbage, så du kan udforske frit uden reelle økonomiske konsekvenser. Bestyrelsens hårde grænser (lønloft og indkøbsrestriktioner) gælder dog stadig på rigtige transfers. Testdataene ryddes automatisk ved næste sæsonskifte."
         },
         "refs": [
@@ -4847,11 +4847,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Team name is now clickable everywhere",
         "en": {
-          "title": "Team name is now clickable everywhere",
+          "title": "Team names clickable on more pages",
           "body": "A rider's owning team is now a clickable link in more places. On the watchlist and the rider comparison view the team name used to be plain text; it now links straight to the team's profile, the same way it already does in the rider database and other tables. Free agents stay as plain text."
         },
         "da": {
-          "title": "Team name is now clickable everywhere",
+          "title": "Holdnavne klikbare flere steder",
           "body": "En rytters ejer-hold er nu et klikbart link flere steder. På ønskelisten og i rytter-sammenligningen var holdnavnet før ren tekst; det linker nu direkte til holdets profil, ligesom det allerede gør i rytterdatabasen og andre tabeller. Fri-agenter forbliver ren tekst."
         },
         "refs": [
@@ -4870,11 +4870,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Season progress now counts completed race days",
         "en": {
-          "title": "Season progress now reflects how many race days have…",
+          "title": "Season progress counts ridden race days",
           "body": "Season progress now reflects how many race days have actually been ridden. The counter was never advanced when results were imported, so it stayed at 0 even after races were finalized. And the board's plan-negotiation reminders, which key off that counter, never fired. It is now recomputed from the completed races (a one-day race counts 1 day, a stage race counts its stages) every time results are imported, and Season 1 has been backfilled."
         },
         "da": {
-          "title": "Sæson-fremgangen afspejler nu hvor mange løbsdage der…",
+          "title": "Sæson-fremgang tæller kørte løbsdage",
           "body": "Sæson-fremgangen afspejler nu hvor mange løbsdage der faktisk er kørt. Tælleren blev aldrig talt op når resultater blev importeret, så den blev stående på 0 selv efter løb var afviklet. Og bestyrelsens påmindelser om planforhandling, der bygger på den tæller, blev derfor aldrig udløst. Den genberegnes nu ud fra de afviklede løb (et endagsløb tæller 1 dag, et etapeløb tæller sine etaper) hver gang resultater importeres, og Sæson 1 er rettet med tilbagevirkende kraft."
         },
         "refs": [
@@ -4893,11 +4893,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Nation now has its own column",
         "en": {
-          "title": "Nation now has its own column",
+          "title": "Nation gets its own column",
           "body": "In rider tables the flag and name used to share one wide column. The nation (flag plus 3-letter code) now sits in its own column next to the name across the rider database, your squad, other teams' squads, the watchlist, the rider rankings and the auction history. Where a rider's owning team is shown, it stays in its own column too. The name column is now narrower and the tables are easier to scan. On small screens the nation and team columns are hidden to keep the table compact."
         },
         "da": {
-          "title": "Nation now has its own column",
+          "title": "Nation får sin egen kolonne",
           "body": "I ryttertabeller delte flag og navn før én bred kolonne. Nationen (flag plus 3-bogstavskode) ligger nu i sin egen kolonne ved siden af navnet på rytterdatabasen, din trup, andre holds trupper, ønskelisten, rytterranglisten og auktionshistorikken. Hvor en rytters ejer-hold vises, bliver det også i sin egen kolonne. Navnekolonnen er nu smallere, og tabellerne er nemmere at skanne. På små skærme skjules nation- og hold-kolonnerne for at holde tabellen kompakt."
         }
       }
@@ -4913,11 +4913,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Season history now groups by game season",
         "en": {
-          "title": "Season history now groups by game season",
+          "title": "Rider history grouped by game season",
           "body": "The Season tab on a rider's page now groups results by game season (Season 1, Season 2, ...) instead of by the race's calendar edition year. The result list under each race also shows the game season. Wins, top-3s and prize money are now totalled per season the way the standings work."
         },
         "da": {
-          "title": "Season history now groups by game season",
+          "title": "Rytterhistorik grupperet pr. spil-sæson",
           "body": "Sæson-fanen på en rytters side grupperer nu resultater efter spil-sæson (Sæson 1, Sæson 2, ...) i stedet for løbets kalender-udgaveår. Resultatlisten under hvert løb viser også spil-sæsonen. Sejre, top-3 og præmiepenge tælles nu sammen pr. sæson på samme måde som ranglisten."
         },
         "refs": [
@@ -4936,11 +4936,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Race result history now shows on the rider page",
         "en": {
-          "title": "The Results tab on a rider's page now lists that ride…",
+          "title": "Rider race results are back",
           "body": "The Results tab on a rider's page now lists that rider's race results again, and the Season tab counts their wins, top-3s and prize money. The query was asking for a race date field that no longer exists, which made the whole request fail and left both tabs empty. It now reads the race edition year and finishing rank correctly."
         },
         "da": {
-          "title": "Resultat-fanen på en rytters side viser nu rytterens…",
+          "title": "Rytterens løbsresultater er tilbage",
           "body": "Resultat-fanen på en rytters side viser nu rytterens løbsresultater igen, og Sæson-fanen tæller sejre, top-3 og præmiepenge. Forespørgslen bad om et løbsdato-felt der ikke længere findes, hvilket fik hele kaldet til at fejle og efterlod begge faner tomme. Den læser nu løbets udgaveår og placering korrekt."
         },
         "refs": [
@@ -4959,11 +4959,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Standings, results and dashboard now update live",
         "en": {
-          "title": "The standings",
+          "title": "Standings and dashboard update live",
           "body": "The standings, results hub and dashboard now refresh on their own when new race results come in. No more hard reload to see updated points, season progress or top riders. Previously these pages only loaded once when opened, so they could show stale numbers after a race was finalized."
         },
         "da": {
-          "title": "Ranglisten",
+          "title": "Rangliste og dashboard opdaterer live",
           "body": "Ranglisten, resultat-hubben og dashboardet opdaterer nu af sig selv når nye løbsresultater kommer ind. Ingen hård genindlæsning mere for at se opdaterede point, sæson-fremskridt eller top-ryttere. Tidligere indlæste siderne kun data én gang ved åbning, så de kunne vise gamle tal efter et løb var finaliseret."
         },
         "refs": [
@@ -5002,11 +5002,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Hall of Fame now switches fully to English",
         "en": {
-          "title": "The Hall of Fame page (record categories",
+          "title": "Hall of Fame fully in English",
           "body": "The Hall of Fame page (record categories, manager titles, the division-history view and all table labels) now displays fully in English when the app language is set to English. Previously these showed Danish text regardless of the selected language."
         },
         "da": {
-          "title": "Hall of Fame-siden (rekordkategorier",
+          "title": "Hall of Fame helt på engelsk",
           "body": "Hall of Fame-siden (rekordkategorier, manager-titler, divisionshistorik-visningen og alle tabel-labels) vises nu fuldt på engelsk når appens sprog er sat til engelsk. Tidligere viste disse dansk tekst uanset det valgte sprog."
         },
         "refs": [
@@ -5025,11 +5025,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "More pages now switch fully to English",
         "en": {
-          "title": "More pages now switch fully to English",
+          "title": "More pages now fully in English",
           "body": "Profile, Activity, Watchlist, Standings, Head-to-Head, the team and manager pages, rider rankings and comparison, and the season finance report now display fully in English when the app language is set to English. Previously these pages showed Danish labels regardless of the selected language."
         },
         "da": {
-          "title": "More pages now switch fully to English",
+          "title": "Flere sider nu helt på engelsk",
           "body": "Profil, Aktivitet, Ønskeliste, Rangliste, Head-to-Head, hold- og managersiderne, rytterrangliste og -sammenligning samt sæson-finansrapporten vises nu fuldt på engelsk når appens sprog er sat til engelsk. Tidligere viste disse sider danske labels uanset det valgte sprog."
         },
         "refs": [
@@ -5114,14 +5114,14 @@ export const PATCHES = [
     "changes": [
       {
         "category": "fixed",
-        "audience": "internal",
+        "audience": "player",
         "topic": "Blank crash screens now explain what happened",
         "en": {
-          "title": "If the frontend crashes",
+          "title": "Crash screen now explains what happened",
           "body": "If the frontend crashes, Cycling Zone no longer leaves you on an empty beige screen. The global error screen now explains that something went wrong, gives you a reload action, and includes an error ID when Sentry provides one. Stale-tab deploy errors are handled separately: if your browser still has an older app version open and a lazy-loaded page chunk can no longer be fetched, the app attempts one safe reload instead of trapping you on a blank page."
         },
         "da": {
-          "title": "Hvis frontend'en crasher",
+          "title": "Crash-skærm forklarer nu hvad der skete",
           "body": "Hvis frontend'en crasher, efterlader Cycling Zone dig ikke længere på en tom beige skærm. Den globale fejlside forklarer nu at noget gik galt, giver dig en genindlæs-knap, og viser et fejl-id når Sentry leverer et. Stale-tab deploy-fejl håndteres særskilt: hvis din browser stadig har en ældre app-version åben og en lazy-loaded side-chunk ikke længere kan hentes, prøver appen én sikker genindlæsning i stedet for at fange dig på en blank side."
         },
         "refs": [
@@ -5140,11 +5140,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Achievements sync no longer fails for teams with multiple board plans",
         "en": {
-          "title": "Achievement sync now handles the parallel board-plan…",
+          "title": "Achievements unlock again for all teams",
           "body": "Achievement sync now handles the parallel board-plan model correctly. Managers with 5yr/3yr/1yr board plans no longer get `/api/achievements/check` failures from the old single-board-profile assumption, so bids, transfers, watchlist actions and login-triggered achievement checks can unlock normally again."
         },
         "da": {
-          "title": "Achievement-syncen håndterer nu den parallelle bestyr…",
+          "title": "Achievements låser op igen for alle hold",
           "body": "Achievement-syncen håndterer nu den parallelle bestyrelsesplan-model korrekt. Managers med 5yr/3yr/1yr-planer får ikke længere `/api/achievements/check`-fejl fra den gamle antagelse om én board-profile pr. hold, så bud, transfers, ønskeliste-handlinger og login-triggerede achievement-checks kan låse op normalt igen."
         }
       }
@@ -5160,11 +5160,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Club DNA text now follows EN/DA on the board page",
         "en": {
-          "title": "Club DNA names",
+          "title": "Club DNA text now respects your language",
           "body": "Club DNA names, descriptions, suggestion rationales and tradition-goal labels on the Board page now render through the board translation namespace instead of backend Danish strings. English mode now shows the season-2 DNA choices fully in English while Danish keeps the original tone."
         },
         "da": {
-          "title": "Klub-DNA-navne",
+          "title": "Klub-DNA-tekst følger nu dit sprog",
           "body": "Klub-DNA-navne, beskrivelser, forslagstekster og tradition-mål på Bestyrelse-siden renderes nu via board-oversættelser i stedet for danske backend-strenge. Engelsk mode viser nu sæson-2 DNA-valgene fuldt på engelsk, mens dansk bevarer den oprindelige tone."
         },
         "refs": [
@@ -5183,11 +5183,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Country names now follow EN/DA on rider screens",
         "en": {
-          "title": "Country names in the rider filter dropdown",
+          "title": "Country names now match your language",
           "body": "Country names in the rider filter dropdown, active country filter chip, rider detail nationality line and flag tooltips now follow the active language. English mode now shows names like Slovenia, Austria and United Arab Emirates instead of the Danish labels, and the country dropdown sorts by the visible localized names."
         },
         "da": {
-          "title": "Landenavne i rytter-filterets dropdown",
+          "title": "Landenavne følger nu dit sprog",
           "body": "Landenavne i rytter-filterets dropdown, aktivt land-filter, rytter-detailens nationalitetslinje og flag-tooltips følger nu aktivt sprog. Engelsk mode viser nu navne som Slovenia, Austria og United Arab Emirates i stedet for danske labels, og land-dropdownen sorterer efter de synlige lokaliserede navne."
         },
         "refs": [
@@ -5203,14 +5203,14 @@ export const PATCHES = [
     "changes": [
       {
         "category": "fixed",
-        "audience": "internal",
+        "audience": "player",
         "topic": "Rider values are accurate again, 296 riders restored after broken UCI sync",
         "en": {
-          "title": "This morning's scheduled UCI value-update accidentall…",
+          "title": "Rider values restored after sync glitch",
           "body": "This morning's scheduled UCI value-update accidentally reset 319 riders to the minimum (5 UCI points / 20.000 CZ$), including stars like Vingegaard, Evenepoel, Pidcock, Pedersen, Bernal and Almeida. Root cause: the upstream PCS library silently returns `0` instead of decimal points (e.g. Vingegaard's `6885.1` became `0`), and our safety-gate didn't catch it because the riders WERE matched. Just to a zero. We now also parse the raw PCS HTML to recover decimal points, so Vingegaard is back to 6885 and the other 295 affected riders are restored. Forward-guard: two new unit tests verify decimal parsing won't regress. Refs PR"
         },
         "da": {
-          "title": "Værdi-opdateringen i morges nullstillede ved et uheld…",
+          "title": "Rytter-værdier gendannet efter sync-fejl",
           "body": "Værdi-opdateringen i morges nullstillede ved et uheld 319 ryttere til minimum (5 UCI-point / 20.000 CZ$), inkl. stjerner som Vingegaard, Evenepoel, Pidcock, Pedersen, Bernal og Almeida. Rod-årsag: PCS-biblioteket returnerer stille `0` i stedet for decimaltal-points (fx Vingegaards `6885.1` blev til `0`), og vores safety-gate fangede det ikke fordi rytterne BLEV matched. Bare mod et nul. Vi parser nu også rå PCS-HTML for at recovere decimaltal, så Vingegaard er tilbage på 6885 og de andre 295 berørte ryttere er gendannet. Forward-guard: to nye unit-tests sikrer decimal-parsingen ikke regresserer. Refs PR"
         },
         "refs": [
@@ -5229,11 +5229,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Rider value header no longer breaks awkwardly on mobile",
         "en": {
-          "title": "The rider detail header no longer uses character-by-c…",
+          "title": "Rider value reads cleanly on mobile",
           "body": "The rider detail header no longer uses character-by-character wrapping for the value number on narrow screens. Long locale-formatted values now stay on one tidy line with overflow protection, while the full CZ$ value remains available on hover/title."
         },
         "da": {
-          "title": "Rytter-detail-headeren bruger ikke længere tegn-for-t…",
+          "title": "Rytterværdi vises pænt på mobil",
           "body": "Rytter-detail-headeren bruger ikke længere tegn-for-tegn linjeskift for værdien på smalle skærme. Lange locale-formaterede værdier bliver nu på én ryddelig linje med overflow-beskyttelse, mens den fulde CZ$-værdi stadig findes i hover/title."
         },
         "refs": [
@@ -5252,11 +5252,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Mobile bottom-nav + 6 player-facing screens now switch labels with the language toggle",
         "en": {
-          "title": "The mobile bottom-nav (Inbox / Market / Riders / My T…",
+          "title": "Mobile nav now respects language toggle",
           "body": "The mobile bottom-nav (Inbox / Market / Riders / My Team) stayed hard-coded Danish even when the language was set to English. It was the parallel mobile-version of the desktop sidebar but never got migrated when the rest of the navigation was. Fixed. Plus a sweep of six other screens that still had a few hard-coded Danish labels: the Manager Profile's rider-count stat, the Auction History page heading, the Deadline Day table's column header, the Activity page's Auctions + Watchlist filter tabs, the Season Preview's per-team rider-count stat, and the Admin area's Finance tab. All of them now follow the active language. A new CI guard (`i18n-check-nav-strings.mjs`) blocks future regressions: any new label literal in a Nav / Sidebar / Layout component fails the build until it's wired through i18n."
         },
         "da": {
-          "title": "Mobile bottom-nav'en (Indbakke / Marked / Ryttere / M…",
+          "title": "Mobilmenu skifter nu sprog korrekt",
           "body": "Mobile bottom-nav'en (Indbakke / Marked / Ryttere / Mit Hold) forblev hard-kodet dansk selv når sproget var sat til engelsk. Det var den parallelle mobile-version af desktop-sidebaren, men blev aldrig migreret da resten af navigationen blev oversat. Rettet. Plus en oprydning af seks andre skærme der stadig havde nogle få hard-kodede danske labels: Manager-profilens rytter-antal-stat, Auktionshistorik-sidens overskrift, Deadline Day-tabellens kolonne-header, Aktivitet-sidens Auktioner + Ønskeliste-filterfaner, Sæson Preview's pr-hold rytter-antal-stat, og Admin-områdets Økonomi-fane. Alle følger nu aktivt sprog. En ny CI-guard (`i18n-check-nav-strings.mjs`) blokerer fremtidige regressioner: enhver ny label-literal i en Nav / Sidebar / Layout-komponent fejler bygget indtil den er wired igennem i18n."
         },
         "refs": [
@@ -5275,11 +5275,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Backend-generated messages now follow the active language (finance warnings, transactions, board notifications)",
         "en": {
-          "title": "The finance forecast card's warnings (debt-near-cap",
+          "title": "Finance and inbox messages now translated",
           "body": "The finance forecast card's warnings (debt-near-cap, salary-exceeds-sponsor, debt-trend), the transaction history rows (sponsor income, salaries, interest, division bonus, loans received and repaid, emergency loan, loan fees, loan interest, squad fines) and the in-app notifications (board plan expired, mid-plan review, season report, chairman replaced, forced rider listing, sponsor pullout, bonus offer, division promotion/relegation, T-3/T-1 plan reminders, auto-accept, autobid placed, loan created, emergency loan, loan paid off) used to be hard-coded Danish strings in the backend libraries, which leaked through to EN-mode players on the Finance page and in the inbox. Backend now emits a structured `{ code, params }` payload per event; the frontend renders it via the new `backendMessages` i18n namespace with locale-aware number formatting. Same content, properly translated. Closes the final blocker for the Tour de France 2026 EN-mode launch on June 20."
         },
         "da": {
-          "title": "Finansprognose-kortets advarsler (gæld-tæt-på-loft",
+          "title": "Finans- og indbakkebeskeder nu oversat",
           "body": "Finansprognose-kortets advarsler (gæld-tæt-på-loft, løn-overstiger-sponsor, gælds-trend), transaktionshistorikkens rækker (sponsorindtægt, lønninger, renter, divisionsbonus, lån modtaget og tilbagebetalt, nødlån, lejegebyrer, lånerenter, trupbøder) og in-app-notifikationerne (bestyrelsesplan udløbet, halvvejs-evaluering, sæsonrapport, formand udskiftet, tvunget rytter-listing, sponsor-pullout, bonus-tilbud, op-/nedrykning, T-3/T-1 plan-påmindelser, auto-accept, autobud afgivet, lån oprettet, nødlån, lån tilbagebetalt) var hard-kodede danske strenge i backend-bibliotekerne, hvilket lækkede igennem til EN-mode-spillere på Finanser-siden og i indbakken. Backend udsender nu en struktureret `{ code, params }`-payload pr. event; frontend renderer via den nye `backendMessages` i18n-namespace med locale-aware tal-formattering. Samme indhold, korrekt oversat. Lukker den sidste blocker for Tour de France 2026 EN-mode-launch 20. juni."
         },
         "refs": [
@@ -5298,11 +5298,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Numbers and dates now follow the active language across 21 player-facing screens",
         "en": {
-          "title": "Across 21 player-facing screens (auction history",
+          "title": "Numbers and dates match your language",
           "body": "Across 21 player-facing screens (auction history, head-to-head, standings, season-end, rider rankings, race history, race points, results, manager profile, team profile, watchlist, races, hall of fame, activity, season preview, season finance report, teams, privacy policy, plus the price-change modal and the auction confetti), every number and date was previously hard-coded to Danish formatting (`1.234.567` thousand-separators, `26-05-2026` date order). Now they delegate to the locale-aware `formatNumber()`, `formatDate()` and `formatDateTime()` helpers and follow the active i18next language. In English you now see `1,234,567` and `May 26, 2026`; in Danish it still renders `1.234.567` and `26. maj 2026`. Foundation step toward the Tour de France 2026 EN-mode launch on June 20."
         },
         "da": {
-          "title": "På tværs af 21 spiller-rettede skærme (auktionshistorik",
+          "title": "Tal og datoer følger dit sprog",
           "body": "På tværs af 21 spiller-rettede skærme (auktionshistorik, head-to-head, ranglister, sæson-slut, rytter-ranglister, løbshistorik, point-side, resultater, manager-profil, hold-profil, ønskeliste, løbsoversigt, hall of fame, aktivitet, sæson-preview, sæson-finansrapport, holdoversigt, privatlivspolitik plus pris-ændrings-modalen og auktions-konfetti) var hvert tal og hver dato hard-kodet til dansk format (`1.234.567` tusind-separatorer, `26-05-2026` dato-rækkefølge). Nu kalder de de locale-aware `formatNumber()`, `formatDate()` og `formatDateTime()`-helpers og følger aktivt i18next-sprog. På engelsk ser du nu `1,234,567` og `May 26, 2026`; på dansk renderer det stadig `1.234.567` og `26. maj 2026`. Fundamentskridt frem mod Tour de France 2026 EN-mode-launch 20. juni."
         },
         "refs": [
@@ -5321,11 +5321,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "EN/DA support extended to Finance page",
         "en": {
-          "title": "EN/DA support extended to Finance page",
+          "title": "Finance page now in English and Danish",
           "body": "The Finance page now renders in both English and Danish via the language switcher. This covers the balance, debt and prize-money KPIs, the season forecast card (including the 1-5 season horizon selector and the multi-season table), the first-visit explainer card with the four cashflow streams, the onboarding tour for balance/debt-ceiling/transaction history, the active-loans list (principal, interest, seasons remaining, repayment flow), the take-out-loan form (fee, interest, total preview), the loan-terms table per division, and the full transaction history with all 12 transaction types (sponsor, salary, transfer in/out, loan received/repayment/interest, emergency loan, prize, bonus, admin adjustment, interest). Numbers follow the active language (1,500 in EN, 1.500 in DA). Em-dashes replaced with sentences per tone-of-voice guide. Phase 3.5 of the i18n rollout (#483)."
         },
         "da": {
-          "title": "EN/DA support extended to Finance page",
+          "title": "Finanser-siden taler nu engelsk og dansk",
           "body": "Finanser-siden rendres nu på både engelsk og dansk via sprog-vælgeren. Det dækker balance-, gæld- og præmiepenge-KPI'erne, sæsonprognose-kortet (inkl. 1-5 sæsons-horisont-vælgeren og multi-sæson-tabellen), første-besøgs-explainerkortet med de fire pengestrømme, onboarding-touren for balance/gældsloft/transaktionshistorik, aktive-lån-listen (hovedstol, rente, sæsoner tilbage, tilbagebetalings-flow), optag-lån-formularen (gebyr, rente, total-preview), lånebetingelser-tabellen pr. division, og fuld transaktionshistorik med alle 12 transaktionstyper (sponsor, løn, transfer ind/ud, lån modtaget/rate/renter, nødlån, præmie, bonus, admin justering, renter). Tal følger aktivt sprog (1,500 i EN, 1.500 i DA). Em-dashes erstattet med sætninger jf. tone-of-voice-guide. Fase 3.5 i i18n-udrulningen (#483)."
         },
         "refs": [
@@ -5369,11 +5369,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Rider values now follow the active language everywhere",
         "en": {
-          "title": "The `formatCz()` helper that renders every rider value",
+          "title": "Rider values match your chosen language",
           "body": "The `formatCz()` helper that renders every rider value, balance and CZ$-amount across the app (rider detail header, comparisons, transfers, watchlist, admin, season preview) was hard-coded to Danish thousand-separators (`46.520.000`), so EN-mode users saw period-separated numbers instead of `46,520,000`. Now the helper delegates to the locale-aware `formatNumber()` and picks up the i18next language. Same fix applied to the rider development chart's tooltip (`toLocaleString(\"da-DK\")` → `formatNumber()`) and its date axis."
         },
         "da": {
-          "title": "Hjælpe-funktionen `formatCz()` der renderer hver rytt…",
+          "title": "Rytterværdier følger nu dit sprog",
           "body": "Hjælpe-funktionen `formatCz()` der renderer hver rytter-værdi, saldo og CZ$-beløb i appen (rytter-detail-header, sammenligning, transfers, ønskeliste, admin, sæson-preview) var hard-kodet til danske tusind-separatorer (`46.520.000`), så EN-brugere så punktum-separerede tal i stedet for `46,520,000`. Nu kalder den den locale-aware `formatNumber()` og følger i18next-sproget. Samme fix på rytter-udviklings-grafens tooltip (`toLocaleString(\"da-DK\")` → `formatNumber()`) og dens dato-akse."
         },
         "refs": [
@@ -5392,11 +5392,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Active-auction badge background was invisible",
         "en": {
-          "title": "The orange \"Active auction\" pill next to a rider's na…",
+          "title": "Active auction badge now visible again",
           "body": "The orange \"Active auction\" pill next to a rider's name in the Riders table and on the rider detail page had a broken Tailwind opacity class (`bg-cz-accent/100/15` is not valid syntax. Two opacity modifiers chained), so the background rendered as transparent and only the orange text was visible. Fixed to `bg-cz-accent/15` so the pill has the intended 15%-opacity accent background, matching every other accent-pill on the site."
         },
         "da": {
-          "title": "Den orange \"Aktiv auktion\"-pille ved siden af en rytt…",
+          "title": "Aktiv auktion-mærket vises korrekt igen",
           "body": "Den orange \"Aktiv auktion\"-pille ved siden af en rytters navn i Rytter-tabellen og på rytter-detail-siden havde en kaput Tailwind opacity-klasse (`bg-cz-accent/100/15` er ikke gyldig syntaks. To opacity-modifiers kædet sammen), så baggrunden rendrede transparent og kun den orange tekst var synlig. Rettet til `bg-cz-accent/15` så pillen har den tiltænkte 15%-opacity accent-baggrund, ligesom alle andre accent-piller på siden."
         },
         "refs": [
@@ -5415,11 +5415,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "EN/DA support extended to Team page",
         "en": {
-          "title": "EN/DA support extended to Team page",
+          "title": "Team page now in English and Danish",
           "body": "The Team page now renders in both English and Danish via the language switcher. This covers the squad table (14 rider attributes, transfer/loan tags, action buttons), the Economy tab (KPI cards, season forecast, transaction breakdown, full history table with all transaction types: prize money, sponsor income, sales, purchases, salaries, interest), the rider action modal (auction, transfer list, guaranteed sale with full descriptions), and the transfer-window status badge. Numbers and dates follow the active language. Em-dashes replaced with sentences per tone-of-voice guide. Phase 3.5 of the i18n rollout (#483)."
         },
         "da": {
-          "title": "EN/DA support extended to Team page",
+          "title": "Hold-siden taler nu engelsk og dansk",
           "body": "Hold-siden rendres nu på både engelsk og dansk via sprog-vælgeren. Det dækker trup-tabellen (14 rytter-attributter, transfer/leje-tags, handlingsknapper), Økonomi-fanen (KPI-kort, sæsonprognose, transaktions-fordeling, fuld historik-tabel med alle transaktionstyper: præmiepenge, sponsorindtægt, salg, køb, lønninger, renter), rytter-handlingsmodalen (auktion, transferliste, garanteret salg med fulde beskrivelser) og transfervindue-status-badge. Tal og datoer følger aktivt sprog. Em-dashes erstattet med sætninger jf. tone-of-voice-guide. Fase 3.5 i i18n-udrulningen (#483)."
         },
         "refs": [
@@ -5439,11 +5439,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "EN/DA support extended to rider detail, inbox, riders database",
         "en": {
-          "title": "Three large pages now render in both English and Dani…",
+          "title": "Rider detail, inbox and database translated",
           "body": "Three large pages now render in both English and Danish via the language switcher: Rider detail (full skill breakdown across 14 attributes, bid and transfer flows, season history, tabs), Inbox (filters, all notification types with proper plurals, time-relative strings), and Riders database (search, all 14 skill filters, watchlist toggle, onboarding tour, empty-state). Bonus: the shared rider-filter component used across Auctions, Transfers, Watchlist, Team and Riders also picks up its translations. Numbers, currency and dates follow the active language. Phase 3.5 of the i18n rollout (#483)."
         },
         "da": {
-          "title": "Tre store sider rendres nu på både engelsk og dansk v…",
+          "title": "Rytterprofil, indbakke og database oversat",
           "body": "Tre store sider rendres nu på både engelsk og dansk via sprog-vælgeren: Rytter-detail (skill-overblik på 14 attributter, bud- og transfer-flows, sæsonhistorik, faner), Indbakke (filtre, alle notifikationstyper med korrekt flertal, relativ tid) og Rytter-database (søgning, alle 14 skill-filtre, ønskeliste-toggle, onboarding-tur, tom-state). Bonus: den delte filter-komponent som bruges på Auktioner, Transfers, Ønskeliste, Hold og Ryttere får også oversættelser med. Tal, valuta og datoer følger aktivt sprog. Fase 3.5 i i18n-udrulningen (#483)."
         },
         "refs": [
@@ -5512,11 +5512,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "XLSX lazy-loading on /races",
         "en": {
-          "title": "XLSX lazy-loading on /races",
+          "title": "Races page loads far faster",
           "body": "The @e965/xlsx library (~493 kB) is now loaded on demand when a user triggers a file upload on the Races page, instead of being bundled into the initial route chunk. The RacesPage initial chunk drops from ~392 kB to ~28 kB. Upload functionality is unchanged."
         },
         "da": {
-          "title": "XLSX lazy-loading on /races",
+          "title": "Races-siden loader meget hurtigere",
           "body": "@e965/xlsx-biblioteket (~493 kB) indlæses nu on demand, når en bruger uploader en fil på Races-siden, i stedet for at være inkluderet i det initiale route-chunk. RacesPage initial chunk falder fra ~392 kB til ~28 kB. Upload-funktionalitet er uændret."
         },
         "refs": [
@@ -5581,11 +5581,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "webhook-URL'er låst ned + DM-observability",
         "en": {
-          "title": "Two-in-one hardening pass.",
+          "title": "Outbid Discord DMs working again",
           "body": "Two-in-one hardening pass. (1) Security #517: Discord webhook URLs were public-readable through Supabase's anon role. Anyone could pull the full webhook list including the secret URL. Public read-policy on discord_settings has been dropped (verified: anon now sees 0 rows). Admin UI for Discord webhooks now goes through new backend endpoints under /api/admin/discord-settings, and the frontend only ever receives a masked URL (last 8 chars) for display. Full URL never leaves the server. ACTION REQUIRED FROM ADMIN: rotate existing Discord webhook URLs in Discord (Server Settings → Integrations → Webhooks → regenerate) since the old URLs were exposed during the leak window. (2) Bug #449: Discord DMs on outbid silently stopped working around May 11. Root cause not 100% confirmed (likely related to the May 11 Supabase rotation/redeploy), but we found a class of silent fail-patterns in the notification pipeline: sendDM returned without logging when DISCORD_BOT_TOKEN was missing, and 5 .catch(() => {}) calls swallowed all DM-send errors. All now log structured warnings/errors so Railway logs will surface the real failure mode next time. If your DMs are still not working, ping in #bugs and we now have logs to diagnose with."
         },
         "da": {
-          "title": "To-i-én hardening-pass.",
+          "title": "Discord-besked ved overbud virker igen",
           "body": "To-i-én hardening-pass. (1) Sikkerhed #517: Discord webhook URLs var public-readable via Supabases anon-rolle. Enhver kunne trække hele webhook-listen inklusive den hemmelige URL. Public-read-policy på discord_settings er droppet (verificeret: anon ser nu 0 rows). Admin-UI for Discord-webhooks går nu gennem nye backend-endpoints under /api/admin/discord-settings, og frontend modtager kun en maskeret URL (sidste 8 tegn) til visning. Fuld URL forlader aldrig serveren. HANDLING KRÆVET FRA ADMIN: rotér eksisterende Discord webhook URLs i Discord (Server Settings → Integrations → Webhooks → regenerate), da de gamle URLs var eksponeret i leak-vinduet. (2) Bug #449: Discord-DM ved overbud holdt op silent omkring 11. maj. Root cause ikke 100% bekræftet (sandsynligvis relateret til Supabase-rotation/redeploy 11. maj), men vi fandt en klasse af silent fail-patterns i notifikations-pipelinen: sendDM returnerede uden at logge når DISCORD_BOT_TOKEN manglede, og 5 .catch(() => {})-kald slugte alle DM-send-fejl. Alle logger nu strukturerede warnings/errors så Railway-logs viser den faktiske fejl næste gang. Hvis dine DM'er stadig ikke virker, ping i #bugs og vi har nu logs at diagnostisere med."
         },
         "refs": [
@@ -5605,11 +5605,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Loop-incident rest-cleanup: ghost-renter på lån fjernet (zero-sum-justering)",
         "en": {
-          "title": "Forensic deep-dive after the v3.86 rollback revealed…",
+          "title": "Phantom CZ$ and loan debt removed",
           "body": "Forensic deep-dive after the v3.86 rollback revealed the original cleanup only removed ghost finance_transactions and reset team balances using SUM(ghost-tx.amount). But processLoanInterest writes a finance_transactions row with amount=-interest as audit, while the actual debit happens by increasing loans.amount_remaining (the loan grows by the interest), NOT by deducting from teams.balance. The original rollback therefore subtracted ghost loan_interest amounts from balance even though they were never in the balance to begin with. And left loans.amount_remaining pumped up by 3 extra ghost interest cycles. Net effect: 8 teams with loans had 1.09M CZ$ of phantom money on their balance, AND their loans had 1.09M CZ$ of phantom debt (perfect 1:1 correspondence). Rest-cleanup deployed: 10 active loans rolled back via amount_remaining / (1+interest_rate)^3 + seasons_remaining += 3, 8 teams' balances reduced by sum of per-loan overshoot. Manager net-worth (balance − debt) is unchanged per team. All 19 teams now reconcile cleanly against finance_transactions. New doc docs/SEASON_LOOP_FORENSICS.md documents the methodology so the same audit can be redone in the future."
         },
         "da": {
-          "title": "Forensisk dybde-undersøgelse efter v3.86-rollbacken a…",
+          "title": "Fantom-CZ$ og lånegæld fjernet",
           "body": "Forensisk dybde-undersøgelse efter v3.86-rollbacken afslørede at den oprindelige cleanup kun fjernede ghost finance_transactions og resatte hold-balancer via SUM(ghost-tx.amount). Men processLoanInterest skriver en finance_transactions-row med amount=-rente som audit, mens den faktiske debet sker ved at lægge renten oven i loans.amount_remaining (gælden vokser), IKKE ved at trække fra teams.balance. Original rollback subtraherede derfor ghost loan_interest-amounts fra balance selvom de aldrig var i balancen. Og lod loans.amount_remaining stå pumpet med 3 ekstra ghost-rente-cykler. Net effekt: 8 hold med lån havde 1,09M CZ$ phantom-penge på balancen, OG deres lån havde 1,09M CZ$ phantom-gæld (perfekt 1:1 korrespondance). Rest-cleanup deployed: 10 aktive lån rullet tilbage via amount_remaining / (1+rente)^3 + seasons_remaining += 3, 8 holds balancer reduceret med sum af ghost-overshoot per lån. Manager net-worth (balance − gæld) er uændret per hold. Alle 19 hold matcher nu rekonstruktion fra finance_transactions. Ny doc docs/SEASON_LOOP_FORENSICS.md dokumenterer metodologien så samme audit kan gentages fremover."
         }
       }
@@ -5622,7 +5622,7 @@ export const PATCHES = [
     "changes": [
       {
         "category": "fixed",
-        "audience": "player",
+        "audience": "internal",
         "topic": "Safety-net mod cron-loop bug (forward-guards efter v3.86)",
         "en": {
           "title": "Five forward-guards are now active after the v3.86 fix",
@@ -5670,11 +5670,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Frosne hold fjernet fra Panic Board + polish",
         "en": {
-          "title": "The Deadline Day overview (/deadline-day) no longer l…",
+          "title": "Deadline Day hides frozen teams",
           "body": "The Deadline Day overview (/deadline-day) no longer lists frozen teams, AI teams or unowned teams in the squad-size table. Previously it only filtered out the bank team, so 4 frozen teams (Inuit Cycling + 3 test teams) were shown as 'under minimum' even though they don't participate in the season. Same is_frozen-filter as the v3.83 cron fix, now applied to the UI endpoint as well. The page is also renamed from 'Panic Board' to 'Deadline Day' to match the navigation, banner and route. Other small improvements: real error messages when the backend is unreachable (instead of the misleading 'not active' state), accessibility attributes on the table, horizontal scroll on narrow screens, and an explicit 'all teams over minimum' state."
         },
         "da": {
-          "title": "Deadline Day-oversigten (/deadline-day) viser ikke læ…",
+          "title": "Deadline Day skjuler frosne hold",
           "body": "Deadline Day-oversigten (/deadline-day) viser ikke længere frosne hold, AI-hold eller hold uden manager i trupstørrelse-tabellen. Tidligere filtrerede den kun bank-holdet fra, så 4 frosne hold (Inuit Cycling + 3 test-hold) blev vist som 'under minimum' selv om de ikke deltager i sæsonen. Samme is_frozen-filter som v3.83 cron-fixen, nu også på UI-endpointet. Siden er også omdøbt fra 'Panic Board' til 'Deadline Day' så den matcher navigationen, banneret og ruten. Øvrige små forbedringer: rigtige fejlmeddelelser når backend ikke kan nås (i stedet for den misvisende 'ikke aktiv'-tilstand), tilgængelighedsattributter på tabellen, vandret scroll på smalle skærme, og en eksplicit 'alle hold over minimum'-tilstand."
         }
       }
@@ -5690,11 +5690,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Final Whistle inkluderer nu ai-pool auktioner + viser største auktion og største transfer separat",
         "en": {
-          "title": "The Final Whistle Discord embed (posted automatically…",
+          "title": "Final Whistle now counts pool buys",
           "body": "The Final Whistle Discord embed (posted automatically when a transfer window closes) now counts ALL completed auctions during the window, including purchases from the free agent / AI rider pool. Previously only manager-to-manager auctions were counted, which made the report misleading in early seasons where most deals are from the open pool, e.g. season 0 had 111 completed auctions, but only 9 would have shown. The embed also splits 'Biggest deal' into two separate fields: 🏆 Biggest auction and 💸 Biggest transfer, so manager-vs-manager moves don't get hidden when an AI-pool buy happens to be larger. Auctions with no seller (pool buys) show as 'fri pulje' instead of '–'. Panic-handler flag still requires a real seller team, so AI-pool auctions can never be panic deals."
         },
         "da": {
-          "title": "Final Whistle Discord-embed (sendes automatisk når et…",
+          "title": "Final Whistle tæller pulje-køb med",
           "body": "Final Whistle Discord-embed (sendes automatisk når et transfervindue lukker) tæller nu ALLE gennemførte auktioner i vinduet, inklusive køb fra fri-agent-puljen / AI-rytter-puljen. Tidligere blev kun manager-til-manager auktioner talt med, hvilket gjorde rapporten misvisende i tidlige sæsoner hvor de fleste handler er fra den åbne pulje. Fx havde sæson 0 111 gennemførte auktioner, men kun 9 ville være vist. Embeddet splitter også 'Største handel' i to separate felter: 🏆 Største auktion og 💸 Største transfer, så manager-vs-manager træk ikke skjules når et AI-pool-køb tilfældigvis er større. Auktioner uden sælger (pulje-køb) vises som 'fri pulje' i stedet for '–'. Panik-handler-flag kræver stadig et faktisk sælger-hold, så AI-pool auktioner kan aldrig være panik-handler."
         }
       }
@@ -5710,11 +5710,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Frosne hold ekskluderet fra deadline-cron + squad enforcement + debt warnings",
         "en": {
-          "title": "Frozen teams are now correctly skipped by three backg…",
+          "title": "Frozen teams skip forced buys and fines",
           "body": "Frozen teams are now correctly skipped by three background jobs that previously treated them as active managers: (1) squad-size enforcement no longer force-buys riders or fines frozen teams when a transfer window closes, (2) deadline-day notifications (24h/2h/30min reminders + final whistle) are no longer sent to frozen managers, and (3) negative-balance interest warnings skip frozen teams. Previously these jobs only filtered out AI and bank teams, so frozen human teams could be hit with forced auto-purchases at 150% market value plus 100K CZ$ fines plus 200 penalty points per missing rider. Reason: ahead of the season 0 → 1 transition tonight, 4 frozen teams (Inuit Cycling + 3 test teams) had 0 riders, which would have triggered 32 forced purchases and ~3.2M CZ$ in fines if the cron had run. New regression tests lock the is_frozen skip-path on both the per-team helper and the cron loader."
         },
         "da": {
-          "title": "Frosne hold springes nu korrekt over af tre baggrunds…",
+          "title": "Frosne hold slipper for tvangskøb og bøder",
           "body": "Frosne hold springes nu korrekt over af tre baggrundsjobs der tidligere behandlede dem som aktive managers: (1) trupstørrelse-håndhævelse tvinger ikke længere køb af ryttere eller bøder på frosne hold når et transfervindue lukker, (2) deadline-day notifikationer (24h/2h/30min advarsler + final whistle) sendes ikke længere til frosne managers, og (3) negativ-saldo-advarsler skipper frosne hold. Tidligere filtrerede disse jobs kun AI- og bank-hold fra, så frosne human-hold kunne blive ramt af tvungne auto-køb til 150% market value plus 100K CZ$ bøder plus 200 fradragspoint per manglende rytter. Begrundelse: før sæson 0 → 1 transitionen i aften havde 4 frosne hold (Inuit Cycling + 3 test-hold) 0 ryttere, hvilket ville have udløst 32 tvungne køb og ~3,2M CZ$ i bøder hvis cron'en havde kørt. Nye regressionstests låser is_frozen skip-stien på både per-hold-helperen og cron-loaderen."
         }
       }
@@ -5750,11 +5750,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Ingen op/nedrykninger i sæson 1 og 2",
         "en": {
-          "title": "Ingen op/nedrykninger i sæson 1 og 2",
+          "title": "No promotion or relegation in seasons 1-2",
           "body": "Promotion and relegation between divisions is paused for the rest of season 1 and all of season 2. When season 1 and season 2 end, no teams will move between Division 1, 2 and 3 based on the final standings. Division bonuses, board evaluation and rider value recalculation still run as normal. Only the division-shuffle is skipped. Reason: with open beta still finding its footing and an uneven team-count per division, we want time to design a healthy long-term distribution before we start moving teams around. Promotion/relegation re-enables automatically when season 2 ends (i.e. starting with the season 2 → 3 transition), unless we change the rules again before then."
         },
         "da": {
-          "title": "Ingen op/nedrykninger i sæson 1 og 2",
+          "title": "Ingen op- eller nedrykning i sæson 1-2",
           "body": "Op- og nedrykning mellem divisioner er sat på pause for resten af sæson 1 og hele sæson 2. Når sæson 1 og sæson 2 slutter, flytter ingen hold mellem Division 1, 2 og 3 baseret på den endelige stilling. Divisionsbonusser, bestyrelses-evaluering og rytter-værdi-recalc kører stadig normalt. Kun selve division-skiftet springes over. Begrundelse: open beta er stadig ved at finde sin form og hold-fordelingen per division er ujævn, så vi vil have tid til at designe en sund langtidsfordeling før vi begynder at flytte rundt på hold. Op/nedrykning genaktiveres automatisk når sæson 2 slutter (dvs. ved sæson 2 → 3-transitionen), medmindre vi ændrer reglerne igen inden da."
         }
       }
@@ -5810,11 +5810,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Løn betales nu ved sæson-START i stedet for sæson-slut",
         "en": {
-          "title": "Rider salaries",
+          "title": "Salaries now charged at season start",
           "body": "Rider salaries, loan interest, emergency loans and negative-balance interest now hit your balance at the START of each season (right when sponsor money lands), instead of at the end. You see one combined cashflow event per season instead of getting hit with a big bill when the season closes. Your forecast and accounting becomes simpler. What you see at season start is your real budget. No retroactive effect: season 0 stays untouched, season 1 starts with the new model when the season transition button is clicked tonight."
         },
         "da": {
-          "title": "Rytterlønninger",
+          "title": "Løn trækkes nu ved sæson-start",
           "body": "Rytterlønninger, lånerenter, nødlån og negativ-balance-rente trækkes nu fra din balance ved STARTEN af hver sæson (samtidig med sponsorindkomst), i stedet for ved sæsonens slut. Du ser én samlet pengestrøm pr. sæson i stedet for at få regningen ved sæson-slut. Din prognose og bogføring bliver simplere. Det du ser ved sæson-start er dit reelle budget. Ingen tilbagevirkende effekt: sæson 0 forbliver urørt, sæson 1 starter med den nye model når sæson-skifte-knappen trykkes i aften."
         }
       },
@@ -5823,11 +5823,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Se op til 5 sæsoner frem (estimater fra sæson 2+)",
         "en": {
-          "title": "Finance forecast on /finance now supports a 1-5 seaso…",
+          "title": "Forecast your finances up to 5 seasons",
           "body": "Finance forecast on /finance now supports a 1-5 season horizon via a dropdown. Season +1 is precise (based on actual roster, standings and active loans). Seasons +2 through +5 are estimates using a 'status quo' assumption: same roster, same sponsor formula, and 25%-per-season loan-amortization decay. The table shows sponsor, prize, salary, interest, net cashflow, ending balance and risk tier per season, plus a total row across the full horizon. Helps you stress-test 3yr/5yr board plans before you commit to them."
         },
         "da": {
-          "title": "Finansprognosen på /finance understøtter nu en 1-5 sæ…",
+          "title": "Se finansprognose op til 5 sæsoner frem",
           "body": "Finansprognosen på /finance understøtter nu en 1-5 sæsoners horisont via en dropdown. Sæson +1 er præcis (baseret på din faktiske trup, placering og aktive lån). Sæson +2 til +5 er estimater under 'status quo'-antagelsen: samme trup, samme sponsor-formel, og 25% lån-afdrag per sæson som proxy. Tabellen viser sponsor, præmie, løn, rente, netto-cashflow, slut-saldo og risiko-tier per sæson plus en total-række. Hjælper dig med at stress-teste 3-årige/5-årige bestyrelsesplaner inden du forpligter dig."
         }
       },
@@ -5856,11 +5856,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Sikrere transition fra sæson 0 til sæson 1",
         "en": {
-          "title": "The admin Season transition engine now correctly acti…",
+          "title": "Smoother season 0 to 1 rollover",
           "body": "The admin Season transition engine now correctly activates a season that was pre-created with status 'upcoming' (instead of silently skipping it). This was a contract bug that would have left season 1 in 'upcoming' state after the transition button was clicked, even though the confirmation dialog promised 'active'. No visible UI change for managers. Backend-only fix to backend/lib/seasonTransition.js + 2 new unit tests (676 backend tests still green)."
         },
         "da": {
-          "title": "Admin sæson-skifte-motoren aktiverer nu korrekt en sæ…",
+          "title": "Mere sikkert skift fra sæson 0 til 1",
           "body": "Admin sæson-skifte-motoren aktiverer nu korrekt en sæson der er pre-created med status 'upcoming' (i stedet for at skippe den). Det var en kontrakt-bug der ville efterlade sæson 1 i 'upcoming' efter klik på sæson-skifte-knappen, selv om confirm-dialogen lover 'active'. Ingen synlig UI-ændring for managers. Backend-only fix i backend/lib/seasonTransition.js + 2 nye unit-tests (676 backend-tests stadig grønne)."
         }
       }

@@ -146,8 +146,10 @@ export default function PatchNotesPage() {
                     )}
                   </div>
                   <div className="text-cz-3 text-xs mt-0.5">
-                    {day.count} {da ? "opdateringer" : "updates"}
-                    {day.topics.length ? ` · ${day.topics.slice(0, 3).join(", ")}` : ""}
+                    {["new", "improved", "fixed"]
+                      .filter((cat) => day.categories[cat]?.length)
+                      .map((cat) => `${day.categories[cat].length} ${(da ? CATEGORY_META[cat].da : CATEGORY_META[cat].en).toLowerCase()}`)
+                      .join(" · ")}
                   </div>
                 </div>
                 <span className={`text-cz-3 text-xs transition-transform ${open ? "rotate-180" : ""}`}>▾</span>
