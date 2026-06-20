@@ -69,14 +69,14 @@
           ["1", "Tilfredshed-baseret", "Sponsor-modifier ±20% (passiv)"],
           ["2", "Tilfredshed <40%", "Lønloft: total løn frosses, ingen vækst"],
           ["3", "Tilfredshed <30%", "Signing-restriktion: køb >300K blokeres"],
-          ["4", "Tilfredshed <15%", "Tvunget salg: én rytter auto-listes (pop≥70 og stjerneryttere beskyttede)"],
+          ["4", "Tilfredshed <15%", "Tvunget salg: din rytter med lavest værdi auto-listes (ryttere med popularity ≥70 eller værdi ≥8.000.000 CZ$ er beskyttede)"],
           ["5", "<10% eller 2× plan-udløb under 30%", "Sponsor-pull-out: −10% sponsor én sæson"],
           ["6 (positiv)", ">75% tilfredshed + ≥75% mål nået", "Bonus-tilbud: +200K mod ét ekstra-mål"]
         ]
       },
       "requestsAndLocks": {
         "title": "Board requests og drej-låsninger",
-        "text": "Én gang pr. sæson kan du sende en board request for at dreje din plan (fx 'mere stjernefokus'). Svaret er godkendt, delvist, afvist eller godkendt med tradeoff. MAJOR pivots (ungdom ↔ stjerne) tillades kun én gang pr. plan-livscyklus. 5yr/3yr-planer kan ikke drejes de første 50% af løbetiden medmindre tilfredsheden er ændret >30 point. I de sidste 5 race-days af en sæson er alle requests blokeret."
+        "text": "Én gang pr. sæson kan du sende en board request for at dreje din plan (fx 'mere stjernefokus'). Svaret er godkendt, delvist, afvist eller godkendt med tradeoff. Store drejninger (ungdom ↔ stjerne) tillades kun én gang pr. plan-livscyklus. 5yr/3yr-planer kan ikke drejes de første 50% af løbetiden medmindre tilfredsheden er ændret >30 point. I de sidste 5 race-days af en sæson er alle requests blokeret."
       },
       "midSeasonCheck": {
         "title": "Mid-season check",
@@ -360,7 +360,7 @@
       },
       "promotionRelegation": {
         "title": "Op- og nedrykning",
-        "text": "Top 2 i Division 2 og 3 rykker op. Bund 2 i Division 1 og 2 rykker ned. Afgøres automatisk ved sæsonafslutning baseret på sæsonpoint."
+        "text": "Top 2 i Division 2 og 3 rykker op. Bund 2 i Division 1 og 2 rykker ned. Afgøres automatisk ved sæsonafslutning baseret på sæsonpoint. Divisionerne er låst de første to sæsoner: de første op- og nedrykninger sker når sæson 2 slutter, så alle har tid til at finde sig til rette i en division først."
       },
       "whenSeasonEnds": {
         "title": "Hvornår kan en sæson afsluttes?",
@@ -422,7 +422,7 @@
       },
       "promotionRelegation": {
         "title": "Op- og nedrykning",
-        "text": "Top 2 rykker op, bund 2 rykker ned i hver division. Rykningsafgørelse sker automatisk ved sæsonafslutning."
+        "text": "Top 2 rykker op, bund 2 rykker ned i hver division. Rykningsafgørelse sker automatisk ved sæsonafslutning. Divisionerne er låst de første to sæsoner, så de første op- og nedrykninger sker når sæson 2 slutter."
       }
     },
     "riders": {
@@ -438,6 +438,27 @@
       "stats": {
         "title": "Rytterstatistik",
         "text": "Hver rytter har 14 stats: FL (Flad), BJ (Bjerg), KB (Mellembjerg), BK (Bakke), TT (Enkeltstart), PRL (Prolog), BRO (Brosten), SP (Sprint), ACC (Acceleration), NED (Nedkørsel), UDH (Udholdenhed), MOD (Modstandsdygtighed), RES (Restituering), FTR (Fighter)."
+      },
+      "abilitiesExplained": {
+        "title": "De 15 evner, og hvor de betyder noget",
+        "rows": [
+          ["Evne", "Hvad den gør", "Hvor den betyder mest"],
+          ["Klatring", "Kraft på lange stigninger", "Bjergetaper"],
+          ["Enkeltstart", "At køre alene mod uret", "Enkeltstarter"],
+          ["Flad", "At holde fart på flade veje", "Flade etaper, enkeltstarter"],
+          ["Tempo", "Vedvarende mellem-indsats", "Mellembjerge, kuperede etaper"],
+          ["Sprint", "Topfart til en finish", "Flade samlede spurter"],
+          ["Acceleration", "Eksplosivt ryk til at starte eller lukke et hul", "Spurter, kuperede angreb"],
+          ["Punch", "Korte stejle indsatser", "Kuperede etaper og finaler"],
+          ["Udholdenhed", "At holde hele distancen", "Lange, hårde dage og klassikere"],
+          ["Restituering", "At komme sig mellem dage", "Etapeløb"],
+          ["Modstandsdygtighed", "At modstå træthed, falde mindre af sent", "Hårde flere-etapers løb"],
+          ["Nedkørsel", "Favour på nedadgående finaler", "Etaper der slutter nedad"],
+          ["Brosten", "Beherskelse og kraft på brosten", "Brosten-klassikere"],
+          ["Positionering", "At blive foran", "Hektiske etaper, enkeltstarter"],
+          ["Aggression", "Lysten til at angribe", "Udbrud"],
+          ["Taktik", "Race-forståelse og at læse et løb", "Holdtidskørsler, taktiske løb"]
+        ]
       },
       "development": {
         "title": "Udvikling over tid",
@@ -495,6 +516,10 @@
       "readingReport": {
         "title": "Sådan læser du træningsrapporten",
         "text": "Når træningen er kørt, åbner rapporten med en dags-opsummering: hvor mange ryttere der trænede, hvor mange der fik et gennembrud (en evne steg +1), og hvor mange der er i topform. Hver række viser fokus-evnens vej mod næste +1, og et gennembrud fremhæves med det faktiske spring, for eksempel 71 til 72. Rosterbordet viser den samme fremskridtslinje, så du kan styre et fokus mod en rytter tæt på et gennembrud."
+      },
+      "trainingHistory": {
+        "title": "Træningshistorik",
+        "text": "Hver daglig trænings-kørsel gemmes. Daglig træning-siden viser dine seneste 30 dage under rosteren, hvor hver dag viser hvor mange ryttere der trænede, gennembrud og ryttere i topform; fold en dag ud for at se den fulde rytter-rapport. Hver rytters profil har sin egen træningshistorik under Udvikling-fanen, der lister rytterens fokus, intensitet, fremgang og form dag for dag."
       }
     },
     "activityfeed": {
@@ -717,11 +742,11 @@
     },
     "seasonFinanceReport": {
       "q": "Hvad viser sæson-finansrapporten, og hvor finder jeg den?",
-      "a": "Sæson-finansrapporten er en dedikeret side per sæson som viser dit cashflow i den valgte sæson: hero-kortet øverst summer total indtægt + udgift + nettoresultat, to donut-diagrammer fordeler indtægter og udgifter på reason_code (sponsor, præmiepenge, auktion-køb, løn osv.), top-3-listerne fremhæver dine største transaktioner i hver retning, og loan-portfolio-tabellen viser aktive lån med restgæld + næste sæsons forventede rente. Rapporten er privat: du ser kun din egen, og admins ser ét hold ad gangen via team-dropdown. Du finder rapporten under Historik-fanen på Finanser-siden, hvor en sæsonvælger lader dig skifte mellem dine sæsoner; sæson-snapshot-siden (/seasons) linker også direkte til den. Sponsor-modifier-kurven og direkte sammenligning med forrige sæson er først tilgængelig fra sæson 2, når der er mindst én lukket sæson at sammenligne mod."
+      "a": "Sæson-finansrapporten er en dedikeret side per sæson som viser dit cashflow i den valgte sæson: hero-kortet øverst summer total indtægt + udgift + nettoresultat, to donut-diagrammer fordeler indtægter og udgifter på kategori (sponsor, præmiepenge, auktion-køb, løn osv.), top-3-listerne fremhæver dine største transaktioner i hver retning, og loan-portfolio-tabellen viser aktive lån med restgæld + næste sæsons forventede rente. Rapporten er privat: du ser kun din egen, og admins ser ét hold ad gangen via team-dropdown. Du finder rapporten under Historik-fanen på Finanser-siden, hvor en sæsonvælger lader dig skifte mellem dine sæsoner; sæson-snapshot-siden (/seasons) linker også direkte til den. Sponsor-modifier-kurven og direkte sammenligning med forrige sæson er først tilgængelig fra sæson 2, når der er mindst én lukket sæson at sammenligne mod."
     },
     "forecastCalculation": {
       "q": "Hvordan beregnes prognosen for næste sæson på Finanser-siden?",
-      "a": "Prognosen viser forventet cashflow for hele næste sæson som sum af: (1) sponsor = sæsonens sponsorbase × bestyrelsens budget-modifier × evt. aktiv sponsor-pullout-faktor. Både sæson 1 og sæson 2+ bruger en division-skaleret base (D1 600.000 · D2 400.000 · D3 340.000 CZ$); fra sæson 2 lægges op til 150.000 CZ$ variabel sponsor oveni, fra forrige sæsons point/rang. (2) præmiepenge = sum af dine rytteres prize_earnings_bonus (rolling avg af de sidste 1-3 afsluttede sæsoner), (3) løn = sum af riders.salary, (4) lånerenter = sum(amount_remaining × interest_rate) på alle aktive lån, og (5) lejegebyr for lejede ryttere som løber ind i næste sæson (modregnet med eventuelle gebyrer du modtager som udlåner). Risk-tier-badgen er grøn hvis netto ≥ +50K og gæld < 50% af loftet, gul hvis netto er mellem -50K og +50K eller gæld er mellem 50-80% af loftet, og rød hvis netto < -50K, gæld > 80% af loftet, eller hvis dit underskud rammer gældsloftet inden for 2 sæsoner. Spændet (±20% på præmie-estimatet) afspejler at præmiepenge er den mest variable input. Prognose er ikke kontrakt; tal kan ændre sig hvis du sælger ryttere, optager lån, scorer flere point eller forhandler ny bestyrelsesplan."
+      "a": "Prognosen viser forventet cashflow for hele næste sæson som sum af: (1) sponsor = sæsonens sponsorbase × bestyrelsens budget-modifier × evt. aktiv sponsor-pullout-faktor. Både sæson 1 og sæson 2+ bruger en division-skaleret base (D1 600.000 · D2 400.000 · D3 340.000 CZ$); fra sæson 2 lægges op til 150.000 CZ$ variabel sponsor oveni, fra forrige sæsons point/rang. (2) præmiepenge = præmie-delen af hver rytters værdi (et rullende gennemsnit af deres præmiepenge over de sidste 1-3 afsluttede sæsoner), (3) løn = summen af dine rytteres lønninger, (4) lånerenter = renten på hvert aktivt lån, beregnet af den gæld der stadig er udestående, og (5) lejegebyr for lejede ryttere som løber ind i næste sæson (modregnet med eventuelle gebyrer du modtager som udlåner). Risk-tier-badgen er grøn hvis netto ≥ +50K og gæld < 50% af loftet, gul hvis netto er mellem -50K og +50K eller gæld er mellem 50-80% af loftet, og rød hvis netto < -50K, gæld > 80% af loftet, eller hvis dit underskud rammer gældsloftet inden for 2 sæsoner. Spændet (±20% på præmie-estimatet) afspejler at præmiepenge er den mest variable input. Prognose er ikke kontrakt; tal kan ændre sig hvis du sælger ryttere, optager lån, scorer flere point eller forhandler ny bestyrelsesplan."
     },
     "standingsUpdate": {
       "q": "Hvornår opdateres sæsonstillingen?",
@@ -757,7 +782,7 @@
     },
     "forgotToNegotiatePlan": {
       "q": "Hvad sker der hvis jeg glemmer at forhandle min plan?",
-      "a": "Bestyrelsen tager over. Hvis du ikke har signet en ny plan inden race-day 5 er passeret, signer en cron-job automatisk en plan med default-fokus afledt af dit holds identitet (U25-tungt → ungdomsudvikling, stjerneprofil → stjernesignering, ellers balanceret) og standardmål. Du får først en info-reminder ved race-day 2 ('Bestyrelsen venter paa din N-aarsplan'), derefter en 'Skal handles'-notif ved race-day 4 ('Sidste chance'), og derefter er det bestyrelsens valg. Du kan stadig anmode om ændringer via en board request når planen kører. Tjekker du Bestyrelse-siden ofte, ser du også et live countdown-banner med antal race-days tilbage."
+      "a": "Bestyrelsen tager over. Hvis du ikke har signet en ny plan inden race-day 5 er passeret, signer bestyrelsen automatisk en plan med default-fokus afledt af dit holds identitet (U25-tungt → ungdomsudvikling, stjerneprofil → stjernesignering, ellers balanceret) og standardmål. Du får først en info-reminder ved race-day 2 ('Bestyrelsen venter paa din N-aarsplan'), derefter en 'Skal handles'-notif ved race-day 4 ('Sidste chance'), og derefter er det bestyrelsens valg. Du kan stadig anmode om ændringer via en board request når planen kører. Tjekker du Bestyrelse-siden ofte, ser du også et live countdown-banner med antal race-days tilbage."
     },
     "boardMembersFaq": {
       "q": "Hvem er medlemmerne i min bestyrelse?",
@@ -781,11 +806,11 @@
     },
     "balancedRelativeRank": {
       "q": "Hvad er 'slut foran X andre managers' i balanced-planer?",
-      "a": "Balanced-fokus får nu et 5. mål: 'Slut foran mindst 3 andre managers i divisionen'. Det handler ikke om absolut rangering, men om relativ: du skal slå over halvdelen i din division. Skalerer automatisk når flere managers joiner: hvis der er 5 humane managers i din division og du er rank 1, har du slået 4. Hvis du er rank 4, har du kun slået 1 → målet er ikke opfyldt. Beregnes fra `season_standings.rank_in_division` mod antal humane managers i din division."
+      "a": "Balanced-fokus får nu et 5. mål: 'Slut foran mindst 3 andre managers i divisionen'. Det handler ikke om absolut rangering, men om relativ: du skal slå over halvdelen i din division. Skalerer automatisk når flere managers joiner: hvis der er 5 humane managers i din division og du er rank 1, har du slået 4. Hvis du er rank 4, har du kun slået 1 → målet er ikke opfyldt. Det aflæses af din aktuelle placering i divisionen mod antallet af humane managers i den."
     },
     "boardUnsatisfiedConsequences": {
       "q": "Hvad sker der når bestyrelsen er meget utilfreds, kan jeg blive fyret?",
-      "a": "Du kan ikke blive fyret. I stedet reagerer bestyrelsen gradvist gennem 6 lag jo lavere tilfredsheden bliver: ved <40% pålægger den et lønloft (du kan ikke øge holdets samlede løn, sælg en rytter først). Ved <30% kommer en signing-restriktion: køb over 300K CZ$ blokeres. Ved <15% tvangs-listes en rytter på markedet (laveste market_value, ryttere med pop≥70 og stjerner er beskyttede). Ved <10% trækker en hovedsponsor sig: sponsorindtægten reduceres med 10% i den næste sæson. Alle aktive konsekvenser vises i panelet 'Aktive konsekvenser' på Bestyrelse-siden, og lag 4-5 sender også 'Skal handles'-notifs. Tilfredshed der stiger igen expirerer automatisk lag 2-3."
+      "a": "Du kan ikke blive fyret. I stedet reagerer bestyrelsen gradvist gennem 6 lag jo lavere tilfredsheden bliver: ved <40% pålægger den et lønloft (du kan ikke øge holdets samlede løn, sælg en rytter først). Ved <30% kommer en signing-restriktion: køb over 300K CZ$ blokeres. Ved <15% tvangs-lister bestyrelsen én rytter på markedet: den vælger din rytter med lavest værdi og lister ham til hans markedsværdi. Dine stjerner er beskyttede her, enhver rytter med popularity 70 eller derover, eller en værdi på 8.000.000 CZ$ eller mere, går fri. Ved <10% trækker en hovedsponsor sig: sponsorindtægten reduceres med 10% i den næste sæson. Alle aktive konsekvenser vises i panelet 'Aktive konsekvenser' på Bestyrelse-siden, og lag 4-5 sender også 'Skal handles'-notifs. Tilfredshed der stiger igen expirerer automatisk lag 2-3."
     },
     "bonusOffer": {
       "q": "Hvad er bonus-tilbuddet jeg lige fik fra bestyrelsen?",
@@ -804,8 +829,8 @@
       "a": "Når halvdelen af sæsonens race-days er ovre, tjekker bestyrelsen din plan-status. Hvis tilfredsheden er under 50% ELLER mindst halvdelen af dine plan-mål ligger 'bagud' efter halvtid → får du en 'Mid-season check'-notif i Indbakke 'Skal handles'. Notifen er informativ: bestyrelsen er bekymret men handler ikke automatisk. Du kan reagere ved at sende en board request (dreje plan-mål), anmode om budget-lån på Økonomi-siden, eller bare skærpe focus resten af sæsonen. Banneret fyrer kun én gang pr. sæson pr. board."
     },
     "majorPivotCooldown": {
-      "q": "Hvad er drej-cooldown og 'MAJOR pivot'?",
-      "a": "En MAJOR pivot er en focus-skift mellem extremer: fra ungdomsudvikling til stjernesignering eller omvendt. Dem må du kun gennemføre én gang pr. plan-livscyklus. Når du fx accepterer 'mere stjerner nu' fra et ungdomsspor, registreres et MAJOR-pivot-stempel på din plan, og næste tilsvarende request bliver afvist med 'Bestyrelsen har allerede accepteret en MAJOR drejning'. Stemplet nulstilles når planen bliver fornyet (frisk plan = frisk cool-down). Pivots til/fra balanced er ikke MAJOR: du kan stadig dreje gradvist via balanced-mellemstation."
+      "q": "Hvad er drej-cooldown og 'stor drejning'?",
+      "a": "En stor drejning er et focus-skift mellem extremer: fra ungdomsudvikling til stjernesignering eller omvendt. Dem må du kun gennemføre én gang pr. plan-livscyklus. Når du fx accepterer 'mere stjerner nu' fra et ungdomsspor, noterer bestyrelsen at du har brugt din store drejning på denne plan, og næste tilsvarende request bliver afvist med 'Bestyrelsen har allerede accepteret en stor drejning'. Det nulstilles når planen bliver fornyet (frisk plan = frisk cool-down). Drejninger til/fra balanced er ikke store: du kan stadig dreje gradvist via en balanceret mellemstation."
     },
     "endOfSeasonBlock": {
       "q": "Hvorfor kan jeg ikke sende board requests i sæsonens slutfase?",
@@ -821,7 +846,7 @@
     },
     "relativeRankLive": {
       "q": "Hvordan virker 'slut foran X andre managers'-mål live?",
-      "a": "På Bestyrelse-siden viser balanced-planens relative_rank-mål nu live status: 'Du staar #4 af 8 managers i divisionen, slaar 4 (maal: 3 ✓)'. Tallet opdateres efter hver race-day når season_standings er opdateret. Måler relativt til antallet af humane managers i din division, så det skalerer naturligt fra ~19 nu til 100+ managers efter open beta uden cross-division-støj."
+      "a": "På Bestyrelse-siden viser balanced-planens relative_rank-mål nu live status: 'Du staar #4 af 8 managers i divisionen, slaar 4 (maal: 3 ✓)'. Tallet opdateres efter hver race-day når stillingen genberegnes. Måler relativt til antallet af humane managers i din division, så det skalerer naturligt fra ~19 nu til 100+ managers efter open beta uden cross-division-støj."
     },
     "season0To1Special": {
       "q": "Hvad sker der ved overgangen fra sæson 0 til sæson 1?",
@@ -838,6 +863,14 @@
     "season1RaceCalendarFaq": {
       "q": "Hvilke løb køres i sæson 1?",
       "a": "Sæson 1's kalender designes inden vinduet lukker og publiseres på Løb-siden (Sæson & Resultater → Løb → Kalender). WorldTour-løb (Tour de France, Giro, Vuelta, monumenter) køres ikke i sæson 1 efter beslutning i opstartsfasen, så managere kan finde fodfæste på ProSeries og lavere klasser først. Den fulde liste vises i Løb-tabben så snart admin har godkendt kalenderen."
+    },
+    "howToWinRace": {
+      "q": "Hvordan vinder jeg et løb, og hvad afgør resultatet?",
+      "a": "Resultaterne afgøres af hvor godt dine rytteres evner passer til terrænet. Hvert løb deles op i etaper, og hver etape har en terræntype (fladt, kuperet, bjerge, enkeltstart, brosten osv.) der efterspørger bestemte evner. En flad etape belønner Sprint mest af alt; en bjergetape belønner Klatring; en enkeltstart belønner Enkeltstart; en brosten-etape belønner Brosten; en kuperet etape belønner Punch. For hver rytter lægger motoren de matchende evner sammen, vægtet efter hvad etapen kræver, til en etape-score. Oven på den score ligger nogle få mindre effekter: god form giver en lille favour og høj træthed en lille straf (hver begrænset til ca. ±3%, så en frisk rytter slår en træt af samme niveau, men en favorit vinder stadig på klasse), en kaptajn beskyttet af stærke, friske hjælpere får et boost, udbrud holder af og til hjem på det rette terræn, og en lille tilfældig faktor betyder at den stærkeste rytter vinder det meste af tiden, men ikke altid. Over et etapeløb lægges tidsgabene fra hver etape sammen til det samlede klassement: bjerge og enkeltstarter åbner de største gab og afgør typisk GC, mens flade etaper slutter i en samlet spurt. Placeringer bliver til point, og point bliver til både din rangliste-score og dine præmiepenge. Det praktiske: match hver rytter til de etaper der passer ham, hold dine stjerner friske til de dage der tæller, og sæt den rigtige kaptajn i Holdudtagelse."
+    },
+    "riderAbilities": {
+      "q": "Hvad betyder de 15 rytter-evner?",
+      "a": "Hver rytter vurderes 1-99 på 15 evner, samlet i tre familier. Fysiske (10): Klatring (lange stigninger og bjergetaper), Enkeltstart (at køre alene mod uret), Flad (at holde fart på flade veje som rouleur), Tempo (vedvarende indsats på mellembjerge og kuperet terræn), Sprint (topfart til en samlet spurt), Acceleration (det eksplosive ryk der starter en spurt eller lukker et hul), Punch (korte stejle stigninger og kuperede finaler), Udholdenhed (at holde hele distancen på lange, hårde dage), Restituering (at komme sig mellem etaper og dage) og Modstandsdygtighed (at modstå træthed så rytteren falder mindre af sent i hårde løb). Tekniske (3): Nedkørsel (en lille favour på etaper der slutter nedad), Brosten (cykelbeherskelse og kraft til brosten-klassikere) og Positionering (at blive foran for at undgå splitninger, og en faktor i enkeltstart). Taktisk/mentale (2): Aggression (lysten til at angribe og komme med i udbrud) og Taktik (race-forståelse der hjælper i holdtidskørsler og med at læse et løb). Race-motoren matcher disse mod hver etapes terræn, så den samme rytter kan være en stjerne på én profil og helt almindelig på en anden. Tip: en balanceret trup der dækker flere profiler scorer mere stabilt over en kalender end et ensidigt hold."
     }
   }
 }
