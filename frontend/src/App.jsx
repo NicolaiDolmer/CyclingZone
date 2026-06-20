@@ -50,6 +50,7 @@ const SeasonPreviewPage = lazy(() => import("./pages/SeasonPreviewPage"));
 const HeadToHeadPage = lazy(() => import("./pages/HeadToHeadPage"));
 const PatchNotesPage = lazy(() => import("./pages/PatchNotesPage"));
 const RoadmapPage = lazy(() => import("./pages/RoadmapPage"));
+const RulesPage = lazy(() => import("./pages/RulesPage"));
 const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicyPage"));
 const PrivacyPolicyPageEn = lazy(() => import("./pages/PrivacyPolicyPageEn"));
 const FounderSupporterPage = lazy(() => import("./pages/FounderSupporterPage"));
@@ -179,6 +180,7 @@ export default function App() {
             <Route path="activity-feed" element={<Navigate to="/notifications" replace />} />
             <Route path="watchlist" element={<WatchlistPage />} />
             <Route path="help" element={<HelpPage />} />
+            <Route path="rules" element={<RulesPage />} />
             <Route path="hall-of-fame" element={<HallOfFamePage />} />
             <Route path="season-preview" element={<SeasonPreviewPage />} />
             <Route path="head-to-head" element={<HeadToHeadPage />} />
