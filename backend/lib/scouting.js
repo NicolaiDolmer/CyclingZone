@@ -138,10 +138,21 @@ export function estimatePotentialRange(truePotentiale, scoutLevel, age, riderId,
 //   rider        : { id, potentiale, birthdate, team_id }
 //   level        : viewerens scout-niveau på rytteren (0..maxLevel)
 //   viewerTeamId : viewerens team-id
-// Returnerer { lo, hi, exact, level } eller null (rytter uden potentiale).
+// Returnerer:
+//   • null                       — rytter uden potentiale (intet at vise).
+//   • { hidden: true, level: 0 } — ikke-egen, uscoutet rytter (#1543): potentialet
+//                                  er SKJULT indtil det er scoutet. Hverken den rå
+//                                  potentiale eller et lo–hi-spænd forlader serveren
+//                                  før et scout-slot er brugt — intet gratis level-0
+//                                  hint længere.
+//   • { lo, hi, exact, level }   — egen rytter (eksakt) eller scoutet (level > 0).
 export function buildScoutEstimate(rider, level, viewerTeamId, cfg = SCOUTING_CONFIG, currentYear = new Date().getFullYear()) {
   if (!rider || rider.potentiale == null) return null;
   const isOwn = rider.team_id != null && viewerTeamId != null && rider.team_id === viewerTeamId;
+  // #1543: en ikke-egen rytter som endnu ikke er scoutet (level 0) har INTET
+  // synligt potentiale. Vi beregner ikke et lo–hi-interval og lækker dermed
+  // ingen sandhed (heller ikke gennem clamping/bias) før et slot er brugt.
+  if (!isOwn && (Number(level) || 0) <= 0) return { hidden: true, level: 0 };
   // Egne ryttere er fuldt kendte (samme regel som POST /scouting/:riderId håndhæver).
   const effectiveLevel = isOwn ? cfg.maxLevel : level;
   const age = rider.birthdate ? currentYear - new Date(rider.birthdate).getFullYear() : null;
