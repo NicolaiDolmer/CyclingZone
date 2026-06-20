@@ -3,14 +3,16 @@ import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { formatNumber } from "../lib/intl";
-import { Card, Input, Spinner, EmptyState } from "../components/ui";
+import { Card, Input, Spinner, EmptyState, TeamIcon } from "../components/ui";
 
-// Divisions-farver via design-tokens (ingen raa hex): D1 = accent-guld,
-// D2 = chart-1 (blaa), D3 = chart-2 (violet). Brugt inline til prik + label.
+// Divisions-markør holdt inden for guld+navy-systemet (ingen fremmede hues):
+// D1 = fuld accent-guld (topdivision), D2 = dyb guld (accent-t), D3 = neutral
+// (text-3). Brugt inline til prik + label. (#671 anti-drift — erstatter den
+// tidligere chart-1/chart-2 blaa/violet division-kodning.)
 const DIV_COLORS = {
   1: "rgb(var(--accent))",
-  2: "rgb(var(--cz-chart-1))",
-  3: "rgb(var(--cz-chart-2))",
+  2: "rgb(var(--accent-t))",
+  3: "rgb(var(--text-3))",
 };
 
 export default function TeamsPage() {
@@ -185,7 +187,7 @@ export default function TeamsPage() {
 
       {filtered.length === 0 && (
         <EmptyState
-          icon={<span aria-hidden="true" className="text-3xl text-cz-3">◈</span>}
+          icon={<TeamIcon className="w-8 h-8 text-cz-3" aria-hidden="true" />}
           title={t("list.noMatch")}
         />
       )}

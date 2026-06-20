@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { formatNumber } from "../lib/intl";
-import { Card, Spinner, CoinIcon } from "../components/ui";
+import { Card, Spinner, CoinIcon, InfoIcon } from "../components/ui";
 // Frontend single source of truth for PRIZE_PER_POINT (mirrors backend economyConstants.js).
 import { PRIZE_PER_POINT } from "../lib/expectedPrizeCalculator";
 
@@ -105,7 +105,7 @@ export default function RacePointsPage() {
           className="flex-shrink-0 flex items-center gap-1.5 text-xs text-cz-3 hover:text-cz-2 transition-colors mt-1"
           title={t("points.help")}
         >
-          <span className="w-5 h-5 rounded-full border border-cz-border flex items-center justify-center text-xs font-bold leading-none">?</span>
+          <InfoIcon size={16} className="text-cz-3 flex-shrink-0" aria-hidden="true" />
           <span className="hidden sm:inline">{t("points.help")}</span>
         </Link>
       </div>
@@ -118,7 +118,7 @@ export default function RacePointsPage() {
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {PRIZE_EXAMPLES.map(ex => (
-            <div key={ex.key} className="bg-cz-card rounded-lg px-3 py-2 border border-amber-100">
+            <div key={ex.key} className="bg-cz-card rounded-lg px-3 py-2 border border-cz-accent/30">
               <p className="text-xs text-cz-2 truncate">{t(`points.prizeExample.${ex.key}`)}</p>
               <p className="font-mono font-bold text-cz-accent-t text-sm">{fmt(ex.points)} pt</p>
               <p className="text-xs text-cz-3">{fmtPrize(ex.points)}</p>
@@ -135,7 +135,7 @@ export default function RacePointsPage() {
             onClick={() => setActiveClass(c)}
             className={`flex-shrink-0 px-3 py-1.5 rounded-full text-sm font-medium transition-colors whitespace-nowrap
               ${activeClass === c
-                ? "bg-cz-accent-t text-white"
+                ? "bg-cz-accent-t text-cz-on-accent"
                 : "bg-cz-card border border-cz-border text-cz-2 hover:border-cz-accent/30 hover:text-cz-accent-t"
               }`}
           >

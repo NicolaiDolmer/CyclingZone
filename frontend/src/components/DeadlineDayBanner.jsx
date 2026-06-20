@@ -7,24 +7,24 @@ const API = import.meta.env.VITE_API_URL;
 
 const PHASE = {
   anticipation: {
-    bar: "bg-cz-accent/10 border-[#e8c547]/25",
+    bar: "bg-cz-accent/10 border-cz-accent/25",
     dot: "bg-cz-accent",
     label: "text-cz-accent/80",
     countdown: "text-cz-accent",
     pulse: false,
   },
   pressure: {
-    bar: "bg-red-900/35 border-red-500/35",
-    dot: "bg-cz-danger-bg0",
-    label: "text-red-400",
-    countdown: "text-red-300",
+    bar: "bg-cz-danger-bg border-cz-danger/35",
+    dot: "bg-cz-danger",
+    label: "text-cz-danger",
+    countdown: "text-cz-danger",
     pulse: false,
   },
   chaos: {
-    bar: "bg-red-950/55 border-red-400/50",
-    dot: "bg-red-400 animate-pulse",
-    label: "text-red-300",
-    countdown: "text-white",
+    bar: "bg-cz-danger-bg border-cz-danger/50",
+    dot: "bg-cz-danger animate-pulse",
+    label: "text-cz-danger",
+    countdown: "text-cz-1",
     pulse: true,
   },
 };

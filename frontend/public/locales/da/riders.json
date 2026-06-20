@@ -2,7 +2,7 @@
   "page": {
     "title": "Rytterdatabase",
     "subtitle": "{count} ryttere",
-    "watchlistLink": "⭐ Min ønskeliste ({count})",
+    "watchlistLink": "Min ønskeliste ({count})",
     "loadingAria": "Indlæser ryttere"
   },
   "table": {
@@ -52,7 +52,7 @@
     "tipStats": "<strong>Stat-filtre</strong> = rytter-evner som klatring, spurt og enkeltstart. Start bredt og indsnævr senere.",
     "tipBudget": "<strong>U25 / Fri agent</strong> = budget-venlige veje: yngre potentiale eller ryttere uden kontrakt.",
     "ctaFindFirst": "Find din første rytter (≤ {balance} CZ$)",
-    "ctaTour": "💡 Vis mig rundt"
+    "ctaTour": "Vis mig rundt"
   },
   "rankings": {
     "title": "Rytterrangliste",

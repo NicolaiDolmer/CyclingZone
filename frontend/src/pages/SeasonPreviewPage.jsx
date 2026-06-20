@@ -65,7 +65,15 @@ export default function SeasonPreviewPage() {
 
   useEffect(() => { loadAll(); }, []);
 
-  const DIV_COLORS = { 1: "#e8c547", 2: "#60a5fa", 3: "#a78bfa" };
+  // Division-markør holdt inden for guld+navy-systemet (ingen fremmede hues):
+  // div 1 = fuld guld, div 2 = dyb guld, div 3 = neutral (tema-bevidste channel-
+  // tokens i index.css). divColor() bygger rgb()-strenge med valgfri alpha, så vi
+  // undgår rå hex + hex-alpha-konkatenering. (#671 anti-drift.)
+  const DIV_VARS = { 1: "--accent", 2: "--accent-t", 3: "--div-3" };
+  const divColor = (division, alpha = 1) => {
+    const v = DIV_VARS[division] || DIV_VARS[1];
+    return alpha >= 1 ? `rgb(var(${v}))` : `rgb(var(${v}) / ${alpha})`;
+  };
 
   if (loading) return (
     <div className="flex justify-center py-16">
@@ -88,7 +96,6 @@ export default function SeasonPreviewPage() {
         <div className="flex flex-col gap-3">
           {teams.map(t => {
             const isMe = t.id === myTeamId;
-            const color = DIV_COLORS[t.division] || "#e8c547";
             return (
               <div key={t.id} className={`flex items-center gap-3 ${isMe ? "opacity-100" : "opacity-80"}`}>
                 <span className="text-cz-3 font-mono text-xs w-5 text-right">{t.rank}</span>
@@ -97,13 +104,13 @@ export default function SeasonPreviewPage() {
                     onClick={() => navigate(`/teams/${t.id}`)}>
                     {t.name}
                   </p>
-                  <p className="text-[9px] uppercase tracking-wider" style={{ color: `${color}80` }}>Div {t.division}</p>
+                  <p className="text-[9px] uppercase tracking-wider" style={{ color: divColor(t.division, 0.5) }}>Div {t.division}</p>
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <div className="flex-1 bg-cz-subtle rounded-full h-2">
                       <div className="h-2 rounded-full transition-all duration-500"
-                        style={{ width: `${t.strengthPct}%`, backgroundColor: color }} />
+                        style={{ width: `${t.strengthPct}%`, backgroundColor: divColor(t.division) }} />
                     </div>
                     <span className="text-cz-2 font-mono text-xs w-20 text-right flex-shrink-0">
                       {formatNumber(t.totalValue)} CZ$
@@ -132,7 +139,6 @@ export default function SeasonPreviewPage() {
       <div className="grid sm:grid-cols-2 gap-4">
         {teams.map(t => {
           const isMe = t.id === myTeamId;
-          const color = DIV_COLORS[t.division] || "#e8c547";
           return (
             <div key={t.id}
               style={isMe ? { boxShadow: "inset 0 0 0 1.5px rgb(var(--me-ring) / 0.5)" } : undefined}
@@ -144,17 +150,17 @@ export default function SeasonPreviewPage() {
                     <p className="font-bold text-sm text-cz-1">{t.name}</p>
                     {isMe && <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "rgb(var(--me-badge-bg))", color: "rgb(var(--me-badge-fg))" }}>{tStandings("youBadge")}</span>}
                   </div>
-                  <p className="text-xs mt-0.5" style={{ color: `${color}80` }}>{tStandings("preview.divisionRank", { division: t.division, rank: t.rank })}</p>
+                  <p className="text-xs mt-0.5" style={{ color: divColor(t.division, 0.5) }}>{tStandings("preview.divisionRank", { division: t.division, rank: t.rank })}</p>
                 </div>
-                <span className="text-2xl font-bold font-mono" style={{ color }}>#{t.rank}</span>
+                <span className="text-2xl font-bold font-mono" style={{ color: divColor(t.division) }}>#{t.rank}</span>
               </div>
 
               <div className="grid grid-cols-4 gap-2 mb-4">
                 {[
                   { label: tCommon("nav.item.riders"), value: t.riderCount },
-                  { label: "U25", value: t.u25Count, color: "#60a5fa" },
-                  { label: `Avg ${ABILITY_SHORT.climbing}`, value: t.avgBj, color: t.avgBj >= STRONG_THRESHOLD ? "#e8c547" : undefined },
-                  { label: `Avg ${ABILITY_SHORT.sprint}`, value: t.avgSp, color: t.avgSp >= STRONG_THRESHOLD ? "#e8c547" : undefined },
+                  { label: "U25", value: t.u25Count, color: "rgb(var(--accent-t))" },
+                  { label: `Avg ${ABILITY_SHORT.climbing}`, value: t.avgBj, color: t.avgBj >= STRONG_THRESHOLD ? "rgb(var(--accent))" : undefined },
+                  { label: `Avg ${ABILITY_SHORT.sprint}`, value: t.avgSp, color: t.avgSp >= STRONG_THRESHOLD ? "rgb(var(--accent))" : undefined },
                 ].map(s => (
                   <div key={s.label} className="bg-cz-subtle rounded-lg p-2 text-center">
                     <p className="text-[9px] text-cz-3 uppercase tracking-wider mb-0.5">{s.label}</p>

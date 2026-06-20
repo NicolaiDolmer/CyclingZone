@@ -17,6 +17,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "../lib/language";
+import { CheckIcon, ChevronDownIcon } from "./ui/icons/index.jsx";
 
 const OPTIONS = [
   { code: "da", flag: "dk", labelKey: "language.danish" },
@@ -93,13 +94,11 @@ export default function LanguageSwitcher({ className = "" }) {
         aria-expanded={open}
         aria-label={t("language.switchTooltip")}
         title={t("language.switchTooltip")}
-        className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-cz-2 hover:bg-cz-hover focus:outline-none focus:ring-2 focus:ring-cz-accent"
+        className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-cz-2 hover:bg-cz-subtle focus:outline-none focus:ring-2 focus:ring-cz-accent"
       >
         <span className={`fi fi-${active.flag}`} role="img" aria-hidden="true" />
         <span className="hidden sm:inline uppercase text-xs font-medium">{active.code}</span>
-        <svg width="10" height="6" viewBox="0 0 10 6" aria-hidden="true" className="opacity-60">
-          <path d="M1 1l4 4 4-4" stroke="currentColor" strokeWidth="1.5" fill="none" />
-        </svg>
+        <ChevronDownIcon className="w-3 h-3 opacity-60" aria-hidden="true" />
       </button>
       {open && coords &&
         createPortal(
@@ -128,14 +127,14 @@ export default function LanguageSwitcher({ className = "" }) {
                       setLanguage(opt.code);
                       setOpen(false);
                     }}
-                    className={`w-full text-left px-3 py-1.5 text-sm flex items-center gap-2 text-cz-1 hover:bg-cz-hover ${
+                    className={`w-full text-left px-3 py-1.5 text-sm flex items-center gap-2 text-cz-1 hover:bg-cz-subtle ${
                       selected ? "font-semibold" : ""
                     }`}
                   >
                     <span className={`fi fi-${opt.flag}`} role="img" aria-hidden="true" />
                     <span>{t(opt.labelKey)}</span>
                     {selected && (
-                      <span className="ms-auto text-cz-accent" aria-hidden="true">✓</span>
+                      <CheckIcon className="ms-auto w-3.5 h-3.5 text-cz-accent" aria-hidden="true" />
                     )}
                   </button>
                 </li>
