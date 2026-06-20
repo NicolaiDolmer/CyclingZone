@@ -416,8 +416,8 @@
         "rows": [
           ["Division", "Minimum ryttere", "Maksimum ryttere"],
           ["Division 1", "0", "30"],
-          ["Division 2", "0", "20"],
-          ["Division 3", "0", "10"]
+          ["Division 2", "0", "30"],
+          ["Division 3", "0", "30"]
         ]
       },
       "promotionRelegation": {
@@ -833,7 +833,7 @@
     },
     "squadEnforcementFaq": {
       "q": "Hvad sker der hvis jeg er over max ryttere ved deadline?",
-      "a": "Når transfervinduet lukker, håndhæver systemet hver divisions maksimale holdstørrelse (D1: 30 · D2: 20 · D3: 10). Der er ingen minimumsholdstørrelse: du kan sælge helt ned til 0 ryttere uden straf. Over maksimum: systemet auto-sælger din senest erhvervede rytter til fuld markedsværdi og tilskriver en bøde på 100.000 CZ$ pr. overskydende rytter samt 200 fradragspoint i sæsonstillingen. Tjek 'Deadline Day'-tavlen op til lukketid for at se om dit hold er i grøn, gul eller rød zone."
+      "a": "Når transfervinduet lukker, håndhæver systemet den maksimale holdstørrelse på 30 ryttere (den samme i alle divisioner). Der er ingen minimumsholdstørrelse: du kan sælge helt ned til 0 ryttere uden straf. Over maksimum: systemet auto-sælger din senest erhvervede rytter til fuld markedsværdi og tilskriver en bøde på 100.000 CZ$ pr. overskydende rytter samt 200 fradragspoint i sæsonstillingen. Tjek 'Deadline Day'-tavlen op til lukketid for at se om dit hold er i grøn, gul eller rød zone."
     },
     "season1RaceCalendarFaq": {
       "q": "Hvilke løb køres i sæson 1?",

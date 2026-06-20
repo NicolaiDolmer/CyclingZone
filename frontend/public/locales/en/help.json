@@ -416,8 +416,8 @@
         "rows": [
           ["Division", "Minimum riders", "Maximum riders"],
           ["Division 1", "0", "30"],
-          ["Division 2", "0", "20"],
-          ["Division 3", "0", "10"]
+          ["Division 2", "0", "30"],
+          ["Division 3", "0", "30"]
         ]
       },
       "promotionRelegation": {
@@ -833,7 +833,7 @@
     },
     "squadEnforcementFaq": {
       "q": "What happens if I'm over max riders at deadline?",
-      "a": "When the transfer window closes, the system enforces each division's maximum squad size (D1: 30 · D2: 20 · D3: 10). There is no minimum squad size: you can sell down to 0 riders without penalty. Over maximum: the system auto-sells your most recently acquired rider for full market value, and applies a fine of 100,000 CZ$ per excess rider plus 200 penalty points in the season standings. Check the 'Deadline Day' board approaching the close time to see whether your team is in the green, yellow or red zone."
+      "a": "When the transfer window closes, the system enforces the maximum squad size of 30 riders (the same in every division). There is no minimum squad size: you can sell down to 0 riders without penalty. Over maximum: the system auto-sells your most recently acquired rider for full market value, and applies a fine of 100,000 CZ$ per excess rider plus 200 penalty points in the season standings. Check the 'Deadline Day' board approaching the close time to see whether your team is in the green, yellow or red zone."
     },
     "season1RaceCalendarFaq": {
       "q": "Which races run in season 1?",
