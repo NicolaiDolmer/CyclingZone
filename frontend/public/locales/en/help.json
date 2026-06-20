@@ -1,6 +1,6 @@
 {
   "page": {
-    "title": "Help & Rules",
+    "title": "Help",
     "subtitle": "Everything you need to know about Cycling Zone Manager",
     "searchPlaceholder": "Search help and FAQ...",
     "searchResults": {
@@ -69,14 +69,14 @@
           ["1", "Satisfaction-based", "Sponsor modifier ±20% (passive)"],
           ["2", "Satisfaction <40%", "Salary cap: total salary frozen, no growth"],
           ["3", "Satisfaction <30%", "Signing restriction: buys >300K blocked"],
-          ["4", "Satisfaction <15%", "Forced sale: one rider auto-listed (pop≥70 and star riders protected)"],
+          ["4", "Satisfaction <15%", "Forced sale: your lowest-value rider is auto-listed (riders with popularity ≥70 or value ≥8,000,000 CZ$ are protected)"],
           ["5", "<10% or 2× plan expiry below 30%", "Sponsor pullout: −10% sponsor for one season"],
           ["6 (positive)", ">75% satisfaction + ≥75% targets met", "Bonus offer: +200K for one extra target"]
         ]
       },
       "requestsAndLocks": {
         "title": "Board requests and pivot locks",
-        "text": "Once per season you can send a board request to pivot your plan (e.g. 'more star focus'). The reply is approved, partial, rejected or approved with a tradeoff. MAJOR pivots (youth ↔ star) are only allowed once per plan lifecycle. 5-year and 3-year plans cannot be pivoted in the first 50% of their runtime unless satisfaction has changed by more than 30 points. In the last 5 race days of a season all requests are blocked."
+        "text": "Once per season you can send a board request to pivot your plan (e.g. 'more star focus'). The reply is approved, partial, rejected or approved with a tradeoff. Major pivots (youth ↔ star) are only allowed once per plan lifecycle. 5-year and 3-year plans cannot be pivoted in the first 50% of their runtime unless satisfaction has changed by more than 30 points. In the last 5 race days of a season all requests are blocked."
       },
       "midSeasonCheck": {
         "title": "Mid-season check",
@@ -360,7 +360,7 @@
       },
       "promotionRelegation": {
         "title": "Promotion and relegation",
-        "text": "Top 2 in Division 2 and 3 are promoted. Bottom 2 in Division 1 and 2 are relegated. Decided automatically at season end based on season points."
+        "text": "Top 2 in Division 2 and 3 are promoted. Bottom 2 in Division 1 and 2 are relegated. Decided automatically at season end based on season points. Divisions are locked for the first two seasons: the first promotions and relegations happen when season 2 ends, so everyone has time to settle into a division first."
       },
       "whenSeasonEnds": {
         "title": "When can a season be ended?",
@@ -422,7 +422,7 @@
       },
       "promotionRelegation": {
         "title": "Promotion and relegation",
-        "text": "Top 2 are promoted, bottom 2 are relegated in each division. Decided automatically at season end."
+        "text": "Top 2 are promoted, bottom 2 are relegated in each division. Decided automatically at season end. Divisions are locked for the first two seasons, so the first promotions and relegations happen when season 2 ends."
       }
     },
     "riders": {
@@ -438,6 +438,27 @@
       "stats": {
         "title": "Rider stats",
         "text": "Each rider has 14 stats: FL (Flat), BJ (Mountain), KB (Mid-mountain), BK (Hill), TT (Time trial), PRL (Prologue), BRO (Cobbles), SP (Sprint), ACC (Acceleration), NED (Descent), UDH (Stamina), MOD (Resistance), RES (Recovery), FTR (Fighter)."
+      },
+      "abilitiesExplained": {
+        "title": "The 15 abilities and where they matter",
+        "rows": [
+          ["Ability", "What it does", "Where it matters most"],
+          ["Climbing", "Power on long ascents", "Mountain stages"],
+          ["Time trial", "Riding alone against the clock", "Time trials"],
+          ["Flat", "Holding speed on flat roads", "Flat stages, time trials"],
+          ["Tempo", "Sustained mid-effort", "Mid-mountain, rolling stages"],
+          ["Sprint", "Top-end speed for a finish", "Flat bunch sprints"],
+          ["Acceleration", "Explosive kick to launch or close a gap", "Sprints, hilly attacks"],
+          ["Punch", "Short steep efforts", "Hilly stages and finales"],
+          ["Endurance", "Lasting the full distance", "Long, hard days and classics"],
+          ["Recovery", "Bouncing back between days", "Stage races"],
+          ["Durability", "Resisting fatigue, fading less late", "Hard multi-stage races"],
+          ["Descending", "Edge on downhill finishes", "Stages ending on a descent"],
+          ["Cobbles", "Handling and power on cobbles", "Cobbled classics"],
+          ["Positioning", "Staying near the front", "Hectic stages, time trials"],
+          ["Aggression", "Willingness to attack", "Breakaways"],
+          ["Tactics", "Race-craft and reading a race", "Team time trials, tactical races"]
+        ]
       },
       "development": {
         "title": "Development over time",
@@ -495,6 +516,10 @@
       "readingReport": {
         "title": "Reading the training report",
         "text": "After training runs, the report opens with a day summary: how many riders trained, how many had a breakthrough (an ability rose +1), and how many are in peak form. Each row shows the focus ability's progress toward its next +1, and a breakthrough is highlighted with the actual jump, for example 71 to 72. The roster table shows the same progress bar, so you can steer a focus toward a rider who is close to a breakthrough."
+      },
+      "trainingHistory": {
+        "title": "Training history",
+        "text": "Every daily training run is kept. The Daily Training page lists your last 30 days below the roster, each day showing how many riders trained, breakthroughs and riders in peak form; expand a day to see the full per-rider report. Each rider's profile has its own training history under the Development tab, listing that rider's focus, intensity, gains and form day by day."
       }
     },
     "activityfeed": {
@@ -717,11 +742,11 @@
     },
     "seasonFinanceReport": {
       "q": "What does the season finance report show, and where do I find it?",
-      "a": "The season finance report is a dedicated page per season that shows your cashflow for the chosen season: the hero card at the top sums total income + spend + net result, two donut charts split income and spending by reason_code (sponsor, prize money, auction buys, salary etc.), the top-3 lists highlight your biggest transactions in each direction, and the loan portfolio table shows active loans with remaining debt + next season's expected interest. The report is private: you only see your own, and admins see one team at a time via a team dropdown. You find the report under the History tab on the Finances page, where a season picker lets you switch between your seasons; the season snapshot page (/seasons) also links straight to it. The sponsor modifier curve and direct comparison with the previous season are first available from season 2, once there's at least one closed season to compare against."
+      "a": "The season finance report is a dedicated page per season that shows your cashflow for the chosen season: the hero card at the top sums total income + spend + net result, two donut charts split income and spending by category (sponsor, prize money, auction buys, salary etc.), the top-3 lists highlight your biggest transactions in each direction, and the loan portfolio table shows active loans with remaining debt + next season's expected interest. The report is private: you only see your own, and admins see one team at a time via a team dropdown. You find the report under the History tab on the Finances page, where a season picker lets you switch between your seasons; the season snapshot page (/seasons) also links straight to it. The sponsor modifier curve and direct comparison with the previous season are first available from season 2, once there's at least one closed season to compare against."
     },
     "forecastCalculation": {
       "q": "How is the forecast for next season on the Finances page computed?",
-      "a": "The forecast shows expected cashflow for the entire next season as the sum of: (1) sponsor = season's sponsor base × board's budget modifier × any active sponsor pullout factor. Both season 1 and season 2+ use a division-scaled base (D1 600,000 · D2 400,000 · D3 340,000 CZ$); from season 2 up to 150,000 CZ$ variable sponsor is added on top, from the previous season's points/rank. (2) prize money = sum of your riders' prize_earnings_bonus (rolling avg of the last 1-3 completed seasons), (3) salary = sum of riders.salary, (4) loan interest = sum(amount_remaining × interest_rate) on all active loans, and (5) loan fees for loaned riders extending into next season (offset by any fees you receive as lender). The risk tier badge is green if net ≥ +50K and debt < 50% of ceiling, yellow if net is between -50K and +50K or debt is between 50-80% of ceiling, and red if net < -50K, debt > 80% of ceiling, or if your deficit hits the debt ceiling within 2 seasons. The range (±20% on the prize estimate) reflects that prize money is the most variable input. The forecast is not a contract; numbers can change if you sell riders, take loans, score more points or negotiate a new board plan."
+      "a": "The forecast shows expected cashflow for the entire next season as the sum of: (1) sponsor = season's sponsor base × board's budget modifier × any active sponsor pullout factor. Both season 1 and season 2+ use a division-scaled base (D1 600,000 · D2 400,000 · D3 340,000 CZ$); from season 2 up to 150,000 CZ$ variable sponsor is added on top, from the previous season's points/rank. (2) prize money = the prize part of each rider's value (a rolling average of their prize money over the last 1-3 completed seasons), (3) salary = the sum of your riders' salaries, (4) loan interest = the interest on every active loan, calculated on the debt still outstanding, and (5) loan fees for loaned riders extending into next season (offset by any fees you receive as lender). The risk tier badge is green if net ≥ +50K and debt < 50% of ceiling, yellow if net is between -50K and +50K or debt is between 50-80% of ceiling, and red if net < -50K, debt > 80% of ceiling, or if your deficit hits the debt ceiling within 2 seasons. The range (±20% on the prize estimate) reflects that prize money is the most variable input. The forecast is not a contract; numbers can change if you sell riders, take loans, score more points or negotiate a new board plan."
     },
     "standingsUpdate": {
       "q": "When are the season standings updated?",
@@ -757,7 +782,7 @@
     },
     "forgotToNegotiatePlan": {
       "q": "What happens if I forget to negotiate my plan?",
-      "a": "The board takes over. If you haven't signed a new plan before race day 5 is passed, a cron job automatically signs a plan with default focus derived from your team's identity (U25-heavy → youth development, star profile → star signing, otherwise balanced) and standard targets. You first get an info reminder at race day 2 ('The board is waiting for your N-year plan'), then an 'Action required' notification at race day 4 ('Last chance'), and after that it's the board's pick. You can still request changes via a board request once the plan is running. If you check the Board page often, you'll also see a live countdown banner with race days remaining."
+      "a": "The board takes over. If you haven't signed a new plan before race day 5 is passed, the board automatically signs a plan with default focus derived from your team's identity (U25-heavy → youth development, star profile → star signing, otherwise balanced) and standard targets. You first get an info reminder at race day 2 ('The board is waiting for your N-year plan'), then an 'Action required' notification at race day 4 ('Last chance'), and after that it's the board's pick. You can still request changes via a board request once the plan is running. If you check the Board page often, you'll also see a live countdown banner with race days remaining."
     },
     "boardMembersFaq": {
       "q": "Who are the members of my board?",
@@ -781,11 +806,11 @@
     },
     "balancedRelativeRank": {
       "q": "What is 'finish ahead of X other managers' in balanced plans?",
-      "a": "Balanced focus now gets a 5th target: 'Finish ahead of at least 3 other managers in the division'. It's not about absolute ranking, but relative: you need to beat over half in your division. Scales automatically when more managers join: if there are 5 human managers in your division and you're rank 1, you've beaten 4. If you're rank 4, you've only beaten 1 → target not met. Computed from `season_standings.rank_in_division` against the number of human managers in your division."
+      "a": "Balanced focus now gets a 5th target: 'Finish ahead of at least 3 other managers in the division'. It's not about absolute ranking, but relative: you need to beat over half in your division. Scales automatically when more managers join: if there are 5 human managers in your division and you're rank 1, you've beaten 4. If you're rank 4, you've only beaten 1 → target not met. It's read from your current rank in the division against the number of human managers in it."
     },
     "boardUnsatisfiedConsequences": {
       "q": "What happens when the board is very unhappy, can I be fired?",
-      "a": "You cannot be fired. Instead the board reacts gradually through 6 layers the lower satisfaction goes: at <40% it imposes a salary cap (you can't grow the team's total salary, sell a rider first). At <30% comes a signing restriction: buys above 300K CZ$ are blocked. At <15% a rider is force-listed on the market (lowest market_value, riders with pop≥70 and stars are protected). At <10% a main sponsor pulls out: sponsor income is reduced by 10% for the next season. All active consequences show in the 'Active consequences' panel on the Board page, and layers 4-5 also send 'Action required' notifications. Satisfaction that rises again automatically expires layers 2-3."
+      "a": "You cannot be fired. Instead the board reacts gradually through 6 layers the lower satisfaction goes: at <40% it imposes a salary cap (you can't grow the team's total salary, sell a rider first). At <30% comes a signing restriction: buys above 300K CZ$ are blocked. At <15% the board force-lists one rider on the market: it picks your lowest-value rider and lists him at his market value. Your stars are protected here, any rider with popularity 70 or higher, or a value of 8,000,000 CZ$ or more, is left alone. At <10% a main sponsor pulls out: sponsor income is reduced by 10% for the next season. All active consequences show in the 'Active consequences' panel on the Board page, and layers 4-5 also send 'Action required' notifications. Satisfaction that rises again automatically expires layers 2-3."
     },
     "bonusOffer": {
       "q": "What is the bonus offer I just got from the board?",
@@ -804,8 +829,8 @@
       "a": "When half of the season's race days are over, the board checks your plan status. If satisfaction is under 50% OR at least half of your plan targets are 'behind' after half-time → you get a 'Mid-season check' notification in the inbox 'Action required'. The notification is informational: the board is worried but doesn't act automatically. You can respond by sending a board request (pivot plan targets), requesting a budget loan on the Economy page, or simply sharpening focus for the rest of the season. The banner only fires once per season per board."
     },
     "majorPivotCooldown": {
-      "q": "What is pivot cooldown and 'MAJOR pivot'?",
-      "a": "A MAJOR pivot is a focus shift between extremes: from youth development to star signing or vice versa. These are allowed only once per plan lifecycle. When you e.g. accept 'more stars now' from a youth track, a MAJOR pivot stamp is recorded on your plan, and the next similar request is rejected with 'The board has already accepted a MAJOR pivot'. The stamp resets when the plan is renewed (fresh plan = fresh cooldown). Pivots to/from balanced are not MAJOR: you can still pivot gradually via a balanced intermediate station."
+      "q": "What is pivot cooldown and a 'major pivot'?",
+      "a": "A major pivot is a focus shift between extremes: from youth development to star signing or vice versa. These are allowed only once per plan lifecycle. When you e.g. accept 'more stars now' from a youth track, the board records that you've used your major pivot for this plan, and the next similar request is rejected with 'The board has already accepted a major pivot'. It resets when the plan is renewed (fresh plan = fresh cooldown). Pivots to/from balanced are not major: you can still pivot gradually via a balanced intermediate step."
     },
     "endOfSeasonBlock": {
       "q": "Why can't I send board requests in the season end phase?",
@@ -821,7 +846,7 @@
     },
     "relativeRankLive": {
       "q": "How does the 'finish ahead of X other managers' target work live?",
-      "a": "On the Board page the balanced plan's relative_rank target now shows live status: 'You're #4 of 8 managers in the division, beating 4 (target: 3 ✓)'. The number updates after each race day when season_standings is updated. It measures relatively to the number of human managers in your division, so it scales naturally from ~19 now to 100+ managers after open beta without cross-division noise."
+      "a": "On the Board page the balanced plan's relative_rank target now shows live status: 'You're #4 of 8 managers in the division, beating 4 (target: 3 ✓)'. The number updates after each race day when the standings refresh. It measures relatively to the number of human managers in your division, so it scales naturally from ~19 now to 100+ managers after open beta without cross-division noise."
     },
     "season0To1Special": {
       "q": "What happens at the transition from season 0 to season 1?",
@@ -838,6 +863,14 @@
     "season1RaceCalendarFaq": {
       "q": "Which races run in season 1?",
       "a": "Season 1's calendar is designed before the window closes and is published on the Races page (Season & Results → Races → Calendar). WorldTour races (Tour de France, Giro, Vuelta, monuments) are not run in season 1 by decision in the opening phase, so managers can find their footing in ProSeries and lower classes first. The full list shows up in the Races tab as soon as admin has approved the calendar."
+    },
+    "howToWinRace": {
+      "q": "How do I win a race, and what decides the result?",
+      "a": "Results are decided by how well your riders' abilities fit the terrain. Every race is split into stages, and each stage has a terrain type (flat, hilly, mountain, time trial, cobbles and so on) that asks for specific abilities. A flat stage rewards Sprint above all; a mountain stage rewards Climbing; a time trial rewards Time trial; a cobbled stage rewards Cobbles; a hilly stage rewards Punch. For each rider the engine adds up the matching abilities, weighted by what the stage demands, into a stage score. On top of that score sit a few smaller effects: good form gives a small edge and high fatigue a small penalty (each capped at about ±3%, so a fresh rider beats a tired one of equal ability but a favourite still wins on class), a captain protected by strong, fresh helpers gets a boost, breakaways occasionally stay away on the right terrain, and a small random factor means the strongest rider wins most of the time but not always. Across a stage race, the time gaps from every stage add up into the overall classification: mountains and time trials open the biggest gaps and usually decide the GC, while flat stages finish in a bunch. Finishing positions become points, and points become both your leaderboard score and your prize money. The practical takeaway: match each rider to the stages that suit him, keep your stars rested for the days that matter, and set the right captain in Team selection."
+    },
+    "riderAbilities": {
+      "q": "What do the 15 rider abilities mean?",
+      "a": "Every rider is rated 1-99 on 15 abilities, grouped in three families. Physical (10): Climbing (long ascents and mountain stages), Time trial (riding alone against the clock), Flat (holding speed on flat roads as a rouleur), Tempo (sustained efforts on mid-mountain and rolling terrain), Sprint (top-end speed for a bunch finish), Acceleration (the explosive kick to launch a sprint or jump a gap), Punch (short steep climbs and hilly finales), Endurance (lasting the full distance of long and hard days), Recovery (bouncing back between stages and days), and Durability (resisting fatigue so the rider fades less late in hard races). Technical (3): Descending (a small edge on stages that finish on a downhill), Cobbles (the bike-handling and power for cobbled classics), and Positioning (staying near the front to avoid splits, and a factor in time trials). Tactical/mental (2): Aggression (the willingness to attack and get into breakaways) and Tactics (race-craft that helps in team time trials and reading a race). The race engine matches these to each stage's terrain, so the same rider can be a star on one profile and ordinary on another. Tip: a balanced squad covering several profiles scores more consistently across a calendar than a one-trick team."
     }
   }
 }

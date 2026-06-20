@@ -147,12 +147,23 @@ test("buildScoutEstimate: egen rytter → eksakt (lo == hi), uanset scout-niveau
   assert.deepEqual(est, { lo: 4.5, hi: 4.5, exact: true, level: SCOUTING_CONFIG.maxLevel });
 });
 
-test("buildScoutEstimate: fremmed uscoutet rytter → usikkert interval, exact=false", () => {
+test("buildScoutEstimate: fremmed uscoutet rytter → SKJULT (#1543), intet lo/hi-spænd", () => {
+  // #1543: potentiale er skjult indtil rytteren er scoutet. Et level-0-estimat
+  // for en fremmed rytter må IKKE indeholde et lo–hi-interval (intet gratis hint).
   const rider = { id: "r1", potentiale: 4.5, birthdate: "2006-03-01", team_id: "tOther" };
   const est = buildScoutEstimate(rider, 0, "tMe", SCOUTING_CONFIG, YEAR);
+  assert.deepEqual(est, { hidden: true, level: 0 });
+  assert.equal(est.lo, undefined, "hidden-estimat må ikke lække lo");
+  assert.equal(est.hi, undefined, "hidden-estimat må ikke lække hi");
+});
+
+test("buildScoutEstimate: fremmed rytter scoutet (level 1) → usikkert interval, exact=false", () => {
+  // Post-scout (level > 0) afsløres estimatet uændret som før (#1543 rører kun level 0).
+  const rider = { id: "r1", potentiale: 4.5, birthdate: "2006-03-01", team_id: "tOther" };
+  const est = buildScoutEstimate(rider, 1, "tMe", SCOUTING_CONFIG, YEAR);
   assert.equal(est.exact, false);
-  assert.equal(est.level, 0);
-  assert.ok(est.hi - est.lo > 0, "uscoutet skal have spænd");
+  assert.equal(est.level, 1);
+  assert.ok(est.hi - est.lo > 0, "scoutet rytter skal have spænd");
 });
 
 test("buildScoutEstimate: fuldt scoutet fremmed rytter → eksakt", () => {

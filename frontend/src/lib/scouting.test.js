@@ -21,6 +21,10 @@ test("potentialLabelKey: eksakt estimat (lo == hi) får også label", () => {
   assert.equal(potentialLabelKey({ lo: 3.5, hi: 3.5, exact: true }), "solid");
 });
 
+test("potentialLabelKey: skjult (uscoutet) estimat → ingen label (#1543)", () => {
+  assert.equal(potentialLabelKey({ hidden: true, level: 0 }), null);
+});
+
 // ── Sortering ─────────────────────────────────────────────────────────────────
 
 test("scoutSortValue: midtpunkt af estimatet; manglende estimat → 0", () => {
@@ -28,4 +32,8 @@ test("scoutSortValue: midtpunkt af estimatet; manglende estimat → 0", () => {
   assert.equal(scoutSortValue({ lo: 4.5, hi: 4.5, exact: true }), 4.5);
   assert.equal(scoutSortValue(null), 0);
   assert.equal(scoutSortValue(undefined), 0);
+});
+
+test("scoutSortValue: skjult (uscoutet) estimat → 0 (sorterer nederst, #1543)", () => {
+  assert.equal(scoutSortValue({ hidden: true, level: 0 }), 0);
 });

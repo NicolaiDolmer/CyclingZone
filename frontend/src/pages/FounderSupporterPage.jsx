@@ -20,19 +20,12 @@ import {
 // All copy lever i `founder`-namespacet (en/da) og følger appens globale sprog
 // via useLanguage() — DA/EN-toggle persisterer i localStorage (#678).
 // Pris-variant via ?variant=A|B|C styrer Option B price-test (utm_campaign er
-// canonical attribution; ?variant er menneskelig debug-hint).
+// canonical attribution; ?variant er internt attribution-hint og vises IKKE på
+// den offentlige side — den interne debug-label blev fjernet som privatlivs/
+// professionalisme-fix, #1576).
 // Priser kommer fra central konfig i lib/pricing.js (#1104): DA viser DKK,
 // EN viser EUR (fast dokumenteret kurs) + "pr. dag"-omregning ved siden af
 // den faktiske månedspris.
-
-// Debug/attribution-labels afledt af konfigen. Bevarer det historiske
-// DKK-format så gemte waitlist-rækker forbliver sammenlignelige.
-const VARIANT_LABELS = Object.fromEntries(
-  Object.entries(TIER_PRICES_DKK).map(([key, p]) => [
-    key,
-    `Premium ${p.supporter} / Pro Analyst ${p.pro} DKK`,
-  ])
-);
 
 // Prisformatering: hele beløb uden decimaler ("49 kr."), brudte beløb med
 // 2 decimaler ("€6.57") — gælder både måneds- og pr-dag-beløb.
@@ -141,7 +134,6 @@ export default function FounderSupporterPage() {
   const lang = i18n.language?.startsWith("da") ? "da" : "en";
 
   const variantKey = (searchParams.get("variant") || "").toUpperCase();
-  const variantLabel = VARIANT_LABELS[variantKey] || null;
   const tierPricesDkk = getTierPricesDkk(variantKey);
   // Visningsvaluta (#1104): da → DKK, en → EUR (fast kurs i pricing.js).
   const currency = currencyForLocale(lang);
@@ -295,12 +287,6 @@ export default function FounderSupporterPage() {
             <div className="max-w-2xl mx-auto text-center mb-10">
               <h2 className="text-cz-1 text-2xl sm:text-3xl font-bold mb-3">{t("tiersTitle")}</h2>
               <p className="text-cz-2 text-sm sm:text-base">{t("tiersSub", { prices: supporterPricePoints })}</p>
-              {variantLabel && (
-                <p className="mt-3 inline-flex items-center gap-2 bg-cz-accent/10 border border-cz-accent/30 rounded-lg px-3 py-1.5 text-cz-1 text-xs">
-                  <span className="text-cz-3">{t("variantLabel")}</span>
-                  <span className="font-semibold">{variantLabel}</span>
-                </p>
-              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -387,7 +373,7 @@ export default function FounderSupporterPage() {
               <h2 className="text-cz-1 text-2xl sm:text-3xl font-bold mb-3">{t("formSectionTitle")}</h2>
               <p className="text-cz-2 text-sm sm:text-base">{t("formSectionSub")}</p>
             </div>
-            <FounderSupporterWaitlistForm priceVariantLabel={variantLabel} />
+            <FounderSupporterWaitlistForm />
           </div>
         </section>
 

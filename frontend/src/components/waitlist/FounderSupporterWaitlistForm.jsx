@@ -97,7 +97,7 @@ function FieldError({ id, message }) {
   );
 }
 
-export default function FounderSupporterWaitlistForm({ priceVariantLabel = null }) {
+export default function FounderSupporterWaitlistForm() {
   const { t, i18n } = useTranslation("founder");
   const [searchParams] = useSearchParams();
 
@@ -238,13 +238,6 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null 
 
   return (
     <form onSubmit={handleSubmit} className="bg-cz-card border border-cz-border rounded-cz p-5 sm:p-6 flex flex-col gap-6" noValidate>
-      {priceVariantLabel && (
-        <div className="bg-cz-accent/10 border border-cz-accent/30 rounded-lg px-3 py-2 text-cz-1 text-sm">
-          <span className="text-cz-3 text-xs">{t("form.priceVariantPrefix")}</span>{" "}
-          <span className="font-semibold">{priceVariantLabel}</span>
-        </div>
-      )}
-
       {/* ----- Kontakt ----- */}
       <fieldset className="flex flex-col gap-3">
         <legend className="text-cz-1 text-base font-semibold mb-1">{t("form.contactLegend")}</legend>

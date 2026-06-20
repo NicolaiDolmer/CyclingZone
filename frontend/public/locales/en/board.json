@@ -1036,7 +1036,7 @@
     "alreadyUsed": "You have already used this season's board request.",
     "windowBlocked": "The season's final phase has begun. The board does not take requests in the last {raceDays} race days.",
     "midCycleLocked": "The {years}-year plan is too early in its cycle to be redirected. The board wants at least {percent}% of the plan completed or a major satisfaction swing before a re-orientation.",
-    "majorPivotUsed": "The board has already accepted a MAJOR pivot in this plan cycle. Another big change of direction requires a fresh plan.",
+    "majorPivotUsed": "The board has already accepted a major pivot in this plan cycle. Another big change of direction requires a fresh plan.",
     "unknown": "Unknown board request.",
     "fallback": "The board declines the request right now.",
     "lowerResults": {

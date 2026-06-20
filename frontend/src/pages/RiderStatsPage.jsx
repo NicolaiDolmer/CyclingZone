@@ -12,9 +12,11 @@ import { formatNumber, formatDate, formatDateTime } from "../lib/intl";
 import { resolveApiError } from "../lib/apiError";
 import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
 import TrainingFocus from "../components/rider/TrainingFocus";
+import RiderTrainingHistory from "../components/rider/RiderTrainingHistory.jsx";
 import ConditionChips from "../components/rider/ConditionChips.jsx";
 import { useScouting } from "../lib/useScouting";
 import { useTraining } from "../lib/useTraining";
+import { useTrainingHistory } from "../lib/useTrainingHistory";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge";
 import { BidConfirmModal } from "../components/BidConfirmModal";
 import { RacePriceModal } from "../components/RacePriceModal";
@@ -871,6 +873,8 @@ export default function RiderStatsPage() {
 
   const scouting = useScouting();
   const training = useTraining();
+  // #1533: træningsrapport-historik (egne ryttere) — vises i Development-fanen.
+  const trainingHistory = useTrainingHistory();
   const [rider, setRider]                   = useState(null);
   const [riderCondition, setRiderCondition] = useState(null);
   const [onWatchlist, setOnWatchlist]       = useState(false);
@@ -1713,6 +1717,7 @@ export default function RiderStatsPage() {
       {tab === "development" && (
         <Suspense fallback={<div className="bg-cz-card border border-cz-border rounded-cz p-5 text-cz-3 text-center py-8">{t("stats.loadingDevelopment")}</div>}>
           {isMyRider && !isRetired && <TrainingFocus rider={rider} training={training} />}
+          {isMyRider && <RiderTrainingHistory riderId={rider.id} history={trainingHistory} />}
           <RiderDevelopmentTab statHistory={statHistory} stats={localizedSkills} />
         </Suspense>
       )}

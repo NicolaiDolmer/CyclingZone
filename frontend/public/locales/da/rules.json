@@ -1,0 +1,192 @@
+{
+  "page": {
+    "title": "Regler",
+    "subtitle": "Den autoritative reference for Cycling Zones grænser, satser og formler.",
+    "intro": "Denne side er sandheden om spillets tal. Hjælp-siden forklarer hvordan du gør tingene; denne side viser hvad grænserne og satserne faktisk er. Hvor et tal sættes af en admin (auktionstider, nødlåns-satser) kan det ændre sig mellem sæsoner, og det er noteret.",
+    "faqLinkIntro": "Relaterede Hjælp-spørgsmål",
+    "lastVerified": "Tallene er verificeret mod spillets kode."
+  },
+  "sections": {
+    "squad": {
+      "label": "Trup & roster",
+      "blocks": {
+        "cap": {
+          "title": "Trup-loft",
+          "text": "Du kan have højst {squadCap} ryttere, det samme i alle divisioner. Der er intet minimum: du kan sælge helt ned til 0 ryttere uden straf."
+        },
+        "window": {
+          "title": "Transfervindue-buffer",
+          "text": "Mens et transfervindue er åbent må du midlertidigt være {windowBuffer} ryttere over loftet (op til {squadCapPlusBuffer}). Når vinduet lukker auto-sælges overskuddet ned til {squadCap}."
+        },
+        "enforcement": {
+          "title": "Håndhævelse ved overskridelse",
+          "text": "Når vinduet lukker udløser hver rytter over loftet et auto-salg af din senest erhvervede rytter til fuld markedsværdi, plus en bøde på {squadFine} CZ$ og {squadPenaltyPoints} strafpoint i stillingen pr. overskydende rytter."
+        },
+        "academyExempt": {
+          "title": "Akademiryttere er adskilt",
+          "text": "Akademiryttere tæller aldrig med i {squadCap}-rytter-senior-loftet og auto-sælges aldrig af trup-håndhævelsen. De har deres eget 8-plads akademi-loft."
+        }
+      }
+    },
+    "economy": {
+      "label": "Økonomi",
+      "blocks": {
+        "startingBalance": {
+          "title": "Startbalance",
+          "text": "Hvert hold starter med {startingBalance} CZ$. CZ$ er spillets valuta, tjent ved at spille og aldrig købt for rigtige penge."
+        },
+        "sponsor": {
+          "title": "Sponsorindtægt",
+          "text": "Sæson-1-sponsorindtægt skaleres med division, så et kompetent hold er bæredygtigt: Division 1 {sponsorD1} CZ$, Division 2 {sponsorD2} CZ$, Division 3 {sponsorD3} CZ$. Den endelige udbetaling er loftet til {sponsorCeilingS1} CZ$ i sæson 1 og {sponsorCeilingS2} CZ$ fra sæson 2 og frem (efter bestyrelses-modifikatorer)."
+        },
+        "upkeep": {
+          "title": "Driftsomkostning",
+          "text": "Hver sæson betaler dit hold en fast driftsomkostning (upkeep) ved sæsonstart, skaleret med division så højere divisioner betaler mere. De præcise beløb er en balance-knap udvikleren justerer mellem sæsoner; du ser altid beløbet bogført i din finanslog som 'upkeep'."
+        },
+        "salary": {
+          "title": "Rytterløn",
+          "text": "En rytters løn fryses når du signerer ham, til {salaryRatePct}% af hans markedsværdi på det tidspunkt, og ændres ikke automatisk bagefter. Akademiryttere bruger en separat ungdomssats (se Akademi)."
+        },
+        "negativeInterest": {
+          "title": "Rente på negativ balance",
+          "text": "Hvis din balance er negativ ved sæsonstart, lægges {negativeInterestPct}% rente oven i underskuddet."
+        },
+        "debtCeiling": {
+          "title": "Gældsloft",
+          "text": "Hver division har et gældsmaksimum: Division 1 {debtD1} CZ$, Division 2 {debtD2} CZ$, Division 3 {debtD3} CZ$. Nye lån afvises hvis lånet plus dets gebyr ville skubbe dig over loftet. Automatiske nødlån kan overskride det, men du får en advarsel og skal skære i omkostninger."
+        },
+        "emergencyLoan": {
+          "title": "Nødlån",
+          "text": "Nødlån har et gebyr og en rente, der sættes i lånekonfigurationen (i øjeblikket omkring 15% hver). Disse satser er admin-konfigurerbare og kan ændre sig; låneformularen på Finans-siden viser altid de aktuelle tal."
+        },
+        "divisionBonus": {
+          "title": "Divisionsbonus (sæsonslut)",
+          "text": "En engangsbonus udbetalt ved sæsonslut ud fra din endelige placering i din division:",
+          "rows": [
+            ["Placering", "Division 1", "Division 2", "Division 3"],
+            ["1.", "{bonusD1P1} CZ$", "{bonusD2P1} CZ$", "{bonusD3P1} CZ$"],
+            ["2.", "{bonusD1P2} CZ$", "{bonusD2P2} CZ$", "{bonusD3P2} CZ$"],
+            ["3.", "{bonusD1P3} CZ$", "{bonusD2P3} CZ$", "{bonusD3P3} CZ$"],
+            ["4.", "{bonusD1P4} CZ$", "{bonusD2P4} CZ$", "—"]
+          ]
+        }
+      }
+    },
+    "auctions": {
+      "label": "Auktioner & bud",
+      "blocks": {
+        "duration": {
+          "title": "Auktionslængde",
+          "text": "En auktion kører i {auctionActiveHours} aktive timer. Nattetimer tæller ikke med: hverdage (man.–fre.) er aktive 16:00–22:00, weekender (lør.–søn.) 08:00–23:00. Disse vinduer er admin-konfigurerbare."
+        },
+        "minBid": {
+          "title": "Minimumsbud",
+          "text": "Dit bud skal være mindst {minBidStep} CZ$ over den nuværende pris. Hvis ingen har budt endnu, kan du matche udbudsprisen."
+        },
+        "extension": {
+          "title": "Forlængelse i sidste øjeblik",
+          "text": "Et bud afgivet i de sidste {auctionExtensionMinutes} minutter forlænger auktionen, så andre når at svare. Ingen snipning i sidste sekund."
+        },
+        "proxy": {
+          "title": "Auto-bud & reserveret balance",
+          "text": "Du kan sætte et auto-bud-loft, og systemet byder op til det på dine vegne. Aktive auktioner hvor du fører tæller som reserveret balance og en reserveret trup-plads på samme tid, så du ikke kan overforpligte dig ud over dine disponible midler."
+        }
+      }
+    },
+    "transfers": {
+      "label": "Transfers & deadlines",
+      "blocks": {
+        "contractInherited": {
+          "title": "Kontrakter følger med uændret",
+          "text": "Når en rytter skifter hold (ved transfer, bytte eller auktionssalg) overtager køberen den eksisterende kontrakt uændret. Løn og kontraktlængde genberegnes aldrig ved en handel."
+        },
+        "loansCount": {
+          "title": "Lån tæller med i loftet",
+          "text": "Aktive lejeaftaler tæller med i din trupstørrelse, så en fuld trup kan afvises på lån, auktioner eller andre indgående handler."
+        },
+        "deadlineWarnings": {
+          "title": "Deadline-day-tidslinje",
+          "text": "Op mod lukketiden viser Deadline Day-tavlen din zone (grøn/gul/rød). Inden for 5 minutter efter lukketiden låses vinduet, en Final Whistle-rapport offentliggøres, trup-håndhævelsen kører, og cirka 10–15 minutter senere starter næste sæson med sponsorpenge der lander på hvert hold."
+        }
+      }
+    },
+    "races": {
+      "label": "Løb & point",
+      "blocks": {
+        "prize": {
+          "title": "Præmiepenge",
+          "text": "Præmiepenge udbetales pr. resultat: point for placeringen × {prizePerPoint} CZ$. Kun løb med en løbsklasse (Tour de France, WorldTour, ProSeries osv.) genererer præmiepenge; løb uden klasse giver 0."
+        },
+        "resultType": {
+          "title": "Resultattype",
+          "text": "Et endagsløbs resultat tæller som et sammenlagt (GC) resultat. Resultattypen er kun en etiket: præmiepenge afhænger af point-tabellen for placeringen, ikke af typen."
+        },
+        "freeAgentPrize": {
+          "title": "Ryttere uden hold",
+          "text": "Præmiepenge tjent af ryttere der ikke er på et manager-hold hæver deres markedsværdi, men udbetales aldrig til nogen. Holdsløse ryttere bliver mere værd, men intet hold modtager pengene."
+        }
+      }
+    },
+    "season": {
+      "label": "Sæson & op-/nedrykning",
+      "blocks": {
+        "structure": {
+          "title": "Divisionsstruktur",
+          "text": "Der er {divisions} divisioner. Division {minDivision} er toppen; Division {maxDivision} er bunden. Hver øvre division sigter mod {divisionCapacity} rigtige hold; bunddivisionen er overløb og kan vokse forbi det."
+        },
+        "promotion": {
+          "title": "Op- og nedrykning",
+          "text": "Op- og nedrykning starter fra sæson {firstPromotionSeason}. Sæson 1 og 2 slutter uden divisionsskift, så ligaen kan finde sig til rette først. Derefter rykker de øverste hold op og de nederste hold ned ved sæsonslut."
+        },
+        "transition": {
+          "title": "Manuelt sæsonskift",
+          "text": "At gå til en ny sæson er en bevidst manuel admin-handling, aldrig en automatisk cron. Vindue-luk, final whistle og trup-tjek forbliver automatiske."
+        }
+      }
+    },
+    "academy": {
+      "label": "Akademi",
+      "blocks": {
+        "slots": {
+          "title": "Akademistørrelse",
+          "text": "Dit akademi rummer op til {academySlots} unge ryttere (et hårdt loft), adskilt fra din seniortrup."
+        },
+        "age": {
+          "title": "Aldersinterval",
+          "text": "Akademiryttere er {academyMinAge}–{academyMaxAge} år. Yngre talenter får en ungdomsmultiplikator på udvikling, der aftager mod 22-årsalderen."
+        },
+        "salary": {
+          "title": "Ungdomsløn & kontrakter",
+          "text": "Akademiryttere får {academySalaryPct}% af deres markedsværdi og signerer {academyContractLength}-sæsoners ungdomskontrakter."
+        },
+        "drift": {
+          "title": "Drift",
+          "text": "Hver besat akademiplads koster {academyDrift} CZ$ pr. sæson, opkrævet ved sæsonstart. Et lille akademi (3–4 pladser) er komfortabelt bæredygtigt i alle divisioner; et fuldt 8-plads-akademi er en bevidst, tungere satsning."
+        }
+      }
+    },
+    "fairPlay": {
+      "label": "Fair play",
+      "blocks": {
+        "starProtection": {
+          "title": "Stjernerytter-beskyttelse",
+          "text": "En rytter hvis markedsværdi er mindst {starValue} CZ$ tæller som en stjerne og er beskyttet mod tvangssalg. Det er den samme værdi du ser i rytterens profil."
+        },
+        "noBoardForBots": {
+          "title": "AI-, bank- & frosne hold",
+          "text": "AI-hold, banken og frosne hold får aldrig bestyrelses-funktioner; de er kun for managers. De udløser heller aldrig bestyrelses-konsekvenser."
+        }
+      }
+    }
+  },
+  "academyDisabledNote": "Akademiet lanceres med relaunchen. Grænserne nedenfor er endelige og vist som reference; funktionen er ikke live endnu.",
+  "faqLinks": {
+    "minBidAmount": "Hvor meget skal jeg byde over den nuværende pris?",
+    "debtCeiling": "Hvad er gældsloftet, og hvornår gælder det?",
+    "prizeMoneyFaq": "Hvad er præmiepenge, og hvornår udbetales de?",
+    "divisionBonusFaq": "Hvad er divisionsbonussen, og hvornår udbetales den?",
+    "squadEnforcementFaq": "Hvad sker der hvis jeg er over max ryttere ved deadline?",
+    "auctionExpiry": "Hvornår udløber en auktion?",
+    "deadlineTimelineFaq": "Hvad sker der præcist når transfervinduet lukker?"
+  }
+}
