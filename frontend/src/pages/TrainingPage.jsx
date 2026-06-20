@@ -11,9 +11,11 @@ import { supabase } from "../lib/supabase";
 import RiderLink from "../components/RiderLink.jsx";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge.jsx";
 import { useTraining } from "../lib/useTraining.js";
+import { useTrainingHistory } from "../lib/useTrainingHistory.js";
 import { TRAINING_FOCUS_KEYS, TRAINING_INTENSITIES, injuryDaysLeft } from "../lib/training.js";
 import { groupRidersByType, UNTYPED_KEY } from "../lib/trainingRoster.js";
 import { focusProgress, daySummary, breakthroughJumps, isBreakthrough, NEAR_BREAKTHROUGH } from "../lib/trainingReport.js";
+import TrainingHistory from "../components/training/TrainingHistory.jsx";
 
 // Bred side — samme mønster som TeamPage / RidersPage.
 // (Layout WIDE_CONTENT_ROUTES håndterer kun specific paths — vi bruger inline max-w)
@@ -66,6 +68,10 @@ export default function TrainingPage() {
     enabled, todayRun, condition, progress, loading,
     savingId, running, bulkApplying, setPlan, setPlanBulk, clearPlan, planFor, runToday,
   } = training;
+
+  // Træningsrapport-historik (#1533): seneste 30 dages kørsler. Egen RLS-låst
+  // SELECT-hook (training_day_runs), uafhængig af useTraining's /me-state.
+  const history = useTrainingHistory();
 
   const [riders, setRiders] = useState([]);
   const [ridersLoading, setRidersLoading] = useState(true);
@@ -615,6 +621,9 @@ export default function TrainingPage() {
           </div>
         </div>
       )}
+
+      {/* Træningsrapport-historik (#1533) — seneste 30 dage */}
+      <TrainingHistory history={history} />
     </div>
   );
 }

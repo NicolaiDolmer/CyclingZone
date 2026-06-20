@@ -42,5 +42,17 @@
   "bulkClear": "Clear selection",
   "bulkApplied": "{n, plural, one {Updated # rider.} other {Updated # riders.}}",
   "bulkPartial": "Updated {applied} of {total}. {failed} could not be saved - try again in a moment.",
-  "bulkPickFocus": "Pick a focus to apply."
+  "bulkPickFocus": "Pick a focus to apply.",
+  "historyTitle": "Training history",
+  "historySubtitle": "Your last 30 days of daily training",
+  "historyEmpty": "No training runs yet. Once daily training is live, each day's run will be logged here.",
+  "historyByYou": "By you",
+  "historyByAssistant": "By assistant",
+  "historyDaySummary": "{trained} trained · {breakthroughs} breakthroughs · {peakForm} in peak form",
+  "historyToggleOpen": "Show riders",
+  "historyToggleClose": "Hide riders",
+  "riderHistoryTitle": "Training history",
+  "riderHistorySubtitle": "This rider's daily training over the last 30 days",
+  "riderHistoryEmpty": "No training history for this rider yet.",
+  "riderHistoryRest": "Rest day"
 }
