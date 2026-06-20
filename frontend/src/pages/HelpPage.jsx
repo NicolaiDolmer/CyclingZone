@@ -60,7 +60,7 @@ const SECTION_DEFS = [
   },
   {
     key: "contracts",
-    icon: "📄",
+    icon: "▤",
     blocks: [
       { id: "whatContract", kind: "text" },
       { id: "frozenSalary", kind: "text" },
@@ -171,7 +171,7 @@ const SECTION_DEFS = [
   },
   {
     key: "dailytraining",
-    icon: "📈",
+    icon: "▲",
     blocks: [
       { id: "whatDailyTraining", kind: "text" },
       { id: "programs", kind: "steps" },
@@ -185,7 +185,7 @@ const SECTION_DEFS = [
   },
   {
     key: "academy",
-    icon: "🎓",
+    icon: "△",
     blocks: [
       { id: "whatAcademy", kind: "text" },
       { id: "intakeCohort", kind: "text" },
