@@ -84,6 +84,38 @@ test("daglig cap: >= 5 etaper kørt i dag → skip", async () => {
   assert.equal(ran, 0);
 });
 
+test("FIX 4: daglig cap tæller KUN source='scheduler'-runs (admin-fuld-sim-runs ignoreres)", async () => {
+  // DB indeholder 5 race_simulation_runs siden midnat, men kun 1 er scheduler-drevet
+  // (de øvrige 4 er en admin-fuld-sim af et 5-etapers løb, source=NULL). Cap'en må KUN
+  // tælle scheduler-runen → budget = 5 - 1 = 4, så et due løb afvikles (ikke cap-blokeret).
+  let capQueryFilteredSource = false;
+  const races = [{ id: "rA", season_id: "s1", name: "Alfa", stages: 1, stages_completed: 0, status: "scheduled" }];
+  const schedule = [{ race_id: "rA", stage_number: 1, scheduled_at: "2026-06-21T10:30:00Z" }];
+  const supabase = makeSupabase({
+    seasons: [{ id: "s1" }],
+    race_simulation_runs: (state) => {
+      // countStagesDoneToday SKAL filtrere på source='scheduler'.
+      if (state.eqs.some(([c, v]) => c === "source" && v === "scheduler")) {
+        capQueryFilteredSource = true;
+        return [{ id: "sched1" }]; // kun 1 scheduler-run i dag
+      }
+      // Uden source-filter ville det være alle 5 (det FORKERTE pre-FIX-tal).
+      return [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }, { id: 5 }];
+    },
+    races,
+    race_stage_schedule: () => schedule,
+  });
+  let ran = 0;
+  const r = await runStageScheduler({
+    supabase, now: NOW,
+    isStageSchedulerEnabled: ENABLED, isRaceEngineV2Enabled: ENABLED,
+    runStageFn: async () => { ran++; return {}; },
+  });
+  assert.ok(capQueryFilteredSource, "cap-query skal filtrere på source='scheduler'");
+  assert.equal(ran, 1, "med kun 1 scheduler-run i dag er der budget tilbage → due løb afvikles");
+  assert.equal(r.ran, 1);
+});
+
 test("forfaldne etaper: kører næste etape for hvert due løb (scheduled_at <= now AND stage_number = stages_completed+1)", async () => {
   // To løb hvis næste etape er forfalden.
   const races = [

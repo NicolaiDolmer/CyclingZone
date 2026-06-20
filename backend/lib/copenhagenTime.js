@@ -13,3 +13,18 @@ export function copenhagenDateString(now = new Date()) {
 export function copenhagenHour(now = new Date()) {
   return Number(HOUR_FMT.format(now)) % 24;
 }
+
+// UTC-instant for seneste midnat (00:00) i dansk tid på SAMME danske kalenderdato som `now`.
+// Grænse for "i dag" i spillogik (fx daglige cap's/loop-guards). DST-robust via samme
+// offset-korrektion som auctionEngine.gameHourToUTC: parse den danske dato som om den var
+// UTC-midnat, mål Copenhagens faktiske offset på det tidspunkt, og træk offsetet fra.
+// Korrekt hen over CET↔CEST og PRÆCIS på selve midnats-kanten (modsat en formatToParts-
+// offset-udregning der kan ramme 24h forkert ved hour==="24"/døgnskift).
+export function copenhagenMidnightUTC(now = new Date()) {
+  const localDate = copenhagenDateString(now); // "YYYY-MM-DD" i dansk tid
+  const approx = new Date(`${localDate}T00:00:00Z`); // dato-midnat tolket som UTC
+  // Copenhagens vægur-tid for `approx`, igen tolket som UTC → differensen ER offsetet.
+  const wall = approx.toLocaleString("sv-SE", { timeZone: "Europe/Copenhagen" });
+  const offsetMs = new Date(wall.replace(" ", "T") + "Z").getTime() - approx.getTime();
+  return new Date(approx.getTime() - offsetMs);
+}

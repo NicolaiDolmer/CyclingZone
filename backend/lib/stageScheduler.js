@@ -15,34 +15,25 @@
 //   3. countStagesDoneToday >= MAX_STAGES_PER_DAY hard-cap (Beslutning D: maks 5/dag).
 // + trackedTick (Sentry-capture) i cron-laget.
 
+import { copenhagenMidnightUTC } from "./copenhagenTime.js";
+
 const MAX_STAGES_PER_DAY = 5;
 
-// UTC-instant for seneste midnat i dansk tid (Europe/Copenhagen) — grænse for
-// "kørt i dag". DST-robust via Intl: find dansk dato for now, byg dens 00:00-instant.
-function copenhagenMidnightUTC(now) {
-  const dateFmt = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/Copenhagen", year: "numeric", month: "2-digit", day: "2-digit",
-  });
-  const [y, m, d] = dateFmt.format(now).split("-").map(Number);
-  // Offset (min) for dansk tid omkring nu — find via en formatToParts-rundtur.
-  const partsFmt = new Intl.DateTimeFormat("en-US", {
-    timeZone: "Europe/Copenhagen",
-    year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
-  });
-  const p = Object.fromEntries(partsFmt.formatToParts(now).map((x) => [x.type, x.value]));
-  const asUTC = Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day),
-    Number(p.hour === "24" ? "0" : p.hour), Number(p.minute), Number(p.second));
-  const offsetMin = (asUTC - now.getTime()) / 60000;
-  // Midnat dansk = Date.UTC(dansk-dato 00:00) - offset.
-  return new Date(Date.UTC(y, m - 1, d, 0, 0, 0) - offsetMin * 60000);
-}
+// Source-markør på race_simulation_runs: KUN scheduler-drevne runs tæller i daglig cap.
+// Skrives af persistRuns via simulateStageByIndex's runSource (sat = 'scheduler' fra
+// cron-laget). Admin-fuld-sim (simulateRace) og manuelle stage-runs skriver NULL → tælles ikke.
+const SCHEDULER_RUN_SOURCE = "scheduler";
 
+// Tæl KUN scheduler-drevne etape-runs siden dansk midnat (FIX 4). En admin-fuld-simulering
+// skriver én race_simulation_runs-række PR. ETAPE (source=NULL); ville den blive talt med,
+// kunne ét admin-fuld-sim af et 5-etapers løb opbruge hele dagens stage-budget. Dag-grænsen
+// bruger den delte, DST-robuste copenhagenMidnightUTC (FIX 2).
 async function countStagesDoneToday(supabase, now) {
   const since = copenhagenMidnightUTC(now).toISOString();
   const { data, error } = await supabase
     .from("race_simulation_runs")
     .select("id")
+    .eq("source", SCHEDULER_RUN_SOURCE)
     .gte("created_at", since); // race_simulation_runs bruger created_at (verificeret schema)
   if (error) throw new Error(`race_simulation_runs: ${error.message}`);
   return (data || []).length;
