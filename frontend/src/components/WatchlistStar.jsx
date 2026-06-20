@@ -9,6 +9,7 @@
  * Stopper event propagation så klik på stjernen ikke trigger row-navigation.
  */
 import { useTranslation } from "react-i18next";
+import { StarIcon } from "./ui/icons";
 
 export default function WatchlistStar({ active, onToggle, className = "" }) {
   const { t } = useTranslation("common");
@@ -16,9 +17,9 @@ export default function WatchlistStar({ active, onToggle, className = "" }) {
     <button
       onClick={e => { e.stopPropagation(); onToggle(); }}
       title={active ? t("controls.watchlistRemove") : t("controls.watchlistAdd")}
-      className={`text-lg transition-all hover:scale-110 flex-shrink-0 ${active ? "text-cz-accent-t" : "text-cz-3 hover:text-cz-2"} ${className}`}
+      className={`transition-all hover:scale-110 flex-shrink-0 ${active ? "text-cz-accent-t" : "text-cz-3 hover:text-cz-2"} ${className}`}
     >
-      {active ? "★" : "☆"}
+      <StarIcon size={18} style={{ fill: active ? "currentColor" : "none" }} aria-hidden="true" />
     </button>
   );
 }

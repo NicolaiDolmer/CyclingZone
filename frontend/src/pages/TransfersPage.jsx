@@ -14,7 +14,7 @@ import { formatCz, getRiderMarketValue, getRiderSalary } from "../lib/marketValu
 import { formatNumber, formatDate } from "../lib/intl";
 import { resolveApiError } from "../lib/apiError";
 import { sortListings, LISTING_SORT_OPTIONS } from "../lib/transferListingSort";
-import { Card, EmptyState, ExchangeIcon, ClipboardIcon } from "../components/ui";
+import { Card, EmptyState, ExchangeIcon, ClipboardIcon, InboxIcon } from "../components/ui";
 import { ABILITY_STATS as LISTING_STATS, flattenAbilities } from "../lib/abilities";
 import NationCell from "../components/rider/NationCell";
 import RiderNameCell from "../components/rider/RiderNameCell";
@@ -54,7 +54,7 @@ const STATUS_STYLE = {
   pending:                { color: "text-cz-accent-t",   bg: "bg-cz-accent/10 border-cz-accent/30" },
   countered:              { color: "text-cz-warning",  bg: "bg-cz-warning-bg border-cz-warning/30" },
   awaiting_confirmation:  { color: "text-cz-info",    bg: "bg-cz-info/20 border-cz-info/30" },
-  window_pending:         { color: "text-violet-700",  bg: "bg-violet-50 border-violet-200" },
+  window_pending:         { color: "text-cz-warning",  bg: "bg-cz-warning-bg border-cz-warning/30" },
   accepted:               { color: "text-cz-success",   bg: "bg-cz-success-bg border-cz-success/30" },
   rejected:               { color: "text-cz-danger",     bg: "bg-cz-danger-bg border-cz-danger/30" },
   withdrawn:              { color: "text-cz-3",   bg: "bg-cz-subtle border-cz-border" },
@@ -105,7 +105,7 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
 
   return (
     <div className={`bg-cz-card border rounded-cz p-5 transition-all
-      ${isAwaiting ? "border-blue-500/30" : isWindowPending ? "border-violet-300" : isPending ? "border-cz-accent/30" : "border-cz-border opacity-70"}`}>
+      ${isAwaiting ? "border-cz-info/30" : isWindowPending ? "border-cz-warning/30" : isPending ? "border-cz-accent/30" : "border-cz-border opacity-70"}`}>
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-3">
         <div className="min-w-0">
           <RiderLink id={offer.rider?.id}
@@ -160,13 +160,13 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
         <div className="flex flex-col gap-2">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <button onClick={() => doAction("accept")} disabled={loading}
-              className="min-h-[44px] flex-1 py-2 bg-cz-success-bg text-cz-success border border-green-500/25 rounded-lg text-sm font-medium hover:bg-cz-success-bg0/25 transition-all disabled:opacity-50">
+              className="min-h-[44px] flex-1 py-2 bg-cz-success-bg text-cz-success border border-cz-success/25 rounded-lg text-sm font-medium hover:bg-cz-success-bg0/25 transition-all disabled:opacity-50">
               {t("offerCard.buttons.accept")}
             </button>
             <button onClick={() => setMode(mode === "counter" ? null : "counter")}
               className={`min-h-[44px] flex-1 py-2 rounded-lg text-sm font-medium border transition-all
                 ${mode === "counter"
-                  ? "bg-cz-warning-bg0/20 text-cz-warning border-orange-500/30"
+                  ? "bg-cz-warning-bg0/20 text-cz-warning border-cz-warning/30"
                   : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle"}`}>
               {t("offerCard.buttons.counter")}
             </button>
@@ -200,20 +200,20 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
       {isAwaiting && (
         <div className="flex flex-col gap-2">
           {offer.seller_confirmed ? (
-            <div className="bg-cz-info-bg0/10 border border-blue-500/20 rounded-lg px-4 py-3 text-center">
-              <p className="text-blue-300 text-sm font-medium">{t("offerCard.awaiting.sellerAccepted")}</p>
+            <div className="bg-cz-info-bg0/10 border border-cz-info/20 rounded-lg px-4 py-3 text-center">
+              <p className="text-cz-info text-sm font-medium">{t("offerCard.awaiting.sellerAccepted")}</p>
               <p className="text-cz-3 text-xs mt-1">{price} CZ$ · {offer.buyer?.name}</p>
             </div>
           ) : (
             <div className="flex gap-2">
               <button onClick={() => doAction("confirm")} disabled={loading}
-                className="min-h-[44px] flex-1 py-2 bg-cz-info-bg text-cz-info border border-blue-500/25 rounded-lg text-sm font-medium hover:bg-cz-info-bg0/25 transition-all disabled:opacity-50">
+                className="min-h-[44px] flex-1 py-2 bg-cz-info-bg text-cz-info border border-cz-info/25 rounded-lg text-sm font-medium hover:bg-cz-info-bg0/25 transition-all disabled:opacity-50">
                 {t("offerCard.buttons.confirmDeal", { amount: price })}
               </button>
             </div>
           )}
           <button onClick={() => doAction("cancel")} disabled={loading}
-            className="min-h-[44px] w-full py-2 bg-cz-danger-bg0/5 text-cz-danger/70 border border-red-500/15 rounded-lg text-sm
+            className="min-h-[44px] w-full py-2 bg-cz-danger-bg0/5 text-cz-danger/70 border border-cz-danger/15 rounded-lg text-sm
               hover:bg-cz-danger-bg hover:text-cz-danger hover:border-cz-danger/30 transition-all disabled:opacity-50">
             {t("offerCard.buttons.cancelDeal")}
           </button>
@@ -222,12 +222,12 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
 
       {isWindowPending && (
         <div className="flex flex-col gap-2">
-          <div className="bg-violet-50 border border-violet-200 rounded-lg px-4 py-3 text-center">
-            <p className="text-violet-700 text-sm font-medium">{t("offerCard.awaiting.windowPending")}</p>
+          <div className="bg-cz-warning-bg border border-cz-warning/30 rounded-lg px-4 py-3 text-center">
+            <p className="text-cz-warning text-sm font-medium">{t("offerCard.awaiting.windowPending")}</p>
             <p className="text-cz-3 text-xs mt-1">{price} CZ$</p>
           </div>
           <button onClick={() => doAction("cancel")} disabled={loading}
-            className="min-h-[44px] w-full py-2 bg-cz-danger-bg0/5 text-cz-danger/70 border border-red-500/15 rounded-lg text-sm
+            className="min-h-[44px] w-full py-2 bg-cz-danger-bg0/5 text-cz-danger/70 border border-cz-danger/15 rounded-lg text-sm
               hover:bg-cz-danger-bg hover:text-cz-danger hover:border-cz-danger/30 transition-all disabled:opacity-50">
             {t("offerCard.buttons.cancelDeal")}
           </button>
@@ -275,7 +275,7 @@ function SentOfferCard({ offer, onAction, showArchive = true }) {
 
   return (
     <div className={`bg-cz-card border rounded-cz p-5 transition-all
-      ${isAwaiting ? "border-blue-500/30" : isWindowPending ? "border-violet-300" : isCountered ? "border-cz-warning/30" : isActive ? "border-cz-border" : "border-cz-border opacity-60"}`}>
+      ${isAwaiting ? "border-cz-info/30" : isWindowPending ? "border-cz-warning/30" : isCountered ? "border-cz-warning/30" : isActive ? "border-cz-border" : "border-cz-border opacity-60"}`}>
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-3">
         <div className="min-w-0">
           <RiderLink id={offer.rider?.id}
@@ -321,13 +321,13 @@ function SentOfferCard({ offer, onAction, showArchive = true }) {
         <div className="flex flex-col gap-2">
           <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-2">
             <button onClick={() => doAction("accept_counter")} disabled={loading}
-              className="min-h-[44px] flex-1 py-2 bg-cz-success-bg text-cz-success border border-green-500/25 rounded-lg text-sm font-medium hover:bg-cz-success-bg0/25 disabled:opacity-50">
+              className="min-h-[44px] flex-1 py-2 bg-cz-success-bg text-cz-success border border-cz-success/25 rounded-lg text-sm font-medium hover:bg-cz-success-bg0/25 disabled:opacity-50">
               {t("offerCard.buttons.acceptCounter", { amount: formatNumber(offer.counter_amount) })}
             </button>
             <button onClick={() => setMode(mode === "new_offer" ? null : "new_offer")}
               className={`min-h-[44px] px-4 py-2 rounded-lg text-sm font-medium border transition-all
                 ${mode === "new_offer"
-                  ? "bg-cz-info-bg0/20 text-cz-info border-blue-500/30"
+                  ? "bg-cz-info-bg0/20 text-cz-info border-cz-info/30"
                   : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle"}`}>
               {t("offerCard.buttons.newOffer")}
             </button>
@@ -369,18 +369,18 @@ function SentOfferCard({ offer, onAction, showArchive = true }) {
       {isAwaiting && (
         <div className="flex flex-col gap-2">
           {offer.buyer_confirmed ? (
-            <div className="bg-cz-info-bg0/10 border border-blue-500/20 rounded-lg px-4 py-3 text-center">
-              <p className="text-blue-300 text-sm font-medium">{t("offerCard.awaiting.buyerConfirmed")}</p>
+            <div className="bg-cz-info-bg0/10 border border-cz-info/20 rounded-lg px-4 py-3 text-center">
+              <p className="text-cz-info text-sm font-medium">{t("offerCard.awaiting.buyerConfirmed")}</p>
               <p className="text-cz-3 text-xs mt-1">{price} CZ$ · {offer.seller?.name}</p>
             </div>
           ) : (
             <button onClick={() => doAction("confirm")} disabled={loading}
-              className="min-h-[44px] w-full py-2 bg-cz-info-bg text-cz-info border border-blue-500/25 rounded-lg text-sm font-medium hover:bg-cz-info-bg0/25 transition-all disabled:opacity-50">
+              className="min-h-[44px] w-full py-2 bg-cz-info-bg text-cz-info border border-cz-info/25 rounded-lg text-sm font-medium hover:bg-cz-info-bg0/25 transition-all disabled:opacity-50">
               {t("offerCard.buttons.confirmDeal", { amount: price })}
             </button>
           )}
           <button onClick={() => doAction("cancel")} disabled={loading}
-            className="min-h-[44px] w-full py-2 bg-cz-danger-bg0/5 text-cz-danger/70 border border-red-500/15 rounded-lg text-sm
+            className="min-h-[44px] w-full py-2 bg-cz-danger-bg0/5 text-cz-danger/70 border border-cz-danger/15 rounded-lg text-sm
               hover:bg-cz-danger-bg hover:text-cz-danger hover:border-cz-danger/30 transition-all disabled:opacity-50">
             {t("offerCard.buttons.cancelDeal")}
           </button>
@@ -389,12 +389,12 @@ function SentOfferCard({ offer, onAction, showArchive = true }) {
 
       {isWindowPending && (
         <div className="flex flex-col gap-2">
-          <div className="bg-violet-50 border border-violet-200 rounded-lg px-4 py-3 text-center">
-            <p className="text-violet-700 text-sm font-medium">{t("offerCard.awaiting.windowPending")}</p>
+          <div className="bg-cz-warning-bg border border-cz-warning/30 rounded-lg px-4 py-3 text-center">
+            <p className="text-cz-warning text-sm font-medium">{t("offerCard.awaiting.windowPending")}</p>
             <p className="text-cz-3 text-xs mt-1">{price} CZ$</p>
           </div>
           <button onClick={() => doAction("cancel")} disabled={loading}
-            className="min-h-[44px] w-full py-2 bg-cz-danger-bg0/5 text-cz-danger/70 border border-red-500/15 rounded-lg text-sm
+            className="min-h-[44px] w-full py-2 bg-cz-danger-bg0/5 text-cz-danger/70 border border-cz-danger/15 rounded-lg text-sm
               hover:bg-cz-danger-bg hover:text-cz-danger hover:border-cz-danger/30 transition-all disabled:opacity-50">
             {t("offerCard.buttons.cancelDeal")}
           </button>
@@ -443,7 +443,7 @@ function SwapCard({ swap, myTeamId, onAction }) {
 
   return (
     <div className={`bg-cz-card border rounded-cz p-5 transition-all
-      ${isAwaiting ? "border-blue-500/30" : isWindowPending ? "border-violet-300" : isCountered ? "border-cz-warning/30" : isPending ? "border-cz-border" : "border-cz-border opacity-60"}`}>
+      ${isAwaiting ? "border-cz-info/30" : isWindowPending ? "border-cz-warning/30" : isCountered ? "border-cz-warning/30" : isPending ? "border-cz-border" : "border-cz-border opacity-60"}`}>
 
       <div className="flex items-start justify-between mb-3">
         <div>
@@ -493,12 +493,12 @@ function SwapCard({ swap, myTeamId, onAction }) {
         <div className="flex flex-col gap-2">
           <div className="flex gap-2">
             <button onClick={() => doAction("accept")} disabled={loading}
-              className="min-h-[44px] flex-1 py-2 bg-cz-success-bg text-cz-success border border-green-500/25 rounded-lg text-sm font-medium hover:bg-cz-success-bg0/25 disabled:opacity-50">
+              className="min-h-[44px] flex-1 py-2 bg-cz-success-bg text-cz-success border border-cz-success/25 rounded-lg text-sm font-medium hover:bg-cz-success-bg0/25 disabled:opacity-50">
               {t("swapCard.buttons.accept")}
             </button>
             <button onClick={() => setMode(mode === "counter" ? null : "counter")}
               className={`min-h-[44px] flex-1 py-2 rounded-lg text-sm font-medium border transition-all
-                ${mode === "counter" ? "bg-cz-warning-bg0/20 text-cz-warning border-orange-500/30" : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle"}`}>
+                ${mode === "counter" ? "bg-cz-warning-bg0/20 text-cz-warning border-cz-warning/30" : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle"}`}>
               {t("swapCard.buttons.counter")}
             </button>
             <button onClick={() => doAction("reject")} disabled={loading}
@@ -536,12 +536,12 @@ function SwapCard({ swap, myTeamId, onAction }) {
         <div className="flex flex-col gap-2">
           <div className="flex gap-2">
             <button onClick={() => doAction("accept_counter")} disabled={loading}
-              className="min-h-[44px] flex-1 py-2 bg-cz-success-bg text-cz-success border border-green-500/25 rounded-lg text-sm font-medium hover:bg-cz-success-bg0/25 disabled:opacity-50">
+              className="min-h-[44px] flex-1 py-2 bg-cz-success-bg text-cz-success border border-cz-success/25 rounded-lg text-sm font-medium hover:bg-cz-success-bg0/25 disabled:opacity-50">
               {t("swapCard.buttons.acceptCounter")}
             </button>
             <button onClick={() => setMode(mode === "counter" ? null : "counter")}
               className={`min-h-[44px] flex-1 py-2 rounded-lg text-sm font-medium border transition-all
-                ${mode === "counter" ? "bg-cz-warning-bg0/20 text-cz-warning border-orange-500/30" : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle"}`}>
+                ${mode === "counter" ? "bg-cz-warning-bg0/20 text-cz-warning border-cz-warning/30" : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle"}`}>
               {t("swapCard.buttons.counter")}
             </button>
             <button onClick={() => doAction("withdraw")} disabled={loading}
@@ -570,17 +570,17 @@ function SwapCard({ swap, myTeamId, onAction }) {
       {isAwaiting && (
         <div className="flex flex-col gap-2">
           {(isProposing ? swap.proposing_confirmed : swap.receiving_confirmed) ? (
-            <div className="bg-cz-info-bg0/10 border border-blue-500/20 rounded-lg px-4 py-3 text-center">
-              <p className="text-blue-300 text-sm font-medium">{t("swapCard.awaiting.selfConfirmed")}</p>
+            <div className="bg-cz-info-bg0/10 border border-cz-info/20 rounded-lg px-4 py-3 text-center">
+              <p className="text-cz-info text-sm font-medium">{t("swapCard.awaiting.selfConfirmed")}</p>
             </div>
           ) : (
             <button onClick={() => doAction("confirm")} disabled={loading}
-              className="min-h-[44px] w-full py-2 bg-cz-info-bg text-cz-info border border-blue-500/25 rounded-lg text-sm font-medium hover:bg-cz-info-bg0/25 disabled:opacity-50">
+              className="min-h-[44px] w-full py-2 bg-cz-info-bg text-cz-info border border-cz-info/25 rounded-lg text-sm font-medium hover:bg-cz-info-bg0/25 disabled:opacity-50">
               {t("swapCard.buttons.confirmSwap")}
             </button>
           )}
           <button onClick={() => doAction("cancel")} disabled={loading}
-            className="min-h-[44px] w-full py-2 bg-cz-danger-bg0/5 text-cz-danger/70 border border-red-500/15 rounded-lg text-sm
+            className="min-h-[44px] w-full py-2 bg-cz-danger-bg0/5 text-cz-danger/70 border border-cz-danger/15 rounded-lg text-sm
               hover:bg-cz-danger-bg hover:text-cz-danger hover:border-cz-danger/30 transition-all disabled:opacity-50">
             {t("swapCard.buttons.cancelSwap")}
           </button>
@@ -589,11 +589,11 @@ function SwapCard({ swap, myTeamId, onAction }) {
 
       {isWindowPending && (
         <div className="flex flex-col gap-2">
-          <div className="bg-violet-50 border border-violet-200 rounded-lg px-4 py-3 text-center">
-            <p className="text-violet-700 text-sm font-medium">{t("swapCard.awaiting.windowPending")}</p>
+          <div className="bg-cz-warning-bg border border-cz-warning/30 rounded-lg px-4 py-3 text-center">
+            <p className="text-cz-warning text-sm font-medium">{t("swapCard.awaiting.windowPending")}</p>
           </div>
           <button onClick={() => doAction("cancel")} disabled={loading}
-            className="min-h-[44px] w-full py-2 bg-cz-danger-bg0/5 text-cz-danger/70 border border-red-500/15 rounded-lg text-sm
+            className="min-h-[44px] w-full py-2 bg-cz-danger-bg0/5 text-cz-danger/70 border border-cz-danger/15 rounded-lg text-sm
               hover:bg-cz-danger-bg hover:text-cz-danger hover:border-cz-danger/30 transition-all disabled:opacity-50">
             {t("swapCard.buttons.cancelSwap")}
           </button>
@@ -719,7 +719,7 @@ function NewSwapForm({ myRiders, onSubmit, onCancel }) {
 // ── Loan agreement card ───────────────────────────────────────────────────────
 const LOAN_STATUS_STYLE = {
   pending:   { color: "text-cz-accent-t",   bg: "bg-cz-accent/10 border-cz-accent/30" },
-  active:    { color: "text-purple-400",  bg: "bg-purple-500/10 border-purple-500/20" },
+  active:    { color: "text-cz-info",  bg: "bg-cz-info/10 border-cz-info/20" },
   buyout:    { color: "text-cz-success",   bg: "bg-cz-success-bg border-cz-success/30" },
   cancelled: { color: "text-cz-3",    bg: "bg-cz-subtle border-cz-border" },
   rejected:  { color: "text-cz-danger",     bg: "bg-cz-danger-bg border-cz-danger/30" },
@@ -758,7 +758,7 @@ function LoanCard({ loan, myTeamId, onAction }) {
 
   return (
     <div className={`bg-cz-card border rounded-cz p-5 transition-all
-      ${loan.status === "active" ? "border-purple-500/20" : loan.status === "pending" ? "border-cz-accent/30" : "border-cz-border opacity-70"}`}>
+      ${loan.status === "active" ? "border-cz-info/20" : loan.status === "pending" ? "border-cz-accent/30" : "border-cz-border opacity-70"}`}>
 
       <div className="flex items-start justify-between mb-3">
         <div>
@@ -795,7 +795,7 @@ function LoanCard({ loan, myTeamId, onAction }) {
       {loan.status === "pending" && isLender && (
         <div className="flex gap-2">
           <button onClick={() => doAction("accept")} disabled={loading}
-            className="min-h-[44px] flex-1 py-2 bg-cz-success-bg text-cz-success border border-green-500/25 rounded-lg text-sm font-medium hover:bg-cz-success-bg0/25 disabled:opacity-50">
+            className="min-h-[44px] flex-1 py-2 bg-cz-success-bg text-cz-success border border-cz-success/25 rounded-lg text-sm font-medium hover:bg-cz-success-bg0/25 disabled:opacity-50">
             {t("loanCard.buttons.accept")}
           </button>
           <button onClick={() => doAction("reject")} disabled={loading}
@@ -815,7 +815,7 @@ function LoanCard({ loan, myTeamId, onAction }) {
         <div className="flex flex-col gap-2">
           {isBorrower && loan.buy_option_price && (
             <button onClick={() => doAction("buyout")} disabled={loading}
-              className="min-h-[44px] w-full py-2 bg-cz-success-bg text-cz-success border border-green-500/25 rounded-lg text-sm font-medium hover:bg-cz-success-bg0/25 disabled:opacity-50">
+              className="min-h-[44px] w-full py-2 bg-cz-success-bg text-cz-success border border-cz-success/25 rounded-lg text-sm font-medium hover:bg-cz-success-bg0/25 disabled:opacity-50">
               {t("loanCard.buttons.exerciseBuyout", { amount: formatNumber(loan.buy_option_price) })}
             </button>
           )}
@@ -896,7 +896,7 @@ function NewLoanForm({ myTeamId, onSubmit, onCancel }) {
           )}
         </div>
         {selectedRider && (
-          <p className="text-purple-400/70 text-xs mt-1">{t("newLoan.selectedRider", { firstname: selectedRider.firstname, lastname: selectedRider.lastname, team: selectedRider.team?.name })}</p>
+          <p className="text-cz-info/70 text-xs mt-1">{t("newLoan.selectedRider", { firstname: selectedRider.firstname, lastname: selectedRider.lastname, team: selectedRider.team?.name })}</p>
         )}
       </div>
 
@@ -1507,7 +1507,7 @@ export default function TransfersPage() {
         ${transferWindow.open
           ? "bg-cz-success-bg0/8 text-cz-success border-cz-success/30"
           : "bg-cz-danger-bg text-cz-danger border-cz-danger/30"}`}>
-        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${transferWindow.open ? "bg-green-400" : "bg-red-400"}`} />
+        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${transferWindow.open ? "bg-cz-success" : "bg-cz-danger"}`} />
         {transferWindow.open ? t("window.open") : t("window.closed")}
       </div>
 
@@ -1586,7 +1586,7 @@ export default function TransfersPage() {
             <div className="flex flex-col gap-4">
               {archivedReceivedOffers.length + archivedSentOffers.length === 0 ? (
                 <EmptyState
-                  icon={<span className="text-2xl leading-none" aria-hidden="true">◎</span>}
+                  icon={<InboxIcon size={28} aria-hidden="true" />}
                   title={t("empty.archive")}
                 />
               ) : (
@@ -1674,8 +1674,8 @@ export default function TransfersPage() {
                 />
               ) : (
                 <button onClick={() => setShowNewLoan(true)}
-                  className="min-h-[44px] w-full py-2.5 bg-purple-500/8 text-purple-400/80 border border-purple-500/15 rounded-cz text-sm font-medium
-                    hover:bg-purple-500/15 hover:text-purple-400 transition-all">
+                  className="min-h-[44px] w-full py-2.5 bg-cz-info/8 text-cz-info/80 border border-cz-info/15 rounded-cz text-sm font-medium
+                    hover:bg-cz-info/15 hover:text-cz-info transition-all">
                   {t("newLoan.newButton")}
                 </button>
               )}

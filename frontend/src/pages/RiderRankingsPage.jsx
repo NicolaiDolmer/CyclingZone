@@ -12,6 +12,7 @@ import { formatNumber } from "../lib/intl";
 import { riderStatRating } from "../lib/riderRating";
 import { ABILITY_SELECT, flattenAbilities } from "../lib/abilities";
 import { compareNationality } from "../lib/countryUtils";
+import { CalendarIcon, SearchIcon, ArrowUpIcon, ArrowDownIcon } from "../components/ui";
 
 // Altid-synlige sejr-kolonner (kategori-sejre) — venstre→højre.
 const WIN_COLS = [
@@ -308,12 +309,12 @@ export default function RiderRankingsPage() {
 
       {!season ? (
         <div className="text-center py-16 text-cz-3">
-          <p className="text-4xl mb-3">◉</p>
+          <CalendarIcon size={32} className="mx-auto mb-3" aria-hidden="true" />
           <p>{t("rankings.noActiveSeason")}</p>
         </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-16 text-cz-3">
-          <p className="text-4xl mb-3">◉</p>
+          <SearchIcon size={32} className="mx-auto mb-3" aria-hidden="true" />
           <p>{search ? t("rankings.noResultsFor", { q: search }) : t("rankings.noResults")}</p>
           {(ownerFilter !== "all" || teamFilter !== "all" || search) && (
             <button onClick={() => { setOwnerFilter("all"); setTeamFilter("all"); setSearch(""); }}
@@ -443,7 +444,7 @@ function SortHeader({ col, sortKey, sortAsc, onSort, t, className = "px-3 py-3 t
       <span className="hidden lg:inline">{t(col.labelKey)}</span>
       <span className="lg:hidden">{t(col.shortKey)}</span>
       {sortKey === col.key && (
-        <span className="ms-1">{sortAsc ? "↑" : "↓"}</span>
+        <span className="ms-1 inline-flex align-middle">{sortAsc ? <ArrowUpIcon size={10} aria-hidden="true" /> : <ArrowDownIcon size={10} aria-hidden="true" />}</span>
       )}
     </th>
   );

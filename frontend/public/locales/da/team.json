@@ -2,8 +2,8 @@
   "page": {
     "fallbackTitle": "Mit Hold",
     "managerLabel": "Manager: {name}",
-    "windowOpen": "🟢 Transfervindue åbent",
-    "windowClosed": "🔒 Transfervindue lukket",
+    "windowOpen": "Transfervindue åbent",
+    "windowClosed": "Transfervindue lukket",
     "ridersCount": "{count} ryttere",
     "incomingCount": "+{count} indgående",
     "outgoingCount": "-{count} udgående",
@@ -27,7 +27,7 @@
     },
     "loanedIn": "Lejede ryttere ({count})",
     "loanedOut": "Udlejede ryttere ({count})",
-    "windowClosedHint": "🔒 Transfervindue lukket. Skift træder i kraft ved næste åbning",
+    "windowClosedHint": "Transfervindue lukket. Skift træder i kraft ved næste åbning",
     "emptyState": "Din trup er tom",
     "emptyStateBody": "Skriv dine første ryttere fra markedet og begynd at bygge dit hold.",
     "emptyStateCta": "Find ryttere",
@@ -57,25 +57,25 @@
   "actionModal": {
     "potentialLabel": "Potentiale",
     "tabs": {
-      "auction": "⚡ Auktion",
-      "transfer": "↔ Transferliste"
+      "auction": "Auktion",
+      "transfer": "Transferliste"
     },
     "auction": {
       "description": "Start auktion. Andre managers kan byde.",
       "startButton": "Start",
-      "startFlashButton": "⚡ Start Flash",
-      "flashLabel": "⚡ Flash Auktion (30 min)",
+      "startFlashButton": "Start Flash",
+      "flashLabel": "Flash Auktion (30 min)",
       "flashHint": "Deadline Day: afsluttes præcis 30 min efter start",
-      "successMsg": "✅ Auktion startet!",
+      "successMsg": "Auktion startet!",
       "priceError": "Startpris skal være mellem 0 og Værdi ({amount} CZ$)"
     },
     "transfer": {
       "description": "Sæt til salg med fast pris.",
       "listButton": "Sæt til salg",
-      "successMsg": "✅ Sat på transferlisten!"
+      "successMsg": "Sat på transferlisten!"
     },
     "loadingShort": "...",
-    "errorPrefix": "❌ "
+    "errorPrefix": ""
   },
   "list": {
     "title": "Hold",

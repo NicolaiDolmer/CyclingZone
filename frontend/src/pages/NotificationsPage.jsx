@@ -15,6 +15,7 @@ import {
   LightningIcon, TrophyIcon, UndoIcon, AlertTriangleIcon, StarIcon,
   ExchangeIcon, CheckIcon, XIcon, FlagIcon, RocketIcon, CoinIcon,
   ClipboardIcon, PodiumIcon, BellIcon,
+  ChevronRightIcon, ChevronDownIcon, InfoIcon,
 } from "../components/ui";
 
 // Role key for PENDING_ROLE — mapped to i18n via pending.role.<key>
@@ -39,29 +40,29 @@ const PENDING_KIND_ICON = {
 const TYPE_CONFIG = {
   bid_received:              { Icon: LightningIcon,    color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/auctions" },
   bid_placed:                { Icon: LightningIcon,    color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/auctions" },
-  auction_won:               { Icon: TrophyIcon,       color: "text-cz-success",  bg: "bg-cz-success-bg0/8 border-green-500/15", link: "/auctions" },
+  auction_won:               { Icon: TrophyIcon,       color: "text-cz-success",  bg: "bg-cz-success-bg0/8 border-cz-success/15", link: "/auctions" },
   auction_lost:              { Icon: UndoIcon,         color: "text-cz-2",        bg: "bg-cz-subtle border-cz-border",           link: "/auctions" },
-  auction_outbid:            { Icon: AlertTriangleIcon, color: "text-cz-danger",   bg: "bg-cz-danger-bg0/8 border-red-500/15",    link: "/auctions" },
+  auction_outbid:            { Icon: AlertTriangleIcon, color: "text-cz-danger",   bg: "bg-cz-danger-bg0/8 border-cz-danger/15",    link: "/auctions" },
   watchlist_rider_auction:   { Icon: StarIcon,         color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/auctions" },
-  transfer_offer_received:   { Icon: ExchangeIcon,     color: "text-cz-info",     bg: "bg-cz-info-bg0/8 border-blue-500/15",     link: "/transfers" },
-  transfer_offer_accepted:   { Icon: CheckIcon,        color: "text-cz-success",  bg: "bg-cz-success-bg0/8 border-green-500/15", link: "/transfers" },
-  transfer_offer_rejected:   { Icon: XIcon,            color: "text-cz-danger",   bg: "bg-cz-danger-bg0/8 border-red-500/15",    link: "/transfers" },
+  transfer_offer_received:   { Icon: ExchangeIcon,     color: "text-cz-info",     bg: "bg-cz-info-bg0/8 border-cz-info/15",     link: "/transfers" },
+  transfer_offer_accepted:   { Icon: CheckIcon,        color: "text-cz-success",  bg: "bg-cz-success-bg0/8 border-cz-success/15", link: "/transfers" },
+  transfer_offer_rejected:   { Icon: XIcon,            color: "text-cz-danger",   bg: "bg-cz-danger-bg0/8 border-cz-danger/15",    link: "/transfers" },
   transfer_offer_withdrawn:  { Icon: UndoIcon,         color: "text-cz-2",        bg: "bg-cz-subtle border-cz-border",           link: "/transfers" },
   transfer_counter:          { Icon: ExchangeIcon,     color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/transfers" },
-  transfer_interest:         { Icon: ExchangeIcon,     color: "text-cz-info",     bg: "bg-cz-info-bg0/8 border-blue-500/15",     link: "/transfers" },
+  transfer_interest:         { Icon: ExchangeIcon,     color: "text-cz-info",     bg: "bg-cz-info-bg0/8 border-cz-info/15",     link: "/transfers" },
   watchlist_rider_listed:    { Icon: StarIcon,         color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/transfers" },
   new_race:                  { Icon: FlagIcon,         color: "text-cz-1",        bg: "bg-cz-subtle border-cz-border",           link: "/races" },
-  season_started:            { Icon: RocketIcon,       color: "text-cz-success",  bg: "bg-cz-success-bg0/8 border-green-500/15", link: "/dashboard" },
+  season_started:            { Icon: RocketIcon,       color: "text-cz-success",  bg: "bg-cz-success-bg0/8 border-cz-success/15", link: "/dashboard" },
   season_ended:              { Icon: FlagIcon,         color: "text-cz-1",        bg: "bg-cz-subtle border-cz-border",           link: "/seasons" },
-  salary_paid:               { Icon: CoinIcon,         color: "text-cz-warning",  bg: "bg-cz-warning-bg0/8 border-orange-500/15", link: "/finance" },
-  sponsor_paid:              { Icon: CoinIcon,         color: "text-cz-success",  bg: "bg-cz-success-bg0/8 border-green-500/15", link: "/finance" },
-  loan_created:              { Icon: CoinIcon,         color: "text-cz-info",     bg: "bg-cz-info-bg0/8 border-blue-500/15",     link: "/finance" },
-  emergency_loan:            { Icon: AlertTriangleIcon, color: "text-cz-danger",   bg: "bg-cz-danger-bg0/8 border-red-500/15",    link: "/finance" },
-  loan_paid_off:             { Icon: CheckIcon,        color: "text-cz-success",  bg: "bg-cz-success-bg0/8 border-green-500/15", link: "/finance" },
-  board_update:              { Icon: ClipboardIcon,    color: "text-cz-info",     bg: "bg-cz-info-bg0/8 border-blue-500/15",     link: "/board" },
+  salary_paid:               { Icon: CoinIcon,         color: "text-cz-warning",  bg: "bg-cz-warning-bg0/8 border-cz-warning/15", link: "/finance" },
+  sponsor_paid:              { Icon: CoinIcon,         color: "text-cz-success",  bg: "bg-cz-success-bg0/8 border-cz-success/15", link: "/finance" },
+  loan_created:              { Icon: CoinIcon,         color: "text-cz-info",     bg: "bg-cz-info-bg0/8 border-cz-info/15",     link: "/finance" },
+  emergency_loan:            { Icon: AlertTriangleIcon, color: "text-cz-danger",   bg: "bg-cz-danger-bg0/8 border-cz-danger/15",    link: "/finance" },
+  loan_paid_off:             { Icon: CheckIcon,        color: "text-cz-success",  bg: "bg-cz-success-bg0/8 border-cz-success/15", link: "/finance" },
+  board_update:              { Icon: ClipboardIcon,    color: "text-cz-info",     bg: "bg-cz-info-bg0/8 border-cz-info/15",     link: "/board" },
 };
 
-const DEFAULT_TYPE_CONFIG = { Icon: null, color: "text-cz-2", bg: "bg-cz-subtle border-cz-border" };
+const DEFAULT_TYPE_CONFIG = { Icon: BellIcon, color: "text-cz-2", bg: "bg-cz-subtle border-cz-border" };
 
 const MINE_FILTER_TYPES = {
   all:       null,
@@ -481,7 +482,7 @@ export default function NotificationsPage() {
                       }}>
                       <div className={`w-9 h-9 rounded-cz bg-cz-subtle flex items-center justify-center
                         flex-shrink-0 mt-0.5 ${config.color}`}>
-                        {Icon ? <Icon size={18} /> : <span aria-hidden className="text-base">●</span>}
+                        {Icon ? <Icon size={18} /> : <InfoIcon size={18} aria-hidden="true" />}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className={`text-sm font-medium ${n.is_read ? "text-cz-2" : "text-cz-1"}`}>
@@ -531,7 +532,7 @@ export default function NotificationsPage() {
                       }}>
                       <div className={`w-9 h-9 rounded-cz bg-cz-subtle flex items-center justify-center
                         flex-shrink-0 mt-0.5 relative ${config.color}`}>
-                        {AggIcon ? <AggIcon size={18} /> : <span aria-hidden className="text-base">●</span>}
+                        {AggIcon ? <AggIcon size={18} /> : <InfoIcon size={18} aria-hidden="true" />}
                         <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-cz-pill
                           bg-cz-accent text-cz-on-accent text-[10px] font-bold flex items-center justify-center leading-none">
                           {entry.count > 99 ? "99+" : entry.count}
@@ -550,8 +551,8 @@ export default function NotificationsPage() {
                         {entry.any_unread && (
                           <span className="w-2 h-2 rounded-cz-pill bg-cz-accent flex-shrink-0" />
                         )}
-                        <span className="text-cz-3 text-xs select-none" aria-label={isExpanded ? t("aggregate.collapse") : t("aggregate.expand")} aria-hidden>
-                          {isExpanded ? "▾" : "▸"}
+                        <span className="text-cz-3 flex items-center" aria-label={isExpanded ? t("aggregate.collapse") : t("aggregate.expand")} aria-hidden>
+                          {isExpanded ? <ChevronDownIcon size={14} /> : <ChevronRightIcon size={14} />}
                         </span>
                         <button
                           onClick={e => { e.stopPropagation(); deleteMany(ids); }}
@@ -578,9 +579,9 @@ export default function NotificationsPage() {
                           ))}
                         </ul>
                         {config.link && (
-                          <Button variant="secondary" size="sm" className="self-end"
+                          <Button variant="secondary" size="sm" className="self-end inline-flex items-center gap-1"
                             onClick={e => { e.stopPropagation(); navigate(config.link); }}>
-                            {t("actions.viewAuction")} →
+                            {t("actions.viewAuction")} <ChevronRightIcon size={14} aria-hidden="true" />
                           </Button>
                         )}
                       </div>
@@ -612,14 +613,14 @@ export default function NotificationsPage() {
                   className="flex items-start gap-3 p-3 sm:p-4 rounded-cz border border-cz-accent/30 bg-cz-accent/5 hover:bg-cz-accent/10 transition-colors cursor-pointer"
                   onClick={() => { logEvent("notification_clicked", { kind: item.kind }); navigate(item.link); }}>
                   <div className="w-9 h-9 rounded-cz bg-cz-subtle flex items-center justify-center text-cz-accent-t flex-shrink-0 mt-0.5">
-                    {PendingIcon ? <PendingIcon size={18} /> : <span aria-hidden className="text-base">●</span>}
+                    {PendingIcon ? <PendingIcon size={18} /> : <InfoIcon size={18} aria-hidden="true" />}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-cz-1">{item.primary}</p>
                     <p className="text-cz-2 text-xs mt-0.5 leading-relaxed">{item.secondary}</p>
                     <p className="text-cz-3 text-xs mt-1.5">{timeAgo(item.updated_at)}</p>
                   </div>
-                  <span className="text-cz-accent-t text-xs flex-shrink-0 mt-1 whitespace-nowrap">→</span>
+                  <ChevronRightIcon size={14} className="text-cz-accent-t flex-shrink-0 mt-1" aria-hidden="true" />
                 </div>
                 );
               })}
@@ -652,7 +653,7 @@ export default function NotificationsPage() {
             </div>
           ) : filteredEvents.length === 0 ? (
             <EmptyState
-              icon={<span aria-hidden className="text-3xl leading-none">◎</span>}
+              icon={<FlagIcon size={32} aria-hidden="true" />}
               title={t("empty.noFeed")}
               description={t("empty.noFeedHint")}
             />
@@ -666,7 +667,7 @@ export default function NotificationsPage() {
                   <div key={event.id}
                     className="flex items-start gap-3 px-3 sm:px-4 py-3.5 rounded-cz border bg-cz-card border-cz-border transition-colors">
                     <div className={`w-8 h-8 rounded-cz bg-cz-subtle flex items-center justify-center flex-shrink-0 ${cfg.color}`}>
-                      {FeedIcon ? <FeedIcon size={16} /> : <span aria-hidden className="text-sm">●</span>}
+                      {FeedIcon ? <FeedIcon size={16} /> : <InfoIcon size={16} aria-hidden="true" />}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className={`text-sm font-medium ${cfg.color}`}>

@@ -126,10 +126,10 @@
     "days": "{d}d ago"
   },
   "msg": {
-    "loanCreated": "✅ Loan of {amount} CZ$ created",
-    "loanRepaidFull": "✅ Loan fully repaid!",
-    "loanRepaidPartial": "✅ {paid} CZ$ paid, {remaining} CZ$ remaining",
-    "errorPrefix": "❌ "
+    "loanCreated": "Loan of {amount} CZ$ created",
+    "loanRepaidFull": "Loan fully repaid!",
+    "loanRepaidPartial": "{paid} CZ$ paid, {remaining} CZ$ remaining",
+    "errorPrefix": ""
   },
   "tour": {
     "balance": {
@@ -167,7 +167,7 @@
       "title": "Loans, short vs long",
       "body": "Short loan: low fee, fast repayment. Long loan: larger amount across several seasons. Use them for transfer peaks, not operating gaps."
     },
-    "showTour": "💡 Show me around",
+    "showTour": "Show me around",
     "skip": "Skip"
   },
   "report": {

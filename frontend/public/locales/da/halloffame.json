@@ -1,9 +1,9 @@
 {
   "title": "Hall of Fame",
   "subtitle": "Historiske rekorder og manager statistik",
-  "tabRecords": "🏆 Rekorder",
-  "tabManagers": "👤 Managers",
-  "tabDivHistory": "◉ Divisionshistorik",
+  "tabRecords": "Rekorder",
+  "tabManagers": "Managers",
+  "tabDivHistory": "Divisionshistorik",
   "season": "Sæson {n}",
   "categories": {
     "most_points_season": "Flest point i én sæson",
