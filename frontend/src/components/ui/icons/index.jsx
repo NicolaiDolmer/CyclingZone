@@ -473,3 +473,50 @@ export function BookOpenIcon(props) {
     </IconBase>
   );
 }
+
+// Auction gavel (#1579 WP1: erstatter auktions-emoji). Hammer-hoved + skaft + sokkel.
+export function GavelIcon(props) {
+  return (
+    <IconBase {...props}>
+      <path d="M14 13l-7.5 7.5a2.12 2.12 0 0 1-3-3L11 10" />
+      <path d="M9 8l6 6" />
+      <path d="M13 4l7 7" />
+      <path d="M16 5l3 3" />
+      <path d="M4 22h8" />
+    </IconBase>
+  );
+}
+
+// Briefcase (#1579 WP1: transfers/kontrakter). Kasse + håndtag + skillelinje.
+export function BriefcaseIcon(props) {
+  return (
+    <IconBase {...props}>
+      <rect x="3" y="7" width="18" height="13" rx="1.5" />
+      <path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+      <path d="M3 13h18" />
+    </IconBase>
+  );
+}
+
+// Discord-mærke (#1579 WP1: erstatter Discord-emoji). Forenklet stroke-blob med to øjne.
+export function DiscordIcon(props) {
+  return (
+    <IconBase {...props}>
+      <path d="M7.5 16.5C5.6 14 5 10.2 6 6.6a13 13 0 0 1 4-1.1l.5 1a11 11 0 0 1 3 0l.5-1a13 13 0 0 1 4 1.1c1 3.6.4 7.4-1.5 9.9" />
+      <path d="M7.5 16.5c1.4 1 3 1.5 4.5 1.5s3.1-.5 4.5-1.5" />
+      <circle cx="9.5" cy="12" r="1" />
+      <circle cx="14.5" cy="12" r="1" />
+    </IconBase>
+  );
+}
+
+// Globe (#1579 WP1: sprog-vælger). Cirkel + ækvator + meridian.
+export function GlobeIcon(props) {
+  return (
+    <IconBase {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18" />
+      <path d="M12 3a14 14 0 0 1 0 18 14 14 0 0 1 0-18z" />
+    </IconBase>
+  );
+}
