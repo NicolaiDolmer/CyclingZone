@@ -16,14 +16,21 @@ import { MIN_RIDERS_FOR_RACE } from "./marketUtils.js";
 import { STAT_KEYS } from "./fictionalRiderGenerator.js";
 import { deriveAbilities, VISIBLE_ABILITIES } from "./abilityDerivation.js";
 
-// ── In-memory riders-mock til single-team-allokering (#1560) ───────────────────
-// Understøtter den fulde sti: select(firstname/lastname).order().range() (navne-
-// fetch), select(id).eq(team_id).order().range() (idempotens-tælling),
-// insert(rows).select("id"), select(...).in(ids).order().range() (read-back),
-// update({team_id}).eq(id). En seedet fake-derive sætter base_value pr. rytter.
-function createRidersMock({ seedRiders = [] } = {}) {
+// ── In-memory riders+teams-mock til single-team-allokering (#1560/#1563) ───────
+// Riders: select(firstname/lastname).order().range() (navne-fetch),
+// select(id).eq(team_id).order().range() (rytter-liste), insert(rows).select("id")
+// (respekterer team_id fra payload — #1563 insert-med-team_id), update().eq(),
+// delete().eq(). Teams: select(starter_squad_allocated_at).eq(id).single() (markør-
+// læsning) + update().eq() (markør-skrivning). Ukendte hold auto-vivifies som
+// markør-NULL (et nyt hold) så happy-path-tests ikke behøver seede teams.
+function createRidersMock({ seedRiders = [], teamMarkers = {} } = {}) {
   const store = new Map();
   for (const r of seedRiders) store.set(r.id, { ...r });
+  const teams = new Map(Object.entries(teamMarkers));
+  const getTeam = (id) => {
+    if (!teams.has(id)) teams.set(id, { starter_squad_allocated_at: null, created_at: "2026-06-01T00:00:00Z" });
+    return teams.get(id);
+  };
   let nextId = 1;
 
   const fakeDerive = async (_sb, ids) => {
@@ -37,7 +44,19 @@ function createRidersMock({ seedRiders = [] } = {}) {
 
   const supabase = {
     from(table) {
-      assert.equal(table, "riders", "single-team-allokering rører kun riders");
+      if (table === "teams") {
+        let idFilter;
+        const tb = {
+          select() { return tb; },
+          eq(_col, val) { idFilter = val; return tb; },
+          single() { return Promise.resolve({ data: { ...getTeam(idFilter) }, error: null }); },
+          update(patch) {
+            return { eq(_col, val) { Object.assign(getTeam(val), patch); return Promise.resolve({ error: null }); } };
+          },
+        };
+        return tb;
+      }
+      assert.equal(table, "riders", "single-team-allokering rører kun riders + teams");
       let teamFilter = undefined;
       let inIds = null;
       const builder = {
@@ -57,7 +76,8 @@ function createRidersMock({ seedRiders = [] } = {}) {
           const ids = [];
           for (const row of rows) {
             const id = `r-${nextId++}`;
-            store.set(id, { ...row, id, team_id: null });
+            // #1563: respektér team_id fra payload (insert-med-team_id, intet orphan-vindue).
+            store.set(id, { ...row, id, team_id: row.team_id ?? null });
             ids.push(id);
           }
           return { select() { return Promise.resolve({ data: ids.map((id) => ({ id })), error: null }); } };
@@ -71,12 +91,15 @@ function createRidersMock({ seedRiders = [] } = {}) {
             },
           };
         },
+        delete() {
+          return { eq(_col, id) { store.delete(id); return Promise.resolve({ error: null }); } };
+        },
       };
       return builder;
     },
   };
 
-  return { supabase, store, fakeDerive };
+  return { supabase, store, teams, fakeDerive };
 }
 
 // Fake-generator: stærke stats (80) som SKAL clampes i buildWeakStarterPool, med
@@ -292,8 +315,12 @@ test("runStarterSquadAllocation (#1487): generér svag pulje, derive (data-hale)
   }
   assert.equal(derived.length, 2 * STARTER_SQUAD.SQUAD_SIZE, "alle nye ryttere derivet (data-hale)");
   assert.equal(applied.assigned, 2 * STARTER_SQUAD.SQUAD_SIZE);
-  assert.equal(updates.length, 2 * STARTER_SQUAD.SQUAD_SIZE);
-  assert.ok(updates.every((u) => u.team_id === "t1" || u.team_id === "t2"));
+  // updates rummer nu både team_id-tildelinger (16) og #1563-markør-skrivninger (2).
+  const teamIdUpdates = updates.filter((u) => "team_id" in u);
+  const markerUpdates = updates.filter((u) => "starter_squad_allocated_at" in u);
+  assert.equal(teamIdUpdates.length, 2 * STARTER_SQUAD.SQUAD_SIZE, "16 team_id-tildelinger");
+  assert.ok(teamIdUpdates.every((u) => u.team_id === "t1" || u.team_id === "t2"));
+  assert.equal(markerUpdates.length, 2, "#1563: begge hold markeret som start-trup-allokeret");
 });
 
 // ── #1560 · allocateStarterSquadForTeam (single-team-bootstrap) ────────────────
@@ -307,7 +334,7 @@ test("#1560 hash/seed: deriveTeamSeed er deterministisk + hold-unik", () => {
 });
 
 test("#1560 single-team happy path: præcis SQUAD_SIZE ryttere med korrekt team_id", async () => {
-  const { supabase, store, fakeDerive } = createRidersMock();
+  const { supabase, store, teams, fakeDerive } = createRidersMock();
   const res = await allocateStarterSquadForTeam(supabase, "new-team-1", {
     seed: 2026, generate: makeFakeGenerate(), derive: fakeDerive,
   });
@@ -316,6 +343,9 @@ test("#1560 single-team happy path: præcis SQUAD_SIZE ryttere med korrekt team_
   const onTeam = [...store.values()].filter((r) => r.team_id === "new-team-1");
   assert.equal(onTeam.length, STARTER_SQUAD.SQUAD_SIZE, "8 ryttere har team_id på holdet");
   assert.equal(store.size, STARTER_SQUAD.SQUAD_SIZE, "kun de 8 nye ryttere blev oprettet");
+  assert.ok(teams.get("new-team-1").starter_squad_allocated_at, "markør sat efter allokering (#1563)");
+  assert.equal([...store.values()].filter((r) => r.team_id == null).length, 0,
+    "ingen orphan-ryttere — insert sætter team_id direkte (#1563)");
   // Alle insertede stats clampet til vinduet (svag pulje).
   for (const r of store.values()) {
     for (const k of STAT_KEYS) {
@@ -363,7 +393,7 @@ test("#1560 determinisme + variation: forskellige hold → forskellige reproduce
   assert.notDeepEqual(names(a1.store), names(b.store), "forskellige hold → forskellige ryttere");
 });
 
-test("#1560 idempotens: kald to gange for samme hold → IKKE 16 ryttere", async () => {
+test("#1560/#1563 idempotens: kald to gange for samme hold → markør gør andet kald til no-op", async () => {
   const { supabase, store, fakeDerive } = createRidersMock();
   const generate = makeFakeGenerate();
   const first = await allocateStarterSquadForTeam(supabase, "idem-team", { seed: 2026, generate, derive: fakeDerive });
@@ -371,19 +401,77 @@ test("#1560 idempotens: kald to gange for samme hold → IKKE 16 ryttere", async
 
   const second = await allocateStarterSquadForTeam(supabase, "idem-team", { seed: 2026, generate, derive: fakeDerive });
   assert.equal(second.assigned, 0, "andet kald allokerer intet");
-  assert.equal(second.skipped, "already-has-riders");
+  assert.equal(second.skipped, "already-allocated");
   assert.equal(store.size, STARTER_SQUAD.SQUAD_SIZE, "stadig kun 8 ryttere — ingen dobbelt-allokering");
   assert.equal([...store.values()].filter((r) => r.team_id === "idem-team").length, STARTER_SQUAD.SQUAD_SIZE);
 });
 
-test("#1560 idempotens: hold med eksisterende rytter (fx relaunch-trup) røres ikke", async () => {
+test("#1563 idempotens: hold med markør sat (fx backfilled relaunch-trup) røres ikke", async () => {
   const { supabase, store, fakeDerive } = createRidersMock({
     seedRiders: [{ id: "existing-1", team_id: "relaunch-team", firstname: "Old", lastname: "Rider" }],
+    teamMarkers: { "relaunch-team": { starter_squad_allocated_at: "2026-06-18T00:00:00Z", created_at: "2026-06-18T00:00:00Z" } },
   });
   const res = await allocateStarterSquadForTeam(supabase, "relaunch-team", {
     seed: 2026, generate: makeFakeGenerate(), derive: fakeDerive,
   });
   assert.equal(res.assigned, 0);
-  assert.equal(res.skipped, "already-has-riders");
+  assert.equal(res.skipped, "already-allocated");
   assert.equal(store.size, 1, "ingen nye ryttere oprettet");
+});
+
+// ── #1563 · exploit-sikkerhed + self-heal af delvis/fuld bootstrap-fejl ────────
+
+test("#1563 exploit-sikker: markør sat + 0 ryttere (ejer har solgt ned) → INGEN gratis trup", async () => {
+  // Et legitimt hold KAN sælge sig under 8 (ingen sælg-guard). Markøren forhindrer
+  // at det får en ny gratis start-trup — sandheden er markøren, ikke rytter-antallet.
+  const { supabase, store, fakeDerive } = createRidersMock({
+    teamMarkers: { "sold-down": { starter_squad_allocated_at: "2026-06-18T00:00:00Z", created_at: "2026-06-18T00:00:00Z" } },
+  });
+  const res = await allocateStarterSquadForTeam(supabase, "sold-down", {
+    seed: 2026, generate: makeFakeGenerate(), derive: fakeDerive,
+  });
+  assert.equal(res.skipped, "already-allocated");
+  assert.equal(res.assigned, 0);
+  assert.equal(store.size, 0, "ingen ryttere oprettet til et hold der selv har solgt ned");
+});
+
+test("#1563 heal fuld fejl: markør null + 0 ryttere → allokér 8 + sæt markør", async () => {
+  const { supabase, store, teams, fakeDerive } = createRidersMock();
+  const res = await allocateStarterSquadForTeam(supabase, "stuck-empty", {
+    seed: 2026, generate: makeFakeGenerate(), derive: fakeDerive,
+  });
+  assert.equal(res.assigned, STARTER_SQUAD.SQUAD_SIZE);
+  assert.equal([...store.values()].filter((r) => r.team_id === "stuck-empty").length, STARTER_SQUAD.SQUAD_SIZE);
+  assert.ok(teams.get("stuck-empty").starter_squad_allocated_at, "markør sat efter heal");
+});
+
+test("#1563 heal delvis (derive/markør fejlede): markør null + 8 ryttere → re-derive, INGEN nye, markør sat", async () => {
+  const seedRiders = Array.from({ length: STARTER_SQUAD.SQUAD_SIZE }, (_, i) => ({
+    id: `pre-${i}`, team_id: "derive-failed", firstname: `F${i}`, lastname: `L${i}`,
+  }));
+  const { supabase, store, teams, fakeDerive } = createRidersMock({ seedRiders });
+  const res = await allocateStarterSquadForTeam(supabase, "derive-failed", {
+    seed: 2026, generate: makeFakeGenerate(), derive: fakeDerive,
+  });
+  assert.equal(res.recovered, "re-derived");
+  assert.equal(res.assigned, STARTER_SQUAD.SQUAD_SIZE);
+  assert.equal(store.size, STARTER_SQUAD.SQUAD_SIZE, "ingen NYE ryttere — de 8 eksisterende re-derives");
+  assert.ok(store.get("pre-0").base_value > 0, "fakeDerive kørte (base_value sat)");
+  assert.ok(teams.get("derive-failed").starter_squad_allocated_at, "markør sat efter heal");
+});
+
+test("#1563 heal delvis-insert: markør null + 3 ryttere → ryd det halve + re-allokér til 8", async () => {
+  const seedRiders = Array.from({ length: 3 }, (_, i) => ({
+    id: `partial-${i}`, team_id: "partial-team", firstname: `F${i}`, lastname: `L${i}`,
+  }));
+  const { supabase, store, teams, fakeDerive } = createRidersMock({ seedRiders });
+  const res = await allocateStarterSquadForTeam(supabase, "partial-team", {
+    seed: 2026, generate: makeFakeGenerate(), derive: fakeDerive,
+  });
+  assert.equal(res.recovered, "cleaned-partial");
+  assert.equal(res.assigned, STARTER_SQUAD.SQUAD_SIZE);
+  assert.equal([...store.values()].filter((r) => r.team_id === "partial-team").length, STARTER_SQUAD.SQUAD_SIZE);
+  assert.equal(store.size, STARTER_SQUAD.SQUAD_SIZE, "de 3 delvise ryttere ryddet, 8 friske indsat");
+  assert.ok(!store.has("partial-0"), "den delvise trup blev ryddet");
+  assert.ok(teams.get("partial-team").starter_squad_allocated_at, "markør sat efter heal");
 });
