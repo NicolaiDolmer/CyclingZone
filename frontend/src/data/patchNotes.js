@@ -4,6 +4,29 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "5.77",
+    "date": "2026-06-20",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Design",
+        "en": {
+          "title": "Tighter, more consistent card corners",
+          "body": "Cards, panels, modals and buttons now share one slightly tighter corner radius across the whole app, for a cleaner and more consistent look. Modal backdrops are flat (no blur) and the interface font is now served directly from Cycling Zone, so pages paint a touch faster."
+        },
+        "da": {
+          "title": "Strammere, mere ensartede kort-hjørner",
+          "body": "Kort, paneler, dialoger og knapper deler nu én lidt strammere hjørne-radius i hele appen, for et renere og mere ensartet udtryk. Dialog-baggrunde er flade (uden slør), og interface-skrifttypen leveres nu direkte fra Cycling Zone, så sider tegnes en anelse hurtigere."
+        },
+        "refs": [
+          1578
+        ]
+      }
+    ]
+  },
+  {
     "version": "5.76",
     "date": "2026-06-20",
     "label": "Beta",

@@ -20,7 +20,7 @@ const EMPTY_STATE_KPIS = ["results", "finance", "identity", "rank"];
 export default function BoardEmptyState({ onOpenWizard, onStartTour }) {
   const { t } = useTranslation("board");
   return (
-    <div className="mb-5 px-5 py-5 bg-cz-card border border-cz-accent/30 rounded-xl">
+    <div className="mb-5 px-5 py-5 bg-cz-card border border-cz-accent/30 rounded-cz">
       <div className="flex items-start gap-3 mb-4">
         <span className="text-cz-accent-t text-xl flex-shrink-0">◧</span>
         <div className="flex-1 min-w-0">

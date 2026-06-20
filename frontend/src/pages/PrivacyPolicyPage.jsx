@@ -18,7 +18,7 @@ export default function PrivacyPolicyPage() {
 
   return (
     <div className="min-h-screen bg-cz-body py-10 px-4 sm:px-6">
-      <div className="max-w-3xl mx-auto bg-cz-card rounded-2xl shadow-lg p-6 sm:p-8">
+      <div className="max-w-3xl mx-auto bg-cz-card rounded-cz shadow-lg p-6 sm:p-8">
         <div className="mb-6 flex items-center justify-between gap-3">
           <h1 className="text-cz-1 font-bold text-2xl">Privatlivspolitik</h1>
           <div className="flex items-center gap-3 text-sm">

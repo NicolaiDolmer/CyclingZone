@@ -123,7 +123,7 @@ export default function RaceHistoryPage() {
 
       <div className="grid md:grid-cols-2 gap-4">
         {/* Editions list */}
-        <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+        <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
           <div className="px-4 py-3 border-b border-cz-border">
             <h2 className="font-semibold text-cz-1 text-sm">{t("history.editions")}</h2>
           </div>
@@ -161,7 +161,7 @@ export default function RaceHistoryPage() {
         </div>
 
         {/* Best riders */}
-        <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+        <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
           <div className="px-4 py-3 border-b border-cz-border">
             <h2 className="font-semibold text-cz-1 text-sm">{t("history.bestRiders")}</h2>
             <p className="text-cz-3 text-xs">{t("history.bestRidersSub")}</p>
@@ -204,7 +204,7 @@ export default function RaceHistoryPage() {
 
       {/* Accumulated bar chart */}
       {riderStats.length > 0 && riderStats[0].total_points > 0 && (
-        <div className="bg-cz-card border border-cz-border rounded-xl p-5">
+        <div className="bg-cz-card border border-cz-border rounded-cz p-5">
           <h2 className="font-semibold text-cz-1 text-sm mb-0.5">{t("history.accumulatedTitle")}</h2>
           <p className="text-cz-3 text-xs mb-5">{t("history.accumulatedSub")}</p>
           <div className="space-y-3">

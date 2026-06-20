@@ -308,7 +308,7 @@ export default function ActivityPage() {
 
       {/* ── NEEDS ACTION ── */}
       {tab === "action" && (
-        <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+        <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
           {actionCount === 0 && urgentAuctions.length === 0 ? (
             <EmptyState icon="✓" title={t("empty.actionTitle")} sub={t("empty.actionSub")} />
           ) : (
@@ -386,7 +386,7 @@ export default function ActivityPage() {
 
       {/* ── AUCTIONS ── */}
       {tab === "auctions" && (
-        <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+        <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
           {activeAuctions.length === 0 ? (
             <EmptyState icon="⚡" title={t("empty.auctionsTitle")} sub={t("empty.auctionsSub")} />
           ) : (
@@ -425,13 +425,13 @@ export default function ActivityPage() {
       {tab === "transfers" && (
         <div className="space-y-4">
           {activeReceivedOffers.length + activeSentOffers.length === 0 && (
-            <div className="bg-cz-card border border-cz-border rounded-xl">
+            <div className="bg-cz-card border border-cz-border rounded-cz">
               <EmptyState icon="↔" title={t("empty.transfersTitle")} sub={t("empty.transfersSub")} />
             </div>
           )}
 
           {activeReceivedOffers.length > 0 && (
-            <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+            <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
               <SectionHeader title={t("section.receivedOffers")} count={activeReceivedOffers.length} />
               {activeReceivedOffers.map(o => {
                 const cfg = OFFER_STATUS[o.status] || OFFER_STATUS.pending;
@@ -450,7 +450,7 @@ export default function ActivityPage() {
           )}
 
           {activeSentOffers.length > 0 && (
-            <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+            <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
               <SectionHeader title={t("section.sentOffers")} count={activeSentOffers.length} />
               {activeSentOffers.map(o => {
                 const cfg = OFFER_STATUS[o.status] || OFFER_STATUS.pending;
@@ -474,13 +474,13 @@ export default function ActivityPage() {
       {tab === "loans" && (
         <div className="space-y-4">
           {lendingLoans.length + borrowingLoans.length === 0 ? (
-            <div className="bg-cz-card border border-cz-border rounded-xl">
+            <div className="bg-cz-card border border-cz-border rounded-cz">
               <EmptyState icon="⇄" title={t("empty.loansTitle")} sub={t("empty.loansSub")} />
             </div>
           ) : (
             <>
               {lendingLoans.length > 0 && (
-                <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+                <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
                   <SectionHeader title={t("section.iLend")} count={lendingLoans.length} />
                   {lendingLoans.map(l => {
                     const cfg = LOAN_STATUS[l.status] || LOAN_STATUS.active;
@@ -499,7 +499,7 @@ export default function ActivityPage() {
               )}
 
               {borrowingLoans.length > 0 && (
-                <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+                <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
                   <SectionHeader title={t("section.iBorrow")} count={borrowingLoans.length} />
                   {borrowingLoans.map(l => {
                     const cfg = LOAN_STATUS[l.status] || LOAN_STATUS.active;
@@ -530,7 +530,7 @@ export default function ActivityPage() {
               {t("watchlist.goToFull")}
             </button>
           </div>
-          <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+          <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
             {watchlist.length === 0 ? (
               <EmptyState icon="⭐" title={t("empty.watchlistTitle")}
                 sub={t("empty.watchlistSub")} />
@@ -575,13 +575,13 @@ export default function ActivityPage() {
       {tab === "history" && (
         <div className="space-y-4">
           {completedAuctions.length + histSentOffers.length + histReceivedOffers.length + historicalLoans.length === 0 ? (
-            <div className="bg-cz-card border border-cz-border rounded-xl">
+            <div className="bg-cz-card border border-cz-border rounded-cz">
               <EmptyState icon="◎" title={t("empty.historyTitle")} sub={t("empty.historySub")} />
             </div>
           ) : (
             <>
               {completedAuctions.length > 0 && (
-                <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+                <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
                   <SectionHeader title={t("section.auctions")} count={completedAuctions.length} />
                   {completedAuctions.map(a => {
                     const iWon  = getAuctionLeaderId(a) === myTeamId;
@@ -607,7 +607,7 @@ export default function ActivityPage() {
               )}
 
               {(histReceivedOffers.length + histSentOffers.length) > 0 && (
-                <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+                <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
                   <SectionHeader title={t("section.transfers")} count={histReceivedOffers.length + histSentOffers.length} />
                   {[
                     ...histReceivedOffers.map(o => ({ ...o, _dir: "received" })),
@@ -632,7 +632,7 @@ export default function ActivityPage() {
               )}
 
               {historicalLoans.length > 0 && (
-                <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+                <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
                   <SectionHeader title={t("section.loans")} count={historicalLoans.length} />
                   {historicalLoans.map(l => {
                     const cfg = LOAN_STATUS[l.status] || LOAN_STATUS.completed;

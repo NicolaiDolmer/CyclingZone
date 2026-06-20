@@ -135,7 +135,7 @@ export default function TeamProfilePage() {
       </button>
 
       {/* Header */}
-      <div className="bg-cz-card border border-cz-border rounded-xl p-6 mb-4">
+      <div className="bg-cz-card border border-cz-border rounded-cz p-6 mb-4">
         <div className="flex items-start justify-between">
           <div>
             <div className="flex items-center gap-3 mb-1 flex-wrap">
@@ -170,7 +170,7 @@ export default function TeamProfilePage() {
 
       {/* Season standing */}
       {standing && (
-        <div className="bg-cz-card border border-cz-border rounded-xl p-5 mb-4">
+        <div className="bg-cz-card border border-cz-border rounded-cz p-5 mb-4">
           <div className="flex items-center gap-2 mb-3 flex-wrap">
             <h2 className="text-cz-1 font-semibold text-sm">{t("profile.seasonResults")}</h2>
             {/* #1095: tydeliggør HVILKEN sæson resultaterne gælder + om den er afsluttet */}
@@ -228,7 +228,7 @@ export default function TeamProfilePage() {
 
       {/* Squad with FM toggle */}
       {activeTab === "squad" && (
-      <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+      <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
         <div className="px-5 py-4 border-b border-cz-border flex items-center justify-between flex-wrap gap-3">
           <h2 className="text-cz-1 font-semibold text-sm">{t("profile.squadTitle", { count: currentRiders.length })}</h2>
           {hasTransfers && (

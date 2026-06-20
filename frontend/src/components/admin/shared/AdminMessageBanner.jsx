@@ -6,7 +6,7 @@ export default function AdminMessageBanner({ msg }) {
       ? "bg-cz-info-bg0/10 text-cz-info border-blue-500/20"
       : "bg-cz-success-bg text-cz-success border-cz-success/30";
   return (
-    <div className={`mb-4 px-4 py-3 rounded-xl text-sm border ${cls}`}>
+    <div className={`mb-4 px-4 py-3 rounded-cz text-sm border ${cls}`}>
       {msg.text}
     </div>
   );

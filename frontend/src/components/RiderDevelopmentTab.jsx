@@ -93,7 +93,7 @@ export default function RiderDevelopmentTab({ statHistory, stats }) {
     .map(row => ({ synced_at: row.synced_at, stat_value: row[selectedStat] }));
 
   return (
-    <div className="bg-cz-card border border-cz-border rounded-xl p-5">
+    <div className="bg-cz-card border border-cz-border rounded-cz p-5">
       {statHistory.length === 0 ? (
         <p className="text-cz-3 text-center py-8">{t("development.empty")}</p>
       ) : (

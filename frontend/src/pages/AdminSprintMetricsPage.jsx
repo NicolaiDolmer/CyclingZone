@@ -95,7 +95,7 @@ function buildCsv(metrics) {
 function KpiCard({ label, value, delta, tooltip }) {
   const deltaClass = delta?.dir === "up" ? "text-cz-success" : delta?.dir === "down" ? "text-cz-danger" : "text-cz-3";
   return (
-    <div className="bg-cz-card border border-cz-border rounded-xl p-4">
+    <div className="bg-cz-card border border-cz-border rounded-cz p-4">
       <div className="flex items-start justify-between gap-2">
         <p className="text-cz-3 text-xs uppercase tracking-wide">{label}</p>
         {tooltip && (
@@ -259,7 +259,7 @@ export default function AdminSprintMetricsPage() {
             <KpiCard label={`Aktive i ${windowChoice}`} value={kpis.active.value}  delta={kpis.active.delta}  tooltip={TOOLTIPS.active} />
           </div>
 
-          <div className="bg-cz-card border border-cz-border rounded-xl p-4">
+          <div className="bg-cz-card border border-cz-border rounded-cz p-4">
             <div className="flex items-center justify-between mb-3">
               <p className="text-cz-3 text-xs uppercase tracking-wide">Top 5 features ({windowChoice})</p>
               <span className="text-cz-3 text-xs cursor-help" title={TOOLTIPS.features}>ⓘ</span>
@@ -286,7 +286,7 @@ export default function AdminSprintMetricsPage() {
             )}
           </div>
 
-          <div className="bg-cz-card border border-cz-border rounded-xl p-4">
+          <div className="bg-cz-card border border-cz-border rounded-cz p-4">
             <div className="flex items-center justify-between mb-3">
               <p className="text-cz-3 text-xs uppercase tracking-wide">Signup-kohorte-retention (go/no-go · #1168)</p>
               <span className="text-cz-3 text-xs cursor-help" title={TOOLTIPS.cohort}>ⓘ</span>
@@ -321,7 +321,7 @@ export default function AdminSprintMetricsPage() {
             )}
           </div>
 
-          <div className="bg-cz-card border border-cz-border rounded-xl p-4">
+          <div className="bg-cz-card border border-cz-border rounded-cz p-4">
             <p className="text-cz-3 text-xs uppercase tracking-wide mb-2">Hvordan opdaterer jeg SPRINT_DASHBOARD.md?</p>
             <ol className="text-cz-1 text-sm space-y-1 list-decimal list-inside">
               <li>Vælg vindue ovenfor (typisk &quot;7 dage&quot; for ugentlig sprint-update).</li>
