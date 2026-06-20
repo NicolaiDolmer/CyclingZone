@@ -32,7 +32,9 @@ import { generateFictionalRiders, STAT_KEYS } from "../../lib/fictionalRiderGene
 import { deriveAbilities, VISIBLE_ABILITIES } from "../../lib/abilityDerivation.js";
 import { computeRiderTypes } from "../../lib/riderTypes.js";
 import { predictBaseValue } from "../../lib/riderValuation.js";
-import { allocateStarterSquads, STARTER_SQUAD, computeAge } from "../../lib/starterSquadAllocator.js";
+import {
+  allocateStarterSquads, STARTER_SQUAD, STARTER_POOL_STAT_WINDOW, computeAge, deriveTeamSeed,
+} from "../../lib/starterSquadAllocator.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const baseline = JSON.parse(readFileSync(join(__dirname, "../../lib/riderTypesBaseline.json"), "utf8"));
@@ -192,6 +194,104 @@ function contrastFloorProbe() {
   console.log("  vender først tilbage når vinduet er bredt nok til at spændet (k·(raw−median)) løfter signatur-evnen mærkbart over 8.");
 }
 
+// ── #1560: SINGLE-TEAM SIGNUP-SIMULERING (nye hold efter relaunch) ─────────────
+// Hvert NYT hold får 8 ryttere fra SAMME svage pulje, men med et per-hold seed
+// (deriveTeamSeed) → varierede, reproducerbare trupper. Vi simulerer N signups og
+// måler scorecardet på tværs (forward-guard ≤25, trup-styrke [50,57], 0 stjerner,
+// type-spredning). Spejler produktionens allocateStarterSquadForTeam-vej.
+const SINGLE_TEAM_WINDOW = STARTER_POOL_STAT_WINDOW; // [50,57] (ejer-valgt)
+const BASE_SEED = 2026;                              // launch-seed (som prod-default)
+
+// Byg én 8-rytter-trup for et givet teamId via den ÆGTE prod-vej (clamp →
+// fallback-derivation → type → base_value). Returnerer pr.-rytter-detaljer.
+function buildSingleTeamSquad(teamId) {
+  const teamSeed = deriveTeamSeed((BASE_SEED + 1487) >>> 0, teamId);
+  const { riders } = generateFictionalRiders({
+    seed: teamSeed, count: STARTER_SQUAD.SQUAD_SIZE, referenceYear: REFERENCE_YEAR,
+  });
+  return riders.map((r, i) => {
+    const clampedStats = {};
+    for (const k of STAT_KEYS) clampedStats[k] = clamp(r[k], SINGLE_TEAM_WINDOW.lo, SINGLE_TEAM_WINDOW.hi);
+    const row = { ...r, ...clampedStats, id: `${teamId}-${i}` };
+    const abilities = deriveAbilities({}, row, { asOfYear: REFERENCE_YEAR }); // prod-fallback
+    const { primary, secondary } = computeRiderTypes(abilities, baseline);
+    const withType = { ...row, primary_type: primary.key, secondary_type: secondary.key };
+    return {
+      teamId,
+      primary_type: primary.key,
+      abilities,
+      base_value: predictBaseValue(withType, abilities, model),
+    };
+  });
+}
+
+function singleTeamSignupSim(nSignups = 50) {
+  console.log(`\n================ #1560 SINGLE-TEAM SIGNUP-SIM (${nSignups} nye hold) ================`);
+  console.log(`per-hold seed = deriveTeamSeed(${(BASE_SEED + 1487) >>> 0}, teamId) · vindue [${SINGLE_TEAM_WINDOW.lo},${SINGLE_TEAM_WINDOW.hi}]`);
+  const STAT_DRIVEN = VISIBLE_ABILITIES.filter((k) => k !== "tactics" && k !== "aggression");
+  const STAR_BV = 8_000_000; // STAR_RIDER_MARKET_VALUE-niveau (superstjerne-tærskel)
+
+  const squadStrengths = [];        // pr.-hold gennemsnitlig top-evne (= "hold-styrke"-proxy)
+  let globalMaxAbility = 0;
+  let starCount = 0;
+  const typeSet = new Set();
+  const distinctTypesPerSquad = [];
+  const allSquadAvgStat = [];       // pr.-hold gns. clampet stat (skal ligge i [50,57])
+
+  for (let s = 0; s < nSignups; s++) {
+    const teamId = `sim-team-${s}-${(Math.random() * 1e9) | 0}`; // unik UUID-agtig id pr. signup
+    const squad = buildSingleTeamSquad(teamId);
+
+    const squadDistinct = new Set(squad.map((r) => r.primary_type));
+    distinctTypesPerSquad.push(squadDistinct.size);
+    for (const t of squadDistinct) typeSet.add(t);
+
+    let squadTopSum = 0;
+    for (const r of squad) {
+      const topAbility = Math.max(...STAT_DRIVEN.map((k) => r.abilities[k]));
+      globalMaxAbility = Math.max(globalMaxAbility, topAbility);
+      squadTopSum += topAbility;
+      if ((r.base_value || 0) >= STAR_BV) starCount++;
+    }
+    squadStrengths.push(squadTopSum / squad.length);
+  }
+
+  // "Hold-styrke i [50,57]": ejer-vinduet er på STAT-skalaen (de clampede pcm-stats),
+  // ikke evne-skalaen. Vi måler derfor den gns. clampede stat pr. hold mod [50,57],
+  // OG rapporterer evne-forward-guarden (≤25) separat.
+  for (let s = 0; s < nSignups; s++) {
+    const teamId = `strcheck-${s}`;
+    const { riders } = generateFictionalRiders({
+      seed: deriveTeamSeed((BASE_SEED + 1487) >>> 0, teamId), count: STARTER_SQUAD.SQUAD_SIZE, referenceYear: REFERENCE_YEAR,
+    });
+    let sum = 0; let n = 0;
+    for (const r of riders) for (const k of STAT_KEYS) { sum += clamp(r[k], SINGLE_TEAM_WINDOW.lo, SINGLE_TEAM_WINDOW.hi); n++; }
+    allSquadAvgStat.push(sum / n);
+  }
+
+  const minStat = Math.min(...allSquadAvgStat);
+  const maxStat = Math.max(...allSquadAvgStat);
+  const distinctAcross = typeSet.size;
+  const avgDistinctPerSquad = distinctTypesPerSquad.reduce((a, b) => a + b, 0) / distinctTypesPerSquad.length;
+
+  console.log(`forward-guard: stærkeste STAT-DREVNE evne over ALLE ${nSignups} trupper: ${globalMaxAbility}  (krav ≤25)`);
+  console.log(`hold-stat-vindue: pr.-hold gns. clampet stat ∈ [${minStat.toFixed(2)}, ${maxStat.toFixed(2)}]  (krav ⊆ [${SINGLE_TEAM_WINDOW.lo},${SINGLE_TEAM_WINDOW.hi}])`);
+  console.log(`stjerne-ryttere (base_value ≥ ${STAR_BV.toLocaleString("en-US")}): ${starCount}  (krav 0)`);
+  console.log(`distinkte rytter-typer på tværs af alle trupper: ${distinctAcross}/8  (krav ≥4)`);
+  console.log(`gns. distinkte typer pr. 8-rytter-trup: ${avgDistinctPerSquad.toFixed(1)}`);
+
+  const checks = [
+    ["top-evne ≤25", globalMaxAbility <= 25],
+    [`hold-stat ⊆ [${SINGLE_TEAM_WINDOW.lo},${SINGLE_TEAM_WINDOW.hi}]`, minStat >= SINGLE_TEAM_WINDOW.lo && maxStat <= SINGLE_TEAM_WINDOW.hi],
+    ["0 stjerner", starCount === 0],
+    ["≥4 distinkte typer på tværs", distinctAcross >= 4],
+  ];
+  let allPass = true;
+  for (const [label, ok] of checks) { console.log(`  [${ok ? "PASS" : "FAIL"}] ${label}`); if (!ok) allPass = false; }
+  console.log(allPass ? "→ #1560 SINGLE-TEAM SIM: ALLE ASSERTIONS PASS" : "→ #1560 SINGLE-TEAM SIM: MINDST ÉN FEJLEDE");
+  if (!allPass) process.exitCode = 1;
+}
+
 console.log("=== #1487 SVAG START-POOL — måle-prototype (READ-ONLY) ===");
 console.log(`seed ${SEED} · pool ${POOL_COUNT} · ${TEAMS}×${SQUAD}=${TEAMS * SQUAD} startryttere`);
 console.log(`Derivations-vej: PCM-FALLBACK (= relaunch/akademi-prod-vej; ingen kontrast). Skala 1..99.`);
@@ -205,3 +305,4 @@ scorecard("variety-A [50,60]", { lo: 50, hi: 60 });
 scorecard("variety-B [50,63]", { lo: 50, hi: 63 });
 scorecard("variety-C [50,66]", { lo: 50, hi: 66 });
 contrastFloorProbe();
+singleTeamSignupSim(50);

@@ -1,4 +1,5 @@
 import { createInitialBoardProfile } from "./boardEngine.js";
+import { allocateStarterSquadForTeam } from "./starterSquadAllocator.js";
 import {
   DIVISION_CAPACITY,
   INITIAL_BALANCE,
@@ -242,6 +243,9 @@ export async function upsertOwnTeamProfile({
   existingTeam = null,
   name,
   managerName,
+  // #1560: DI så testen kan verificere at allokeringen kaldes (created===true) vs.
+  // ikke (created===false) uden at skulle mocke hele riders/derive-kæden.
+  allocateStarterSquad = allocateStarterSquadForTeam,
 } = {}) {
   if (!supabase?.from) {
     throw createHttpError(500, "Supabase client is required");
@@ -308,6 +312,26 @@ export async function upsertOwnTeamProfile({
   }
 
   const boardProfileCreated = await ensureBoardProfile({ supabase, team });
+
+  // #1560: et NYT hold skal have en spilbar start-trup (8 ryttere fra den svage
+  // #1487-pulje) FØR signup-responsen — ellers er holdet en tom-trup-blindgyde
+  // (kan ikke stille op til løb, onboarding-trin 2 kan aldrig fuldføres).
+  // Kun ved created===true: en idempotent created===false (et samtidigt bootstrap
+  // vandt) håndteres af det VINDENDE kald — og allocateStarterSquadForTeam har
+  // selv en idempotens-guard, så dobbelt-allokering er umulig uanset.
+  // En fejl her er alvorlig (= hele bug'en) → log tydeligt og bobl op, så holdet
+  // ikke stille efterlades tomt.
+  if (created) {
+    try {
+      await allocateStarterSquad(supabase, team.id);
+    } catch (allocError) {
+      console.error(
+        `[teamProfileEngine] #1560 starter-squad-allokering FEJLEDE for nyt hold ${team.id}:`,
+        allocError?.message || allocError,
+      );
+      throw createHttpError(500, `Holdet blev oprettet, men start-truppen kunne ikke tildeles: ${allocError?.message || allocError}`);
+    }
+  }
 
   return {
     team,

@@ -4,6 +4,15 @@ import assert from "node:assert/strict";
 import { upsertOwnTeamProfile } from "./teamProfileEngine.js";
 import { DIVISION_CAPACITY, INITIAL_BALANCE, SPONSOR_INCOME_BASE } from "./economyConstants.js";
 
+// #1560: alle eksisterende tests injicerer en no-op starter-squad-allokering, så
+// de ikke rammer den ægte riders/derive-kæde (den dækkes i starterSquadAllocator.test.js).
+// upsert(args) = upsertOwnTeamProfile med default-stub; tests der vil verificere
+// allokerings-koblingen sender deres egen recording-stub.
+const noopAllocate = async () => ({ assigned: 0, skipped: "test-noop" });
+function upsert(args) {
+  return upsertOwnTeamProfile({ allocateStarterSquad: noopAllocate, ...args });
+}
+
 function seedTeams({ division, count, is_ai = false, is_frozen = false, is_test_account = false }) {
   const kind = is_ai ? "ai" : is_frozen ? "frozen" : is_test_account ? "test" : "human";
   return Array.from({ length: count }, (_, index) => ({
@@ -209,7 +218,7 @@ function createSupabaseDouble({ teams = [], boardProfiles = [], insertErrors = {
 test("upsertOwnTeamProfile creates a missing team and bootstraps a board profile", async () => {
   const supabase = createSupabaseDouble();
 
-  const result = await upsertOwnTeamProfile({
+  const result = await upsert({
     supabase,
     userId: "user-1",
     name: "  Team Nova  ",
@@ -232,7 +241,7 @@ test("upsertOwnTeamProfile sætter sponsor_income og balance til de delte konsta
   assert.equal(INITIAL_BALANCE, 800000, "DB-default i schema.sql:30 er 800000");
 
   const supabase = createSupabaseDouble();
-  const result = await upsertOwnTeamProfile({
+  const result = await upsert({
     supabase,
     userId: "user-1",
     name: "Sponsor Check",
@@ -250,7 +259,7 @@ test("#962 fyld-fra-toppen: nyt hold lander i div 2 når div 1 er fyldt", async 
     teams: seedTeams({ division: 1, count: DIVISION_CAPACITY }),
   });
 
-  const result = await upsertOwnTeamProfile({
+  const result = await upsert({
     supabase,
     userId: "user-new",
     name: "Overflow To Two",
@@ -268,7 +277,7 @@ test("#962 fyld-fra-toppen: nyt hold lander i div 3 (overflow) når div 1 og 2 e
     ],
   });
 
-  const result = await upsertOwnTeamProfile({
+  const result = await upsert({
     supabase,
     userId: "user-new",
     name: "Overflow To Three",
@@ -287,7 +296,7 @@ test("#962 fyld-fra-toppen: blød cap — div 3 må vokse forbi kapaciteten", as
     ],
   });
 
-  const result = await upsertOwnTeamProfile({
+  const result = await upsert({
     supabase,
     userId: "user-new",
     name: "Soft Cap Overflow",
@@ -307,7 +316,7 @@ test("#962 fyld-fra-toppen: AI-, test- og frosne hold tæller ikke mod kapacitet
     ],
   });
 
-  const result = await upsertOwnTeamProfile({
+  const result = await upsert({
     supabase,
     userId: "user-new",
     name: "Counts Humans Only",
@@ -328,7 +337,7 @@ test("#962 fyld-fra-toppen: test-konti fylder ikke en division (regression — r
     ],
   });
 
-  const result = await upsertOwnTeamProfile({
+  const result = await upsert({
     supabase,
     userId: "user-new",
     name: "Real Team Eighteen",
@@ -356,7 +365,7 @@ test("upsertOwnTeamProfile updates the existing team without duplicating the boa
     ],
   });
 
-  const result = await upsertOwnTeamProfile({
+  const result = await upsert({
     supabase,
     userId: "user-1",
     existingTeam: clone(supabase.state.teams[0]),
@@ -385,7 +394,7 @@ test("upsertOwnTeamProfile repairs legacy signup placeholder economy values", as
     ],
   });
 
-  const result = await upsertOwnTeamProfile({
+  const result = await upsert({
     supabase,
     userId: "user-1",
     existingTeam: clone(supabase.state.teams[0]),
@@ -418,7 +427,7 @@ test("upsertOwnTeamProfile does not overwrite real existing economy values", asy
     ],
   });
 
-  const result = await upsertOwnTeamProfile({
+  const result = await upsert({
     supabase,
     userId: "user-1",
     existingTeam: clone(supabase.state.teams[0]),
@@ -454,7 +463,7 @@ test("upsertOwnTeamProfile rejects duplicate team names case-insensitively", asy
   });
 
   await assert.rejects(
-    () => upsertOwnTeamProfile({
+    () => upsert({
       supabase,
       userId: "user-1",
       existingTeam: clone(supabase.state.teams[0]),
@@ -469,7 +478,7 @@ test("upsertOwnTeamProfile validates manager and team name lengths", async () =>
   const supabase = createSupabaseDouble();
 
   await assert.rejects(
-    () => upsertOwnTeamProfile({
+    () => upsert({
       supabase,
       userId: "user-1",
       name: "AB",
@@ -479,7 +488,7 @@ test("upsertOwnTeamProfile validates manager and team name lengths", async () =>
   );
 
   await assert.rejects(
-    () => upsertOwnTeamProfile({
+    () => upsert({
       supabase,
       userId: "user-1",
       name: "Valid Team",
@@ -524,7 +533,7 @@ test("#1264 dobbelt-bootstrap: user_id-konflikt returnerer eksisterende hold ide
     },
   });
 
-  const result = await upsertOwnTeamProfile({
+  const result = await upsert({
     supabase,
     userId: "user-1",
     name: "Team Nova",
@@ -553,7 +562,7 @@ test("#1264 navne-konflikt ved insert: bounded retry med suffiks giver holdet et
     },
   });
 
-  const result = await upsertOwnTeamProfile({
+  const result = await upsert({
     supabase,
     userId: "user-2",
     name: "Team Nova",
@@ -585,7 +594,7 @@ test("#1264 dobbelt-bootstrap med samme navn: navne-konflikt → retry → user_
     },
   });
 
-  const result = await upsertOwnTeamProfile({
+  const result = await upsert({
     supabase,
     userId: "user-1",
     name: "Team Nova",
@@ -610,7 +619,7 @@ test("#1264 navne-konflikt: bounded retry opgiver med 409 efter alle forsøg", a
   });
 
   await assert.rejects(
-    () => upsertOwnTeamProfile({
+    () => upsert({
       supabase,
       userId: "user-2",
       name: "Team Nova",
@@ -631,7 +640,7 @@ test("#1264 board-profil-konflikt (UNIQUE team_id+plan_type) behandles som aller
     },
   });
 
-  const result = await upsertOwnTeamProfile({
+  const result = await upsert({
     supabase,
     userId: "user-1",
     name: "Team Nova",
@@ -664,7 +673,7 @@ test("#1264 rename til navn taget i race-vinduet giver 409 (ingen auto-suffiks p
   });
 
   await assert.rejects(
-    () => upsertOwnTeamProfile({
+    () => upsert({
       supabase,
       userId: "user-2",
       existingTeam: clone(supabase.state.teams[0]),
@@ -673,4 +682,88 @@ test("#1264 rename til navn taget i race-vinduet giver 409 (ingen auto-suffiks p
     }),
     (error) => error.statusCode === 409 && error.message.includes("allerede taget"),
   );
+});
+
+// ── #1560 · starter-squad-allokering koblet til hold-oprettelse ────────────────
+
+test("#1560 created===true udløser starter-squad-allokering for det nye hold", async () => {
+  const supabase = createSupabaseDouble();
+  const calls = [];
+  const recordingAllocate = async (_sb, teamId) => { calls.push(teamId); return { assigned: 8 }; };
+
+  const result = await upsertOwnTeamProfile({
+    supabase,
+    userId: "user-1",
+    name: "Fresh Squad",
+    managerName: "Manager",
+    allocateStarterSquad: recordingAllocate,
+  });
+
+  assert.equal(result.created, true);
+  assert.equal(calls.length, 1, "allokering kaldt præcis én gang");
+  assert.equal(calls[0], result.team.id, "allokering for det nye holds id");
+});
+
+test("#1560 created===false (rename) udløser IKKE allokering", async () => {
+  const supabase = createSupabaseDouble({
+    teams: [{
+      id: "team-1", user_id: "user-1", name: "Old Name", manager_name: "Old Manager",
+      balance: INITIAL_BALANCE, sponsor_income: SPONSOR_INCOME_BASE,
+    }],
+    boardProfiles: [{ id: "board-1", team_id: "team-1" }],
+  });
+  const calls = [];
+  const recordingAllocate = async (_sb, teamId) => { calls.push(teamId); return { assigned: 8 }; };
+
+  const result = await upsertOwnTeamProfile({
+    supabase,
+    userId: "user-1",
+    existingTeam: clone(supabase.state.teams[0]),
+    name: "New Name",
+    managerName: "New Manager",
+    allocateStarterSquad: recordingAllocate,
+  });
+
+  assert.equal(result.created, false);
+  assert.equal(calls.length, 0, "rename må ikke allokere ny start-trup");
+});
+
+test("#1560 allokerings-fejl boblede op (holdet efterlades ikke stille tomt)", async () => {
+  const supabase = createSupabaseDouble();
+  const failingAllocate = async () => { throw new Error("derive nede"); };
+
+  await assert.rejects(
+    () => upsertOwnTeamProfile({
+      supabase,
+      userId: "user-err",
+      name: "Will Fail",
+      managerName: "Manager",
+      allocateStarterSquad: failingAllocate,
+    }),
+    (error) => error.statusCode === 500 && error.message.includes("start-truppen kunne ikke tildeles"),
+  );
+});
+
+test("#1560 created===false ved user_id-race udløser IKKE allokering (vinderen ejer truppen)", async () => {
+  const supabase = createSupabaseDouble({
+    insertErrors: {
+      teams: [{
+        error: uniqueViolation({ constraint: "teams_user_id_unique_idx", keyDetail: "(user_id)=(user-1)" }),
+        seedRows: [WINNER_TEAM],
+      }],
+    },
+  });
+  const calls = [];
+  const recordingAllocate = async (_sb, teamId) => { calls.push(teamId); return { assigned: 8 }; };
+
+  const result = await upsertOwnTeamProfile({
+    supabase,
+    userId: "user-1",
+    name: "Team Nova",
+    managerName: "Alex",
+    allocateStarterSquad: recordingAllocate,
+  });
+
+  assert.equal(result.created, false);
+  assert.equal(calls.length, 0, "taber-kaldet må ikke allokere — vinderen gjorde det");
 });

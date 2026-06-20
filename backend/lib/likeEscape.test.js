@@ -80,6 +80,10 @@ test("ensureUniqueTeamName — holdnavn med wildcards sendes escaped til .ilike(
     userId: "user-1",
     name: "100% _Team",
     managerName: "Manager",
+    // #1560: dette test verificerer kun ilike-escaping ved hold-oprettelse — stub
+    // starter-squad-allokeringen (dækkes i starterSquadAllocator.test.js), så den
+    // minimale mock ikke behøver riders/derive-kæden.
+    allocateStarterSquad: async () => ({ assigned: 0, skipped: "test-noop" }),
   });
 
   assert.ok(supabase.captured.ilikeValues.length >= 1, ".ilike skal kaldes på teams.name i unikheds-checket");
