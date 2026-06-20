@@ -7,12 +7,6 @@
       "colour": 0,
       "emoji": 1
     },
-    "frontend/public/locales/da/auctions.json": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 11
-    },
     "frontend/public/locales/da/auth.json": {
       "hex": 0,
       "slop": 0,
@@ -37,35 +31,11 @@
       "colour": 0,
       "emoji": 1
     },
-    "frontend/public/locales/da/finance.json": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 5
-    },
-    "frontend/public/locales/da/halloffame.json": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 2
-    },
-    "frontend/public/locales/da/help.json": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 47
-    },
     "frontend/public/locales/da/notifications.json": {
       "hex": 0,
       "slop": 0,
       "colour": 0,
       "emoji": 1
-    },
-    "frontend/public/locales/da/races.json": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 5
     },
     "frontend/public/locales/da/rider.json": {
       "hex": 0,
@@ -73,23 +43,11 @@
       "colour": 0,
       "emoji": 24
     },
-    "frontend/public/locales/da/riders.json": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 2
-    },
     "frontend/public/locales/da/seasonEnd.json": {
       "hex": 0,
       "slop": 0,
       "colour": 0,
       "emoji": 2
-    },
-    "frontend/public/locales/da/team.json": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 10
     },
     "frontend/public/locales/da/transfers.json": {
       "hex": 0,
@@ -108,12 +66,6 @@
       "slop": 0,
       "colour": 0,
       "emoji": 1
-    },
-    "frontend/public/locales/en/auctions.json": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 11
     },
     "frontend/public/locales/en/auth.json": {
       "hex": 0,
@@ -139,35 +91,11 @@
       "colour": 0,
       "emoji": 1
     },
-    "frontend/public/locales/en/finance.json": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 5
-    },
-    "frontend/public/locales/en/halloffame.json": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 2
-    },
-    "frontend/public/locales/en/help.json": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 47
-    },
     "frontend/public/locales/en/notifications.json": {
       "hex": 0,
       "slop": 0,
       "colour": 0,
       "emoji": 1
-    },
-    "frontend/public/locales/en/races.json": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 5
     },
     "frontend/public/locales/en/rider.json": {
       "hex": 0,
@@ -175,23 +103,11 @@
       "colour": 0,
       "emoji": 24
     },
-    "frontend/public/locales/en/riders.json": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 2
-    },
     "frontend/public/locales/en/seasonEnd.json": {
       "hex": 0,
       "slop": 0,
       "colour": 0,
       "emoji": 2
-    },
-    "frontend/public/locales/en/team.json": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 10
     },
     "frontend/public/locales/en/transfers.json": {
       "hex": 0,
@@ -205,35 +121,11 @@
       "colour": 0,
       "emoji": 1
     },
-    "frontend/src/components/BoardEmptyState.jsx": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 1
-    },
     "frontend/src/components/ConfettiModal.jsx": {
       "hex": 5,
       "slop": 0,
       "colour": 0,
       "emoji": 0
-    },
-    "frontend/src/components/DeadlineDayBanner.jsx": {
-      "hex": 1,
-      "slop": 0,
-      "colour": 8,
-      "emoji": 0
-    },
-    "frontend/src/components/DeadlineDayTicker.jsx": {
-      "hex": 3,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 0
-    },
-    "frontend/src/components/Layout.jsx": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 1,
-      "emoji": 1
     },
     "frontend/src/components/LeaderBadge.jsx": {
       "hex": 2,
@@ -258,18 +150,6 @@
       "slop": 0,
       "colour": 0,
       "emoji": 1
-    },
-    "frontend/src/components/PotentialeStars.jsx": {
-      "hex": 5,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 0
-    },
-    "frontend/src/components/RiderDevelopmentTab.jsx": {
-      "hex": 5,
-      "slop": 0,
-      "colour": 1,
-      "emoji": 0
     },
     "frontend/src/components/RiderFilters.jsx": {
       "hex": 0,
@@ -349,12 +229,6 @@
       "colour": 0,
       "emoji": 5
     },
-    "frontend/src/components/race/RaceSelectionPanel.jsx": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 3,
-      "emoji": 0
-    },
     "frontend/src/components/rider/TrainingFocus.jsx": {
       "hex": 0,
       "slop": 0,
@@ -379,12 +253,6 @@
       "colour": 0,
       "emoji": 0
     },
-    "frontend/src/pages/ActivityPage.jsx": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 9,
-      "emoji": 3
-    },
     "frontend/src/pages/AdminSprintMetricsPage.jsx": {
       "hex": 0,
       "slop": 0,
@@ -397,106 +265,10 @@
       "colour": 0,
       "emoji": 2
     },
-    "frontend/src/pages/BoardPage.jsx": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 10
-    },
-    "frontend/src/pages/DashboardPage.jsx": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 5,
-      "emoji": 0
-    },
-    "frontend/src/pages/DeadlineDayBoard.jsx": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 3
-    },
-    "frontend/src/pages/HallOfFamePage.jsx": {
-      "hex": 13,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 3
-    },
-    "frontend/src/pages/HelpPage.jsx": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 10
-    },
     "frontend/src/pages/KitchenSinkPage.jsx": {
       "hex": 2,
       "slop": 0,
       "colour": 0,
-      "emoji": 0
-    },
-    "frontend/src/pages/NotificationsPage.jsx": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 13,
-      "emoji": 0
-    },
-    "frontend/src/pages/RaceDetailPage.jsx": {
-      "hex": 8,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 2
-    },
-    "frontend/src/pages/RaceHistoryPage.jsx": {
-      "hex": 4,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 1
-    },
-    "frontend/src/pages/RacePointsPage.jsx": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 1,
-      "emoji": 0
-    },
-    "frontend/src/pages/RiderStatsPage.jsx": {
-      "hex": 4,
-      "slop": 0,
-      "colour": 12,
-      "emoji": 13
-    },
-    "frontend/src/pages/RoadmapPage.jsx": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 5
-    },
-    "frontend/src/pages/SeasonEndPage.jsx": {
-      "hex": 6,
-      "slop": 0,
-      "colour": 3,
-      "emoji": 5
-    },
-    "frontend/src/pages/SeasonPreviewPage.jsx": {
-      "hex": 8,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 0
-    },
-    "frontend/src/pages/TeamPage.jsx": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 13,
-      "emoji": 0
-    },
-    "frontend/src/pages/TrainingPage.jsx": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 3,
-      "emoji": 0
-    },
-    "frontend/src/pages/TransfersPage.jsx": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 55,
       "emoji": 0
     },
     "frontend/src/pages/admin/AdminDataTab.jsx": {
