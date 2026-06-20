@@ -1,6 +1,7 @@
 # Forever-relaunch readiness — design
 
 > **Status:** Godkendt design (2026-06-19, ejer-godkendt forks + a/b). Næste: writing-plans → implementeringsplan.
+> **⚠️ Erratum 2026-06-20 (#1595):** WS2-beslutning **a (PCM "slet helt")** er nedjusteret til **Option B** (ejer-godkendt). `stat_*`-kolonnerne BEVARES — `abilityDerivation.js:213-217` læser dem ubetinget for 5 evner. Den permanente, gate-styrede udfasning af PCM/`uci_points` lever i `plans/2026-06-20-pcm-uci-permanent-retirement-plan.md`. Se opdateret WS2 §4 + Appendix A nedenfor.
 > **Relateret:** [`docs/PLAN.md`](../../PLAN.md) (SSOT for sekvensering), [`2026-06-17-relaunch-hybrid-engine-1307-design.md`](2026-06-17-relaunch-hybrid-engine-1307-design.md) (18/6-relaunch-stien), epic #1105.
 > **Skelnen:** Dette er IKKE 18/6-relaunchen (frisk beta-sæson 1, allerede live). Dette er **forever-relaunch** = ét sidste destruktivt reset, hvorefter vi committer til ALDRIG at nulstille igen.
 
@@ -41,12 +42,17 @@ Driftsmæssig forudsætning for at slippe spillet til ægte spillere uden manuel
 - **Stress-test live på den nuværende beta-sæson** før forever — den eneste store ukendte bevist tidligt.
 - Filer: `backend/cron.js`, `backend/lib/seasonAutoTransition.js`, `backend/lib/prizePayoutEngine.js`, `backend/lib/economyConstants.js:97`, `backend/scripts/executeSeasonTransition.js`.
 
-### WS2 — PCM-udfasning, slet helt (C) [MIDDEL]
-- Slet PCM-import-pipelinen helt: `pcmResultsImport.js`, `pcmRiderMatcher.js`, `pcmRiderAliases.js`, `pcmTeamAliases.js`, admin-endpoint `POST /admin/import-results-pcm` (api.js ~6157), UI-indgang (#1532).
-- Slet `riders.stat_*`-kolonnerne (14) + erstat fallback i `abilityDerivation.js:93-100` (PRIMARY_STAT) — fallback bliver "ingen evner indtil genereret" (forever-ryttere har altid physiology-profil, så fallbacken er reelt død).
-- Ryd `pcm_id IS NULL`-som-fictional-markør → eksplicit invariant (alle aktive ryttere er fiktive post-forever). Behold `pcm_id`-kolonnen for legacy-audit men som dead. Steder: `api.js:3887,8198,8200-8201`, `youthMarket.js:114-117`, `legacyRiderRetirement.js`.
-- `uci_points`-kolonnen: afkoblet siden #1101 — kan droppes eller beholdes som dead artefakt (lav prioritet).
-- **NB:** `legacyRiderRetirement.js` (relaunch trin 1) bruger `pcm_id IS NOT NULL` til at pensionere legacy-ryttere. Sletning af PCM-pipeline må ikke fjerne denne retirement-sti før vinduet er kørt.
+### WS2 — PCM-udfasning (C) [MIDDEL]
+
+> **⚠️ OPTION A ("slet helt") SUPERSEDET 2026-06-20 → Option B (ejer-godkendt, #1595).** Den oprindelige "slet de 14 `stat_*`-kolonner + PRIMARY_STAT-fallback; fallbacken er reelt død"-plan var **faktuelt forkert**. `backend/lib/abilityDerivation.js:213-217` læser `stat_ned`/`stat_bro`/`stat_fl`/`stat_ftr` **UBETINGET** (uden for `if (fromPhysiology)`-gaten) for 5 tekniske/mentale evner: `descending`, `cobblestone`, `positioning`, `aggression`, `tactics`. `rider_physiology_profiles` indeholder KUN fysiske watt-metrics (`PHYS_ANCHORS`) — ingen skill-stats. Selv en fuld-fysiologi-rytter henter altså disse 5 evner fra `stat_*`. Sletning ville nulstille 5 evner for HELE populationen = balance-brydende + reset-krævende, og strider mod ejer-direktiv #1529 ("PCM ud af VISNING, ikke ud af data — bliver derive-kilde"). Den permanente udfasnings-sti (med eksplicitte gates før noget slettes) lever nu i `docs/superpowers/plans/2026-06-20-pcm-uci-permanent-retirement-plan.md`.
+
+**Option B-scope (denne workstream — ingen migration, intet `stat_*`/`pcm_id` røres):**
+- **BEVAR** de 14 `riders.stat_*`-kolonner + `pcm_id` som tavs derive-kilde + fiktiv-vs-ægte-diskriminator. Ingen migration.
+- **BEVAR** PCM-resultat-pipelinen (`pcmResultsImport.js`, `pcmResultsParser.js`, `pcmRiderMatcher.js`, `pcmRiderAliases.js`, `pcmTeamAliases.js`) + admin-endpoint `POST /admin/import-results-pcm` (api.js ~6172) **indtil WS1 Fase 3 stage-automatisering er bevist på beta** (#1596). Endpointet er den ENESTE manuelle løbsresultat-recovery-sti; dets fjernelse er sekvenseret EFTER WS1 (forever-gate §6.1 kræver alligevel WS1 bevist). UI-indgangen er allerede fjernet (#1532/#1545).
+- `pcmRiderMatcher.js` eksporterer desuden `foldNameNordic`, der bruges af ikke-PCM-kode (`academyIntake.js`, `fictionalRiderGenerator.js`, `relaunchOrchestrator.js`, `starterSquadAllocator.js`, `generateFictionalRiders.js`) — kan IKKE slettes uafhængigt af pipelinen.
+- `uci_points`-kolonnen: afkoblet fra værdi siden #1101, men **stadig live læst** af `boardIdentity.js:367` (`calculateRiderStarScore`, "sidste funktionelle læser" jf. #1208). Må ikke droppes før #1208 kalibrerer star-score væk fra den.
+- `pcm_id IS NULL`-som-fictional-markør er en **live diskriminator** (`api.js`, `youthMarket.js`, `legacyRiderRetirement.js`'s relaunch-pensionering) — ikke et dødt artefakt. Forbliver indtil populationen er 100% fiktiv post-forever.
+- **NB:** `legacyRiderRetirement.js` (relaunch trin 1) bruger `pcm_id IS NOT NULL` til at pensionere legacy-ryttere. PCM-oprydning må ikke fjerne `pcm_id` før forever-vinduet er kørt.
 
 ### WS3 — Egne løb (A) [LILLE]
 - Erstat real-world-navne i `scripts/race_pool_seed.csv` med egne fiktive navne + kør `node backend/scripts/seedRacePool.js`.
@@ -107,7 +113,7 @@ Discord-feedback-pukkel (7 nye #1531-#1537 + jeppek-5 + øvrige), engine-dybde (
 - **result_type/udbrud (#1499)**: afklares i WS4-undersøgelsen. Hvis det viser sig at kræve ny enum-værdi, skal #1499 ind i vinduet — ellers er den umulig uden reset #2.
 - **Beta-testeres data**: forever-reset nulstiller de 22 testeres nuværende sæson. Founder-badges + comms (#1278) håndteres som del af vinduet.
 - **Race-scheduler-robusthed**: ny komponent; loop-bug-historik (2026-05-21) gør grundig test + monitorering kritisk. Re-enable af season-cron skal ske med `runDailySeasonCountCheck`-sikkerhedsnet aktivt.
-- **PCM-sletning vs. retirement-sti**: `legacyRiderRetirement.js` afhænger af `pcm_id` — rækkefølge: pensionér legacy FØR/i vinduet, ryd så PCM-koden.
+- **PCM-sletning vs. retirement-sti**: `legacyRiderRetirement.js` afhænger af `pcm_id` — rækkefølge: pensionér legacy FØR/i vinduet, ryd så PCM-koden. **Opdatering 2026-06-20 (#1595):** `stat_*` BEVARES (Option B) — kun resultat-pipelinen + endpoint fjernes, og dét sekvenseres efter WS1-bevis (#1596). Fuld gate-styret plan: `plans/2026-06-20-pcm-uci-permanent-retirement-plan.md`.
 
 ## Appendix A — Reset-krævende inventory (fra completeness-audit 2026-06-19)
 
@@ -120,7 +126,7 @@ Konstanter/tilstand der SKAL være rigtige før forever-vinduet (ændring senere
 - `riderTypesBaseline.json` (z-score pop-mean, 8.989 ryttere) — stor
 - `RIDER_TYPES`-vægte (8 typer) + LAUNCH_TYPE_FLOORS (gc≥30, sprinter≥40) — stor. `riderTypes.js:36-45`
 - `LAUNCH_POPULATION` (seed=2026, count=800, value-bands, type-floors) — stor. `fictionalLaunchPopulation.js:26-47`
-- PCM stat-fallback i derivation (PRIMARY_STAT) — middel. `abilityDerivation.js:93-100`
+- PCM-skill-stats i derivation — **stor (BEVARES, IKKE slettes — Option A superset 2026-06-20)**. `abilityDerivation.js:213-217` læser `stat_ned`/`stat_bro`/`stat_fl`/`stat_ftr` UBETINGET for `descending`/`cobblestone`/`positioning`/`aggression`/`tactics`. Den fysiologi-løse PRIMARY_STAT-fallback (`abilityDerivation.js:93-100`, linje 191-200) er separat og reelt død for forever-ryttere, men skill-stat-læsningen er det IKKE. `stat_*` fjernes først efter native fysiologi (#1021) erstatter dem som derive-kilde — se retirement-planen.
 
 **Økonomi** (alle E2-tunet mod `moneySupplyScorecard --synthetic`)
 - `SPONSOR_INCOME_BY_DIVISION` (600/400/340k) — stor. `economyConstants.js:22`

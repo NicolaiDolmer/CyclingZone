@@ -1036,7 +1036,7 @@
     "alreadyUsed": "Du har allerede brugt sæsonens board request.",
     "windowBlocked": "Sæsonens slutfase er begyndt. Bestyrelsen tager ikke imod requests de sidste {raceDays} race-days.",
     "midCycleLocked": "{years}-årsplanen er for tidligt i forløbet til at blive drejet. Bestyrelsen ønsker mindst {percent}% af planen gennemført eller en stor tilfredsheds-ændring før en re-orientering.",
-    "majorPivotUsed": "Bestyrelsen har allerede accepteret en MAJOR drejning i denne plan-livscyklus. En ny stor retnings-ændring kræver en frisk plan.",
+    "majorPivotUsed": "Bestyrelsen har allerede accepteret en stor drejning i denne plan-livscyklus. En ny stor retnings-ændring kræver en frisk plan.",
     "unknown": "Ukendt board request.",
     "fallback": "Bestyrelsen afviser forespørgslen lige nu.",
     "lowerResults": {

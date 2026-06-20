@@ -5,6 +5,7 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import RiderLink from "../components/RiderLink";
 import TeamLink from "../components/TeamLink";
 import RaceSelectionPanel from "../components/race/RaceSelectionPanel.jsx";
+import StageScheduleCard from "../components/race/StageScheduleCard.jsx";
 import { Flag } from "../components/Flag";
 import { formatNumber } from "../lib/intl";
 import { fetchAllRows } from "../lib/supabasePagination";
@@ -86,7 +87,7 @@ export default function RaceDetailPage() {
 
     const { data: raceRow, error } = await supabase
       .from("races")
-      .select("id, name, race_type, race_class, stages, edition_year, status, season:season_id(id, number), pool_race:pool_race_id(date_text)")
+      .select("id, name, race_type, race_class, stages, stages_completed, edition_year, status, season:season_id(id, number), pool_race:pool_race_id(date_text)")
       .eq("id", raceId)
       .single();
 
@@ -195,6 +196,13 @@ export default function RaceDetailPage() {
           {race.pool_race?.date_text && ` · ${race.pool_race.date_text}`}
         </p>
       </div>
+
+      {/* #1597: synlig etape-kalender for kommende løb — kortet henter
+          race_stage_schedule selv og skjuler sig hvis der ikke findes en
+          kalender (gamle/PCM-løb, eller scheduler ikke aktiveret). */}
+      {race.status === "scheduled" && (
+        <StageScheduleCard raceId={race.id} stagesCompleted={race.stages_completed ?? 0} />
+      )}
 
       {/* #1307: holdudtagelse for kommende løb — panelet gater selv på
           race-engine-flaget (renderer intet når backend siger enabled=false). */}

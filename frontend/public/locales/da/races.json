@@ -201,6 +201,22 @@
       "label": "Terræn",
       "note": "Vejledende terrænkategori. Fulde højdeprofiler kommer senere."
     },
+    "stageSchedule": {
+      "title": "Etapeplan",
+      "subtitle": "Hver etape afvikles på et fast tidspunkt (København).",
+      "nextStageLabel": "Næste etape",
+      "countdownPrefix": "om",
+      "countdownDays": "{count, plural, one {# dag} other {# dage}}",
+      "countdownHours": "{count, plural, one {# time} other {# timer}}",
+      "countdownMinutes": "{count, plural, one {# min} other {# min}}",
+      "startingNow": "Starter nu",
+      "stageLabel": "Etape {number}",
+      "done": "Afviklet",
+      "live": "Live",
+      "today": "I dag",
+      "tomorrow": "I morgen",
+      "timezoneNote": "Tider vist i København-tid (CET/CEST)."
+    },
     "profileType": {
       "flat": "Fladt",
       "rolling": "Bølget",

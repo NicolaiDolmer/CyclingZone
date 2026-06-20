@@ -205,8 +205,24 @@ function makePayoutSupabase({ pendingRace, riders = [], activeSeason = null, com
             };
             return builder;
           },
+          // #1573: opdateringen er nu et atomart compare-and-set gatet på
+          // prize_paid_at IS NULL og læser de ramte rækker tilbage via .select().
+          // Mocken simulerer Postgres: kun det FØRSTE update pr. race-id rammer en
+          // række (sætter prize_paid_at); efterfølgende kald (et tabende tick) ser
+          // rækken allerede sat og returnerer data: [].
           update(payload) {
-            return { eq: (_c, id) => { state.racesPaidAt.push({ id, ...payload }); return Promise.resolve({ error: null }); } };
+            const builder = { _id: null, _gated: false };
+            builder.eq = (_c, id) => { builder._id = id; return builder; };
+            builder.is = (_col, _val) => { builder._gated = true; return builder; };
+            builder.select = () => {
+              const already = state.racesPaidAt.some(r => r.id === builder._id);
+              if (builder._gated && already) {
+                return Promise.resolve({ data: [], error: null });
+              }
+              state.racesPaidAt.push({ id: builder._id, ...payload });
+              return Promise.resolve({ data: [{ id: builder._id }], error: null });
+            };
+            return builder;
           },
         };
       }
@@ -348,4 +364,163 @@ test("paySeasonPrizesToDate logger actor_type=system når actorType=SYSTEM", asy
   assert.equal(payload.actor_type, FINANCE_ACTOR_TYPE.SYSTEM);
   // actor_id falder tilbage til null når ingen admin-bruger angives.
   assert.equal(payload.actor_id, null);
+});
+
+// ─── #1573: concurrent-tick race → præcis ÉN import_log-række ───────────────────
+
+// Mock der trofast gengiver TOCTOU'en: BEGGE ticks læser samme pending-preview
+// (preview-read af races returnerer altid prize_paid_at: null — som om begge
+// snapshottede den ubetalte tilstand før noget update committede). UPDATE'et er
+// et delt compare-and-set gatet på prize_paid_at IS NULL: kun det FØRSTE tick pr.
+// race-id rammer en række; det tabende tick rammer 0 og må IKKE indsætte en
+// import_log-række. balanceRpc returnerer skipped for det tabende ticks dublet-
+// idempotency_key (som uniq_finance_idempotency_key gør i prod).
+function makeConcurrentPayoutSupabase({ pendingRace }) {
+  const state = { importLogs: [], claimed: new Set(), seenIdemKeys: new Set() };
+  const racesRow = { id: pendingRace.id, name: pendingRace.name, prize_paid_at: null, status: "completed", season_id: "season-1" };
+  const resultRows = pendingRace.results;
+
+  return {
+    state,
+    rpc(_name, params) {
+      // Simulér uniq_finance_idempotency_key: anden gang samme key ses → 23505.
+      const key = params?.p_finance_payload?.idempotency_key;
+      if (key && state.seenIdemKeys.has(key)) {
+        return Promise.resolve({ data: null, error: { code: "23505", message: "duplicate key" } });
+      }
+      if (key) state.seenIdemKeys.add(key);
+      return Promise.resolve({ data: 0, error: null });
+    },
+    from(table) {
+      if (table === "races") {
+        return {
+          select(columns) {
+            // Preview-read ser ALTID den ubetalte tilstand (frosset snapshot for
+            // begge ticks) — det er kernen i TOCTOU'en.
+            const builder = {
+              eq: () => builder,
+              in: () => builder,
+              range: (from, to) => {
+                const rows = [racesRow]
+                  .map(r => (columns === "id, season_id" ? { id: r.id, season_id: r.season_id } : r))
+                  .slice(from, to + 1);
+                return Promise.resolve({ data: rows, error: null });
+              },
+              then: (resolve) => resolve({ data: [racesRow], error: null }),
+            };
+            return builder;
+          },
+          update(payload) {
+            const builder = { _id: null, _gated: false };
+            builder.eq = (_c, id) => { builder._id = id; return builder; };
+            builder.is = () => { builder._gated = true; return builder; };
+            builder.select = () => {
+              // Atomart compare-and-set: kun første claim pr. race-id vinder.
+              if (builder._gated && state.claimed.has(builder._id)) {
+                return Promise.resolve({ data: [], error: null });
+              }
+              state.claimed.add(builder._id);
+              return Promise.resolve({ data: [{ id: builder._id, ...payload }], error: null });
+            };
+            return builder;
+          },
+        };
+      }
+      if (table === "race_results") {
+        const builder = { select: () => builder, eq: () => builder, in: () => builder, gt: () => builder, order: () => builder, range: (from, to) => Promise.resolve({ data: resultRows.slice(from, to + 1), error: null }), then: (r) => r({ data: resultRows, error: null }) };
+        return builder;
+      }
+      if (table === "finance_transactions") {
+        const builder = { select: () => builder, eq: () => builder, in: () => builder, order: () => builder, range: () => Promise.resolve({ data: [], error: null }), then: (r) => r({ data: [], error: null }) };
+        return builder;
+      }
+      if (table === "teams") {
+        const builder = { select: () => builder, in: () => builder, then: (r) => r({ data: [], error: null }) };
+        return builder;
+      }
+      if (table === "import_log") {
+        return { insert: (row) => { state.importLogs.push(row); return Promise.resolve({ error: null }); } };
+      }
+      // Rider-value recalc er ortogonal til dette race — stub den til no-op.
+      if (table === "seasons") {
+        return { select: () => ({ eq: (_c, v) => (v === "active"
+          ? { maybeSingle: () => Promise.resolve({ data: null, error: null }) }
+          : { gt: () => ({ order: () => ({ limit: () => Promise.resolve({ data: [], error: null }) }) }) }) }) };
+      }
+      if (table === "riders") {
+        return { select: () => ({ range: () => Promise.resolve({ data: [], error: null }) }), update: () => ({ eq: () => Promise.resolve({ error: null }) }) };
+      }
+      throw new Error(`uventet tabel: ${table}`);
+    },
+  };
+}
+
+test("paySeasonPrizesToDate: to samtidige ticks indsætter præcis ÉN import_log-række (#1573)", async () => {
+  const supabase = makeConcurrentPayoutSupabase({
+    pendingRace: {
+      id: "race-1",
+      name: "Tour Stage 1",
+      results: [{ race_id: "race-1", team_id: "team-1", rider_id: "rider-1", prize_money: 5000 }],
+    },
+  });
+
+  // To ticks der race'r: begge læser preview (prize_paid_at IS NULL), begge
+  // forsøger at betale + sætte prize_paid_at. Kør dem concurrently for at
+  // efterligne to cron-ticks der overlapper.
+  const [a, b] = await Promise.all([
+    paySeasonPrizesToDate("season-1", null, supabase, { actorType: FINANCE_ACTOR_TYPE.SYSTEM }),
+    paySeasonPrizesToDate("season-1", null, supabase, { actorType: FINANCE_ACTOR_TYPE.SYSTEM }),
+  ]);
+
+  // KERNE-ASSERTION: præcis én audit-række på trods af to ticks.
+  assert.equal(supabase.state.importLogs.length, 1, "forventede præcis én import_log-række");
+  assert.equal(supabase.state.importLogs[0].rows_processed, 1);
+  assert.equal(supabase.state.importLogs[0].import_type, "prize_payout");
+
+  // Præcis ét tick vandt løbet (races_paid: 1); det andet claimede intet (0).
+  const claimed = [a, b].map(r => r.races_paid).sort();
+  assert.deepEqual(claimed, [0, 1], "ét tick claimer løbet, det andet claimer intet");
+
+  // Balancen blev udbetalt netop én gang (idempotency_key beskytter den), og
+  // race blev kun sat én gang.
+  assert.equal(supabase.state.claimed.size, 1);
+});
+
+test("paySeasonPrizesToDate: et enkelt tick indsætter stadig præcis ÉN import_log-række (#1573 ikke-regression)", async () => {
+  const supabase = makeConcurrentPayoutSupabase({
+    pendingRace: {
+      id: "race-1",
+      name: "Tour Stage 1",
+      results: [{ race_id: "race-1", team_id: "team-1", rider_id: "rider-1", prize_money: 5000 }],
+    },
+  });
+
+  const result = await paySeasonPrizesToDate("season-1", null, supabase, { actorType: FINANCE_ACTOR_TYPE.SYSTEM });
+
+  assert.equal(result.races_paid, 1);
+  assert.equal(result.total_paid, 5000);
+  assert.equal(supabase.state.importLogs.length, 1);
+});
+
+test("paySeasonPrizesToDate: et tick der taber ALT springer import_log over (#1573)", async () => {
+  const supabase = makeConcurrentPayoutSupabase({
+    pendingRace: {
+      id: "race-1",
+      name: "Tour Stage 1",
+      results: [{ race_id: "race-1", team_id: "team-1", rider_id: "rider-1", prize_money: 5000 }],
+    },
+  });
+
+  // Første tick claimer løbet.
+  await paySeasonPrizesToDate("season-1", null, supabase, { actorType: FINANCE_ACTOR_TYPE.SYSTEM });
+  assert.equal(supabase.state.importLogs.length, 1);
+
+  // Andet tick læser samme frosne preview (prize_paid_at IS NULL i mocken), men
+  // taber compare-and-set'et for ALLE løb → ingen ny import_log-række.
+  const second = await paySeasonPrizesToDate("season-1", null, supabase, { actorType: FINANCE_ACTOR_TYPE.SYSTEM });
+
+  assert.equal(second.races_paid, 0);
+  assert.equal(second.total_paid, 0);
+  assert.deepEqual(second.by_race, []);
+  assert.equal(supabase.state.importLogs.length, 1, "tabende tick må IKKE tilføje en import_log-række");
 });

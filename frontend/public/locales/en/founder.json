@@ -15,9 +15,8 @@
   "promiseBody": "Premium can unlock identity, convenience, analytics and ways to back development. It cannot unlock better race results, faster training, stronger riders, transfer advantages, improved scouting odds or hidden power.",
   "promiseFootnote": "This promise appears here and near any future pricing info. It's the most important trust message in the whole premium conversation.",
   "tiersTitle": "What might fair premium look like?",
-  "tiersSub": "Decisions made 2026-05-14. The survey tests different price points, so Premium varies between {prices} depending on which link you clicked.",
+  "tiersSub": "Nothing here is final. These are the Premium price points I'm considering ({prices}/mo), and joining the waitlist helps me decide.",
   "perDayApprox": "≈ {price}/day",
-  "variantLabel": "Variant:",
   "founderNoteTitle": "Where does the Founder waitlist fit?",
   "founderNoteBody": "Founder is not a separate paid tier. It's an early waitlist status for the first 100 players who want to be considered if payment opens later. Joining is non-binding, and you are charged nothing today.",
   "tierFree": {
@@ -153,7 +152,6 @@
     "submit": "Join the Founder waitlist",
     "submitLoading": "Sending...",
     "submitDisclaimer": "We don't spam and never share your info. You can always email us to be removed.",
-    "priceVariantPrefix": "Price variant:",
     "honeypotLabel": "Leave this field empty",
     "successTitle": "You're on the list!",
     "successBody": "Thanks for joining early. We'll email when premium opens, and before that if we have questions about what you think.",

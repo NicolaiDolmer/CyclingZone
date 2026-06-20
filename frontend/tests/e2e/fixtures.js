@@ -472,7 +472,9 @@ export async function installNetworkMocks(page) {
     if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
 
     // #1162: viewer-maskerede potentiale-estimater (POST, batched fra useScouting).
-    // Egne ryttere = eksakt (lo == hi), andres = usikkert interval.
+    // Egne ryttere = eksakt (lo == hi). #1543: andres = SKJULT indtil scoutet
+    // (level 0 → { hidden: true }), så intet gratis lo–hi-spænd vises før et slot
+    // er brugt — non-null, så den potentiale-gatede række stadig renderes.
     if (url.pathname.endsWith("/api/scouting/estimates") && request.method() === "POST") {
       let ids = [];
       try { ids = JSON.parse(request.postData() || "{}").riderIds || []; } catch { /* tom body */ }
@@ -482,7 +484,7 @@ export async function installNetworkMocks(page) {
         if (!rider) continue;
         estimates[id] = rider.team_id === TEST_TEAM.id
           ? { lo: 4.5, hi: 4.5, exact: true, level: 3 }
-          : { lo: 3.5, hi: 5, exact: false, level: 0 };
+          : { hidden: true, level: 0 };
       }
       return json(route, { teamId: TEST_TEAM.id, maxLevel: 3, estimates });
     }

@@ -4,8 +4,8 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
-    "version": "5.77",
-    "date": "2026-06-20",
+    "version": "5.81",
+    "date": "2026-06-21",
     "label": "Beta",
     "changes": [
       {
@@ -22,6 +22,98 @@ export const PATCHES = [
         },
         "refs": [
           1602
+        ]
+      }
+    ]
+  },
+  {
+    "version": "5.80",
+    "date": "2026-06-21",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Scouting",
+        "en": {
+          "title": "Potential is now hidden until you scout a rider",
+          "body": "A rider's potential is no longer revealed before you scout them. Previously every rider showed a rough star range for free; now unscouted riders read \"Not scouted\" until you spend a scout slot. Once you scout, the estimate appears and narrows with each additional scout, and your own riders stay fully known. This makes scouting a real decision: the talent you uncover is genuinely yours to find."
+        },
+        "da": {
+          "title": "Potentiale er nu skjult, indtil du scouter en rytter",
+          "body": "En rytters potentiale afsløres ikke længere, før du scouter rytteren. Tidligere viste alle ryttere gratis et groft stjerne-interval; nu står der \"Ikke scoutet\" på uscoutede ryttere, indtil du bruger et scout-slot. Når du scouter, dukker estimatet op og indsnævres for hvert ekstra scout, og dine egne ryttere er stadig fuldt kendte. Det gør scouting til en ægte beslutning: det talent, du afdækker, har du selv fundet."
+        },
+        "refs": [
+          1543
+        ]
+      }
+    ]
+  },
+  {
+    "version": "5.79",
+    "date": "2026-06-21",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Stage schedule on upcoming races",
+          "body": "Open an upcoming stage race and you now see its stage schedule: each stage with its fixed start time, plus a live \"next stage in\" countdown. Times are shown in Copenhagen time (CET/CEST) so the slot is the same wherever you play from, and stages that have already run are marked Done."
+        },
+        "da": {
+          "title": "Etapeplan på kommende løb",
+          "body": "Åbn et kommende etapeløb, og du ser nu dets etapeplan: hver etape med sit faste starttidspunkt plus en live \"næste etape om\"-nedtælling. Tiderne vises i København-tid (CET/CEST), så slottet er det samme uanset hvor du spiller fra, og etaper der allerede er afviklet er markeret Afviklet."
+        },
+        "refs": [
+          1597
+        ]
+      }
+    ]
+  },
+  {
+    "version": "5.78",
+    "date": "2026-06-21",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Help & FAQ",
+        "en": {
+          "title": "Help now explains how races are won and what every ability does",
+          "body": "Two new FAQ entries answer the questions new managers ask most: 'How do I win a race?' walks through how the race engine matches your riders' abilities to each stage's terrain, plus form, fatigue, captain protection and breakaways. A second entry, and a new table on the Riders help page, explain all 15 rider abilities and which stages each one matters on. We also corrected the board's forced-sale rule (it lists your lowest-value rider and protects anyone with popularity 70+ or a value of 8,000,000 CZ$+), added the note that divisions are locked until season 2 ends, and rewrote several help passages in plain language."
+        },
+        "da": {
+          "title": "Hjælp forklarer nu hvordan løb vindes, og hvad hver evne gør",
+          "body": "To nye FAQ-punkter svarer på de spørgsmål nye managers oftest stiller: 'Hvordan vinder jeg et løb?' gennemgår hvordan race-motoren matcher dine rytteres evner til hver etapes terræn, plus form, træthed, kaptajn-beskyttelse og udbrud. Et andet punkt, og en ny tabel på Ryttere-hjælpesiden, forklarer alle 15 rytter-evner og hvilke etaper hver enkelt betyder noget på. Vi har også rettet bestyrelsens regel for tvunget salg (den lister din rytter med lavest værdi og beskytter alle med popularity 70+ eller en værdi på 8.000.000 CZ$+), tilføjet noten om at divisionerne er låst indtil sæson 2 slutter, og skrevet flere hjælpe-afsnit om i klar tale."
+        },
+        "refs": [
+          1601
+        ]
+      }
+    ]
+  },
+  {
+    "version": "5.77",
+    "date": "2026-06-20",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Training history added",
+          "body": "Daily training now keeps a history. The training page shows your last 30 days of training runs, each day with how many riders trained, breakthroughs and riders in peak form - expand any day to see the full per-rider report. Each rider's profile gets a training history of its own under Development, listing that rider's focus, intensity, gains and form day by day."
+        },
+        "da": {
+          "title": "Træningshistorik tilføjet",
+          "body": "Daglig træning gemmer nu en historik. Træningssiden viser dine seneste 30 dages trænings-kørsler, hver dag med hvor mange ryttere der trænede, gennembrud og ryttere i topform - fold en dag ud for at se den fulde rytter-rapport. Hver rytters profil får sin egen træningshistorik under Udvikling, der lister rytterens fokus, intensitet, fremgang og form dag for dag."
+        },
+        "refs": [
+          1533
         ]
       }
     ]
