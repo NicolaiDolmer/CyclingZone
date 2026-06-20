@@ -36,7 +36,7 @@ function readGitFile(ref, file) {
 }
 
 function parseVersions(content) {
-  return [...content.matchAll(/version:\s*["'](\d+(?:\.\d+){1,2})["']/g)].map(match => match[1]);
+  return [...content.matchAll(/"?version"?:\s*["'](\d+(?:\.\d+){1,2})["']/g)].map(match => match[1]);
 }
 
 function compareVersion(a, b) {
