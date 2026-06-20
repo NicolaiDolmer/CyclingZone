@@ -9,7 +9,7 @@ import { foldNameNordic } from "./pcmRiderMatcher.js";
 import { makeRng } from "./fictionalRiderGenerator.js";
 import { ACADEMY } from "./academyFlag.js";
 import { calculateRiderMarketValue } from "./marketUtils.js";
-import { incrementBalanceWithAudit } from "./balanceRpc.js";
+import { DUPLICATE_VIOLATION_CODE } from "./balanceRpc.js";
 import { notifyTeamOwner } from "./notificationService.js";
 import { deriveForRiderIds } from "./backfillCores.js";
 
@@ -172,8 +172,10 @@ export async function runAcademyIntake(supabase, {
 /**
  * Signer en akademi-kandidat til holdet.
  *
- * Rækkefølge-garanti: validering (offered-check + cap-check) sker FØR enhver write.
- * Ingen debit hvis sign-betingelserne ikke er opfyldt.
+ * #1558: cap-check (8-plads) + rider-update + signing-fee-debit sker ATOMISK i
+ * finalize_academy_acquisition-RPC'en under pg_advisory_xact_lock(team_id), så en
+ * samtidig youth-auktion-finalize ikke kan dobbelt-debitere samme rytter. Kun
+ * offered-check'en sker før RPC-kaldet; RPC'en er den autoritative cap/balance-gate.
  *
  * @param {object} supabase
  * @param {object} opts
@@ -181,7 +183,7 @@ export async function runAcademyIntake(supabase, {
  * @param {string} opts.riderId
  * @param {number} opts.seasonNumber   — aktiv sæsons nummer (bruges til contract_end_season)
  * @returns {Promise<{riderId, salary, fee, contractEndSeason}>}
- * @throws {Error} 'not_offered' | 'academy_full'
+ * @throws {Error} 'not_offered' | 'academy_full' | 'insufficient_balance' | 'already_assigned'
  */
 export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNumber }) {
   // 1. Hent academy_intake-rækken — skal eksistere og have status 'offered'.
@@ -194,11 +196,7 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
   if (intakeErr) throw new Error(`signAcademyCandidate intake lookup: ${intakeErr.message}`);
   if (!intakeRow || intakeRow.status !== "offered") throw new Error("not_offered");
 
-  // 2. Cap-check FØR enhver write.
-  const currentCount = await getTeamAcademyCount(supabase, teamId);
-  if (currentCount >= ACADEMY.SLOTS) throw new Error("academy_full");
-
-  // 3. Hent rytterens markedsværdi og beregn løn + signing-fee.
+  // 2. Hent rytterens markedsværdi og beregn løn + signing-fee.
   const { data: rider, error: riderErr } = await supabase
     .from("riders")
     .select("id, firstname, lastname, market_value, base_value, prize_earnings_bonus")
@@ -211,28 +209,27 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
   const salary = Math.max(1, Math.round(value * ACADEMY.SALARY_RATE));
   const fee = Math.round(value * ACADEMY.SIGNING_FEE_RATE);
   const contractEndSeason = seasonNumber + ACADEMY.CONTRACT_LENGTH - 1;
-
-  // 4. Opdatér rytter: is_academy=true, team_id, løn, kontrakt.
-  const { error: riderUpdateErr } = await supabase
-    .from("riders")
-    .update({
-      is_academy: true,
-      team_id: teamId,
-      salary,
-      contract_length: ACADEMY.CONTRACT_LENGTH,
-      contract_end_season: contractEndSeason,
-    })
-    .eq("id", riderId);
-  if (riderUpdateErr) throw new Error(`signAcademyCandidate rider update: ${riderUpdateErr.message}`);
-
-  // 5. Debitér signing-fee atomisk via RPC. #1483: struktureret metadata så
-  // Historik-fanen renderer rytternavnet via backendMessages-i18n i stedet for
-  // den rå UUID i description-fallbacken.
   const riderName = `${rider.firstname ?? ""} ${rider.lastname ?? ""}`.trim();
-  await incrementBalanceWithAudit(supabase, {
-    teamId,
-    delta: -fee,
-    payload: {
+  const acquiredAt = new Date().toISOString();
+
+  // 3. #1558: cap-check (8-plads) + rider-update + signing-fee-debit sker nu
+  // ATOMISK i én RPC under pg_advisory_xact_lock(team_id). Tidligere var
+  // cap-tjekket (ulåst getTeamAcademyCount) adskilt fra writes, og denne sti
+  // brugte INGEN idempotency_key — så en samtidig finalize (youth_auction_winner)
+  // gav to separate finance_transactions (dobbelt-debit). RPC'en lukker racen;
+  // idempotency_key nedenfor gør gentagne signeringer af samme rytter sikre.
+  //
+  // #1483: struktureret metadata så Historik-fanen renderer rytternavnet via
+  // backendMessages-i18n i stedet for den rå UUID i description-fallbacken.
+  const { data: acq, error: acqErr } = await supabase.rpc("finalize_academy_acquisition", {
+    p_team_id: teamId,
+    p_rider_id: riderId,
+    p_price: fee,
+    p_salary: salary,
+    p_contract_length: ACADEMY.CONTRACT_LENGTH,
+    p_contract_end_season: contractEndSeason,
+    p_acquired_at: acquiredAt,
+    p_finance_payload: {
       type: "academy_signing",
       amount: -fee,
       description: riderName
@@ -242,17 +239,33 @@ export async function signAcademyCandidate(supabase, { teamId, riderId, seasonNu
         code: "tx.academySigning",
         params: { riderName: riderName || riderId },
       },
+      // En rytter kan kun optages i ét akademi én gang — riderId er derfor en
+      // stabil, unik nøgle der lukker racen mod youth_auction_winner:<auctionId>.
+      // (seasonId er ikke i scope her; en akademi-optagelse er en éngangshændelse
+      // pr. rytter, så riderId alene er tilstrækkeligt unikt.)
+      idempotency_key: `academy_signing:${riderId}`,
     },
-  }, { allowDuplicate: true });
+  });
 
-  // 6. Opdatér academy_intake → signed.
+  if (acqErr) {
+    // 23505 = denne rytter er allerede optaget (cron-/dobbeltklik-retry). Behandl
+    // som idempotent no-op snarere end hård fejl.
+    if (acqErr.code === DUPLICATE_VIOLATION_CODE) throw new Error("already_assigned");
+    throw acqErr;
+  }
+  if (acq?.code === "academy_full") throw new Error("academy_full");
+  if (acq?.code === "insufficient_balance") throw new Error("insufficient_balance");
+  if (acq?.code === "already_assigned") throw new Error("already_assigned");
+  if (!acq?.ok) throw new Error(`finalize_academy_acquisition uventet svar: ${JSON.stringify(acq)}`);
+
+  // 4. Opdatér academy_intake → signed.
   const { error: intakeUpdateErr } = await supabase
     .from("academy_intake")
     .update({ status: "signed", resolved_at: new Date().toISOString() })
     .eq("id", intakeRow.id);
   if (intakeUpdateErr) throw new Error(`signAcademyCandidate intake update: ${intakeUpdateErr.message}`);
 
-  // 7. Notifikation til hold-ejeren. notifyTeamOwner henter user_id selv.
+  // 5. Notifikation til hold-ejeren. notifyTeamOwner henter user_id selv.
   await notifyTeamOwner({
     supabase,
     teamId,

@@ -10,9 +10,8 @@ import {
   MARKET_SQUAD_LIMITS,
   TRANSFER_WINDOW_SOFT_CAP_BUFFER,
 } from "./marketUtils.js";
-import { incrementBalanceWithAudit } from "./balanceRpc.js";
+import { incrementBalanceWithAudit, DUPLICATE_VIOLATION_CODE } from "./balanceRpc.js";
 import { contractOnAcquirePatch } from "./contractSeed.js";
-import { getTeamAcademyCount } from "./academyIntake.js";
 import { ACADEMY } from "./academyFlag.js";
 import {
   FINANCE_ACTOR_TYPE,
@@ -157,69 +156,27 @@ async function finalizeYouthAuctionRecord({
 
   const price = auction.current_price;
 
-  // Balance-tjek (spejler senior-stien: balance før kapacitet).
-  const buyer = await expectMaybeSingle(
-    supabase.from("teams").select("id, name, balance").eq("id", bidderId)
-  );
-  if (!buyer || buyer.balance < price) {
-    await closeAuction({ supabase, auction, status: "cancelled", actualEnd, sellerOwned: false });
-    await notifyTeamOwner(
-      bidderId,
-      "auction_lost",
-      "Auktion annulleret",
-      `Du havde ikke råd til ${rider.firstname} ${rider.lastname}. Saldo: ${buyer?.balance || 0} pts`,
-      auction.id,
-      { riderId: rider.id }
-    );
-    return { ok: true, code: "cancelled_insufficient_balance", auction_id: auction.id };
-  }
-
-  // 8-plads akademi-cap (hård, ingen buffer). Fyldt → annullér; rytteren forbliver
-  // fri ungdom og kan stadig signes direkte via signFreeAgentYouth.
-  const academyCount = await getTeamAcademyCount(supabase, bidderId);
-  if (academyCount >= ACADEMY.SLOTS) {
-    await closeAuction({ supabase, auction, status: "cancelled", actualEnd, sellerOwned: false });
-    await notifyTeamOwner(
-      bidderId,
-      "auction_lost",
-      "Auktion annulleret — akademi fuldt",
-      `Dit akademi er fuldt (${ACADEMY.SLOTS} pladser). ${rider.firstname} ${rider.lastname} kunne ikke optages.`,
-      auction.id,
-      { riderId: rider.id }
-    );
-    return { ok: true, code: "academy_full", auction_id: auction.id };
-  }
-
   // Placér i akademiet med ungdomskontrakt (samme løn-/kontrakt-model som
   // signAcademyCandidate; akademiryttere bypasser senior-cap + transfervindue).
   const value = Math.max(1, calculateRiderMarketValue(rider));
   const salary = Math.max(1, Math.round(value * ACADEMY.SALARY_RATE));
   const contractEndSeason = activeSeasonNumber + ACADEMY.CONTRACT_LENGTH - 1;
 
-  await expectMutation(
-    supabase
-      .from("riders")
-      .update({
-        team_id: bidderId,
-        is_academy: true,
-        pending_team_id: null,
-        acquired_at: actualEnd,
-        salary,
-        contract_length: ACADEMY.CONTRACT_LENGTH,
-        contract_end_season: contractEndSeason,
-      })
-      .eq("id", rider.id)
-  );
-
-  // Defensivt: luk evt. åbne transfer_listings (en fri ungdom bør ikke have nogen).
-  await closeTransferListingsForRiders(supabase, [rider.id], "sold");
-
-  // Vinder betaler sit bud som academy_signing (sink — ingen sælger). idempotency_key
-  // gør cron-retries sikre mod dobbelt-debit (spejler senior-stien).
-  await incrementBalanceWithAudit(supabase, {
-    teamId: bidderId,
-    delta: -price,
-    payload: {
+  // #1558: cap-check (8-plads, hård) + balance-check + rider-update + debit sker
+  // nu ATOMISK i én RPC under pg_advisory_xact_lock(team_id) — samme lock-nøgle
+  // som increment_balance_with_audit, så de serialiserer på samme team. Det
+  // lukker BÅDE finalize-vs-finalize OG finalize-vs-signAcademyCandidate-racen,
+  // som tidligere kunne give to debiteringer (forskellige idempotency-keys). RPC'en
+  // er nu den autoritative gate; idempotency_key gør cron-retries sikre.
+  const { data: acq, error: acqErr } = await supabase.rpc("finalize_academy_acquisition", {
+    p_team_id: bidderId,
+    p_rider_id: rider.id,
+    p_price: price,
+    p_salary: salary,
+    p_contract_length: ACADEMY.CONTRACT_LENGTH,
+    p_contract_end_season: contractEndSeason,
+    p_acquired_at: actualEnd,
+    p_finance_payload: {
       type: "academy_signing",
       amount: -price,
       description: `Vandt ungdomsrytter ${rider.firstname} ${rider.lastname} på auktion`,
@@ -234,9 +191,71 @@ async function finalizeYouthAuctionRecord({
       reason_code: FINANCE_REASON.AUCTION_WINNER_PAYMENT,
       related_entity_type: FINANCE_RELATED_ENTITY.AUCTION,
       related_entity_id: auction.id,
+      // Cron-retry-sikring: en gen-finalize af samme auktion må ikke double-pay.
       idempotency_key: `youth_auction_winner:${auction.id}`,
     },
-  }, { allowDuplicate: true });
+  });
+
+  // 23505 (idempotency_key-dublet) = cron-retry af en allerede-betalt auktion.
+  // Behandl som "allerede gennemført" — luk auktionen completed uden notifikation.
+  if (acqErr) {
+    if (acqErr.code === DUPLICATE_VIOLATION_CODE) {
+      await closeAuction({ supabase, auction, status: "completed", actualEnd, sellerOwned: false });
+      return { ok: true, code: "youth_completed", auction_id: auction.id, academy: true, duplicate: true };
+    }
+    throw acqErr;
+  }
+
+  // Akademi fuldt (cap nået inde i låsen) → annullér; rytteren forbliver fri
+  // ungdom og kan stadig signes direkte via signFreeAgentYouth.
+  if (acq?.code === "academy_full") {
+    await closeAuction({ supabase, auction, status: "cancelled", actualEnd, sellerOwned: false });
+    await notifyTeamOwner(
+      bidderId,
+      "auction_lost",
+      "Auktion annulleret — akademi fuldt",
+      `Dit akademi er fuldt (${ACADEMY.SLOTS} pladser). ${rider.firstname} ${rider.lastname} kunne ikke optages.`,
+      auction.id,
+      { riderId: rider.id }
+    );
+    return { ok: true, code: "academy_full", auction_id: auction.id };
+  }
+
+  // Utilstrækkelig balance (verificeret inde i låsen) → annullér.
+  if (acq?.code === "insufficient_balance") {
+    await closeAuction({ supabase, auction, status: "cancelled", actualEnd, sellerOwned: false });
+    await notifyTeamOwner(
+      bidderId,
+      "auction_lost",
+      "Auktion annulleret",
+      `Du havde ikke råd til ${rider.firstname} ${rider.lastname}.`,
+      auction.id,
+      { riderId: rider.id }
+    );
+    return { ok: true, code: "cancelled_insufficient_balance", auction_id: auction.id };
+  }
+
+  // Rytteren var allerede optaget (vundet af en parallel sti) → annullér uden
+  // debit (lukker det omvendte tab: køber debiteret uden at få rytteren).
+  if (acq?.code === "already_assigned") {
+    await closeAuction({ supabase, auction, status: "cancelled", actualEnd, sellerOwned: false });
+    await notifyTeamOwner(
+      bidderId,
+      "auction_lost",
+      "Auktion annulleret",
+      `${rider.firstname} ${rider.lastname} blev optaget af et andet hold.`,
+      auction.id,
+      { riderId: rider.id }
+    );
+    return { ok: true, code: "cancelled_already_assigned", auction_id: auction.id };
+  }
+
+  if (!acq?.ok) {
+    throw new Error(`finalize_academy_acquisition uventet svar: ${JSON.stringify(acq)}`);
+  }
+
+  // Defensivt: luk evt. åbne transfer_listings (en fri ungdom bør ikke have nogen).
+  await closeTransferListingsForRiders(supabase, [rider.id], "sold");
 
   await awardXP(bidderId, "auction_won");
   await notifyTeamOwner(

@@ -369,18 +369,10 @@ function makeSignRejectSupabase({
 
       if (table === "riders") {
         return {
-          select(_cols, opts) {
-            if (opts?.count === "exact" && opts?.head === true) {
-              // getTeamAcademyCount
-              const countApi = {
-                eq() { return countApi; },
-                then(res) {
-                  return Promise.resolve({ count: teamAcademyCount, error: null }).then(res);
-                },
-              };
-              return countApi;
-            }
-            // Rider-fetch (market_value etc.)
+          // #1558: getTeamAcademyCount-stien bruges ikke længere af
+          // signAcademyCandidate (cap-check er flyttet ind i RPC'en); kun
+          // rider-lookup (market_value etc.) tilbage.
+          select() {
             const readApi = {
               eq() { return readApi; },
               maybeSingle() {
@@ -391,14 +383,6 @@ function makeSignRejectSupabase({
               },
             };
             return readApi;
-          },
-          update(data) {
-            riderUpdates.push(data);
-            const upApi = {
-              eq() { return upApi; },
-              then(resolve) { return Promise.resolve({ error: null }).then(resolve); },
-            };
-            return upApi;
           },
         };
       }
@@ -434,9 +418,30 @@ function makeSignRejectSupabase({
 
       return {};
     },
+    // #1558: cap-check + rider-update + signing-fee-debit sker nu atomisk i
+    // finalize_academy_acquisition. Mocken replikerer plpgsql-semantikken og
+    // syntetiserer en rider-update i _riderUpdates så de eksisterende
+    // placerings-assertions stadig holder.
     rpc(_name, _args) {
       rpcCalls.push({ _name, _args });
-      return Promise.resolve({ data: 500000, error: null });
+      assert.equal(_name, "finalize_academy_acquisition");
+      const price = Number(_args.p_price);
+      if (teamAcademyCount >= 8) {
+        return Promise.resolve({ data: { ok: false, code: "academy_full" }, error: null });
+      }
+      if (price > 0 && 500000 < price) {
+        return Promise.resolve({ data: { ok: false, code: "insufficient_balance" }, error: null });
+      }
+      riderUpdates.push({
+        team_id: _args.p_team_id,
+        is_academy: true,
+        salary: Number(_args.p_salary),
+        contract_length: _args.p_contract_length,
+        contract_end_season: _args.p_contract_end_season,
+        acquired_at: _args.p_acquired_at,
+        pending_team_id: null,
+      });
+      return Promise.resolve({ data: { ok: true, balance: 500000 - price, academy_count: teamAcademyCount + 1 }, error: null });
     },
     _riderUpdates: riderUpdates,
     _intakeUpdates: intakeUpdates,
@@ -465,13 +470,17 @@ test("signAcademyCandidate: opdaterer rytter med is_academy=true, team_id, salar
   assert.equal(upd.contract_end_season, 3);
   assert.ok(typeof upd.salary === "number" && upd.salary >= 1, "salary er tal >= 1");
 
-  // Finance-debit via RPC
+  // #1558: cap + rider-update + finance-debit via den atomære RPC.
   assert.equal(supabase._rpcCalls.length, 1, "præcis ét RPC-kald");
   const rpcCall = supabase._rpcCalls[0];
-  assert.equal(rpcCall._name, "increment_balance_with_audit");
+  assert.equal(rpcCall._name, "finalize_academy_acquisition");
   assert.equal(rpcCall._args.p_team_id, "team-A");
-  assert.ok(rpcCall._args.p_delta < 0, "delta er negativ (debit)");
+  assert.equal(rpcCall._args.p_rider_id, "rider-X");
+  assert.ok(rpcCall._args.p_price > 0, "p_price er signing-fee > 0 (debit)");
+  assert.ok(rpcCall._args.p_finance_payload.amount < 0, "payload.amount er negativ (debit)");
   assert.equal(rpcCall._args.p_finance_payload.type, "academy_signing");
+  // #1558: stabil idempotency_key pr. rytter lukker racen mod youth_auction_winner.
+  assert.equal(rpcCall._args.p_finance_payload.idempotency_key, "academy_signing:rider-X");
   // #1483: struktureret metadata med rytternavn så Historik-fanen viser navnet
   // i stedet for den rå UUID.
   assert.deepEqual(rpcCall._args.p_finance_payload.metadata, {
@@ -498,8 +507,11 @@ test("signAcademyCandidate: kaster 'academy_full' når cap er opfyldt (8 ryttere
     "skal kaste academy_full",
   );
 
-  assert.equal(supabase._riderUpdates.length, 0, "ingen rider-update ved cap-fejl");
-  assert.equal(supabase._rpcCalls.length, 0, "ingen finance-debit ved cap-fejl");
+  // #1558: cap håndhæves nu inde i RPC'en — den kaldes, men returnerer
+  // academy_full uden at optage rytteren eller debitere.
+  assert.equal(supabase._riderUpdates.length, 0, "ingen rider-update (optagelse) ved cap-fejl");
+  assert.equal(supabase._rpcCalls.length, 1, "RPC kaldes som gate, men afviser med academy_full");
+  assert.equal(supabase._rpcCalls[0]._args.p_finance_payload.idempotency_key, "academy_signing:rider-X");
   assert.equal(supabase._intakeUpdates.length, 0, "ingen intake-update ved cap-fejl");
 });
 

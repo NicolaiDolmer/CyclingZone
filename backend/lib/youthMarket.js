@@ -6,7 +6,6 @@
 
 import { calculateAuctionEnd, DEFAULT_AUCTION_CONFIG } from "./auctionEngine.js";
 import { calculateRiderMarketValue } from "./marketUtils.js";
-import { getTeamAcademyCount } from "./academyIntake.js";
 import { ACADEMY, isAcademyAge } from "./academyFlag.js";
 
 // Startpris for en ungdomsauktion = lav andel af markedsværdi. Afviste prospekter
@@ -85,7 +84,10 @@ export async function listRejectedAsYouthAuction(supabase, { riderId, now = new 
  * free-agent-pool) — kun den løbende minimumsløn (= SALARY_RATE × markedsværdi)
  * og akademi-drift belaster økonomien. 8-plads-cap gælder.
  *
- * Rækkefølge-garanti: al validering (free-agent + alder + cap) sker FØR write.
+ * Rækkefølge-garanti: free-agent- + alder-validering sker før RPC-kaldet; cap-check
+ * (8-plads) + rider-update sker ATOMISK i finalize_academy_acquisition (#1558) med
+ * p_price=0 (ingen debit), så optagelsen serialiserer mod en samtidig finalize/sign
+ * på samme hold og ikke kan overfylde cap'en.
  *
  * @param {object} supabase
  * @param {object} opts
@@ -140,26 +142,30 @@ export async function signFreeAgentYouth(supabase, { teamId, riderId, seasonNumb
   const age = rider.birthdate ? now.getFullYear() - new Date(rider.birthdate).getFullYear() : null;
   if (!isAcademyAge(age)) throw new Error("not_academy_age");
 
-  // 8-plads akademi-cap.
-  const count = await getTeamAcademyCount(supabase, teamId);
-  if (count >= ACADEMY.SLOTS) throw new Error("academy_full");
-
   const value = Math.max(1, calculateRiderMarketValue(rider));
   const salary = Math.max(1, Math.round(value * ACADEMY.SALARY_RATE));
   const contractEndSeason = seasonNumber + ACADEMY.CONTRACT_LENGTH - 1;
 
-  const { error: upErr } = await supabase
-    .from("riders")
-    .update({
-      is_academy: true,
-      team_id: teamId,
-      acquired_at: now.toISOString(),
-      salary,
-      contract_length: ACADEMY.CONTRACT_LENGTH,
-      contract_end_season: contractEndSeason,
-    })
-    .eq("id", riderId);
-  if (upErr) throw new Error(`signFreeAgentYouth update: ${upErr.message}`);
+  // #1558: 8-plads akademi-cap + rider-update sker nu ATOMISK i samme RPC som
+  // de betalende stier — under pg_advisory_xact_lock(team_id), så denne gratis
+  // optagelse serialiserer mod en samtidig finalize/sign på samme hold og ikke
+  // kan overfylde cap'en (>8 akademiryttere). p_price=0 → ingen debit/finance-
+  // insert; payload bæres kun for kontrakt-type-validering i RPC'en springes over
+  // ved gratis optagelse, men type/amount sættes defensivt.
+  const { data: acq, error: acqErr } = await supabase.rpc("finalize_academy_acquisition", {
+    p_team_id: teamId,
+    p_rider_id: riderId,
+    p_price: 0,
+    p_salary: salary,
+    p_contract_length: ACADEMY.CONTRACT_LENGTH,
+    p_contract_end_season: contractEndSeason,
+    p_acquired_at: now.toISOString(),
+    p_finance_payload: { type: "academy_signing", amount: 0 },
+  });
+  if (acqErr) throw acqErr;
+  if (acq?.code === "academy_full") throw new Error("academy_full");
+  if (acq?.code === "already_assigned") throw new Error("not_free_agent");
+  if (!acq?.ok) throw new Error(`finalize_academy_acquisition uventet svar: ${JSON.stringify(acq)}`);
 
   return { riderId, salary, contractEndSeason };
 }
