@@ -14,11 +14,13 @@
  */
 
 import { transitionToNextSeason } from "./seasonTransition.js";
+import { assessTransitionReadiness } from "./seasonTransitionReadiness.js";
 
 export async function processSeasonAutoTransitionCron({
   supabase,
   now = new Date(),
   transitionFn = transitionToNextSeason,
+  assessReadiness = assessTransitionReadiness,
 }) {
   if (!supabase?.from) throw new Error("Supabase client required");
 
@@ -59,6 +61,17 @@ export async function processSeasonAutoTransitionCron({
   if (!season) return { transitioned: false, reason: "season_not_found" };
   if (season.status !== "active") {
     return { transitioned: false, reason: `season_status_${season.status}` };
+  }
+
+  // #WS1 Task 2.1: readiness-gate. Den manuelle endpoint deler allerede dette
+  // check (POST /api/admin/season-transition); auto-cron'en var ugatet og kunne
+  // skifte sæson midt i uafsluttede løb / aktive auktioner. assessTransitionReadiness
+  // returnerer { ready, checks, failed_critical } — afled en reason fra det første
+  // fejlede kritiske check så afbruddet er sporbart i loggen.
+  const readiness = await assessReadiness({ supabase, fromSeasonId: window.season_id });
+  if (!readiness.ready) {
+    const cause = readiness.failed_critical?.[0] ?? "unknown";
+    return { transitioned: false, reason: `not_ready_${cause}` };
   }
 
   const result = await transitionFn({
