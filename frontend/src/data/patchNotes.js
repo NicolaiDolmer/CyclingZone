@@ -4,6 +4,30 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "5.84",
+    "date": "2026-06-21",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Design",
+        "en": {
+          "title": "Crisper icons and consistent colours across the app",
+          "body": "Icons and colours are now consistent everywhere. The old emoji used as icons are replaced with crisp, scalable SVG icons that stay sharp on every screen, and colours now follow the brand palette and respect light and dark mode instead of one-off shades. Race result jerseys (leader, points, mountain, young rider) use real cycling-jersey hues. A cleaner, calmer look with the same information."
+        },
+        "da": {
+          "title": "Skarpere ikoner og ensartede farver i hele appen",
+          "body": "Ikoner og farver er nu ensartede overalt. De gamle emoji brugt som ikoner er erstattet med skarpe, skalerbare SVG-ikoner der forbliver skarpe på enhver skærm, og farver følger nu brand-paletten og respekterer lyst og mørkt tema i stedet for tilfældige nuancer. Løbsresultaternes trøjer (fører, point, bjerg, ungdom) bruger ægte cykel-trøjefarver. Et renere, roligere udtryk med samme information."
+        },
+        "refs": [
+          1579,
+          1580
+        ]
+      }
+    ]
+  },
+  {
     "version": "5.83",
     "date": "2026-06-21",
     "label": "Beta",
