@@ -4,11 +4,23 @@
 
 ## Leverance i tal
 
-- **13 PR'er merged** (alle CI-grønne: review/claude-review + alle required gates).
+- **15 PR'er merged** (alle CI-grønne). Backend (sikkerhed + SSOT-hygiejne + forward-guard-test) **LIVE via Railway**; frontend venter Vercel-reset.
 - **2 patch-notes-versioner** (v5.67 batch + v5.68 a11y).
-- **3 audits** kørt (design-kvalitet, security m. prod-verifikation, bug-backlog ×2).
-- **4 issues lukket** (verificeret) + **1 rod-årsag udredt** (#46).
-- **1 implementeringsplan** (WS1 race-automatisering) + **3 doc-fixes**.
+- **7 audits** + Sentry-gennemgang (0 prod-fejl): design-kvalitet, security (prod-verificeret), bug-backlog ×2, DB-perf-advisor, + **tre kerne-system-korrektheds-audits med adversariel verifikation** (se nedenfor).
+- **4 issues lukket** (verificeret) + **1 rod-årsag udredt** (#46) + **1 launch-blocker oprettet** (#1558).
+- **1 implementeringsplan** (WS1 race-automatisering) + audit-docs.
+
+## Kerne-system-audits (adversariel verifikation — det stærkeste signal)
+
+Tre korrektheds-audits af de vigtigste systemer, hver med en adversariel verify-fase der **afviste de fleste påståede bugs** (hurtige scannere producerer falske positiver; verifikationen er det der gør konklusionen troværdig):
+
+| System | Resultat | Doc |
+|--------|----------|-----|
+| **Race-engine** (#1-prioritet) | **0 bugs — solid.** Determinisme, idempotens, evne-drevne resultater, klassementer alle verificeret korrekte. Få edge-cases (E1 tom bjerg-trøje er eneste spiller-synlige). | [race-engine-quality](2026-06-20-race-engine-quality.md) |
+| **Økonomi** (#1441) | **0 beregnings-bugs — solid.** Idempotens, advisory-lock-atomicitet, frosne lønninger, sponsor-loft alle korrekte. | [economy-correctness](2026-06-20-economy-correctness.md) |
+| **Concurrency** (forever-relaunch) | **1 reel race = #1558** (akademi-race, eneste sted en bruger kan tabe penge). Resten verificeret beskyttet. | [concurrency](2026-06-20-concurrency.md) |
+
+**Vigtigst:** #1558 er den eneste launch-blocker i hele audit-mængden. Idempotency-key alene lukker den ikke (to krydser, forskellige keys) — fix kræver atomær RPC. Detaljer + fix-retning på issuet.
 
 ## Merged PR'er
 
