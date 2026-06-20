@@ -128,7 +128,6 @@
   ],
   "footerPrivacy": "Privatlivspolitik",
   "footerBack": "← Tilbage til Cycling Zone",
-  "footerSprintRef": "Refs #361/#362/#363. Foundation #359.",
   "form": {
     "contactLegend": "Sådan kontakter vi dig",
     "contactHelp": "Mindst én af felterne skal udfyldes.",
@@ -160,11 +159,11 @@
     "successBody": "Tak fordi du vil være med fra start. Vi sender en mail når premium åbner, og inden da hvis vi har spørgsmål til hvad du synes.",
     "successNextTitle": "Næste skridt:",
     "successNext": [
-      { "text": "Tilmeld dig vores Discord når invite-link er klar (se ", "link": { "href": "https://github.com/NicolaiDolmer/CyclingZone/issues/415", "text": "#415" }, "suffix": ")" },
+      { "text": "Tilmeld dig vores Discord for opdateringer og spørgsmål" },
       { "text": "Følg patch notes for fremgang" },
       { "text": "Tjek din inbox de næste dage" }
     ],
-    "successFooterRefs": "Refs #362. Du kan altid skrive til ",
+    "successDiscordCta": "Tilmeld dig vores Discord",
     "interestOptions": {
       "very": "Meget interesseret, vil gerne være med fra start",
       "maybe": "Måske, afhænger af pris og indhold",

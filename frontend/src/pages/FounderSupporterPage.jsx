@@ -405,8 +405,7 @@ export default function FounderSupporterPage() {
       </main>
 
       <footer className="border-t border-cz-border px-4 sm:px-6 py-8">
-        <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-cz-3 text-xs">
-          <p>{t("footerSprintRef")}</p>
+        <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-center gap-4 text-cz-3 text-xs">
           <div className="flex items-center gap-4">
             <Link to={lang === "en" ? "/privacy-policy" : "/privatlivspolitik"} className="hover:text-cz-1 transition-colors">
               {t("footerPrivacy")}
