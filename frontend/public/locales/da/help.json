@@ -201,15 +201,15 @@
       },
       "onlineStatus": {
         "title": "Online status",
-        "text": "En grøn prik ved en managers navn betyder de er aktive lige nu (sidst set inden for 5 minutter). En grå prik med tekst viser hvornår de sidst var online, f.eks. '3t siden'. Du kan se dette på managerprofiler og i holdlisten."
+        "text": "En grøn prik ved en managers navn betyder de er aktive lige nu (sidst set inden for 5 minutter). En grå prik betyder de er offline lige nu. Du kan se dette på managerprofiler og ved hvert hold i Liga & rangliste."
       },
       "managersOnline": {
         "title": "Antal managers online",
         "text": "På Dashboard kan du se hvor mange managers der er aktive i spillet lige nu. Dette opdateres automatisk."
       },
       "headToHead": {
-        "title": "Head-to-Head",
-        "text": "Under Liga, Head-to-Head kan du sammenligne to holds historik direkte: sæsonpoint, etape- og GC-sejre, transferhistorik imellem holdene og begges nuværende top-5 ryttere. Hold A er automatisk dit eget hold. Klik i Hold B-feltet for at se forslag med det samme. Ingen typing nødvendig."
+        "title": "Sammenlign to hold (Head-to-Head)",
+        "text": "Åbn Liga & rangliste (under Sæson & Resultater). Klik på rang-tallet ved to hold for at vælge dem, og tryk Sammenlign for at åbne en side-om-side-drawer: sæsonpoint, etape- og GC-sejre, transferhistorik imellem holdene og begges nuværende top-5 ryttere. Dit eget hold er valgt først som standard."
       }
     },
     "discord": {

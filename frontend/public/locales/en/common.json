@@ -5,7 +5,6 @@
       "marked": "Market",
       "saeson": "Season & Results",
       "min": "My",
-      "liga": "League",
       "admin": "Admin"
     },
     "item": {
@@ -25,7 +24,7 @@
       "watchlist": "Watchlist",
       "activity": "My Activity",
       "results": "Overview",
-      "standings": "Standings",
+      "standings": "League & standings",
       "riderRankings": "Rider Rankings",
       "races": "Races",
       "seasons": "Season Snapshot",
@@ -36,9 +35,6 @@
       "patchNotes": "Patch Notes",
       "roadmap": "Roadmap",
       "logout": "Log out",
-      "teams": "Teams",
-      "headToHead": "Head-to-Head",
-      "seasonPreview": "Season Preview",
       "admin": "Admin",
       "waitlist": "Waitlist",
       "sprintMetrics": "Sprint metrics",

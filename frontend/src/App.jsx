@@ -39,15 +39,12 @@ const StandingsPage = lazy(() => import("./pages/StandingsPage"));
 const BoardPage = lazy(() => import("./pages/BoardPage"));
 const RiderStatsPage = lazy(() => import("./pages/RiderStatsPage"));
 const TeamProfilePage = lazy(() => import("./pages/TeamProfilePage"));
-const TeamsPage = lazy(() => import("./pages/TeamsPage"));
 const NotificationsPage = lazy(() => import("./pages/NotificationsPage"));
 const RiderComparePage = lazy(() => import("./pages/RiderComparePage"));
 const ActivityPage = lazy(() => import("./pages/ActivityPage"));
 const WatchlistPage = lazy(() => import("./pages/WatchlistPage"));
 const HelpPage = lazy(() => import("./pages/HelpPage"));
 const HallOfFamePage = lazy(() => import("./pages/HallOfFamePage"));
-const SeasonPreviewPage = lazy(() => import("./pages/SeasonPreviewPage"));
-const HeadToHeadPage = lazy(() => import("./pages/HeadToHeadPage"));
 const PatchNotesPage = lazy(() => import("./pages/PatchNotesPage"));
 const RoadmapPage = lazy(() => import("./pages/RoadmapPage"));
 const RulesPage = lazy(() => import("./pages/RulesPage"));
@@ -169,7 +166,9 @@ export default function App() {
             <Route path="auctions/history" element={<AuctionHistoryPage />} />
             <Route path="transfers" element={<TransfersPage />} />
             <Route path="team" element={<TeamPage />} />
-            <Route path="teams" element={<TeamsPage />} />
+            {/* #1609: Teams/H2H/Season-Preview konsolideret ind i Standings-hub'en.
+                Bevarer dybe links via redirect (eget hold som Compare-A på H2H). */}
+            <Route path="teams" element={<Navigate to="/standings" replace />} />
             <Route path="teams/:id" element={<TeamProfilePage />} />
             <Route path="standings" element={<StandingsPage />} />
             <Route path="board" element={<BoardPage />} />
@@ -182,8 +181,8 @@ export default function App() {
             <Route path="help" element={<HelpPage />} />
             <Route path="rules" element={<RulesPage />} />
             <Route path="hall-of-fame" element={<HallOfFamePage />} />
-            <Route path="season-preview" element={<SeasonPreviewPage />} />
-            <Route path="head-to-head" element={<HeadToHeadPage />} />
+            <Route path="season-preview" element={<Navigate to="/standings?view=strength" replace />} />
+            <Route path="head-to-head" element={<Navigate to="/standings?compare=1" replace />} />
             <Route path="patch-notes" element={<PatchNotesPage />} />
             <Route path="roadmap" element={<RoadmapPage />} />
             <Route path="races" element={<RacesPage />} />
