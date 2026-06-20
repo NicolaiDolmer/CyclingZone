@@ -134,6 +134,64 @@ export function parseRacePoolCsv(csvText) {
   return { rows, errors };
 }
 
+// WS3 (#1571) — Stale-row prune ved re-seed.
+//
+// external_id er en hash af (name + date_text). Når et løb omdøbes (WS3:
+// real-world-navne → CZ-egne navne) ændrer external_id sig, så en upsert ON
+// CONFLICT (external_id) INDSÆTTER en ny række og efterlader den gamle real-
+// navngivne pool-række som forældreløs. Denne pure-funktion afgør HVILKE
+// forældreløse rækker der trygt kan slettes.
+//
+// FK-/reference-model (verificeret 2026-06-20):
+//   - races.pool_race_id → race_pool(id) ON DELETE SET NULL (DB-constraint).
+//     En slettet pool-række NULL'er race-linket frem for at cascade-slette løbet,
+//     men det er stadig reference-tab → vi sletter ALDRIG en pool-række som et
+//     races-løb peger på.
+//   - seasons.stage_race_priority / single_race_boost er UUID-arrays af
+//     race_pool.id (whitelists, ikke ægte FK). Stale IDs ignoreres stille i
+//     seasonRaceSelection.js, men referencedPoolIds bør inkludere dem hvis
+//     calleren vil bevare whitelist-integritet. seedRacePool.js samler dem.
+//
+// Argumenter:
+//   seedExternalIds : Set/array af external_id'er fra DEN AKTUELLE seed-CSV.
+//   poolRows        : alle nuværende race_pool-rækker ({ id, external_id, name }).
+//   referencedPoolIds : Set/array af race_pool.id der er FK-/whitelist-refereret.
+//
+// Returnerer:
+//   { toDelete, skippedReferenced, keptInSeed }
+//   - toDelete           : forældreløse + ikke-refererede → trygge at slette.
+//   - skippedReferenced  : forældreløse MEN refererede → bevares (aldrig slet).
+//   - keptInSeed         : rækker hvis external_id stadig findes i seed → bevares.
+export function computeStalePoolPrune({
+  seedExternalIds = [],
+  poolRows = [],
+  referencedPoolIds = [],
+} = {}) {
+  const seedSet = seedExternalIds instanceof Set ? seedExternalIds : new Set(seedExternalIds);
+  const refSet = referencedPoolIds instanceof Set ? referencedPoolIds : new Set(referencedPoolIds);
+
+  const toDelete = [];
+  const skippedReferenced = [];
+  const keptInSeed = [];
+
+  for (const row of poolRows || []) {
+    if (!row || row.id == null) continue;
+    const inSeed = seedSet.has(row.external_id);
+    if (inSeed) {
+      keptInSeed.push(row);
+      continue;
+    }
+    // Forældreløs (ikke i seed). Slet KUN hvis ingen race/whitelist peger på den.
+    if (refSet.has(row.id)) {
+      skippedReferenced.push(row);
+    } else {
+      toDelete.push(row);
+    }
+  }
+
+  return { toDelete, skippedReferenced, keptInSeed };
+}
+
 // Beregner en oversigt over pool-løb pr. klasse: antal og samlede løbsdage.
 // Bruges af AdminPage til at vise "her er hvad du kan vælge".
 export function summarizePool(poolRows) {
