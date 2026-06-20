@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { track } from "@vercel/analytics";
 import { supabase } from "../../lib/supabase";
+import DiscordJoinLink from "../DiscordJoinLink";
 import { formatCurrency, currencyForLocale } from "../../lib/intl.js";
 import { getTierPricesDkk, monthlyInCurrency, annualOf } from "../../lib/pricing.js";
 import {
@@ -226,13 +227,9 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null 
             ))}
           </ul>
         </div>
-        <p className="text-cz-3 text-xs mt-4">
-          {t("form.successFooterRefs")}
-          <a href="mailto:nicolai.dolmer.mikkelsen@gmail.com" className="text-cz-accent underline">
-            nicolai.dolmer.mikkelsen@gmail.com
-          </a>
-          .
-        </p>
+        <div className="mt-4">
+          <DiscordJoinLink variant="button" label={t("form.successDiscordCta")} />
+        </div>
       </div>
     );
   }

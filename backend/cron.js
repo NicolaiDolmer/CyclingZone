@@ -46,6 +46,7 @@ import { isRaceEngineV2Enabled } from "./lib/raceEngineFlag.js";
 import { runAdminSimulateStage, buildRaceSimEmbed } from "./lib/adminSimulateRace.js";
 import { makeEnsureSeasonStandings } from "./lib/seasonStandingsBootstrap.js";
 import { updateStandings } from "./lib/economyEngine.js";
+import { runStarterSquadHealSweep } from "./lib/starterSquadHealSweep.js";
 import { captureException as sentryCapture } from "./lib/sentry.js";
 const __envdir = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__envdir, "../.env"), quiet: true });
@@ -389,6 +390,20 @@ async function runGraduationSweepCron() {
   }
 }
 
+// ─── Start-trup heal: reparér nye hold hvis signup-allokeringen fejlede (#1563) ─
+// Markør-gatet (starter_squad_allocated_at NULL) + alders-guard → rører kun hold
+// hvis bootstrap fejlede, aldrig et hold der selv har solgt ned (ingen exploit).
+
+async function runStarterSquadHealSweepCron() {
+  const result = await runStarterSquadHealSweep({ supabase, now: new Date() });
+  if (result.healed) {
+    console.log(`🛟 Start-trup heal-sweep: ${result.healed} hold repareret (manglende start-trup)`);
+  }
+  if (result.failed) {
+    console.error(`❌ Start-trup heal-sweep: ${result.failed} hold fejlede (per-team try/catch isolerede)`);
+  }
+}
+
 // ─── Auto-prize: udbetal udestående præmier for completede løb (#WS1) ─────────
 // Gated bag runtime-flag auto_prize_enabled (fail-safe OFF) — er flaget ikke tændt,
 // returnerer sweep'en straks { skipped: "flag_off" } uden side-effekter.
@@ -525,6 +540,10 @@ export function startCron() {
 
   // Akademi-graduering: auto-resolver udløbne pending graduates efter kl. 22 (#932)
   setInterval(trackedTick("graduation sweep", runGraduationSweepCron), 5 * 60 * 1000);
+
+  // Start-trup heal: reparér nye hold hvis signup-allokeringen fejlede (#1563).
+  // Markør-gatet + alders-guard → idempotent, exploit-sikker, ingen flag nødvendig.
+  setInterval(trackedTick("starter-squad heal sweep", runStarterSquadHealSweepCron), 5 * 60 * 1000);
 
   // Auto-prize: udbetal udestående præmier for completede løb (#WS1).
   // trackedTick giver Sentry-capture + graceful-shutdown gratis. Idempotent via

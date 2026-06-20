@@ -77,8 +77,12 @@ export default function DashboardPage() {
   );
   const [showDiscordNudge, setShowDiscordNudge] = useState(false);
   const [onboardingProgress, setOnboardingProgress] = useState(null);
+  // #1569: progress-guiden dismisses kun for DENNE session (sessionStorage), ikke
+  // permanent — et fejlklik på X ved 0/4 trin må ikke dræbe den eneste onboarding-
+  // guide for altid. Den kommer tilbage ved næste besøg indtil alle trin er nået.
+  // Completion-kortet (4/4) beholder permanent localStorage-dismiss nedenfor.
   const [onboardingDismissed, setOnboardingDismissed] = useState(
-    () => typeof window !== "undefined" && localStorage.getItem("cz-dashboard-onboarding-dismissed") === "1"
+    () => typeof window !== "undefined" && sessionStorage.getItem("cz-dashboard-onboarding-dismissed") === "1"
   );
   const [completionDismissed, setCompletionDismissed] = useState(
     () => typeof window !== "undefined" && localStorage.getItem("cz-dashboard-onboarding-completion-dismissed") === "1"
@@ -291,7 +295,8 @@ export default function DashboardPage() {
   }
 
   function dismissOnboarding() {
-    localStorage.setItem("cz-dashboard-onboarding-dismissed", "1");
+    // #1569: session-scoped (ikke permanent) — se init-kommentar ovenfor.
+    sessionStorage.setItem("cz-dashboard-onboarding-dismissed", "1");
     setOnboardingDismissed(true);
   }
 

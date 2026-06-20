@@ -4,6 +4,7 @@ import {
   parseRacePoolCsv,
   buildExternalId,
   summarizePool,
+  computeStalePoolPrune,
   KATEGORI_TO_RACE_CLASS,
   TYPE_TO_RACE_TYPE,
   WORLD_TOUR_CLASSES,
@@ -138,4 +139,101 @@ test("WORLD_TOUR_CLASSES dækker alle 6 WT-keys (alt undtagen ProSeries/Class1/C
 test("TYPE_TO_RACE_TYPE — kun 2 typer", () => {
   assert.equal(TYPE_TO_RACE_TYPE["Endagsløb"], "single");
   assert.equal(TYPE_TO_RACE_TYPE["Etapeløb"], "stage_race");
+});
+
+// --- computeStalePoolPrune (WS3 #1571) ---
+
+test("computeStalePoolPrune — forældreløs + ikke-refereret række slettes", () => {
+  const seedExternalIds = new Set(["new1", "new2"]);
+  const poolRows = [
+    { id: "u-new1", external_id: "new1", name: "Tour de l'Hexagone" },
+    { id: "u-new2", external_id: "new2", name: "Giro della Penisola" },
+    { id: "u-old1", external_id: "old1", name: "Tour de France" }, // forældreløs (omdøbt)
+  ];
+  const { toDelete, skippedReferenced, keptInSeed } = computeStalePoolPrune({
+    seedExternalIds,
+    poolRows,
+    referencedPoolIds: [],
+  });
+  assert.equal(keptInSeed.length, 2);
+  assert.equal(skippedReferenced.length, 0);
+  assert.deepEqual(toDelete.map((r) => r.id), ["u-old1"]);
+});
+
+test("computeStalePoolPrune — forældreløs MEN refereret række bevares (FK-sikkerhed)", () => {
+  const seedExternalIds = new Set(["new1"]);
+  const poolRows = [
+    { id: "u-new1", external_id: "new1", name: "Tour de l'Hexagone" },
+    { id: "u-old1", external_id: "old1", name: "Tour de France" }, // forældreløs men refereret
+  ];
+  const { toDelete, skippedReferenced, keptInSeed } = computeStalePoolPrune({
+    seedExternalIds,
+    poolRows,
+    referencedPoolIds: ["u-old1"], // et races-løb / whitelist peger på den
+  });
+  assert.equal(keptInSeed.length, 1);
+  assert.equal(toDelete.length, 0, "refereret række må ALDRIG slettes");
+  assert.deepEqual(skippedReferenced.map((r) => r.id), ["u-old1"]);
+});
+
+test("computeStalePoolPrune — ren re-seed (alle external_id i seed) sletter intet", () => {
+  const seedExternalIds = new Set(["a", "b", "c"]);
+  const poolRows = [
+    { id: "u-a", external_id: "a", name: "A" },
+    { id: "u-b", external_id: "b", name: "B" },
+    { id: "u-c", external_id: "c", name: "C" },
+  ];
+  const { toDelete, skippedReferenced, keptInSeed } = computeStalePoolPrune({
+    seedExternalIds,
+    poolRows,
+    referencedPoolIds: [],
+  });
+  assert.equal(toDelete.length, 0);
+  assert.equal(skippedReferenced.length, 0);
+  assert.equal(keptInSeed.length, 3);
+});
+
+test("computeStalePoolPrune — accepterer både Set og array for id-sæt", () => {
+  const poolRows = [
+    { id: "u-keep", external_id: "keep", name: "Keep" },
+    { id: "u-ref", external_id: "stale-ref", name: "RefStale" },
+    { id: "u-del", external_id: "stale-del", name: "DelStale" },
+  ];
+  const arrResult = computeStalePoolPrune({
+    seedExternalIds: ["keep"],
+    poolRows,
+    referencedPoolIds: ["u-ref"],
+  });
+  const setResult = computeStalePoolPrune({
+    seedExternalIds: new Set(["keep"]),
+    poolRows,
+    referencedPoolIds: new Set(["u-ref"]),
+  });
+  assert.deepEqual(
+    arrResult.toDelete.map((r) => r.id),
+    setResult.toDelete.map((r) => r.id),
+  );
+  assert.deepEqual(arrResult.toDelete.map((r) => r.id), ["u-del"]);
+  assert.deepEqual(arrResult.skippedReferenced.map((r) => r.id), ["u-ref"]);
+});
+
+test("computeStalePoolPrune — springer rækker uden id over (defensivt)", () => {
+  const poolRows = [
+    { id: "u-a", external_id: "a", name: "A" },
+    { external_id: "no-id", name: "MalformedNoId" }, // ingen id → ignoreres
+    null,
+  ];
+  const { toDelete, skippedReferenced, keptInSeed } = computeStalePoolPrune({
+    seedExternalIds: ["a"],
+    poolRows,
+    referencedPoolIds: [],
+  });
+  assert.equal(keptInSeed.length, 1);
+  assert.equal(toDelete.length, 0);
+  assert.equal(skippedReferenced.length, 0);
+});
+
+test("computeStalePoolPrune — tomme inputs giver tomme resultater", () => {
+  const r = computeStalePoolPrune({});
+  assert.deepEqual(r, { toDelete: [], skippedReferenced: [], keptInSeed: [] });
 });

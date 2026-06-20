@@ -218,61 +218,120 @@ async function writeTeamAssignments(supabase, pairs) {
   return assigned;
 }
 
-// Antal eksisterende ryttere på et hold (idempotens-guard for single-team-bootstrap).
-async function countTeamRiders(supabase, teamId) {
+// Rytter-id'er på et hold (rækkefølge-stabil). Single-team-bootstrap bruger den
+// til at afgøre om et markør-NULL hold mangler/har en delvis start-trup.
+async function listTeamRiderIds(supabase, teamId) {
   const rows = await fetchAllRows(() =>
     supabase.from("riders").select("id").eq("team_id", teamId).order("id"));
-  return rows.length;
+  return rows.map((r) => r.id);
 }
 
-// #1560 — SINGLE-TEAM-allokering: et NYT hold (oprettet efter relaunch via den
-// normale signup-flow) får automatisk en spilbar start-trup fra SAMME svage pulje-
-// mekanik (#1487) som relaunch-holdene fik. Synkron ved signup → holdet er aldrig
-// tomt før responsen. Deler kerne-generering + insert/derive/write med
-// runStarterSquadAllocation, så de to varianter ikke kan drifte balance-mæssigt.
+// Slet ryttere (concurrency-bounded). Bruges KUN til at rydde en delvis/ufuldstændig
+// start-trup på et markør-NULL hold før en ren re-allokering (yderst sjælden sti —
+// kræver en delvis-insert, som det ene batch-insert nedenfor gør næsten umulig).
+async function deleteRiders(supabase, ids) {
+  for (let i = 0; i < ids.length; i += WRITE_CONCURRENCY) {
+    const batch = ids.slice(i, i + WRITE_CONCURRENCY);
+    await Promise.all(batch.map((id) =>
+      supabase.from("riders").delete().eq("id", id).then(({ error }) => {
+        if (error) throw new Error(`delete partial starter ${id}: ${error.message}`);
+      })));
+  }
+}
+
+// #1563-markør: "fik dette hold nogensinde sin start-trup?" (teams.starter_squad_allocated_at).
+// SANDHEDEN for idempotens — IKKE rytter-antallet — så et hold der selv har solgt
+// ned under 8 aldrig får gratis ryttere. Service-role-managed (api.js + cron).
+async function readSquadMarker(supabase, teamId) {
+  const { data, error } = await supabase
+    .from("teams").select("starter_squad_allocated_at").eq("id", teamId).single();
+  if (error) throw new Error(`read starter-squad marker ${teamId}: ${error.message}`);
+  return data?.starter_squad_allocated_at ?? null;
+}
+
+async function setSquadMarker(supabase, teamId, nowIso) {
+  const { error } = await supabase
+    .from("teams").update({ starter_squad_allocated_at: nowIso }).eq("id", teamId);
+  if (error) throw new Error(`set starter-squad marker ${teamId}: ${error.message}`);
+}
+
+// #1563: indsæt en frisk svag 8-rytter-pulje DIREKTE med team_id sat (ikke
+// team_id=null + separat assign-skridt). Det lukker orphan-vinduet: fejler noget
+// efter insert, er rytterne EJET (ikke ejerløse i markedet), og en re-derive heler
+// dem. Genbruger den svage pulje-mekanik (#1487) + derive-kæden (data-hale).
+async function insertWeakSquadForTeam(supabase, teamId, { seed, referenceYear, generate, derive }) {
+  const existingFoldedNames = await fetchExistingFoldedNames(supabase);
+  // Per-hold seed: basis-offset (+1487, samme som relaunch-puljen) XOR hash(teamId).
+  const teamSeed = deriveTeamSeed((seed + 1487) >>> 0, teamId);
+  const poolPayload = buildWeakStarterPool({
+    count: STARTER_SQUAD.SQUAD_SIZE, seed: teamSeed, referenceYear, existingFoldedNames, generate,
+  }).map((r) => ({ ...r, team_id: teamId }));
+
+  const insertedIds = [];
+  for (let i = 0; i < poolPayload.length; i += INSERT_BATCH) {
+    const batch = poolPayload.slice(i, i + INSERT_BATCH);
+    const { data, error } = await supabase.from("riders").insert(batch).select("id");
+    if (error) throw new Error(`starter-squad insert ${teamId} ved ${i}: ${error.message}`);
+    insertedIds.push(...(data || []).map((r) => r.id));
+  }
+
+  // Data-hale-garanti: physiology→abilities→type→base_value for de nye ryttere.
+  await derive(supabase, insertedIds, { dryRun: false });
+  return insertedIds;
+}
+
+// #1560/#1563 — SINGLE-TEAM-allokering, robust mod delvis/transient fejl.
+// Et NYT hold (oprettet efter relaunch via den normale signup-flow) får en spilbar
+// start-trup fra SAMME svage pulje-mekanik (#1487) som relaunch-holdene. Synkron ved
+// signup → holdet er aldrig tomt før responsen; en self-heal-sweep
+// (runStarterSquadHealSweep) reparerer hold hvis selve signup-allokeringen fejlede.
 //
 //   • Per-hold seed (deriveTeamSeed) → varierede men reproducerbare trupper.
-//   • Idempotens-guard: har holdet ≥1 rytter, gør INTET (beskytter mod dobbelt-
-//     bootstrap ved samtidige/gentagne signup-kald — samme race-mønster som
-//     team-create i teamProfileEngine.js).
+//   • Idempotens på MARKØREN starter_squad_allocated_at (#1563), IKKE rytter-antal:
+//     markør sat → no-op (også hvis ejeren selv har solgt ned under 8 → ingen
+//     gratis-trup-exploit). Markør NULL = bootstrap aldrig fuldført → alle holdets
+//     nuværende ryttere (0-8) stammer fra et ufuldstændigt forsøg → bring til præcis
+//     SQUAD_SIZE derive'de ryttere + sæt markøren.
+//   • insert-med-team_id → intet orphan-vindue ved fejl.
 export async function allocateStarterSquadForTeam(supabase, teamId, {
   seed = LAUNCH_POPULATION.seed,
   referenceYear = LAUNCH_POPULATION.referenceYear,
   generate = generateFictionalRiders,
   derive = deriveForRiderIds,
+  now = () => new Date(),
 } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
   if (!teamId) throw new Error("teamId required");
 
-  // Idempotens: allokér aldrig dobbelt. Et samtidigt/gentaget bootstrap-kald
-  // (eller et hold der allerede fik trup ved relaunch) skal være et no-op.
-  const existingRiders = await countTeamRiders(supabase, teamId);
-  if (existingRiders > 0) {
-    return { teamId, skipped: "already-has-riders", existingRiders, assigned: 0 };
+  const marker = await readSquadMarker(supabase, teamId);
+  if (marker) {
+    return { teamId, skipped: "already-allocated", allocatedAt: marker, assigned: 0 };
   }
 
-  const count = STARTER_SQUAD.SQUAD_SIZE;
-  const existingFoldedNames = await fetchExistingFoldedNames(supabase);
+  const existingIds = await listTeamRiderIds(supabase, teamId);
+  const n = existingIds.length;
+  const SIZE = STARTER_SQUAD.SQUAD_SIZE;
 
-  // Per-hold seed: basis-offset (+1487, samme som relaunch-puljen) XOR hash(teamId)
-  // → hvert nyt hold får sin egen reproducerbare, varierede 8-rytter-pulje.
-  const teamSeed = deriveTeamSeed((seed + 1487) >>> 0, teamId);
-  const poolPayload = buildWeakStarterPool({
-    count,
-    seed: teamSeed,
-    referenceYear,
-    existingFoldedNames,
-    generate,
-  });
+  let assigned;
+  let recovered = null;
+  if (n === 0) {
+    const ids = await insertWeakSquadForTeam(supabase, teamId, { seed, referenceYear, generate, derive });
+    assigned = ids.length;
+  } else if (n === SIZE) {
+    // Insert lykkedes sidst, men derive/markør fejlede → re-derive (idempotent) + markér.
+    await derive(supabase, existingIds, { dryRun: false });
+    assigned = n;
+    recovered = "re-derived";
+  } else {
+    // 0<n<SIZE: en yderst sjælden delvis-insert. Ryd det halve forsøg + re-allokér rent.
+    await deleteRiders(supabase, existingIds);
+    const ids = await insertWeakSquadForTeam(supabase, teamId, { seed, referenceYear, generate, derive });
+    assigned = ids.length;
+    recovered = "cleaned-partial";
+  }
 
-  const pool = await insertDeriveAndReadPool(supabase, poolPayload, { referenceYear, derive });
-
-  // Allokér hele puljen til det ene hold (starCutoffFraction 0 — alt er svagt).
-  const { assignments, stats } = allocateStarterSquads(pool, [teamId], { seed: teamSeed, starCutoffFraction: 0 });
-  const pairs = (assignments[teamId] || []).map((id) => ({ id, team_id: teamId }));
-  const assigned = await writeTeamAssignments(supabase, pairs);
-
-  return { teamId, poolSize: pool.length, assigned, stats };
+  await setSquadMarker(supabase, teamId, now().toISOString());
+  return { teamId, assigned, ...(recovered ? { recovered } : {}) };
 }
 
 // DB-wrapper (#1487 approach B): generér en dedikeret svag pulje (N×SQUAD_SIZE),
@@ -324,5 +383,17 @@ export async function runStarterSquadAllocation(supabase, {
 
   // Skriv team_id (delt kerne).
   const assigned = await writeTeamAssignments(supabase, pairs);
+
+  // #1563: markér holdene som start-trup-allokeret, så self-heal-sweep'en og
+  // single-team-bootstrappen ALDRIG re-allokerer dem (markør = sandhed). Uden det
+  // ville et forever-relaunch-hold (markør NULL fra denne sti) blive "healet" af
+  // sweep'en. Best-effort pr. hold — en fejl her efterlader holdet med sin trup,
+  // og sweep'en re-deriver det blot (idempotent), så det må aldrig fejle relaunchen.
+  const nowIso = new Date().toISOString();
+  await Promise.all(teamIds.map((teamId) =>
+    setSquadMarker(supabase, teamId, nowIso).catch((err) => {
+      console.error(`[runStarterSquadAllocation] markér ${teamId} fejlede:`, err?.message || err);
+    })));
+
   return { dryRun: false, teams: teamIds.length, poolSize: pool.length, assigned, leftToMarket: leftToMarket.length, stats };
 }

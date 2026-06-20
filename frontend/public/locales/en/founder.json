@@ -128,7 +128,6 @@
   ],
   "footerPrivacy": "Privacy policy",
   "footerBack": "← Back to Cycling Zone",
-  "footerSprintRef": "Refs #361/#362/#363. Foundation #359.",
   "form": {
     "contactLegend": "How we contact you",
     "contactHelp": "At least one of the fields below must be filled.",
@@ -160,11 +159,11 @@
     "successBody": "Thanks for joining early. We'll email when premium opens, and before that if we have questions about what you think.",
     "successNextTitle": "Next steps:",
     "successNext": [
-      { "text": "Join our Discord when the invite link is ready (see ", "link": { "href": "https://github.com/NicolaiDolmer/CyclingZone/issues/415", "text": "#415" }, "suffix": ")" },
+      { "text": "Join our Discord for updates and questions" },
       { "text": "Follow patch notes for progress" },
       { "text": "Check your inbox the next few days" }
     ],
-    "successFooterRefs": "Refs #362. You can always email ",
+    "successDiscordCta": "Join the Discord",
     "interestOptions": {
       "very": "Very interested, want to be there from the start",
       "maybe": "Maybe, depends on price and content",

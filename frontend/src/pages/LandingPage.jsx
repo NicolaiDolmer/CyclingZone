@@ -165,20 +165,35 @@ export default function LandingPage() {
 
             <p className="mt-5 max-w-xl text-base leading-relaxed text-cz-2 sm:text-lg">{t("hero.subtitle")}</p>
 
+            {/* #1570: spillet er live og tager imod spillere nu → "Opret dit hold"
+                er den primære hero-handling. Discord demoteres til sekundær, og
+                launch-mailen bliver et diskret link, så en kold besøgende der vil
+                spille NU ikke dirigeres ud i en venteliste/community-tragt. */}
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
+              <Link
+                to="/login?mode=signup"
+                className={buttonClass({ variant: "primary", size: "lg" })}
+              >
+                {t("hero.ctaPlay")}
+              </Link>
               <a
                 href={DISCORD_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className={buttonClass({ variant: "primary", size: "lg" })}
+                className={buttonClass({ variant: "secondary", size: "lg" })}
               >
                 <DiscordGlyph size={18} />
                 {t("hero.ctaDiscord")}
               </a>
-              <a href="#waitlist" className={buttonClass({ variant: "secondary", size: "lg" })}>
+            </div>
+            <p className="mt-3 text-sm">
+              <a
+                href="#waitlist"
+                className="font-medium text-cz-2 underline-offset-2 hover:text-cz-1 hover:underline"
+              >
                 {t("hero.ctaEmail")}
               </a>
-            </div>
+            </p>
 
             <ul className="mt-7 flex flex-wrap gap-x-5 gap-y-2">
               {["hero.trustFree", "hero.trustNoCard", "hero.trustBrowser"].map((key) => (
