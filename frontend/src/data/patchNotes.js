@@ -4,6 +4,29 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "5.79",
+    "date": "2026-06-21",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Stage schedule on upcoming races",
+          "body": "Open an upcoming stage race and you now see its stage schedule: each stage with its fixed start time, plus a live \"next stage in\" countdown. Times are shown in Copenhagen time (CET/CEST) so the slot is the same wherever you play from, and stages that have already run are marked Done."
+        },
+        "da": {
+          "title": "Etapeplan på kommende løb",
+          "body": "Åbn et kommende etapeløb, og du ser nu dets etapeplan: hver etape med sit faste starttidspunkt plus en live \"næste etape om\"-nedtælling. Tiderne vises i København-tid (CET/CEST), så slottet er det samme uanset hvor du spiller fra, og etaper der allerede er afviklet er markeret Afviklet."
+        },
+        "refs": [
+          1597
+        ]
+      }
+    ]
+  },
+  {
     "version": "5.78",
     "date": "2026-06-21",
     "label": "Beta",
