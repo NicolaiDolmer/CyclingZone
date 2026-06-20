@@ -8,10 +8,10 @@
     "points": "Points tables and prize formula"
   },
   "tabs": {
-    "calendar": "📅 Calendar",
-    "library": "📚 Library",
-    "world": "🌍 World calendar",
-    "points": "💰 Points & prizes"
+    "calendar": "Calendar",
+    "library": "Library",
+    "world": "World calendar",
+    "points": "Points & prizes"
   },
   "raceType": {
     "stageRace": "Stage race",
@@ -51,7 +51,6 @@
     "points": "{count} pt"
   },
   "empty": {
-    "icon": "🏁",
     "noRacesSeason": "No races this season yet",
     "addRaceAdmin": "Add races in the Admin panel",
     "noRacesMatch": "No races match the filters",

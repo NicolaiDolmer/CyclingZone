@@ -4,24 +4,27 @@ import { supabase } from "../lib/supabase";
 import TeamLink from "../components/TeamLink";
 import { logEvent } from "../lib/logEvent";
 import { formatNumber } from "../lib/intl";
+import { TrophyIcon, LightningIcon, CrownIcon } from "../components/ui";
 
 const CATEGORIES = [
-  { key: "most_points_season", icon: "🏆", unitKey: "points", color: "#e8c547" },
-  { key: "most_stage_wins_season", icon: "⚡", unitKey: "wins", color: "#60a5fa" },
-  { key: "most_div1_titles", icon: "👑", unitKey: "titles", color: "#a78bfa" },
+  { key: "most_points_season", Icon: TrophyIcon, unitKey: "points" },
+  { key: "most_stage_wins_season", Icon: LightningIcon, unitKey: "wins" },
+  { key: "most_div1_titles", Icon: CrownIcon, unitKey: "titles" },
 ];
 
+// #1580: 2-farve-disciplin — niveau-tier mappes til en monokrom intensitet via
+// cz-tekst-tokens (lav tier dæmpet, top tier guld) i stedet for 10 regnbue-hex.
 const LEVEL_TITLES = [
-  { min: 1,  max: 4,  key: "rookie",      color: "#9ca3af" },
-  { min: 5,  max: 9,  key: "amateur",     color: "#6b7280" },
-  { min: 10, max: 14, key: "continental", color: "#34d399" },
-  { min: 15, max: 19, key: "pro",         color: "#60a5fa" },
-  { min: 20, max: 24, key: "proTeam",     color: "#818cf8" },
-  { min: 25, max: 29, key: "worldTour",   color: "#e8c547" },
-  { min: 30, max: 34, key: "monument",    color: "#f97316" },
-  { min: 35, max: 39, key: "gcContender", color: "#ef4444" },
-  { min: 40, max: 44, key: "grandTour",   color: "#ec4899" },
-  { min: 45, max: 50, key: "legend",      color: "#e8c547" },
+  { min: 1,  max: 4,  key: "rookie",      cls: "text-cz-3" },
+  { min: 5,  max: 9,  key: "amateur",     cls: "text-cz-3" },
+  { min: 10, max: 14, key: "continental", cls: "text-cz-2" },
+  { min: 15, max: 19, key: "pro",         cls: "text-cz-2" },
+  { min: 20, max: 24, key: "proTeam",     cls: "text-cz-2" },
+  { min: 25, max: 29, key: "worldTour",   cls: "text-cz-1" },
+  { min: 30, max: 34, key: "monument",    cls: "text-cz-1" },
+  { min: 35, max: 39, key: "gcContender", cls: "text-cz-accent-t" },
+  { min: 40, max: 44, key: "grandTour",   cls: "text-cz-accent-t" },
+  { min: 45, max: 50, key: "legend",      cls: "text-cz-accent-t" },
 ];
 
 export function getLevelInfo(level) {
@@ -142,9 +145,8 @@ export default function HallOfFamePage() {
             const entries = getBestFromStandings(cat.key);
             return (
               <div key={cat.key} className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
-                <div className="flex items-center gap-3 px-5 py-4 border-b border-cz-border"
-                  style={{ borderLeft: `3px solid ${cat.color}` }}>
-                  <span className="text-xl">{cat.icon}</span>
+                <div className="flex items-center gap-3 px-5 py-4 border-b border-l-[3px] border-cz-border border-l-cz-accent">
+                  <cat.Icon size={20} className="text-cz-accent-t" aria-hidden="true" />
                   <h2 className="text-cz-1 font-semibold text-sm">{t(`categories.${cat.key}`)}</h2>
                 </div>
                 {entries.length === 0 ? (
@@ -171,7 +173,7 @@ export default function HallOfFamePage() {
                             )}
                           </td>
                           <td className="px-5 py-3 text-right">
-                            <span className="font-mono font-bold text-lg" style={{ color: cat.color }}>
+                            <span className="font-mono font-bold text-lg text-cz-accent-t">
                               {formatNumber(e.value)}
                             </span>
                             <span className="text-cz-3 text-xs ms-1">{t(`units.${cat.unitKey}`)}</span>
@@ -216,13 +218,12 @@ export default function HallOfFamePage() {
                       )}
                     </td>
                     <td className="px-4 py-3">
-                      <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-cz-subtle"
-                        style={{ color: levelInfo.color }}>
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full bg-cz-subtle ${levelInfo.cls}`}>
                         {t(`level.${levelInfo.key}`)}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <span className="font-mono font-bold" style={{ color: levelInfo.color }}>
+                      <span className={`font-mono font-bold ${levelInfo.cls}`}>
                         {m.level || 1}
                       </span>
                     </td>
@@ -248,7 +249,7 @@ export default function HallOfFamePage() {
         <div>
           {Object.keys(divHistory).length === 0 ? (
             <div className="text-center py-16 text-cz-3">
-              <p className="text-4xl mb-3">◉</p>
+              <TrophyIcon size={32} className="mx-auto mb-3" aria-hidden="true" />
               <p>{t("noDivHistory")}</p>
               <p className="text-sm mt-2">{t("noDivHistoryHint")}</p>
             </div>

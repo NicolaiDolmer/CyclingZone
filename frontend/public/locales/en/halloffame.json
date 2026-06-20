@@ -1,9 +1,9 @@
 {
   "title": "Hall of Fame",
   "subtitle": "Historical records and manager stats",
-  "tabRecords": "🏆 Records",
-  "tabManagers": "👤 Managers",
-  "tabDivHistory": "◉ Division history",
+  "tabRecords": "Records",
+  "tabManagers": "Managers",
+  "tabDivHistory": "Division history",
   "season": "Season {n}",
   "categories": {
     "most_points_season": "Most points in a season",

@@ -8,10 +8,10 @@
     "points": "Pointtabeller og præmieformel"
   },
   "tabs": {
-    "calendar": "📅 Kalender",
-    "library": "📚 Bibliotek",
-    "world": "🌍 Verdens-kalender",
-    "points": "💰 Point & præmier"
+    "calendar": "Kalender",
+    "library": "Bibliotek",
+    "world": "Verdens-kalender",
+    "points": "Point & præmier"
   },
   "raceType": {
     "stageRace": "Etapeløb",
@@ -51,7 +51,6 @@
     "points": "{count} pt"
   },
   "empty": {
-    "icon": "🏁",
     "noRacesSeason": "Ingen løb i denne sæson endnu",
     "addRaceAdmin": "Tilføj løb i Admin-panelet",
     "noRacesMatch": "Ingen løb matcher filtrene",

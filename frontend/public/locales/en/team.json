@@ -2,8 +2,8 @@
   "page": {
     "fallbackTitle": "My Team",
     "managerLabel": "Manager: {name}",
-    "windowOpen": "🟢 Transfer window open",
-    "windowClosed": "🔒 Transfer window closed",
+    "windowOpen": "Transfer window open",
+    "windowClosed": "Transfer window closed",
     "ridersCount": "{count} riders",
     "incomingCount": "+{count} incoming",
     "outgoingCount": "-{count} outgoing",
@@ -27,7 +27,7 @@
     },
     "loanedIn": "Loaned riders ({count})",
     "loanedOut": "Riders on loan out ({count})",
-    "windowClosedHint": "🔒 Transfer window closed. Changes take effect at the next opening",
+    "windowClosedHint": "Transfer window closed. Changes take effect at the next opening",
     "emptyState": "Your squad is empty",
     "emptyStateBody": "Sign your first riders from the market to start building your team.",
     "emptyStateCta": "Browse riders",
@@ -57,25 +57,25 @@
   "actionModal": {
     "potentialLabel": "Potential",
     "tabs": {
-      "auction": "⚡ Auction",
-      "transfer": "↔ Transfer list"
+      "auction": "Auction",
+      "transfer": "Transfer list"
     },
     "auction": {
       "description": "Start auction. Other managers can bid.",
       "startButton": "Start",
-      "startFlashButton": "⚡ Start Flash",
-      "flashLabel": "⚡ Flash auction (30 min)",
+      "startFlashButton": "Start Flash",
+      "flashLabel": "Flash auction (30 min)",
       "flashHint": "Deadline Day: ends exactly 30 minutes after start",
-      "successMsg": "✅ Auction started!",
+      "successMsg": "Auction started!",
       "priceError": "Start price must be between 0 and Value ({amount} CZ$)"
     },
     "transfer": {
       "description": "List for sale at a fixed price.",
       "listButton": "List for sale",
-      "successMsg": "✅ Listed for sale!"
+      "successMsg": "Listed for sale!"
     },
     "loadingShort": "...",
-    "errorPrefix": "❌ "
+    "errorPrefix": ""
   },
   "list": {
     "title": "Teams",
