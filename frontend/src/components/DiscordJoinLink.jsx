@@ -36,7 +36,7 @@ export default function DiscordJoinLink({ variant = "button", label, className =
       target="_blank"
       rel="noopener noreferrer"
       onClick={onClick}
-      className={`inline-flex w-full items-center justify-center gap-2 rounded-cz bg-cz-discord px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-cz-discord-hover ${className}`}
+      className={`inline-flex w-full items-center justify-center gap-2 rounded-cz bg-cz-discord px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-cz-discord-hover ${className}`}
     >
       <DiscordGlyph className="h-4 w-4" />
       <span>{label}</span>

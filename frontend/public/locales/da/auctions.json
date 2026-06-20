@@ -26,7 +26,7 @@
     "minBidBody": "Et nyt bud skal mindst være 1 CZ$ over det aktuelle bud. Min-bud er forudfyldt i input-feltet.",
     "autoExtendLabel": "10-min auto-forlængelse:",
     "autoExtendBody": "Bud i de sidste 10 minutter forlænger auktionen, så du kan altid svare igen, hvis nogen overbyder dig på falderebet.",
-    "startTour": "💡 Vis mig rundt"
+    "startTour": "Vis mig rundt"
   },
   "ticker": {
     "bidCount": "{count, plural, one {1 nyt bud} other {# nye bud}} for nylig"
@@ -113,10 +113,10 @@
     "winning": "Vinder",
     "seller": "Sælger",
     "mine": "Din",
-    "extended": "⚡ Ext",
-    "flash": "⚡ Flash",
+    "extended": "Ext",
+    "flash": "Flash",
     "u25": "U25",
-    "youth": "🎓 Ungdom"
+    "youth": "Ungdom"
   },
   "bid": {
     "minBid": "Min. {amount} CZ$",
@@ -146,9 +146,9 @@
     }
   },
   "section": {
-    "leading": "🟢 Du leder",
-    "overbid": "🔴 Du er overbudt",
-    "selling": "🔵 Du sælger"
+    "leading": "Du leder",
+    "overbid": "Du er overbudt",
+    "selling": "Du sælger"
   },
   "empty": {
     "wishlistNoResults": "Ingen aktive auktioner på dine ønskelistede ryttere",
@@ -176,15 +176,15 @@
     "bidTitle": "Bekræft bud",
     "bidVerb": "byde",
     "bidAction": "Byd",
-    "bidIcon": "🏷️",
+    "bidIcon": "",
     "proxyTitle": "Bekræft autobud",
     "proxyVerb": "sætte autobud-loft til",
     "proxyAction": "Gem autobud",
-    "proxyIcon": "🤖",
+    "proxyIcon": "",
     "transferTitle": "Bekræft transferbud",
     "transferVerb": "sende et transferbud på",
     "transferAction": "Send bud",
-    "transferIcon": "💼",
+    "transferIcon": "",
     "questionPrefix": "Er du sikker på at du vil",
     "onLabel": "på"
   },
@@ -192,7 +192,7 @@
     "rider": "rytter"
   },
   "celebration": {
-    "title": "Du vandt auktionen! 🏆",
+    "title": "Du vandt auktionen!",
     "subtitle": "Rytteren er nu på dit hold"
   },
   "priceChanged": {

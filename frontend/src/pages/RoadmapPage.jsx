@@ -16,13 +16,14 @@ import {
   buildVotePayload,
   votesByItemId,
 } from "../lib/roadmapVoting.js";
+import { FlagIcon, StopwatchIcon, TeamIcon, ExchangeIcon, CrownIcon } from "../components/ui";
 
 const ENGINES = [
-  { key: "races", icon: "🏁" },
-  { key: "training", icon: "📈" },
-  { key: "youth", icon: "🌱" },
-  { key: "market", icon: "⚡" },
-  { key: "club", icon: "🏛️" },
+  { key: "races", Icon: FlagIcon },
+  { key: "training", Icon: StopwatchIcon },
+  { key: "youth", Icon: TeamIcon },
+  { key: "market", Icon: ExchangeIcon },
+  { key: "club", Icon: CrownIcon },
 ];
 
 function VoteAxis({ label, value, disabled, onSelect }) {
@@ -131,10 +132,10 @@ export default function RoadmapPage() {
       </div>
 
       <div className="flex flex-col gap-3">
-        {ENGINES.map(({ key, icon }) => (
+        {ENGINES.map(({ key, Icon }) => (
           <div key={key} className="bg-cz-card border border-cz-border rounded-cz px-5 py-4">
             <div className="flex items-center gap-2 mb-3">
-              <span aria-hidden="true">{icon}</span>
+              <Icon className="w-4 h-4 text-cz-accent-t flex-shrink-0" aria-hidden="true" />
               <h2 className="text-cz-1 font-bold text-sm">{t(`engines.${key}.title`)}</h2>
             </div>
 

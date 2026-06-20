@@ -177,7 +177,7 @@ export default function RaceSelectionPanel({ raceId }) {
                       />
                       <span className="text-cz-1 font-medium">{rider.name}</span>
                       {rider.injured && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/20">
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-cz-danger/10 text-cz-danger border border-cz-danger/20">
                           {t("selection.injured")}
                         </span>
                       )}
@@ -242,7 +242,7 @@ export default function RaceSelectionPanel({ raceId }) {
             type="button"
             onClick={save}
             disabled={clientErrors.length > 0 || saving}
-            className="px-4 py-2 rounded-lg bg-cz-accent text-white text-sm font-semibold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity self-start sm:self-auto"
+            className="px-4 py-2 rounded-lg bg-cz-accent text-cz-on-accent text-sm font-semibold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity self-start sm:self-auto"
           >
             {saving ? t("selection.saving") : t("selection.save")}
           </button>

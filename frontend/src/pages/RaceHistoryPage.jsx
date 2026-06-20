@@ -6,6 +6,7 @@ import RiderLink from "../components/RiderLink";
 import TeamLink from "../components/TeamLink";
 import { Flag } from "../components/Flag";
 import { formatNumber } from "../lib/intl";
+import { FlagIcon } from "../components/ui";
 
 export default function RaceHistoryPage() {
   const { t } = useTranslation("races");
@@ -100,7 +101,7 @@ export default function RaceHistoryPage() {
     <div className="max-w-4xl mx-auto">
       <Link to="/races?tab=library" className="text-xs text-cz-accent-t hover:underline mb-4 inline-block">{t("history.backToLibrary")}</Link>
       <div className="text-center py-16 text-cz-3">
-        <p className="text-4xl mb-3">🏁</p>
+        <FlagIcon size={36} className="mx-auto mb-3" aria-hidden="true" />
         <p>{t("empty.noHistory", { name: raceName })}</p>
       </div>
     </div>
@@ -211,7 +212,8 @@ export default function RaceHistoryPage() {
             {riderStats.map((s, i) => {
               const pct = maxPoints > 0 ? (s.total_points / maxPoints) * 100 : 0;
               const lastName = s.rider_name.split(" ").slice(-1)[0];
-              const barColor = i === 0 ? "#e8c547" : i === 1 ? "#94a3b8" : i === 2 ? "#b45309" : "#e2e8f0";
+              // 2-farve-system: guld bærer rang-hierarkiet via faldende opacitet (tema-bevidst).
+              const barColor = i === 0 ? "rgb(var(--accent))" : i === 1 ? "rgb(var(--accent) / 0.6)" : i === 2 ? "rgb(var(--accent) / 0.4)" : "rgb(var(--accent) / 0.25)";
               return (
                 <div key={s.rider?.id || s.rider_name} className="flex items-center gap-3">
                   <div className="w-28 text-xs text-cz-2 truncate text-right flex-shrink-0">

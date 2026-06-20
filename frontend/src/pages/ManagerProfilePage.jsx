@@ -45,11 +45,11 @@ function AchievementBadge({ achievement }) {
   const description = t(`${achievement.id}.description`, { defaultValue: achievement.description });
   return (
     <div className="group relative">
-      <div className={`w-10 h-10 rounded-cz flex items-center justify-center border transition-all text-lg
+      <div className={`w-10 h-10 rounded-cz flex items-center justify-center border transition-all
         ${isLocked ? "bg-cz-subtle border-cz-border opacity-40 grayscale" : "bg-cz-accent/10 border-cz-accent/30"}`}>
         {isLocked && achievement.is_secret
           ? <LockIcon size={16} className="text-cz-3" />
-          : <span>{achievement.icon}</span>}
+          : <TrophyIcon size={18} className={isLocked ? "text-cz-3" : "text-cz-accent"} aria-hidden="true" />}
       </div>
       <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 bg-cz-subtle border border-cz-border rounded-cz px-3 py-2 w-44
         opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
@@ -161,7 +161,7 @@ export default function ManagerProfilePage() {
             )}
           </div>
           <div className="flex gap-3 ms-4">
-            {/* Login-streak (🔥) skjult per #1139 — ingen daglig login-tvang. Kosmetisk achievements bevares. */}
+            {/* Login-streak skjult per #1139 — ingen daglig login-tvang. Kosmetisk achievements bevares. */}
             <div className="bg-cz-subtle border border-cz-border rounded-cz px-4 py-3 text-center">
               <TrophyIcon size={20} className="mx-auto text-cz-accent" />
               <p className="text-cz-1 font-bold text-sm mt-1">{unlockedCount}</p>
@@ -268,7 +268,7 @@ export default function ManagerProfilePage() {
                         {(() => {
                           const ageTier = ageBadgeKey(r);
                           return ageTier ? (
-                            <span className="text-[9px] bg-cz-info-bg0/20 text-cz-info px-1.5 py-0.5 rounded-cz">{tRider(`header.${ageTier}`)}</span>
+                            <span className="text-[9px] bg-cz-subtle border border-cz-border text-cz-2 px-1.5 py-0.5 rounded-cz">{tRider(`header.${ageTier}`)}</span>
                           ) : null;
                         })()}
                       </Td>
