@@ -26,7 +26,7 @@
           "You start in Division 3 with a starting budget of 800,000 CZ$.",
           "Go to Riders and find free riders you want to bid on.",
           "Start an auction on a rider. If you win the auction, the rider is yours.",
-          "Build a squad of at least 8 riders to compete in races."
+          "You begin with a starting squad. No minimum squad size is enforced, but you need riders on your roster to field a team in races."
         ]
       }
     },
@@ -328,7 +328,7 @@
         "title": "Season flow",
         "steps": [
           "Admin closes the transfer window and starts a new season.",
-          "At season start: pending transfers are processed, sponsor money is paid out first, then loan interest and salaries are deducted (salaries follow the current market value). An emergency loan is created only if sponsor + balance can't cover the shortfall.",
+          "At season start: pending transfers are processed, sponsor money is paid out first, then loan interest and salaries are deducted (each salary is frozen at signing and does not follow the rider's later market value). An emergency loan is created only if sponsor + balance can't cover the shortfall.",
           "Races are run by the Cycling Zone race engine, which simulates each stage and writes the results automatically.",
           "At season end: points are tallied, division bonus is paid out, promotion/relegation is decided (from season 3 onwards), and board plans are evaluated. Salaries and interest are no longer deducted at season end. They moved to the next season's start (v3.78)."
         ]
@@ -415,9 +415,9 @@
         "title": "Squad size per division",
         "rows": [
           ["Division", "Minimum riders", "Maximum riders"],
-          ["Division 1", "20", "30"],
-          ["Division 2", "14", "30"],
-          ["Division 3", "8", "30"]
+          ["Division 1", "0", "30"],
+          ["Division 2", "0", "20"],
+          ["Division 3", "0", "10"]
         ]
       },
       "promotionRelegation": {
@@ -433,7 +433,7 @@
       },
       "salary": {
         "title": "Salary",
-        "text": "Each rider's annual salary is about 6.7% of market value and is set at purchase or at the scheduled salary recalculation. The salary is visible as a separate column in the Rider Database and on the watchlist. Salaries are paid automatically at the start of the next season, right after sponsor money lands. If sponsor + your existing balance can't cover the salaries, the system automatically takes an emergency loan."
+        "text": "Each rider's annual salary is set at signing as about 6.7% of their market value at that moment, and is then frozen: it does not change automatically as the rider develops. The salary is visible as a separate column in the Rider Database and on the watchlist. Salaries are paid automatically at the start of the next season, right after sponsor money lands. If sponsor + your existing balance can't cover the salaries, the system automatically takes an emergency loan."
       },
       "stats": {
         "title": "Rider stats",
@@ -460,7 +460,7 @@
       "label": "Daily Training",
       "whatDailyTraining": {
         "title": "What is Daily Training?",
-        "text": "Daily Training lets you develop your riders every day instead of only at season transitions. On the Daily Training page you set a program for each rider (a focus direction and an intensity), and the system applies it automatically each day. Daily Training activates at the season relaunch on 20 June."
+        "text": "Daily Training lets you develop your riders every day instead of only at season transitions. On the Daily Training page you set a program for each rider (a focus direction and an intensity), and the system applies it automatically each day. Daily Training is active, live since the season 1 relaunch."
       },
       "programs": {
         "title": "Setting programs",
@@ -478,7 +478,7 @@
       },
       "formFatigue": {
         "title": "Form and Fatigue",
-        "text": "Every rider has a Form value and a Fatigue value, both on a 0-100 scale, visible on the rider profile. Training and racing build Fatigue. Rest days and easy sessions lower it. Form follows the balance between the two: high Fatigue keeps Form low, while a well-rested rider's Form rises. Both values update daily. In races (active from the season relaunch on 20 June), form gives a small scoring edge and fatigue a small penalty, capped at about ±3% so favorites still win on ability. Race days build fatigue based on stage profile: mountain stages cost the most, flat stages the least. Injured riders are not entered into races automatically."
+        "text": "Every rider has a Form value and a Fatigue value, both on a 0-100 scale, visible on the rider profile. Training and racing build Fatigue. Rest days and easy sessions lower it. Form follows the balance between the two: high Fatigue keeps Form low, while a well-rested rider's Form rises. Both values update daily. In races (active since the season 1 relaunch), form gives a small scoring edge and fatigue a small penalty, capped at about ±3% so favorites still win on ability. Race days build fatigue based on stage profile: mountain stages cost the most, flat stages the least. Injured riders are not entered into races automatically."
       },
       "injuryRisk": {
         "title": "Injury risk",
@@ -542,7 +542,7 @@
       "label": "Academy",
       "whatAcademy": {
         "title": "What is the Academy?",
-        "text": "The Academy lets you develop your own young talent instead of buying established riders on the open market. Each season your club receives a cohort of prospects at the start of the season. You review them, sign 0-2 into your Academy, and develop them in-house. The Academy is separate from your senior squad and activates at the season relaunch on 20 June."
+        "text": "The Academy lets you develop your own young talent instead of buying established riders on the open market. Each season your club receives a cohort of prospects at the start of the season. You review them, sign 0-2 into your Academy, and develop them in-house. The Academy is separate from your senior squad and is active, live since the season 1 relaunch."
       },
       "intakeCohort": {
         "title": "Season intake cohort",
@@ -713,7 +713,7 @@
     },
     "sponsorPayoutTiming": {
       "q": "When is sponsor money paid out?",
-      "a": "Sponsor money is paid at season start. Season 1 is an intro season with a division-scaled base (D1 600,000 · D2 400,000 · D3 260,000 CZ$) before any board or pullout effects. From season 2 a performance share of 0-150,000 CZ$ is added on top of that same division base, based on the previous season's points and placing in your division. The amount is then multiplied by the board's budget modifier and any sponsor pullout. This means strong results can lift the sponsorship, while a bottom placing still keeps the full division base before modifier."
+      "a": "Sponsor money is paid at season start. Season 1 is an intro season with a division-scaled base (D1 600,000 · D2 400,000 · D3 340,000 CZ$) before any board or pullout effects. From season 2 a performance share of 0-150,000 CZ$ is added on top of that same division base, based on the previous season's points and placing in your division. The amount is then multiplied by the board's budget modifier and any sponsor pullout. This means strong results can lift the sponsorship, while a bottom placing still keeps the full division base before modifier."
     },
     "seasonFinanceReport": {
       "q": "What does the season finance report show, and where do I find it?",
@@ -721,7 +721,7 @@
     },
     "forecastCalculation": {
       "q": "How is the forecast for next season on the Finances page computed?",
-      "a": "The forecast shows expected cashflow for the entire next season as the sum of: (1) sponsor = season's sponsor base × board's budget modifier × any active sponsor pullout factor. Both season 1 and season 2+ use a division-scaled base (D1 600,000 · D2 400,000 · D3 260,000 CZ$); from season 2 up to 150,000 CZ$ variable sponsor is added on top, from the previous season's points/rank. (2) prize money = sum of your riders' prize_earnings_bonus (rolling avg of the last 1-3 completed seasons), (3) salary = sum of riders.salary, (4) loan interest = sum(amount_remaining × interest_rate) on all active loans, and (5) loan fees for loaned riders extending into next season (offset by any fees you receive as lender). The risk tier badge is green if net ≥ +50K and debt < 50% of ceiling, yellow if net is between -50K and +50K or debt is between 50-80% of ceiling, and red if net < -50K, debt > 80% of ceiling, or if your deficit hits the debt ceiling within 2 seasons. The range (±20% on the prize estimate) reflects that prize money is the most variable input. The forecast is not a contract; numbers can change if you sell riders, take loans, score more points or negotiate a new board plan."
+      "a": "The forecast shows expected cashflow for the entire next season as the sum of: (1) sponsor = season's sponsor base × board's budget modifier × any active sponsor pullout factor. Both season 1 and season 2+ use a division-scaled base (D1 600,000 · D2 400,000 · D3 340,000 CZ$); from season 2 up to 150,000 CZ$ variable sponsor is added on top, from the previous season's points/rank. (2) prize money = sum of your riders' prize_earnings_bonus (rolling avg of the last 1-3 completed seasons), (3) salary = sum of riders.salary, (4) loan interest = sum(amount_remaining × interest_rate) on all active loans, and (5) loan fees for loaned riders extending into next season (offset by any fees you receive as lender). The risk tier badge is green if net ≥ +50K and debt < 50% of ceiling, yellow if net is between -50K and +50K or debt is between 50-80% of ceiling, and red if net < -50K, debt > 80% of ceiling, or if your deficit hits the debt ceiling within 2 seasons. The range (±20% on the prize estimate) reflects that prize money is the most variable input. The forecast is not a contract; numbers can change if you sell riders, take loans, score more points or negotiate a new board plan."
     },
     "standingsUpdate": {
       "q": "When are the season standings updated?",
@@ -825,15 +825,15 @@
     },
     "season0To1Special": {
       "q": "What happens at the transition from season 0 to season 1?",
-      "a": "Season 0 is the opening phase with no races, points or salaries. When the transfer window closes, the system skips season 0's salary deduction and interest charges (there's no season 0 to settle). The only cash flow is: your division's sponsor money (D1 600,000 · D2 400,000 · D3 260,000 CZ$) lands on your team when season 1 starts. From season 1 onwards the normal cycle runs at season start: 1) sponsor is paid out, 2) loan interest is deducted, 3) salaries are deducted, 4) an emergency loan is taken if there's still a shortfall. Season end only handles division bonus, promotion/relegation and board plan evaluation."
+      "a": "Season 0 is the opening phase with no races, points or salaries. When the transfer window closes, the system skips season 0's salary deduction and interest charges (there's no season 0 to settle). The only cash flow is: your division's sponsor money (D1 600,000 · D2 400,000 · D3 340,000 CZ$) lands on your team when season 1 starts. From season 1 onwards the normal cycle runs at season start: 1) sponsor is paid out, 2) loan interest is deducted, 3) salaries are deducted, 4) an emergency loan is taken if there's still a shortfall. Season end only handles division bonus, promotion/relegation and board plan evaluation."
     },
     "deadlineTimelineFaq": {
       "q": "What exactly happens when the transfer window closes?",
-      "a": "Expected timeline once the close time hits: (1) within 5 minutes the window is automatically locked and no more bids or accepted offers go through. (2) A Final Whistle report appears on the Deadline Day page in-app and posts in Discord with the day's biggest deals, most active managers and panic moves. (3) Squad enforcement runs: teams outside their division's minimum/maximum get an auto-buy or auto-sell + fine. (4) About 10-15 minutes after the close time, season 1 starts and sponsor money lands on every team. You get an inbox notification when sponsor has been paid."
+      "a": "Expected timeline once the close time hits: (1) within 5 minutes the window is automatically locked and no more bids or accepted offers go through. (2) A Final Whistle report appears on the Deadline Day page in-app and posts in Discord with the day's biggest deals, most active managers and panic moves. (3) Squad enforcement runs: teams over their division's maximum get an auto-sell + fine (there is no minimum squad size). (4) About 10-15 minutes after the close time, season 1 starts and sponsor money lands on every team. You get an inbox notification when sponsor has been paid."
     },
     "squadEnforcementFaq": {
-      "q": "What happens if I'm under min or over max riders at deadline?",
-      "a": "When the transfer window closes, the system enforces that each team is within its division's limits (D1: 20-30 · D2: 14-20 · D3: 8-10). Under minimum: the system auto-buys the cheapest available rider at 150% of market value (an emergency loan is taken automatically if you can't pay). Over maximum: the system auto-sells your most recently acquired rider for full market value. In both cases a fine of 100,000 CZ$ per deviating rider is applied plus 200 penalty points in the season standings. Check the 'Deadline Day' board approaching the close time to see whether your team is in the green, yellow or red zone."
+      "q": "What happens if I'm over max riders at deadline?",
+      "a": "When the transfer window closes, the system enforces each division's maximum squad size (D1: 30 · D2: 20 · D3: 10). There is no minimum squad size: you can sell down to 0 riders without penalty. Over maximum: the system auto-sells your most recently acquired rider for full market value, and applies a fine of 100,000 CZ$ per excess rider plus 200 penalty points in the season standings. Check the 'Deadline Day' board approaching the close time to see whether your team is in the green, yellow or red zone."
     },
     "season1RaceCalendarFaq": {
       "q": "Which races run in season 1?",
