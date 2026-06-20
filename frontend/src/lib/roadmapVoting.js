@@ -44,6 +44,13 @@ export function buildVotePayload({ itemId, userId, ideaScore, importanceScore })
   };
 }
 
-export function votesByItemId(votes) {
-  return new Map((votes ?? []).map((vote) => [vote.item_id, vote]));
+// Privacy (#1599): når userId er sat, filtreres til KUN den brugers egne
+// stemmer FØR Map'en bygges. Forsvars-lag 2 oven på query-filteret — så en
+// admin-RLS-undtagelse (OR is_admin()) der lækker andres rows ikke kan skrive
+// fremmede scores ind i brugerens sliders. Uden userId = uændret (unit-tests).
+export function votesByItemId(votes, userId) {
+  const rows = userId
+    ? (votes ?? []).filter((vote) => vote.user_id === userId)
+    : (votes ?? []);
+  return new Map(rows.map((vote) => [vote.item_id, vote]));
 }
