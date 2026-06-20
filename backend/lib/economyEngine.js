@@ -43,6 +43,7 @@ import {
   FIRST_PROMOTION_RELEGATION_SEASON,
   MAX_DIVISION,
   MIN_DIVISION,
+  NEGATIVE_BALANCE_INTEREST_RATE,
   SEASON_RIDER_PROGRESSION_ENABLED,
   SEASON_VALUE_RECALC_ENABLED,
   SPONSOR_INCOME_BASE,
@@ -74,7 +75,6 @@ async function getDefaultSupabaseClient() {
 // Løn er FROSSEN ved signering (#1309: salary er en plain INTEGER, ikke længere
 // GENERATED). Raten lever i economyConstants.SALARY_RATE (E2: 0.067) og bruges af
 // contractSeed/marketUtils — IKKE her. Sæson-slut læser den stored rider.salary.
-const INTEREST_RATE = 0.10;        // 10% interest on negative balance per season
 const PROMOTION_SLOTS = 2;         // Top 2 promote
 const RELEGATION_SLOTS = 2;        // Bottom 2 relegate
 // MIN_DIVISION / MAX_DIVISION lever nu i economyConstants.js (#962) — delt med
@@ -596,7 +596,7 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
   throwIfSupabaseError(postSalaryError, `Could not load post-salary balance for ${team.name}`);
   let negativeInterestCharged = 0;
   if (postSalaryTeam && postSalaryTeam.balance < 0) {
-    negativeInterestCharged = Math.round(Math.abs(postSalaryTeam.balance) * INTEREST_RATE);
+    negativeInterestCharged = Math.round(Math.abs(postSalaryTeam.balance) * NEGATIVE_BALANCE_INTEREST_RATE);
     await debitTeam(
       team.id,
       negativeInterestCharged,
