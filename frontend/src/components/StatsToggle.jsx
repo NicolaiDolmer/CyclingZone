@@ -34,7 +34,7 @@ export default function StatsToggle({ visibleStats, onToggleStat, onShowAll, onH
         onClick={() => setOpen(o => !o)}
         aria-expanded={open}
         aria-haspopup="true"
-        className={`px-3 py-1.5 rounded-cz text-sm font-medium transition-all border whitespace-nowrap
+        className={`inline-flex items-center min-h-[44px] px-3 py-1.5 rounded-cz text-sm font-medium transition-all border whitespace-nowrap
           ${count > 0
             ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
             : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}
@@ -60,7 +60,7 @@ export default function StatsToggle({ visibleStats, onToggleStat, onShowAll, onH
                 <button
                   key={key}
                   onClick={() => onToggleStat(key)}
-                  className={`px-2 py-1.5 rounded-cz text-xs font-mono font-medium transition-all border
+                  className={`inline-flex items-center justify-center min-h-[44px] px-2 py-1.5 rounded-cz text-xs font-mono font-medium transition-all border
                     ${active
                       ? "bg-cz-accent/15 text-cz-accent-t border-cz-accent/40"
                       : "bg-cz-subtle text-cz-3 border-cz-border hover:text-cz-1"}`}

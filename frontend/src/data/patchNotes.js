@@ -4,6 +4,29 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "5.77",
+    "date": "2026-06-20",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Mobile",
+        "en": {
+          "title": "Bigger tap targets on auctions and transfers",
+          "body": "Buttons across the auctions and transfers screens are now easier to hit on a phone. Bid filters, the stat toggle, the wishlist star, and every accept, counter, reject and offer button now meet the 44-pixel touch size, so you mis-tap far less often during a live auction or a tense negotiation."
+        },
+        "da": {
+          "title": "Større tryk-mål på auktioner og transfers",
+          "body": "Knapper på auktions- og transfer-skærmene er nu nemmere at ramme på en telefon. Bud-filtre, stat-knappen, ønskeliste-stjernen og hver accept-, modbuds-, afvis- og tilbuds-knap rammer nu 44-pixels tryk-størrelsen, så du rammer ved siden af langt sjældnere under en live-auktion eller en spændt forhandling."
+        },
+        "refs": [
+          1602
+        ]
+      }
+    ]
+  },
+  {
     "version": "5.76",
     "date": "2026-06-20",
     "label": "Beta",
