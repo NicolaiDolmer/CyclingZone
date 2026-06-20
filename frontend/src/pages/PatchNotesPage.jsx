@@ -9,8 +9,8 @@ const PATCHES = [
       {
         category: "Improved · Getting started",
         items: [
-          "EN · The rider database now explains its 15 ability codes. Hover any stat column to see its full name, and a new \"What do the codes mean?\" key under the filters lists every code (CLM = Climbing, TT = Time trial, and so on) — so a new manager can read the table and pick their first rider with confidence. Refs #1592",
-          "DA · Rytterdatabasen forklarer nu sine 15 evne-koder. Hold musen over en stat-kolonne for at se det fulde navn, og en ny \"Hvad betyder koderne?\"-forklaring under filtrene viser alle koderne (CLM = Klatring, TT = Enkeltstart osv.) — så en ny manager kan læse tabellen og vælge sin første rytter med tillid. Refs #1592",
+          "EN · The rider database now explains its 15 ability codes. Hover any stat column to see its full name, and a new \"What do the codes mean?\" key under the filters lists every code (CLM = Climbing, TT = Time trial, and so on), so a new manager can read the table and pick their first rider with confidence. Refs #1592",
+          "DA · Rytterdatabasen forklarer nu sine 15 evne-koder. Hold musen over en stat-kolonne for at se det fulde navn, og en ny \"Hvad betyder koderne?\"-forklaring under filtrene viser alle koderne (CLM = Klatring, TT = Enkeltstart osv.), så en ny manager kan læse tabellen og vælge sin første rytter med tillid. Refs #1592",
         ],
       },
     ],
