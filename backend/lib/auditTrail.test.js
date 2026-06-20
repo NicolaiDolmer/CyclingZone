@@ -459,7 +459,9 @@ test("paySeasonPrizesToDate populerer admin auditCtx + idempotency_key", async (
               }),
             }),
           }),
-          update: () => ({ eq: () => Promise.resolve({ error: null }) }),
+          // #1573: update er nu gatet på prize_paid_at IS NULL + .select() der
+          // læser de claimede rækker tilbage. Returnér én ramt række (single tick).
+          update: () => ({ eq: () => ({ is: () => ({ select: () => Promise.resolve({ data: [{ id: "race-1" }], error: null }) }) }) }),
         };
       }
       if (table === "race_results") {

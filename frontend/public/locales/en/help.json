@@ -516,6 +516,10 @@
       "readingReport": {
         "title": "Reading the training report",
         "text": "After training runs, the report opens with a day summary: how many riders trained, how many had a breakthrough (an ability rose +1), and how many are in peak form. Each row shows the focus ability's progress toward its next +1, and a breakthrough is highlighted with the actual jump, for example 71 to 72. The roster table shows the same progress bar, so you can steer a focus toward a rider who is close to a breakthrough."
+      },
+      "trainingHistory": {
+        "title": "Training history",
+        "text": "Every daily training run is kept. The Daily Training page lists your last 30 days below the roster, each day showing how many riders trained, breakthroughs and riders in peak form; expand a day to see the full per-rider report. Each rider's profile has its own training history under the Development tab, listing that rider's focus, intensity, gains and form day by day."
       }
     },
     "activityfeed": {

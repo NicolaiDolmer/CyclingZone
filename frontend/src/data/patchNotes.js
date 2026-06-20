@@ -4,8 +4,8 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
-    "version": "5.77",
-    "date": "2026-06-20",
+    "version": "5.78",
+    "date": "2026-06-21",
     "label": "Beta",
     "changes": [
       {
@@ -22,6 +22,29 @@ export const PATCHES = [
         },
         "refs": [
           1601
+        ]
+      }
+    ]
+  },
+  {
+    "version": "5.77",
+    "date": "2026-06-20",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Training history added",
+          "body": "Daily training now keeps a history. The training page shows your last 30 days of training runs, each day with how many riders trained, breakthroughs and riders in peak form - expand any day to see the full per-rider report. Each rider's profile gets a training history of its own under Development, listing that rider's focus, intensity, gains and form day by day."
+        },
+        "da": {
+          "title": "Træningshistorik tilføjet",
+          "body": "Daglig træning gemmer nu en historik. Træningssiden viser dine seneste 30 dages trænings-kørsler, hver dag med hvor mange ryttere der trænede, gennembrud og ryttere i topform - fold en dag ud for at se den fulde rytter-rapport. Hver rytters profil får sin egen træningshistorik under Udvikling, der lister rytterens fokus, intensitet, fremgang og form dag for dag."
+        },
+        "refs": [
+          1533
         ]
       }
     ]
