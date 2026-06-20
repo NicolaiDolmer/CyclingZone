@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.71",
+    date: "2026-06-20",
+    label: "Beta",
+    changes: [
+      {
+        category: "Improved · Getting started",
+        items: [
+          "EN · First-session polish: the \"Get started\" guide on your dashboard no longer disappears for good if you close it by accident, your empty squad now points you straight to the market to sign your first riders, and the welcome dialog is cleaner. The filter hint on the riders page now names real abilities instead of old codes. Refs #1569",
+          "DA · First-session-polish: \"Kom i gang\"-guiden på dit dashboard forsvinder ikke længere for altid, hvis du lukker den ved et uheld, din tomme trup peger nu direkte mod markedet, så du kan skrive dine første ryttere, og velkomstdialogen er renere. Filter-tippet på rytter-siden nævner nu rigtige evner i stedet for gamle koder. Refs #1569",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.70",
     date: "2026-06-20",
     label: "Beta",

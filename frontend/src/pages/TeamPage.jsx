@@ -1,4 +1,5 @@
 ﻿import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import RiderLink from "../components/RiderLink";
 import { useClientRiderFilters } from "../lib/useRiderFilters";
@@ -18,6 +19,7 @@ import { scoutSortValue } from "../lib/scouting";
 import TeamTransferHistoryTab from "../components/TeamTransferHistoryTab";
 import { resolveApiError } from "../lib/apiError";
 import { Card, Button, Input, BikeIcon } from "../components/ui";
+import { buttonClass } from "../components/ui/buttonStyles.js";
 
 // Stat-kolonner = de 15 CZ-evner (delt config lib/abilities.js, importeret som STATS).
 // #1529: erstattede de 14 PCM stat_*-kolonner — visningen viser nu evner.
@@ -268,10 +270,24 @@ function SquadTab({ riders, scouting, onSelectRider, windowOpen }) {
       )}
 
       {displayRiders.length === 0 ? (
-        <div className="text-center py-16 text-cz-3">
-          <BikeIcon size={40} className="mx-auto mb-3 text-cz-3" />
-          <p>{t("squad.emptyState")}</p>
-        </div>
+        riders.length === 0 ? (
+          /* #1569: ægte tom trup (ny spiller) — gør blindgyden guidende med en
+             primær CTA til markedet, så "hvad gør jeg nu?" har et svar. */
+          <div className="text-center py-16 text-cz-3">
+            <BikeIcon size={40} className="mx-auto mb-3 text-cz-3" />
+            <p className="text-cz-2 font-medium">{t("squad.emptyState")}</p>
+            <p className="mt-1 text-sm">{t("squad.emptyStateBody")}</p>
+            <Link to="/riders" className={`${buttonClass({ variant: "primary", size: "sm" })} mt-4 inline-flex`}>
+              {t("squad.emptyStateCta")}
+            </Link>
+          </div>
+        ) : (
+          /* Trup har ryttere, men den valgte visning/filter er tom. */
+          <div className="text-center py-16 text-cz-3">
+            <BikeIcon size={40} className="mx-auto mb-3 text-cz-3" />
+            <p>{t("squad.emptyView")}</p>
+          </div>
+        )
       ) : (
         <Card className="overflow-hidden">
           <div className="overflow-x-auto">
