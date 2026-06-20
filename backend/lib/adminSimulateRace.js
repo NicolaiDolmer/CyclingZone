@@ -134,6 +134,7 @@ export async function runAdminSimulateStage({
   supabase,
   raceId,
   dryRun = false,
+  runSource = null,
   ensureSeasonStandings,
   updateStandings,
   notifyDiscord = null,
@@ -181,6 +182,7 @@ export async function runAdminSimulateStage({
     race,
     stageIndex,
     dryRun,
+    runSource, // 'scheduler' fra cron → tælles i daglig cap (FIX 4); null = admin/manuel
     ensureSeasonStandings,
     updateStandings,
     notifyDiscord,

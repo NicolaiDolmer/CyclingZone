@@ -425,6 +425,7 @@ async function runStageSchedulerCron() {
         supabase,
         raceId,
         dryRun: false,
+        runSource: "scheduler", // FIX 4: kun scheduler-runs tæller i den daglige cap
         ensureSeasonStandings: ensureSeasonStandingsCron,
         updateStandings,
         notifyDiscord,
