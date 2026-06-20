@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { getSeasonPrizePreview, paySeasonPrizesToDate } from "./prizePayoutEngine.js";
+import { FINANCE_ACTOR_TYPE } from "./economyConstants.js";
 
 // Mock-query-builder: thenable (for kæder der afsluttes uden .range(), fx races/
 // teams) OG med .range() der pager (for fetchAllRows på race_results/finance_tx).
@@ -308,4 +309,43 @@ test("paySeasonPrizesToDate still succeeds when the rider-value recalc throws", 
   assert.equal(result.total_paid, 8000);
   assert.equal(result.riders_updated, null);
   assert.equal(supabase.state.racesPaidAt.length, 1);
+});
+
+// ─── opts.actorType: cron-payout logger som SYSTEM, ikke ADMIN (#WS1) ──────────
+
+test("paySeasonPrizesToDate logger actor_type=admin som default (uændret adfærd)", async () => {
+  const supabase = makePayoutSupabase({
+    pendingRace: {
+      id: "race-1",
+      name: "Tour Stage 1",
+      results: [{ race_id: "race-1", team_id: "team-1", rider_id: "rider-1", prize_money: 1000 }],
+    },
+    riders: [{ id: "rider-1" }],
+    activeSeason: { id: "season-1", number: 1, race_days_completed: 6, race_days_total: 60 },
+  });
+
+  await paySeasonPrizesToDate("season-1", "admin-1", supabase);
+
+  assert.equal(supabase.state.rpcCalls.length, 1);
+  assert.equal(supabase.state.rpcCalls[0].params.p_finance_payload.actor_type, FINANCE_ACTOR_TYPE.ADMIN);
+});
+
+test("paySeasonPrizesToDate logger actor_type=system når actorType=SYSTEM", async () => {
+  const supabase = makePayoutSupabase({
+    pendingRace: {
+      id: "race-1",
+      name: "Tour Stage 1",
+      results: [{ race_id: "race-1", team_id: "team-1", rider_id: "rider-1", prize_money: 1000 }],
+    },
+    riders: [{ id: "rider-1" }],
+    activeSeason: { id: "season-1", number: 1, race_days_completed: 6, race_days_total: 60 },
+  });
+
+  await paySeasonPrizesToDate("season-1", null, supabase, { actorType: FINANCE_ACTOR_TYPE.SYSTEM });
+
+  assert.equal(supabase.state.rpcCalls.length, 1);
+  const payload = supabase.state.rpcCalls[0].params.p_finance_payload;
+  assert.equal(payload.actor_type, FINANCE_ACTOR_TYPE.SYSTEM);
+  // actor_id falder tilbage til null når ingen admin-bruger angives.
+  assert.equal(payload.actor_id, null);
 });

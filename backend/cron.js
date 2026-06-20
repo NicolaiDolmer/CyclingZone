@@ -39,6 +39,7 @@ import { processDailySeasonCountCheck } from "./lib/dailySeasonCountCheck.js";
 import { processDiscordBotTokenCheck } from "./lib/discordBotTokenCheck.js";
 import { runTrainingSweep } from "./lib/trainingSweep.js";
 import { runAcademyGraduationSweep } from "./lib/academyGraduationSweep.js";
+import { runAutoPrizeSweep } from "./lib/autoPrizeSweep.js";
 import { captureException as sentryCapture } from "./lib/sentry.js";
 const __envdir = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__envdir, "../.env"), quiet: true });
@@ -382,6 +383,17 @@ async function runGraduationSweepCron() {
   }
 }
 
+// ─── Auto-prize: udbetal udestående præmier for completede løb (#WS1) ─────────
+// Gated bag runtime-flag auto_prize_enabled (fail-safe OFF) — er flaget ikke tændt,
+// returnerer sweep'en straks { skipped: "flag_off" } uden side-effekter.
+
+async function runAutoPrizeSweepCron() {
+  const r = await runAutoPrizeSweep({ supabase });
+  if (r.paid > 0) {
+    console.log(`💰 Auto-prize: ${r.paid} løb udbetalt (${r.total} CZ$)`);
+  }
+}
+
 // ─── In-flight tracking for graceful shutdown ────────────────────────────────
 // SIGTERM (Railway-deploy) skal ikke afbryde en transition mid-tick. server.js
 // kalder awaitCronsIdle() i sin SIGTERM-handler så processen venter til ticks
@@ -470,6 +482,13 @@ export function startCron() {
 
   // Akademi-graduering: auto-resolver udløbne pending graduates efter kl. 22 (#932)
   setInterval(trackedTick("graduation sweep", runGraduationSweepCron), 5 * 60 * 1000);
+
+  // Auto-prize: udbetal udestående præmier for completede løb (#WS1).
+  // trackedTick giver Sentry-capture + graceful-shutdown gratis. Idempotent via
+  // prize_paid_at. Gated bag auto_prize_enabled (fail-safe OFF) — sweep'en er en
+  // no-op indtil flaget eksplicit tændes runtime. Bevidst INGEN immediate-run:
+  // det periodiske tick er nok, og en udbetaling skal ikke fyre ved hver genstart.
+  setInterval(trackedTick("auto-prize sweep", runAutoPrizeSweepCron), 5 * 60 * 1000);
 
   // Run immediately on start
   trackedTick("auctions", finalizeExpiredAuctions)();

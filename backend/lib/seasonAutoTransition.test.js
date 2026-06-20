@@ -29,15 +29,38 @@ function makeSeasonQuery(seasonRow) {
   return builder;
 }
 
-function makeSupabase({ window: w, season: s, capturedFilters = null }) {
+// Count-query stub (head:true, count:"exact") for admin_log min-interval-guard.
+// Default 0 → ingen recent transition inden for guard-vinduet.
+function makeCountQuery(count = 0) {
+  const builder = {
+    select() { return builder; },
+    eq() { return builder; },
+    gte() { return builder; },
+    then(resolve) { return resolve({ count, error: null }); },
+  };
+  return builder;
+}
+
+function makeSupabase({
+  window: w,
+  season: s,
+  capturedFilters = null,
+  recentTransitions = 0,
+}) {
   return {
     from(table) {
       if (table === "transfer_windows") return makeWindowQuery(w, capturedFilters);
       if (table === "seasons") return makeSeasonQuery(s);
+      if (table === "admin_log") return makeCountQuery(recentTransitions);
       throw new Error(`Unexpected table: ${table}`);
     },
   };
 }
+
+// Standard passing-readiness stub: cron-tests der vil nå transitionFn injicerer
+// denne, så vi ikke afhænger af den rigtige assessTransitionReadiness (den queryer
+// auctions/races og ville kræve ekstra stubbing — dækket af dens egen test-fil).
+const readyStub = async () => ({ ready: true, failed_critical: [] });
 
 test("processSeasonAutoTransitionCron: no wrapped window → no-op", async () => {
   const supabase = makeSupabase({ window: null, season: null });
@@ -98,6 +121,7 @@ test("processSeasonAutoTransitionCron: all flags set + season active → transit
   const capturedArgs = [];
   const result = await processSeasonAutoTransitionCron({
     supabase,
+    assessReadiness: readyStub,
     transitionFn: async (args) => {
       capturedArgs.push(args);
       return { ok: true, log: [{ phase: "insert_next_season", inserted: true }] };
@@ -116,6 +140,86 @@ test("processSeasonAutoTransitionCron: rejects missing supabase client", async (
     () => processSeasonAutoTransitionCron({ supabase: null }),
     /Supabase client required/
   );
+});
+
+// ─── #WS1 Task 2.1: readiness-gate i auto-transition-stien ────────────────────
+// assessTransitionReadiness returnerer { ready, checks, failed_critical } (ikke
+// { reason }) — gaten afleder en reason-streng fra failed_critical[0].
+
+const ACTIVE_WRAPPED = {
+  window: { id: "w1", season_id: "s0", status: "closed", final_whistle_sent_at: "2026-05-21T21:00Z", squad_enforcement_completed_at: "2026-05-21T21:05Z" },
+  season: { id: "s0", number: 0, status: "active" },
+};
+
+test("processSeasonAutoTransitionCron: afbryder hvis readiness ikke er opfyldt", async () => {
+  const supabase = makeSupabase(ACTIVE_WRAPPED);
+  let transitioned = false;
+  const r = await processSeasonAutoTransitionCron({
+    supabase,
+    now: new Date(),
+    transitionFn: async () => { transitioned = true; return {}; },
+    assessReadiness: async () => ({ ready: false, failed_critical: ["no_active_auctions"] }),
+  });
+  assert.equal(transitioned, false);
+  assert.equal(r.transitioned, false);
+  assert.equal(r.reason, "not_ready_no_active_auctions");
+});
+
+test("processSeasonAutoTransitionCron: transitionerer når readiness er opfyldt", async () => {
+  const supabase = makeSupabase(ACTIVE_WRAPPED);
+  let transitioned = false;
+  const r = await processSeasonAutoTransitionCron({
+    supabase,
+    now: new Date(),
+    transitionFn: async () => { transitioned = true; return { ok: true }; },
+    assessReadiness: async () => ({ ready: true, failed_critical: [] }),
+  });
+  assert.equal(transitioned, true);
+  assert.equal(r.transitioned, true);
+});
+
+test("processSeasonAutoTransitionCron: kalder assessReadiness med fromSeasonId fra vinduet", async () => {
+  const supabase = makeSupabase(ACTIVE_WRAPPED);
+  let readinessArg = null;
+  await processSeasonAutoTransitionCron({
+    supabase,
+    now: new Date(),
+    transitionFn: async () => ({ ok: true }),
+    assessReadiness: async (arg) => { readinessArg = arg; return { ready: true, failed_critical: [] }; },
+  });
+  assert.equal(readinessArg.fromSeasonId, "s0");
+  assert.equal(readinessArg.supabase, supabase);
+});
+
+// ─── #WS1 Task 2.2: min-interval-guard (prævention mod transition-loop) ────────
+// admin_log-baseret hård prævention: maks én transition per N timer. Loop-guarden
+// (dailySeasonCountCheck) alerter først EFTER den 2. transition — denne FORHINDRER.
+
+test("processSeasonAutoTransitionCron: blokeres hvis en transition allerede er logget inden for min-interval", async () => {
+  const supabase = makeSupabase({ ...ACTIVE_WRAPPED, recentTransitions: 1 });
+  let transitioned = false;
+  const r = await processSeasonAutoTransitionCron({
+    supabase,
+    now: new Date(),
+    transitionFn: async () => { transitioned = true; return {}; },
+    assessReadiness: readyStub,
+  });
+  assert.equal(transitioned, false);
+  assert.equal(r.transitioned, false);
+  assert.equal(r.reason, "recent_transition_guard");
+});
+
+test("processSeasonAutoTransitionCron: transitionerer når ingen recent transition i admin_log", async () => {
+  const supabase = makeSupabase({ ...ACTIVE_WRAPPED, recentTransitions: 0 });
+  let transitioned = false;
+  const r = await processSeasonAutoTransitionCron({
+    supabase,
+    now: new Date(),
+    transitionFn: async () => { transitioned = true; return { ok: true }; },
+    assessReadiness: readyStub,
+  });
+  assert.equal(transitioned, true);
+  assert.equal(r.transitioned, true);
 });
 
 // ─── Regression: sæson-loop-bug 2026-05-21 ────────────────────────────────────

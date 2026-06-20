@@ -14,11 +14,19 @@
  */
 
 import { transitionToNextSeason } from "./seasonTransition.js";
+import { assessTransitionReadiness } from "./seasonTransitionReadiness.js";
+import { ADMIN_ACTION_TYPE } from "./economyConstants.js";
+
+// #WS1 Task 2.2: hård prævention mod transition-loop. Auto-cron'en må maks fyre
+// én transition per dette antal timer, læst fra admin_log (samme kilde som
+// dailySeasonCountCheck-loop-guarden, men FORHINDRER frem for kun at alerte).
+export const MIN_TRANSITION_INTERVAL_HOURS = 12;
 
 export async function processSeasonAutoTransitionCron({
   supabase,
   now = new Date(),
   transitionFn = transitionToNextSeason,
+  assessReadiness = assessTransitionReadiness,
 }) {
   if (!supabase?.from) throw new Error("Supabase client required");
 
@@ -59,6 +67,33 @@ export async function processSeasonAutoTransitionCron({
   if (!season) return { transitioned: false, reason: "season_not_found" };
   if (season.status !== "active") {
     return { transitioned: false, reason: `season_status_${season.status}` };
+  }
+
+  // #WS1 Task 2.1: readiness-gate. Den manuelle endpoint deler allerede dette
+  // check (POST /api/admin/season-transition); auto-cron'en var ugatet og kunne
+  // skifte sæson midt i uafsluttede løb / aktive auktioner. assessTransitionReadiness
+  // returnerer { ready, checks, failed_critical } — afled en reason fra det første
+  // fejlede kritiske check så afbruddet er sporbart i loggen.
+  const readiness = await assessReadiness({ supabase, fromSeasonId: window.season_id });
+  if (!readiness.ready) {
+    const cause = readiness.failed_critical?.[0] ?? "unknown";
+    return { transitioned: false, reason: `not_ready_${cause}` };
+  }
+
+  // #WS1 Task 2.2: min-interval-guard. Hvis en SEASON_TRANSITION allerede er logget
+  // i admin_log inden for de seneste MIN_TRANSITION_INTERVAL_HOURS, afbryd — dette
+  // forhindrer 0→1→2→3→4-loopet (2026-05-21) strukturelt, ikke kun via alert.
+  const guardSince = new Date(
+    now.getTime() - MIN_TRANSITION_INTERVAL_HOURS * 3600 * 1000
+  ).toISOString();
+  const { count: recent, error: guardError } = await supabase
+    .from("admin_log")
+    .select("id", { count: "exact", head: true })
+    .eq("action_type", ADMIN_ACTION_TYPE.SEASON_TRANSITION)
+    .gte("created_at", guardSince);
+  if (guardError) throw new Error(`admin_log guard: ${guardError.message}`);
+  if ((recent ?? 0) > 0) {
+    return { transitioned: false, reason: "recent_transition_guard" };
   }
 
   const result = await transitionFn({
