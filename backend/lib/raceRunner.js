@@ -591,3 +591,156 @@ export async function simulateRace({
     runs: runs.length,
   };
 }
+
+/**
+ * Stage-by-stage afvikling (WS1 Fase 3): afvikl PRÆCIS én etape (0-indekseret
+ * stageIndex). Determinismen i buildRaceResults gør dette korrekt og billigt:
+ * vi re-simulerer hele løbet fra etape 1 (seeds = stableSeed(`${race.id}:${stage}`)
+ * er faste), men persisterer KUN etape stageIndex+1. Etape 1..N-1's DB-rækker
+ * røres ikke — den idempotente delete-then-insert er afgrænset til denne etape.
+ *
+ * KORREKTHED:
+ *  - applyFatigue kaldes KUN for DENNE etapes profil (ikke 1..N — de kørte i
+ *    tidligere invokationer; ellers dobbelt-akkumulering).
+ *  - Finalization (status=completed, recomputeRaceDays, processBoardWeekend,
+ *    notifyDiscord) fyrer KUN på final-etapen. Mellem-etaper afslører resultater
+ *    men finaliserer ikke. Discord-embed på final = HELE løbets race_results
+ *    genlæst fra DB (alle etaper, ikke kun final-etapens nybyggede rækker).
+ *  - loadEntrantsForRace.persist = (stageIndex === 0) — entries auto-fyldes kun
+ *    ved første etape; senere etaper rører ikke startfeltet.
+ *
+ * @returns {{ stageNumber, isFinalStage, rowsImported, entrants, stages }}
+ */
+export async function simulateStageByIndex({
+  supabase,
+  race,
+  stageIndex,
+  dryRun = false,
+  applyRaceResults = applyRaceResultsShared,
+  ensureSeasonStandings = async () => {},
+  updateStandings = async () => {},
+  recomputeRaceDays = recomputeSeasonRaceDays,
+  processBoardWeekend = processBoardWeekendFinalizationShared,
+  notifyDiscord = null,
+  applyFatigue = applyRaceFatigue,
+}) {
+  if (!supabase?.from) throw new Error("supabase client kræves");
+  if (!race?.id || !race?.season_id) throw new Error("race {id, season_id} kræves");
+  if (!Number.isInteger(stageIndex) || stageIndex < 0) throw new Error("stageIndex skal være et ikke-negativt heltal");
+
+  // Checkpoint FØR afviklingen — board-weekend bruger previous-vs-new race_days.
+  const { data: seasonBefore } = await supabase
+    .from("seasons")
+    .select("id, number, status, race_days_completed, race_days_total")
+    .eq("id", race.season_id)
+    .maybeSingle();
+
+  const stages = await loadStageProfiles(supabase, race.id);
+  if (!stages.length) throw new Error(`Ingen race_stage_profiles for løb ${race.id} — kør backfill`);
+  if (stageIndex > stages.length - 1) {
+    throw new Error(`stageIndex ${stageIndex} uden for rækkevidde (løbet har ${stages.length} etaper)`);
+  }
+
+  const stagesSorted = [...stages].sort((a, b) => (a.stage_number || 1) - (b.stage_number || 1));
+  const thisStage = stagesSorted[stageIndex];
+  const stageNumber = thisStage.stage_number || stageIndex + 1;
+  const isFinalStage = stageIndex === stagesSorted.length - 1;
+
+  // Entries auto-fyldes KUN ved første etape (persist=false fra etape 2).
+  const persistEntries = !dryRun && stageIndex === 0;
+  const entrants = await loadEntrantsForRace({ supabase, race, stages, persist: persistEntries });
+  if (!entrants.length) throw new Error(`Intet startfelt for løb ${race.id}`);
+
+  const racePoints = await loadRacePoints(supabase, race.race_class);
+  const pointsLookup = buildRacePointsLookup({ racePoints, raceType: race.race_type });
+
+  // Determinisme: byg HELE løbet (faste seeds), filtrér til kun denne etape.
+  const { resultRows: allRows, runs: allRuns } = buildRaceResults({ race, stages, entrants, pointsLookup });
+  const resultRows = allRows.filter((r) => r.stage_number === stageNumber);
+  const runs = allRuns.filter((r) => r.stage_number === stageNumber);
+
+  if (dryRun) {
+    const stageWinner = resultRows.find((r) => r.result_type === "stage" && r.rank === 1);
+    const gcPodium = resultRows
+      .filter((r) => r.result_type === "gc" && r.rank <= 3)
+      .sort((a, b) => a.rank - b.rank)
+      .map((r) => ({ rank: r.rank, rider: r.rider_name }));
+    return {
+      dryRun: true,
+      stageNumber, isFinalStage,
+      rows: resultRows.length, stages: stagesSorted.length, entrants: entrants.length,
+      stageWinner: stageWinner ? stageWinner.rider_name : null,
+      gcPodium,
+    };
+  }
+
+  // Idempotent: slet KUN denne etapes race_results før insert. En gen-afvikling af
+  // samme stageIndex re-deleter+re-inserter sikkert (stages_completed-desync efter
+  // en mid-step-fejl er derfor harmløs).
+  await supabase.from("race_results").delete().eq("race_id", race.id).eq("stage_number", stageNumber);
+
+  const applied = await applyRaceResults({
+    supabase,
+    race: { ...race },
+    resultRows,
+    ensureSeasonStandings,
+    updateStandings,
+  });
+
+  await persistRuns({ supabase, race, runs });
+
+  // Counter + (kun ved final) status=completed. status forbliver scheduled under
+  // afvikling — den binære races.status-enum har ingen 'delvist'-tilstand.
+  const raceUpdate = { stages_completed: stageNumber };
+  if (isFinalStage) raceUpdate.status = "completed";
+  await supabase.from("races").update(raceUpdate).eq("id", race.id);
+
+  // #1306 spec 6.4: træthed bygges af DENNE etapes belastning — PRÆCIS ét kald
+  // (ikke 1..N: de tidligere etaper akkumulerede deres last i tidligere invokationer).
+  try {
+    await applyFatigue({ supabase, riderIds: entrants.map((e) => e.rider_id), profileType: thisStage.profile_type });
+  } catch (err) {
+    console.error(`  ⚠️  race fatigue upsert fejlede (etape ${stageNumber}, ${thisStage.profile_type}): ${err.message}`);
+  }
+
+  // ── FINALIZATION: KUN på final-etapen ───────────────────────────────────────
+  if (!isFinalStage) {
+    return { stageNumber, isFinalStage, rowsImported: applied.rowsImported, rows: resultRows.length, entrants: entrants.length, stages: stagesSorted.length };
+  }
+
+  const newRaceDaysCompleted = await recomputeRaceDays({ supabase, seasonId: race.season_id });
+
+  if (seasonBefore?.id) {
+    try {
+      await processBoardWeekend({
+        supabase,
+        season: {
+          ...seasonBefore,
+          race_days_completed: Number.isFinite(Number(newRaceDaysCompleted))
+            ? newRaceDaysCompleted
+            : seasonBefore.race_days_completed,
+        },
+        previousRaceDaysCompleted: seasonBefore.race_days_completed ?? null,
+        race: { id: race.id, name: race.name },
+      });
+    } catch (error) {
+      console.error("  ⚠️  board weekend update failed after stage simulation:", error.message);
+    }
+  }
+
+  if (notifyDiscord) {
+    try {
+      // Embed = HELE løbets race_results (alle etaper) genlæst fra DB, ikke kun
+      // final-etapens nybyggede rækker — så GC-vinder + alle etapevindere vises.
+      const { data: wholeRaceRows } = await supabase
+        .from("race_results")
+        .select("result_type, rank, rider_name, stage_number")
+        .eq("race_id", race.id);
+      await notifyDiscord({ race, resultRows: wholeRaceRows || resultRows });
+    } catch {
+      // Discord-fejl må ikke vælte afviklingen.
+    }
+  }
+
+  return { stageNumber, isFinalStage, rowsImported: applied.rowsImported, rows: resultRows.length, entrants: entrants.length, stages: stagesSorted.length };
+}
