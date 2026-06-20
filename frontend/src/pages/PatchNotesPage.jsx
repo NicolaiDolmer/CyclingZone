@@ -2,6 +2,27 @@
 
 const PATCHES = [
   {
+    version: "5.69",
+    date: "2026-06-20",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fixed · Academy",
+        items: [
+          "EN · Youth-academy acquisitions are now fully atomic. A rare timing window where an auction win or a signing could charge a team without delivering the rider, or push the academy past its 8-rider cap, is now closed. Refs #1558",
+          "DA · Ungdomsakademi-optagelser er nu fuldt atomiske. Et sjældent timing-vindue, hvor en auktionsgevinst eller en signering kunne debitere et hold uden at levere rytteren, eller skubbe akademiet forbi 8-rytter-loftet, er nu lukket. Refs #1558",
+        ],
+      },
+      {
+        category: "Fixed · Onboarding",
+        items: [
+          "EN · New teams now receive their starting squad automatically when created, so a team is ready to race from the start. Refs #1560",
+          "DA · Nye hold får nu automatisk deres start-trup ved oprettelse, så holdet er klar til at køre løb fra start. Refs #1560",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.68",
     date: "2026-06-20",
     label: "Beta",
