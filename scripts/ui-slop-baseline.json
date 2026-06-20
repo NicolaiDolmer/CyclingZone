@@ -196,11 +196,6 @@
       "slop": 0,
       "emoji": 0
     },
-    "frontend/src/pages/PatchNotesPage.jsx": {
-      "hex": 3,
-      "slop": 1,
-      "emoji": 68
-    },
     "frontend/src/pages/PrivacyPolicyPage.jsx": {
       "hex": 0,
       "slop": 1,

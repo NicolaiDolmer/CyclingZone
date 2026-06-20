@@ -89,7 +89,8 @@ export const EXEMPT_FILES = new Map([
   ["frontend/src/pages/AdminSprintMetricsPage.jsx", "Admin-only intern metrics-side."],
   ["frontend/src/pages/AdminWaitlistPage.jsx", "Admin-only waitlist-værktøj."],
   ["frontend/src/pages/AdminAttributionPage.jsx", "Admin-only signup-attribution-dashboard (#679)."],
-  ["frontend/src/pages/PatchNotesPage.jsx", "Patch notes er bilingual i-side data (EN+DA pr. entry) — DA-strenge er by design."],
+  ["frontend/src/pages/PatchNotesPage.jsx", "Patch notes-side: bilingual chrome via da?-ternary (samme mønster som FounderSupporterPage); indholdet ligger i data/patchNotes.js."],
+  ["frontend/src/data/patchNotes.js", "Patch notes er bilingual i-fil data (EN+DA pr. entry) — DA-strenge er by design."],
   ["frontend/src/pages/PrivacyPolicyPage.jsx", "DA-udgaven i dual-page-mønster (PrivacyPolicyPageEn.jsx er EN)."],
   ["backend/lib/seasonTransitionReadiness.js", "Admin-only readiness-gate (#1346): detail-/fejl-strenge vises kun i admin-UI (DA-konvention) og admin_log."],
 ]);

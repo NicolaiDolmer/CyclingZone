@@ -34,7 +34,12 @@ const SRC_DIR = join(ROOT, "frontend", "src");
 
 // index.css er token-definitions-filen: raa hex er LEGITIMT der (det er hele
 // pointen — tokens defineres ét sted). Helt undtaget fra scannen.
-export const EXEMPT_FILES = new Set(["frontend/src/index.css"]);
+export const EXEMPT_FILES = new Set([
+  "frontend/src/index.css",
+  // Patch notes-historik er indhold, ikke UI-kode: body-tekst kan citere hex/emoji
+  // fra tidligere ændringer ("fjernede gold-glow", emoji nævnt i en gammel note).
+  "frontend/src/data/patchNotes.js",
+]);
 
 // --- Detektorer (rene funktioner paa kildestrenge) ------------------------
 

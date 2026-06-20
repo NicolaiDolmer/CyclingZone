@@ -83,7 +83,7 @@ export default function PatchNotesPage() {
           onChange={(e) => setQuery(e.target.value)}
           aria-label={da ? "Søg i opdateringer" : "Search updates"}
           placeholder={da ? "Søg i opdateringer…" : "Search updates…"}
-          className="w-full bg-cz-card border border-cz-border rounded-lg px-3 py-2 text-sm text-cz-1 placeholder:text-cz-3 focus:outline-none focus:border-cz-accent/50"
+          className="w-full bg-cz-card border border-cz-border rounded-cz px-3 py-2 text-sm text-cz-1 placeholder:text-cz-3 focus:outline-none focus:border-cz-accent/50"
         />
       </div>
 
@@ -101,13 +101,13 @@ export default function PatchNotesPage() {
               key={cat}
               onClick={() => setCategory(cat)}
               aria-pressed={active}
-              className={`text-xs px-3 py-1.5 rounded-full border transition-colors flex items-center gap-2 ${
+              className={`text-xs px-3 py-1.5 rounded-cz-pill border transition-colors flex items-center gap-2 ${
                 active
                   ? "border-cz-accent/40 bg-cz-accent/10 text-cz-accent-t"
                   : "border-cz-border text-cz-2 hover:text-cz-1"
               }`}
             >
-              {meta && <span className={`w-1.5 h-1.5 rounded-full ${meta.dot}`} />}
+              {meta && <span className={`w-1.5 h-1.5 rounded-cz-pill ${meta.dot}`} />}
               {label}
             </button>
           );
@@ -125,7 +125,7 @@ export default function PatchNotesPage() {
           return (
             <div
               key={day.date}
-              className={`bg-cz-card border rounded-xl overflow-hidden ${
+              className={`bg-cz-card border rounded-cz overflow-hidden ${
                 open ? "border-cz-accent/30" : "border-cz-border"
               }`}
             >
@@ -140,7 +140,7 @@ export default function PatchNotesPage() {
                       {formatDate(day.date, lang)}
                     </span>
                     {isNew && (
-                      <span className="text-[9px] uppercase bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30 px-2 py-0.5 rounded-full">
+                      <span className="text-[9px] uppercase bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30 px-2 py-0.5 rounded-cz-pill">
                         {da ? "Ny" : "New"}
                       </span>
                     )}
@@ -162,7 +162,7 @@ export default function PatchNotesPage() {
                     return (
                       <div key={cat}>
                         <div className="flex items-center gap-2 mb-2">
-                          <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${meta.dot}`} />
+                          <div className={`w-1.5 h-1.5 rounded-cz-pill flex-shrink-0 ${meta.dot}`} />
                           <span className="text-cz-2 text-xs font-semibold uppercase tracking-wider">
                             {da ? meta.da : meta.en}
                           </span>
