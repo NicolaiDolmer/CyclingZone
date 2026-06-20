@@ -73,13 +73,19 @@ export default function RoadmapPage() {
       ]);
       if (cancelled) return;
       setItems(itemData ?? []);
-      setUserId(auth?.user?.id ?? null);
+      const uid = auth?.user?.id ?? null;
+      setUserId(uid);
 
+      // Privacy (#1599): hent KUN egne stemmer. Anonyme har ingen.
+      // .eq filtrerer i querien; votesByItemId(uid) er forsvars-lag 2 mod
+      // en evt. admin-RLS-undtagelse der returnerer andres rows.
+      if (!uid) return;
       const { data: voteData } = await supabase
         .from("roadmap_votes")
-        .select("item_id, idea_score, importance_score");
+        .select("item_id, idea_score, importance_score, user_id")
+        .eq("user_id", uid);
       if (cancelled) return;
-      const byItem = votesByItemId(voteData);
+      const byItem = votesByItemId(voteData, uid);
       setDrafts((prev) => {
         const next = { ...prev };
         for (const [itemId, vote] of byItem) {

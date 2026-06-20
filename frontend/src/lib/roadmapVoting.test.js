@@ -82,3 +82,19 @@ test("votesByItemId maps rows to a lookup", () => {
   assert.equal(map.get("b").importance_score, 1);
   assert.equal(votesByItemId(null).size, 0);
 });
+
+test("votesByItemId(userId) keeps ONLY that user's votes (#1599 privacy)", () => {
+  const mixed = [
+    { item_id: "a", idea_score: 2, importance_score: 3, user_id: "me" },
+    { item_id: "a", idea_score: 6, importance_score: 6, user_id: "other" },
+    { item_id: "b", idea_score: 5, importance_score: 4, user_id: "other" },
+  ];
+  const map = votesByItemId(mixed, "me");
+  // Egen stemme på "a" bevares; andres "a" må ikke overskrive den.
+  assert.equal(map.get("a").idea_score, 2);
+  // "b" tilhører kun en anden bruger → må ikke optræde.
+  assert.equal(map.has("b"), false);
+  assert.equal(map.size, 1);
+  // Uden userId = uændret (bagudkompatibelt for callers uden filter).
+  assert.equal(votesByItemId(mixed).size, 2);
+});
