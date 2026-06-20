@@ -108,9 +108,9 @@ function teamClassification(entrants, cumTime) {
  * @returns {{ resultRows, runs }}
  */
 export function buildRaceResults({ race, stages = [], entrants = [], pointsLookup = {} }) {
-  if (!race?.id) throw new Error("race.id kræves");
-  if (!stages.length) throw new Error("ingen stage-profiler");
-  if (!entrants.length) throw new Error("ingen entrants");
+  if (!race?.id) throw new Error("race.id required");
+  if (!stages.length) throw new Error("no stage profiles");
+  if (!entrants.length) throw new Error("no entrants");
 
   const isStageRace = race.race_type === "stage_race";
   const stagesSorted = [...stages].sort((a, b) => (a.stage_number || 1) - (b.stage_number || 1));
@@ -448,7 +448,9 @@ async function loadRacePoints(supabase, raceClass) {
   return data || [];
 }
 
-async function persistRuns({ supabase, race, runs }) {
+// source: diskriminator til stage-schedulerens daglige cap (FIX 4). 'scheduler' →
+// tælles i cap'en; null (admin-fuld-sim / manuel afvikling) → tælles ikke.
+async function persistRuns({ supabase, race, runs, source = null }) {
   if (!runs.length) return;
   const rows = runs.map((r) => ({
     race_id: race.id,
@@ -457,6 +459,7 @@ async function persistRuns({ supabase, race, runs }) {
     engine_version: r.engine_version,
     entrant_snapshot: r.entrant_snapshot,
     input_checksum: r.input_checksum,
+    source,
   }));
   // Idempotent: slet tidligere runs for de samme etaper før insert.
   await supabase.from("race_simulation_runs").delete().eq("race_id", race.id)
@@ -482,8 +485,8 @@ export async function simulateRace({
   notifyDiscord = null,
   applyFatigue = applyRaceFatigue,
 }) {
-  if (!supabase?.from) throw new Error("supabase client kræves");
-  if (!race?.id || !race?.season_id) throw new Error("race {id, season_id} kræves");
+  if (!supabase?.from) throw new Error("supabase client required");
+  if (!race?.id || !race?.season_id) throw new Error("race {id, season_id} required");
 
   // #1187 · race_days_completed FØR afviklingen — checkpoint-udgangspunkt for
   // board-weekend-wiring nedenfor. Defensiv: manglende række → null (ingen
@@ -495,10 +498,10 @@ export async function simulateRace({
     .maybeSingle();
 
   const stages = await loadStageProfiles(supabase, race.id);
-  if (!stages.length) throw new Error(`Ingen race_stage_profiles for løb ${race.id} — kør backfill`);
+  if (!stages.length) throw new Error(`No race_stage_profiles for race ${race.id} — run backfill`);
 
   const entrants = await loadEntrantsForRace({ supabase, race, stages, persist: !dryRun });
-  if (!entrants.length) throw new Error(`Intet startfelt for løb ${race.id}`);
+  if (!entrants.length) throw new Error(`No start list for race ${race.id}`);
 
   const racePoints = await loadRacePoints(supabase, race.race_class);
   const pointsLookup = buildRacePointsLookup({ racePoints, raceType: race.race_type });
@@ -549,7 +552,7 @@ export async function simulateRace({
     try {
       await applyFatigue({ supabase, riderIds, profileType: stage.profile_type });
     } catch (err) {
-      console.error(`  ⚠️  race fatigue upsert fejlede (etape ${stage.stage_number}, ${stage.profile_type}): ${err.message}`);
+      console.error(`  ⚠️  race fatigue upsert failed (stage ${stage.stage_number}, ${stage.profile_type}): ${err.message}`);
     }
   }
 
@@ -589,5 +592,245 @@ export async function simulateRace({
     stages: stages.length,
     entrants: entrants.length,
     runs: runs.length,
+  };
+}
+
+/**
+ * Stage-by-stage afvikling (WS1 Fase 3): afvikl PRÆCIS én etape (0-indekseret
+ * stageIndex). Determinismen i buildRaceResults gør dette korrekt og billigt:
+ * vi re-simulerer hele løbet fra etape 1 (seeds = stableSeed(`${race.id}:${stage}`)
+ * er faste), men persisterer KUN etape stageIndex+1. Etape 1..N-1's DB-rækker
+ * røres ikke — den idempotente delete-then-insert er afgrænset til denne etape.
+ *
+ * KORREKTHED:
+ *  - applyFatigue kaldes KUN for DENNE etapes profil (ikke 1..N — de kørte i
+ *    tidligere invokationer; ellers dobbelt-akkumulering).
+ *  - Finalization (status=completed, recomputeRaceDays, processBoardWeekend,
+ *    notifyDiscord) fyrer KUN på final-etapen. Mellem-etaper afslører resultater
+ *    men finaliserer ikke. Discord-embed på final = HELE løbets race_results
+ *    genlæst fra DB (alle etaper, ikke kun final-etapens nybyggede rækker).
+ *  - loadEntrantsForRace.persist = (stageIndex === 0) — entries auto-fyldes kun
+ *    ved første etape; senere etaper rører ikke startfeltet.
+ *
+ * @returns {{ stageNumber, isFinalStage, rowsImported, entrants, stages }}
+ */
+export async function simulateStageByIndex({
+  supabase,
+  race,
+  stageIndex,
+  dryRun = false,
+  runSource = null,
+  applyRaceResults = applyRaceResultsShared,
+  ensureSeasonStandings = async () => {},
+  updateStandings = async () => {},
+  recomputeRaceDays = recomputeSeasonRaceDays,
+  processBoardWeekend = processBoardWeekendFinalizationShared,
+  notifyDiscord = null,
+  applyFatigue = applyRaceFatigue,
+}) {
+  if (!supabase?.from) throw new Error("supabase client required");
+  if (!race?.id || !race?.season_id) throw new Error("race {id, season_id} required");
+  if (!Number.isInteger(stageIndex) || stageIndex < 0) throw new Error("stageIndex must be a non-negative integer");
+
+  // Checkpoint FØR afviklingen — board-weekend bruger previous-vs-new race_days.
+  const { data: seasonBefore } = await supabase
+    .from("seasons")
+    .select("id, number, status, race_days_completed, race_days_total")
+    .eq("id", race.season_id)
+    .maybeSingle();
+
+  const stages = await loadStageProfiles(supabase, race.id);
+  if (!stages.length) throw new Error(`No race_stage_profiles for race ${race.id} — run backfill`);
+  if (stageIndex > stages.length - 1) {
+    throw new Error(`stageIndex ${stageIndex} out of range (race has ${stages.length} stages)`);
+  }
+
+  const stagesSorted = [...stages].sort((a, b) => (a.stage_number || 1) - (b.stage_number || 1));
+  const thisStage = stagesSorted[stageIndex];
+  const stageNumber = thisStage.stage_number || stageIndex + 1;
+  const isFinalStage = stageIndex === stagesSorted.length - 1;
+  const totalStages = stagesSorted.length;
+  const completedBefore = Number(race.stages_completed) || 0;
+
+  // ── FIX 1 (re-entrant recovery): et løb hvis ALLE etaper er afviklet
+  // (stages_completed >= stages) men status ENDNU ikke er 'completed' sidder fast i
+  // "finalization pending" (et crash mellem stages_completed-bump og status-flip, eller
+  // mellem finalization-trin). Det skal kunne genoptages idempotent → kør KUN finalization
+  // (resultater/standings ER allerede skrevet; vi rør dem ikke igen). isFinalStage SKAL
+  // gælde her — recovery giver kun mening for final-etapen.
+  const finalizationPending = !dryRun
+    && isFinalStage
+    && completedBefore >= totalStages
+    && race.status !== "completed";
+
+  // ── FIX 3 (status-guard, defense-in-depth): et FÆRDIGT løb (status='completed')
+  // må ikke gen-afvikles via denne sti — finalization er per definition allerede kørt.
+  // Recovery-tilfældet ovenfor er det modsatte (status != completed), så de udelukker hinanden.
+  if (!dryRun && race.status === "completed") {
+    throw new Error(`Race ${race.id} already simulated (status=completed) — re-simulation blocked`);
+  }
+
+  // Entries auto-fyldes KUN ved første etape (persist=false fra etape 2). I recovery
+  // springer vi entrants/resultatberegning helt over — intet skal genberegnes.
+  const persistEntries = !dryRun && !finalizationPending && stageIndex === 0;
+
+  let entrants = [];
+  let resultRows = [];
+  let runs = [];
+  let applied = { rowsImported: 0 };
+
+  if (!finalizationPending) {
+    entrants = await loadEntrantsForRace({ supabase, race, stages, persist: persistEntries });
+    if (!entrants.length) throw new Error(`No start list for race ${race.id}`);
+
+    const racePoints = await loadRacePoints(supabase, race.race_class);
+    const pointsLookup = buildRacePointsLookup({ racePoints, raceType: race.race_type });
+
+    // Determinisme: byg HELE løbet (faste seeds), filtrér til kun denne etape.
+    const { resultRows: allRows, runs: allRuns } = buildRaceResults({ race, stages, entrants, pointsLookup });
+    resultRows = allRows.filter((r) => r.stage_number === stageNumber);
+    runs = allRuns.filter((r) => r.stage_number === stageNumber);
+
+    if (dryRun) {
+      const stageWinner = resultRows.find((r) => r.result_type === "stage" && r.rank === 1);
+      const gcPodium = resultRows
+        .filter((r) => r.result_type === "gc" && r.rank <= 3)
+        .sort((a, b) => a.rank - b.rank)
+        .map((r) => ({ rank: r.rank, rider: r.rider_name }));
+      return {
+        dryRun: true,
+        stageNumber, isFinalStage,
+        rows: resultRows.length, stages: totalStages, entrants: entrants.length,
+        stageWinner: stageWinner ? stageWinner.rider_name : null,
+        gcPodium,
+      };
+    }
+
+    // ── FIX 5 (optimistisk lås): hævn stages_completed fra stageIndex → stageNumber
+    // FØR resultater/standings skrives. To næsten-samtidige runs (dobbelt-klik, eller
+    // admin + scheduler) for samme løb beregner begge SAMME stageIndex; kun den FØRSTE
+    // vinder WHERE stages_completed = stageIndex. Taberen ser 0 ramte rækker → afbryd
+    // FØR applyRaceResults, så standings/præmier ikke dobbelt-anvendes. status sættes
+    // IKKE her (FIX 1: status flippes sidst, efter finalization).
+    const { data: locked, error: lockErr } = await supabase
+      .from("races")
+      .update({ stages_completed: stageNumber })
+      .eq("id", race.id)
+      .eq("stages_completed", stageIndex)
+      .select("id");
+    if (lockErr) throw new Error(`races stages_completed lock: ${lockErr.message}`);
+    if (!locked || locked.length === 0) {
+      // Konkurrerende run vandt (eller stages_completed er allerede forbi denne etape).
+      // Ingen side-effekter er kørt → sikkert at afbryde uden dobbelt-anvendelse.
+      return {
+        stageNumber, isFinalStage, skipped: "concurrent_lock_lost",
+        rowsImported: 0, rows: 0, entrants: entrants.length, stages: totalStages,
+      };
+    }
+
+    // FIX 1/5: låsen bumpede stages_completed FØR resultaterne er skrevet (krævet for
+    // at konkurrenten kan tabe og afbryde før standings). Det åbner et smalt vindue: et
+    // kast mellem lås og resultat-skriv ville efterlade counter foran tomme race_results
+    // for etapen. Vi LUKKER vinduet for in-process-fejl ved at rulle counteren TILBAGE til
+    // stageIndex hvis resultat-skrivningen kaster — så en gen-afvikling re-kører PRÆCIS
+    // denne etape. (Et hårdt proces-kill mellem to round-trips er fortsat teoretisk muligt,
+    // men er nu kun ét enkelt skriv væk; final-etapens recovery-sti dækker slut-etapen.)
+    try {
+      // Idempotent: slet KUN denne etapes race_results før insert. En gen-afvikling af
+      // samme stageIndex re-deleter+re-inserter sikkert.
+      await supabase.from("race_results").delete().eq("race_id", race.id).eq("stage_number", stageNumber);
+
+      applied = await applyRaceResults({
+        supabase,
+        race: { ...race },
+        resultRows,
+        ensureSeasonStandings,
+        updateStandings,
+      });
+
+      await persistRuns({ supabase, race, runs, source: runSource });
+    } catch (err) {
+      // Rul counteren tilbage så etapen kan gen-afvikles rent. Bedst-effort: lykkes
+      // rollbacken ikke, kaster vi stadig den oprindelige fejl (synlig + monitoreret).
+      try {
+        await supabase.from("races").update({ stages_completed: stageIndex }).eq("id", race.id);
+      } catch (rbErr) {
+        console.error(`  ⚠️  counter rollback failed after result-write error (stage ${stageNumber}): ${rbErr.message}`);
+      }
+      throw err;
+    }
+
+    // #1306 spec 6.4: træthed bygges af DENNE etapes belastning — PRÆCIS ét kald
+    // (ikke 1..N: de tidligere etaper akkumulerede deres last i tidligere invokationer).
+    try {
+      await applyFatigue({ supabase, riderIds: entrants.map((e) => e.rider_id), profileType: thisStage.profile_type });
+    } catch (err) {
+      console.error(`  ⚠️  race fatigue upsert failed (stage ${stageNumber}, ${thisStage.profile_type}): ${err.message}`);
+    }
+
+    // ── Mellem-etape: INGEN finalization. status forbliver scheduled (binær enum). ──
+    if (!isFinalStage) {
+      return { stageNumber, isFinalStage, rowsImported: applied.rowsImported, rows: resultRows.length, entrants: entrants.length, stages: totalStages };
+    }
+  }
+
+  // ── FINALIZATION (final-etape ELLER recovery) ───────────────────────────────
+  // FIX 1: kør finalization FØR status='completed'. recomputeSeasonRaceDays er idempotent
+  // og processBoardWeekend er sikker at gen-køre; et crash her efterlader status != completed
+  // → recovery-stien ovenfor genoptager. status flippes KUN hvis finalization lykkes.
+  const newRaceDaysCompleted = await recomputeRaceDays({ supabase, seasonId: race.season_id });
+
+  if (seasonBefore?.id) {
+    try {
+      await processBoardWeekend({
+        supabase,
+        season: {
+          ...seasonBefore,
+          race_days_completed: Number.isFinite(Number(newRaceDaysCompleted))
+            ? newRaceDaysCompleted
+            : seasonBefore.race_days_completed,
+        },
+        previousRaceDaysCompleted: seasonBefore.race_days_completed ?? null,
+        race: { id: race.id, name: race.name },
+      });
+    } catch (error) {
+      console.error("  ⚠️  board weekend update failed after stage simulation:", error.message);
+    }
+  }
+
+  if (notifyDiscord) {
+    try {
+      // Embed = HELE løbets race_results (alle etaper) genlæst fra DB, ikke kun
+      // final-etapens nybyggede rækker — så GC-vinder + alle etapevindere vises.
+      const { data: wholeRaceRows } = await supabase
+        .from("race_results")
+        .select("result_type, rank, rider_name, stage_number")
+        .eq("race_id", race.id);
+      // FIX 1: undgå dobbelt-send ved re-finalization. Et discord_sent-flag i admin_log
+      // ville kræve en CHECK-constraint-migration (uden for scope); i stedet er denne
+      // notifyDiscord-callback selv idempotent (cron-laget de-duper på løb), OG recovery
+      // sker kun efter et crash hvor en embed sjældent allerede nåede ud. Vi sender derfor
+      // KUN hvis dette IKKE er en recovery-genkørsel — den normale final-etape sender én gang.
+      if (!finalizationPending) {
+        await notifyDiscord({ race, resultRows: wholeRaceRows || resultRows });
+      }
+    } catch {
+      // Discord-fejl må ikke vælte afviklingen.
+    }
+  }
+
+  // FIX 1: status='completed' sættes SIDST — efter al finalization er lykkedes. Idempotent
+  // (en recovery-genkørsel sætter samme værdi). stages_completed sættes også (recovery-sti
+  // hvor låsen ikke kørte; normal-sti har allerede sat den via låsen, så dette er en no-op-værdi).
+  await supabase
+    .from("races")
+    .update({ status: "completed", stages_completed: totalStages })
+    .eq("id", race.id);
+
+  return {
+    stageNumber, isFinalStage,
+    rowsImported: applied.rowsImported, rows: resultRows.length,
+    entrants: entrants.length, stages: totalStages,
+    ...(finalizationPending ? { recovered: true } : {}),
   };
 }

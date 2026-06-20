@@ -144,6 +144,12 @@ const WHITELIST_EMPTY_TABLES = new Set([
   // Form/træthed #1306: raceFatigue.js skriver rytter-condition ved løbsafvikling
   // bag samme RACE_ENGINE_V2_ENABLED-flag. Bevidst tom indtil 20/6-flag-flip (#1103).
   "rider_condition",
+  // Stage-kalender (WS1 Fase 3): race_stage_schedule fyldes af backfillRaceScheduledFor.js
+  // (insert af ét scheduled_at pr. (race, etape)). Backfill + stage-scheduler er gated bag
+  // runtime-flag stage_scheduler_enabled (fail-safe OFF indtil 20/6-relaunch, #1103), så
+  // tabellen er bevidst tom indtil flaget flippes og backfillen kører. Skriv-path verificeret
+  // i backend/scripts/backfillRaceScheduledFor.js. Fjern denne entry når tabellen har rows.
+  "race_stage_schedule",
   // Daglig træning #1305 Fase A: dailyTrainingEngine.js skriver run-log pr.
   // træningsdag, gated af isDailyTrainingEnabled (DB-flag, seedet OFF indtil
   // 20/6-relaunch, #1103). Fjern når flag tændes + tabellen har rows.
@@ -179,6 +185,12 @@ const WHITELIST_ORPHANED_ENDPOINTS = new Set([
   "POST /admin/finalize-expired-auctions",
   "POST /admin/pay-prizes-to-date",
   "POST /auctions/:id/finalize",
+  // Stage-by-stage race-motor (WS1 Fase 3): drives by the cron stage-scheduler
+  // (backend/cron.js → runAdminSimulateStage) one stage at a time. Also serves as
+  // a requireAdmin-gated manual fallback / test-trigger. No frontend caller by
+  // design — the full-race admin button (POST /admin/simulate-race) is the UI path;
+  // per-stage runs are cron/admin-only. Intentional orphaned, not drift.
+  "POST /admin/races/:id/simulate-stage",
   // Health / probe
   "GET /health",
   // Admin-only via curl/admin-page-future-wiring (cancel-tools fra adminRouteOwnership-kontrakt #97)

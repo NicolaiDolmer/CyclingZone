@@ -40,6 +40,12 @@ import { processDiscordBotTokenCheck } from "./lib/discordBotTokenCheck.js";
 import { runTrainingSweep } from "./lib/trainingSweep.js";
 import { runAcademyGraduationSweep } from "./lib/academyGraduationSweep.js";
 import { runAutoPrizeSweep } from "./lib/autoPrizeSweep.js";
+import { runStageScheduler } from "./lib/stageScheduler.js";
+import { isStageSchedulerEnabled } from "./lib/stageSchedulerFlag.js";
+import { isRaceEngineV2Enabled } from "./lib/raceEngineFlag.js";
+import { runAdminSimulateStage, buildRaceSimEmbed } from "./lib/adminSimulateRace.js";
+import { makeEnsureSeasonStandings } from "./lib/seasonStandingsBootstrap.js";
+import { updateStandings } from "./lib/economyEngine.js";
 import { runStarterSquadHealSweep } from "./lib/starterSquadHealSweep.js";
 import { captureException as sentryCapture } from "./lib/sentry.js";
 const __envdir = dirname(fileURLToPath(import.meta.url));
@@ -409,6 +415,43 @@ async function runAutoPrizeSweepCron() {
   }
 }
 
+// ─── Stage-scheduler: afvikl forfaldne etaper én ad gangen (#WS1 Fase 3) ──────
+// Gated bag stage_scheduler_enabled + race_engine_v2 (fail-safe OFF) + daglig cap
+// (maks 5 etaper/dag). runStageFn = runAdminSimulateStage, så samme flag-/profil-/
+// completed-guards som den manuelle admin-route gælder. Discord-embed (final-etape) =
+// hele løbets race_results, hentet inde i simulateStageByIndex.
+
+const ensureSeasonStandingsCron = makeEnsureSeasonStandings(supabase);
+
+async function runStageSchedulerCron() {
+  const result = await runStageScheduler({
+    supabase,
+    now: new Date(),
+    isStageSchedulerEnabled,
+    isRaceEngineV2Enabled,
+    runStageFn: async ({ raceId }) => {
+      const notifyDiscord = async ({ race, resultRows }) => {
+        const url = await getDefaultWebhook();
+        if (!url) return;
+        const embed = buildRaceSimEmbed({ race, resultRows });
+        await sendWebhook(url, { embeds: [{ ...embed, footer: { text: "Cycling Zone" } }] });
+      };
+      return runAdminSimulateStage({
+        supabase,
+        raceId,
+        dryRun: false,
+        runSource: "scheduler", // FIX 4: kun scheduler-runs tæller i den daglige cap
+        ensureSeasonStandings: ensureSeasonStandingsCron,
+        updateStandings,
+        notifyDiscord,
+      });
+    },
+  });
+  if (result.ran || result.errors) {
+    console.log(`🚵 Stage-scheduler: ${result.ran} etape(r) afviklet, ${result.errors} fejl`);
+  }
+}
+
 // ─── In-flight tracking for graceful shutdown ────────────────────────────────
 // SIGTERM (Railway-deploy) skal ikke afbryde en transition mid-tick. server.js
 // kalder awaitCronsIdle() i sin SIGTERM-handler så processen venter til ticks
@@ -508,6 +551,13 @@ export function startCron() {
   // no-op indtil flaget eksplicit tændes runtime. Bevidst INGEN immediate-run:
   // det periodiske tick er nok, og en udbetaling skal ikke fyre ved hver genstart.
   setInterval(trackedTick("auto-prize sweep", runAutoPrizeSweepCron), 5 * 60 * 1000);
+
+  // Every 5 minutes: stage-scheduler — afvikl forfaldne etaper én ad gangen (#WS1 Fase 3).
+  // trackedTick giver Sentry-capture + graceful-shutdown gratis. Gated bag
+  // stage_scheduler_enabled + race_engine_v2 (fail-safe OFF) + daglig cap (maks 5/dag).
+  // Bevidst INGEN immediate-run: det periodiske tick er nok, og en etape skal ikke
+  // fyre ved hver genstart (mirror auto-prize-mønstret).
+  setInterval(trackedTick("stage scheduler", runStageSchedulerCron), 5 * 60 * 1000);
 
   // Run immediately on start
   trackedTick("auctions", finalizeExpiredAuctions)();

@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   runAdminSimulateRace,
+  runAdminSimulateStage,
   getRaceEngineStatus,
   buildRaceSimEmbed,
 } from "./adminSimulateRace.js";
@@ -120,7 +121,7 @@ test("runAdminSimulateRace: completed-løb → 409", async () => {
   }
   assert.ok(err, "skal kaste");
   assert.equal(err.status, 409);
-  assert.ok(err.message.includes("allerede afviklet") || err.message.includes("completed"), `uventet besked: ${err.message}`);
+  assert.ok(err.message.includes("already simulated") || err.message.includes("completed"), `uventet besked: ${err.message}`);
 });
 
 // Test 5: manglende raceId → 400.
@@ -155,7 +156,7 @@ test("runAdminSimulateRace: delvise stage-profiler (1/3) → 409 Delvise, simula
   }
   assert.ok(err, "skal kaste ved dryRun=true med delvise profiler");
   assert.equal(err.status, 409, `forventet 409, fik ${err.status}: ${err.message}`);
-  assert.ok(err.message.includes("Delvise"), `forventet "Delvise" i besked, fik: ${err.message}`);
+  assert.ok(err.message.includes("Partial"), `forventet "Partial" i besked, fik: ${err.message}`);
   assert.equal(stubCalled, false, "simulateRace-stub må ikke kaldes ved delvise profiler");
 });
 
@@ -177,7 +178,7 @@ test("runAdminSimulateRace: nul stage-profiler (0/3) → 409 Delvise, simulateRa
   }
   assert.ok(err, "skal kaste");
   assert.equal(err.status, 409);
-  assert.ok(err.message.includes("Delvise"), `forventet "Delvise" i besked, fik: ${err.message}`);
+  assert.ok(err.message.includes("Partial"), `forventet "Partial" i besked, fik: ${err.message}`);
   assert.equal(stubCalled, false, "simulateRace-stub må ikke kaldes ved nul profiler");
 });
 
@@ -243,4 +244,104 @@ test("buildRaceSimEmbed: titel indeholder løbsnavn, beskrivelse indeholder GC-v
   assert.ok(embed.description.includes("B"), `beskrivelse skal indeholde etapevinder "B" — fik: ${embed.description}`);
   assert.ok(embed.description.includes("C"), `beskrivelse skal indeholde etapevinder "C" — fik: ${embed.description}`);
   assert.ok(typeof embed.color === "number", "color skal være et tal");
+});
+
+// ── runAdminSimulateStage (WS1 Fase 3) ────────────────────────────────────────
+
+// stageIndex udledes af stages_completed; flag ON → stub kaldt med korrekt index.
+test("runAdminSimulateStage: stageIndex = stages_completed; stub kaldt med korrekt index", async () => {
+  const supabase = makeSupabase({
+    app_config: [{ value: true }], // flag ON
+    races: [{ id: "r1", season_id: "s1", name: "Test GP", race_type: "stage_race", race_class: "ProSeries", stages: 3, stages_completed: 1, status: "scheduled" }],
+    race_stage_profiles: [{ id: "p1" }, { id: "p2" }, { id: "p3" }], // 3/3 → profil-guard OK
+  });
+  let captured = null;
+  const stub = async (args) => { captured = args; return { stageNumber: 2, isFinalStage: false }; };
+
+  const result = await runAdminSimulateStage({ supabase, raceId: "r1", simulateStageByIndex: stub });
+
+  assert.ok(captured, "simulateStageByIndex-stub skal kaldes");
+  assert.equal(captured.stageIndex, 1, "stageIndex skal udledes af stages_completed (1)");
+  assert.equal(captured.race.id, "r1");
+  assert.equal(result.stageNumber, 2);
+});
+
+// stages_completed >= stages → 409 (alle etaper kørt); stub ikke kaldt.
+test("runAdminSimulateStage: alle etaper kørt (stages_completed=stages) → 409, stub ikke kaldt", async () => {
+  const supabase = makeSupabase({
+    app_config: [{ value: true }],
+    races: [{ id: "r1", season_id: "s1", name: "Test GP", race_type: "stage_race", race_class: "ProSeries", stages: 3, stages_completed: 3, status: "scheduled" }],
+    race_stage_profiles: [{ id: "p1" }, { id: "p2" }, { id: "p3" }],
+  });
+  let stubCalled = false;
+  let err = null;
+  try {
+    await runAdminSimulateStage({ supabase, raceId: "r1", simulateStageByIndex: async () => { stubCalled = true; return {}; } });
+  } catch (e) { err = e; }
+  assert.ok(err, "skal kaste");
+  assert.equal(err.status, 409);
+  assert.equal(stubCalled, false, "stub må ikke kaldes når alle etaper er kørt");
+});
+
+// status=completed → 409.
+test("runAdminSimulateStage: completed-løb → 409", async () => {
+  const supabase = makeSupabase({
+    app_config: [{ value: true }],
+    races: [{ id: "r2", season_id: "s1", name: "Afviklet", race_type: "stage_race", race_class: "ProSeries", stages: 3, stages_completed: 3, status: "completed" }],
+  });
+  let err = null;
+  try {
+    await runAdminSimulateStage({ supabase, raceId: "r2", simulateStageByIndex: async () => ({}) });
+  } catch (e) { err = e; }
+  assert.ok(err, "skal kaste");
+  assert.equal(err.status, 409);
+});
+
+// flag OFF + dryRun=false → 409 (samme flag-check som runAdminSimulateRace).
+test("runAdminSimulateStage: flag OFF + dryRun=false → 409, stub ikke kaldt", async () => {
+  const supabase = makeSupabase({
+    app_config: [], // flag OFF
+    races: [{ id: "r1", season_id: "s1", name: "Test GP", race_type: "stage_race", race_class: "ProSeries", stages: 3, stages_completed: 0, status: "scheduled" }],
+    race_stage_profiles: [{ id: "p1" }, { id: "p2" }, { id: "p3" }],
+  });
+  let stubCalled = false;
+  let err = null;
+  try {
+    await runAdminSimulateStage({ supabase, raceId: "r1", dryRun: false, simulateStageByIndex: async () => { stubCalled = true; return {}; } });
+  } catch (e) { err = e; }
+  assert.ok(err, "skal kaste");
+  assert.equal(err.status, 409);
+  assert.ok(err.message.includes("RACE_ENGINE_V2_ENABLED"), `forventet flag-besked, fik: ${err.message}`);
+  assert.equal(stubCalled, false);
+});
+
+// delvise profiler (1/3) → 409 Delvise.
+test("runAdminSimulateStage: delvise profiler (1/3) → 409 Delvise, stub ikke kaldt", async () => {
+  const supabase = makeSupabase({
+    app_config: [{ value: true }],
+    races: [{ id: "r1", season_id: "s1", name: "Test GP", race_type: "stage_race", race_class: "ProSeries", stages: 3, stages_completed: 0, status: "scheduled" }],
+    race_stage_profiles: [{ id: "p1" }], // 1/3
+  });
+  let stubCalled = false;
+  let err = null;
+  try {
+    await runAdminSimulateStage({ supabase, raceId: "r1", simulateStageByIndex: async () => { stubCalled = true; return {}; } });
+  } catch (e) { err = e; }
+  assert.ok(err, "skal kaste");
+  assert.equal(err.status, 409);
+  assert.ok(err.message.includes("Partial"), `forventet "Partial", fik: ${err.message}`);
+  assert.equal(stubCalled, false);
+});
+
+// manglende raceId → 400; ukendt raceId → 404.
+test("runAdminSimulateStage: manglende raceId → 400; ukendt → 404", async () => {
+  const sb1 = makeSupabase({});
+  let err1 = null;
+  try { await runAdminSimulateStage({ supabase: sb1, simulateStageByIndex: async () => ({}) }); } catch (e) { err1 = e; }
+  assert.equal(err1.status, 400);
+
+  const sb2 = makeSupabase({ races: [] });
+  let err2 = null;
+  try { await runAdminSimulateStage({ supabase: sb2, raceId: "ukendt", simulateStageByIndex: async () => ({}) }); } catch (e) { err2 = e; }
+  assert.equal(err2.status, 404);
 });
