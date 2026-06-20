@@ -8,9 +8,20 @@ import { DIVISION_CAPACITY, INITIAL_BALANCE, SPONSOR_INCOME_BASE } from "./econo
 // de ikke rammer den ægte riders/derive-kæde (den dækkes i starterSquadAllocator.test.js).
 // upsert(args) = upsertOwnTeamProfile med default-stub; tests der vil verificere
 // allokerings-koblingen sender deres egen recording-stub.
+//
+// Akademi-kuld (forever-relaunch): standard-stubs holder akademi-koblingen ude af
+// de eksisterende tests (academyEnabled=false → ingen seeding); tests der vil
+// verificere koblingen sender deres egne stubs.
 const noopAllocate = async () => ({ assigned: 0, skipped: "test-noop" });
+const noopRunAcademyCohort = async () => ({ skipped: "test-noop", candidates: 0 });
+const academyDisabled = async () => false;
 function upsert(args) {
-  return upsertOwnTeamProfile({ allocateStarterSquad: noopAllocate, ...args });
+  return upsertOwnTeamProfile({
+    allocateStarterSquad: noopAllocate,
+    runAcademyCohort: noopRunAcademyCohort,
+    academyEnabled: academyDisabled,
+    ...args,
+  });
 }
 
 function seedTeams({ division, count, is_ai = false, is_frozen = false, is_test_account = false }) {
@@ -697,6 +708,8 @@ test("#1560 created===true udløser starter-squad-allokering for det nye hold", 
     name: "Fresh Squad",
     managerName: "Manager",
     allocateStarterSquad: recordingAllocate,
+    runAcademyCohort: noopRunAcademyCohort,
+    academyEnabled: academyDisabled,
   });
 
   assert.equal(result.created, true);
@@ -722,6 +735,8 @@ test("#1560 created===false (rename) udløser IKKE allokering", async () => {
     name: "New Name",
     managerName: "New Manager",
     allocateStarterSquad: recordingAllocate,
+    runAcademyCohort: noopRunAcademyCohort,
+    academyEnabled: academyDisabled,
   });
 
   assert.equal(result.created, false);
@@ -762,8 +777,101 @@ test("#1560 created===false ved user_id-race udløser IKKE allokering (vinderen 
     name: "Team Nova",
     managerName: "Alex",
     allocateStarterSquad: recordingAllocate,
+    runAcademyCohort: noopRunAcademyCohort,
+    academyEnabled: academyDisabled,
   });
 
   assert.equal(result.created, false);
   assert.equal(calls.length, 0, "taber-kaldet må ikke allokere — vinderen gjorde det");
+});
+
+// ── Akademi-kuld koblet til hold-oprettelse (forever-relaunch, spejler #1560) ──
+
+test("akademi: nyt hold (created===true) med flag ON får ét akademi-kuld for sit holds-id", async () => {
+  const supabase = createSupabaseDouble();
+  const academyCalls = [];
+  const recordingAcademy = async (_sb, teamId) => { academyCalls.push(teamId); return { teamId, candidates: 4 }; };
+
+  const result = await upsertOwnTeamProfile({
+    supabase,
+    userId: "user-1",
+    name: "Fresh Academy",
+    managerName: "Manager",
+    allocateStarterSquad: noopAllocate,
+    runAcademyCohort: recordingAcademy,
+    academyEnabled: async () => true,
+  });
+
+  assert.equal(result.created, true);
+  assert.equal(academyCalls.length, 1, "akademi-kuld seedet præcis én gang");
+  assert.equal(academyCalls[0], result.team.id, "akademi-kuld for det nye holds id");
+});
+
+test("akademi: flag OFF seeder INTET kuld (global gate)", async () => {
+  const supabase = createSupabaseDouble();
+  const academyCalls = [];
+  const recordingAcademy = async (_sb, teamId) => { academyCalls.push(teamId); return { teamId, candidates: 4 }; };
+
+  const result = await upsertOwnTeamProfile({
+    supabase,
+    userId: "user-1",
+    name: "No Academy Yet",
+    managerName: "Manager",
+    allocateStarterSquad: noopAllocate,
+    runAcademyCohort: recordingAcademy,
+    academyEnabled: async () => false,
+  });
+
+  assert.equal(result.created, true);
+  assert.equal(academyCalls.length, 0, "flag OFF → ingen akademi-seeding");
+});
+
+test("akademi: rename (created===false) seeder INTET kuld", async () => {
+  const supabase = createSupabaseDouble({
+    teams: [{
+      id: "team-1", user_id: "user-1", name: "Old Name", manager_name: "Old Manager",
+      balance: INITIAL_BALANCE, sponsor_income: SPONSOR_INCOME_BASE,
+    }],
+    boardProfiles: [{ id: "board-1", team_id: "team-1" }],
+  });
+  const academyCalls = [];
+  const recordingAcademy = async (_sb, teamId) => { academyCalls.push(teamId); return { teamId, candidates: 4 }; };
+
+  const result = await upsertOwnTeamProfile({
+    supabase,
+    userId: "user-1",
+    existingTeam: clone(supabase.state.teams[0]),
+    name: "New Name",
+    managerName: "New Manager",
+    allocateStarterSquad: noopAllocate,
+    runAcademyCohort: recordingAcademy,
+    academyEnabled: async () => true,
+  });
+
+  assert.equal(result.created, false);
+  assert.equal(academyCalls.length, 0, "rename må ikke seede akademi-kuld");
+});
+
+test("akademi: kuld-fejl er IKKE-fatal — signup lykkes og start-truppen er tildelt", async () => {
+  // Bevidst delvis-fejl-adfærd: et manglende akademi er en blødere, genoprettelig
+  // blindgyde end en blokeret signup. En fejl i akademi-seedingen fanges (Sentry +
+  // console.error) og signup fortsætter — holdet beholder sin start-trup.
+  const supabase = createSupabaseDouble();
+  const squadCalls = [];
+  const recordingAllocate = async (_sb, teamId) => { squadCalls.push(teamId); return { assigned: 8 }; };
+  const failingAcademy = async () => { throw new Error("derive nede"); };
+
+  const result = await upsertOwnTeamProfile({
+    supabase,
+    userId: "user-1",
+    name: "Academy Soft Fail",
+    managerName: "Manager",
+    allocateStarterSquad: recordingAllocate,
+    runAcademyCohort: failingAcademy,
+    academyEnabled: async () => true,
+  });
+
+  assert.equal(result.created, true, "signup lykkes trods akademi-fejl");
+  assert.equal(squadCalls.length, 1, "start-truppen blev tildelt");
+  assert.equal(supabase.state.teams.length, 1, "holdet blev oprettet");
 });

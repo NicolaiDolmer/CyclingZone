@@ -13,6 +13,20 @@ import { DUPLICATE_VIOLATION_CODE } from "./balanceRpc.js";
 import { notifyTeamOwner } from "./notificationService.js";
 import { deriveForRiderIds } from "./backfillCores.js";
 
+// Deterministisk 32-bit hash (FNV-1a) — samme algoritme som
+// starterSquadAllocator.hashStringToSeed, bevidst dupliceret (få linjer) for ikke
+// at koble akademi-intake til startholds-allokatoren. Bruges til per-hold PRNG-seed
+// så to nye hold ikke får identiske kuld, men hvert hold er reproducerbart.
+function hashStringToSeed(str) {
+  let h = 0x811c9dc5;
+  const s = String(str ?? "");
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return h >>> 0;
+}
+
 /**
  * Returnerer antal ryttere med is_academy=true for et givet hold.
  * Bruges af squad-cap-logik (Task 7).
@@ -29,6 +43,85 @@ export async function getTeamAcademyCount(supabase, teamId) {
     .eq("is_academy", true);
   if (error) throw new Error(`getTeamAcademyCount: ${error.message}`);
   return count ?? 0;
+}
+
+/**
+ * Slå den aktive sæson op. Returnerer { id, number, start_date } eller null.
+ * Delt af batch- og per-hold-stien, så de altid rammer SAMME sæson-definition.
+ */
+async function fetchActiveSeason(supabase) {
+  const seasonRes = await supabase
+    .from("seasons")
+    .select("id, number, start_date")
+    .eq("status", "active")
+    .maybeSingle();
+  if (seasonRes?.error) throw new Error(`academy-intake season lookup: ${seasonRes.error.message}`);
+  return seasonRes?.data ?? null;
+}
+
+function referenceYearForSeason(season) {
+  return parseInt(String(season.start_date).slice(0, 4), 10) || 2026;
+}
+
+/**
+ * Byg sættet af foldede navne på ALLE eksisterende ryttere (navne-unikhed).
+ * Delt af batch- og per-hold-stien.
+ */
+async function fetchExistingFoldedRiderNames(supabase) {
+  const existingRiders = await fetchAllRows(() =>
+    supabase.from("riders").select("firstname,lastname").order("id")
+  );
+  return new Set(existingRiders.map((r) => foldNameNordic(`${r.firstname} ${r.lastname}`)));
+}
+
+/**
+ * DELT KERNE (batch + per-hold): generér ét kuld for ÉT hold, indsæt ryttere
+ * (pcm_id null, is_academy false) og academy_intake-rækker (status 'offered').
+ * Muterer `existingNames` (navne-dedup) og returnerer de nyindsatte rider-id'er.
+ *
+ * KØRER IKKE afled-pipelinen — det ejer opkalderen, så batch kan afled'e ALLE
+ * nyindsatte ryttere i ÉT kald (uændret #1478-adfærd) mens per-hold afled'er sit
+ * eget kuld. Begge call-sites deler dermed nøjagtig samme generering+insert-logik,
+ * så batch og signup-stien ikke kan drifte fra hinanden.
+ *
+ * @returns {Promise<string[]>} de nyindsatte akademi-rytteres id'er
+ */
+async function seedAcademyCohortForTeam(supabase, {
+  teamId,
+  season,
+  referenceYear,
+  existingNames,
+  rng,
+  identityBasis = null,
+}) {
+  const candidates = generateAcademyCandidates({
+    rng,
+    referenceYear,
+    existingNames,
+    identityBasis: identityBasis || null,
+  });
+
+  const riderPayload = candidates.map((c) => c.rider);
+  const { data: insertedRiders, error: riderErr } = await supabase
+    .from("riders")
+    .insert(riderPayload)
+    .select("id");
+  if (riderErr) throw new Error(`academy-intake rider insert (team ${teamId}): ${riderErr.message}`);
+
+  const intakeRows = insertedRiders.map((r, idx) => ({
+    team_id: teamId,
+    rider_id: r.id,
+    season_id: season.id,
+    is_serious: candidates[idx].is_serious,
+    status: "offered",
+  }));
+
+  const { error: intakeErr } = await supabase
+    .from("academy_intake")
+    .insert(intakeRows);
+  if (intakeErr) throw new Error(`academy-intake intake insert (team ${teamId}): ${intakeErr.message}`);
+
+  return insertedRiders.map((r) => r.id);
 }
 
 /**
@@ -77,14 +170,7 @@ export async function runAcademyIntake(supabase, {
   }
 
   // ── Aktiv sæson ─────────────────────────────────────────────────────────────
-  const seasonRes = await supabase
-    .from("seasons")
-    .select("id, number, start_date")
-    .eq("status", "active")
-    .maybeSingle();
-  if (seasonRes?.error) throw new Error(`runAcademyIntake season lookup: ${seasonRes.error.message}`);
-
-  const season = seasonRes?.data ?? null;
+  const season = await fetchActiveSeason(supabase);
 
   if (!season) {
     if (dryRun) {
@@ -93,15 +179,10 @@ export async function runAcademyIntake(supabase, {
     throw new Error("runAcademyIntake: no active season - run after season transition");
   }
 
-  const referenceYear = parseInt(String(season.start_date).slice(0, 4), 10) || 2026;
+  const referenceYear = referenceYearForSeason(season);
 
   // ── Navne-unikhed (mod eksisterende ryttere) ─────────────────────────────────
-  const existingRiders = await fetchAllRows(() =>
-    supabase.from("riders").select("firstname,lastname").order("id")
-  );
-  const existingNames = new Set(
-    existingRiders.map((r) => foldNameNordic(`${r.firstname} ${r.lastname}`))
-  );
+  const existingNames = await fetchExistingFoldedRiderNames(supabase);
 
   // ── Idempotens: find allerede-seedede hold for denne sæson ───────────────────
   const seededRows = await fetchAllRows(() =>
@@ -120,40 +201,32 @@ export async function runAcademyIntake(supabase, {
   for (const team of teams) {
     if (seededTeamIds.has(team.id)) continue; // allerede behandlet
 
-    const candidates = generateAcademyCandidates({
-      rng,
+    // Tæl kandidater i dry-run via samme generator (ingen writes). I apply-mode
+    // går vi gennem den delte kerne (seedAcademyCohortForTeam) som batch og
+    // per-hold-stien deler.
+    if (dryRun) {
+      const candidates = generateAcademyCandidates({
+        rng,
+        referenceYear,
+        existingNames,
+        identityBasis: team.season_1_identity_basis || null,
+      });
+      totalTeams++;
+      totalCandidates += candidates.length;
+      continue;
+    }
+
+    const newIds = await seedAcademyCohortForTeam(supabase, {
+      teamId: team.id,
+      season,
       referenceYear,
       existingNames,
+      rng,
       identityBasis: team.season_1_identity_basis || null,
     });
-
     totalTeams++;
-    totalCandidates += candidates.length;
-
-    if (dryRun) continue; // ingen writes i preview
-
-    // Apply: insert ryttere → hent id'er → insert academy_intake-rækker
-    const riderPayload = candidates.map((c) => c.rider);
-    const { data: insertedRiders, error: riderErr } = await supabase
-      .from("riders")
-      .insert(riderPayload)
-      .select("id");
-    if (riderErr) throw new Error(`runAcademyIntake rider insert (team ${team.id}): ${riderErr.message}`);
-
-    const intakeRows = insertedRiders.map((r, idx) => ({
-      team_id: team.id,
-      rider_id: r.id,
-      season_id: season.id,
-      is_serious: candidates[idx].is_serious,
-      status: "offered",
-    }));
-
-    const { error: intakeErr } = await supabase
-      .from("academy_intake")
-      .insert(intakeRows);
-    if (intakeErr) throw new Error(`runAcademyIntake intake insert (team ${team.id}): ${intakeErr.message}`);
-
-    for (const r of insertedRiders) insertedRiderIds.push(r.id);
+    totalCandidates += newIds.length;
+    for (const id of newIds) insertedRiderIds.push(id);
   }
 
   // ── Afled-pipeline for de nyindsatte akademi-ryttere (#1478) ─────────────────
@@ -167,6 +240,82 @@ export async function runAcademyIntake(supabase, {
   }
 
   return { dryRun, teams: totalTeams, candidates: totalCandidates };
+}
+
+/**
+ * #1560-SPEJLING — PER-HOLD akademi-intake: ét nyt hold (oprettet efter relaunch
+ * via den normale signup-flow) får automatisk ÉT akademi-kuld (3-5 offered, nul
+ * tvungen cost) ved team-create, akkurat som relaunch-holdene fik. Uden dette er
+ * akademiet en forever-relaunch-blindgyde for nye signups.
+ *
+ * Deler kerne-generering + insert (seedAcademyCohortForTeam) med batch-stien, så
+ * de to varianter ikke kan drifte. Genbruger de NØJAGTIGT samme kuld-parametre
+ * (ACADEMY.INTAKE_MIN/MAX, SERIOUS_MIN/MAX + evne-bånd i generateAcademyCandidates)
+ * — ingen nye parametre. Kører afled-pipelinen for kuldet (#1478-fælden: ellers mangler
+ * kandidaterne physiology/abilities/type/base_value og springes i træning).
+ *
+ *   • Idempotens-guard: har holdet allerede academy_intake-rækker for den aktive
+ *     sæson, gør INTET (no-op) — spejler allocateStarterSquadForTeam's
+ *     "already-has-riders → skip". Et re-signup/retry må aldrig dobbelt-seede.
+ *   • Per-hold PRNG-seed (seed XOR hash(teamId)) → varierede men reproducerbare
+ *     kuld på tværs af nye hold; samme determinisme-mønster som start-truppen.
+ *   • null season_1_identity_basis (et splinternyt post-relaunch hold) er gyldigt
+ *     → generateAcademyCandidates falder tilbage til default-nation-vægte.
+ *
+ * @param {object} supabase
+ * @param {string} teamId
+ * @param {object} [opts]
+ * @param {number}  [opts.seed=2026]
+ * @param {object|null} [opts.identityBasis]  nation-bias (default null = default-vægte)
+ * @param {Function} [opts.deriveRiders]      DI-hook; default deriveForRiderIds
+ * @returns {Promise<{teamId, candidates} | {teamId, skipped}>}
+ */
+export async function runAcademyIntakeForTeam(supabase, teamId, {
+  seed = 2026,
+  identityBasis = null,
+  deriveRiders = deriveForRiderIds,
+} = {}) {
+  if (!supabase?.from) throw new Error("Supabase client required");
+  if (!teamId) throw new Error("teamId required");
+
+  // ── Aktiv sæson ──────────────────────────────────────────────────────────────
+  const season = await fetchActiveSeason(supabase);
+  if (!season) throw new Error("runAcademyIntakeForTeam: no active season - run after season transition");
+
+  // ── Idempotens-guard: har holdet allerede et kuld for denne sæson? ───────────
+  // Spejler allocateStarterSquadForTeam's "already-has-riders → skip". Et
+  // samtidigt/gentaget signup-kald (eller et hold der allerede fik kuld ved
+  // relaunch) skal være et rent no-op — aldrig dobbelt-seede.
+  const existing = await fetchAllRows(() =>
+    supabase.from("academy_intake").select("id").eq("team_id", teamId).eq("season_id", season.id)
+  );
+  if (existing.length > 0) {
+    return { teamId, skipped: "already-has-cohort", existing: existing.length, candidates: 0 };
+  }
+
+  const referenceYear = referenceYearForSeason(season);
+  const existingNames = await fetchExistingFoldedRiderNames(supabase);
+
+  // Per-hold seed: basis-seed XOR hash(teamId) → varieret men reproducerbart kuld.
+  const teamSeed = (((seed >>> 0) ^ hashStringToSeed(teamId)) >>> 0);
+  const rng = makeRng(teamSeed);
+
+  const newIds = await seedAcademyCohortForTeam(supabase, {
+    teamId,
+    season,
+    referenceYear,
+    existingNames,
+    rng,
+    identityBasis: identityBasis || null,
+  });
+
+  // Afled-pipeline (#1478): physiology→abilities→type→base_value for kuldet,
+  // ellers springes kandidaterne i træning og viser rå PCM-stats.
+  if (newIds.length > 0) {
+    await deriveRiders(supabase, newIds, { dryRun: false });
+  }
+
+  return { teamId, candidates: newIds.length };
 }
 
 /**
