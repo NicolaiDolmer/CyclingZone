@@ -39,9 +39,27 @@ const STAGES_3 = [
 // opts.lockAffected: override antal ramte rækker for races stages_completed-låsen
 //   (FIX 5) — number eller funktion(eqs)=>number. Default: lås matcher (1 ramt række)
 //   medmindre en .eq("stages_completed", v) er angivet og v != canned races stages_completed.
+//
+// #1598: per-etape result-write går nu via apply_stage_result-RPC. Mocken
+// implementerer rpc("apply_stage_result", ...) og registrerer kaldet i __rpcCalls
+// + et syntetisk __writes-entry (op: "stage_rpc") så de eksisterende counter/results-
+// asserts kan re-pege på RPC-parametrene. lockWon honorerer opts.lockAffected.
 function makeSupabase(canned = {}, opts = {}) {
   const writes = [];
+  const rpcCalls = [];
   const racesRow = (canned.races || [])[0] || {};
+  function rpc(name, params) {
+    rpcCalls.push({ name, params });
+    if (name === "apply_stage_result") {
+      const lockWon = typeof opts.lockAffected !== "undefined" ? opts.lockAffected > 0 : true;
+      writes.push({ table: "races", op: "stage_rpc", params, lockWon });
+      return Promise.resolve({
+        data: { lock_won: lockWon, rows_imported: lockWon ? (params.p_result_rows?.length ?? 0) : 0 },
+        error: null,
+      });
+    }
+    return Promise.resolve({ data: null, error: null });
+  }
   function from(table) {
     const b = {
       select() { return b; },
@@ -84,7 +102,7 @@ function makeSupabase(canned = {}, opts = {}) {
     };
     return b;
   }
-  return { from, __writes: writes };
+  return { from, rpc, __writes: writes, __rpcCalls: rpcCalls };
 }
 
 function cannedFor(race = STAGE_RACE, stages = STAGES_3, extra = {}, opts = {}) {
@@ -101,11 +119,21 @@ function cannedFor(race = STAGE_RACE, stages = STAGES_3, extra = {}, opts = {}) 
 }
 
 const NOOP_DEPS = {
-  applyRaceResults: async ({ resultRows }) => ({ rowsImported: resultRows.length }),
   recomputeRaceDays: async () => 12,
   processBoardWeekend: async () => ({}),
   applyFatigue: async () => ({ updated: 0 }),
 };
+
+// #1598: helper der capturer rækkerne sendt til den atomære RPC (erstatter den
+// gamle applyRaceResults-capture). Returnerer en applyStageResult-stub + en getter.
+function captureStageResult() {
+  let captured = null;
+  const applyStageResult = async (_client, { resultRows }) => {
+    captured = resultRows;
+    return { lockWon: true, rowsImported: resultRows.length };
+  };
+  return { applyStageResult, rows: () => captured };
+}
 
 // ── Determinisme (KRITISK): stage-N-via-index == samme stage fra helt-løb ──────
 test("determinisme: simulateStageByIndex persisterer PRÆCIS de rækker helt-løbet ville for samme etape", async () => {
@@ -117,15 +145,15 @@ test("determinisme: simulateStageByIndex persisterer PRÆCIS de rækker helt-lø
   for (let idx = 0; idx < STAGES_3.length; idx++) {
     const stageNumber = idx + 1;
     const supabase = cannedFor();
-    let applied = null;
+    const cap = captureStageResult();
     await simulateStageByIndex({
       supabase, race: STAGE_RACE, stageIndex: idx,
       ...NOOP_DEPS,
-      applyRaceResults: async ({ resultRows }) => { applied = resultRows; return { rowsImported: resultRows.length }; },
+      applyStageResult: cap.applyStageResult,
     });
     const expected = whole.resultRows.filter((r) => r.stage_number === stageNumber);
-    assert.ok(applied, `etape ${stageNumber}: applyRaceResults fik ingen rækker`);
-    assert.deepEqual(applied, expected, `etape ${stageNumber}: stage-by-stage != helt-løb (bit-for-bit)`);
+    assert.ok(cap.rows(), `etape ${stageNumber}: apply_stage_result fik ingen rækker`);
+    assert.deepEqual(cap.rows(), expected, `etape ${stageNumber}: stage-by-stage != helt-løb (bit-for-bit)`);
   }
 });
 
@@ -144,48 +172,49 @@ test("fatigue: PRÆCIS ét applyFatigue-kald pr. invokation, med DENNE etapes pr
   }
 });
 
-// ── Persist: KUN etape N's race_results (idempotent delete pr. etape) ──────────
-test("persist: kun etape N skrives — idempotent delete på (race_id, stage_number=N)", async () => {
+// ── Persist: KUN etape N's race_results via atomær RPC (idempotent delete+insert) ──
+test("persist: kun etape N skrives — atomær RPC med race_id + stage_number=N + kun etape-N-rækker", async () => {
   const supabase = cannedFor();
-  let applied = null;
   await simulateStageByIndex({
     supabase, race: STAGE_RACE, stageIndex: 1, // etape 2
     ...NOOP_DEPS,
-    applyRaceResults: async ({ resultRows }) => { applied = resultRows; return { rowsImported: resultRows.length }; },
   });
+  // #1598: counter-bump + delete + insert sker nu atomisk i apply_stage_result-RPC.
+  const rpc = supabase.__rpcCalls.find((c) => c.name === "apply_stage_result");
+  assert.ok(rpc, "ingen apply_stage_result-RPC-kald");
+  assert.equal(rpc.params.p_race_id, STAGE_RACE.id, "RPC mangler race_id");
+  assert.equal(rpc.params.p_stage_number, 2, "RPC mangler stage_number=2 (idempotent delete-scope)");
+  assert.equal(rpc.params.p_stage_index, 1, "RPC mangler lås-prædikat stageIndex=1");
   // Alle persisterede rækker er etape 2.
-  assert.ok(applied.length > 0);
-  assert.ok(applied.every((r) => r.stage_number === 2), "ikke-etape-2-rækker lækkede");
-  // Idempotent delete på race_results for præcis stage_number=2.
-  const del = supabase.__writes.find((w) => w.table === "race_results" && w.op === "delete");
-  assert.ok(del, "ingen idempotent delete af race_results");
-  assert.ok(del.eqs.some(([c, v]) => c === "race_id" && v === STAGE_RACE.id), "delete mangler race_id-filter");
-  assert.ok(del.eqs.some(([c, v]) => c === "stage_number" && v === 2), "delete mangler stage_number=2-filter");
+  assert.ok(rpc.params.p_result_rows.length > 0);
+  assert.ok(rpc.params.p_result_rows.every((r) => r.stage_number === 2), "ikke-etape-2-rækker lækkede");
 });
 
 // ── stages_completed-counter ──────────────────────────────────────────────────
-test("counter: stages_completed sættes til stageNumber via lås; status IKKE completed på mellem-etape", async () => {
+test("counter: stages_completed bumpes til stageNumber via atomær RPC; status IKKE completed på mellem-etape", async () => {
   const supabase = cannedFor();
   await simulateStageByIndex({ supabase, race: STAGE_RACE, stageIndex: 0, ...NOOP_DEPS }); // etape 1 (af 3)
+  // #1598: counter-bump sker nu i apply_stage_result-RPC (lås-prædikat stages_completed=stageIndex).
+  const rpc = supabase.__rpcCalls.find((c) => c.name === "apply_stage_result");
+  assert.ok(rpc, "ingen apply_stage_result-RPC-kald");
+  assert.equal(rpc.params.p_stage_number, 1, "RPC bumper stages_completed til stageNumber");
+  assert.equal(rpc.params.p_stage_index, 0, "RPC's lås-prædikat = stageIndex");
+  // Mellem-etape: INGEN races-table .update() (counter-bump er i RPC, ingen status-flip).
   const raceUpdates = supabase.__writes.filter((w) => w.table === "races" && w.op === "update");
-  // Mellem-etape: PRÆCIS én races-update (den optimistiske lås) — ingen status-flip.
-  assert.equal(raceUpdates.length, 1, "mellem-etape skal kun lave lås-update'n");
-  const lock = raceUpdates[0];
-  assert.equal(lock.obj.stages_completed, 1);
-  assert.ok(lock.eqs.some(([c, v]) => c === "stages_completed" && v === 0), "lås mangler WHERE stages_completed = stageIndex");
-  assert.notEqual(lock.obj.status, "completed", "mellem-etape må ikke sætte completed");
+  assert.equal(raceUpdates.length, 0, "mellem-etape må ikke lave nogen races .update() (counter er i RPC)");
 });
 
-test("counter: final-etape sætter stages_completed = stages OG status=completed (status SIDST)", async () => {
+test("counter: final-etape — RPC bumper stages_completed=stageNumber, derefter ÉN status=completed-update (status SIDST)", async () => {
   const supabase = cannedFor();
   await simulateStageByIndex({ supabase, race: STAGE_RACE, stageIndex: 2, ...NOOP_DEPS }); // etape 3 = final
+  // RPC bumper counter til 3 (final-etapens stageNumber).
+  const rpc = supabase.__rpcCalls.find((c) => c.name === "apply_stage_result");
+  assert.ok(rpc, "ingen apply_stage_result-RPC-kald");
+  assert.equal(rpc.params.p_stage_number, 3, "RPC bumper counter til final-etapens stageNumber");
+  // Final-etape: PRÆCIS én races .update() = status-flip (FIX 1: status sidst, efter finalization).
   const raceUpdates = supabase.__writes.filter((w) => w.table === "races" && w.op === "update");
-  // To updates: (1) lås stages_completed=3 uden status, (2) final status=completed.
-  assert.equal(raceUpdates.length, 2, "final-etape: lås + status-flip = 2 races-updates");
-  const lock = raceUpdates[0];
-  assert.equal(lock.obj.stages_completed, 3);
-  assert.equal(lock.obj.status, undefined, "lås må IKKE sætte status (FIX 1: status sidst)");
-  const finalUpd = raceUpdates[1];
+  assert.equal(raceUpdates.length, 1, "final-etape: kun status-flip-update (counter-bump er i RPC)");
+  const finalUpd = raceUpdates[0];
   assert.equal(finalUpd.obj.status, "completed");
   assert.equal(finalUpd.obj.stages_completed, 3);
 });
@@ -196,7 +225,6 @@ test("gating: mellem-etape kalder IKKE recompute/board/discord", async () => {
   let recompute = 0, board = 0, discord = 0;
   await simulateStageByIndex({
     supabase, race: STAGE_RACE, stageIndex: 0, // etape 1
-    applyRaceResults: async ({ resultRows }) => ({ rowsImported: resultRows.length }),
     recomputeRaceDays: async () => { recompute++; return 12; },
     processBoardWeekend: async () => { board++; return {}; },
     notifyDiscord: async () => { discord++; },
@@ -212,7 +240,6 @@ test("gating: final-etape kalder recompute + board + discord", async () => {
   let recompute = 0; const boardCalls = []; let discordPayload = null;
   await simulateStageByIndex({
     supabase, race: STAGE_RACE, stageIndex: 2, // etape 3 = final
-    applyRaceResults: async ({ resultRows }) => ({ rowsImported: resultRows.length }),
     recomputeRaceDays: async () => { recompute++; return 12; },
     processBoardWeekend: async (args) => { boardCalls.push(args); return {}; },
     notifyDiscord: async (payload) => { discordPayload = payload; },
@@ -235,7 +262,6 @@ test("gating: final-etape Discord-embed = HELE løbets race_results genlæst fra
   let discordPayload = null;
   await simulateStageByIndex({
     supabase, race: STAGE_RACE, stageIndex: 2,
-    applyRaceResults: async ({ resultRows }) => ({ rowsImported: resultRows.length }),
     recomputeRaceDays: async () => 12,
     processBoardWeekend: async () => ({}),
     notifyDiscord: async (payload) => { discordPayload = payload; },
@@ -314,8 +340,9 @@ test("FIX 3: status=completed på final-etape → kaster (gen-afvikling blokeret
     () => simulateStageByIndex({ supabase, race: completedRace, stageIndex: 2, ...NOOP_DEPS }),
     /already simulated/,
   );
-  // Ingen side-effekter: ingen races-update, ingen applyRaceResults.
+  // Ingen side-effekter: ingen races-update, ingen apply_stage_result-RPC.
   assert.ok(!supabase.__writes.some((w) => w.table === "races" && w.op === "update"), "completed-løb må ikke skrive races");
+  assert.ok(!supabase.__rpcCalls.some((c) => c.name === "apply_stage_result"), "completed-løb må ikke kalde apply_stage_result");
 });
 
 test("FIX 3: status=completed på mellem-etape → kaster også", async () => {
@@ -328,59 +355,62 @@ test("FIX 3: status=completed på mellem-etape → kaster også", async () => {
 });
 
 // ── FIX 5: optimistisk lås — konkurrerende run taber → ingen dobbelt-anvendelse ──
-test("FIX 5: konkurrent vinder låsen (0 ramte rækker) → afbryd FØR applyRaceResults/standings", async () => {
-  let appliedCalled = 0;
+test("FIX 5: konkurrent vinder låsen (RPC lockWon=false) → afbryd FØR standings", async () => {
   let standingsCalled = 0;
-  const supabase = cannedFor(STAGE_RACE, STAGES_3, {}, { lockAffected: 0 }); // låsen taber
+  const supabase = cannedFor(STAGE_RACE, STAGES_3, {}, { lockAffected: 0 }); // RPC taber låsen
   const r = await simulateStageByIndex({
     supabase, race: STAGE_RACE, stageIndex: 1,
-    applyRaceResults: async ({ resultRows }) => { appliedCalled++; return { rowsImported: resultRows.length }; },
     updateStandings: async () => { standingsCalled++; },
     recomputeRaceDays: async () => 12,
     processBoardWeekend: async () => ({}),
     applyFatigue: async () => ({ updated: 0 }),
   });
   assert.equal(r.skipped, "concurrent_lock_lost", "tabt lås skal rapporteres");
-  assert.equal(appliedCalled, 0, "applyRaceResults må IKKE køre når låsen tabes");
-  assert.equal(standingsCalled, 0, "standings må IKKE dobbelt-anvendes");
-  // Ingen race_results-delete, ingen run-insert (alle side-effekter sprunget over).
-  assert.ok(!supabase.__writes.some((w) => w.table === "race_results"), "ingen race_results-skriv ved tabt lås");
+  assert.equal(standingsCalled, 0, "standings må IKKE dobbelt-anvendes ved tabt lås");
+  // RPC blev kaldt (med lås-prædikatet), men kørte ingen side-effekter (lockWon=false).
+  assert.ok(supabase.__rpcCalls.some((c) => c.name === "apply_stage_result"), "RPC skal forsøges (låsen evalueres i RPC)");
+  // Ingen run-insert (alle post-RPC side-effekter sprunget over).
   assert.ok(!supabase.__writes.some((w) => w.table === "race_simulation_runs"), "ingen run-insert ved tabt lås");
 });
 
-test("FIX 5: vinder af låsen kører fuldt (1 ramt række) — normal sti uændret", async () => {
-  let appliedCalled = 0;
-  const supabase = cannedFor(STAGE_RACE, STAGES_3, {}, { lockAffected: 1 }); // låsen vinder
+test("FIX 5: vinder af låsen kører fuldt (RPC lockWon=true) — normal sti uændret", async () => {
+  const supabase = cannedFor(STAGE_RACE, STAGES_3, {}, { lockAffected: 1 }); // RPC vinder låsen
+  const cap = captureStageResult();
   const r = await simulateStageByIndex({
     supabase, race: STAGE_RACE, stageIndex: 1,
     ...NOOP_DEPS,
-    applyRaceResults: async ({ resultRows }) => { appliedCalled++; return { rowsImported: resultRows.length }; },
+    applyStageResult: cap.applyStageResult,
   });
   assert.equal(r.skipped, undefined, "vinder må ikke rapportere skip");
-  assert.equal(appliedCalled, 1, "vinder skal anvende resultater");
+  assert.ok(cap.rows(), "vinder skal sende resultater til den atomære RPC");
+  assert.ok(r.rowsImported > 0, "vinder skal rapportere rowsImported");
 });
 
-test("FIX 1: resultat-skriv-fejl efter lås → counter rulles tilbage til stageIndex (etape kan gen-køres)", async () => {
-  // applyRaceResults kaster (simulér crash midt i resultat-skriv). Vi forventer:
-  //   (1) fejlen propagerer (caller ser den), (2) en races-update der ruller
-  //   stages_completed TILBAGE til stageIndex (=1), så en gen-afvikling re-kører etapen.
+test("#1598: result-write-fejl i RPC propagerer (transaktion ruller ALT tilbage — ingen JS-rollback)", async () => {
+  // RPC'en wrapper counter-bump + delete + insert atomisk. En fejl ruller HELE
+  // transaktionen tilbage I POSTGRES — der er INTET JS-counter-rollback-trin mere
+  // (den gamle FIX-1-rollback er overflødiggjort). Vi verificerer at fejlen
+  // propagerer OG at JS IKKE laver nogen kompenserende races-update.
   const supabase = cannedFor();
   await assert.rejects(() => simulateStageByIndex({
     supabase, race: STAGE_RACE, stageIndex: 1,
     ...NOOP_DEPS,
-    applyRaceResults: async () => { throw new Error("DB boom midt i skriv"); },
+    applyStageResult: async () => { throw new Error("DB boom i atomær RPC"); },
   }), /DB boom/);
+  // INGEN kompenserende races-update i JS — atomiciteten ligger i Postgres-transaktionen.
   const raceUpdates = supabase.__writes.filter((w) => w.table === "races" && w.op === "update");
-  // (1) lås-update stages_completed=2, derefter (2) rollback til stageIndex=1.
-  assert.equal(raceUpdates.length, 2, "forventet lås + rollback");
-  assert.equal(raceUpdates[0].obj.stages_completed, 2, "lås bumper til stageNumber");
-  assert.equal(raceUpdates[1].obj.stages_completed, 1, "rollback sætter counter tilbage til stageIndex");
+  assert.equal(raceUpdates.length, 0, "ingen JS-counter-rollback (RPC-transaktionen ruller selv tilbage)");
 });
 
 // ── FIX 1: status sættes EFTER finalization (crash-safe rækkefølge) ───────────
 test("FIX 1: final-etape kører finalization FØR status=completed (rækkefølge)", async () => {
   const order = [];
   const supabase = {
+    rpc(name) {
+      // #1598: result-write (counter+results) via atomær RPC — committer FØR standings.
+      if (name === "apply_stage_result") order.push("stage_rpc");
+      return Promise.resolve({ data: { lock_won: true, rows_imported: 1 }, error: null });
+    },
     from(table) {
       const b = {
         select() { return b; }, eq() { return b; }, in() { return b; }, or() { return b; },
@@ -423,14 +453,13 @@ test("FIX 1: final-etape kører finalization FØR status=completed (rækkefølge
   };
   await simulateStageByIndex({
     supabase, race: STAGE_RACE, stageIndex: 2, // final
-    applyRaceResults: async ({ resultRows }) => ({ rowsImported: resultRows.length }),
     recomputeRaceDays: async () => { order.push("recompute"); return 12; },
     processBoardWeekend: async () => { order.push("board"); },
     notifyDiscord: async () => { order.push("discord"); },
     applyFatigue: async () => ({ updated: 0 }),
   });
-  assert.deepEqual(order, ["recompute", "board", "discord", "status_completed"],
-    "finalization (recompute→board→discord) skal køre FØR status=completed");
+  assert.deepEqual(order, ["stage_rpc", "recompute", "board", "discord", "status_completed"],
+    "atomær result-write (stage_rpc) → finalization (recompute→board→discord) → status=completed");
 });
 
 // ── FIX 1: recovery — stages_completed >= stages men status != completed ───────
@@ -439,7 +468,7 @@ test("FIX 1 recovery: finalization-pending løb re-kører finalization til compl
   // men status stadig scheduled. En ny invokation (stageIndex=2 = final) skal IDEMPOTENT
   // genoptage finalization OG IKKE genberegne resultater/standings.
   const pendingRace = { ...STAGE_RACE, status: "scheduled", stages_completed: 3 };
-  let applied = 0, recompute = 0, board = 0, discord = 0, entriesLoaded = 0;
+  let rpcCalled = 0, recompute = 0, board = 0, discord = 0, entriesLoaded = 0;
   const supabase = {
     from(table) {
       if (table === "race_entries") entriesLoaded++;
@@ -473,14 +502,14 @@ test("FIX 1 recovery: finalization-pending løb re-kører finalization til compl
   };
   const r = await simulateStageByIndex({
     supabase, race: pendingRace, stageIndex: 2,
-    applyRaceResults: async () => { applied++; return { rowsImported: 0 }; },
+    applyStageResult: async () => { rpcCalled++; return { lockWon: true, rowsImported: 0 }; },
     recomputeRaceDays: async () => { recompute++; return 12; },
     processBoardWeekend: async () => { board++; },
     notifyDiscord: async () => { discord++; },
     applyFatigue: async () => ({ updated: 0 }),
   });
   assert.equal(r.recovered, true, "recovery skal markeres");
-  assert.equal(applied, 0, "recovery må IKKE genanvende resultater");
+  assert.equal(rpcCalled, 0, "recovery må IKKE kalde den atomære result-write-RPC");
   assert.equal(entriesLoaded, 0, "recovery må IKKE genindlæse startfeltet");
   assert.equal(recompute, 1, "recovery skal køre recompute");
   assert.equal(board, 1, "recovery skal køre board-weekend");
