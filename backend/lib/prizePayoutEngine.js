@@ -191,7 +191,12 @@ export async function getSeasonPrizePreview(seasonId, supabase) {
   };
 }
 
-export async function paySeasonPrizesToDate(seasonId, adminUserId, supabase) {
+export async function paySeasonPrizesToDate(seasonId, adminUserId, supabase, opts = {}) {
+  // #WS1: valgfri actorType så en cron-sweep kan logge udbetalingen som SYSTEM i
+  // stedet for ADMIN (ærlig audit-trail). Default = ADMIN → manuelle endpoint
+  // (api.js) er fuldstændig uændret.
+  const actorType = opts.actorType ?? FINANCE_ACTOR_TYPE.ADMIN;
+
   const preview = await getSeasonPrizePreview(seasonId, supabase);
   if (!preview.pending_payment.length) return { races_paid: 0, total_paid: 0, by_race: [] };
 
@@ -211,7 +216,7 @@ export async function paySeasonPrizesToDate(seasonId, adminUserId, supabase) {
           description: `Præmiepenge — ${race.race_name}`,
           season_id: seasonId,
           race_id: race.race_id,
-          actor_type: FINANCE_ACTOR_TYPE.ADMIN,
+          actor_type: actorType,
           actor_id: adminUserId || null,
           source_path: "prizePayoutEngine.paySeasonPrizesToDate",
           reason_code: FINANCE_REASON.RACE_PRIZE_PAYOUT,
