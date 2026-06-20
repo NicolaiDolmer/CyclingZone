@@ -219,7 +219,8 @@ import {
 import { adminImportUploadMultipleFiles } from "../lib/adminImportUpload.js";
 import { getDefaultWebhook, sendWebhook } from "../lib/discordNotifier.js";
 import { importPcmResults, buildPcmImportEmbed } from "../lib/pcmResultsImport.js";
-import { getRaceEngineStatus, runAdminSimulateRace, buildRaceSimEmbed } from "../lib/adminSimulateRace.js";
+import { getRaceEngineStatus, runAdminSimulateRace, runAdminSimulateStage, buildRaceSimEmbed } from "../lib/adminSimulateRace.js";
+import { ensureSeasonStandings as ensureSeasonStandingsShared } from "../lib/seasonStandingsBootstrap.js";
 import { generateRaceStageProfiles, GENERATOR_VERSION } from "../lib/raceStageProfileGenerator.js";
 import { checkAchievements } from "../lib/achievementEngine.js";
 import { captureException, setSentryUser } from "../lib/sentry.js";
@@ -429,35 +430,10 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY
 );
 
-async function ensureSeasonStandings(seasonId) {
-  // #203: Test-konti udelukkes fra standings — ellers påvirker de leaderboards
-  // for ægte managers (rank_in_division-måling, balanced-plans, etc.).
-  const [{ data: teams, error: teamsError }, { data: standings, error: standingsError }] = await Promise.all([
-    supabase.from("teams").select("id, division").eq("is_test_account", false),
-    supabase.from("season_standings").select("team_id").eq("season_id", seasonId),
-  ]);
-
-  if (teamsError) throw new Error(teamsError.message);
-  if (standingsError) throw new Error(standingsError.message);
-
-  const existingTeamIds = new Set((standings || []).map(row => row.team_id));
-  const missingRows = (teams || [])
-    .filter(team => !existingTeamIds.has(team.id))
-    .map(team => ({
-      season_id: seasonId,
-      team_id: team.id,
-      division: team.division,
-    }));
-
-  if (missingRows.length > 0) {
-    const { error: insertError } = await supabase.from("season_standings").insert(missingRows);
-    if (insertError) throw new Error(insertError.message);
-  }
-
-  return {
-    created: missingRows.length,
-    total_teams: (teams || []).length,
-  };
+// #203-logik udtrukket til lib/seasonStandingsBootstrap.js (delt med stage-scheduler-cron).
+// Test-konti udelukkes fra standings — ellers påvirker de leaderboards for ægte managers.
+function ensureSeasonStandings(seasonId) {
+  return ensureSeasonStandingsShared(supabase, seasonId);
 }
 
 async function createRaceRecord(payload) {
@@ -6260,6 +6236,30 @@ router.post("/admin/simulate-race", requireAdmin, adminWriteLimiter, async (req,
   try {
     const result = await runAdminSimulateRace({
       supabase, raceId: req.body?.race_id, dryRun,
+      ensureSeasonStandings, updateStandings, notifyDiscord,
+    });
+    res.json(result);
+  } catch (err) {
+    res.status(err.status || 500).json({ error: err.message });
+  }
+});
+
+// POST /api/admin/races/:id/simulate-stage — afvikl PRÆCIS én etape (WS1 Fase 3).
+// Manuel fallback + test-trigger for stage-scheduleren. stageIndex udledes server-side
+// af races.stages_completed. body: { dry_run } — dry_run=true giver preview (tilladt ved flag OFF).
+router.post("/admin/races/:id/simulate-stage", requireAdmin, adminWriteLimiter, async (req, res) => {
+  const dryRun = req.body?.dry_run === true || req.body?.dry_run === "true";
+  const notifyDiscord = dryRun
+    ? null
+    : async ({ race, resultRows }) => {
+        const url = await getDefaultWebhook();
+        if (!url) return;
+        const embed = buildRaceSimEmbed({ race, resultRows });
+        await sendWebhook(url, { embeds: [{ ...embed, footer: { text: "Cycling Zone" } }] });
+      };
+  try {
+    const result = await runAdminSimulateStage({
+      supabase, raceId: req.params.id, dryRun,
       ensureSeasonStandings, updateStandings, notifyDiscord,
     });
     res.json(result);

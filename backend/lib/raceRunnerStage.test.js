@@ -39,7 +39,6 @@ const STAGES_3 = [
 function makeSupabase(canned = {}) {
   const writes = [];
   function from(table) {
-    const rec = { table };
     const b = {
       select() { return b; },
       eq() { return b; },
