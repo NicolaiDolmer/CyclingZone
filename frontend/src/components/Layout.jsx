@@ -53,7 +53,7 @@ function buildNavGroups(team, t, academyEnabled = false) {
         // transferliste-genvejen (?tab=market) — kun én af de to er aktiv.
         { to: "/transfers",    label: t("nav.item.transfers"), excludeQuery: "tab=market" },
         { to: "/transfers?tab=market", label: t("nav.item.transferList") },
-        { to: "/deadline-day", label: t("nav.item.deadlineDay") },
+        { to: "/deadline-day", label: t("nav.item.deadlineDay"), title: t("nav.tooltip.deadlineDay") },
         { to: "/watchlist",    label: t("nav.item.watchlist") },
         { to: "/activity",     label: t("nav.item.activity") },
       ],
@@ -120,11 +120,11 @@ async function fetchUnreadCount(userId) {
   return count || 0;
 }
 
-function NavItem({ to, label, badge, onClick, location, unread, exact, excludeQuery }) {
+function NavItem({ to, label, badge, onClick, location, unread, exact, excludeQuery, title }) {
   const isActive = pathMatchesNavItem(location, to, exact, excludeQuery);
   const showBadge = badge && unread > 0;
   return (
-    <NavLink to={to} onClick={onClick} aria-current={isActive ? "page" : undefined}
+    <NavLink to={to} onClick={onClick} title={title} aria-current={isActive ? "page" : undefined}
       className={`group relative flex items-center justify-between mx-2 px-3 py-2 rounded-lg text-[13px] transition-all duration-150
         ${isActive
           ? "bg-cz-accent/12 text-cz-accent font-medium cursor-default"
@@ -174,11 +174,11 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
       {balance != null && (
         <div className="px-4 py-3 border-b border-cz-sidebar-border">
           <p className="text-[9px] text-cz-sidebar-3 uppercase tracking-widest mb-0.5">{t("sidebar.balance")}</p>
-          <p className="text-cz-accent font-mono font-bold text-sm leading-tight">
+          <p className="text-cz-accent font-mono font-bold text-sm leading-tight" title={t("sidebar.balanceTooltip")}>
             {formatNumber(balance)} CZ$
           </p>
           {team?.division != null && (
-            <p className="text-cz-sidebar-3 text-[10px] mt-0.5">{t("sidebar.division", { division: team.division })}</p>
+            <p className="text-cz-sidebar-3 text-[10px] mt-0.5" title={t("sidebar.divisionTooltip")}>{t("sidebar.division", { division: team.division })}</p>
           )}
         </div>
       )}

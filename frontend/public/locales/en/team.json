@@ -11,7 +11,9 @@
     "salaryPerSeasonTooltip": "Total salary your squad earns per season",
     "teamValue": "Team value: {value} CZ$",
     "division": "Division {n}",
-    "balance": "{value} CZ$"
+    "divisionTooltip": "Your league tier. Division 1 is the top tier, Division 3 the entry tier.",
+    "balance": "{value} CZ$",
+    "balanceTooltip": "CZ$ is the in-game currency. You earn it by playing, and it cannot be bought with real money."
   },
   "tabs": {
     "squad": "Squad ({count})",

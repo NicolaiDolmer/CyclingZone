@@ -42,11 +42,16 @@
       "waitlist": "Waitlist",
       "sprintMetrics": "Sprint-metrics",
       "attribution": "Attribution"
+    },
+    "tooltip": {
+      "deadlineDay": "Et transfervindue hvor 30-minutters flash-auktioner åbner."
     }
   },
   "sidebar": {
     "balance": "Balance",
+    "balanceTooltip": "CZ$ er spillets valuta. Du tjener den ved at spille, og den kan ikke købes for rigtige penge.",
     "division": "Division {division}",
+    "divisionTooltip": "Dit ligatrin. Division 1 er øverste niveau, Division 3 er startniveauet.",
     "onlineNow": "{count} online nu",
     "joinDiscord": "Join Discord"
   },

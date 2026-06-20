@@ -42,11 +42,16 @@
       "waitlist": "Waitlist",
       "sprintMetrics": "Sprint metrics",
       "attribution": "Attribution"
+    },
+    "tooltip": {
+      "deadlineDay": "A transfer window where 30-minute flash auctions open up."
     }
   },
   "sidebar": {
     "balance": "Balance",
+    "balanceTooltip": "CZ$ is the in-game currency. You earn it by playing, and it cannot be bought with real money.",
     "division": "Division {division}",
+    "divisionTooltip": "Your league tier. Division 1 is the top tier, Division 3 the entry tier.",
     "onlineNow": "{count} online now",
     "joinDiscord": "Join Discord"
   },
