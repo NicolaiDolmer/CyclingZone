@@ -27,8 +27,15 @@ export default {
   // #639 forward-guard: SQL string-literal lint catches unescaped apostrophes
   // (e.g. `claim'et` instead of `claim''et`) that would otherwise abort
   // auto-migrate on ON_ERROR_STOP=1 (the #635 bug shape).
-  "database/**/*.sql": (files) =>
+  "database/**/*.sql": (files) => [
     `node scripts/lint-sql-strings.mjs ${files.map(escape).join(" ")}`,
+    // #401 forward-guard: NEW database/2026-*.sql migrations must use idempotent
+    // DDL so a re-run (recovery replay / partial re-apply / fresh rebuild from
+    // the migration log) is a no-op, not an error. The script filters to
+    // 2026-*.sql basenames + respects the historical whitelist, so passing the
+    // staged paths is safe. Rule + recipes: docs/MIGRATIONS.md.
+    `node scripts/lint-migration-idempotency.mjs ${files.map(escape).join(" ")}`,
+  ],
   // #1068 forward-guard: i18n leak-check (DA-in-EN locale values + hardcoded
   // Danish strings in player-facing code). The script always does a full-repo
   // scan against scripts/i18n-leaks-baseline.json (ratchet) — the staged file
