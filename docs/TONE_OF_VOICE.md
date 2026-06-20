@@ -121,3 +121,65 @@ Brug ikke `Founder Supporter` som samlet navn. Hvis et teknisk felt eller en eks
 ## Når du er i tvivl
 
 Hvis en tekst krydser grænsen til player-eyes og du er usikker på om tonen passer: STOP og spørg founder. Per `feedback_player_facing_copy_rules.md` regel 5 er den her guide en hard-forudsætning, ikke en suggestion. Brydes den, ryger trust, og det er sværere at genopbygge end at vente 30 minutter på en afklaring.
+
+---
+
+## Founder voice: template
+
+> **Tilføjet:** 2026-06-21 per [#1283](https://github.com/NicolaiDolmer/CyclingZone/issues/1283) (ToV-session: definér founder-stemmen).
+> **Formål:** en genbrugelig STRUKTUR/skelet til founder-stemme-opslag (marketing, roadmap-intros, Discord-announcements, patch-note-intros). AI leverer skelettet; **selve prosaen skriver ejeren**, jf. `feedback_founder_voice_owner_writes` (Claude-forfattet founder-stemme rammer ikke Nicolais tone, roadmap-intro 10/6).
+>
+> **Udestående ejer-leverance (fra #1283):** 2-3 godkendte eksempeltekster AI kan kalibrere imod. Indtil de findes, må AI **ikke** generere færdig founder-prosa. AI udfylder strukturen med fakta-bullets + markerer prosa-slots `[FOUNDER-PROSA]`.
+
+### Sådan bruges skelettet
+
+1. AI (eller ejer) fylder fakta-bullets ind i hvert slot: neutralt, verificeret, ingen stemme-prosa.
+2. Ejer skriver prosaen i hvert `[FOUNDER-PROSA]`-slot, i jeg-stemme.
+3. Tjek mod DO/DON'T nedenfor + ToV-resten af dette dokument før udsendelse.
+
+### Skelet (4 slots)
+
+**Slot 1: Opening hook**
+`[FOUNDER-PROSA: ejer skriver åbningslinjen.]`
+- Formål: fange læseren personligt, 1-til-1. Ofte en ærlig indrømmelse eller en ting ejeren har tænkt på.
+- Fakta-input AI må levere: hvad opslaget handler om (én linje), så ejeren har en knage.
+
+**Slot 2: What changed / what I'm doing**
+- Fakta-bullets (AI må fylde): de konkrete, verificerede ændringer/fakta. EN-first, DA under.
+- `[FOUNDER-PROSA: ejer binder fakta sammen i egen stemme.]`
+
+**Slot 3: Why it matters**
+- Fakta-anker (AI må fylde): den objektive begrundelse (fx "det gør spillet mere fair / mere holdbart").
+- `[FOUNDER-PROSA: ejer skriver "hvorfor"-narrativet: del tankegangen, ikke kun konklusionen.]`
+- Dette slot er kerne-founder-stemme; AI skriver det aldrig færdigt.
+
+**Slot 4: Ask / CTA**
+- Fakta-bullets (AI må fylde): hvor man svarer/handler (kanal, link), evt. timing.
+- `[FOUNDER-PROSA: ejer skriver invitationen: fx at kritisk feedback er velkommen.]`
+
+### DO (trukket fra resten af dette dokument)
+
+- Skriv i **jeg-stemme** ("I"/"jeg"), ikke "we"/"vi" (brand-stemmen er Nicolais). Undtagelse: diegetisk karakter-dialog.
+- Tal **1-til-1** med læseren ("you"/"du"), ikke til en flok ("everyone"/"alle").
+- **Del tankegangen, ikke kun konklusionen** ("I'm trying to figure out..." / "jeg overvejer...").
+- Vær **reflective, honest, open** om det du ikke ved endnu (build-in-public).
+- **EN-first, DA-second** (language priority). Discord: EN-post først, DA i tråd nedenunder.
+- Gentag **fairness-løftet** ordret når emnet er premium ("The game must be fair for everyone...").
+
+### DON'T (trukket fra resten af dette dokument)
+
+- Ingen **em-dash (: )** nogensteds i prosa. Brug komma, punktum, kolon eller parentes. (CI-guard: `scripts/tone-check-em-dash.mjs`.)
+- Ingen **intern jargon**: "sprint", "validation", "Go/No-Go", "freemium", "30 weeks runway", sprint-timeline-referencer.
+- Ingen **"støt"/"support"** som verb om premium. Brug "back the project", "join premium", "go premium".
+- Aldrig **"Founder Supporter"** som samlet navn. Brug "Founder" eller "Supporter" alene.
+- Aldrig **"fuldtid"/"full-time"** om Nicolai før indtægt dækker leveomkostninger.
+- Aldrig **"free forever"** som markedsførings-frase (jf. `feedback_anti_ai_slop_design_taste`). Spillet er gratis og forbliver gratis, men formuleringen "free forever" bruges ikke.
+- Ingen **AI-slop-floskler** eller opfundet indhold; ingen tom hype.
+
+### Reference-eksempel
+
+Det eksisterende **Discord launch-post-eksempel** (EN+DA) længere oppe i dette dokument er det nærmeste vi har på en kalibreret founder-prosa-prøve. Bemærk: det er en `Manus`-omskrevet draft, ikke en ejer-godkendt prøvetekst. De endelige 2-3 kalibrerings-eksempler fra #1283 erstatter det som reference når de findes.
+
+### Første anvendelse
+
+Relaunch-comms-kittet (`docs/comms/2026-06-21-relaunch-comms-kit.md`, [#1278](https://github.com/NicolaiDolmer/CyclingZone/issues/1278)) bruger dette skelet i alle tre kanaler (FAQ-intro, patch-note-intro, Discord-announcement). Det er den oplagte første test af founder-stemme-skabelonen, jf. koblingen nævnt i #1283.
