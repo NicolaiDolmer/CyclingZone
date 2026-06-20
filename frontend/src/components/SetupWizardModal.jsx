@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
-import { Monogram } from "./Brand.jsx";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -62,13 +61,12 @@ export default function SetupWizardModal({ onComplete }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-      <div className="bg-cz-card rounded-2xl shadow-2xl max-w-md w-full p-6">
-        <div className="flex items-center gap-3 mb-6">
-          <Monogram className="w-10 h-10" />
-          <div>
-            <h2 className="text-cz-1 font-bold text-lg leading-tight">{t("setupWizard.title")}</h2>
-            <p className="text-cz-3 text-sm">{t("setupWizard.subtitle")}</p>
-          </div>
+      <div className="bg-cz-card rounded-cz shadow-2xl max-w-md w-full p-6">
+        {/* #1569: intet monogram i chrome (jf. #671 — titlen bærer brandet);
+            rounded-cz matcher resten af appens modaler (var rounded-2xl SaaS-slop). */}
+        <div className="mb-6">
+          <h2 className="text-cz-1 font-bold text-lg leading-tight">{t("setupWizard.title")}</h2>
+          <p className="text-cz-3 text-sm">{t("setupWizard.subtitle")}</p>
         </div>
 
         <div className="space-y-4 mb-5">

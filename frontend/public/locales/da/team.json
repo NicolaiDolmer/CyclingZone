@@ -26,7 +26,10 @@
     "loanedIn": "Lejede ryttere ({count})",
     "loanedOut": "Udlejede ryttere ({count})",
     "windowClosedHint": "🔒 Transfervindue lukket. Skift træder i kraft ved næste åbning",
-    "emptyState": "Ingen ryttere på holdet endnu",
+    "emptyState": "Din trup er tom",
+    "emptyStateBody": "Skriv dine første ryttere fra markedet og begynd at bygge dit hold.",
+    "emptyStateCta": "Find ryttere",
+    "emptyView": "Ingen ryttere matcher den nuværende visning.",
     "headers": {
       "nation": "Nation",
       "rider": "Rytter",
