@@ -201,6 +201,22 @@
       "label": "Terrain",
       "note": "Indicative terrain category. Full elevation profiles arrive later."
     },
+    "stageSchedule": {
+      "title": "Stage schedule",
+      "subtitle": "Each stage runs at a fixed time (Copenhagen).",
+      "nextStageLabel": "Next stage",
+      "countdownPrefix": "in",
+      "countdownDays": "{count, plural, one {# day} other {# days}}",
+      "countdownHours": "{count, plural, one {# hour} other {# hours}}",
+      "countdownMinutes": "{count, plural, one {# min} other {# min}}",
+      "startingNow": "Starting now",
+      "stageLabel": "Stage {number}",
+      "done": "Done",
+      "live": "Live",
+      "today": "Today",
+      "tomorrow": "Tomorrow",
+      "timezoneNote": "Times shown in Copenhagen time (CET/CEST)."
+    },
     "profileType": {
       "flat": "Flat",
       "rolling": "Rolling",
