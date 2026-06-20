@@ -8,8 +8,9 @@
 
 // Kvalitativ label-NØGLE fra estimatets midtpunkt (oversættes via i18n
 // rider:scouting.label_*). Bevidst grov (5 bånd) — flavor, ikke præcision.
+// #1543: et skjult (uscoutet) estimat har intet midtpunkt → ingen label.
 export function potentialLabelKey(range) {
-  if (!range) return null;
+  if (!range || range.hidden) return null;
   const mid = (range.lo + range.hi) / 2;
   if (mid >= 5.25) return "worldclass";
   if (mid >= 4.25) return "high";
@@ -21,8 +22,9 @@ export function potentialLabelKey(range) {
 // Sorteringsværdi for potentiale-kolonner: estimatets midtpunkt. Bruges til at
 // dekorere rytter-rækker (fx `_scoutMid`) så klient-side tabel-sortering virker
 // uden adgang til den rå potentiale. undefined/null (ikke hentet / intet
-// potentiale) → 0, så u-estimerede ryttere sorterer nederst.
+// potentiale) ELLER skjult/uscoutet (#1543) → 0, så ryttere uden synligt
+// estimat sorterer nederst.
 export function scoutSortValue(estimate) {
-  if (!estimate) return 0;
+  if (!estimate || estimate.hidden) return 0;
   return (estimate.lo + estimate.hi) / 2;
 }

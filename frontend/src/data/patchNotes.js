@@ -4,6 +4,29 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "5.77",
+    "date": "2026-06-20",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Scouting",
+        "en": {
+          "title": "Potential is now hidden until you scout a rider",
+          "body": "A rider's potential is no longer revealed before you scout them. Previously every rider showed a rough star range for free; now unscouted riders read \"Not scouted\" until you spend a scout slot. Once you scout, the estimate appears and narrows with each additional scout, and your own riders stay fully known. This makes scouting a real decision: the talent you uncover is genuinely yours to find."
+        },
+        "da": {
+          "title": "Potentiale er nu skjult, indtil du scouter en rytter",
+          "body": "En rytters potentiale afsløres ikke længere, før du scouter rytteren. Tidligere viste alle ryttere gratis et groft stjerne-interval; nu står der \"Ikke scoutet\" på uscoutede ryttere, indtil du bruger et scout-slot. Når du scouter, dukker estimatet op og indsnævres for hvert ekstra scout, og dine egne ryttere er stadig fuldt kendte. Det gør scouting til en ægte beslutning: det talent, du afdækker, har du selv fundet."
+        },
+        "refs": [
+          1543
+        ]
+      }
+    ]
+  },
+  {
     "version": "5.76",
     "date": "2026-06-20",
     "label": "Beta",
