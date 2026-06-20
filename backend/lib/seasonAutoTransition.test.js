@@ -191,6 +191,37 @@ test("processSeasonAutoTransitionCron: kalder assessReadiness med fromSeasonId f
   assert.equal(readinessArg.supabase, supabase);
 });
 
+// ─── #WS1 Task 2.2: min-interval-guard (prævention mod transition-loop) ────────
+// admin_log-baseret hård prævention: maks én transition per N timer. Loop-guarden
+// (dailySeasonCountCheck) alerter først EFTER den 2. transition — denne FORHINDRER.
+
+test("processSeasonAutoTransitionCron: blokeres hvis en transition allerede er logget inden for min-interval", async () => {
+  const supabase = makeSupabase({ ...ACTIVE_WRAPPED, recentTransitions: 1 });
+  let transitioned = false;
+  const r = await processSeasonAutoTransitionCron({
+    supabase,
+    now: new Date(),
+    transitionFn: async () => { transitioned = true; return {}; },
+    assessReadiness: readyStub,
+  });
+  assert.equal(transitioned, false);
+  assert.equal(r.transitioned, false);
+  assert.equal(r.reason, "recent_transition_guard");
+});
+
+test("processSeasonAutoTransitionCron: transitionerer når ingen recent transition i admin_log", async () => {
+  const supabase = makeSupabase({ ...ACTIVE_WRAPPED, recentTransitions: 0 });
+  let transitioned = false;
+  const r = await processSeasonAutoTransitionCron({
+    supabase,
+    now: new Date(),
+    transitionFn: async () => { transitioned = true; return { ok: true }; },
+    assessReadiness: readyStub,
+  });
+  assert.equal(transitioned, true);
+  assert.equal(r.transitioned, true);
+});
+
 // ─── Regression: sæson-loop-bug 2026-05-21 ────────────────────────────────────
 // Racing-vinduer (oprettet via transitionToNextSeason med status='closed' men
 // closed_at=null) må aldrig matche cron-filteret — ellers fyrer cron'en endnu
