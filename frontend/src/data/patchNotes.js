@@ -4,6 +4,26 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "5.76",
+    "date": "2026-06-20",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Patch notes",
+        "en": {
+          "title": "Patch notes page rebuilt",
+          "body": "The patch notes page is rebuilt around your day. Updates are grouped by date with a clear headline on each change, so you can see what's new at a glance. Filter by New, Improved or Fixed, search the whole history, and read everything in your own language. Days you haven't seen yet are marked New."
+        },
+        "da": {
+          "title": "Patch notes-siden er gentænkt",
+          "body": "Patch notes-siden er bygget om efter din dag. Opdateringer samles pr. dato med en tydelig overskrift på hver ændring, så du kan se hvad der er nyt på et øjeblik. Filtrér på Nyt, Forbedringer eller Fejlrettelser, søg i hele historikken, og læs det hele på dit eget sprog. Dage du ikke har set endnu er markeret med Ny."
+        }
+      }
+    ]
+  },
+  {
     "version": "5.75",
     "date": "2026-06-20",
     "label": "Beta",
