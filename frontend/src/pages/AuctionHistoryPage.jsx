@@ -8,7 +8,7 @@ import NationCell from "../components/rider/NationCell";
 import RiderBadges from "../components/rider/RiderBadges";
 import { ageBadgeKey } from "../lib/riderAge";
 import { formatNumber, formatDate } from "../lib/intl";
-import { Card, Button, EmptyState, Spinner } from "../components/ui";
+import { Card, Button, EmptyState, Spinner, GavelIcon } from "../components/ui";
 
 function timeAgo(dateStr, t) {
   if (!dateStr) return "—";
@@ -205,7 +205,7 @@ export default function AuctionHistoryPage() {
         </div>
       ) : auctions.length === 0 ? (
         <EmptyState
-          icon={<span className="text-4xl leading-none" aria-hidden="true">◈</span>}
+          icon={<GavelIcon size={28} aria-hidden="true" />}
           title={
             filter === "won" ? t("history.emptyWon")
               : filter === "sold" ? t("history.emptySold")

@@ -93,7 +93,7 @@ export default function DeadlineDayTicker({ onActiveChange }) {
   const animationStopped = paused || reducedMotion;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-40 bg-[#0a0a0f]/95 border-t border-[#e8c547]/15 overflow-hidden h-8 flex items-center">
+    <div className="fixed bottom-0 left-0 right-0 z-40 bg-cz-sidebar/95 border-t border-cz-accent/15 overflow-hidden h-8 flex items-center">
       {/* Når animationen er stoppet bliver striben scrollbar, så hele indholdet
           forbliver læsbart uden bevægelse (WCAG 2.2.2 — indhold må ikke gå tabt). */}
       <div
@@ -112,7 +112,7 @@ export default function DeadlineDayTicker({ onActiveChange }) {
         aria-pressed={animationStopped}
         title={animationStopped ? t("deadlineTicker.resume") : t("deadlineTicker.pause")}
         aria-label={animationStopped ? t("deadlineTicker.resume") : t("deadlineTicker.pause")}
-        className="flex-shrink-0 h-full px-2.5 flex items-center justify-center text-cz-accent/70 hover:text-cz-accent transition-colors border-l border-[#e8c547]/15"
+        className="flex-shrink-0 h-full px-2.5 flex items-center justify-center text-cz-accent/70 hover:text-cz-accent transition-colors border-l border-cz-accent/15"
       >
         {animationStopped ? (
           <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" aria-hidden="true">

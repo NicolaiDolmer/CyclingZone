@@ -22,7 +22,7 @@ import {
   resolveCategoryLabel,
 } from "../lib/boardCopy";
 import DashboardCustomizeMenu from "../components/DashboardCustomizeMenu";
-import { Card, AlertTriangleIcon, BellIcon } from "../components/ui";
+import { Card, AlertTriangleIcon, BellIcon, XIcon, ArrowDownIcon } from "../components/ui";
 
 const API = import.meta.env.VITE_API_URL;
 // Realtime: sæson-fremskridt (race_days_completed) + resultat-afledte tal skal
@@ -360,7 +360,7 @@ export default function DashboardPage() {
             {t("dashboard:header.subtitle", { division: team?.division, count: ownedNow })}
             {pendingIncomingCount > 0 && <span className="text-cz-success"> {t("dashboard:header.incoming", { count: pendingIncomingCount })}</span>}
             {outgoingCount > 0 && <span className="text-cz-danger"> {t("dashboard:header.outgoing", { count: outgoingCount })}</span>}
-            {incomingLoanCount > 0 && <span className="text-purple-400"> {t("dashboard:header.loans", { count: incomingLoanCount })}</span>}
+            {incomingLoanCount > 0 && <span className="text-cz-info"> {t("dashboard:header.loans", { count: incomingLoanCount })}</span>}
           </p>
         </div>
         <div className="flex items-center gap-3 flex-shrink-0">
@@ -439,9 +439,9 @@ export default function DashboardPage() {
           </Link>
           <button
             onClick={dismissDiscordNudge}
-            className="text-cz-3 hover:text-cz-1 text-lg leading-none px-1 flex-shrink-0"
+            className="text-cz-3 hover:text-cz-1 leading-none px-1 flex-shrink-0"
             aria-label={t("dashboard:discordNudge.dismissAria")}>
-            ×
+            <XIcon size={16} aria-hidden="true" />
           </button>
         </div>
       )}
@@ -599,7 +599,7 @@ export default function DashboardPage() {
             <div className="flex flex-col gap-2">
               {pendingIncoming > 0 && (
                 <div className="flex items-center gap-3 py-2 border-b border-cz-border">
-                  <span aria-hidden="true" className="text-cz-success text-lg">↓</span>
+                  <ArrowDownIcon aria-hidden="true" className="text-cz-success w-4 h-4 flex-shrink-0" />
                   <p className="text-cz-1 text-sm">{t("dashboard:cards.transfers.incomingCount", { count: pendingIncoming })}</p>
                   <span className="ms-auto text-[9px] bg-cz-success-bg text-cz-success border border-cz-success/30 px-2 py-0.5 rounded-full">{t("dashboard:cards.transfers.awaitingWindow")}</span>
                 </div>
@@ -720,7 +720,7 @@ export default function DashboardPage() {
                   <div className="flex items-center gap-3">
                     <div className="flex-1 bg-cz-subtle rounded-full h-2">
                       <div className={`h-2 rounded-full transition-all
-                        ${board.satisfaction >= 70 ? "bg-green-400" : board.satisfaction >= 40 ? "bg-cz-accent" : "bg-red-400"}`}
+                        ${board.satisfaction >= 70 ? "bg-cz-success" : board.satisfaction >= 40 ? "bg-cz-accent" : "bg-cz-danger"}`}
                         style={{ width: `${board.satisfaction}%` }} />
                     </div>
                     <span className={`font-mono font-bold text-sm ${satisfactionColor}`}>{board.satisfaction}%</span>
@@ -760,7 +760,7 @@ export default function DashboardPage() {
                         </div>
                         <div className="bg-cz-subtle rounded-full h-1.5">
                           <div
-                            className={`h-1.5 rounded-full ${category.score_pct >= 75 ? "bg-green-400" : category.score_pct >= 55 ? "bg-cz-accent" : "bg-red-400"}`}
+                            className={`h-1.5 rounded-full ${category.score_pct >= 75 ? "bg-cz-success" : category.score_pct >= 55 ? "bg-cz-accent" : "bg-cz-danger"}`}
                             style={{ width: `${Math.min(100, category.score_pct)}%` }}
                           />
                         </div>

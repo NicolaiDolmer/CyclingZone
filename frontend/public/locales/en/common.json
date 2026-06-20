@@ -85,7 +85,7 @@
     "compareSelect": "Select for comparison",
     "compareRemove": "Remove from comparison",
     "compareMax": "Max {max} riders can be compared",
-    "compareButton": "⇄ Compare",
+    "compareButton": "Compare",
     "compareSelectedLabel": "selected",
     "compareMinHint": "(select at least 2)",
     "clear": "Clear",
