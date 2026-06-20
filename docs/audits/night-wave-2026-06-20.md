@@ -6,7 +6,7 @@
 
 - **15 PR'er merged** (alle CI-grønne). Backend (sikkerhed + SSOT-hygiejne + forward-guard-test) **LIVE via Railway**; frontend venter Vercel-reset.
 - **2 patch-notes-versioner** (v5.67 batch + v5.68 a11y).
-- **7 audits** + Sentry-gennemgang (0 prod-fejl): design-kvalitet, security (prod-verificeret), bug-backlog ×2, DB-perf-advisor, + **tre kerne-system-korrektheds-audits med adversariel verifikation** (se nedenfor).
+- **9 audits** + Sentry-gennemgang (0 prod-fejl): design-kvalitet, security (prod-verificeret), bug-backlog ×2, DB-perf-advisor, + **fem kerne-system/rejse-audits med adversariel verifikation** (race-engine, økonomi, concurrency, onboarding, progression/akademi — alle fire kerne-motorer dækket) → kulmination i [forever-readiness-syntese](2026-06-20-forever-relaunch-readiness.md).
 - **4 issues lukket** (verificeret) + **1 rod-årsag udredt** (#46) + **1 launch-blocker oprettet** (#1558).
 - **1 implementeringsplan** (WS1 race-automatisering) + audit-docs.
 
