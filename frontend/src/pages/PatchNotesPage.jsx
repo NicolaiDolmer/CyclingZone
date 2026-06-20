@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.72",
+    date: "2026-06-20",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fixed · Balance",
+        items: [
+          "EN · Your balance in the header now updates live. After winning a bid, selling a rider or taking a loan, the figure refreshes instantly instead of staying stale until you reload the page. Refs #46",
+          "DA · Din saldo i headeren opdateres nu live. Efter en vundet auktion, et salg eller et lån opdateres tallet med det samme i stedet for at stå forældet, indtil du genindlæser siden. Refs #46",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.71",
     date: "2026-06-20",
     label: "Beta",
