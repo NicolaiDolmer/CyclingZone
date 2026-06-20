@@ -1662,10 +1662,34 @@ function makeYouthFinalizeSupabase({ auction, buyerBalance = 1_000_000, academyC
   const buyer = { id: auction.current_bidder_id, name: "Buyer FC", balance: buyerBalance };
 
   const supabase = {
+    // #1558: cap-check + rider-update + debit sker nu atomisk i én RPC. Mocken
+    // replikerer plpgsql-semantikken: cap → balance → guarded rider-update →
+    // betinget debit, og returnerer JSONB-resultatet.
     rpc(name, params) {
-      assert.equal(name, "increment_balance_with_audit");
-      financeInserts.push({ team_id: params.p_team_id, delta: params.p_delta, ...params.p_finance_payload });
-      return Promise.resolve({ data: buyerBalance + params.p_delta, error: null });
+      assert.equal(name, "finalize_academy_acquisition");
+      const price = Number(params.p_price);
+      if (academyCount >= 8) {
+        return Promise.resolve({ data: { ok: false, code: "academy_full" }, error: null });
+      }
+      if (price > 0 && buyer.balance < price) {
+        return Promise.resolve({ data: { ok: false, code: "insufficient_balance" }, error: null });
+      }
+      // Guarded rider-update (placering).
+      riderUpdates.push({
+        team_id: params.p_team_id,
+        is_academy: true,
+        salary: Number(params.p_salary),
+        contract_length: params.p_contract_length,
+        contract_end_season: params.p_contract_end_season,
+        acquired_at: params.p_acquired_at,
+        pending_team_id: null,
+      });
+      // Betinget debit + finance-row.
+      if (price > 0) {
+        financeInserts.push({ team_id: params.p_team_id, delta: -price, ...params.p_finance_payload });
+        buyer.balance -= price;
+      }
+      return Promise.resolve({ data: { ok: true, balance: buyer.balance, academy_count: academyCount + 1 }, error: null });
     },
     from(table) {
       if (table === "auctions") {
@@ -1690,28 +1714,6 @@ function makeYouthFinalizeSupabase({ auction, buyerBalance = 1_000_000, academyC
               }),
             }),
           }),
-        };
-      }
-      if (table === "teams") {
-        return {
-          select: () => ({
-            eq: () => ({
-              maybeSingle: () => Promise.resolve({ data: buyer, error: null }),
-              single: () => Promise.resolve({ data: buyer, error: null }),
-            }),
-          }),
-        };
-      }
-      if (table === "riders") {
-        return {
-          // getTeamAcademyCount: .select("id",{count,head}).eq("team_id").eq("is_academy") → awaited
-          select() {
-            const api = { eq() { return api; }, then(res) { return Promise.resolve({ count: academyCount, error: null }).then(res); } };
-            return api;
-          },
-          update(payload) {
-            return { eq: () => { riderUpdates.push(payload); return Promise.resolve({ error: null }); } };
-          },
         };
       }
       if (table === "transfer_listings") {

@@ -137,20 +137,32 @@ function makeFreeAgentSupabase({
   const riderUpdates = [];
   const rpcCalls = [];
   const supabase = {
-    rpc(name, args) { rpcCalls.push({ name, args }); return Promise.resolve({ data: 0, error: null }); },
+    // #1558: cap-check + rider-update sker nu atomisk i finalize_academy_acquisition
+    // med p_price=0 (gratis optagelse, ingen debit). Mocken replikerer
+    // semantikken og syntetiserer en rider-update i _riderUpdates.
+    rpc(name, args) {
+      rpcCalls.push({ name, args });
+      assert.equal(name, "finalize_academy_acquisition");
+      if (academyCount >= 8) {
+        return Promise.resolve({ data: { ok: false, code: "academy_full" }, error: null });
+      }
+      riderUpdates.push({
+        team_id: args.p_team_id,
+        is_academy: true,
+        salary: Number(args.p_salary),
+        contract_length: args.p_contract_length,
+        contract_end_season: args.p_contract_end_season,
+        acquired_at: args.p_acquired_at,
+        pending_team_id: null,
+      });
+      return Promise.resolve({ data: { ok: true, balance: 0, academy_count: academyCount + 1 }, error: null });
+    },
     from(table) {
       if (table === "riders") {
         return {
-          select(_cols, opts) {
-            if (opts?.count === "exact" && opts?.head === true) {
-              const api = { eq() { return api; }, then(res) { return Promise.resolve({ count: academyCount, error: null }).then(res); } };
-              return api;
-            }
+          select() {
             const readApi = { eq() { return readApi; }, maybeSingle() { return Promise.resolve({ data: rider, error: null }); } };
             return readApi;
-          },
-          update(payload) {
-            return { eq() { riderUpdates.push(payload); return Promise.resolve({ error: null }); } };
           },
         };
       }
@@ -197,8 +209,11 @@ test("signFreeAgentYouth: signer fri ungdom til minimumsløn ind i akademiet (is
   assert.equal(upd.contract_end_season, 3);
   assert.ok(upd.salary >= 1);
 
-  // Ingen finance-fee ved free-agent-sign (kun løbende løn)
-  assert.equal(supabase._rpcCalls.length, 0, "ingen signing-fee-debit");
+  // #1558: optagelsen går nu gennem den atomære RPC med p_price=0 — så der ER
+  // præcis ét RPC-kald, men det er en gratis optagelse (ingen finance-debit).
+  assert.equal(supabase._rpcCalls.length, 1, "præcis ét RPC-kald (atomær cap+update)");
+  assert.equal(supabase._rpcCalls[0].name, "finalize_academy_acquisition");
+  assert.equal(supabase._rpcCalls[0].args.p_price, 0, "p_price=0 → ingen signing-fee-debit");
 });
 
 test("signFreeAgentYouth: afviser ikke-free-agent (team_id sat) → not_free_agent", async () => {

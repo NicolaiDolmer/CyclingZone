@@ -535,7 +535,10 @@ const IDEMPOTENT_LITERAL_SOURCE_PATHS = new Set([
   "auctionFinalization.finalizeAuctionRecord.buyer",
   "auctionFinalization.finalizeAuctionRecord.seller",
   "auctionFinalization.finalizeAuctionRecord.guaranteedBankSale",
-  "auctionFinalization.finalizeYouthAuctionRecord.winner",
+  // #1558: finalizeYouthAuctionRecord.winner debiterer nu via den atomære
+  // finalize_academy_acquisition-RPC (ikke incrementBalanceWithAudit), så den er
+  // ikke længere et scannet callsite her. idempotency_key bæres stadig i
+  // RPC-payloaden (youth_auction_winner:<auctionId>).
 ]);
 
 const CALLSITE_FILES = [
@@ -545,7 +548,10 @@ const CALLSITE_FILES = [
   { rel: "./prizePayoutEngine.js", expectedCalls: 1 },
   { rel: "./loanEngine.js", expectedCalls: 5 },
   { rel: "./economyEngine.js", expectedCalls: 2 },
-  { rel: "./auctionFinalization.js", expectedCalls: 4 },
+  // #1558: youth-stiens debit flyttede til finalize_academy_acquisition-RPC'en,
+  // så incrementBalanceWithAudit-callsites faldt fra 4 til 3 (senior buyer/seller
+  // + guaranteedBankSale).
+  { rel: "./auctionFinalization.js", expectedCalls: 3 },
 ];
 
 function extractIncrementCalls(source) {
