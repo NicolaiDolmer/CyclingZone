@@ -1,0 +1,1604 @@
+[
+  {
+    "key": "5.75#0",
+    "en_title": "Tooltips explain CZ$, Division, Deadline Day",
+    "da_title": "Tooltips forklarer CZ$, Division, Deadline Day",
+    "audience": "player"
+  },
+  {
+    "key": "5.74#0",
+    "en_title": "Rider stat codes now explained",
+    "da_title": "Rytterdatabasens evne-koder forklaret",
+    "audience": "player"
+  },
+  {
+    "key": "5.73#0",
+    "en_title": "Wide tables readable on phones",
+    "da_title": "Brede tabeller læsbare på telefon",
+    "audience": "player"
+  },
+  {
+    "key": "5.72#0",
+    "en_title": "Header balance updates live",
+    "da_title": "Saldoen i headeren opdateres live",
+    "audience": "player"
+  },
+  {
+    "key": "5.71#0",
+    "en_title": "Smoother first session",
+    "da_title": "Glattere første session",
+    "audience": "player"
+  },
+  {
+    "key": "5.70#0",
+    "en_title": "Homepage leads with Create your team",
+    "da_title": "Forsiden fører med Opret dit hold",
+    "audience": "player"
+  },
+  {
+    "key": "5.70#1",
+    "en_title": "Clearer sign-up and login messages",
+    "da_title": "Tydeligere opret-bruger og login",
+    "audience": "player"
+  },
+  {
+    "key": "5.69#0",
+    "en_title": "Academy signings can't charge without delivering",
+    "da_title": "Akademi-signeringer debiterer ikke uden levering",
+    "audience": "player"
+  },
+  {
+    "key": "5.69#1",
+    "en_title": "New teams get a squad instantly",
+    "da_title": "Nye hold får trup med det samme",
+    "audience": "player"
+  },
+  {
+    "key": "5.68#0",
+    "en_title": "Better screen reader support",
+    "da_title": "Bedre understøttelse af skærmlæsere",
+    "audience": "player"
+  },
+  {
+    "key": "5.67#0",
+    "en_title": "Stages now show a terrain badge",
+    "da_title": "Etaper viser nu et terræn-badge",
+    "audience": "player"
+  },
+  {
+    "key": "5.67#1",
+    "en_title": "Sort the rider list on mobile",
+    "da_title": "Sortér rytterlisten på mobil",
+    "audience": "player"
+  },
+  {
+    "key": "5.67#2",
+    "en_title": "U23 filter now matches the badge",
+    "da_title": "U23-filter matcher nu badgen",
+    "audience": "player"
+  },
+  {
+    "key": "5.67#3",
+    "en_title": "Notifications link to the rider",
+    "da_title": "Notifikationer linker til rytteren",
+    "audience": "player"
+  },
+  {
+    "key": "5.67#4",
+    "en_title": "Rider names on more finance entries",
+    "da_title": "Rytternavne på flere finans-poster",
+    "audience": "player"
+  },
+  {
+    "key": "5.67#5",
+    "en_title": "Tied auctions sort by highest bid",
+    "da_title": "Samtidige auktioner sorteres efter højeste bud",
+    "audience": "player"
+  },
+  {
+    "key": "5.67#6",
+    "en_title": "Fewer fake-clickable elements",
+    "da_title": "Færre falsk-klikbare elementer",
+    "audience": "player"
+  },
+  {
+    "key": "5.67#7",
+    "en_title": "Cleaner badges and icons",
+    "da_title": "Renere badges og ikoner",
+    "audience": "player"
+  },
+  {
+    "key": "5.67#8",
+    "en_title": "PCM result entry removed",
+    "da_title": "PCM-resultatindberetning fjernet",
+    "audience": "player"
+  },
+  {
+    "key": "5.66#0",
+    "en_title": "Sort the rider database your way",
+    "da_title": "Sortér rytterdatabasen som du vil",
+    "audience": "player"
+  },
+  {
+    "key": "5.66#1",
+    "en_title": "Transfer market now in clean rows",
+    "da_title": "Transfermarkedet vises nu i rækker",
+    "audience": "player"
+  },
+  {
+    "key": "5.66#2",
+    "en_title": "Injured badge on every squad",
+    "da_title": "Skadet-badge på alle hold",
+    "audience": "player"
+  },
+  {
+    "key": "5.66#3",
+    "en_title": "Hide more dashboard modules",
+    "da_title": "Skjul flere dashboard-moduler",
+    "audience": "player"
+  },
+  {
+    "key": "5.66#4",
+    "en_title": "Cleaner name editing on your profile",
+    "da_title": "Renere navneredigering på din profil",
+    "audience": "player"
+  },
+  {
+    "key": "5.65#0",
+    "en_title": "New ability system everywhere",
+    "da_title": "Nyt evne-system overalt",
+    "audience": "player"
+  },
+  {
+    "key": "5.65#1",
+    "en_title": "Academy call-ups in transfer history",
+    "da_title": "Akademi-oprykninger i transferhistorikken",
+    "audience": "player"
+  },
+  {
+    "key": "5.64#0",
+    "en_title": "Open any academy rider's profile",
+    "da_title": "Åbn enhver akademirytters profil",
+    "audience": "player"
+  },
+  {
+    "key": "5.63#0",
+    "en_title": "Fresh look across many pages",
+    "da_title": "Friskt look på mange sider",
+    "audience": "player"
+  },
+  {
+    "key": "5.63#1",
+    "en_title": "No more daily login streak",
+    "da_title": "Slut med daglig login-streak",
+    "audience": "player"
+  },
+  {
+    "key": "5.62#0",
+    "en_title": "Search now matches full names",
+    "da_title": "Søgning matcher nu fulde navne",
+    "audience": "player"
+  },
+  {
+    "key": "5.62#1",
+    "en_title": "Sort auctions by ability",
+    "da_title": "Sortér auktioner efter evne",
+    "audience": "player"
+  },
+  {
+    "key": "5.62#2",
+    "en_title": "Smoother rider list browsing",
+    "da_title": "Mere flydende rytteroversigt",
+    "audience": "player"
+  },
+  {
+    "key": "5.62#3",
+    "en_title": "Notification badge shows 9+",
+    "da_title": "Notifikations-badge viser 9+",
+    "audience": "player"
+  },
+  {
+    "key": "5.62#4",
+    "en_title": "Click into races from team results",
+    "da_title": "Klik ind i løb fra holdresultater",
+    "audience": "player"
+  },
+  {
+    "key": "5.61#0",
+    "en_title": "Daily training works again",
+    "da_title": "Daglig træning virker igen",
+    "audience": "player"
+  },
+  {
+    "key": "5.61#1",
+    "en_title": "Four academy bugs fixed",
+    "da_title": "Fire akademi-fejl rettet",
+    "audience": "player"
+  },
+  {
+    "key": "5.61#2",
+    "en_title": "Rider names in finance history",
+    "da_title": "Rytternavne i økonomi-historikken",
+    "audience": "player"
+  },
+  {
+    "key": "5.61#3",
+    "en_title": "Board card hidden until set up",
+    "da_title": "Bestyrelses-kort skjult til oprettelse",
+    "audience": "player"
+  },
+  {
+    "key": "5.61#4",
+    "en_title": "Sortable squad table columns",
+    "da_title": "Sortérbare kolonner i trup-tabellen",
+    "audience": "player"
+  },
+  {
+    "key": "5.61#5",
+    "en_title": "Train several riders at once",
+    "da_title": "Træn flere ryttere ad gangen",
+    "audience": "player"
+  },
+  {
+    "key": "5.61#6",
+    "en_title": "Cleaner season relaunch reset",
+    "da_title": "Renere nulstilling ved sæson-relancering",
+    "audience": "player"
+  },
+  {
+    "key": "5.60#0",
+    "en_title": "Season 1 relaunch on fresh foundation",
+    "da_title": "Sæson 1 relanceret på nyt fundament",
+    "audience": "player"
+  },
+  {
+    "key": "5.59#0",
+    "en_title": "Deadline Day summary reads correctly now",
+    "da_title": "Final Whistle viser nu korrekt tekst",
+    "audience": "player"
+  },
+  {
+    "key": "5.58#0",
+    "en_title": "Training report shows real progress",
+    "da_title": "Træningsrapport viser nu ægte fremgang",
+    "audience": "player"
+  },
+  {
+    "key": "5.57#0",
+    "en_title": "Academy riders graduate at 22",
+    "da_title": "Akademiryttere forlader akademiet ved 22",
+    "audience": "player"
+  },
+  {
+    "key": "5.56#0",
+    "en_title": "Track board satisfaction race by race",
+    "da_title": "Følg bestyrelsens tilfredshed løb for løb",
+    "audience": "player"
+  },
+  {
+    "key": "5.55#0",
+    "en_title": "Watchlist flags riders already in auction",
+    "da_title": "Ønskeliste viser ryttere i auktion",
+    "audience": "player"
+  },
+  {
+    "key": "5.54#0",
+    "en_title": "Seasonal upkeep cost per division",
+    "da_title": "Sæsonbestemt driftsomkostning pr. division",
+    "audience": "player"
+  },
+  {
+    "key": "5.54#1",
+    "en_title": "Debt now capped at division ceiling",
+    "da_title": "Gæld loftes nu efter division",
+    "audience": "player"
+  },
+  {
+    "key": "5.53#0",
+    "en_title": "Season 2 sponsor income scales by division",
+    "da_title": "Sæson 2-sponsor skaleres efter division",
+    "audience": "player"
+  },
+  {
+    "key": "5.52#0",
+    "en_title": "Lower salaries, division-scaled sponsors",
+    "da_title": "Lavere løn, sponsor efter division",
+    "audience": "player"
+  },
+  {
+    "key": "5.51#0",
+    "en_title": "Results now show time gaps",
+    "da_title": "Resultater viser nu tidsgab",
+    "audience": "player"
+  },
+  {
+    "key": "5.50#0",
+    "en_title": "Rider values recalibrated for new types",
+    "da_title": "Rytter-værdier rekalibreret efter typer",
+    "audience": "player"
+  },
+  {
+    "key": "5.49#0",
+    "en_title": "Lead-out retired, eight rider types remain",
+    "da_title": "Lead-out udgået, otte ryttertyper tilbage",
+    "audience": "player"
+  },
+  {
+    "key": "5.48#0",
+    "en_title": "More accurate GC rider classification",
+    "da_title": "Mere præcis GC-klassificering af ryttere",
+    "audience": "player"
+  },
+  {
+    "key": "5.47#0",
+    "en_title": "Auto-bid now explained in plain terms",
+    "da_title": "Autobud forklaret i klar tekst",
+    "audience": "player"
+  },
+  {
+    "key": "5.46#0",
+    "en_title": "Profiles show next season's team",
+    "da_title": "Profiler viser næste sæsons hold",
+    "audience": "player"
+  },
+  {
+    "key": "5.45#0",
+    "en_title": "Final Whistle report now in-app",
+    "da_title": "Final Whistle-rapport nu i appen",
+    "audience": "player"
+  },
+  {
+    "key": "5.44#0",
+    "en_title": "Public pages easier to find, share",
+    "da_title": "Offentlige sider lettere at finde",
+    "audience": "player"
+  },
+  {
+    "key": "5.43#0",
+    "en_title": "Whole rider card now clickable",
+    "da_title": "Hele rytter-kortet er nu klikbart",
+    "audience": "player"
+  },
+  {
+    "key": "5.42#0",
+    "en_title": "No more crashes after updates",
+    "da_title": "Færre crashes efter opdateringer",
+    "audience": "player"
+  },
+  {
+    "key": "5.41#0",
+    "en_title": "Finance page reorganised into tabs",
+    "da_title": "Økonomisiden delt op i faner",
+    "audience": "player"
+  },
+  {
+    "key": "5.40#0",
+    "en_title": "New landing page for visitors",
+    "da_title": "Ny landing page for besøgende",
+    "audience": "player"
+  },
+  {
+    "key": "5.39#0",
+    "en_title": "Fresh look for Riders and Races",
+    "da_title": "Nyt look til Riders og Race",
+    "audience": "player"
+  },
+  {
+    "key": "5.38#0",
+    "en_title": "Join our Discord from the sidebar",
+    "da_title": "Find vores Discord i sidebjælken",
+    "audience": "player"
+  },
+  {
+    "key": "5.37#0",
+    "en_title": "Refreshed dashboard design",
+    "da_title": "Opfrisket dashboard-design",
+    "audience": "player"
+  },
+  {
+    "key": "5.37#1",
+    "en_title": "Cleaner sidebar header",
+    "da_title": "Renere header i sidebjælken",
+    "audience": "player"
+  },
+  {
+    "key": "5.36#0",
+    "en_title": "Polished login and signup screens",
+    "da_title": "Pudsede login- og signup-skærme",
+    "audience": "player"
+  },
+  {
+    "key": "5.35#0",
+    "en_title": "Season-start alerts now in-app",
+    "da_title": "Sæsonstart varsles nu i appen",
+    "audience": "player"
+  },
+  {
+    "key": "5.34#0",
+    "en_title": "Clear errors on login network failures",
+    "da_title": "Tydelige fejl ved login-netværksfejl",
+    "audience": "player"
+  },
+  {
+    "key": "5.34#1",
+    "en_title": "Retry button when Finance or Auctions fail",
+    "da_title": "Prøv-igen-knap når Finans og Auktioner fejler",
+    "audience": "player"
+  },
+  {
+    "key": "5.34#2",
+    "en_title": "Watchlist star warns when saving fails",
+    "da_title": "Ønskeliste-stjerne advarer ved gem-fejl",
+    "audience": "player"
+  },
+  {
+    "key": "5.34#3",
+    "en_title": "History shows errors, not blank pages",
+    "da_title": "Historik viser fejl i stedet for tomhed",
+    "audience": "player"
+  },
+  {
+    "key": "5.34#4",
+    "en_title": "Pause the Deadline Day ticker",
+    "da_title": "Sæt Deadline Day-tickeren på pause",
+    "audience": "player"
+  },
+  {
+    "key": "5.34#5",
+    "en_title": "Better screen-reader support on forms",
+    "da_title": "Bedre skærmlæser-støtte i formularer",
+    "audience": "player"
+  },
+  {
+    "key": "5.33#0",
+    "en_title": "Bid on youth prospects at auction",
+    "da_title": "Byd på ungdomsprospekter på auktion",
+    "audience": "player"
+  },
+  {
+    "key": "5.32#0",
+    "en_title": "The Academy opens for young prospects",
+    "da_title": "Akademiet åbner for unge talenter",
+    "audience": "player"
+  },
+  {
+    "key": "5.31#0",
+    "en_title": "Riders now sign real contracts",
+    "da_title": "Ryttere har nu rigtige kontrakter",
+    "audience": "player"
+  },
+  {
+    "key": "5.30#0",
+    "en_title": "Pick your race squad and captains",
+    "da_title": "Udtag holdet og dine kaptajner",
+    "audience": "player"
+  },
+  {
+    "key": "5.30#1",
+    "en_title": "Breakaways can now stay away",
+    "da_title": "Udbrud kan nu holde hjem",
+    "audience": "player"
+  },
+  {
+    "key": "5.29#0",
+    "en_title": "Finance and Deadline Day in English",
+    "da_title": "Finans og Deadline Day på dit sprog",
+    "audience": "player"
+  },
+  {
+    "key": "5.28#0",
+    "en_title": "Pages recover smoothly after updates",
+    "da_title": "Sider genindlæses pænt efter opdatering",
+    "audience": "player"
+  },
+  {
+    "key": "5.27#0",
+    "en_title": "Form and fatigue tweak race scores",
+    "da_title": "Form og træthed påvirker løbsscoren",
+    "audience": "player"
+  },
+  {
+    "key": "5.27#1",
+    "en_title": "Tough races drain your squad",
+    "da_title": "Hårde løb dræner din trup",
+    "audience": "player"
+  },
+  {
+    "key": "5.27#2",
+    "en_title": "Injured riders sit races out",
+    "da_title": "Skadede ryttere sidder løb over",
+    "audience": "player"
+  },
+  {
+    "key": "5.26#0",
+    "en_title": "New Daily Training page for everyone",
+    "da_title": "Ny Daglig træning-side til alle",
+    "audience": "player"
+  },
+  {
+    "key": "5.26#1",
+    "en_title": "Train today for a +25% boost",
+    "da_title": "Træn i dag for +25% boost",
+    "audience": "player"
+  },
+  {
+    "key": "5.26#2",
+    "en_title": "Form and fatigue on every profile",
+    "da_title": "Form og træthed på hver profil",
+    "audience": "player"
+  },
+  {
+    "key": "5.26#3",
+    "en_title": "Daily report tracks training gains",
+    "da_title": "Daglig rapport viser træningsfremskridt",
+    "audience": "player"
+  },
+  {
+    "key": "5.25#0",
+    "en_title": "New team Results tab and sortable nations",
+    "da_title": "Ny Resultater-fane og sorterbar nation",
+    "audience": "player"
+  },
+  {
+    "key": "5.25#1",
+    "en_title": "See pending transfers in the database",
+    "da_title": "Se ventende handler i databasen",
+    "audience": "player"
+  },
+  {
+    "key": "5.25#2",
+    "en_title": "Start Flash auctions from My Team",
+    "da_title": "Start Flash-auktioner fra Mit Hold",
+    "audience": "player"
+  },
+  {
+    "key": "5.25#3",
+    "en_title": "Transfer list shortcut and clearer auctions",
+    "da_title": "Transferliste-genvej og klarere auktioner",
+    "audience": "player"
+  },
+  {
+    "key": "5.25#4",
+    "en_title": "Clearer bankruptcy, prize and loan figures",
+    "da_title": "Klarere konkurs-, præmie- og lånetal",
+    "audience": "player"
+  },
+  {
+    "key": "5.25#5",
+    "en_title": "First result achievement now awards correctly",
+    "da_title": "Første resultat-achievement tildeles nu korrekt",
+    "audience": "player"
+  },
+  {
+    "key": "5.25#6",
+    "en_title": "More pages fully translated to English",
+    "da_title": "Flere sider følger nu dit sprogvalg",
+    "audience": "player"
+  },
+  {
+    "key": "5.25#7",
+    "en_title": "Sortable salaries and quick race links",
+    "da_title": "Sorterbar løn og hurtige løbslinks",
+    "audience": "player"
+  },
+  {
+    "key": "5.24#0",
+    "en_title": "Analytics added, gated by your cookie consent",
+    "da_title": "Analytics tilføjet, styret af dit cookie-samtykke",
+    "audience": "player"
+  },
+  {
+    "key": "5.23#0",
+    "en_title": "We moved to cyclingzone.org",
+    "da_title": "Vi er flyttet til cyclingzone.org",
+    "audience": "player"
+  },
+  {
+    "key": "5.22#0",
+    "en_title": "Vote on the roadmap",
+    "da_title": "Stem på roadmappet",
+    "audience": "player"
+  },
+  {
+    "key": "5.21#0",
+    "en_title": "Board mood now updates every weekend",
+    "da_title": "Bestyrelsens humør opdateres nu hver weekend",
+    "audience": "player"
+  },
+  {
+    "key": "5.21#1",
+    "en_title": "Board penalties limited to fixed checkpoints",
+    "da_title": "Bestyrelses-straffe kun ved faste checkpoints",
+    "audience": "player"
+  },
+  {
+    "key": "5.20#0",
+    "en_title": "Cheat-proof scouting, clearer potential",
+    "da_title": "Snydesikker scouting og tydeligt potentiale",
+    "audience": "player"
+  },
+  {
+    "key": "5.20#1",
+    "en_title": "Filter and sort the rider rankings",
+    "da_title": "Filtrér og sortér rytterranglisten",
+    "audience": "player"
+  },
+  {
+    "key": "5.20#2",
+    "en_title": "Wider My Team with future squad view",
+    "da_title": "Bredere Mit Hold med kommende trup",
+    "audience": "player"
+  },
+  {
+    "key": "5.20#3",
+    "en_title": "Easier transfer listing and sorting",
+    "da_title": "Nemmere salg og sortering på transferlisten",
+    "audience": "player"
+  },
+  {
+    "key": "5.20#4",
+    "en_title": "See your profit per sold rider",
+    "da_title": "Se din gevinst pr. solgt rytter",
+    "audience": "player"
+  },
+  {
+    "key": "5.20#5",
+    "en_title": "Borrow your max with one click",
+    "da_title": "Lån dit maksimum med ét klik",
+    "audience": "player"
+  },
+  {
+    "key": "5.20#6",
+    "en_title": "Fairer board goals and classics DNA",
+    "da_title": "Mere fair mål og klassiker-DNA",
+    "audience": "player"
+  },
+  {
+    "key": "5.20#7",
+    "en_title": "Clearer, tidier board negotiations",
+    "da_title": "Klarere og pænere bestyrelses-forhandlinger",
+    "audience": "player"
+  },
+  {
+    "key": "5.20#8",
+    "en_title": "Board plan seasons now count correctly",
+    "da_title": "Bestyrelsesplanens sæsoner tælles rigtigt",
+    "audience": "player"
+  },
+  {
+    "key": "5.20#9",
+    "en_title": "Squad warning counts next-season moves",
+    "da_title": "Trup-advarsel tæller næste sæsons skift",
+    "audience": "player"
+  },
+  {
+    "key": "5.20#10",
+    "en_title": "Discord alerts no longer go missing",
+    "da_title": "Discord-beskeder går ikke længere tabt",
+    "audience": "player"
+  },
+  {
+    "key": "5.20#11",
+    "en_title": "Faster navigation, more room on mobile",
+    "da_title": "Hurtigere navigation og mere plads på mobil",
+    "audience": "player"
+  },
+  {
+    "key": "5.20#12",
+    "en_title": "Waitlist form fully translated",
+    "da_title": "Waitlist-formular fuldt oversat",
+    "audience": "player"
+  },
+  {
+    "key": "5.20#13",
+    "en_title": "Founder prices shown in euro",
+    "da_title": "Founder-priser vises i euro",
+    "audience": "player"
+  },
+  {
+    "key": "5.19#0",
+    "en_title": "Tied bids no longer steal the lead",
+    "da_title": "Lige bud overhaler ikke længere føreren",
+    "audience": "player"
+  },
+  {
+    "key": "5.19#1",
+    "en_title": "No more ghost transfer listings",
+    "da_title": "Slut med spøgelses-annoncer",
+    "audience": "player"
+  },
+  {
+    "key": "5.19#2",
+    "en_title": "Riders can't be in auction and swap",
+    "da_title": "Rytter kan ikke være på auktion og byt samtidig",
+    "audience": "player"
+  },
+  {
+    "key": "5.19#3",
+    "en_title": "Transfer history signs now match account",
+    "da_title": "Transferhistorik matcher nu kontobevægelser",
+    "audience": "player"
+  },
+  {
+    "key": "5.19#4",
+    "en_title": "Squad value sorting now correct",
+    "da_title": "Sortering efter trupværdi virker korrekt",
+    "audience": "player"
+  },
+  {
+    "key": "5.19#5",
+    "en_title": "Podiums column now counts properly",
+    "da_title": "Podie-kolonnen tæller nu rigtigt",
+    "audience": "player"
+  },
+  {
+    "key": "5.18#0",
+    "en_title": "New Roadmap page in the sidebar",
+    "da_title": "Ny Roadmap-side i sidemenuen",
+    "audience": "player"
+  },
+  {
+    "key": "5.17#0",
+    "en_title": "Star rider threshold raised to 8M CZ$",
+    "da_title": "Stjernegrænse hævet til 8 mio. CZ$",
+    "audience": "player"
+  },
+  {
+    "key": "5.15#0",
+    "en_title": "Help now explains training focus",
+    "da_title": "Hjælp forklarer nu træningsfokus",
+    "audience": "player"
+  },
+  {
+    "key": "5.14#0",
+    "en_title": "Cookie banner follows your language",
+    "da_title": "Cookie-banner følger dit sprog",
+    "audience": "player"
+  },
+  {
+    "key": "5.13#0",
+    "en_title": "One-day races labelled simply Winner",
+    "da_title": "Endagsløb hedder nu bare Vinder",
+    "audience": "player"
+  },
+  {
+    "key": "5.12#0",
+    "en_title": "Profile bids check your real budget",
+    "da_title": "Profil-bud tjekker din reelle saldo",
+    "audience": "player"
+  },
+  {
+    "key": "5.11#0",
+    "en_title": "Unlockable star achievements fixed",
+    "da_title": "Stjerne-achievements kan nu låses op",
+    "audience": "player"
+  },
+  {
+    "key": "5.10#0",
+    "en_title": "Race scoring renamed to points",
+    "da_title": "Løbsscoring hedder nu bare point",
+    "audience": "player"
+  },
+  {
+    "key": "5.09#0",
+    "en_title": "Help texts use the new value formula",
+    "da_title": "Hjælpetekster bruger ny værdiformel",
+    "audience": "player"
+  },
+  {
+    "key": "5.08#0",
+    "en_title": "Rider values now built on in-game ability",
+    "da_title": "Rytterværdier bygger nu på evner i spillet",
+    "audience": "player"
+  },
+  {
+    "key": "5.07#0",
+    "en_title": "Login tagline matches the wordmark",
+    "da_title": "Login-tagline matcher nu wordmarket",
+    "audience": "player"
+  },
+  {
+    "key": "5.06#0",
+    "en_title": "New Cycling Zone logo goes live",
+    "da_title": "Nyt Cycling Zone-logo er live",
+    "audience": "player"
+  },
+  {
+    "key": "5.05#0",
+    "en_title": "Cleaner ability values in rider database",
+    "da_title": "Renere evnetal i rytterdatabasen",
+    "audience": "player"
+  },
+  {
+    "key": "5.04#0",
+    "en_title": "Season 2 begins, pick your Club DNA",
+    "da_title": "Sæson 2 starter, vælg dit Klub-DNA",
+    "audience": "player"
+  },
+  {
+    "key": "5.03#0",
+    "en_title": "Set a training focus for riders",
+    "da_title": "Sæt et træningsfokus for ryttere",
+    "audience": "player"
+  },
+  {
+    "key": "5.02#0",
+    "en_title": "Scout riders to reveal potential",
+    "da_title": "Scout ryttere for at se potentiale",
+    "audience": "player"
+  },
+  {
+    "key": "5.01#0",
+    "en_title": "Rider values build over three seasons",
+    "da_title": "Rytterværdier bygges over tre sæsoner",
+    "audience": "player"
+  },
+  {
+    "key": "5.00#0",
+    "en_title": "Riders now grow and decline",
+    "da_title": "Ryttere udvikler sig over tid",
+    "audience": "player"
+  },
+  {
+    "key": "4.99#0",
+    "en_title": "Sharper, more realistic rider types",
+    "da_title": "Skarpere og mere realistiske ryttertyper",
+    "audience": "player"
+  },
+  {
+    "key": "4.98#0",
+    "en_title": "Results and season pages now in English",
+    "da_title": "Resultater og sæson nu på engelsk",
+    "audience": "player"
+  },
+  {
+    "key": "4.97#0",
+    "en_title": "Race pages now in English",
+    "da_title": "Løbssider nu på engelsk",
+    "audience": "player"
+  },
+  {
+    "key": "4.96#0",
+    "en_title": "Board negotiate button no longer dead",
+    "da_title": "Forhandl ned-knap virker tydeligt nu",
+    "audience": "player"
+  },
+  {
+    "key": "4.95#0",
+    "en_title": "16 sharper rider abilities (beta)",
+    "da_title": "16 skarpere rytterevner (beta)",
+    "audience": "player"
+  },
+  {
+    "key": "4.94#0",
+    "en_title": "Rider types reveal each rider's strengths",
+    "da_title": "Ryttertyper viser hver rytters styrker",
+    "audience": "player"
+  },
+  {
+    "key": "4.93#0",
+    "en_title": "Preview a rider's new value",
+    "da_title": "Forhåndsvis rytterens nye værdi",
+    "audience": "player"
+  },
+  {
+    "key": "4.92#0",
+    "en_title": "See what drives your board",
+    "da_title": "Se hvad der rykker dit board",
+    "audience": "player"
+  },
+  {
+    "key": "4.92#1",
+    "en_title": "Star-rider goal becomes high-renown",
+    "da_title": "Stjernemål bliver til højt omdømme",
+    "audience": "player"
+  },
+  {
+    "key": "4.92#2",
+    "en_title": "Board goals explain how they're measured",
+    "da_title": "Bestyrelsesmål forklarer hvordan de måles",
+    "audience": "player"
+  },
+  {
+    "key": "4.91#0",
+    "en_title": "Gold jersey now marks the leader",
+    "da_title": "Guldtrøje markerer nu føreren",
+    "audience": "player"
+  },
+  {
+    "key": "4.90#0",
+    "en_title": "Board plans split into clear tabs",
+    "da_title": "Bestyrelsesplaner opdelt i klare faner",
+    "audience": "player"
+  },
+  {
+    "key": "4.89#0",
+    "en_title": "Board dialogs now keyboard and screen-reader friendly",
+    "da_title": "Bestyrelsens dialoger virker nu med tastatur",
+    "audience": "player"
+  },
+  {
+    "key": "4.89#1",
+    "en_title": "Board page styling matches the app",
+    "da_title": "Bestyrelsessiden følger appens udseende",
+    "audience": "player"
+  },
+  {
+    "key": "4.89#2",
+    "en_title": "Offline dot now visible on profiles",
+    "da_title": "Offline-prik er nu synlig på profiler",
+    "audience": "player"
+  },
+  {
+    "key": "4.88#0",
+    "en_title": "Board members now read in English",
+    "da_title": "Bestyrelsesmedlemmer oversat til engelsk",
+    "audience": "player"
+  },
+  {
+    "key": "4.87#0",
+    "en_title": "All goal types now count toward plans",
+    "da_title": "Alle måltyper tælles nu med",
+    "audience": "player"
+  },
+  {
+    "key": "4.86#0",
+    "en_title": "This season's wins count toward long-term goals",
+    "da_title": "Sæsonens sejre tæller mod langsigtede mål",
+    "audience": "player"
+  },
+  {
+    "key": "4.85#0",
+    "en_title": "Tap board cards for instant details",
+    "da_title": "Tryk på bestyrelses-kort for detaljer",
+    "audience": "player"
+  },
+  {
+    "key": "4.84#0",
+    "en_title": "The board opens for everyone",
+    "da_title": "Bestyrelsen er nu åben for alle",
+    "audience": "player"
+  },
+  {
+    "key": "4.83#0",
+    "en_title": "Squad minimum removed, sell freely",
+    "da_title": "Intet trup-minimum mere, sælg frit",
+    "audience": "player"
+  },
+  {
+    "key": "4.82#0",
+    "en_title": "Dashboard cards are now clickable",
+    "da_title": "Dashboard-kort er nu klikbare",
+    "audience": "player"
+  },
+  {
+    "key": "4.81#0",
+    "en_title": "Whole rider row now clickable",
+    "da_title": "Hele rytter-rækken er nu klikbar",
+    "audience": "player"
+  },
+  {
+    "key": "4.80#0",
+    "en_title": "Auction history now reads in English",
+    "da_title": "Auktionshistorik oversat til engelsk",
+    "audience": "player"
+  },
+  {
+    "key": "4.79#0",
+    "en_title": "Board messages now read in English",
+    "da_title": "Bestyrelses-beskeder oversat til engelsk",
+    "audience": "player"
+  },
+  {
+    "key": "4.78#0",
+    "en_title": "Transfer errors now read in English",
+    "da_title": "Transfer-fejlbeskeder oversat til engelsk",
+    "audience": "player"
+  },
+  {
+    "key": "4.77#0",
+    "en_title": "Auction errors now read in English",
+    "da_title": "Auktions-fejlbeskeder oversat til engelsk",
+    "audience": "player"
+  },
+  {
+    "key": "4.76#0",
+    "en_title": "Gold dots mark your place in nav",
+    "da_title": "Guld-prikker viser hvor du er",
+    "audience": "player"
+  },
+  {
+    "key": "4.75#0",
+    "en_title": "New brand fonts and refined colours",
+    "da_title": "Nye brand-skrifttyper og forfinet farvepalet",
+    "audience": "player"
+  },
+  {
+    "key": "4.74#0",
+    "en_title": "Shared links show the real logo",
+    "da_title": "Delte links viser det rigtige logo",
+    "audience": "player"
+  },
+  {
+    "key": "4.73#0",
+    "en_title": "Mobile logo links to your dashboard",
+    "da_title": "Mobil-logo linker til dit dashboard",
+    "audience": "player"
+  },
+  {
+    "key": "4.72#0",
+    "en_title": "Clearer auction and filter messages",
+    "da_title": "Tydeligere auktions- og filter-beskeder",
+    "audience": "player"
+  },
+  {
+    "key": "4.71#0",
+    "en_title": "Big tables now use full screen width",
+    "da_title": "Store tabeller bruger nu hele bredden",
+    "audience": "player"
+  },
+  {
+    "key": "4.70#0",
+    "en_title": "New monogram in the browser tab",
+    "da_title": "Nyt monogram i browser-fanen",
+    "audience": "player"
+  },
+  {
+    "key": "4.69#0",
+    "en_title": "Power numbers on rider profiles (beta)",
+    "da_title": "Effekttal på rytterprofiler (beta)",
+    "audience": "player"
+  },
+  {
+    "key": "4.67#0",
+    "en_title": "Privacy policy names the data controller",
+    "da_title": "Privatlivspolitik angiver den dataansvarlige",
+    "audience": "player"
+  },
+  {
+    "key": "4.66#0",
+    "en_title": "Tidied up the dashboard top",
+    "da_title": "Ryddet op i toppen af dashboardet",
+    "audience": "player"
+  },
+  {
+    "key": "4.66#1",
+    "en_title": "Customize button now a gear icon",
+    "da_title": "Tilpas-knap er nu et tandhjul",
+    "audience": "player"
+  },
+  {
+    "key": "4.65#0",
+    "en_title": "Customize which dashboard modules show",
+    "da_title": "Tilpas hvilke dashboard-moduler du ser",
+    "audience": "player"
+  },
+  {
+    "key": "4.65#1",
+    "en_title": "New recent results and rider ranking modules",
+    "da_title": "Nye moduler: resultater og rytterrangliste",
+    "audience": "player"
+  },
+  {
+    "key": "4.64#0",
+    "en_title": "See how many managers view a rider",
+    "da_title": "Se hvor mange kigger på en rytter",
+    "audience": "player"
+  },
+  {
+    "key": "4.63#0",
+    "en_title": "Discord notifications working again",
+    "da_title": "Discord-beskeder virker igen",
+    "audience": "player"
+  },
+  {
+    "key": "4.62#0",
+    "en_title": "Leading bidder updates live",
+    "da_title": "Ledende byder opdateres live",
+    "audience": "player"
+  },
+  {
+    "key": "4.62#1",
+    "en_title": "List your riders below their Value",
+    "da_title": "Sælg ryttere under deres Værdi",
+    "audience": "player"
+  },
+  {
+    "key": "4.62#2",
+    "en_title": "Hide live bids, longer bid history",
+    "da_title": "Skjul live bud, længere bud-historik",
+    "audience": "player"
+  },
+  {
+    "key": "4.61#0",
+    "en_title": "Rider values no longer dragged down",
+    "da_title": "Rytterværdier trækkes ikke længere ned",
+    "audience": "player"
+  },
+  {
+    "key": "4.60#0",
+    "en_title": "Standings now show prize money",
+    "da_title": "Ranglisten viser nu præmiepenge",
+    "audience": "player"
+  },
+  {
+    "key": "4.60#1",
+    "en_title": "Rider values refresh with new points",
+    "da_title": "Rytterværdier opdateres med nye point",
+    "audience": "player"
+  },
+  {
+    "key": "4.59#0",
+    "en_title": "Apply updated points to past results",
+    "da_title": "Slå nye point igennem på gamle resultater",
+    "audience": "player"
+  },
+  {
+    "key": "4.58#0",
+    "en_title": "Richer rider rankings with new columns",
+    "da_title": "Rigere rytterrangliste med nye kolonner",
+    "audience": "player"
+  },
+  {
+    "key": "4.58#1",
+    "en_title": "Team classification now on standings",
+    "da_title": "Holdkonkurrence nu på holdranglisten",
+    "audience": "player"
+  },
+  {
+    "key": "4.58#2",
+    "en_title": "Daily rates for every jersey shown",
+    "da_title": "Daglig sats for hver trøje vises",
+    "audience": "player"
+  },
+  {
+    "key": "4.57#0",
+    "en_title": "Team card stats readable in light mode",
+    "da_title": "Holdkort-tal læselige i lyst tema",
+    "audience": "player"
+  },
+  {
+    "key": "4.56#0",
+    "en_title": "Full results page for every race",
+    "da_title": "Fuld resultatside for hvert løb",
+    "audience": "player"
+  },
+  {
+    "key": "4.55#0",
+    "en_title": "Active auctions counts only yours",
+    "da_title": "Aktive auktioner tæller kun dine",
+    "audience": "player"
+  },
+  {
+    "key": "4.54#0",
+    "en_title": "New Next move panel on dashboard",
+    "da_title": "Nyt Næste træk-panel på dashboardet",
+    "audience": "player"
+  },
+  {
+    "key": "4.53#0",
+    "en_title": "Loan requests reach the rider's owner",
+    "da_title": "Leje-anmodninger når frem til ejeren",
+    "audience": "player"
+  },
+  {
+    "key": "4.52#0",
+    "en_title": "Board scores cap at 100% with Exceeded",
+    "da_title": "Bestyrelses-score stopper ved 100% med Overget",
+    "audience": "player"
+  },
+  {
+    "key": "4.51#0",
+    "en_title": "Language menu no longer cut off",
+    "da_title": "Sprog-menuen bliver ikke skåret af",
+    "audience": "player"
+  },
+  {
+    "key": "4.50#0",
+    "en_title": "Test accounts no longer fill division slots",
+    "da_title": "Testkonti optager ikke divisions-pladser",
+    "audience": "player"
+  },
+  {
+    "key": "4.49#0",
+    "en_title": "New teams start in the top division",
+    "da_title": "Nye hold starter i toppen",
+    "audience": "player"
+  },
+  {
+    "key": "4.48#0",
+    "en_title": "Filter reset always visible with count",
+    "da_title": "Nulstil-knap altid synlig med antal",
+    "audience": "player"
+  },
+  {
+    "key": "4.47#0",
+    "en_title": "Loan buyout no longer double-counts squad",
+    "da_title": "Købsoption tæller ikke truppen dobbelt",
+    "audience": "player"
+  },
+  {
+    "key": "4.46#0",
+    "en_title": "Upcoming races show current season only",
+    "da_title": "Kommende løb kun fra nuværende sæson",
+    "audience": "player"
+  },
+  {
+    "key": "4.46#1",
+    "en_title": "Board plans lock late in season",
+    "da_title": "Bestyrelsesplaner låses sent på sæsonen",
+    "audience": "player"
+  },
+  {
+    "key": "4.45#0",
+    "en_title": "Rider list updates team changes live",
+    "da_title": "Rytterlisten opdaterer holdskift live",
+    "audience": "player"
+  },
+  {
+    "key": "4.45#1",
+    "en_title": "Rumor alert opens the rider's profile",
+    "da_title": "Rygte-besked åbner rytterens profil",
+    "audience": "player"
+  },
+  {
+    "key": "4.45#2",
+    "en_title": "Head-to-Head search lists every team",
+    "da_title": "Head-to-Head-søgning viser alle hold",
+    "audience": "player"
+  },
+  {
+    "key": "4.45#3",
+    "en_title": "Five-year timeline fits narrow screens",
+    "da_title": "Femårs-tidslinje passer smalle skærme",
+    "audience": "player"
+  },
+  {
+    "key": "4.45#4",
+    "en_title": "Bell badge shows 9+ for many unread",
+    "da_title": "Klokke-badge viser 9+ ved mange ulæste",
+    "audience": "player"
+  },
+  {
+    "key": "4.45#5",
+    "en_title": "Incoming riders show nationality flags",
+    "da_title": "Indkommende ryttere viser nationalitetsflag",
+    "audience": "player"
+  },
+  {
+    "key": "4.44#0",
+    "en_title": "Rider values update on prize payouts",
+    "da_title": "Rytterværdier opdateres ved præmieudbetaling",
+    "audience": "player"
+  },
+  {
+    "key": "4.42#0",
+    "en_title": "Agree loans while window is closed",
+    "da_title": "Aftal lejehandler mens vinduet er lukket",
+    "audience": "player"
+  },
+  {
+    "key": "4.41#0",
+    "en_title": "Negotiate offers with the window closed",
+    "da_title": "Forhandl tilbud mens vinduet er lukket",
+    "audience": "player"
+  },
+  {
+    "key": "4.41#1",
+    "en_title": "AI review now required on every PR",
+    "da_title": "AI-review nu obligatorisk på hver PR",
+    "audience": "internal"
+  },
+  {
+    "key": "4.41#2",
+    "en_title": "Pick Club DNA before your board",
+    "da_title": "Vælg Klub-DNA før din bestyrelse",
+    "audience": "player"
+  },
+  {
+    "key": "4.41#3",
+    "en_title": "Club DNA choice can't lock you out",
+    "da_title": "Klub-DNA-valg kan ikke låse dig ude",
+    "audience": "player"
+  },
+  {
+    "key": "4.37#0",
+    "en_title": "Season history counts wins correctly",
+    "da_title": "Sæsonhistorik tæller sejre korrekt",
+    "audience": "player"
+  },
+  {
+    "key": "4.37#1",
+    "en_title": "Stage races show every stage",
+    "da_title": "Etapeløb viser alle etaper",
+    "audience": "player"
+  },
+  {
+    "key": "4.36#0",
+    "en_title": "Clearer order for your first board meeting",
+    "da_title": "Tydeligere rækkefølge på første bestyrelsesmøde",
+    "audience": "player"
+  },
+  {
+    "key": "4.35#0",
+    "en_title": "Buttons recover when connection drops",
+    "da_title": "Knapper genopretter når forbindelsen ryger",
+    "audience": "player"
+  },
+  {
+    "key": "4.34#0",
+    "en_title": "Create-team button no longer hangs",
+    "da_title": "Opret hold-knappen hænger ikke længere",
+    "audience": "player"
+  },
+  {
+    "key": "4.33#0",
+    "en_title": "Head-to-Head shows real earned points",
+    "da_title": "Head-to-Head viser optjente løb-point",
+    "audience": "player"
+  },
+  {
+    "key": "4.32#0",
+    "en_title": "Readable status labels in own column",
+    "da_title": "Læsbare status-labels i egen kolonne",
+    "audience": "player"
+  },
+  {
+    "key": "4.31#0",
+    "en_title": "One colour scale for abilities everywhere",
+    "da_title": "Én farveskala for evner overalt",
+    "audience": "player"
+  },
+  {
+    "key": "4.30#0",
+    "en_title": "Trade while the window is closed",
+    "da_title": "Handl mens vinduet er lukket",
+    "audience": "player"
+  },
+  {
+    "key": "4.29#0",
+    "en_title": "30-rider roster cap in every division",
+    "da_title": "Trupgrænse på 30 i alle divisioner",
+    "audience": "player"
+  },
+  {
+    "key": "4.28#0",
+    "en_title": "Guaranteed 50% sale removed",
+    "da_title": "Garanteret 50%-salg fjernet",
+    "audience": "player"
+  },
+  {
+    "key": "4.27#0",
+    "en_title": "Standings colours adapt to your theme",
+    "da_title": "Rangliste-farver tilpasser sig dit tema",
+    "audience": "player"
+  },
+  {
+    "key": "4.26#0",
+    "en_title": "Calendar now sorted by date",
+    "da_title": "Kalender sorteret efter dato",
+    "audience": "player"
+  },
+  {
+    "key": "4.25#0",
+    "en_title": "New free agents ranking filter",
+    "da_title": "Nyt filter for fri agenter",
+    "audience": "player"
+  },
+  {
+    "key": "4.24#0",
+    "en_title": "Status badges are compact icons now",
+    "da_title": "Status-mærker er nu kompakte ikoner",
+    "audience": "player"
+  },
+  {
+    "key": "4.23#0",
+    "en_title": "Rider name stays pinned while scrolling",
+    "da_title": "Rytternavn bliver fastlåst ved scroll",
+    "audience": "player"
+  },
+  {
+    "key": "4.22#0",
+    "en_title": "Try the boardroom, economy frozen",
+    "da_title": "Prøv bestyrelsen med frossen økonomi",
+    "audience": "player"
+  },
+  {
+    "key": "4.21#0",
+    "en_title": "Team names clickable on more pages",
+    "da_title": "Holdnavne klikbare flere steder",
+    "audience": "player"
+  },
+  {
+    "key": "4.20#0",
+    "en_title": "Season progress counts ridden race days",
+    "da_title": "Sæson-fremgang tæller kørte løbsdage",
+    "audience": "player"
+  },
+  {
+    "key": "4.19#0",
+    "en_title": "Nation gets its own column",
+    "da_title": "Nation får sin egen kolonne",
+    "audience": "player"
+  },
+  {
+    "key": "4.18#0",
+    "en_title": "Rider history grouped by game season",
+    "da_title": "Rytterhistorik grupperet pr. spil-sæson",
+    "audience": "player"
+  },
+  {
+    "key": "4.17#0",
+    "en_title": "Rider race results are back",
+    "da_title": "Rytterens løbsresultater er tilbage",
+    "audience": "player"
+  },
+  {
+    "key": "4.16#0",
+    "en_title": "Standings and dashboard update live",
+    "da_title": "Rangliste og dashboard opdaterer live",
+    "audience": "player"
+  },
+  {
+    "key": "4.14#0",
+    "en_title": "Hall of Fame fully in English",
+    "da_title": "Hall of Fame helt på engelsk",
+    "audience": "player"
+  },
+  {
+    "key": "4.13#0",
+    "en_title": "More pages now fully in English",
+    "da_title": "Flere sider nu helt på engelsk",
+    "audience": "player"
+  },
+  {
+    "key": "4.08#0",
+    "en_title": "Achievements unlock again for all teams",
+    "da_title": "Achievements låser op igen for alle hold",
+    "audience": "player"
+  },
+  {
+    "key": "4.07#0",
+    "en_title": "Club DNA text now respects your language",
+    "da_title": "Klub-DNA-tekst følger nu dit sprog",
+    "audience": "player"
+  },
+  {
+    "key": "4.06#0",
+    "en_title": "Country names now match your language",
+    "da_title": "Landenavne følger nu dit sprog",
+    "audience": "player"
+  },
+  {
+    "key": "4.04#0",
+    "en_title": "Rider value reads cleanly on mobile",
+    "da_title": "Rytterværdi vises pænt på mobil",
+    "audience": "player"
+  },
+  {
+    "key": "4.03#0",
+    "en_title": "Mobile nav now respects language toggle",
+    "da_title": "Mobilmenu skifter nu sprog korrekt",
+    "audience": "player"
+  },
+  {
+    "key": "4.02#0",
+    "en_title": "Finance and inbox messages now translated",
+    "da_title": "Finans- og indbakkebeskeder nu oversat",
+    "audience": "player"
+  },
+  {
+    "key": "4.01#0",
+    "en_title": "Numbers and dates match your language",
+    "da_title": "Tal og datoer følger dit sprog",
+    "audience": "player"
+  },
+  {
+    "key": "4.00#0",
+    "en_title": "Finance page now in English and Danish",
+    "da_title": "Finanser-siden taler nu engelsk og dansk",
+    "audience": "player"
+  },
+  {
+    "key": "3.98#0",
+    "en_title": "Rider values match your chosen language",
+    "da_title": "Rytterværdier følger nu dit sprog",
+    "audience": "player"
+  },
+  {
+    "key": "3.97#0",
+    "en_title": "Active auction badge now visible again",
+    "da_title": "Aktiv auktion-mærket vises korrekt igen",
+    "audience": "player"
+  },
+  {
+    "key": "3.96#0",
+    "en_title": "Team page now in English and Danish",
+    "da_title": "Hold-siden taler nu engelsk og dansk",
+    "audience": "player"
+  },
+  {
+    "key": "3.95#0",
+    "en_title": "Rider detail, inbox and database translated",
+    "da_title": "Rytterprofil, indbakke og database oversat",
+    "audience": "player"
+  },
+  {
+    "key": "3.92#0",
+    "en_title": "Races page loads far faster",
+    "da_title": "Races-siden loader meget hurtigere",
+    "audience": "player"
+  },
+  {
+    "key": "3.89#0",
+    "en_title": "Outbid Discord DMs working again",
+    "da_title": "Discord-besked ved overbud virker igen",
+    "audience": "player"
+  },
+  {
+    "key": "3.88#0",
+    "en_title": "Phantom CZ$ and loan debt removed",
+    "da_title": "Fantom-CZ$ og lånegæld fjernet",
+    "audience": "player"
+  },
+  {
+    "key": "3.87#0",
+    "en_title": "",
+    "da_title": "",
+    "audience": "internal"
+  },
+  {
+    "key": "3.85#0",
+    "en_title": "Deadline Day hides frozen teams",
+    "da_title": "Deadline Day skjuler frosne hold",
+    "audience": "player"
+  },
+  {
+    "key": "3.84#0",
+    "en_title": "Final Whistle now counts pool buys",
+    "da_title": "Final Whistle tæller pulje-køb med",
+    "audience": "player"
+  },
+  {
+    "key": "3.83#0",
+    "en_title": "Frozen teams skip forced buys and fines",
+    "da_title": "Frosne hold slipper for tvangskøb og bøder",
+    "audience": "player"
+  },
+  {
+    "key": "3.81#0",
+    "en_title": "No promotion or relegation in seasons 1-2",
+    "da_title": "Ingen op- eller nedrykning i sæson 1-2",
+    "audience": "player"
+  },
+  {
+    "key": "3.78#0",
+    "en_title": "Salaries now charged at season start",
+    "da_title": "Løn trækkes nu ved sæson-start",
+    "audience": "player"
+  },
+  {
+    "key": "3.78#1",
+    "en_title": "Forecast your finances up to 5 seasons",
+    "da_title": "Se finansprognose op til 5 sæsoner frem",
+    "audience": "player"
+  },
+  {
+    "key": "3.77#0",
+    "en_title": "Smoother season 0 to 1 rollover",
+    "da_title": "Mere sikkert skift fra sæson 0 til 1",
+    "audience": "player"
+  },
+  {
+    "key": "4.09#0",
+    "en_title": "Crash screen now explains what happened",
+    "da_title": "Crash-skærm forklarer nu hvad der skete",
+    "audience": "player"
+  },
+  {
+    "key": "4.05#0",
+    "en_title": "Rider values restored after sync glitch",
+    "da_title": "Rytter-værdier gendannet efter sync-fejl",
+    "audience": "player"
+  }
+]
