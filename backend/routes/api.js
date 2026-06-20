@@ -758,7 +758,8 @@ router.get("/deadline-day/ticker", requireAuth, async (req, res) => {
 router.get("/deadline-day/squads", requireAuth, async (req, res) => {
   try {
     // Roster-floor fjernet 2026-06-05: min=0 → Panic Board flagger aldrig "critical"/"warning" for under-min.
-    const LIMITS = { 1: { min: 0, max: 30 }, 2: { min: 0, max: 20 }, 3: { min: 0, max: 10 } };
+    // #1614: ét fælles roster-loft (30) for alle divisioner — matcher håndhævelsen i marketUtils.MARKET_SQUAD_LIMITS.
+    const LIMITS = { 1: { min: 0, max: 30 }, 2: { min: 0, max: 30 }, 3: { min: 0, max: 30 } };
     const [{ data: teams }, { data: riders }] = await Promise.all([
       // Filter matcher v3.83 cron-fix (a57b8d9): kun aktive manager-hold tæller mod
       // squad-minimum. Frosne hold (is_frozen=true) + AI-hold + bank + eierløse rows
@@ -5917,7 +5918,8 @@ router.put("/admin/deadline-day/override", requireAdmin, adminWriteLimiter, asyn
 router.get("/admin/deadline-readiness", requireAdmin, async (req, res) => {
   try {
     // Roster-floor fjernet 2026-06-05: min=0 → squad-violations rapporterer kun "over_max".
-    const LIMITS = { 1: { min: 0, max: 30 }, 2: { min: 0, max: 20 }, 3: { min: 0, max: 10 } };
+    // #1614: ét fælles roster-loft (30) for alle divisioner — matcher håndhævelsen i marketUtils.MARKET_SQUAD_LIMITS.
+    const LIMITS = { 1: { min: 0, max: 30 }, 2: { min: 0, max: 30 }, 3: { min: 0, max: 30 } };
 
     const [
       { data: window },

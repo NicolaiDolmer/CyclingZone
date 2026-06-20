@@ -11,15 +11,26 @@ import { useTranslation } from "react-i18next";
 import { formatNumber } from "../lib/intl.js";
 import { RULES_NUMBERS } from "../lib/rulesNumbers.js";
 import { useAcademy } from "../lib/useAcademy.js";
-import { InfoIcon, ExternalLinkIcon } from "../components/ui/icons/index.jsx";
+import {
+  InfoIcon,
+  ExternalLinkIcon,
+  TeamIcon,
+  CoinIcon,
+  TagIcon,
+  ExchangeIcon,
+  FlagIcon,
+  CalendarIcon,
+  StarIcon,
+  LockIcon,
+} from "../components/ui/icons/index.jsx";
 
 // Section → block ids + block kind. "table" blocks render rules[].rows; the rest
 // render a single interpolated paragraph. Order here is the display order.
 const SECTION_DEFS = [
-  { key: "squad", icon: "◧", blocks: ["cap", "window", "enforcement", "academyExempt"] },
+  { key: "squad", icon: TeamIcon, blocks: ["cap", "window", "enforcement", "academyExempt"] },
   {
     key: "economy",
-    icon: "⚡",
+    icon: CoinIcon,
     blocks: [
       "startingBalance",
       "sponsor",
@@ -31,15 +42,15 @@ const SECTION_DEFS = [
       { id: "divisionBonus", kind: "table" },
     ],
   },
-  { key: "auctions", icon: "◎", blocks: ["duration", "minBid", "extension", "proxy"] },
-  { key: "transfers", icon: "↔", blocks: ["contractInherited", "loansCount", "deadlineWarnings"] },
-  { key: "races", icon: "🏁", blocks: ["prize", "resultType", "freeAgentPrize"] },
-  { key: "season", icon: "◉", blocks: ["structure", "promotion", "transition"] },
+  { key: "auctions", icon: TagIcon, blocks: ["duration", "minBid", "extension", "proxy"] },
+  { key: "transfers", icon: ExchangeIcon, blocks: ["contractInherited", "loansCount", "deadlineWarnings"] },
+  { key: "races", icon: FlagIcon, blocks: ["prize", "resultType", "freeAgentPrize"] },
+  { key: "season", icon: CalendarIcon, blocks: ["structure", "promotion", "transition"] },
   // Academy is gated behind academy_enabled (see RulesPage props). When the flag
   // is off we still render the section (numbers are final) with a "launches at
   // relaunch" note, per #1604.
-  { key: "academy", icon: "△", gated: true, blocks: ["slots", "age", "salary", "drift"] },
-  { key: "fairPlay", icon: "▲", blocks: ["starProtection", "noBoardForBots"] },
+  { key: "academy", icon: StarIcon, gated: true, blocks: ["slots", "age", "salary", "drift"] },
+  { key: "fairPlay", icon: LockIcon, blocks: ["starProtection", "noBoardForBots"] },
 ];
 
 // FAQ deep-links shown under the page intro — FAQ stays "how do I X" and points
@@ -121,7 +132,7 @@ export default function RulesPage() {
                       : "text-cz-2 hover:text-cz-1 hover:bg-cz-subtle"
                   }`}
               >
-                <span aria-hidden="true">{s.icon}</span>
+                <s.icon className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
                 <span>{t(`sections.${s.key}.label`)}</span>
               </button>
             ))}
@@ -131,7 +142,7 @@ export default function RulesPage() {
         {/* Section content */}
         <div className="flex-1 min-w-0">
           <h2 className="text-cz-1 font-bold text-base mb-4 flex items-center gap-2">
-            <span aria-hidden="true">{currentDef.icon}</span>
+            <currentDef.icon className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
             {t(`sections.${currentDef.key}.label`)}
           </h2>
 

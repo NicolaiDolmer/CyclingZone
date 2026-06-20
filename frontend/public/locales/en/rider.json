@@ -423,7 +423,9 @@
     "scouting": "Scouting…",
     "scoutTitle": "Use a scout slot to narrow this rider's potential estimate",
     "noSlots": "No scout slots left this season",
-    "levelTitle": "Scouting level. Higher means a more precise estimate"
+    "levelTitle": "Scouting level. Higher means a more precise estimate",
+    "notScouted": "Not scouted",
+    "scoutToReveal": "Potential is hidden until you scout this rider"
   },
   "condition": {
     "form": "Form",

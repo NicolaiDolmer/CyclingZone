@@ -423,7 +423,9 @@
     "scouting": "Scouter…",
     "scoutTitle": "Brug et scout-slot til at indsnævre rytterens potentiale-estimat",
     "noSlots": "Ingen scout-slots tilbage i denne sæson",
-    "levelTitle": "Scout-niveau. Højere betyder et mere præcist estimat"
+    "levelTitle": "Scout-niveau. Højere betyder et mere præcist estimat",
+    "notScouted": "Ikke scoutet",
+    "scoutToReveal": "Potentialet er skjult, indtil du scouter rytteren"
   },
   "condition": {
     "form": "Form",

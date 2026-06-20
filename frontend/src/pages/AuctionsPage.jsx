@@ -392,7 +392,7 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, watchlist,
             <WatchlistStar
               active={onWatchlist}
               onToggle={() => onToggleWatchlist(r.id)}
-              className="mt-0.5"
+              className="inline-flex items-center justify-center min-h-[44px] min-w-[44px] -ms-2 -mt-2 leading-none"
             />
           )}
           <div className="min-w-0">
@@ -1283,7 +1283,7 @@ export default function AuctionsPage() {
         <div className="flex gap-2 flex-wrap items-center">
           {FILTER_TABS.map(tab => (
             <button key={tab.key} onClick={() => setFilter(tab.key)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
+              className={`inline-flex items-center min-h-[44px] px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
                 ${filter === tab.key
                   ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
                   : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
@@ -1294,7 +1294,7 @@ export default function AuctionsPage() {
             onClick={() => setWishlistOnly(v => !v)}
             aria-pressed={wishlistOnly}
             title={wishlistOnly ? t("auctions:filter.wishlistTitleOn") : t("auctions:filter.wishlistTitleOff")}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
+            className={`inline-flex items-center gap-1.5 min-h-[44px] px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
               ${wishlistOnly
                 ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
                 : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
@@ -1305,7 +1305,7 @@ export default function AuctionsPage() {
             onClick={() => setShowFeed(v => !v)}
             aria-pressed={showFeed}
             title={showFeed ? t("auctions:filter.feedTitleOn") : t("auctions:filter.feedTitleOff")}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
+            className={`inline-flex items-center gap-1.5 min-h-[44px] px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
               ${showFeed
                 ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
                 : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
