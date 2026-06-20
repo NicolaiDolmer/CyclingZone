@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.73",
+    date: "2026-06-20",
+    label: "Beta",
+    changes: [
+      {
+        category: "Fixed · Mobile",
+        items: [
+          "EN · Two tables no longer clip on narrow phones: the rider comparison now scrolls sideways instead of squeezing each rider into an unreadable column, and the loan-terms table on the finance page can reach its last column. Refs #1603 #1602",
+          "DA · To tabeller klipper ikke længere på smalle telefoner: rytter-sammenligningen scroller nu vandret i stedet for at klemme hver rytter ned i en ulæselig kolonne, og lånebetingelses-tabellen på økonomi-siden kan nå sin sidste kolonne. Refs #1603 #1602",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.72",
     date: "2026-06-20",
     label: "Beta",
