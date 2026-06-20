@@ -111,7 +111,7 @@ export async function runStageScheduler({
       budget--;
     } catch (err) {
       errors++;
-      console.error(`  ❌ stage-scheduler: løb ${race.name ?? race.id} fejlede: ${err.message}`);
+      console.error(`  ❌ stage-scheduler: race ${race.name ?? race.id} failed: ${err.message}`);
     }
   }
   return { ran, errors };

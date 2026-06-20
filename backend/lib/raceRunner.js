@@ -108,9 +108,9 @@ function teamClassification(entrants, cumTime) {
  * @returns {{ resultRows, runs }}
  */
 export function buildRaceResults({ race, stages = [], entrants = [], pointsLookup = {} }) {
-  if (!race?.id) throw new Error("race.id kræves");
-  if (!stages.length) throw new Error("ingen stage-profiler");
-  if (!entrants.length) throw new Error("ingen entrants");
+  if (!race?.id) throw new Error("race.id required");
+  if (!stages.length) throw new Error("no stage profiles");
+  if (!entrants.length) throw new Error("no entrants");
 
   const isStageRace = race.race_type === "stage_race";
   const stagesSorted = [...stages].sort((a, b) => (a.stage_number || 1) - (b.stage_number || 1));
@@ -485,8 +485,8 @@ export async function simulateRace({
   notifyDiscord = null,
   applyFatigue = applyRaceFatigue,
 }) {
-  if (!supabase?.from) throw new Error("supabase client kræves");
-  if (!race?.id || !race?.season_id) throw new Error("race {id, season_id} kræves");
+  if (!supabase?.from) throw new Error("supabase client required");
+  if (!race?.id || !race?.season_id) throw new Error("race {id, season_id} required");
 
   // #1187 · race_days_completed FØR afviklingen — checkpoint-udgangspunkt for
   // board-weekend-wiring nedenfor. Defensiv: manglende række → null (ingen
@@ -498,10 +498,10 @@ export async function simulateRace({
     .maybeSingle();
 
   const stages = await loadStageProfiles(supabase, race.id);
-  if (!stages.length) throw new Error(`Ingen race_stage_profiles for løb ${race.id} — kør backfill`);
+  if (!stages.length) throw new Error(`No race_stage_profiles for race ${race.id} — run backfill`);
 
   const entrants = await loadEntrantsForRace({ supabase, race, stages, persist: !dryRun });
-  if (!entrants.length) throw new Error(`Intet startfelt for løb ${race.id}`);
+  if (!entrants.length) throw new Error(`No start list for race ${race.id}`);
 
   const racePoints = await loadRacePoints(supabase, race.race_class);
   const pointsLookup = buildRacePointsLookup({ racePoints, raceType: race.race_type });
@@ -552,7 +552,7 @@ export async function simulateRace({
     try {
       await applyFatigue({ supabase, riderIds, profileType: stage.profile_type });
     } catch (err) {
-      console.error(`  ⚠️  race fatigue upsert fejlede (etape ${stage.stage_number}, ${stage.profile_type}): ${err.message}`);
+      console.error(`  ⚠️  race fatigue upsert failed (stage ${stage.stage_number}, ${stage.profile_type}): ${err.message}`);
     }
   }
 
@@ -628,9 +628,9 @@ export async function simulateStageByIndex({
   notifyDiscord = null,
   applyFatigue = applyRaceFatigue,
 }) {
-  if (!supabase?.from) throw new Error("supabase client kræves");
-  if (!race?.id || !race?.season_id) throw new Error("race {id, season_id} kræves");
-  if (!Number.isInteger(stageIndex) || stageIndex < 0) throw new Error("stageIndex skal være et ikke-negativt heltal");
+  if (!supabase?.from) throw new Error("supabase client required");
+  if (!race?.id || !race?.season_id) throw new Error("race {id, season_id} required");
+  if (!Number.isInteger(stageIndex) || stageIndex < 0) throw new Error("stageIndex must be a non-negative integer");
 
   // Checkpoint FØR afviklingen — board-weekend bruger previous-vs-new race_days.
   const { data: seasonBefore } = await supabase
@@ -640,9 +640,9 @@ export async function simulateStageByIndex({
     .maybeSingle();
 
   const stages = await loadStageProfiles(supabase, race.id);
-  if (!stages.length) throw new Error(`Ingen race_stage_profiles for løb ${race.id} — kør backfill`);
+  if (!stages.length) throw new Error(`No race_stage_profiles for race ${race.id} — run backfill`);
   if (stageIndex > stages.length - 1) {
-    throw new Error(`stageIndex ${stageIndex} uden for rækkevidde (løbet har ${stages.length} etaper)`);
+    throw new Error(`stageIndex ${stageIndex} out of range (race has ${stages.length} stages)`);
   }
 
   const stagesSorted = [...stages].sort((a, b) => (a.stage_number || 1) - (b.stage_number || 1));
@@ -667,7 +667,7 @@ export async function simulateStageByIndex({
   // må ikke gen-afvikles via denne sti — finalization er per definition allerede kørt.
   // Recovery-tilfældet ovenfor er det modsatte (status != completed), så de udelukker hinanden.
   if (!dryRun && race.status === "completed") {
-    throw new Error(`Løbet ${race.id} er allerede afviklet (status=completed) — gen-afvikling blokeret`);
+    throw new Error(`Race ${race.id} already simulated (status=completed) — re-simulation blocked`);
   }
 
   // Entries auto-fyldes KUN ved første etape (persist=false fra etape 2). I recovery
@@ -681,7 +681,7 @@ export async function simulateStageByIndex({
 
   if (!finalizationPending) {
     entrants = await loadEntrantsForRace({ supabase, race, stages, persist: persistEntries });
-    if (!entrants.length) throw new Error(`Intet startfelt for løb ${race.id}`);
+    if (!entrants.length) throw new Error(`No start list for race ${race.id}`);
 
     const racePoints = await loadRacePoints(supabase, race.race_class);
     const pointsLookup = buildRacePointsLookup({ racePoints, raceType: race.race_type });
@@ -718,7 +718,7 @@ export async function simulateStageByIndex({
       .eq("id", race.id)
       .eq("stages_completed", stageIndex)
       .select("id");
-    if (lockErr) throw new Error(`races stages_completed-lås: ${lockErr.message}`);
+    if (lockErr) throw new Error(`races stages_completed lock: ${lockErr.message}`);
     if (!locked || locked.length === 0) {
       // Konkurrerende run vandt (eller stages_completed er allerede forbi denne etape).
       // Ingen side-effekter er kørt → sikkert at afbryde uden dobbelt-anvendelse.
@@ -755,7 +755,7 @@ export async function simulateStageByIndex({
       try {
         await supabase.from("races").update({ stages_completed: stageIndex }).eq("id", race.id);
       } catch (rbErr) {
-        console.error(`  ⚠️  counter-rollback fejlede efter resultat-skriv-fejl (etape ${stageNumber}): ${rbErr.message}`);
+        console.error(`  ⚠️  counter rollback failed after result-write error (stage ${stageNumber}): ${rbErr.message}`);
       }
       throw err;
     }
@@ -765,7 +765,7 @@ export async function simulateStageByIndex({
     try {
       await applyFatigue({ supabase, riderIds: entrants.map((e) => e.rider_id), profileType: thisStage.profile_type });
     } catch (err) {
-      console.error(`  ⚠️  race fatigue upsert fejlede (etape ${stageNumber}, ${thisStage.profile_type}): ${err.message}`);
+      console.error(`  ⚠️  race fatigue upsert failed (stage ${stageNumber}, ${thisStage.profile_type}): ${err.message}`);
     }
 
     // ── Mellem-etape: INGEN finalization. status forbliver scheduled (binær enum). ──

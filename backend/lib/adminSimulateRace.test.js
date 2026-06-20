@@ -121,7 +121,7 @@ test("runAdminSimulateRace: completed-løb → 409", async () => {
   }
   assert.ok(err, "skal kaste");
   assert.equal(err.status, 409);
-  assert.ok(err.message.includes("allerede afviklet") || err.message.includes("completed"), `uventet besked: ${err.message}`);
+  assert.ok(err.message.includes("already simulated") || err.message.includes("completed"), `uventet besked: ${err.message}`);
 });
 
 // Test 5: manglende raceId → 400.
@@ -156,7 +156,7 @@ test("runAdminSimulateRace: delvise stage-profiler (1/3) → 409 Delvise, simula
   }
   assert.ok(err, "skal kaste ved dryRun=true med delvise profiler");
   assert.equal(err.status, 409, `forventet 409, fik ${err.status}: ${err.message}`);
-  assert.ok(err.message.includes("Delvise"), `forventet "Delvise" i besked, fik: ${err.message}`);
+  assert.ok(err.message.includes("Partial"), `forventet "Partial" i besked, fik: ${err.message}`);
   assert.equal(stubCalled, false, "simulateRace-stub må ikke kaldes ved delvise profiler");
 });
 
@@ -178,7 +178,7 @@ test("runAdminSimulateRace: nul stage-profiler (0/3) → 409 Delvise, simulateRa
   }
   assert.ok(err, "skal kaste");
   assert.equal(err.status, 409);
-  assert.ok(err.message.includes("Delvise"), `forventet "Delvise" i besked, fik: ${err.message}`);
+  assert.ok(err.message.includes("Partial"), `forventet "Partial" i besked, fik: ${err.message}`);
   assert.equal(stubCalled, false, "simulateRace-stub må ikke kaldes ved nul profiler");
 });
 
@@ -329,7 +329,7 @@ test("runAdminSimulateStage: delvise profiler (1/3) → 409 Delvise, stub ikke k
   } catch (e) { err = e; }
   assert.ok(err, "skal kaste");
   assert.equal(err.status, 409);
-  assert.ok(err.message.includes("Delvise"), `forventet "Delvise", fik: ${err.message}`);
+  assert.ok(err.message.includes("Partial"), `forventet "Partial", fik: ${err.message}`);
   assert.equal(stubCalled, false);
 });
 

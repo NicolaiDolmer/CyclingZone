@@ -174,7 +174,7 @@ test("endagsløb: kun gc(all) + team — ingen stage/dag-ledere", () => {
 });
 
 test("guards: kaster ved manglende stages/entrants/race.id", () => {
-  assert.throws(() => buildRaceResults({ race: STAGE_RACE, stages: [], entrants: ENTRANTS }), /stage-profiler/);
+  assert.throws(() => buildRaceResults({ race: STAGE_RACE, stages: [], entrants: ENTRANTS }), /stage profiles/);
   assert.throws(() => buildRaceResults({ race: STAGE_RACE, stages: STAGES_3, entrants: [] }), /entrants/);
   assert.throws(() => buildRaceResults({ race: {}, stages: STAGES_3, entrants: ENTRANTS }), /race\.id/);
 });

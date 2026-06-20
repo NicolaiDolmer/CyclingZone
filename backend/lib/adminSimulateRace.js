@@ -75,7 +75,7 @@ export async function runAdminSimulateRace({
   notifyDiscord = null,
   simulateRace = simulateRaceDefault,
 }) {
-  if (!raceId) throw httpError(400, "race_id påkrævet");
+  if (!raceId) throw httpError(400, "race_id required");
 
   const { data: race, error } = await supabase
     .from("races")
@@ -84,12 +84,12 @@ export async function runAdminSimulateRace({
     .maybeSingle();
 
   if (error) throw new Error(error.message);
-  if (!race) throw httpError(404, "Løb ikke fundet");
+  if (!race) throw httpError(404, "Race not found");
 
   if (race.status === "completed") {
     throw httpError(
       409,
-      "Løbet er allerede afviklet — sæt status tilbage via løbs-redigering hvis gen-afvikling er bevidst",
+      "Race already simulated — reset status via race editing if re-simulation is intentional",
     );
   }
 
@@ -101,7 +101,7 @@ export async function runAdminSimulateRace({
     .eq("race_id", race.id);
   const expectedStages = race.stages || 1;
   if ((profileCount ?? 0) < expectedStages) {
-    throw httpError(409, `Delvise stage-profiles (${profileCount ?? 0}/${expectedStages}) — kør backfillRaceStageProfiles før afvikling`);
+    throw httpError(409, `Partial stage profiles (${profileCount ?? 0}/${expectedStages}) — run backfillRaceStageProfiles before simulation`);
   }
 
   if (!dryRun) {
@@ -109,7 +109,7 @@ export async function runAdminSimulateRace({
     if (!enabled) {
       throw httpError(
         409,
-        "RACE_ENGINE_V2_ENABLED er OFF — ægte afvikling blokeret (preview er tilladt)",
+        "RACE_ENGINE_V2_ENABLED is OFF — real simulation blocked (preview is allowed)",
       );
     }
   }
@@ -140,7 +140,7 @@ export async function runAdminSimulateStage({
   notifyDiscord = null,
   simulateStageByIndex = simulateStageByIndexDefault,
 }) {
-  if (!raceId) throw httpError(400, "race_id påkrævet");
+  if (!raceId) throw httpError(400, "race_id required");
 
   const { data: race, error } = await supabase
     .from("races")
@@ -149,16 +149,16 @@ export async function runAdminSimulateStage({
     .maybeSingle();
 
   if (error) throw new Error(error.message);
-  if (!race) throw httpError(404, "Løb ikke fundet");
+  if (!race) throw httpError(404, "Race not found");
 
   if (race.status === "completed") {
-    throw httpError(409, "Løbet er allerede afviklet — alle etaper kørt");
+    throw httpError(409, "Race already simulated — all stages run");
   }
 
   const totalStages = race.stages || 1;
   const stageIndex = race.stages_completed || 0;
   if (stageIndex >= totalStages) {
-    throw httpError(409, `Alle ${totalStages} etaper er allerede afviklet (stages_completed=${race.stages_completed})`);
+    throw httpError(409, `All ${totalStages} stages already simulated (stages_completed=${race.stages_completed})`);
   }
 
   // Delvise profiler må ikke kunne afvikles — samme guard som runAdminSimulateRace.
@@ -167,13 +167,13 @@ export async function runAdminSimulateStage({
     .select("id", { count: "exact", head: true })
     .eq("race_id", race.id);
   if ((profileCount ?? 0) < totalStages) {
-    throw httpError(409, `Delvise stage-profiles (${profileCount ?? 0}/${totalStages}) — kør backfillRaceStageProfiles før afvikling`);
+    throw httpError(409, `Partial stage profiles (${profileCount ?? 0}/${totalStages}) — run backfillRaceStageProfiles before simulation`);
   }
 
   if (!dryRun) {
     const enabled = await isRaceEngineV2Enabled(supabase, { isBetaTester: true });
     if (!enabled) {
-      throw httpError(409, "RACE_ENGINE_V2_ENABLED er OFF — ægte afvikling blokeret (preview er tilladt)");
+      throw httpError(409, "RACE_ENGINE_V2_ENABLED is OFF — real simulation blocked (preview is allowed)");
     }
   }
 

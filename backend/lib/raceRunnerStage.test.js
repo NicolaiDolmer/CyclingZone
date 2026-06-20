@@ -312,7 +312,7 @@ test("FIX 3: status=completed på final-etape → kaster (gen-afvikling blokeret
   const supabase = cannedFor(completedRace);
   await assert.rejects(
     () => simulateStageByIndex({ supabase, race: completedRace, stageIndex: 2, ...NOOP_DEPS }),
-    /allerede afviklet/,
+    /already simulated/,
   );
   // Ingen side-effekter: ingen races-update, ingen applyRaceResults.
   assert.ok(!supabase.__writes.some((w) => w.table === "races" && w.op === "update"), "completed-løb må ikke skrive races");
@@ -323,7 +323,7 @@ test("FIX 3: status=completed på mellem-etape → kaster også", async () => {
   const supabase = cannedFor(completedRace);
   await assert.rejects(
     () => simulateStageByIndex({ supabase, race: completedRace, stageIndex: 1, ...NOOP_DEPS }),
-    /allerede afviklet/,
+    /already simulated/,
   );
 });
 
