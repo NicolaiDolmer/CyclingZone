@@ -20,10 +20,10 @@
 
 > **📊 Backlog-audit (11/6, fuld):** 345→299 åbne; priority:high 62→31 (ærlig blocker-liste); alle 345 klassificeret. **Ejer-handlinger: [`docs/audits/2026-06-11-ejer-dashboard.md`](audits/2026-06-11-ejer-dashboard.md)** (vigtigst: #1101-verify + #375-backup-bekræft + prod-checkliste ~15 min). Beslutningsrunde 11/6: 22 ejer-svar eksekveret — 6 closes (#375/#1277/#937/#942/#874/#34), #954/#940/#1235/#1237 op-prioriteret, Codex udfases (#1290), design-beslutninger logget på #109/#230/#311/#1207/#1276. Artifact: `.claude/audits/audit-2026-06-11.md`.
 
-## Standing context (launch-deadline 20. juni)
+## Standing context (forever-relaunch — pejlemærke før TdF 4/7, ikke dato-fikseret)
 
 - **Sæson 1→2 skifte UDFØRT + VERIFICERET ([#1155](https://github.com/NicolaiDolmer/CyclingZone/issues/1155)).** Alle gates holdt. Bestyrelsen åbnet.
-- **Relaunch-spor (20/6):** Epic #1136 progression — L1 scouting #1138 live, L2 træning teaser #1163 live. **20/6 = hard relaunch til frisk sæson 1** (epic #1105). **Launch-scope udvidet 11/6** (spec `2026-06-11-kernesystemer-design.md`): + daglig træning/form-spine, holdudtagelse/kaptajn/udbrud, akademi-MVP, kontrakt-data-seed.
+- **Relaunch-spor:** 18/6-relaunch UDFØRT (frisk sæson 1 LIVE, 22 hold; daglig træning/form, akademi-MVP, holdudtagelse alt live). Epic #1136 progression: L1 scouting #1138 + L2 træning teaser #1163 live. **Næste = forever-relaunch** (epic #1105; ét sidste reset → permanent, ikke dato-fikseret). 2 blockers: #1560 + #1558.
 - **Sikkerhed:** [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) SUPABASE_SERVICE_KEY-rotation åben.
 - **Skalering (ikke launch-blocker):** infra bærer 100 aktive managers; Supabase Pro købt 10/6 (#1181). Oprydning #1182 (Railway Postgres+Redis) efter launch. Perf-arkitektur-spec (13/6) merged → tracker #1375 (frontend-cache #1373, Realtime-invalidering #1374), alt post-launch.
 - **TdF launch-prep:** [#672](https://github.com/NicolaiDolmer/CyclingZone/issues/672) landing page · [#671](https://github.com/NicolaiDolmer/CyclingZone/issues/671) brand. _(Race Engine #676 = v2 LIVE #1428.)_

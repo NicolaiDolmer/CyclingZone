@@ -2,23 +2,24 @@
 
 > **SSOT for sekvensering/prioritering.** Etableret 2026-06-15 (stor strategisk re-plan, ejer-godkendt). Arbejdsudkast: `~/.claude/plans/brug-plan-mode-og-shimmering-forest.md`. Spil-motor-design = `docs/superpowers/specs/` + `plans/` (røres ikke — bruges ved bygning).
 > **Model:** Kontinuerlige, meningsfulde kvalitets-forbedringer — IKKE et datofikseret big-bang.
-> **To pejlemærker (ikke deadlines):** (1) Den rigtige open beta (frisk sæson) i gang hurtigst muligt. (2) Spillet reelt *startet* + store forbedringer + race engine i fuld dybde live **før TdF 4/7**.
+> **To pejlemærker (ikke deadlines):** (1) **Forever-relaunch** — ét sidste reset → permanent no-reset, klar til ægte nye spillere (frisk sæson 1 er allerede LIVE siden 18/6; forever = det permanente vindue, spec `specs/2026-06-19-forever-relaunch-readiness-design.md`). (2) Spillet reelt *startet* + store forbedringer + race engine i fuld dybde live **før TdF 4/7**.
 
-> **📊 Status-snapshot (2026-06-17, kode+prod-verificeret):** Race Engine v2 + abilities v2 + egen værdimodel **bygget**; `race_engine_v2_enabled` står på `beta` i prod (kun admin/beta-testere — IKKE `on` for alle endnu) · værdimodel prod-backfilled (PR #1434/#1435, 8994 ryttere, R² 0.959) · E1 værdi-gate merged (#1397). **Økonomi E2 + anti-inflation Fase 1 (#1438/#1442) ER i kode, deployet og migreret i prod** (`transfer_frozen`/`debt_breach_streak` findes på `teams`; `SPONSOR_INCOME_BASE=240k` er nu kun legacy-fallback — aktiv sponsor er division-skaleret {600/400/340k}, løn 0.067, upkeep {440/140/40k}). **Reelle resterende launch-blockers:** relaunch-stiens manglende undo/backup · orchestrator grøn ejer-verify · #1101-cutover-ack · #677. Race-motorens *dybde* (fuld fysiologi #1021) er det største world-class-gap, ikke en relaunch-blocker.
+> **📊 Status-snapshot (2026-06-20, kode+prod-verificeret):** 18/6-relaunch UDFØRT — frisk uafhængig sæson 1 LIVE (22 hold, flags `race_engine_v2`/`daily_training`/`academy` = `on` for ALLE). E2-økonomi + anti-inflation Fase 1 (#1438/#1442) landet+deployet+migreret · værdimodel prod-backfilled (#1434/#1435, R² 0.959) · #1101-cutover kvitteret · backup/PITR opfyldt (off-site, `db:verify-restore` grøn). Natbølge 19→20/6: 15 PR'er + 9 audits → **fundamentet verificeret solidt** (race-engine/økonomi/progression/board = 0 bugs; concurrency = 1 reel race). **Næste milepæl = forever-relaunch.** **2 launch-blockers: #1560 (nye hold får tom trup) + #1558 (akademi-race penge-tab).** Race-motorens fulde fysiologi-dybde (#1021) er det største world-class-gap, ikke en forever-blocker.
 
-## Horisont — launch-kritisk vs world-class (adskilt)
+## Horisont — forever-relaunch-blockers vs world-class (adskilt)
 
-**A. Launch-kritisk (nu → blød relaunch-checkpoint; 20/6 er IKKE hård deadline — fyrer kun når gates er grønne):**
-1. **E2-økonomi + anti-inflation Fase 1 (`strict_fair_v1`) — ✅ LANDET (ikke længere blocker).** Verificeret mod kode+prod 2026-06-17: division-skaleret sponsor {600/400/340k}, løn ×0.067, upkeep {440/140/40k}, FINAL sponsor-clamp, hård gældsbund #97 — alt i `economyConstants.js` på main + migration anvendt i prod (`transfer_frozen`/`debt_breach_streak` findes). PR #1438/#1442 merged+deployet. **Fase 2** (forhandlbare sponsorer) + **Fase 3** (modbud) = POST-relaunch.
-2. **Relaunch-stiens sikkerhed: backup/undo (HÅRD pre-req).** Korrektion 2026-06-17: server-gate FINDES (`assessTransitionReadiness`, #1346, merged 12/6) — men dækker KUN `POST /admin/season-transition`. Relaunch-orchestrator + cron + `executeSeasonTransition.js` kalder `transitionToNextSeason` **direkte og er bevidst ugatede**, og der er **ingen undo** for `runFullBetaReset`'s hårde DELETEs. Prod kører en levende sæson 2 → ét fejlklik sletter den permanent. **Verificerbar DB-backup/PITR SKAL på plads før prod-apply.** Detaljer: `docs/superpowers/specs/2026-06-17-relaunch-hybrid-engine-1307-design.md`.
-3. **Relaunch-orchestrator grøn ejer-verify** (#1103/#1105) — dev-færdig + merged, afventer click-through mod preview-DB før prod.
-4. **Staged akademi/daglig-træning-aktivering** (#1308/#1163, epic #1136) — kode-komplet, flag OFF; flip ON med tæt monitorering (aldrig kørt live på fuld population).
-5. **Baroudeur værdi-anker + værdimodel-regression-test** — én af de 8 typer er mispriset (mangler anker); billig fix der beskytter den friske værdimodel.
-6. **Ejer/comms/bugs:** PCM-dump IP-beslutning (#1276, ejer) · relaunch-comms (#1278) · lån/gæld-bugs (#45/#31/#97, E3) · skjul Hall of Fame/manager-XP (#1139, blød).
+**A. NOW — forever-relaunch-blockers (Claude-kodearbejde):**
+1. **#1560 — Nye hold får INGEN starttrup (tom-trup dead-end).** P1, mest fundamentale. Trup-allokering er bagt udelukkende ind i relaunch-orchestratoren (`runStarterSquadAllocation`), aldrig i den normale team-create-flow (`upsertOwnTeamProfile`) → næste nye signup efter relaunch sidder fast. Fix: udtræk per-hold-allokering til delt funktion kaldt fra team-create-hooket; genbrug svag pulje `[50,57]` (#1487-mål) + akademi-kuld. **Balance-følsom → simulér-før-ship.** Kræver ejer-beslutning (start-pulje-model + budget-kobling).
+2. **WS1 race-automatisering** (`plans/2026-06-19-ws1-race-automation.md`). Fase 1 (auto-prize) + Fase 2 (season-cron) implementerbare straks efter ejer Fase-0-beslutning; Fase 3 (race-scheduler) gated af schema-beslutning + migration. Drift: spillet kan ikke slippes til ægte spillere uden automatisk løb-afvikling — skal bevises på beta.
+3. **#1558 — Akademi-cap-race (penge-tab).** Severity medium (latent; prod: ingen hold >8 akademiryttere), men eneste sted en bruger kan tabe penge; samtidighed stiger med nye spillere. Fix: atomær RPC under `pg_advisory_xact_lock(team_id)` over hele count→balance→rider-update→debit (idempotency alene lukker den ikke). Migration → **ejeren merger selv**.
+4. **WS2-backend (PCM-sletning) + WS3 (egne løbsnavne).** UI-del gjort (#1532/#1545). Forever-gate §6.2.
 
-**B. World-class-vision (efter launch-gate; vægt: simulerings-dybde > polish/føl > indholds-bredde):**
-- **Next (mod TdF 4/7):** (a) **fysiologi #1021 FØRST** — persistent form/træthed/recovery (erstat de neutrale 0-stubs; lukker "kondition afgør løb"-løftet) → (b) **taktik-dybde** (udbrud-timing, kaptajn-beskyttelse, lead-out-tog, hold-roller) → (c) **resultat-/spectation-UI** (#959 V2 + staged stage-by-stage reveal — gør den færdige motor følbar) → (d) **first-run onboarding-arc** (første auktion/transfer/race-milestones) → (e) **design-system-rollout HELT i mål (Plan 4) + frontend test/visual-regression-matrix** på core-flows.
-- **Later (post-TdF, bredde):** mobil-first nav (bottom-nav, tabel-reflow) · post-sæson-recap + let auto-narrativ (#1311) · roster-vedligeholdelses-pipeline (verden føles endelig efter måneder) · **let multiplayer-liveness** (deadline-day-kompression, "N byder nu", aktivitets-feed — **bevidst nedprioriteret** jf. ejer-vægtning).
+**A′. NOW — ejer-gates (parallelt spor, ikke Claude-kode):** Vercel-reset/Pro → frontend-deploy (v5.67/v5.68) + prod-spotcheck · WS1 Fase-0 A/B/C · granit-frys §7 (godkend kalibrerede tal som endelige) · leaked-password-protection #929 · spiller-comms #1278 · WS4 result_type/#1499 + START_DATE-afklaring · design A/B/C · #1276 PCM-IP · frisk backup-spotcheck umiddelbart før vinduet.
+
+**B. NEXT — world-class (efter forever; vægt: simulerings-dybde > polish/føl > indholds-bredde):**
+- (a) **fysiologi #1021 FØRST** — persistent form/træthed/recovery (erstat de neutrale 0-stubs; lukker "kondition afgør løb"-løftet) → (b) **taktik-dybde** (udbrud-timing, kaptajn-beskyttelse, lead-out-tog, hold-roller) → (c) **resultat-/spectation-UI** (#959 V2 + staged stage-by-stage reveal) → (d) **first-run onboarding-arc** → (e) **design-system-rollout HELT i mål (Plan 4) + visual-regression-matrix** på core-flows.
+
+**C. LATER (post-TdF, bredde):** mobil-first nav (bottom-nav, tabel-reflow) · post-sæson-recap + let auto-narrativ (#1311) · roster-vedligeholdelses-pipeline · **let multiplayer-liveness** (bevidst nedprioriteret) · økonomi #1441 Fase 2-3 (forhandlbare sponsorer + modbud) · perf #1373/#1374/#1375.
 
 Detaljeret tematisk nedbrydning (hvordan, ikke hvornår): Track 1-6 nedenfor.
 
@@ -54,7 +55,7 @@ Plan 4 UI-foundation-rollout (`docs/superpowers/plans/2026-06-15-ui-foundation-p
 
 ## Track 3 — Central must (forudsætning)
 
-**Økonomi-korrekthed E2 = HÅRD launch-gate** (sponsor-division-scaling + løn ×0.67 mangler i kode; gældsloft på plads — detalje i Horisont A.1) + lån/gæld-bugs #45/#31/#97 (E3) · **season-transition/orchestrator server-gate + undo** (Horisont A.2) · legal #1276 · deploy-stabilitet #906 · security #929 · **verificerbare DB-backups** · #691 key-rotation · #563 secret-decommission.
+**Økonomi-korrekthed E2 + anti-inflation Fase 1 = ✅ LANDET+deployet+migreret** (division-skaleret sponsor, løn ×0.067, hård gældsbund — `economyConstants.js` + prod-migration; #1438/#1442; økonomi-audit 20/6 = 0 beregnings-bugs). **DB-backup/PITR ✅ opfyldt 18/6.** Rester (lav-prio / ejer-gate): lån/gæld-bugs #45/#31/#97 (E3) · legal #1276 · deploy-stabilitet #906 · security #929 (leaked-password — ejer-gate, før forever) · #691 key-rotation · #563 secret-decommission.
 
 ## Track 4 — Måling (lean — instrumentér MENS du bygger)
 
@@ -79,13 +80,13 @@ Plan 4 UI-foundation-rollout (`docs/superpowers/plans/2026-06-15-ui-foundation-p
 - **Fredag = FEATURE FRIDAY:** ship én poleret søjle-forbedring mod "fantastisk" + annoncér. (Marketing-prosa: ejeren skriver selv; Claude leverer struktur + udkast.)
 - **Løbende under TdF:** auto OG-etapekort + stage-posts.
 
-## Eksekvering — første skridt
+## Eksekvering — næste skridt (mod forever-relaunch)
 
-1. **Kollaborativ issue-oprydning** (github-housekeeping, gruppe for gruppe, INGEN autonom sletning): batch-luk verificerede done (#1347-1351, #1355, #1338, #1185, #1166, #1174, #1180, #1187, #1275); gennemgå dubletter/stale/mangler-done + grupper (monetisering, board-UX, bugs) med ejer. Luk #873 won't-do (findbar).
-2. **Kick-off parallelt:** Track 3 + Track 1 #1 (race engine fuld dybde + stats) + Track 6 (højeste-payback loops).
-3. **Instrumentér mens vi bygger** (Track 4 events).
-4. **Etablér uge-rytmen straks** (Man/Ons/Fre).
-5. **Relaunch (rigtig open beta)** fyrer når launch-gaten er grøn (Horisont A: E2 + orchestrator-verify + præsentable søjler). **Light-motoren (evner afgør) er nok til relaunch; fuld fysiologi-dybde er Next (post-relaunch, mod TdF)** — ikke en relaunch-blocker.
+1. **Luk de 2 launch-blockers:** #1560 (nye-hold-trup — ejer-beslutning → simulér-før-ship → PR) + #1558 (akademi-race atomær RPC — migration ejeren merger).
+2. **WS1 race-automatisering:** ejer Fase-0 A/B/C → Fase 1-2 implementér → bevis på beta (forever-gate §6.1).
+3. **Ejer-gates parallelt** (Horisont A′): Vercel-reset+spotcheck · granit-frys §7 · leaked-password #929 · comms #1278.
+4. **Forever-relaunch-vindue:** når §6-gaten er grøn (blockers lukket + automatisering bevist på beta + granit-frys godkendt) → ét sidste reset → permanent. Frisk verificeret backup umiddelbart før.
+5. **Derefter:** world-class-sporet (Horisont B: fysiologi #1021 først), Feature-Friday-rytme (Man/Ons/Fre). Instrumentér mens vi bygger (Track 4).
 
 ## Plan-doc-konsolidering (INTET slettes)
 
