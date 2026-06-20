@@ -22,6 +22,10 @@ Tre korrektheds-audits af de vigtigste systemer, hver med en adversariel verify-
 
 **Vigtigst:** #1558 er den eneste launch-blocker i hele audit-mængden. Idempotency-key alene lukker den ikke (to krydser, forskellige keys) — fix kræver atomær RPC. Detaljer + fix-retning på issuet.
 
+## Onboarding / nye-spiller-rejse (forever-relaunch retention) — fandt den STØRSTE blocker
+
+En 8. audit ([onboarding-journey](2026-06-20-onboarding-journey.md)) af den nye spillers første-oplevelse afslørede **#1560 — det vigtigste fund i hele natbølgen:** hold oprettet EFTER relaunch får INGEN starttrup (`PUT /api/teams/my` allokerer 0 ryttere; `runStarterSquadAllocation` kører kun ved relaunch). Næste nye signup sidder fast i en tom-trup-købs-cirkel. Verificeret mod kode + prod (ikke aktivt live — alle 22 hold har trup fra relaunch — men hård forever-relaunch-blocker, da løbende nye signups er hele præmissen). Railway-deploybar, men balance-følsom (#1487) → ejer + simulér-før-ship. Øvrige onboarding-fund (R2-R4 signup-copy/dismiss/narrativ) er mest frontend → venter Vercel-reset.
+
 ## Merged PR'er
 
 **Frontend (deployer ved Vercel-reset — se §Vercel):**
