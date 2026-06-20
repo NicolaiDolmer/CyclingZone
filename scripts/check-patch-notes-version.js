@@ -4,7 +4,7 @@ const { execFileSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 
-const PATCH_FILE = "frontend/src/pages/PatchNotesPage.jsx";
+const PATCH_FILE = "frontend/src/data/patchNotes.js";
 const NOW_FILE = "docs/NOW.md";
 
 function run(command, args, options = {}) {
