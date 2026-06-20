@@ -59,13 +59,47 @@ function buildRidersTourSteps(t) {
 // Stat-kolonner = de 15 CZ-evner (delt config lib/abilities.js, importeret som STATS).
 // #1529: erstattede de 14 PCM stat_*-kolonner — visningen viser nu evner.
 
-function SortTh({ children, sortKey, sort, sortDir, onSort, className = "" }) {
+function SortTh({ children, sortKey, sort, sortDir, onSort, className = "", title }) {
   const active = sort === sortKey;
   return (
-    <th onClick={() => onSort(sortKey)}
+    <th onClick={() => onSort(sortKey)} title={title}
       className={`cursor-pointer select-none transition-colors ${active ? "text-cz-accent-t/80" : "text-cz-3 hover:text-cz-2"} ${className}`}>
       {children}{active && <span className="ms-0.5 text-[10px]">{sortDir === "desc" ? "↓" : "↑"}</span>}
     </th>
+  );
+}
+
+// #1592: nye spillere kan ikke afkode de 15 evne-koder (CLM/TT/FLT/…) i kolonne-
+// overskrifterne, og det blokerer det første rytter-valg. Hver stat-header får en
+// `title`-tooltip med det fulde navn, og denne kollapsbare legende giver en altid-
+// tilgængelig oversigt over alle koder → fulde navne. Begge genbruger samme kilde
+// (rider:racePreview.derived.*), så tooltip og legende aldrig kan drifte fra hinanden.
+function AbilityLegend({ t, tRider }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mb-3">
+      <button
+        type="button"
+        onClick={() => setOpen(o => !o)}
+        aria-expanded={open}
+        className="inline-flex items-center gap-1.5 text-cz-3 hover:text-cz-2 text-xs transition-colors"
+      >
+        <span className="font-mono text-[10px] border border-cz-border rounded px-1" aria-hidden="true">?</span>
+        {t("abilityLegend.toggle")}
+        <span className="text-[9px]" aria-hidden="true">{open ? "▲" : "▼"}</span>
+      </button>
+      {open && (
+        <dl className="mt-2 p-3 bg-cz-subtle border border-cz-border rounded-cz max-w-3xl
+          grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1.5">
+          {STATS.map(({ key, label }) => (
+            <div key={key} className="flex items-baseline gap-2 text-xs min-w-0">
+              <dt className="font-mono text-[10px] text-cz-accent-t/80 w-9 flex-shrink-0">{label}</dt>
+              <dd className="text-cz-2 truncate">{tRider(`racePreview.derived.${key}`)}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+    </div>
   );
 }
 
@@ -182,6 +216,7 @@ function RiderRow({ rider, statCols, onSelect, watchlist, onToggleWatchlist, isI
 export default function RidersPage() {
   const { t } = useTranslation("riders");
   const { t: tCommon } = useTranslation("common");
+  const { t: tRider } = useTranslation("rider"); // #1592: fulde evne-navne til tooltips + legende
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [riders, setRiders] = useState([]);
@@ -376,6 +411,9 @@ export default function RidersPage() {
         <RiderFilters filters={filters} onChange={setFilter} onReset={onReset} showTeamFilter={false} nationalities={nationalities} />
       </div>
 
+      {/* #1592: evne-kode-legende — afkoder de 15 kolonne-koder for nye spillere. */}
+      <AbilityLegend t={t} tRider={tRider} />
+
       {loading ? (
         <div className="flex justify-center py-16">
           <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
@@ -422,6 +460,7 @@ export default function RidersPage() {
                       visningen (doctrine #1138). */}
                   {visibleStatCols.map(({ key, label }) => (
                     <SortTh key={key} sortKey={key} sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
+                      title={tRider(`racePreview.derived.${key}`)}
                       className="px-1.5 py-3 text-center font-medium w-14">{label}</SortTh>
                   ))}
                 </tr>

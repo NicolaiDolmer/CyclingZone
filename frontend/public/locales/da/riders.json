@@ -17,6 +17,9 @@
     "teamFree": "Fri",
     "pendingTransfer": "Holdskifte på vej: skifter til {team}"
   },
+  "abilityLegend": {
+    "toggle": "Hvad betyder koderne?"
+  },
   "mobileSort": {
     "label": "Sortér efter",
     "ascAria": "Sorterer stigende, tryk for faldende",

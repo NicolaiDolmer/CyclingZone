@@ -17,6 +17,9 @@
     "teamFree": "Free",
     "pendingTransfer": "Transfer pending: moving to {team}"
   },
+  "abilityLegend": {
+    "toggle": "What do the codes mean?"
+  },
   "mobileSort": {
     "label": "Sort by",
     "ascAria": "Sorting ascending, tap for descending",
