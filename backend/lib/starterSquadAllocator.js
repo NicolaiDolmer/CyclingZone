@@ -48,6 +48,26 @@ export function computeAge(birthdate, referenceYear) {
   return referenceYear - year;
 }
 
+// Deterministisk 32-bit hash af en streng (FNV-1a). Bruges til at udlede et
+// PER-HOLD seed for single-team-allokeringen, så to nye hold IKKE får identiske
+// trupper, men hvert hold stadig er reproducerbart (samme teamId+seed → samme
+// ryttere). team_id er en UUID → bredt hash-domæne.
+export function hashStringToSeed(str) {
+  let h = 0x811c9dc5;
+  const s = String(str ?? "");
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return h >>> 0;
+}
+
+// Per-hold seed: basis-seed XOR hash(teamId), holdt i 32-bit. Determinisk +
+// hold-unik → varierede men reproducerbare start-trupper på tværs af nye hold.
+export function deriveTeamSeed(baseSeed, teamId) {
+  return ((baseSeed >>> 0) ^ hashStringToSeed(teamId)) >>> 0;
+}
+
 function seededShuffle(arr, rng) {
   const a = [...arr];
   for (let i = a.length - 1; i > 0; i--) {
@@ -148,6 +168,113 @@ export function buildWeakStarterPool({
   return toInsertPayload(clamped);
 }
 
+// Navne-unikhed mod ALLE eksisterende ryttere (den svage pulje genereres separat
+// fra markeds-pyramiden → må ikke kollidere på navn, jf. PCM-import-fælden i #669).
+async function fetchExistingFoldedNames(supabase) {
+  const existing = await fetchAllRows(() =>
+    supabase.from("riders").select("firstname, lastname").order("id"));
+  return new Set(existing.map((r) => foldNameNordic(`${r.firstname} ${r.lastname}`)));
+}
+
+// DELT KERNE (relaunch + single-team): indsæt en svag pulje, kør hele derive-kæden
+// (data-hale-garanti: physiology→abilities→type→base_value) og læs base_value +
+// demografi tilbage som allokerings-pulje. Begge call-sites MÅ bruge denne, så
+// start-truppernes balance ikke kan drifte mellem batch- og single-varianten.
+async function insertDeriveAndReadPool(supabase, poolPayload, { referenceYear, derive }) {
+  // 1) Indsæt svag pulje, fang DB-genererede id'er.
+  const insertedIds = [];
+  for (let i = 0; i < poolPayload.length; i += INSERT_BATCH) {
+    const batch = poolPayload.slice(i, i + INSERT_BATCH);
+    const { data, error } = await supabase.from("riders").insert(batch).select("id");
+    if (error) throw new Error(`weak-pool insert ved ${i}: ${error.message}`);
+    insertedIds.push(...(data || []).map((r) => r.id));
+  }
+
+  // 2) Data-hale-garanti: physiology→abilities→type→base_value for de nye ryttere.
+  await derive(supabase, insertedIds, { dryRun: false });
+
+  // 3) Læs base_value (+ alder/potentiale) tilbage → allokerings-pulje.
+  const rows = await fetchAllRows(() =>
+    supabase.from("riders").select("id, birthdate, potentiale, base_value").in("id", insertedIds).order("id"));
+  return rows.map((r) => ({
+    id: r.id,
+    age: computeAge(r.birthdate, referenceYear),
+    potentiale: r.potentiale,
+    base_value: r.base_value,
+  }));
+}
+
+// DELT KERNE: skriv team_id på de allokerede ryttere (concurrency-bounded).
+async function writeTeamAssignments(supabase, pairs) {
+  let assigned = 0;
+  for (let i = 0; i < pairs.length; i += WRITE_CONCURRENCY) {
+    const batch = pairs.slice(i, i + WRITE_CONCURRENCY);
+    await Promise.all(batch.map(({ id, team_id }) =>
+      supabase.from("riders").update({ team_id }).eq("id", id).then(({ error }) => {
+        if (error) throw new Error(`assign ${id}: ${error.message}`);
+      })));
+    assigned += batch.length;
+  }
+  return assigned;
+}
+
+// Antal eksisterende ryttere på et hold (idempotens-guard for single-team-bootstrap).
+async function countTeamRiders(supabase, teamId) {
+  const rows = await fetchAllRows(() =>
+    supabase.from("riders").select("id").eq("team_id", teamId).order("id"));
+  return rows.length;
+}
+
+// #1560 — SINGLE-TEAM-allokering: et NYT hold (oprettet efter relaunch via den
+// normale signup-flow) får automatisk en spilbar start-trup fra SAMME svage pulje-
+// mekanik (#1487) som relaunch-holdene fik. Synkron ved signup → holdet er aldrig
+// tomt før responsen. Deler kerne-generering + insert/derive/write med
+// runStarterSquadAllocation, så de to varianter ikke kan drifte balance-mæssigt.
+//
+//   • Per-hold seed (deriveTeamSeed) → varierede men reproducerbare trupper.
+//   • Idempotens-guard: har holdet ≥1 rytter, gør INTET (beskytter mod dobbelt-
+//     bootstrap ved samtidige/gentagne signup-kald — samme race-mønster som
+//     team-create i teamProfileEngine.js).
+export async function allocateStarterSquadForTeam(supabase, teamId, {
+  seed = LAUNCH_POPULATION.seed,
+  referenceYear = LAUNCH_POPULATION.referenceYear,
+  generate = generateFictionalRiders,
+  derive = deriveForRiderIds,
+} = {}) {
+  if (!supabase?.from) throw new Error("Supabase client required");
+  if (!teamId) throw new Error("teamId required");
+
+  // Idempotens: allokér aldrig dobbelt. Et samtidigt/gentaget bootstrap-kald
+  // (eller et hold der allerede fik trup ved relaunch) skal være et no-op.
+  const existingRiders = await countTeamRiders(supabase, teamId);
+  if (existingRiders > 0) {
+    return { teamId, skipped: "already-has-riders", existingRiders, assigned: 0 };
+  }
+
+  const count = STARTER_SQUAD.SQUAD_SIZE;
+  const existingFoldedNames = await fetchExistingFoldedNames(supabase);
+
+  // Per-hold seed: basis-offset (+1487, samme som relaunch-puljen) XOR hash(teamId)
+  // → hvert nyt hold får sin egen reproducerbare, varierede 8-rytter-pulje.
+  const teamSeed = deriveTeamSeed((seed + 1487) >>> 0, teamId);
+  const poolPayload = buildWeakStarterPool({
+    count,
+    seed: teamSeed,
+    referenceYear,
+    existingFoldedNames,
+    generate,
+  });
+
+  const pool = await insertDeriveAndReadPool(supabase, poolPayload, { referenceYear, derive });
+
+  // Allokér hele puljen til det ene hold (starCutoffFraction 0 — alt er svagt).
+  const { assignments, stats } = allocateStarterSquads(pool, [teamId], { seed: teamSeed, starCutoffFraction: 0 });
+  const pairs = (assignments[teamId] || []).map((id) => ({ id, team_id: teamId }));
+  const assigned = await writeTeamAssignments(supabase, pairs);
+
+  return { teamId, poolSize: pool.length, assigned, stats };
+}
+
 // DB-wrapper (#1487 approach B): generér en dedikeret svag pulje (N×SQUAD_SIZE),
 // indsæt den, kør hele derive-kæden (data-hale-garanti: physiology→abilities→type→
 // base_value), allokér til holdene og skriv team_id. Markeds-pyramiden (de 800)
@@ -172,11 +299,7 @@ export async function runStarterSquadAllocation(supabase, {
   const teamIds = teams.map((t) => t.id).filter(Boolean);
   const count = teamIds.length * STARTER_SQUAD.SQUAD_SIZE;
 
-  // Navne-unikhed mod ALLE eksisterende ryttere (den svage pulje genereres separat
-  // fra markeds-pyramiden → må ikke kollidere på navn, jf. PCM-import-fælden i #669).
-  const existing = await fetchAllRows(() =>
-    supabase.from("riders").select("firstname, lastname").order("id"));
-  const existingFoldedNames = new Set(existing.map((r) => foldNameNordic(`${r.firstname} ${r.lastname}`)));
+  const existingFoldedNames = await fetchExistingFoldedNames(supabase);
 
   // Eget seed-offset så puljen ikke spejler markeds-populationens første N ryttere.
   const poolPayload = buildWeakStarterPool({
@@ -191,42 +314,15 @@ export async function runStarterSquadAllocation(supabase, {
     return { dryRun: true, teams: teamIds.length, poolSize: count, assigned: 0, toAssign: count };
   }
 
-  // 1) Indsæt svag pulje, fang DB-genererede id'er.
-  const insertedIds = [];
-  for (let i = 0; i < poolPayload.length; i += INSERT_BATCH) {
-    const batch = poolPayload.slice(i, i + INSERT_BATCH);
-    const { data, error } = await supabase.from("riders").insert(batch).select("id");
-    if (error) throw new Error(`weak-pool insert ved ${i}: ${error.message}`);
-    insertedIds.push(...(data || []).map((r) => r.id));
-  }
+  // Delt kerne: insert → derive (data-hale) → læs allokerings-pulje tilbage.
+  const pool = await insertDeriveAndReadPool(supabase, poolPayload, { referenceYear, derive: d.derive });
 
-  // 2) Data-hale-garanti: physiology→abilities→type→base_value for de nye ryttere.
-  await d.derive(supabase, insertedIds, { dryRun: false });
-
-  // 3) Læs base_value (+ alder/potentiale) tilbage → allokerings-pulje.
-  const rows = await fetchAllRows(() =>
-    supabase.from("riders").select("id, birthdate, potentiale, base_value").in("id", insertedIds).order("id"));
-  const pool = rows.map((r) => ({
-    id: r.id,
-    age: computeAge(r.birthdate, referenceYear),
-    potentiale: r.potentiale,
-    base_value: r.base_value,
-  }));
-
-  // 4) Allokér (starCutoffFraction 0 — hele puljen er svag, ingen stjerner).
+  // Allokér (starCutoffFraction 0 — hele puljen er svag, ingen stjerner).
   const { assignments, leftToMarket, stats } = allocateStarterSquads(pool, teamIds, { seed, starCutoffFraction: 0 });
   const pairs = Object.entries(assignments).flatMap(([teamId, ids]) =>
     ids.map((id) => ({ id, team_id: teamId })));
 
-  // 5) Skriv team_id.
-  let assigned = 0;
-  for (let i = 0; i < pairs.length; i += WRITE_CONCURRENCY) {
-    const batch = pairs.slice(i, i + WRITE_CONCURRENCY);
-    await Promise.all(batch.map(({ id, team_id }) =>
-      supabase.from("riders").update({ team_id }).eq("id", id).then(({ error }) => {
-        if (error) throw new Error(`assign ${id}: ${error.message}`);
-      })));
-    assigned += batch.length;
-  }
+  // Skriv team_id (delt kerne).
+  const assigned = await writeTeamAssignments(supabase, pairs);
   return { dryRun: false, teams: teamIds.length, poolSize: pool.length, assigned, leftToMarket: leftToMarket.length, stats };
 }
