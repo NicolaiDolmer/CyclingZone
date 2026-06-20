@@ -59,6 +59,16 @@ const SECTION_DEFS = [
     ],
   },
   {
+    key: "contracts",
+    icon: "▤",
+    blocks: [
+      { id: "whatContract", kind: "text" },
+      { id: "frozenSalary", kind: "text" },
+      { id: "contractOnTrade", kind: "text" },
+      { id: "freeAgents", kind: "text" },
+    ],
+  },
+  {
     key: "managers",
     icon: "👤",
     blocks: [
@@ -157,6 +167,34 @@ const SECTION_DEFS = [
       { id: "trainingFocus", kind: "text" },
       { id: "scouting", kind: "text" },
       { id: "u25u23", kind: "text" },
+    ],
+  },
+  {
+    key: "dailytraining",
+    icon: "▲",
+    blocks: [
+      { id: "whatDailyTraining", kind: "text" },
+      { id: "programs", kind: "steps" },
+      { id: "trainToday", kind: "text" },
+      { id: "formFatigue", kind: "text" },
+      { id: "injuryRisk", kind: "text" },
+      { id: "progressBars", kind: "text" },
+      { id: "longTermGrowth", kind: "text" },
+      { id: "readingReport", kind: "text" },
+    ],
+  },
+  {
+    key: "academy",
+    icon: "△",
+    blocks: [
+      { id: "whatAcademy", kind: "text" },
+      { id: "intakeCohort", kind: "text" },
+      { id: "signingProspects", kind: "steps" },
+      { id: "academySize", kind: "text" },
+      { id: "dailyTrainingBoost", kind: "text" },
+      { id: "youthAuctions", kind: "text" },
+      { id: "upkeepCost", kind: "text" },
+      { id: "graduation", kind: "text" },
     ],
   },
   {
