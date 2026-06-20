@@ -8,14 +8,15 @@ import LeaderBadge from "../components/LeaderBadge";
 import { formatNumber } from "../lib/intl";
 import { countTeamPodiums } from "../lib/standingsPodiums";
 import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch";
-import { Card, EmptyState, Spinner } from "../components/ui";
+import { Card, EmptyState, Spinner, PodiumIcon } from "../components/ui";
 
-// Division-farver via design-tokens (theme-agnostiske chart-vars + brand-guld),
-// så ranglistens kategori-accent matcher resten af UI'et: div 1 = guld (--accent),
-// div 2 = blå (--cz-chart-1), div 3 = violet (--cz-chart-2). Vi gemmer selve
-// CSS-var-navnet og bygger rgb()-strenge med alpha via divColor() — så vi undgår
-// hex-alpha-konkatenering (#rrggbbNN) og holder farverne token-drevne.
-const DIV_VARS = { 1: "--accent", 2: "--cz-chart-1", 3: "--cz-chart-2" };
+// Division-markør holdt inden for guld+navy-systemet (ingen fremmede hues):
+// div 1 = fuld guld (--accent), div 2 = dyb guld (--accent-t), div 3 = neutral
+// (--div-3, tema-bevidst channel-token i index.css). Vi gemmer selve CSS-var-
+// navnet og bygger rgb()-strenge med alpha via divColor() — så vi undgår hex-
+// alpha-konkatenering (#rrggbbNN) og holder farverne token-drevne.
+// (#671 anti-drift — erstatter chart-1/chart-2 blaa/violet division-kodning.)
+const DIV_VARS = { 1: "--accent", 2: "--accent-t", 3: "--div-3" };
 const divColor = (div, alpha = 1) => {
   const v = DIV_VARS[div] || DIV_VARS[1];
   return alpha >= 1 ? `rgb(var(${v}))` : `rgb(var(${v}) / ${alpha})`;
@@ -198,7 +199,7 @@ export default function StandingsPage() {
 
       {divStandings.length === 0 ? (
         <EmptyState
-          icon={<span aria-hidden="true" className="text-4xl">◉</span>}
+          icon={<PodiumIcon className="w-8 h-8 text-cz-3" aria-hidden="true" />}
           title={t("noData", { n: divTab })}
         />
       ) : (

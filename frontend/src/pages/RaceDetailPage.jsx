@@ -7,6 +7,7 @@ import TeamLink from "../components/TeamLink";
 import RaceSelectionPanel from "../components/race/RaceSelectionPanel.jsx";
 import StageScheduleCard from "../components/race/StageScheduleCard.jsx";
 import { Flag } from "../components/Flag";
+import { FlagIcon } from "../components/ui";
 import { formatNumber } from "../lib/intl";
 import { fetchAllRows } from "../lib/supabasePagination";
 import { logEvent } from "../lib/logEvent";
@@ -38,11 +39,13 @@ const CLASSIFICATIONS = [
 
 // Daglige trøjebærere — vist som badges på hver etape-fane.
 // Label kommer fra t(`detail.jersey.${dayType}`).
+// Trøjefarver kommer fra navngivne CSS-tokens i index.css (--jersey-*), så
+// callsiten ikke baerer raa hex (#671 anti-drift). Ægte cykel-jersey-hues.
 const JERSEYS = [
-  { dayType: "leader",       bg: "#e8c547", fg: "#1a1a1a" },
-  { dayType: "points_day",   bg: "#22c55e", fg: "#052e16" },
-  { dayType: "mountain_day", bg: "#ef4444", fg: "#ffffff" },
-  { dayType: "young_day",    bg: "#f1f5f9", fg: "#1a1a1a" },
+  { dayType: "leader",       bg: "rgb(var(--jersey-leader-bg))",   fg: "rgb(var(--jersey-leader-fg))" },
+  { dayType: "points_day",   bg: "rgb(var(--jersey-points-bg))",   fg: "rgb(var(--jersey-points-fg))" },
+  { dayType: "mountain_day", bg: "rgb(var(--jersey-mountain-bg))", fg: "rgb(var(--jersey-mountain-fg))" },
+  { dayType: "young_day",    bg: "rgb(var(--jersey-young-bg))",    fg: "rgb(var(--jersey-young-fg))" },
 ];
 
 function riderName(res) {
@@ -173,7 +176,7 @@ export default function RaceDetailPage() {
     <div className="max-w-4xl mx-auto">
       <Link to="/races?tab=library" className="text-xs text-cz-accent-t hover:underline mb-4 inline-block">{t("detail.backToLibrary")}</Link>
       <div className="text-center py-16 text-cz-3">
-        <p className="text-4xl mb-3">🏁</p>
+        <FlagIcon className="w-8 h-8 mx-auto mb-3" aria-hidden="true" />
         <p>{t("empty.raceNotFound")}</p>
       </div>
     </div>
@@ -210,7 +213,7 @@ export default function RaceDetailPage() {
 
       {!hasAnyResults && (
         <div className="bg-cz-card border border-cz-border rounded-cz p-10 text-center text-cz-3">
-          <p className="text-4xl mb-3">🏁</p>
+          <FlagIcon className="w-8 h-8 mx-auto mb-3" aria-hidden="true" />
           <p className="text-sm">{t("empty.noResultsImportedRace")}</p>
         </div>
       )}

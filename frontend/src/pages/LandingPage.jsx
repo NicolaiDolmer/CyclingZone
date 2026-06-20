@@ -12,6 +12,7 @@ import {
   FlagIcon,
   CalendarIcon,
   CheckIcon,
+  PlusIcon,
 } from "../components/ui/icons/index.jsx";
 
 // Offentlig landing page for kold TdF-trafik (#672). Vises på bart domæne for
@@ -74,12 +75,10 @@ function FaqItem({ q, a, defaultOpen }) {
     <details open={defaultOpen} className="group border-b border-cz-border last:border-b-0">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-4 py-4">
         <span className="text-[15px] font-medium text-cz-1">{q}</span>
-        <span
-          className="font-display text-2xl leading-none text-cz-accent-t transition-transform duration-200 group-open:rotate-45"
+        <PlusIcon
+          className="w-5 h-5 flex-shrink-0 text-cz-accent-t transition-transform duration-200 group-open:rotate-45"
           aria-hidden="true"
-        >
-          +
-        </span>
+        />
       </summary>
       <p className="max-w-2xl pb-4 text-sm leading-relaxed text-cz-2">{a}</p>
     </details>

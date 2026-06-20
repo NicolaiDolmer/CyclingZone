@@ -25,6 +25,16 @@ import {
   resolveMemberLongDescription,
   resolveReactionQuote,
 } from "../lib/boardCopy";
+import {
+  LockIcon,
+  XIcon,
+  BellIcon,
+  CoinIcon,
+  ClockIcon,
+  EditIcon,
+  EyeIcon,
+  TrophyIcon,
+} from "../components/ui";
 
 const API = import.meta.env.VITE_API_URL;
 const PLAN_SEQUENCE = ["5yr", "3yr", "1yr"];
@@ -458,7 +468,7 @@ function ClubDnaDialog({ dna, onClose }) {
           <p className="text-cz-3 text-sm mt-3 italic leading-relaxed">{getDnaCopy(t, dna, "longDescription")}</p>
         )}
         <div className="mt-4 pt-4 border-t border-cz-border">
-          <p className="text-cz-2 text-xs font-semibold">🔒 {t("dna.locked.heading")}</p>
+          <p className="text-cz-2 text-xs font-semibold flex items-center gap-1.5"><LockIcon size={14} aria-hidden="true" /> {t("dna.locked.heading")}</p>
           <p className="text-cz-3 text-xs mt-1 leading-relaxed">{t("dna.locked.body")}</p>
         </div>
       </div>
@@ -1135,10 +1145,10 @@ function BoardRequestPanel({ requestOptions, requestStatus, requestError, reques
 // Lag 2-3 = warning på BoardPage (ingen notif). Lag 4-5 = røde events i Bestyrelse-feed
 // + 'Skal handles' notif. Lag 6 (bonus_offer) har egen card-komponent (BonusOfferCard).
 const CONSEQUENCE_LAYER_STYLE = {
-  2: { emoji: "🔒", severity: "warning"  },
-  3: { emoji: "🛑", severity: "warning"  },
-  4: { emoji: "📢", severity: "critical" },
-  5: { emoji: "💸", severity: "critical" },
+  2: { Icon: LockIcon, severity: "warning"  },
+  3: { Icon: XIcon,    severity: "warning"  },
+  4: { Icon: BellIcon, severity: "critical" },
+  5: { Icon: CoinIcon, severity: "critical" },
 };
 
 function describeConsequence(t, c) {
@@ -1170,13 +1180,15 @@ function BoardConsequencesPanel({ consequences = [] }) {
         {visible.sort((a, b) => a.layer - b.layer).map((c) => {
           const style = CONSEQUENCE_LAYER_STYLE[c.layer];
           const isCritical = style.severity === "critical";
+          const LayerIcon = style.Icon;
           return (
             <div key={c.id}
               className={`p-3 rounded-lg border ${isCritical
                 ? "bg-cz-danger-bg0/8 border-cz-danger/30"
                 : "bg-cz-accent/10 border-cz-accent/30"}`}>
               <div className="flex items-start gap-3">
-                <span className="text-xl flex-shrink-0">{style.emoji}</span>
+                <LayerIcon size={20} aria-hidden="true"
+                  className={`flex-shrink-0 mt-0.5 ${isCritical ? "text-cz-danger" : "text-cz-accent-t"}`} />
                 <div className="flex-1">
                   <p className={`text-sm font-semibold ${isCritical ? "text-cz-danger" : "text-cz-accent-t"}`}>
                     {t(`consequence.layer${c.layer}.label`)}
@@ -1202,7 +1214,7 @@ function BonusOfferCard({ offer, onAccept, onDecline, busy }) {
   return (
     <div className="mt-5 rounded-cz p-5 border border-cz-success/40 bg-cz-success-bg0/8">
       <div className="flex items-start gap-3">
-        <span className="text-2xl flex-shrink-0">🎁</span>
+        <TrophyIcon size={24} aria-hidden="true" className="flex-shrink-0 text-cz-success" />
         <div className="flex-1">
           <p className="text-sm font-semibold text-cz-success">{t("bonusOffer.heading")}</p>
           <p className="text-cz-2 text-xs mt-2 leading-relaxed">
@@ -1310,7 +1322,7 @@ function BoardAutoAcceptCountdown({ isBaselinePhase, autoAccept, setupNextPlanTy
   return (
     <div className={`rounded-cz p-4 mb-5 border ${containerClass}`}>
       <div className="flex items-start gap-3">
-        <span className="text-2xl">⏳</span>
+        <ClockIcon size={24} aria-hidden="true" className={`flex-shrink-0 mt-0.5 ${accentClass}`} />
         <div className="flex-1">
           <p className={`font-semibold text-sm ${accentClass}`}>
             {isCritical
@@ -1754,7 +1766,9 @@ function WizardStep3({ finalGoals, planType, onSign, saving, onBack }) {
       )}
       <div className="text-center mb-8">
         <div className="w-14 h-14 rounded-full bg-cz-success-bg border border-cz-success/30
-          flex items-center justify-center text-2xl mx-auto mb-4" aria-hidden="true">✍</div>
+          flex items-center justify-center mx-auto mb-4 text-cz-success" aria-hidden="true">
+          <EditIcon size={24} />
+        </div>
         <h2 className="text-cz-1 font-bold text-xl">{t("wizard.step3Title")}</h2>
         <p className="text-cz-2 text-sm mt-1">
           {t("wizard.step3Subtitle", { plan: getPlanLabel(t, planType), count: duration })}
@@ -2262,8 +2276,8 @@ export default function BoardPage() {
         </div>
         <Link to="/finance"
           className="px-3 py-2 rounded-lg text-sm border bg-cz-subtle text-cz-2 border-cz-border
-            hover:text-cz-1 hover:bg-cz-subtle transition-all">
-          💰 {t("page.financeLink")}
+            hover:text-cz-1 hover:bg-cz-subtle transition-all inline-flex items-center gap-1.5">
+          <CoinIcon size={16} aria-hidden="true" /> {t("page.financeLink")}
         </Link>
       </div>
 
@@ -2271,7 +2285,7 @@ export default function BoardPage() {
       {isBaselinePhase && (
         <div className="bg-cz-card border border-cz-border rounded-cz p-5 mb-5">
           <div className="flex items-start gap-3">
-            <span className="text-2xl">👀</span>
+            <EyeIcon size={24} aria-hidden="true" className="flex-shrink-0 mt-0.5 text-cz-2" />
             <div>
               <h2 className="text-cz-1 font-semibold text-base mb-1">{t("baseline.title")}</h2>
               <p className="text-cz-3 text-sm leading-relaxed">{t("baseline.body")}</p>

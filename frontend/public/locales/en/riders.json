@@ -2,7 +2,7 @@
   "page": {
     "title": "Rider Database",
     "subtitle": "{count} riders",
-    "watchlistLink": "⭐ My Watchlist ({count})",
+    "watchlistLink": "My Watchlist ({count})",
     "loadingAria": "Loading riders"
   },
   "table": {
@@ -52,7 +52,7 @@
     "tipStats": "<strong>Stat filters</strong> = rider abilities like climbing, sprinting and time-trialling. Start broad and narrow down later.",
     "tipBudget": "<strong>U25 / Free agent</strong> = budget-friendly paths: younger potential or riders without a contract.",
     "ctaFindFirst": "Find your first rider (≤ {balance} CZ$)",
-    "ctaTour": "💡 Show me around"
+    "ctaTour": "Show me around"
   },
   "rankings": {
     "title": "Rider rankings",
