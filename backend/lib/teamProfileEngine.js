@@ -1,5 +1,8 @@
 import { createInitialBoardProfile } from "./boardEngine.js";
 import { allocateStarterSquadForTeam } from "./starterSquadAllocator.js";
+import { runAcademyIntakeForTeam } from "./academyIntake.js";
+import { isAcademyEnabled } from "./academyFlag.js";
+import { captureException as sentryCapture } from "./sentry.js";
 import {
   DIVISION_CAPACITY,
   INITIAL_BALANCE,
@@ -246,6 +249,11 @@ export async function upsertOwnTeamProfile({
   // #1560: DI så testen kan verificere at allokeringen kaldes (created===true) vs.
   // ikke (created===false) uden at skulle mocke hele riders/derive-kæden.
   allocateStarterSquad = allocateStarterSquadForTeam,
+  // Forever-relaunch (spejler #1560): et NYT hold skal også have ét akademi-kuld.
+  // DI så testen kan verificere koblingen + den globale flag-gate uden at mocke
+  // hele riders/derive-kæden eller app_config.
+  runAcademyCohort = runAcademyIntakeForTeam,
+  academyEnabled = isAcademyEnabled,
 } = {}) {
   if (!supabase?.from) {
     throw createHttpError(500, "Supabase client is required");
@@ -330,6 +338,34 @@ export async function upsertOwnTeamProfile({
         allocError?.message || allocError,
       );
       throw createHttpError(500, `Holdet blev oprettet, men start-truppen kunne ikke tildeles: ${allocError?.message || allocError}`);
+    }
+
+    // Forever-relaunch (spejler #1560): et NYT hold får også ét akademi-kuld
+    // (3-5 offered, nul tvungen cost) ved signup — ellers er akademiet en
+    // forever-relaunch-blindgyde for nye signups. Gated GLOBALT via
+    // isAcademyEnabled(supabase) UDEN beta-opts (samme som relaunch-stien,
+    // relaunchOrchestrator trin 6.4), så ikke-beta nye signups ikke stille
+    // springes over mens flaget er 'on'.
+    //
+    // BEVIDST IKKE-FATAL DELVIS-FEJL: i modsætning til start-truppen ovenfor
+    // (hvis fejl = hele bug'en → bobl op) er et manglende akademi en blødere,
+    // genoprettelig blindgyde end en blokeret signup. Fanger vi en fejl her,
+    // logger vi den (Sentry + console.error) og FORTSÆTTER — holdet beholder sin
+    // start-trup og signup lykkes. (Opfølgning: en retry-sweep der hærder
+    // akademi-seedingen mod forbigående fejl, analogt til #1563 for start-truppe.)
+    try {
+      if (await academyEnabled(supabase)) {
+        await runAcademyCohort(supabase, team.id);
+      }
+    } catch (academyError) {
+      console.error(
+        `[teamProfileEngine] akademi-kuld-seeding FEJLEDE for nyt hold ${team.id} (ikke-fatal, signup fortsætter):`,
+        academyError?.message || academyError,
+      );
+      sentryCapture(
+        academyError instanceof Error ? academyError : new Error(String(academyError)),
+        { tags: { component: "team-create-academy" }, extra: { teamId: team.id } },
+      );
     }
   }
 
