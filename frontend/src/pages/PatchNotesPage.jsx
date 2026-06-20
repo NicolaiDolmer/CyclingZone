@@ -2,6 +2,20 @@
 
 const PATCHES = [
   {
+    version: "5.75",
+    date: "2026-06-20",
+    label: "Beta",
+    changes: [
+      {
+        category: "Improved · Getting started",
+        items: [
+          "EN · Plain-language tooltips now explain the shorthand a new manager meets first. Hover the sidebar balance to learn that CZ$ is the in-game currency (earned by playing, never bought with real money), hover Division to see it is your league tier, and hover the Deadline Day menu item to learn it is a transfer window with 30-minute flash auctions. The same balance and division tooltips appear on your team header. Refs #1593",
+          "DA · Tooltips i klar tale forklarer nu de forkortelser en ny manager møder først. Hold musen over saldoen i sidebaren for at lære at CZ$ er spillets valuta (tjent ved at spille, aldrig købt for rigtige penge), hold musen over Division for at se at det er dit ligatrin, og hold musen over Deadline Day-menupunktet for at lære at det er et transfervindue med 30-minutters flash-auktioner. De samme saldo- og division-tooltips findes på dit hold-header. Refs #1593",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.74",
     date: "2026-06-20",
     label: "Beta",

@@ -524,8 +524,8 @@ export function TeamPage() {
           <p className="text-cz-2 text-sm mt-0.5">{t("page.managerLabel", { name: team.manager_name })}</p>
         )}
         <div className="flex gap-4 mt-1 flex-wrap text-sm">
-          <span className="text-cz-accent-t font-mono font-bold">{t("page.balance", { value: formatNumber(team?.balance ?? 0) })}</span>
-          <span className="text-cz-3">{t("page.division", { n: team?.division })}</span>
+          <span className="text-cz-accent-t font-mono font-bold" title={t("page.balanceTooltip")}>{t("page.balance", { value: formatNumber(team?.balance ?? 0) })}</span>
+          <span className="text-cz-3" title={t("page.divisionTooltip")}>{t("page.division", { n: team?.division })}</span>
           <span className="text-cz-3">{t("page.ridersCount", { count: currentRiders.length })}</span>
           {incomingCount > 0 && <span className="text-cz-success text-xs">{t("page.incomingCount", { count: incomingCount })}</span>}
           {outgoingCount > 0 && <span className="text-cz-danger text-xs">{t("page.outgoingCount", { count: outgoingCount })}</span>}
