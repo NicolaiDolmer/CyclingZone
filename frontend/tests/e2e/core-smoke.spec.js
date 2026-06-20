@@ -32,6 +32,9 @@ const CORE_PAGES = [
   // at miste blank-screen-detektion. Hvis trusler fra fremtidige layout-changes
   // sneaker forbi, kig på inbox-actual.png attachment i Playwright-report.
   { path: "/notifications", heading: "Indbakke", snapshot: "inbox.png", maxDiffPixelRatio: 0.12 },
+  // Patch notes-h1 er sprog-uafhængig ("Patch notes" i begge sprog). Nyeste dag
+  // åbnes by default (localStorage tom i test) → deterministisk first paint.
+  { path: "/patch-notes", heading: "Patch notes", snapshot: "patch-notes.png" },
 ];
 
 test.beforeEach(async ({ page }) => {
