@@ -23,7 +23,6 @@
     "backend/lib/seasonRaceDays.js": 3,
     "backend/lib/teamProfileEngine.js": 3,
     "backend/lib/transferExecution.js": 8,
-    "backend/lib/uciStaleDataCheck.js": 1,
     "backend/lib/urlSafety.js": 6,
     "backend/routes/api.js": 111
   }
