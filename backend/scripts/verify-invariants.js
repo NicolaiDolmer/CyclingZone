@@ -7,7 +7,8 @@ import path from "node:path";
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_ENV = path.resolve(SCRIPT_DIR, "../.env");
 
-const SQUAD_MAX = { 1: 30, 2: 20, 3: 10 };
+// #1614/#838: ét fælles roster-loft (30) for alle divisioner — matcher håndhævelsen i marketUtils.MARKET_SQUAD_LIMITS.
+const SQUAD_MAX = { 1: 30, 2: 30, 3: 30 };
 const DEBT_CEILING = { 1: 1_200_000, 2: 900_000, 3: 600_000 };
 
 const KNOWN_TX_TYPES = new Set([

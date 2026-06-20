@@ -202,6 +202,12 @@ export async function paySeasonPrizesToDate(seasonId, adminUserId, supabase, opt
 
   const now = new Date().toISOString();
 
+  // #1573: saml de løb DETTE tick faktisk vandt prize_paid_at-kapløbet om. Et
+  // rivaliserende cron-tick kan have læst det samme pending-preview (begge så
+  // prize_paid_at IS NULL) — balancen er beskyttet af uniq_finance_idempotency_key,
+  // men import_log-indsættelsen var ikke gatet og kunne dublere audit-rækken.
+  const claimedRaces = [];
+
   for (const race of preview.pending_payment) {
     for (const team of race.by_team) {
       // Slice 07c: balance + finance_transactions atomic via RPC.
@@ -227,21 +233,34 @@ export async function paySeasonPrizesToDate(seasonId, adminUserId, supabase, opt
       }, { allowDuplicate: true });
     }
 
-    const { error: raceError } = await supabase
+    // #1573: gat opdateringen på prize_paid_at IS NULL og læs de faktisk ramte
+    // rækker tilbage. Vinder dette tick kapløbet, rammer UPDATE'et 1 række; har
+    // et samtidigt tick allerede sat prize_paid_at, rammer den 0. Det atomare
+    // compare-and-set i Postgres afgør hvem der "ejer" import_log-indsættelsen.
+    const { data: claimedRows, error: raceError } = await supabase
       .from("races")
       .update({ prize_paid_at: now })
-      .eq("id", race.race_id);
+      .eq("id", race.race_id)
+      .is("prize_paid_at", null)
+      .select("id");
     if (raceError) throw new Error(raceError.message);
+    if (claimedRows?.length) claimedRaces.push(race);
   }
 
-  await supabase.from("import_log").insert({
-    import_type: "prize_payout",
-    rows_processed: preview.pending_payment.length,
-    rows_updated: preview.pending_payment.length,
-    rows_inserted: 0,
-    errors: [],
-    imported_by: adminUserId,
-  });
+  // #1573: indsæt KUN audit-rækken hvis dette tick rent faktisk satte mindst ét
+  // løbs prize_paid_at. Et tabende tick (betalte intet nyt — alt allerede claimet
+  // af et rivaliserende tick) springer indsættelsen over, så audit-trailen får
+  // præcis én import_log-række pr. reel udbetalingsbølge.
+  if (claimedRaces.length) {
+    await supabase.from("import_log").insert({
+      import_type: "prize_payout",
+      rows_processed: claimedRaces.length,
+      rows_updated: claimedRaces.length,
+      rows_inserted: 0,
+      errors: [],
+      imported_by: adminUserId,
+    });
+  }
 
   // R3 (#895): recalculate rider values now that this season's prizes are paid,
   // so the active season's prize earnings feed the progress-weighted value
@@ -256,11 +275,14 @@ export async function paySeasonPrizesToDate(seasonId, adminUserId, supabase, opt
     riders_updated = null;
   }
 
+  // #1573: rapportér KUN de løb dette tick faktisk claimede — ikke hele det læste
+  // pending-preview. Et tabende tick returnerer races_paid: 0 (det satte ingenting
+  // og indsatte ingen import_log-række), så svaret matcher audit-trailen.
   return {
-    races_paid: preview.pending_payment.length,
-    total_paid: preview.total_pending,
+    races_paid: claimedRaces.length,
+    total_paid: claimedRaces.reduce((s, r) => s + r.total_prize, 0),
     riders_updated,
-    by_race: preview.pending_payment.map(r => ({
+    by_race: claimedRaces.map(r => ({
       race_name: r.race_name,
       total_prize: r.total_prize,
     })),

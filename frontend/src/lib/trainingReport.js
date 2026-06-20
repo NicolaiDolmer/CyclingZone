@@ -77,3 +77,29 @@ export function breakthroughJumps(reportRow) {
   }
   return out;
 }
+
+// Træningsrapport-historik for ÉN rytter (#1533). Plukker rytterens linje ud af
+// hver dags report.riders og parrer den med dagens metadata, så rytterprofilen kan
+// vise dag-for-dag-historikken uden at kende run-formen.
+//   runs    : [{ tick_date, executed_by, bonus_applied, report: { riders: [...] } }]
+//             (allerede sorteret nyeste-først af useTrainingHistory)
+//   riderId : rytterens id
+// Returnerer [{ tick_date, executed_by, bonus_applied, row }] — kun dage hvor
+// rytteren faktisk indgik i kørslen (nye/solgte ryttere mangler på gamle dage).
+export function riderHistoryFromRuns(runs, riderId) {
+  if (!Array.isArray(runs) || !riderId) return [];
+  const out = [];
+  for (const run of runs) {
+    const rows = run?.report?.riders;
+    if (!Array.isArray(rows)) continue;
+    const row = rows.find((r) => r && r.rider_id === riderId);
+    if (!row) continue;
+    out.push({
+      tick_date: run.tick_date,
+      executed_by: run.executed_by,
+      bonus_applied: run.bonus_applied,
+      row,
+    });
+  }
+  return out;
+}

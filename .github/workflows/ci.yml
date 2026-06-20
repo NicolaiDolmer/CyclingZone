@@ -130,3 +130,28 @@ jobs:
 
       - name: Run anti-drift guard
         run: node scripts/lint-ui-slop.mjs
+
+  migration-idempotency:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # #401 migration-drift guard: NEW database/2026-*.sql migrations must use
+    # idempotent DDL (IF NOT EXISTS / DROP ... IF EXISTS first / DO-block guard)
+    # so a re-run (recovery replay, partial-failure re-apply, fresh rebuild from
+    # the migration log) is a no-op rather than an error. schema.sql +
+    # supabase_setup.sql stay as bootstrap/DR snapshots. Rule + recipes:
+    # docs/MIGRATIONS.md.
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Test idempotency guard
+        run: node --test scripts/lint-migration-idempotency.test.mjs
+
+      - name: Run idempotency guard
+        run: node scripts/lint-migration-idempotency.mjs
