@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { getTeamAcademyCount, runAcademyIntake, signAcademyCandidate, rejectAcademyCandidate } from "./academyIntake.js";
+import { getTeamAcademyCount, runAcademyIntake, runAcademyIntakeForTeam, signAcademyCandidate, rejectAcademyCandidate } from "./academyIntake.js";
 
 // ─── Mock-supabase helpers ────────────────────────────────────────────────────
 
@@ -37,15 +37,20 @@ function makeIntakeSupabase({
       }
 
       if (table === "academy_intake") {
+        // Sporing af eq-filtre, så den per-hold idempotens-guard (eq team_id +
+        // eq season_id) kun ser rækker for DET hold, mens batch-guarden (kun
+        // eq season_id) stadig ser alle seedede team_ids.
+        const eqFilters = {};
         const api = {
           select() { return api; },
-          eq() { return api; },
+          eq(col, val) { eqFilters[col] = val; return api; },
           // fetchAllRows bruger .range()
           range() {
-            return Promise.resolve({
-              data: academyIntakeTeamIds.map((team_id) => ({ team_id })),
-              error: null,
-            });
+            let rows = academyIntakeTeamIds.map((team_id) => ({ team_id }));
+            if (eqFilters.team_id !== undefined) {
+              rows = rows.filter((r) => r.team_id === eqFilters.team_id);
+            }
+            return Promise.resolve({ data: rows, error: null });
           },
           insert(rows) {
             const inserted = Array.isArray(rows) ? rows : [rows];
@@ -292,6 +297,85 @@ test("runAcademyIntake (apply): hold allerede i academy_intake springes over (id
   // team-B inserts eksisterer
   const intakeForB = supabase._academyIntakeInserts.filter((r) => r.team_id === "team-B");
   assert.ok(intakeForB.length >= 3, `for få inserts for team-B: ${intakeForB.length}`);
+});
+
+// ─── runAcademyIntakeForTeam (#1560-spejling: per-hold ved signup) ─────────────
+
+test("runAcademyIntakeForTeam: seeder ét kuld for et nyt hold + kører afled-pipeline", async () => {
+  const supabase = makeIntakeSupabase({
+    activeSeason: { id: "season-1", number: 1, start_date: "2026-06-20" },
+    academyIntakeTeamIds: [],
+    existingRiders: [],
+  });
+
+  const deriveCalls = [];
+  const res = await runAcademyIntakeForTeam(supabase, "team-NEW", {
+    seed: 2026,
+    deriveRiders: async (_sb, ids, opts) => { deriveCalls.push({ ids, opts }); return { riders: ids.length }; },
+  });
+
+  assert.equal(res.teamId, "team-NEW");
+  assert.ok(res.candidates >= 3, `candidates=${res.candidates} < 3`);
+
+  // Rider-inserts: pcm_id null, is_academy false (samme kontrakt som batch).
+  assert.ok(supabase._riderInserts.length >= 3, "for få rider-inserts");
+  for (const r of supabase._riderInserts) {
+    assert.equal(r.pcm_id, null, "pcm_id skal være null");
+    assert.equal(r.is_academy, false, "is_academy skal være false ved insert");
+  }
+
+  // academy_intake-inserts: status offered, season_id sat, team_id = det nye hold.
+  assert.equal(supabase._academyIntakeInserts.length, res.candidates, "en intake-række pr. kandidat");
+  for (const row of supabase._academyIntakeInserts) {
+    assert.equal(row.status, "offered");
+    assert.equal(row.season_id, "season-1");
+    assert.equal(row.team_id, "team-NEW");
+    assert.ok(typeof row.is_serious === "boolean");
+  }
+
+  // Afled-pipeline kører præcis én gang i apply-mode for alle nye id'er (#1478).
+  assert.equal(deriveCalls.length, 1, "afled-pipeline skal køres præcis én gang");
+  assert.equal(deriveCalls[0].opts.dryRun, false, "afled skal køre i apply-mode");
+  assert.equal(deriveCalls[0].ids.length, res.candidates, "afled dækker alle nyindsatte ryttere");
+});
+
+test("runAcademyIntakeForTeam: idempotent — hold med eksisterende academy_intake seeder INTET", async () => {
+  // team-SEEDED har allerede rækker i academy_intake for sæsonen → no-op.
+  const supabase = makeIntakeSupabase({
+    activeSeason: { id: "season-1", number: 1, start_date: "2026-06-20" },
+    academyIntakeTeamIds: ["team-SEEDED"],
+    existingRiders: [],
+  });
+
+  let derived = false;
+  const res = await runAcademyIntakeForTeam(supabase, "team-SEEDED", {
+    seed: 2026,
+    deriveRiders: async () => { derived = true; },
+  });
+
+  assert.ok(res.skipped, "skal returnere skipped-markør");
+  assert.equal(supabase._riderInserts.length, 0, "ingen rider-inserts ved idempotens-skip");
+  assert.equal(supabase._academyIntakeInserts.length, 0, "ingen academy_intake-inserts ved idempotens-skip");
+  assert.equal(derived, false, "ingen afled-writes ved idempotens-skip");
+});
+
+test("runAcademyIntakeForTeam: null identity-basis genererer stadig et kuld (post-relaunch nyt hold)", async () => {
+  // Et splinternyt post-relaunch hold har null season_1_identity_basis →
+  // generateAcademyCandidates skal falde tilbage til default-nation-vægte.
+  const supabase = makeIntakeSupabase({
+    activeSeason: { id: "season-1", number: 1, start_date: "2026-06-20" },
+    academyIntakeTeamIds: [],
+    existingRiders: [],
+  });
+
+  const res = await runAcademyIntakeForTeam(supabase, "team-NULLBASIS", {
+    seed: 2026,
+    identityBasis: null,
+    deriveRiders: async () => {},
+  });
+
+  assert.ok(res.candidates >= 3, `null identity-basis skal stadig give et kuld: ${res.candidates}`);
+  assert.equal(supabase._academyIntakeInserts.length, res.candidates);
 });
 
 // ─── Ingen aktiv sæson ────────────────────────────────────────────────────────
