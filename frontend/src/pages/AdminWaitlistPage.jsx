@@ -103,7 +103,7 @@ function buildCsv(rows) {
 
 function KpiCard({ label, value, sub }) {
   return (
-    <div className="bg-cz-card border border-cz-border rounded-xl p-4">
+    <div className="bg-cz-card border border-cz-border rounded-cz p-4">
       <p className="text-cz-3 text-xs uppercase tracking-wide">{label}</p>
       <p className="text-cz-1 text-2xl font-bold mt-1">{value}</p>
       {sub && <p className="text-cz-3 text-xs mt-1">{sub}</p>}
@@ -292,7 +292,7 @@ export default function AdminWaitlistPage() {
           value={pct(kpis.proAnalyst, kpis.total)}
           sub={`${kpis.proAnalyst} af ${kpis.total}`}
         />
-        <div className="bg-cz-card border border-cz-border rounded-xl p-4 col-span-2 md:col-span-1">
+        <div className="bg-cz-card border border-cz-border rounded-cz p-4 col-span-2 md:col-span-1">
           <p className="text-cz-3 text-xs uppercase tracking-wide">Top 3 kilder</p>
           {kpis.topSources.length === 0 ? (
             <p className="text-cz-3 text-sm mt-2">Ingen data endnu</p>
@@ -309,7 +309,7 @@ export default function AdminWaitlistPage() {
         </div>
       </div>
 
-      <div className="bg-cz-card border border-cz-border rounded-xl p-4">
+      <div className="bg-cz-card border border-cz-border rounded-cz p-4">
         <p className="text-cz-3 text-xs uppercase tracking-wide mb-3">Filtre</p>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           <FilterSelect label="Interesseniveau" value={filterInterest} onChange={setFilterInterest} options={INTEREST_OPTIONS} />
@@ -326,7 +326,7 @@ export default function AdminWaitlistPage() {
         </p>
       </div>
 
-      <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+      <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-cz-subtle border-b border-cz-border">

@@ -35,7 +35,7 @@ export default function TrainingFocus({ rider, training }) {
   const handleClear = () => { if (!busy) clearPlan(rider.id); };
 
   return (
-    <div className="bg-cz-card border border-cz-border rounded-xl p-5 mb-4">
+    <div className="bg-cz-card border border-cz-border rounded-cz p-5 mb-4">
       <div className="flex items-center justify-between mb-1">
         <h3 className="text-sm font-semibold text-cz-1">🚴 {t("training.title")}</h3>
         {/* Slot-tæller skjules når slots.total === null (ubegrænsede pladser) */}

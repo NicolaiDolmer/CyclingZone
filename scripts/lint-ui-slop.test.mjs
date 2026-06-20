@@ -10,6 +10,7 @@ import { fileURLToPath } from "node:url";
 import {
   countHex,
   countSlop,
+  countColor,
   countEmoji,
   scanSource,
   scanRepo,
@@ -61,23 +62,41 @@ test("countEmoji flags emoji used as icons but not text symbols", () => {
   assert.equal(countEmoji("// 🏁 in a comment"), 0); // comment stripped
 });
 
-test("scanSource returns per-category counts", () => {
-  const r = scanSource('<div className="rounded-2xl" style={{color:"#fff"}}>🏁</div>');
-  assert.deepEqual(r, { hex: 1, slop: 1, emoji: 1 });
+test("countColor flags raw Tailwind palette colours but not cz-tokens", () => {
+  assert.equal(countColor('className="bg-red-500"'), 1);
+  assert.equal(countColor("text-slate-400 border-emerald-300"), 2);
+  assert.equal(countColor("bg-violet-50/80 ring-sky-500"), 2); // opacity suffix OK
+  assert.equal(countColor("bg-cz-card text-cz-1 border-cz-border"), 0); // brand tokens
+  assert.equal(countColor("bg-black/60 text-white"), 0); // black/white take no shade
+  assert.equal(countColor("bg-cz-success/10 text-cz-danger"), 0); // semantic tokens
+  assert.equal(countColor("// avoid bg-red-500 in new UI"), 0); // comment stripped
+});
+
+test("scanSource returns per-category counts (hex/slop/colour/emoji)", () => {
+  const r = scanSource('<div className="rounded-2xl bg-red-500" style={{color:"#fff"}}>🏁</div>');
+  assert.deepEqual(r, { hex: 1, slop: 1, colour: 1, emoji: 1 });
 });
 
 test("compareAgainstBaseline only flags increases over baseline", () => {
-  const findings = { "a.jsx": { hex: 2, slop: 0, emoji: 1 } };
-  const baseline = { files: { "a.jsx": { hex: 2, slop: 0, emoji: 0 } } };
+  const findings = { "a.jsx": { hex: 2, slop: 0, colour: 0, emoji: 1 } };
+  const baseline = { files: { "a.jsx": { hex: 2, slop: 0, colour: 0, emoji: 0 } } };
   const { newViolations } = compareAgainstBaseline(findings, baseline);
   assert.equal(newViolations.length, 1); // emoji 1 > 0
   assert.match(newViolations[0], /a\.jsx/);
   assert.match(newViolations[0], /emoji/);
 });
 
+test("compareAgainstBaseline flags a new raw-colour increase", () => {
+  const findings = { "b.jsx": { hex: 0, slop: 0, colour: 3, emoji: 0 } };
+  const baseline = { files: { "b.jsx": { hex: 0, slop: 0, colour: 2, emoji: 0 } } };
+  const { newViolations } = compareAgainstBaseline(findings, baseline);
+  assert.equal(newViolations.length, 1);
+  assert.match(newViolations[0], /colour/);
+});
+
 test("compareAgainstBaseline reports stale baseline when violations shrink", () => {
-  const findings = { "a.jsx": { hex: 1, slop: 0, emoji: 0 } };
-  const baseline = { files: { "a.jsx": { hex: 2, slop: 0, emoji: 0 } } };
+  const findings = { "a.jsx": { hex: 1, slop: 0, colour: 0, emoji: 0 } };
+  const baseline = { files: { "a.jsx": { hex: 2, slop: 0, colour: 0, emoji: 0 } } };
   const { newViolations, stale } = compareAgainstBaseline(findings, baseline);
   assert.equal(newViolations.length, 0);
   assert.ok(stale.length >= 1);

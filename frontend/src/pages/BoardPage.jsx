@@ -182,7 +182,7 @@ function BoardMembersGrid({ members = [], onSelect }) {
   const { t } = useTranslation("board");
   if (!members.length) return null;
   return (
-    <div className="bg-cz-card border border-cz-border rounded-xl p-5 mt-4">
+    <div className="bg-cz-card border border-cz-border rounded-cz p-5 mt-4">
       <div className="flex items-center justify-between mb-3">
         <p className="text-cz-3 text-xs uppercase tracking-wider">{t("members.heading")}</p>
         <span className="text-cz-3 text-[10px]">{t("members.count", { count: members.length })}</span>
@@ -237,11 +237,11 @@ function BoardMemberDialog({ member, onClose }) {
       : t("members.identityMatch");
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-4"
       onClick={e => e.target === e.currentTarget && onClose()}
     >
       <div ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="board-member-dialog-title"
-        className="w-full max-w-md bg-cz-card border border-cz-border rounded-2xl p-6 shadow-overlay max-h-[85vh] overflow-y-auto">
+        className="w-full max-w-md bg-cz-card border border-cz-border rounded-cz p-6 shadow-overlay max-h-[85vh] overflow-y-auto">
         <div className="flex items-start gap-3 mb-4">
           <div className={`relative w-12 h-12 rounded-full bg-cz-subtle border flex items-center justify-center text-2xl flex-shrink-0
             ${member.is_chairman ? "border-cz-accent/40" : "border-cz-border"}`}>
@@ -281,7 +281,7 @@ function ClubDnaSelectionCard({ suggestions = [], onChoose, busy = false, error 
   const { t } = useTranslation("board");
   if (!suggestions.length) return null;
   return (
-    <div className="bg-cz-card border border-cz-border rounded-xl p-5 mt-4">
+    <div className="bg-cz-card border border-cz-border rounded-cz p-5 mt-4">
       <div className="flex items-start justify-between gap-3 mb-4">
         <div>
           <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{t("dna.sectionLabel")}</p>
@@ -343,7 +343,7 @@ function ClubDnaBadge({ dna, onSelect }) {
   if (!dna) return null;
   return (
     <button type="button" onClick={onSelect} title={t("dna.badge.viewHint")}
-      className="w-full text-left bg-cz-card border border-cz-border rounded-xl p-4 mt-4 flex items-start gap-4
+      className="w-full text-left bg-cz-card border border-cz-border rounded-cz p-4 mt-4 flex items-start gap-4
         hover:border-cz-accent/40 hover:bg-cz-subtle/40 transition-colors group">
       <div className="w-12 h-12 rounded-full bg-cz-subtle border border-cz-border
         flex items-center justify-center text-2xl flex-shrink-0">
@@ -388,7 +388,7 @@ function BoardDriversPanel({ dna, plans }) {
   if (overall == null && !topWeighted.length) return null;
 
   return (
-    <div data-testid="board-drivers" className="bg-cz-card border border-cz-border rounded-xl p-5 mt-4">
+    <div data-testid="board-drivers" className="bg-cz-card border border-cz-border rounded-cz p-5 mt-4">
       <p className="text-cz-3 text-xs uppercase tracking-wider mb-3">{t("drivers.heading")}</p>
 
       {overall != null && (
@@ -435,11 +435,11 @@ function ClubDnaDialog({ dna, onClose }) {
   if (!dna) return null;
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-4"
       onClick={e => e.target === e.currentTarget && onClose()}
     >
       <div ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="club-dna-dialog-title"
-        className="w-full max-w-md bg-cz-card border border-cz-border rounded-2xl p-6 shadow-overlay max-h-[85vh] overflow-y-auto">
+        className="w-full max-w-md bg-cz-card border border-cz-border rounded-cz p-6 shadow-overlay max-h-[85vh] overflow-y-auto">
         <div className="flex items-start gap-3 mb-4">
           <div className="w-12 h-12 rounded-full bg-cz-subtle border border-cz-border
             flex items-center justify-center text-2xl flex-shrink-0">
@@ -500,7 +500,7 @@ function SatisfactionMeter({ value }) {
   const labelKey = value >= 80 ? "veryHappy" : value >= 60 ? "happy" :
     value >= 40 ? "neutral" : value >= 20 ? "unhappy" : "veryUnhappy";
   return (
-    <div className="bg-cz-card border border-cz-border rounded-xl p-5">
+    <div className="bg-cz-card border border-cz-border rounded-cz p-5">
       <div className="flex items-center justify-between mb-3">
         <p className="text-cz-3 text-xs uppercase tracking-wider">{t("satisfactionMeter.label")}</p>
         <span className={`font-data font-bold text-lg ${textClass}`}>{value}%</span>
@@ -677,11 +677,11 @@ function GoalMiniDialog({ goal, achieved, evaluation, cumulativeProgress, onClos
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-4"
       onClick={e => e.target === e.currentTarget && onClose()}
     >
       <div ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="goal-mini-dialog-title"
-        className="w-full max-w-lg bg-cz-card border border-cz-border rounded-2xl p-6 shadow-overlay max-h-[85vh] overflow-y-auto">
+        className="w-full max-w-lg bg-cz-card border border-cz-border rounded-cz p-6 shadow-overlay max-h-[85vh] overflow-y-auto">
         <div className="flex items-start gap-3 mb-4">
           <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold ${iconCls}`}>
             <span aria-hidden="true">{iconContent}</span>
@@ -817,7 +817,7 @@ function CumulativeStatsRow({ goals, cumStats }) {
         const pct = Math.min(100, Math.round((current / goal.target) * 100));
         const achieved = current >= goal.target;
         return (
-          <div key={i} className="bg-cz-card border border-cz-border rounded-xl p-4">
+          <div key={i} className="bg-cz-card border border-cz-border rounded-cz p-4">
             <p className="text-cz-3 text-xs uppercase tracking-wider mb-2">
               {goal.type === "stage_wins" ? t("cumulative.stageWins") : t("cumulative.gcWins")}
             </p>
@@ -842,7 +842,7 @@ function SeasonSnapshotGrid({ snapshots }) {
   const { t } = useTranslation("board");
   if (!snapshots?.length) return null;
   return (
-    <div className="bg-cz-card border border-cz-border rounded-xl p-5">
+    <div className="bg-cz-card border border-cz-border rounded-cz p-5">
       <p className="text-cz-3 text-xs uppercase tracking-wider mb-3">{t("snapshot.heading")}</p>
       <table className="w-full text-xs">
         <thead>
@@ -925,7 +925,7 @@ function BoardIdentityCard({ identityProfile, title }) {
   );
 
   return (
-    <div className="bg-cz-card border border-cz-border rounded-xl p-5 mt-4">
+    <div className="bg-cz-card border border-cz-border rounded-cz p-5 mt-4">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{resolvedTitle}</p>
@@ -1010,7 +1010,7 @@ function BoardRequestPanel({ requestOptions, requestStatus, requestError, reques
   const latestStyle = OUTCOME_STYLE[outcomeKey];
 
   return (
-    <div className="bg-cz-card border border-cz-border rounded-xl p-5">
+    <div className="bg-cz-card border border-cz-border rounded-cz p-5">
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{t("request.heading")}</p>
@@ -1024,13 +1024,13 @@ function BoardRequestPanel({ requestOptions, requestStatus, requestError, reques
       </div>
 
       {!supported && (
-        <div className="rounded-xl border border-cz-accent/30 bg-cz-accent/10 p-4 mt-4">
+        <div className="rounded-cz border border-cz-accent/30 bg-cz-accent/10 p-4 mt-4">
           <p className="text-cz-accent-t text-sm font-semibold">{t("request.pendingMigration")}</p>
         </div>
       )}
 
       {latestRequest && (
-        <div className={`rounded-xl border p-4 mt-4 ${latestStyle.box}`}>
+        <div className={`rounded-cz border p-4 mt-4 ${latestStyle.box}`}>
           <div className="flex items-start justify-between gap-3">
             <div>
               {/* #1084 · *_code resolves via board.json; gamle log-rækker uden koder
@@ -1086,7 +1086,7 @@ function BoardRequestPanel({ requestOptions, requestStatus, requestError, reques
       )}
 
       {requestError && (
-        <div className="rounded-xl border border-cz-danger/30 bg-cz-danger-bg0/8 p-4 mt-4">
+        <div className="rounded-cz border border-cz-danger/30 bg-cz-danger-bg0/8 p-4 mt-4">
           <p className="text-cz-danger text-sm">{requestError}</p>
         </div>
       )}
@@ -1097,7 +1097,7 @@ function BoardRequestPanel({ requestOptions, requestStatus, requestError, reques
             const disabled = Boolean(option.disabled);
             const isBusy = requestingType === option.type;
             return (
-              <div key={option.type} className="bg-cz-subtle border border-cz-border rounded-xl p-4">
+              <div key={option.type} className="bg-cz-subtle border border-cz-border rounded-cz p-4">
                 {/* #1084 · requestDefs-keys resolves via board.json (dansk = fallback). */}
                 <p className="text-cz-1 font-semibold text-sm">{resolveBoardCopy(t, option.label_key, option.label)}</p>
                 <p className="text-cz-2 text-sm mt-1">{resolveBoardCopy(t, option.description_key, option.description)}</p>
@@ -1161,7 +1161,7 @@ function BoardConsequencesPanel({ consequences = [] }) {
   if (visible.length === 0) return null;
 
   return (
-    <div className="mt-5 bg-cz-card border border-cz-border rounded-xl p-5">
+    <div className="mt-5 bg-cz-card border border-cz-border rounded-cz p-5">
       <div className="flex items-center justify-between mb-3">
         <p className="text-cz-3 text-xs uppercase tracking-wider">{t("consequence.heading")}</p>
         <span className="text-cz-3 text-[10px]">{t("consequence.count", { count: visible.length })}</span>
@@ -1200,7 +1200,7 @@ function BonusOfferCard({ offer, onAccept, onDecline, busy }) {
   const bonus = offer.severity || 0;
 
   return (
-    <div className="mt-5 rounded-xl p-5 border border-cz-success/40 bg-cz-success-bg0/8">
+    <div className="mt-5 rounded-cz p-5 border border-cz-success/40 bg-cz-success-bg0/8">
       <div className="flex items-start gap-3">
         <span className="text-2xl flex-shrink-0">🎁</span>
         <div className="flex-1">
@@ -1245,7 +1245,7 @@ function BoardFeedSection({ items = [] }) {
   const recent = items.slice(0, 5);
 
   return (
-    <div className="mt-5 bg-cz-card border border-cz-border rounded-xl p-5">
+    <div className="mt-5 bg-cz-card border border-cz-border rounded-cz p-5">
       <div className="flex items-center justify-between mb-3">
         <p className="text-cz-3 text-xs uppercase tracking-wider">{t("feed.heading")}</p>
         <span className="text-cz-3 text-[10px]">{t("feed.latestCount", { count: items.length })}</span>
@@ -1308,7 +1308,7 @@ function BoardAutoAcceptCountdown({ isBaselinePhase, autoAccept, setupNextPlanTy
     : isWarning ? "text-cz-accent-t" : "text-cz-info";
 
   return (
-    <div className={`rounded-xl p-4 mb-5 border ${containerClass}`}>
+    <div className={`rounded-cz p-4 mb-5 border ${containerClass}`}>
       <div className="flex items-start gap-3">
         <span className="text-2xl">⏳</span>
         <div className="flex-1">
@@ -1333,7 +1333,7 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
 
   if (!planData) {
     return (
-      <div className="bg-cz-card border border-cz-border rounded-xl p-4 flex flex-col items-center justify-center gap-2 min-h-[120px] text-center">
+      <div className="bg-cz-card border border-cz-border rounded-cz p-4 flex flex-col items-center justify-center gap-2 min-h-[120px] text-center">
         <div className="w-8 h-8 rounded-full bg-cz-subtle flex items-center justify-center text-cz-3 text-sm font-bold">
           {planType === "5yr" ? "5" : planType === "3yr" ? "3" : "1"}
         </div>
@@ -1373,7 +1373,7 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
     && seasons_completed === Math.floor(plan_duration / 2);
 
   return (
-    <div className={`bg-cz-card border rounded-xl flex flex-col ${is_expired ? "border-cz-accent/40" : "border-cz-border"}`}>
+    <div className={`bg-cz-card border rounded-cz flex flex-col ${is_expired ? "border-cz-accent/40" : "border-cz-border"}`}>
       {/* Full-bredde header (#955 fane-rework) */}
       <div className="p-5">
         <div className="flex items-start justify-between gap-3 mb-4">
@@ -1483,7 +1483,7 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
           )}
 
           {showMidReviewBanner && (
-            <div className="bg-cz-info-bg0/10 border border-cz-info/20 rounded-xl p-4">
+            <div className="bg-cz-info-bg0/10 border border-cz-info/20 rounded-cz p-4">
               <p className="text-cz-info text-sm font-semibold">{t("plan.midReviewHeading")}</p>
               <p className="text-cz-info/60 text-xs mt-1">{t("plan.midReviewBody", { current: Math.floor(plan_duration / 2), total: plan_duration })}</p>
             </div>
@@ -1501,7 +1501,7 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
           <BoardSatisfactionTimeline events={events} />
 
           {outlook?.feedback && (
-            <div className="bg-cz-subtle border border-cz-border rounded-xl p-4">
+            <div className="bg-cz-subtle border border-cz-border rounded-cz p-4">
               <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{t("plan.outlookHeading")}</p>
               <p className="text-cz-1 text-sm font-semibold">{resolveBoardFeedbackHeadline(t, outlook.feedback)}</p>
               <p className="text-cz-2 text-sm mt-1">{resolveBoardFeedbackSummary(t, outlook.feedback)}</p>
@@ -1564,7 +1564,7 @@ function WizardStep1({ identityProfile, focus, setFocus, planType, previewGoals,
 
       <BoardIdentityCard identityProfile={identityProfile} title={t("identity.wizardTitle")} />
 
-      <div className="bg-cz-card border border-cz-border rounded-xl p-5 mb-4 mt-4">
+      <div className="bg-cz-card border border-cz-border rounded-cz p-5 mb-4 mt-4">
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-cz-3 text-xs uppercase tracking-wider mb-2">{t("wizard.focusLabel")}</label>
@@ -1593,7 +1593,7 @@ function WizardStep1({ identityProfile, focus, setFocus, planType, previewGoals,
         )}
       </div>
 
-      <div className="bg-cz-card border border-cz-border rounded-xl p-5 mb-6">
+      <div className="bg-cz-card border border-cz-border rounded-cz p-5 mb-6">
         <p className="text-cz-3 text-xs uppercase tracking-wider mb-3">{t("wizard.requirementsHeading")}</p>
         {previewLoading ? (
           <div className="flex items-center justify-center py-8">
@@ -1632,7 +1632,7 @@ function WizardStep1({ identityProfile, focus, setFocus, planType, previewGoals,
       <button
         onClick={onStart}
         disabled={previewLoading || preview.length === 0}
-        className="w-full py-3 bg-cz-accent text-cz-on-accent font-bold rounded-xl text-sm hover:brightness-110
+        className="w-full py-3 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110
           disabled:opacity-50 transition-all"
       >
         {t("wizard.startNegotiation")}
@@ -1676,7 +1676,7 @@ function WizardStep2({ goals, goalIdx, negotiated, negotiationOptions = [], pend
         <p className="text-cz-2 text-sm mt-1">{t("wizard.step2Subtitle")}</p>
       </div>
 
-      <div className="bg-cz-card border border-cz-border rounded-xl p-5 mb-4">
+      <div className="bg-cz-card border border-cz-border rounded-cz p-5 mb-4">
         <p className="text-cz-3 text-xs uppercase tracking-wider mb-3">{t("wizard.requirementsHeading")}</p>
         <div className={`flex items-start gap-3 p-4 rounded-lg border
           ${current?.negotiated ? "bg-cz-info-bg0/5 border-cz-info/20" : "bg-cz-subtle border-cz-border"}`}>
@@ -1705,7 +1705,7 @@ function WizardStep2({ goals, goalIdx, negotiated, negotiationOptions = [], pend
         <div className="flex gap-3">
           <button onClick={onNegotiate} disabled={negotiateDisabled}
             title={!hasNegotiationOption && !alreadyNegotiated ? t("wizard.cannotNegotiate") : undefined}
-            className={`flex-1 py-3 rounded-xl text-sm font-medium border transition-all
+            className={`flex-1 py-3 rounded-cz text-sm font-medium border transition-all
               ${negotiateDisabled
                 ? "bg-cz-subtle text-cz-3 border-cz-border cursor-not-allowed opacity-60"
                 : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle hover:text-cz-2"}`}>
@@ -1716,18 +1716,18 @@ function WizardStep2({ goals, goalIdx, negotiated, negotiationOptions = [], pend
                 : t("wizard.negotiateDown")}
           </button>
           <button onClick={onAccept}
-            className="flex-1 py-3 bg-cz-accent text-cz-on-accent font-bold rounded-xl text-sm hover:brightness-110 transition-all">
+            className="flex-1 py-3 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110 transition-all">
             {t("wizard.accept")}
           </button>
         </div>
       ) : (
         <div>
-          <div className="bg-cz-info-bg0/10 border border-cz-info/20 rounded-xl p-4 mb-4">
+          <div className="bg-cz-info-bg0/10 border border-cz-info/20 rounded-cz p-4 mb-4">
             <p className="text-cz-info text-sm font-medium">{t("wizard.compromiseHeading")}</p>
             <p className="text-cz-info text-xs mt-1">{t("wizard.compromiseBody")}</p>
           </div>
           <button onClick={onAcceptNegotiated}
-            className="w-full py-3 bg-cz-accent text-cz-on-accent font-bold rounded-xl text-sm hover:brightness-110 transition-all">
+            className="w-full py-3 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110 transition-all">
             {t("wizard.acceptNegotiated")}
           </button>
         </div>
@@ -1761,7 +1761,7 @@ function WizardStep3({ finalGoals, planType, onSign, saving, onBack }) {
         </p>
       </div>
 
-      <div className="bg-cz-card border border-cz-border rounded-xl p-5 mb-6">
+      <div className="bg-cz-card border border-cz-border rounded-cz p-5 mb-6">
         <p className="text-cz-3 text-xs uppercase tracking-wider mb-3">{t("wizard.agreedHeading")}</p>
         <div className="flex flex-col gap-2">
           {finalGoals.map((g, i) => (
@@ -1787,7 +1787,7 @@ function WizardStep3({ finalGoals, planType, onSign, saving, onBack }) {
       </div>
 
       <button onClick={onSign} disabled={saving}
-        className="w-full py-3 bg-cz-accent text-cz-on-accent font-bold rounded-xl
+        className="w-full py-3 bg-cz-accent text-cz-on-accent font-bold rounded-cz
           hover:brightness-110 disabled:opacity-50 transition-all">
         {saving ? t("wizard.signing") : t("wizard.sign")}
       </button>
@@ -2269,7 +2269,7 @@ export default function BoardPage() {
 
       {/* S-02a: Sæson 1 baseline — bestyrelsen observerer, ingen forhandling endnu. */}
       {isBaselinePhase && (
-        <div className="bg-cz-card border border-cz-border rounded-xl p-5 mb-5">
+        <div className="bg-cz-card border border-cz-border rounded-cz p-5 mb-5">
           <div className="flex items-start gap-3">
             <span className="text-2xl">👀</span>
             <div>
@@ -2399,7 +2399,7 @@ export default function BoardPage() {
       {!isBaselinePhase && <BoardFeedSection items={boardFeed} />}
 
       {/* Tilfredshedsforklaring — #1030: scroll-mål fra plan-panelets tilfredsheds-tal */}
-      <div id="board-satisfaction-explainer" className="bg-cz-card border border-cz-border rounded-xl p-5 mt-5 scroll-mt-4">
+      <div id="board-satisfaction-explainer" className="bg-cz-card border border-cz-border rounded-cz p-5 mt-5 scroll-mt-4">
         <h2 className="text-cz-1 font-semibold text-sm mb-4">{t("satisfactionExplainer.heading")}</h2>
         <div className="grid sm:grid-cols-3 gap-3">
           {[
@@ -2418,15 +2418,15 @@ export default function BoardPage() {
 
       {/* S-02h · Wizard modal overlay — vises oven på dashboard (ikke full-page takeover) */}
       {wizardPlanType && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/70 backdrop-blur-sm overflow-y-auto py-6 px-4">
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/70 overflow-y-auto py-6 px-4">
           {/* #1241 · Solid tema-flade (bg-cz-body) bag wizard-indholdet: overskrifter,
               mål-tæller og knapper flød før direkte på den mørke overlay → tema-tokens
               (text-cz-1/2/3) blev ulæselige i light-mode ("gennemsigtig tekst"). */}
           <div ref={wizardDialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-label={t("wizard.dialogAria")}
-            className="w-full max-w-2xl bg-cz-body border border-cz-border rounded-2xl p-4 sm:p-6 shadow-2xl h-fit">
+            className="w-full max-w-2xl bg-cz-body border border-cz-border rounded-cz p-4 sm:p-6 shadow-2xl h-fit">
             {/* Onboarding-header (sæson 2 setup) */}
             {wizardIsSetup && (
-              <div className="bg-cz-accent/10 border border-cz-accent/30 rounded-xl p-4 mb-6">
+              <div className="bg-cz-accent/10 border border-cz-accent/30 rounded-cz p-4 mb-6">
                 <p className="text-cz-accent-t text-sm font-semibold">
                   {t("wizard.setupHeading", { step: wizardSetupStep })}
                 </p>
@@ -2443,7 +2443,7 @@ export default function BoardPage() {
 
             {/* Multi-plan renewal header (Q19) */}
             {isMultiRenewal && (
-              <div className="bg-cz-accent/10 border border-cz-accent/30 rounded-xl p-4 mb-6">
+              <div className="bg-cz-accent/10 border border-cz-accent/30 rounded-cz p-4 mb-6">
                 <p className="text-cz-accent-t text-sm font-semibold">
                   {t("wizard.multiRenewalHeading", { current: renewalQueueIdx + 1, total: renewalQueue.length, plan: getPlanLabel(t, wizardPlanType) })}
                 </p>
@@ -2457,14 +2457,14 @@ export default function BoardPage() {
 
             {/* Enkelt renewal header */}
             {!wizardIsSetup && !isMultiRenewal && wizardExistingPlanData?.is_expired && (
-              <div className="bg-cz-accent/10 border border-cz-accent/30 rounded-xl p-4 mb-6">
+              <div className="bg-cz-accent/10 border border-cz-accent/30 rounded-cz p-4 mb-6">
                 <p className="text-cz-accent-t text-sm font-semibold">{t("wizard.singleRenewalHeading", { plan: getPlanLabel(t, wizardPlanType) })}</p>
                 <p className="text-cz-accent-t text-xs mt-1">{t("wizard.singleRenewalBody", { plan: getPlanLabel(t, wizardPlanType) })}</p>
               </div>
             )}
 
             {/* Trin-indikator */}
-            <div className="bg-cz-card border border-cz-border rounded-xl p-5 mb-4">
+            <div className="bg-cz-card border border-cz-border rounded-cz p-5 mb-4">
               <div className="flex items-center">
                 {[
                   { n: 1, labelKey: "strategy"    },

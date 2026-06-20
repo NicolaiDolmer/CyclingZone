@@ -132,7 +132,7 @@ export default function RoadmapPage() {
 
       <div className="flex flex-col gap-3">
         {ENGINES.map(({ key, icon }) => (
-          <div key={key} className="bg-cz-card border border-cz-border rounded-xl px-5 py-4">
+          <div key={key} className="bg-cz-card border border-cz-border rounded-cz px-5 py-4">
             <div className="flex items-center gap-2 mb-3">
               <span aria-hidden="true">{icon}</span>
               <h2 className="text-cz-1 font-bold text-sm">{t(`engines.${key}.title`)}</h2>

@@ -388,7 +388,7 @@ export default function RacePoolSection({ getAuth, onMsg }) {
   return (
     <div className="space-y-4">
       {/* Pool-overblik */}
-      <div className="bg-cz-subtle rounded-xl p-4">
+      <div className="bg-cz-subtle rounded-cz p-4">
         <p className="text-cz-2 font-medium text-sm mb-3">
           Verdens-kalender — {pool.length} løb · {totalPoolRaceDays} race-dage
         </p>
@@ -419,7 +419,7 @@ export default function RacePoolSection({ getAuth, onMsg }) {
       </div>
 
       {/* Filter-form */}
-      <div className="bg-cz-subtle rounded-xl p-4 space-y-3">
+      <div className="bg-cz-subtle rounded-cz p-4 space-y-3">
         <p className="text-cz-2 font-medium text-sm">Sammensæt sæsons kalender</p>
 
         <div>
@@ -553,7 +553,7 @@ export default function RacePoolSection({ getAuth, onMsg }) {
 
       {/* Preview + gem */}
       {preview && (
-        <div className="bg-cz-subtle rounded-xl p-4 space-y-3">
+        <div className="bg-cz-subtle rounded-cz p-4 space-y-3">
           <div className="flex flex-wrap justify-between items-center gap-2">
             <p className="text-cz-2 font-medium text-sm">
               Forslag: {finalSelected.length} løb · {finalRaceDays} race-dage (mål{" "}
@@ -776,7 +776,7 @@ function WhitelistEditor({
   }
 
   return (
-    <div className="bg-cz-bg border border-cz-border rounded-xl p-3 space-y-2">
+    <div className="bg-cz-bg border border-cz-border rounded-cz p-3 space-y-2">
       <button
         type="button"
         onClick={onToggleOpen}

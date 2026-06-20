@@ -79,7 +79,7 @@ function DayRiderTable({ rows, t, tRider }) {
                   <div className="flex flex-col gap-0.5">
                     {row.status === "over" && <span className="text-cz-success text-xs">{t("sharpDay")}</span>}
                     {row.status === "under" && <span className="text-cz-danger text-xs">{t("flatDay")}</span>}
-                    <span className={`text-[11px] font-mono ${fatigueDelta > 0 ? "text-orange-400" : fatigueDelta < 0 ? "text-cz-success" : "text-cz-3"}`}>
+                    <span className={`text-[11px] font-mono ${fatigueDelta > 0 ? "text-cz-warning" : fatigueDelta < 0 ? "text-cz-success" : "text-cz-3"}`}>
                       {t("fatigueChange", { delta: `${fatigueSign}${fatigueDelta}` })}
                     </span>
                   </div>

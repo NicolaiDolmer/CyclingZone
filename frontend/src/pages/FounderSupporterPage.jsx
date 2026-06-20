@@ -209,7 +209,7 @@ export default function FounderSupporterPage() {
   return (
     <div className="min-h-screen bg-cz-body">
       {/* ----- Sticky top-bar ----- */}
-      <header className="sticky top-0 z-40 bg-cz-body/90 backdrop-blur-md border-b border-cz-border">
+      <header className="sticky top-0 z-40 bg-cz-body border-b border-cz-border">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
           <Link to="/" aria-label="Cycling Zone" className="flex items-center gap-2.5 group">
             {/* #481: locked monogram + theme-aware outlined wordmark (with twin lines). */}
@@ -296,7 +296,7 @@ export default function FounderSupporterPage() {
               <TierCard tier={tiers.patron} />
             </div>
 
-            <div className="mt-8 max-w-3xl mx-auto bg-cz-subtle border border-cz-border rounded-xl p-5">
+            <div className="mt-8 max-w-3xl mx-auto bg-cz-subtle border border-cz-border rounded-cz p-5">
               <h3 className="text-cz-1 text-base font-semibold mb-2 flex items-center gap-2">
                 <span className="text-cz-accent">★</span>
                 {t("founderNoteTitle")}
@@ -315,7 +315,7 @@ export default function FounderSupporterPage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-cz-card border border-cz-border rounded-xl p-5">
+              <div className="bg-cz-card border border-cz-border rounded-cz p-5">
                 <h3 className="text-cz-1 text-base font-semibold mb-3 flex items-center gap-2">
                   <CheckIcon className="w-4 h-4 text-cz-success flex-shrink-0" />
                   {t("soldCol")}
@@ -330,7 +330,7 @@ export default function FounderSupporterPage() {
                 </ul>
               </div>
 
-              <div className="bg-cz-card border border-cz-danger/30 rounded-xl p-5">
+              <div className="bg-cz-card border border-cz-danger/30 rounded-cz p-5">
                 <h3 className="text-cz-1 text-base font-semibold mb-3 flex items-center gap-2">
                   <XIcon className="w-4 h-4 text-cz-danger flex-shrink-0" />
                   {t("notSoldCol")}
@@ -357,7 +357,7 @@ export default function FounderSupporterPage() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {t("benefitsList", { returnObjects: true }).map((b, i) => (
-                <div key={i} className="bg-cz-card border border-cz-border rounded-xl p-4">
+                <div key={i} className="bg-cz-card border border-cz-border rounded-cz p-4">
                   <h3 className="text-cz-1 text-sm font-semibold mb-1">{b.title}</h3>
                   <p className="text-cz-3 text-xs leading-relaxed">{b.desc}</p>
                 </div>

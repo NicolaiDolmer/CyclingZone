@@ -72,7 +72,7 @@ export default function DeadlineReadinessSection({ getAuth, onMsg }) {
   return (
     <div className="space-y-3">
       {/* Overall status banner */}
-      <div className={`rounded-xl p-4 border ${statusBg}`}>
+      <div className={`rounded-cz p-4 border ${statusBg}`}>
         <div className="flex justify-between items-start">
           <div>
             <p className="font-semibold text-sm">
@@ -99,7 +99,7 @@ export default function DeadlineReadinessSection({ getAuth, onMsg }) {
       </div>
 
       {/* Checks */}
-      <div className="bg-cz-subtle rounded-xl p-4">
+      <div className="bg-cz-subtle rounded-cz p-4">
         <p className="text-cz-2 font-medium text-sm mb-2">System-tjek</p>
         <ul className="space-y-1.5 text-sm">
           {Object.entries(checks).map(([key, check]) => (
@@ -117,7 +117,7 @@ export default function DeadlineReadinessSection({ getAuth, onMsg }) {
       </div>
 
       {/* Counts */}
-      <div className="bg-cz-subtle rounded-xl p-4">
+      <div className="bg-cz-subtle rounded-cz p-4">
         <p className="text-cz-2 font-medium text-sm mb-2">Aktive markedshandler ved deadline</p>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm">
           <div className="px-3 py-2 bg-cz-card rounded border border-cz-border">
@@ -154,7 +154,7 @@ export default function DeadlineReadinessSection({ getAuth, onMsg }) {
       </div>
 
       {/* Dry-run preview af sæson-skifte */}
-      <div className="bg-cz-subtle rounded-xl p-4">
+      <div className="bg-cz-subtle rounded-cz p-4">
         <div className="flex justify-between items-center mb-2">
           <p className="text-cz-2 font-medium text-sm">Sæson-skifte preview (dry-run)</p>
           <button onClick={runDryRun} disabled={dryRunLoading}
@@ -214,7 +214,7 @@ export default function DeadlineReadinessSection({ getAuth, onMsg }) {
 
       {/* Squad violations */}
       {violations.length > 0 && (
-        <div className="bg-cz-warning-bg/30 border border-cz-warning/30 rounded-xl p-4">
+        <div className="bg-cz-warning-bg/30 border border-cz-warning/30 rounded-cz p-4">
           <p className="text-cz-2 font-medium text-sm mb-2">
             ⚠ {violations.length} hold udenfor min/max — squad enforcement vil ramme dem
           </p>

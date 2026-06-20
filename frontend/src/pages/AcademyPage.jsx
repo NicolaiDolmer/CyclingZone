@@ -114,7 +114,7 @@ export default function AcademyPage() {
     return (
       <div className="space-y-4">
         <h1 className="text-xl font-bold text-cz-1">{t("title")}</h1>
-        <div className="bg-cz-card border border-cz-border rounded-xl px-6 py-10 text-center">
+        <div className="bg-cz-card border border-cz-border rounded-cz px-6 py-10 text-center">
           <p className="text-cz-2 text-sm">{t("disabledNote")}</p>
         </div>
       </div>
@@ -200,7 +200,7 @@ export default function AcademyPage() {
         <h2 className="text-sm font-semibold text-cz-3 uppercase tracking-wide mb-3">{t("intakeHeading")}</h2>
 
         {intake.length === 0 ? (
-          <div className="bg-cz-card border border-cz-border rounded-xl px-6 py-10 text-center">
+          <div className="bg-cz-card border border-cz-border rounded-cz px-6 py-10 text-center">
             <p className="text-cz-3 text-sm">{t("emptyIntake")}</p>
           </div>
         ) : (
@@ -215,7 +215,7 @@ export default function AcademyPage() {
               return (
                 <div
                   key={item.intakeId}
-                  className="bg-cz-card border border-cz-border rounded-xl p-4 flex flex-col gap-3"
+                  className="bg-cz-card border border-cz-border rounded-cz p-4 flex flex-col gap-3"
                 >
                   {/* Navn + nationalitet */}
                   <div className="flex items-start justify-between gap-2">
@@ -297,11 +297,11 @@ export default function AcademyPage() {
         <h2 className="text-sm font-semibold text-cz-3 uppercase tracking-wide mb-3">{t("rosterHeading")}</h2>
 
         {roster.length === 0 ? (
-          <div className="bg-cz-card border border-cz-border rounded-xl px-6 py-8 text-center">
+          <div className="bg-cz-card border border-cz-border rounded-cz px-6 py-8 text-center">
             <p className="text-cz-3 text-sm">{t("emptyRoster")}</p>
           </div>
         ) : (
-          <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+          <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -353,7 +353,7 @@ export default function AcademyPage() {
         <h2 className="text-sm font-semibold text-cz-3 uppercase tracking-wide mb-3">{t("freeAgentsHeading")}</h2>
 
         {freeAgents.length === 0 ? (
-          <div className="bg-cz-card border border-cz-border rounded-xl px-6 py-8 text-center">
+          <div className="bg-cz-card border border-cz-border rounded-cz px-6 py-8 text-center">
             <p className="text-cz-3 text-sm">{t("emptyFreeAgents")}</p>
           </div>
         ) : (
@@ -363,7 +363,7 @@ export default function AcademyPage() {
               const busy = actionState[rider.id] != null;
               const err = actionErrors[rider.id];
               return (
-                <div key={rider.id} className="bg-cz-card border border-cz-border rounded-xl p-4 flex flex-col gap-3">
+                <div key={rider.id} className="bg-cz-card border border-cz-border rounded-cz p-4 flex flex-col gap-3">
                   <div className="flex items-start justify-between gap-2">
                     <div>
                       <p className="font-semibold text-sm leading-snug">

@@ -246,7 +246,7 @@ export default function AdminSeasonTab() {
       </AdminSection>
 
       <AdminSection title="Transfervindue">
-        <div className="flex items-center justify-between bg-cz-subtle rounded-xl p-4 mb-3">
+        <div className="flex items-center justify-between bg-cz-subtle rounded-cz p-4 mb-3">
           <div>
             <p className="text-cz-1 font-medium text-sm">
               Status: <span className={windowOpen ? "text-cz-success" : "text-cz-2"}>
@@ -266,7 +266,7 @@ export default function AdminSeasonTab() {
           </button>
         </div>
 
-        <div className="bg-cz-subtle rounded-xl p-4 mb-3">
+        <div className="bg-cz-subtle rounded-cz p-4 mb-3">
           <p className="text-cz-2 font-medium text-sm mb-2">Lukketidspunkt</p>
           <div className="flex items-center gap-2">
             <input
@@ -287,7 +287,7 @@ export default function AdminSeasonTab() {
           </p>
         </div>
 
-        <div className="bg-cz-subtle rounded-xl p-4 mb-3">
+        <div className="bg-cz-subtle rounded-cz p-4 mb-3">
           <p className="text-cz-2 font-medium text-sm mb-2">Deadline Day tilstand</p>
           <div className="flex gap-2">
             {["auto", "on", "off"].map(mode => {

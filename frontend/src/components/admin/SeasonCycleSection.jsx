@@ -106,7 +106,7 @@ export default function SeasonCycleSection({ getAuth, onMsg }) {
 
   if (!preview) {
     return (
-      <div className="bg-cz-subtle rounded-xl p-4">
+      <div className="bg-cz-subtle rounded-cz p-4">
         <p className="text-cz-3 text-sm mb-3">Ingen forhåndsvisning tilgængelig.</p>
         <button
           onClick={reloadPreview}
@@ -121,7 +121,7 @@ export default function SeasonCycleSection({ getAuth, onMsg }) {
   return (
     <div className="space-y-3">
       {/* Hero — hvad sker der */}
-      <div className="bg-cz-subtle rounded-xl p-4">
+      <div className="bg-cz-subtle rounded-cz p-4">
         <p className="text-cz-2 font-medium text-sm mb-2">Hvad sker der ved sæsonskifte?</p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
           <div>
@@ -142,7 +142,7 @@ export default function SeasonCycleSection({ getAuth, onMsg }) {
       </div>
 
       {/* Plan-detaljer */}
-      <div className="bg-cz-subtle rounded-xl p-4">
+      <div className="bg-cz-subtle rounded-cz p-4">
         <p className="text-cz-2 font-medium text-sm mb-3">Forhåndsvisning</p>
         <div className="space-y-2 text-sm">
           <Row label="Hold påvirket" value={preview.teams_affected.toString()} />
@@ -164,7 +164,7 @@ export default function SeasonCycleSection({ getAuth, onMsg }) {
 
       {/* Sponsor-breakdown */}
       {preview.sponsor_breakdown?.length > 0 && (
-        <details className="bg-cz-subtle rounded-xl p-4">
+        <details className="bg-cz-subtle rounded-cz p-4">
           <summary className="text-cz-2 font-medium text-sm cursor-pointer">
             Sponsor pr. hold ({preview.sponsor_breakdown.length})
           </summary>
@@ -193,7 +193,7 @@ export default function SeasonCycleSection({ getAuth, onMsg }) {
 
       {/* #1346: Readiness-gate — spejler server-gaten så admin ser årsager før klik */}
       {gate.known && (
-        <div className="bg-cz-subtle rounded-xl p-4">
+        <div className="bg-cz-subtle rounded-cz p-4">
           <p className="text-cz-2 font-medium text-sm mb-2">
             Readiness-gate: {gate.blocked ? "🔴 blokeret" : "🟢 klar"}
           </p>
@@ -252,7 +252,7 @@ export default function SeasonCycleSection({ getAuth, onMsg }) {
 
       {/* Resultat-log efter udførsel */}
       {result && (
-        <div className="bg-cz-subtle rounded-xl p-4">
+        <div className="bg-cz-subtle rounded-cz p-4">
           <p className="text-cz-2 font-medium text-sm mb-2">✅ Sæsonskifte udført</p>
           <div className="space-y-1 text-xs font-mono">
             {(result.log || []).map((entry, i) => (

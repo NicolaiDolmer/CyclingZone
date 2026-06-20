@@ -141,7 +141,7 @@ export default function HallOfFamePage() {
           {CATEGORIES.map(cat => {
             const entries = getBestFromStandings(cat.key);
             return (
-              <div key={cat.key} className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+              <div key={cat.key} className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
                 <div className="flex items-center gap-3 px-5 py-4 border-b border-cz-border"
                   style={{ borderLeft: `3px solid ${cat.color}` }}>
                   <span className="text-xl">{cat.icon}</span>
@@ -189,7 +189,7 @@ export default function HallOfFamePage() {
 
       {/* Managers tab */}
       {tab === "managers" && (
-        <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+        <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-cz-border">
@@ -255,7 +255,7 @@ export default function HallOfFamePage() {
           ) : (
             <div className="flex flex-col gap-4">
               {Object.entries(divHistory).sort((a, b) => parseInt(b[0]) - parseInt(a[0])).map(([season, entries]) => (
-                <div key={season} className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+                <div key={season} className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
                   <div className="px-5 py-3 border-b border-cz-border flex items-center gap-2">
                     <span className="text-cz-accent-t font-bold text-sm">{t("season", { n: season })}</span>
                     <span className="text-cz-3 text-xs">{t("division1")}</span>

@@ -129,7 +129,7 @@ function FinalWhistleReport({ data }) {
 function SquadTable({ rows, dimmed, captionId }) {
   const { t } = useTranslation("transfers");
   return (
-    <div className={`rounded-xl border border-cz-border overflow-x-auto${dimmed ? " opacity-60" : ""}`}>
+    <div className={`rounded-cz border border-cz-border overflow-x-auto${dimmed ? " opacity-60" : ""}`}>
       <table className="w-full text-sm" aria-labelledby={captionId}>
         <thead>
           <tr className="border-b border-cz-border text-[10px] text-cz-3 uppercase tracking-wider">
@@ -273,7 +273,7 @@ export default function DeadlineDayBoard() {
       </div>
 
       {totalShown === 0 && (
-        <div className="rounded-xl border border-cz-border p-6 text-center">
+        <div className="rounded-cz border border-cz-border p-6 text-center">
           <p className="text-2xl mb-2">✅</p>
           <p className="font-semibold text-cz-2">{t("deadlineDay.allOkTitle")}</p>
           <p className="text-sm text-cz-3 mt-1">{t("deadlineDay.allOkSubtitle")}</p>

@@ -169,7 +169,7 @@ function RacePhysiologyPreview({ physiology }) {
   const { t } = useTranslation("rider");
   if (!physiology) return null;
   return (
-    <div className="bg-cz-card border border-cz-border rounded-xl p-5 mt-4">
+    <div className="bg-cz-card border border-cz-border rounded-cz p-5 mt-4">
       <h3 className="text-cz-1 font-semibold mb-3">{t("racePreview.powerProfile")}</h3>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <PowerStat label={t("racePreview.zones.zone2")}  value={physiology.zone2_power_wkg}  unit="W/kg" />
@@ -249,7 +249,7 @@ function SwapOfferButton({ rider, myTeamId }) {
         </div>
       )}
       <button onClick={openForm}
-        className={`w-full min-h-[44px] py-2.5 rounded-xl text-sm font-bold transition-all border
+        className={`w-full min-h-[44px] py-2.5 rounded-cz text-sm font-bold transition-all border
           ${show
               ? "bg-cz-accent/10 text-cz-accent-t border-[#e8c547]/25"
               : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle hover:text-cz-1"}`}>
@@ -341,7 +341,7 @@ function LoanOfferButton({ rider }) {
         </div>
       )}
       <button onClick={() => setShow(!show)}
-        className={`w-full min-h-[44px] py-2.5 rounded-xl text-sm font-bold transition-all border
+        className={`w-full min-h-[44px] py-2.5 rounded-cz text-sm font-bold transition-all border
           ${show
               ? "bg-cz-accent/10 text-cz-accent-t border-[#e8c547]/25"
               : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle hover:text-cz-1"}`}>
@@ -429,7 +429,7 @@ function DirectOfferButton({ rider }) {
         </div>
       )}
       <button onClick={() => setShow(!show)}
-        className={`w-full min-h-[44px] py-2.5 rounded-xl text-sm font-bold transition-all border
+        className={`w-full min-h-[44px] py-2.5 rounded-cz text-sm font-bold transition-all border
           ${show
               ? "bg-cz-accent/10 text-cz-accent-t border-[#e8c547]/25"
               : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle hover:text-cz-1"}`}>
@@ -571,7 +571,7 @@ function TransferListButton({ rider }) {
         </div>
       )}
       {listing ? (
-        <div className="rounded-xl border border-cz-border bg-cz-subtle p-3 flex flex-col gap-2">
+        <div className="rounded-cz border border-cz-border bg-cz-subtle p-3 flex flex-col gap-2">
           <p className="text-cz-2 text-sm">
             {t("sellRider.listedStatus", { amount: formatNumber(listing.asking_price) })}
           </p>
@@ -601,7 +601,7 @@ function TransferListButton({ rider }) {
         </div>
       ) : (
         <button onClick={() => setShow(!show)}
-          className={`w-full min-h-[44px] py-2.5 rounded-xl text-sm font-bold transition-all border
+          className={`w-full min-h-[44px] py-2.5 rounded-cz text-sm font-bold transition-all border
             ${show
                 ? "bg-cz-accent/10 text-cz-accent-t border-[#e8c547]/25"
                 : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle hover:text-cz-1"}`}>
@@ -679,7 +679,7 @@ function RiderBidPanel({ auction, myTeamId, myBalance, reservedBalance, riderNam
   });
 
   return (
-    <div className={`rounded-xl border p-4 ${imWinning ? "border-cz-accent/40 bg-cz-accent/[0.04]" : "border-cz-border bg-cz-subtle"}`}>
+    <div className={`rounded-cz border p-4 ${imWinning ? "border-cz-accent/40 bg-cz-accent/[0.04]" : "border-cz-border bg-cz-subtle"}`}>
       <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
         <p className="text-cz-3 text-xs uppercase tracking-widest">{t("auctionPanel.activeLabel")}</p>
         <div className="flex items-center gap-1.5 flex-wrap">
@@ -1396,7 +1396,7 @@ export default function RiderStatsPage() {
 
       <button onClick={() => navigate(-1)} className="text-cz-3 hover:text-cz-1 text-sm mb-4 flex items-center gap-1">{t("page.back")}</button>
 
-      <div className="bg-cz-card border border-cz-border rounded-xl p-5 mb-4">
+      <div className="bg-cz-card border border-cz-border rounded-cz p-5 mb-4">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-2">
           <div className="flex-1 min-w-0">
             <div className="flex items-start gap-3">
@@ -1595,7 +1595,7 @@ export default function RiderStatsPage() {
 
       {tab === "stats" && (
         <>
-          <div className="bg-cz-card border border-cz-border rounded-xl p-5">
+          <div className="bg-cz-card border border-cz-border rounded-cz p-5">
             {scouting.estimateFor(rider.id) !== null && (
               <div className="flex items-center gap-3 py-2 mb-1 border-b border-cz-border">
                 <span className="text-cz-3 w-4 text-center text-sm">◆</span>
@@ -1626,7 +1626,7 @@ export default function RiderStatsPage() {
       )}
 
       {tab === "season" && (
-        <div className="bg-cz-card border border-cz-border rounded-xl p-5">
+        <div className="bg-cz-card border border-cz-border rounded-cz p-5">
           {Object.keys(bySeason).length === 0 ? (
             <p className="text-cz-3 text-center py-8">{t("season.empty")}</p>
           ) : (
@@ -1663,7 +1663,7 @@ export default function RiderStatsPage() {
       )}
 
       {tab === "results" && (
-        <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+        <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
           {results.length === 0 ? (
             <p className="text-cz-3 text-center py-8">{t("results.empty")}</p>
           ) : (
@@ -1705,7 +1705,7 @@ export default function RiderStatsPage() {
       )}
 
       {tab === "history" && (
-        <div className="bg-cz-card border border-cz-border rounded-xl divide-y divide-cz-border">
+        <div className="bg-cz-card border border-cz-border rounded-cz divide-y divide-cz-border">
           {history.length === 0 ? (
             <p className="text-cz-3 text-center py-8">{t("history.empty")}</p>
           ) : history.map((e, i) => (
@@ -1715,7 +1715,7 @@ export default function RiderStatsPage() {
       )}
 
       {tab === "development" && (
-        <Suspense fallback={<div className="bg-cz-card border border-cz-border rounded-xl p-5 text-cz-3 text-center py-8">{t("stats.loadingDevelopment")}</div>}>
+        <Suspense fallback={<div className="bg-cz-card border border-cz-border rounded-cz p-5 text-cz-3 text-center py-8">{t("stats.loadingDevelopment")}</div>}>
           {isMyRider && !isRetired && <TrainingFocus rider={rider} training={training} />}
           {isMyRider && <RiderTrainingHistory riderId={rider.id} history={trainingHistory} />}
           <RiderDevelopmentTab statHistory={statHistory} stats={localizedSkills} />
@@ -1729,7 +1729,7 @@ function BidTimelineTab({ timeline }) {
   const { t } = useTranslation("rider");
   if (!timeline || timeline.auction_id === null) {
     return (
-      <div className="bg-cz-card border border-cz-border rounded-xl p-5">
+      <div className="bg-cz-card border border-cz-border rounded-cz p-5">
         <p className="text-cz-3 text-center py-8">{t("bids.noAuction")}</p>
       </div>
     );
@@ -1740,7 +1740,7 @@ function BidTimelineTab({ timeline }) {
       ? formatDateTime(timeline.completed_at)
       : t("bids.fallbackDash");
     return (
-      <div className="bg-cz-card border border-cz-border rounded-xl p-5">
+      <div className="bg-cz-card border border-cz-border rounded-cz p-5">
         <div className="flex items-start gap-3">
           <span className="text-cz-accent-t text-2xl mt-0.5">🏆</span>
           <div className="flex-1 min-w-0">
@@ -1770,7 +1770,7 @@ function BidTimelineTab({ timeline }) {
   const ordered = [...bids].reverse();
 
   return (
-    <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+    <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
       <div className="px-5 py-3 border-b border-cz-border flex items-center justify-between">
         <span className="text-xs uppercase tracking-wider text-cz-accent-t font-medium">{t("bids.activeAuction")}</span>
         {timeline.current_price != null && (

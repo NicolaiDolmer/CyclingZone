@@ -49,7 +49,7 @@ export function StackedMark({ className = "w-16 h-16", alt = BRAND_NAME }) {
     <img
       src="/brand/favicon-stacked.svg"
       alt={alt}
-      className={`rounded-xl ${className}`}
+      className={`rounded-cz ${className}`}
       draggable="false"
     />
   );

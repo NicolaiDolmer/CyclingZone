@@ -209,7 +209,7 @@ export default function RaceDetailPage() {
       {race.status === "scheduled" && <RaceSelectionPanel raceId={race.id} />}
 
       {!hasAnyResults && (
-        <div className="bg-cz-card border border-cz-border rounded-xl p-10 text-center text-cz-3">
+        <div className="bg-cz-card border border-cz-border rounded-cz p-10 text-center text-cz-3">
           <p className="text-4xl mb-3">🏁</p>
           <p className="text-sm">{t("empty.noResultsImportedRace")}</p>
         </div>
@@ -267,7 +267,7 @@ function OverallTab({ finalByType }) {
   const { t } = useTranslation("races");
   const any = CLASSIFICATIONS.some(c => finalByType[c.key]?.length > 0);
   if (!any) return (
-    <div className="bg-cz-card border border-cz-border rounded-xl p-8 text-center text-cz-3 text-sm">
+    <div className="bg-cz-card border border-cz-border rounded-cz p-8 text-center text-cz-3 text-sm">
       {t("detail.noOverall")}
     </div>
   );
@@ -296,7 +296,7 @@ function StageTab({ stage, results, profile }) {
     <div className="space-y-5">
       <StageProfileCard profile={profile} />
       {jerseys.length > 0 && (
-        <div className="bg-cz-card border border-cz-border rounded-xl p-4">
+        <div className="bg-cz-card border border-cz-border rounded-cz p-4">
           <p className="text-cz-2 text-xs uppercase tracking-wider mb-3 font-semibold">{t("detail.jerseysAfterStage")}</p>
           <div className="flex flex-wrap gap-2">
             {jerseys.map(j => (
@@ -382,7 +382,7 @@ function ResultTable({ title, rows }) {
   // gamle PCM-løb og point/bjerg/ungdom/hold-klassementer har tom finish_time.
   const showTime = rows.some(r => r.finish_time);
   return (
-    <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+    <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
       <div className="px-4 py-3 border-b border-cz-border">
         <h2 className="font-semibold text-cz-1 text-sm">{title}</h2>
       </div>

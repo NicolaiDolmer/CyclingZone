@@ -114,7 +114,7 @@ export default function TeamResultsTab({ teamId }) {
     </div>
   );
   if (error) return (
-    <div className="bg-cz-danger-bg border border-cz-danger/30 rounded-xl p-4">
+    <div className="bg-cz-danger-bg border border-cz-danger/30 rounded-cz p-4">
       <p className="text-cz-danger text-sm">{error}</p>
     </div>
   );
@@ -123,7 +123,7 @@ export default function TeamResultsTab({ teamId }) {
   const noResults = results.length === 0;
 
   return (
-    <div className="bg-cz-card border border-cz-border rounded-xl p-5">
+    <div className="bg-cz-card border border-cz-border rounded-cz p-5">
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <div>
           <h2 className="text-cz-1 font-semibold text-sm">{t("results.title")}</h2>

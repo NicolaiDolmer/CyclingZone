@@ -324,7 +324,7 @@ export default function RiderRankingsPage() {
           )}
         </div>
       ) : (
-        <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+        <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>

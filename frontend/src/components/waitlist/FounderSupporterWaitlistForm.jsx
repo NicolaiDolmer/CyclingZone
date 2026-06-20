@@ -205,7 +205,7 @@ export default function FounderSupporterWaitlistForm() {
   if (success) {
     const successNext = t("form.successNext", { returnObjects: true });
     return (
-      <div className="bg-cz-card border border-cz-border rounded-2xl p-6 text-center">
+      <div className="bg-cz-card border border-cz-border rounded-cz p-6 text-center">
         <div className="text-4xl mb-3">🎉</div>
         <h2 className="text-cz-1 text-xl font-bold mb-2">{t("form.successTitle")}</h2>
         <p className="text-cz-2 text-sm mb-4">{t("form.successBody")}</p>
@@ -237,7 +237,7 @@ export default function FounderSupporterWaitlistForm() {
   const showErr = (key) => (touched ? errors[key] : null);
 
   return (
-    <form onSubmit={handleSubmit} className="bg-cz-card border border-cz-border rounded-2xl p-5 sm:p-6 flex flex-col gap-6" noValidate>
+    <form onSubmit={handleSubmit} className="bg-cz-card border border-cz-border rounded-cz p-5 sm:p-6 flex flex-col gap-6" noValidate>
       {/* ----- Kontakt ----- */}
       <fieldset className="flex flex-col gap-3">
         <legend className="text-cz-1 text-base font-semibold mb-1">{t("form.contactLegend")}</legend>

@@ -306,7 +306,7 @@ export default function SeasonEndPage() {
 
           {/* Kalender */}
           {races.length > 0 && (
-            <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+            <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
               <div className="px-5 py-3 border-b border-cz-border flex items-center justify-between flex-wrap gap-2">
                 <div>
                   <h2 className="font-bold text-cz-1 text-sm">{t("calendar.heading", { count: races.length })}</h2>
@@ -362,7 +362,7 @@ export default function SeasonEndPage() {
             const color = DIV_COLORS[div];
             const isCompleted = selectedSeason?.status === "completed";
             return (
-              <div key={div} className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+              <div key={div} className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
                 <div className="flex items-center justify-between px-5 py-4 border-b border-cz-border"
                   style={{ borderLeft: `3px solid ${color}` }}>
                   <h2 className="font-bold text-sm" style={{ color }}>{t("division", { div })}</h2>
@@ -459,7 +459,7 @@ export default function SeasonEndPage() {
 
           {/* Full point progression for my team */}
           {myTeamId && pointsByTeam[myTeamId]?.length > 1 && races.length > 1 && (
-            <div className="bg-cz-card border border-cz-border rounded-xl p-5">
+            <div className="bg-cz-card border border-cz-border rounded-cz p-5">
               <h2 className="text-cz-1 font-semibold text-sm mb-4">{t("myProgression")}</h2>
               <PointChart
                 data={pointsByTeam[myTeamId]}
@@ -478,7 +478,7 @@ function WinnerCard({ icon, title, primary, secondary, onClick, hasData }) {
     <button
       onClick={onClick}
       disabled={!hasData}
-      className={`bg-cz-card border border-cz-border rounded-xl p-3 text-left transition-colors ${
+      className={`bg-cz-card border border-cz-border rounded-cz p-3 text-left transition-colors ${
         hasData ? "hover:border-cz-accent/30 cursor-pointer" : "cursor-default"
       }`}>
       <div className="flex items-center gap-1.5 mb-1.5">
