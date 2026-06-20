@@ -4,6 +4,29 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "5.77",
+    "date": "2026-06-20",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Rules",
+        "en": {
+          "title": "New Rules page — the numbers in one place",
+          "body": "A dedicated Rules page now collects every limit, rate and formula in one authoritative reference: squad cap, economy (sponsor, salary, debt, division bonus), auctions, transfers, races, season and promotion, the academy, and fair play. The Help page still answers \"how do I X\" and links into Rules as the source of truth. The figures are pinned to the game code so they can't drift out of date. Find it in the sidebar next to Help."
+        },
+        "da": {
+          "title": "Ny Regler-side — tallene ét sted",
+          "body": "En dedikeret Regler-side samler nu alle grænser, satser og formler i én autoritativ reference: trup-loft, økonomi (sponsor, løn, gæld, divisionsbonus), auktioner, transfers, løb, sæson og op-/nedrykning, akademiet og fair play. Hjælp-siden svarer stadig på \"hvordan gør jeg X\" og linker ind til Regler som sandheden. Tallene er låst til spillets kode, så de ikke kan drive ud af sync. Find den i sidebaren ved siden af Hjælp."
+        },
+        "refs": [
+          1604
+        ]
+      }
+    ]
+  },
+  {
     "version": "5.76",
     "date": "2026-06-20",
     "label": "Beta",
