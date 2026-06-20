@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { useLanguage } from "../lib/language";
@@ -24,6 +24,7 @@ function getPasswordResetRedirectUrl() {
 export default function LoginPage() {
   const { t } = useTranslation(["auth", "errors"]);
   const { language } = useLanguage();
+  const navigate = useNavigate();
   // #672: landing kan deep-linke til signup-mode via ?mode=signup (Opret bruger-CTA).
   const [searchParams] = useSearchParams();
   const [mode, setMode] = useState(() => {
@@ -101,7 +102,11 @@ export default function LoginPage() {
           password,
         });
 
-        if (error) setError(t("auth:error.invalidCredentials"));
+        // #1570: map Supabase-fejlen i stedet for en hårdkodet "forkert kodeord".
+        // Vigtigst: "Email not confirmed" får sin egen besked, så en ny spiller
+        // der prøver at logge ind før de har klikket bekræftelseslinket forstår
+        // hvorfor — frem for fejlagtigt at tro deres adgangskode er forkert.
+        if (error) setError(mapSupabaseAuthError(error, t));
         return;
       }
 
@@ -159,6 +164,16 @@ export default function LoginPage() {
 
       if (!data?.user) return;
 
+      // #1570: Email-bekræftelse slået TIL → Supabase returnerer user men ingen
+      // session. Vis ÉN entydig "bekræft din email"-besked med adressen, i stedet
+      // for at vente 5s og vise en modstridende "dit hold er klar / log ind"-kombi.
+      if (!data.session) {
+        setSuccess({ kind: "confirm", email: email.trim() });
+        return;
+      }
+
+      // Session med det samme (bekræftelse slået fra) → bootstrap holdet og send
+      // spilleren direkte ind i spillet; de ER logget ind, så ingen login-omvej.
       const headers = await waitForAuthHeaders(5000);
       if (!headers) {
         console.warn("[signup] session ikke ready efter 5s — viser signupPartial");
@@ -191,10 +206,10 @@ export default function LoginPage() {
         return;
       }
 
-      setSuccess({
-        kind: "signup",
-        message: t("auth:success.signupComplete", { teamName: bootstrapData.team?.name || teamName.trim() }),
-      });
+      // #1570: holdet er oprettet og spilleren har en aktiv session → direkte ind
+      // i spillet. SetupWizard/onboarding på dashboardet guider videre — ingen
+      // selvmodsigende "dit hold er klar, men log ind igen"-success-skærm.
+      navigate("/dashboard");
     } catch (err) {
       // #1348 — login/signup/forgot brugte try/finally uden catch: et rejected
       // Supabase-kald (offline/dropped connection) clearede loading men
@@ -253,11 +268,15 @@ export default function LoginPage() {
                   <InboxIcon size={32} className="text-cz-accent" />
                 )}
               </div>
-              <p className="text-sm font-medium text-cz-success">{success.message}</p>
+              <p className="text-sm font-medium text-cz-success">
+                {success.kind === "confirm" ? t("auth:success.confirmTitle") : success.message}
+              </p>
               <p className="mt-3 text-xs text-cz-3">
                 {success.kind === "signup"
                   ? t("auth:success.signupBody")
-                  : t("auth:success.forgotBody")}
+                  : success.kind === "confirm"
+                    ? t("auth:success.confirmBody", { email: success.email })
+                    : t("auth:success.forgotBody")}
               </p>
               <Button
                 type="button"
@@ -274,7 +293,7 @@ export default function LoginPage() {
               >
                 {t("auth:success.signupCta")}
               </Button>
-              {success.kind === "signup" && (
+              {(success.kind === "signup" || success.kind === "confirm") && (
                 <div className="mt-4 border-t border-cz-border pt-4">
                   <p className="mb-2 text-xs text-cz-3">{t("auth:success.joinDiscord")}</p>
                   <DiscordJoinLink variant="button" label={t("auth:success.joinDiscordCta")} />

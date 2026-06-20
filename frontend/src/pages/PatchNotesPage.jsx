@@ -2,6 +2,27 @@
 
 const PATCHES = [
   {
+    version: "5.70",
+    date: "2026-06-20",
+    label: "Beta",
+    changes: [
+      {
+        category: "Improved · Getting started",
+        items: [
+          "EN · The homepage now leads with a clear \"Create your team\" button, so you can jump straight into the game. Discord and the launch email are still there as secondary options. Refs #1570",
+          "DA · Forsiden fører nu med en tydelig \"Opret dit hold\"-knap, så du kan hoppe direkte ind i spillet. Discord og launch-mailen er der stadig som sekundære valg. Refs #1570",
+        ],
+      },
+      {
+        category: "Fixed · Sign-up",
+        items: [
+          "EN · The sign-up flow is clearer: when your account is ready you go straight to your team, and if email confirmation is needed you get one clear message showing exactly which address to check. Trying to log in before confirming now explains why, instead of looking like a wrong password. Refs #1570",
+          "DA · Opret-bruger-flowet er tydeligere: når din konto er klar ryger du direkte ind til dit hold, og hvis email-bekræftelse kræves får du én klar besked med præcis hvilken adresse du skal tjekke. At logge ind før bekræftelse forklarer nu hvorfor, i stedet for at ligne en forkert adgangskode. Refs #1570",
+        ],
+      },
+    ],
+  },
+  {
     version: "5.69",
     date: "2026-06-20",
     label: "Beta",
