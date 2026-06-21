@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "Cycling Zone · the browser cycling manager where strategy beats spending",
-    "description": "Draft a team, bid for riders in live auctions, set your tactics, and race a full season. A free, browser-based cycling manager game. No pay-to-win."
+    "description": "Build a team, bid for riders in live auctions, set your tactics, and race a full season. A free, browser-based cycling manager game. No pay-to-win."
   },
   "nav": {
     "discordLabel": "Discord",
@@ -12,8 +12,8 @@
   },
   "hero": {
     "badge": "Open beta · Free to play",
-    "title": "Race a season. Outthink the field.",
-    "subtitle": "Cycling Zone is a browser-based cycling manager. Draft your team, bid for riders in live auctions, set the tactics, and chase results across a full season calendar.",
+    "title": "A cycling manager built for the long game.",
+    "subtitle": "Build your team, bid for riders in live auctions, and make every call across a full season. Climb the divisions, right in your browser.",
     "ctaPlay": "Create your team",
     "ctaDiscord": "Join the Discord",
     "ctaEmail": "Get the launch email",
@@ -41,7 +41,7 @@
     "rows": [
       {
         "no": "01",
-        "title": "Draft your squad",
+        "title": "Build your team",
         "body": "Pick a roster that fits your plan. Climbers for the mountains, sprinters for the flat, a captain to build around.",
         "data": "Riders with real, readable ratings"
       },
@@ -76,7 +76,7 @@
       },
       {
         "title": "Free to play",
-        "body": "The full game is free. Sign up, draft a team, and compete without paying for anything that affects the outcome."
+        "body": "The full game is free. Sign up, build a team, and compete without paying for anything that affects the outcome."
       },
       {
         "title": "No install",
@@ -87,7 +87,7 @@
   "discord": {
     "kicker": "Join in",
     "title": "The game is built in the open",
-    "body": "I am building Cycling Zone as a solo developer, in public. The Discord is where I share what I am working on, where new managers find their feet, and where your feedback shapes what gets built next.",
+    "body": "Cycling Zone started as one idea: a cycling manager where you do not just click through numbers, but actually build something over a season. I am making it on my own, in the open, season by season. The Discord is where I share what I am working on before it ships, where new managers get a hand finding their feet, and where your feedback decides what I build next. It is not finished, and it gets better every week. You come for the racing. You stay for the people. Bring your team, share your thoughts, and help shape where it goes.",
     "cta": "Open the Discord"
   },
   "waitlist": {
@@ -125,7 +125,7 @@
     "items": [
       {
         "q": "Is it really free?",
-        "a": "Yes. The full game is free to play. You can sign up, draft a team, and compete in a full season without paying for anything."
+        "a": "Yes. The full game is free to play. You can sign up, build a team, and compete in a full season without paying for anything."
       },
       {
         "q": "Is it pay-to-win?",
