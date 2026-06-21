@@ -199,7 +199,8 @@ export default function RiderComparePage() {
           <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
             {/* Potentiale row */}
             {fullRiders.some(r => scouting.estimateFor(r.id) !== null) && (
-              <div className="grid items-center py-3 px-4 border-b border-cz-border bg-cz-accent/10"
+              <div data-testid="compare-potential-row"
+                className="grid items-center py-3 px-4 border-b border-cz-border bg-cz-accent/10"
                 style={{ gridTemplateColumns: `200px repeat(${fullRiders.length}, minmax(120px, 1fr))` }}>
                 <div className="flex items-center gap-2">
                   <StarIcon size={14} className="text-cz-3 flex-shrink-0" aria-hidden="true" />
