@@ -25,6 +25,7 @@ import { runAcademyIntake } from "./academyIntake.js";
 import { isAcademyEnabled } from "./academyFlag.js";
 import { grantFounderBadges } from "./founderBadge.js";
 import { transitionToNextSeason, computeSeasonUuid } from "./seasonTransition.js";
+import { startSequentialNegotiation } from "./boardSequentialNegotiation.js";
 
 const INSERT_BATCH = 500;
 export const RELAUNCH_CONFIRM_TOKEN = "RELAUNCH SEASON 1";
@@ -85,6 +86,7 @@ const DEFAULT_DEPS = {
   allocateLeaguePools,
   seedSeasonZero,
   transitionToNextSeason,
+  startSequentialNegotiation,
   runAcademyIntake,
   runContractSeed,
   grantFounderBadges,
@@ -141,6 +143,27 @@ export async function runRelaunchSeason1(supabase, {
     // (fundet i rehearsal #1191, 11/6).
     const s0 = await d.seedSeasonZero(supabase, { startDate, dryRun: false });
     summary.season = await d.transitionToNextSeason({ supabase, fromSeasonId: s0.seasonId, transitionAt: startDate });
+  }
+
+  // 6.2 #1680 · Bestyrelse låst OP fra start i sæson 1 (ejer-direktiv 2026-06-21).
+  // transitionToNextSeason oprettede sæson-1-vinduet med DB-default 'locked' (baseline-
+  // observation), så managere ville ikke kunne forhandle planer før sæson 2. Vi flipper
+  // det til 'pending_5yr' via den eksisterende, testede unlock-primitiv
+  // (startSequentialNegotiation = slet baseline-rows + sæt vindue pending_5yr), så
+  // sæson-2-onboarding-flowet (5yr → 3yr → 1yr) er åbent fra dag 1 i sæson 1.
+  //
+  // SPONSOR-NEUTRALITET (verificeret): sæson-1-sponsoren betales i processSeasonStart
+  // UNDER transitionen ovenfor — FØR denne oplåsning og før nogen plan kan forhandles —
+  // og board-modifieren udregnes dér fra completed boards (baseline=1.0 / ingen → 1.0).
+  // En plan signeret i sæson 1 påvirker derfor først sæson-2-sponsoren (præcis som den
+  // eksisterende sæson-2-onboarding); oplåsningen rykker kun forhandlings-vinduet én
+  // sæson frem og indfører INGEN ny modifier-interaktion. Med renown-sponsor (#1663) er
+  // payouten desuden capped på guaranteed_base × MAX_BOARD_MODIFIER, så board-modifier +
+  // renown ikke kan dobbelt-tælle. Springes i dry-run (kræver sæson-1-vinduet fra apply).
+  if (dryRun) {
+    summary.boardUnlock = { skipped: "dryRun", plan: "startSequentialNegotiation → window pending_5yr" };
+  } else {
+    summary.boardUnlock = await d.startSequentialNegotiation({ supabase });
   }
 
   // 6.4 Akademi-intake: kandidat-kuld pr. menneske-hold (efter sæson-transition,
