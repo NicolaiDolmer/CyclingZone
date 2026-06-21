@@ -51,6 +51,15 @@ async function ensureIdentity() {
 }
 
 export const KNOWN_EVENTS = Object.freeze([
+  // Aktiverings-funnel (#1583): eksplicitte trin så drop-off kan AFLÆSES direkte
+  // frem for udledes via min(created_at)-aggregering. signup fyrer ved
+  // kontooprettelse (se markPendingSignup/flushPendingSignup), onboarding_completed
+  // ved 4/4 onboarding-steps, first_bid/first_transfer KUN ved brugerens første
+  // (de-dup pr. bruger via logFirstEvent).
+  "signup",
+  "onboarding_completed",
+  "first_bid",
+  "first_transfer",
   // Game-events — engagement / retention-signal
   "session_started",
   "auction_view",
@@ -89,6 +98,94 @@ async function _logEvent(name, data) {
 
 export function logEvent(name, data = {}) {
   _logEvent(name, data).catch(() => {
+    // Instrumentation must never break the user flow.
+  });
+}
+
+// --- Funnel "first"-events (#1583) ---------------------------------------
+// De-duplikér pr. bruger via localStorage, så first_bid/first_transfer/
+// onboarding_completed kun fyrer ÉN gang. Best-effort: localStorage er
+// device-bundet, men en ny tester gennemfører sin aktivering på samme device,
+// så funnellen fanger førstegangs-handlingen. Bemærk: en eksisterende bruger
+// (uden historisk flag) kan fyre ét "first"-event ved sin første relevante
+// handling efter deploy — for funnel-analyse af nye testere filtreres på
+// signup-dato ≥ deploy. Den autoritative signup-måling er signup_attribution.
+const FIRST_EVENT_PREFIX = "cz_first_event_v1:";
+
+async function _logFirstEvent(name, data) {
+  if (!hasAnalyticsConsent()) return;
+  const identity = await ensureIdentity();
+  if (!identity?.userId) return;
+  const flagKey = `${FIRST_EVENT_PREFIX}${name}:${identity.userId}`;
+  try {
+    if (localStorage.getItem(flagKey)) return;
+  } catch {
+    // localStorage utilgængelig — fortsæt og fyr eventet (hellere over- end under-tælle).
+  }
+  await supabase.from("player_events").insert({
+    team_id: identity.teamId,
+    user_id: identity.userId,
+    event_name: name,
+    event_data: data || {},
+  });
+  // Sæt flag FØRST efter en succesfuld insert — fejler insert, prøver vi igen næste gang.
+  try {
+    localStorage.setItem(flagKey, "1");
+  } catch {
+    // best-effort
+  }
+}
+
+export function logFirstEvent(name, data = {}) {
+  _logFirstEvent(name, data).catch(() => {
+    // Instrumentation must never break the user flow.
+  });
+}
+
+// --- Signup-funnel-event (#1583) -----------------------------------------
+// signup sker FØR en authenticated session findes når email-bekræftelse er slået
+// TIL (prod, #1570). player_events kræver auth+team, så vi kan ikke skrive eventet
+// i selve signup-øjeblikket. I stedet markerer vi en ventende signup ved
+// kontooprettelse, og flusher den når brugeren er authenticated (confirm-off:
+// straks efter bootstrap; confirm-on: ved første dashboard-load efter bekræftelse).
+// Markøren sættes KUN ved en ægte signUp(), så eksisterende brugere aldrig tæller.
+const PENDING_SIGNUP_KEY = "cz_pending_signup_event_v1";
+
+export function markPendingSignup() {
+  try {
+    localStorage.setItem(PENDING_SIGNUP_KEY, "1");
+  } catch {
+    // best-effort
+  }
+}
+
+async function _flushPendingSignup() {
+  let pending;
+  try {
+    pending = localStorage.getItem(PENDING_SIGNUP_KEY) === "1";
+  } catch {
+    return;
+  }
+  if (!pending) return;
+  // Vent på consent — markøren bevares til consent gives (samme gate som øvrige events).
+  if (!hasAnalyticsConsent()) return;
+  const identity = await ensureIdentity();
+  if (!identity?.userId) return;
+  await supabase.from("player_events").insert({
+    team_id: identity.teamId,
+    user_id: identity.userId,
+    event_name: "signup",
+    event_data: {},
+  });
+  try {
+    localStorage.removeItem(PENDING_SIGNUP_KEY);
+  } catch {
+    // best-effort
+  }
+}
+
+export function flushPendingSignup() {
+  _flushPendingSignup().catch(() => {
     // Instrumentation must never break the user flow.
   });
 }

@@ -250,6 +250,15 @@ const WHITELIST_ZERO_IMPRESSION_EVENTS = new Set([
   // (useTraining.setPlan). Starter naturligt på 0 indtil spillere sætter fokus
   // — fjern entry når events flyder (tjek player_events for training_focus_set).
   "training_focus_set",
+  // Aktiverings-funnel (#1583) instrumenteret 2026-06-21 sammen med firing-stierne
+  // (LoginPage+DashboardPage signup, DashboardPage onboarding_completed,
+  // useAuctionBidding first_bid, RiderStatsPage first_transfer). Starter naturligt
+  // på 0 indtil nye signups gennemfører funnellen — fjern hver entry når dens
+  // event flyder (tjek player_events).
+  "signup",
+  "onboarding_completed",
+  "first_bid",
+  "first_transfer",
 ]);
 
 // Detector D: prod-tabeller vi accepterer uden CREATE TABLE i repo

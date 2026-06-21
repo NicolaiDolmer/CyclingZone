@@ -11,6 +11,7 @@ import DiscordJoinLink from "../components/DiscordJoinLink";
 import { Card, Button, Input, CheckIcon, InboxIcon } from "../components/ui";
 import { labelClass, helperClass } from "../components/ui/fieldStyles.js";
 import { getAttribution } from "../lib/attribution";
+import { markPendingSignup } from "../lib/logEvent";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -163,6 +164,13 @@ export default function LoginPage() {
       }
 
       if (!data?.user) return;
+
+      // #1583: markér en ventende signup til aktiverings-funnellen. Selve
+      // player_events-eventet flushes når brugeren er authenticated (confirm-off:
+      // straks efter bootstrap nedenfor; confirm-on: ved første dashboard-load
+      // efter email-bekræftelse — se DashboardPage). Markøren sættes kun ved en
+      // ægte signUp(), så eksisterende brugere aldrig tæller med i funnellen.
+      markPendingSignup();
 
       // #1570: Email-bekræftelse slået TIL → Supabase returnerer user men ingen
       // session. Vis ÉN entydig "bekræft din email"-besked med adressen, i stedet
