@@ -139,6 +139,7 @@ import { computeMultiSeasonForecast } from "../lib/financeForecast.js";
 import { buildSeasonFinanceReport } from "../lib/seasonFinanceReport.js";
 import { groupCronRuns } from "../lib/cronRunCorrelation.js";
 import { getSeasonPrizePreview, paySeasonPrizesToDate } from "../lib/prizePayoutEngine.js";
+import { payRaceDaySponsorsToDate } from "../lib/sponsorRaceDayIncome.js";
 import {
   buildSeasonEndPreviewRows,
   DEFAULT_SPONSOR_INCOME,
@@ -6303,7 +6304,12 @@ router.post("/admin/pay-prizes-to-date", requireAdmin, adminWriteLimiter, async 
   if (!season_id) return res.status(400).json({ error: "season_id påkrævet" });
   try {
     const result = await paySeasonPrizesToDate(season_id, req.user.id, supabase);
-    res.json(result);
+    // #1663: udbetal også per-løbsdag-sponsor-indkomst så manuel trigger betaler
+    // det samme som auto-sweep'en (idempotent per (race, team)).
+    const sponsor = await payRaceDaySponsorsToDate(season_id, supabase, {
+      actorType: FINANCE_ACTOR_TYPE.ADMIN,
+    });
+    res.json({ ...result, sponsor_credited: sponsor.credited });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

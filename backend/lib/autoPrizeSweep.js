@@ -8,12 +8,14 @@
 // før prize_paid_at sættes og løbet låses (Beslutning A, plan-Fase 0).
 import { isAutoPrizeEnabled } from "./autoPrizeFlag.js";
 import { paySeasonPrizesToDate } from "./prizePayoutEngine.js";
+import { payRaceDaySponsorsToDate } from "./sponsorRaceDayIncome.js";
 import { FINANCE_ACTOR_TYPE } from "./economyConstants.js";
 
 export async function runAutoPrizeSweep({
   supabase,
   isEnabled = isAutoPrizeEnabled,
   payFn = paySeasonPrizesToDate,
+  sponsorFn = payRaceDaySponsorsToDate,
 } = {}) {
   if (!(await isEnabled(supabase))) return { paid: 0, skipped: "flag_off" };
 
@@ -23,5 +25,14 @@ export async function runAutoPrizeSweep({
   if (!season) return { paid: 0, skipped: "no_active_season" };
 
   const result = await payFn(season.id, null, supabase, { actorType: FINANCE_ACTOR_TYPE.SYSTEM });
-  return { paid: result.races_paid ?? 0, total: result.total_paid ?? 0 };
+
+  // #1663: per-løbsdag-sponsor-indkomst krediteres ved samme finaliserings-sweep
+  // (idempotent per (race, team) — gentagne ticks er harmløse).
+  const sponsor = await sponsorFn(season.id, supabase, { actorType: FINANCE_ACTOR_TYPE.SYSTEM });
+
+  return {
+    paid: result.races_paid ?? 0,
+    total: result.total_paid ?? 0,
+    sponsor_credited: sponsor?.credited ?? 0,
+  };
 }
