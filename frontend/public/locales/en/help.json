@@ -37,13 +37,13 @@
         "text": "The board sets targets for your team and follows your season live: satisfaction now updates after every race weekend (it moves at most 5 points per weekend) towards what a full season evaluation would give. Satisfaction determines your sponsor modifier, i.e. how much of the sponsor income gets paid out, and the modifier follows satisfaction live. Hard consequences (salary cap, signing restriction, forced sale) are only evaluated at two predictable checkpoints: mid-season and season end. You cannot be fired; consequences are graduated and always predictable. You can follow this race by race in the plan details on the Board page, where a weekend-by-weekend history shows whether satisfaction went up or down and which goal area drove it."
       },
       "season1Baseline": {
-        "title": "Season 1: Baseline, no demands",
-        "text": "Your first season is a pure observation season. The board sets no targets, does not evaluate satisfaction and keeps the sponsor modifier at 1.0×. Instead it reads your team (national core, U25 share, specialisation and star profile) and saves a permanent identity snapshot used as the foundation for season 2's 5-year plan suggestions."
+        "title": "Your board is open from day one",
+        "text": "The board of directors is unlocked from the start of your first season, so you can pick your Club DNA and negotiate your plans right away rather than waiting a season. Your sponsor modifier stays at 1.0× until you sign your first plan, so the season-1 sponsor is neutral while you set up. The board also reads your team (national core, U25 share, specialisation and star profile) and saves a permanent identity snapshot that feeds your 5-year plan suggestions."
       },
       "season2Onboarding": {
-        "title": "Sequential onboarding in season 2",
+        "title": "Sequential board onboarding",
         "steps": [
-          "When season 1 ends, you pick Club DNA first. Then the board opens sequentially: 5-year plan, 3-year plan, 1-year plan.",
+          "From the start of season 1 you pick Club DNA first. Then the board opens sequentially: 5-year plan, 3-year plan, 1-year plan.",
           "Pick a focus direction (Balanced, Youth Development, Star Signing) and negotiate each target once in the wizard.",
           "Your Club DNA is required before the first plan: it colours both target suggestions and the board composition.",
           "If you forget to pick DNA and negotiate before race day 5, the system picks the best-matching DNA suggestion, assigns the board and signs a plan with default focus derived from your identity snapshot.",
@@ -60,7 +60,7 @@
       },
       "clubDna": {
         "title": "Club DNA",
-        "text": "In season 2 you pick one of 5 club DNA archetypes before the board is assembled: Scandinavian development team, Italian classics traditionalist, Sprint-focused commercial, French climber heritage, British all-rounder. DNA affects three things: (1) 5-year plans get an extra tradition target (e.g. a podium in a classic, incl. Monuments, for italian_classics), (2) targets matching DNA priorities get boosted satisfaction bonus and penalty, (3) board members and future chairman swaps tip towards matching archetypes."
+        "text": "At the start of season 1 you pick one of 5 club DNA archetypes before the board is assembled: Scandinavian development team, Italian classics traditionalist, Sprint-focused commercial, French climber heritage, British all-rounder. DNA affects three things: (1) 5-year plans get an extra tradition target (e.g. a podium in a classic, incl. Monuments, for italian_classics), (2) targets matching DNA priorities get boosted satisfaction bonus and penalty, (3) board members and future chairman swaps tip towards matching archetypes."
       },
       "consequenceTiers": {
         "title": "Consequence tiers (6 layers)",
@@ -738,7 +738,7 @@
     },
     "sponsorPayoutTiming": {
       "q": "When is sponsor money paid out?",
-      "a": "Sponsor money is paid at season start. Season 1 is an intro season with a division-scaled base (D1 600,000 · D2 400,000 · D3 340,000 CZ$) before any board or pullout effects. From season 2 a performance share of 0-150,000 CZ$ is added on top of that same division base, based on the previous season's points and placing in your division. The amount is then multiplied by the board's budget modifier and any sponsor pullout. This means strong results can lift the sponsorship, while a bottom placing still keeps the full division base before modifier."
+      "a": "Sponsor money is paid at season start. One exception at the very beginning: if you start your first season with your full founding budget, you do not also receive a season-1 sponsor payout on top (that would be double income at the start). From season 2 onwards sponsor is always paid. Season 1 is an intro season with a division-scaled base (D1 600,000 · D2 400,000 · D3 340,000 CZ$) before any board or pullout effects. From season 2 a performance share of 0-150,000 CZ$ is added on top of that same division base, based on the previous season's points and placing in your division. The amount is then multiplied by the board's budget modifier and any sponsor pullout. This means strong results can lift the sponsorship, while a bottom placing still keeps the full division base before modifier."
     },
     "sponsorNegotiation": {
       "q": "How do I negotiate my sponsor, and what do the offers mean?",
@@ -777,8 +777,8 @@
       "a": "The Dashboard shows a short board outlook with status and category scores, while the Board page shows the more detailed assessment. The Board page also shows the board's read of the team with specialisation, U25 share, national core, star profile and squad status, now with country name and flag on the national core. The Board page now also explains more clearly why the board reacts, by showing which categories drive the assessment, what's holding it back, and which signals from history, identity or profiles play in. The two places read the same board data from the backend, so they share the same truth."
     },
     "season1BaselineFaq": {
-      "q": "What is the season 1 baseline, and why doesn't the board set demands?",
-      "a": "Season 1 is an observation season. The board sets no targets, doesn't evaluate satisfaction, and the sponsor modifier stays at 1.0×. Instead it *reads* your team: which nation dominates, how large the U25 share is, which specialisation the team points towards, and how visible your stars are. When the season ends, this 'identity snapshot' is saved on your team permanently and used as the basis for season 2's 5-year plan suggestions. So you have a full season to find your direction before negotiations start in earnest."
+      "q": "Is the board available in season 1?",
+      "a": "Yes. The board is unlocked from the start of season 1, so you can pick your Club DNA and negotiate your 5-year, 3-year and 1-year plans right away. Until you sign your first plan the sponsor modifier stays at 1.0×, so the season-1 sponsor is neutral while you set up. The board also *reads* your team (which nation dominates, how large the U25 share is, which specialisation the team points towards, and how visible your stars are) and saves this 'identity snapshot' on your team permanently as the basis for your 5-year plan suggestions."
     },
     "buildOnCoreBadge": {
       "q": "What does the 'Builds on your core' badge mean on 5-year targets?",
@@ -822,7 +822,7 @@
     },
     "clubDnaFaq": {
       "q": "What is club DNA and when do I pick it?",
-      "a": "Club DNA is your club's identity, one of 5 hand-crafted archetypes: Scandinavian development team, Italian classics traditionalist, Sprint-focused commercial, French climber heritage or British all-rounder. You pick it in season 2, after season 1's identity has been observed. The board analyses your team's national core and primary specialisation and suggests 3 options: one national match, one specialisation match and one wildcard. You can pick freely among the three. The DNA is final until the drift mechanic arrives (gradual evolution over 5 seasons, delivered in a follow-up slice)."
+      "a": "Club DNA is your club's identity, one of 5 hand-crafted archetypes: Scandinavian development team, Italian classics traditionalist, Sprint-focused commercial, French climber heritage or British all-rounder. You pick it from the start of season 1, as soon as the board is open. The board analyses your team's national core and primary specialisation and suggests 3 options: one national match, one specialisation match and one wildcard. You can pick freely among the three. The DNA is final until the drift mechanic arrives (gradual evolution over 5 seasons, delivered in a follow-up slice)."
     },
     "clubDnaEffects": {
       "q": "What does club DNA do exactly?",
@@ -854,7 +854,7 @@
     },
     "season0To1Special": {
       "q": "What happens at the transition from season 0 to season 1?",
-      "a": "Season 0 is the opening phase with no races, points or salaries. When the transfer window closes, the system skips season 0's salary deduction and interest charges (there's no season 0 to settle). The only cash flow is: your division's sponsor money (D1 600,000 · D2 400,000 · D3 340,000 CZ$) lands on your team when season 1 starts. From season 1 onwards the normal cycle runs at season start: 1) sponsor is paid out, 2) loan interest is deducted, 3) salaries are deducted, 4) an emergency loan is taken if there's still a shortfall. Season end only handles division bonus, promotion/relegation and board plan evaluation."
+      "a": "Season 0 is the opening phase with no races, points or salaries. When season 1 starts you already hold your founding budget, so the system does not pay a season-1 sponsor on top (that would be double income at the start), and running costs (upkeep) are held back until the season is actually underway. From season 2 onwards the normal cycle runs at season start: 1) sponsor is paid out, 2) loan interest is deducted, 3) salaries are deducted, 4) upkeep is deducted, 5) an emergency loan is taken if there's still a shortfall. Season end only handles division bonus, promotion/relegation and board plan evaluation."
     },
     "deadlineTimelineFaq": {
       "q": "What exactly happens when the transfer window closes?",

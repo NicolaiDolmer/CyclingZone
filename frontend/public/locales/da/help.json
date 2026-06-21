@@ -37,13 +37,13 @@
         "text": "Bestyrelsen sætter mål for dit hold og følger din sæson live: tilfredsheden opdateres nu efter hver løbsweekend (den flytter sig højst 5 point pr. weekend) mod det en fuld sæson-evaluering ville give. Tilfredsheden bestemmer din sponsor-modifier, dvs. hvor meget du får udbetalt af sponsorindtægten, og modifieren følger tilfredsheden live. Hårde konsekvenser (lønloft, signing-restriktion, tvunget salg) evalueres kun ved to forudsigelige checkpoints: mid-season og sæson-slut. Du kan ikke blive fyret; konsekvenserne er graduerede og altid forudsigelige. Du kan følge det løb for løb i plan-detaljerne på Bestyrelses-siden, hvor en weekend-for-weekend-historik viser om tilfredsheden gik op eller ned og hvilket målområde der drev det."
       },
       "season1Baseline": {
-        "title": "Sæson 1: Baseline, ingen krav",
-        "text": "Din første sæson er en ren observations-sæson. Bestyrelsen stiller ingen mål, evaluerer ikke tilfredshed og holder sponsor-modifier på 1.0×. Den læser i stedet dit hold (national kerne, U25-andel, specialisering og stjerneprofil) og gemmer et permanent identity-snapshot der bruges som fundament for sæson 2's 5-årsplan-forslag."
+        "title": "Din bestyrelse er åben fra dag ét",
+        "text": "Bestyrelsen er låst op fra starten af din første sæson, så du kan vælge dit Klub-DNA og forhandle dine planer med det samme i stedet for at vente en sæson. Din sponsor-modifier holdes på 1.0× indtil du signer din første plan, så sæson-1-sponsoren er neutral mens du sætter op. Bestyrelsen læser også dit hold (national kerne, U25-andel, specialisering og stjerneprofil) og gemmer et permanent identity-snapshot der bruges som fundament for dine 5-årsplan-forslag."
       },
       "season2Onboarding": {
-        "title": "Sekventiel onboarding i sæson 2",
+        "title": "Sekventiel onboarding",
         "steps": [
-          "Når sæson 1 slutter, vælger du først Klub-DNA. Derefter åbner bestyrelsen sekventielt: 5-årsplan, 3-årsplan, 1-årsplan.",
+          "Fra starten af sæson 1 vælger du først Klub-DNA. Derefter åbner bestyrelsen sekventielt: 5-årsplan, 3-årsplan, 1-årsplan.",
           "Vælg en fokus-retning (Balanceret, Ungdomsudvikling, Stjernesignering) og forhandl hvert mål én gang i wizard'en.",
           "Dit Klub-DNA er obligatorisk før første plan: det farver både mål-forslag og bestyrelsens sammensætning.",
           "Glemmer du at vælge DNA og forhandle inden race-day 5, vælger systemet det bedst matchede DNA-forslag, tildeler bestyrelsen og signer en plan med default-fokus afledt af dit identity-snapshot.",
@@ -60,7 +60,7 @@
       },
       "clubDna": {
         "title": "Klub-DNA",
-        "text": "I sæson 2 vælger du én af 5 klub-DNA-arketyper før bestyrelsen sammensættes: Skandinavisk udviklingshold, Italiensk klassiker-traditionalist, Sprint-fokuseret kommerciel, Fransk klatrer-arv, Britisk all-rounder. DNA påvirker tre ting: (1) 5-årsplaner får et ekstra tradition-mål (fx et podie i en klassiker, inkl. Monuments, for italiensk_klassiker), (2) mål der matcher DNA-prioriteter får boosted satisfaction-bonus og -penalty, (3) board-medlemmer og fremtidige formandsskifter tipper mod passende arketyper."
+        "text": "Fra starten af sæson 1 vælger du én af 5 klub-DNA-arketyper før bestyrelsen sammensættes: Skandinavisk udviklingshold, Italiensk klassiker-traditionalist, Sprint-fokuseret kommerciel, Fransk klatrer-arv, Britisk all-rounder. DNA påvirker tre ting: (1) 5-årsplaner får et ekstra tradition-mål (fx et podie i en klassiker, inkl. Monuments, for italiensk_klassiker), (2) mål der matcher DNA-prioriteter får boosted satisfaction-bonus og -penalty, (3) board-medlemmer og fremtidige formandsskifter tipper mod passende arketyper."
       },
       "consequenceTiers": {
         "title": "Konsekvens-tier (6 lag)",
@@ -738,7 +738,7 @@
     },
     "sponsorPayoutTiming": {
       "q": "Hvornår udbetales sponsorpenge?",
-      "a": "Sponsorpenge udbetales ved sæsonstart. Sæson 1 er en introsæson med en division-skaleret base (D1 600.000 · D2 400.000 · D3 340.000 CZ$) før eventuelle bestyrelses- eller pullout-effekter. Fra sæson 2 lægges en performance-del på 0-150.000 CZ$ oveni den samme division-base, ud fra forrige sæsons point og placering i din division. Derefter ganges beløbet med bestyrelsens budget-modifier og eventuel sponsor-pullout. Det betyder at stærke resultater kan løfte sponsoratet, mens bundplacering stadig beholder den fulde division-base før modifier."
+      "a": "Sponsorpenge udbetales ved sæsonstart. Én undtagelse helt i begyndelsen: hvis du starter din første sæson med din fulde startkapital, får du ikke også en sæson-1-sponsorudbetaling oveni (det ville være dobbelt-indkomst ved opstart). Fra sæson 2 og frem udbetales sponsor altid. Sæson 1 er en introsæson med en division-skaleret base (D1 600.000 · D2 400.000 · D3 340.000 CZ$) før eventuelle bestyrelses- eller pullout-effekter. Fra sæson 2 lægges en performance-del på 0-150.000 CZ$ oveni den samme division-base, ud fra forrige sæsons point og placering i din division. Derefter ganges beløbet med bestyrelsens budget-modifier og eventuel sponsor-pullout. Det betyder at stærke resultater kan løfte sponsoratet, mens bundplacering stadig beholder den fulde division-base før modifier."
     },
     "sponsorNegotiation": {
       "q": "Hvordan forhandler jeg min sponsor, og hvad betyder tilbuddene?",
@@ -777,8 +777,8 @@
       "a": "Dashboardet viser et kort bestyrelses-outlook med status og category-scores, mens Bestyrelsessiden viser den mere detaljerede vurdering. Bestyrelsessiden viser også bestyrelsens læsning af holdet med specialisering, U25-andel, national kerne, stjerneprofil og trupstatus, nu med landenavn og flag på den nationale kerne. Derudover forklarer Board-siden nu tydeligere hvorfor bestyrelsen reagerer, ved at vise hvilke kategorier der driver vurderingen, hvad der holder den tilbage, og hvilke signaler fra historik, identitet eller profiler der spiller ind. De to steder læser samme board-data fra backend, så de bruger den samme sandhed."
     },
     "season1BaselineFaq": {
-      "q": "Hvad er sæson 1-baseline, og hvorfor stiller bestyrelsen ikke krav?",
-      "a": "Sæson 1 er en observations-sæson. Bestyrelsen stiller ingen mål, evaluerer ikke tilfredshed, og sponsor-modifier holdes på 1.0×. I stedet *læser* den dit hold: hvilken nation dominerer, hvor stor er U25-andelen, hvilken specialisering peger holdet mod, og hvor synlige er dine stjerner. Når sæsonen slutter, gemmes dette 'identity-snapshot' på dit hold permanent og bruges som grundlag for sæson 2's 5-årsplan-forslag. Du har derfor en hel sæson til at finde din retning før forhandlingerne starter for alvor."
+      "q": "Er bestyrelsen tilgængelig i sæson 1?",
+      "a": "Ja. Bestyrelsen er låst op fra starten af sæson 1, så du kan vælge dit Klub-DNA og forhandle dine 5-, 3- og 1-årsplaner med det samme. Indtil du signer din første plan holdes sponsor-modifier på 1.0×, så sæson-1-sponsoren er neutral mens du sætter op. Bestyrelsen *læser* også dit hold (hvilken nation dominerer, hvor stor er U25-andelen, hvilken specialisering peger holdet mod, og hvor synlige er dine stjerner) og gemmer dette 'identity-snapshot' på dit hold permanent som grundlag for dine 5-årsplan-forslag."
     },
     "buildOnCoreBadge": {
       "q": "Hvad betyder 'Bygger paa din kerne'-badgen på 5-årsmål?",
@@ -822,7 +822,7 @@
     },
     "clubDnaFaq": {
       "q": "Hvad er klub-DNA og hvornår vælger jeg det?",
-      "a": "Klub-DNA er din klubs identitet, én af 5 håndlavede arketyper: Skandinavisk udviklingshold, Italiensk klassiker-traditionalist, Sprint-fokuseret kommerciel, Fransk klatrer-arv eller Britisk all-rounder. Du vælger det i sæson 2, efter sæson 1's identitet er observeret. Bestyrelsen analyserer dit holds national kerne og primære specialisering og foreslår 3 muligheder: ét national-match, ét specialiserings-match og ét wildcard. Du kan vælge frit blandt de tre. DNA'et er final indtil drift-mekanikken kommer (gradvis udvikling over 5 sæsoner, leveres i opfølgningsslice)."
+      "a": "Klub-DNA er din klubs identitet, én af 5 håndlavede arketyper: Skandinavisk udviklingshold, Italiensk klassiker-traditionalist, Sprint-fokuseret kommerciel, Fransk klatrer-arv eller Britisk all-rounder. Du vælger det fra starten af sæson 1, så snart bestyrelsen er åben. Bestyrelsen analyserer dit holds national kerne og primære specialisering og foreslår 3 muligheder: ét national-match, ét specialiserings-match og ét wildcard. Du kan vælge frit blandt de tre. DNA'et er final indtil drift-mekanikken kommer (gradvis udvikling over 5 sæsoner, leveres i opfølgningsslice)."
     },
     "clubDnaEffects": {
       "q": "Hvad gør klub-DNA helt konkret?",
@@ -854,7 +854,7 @@
     },
     "season0To1Special": {
       "q": "Hvad sker der ved overgangen fra sæson 0 til sæson 1?",
-      "a": "Sæson 0 er åbnings-fasen uden løb, point eller lønninger. Når transfervinduet lukker, springer systemet sæson-0's løn-træk og rente-træk over (der er ingen sæson 0 at lave op for). Det eneste pengeflow er: din divisions sponsorpenge (D1 600.000 · D2 400.000 · D3 340.000 CZ$) lander på dit hold når sæson 1 starter. Fra sæson 1 og frem kører den normale cyklus ved sæsonstart: 1) sponsor udbetales, 2) lånerenter trækkes, 3) lønninger trækkes, 4) nødlån oprettes hvis stadig shortfall. Sæsonslut håndterer kun divisionsbonus, op/nedrykning og bestyrelsesplaner."
+      "a": "Sæson 0 er åbnings-fasen uden løb, point eller lønninger. Når sæson 1 starter, har du allerede din startkapital, så systemet udbetaler ikke en sæson-1-sponsor oveni (det ville være dobbelt-indkomst ved opstart), og driftsomkostninger (upkeep) holdes tilbage indtil sæsonen reelt er i gang. Fra sæson 2 og frem kører den normale cyklus ved sæsonstart: 1) sponsor udbetales, 2) lånerenter trækkes, 3) lønninger trækkes, 4) upkeep trækkes, 5) nødlån oprettes hvis stadig shortfall. Sæsonslut håndterer kun divisionsbonus, op/nedrykning og bestyrelsesplaner."
     },
     "deadlineTimelineFaq": {
       "q": "Hvad sker der præcist når transfervinduet lukker?",

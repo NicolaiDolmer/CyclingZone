@@ -43,10 +43,13 @@ import {
   MAX_BOARD_MODIFIER,
   MAX_DIVISION,
   MIN_DIVISION,
+  INITIAL_BALANCE,
   NEGATIVE_BALANCE_INTEREST_RATE,
+  SEASON1_SKIP_SPONSOR_IF_STARTING_CAPITAL,
   SEASON_RIDER_PROGRESSION_ENABLED,
   SEASON_VALUE_RECALC_ENABLED,
   SPONSOR_INCOME_BASE,
+  UPKEEP_BEFORE_FIRST_RACE_ENABLED,
   UPKEEP_BY_DIVISION,
 } from "./economyConstants.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
@@ -256,24 +259,41 @@ export async function processSeasonStart(seasonId, deps = {}) {
     // som fallback.
     const sponsorMetadata = buildSponsorMetadata(sponsorBreakdown, modifier, pulloutFactor < 1.0);
 
+    // #1678 · Sæson-1-opstarts-gate: spring sponsor over for hold der ALLEREDE har
+    // fået startkapital (INITIAL_BALANCE, uberørt). Ejer-direktiv: undgå dobbelt-
+    // indtægt ved opstart (800k start + sponsor i samme øjeblik). Gælder KUN sæson 1
+    // og kun ved uberørt balance — har holdet brugt/tjent penge er det ikke længere
+    // "lige fået startkapital", og sponsor udbetales normalt. Rør IKKE sæson 2+
+    // (renown-/variabel-sponsor-stien) eller scorecardens steady-state-net.
+    const skipSponsor =
+      SEASON1_SKIP_SPONSOR_IF_STARTING_CAPITAL &&
+      seasonNumber === 1 &&
+      Number(team.balance) === INITIAL_BALANCE;
+
     // Pay sponsor income (idempotent: cron-retry må ikke double-pay)
-    await creditTeam(
-      team.id,
-      sponsorPayout,
-      "sponsor",
-      null,
-      seasonId,
-      supabaseClient,
-      {
-        idempotent: true,
-        metadata: sponsorMetadata,
-        audit: {
-          sourcePath: "economyEngine.processSeasonStart.sponsor",
-          reasonCode: FINANCE_REASON.SEASON_START_SPONSOR,
-          idempotencyKey: `sponsor:${team.id}:${seasonId}`,
-        },
-      }
-    );
+    if (!skipSponsor) {
+      await creditTeam(
+        team.id,
+        sponsorPayout,
+        "sponsor",
+        null,
+        seasonId,
+        supabaseClient,
+        {
+          idempotent: true,
+          metadata: sponsorMetadata,
+          audit: {
+            sourcePath: "economyEngine.processSeasonStart.sponsor",
+            reasonCode: FINANCE_REASON.SEASON_START_SPONSOR,
+            idempotencyKey: `sponsor:${team.id}:${seasonId}`,
+          },
+        }
+      );
+    } else {
+      console.log(
+        `  ⏭️  ${team.name}: sæson-1-sponsor sprunget over (uberørt startkapital ${INITIAL_BALANCE})`
+      );
+    }
 
     const chargedLoanFees = await processLoanAgreementSeasonFeesFn(
       team.id,
@@ -303,16 +323,21 @@ export async function processSeasonStart(seasonId, deps = {}) {
     const totalLoanFees = chargedLoanFees.reduce((sum, loan) => sum + (loan.loan_fee || 0), 0);
     results.push({
       team: team.name,
-      sponsor: sponsorPayout,
+      sponsor: skipSponsor ? 0 : sponsorPayout,
+      sponsor_skipped: skipSponsor,
       sponsor_breakdown: sponsorBreakdown,
       recurring_loan_fees: totalLoanFees,
       pullout_applied: pulloutFactor < 1.0,
     });
-    console.log(
-      `  ✅ ${team.name}: +${sponsorPayout} pts sponsor${
-        pulloutFactor < 1.0 ? " (sponsor-pullout aktiv)" : ""
-      }${totalLoanFees > 0 ? `, -${totalLoanFees} pts lejegebyrer` : ""}`
-    );
+    if (!skipSponsor) {
+      console.log(
+        `  ✅ ${team.name}: +${sponsorPayout} pts sponsor${
+          pulloutFactor < 1.0 ? " (sponsor-pullout aktiv)" : ""
+        }${totalLoanFees > 0 ? `, -${totalLoanFees} pts lejegebyrer` : ""}`
+      );
+    } else if (totalLoanFees > 0) {
+      console.log(`  ${team.name}: -${totalLoanFees} pts lejegebyrer`);
+    }
   }
 
   // S-02e · Expire alle aktive lag 5 efter sponsor-payment. Pullout har nu
@@ -337,8 +362,13 @@ export async function processSeasonStart(seasonId, deps = {}) {
   // til sæson-slut for at få regningen.
   // Payroll injicerbar via deps.runSeasonPayroll så sponsor-fokuserede tests
   // kan stub'e den uden at skulle mocke riders/board_profiles-tabeller.
+  // #1678 · seasonNumber threads videre til processTeamSeasonPayroll så upkeep-
+  // deferral (ingen upkeep i sæson 1 før første løb) kan gate på sæsonen.
   const runSeasonPayrollFn = deps.runSeasonPayroll ?? defaultRunSeasonPayroll;
-  const payrollOutcome = await runSeasonPayrollFn(supabaseClient, seasonId, deps);
+  const payrollOutcome = await runSeasonPayrollFn(supabaseClient, seasonId, {
+    ...deps,
+    seasonNumber,
+  });
 
   // #535: Returnér struktureret { sponsor, payroll } så admin-UI og
   // transitionToNextSeason's return-log kan vise payroll-counts + totaler
@@ -407,6 +437,8 @@ async function defaultRunSeasonPayroll(supabaseClient, seasonId, deps = {}) {
   for (const teamWithRoster of teamsWithRoster) {
     const payroll = await processTeamSeasonPayroll(teamWithRoster, seasonId, {
       supabase: supabaseClient,
+      // #1678 · videre-fører seasonNumber så upkeep kan deferres i sæson 1.
+      seasonNumber: deps.seasonNumber,
       processLoanInterest: processLoanInterestFn,
       createEmergencyLoan: createEmergencyLoanFn,
     });
@@ -468,6 +500,9 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
   const processLoanInterestFn = deps.processLoanInterest ?? processLoanInterest;
   const createEmergencyLoanFn = deps.createEmergencyLoan ?? createEmergencyLoan;
   const getTotalDebtFn = deps.getTotalDebt ?? getTotalDebt;
+  // #1678 · sæson-nummer (threades fra processSeasonStart → defaultRunSeasonPayroll)
+  // bruges til upkeep-deferral: ingen gold sink i sæson 1 før første løb.
+  const seasonNumber = deps.seasonNumber ?? null;
 
   // 1. Lånerenter på alle aktive lån. processLoanInterest returnerer
   //    { charged: [{ loan_id, interest, skipped }] } så vi kan aggregere
@@ -666,7 +701,18 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
 
   // 5. Løbende upkeep (#1441) — division-tier-skaleret operating cost (gold sink).
   //    Flad pr. division (IKKE modifier-skaleret), idempotent pr. sæson+hold.
-  const upkeepCharged = UPKEEP_BY_DIVISION[team.division] || 0;
+  // #1678 · Upkeep-deferral: ingen upkeep i sæson 1's opstart (før sæsonen reelt
+  //    går i gang / første løb). Ejer-direktiv 2026-06-21. Gælder KUN sæson 1 —
+  //    sæson 2+ beholder upkeep som den steady-state gold sink moneySupplyScorecard
+  //    (--synthetic-only) granit-låser. Forward-guard: relaunch-populationen står i
+  //    tier 4 (UPKEEP_BY_DIVISION[4]=0), så sæson-1-upkeep er allerede 0 — flaget
+  //    sikrer det også holder hvis et hold ikke ligger i bund-tier. Når flaget sættes
+  //    true gen-aktiveres upkeep-ved-sæson-1-start som før.
+  const deferUpkeep = !UPKEEP_BEFORE_FIRST_RACE_ENABLED && seasonNumber === 1;
+  const upkeepCharged = deferUpkeep ? 0 : (UPKEEP_BY_DIVISION[team.division] || 0);
+  if (deferUpkeep) {
+    console.log(`  ⏭️  ${team.name}: upkeep udskudt i sæson 1 (før første løb)`);
+  }
   if (upkeepCharged > 0) {
     await debitTeam(
       team.id, upkeepCharged, "upkeep", null, seasonId, supabaseClient,

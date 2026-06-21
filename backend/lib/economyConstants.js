@@ -133,6 +133,26 @@ export const SEASON_VALUE_RECALC_ENABLED = false;
 // koerer developRidersForSeason som foer.
 export const SEASON_RIDER_PROGRESSION_ENABLED = false;
 
+// -- Forever-relaunch saeson-1-opstarts-gates (#1678, ejer-direktiv 2026-06-21) -----
+// To rene applikationskode-flags (samme moenster som SEASON_AUTO_TRANSITION_ENABLED:
+// genaktivering = saet false/true + deploy, ingen migration). De gaelder KUN
+// engangs-opstarten af saeson 1 (transition 0->1) — IKKE de loebende net-kurver, som
+// moneySupplyScorecard --synthetic-only granit-laaser.
+//
+// (1) Spring saeson-1 sponsor-udbetalingen over for hold der ALLEREDE har faaet
+//     startkapital (INITIAL_BALANCE). Ejer-direktiv: undgaa dobbelt-indtaegt ved
+//     opstart (800k start + sponsor i samme oejeblik). Kun saeson 1 (seasonNumber===1)
+//     og kun naar holdets balance == INITIAL_BALANCE (umodificeret startkapital — har
+//     holdet allerede brugt/tjent penge, er det ikke laengere "lige faaet startkapital").
+export const SEASON1_SKIP_SPONSOR_IF_STARTING_CAPITAL = true;
+
+// (2) Ingen upkeep (gold sink) FOER saesonen reelt gaar i gang (foerste loebsdag).
+//     Ejer-direktiv: hold betaler ikke driftsomkostninger i opstartsfasen. Naar false:
+//     upkeep-debiten i processTeamSeasonPayroll springes over hvis saesonen endnu ikke
+//     har afviklet sit foerste loeb (races med completed-resultater i den aktive saeson).
+//     Saet true for at gen-aktivere upkeep-ved-saeson-start som foer #1678.
+export const UPKEEP_BEFORE_FIRST_RACE_ENABLED = false;
+
 // Senior-kontrakt løn-rate. E2 (strict_fair_v1): sænket 0.10 → 0.067 (×0.67) så
 // lønbyrden matcher den division-skalerede sponsor. Løn er FROSSEN ved signering
 // (#1309: salary er en plain INTEGER, ikke længere GENERATED) — denne rate bruges

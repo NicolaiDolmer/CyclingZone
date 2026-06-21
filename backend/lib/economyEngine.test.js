@@ -17,7 +17,12 @@ const {
   updateStandings,
 } = await import("./economyEngine.js");
 
-const { DIVISION_CAPACITY, MAX_BOARD_MODIFIER } = await import("./economyConstants.js");
+const {
+  DIVISION_CAPACITY,
+  MAX_BOARD_MODIFIER,
+  INITIAL_BALANCE,
+  UPKEEP_BY_DIVISION,
+} = await import("./economyConstants.js");
 const { ACADEMY } = await import("./academyFlag.js");
 
 function clone(value) {
@@ -3270,3 +3275,182 @@ test("#1608 · processDivisionEnd promoverer tier-4-hold (MAX_DIVISION=4 → div
   assert.deepEqual(promotions, ["4-a", "4-b"], "div-4 top 2 rykker op til div 3");
   assert.equal(relegations.length, 0, "ingen relegering fra bund-tier (division 5 findes ikke)");
 });
+
+// ─── #1678: Sæson-1-opstarts-gates (sponsor-skip + upkeep-deferral) ──────────────
+
+function makeSeason1Team(overrides = {}) {
+  return {
+    id: "team-s1",
+    name: "Season 1 CF",
+    is_ai: false,
+    is_frozen: false,
+    division: 4, // relaunch-population starter i bunden (MAX_DIVISION)
+    balance: INITIAL_BALANCE,
+    sponsor_income: 315_000,
+    board_profiles: [
+      {
+        id: "board-s1",
+        team_id: "team-s1",
+        plan_type: "baseline",
+        negotiation_status: "completed",
+        budget_modifier: 1.0,
+        is_baseline: true,
+      },
+    ],
+    ...overrides,
+  };
+}
+
+test("#1678: processSeasonStart SPRINGER sæson-1-sponsor over for hold med uberørt startkapital", async () => {
+  const seasonId = "season-1";
+  const supabase = createSeasonStartSupabase({
+    season: { id: seasonId, number: 1 },
+    team: makeSeason1Team({ balance: INITIAL_BALANCE }),
+  });
+
+  const outcome = await processSeasonStart(seasonId, {
+    supabase,
+    processLoanAgreementSeasonFees: async () => [],
+    runSeasonPayroll: async () => ({ results: [], summary: {} }),
+  });
+
+  const sponsorRow = supabase.state.financeRows.find((r) => r.type === "sponsor");
+  assert.equal(
+    sponsorRow,
+    undefined,
+    "Ingen sponsor-finance-row må skrives når holdet har uberørt startkapital i sæson 1"
+  );
+  const result = outcome.sponsor.find((r) => r.team === "Season 1 CF");
+  assert.ok(result, "Holdet skal stadig optræde i sponsor-resultatet");
+  assert.equal(result.sponsor, 0, "Rapporteret sponsor skal være 0 (sprunget over)");
+  assert.equal(result.sponsor_skipped, true, "Resultatet skal markere skip eksplicit");
+});
+
+test("#1678: processSeasonStart BETALER sæson-1-sponsor hvis holdet allerede har rørt sin startkapital", async () => {
+  const seasonId = "season-1";
+  // Holdet har brugt/tjent penge → balance != INITIAL_BALANCE → ikke længere
+  // "lige fået startkapital" → sponsor udbetales som normalt.
+  const supabase = createSeasonStartSupabase({
+    season: { id: seasonId, number: 1 },
+    team: makeSeason1Team({ balance: INITIAL_BALANCE - 50_000 }),
+  });
+
+  await processSeasonStart(seasonId, {
+    supabase,
+    processLoanAgreementSeasonFees: async () => [],
+    runSeasonPayroll: async () => ({ results: [], summary: {} }),
+  });
+
+  const sponsorRow = supabase.state.financeRows.find((r) => r.type === "sponsor");
+  assert.ok(sponsorRow, "Sponsor skal udbetales når startkapitalen er rørt");
+  assert.ok(sponsorRow.amount > 0, "Sponsor-beløb skal være positivt");
+});
+
+test("#1678: processSeasonStart udbetaler sponsor normalt i sæson 2 (skip gælder kun sæson 1)", async () => {
+  const seasonId = "season-2";
+  const supabase = createSeasonStartSupabase({
+    season: { id: seasonId, number: 2 },
+    prevSeasonId: "season-1",
+    prevStandings: [],
+    team: makeSeason1Team({ balance: INITIAL_BALANCE, division: 3, sponsor_income: 340_000 }),
+  });
+
+  await processSeasonStart(seasonId, {
+    supabase,
+    processLoanAgreementSeasonFees: async () => [],
+    runSeasonPayroll: async () => ({ results: [], summary: {} }),
+  });
+
+  const sponsorRow = supabase.state.financeRows.find((r) => r.type === "sponsor");
+  assert.ok(sponsorRow, "Sæson 2 skal stadig udbetale sponsor uanset uberørt balance");
+  assert.ok(sponsorRow.amount > 0, "Sæson-2-sponsor skal være positiv");
+});
+
+test("#1678: processTeamSeasonPayroll SPRINGER upkeep over i sæson 1 (før første løb)", async () => {
+  const seasonId = "season-1";
+  const teamId = "team-upkeep-s1";
+
+  const financeRows = [];
+  const supabase = makeUpkeepSupabase(financeRows);
+
+  const team = {
+    id: teamId,
+    name: "S1 Upkeep FC",
+    division: 2, // tving D2 (upkeep 140k) for at bevise at det skippes i sæson 1
+    balance: 999_999,
+    riders: [],
+  };
+
+  await processTeamSeasonPayroll(team, seasonId, {
+    supabase,
+    seasonNumber: 1,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => {},
+    getTotalDebt: async () => 0,
+  });
+
+  const upkeepRows = financeRows.filter((r) => r.type === "upkeep");
+  assert.equal(upkeepRows.length, 0, "Ingen upkeep-transaktion i sæson 1 (deferred til racing)");
+});
+
+test("#1678: processTeamSeasonPayroll BEHOLDER upkeep i sæson 2 (steady-state gold sink)", async () => {
+  const seasonId = "season-2";
+  const teamId = "team-upkeep-s2";
+
+  const financeRows = [];
+  const supabase = makeUpkeepSupabase(financeRows);
+
+  const team = {
+    id: teamId,
+    name: "S2 Upkeep FC",
+    division: 2,
+    balance: 999_999,
+    riders: [],
+  };
+
+  await processTeamSeasonPayroll(team, seasonId, {
+    supabase,
+    seasonNumber: 2,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => {},
+    getTotalDebt: async () => 0,
+  });
+
+  const upkeepRows = financeRows.filter((r) => r.type === "upkeep");
+  assert.equal(upkeepRows.length, 1, "Sæson 2 skal stadig debitere upkeep (scorecard-steady-state)");
+  assert.equal(upkeepRows[0].amount, -UPKEEP_BY_DIVISION[2], "Upkeep-beløb skal matche D2-konstanten");
+});
+
+// Genbruger upkeep-test-fakens form (teams.balance-single + riders count/in).
+function makeUpkeepSupabase(financeRows) {
+  return {
+    rpc(name, params) {
+      assert.equal(name, "increment_balance_with_audit");
+      financeRows.push({ team_id: params.p_team_id, ...params.p_finance_payload });
+      return Promise.resolve({ data: 0, error: null });
+    },
+    from(table) {
+      if (table === "teams") {
+        return {
+          select() {
+            return { eq() { return { single() { return Promise.resolve({ data: { balance: 999_999 }, error: null }); } }; } };
+          },
+          update() {
+            return { eq() { return Promise.resolve({ error: null }); } };
+          },
+        };
+      }
+      if (table === "riders") {
+        return {
+          select(_cols, opts) {
+            if (opts && opts.count === "exact" && opts.head === true) {
+              return { eq() { return { eq() { return Promise.resolve({ count: 0, error: null }); } }; } };
+            }
+            return { in() { return Promise.resolve({ data: [], error: null }); } };
+          },
+        };
+      }
+      throw new Error(`Unexpected table in #1678 upkeep faken: ${table}`);
+    },
+  };
+}

@@ -27,6 +27,8 @@ function makeDeps(order) {
     allocateLeaguePools: rec("leaguePools", { allocated: 18, pools: 8 }),
     seedSeasonZero: async (_s, opts = {}) => { order.push({ name: "seedSeason0", dryRun: opts.dryRun }); return { seasonId: computeSeasonUuid(0) }; },
     transitionToNextSeason: async () => { order.push({ name: "transition" }); return { ok: true }; },
+    // #1680: bestyrelse låst OP fra start i sæson 1 (startSequentialNegotiation-primitiv).
+    startSequentialNegotiation: async () => { order.push({ name: "unlockBoard" }); return { window_state: "pending_5yr", baseline_rows_deleted: 2 }; },
     runAcademyIntake: rec("academy", { teams: 2, candidates: 8 }),
     runContractSeed: rec("contracts", { seeded: 144 }),
     grantFounderBadges: rec("founder", { wouldGrant: 18 }),
@@ -58,8 +60,29 @@ test("runRelaunchSeason1 (apply): kalder reset + seedSeason0 + transition i korr
   const names = order.map((o) => o.name);
   assert.deepEqual(names, [
     "retire", "reset", "population", "physiology", "types", "baseValue", "allocation",
-    "leaguePools", "seedSeason0", "transition", "contracts", "founder",
+    "leaguePools", "seedSeason0", "transition", "unlockBoard", "contracts", "founder",
   ]);
+});
+
+// #1680: bestyrelsen skal være låst OP fra start i sæson 1. Apply-stien flipper
+// sæson-1-vinduet til 'pending_5yr' (via startSequentialNegotiation) EFTER transitionen,
+// så managere kan forhandle planer fra dag 1 i stedet for at vente til sæson 2.
+test("runRelaunchSeason1 (apply): låser bestyrelsen OP i sæson 1 efter transition", async () => {
+  const order = [];
+  const summary = await runRelaunchSeason1({}, { dryRun: false, startDate: "2026-06-20", deps: makeDeps(order) });
+  const idxTransition = order.findIndex((o) => o.name === "transition");
+  const idxUnlock = order.findIndex((o) => o.name === "unlockBoard");
+  assert.ok(idxUnlock > idxTransition, "board-oplåsning skal ske EFTER sæson-transitionen");
+  assert.equal(summary.boardUnlock?.window_state, "pending_5yr", "summary skal vise board låst op (pending_5yr)");
+});
+
+// Dry-run må ikke skrive — board-oplåsning springes over (kræver et eksisterende
+// sæson-1-vindue, der først findes efter apply).
+test("runRelaunchSeason1 (dryRun): springer board-oplåsning over", async () => {
+  const order = [];
+  const summary = await runRelaunchSeason1({}, { dryRun: true, startDate: "2026-06-20", deps: makeDeps(order) });
+  assert.ok(!order.some((o) => o.name === "unlockBoard"), "unlockBoard må ikke kaldes i dry-run");
+  assert.ok("skipped" in (summary.boardUnlock || {}), "summary.boardUnlock skal markere dry-run-skip");
 });
 
 // Regression #1191: seedSeasonZero defaulter til dryRun=true — apply-stien SKAL

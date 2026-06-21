@@ -23,6 +23,38 @@ export const PATCHES = [
         "refs": [
           1673
         ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "Your board is open from day one",
+          "body": "The board of directors is now unlocked from the start of your first season. You can dive into your plans and negotiate with the board right away instead of waiting a season — the team is yours to build from the first day."
+        },
+        "da": {
+          "title": "Din bestyrelse er åben fra dag ét",
+          "body": "Bestyrelsen er nu låst op fra starten af din første sæson. Du kan kaste dig over dine planer og forhandle med bestyrelsen med det samme i stedet for at vente en sæson — holdet er dit at bygge fra første dag."
+        },
+        "refs": [
+          1680
+        ]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Economy",
+        "en": {
+          "title": "No double income or running costs at season one start",
+          "body": "When a new club starts with its founding budget, it no longer also receives a sponsor payout on top in season one — that was double income at the very start. Running costs (upkeep) are also held back until the season is actually underway, so you are not charged operating costs before you have raced. Sponsor and upkeep return to normal from season two onward."
+        },
+        "da": {
+          "title": "Ingen dobbelt-indkomst eller driftsomkostninger ved sæson 1-start",
+          "body": "Når en ny klub starter med sin startkapital, får den ikke længere også en sponsorudbetaling oveni i sæson 1 — det var dobbelt-indkomst lige ved opstart. Driftsomkostninger (upkeep) holdes også tilbage indtil sæsonen reelt er i gang, så du ikke betaler driftsudgifter før du har kørt løb. Sponsor og upkeep er tilbage til normalen fra sæson 2 og frem."
+        },
+        "refs": [
+          1678
+        ]
       }
     ]
   },
