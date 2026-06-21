@@ -77,6 +77,11 @@ if (invokedDirectly) {
     exportOg(svgPath, outPath)
       .then((r) => console.log(`OK: OG raster ${r.width}x${r.height} -> ${r.outPath}`))
       .catch((e) => { console.error(e); process.exit(1); });
+  } else if (process.argv[2] === 'banner') {
+    const [, , , svgPath = 'frontend/public/brand/discord-banner.svg', outPath = 'frontend/public/brand/discord-banner.png'] = process.argv;
+    exportOg(svgPath, outPath, { width: 960, height: 540 })
+      .then((r) => console.log(`OK: banner raster ${r.width}x${r.height} -> ${r.outPath}`))
+      .catch((e) => { console.error(e); process.exit(1); });
   } else {
     const [, , svgPath, outDir = 'frontend/public/brand', name = 'cz'] = process.argv;
     if (!svgPath) {

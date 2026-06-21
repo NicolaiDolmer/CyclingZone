@@ -20,6 +20,7 @@
     "test:icu-braces": "node --test scripts/i18n-check-icu-braces.test.mjs",
     "brand:export": "node scripts/brand-export.mjs",
     "brand:export:og": "node scripts/brand-export.mjs og frontend/public/og-cycling-zone.svg frontend/public/og-cycling-zone.png",
+    "brand:export:banner": "node scripts/brand-export.mjs banner frontend/public/brand/discord-banner.svg frontend/public/brand/discord-banner.png",
     "lint:sql": "node scripts/lint-sql-strings.mjs",
     "test:lint-sql": "node --test scripts/lint-sql-strings.test.mjs",
     "lint:migrations": "node scripts/lint-migration-idempotency.mjs",
