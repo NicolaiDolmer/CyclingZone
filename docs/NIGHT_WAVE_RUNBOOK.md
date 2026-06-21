@@ -2,7 +2,7 @@
 
 > **On-demand doc.** Auto-loader IKKE (bevidst: 0 cold-start-tokens — derfor doc, ikke skill/saved workflow; orkestreringen er konversationel med ejer-go pr. bølge). Læs FØR enhver natbølge claims. Kanonisk kilde for bølge-protokollen; memory `project_multiagent_fleet_playbook.md` peger hertil. Oprettet efter natbølge 3-postmortem (PC i Modern Standby 4 min efter claim → 0 agenter kørte).
 
-## Pipeline (6 trin — rækkefølgen er ikke valgfri)
+## Pipeline (7 trin — rækkefølgen er ikke valgfri)
 
 | # | Trin | Kommando/handling | Gate |
 |---|---|---|---|
@@ -11,7 +11,8 @@
 | 3 | **Launch i SAMME tur som go** | Workflow spawnes i samme svar som ejer-go modtages — turen må IKKE slutte mellem claim-commit og launch (natbølge 3-død) | Workflow-kald afsendt |
 | 4 | **Launch-bevis** | Ejer SER "Workflow kører — N agenter aktive" på skærmen før maskinen forlades | Intet bevis = bølgen er IKKE startet. Fuld stop, ingen antagelser. |
 | 5 | **Merge-protokol** (morgen) | Ejer-go pr. bølge; >5 PR'er = eksplicit bulk-go ([fleet-playbook](../.claude/learnings/) bølge 2). Rækkefølge: backend/lav-konflikt → store UI-PR'er → bredeste PR (med migration) sidst; snapshots refreshes i DENS worktree. `database/2026-*.sql` auto-applies på prod ved merge — review SQL FØR merge. Mellemliggende deploy-verify-fails i en merge-salve er støj; kun SIDSTE merges deploy-verify + auto-migrate tæller. | Alle merges har ejer-go |
-| 6 | **Bølge-artifact** | Orkestrator skriver `docs/audits/night-wave-YYYY-MM-DD.md` (template nedenfor) ved close-out | Artifact committet |
+| 5b | **Done-flip pr. merged issue (OBLIGATORISK)** | Umiddelbart efter HVER merge: `gh issue edit <N> --add-label claude:done --remove-label claude:todo` + kort shipped-kommentar med PR-nr (via gh-retry-wrapper). Gør det PR-for-PR i merge-løkken — ikke som et separat "til sidst"-trin der glemmes. | **Nul af bølgens merged issues må stå tilbage som `claude:todo`.** Den hyppigste close-out-fejl: PR merges, issue glemmes → backlog fyldes med done-men-åbne issues (ejer-frustration 2026-06-21: ~14 done issues stod stadig som todo). |
+| 6 | **Bølge-artifact + done-verifikation** | Orkestrator skriver `docs/audits/night-wave-YYYY-MM-DD.md` (template nedenfor) ved close-out — inkl. udfyldt `Issues → claude:done`-række. | Artifact committet **og** done-flip verificeret: `gh issue list --label claude:todo` viser ingen af bølgens merged issues. |
 
 ## Preflight-detaljer
 
