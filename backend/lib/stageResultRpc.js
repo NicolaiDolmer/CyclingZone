@@ -24,17 +24,17 @@ export async function applyStageResultAtomic(
   { raceId, stageIndex, stageNumber, totalStages, resultRows },
 ) {
   if (!client?.rpc) {
-    throw new Error("applyStageResultAtomic kræver Supabase-client med rpc()");
+    throw new Error("applyStageResultAtomic requires a Supabase client with rpc()");
   }
-  if (!raceId) throw new Error("applyStageResultAtomic: raceId er påkrævet");
+  if (!raceId) throw new Error("applyStageResultAtomic: raceId is required");
   if (!Number.isInteger(stageIndex) || stageIndex < 0) {
-    throw new Error("applyStageResultAtomic: stageIndex skal være et ikke-negativt heltal");
+    throw new Error("applyStageResultAtomic: stageIndex must be a non-negative integer");
   }
   if (!Number.isInteger(stageNumber) || stageNumber < 1) {
-    throw new Error("applyStageResultAtomic: stageNumber skal være et positivt heltal");
+    throw new Error("applyStageResultAtomic: stageNumber must be a positive integer");
   }
   if (!Array.isArray(resultRows) || resultRows.length === 0) {
-    throw new Error("applyStageResultAtomic: resultRows skal være et ikke-tomt array");
+    throw new Error("applyStageResultAtomic: resultRows must be a non-empty array");
   }
 
   const { data, error } = await client.rpc("apply_stage_result", {

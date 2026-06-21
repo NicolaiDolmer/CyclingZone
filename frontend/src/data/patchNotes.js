@@ -4,6 +4,29 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "5.88",
+    "date": "2026-06-21",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "See who made the morning breakaway, and whether it held",
+          "body": "Stage results now mark which riders went up the road in the early breakaway, and whether they held to the finish or got caught by the bunch. Most breakaways get reeled in, so the ones that survive stand out."
+        },
+        "da": {
+          "title": "Se hvem der kom med i morgenudbruddet, og om det holdt",
+          "body": "Etaperesultaterne markerer nu hvilke ryttere der kom med i det tidlige udbrud, og om de holdt hjem til mål eller blev hentet af feltet. De fleste udbrud bliver kørt ind igen, så dem der overlever skiller sig ud."
+        },
+        "refs": [
+          1499
+        ]
+      }
+    ]
+  },
+  {
     "version": "5.87",
     "date": "2026-06-21",
     "label": "Beta",
