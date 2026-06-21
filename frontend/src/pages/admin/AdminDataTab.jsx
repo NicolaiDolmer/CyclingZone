@@ -7,6 +7,7 @@ import RiderExplorerSection from "../../components/admin/RiderExplorerSection";
 import AdminSection from "../../components/admin/shared/AdminSection";
 import AdminMessageBanner from "../../components/admin/shared/AdminMessageBanner";
 import { adminErrorMessage, readAdminJson, useAdminAuth } from "../../components/admin/shared/useAdminAuth";
+import { FlagIcon, EditIcon, CheckIcon, XIcon } from "../../components/ui";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -46,9 +47,9 @@ export default function AdminDataTab() {
       });
       const data = await readAdminJson(res);
       if (res.ok) setEngineStatus(data);
-      else showMsg(`❌ Race-motor status: ${adminErrorMessage(data, res)}`, "error");
+      else showMsg(`Race-motor status: ${adminErrorMessage(data, res)}`, "error");
     } catch (e) {
-      showMsg(`❌ Race-motor status fejlede: ${e.message || "ukendt"}`, "error");
+      showMsg(`Race-motor status fejlede: ${e.message || "ukendt"}`, "error");
     }
   }
 
@@ -68,10 +69,10 @@ export default function AdminDataTab() {
         }),
       });
       const data = await readAdminJson(res);
-      if (res.ok) { showMsg(`✅ Løb "${data.name}" tilføjet`); loadData(); setRaceForm(f => ({ ...f, name: "", edition_year: "", race_class: "" })); }
-      else showMsg(`❌ ${adminErrorMessage(data, res)}`, "error");
+      if (res.ok) { showMsg(`Løb "${data.name}" tilføjet`); loadData(); setRaceForm(f => ({ ...f, name: "", edition_year: "", race_class: "" })); }
+      else showMsg(adminErrorMessage(data, res), "error");
     } catch (e) {
-      showMsg(`❌ Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
+      showMsg(`Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
     } finally {
       setLoad("race", false);
     }
@@ -107,11 +108,11 @@ export default function AdminDataTab() {
       });
       let data = {};
       try { data = await res.json(); } catch { /* non-JSON response */ }
-      if (res.ok) { showMsg("✅ Løb gemt"); setEditingRace(null); loadData(); }
-      else if (res.status === 404) showMsg("❌ Endpoint ikke deployet endnu — vent 1-2 min og prøv igen", "error");
-      else showMsg(`❌ ${data.error || `HTTP ${res.status}`}`, "error");
+      if (res.ok) { showMsg("Løb gemt"); setEditingRace(null); loadData(); }
+      else if (res.status === 404) showMsg("Endpoint ikke deployet endnu — vent 1-2 min og prøv igen", "error");
+      else showMsg(data.error || `HTTP ${res.status}`, "error");
     } catch (e) {
-      showMsg(`❌ Netværksfejl: ${e.message || "ukendt"}`, "error");
+      showMsg(`Netværksfejl: ${e.message || "ukendt"}`, "error");
     } finally {
       setLoad("raceEdit", false);
     }
@@ -125,10 +126,10 @@ export default function AdminDataTab() {
         method: "DELETE", headers: await getAuth(),
       });
       const data = await readAdminJson(res);
-      if (res.ok) { showMsg(`✅ ${raceName} slettet`); loadData(); }
-      else showMsg(`❌ ${adminErrorMessage(data, res)}`, "error");
+      if (res.ok) { showMsg(`${raceName} slettet`); loadData(); }
+      else showMsg(adminErrorMessage(data, res), "error");
     } catch (e) {
-      showMsg(`❌ Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
+      showMsg(`Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
     } finally {
       setLoad(`del_race_${raceId}`, false);
     }
@@ -152,18 +153,18 @@ export default function AdminDataTab() {
       });
       const data = await readAdminJson(res);
       if (!res.ok) {
-        showMsg(`❌ ${adminErrorMessage(data, res)}`, "error");
+        showMsg(adminErrorMessage(data, res), "error");
         return;
       }
       if (dryRun) {
         setSimPreview({ race, ...data });
       } else {
         setSimPreview(null); // ryd evt. stale dry-run panel med et andet resultat
-        showMsg(`✅ ${race.name}: ${data.rows} resultatrækker skrevet via motoren`);
+        showMsg(`${race.name}: ${data.rows} resultatrækker skrevet via motoren`);
         loadEngineStatus();
       }
     } catch (e) {
-      showMsg(`❌ Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
+      showMsg(`Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
     } finally {
       setSimBusyId(null);
     }
@@ -173,7 +174,7 @@ export default function AdminDataTab() {
     <>
       <AdminMessageBanner msg={msg} />
 
-      <AdminSection title="🏁 Race-katalog">
+      <AdminSection title={<span className="inline-flex items-center gap-1.5"><FlagIcon size={14} aria-hidden="true" />Race-katalog</span>}>
         <RacePoolSection getAuth={getAuth} onMsg={showMsg} />
       </AdminSection>
 
@@ -211,20 +212,20 @@ export default function AdminDataTab() {
                         <div className="flex gap-2 justify-end">
                           <button
                             onClick={() => setEditingRace(editingRace?.id === r.id ? null : { ...r })}
-                            className="px-2 py-1 bg-cz-subtle text-cz-2 border border-cz-border rounded text-xs hover:bg-cz-subtle hover:text-cz-1 transition-all">
-                            ✏ Rediger
+                            className="inline-flex items-center gap-1 px-2 py-1 bg-cz-subtle text-cz-2 border border-cz-border rounded text-xs hover:bg-cz-subtle hover:text-cz-1 transition-all">
+                            <EditIcon size={12} aria-hidden="true" />Rediger
                           </button>
                           <button
                             onClick={() => handleDeleteRace(r.id, r.name)}
                             disabled={loading[`del_race_${r.id}`]}
-                            className="px-2 py-1 bg-cz-danger-bg text-red-600 border border-cz-danger/30 rounded text-xs hover:bg-cz-danger-bg disabled:opacity-50 transition-all">
+                            className="px-2 py-1 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded text-xs hover:bg-cz-danger-bg disabled:opacity-50 transition-all">
                             {loading[`del_race_${r.id}`] ? "..." : "Slet"}
                           </button>
                         </div>
                       </td>
                     </tr>
                     {editingRace?.id === r.id && (
-                      <tr key={`edit-${r.id}`} className="border-b border-[#e8c547]/10 bg-cz-accent/3">
+                      <tr key={`edit-${r.id}`} className="border-b border-cz-accent/10 bg-cz-accent/3">
                         <td colSpan={4} className="px-3 py-4">
                           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
                             <div className="col-span-2 sm:col-span-1">
@@ -400,15 +401,15 @@ export default function AdminDataTab() {
         <RacePointsAdminSection getAuth={getAuth} onMsg={showMsg} />
       </AdminSection>
 
-      <AdminSection title="🏁 Race-motor V2 (#1102)">
+      <AdminSection title={<span className="inline-flex items-center gap-1.5"><FlagIcon size={14} aria-hidden="true" />Race-motor V2 (#1102)</span>}>
         <div className="flex items-center gap-3 flex-wrap mb-4">
           <p className="text-cz-2 text-xs">
             Flag:{" "}
             {engineStatus == null
               ? <span className="text-cz-3 italic">ikke hentet endnu</span>
               : engineStatus.enabled
-                ? <span className="text-cz-success font-semibold">✅ ON</span>
-                : <span className="text-red-500 font-semibold">⛔ OFF <span className="text-cz-3 font-normal">(ægte afvikling deaktiveret — kun preview)</span></span>
+                ? <span className="inline-flex items-center gap-1 text-cz-success font-semibold"><CheckIcon size={12} aria-hidden="true" />ON</span>
+                : <span className="inline-flex items-center gap-1 text-cz-danger font-semibold"><XIcon size={12} aria-hidden="true" />OFF <span className="text-cz-3 font-normal">(ægte afvikling deaktiveret — kun preview)</span></span>
             }
           </p>
           <p className="text-cz-3 text-xs italic">preview virker altid; ægte afvikling kræver flag ON</p>
@@ -444,8 +445,8 @@ export default function AdminDataTab() {
                     <td className="px-3 py-2.5 text-cz-2">{race.stages}</td>
                     <td className="px-3 py-2.5">
                       {race.ready
-                        ? <span className="text-cz-success">✅ {race.profile_count}</span>
-                        : <span className="text-cz-accent-t">❌ kør backfill</span>
+                        ? <span className="inline-flex items-center gap-1 text-cz-success"><CheckIcon size={12} aria-hidden="true" />{race.profile_count}</span>
+                        : <span className="inline-flex items-center gap-1 text-cz-accent-t"><XIcon size={12} aria-hidden="true" />kør backfill</span>
                       }
                     </td>
                     <td className="px-3 py-2.5 text-cz-2">
