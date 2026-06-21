@@ -33,6 +33,7 @@ import { simulateStage, stableSeed, ENGINE_VERSION, ABILITY_KEYS, deriveBreakawa
 import { copenhagenDateString } from "./copenhagenTime.js";
 import { applyRaceFatigue, stageEnteringFatigues } from "./raceFatigue.js";
 import { autopickTeamSelection, selectionSizeForRace } from "./raceAutopick.js";
+import { applyStageResultAtomic } from "./stageResultRpc.js";
 
 // Intern klassements-point (grøn/bjerg) — afgør KUN rækkefølgen i de respektive
 // trøje-konkurrencer; selve præmie-pointene kommer fra race_points via rank.
@@ -631,13 +632,16 @@ export async function simulateStageByIndex({
   stageIndex,
   dryRun = false,
   runSource = null,
-  applyRaceResults = applyRaceResultsShared,
+  // #1598: result-write (counter + race_results delete+insert) går nu via den atomære
+  // apply_stage_result-RPC (applyStageResult). ensureSeasonStandings/updateStandings
+  // kører EFTER RPC'en committer (standings = idempotent re-derivation, ej desync-følsom).
   ensureSeasonStandings = async () => {},
   updateStandings = async () => {},
   recomputeRaceDays = recomputeSeasonRaceDays,
   processBoardWeekend = processBoardWeekendFinalizationShared,
   notifyDiscord = null,
   applyFatigue = applyRaceFatigue,
+  applyStageResult = applyStageResultAtomic,
 }) {
   if (!supabase?.from) throw new Error("supabase client required");
   if (!race?.id || !race?.season_id) throw new Error("race {id, season_id} required");
@@ -717,59 +721,47 @@ export async function simulateStageByIndex({
       };
     }
 
-    // ── FIX 5 (optimistisk lås): hævn stages_completed fra stageIndex → stageNumber
-    // FØR resultater/standings skrives. To næsten-samtidige runs (dobbelt-klik, eller
+    // ── #1598: atomær per-etape-skrivning (counter-bump + race_results delete+insert)
+    // i ÉN Postgres-transaktion via apply_stage_result-RPC. Lukker det skarpe crash-
+    // vindue #1574 efterlod: et HÅRDT proces-kill mellem counter-bump og result-write
+    // på en mellem-etape kunne efterlade stages_completed FORAN tomme race_results.
+    // RPC'en committer de tre trin samlet eller ruller ALT tilbage — ingen partial state.
+    //
+    // FIX 5-lås (uændret prædikat): RPC'en bumper kun stages_completed WHERE
+    // stages_completed = stageIndex. To næsten-samtidige runs (dobbelt-klik, eller
     // admin + scheduler) for samme løb beregner begge SAMME stageIndex; kun den FØRSTE
-    // vinder WHERE stages_completed = stageIndex. Taberen ser 0 ramte rækker → afbryd
-    // FØR applyRaceResults, så standings/præmier ikke dobbelt-anvendes. status sættes
-    // IKKE her (FIX 1: status flippes sidst, efter finalization).
-    const { data: locked, error: lockErr } = await supabase
-      .from("races")
-      .update({ stages_completed: stageNumber })
-      .eq("id", race.id)
-      .eq("stages_completed", stageIndex)
-      .select("id");
-    if (lockErr) throw new Error(`races stages_completed lock: ${lockErr.message}`);
-    if (!locked || locked.length === 0) {
+    // vinder. Taberen ser lockWon=false → afbryd FØR standings, så standings/præmier
+    // ikke dobbelt-anvendes. status sættes IKKE her (FIX 1: status flippes sidst).
+    //
+    // resultRows er allerede afgrænset til DENNE etape (linje ~691), og rækkerne har
+    // points_earned/prize_money udledt via buildRacePointsLookup — RPC'en persisterer
+    // dem 1:1 (samme normaliserede kolonne-mapping som applyRaceResults). Balance-NEUTRAL.
+    const { lockWon, rowsImported } = await applyStageResult(supabase, {
+      raceId: race.id,
+      stageIndex,
+      stageNumber,
+      totalStages,
+      resultRows,
+    });
+    if (!lockWon) {
       // Konkurrerende run vandt (eller stages_completed er allerede forbi denne etape).
-      // Ingen side-effekter er kørt → sikkert at afbryde uden dobbelt-anvendelse.
+      // RPC'en kørte INGEN side-effekter → sikkert at afbryde uden dobbelt-anvendelse.
       return {
         stageNumber, isFinalStage, skipped: "concurrent_lock_lost",
         rowsImported: 0, rows: 0, entrants: entrants.length, stages: totalStages,
       };
     }
+    applied = { rowsImported };
 
-    // FIX 1/5: låsen bumpede stages_completed FØR resultaterne er skrevet (krævet for
-    // at konkurrenten kan tabe og afbryde før standings). Det åbner et smalt vindue: et
-    // kast mellem lås og resultat-skriv ville efterlade counter foran tomme race_results
-    // for etapen. Vi LUKKER vinduet for in-process-fejl ved at rulle counteren TILBAGE til
-    // stageIndex hvis resultat-skrivningen kaster — så en gen-afvikling re-kører PRÆCIS
-    // denne etape. (Et hårdt proces-kill mellem to round-trips er fortsat teoretisk muligt,
-    // men er nu kun ét enkelt skriv væk; final-etapens recovery-sti dækker slut-etapen.)
-    try {
-      // Idempotent: slet KUN denne etapes race_results før insert. En gen-afvikling af
-      // samme stageIndex re-deleter+re-inserter sikkert.
-      await supabase.from("race_results").delete().eq("race_id", race.id).eq("stage_number", stageNumber);
+    // Standings-recompute kører EFTER den atomære result-write committer. updateStandings
+    // er en fuld re-derivation fra race_results (alle etaper) — inhærent idempotent og
+    // self-healing, og var aldrig en del af counter↔results-desync'en. Et crash her
+    // efterlader korrekte race_results + counter; en næste afvikling/recompute re-deriverer
+    // standings. persistRuns (run-snapshot) er ligeledes additiv enrichment.
+    await ensureSeasonStandings(race.season_id);
+    await updateStandings(race.season_id, race.id);
 
-      applied = await applyRaceResults({
-        supabase,
-        race: { ...race },
-        resultRows,
-        ensureSeasonStandings,
-        updateStandings,
-      });
-
-      await persistRuns({ supabase, race, runs, source: runSource });
-    } catch (err) {
-      // Rul counteren tilbage så etapen kan gen-afvikles rent. Bedst-effort: lykkes
-      // rollbacken ikke, kaster vi stadig den oprindelige fejl (synlig + monitoreret).
-      try {
-        await supabase.from("races").update({ stages_completed: stageIndex }).eq("id", race.id);
-      } catch (rbErr) {
-        console.error(`  ⚠️  counter rollback failed after result-write error (stage ${stageNumber}): ${rbErr.message}`);
-      }
-      throw err;
-    }
+    await persistRuns({ supabase, race, runs, source: runSource });
 
     // #1306 spec 6.4: træthed bygges af DENNE etapes belastning — PRÆCIS ét kald
     // (ikke 1..N: de tidligere etaper akkumulerede deres last i tidligere invokationer).
