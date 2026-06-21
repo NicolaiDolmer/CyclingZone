@@ -5161,7 +5161,7 @@ router.post("/admin/seasons/:seasonId/race-selection", requireAdmin, adminWriteL
 
     const { data: season, error: seasonError } = await supabase
       .from("seasons")
-      .select("id, status")
+      .select("id, status, start_date")
       .eq("id", seasonId)
       .single();
     if (seasonError) return res.status(500).json({ error: seasonError.message });
@@ -5217,6 +5217,20 @@ router.post("/admin/seasons/:seasonId/race-selection", requireAdmin, adminWriteL
     if (existingError) return res.status(500).json({ error: existingError.message });
     const existingPoolIds = new Set((existing || []).map((r) => r.pool_race_id));
 
+    // #1126: stempl edition_year som ren baggrunds-metadata = kalenderåret fra
+    // sæsonens start-dato (start_date er 'YYYY-MM-DD'), så feltet ikke er null.
+    // Sæson-nummeret ("Sæson 1, 2, 3…") er den eneste spiller-vendte løbs-
+    // identitet — edition_year vises ALDRIG som løbets "årgang" i UI'et. En
+    // sæson varer ~30 dage, så flere sæsoner deler samme edition_year; det er
+    // OK, fordi identiteten er sæson-nummeret, ikke året.
+    let editionYear = null;
+    if (season.start_date) {
+      const parsedYear = Number.parseInt(String(season.start_date).slice(0, 4), 10);
+      if (Number.isFinite(parsedYear) && parsedYear >= 2000 && parsedYear <= 2099) {
+        editionYear = parsedYear;
+      }
+    }
+
     const toInsert = (poolRaces || [])
       .filter((p) => !existingPoolIds.has(p.id))
       .map((p) => ({
@@ -5226,6 +5240,7 @@ router.post("/admin/seasons/:seasonId/race-selection", requireAdmin, adminWriteL
         race_class: p.race_class,
         race_type: p.race_type,
         stages: p.stages,
+        edition_year: editionYear,
         status: "scheduled",
       }));
 

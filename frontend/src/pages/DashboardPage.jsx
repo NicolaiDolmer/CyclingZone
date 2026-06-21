@@ -661,9 +661,6 @@ export default function DashboardPage() {
                     {race.pool_race?.date_text
                       ? <p className="text-cz-2 text-sm">{race.pool_race.date_text}</p>
                       : <p className="text-cz-3 text-sm">{t("dashboard:cards.races.dateTbd")}</p>}
-                    {race.edition_year && (
-                      <p className="text-cz-accent-t text-xs font-mono">{t("common:race.editionYear", { year: race.edition_year })}</p>
-                    )}
                   </div>
                 </Link>
               ))}
