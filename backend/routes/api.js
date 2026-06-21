@@ -1335,7 +1335,7 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
       const secs = (new Date(tw.closes_at) - Date.now()) / 1000;
       ddActive = secs > 0 && secs <= 86400;
     }
-    if (!ddActive) return res.status(403).json({ error: "Flash Auktioner er kun tilgængelige under Deadline Day", errorCode: "flash_deadline_day_only" });
+    if (!ddActive) return res.status(403).json({ error: "Flash auctions are only available during Deadline Day", errorCode: "flash_deadline_day_only" });
   }
 
   // Verify rider belongs to this team
@@ -1354,9 +1354,9 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
   const auctionStartIssue = getAuctionStartIssue({ rider });
   if (auctionStartIssue) {
     if (auctionStartIssue.code === "rider_retired") {
-      return res.status(409).json({ error: "Rytteren er pensioneret og kan ikke sættes på auktion", errorCode: "rider_retired_auction" });
+      return res.status(409).json({ error: "This rider has retired and can't be put up for auction", errorCode: "rider_retired_auction" });
     }
-    return res.status(409).json({ error: "Rytteren er vundet på en auktion og afventer overførsel til det nye hold", errorCode: "rider_pending_transfer_auction" });
+    return res.status(409).json({ error: "This rider was won at auction and is awaiting transfer to the new team", errorCode: "rider_pending_transfer_auction" });
   }
 
   // Allow auction if:
@@ -1372,7 +1372,7 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
       .single();
     // If owned by a human manager (not AI), block the auction
     if (owningTeam && !owningTeam.is_ai && owningTeam.user_id) {
-      return res.status(403).json({ error: "Denne rytter tilhører en anden manager", errorCode: "rider_other_manager" });
+      return res.status(403).json({ error: "This rider belongs to another manager", errorCode: "rider_other_manager" });
     }
   }
 
@@ -1402,7 +1402,7 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
     openSwapOfferedRiderIds: (openSwapsForRider || []).map(s => s.offered_rider_id),
   });
   if (swapIssue) {
-    return res.status(409).json({ error: "Rytteren er tilbudt i en åben byttehandel. Træk byttetilbuddet tilbage, før du starter en auktion", errorCode: "rider_in_open_swap_auction" });
+    return res.status(409).json({ error: "This rider is offered in an open swap. Withdraw the swap offer before starting an auction", errorCode: "rider_in_open_swap_auction" });
   }
 
   const riderValue = Math.max(calculateRiderMarketValue(rider), 1);
@@ -1415,9 +1415,9 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
     }
     const formatted = riderValue.toLocaleString("da-DK");
     if (priceIssue.code === "own_price_out_of_range") {
-      return res.status(400).json({ error: `Startpris skal være mellem 0 og rytterens Værdi (${formatted} CZ$)`, errorCode: "start_price_own_range", errorParams: { value: riderValue } });
+      return res.status(400).json({ error: `Starting price must be between 0 and the rider's Value (${formatted} CZ$)`, errorCode: "start_price_own_range", errorParams: { value: riderValue } });
     }
-    return res.status(400).json({ error: `Startpris skal mindst matche rytterens Værdi (${formatted} CZ$)`, errorCode: "start_price_min_value", errorParams: { value: riderValue } });
+    return res.status(400).json({ error: `Starting price must at least match the rider's Value (${formatted} CZ$)`, errorCode: "start_price_min_value", errorParams: { value: riderValue } });
   }
 
   const price = (starting_price === null || starting_price === undefined || starting_price === "")
@@ -1453,7 +1453,7 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
       proxiesByAuctionId,
     }) + price;
     if ((Number(teamState.balance) || 0) < totalCommitment) {
-      return res.status(400).json({ error: "Startbuddet overstiger din disponible balance inkl. aktive auktionsføringer", errorCode: "start_bid_exceeds_balance" });
+      return res.status(400).json({ error: "The starting bid exceeds your available balance, including active auction leads", errorCode: "start_bid_exceeds_balance" });
     }
 
     // Squad-cap er ikke længere en hard block (#29) — håndhæves ved vindue-luk via squadEnforcement.
@@ -1582,7 +1582,7 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
     const { data: auctionRider } = await supabase
       .from("riders").select("team_id").eq("id", auction.rider_id).single();
     if (auctionRider?.team_id === req.team.id) {
-      return res.status(400).json({ error: "Du kan ikke byde på din egen rytter", errorCode: "cannot_bid_own_rider" });
+      return res.status(400).json({ error: "You can't bid on your own rider", errorCode: "cannot_bid_own_rider" });
     }
   }
   // #44: worst-case commitment EXKL. denne auktion. Hvis manageren allerede leder
@@ -1671,7 +1671,7 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
   });
   if (bidInsertError) {
     if (isLateBidTriggerError(bidInsertError)) {
-      return res.status(400).json({ error: "Auktionen er udløbet", errorCode: "auction_expired" });
+      return res.status(400).json({ error: "The auction has ended", errorCode: "auction_expired" });
     }
     return res.status(500).json({ error: "Bud kunne ikke gemmes", errorCode: "bid_save_failed" });
   }
@@ -1820,7 +1820,7 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
     const { data: auctionRider } = await supabase
       .from("riders").select("team_id").eq("id", auction.rider_id).single();
     if (auctionRider?.team_id === req.team.id) {
-      return res.status(400).json({ error: "Du kan ikke sætte autobud på din egen rytter", errorCode: "cannot_proxy_own_rider" });
+      return res.status(400).json({ error: "You can't set an auto-bid on your own rider", errorCode: "cannot_proxy_own_rider" });
     }
   }
 
@@ -1911,7 +1911,7 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
     });
     if (bidInsertError) {
       if (isLateBidTriggerError(bidInsertError)) {
-        return res.status(400).json({ error: "Auktionen er udløbet", errorCode: "auction_expired" });
+        return res.status(400).json({ error: "The auction has ended", errorCode: "auction_expired" });
       }
       return res.status(500).json({ error: "Autobud kunne ikke placeres", errorCode: "proxy_place_failed" });
     }
@@ -2066,7 +2066,7 @@ router.post("/transfers", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!rider || rider.team_id !== req.team.id)
     return res.status(403).json({ error: "Du ejer ikke denne rytter", errorCode: "rider_not_owned" });
   if (rider.is_retired)
-    return res.status(409).json({ error: "Rytteren er pensioneret og kan ikke sættes til salg", errorCode: "rider_retired_listing" });
+    return res.status(409).json({ error: "This rider has retired and can't be listed for sale", errorCode: "rider_retired_listing" });
 
   // #247: maks én aktiv listing pr. rytter. Tjekkes først her, og DB-niveau
   // partial unique index (uniq_transfer_listings_one_active_per_rider) fanger
@@ -2078,7 +2078,7 @@ router.post("/transfers", requireAuth, marketWriteLimiter, async (req, res) => {
     .in("status", ["open", "negotiating"])
     .maybeSingle();
   if (existingListing) {
-    return res.status(409).json({ error: "Rytteren er allerede til salg på transfermarkedet", errorCode: "rider_already_listed" });
+    return res.status(409).json({ error: "This rider is already listed on the transfer market", errorCode: "rider_already_listed" });
   }
 
   const { data, error } = await supabase
@@ -2089,7 +2089,7 @@ router.post("/transfers", requireAuth, marketWriteLimiter, async (req, res) => {
     // 23505 = unique_violation fra uniq_transfer_listings_one_active_per_rider
     // ved race mellem SELECT-tjek og INSERT (typisk dobbeltklik).
     if (error.code === "23505") {
-      return res.status(409).json({ error: "Rytteren er allerede til salg på transfermarkedet", errorCode: "rider_already_listed" });
+      return res.status(409).json({ error: "This rider is already listed on the transfer market", errorCode: "rider_already_listed" });
     }
     return res.status(500).json({ error: error.message });
   }
@@ -2200,13 +2200,13 @@ router.post("/transfers/offer", requireAuth, marketWriteLimiter, async (req, res
   const offer_amount = Number.parseInt(req.body.offer_amount, 10);
   if (!rider_id) return res.status(400).json({ error: "rider_id og offer_amount kræves" });
   if (!Number.isInteger(offer_amount) || offer_amount < 1)
-    return res.status(400).json({ error: "Ugyldigt beløb", errorCode: "invalid_offer_amount" });
+    return res.status(400).json({ error: "Invalid amount", errorCode: "invalid_offer_amount" });
 
   const { data: rider } = await supabase
     .from("riders").select("id, team_id, firstname, lastname, is_retired").eq("id", rider_id).single();
   if (!rider || !rider.team_id) return res.status(404).json({ error: "Rytter ikke fundet eller har intet hold", errorCode: "rider_not_found_or_no_team" });
   if (rider.is_retired) return res.status(409).json({ error: "Rytteren er pensioneret og kan ikke handles", errorCode: "rider_retired_trade" });
-  if (rider.team_id === req.team.id) return res.status(400).json({ error: "Du kan ikke byde på din egen rytter", errorCode: "cannot_bid_own_rider" });
+  if (rider.team_id === req.team.id) return res.status(400).json({ error: "You can't bid on your own rider", errorCode: "cannot_bid_own_rider" });
 
   const { data: sellerTeam } = await supabase
     .from("teams")
@@ -2214,13 +2214,13 @@ router.post("/transfers/offer", requireAuth, marketWriteLimiter, async (req, res
     .eq("id", rider.team_id)
     .single();
   if (sellerTeam?.is_bank) {
-    return res.status(400).json({ error: "AI-ryttere kan ikke modtage direkte tilbud. Start eller byd på en auktion i stedet.", errorCode: "ai_rider_no_direct_offer" });
+    return res.status(400).json({ error: "AI riders can't receive direct offers. Start or bid on an auction instead.", errorCode: "ai_rider_no_direct_offer" });
   }
 
   // Check buyer balance
   const buyerState = await getTeamMarketState(supabase, req.team.id);
   if (offer_amount > buyerState.balance)
-    return res.status(400).json({ error: "Du har ikke råd til dette tilbud", errorCode: "cannot_afford_offer" });
+    return res.status(400).json({ error: "You can't afford this offer", errorCode: "cannot_afford_offer" });
 
   // Check squad size limits for buyer.
   // #19/#267: +2 soft-cap buffer gælder kun i åbent vindue; lukket → hard-cap.
@@ -2378,7 +2378,7 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
     // Soft balance check — final check happens at confirmation
     const { data: buyer } = await supabase.from("teams").select("balance").eq("id", offer.buyer_team_id).single();
     if (!buyer || buyer.balance < price)
-      return res.status(400).json({ error: "Køber har ikke råd", errorCode: "buyer_cannot_afford" });
+      return res.status(400).json({ error: "The buyer can't afford this", errorCode: "buyer_cannot_afford" });
 
     await supabase.from("transfer_offers").update({
       status: "awaiting_confirmation",
@@ -2442,7 +2442,7 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
 
     const { data: buyer } = await supabase.from("teams").select("balance").eq("id", req.team.id).single();
     if (!buyer || buyer.balance < price)
-      return res.status(400).json({ error: "Du har ikke råd", errorCode: "cannot_afford" });
+      return res.status(400).json({ error: "You can't afford this", errorCode: "cannot_afford" });
 
     // S-02e · Hard-block ved aktivt lag 2/3 (genkontrol — sat kan have ændret sig siden offer).
     const signingBlock = await assertSigningAllowed({
@@ -2566,17 +2566,17 @@ router.post("/transfers/:id/offer", requireAuth, marketWriteLimiter, async (req,
   if (!listing || listing.status !== "open")
     return res.status(404).json({ error: "Listing ikke fundet", errorCode: "listing_unavailable" });
   if (listing.seller_team_id === req.team.id)
-    return res.status(400).json({ error: "Kan ikke byde på eget udbud", errorCode: "cannot_bid_own_listing" });
+    return res.status(400).json({ error: "You can't bid on your own listing", errorCode: "cannot_bid_own_listing" });
   const { data: listingSeller } = await supabase
     .from("teams")
     .select("is_bank")
     .eq("id", listing.seller_team_id)
     .single();
   if (listingSeller?.is_bank)
-    return res.status(400).json({ error: "AI-ryttere kan ikke modtage direkte tilbud. Start eller byd på en auktion i stedet.", errorCode: "ai_rider_no_direct_offer" });
+    return res.status(400).json({ error: "AI riders can't receive direct offers. Start or bid on an auction instead.", errorCode: "ai_rider_no_direct_offer" });
   const listingBuyerState = await getTeamMarketState(supabase, req.team.id);
   if (offer_amount > listingBuyerState.balance)
-    return res.status(400).json({ error: "Du har ikke råd til dette tilbud", errorCode: "cannot_afford_offer" });
+    return res.status(400).json({ error: "You can't afford this offer", errorCode: "cannot_afford_offer" });
   // #19/#267: +2 soft-cap buffer kun i åbent vindue; lukket → hard-cap.
   const listingSquadViolation = getIncomingSquadViolation(listingBuyerState, {
     softCapBuffer: open ? TRANSFER_WINDOW_SOFT_CAP_BUFFER : 0,
@@ -2649,13 +2649,13 @@ router.post("/transfers/swaps", requireAuth, marketWriteLimiter, async (req, res
   const requested = requestedRes.data;
 
   if (!offered || offered.team_id !== req.team.id)
-    return res.status(400).json({ error: "Din tilbudte rytter tilhører ikke dit hold", errorCode: "offered_rider_not_owned" });
+    return res.status(400).json({ error: "Your offered rider doesn't belong to your team", errorCode: "offered_rider_not_owned" });
   if (offered.is_retired)
     return res.status(409).json({ error: "Din tilbudte rytter er pensioneret og kan ikke handles", errorCode: "offered_rider_retired" });
   if (!requested || !requested.team_id)
-    return res.status(404).json({ error: "Målrytter ikke fundet eller har intet hold", errorCode: "target_rider_not_found" });
+    return res.status(404).json({ error: "Target rider not found or has no team", errorCode: "target_rider_not_found" });
   if (requested.is_retired)
-    return res.status(409).json({ error: "Målrytteren er pensioneret og kan ikke handles", errorCode: "target_rider_retired" });
+    return res.status(409).json({ error: "The target rider has retired and can't be traded", errorCode: "target_rider_retired" });
   if (requested.team_id === req.team.id)
     return res.status(400).json({ error: "Du kan ikke bytte med dig selv", errorCode: "cannot_swap_self" });
   const { data: requestedTeam } = await supabase
@@ -2664,7 +2664,7 @@ router.post("/transfers/swaps", requireAuth, marketWriteLimiter, async (req, res
     .eq("id", requested.team_id)
     .single();
   if (requestedTeam?.is_bank)
-    return res.status(400).json({ error: "AI-ryttere kan ikke indgå i direkte byttehandler. Brug auktioner i stedet.", errorCode: "ai_rider_no_swap" });
+    return res.status(400).json({ error: "AI riders can't take part in direct swaps. Use auctions instead.", errorCode: "ai_rider_no_swap" });
 
   // #1089: dobbelt-salgs-guard — en rytter på aktiv auktion kan ikke samtidig
   // indgå i en byttehandel (samme rytter ville kunne sælges to gange).
@@ -2680,15 +2680,15 @@ router.post("/transfers/swaps", requireAuth, marketWriteLimiter, async (req, res
   });
   if (auctionConflict) {
     if (auctionConflict.code === "offered_rider_on_auction") {
-      return res.status(409).json({ error: "Din tilbudte rytter er på aktiv auktion og kan ikke tilbydes i bytte, før auktionen er afsluttet", errorCode: "offered_rider_on_auction" });
+      return res.status(409).json({ error: "Your offered rider is in an active auction and can't be offered in a swap until the auction has ended", errorCode: "offered_rider_on_auction" });
     }
-    return res.status(409).json({ error: "Målrytteren er på aktiv auktion og kan ikke indgå i en byttehandel, før auktionen er afsluttet", errorCode: "requested_rider_on_auction" });
+    return res.status(409).json({ error: "The target rider is in an active auction and can't be part of a swap until the auction has ended", errorCode: "requested_rider_on_auction" });
   }
 
   if (cash_adjustment > 0) {
     const proposingState = await getTeamMarketState(supabase, req.team.id);
     if (proposingState.balance < cash_adjustment)
-      return res.status(400).json({ error: "Du har ikke råd til den ønskede kontantbetaling", errorCode: "cannot_afford_cash_adjustment" });
+      return res.status(400).json({ error: "You can't afford the requested cash payment", errorCode: "cannot_afford_cash_adjustment" });
   }
 
   const { data, error } = await supabase.from("swap_offers").insert({
@@ -2800,7 +2800,7 @@ router.patch("/transfers/swaps/:id", requireAuth, marketWriteLimiter, async (req
     if (effectiveCash > 0) {
       const { data: proposingTeam } = await supabase.from("teams").select("balance").eq("id", req.team.id).single();
       if (!proposingTeam || proposingTeam.balance < effectiveCash)
-        return res.status(400).json({ error: "Du har ikke råd til det kontra-tilbud", errorCode: "cannot_afford_counter" });
+        return res.status(400).json({ error: "You can't afford this counter-offer", errorCode: "cannot_afford_counter" });
     }
     await supabase.from("swap_offers").update({
       status: "awaiting_confirmation",
@@ -2902,7 +2902,7 @@ router.post("/loans", requireAuth, marketWriteLimiter, async (req, res) => {
   if (end_season < start_season)
     return res.status(400).json({ error: "end_season skal være >= start_season" });
   if (end_season > start_season)
-    return res.status(400).json({ error: "Lejeaftale kan max dække 1 sæson — sæt start og slut til samme sæsonnummer", errorCode: "loan_max_one_season" });
+    return res.status(400).json({ error: "A loan can cover one season at most. Set the start and end to the same season number.", errorCode: "loan_max_one_season" });
 
   const { data: rider } = await supabase
     .from("riders").select("id, team_id, firstname, lastname, is_retired").eq("id", rider_id).single();
@@ -3138,7 +3138,7 @@ router.patch("/loans/:id", requireAuth, marketWriteLimiter, async (req, res) => 
       .select("id");
     if (claimErr) return res.status(500).json({ error: claimErr.message });
     if (!claimedRider || claimedRider.length === 0)
-      return res.status(409).json({ error: "Rytteren er ikke længere tilgængelig for købsoption — den er allerede involveret i en anden handel.", errorCode: "buyout_rider_unavailable" });
+      return res.status(409).json({ error: "This rider is no longer available for the buy option; it's already part of another deal.", errorCode: "buyout_rider_unavailable" });
 
     // Slice 07c: balance + finance_transactions atomic via RPC.
     // 07d Fase B / #240: borrower aktiverer købsoption → req.user.id = køber.
@@ -5515,7 +5515,7 @@ router.post("/finance/loans", requireAuth, marketWriteLimiter, async (req, res) 
     // ikke-numerisk streng eller decimal slap forbi og gav NaN i parseInt(amount) nedenfor.
     const amount = Number.parseInt(req.body.amount, 10);
     if (!Number.isInteger(amount) || amount < 1)
-      return res.status(400).json({ error: "Ugyldigt beløb", errorCode: "invalid_loan_amount" });
+      return res.status(400).json({ error: "Invalid amount", errorCode: "invalid_loan_amount" });
     const loan = await createLoan(req.team.id, loan_type, amount, null, {
       actorType: FINANCE_ACTOR_TYPE.API,
       actorId: req.user.id,

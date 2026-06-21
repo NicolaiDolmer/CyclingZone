@@ -229,12 +229,6 @@
       "colour": 0,
       "emoji": 0
     },
-    "frontend/src/pages/admin/AdminDataTab.jsx": {
-      "hex": 1,
-      "slop": 0,
-      "colour": 2,
-      "emoji": 22
-    },
     "frontend/src/pages/admin/AdminEconomyTab.jsx": {
       "hex": 0,
       "slop": 0,
