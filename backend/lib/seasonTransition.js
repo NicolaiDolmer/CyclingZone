@@ -33,6 +33,7 @@ import {
   FIRST_VARIABLE_SPONSOR_SEASON,
 } from "./sponsorEngine.js";
 import { notifyUser } from "./notificationService.js";
+import { expireAndRenewContracts as defaultExpireAndRenewContracts } from "./sponsorContractsService.js";
 
 let processSeasonStartImpl;
 async function getProcessSeasonStart() {
@@ -542,6 +543,35 @@ export async function transitionToNextSeason({
       ...(await resetBetaBoardProfilesFn(supabase)),
     });
   }
+
+  // Phase 5b (#1663, Økonomi Fase 2): udløb + forny sponsor-kontrakter FØR
+  // sponsor-payout. For hvert menneske-hold beholdes en stadig-låst kontrakt
+  // (expires_after_season >= ny sæson) — ellers udløbes den gamle og default-
+  // varianten ("long") for den nye sæson auto-tildeles. Garanterer at hvert
+  // hold har en aktiv kontrakt hvis guaranteed_base processSeasonStart betaler.
+  // Samme menneske-hold-diskriminator som processSeasonStart (is_ai=false,
+  // is_bank=false, is_frozen=false; #1077). expireAndRenewContracts er
+  // injicerbar via deps for test (mirror'er processSeasonStart-mønstret).
+  const expireAndRenewContractsFn =
+    deps.expireAndRenewContracts ?? defaultExpireAndRenewContracts;
+  const { data: renewTeams, error: renewTeamsError } = await supabase
+    .from("teams")
+    .select("id")
+    .eq("is_ai", false)
+    .eq("is_bank", false)
+    .eq("is_frozen", false);
+  if (renewTeamsError) {
+    throw new Error(`Could not load teams for contract renewal: ${renewTeamsError.message}`);
+  }
+  await expireAndRenewContractsFn({
+    supabase,
+    newSeasonNumber: plan.to_season.number,
+    teamIds: (renewTeams || []).map((t) => t.id),
+  });
+  log.push({
+    phase: "sponsor_contracts_renewal",
+    teams: (renewTeams || []).length,
+  });
 
   // Phase 6: sponsor-payout + payroll (idempotent via partial UNIQUE-indices
   // på sponsor:team:season + salary/negative_interest:team:season +
