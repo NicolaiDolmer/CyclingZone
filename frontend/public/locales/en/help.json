@@ -201,15 +201,15 @@
       },
       "onlineStatus": {
         "title": "Online status",
-        "text": "A green dot next to a manager's name means they are active right now (last seen within 5 minutes). A grey dot with text shows when they were last online, e.g. '3h ago'. You can see this on manager profiles and in the team list."
+        "text": "A green dot next to a manager's name means they are active right now (last seen within 5 minutes). A grey dot shows they are currently offline. You can see this on manager profiles and next to each team in League & standings."
       },
       "managersOnline": {
         "title": "Managers online count",
         "text": "On the Dashboard you can see how many managers are active in the game right now. This updates automatically."
       },
       "headToHead": {
-        "title": "Head-to-Head",
-        "text": "Under League, Head-to-Head you can compare two teams' history directly: season points, stage and GC wins, transfer history between the teams and both teams' current top-5 riders. Team A is automatically your own team. Click the Team B field to see suggestions immediately. No typing required."
+        "title": "Compare two teams (Head-to-Head)",
+        "text": "Open League & standings (under Season & Results). Click the rank number on two teams to select them, then press Compare to open a side-by-side drawer: season points, stage and GC wins, transfer history between the teams and both teams' current top-5 riders. Your own team is selected first by default."
       }
     },
     "discord": {

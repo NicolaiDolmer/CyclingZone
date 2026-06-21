@@ -61,6 +61,8 @@ function buildNavGroups(team, t, academyEnabled = false) {
       ],
     },
     {
+      // #1609: "League"-gruppen nedlagt — Teams/H2H/Season-Preview er konsolideret
+      // ind i Standings-hub'en (linse + drawer). Hub'en bor her som "League & standings".
       key: "saeson-resultater", label: t("nav.group.saeson"),
       items: [
         { to: "/resultater",     label: t("nav.item.results") },
@@ -68,14 +70,6 @@ function buildNavGroups(team, t, academyEnabled = false) {
         { to: "/rider-rankings", label: t("nav.item.riderRankings") },
         { to: "/races",          label: t("nav.item.races") },
         { to: "/seasons",        label: t("nav.item.seasons") },
-      ],
-    },
-    {
-      key: "liga", label: t("nav.group.liga"),
-      items: [
-        { to: "/teams",          label: t("nav.item.teams") },
-        { to: "/head-to-head",   label: t("nav.item.headToHead") },
-        { to: "/season-preview", label: t("nav.item.seasonPreview") },
       ],
     },
   ];
