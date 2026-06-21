@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   findLocaleEmDashViolations,
   findProseEmDashViolations,
+  findHtmlEmDashViolations,
 } from "./tone-check-em-dash.mjs";
 
 test("locale scanner flags prose em-dashes and allows standalone empty-value glyphs", () => {
@@ -36,4 +37,16 @@ const explanation = "The table used '—' for missing values";
 `;
 
   assert.deepEqual(findProseEmDashViolations(source, "FixturePage.jsx"), []);
+});
+
+test("html scanner flags meta-tag em-dashes and ignores HTML comments + middots", () => {
+  const source = [
+    "<!-- fonts are self-hosted — no render-blocking link -->",
+    '<meta name="description" content="Cycling Zone — fair manager MMO." />',
+    '<meta property="og:title" content="Cycling Zone · Fair Cycling Manager" />',
+  ].join("\n");
+
+  assert.deepEqual(findHtmlEmDashViolations(source, "frontend/index.html"), [
+    'frontend/index.html:2: <meta name="description" content="Cycling Zone — fair manager MMO." />',
+  ]);
 });

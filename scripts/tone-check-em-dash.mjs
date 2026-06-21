@@ -19,6 +19,10 @@
 //      Scanner kun string-literals (kommentarer strippes). Tilladt: glyf-
 //      CITATION `'—'` inde i prosa (fx "viste '—' i Løn-kolonnen") og
 //      literals der i sig selv kun er glyffen.
+//   3. frontend/index.html — player-facing meta-tags (description, og/twitter)
+//      + <title>. HTML-kommentarer strippes (samme princip som §2: kommentarer
+//      er ikke player-facing). Tilføjet efter en em-dash slap forbi i
+//      <meta name="description"> fordi guarden kun dækkede §1+§2.
 //
 // Brug:
 //   node scripts/tone-check-em-dash.mjs
@@ -34,6 +38,7 @@ const PROSE_FILES = [
   "frontend/src/pages/PrivacyPolicyPage.jsx",
   "frontend/src/pages/PrivacyPolicyPageEn.jsx",
 ];
+const HTML_FILES = ["frontend/index.html"];
 
 const EM_DASH = "—";
 
@@ -96,6 +101,25 @@ export function findProseEmDashViolations(source, file) {
   return violations;
 }
 
+// ---------- 3. index.html (meta-tags, ikke HTML-kommentarer) ----------
+
+// Erstat hver HTML-kommentar med blanktegn men bevar newlines, så
+// linjenumre i fund-rapporten matcher kildefilen.
+function stripHtmlComments(src) {
+  return src.replace(/<!--[\s\S]*?-->/g, (m) => m.replace(/[^\n]/g, " "));
+}
+
+export function findHtmlEmDashViolations(source, file) {
+  const violations = [];
+  const src = stripHtmlComments(source);
+  src.split("\n").forEach((line, i) => {
+    if (line.includes(EM_DASH) && line.trim() !== EM_DASH) {
+      violations.push(`${file}:${i + 1}: ${line.trim().slice(0, 80)}`);
+    }
+  });
+  return violations;
+}
+
 // ---------- Resultat ----------
 
 function runToneCheck() {
@@ -120,6 +144,15 @@ function runToneCheck() {
     );
   }
 
+  for (const relFile of HTML_FILES) {
+    violations.push(
+      ...findHtmlEmDashViolations(
+        readFileSync(join(ROOT, relFile), "utf8"),
+        relFile,
+      ),
+    );
+  }
+
   if (violations.length) {
     console.error(
       `tone-check-em-dash: ${violations.length} em-dash-fund i player-facing copy:\n`,
@@ -134,7 +167,7 @@ function runToneCheck() {
   }
 
   console.log(
-    "tone-check-em-dash: OK — ingen em-dash i player-facing copy (locales + prosa-sider).",
+    "tone-check-em-dash: OK — ingen em-dash i player-facing copy (locales + prosa-sider + index.html).",
   );
 }
 
