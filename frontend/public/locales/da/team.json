@@ -150,6 +150,8 @@
     "streak": "streak",
     "achievements": "achievements",
     "recentlyUnlocked": "Senest låst op",
+    "inProgress": "I gang",
+    "progressTowards": "{title}: {current} af {target}",
     "tabOverview": "Overblik",
     "tabRiders": "Hold ({count})",
     "tabSeason": "Sæsonhistorik",

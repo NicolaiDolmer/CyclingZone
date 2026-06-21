@@ -150,6 +150,8 @@
     "streak": "streak",
     "achievements": "achievements",
     "recentlyUnlocked": "Recently unlocked",
+    "inProgress": "In progress",
+    "progressTowards": "{title}: {current} of {target}",
     "tabOverview": "Overview",
     "tabRiders": "Team ({count})",
     "tabSeason": "Season history",

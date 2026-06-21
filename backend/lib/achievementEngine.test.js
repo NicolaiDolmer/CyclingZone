@@ -1,7 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { checkAchievements, getAchievementUnlocks } from "./achievementEngine.js";
+import {
+  checkAchievements,
+  getAchievementUnlocks,
+  computeAchievementProgress,
+} from "./achievementEngine.js";
 import { STAR_RIDER_MARKET_VALUE } from "./economyConstants.js";
 
 function createAchievementSupabase(initialState) {
@@ -329,6 +333,43 @@ test("checkAchievements tolerates missing public user row for login streak", asy
     unlocked.map(achievement => achievement.id),
     ["auction_first_bid"]
   );
+});
+
+// #1008: progress mod næste mål.
+test("computeAchievementProgress reports only the next tier for tiered groups", () => {
+  const progress = computeAchievementProgress({
+    stats: { auctionWinCount: 40 },
+  });
+  // 40 har nået 1/5/10/25, så næste (eneste) mål er 50.
+  assert.deepEqual(progress.auction_50_wins, { current: 40, target: 50 });
+  assert.equal(progress.auction_25_wins, undefined);
+  assert.equal(progress.auction_10_wins, undefined);
+});
+
+test("computeAchievementProgress picks the lowest unreached tier", () => {
+  const progress = computeAchievementProgress({
+    stats: { transferCount: 7 },
+  });
+  assert.deepEqual(progress.transfer_15, { current: 7, target: 15 });
+  assert.equal(progress.transfer_5, undefined);
+});
+
+test("computeAchievementProgress omits groups where all tiers are reached", () => {
+  const progress = computeAchievementProgress({
+    stats: { riderCount: 30 },
+  });
+  assert.equal(progress.team_30_riders, undefined);
+});
+
+test("computeAchievementProgress reports single-threshold and meta progress", () => {
+  const progress = computeAchievementProgress({
+    stats: { transferBuyerCount: 4, watchlistCount: 12, boardSatisfaction: 80 },
+    unlockedCount: 3,
+  });
+  assert.deepEqual(progress.transfer_buyer_10, { current: 4, target: 10 });
+  assert.deepEqual(progress.secret_watchlist_50, { current: 12, target: 50 });
+  assert.deepEqual(progress.season_board_100, { current: 80, target: 100 });
+  assert.deepEqual(progress.team_5_achievements, { current: 3, target: 5 });
 });
 
 test("getAchievementUnlocks does not re-unlock achievements that are already recorded", () => {

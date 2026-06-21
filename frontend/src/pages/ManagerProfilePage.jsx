@@ -22,6 +22,7 @@ import {
   Tr,
   Th,
   Td,
+  ProgressMeter,
   TrophyIcon,
   LockIcon,
   ChevronLeftIcon,
@@ -63,6 +64,24 @@ function AchievementBadge({ achievement }) {
           </p>
         )}
       </div>
+    </div>
+  );
+}
+
+// #1008: progress mod næste mål for en låst, tæller-baseret achievement (fx "40/50").
+// Backend sender kun progress for ikke-secret achievements der har en meningsfuld tæller.
+function AchievementProgress({ achievement }) {
+  const { t } = useTranslation("achievements");
+  const { t: tTeam } = useTranslation("team");
+  const title = t(`${achievement.id}.title`, { defaultValue: achievement.title });
+  const { current, target } = achievement.progress;
+  return (
+    <div>
+      <div className="mb-1 flex items-baseline justify-between gap-2">
+        <span className="text-xs font-medium text-cz-2">{title}</span>
+        <span className="font-data text-xs font-semibold tabular-nums text-cz-3">{current}/{target}</span>
+      </div>
+      <ProgressMeter value={current} max={target} ariaLabel={tTeam("manager.progressTowards", { title, current, target })} />
     </div>
   );
 }
@@ -330,17 +349,26 @@ export default function ManagerProfilePage() {
 
         <TabPanel value="achievements">
           <div className="space-y-4">
-            {Object.entries(achByCategory).map(([cat, achs]) => (
-              <Card key={cat} className="p-5">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-cz-1 font-semibold text-sm capitalize">{cat}</h2>
-                  <span className="text-cz-3 text-xs">{achs.filter(a => a.unlocked).length}/{achs.length}</span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {achs.map(a => <AchievementBadge key={a.id} achievement={a} />)}
-                </div>
-              </Card>
-            ))}
+            {Object.entries(achByCategory).map(([cat, achs]) => {
+              const inProgress = achs.filter(a => a.progress);
+              return (
+                <Card key={cat} className="p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-cz-1 font-semibold text-sm capitalize">{cat}</h2>
+                    <span className="text-cz-3 text-xs">{achs.filter(a => a.unlocked).length}/{achs.length}</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {achs.map(a => <AchievementBadge key={a.id} achievement={a} />)}
+                  </div>
+                  {inProgress.length > 0 && (
+                    <div className="mt-4 pt-4 border-t border-cz-border space-y-3">
+                      <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("manager.inProgress")}</p>
+                      {inProgress.map(a => <AchievementProgress key={a.id} achievement={a} />)}
+                    </div>
+                  )}
+                </Card>
+              );
+            })}
           </div>
         </TabPanel>
       </Tabs>

@@ -222,7 +222,7 @@ import { importPcmResults, buildPcmImportEmbed } from "../lib/pcmResultsImport.j
 import { getRaceEngineStatus, runAdminSimulateRace, runAdminSimulateStage, buildRaceSimEmbed } from "../lib/adminSimulateRace.js";
 import { ensureSeasonStandings as ensureSeasonStandingsShared } from "../lib/seasonStandingsBootstrap.js";
 import { generateRaceStageProfiles, GENERATOR_VERSION } from "../lib/raceStageProfileGenerator.js";
-import { checkAchievements } from "../lib/achievementEngine.js";
+import { checkAchievements, getAchievementProgressMap } from "../lib/achievementEngine.js";
 import { captureException, setSentryUser } from "../lib/sentry.js";
 import { upsertOwnTeamProfile } from "../lib/teamProfileEngine.js";
 import { buildAttributionRow } from "../lib/signupAttribution.js";
@@ -6848,9 +6848,21 @@ router.get("/managers/:teamId", requireAuth, async (req, res) => {
 
   const unlockedMap = {};
   (unlockedAchsRes.data || []).forEach(u => { unlockedMap[u.achievement_id] = u.unlocked_at; });
-  const achievements = (allAchsRes.data || []).map(a => ({
-    ...a, unlocked: !!unlockedMap[a.id], unlocked_at: unlockedMap[a.id] || null,
-  }));
+
+  // #1008: progress mod næste mål (fx "40/50") for låste, tæller-baserede achievements.
+  // Hentes efter unlock-mappet, så team_5_achievements kan tælle allerede oplåste.
+  // Secret achievements får IKKE progress (ville lække "???"-badgets indhold).
+  const progressMap = await getAchievementProgressMap({
+    supabase,
+    userId: team.user_id,
+    teamId,
+    unlockedCount: Object.keys(unlockedMap).length,
+  });
+  const achievements = (allAchsRes.data || []).map(a => {
+    const unlocked = !!unlockedMap[a.id];
+    const progress = !unlocked && !a.is_secret ? progressMap[a.id] || null : null;
+    return { ...a, unlocked, unlocked_at: unlockedMap[a.id] || null, progress };
+  });
 
   const userData = userRes.data;
   if (userData?.last_seen) {

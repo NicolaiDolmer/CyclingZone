@@ -27,6 +27,25 @@ const LOGIN_STREAK_THRESHOLDS = [
   ["secret_streak_30", 30],
 ];
 
+// #1008: tæller-baserede achievements har en meningsfuld "X/Y mod næste mål"-progress.
+// Tiered grupper (auktion/transfer/holdstørrelse/streak) viser KUN den næste ikke-nåede
+// tier — ellers ville fx 7 auktionssejre vise 7/10, 7/25 og 7/50 på én gang (støj).
+// Bool-achievements (sniper, high_roller, bargain, star ...) har ingen progress.
+const PROGRESS_GROUPS = [
+  { thresholds: AUCTION_WIN_THRESHOLDS, statKey: "auctionWinCount" },
+  { thresholds: TRANSFER_THRESHOLDS, statKey: "transferCount" },
+  { thresholds: TEAM_SIZE_THRESHOLDS, statKey: "riderCount" },
+  { thresholds: LOGIN_STREAK_THRESHOLDS, statKey: "loginStreak" },
+];
+
+const SINGLE_PROGRESS = [
+  ["transfer_buyer_10", 10, "transferBuyerCount"],
+  ["transfer_seller_10", 10, "transferSellerCount"],
+  ["secret_watchlist_50", 50, "watchlistCount"],
+  ["season_board_100", 100, "boardSatisfaction"],
+  ["team_5_achievements", 5, "__achievementCount"],
+];
+
 function toNumber(value) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
@@ -110,6 +129,40 @@ export function getAchievementUnlocks({
   unlock("team_5_achievements", unlockedIds.size >= 5);
 
   return newlyUnlocked;
+}
+
+// #1008: ren progress-beregning — returnerer { [achievementId]: { current, target } }
+// for hver låst, tæller-baseret achievement der har en meningsfuld næste-mål-progress.
+// Allerede nåede tiers udelades (de er låst op via getAchievementUnlocks).
+export function computeAchievementProgress({ stats = {}, unlockedCount = 0 }) {
+  const valueFor = (statKey) =>
+    statKey === "__achievementCount" ? unlockedCount : toNumber(stats[statKey]);
+  const progress = {};
+
+  for (const { thresholds, statKey } of PROGRESS_GROUPS) {
+    const value = valueFor(statKey);
+    // thresholds er sorteret stigende — første ikke-nåede tier er næste mål.
+    const next = thresholds.find(([, minimum]) => value < minimum);
+    if (next) {
+      progress[next[0]] = { current: value, target: next[1] };
+    }
+  }
+
+  for (const [achievementId, target, statKey] of SINGLE_PROGRESS) {
+    const value = valueFor(statKey);
+    if (value < target) {
+      progress[achievementId] = { current: value, target };
+    }
+  }
+
+  return progress;
+}
+
+// #1008: async-wrapper der henter live-stats og udregner progress-mappet. Genbruger
+// loadAchievementStats (samme kilder som checkAchievements), så progress matcher unlocks.
+export async function getAchievementProgressMap({ supabase, userId, teamId, unlockedCount = 0 }) {
+  const stats = await loadAchievementStats({ supabase, userId, teamId });
+  return computeAchievementProgress({ stats, unlockedCount });
 }
 
 async function loadTeamId({ supabase, userId }) {
