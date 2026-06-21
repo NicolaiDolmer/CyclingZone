@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "Cycling Zone · the browser cycling manager where strategy beats spending",
-    "description": "Build a team, bid for riders in live auctions, set your tactics, and race a full season. A free, browser-based cycling manager game. No pay-to-win."
+    "description": "Build a team, bid on riders in live auctions, set your tactics, and race a full season. A free, browser-based cycling manager game. No pay-to-win."
   },
   "nav": {
     "discordLabel": "Discord",
@@ -13,12 +13,12 @@
   "hero": {
     "badge": "Open beta · Free to play",
     "title": "A cycling manager built for the long game.",
-    "subtitle": "Build your team, bid for riders in live auctions, and make every call across a full season. Climb the divisions, right in your browser.",
+    "subtitle": "Build your team, bid on riders in live auctions, and make every call across a full season. Climb the divisions, right in your browser.",
     "ctaPlay": "Create your team",
     "ctaDiscord": "Join the Discord",
     "ctaEmail": "Get the launch email",
     "trustFree": "Free to play",
-    "trustNoCard": "No credit card",
+    "trustNoCard": "No download",
     "trustBrowser": "Runs in your browser"
   },
   "signature": {
@@ -37,13 +37,13 @@
   },
   "how": {
     "kicker": "How you play",
-    "title": "Four decisions, one season",
+    "title": "Five decisions, every season",
     "rows": [
       {
         "no": "01",
         "title": "Build your team",
-        "body": "Pick a roster that fits your plan. Climbers for the mountains, sprinters for the flat, a captain to build around.",
-        "data": "Riders with real, readable ratings"
+        "body": "Pick a roster that fits your strategy. Climbers for the mountains, sprinters for the flat, a captain to build around.",
+        "data": "Lead a full roster, not just a star"
       },
       {
         "no": "02",
@@ -53,26 +53,32 @@
       },
       {
         "no": "03",
-        "title": "Set your tactics",
-        "body": "Name your captain, plan the breakaway, decide who chases and who saves their legs for the finish.",
-        "data": "Tactics that change the result"
+        "title": "Develop your riders",
+        "body": "Train your riders to sharpen their strengths, and bring young talent up through your academy. Today's prospect can become next season's star.",
+        "data": "A youth academy to grow your own stars"
       },
       {
         "no": "04",
-        "title": "Race the calendar",
-        "body": "Follow your team through stages and one-day races across a full season, then build for the next one.",
-        "data": "A full season of results"
+        "title": "Set your tactics",
+        "body": "Pick your captain, send riders up the road, and decide who chases and who saves their legs for the finish.",
+        "data": "Tactics that change the result"
+      },
+      {
+        "no": "05",
+        "title": "Race the season",
+        "body": "Follow your team through stage races and one-day races across a full season, then build for the next season.",
+        "data": "Race your way up the divisions"
       }
     ]
   },
   "different": {
     "kicker": "Not your usual manager game",
     "title": "Built on one promise",
-    "fairness": "The game must be fair for everyone. You cannot pay for better riders, faster training, or better results.",
+    "fairness": "The game must be fair for everyone. Real money can't buy better riders, faster training, or better results.",
     "cards": [
       {
-        "title": "Strategy over spending",
-        "body": "Results come from your decisions, not your wallet. The best manager wins, not the biggest spender."
+        "title": "Shaped by the community",
+        "body": "One developer, building in public. Your feedback decides what gets built next, and every change ships where you can see it."
       },
       {
         "title": "Free to play",
@@ -87,13 +93,13 @@
   "discord": {
     "kicker": "Join in",
     "title": "The game is built in the open",
-    "body": "Cycling Zone started as one idea: a cycling manager where you do not just click through numbers, but actually build something over a season. I am making it on my own, in the open, season by season. The Discord is where I share what I am working on before it ships, where new managers get a hand finding their feet, and where your feedback decides what I build next. It is not finished, and it gets better every week. You come for the racing. You stay for the people. Bring your team, share your thoughts, and help shape where it goes.",
+    "body": "Cycling Zone started as one idea: a cycling manager where you don't just click through numbers, but actually build something over a season. I'm making it on my own, in the open, season by season. The Discord is where I share what I'm working on before it ships, where new managers get a hand finding their feet, and where your feedback decides what I build next. It's not finished, and it gets better every week. You come for the racing. You stay for the people. Bring your team, share your thoughts, and help shape where it goes.",
     "cta": "Open the Discord"
   },
   "waitlist": {
     "kicker": "Prefer email?",
     "title": "Get the launch email",
-    "body": "Leave your email and I will send one message when the new season opens. No newsletter, no noise.",
+    "body": "Leave your email, and I'll send you one message when the next season starts. No newsletter, no noise.",
     "emailLabel": "Email",
     "emailPlaceholder": "you@example.com",
     "nameLabel": "First name",
@@ -107,7 +113,7 @@
     "submitting": "Adding you to the list...",
     "disclaimer": "One email at launch. Unsubscribe any time.",
     "successTitle": "You are on the list",
-    "successBody": "Thanks. I will email you once when the new season opens. In the meantime, the Discord is the best place to follow along.",
+    "successBody": "Thanks. I'll email you once when the next season starts. In the meantime, the Discord is the best place to follow along.",
     "successDiscord": "Join the Discord",
     "errors": {
       "emailRequired": "Please enter your email.",
@@ -125,15 +131,15 @@
     "items": [
       {
         "q": "Is it really free?",
-        "a": "Yes. The full game is free to play. You can sign up, build a team, and compete in a full season without paying for anything."
+        "a": "Yes. The full game is free to play. You can sign up, build a team, and compete against other managers without paying for anything."
       },
       {
         "q": "Is it pay-to-win?",
-        "a": "No. The game must be fair for everyone. You cannot pay for better riders, faster training, or better results."
+        "a": "No. Real money can't buy results. The best manager wins, not the biggest spender."
       },
       {
         "q": "When does the season start?",
-        "a": "Cycling Zone is in open beta now, with a fresh season opening soon. Join the Discord or leave your email and I will let you know the moment it starts."
+        "a": "Cycling Zone is in open beta now, with a fresh season opening soon. Join the Discord or leave your email, and I'll let you know the moment it starts."
       },
       {
         "q": "Do I need to install anything?",
