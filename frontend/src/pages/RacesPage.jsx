@@ -258,9 +258,6 @@ export default function RacesPage() {
                           {race.pool_race?.date_text && (
                             <p className="text-cz-3 text-xs">{race.pool_race.date_text}</p>
                           )}
-                          {race.edition_year && (
-                            <p className="text-cz-accent-t text-xs font-mono mt-0.5">{t("common.edition", { year: race.edition_year })}</p>
-                          )}
                           {expectedPrize > 0 && (
                             <p className="text-cz-2 text-xs font-mono mt-0.5" title={t("calendar.expectedPoolTooltip")}>
                               {t("calendar.expectedPool", { amount: formatExpectedPrize(expectedPrize) })}
@@ -318,7 +315,6 @@ export default function RacesPage() {
                 <p className="text-cz-3 text-xs mb-1">
                   {selectedRace.race_type === "stage_race" ? t("raceType.stages", { count: selectedRace.stages }) : t("raceType.oneDay")}
                   {selectedRace.pool_race?.date_text && ` · ${selectedRace.pool_race.date_text}`}
-                  {selectedRace.edition_year && ` · ${t("common.edition", { year: selectedRace.edition_year })}`}
                 </p>
                 {(() => {
                   const expected = computeExpectedRacePrize({
@@ -495,7 +491,7 @@ export default function RacesPage() {
                           {r.race_type === "stage_race" ? t("raceType.stageRaceParen", { count: r.stages }) : t("raceType.oneDayShort")}
                         </Td>
                         <Td className="text-cz-2 text-xs">
-                          {r.edition_year ? t("common.edition", { year: r.edition_year }) : "—"}
+                          {r.pool_race?.date_text || "—"}
                         </Td>
                         <Td className="text-xs">
                           <span className={`inline-block px-2 py-0.5 rounded-full border text-[10px] uppercase

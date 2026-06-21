@@ -349,7 +349,6 @@ export default function SeasonEndPage() {
                         <p className="text-cz-1 text-sm font-medium truncate">{race.name}</p>
                         <p className="text-cz-3 text-xs">
                           {race.race_type === "stage_race" ? t("calendar.stageRace", { count: race.stages }) : t("calendar.oneDay")}
-                          {race.edition_year ? ` · ${t("calendar.edition", { year: race.edition_year })}` : ""}
                           {expectedPrize > 0 ? <span className="text-cz-2 font-mono"> · {formatExpectedPrize(expectedPrize)}</span> : ""}
                         </p>
                       </div>

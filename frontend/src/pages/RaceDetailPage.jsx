@@ -212,7 +212,6 @@ export default function RaceDetailPage() {
             ? t("raceType.stageRaceWithStages", { count: race.stages })
             : t("raceType.oneDay")}
           {race.season?.number != null && ` · ${t("library.seasonOption", { number: race.season.number })}`}
-          {race.edition_year && ` · ${t("common.edition", { year: race.edition_year })}`}
           {race.pool_race?.date_text && ` · ${race.pool_race.date_text}`}
         </p>
       </div>

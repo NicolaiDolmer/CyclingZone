@@ -133,9 +133,6 @@ export default function RaceHistoryPage() {
               <div key={ed.id} className="px-4 py-3 flex items-center justify-between gap-3">
                 <div>
                   <p className="text-cz-2 text-sm font-medium">{t("history.season", { number: ed.season?.number })}</p>
-                  {ed.edition_year && (
-                    <p className="text-cz-3 text-xs">{t("common.edition", { year: ed.edition_year })}</p>
-                  )}
                 </div>
                 <div className="text-right">
                   {ed.winner ? (
