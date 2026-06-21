@@ -268,6 +268,7 @@ const FAQ_KEYS = [
   "prizeMoneyFaq",
   "divisionBonusFaq",
   "sponsorPayoutTiming",
+  "sponsorNegotiation",
   "seasonFinanceReport",
   "forecastCalculation",
   "standingsUpdate",

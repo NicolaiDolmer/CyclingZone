@@ -4,6 +4,61 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "5.91",
+    "date": "2026-06-21",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Economy",
+        "en": {
+          "title": "Sponsor income now scales with your club's reputation",
+          "body": "Your sponsor is no longer a flat amount per division. It now scales with your club's standing, built from your division and your results over recent seasons. A fresh or low-standing club earns about the same as before, while a strong, established club earns a bigger sponsor. Keep climbing and your backing grows with you."
+        },
+        "da": {
+          "title": "Sponsorindkomst skalerer nu med dit klubs omdømme",
+          "body": "Din sponsor er ikke længere et fast beløb per division. Den skalerer nu med dit klubs anseelse, bygget på din division og dine resultater over de seneste sæsoner. En ny klub eller en klub med lav anseelse tjener nogenlunde det samme som før, mens en stærk og etableret klub får en større sponsor. Bliv ved med at rykke op, så vokser din opbakning med dig."
+        },
+        "refs": [
+          1663
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Economy",
+        "en": {
+          "title": "Choose your sponsor: negotiate the deal each season",
+          "body": "At the start of a new season you now pick from three sponsor offers on the Board page. Each offer trades a guaranteed base against a per-race-day rate and a contract length of 1 to 3 seasons. A steady backer leans on the guaranteed base, a race-day backer pays more per race day if you race a lot, and a long-term partner locks the terms in for longer. The deal you sign is shown on the Finance page under the Sponsor tab."
+        },
+        "da": {
+          "title": "Vælg din sponsor: forhandl aftalen hver sæson",
+          "body": "Ved starten af en ny sæson vælger du nu mellem tre sponsortilbud på Bestyrelse-siden. Hvert tilbud afvejer en garanteret base mod en sats per løbsdag og en kontraktlængde på 1 til 3 sæsoner. En stabil sponsor læner sig op ad den garanterede base, en løbsdags-sponsor betaler mere per løbsdag hvis du kører meget, og en langsigtet partner låser vilkårene i længere tid. Den aftale du underskriver vises på Finanser-siden under Sponsor-fanen."
+        },
+        "refs": [
+          1663
+        ]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Economy",
+        "en": {
+          "title": "Earn income for every race day you compete in",
+          "body": "On top of your sponsor base you now earn a fixed amount for every race day your team competes in, credited as races finalize. Racing the full calendar maximizes it, so an active season is rewarded directly. The per-race-day rate is part of the sponsor deal you choose, so a race-day backer pays more here than a steady backer."
+        },
+        "da": {
+          "title": "Tjen indkomst for hver løbsdag du deltager i",
+          "body": "Oveni din sponsorbase tjener du nu et fast beløb for hver løbsdag dit hold deltager i, krediteret efterhånden som løbene finaliseres. At køre hele kalenderen maksimerer det, så en aktiv sæson belønnes direkte. Satsen per løbsdag er en del af den sponsoraftale du vælger, så en løbsdags-sponsor betaler mere her end en stabil sponsor."
+        },
+        "refs": [
+          1663
+        ]
+      }
+    ]
+  },
+  {
     "version": "5.90",
     "date": "2026-06-21",
     "label": "Beta",
