@@ -77,21 +77,6 @@
     "loadingShort": "...",
     "errorPrefix": ""
   },
-  "list": {
-    "title": "Teams",
-    "managerCount": "{count} managers",
-    "searchPlaceholder": "Search teams...",
-    "filterAll": "All",
-    "divisionName": "Division {n}",
-    "divisionShort": "Div {n}",
-    "teamsCount": "{count} teams",
-    "ridersCount": "{count} riders",
-    "statPoints": "Points",
-    "statStageWins": "Stage wins",
-    "statGcWins": "GC wins",
-    "youBadge": "You",
-    "noMatch": "No teams match your search"
-  },
   "profile": {
     "back": "← Back",
     "notFound": "Team not found",

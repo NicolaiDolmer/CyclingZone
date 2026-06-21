@@ -77,21 +77,6 @@
     "loadingShort": "...",
     "errorPrefix": ""
   },
-  "list": {
-    "title": "Hold",
-    "managerCount": "{count} managere",
-    "searchPlaceholder": "Søg hold...",
-    "filterAll": "Alle",
-    "divisionName": "Division {n}",
-    "divisionShort": "Div {n}",
-    "teamsCount": "{count} hold",
-    "ridersCount": "{count} ryttere",
-    "statPoints": "Point",
-    "statStageWins": "Etapesejre",
-    "statGcWins": "GC-sejre",
-    "youBadge": "Dig",
-    "noMatch": "Ingen hold matcher din søgning"
-  },
   "profile": {
     "back": "← Tilbage",
     "notFound": "Hold ikke fundet",
