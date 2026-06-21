@@ -24,6 +24,7 @@ function makeDeps(order) {
     runRiderTypesBackfill: rec("types"),
     runBaseValueBackfill: rec("baseValue"),
     runStarterSquadAllocation: rec("allocation", { teams: 18 }),
+    allocateLeaguePools: rec("leaguePools", { allocated: 18, pools: 8 }),
     seedSeasonZero: async (_s, opts = {}) => { order.push({ name: "seedSeason0", dryRun: opts.dryRun }); return { seasonId: computeSeasonUuid(0) }; },
     transitionToNextSeason: async () => { order.push({ name: "transition" }); return { ok: true }; },
     runAcademyIntake: rec("academy", { teams: 2, candidates: 8 }),
@@ -38,12 +39,12 @@ test("runRelaunchSeason1 (dryRun): sekvens + dryRun-prop, INGEN reset/sæson-tra
   const summary = await runRelaunchSeason1({}, { dryRun: true, startDate: "2026-06-20", deps: makeDeps(order) });
   assert.equal(summary.dryRun, true);
   const names = order.map((o) => o.name);
-  // reset, seedSeason0 og transition kaldes IKKE i dry-run (kan ikke simuleres uden writes)
+  // reset, leaguePools, seedSeason0 og transition kaldes IKKE i dry-run (kan ikke simuleres uden writes)
   assert.deepEqual(names, ["retire", "population", "physiology", "types", "baseValue", "allocation", "contracts", "founder"]);
   // dryRun propagerer til alle byggeklodser der modtager opts
   assert.ok(order.filter((o) => "dryRun" in o && o.dryRun !== undefined).every((o) => o.dryRun === true));
   // summary har en nøgle pr. fase
-  for (const k of ["retireLegacy", "reset", "population", "backfills", "allocation", "season", "academy", "contracts", "founderBadge"]) {
+  for (const k of ["retireLegacy", "reset", "population", "backfills", "allocation", "leaguePools", "season", "academy", "contracts", "founderBadge"]) {
     assert.ok(k in summary, `summary mangler ${k}`);
   }
   // academy-trinet er flag-gated; uden academy_enabled=true i mock → skipped-form
@@ -57,7 +58,7 @@ test("runRelaunchSeason1 (apply): kalder reset + seedSeason0 + transition i korr
   const names = order.map((o) => o.name);
   assert.deepEqual(names, [
     "retire", "reset", "population", "physiology", "types", "baseValue", "allocation",
-    "seedSeason0", "transition", "contracts", "founder",
+    "leaguePools", "seedSeason0", "transition", "contracts", "founder",
   ]);
 });
 

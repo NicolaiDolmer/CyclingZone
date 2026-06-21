@@ -245,11 +245,11 @@ import {
   DEFAULT_RACE_DAYS_TARGET,
 } from "../lib/seasonRaceSelection.js";
 import {
+  allocateLeaguePools,
   cancelBetaMarket,
   resetBetaAchievements,
   resetBetaBalances,
   resetBetaBoardProfiles,
-  resetBetaDivisions,
   resetBetaLoans,
   resetBetaManagerProgress,
   resetBetaNotifications,
@@ -8083,10 +8083,12 @@ router.post("/admin/beta/reset-balances", requireAdmin, adminWriteLimiter, async
   }
 });
 
-// POST /api/admin/beta/reset-divisions — sæt alle aktive managerhold tilbage til 3. division
+// POST /api/admin/beta/reset-divisions — #1608 form-frys: pulje-spredende allokering.
+// Placerer alle aktive manager-hold i bunden (tier 4) + spreder dem på de 8 div-4-puljer
+// (erstatter den flade "tilbage til division 3"-bulk-update).
 router.post("/admin/beta/reset-divisions", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
-    res.json({ ok: true, divisions: await resetBetaDivisions(supabase) });
+    res.json({ ok: true, divisions: await allocateLeaguePools(supabase) });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

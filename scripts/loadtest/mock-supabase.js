@@ -4,7 +4,8 @@
  * Emulerer KUN de endpoints backendens signup-bootstrap + presence-kæde rammer:
  *   GET  /auth/v1/user                  → token "lt-<n>" → deterministisk bruger
  *   GET  /rest/v1/teams?...             → user_id-lookup (.single), ilike-navnetjek,
- *                                          division-scan (pickDivisionForNewTeam)
+ *                                          pulje-scan (pickDivisionForNewTeam, #1608)
+ *   GET  /rest/v1/league_divisions?...  → div-4-puljer (bund-op-placering, #1608)
  *   POST /rest/v1/teams                 → insert + return=representation
  *   GET  /rest/v1/board_profiles?...    → lookup
  *   POST /rest/v1/board_profiles        → insert (return=minimal)
@@ -31,6 +32,16 @@ const teams = [];
 const boardProfiles = [];
 let teamSeq = 0;
 
+// #1608 form-frys: de 8 div-4-puljer (tier 4 = bunden) som migration
+// 2026-06-21-league-divisions-pyramid.sql seeder. pickDivisionForNewTeam spreder nye
+// managere på den mindst-fyldte af disse (bund-op-placering).
+const leagueDivisions = Array.from({ length: 8 }, (_, index) => ({
+  id: 8 + index,
+  tier: 4,
+  pool_index: index,
+  label: `Division 4 — ${String.fromCharCode(65 + index)}`,
+}));
+
 function uuidFromSeq(n) {
   return `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 }
@@ -43,6 +54,7 @@ for (let i = 0; i < 28; i++) {
     name: `Seed Team ${i}`,
     manager_name: `Seed Manager ${i}`,
     division: i < 20 ? 1 : 2,
+    league_division_id: null,
     balance: 800000,
     sponsor_income: 240000,
     is_ai: false,
@@ -166,11 +178,12 @@ const server = http.createServer(async (req, res) => {
         return send(res, 200, rows);
       }
 
-      if (select.includes("division")) {
-        // pickDivisionForNewTeam: alle ikke-AI/test/frosne hold
+      if (select.includes("league_division_id") || select.includes("division")) {
+        // pickDivisionForNewTeam (#1608): alle ikke-AI/test/frosne hold — bruges til
+        // pulje-fyldnings-tælling (league_division_id) / division-scan.
         const rows = teams
           .filter((t) => !t.is_ai && !t.is_test_account && !t.is_frozen)
-          .map((t) => ({ division: t.division }));
+          .map((t) => ({ division: t.division, league_division_id: t.league_division_id ?? null }));
         return send(res, 200, rows);
       }
 
@@ -221,6 +234,17 @@ const server = http.createServer(async (req, res) => {
       boardProfiles.push(row);
       // insert uden .select() → Prefer: return=minimal → 201 tom body
       return send(res, 201, null);
+    }
+  }
+
+  // ── PostgREST: /rest/v1/league_divisions (#1608 bund-op pulje-scan) ─────────
+  if (path === "/rest/v1/league_divisions") {
+    if (req.method === "GET") {
+      const tierEq = url.searchParams.get("tier");
+      const rows = tierEq?.startsWith("eq.")
+        ? leagueDivisions.filter((p) => p.tier === Number(tierEq.slice(3)))
+        : leagueDivisions;
+      return send(res, 200, rows.map((p) => ({ id: p.id })));
     }
   }
 

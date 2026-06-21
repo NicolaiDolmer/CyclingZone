@@ -1,9 +1,9 @@
 import { createBaselineProfile } from "./boardEngine.js";
 import { DEFAULT_SPONSOR_INCOME } from "./economyEngine.js";
 import { FOUNDER_BADGE_KEY } from "./founderBadge.js";
+import { MAX_DIVISION } from "./economyConstants.js";
 
 export const DEFAULT_BETA_BALANCE = 800000;
-export const DEFAULT_BETA_DIVISION = 3;
 
 // --- FK-forward-guard-manifest (#1471 relaunch 18/6 · #1464 forward-guard-spor) ----------
 //
@@ -209,19 +209,65 @@ export async function resetBetaBalances(supabase, { clearTransactions = false, b
   return { reset: teamIds.length, balance, clear_transactions: clearTransactions };
 }
 
-export async function resetBetaDivisions(supabase, { division = DEFAULT_BETA_DIVISION } = {}) {
+// #1608 Task 6 · pulje-spredende reset-allokering. ERSTATTER den flade bulk-update til
+// DEFAULT_BETA_DIVISION. Forever-relaunch-politik: ægte managere kommer ind fra BUNDEN
+// (tier 4 = MAX_DIVISION) og rykker op over sæsoner. Hvert ægte-manager-hold placeres i
+// den p.t. mindst-fyldte div-4-pulje (league_divisions med tier = MAX_DIVISION), så de 8
+// puljer fyldes jævnt (mindst-fyldte-først) — kritisk for race-levedygtighed (et tomt
+// felt kan ikke afvikle løb). Blød cap: puljer må vokse forbi POOL_TARGET_SIZE hvis alle
+// er fulde (vi lander altid i mindst-fyldte). Sætter BÅDE teams.division = tier (4) OG
+// teams.league_division_id = pulje-id. Ingen NULL league_division_id på manager-hold efter
+// kørsel (medmindre puljerne mangler — pre-migration-fallback).
+//
+// AI-fyld-GENERERING er UDE AF SCOPE (additivt #1608-child) — der findes ingen AI-generator
+// i dag. Denne funktion placerer kun EKSISTERENDE ægte-manager-hold.
+export async function allocateLeaguePools(supabase) {
   const managerTeams = await getBetaManagerTeams(supabase);
-  const teamIds = managerTeams.map((team) => team.id);
-  if (teamIds.length === 0) {
-    return { reset: 0, division };
+  if (managerTeams.length === 0) {
+    return { allocated: 0, pools: 0 };
   }
 
-  ensureOk(await supabase
-    .from("teams")
-    .update({ division })
-    .in("id", teamIds));
+  const poolsResult = ensureOk(await supabase
+    .from("league_divisions")
+    .select("id")
+    .eq("tier", MAX_DIVISION));
+  const div4Pools = poolsResult.data || [];
 
-  return { reset: teamIds.length, division };
+  if (div4Pools.length === 0) {
+    // Pre-migration-fallback: ingen puljer at sprede på. Flyt holdene til bunden (tier 4)
+    // så tier-keyet økonomi er korrekt; pulje-referencen efter-allokeres når puljerne findes.
+    const teamIds = managerTeams.map((team) => team.id);
+    ensureOk(await supabase.from("teams").update({ division: MAX_DIVISION }).in("id", teamIds));
+    return { allocated: teamIds.length, pools: 0, poolless: true };
+  }
+
+  // Mindst-fyldte-først greedy: hold telleren pr. pulje opdateret undervejs, så holdene
+  // spredes jævnt (ikke alle i pulje 0). Deterministisk: laveste pulje-id ved lige fyldning.
+  const counts = new Map(div4Pools.map((pool) => [pool.id, 0]));
+
+  const pickLeastFilledPool = () => {
+    let chosenId = div4Pools[0].id;
+    let chosenCount = counts.get(chosenId);
+    for (const pool of div4Pools) {
+      const count = counts.get(pool.id);
+      if (count < chosenCount) {
+        chosenId = pool.id;
+        chosenCount = count;
+      }
+    }
+    return chosenId;
+  };
+
+  for (const team of managerTeams) {
+    const poolId = pickLeastFilledPool();
+    counts.set(poolId, counts.get(poolId) + 1);
+    ensureOk(await supabase
+      .from("teams")
+      .update({ division: MAX_DIVISION, league_division_id: poolId })
+      .eq("id", team.id));
+  }
+
+  return { allocated: managerTeams.length, pools: div4Pools.length };
 }
 
 // S-02a · Beta-reset opretter ÉN baseline-row pr. team (sæson 1 = observation),
@@ -524,7 +570,9 @@ export async function runFullBetaReset(supabase, options = {}) {
   const balances = await resetBetaBalances(supabase, {
     clearTransactions: Boolean(options.clearTransactions),
   });
-  const divisions = await resetBetaDivisions(supabase);
+  // #1608 Task 6: pulje-spredende allokering (tier 4 + div-4-puljer) erstatter den flade
+  // resetBetaDivisions-bulk-update. Behold nøglen `divisions` i summary for bagudkompat.
+  const divisions = await allocateLeaguePools(supabase);
   const race_calendar = await resetBetaRaceCalendar(supabase);
   const seasons = await resetBetaSeasons(supabase);
   const board_profiles = await resetBetaBoardProfiles(supabase);

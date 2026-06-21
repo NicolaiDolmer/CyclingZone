@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  allocateLeaguePools,
   cancelBetaMarket,
   resetBetaAchievements,
   resetBetaBalances,
@@ -15,6 +16,19 @@ import {
   runFullBetaReset,
 } from "./betaResetService.js";
 import { FOUNDER_BADGE_KEY } from "./founderBadge.js";
+import { MAX_DIVISION, POOL_TARGET_SIZE } from "./economyConstants.js";
+
+// #1608 Task 6: de 8 div-4-puljer som migration 2026-06-21-league-divisions-pyramid.sql
+// seeder (tier 4 = bunden). id 8..15 spejler seed-rækkefølgen; kun "8 distinkte tier-4-
+// puljer" betyder noget for testen.
+function seedDiv4Pools() {
+  return Array.from({ length: 8 }, (_, index) => ({
+    id: 8 + index,
+    tier: MAX_DIVISION,
+    pool_index: index,
+    label: `Division 4 — ${String.fromCharCode(65 + index)}`,
+  }));
+}
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
@@ -122,6 +136,9 @@ function createBetaResetSupabase(initialState, fkConstraints = []) {
         }
         return query;
       },
+      order() {
+        return query;
+      },
       select() {
         return query;
       },
@@ -164,11 +181,12 @@ function createBetaResetSupabase(initialState, fkConstraints = []) {
 function createInitialState() {
   return {
     teams: [
-      { id: "team-1", user_id: "user-1", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, division: 1, balance: 12, sponsor_income: 240000 },
-      { id: "team-ai", user_id: null, is_ai: true, is_bank: false, is_frozen: false, is_test_account: false, division: 1, balance: 999, sponsor_income: 0 },
-      { id: "team-bank", user_id: null, is_ai: false, is_bank: true, is_frozen: false, is_test_account: false, division: 1, balance: 999, sponsor_income: 0 },
-      { id: "team-frozen", user_id: "user-frozen", is_ai: false, is_bank: false, is_frozen: true, is_test_account: false, division: 1, balance: 999, sponsor_income: 0 },
+      { id: "team-1", user_id: "user-1", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, division: 1, league_division_id: 1, balance: 12, sponsor_income: 240000 },
+      { id: "team-ai", user_id: null, is_ai: true, is_bank: false, is_frozen: false, is_test_account: false, division: 1, league_division_id: 1, balance: 999, sponsor_income: 0 },
+      { id: "team-bank", user_id: null, is_ai: false, is_bank: true, is_frozen: false, is_test_account: false, division: 1, league_division_id: 1, balance: 999, sponsor_income: 0 },
+      { id: "team-frozen", user_id: "user-frozen", is_ai: false, is_bank: false, is_frozen: true, is_test_account: false, division: 1, league_division_id: 1, balance: 999, sponsor_income: 0 },
     ],
+    league_divisions: seedDiv4Pools(),
     riders: [
       { id: "rider-ai", team_id: "team-1", ai_team_id: "team-ai", pending_team_id: "team-2" },
       { id: "rider-free", team_id: "team-1", ai_team_id: null, pending_team_id: "team-2" },
@@ -400,7 +418,8 @@ test("runFullBetaReset completes the full test reset suite without touching AI o
   const result = await runFullBetaReset(supabase, { clearTransactions: true, resetMode: "test" });
 
   assert.equal(result.reset_mode, "test");
-  assert.equal(result.divisions.reset, 1);
+  // #1608 Task 6: divisions-trinet er nu pulje-spredende allokering (allocateLeaguePools).
+  assert.equal(result.divisions.allocated, 1, "1 manager-hold pulje-allokeret");
   assert.equal(result.race_calendar.races, 1);
   assert.equal(result.seasons.seasons, 1);
   assert.equal(result.manager_progress.users, 1);
@@ -411,7 +430,14 @@ test("runFullBetaReset completes the full test reset suite without touching AI o
   assert.equal(result.rosters.pending_cleared, 1, "indkommende manager-handel ryddet i full-reset");
   assert.deepEqual(supabase.state.auctions, []);
   assert.deepEqual(supabase.state.loan_agreements, []);
-  assert.equal(supabase.state.teams.find((team) => team.id === "team-1").division, 3);
+  // #1608 Task 6: ægte managere placeres i bunden (tier 4) + en div-4-pulje; frosne
+  // hold er urørt (bevarer division 1 + sin gamle pulje).
+  const resetTeam1 = supabase.state.teams.find((team) => team.id === "team-1");
+  assert.equal(resetTeam1.division, MAX_DIVISION, "manager-hold flyttet til bunden (tier 4)");
+  assert.ok(
+    supabase.state.league_divisions.some((pool) => pool.id === resetTeam1.league_division_id && pool.tier === MAX_DIVISION),
+    "manager-hold placeret i en faktisk div-4-pulje",
+  );
   assert.equal(supabase.state.teams.find((team) => team.id === "team-frozen").division, 1);
   assert.equal(supabase.state.users.find((user) => user.id === "user-1").level, 1);
   assert.equal(supabase.state.users.find((user) => user.id === "user-frozen").level, 3);
@@ -454,6 +480,95 @@ test("resetBetaWishlist sletter manager-brugeres rider_watchlist men ikke AI/fro
     ["wl-frozen", "wl-none"],
     "kun manager-brugeres ønskelister slettes",
   );
+});
+
+// --- #1608 Task 6 · pulje-spredende reset-allokering (allocateLeaguePools) ----------------
+
+test("allocateLeaguePools placerer ægte managere i tier 4 + spreder dem på div-4-puljerne", async () => {
+  const initialState = createInitialState();
+  // 3 ekstra manager-hold (alle på et ikke-tier-4-sted) så vi kan se spredning.
+  initialState.teams.push(
+    { id: "team-2", user_id: "user-2", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, division: 2, league_division_id: 1 },
+    { id: "team-3", user_id: "user-3", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, division: 2, league_division_id: 1 },
+    { id: "team-4", user_id: "user-4", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, division: 3, league_division_id: 1 },
+  );
+  const supabase = createBetaResetSupabase(initialState);
+
+  const result = await allocateLeaguePools(supabase);
+
+  // 4 manager-hold (team-1..team-4); AI/bank/frozen ekskluderet.
+  assert.equal(result.allocated, 4, "alle 4 ægte managere allokeret");
+
+  const managerIds = ["team-1", "team-2", "team-3", "team-4"];
+  const pools = supabase.state.league_divisions.filter((p) => p.tier === MAX_DIVISION).map((p) => p.id);
+  const usedPools = new Set();
+  for (const id of managerIds) {
+    const team = supabase.state.teams.find((t) => t.id === id);
+    assert.equal(team.division, MAX_DIVISION, `${id} flyttet til tier 4`);
+    assert.ok(pools.includes(team.league_division_id), `${id} placeret i en div-4-pulje`);
+    usedPools.add(team.league_division_id);
+  }
+  // Spredning: 4 hold mod 8 tomme puljer (mindst-fyldte-først) → 4 distinkte puljer.
+  assert.equal(usedPools.size, 4, "holdene spredes på distinkte div-4-puljer for race-levedygtighed");
+
+  // Ingen NULL league_division_id på manager-hold efter kørsel.
+  for (const id of managerIds) {
+    assert.notEqual(supabase.state.teams.find((t) => t.id === id).league_division_id, null);
+  }
+});
+
+test("allocateLeaguePools rører ikke AI-, bank- eller frosne hold", async () => {
+  const supabase = createBetaResetSupabase(createInitialState());
+
+  await allocateLeaguePools(supabase);
+
+  const ai = supabase.state.teams.find((t) => t.id === "team-ai");
+  const bank = supabase.state.teams.find((t) => t.id === "team-bank");
+  const frozen = supabase.state.teams.find((t) => t.id === "team-frozen");
+  assert.equal(ai.division, 1, "AI-hold urørt");
+  assert.equal(bank.division, 1, "bank urørt");
+  assert.equal(frozen.division, 1, "frosset hold urørt");
+});
+
+test("allocateLeaguePools no-op uden manager-hold", async () => {
+  const initialState = createInitialState();
+  initialState.teams = initialState.teams.filter((t) => t.id !== "team-1"); // fjern eneste manager
+  const supabase = createBetaResetSupabase(initialState);
+
+  const result = await allocateLeaguePools(supabase);
+
+  assert.equal(result.allocated, 0);
+});
+
+test("allocateLeaguePools blød cap — mange managere fordeles jævnt forbi POOL_TARGET_SIZE", async () => {
+  const initialState = createInitialState();
+  initialState.teams = [
+    { id: "team-bank", user_id: null, is_ai: false, is_bank: true, is_frozen: false, is_test_account: false, division: 1, league_division_id: 1 },
+  ];
+  // Flere managere end 8 puljer × 1 → mindst én pulje får 2+, men ingen fejl/NULL.
+  const managerCount = 8 * 2 + 3; // 19 managere
+  for (let i = 0; i < managerCount; i++) {
+    initialState.teams.push({
+      id: `m-${i}`, user_id: `u-${i}`, is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, division: 1, league_division_id: 1,
+    });
+  }
+  const supabase = createBetaResetSupabase(initialState);
+
+  const result = await allocateLeaguePools(supabase);
+
+  assert.equal(result.allocated, managerCount);
+  const pools = supabase.state.league_divisions.filter((p) => p.tier === MAX_DIVISION).map((p) => p.id);
+  const counts = new Map(pools.map((id) => [id, 0]));
+  for (let i = 0; i < managerCount; i++) {
+    const team = supabase.state.teams.find((t) => t.id === `m-${i}`);
+    assert.equal(team.division, MAX_DIVISION);
+    assert.ok(pools.includes(team.league_division_id), `m-${i} i en div-4-pulje`);
+    counts.set(team.league_division_id, counts.get(team.league_division_id) + 1);
+  }
+  // Mindst-fyldte-først → jævn fordeling: max-min ≤ 1 over de 8 puljer.
+  const values = [...counts.values()];
+  assert.ok(Math.max(...values) - Math.min(...values) <= 1, "jævn spredning (mindst-fyldte-først)");
+  void POOL_TARGET_SIZE; // blød cap: tallet er kun en sigtelinje, ikke en hård grænse her.
 });
 
 // --- Forward-guard: NO ACTION FK-crashes i beta-reset (#1471, relaunch 18/6) -------------

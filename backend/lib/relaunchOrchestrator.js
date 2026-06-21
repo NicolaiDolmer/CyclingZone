@@ -17,7 +17,7 @@ import { foldNameNordic } from "./pcmRiderMatcher.js";
 import { generateLaunchPopulation, LAUNCH_POPULATION } from "./fictionalLaunchPopulation.js";
 import { toInsertPayload } from "./fictionalRiderGenerator.js";
 import { retireLegacyRiders } from "./legacyRiderRetirement.js";
-import { runFullBetaReset, getBetaManagerTeams } from "./betaResetService.js";
+import { runFullBetaReset, getBetaManagerTeams, allocateLeaguePools } from "./betaResetService.js";
 import { runPhysiologyBackfill, runRiderTypesBackfill, runBaseValueBackfill } from "./backfillCores.js";
 import { runStarterSquadAllocation } from "./starterSquadAllocator.js";
 import { runContractSeed } from "./contractSeed.js";
@@ -82,6 +82,7 @@ const DEFAULT_DEPS = {
   runRiderTypesBackfill,
   runBaseValueBackfill,
   runStarterSquadAllocation,
+  allocateLeaguePools,
   seedSeasonZero,
   transitionToNextSeason,
   runAcademyIntake,
@@ -119,6 +120,17 @@ export async function runRelaunchSeason1(supabase, {
 
   // 5. Startholds fra den fiktive pool.
   summary.allocation = await d.runStarterSquadAllocation(supabase, { dryRun, seed });
+
+  // 5.5 #1608 Task 6 · pulje-spredende liga-allokering: placér alle ægte-manager-hold i
+  // bunden (tier 4) + spred dem på de 8 div-4-puljer (race-levedygtighed). Kører EFTER
+  // trup-allokering og FØR sæson-transitionen, så standings/race-grupperingen er sat når
+  // sæson 1 åbner. runFullBetaReset (apply, trin 2) kalder også allocateLeaguePools, men
+  // det er et idempotent re-run mod den FRISKE population her — pulje-fyldningen tælles
+  // fra DB hver gang, så et gentaget kald giver samme jævne fordeling.
+  // Springes i dry-run (kræver writes — kan ikke simuleres trofast, jf. reset/transition).
+  summary.leaguePools = dryRun
+    ? { skipped: "dryRun" }
+    : await d.allocateLeaguePools(supabase);
 
   // 6. Frisk sæson 1 (sæson 0 → transition 0→1). Springes i dry-run (kræver sæson-0-row).
   if (dryRun) {
