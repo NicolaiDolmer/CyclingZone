@@ -7,7 +7,8 @@
 //   B: jersey_wins = cumulative for 3yr/5yr, per-sæson for 1yr (vi returnerer begge)
 //   D: profitable_transfers = SUM(amount) finance_transactions type IN (transfer_in, transfer_out)
 //   E1: planStart-baseline fra første board_plan_snapshots-row i planen
-//   F: divisionManagerCount = is_ai=false-teams i samme division for sæsonen
+//   F: divisionManagerCount = is_ai=false-teams i samme PULJE (league_division_id)
+//      for sæsonen, når leagueDivisionId er sat (#1608); ellers tier-bredt fallback.
 //
 // #1238 · Podie-queryen dækker hele den kanoniske klassiker-kategori
 // (CLASSIC_RACE_CLASSES, Monuments ⊂ klassikere) og splittes i JS via
@@ -22,6 +23,7 @@ export async function loadGoalContextForBoard({
   boardId,
   currentSeasonId,
   division = null,
+  leagueDivisionId = null,
   standings = null,
   planStartSeasonNumber = null,
 }) {
@@ -113,13 +115,33 @@ export async function loadGoalContextForBoard({
     }
   }
 
-  // Antal humane managers i samme division. Fra pre-loaded standings hvis
-  // muligt (sparer en query), ellers løs fra DB.
+  // Antal humane managers i samme PULJE (#1608). Efter form-frysen er
+  // rank_in_division pulje-rang (updateStandings ranger pr. league_division_id),
+  // så relative_rank-målet ("slå N managere") skal måles mod managere i SAMME
+  // pulje — ikke hele tier'en. Når leagueDivisionId er sat tælles pr. pulje;
+  // ellers (pre-pulje-DB'er / kald uden pulje) falder vi tilbage til den gamle
+  // tier-brede tælling, så eksisterende sæsoner bevarer adfærd.
+  // Fra pre-loaded standings hvis muligt (sparer en query), ellers løs fra DB.
   let divisionManagerCount = null;
-  if (division != null && Array.isArray(standings)) {
+  const usePool = leagueDivisionId != null;
+  if (Array.isArray(standings) && (usePool || division != null)) {
     divisionManagerCount = standings
-      .filter((s) => s.division === division && s.team && !s.team.is_ai)
+      .filter((s) => {
+        if (!s.team || s.team.is_ai) return false;
+        return usePool ? s.league_division_id === leagueDivisionId : s.division === division;
+      })
       .length;
+  } else if (usePool) {
+    const { data: poolStandings, error: poolErr } = await supabase
+      .from("season_standings")
+      .select("team:team_id(is_ai)")
+      .eq("season_id", currentSeasonId)
+      .eq("league_division_id", leagueDivisionId);
+    if (!poolErr) {
+      divisionManagerCount = (poolStandings || [])
+        .filter((s) => s.team && !s.team.is_ai)
+        .length;
+    }
   } else if (division != null) {
     const { data: divisionStandings, error: divErr } = await supabase
       .from("season_standings")

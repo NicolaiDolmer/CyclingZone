@@ -91,6 +91,10 @@ const DIVISION_BONUSES = {
   1: [300_000, 200_000, 100_000, 50_000],
   2: [150_000, 100_000, 50_000, 25_000],
   3: [75_000, 50_000, 25_000],
+  // #1608 forever-relaunch FORM-FRYS (granit, ejer-godkendt 2026-06-21): tier 4 = bunden,
+  // lavest sæson-slut-bonus pr. pulje-placering. Uden denne række ville div-4-hold få
+  // tavst undefined → continue i payDivisionBonuses (samme tavse hul som [1,2,3]-loopet).
+  4: [50_000, 25_000, 10_000],
 };
 
 function throwIfSupabaseError(error, message) {
@@ -847,7 +851,9 @@ export async function processSeasonEnd(seasonId, deps = {}) {
   await payDivisionBonuses(standings, seasonId, supabaseClient);
 
   // Process each division after finance/board side effects have succeeded.
-  for (const division of [1, 2, 3]) {
+  // #1608: loop MIN..MAX_DIVISION (nu 4) i stedet for hardcodet [1,2,3], så tier 4
+  // ikke tavst springes over ved sæson-slut. MAX_DIVISION lever i economyConstants.
+  for (let division = MIN_DIVISION; division <= MAX_DIVISION; division++) {
     const divStandings = standings.filter(s => s.division === division);
     await processDivisionEnd(divStandings, division, seasonId, currentSeasonNumber, {
       supabase: supabaseClient,
@@ -1121,6 +1127,9 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
       boardId: board.id,
       currentSeasonId: seasonId,
       division: teamStanding.division,
+      // #1608 · pulje-rang: divisionManagerCount tælles pr. pulje når holdet er
+      // pulje-allokeret (ellers tier-bredt fallback i loadGoalContextForBoard).
+      leagueDivisionId: teamStanding.league_division_id ?? null,
       standings,
       // #54 · Afgræns cumulative + u25-baseline til den aktuelle plan-cyklus.
       planStartSeasonNumber: board.plan_start_season_number,

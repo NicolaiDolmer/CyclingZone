@@ -7268,6 +7268,9 @@ router.get("/board/status", requireAuth, async (req, res) => {
             boardId: board.id,
             currentSeasonId: activeSeason.id,
             division: currentStanding?.division ?? null,
+            // #1608 · pulje-rang: divisionManagerCount tælles pr. pulje når holdet
+            // er pulje-allokeret (ellers tier-bredt fallback).
+            leagueDivisionId: currentStanding?.league_division_id ?? null,
             // #54 · Afgræns cumulative + u25-baseline til den aktuelle plan-cyklus.
             planStartSeasonNumber: board.plan_start_season_number,
           });

@@ -298,12 +298,16 @@ test("#962 fyld-fra-toppen: nyt hold lander i div 3 (overflow) når div 1 og 2 e
   assert.equal(result.team.division, 3);
 });
 
-test("#962 fyld-fra-toppen: blød cap — div 3 må vokse forbi kapaciteten", async () => {
+test("#962 fyld-fra-toppen: blød cap — bund-divisionen (div 4) må vokse forbi kapaciteten", async () => {
+  // #1608 form-frys: MAX_DIVISION=4 → bunden er nu div 4 (var div 3). Fyld-fra-toppen
+  // overflyder til bund-divisionen, som er blød cap. (Pulje-bevidst bund-op-placering for
+  // ægte managere er #1608 Task 9 og vil omskrive denne fyld-fra-toppen-test.)
   const supabase = createSupabaseDouble({
     teams: [
       ...seedTeams({ division: 1, count: DIVISION_CAPACITY }),
       ...seedTeams({ division: 2, count: DIVISION_CAPACITY }),
       ...seedTeams({ division: 3, count: DIVISION_CAPACITY }),
+      ...seedTeams({ division: 4, count: DIVISION_CAPACITY }),
     ],
   });
 
@@ -314,7 +318,7 @@ test("#962 fyld-fra-toppen: blød cap — div 3 må vokse forbi kapaciteten", as
     managerName: "Manager",
   });
 
-  assert.equal(result.team.division, 3);
+  assert.equal(result.team.division, 4);
 });
 
 test("#962 fyld-fra-toppen: AI-, test- og frosne hold tæller ikke mod kapaciteten", async () => {

@@ -3202,3 +3202,71 @@ test("processTeamSeasonPayroll: team under ceiling nulstiller breach-streak + fj
   const forcedSaleRows = financeRows.filter(r => r.type === "forced_debt_sale");
   assert.equal(forcedSaleRows.length, 0, "Ingen forced_debt_sale ved recovery");
 });
+
+// ─── #1608 form-frys: tier 4 (DIVISION_BONUSES[4] + [1,2,3]→MIN..MAX-loop) ────────
+
+test("#1608 · payDivisionBonuses krediterer tier-4-hold (DIVISION_BONUSES[4] findes)", async () => {
+  // Uden DIVISION_BONUSES[4] ville div-4-standings tavst falde igennem
+  // (undefined → continue) — samme tavse hul som det hardcodede [1,2,3]-loop.
+  const balances = { "team-d4-r1": 0, "team-d4-r4": 0 };
+  const financeRows = [];
+  const supabase = {
+    rpc(name, params) {
+      assert.equal(name, "increment_balance_with_audit");
+      balances[params.p_team_id] = (balances[params.p_team_id] ?? 0) + params.p_delta;
+      financeRows.push({ team_id: params.p_team_id, ...params.p_finance_payload });
+      return Promise.resolve({ data: balances[params.p_team_id], error: null });
+    },
+    from(table) {
+      if (table === "finance_transactions") {
+        return {
+          select() {
+            const filters = {};
+            return {
+              eq(col, val) {
+                filters[col] = val;
+                return {
+                  eq(col2, val2) {
+                    filters[col2] = val2;
+                    const data = financeRows
+                      .filter(r => Object.entries(filters).every(([k, v]) => r[k] === v))
+                      .map(r => ({ team_id: r.team_id }));
+                    return Promise.resolve({ data, error: null });
+                  },
+                };
+              },
+            };
+          },
+        };
+      }
+      throw new Error(`Unexpected table: ${table}`);
+    },
+  };
+
+  const standings = [
+    { team_id: "team-d4-r1", division: 4, rank_in_division: 1, team: { is_ai: false } },
+    { team_id: "team-d4-r4", division: 4, rank_in_division: 4, team: { is_ai: false } }, // kun top 3 betales
+  ];
+
+  await payDivisionBonuses(standings, "season-1", supabase);
+
+  assert.equal(balances["team-d4-r1"], 50_000, "D4 rank 1 → 50k (DIVISION_BONUSES[4][0])");
+  assert.equal(balances["team-d4-r4"], 0, "D4 betaler kun top 3 — rank 4 springes over");
+});
+
+test("#1608 · processDivisionEnd promoverer tier-4-hold (MAX_DIVISION=4 → div 4 er promotable, ikke bunden ved 3)", async () => {
+  // Beviser at MAX_DIVISION=4-skiftet gør tier 4 til den behandlede bund: et
+  // div-4-hold i top-2 ved en gate-cleared sæson rykker OP til div 3, og INGEN
+  // div-4-hold relegeres (division < MAX_DIVISION er falsk for 4). Før form-frysen
+  // (MAX_DIVISION=3 + hardcodet [1,2,3]-loop) ville div 4 aldrig blive behandlet.
+  const supabase = createDivisionEndSupabase();
+  await processDivisionEnd(buildDivStandings(4), 4, "season-3", 3, {
+    supabase, now: new Date("2026-07-21T23:00:00Z"),
+  });
+
+  // Top 2 promoveres til div 3; ingen relegering (4 er nu den behandlede bund).
+  const promotions = supabase.updates.filter(u => u.payload.division === 3).map(u => u.id).sort();
+  const relegations = supabase.updates.filter(u => u.payload.division === 5);
+  assert.deepEqual(promotions, ["4-a", "4-b"], "div-4 top 2 rykker op til div 3");
+  assert.equal(relegations.length, 0, "ingen relegering fra bund-tier (division 5 findes ikke)");
+});

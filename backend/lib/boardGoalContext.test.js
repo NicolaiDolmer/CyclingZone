@@ -76,6 +76,57 @@ test("#54 · uden planStartSeasonNumber anvendes intet cyklus-filter (bagudkompa
   assert.equal(gteCall, undefined, "intet gte-filter når planStartSeasonNumber er null");
 });
 
+test("#1608 · divisionManagerCount tæller PR. PULJE (league_division_id), ikke pr. tier", async () => {
+  // Efter form-frysen er rank_in_division pulje-rang (updateStandings ranger pr.
+  // league_division_id). divisionManagerCount SKAL derfor også tælle managere i
+  // SAMME pulje — ellers sammenligner relative_rank-målet en pulje-rang (1..N i
+  // puljen) mod en tier-bred manager-tælling (managere på tværs af alle puljer i
+  // tier'en), og "slå N managere"-målet bliver trivielt opfyldeligt.
+  const recorder = [];
+  // To puljer i tier 4: pulje 11 (2 managere + 1 AI), pulje 12 (3 managere).
+  const standings = [
+    { division: 4, league_division_id: 11, team: { is_ai: false } },
+    { division: 4, league_division_id: 11, team: { is_ai: false } },
+    { division: 4, league_division_id: 11, team: { is_ai: true } },
+    { division: 4, league_division_id: 12, team: { is_ai: false } },
+    { division: 4, league_division_id: 12, team: { is_ai: false } },
+    { division: 4, league_division_id: 12, team: { is_ai: false } },
+  ];
+  const supabase = makeSupabase({
+    board_plan_snapshots: [], race_results: [], finance_transactions: [],
+  }, recorder);
+
+  const ctx = await loadGoalContextForBoard({
+    supabase, teamId: "t1", boardId: "b1", currentSeasonId: "s-cur",
+    division: 4, leagueDivisionId: 11, standings,
+  });
+
+  // Tier 4 har 5 managere i alt, men pulje 11 har kun 2 (AI ekskluderet).
+  assert.equal(ctx.divisionManagerCount, 2,
+    "skal tælle managere i pulje 11, ikke alle 5 i tier 4");
+});
+
+test("#1608 · divisionManagerCount falder tilbage til tier-tælling når pulje mangler (bagudkompatibelt)", async () => {
+  // Pre-pulje-DB'er (league_division_id = NULL) + kald uden leagueDivisionId skal
+  // bevare den gamle tier-brede adfærd, så eksisterende sæsoner ikke knækker.
+  const recorder = [];
+  const standings = [
+    { division: 3, league_division_id: null, team: { is_ai: false } },
+    { division: 3, league_division_id: null, team: { is_ai: false } },
+    { division: 3, league_division_id: null, team: { is_ai: false } },
+  ];
+  const supabase = makeSupabase({
+    board_plan_snapshots: [], race_results: [], finance_transactions: [],
+  }, recorder);
+
+  const ctx = await loadGoalContextForBoard({
+    supabase, teamId: "t1", boardId: "b1", currentSeasonId: "s-cur",
+    division: 3, standings, // ingen leagueDivisionId → tier-bred tælling
+  });
+
+  assert.equal(ctx.divisionManagerCount, 3, "tier-bred tælling bevaret uden pulje");
+});
+
 test("#1238 · podie-query bruger kanonisk klassiker-liste og splitter monument/klassiker-optælling", async () => {
   const recorder = [];
   const supabase = makeSupabase({
