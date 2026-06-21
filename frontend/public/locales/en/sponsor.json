@@ -24,8 +24,7 @@
     "guaranteedBase": "Guaranteed base",
     "perRaceDay": "Per race day",
     "length": "Length",
-    "seasons": "{count, plural, one {# season} other {# seasons}}",
-    "raceDayIncome": "Race-day income"
+    "seasons": "{count, plural, one {# season} other {# seasons}}"
   },
   "contract": {
     "title": "Current sponsor",

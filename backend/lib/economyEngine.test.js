@@ -17,7 +17,7 @@ const {
   updateStandings,
 } = await import("./economyEngine.js");
 
-const { DIVISION_CAPACITY, FINAL_SPONSOR_PAYOUT_CEILING } = await import("./economyConstants.js");
+const { DIVISION_CAPACITY, MAX_BOARD_MODIFIER } = await import("./economyConstants.js");
 const { ACADEMY } = await import("./academyFlag.js");
 
 function clone(value) {
@@ -2677,10 +2677,14 @@ function createSeasonStartSupabase({ season, team, prevSeasonId = null, prevStan
   };
 }
 
-test("processSeasonStart clamps FINAL sponsor payout til S2_PLUS ceiling (900k)", async () => {
-  // Scenarie: D1-hold i sæson 2 (S2+), gross_sponsor = 750k,
-  // board budget_modifier = 1.5 → uden clamp ville payout = 1.125M.
-  // Med clamp skal resultatet være 900k (FINAL_SPONSOR_PAYOUT_CEILING.S2_PLUS).
+test("processSeasonStart clamper FINAL sponsor-payout til gross_sponsor × MAX_BOARD_MODIFIER (no-contract-sti)", async () => {
+  // #1663: i no-contract-stien er loftet IKKE den flade FINAL_SPONSOR_PAYOUT_CEILING.
+  // Det afledes dynamisk: ceiling = round(gross_sponsor × MAX_BOARD_MODIFIER), så
+  // legitim renown-skalering ikke cappes — kun board-modifier-bypass.
+  // Scenarie: D1-hold i sæson 2, board budget_modifier = 1.5 > MAX_BOARD_MODIFIER (1.2)
+  // → payouten clampes til gross_sponsor × 1.20. Vi asserter mod selve formlen (afledt
+  // af det faktiske sponsor_breakdown.gross_sponsor), så et regression i ceiling-formlen
+  // fanges — ikke et tilfældigt 750k×1.2 = 900k-sammenfald med den flade S2_PLUS-konstant.
 
   const seasonId = "season-2";
 
@@ -2716,7 +2720,7 @@ test("processSeasonStart clamps FINAL sponsor payout til S2_PLUS ceiling (900k)"
     },
   });
 
-  await processSeasonStart(seasonId, {
+  const outcome = await processSeasonStart(seasonId, {
     supabase,
     processLoanAgreementSeasonFees: async () => [],
     runSeasonPayroll: async () => ({ results: [], summary: {} }),
@@ -2724,10 +2728,24 @@ test("processSeasonStart clamps FINAL sponsor payout til S2_PLUS ceiling (900k)"
 
   const sponsorRow = supabase.state.financeRows.find(r => r.type === "sponsor");
   assert.ok(sponsorRow, "Ingen sponsor finance-row fundet");
+
+  // Afled det faktiske gross_sponsor fra resultatet (ikke et hardcoded tal), så
+  // testen følger sponsor-motorens output og ikke et tilfældigt sammenfald.
+  const sponsorResult = outcome.sponsor.find(r => r.team === "Clamp Test CF");
+  assert.ok(sponsorResult, "Ingen sponsor-resultat for holdet");
+  const gross = sponsorResult.sponsor_breakdown.gross_sponsor;
+  const expectedCeiling = Math.round(gross * MAX_BOARD_MODIFIER);
+
+  // Board-modifier 1.5 > MAX_BOARD_MODIFIER → uncapped = round(gross × 1.5) >
+  // ceiling, så payouten SKAL lande præcis på det dynamiske loft.
+  assert.ok(
+    Math.round(gross * 1.5) > expectedCeiling,
+    "Forudsætning: board-modifier 1.5 skal overstige loftet (ellers tester vi ikke clampen)"
+  );
   assert.equal(
     sponsorRow.amount,
-    FINAL_SPONSOR_PAYOUT_CEILING.S2_PLUS,
-    `Sponsor payout skal clamp'es til ${FINAL_SPONSOR_PAYOUT_CEILING.S2_PLUS} — fik ${sponsorRow.amount}`
+    expectedCeiling,
+    `Sponsor payout skal clampes til round(gross_sponsor ${gross} × MAX_BOARD_MODIFIER ${MAX_BOARD_MODIFIER}) = ${expectedCeiling} — fik ${sponsorRow.amount}`
   );
 });
 

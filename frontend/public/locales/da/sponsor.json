@@ -24,8 +24,7 @@
     "guaranteedBase": "Garanteret grundbeløb",
     "perRaceDay": "Pr. løbsdag",
     "length": "Længde",
-    "seasons": "{count, plural, one {# sæson} other {# sæsoner}}",
-    "raceDayIncome": "Løbsdags-indkomst"
+    "seasons": "{count, plural, one {# sæson} other {# sæsoner}}"
   },
   "contract": {
     "title": "Nuværende sponsor",

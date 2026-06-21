@@ -16,9 +16,24 @@
 //   seasons.number er sæson-heltallet; season_standings keyer på season_id (UUID FK
 //     til seasons.id), IKKE et nummer → resolv forrige sæsons id først.
 import { renownTarget } from "./renownEngine.js";
-import { generateOffers } from "./sponsorOffers.js";
+import { generateOffers, FULL_CALENDAR_DAYS } from "./sponsorOffers.js";
 
 const DEFAULT_RENEW_VARIANT = "long";
+
+// Henter den reelle sæson-kalenderlængde (seasons.race_days_total) for den aktive
+// sæson, så per-løbsdag-raten i tilbuddene afspejler den faktiske kalender frem for
+// den hardcodede FULL_CALENDAR_DAYS-konstant. Falder tilbage til FULL_CALENDAR_DAYS
+// hvis ingen aktiv sæson / kolonnen er null. Én ekstra letvægts-query.
+async function loadCalendarDays({ supabase }) {
+  const { data, error } = await supabase
+    .from("seasons")
+    .select("race_days_total")
+    .eq("status", "active")
+    .maybeSingle();
+  if (error) throw error;
+  const days = Number(data?.race_days_total);
+  return Number.isFinite(days) && days > 0 ? days : FULL_CALENDAR_DAYS;
+}
 
 export async function getActiveContract({ supabase, teamId }) {
   const { data, error } = await supabase
@@ -94,7 +109,8 @@ export async function getOffers({ supabase, teamId, seasonNumber }) {
     teamId,
     seasonNumber,
   });
-  return generateOffers({ teamId, seasonNumber, renownTargetValue });
+  const calendarDays = await loadCalendarDays({ supabase });
+  return generateOffers({ teamId, seasonNumber, renownTargetValue, calendarDays });
 }
 
 // Forhandlings-tilstand for nuværende sæson. Et hold kan forhandle for den KOMMENDE

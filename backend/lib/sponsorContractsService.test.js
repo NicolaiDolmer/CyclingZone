@@ -27,6 +27,7 @@ import { generateOffers } from "./sponsorOffers.js";
 function makeSupabase({
   team = { id: "t1", division: 2 },
   seasonsByNumber = {},       // { [number]: { id, number } | null }
+  activeSeason = null,        // { race_days_total } | null — seasons.eq("status","active")
   standingsBySeasonId = {},   // { [seasonId]: [rows] }
   activeContractByTeam = {},  // { [teamId]: contractRow | null }
   pendingContractByTeam = {}, // { [teamId]: contractRow | null }
@@ -39,9 +40,15 @@ function makeSupabase({
       select: () => b,
       eq: (col, val) => {
         if (col === "number") ctx.number = val;
+        if (col === "status") ctx.status = val;
         return b;
       },
       maybeSingle: () => {
+        // loadCalendarDays: .select("race_days_total").eq("status","active")
+        if (ctx.status === "active") {
+          return Promise.resolve({ data: activeSeason, error: null });
+        }
+        // loadRenownTargetValue: .select("id, number").eq("number", N-1)
         const row = seasonsByNumber[ctx.number] ?? null;
         return Promise.resolve({ data: row, error: null });
       },
@@ -247,6 +254,67 @@ test("getOffers falder tilbage til division-base × 1.0 når intet sidste-sæson
   const offers = await getOffers({ supabase, teamId: "t1", seasonNumber: 2 });
 
   // renownTarget med null standing = base × 1.0 = 400000 (division 2).
+  const expected = generateOffers({
+    teamId: "t1",
+    seasonNumber: 2,
+    renownTargetValue: 400000,
+  });
+  assert.deepEqual(offers, expected);
+});
+
+test("getOffers bruger seasons.race_days_total som per-dag-divisor (#1663)", async () => {
+  // Aktiv sæson har en 40-dages kalender (ikke default 60). Per-løbsdag-raten skal
+  // derfor afledes med 40 som divisor, så guaranteed_base + per_dag × 40 ≈ renownTarget.
+  const supabase = makeSupabase({
+    team: { id: "t1", division: 2 },
+    seasonsByNumber: { 1: null }, // frisk hold → target 400000
+    standingsBySeasonId: {},
+    activeSeason: { race_days_total: 40 },
+  });
+
+  const offers = await getOffers({ supabase, teamId: "t1", seasonNumber: 2 });
+
+  const renownTargetValue = 400000;
+  // Forventning: samme tilbud som generateOffers med calendarDays=40.
+  const expected = generateOffers({
+    teamId: "t1",
+    seasonNumber: 2,
+    renownTargetValue,
+    calendarDays: 40,
+  });
+  assert.deepEqual(offers, expected);
+
+  // Og det adskiller sig fra default-60-tilbuddene (ellers tester vi ikke wiringen).
+  const default60 = generateOffers({
+    teamId: "t1",
+    seasonNumber: 2,
+    renownTargetValue,
+  });
+  assert.notDeepEqual(offers, default60);
+
+  // Sanity: guaranteed_base + per_dag × 40 rammer ≈ target for hver variant.
+  for (const o of offers) {
+    const reconstructed = o.guaranteedBase + o.perRaceDayRate * 40;
+    // Afrunding pr. variant → tillad lille afvigelse (< 40, ét per-dag-trin).
+    assert.ok(
+      Math.abs(reconstructed - renownTargetValue) < 40,
+      `variant ${o.variant}: ${reconstructed} bør være ≈ ${renownTargetValue}`,
+    );
+  }
+});
+
+test("getOffers falder tilbage til FULL_CALENDAR_DAYS når ingen aktiv sæson (#1663)", async () => {
+  // Ingen aktiv sæson (activeSeason=null) → divisor falder tilbage til default 60.
+  const supabase = makeSupabase({
+    team: { id: "t1", division: 2 },
+    seasonsByNumber: { 1: null },
+    standingsBySeasonId: {},
+    activeSeason: null,
+  });
+
+  const offers = await getOffers({ supabase, teamId: "t1", seasonNumber: 2 });
+
+  // Identisk med generateOffers uden calendarDays (default 60).
   const expected = generateOffers({
     teamId: "t1",
     seasonNumber: 2,

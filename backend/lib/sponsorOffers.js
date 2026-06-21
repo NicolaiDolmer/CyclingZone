@@ -37,14 +37,19 @@ function hashSeed(str) {
 }
 
 // Split-varianter: guaranteedFraction = andel af target lagt i garanteret base; resten
-// dækkes af per-dag × FULL_CALENDAR_DAYS, så total ≈ target ved fuld kalender.
+// dækkes af per-dag × calendarDays (den reelle sæson-kalender; default FULL_CALENDAR_DAYS),
+// så total ≈ target ved fuld kalender.
 const VARIANTS = [
   { variant: "predictable", guaranteedFraction: 0.88, lengthSeasons: 1 },
   { variant: "activity",    guaranteedFraction: 0.55, lengthSeasons: 2 },
   { variant: "long",        guaranteedFraction: 0.73, lengthSeasons: 3 },
 ];
 
-export function generateOffers({ teamId, seasonNumber, renownTargetValue }) {
+// calendarDays: den reelle sæson-kalenderlængde (seasons.race_days_total). Bruges som
+// divisor så per-dag-raten skalerer med den faktiske sæson. Defaulter til
+// FULL_CALENDAR_DAYS (60) — eksisterende callsites uden argumentet bevarer adfærden.
+export function generateOffers({ teamId, seasonNumber, renownTargetValue, calendarDays = FULL_CALENDAR_DAYS }) {
+  const divisor = Number(calendarDays) > 0 ? Number(calendarDays) : FULL_CALENDAR_DAYS;
   const seed = hashSeed(`${teamId}:${seasonNumber}`);
   // Vælg 3 forskellige navne deterministisk.
   const names = [];
@@ -57,7 +62,7 @@ export function generateOffers({ teamId, seasonNumber, renownTargetValue }) {
 
   return VARIANTS.map((v, i) => {
     const guaranteedBase = Math.round(renownTargetValue * v.guaranteedFraction);
-    const perRaceDayRate = Math.round((renownTargetValue - guaranteedBase) / FULL_CALENDAR_DAYS);
+    const perRaceDayRate = Math.round((renownTargetValue - guaranteedBase) / divisor);
     return {
       variant: v.variant,
       sponsorName: names[i],
