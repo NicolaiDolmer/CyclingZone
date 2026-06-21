@@ -1,5 +1,13 @@
 {
   "tab": "Sponsor",
+  "cta": {
+    "title": "Vælg din sponsor for sæson {season}",
+    "body": "En ny sponsoraftale er på bordet. Sammenlign tilbuddene og lås din opbakning for den kommende sæson.",
+    "button": "Se tilbud",
+    "pendingTitle": "Sponsor valgt for sæson {season}",
+    "pendingBody": "Du har valgt en aftale for den kommende sæson. Du kan stadig skifte til et andet tilbud.",
+    "changeButton": "Skift valg"
+  },
   "offers": {
     "title": "Sponsortilbud",
     "subtitle": "Vælg en sponsoraftale for sæson {season}. Kontrakten løber fra starten af den sæson.",

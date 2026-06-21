@@ -1,5 +1,13 @@
 {
   "tab": "Sponsor",
+  "cta": {
+    "title": "Choose your sponsor for season {season}",
+    "body": "A new sponsor deal is on the table. Compare the offers and lock in your backing for the upcoming season.",
+    "button": "View offers",
+    "pendingTitle": "Sponsor selected for season {season}",
+    "pendingBody": "You have chosen a deal for the upcoming season. You can still switch to a different offer.",
+    "changeButton": "Change choice"
+  },
   "offers": {
     "title": "Sponsor offers",
     "subtitle": "Choose a sponsor deal for season {season}. The contract runs from the start of that season.",

@@ -10,6 +10,7 @@ import { Flag } from "../components/Flag";
 import { Link } from "react-router-dom";
 import BoardEmptyState from "../components/BoardEmptyState";
 import BoardSatisfactionTimeline from "../components/BoardSatisfactionTimeline";
+import SponsorOfferModal from "../components/SponsorOfferModal";
 import OnboardingTour from "../components/OnboardingTour";
 import { startTour } from "../lib/onboardingTour";
 import { logEvent } from "../lib/logEvent";
@@ -1815,6 +1816,8 @@ function WizardStep3({ finalGoals, planType, onSign, saving, onBack }) {
 
 export default function BoardPage() {
   const { t } = useTranslation("board");
+  // #1663 · separat sponsor-namespace til CTA + tilbuds-modal (forhandling for kommende sæson)
+  const { t: tSponsor } = useTranslation("sponsor");
   // Plandata
   const [plans, setPlans] = useState({ "5yr": null, "3yr": null, "1yr": null });
   // #955 · aktiv plan-fane (5/3/1-år vises én ad gangen, fuld bredde)
@@ -1867,8 +1870,22 @@ export default function BoardPage() {
   const [dnaDialogOpen, setDnaDialogOpen] = useState(false);
   const [renewalQueue, setRenewalQueue] = useState([]); // ['3yr', '1yr'] sorted by PLAN_SEQUENCE
   const [renewalQueueIdx, setRenewalQueueIdx] = useState(0);
+  // #1663 · sponsor-forhandling: state hentet fra GET /api/sponsor/offers
+  const [sponsorState, setSponsorState] = useState(null); // { negotiable, upcomingSeasonNumber, offers, pendingVariant } | null
+  const [sponsorModalOpen, setSponsorModalOpen] = useState(false);
+  const [accepting, setAccepting] = useState(false);
 
   useEffect(() => { loadAll(); }, []);
+
+  // #1663 · hent sponsor-forhandlings-state (fejl håndteres stille — må ikke vælte Board)
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const state = await fetchSponsorOffers();
+      if (alive && state) setSponsorState(state);
+    })();
+    return () => { alive = false; };
+  }, []);
 
   useEffect(() => {
     if (!wizardPlanType) return;
@@ -1965,6 +1982,51 @@ export default function BoardPage() {
     }
 
     setLoading(false);
+  }
+
+  // #1663 · GET /api/sponsor/offers → { negotiable, upcomingSeasonNumber, offers, pendingVariant }.
+  // Returnerer null ved fejl (kalderen lader Board stå urørt).
+  async function fetchSponsorOffers() {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) return null;
+      const res = await fetch(`${API}/api/sponsor/offers`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return null;
+      return await res.json().catch(() => null);
+    } catch (e) {
+      console.error("BoardPage sponsor offers load failed", e);
+      return null;
+    }
+  }
+
+  // #1663 · POST /api/sponsor/offers/accept { variant }. Ved succes: refetch state
+  // (så pendingVariant opdateres) + luk modal. Fejl håndteres stille (logget).
+  async function handleAcceptSponsor(variant) {
+    setAccepting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) return;
+      const res = await fetch(`${API}/api/sponsor/offers/accept`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ variant }),
+      });
+      if (!res.ok) {
+        console.error("BoardPage sponsor accept failed", res.status);
+        return;
+      }
+      const refreshed = await fetchSponsorOffers();
+      if (refreshed) setSponsorState(refreshed);
+      setSponsorModalOpen(false);
+    } catch (e) {
+      console.error("BoardPage sponsor accept error", e);
+    } finally {
+      setAccepting(false);
+    }
   }
 
   async function fetchBoardProposal(focus, planType) {
@@ -2313,6 +2375,31 @@ export default function BoardPage() {
 
       <BoardIdentityCard identityProfile={identityProfile} />
 
+      {/* #1663 · Sponsor-CTA — kun når der reelt er åbne tilbud at vælge imellem. */}
+      {sponsorState?.negotiable && sponsorState.offers.length > 0 && (
+        <div className="bg-cz-card border border-cz-border rounded-cz p-5 mt-5">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="min-w-0">
+              <h2 className="text-cz-1 font-semibold text-sm">
+                {sponsorState.pendingVariant
+                  ? tSponsor("cta.pendingTitle", { season: sponsorState.upcomingSeasonNumber })
+                  : tSponsor("cta.title", { season: sponsorState.upcomingSeasonNumber })}
+              </h2>
+              <p className="text-cz-3 text-sm mt-1">
+                {sponsorState.pendingVariant ? tSponsor("cta.pendingBody") : tSponsor("cta.body")}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSponsorModalOpen(true)}
+              className="flex-shrink-0 py-2 px-4 bg-cz-accent text-cz-on-accent text-sm font-semibold rounded-cz hover:brightness-110 transition-all"
+            >
+              {sponsorState.pendingVariant ? tSponsor("cta.changeButton") : tSponsor("cta.button")}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* S-02f · Klub-DNA */}
       {!isBaselinePhase && teamDna && <ClubDnaBadge dna={teamDna} onSelect={() => setDnaDialogOpen(true)} />}
       {!isBaselinePhase && teamDna && <BoardDriversPanel dna={teamDna} plans={plans} />}
@@ -2601,6 +2688,17 @@ export default function BoardPage() {
       {dnaDialogOpen && teamDna && (
         <ClubDnaDialog dna={teamDna} onClose={() => setDnaDialogOpen(false)} />
       )}
+
+      {/* #1663 · Sponsor-tilbuds-modal — forhandling for kommende sæson */}
+      <SponsorOfferModal
+        open={sponsorModalOpen}
+        onClose={() => setSponsorModalOpen(false)}
+        offers={sponsorState?.offers ?? []}
+        pendingVariant={sponsorState?.pendingVariant}
+        upcomingSeasonNumber={sponsorState?.upcomingSeasonNumber}
+        onAccept={handleAcceptSponsor}
+        accepting={accepting}
+      />
     </div>
   );
 }
