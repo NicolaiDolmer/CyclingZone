@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { getMinimumAuctionBid } from "./marketValues";
 import { formatBidWarning, computeAvailableForBid } from "./auctionLogic";
-import { logEvent } from "./logEvent";
+import { logEvent, logFirstEvent } from "./logEvent";
 
 // Delt bid + autobud-loft state-machine. Bruges af AuctionRow (desktop tabel),
 // AuctionCard (mobil card) og RiderStatsPage (rytter-profil) — så vi har ÉN kilde
@@ -80,6 +80,8 @@ export function useAuctionBidding({
         setErrorText(result.error || "");
         if (result.ok) {
           logEvent("auction_bid_placed", { auction_id: auction.id, amount: bidAmount });
+          // #1583: aktiverings-funnel — kun brugerens FØRSTE bud (de-dup pr. bruger).
+          logFirstEvent("first_bid", { auction_id: auction.id, amount: bidAmount });
           const warningMsg = (result.warnings || []).map(w => formatBidWarning(w, t)).filter(Boolean).join(" ");
           if (warningMsg) {
             setWarningText(warningMsg);

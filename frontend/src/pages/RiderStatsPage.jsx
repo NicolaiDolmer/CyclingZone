@@ -31,7 +31,7 @@ import {
 } from "../lib/auctionLogic";
 import { useAuctionBidding } from "../lib/useAuctionBidding";
 import { isOverbidEvent, shouldFlashPrice } from "../lib/auctionsRealtime";
-import { logEvent } from "../lib/logEvent";
+import { logEvent, logFirstEvent } from "../lib/logEvent";
 import TeamLink from "../components/TeamLink";
 import { aggregateRiderSeasons } from "../lib/riderSeasonStats";
 import { TrophyIcon, ExchangeIcon, ClipboardIcon } from "../components/ui";
@@ -405,6 +405,8 @@ function DirectOfferButton({ rider }) {
       const data = await res.json().catch(() => ({}));
       if (res.ok) {
         logEvent("transfer_offer_sent", { rider_id: rider.id, amount });
+        // #1583: aktiverings-funnel — kun brugerens FØRSTE transfer (de-dup pr. bruger).
+        logFirstEvent("first_transfer", { rider_id: rider.id, amount });
         setResult({ ok: true, msg: t("directOffer.toast.success") }); setShow(false);
       }
       else        { setResult({ ok: false, msg: `${t("directOffer.toast.errorPrefix")} ${resolveApiError(data, t)}` }); }

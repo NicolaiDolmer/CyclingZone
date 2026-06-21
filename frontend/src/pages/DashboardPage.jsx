@@ -23,6 +23,7 @@ import {
 } from "../lib/boardCopy";
 import DashboardCustomizeMenu from "../components/DashboardCustomizeMenu";
 import { Card, AlertTriangleIcon, BellIcon, XIcon, ArrowDownIcon } from "../components/ui";
+import { flushPendingSignup, logFirstEvent } from "../lib/logEvent";
 
 const API = import.meta.env.VITE_API_URL;
 // Realtime: sæson-fremskridt (race_days_completed) + resultat-afledte tal skal
@@ -259,6 +260,23 @@ export default function DashboardPage() {
 
   useEffect(() => { loadAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useRealtimeRefetch("dashboard-live", REALTIME_TABLES, loadAll);
+
+  // #1583: flush en ventende signup når brugeren er authenticated på dashboardet.
+  // Dækker confirm-on-flowet (prod), hvor LoginPage ingen session havde i selve
+  // signup-øjeblikket. No-op hvis ingen ventende markør / manglende consent.
+  useEffect(() => {
+    if (team?.id) flushPendingSignup();
+  }, [team?.id]);
+
+  // #1583: onboarding_completed-funnel-event når alle steps er nået (4/4).
+  // logFirstEvent de-dup'er pr. bruger, så eventet kun fyrer én gang.
+  useEffect(() => {
+    if (!onboardingProgress) return;
+    const { completed_count, total_count } = onboardingProgress;
+    if (total_count > 0 && completed_count === total_count) {
+      logFirstEvent("onboarding_completed", { completed_count, total_count });
+    }
+  }, [onboardingProgress]);
 
   // #1005: hent de to nye moduler fra deres aggregat-endpoints — kun når modulet
   // er synligt, så managere der har skjult dem ikke betaler omkostningen. Endpoints
