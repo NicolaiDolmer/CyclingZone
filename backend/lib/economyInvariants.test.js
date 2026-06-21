@@ -211,6 +211,15 @@ function createIdempotencySupabase({
           };
         }
 
+        if (table === "sponsor_contracts") {
+          // #1663: getActiveContract — ingen aktiv kontrakt (no-contract-sti).
+          const query = {
+            eq() { return query; },
+            maybeSingle() { return Promise.resolve({ data: null, error: null }); },
+          };
+          return { select() { return query; } };
+        }
+
         throw new Error(`Unexpected table: ${table}`);
       },
     },
@@ -636,6 +645,11 @@ test("processSeasonStart bruger variabel sponsor fra forrige sæsons standings f
           insert() { return Promise.resolve({ error: null }); },
         };
       }
+      if (table === "sponsor_contracts") {
+        // #1663: getActiveContract — ingen aktiv kontrakt (no-contract-sti).
+        const query = { eq() { return query; }, maybeSingle() { return Promise.resolve({ data: null, error: null }); } };
+        return { select() { return query; } };
+      }
       throw new Error(`Unexpected table: ${table}`);
     },
   };
@@ -708,6 +722,11 @@ test("processSeasonStart tvinger sponsor-modifier til 1.0 i board test-mode", as
         }
         if (table === "board_profiles") {
           return { insert() { return Promise.resolve({ error: null }); } };
+        }
+        if (table === "sponsor_contracts") {
+          // #1663: getActiveContract — ingen aktiv kontrakt (no-contract-sti).
+          const query = { eq() { return query; }, maybeSingle() { return Promise.resolve({ data: null, error: null }); } };
+          return { select() { return query; } };
         }
         throw new Error(`Unexpected table: ${table}`);
       },
@@ -788,6 +807,11 @@ test("processSeasonStart krediterer sponsor til ALLE hold før runSeasonPayroll 
       }
       if (table === "finance_transactions") {
         return { insert() { return Promise.resolve({ error: null }); } };
+      }
+      if (table === "sponsor_contracts") {
+        // #1663: getActiveContract — ingen aktiv kontrakt (no-contract-sti).
+        const query = { eq() { return query; }, maybeSingle() { return Promise.resolve({ data: null, error: null }); } };
+        return { select() { return query; } };
       }
       throw new Error(`Unexpected table: ${table}`);
     },

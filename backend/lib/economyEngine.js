@@ -39,8 +39,8 @@ import {
   FINANCE_ACTOR_TYPE,
   FINANCE_REASON,
   FINANCE_RELATED_ENTITY,
-  FINAL_SPONSOR_PAYOUT_CEILING,
   FIRST_PROMOTION_RELEGATION_SEASON,
+  MAX_BOARD_MODIFIER,
   MAX_DIVISION,
   MIN_DIVISION,
   NEGATIVE_BALANCE_INTEREST_RATE,
@@ -57,6 +57,7 @@ import {
   computeSponsorForSeason,
   FIRST_VARIABLE_SPONSOR_SEASON,
 } from "./sponsorEngine.js";
+import { getActiveContract } from "./sponsorContractsService.js";
 
 let defaultSupabaseClientPromise;
 
@@ -229,6 +230,8 @@ export async function processSeasonStart(seasonId, deps = {}) {
     const pulloutFactor = pulloutFactorByTeamId.get(team.id) ?? 1.0;
     const modifier = boardTestMode ? 1.0 : baseModifier * pulloutFactor;
     const lastSeasonStanding = sponsorStandingsContext.standingByTeamId.get(team.id) || null;
+    // #1663: en aktiv (forhandlet) kontrakt definerer den låste garanterede base.
+    const activeContract = await getActiveContract({ supabase: supabaseClient, teamId: team.id });
     const sponsorBreakdown = computeSponsorForSeason({
       seasonNumber,
       team,
@@ -236,11 +239,13 @@ export async function processSeasonStart(seasonId, deps = {}) {
       divisionStandings: lastSeasonStanding
         ? sponsorStandingsContext.divisionStandingsByDivision.get(lastSeasonStanding.division) || []
         : [],
+      activeContract,
     });
-    const finalCeiling = (Number.isInteger(seasonNumber) && seasonNumber >= FIRST_VARIABLE_SPONSOR_SEASON)
-      ? FINAL_SPONSOR_PAYOUT_CEILING.S2_PLUS
-      : FINAL_SPONSOR_PAYOUT_CEILING.S1;
-    const sponsorPayout = Math.min(finalCeiling, Math.round(sponsorBreakdown.gross_sponsor * modifier));
+    // #1663: loft afledt af den (låste) garanterede base × maks board-modifier — capper
+    // board-modifier-bypass, men ikke legitim renown-skalering.
+    const ceilingBase = activeContract?.guaranteed_base ?? sponsorBreakdown.gross_sponsor;
+    const ceiling = Math.round(Number(ceilingBase) * MAX_BOARD_MODIFIER);
+    const sponsorPayout = Math.min(Math.round(sponsorBreakdown.gross_sponsor * modifier), ceiling);
 
     // #666: description holdes null for nye rows — frontend renderer fra
     // metadata via backendMessages-i18n. Legacy rows beholder DA-description

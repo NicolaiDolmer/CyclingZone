@@ -2509,10 +2509,11 @@ test("processTeamSeasonPayroll skips academy_drift entirely for a team with 0 ac
  *
  * processLoanAgreementSeasonFees + runSeasonPayroll injiceres som no-op stubs.
  */
-function createSeasonStartSupabase({ season, team, prevSeasonId = null, prevStandings = [] } = {}) {
+function createSeasonStartSupabase({ season, team, prevSeasonId = null, prevStandings = [], activeContract = null } = {}) {
   const state = {
     season: clone(season),
     team: clone(team),
+    activeContract: clone(activeContract),
     financeRows: [],
   };
 
@@ -2645,6 +2646,28 @@ function createSeasonStartSupabase({ season, team, prevSeasonId = null, prevStan
         return {
           insert(_payload) {
             return Promise.resolve({ error: null });
+          },
+        };
+      }
+
+      if (table === "sponsor_contracts") {
+        // #1663: getActiveContract — ingen aktiv kontrakt i dette scenarie
+        // (no-contract-stien: ceiling = gross_sponsor × MAX_BOARD_MODIFIER).
+        return {
+          select() {
+            return {
+              eq() {
+                return {
+                  eq() {
+                    return {
+                      maybeSingle() {
+                        return Promise.resolve({ data: state.activeContract ?? null, error: null });
+                      },
+                    };
+                  },
+                };
+              },
+            };
           },
         };
       }
