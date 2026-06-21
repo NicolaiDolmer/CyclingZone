@@ -20,6 +20,7 @@ on:
       - 'scripts/i18n-leaks-baseline.json'
       - 'scripts/tone-check-em-dash.mjs'
       - 'scripts/tone-check-em-dash.test.mjs'
+      - 'frontend/index.html'
   workflow_dispatch:
 
 permissions:
