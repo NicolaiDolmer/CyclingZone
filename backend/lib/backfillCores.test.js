@@ -153,3 +153,27 @@ test("deriveForRiderIds (tom liste) er no-op", async () => {
   assert.equal(supabase.writes.upserts.length, 0);
   assert.equal(supabase.writes.updates.length, 0);
 });
+
+// ─── Kilde-guard (#1673): partiel derive må kaste, ikke strande tavst ──────────
+
+test("deriveForRiderIds (apply) KASTER hvis en rytter ikke fik base_value (partiel derive)", async () => {
+  // En brudt valuationModel (a=NaN) → predictBaseValue returnerer null for ALLE
+  // ryttere → riderUpdates har ingen base_value. Det er præcis #1673's tavse
+  // strandings-tilstand; guarden skal nu gøre den til en hård fejl ved kilden.
+  const supabase = makeMockSupabase({ riders: [makeRider("r1"), makeRider("r2")] });
+  await assert.rejects(
+    () => deriveForRiderIds(supabase, ["r1", "r2"], {
+      dryRun: false,
+      valuationModel: { a: NaN, b: 1, offset: {} },
+    }),
+    /partielt derive.*uden base_value/,
+    "guard skal kaste når base_value mangler for de inserterede id'er",
+  );
+});
+
+test("deriveForRiderIds (apply) KASTER ikke når alle id'er fik fuld derive", async () => {
+  // Sund model (default) → alle ryttere får abilities + base_value → ingen throw.
+  const supabase = makeMockSupabase({ riders: [makeRider("r1")] });
+  const res = await deriveForRiderIds(supabase, ["r1"], { dryRun: false });
+  assert.equal(res.valued, 1, "sund derive fuldfører uden at kaste");
+});
