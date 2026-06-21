@@ -3,9 +3,9 @@
 // Holdt fri for React/Vite så den kan unit-testes med node:test.
 
 export const CATEGORY_META = {
-  new: { en: "New", da: "Nyt", dot: "bg-green-400" },
-  improved: { en: "Improved", da: "Forbedringer", dot: "bg-blue-400" },
-  fixed: { en: "Fixed", da: "Fejlrettelser", dot: "bg-red-400" },
+  new: { en: "New", da: "Nyt", dot: "bg-cz-success" },
+  improved: { en: "Improved", da: "Forbedringer", dot: "bg-cz-info" },
+  fixed: { en: "Fixed", da: "Fejlrettelser", dot: "bg-cz-danger" },
 };
 
 export function flattenChanges(patches) {
