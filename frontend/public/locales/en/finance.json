@@ -119,7 +119,7 @@
     }
   },
   "timeAgo": {
-    "unknown": "—",
+    "unknown": "Unknown",
     "now": "Just now",
     "minutes": "{m}m ago",
     "hours": "{h}h ago",
