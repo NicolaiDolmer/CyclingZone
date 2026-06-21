@@ -4,6 +4,29 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "5.92",
+    "date": "2026-06-21",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Fixed riders showing no stats or abilities",
+          "body": "A batch of riders created on 18 June were left without their derived abilities and value because the calculation step never finished for them, so they showed up blank wherever stats are displayed. Their underlying ratings were always intact — only the derived layer was missing. We restored the missing data and added a safeguard: the game now verifies every rider has a full ability set, automatically re-derives any rider that slips through, and fails loudly if a batch is ever left incomplete, so this can't quietly happen again."
+        },
+        "da": {
+          "title": "Rettet ryttere der ikke viste stats eller evner",
+          "body": "En gruppe ryttere oprettet 18. juni stod uden deres afledte evner og værdi, fordi beregningstrinet aldrig blev færdigt for dem, så de fremstod blanke overalt hvor stats vises. Deres underliggende ratings var altid intakte — kun det afledte lag manglede. Vi har genskabt de manglende data og tilføjet en sikring: spillet verificerer nu at hver rytter har et fuldt evne-sæt, re-deriverer automatisk enhver rytter der falder igennem, og fejler højlydt hvis et batch nogensinde efterlades ufuldstændigt, så det ikke kan ske stille igen."
+        },
+        "refs": [
+          1673
+        ]
+      }
+    ]
+  },
+  {
     "version": "5.91",
     "date": "2026-06-21",
     "label": "Beta",

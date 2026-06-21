@@ -48,6 +48,7 @@ import { makeEnsureSeasonStandings } from "./lib/seasonStandingsBootstrap.js";
 import { updateStandings } from "./lib/economyEngine.js";
 import { runStarterSquadHealSweep } from "./lib/starterSquadHealSweep.js";
 import { runAcademyHealSweep } from "./lib/academyHealSweep.js";
+import { runRiderDeriveHealSweep } from "./lib/riderDeriveHealSweep.js";
 import { captureException as sentryCapture } from "./lib/sentry.js";
 const __envdir = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__envdir, "../.env"), quiet: true });
@@ -420,6 +421,19 @@ async function runAcademyHealSweepCron() {
   }
 }
 
+// ─── Rytter-derive heal: re-deriver "strandede" ryttere (#1673) ──────────────
+// RYTTER-data-gatet (ikke team-markør): finder aktive ryttere uden rider_derived_
+// abilities-række ELLER med base_value NULL og re-deriver dem. Fanger strandede
+// free agents OG ryttere på hold (hvor markør er sat) som starterSquad/academy-
+// heal-sweepene strukturelt ikke kan se. Idempotent + deterministisk, ingen flag.
+
+async function runRiderDeriveHealSweepCron() {
+  const result = await runRiderDeriveHealSweep({ supabase });
+  if (result.healed) {
+    console.log(`🩺 Rytter-derive heal-sweep: ${result.healed} strandede ryttere re-derived (${result.remaining ?? 0} tilbage)`);
+  }
+}
+
 // ─── Auto-prize: udbetal udestående præmier for completede løb (#WS1) ─────────
 // Gated bag runtime-flag auto_prize_enabled (fail-safe OFF) — er flaget ikke tændt,
 // returnerer sweep'en straks { skipped: "flag_off" } uden side-effekter.
@@ -564,6 +578,11 @@ export function startCron() {
   // Akademi-kuld heal: reparér nye hold hvis signup-akademi-seedingen fejlede (#1584).
   // Markør-gatet + alders-guard → idempotent, exploit-sikker, ingen flag nødvendig.
   setInterval(trackedTick("academy heal sweep", runAcademyHealSweepCron), 5 * 60 * 1000);
+
+  // Rytter-derive heal: re-deriver strandede ryttere uden derive-lag (#1673).
+  // RYTTER-data-gatet (ikke team-markør) → fanger free agents OG ryttere på hold.
+  // Idempotent + deterministisk, ingen flag. Cadence matcher de andre heal-sweeps.
+  setInterval(trackedTick("rider-derive heal sweep", runRiderDeriveHealSweepCron), 5 * 60 * 1000);
 
   // Auto-prize: udbetal udestående præmier for completede løb (#WS1).
   // trackedTick giver Sentry-capture + graceful-shutdown gratis. Idempotent via

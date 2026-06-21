@@ -184,6 +184,30 @@ export async function deriveForRiderIds(supabase, riderIds, {
   await upsertBatched(supabase, "rider_derived_abilities", abilities, "rider_id");
   const typedWritten = await updateRidersConcurrent(supabase, riderUpdates);
 
+  // ── Kilde-guard (#1673): verificér at ALLE input-id'er faktisk blev derived ──
+  // Rod-årsagen til #1673 var at denne sti kunne efterlade en delmængde af de
+  // inserterede ryttere "strandet" (ingen rider_derived_abilities-række + base_value
+  // NULL) UDEN at fejle — et partielt batch fuldførte tavst. Samme sti bruges af
+  // start-trup-allokeringen (insertDeriveAndReadPool → deriveForRiderIds) og akademi-
+  // intake, så en frisk relaunch kunne genskabe bugen. Vi kaster nu, hvis et input-id
+  // ikke fik en ability-række ELLER en base_value, så fejlen bliver synlig ved kilden
+  // (call-sites er ikke-fatale/idempotente nok til at retry/heal-sweep tager over).
+  //
+  // Bemærk: et input-id der IKKE findes i `riders` (slettet/ugyldigt) er IKKE en fejl
+  // her — vi verificerer kun de ryttere vi faktisk hentede. base_value må desuden
+  // legitimt være NULL hvis predictBaseValue ikke kunne værdisætte (model-fejl /
+  // ingen abilities); de fanges af "manglende ability-række"-tjekket alligevel, da
+  // ingen abilities → ingen base_value.
+  const derivedIds = new Set(abilities.map((a) => a.rider_id));
+  const missingAbilities = riders.filter((r) => !derivedIds.has(r.id)).map((r) => r.id);
+  const missingValue = riderUpdates.filter((u) => u.base_value == null).map((u) => u.id);
+  if (missingAbilities.length > 0 || missingValue.length > 0) {
+    const parts = [];
+    if (missingAbilities.length) parts.push(`${missingAbilities.length} uden ability-række (${missingAbilities.slice(0, 5).join(", ")}${missingAbilities.length > 5 ? ", …" : ""})`);
+    if (missingValue.length) parts.push(`${missingValue.length} uden base_value (${missingValue.slice(0, 5).join(", ")}${missingValue.length > 5 ? ", …" : ""})`);
+    throw new Error(`deriveForRiderIds: partielt derive — ${parts.join("; ")}. ${riders.length}/${ids.length} ryttere hentet.`);
+  }
+
   return {
     riders: riders.length,
     profiles: profiles.length,

@@ -96,9 +96,12 @@ async function main() {
 
   const fetch_ = (table, select, filters) => fetchAll(baseUrl, apiKey, table, select, filters);
 
-  const [teams, riders, activeAuctions, openListings, openSwaps, financeRows, notifRows, activeLoans] = await Promise.all([
+  const [teams, riders, activeRiders, derivedRows, activeAuctions, openListings, openSwaps, financeRows, notifRows, activeLoans] = await Promise.all([
     fetch_("teams", "id,division,is_ai,is_frozen,is_bank"),
     fetch_("riders", "id,team_id"),
+    // #1673: aktive (ikke-retired) ryttere + deres derive-laget, til invariant-check.
+    fetch_("riders", "id,base_value", { is_retired: "is.false" }),
+    fetch_("rider_derived_abilities", "rider_id"),
     fetch_("auctions", "id,rider_id,status", { status: "in.(active,extended)" }),
     fetch_("transfer_listings", "id,rider_id,status", { status: "eq.open" }),
     fetch_("swap_offers", "id,offered_rider_id,status", { status: "in.(pending,countered,awaiting_confirmation)" }),
@@ -171,6 +174,22 @@ async function main() {
     .filter(id => offeredSwapRiders.has(id))
     .map(riderId => ({ riderId }));
 
+  // Check 8 (#1673): Ingen aktiv (ikke-retired) rytter må mangle sit derive-lag.
+  // En strandet rytter har enten ingen rider_derived_abilities-række ELLER base_value
+  // IS NULL → serve-laget (api.js embed) returnerer null → blanke stats i UI. Rod-
+  // årsagen var en partiel derive-batch der fejlede tavst (se postmortem 2026-06-21).
+  // Bemærk: detaljer cap'es til de første 50 så --json ikke eksploderer ved et stort
+  // efterslæb; `count` rapporterer det fulde antal.
+  const derivedRiderIds = new Set(derivedRows.map(d => d.rider_id));
+  const strandedRiders = [];
+  for (const r of activeRiders) {
+    const missingDerived = !derivedRiderIds.has(r.id);
+    const missingValue = r.base_value == null;
+    if (missingDerived || missingValue) {
+      strandedRiders.push({ riderId: r.id, missingDerived, missingValue });
+    }
+  }
+
   const checks = {
     no_double_active_auctions: check(
       doubleAuctions.length === 0,
@@ -220,6 +239,13 @@ async function main() {
         ? `OK — ${activeAuctions.length} auktioner, ${openSwaps.length} åbne swap-tilbud`
         : `${doubleSwapMarket.length} rytter(e) er i både aktiv auktion og tilbudt i åbent swap-tilbud`,
       doubleSwapMarket
+    ),
+    riders_have_derived_abilities: check(
+      strandedRiders.length === 0,
+      strandedRiders.length === 0
+        ? `OK — ${activeRiders.length} aktive ryttere har derive + base_value`
+        : `${strandedRiders.length} aktiv(e) rytter(e) mangler derive (rider_derived_abilities-række eller base_value)`,
+      strandedRiders.slice(0, 50)
     ),
   };
 
