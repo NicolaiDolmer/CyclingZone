@@ -88,7 +88,24 @@ export function computeSponsorForSeason({
   team = {},
   lastSeasonStanding = null,
   divisionStandings = [],
+  activeContract = null,
 } = {}) {
+  // #1663: en aktiv kontrakt definerer den (låste) garanterede base. Den vinder over
+  // den gamle division-flade-base. Per-løbsdag betales separat (sponsorRaceDayIncome).
+  if (activeContract && Number.isFinite(Number(activeContract.guaranteed_base))) {
+    const base = Number(activeContract.guaranteed_base);
+    return {
+      mode: "contract",
+      season_number: seasonNumber,
+      base,
+      variable: 0,
+      gross_sponsor: base,
+      capped: false,
+      per_race_day_rate: Number(activeContract.per_race_day_rate) || 0,
+      explanation: `Kontrakt-garanteret base ${base}.`,
+    };
+  }
+
   const legacySponsor = team?.sponsor_income ?? SPONSOR_INCOME_BASE;
   // Division-skaleret base (E2 + #1439 + #1441 A6): sponsor skalerer med den division
   // holdet konkurrerer i (D1 600k / D2 400k / D3 340k) — IKKE en flad, auto-eskalerende
