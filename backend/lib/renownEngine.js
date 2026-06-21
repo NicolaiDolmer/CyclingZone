@@ -38,7 +38,7 @@ export function computeResultsScore({ lastSeasonStanding, divisionStandings = []
   return clamp(pointsFactor * rankFactor, 0, 1);
 }
 
-export function computeRenownMultiplier({ division, lastSeasonStanding, divisionStandings = [] }) {
+export function computeRenownMultiplier({ lastSeasonStanding, divisionStandings = [] }) {
   const resultsScore = computeResultsScore({ lastSeasonStanding, divisionStandings });
   return clamp(1 + W_RESULTS * resultsScore, 1.0, MAX_MULTIPLIER);
 }
