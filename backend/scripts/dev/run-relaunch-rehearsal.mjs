@@ -23,8 +23,9 @@ import { reactivateLegacyRiders, retireLegacyRiders } from "../../lib/legacyRide
 import { runFullBetaReset } from "../../lib/betaResetService.js";
 import { runAcademyIntake } from "../../lib/academyIntake.js";
 import { fetchAllRows } from "../../lib/supabasePagination.js";
+import { INITIAL_BALANCE } from "../../lib/economyConstants.js";
 
-const START_DATE = "2026-06-20";
+const START_DATE = "2026-06-22"; // ejer-besluttet 2026-06-22
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, "../../.env"), quiet: true });
 
@@ -149,14 +150,69 @@ async function main() {
   const allHave = [...eligible].every((u) => haveBadge.has(u)) && eligible.size > 0;
   add("Founder-badge tildelt alle beta-managers", allHave, `${haveBadge.size}/${eligible.size}`, "alle");
 
-  // Sæson 1 aktiv
-  const { data: seasons } = await supabase.from("seasons").select("number, status").order("number");
+  // Sæson 1 aktiv (id medtages: board-tjekket nedenfor filtrerer transfer_windows på season_id)
+  const { data: seasons } = await supabase.from("seasons").select("id, number, status").order("number");
   const s1 = (seasons || []).find((s) => s.number === 1);
   add("Sæson 1 aktiv", s1?.status === "active", `${s1?.number}/${s1?.status}`, "1/active");
 
   // Brugerkonti bevaret
   const { count: userCount } = await supabase.from("users").select("id", { count: "exact", head: true });
   add("Brugerkonti bevaret", userCount === 30, userCount, "30");
+
+  // ── FORM-FRYS-FEATURES (#1608/#1690 · #1678 · #1680) ────────────────────────
+  // 3 tjek tilføjet 2026-06-22: rehearsal-harnessen (18/6) testede ikke disse
+  // forever-relaunch-features endnu. Verificeret mod faktisk skema/kode:
+  // league_divisions (2026-06-21-league-divisions-pyramid.sql), teams.league_division_id
+  // + teams.division (=tier), economyConstants.INITIAL_BALANCE,
+  // transfer_windows.board_negotiation_state ('pending_5yr').
+
+  // (a) Pyramide-allokering (#1608/#1690): 15 puljer (tier 1/2/4/8) + ALLE ægte-
+  //     manager-hold i bunden (division/tier 4) med en tier-4-pulje-reference.
+  const { data: poolRows } = await supabase.from("league_divisions").select("id, tier");
+  const pools = poolRows || [];
+  const tier4PoolIds = new Set(pools.filter((p) => p.tier === 4).map((p) => p.id));
+  add("Pyramide: 15 league_divisions-puljer", pools.length === 15, pools.length, "15");
+
+  const { data: managerTeamRows } = await supabase.from("teams")
+    .select("league_division_id, division")
+    .eq("is_ai", false).eq("is_bank", false).eq("is_frozen", false).eq("is_test_account", false);
+  const mgrTeams = managerTeamRows || [];
+  const allBottomPlaced = mgrTeams.length > 0 && mgrTeams.every(
+    (t) => t.league_division_id !== null && t.division === 4
+  );
+  const placedInDiv4 = mgrTeams.filter((t) => t.league_division_id !== null && t.division === 4).length;
+  add("Pyramide: alle ægte-manager-hold i bunden (div 4 + pulje)", allBottomPlaced,
+    `${placedInDiv4}/${mgrTeams.length} i div4+pulje`, `${mgrTeams.length}/${mgrTeams.length}`);
+
+  const allPoolsTier4 = mgrTeams.length > 0 && mgrTeams.every((t) => tier4PoolIds.has(t.league_division_id));
+  const tier4Used = mgrTeams.filter((t) => tier4PoolIds.has(t.league_division_id)).length;
+  add("Pyramide: brugte puljer er tier-4-puljer", allPoolsTier4,
+    `${tier4Used}/${mgrTeams.length} i tier-4-pulje`, `${mgrTeams.length}/${mgrTeams.length}`);
+
+  // (b) Sæson-1-opstartsøkonomi (#1678): friske ægte-manager-hold beholder uberørt
+  //     startkapital — sæson-1-sponsor er IKKE lagt oveni (economyEngine springer
+  //     sponsor over når balance === INITIAL_BALANCE ved sæson 1). Balance-tjek er
+  //     robust mod skemaet: finance_transactions har ingen reason_code-kolonne
+  //     (FINANCE_REASON er metadata-only), så ledger-filtrering ville være skrøbelig.
+  const { data: balanceRows } = await supabase.from("teams").select("balance")
+    .eq("is_ai", false).eq("is_bank", false).eq("is_frozen", false).eq("is_test_account", false);
+  const balances = (balanceRows || []).map((t) => Number(t.balance));
+  const allInitialBalance = balances.length > 0 && balances.every((b) => b === INITIAL_BALANCE);
+  const atInitial = balances.filter((b) => b === INITIAL_BALANCE).length;
+  add("Opstart: ingen sæson-1-sponsor oveni startkapital (balance === INITIAL_BALANCE)",
+    allInitialBalance, `${atInitial}/${balances.length} == ${INITIAL_BALANCE}`, `alle == ${INITIAL_BALANCE}`);
+
+  // (c) Board låst OP (#1680): sæson-1-vinduet skal stå i 'pending_5yr' (ikke 'locked'),
+  //     så sæson-2-onboarding-flowet (5yr→3yr→1yr) er åbent fra dag 1.
+  const s1Season = (seasons || []).find((s) => s.number === 1);
+  const { data: s1WindowRows } = s1Season
+    ? await supabase.from("transfer_windows").select("board_negotiation_state").eq("season_id", s1Season.id)
+    : { data: [] };
+  const s1Windows = s1WindowRows || [];
+  const boardUnlocked = s1Windows.length > 0 && s1Windows.every((w) => w.board_negotiation_state === "pending_5yr");
+  add("Board låst OP i sæson 1 (window board_negotiation_state='pending_5yr')", boardUnlocked,
+    s1Windows.length === 0 ? "intet sæson-1-vindue" : s1Windows.map((w) => w.board_negotiation_state).join(","),
+    "pending_5yr");
 
   // Academy-kuld (#1308 ③ cohort-on-day-1): hvert menneske-hold skal have et kuld
   // på 3-5 offered-kandidater (academyGenerator INTAKE_MIN..MAX). teamIds er de
