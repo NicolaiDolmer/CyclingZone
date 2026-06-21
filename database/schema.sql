@@ -32,13 +32,30 @@ CREATE TABLE users (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- league_divisions = puljerne i 4-tier-pyramiden (#1608 forever-relaunch form-freeze).
+-- Én række = én pulje inden for en tier. 15 puljer: tier1×1, tier2×2, tier3×4, tier4×8.
+-- teams.division = TIER (1-4, økonomi); league_division_id = pulje (race/standings).
+-- Definér FØR teams (FK-reference). Kanonisk migration:
+-- database/2026-06-21-league-divisions-pyramid.sql.
+CREATE TABLE league_divisions (
+  id SERIAL PRIMARY KEY,
+  tier INTEGER NOT NULL CHECK (tier IN (1, 2, 3, 4)),
+  pool_index INTEGER NOT NULL,            -- 0-baseret indeks inden for tier
+  label TEXT NOT NULL,
+  UNIQUE (tier, pool_index)
+);
+
 CREATE TABLE teams (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID REFERENCES users(id) ON DELETE SET NULL,
   name TEXT NOT NULL,
   is_ai BOOLEAN DEFAULT FALSE,
   ai_source_id INTEGER, -- fkIDteam from PCM world db
-  division INTEGER DEFAULT 3 CHECK (division IN (1, 2, 3)),
+  -- division = TIER (1-4). Default 4 = bunden (nye spillere ind fra bunden, #1608
+  -- forever-relaunch form-freeze). Tier-keyet økonomi (*_BY_DIVISION[tier]).
+  division INTEGER DEFAULT 4 CHECK (division IN (1, 2, 3, 4)),
+  -- Pulje-reference (race/standings-gruppe, #1608). NULL = endnu ikke pulje-allokeret.
+  league_division_id INTEGER REFERENCES league_divisions(id),
   balance BIGINT DEFAULT 800000, -- in points/currency
   sponsor_income BIGINT DEFAULT 240000, -- per season
   is_frozen BOOLEAN DEFAULT FALSE,
@@ -473,7 +490,8 @@ CREATE TABLE season_standings (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   season_id UUID NOT NULL REFERENCES seasons(id) ON DELETE CASCADE,
   team_id UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
-  division INTEGER NOT NULL,
+  division INTEGER NOT NULL, -- TIER (1-4)
+  league_division_id INTEGER REFERENCES league_divisions(id), -- pulje (#1608); rank_in_division = rang INDEN FOR puljen
   rank_in_division INTEGER,
   total_points INTEGER DEFAULT 0,
   races_completed INTEGER DEFAULT 0,

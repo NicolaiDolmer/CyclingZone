@@ -587,7 +587,7 @@ function createStandingsSupabase({ teams, races, results }) {
       if (table === "teams") {
         return {
           select(columns) {
-            assert.equal(columns, "id, division");
+            assert.equal(columns, "id, division, league_division_id");
             return Promise.resolve({
               data: clone(state.teams),
               error: null,
@@ -1857,6 +1857,7 @@ test("updateStandings stores division ranks and keeps zero-point teams in the ca
       season_id: "season-1",
       team_id: "team-a",
       division: 1,
+      league_division_id: null,
       rank_in_division: 1,
       total_points: 50,
       stage_wins: 2,
@@ -1868,6 +1869,7 @@ test("updateStandings stores division ranks and keeps zero-point teams in the ca
       season_id: "season-1",
       team_id: "team-b",
       division: 1,
+      league_division_id: null,
       rank_in_division: 2,
       total_points: 40,
       stage_wins: 0,
@@ -1879,6 +1881,7 @@ test("updateStandings stores division ranks and keeps zero-point teams in the ca
       season_id: "season-1",
       team_id: "team-c",
       division: 2,
+      league_division_id: null,
       rank_in_division: 1,
       total_points: 0,
       stage_wins: 0,
@@ -1887,6 +1890,45 @@ test("updateStandings stores division ranks and keeps zero-point teams in the ca
       updated_at: supabase.state.upserts[0].rows[2].updated_at,
     },
   ]);
+});
+
+test("updateStandings ranger inden for puljen (league_division_id), ikke på tværs af tier'en", async () => {
+  // To puljer i SAMME tier (division 4): pulje 11 og pulje 12.
+  // Hold i hver pulje har samme point → begge pulje-vindere skal få rank_in_division=1.
+  // Hvis rangen fejlagtigt beregnes på tier-niveau (division), ville kun ét hold få rank 1.
+  const supabase = createStandingsSupabase({
+    teams: [
+      { id: "pool-a-leader", division: 4, league_division_id: 11 },
+      { id: "pool-a-runner", division: 4, league_division_id: 11 },
+      { id: "pool-b-leader", division: 4, league_division_id: 12 },
+      { id: "pool-b-runner", division: 4, league_division_id: 12 },
+    ],
+    races: [{ id: "race-1" }],
+    results: [
+      { race_id: "race-1", team_id: "pool-a-leader", result_type: "gc", rank: 1, points_earned: 100, rider: null },
+      { race_id: "race-1", team_id: "pool-a-runner", result_type: "gc", rank: 2, points_earned: 50, rider: null },
+      { race_id: "race-1", team_id: "pool-b-leader", result_type: "gc", rank: 1, points_earned: 80, rider: null },
+      { race_id: "race-1", team_id: "pool-b-runner", result_type: "gc", rank: 2, points_earned: 40, rider: null },
+    ],
+  });
+
+  await updateStandings("season-1", "race-1", { supabase });
+
+  const rows = supabase.state.upserts[0].rows;
+  const byTeam = Object.fromEntries(rows.map(row => [row.team_id, row]));
+
+  // Begge pulje-ledere er nr. 1 i deres egen pulje.
+  assert.equal(byTeam["pool-a-leader"].rank_in_division, 1, "pulje-A-leder = rang 1 i puljen");
+  assert.equal(byTeam["pool-b-leader"].rank_in_division, 1, "pulje-B-leder = rang 1 i puljen (ikke tier-bred)");
+  assert.equal(byTeam["pool-a-runner"].rank_in_division, 2);
+  assert.equal(byTeam["pool-b-runner"].rank_in_division, 2);
+
+  // division (tier) bevares til økonomi/visning; league_division_id sættes på hver række.
+  for (const row of rows) {
+    assert.equal(row.division, 4, "tier bevares = 4");
+  }
+  assert.equal(byTeam["pool-a-leader"].league_division_id, 11);
+  assert.equal(byTeam["pool-b-leader"].league_division_id, 12);
 });
 
 test("updateStandings paginerer race_results forbi 1000-row-loftet", async () => {

@@ -1679,7 +1679,7 @@ export async function rebalanceDivisions(seasonNumber, standings, deps = {}) {
 export async function updateStandings(seasonId, raceId = null, deps = {}) {
   const supabaseClient = deps.supabase ?? await getDefaultSupabaseClient();
   const [{ data: teams, error: teamsError }, { data: races, error: racesError }] = await Promise.all([
-    supabaseClient.from("teams").select("id, division"),
+    supabaseClient.from("teams").select("id, division, league_division_id"),
     supabaseClient.from("races").select("id").eq("season_id", seasonId),
   ]);
 
@@ -1690,6 +1690,9 @@ export async function updateStandings(seasonId, raceId = null, deps = {}) {
   for (const team of teams || []) {
     teamStats[team.id] = {
       division: team.division || 3,
+      // Pulje-reference (race/standings-gruppe, #1608). NULL = endnu ikke pulje-
+      // allokeret → rang falder tilbage til tier (division), så pre-pulje-DB'er virker.
+      league_division_id: team.league_division_id ?? null,
       points: 0,
       stage_wins: 0,
       gc_wins: 0,
@@ -1718,6 +1721,7 @@ export async function updateStandings(seasonId, raceId = null, deps = {}) {
       if (!teamStats[teamId]) {
         teamStats[teamId] = {
           division: 3,
+          league_division_id: null,
           points: 0,
           stage_wins: 0,
           gc_wins: 0,
@@ -1748,11 +1752,20 @@ export async function updateStandings(seasonId, raceId = null, deps = {}) {
     }
   }
 
+  // #1608: rang beregnes INDEN FOR puljen (league_division_id), ikke på tværs af
+  // hele tier'en. Pulje er den frosne race/standings-gruppe; to puljer i samme tier
+  // har hver deres rang-1. Pre-pulje-hold (league_division_id = NULL) falder tilbage
+  // til tier-bred rang (gruppér på "tier:<division>"), så gamle DB'er bevarer adfærd.
+  const poolKeyOf = (stats) =>
+    stats.league_division_id != null
+      ? `pool:${stats.league_division_id}`
+      : `tier:${stats.division || 3}`;
+
   const rankByTeamId = new Map();
-  const divisions = [...new Set(Object.values(teamStats).map(stats => stats.division || 3))];
-  for (const division of divisions) {
+  const poolKeys = [...new Set(Object.values(teamStats).map(poolKeyOf))];
+  for (const poolKey of poolKeys) {
     const rankedTeams = Object.entries(teamStats)
-      .filter(([, stats]) => (stats.division || 3) === division)
+      .filter(([, stats]) => poolKeyOf(stats) === poolKey)
       .sort(([leftId, left], [rightId, right]) => {
         const leftEffective = (left.points || 0) - (penaltyByTeamId.get(leftId) || 0);
         const rightEffective = (right.points || 0) - (penaltyByTeamId.get(rightId) || 0);
@@ -1772,6 +1785,7 @@ export async function updateStandings(seasonId, raceId = null, deps = {}) {
     season_id: seasonId,
     team_id: teamId,
     division: stats.division,
+    league_division_id: stats.league_division_id,
     rank_in_division: rankByTeamId.get(teamId) || null,
     total_points: stats.points,
     stage_wins: stats.stage_wins,
