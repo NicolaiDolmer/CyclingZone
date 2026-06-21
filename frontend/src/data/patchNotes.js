@@ -4,6 +4,45 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "5.89",
+    "date": "2026-06-21",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Achievements",
+        "en": {
+          "title": "See your progress toward the next achievement",
+          "body": "Locked achievements now show how close you are to unlocking them (for example \"40/50 auctions won\"), so you can see what you're working toward instead of a blank locked badge."
+        },
+        "da": {
+          "title": "Se din fremgang mod næste achievement",
+          "body": "Låste achievements viser nu hvor tæt du er på at låse dem op (fx \"40/50 auktioner vundet\"), så du kan se hvad du arbejder hen imod i stedet for et tomt låst mærke."
+        },
+        "refs": [
+          1008
+        ]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Races are labelled by season, not a stand-in year",
+          "body": "Races are now identified by their season across the game (for example \"Season 3\") instead of a placeholder calendar year. Each race still keeps a real year behind the scenes for record-keeping."
+        },
+        "da": {
+          "title": "Løb mærkes efter sæson, ikke et stand-in-årstal",
+          "body": "Løb identificeres nu efter deres sæson i hele spillet (fx \"Sæson 3\") i stedet for et stand-in-kalenderår. Hvert løb beholder stadig et rigtigt årstal bag kulisserne til historik."
+        },
+        "refs": [
+          1126
+        ]
+      }
+    ]
+  },
+  {
     "version": "5.88",
     "date": "2026-06-21",
     "label": "Beta",
