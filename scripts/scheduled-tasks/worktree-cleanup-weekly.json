@@ -1,0 +1,6 @@
+{
+  "taskId": "worktree-cleanup-weekly",
+  "description": "Ugentlig auto-prune af merged worktrees + branches (#1271) — søndag 20:00",
+  "cronExpression": "0 20 * * 0",
+  "promptFile": "scripts/scheduled-tasks/worktree-cleanup-weekly-prompt.md"
+}
