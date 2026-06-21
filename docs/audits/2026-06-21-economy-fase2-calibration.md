@@ -1,18 +1,23 @@
 # Økonomi Fase 2 — kalibrerings-rapport (2026-06-21)
 
 > Refs #1441 (epic), #1607 (præmie). Ejer-godkendt design: `docs/superpowers/specs/2026-06-21-economy-coherence-design.md` + `2026-06-17-okonomi-redesign-1441-design.md`.
-> **Status: ANBEFALING — ingen prod-konstant ændret.** Harness + sweep + denne rapport er backend-only. Prod-ændring sker i en separat, ejer-godkendt PR.
+> **Status: SHIPPED — flatten 0.5 bagt ind i prod-defaulten** (`backend/lib/uciRacePointDefaults.js` via `backend/lib/racePointFlatten.js`, ejer-godkendt). Sponsor + `PRIZE_PER_POINT` står UÆNDREDE per konklusionen nedenfor. Harnessen genbruger samme transform, så scorecardet ved PROD (override flatten 0) matcher den shippede kurve bit-for-bit.
 > Mål (ejer-låst 2026-06-21): et KOMPETENT hold ~break-even, MÅLT af den ægte syntetiske scorecard — ikke gættet. Net-mål D1≈0 (|median|≤30k) · D2 +0–20k · D3 +0–30k (progressiv, anti-snowball). 5-sæsons saldo i 0,8×–1,3× start. Fladere præmie-fordeling for at skære divergens.
 
-## TL;DR — anbefaling
+## TL;DR — hvad der blev shippet, og hvad beviset er
 
-| Knap | Prod i dag | **Anbefalet** | Begrundelse |
+**Drifts-lags-break-even ER bevist — af fresh-population-gaten, ikke af det modne felt.**
+`moneySupplyScorecard --synthetic-only` (det friske 8-rytters relaunch-hold, ~316k løn) lander på **D1 +3,6k · D2 +13,6k · D3 +8,6k pr. sæson, alle ✅** ved prod-sponsor/upkeep, og flatten rører den IKKE (fresh-præmien er et fast estimat). Det er drifts-lags-sandheden: et frisk kompetent hold går i nul-til-let-positiv. Saldo 1,02–1,07× start over 5 sæsoner. **Det er den linse der skal forblive grøn — og den gør det.**
+
+**`prizeDistributionScorecard`-net-tabellerne er IKKE en break-even-måling — de er divergens-diagnostik for ambitions-laget.** Det script drafter de stærkeste ikke-superstjerne-rosters (D1 ~51M roster / 3,4M løn) — et fuldt udbygget ambitions-lags-hold hvis præmie PER DESIGN overstiger break-even og finansierer gold-sinks. Dets "deficit/overskud" pr. seed er managed (absorberet af 800k-start + geninvestering), ikke en drifts-fejl. Brug det til at læse **divergensen** (hvor langt fra hinanden stærke og svage hold ender), ikke til at læse break-even.
+
+| Knap | Prod | **Beslutning** | Begrundelse |
 |---|---|---|---|
-| `SPONSOR_INCOME_BY_DIVISION` | 600k / 400k / 340k | **UÆNDRET** | Fresh-population-gaten pinner sponsor på prod-niveau (se §3). Enhver hævelse over-fodrer friske hold (D2 → 2,57× start ved sponsor 700k). |
-| `PRIZE_PER_POINT` | 1500 | **UÆNDRET** | Hævelse multiplicerer hele præmie-spredningen → ØGER divergens og overshooter break-even på de stærke hold. Den målte præmie er allerede stor. |
-| Præmie-fordeling (`uciRacePointDefaults`) | GC-top-tung | **flatten 0.5 (ren GC-kompression, breadthBoost=0)** | Den ENESTE knap der skærer divergens uden at bryde fresh-gaten. Komprimerer Klassement/Klassiker-kurven 50% mod dens middel (sum bevaret); etape/hold-point urørt → relativ vægt skifter mod etapesejre + holdklassement (ejer-direktiv C). |
+| `SPONSOR_INCOME_BY_DIVISION` | 600k / 400k / 340k | **UÆNDRET** | Fresh-gaten pinner sponsor på prod-niveau (§3). Enhver hævelse over-fodrer friske hold (D2 → 2,57× start ved sponsor 700k). Et fladt sponsor-add kan ikke være niveau-knap for både et 316k- og et 3,4M-løns-hold. |
+| `PRIZE_PER_POINT` | 1500 | **UÆNDRET** | Hævelse multiplicerer hele præmie-spredningen → ØGER divergens og overshooter break-even på de stærke hold. |
+| Præmie-fordeling (`uciRacePointDefaults`) | ~~GC-top-tung~~ → **flatten 0.5 SHIPPED** | ✅ | Den ENESTE knap der skærer divergens uden at bryde fresh-gaten. Komprimerer Klassement/Klassiker-kurven 50% mod sin egen middel pr. race-class (**sum bevaret → niveau uændret, kun formen flader**); etape/troje/hold-point urørt (breadthBoost=0). |
 
-**Kerneresultat:** den eneste robuste, design-kohærente ændring er **fladere præmie-fordeling**. Sponsor og prize-per-point er låst fra hver sin side (fresh-gate ovenfra på sponsor; divergens nedefra på ppp). Flatten skærer divergensen ~22–26% (p10–p90 spread) og trækker 5-sæsons-trajektorierne ind mod 0,8–1,3×-båndet — uden at røre én eneste prod-konstant nu.
+**Kerneresultat:** den shippede ændring er **fladere præmie-fordeling**. Den skærer p10–p90 net-divergensen **−26% (D1) / −21% (D2) / −11% (D3)** og trækker 5-sæsons-trajektorierne ind mod 0,8–1,3×-båndet — uden at flytte fresh-gate-break-even og uden at fjerne vinder-incitamentet (rank 1 ≫ rank 20 i den serverede kurve). **Store klubbers bæredygtighed løses IKKE her** — den hører til Fase 2's omdømme-skalerede sponsor (en sponsor der vokser med roster-styrke/renown), ikke en flad konstant. Flatten er anti-divergens; renown-motoren er niveau-knappen for det modne lag.
 
 ## 1. Den empiriske kerne-spænding (kør scorecardsne — stol ikke på en mental model)
 
@@ -100,12 +105,17 @@ Gini bevæger sig samme retning for D1/D2 (D1 0,36→0,36, D2 0,47→0,43 i gns.
 5. **Statisk trajektorie.** 5-sæsons-modellen antager samme roster/præmie hver sæson (ingen vækst, ingen transfers, ingen gold-sink-reinvestering). Ambitions-lags-geninvestering (faciliteter) er IKKE modelleret → det modne deficit er overvurderet i absolut forstand.
 6. **upkeep urørt.** Fase 1-shipped upkeep (440k/140k/40k) blev IKKE re-tunet — målene var nåelige (på divergens-aksen) uden. Hvis ejeren senere vil sænke det modne deficit uden at røre fresh-gaten, er upkeep-sænkning på D1 den næste kandidat (den rammer modne og friske hold ens, så det skal gen-tjekkes mod fresh-gaten).
 
-## 8. Harness-artefakter (denne PR — backend-only, prod uændret)
+## 8. Artefakter (denne PR — prod-flatten + harness)
 
-- `backend/scripts/lib/economyCalibrationOverrides.js` — override-mekanisme (sponsor/upkeep/prizePerPoint/flatten/breadthBoost) via env / `--config=fil.json`. Prod-konstanter uændrede; overrides default'er TIL prod-værdierne.
-- `backend/scripts/prizeDistributionScorecard.js` — refaktoreret til `runScorecard(opts)` (genbrugbar, silent-capable, returnerer struktureret net/divergens) + præmie genberegnes fra `points_earned × override.prizePerPoint` + flatten reshaper point-rows in-memory. CLI uændret i adfærd ved baseline.
+**Prod-ændring (serveret kurve):**
+- `backend/lib/racePointFlatten.js` — **NY.** Delt, sum-bevarende flatten-transform-kerne (`applyFlattenToPointRows` + `compressTowardMean`) + de shippede konstanter `PROD_FLATTEN=0.5`, `PROD_BREADTH_BOOST=0`. Bruges af BÅDE prod-defaulten og harnessen → bit-identitet.
+- `backend/lib/uciRacePointDefaults.js` — `buildUciMenRacePointRows()` bager nu flatten 0.5 ind i den serverede kurve (rå baseline eksponeret som `buildRawUciMenRacePointRows()` til tests). Klassement/Klassiker-toppen komprimeret, sum bevaret, etape/troje/hold urørt.
+
+**Harness (prod uændret af disse):**
+- `backend/scripts/lib/economyCalibrationOverrides.js` — override-mekanisme (sponsor/upkeep/prizePerPoint/flatten/breadthBoost) via env / `--config=fil.json`; re-eksporterer nu flatten-transformen fra `racePointFlatten.js` (ingen duplikeret matematik). **NB:** prod-kurven ER allerede flad → kør scorecards med override flatten=0 (prod-mode) for at undgå dobbelt-fladning.
+- `backend/scripts/prizeDistributionScorecard.js` — `runScorecard(opts)` (genbrugbar, silent-capable, struktureret net/divergens) + præmie fra `points_earned × override.prizePerPoint` + flatten reshaper point-rows in-memory.
 - `backend/scripts/economyCalibrationSweep.js` — grid-sweep × seeds, mål-afstand + divergens-rangering, markdown-output.
-- `backend/scripts/moneySupplyScorecard.js` — læser nu sponsor/upkeep-override (fresh-gate gen-tjek ved kandidat-params); baseline-adfærd uændret.
-- `backend/scripts/.cal-recommended.json` — den anbefalede param-fil.
+- `backend/scripts/moneySupplyScorecard.js` — læser sponsor/upkeep-override; fresh-gate gen-tjek.
+- `backend/scripts/.cal-recommended.json` — nu PROD-MODE (flatten 0, fordi prod-defaulten allerede er flad).
 
-Reproducér: `node scripts/economyCalibrationSweep.js --markdown` · `node scripts/prizeDistributionScorecard.js --config=scripts/.cal-recommended.json --seed=2026|2027|2028` · `node scripts/moneySupplyScorecard.js --synthetic-only --config=scripts/.cal-recommended.json`.
+Reproducér prod-kurven: `node scripts/prizeDistributionScorecard.js --seed=2026|2027|2028` (uden flag = prod-default-kurven; matcher §4-tallene). Fresh-gate: `node scripts/moneySupplyScorecard.js --synthetic-only`. Sweep: `node scripts/economyCalibrationSweep.js --markdown`.

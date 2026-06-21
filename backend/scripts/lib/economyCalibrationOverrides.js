@@ -22,15 +22,17 @@ import {
   UPKEEP_BY_DIVISION,
   PRIZE_PER_POINT,
 } from "../../lib/economyConstants.js";
+// Flatten-transformen deles nu med prod-defaulten (racePointFlatten.js) → harness-resultat
+// og prod-kurve er bit-identiske. NB: prod-defaulten BAGER allerede flatten 0.5 ind, så
+// scorecardet skal køre med override flatten=0 (prod-mode) for at undgå dobbelt-fladning.
+import { applyFlattenToPointRows } from "../../lib/racePointFlatten.js";
 
-// Result-typer der er "top-tunge" klassementer → komprimeres af flatten.
-const TOP_HEAVY_RESULT_TYPES = new Set(["Klassement", "Klassiker"]);
-// Result-typer der belønner bredde (etapesejre + holdklassement) → boostes af flatten.
-const BREADTH_RESULT_TYPES = new Set(["Etapeplacering", "EtapelobHold", "KlassikerHold"]);
+export { applyFlattenToPointRows };
+
 // Hvor meget breadth-typerne maksimalt boostes ved flatten=1 (×(1+BOOST)).
 // Override-bar via CZ_CAL_BREADTH_BOOST / cfg.breadthBoost: empirisk viste det sig at
 // breadth-boost ØGER divergens i den rige-roster-model (stærke hold vinder også etaper),
-// så ren GC-kompression (boost=0) kan være at foretrække — sweep'en kan teste begge.
+// så ren GC-kompression (boost=0) er at foretrække — sweep'en kan teste begge.
 const DEFAULT_BREADTH_BOOST_AT_FULL = 0.6;
 
 function num(v, def) {
@@ -87,55 +89,6 @@ export function resolveOverrides(explicit = {}, argv = process.argv, env = proce
   );
 
   return { sponsorBase, upkeep, prizePerPoint, flatten, breadthBoost };
-}
-
-// Komprimér én skala (array af point pr. rank, desc) mod dens gennemsnit med faktor f.
-// f=0 → uændret; f=1 → alle ranks = gennemsnit (helt flad). Bevarer total-summen
-// (ren omfordeling inden for skalaen) så niveau-knappen (prizePerPoint) forbliver
-// den eneste der ændrer NIVEAUET; flatten ændrer kun FORMEN.
-function compressTowardMean(points, f) {
-  if (!points.length || f <= 0) return points;
-  const mean = points.reduce((a, b) => a + b, 0) / points.length;
-  return points.map((p) => p + (mean - p) * f);
-}
-
-// Reshape de rå UCI-point-rows efter flatten-faktoren:
-//   • top-tunge klassementer (Klassement/Klassiker) komprimeres mod deres egen middel
-//     (summen bevaret) → mindre forskel mellem stærke og svage hold (lavere divergens)
-//   • breadth-typer (etapeplacering + holdklassement) skaleres ×(1+f·BOOST) → vægt
-//     flyttes mod etapesejre + holdklassement (ejer-direktiv C)
-// Prod-rows leveres af buildUciMenRacePointRows() og er UÆNDREDE på disk; vi
-// transformerer KUN den in-memory kopi som scorecardet bruger.
-export function applyFlattenToPointRows(rows, flatten, breadthBoost = DEFAULT_BREADTH_BOOST_AT_FULL) {
-  if (!flatten || flatten <= 0) return rows.map((r) => ({ ...r }));
-
-  // Grupper top-tunge skalaer pr. (race_class, result_type) for sum-bevarende kompression.
-  const groups = new Map();
-  for (const r of rows) {
-    if (!TOP_HEAVY_RESULT_TYPES.has(r.result_type)) continue;
-    const key = `${r.race_class}__${r.result_type}`;
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(r);
-  }
-  const compressed = new Map(); // key → Map(rank → newPoints)
-  for (const [key, grp] of groups) {
-    const sorted = [...grp].sort((a, b) => a.rank - b.rank);
-    const newPts = compressTowardMean(sorted.map((r) => r.points), flatten);
-    const rankMap = new Map();
-    sorted.forEach((r, i) => rankMap.set(r.rank, newPts[i]));
-    compressed.set(key, rankMap);
-  }
-
-  return rows.map((r) => {
-    const out = { ...r };
-    const key = `${r.race_class}__${r.result_type}`;
-    if (compressed.has(key)) {
-      out.points = Math.round(compressed.get(key).get(r.rank));
-    } else if (breadthBoost > 0 && BREADTH_RESULT_TYPES.has(r.result_type)) {
-      out.points = Math.round(r.points * (1 + flatten * breadthBoost));
-    }
-    return out;
-  });
 }
 
 export function describeOverrides(ov) {
