@@ -1,0 +1,7 @@
+{
+  "_note": "PROD-MODE config (#1441/#1607, 2026-06-21). Den ejer-godkendte flatten 0.5 (ren GC-kompression, breadthBoost 0) er nu BAGT IND i prod-defaulten (uciRacePointDefaults.js via racePointFlatten.js). Derfor er flatten=0 her: prod-kurven ER allerede flad, og en override >0 ville DOBBELT-flade. Sponsor/ppp UÆNDREDE (fresh-gaten pinner sponsor; ppp-hævelse oppuster divergens). Kør: node scripts/prizeDistributionScorecard.js --config=scripts/.cal-recommended.json (= prod-kurven) eller helt uden flag (samme resultat).",
+  "sponsorBase": { "1": 600000, "2": 400000, "3": 340000 },
+  "prizePerPoint": 1500,
+  "flatten": 0,
+  "breadthBoost": 0
+}

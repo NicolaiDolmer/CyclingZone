@@ -4,6 +4,29 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "5.90",
+    "date": "2026-06-21",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Flatter prize payouts — a tighter field, winning still pays",
+          "body": "Race prize money is spread more evenly across the standings, so a strong rider further down still earns a meaningful payout instead of nearly everything going to the overall winner. The total prize pool per race is unchanged — only its shape is flatter. Winning still pays clearly more than placing, so there's every reason to race for the win."
+        },
+        "da": {
+          "title": "Fladere præmieudbetaling — tættere felt, sejr betaler sig stadig",
+          "body": "Præmiepengene i løb fordeles mere jævnt over klassementet, så en stærk rytter længere nede stadig får en mærkbar udbetaling i stedet for at næsten alt går til den samlede vinder. Den samlede præmiepulje pr. løb er uændret — kun formen er fladere. At vinde betaler sig stadig klart mere end at blive placeret, så der er al mulig grund til at køre efter sejren."
+        },
+        "refs": [
+          1607
+        ]
+      }
+    ]
+  },
+  {
     "version": "5.89",
     "date": "2026-06-21",
     "label": "Beta",

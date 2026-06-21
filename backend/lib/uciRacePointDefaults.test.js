@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildUciMenRacePointRows } from "./uciRacePointDefaults.js";
+import {
+  buildUciMenRacePointRows,
+  buildRawUciMenRacePointRows,
+} from "./uciRacePointDefaults.js";
 
 function pointFor(rows, raceClass, resultType, rank) {
   return rows.find(row =>
@@ -11,8 +14,15 @@ function pointFor(rows, raceClass, resultType, rank) {
   )?.points;
 }
 
-test("UCI men race point defaults match core 2025 ranking scales", () => {
-  const rows = buildUciMenRacePointRows();
+function sumFor(rows, raceClass, resultType) {
+  return rows
+    .filter(row => row.race_class === raceClass && row.result_type === resultType)
+    .reduce((s, row) => s + row.points, 0);
+}
+
+// Den RÅ (uflade) UCI-baseline — Klassement/Klassiker matcher de officielle 2025-skalaer.
+test("raw UCI men race point defaults match core 2025 ranking scales (pre-flatten)", () => {
+  const rows = buildRawUciMenRacePointRows();
 
   assert.equal(pointFor(rows, "TourFrance", "Klassement", 1), 1300);
   assert.equal(pointFor(rows, "GiroVuelta", "Klassement", 1), 1100);
@@ -23,11 +33,44 @@ test("UCI men race point defaults match core 2025 ranking scales", () => {
   assert.equal(pointFor(rows, "ProSeries", "Klassement", 1), 200);
   assert.equal(pointFor(rows, "Class1", "Klassiker", 1), 125);
   assert.equal(pointFor(rows, "Class2", "Klassement", 1), 40);
+});
+
+// Etape/troje-point er flatten-INVARIANTE (breadthBoost=0) → identiske i den serverede kurve.
+test("UCI men race point defaults keep stage/jersey scales (flatten-invariant)", () => {
+  const rows = buildUciMenRacePointRows();
 
   assert.equal(pointFor(rows, "TourFrance", "Etapeplacering", 1), 210);
   assert.equal(pointFor(rows, "GiroVuelta", "Bjergtroje", 3), 95);
   assert.equal(pointFor(rows, "OtherWorldTourC", "Forertroje", 1), 6);
   assert.equal(pointFor(rows, "Class2", "Etapeplacering", 3), 1);
+});
+
+// Den SERVEREDE kurve har flatten 0.5 bagt ind (#1607): Klassement/Klassiker-toppen er
+// komprimeret mod sin egen middel, MEN summen pr. (race_class, result_type) er bevaret
+// (op til ±~25 heltals-afrundings-drift) → præmie-NIVEAUET er uændret, kun formen flader.
+test("served curve bakes in flatten 0.5 — top compressed, sum preserved per scale", () => {
+  const raw = buildRawUciMenRacePointRows();
+  const served = buildUciMenRacePointRows();
+
+  // Toppen er fladere (rank 1 < rå rank 1) men stadig klart over rank 20.
+  const tfRaw1 = pointFor(raw, "TourFrance", "Klassement", 1);
+  const tfServed1 = pointFor(served, "TourFrance", "Klassement", 1);
+  assert.ok(tfServed1 < tfRaw1, "rank 1 skal komprimeres nedad");
+  const tfServed20 = pointFor(served, "TourFrance", "Klassement", 20);
+  assert.ok(tfServed1 > tfServed20, "det skal stadig klart betale sig at vinde (rank1 > rank20)");
+
+  // Sum bevaret pr. top-tung skala (niveau uændret), tolerance for heltals-afrunding.
+  for (const [rc, rt] of [
+    ["TourFrance", "Klassement"],
+    ["GiroVuelta", "Klassement"],
+    ["Monuments", "Klassiker"],
+    ["OtherWorldTourA", "Klassement"],
+    ["ProSeries", "Klassiker"],
+    ["Class2", "Klassement"],
+  ]) {
+    const drift = Math.abs(sumFor(served, rc, rt) - sumFor(raw, rc, rt));
+    assert.ok(drift <= 30, `${rc}/${rt} sum-drift ${drift} skal være ≤30 (afrunding)`);
+  }
 });
 
 test("Bjerg + Point final classifications cover all stage-race classes", () => {

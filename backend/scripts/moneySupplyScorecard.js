@@ -17,12 +17,16 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { createClient } from "@supabase/supabase-js";
 import {
-  SPONSOR_INCOME_BY_DIVISION,
-  UPKEEP_BY_DIVISION,
   SALARY_RATE,
   PRIZE_PER_POINT,
   INITIAL_BALANCE,
 } from "../lib/economyConstants.js";
+// Kalibrerings-override (sponsor + upkeep): default = prod-konstanterne, så denne gate
+// stadig gælder prod ved baseline. Sat via env/--config → re-tjek fresh-population ved
+// de sweep-anbefalede sponsor-tal UDEN at røre prod (task 4: fresh må ikke regressere).
+// NB: ppp/flatten påvirker IKKE denne linse — præmien her er et fast estimat (det BLØDESTE
+// input), ikke den målte kurve; det er prizeDistributionScorecard der måler præmie-niveau.
+import { resolveOverrides } from "./lib/economyCalibrationOverrides.js";
 import { generateLaunchPopulation } from "../lib/fictionalLaunchPopulation.js";
 import { deriveAbilities, VISIBLE_ABILITIES } from "../lib/abilityDerivation.js";
 import { computeRiderTypes } from "../lib/riderTypes.js";
@@ -116,8 +120,17 @@ function computeFreshSalaryBurden() {
   };
 }
 
-function printSyntheticSection(fresh) {
+function printSyntheticSection(fresh, overrides) {
+  const SPONSOR_INCOME_BY_DIVISION = overrides.sponsorBase;
+  const UPKEEP_BY_DIVISION = overrides.upkeep;
+  const usingOverride =
+    SPONSOR_INCOME_BY_DIVISION[1] !== 600000 || SPONSOR_INCOME_BY_DIVISION[2] !== 400000 ||
+    SPONSOR_INCOME_BY_DIVISION[3] !== 340000 || UPKEEP_BY_DIVISION[1] !== 440000;
+
   console.log("=== #1441 money-supply-scorecard — (A) SYNTETISK fresh-population (PRIMÆR gate) ===\n");
+  if (usingOverride) {
+    console.log(`OVERRIDE AKTIV (kalibrering): sponsor D1=${SPONSOR_INCOME_BY_DIVISION[1]}/D2=${SPONSOR_INCOME_BY_DIVISION[2]}/D3=${SPONSOR_INCOME_BY_DIVISION[3]} · upkeep D1=${UPKEEP_BY_DIVISION[1]}/D2=${UPKEEP_BY_DIVISION[2]}/D3=${UPKEEP_BY_DIVISION[3]} (prod uændret)\n`);
+  }
 
   console.log("Antagelser (eksplicitte — ejer sanity-tjekker):");
   console.log(`  • Roster-størrelse        : ${fresh.squadSize} ryttere/hold (starterSquadAllocator.SQUAD_SIZE)`);
@@ -275,8 +288,9 @@ async function printLiveSection() {
 async function main() {
   const syntheticOnly = process.argv.includes("--synthetic-only");
 
+  const overrides = resolveOverrides();
   const fresh = computeFreshSalaryBurden();
-  const syntheticResult = printSyntheticSection(fresh);
+  const syntheticResult = printSyntheticSection(fresh, overrides);
 
   if (!syntheticOnly) {
     await printLiveSection();

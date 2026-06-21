@@ -1,3 +1,5 @@
+import { applyFlattenToPointRows, PROD_FLATTEN, PROD_BREADTH_BOOST } from "./racePointFlatten.js";
+
 export const UCI_MEN_RACE_CLASSES = [
   { key: "TourFrance", label: "Tour de France", type: "Grand Tour", uciCode: "2.UWT" },
   { key: "GiroVuelta", label: "Giro, Vuelta", type: "Grand Tour", uciCode: "2.UWT" },
@@ -190,7 +192,9 @@ function rowsForScale(raceClass, resultType, points) {
   }));
 }
 
-export function buildUciMenRacePointRows() {
+// Rå (top-tunge) UCI-kurve FØR flatten. Bevaret separat så testene kan asserte den
+// uflade form og harnessen kan reshape præcis denne baseline.
+function buildRawUciMenRacePointRows() {
   const rows = [];
 
   for (const [raceClass, points] of Object.entries(finalWorldTour)) {
@@ -260,3 +264,17 @@ export function buildUciMenRacePointRows() {
 
   return rows;
 }
+
+// Den SERVEREDE prod-kurve = rå UCI-kurve med den ejer-godkendte flatten (#1607) bagt ind:
+// Klassement/Klassiker-kurverne komprimeres 50% mod deres egen middel pr. race-class
+// (sum-bevaret → præmie-niveauet uændret, kun formen flader), mens etape/troje/hold-point
+// er urørte (breadthBoost=0). Empirisk: skærer p10–p90 net-divergens ~11–26% pr. division
+// uden at bryde fresh-population-gaten — se docs/audits/2026-06-21-economy-fase2-calibration.md.
+// Kalibrerings-harnessen genbruger SAMME transform (racePointFlatten.js) så scorecardet ved
+// PROD (override flatten 0) matcher den shippede kurve bit-for-bit.
+export function buildUciMenRacePointRows() {
+  return applyFlattenToPointRows(buildRawUciMenRacePointRows(), PROD_FLATTEN, PROD_BREADTH_BOOST);
+}
+
+// Eksponér den uflade baseline til tests/diagnostik (ikke prod-serveret).
+export { buildRawUciMenRacePointRows };
