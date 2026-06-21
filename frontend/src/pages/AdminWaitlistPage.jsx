@@ -248,7 +248,7 @@ export default function AdminWaitlistPage() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <Link to="/admin" className="text-cz-3 text-xs hover:text-cz-1">← Admin</Link>
-          <h1 className="text-cz-1 text-xl font-bold mt-1">Founder Supporter waitlist</h1>
+          <h1 className="text-cz-1 text-xl font-bold mt-1">Founder waitlist</h1>
           <p className="text-cz-3 text-sm">Intent-scoring + lead-prioritering. Refs sprint-validation #363.</p>
         </div>
         <div className="flex gap-2">

@@ -57,9 +57,9 @@ export default function PrivacyPolicyPageEn() {
           </ul>
         </Section>
 
-        <Section title="Founder Supporter waitlist (non-binding expression of interest)">
+        <Section title="Founder waitlist (non-binding expression of interest)">
           <p className="mb-2">
-            If you sign up for our &quot;Founder Supporter&quot; waitlist, we process the following data based on your explicit consent (GDPR art. 6(1)(a)):
+            If you sign up for our &quot;Founder&quot; waitlist, we process the following data based on your explicit consent (GDPR art. 6(1)(a)):
           </p>
           <ul className="list-disc pl-5 space-y-1">
             <li><strong>Contact:</strong> email and/or Discord handle (at least one required so we can reach back).</li>
