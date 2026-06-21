@@ -1,18 +1,6 @@
 {
   "$comment": "Kendte UI-anti-drift-overtraedelser (ratchet — maa kun skrumpe). Kategorier: hex/slop/colour/emoji. Genereret af scripts/lint-ui-slop.mjs --update-baseline. Refs #671 Plan 3, #1578 WP0. Nye overtraedelser maa IKKE tilfoejes her — brug ui/-primitiver + tokens, eller (legitimt) udvid EXEMPT_FILES i scriptet med begrundelse. WP1 skrumper emoji, WP2 skrumper colour/hex.",
   "files": {
-    "frontend/public/locales/da/activity.json": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 1
-    },
-    "frontend/public/locales/da/auth.json": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 1
-    },
     "frontend/public/locales/da/backendMessages.json": {
       "hex": 0,
       "slop": 0,
@@ -56,18 +44,6 @@
       "emoji": 23
     },
     "frontend/public/locales/da/watchlist.json": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 1
-    },
-    "frontend/public/locales/en/activity.json": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 1
-    },
-    "frontend/public/locales/en/auth.json": {
       "hex": 0,
       "slop": 0,
       "colour": 0,
@@ -120,12 +96,6 @@
       "slop": 0,
       "colour": 0,
       "emoji": 1
-    },
-    "frontend/src/components/ConfettiModal.jsx": {
-      "hex": 5,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 0
     },
     "frontend/src/components/LeaderBadge.jsx": {
       "hex": 2,
@@ -230,12 +200,6 @@
       "emoji": 5
     },
     "frontend/src/components/rider/TrainingFocus.jsx": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 1
-    },
-    "frontend/src/components/waitlist/FounderSupporterWaitlistForm.jsx": {
       "hex": 0,
       "slop": 0,
       "colour": 0,
