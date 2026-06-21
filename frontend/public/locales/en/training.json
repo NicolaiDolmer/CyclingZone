@@ -1,6 +1,6 @@
 {
   "title": "Daily Training",
-  "trainToday": "Train today (+25% boost)",
+  "trainToday": "Train today (+25% consistency bonus)",
   "trainedToday_you": "Trained today (by you)",
   "trainedToday_assistant": "Trained today (by assistant)",
   "disabledNote": "Daily training starts at the relaunch. Training programs can be set up now.",
@@ -41,7 +41,7 @@
   "bulkApplying": "Applying…",
   "bulkClear": "Clear selection",
   "bulkApplied": "{n, plural, one {Updated # rider.} other {Updated # riders.}}",
-  "bulkPartial": "Updated {applied} of {total}. {failed} could not be saved - try again in a moment.",
+  "bulkPartial": "Updated {applied} of {total}. {failed} could not be saved. Try again in a moment.",
   "bulkPickFocus": "Pick a focus to apply.",
   "historyTitle": "Training history",
   "historySubtitle": "Your last 30 days of daily training",

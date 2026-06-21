@@ -61,7 +61,7 @@ export default function RaceHistoryPage() {
           rider: res.rider,
           rider_name: res.rider
             ? `${res.rider.firstname} ${res.rider.lastname}`
-            : (res.rider_name || "—"),
+            : (res.rider_name || "–"),
           stage_wins: 0,
           gc_wins: 0,
           top3: 0,
@@ -148,7 +148,7 @@ export default function RaceHistoryPage() {
                       </RiderLink>
                       <p className="text-cz-3 text-[10px]">
                         <TeamLink id={ed.winner.rider?.team?.id} className="hover:text-cz-accent-t transition-colors">
-                          {ed.winner.rider?.team?.name || ed.winner.team_name || "—"}
+                          {ed.winner.rider?.team?.name || ed.winner.team_name || "–"}
                         </TeamLink>
                       </p>
                     </div>
