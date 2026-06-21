@@ -1,0 +1,30 @@
+{
+  "tab": "Sponsor",
+  "offers": {
+    "title": "Sponsortilbud",
+    "subtitle": "Vælg en sponsoraftale for sæson {season}. Kontrakten løber fra starten af den sæson.",
+    "empty": "Der er ingen tilbud lige nu. En ny aftale kan forhandles, når den nuværende kontrakt skal fornyes.",
+    "choose": "Vælg",
+    "pending": "Valgt"
+  },
+  "variant": {
+    "predictable": "Stabil bagmand",
+    "activity": "Løbsdags-bagmand",
+    "long": "Langsigtet partner"
+  },
+  "field": {
+    "guaranteedBase": "Garanteret grundbeløb",
+    "perRaceDay": "Pr. løbsdag",
+    "length": "Længde",
+    "seasons": "{count, plural, one {# sæson} other {# sæsoner}}",
+    "raceDayIncome": "Løbsdags-indkomst"
+  },
+  "contract": {
+    "title": "Nuværende sponsor",
+    "loading": "Henter sponsorkontrakt",
+    "error": "Kunne ikke hente din sponsorkontrakt. Prøv igen.",
+    "none": "Ingen aktiv sponsorkontrakt.",
+    "runsThrough": "Løber sæson {season} ud",
+    "sponsorName": "Sponsor"
+  }
+}
