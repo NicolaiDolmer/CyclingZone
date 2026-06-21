@@ -615,7 +615,7 @@
       },
       "breakaway": {
         "title": "Udbrud",
-        "text": "På flade, kuperede og mellembjergs-etaper får et lille udbrud chance for at holde hjem. De fleste bliver hentet, men indimellem holder bruddet. Aggressive ryttere og udpegede jægere kommer med i udbrud oftere."
+        "text": "På flade, kuperede og mellembjergs-etaper får et lille udbrud chance for at holde hjem. De fleste bliver hentet, men indimellem holder bruddet. Aggressive ryttere og udpegede jægere kommer med i udbrud oftere. Etaperesultater markerer ryttere der var i udbruddet med et flag, og viser om de holdt hjem til mål eller blev indhentet af feltet."
       },
       "fatigue": {
         "title": "Træthed betyder noget",
