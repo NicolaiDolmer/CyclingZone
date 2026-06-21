@@ -14,6 +14,33 @@
     "saved": "Gemt",
     "error": "Din stemme blev ikke gemt. Prøv igen."
   },
+  "shipped": {
+    "title": "Allerede bygget",
+    "subtitle": "Ting fra roadmappet der nu er live i spillet."
+  },
+  "admin": {
+    "panel": "Admin · roadmap-vedligehold",
+    "markShipped": "Markér som bygget",
+    "markShippedConfirm": "Flyt dette item til \"Allerede bygget\"? Spillere ser det i historik-sektionen og kan ikke længere stemme på det.",
+    "markActive": "Flyt tilbage til roadmap",
+    "markActiveConfirm": "Flyt dette item tilbage til det aktive roadmap? Spillere kan stemme på det igen.",
+    "createTitle": "Tilføj en roadmap-idé",
+    "engine": "Motor",
+    "sortOrder": "Sortering",
+    "titleEn": "Titel (engelsk)",
+    "titleDa": "Titel (dansk)",
+    "approved": "Godkendt (synlig for spillere)",
+    "status": "Status",
+    "statusActive": "Aktiv (på roadmappet)",
+    "statusShipped": "Bygget (historik)",
+    "statusArchived": "Arkiveret (skjult)",
+    "create": "Tilføj idé",
+    "creating": "Tilføjer…",
+    "created": "Idé tilføjet.",
+    "saving": "Gemmer…",
+    "error": "Det blev ikke gemt. Prøv igen.",
+    "missingFields": "Udfyld begge titler før du tilføjer."
+  },
   "engines": {
     "races": {
       "title": "Løb",

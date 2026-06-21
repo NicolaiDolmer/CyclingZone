@@ -4,6 +4,29 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "5.87",
+    "date": "2026-06-21",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Roadmap",
+        "en": {
+          "title": "See what's already been built on the roadmap",
+          "body": "The roadmap now has an \"Already built\" section at the bottom. When a plan from the roadmap goes live in the game, it moves here so you can see how far Cycling Zone has come, not just what's still ahead. The voting section above keeps working exactly as before."
+        },
+        "da": {
+          "title": "Se hvad der allerede er bygget på roadmappet",
+          "body": "Roadmappet har nu en \"Allerede bygget\"-sektion nederst. Når en plan fra roadmappet går live i spillet, flytter den herned, så du kan se hvor langt Cycling Zone er nået — ikke kun hvad der stadig venter forude. Afstemningssektionen ovenfor virker præcis som før."
+        },
+        "refs": [
+          1600
+        ]
+      }
+    ]
+  },
+  {
     "version": "5.86",
     "date": "2026-06-21",
     "label": "Beta",

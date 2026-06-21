@@ -14,6 +14,33 @@
     "saved": "Saved",
     "error": "Your vote was not saved. Try again."
   },
+  "shipped": {
+    "title": "Already built",
+    "subtitle": "Things from the roadmap that are now live in the game."
+  },
+  "admin": {
+    "panel": "Admin · roadmap maintenance",
+    "markShipped": "Mark as built",
+    "markShippedConfirm": "Move this item to \"Already built\"? Players will see it in the history section and can no longer vote on it.",
+    "markActive": "Move back to roadmap",
+    "markActiveConfirm": "Move this item back to the active roadmap? Players will be able to vote on it again.",
+    "createTitle": "Add a roadmap idea",
+    "engine": "Engine",
+    "sortOrder": "Sort order",
+    "titleEn": "Title (English)",
+    "titleDa": "Title (Danish)",
+    "approved": "Approved (visible to players)",
+    "status": "Status",
+    "statusActive": "Active (on the roadmap)",
+    "statusShipped": "Built (history)",
+    "statusArchived": "Archived (hidden)",
+    "create": "Add idea",
+    "creating": "Adding…",
+    "created": "Idea added.",
+    "saving": "Saving…",
+    "error": "That didn't save. Try again.",
+    "missingFields": "Fill in both titles before adding."
+  },
   "engines": {
     "races": {
       "title": "Races",
