@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 
 import {
   getActiveContract,
+  getPendingContract,
+  getNegotiationState,
   getOffers,
   acceptOffer,
   expireAndRenewContracts,
@@ -18,14 +20,16 @@ import { generateOffers } from "./sponsorOffers.js";
 //   season_standings: .select(...).eq("season_id", id)  (thenable → array)
 //   sponsor_contracts:
 //     .select("*").eq("team_id").eq("status","active").maybeSingle()
-//     .update({status}).eq(...)             (registreres i state.updates)
-//     .update({status}).eq("id", id)        (registreres i state.updates)
-//     .insert(row).select().single()        (registreres i state.inserts)
+//     .select("*").eq("team_id").eq("status","pending").maybeSingle()
+//     .update({status}).eq("team_id").eq("status",...)   (registreres i state.updates)
+//     .update({status}).eq("id", id)                     (registreres i state.updates)
+//     .insert(row).select().single()                     (registreres i state.inserts)
 function makeSupabase({
   team = { id: "t1", division: 2 },
-  seasonsByNumber = {},      // { [number]: { id, number } | null }
-  standingsBySeasonId = {},  // { [seasonId]: [rows] }
-  activeContractByTeam = {}, // { [teamId]: contractRow | null }
+  seasonsByNumber = {},       // { [number]: { id, number } | null }
+  standingsBySeasonId = {},   // { [seasonId]: [rows] }
+  activeContractByTeam = {},  // { [teamId]: contractRow | null }
+  pendingContractByTeam = {}, // { [teamId]: contractRow | null }
 } = {}) {
   const state = { updates: [], inserts: [] };
 
@@ -88,9 +92,11 @@ function makeSupabase({
         return b;
       },
       maybeSingle: () => {
-        // select active contract
+        // select active OR pending contract (gated på ctx.status).
+        const map =
+          ctx.status === "pending" ? pendingContractByTeam : activeContractByTeam;
         return Promise.resolve({
-          data: activeContractByTeam[ctx.team_id] ?? null,
+          data: map[ctx.team_id] ?? null,
           error: null,
         });
       },
@@ -109,14 +115,29 @@ function makeSupabase({
           status: ctx.status,
           id: ctx.id,
         });
-        // Flip the in-memory active contract away so a later select sees none.
-        if (ctx.team_id && activeContractByTeam[ctx.team_id]) {
+        // update by (team_id + status): flip den matchende in-memory række væk så
+        // et senere select ikke ser den igen.
+        if (ctx.team_id && ctx.status === "active" && activeContractByTeam[ctx.team_id]) {
           activeContractByTeam[ctx.team_id] = null;
         }
+        if (ctx.team_id && ctx.status === "pending" && pendingContractByTeam[ctx.team_id]) {
+          pendingContractByTeam[ctx.team_id] = null;
+        }
+        // update by id: aktivering (pending->active) eller expired-flip. Find rækken
+        // i begge maps og flyt/fjern den så efterfølgende selects er konsistente.
         if (ctx.id) {
+          const newStatus = ctx.payload?.status;
           for (const k of Object.keys(activeContractByTeam)) {
-            if (activeContractByTeam[k] && activeContractByTeam[k].id === ctx.id) {
-              activeContractByTeam[k] = null;
+            const row = activeContractByTeam[k];
+            if (row && row.id === ctx.id) activeContractByTeam[k] = null;
+          }
+          for (const k of Object.keys(pendingContractByTeam)) {
+            const row = pendingContractByTeam[k];
+            if (row && row.id === ctx.id) {
+              pendingContractByTeam[k] = null;
+              if (newStatus === "active") {
+                activeContractByTeam[k] = { ...row, status: "active" };
+              }
             }
           }
         }
@@ -155,6 +176,27 @@ test("getActiveContract returnerer den aktive kontrakt", async () => {
 test("getActiveContract returnerer null når intet aktivt", async () => {
   const supabase = makeSupabase({ activeContractByTeam: { t1: null } });
   const row = await getActiveContract({ supabase, teamId: "t1" });
+  assert.equal(row, null);
+});
+
+test("getPendingContract returnerer den pending kontrakt", async () => {
+  const pending = {
+    id: "p1",
+    team_id: "t1",
+    sponsor_name: "Alta Cycles",
+    status: "pending",
+    start_season: 3,
+    expires_after_season: 5,
+  };
+  const supabase = makeSupabase({ pendingContractByTeam: { t1: pending } });
+
+  const row = await getPendingContract({ supabase, teamId: "t1" });
+  assert.deepEqual(row, pending);
+});
+
+test("getPendingContract returnerer null når intet pending", async () => {
+  const supabase = makeSupabase({ pendingContractByTeam: { t1: null } });
+  const row = await getPendingContract({ supabase, teamId: "t1" });
   assert.equal(row, null);
 });
 
@@ -213,38 +255,171 @@ test("getOffers falder tilbage til division-base × 1.0 når intet sidste-sæson
   assert.deepEqual(offers, expected);
 });
 
-test("acceptOffer flipper gammel aktiv til 'replaced' og indsætter ny aktiv fra valgt variant", async () => {
-  const oldActive = {
-    id: "c-old",
+test("getNegotiationState — negotiable når aktiv kontrakt udløber ved nuværende sæson", async () => {
+  // Aktiv kontrakt udløber ved slutningen af nuværende sæson (2) → forhandl for 3.
+  const active = {
+    id: "c1",
     team_id: "t1",
-    sponsor_name: "Old Sponsor",
     status: "active",
     expires_after_season: 2,
   };
   const supabase = makeSupabase({
     team: { id: "t1", division: 2 },
-    seasonsByNumber: { 1: null }, // frisk → target 400000
+    seasonsByNumber: { 2: null }, // kommende sæson 3 → prev = 2; ingen standings → target 400000
+    activeContractByTeam: { t1: active },
+    pendingContractByTeam: { t1: null },
+  });
+
+  const result = await getNegotiationState({
+    supabase,
+    teamId: "t1",
+    currentSeasonNumber: 2,
+  });
+
+  assert.equal(result.negotiable, true);
+  assert.equal(result.upcomingSeasonNumber, 3);
+  assert.equal(result.offers.length, 3);
+  assert.equal(result.pendingVariant, null);
+  // Tilbuddene er for den KOMMENDE sæson (3).
+  const expected = generateOffers({
+    teamId: "t1",
+    seasonNumber: 3,
+    renownTargetValue: 400000,
+  });
+  assert.deepEqual(result.offers, expected);
+});
+
+test("getNegotiationState — negotiable når INGEN aktiv kontrakt", async () => {
+  const supabase = makeSupabase({
+    team: { id: "t1", division: 2 },
+    seasonsByNumber: { 2: null },
+    activeContractByTeam: { t1: null },
+    pendingContractByTeam: { t1: null },
+  });
+
+  const result = await getNegotiationState({
+    supabase,
+    teamId: "t1",
+    currentSeasonNumber: 2,
+  });
+
+  assert.equal(result.negotiable, true);
+  assert.equal(result.offers.length, 3);
+});
+
+test("getNegotiationState — IKKE negotiable når aktiv kontrakt stadig dækker kommende sæson", async () => {
+  const active = {
+    id: "c1",
+    team_id: "t1",
+    status: "active",
+    expires_after_season: 4, // > currentSeasonNumber 2 → låst
+  };
+  const supabase = makeSupabase({
+    team: { id: "t1", division: 2 },
+    activeContractByTeam: { t1: active },
+  });
+
+  const result = await getNegotiationState({
+    supabase,
+    teamId: "t1",
+    currentSeasonNumber: 2,
+  });
+
+  assert.equal(result.negotiable, false);
+  assert.equal(result.upcomingSeasonNumber, 3);
+  assert.deepEqual(result.offers, []);
+  assert.equal(result.pendingVariant, null);
+});
+
+test("getNegotiationState — pendingVariant detekteres fra eksisterende pending-række", async () => {
+  // Manager har allerede valgt 'long' for kommende sæson (3) → pending-række findes.
+  const longOffer = generateOffers({
+    teamId: "t1",
+    seasonNumber: 3,
+    renownTargetValue: 400000,
+  }).find((o) => o.variant === "long");
+  const pending = {
+    id: "p1",
+    team_id: "t1",
+    status: "pending",
+    start_season: 3,
+    length_seasons: longOffer.lengthSeasons,
+    guaranteed_base: longOffer.guaranteedBase,
+    expires_after_season: 3 + longOffer.lengthSeasons - 1,
+  };
+  const supabase = makeSupabase({
+    team: { id: "t1", division: 2 },
+    seasonsByNumber: { 2: null },
+    activeContractByTeam: { t1: null },
+    pendingContractByTeam: { t1: pending },
+  });
+
+  const result = await getNegotiationState({
+    supabase,
+    teamId: "t1",
+    currentSeasonNumber: 2,
+  });
+
+  assert.equal(result.negotiable, true);
+  assert.equal(result.pendingVariant, "long");
+});
+
+test("getNegotiationState — pending med forkert start_season giver pendingVariant null", async () => {
+  const longOffer = generateOffers({
+    teamId: "t1",
+    seasonNumber: 3,
+    renownTargetValue: 400000,
+  }).find((o) => o.variant === "long");
+  const stalePending = {
+    id: "p1",
+    team_id: "t1",
+    status: "pending",
+    start_season: 99, // matcher ikke upcomingSeasonNumber 3
+    length_seasons: longOffer.lengthSeasons,
+    guaranteed_base: longOffer.guaranteedBase,
+  };
+  const supabase = makeSupabase({
+    team: { id: "t1", division: 2 },
+    seasonsByNumber: { 2: null },
+    activeContractByTeam: { t1: null },
+    pendingContractByTeam: { t1: stalePending },
+  });
+
+  const result = await getNegotiationState({
+    supabase,
+    teamId: "t1",
+    currentSeasonNumber: 2,
+  });
+
+  assert.equal(result.pendingVariant, null);
+});
+
+test("acceptOffer skriver en PENDING kontrakt (ikke aktiv) for kommende sæson", async () => {
+  const supabase = makeSupabase({
+    team: { id: "t1", division: 2 },
+    seasonsByNumber: { 2: null }, // kommende sæson 3 → prev 2; frisk → target 400000
     standingsBySeasonId: {},
-    activeContractByTeam: { t1: oldActive },
+    activeContractByTeam: { t1: { id: "c-old", team_id: "t1", status: "active", expires_after_season: 3 } },
+    pendingContractByTeam: { t1: null },
   });
 
   const row = await acceptOffer({
     supabase,
     teamId: "t1",
-    seasonNumber: 2,
+    upcomingSeasonNumber: 3,
     variant: "long",
   });
 
-  // Den gamle blev flippet til 'replaced'.
+  // Erstatter en evt. pending (her ingen) — flip gatet på status=pending, IKKE active.
   assert.equal(supabase.state.updates.length, 1);
   assert.equal(supabase.state.updates[0].payload.status, "replaced");
   assert.equal(supabase.state.updates[0].team_id, "t1");
-  assert.equal(supabase.state.updates[0].status, "active"); // gatet på status=active
+  assert.equal(supabase.state.updates[0].status, "pending");
 
-  // Den nye række matcher den valgte 'long'-variant.
+  // Den nye række er PENDING med korrekt start_season + variant-felter.
   const longVariant = generateOffers({
     teamId: "t1",
-    seasonNumber: 2,
+    seasonNumber: 3,
     renownTargetValue: 400000,
   }).find((o) => o.variant === "long");
 
@@ -255,20 +430,49 @@ test("acceptOffer flipper gammel aktiv til 'replaced' og indsætter ny aktiv fra
   assert.equal(inserted.guaranteed_base, longVariant.guaranteedBase);
   assert.equal(inserted.per_race_day_rate, longVariant.perRaceDayRate);
   assert.equal(inserted.length_seasons, longVariant.lengthSeasons); // 3
-  assert.equal(inserted.start_season, 2);
-  assert.equal(inserted.expires_after_season, 2 + longVariant.lengthSeasons - 1); // 4
-  assert.equal(inserted.status, "active");
+  assert.equal(inserted.start_season, 3);
+  assert.equal(inserted.expires_after_season, 3 + longVariant.lengthSeasons - 1); // 5
+  assert.equal(inserted.status, "pending");
 
   assert.deepEqual(row, inserted);
+});
+
+test("acceptOffer erstatter en eksisterende pending", async () => {
+  const oldPending = {
+    id: "p-old",
+    team_id: "t1",
+    status: "pending",
+    start_season: 3,
+  };
+  const supabase = makeSupabase({
+    team: { id: "t1", division: 2 },
+    seasonsByNumber: { 2: null },
+    pendingContractByTeam: { t1: oldPending },
+  });
+
+  await acceptOffer({
+    supabase,
+    teamId: "t1",
+    upcomingSeasonNumber: 3,
+    variant: "predictable",
+  });
+
+  // Den gamle pending blev flippet til 'replaced'.
+  assert.equal(supabase.state.updates.length, 1);
+  assert.equal(supabase.state.updates[0].payload.status, "replaced");
+  assert.equal(supabase.state.updates[0].status, "pending");
+  // Den nye pending er indsat.
+  assert.equal(supabase.state.inserts.length, 1);
+  assert.equal(supabase.state.inserts[0].status, "pending");
 });
 
 test("acceptOffer kaster ved ukendt variant", async () => {
   const supabase = makeSupabase({
     team: { id: "t1", division: 2 },
-    seasonsByNumber: { 1: null },
+    seasonsByNumber: { 2: null },
   });
   await assert.rejects(
-    () => acceptOffer({ supabase, teamId: "t1", seasonNumber: 2, variant: "nonsense" }),
+    () => acceptOffer({ supabase, teamId: "t1", upcomingSeasonNumber: 3, variant: "nonsense" }),
     /Ukendt variant/,
   );
 });
@@ -292,7 +496,55 @@ test("expireAndRenewContracts beholder en stadig-låst kontrakt", async () => {
   assert.equal(supabase.state.inserts.length, 0);
 });
 
-test("expireAndRenewContracts udløber en udløbet kontrakt og fornyer med default 'long'", async () => {
+test("expireAndRenewContracts AKTIVERER en matchende pending (manager-valg)", async () => {
+  const expiring = {
+    id: "c-exp",
+    team_id: "t1",
+    status: "active",
+    expires_after_season: 2, // < newSeasonNumber 3 → udløb
+  };
+  const pending = {
+    id: "p-choice",
+    team_id: "t1",
+    status: "pending",
+    start_season: 3, // matcher newSeasonNumber → aktivér
+    length_seasons: 2,
+    guaranteed_base: 220000,
+    expires_after_season: 4,
+  };
+  const supabase = makeSupabase({
+    team: { id: "t1", division: 2 },
+    seasonsByNumber: { 2: null },
+    activeContractByTeam: { t1: expiring },
+    pendingContractByTeam: { t1: pending },
+  });
+
+  await expireAndRenewContracts({ supabase, newSeasonNumber: 3, teamIds: ["t1"] });
+
+  // Den gamle aktive blev udløbet (by id).
+  const expiredFlip = supabase.state.updates.find((u) => u.payload.status === "expired");
+  assert.ok(expiredFlip, "forventede en 'expired'-flip");
+  assert.equal(expiredFlip.id, "c-exp");
+
+  // Den pending række blev aktiveret (pending -> active, by id) — IKKE en ny insert.
+  const activatedFlip = supabase.state.updates.find((u) => u.payload.status === "active");
+  assert.ok(activatedFlip, "forventede en 'active'-aktivering af pending");
+  assert.equal(activatedFlip.id, "p-choice");
+
+  // Ingen default-insert: managerens valg blev brugt.
+  assert.equal(supabase.state.inserts.length, 0);
+
+  // Pending er nu aktiv (mock-state afspejler aktivering).
+  const nowActive = await getActiveContract({ supabase, teamId: "t1" });
+  assert.ok(nowActive, "den aktiverede kontrakt skal nu være aktiv");
+  assert.equal(nowActive.id, "p-choice");
+  assert.equal(nowActive.status, "active");
+  // Ingen pending tilbage efter aktivering.
+  const stillPending = await getPendingContract({ supabase, teamId: "t1" });
+  assert.equal(stillPending, null);
+});
+
+test("expireAndRenewContracts falder tilbage til default 'long' når ingen matchende pending", async () => {
   const expiring = {
     id: "c-exp",
     team_id: "t1",
@@ -304,17 +556,17 @@ test("expireAndRenewContracts udløber en udløbet kontrakt og fornyer med defau
     seasonsByNumber: { 2: null }, // sæson 3 - 1 = 2; ingen standings → target 400000
     standingsBySeasonId: {},
     activeContractByTeam: { t1: expiring },
+    pendingContractByTeam: { t1: null },
   });
 
   await expireAndRenewContracts({ supabase, newSeasonNumber: 3, teamIds: ["t1"] });
 
-  // To updates: 'expired' på den gamle (by id) + 'replaced'-flip i acceptOffer
-  // (men acceptOffer ser ingen aktiv tilbage, så kun expired-flippet rammer).
+  // Den gamle blev udløbet (by id).
   const expiredFlip = supabase.state.updates.find((u) => u.payload.status === "expired");
   assert.ok(expiredFlip, "forventede en 'expired'-flip");
   assert.equal(expiredFlip.id, "c-exp");
 
-  // Forny med 'long' for sæson 3.
+  // Default-forny med 'long' (aktiv) for sæson 3 — direkte insert, ingen pending.
   assert.equal(supabase.state.inserts.length, 1);
   const inserted = supabase.state.inserts[0];
   const longVariant = generateOffers({
@@ -328,17 +580,44 @@ test("expireAndRenewContracts udløber en udløbet kontrakt og fornyer med defau
   assert.equal(inserted.status, "active");
 });
 
-test("expireAndRenewContracts fornyer et hold helt uden kontrakt", async () => {
+test("expireAndRenewContracts fornyer et hold helt uden kontrakt (default 'long')", async () => {
   const supabase = makeSupabase({
     team: { id: "t1", division: 2 },
     seasonsByNumber: { 2: null },
     activeContractByTeam: { t1: null },
+    pendingContractByTeam: { t1: null },
   });
 
   await expireAndRenewContracts({ supabase, newSeasonNumber: 3, teamIds: ["t1"] });
 
-  // Ingen 'expired'-flip (intet at udløbe), men en ny 'long'-kontrakt indsættes.
+  // Ingen 'expired'-flip (intet at udløbe), men en ny 'long'-kontrakt (aktiv) indsættes.
   assert.equal(supabase.state.updates.filter((u) => u.payload.status === "expired").length, 0);
+  assert.equal(supabase.state.inserts.length, 1);
+  assert.equal(supabase.state.inserts[0].status, "active");
+  assert.equal(supabase.state.inserts[0].start_season, 3);
+});
+
+test("expireAndRenewContracts ignorerer pending der ikke matcher newSeasonNumber → default", async () => {
+  // Pending med forkert start_season (fx en stale fra en tidligere fejl) → default-forny.
+  const stalePending = {
+    id: "p-stale",
+    team_id: "t1",
+    status: "pending",
+    start_season: 99,
+    length_seasons: 1,
+    guaranteed_base: 1,
+  };
+  const supabase = makeSupabase({
+    team: { id: "t1", division: 2 },
+    seasonsByNumber: { 2: null },
+    activeContractByTeam: { t1: null },
+    pendingContractByTeam: { t1: stalePending },
+  });
+
+  await expireAndRenewContracts({ supabase, newSeasonNumber: 3, teamIds: ["t1"] });
+
+  // Ingen aktivering af den stale pending; default 'long' indsat i stedet.
+  assert.equal(supabase.state.updates.filter((u) => u.payload.status === "active").length, 0);
   assert.equal(supabase.state.inserts.length, 1);
   assert.equal(supabase.state.inserts[0].status, "active");
   assert.equal(supabase.state.inserts[0].start_season, 3);

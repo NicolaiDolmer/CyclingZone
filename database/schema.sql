@@ -274,14 +274,17 @@ CREATE TABLE sponsor_contracts (
   start_season         INTEGER NOT NULL,
   expires_after_season INTEGER NOT NULL,
   status               TEXT NOT NULL DEFAULT 'active'
-    CHECK (status IN ('active', 'expired', 'replaced')),
+    CHECK (status IN ('active', 'expired', 'replaced', 'pending')),
   created_at           TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 COMMENT ON TABLE sponsor_contracts IS
-  'Sponsor-kontrakter (#1663, Økonomi Fase 2): forhandlet sponsor-indkomst pr. hold. status active->expired/replaced.';
+  'Sponsor-kontrakter (#1663, Økonomi Fase 2): forhandlet sponsor-indkomst pr. hold. status pending->active ved sæson-skifte; active->expired/replaced.';
 -- Højst én aktiv kontrakt pr. hold; udløbne/erstattede beholdes som historik.
 CREATE UNIQUE INDEX IF NOT EXISTS idx_sponsor_contracts_team_active
   ON sponsor_contracts(team_id) WHERE status = 'active';
+-- Højst én pending kontrakt pr. hold (manager-valg for kommende sæson, aktiveres ved skifte).
+CREATE UNIQUE INDEX IF NOT EXISTS idx_sponsor_contracts_team_pending
+  ON sponsor_contracts(team_id) WHERE status = 'pending';
 
 ALTER TABLE sponsor_contracts ENABLE ROW LEVEL SECURITY;
 -- Hold-ejeren læser egne kontrakter; skrivning sker service-role (backend).

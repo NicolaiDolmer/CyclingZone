@@ -7,9 +7,12 @@
 // supabase injiceres som service_role-klient (tests injicerer en mock).
 //
 // Schema-fakta (database/schema.sql):
-//   sponsor_contracts.status CHECK ∈ {'active','expired','replaced'}; partial UNIQUE
-//     index → højst ÉN status='active' pr. hold. Flip altid den eksisterende aktive
-//     væk FØR insert af en ny aktiv.
+//   sponsor_contracts.status CHECK ∈ {'active','expired','replaced','pending'}; to delvise
+//     UNIQUE indekser → højst ÉN status='active' OG højst ÉN status='pending' pr. hold.
+//     Flip altid den eksisterende aktive/pending væk FØR insert af en ny af samme status.
+//   Flow: manager vælger et tilbud for KOMMENDE sæson under nuværende sæson → 'pending'
+//     (start_season = kommende). Ved sæson-skifte aktiveres den pending (eller default
+//     'long' oprettes hvis ingen). Sæson-start betaler så den nu-aktive guaranteed_base.
 //   seasons.number er sæson-heltallet; season_standings keyer på season_id (UUID FK
 //     til seasons.id), IKKE et nummer → resolv forrige sæsons id først.
 import { renownTarget } from "./renownEngine.js";
@@ -23,6 +26,17 @@ export async function getActiveContract({ supabase, teamId }) {
     .select("*")
     .eq("team_id", teamId)
     .eq("status", "active")
+    .maybeSingle();
+  if (error) throw error;
+  return data || null;
+}
+
+export async function getPendingContract({ supabase, teamId }) {
+  const { data, error } = await supabase
+    .from("sponsor_contracts")
+    .select("*")
+    .eq("team_id", teamId)
+    .eq("status", "pending")
     .maybeSingle();
   if (error) throw error;
   return data || null;
@@ -83,18 +97,58 @@ export async function getOffers({ supabase, teamId, seasonNumber }) {
   return generateOffers({ teamId, seasonNumber, renownTargetValue });
 }
 
-export async function acceptOffer({ supabase, teamId, seasonNumber, variant }) {
-  const offers = await getOffers({ supabase, teamId, seasonNumber });
+// Forhandlings-tilstand for nuværende sæson. Et hold kan forhandle for den KOMMENDE
+// sæson (currentSeasonNumber + 1) hvis dets aktive kontrakt udløber ved slutningen af
+// nuværende sæson (expires_after_season <= currentSeasonNumber) ELLER der ingen aktiv
+// kontrakt er. Returnerer de regenererede tilbud + den allerede valgte variant (hvis en
+// pending række for kommende sæson findes), så UI kan markere managerens valg.
+export async function getNegotiationState({ supabase, teamId, currentSeasonNumber }) {
+  const upcomingSeasonNumber = currentSeasonNumber + 1;
+  const active = await getActiveContract({ supabase, teamId });
+  const negotiable =
+    !active || active.expires_after_season <= currentSeasonNumber;
+
+  const offers = negotiable
+    ? await getOffers({ supabase, teamId, seasonNumber: upcomingSeasonNumber })
+    : [];
+
+  // Aflæs hvilken variant en evt. pending række svarer til ved at matche dens
+  // length_seasons + guaranteed_base mod de regenererede tilbud (varianten
+  // persisteres ikke på rækken). Kun pending der starter i kommende sæson tæller.
+  let pendingVariant = null;
+  const pending = await getPendingContract({ supabase, teamId });
+  if (pending && pending.start_season === upcomingSeasonNumber) {
+    const match = offers.find(
+      (o) =>
+        o.lengthSeasons === pending.length_seasons &&
+        o.guaranteedBase === pending.guaranteed_base,
+    );
+    pendingVariant = match ? match.variant : null;
+  }
+
+  return { negotiable, upcomingSeasonNumber, offers, pendingVariant };
+}
+
+// Manager vælger et tilbud for den KOMMENDE sæson. Skriver en 'pending' række
+// (start_season = upcomingSeasonNumber); den aktiveres ved sæson-skiftet via
+// expireAndRenewContracts. Erstatter en evt. eksisterende pending (delvist UNIQUE
+// index tillader kun én pending pr. hold). API'et gater på negotiable.
+export async function acceptOffer({ supabase, teamId, upcomingSeasonNumber, variant }) {
+  const offers = await getOffers({
+    supabase,
+    teamId,
+    seasonNumber: upcomingSeasonNumber,
+  });
   const chosen = offers.find((o) => o.variant === variant);
   if (!chosen) throw new Error(`Ukendt variant: ${variant}`);
 
-  // Flip den eksisterende aktive kontrakt til 'replaced' FØR insert (partial
-  // UNIQUE index tillader kun én aktiv pr. hold).
+  // Flip en evt. eksisterende pending til 'replaced' FØR insert (delvist UNIQUE
+  // index tillader kun én pending pr. hold).
   const { error: updateError } = await supabase
     .from("sponsor_contracts")
     .update({ status: "replaced" })
     .eq("team_id", teamId)
-    .eq("status", "active");
+    .eq("status", "pending");
   if (updateError) throw updateError;
 
   const row = {
@@ -103,9 +157,9 @@ export async function acceptOffer({ supabase, teamId, seasonNumber, variant }) {
     guaranteed_base: chosen.guaranteedBase,
     per_race_day_rate: chosen.perRaceDayRate,
     length_seasons: chosen.lengthSeasons,
-    start_season: seasonNumber,
-    expires_after_season: seasonNumber + chosen.lengthSeasons - 1,
-    status: "active",
+    start_season: upcomingSeasonNumber,
+    expires_after_season: upcomingSeasonNumber + chosen.lengthSeasons - 1,
+    status: "pending",
   };
   const { data, error } = await supabase
     .from("sponsor_contracts")
@@ -116,12 +170,16 @@ export async function acceptOffer({ supabase, teamId, seasonNumber, variant }) {
   return data || row;
 }
 
-// Sæson-skifte: for hvert hold — behold en stadig-låst kontrakt; ellers udløb den
-// gamle ('expired') og forny med default-varianten for den nye sæson.
+// Sæson-skifte: for hvert hold — behold en stadig-låst kontrakt; ellers udløb den gamle
+// ('expired') og AKTIVÉR holdets pending valg (flip pending->active). Hvis ingen matchende
+// pending findes: opret default 'long' aktiv-kontrakt for den nye sæson.
 export async function expireAndRenewContracts({ supabase, newSeasonNumber, teamIds }) {
   for (const teamId of teamIds) {
     const active = await getActiveContract({ supabase, teamId });
+    // Kontrakten dækker stadig den nye sæson → behold (låst).
     if (active && active.expires_after_season >= newSeasonNumber) continue;
+
+    // Udløb den gamle aktive FØR vi aktiverer pending (kun én aktiv pr. hold).
     if (active) {
       const { error } = await supabase
         .from("sponsor_contracts")
@@ -129,11 +187,42 @@ export async function expireAndRenewContracts({ supabase, newSeasonNumber, teamI
         .eq("id", active.id);
       if (error) throw error;
     }
-    await acceptOffer({
+
+    const pending = await getPendingContract({ supabase, teamId });
+    if (pending && pending.start_season === newSeasonNumber) {
+      // Aktivér managerens valg: pending -> active.
+      const { error } = await supabase
+        .from("sponsor_contracts")
+        .update({ status: "active" })
+        .eq("id", pending.id);
+      if (error) throw error;
+      continue;
+    }
+
+    // Ingen matchende pending → default-forny med 'long' for den nye sæson.
+    const offers = await getOffers({
       supabase,
       teamId,
       seasonNumber: newSeasonNumber,
-      variant: DEFAULT_RENEW_VARIANT,
     });
+    const chosen = offers.find((o) => o.variant === DEFAULT_RENEW_VARIANT);
+    if (!chosen) throw new Error(`Ukendt variant: ${DEFAULT_RENEW_VARIANT}`);
+
+    const row = {
+      team_id: teamId,
+      sponsor_name: chosen.sponsorName,
+      guaranteed_base: chosen.guaranteedBase,
+      per_race_day_rate: chosen.perRaceDayRate,
+      length_seasons: chosen.lengthSeasons,
+      start_season: newSeasonNumber,
+      expires_after_season: newSeasonNumber + chosen.lengthSeasons - 1,
+      status: "active",
+    };
+    const { error } = await supabase
+      .from("sponsor_contracts")
+      .insert(row)
+      .select()
+      .single();
+    if (error) throw error;
   }
 }
