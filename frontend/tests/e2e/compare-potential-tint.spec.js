@@ -16,13 +16,13 @@ test("compare potential row renders an accent tint, not a transparent/no-op back
   // so the gated Potential row (`scouting.estimateFor(r.id) !== null`) renders.
   await page.goto("/compare?ids=rider-1,rider-2");
 
-  // The ◆ marker is the locale-independent anchor for the Potential row.
-  const marker = page.locator("main span", { hasText: /^◆$/ });
-  await expect(marker).toBeVisible();
+  // Locale- and icon-independent anchor for the Potential row. (#1639 swapped the
+  // ◆ glyph for a StarIcon SVG, so we key off a stable data-testid, not the marker.)
+  const potentialRow = page.getByTestId("compare-potential-row");
+  await expect(potentialRow).toBeVisible();
 
   const styles = await page.evaluate(() => {
-    const m = [...document.querySelectorAll("main span")].find(s => s.textContent.trim() === "◆");
-    const potentialRow = m?.closest("div.grid");
+    const potentialRow = document.querySelector('[data-testid="compare-potential-row"]');
     const container = potentialRow?.parentElement;
     // First grid row that is NOT the potential row = a regular stat row (transparent).
     const statRow = container

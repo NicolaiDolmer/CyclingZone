@@ -205,12 +205,6 @@
       "colour": 0,
       "emoji": 1
     },
-    "frontend/src/lib/patchNotes.js": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 3,
-      "emoji": 0
-    },
     "frontend/src/lib/statColor.js": {
       "hex": 2,
       "slop": 0,
