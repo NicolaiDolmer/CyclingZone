@@ -38,6 +38,9 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+# Delt encoding (samme regel som prune-merged-worktrees.ps1 + remove-worktree.ps1).
+. (Join-Path $PSScriptRoot 'lib\claude-project-paths.ps1')
+
 $dry = -not $Execute
 $mode = if ($dry) { "DRY-RUN (intet slettes — kør med -Execute)" } else { "EXECUTE" }
 Write-Host "=== prune-stale-project-dirs [$mode] ===" -ForegroundColor Cyan
@@ -48,18 +51,13 @@ if (-not (Test-Path $projDir)) {
   return
 }
 
-# Claude Codes faktiske encoding: erstat ':', '\', '/' og '.' med '-'.
-function Get-EncodedName([string]$path) {
-  $p = ($path -replace '/', '\').TrimEnd('\')
-  return ($p -replace '[:\\./]', '-')
-}
-
 # LIVE worktrees fra git (autoritativt). Disse — og undermapper deri — beholdes.
+# Get-ClaudeProjectDirName koder ':', '\', '/' og '.' til '-' (delt regel).
 $liveEnc = @()
 $porcelain = & git -C $RepoRoot worktree list --porcelain 2>$null
 foreach ($raw in $porcelain) {
   $l = $raw.TrimEnd("`r")
-  if ($l -like 'worktree *') { $liveEnc += (Get-EncodedName $l.Substring(9)) }
+  if ($l -like 'worktree *') { $liveEnc += (Get-ClaudeProjectDirName $l.Substring(9)) }
 }
 if ($liveEnc.Count -eq 0) {
   Write-Host "Kunne ikke læse 'git worktree list' for $RepoRoot — abort (sletter intet)." -ForegroundColor Red
@@ -67,7 +65,7 @@ if ($liveEnc.Count -eq 0) {
 }
 
 # Worktree-session-dirs for dette repo har altid dette prefix.
-$repoEnc = Get-EncodedName $RepoRoot                      # fx C--Dev-CyclingZone
+$repoEnc = Get-ClaudeProjectDirName $RepoRoot             # fx C--Dev-CyclingZone
 $wtPrefix = "$repoEnc--claude-worktrees-"                  # kun .claude/worktrees-sessions
 
 # Behold KUN live-entries der selv er worktree-sessions. Hoved-checkoutet

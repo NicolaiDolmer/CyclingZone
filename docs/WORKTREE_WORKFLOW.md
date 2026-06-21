@@ -77,7 +77,7 @@ pwsh -File scripts/prune-merged-worktrees.ps1            # dry-run: rapportér h
 pwsh -File scripts/prune-merged-worktrees.ps1 -Execute   # udfør
 ```
 
-Det enumererer **alle** worktrees via `git worktree list` (layout-uafhængigt) og genbruger den delte, squash-bevidste merge-detektion (`scripts/lib/git-merge-detection.ps1`). Sletter kun når ancestry-merge **eller** en merged PR (via `gh`) bekræfter det — er `gh` ubestemt for en squash-branch, **beholdes** branchen. Springer altid primær checkout, aktiv session, locked worktrees, detached HEAD, branches der lever på origin, og worktrees med uncommitted changes (medmindre `-Force`) over. Default er dry-run; intet slettes uden `-Execute`.
+Det enumererer **alle** worktrees via `git worktree list` (layout-uafhængigt) og genbruger den delte, squash-bevidste merge-detektion (`scripts/lib/git-merge-detection.ps1`). Sletter kun med **positivt merge-bevis**: en merged PR (via `gh`), eller en ancestry-merge med egne commits — er `gh` ubestemt for en squash-branch, **beholdes** branchen. Et **frisk worktree uden egne commits** (ahead==0, fx et netop oprettet fleet-worktree) beholdes også, selv om `git branch --merged` viser det som ancestor ([#1271](https://github.com/NicolaiDolmer/CyclingZone/issues/1271)); kun `-Force` rydder dem. Springer altid primær checkout, aktiv session, locked worktrees, detached HEAD, branches der lever på origin, og worktrees med uncommitted changes (medmindre `-Force`) over. Default er dry-run; intet slettes uden `-Execute`.
 
 Genvej (dry-run + udfør):
 

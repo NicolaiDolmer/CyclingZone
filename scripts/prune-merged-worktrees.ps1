@@ -14,8 +14,12 @@
 #   - Springer over: primær checkout, det worktree scriptet selv kører i,
 #     locked worktrees, detached HEAD, og branches der stadig lever på origin.
 #   - Springer over worktrees med uncommitted changes (medmindre -Force).
-#   - Sletter kun når ancestry-merge ELLER merged PR (gh) bekræfter det.
-#     Er gh utilgængelig/ubestemt for en squash-branch → branchen BEHOLDES.
+#   - Springer over FRISKE worktrees uden egne commits ift. base (ahead==0) — et
+#     netop oprettet fleet-worktree ser ancestry-merged ud, men er ikke merged
+#     (issue #1271). -Force kan rydde dem alligevel.
+#   - Sletter kun med positivt merge-bevis: en merged PR (gh), eller en
+#     ancestry-merge MED egne commits. Er gh ubestemt for en squash-branch →
+#     branchen BEHOLDES.
 #
 # Brug:
 #   pwsh -File scripts/prune-merged-worktrees.ps1            # dry-run (rapportér)
@@ -33,6 +37,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 . (Join-Path $PSScriptRoot 'lib\git-merge-detection.ps1')
+. (Join-Path $PSScriptRoot 'lib\claude-project-paths.ps1')
 
 $dry = -not $Execute
 $mode = if ($dry) { "DRY-RUN (intet slettes — kør med -Execute)" } else { "EXECUTE" }
@@ -75,7 +80,9 @@ $removed = @(); $skipped = @(); $branchesToSweep = [System.Collections.Generic.H
 
 function Remove-MemoryJunction([string]$wtPath) {
   # Spejler remove-worktree.ps1: fjern ~/.claude/projects/<encoded>/ (memory-junction-parent).
-  $encoded = $wtPath -replace '[:\\]', '-'
+  # Encoding via delt Get-ClaudeProjectDirName (lib\claude-project-paths.ps1) — den
+  # koder OGSÅ '.' til '-', så vi rammer den faktiske '--claude'-form on-disk.
+  $encoded = Get-ClaudeProjectDirName $wtPath
   $claudeProj = Join-Path $env:USERPROFILE ".claude\projects\$encoded"
   if (-not (Test-Path $claudeProj)) { return }
   if ($script:dry) { Write-Host "      [would-remove] $claudeProj" -ForegroundColor DarkGray; return }
@@ -102,20 +109,28 @@ foreach ($b in $blocks) {
     if ($st) { $skipped += "uncommitted ($((@($st)).Count) filer): $tag"; continue }
   }
 
-  # Merge-beslutning (genbrug delt lib).
+  # Merge-beslutning (genbrug delt lib). Ahead-count skelner frisk/aktiv worktree
+  # fra ægte merge (issue #1271). gh-proben køres ALTID — ikke kun når ancestry
+  # fejler — så et merged-PR-bevis kan vinde over zero-ahead-guarden (en --no-ff
+  # PR-merge er ancestry-merged men ahead==0, og skal stadig kunne ryddes).
   $anc = Test-BranchMergedByAncestry -Branch $branch -RepoRoot $RepoRoot -BaseRef $BaseRef
-  $prState = if ($anc) { $false } else { Test-BranchHasMergedPr -Branch $branch -RepoRoot $RepoRoot }
-  $decision = Get-BranchMergeDecision -AncestryMerged $anc -MergedPrState $prState -BaseRef $BaseRef
+  $ahead = Get-BranchAheadCount -Branch $branch -RepoRoot $RepoRoot -BaseRef $BaseRef
+  $prState = Test-BranchHasMergedPr -Branch $branch -RepoRoot $RepoRoot
+  $decision = Get-BranchMergeDecision -AncestryMerged $anc -MergedPrState $prState -AheadCount $ahead -BaseRef $BaseRef
 
-  if (-not $decision.Merged) { $skipped += "$($decision.Detail): $tag"; continue }
+  # Et frisk/aktivt worktree (Method='fresh') beholdes — medmindre -Force.
+  $removeForFresh = $Force -and ($decision.Method -eq 'fresh')
+  if (-not $decision.Merged -and -not $removeForFresh) { $skipped += "$($decision.Detail): $tag"; continue }
 
-  Write-Host ("  {0} {1}  [{2}]  ({3})" -f ($(if ($dry) {'[would-remove]'} else {'[remove]'})), $path, $branch, $decision.Detail) -ForegroundColor Yellow
+  $detail = if ($removeForFresh) { "frisk worktree, fjernet via -Force" } else { $decision.Detail }
+  $forceDel = $decision.ForceDelete -or $removeForFresh
+  Write-Host ("  {0} {1}  [{2}]  ({3})" -f ($(if ($dry) {'[would-remove]'} else {'[remove]'})), $path, $branch, $detail) -ForegroundColor Yellow
   Remove-MemoryJunction $path
   if (-not $dry) {
     & git -C $RepoRoot worktree remove $path 2>&1 | Out-Null
     if ($LASTEXITCODE -ne 0) { & git -C $RepoRoot worktree remove --force $path 2>&1 | Out-Null }
   }
-  [void]$branchesToSweep.Add("$branch|$($decision.ForceDelete)")
+  [void]$branchesToSweep.Add("$branch|$forceDel")
   $removed += $tag
 }
 
@@ -139,9 +154,12 @@ foreach ($line in (& git -C $RepoRoot branch --format='%(refname:short)' 2>$null
   if ($wtBranches.Contains($n)) { continue }       # stadig i et (beholdt) worktree
   if ($liveOnOrigin.Contains($n)) { continue }      # lever på origin
   if ($plannedNames.Contains($n)) { continue }      # allerede planlagt
+  # Samme zero-ahead-bevidste beslutning som for worktrees: en løs branch uden
+  # egne commits (ahead==0) og uden merged PR beholdes (frisk/uarbejdet).
   $anc = Test-BranchMergedByAncestry -Branch $n -RepoRoot $RepoRoot -BaseRef $BaseRef
-  $prState = if ($anc) { $false } else { Test-BranchHasMergedPr -Branch $n -RepoRoot $RepoRoot }
-  $decision = Get-BranchMergeDecision -AncestryMerged $anc -MergedPrState $prState -BaseRef $BaseRef
+  $ahead = Get-BranchAheadCount -Branch $n -RepoRoot $RepoRoot -BaseRef $BaseRef
+  $prState = Test-BranchHasMergedPr -Branch $n -RepoRoot $RepoRoot
+  $decision = Get-BranchMergeDecision -AncestryMerged $anc -MergedPrState $prState -AheadCount $ahead -BaseRef $BaseRef
   if ($decision.Merged) { $delBranches += [pscustomobject]@{ name = $n; force = $decision.ForceDelete } }
 }
 

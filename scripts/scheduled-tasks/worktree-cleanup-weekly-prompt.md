@@ -9,7 +9,8 @@ Både Claude Code-sessioner og `new-worktree.ps1` opretter git worktrees, men cl
 Scriptets safety-checks (sletter ALDRIG noget vi ikke kan bekræfte er merged):
 - Default = dry-run; intet slettes uden `-Execute`.
 - Springer over: primær checkout, det worktree scriptet selv kører i, locked worktrees, detached HEAD, branches der stadig lever på origin, og worktrees med uncommitted changes (medmindre `-Force`).
-- Sletter kun når ancestry-merge ELLER merged PR (gh) bekræfter det. Er gh ubestemt for en squash-branch → branchen BEHOLDES.
+- Springer over FRISKE worktrees uden egne commits ift. origin/main (ahead==0) — et netop oprettet fleet-worktree ser ancestry-merged ud, men er ikke merged (issue #1271). Den automatiserede kørsel bruger aldrig `-Force`, så de er altid sikre.
+- Sletter kun med positivt merge-bevis: en merged PR (gh), eller en ancestry-merge med egne commits. Er gh ubestemt for en squash-branch → branchen BEHOLDES.
 
 ## Trin
 

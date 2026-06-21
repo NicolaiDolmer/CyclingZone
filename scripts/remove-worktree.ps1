@@ -38,6 +38,8 @@ $ErrorActionPreference = "Stop"
 
 # Delt merge-detektion (ancestry + squash-PR-fallback). Se filens header.
 . (Join-Path $PSScriptRoot 'lib\git-merge-detection.ps1')
+# Delt encoding af worktree-sti → ~/.claude/projects/<encoded>/ (memory-junction).
+. (Join-Path $PSScriptRoot 'lib\claude-project-paths.ps1')
 
 $slug = $Branch -replace '/','-'
 $wt = Join-Path $WorktreesRoot $slug
@@ -70,8 +72,10 @@ if (-not $Force) {
   }
 }
 
-# Fjern Claude-projects-mappen for worktreet (memory-junction-parent)
-$encoded = $wt -replace '[:\\]','-'
+# Fjern Claude-projects-mappen for worktreet (memory-junction-parent).
+# Delt Get-ClaudeProjectDirName koder OGSÅ '.' til '-' — relevant hvis WorktreesRoot
+# nogensinde ligger under en sti med '.' (fx .claude\worktrees).
+$encoded = Get-ClaudeProjectDirName $wt
 $claudeProj = Join-Path $env:USERPROFILE ".claude\projects\$encoded"
 if (Test-Path $claudeProj) {
   if ($DryRun) {
