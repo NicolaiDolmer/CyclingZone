@@ -3,6 +3,7 @@
 > **Established:** 2026-05-18 (tone session efter PR #475 PatchNotes overreach + #366 blokering)
 > **Owner:** Nicolai Dolmer Mikkelsen (founder)
 > **Konsulter denne guide før al ny player-facing tekst**, per `feedback_player_facing_copy_rules.md` regel 5.
+> **Revideret 2026-06-21:** ny sektion *Voice DNA* + 4 låste tone-beslutninger, destilleret fra 4.453 af ejerens egne Discord-beskeder (~15 mdr). Delvist svar på #1283's udestående kalibrerings-leverance.
 
 ## Language priority
 
@@ -20,6 +21,56 @@ Se også: `memory/feedback_language_priority.md`.
 - Share the thinking, not just the conclusion ("I'm trying to figure out..." / "jeg overvejer...")
 
 **Build-in-public means:** We share the decision-making process while it happens, not after. Players who join early should feel they are shaping the direction, not consuming a finished product.
+
+## Voice DNA · destilleret fra egne Discord-beskeder (2026-06-21)
+
+> **Kilde:** ~15 mdr af Nicolais egne beskeder på tværs af 9 kanaler i "Cycling Career"-serveren (#general, #cycling-zone, #livecykling, #spørgsmål-og-svar, #patch-notes, #roadmap, #next-step-cz, #cyclingcareer, #hvad-er-cycling-zone), 4.453 beskeder filtreret til kun ejerens, analyseret 2026-06-21. Dette er calibration-materiale til founder-stemmen (delvist svar på #1283): ejerens egne ord, ikke AI-prosa.
+
+### Den autentiske stemme (kort)
+
+Nærværende, varm, lidt kaotisk solo-udvikler der taler til vennerne i klubben, aldrig til "kunder." Radikalt åben om bugs og egne grænser, fællesskab > resultater, ægte cykel-/sim-dybde i rygmarven, tør selvironisk humor, hedger løfter men hyper lanceringer, og dropper jokerne og bliver oprigtig founder når øjeblikket er stort.
+
+### Signatur-markører der SKAL overleve i player-facing copy
+
+- Radikal åbenhed om WIP/bugs/grænser, uden forsvar (et brand-aktiv, ikke en svaghed)
+- Oprigtig, struktureret founder-alvor når det gælder (#next-step-cz-registeret)
+- Fællesskab-over-resultater som overbevisning
+- Ubesværet, ægte cykel-/manager-sim-fluency med konkrete tal-eksempler = troværdighed AI-slop ikke kan fake
+- Invitation med lav tærskel ("kom som du er", "det bedste tidspunkt at komme med er altid nu")
+- Tør, selvbevidst humor brugt sparsomt
+- Solo-builder-in-public-identiteten selv: et ægte menneske med navn, ikke et ansigtsløst studie
+
+### Anti-mønstre der IKKE må med i akkvisitions-copy (landingsside/signup/store)
+
+Disse må gerne leve videre i Discord/community, hvor de skaber nærhed. Spændingen er **kontekst, ikke censur**.
+
+- Bandeord som fyld/begejstring (sku, fandme, satme); nedsættende slang ("full retard"/"mongol") må ALDRIG optræde nogensteds
+- Emoji-klynger som tegnsætning (✌️✌️🔥🔥), "xD", "(Y)"
+- ALL-CAPS-hype (ITS ALIVE, FORHELVEDE)
+- Ukorrigerede typos + stjerne-selvkorrektioner
+- Insider-PCM/cykel-shorthand som forudsat fælessprog (bj/bk/udh, World DB, conti, nerf/buff)
+- Over-hedging der underminerer selvtillid på akkvisitions-flader
+- In-jokes der kræver kontekst (kapitalist/købmand-bittet, "Dont mention Omloop")
+- Mock-mikrotransaktions-jokes nær et gratis produkt
+
+### Låste beslutninger (ejer, 2026-06-21)
+
+1. **Slang+emoji → Ren editorial.** Akkvisitions-flader: 0 bandeord, 0 xD/(Y), ingen emoji-som-pynt, ingen råb-i-versaler. Energien lever i stærke verber, ægte cykel-detaljer og korte sætninger, ikke i dekoration. Løs stemme stadig OK i Discord/community.
+2. **Jeg vs vi → Solo-founder 'jeg'.** Bekræfter brand-voice-reglen ovenfor. Led med det ægte menneske; "vi" kun om fællesskabet der kører sammen, aldrig for at fake et team.
+3. **Ærlighed → Ærlig men sikker.** Behold åbenheden som differentiator ("bygget i det åbne, bedre hver uge"), MEN fjern bug/WIP-advarsler fra akkvisitions-flader (de hører til i community) og par hvert hedge med en konkret grund til at hoppe på nu. Oprigtig om rejsen, selvsikker om oplevelsen. Forfiner build-in-public-afsnittet ovenfor for akkvisitions-kontekst.
+4. **Jargon → Fantasi først.** Led med fantasien i klart sprog (saml et hold, byd i live-auktioner, læg taktik, kør en hel sæson); lad dyb cykel-detalje være en belønning man opdager. Ægte specifik = troværdigheds-signal, aldrig entry-gate.
+
+### Calibration-citater (ejerens egne ord — referencetone, ikke til ordret genbrug)
+
+- "Det startede som en idé, en passion og et ønske om at skabe et cykelmanagerspil, hvor man ikke bare klikker sig igennem nogle tal, men hvor man faktisk føler, at man bygger noget op over tid."
+- "Det er fuldstændig ligegyldigt med de der resultater... Du kommer på grund af fællesskabet. det er fællesskabet der gør, at du bliver."
+- "Man kan være med på egne præmisser og komme og gå som man vil."
+- "...hvis det føles som work in progress, så er det fordi det er det. Bare fordi det ikke er ordnet fra dag 1, betyder det ikke, at det aldrig bliver det."
+- "Det bedste tidspunkt at komme med i spillet er altid nu."
+- "Min drøm er, at Cycling Zone skal blive mere end bare et hobbyprojekt."
+- "Det her er starten på noget stort."
+
+> Citaterne er dansk, afslappet Discord-register. De kalibrerer ejerens **personlighed og rytme**, ikke EN-first akkvisitions-prosa. Den endelige EN-copy forfattes stadig af ejeren (eller udfyldes i skelettet nederst), jf. founder-prosa-reglen.
 
 ## Positioning · the game is free, premium is optional
 
@@ -130,6 +181,7 @@ Hvis en tekst krydser grænsen til player-eyes og du er usikker på om tonen pas
 > **Formål:** en genbrugelig STRUKTUR/skelet til founder-stemme-opslag (marketing, roadmap-intros, Discord-announcements, patch-note-intros). AI leverer skelettet; **selve prosaen skriver ejeren**, jf. `feedback_founder_voice_owner_writes` (Claude-forfattet founder-stemme rammer ikke Nicolais tone, roadmap-intro 10/6).
 >
 > **Udestående ejer-leverance (fra #1283):** 2-3 godkendte eksempeltekster AI kan kalibrere imod. Indtil de findes, må AI **ikke** generere færdig founder-prosa. AI udfylder strukturen med fakta-bullets + markerer prosa-slots `[FOUNDER-PROSA]`.
+> **Delvist dækket 2026-06-21:** sektionen *Voice DNA* ovenfor giver nu signatur-markører + ejerens egne calibration-citater fra Discord. Det kalibrerer ejerens personlighed/rytme; en endelig EN-first akkvisitions-prøvetekst mangler stadig fra ejeren.
 
 ### Sådan bruges skelettet
 
