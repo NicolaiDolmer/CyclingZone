@@ -19,7 +19,11 @@ export const SPONSOR_INCOME_BASE = 240000;
 // (260k) lå under lønbyrden, så D3-net var negativ selv ved upkeep=0 → §4.1 kilde-re-tune
 // var påkrævet for at lukke D3-loopet (spec §3.2/§4.1). Verificeret af moneySupplyScorecard
 // (syntetisk fresh-population-projektion, --synthetic).
-export const SPONSOR_INCOME_BY_DIVISION = { 1: 600000, 2: 400000, 3: 340000 };
+// #1608 forever-relaunch FORM-FRYS (granit, ejer-godkendt 2026-06-21 — MÅ IKKE ÆNDRES):
+// tier 4 = bunden (nye managere ind fra bunden). 315k er kalibreret mod den frosne
+// fresh-roster-lønbyrde ≈ 316k/hold (samme 8-rytter-allokering som tier 1-3), så tier 4
+// rammer net break-even ved upkeep=0. Tier 1-3-tallene er granit fra #1441 A6 og urørt.
+export const SPONSOR_INCOME_BY_DIVISION = { 1: 600000, 2: 400000, 3: 340000, 4: 315000 };
 
 // #1441 Fase 1 — løbende upkeep (gold sink). Division-tier-skaleret, IKKE live
 // roster-værdi (undgår auto-eskalerende feedback-loop).
@@ -30,7 +34,9 @@ export const SPONSOR_INCOME_BY_DIVISION = { 1: 600000, 2: 400000, 3: 340000 };
 // + repræsentativ præmie (D1 160k/D2 70k/D3 25k) rammer nettoen: D1 ≈ +3,6k (break-even,
 // |net|≤30k ✅), D2 ≈ +13,6k ✅, D3 ≈ +8,6k ✅ (alle i §2.2 net-mål). Låst af
 // moneySupplyScorecard --synthetic. Præmie er det blødeste input — se scorecard-noten.
-export const UPKEEP_BY_DIVISION = { 1: 440000, 2: 140000, 3: 40000 };
+// #1608 forever-relaunch FORM-FRYS (granit, ejer-godkendt 2026-06-21 — MÅ IKKE ÆNDRES):
+// tier 4 upkeep = 0 (ingen gold sink i bunden — sponsoren bærer hele break-even-balancen).
+export const UPKEEP_BY_DIVISION = { 1: 440000, 2: 140000, 3: 40000, 4: 0 };
 
 // #1441 Fase 1 — FINAL sponsor-payout-loft (post board_modifier × pullout).
 // S2+ = D1 750k gross × 1.2 = 900k; S1/intro = D1 600k gross × 1.2 = 720k.
@@ -68,12 +74,18 @@ export const NEGATIVE_BALANCE_INTEREST_RATE = 0.10;
 
 // Loan debt-loft per division (loan_config-tabel + 2026-04-30-economy-light-tune-v176.sql).
 // Bruges som soft-tjek; loan_config er kanonisk runtime-værdi.
-export const DEBT_CEILING_BY_DIVISION = { 1: 1200000, 2: 900000, 3: 600000 };
+// #1608 forever-relaunch FORM-FRYS (granit, ejer-godkendt 2026-06-21 — MÅ IKKE ÆNDRES):
+// tier 4 debt-loft = 400k (lavest, matcher loan_config-rækkerne i
+// database/2026-06-21-tier4-economy.sql). Tier 1-3 er granit fra economy-light-tune-v176.
+export const DEBT_CEILING_BY_DIVISION = { 1: 1200000, 2: 900000, 3: 600000, 4: 400000 };
 
 // Divisions-struktur. Div 1 = toppen (bedst), MAX_DIVISION = bunden.
 // Centraliseret her (#962) så fyld-fra-toppen og op/nedrykning deler samme bounds.
 export const MIN_DIVISION = 1;
-export const MAX_DIVISION = 3;
+// #1608 forever-relaunch FORM-FRYS (granit, ejer-godkendt 2026-06-21): 4-tier-pyramide.
+// Tier 4 = bunden. Bevidst retning: pickDivisionForNewTeam + rebalanceDivisions looper
+// nu MIN..4. Pulje-bevidst placering bygges additivt (#1608-children, Task 6/9).
+export const MAX_DIVISION = 4;
 
 // Mål-antal "rigtige" hold pr. division for fyld-fra-toppen (#962). Kun aktive,
 // ikke-test menneske-hold tæller med — samme filter som ranglisten (AI, test og
@@ -81,6 +93,14 @@ export const MAX_DIVISION = 3;
 // (MAX_DIVISION) er overflow og må vokse forbi dette tal (blød cap), så der altid
 // er plads til nye hold.
 export const DIVISION_CAPACITY = 20;
+
+// #1608 forever-relaunch FORM-FRYS (granit, ejer-godkendt 2026-06-21): pulje-target =
+// race-feltcap = 24. Hver pulje (league_divisions-række) sigter mod 24 hold; tallet
+// forener #1608's 24-cap (race-feltinddeling) med pulje-kapaciteten, så standings-puljen
+// og race-feltet altid har samme størrelse. Erstatter DIVISION_CAPACITY=20 som
+// pulje-kapacitet (DIVISION_CAPACITY bevares til den eksisterende tier-brede
+// fyld-fra-toppen indtil pulje-bevidst allokering lander, #1608-children Task 6/9).
+export const POOL_TARGET_SIZE = 24;
 
 // Første sæson-slut hvor op/nedrykninger må ske. Aktiveret 2026-05-21 for at give
 // open-beta tid til at finde en sund langtids-fordeling af hold i divisioner før

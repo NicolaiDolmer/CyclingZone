@@ -245,11 +245,11 @@ import {
   DEFAULT_RACE_DAYS_TARGET,
 } from "../lib/seasonRaceSelection.js";
 import {
+  allocateLeaguePools,
   cancelBetaMarket,
   resetBetaAchievements,
   resetBetaBalances,
   resetBetaBoardProfiles,
-  resetBetaDivisions,
   resetBetaLoans,
   resetBetaManagerProgress,
   resetBetaNotifications,
@@ -7268,6 +7268,9 @@ router.get("/board/status", requireAuth, async (req, res) => {
             boardId: board.id,
             currentSeasonId: activeSeason.id,
             division: currentStanding?.division ?? null,
+            // #1608 · pulje-rang: divisionManagerCount tælles pr. pulje når holdet
+            // er pulje-allokeret (ellers tier-bredt fallback).
+            leagueDivisionId: currentStanding?.league_division_id ?? null,
             // #54 · Afgræns cumulative + u25-baseline til den aktuelle plan-cyklus.
             planStartSeasonNumber: board.plan_start_season_number,
           });
@@ -8080,10 +8083,12 @@ router.post("/admin/beta/reset-balances", requireAdmin, adminWriteLimiter, async
   }
 });
 
-// POST /api/admin/beta/reset-divisions — sæt alle aktive managerhold tilbage til 3. division
+// POST /api/admin/beta/reset-divisions — #1608 form-frys: pulje-spredende allokering.
+// Placerer alle aktive manager-hold i bunden (tier 4) + spreder dem på de 8 div-4-puljer
+// (erstatter den flade "tilbage til division 3"-bulk-update).
 router.post("/admin/beta/reset-divisions", requireAdmin, adminWriteLimiter, async (req, res) => {
   try {
-    res.json({ ok: true, divisions: await resetBetaDivisions(supabase) });
+    res.json({ ok: true, divisions: await allocateLeaguePools(supabase) });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

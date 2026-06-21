@@ -36,9 +36,9 @@ export const RULES_NUMBERS = {
   debtD3: 600000, // DEBT_CEILING_BY_DIVISION[3]
   prizePerPoint: 1500, // PRIZE_PER_POINT
   starValue: 8000000, // STAR_RIDER_MARKET_VALUE
-  divisions: 3, // MAX_DIVISION - MIN_DIVISION + 1
+  divisions: 4, // MAX_DIVISION - MIN_DIVISION + 1 (#1608 form-frys: 4-tier-pyramide)
   minDivision: 1, // MIN_DIVISION
-  maxDivision: 3, // MAX_DIVISION
+  maxDivision: 4, // MAX_DIVISION (#1608 form-frys: tier 4 = bunden)
   divisionCapacity: 20, // DIVISION_CAPACITY
   firstPromotionSeason: 3, // FIRST_PROMOTION_RELEGATION_SEASON
 
