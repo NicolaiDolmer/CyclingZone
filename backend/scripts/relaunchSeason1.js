@@ -20,7 +20,7 @@ import { fileURLToPath } from "node:url";
 
 import { runRelaunchSeason1, assertRelaunchProdGuard, isProdSupabaseUrl } from "../lib/relaunchOrchestrator.js";
 
-const START_DATE = "2026-06-20"; // TdF-relaunch
+const START_DATE = "2026-06-22"; // TdF-relaunch (ejer-besluttet 2026-06-22)
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__dirname, "../.env"), quiet: true });
