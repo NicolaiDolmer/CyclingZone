@@ -59,9 +59,9 @@ export default function PrivacyPolicyPage() {
           </ul>
         </Section>
 
-        <Section title="Founder Supporter-waitlist (uforpligtende interessetilkendegivelse)">
+        <Section title="Founder-waitlist (uforpligtende interessetilkendegivelse)">
           <p className="mb-2">
-            Hvis du tilmelder dig vores waitlist for &quot;Founder Supporter&quot;-status, behandler vi følgende data baseret på dit udtrykkelige samtykke (GDPR art. 6, stk. 1, litra a):
+            Hvis du tilmelder dig vores waitlist for &quot;Founder&quot;-status, behandler vi følgende data baseret på dit udtrykkelige samtykke (GDPR art. 6, stk. 1, litra a):
           </p>
           <ul className="list-disc pl-5 space-y-1">
             <li><strong>Kontakt:</strong> e-mail og/eller Discord-handle (mindst én kræves så vi kan vende tilbage).</li>
