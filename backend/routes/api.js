@@ -141,6 +141,11 @@ import { groupCronRuns } from "../lib/cronRunCorrelation.js";
 import { getSeasonPrizePreview, paySeasonPrizesToDate } from "../lib/prizePayoutEngine.js";
 import { payRaceDaySponsorsToDate } from "../lib/sponsorRaceDayIncome.js";
 import {
+  getActiveContract,
+  getNegotiationState,
+  acceptOffer,
+} from "../lib/sponsorContractsService.js";
+import {
   buildSeasonEndPreviewRows,
   DEFAULT_SPONSOR_INCOME,
   loadHumanSeasonEndTeams,
@@ -5556,6 +5561,54 @@ router.post("/finance/loans/:id/repay", requireAuth, marketWriteLimiter, async (
       ...(e.params ? { errorParams: e.params } : {}),
     });
   }
+});
+
+// ── Sponsor-kontrakter (#1663, Økonomi Fase 2) ─────────────────────────────────
+// Hjælper: nuværende sæsons heltal (samme idiom som resten af filen). Frisk DB /
+// ingen aktiv sæson → fald tilbage til 1.
+async function resolveCurrentSeasonNumber() {
+  const { data: s } = await supabase
+    .from("seasons")
+    .select("number")
+    .eq("status", "active")
+    .maybeSingle();
+  return s?.number ?? 1;
+}
+
+// GET /api/sponsor/contract — holdets aktive sponsor-kontrakt (eller null).
+router.get("/sponsor/contract", requireAuth, async (req, res) => {
+  try {
+    if (!req.team?.id) return res.status(404).json({ error: "No team" });
+    const contract = await getActiveContract({ supabase, teamId: req.team.id });
+    res.json({ contract });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/sponsor/offers — forhandlings-tilstand for den kommende sæson:
+// { negotiable, upcomingSeasonNumber, offers, pendingVariant }.
+router.get("/sponsor/offers", requireAuth, async (req, res) => {
+  try {
+    if (!req.team?.id) return res.status(404).json({ error: "No team" });
+    const currentSeasonNumber = await resolveCurrentSeasonNumber();
+    const state = await getNegotiationState({ supabase, teamId: req.team.id, currentSeasonNumber });
+    res.json(state);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/sponsor/offers/accept — manager vælger et tilbud for den kommende
+// sæson; gemmes som 'pending' og aktiveres ved sæson-skiftet. body: { variant }.
+router.post("/sponsor/offers/accept", requireAuth, async (req, res) => {
+  try {
+    if (!req.team?.id) return res.status(404).json({ error: "No team" });
+    const variant = req.body?.variant;
+    if (!variant) return res.status(400).json({ error: "variant required" });
+    const currentSeasonNumber = await resolveCurrentSeasonNumber();
+    const state = await getNegotiationState({ supabase, teamId: req.team.id, currentSeasonNumber });
+    if (!state.negotiable) return res.status(409).json({ error: "Contract is locked — not negotiable this season" });
+    if (!state.offers.some((o) => o.variant === variant)) return res.status(400).json({ error: "Unknown variant" });
+    const contract = await acceptOffer({ supabase, teamId: req.team.id, upcomingSeasonNumber: state.upcomingSeasonNumber, variant });
+    res.json({ contract, upcomingSeasonNumber: state.upcomingSeasonNumber });
+  } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
 // PATCH /api/admin/loan-config — opdater lånekonfiguration
