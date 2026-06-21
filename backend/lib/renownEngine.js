@@ -2,13 +2,15 @@
 // Renown-multiplier (Fase 2, #1663): sponsor-basen skalerer med klub-omdømme
 // (division + resultat-historik). Ren funktion — ingen I/O. Aktivitet er IKKE en
 // multiplier-faktor (det er per-løbsdag-indkomst, se sponsorRaceDayIncome.js).
-// Default-konstanter er START-GÆT; kalibreres empirisk i harness (#1663 §7) før ship.
 import { SPONSOR_INCOME_BY_DIVISION, SPONSOR_INCOME_BASE } from "./economyConstants.js";
 
-// PLACEHOLDER indtil harness-kalibrering (Phase J). W_RESULTS sat så et top-hold
-// (resultsScore 1,0) rammer MAX_MULTIPLIER.
-export const W_RESULTS = 0.60;
-export const MAX_MULTIPLIER = 1.60;
+// Harness-kalibreret (#1663 Fase J, 2026-06-21 — se docs/audits/2026-06-21-renown-sponsor-
+// calibration.md). W_RESULTS=0,45 trækker det modne D1-felt dead-on break-even (median-net
+// ≈ +4k) UDEN at hæve divergens (Gini falder faktisk — de stærke hold bærer den dybeste
+// løn-deficit, så at booste dem komprimerer net-spredningen). MAX_MULTIPLIER=1,40 = top-
+// holdets ceiling (resultsScore=1,0 → 1+0,45 = 1,45, clamp'et til 1,40) → aktiv clamp.
+export const W_RESULTS = 0.45;
+export const MAX_MULTIPLIER = 1.40;
 
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));

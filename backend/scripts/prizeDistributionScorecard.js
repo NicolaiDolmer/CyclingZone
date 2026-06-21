@@ -96,6 +96,7 @@ import {
   resolveOverrides,
   applyFlattenToPointRows,
   describeOverrides,
+  renownSponsorFor,
 } from "./lib/economyCalibrationOverrides.js";
 // NB: SALARY_RATE (0.067) bruges via computeFrozenSalary. PRIZE_PER_POINT er IKKE
 // importeret direkte: præmie genberegnes fra points_earned × override.prizePerPoint
@@ -330,7 +331,7 @@ export function runScorecard(opts = {}) {
   const rosterSize = opts.rosterSize ?? 8;
   const overrides = opts.overrides ?? resolveOverrides();
   const print = opts.print !== false;
-  const { sponsorBase, upkeep: upkeepOv, prizePerPoint, flatten, breadthBoost } = overrides;
+  const { sponsorBase, upkeep: upkeepOv, prizePerPoint, flatten, breadthBoost, wResults, maxMultiplier } = overrides;
 
   if (print) {
     console.log(`\n=== #1606 PRIZE-DISTRIBUTION-SCORECARD — syntetisk sæson (seed ${seed}, ${teamCount} hold) ===`);
@@ -406,19 +407,46 @@ export function runScorecard(opts = {}) {
     );
     const medPrize = median(prizes);
     const medSalary = median(salaries);
-    const sponsor = sponsorBase[d];
+    const divisionBase = sponsorBase[d];
     const upkeep = upkeepOv[d];
 
-    // Net pr. hold (sponsor − upkeep − holdets egen løn + holdets egen præmie).
+    // #1663 renown-sponsor: byg hver divisions standing fra de SIMULEREDE point. Point er
+    // proportionale med præmie inden for ét prizePerPoint-niveau (præmie = point × ppp), så
+    // total_points = seasonPrize / prizePerPoint (eksakt). Vi bruger SAMME-sæsons standing
+    // som proxy for "sidste sæson" (et modent felt antages at have ligget stabilt) — den
+    // eneste tilgængelige resultat-historik i denne statiske 1-sæsons-model.
+    const standingsRaw = divTeams
+      .map((t) => ({ team_id: t.id, total_points: seasonPrize.get(t.id) / prizePerPoint }))
+      .sort((a, b) => b.total_points - a.total_points);
+    standingsRaw.forEach((s, i) => { s.rank_in_division = i + 1; });
+    const standingByTeam = new Map(standingsRaw.map((s) => [s.team_id, s]));
+
+    // Per-hold renown-skaleret sponsor (frisk/standing-løst hold ville give multiplier 1,0).
+    const sponsorByTeam = new Map(
+      divTeams.map((t) => [
+        t.id,
+        renownSponsorFor({
+          divisionBase,
+          standing: standingByTeam.get(t.id),
+          divisionStandings: standingsRaw,
+          wResults,
+          maxMultiplier,
+        }),
+      ])
+    );
+    const sponsors = divTeams.map((t) => sponsorByTeam.get(t.id));
+    const medSponsor = median(sponsors);
+
+    // Net pr. hold (renown-sponsor − upkeep − holdets egen løn + holdets egen præmie).
     const nets = divTeams.map((t) => {
       const salary = t.riders.reduce((s, r) => s + computeFrozenSalary({ base_value: r.base_value, prize_earnings_bonus: 0 }), 0);
-      return sponsor - upkeep - salary + seasonPrize.get(t.id);
+      return sponsorByTeam.get(t.id) - upkeep - salary + seasonPrize.get(t.id);
     }).sort((a, b) => a - b);
 
     const p10 = percentile(nets, 0.1);
     const p90 = percentile(nets, 0.9);
     divisions[d] = {
-      nets, prizes, salaries, sponsor, upkeep,
+      nets, prizes, salaries, sponsor: medSponsor, sponsors, upkeep,
       medNet: median(nets), medPrize, medSalary,
       p10, p90, p10p90Spread: p90 - p10, gini: gini(nets),
     };
@@ -426,7 +454,8 @@ export function runScorecard(opts = {}) {
     if (print) {
       console.log(`  D${d} (${divTeams.length} hold, roster-værdi median ${fmt(median(divTeams.map((t) => t.rosterValue)))}):`);
       console.log(`     PRÆMIE/sæson  p10 ${fmt(percentile(prizes, 0.1))} · p25 ${fmt(percentile(prizes, 0.25))} · median ${fmt(medPrize)} · p75 ${fmt(percentile(prizes, 0.75))} · p90 ${fmt(percentile(prizes, 0.9))}`);
-      console.log(`     NET/sæson     p10 ${fmt(p10)} · median ${fmt(median(nets))} · p90 ${fmt(p90)}   [sponsor ${fmt(sponsor)} − upkeep ${fmt(upkeep)} − løn ${fmt(medSalary)} + præmie ${fmt(medPrize)}]`);
+      console.log(`     SPONSOR/sæson base ${fmt(divisionBase)} → renown p10 ${fmt(percentile([...sponsors].sort((a, b) => a - b), 0.1))} · median ${fmt(medSponsor)} · p90 ${fmt(percentile([...sponsors].sort((a, b) => a - b), 0.9))} (wRes ${wResults}, maxMult ${maxMultiplier})`);
+      console.log(`     NET/sæson     p10 ${fmt(p10)} · median ${fmt(median(nets))} · p90 ${fmt(p90)}   [sponsor ${fmt(medSponsor)} − upkeep ${fmt(upkeep)} − løn ${fmt(medSalary)} + præmie ${fmt(medPrize)}]`);
       console.log(`     divergens     Gini ${divisions[d].gini.toFixed(3)} · p10–p90 spread ${fmt(divisions[d].p10p90Spread)}`);
     }
   }
