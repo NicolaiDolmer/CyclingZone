@@ -91,13 +91,16 @@ import { parseRacePoolCsv } from "../lib/racePoolImport.js";
 import { aggressionScore } from "../lib/raceSimulator.js";
 import { makeRng } from "../lib/fictionalRiderGenerator.js";
 import { computeFrozenSalary } from "../lib/contractSeed.js";
+import { INITIAL_BALANCE } from "../lib/economyConstants.js";
 import {
-  SPONSOR_INCOME_BY_DIVISION,
-  UPKEEP_BY_DIVISION,
-  INITIAL_BALANCE,
-} from "../lib/economyConstants.js";
-// NB: SALARY_RATE (0.067) bruges via computeFrozenSalary; PRIZE_PER_POINT (1.500)
-// via buildRaceResults — derfor ikke importeret direkte her.
+  resolveOverrides,
+  applyFlattenToPointRows,
+  describeOverrides,
+} from "./lib/economyCalibrationOverrides.js";
+// NB: SALARY_RATE (0.067) bruges via computeFrozenSalary. PRIZE_PER_POINT er IKKE
+// importeret direkte: præmie genberegnes fra points_earned × override.prizePerPoint
+// (override-default = prod 1.500) så NIVEAU-knappen virker uden at røre prod-konstanten.
+// Sponsor/upkeep læses fra override (override-default = prod-konstanterne).
 
 const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
 const REFERENCE_YEAR = 2026;
@@ -109,9 +112,6 @@ function arg(name, def) {
   if (process.argv.includes(`--${name}`)) return true;
   return def;
 }
-const SEED = parseInt(arg("seed", "2026"), 10);
-const TEAM_COUNT = parseInt(arg("teams", "22"), 10);   // relaunch-rehearsal: 22 manager-hold (#1191)
-const ROSTER_SIZE = parseInt(arg("roster", "8"), 10);  // STARTER_SQUAD.SQUAD_SIZE = MIN_RIDERS_FOR_RACE
 const SINGLE_FIELD = parseInt(arg("singleField", "140"), 10);
 const STAGE_FIELD = parseInt(arg("stageField", "150"), 10);
 const AUTOPICK_MIN = 6, AUTOPICK_MAX = 8;
@@ -130,12 +130,16 @@ function percentile(sortedAsc, p) {
 const median = (arr) => percentile([...arr].sort((a, b) => a - b), 0.5);
 
 // ── 1. Byg markedet (launch-population → fuld værdi-kæde) ───────────────────────
+// Markedet er seed-uafhængigt (generateLaunchPopulation bruger fast intern seed) →
+// cache det, så sweep'en (1000+ kandidater) ikke genbygger værdi-pyramiden hver gang.
+let _marketCache = null;
 function buildMarket() {
+  if (_marketCache) return _marketCache;
   const baseline = JSON.parse(readFileSync(path.join(SCRIPT_DIR, "../lib/riderTypesBaseline.json"), "utf8"));
   const model = JSON.parse(readFileSync(path.join(SCRIPT_DIR, "../lib/riderValuationModel.json"), "utf8"));
   const { riders } = generateLaunchPopulation();
 
-  return riders.map((r, i) => {
+  _marketCache = riders.map((r, i) => {
     const id = `r${i}`;
     const abilities = deriveAbilities(r._meta?.physiology ?? {}, { ...r, id }, { asOfYear: REFERENCE_YEAR });
     const primary = computeRiderTypes(abilities, baseline).primary?.key ?? null;
@@ -150,6 +154,7 @@ function buildMarket() {
       primary,
     };
   });
+  return _marketCache;
 }
 
 // ── 2. STRATIFICERET draft: distinkte styrke-lag pr. division ───────────────────
@@ -160,11 +165,13 @@ function buildMarket() {
 // sammenlignelige hold (starterSquadAllocator-fairness). Det modellerer et felt hvor D1
 // er de bedst-byggede hold, D3 de spirende — den reelle division-betydning.
 // (Sæson 1 har ingen op/nedrykning endnu; division er her ren styrke-lag-proxy.)
-const DIVISION_TEAM_SPLIT = [
-  { d: 1, teams: Math.round(TEAM_COUNT / 3) },
-  { d: 2, teams: Math.round(TEAM_COUNT / 3) },
-  { d: 3, teams: TEAM_COUNT - 2 * Math.round(TEAM_COUNT / 3) },
-];
+function divisionTeamSplit(teamCount) {
+  return [
+    { d: 1, teams: Math.round(teamCount / 3) },
+    { d: 2, teams: Math.round(teamCount / 3) },
+    { d: 3, teams: teamCount - 2 * Math.round(teamCount / 3) },
+  ];
+}
 
 function draftTeams(market, teamCount, rosterSize) {
   const pool = market
@@ -176,7 +183,7 @@ function draftTeams(market, teamCount, rosterSize) {
   const usedIds = new Set();
   let teamCounter = 0;
   let poolIdx = 0;
-  for (const { d, teams: nTeams } of DIVISION_TEAM_SPLIT) {
+  for (const { d, teams: nTeams } of divisionTeamSplit(teamCount)) {
     const divTeams = Array.from({ length: nTeams }, () => ({ id: `t${teamCounter++}`, division: d, riders: [] }));
     // Tag de næste (nTeams × rosterSize) ryttere fra den sorterede pool → dette tiers ryttere.
     const tierRiders = pool.slice(poolIdx, poolIdx + nTeams * rosterSize);
@@ -222,21 +229,23 @@ function autopickTeam(team, size) {
 }
 
 // ── 5. Byg sæson-kalenderen (ProSeries-only, ~60 løbsdage) ──────────────────────
-function buildCalendar() {
+function buildCalendar(seed) {
   const csv = readFileSync(path.join(SCRIPT_DIR, "../../scripts/race_pool_seed.csv"), "utf8");
   const { rows } = parseRacePoolCsv(csv);
   // Giv hver pool-række en stabil id (selectSeasonRaces shuffler på id).
   const pool = rows.map((r, i) => ({ ...r, id: `pool-${i}` }));
-  const { selected, totalRaceDays } = selectFirstSeasonRaces(pool, { seed: SEED });
+  const { selected, totalRaceDays } = selectFirstSeasonRaces(pool, { seed });
   return { selected, totalRaceDays };
 }
 
 // ── 6. Afvikl ét løb → præmie pr. manager-hold ──────────────────────────────────
-function runRace(race, teams, freeAgents, racePointsByClass, rng) {
+// prizePerPoint er override-knappen: præmie genberegnes fra points_earned i stedet for
+// row.prize_money (som er bagt med prod-PRIZE_PER_POINT inde i buildRaceResults).
+function runRace(race, teams, freeAgents, racePointsByClass, rng, seed, prizePerPoint) {
   // Stage-profiler (ægte generator). Deterministisk seed pr. løb.
   const stages = generateRaceStageProfiles(
     { id: race.id, race_type: race.race_type, stages: race.stages },
-    { seed: (SEED ^ hashStr(race.id)) >>> 0 }
+    { seed: (seed ^ hashStr(race.id)) >>> 0 }
   );
 
   // Manager-entrants: hvert hold autopicker.
@@ -265,13 +274,16 @@ function runRace(race, teams, freeAgents, racePointsByClass, rng) {
   });
 
   // Aggregér præmie pr. hold (kun rækker MED team_id — payable, jf. prizePayoutEngine).
+  // Præmie = points_earned × prizePerPoint (override-knap; default = prod 1.500). Vi bruger
+  // IKKE row.prize_money, da den er bagt med den importerede prod-konstant.
   const prizeByTeam = new Map();
   let earned = 0, payable = 0;
   for (const row of resultRows) {
-    earned += row.prize_money;
+    const prize = (row.points_earned || 0) * prizePerPoint;
+    earned += prize;
     if (row.team_id) {
-      payable += row.prize_money;
-      prizeByTeam.set(row.team_id, (prizeByTeam.get(row.team_id) || 0) + row.prize_money);
+      payable += prize;
+      prizeByTeam.set(row.team_id, (prizeByTeam.get(row.team_id) || 0) + prize);
     }
   }
   return { prizeByTeam, earned, payable };
@@ -292,16 +304,45 @@ function hashStr(s) {
   return h >>> 0;
 }
 
-// ── 7. Kør hele sæsonen + rapportér ─────────────────────────────────────────────
-function main() {
-  console.log(`\n=== #1606 PRIZE-DISTRIBUTION-SCORECARD — syntetisk sæson (seed ${SEED}, ${TEAM_COUNT} hold) ===\n`);
+// ── Gini-koefficient (divergens-metrik) på en array af net-værdier ──────────────
+// Skiftet til alle-positive ved at trække min fra (Gini er udefineret for negative);
+// måler RELATIV spredning af net mellem hold i en division.
+function gini(values) {
+  if (values.length < 2) return 0;
+  const min = Math.min(...values);
+  const shifted = values.map((v) => v - min);
+  const sum = shifted.reduce((a, b) => a + b, 0);
+  if (sum === 0) return 0;
+  const sorted = [...shifted].sort((a, b) => a - b);
+  const n = sorted.length;
+  let cum = 0;
+  for (let i = 0; i < n; i++) cum += (2 * (i + 1) - n - 1) * sorted[i];
+  return cum / (n * sum);
+}
+
+// ── 7. Kør hele sæsonen → struktureret resultat (genbruges af sweep) ─────────────
+// opts: { seed, teamCount, rosterSize, overrides, print }
+// Returnerer per-division { nets[], prizes[], salaries[], sponsor, upkeep, medNet,
+// p10/p90 net, gini, p10p90Spread } + balance-trajektorier.
+export function runScorecard(opts = {}) {
+  const seed = opts.seed ?? 2026;
+  const teamCount = opts.teamCount ?? 22;
+  const rosterSize = opts.rosterSize ?? 8;
+  const overrides = opts.overrides ?? resolveOverrides();
+  const print = opts.print !== false;
+  const { sponsorBase, upkeep: upkeepOv, prizePerPoint, flatten, breadthBoost } = overrides;
+
+  if (print) {
+    console.log(`\n=== #1606 PRIZE-DISTRIBUTION-SCORECARD — syntetisk sæson (seed ${seed}, ${teamCount} hold) ===`);
+    console.log(`Overrides: ${describeOverrides(overrides)}\n`);
+  }
 
   const market = buildMarket();
-  const { teams, freeAgents } = draftTeams(market, TEAM_COUNT, ROSTER_SIZE);
-  const { selected, totalRaceDays } = buildCalendar();
+  const { teams, freeAgents } = draftTeams(market, teamCount, rosterSize);
+  const { selected, totalRaceDays } = buildCalendar(seed);
 
-  // Ægte UCI-kurve pr. race_class.
-  const allPoints = buildUciMenRacePointRows();
+  // Ægte UCI-kurve pr. race_class — reshapet af flatten-override (in-memory, prod uændret).
+  const allPoints = applyFlattenToPointRows(buildUciMenRacePointRows(), flatten, breadthBoost);
   const racePointsByClass = new Map();
   for (const row of allPoints) {
     if (!racePointsByClass.has(row.race_class)) racePointsByClass.set(row.race_class, []);
@@ -309,102 +350,121 @@ function main() {
   }
 
   // Felt-resumé.
-  const ovSorted = market.map((r) => r.overall).sort((a, b) => a - b);
-  const bvSorted = market.map((r) => r.base_value).sort((a, b) => a - b);
-  console.log("MARKED (launch-population):");
-  console.log(`  ${market.length} ryttere · overall p10 ${percentile(ovSorted, 0.1)}/median ${percentile(ovSorted, 0.5)}/p90 ${percentile(ovSorted, 0.9)}`);
-  console.log(`  base_value median ${fmt(percentile(bvSorted, 0.5))} · p90 ${fmt(percentile(bvSorted, 0.9))} · max ${fmt(bvSorted[bvSorted.length - 1])}`);
-  console.log(`  Draftet: ${teams.length} hold × ${ROSTER_SIZE} ryttere (ikke-superstjerne <${fmt(SUPERSTAR_CUTOFF)}) · ${freeAgents.length} free agents (AI-felt)`);
-  for (const d of [1, 2, 3]) {
-    const dt = teams.filter((t) => t.division === d);
-    if (!dt.length) continue;
-    const wageBills = dt.map((t) => t.riders.reduce((s, r) => s + computeFrozenSalary({ base_value: r.base_value, prize_earnings_bonus: 0 }), 0));
-    console.log(`    D${d}: ${dt.length} hold · median roster-værdi ${fmt(median(dt.map((t) => t.rosterValue)))} · median lønbyrde ${fmt(median(wageBills))}`);
-  }
-  console.log();
+  if (print) {
+    const ovSorted = market.map((r) => r.overall).sort((a, b) => a - b);
+    const bvSorted = market.map((r) => r.base_value).sort((a, b) => a - b);
+    console.log("MARKED (launch-population):");
+    console.log(`  ${market.length} ryttere · overall p10 ${percentile(ovSorted, 0.1)}/median ${percentile(ovSorted, 0.5)}/p90 ${percentile(ovSorted, 0.9)}`);
+    console.log(`  base_value median ${fmt(percentile(bvSorted, 0.5))} · p90 ${fmt(percentile(bvSorted, 0.9))} · max ${fmt(bvSorted[bvSorted.length - 1])}`);
+    console.log(`  Draftet: ${teams.length} hold × ${rosterSize} ryttere (ikke-superstjerne <${fmt(SUPERSTAR_CUTOFF)}) · ${freeAgents.length} free agents (AI-felt)`);
+    for (const d of [1, 2, 3]) {
+      const dt = teams.filter((t) => t.division === d);
+      if (!dt.length) continue;
+      const wageBills = dt.map((t) => t.riders.reduce((s, r) => s + computeFrozenSalary({ base_value: r.base_value, prize_earnings_bonus: 0 }), 0));
+      console.log(`    D${d}: ${dt.length} hold · median roster-værdi ${fmt(median(dt.map((t) => t.rosterValue)))} · median lønbyrde ${fmt(median(wageBills))}`);
+    }
+    console.log();
 
-  // Kalender-resumé.
-  const byClass = {};
-  for (const r of selected) byClass[r.race_class] = (byClass[r.race_class] || 0) + 1;
-  const singles = selected.filter((r) => r.race_type === "single").length;
-  const stageRaces = selected.filter((r) => r.race_type === "stage_race").length;
-  console.log(`KALENDER (sæson 1, WT ekskluderet): ${selected.length} løb · ${totalRaceDays} løbsdage`);
-  console.log(`  ${stageRaces} etapeløb + ${singles} endagsløb · klasser: ${Object.entries(byClass).map(([k, v]) => `${k} ${v}`).join(", ")}\n`);
+    // Kalender-resumé.
+    const byClass = {};
+    for (const r of selected) byClass[r.race_class] = (byClass[r.race_class] || 0) + 1;
+    const singles = selected.filter((r) => r.race_type === "single").length;
+    const stageRaces = selected.filter((r) => r.race_type === "stage_race").length;
+    console.log(`KALENDER (sæson 1, WT ekskluderet): ${selected.length} løb · ${totalRaceDays} løbsdage`);
+    console.log(`  ${stageRaces} etapeløb + ${singles} endagsløb · klasser: ${Object.entries(byClass).map(([k, v]) => `${k} ${v}`).join(", ")}\n`);
+  }
 
   // Afvikl alle løb, akkumulér præmie pr. hold.
   const seasonPrize = new Map(teams.map((t) => [t.id, 0]));
   let totalEarned = 0, totalPayable = 0;
-  const rng = makeRng((SEED ^ 0x9e3779b9) >>> 0);
+  const rng = makeRng((seed ^ 0x9e3779b9) >>> 0);
   for (const race of selected) {
-    const { prizeByTeam, earned, payable } = runRace(race, teams, freeAgents, racePointsByClass, rng);
+    const { prizeByTeam, earned, payable } = runRace(race, teams, freeAgents, racePointsByClass, rng, seed, prizePerPoint);
     totalEarned += earned; totalPayable += payable;
     for (const [teamId, prize] of prizeByTeam) seasonPrize.set(teamId, seasonPrize.get(teamId) + prize);
   }
 
-  console.log("PRÆMIE-PULJE (hele sæsonen):");
-  console.log(`  Optjent (earned, alle ryttere): ${fmt(totalEarned)} CZ$`);
-  console.log(`  Udbetalbar (payable, kun manager-hold): ${fmt(totalPayable)} CZ$ (${Math.round(100 * totalPayable / totalEarned)}% af optjent)`);
-  console.log(`  AI-andel (earned − payable): ${fmt(totalEarned - totalPayable)} CZ$\n`);
+  if (print) {
+    console.log("PRÆMIE-PULJE (hele sæsonen):");
+    console.log(`  Optjent (earned, alle ryttere): ${fmt(totalEarned)} CZ$`);
+    console.log(`  Udbetalbar (payable, kun manager-hold): ${fmt(totalPayable)} CZ$ (${Math.round(100 * totalPayable / totalEarned)}% af optjent)`);
+    console.log(`  AI-andel (earned − payable): ${fmt(totalEarned - totalPayable)} CZ$\n`);
+  }
 
-  // ── Per-division percentiler ──────────────────────────────────────────────────
-  const GUESS = { 1: 160000, 2: 70000, 3: 25000 };
-  const divNets = {};
-  console.log("PER-DIVISION PRÆMIE + NET/SÆSON:");
-  console.log("─".repeat(92));
+  // ── Per-division percentiler + struktureret resultat ───────────────────────────
+  const divisions = {};
+  if (print) {
+    console.log("PER-DIVISION PRÆMIE + NET/SÆSON:");
+    console.log("─".repeat(92));
+  }
   for (const d of [1, 2, 3]) {
     const divTeams = teams.filter((t) => t.division === d);
-    if (!divTeams.length) { console.log(`  D${d}: ingen hold`); continue; }
+    if (!divTeams.length) { if (print) console.log(`  D${d}: ingen hold`); continue; }
     const prizes = divTeams.map((t) => seasonPrize.get(t.id)).sort((a, b) => a - b);
     const salaries = divTeams.map((t) =>
       t.riders.reduce((s, r) => s + computeFrozenSalary({ base_value: r.base_value, prize_earnings_bonus: 0 }), 0)
     );
     const medPrize = median(prizes);
     const medSalary = median(salaries);
-    const sponsor = SPONSOR_INCOME_BY_DIVISION[d];
-    const upkeep = UPKEEP_BY_DIVISION[d];
+    const sponsor = sponsorBase[d];
+    const upkeep = upkeepOv[d];
 
     // Net pr. hold (sponsor − upkeep − holdets egen løn + holdets egen præmie).
     const nets = divTeams.map((t) => {
       const salary = t.riders.reduce((s, r) => s + computeFrozenSalary({ base_value: r.base_value, prize_earnings_bonus: 0 }), 0);
       return sponsor - upkeep - salary + seasonPrize.get(t.id);
     }).sort((a, b) => a - b);
-    divNets[d] = nets;
 
-    const guess = GUESS[d];
-    const factor = guess ? medPrize / guess : 0;
-    const dir = medPrize >= guess ? "OVER" : "UNDER";
+    const p10 = percentile(nets, 0.1);
+    const p90 = percentile(nets, 0.9);
+    divisions[d] = {
+      nets, prizes, salaries, sponsor, upkeep,
+      medNet: median(nets), medPrize, medSalary,
+      p10, p90, p10p90Spread: p90 - p10, gini: gini(nets),
+    };
 
-    console.log(`  D${d} (${divTeams.length} hold, roster-værdi median ${fmt(median(divTeams.map((t) => t.rosterValue)))}):`);
-    console.log(`     PRÆMIE/sæson  p10 ${fmt(percentile(prizes, 0.1))} · p25 ${fmt(percentile(prizes, 0.25))} · median ${fmt(medPrize)} · p75 ${fmt(percentile(prizes, 0.75))} · p90 ${fmt(percentile(prizes, 0.9))}`);
-    console.log(`     vs GÆT ${fmt(guess)}: median er ${dir} med faktor ${factor.toFixed(2)}× (median ÷ gæt)`);
-    console.log(`     NET/sæson     p10 ${fmt(percentile(nets, 0.1))} · median ${fmt(median(nets))} · p90 ${fmt(percentile(nets, 0.9))}   [sponsor ${fmt(sponsor)} − upkeep ${fmt(upkeep)} − løn ${fmt(medSalary)} + præmie ${fmt(medPrize)}]`);
+    if (print) {
+      console.log(`  D${d} (${divTeams.length} hold, roster-værdi median ${fmt(median(divTeams.map((t) => t.rosterValue)))}):`);
+      console.log(`     PRÆMIE/sæson  p10 ${fmt(percentile(prizes, 0.1))} · p25 ${fmt(percentile(prizes, 0.25))} · median ${fmt(medPrize)} · p75 ${fmt(percentile(prizes, 0.75))} · p90 ${fmt(percentile(prizes, 0.9))}`);
+      console.log(`     NET/sæson     p10 ${fmt(p10)} · median ${fmt(median(nets))} · p90 ${fmt(p90)}   [sponsor ${fmt(sponsor)} − upkeep ${fmt(upkeep)} − løn ${fmt(medSalary)} + præmie ${fmt(medPrize)}]`);
+      console.log(`     divergens     Gini ${divisions[d].gini.toFixed(3)} · p10–p90 spread ${fmt(divisions[d].p10p90Spread)}`);
+    }
   }
-  console.log("─".repeat(92));
+  if (print) console.log("─".repeat(92));
 
   // ── 5-sæsons balance-trajektorie (statisk roster/præmie, balance += net/sæson) ──
-  console.log("\n5-SÆSONS BALANCE-TRAJEKTORIE (start 800k, balance += median-net/sæson; konservativ, ingen vækst):");
+  const trajectories = {};
   for (const d of [1, 2, 3]) {
-    if (!divNets[d]) continue;
-    const medNet = median(divNets[d]);
+    if (!divisions[d]) continue;
+    const medNet = divisions[d].medNet;
     const traj = [];
     let bal = INITIAL_BALANCE;
     for (let s = 1; s <= 5; s++) { traj.push(bal); if (s < 5) bal += medNet; }
-    traj.push(bal);
-    console.log(`  D${d} (median-net ${fmt(medNet)}/sæson): S1 ${fmt(traj[0])} → S2 ${fmt(traj[1])} → S3 ${fmt(traj[2])} → S4 ${fmt(traj[3])} → S5 ${fmt(traj[4])}`);
+    trajectories[d] = { traj, ratioS5: traj[4] / INITIAL_BALANCE };
+  }
+  if (print) {
+    console.log("\n5-SÆSONS BALANCE-TRAJEKTORIE (start 800k, balance += median-net/sæson; konservativ, ingen vækst):");
+    for (const d of [1, 2, 3]) {
+      if (!trajectories[d]) continue;
+      const { traj } = trajectories[d];
+      console.log(`  D${d} (median-net ${fmt(divisions[d].medNet)}/sæson): S1 ${fmt(traj[0])} → S2 ${fmt(traj[1])} → S3 ${fmt(traj[2])} → S4 ${fmt(traj[3])} → S5 ${fmt(traj[4])} (${trajectories[d].ratioS5.toFixed(2)}× start)`);
+    }
+    console.log("\nNOTE: 100% syntetisk, intet rørt i prod. Ét seed/felt — kør flere --seed for et interval.");
+    console.log("      Sæson 1 = ProSeries-only (WT ekskluderet); sæson 2+ med WT-puljer (10-100× større) → præmie eksploderer.\n");
   }
 
-  // ── Sammenfatning mod gættet ──────────────────────────────────────────────────
-  console.log("\nSAMMENFATNING — målt median-præmie vs nuværende gæt (moneySupplyScorecard:54):");
-  for (const d of [1, 2, 3]) {
-    const divTeams = teams.filter((t) => t.division === d);
-    if (!divTeams.length) continue;
-    const medPrize = median(divTeams.map((t) => seasonPrize.get(t.id)));
-    const guess = GUESS[d];
-    const factor = medPrize / guess;
-    console.log(`  D${d}: gæt ${fmt(guess)} → målt ${fmt(medPrize)}  (${factor >= 1 ? "OVER" : "UNDER"} ${factor.toFixed(2)}×)`);
-  }
-  console.log("\nNOTE: 100% syntetisk, intet rørt i prod. Ét seed/felt — kør flere --seed for et interval.");
-  console.log("      Sæson 1 = ProSeries-only (WT ekskluderet); sæson 2+ med WT-puljer (10-100× større) → præmie eksploderer.\n");
+  return { seed, teamCount, overrides, divisions, trajectories, totalEarned, totalPayable };
 }
 
-main();
+// ── CLI ──────────────────────────────────────────────────────────────────────────
+function main() {
+  const seed = parseInt(arg("seed", "2026"), 10);
+  const teamCount = parseInt(arg("teams", "22"), 10);
+  const rosterSize = parseInt(arg("roster", "8"), 10);
+  runScorecard({ seed, teamCount, rosterSize, overrides: resolveOverrides(), print: true });
+}
+
+// Kør kun som CLI hvis dette er entry-modulet (ikke ved import fra sweep).
+if (import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.endsWith("prizeDistributionScorecard.js")) {
+  main();
+}
