@@ -12,7 +12,16 @@
 #      Fanger squash-merges. Kræver 'git branch -D' (force), fordi git stadig
 #      ser branchen som ikke-merged via ancestry.
 #
-# Get-BranchMergeDecision er REN (ingen IO) og kombinerer de to probe-resultater
+# VIGTIGT (issue #1271, 2026-06-21): ancestry ALENE er IKKE bevis for merge. En
+# frisk branch uden egne commits (tip == base, eller base voksede forbi den) har
+# også tippet i base's historie, så 'git branch --merged' rapporterer den som
+# "merged" — selvom intet arbejde nogensinde landede. At slette dens worktree er
+# data-tab (aktiv/frisk arbejdsplads rives væk). Get-BranchAheadCount leverer det
+# manglende signal: ahead == 0 => ingen egne commits => kan ikke bevises merged
+# => BEHOLD. Et POSITIVT bevis (merged PR) vinder dog over zero-ahead, fordi en
+# merget PR betyder worktreet er færdigt, ikke frisk.
+#
+# Get-BranchMergeDecision er REN (ingen IO) og kombinerer probe-resultaterne
 # til én beslutning — derfor kan beslutnings-logikken unit-testes uden git, gh
 # eller netværk. Se scripts/test-remove-worktree-merge-detection.ps1.
 
@@ -73,32 +82,73 @@ function Test-BranchHasMergedPr {
   return ($n -gt 0)
 }
 
+function Get-BranchAheadCount {
+  # Antal commits på $Branch der IKKE er på $BaseRef ('git rev-list --count base..branch').
+  # Svaret skelner 'frisk/aktiv worktree' fra 'merged efter eget arbejde':
+  #   0     — ingen egne commits ift. base (frisk branch, eller base voksede forbi
+  #           den). Kan IKKE bevises merged via ancestry → behold.
+  #   > 0   — branchen har eget arbejde (kan stadig være squash-merged via PR).
+  #   $null — UBESTEMT (git fejlede / ukendt ref). Kalderen falder tilbage til
+  #           gammel adfærd (zero-ahead-guarden springes over, sletter ikke ekstra).
+  [CmdletBinding()]
+  param(
+    [Parameter(Mandatory)][string]$Branch,
+    [Parameter(Mandatory)][string]$RepoRoot,
+    [string]$BaseRef = 'origin/main'
+  )
+  $out = & git -C $RepoRoot rev-list --count "$BaseRef..$Branch" 2>$null
+  if ($LASTEXITCODE -ne 0) { return $null }
+  $text = "$out".Trim()
+  $n = 0
+  if (-not [int]::TryParse($text, [ref]$n)) { return $null }
+  return $n
+}
+
 function Get-BranchMergeDecision {
   # REN beslutnings-funktion (ingen IO) — kombinerer probe-resultaterne.
-  #   $AncestryMerged : [bool]          fra Test-BranchMergedByAncestry
-  #   $MergedPrState  : $true/$false/$null fra Test-BranchHasMergedPr
+  #   $AncestryMerged : [bool]              fra Test-BranchMergedByAncestry
+  #   $MergedPrState  : $true/$false/$null  fra Test-BranchHasMergedPr
+  #   $AheadCount     : [int]/$null         fra Get-BranchAheadCount ($null = ukendt)
   # Returnerer [pscustomobject]:
   #   Merged      [bool]   — skal branchen slettes?
   #   ForceDelete [bool]   — kræver 'git branch -D' (squash) frem for '-d'?
-  #   Method      [string] — 'ancestry' | 'squash-pr' | 'none' | 'unknown'
+  #   Method      [string] — 'squash-pr' | 'ancestry' | 'fresh' | 'none' | 'unknown'
   #   Detail      [string] — menneskelig forklaring til log-output
   [CmdletBinding()]
   param(
     [Parameter(Mandatory)][bool]$AncestryMerged,
     $MergedPrState,
+    $AheadCount = $null,
     [string]$BaseRef = 'origin/main'
   )
 
+  # (1) Positivt merge-bevis vinder ALTID: en merged PR betyder arbejdet er landet
+  #     og worktreet er FÆRDIGT — også når tippet er ancestry-merged (ahead==0,
+  #     fx en --no-ff PR-merge). Force (-D) er sikkert for både squash og ancestry.
+  if ($MergedPrState -eq $true) {
+    return [pscustomobject]@{
+      Merged = $true; ForceDelete = $true; Method = 'squash-pr'
+      Detail = "merged via merged PR til $BaseRef"
+    }
+  }
+
+  # (2) Zero-ahead-guard (issue #1271): ingen merged-PR-bevis OG ingen egne commits
+  #     ift. base → kan ikke skelne frisk/aktiv worktree fra en ren ancestor. Et
+  #     ancestry-hit her er TVETYDIGT, så vi BEHOLDER (data-tab > disk). Kun et
+  #     eksplicit $AheadCount == 0 trigger dette; $null (ukendt) falder igennem.
+  if ($null -ne $AheadCount -and [int]$AheadCount -eq 0) {
+    return [pscustomobject]@{
+      Merged = $false; ForceDelete = $false; Method = 'fresh'
+      Detail = "ingen egne commits ift. $BaseRef + ingen merged PR (frisk/aktiv - behold)"
+    }
+  }
+
+  # (3) Ancestry-merge MED egne commits (ahead>0 eller ukendt): almindelig merge-
+  #     commit der bevarer ancestry. Sikker at slette med '-d' (git verificerer selv).
   if ($AncestryMerged) {
     return [pscustomobject]@{
       Merged = $true; ForceDelete = $false; Method = 'ancestry'
       Detail = "merged til $BaseRef (ancestry)"
-    }
-  }
-  if ($MergedPrState -eq $true) {
-    return [pscustomobject]@{
-      Merged = $true; ForceDelete = $true; Method = 'squash-pr'
-      Detail = "squash-merged via merged PR til $BaseRef"
     }
   }
   if ($null -eq $MergedPrState) {
