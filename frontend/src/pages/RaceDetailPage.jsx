@@ -53,6 +53,23 @@ function riderName(res) {
   return res.rider_name || "—";
 }
 
+// #1499 Deskriptiv udbruds-markør: vises kun for ryttere der var i (morgen-)udbruddet.
+// Holdt hjem (survived) = accent-toned; indhentet (caught) = dæmpet. Tooltip via title.
+function BreakawayMarker({ result, t }) {
+  if (!result?.in_breakaway) return null;
+  const caught = !!result.breakaway_caught;
+  const label = caught ? t("detail.breakaway.caught") : t("detail.breakaway.survived");
+  return (
+    <span
+      className={`ms-1 inline-flex align-middle ${caught ? "text-cz-3" : "text-cz-accent-t"}`}
+      title={`${t("detail.breakaway.label")} — ${label}`}
+      aria-label={`${t("detail.breakaway.label")} — ${label}`}
+    >
+      <FlagIcon size={13} />
+    </span>
+  );
+}
+
 function byRank(a, b) {
   return (a.rank ?? 9999) - (b.rank ?? 9999);
 }
@@ -103,7 +120,7 @@ export default function RaceDetailPage() {
     const rows = await fetchAllRows(() =>
       supabase
         .from("race_results")
-        .select("id, stage_number, result_type, rank, rider_id, rider_name, team_id, team_name, finish_time, points_earned, prize_money, rider:rider_id(id, firstname, lastname, nationality_code, team:team_id(id, name))")
+        .select("id, stage_number, result_type, rank, rider_id, rider_name, team_id, team_name, finish_time, points_earned, prize_money, in_breakaway, breakaway_caught, rider:rider_id(id, firstname, lastname, nationality_code, team:team_id(id, name))")
         .eq("race_id", raceId)
         .order("id")
     );
@@ -405,6 +422,7 @@ function ResultTable({ title, rows }) {
                         <Flag code={r.rider.nationality_code} className="me-1" />
                       )}
                       {riderName(r)}
+                      <BreakawayMarker result={r} t={t} />
                     </span>
                   </RiderLink>
                 </td>

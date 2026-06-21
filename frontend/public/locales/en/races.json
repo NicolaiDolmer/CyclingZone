@@ -196,6 +196,11 @@
       "mountain_day": "Mountains",
       "young_day": "Youth"
     },
+    "breakaway": {
+      "label": "Breakaway",
+      "survived": "stayed away to the finish",
+      "caught": "caught by the bunch"
+    },
     "stageProfile": {
       "label": "Terrain",
       "note": "Indicative terrain category. Full elevation profiles arrive later."

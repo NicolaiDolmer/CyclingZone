@@ -196,6 +196,11 @@
       "mountain_day": "Bjerg",
       "young_day": "Ungdom"
     },
+    "breakaway": {
+      "label": "Udbrud",
+      "survived": "holdt hjem til mål",
+      "caught": "indhentet af feltet"
+    },
     "stageProfile": {
       "label": "Terræn",
       "note": "Vejledende terrænkategori. Fulde højdeprofiler kommer senere."

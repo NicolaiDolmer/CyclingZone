@@ -100,6 +100,9 @@ export async function applyRaceResults({
     finish_time: row.finish_time || null,
     prize_money: Number(row.prize_money) || 0,
     points_earned: row.points_earned ?? 0,
+    // #1499: deskriptive udbruds-etiketter (false for importerede/PCM-rækker uden flag).
+    in_breakaway: row.in_breakaway === true,
+    breakaway_caught: row.breakaway_caught === true,
   }));
 
   const { error: insertError } = await supabase.from("race_results").insert(normalizedRows);

@@ -2,7 +2,7 @@
 // #1307: udbruds-mekanik — seeded, kun egnede profiler, 1-3 escapees, hunter-vægt.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { simulateStage, aggressionScore, breakawayMaxBonus, BREAKAWAY_BONUS, BREAKAWAY_TOP_EXCLUDED } from "./raceSimulator.js";
+import { simulateStage, aggressionScore, breakawayMaxBonus, deriveBreakawayStatus, BREAKAWAY_BONUS, BREAKAWAY_TOP_EXCLUDED } from "./raceSimulator.js";
 
 const ab = (over = {}) => ({
   climbing: 50, time_trial: 50, sprint: 50, punch: 50, endurance: 50,
@@ -116,6 +116,98 @@ test("breakawayMaxBonus: flad lav; itt/ttt giver intet udbrud", () => {
 test("breakawayMaxBonus: ukendt profil → 0; manglende finale → profil-default", () => {
   assert.equal(breakawayMaxBonus("nonsense", "whatever"), 0);
   assert.ok(breakawayMaxBonus("mountain", undefined) > 0); // _default-sti
+});
+
+// ── #1499: deskriptiv udbruds-status (deriveBreakawayStatus) ─────────────────
+// Ren read af motorens output — verificér at den IKKE ændrer rang/score (balance-neutral)
+// og at survived/caught-reglen matcher den gate-målte "holdt hjem"-definition.
+
+const ranked = (rows) =>
+  // rows: [rider_id, rank, breakaway] → minimal ranked-form
+  rows.map(([rider_id, rank, breakaway]) => ({ rider_id, rank, components: { breakaway } }));
+
+test("#1499: in_breakaway = components.breakaway > 0", () => {
+  const status = deriveBreakawayStatus(ranked([
+    ["esc1", 1, 0.3], ["esc2", 2, 0.2], ["peloton1", 3, 0], ["peloton2", 4, 0],
+  ]));
+  assert.equal(status.get("esc1").in_breakaway, true);
+  assert.equal(status.get("esc2").in_breakaway, true);
+  assert.equal(status.get("peloton1").in_breakaway, false);
+  assert.equal(status.get("peloton2").in_breakaway, false);
+});
+
+test("#1499: udbrud holdt hjem (alle escapees foran feltet) → ingen caught", () => {
+  // esc1+esc2 finishede 1-2, første ikke-escapee er rank 3 → begge holdt hjem.
+  const status = deriveBreakawayStatus(ranked([
+    ["esc1", 1, 0.3], ["esc2", 2, 0.2], ["peloton1", 3, 0], ["peloton2", 4, 0],
+  ]));
+  assert.equal(status.get("esc1").breakaway_caught, false);
+  assert.equal(status.get("esc2").breakaway_caught, false);
+});
+
+test("#1499: escapee bag en ikke-escapee → caught", () => {
+  // Feltet (peloton1, rank 1) slugte esc2 (rank 3): esc1 holdt hjem, esc2 caught.
+  const status = deriveBreakawayStatus(ranked([
+    ["peloton1", 1, 0], ["esc1", 2, 0.3], ["esc2", 3, 0.2], ["peloton2", 4, 0],
+  ]));
+  // bedste ikke-escapee = rank 1 → esc1 (rank 2) > 1 → caught; esc2 (rank 3) > 1 → caught.
+  assert.equal(status.get("esc1").in_breakaway, true);
+  assert.equal(status.get("esc1").breakaway_caught, true);
+  assert.equal(status.get("esc2").breakaway_caught, true);
+  // ikke-escapees er aldrig caught.
+  assert.equal(status.get("peloton1").breakaway_caught, false);
+});
+
+test("#1499: delvist hold — escapee foran feltet survived, escapee bag caught", () => {
+  // esc1 vinder (rank 1), feltet kommer på rank 2, esc2 caught bagved (rank 5).
+  const status = deriveBreakawayStatus(ranked([
+    ["esc1", 1, 0.3], ["peloton1", 2, 0], ["peloton2", 3, 0], ["peloton3", 4, 0], ["esc2", 5, 0.2],
+  ]));
+  assert.equal(status.get("esc1").breakaway_caught, false); // rank 1 < bedste ikke-escapee (2)
+  assert.equal(status.get("esc2").breakaway_caught, true);  // rank 5 > 2
+});
+
+test("#1499: ingen escapees → alt false; tom liste → tom map", () => {
+  const none = deriveBreakawayStatus(ranked([["a", 1, 0], ["b", 2, 0]]));
+  assert.equal(none.get("a").in_breakaway, false);
+  assert.equal(none.get("a").breakaway_caught, false);
+  assert.equal(deriveBreakawayStatus([]).size, 0);
+  assert.equal(deriveBreakawayStatus().size, 0);
+});
+
+test("#1499: deriveBreakawayStatus matcher simulateStage-output (vinder-holdt-hjem ⇔ in_breakaway & ikke caught)", () => {
+  // Mod den ÆGTE motor: hver gang vinderen er escapee skal status sige in_breakaway && !caught.
+  const ab = (over = {}) => ({
+    climbing: 50, time_trial: 50, sprint: 50, punch: 50, endurance: 50,
+    cobblestone: 50, acceleration: 50, recovery: 50, tactics: 50, positioning: 50, ...over,
+  });
+  const entrants = Array.from({ length: 40 }, (_, i) => ({
+    rider_id: `r${String(i).padStart(3, "0")}`,
+    abilities: ab({ sprint: 90 - i * 1.5, tactics: 40 + (i % 30) }),
+  }));
+  const dem = { sprint: 0.6, endurance: 0.3, randomness: 0.5 };
+  let checkedWinners = 0;
+  for (let seed = 1; seed <= 60; seed++) {
+    const { ranked: r } = simulateStage({ entrants, stageProfile: { profile_type: "flat", finale_type: "bunch_sprint", demand_vector: dem }, seed });
+    const status = deriveBreakawayStatus(r);
+    // Balance-neutral: status dækker præcis de samme ryttere, rang/score urørt.
+    assert.equal(status.size, r.length);
+    const winner = r[0];
+    if ((winner.components.breakaway || 0) > 0) {
+      checkedWinners++;
+      assert.equal(status.get(winner.rider_id).in_breakaway, true);
+      assert.equal(status.get(winner.rider_id).breakaway_caught, false, `escapee-vinder ${winner.rider_id} må ikke være caught`);
+    }
+    // Hver caught escapee SKAL have mindst én ikke-escapee foran sig.
+    for (const row of r) {
+      const st = status.get(row.rider_id);
+      if (st.breakaway_caught) {
+        const aheadNonEsc = r.some((x) => x.rank < row.rank && !((x.components.breakaway || 0) > 0));
+        assert.ok(aheadNonEsc, `caught ${row.rider_id} skal have ikke-escapee foran`);
+      }
+    }
+  }
+  assert.ok(checkedWinners > 0, "mindst én escapee-vinder forventet over 60 seeds");
 });
 
 test("#1021: mountain descent-finale giver flere escapee-sejre end summit-finale", () => {
