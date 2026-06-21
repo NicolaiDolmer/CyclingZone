@@ -18,7 +18,7 @@
     "ctaDiscord": "Kom med på Discord",
     "ctaEmail": "Få launch-mailen",
     "trustFree": "Gratis at spille",
-    "trustNoCard": "Intet betalingskort",
+    "trustNoCard": "Ingen installation",
     "trustBrowser": "Kører i din browser"
   },
   "signature": {
@@ -37,13 +37,13 @@
   },
   "how": {
     "kicker": "Sådan spiller du",
-    "title": "Fire valg, én sæson",
+    "title": "Fem valg, hver sæson",
     "rows": [
       {
         "no": "01",
         "title": "Byg dit hold",
-        "body": "Vælg en trup der passer din plan. Klatrere til bjergene, spurtere til det flade, en kaptajn at bygge omkring.",
-        "data": "Ryttere med ægte, læsbare ratings"
+        "body": "Vælg en trup der passer din strategi. Klatrere til bjergene, spurtere til det flade, en kaptajn at bygge omkring.",
+        "data": "Led en hel trup, ikke kun én stjerne"
       },
       {
         "no": "02",
@@ -53,26 +53,32 @@
       },
       {
         "no": "03",
-        "title": "Læg din taktik",
-        "body": "Udnævn din kaptajn, planlæg udbruddet, bestem hvem der jager og hvem der gemmer benene til finalen.",
-        "data": "Taktik der ændrer resultatet"
+        "title": "Udvikl dine ryttere",
+        "body": "Træn dine ryttere så deres styrker skærpes, og hent unge talenter op gennem akademiet. Dagens talent kan blive næste sæsons stjerne.",
+        "data": "Et ungdomsakademi til at skabe dine egne stjerner"
       },
       {
         "no": "04",
-        "title": "Kør kalenderen",
-        "body": "Følg dit hold gennem etaper og endagsløb over en hel sæson, og byg så videre til den næste.",
-        "data": "En hel sæson af resultater"
+        "title": "Læg din taktik",
+        "body": "Udpeg din kaptajn, send ryttere i udbrud, og bestem hvem der jager og hvem der gemmer benene til finalen.",
+        "data": "Taktik der ændrer resultatet"
+      },
+      {
+        "no": "05",
+        "title": "Kør sæsonen",
+        "body": "Følg dit hold gennem etapeløb og endagsløb over en hel sæson, og byg så videre til næste sæson.",
+        "data": "Kør dig op gennem divisionerne"
       }
     ]
   },
   "different": {
     "kicker": "Ikke det sædvanlige managerspil",
     "title": "Bygget på ét løfte",
-    "fairness": "Spillet skal være lige for alle. Du kan ikke betale dig til bedre ryttere, hurtigere træning eller bedre resultater.",
+    "fairness": "Spillet skal være lige for alle. Rigtige penge kan ikke købe bedre ryttere, hurtigere træning eller bedre resultater.",
     "cards": [
       {
-        "title": "Strategi over penge",
-        "body": "Resultater kommer fra dine valg, ikke din pengepung. Den bedste manager vinder, ikke den der bruger mest."
+        "title": "Formet af fællesskabet",
+        "body": "Én udvikler, der bygger i det åbne. Din feedback afgør hvad der bygges som det næste, og hver ændring lander hvor du kan se den."
       },
       {
         "title": "Gratis at spille",
@@ -87,13 +93,13 @@
   "discord": {
     "kicker": "Vær med",
     "title": "Spillet bygges i det åbne",
-    "body": "Cycling Zone startede som én idé: en cykel-manager hvor du ikke bare klikker dig gennem tal, men faktisk bygger noget op over en sæson. Jeg laver det på egen hånd, i det åbne, sæson for sæson. Discord er der hvor jeg deler hvad jeg arbejder på før det går live, hvor nye managere får en hånd med at finde fodfæste, og hvor din feedback afgør hvad jeg bygger næst. Det er ikke færdigt, og det bliver bedre hver uge. Du kommer for løbene. Du bliver for menneskene. Tag dit hold med, del dine tanker, og vær med til at forme hvor det går hen.",
+    "body": "Cycling Zone startede som én idé: en cykel-manager hvor du ikke bare klikker dig gennem tal, men faktisk bygger noget op over en sæson. Jeg laver det på egen hånd, i det åbne, sæson for sæson. Discord er der hvor jeg deler hvad jeg arbejder på før det går live, hvor nye managere får en hånd med at finde fodfæste, og hvor din feedback afgør hvad jeg bygger som det næste. Det er ikke færdigt, og det bliver bedre hver uge. Du kommer for løbene. Du bliver for menneskene. Tag dit hold med, del dine tanker, og vær med til at forme hvor det går hen.",
     "cta": "Åbn Discord"
   },
   "waitlist": {
     "kicker": "Foretrækker du mail?",
     "title": "Få launch-mailen",
-    "body": "Læg din mail, så sender jeg én besked når den nye sæson åbner. Intet nyhedsbrev, ingen støj.",
+    "body": "Læg din mail, så sender jeg dig én besked når den næste sæson starter. Intet nyhedsbrev, ingen støj.",
     "emailLabel": "Mail",
     "emailPlaceholder": "dig@eksempel.dk",
     "nameLabel": "Fornavn",
@@ -107,7 +113,7 @@
     "submitting": "Tilføjer dig til listen...",
     "disclaimer": "Én mail ved launch. Afmeld når som helst.",
     "successTitle": "Du er på listen",
-    "successBody": "Tak. Jeg sender dig én mail når den nye sæson åbner. Indtil da er Discord det bedste sted at følge med.",
+    "successBody": "Tak. Jeg sender dig én mail når den næste sæson starter. Indtil da er Discord det bedste sted at følge med.",
     "successDiscord": "Kom med på Discord",
     "errors": {
       "emailRequired": "Skriv din mail.",
@@ -125,11 +131,11 @@
     "items": [
       {
         "q": "Er det virkelig gratis?",
-        "a": "Ja. Hele spillet er gratis at spille. Du kan tilmelde dig, bygge et hold og konkurrere i en hel sæson uden at betale for noget."
+        "a": "Ja. Hele spillet er gratis at spille. Du kan tilmelde dig, bygge et hold og konkurrere mod andre managere uden at betale for noget."
       },
       {
         "q": "Er det pay-to-win?",
-        "a": "Nej. Spillet skal være lige for alle. Du kan ikke betale dig til bedre ryttere, hurtigere træning eller bedre resultater."
+        "a": "Nej. Rigtige penge kan ikke købe resultater. Den bedste manager vinder, ikke den der bruger mest."
       },
       {
         "q": "Hvornår starter sæsonen?",

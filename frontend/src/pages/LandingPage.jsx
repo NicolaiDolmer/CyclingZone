@@ -9,6 +9,7 @@ import LaunchWaitlistForm from "../components/landing/LaunchWaitlistForm.jsx";
 import {
   TeamIcon,
   CoinIcon,
+  StarIcon,
   FlagIcon,
   CalendarIcon,
   CheckIcon,
@@ -24,7 +25,7 @@ import {
 
 const DISCORD_URL = "https://discord.gg/ykysBrWUyC";
 
-const HOW_ICONS = [TeamIcon, CoinIcon, FlagIcon, CalendarIcon];
+const HOW_ICONS = [TeamIcon, CoinIcon, StarIcon, FlagIcon, CalendarIcon];
 
 function DiscordGlyph({ size = 18, className = "" }) {
   return (
