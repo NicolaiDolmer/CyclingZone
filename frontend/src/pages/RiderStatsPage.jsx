@@ -34,6 +34,7 @@ import { isOverbidEvent, shouldFlashPrice } from "../lib/auctionsRealtime";
 import { logEvent } from "../lib/logEvent";
 import TeamLink from "../components/TeamLink";
 import { aggregateRiderSeasons } from "../lib/riderSeasonStats";
+import { TrophyIcon, ExchangeIcon, ClipboardIcon } from "../components/ui";
 
 const API = import.meta.env.VITE_API_URL;
 const RiderDevelopmentTab = lazyWithRetry(() => import("../components/RiderDevelopmentTab"));
@@ -66,11 +67,11 @@ const STATS = [
   { key: "stat_bj",  slug: "bj",  icon: "▲" },
   { key: "stat_kb",  slug: "kb",  icon: "△" },
   { key: "stat_bk",  slug: "bk",  icon: "∧" },
-  { key: "stat_tt",  slug: "tt",  icon: "⏱" },
+  { key: "stat_tt",  slug: "tt",  icon: "◴" },
   { key: "stat_prl", slug: "prl", icon: "◷" },
   { key: "stat_bro", slug: "bro", icon: "⬡" },
-  { key: "stat_sp",  slug: "sp",  icon: "⚡" },
-  { key: "stat_acc", slug: "acc", icon: "▶" },
+  { key: "stat_sp",  slug: "sp",  icon: "↯" },
+  { key: "stat_acc", slug: "acc", icon: "▷" },
   { key: "stat_ned", slug: "ned", icon: "↓" },
   { key: "stat_udh", slug: "udh", icon: "◎" },
   { key: "stat_mod", slug: "mod", icon: "◈" },
@@ -125,11 +126,11 @@ function StatRow({ label, icon, value, progressFraction, progressHint }) {
 const DERIVED_ABILITIES = [
   // Fysiske
   { key: "climbing",     icon: "▲" },
-  { key: "time_trial",   icon: "⏱" },
+  { key: "time_trial",   icon: "◴" },
   { key: "flat",         icon: "▬" },
   { key: "tempo",        icon: "◈" },
-  { key: "sprint",       icon: "⚡" },
-  { key: "acceleration", icon: "▶" },
+  { key: "sprint",       icon: "↯" },
+  { key: "acceleration", icon: "▷" },
   { key: "punch",        icon: "✦" },
   { key: "endurance",    icon: "◎" },
   { key: "recovery",     icon: "↺" },
@@ -140,7 +141,7 @@ const DERIVED_ABILITIES = [
   { key: "positioning",  icon: "⊹" },
   // Taktisk/mentale
   { key: "aggression",   icon: "➹" },
-  { key: "tactics",      icon: "♟" },
+  { key: "tactics",      icon: "⌖" },
 ];
 
 // Ét nøgletal (watt/W·kg) i effektprofil-grid'et.
@@ -251,7 +252,7 @@ function SwapOfferButton({ rider, myTeamId }) {
       <button onClick={openForm}
         className={`w-full min-h-[44px] py-2.5 rounded-cz text-sm font-bold transition-all border
           ${show
-              ? "bg-cz-accent/10 text-cz-accent-t border-[#e8c547]/25"
+              ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/25"
               : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle hover:text-cz-1"}`}>
         {t("swapOffer.buttonOpen")}
       </button>
@@ -343,7 +344,7 @@ function LoanOfferButton({ rider }) {
       <button onClick={() => setShow(!show)}
         className={`w-full min-h-[44px] py-2.5 rounded-cz text-sm font-bold transition-all border
           ${show
-              ? "bg-cz-accent/10 text-cz-accent-t border-[#e8c547]/25"
+              ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/25"
               : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle hover:text-cz-1"}`}>
         {t("loanOffer.buttonOpen")}
       </button>
@@ -431,7 +432,7 @@ function DirectOfferButton({ rider }) {
       <button onClick={() => setShow(!show)}
         className={`w-full min-h-[44px] py-2.5 rounded-cz text-sm font-bold transition-all border
           ${show
-              ? "bg-cz-accent/10 text-cz-accent-t border-[#e8c547]/25"
+              ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/25"
               : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle hover:text-cz-1"}`}>
         {t("directOffer.buttonOpen")}
       </button>
@@ -603,7 +604,7 @@ function TransferListButton({ rider }) {
         <button onClick={() => setShow(!show)}
           className={`w-full min-h-[44px] py-2.5 rounded-cz text-sm font-bold transition-all border
             ${show
-                ? "bg-cz-accent/10 text-cz-accent-t border-[#e8c547]/25"
+                ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/25"
                 : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle hover:text-cz-1"}`}>
           {t("sellRider.buttonOpen")}
         </button>
@@ -831,7 +832,7 @@ function AuctionButton({ rider, auctionLabel, onStart, ddActive, isOwnRider }) {
         <label className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-3 cursor-pointer select-none">
           <div className="flex items-center gap-2">
             <input type="checkbox" checked={flash} onChange={e => setFlash(e.target.checked)}
-              className="rounded accent-red-600" />
+              className="rounded accent-cz-danger" />
             <span className="text-sm text-cz-danger font-medium">{t("auctionStart.flash.label")}</span>
           </div>
           <span className="text-xs text-cz-3 sm:ms-0 ms-6">{t("auctionStart.flash.hint")}</span>
@@ -846,19 +847,19 @@ function AuctionButton({ rider, auctionLabel, onStart, ddActive, isOwnRider }) {
           onChange={e => { const v = parseInt(e.target.value, 10); setPrice(Number.isNaN(v) ? (isOwnRider ? 0 : riderValue) : v); }}
           className={`min-w-0 flex-1 min-h-[44px] bg-cz-subtle border rounded-lg px-3 py-2 text-cz-1 text-base sm:text-sm font-mono focus:outline-none
             ${priceError
-              ? "border-red-300 focus:border-red-400"
+              ? "border-cz-danger/40 focus:border-cz-danger"
               : "border-cz-border focus:border-cz-accent"}`}
         />
         <button
           onClick={async () => { setLoading(true); await onStart(price, flash); setLoading(false); }}
           disabled={loading || priceError}
           className={`w-full sm:w-auto min-h-[44px] px-4 py-2 font-bold rounded-lg text-sm transition-all disabled:opacity-50
-            ${flash ? "bg-red-600 text-white hover:bg-red-700" : "bg-cz-accent text-cz-on-accent hover:brightness-110"}`}>
+            ${flash ? "bg-cz-danger text-white hover:brightness-110" : "bg-cz-accent text-cz-on-accent hover:brightness-110"}`}>
           {loading ? t("auctionStart.buttons.loading") : flash ? t("auctionStart.buttons.startFlash") : t("auctionStart.buttons.start")}
         </button>
       </div>
       {priceError && (
-        <p className="text-red-500 text-xs mt-1.5">
+        <p className="text-cz-danger text-xs mt-1.5">
           {t(isOwnRider ? "auctionStart.priceErrorOwn" : "auctionStart.priceError", { amount: formatNumber(riderValue) })}
         </p>
       )}
@@ -1390,7 +1391,6 @@ export default function RiderStatsPage() {
         title={celebration?.title || ""}
         subtitle={celebration?.subtitle}
         amount={celebration?.amount}
-        icon="🏆"
       />
       <OverbidToast toasts={toasts} onDismiss={dismissToast} />
 
@@ -1742,7 +1742,7 @@ function BidTimelineTab({ timeline }) {
     return (
       <div className="bg-cz-card border border-cz-border rounded-cz p-5">
         <div className="flex items-start gap-3">
-          <span className="text-cz-accent-t text-2xl mt-0.5">🏆</span>
+          <TrophyIcon size={24} aria-hidden="true" className="text-cz-accent-t mt-0.5 flex-shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-xs uppercase tracking-wider text-cz-accent-t font-medium mb-1">{t("bids.soldLabel")}</p>
             <p className="text-cz-1 text-base">
@@ -1860,7 +1860,7 @@ function HistoryEvent({ event }) {
 
     return (
       <div className="px-4 py-3 flex items-start gap-3">
-        <span className="text-cz-accent-t text-lg mt-0.5">🏆</span>
+        <TrophyIcon size={18} aria-hidden="true" className="text-cz-accent-t mt-0.5 flex-shrink-0" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs uppercase tracking-wider text-cz-accent-t font-medium">{typeLabel}</span>
@@ -1882,7 +1882,7 @@ function HistoryEvent({ event }) {
   if (event.type === "transfer") {
     return (
       <div className="px-4 py-3 flex items-start gap-3">
-        <span className="text-blue-500 text-lg mt-0.5">↔</span>
+        <ExchangeIcon size={18} aria-hidden="true" className="text-cz-info mt-0.5 flex-shrink-0" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs uppercase tracking-wider text-cz-info font-medium">{t("history.transfer.label")}</span>
@@ -1904,15 +1904,15 @@ function HistoryEvent({ event }) {
   if (event.type === "swap") {
     return (
       <div className="px-4 py-3 flex items-start gap-3">
-        <span className="text-purple-500 text-lg mt-0.5">⇄</span>
+        <ExchangeIcon size={18} aria-hidden="true" className="text-cz-info mt-0.5 flex-shrink-0" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs uppercase tracking-wider text-purple-700 font-medium">{t("history.swap.label")}</span>
+            <span className="text-xs uppercase tracking-wider text-cz-info font-medium">{t("history.swap.label")}</span>
             <span className="text-cz-3 text-xs">{date}</span>
           </div>
           <p className="text-cz-2 text-sm mt-0.5">
             <TeamLink id={event.proposing_team?.id} className="font-medium hover:text-cz-accent-t transition-colors">{event.proposing_team?.name || t("history.swap.teamFallback")}</TeamLink>
-            <span className="text-cz-3"> ↔ </span>
+            <ExchangeIcon size={12} aria-hidden="true" className="text-cz-3 inline-block mx-1 align-middle" />
             <TeamLink id={event.receiving_team?.id} className="font-medium hover:text-cz-accent-t transition-colors">{event.receiving_team?.name || t("history.swap.teamFallback")}</TeamLink>
           </p>
           {event.cash_adjustment !== 0 && event.cash_adjustment != null && (
@@ -1930,15 +1930,15 @@ function HistoryEvent({ event }) {
       active: "text-cz-success",
       completed: "text-cz-3",
       buyout: "text-cz-accent-t",
-      pending: "text-blue-600",
-      cancelled: "text-red-500",
-      rejected: "text-red-400",
+      pending: "text-cz-info",
+      cancelled: "text-cz-danger",
+      rejected: "text-cz-danger",
     };
     const statusKey = event.status && `history.loan.status.${event.status}`;
     const statusLabel = statusKey ? t(statusKey, { defaultValue: event.status }) : "";
     return (
       <div className="px-4 py-3 flex items-start gap-3">
-        <span className="text-cz-3 text-lg mt-0.5">📋</span>
+        <ClipboardIcon size={18} aria-hidden="true" className="text-cz-3 mt-0.5 flex-shrink-0" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs uppercase tracking-wider text-cz-2 font-medium">{t("history.loan.label")}</span>

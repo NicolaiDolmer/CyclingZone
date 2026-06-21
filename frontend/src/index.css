@@ -166,6 +166,26 @@
      format for <alpha-value>-support. */
   --discord:       88 101 242;   /* #5865F2 */
   --discord-hover: 71 82 196;    /* #4752c4 */
+
+  /* Trøjefarver (#959 etape-resultater) — ægte cykel-jersey-hues (gul fører /
+     grøn point / prik-rød bjerg / hvid ungdom). Reelle sport-data, ikke generisk
+     palette: defineres som navngivne tokens her saa RaceDetailPage ikke baerer
+     raa hex (#671 anti-drift). Føretrøjen bruger brand-guld (accent). Channel-
+     format saa /<alpha> virker. Samme i begge temaer (sport-data). */
+  --jersey-leader-bg:   232 197 71;   /* brand gold (fører) */
+  --jersey-leader-fg:    26 26 26;
+  --jersey-points-bg:    34 197 94;   /* green (point) */
+  --jersey-points-fg:     5  46 22;
+  --jersey-mountain-bg: 239  68  68;  /* red (bjerg / prikket) */
+  --jersey-mountain-fg: 255 255 255;
+  --jersey-young-bg:    241 245 249;  /* white (ungdom) */
+  --jersey-young-fg:     26  26  26;
+
+  /* Division-3 neutral (#671 anti-drift) — channel-format så divColor()/
+     rgb(var / alpha) virker. Dæmpet navy-grå, holder division-markøren inden
+     for guld+navy i stedet for den tidligere fremmede violet (--cz-chart-2).
+     Tema-bevidst: lysere på den mørke canvas. */
+  --div-3: 152 150 176;   /* matcher --text-3 #9896b0 (light) */
 }
 
 [data-theme="dark"] {
@@ -203,6 +223,9 @@
   --warning-bg: rgba(240, 168, 48, 0.12);
   --info:       122 176 251;  /* #7ab0fb */
   --info-bg:    rgba(122, 176, 251, 0.12);
+
+  /* Division-3 neutral — lysere på den mørke canvas (matcher --text-3 #888ba0). */
+  --div-3: 136 139 160;
 }
 
 body {

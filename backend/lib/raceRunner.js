@@ -29,7 +29,7 @@ import {
 } from "./raceResultsEngine.js";
 import { recomputeSeasonRaceDays } from "./seasonRaceDays.js";
 import { processBoardWeekendFinalization as processBoardWeekendFinalizationShared } from "./boardWeekendFinalization.js";
-import { simulateStage, stableSeed, ENGINE_VERSION, ABILITY_KEYS } from "./raceSimulator.js";
+import { simulateStage, stableSeed, ENGINE_VERSION, ABILITY_KEYS, deriveBreakawayStatus } from "./raceSimulator.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
 import { applyRaceFatigue, stageEnteringFatigues } from "./raceFatigue.js";
 import { autopickTeamSelection, selectionSizeForRace } from "./raceAutopick.js";
@@ -133,7 +133,10 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
   const resultRows = [];
   const runs = [];
 
-  const pushIndiv = ({ result_type, rank, rider_id, stage_number, finish_time = null }) => {
+  // #1499: in_breakaway/breakaway_caught er DESKRIPTIVE udbruds-etiketter (ren read
+  // af motorens egne tal — påvirker IKKE rang/point/finish_time). Default false, så
+  // alle ikke-etape-rækker (gc/points/trøjer/team) bærer dem som false.
+  const pushIndiv = ({ result_type, rank, rider_id, stage_number, finish_time = null, in_breakaway = false, breakaway_caught = false }) => {
     const e = byId.get(rider_id);
     const pts = pointsLookup[`${result_type}__${rank}`] || 0;
     resultRows.push({
@@ -148,6 +151,8 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
       finish_time,
       points_earned: pts,
       prize_money: pts * PRIZE_PER_POINT,
+      in_breakaway,
+      breakaway_caught,
     });
   };
   const pushTeam = ({ rank, team_id, stage_number }) => {
@@ -164,6 +169,8 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
       finish_time: null,
       points_earned: pts,
       prize_money: pts * PRIZE_PER_POINT,
+      in_breakaway: false,
+      breakaway_caught: false,
     });
   };
 
@@ -196,6 +203,9 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
     const isFinal = i === stagesSorted.length - 1;
     const seed = stableSeed(`${race.id}:${stageNumber}`);
     const { ranked } = simulateStage({ entrants: simEntrants, stageProfile: stage, seed });
+    // #1499: deskriptive udbruds-etiketter for denne etapes finish-order (ren read).
+    const breakawayStatus = deriveBreakawayStatus(ranked);
+    const bwOf = (riderId) => breakawayStatus.get(riderId) || { in_breakaway: false, breakaway_caught: false };
 
     runs.push({
       stage_number: stageNumber,
@@ -223,14 +233,15 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
 
     if (!isStageRace) {
       // ENDAGSLØB: gc(all) + team. Ingen 'stage' (= dobbelttælling, jf. PCM).
-      for (const g of gc) pushIndiv({ result_type: "gc", rank: g.rank, rider_id: g.rider_id, stage_number: 1, finish_time: gcFinish(g) });
+      // gc-finish-order = denne ene etapes finish-order → udbruds-etiketten gælder direkte.
+      for (const g of gc) pushIndiv({ result_type: "gc", rank: g.rank, rider_id: g.rider_id, stage_number: 1, finish_time: gcFinish(g), ...bwOf(g.rider_id) });
       for (const t of teamClassification(entrants, cumTime)) pushTeam({ rank: t.rank, team_id: t.team_id, stage_number: 1 });
       break;
     }
 
     // ETAPELØB: stage-resultater hver etape.
     for (const r of ranked) {
-      pushIndiv({ result_type: "stage", rank: r.rank, rider_id: r.rider_id, stage_number: stageNumber, finish_time: formatGap(r.stageGap) });
+      pushIndiv({ result_type: "stage", rank: r.rank, rider_id: r.rider_id, stage_number: stageNumber, finish_time: formatGap(r.stageGap), ...bwOf(r.rider_id) });
     }
 
     if (!isFinal) {

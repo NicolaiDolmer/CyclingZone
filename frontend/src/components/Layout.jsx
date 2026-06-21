@@ -10,6 +10,7 @@ import MobileQuickNav from "./MobileQuickNav";
 import LanguageSwitcher from "./LanguageSwitcher";
 import { Wordmark } from "./Brand";
 import DiscordJoinLink from "./DiscordJoinLink";
+import { MenuIcon, BellIcon, ChevronDownIcon, ChevronLeftIcon } from "./ui/icons";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -60,6 +61,8 @@ function buildNavGroups(team, t, academyEnabled = false) {
       ],
     },
     {
+      // #1609: "League"-gruppen nedlagt — Teams/H2H/Season-Preview er konsolideret
+      // ind i Standings-hub'en (linse + drawer). Hub'en bor her som "League & standings".
       key: "saeson-resultater", label: t("nav.group.saeson"),
       items: [
         { to: "/resultater",     label: t("nav.item.results") },
@@ -67,14 +70,6 @@ function buildNavGroups(team, t, academyEnabled = false) {
         { to: "/rider-rankings", label: t("nav.item.riderRankings") },
         { to: "/races",          label: t("nav.item.races") },
         { to: "/seasons",        label: t("nav.item.seasons") },
-      ],
-    },
-    {
-      key: "liga", label: t("nav.group.liga"),
-      items: [
-        { to: "/teams",          label: t("nav.item.teams") },
-        { to: "/head-to-head",   label: t("nav.item.headToHead") },
-        { to: "/season-preview", label: t("nav.item.seasonPreview") },
       ],
     },
   ];
@@ -188,7 +183,7 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
       {onlineCount > 0 && (
         <div className="px-4 py-2 border-b border-cz-sidebar-border">
           <span className="inline-flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
+            <span className="w-1.5 h-1.5 rounded-full bg-cz-success" />
             <span className="text-cz-sidebar-3 text-[10px]">{t("sidebar.onlineNow", { count: onlineCount })}</span>
           </span>
         </div>
@@ -207,9 +202,7 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
                 <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-cz-sidebar-3 group-hover:text-cz-sidebar-2 transition-colors">
                   {group.label}
                 </span>
-                <span className={`text-[8px] text-cz-sidebar-3 group-hover:text-cz-sidebar-2 transition-all duration-200 ${isOpen ? "rotate-180" : ""}`}>
-                  ▾
-                </span>
+                <ChevronDownIcon aria-hidden="true" className={`w-3 h-3 text-cz-sidebar-3 group-hover:text-cz-sidebar-2 transition-all duration-200 ${isOpen ? "rotate-180" : ""}`} />
               </button>
 
               {isOpen && (
@@ -237,8 +230,8 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
       <div className="border-t border-cz-sidebar-border px-4 py-3 flex items-center justify-between gap-2">
         <button
           onClick={signOut}
-          className="text-[11px] text-cz-sidebar-3 hover:text-cz-sidebar-2 transition-colors">
-          ← {logoutLabel}
+          className="inline-flex items-center gap-1 text-[11px] text-cz-sidebar-3 hover:text-cz-sidebar-2 transition-colors">
+          <ChevronLeftIcon aria-hidden="true" className="w-3 h-3" /> {logoutLabel}
         </button>
         <LanguageSwitcher />
       </div>
@@ -403,14 +396,14 @@ export default function Layout() {
         {/* Mobile topbar — bevidst IKKE sticky: den skal scrolle med indholdet
             og ikke "følge med op" og stjæle plads på små skærme (#1007). */}
         <div className="md:hidden flex items-center justify-between px-4 py-3 bg-cz-sidebar border-b border-cz-sidebar-border">
-          <button onClick={() => setMobileOpen(true)} aria-label={t("a11y.openMenu")} className="text-cz-sidebar-2 hover:text-cz-sidebar-1 text-xl"><span aria-hidden="true">☰</span></button>
+          <button onClick={() => setMobileOpen(true)} aria-label={t("a11y.openMenu")} className="text-cz-sidebar-2 hover:text-cz-sidebar-1"><MenuIcon aria-hidden="true" className="w-6 h-6" /></button>
           <Link to="/dashboard" aria-label={t("nav.item.dashboard")} className="flex items-center gap-2 rounded hover:opacity-80 transition-opacity">
             <Wordmark forceDark className="h-5 w-auto" alt="" />
           </Link>
           <div className="flex items-center gap-2">
             <LanguageSwitcher />
             <NavLink to="/notifications" aria-label={t("a11y.openNotifications")} className="relative">
-              <span aria-hidden="true" className="text-cz-sidebar-2 hover:text-cz-sidebar-1 text-lg">🔔</span>
+              <BellIcon aria-hidden="true" className="w-5 h-5 text-cz-sidebar-2 hover:text-cz-sidebar-1" />
               {unread > 0 && (
                 <span className="absolute -top-1 -right-1 bg-cz-accent text-cz-on-accent text-[8px] font-black min-w-3.5 h-3.5 px-0.5 rounded-full flex items-center justify-center leading-none">
                   {unread > 9 ? "9+" : unread}

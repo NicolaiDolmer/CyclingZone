@@ -21,12 +21,15 @@ function rider(id, first, last) {
   return { id, firstname: first, lastname: last, nationality_code: "dk", team: { id: "team-x", name: "Team X" } };
 }
 
-function row(id, stage_number, result_type, rank, r, points = 0, finish_time = null) {
+function row(id, stage_number, result_type, rank, r, points = 0, finish_time = null, breakaway = {}) {
   return {
     id, stage_number, result_type, rank,
     rider_id: r.id, rider_name: `${r.firstname} ${r.lastname}`,
     team_id: r.team.id, team_name: r.team.name,
     finish_time, points_earned: points, prize_money: 0, rider: r,
+    // #1499 deskriptive udbruds-etiketter (default false).
+    in_breakaway: breakaway.in_breakaway === true,
+    breakaway_caught: breakaway.breakaway_caught === true,
   };
 }
 
@@ -41,8 +44,9 @@ const STAGE_PROFILES = [
 
 const RESULTS = [
   // Etape 1 målrækkefølge (Race Engine v2 skriver pr.-etape-gab i finish_time)
-  row("r1", 1, "stage", 1, ADA, 100, "+0:00"),
-  row("r2", 1, "stage", 2, MIK, 80, "+0:23"),
+  // #1499: ADA holdt hjem fra udbruddet (survived), MIK var i udbruddet men blev indhentet (caught).
+  row("r1", 1, "stage", 1, ADA, 100, "+0:00", { in_breakaway: true, breakaway_caught: false }),
+  row("r2", 1, "stage", 2, MIK, 80, "+0:23", { in_breakaway: true, breakaway_caught: true }),
   // Etape 1 trøjebærere (ingen finish_time)
   row("j1", 1, "leader", 1, ADA, 0),
   row("j2", 1, "points_day", 1, MIK, 0),
@@ -95,6 +99,10 @@ test("race detail page renders stage tabs, jerseys and overall classifications",
   await expect(page.getByText("Bjerg", { exact: true })).toBeVisible();
   await expect(page.getByText("Etape 1 · målrækkefølge")).toBeVisible();
   await expect(page.getByText("+0:23")).toBeVisible();
+
+  // #1499 udbruds-markør: survived (ADA) + caught (MIK) via title-tooltip.
+  await expect(page.getByTitle("Udbrud — holdt hjem til mål")).toBeVisible();
+  await expect(page.getByTitle("Udbrud — indhentet af feltet")).toBeVisible();
 
   // #1484 terræn-indikator: etape 1 = fladt + massespurt.
   await expect(page.getByText("Terræn", { exact: true })).toBeVisible();

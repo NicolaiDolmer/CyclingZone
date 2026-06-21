@@ -4,6 +4,7 @@ import { PATCHES } from "../data/patchNotes.js";
 import {
   flattenChanges, filterChanges, groupByDay, pickLang, computeNewDays, CATEGORY_META,
 } from "../lib/patchNotes.js";
+import { ChevronDownIcon } from "../components/ui";
 
 const LAST_SEEN_KEY = "cz_patchnotes_last_seen";
 const CATEGORIES = ["all", "new", "improved", "fixed"];
@@ -152,7 +153,7 @@ export default function PatchNotesPage() {
                       .join(" · ")}
                   </div>
                 </div>
-                <span className={`text-cz-3 text-xs transition-transform ${open ? "rotate-180" : ""}`}>▾</span>
+                <ChevronDownIcon aria-hidden="true" className={`w-4 h-4 text-cz-3 flex-shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
               </button>
 
               {open && (

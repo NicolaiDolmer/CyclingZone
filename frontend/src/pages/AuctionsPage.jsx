@@ -1298,7 +1298,9 @@ export default function AuctionsPage() {
               ${wishlistOnly
                 ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
                 : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
-            <span className={wishlistOnly ? "text-cz-accent-t" : "text-cz-3"}>{wishlistOnly ? "★" : "☆"}</span>
+            <StarIcon size={16} aria-hidden="true"
+              className={wishlistOnly ? "text-cz-accent-t" : "text-cz-3"}
+              fill={wishlistOnly ? "currentColor" : "none"} />
             {t("auctions:filter.wishlistButton")}
           </button>
           <button

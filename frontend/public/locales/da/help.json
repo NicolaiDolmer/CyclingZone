@@ -56,11 +56,11 @@
       },
       "namedMembers": {
         "title": "Navngivne bestyrelsesmedlemmer",
-        "text": "Dit hold har 5 navngivne bestyrelsesmedlemmer fra en pool på 9 arketyper: Sponsoraten 💰, Traditionalisten 🎩, Talentspejderen 🔭, Resultatjægeren 🏆, Pragmatikeren ⚖️, Ungdoms-idealisten 🌱, Nationalist-purist 🏳️, Klassiker-purist 🪨 og GC-elsker ⛰️. De tildeles først efter Klub-DNA er valgt, så tre matches til dit holds sæson-1-identitet og valgte DNA, mens to wildcards bringer kontrast. Medlemmet med højeste alignment er formand (★) og taler ved tvivl. 2× plan-udløb under 30% tilfredshed i træk udskifter formanden."
+        "text": "Dit hold har 5 navngivne bestyrelsesmedlemmer fra en pool på 9 arketyper: Sponsoraten, Traditionalisten, Talentspejderen, Resultatjægeren, Pragmatikeren, Ungdoms-idealisten, Nationalist-purist, Klassiker-purist og GC-elsker. De tildeles først efter Klub-DNA er valgt, så tre matches til dit holds sæson-1-identitet og valgte DNA, mens to wildcards bringer kontrast. Medlemmet med højeste alignment er formand (★) og taler ved tvivl. 2× plan-udløb under 30% tilfredshed i træk udskifter formanden."
       },
       "clubDna": {
         "title": "Klub-DNA",
-        "text": "I sæson 2 vælger du én af 5 klub-DNA-arketyper før bestyrelsen sammensættes: 🌲 Skandinavisk udviklingshold, 🪨 Italiensk klassiker-traditionalist, ⚡ Sprint-fokuseret kommerciel, ⛰️ Fransk klatrer-arv, 🎯 Britisk all-rounder. DNA påvirker tre ting: (1) 5-årsplaner får et ekstra tradition-mål (fx et podie i en klassiker, inkl. Monuments, for italiensk_klassiker), (2) mål der matcher DNA-prioriteter får boosted satisfaction-bonus og -penalty, (3) board-medlemmer og fremtidige formandsskifter tipper mod passende arketyper."
+        "text": "I sæson 2 vælger du én af 5 klub-DNA-arketyper før bestyrelsen sammensættes: Skandinavisk udviklingshold, Italiensk klassiker-traditionalist, Sprint-fokuseret kommerciel, Fransk klatrer-arv, Britisk all-rounder. DNA påvirker tre ting: (1) 5-årsplaner får et ekstra tradition-mål (fx et podie i en klassiker, inkl. Monuments, for italiensk_klassiker), (2) mål der matcher DNA-prioriteter får boosted satisfaction-bonus og -penalty, (3) board-medlemmer og fremtidige formandsskifter tipper mod passende arketyper."
       },
       "consequenceTiers": {
         "title": "Konsekvens-tier (6 lag)",
@@ -76,7 +76,7 @@
       },
       "requestsAndLocks": {
         "title": "Board requests og drej-låsninger",
-        "text": "Én gang pr. sæson kan du sende en board request for at dreje din plan (fx 'mere stjernefokus'). Svaret er godkendt, delvist, afvist eller godkendt med tradeoff. Store drejninger (ungdom ↔ stjerne) tillades kun én gang pr. plan-livscyklus. 5yr/3yr-planer kan ikke drejes de første 50% af løbetiden medmindre tilfredsheden er ændret >30 point. I de sidste 5 race-days af en sæson er alle requests blokeret."
+        "text": "Én gang pr. sæson kan du sende en board request for at dreje din plan (fx 'mere stjernefokus'). Svaret er godkendt, delvist, afvist eller godkendt med tradeoff. Store drejninger (ungdom/stjerne) tillades kun én gang pr. plan-livscyklus. 5yr/3yr-planer kan ikke drejes de første 50% af løbetiden medmindre tilfredsheden er ændret >30 point. I de sidste 5 race-days af en sæson er alle requests blokeret."
       },
       "midSeasonCheck": {
         "title": "Mid-season check",
@@ -101,7 +101,7 @@
       },
       "bidding": {
         "title": "Byde på auktioner",
-        "text": "Gå til Auktioner og find en auktion du vil byde på. Indtast dit bud og klik 'Byd'. Du kan se om du vinder (🏆 Vinder) eller om du har budt men er overbudt (⚡ Du har budt). Minimumsbuddet er 1 CZ$ over nuværende pris (eller match af asking-pris hvis ingen har budt endnu)."
+        "text": "Gå til Auktioner og find en auktion du vil byde på. Indtast dit bud og klik 'Byd'. Du kan se om du vinder (Vinder) eller om du har budt men er overbudt (Du har budt). Minimumsbuddet er 1 CZ$ over nuværende pris (eller match af asking-pris hvis ingen har budt endnu)."
       },
       "autoBidCap": {
         "title": "Autobud loft",
@@ -142,7 +142,7 @@
         "title": "Send et tilbud",
         "steps": [
           "Find rytteren du vil købe under Ryttere og klik på hans navn.",
-          "Klik '↔ Send transfertilbud' nederst på siden.",
+          "Klik 'Send transfertilbud' nederst på siden.",
           "Indtast dit tilbud i CZ$ og en valgfri besked.",
           "Klik 'Send tilbud'. Sælger modtager en notifikation.",
           "AI-ryttere kan ikke modtage direkte tilbud; de skal købes via auktion."
@@ -150,7 +150,7 @@
       },
       "receiveAndReply": {
         "title": "Modtage og besvare tilbud",
-        "text": "Gå til Transfers, Modtagne tilbud. Her ser du alle tilbud på dine ryttere. Du kan acceptere (✓), afvise (✕) eller sende et modbud (↔) med din egen pris."
+        "text": "Gå til Transfers, Modtagne tilbud. Her ser du alle tilbud på dine ryttere. Du kan acceptere, afvise eller sende et modbud med din egen pris."
       },
       "finalConfirmation": {
         "title": "Endelig bekræftelse",
@@ -197,19 +197,19 @@
       },
       "inbox": {
         "title": "Indbakke",
-        "text": "Indbakken (under Klubhus) samler alle systemhændelser: bud, auktioner, transfertilbud, sæsonstart, økonomi og achievements. Klik på en besked for at gå direkte til den relevante side. Ulæste beskeder vises med et gult tal ved 🔔-ikonet."
+        "text": "Indbakken (under Klubhus) samler alle systemhændelser: bud, auktioner, transfertilbud, sæsonstart, økonomi og achievements. Klik på en besked for at gå direkte til den relevante side. Ulæste beskeder vises med et gult tal ved klokke-ikonet."
       },
       "onlineStatus": {
         "title": "Online status",
-        "text": "En grøn prik ved en managers navn betyder de er aktive lige nu (sidst set inden for 5 minutter). En grå prik med tekst viser hvornår de sidst var online, f.eks. '3t siden'. Du kan se dette på managerprofiler og i holdlisten."
+        "text": "En grøn prik ved en managers navn betyder de er aktive lige nu (sidst set inden for 5 minutter). En grå prik betyder de er offline lige nu. Du kan se dette på managerprofiler og ved hvert hold i Liga & rangliste."
       },
       "managersOnline": {
         "title": "Antal managers online",
         "text": "På Dashboard kan du se hvor mange managers der er aktive i spillet lige nu. Dette opdateres automatisk."
       },
       "headToHead": {
-        "title": "Head-to-Head",
-        "text": "Under Liga, Head-to-Head kan du sammenligne to holds historik direkte: sæsonpoint, etape- og GC-sejre, transferhistorik imellem holdene og begges nuværende top-5 ryttere. Hold A er automatisk dit eget hold. Klik i Hold B-feltet for at se forslag med det samme. Ingen typing nødvendig."
+        "title": "Sammenlign to hold (Head-to-Head)",
+        "text": "Åbn Liga & rangliste (under Sæson & Resultater). Klik på rang-tallet ved to hold for at vælge dem, og tryk Sammenlign for at åbne en side-om-side-drawer: sæsonpoint, etape- og GC-sejre, transferhistorik imellem holdene og begges nuværende top-5 ryttere. Dit eget hold er valgt først som standard."
       }
     },
     "discord": {
@@ -256,16 +256,16 @@
         "title": "Kategorier",
         "rows": [
           ["Kategori", "Eksempler"],
-          ["⚡ Auktioner", "Første bud, Sniper, High Roller, 50 vundne auktioner"],
-          ["↔ Transfers", "Første handel, Forhandler, Kuppet, 30 transfers"],
+          ["Auktioner", "Første bud, Sniper, High Roller, 50 vundne auktioner"],
+          ["Transfers", "Første handel, Forhandler, Kuppet, 30 transfers"],
           ["◈ Hold", "Fuldt hold, Ungdomshold, Stjerneholdet, Oprykket!"],
-          ["🏁 Sæson", "Divisionsvinder, Podium, Bestyrelsens yndling, Veteran"],
-          ["🔒 Hemmelige", "Låses op ved uventede hændelser, beskrives ikke på forhånd"]
+          ["Sæson", "Divisionsvinder, Podium, Bestyrelsens yndling, Veteran"],
+          ["Hemmelige", "Låses op ved uventede hændelser, beskrives ikke på forhånd"]
         ]
       },
       "secretAchievements": {
         "title": "Hemmelige achievements",
-        "text": "Hemmelige achievements vises som 🔒 med titlen '???' indtil du låser dem op. Beskrivelsen afsløres først bagefter. De låses op ved at gøre uventede eller sjove ting i spillet."
+        "text": "Hemmelige achievements vises som låst med titlen '???' indtil du låser dem op. Beskrivelsen afsløres først bagefter. De låses op ved at gøre uventede eller sjove ting i spillet."
       },
       "notifications": {
         "title": "Achievement-notifikationer",
@@ -293,7 +293,7 @@
       },
       "watchlistCounter": {
         "title": "Watchlist-tæller",
-        "text": "På en rytters statistikside kan du se '👁 X managers følger denne rytter'. Dette viser det samlede antal managers der har rytteren på deres ønskeliste, uden at afsløre hvem. Brug dette som et signal om efterspørgsel."
+        "text": "På en rytters statistikside kan du se 'X managers følger denne rytter'. Dette viser det samlede antal managers der har rytteren på deres ønskeliste, uden at afsløre hvem. Brug dette som et signal om efterspørgsel."
       },
       "features": {
         "title": "Funktioner i Talentspejder",
@@ -532,11 +532,11 @@
         "title": "Hvad vises i feedet?",
         "rows": [
           ["Hændelse", "Beskrivelse"],
-          ["🏆 Auktion vundet", "Hold vandt en auktion (viser rytter og pris)"],
-          ["⚡ Auktion startet", "Et hold har sat en rytter til auktion"],
-          ["↔ Transfer gennemført", "En transfer mellem to managers er accepteret"],
-          ["🚀 Sæson startet", "Admin har startet en ny sæson"],
-          ["🏅 Resultater godkendt", "Admin har godkendt løbsresultater"]
+          ["Auktion vundet", "Hold vandt en auktion (viser rytter og pris)"],
+          ["Auktion startet", "Et hold har sat en rytter til auktion"],
+          ["Transfer gennemført", "En transfer mellem to managers er accepteret"],
+          ["Sæson startet", "Admin har startet en ny sæson"],
+          ["Resultater godkendt", "Admin har godkendt løbsresultater"]
         ]
       },
       "transferRumors": {
@@ -615,7 +615,7 @@
       },
       "breakaway": {
         "title": "Udbrud",
-        "text": "På flade, kuperede og mellembjergs-etaper får et lille udbrud chance for at holde hjem. De fleste bliver hentet, men indimellem holder bruddet. Aggressive ryttere og udpegede jægere kommer med i udbrud oftere."
+        "text": "På flade, kuperede og mellembjergs-etaper får et lille udbrud chance for at holde hjem. De fleste bliver hentet, men indimellem holder bruddet. Aggressive ryttere og udpegede jægere kommer med i udbrud oftere. Etaperesultater markerer ryttere der var i udbruddet med et flag, og viser om de holdt hjem til mål eller blev indhentet af feltet."
       },
       "fatigue": {
         "title": "Træthed betyder noget",
@@ -694,7 +694,7 @@
     },
     "secretAchievementsFaq": {
       "q": "Hvad er hemmelige achievements?",
-      "a": "Hemmelige achievements vises som 🔒 og afsløres kun når du låser dem op. De udløses af uventede handlinger i spillet."
+      "a": "Hemmelige achievements vises som låst og afsløres kun når du låser dem op. De udløses af uventede handlinger i spillet."
     },
     "onlineStatusFaq": {
       "q": "Hvad er online status?",
@@ -786,7 +786,7 @@
     },
     "boardMembersFaq": {
       "q": "Hvem er medlemmerne i min bestyrelse?",
-      "a": "Bestyrelsen består af 5 navngivne medlemmer fra en pool af 9 arketyper: Sponsoraten 💰 (vogter sponsorforhold), Traditionalisten 🎩 (klubbens arv), Talentspejderen 🔭 (langsigtede unge), Resultatjægeren 🏆 (vil vinde nu), Pragmatikeren ⚖️ (balance), Ungdoms-idealisten 🌱 (fremtid frem for nu), Nationalist-purist 🏳️ (hjemlige farver), Klassiker-purist 🪨 (monumenter), GC-elsker ⛰️ (Tour). Tre medlemmer matches til dit holds identitet ved sæson-1-slut, to vælges som wildcards der bringer kontrast, men aldrig direkte modsigelse (en debt-aversion-purist parres ikke med en risiko-rytter). Avatar-grid'et på Bestyrelse-siden viser hvem der er hvem; den med ★ er formanden."
+      "a": "Bestyrelsen består af 5 navngivne medlemmer fra en pool af 9 arketyper: Sponsoraten (vogter sponsorforhold), Traditionalisten (klubbens arv), Talentspejderen (langsigtede unge), Resultatjægeren (vil vinde nu), Pragmatikeren (balance), Ungdoms-idealisten (fremtid frem for nu), Nationalist-purist (hjemlige farver), Klassiker-purist (monumenter), GC-elsker (Tour). Tre medlemmer matches til dit holds identitet ved sæson-1-slut, to vælges som wildcards der bringer kontrast, men aldrig direkte modsigelse (en debt-aversion-purist parres ikke med en risiko-rytter). Avatar-grid'et på Bestyrelse-siden viser hvem der er hvem; den med ★ er formanden."
     },
     "boardChairman": {
       "q": "Hvad gør bestyrelsesformanden?",
@@ -818,7 +818,7 @@
     },
     "clubDnaFaq": {
       "q": "Hvad er klub-DNA og hvornår vælger jeg det?",
-      "a": "Klub-DNA er din klubs identitet, én af 5 håndlavede arketyper: 🌲 Skandinavisk udviklingshold, 🪨 Italiensk klassiker-traditionalist, ⚡ Sprint-fokuseret kommerciel, ⛰️ Fransk klatrer-arv eller 🎯 Britisk all-rounder. Du vælger det i sæson 2, efter sæson 1's identitet er observeret. Bestyrelsen analyserer dit holds national kerne og primære specialisering og foreslår 3 muligheder: ét national-match, ét specialiserings-match og ét wildcard. Du kan vælge frit blandt de tre. DNA'et er final indtil drift-mekanikken kommer (gradvis udvikling over 5 sæsoner, leveres i opfølgningsslice)."
+      "a": "Klub-DNA er din klubs identitet, én af 5 håndlavede arketyper: Skandinavisk udviklingshold, Italiensk klassiker-traditionalist, Sprint-fokuseret kommerciel, Fransk klatrer-arv eller Britisk all-rounder. Du vælger det i sæson 2, efter sæson 1's identitet er observeret. Bestyrelsen analyserer dit holds national kerne og primære specialisering og foreslår 3 muligheder: ét national-match, ét specialiserings-match og ét wildcard. Du kan vælge frit blandt de tre. DNA'et er final indtil drift-mekanikken kommer (gradvis udvikling over 5 sæsoner, leveres i opfølgningsslice)."
     },
     "clubDnaEffects": {
       "q": "Hvad gør klub-DNA helt konkret?",
@@ -841,7 +841,7 @@
       "a": "5-årsplaner og 3-årsplaner er låst de første halvdel af deres løbetid. Konkret: bestyrelsen accepterer ikke requests på en multi-årsplan før mindst 50% af planen er gennemført ELLER din tilfredshed er ændret med over 30 point siden plan-start. Det forhindrer impulsive flip-flops på langtidsplaner og giver bestyrelsen tid til at se om strategien virker. 1-årsplaner har ingen tilsvarende lås."
     },
     "tightenedBadge": {
-      "q": "Hvad betyder '🔒 Strammet' badgen på et mål i min nye plan?",
+      "q": "Hvad betyder 'Strammet' badgen på et mål i min nye plan?",
       "a": "Badgen vises når et mål er hævet pga. en tradeoff-låsning fra en tidligere request. Hvis du fx fik godkendt 'Sænk resultatpresset' i forrige sæson, får din nye plans U25- eller national-mål +1 i krav (eller sponsor_growth +5pp ved 'Lemp identitetskrav'). Det er den deferrede konsekvens af at have lempet noget: bestyrelsen forventer at se mere af noget andet til gengæld. Stramningen forsvinder igen efter ÉN sæson."
     },
     "relativeRankLive": {

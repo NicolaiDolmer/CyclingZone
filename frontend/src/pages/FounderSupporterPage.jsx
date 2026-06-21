@@ -5,7 +5,7 @@ import { useLanguage } from "../lib/language.jsx";
 import { useDocumentHead } from "../hooks/useDocumentHead.js";
 import FounderSupporterWaitlistForm from "../components/waitlist/FounderSupporterWaitlistForm.jsx";
 import { Wordmark, Monogram } from "../components/Brand.jsx";
-import { CheckIcon, XIcon } from "../components/ui/icons/index.jsx";
+import { CheckIcon, XIcon, ChevronDownIcon, StarIcon } from "../components/ui/icons/index.jsx";
 import { formatCurrency, currencyForLocale } from "../lib/intl.js";
 import {
   TIER_PRICES_DKK,
@@ -66,37 +66,53 @@ function LanguageToggle({ language, onChange, label }) {
 }
 
 function TierCard({ tier, highlighted = false }) {
+  // Premium tier earns real hierarchy via a top accent rule + heavier border —
+  // not just a wash of accent-tint. Gold stays meaningful by being sparse.
   return (
     <div
       className={
-        "flex flex-col gap-3 rounded-cz border p-5 transition-all " +
-        (highlighted
-          ? "border-cz-accent bg-cz-accent/5"
-          : "border-cz-border bg-cz-card")
+        "flex flex-col gap-3 rounded-cz border p-5 transition-all bg-cz-card " +
+        (highlighted ? "border-cz-accent border-t-2" : "border-cz-border")
       }
     >
       <div className="flex items-baseline justify-between gap-3">
-        <h3 className="text-cz-1 text-lg font-bold">{tier.name}</h3>
+        <h3 className="text-cz-1 font-display text-xl tracking-wide">{tier.name}</h3>
         <div className="text-right">
-          <div className="text-cz-1 text-xl font-bold">
+          <div className="text-cz-1 font-data text-xl font-bold tabular-nums">
             {tier.price}
             {tier.priceSuffix && (
               <span className="text-cz-3 text-xs font-normal ms-1">{tier.priceSuffix}</span>
             )}
           </div>
-          {tier.perDay && <div className="text-cz-3 text-[11px]">{tier.perDay}</div>}
-          {tier.altYear && <div className="text-cz-3 text-[11px]">{tier.altYear}</div>}
+          {tier.perDay && <div className="text-cz-3 font-data text-[11px] tabular-nums">{tier.perDay}</div>}
+          {tier.altYear && <div className="text-cz-3 font-data text-[11px] tabular-nums">{tier.altYear}</div>}
         </div>
       </div>
       <p className="text-cz-3 text-xs uppercase tracking-wider">{tier.tagline}</p>
       <ul className="flex flex-col gap-1.5 text-cz-2 text-sm">
         {tier.bullets.map((b, i) => (
           <li key={i} className="flex items-start gap-2">
-            <span className="mt-1 w-1 h-1 rounded-full bg-cz-accent flex-shrink-0" />
+            <span
+              className={
+                "mt-1 w-1 h-1 rounded-full flex-shrink-0 " +
+                (highlighted ? "bg-cz-accent" : "bg-cz-3")
+              }
+            />
             <span>{b}</span>
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+// Editorial section header: left-aligned, Bebas display H2 over a hairline rule.
+// Replaces the centered "everything-symmetric" pattern with real hierarchy.
+function SectionHeader({ title, sub, className = "" }) {
+  return (
+    <div className={"max-w-2xl " + className}>
+      <h2 className="text-cz-1 font-display text-3xl sm:text-4xl tracking-tight leading-none">{title}</h2>
+      {sub && <p className="text-cz-2 text-sm sm:text-base mt-3 leading-relaxed">{sub}</p>}
     </div>
   );
 }
@@ -111,15 +127,14 @@ function FaqItem({ q, a, idx }) {
     >
       <summary className="flex items-center justify-between gap-3 py-4 cursor-pointer list-none">
         <span className="text-cz-1 text-sm sm:text-base font-medium">{q}</span>
-        <span
+        <ChevronDownIcon
+          size={18}
           className={
-            "text-cz-accent text-lg transition-transform duration-200 " +
-            (open ? "rotate-45" : "")
+            "flex-shrink-0 text-cz-accent-t transition-transform duration-200 " +
+            (open ? "rotate-180" : "")
           }
           aria-hidden="true"
-        >
-          +
-        </span>
+        />
       </summary>
       <p className="text-cz-2 text-sm pb-4 pr-8 leading-relaxed">{a}</p>
     </details>
@@ -221,58 +236,58 @@ export default function FounderSupporterPage() {
       </header>
 
       <main>
-        {/* ----- Hero ----- */}
+        {/* ----- Hero (editorial, left-aligned) ----- */}
         <section className="px-4 sm:px-6 pt-12 sm:pt-20 pb-12 sm:pb-16">
-          <div className="max-w-4xl mx-auto text-center">
-            <p className="text-cz-accent text-xs font-bold uppercase tracking-[0.2em] mb-4">
+          <div className="max-w-4xl mx-auto">
+            <p className="text-cz-accent-t text-xs font-bold uppercase tracking-[0.2em] mb-4">
               {t("heroEyebrow")}
             </p>
-            <h1 className="text-cz-1 text-3xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.1]">
+            <h1 className="text-cz-1 font-display text-5xl sm:text-6xl lg:text-7xl tracking-tight leading-[0.92]">
               {t("heroHeadline")}
             </h1>
-            <p className="text-cz-2 text-base sm:text-lg mt-6 max-w-2xl mx-auto leading-relaxed">
+            <p className="text-cz-2 text-base sm:text-lg mt-6 max-w-2xl leading-relaxed">
               {t("heroSub")}
               <strong className="text-cz-1">{t("heroSubStrong")}</strong>
             </p>
 
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+            <div className="mt-8 flex flex-wrap items-center gap-3">
               <a
                 href="#waitlist"
-                className="inline-flex items-center justify-center px-6 py-3 bg-cz-accent text-cz-on-accent font-bold rounded-lg text-sm hover:brightness-110 transition-all"
+                className="inline-flex items-center justify-center px-6 py-3 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110 transition-all"
               >
                 {t("ctaPrimary")}
               </a>
               <a
                 href="#promise"
-                className="inline-flex items-center justify-center px-6 py-3 border border-cz-border text-cz-1 font-medium rounded-lg text-sm hover:bg-cz-subtle transition-all"
+                className="inline-flex items-center justify-center px-6 py-3 border border-cz-border text-cz-1 font-medium rounded-cz text-sm hover:bg-cz-subtle transition-all"
               >
                 {t("ctaSecondary")}
               </a>
             </div>
 
-            <div className="mt-8 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-cz-2 text-xs">
-              <span className="inline-flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-cz-accent" />
+            <ul className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-cz-border pt-6 text-cz-2 text-xs">
+              <li className="inline-flex items-center gap-1.5">
+                <CheckIcon size={14} className="text-cz-accent-t flex-shrink-0" />
                 {t("badgeBeta")}
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-cz-accent" />
+              </li>
+              <li className="inline-flex items-center gap-1.5">
+                <CheckIcon size={14} className="text-cz-accent-t flex-shrink-0" />
                 {t("badgeFair")}
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-cz-accent" />
+              </li>
+              <li className="inline-flex items-center gap-1.5">
+                <CheckIcon size={14} className="text-cz-accent-t flex-shrink-0" />
                 {t("badgeGdpr")}
-              </span>
-            </div>
+              </li>
+            </ul>
           </div>
         </section>
 
         {/* ----- Fair Premium Promise ----- */}
         <section id="promise" className="px-4 sm:px-6 py-12 sm:py-16 bg-cz-subtle/40 border-y border-cz-border">
           <div className="max-w-3xl mx-auto">
-            <div className="bg-cz-card border-2 border-cz-accent/40 rounded-cz p-6 sm:p-8">
-              <h2 className="text-cz-1 text-2xl sm:text-3xl font-bold mb-3 flex items-center gap-2">
-                <CheckIcon className="w-6 h-6 text-cz-success flex-shrink-0" />
+            <div className="bg-cz-card border-l-2 border-cz-accent border-y border-r border-y-cz-border border-r-cz-border rounded-cz p-6 sm:p-8">
+              <h2 className="text-cz-1 font-display text-3xl sm:text-4xl tracking-tight mb-3 flex items-center gap-2.5">
+                <CheckIcon className="w-6 h-6 text-cz-accent-t flex-shrink-0" />
                 {t("promiseTitle")}
               </h2>
               <p className="text-cz-1 text-base sm:text-lg leading-relaxed">{t("promiseBody")}</p>
@@ -284,10 +299,11 @@ export default function FounderSupporterPage() {
         {/* ----- Tier comparison ----- */}
         <section className="px-4 sm:px-6 py-12 sm:py-16">
           <div className="max-w-6xl mx-auto">
-            <div className="max-w-2xl mx-auto text-center mb-10">
-              <h2 className="text-cz-1 text-2xl sm:text-3xl font-bold mb-3">{t("tiersTitle")}</h2>
-              <p className="text-cz-2 text-sm sm:text-base">{t("tiersSub", { prices: supporterPricePoints })}</p>
-            </div>
+            <SectionHeader
+              title={t("tiersTitle")}
+              sub={t("tiersSub", { prices: supporterPricePoints })}
+              className="mb-10"
+            />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <TierCard tier={tiers.free} />
@@ -296,9 +312,9 @@ export default function FounderSupporterPage() {
               <TierCard tier={tiers.patron} />
             </div>
 
-            <div className="mt-8 max-w-3xl mx-auto bg-cz-subtle border border-cz-border rounded-cz p-5">
+            <div className="mt-8 max-w-3xl bg-cz-subtle border-l-2 border-cz-accent border-y border-r border-y-cz-border border-r-cz-border rounded-cz p-5">
               <h3 className="text-cz-1 text-base font-semibold mb-2 flex items-center gap-2">
-                <span className="text-cz-accent">★</span>
+                <StarIcon size={16} className="text-cz-accent-t flex-shrink-0" />
                 {t("founderNoteTitle")}
               </h3>
               <p className="text-cz-2 text-sm leading-relaxed">{t("founderNoteBody")}</p>
@@ -309,10 +325,7 @@ export default function FounderSupporterPage() {
         {/* ----- What may / may not be sold ----- */}
         <section className="px-4 sm:px-6 py-12 sm:py-16 bg-cz-subtle/40 border-y border-cz-border">
           <div className="max-w-4xl mx-auto">
-            <div className="text-center mb-8">
-              <h2 className="text-cz-1 text-2xl sm:text-3xl font-bold mb-2">{t("fairnessTitle")}</h2>
-              <p className="text-cz-2 text-sm sm:text-base">{t("fairnessSub")}</p>
-            </div>
+            <SectionHeader title={t("fairnessTitle")} sub={t("fairnessSub")} className="mb-8" />
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-cz-card border border-cz-border rounded-cz p-5">
@@ -322,8 +335,8 @@ export default function FounderSupporterPage() {
                 </h3>
                 <ul className="flex flex-col gap-2">
                   {t("sold", { returnObjects: true }).map((item, i) => (
-                    <li key={i} className="text-cz-2 text-sm flex items-start gap-2">
-                      <span className="text-cz-success mt-0.5">·</span>
+                    <li key={i} className="text-cz-2 text-sm flex items-start gap-2.5">
+                      <span className="mt-[7px] h-1 w-1 rounded-full bg-cz-success flex-shrink-0" aria-hidden="true" />
                       <span>{item}</span>
                     </li>
                   ))}
@@ -337,8 +350,8 @@ export default function FounderSupporterPage() {
                 </h3>
                 <ul className="flex flex-col gap-2">
                   {t("notSold", { returnObjects: true }).map((item, i) => (
-                    <li key={i} className="text-cz-2 text-sm flex items-start gap-2">
-                      <span className="text-cz-danger mt-0.5">·</span>
+                    <li key={i} className="text-cz-2 text-sm flex items-start gap-2.5">
+                      <span className="mt-[7px] h-1 w-1 rounded-full bg-cz-danger flex-shrink-0" aria-hidden="true" />
                       <span>{item}</span>
                     </li>
                   ))}
@@ -351,13 +364,10 @@ export default function FounderSupporterPage() {
         {/* ----- Founder waitlist benefits ----- */}
         <section className="px-4 sm:px-6 py-12 sm:py-16">
           <div className="max-w-4xl mx-auto">
-            <div className="text-center mb-10">
-              <h2 className="text-cz-1 text-2xl sm:text-3xl font-bold mb-3">{t("benefitsTitle")}</h2>
-              <p className="text-cz-2 text-sm sm:text-base max-w-2xl mx-auto">{t("benefitsBody")}</p>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <SectionHeader title={t("benefitsTitle")} sub={t("benefitsBody")} className="mb-10" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px border border-cz-border bg-cz-border">
               {t("benefitsList", { returnObjects: true }).map((b, i) => (
-                <div key={i} className="bg-cz-card border border-cz-border rounded-cz p-4">
+                <div key={i} className="bg-cz-card p-5">
                   <h3 className="text-cz-1 text-sm font-semibold mb-1">{b.title}</h3>
                   <p className="text-cz-3 text-xs leading-relaxed">{b.desc}</p>
                 </div>
@@ -369,10 +379,7 @@ export default function FounderSupporterPage() {
         {/* ----- Waitlist form ----- */}
         <section id="waitlist" className="px-4 sm:px-6 py-12 sm:py-16 bg-cz-subtle/40 border-y border-cz-border scroll-mt-16">
           <div className="max-w-2xl mx-auto">
-            <div className="text-center mb-8">
-              <h2 className="text-cz-1 text-2xl sm:text-3xl font-bold mb-3">{t("formSectionTitle")}</h2>
-              <p className="text-cz-2 text-sm sm:text-base">{t("formSectionSub")}</p>
-            </div>
+            <SectionHeader title={t("formSectionTitle")} sub={t("formSectionSub")} className="mb-8" />
             <FounderSupporterWaitlistForm />
           </div>
         </section>
@@ -380,7 +387,7 @@ export default function FounderSupporterPage() {
         {/* ----- FAQ ----- */}
         <section className="px-4 sm:px-6 py-12 sm:py-16">
           <div className="max-w-3xl mx-auto">
-            <h2 className="text-cz-1 text-2xl sm:text-3xl font-bold text-center mb-8">{t("faqTitle")}</h2>
+            <h2 className="text-cz-1 font-display text-3xl sm:text-4xl tracking-tight leading-none mb-8">{t("faqTitle")}</h2>
             <div className="bg-cz-card border border-cz-border rounded-cz px-5 sm:px-6">
               {t("faqItems", { returnObjects: true }).map((item, i) => (
                 <FaqItem key={i} idx={i} q={item.q} a={item.a} />

@@ -4,6 +4,102 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "5.87",
+    "date": "2026-06-21",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Roadmap",
+        "en": {
+          "title": "See what's already been built on the roadmap",
+          "body": "The roadmap now has an \"Already built\" section at the bottom. When a plan from the roadmap goes live in the game, it moves here so you can see how far Cycling Zone has come, not just what's still ahead. The voting section above keeps working exactly as before."
+        },
+        "da": {
+          "title": "Se hvad der allerede er bygget på roadmappet",
+          "body": "Roadmappet har nu en \"Allerede bygget\"-sektion nederst. Når en plan fra roadmappet går live i spillet, flytter den herned, så du kan se hvor langt Cycling Zone er nået — ikke kun hvad der stadig venter forude. Afstemningssektionen ovenfor virker præcis som før."
+        },
+        "refs": [
+          1600
+        ]
+      }
+    ]
+  },
+  {
+    "version": "5.86",
+    "date": "2026-06-21",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Design",
+        "en": {
+          "title": "A calmer, cleaner look on public pages, celebrations and dialogs",
+          "body": "More visual polish across the app. The Founder and Privacy pages get an editorial refresh with proper display headings and cleaner cards, the win celebration is now a quiet gold-and-navy moment instead of a confetti burst, board dialogs share one consistent style, and small wording touches across several pages are tidied up."
+        },
+        "da": {
+          "title": "Et roligere, renere udtryk på offentlige sider, fejringer og dialoger",
+          "body": "Mere visuel polish i hele appen. Founder- og Privatliv-siderne får et editorial-løft med rigtige display-overskrifter og renere kort, sejrs-fejringen er nu et roligt guld-og-navy-øjeblik i stedet for et konfetti-brag, bestyrelses-dialoger deler én ensartet stil, og små formuleringer på tværs af flere sider er strammet op."
+        },
+        "refs": [
+          1588,
+          1589,
+          1591
+        ]
+      }
+    ]
+  },
+  {
+    "version": "5.85",
+    "date": "2026-06-21",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "League",
+        "en": {
+          "title": "Teams, Head-to-Head and Season Preview are now one League & Standings hub",
+          "body": "The league pages are consolidated into a single hub. Standings now has two views, a switch between the league table and a Squad strength view, opens in your own division, shows who is online, and lets you search for a team. Pick any two teams and Compare to see them side by side with the transfer history between them. Teams, Head-to-Head and Season Preview now redirect here, so everything about the league lives in one place."
+        },
+        "da": {
+          "title": "Hold, Head-to-Head og Sæson-preview er nu én Liga & rangliste-hub",
+          "body": "Liga-siderne er samlet i én hub. Ranglisten har nu to visninger, et skift mellem ligatabellen og en Trup-styrke-visning, åbner i din egen division, viser hvem der er online, og lader dig søge efter et hold. Vælg to vilkårlige hold og tryk Sammenlign for at se dem side om side med transfer-historikken mellem dem. Hold, Head-to-Head og Sæson-preview omdirigerer nu hertil, så alt om ligaen bor ét sted."
+        },
+        "refs": [
+          1609,
+          1605
+        ]
+      }
+    ]
+  },
+  {
+    "version": "5.84",
+    "date": "2026-06-21",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Design",
+        "en": {
+          "title": "Crisper icons and consistent colours across the app",
+          "body": "Icons and colours are now consistent everywhere. The old emoji used as icons are replaced with crisp, scalable SVG icons that stay sharp on every screen, and colours now follow the brand palette and respect light and dark mode instead of one-off shades. Race result jerseys (leader, points, mountain, young rider) use real cycling-jersey hues. A cleaner, calmer look with the same information."
+        },
+        "da": {
+          "title": "Skarpere ikoner og ensartede farver i hele appen",
+          "body": "Ikoner og farver er nu ensartede overalt. De gamle emoji brugt som ikoner er erstattet med skarpe, skalerbare SVG-ikoner der forbliver skarpe på enhver skærm, og farver følger nu brand-paletten og respekterer lyst og mørkt tema i stedet for tilfældige nuancer. Løbsresultaternes trøjer (fører, point, bjerg, ungdom) bruger ægte cykel-trøjefarver. Et renere, roligere udtryk med samme information."
+        },
+        "refs": [
+          1579,
+          1580
+        ]
+      }
+    ]
+  },
+  {
     "version": "5.83",
     "date": "2026-06-21",
     "label": "Beta",

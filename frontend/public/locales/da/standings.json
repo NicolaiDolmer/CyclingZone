@@ -1,10 +1,12 @@
 {
-  "title": "Rangliste",
+  "title": "Liga & rangliste",
   "season": "Sæson {n}",
   "seasonTooltip": "Nuværende sæson. Ranglisten nulstilles hver sæson.",
   "noActiveSeason": "Ingen aktiv sæson",
   "division": "Division {n}",
   "noData": "Ingen data for Division {n} endnu",
+  "noMatch": "Ingen hold matcher din søgning",
+  "searchPlaceholder": "Søg hold...",
   "thTeam": "Hold",
   "thStageWins": "Etapesejre",
   "thTeamComp": "Holdkonkurrence",
@@ -14,6 +16,11 @@
   "thPrizeShort": "Præmie",
   "thPoints": "Point",
   "thProgress": "Udvikling",
+  "thSquadValue": "Holdværdi",
+  "thSquadValueShort": "Værdi",
+  "thRiders": "Ryttere",
+  "thU25": "U25",
+  "thTopStar": "Topstjerne",
   "youBadge": "Dig",
   "promotionBadge": "↑ Op",
   "relegationBadge": "↓ Ned",
@@ -21,7 +28,22 @@
   "legendLeader": "Fører (nr. 1)",
   "legendPromotion": "Oprykningszone (top 2)",
   "legendRelegation": "Nedrykningszone (bund 2)",
+  "legendStrong": "Stærk evne ({n}+)",
+  "strengthHint": "Sorteret efter samlet holdværdi",
   "racesPlayed": "{count} løb spillet",
+  "onlineNow": "Online nu",
+  "offline": "Offline",
+  "lens": {
+    "standings": "Rangliste",
+    "strength": "Holdstyrke"
+  },
+  "compare": {
+    "action": "Sammenlign ({count})",
+    "select": "Vælg {team} til sammenligning",
+    "selectHint": "Vælg op til 2 hold at sammenligne",
+    "drawerTitle": "Head-to-head",
+    "close": "Luk sammenligning"
+  },
   "preview": {
     "title": "Sæson Preview",
     "subtitle": "Sæson {n}: holdstyrker og spådomme",

@@ -56,11 +56,11 @@
       },
       "namedMembers": {
         "title": "Named board members",
-        "text": "Your team has 5 named board members from a pool of 9 archetypes: The Sponsor Pleaser 💰, The Traditionalist 🎩, The Talent Scout 🔭, The Result Hunter 🏆, The Pragmatist ⚖️, The Youth Idealist 🌱, The Nationalist Purist 🏳️, The Classics Purist 🪨 and The GC Lover ⛰️. They are assigned only after Club DNA is chosen, so three match your team's season 1 identity and chosen DNA, while two wildcards bring contrast. The member with the highest alignment is chairman (★) and speaks when in doubt. Two consecutive plan expirations below 30% satisfaction replace the chairman."
+        "text": "Your team has 5 named board members from a pool of 9 archetypes: The Sponsor Pleaser, The Traditionalist, The Talent Scout, The Result Hunter, The Pragmatist, The Youth Idealist, The Nationalist Purist, The Classics Purist and The GC Lover. They are assigned only after Club DNA is chosen, so three match your team's season 1 identity and chosen DNA, while two wildcards bring contrast. The member with the highest alignment is chairman (★) and speaks when in doubt. Two consecutive plan expirations below 30% satisfaction replace the chairman."
       },
       "clubDna": {
         "title": "Club DNA",
-        "text": "In season 2 you pick one of 5 club DNA archetypes before the board is assembled: 🌲 Scandinavian development team, 🪨 Italian classics traditionalist, ⚡ Sprint-focused commercial, ⛰️ French climber heritage, 🎯 British all-rounder. DNA affects three things: (1) 5-year plans get an extra tradition target (e.g. a podium in a classic, incl. Monuments, for italian_classics), (2) targets matching DNA priorities get boosted satisfaction bonus and penalty, (3) board members and future chairman swaps tip towards matching archetypes."
+        "text": "In season 2 you pick one of 5 club DNA archetypes before the board is assembled: Scandinavian development team, Italian classics traditionalist, Sprint-focused commercial, French climber heritage, British all-rounder. DNA affects three things: (1) 5-year plans get an extra tradition target (e.g. a podium in a classic, incl. Monuments, for italian_classics), (2) targets matching DNA priorities get boosted satisfaction bonus and penalty, (3) board members and future chairman swaps tip towards matching archetypes."
       },
       "consequenceTiers": {
         "title": "Consequence tiers (6 layers)",
@@ -76,7 +76,7 @@
       },
       "requestsAndLocks": {
         "title": "Board requests and pivot locks",
-        "text": "Once per season you can send a board request to pivot your plan (e.g. 'more star focus'). The reply is approved, partial, rejected or approved with a tradeoff. Major pivots (youth ↔ star) are only allowed once per plan lifecycle. 5-year and 3-year plans cannot be pivoted in the first 50% of their runtime unless satisfaction has changed by more than 30 points. In the last 5 race days of a season all requests are blocked."
+        "text": "Once per season you can send a board request to pivot your plan (e.g. 'more star focus'). The reply is approved, partial, rejected or approved with a tradeoff. Major pivots (youth/star) are only allowed once per plan lifecycle. 5-year and 3-year plans cannot be pivoted in the first 50% of their runtime unless satisfaction has changed by more than 30 points. In the last 5 race days of a season all requests are blocked."
       },
       "midSeasonCheck": {
         "title": "Mid-season check",
@@ -101,7 +101,7 @@
       },
       "bidding": {
         "title": "Bidding on auctions",
-        "text": "Go to Auctions and find an auction you want to bid on. Enter your bid and click 'Bid'. You can see whether you're winning (🏆 Winning) or whether you've bid but been outbid (⚡ You bid). The minimum bid is 1 CZ$ above the current price (or matching the asking price if no one has bid yet)."
+        "text": "Go to Auctions and find an auction you want to bid on. Enter your bid and click 'Bid'. You can see whether you're winning (Winning) or whether you've bid but been outbid (You bid). The minimum bid is 1 CZ$ above the current price (or matching the asking price if no one has bid yet)."
       },
       "autoBidCap": {
         "title": "Auto-bid cap",
@@ -142,7 +142,7 @@
         "title": "Send an offer",
         "steps": [
           "Find the rider you want to buy under Riders and click his name.",
-          "Click '↔ Send transfer offer' at the bottom of the page.",
+          "Click 'Send transfer offer' at the bottom of the page.",
           "Enter your offer in CZ$ and an optional message.",
           "Click 'Send offer'. The seller gets a notification.",
           "AI riders cannot receive direct offers; they must be bought via auction."
@@ -150,7 +150,7 @@
       },
       "receiveAndReply": {
         "title": "Receive and reply to offers",
-        "text": "Go to Transfers, Received offers. Here you see all offers on your riders. You can accept (✓), reject (✕) or send a counter-offer (↔) with your own price."
+        "text": "Go to Transfers, Received offers. Here you see all offers on your riders. You can accept, reject or send a counter-offer with your own price."
       },
       "finalConfirmation": {
         "title": "Final confirmation",
@@ -197,19 +197,19 @@
       },
       "inbox": {
         "title": "Inbox",
-        "text": "The inbox (under Clubhouse) collects all system events: bids, auctions, transfer offers, season start, economy and achievements. Click a message to jump directly to the relevant page. Unread messages show as a yellow count next to the 🔔 icon."
+        "text": "The inbox (under Clubhouse) collects all system events: bids, auctions, transfer offers, season start, economy and achievements. Click a message to jump directly to the relevant page. Unread messages show as a yellow count next to the bell icon."
       },
       "onlineStatus": {
         "title": "Online status",
-        "text": "A green dot next to a manager's name means they are active right now (last seen within 5 minutes). A grey dot with text shows when they were last online, e.g. '3h ago'. You can see this on manager profiles and in the team list."
+        "text": "A green dot next to a manager's name means they are active right now (last seen within 5 minutes). A grey dot shows they are currently offline. You can see this on manager profiles and next to each team in League & standings."
       },
       "managersOnline": {
         "title": "Managers online count",
         "text": "On the Dashboard you can see how many managers are active in the game right now. This updates automatically."
       },
       "headToHead": {
-        "title": "Head-to-Head",
-        "text": "Under League, Head-to-Head you can compare two teams' history directly: season points, stage and GC wins, transfer history between the teams and both teams' current top-5 riders. Team A is automatically your own team. Click the Team B field to see suggestions immediately. No typing required."
+        "title": "Compare two teams (Head-to-Head)",
+        "text": "Open League & standings (under Season & Results). Click the rank number on two teams to select them, then press Compare to open a side-by-side drawer: season points, stage and GC wins, transfer history between the teams and both teams' current top-5 riders. Your own team is selected first by default."
       }
     },
     "discord": {
@@ -256,16 +256,16 @@
         "title": "Categories",
         "rows": [
           ["Category", "Examples"],
-          ["⚡ Auctions", "First bid, Sniper, High Roller, 50 won auctions"],
-          ["↔ Transfers", "First deal, Negotiator, Stolen, 30 transfers"],
+          ["Auctions", "First bid, Sniper, High Roller, 50 won auctions"],
+          ["Transfers", "First deal, Negotiator, Stolen, 30 transfers"],
           ["◈ Team", "Full squad, Youth team, Star team, Promoted!"],
-          ["🏁 Season", "Division winner, Podium, Board favourite, Veteran"],
-          ["🔒 Secret", "Unlocked by unexpected events, not described upfront"]
+          ["Season", "Division winner, Podium, Board favourite, Veteran"],
+          ["Secret", "Unlocked by unexpected events, not described upfront"]
         ]
       },
       "secretAchievements": {
         "title": "Secret achievements",
-        "text": "Secret achievements show as 🔒 with the title '???' until you unlock them. The description is only revealed afterwards. They unlock when you do unexpected or fun things in the game."
+        "text": "Secret achievements show as locked with the title '???' until you unlock them. The description is only revealed afterwards. They unlock when you do unexpected or fun things in the game."
       },
       "notifications": {
         "title": "Achievement notifications",
@@ -293,7 +293,7 @@
       },
       "watchlistCounter": {
         "title": "Watchlist counter",
-        "text": "On a rider's stats page you can see '👁 X managers are tracking this rider'. This shows the total number of managers who have the rider on their watchlist, without revealing who. Use this as a demand signal."
+        "text": "On a rider's stats page you can see 'X managers are tracking this rider'. This shows the total number of managers who have the rider on their watchlist, without revealing who. Use this as a demand signal."
       },
       "features": {
         "title": "Watchlist features",
@@ -532,11 +532,11 @@
         "title": "What appears in the feed?",
         "rows": [
           ["Event", "Description"],
-          ["🏆 Auction won", "Team won an auction (shows rider and price)"],
-          ["⚡ Auction started", "A team has listed a rider for auction"],
-          ["↔ Transfer completed", "A transfer between two managers was accepted"],
-          ["🚀 Season started", "Admin has started a new season"],
-          ["🏅 Results approved", "Admin has approved race results"]
+          ["Auction won", "Team won an auction (shows rider and price)"],
+          ["Auction started", "A team has listed a rider for auction"],
+          ["Transfer completed", "A transfer between two managers was accepted"],
+          ["Season started", "Admin has started a new season"],
+          ["Results approved", "Admin has approved race results"]
         ]
       },
       "transferRumors": {
@@ -615,7 +615,7 @@
       },
       "breakaway": {
         "title": "Breakaways",
-        "text": "On flat, rolling and medium mountain stages a small breakaway gets a chance to stay away. Most get caught, but sometimes the break makes it. Aggressive riders and designated hunters join breaks more often."
+        "text": "On flat, rolling and medium mountain stages a small breakaway gets a chance to stay away. Most get caught, but sometimes the break makes it. Aggressive riders and designated hunters join breaks more often. Stage results mark riders who were in the breakaway with a flag, showing whether they stayed away to the finish or were caught by the bunch."
       },
       "fatigue": {
         "title": "Fatigue matters",
@@ -694,7 +694,7 @@
     },
     "secretAchievementsFaq": {
       "q": "What are secret achievements?",
-      "a": "Secret achievements show as 🔒 and are only revealed when you unlock them. They are triggered by unexpected actions in the game."
+      "a": "Secret achievements show as locked and are only revealed when you unlock them. They are triggered by unexpected actions in the game."
     },
     "onlineStatusFaq": {
       "q": "What is online status?",
@@ -786,7 +786,7 @@
     },
     "boardMembersFaq": {
       "q": "Who are the members of my board?",
-      "a": "The board has 5 named members from a pool of 9 archetypes: The Sponsor Pleaser 💰 (guards sponsor relationships), The Traditionalist 🎩 (the club's heritage), The Talent Scout 🔭 (long-term youth), The Result Hunter 🏆 (wants to win now), The Pragmatist ⚖️ (balance), The Youth Idealist 🌱 (future over now), The Nationalist Purist 🏳️ (home colours), The Classics Purist 🪨 (monuments), The GC Lover ⛰️ (Tour). Three members are matched to the team's identity at end of season 1, two are chosen as wildcards that bring contrast, but never direct contradiction (a debt-aversion purist isn't paired with a risk taker). The avatar grid on the Board page shows who's who; the one with ★ is the chairman."
+      "a": "The board has 5 named members from a pool of 9 archetypes: The Sponsor Pleaser (guards sponsor relationships), The Traditionalist (the club's heritage), The Talent Scout (long-term youth), The Result Hunter (wants to win now), The Pragmatist (balance), The Youth Idealist (future over now), The Nationalist Purist (home colours), The Classics Purist (monuments), The GC Lover (Tour). Three members are matched to the team's identity at end of season 1, two are chosen as wildcards that bring contrast, but never direct contradiction (a debt-aversion purist isn't paired with a risk taker). The avatar grid on the Board page shows who's who; the one with ★ is the chairman."
     },
     "boardChairman": {
       "q": "What does the board chairman do?",
@@ -818,7 +818,7 @@
     },
     "clubDnaFaq": {
       "q": "What is club DNA and when do I pick it?",
-      "a": "Club DNA is your club's identity, one of 5 hand-crafted archetypes: 🌲 Scandinavian development team, 🪨 Italian classics traditionalist, ⚡ Sprint-focused commercial, ⛰️ French climber heritage or 🎯 British all-rounder. You pick it in season 2, after season 1's identity has been observed. The board analyses your team's national core and primary specialisation and suggests 3 options: one national match, one specialisation match and one wildcard. You can pick freely among the three. The DNA is final until the drift mechanic arrives (gradual evolution over 5 seasons, delivered in a follow-up slice)."
+      "a": "Club DNA is your club's identity, one of 5 hand-crafted archetypes: Scandinavian development team, Italian classics traditionalist, Sprint-focused commercial, French climber heritage or British all-rounder. You pick it in season 2, after season 1's identity has been observed. The board analyses your team's national core and primary specialisation and suggests 3 options: one national match, one specialisation match and one wildcard. You can pick freely among the three. The DNA is final until the drift mechanic arrives (gradual evolution over 5 seasons, delivered in a follow-up slice)."
     },
     "clubDnaEffects": {
       "q": "What does club DNA do exactly?",
@@ -841,7 +841,7 @@
       "a": "5-year and 3-year plans are locked for the first half of their runtime. Specifically: the board doesn't accept requests on a multi-year plan before at least 50% of the plan is completed OR your satisfaction has changed by more than 30 points since plan start. This prevents impulsive flip-flops on long-term plans and gives the board time to see whether the strategy is working. 1-year plans have no equivalent lock."
     },
     "tightenedBadge": {
-      "q": "What does the '🔒 Tightened' badge mean on a target in my new plan?",
+      "q": "What does the 'Tightened' badge mean on a target in my new plan?",
       "a": "The badge shows when a target has been raised due to a tradeoff lock from a previous request. If you e.g. got 'Lower the result pressure' approved last season, your new plan's U25 or national target gets +1 in demand (or sponsor_growth +5pp under 'Ease the identity demand'). It's the deferred consequence of easing something: the board expects to see more of something else in return. The tightening goes away again after ONE season."
     },
     "relativeRankLive": {

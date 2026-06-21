@@ -1,44 +1,56 @@
+import { useId } from "react";
+
 const CURRENT_YEAR = new Date().getFullYear();
 
-// Eksakt-stjerne (kendt potentiale): fuld / halv / tom.
-function StarIcon({ type, color, emptyColor }) {
-  if (type === "full")  return <span style={{ color }} className="leading-none select-none">★</span>;
-  if (type === "empty") return <span style={{ color: emptyColor }} className="leading-none select-none">★</span>;
-  return (
-    <span className="relative inline-block leading-none select-none" style={{ color: emptyColor }}>
-      ★
-      <span className="absolute inset-0 overflow-hidden leading-none" style={{ width: "52%", color }}>★</span>
-    </span>
-  );
-}
+// Delt stjerne-geometri (samme path som ui/icons StarIcon) — renderes nu som
+// SVG i stedet for ★-glyf, så potentiale-stjernerne deler stroke/fyld-system med
+// resten af appen (#671 anti-drift). Farverne kommer fra cz-tokens (ingen rå hex).
+const STAR_PATH =
+  "M12 3l2.6 5.6 6 .8-4.4 4.2 1.1 6L12 17l-5.3 2.6 1.1-6L3.4 9.4l6-.8z";
 
-// Range-stjerne (scoutet estimat, #1138): en SIKKER guld-fyldning op til `lo` +
-// en lysere "måske"-fyldning op til `hi`. Hver stjerne i dækker 0-6-skalaens
-// interval [i-1, i]; fyld-fraktionen for en tærskel t er clamp(t-(i-1),0,1).
-function RangeStar({ certain, uncertain, color, uncertainColor, emptyColor }) {
+// Én stjerne med valgfri fraktioneret fyldning. `fill`-laget klippes vandret til
+// `fillFraction` (0–1); et evt. `softFraction`-lag (lysere "måske"-tone) ligger
+// under. `tone`/`softTone`/`emptyTone` er farve-strenge (rgb(var(--…))).
+function Star({ fillFraction = 0, softFraction = 0, tone, softTone, emptyTone, idSuffix }) {
+  const clipFull = `cz-star-full-${idSuffix}`;
+  const clipSoft = `cz-star-soft-${idSuffix}`;
   return (
-    <span className="relative inline-block leading-none select-none" style={{ color: emptyColor }}>
-      ★
-      {uncertain > 0 && (
-        <span className="absolute inset-0 overflow-hidden leading-none"
-          style={{ width: `${uncertain * 100}%`, color: uncertainColor }}>★</span>
+    <svg viewBox="0 0 24 24" className="w-[1em] h-[1em] flex-shrink-0" aria-hidden="true">
+      <defs>
+        <clipPath id={clipSoft}>
+          <rect x="0" y="0" width={24 * softFraction} height="24" />
+        </clipPath>
+        <clipPath id={clipFull}>
+          <rect x="0" y="0" width={24 * fillFraction} height="24" />
+        </clipPath>
+      </defs>
+      {/* Tom-baggrund */}
+      <path d={STAR_PATH} fill={emptyTone} />
+      {/* "Måske"-lag (lysere tone) */}
+      {softFraction > 0 && softTone && (
+        <path d={STAR_PATH} fill={softTone} clipPath={`url(#${clipSoft})`} />
       )}
-      {certain > 0 && (
-        <span className="absolute inset-0 overflow-hidden leading-none"
-          style={{ width: `${certain * 100}%`, color }}>★</span>
+      {/* Sikker fyldning */}
+      {fillFraction > 0 && (
+        <path d={STAR_PATH} fill={tone} clipPath={`url(#${clipFull})`} />
       )}
-    </span>
+    </svg>
   );
 }
 
 const clamp01 = (n) => Math.max(0, Math.min(1, n));
 
 export default function PotentialeStars({ value, range, label, birthdate, large = false }) {
+  // Unik pr. instans, så clipPath-id'er ikke kolliderer mellem flere stjerne-rækker
+  // på samme side (SVG-id'er er dokument-globale). Sanitér useId's koloner.
+  const uid = useId().replace(/:/g, "");
   const age = birthdate ? CURRENT_YEAR - new Date(birthdate).getFullYear() : null;
   const isOld = age !== null && age >= 30;
-  const color = isOld ? "#94a3b8" : "#e8c547";
-  const uncertainColor = isOld ? "#cbd5e1" : "#f3e6a8"; // lysere variant af samme tone
-  const emptyColor = "#e2e8f0";
+  // Token-baserede toner (ingen rå hex): gamle ryttere = neutral (text-3),
+  // ellers brand-guld (accent). Lysere "måske"-tone = accent ved lav alpha.
+  const tone = isOld ? "rgb(var(--div-3))" : "rgb(var(--accent))";
+  const softTone = isOld ? "rgb(var(--div-3) / 0.45)" : "rgb(var(--accent) / 0.45)";
+  const emptyTone = "rgb(var(--div-3) / 0.3)";
   const sizeClass = large ? "text-lg" : "text-sm";
 
   // ── Scoutet estimat-range (usikkert) ──────────────────────────────────────────
@@ -52,8 +64,8 @@ export default function PotentialeStars({ value, range, label, birthdate, large 
     return (
       <span className={`flex items-center gap-px flex-shrink-0 ${sizeClass}`}>
         {stars.map((s, i) => (
-          <RangeStar key={i} certain={s.certain} uncertain={s.uncertain}
-            color={color} uncertainColor={uncertainColor} emptyColor={emptyColor} />
+          <Star key={i} idSuffix={`${uid}r${i}`} fillFraction={s.certain} softFraction={s.uncertain}
+            tone={tone} softTone={softTone} emptyTone={emptyTone} />
         ))}
         {label && <span className="ms-1.5 text-[10px] font-medium text-cz-3 whitespace-nowrap">{label}</span>}
       </span>
@@ -67,15 +79,16 @@ export default function PotentialeStars({ value, range, label, birthdate, large 
 
   const stars = [];
   for (let i = 1; i <= 6; i++) {
-    if (value >= i) stars.push("full");
-    else if (value >= i - 0.5) stars.push("half");
-    else stars.push("empty");
+    if (value >= i) stars.push(1);
+    else if (value >= i - 0.5) stars.push(0.52);
+    else stars.push(0);
   }
 
   return (
     <span className={`flex items-center gap-px flex-shrink-0 ${sizeClass}`}>
-      {stars.map((type, i) => (
-        <StarIcon key={i} type={type} color={color} emptyColor={emptyColor} />
+      {stars.map((fillFraction, i) => (
+        <Star key={i} idSuffix={`${uid}e${i}`} fillFraction={fillFraction}
+          tone={tone} emptyTone={emptyTone} />
       ))}
       {label && <span className="ms-1.5 text-[10px] font-medium text-cz-3 whitespace-nowrap">{label}</span>}
     </span>

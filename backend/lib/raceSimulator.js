@@ -369,3 +369,46 @@ export function simulateStage({ entrants = [], stageProfile, seed } = {}) {
 
   return { seed: seed >>> 0, ranked };
 }
+
+// ── #1499: DESKRIPTIV udbruds-status (ren read, ZERO balance-effekt) ──────────
+// Afleder per-rytter "var i (morgen-)udbruddet" + "holdt hjem vs. blev indhentet"
+// UDELUKKENDE fra det eksisterende simulateStage-output (`ranked`). Rører IKKE
+// finalScore, rang, point eller kalibrering — det er en efter-løb-etiket oven på
+// motorens egne tal, så den fulde race-gate forbliver bit-identisk grøn.
+//
+// Definitioner (genbruger den ejer-fastsatte, gate-målte konvention):
+//   in_breakaway   = components.breakaway > 0  (rytteren var en udvalgt escapee;
+//                    den PRÆCISE definition fra kalibrerings-loggen 2026-06-16 +
+//                    BREAKAWAY_TARGETS-gaten: "udbruds-sejr = components.breakaway > 0").
+//   breakaway_caught = escapee BLEV indhentet før mål = der finishede mindst én
+//                    IKKE-escapee FORAN ham (feltet havde slugt ham ved stregen).
+//                    "Holdt hjem" (survived) = ingen ikke-escapee foran → den
+//                    direkte per-rytter-generalisering af gatens "vinder holdt
+//                    hjem" (når vinderen er escapee, holdt alle escapees foran
+//                    feltet hjem). Rang-afledt, så den arver motorens rangering 1:1.
+//
+// @param {Array<{rider_id, rank, components:{breakaway}}>} ranked  fra simulateStage
+// @returns {Map<riderId, {in_breakaway:boolean, breakaway_caught:boolean}>}
+//   in_breakaway=false → breakaway_caught=false (status gælder kun escapees).
+export function deriveBreakawayStatus(ranked = []) {
+  const out = new Map();
+  if (!ranked.length) return out;
+  // Rang for den bedst placerede IKKE-escapee. Inf hvis hele finishet var escapees
+  // (kun teoretisk: feltet er altid > 3, escapees ≤ 3 → der er altid ikke-escapees).
+  let bestNonEscapeeRank = Infinity;
+  for (const r of ranked) {
+    if (!((r.components?.breakaway || 0) > 0) && r.rank < bestNonEscapeeRank) {
+      bestNonEscapeeRank = r.rank;
+    }
+  }
+  for (const r of ranked) {
+    const inBreakaway = (r.components?.breakaway || 0) > 0;
+    out.set(r.rider_id, {
+      in_breakaway: inBreakaway,
+      // Indhentet = escapee med mindst én ikke-escapee foran sig. Ikke-escapees
+      // har altid in_breakaway=false → caught=false.
+      breakaway_caught: inBreakaway && r.rank > bestNonEscapeeRank,
+    });
+  }
+  return out;
+}

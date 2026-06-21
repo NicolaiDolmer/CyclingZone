@@ -51,13 +51,13 @@ function DevelopmentChart({ title, subtitle, data, color }) {
             <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" vertical={false} />
             <XAxis
               dataKey="dateLabel"
-              tick={{ fill: "#94a3b8", fontSize: 11 }}
+              tick={{ fill: "var(--text-3)", fontSize: 11 }}
               tickLine={false}
-              axisLine={{ stroke: "#e2e8f0" }}
+              axisLine={{ stroke: "var(--border)" }}
               minTickGap={16}
             />
             <YAxis
-              tick={{ fill: "#94a3b8", fontSize: 11 }}
+              tick={{ fill: "var(--text-3)", fontSize: 11 }}
               tickLine={false}
               axisLine={false}
               allowDecimals={false}
@@ -68,7 +68,7 @@ function DevelopmentChart({ title, subtitle, data, color }) {
               dataKey="value"
               stroke={color}
               strokeWidth={2.5}
-              dot={{ r: 3, strokeWidth: 2, fill: "#fff" }}
+              dot={{ r: 3, strokeWidth: 2, fill: "var(--bg-card)" }}
               activeDot={{ r: 5 }}
               connectNulls
             />
@@ -119,7 +119,7 @@ export default function RiderDevelopmentTab({ statHistory, stats }) {
                 title=""
                 subtitle=""
                 data={statChartData}
-                color="#60a5fa"
+                color="rgb(var(--accent-t))"
               />
             </section>
           )}
@@ -140,7 +140,7 @@ export default function RiderDevelopmentTab({ statHistory, stats }) {
                   {recentDevelopmentRows.map(row => (
                     <tr key={row.synced_at} className="border-b border-cz-border last:border-0">
                       <td className="px-4 py-2 text-cz-2">{formatHistoryDate(row.synced_at, { day: "numeric", month: "short", year: "numeric" })}</td>
-                      <td className="px-4 py-2 text-right text-blue-500 font-mono">{row.stat_value ?? t("development.fallbackDash")}</td>
+                      <td className="px-4 py-2 text-right text-cz-info font-mono">{row.stat_value ?? t("development.fallbackDash")}</td>
                     </tr>
                   ))}
                 </tbody>

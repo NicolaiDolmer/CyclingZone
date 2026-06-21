@@ -273,12 +273,12 @@ export default function TrainingPage() {
 
         {/* Form */}
         <td className="px-4 py-3">
-          <MiniBar value={cond.form} color="bg-blue-400" label={t("form")} />
+          <MiniBar value={cond.form} color="bg-cz-info" label={t("form")} />
         </td>
 
         {/* Træthed */}
         <td className="px-4 py-3">
-          <MiniBar value={cond.fatigue} color="bg-orange-400" label={t("fatigue")} />
+          <MiniBar value={cond.fatigue} color="bg-cz-warning" label={t("fatigue")} />
         </td>
 
         {/* Status: skadet / høj risiko */}
@@ -608,7 +608,7 @@ export default function TrainingPage() {
                           {row.status === "under" && (
                             <span className="text-cz-danger text-xs">{t("flatDay")}</span>
                           )}
-                          <span className={`text-[11px] font-mono ${fatigueDelta > 0 ? "text-orange-400" : fatigueDelta < 0 ? "text-cz-success" : "text-cz-3"}`}>
+                          <span className={`text-[11px] font-mono ${fatigueDelta > 0 ? "text-cz-warning" : fatigueDelta < 0 ? "text-cz-success" : "text-cz-3"}`}>
                             {t("fatigueChange", { delta: `${fatigueSign}${fatigueDelta}` })}
                           </span>
                         </div>

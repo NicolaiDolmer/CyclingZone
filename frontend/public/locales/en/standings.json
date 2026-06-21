@@ -1,10 +1,12 @@
 {
-  "title": "Standings",
+  "title": "League & standings",
   "season": "Season {n}",
   "seasonTooltip": "Current season. Standings reset each season.",
   "noActiveSeason": "No active season",
   "division": "Division {n}",
   "noData": "No data for Division {n} yet",
+  "noMatch": "No teams match your search",
+  "searchPlaceholder": "Search teams...",
   "thTeam": "Team",
   "thStageWins": "Stage wins",
   "thTeamComp": "Team classification",
@@ -14,6 +16,11 @@
   "thPrizeShort": "Prize",
   "thPoints": "Points",
   "thProgress": "Progress",
+  "thSquadValue": "Squad value",
+  "thSquadValueShort": "Value",
+  "thRiders": "Riders",
+  "thU25": "U25",
+  "thTopStar": "Top star",
   "youBadge": "You",
   "promotionBadge": "↑ Up",
   "relegationBadge": "↓ Down",
@@ -21,7 +28,22 @@
   "legendLeader": "Leader (rank 1)",
   "legendPromotion": "Promotion zone (top 2)",
   "legendRelegation": "Relegation zone (bottom 2)",
+  "legendStrong": "Strong ability ({n}+)",
+  "strengthHint": "Sorted by total squad value",
   "racesPlayed": "{count} races played",
+  "onlineNow": "Online now",
+  "offline": "Offline",
+  "lens": {
+    "standings": "Standings",
+    "strength": "Squad strength"
+  },
+  "compare": {
+    "action": "Compare ({count})",
+    "select": "Select {team} for comparison",
+    "selectHint": "Select up to 2 teams to compare",
+    "drawerTitle": "Head-to-head",
+    "close": "Close comparison"
+  },
   "preview": {
     "title": "Season Preview",
     "subtitle": "Season {n}: team strengths and predictions",

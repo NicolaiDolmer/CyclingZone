@@ -26,7 +26,7 @@
     "minBidBody": "A new bid must be at least 1 CZ$ above the current bid. Min bid is pre-filled in the input field.",
     "autoExtendLabel": "10-min auto-extension:",
     "autoExtendBody": "Bids in the last 10 minutes extend the auction, so you can always respond if someone outbids you at the very end.",
-    "startTour": "💡 Show me around"
+    "startTour": "Show me around"
   },
   "ticker": {
     "bidCount": "{count, plural, one {1 recent bid} other {# recent bids}}"
@@ -113,10 +113,10 @@
     "winning": "Winning",
     "seller": "Seller",
     "mine": "Mine",
-    "extended": "⚡ Ext",
-    "flash": "⚡ Flash",
+    "extended": "Ext",
+    "flash": "Flash",
     "u25": "U25",
-    "youth": "🎓 Youth"
+    "youth": "Youth"
   },
   "bid": {
     "minBid": "Min. {amount} CZ$",
@@ -146,9 +146,9 @@
     }
   },
   "section": {
-    "leading": "🟢 You're leading",
-    "overbid": "🔴 You've been outbid",
-    "selling": "🔵 You're selling"
+    "leading": "You're leading",
+    "overbid": "You've been outbid",
+    "selling": "You're selling"
   },
   "empty": {
     "wishlistNoResults": "No active auctions on your wishlisted riders",
@@ -176,15 +176,15 @@
     "bidTitle": "Confirm bid",
     "bidVerb": "bid",
     "bidAction": "Bid",
-    "bidIcon": "🏷️",
+    "bidIcon": "",
     "proxyTitle": "Confirm auto-bid",
     "proxyVerb": "set auto-bid limit to",
     "proxyAction": "Save auto-bid",
-    "proxyIcon": "🤖",
+    "proxyIcon": "",
     "transferTitle": "Confirm transfer bid",
     "transferVerb": "send a transfer bid of",
     "transferAction": "Send bid",
-    "transferIcon": "💼",
+    "transferIcon": "",
     "questionPrefix": "Are you sure you want to",
     "onLabel": "on"
   },
@@ -192,7 +192,7 @@
     "rider": "rider"
   },
   "celebration": {
-    "title": "You won the auction! 🏆",
+    "title": "You won the auction!",
     "subtitle": "The rider is now on your team"
   },
   "priceChanged": {

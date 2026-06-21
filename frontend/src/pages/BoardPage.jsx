@@ -15,6 +15,7 @@ import { startTour } from "../lib/onboardingTour";
 import { logEvent } from "../lib/logEvent";
 import { resolveApiError } from "../lib/apiError";
 import { useModalA11y } from "../hooks/useModalA11y";
+import Modal from "../components/ui/Modal";
 import {
   resolveBoardCopy,
   resolveBoardFeedbackHeadline,
@@ -25,6 +26,16 @@ import {
   resolveMemberLongDescription,
   resolveReactionQuote,
 } from "../lib/boardCopy";
+import {
+  LockIcon,
+  XIcon,
+  BellIcon,
+  CoinIcon,
+  ClockIcon,
+  EditIcon,
+  EyeIcon,
+  TrophyIcon,
+} from "../components/ui";
 
 const API = import.meta.env.VITE_API_URL;
 const PLAN_SEQUENCE = ["5yr", "3yr", "1yr"];
@@ -226,9 +237,11 @@ function BoardMembersGrid({ members = [], onSelect }) {
 }
 
 // #1030 · Klik på et bestyrelsesmedlem → portræt + fuld karakter-beskrivelse.
+// #1589 WP4 · Bruger den delte Modal-primitiv (portal, focus-trap, Escape, scrim);
+// den rige header (portræt + rolle) ligger i children, så aria-labelledby peger på
+// dens egen #board-member-dialog-title i stedet for primitivens title-h2.
 function BoardMemberDialog({ member, onClose }) {
   const { t } = useTranslation("board");
-  const dialogRef = useModalA11y(onClose);
   if (!member) return null;
   const roleLabel = member.is_chairman
     ? t("members.chairman")
@@ -236,40 +249,39 @@ function BoardMemberDialog({ member, onClose }) {
       ? t("members.wildcard")
       : t("members.identityMatch");
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-4"
-      onClick={e => e.target === e.currentTarget && onClose()}
+    <Modal
+      open={Boolean(member)}
+      onClose={onClose}
+      size="sm"
+      closeLabel={t("a11y.closeDialog")}
+      ariaLabelledby="board-member-dialog-title"
     >
-      <div ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="board-member-dialog-title"
-        className="w-full max-w-md bg-cz-card border border-cz-border rounded-cz p-6 shadow-overlay max-h-[85vh] overflow-y-auto">
-        <div className="flex items-start gap-3 mb-4">
-          <div className={`relative w-12 h-12 rounded-full bg-cz-subtle border flex items-center justify-center text-2xl flex-shrink-0
-            ${member.is_chairman ? "border-cz-accent/40" : "border-cz-border"}`}>
-            <span aria-hidden>{member.emoji}</span>
-            {member.is_chairman && (
-              <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-cz-accent
-                text-cz-on-accent text-[9px] font-bold flex items-center justify-center border border-cz-card"
-                title={t("members.chairmanTitle")}>★</span>
-            )}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p id="board-member-dialog-title" className="text-cz-1 font-semibold text-base leading-snug break-words">{resolveMemberLabel(t, member)}</p>
-            <p className={`text-xs uppercase tracking-wider mt-0.5 ${member.is_chairman ? "text-cz-accent-t font-semibold" : "text-cz-3"}`}>
-              {roleLabel}
-            </p>
-          </div>
-          <button onClick={onClose} aria-label={t("a11y.closeDialog")} className="text-cz-3 hover:text-cz-2 text-xl leading-none flex-shrink-0 px-1"><span aria-hidden="true">×</span></button>
+      <div className="flex items-start gap-3 mb-4">
+        <div className={`relative w-12 h-12 rounded-full bg-cz-subtle border flex items-center justify-center text-2xl flex-shrink-0
+          ${member.is_chairman ? "border-cz-accent/40" : "border-cz-border"}`}>
+          <span aria-hidden>{member.emoji}</span>
+          {member.is_chairman && (
+            <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-cz-accent
+              text-cz-on-accent text-[9px] font-bold flex items-center justify-center border border-cz-card"
+              title={t("members.chairmanTitle")}>★</span>
+          )}
         </div>
-        {resolveMemberShortDescription(t, member) && (
-          <p className="text-cz-2 text-sm leading-relaxed">{resolveMemberShortDescription(t, member)}</p>
-        )}
-        {/* #1241 · text-cz-2 (før cz-3): lang brødtekst i modal skal være
-            kontrast-sikker i begge temaer; hierarki bæres af mt-spacing. */}
-        {resolveMemberLongDescription(t, member) && (
-          <p className="text-cz-2 text-sm mt-3 leading-relaxed">{resolveMemberLongDescription(t, member)}</p>
-        )}
+        <div className="flex-1 min-w-0">
+          <p id="board-member-dialog-title" className="text-cz-1 font-semibold text-base leading-snug break-words">{resolveMemberLabel(t, member)}</p>
+          <p className={`text-xs uppercase tracking-wider mt-0.5 ${member.is_chairman ? "text-cz-accent-t font-semibold" : "text-cz-3"}`}>
+            {roleLabel}
+          </p>
+        </div>
       </div>
-    </div>
+      {resolveMemberShortDescription(t, member) && (
+        <p className="text-cz-2 text-sm leading-relaxed">{resolveMemberShortDescription(t, member)}</p>
+      )}
+      {/* #1241 · text-cz-2 (før cz-3): lang brødtekst i modal skal være
+          kontrast-sikker i begge temaer; hierarki bæres af mt-spacing. */}
+      {resolveMemberLongDescription(t, member) && (
+        <p className="text-cz-2 text-sm mt-3 leading-relaxed">{resolveMemberLongDescription(t, member)}</p>
+      )}
+    </Modal>
   );
 }
 
@@ -429,40 +441,40 @@ function BoardDriversPanel({ dna, plans }) {
 }
 
 // #1030 · DNA-detalje-dialog — fuld beskrivelse + forklaring på at DNA er låst for sæsonen.
+// #1589 WP4 · Delt Modal-primitiv; rig header (DNA-emoji + label) i children, så
+// aria-labelledby peger på dens egen #club-dna-dialog-title.
 function ClubDnaDialog({ dna, onClose }) {
   const { t } = useTranslation("board");
-  const dialogRef = useModalA11y(onClose);
   if (!dna) return null;
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-4"
-      onClick={e => e.target === e.currentTarget && onClose()}
+    <Modal
+      open={Boolean(dna)}
+      onClose={onClose}
+      size="sm"
+      closeLabel={t("a11y.closeDialog")}
+      ariaLabelledby="club-dna-dialog-title"
     >
-      <div ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="club-dna-dialog-title"
-        className="w-full max-w-md bg-cz-card border border-cz-border rounded-cz p-6 shadow-overlay max-h-[85vh] overflow-y-auto">
-        <div className="flex items-start gap-3 mb-4">
-          <div className="w-12 h-12 rounded-full bg-cz-subtle border border-cz-border
-            flex items-center justify-center text-2xl flex-shrink-0">
-            <span aria-hidden>{dna.emoji}</span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-cz-3 text-xs uppercase tracking-wider">{t("dna.badge.label")}</p>
-            <p id="club-dna-dialog-title" className="text-cz-1 font-semibold text-base leading-snug">{getDnaCopy(t, dna, "label")}</p>
-          </div>
-          <button onClick={onClose} aria-label={t("a11y.closeDialog")} className="text-cz-3 hover:text-cz-2 text-xl leading-none flex-shrink-0 px-1"><span aria-hidden="true">×</span></button>
+      <div className="flex items-start gap-3 mb-4">
+        <div className="w-12 h-12 rounded-full bg-cz-subtle border border-cz-border
+          flex items-center justify-center text-2xl flex-shrink-0">
+          <span aria-hidden>{dna.emoji}</span>
         </div>
-        {getDnaCopy(t, dna, "shortDescription") && (
-          <p className="text-cz-2 text-sm leading-relaxed">{getDnaCopy(t, dna, "shortDescription")}</p>
-        )}
-        {getDnaCopy(t, dna, "longDescription") && (
-          <p className="text-cz-3 text-sm mt-3 italic leading-relaxed">{getDnaCopy(t, dna, "longDescription")}</p>
-        )}
-        <div className="mt-4 pt-4 border-t border-cz-border">
-          <p className="text-cz-2 text-xs font-semibold">🔒 {t("dna.locked.heading")}</p>
-          <p className="text-cz-3 text-xs mt-1 leading-relaxed">{t("dna.locked.body")}</p>
+        <div className="flex-1 min-w-0">
+          <p className="text-cz-3 text-xs uppercase tracking-wider">{t("dna.badge.label")}</p>
+          <p id="club-dna-dialog-title" className="text-cz-1 font-semibold text-base leading-snug">{getDnaCopy(t, dna, "label")}</p>
         </div>
       </div>
-    </div>
+      {getDnaCopy(t, dna, "shortDescription") && (
+        <p className="text-cz-2 text-sm leading-relaxed">{getDnaCopy(t, dna, "shortDescription")}</p>
+      )}
+      {getDnaCopy(t, dna, "longDescription") && (
+        <p className="text-cz-3 text-sm mt-3 italic leading-relaxed">{getDnaCopy(t, dna, "longDescription")}</p>
+      )}
+      <div className="mt-4 pt-4 border-t border-cz-border">
+        <p className="text-cz-2 text-xs font-semibold flex items-center gap-1.5"><LockIcon size={14} aria-hidden="true" /> {t("dna.locked.heading")}</p>
+        <p className="text-cz-3 text-xs mt-1 leading-relaxed">{t("dna.locked.body")}</p>
+      </div>
+    </Modal>
   );
 }
 
@@ -662,7 +674,6 @@ function GoalCard({ goal, achieved, cumulativeProgress, evaluation, onSelect }) 
 
 function GoalMiniDialog({ goal, achieved, evaluation, cumulativeProgress, onClose }) {
   const { t } = useTranslation("board");
-  const dialogRef = useModalA11y(onClose);
   const status = evaluation?.status;
   const statusMeta = !achieved && status ? getGoalStatusMeta(t, status) : null;
   const memberReaction = evaluation?.member_reaction || null;
@@ -675,92 +686,93 @@ function GoalMiniDialog({ goal, achieved, evaluation, cumulativeProgress, onClos
     : isNearMiss ? "bg-cz-accent/10 text-cz-accent-t"
     : "bg-cz-subtle text-cz-3";
 
+  // #1589 WP4 · Delt Modal-primitiv; rig header (status-ikon + mål-label) i children,
+  // så aria-labelledby peger på dens egen #goal-mini-dialog-title.
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-4"
-      onClick={e => e.target === e.currentTarget && onClose()}
+    <Modal
+      open
+      onClose={onClose}
+      size="md"
+      closeLabel={t("a11y.closeDialog")}
+      ariaLabelledby="goal-mini-dialog-title"
     >
-      <div ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="goal-mini-dialog-title"
-        className="w-full max-w-lg bg-cz-card border border-cz-border rounded-cz p-6 shadow-overlay max-h-[85vh] overflow-y-auto">
-        <div className="flex items-start gap-3 mb-4">
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold ${iconCls}`}>
-            <span aria-hidden="true">{iconContent}</span>
-            <span className="sr-only">{getGoalStatusA11yLabel(t, { achieved, status })}</span>
-          </div>
-          <div className="flex-1">
-            <p id="goal-mini-dialog-title" className="text-cz-1 font-semibold text-base leading-snug break-words">{getBoardGoalLabel(t, goal)}</p>
-            {statusMeta?.label && (
-              <p className={`text-sm mt-0.5 ${statusMeta.color}`}>{statusMeta.label}</p>
-            )}
-          </div>
-          <button onClick={onClose} aria-label={t("a11y.closeDialog")} className="text-cz-3 hover:text-cz-2 text-xl leading-none flex-shrink-0 px-1"><span aria-hidden="true">×</span></button>
+      <div className="flex items-start gap-3 mb-4">
+        <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-sm font-bold ${iconCls}`}>
+          <span aria-hidden="true">{iconContent}</span>
+          <span className="sr-only">{getGoalStatusA11yLabel(t, { achieved, status })}</span>
         </div>
-
-        {evaluation?.actual != null && (
-          <div className="bg-cz-subtle rounded-lg px-4 py-3 mb-4 flex items-center justify-between">
-            <span className="text-cz-3 text-sm">{t("goal.progress")}</span>
-            <span className="font-mono text-cz-1 text-sm font-semibold">
-              {goal.type === "top_n_finish" ? `#${evaluation.actual}` : evaluation.actual}
-              {" / "}
-              {goal.type === "top_n_finish" ? `top ${evaluation.target}` : evaluation.target}
-            </span>
-          </div>
-        )}
-
-        {goal.type === "relative_rank" && evaluation?.rank_in_division != null && (
-          <p className="text-cz-3 text-sm mb-4 leading-relaxed">
-            {t("goal.rankInDivisionShort", {
-              rank: evaluation.rank_in_division,
-              total: evaluation.division_manager_count,
-            })}
-          </p>
-        )}
-
-        {goal.cumulative && cumulativeProgress !== undefined && (
-          <div className="mb-4">
-            <div className="bg-cz-subtle rounded-full h-2">
-              <div className={`h-2 rounded-full transition-all ${achieved ? "bg-cz-success-bg0" : "bg-cz-accent"}`}
-                style={{ width: `${Math.min(100, Math.round((cumulativeProgress / goal.target) * 100))}%` }} />
-            </div>
-            <p className="text-cz-3 text-xs text-center mt-1">{cumulativeProgress}/{goal.target}</p>
-          </div>
-        )}
-
-        <div className="flex flex-wrap gap-2 mb-4">
-          {goal.importance === "required" && <span className="text-xs bg-cz-subtle text-cz-3 px-2 py-0.5 rounded border border-cz-border">{t("goal.obligatory")}</span>}
-          {goal.cumulative && <span className="text-xs bg-cz-info-bg0/10 text-cz-info px-2 py-0.5 rounded">{t("goal.cumulative")}</span>}
-          {goal.tradeoff_tightened && <span className="text-xs text-cz-warning/80">{t("goal.tightenedBadge")}</span>}
-          {goal.satisfaction_bonus > 0 && <span className="text-xs text-cz-success/70">{t("goal.satisfactionBonus", { count: goal.satisfaction_bonus })}</span>}
-          {goal.satisfaction_penalty > 0 && <span className="text-xs text-cz-danger/70">{t("goal.satisfactionPenalty", { count: goal.satisfaction_penalty })}</span>}
-          {goal.negotiated && <span className="text-xs text-cz-info/70">{t("goal.negotiated")}</span>}
+        <div className="flex-1">
+          <p id="goal-mini-dialog-title" className="text-cz-1 font-semibold text-base leading-snug break-words">{getBoardGoalLabel(t, goal)}</p>
+          {statusMeta?.label && (
+            <p className={`text-sm mt-0.5 ${statusMeta.color}`}>{statusMeta.label}</p>
+          )}
         </div>
-
-        {/* #989/#1096/#815 · "Hvordan måles dette?" — forklarer evalueringen for de
-            måltyper hvor formatet/kriteriet ikke er selvforklarende. */}
-        {getGoalHelpText(t, goal) && (
-          <div className="bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 mb-4">
-            <p className="text-[11px] text-cz-3 uppercase tracking-wider mb-1">{t("goalHelp.heading")}</p>
-            <p className="text-cz-2 text-xs leading-relaxed">{getGoalHelpText(t, goal)}</p>
-          </div>
-        )}
-
-        {identityRationale && (
-          <div className="bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 mb-4">
-            <p className="text-[11px] text-cz-info">★ {formatBoardCopy(identityRationale.short)}</p>
-            {identityRationale.long && (
-              <p className="text-[11px] text-cz-3 mt-1 leading-relaxed">{formatBoardCopy(identityRationale.long)}</p>
-            )}
-          </div>
-        )}
-
-        {memberReaction && (
-          <div>
-            <p className="text-cz-3 text-xs uppercase tracking-wider mb-2">{t("goal.boardReaction")}</p>
-            <MemberReactionPanel reaction={memberReaction} />
-          </div>
-        )}
       </div>
-    </div>
+
+      {evaluation?.actual != null && (
+        <div className="bg-cz-subtle rounded-lg px-4 py-3 mb-4 flex items-center justify-between">
+          <span className="text-cz-3 text-sm">{t("goal.progress")}</span>
+          <span className="font-mono text-cz-1 text-sm font-semibold">
+            {goal.type === "top_n_finish" ? `#${evaluation.actual}` : evaluation.actual}
+            {" / "}
+            {goal.type === "top_n_finish" ? `top ${evaluation.target}` : evaluation.target}
+          </span>
+        </div>
+      )}
+
+      {goal.type === "relative_rank" && evaluation?.rank_in_division != null && (
+        <p className="text-cz-3 text-sm mb-4 leading-relaxed">
+          {t("goal.rankInDivisionShort", {
+            rank: evaluation.rank_in_division,
+            total: evaluation.division_manager_count,
+          })}
+        </p>
+      )}
+
+      {goal.cumulative && cumulativeProgress !== undefined && (
+        <div className="mb-4">
+          <div className="bg-cz-subtle rounded-full h-2">
+            <div className={`h-2 rounded-full transition-all ${achieved ? "bg-cz-success-bg0" : "bg-cz-accent"}`}
+              style={{ width: `${Math.min(100, Math.round((cumulativeProgress / goal.target) * 100))}%` }} />
+          </div>
+          <p className="text-cz-3 text-xs text-center mt-1">{cumulativeProgress}/{goal.target}</p>
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-2 mb-4">
+        {goal.importance === "required" && <span className="text-xs bg-cz-subtle text-cz-3 px-2 py-0.5 rounded border border-cz-border">{t("goal.obligatory")}</span>}
+        {goal.cumulative && <span className="text-xs bg-cz-info-bg0/10 text-cz-info px-2 py-0.5 rounded">{t("goal.cumulative")}</span>}
+        {goal.tradeoff_tightened && <span className="text-xs text-cz-warning/80">{t("goal.tightenedBadge")}</span>}
+        {goal.satisfaction_bonus > 0 && <span className="text-xs text-cz-success/70">{t("goal.satisfactionBonus", { count: goal.satisfaction_bonus })}</span>}
+        {goal.satisfaction_penalty > 0 && <span className="text-xs text-cz-danger/70">{t("goal.satisfactionPenalty", { count: goal.satisfaction_penalty })}</span>}
+        {goal.negotiated && <span className="text-xs text-cz-info/70">{t("goal.negotiated")}</span>}
+      </div>
+
+      {/* #989/#1096/#815 · "Hvordan måles dette?" — forklarer evalueringen for de
+          måltyper hvor formatet/kriteriet ikke er selvforklarende. */}
+      {getGoalHelpText(t, goal) && (
+        <div className="bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 mb-4">
+          <p className="text-[11px] text-cz-3 uppercase tracking-wider mb-1">{t("goalHelp.heading")}</p>
+          <p className="text-cz-2 text-xs leading-relaxed">{getGoalHelpText(t, goal)}</p>
+        </div>
+      )}
+
+      {identityRationale && (
+        <div className="bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 mb-4">
+          <p className="text-[11px] text-cz-info">★ {formatBoardCopy(identityRationale.short)}</p>
+          {identityRationale.long && (
+            <p className="text-[11px] text-cz-3 mt-1 leading-relaxed">{formatBoardCopy(identityRationale.long)}</p>
+          )}
+        </div>
+      )}
+
+      {memberReaction && (
+        <div>
+          <p className="text-cz-3 text-xs uppercase tracking-wider mb-2">{t("goal.boardReaction")}</p>
+          <MemberReactionPanel reaction={memberReaction} />
+        </div>
+      )}
+    </Modal>
   );
 }
 
@@ -1135,10 +1147,10 @@ function BoardRequestPanel({ requestOptions, requestStatus, requestError, reques
 // Lag 2-3 = warning på BoardPage (ingen notif). Lag 4-5 = røde events i Bestyrelse-feed
 // + 'Skal handles' notif. Lag 6 (bonus_offer) har egen card-komponent (BonusOfferCard).
 const CONSEQUENCE_LAYER_STYLE = {
-  2: { emoji: "🔒", severity: "warning"  },
-  3: { emoji: "🛑", severity: "warning"  },
-  4: { emoji: "📢", severity: "critical" },
-  5: { emoji: "💸", severity: "critical" },
+  2: { Icon: LockIcon, severity: "warning"  },
+  3: { Icon: XIcon,    severity: "warning"  },
+  4: { Icon: BellIcon, severity: "critical" },
+  5: { Icon: CoinIcon, severity: "critical" },
 };
 
 function describeConsequence(t, c) {
@@ -1170,13 +1182,15 @@ function BoardConsequencesPanel({ consequences = [] }) {
         {visible.sort((a, b) => a.layer - b.layer).map((c) => {
           const style = CONSEQUENCE_LAYER_STYLE[c.layer];
           const isCritical = style.severity === "critical";
+          const LayerIcon = style.Icon;
           return (
             <div key={c.id}
               className={`p-3 rounded-lg border ${isCritical
                 ? "bg-cz-danger-bg0/8 border-cz-danger/30"
                 : "bg-cz-accent/10 border-cz-accent/30"}`}>
               <div className="flex items-start gap-3">
-                <span className="text-xl flex-shrink-0">{style.emoji}</span>
+                <LayerIcon size={20} aria-hidden="true"
+                  className={`flex-shrink-0 mt-0.5 ${isCritical ? "text-cz-danger" : "text-cz-accent-t"}`} />
                 <div className="flex-1">
                   <p className={`text-sm font-semibold ${isCritical ? "text-cz-danger" : "text-cz-accent-t"}`}>
                     {t(`consequence.layer${c.layer}.label`)}
@@ -1202,7 +1216,7 @@ function BonusOfferCard({ offer, onAccept, onDecline, busy }) {
   return (
     <div className="mt-5 rounded-cz p-5 border border-cz-success/40 bg-cz-success-bg0/8">
       <div className="flex items-start gap-3">
-        <span className="text-2xl flex-shrink-0">🎁</span>
+        <TrophyIcon size={24} aria-hidden="true" className="flex-shrink-0 text-cz-success" />
         <div className="flex-1">
           <p className="text-sm font-semibold text-cz-success">{t("bonusOffer.heading")}</p>
           <p className="text-cz-2 text-xs mt-2 leading-relaxed">
@@ -1310,7 +1324,7 @@ function BoardAutoAcceptCountdown({ isBaselinePhase, autoAccept, setupNextPlanTy
   return (
     <div className={`rounded-cz p-4 mb-5 border ${containerClass}`}>
       <div className="flex items-start gap-3">
-        <span className="text-2xl">⏳</span>
+        <ClockIcon size={24} aria-hidden="true" className={`flex-shrink-0 mt-0.5 ${accentClass}`} />
         <div className="flex-1">
           <p className={`font-semibold text-sm ${accentClass}`}>
             {isCritical
@@ -1754,7 +1768,9 @@ function WizardStep3({ finalGoals, planType, onSign, saving, onBack }) {
       )}
       <div className="text-center mb-8">
         <div className="w-14 h-14 rounded-full bg-cz-success-bg border border-cz-success/30
-          flex items-center justify-center text-2xl mx-auto mb-4" aria-hidden="true">✍</div>
+          flex items-center justify-center mx-auto mb-4 text-cz-success" aria-hidden="true">
+          <EditIcon size={24} />
+        </div>
         <h2 className="text-cz-1 font-bold text-xl">{t("wizard.step3Title")}</h2>
         <p className="text-cz-2 text-sm mt-1">
           {t("wizard.step3Subtitle", { plan: getPlanLabel(t, planType), count: duration })}
@@ -2262,8 +2278,8 @@ export default function BoardPage() {
         </div>
         <Link to="/finance"
           className="px-3 py-2 rounded-lg text-sm border bg-cz-subtle text-cz-2 border-cz-border
-            hover:text-cz-1 hover:bg-cz-subtle transition-all">
-          💰 {t("page.financeLink")}
+            hover:text-cz-1 hover:bg-cz-subtle transition-all inline-flex items-center gap-1.5">
+          <CoinIcon size={16} aria-hidden="true" /> {t("page.financeLink")}
         </Link>
       </div>
 
@@ -2271,7 +2287,7 @@ export default function BoardPage() {
       {isBaselinePhase && (
         <div className="bg-cz-card border border-cz-border rounded-cz p-5 mb-5">
           <div className="flex items-start gap-3">
-            <span className="text-2xl">👀</span>
+            <EyeIcon size={24} aria-hidden="true" className="flex-shrink-0 mt-0.5 text-cz-2" />
             <div>
               <h2 className="text-cz-1 font-semibold text-base mb-1">{t("baseline.title")}</h2>
               <p className="text-cz-3 text-sm leading-relaxed">{t("baseline.body")}</p>

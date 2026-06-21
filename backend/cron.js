@@ -47,6 +47,7 @@ import { runAdminSimulateStage, buildRaceSimEmbed } from "./lib/adminSimulateRac
 import { makeEnsureSeasonStandings } from "./lib/seasonStandingsBootstrap.js";
 import { updateStandings } from "./lib/economyEngine.js";
 import { runStarterSquadHealSweep } from "./lib/starterSquadHealSweep.js";
+import { runAcademyHealSweep } from "./lib/academyHealSweep.js";
 import { captureException as sentryCapture } from "./lib/sentry.js";
 const __envdir = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__envdir, "../.env"), quiet: true });
@@ -404,6 +405,21 @@ async function runStarterSquadHealSweepCron() {
   }
 }
 
+// ─── Akademi-kuld heal: reparér nye hold hvis signup-seedingen fejlede (#1584) ──
+// Markør-gatet (academy_intake_seeded_at NULL) + alders-guard → rører kun hold hvis
+// deres første akademi-kuld-seeding fejlede (bevidst ikke-fatal ved signup), aldrig
+// et hold der selv har brugt/afvist sine pladser (ingen gratis-kuld-exploit).
+
+async function runAcademyHealSweepCron() {
+  const result = await runAcademyHealSweep({ supabase, now: new Date() });
+  if (result.healed) {
+    console.log(`🎓 Akademi-kuld heal-sweep: ${result.healed} hold repareret (manglende første kuld)`);
+  }
+  if (result.failed) {
+    console.error(`❌ Akademi-kuld heal-sweep: ${result.failed} hold fejlede (per-team try/catch isolerede)`);
+  }
+}
+
 // ─── Auto-prize: udbetal udestående præmier for completede løb (#WS1) ─────────
 // Gated bag runtime-flag auto_prize_enabled (fail-safe OFF) — er flaget ikke tændt,
 // returnerer sweep'en straks { skipped: "flag_off" } uden side-effekter.
@@ -544,6 +560,10 @@ export function startCron() {
   // Start-trup heal: reparér nye hold hvis signup-allokeringen fejlede (#1563).
   // Markør-gatet + alders-guard → idempotent, exploit-sikker, ingen flag nødvendig.
   setInterval(trackedTick("starter-squad heal sweep", runStarterSquadHealSweepCron), 5 * 60 * 1000);
+
+  // Akademi-kuld heal: reparér nye hold hvis signup-akademi-seedingen fejlede (#1584).
+  // Markør-gatet + alders-guard → idempotent, exploit-sikker, ingen flag nødvendig.
+  setInterval(trackedTick("academy heal sweep", runAcademyHealSweepCron), 5 * 60 * 1000);
 
   // Auto-prize: udbetal udestående præmier for completede løb (#WS1).
   // trackedTick giver Sentry-capture + graceful-shutdown gratis. Idempotent via

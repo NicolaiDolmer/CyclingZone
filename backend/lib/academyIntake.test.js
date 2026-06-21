@@ -13,18 +13,49 @@ import { getTeamAcademyCount, runAcademyIntake, runAcademyIntakeForTeam, signAca
  * @param {string[]}    opts.academyIntakeTeamIds - team_ids allerede i academy_intake for den sæson
  * @param {object[]}    opts.existingRiders       - { firstname, lastname }[]
  * @param {number}      opts.teamAcademyCount     - hvad count-query returnerer
+ * @param {object}      opts.academyMarkers       - { [teamId]: timestamptz|null } #1584-markør pr. hold
  */
 function makeIntakeSupabase({
   activeSeason = { id: "season-1", number: 1, start_date: "2026-06-20" },
   academyIntakeTeamIds = [],
   existingRiders = [],
   teamAcademyCount = 0,
+  academyMarkers = {},
 } = {}) {
   const riderInserts = [];
   const academyIntakeInserts = [];
+  const markerWrites = []; // { teamId, value } — #1584-markør-sætninger
 
   const supabase = {
     from(table) {
+      if (table === "teams") {
+        // #1584-markør: select("academy_intake_seeded_at").eq("id", teamId).single()
+        // + update({ academy_intake_seeded_at }).eq("id", teamId).
+        let whereId = null;
+        const api = {
+          select() { return api; },
+          eq(col, val) { if (col === "id") whereId = val; return api; },
+          single() {
+            return Promise.resolve({
+              data: { academy_intake_seeded_at: academyMarkers[whereId] ?? null },
+              error: null,
+            });
+          },
+          update(patch) {
+            const upApi = {
+              eq(col, val) { if (col === "id") whereId = val; return upApi; },
+              then(resolve) {
+                markerWrites.push({ teamId: whereId, value: patch.academy_intake_seeded_at });
+                academyMarkers[whereId] = patch.academy_intake_seeded_at;
+                return Promise.resolve({ error: null }).then(resolve);
+              },
+            };
+            return upApi;
+          },
+        };
+        return api;
+      }
+
       if (table === "seasons") {
         const api = {
           select() { return api; },
@@ -136,6 +167,7 @@ function makeIntakeSupabase({
     },
     _riderInserts: riderInserts,
     _academyIntakeInserts: academyIntakeInserts,
+    _markerWrites: markerWrites,
   };
 
   return supabase;
@@ -337,14 +369,22 @@ test("runAcademyIntakeForTeam: seeder ét kuld for et nyt hold + kører afled-pi
   assert.equal(deriveCalls.length, 1, "afled-pipeline skal køres præcis én gang");
   assert.equal(deriveCalls[0].opts.dryRun, false, "afled skal køre i apply-mode");
   assert.equal(deriveCalls[0].ids.length, res.candidates, "afled dækker alle nyindsatte ryttere");
+
+  // #1584: markøren academy_intake_seeded_at sættes EFTER seed+derive → self-heal-
+  // sweep'en (og en re-signup) re-seeder aldrig holdet.
+  assert.equal(supabase._markerWrites.length, 1, "markøren skal sættes præcis én gang");
+  assert.equal(supabase._markerWrites[0].teamId, "team-NEW");
+  assert.ok(supabase._markerWrites[0].value, "markør-værdi (timestamp) skal være sat");
 });
 
-test("runAcademyIntakeForTeam: idempotent — hold med eksisterende academy_intake seeder INTET", async () => {
-  // team-SEEDED har allerede rækker i academy_intake for sæsonen → no-op.
+test("runAcademyIntakeForTeam: markør sat → rent no-op (ingen gratis-kuld-exploit, #1584)", async () => {
+  // team-SEEDED har markøren sat (fik allerede sit første kuld) → no-op selv hvis
+  // holdet har underskrevet/afvist alle sine kandidater (ingen intake-rækker tilbage).
   const supabase = makeIntakeSupabase({
     activeSeason: { id: "season-1", number: 1, start_date: "2026-06-20" },
-    academyIntakeTeamIds: ["team-SEEDED"],
+    academyIntakeTeamIds: [],
     existingRiders: [],
+    academyMarkers: { "team-SEEDED": "2026-06-19T00:00:00Z" },
   });
 
   let derived = false;
@@ -353,10 +393,37 @@ test("runAcademyIntakeForTeam: idempotent — hold med eksisterende academy_inta
     deriveRiders: async () => { derived = true; },
   });
 
-  assert.ok(res.skipped, "skal returnere skipped-markør");
-  assert.equal(supabase._riderInserts.length, 0, "ingen rider-inserts ved idempotens-skip");
-  assert.equal(supabase._academyIntakeInserts.length, 0, "ingen academy_intake-inserts ved idempotens-skip");
-  assert.equal(derived, false, "ingen afled-writes ved idempotens-skip");
+  assert.equal(res.skipped, "already-seeded", "markør-gate skal returnere already-seeded");
+  assert.equal(res.candidates, 0);
+  assert.equal(supabase._riderInserts.length, 0, "ingen rider-inserts ved markør-skip");
+  assert.equal(supabase._academyIntakeInserts.length, 0, "ingen academy_intake-inserts ved markør-skip");
+  assert.equal(supabase._markerWrites.length, 0, "ingen markør-write ved markør-skip (allerede sat)");
+  assert.equal(derived, false, "ingen afled-writes ved markør-skip");
+});
+
+test("runAcademyIntakeForTeam: bælte-og-seler — markør NULL men kuld eksisterer → markér, seed ikke", async () => {
+  // Pre-#1584 hold: fik sit kuld før markøren fandtes (markør NULL via backfill-race
+  // / samtidigt kald). academy_intake har rækker → seed aldrig, sæt blot markøren.
+  const supabase = makeIntakeSupabase({
+    activeSeason: { id: "season-1", number: 1, start_date: "2026-06-20" },
+    academyIntakeTeamIds: ["team-PRE"],
+    existingRiders: [],
+    academyMarkers: { "team-PRE": null },
+  });
+
+  let derived = false;
+  const res = await runAcademyIntakeForTeam(supabase, "team-PRE", {
+    seed: 2026,
+    deriveRiders: async () => { derived = true; },
+  });
+
+  assert.equal(res.skipped, "already-has-cohort", "eksisterende kuld → already-has-cohort");
+  assert.equal(supabase._riderInserts.length, 0, "ingen rider-inserts (dobbelt-seed undgået)");
+  assert.equal(supabase._academyIntakeInserts.length, 0, "ingen academy_intake-inserts");
+  assert.equal(derived, false, "ingen afled-writes");
+  // Markøren sættes nu så holdet ikke evigt re-tjekkes af sweep'en.
+  assert.equal(supabase._markerWrites.length, 1, "markøren skal sættes på bælte-og-seler-stien");
+  assert.equal(supabase._markerWrites[0].teamId, "team-PRE");
 });
 
 test("runAcademyIntakeForTeam: null identity-basis genererer stadig et kuld (post-relaunch nyt hold)", async () => {

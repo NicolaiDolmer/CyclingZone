@@ -113,11 +113,13 @@ BEGIN
       AND stage_number = p_stage_number;
 
   -- ── Trin 3: insert de nybyggede rækker for etapen ─────────────────────────
-  -- Kolonne-mapping spejler raceResultsEngine.applyRaceResults' normalizedRows 1:1.
+  -- Kolonne-mapping spejler raceResultsEngine.applyRaceResults' normalizedRows 1:1
+  -- (inkl. #1499's deskriptive udbruds-flag in_breakaway/breakaway_caught, så
+  -- RPC-stien persisterer dem på linje med den ikke-atomære full-race-sti).
   INSERT INTO public.race_results (
     race_id, rider_id, rider_name, team_id, team_name,
     result_type, rank, stage_number, finish_time,
-    prize_money, points_earned
+    prize_money, points_earned, in_breakaway, breakaway_caught
   )
   SELECT
     p_race_id,
@@ -130,7 +132,9 @@ BEGIN
     COALESCE((r->>'stage_number')::integer, p_stage_number),
     r->>'finish_time',
     COALESCE((r->>'prize_money')::bigint, 0),
-    COALESCE((r->>'points_earned')::integer, 0)
+    COALESCE((r->>'points_earned')::integer, 0),
+    COALESCE((r->>'in_breakaway')::boolean, false),
+    COALESCE((r->>'breakaway_caught')::boolean, false)
   FROM jsonb_array_elements(p_result_rows) AS r;
 
   GET DIAGNOSTICS v_inserted = ROW_COUNT;

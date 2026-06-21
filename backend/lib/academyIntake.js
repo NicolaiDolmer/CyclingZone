@@ -63,6 +63,24 @@ function referenceYearForSeason(season) {
   return parseInt(String(season.start_date).slice(0, 4), 10) || 2026;
 }
 
+// #1584-markør: "fik dette hold nogensinde sit FØRSTE akademi-kuld?"
+// (teams.academy_intake_seeded_at). SANDHEDEN for idempotens — IKKE academy_intake-
+// rækkerne — så et hold der selv har underskrevet/afvist sine pladser aldrig får et
+// gratis-kuld. Service-role-managed (api.js/teamProfileEngine + cron). 1:1-spejling
+// af starterSquadAllocator.readSquadMarker/setSquadMarker.
+async function readAcademyMarker(supabase, teamId) {
+  const { data, error } = await supabase
+    .from("teams").select("academy_intake_seeded_at").eq("id", teamId).single();
+  if (error) throw new Error(`read academy-intake marker ${teamId}: ${error.message}`);
+  return data?.academy_intake_seeded_at ?? null;
+}
+
+async function setAcademyMarker(supabase, teamId, nowIso) {
+  const { error } = await supabase
+    .from("teams").update({ academy_intake_seeded_at: nowIso }).eq("id", teamId);
+  if (error) throw new Error(`set academy-intake marker ${teamId}: ${error.message}`);
+}
+
 /**
  * Byg sættet af foldede navne på ALLE eksisterende ryttere (navne-unikhed).
  * Delt af batch- og per-hold-stien.
@@ -254,9 +272,13 @@ export async function runAcademyIntake(supabase, {
  * — ingen nye parametre. Kører afled-pipelinen for kuldet (#1478-fælden: ellers mangler
  * kandidaterne physiology/abilities/type/base_value og springes i træning).
  *
- *   • Idempotens-guard: har holdet allerede academy_intake-rækker for den aktive
- *     sæson, gør INTET (no-op) — spejler allocateStarterSquadForTeam's
- *     "already-has-riders → skip". Et re-signup/retry må aldrig dobbelt-seede.
+ *   • Idempotens-guard på MARKØREN academy_intake_seeded_at (#1584), IKKE
+ *     academy_intake-rækkerne: markør sat → no-op (også hvis holdet selv har
+ *     underskrevet/afvist alle sine kandidater → INGEN gratis-kuld-exploit).
+ *     Spejler allocateStarterSquadForTeam's markør-gate (#1563). Som
+ *     bælte-og-seler beholdes academy_intake-tjekket: rammer markør-NULL stien
+ *     et hold der allerede HAR rækker for sæsonen (fx pre-#1584 relaunch-hold
+ *     under back-/forward-fill), markeres det blot uden at dobbelt-seede.
  *   • Per-hold PRNG-seed (seed XOR hash(teamId)) → varierede men reproducerbare
  *     kuld på tværs af nye hold; samme determinisme-mønster som start-truppen.
  *   • null season_1_identity_basis (et splinternyt post-relaunch hold) er gyldigt
@@ -268,28 +290,40 @@ export async function runAcademyIntake(supabase, {
  * @param {number}  [opts.seed=2026]
  * @param {object|null} [opts.identityBasis]  nation-bias (default null = default-vægte)
  * @param {Function} [opts.deriveRiders]      DI-hook; default deriveForRiderIds
+ * @param {Function} [opts.now]               DI-hook; default () => new Date()
  * @returns {Promise<{teamId, candidates} | {teamId, skipped}>}
  */
 export async function runAcademyIntakeForTeam(supabase, teamId, {
   seed = 2026,
   identityBasis = null,
   deriveRiders = deriveForRiderIds,
+  now = () => new Date(),
 } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
   if (!teamId) throw new Error("teamId required");
+
+  // ── Markør-gate (#1584): fik holdet nogensinde sit første kuld? ──────────────
+  // Markøren er sandheden for idempotens (IKKE academy_intake-rækkerne), så et
+  // hold der selv har underskrevet/afvist sine pladser aldrig får et gratis-kuld.
+  // Spejler allocateStarterSquadForTeam's markør-gate. Markør sat → rent no-op.
+  const marker = await readAcademyMarker(supabase, teamId);
+  if (marker) {
+    return { teamId, skipped: "already-seeded", seededAt: marker, candidates: 0 };
+  }
 
   // ── Aktiv sæson ──────────────────────────────────────────────────────────────
   const season = await fetchActiveSeason(supabase);
   if (!season) throw new Error("runAcademyIntakeForTeam: no active season - run after season transition");
 
-  // ── Idempotens-guard: har holdet allerede et kuld for denne sæson? ───────────
-  // Spejler allocateStarterSquadForTeam's "already-has-riders → skip". Et
-  // samtidigt/gentaget signup-kald (eller et hold der allerede fik kuld ved
-  // relaunch) skal være et rent no-op — aldrig dobbelt-seede.
+  // ── Bælte-og-seler: har holdet ALLEREDE et kuld for denne sæson? ─────────────
+  // Markør-NULL men eksisterende academy_intake-rækker = et pre-#1584 hold der
+  // fik sit kuld før markøren fandtes (eller et samtidigt kald der vandt racen).
+  // Sæt blot markøren — dobbelt-seed aldrig.
   const existing = await fetchAllRows(() =>
     supabase.from("academy_intake").select("id").eq("team_id", teamId).eq("season_id", season.id)
   );
   if (existing.length > 0) {
+    await setAcademyMarker(supabase, teamId, now().toISOString());
     return { teamId, skipped: "already-has-cohort", existing: existing.length, candidates: 0 };
   }
 
@@ -314,6 +348,11 @@ export async function runAcademyIntakeForTeam(supabase, teamId, {
   if (newIds.length > 0) {
     await deriveRiders(supabase, newIds, { dryRun: false });
   }
+
+  // Markér holdet som seedet (#1584) → self-heal-sweep'en og en re-signup
+  // re-seeder ALDRIG. Sættes EFTER seed+derive: fejler noget undervejs forbliver
+  // markøren NULL → sweep'en heler holdet. Sandheden, ikke intake-rækkerne.
+  await setAcademyMarker(supabase, teamId, now().toISOString());
 
   return { teamId, candidates: newIds.length };
 }

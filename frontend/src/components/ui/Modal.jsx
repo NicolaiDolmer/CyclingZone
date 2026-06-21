@@ -49,6 +49,10 @@ export default function Modal({
   size = "md",
   closeLabel = "Close",
   titleId = "cz-modal-title",
+  // Eksplicit aria-labelledby for callers der renderer deres egen rige header i
+  // children (emoji-portræt, status-ikon, rolle-label) i stedet for `title`-h2'en.
+  // Overstyrer den afledte (title ? titleId : undefined) — bagudkompatibel.
+  ariaLabelledby,
   children,
 }) {
   const ref = useModalA11y(open ? onClose : null, Boolean(open));
@@ -62,7 +66,7 @@ export default function Modal({
           tabIndex={-1}
           role="dialog"
           aria-modal="true"
-          aria-labelledby={title ? titleId : undefined}
+          aria-labelledby={ariaLabelledby ?? (title ? titleId : undefined)}
           title={title}
           titleId={titleId}
           description={description}

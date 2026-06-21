@@ -25,7 +25,7 @@ function calcAge(birthdate) {
 }
 
 function formatSalary(salary) {
-  if (salary == null) return "—";
+  if (salary == null) return "–";
   return new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 }).format(salary);
 }
 
@@ -328,7 +328,7 @@ export default function AcademyPage() {
                           </div>
                         </td>
                         <td className="px-4 py-3 text-cz-2">
-                          {age != null ? age : "—"}
+                          {age != null ? age : "–"}
                         </td>
                         <td className="px-4 py-3 font-mono text-cz-2">
                           {formatSalary(rider.salary)} CZ$
@@ -336,7 +336,7 @@ export default function AcademyPage() {
                         <td className="px-4 py-3 text-cz-2">
                           {rider.contract_end_season != null
                             ? t("contractUntil", { season: rider.contract_end_season })
-                            : "—"}
+                            : "–"}
                         </td>
                       </tr>
                     );

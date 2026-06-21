@@ -119,17 +119,17 @@
     }
   },
   "timeAgo": {
-    "unknown": "—",
+    "unknown": "Ukendt",
     "now": "Lige nu",
     "minutes": "{m}m siden",
     "hours": "{h}t siden",
     "days": "{d}d siden"
   },
   "msg": {
-    "loanCreated": "✅ Lån på {amount} CZ$ oprettet",
-    "loanRepaidFull": "✅ Lån fuldt tilbagebetalt!",
-    "loanRepaidPartial": "✅ {paid} CZ$ betalt, {remaining} CZ$ resterende",
-    "errorPrefix": "❌ "
+    "loanCreated": "Lån på {amount} CZ$ oprettet",
+    "loanRepaidFull": "Lån fuldt tilbagebetalt!",
+    "loanRepaidPartial": "{paid} CZ$ betalt, {remaining} CZ$ resterende",
+    "errorPrefix": ""
   },
   "tour": {
     "balance": {
@@ -167,7 +167,7 @@
       "title": "Lån, kort vs. langt",
       "body": "Kort lån: lavt gebyr, hurtig tilbagebetaling. Langt lån: større beløb over flere sæsoner. Brug dem til transferspidser, ikke driftshuller."
     },
-    "showTour": "💡 Vis mig rundt",
+    "showTour": "Vis mig rundt",
     "skip": "Spring over"
   },
   "report": {

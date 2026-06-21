@@ -2,14 +2,18 @@
 // Mode styrer ordvalg + ikonet. i18n: Fase 3b — Refs #412.
 import { useTranslation } from "react-i18next";
 import { formatNumber } from "../lib/intl";
+import { GavelIcon, AlertTriangleIcon, BriefcaseIcon } from "./ui/icons";
+
+// Ikonet er ikke oversættelig tekst — det vælges af mode, ikke i18n.
+const MODE_ICON = { bid: GavelIcon, proxy: AlertTriangleIcon, transfer: BriefcaseIcon };
 
 export function BidConfirmModal({ show, mode = "bid", riderName, amount, onCancel, onConfirm, busy = false }) {
   const { t } = useTranslation(["auctions", "common"]);
   if (!show) return null;
 
   const modeKey = ["bid", "proxy", "transfer"].includes(mode) ? mode : "bid";
+  const Icon = MODE_ICON[modeKey];
   const l = {
-    icon:   t(`auctions:modal.${modeKey}Icon`),
     title:  t(`auctions:modal.${modeKey}Title`),
     verb:   t(`auctions:modal.${modeKey}Verb`),
     action: t(`auctions:modal.${modeKey}Action`),
@@ -27,7 +31,7 @@ export function BidConfirmModal({ show, mode = "bid", riderName, amount, onCance
         aria-modal="true"
         aria-labelledby="bid-confirm-title"
       >
-        <div className="text-4xl mb-3" aria-hidden="true">{l.icon}</div>
+        <Icon size={32} className="mx-auto mb-3 text-cz-accent-t" aria-hidden="true" />
         <h2 id="bid-confirm-title" className="text-cz-1 font-bold text-lg mb-2">{l.title}</h2>
         <p className="text-cz-2 text-sm mb-5">
           {t("auctions:modal.questionPrefix")} {l.verb}{" "}

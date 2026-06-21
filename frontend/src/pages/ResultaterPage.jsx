@@ -16,6 +16,7 @@ import {
   BookOpenIcon,
   CalendarIcon,
   CoinIcon,
+  PodiumIcon,
 } from "../components/ui";
 
 // Realtime: opdatér top-hold/-ryttere live efter en resultat-import (#783).
@@ -124,7 +125,7 @@ export default function ResultaterPage() {
 
       {!season ? (
         <EmptyState
-          icon={<span className="text-4xl leading-none" aria-hidden="true">◉</span>}
+          icon={<CalendarIcon size={32} aria-hidden="true" />}
           title={t("emptyNoSeason")}
         />
       ) : (
@@ -204,7 +205,7 @@ export default function ResultaterPage() {
           {topTeams.length === 0 && topRiders.length === 0 && (
             <EmptyState
               className="md:col-span-2"
-              icon={<span className="text-4xl leading-none" aria-hidden="true">◉</span>}
+              icon={<PodiumIcon size={32} aria-hidden="true" />}
               title={t("emptyNoResults")}
             />
           )}

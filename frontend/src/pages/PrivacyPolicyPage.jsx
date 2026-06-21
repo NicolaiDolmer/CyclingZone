@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { useConsent } from "../lib/consent.jsx";
 import { formatDateTime } from "../lib/intl";
 import { useDocumentHead } from "../hooks/useDocumentHead.js";
+import { Wordmark } from "../components/Brand.jsx";
 
 export default function PrivacyPolicyPage() {
   const { openBanner, consent } = useConsent();
@@ -18,10 +19,15 @@ export default function PrivacyPolicyPage() {
 
   return (
     <div className="min-h-screen bg-cz-body py-10 px-4 sm:px-6">
-      <div className="max-w-3xl mx-auto bg-cz-card rounded-cz shadow-lg p-6 sm:p-8">
-        <div className="mb-6 flex items-center justify-between gap-3">
-          <h1 className="text-cz-1 font-bold text-2xl">Privatlivspolitik</h1>
-          <div className="flex items-center gap-3 text-sm">
+      <div className="max-w-3xl mx-auto bg-cz-card rounded-cz border border-cz-border p-6 sm:p-8">
+        <div className="mb-6 flex items-start justify-between gap-3 border-b border-cz-border pb-5">
+          <div>
+            <Link to="/" aria-label="Cycling Zone" className="inline-block">
+              <Wordmark className="h-4 w-auto mb-3" alt="" />
+            </Link>
+            <h1 className="text-cz-1 font-display text-4xl tracking-tight leading-none">Privatlivspolitik</h1>
+          </div>
+          <div className="flex flex-shrink-0 items-center gap-3 text-sm pt-1">
             <Link to="/privacy-policy" className="text-cz-3 hover:text-cz-1">English</Link>
             <Link to="/" className="text-cz-3 hover:text-cz-1">← Tilbage</Link>
           </div>
@@ -113,7 +119,7 @@ export default function PrivacyPolicyPage() {
             <button
               type="button"
               onClick={openBanner}
-              className="bg-cz-accent-t text-white font-semibold text-sm rounded-lg px-4 py-2 hover:opacity-90"
+              className="bg-cz-accent text-cz-on-accent font-semibold text-sm rounded-cz px-4 py-2 hover:brightness-110 transition-all"
             >
               Skift mine samtykke-valg
             </button>
@@ -154,8 +160,8 @@ export default function PrivacyPolicyPage() {
 
 function Section({ title, children }) {
   return (
-    <section className="mb-6 last:mb-0">
-      <h2 className="text-cz-1 font-semibold text-base mb-2">{title}</h2>
+    <section className="border-t border-cz-border pt-6 mt-6 first:border-t-0 first:pt-0 first:mt-0">
+      <h2 className="text-cz-1 font-semibold text-xs uppercase tracking-[0.12em] mb-2.5">{title}</h2>
       <div className="text-cz-2 text-sm leading-relaxed">{children}</div>
     </section>
   );
