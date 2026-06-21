@@ -11,6 +11,7 @@ import { FINANCE_REASON } from "./economyConstants.js";
 // Holdes her (ikke i UI) så backend-output er self-describing.
 export const REASON_LABEL = Object.freeze({
   [FINANCE_REASON.SEASON_START_SPONSOR]: "Sponsor",
+  [FINANCE_REASON.SPONSOR_RACE_DAY]: "Sponsor (løbsdag)",
   [FINANCE_REASON.SEASON_END_SALARY]: "Løn",
   [FINANCE_REASON.SEASON_END_DIVISION_BONUS]: "Divisionsbonus",
   [FINANCE_REASON.SEASON_END_NEGATIVE_INTEREST]: "Negativ rente",

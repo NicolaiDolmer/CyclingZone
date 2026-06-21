@@ -37,6 +37,12 @@ export const UPKEEP_BY_DIVISION = { 1: 440000, 2: 140000, 3: 40000 };
 // Forward-guard mod board-modifier-bypass; ingen DB-default spejler dette.
 export const FINAL_SPONSOR_PAYOUT_CEILING = Object.freeze({ S1: 720000, S2_PLUS: 900000 });
 
+// Maks board-satisfaction-modifier (bekræftet boardEvaluation.js satisfactionToModifier:
+// ≥80 satisfaction → 1.20). Bruges som kontrakt-bevidst sponsor-loft-faktor (#1663):
+// ceiling = guaranteed_base × MAX_BOARD_MODIFIER (guarder board-modifier-bypass uden at
+// cappe legitim renown-skalering).
+export const MAX_BOARD_MODIFIER = 1.20;
+
 // teams.balance DEFAULT i database/schema.sql + 2026-04-25-economy-retuning.sql.
 // Også brugt som DEFAULT_BETA_BALANCE i betaResetService.js.
 export const INITIAL_BALANCE = 800000;
@@ -189,6 +195,7 @@ export const FINANCE_REASON = Object.freeze({
   STARTING_BUDGET: "starting_budget",
   // Race-baserede payouts
   RACE_PRIZE_PAYOUT: "race_prize_payout",
+  SPONSOR_RACE_DAY: "sponsor_race_day",
   // Auctions
   AUCTION_WINNER_PAYMENT: "auction_winner_payment",
   AUCTION_SELLER_PAYOUT: "auction_seller_payout",

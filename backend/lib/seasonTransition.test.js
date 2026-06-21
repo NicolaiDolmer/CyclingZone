@@ -45,6 +45,7 @@ function createMockSupabase(initialState = {}) {
     season_standings: initialState.season_standings ? [...initialState.season_standings] : [],
     admin_log: initialState.admin_log ? [...initialState.admin_log] : [],
     notifications: initialState.notifications ? [...initialState.notifications] : [],
+    sponsor_contracts: initialState.sponsor_contracts ? [...initialState.sponsor_contracts] : [],
   };
   const calls = { inserts: [], updates: [] };
 
@@ -164,6 +165,7 @@ test("buildTransitionPlan — sæson 0 → 1 plan med 22 humans, sponsor 340K hv
       sponsor_income: 240000,
       division: 3,
       is_ai: false,
+      is_bank: false,
       is_frozen: false,
     })),
   });
@@ -186,9 +188,9 @@ test("buildTransitionPlan — sæson 1 → 2 preview viser variabel sponsor", as
   const supabase = createMockSupabase({
     seasons: [{ id: "season-1", number: 1, status: "active", start_date: "2026-05-15", end_date: null }],
     teams: [
-      { id: "team-1", name: "Top Team", sponsor_income: 240000, division: 3, is_ai: false, is_frozen: false },
-      { id: "team-2", name: "Mid Team", sponsor_income: 240000, division: 3, is_ai: false, is_frozen: false },
-      { id: "team-3", name: "Bottom Team", sponsor_income: 240000, division: 3, is_ai: false, is_frozen: false },
+      { id: "team-1", name: "Top Team", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false },
+      { id: "team-2", name: "Mid Team", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false },
+      { id: "team-3", name: "Bottom Team", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false },
     ],
     season_standings: [
       { season_id: "season-1", team_id: "team-1", division: 3, total_points: 180, rank_in_division: 1 },
@@ -218,7 +220,7 @@ test("buildTransitionPlan — already_transitioned=true når sæson 1 allerede e
       { id: "00000000-0000-0000-0000-000000000000", number: 0, status: "active", start_date: "2026-05-08" },
       { id: "00000000-0000-0000-0000-000000000001", number: 1, status: "active", start_date: "2026-05-09" },
     ],
-    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_frozen: false }],
+    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false }],
   });
 
   const plan = await buildTransitionPlan({
@@ -252,7 +254,7 @@ test("buildTransitionPlan — kaster fejl hvis fromSeason mangler", async () => 
 test("transitionToNextSeason — dry-run laver ingen writes", async () => {
   const supabase = createMockSupabase({
     seasons: [{ id: "00000000-0000-0000-0000-000000000000", number: 0, status: "active" }],
-    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_frozen: false }],
+    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false }],
   });
 
   const result = await transitionToNextSeason({
@@ -277,7 +279,7 @@ test("transitionToNextSeason — real run udfører alle 6 faser", async () => {
   const supabase = createMockSupabase({
     seasons: [{ id: "00000000-0000-0000-0000-000000000000", number: 0, status: "active" }],
     transfer_windows: [{ id: "win-0", season_id: "00000000-0000-0000-0000-000000000000", status: "open", created_at: "2026-05-08" }],
-    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_frozen: false }],
+    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false }],
   });
 
   const result = await transitionToNextSeason({
@@ -310,13 +312,15 @@ test("transitionToNextSeason — real run udfører alle 6 faser", async () => {
         };
       },
       notifySeasonEvent: async () => {},
+      // #1663: kontrakt-fornyelse stubbet — egen unit-test dækker DB-laget.
+      expireAndRenewContracts: async () => {},
     },
   });
 
   assert.equal(result.ok, true);
   assert.equal(result.dryRun, false);
-  // #535: 8 faser; #1357: +season_started_notifications efter discord_broadcast = 9
-  assert.equal(result.log.length, 9);
+  // #535: 8 faser; #1357: +season_started_notifications; #1663: +sponsor_contracts_renewal = 10
+  assert.equal(result.log.length, 10);
   assert.equal(result.log[0].phase, "insert_next_season");
   assert.equal(result.log[0].inserted, true);
   assert.equal(result.log[1].phase, "mark_previous_completed");
@@ -325,16 +329,18 @@ test("transitionToNextSeason — real run udfører alle 6 faser", async () => {
   assert.equal(result.log[2].updated, true);
   assert.equal(result.log[3].phase, "insert_next_transfer_window");
   assert.equal(result.log[3].inserted, true);
-  assert.equal(result.log[4].phase, "sponsor_payout");
-  assert.equal(result.log[4].count, 1);
-  assert.equal(result.log[5].phase, "season_payroll");
-  assert.equal(result.log[5].teams_processed, 1);
-  assert.equal(result.log[5].salary_count, 0);
-  assert.equal(result.log[6].phase, "admin_log");
-  assert.equal(result.log[6].inserted, true);
-  assert.equal(result.log[7].phase, "discord_broadcast");
-  assert.equal(result.log[7].sent, true);
-  assert.equal(result.log[8].phase, "season_started_notifications");
+  assert.equal(result.log[4].phase, "sponsor_contracts_renewal");
+  assert.equal(result.log[4].teams, 1);
+  assert.equal(result.log[5].phase, "sponsor_payout");
+  assert.equal(result.log[5].count, 1);
+  assert.equal(result.log[6].phase, "season_payroll");
+  assert.equal(result.log[6].teams_processed, 1);
+  assert.equal(result.log[6].salary_count, 0);
+  assert.equal(result.log[7].phase, "admin_log");
+  assert.equal(result.log[7].inserted, true);
+  assert.equal(result.log[8].phase, "discord_broadcast");
+  assert.equal(result.log[8].sent, true);
+  assert.equal(result.log[9].phase, "season_started_notifications");
 
   assert.deepEqual(sponsorCalls, ["00000000-0000-0000-0000-000000000001"]);
 
@@ -360,6 +366,52 @@ test("transitionToNextSeason — real run udfører alle 6 faser", async () => {
   assert.equal(adminEntry.meta.to_season_number, 1);
 });
 
+// #1663 · Sponsor-kontrakter fornyes FØR sponsor-payout: hvert menneske-hold
+// (is_ai=false, is_bank=false, is_frozen=false) får expireAndRenewContracts kaldt
+// med den nye sæsons nummer + holdets id, og fasen kører før processSeasonStart.
+test("transitionToNextSeason — fornyer sponsor-kontrakter før payout med nye sæsons nummer + menneske-hold", async () => {
+  const order = [];
+  let renewArgs = null;
+  const supabase = createMockSupabase({
+    seasons: [{ id: "00000000-0000-0000-0000-000000000000", number: 0, status: "active" }],
+    transfer_windows: [{ id: "win-0", season_id: "00000000-0000-0000-0000-000000000000", status: "open", created_at: "2026-05-08" }],
+    teams: [
+      { id: "human-1", name: "Human 1", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false },
+      { id: "human-2", name: "Human 2", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false },
+      // Skal ekskluderes af samme diskriminator som processSeasonStart.
+      { id: "ai-1", name: "AI", sponsor_income: 240000, division: 3, is_ai: true, is_bank: false, is_frozen: false },
+      { id: "bank-1", name: "Bank", sponsor_income: 0, division: 3, is_ai: false, is_bank: true, is_frozen: false },
+      { id: "frozen-1", name: "Frozen", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: true },
+    ],
+  });
+
+  const result = await transitionToNextSeason({
+    supabase,
+    fromSeasonId: "00000000-0000-0000-0000-000000000000",
+    transitionAt: new Date("2026-05-15T06:00:00Z"),
+    deps: {
+      expireAndRenewContracts: async (args) => { order.push("renew"); renewArgs = args; },
+      processSeasonStart: async () => { order.push("seasonStart"); return { sponsor: [], payroll: { results: [], summary: { teams_processed: 0 } } }; },
+      notifySeasonEvent: async () => {},
+    },
+  });
+
+  assert.equal(result.ok, true);
+  // Fornyelse SKAL ske før season-start (ellers betaler payout en udløbet kontrakt).
+  assert.deepEqual(order, ["renew", "seasonStart"]);
+  assert.ok(renewArgs, "expireAndRenewContracts skal kaldes");
+  assert.equal(renewArgs.newSeasonNumber, 1, "ny sæsons heltal = plan.to_season.number");
+  assert.deepEqual(
+    [...renewArgs.teamIds].sort(),
+    ["human-1", "human-2"],
+    "kun menneske-hold (ekskl. AI/bank/frozen)",
+  );
+
+  const renewalPhase = result.log.find((p) => p.phase === "sponsor_contracts_renewal");
+  assert.ok(renewalPhase, "sponsor_contracts_renewal-fasen skal logges");
+  assert.equal(renewalPhase.teams, 2);
+});
+
 // #805 · Board-test-exit: når afgående sæson kørte board_test_mode, nulstilles
 // board-data via resetBetaBoardProfiles FØR processSeasonStart, så test-perioden
 // ikke bærer økonomisk spor ind i den nye sæson.
@@ -368,7 +420,7 @@ test("transitionToNextSeason — nulstiller board-data når afgående window er 
   const supabase = createMockSupabase({
     seasons: [{ id: "00000000-0000-0000-0000-000000000000", number: 0, status: "active" }],
     transfer_windows: [{ id: "win-0", season_id: "00000000-0000-0000-0000-000000000000", status: "open", created_at: "2026-05-08", board_test_mode: true }],
-    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_frozen: false }],
+    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false }],
   });
 
   const result = await transitionToNextSeason({
@@ -380,6 +432,7 @@ test("transitionToNextSeason — nulstiller board-data når afgående window er 
       resetBetaBoardProfiles: async () => { order.push("reset"); return { reset: 1, created: 1 }; },
       processSeasonStart: async () => { order.push("seasonStart"); return { sponsor: [], payroll: { results: [], summary: { teams_processed: 0 } } }; },
       notifySeasonEvent: async () => {},
+      expireAndRenewContracts: async () => {},
     },
   });
 
@@ -396,7 +449,7 @@ test("transitionToNextSeason — springer board-reset over når window ikke er i
   const supabase = createMockSupabase({
     seasons: [{ id: "00000000-0000-0000-0000-000000000000", number: 0, status: "active" }],
     transfer_windows: [{ id: "win-0", season_id: "00000000-0000-0000-0000-000000000000", status: "open", created_at: "2026-05-08", board_test_mode: false }],
-    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_frozen: false }],
+    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false }],
   });
 
   const result = await transitionToNextSeason({
@@ -407,6 +460,7 @@ test("transitionToNextSeason — springer board-reset over når window ikke er i
       resetBetaBoardProfiles: async () => { order.push("reset"); return { reset: 1 }; },
       processSeasonStart: async () => ({ sponsor: [], payroll: { results: [], summary: { teams_processed: 0 } } }),
       notifySeasonEvent: async () => {},
+      expireAndRenewContracts: async () => {},
     },
   });
 
@@ -423,14 +477,14 @@ test("transitionToNextSeason — re-run efter delvis fejl skipper allerede-gjort
       { id: "00000000-0000-0000-0000-000000000001", number: 1, status: "active", start_date: "2026-05-15" },
     ],
     transfer_windows: [{ id: "win-0", season_id: "00000000-0000-0000-0000-000000000000", status: "open", created_at: "2026-05-08" }],
-    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_frozen: false }],
+    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false }],
   });
 
   const result = await transitionToNextSeason({
     supabase,
     fromSeasonId: "00000000-0000-0000-0000-000000000000",
     transitionAt: new Date("2026-05-15T06:00:00Z"),
-    deps: { processSeasonStart: async () => [], notifySeasonEvent: async () => {} },
+    deps: { processSeasonStart: async () => [], notifySeasonEvent: async () => {}, expireAndRenewContracts: async () => {} },
   });
 
   assert.equal(result.ok, true);
@@ -456,7 +510,7 @@ test("transitionToNextSeason — fuld idempotens: re-run med alt færdig giver a
       { id: "win-0", season_id: "00000000-0000-0000-0000-000000000000", status: "closed", created_at: "2026-05-08" },
       { id: "00000000-0000-0000-0000-00000001aaaa", season_id: "00000000-0000-0000-0000-000000000001", status: "closed", created_at: transitionAt },
     ],
-    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_frozen: false }],
+    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false }],
     admin_log: [{
       id: "log-1",
       action_type: "season_transition",
@@ -485,6 +539,7 @@ test("transitionToNextSeason — fuld idempotens: re-run med alt færdig giver a
         },
       }),
       notifySeasonEvent: async () => {},
+      expireAndRenewContracts: async () => {},
     },
   });
 
@@ -497,10 +552,11 @@ test("transitionToNextSeason — fuld idempotens: re-run med alt færdig giver a
   assert.equal(result.log[2].skipped, true, "win-0 allerede closed → skipped");
   assert.equal(result.log[3].phase, "insert_next_transfer_window");
   assert.equal(result.log[3].skipped, true, "sæson 1's window eksisterer → skipped");
-  assert.equal(result.log[6].phase, "admin_log");
-  assert.equal(result.log[6].skipped, true, "admin_log-entry eksisterer → skipped");
+  const adminLog = result.log.find((p) => p.phase === "admin_log");
+  assert.ok(adminLog, "admin_log-fasen skal logges");
+  assert.equal(adminLog.skipped, true, "admin_log-entry eksisterer → skipped");
   // Discord broadcaster altid (fire-and-forget, bruger har godkendt 1 ekstra besked)
-  assert.equal(result.log[7].phase, "discord_broadcast");
+  assert.ok(result.log.find((p) => p.phase === "discord_broadcast"));
 });
 
 test("transitionToNextSeason — resume efter partial failure efter mark_previous_completed (#578)", async () => {
@@ -518,7 +574,7 @@ test("transitionToNextSeason — resume efter partial failure efter mark_previou
     transfer_windows: [
       { id: "win-0", season_id: "00000000-0000-0000-0000-000000000000", status: "open", created_at: "2026-05-08" },
     ],
-    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_frozen: false }],
+    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false }],
   });
 
   const result = await transitionToNextSeason({
@@ -540,6 +596,7 @@ test("transitionToNextSeason — resume efter partial failure efter mark_previou
         },
       }),
       notifySeasonEvent: async () => {},
+      expireAndRenewContracts: async () => {},
     },
   });
 
@@ -552,8 +609,9 @@ test("transitionToNextSeason — resume efter partial failure efter mark_previou
   assert.equal(result.log[2].updated, true, "win-0 var 'open' → lukkes nu (fase 4 fejlede tidligere)");
   assert.equal(result.log[3].phase, "insert_next_transfer_window");
   assert.equal(result.log[3].inserted, true, "sæson 1's window manglede → oprettet nu");
-  assert.equal(result.log[6].phase, "admin_log");
-  assert.equal(result.log[6].inserted, true, "admin_log-entry manglede → oprettet nu");
+  const adminLogResume = result.log.find((p) => p.phase === "admin_log");
+  assert.ok(adminLogResume, "admin_log-fasen skal logges");
+  assert.equal(adminLogResume.inserted, true, "admin_log-entry manglede → oprettet nu");
 
   const sæson0 = supabase.__state.seasons.find((s) => s.number === 0);
   assert.equal(sæson0.status, "completed", "sæson 0 forbliver completed");
@@ -571,7 +629,7 @@ test("buildTransitionPlan — completed UDEN toSeason kaster stadig (faktisk fej
   // anden bug — operatør skal undersøge, ikke blindly retry.
   const supabase = createMockSupabase({
     seasons: [{ id: "00000000-0000-0000-0000-000000000000", number: 0, status: "completed", end_date: "2026-05-15" }],
-    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_frozen: false }],
+    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false }],
   });
 
   await assert.rejects(
@@ -629,7 +687,7 @@ test("resolveTransitionSourceSeason → transitionToNextSeason — fuld resume f
     transfer_windows: [
       { id: "win-1", season_id: "00000000-0000-0000-0000-000000000001", status: "open", created_at: "2026-05-20" },
     ],
-    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_frozen: false }],
+    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false }],
   });
 
   const fromSeason = await resolveTransitionSourceSeason({ supabase });
@@ -642,6 +700,7 @@ test("resolveTransitionSourceSeason → transitionToNextSeason — fuld resume f
     deps: {
       processSeasonStart: async () => ({ sponsor: [], payroll: null }),
       notifySeasonEvent: async () => {},
+      expireAndRenewContracts: async () => {},
     },
   });
 
@@ -679,14 +738,14 @@ test("transitionToNextSeason — promoterer pre-created sæson 1 fra 'upcoming' 
       { id: "00000000-0000-0000-0000-000000000001", number: 1, status: "upcoming", start_date: null, end_date: null },
     ],
     transfer_windows: [{ id: "win-0", season_id: "00000000-0000-0000-0000-000000000000", status: "open", created_at: "2026-05-08" }],
-    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_frozen: false }],
+    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false }],
   });
 
   const result = await transitionToNextSeason({
     supabase,
     fromSeasonId: "00000000-0000-0000-0000-000000000000",
     transitionAt: new Date("2026-05-21T21:00:00Z"),
-    deps: { processSeasonStart: async () => [], notifySeasonEvent: async () => {} },
+    deps: { processSeasonStart: async () => [], notifySeasonEvent: async () => {}, expireAndRenewContracts: async () => {} },
   });
 
   // Fase 1 skal nu rapportere updated=true (ikke skipped, ikke inserted)
@@ -712,14 +771,14 @@ test("transitionToNextSeason — bevarer eksisterende start_date hvis sæson 1 a
       { id: "00000000-0000-0000-0000-000000000001", number: 1, status: "upcoming", start_date: "2026-05-20" },
     ],
     transfer_windows: [{ id: "win-0", season_id: "00000000-0000-0000-0000-000000000000", status: "open", created_at: "2026-05-08" }],
-    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_frozen: false }],
+    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false }],
   });
 
   await transitionToNextSeason({
     supabase,
     fromSeasonId: "00000000-0000-0000-0000-000000000000",
     transitionAt: new Date("2026-05-21T21:00:00Z"),
-    deps: { processSeasonStart: async () => [], notifySeasonEvent: async () => {} },
+    deps: { processSeasonStart: async () => [], notifySeasonEvent: async () => {}, expireAndRenewContracts: async () => {} },
   });
 
   const sæson1 = supabase.__state.seasons.find((s) => s.number === 1);
@@ -734,7 +793,7 @@ test("transitionToNextSeason — Discord-broadcast: notifySeasonEvent kaldes nø
   const supabase = createMockSupabase({
     seasons: [{ id: "00000000-0000-0000-0000-000000000000", number: 0, status: "active" }],
     transfer_windows: [{ id: "win-0", season_id: "00000000-0000-0000-0000-000000000000", status: "open", created_at: "2026-05-08" }],
-    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_frozen: false }],
+    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false }],
   });
 
   const result = await transitionToNextSeason({
@@ -744,6 +803,7 @@ test("transitionToNextSeason — Discord-broadcast: notifySeasonEvent kaldes nø
     deps: {
       processSeasonStart: async () => [],
       notifySeasonEvent: async (payload) => { notifyCalls.push(payload); },
+      expireAndRenewContracts: async () => {},
     },
   });
 
@@ -761,7 +821,7 @@ test("transitionToNextSeason — Discord-broadcast: webhook-fejl må aldrig blok
   const supabase = createMockSupabase({
     seasons: [{ id: "00000000-0000-0000-0000-000000000000", number: 0, status: "active" }],
     transfer_windows: [{ id: "win-0", season_id: "00000000-0000-0000-0000-000000000000", status: "open", created_at: "2026-05-08" }],
-    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_frozen: false }],
+    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false }],
   });
 
   const result = await transitionToNextSeason({
@@ -770,6 +830,7 @@ test("transitionToNextSeason — Discord-broadcast: webhook-fejl må aldrig blok
     deps: {
       processSeasonStart: async () => [],
       notifySeasonEvent: async () => { throw new Error("Discord 503"); },
+      expireAndRenewContracts: async () => {},
     },
   });
 
@@ -783,13 +844,13 @@ test("transitionToNextSeason — sæson 1's transfer_window oprettes som 'closed
   const supabase = createMockSupabase({
     seasons: [{ id: "00000000-0000-0000-0000-000000000000", number: 0, status: "active" }],
     transfer_windows: [{ id: "win-0", season_id: "00000000-0000-0000-0000-000000000000", status: "open", created_at: "2026-05-08" }],
-    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_frozen: false }],
+    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false }],
   });
 
   await transitionToNextSeason({
     supabase,
     fromSeasonId: "00000000-0000-0000-0000-000000000000",
-    deps: { processSeasonStart: async () => [], notifySeasonEvent: async () => {} },
+    deps: { processSeasonStart: async () => [], notifySeasonEvent: async () => {}, expireAndRenewContracts: async () => {} },
   });
 
   const sæson1Window = supabase.__state.transfer_windows.find(

@@ -8,6 +8,7 @@ import { resolveLegacyFinanceMessage } from "../lib/legacyFinanceMessage";
 import FinanceFirstVisitHint from "../components/FinanceFirstVisitHint";
 import FinanceForecastCard from "../components/FinanceForecastCard";
 import SeasonFinanceReportPanel from "../components/SeasonFinanceReportPanel";
+import SponsorContractPanel from "../components/SponsorContractPanel";
 import OnboardingTour from "../components/OnboardingTour";
 import { startTour } from "../lib/onboardingTour";
 import { logEvent } from "../lib/logEvent";
@@ -19,7 +20,7 @@ import {
 
 const API = import.meta.env.VITE_API_URL;
 
-const FINANCE_TABS = ["overview", "loans", "history"];
+const FINANCE_TABS = ["overview", "loans", "sponsors", "history"];
 
 function useTimeAgo(t) {
   return (d) => {
@@ -374,6 +375,7 @@ export default function FinancePage() {
         <TabList label={t("page.title")} className="mb-4">
           <Tab value="overview">{t("tabs.overview")}</Tab>
           <Tab value="loans">{t("tabs.loans")}</Tab>
+          <Tab value="sponsors">{t("tabs.sponsors")}</Tab>
           <Tab value="history">{t("tabs.history")}</Tab>
         </TabList>
 
@@ -688,6 +690,11 @@ export default function FinancePage() {
               </div>
             </Card>
           )}
+        </TabPanel>
+
+        {/* ───────────────────────────── Sponsor ───────────────────────────── */}
+        <TabPanel value="sponsors">
+          <SponsorContractPanel />
         </TabPanel>
 
         {/* ───────────────────────────── Historik ───────────────────────────── */}

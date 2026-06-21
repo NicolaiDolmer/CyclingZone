@@ -26,7 +26,7 @@ import {
 // de sweep-anbefalede sponsor-tal UDEN at røre prod (task 4: fresh må ikke regressere).
 // NB: ppp/flatten påvirker IKKE denne linse — præmien her er et fast estimat (det BLØDESTE
 // input), ikke den målte kurve; det er prizeDistributionScorecard der måler præmie-niveau.
-import { resolveOverrides } from "./lib/economyCalibrationOverrides.js";
+import { resolveOverrides, renownSponsorFor } from "./lib/economyCalibrationOverrides.js";
 import { generateLaunchPopulation } from "../lib/fictionalLaunchPopulation.js";
 import { deriveAbilities, VISIBLE_ABILITIES } from "../lib/abilityDerivation.js";
 import { computeRiderTypes } from "../lib/riderTypes.js";
@@ -153,7 +153,17 @@ function printSyntheticSection(fresh, overrides) {
   let allPass = true;
   const nets = {};
   for (const d of [1, 2, 3]) {
-    const sponsor = SPONSOR_INCOME_BY_DIVISION[d] || 0;
+    // #1663 renown-sponsor: friske hold har INGEN resultat-historik (standing=null) →
+    // resultsScore=0 → multiplier=1,0 → sponsor = division-base UÆNDRET. Vi kalder den
+    // delte renownSponsorFor for at bevise det per konstruktion (ikke for at ændre tallet):
+    // fresh-gaten må aldrig regressere af renown-skalering.
+    const sponsor = renownSponsorFor({
+      divisionBase: SPONSOR_INCOME_BY_DIVISION[d] || 0,
+      standing: null,
+      divisionStandings: [],
+      wResults: overrides.wResults,
+      maxMultiplier: overrides.maxMultiplier,
+    });
     const upkeep = UPKEEP_BY_DIVISION[d] || 0;
     const prize = PRIZE_ESTIMATE_BY_DIVISION[d] || 0;
     const net = sponsor + prize - salary - upkeep;

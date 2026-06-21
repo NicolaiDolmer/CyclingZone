@@ -260,6 +260,40 @@ CREATE POLICY academy_graduation_owner_read ON academy_graduation
   FOR SELECT TO authenticated
   USING (team_id IN (SELECT id FROM teams WHERE user_id = auth.uid()));
 
+-- Sponsor-kontrakter (#1663, Økonomi Fase 2): forhandlet sponsor-indkomst pr. hold.
+-- guaranteed_base + per_race_day_rate, længde 1-3 sæsoner. Højst én status=active pr.
+-- hold (delvist unik-index). Backfill (i migrationen) er renown-neutral. Spejlet fra
+-- database/2026-06-21-sponsor-contracts.sql (backfill-INSERT bor kun i migrationen).
+CREATE TABLE sponsor_contracts (
+  id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  team_id              UUID NOT NULL REFERENCES teams(id) ON DELETE CASCADE,
+  sponsor_name         TEXT NOT NULL,
+  guaranteed_base      BIGINT NOT NULL,
+  per_race_day_rate    BIGINT NOT NULL DEFAULT 0,
+  length_seasons       INTEGER NOT NULL CHECK (length_seasons BETWEEN 1 AND 3),
+  start_season         INTEGER NOT NULL,
+  expires_after_season INTEGER NOT NULL,
+  status               TEXT NOT NULL DEFAULT 'active'
+    CHECK (status IN ('active', 'expired', 'replaced', 'pending')),
+  created_at           TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+COMMENT ON TABLE sponsor_contracts IS
+  'Sponsor-kontrakter (#1663, Økonomi Fase 2): forhandlet sponsor-indkomst pr. hold. status pending->active ved sæson-skifte; active->expired/replaced.';
+-- Højst én aktiv kontrakt pr. hold; udløbne/erstattede beholdes som historik.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_sponsor_contracts_team_active
+  ON sponsor_contracts(team_id) WHERE status = 'active';
+-- Højst én pending kontrakt pr. hold (manager-valg for kommende sæson, aktiveres ved skifte).
+CREATE UNIQUE INDEX IF NOT EXISTS idx_sponsor_contracts_team_pending
+  ON sponsor_contracts(team_id) WHERE status = 'pending';
+
+ALTER TABLE sponsor_contracts ENABLE ROW LEVEL SECURITY;
+-- Hold-ejeren læser egne kontrakter; skrivning sker service-role (backend).
+CREATE POLICY sponsor_contracts_select_own ON sponsor_contracts
+  FOR SELECT TO authenticated
+  USING (team_id IN (SELECT id FROM teams WHERE user_id = auth.uid()));
+
+GRANT SELECT ON sponsor_contracts TO authenticated;
+
 -- ============================================================
 -- TRANSFER LISTINGS & OFFERS
 -- ============================================================

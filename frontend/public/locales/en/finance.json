@@ -8,7 +8,8 @@
   "tabs": {
     "overview": "Overview",
     "loans": "Loans",
-    "history": "History"
+    "history": "History",
+    "sponsors": "Sponsor"
   },
   "loanSummary": {
     "active": "{count, plural, one {1 active loan} other {# active loans}}",

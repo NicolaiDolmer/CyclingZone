@@ -26,6 +26,13 @@ import {
 // og prod-kurve er bit-identiske. NB: prod-defaulten BAGER allerede flatten 0.5 ind, så
 // scorecardet skal køre med override flatten=0 (prod-mode) for at undgå dobbelt-fladning.
 import { applyFlattenToPointRows } from "../../lib/racePointFlatten.js";
+// #1663 Fase J — renown-sponsor-kalibrering. Genbrug PROD-scoren (computeResultsScore) +
+// prod-default-konstanterne (W_RESULTS/MAX_MULTIPLIER) så "ingen override" = prod bit-for-bit.
+import {
+  computeResultsScore,
+  W_RESULTS,
+  MAX_MULTIPLIER,
+} from "../../lib/renownEngine.js";
 
 export { applyFlattenToPointRows };
 
@@ -88,13 +95,49 @@ export function resolveOverrides(explicit = {}, argv = process.argv, env = proce
     num(explicit.breadthBoost, num(cfg.breadthBoost, num(env.CZ_CAL_BREADTH_BOOST, DEFAULT_BREADTH_BOOST_AT_FULL)))
   );
 
-  return { sponsorBase, upkeep, prizePerPoint, flatten, breadthBoost };
+  // #1663 renown-sponsor (Fase J). wResults skalerer resultsScore ∈ [0,1] ind i
+  // multiplieren; maxMultiplier clamper top-holdets løft. Default = prod-konstanterne fra
+  // renownEngine → "ingen override" = prod bit-for-bit (et frisk hold med standing=null
+  // får resultsScore=0 → multiplier=1,0 → sponsor = division-base UÆNDRET).
+  const wResults = Math.max(
+    0,
+    num(explicit.wResults, num(cfg.wResults, num(env.CZ_CAL_W_RESULTS, W_RESULTS)))
+  );
+  const maxMultiplier = Math.max(
+    1,
+    num(explicit.maxMultiplier, num(cfg.maxMultiplier, num(env.CZ_CAL_MAX_MULTIPLIER, MAX_MULTIPLIER)))
+  );
+
+  return { sponsorBase, upkeep, prizePerPoint, flatten, breadthBoost, wResults, maxMultiplier };
 }
 
 export function describeOverrides(ov) {
   return (
     `sponsor D1=${ov.sponsorBase[1]} D2=${ov.sponsorBase[2]} D3=${ov.sponsorBase[3]} · ` +
     `upkeep D1=${ov.upkeep[1]} D2=${ov.upkeep[2]} D3=${ov.upkeep[3]} · ` +
-    `prizePerPoint=${ov.prizePerPoint} · flatten=${ov.flatten} · breadthBoost=${ov.breadthBoost}`
+    `prizePerPoint=${ov.prizePerPoint} · flatten=${ov.flatten} · breadthBoost=${ov.breadthBoost} · ` +
+    `wResults=${ov.wResults} · maxMultiplier=${ov.maxMultiplier}`
   );
+}
+
+// #1663 Fase J — renown-skaleret sponsor for ÉT hold. Spejler prod-modellen
+// (renownEngine.renownTarget) men med harness-kalibrerbare W_RESULTS/MAX_MULTIPLIER:
+//   renownMultiplier = clamp(1 + wResults × resultsScore(standing), 1.0, maxMultiplier)
+//   sponsor          = divisionBase × renownMultiplier
+// resultsScore beregnes via den DELTE prod-funktion (computeResultsScore) → harness-formlen
+// matcher prod nøjagtigt. Et hold uden standing (frisk) → resultsScore=0 → multiplier=1,0 →
+// sponsor = divisionBase (fresh-gaten bevares per konstruktion).
+export function renownSponsorFor({
+  divisionBase,
+  standing = null,
+  divisionStandings = [],
+  wResults = W_RESULTS,
+  maxMultiplier = MAX_MULTIPLIER,
+}) {
+  const resultsScore = computeResultsScore({
+    lastSeasonStanding: standing,
+    divisionStandings,
+  });
+  const multiplier = Math.min(maxMultiplier, Math.max(1.0, 1 + wResults * resultsScore));
+  return Math.round(divisionBase * multiplier);
 }

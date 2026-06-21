@@ -25,6 +25,7 @@ import {
   UPKEEP_BY_DIVISION,
   PRIZE_PER_POINT,
 } from "../lib/economyConstants.js";
+import { W_RESULTS, MAX_MULTIPLIER } from "../lib/renownEngine.js";
 
 function arg(name, def) {
   const hit = process.argv.find((a) => a.startsWith(`--${name}=`));
@@ -71,7 +72,17 @@ const FLATTEN_GRID = [0, 0.3, 0.5];
 // Empirisk øger breadth-boost divergens (stærke hold vinder også etaper) → test begge.
 const BREADTH_BOOST_GRID = [0, 0.6];
 
-function* candidates() {
+// #1663 Fase J — renown-sponsor-grid. Holder sponsor/ppp/flatten på de Fase-2-besluttede
+// PROD-værdier (prod-curven bager allerede flatten 0.5 ind → override flatten=0) og sweeper
+// KUN de to renown-knapper. wResults skalerer resultsScore∈[0,1] ind i multiplieren;
+// maxMultiplier clamper top-holdets løft. wResults=0 = renown SLUKKET (= flad sponsor,
+// flatten-0.5-baseline) → med i griddet som anti-snowball-referencepunkt.
+const W_RESULTS_GRID = [0, 0.3, 0.45, 0.6, 0.75];
+const MAX_MULTIPLIER_GRID = [1.4, 1.6, 1.8];
+
+const RENOWN_MODE = !!arg("renown", false);
+
+function* sponsorCandidates() {
   for (const s1 of SPONSOR_GRID[1])
     for (const s2 of SPONSOR_GRID[2])
       for (const s3 of SPONSOR_GRID[3])
@@ -85,6 +96,25 @@ function* candidates() {
                 flatten,
                 breadthBoost,
               };
+}
+
+// Renown-sweep: prod sponsor/ppp + prod-curve (flatten=0 i override = ingen dobbelt-flad).
+function* renownCandidates() {
+  for (const wResults of W_RESULTS_GRID)
+    for (const maxMultiplier of (wResults === 0 ? [MAX_MULTIPLIER_GRID[0]] : MAX_MULTIPLIER_GRID))
+      yield {
+        sponsorBase: { ...SPONSOR_INCOME_BY_DIVISION },
+        upkeep: { ...UPKEEP_BY_DIVISION },
+        prizePerPoint: PRIZE_PER_POINT,
+        flatten: 0,
+        breadthBoost: 0,
+        wResults,
+        maxMultiplier,
+      };
+}
+
+function* candidates() {
+  yield* (RENOWN_MODE ? renownCandidates() : sponsorCandidates());
 }
 
 // Kør én kandidat over alle seeds; aggreger pr. division (median-af-seeds).
@@ -138,7 +168,107 @@ function divergenceScore(agg) {
   return (agg[1].gini + agg[2].gini + agg[3].gini) / 3;
 }
 
+// #1663 Fase J — renown-deficit-score: hvor langt det MODNE D1+D2-median-net er fra
+// break-even (0). Renown trækker stærke hold MOD 0 fra neden (managed deficit), så vi
+// måler |median net| for D1+D2 (de tunge løn-divisioner). Lavere = tættere på break-even.
+// D3 er nær nul i forvejen → ekskluderet fra deficit-scoren (men dens Gini tæller stadig).
+function renownDeficitScore(agg) {
+  return Math.abs(agg[1].medNet) + Math.abs(agg[2].medNet);
+}
+
+// #1663 Fase J renown-sweep: hold sponsor/ppp/flatten på prod, sweep wResults×maxMultiplier.
+// Rangering: (i) mindste modne D1/D2-deficit (tættest på break-even), HÅRD FILTER (ii) Gini
+// må ikke stige materielt over wResults=0-baselinen (anti-snowball, spec §7) + ingen seed
+// median < den hårde −30k×skala. Fresh-gaten er invariant (renownSponsorFor(null)=base).
+function renownMain() {
+  const all = [...candidates()];
+  console.log(`\n=== #1663 RENOWN-SPONSOR-KALIBRERINGS-SWEEP (Fase J) ===`);
+  console.log(`Seeds: ${SEEDS.join(", ")} · ${all.length} kandidater · ${TEAM_COUNT} hold × ${ROSTER_SIZE} ryttere`);
+  console.log(`Holdt på PROD: sponsor D1=${SPONSOR_INCOME_BY_DIVISION[1]}/D2=${SPONSOR_INCOME_BY_DIVISION[2]}/D3=${SPONSOR_INCOME_BY_DIVISION[3]} · ppp=${PRIZE_PER_POINT} · prod-curve (flatten 0.5 bagt) · upkeep D1=${UPKEEP_BY_DIVISION[1]}/D2=${UPKEEP_BY_DIVISION[2]}/D3=${UPKEEP_BY_DIVISION[3]}`);
+  console.log(`Prod renown (renownEngine.js): W_RESULTS=${W_RESULTS} · MAX_MULTIPLIER=${MAX_MULTIPLIER}`);
+  console.log(`Swept: wResults ∈ {${W_RESULTS_GRID.join(", ")}} × maxMultiplier ∈ {${MAX_MULTIPLIER_GRID.join(", ")}}`);
+  console.log(`Mål: træk modent D1/D2-median-net mod break-even fra neden UDEN at hæve Gini over wResults=0-baseline (anti-snowball, hård filter).\n`);
+
+  const results = all.map(evaluate);
+  for (const r of results) {
+    r.deficit = renownDeficitScore(r.agg);
+    r.div = divergenceScore(r.agg);
+    r.minSeedNet = Math.min(r.agg[1].medNetMin, r.agg[2].medNetMin, r.agg[3].medNetMin);
+  }
+
+  // Baseline = wResults=0 (renown slukket = flad sponsor på prod-curve = flatten-0.5-baseline).
+  const baseline = results.find((r) => r.overrides.wResults === 0);
+  const baseGini = baseline ? baseline.div : Infinity;
+  const baseGiniByDiv = baseline ? [1, 2, 3].map((d) => baseline.agg[d].gini) : [Infinity, Infinity, Infinity];
+  const GINI_TOL = 0.005; // materiel-stigning-tolerance (afrundings-/seed-støj).
+
+  // Hård filter: ingen division-Gini må stige > tolerance over baseline (anti-snowball).
+  for (const r of results) {
+    r.giniRise = r.div - baseGini;
+    r.maxDivGiniRise = Math.max(...[1, 2, 3].map((d, i) => r.agg[d].gini - baseGiniByDiv[i]));
+    r.giniOk = r.maxDivGiniRise <= GINI_TOL;
+  }
+
+  // Rangér: Gini-ok først (hård filter), så mindste modne deficit, så mindste Gini.
+  const ranked = [...results].sort((a, b) => {
+    if (a.giniOk !== b.giniOk) return a.giniOk ? -1 : 1;
+    if (Math.abs(a.deficit - b.deficit) > 1) return a.deficit - b.deficit;
+    return a.div - b.div;
+  });
+
+  if (baseline) {
+    console.log("BASELINE (wResults=0, renown SLUKKET = flad sponsor, flatten-0.5-curve):");
+    for (const d of [1, 2, 3]) {
+      const a = baseline.agg[d];
+      console.log(`  D${d}: median-net ${fmt(a.medNet)} · Gini ${a.gini.toFixed(3)} · p10–p90 ${fmt(a.spread)} · S5 ${a.ratioS5.toFixed(2)}×`);
+    }
+    console.log(`  modent D1+D2-deficit |net|: ${fmt(baseline.deficit)} · gns. Gini ${baseGini.toFixed(3)}\n`);
+  }
+
+  const giniOkCount = results.filter((r) => r.giniOk).length;
+  console.log(`KANDIDATER DER IKKE HÆVER GINI (≤ +${GINI_TOL} pr. division): ${giniOkCount} af ${results.length}\n`);
+
+  const rows = ranked.slice(0, TOP);
+  console.log("RANGEREDE KANDIDATER (Gini-ok → mindst modent deficit → mindst Gini):");
+  console.log("─".repeat(120));
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i];
+    const o = r.overrides;
+    console.log(
+      `#${i + 1}  wResults=${o.wResults} maxMult=${o.maxMultiplier}` +
+      `  ${r.giniOk ? "✅ Gini-ok" : `⚠️ Gini +${r.maxDivGiniRise.toFixed(3)}`}` +
+      `  modent D1+D2 deficit ${fmt(r.deficit)}  gns.Gini ${r.div.toFixed(3)} (Δ ${r.giniRise >= 0 ? "+" : ""}${r.giniRise.toFixed(3)})`
+    );
+    for (const d of [1, 2, 3]) {
+      const a = r.agg[d];
+      console.log(
+        `      D${d}: median-net ${fmt(a.medNet)} (seed-spænd ${fmt(a.medNetMin)}..${fmt(a.medNetMax)}) · net p10 ${fmt(a.p10)}/p90 ${fmt(a.p90)} · Gini ${a.gini.toFixed(3)} · spread ${fmt(a.spread)} · S5 ${a.ratioS5.toFixed(2)}×`
+      );
+    }
+    console.log();
+  }
+  console.log("─".repeat(120));
+
+  if (MARKDOWN) {
+    console.log("\n### Renown-sweep (rangeret, markdown)\n");
+    console.log("| # | wResults | maxMult | D1 net | D2 net | D3 net | modent D1+D2 |net| | gns. Gini | ΔGini | D1 spread | D2 spread | Gini-ok |");
+    console.log("|---|---|---|---|---|---|---|---|---|---|---|---|");
+    for (let i = 0; i < rows.length; i++) {
+      const r = rows[i]; const o = r.overrides;
+      console.log(
+        `| ${i + 1} | ${o.wResults} | ${o.maxMultiplier} | ${fmt(r.agg[1].medNet)} | ${fmt(r.agg[2].medNet)} | ${fmt(r.agg[3].medNet)} | ` +
+        `${fmt(r.deficit)} | ${r.div.toFixed(3)} | ${r.giniRise >= 0 ? "+" : ""}${r.giniRise.toFixed(3)} | ${fmt(r.agg[1].spread)} | ${fmt(r.agg[2].spread)} | ${r.giniOk ? "✅" : "⚠️"} |`
+      );
+    }
+  }
+
+  console.log("\nNOTE: 100% syntetisk, prod-konstanter UÆNDREDE. Fresh-gaten er invariant (renownSponsorFor(null)=base).");
+  console.log("      Vælg den Gini-ok-kandidat med mindst modent D1+D2-deficit. wResults=0 = renown slukket (reference).\n");
+  return rows;
+}
+
 function main() {
+  if (RENOWN_MODE) return renownMain();
   const all = [...candidates()];
   console.log(`\n=== #1441/#1607 ECONOMY-CALIBRATION-SWEEP ===`);
   console.log(`Seeds: ${SEEDS.join(", ")} · ${all.length} kandidater · ${TEAM_COUNT} hold × ${ROSTER_SIZE} ryttere`);

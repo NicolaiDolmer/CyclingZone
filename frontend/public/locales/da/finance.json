@@ -8,7 +8,8 @@
   "tabs": {
     "overview": "Overblik",
     "loans": "Lån",
-    "history": "Historik"
+    "history": "Historik",
+    "sponsors": "Sponsor"
   },
   "loanSummary": {
     "active": "{count, plural, one {1 aktivt lån} other {# aktive lån}}",

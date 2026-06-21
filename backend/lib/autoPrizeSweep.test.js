@@ -38,13 +38,33 @@ test("runAutoPrizeSweep: kalder payFn med aktiv sæson + actorType SYSTEM", asyn
     called = { seasonId, actorId, opts };
     return { races_paid: 2, total_paid: 5000 };
   };
-  const r = await runAutoPrizeSweep({ supabase, isEnabled: async () => true, payFn });
+  const sponsorFn = async () => ({ credited: 0 });
+  const r = await runAutoPrizeSweep({ supabase, isEnabled: async () => true, payFn, sponsorFn });
 
   assert.equal(called.seasonId, "s1");
   assert.equal(called.actorId, null);
   assert.equal(called.opts.actorType, FINANCE_ACTOR_TYPE.SYSTEM);
   assert.equal(r.paid, 2);
   assert.equal(r.total, 5000);
+});
+
+test("runAutoPrizeSweep: kalder sponsorFn med aktiv sæson + actorType SYSTEM", async () => {
+  const supabase = {
+    from: () => ({
+      select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { id: "s1" }, error: null }) }) }),
+    }),
+  };
+  let sponsorCalled = null;
+  const payFn = async () => ({ races_paid: 0, total_paid: 0 });
+  const sponsorFn = async (seasonId, sb, opts) => {
+    sponsorCalled = { seasonId, opts };
+    return { credited: 3 };
+  };
+  const r = await runAutoPrizeSweep({ supabase, isEnabled: async () => true, payFn, sponsorFn });
+
+  assert.equal(sponsorCalled.seasonId, "s1");
+  assert.equal(sponsorCalled.opts.actorType, FINANCE_ACTOR_TYPE.SYSTEM);
+  assert.equal(r.sponsor_credited, 3);
 });
 
 test("runAutoPrizeSweep: kaster hvis seasons-query fejler", async () => {

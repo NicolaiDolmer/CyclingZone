@@ -1,0 +1,37 @@
+{
+  "tab": "Sponsor",
+  "cta": {
+    "title": "Choose your sponsor for season {season}",
+    "body": "A new sponsor deal is on the table. Compare the offers and lock in your backing for the upcoming season.",
+    "button": "View offers",
+    "pendingTitle": "Sponsor selected for season {season}",
+    "pendingBody": "You have chosen a deal for the upcoming season. You can still switch to a different offer.",
+    "changeButton": "Change choice"
+  },
+  "offers": {
+    "title": "Sponsor offers",
+    "subtitle": "Choose a sponsor deal for season {season}. The contract runs from the start of that season.",
+    "empty": "No offers are available right now. A new deal can be negotiated once the current contract is up for renewal.",
+    "choose": "Choose",
+    "pending": "Selected"
+  },
+  "variant": {
+    "predictable": "Steady backer",
+    "activity": "Race-day backer",
+    "long": "Long-term partner"
+  },
+  "field": {
+    "guaranteedBase": "Guaranteed base",
+    "perRaceDay": "Per race day",
+    "length": "Length",
+    "seasons": "{count, plural, one {# season} other {# seasons}}"
+  },
+  "contract": {
+    "title": "Current sponsor",
+    "loading": "Loading sponsor contract",
+    "error": "Could not load your sponsor contract. Please try again.",
+    "none": "No active sponsor contract.",
+    "runsThrough": "Runs through season {season}",
+    "sponsorName": "Sponsor"
+  }
+}

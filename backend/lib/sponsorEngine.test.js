@@ -90,3 +90,25 @@ test("computeSponsorForSeason falls back safely if season 2 lacks standings", ()
   assert.equal(result.mode, "fallback");
   assert.equal(result.gross_sponsor, 240_000);
 });
+
+test("aktiv kontrakt vinder: gross_sponsor = guaranteed_base", () => {
+  const res = computeSponsorForSeason({
+    seasonNumber: 2,
+    team: { division: 1, sponsor_income: 240000 },
+    activeContract: { guaranteed_base: 845000, per_race_day_rate: 1900 },
+    lastSeasonStanding: { total_points: 500, rank_in_division: 1, division: 1 },
+    divisionStandings: [{ total_points: 500 }],
+  });
+  assert.equal(res.gross_sponsor, 845000);
+  assert.equal(res.mode, "contract");
+});
+
+test("ingen kontrakt → falder tilbage til division-base (bagudkompatibelt)", () => {
+  const res = computeSponsorForSeason({
+    seasonNumber: 1,
+    team: { division: 3 },
+    activeContract: null,
+    lastSeasonStanding: null,
+  });
+  assert.equal(res.gross_sponsor, 340000);
+});
