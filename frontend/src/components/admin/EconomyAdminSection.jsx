@@ -177,7 +177,7 @@ function HealthView({ getAuth, onMsg }) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="bg-cz-subtle rounded-xl p-4 border border-cz-border">
+        <div className="bg-cz-subtle rounded-cz p-4 border border-cz-border">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-cz-1 font-semibold text-sm">Audit-population</h3>
             <HealthBadge ok={nullPostOk}>{nullPostOk ? "Ingen leak" : "Leak detekteret"}</HealthBadge>
@@ -207,7 +207,7 @@ function HealthView({ getAuth, onMsg }) {
           </p>
         </div>
 
-        <div className="bg-cz-subtle rounded-xl p-4 border border-cz-border">
+        <div className="bg-cz-subtle rounded-cz p-4 border border-cz-border">
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-cz-1 font-semibold text-sm">Balance-drift watchdog</h3>
             <HealthBadge ok={driftOk}>{driftOk ? "Ingen drift" : "Drift detekteret"}</HealthBadge>
@@ -457,7 +457,7 @@ function TransactionDetailModal({ tx, onClose }) {
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4 py-6 overflow-y-auto"
       onClick={onClose}>
-      <div className="bg-cz-card border border-cz-border rounded-xl max-w-2xl w-full p-5"
+      <div className="bg-cz-card border border-cz-border rounded-cz max-w-2xl w-full p-5"
         onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-cz-1 font-semibold text-base">Transaktions-detaljer</h3>
@@ -698,7 +698,7 @@ function AdminLogDetailModal({ entry, onClose }) {
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4 py-6 overflow-y-auto"
       onClick={onClose}>
-      <div className="bg-cz-card border border-cz-border rounded-xl max-w-2xl w-full p-5"
+      <div className="bg-cz-card border border-cz-border rounded-cz max-w-2xl w-full p-5"
         onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-cz-1 font-semibold text-base">Admin-handling</h3>

@@ -11,6 +11,7 @@ import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
 import { useScouting } from "../lib/useScouting";
 import { statColor, statStyle } from "../lib/statColor";
 import { ABILITY_STATS, ABILITY_SELECT, flattenAbilities } from "../lib/abilities";
+import { EmptyState, SearchIcon, StarIcon, XIcon } from "../components/ui";
 
 const MAX_COMPARE = 3;
 
@@ -164,10 +165,7 @@ export default function RiderComparePage() {
       )}
 
       {fullRiders.length === 0 ? (
-        <div className="text-center py-16 text-cz-3">
-          <p className="text-4xl mb-3">◈</p>
-          <p>{t("compare.empty")}</p>
-        </div>
+        <EmptyState icon={<SearchIcon size={24} aria-hidden="true" />} title={t("compare.empty")} />
       ) : (
         <div className="overflow-x-auto pb-1">
           {/* Rider headers */}
@@ -178,7 +176,7 @@ export default function RiderComparePage() {
                 <button
                   onClick={() => removeRider(r.id)}
                   aria-label={t("common:a11y.removeFromComparison")}
-                  className="float-right text-cz-3 hover:text-cz-2 text-sm -mt-1 -me-1"><span aria-hidden="true">×</span></button>
+                  className="float-right text-cz-3 hover:text-cz-2 -mt-1 -me-1"><XIcon size={14} aria-hidden="true" /></button>
                 <RiderLink id={r.id}
                   className="font-bold text-cz-1 text-sm cursor-pointer hover:text-cz-accent-t block">
                   {r.nationality_code && <Flag code={r.nationality_code} className="me-1" />}{r.firstname} {r.lastname}
@@ -204,7 +202,7 @@ export default function RiderComparePage() {
               <div className="grid items-center py-3 px-4 border-b border-cz-border bg-cz-accent/10"
                 style={{ gridTemplateColumns: `200px repeat(${fullRiders.length}, minmax(120px, 1fr))` }}>
                 <div className="flex items-center gap-2">
-                  <span className="text-cz-3 w-4 text-center">◆</span>
+                  <StarIcon size={14} className="text-cz-3 flex-shrink-0" aria-hidden="true" />
                   <span className="text-cz-2 text-sm font-medium">{t("compare.potential")}</span>
                 </div>
                 {fullRiders.map(r => (

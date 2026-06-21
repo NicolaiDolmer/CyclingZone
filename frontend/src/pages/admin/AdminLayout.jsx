@@ -46,7 +46,7 @@ export default function AdminLayout() {
       </div>
       <AdminTabs />
       {marketPause.level !== "none" && (
-        <div className="mb-4 px-4 py-3 rounded-xl text-sm border bg-cz-danger-bg text-cz-danger border-cz-danger/30">
+        <div className="mb-4 px-4 py-3 rounded-cz text-sm border bg-cz-danger-bg text-cz-danger border-cz-danger/30">
           <p className="font-semibold">
             🛑 {marketPause.level === "all" ? "Hele markedet er pauset" : "Auktioner er pauset"}
           </p>

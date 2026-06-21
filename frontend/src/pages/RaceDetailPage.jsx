@@ -5,7 +5,9 @@ import { Link, useParams, useSearchParams } from "react-router-dom";
 import RiderLink from "../components/RiderLink";
 import TeamLink from "../components/TeamLink";
 import RaceSelectionPanel from "../components/race/RaceSelectionPanel.jsx";
+import StageScheduleCard from "../components/race/StageScheduleCard.jsx";
 import { Flag } from "../components/Flag";
+import { FlagIcon } from "../components/ui";
 import { formatNumber } from "../lib/intl";
 import { fetchAllRows } from "../lib/supabasePagination";
 import { logEvent } from "../lib/logEvent";
@@ -37,11 +39,13 @@ const CLASSIFICATIONS = [
 
 // Daglige trøjebærere — vist som badges på hver etape-fane.
 // Label kommer fra t(`detail.jersey.${dayType}`).
+// Trøjefarver kommer fra navngivne CSS-tokens i index.css (--jersey-*), så
+// callsiten ikke baerer raa hex (#671 anti-drift). Ægte cykel-jersey-hues.
 const JERSEYS = [
-  { dayType: "leader",       bg: "#e8c547", fg: "#1a1a1a" },
-  { dayType: "points_day",   bg: "#22c55e", fg: "#052e16" },
-  { dayType: "mountain_day", bg: "#ef4444", fg: "#ffffff" },
-  { dayType: "young_day",    bg: "#f1f5f9", fg: "#1a1a1a" },
+  { dayType: "leader",       bg: "rgb(var(--jersey-leader-bg))",   fg: "rgb(var(--jersey-leader-fg))" },
+  { dayType: "points_day",   bg: "rgb(var(--jersey-points-bg))",   fg: "rgb(var(--jersey-points-fg))" },
+  { dayType: "mountain_day", bg: "rgb(var(--jersey-mountain-bg))", fg: "rgb(var(--jersey-mountain-fg))" },
+  { dayType: "young_day",    bg: "rgb(var(--jersey-young-bg))",    fg: "rgb(var(--jersey-young-fg))" },
 ];
 
 function riderName(res) {
@@ -86,7 +90,7 @@ export default function RaceDetailPage() {
 
     const { data: raceRow, error } = await supabase
       .from("races")
-      .select("id, name, race_type, race_class, stages, edition_year, status, season:season_id(id, number), pool_race:pool_race_id(date_text)")
+      .select("id, name, race_type, race_class, stages, stages_completed, edition_year, status, season:season_id(id, number), pool_race:pool_race_id(date_text)")
       .eq("id", raceId)
       .single();
 
@@ -172,7 +176,7 @@ export default function RaceDetailPage() {
     <div className="max-w-4xl mx-auto">
       <Link to="/races?tab=library" className="text-xs text-cz-accent-t hover:underline mb-4 inline-block">{t("detail.backToLibrary")}</Link>
       <div className="text-center py-16 text-cz-3">
-        <p className="text-4xl mb-3">🏁</p>
+        <FlagIcon className="w-8 h-8 mx-auto mb-3" aria-hidden="true" />
         <p>{t("empty.raceNotFound")}</p>
       </div>
     </div>
@@ -196,13 +200,20 @@ export default function RaceDetailPage() {
         </p>
       </div>
 
+      {/* #1597: synlig etape-kalender for kommende løb — kortet henter
+          race_stage_schedule selv og skjuler sig hvis der ikke findes en
+          kalender (gamle/PCM-løb, eller scheduler ikke aktiveret). */}
+      {race.status === "scheduled" && (
+        <StageScheduleCard raceId={race.id} stagesCompleted={race.stages_completed ?? 0} />
+      )}
+
       {/* #1307: holdudtagelse for kommende løb — panelet gater selv på
           race-engine-flaget (renderer intet når backend siger enabled=false). */}
       {race.status === "scheduled" && <RaceSelectionPanel raceId={race.id} />}
 
       {!hasAnyResults && (
-        <div className="bg-cz-card border border-cz-border rounded-xl p-10 text-center text-cz-3">
-          <p className="text-4xl mb-3">🏁</p>
+        <div className="bg-cz-card border border-cz-border rounded-cz p-10 text-center text-cz-3">
+          <FlagIcon className="w-8 h-8 mx-auto mb-3" aria-hidden="true" />
           <p className="text-sm">{t("empty.noResultsImportedRace")}</p>
         </div>
       )}
@@ -259,7 +270,7 @@ function OverallTab({ finalByType }) {
   const { t } = useTranslation("races");
   const any = CLASSIFICATIONS.some(c => finalByType[c.key]?.length > 0);
   if (!any) return (
-    <div className="bg-cz-card border border-cz-border rounded-xl p-8 text-center text-cz-3 text-sm">
+    <div className="bg-cz-card border border-cz-border rounded-cz p-8 text-center text-cz-3 text-sm">
       {t("detail.noOverall")}
     </div>
   );
@@ -288,7 +299,7 @@ function StageTab({ stage, results, profile }) {
     <div className="space-y-5">
       <StageProfileCard profile={profile} />
       {jerseys.length > 0 && (
-        <div className="bg-cz-card border border-cz-border rounded-xl p-4">
+        <div className="bg-cz-card border border-cz-border rounded-cz p-4">
           <p className="text-cz-2 text-xs uppercase tracking-wider mb-3 font-semibold">{t("detail.jerseysAfterStage")}</p>
           <div className="flex flex-wrap gap-2">
             {jerseys.map(j => (
@@ -374,7 +385,7 @@ function ResultTable({ title, rows }) {
   // gamle PCM-løb og point/bjerg/ungdom/hold-klassementer har tom finish_time.
   const showTime = rows.some(r => r.finish_time);
   return (
-    <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+    <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
       <div className="px-4 py-3 border-b border-cz-border">
         <h2 className="font-semibold text-cz-1 text-sm">{title}</h2>
       </div>

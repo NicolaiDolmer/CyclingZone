@@ -26,7 +26,7 @@ import StatsToggle from "../components/StatsToggle";
 import useStatsToggle from "../lib/useStatsToggle";
 import { startTour } from "../lib/onboardingTour";
 import { formatNumber } from "../lib/intl";
-import { Card, ExchangeIcon, Select, ArrowUpIcon, ArrowDownIcon } from "../components/ui";
+import { Card, ExchangeIcon, Select, ArrowUpIcon, ArrowDownIcon, ChevronUpIcon, ChevronDownIcon } from "../components/ui";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -64,7 +64,7 @@ function SortTh({ children, sortKey, sort, sortDir, onSort, className = "", titl
   return (
     <th onClick={() => onSort(sortKey)} title={title}
       className={`cursor-pointer select-none transition-colors ${active ? "text-cz-accent-t/80" : "text-cz-3 hover:text-cz-2"} ${className}`}>
-      {children}{active && <span className="ms-0.5 text-[10px]">{sortDir === "desc" ? "↓" : "↑"}</span>}
+      {children}{active && <span className="ms-0.5 inline-flex align-middle">{sortDir === "desc" ? <ArrowDownIcon size={10} aria-hidden="true" /> : <ArrowUpIcon size={10} aria-hidden="true" />}</span>}
     </th>
   );
 }
@@ -86,7 +86,7 @@ function AbilityLegend({ t, tRider }) {
       >
         <span className="font-mono text-[10px] border border-cz-border rounded px-1" aria-hidden="true">?</span>
         {t("abilityLegend.toggle")}
-        <span className="text-[9px]" aria-hidden="true">{open ? "▲" : "▼"}</span>
+        {open ? <ChevronUpIcon size={12} aria-hidden="true" /> : <ChevronDownIcon size={12} aria-hidden="true" />}
       </button>
       {open && (
         <dl className="mt-2 p-3 bg-cz-subtle border border-cz-border rounded-cz max-w-3xl

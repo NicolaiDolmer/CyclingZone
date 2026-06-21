@@ -144,7 +144,7 @@ function RiderActionModal({ rider, scouting, onClose, onAction, ddActive }) {
                 <label className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-3 cursor-pointer select-none">
                   <div className="flex items-center gap-2">
                     <input type="checkbox" checked={flash} onChange={e => setFlash(e.target.checked)}
-                      className="rounded accent-red-600" />
+                      className="rounded accent-cz-danger" />
                     <span className="text-sm text-cz-danger font-medium">{t("actionModal.auction.flashLabel")}</span>
                   </div>
                   <span className="text-xs text-cz-3 sm:ms-0 ms-6">{t("actionModal.auction.flashHint")}</span>
@@ -246,14 +246,14 @@ function SquadTab({ riders, scouting, onSelectRider, windowOpen }) {
             </div>
           )}
           {loanedInRiders.length > 0 && (
-            <span className="flex items-center gap-2 px-3 py-1.5 text-xs bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded-cz">
-              <span className="w-2 h-2 rounded-full bg-purple-400" />
+            <span className="flex items-center gap-2 px-3 py-1.5 text-xs bg-cz-info/10 text-cz-info border border-cz-info/20 rounded-cz">
+              <span className="w-2 h-2 rounded-full bg-cz-info" />
               {t("squad.loanedIn", { count: loanedInRiders.length })}
             </span>
           )}
           {loanedOutRiders.length > 0 && (
             <span className="flex items-center gap-2 px-3 py-1.5 text-xs bg-cz-warning/10 text-cz-warning border border-cz-warning/20 rounded-cz">
-              <span className="w-2 h-2 rounded-full bg-yellow-400" />
+              <span className="w-2 h-2 rounded-full bg-cz-warning" />
               {t("squad.loanedOut", { count: loanedOutRiders.length })}
             </span>
           )}
@@ -328,17 +328,17 @@ function SquadTab({ riders, scouting, onSelectRider, windowOpen }) {
                     className={`border-b border-cz-border hover:bg-cz-subtle
                       ${r._isIncoming  ? "bg-cz-success-bg0/3"  :
                         r._isOutgoing  ? "bg-cz-danger-bg0/3"    :
-                        r._isLoanedIn  ? "bg-purple-500/3" :
+                        r._isLoanedIn  ? "bg-cz-info/3" :
                         r._isLoanedOut ? "bg-cz-warning/10" : ""}`}>
                     <td className="px-2 py-2.5">
                       <NationCell code={r.nationality_code} />
                     </td>
                     <td className="px-3 py-2.5 sticky-name-cell sticky left-0 z-10 border-r border-cz-border shadow-[10px_0_16px_-16px_rgba(0,0,0,0.5)]">
                       <div className="flex items-center gap-2 flex-wrap">
-                        {r._isIncoming  && <span className="w-2 h-2 rounded-full bg-green-400 flex-shrink-0" />}
-                        {r._isOutgoing  && <span className="w-2 h-2 rounded-full bg-red-400 flex-shrink-0" />}
-                        {r._isLoanedIn  && <span className="w-2 h-2 rounded-full bg-purple-400 flex-shrink-0" />}
-                        {r._isLoanedOut && <span className="w-2 h-2 rounded-full bg-yellow-400 flex-shrink-0" />}
+                        {r._isIncoming  && <span className="w-2 h-2 rounded-full bg-cz-success flex-shrink-0" />}
+                        {r._isOutgoing  && <span className="w-2 h-2 rounded-full bg-cz-danger flex-shrink-0" />}
+                        {r._isLoanedIn  && <span className="w-2 h-2 rounded-full bg-cz-info flex-shrink-0" />}
+                        {r._isLoanedOut && <span className="w-2 h-2 rounded-full bg-cz-warning flex-shrink-0" />}
                         <RiderLink id={r.id}
                           className="text-cz-1 text-sm font-medium hover:text-cz-accent-t transition-colors">
                           {r.firstname} {r.lastname}
@@ -346,7 +346,7 @@ function SquadTab({ riders, scouting, onSelectRider, windowOpen }) {
                         {/* #1482: U25/ind/ud-pills flyttet til Status-kolonnen.
                             Loan-pills bliver i navne-cellen (de bærer team/sæson-tooltip). */}
                         {r._isLoanedIn  && (
-                          <span className="text-[9px] uppercase bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded"
+                          <span className="text-[9px] uppercase bg-cz-info/20 text-cz-info px-1.5 py-0.5 rounded"
                             title={t("squad.tooltips.loanedFrom", { team: r._loanInInfo?.from_team?.name, start: r._loanInInfo?.start_season, end: r._loanInInfo?.end_season })}>
                             {t("squad.tags.loanedIn")}
                           </span>
@@ -513,10 +513,11 @@ export function TeamPage() {
       <div className="mb-5">
         <div className="flex items-center gap-3 flex-wrap">
           <h1 className="text-xl font-bold text-cz-1">{team?.name || t("page.fallbackTitle")}</h1>
-          <span className={`text-xs px-2 py-1 rounded-full border ${
+          <span className={`inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full border ${
             windowOpen
               ? "bg-cz-success-bg text-cz-success border-cz-success/30"
               : "bg-cz-subtle text-cz-3 border-cz-border"}`}>
+            <span className={`w-2 h-2 rounded-full ${windowOpen ? "bg-cz-success" : "bg-cz-3"}`} aria-hidden="true" />
             {windowOpen ? t("page.windowOpen") : t("page.windowClosed")}
           </span>
         </div>

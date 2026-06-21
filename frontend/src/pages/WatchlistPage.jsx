@@ -13,7 +13,7 @@ import { ageBadgeKey } from "../lib/riderAge";
 import { statStyle } from "../lib/statColor";
 import { formatCz, getRiderMarketValue, getRiderSalary } from "../lib/marketValues.js";
 import { formatNumber } from "../lib/intl";
-import { StarIcon } from "../components/ui";
+import { StarIcon, ExchangeIcon, CheckIcon } from "../components/ui";
 import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
 import { useScouting } from "../lib/useScouting";
 import { scoutSortValue } from "../lib/scouting";
@@ -217,7 +217,9 @@ export default function WatchlistPage() {
                       className="px-2 py-3 text-left font-medium uppercase tracking-wider hidden sm:table-cell">{t("thNation")}</SortTh>
                     <SortTh sortKey="firstname" sort={sort} sortDir={sortDir} onSort={handleSort}
                       className="px-3 py-3 text-left font-medium uppercase tracking-wider sticky left-0 z-30 bg-cz-card border-r border-cz-border">{t("thRider")}</SortTh>
-                    <th className="px-1 py-3 w-8" title={t("compareTooltip")}>⇄</th>
+                    <th className="px-1 py-3 w-8" title={t("compareTooltip")}>
+                      <ExchangeIcon size={14} aria-hidden="true" className="mx-auto text-cz-3" />
+                    </th>
                     <th className="px-2 py-3 w-8" />
                     <th className="px-3 py-3 text-left text-cz-3 font-medium uppercase tracking-wider hidden sm:table-cell">{t("thTeam")}</th>
                     <th className="px-3 py-3 text-left text-cz-3 font-medium uppercase tracking-wider hidden sm:table-cell">{t("thBadges")}</th>
@@ -303,7 +305,7 @@ export default function WatchlistPage() {
                                   text-cz-1 text-xs focus:outline-none focus:border-cz-accent w-20"
                                 autoFocus placeholder={t("notePlaceholder")} aria-label={t("notePlaceholder")} />
                               <button onClick={() => saveNote(entry.id)} aria-label={t("common:a11y.saveNote")}
-                                className="text-cz-success text-xs px-1"><span aria-hidden="true">✓</span></button>
+                                className="text-cz-success text-xs px-1"><CheckIcon size={14} aria-hidden="true" /></button>
                             </div>
                           ) : (
                             <button onClick={() => { setEditingNote(entry.id); setNoteText(entry.note || ""); }}

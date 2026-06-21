@@ -7,8 +7,16 @@ import { computeExpectedRacePrize, formatExpectedPrize } from "../lib/expectedPr
 import { formatNumber } from "../lib/intl";
 import { dateTextToDayOfYear } from "../lib/raceCalendar";
 import LeaderBadge from "../components/LeaderBadge";
+import { CoinIcon, BriefcaseIcon, ExchangeIcon, BikeIcon, FlagIcon } from "../components/ui";
 
-const DIV_COLORS = { 1: "#e8c547", 2: "#60a5fa", 3: "#a78bfa" };
+// 2-farve-system: guld bærer division-hierarkiet via faldende opacitet (tema-bevidst),
+// så Div 2/3-tabeller ikke maler sig i fremmed SaaS-blå/lilla. Bruges i rgb()-form
+// så inline-style/SVG-attributter også resolver mod --accent-tokenet.
+const DIV_COLORS = {
+  1: "rgb(var(--accent))",
+  2: "rgb(var(--accent) / 0.6)",
+  3: "rgb(var(--accent) / 0.4)",
+};
 
 // Label resolves via t("status.<key>") ved render — se seasonEnd-namespacet.
 const RACE_STATUS_CLS = {
@@ -256,7 +264,7 @@ export default function SeasonEndPage() {
 
       {standings.length === 0 ? (
         <div className="text-center py-20 text-cz-3">
-          <p className="text-5xl mb-4" aria-hidden="true">🏁</p>
+          <FlagIcon size={44} className="mx-auto mb-4" aria-hidden="true" />
           <p className="text-lg font-medium text-cz-3">{t("empty.title")}</p>
           <p className="text-sm mt-2">{t("empty.body")}</p>
         </div>
@@ -265,7 +273,7 @@ export default function SeasonEndPage() {
           {/* Sæsonens vindere */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
             <WinnerCard
-              icon="💰"
+              icon={CoinIcon}
               title={t("winners.prize.title")}
               primary={winners.prize?.team?.name || "—"}
               secondary={winners.prize ? t("winners.prize.secondary", { amount: formatCZ(winners.prize.amount) }) : t("winners.prize.empty")}
@@ -273,7 +281,7 @@ export default function SeasonEndPage() {
               onClick={() => winners.prize?.team?.id && navigate(`/teams/${winners.prize.team.id}`)}
             />
             <WinnerCard
-              icon="💸"
+              icon={BriefcaseIcon}
               title={t("winners.transfer.title")}
               primary={winners.biggestTransfer ? formatCZ(winners.biggestTransfer.amount) : "—"}
               secondary={winners.biggestTransfer
@@ -283,7 +291,7 @@ export default function SeasonEndPage() {
               onClick={() => winners.biggestTransfer?.team?.id && navigate(`/teams/${winners.biggestTransfer.team.id}`)}
             />
             <WinnerCard
-              icon="🔄"
+              icon={ExchangeIcon}
               title={t("winners.active.title")}
               primary={winners.mostActive?.team?.name || "—"}
               secondary={winners.mostActive ? t("winners.active.secondary", { count: winners.mostActive.count }) : t("winners.active.empty")}
@@ -291,7 +299,7 @@ export default function SeasonEndPage() {
               onClick={() => winners.mostActive?.team?.id && navigate(`/teams/${winners.mostActive.team.id}`)}
             />
             <WinnerCard
-              icon="🚴"
+              icon={BikeIcon}
               title={t("winners.stageKing.title")}
               primary={winners.stageKing?.rider
                 ? `${winners.stageKing.rider.firstname} ${winners.stageKing.rider.lastname}`
@@ -306,7 +314,7 @@ export default function SeasonEndPage() {
 
           {/* Kalender */}
           {races.length > 0 && (
-            <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+            <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
               <div className="px-5 py-3 border-b border-cz-border flex items-center justify-between flex-wrap gap-2">
                 <div>
                   <h2 className="font-bold text-cz-1 text-sm">{t("calendar.heading", { count: races.length })}</h2>
@@ -362,7 +370,7 @@ export default function SeasonEndPage() {
             const color = DIV_COLORS[div];
             const isCompleted = selectedSeason?.status === "completed";
             return (
-              <div key={div} className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+              <div key={div} className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
                 <div className="flex items-center justify-between px-5 py-4 border-b border-cz-border"
                   style={{ borderLeft: `3px solid ${color}` }}>
                   <h2 className="font-bold text-sm" style={{ color }}>{t("division", { div })}</h2>
@@ -392,8 +400,8 @@ export default function SeasonEndPage() {
                       const prog = pointsByTeam[s.team_id] || [];
                       // Zone bar + neutral "you" ring co-exist; gold = the leader chip (PF2 B).
                       const bars = [];
-                      if (isPromotion) bars.push("inset 3px 0 0 #4ade80");
-                      else if (isRelegation) bars.push("inset 3px 0 0 #f87171");
+                      if (isPromotion) bars.push("inset 3px 0 0 rgb(var(--success))");
+                      else if (isRelegation) bars.push("inset 3px 0 0 rgb(var(--danger))");
                       if (isMe) bars.push("inset 0 0 0 1.5px rgb(var(--me-ring) / 0.5)");
                       const rowStyle = bars.length ? { boxShadow: bars.join(", ") } : {};
                       return (
@@ -409,7 +417,7 @@ export default function SeasonEndPage() {
                           <tr
                             style={rowStyle}
                             className={`border-b border-cz-border last:border-0 hover:bg-cz-subtle cursor-pointer transition-colors
-                              ${isLeader ? "bg-cz-accent/[0.08]" : isPromotion ? "bg-emerald-50" : isRelegation ? "bg-cz-danger-bg" : ""}`}
+                              ${isLeader ? "bg-cz-accent/[0.08]" : isPromotion ? "bg-cz-success-bg" : isRelegation ? "bg-cz-danger-bg" : ""}`}
                             onClick={() => navigate(`/teams/${s.team_id}`)}>
                             <td className="px-4 py-3">
                               <span className={`font-mono font-bold text-sm
@@ -424,7 +432,7 @@ export default function SeasonEndPage() {
                                 </span>
                                 {isLeader && <LeaderBadge />}
                                 {isMe && <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "rgb(var(--me-badge-bg))", color: "rgb(var(--me-badge-fg))" }}>{t("you")}</span>}
-                                {isPromotion && <span className="text-[9px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-medium">{t("promotion")}</span>}
+                                {isPromotion && <span className="text-[9px] bg-cz-success-bg text-cz-success px-1.5 py-0.5 rounded font-medium">{t("promotion")}</span>}
                                 {isRelegation && <span className="text-[9px] bg-cz-danger-bg text-cz-danger px-1.5 py-0.5 rounded font-medium">{t("relegation")}</span>}
                               </div>
                             </td>
@@ -459,12 +467,12 @@ export default function SeasonEndPage() {
 
           {/* Full point progression for my team */}
           {myTeamId && pointsByTeam[myTeamId]?.length > 1 && races.length > 1 && (
-            <div className="bg-cz-card border border-cz-border rounded-xl p-5">
+            <div className="bg-cz-card border border-cz-border rounded-cz p-5">
               <h2 className="text-cz-1 font-semibold text-sm mb-4">{t("myProgression")}</h2>
               <PointChart
                 data={pointsByTeam[myTeamId]}
                 labels={races.map(r => r.name)}
-                color="#e8c547" />
+                color="rgb(var(--accent))" />
             </div>
           )}
         </div>
@@ -473,16 +481,16 @@ export default function SeasonEndPage() {
   );
 }
 
-function WinnerCard({ icon, title, primary, secondary, onClick, hasData }) {
+function WinnerCard({ icon: Icon, title, primary, secondary, onClick, hasData }) {
   return (
     <button
       onClick={onClick}
       disabled={!hasData}
-      className={`bg-cz-card border border-cz-border rounded-xl p-3 text-left transition-colors ${
+      className={`bg-cz-card border border-cz-border rounded-cz p-3 text-left transition-colors ${
         hasData ? "hover:border-cz-accent/30 cursor-pointer" : "cursor-default"
       }`}>
       <div className="flex items-center gap-1.5 mb-1.5">
-        <span aria-hidden="true" className="text-base leading-none">{icon}</span>
+        {Icon && <Icon size={15} className="text-cz-accent flex-shrink-0" aria-hidden="true" />}
         <span className="text-cz-3 text-[10px] uppercase tracking-wider font-semibold">{title}</span>
       </div>
       <p className="text-cz-1 font-bold text-sm truncate">{primary}</p>
@@ -509,7 +517,7 @@ function PointChart({ data, labels, color }) {
         {[0, 0.25, 0.5, 0.75, 1].map(t => (
           <line key={t} x1={padX} x2={w - padX}
             y1={padY + t * (h - padY * 2)} y2={padY + t * (h - padY * 2)}
-            stroke="rgba(0,0,0,0.06)" strokeWidth="0.5" />
+            stroke="rgb(var(--border))" strokeWidth="0.5" />
         ))}
         {/* Area fill */}
         <polygon

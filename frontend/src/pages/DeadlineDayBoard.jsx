@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import { AlertTriangleIcon, ClockIcon, CheckIcon } from "../components/ui";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -129,7 +130,7 @@ function FinalWhistleReport({ data }) {
 function SquadTable({ rows, dimmed, captionId }) {
   const { t } = useTranslation("transfers");
   return (
-    <div className={`rounded-xl border border-cz-border overflow-x-auto${dimmed ? " opacity-60" : ""}`}>
+    <div className={`rounded-cz border border-cz-border overflow-x-auto${dimmed ? " opacity-60" : ""}`}>
       <table className="w-full text-sm" aria-labelledby={captionId}>
         <thead>
           <tr className="border-b border-cz-border text-[10px] text-cz-3 uppercase tracking-wider">
@@ -228,7 +229,7 @@ export default function DeadlineDayBoard() {
   if (fetchError) {
     return (
       <div className="max-w-xl mx-auto text-center py-20 space-y-3" role="alert">
-        <p className="text-4xl">⚠️</p>
+        <AlertTriangleIcon size={36} className="mx-auto text-cz-danger" aria-hidden="true" />
         <p className="font-semibold text-cz-danger">{t("deadlineDay.fetchErrorTitle")}</p>
         <p className="text-sm text-cz-3">{t("deadlineDay.fetchErrorRetry")}</p>
       </div>
@@ -251,7 +252,7 @@ export default function DeadlineDayBoard() {
     }
     return (
       <div className="max-w-xl mx-auto text-center py-20 space-y-3">
-        <p className="text-4xl">🕐</p>
+        <ClockIcon size={36} className="mx-auto text-cz-3" aria-hidden="true" />
         <p className="font-semibold text-cz-2">{t("deadlineDay.inactiveTitle")}</p>
         <p className="text-sm text-cz-3">{t("deadlineDay.inactiveSubtitle")}</p>
       </div>
@@ -273,8 +274,8 @@ export default function DeadlineDayBoard() {
       </div>
 
       {totalShown === 0 && (
-        <div className="rounded-xl border border-cz-border p-6 text-center">
-          <p className="text-2xl mb-2">✅</p>
+        <div className="rounded-cz border border-cz-border p-6 text-center">
+          <CheckIcon size={28} className="mx-auto mb-2 text-cz-success" aria-hidden="true" />
           <p className="font-semibold text-cz-2">{t("deadlineDay.allOkTitle")}</p>
           <p className="text-sm text-cz-3 mt-1">{t("deadlineDay.allOkSubtitle")}</p>
         </div>

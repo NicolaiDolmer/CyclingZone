@@ -8,6 +8,7 @@
 // der lander her uden at gå via Dashboard.
 
 import { useTranslation } from "react-i18next";
+import { ClipboardIcon } from "./ui/icons";
 
 const EMPTY_STATE_PLANS = [
   { id: "oneYear",   badge: "1" },
@@ -20,9 +21,9 @@ const EMPTY_STATE_KPIS = ["results", "finance", "identity", "rank"];
 export default function BoardEmptyState({ onOpenWizard, onStartTour }) {
   const { t } = useTranslation("board");
   return (
-    <div className="mb-5 px-5 py-5 bg-cz-card border border-cz-accent/30 rounded-xl">
+    <div className="mb-5 px-5 py-5 bg-cz-card border border-cz-accent/30 rounded-cz">
       <div className="flex items-start gap-3 mb-4">
-        <span className="text-cz-accent-t text-xl flex-shrink-0">◧</span>
+        <ClipboardIcon size={20} className="text-cz-accent-t flex-shrink-0" aria-hidden="true" />
         <div className="flex-1 min-w-0">
           <p className="text-cz-1 text-base font-semibold">{t("emptyState.headline")}</p>
           <p className="text-cz-2 text-xs mt-1">{t("emptyState.intro")}</p>
@@ -73,7 +74,7 @@ export default function BoardEmptyState({ onOpenWizard, onStartTour }) {
             onClick={onStartTour}
             className="text-cz-accent-t text-xs hover:underline font-medium px-2 py-1"
           >
-            💡 {t("emptyState.ctaShowTour")}
+            {t("emptyState.ctaShowTour")}
           </button>
         )}
       </div>

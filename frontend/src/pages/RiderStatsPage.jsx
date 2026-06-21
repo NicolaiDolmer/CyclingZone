@@ -12,9 +12,11 @@ import { formatNumber, formatDate, formatDateTime } from "../lib/intl";
 import { resolveApiError } from "../lib/apiError";
 import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
 import TrainingFocus from "../components/rider/TrainingFocus";
+import RiderTrainingHistory from "../components/rider/RiderTrainingHistory.jsx";
 import ConditionChips from "../components/rider/ConditionChips.jsx";
 import { useScouting } from "../lib/useScouting";
 import { useTraining } from "../lib/useTraining";
+import { useTrainingHistory } from "../lib/useTrainingHistory";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge";
 import { BidConfirmModal } from "../components/BidConfirmModal";
 import { RacePriceModal } from "../components/RacePriceModal";
@@ -32,6 +34,7 @@ import { isOverbidEvent, shouldFlashPrice } from "../lib/auctionsRealtime";
 import { logEvent } from "../lib/logEvent";
 import TeamLink from "../components/TeamLink";
 import { aggregateRiderSeasons } from "../lib/riderSeasonStats";
+import { TrophyIcon, ExchangeIcon, ClipboardIcon } from "../components/ui";
 
 const API = import.meta.env.VITE_API_URL;
 const RiderDevelopmentTab = lazyWithRetry(() => import("../components/RiderDevelopmentTab"));
@@ -64,11 +67,11 @@ const STATS = [
   { key: "stat_bj",  slug: "bj",  icon: "▲" },
   { key: "stat_kb",  slug: "kb",  icon: "△" },
   { key: "stat_bk",  slug: "bk",  icon: "∧" },
-  { key: "stat_tt",  slug: "tt",  icon: "⏱" },
+  { key: "stat_tt",  slug: "tt",  icon: "◴" },
   { key: "stat_prl", slug: "prl", icon: "◷" },
   { key: "stat_bro", slug: "bro", icon: "⬡" },
-  { key: "stat_sp",  slug: "sp",  icon: "⚡" },
-  { key: "stat_acc", slug: "acc", icon: "▶" },
+  { key: "stat_sp",  slug: "sp",  icon: "↯" },
+  { key: "stat_acc", slug: "acc", icon: "▷" },
   { key: "stat_ned", slug: "ned", icon: "↓" },
   { key: "stat_udh", slug: "udh", icon: "◎" },
   { key: "stat_mod", slug: "mod", icon: "◈" },
@@ -123,11 +126,11 @@ function StatRow({ label, icon, value, progressFraction, progressHint }) {
 const DERIVED_ABILITIES = [
   // Fysiske
   { key: "climbing",     icon: "▲" },
-  { key: "time_trial",   icon: "⏱" },
+  { key: "time_trial",   icon: "◴" },
   { key: "flat",         icon: "▬" },
   { key: "tempo",        icon: "◈" },
-  { key: "sprint",       icon: "⚡" },
-  { key: "acceleration", icon: "▶" },
+  { key: "sprint",       icon: "↯" },
+  { key: "acceleration", icon: "▷" },
   { key: "punch",        icon: "✦" },
   { key: "endurance",    icon: "◎" },
   { key: "recovery",     icon: "↺" },
@@ -138,7 +141,7 @@ const DERIVED_ABILITIES = [
   { key: "positioning",  icon: "⊹" },
   // Taktisk/mentale
   { key: "aggression",   icon: "➹" },
-  { key: "tactics",      icon: "♟" },
+  { key: "tactics",      icon: "⌖" },
 ];
 
 // Ét nøgletal (watt/W·kg) i effektprofil-grid'et.
@@ -167,7 +170,7 @@ function RacePhysiologyPreview({ physiology }) {
   const { t } = useTranslation("rider");
   if (!physiology) return null;
   return (
-    <div className="bg-cz-card border border-cz-border rounded-xl p-5 mt-4">
+    <div className="bg-cz-card border border-cz-border rounded-cz p-5 mt-4">
       <h3 className="text-cz-1 font-semibold mb-3">{t("racePreview.powerProfile")}</h3>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <PowerStat label={t("racePreview.zones.zone2")}  value={physiology.zone2_power_wkg}  unit="W/kg" />
@@ -247,9 +250,9 @@ function SwapOfferButton({ rider, myTeamId }) {
         </div>
       )}
       <button onClick={openForm}
-        className={`w-full min-h-[44px] py-2.5 rounded-xl text-sm font-bold transition-all border
+        className={`w-full min-h-[44px] py-2.5 rounded-cz text-sm font-bold transition-all border
           ${show
-              ? "bg-cz-accent/10 text-cz-accent-t border-[#e8c547]/25"
+              ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/25"
               : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle hover:text-cz-1"}`}>
         {t("swapOffer.buttonOpen")}
       </button>
@@ -339,9 +342,9 @@ function LoanOfferButton({ rider }) {
         </div>
       )}
       <button onClick={() => setShow(!show)}
-        className={`w-full min-h-[44px] py-2.5 rounded-xl text-sm font-bold transition-all border
+        className={`w-full min-h-[44px] py-2.5 rounded-cz text-sm font-bold transition-all border
           ${show
-              ? "bg-cz-accent/10 text-cz-accent-t border-[#e8c547]/25"
+              ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/25"
               : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle hover:text-cz-1"}`}>
         {t("loanOffer.buttonOpen")}
       </button>
@@ -427,9 +430,9 @@ function DirectOfferButton({ rider }) {
         </div>
       )}
       <button onClick={() => setShow(!show)}
-        className={`w-full min-h-[44px] py-2.5 rounded-xl text-sm font-bold transition-all border
+        className={`w-full min-h-[44px] py-2.5 rounded-cz text-sm font-bold transition-all border
           ${show
-              ? "bg-cz-accent/10 text-cz-accent-t border-[#e8c547]/25"
+              ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/25"
               : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle hover:text-cz-1"}`}>
         {t("directOffer.buttonOpen")}
       </button>
@@ -569,7 +572,7 @@ function TransferListButton({ rider }) {
         </div>
       )}
       {listing ? (
-        <div className="rounded-xl border border-cz-border bg-cz-subtle p-3 flex flex-col gap-2">
+        <div className="rounded-cz border border-cz-border bg-cz-subtle p-3 flex flex-col gap-2">
           <p className="text-cz-2 text-sm">
             {t("sellRider.listedStatus", { amount: formatNumber(listing.asking_price) })}
           </p>
@@ -599,9 +602,9 @@ function TransferListButton({ rider }) {
         </div>
       ) : (
         <button onClick={() => setShow(!show)}
-          className={`w-full min-h-[44px] py-2.5 rounded-xl text-sm font-bold transition-all border
+          className={`w-full min-h-[44px] py-2.5 rounded-cz text-sm font-bold transition-all border
             ${show
-                ? "bg-cz-accent/10 text-cz-accent-t border-[#e8c547]/25"
+                ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/25"
                 : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle hover:text-cz-1"}`}>
           {t("sellRider.buttonOpen")}
         </button>
@@ -677,7 +680,7 @@ function RiderBidPanel({ auction, myTeamId, myBalance, reservedBalance, riderNam
   });
 
   return (
-    <div className={`rounded-xl border p-4 ${imWinning ? "border-cz-accent/40 bg-cz-accent/[0.04]" : "border-cz-border bg-cz-subtle"}`}>
+    <div className={`rounded-cz border p-4 ${imWinning ? "border-cz-accent/40 bg-cz-accent/[0.04]" : "border-cz-border bg-cz-subtle"}`}>
       <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
         <p className="text-cz-3 text-xs uppercase tracking-widest">{t("auctionPanel.activeLabel")}</p>
         <div className="flex items-center gap-1.5 flex-wrap">
@@ -829,7 +832,7 @@ function AuctionButton({ rider, auctionLabel, onStart, ddActive, isOwnRider }) {
         <label className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-3 cursor-pointer select-none">
           <div className="flex items-center gap-2">
             <input type="checkbox" checked={flash} onChange={e => setFlash(e.target.checked)}
-              className="rounded accent-red-600" />
+              className="rounded accent-cz-danger" />
             <span className="text-sm text-cz-danger font-medium">{t("auctionStart.flash.label")}</span>
           </div>
           <span className="text-xs text-cz-3 sm:ms-0 ms-6">{t("auctionStart.flash.hint")}</span>
@@ -844,19 +847,19 @@ function AuctionButton({ rider, auctionLabel, onStart, ddActive, isOwnRider }) {
           onChange={e => { const v = parseInt(e.target.value, 10); setPrice(Number.isNaN(v) ? (isOwnRider ? 0 : riderValue) : v); }}
           className={`min-w-0 flex-1 min-h-[44px] bg-cz-subtle border rounded-lg px-3 py-2 text-cz-1 text-base sm:text-sm font-mono focus:outline-none
             ${priceError
-              ? "border-red-300 focus:border-red-400"
+              ? "border-cz-danger/40 focus:border-cz-danger"
               : "border-cz-border focus:border-cz-accent"}`}
         />
         <button
           onClick={async () => { setLoading(true); await onStart(price, flash); setLoading(false); }}
           disabled={loading || priceError}
           className={`w-full sm:w-auto min-h-[44px] px-4 py-2 font-bold rounded-lg text-sm transition-all disabled:opacity-50
-            ${flash ? "bg-red-600 text-white hover:bg-red-700" : "bg-cz-accent text-cz-on-accent hover:brightness-110"}`}>
+            ${flash ? "bg-cz-danger text-white hover:brightness-110" : "bg-cz-accent text-cz-on-accent hover:brightness-110"}`}>
           {loading ? t("auctionStart.buttons.loading") : flash ? t("auctionStart.buttons.startFlash") : t("auctionStart.buttons.start")}
         </button>
       </div>
       {priceError && (
-        <p className="text-red-500 text-xs mt-1.5">
+        <p className="text-cz-danger text-xs mt-1.5">
           {t(isOwnRider ? "auctionStart.priceErrorOwn" : "auctionStart.priceError", { amount: formatNumber(riderValue) })}
         </p>
       )}
@@ -871,6 +874,8 @@ export default function RiderStatsPage() {
 
   const scouting = useScouting();
   const training = useTraining();
+  // #1533: træningsrapport-historik (egne ryttere) — vises i Development-fanen.
+  const trainingHistory = useTrainingHistory();
   const [rider, setRider]                   = useState(null);
   const [riderCondition, setRiderCondition] = useState(null);
   const [onWatchlist, setOnWatchlist]       = useState(false);
@@ -1386,13 +1391,12 @@ export default function RiderStatsPage() {
         title={celebration?.title || ""}
         subtitle={celebration?.subtitle}
         amount={celebration?.amount}
-        icon="🏆"
       />
       <OverbidToast toasts={toasts} onDismiss={dismissToast} />
 
       <button onClick={() => navigate(-1)} className="text-cz-3 hover:text-cz-1 text-sm mb-4 flex items-center gap-1">{t("page.back")}</button>
 
-      <div className="bg-cz-card border border-cz-border rounded-xl p-5 mb-4">
+      <div className="bg-cz-card border border-cz-border rounded-cz p-5 mb-4">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-2">
           <div className="flex-1 min-w-0">
             <div className="flex items-start gap-3">
@@ -1591,7 +1595,7 @@ export default function RiderStatsPage() {
 
       {tab === "stats" && (
         <>
-          <div className="bg-cz-card border border-cz-border rounded-xl p-5">
+          <div className="bg-cz-card border border-cz-border rounded-cz p-5">
             {scouting.estimateFor(rider.id) !== null && (
               <div className="flex items-center gap-3 py-2 mb-1 border-b border-cz-border">
                 <span className="text-cz-3 w-4 text-center text-sm">◆</span>
@@ -1622,7 +1626,7 @@ export default function RiderStatsPage() {
       )}
 
       {tab === "season" && (
-        <div className="bg-cz-card border border-cz-border rounded-xl p-5">
+        <div className="bg-cz-card border border-cz-border rounded-cz p-5">
           {Object.keys(bySeason).length === 0 ? (
             <p className="text-cz-3 text-center py-8">{t("season.empty")}</p>
           ) : (
@@ -1659,7 +1663,7 @@ export default function RiderStatsPage() {
       )}
 
       {tab === "results" && (
-        <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+        <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
           {results.length === 0 ? (
             <p className="text-cz-3 text-center py-8">{t("results.empty")}</p>
           ) : (
@@ -1701,7 +1705,7 @@ export default function RiderStatsPage() {
       )}
 
       {tab === "history" && (
-        <div className="bg-cz-card border border-cz-border rounded-xl divide-y divide-cz-border">
+        <div className="bg-cz-card border border-cz-border rounded-cz divide-y divide-cz-border">
           {history.length === 0 ? (
             <p className="text-cz-3 text-center py-8">{t("history.empty")}</p>
           ) : history.map((e, i) => (
@@ -1711,8 +1715,9 @@ export default function RiderStatsPage() {
       )}
 
       {tab === "development" && (
-        <Suspense fallback={<div className="bg-cz-card border border-cz-border rounded-xl p-5 text-cz-3 text-center py-8">{t("stats.loadingDevelopment")}</div>}>
+        <Suspense fallback={<div className="bg-cz-card border border-cz-border rounded-cz p-5 text-cz-3 text-center py-8">{t("stats.loadingDevelopment")}</div>}>
           {isMyRider && !isRetired && <TrainingFocus rider={rider} training={training} />}
+          {isMyRider && <RiderTrainingHistory riderId={rider.id} history={trainingHistory} />}
           <RiderDevelopmentTab statHistory={statHistory} stats={localizedSkills} />
         </Suspense>
       )}
@@ -1724,7 +1729,7 @@ function BidTimelineTab({ timeline }) {
   const { t } = useTranslation("rider");
   if (!timeline || timeline.auction_id === null) {
     return (
-      <div className="bg-cz-card border border-cz-border rounded-xl p-5">
+      <div className="bg-cz-card border border-cz-border rounded-cz p-5">
         <p className="text-cz-3 text-center py-8">{t("bids.noAuction")}</p>
       </div>
     );
@@ -1735,9 +1740,9 @@ function BidTimelineTab({ timeline }) {
       ? formatDateTime(timeline.completed_at)
       : t("bids.fallbackDash");
     return (
-      <div className="bg-cz-card border border-cz-border rounded-xl p-5">
+      <div className="bg-cz-card border border-cz-border rounded-cz p-5">
         <div className="flex items-start gap-3">
-          <span className="text-cz-accent-t text-2xl mt-0.5">🏆</span>
+          <TrophyIcon size={24} aria-hidden="true" className="text-cz-accent-t mt-0.5 flex-shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-xs uppercase tracking-wider text-cz-accent-t font-medium mb-1">{t("bids.soldLabel")}</p>
             <p className="text-cz-1 text-base">
@@ -1765,7 +1770,7 @@ function BidTimelineTab({ timeline }) {
   const ordered = [...bids].reverse();
 
   return (
-    <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+    <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
       <div className="px-5 py-3 border-b border-cz-border flex items-center justify-between">
         <span className="text-xs uppercase tracking-wider text-cz-accent-t font-medium">{t("bids.activeAuction")}</span>
         {timeline.current_price != null && (
@@ -1855,7 +1860,7 @@ function HistoryEvent({ event }) {
 
     return (
       <div className="px-4 py-3 flex items-start gap-3">
-        <span className="text-cz-accent-t text-lg mt-0.5">🏆</span>
+        <TrophyIcon size={18} aria-hidden="true" className="text-cz-accent-t mt-0.5 flex-shrink-0" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs uppercase tracking-wider text-cz-accent-t font-medium">{typeLabel}</span>
@@ -1877,7 +1882,7 @@ function HistoryEvent({ event }) {
   if (event.type === "transfer") {
     return (
       <div className="px-4 py-3 flex items-start gap-3">
-        <span className="text-blue-500 text-lg mt-0.5">↔</span>
+        <ExchangeIcon size={18} aria-hidden="true" className="text-cz-info mt-0.5 flex-shrink-0" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs uppercase tracking-wider text-cz-info font-medium">{t("history.transfer.label")}</span>
@@ -1899,15 +1904,15 @@ function HistoryEvent({ event }) {
   if (event.type === "swap") {
     return (
       <div className="px-4 py-3 flex items-start gap-3">
-        <span className="text-purple-500 text-lg mt-0.5">⇄</span>
+        <ExchangeIcon size={18} aria-hidden="true" className="text-cz-info mt-0.5 flex-shrink-0" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs uppercase tracking-wider text-purple-700 font-medium">{t("history.swap.label")}</span>
+            <span className="text-xs uppercase tracking-wider text-cz-info font-medium">{t("history.swap.label")}</span>
             <span className="text-cz-3 text-xs">{date}</span>
           </div>
           <p className="text-cz-2 text-sm mt-0.5">
             <TeamLink id={event.proposing_team?.id} className="font-medium hover:text-cz-accent-t transition-colors">{event.proposing_team?.name || t("history.swap.teamFallback")}</TeamLink>
-            <span className="text-cz-3"> ↔ </span>
+            <ExchangeIcon size={12} aria-hidden="true" className="text-cz-3 inline-block mx-1 align-middle" />
             <TeamLink id={event.receiving_team?.id} className="font-medium hover:text-cz-accent-t transition-colors">{event.receiving_team?.name || t("history.swap.teamFallback")}</TeamLink>
           </p>
           {event.cash_adjustment !== 0 && event.cash_adjustment != null && (
@@ -1925,15 +1930,15 @@ function HistoryEvent({ event }) {
       active: "text-cz-success",
       completed: "text-cz-3",
       buyout: "text-cz-accent-t",
-      pending: "text-blue-600",
-      cancelled: "text-red-500",
-      rejected: "text-red-400",
+      pending: "text-cz-info",
+      cancelled: "text-cz-danger",
+      rejected: "text-cz-danger",
     };
     const statusKey = event.status && `history.loan.status.${event.status}`;
     const statusLabel = statusKey ? t(statusKey, { defaultValue: event.status }) : "";
     return (
       <div className="px-4 py-3 flex items-start gap-3">
-        <span className="text-cz-3 text-lg mt-0.5">📋</span>
+        <ClipboardIcon size={18} aria-hidden="true" className="text-cz-3 mt-0.5 flex-shrink-0" />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-xs uppercase tracking-wider text-cz-2 font-medium">{t("history.loan.label")}</span>

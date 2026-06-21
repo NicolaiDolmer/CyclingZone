@@ -1,12 +1,33 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { InfoIcon } from "../components/ui/icons/index.jsx";
+import {
+  InfoIcon,
+  RocketIcon,
+  ClipboardIcon,
+  LightningIcon,
+  ExchangeIcon,
+  BriefcaseIcon,
+  UserIcon,
+  DiscordIcon,
+  TrophyIcon,
+  StarIcon,
+  ClockIcon,
+  FlagIcon,
+  PodiumIcon,
+  TeamIcon,
+  BikeIcon,
+  StopwatchIcon,
+  BookOpenIcon,
+  BellIcon,
+  JerseyIcon,
+  ChevronDownIcon,
+} from "../components/ui/icons/index.jsx";
 
 const SECTION_DEFS = [
   {
     key: "start",
-    icon: "🚀",
+    Icon: RocketIcon,
     blocks: [
       { id: "intro", kind: "text" },
       { id: "firstSteps", kind: "steps" },
@@ -14,7 +35,7 @@ const SECTION_DEFS = [
   },
   {
     key: "board",
-    icon: "◧",
+    Icon: ClipboardIcon,
     blocks: [
       { id: "whatBoard", kind: "text" },
       { id: "season1Baseline", kind: "text" },
@@ -29,7 +50,7 @@ const SECTION_DEFS = [
   },
   {
     key: "auctions",
-    icon: "⚡",
+    Icon: LightningIcon,
     blocks: [
       { id: "whatAuctions", kind: "text" },
       { id: "howToStart", kind: "steps" },
@@ -44,7 +65,7 @@ const SECTION_DEFS = [
   },
   {
     key: "transfers",
-    icon: "↔",
+    Icon: ExchangeIcon,
     blocks: [
       { id: "whatTransfers", kind: "text" },
       { id: "sellOnTransferList", kind: "text" },
@@ -60,7 +81,7 @@ const SECTION_DEFS = [
   },
   {
     key: "contracts",
-    icon: "▤",
+    Icon: BriefcaseIcon,
     blocks: [
       { id: "whatContract", kind: "text" },
       { id: "frozenSalary", kind: "text" },
@@ -70,7 +91,7 @@ const SECTION_DEFS = [
   },
   {
     key: "managers",
-    icon: "👤",
+    Icon: UserIcon,
     blocks: [
       { id: "profile", kind: "text" },
       { id: "namesAndInit", kind: "text" },
@@ -84,7 +105,7 @@ const SECTION_DEFS = [
   },
   {
     key: "discord",
-    icon: "D",
+    Icon: DiscordIcon,
     blocks: [
       { id: "whyDms", kind: "text" },
       { id: "howToGetDms", kind: "steps" },
@@ -94,7 +115,7 @@ const SECTION_DEFS = [
   },
   {
     key: "achievements",
-    icon: "🏆",
+    Icon: TrophyIcon,
     blocks: [
       { id: "whatAchievements", kind: "text" },
       { id: "categories", kind: "rows" },
@@ -104,7 +125,7 @@ const SECTION_DEFS = [
   },
   {
     key: "watchlist",
-    icon: "⭐",
+    Icon: StarIcon,
     blocks: [
       { id: "whatWatchlist", kind: "text" },
       { id: "howToAdd", kind: "steps" },
@@ -115,7 +136,7 @@ const SECTION_DEFS = [
   },
   {
     key: "activity",
-    icon: "◎",
+    Icon: ClockIcon,
     blocks: [
       { id: "whatActivity", kind: "text" },
       { id: "tabs", kind: "steps" },
@@ -124,7 +145,7 @@ const SECTION_DEFS = [
   },
   {
     key: "season",
-    icon: "🏁",
+    Icon: FlagIcon,
     blocks: [
       { id: "seasonFlow", kind: "steps" },
       { id: "racesAndResults", kind: "text" },
@@ -139,7 +160,7 @@ const SECTION_DEFS = [
   },
   {
     key: "prizes",
-    icon: "🏅",
+    Icon: PodiumIcon,
     blocks: [
       { id: "formula", kind: "text" },
       { id: "examples", kind: "rows" },
@@ -149,7 +170,7 @@ const SECTION_DEFS = [
   },
   {
     key: "divisions",
-    icon: "◉",
+    Icon: TeamIcon,
     blocks: [
       { id: "overview", kind: "text" },
       { id: "sizePerDivision", kind: "rows" },
@@ -158,11 +179,12 @@ const SECTION_DEFS = [
   },
   {
     key: "riders",
-    icon: "🚴",
+    Icon: BikeIcon,
     blocks: [
       { id: "valueAndPrice", kind: "text" },
       { id: "salary", kind: "text" },
       { id: "stats", kind: "text" },
+      { id: "abilitiesExplained", kind: "rows" },
       { id: "development", kind: "text" },
       { id: "trainingFocus", kind: "text" },
       { id: "scouting", kind: "text" },
@@ -171,7 +193,7 @@ const SECTION_DEFS = [
   },
   {
     key: "dailytraining",
-    icon: "▲",
+    Icon: StopwatchIcon,
     blocks: [
       { id: "whatDailyTraining", kind: "text" },
       { id: "programs", kind: "steps" },
@@ -185,7 +207,7 @@ const SECTION_DEFS = [
   },
   {
     key: "academy",
-    icon: "△",
+    Icon: BookOpenIcon,
     blocks: [
       { id: "whatAcademy", kind: "text" },
       { id: "intakeCohort", kind: "text" },
@@ -199,7 +221,7 @@ const SECTION_DEFS = [
   },
   {
     key: "activityfeed",
-    icon: "◉",
+    Icon: BellIcon,
     blocks: [
       { id: "whatActivityFeed", kind: "text" },
       { id: "whatShown", kind: "rows" },
@@ -208,7 +230,7 @@ const SECTION_DEFS = [
   },
   {
     key: "raceSelection",
-    icon: "🎽",
+    Icon: JerseyIcon,
     blocks: [
       { id: "what", kind: "text" },
       { id: "roles", kind: "text" },
@@ -238,6 +260,8 @@ const FAQ_KEYS = [
   "watchlistSaleNotificationFaq",
   "riderSalaryView",
   "riderDevelopment",
+  "howToWinRace",
+  "riderAbilities",
   "trainingFocusFaq",
   "salaryShortfall",
   "debtCeiling",
@@ -282,7 +306,7 @@ function buildSections(t) {
     const base = `sections.${def.key}`;
     return {
       key: def.key,
-      icon: def.icon,
+      Icon: def.Icon,
       label: t(`${base}.label`),
       content: def.blocks.map((block) => {
         const blockBase = `${base}.${block.id}`;
@@ -381,8 +405,8 @@ export default function HelpPage() {
                   className="w-full text-left bg-cz-card border border-cz-border rounded-cz px-4 py-3 mb-2
                     hover:border-cz-border transition-all"
                 >
-                  <p className="text-cz-1 text-sm">
-                    <span aria-hidden="true">{s.icon}</span> {s.label}
+                  <p className="text-cz-1 text-sm flex items-center gap-2">
+                    <s.Icon className="w-4 h-4 flex-shrink-0" aria-hidden="true" /> <span>{s.label}</span>
                   </p>
                 </button>
               ))}
@@ -421,7 +445,7 @@ export default function HelpPage() {
                         : "text-cz-2 hover:text-cz-1 hover:bg-cz-subtle"
                     }`}
                 >
-                  <span aria-hidden="true">{s.icon}</span>
+                  <s.Icon className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
                   <span>{s.label}</span>
                 </button>
               ))}
@@ -457,14 +481,12 @@ export default function HelpPage() {
                         className="w-full flex items-center justify-between px-4 py-3 text-left"
                       >
                         <p className="text-cz-1 text-sm font-medium">{f.q}</p>
-                        <span
+                        <ChevronDownIcon
                           aria-hidden="true"
-                          className={`text-cz-3 text-xs ms-3 flex-shrink-0 transition-transform ${
+                          className={`w-4 h-4 text-cz-3 ms-3 flex-shrink-0 transition-transform ${
                             faqOpen === i ? "rotate-180" : ""
                           }`}
-                        >
-                          ▾
-                        </span>
+                        />
                       </button>
                       {faqOpen === i && (
                         <div className="px-4 pb-3 border-t border-cz-border pt-3">
@@ -477,8 +499,8 @@ export default function HelpPage() {
               </div>
             ) : currentSection ? (
               <div>
-                <h2 className="text-cz-1 font-bold text-base mb-4">
-                  <span aria-hidden="true">{currentSection.icon}</span> {currentSection.label}
+                <h2 className="text-cz-1 font-bold text-base mb-4 flex items-center gap-2">
+                  <currentSection.Icon className="w-5 h-5 flex-shrink-0" aria-hidden="true" /> <span>{currentSection.label}</span>
                 </h2>
                 <div className="flex flex-col gap-4">
                   {currentSection.content.map((block, i) => (

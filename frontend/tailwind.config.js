@@ -19,6 +19,11 @@ export default {
         12: "0.12",
       },
       fontFamily: {
+        // #1578 WP0: `sans` is the prose/UI body face (DM Sans), matching the
+        // `body { font-family: 'DM Sans' … }` rule in index.css so `font-sans`
+        // resolves to the brand body font instead of Tailwind's stock stack.
+        // Self-hosted (see index.css @font-face); no render-blocking Google link.
+        sans:    ['"DM Sans"', "system-ui", "-apple-system", "sans-serif"],
         // #481 Phase 4 (PF1): Inter Tight is the de-facto data font. `mono` is
         // redefined to it so all ~366 existing `font-mono` data sites inherit the
         // brand workhorse with zero churn; `data` is the explicit alias for new
@@ -74,10 +79,6 @@ export default {
         "cz-discord":       "rgb(var(--discord) / <alpha-value>)",
         "cz-discord-hover": "rgb(var(--discord-hover) / <alpha-value>)",
       },
-      borderRadius: {
-        cz: "var(--radius-sm)",
-        "cz-pill": "var(--radius-pill)",
-      },
       boxShadow: {
         overlay: "var(--shadow-overlay)",
       },
@@ -85,6 +86,36 @@ export default {
         dropdown: "1000", sticky: "1100", overlay: "1200", modal: "1300", toast: "1400",
       },
     },
+
+    // #1578 WP0 — radius token-lock. Overriding (NOT extending) borderRadius
+    // removes Tailwind's stock xl/2xl/3xl so `rounded-xl`/`rounded-2xl`/
+    // `rounded-3xl` no longer resolve to a class (they become no-ops) — slop
+    // radii can't drift back in. The brand tokens are the only "soft" radii:
+    //   rounded-cz       = 5px  (cards, inputs, buttons — the default surface)
+    //   rounded-cz-pill  = 9999 (pills/chips)
+    // none/sm/DEFAULT/md/lg/full are kept verbatim from Tailwind's defaults
+    // because ~470 legitimate callsites (rounded, rounded-md, rounded-lg,
+    // rounded-full) rely on them and are NOT in scope for this token-lock.
+    // (Values mirror tailwindcss/defaultTheme borderRadius so the kept scale
+    // is byte-identical; only xl/2xl/3xl are dropped.)
+    borderRadius: {
+      none: "0px",
+      sm: "0.125rem",
+      DEFAULT: "0.25rem",
+      md: "0.375rem",
+      lg: "0.5rem",
+      full: "9999px",
+      cz: "var(--radius-sm)",
+      "cz-pill": "var(--radius-pill)",
+    },
+
+    // #1578 WP0 — blur token-lock. The Modal primitive deliberately ships a
+    // flat scrim (no blur, see modalStyles.js + modal.source.test.js A9), and
+    // backdrop-blur is a classic AI-slop tell. Emptying the scale makes every
+    // `backdrop-blur*` utility a no-op so it can't be reintroduced; the five
+    // hand-rolled overlays/headers that used it now carry a plain semi-opaque
+    // backdrop instead. (Full migration to <Modal> is WP4.)
+    backdropBlur: {},
   },
   plugins: [],
 };

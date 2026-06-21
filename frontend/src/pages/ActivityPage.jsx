@@ -6,6 +6,15 @@ import RiderLink from "../components/RiderLink";
 import { getRiderMarketValue } from "../lib/marketValues";
 import WatchlistStar from "../components/WatchlistStar";
 import { formatNumber, formatDate, formatRelativeTime } from "../lib/intl";
+import {
+  CheckIcon,
+  LightningIcon,
+  ExchangeIcon,
+  StarIcon,
+  InboxIcon,
+  UndoIcon,
+  ChevronRightIcon,
+} from "../components/ui";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -61,7 +70,7 @@ const OFFER_STATUS = {
   pending:               { labelKey: "offerStatus.pending",               cls: "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" },
   countered:             { labelKey: "offerStatus.countered",             cls: "bg-cz-warning-bg text-cz-warning border-cz-warning/30" },
   awaiting_confirmation: { labelKey: "offerStatus.awaiting_confirmation", cls: "bg-cz-info-bg text-cz-info border-cz-info/30" },
-  window_pending:        { labelKey: "offerStatus.window_pending",        cls: "bg-violet-50 text-violet-700 border-violet-200" },
+  window_pending:        { labelKey: "offerStatus.window_pending",        cls: "bg-cz-info-bg text-cz-info border-cz-info/30" },
   accepted:              { labelKey: "offerStatus.accepted",              cls: "bg-cz-success-bg text-cz-success border-cz-success/30" },
   rejected:              { labelKey: "offerStatus.rejected",              cls: "bg-cz-danger-bg text-cz-danger border-cz-danger/30" },
   withdrawn:             { labelKey: "offerStatus.withdrawn",             cls: "bg-cz-subtle text-cz-3 border-cz-border" },
@@ -73,7 +82,7 @@ const LOAN_STATUS = {
   completed: { labelKey: "loanStatus.completed", cls: "bg-cz-subtle text-cz-2 border-cz-border" },
   rejected:  { labelKey: "loanStatus.rejected",  cls: "bg-cz-danger-bg text-cz-danger border-cz-danger/30" },
   cancelled: { labelKey: "loanStatus.cancelled", cls: "bg-cz-subtle text-cz-3 border-cz-border" },
-  buyout:    { labelKey: "loanStatus.buyout",    cls: "bg-purple-50 text-purple-700 border-purple-200" },
+  buyout:    { labelKey: "loanStatus.buyout",    cls: "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" },
 };
 
 function SectionHeader({ title, count }) {
@@ -88,7 +97,7 @@ function SectionHeader({ title, count }) {
 function EmptyState({ icon, title, sub }) {
   return (
     <div className="text-center py-14">
-      <p className="text-4xl mb-3 text-cz-3">{icon}</p>
+      <div className="mb-3 flex justify-center text-cz-3">{icon}</div>
       <p className="text-cz-3 font-medium">{title}</p>
       {sub && <p className="text-sm mt-1 text-cz-3">{sub}</p>}
     </div>
@@ -118,7 +127,7 @@ function Row({ badge, badgeCls, rider, riderId, detail, amount, time, children, 
         </span>
       )}
       {time && <span className="text-xs text-cz-3 whitespace-nowrap flex-shrink-0">{time}</span>}
-      <span className="text-cz-3 text-sm flex-shrink-0">→</span>
+      <ChevronRightIcon size={16} aria-hidden="true" className="text-cz-3 flex-shrink-0" />
     </div>
   );
 }
@@ -279,7 +288,7 @@ export default function ActivityPage() {
               bg-cz-card hover:bg-cz-subtle rounded-lg border border-cz-border
               transition-all disabled:opacity-50 flex items-center gap-1.5"
             title={t("refreshTitle")}>
-            <span className={refreshing ? "inline-block animate-spin" : "inline-block"}>↻</span>
+            <UndoIcon size={14} aria-hidden="true" className={refreshing ? "animate-spin" : undefined} />
             {refreshing ? t("refreshing") : t("refresh")}
           </button>
         </div>
@@ -308,9 +317,9 @@ export default function ActivityPage() {
 
       {/* ── NEEDS ACTION ── */}
       {tab === "action" && (
-        <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+        <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
           {actionCount === 0 && urgentAuctions.length === 0 ? (
-            <EmptyState icon="✓" title={t("empty.actionTitle")} sub={t("empty.actionSub")} />
+            <EmptyState icon={<CheckIcon className="w-8 h-8" aria-hidden="true" />} title={t("empty.actionTitle")} sub={t("empty.actionSub")} />
           ) : (
             <>
               {actionTransfers.length > 0 && (
@@ -339,7 +348,7 @@ export default function ActivityPage() {
                   <SectionHeader title={t("section.loanProposals")} count={actionLoans.length} />
                   {actionLoans.map(l => (
                     <Row key={l.id}
-                      badge={t("badge.loanProposal")} badgeCls="bg-purple-50 text-purple-700 border-purple-200"
+                      badge={t("badge.loanProposal")} badgeCls="bg-cz-info-bg text-cz-info border-cz-info/30"
                       rider={`${l.rider?.firstname} ${l.rider?.lastname}`}
                       riderId={l.rider?.id}
                       detail={`${t("detail.from", { name: l.to_team?.name })} · ${seasonDetail(l)}`}
@@ -386,9 +395,9 @@ export default function ActivityPage() {
 
       {/* ── AUCTIONS ── */}
       {tab === "auctions" && (
-        <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+        <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
           {activeAuctions.length === 0 ? (
-            <EmptyState icon="⚡" title={t("empty.auctionsTitle")} sub={t("empty.auctionsSub")} />
+            <EmptyState icon={<LightningIcon className="w-8 h-8" aria-hidden="true" />} title={t("empty.auctionsTitle")} sub={t("empty.auctionsSub")} />
           ) : (
             <>
               <SectionHeader title={t("section.activeAuctions")} count={activeAuctions.length} />
@@ -425,13 +434,13 @@ export default function ActivityPage() {
       {tab === "transfers" && (
         <div className="space-y-4">
           {activeReceivedOffers.length + activeSentOffers.length === 0 && (
-            <div className="bg-cz-card border border-cz-border rounded-xl">
-              <EmptyState icon="↔" title={t("empty.transfersTitle")} sub={t("empty.transfersSub")} />
+            <div className="bg-cz-card border border-cz-border rounded-cz">
+              <EmptyState icon={<ExchangeIcon className="w-8 h-8" aria-hidden="true" />} title={t("empty.transfersTitle")} sub={t("empty.transfersSub")} />
             </div>
           )}
 
           {activeReceivedOffers.length > 0 && (
-            <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+            <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
               <SectionHeader title={t("section.receivedOffers")} count={activeReceivedOffers.length} />
               {activeReceivedOffers.map(o => {
                 const cfg = OFFER_STATUS[o.status] || OFFER_STATUS.pending;
@@ -450,7 +459,7 @@ export default function ActivityPage() {
           )}
 
           {activeSentOffers.length > 0 && (
-            <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+            <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
               <SectionHeader title={t("section.sentOffers")} count={activeSentOffers.length} />
               {activeSentOffers.map(o => {
                 const cfg = OFFER_STATUS[o.status] || OFFER_STATUS.pending;
@@ -474,13 +483,13 @@ export default function ActivityPage() {
       {tab === "loans" && (
         <div className="space-y-4">
           {lendingLoans.length + borrowingLoans.length === 0 ? (
-            <div className="bg-cz-card border border-cz-border rounded-xl">
-              <EmptyState icon="⇄" title={t("empty.loansTitle")} sub={t("empty.loansSub")} />
+            <div className="bg-cz-card border border-cz-border rounded-cz">
+              <EmptyState icon={<ExchangeIcon className="w-8 h-8" aria-hidden="true" />} title={t("empty.loansTitle")} sub={t("empty.loansSub")} />
             </div>
           ) : (
             <>
               {lendingLoans.length > 0 && (
-                <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+                <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
                   <SectionHeader title={t("section.iLend")} count={lendingLoans.length} />
                   {lendingLoans.map(l => {
                     const cfg = LOAN_STATUS[l.status] || LOAN_STATUS.active;
@@ -499,7 +508,7 @@ export default function ActivityPage() {
               )}
 
               {borrowingLoans.length > 0 && (
-                <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+                <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
                   <SectionHeader title={t("section.iBorrow")} count={borrowingLoans.length} />
                   {borrowingLoans.map(l => {
                     const cfg = LOAN_STATUS[l.status] || LOAN_STATUS.active;
@@ -530,9 +539,9 @@ export default function ActivityPage() {
               {t("watchlist.goToFull")}
             </button>
           </div>
-          <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+          <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
             {watchlist.length === 0 ? (
-              <EmptyState icon="⭐" title={t("empty.watchlistTitle")}
+              <EmptyState icon={<StarIcon className="w-8 h-8" aria-hidden="true" />} title={t("empty.watchlistTitle")}
                 sub={t("empty.watchlistSub")} />
             ) : (
               watchlist.map(entry => {
@@ -575,13 +584,13 @@ export default function ActivityPage() {
       {tab === "history" && (
         <div className="space-y-4">
           {completedAuctions.length + histSentOffers.length + histReceivedOffers.length + historicalLoans.length === 0 ? (
-            <div className="bg-cz-card border border-cz-border rounded-xl">
-              <EmptyState icon="◎" title={t("empty.historyTitle")} sub={t("empty.historySub")} />
+            <div className="bg-cz-card border border-cz-border rounded-cz">
+              <EmptyState icon={<InboxIcon className="w-8 h-8" aria-hidden="true" />} title={t("empty.historyTitle")} sub={t("empty.historySub")} />
             </div>
           ) : (
             <>
               {completedAuctions.length > 0 && (
-                <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+                <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
                   <SectionHeader title={t("section.auctions")} count={completedAuctions.length} />
                   {completedAuctions.map(a => {
                     const iWon  = getAuctionLeaderId(a) === myTeamId;
@@ -607,7 +616,7 @@ export default function ActivityPage() {
               )}
 
               {(histReceivedOffers.length + histSentOffers.length) > 0 && (
-                <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+                <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
                   <SectionHeader title={t("section.transfers")} count={histReceivedOffers.length + histSentOffers.length} />
                   {[
                     ...histReceivedOffers.map(o => ({ ...o, _dir: "received" })),
@@ -632,7 +641,7 @@ export default function ActivityPage() {
               )}
 
               {historicalLoans.length > 0 && (
-                <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+                <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
                   <SectionHeader title={t("section.loans")} count={historicalLoans.length} />
                   {historicalLoans.map(l => {
                     const cfg = LOAN_STATUS[l.status] || LOAN_STATUS.completed;

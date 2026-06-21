@@ -15,6 +15,7 @@ import {
   XIcon,
   AlertTriangleIcon,
   ClockIcon,
+  DiscordIcon,
 } from "../components/ui";
 import { buttonClass } from "../components/ui/buttonStyles.js";
 
@@ -351,7 +352,7 @@ export default function ProfilePage() {
       <Card className="p-5">
         <div className="flex items-center gap-3 mb-4">
           <div className="w-8 h-8 rounded-cz bg-cz-discord/20 flex items-center justify-center">
-            <span className="text-cz-discord text-sm font-bold">D</span>
+            <DiscordIcon size={18} className="text-cz-discord" aria-hidden="true" />
           </div>
           <div>
             <h2 className="text-cz-1 font-semibold text-sm">{t("discord.title")}</h2>

@@ -15,9 +15,8 @@
   "promiseBody": "Premium kan låse op for identitet, bekvemmelighed, analyser og måder at bakke udviklingen op. Det kan IKKE låse op for bedre løbsresultater, hurtigere træning, stærkere ryttere, transfer-fordele, bedre scout-odds eller skjult magt.",
   "promiseFootnote": "Dette løfte vises både her og ved enhver fremtidig pris-info. Det er den vigtigste tillids-besked i hele samtalen om premium.",
   "tiersTitle": "Hvad kunne fair premium se ud som?",
-  "tiersSub": "Beslutninger truffet 2026-05-14. Surveyen tester forskellige prispunkter, så Premium varierer mellem {prices} afhængig af, hvor du klikker fra.",
+  "tiersSub": "Intet her er endeligt. Det er de Premium-prispunkter, jeg overvejer ({prices}/md), og din tilmelding hjælper mig med at beslutte.",
   "perDayApprox": "≈ {price}/dag",
-  "variantLabel": "Variant:",
   "founderNoteTitle": "Hvor passer Founder-waitlisten ind?",
   "founderNoteBody": "Founder er ikke en separat betalt tier. Det er en early waitlist-status for de første 100 spillere, der vil overvejes, hvis betaling åbner senere. Tilmelding er uforpligtende, og du opkræves ingenting i dag.",
   "tierFree": {
@@ -153,7 +152,6 @@
     "submit": "Skriv mig på Founder-waitlisten",
     "submitLoading": "Sender...",
     "submitDisclaimer": "Vi sender ikke spam og deler aldrig din info. Du kan altid skrive til os for at blive slettet.",
-    "priceVariantPrefix": "Pris-variant:",
     "honeypotLabel": "Lad dette felt være tomt",
     "successTitle": "Du er på listen!",
     "successBody": "Tak fordi du vil være med fra start. Vi sender en mail når premium åbner, og inden da hvis vi har spørgsmål til hvad du synes.",

@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { track } from "@vercel/analytics";
 import { supabase } from "../../lib/supabase";
 import DiscordJoinLink from "../DiscordJoinLink";
+import { CheckIcon } from "../ui/icons/index.jsx";
 import { formatCurrency, currencyForLocale } from "../../lib/intl.js";
 import { getTierPricesDkk, monthlyInCurrency, annualOf } from "../../lib/pricing.js";
 import {
@@ -33,7 +34,7 @@ import {
 
 const fieldLabel = "block text-xs font-medium text-cz-2 uppercase tracking-wider mb-1.5";
 const inputBase =
-  "w-full bg-cz-subtle border border-cz-border rounded-lg " +
+  "w-full bg-cz-subtle border border-cz-border rounded-cz " +
   "px-4 py-2.5 text-cz-1 text-sm placeholder-cz-3 " +
   "focus:outline-none focus:border-cz-accent transition-all";
 const inputErr = "border-cz-danger/50 focus:border-cz-danger";
@@ -42,9 +43,9 @@ function RadioCard({ name, value, checked, onChange, label, sub, disabled }) {
   return (
     <label
       className={
-        "flex items-start gap-3 cursor-pointer rounded-lg border p-3 transition-all " +
+        "flex items-start gap-3 cursor-pointer rounded-cz border p-3 transition-all " +
         (checked
-          ? "border-cz-accent bg-cz-accent/5"
+          ? "border-cz-accent bg-cz-subtle"
           : "border-cz-border bg-cz-subtle hover:border-cz-border-strong")
       }
     >
@@ -69,9 +70,9 @@ function CheckboxCard({ value, checked, onChange, label, disabled }) {
   return (
     <label
       className={
-        "flex items-center gap-2.5 cursor-pointer rounded-lg border px-3 py-2 transition-all " +
+        "flex items-center gap-2.5 cursor-pointer rounded-cz border px-3 py-2 transition-all " +
         (checked
-          ? "border-cz-accent bg-cz-accent/5"
+          ? "border-cz-accent bg-cz-subtle"
           : "border-cz-border bg-cz-subtle hover:border-cz-border-strong")
       }
     >
@@ -97,7 +98,7 @@ function FieldError({ id, message }) {
   );
 }
 
-export default function FounderSupporterWaitlistForm({ priceVariantLabel = null }) {
+export default function FounderSupporterWaitlistForm() {
   const { t, i18n } = useTranslation("founder");
   const [searchParams] = useSearchParams();
 
@@ -205,11 +206,15 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null 
   if (success) {
     const successNext = t("form.successNext", { returnObjects: true });
     return (
-      <div className="bg-cz-card border border-cz-border rounded-2xl p-6 text-center">
-        <div className="text-4xl mb-3">🎉</div>
-        <h2 className="text-cz-1 text-xl font-bold mb-2">{t("form.successTitle")}</h2>
+      <div className="bg-cz-card border border-cz-border rounded-cz p-6 text-center">
+        <div className="mb-4 flex justify-center" aria-hidden="true">
+          <span className="inline-flex h-12 w-12 items-center justify-center rounded-cz-pill border border-cz-accent/40 bg-cz-accent/10 text-cz-accent-t">
+            <CheckIcon size={26} />
+          </span>
+        </div>
+        <h2 className="text-cz-1 font-display text-2xl tracking-wide mb-2">{t("form.successTitle")}</h2>
         <p className="text-cz-2 text-sm mb-4">{t("form.successBody")}</p>
-        <div className="bg-cz-subtle border border-cz-border rounded-lg p-3 text-left text-cz-2 text-sm">
+        <div className="bg-cz-subtle border border-cz-border rounded-cz p-3 text-left text-cz-2 text-sm">
           <p className="font-medium mb-1">{t("form.successNextTitle")}</p>
           <ul className="list-disc list-inside space-y-1 text-cz-3">
             {(Array.isArray(successNext) ? successNext : []).map((item, i) => (
@@ -237,14 +242,7 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null 
   const showErr = (key) => (touched ? errors[key] : null);
 
   return (
-    <form onSubmit={handleSubmit} className="bg-cz-card border border-cz-border rounded-2xl p-5 sm:p-6 flex flex-col gap-6" noValidate>
-      {priceVariantLabel && (
-        <div className="bg-cz-accent/10 border border-cz-accent/30 rounded-lg px-3 py-2 text-cz-1 text-sm">
-          <span className="text-cz-3 text-xs">{t("form.priceVariantPrefix")}</span>{" "}
-          <span className="font-semibold">{priceVariantLabel}</span>
-        </div>
-      )}
-
+    <form onSubmit={handleSubmit} className="bg-cz-card border border-cz-border rounded-cz p-5 sm:p-6 flex flex-col gap-6" noValidate>
       {/* ----- Kontakt ----- */}
       <fieldset className="flex flex-col gap-3">
         <legend className="text-cz-1 text-base font-semibold mb-1">{t("form.contactLegend")}</legend>
@@ -431,7 +429,7 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null 
       </div>
 
       {submitErr && (
-        <div className="bg-cz-danger-bg border border-cz-danger/30 rounded-lg px-4 py-2.5 text-cz-danger text-sm">
+        <div className="bg-cz-danger-bg border border-cz-danger/30 rounded-cz px-4 py-2.5 text-cz-danger text-sm">
           {submitErr.message}
         </div>
       )}
@@ -439,10 +437,9 @@ export default function FounderSupporterWaitlistForm({ priceVariantLabel = null 
       <button
         type="submit"
         disabled={submitting}
-        className="w-full bg-cz-accent text-cz-on-accent font-bold rounded-lg py-3 text-sm
+        className="w-full bg-cz-accent text-cz-on-accent font-bold rounded-cz py-3 text-sm
           tracking-wide hover:brightness-110 transition-all
-          disabled:opacity-50 disabled:cursor-not-allowed
-          shadow-[0_4px_20px_rgba(232,197,71,0.2)]"
+          disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {submitting ? t("form.submitLoading") : t("form.submit")}
       </button>

@@ -1,0 +1,192 @@
+{
+  "page": {
+    "title": "Rules",
+    "subtitle": "The authoritative reference for Cycling Zone's limits, rates and formulas.",
+    "intro": "This page is the source of truth for the game's numbers. The Help page explains how to do things; this page lists what the limits and rates actually are. Where a number is set by an admin (auction times, emergency-loan rates) it can change between seasons, and those are noted as such.",
+    "faqLinkIntro": "Related Help questions",
+    "lastVerified": "Numbers verified against the game code."
+  },
+  "sections": {
+    "squad": {
+      "label": "Squad & roster",
+      "blocks": {
+        "cap": {
+          "title": "Squad cap",
+          "text": "You can hold a maximum of {squadCap} riders, the same in every division. There is no minimum: you can sell down to 0 riders without penalty."
+        },
+        "window": {
+          "title": "Transfer-window buffer",
+          "text": "While a transfer window is open you may temporarily go {windowBuffer} riders over the cap (up to {squadCapPlusBuffer}). When the window closes the surplus is auto-sold back down to {squadCap}."
+        },
+        "enforcement": {
+          "title": "Over-cap enforcement",
+          "text": "When the window closes, every rider over the cap triggers an auto-sale of your most recently acquired rider for full market value, plus a fine of {squadFine} CZ$ and {squadPenaltyPoints} penalty points in the standings per excess rider."
+        },
+        "academyExempt": {
+          "title": "Academy riders are separate",
+          "text": "Academy riders never count towards the {squadCap}-rider senior cap and are never auto-sold by squad enforcement. They have their own 8-place academy cap."
+        }
+      }
+    },
+    "economy": {
+      "label": "Economy",
+      "blocks": {
+        "startingBalance": {
+          "title": "Starting balance",
+          "text": "Every team starts with {startingBalance} CZ$. CZ$ is the in-game currency, earned by playing and never bought with real money."
+        },
+        "sponsor": {
+          "title": "Sponsor income",
+          "text": "Season-1 sponsor income is scaled by division so a competent team is sustainable: Division 1 {sponsorD1} CZ$, Division 2 {sponsorD2} CZ$, Division 3 {sponsorD3} CZ$. The final payout is capped at {sponsorCeilingS1} CZ$ in season 1 and {sponsorCeilingS2} CZ$ from season 2 onwards (after board modifiers)."
+        },
+        "upkeep": {
+          "title": "Upkeep",
+          "text": "Each season your team pays a fixed operating cost (upkeep) at season start, scaled by division so higher divisions pay more. The exact figures are a balance lever the developer tunes between seasons; you always see the amount booked in your Finance log as 'upkeep'."
+        },
+        "salary": {
+          "title": "Rider salary",
+          "text": "A rider's salary is frozen when you sign them at {salaryRatePct}% of their market value at that moment, and does not change automatically afterwards. Academy riders use a separate youth rate (see Academy)."
+        },
+        "negativeInterest": {
+          "title": "Negative-balance interest",
+          "text": "If your balance is negative at season start, {negativeInterestPct}% interest is added on top of the shortfall."
+        },
+        "debtCeiling": {
+          "title": "Debt ceiling",
+          "text": "Each division has a maximum debt: Division 1 {debtD1} CZ$, Division 2 {debtD2} CZ$, Division 3 {debtD3} CZ$. New loans are rejected if the loan plus its fee would push you over the ceiling. Automatic emergency loans can exceed it, but you get a warning and must cut costs."
+        },
+        "emergencyLoan": {
+          "title": "Emergency loans",
+          "text": "Emergency loans carry a fee and interest set in the loan configuration (currently around 15% each). These rates are admin-configurable and may change; the loan form on the Finance page always shows the current numbers."
+        },
+        "divisionBonus": {
+          "title": "Division bonus (season end)",
+          "text": "A one-time bonus paid at season end based on your final placing in your division:",
+          "rows": [
+            ["Place", "Division 1", "Division 2", "Division 3"],
+            ["1st", "{bonusD1P1} CZ$", "{bonusD2P1} CZ$", "{bonusD3P1} CZ$"],
+            ["2nd", "{bonusD1P2} CZ$", "{bonusD2P2} CZ$", "{bonusD3P2} CZ$"],
+            ["3rd", "{bonusD1P3} CZ$", "{bonusD2P3} CZ$", "{bonusD3P3} CZ$"],
+            ["4th", "{bonusD1P4} CZ$", "{bonusD2P4} CZ$", "—"]
+          ]
+        }
+      }
+    },
+    "auctions": {
+      "label": "Auctions & bidding",
+      "blocks": {
+        "duration": {
+          "title": "Auction length",
+          "text": "An auction runs for {auctionActiveHours} active hours. Night hours don't count: weekdays (Mon–Fri) are active 16:00–22:00, weekends (Sat–Sun) 08:00–23:00. These windows are admin-configurable."
+        },
+        "minBid": {
+          "title": "Minimum bid",
+          "text": "Your bid must be at least {minBidStep} CZ$ above the current price. If no one has bid yet, you can match the asking price."
+        },
+        "extension": {
+          "title": "Last-minute extension",
+          "text": "A bid placed in the final {auctionExtensionMinutes} minutes extends the auction so others get a chance to respond. No sniping in the last second."
+        },
+        "proxy": {
+          "title": "Auto-bidding & reserved balance",
+          "text": "You can set an auto-bid cap and the system bids up to it on your behalf. Active auctions where you lead count as reserved balance and a reserved squad slot at the same time, so you can't overcommit beyond your available funds."
+        }
+      }
+    },
+    "transfers": {
+      "label": "Transfers & deadlines",
+      "blocks": {
+        "contractInherited": {
+          "title": "Contracts transfer as-is",
+          "text": "When a rider changes team (by transfer, swap or auction sale) the buyer takes over the existing contract unchanged. Salary and contract length are never recalculated on a deal."
+        },
+        "loansCount": {
+          "title": "Loans count towards the cap",
+          "text": "Active loan deals count towards your squad size, so a full squad can be rejected on loans, auctions or other incoming deals."
+        },
+        "deadlineWarnings": {
+          "title": "Deadline-day timeline",
+          "text": "Approaching the close, the Deadline Day board shows your zone (green/yellow/red). Within 5 minutes of the close time the window locks, a Final Whistle report is posted, squad enforcement runs, and about 10–15 minutes later the next season starts with sponsor money landing on every team."
+        }
+      }
+    },
+    "races": {
+      "label": "Races & points",
+      "blocks": {
+        "prize": {
+          "title": "Prize money",
+          "text": "Prize money is paid per result: points for the placing × {prizePerPoint} CZ$. Only races with a race class (Tour de France, WorldTour, ProSeries, etc.) generate prize money; races without a class give 0."
+        },
+        "resultType": {
+          "title": "Result type",
+          "text": "A one-day race's result counts as a general-classification (GC) result. The result type is only a label: prize money depends on the points table for the placing, not the type."
+        },
+        "freeAgentPrize": {
+          "title": "Riders without a team",
+          "text": "Prize money earned by riders who aren't on a manager team raises their market value but is never paid out to anyone. Unowned riders get more valuable, but no team receives the cash."
+        }
+      }
+    },
+    "season": {
+      "label": "Season & promotion",
+      "blocks": {
+        "structure": {
+          "title": "Division structure",
+          "text": "There are {divisions} divisions. Division {minDivision} is the top; Division {maxDivision} is the bottom. Each upper division targets {divisionCapacity} real teams; the bottom division is overflow and can grow past that."
+        },
+        "promotion": {
+          "title": "Promotion & relegation",
+          "text": "Promotion and relegation start from season {firstPromotionSeason}. Seasons 1 and 2 end without division changes to let the league settle first. From then on, the top teams move up and the bottom teams move down at season end."
+        },
+        "transition": {
+          "title": "Manual season change",
+          "text": "Moving to a new season is a deliberate manual admin action, never an automatic cron. Window-close, the final whistle and squad checks remain automatic."
+        }
+      }
+    },
+    "academy": {
+      "label": "Academy",
+      "blocks": {
+        "slots": {
+          "title": "Academy size",
+          "text": "Your academy holds up to {academySlots} young riders (a hard cap), separate from your senior squad."
+        },
+        "age": {
+          "title": "Age range",
+          "text": "Academy riders are aged {academyMinAge}–{academyMaxAge}. Younger prospects get a youth multiplier on development that tapers towards age 22."
+        },
+        "salary": {
+          "title": "Youth salary & contracts",
+          "text": "Academy riders are paid {academySalaryPct}% of their market value and sign {academyContractLength}-season youth contracts."
+        },
+        "drift": {
+          "title": "Upkeep (drift)",
+          "text": "Each filled academy place costs {academyDrift} CZ$ per season, charged at season start. A small academy (3–4 places) is comfortably affordable in every division; a full 8-place academy is a deliberate, heavier investment."
+        }
+      }
+    },
+    "fairPlay": {
+      "label": "Fair play",
+      "blocks": {
+        "starProtection": {
+          "title": "Star-rider protection",
+          "text": "A rider whose market value is at least {starValue} CZ$ counts as a star and is protected from forced sales. This is the same value you see in the rider's profile."
+        },
+        "noBoardForBots": {
+          "title": "AI, bank & frozen teams",
+          "text": "AI teams, the bank and frozen teams never get board features; those are manager-only. They also never trigger board consequences."
+        }
+      }
+    }
+  },
+  "academyDisabledNote": "The Academy launches with the relaunch. The limits below are final and shown for reference; the feature isn't live yet.",
+  "faqLinks": {
+    "minBidAmount": "How much do I need to bid above the current price?",
+    "debtCeiling": "What is the debt ceiling, and when does it apply?",
+    "prizeMoneyFaq": "What is prize money, and when is it paid out?",
+    "divisionBonusFaq": "What is the division bonus, and when is it paid out?",
+    "squadEnforcementFaq": "What happens if I'm over max riders at deadline?",
+    "auctionExpiry": "When does an auction expire?",
+    "deadlineTimelineFaq": "What exactly happens when the transfer window closes?"
+  }
+}

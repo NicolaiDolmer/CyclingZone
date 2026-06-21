@@ -8,10 +8,10 @@
     "points": "Points tables and prize formula"
   },
   "tabs": {
-    "calendar": "📅 Calendar",
-    "library": "📚 Library",
-    "world": "🌍 World calendar",
-    "points": "💰 Points & prizes"
+    "calendar": "Calendar",
+    "library": "Library",
+    "world": "World calendar",
+    "points": "Points & prizes"
   },
   "raceType": {
     "stageRace": "Stage race",
@@ -51,7 +51,6 @@
     "points": "{count} pt"
   },
   "empty": {
-    "icon": "🏁",
     "noRacesSeason": "No races this season yet",
     "addRaceAdmin": "Add races in the Admin panel",
     "noRacesMatch": "No races match the filters",
@@ -200,6 +199,22 @@
     "stageProfile": {
       "label": "Terrain",
       "note": "Indicative terrain category. Full elevation profiles arrive later."
+    },
+    "stageSchedule": {
+      "title": "Stage schedule",
+      "subtitle": "Each stage runs at a fixed time (Copenhagen).",
+      "nextStageLabel": "Next stage",
+      "countdownPrefix": "in",
+      "countdownDays": "{count, plural, one {# day} other {# days}}",
+      "countdownHours": "{count, plural, one {# hour} other {# hours}}",
+      "countdownMinutes": "{count, plural, one {# min} other {# min}}",
+      "startingNow": "Starting now",
+      "stageLabel": "Stage {number}",
+      "done": "Done",
+      "live": "Live",
+      "today": "Today",
+      "tomorrow": "Tomorrow",
+      "timezoneNote": "Times shown in Copenhagen time (CET/CEST)."
     },
     "profileType": {
       "flat": "Flat",

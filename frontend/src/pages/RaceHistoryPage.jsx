@@ -6,6 +6,7 @@ import RiderLink from "../components/RiderLink";
 import TeamLink from "../components/TeamLink";
 import { Flag } from "../components/Flag";
 import { formatNumber } from "../lib/intl";
+import { FlagIcon } from "../components/ui";
 
 export default function RaceHistoryPage() {
   const { t } = useTranslation("races");
@@ -60,7 +61,7 @@ export default function RaceHistoryPage() {
           rider: res.rider,
           rider_name: res.rider
             ? `${res.rider.firstname} ${res.rider.lastname}`
-            : (res.rider_name || "—"),
+            : (res.rider_name || "–"),
           stage_wins: 0,
           gc_wins: 0,
           top3: 0,
@@ -100,7 +101,7 @@ export default function RaceHistoryPage() {
     <div className="max-w-4xl mx-auto">
       <Link to="/races?tab=library" className="text-xs text-cz-accent-t hover:underline mb-4 inline-block">{t("history.backToLibrary")}</Link>
       <div className="text-center py-16 text-cz-3">
-        <p className="text-4xl mb-3">🏁</p>
+        <FlagIcon size={36} className="mx-auto mb-3" aria-hidden="true" />
         <p>{t("empty.noHistory", { name: raceName })}</p>
       </div>
     </div>
@@ -123,7 +124,7 @@ export default function RaceHistoryPage() {
 
       <div className="grid md:grid-cols-2 gap-4">
         {/* Editions list */}
-        <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+        <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
           <div className="px-4 py-3 border-b border-cz-border">
             <h2 className="font-semibold text-cz-1 text-sm">{t("history.editions")}</h2>
           </div>
@@ -147,7 +148,7 @@ export default function RaceHistoryPage() {
                       </RiderLink>
                       <p className="text-cz-3 text-[10px]">
                         <TeamLink id={ed.winner.rider?.team?.id} className="hover:text-cz-accent-t transition-colors">
-                          {ed.winner.rider?.team?.name || ed.winner.team_name || "—"}
+                          {ed.winner.rider?.team?.name || ed.winner.team_name || "–"}
                         </TeamLink>
                       </p>
                     </div>
@@ -161,7 +162,7 @@ export default function RaceHistoryPage() {
         </div>
 
         {/* Best riders */}
-        <div className="bg-cz-card border border-cz-border rounded-xl overflow-hidden">
+        <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
           <div className="px-4 py-3 border-b border-cz-border">
             <h2 className="font-semibold text-cz-1 text-sm">{t("history.bestRiders")}</h2>
             <p className="text-cz-3 text-xs">{t("history.bestRidersSub")}</p>
@@ -204,14 +205,15 @@ export default function RaceHistoryPage() {
 
       {/* Accumulated bar chart */}
       {riderStats.length > 0 && riderStats[0].total_points > 0 && (
-        <div className="bg-cz-card border border-cz-border rounded-xl p-5">
+        <div className="bg-cz-card border border-cz-border rounded-cz p-5">
           <h2 className="font-semibold text-cz-1 text-sm mb-0.5">{t("history.accumulatedTitle")}</h2>
           <p className="text-cz-3 text-xs mb-5">{t("history.accumulatedSub")}</p>
           <div className="space-y-3">
             {riderStats.map((s, i) => {
               const pct = maxPoints > 0 ? (s.total_points / maxPoints) * 100 : 0;
               const lastName = s.rider_name.split(" ").slice(-1)[0];
-              const barColor = i === 0 ? "#e8c547" : i === 1 ? "#94a3b8" : i === 2 ? "#b45309" : "#e2e8f0";
+              // 2-farve-system: guld bærer rang-hierarkiet via faldende opacitet (tema-bevidst).
+              const barColor = i === 0 ? "rgb(var(--accent))" : i === 1 ? "rgb(var(--accent) / 0.6)" : i === 2 ? "rgb(var(--accent) / 0.4)" : "rgb(var(--accent) / 0.25)";
               return (
                 <div key={s.rider?.id || s.rider_name} className="flex items-center gap-3">
                   <div className="w-28 text-xs text-cz-2 truncate text-right flex-shrink-0">
