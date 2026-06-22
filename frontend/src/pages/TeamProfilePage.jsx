@@ -127,15 +127,19 @@ export default function TeamProfilePage() {
   const hasTransfers = incomingRiders.length > 0 || outgoingRiders.length > 0;
   const totalValue = currentRiders.reduce((s, r) => s + getRiderMarketValue(r), 0);
 
+  // #1675: squad-fanen viser en bred trup-tabel (15 evne-kolonner) — den bruger fuld
+  // content-bredde (Layout giver /teams/:id max-w-full, samme som "/team"). Header,
+  // sæson-boks, tabs + resultat-/transfer-faner cappes til en læsbar kolonne.
+  const isSquadTab = activeTab === "squad";
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className={isSquadTab ? "max-w-full" : "max-w-4xl mx-auto"}>
       <button onClick={() => navigate(-1)}
         className="text-cz-2 hover:text-cz-1 text-sm mb-5 flex items-center gap-2 transition-colors">
         {t("profile.back")}
       </button>
 
       {/* Header */}
-      <div className="bg-cz-card border border-cz-border rounded-cz p-6 mb-4">
+      <div className="bg-cz-card border border-cz-border rounded-cz p-6 mb-4 max-w-4xl">
         <div className="flex items-start justify-between">
           <div>
             <div className="flex items-center gap-3 mb-1 flex-wrap">
@@ -170,7 +174,7 @@ export default function TeamProfilePage() {
 
       {/* Season standing */}
       {standing && (
-        <div className="bg-cz-card border border-cz-border rounded-cz p-5 mb-4">
+        <div className="bg-cz-card border border-cz-border rounded-cz p-5 mb-4 max-w-4xl">
           <div className="flex items-center gap-2 mb-3 flex-wrap">
             <h2 className="text-cz-1 font-semibold text-sm">{t("profile.seasonResults")}</h2>
             {/* #1095: tydeliggør HVILKEN sæson resultaterne gælder + om den er afsluttet */}
@@ -204,7 +208,7 @@ export default function TeamProfilePage() {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-4">
+      <div className="flex gap-2 mb-4 max-w-4xl">
         {[
           { key: "squad", label: t("profile.tabSquad", { count: currentRiders.length }) },
           { key: "results", label: t("profile.tabResults") },
