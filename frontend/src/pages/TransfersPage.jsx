@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
@@ -1184,6 +1184,11 @@ export default function TransfersPage() {
   function setTab(key) {
     setSearchParams(key === DEFAULT_TAB ? {} : { tab: key }, { replace: true });
   }
+  // #1569: en ny spiller har ALLE handels-faner tomme (ingen tilbud/swaps/loans/
+  // archive), så default-fanen 'received' var en tom blindgyde. Når data er loadet
+  // og alle handels-faner er tomme — og manageren ikke selv har deep-linket en
+  // fane — defaulter vi ÉN gang til 'market'-fanen, hvor der faktisk er ryttere.
+  const didDefaultTabRef = useRef(false);
   const [listings, setListings] = useState([]);
   const [sentOffers, setSentOffers] = useState([]);
   const [receivedOffers, setReceivedOffers] = useState([]);
@@ -1210,6 +1215,24 @@ export default function TransfersPage() {
   }
 
   useEffect(() => { loadAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // #1569: én-skuds default-til-'market' når alle handels-faner er tomme.
+  // Gates på: data loadet, intet eksplicit ?tab= i URL'en, og alle handels-
+  // arrays tomme. Ref'en sikrer at vi kun gør det én gang.
+  useEffect(() => {
+    if (loading || didDefaultTabRef.current || tabParam) return;
+    const allTradeTabsEmpty =
+      receivedOffers.length === 0 &&
+      sentOffers.length === 0 &&
+      archivedReceivedOffers.length === 0 &&
+      archivedSentOffers.length === 0 &&
+      receivedSwaps.length === 0 &&
+      sentSwaps.length === 0 &&
+      lendingLoans.length === 0 &&
+      borrowingLoans.length === 0;
+    didDefaultTabRef.current = true;
+    if (allTradeTabsEmpty) setTab("market");
+  }, [loading, tabParam, receivedOffers, sentOffers, archivedReceivedOffers, archivedSentOffers, receivedSwaps, sentSwaps, lendingLoans, borrowingLoans]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function loadAll() {
     setLoading(true);
@@ -1714,6 +1737,9 @@ export default function TransfersPage() {
 
           {tab === "market" && (
             <div>
+              {/* #1569: kort intro så nye spillere forstår transferlistens marked
+                  (vs. auktioner) + at swaps/loans er valgfri. */}
+              <p className="text-cz-3 text-xs mb-3">{t("marketIntro")}</p>
               <RiderFilters
                 filters={riderFilters.filters}
                 onChange={riderFilters.onChange}

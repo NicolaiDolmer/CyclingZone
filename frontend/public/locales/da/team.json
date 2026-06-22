@@ -31,6 +31,7 @@
     "emptyState": "Din trup er tom",
     "emptyStateBody": "Skriv dine første ryttere fra markedet og begynd at bygge dit hold.",
     "emptyStateCta": "Find ryttere",
+    "emptyStateCtaAuctions": "Gå til auktioner",
     "emptyView": "Ingen ryttere matcher den nuværende visning.",
     "headers": {
       "nation": "Nation",

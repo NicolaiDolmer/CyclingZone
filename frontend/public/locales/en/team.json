@@ -31,6 +31,7 @@
     "emptyState": "Your squad is empty",
     "emptyStateBody": "Sign your first riders from the market to start building your team.",
     "emptyStateCta": "Browse riders",
+    "emptyStateCtaAuctions": "Go to auctions",
     "emptyView": "No riders match the current view.",
     "headers": {
       "nation": "Nation",

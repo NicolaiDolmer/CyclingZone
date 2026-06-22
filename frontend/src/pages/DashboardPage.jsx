@@ -2,7 +2,6 @@
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { Link, useNavigate } from "react-router-dom";
-import OnboardingModal from "../components/OnboardingModal";
 import OnboardingProgressCard from "../components/OnboardingProgressCard";
 import OnboardingCompletionCard from "../components/OnboardingCompletionCard";
 import { FinanceForecastBadge } from "../components/FinanceForecastCard";
@@ -72,7 +71,6 @@ export default function DashboardPage() {
 
   const [seasonInfo, setSeasonInfo] = useState(null);
   const [transferWindow, setTransferWindow] = useState(null);
-  const [showOnboarding, setShowOnboarding] = useState(false);
   const [discordNudgeDismissed, setDiscordNudgeDismissed] = useState(
     () => typeof window !== "undefined" && localStorage.getItem("cz-dashboard-discord-nudge-dismissed") === "1"
   );
@@ -213,11 +211,9 @@ export default function DashboardPage() {
       .order("created_at", { ascending: false }).limit(1).single();
     setTransferWindow(tw);
 
-    // Onboarding — show if user has no riders
-    const riderCount = (ridersRes.data || []).length;
-    if (riderCount === 0 && !localStorage.getItem("cz_onboarding_done")) {
-      setShowOnboarding(true);
-    }
+    // #1140: OnboardingModal (det redundante 3-korts intro-modal) er konsolideret
+    // væk — OnboardingProgressCard nedenfor er nu den ENESTE kanoniske dashboard-
+    // onboarding-UI. Vi viser ikke længere et separat modal for ny-spillere.
 
     // Discord nudge — vises hvis brugeren ikke har discord_id (og ikke har dismissed)
     if (!discordNudgeDismissed && token) {
@@ -491,12 +487,9 @@ export default function DashboardPage() {
         );
       })()}
 
-      {showOnboarding && (
-        <OnboardingModal onClose={() => {
-          setShowOnboarding(false);
-          localStorage.setItem("cz_onboarding_done", "1");
-        }} />
-      )}
+      {/* #1140: OnboardingModal er konsolideret væk — OnboardingProgressCard
+          ovenfor er den kanoniske onboarding-UI. Filen beholdes (genbruges evt.
+          senere), men monteres ikke længere her. */}
 
       {/* Season Status Banner — links to the race calendar (#1421: was a dead Card) */}
       {seasonInfo && (

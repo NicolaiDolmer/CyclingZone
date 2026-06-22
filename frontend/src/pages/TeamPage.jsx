@@ -277,9 +277,14 @@ function SquadTab({ riders, scouting, onSelectRider, windowOpen }) {
             <BikeIcon size={40} className="mx-auto mb-3 text-cz-3" />
             <p className="text-cz-2 font-medium">{t("squad.emptyState")}</p>
             <p className="mt-1 text-sm">{t("squad.emptyStateBody")}</p>
-            <Link to="/riders" className={`${buttonClass({ variant: "primary", size: "sm" })} mt-4 inline-flex`}>
-              {t("squad.emptyStateCta")}
-            </Link>
+            <div className="mt-4 flex items-center justify-center gap-2 flex-wrap">
+              <Link to="/riders" className={`${buttonClass({ variant: "primary", size: "sm" })} inline-flex`}>
+                {t("squad.emptyStateCta")}
+              </Link>
+              <Link to="/auctions" className={`${buttonClass({ variant: "secondary", size: "sm" })} inline-flex`}>
+                {t("squad.emptyStateCtaAuctions")}
+              </Link>
+            </div>
           </div>
         ) : (
           /* Trup har ryttere, men den valgte visning/filter er tom. */

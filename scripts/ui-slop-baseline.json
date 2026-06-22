@@ -13,12 +13,6 @@
       "colour": 0,
       "emoji": 2
     },
-    "frontend/public/locales/da/dashboard.json": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 1
-    },
     "frontend/public/locales/da/notifications.json": {
       "hex": 0,
       "slop": 0,
@@ -61,12 +55,6 @@
       "colour": 0,
       "emoji": 2
     },
-    "frontend/public/locales/en/dashboard.json": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 1
-    },
     "frontend/public/locales/en/notifications.json": {
       "hex": 0,
       "slop": 0,
@@ -102,24 +90,6 @@
       "slop": 0,
       "colour": 0,
       "emoji": 0
-    },
-    "frontend/src/components/OnboardingCompletionCard.jsx": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 4
-    },
-    "frontend/src/components/OnboardingModal.jsx": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 3
-    },
-    "frontend/src/components/OnboardingProgressCard.jsx": {
-      "hex": 0,
-      "slop": 0,
-      "colour": 0,
-      "emoji": 1
     },
     "frontend/src/components/RiderFilters.jsx": {
       "hex": 0,

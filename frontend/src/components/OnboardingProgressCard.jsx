@@ -30,7 +30,8 @@ export default function OnboardingProgressCard({ progress, onDismiss }) {
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-cz-accent-t text-base">🚴</span>
+            {/* #1569: editorial accent-markør i stedet for emoji-eyebrow (anti-AI-slop) */}
+            <span className="w-1 h-4 bg-cz-accent rounded-full flex-shrink-0" aria-hidden="true" />
             <p className="text-cz-1 text-sm font-semibold">
               {t("onboardingProgress.header", { completed: completed_count, total: total_count })}
             </p>
