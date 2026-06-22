@@ -294,6 +294,7 @@
     "nation": "Nation",
     "rider": "Rytter",
     "seller": "Sælger",
+    "age": "Alder",
     "listed": "Til salg",
     "value": "Værdi",
     "salary": "Løn",

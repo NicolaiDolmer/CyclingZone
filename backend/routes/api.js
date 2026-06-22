@@ -2271,7 +2271,7 @@ router.get("/transfers", requireAuth, async (req, res) => {
   const { data, error } = await supabase
     .from("transfer_listings")
     .select(`id, asking_price, status, created_at,
-      rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, is_u25, nationality_code,
+      rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, is_u25, nationality_code, birthdate,
         rider_derived_abilities(climbing, time_trial, flat, tempo, sprint, acceleration, punch, endurance, recovery, durability, descending, cobblestone, positioning, aggression, tactics)),
       seller:seller_team_id(id, name)`)
     .eq("status", status)
