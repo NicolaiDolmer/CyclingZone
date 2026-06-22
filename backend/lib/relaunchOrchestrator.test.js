@@ -30,7 +30,11 @@ function makeDeps(order) {
     clearAllAiTeams: async () => { order.push({ name: "clearAiTeams" }); return { teams: 1 }; },
     generateAndAllocateAiTeams: async () => { order.push({ name: "aiTeams" }); return { created: 72, removed: 0, pools: [] }; },
     seedSeasonZero: async (_s, opts = {}) => { order.push({ name: "seedSeason0", dryRun: opts.dryRun }); return { seasonId: computeSeasonUuid(0) }; },
-    transitionToNextSeason: async () => { order.push({ name: "transition" }); return { ok: true }; },
+    // transitionToNextSeason returnerer { ok, plan, log }; orchestrator udvinder den nye
+    // sæson-id fra plan.to_season.id til kalender-materialiseringen.
+    transitionToNextSeason: async () => { order.push({ name: "transition" }); return { ok: true, plan: { to_season: { id: computeSeasonUuid(1), number: 1 } } }; },
+    // #1704: per-division-kalender materialiseres EFTER transitionen (ét options-objekt-kald).
+    materializeSeasonCalendar: async (opts = {}) => { order.push({ name: "calendar", seasonId: opts.seasonId, dryRun: opts.dryRun }); return { racesInserted: 42, stageProfiles: 100, stageSchedules: 100, pools: [] }; },
     // #1680: bestyrelse låst OP fra start i sæson 1 (startSequentialNegotiation-primitiv).
     startSequentialNegotiation: async () => { order.push({ name: "unlockBoard" }); return { window_state: "pending_5yr", baseline_rows_deleted: 2 }; },
     runAcademyIntake: rec("academy", { teams: 2, candidates: 8 }),
@@ -50,7 +54,7 @@ test("runRelaunchSeason1 (dryRun): sekvens + dryRun-prop, INGEN reset/sæson-tra
   // dryRun propagerer til alle byggeklodser der modtager opts
   assert.ok(order.filter((o) => "dryRun" in o && o.dryRun !== undefined).every((o) => o.dryRun === true));
   // summary har en nøgle pr. fase
-  for (const k of ["retireLegacy", "reset", "population", "backfills", "allocation", "leaguePools", "aiTeams", "season", "academy", "contracts", "founderBadge"]) {
+  for (const k of ["retireLegacy", "reset", "population", "backfills", "allocation", "leaguePools", "aiTeams", "season", "calendar", "academy", "contracts", "founderBadge"]) {
     assert.ok(k in summary, `summary mangler ${k}`);
   }
   // academy-trinet er flag-gated; uden academy_enabled=true i mock → skipped-form
@@ -64,7 +68,7 @@ test("runRelaunchSeason1 (apply): kalder reset + seedSeason0 + transition i korr
   const names = order.map((o) => o.name);
   assert.deepEqual(names, [
     "retire", "reset", "population", "physiology", "types", "baseValue", "allocation",
-    "leaguePools", "clearAiTeams", "aiTeams", "seedSeason0", "transition", "unlockBoard", "contracts", "founder",
+    "leaguePools", "clearAiTeams", "aiTeams", "seedSeason0", "transition", "calendar", "unlockBoard", "contracts", "founder",
   ]);
 });
 
@@ -87,6 +91,30 @@ test("runRelaunchSeason1 (dryRun): springer board-oplåsning over", async () => 
   const summary = await runRelaunchSeason1({}, { dryRun: true, startDate: "2026-06-20", deps: makeDeps(order) });
   assert.ok(!order.some((o) => o.name === "unlockBoard"), "unlockBoard må ikke kaldes i dry-run");
   assert.ok("skipped" in (summary.boardUnlock || {}), "summary.boardUnlock skal markere dry-run-skip");
+});
+
+// #1704: per-division-kalender materialiseres EFTER sæson-transitionen (sæson 1 er aktiv +
+// AI-fyld kørt = puljerne har felter at køre løbene i), med sæson-id udvundet fra transitionen
+// og dryRun=false. IKKE flag-gated her (relaunchen materialiserer altid eksplicit).
+test("runRelaunchSeason1 (apply): materialiserer kalender efter transition med sæson-1-id", async () => {
+  const order = [];
+  const summary = await runRelaunchSeason1({}, { dryRun: false, startDate: "2026-06-20", deps: makeDeps(order) });
+  const idxTransition = order.findIndex((o) => o.name === "transition");
+  const idxCalendar = order.findIndex((o) => o.name === "calendar");
+  assert.ok(idxCalendar > idxTransition, "kalender skal materialiseres EFTER sæson-transitionen");
+  const calCall = order.find((o) => o.name === "calendar");
+  assert.equal(calCall?.seasonId, computeSeasonUuid(1), "kalender skal bruge den nye sæson-1-id fra transitionen");
+  assert.equal(calCall?.dryRun, false, "apply → materialisér med writes");
+  assert.equal(summary.calendar?.racesInserted, 42, "summary skal vise materialiserings-resultatet");
+});
+
+// Dry-run må ikke skrive — kalender-materialiseringen springes over (kræver den aktive
+// sæson-1-row + AI-fyldte puljer der først findes efter apply).
+test("runRelaunchSeason1 (dryRun): springer kalender-materialisering over", async () => {
+  const order = [];
+  const summary = await runRelaunchSeason1({}, { dryRun: true, startDate: "2026-06-20", deps: makeDeps(order) });
+  assert.ok(!order.some((o) => o.name === "calendar"), "calendar må ikke kaldes i dry-run");
+  assert.ok("skipped" in (summary.calendar || {}), "summary.calendar skal markere dry-run-skip");
 });
 
 // Regression #1191: seedSeasonZero defaulter til dryRun=true — apply-stien SKAL
