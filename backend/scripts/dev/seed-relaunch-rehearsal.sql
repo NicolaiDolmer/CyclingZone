@@ -9,6 +9,30 @@
 -- Deterministiske UUID'er: users 00000000-0000-4000-8000-0000000000NN,
 -- teams 00000000-0000-4000-9000-0000000000NN (NN = 01..30 hex).
 
+-- ── A0 · form-frys-struktur (#1608/#1685) — 4-tier/15-pulje pyramide ─────────
+-- Seeden er fra FØR form-frysen; disse idempotente statements sikrer at puljerne
+-- + pulje-kolonnerne findes på branchen, så orchestrator-trin 5.5 (allocateLeague-
+-- Pools) + 5.6 (AI-fyld, #1688) kan køre. Spejler database/2026-06-21-league-
+-- divisions-pyramid.sql (idempotent → harmløs hvis branch-skemaet allerede har dem).
+CREATE TABLE IF NOT EXISTS league_divisions (
+  id SERIAL PRIMARY KEY,
+  tier INTEGER NOT NULL CHECK (tier IN (1, 2, 3, 4)),
+  pool_index INTEGER NOT NULL,
+  label TEXT NOT NULL,
+  UNIQUE (tier, pool_index)
+);
+INSERT INTO league_divisions (tier, pool_index, label) VALUES
+  (1, 0, 'Division 1'),
+  (2, 0, 'Division 2 — A'), (2, 1, 'Division 2 — B'),
+  (3, 0, 'Division 3 — A'), (3, 1, 'Division 3 — B'), (3, 2, 'Division 3 — C'), (3, 3, 'Division 3 — D'),
+  (4, 0, 'Division 4 — A'), (4, 1, 'Division 4 — B'), (4, 2, 'Division 4 — C'), (4, 3, 'Division 4 — D'),
+  (4, 4, 'Division 4 — E'), (4, 5, 'Division 4 — F'), (4, 6, 'Division 4 — G'), (4, 7, 'Division 4 — H')
+ON CONFLICT (tier, pool_index) DO NOTHING;
+ALTER TABLE teams DROP CONSTRAINT IF EXISTS teams_division_check;
+ALTER TABLE teams ADD CONSTRAINT teams_division_check CHECK (division IN (1, 2, 3, 4));
+ALTER TABLE teams ADD COLUMN IF NOT EXISTS league_division_id INTEGER REFERENCES league_divisions(id);
+ALTER TABLE season_standings ADD COLUMN IF NOT EXISTS league_division_id INTEGER REFERENCES league_divisions(id);
+
 -- ── A1 · auth.users (kræves af xp_log/player_events-FK'er) ──────────────────
 INSERT INTO auth.users (instance_id, id, aud, role, email, encrypted_password,
   email_confirmed_at, created_at, updated_at, raw_app_meta_data, raw_user_meta_data,
