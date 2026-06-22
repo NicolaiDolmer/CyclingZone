@@ -31,6 +31,7 @@ import {
   computeReservedBalance,
   computeWorstCaseCommitment,
   getAuctionBidIssue,
+  getAuctionBidSquadBlock,
   getAuctionBidWarnings,
   getAuctionInitialBidderId,
   getAuctionStartIssue,
@@ -1821,14 +1822,30 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
 
   // Bagudkompat: aktivLedingExceptCurrent bruges af getAuctionBidWarnings nedenfor.
   const activeLeadingExceptCurrent = leadingExceptThis;
+  const alreadyLeadingThisAuction = auction.current_bidder_id === req.team.id;
 
-  // Squad-cap er ikke længere en hard block (#29). Konverteret til warning som UI viser
-  // efter bud er placeret. Manager må gerne lede 11+ auktioner under vinduet — squadEnforcement
-  // auto-sælger og bøder kun hvis trupstørrelsen stadig er over max ved vindue-luk.
+  // #1694: HARD block når truppen er fuld — efter #16 (vinduet afskaffet) afviser
+  // finalize over-cap-vindere hardt, så bud-gaten skal matche (reservér én plads pr.
+  // ført auktion). Et forsvars-bud på en auktion man allerede fører blokeres aldrig.
+  const squadBlock = getAuctionBidSquadBlock({
+    teamState,
+    activeLeadingCount: activeLeadingExceptCurrent.length,
+    alreadyLeadingThisAuction,
+  });
+  if (squadBlock) {
+    return res.status(400).json({
+      error: `Dit hold er fyldt (${squadBlock.maxRiders} ryttere). Sælg en rytter, før du byder på en ny.`,
+      errorCode: "squad_full_bid",
+      errorParams: { maxRiders: squadBlock.maxRiders },
+    });
+  }
+
+  // #29: ud over hard-blokken ovenfor viser vi stadig en warning for grænse-tilfælde
+  // (fx forsvars-bud der lige rammer cap'en) som UI kan overbringe efter buddet.
   const bidWarnings = getAuctionBidWarnings({
     teamState,
     activeLeadingCount: activeLeadingExceptCurrent.length,
-    alreadyLeadingThisAuction: auction.current_bidder_id === req.team.id,
+    alreadyLeadingThisAuction,
   });
 
   // S-02e · Hard-block ved aktivt lag 2 (salary cap) eller lag 3 (signing-restriktion).
@@ -2059,7 +2076,24 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
     });
   }
 
+  // #1694: et autobud der placerer et åbningsbud (openingBidAmount !== null) gør
+  // manageren til fører → reservér en plads, samme hard-cap som direkte bud. Et
+  // autobud sat MENS man allerede fører (openingBidAmount === null) højner kun
+  // loftet og fylder ingen ny plads, så det gates ikke.
   if (openingBidAmount !== null) {
+    const squadBlock = getAuctionBidSquadBlock({
+      teamState,
+      activeLeadingCount: leadingAuctions.filter((row) => row.id !== req.params.id).length,
+      alreadyLeadingThisAuction: false,
+    });
+    if (squadBlock) {
+      return res.status(400).json({
+        error: `Dit hold er fyldt (${squadBlock.maxRiders} ryttere). Sælg en rytter, før du byder på en ny.`,
+        errorCode: "squad_full_bid",
+        errorParams: { maxRiders: squadBlock.maxRiders },
+      });
+    }
+
     const signingBlock = await assertSigningAllowed({
       supabase,
       buyerTeamId: req.team.id,

@@ -63,6 +63,7 @@
     "cannot_afford_offer": "Du har ikke råd til dette tilbud",
     "squad_full": "Dit hold er fyldt ({effectiveCap} ryttere, Div {division} cap {maxRiders})",
     "squad_full_buffer": "Dit hold er fyldt ({effectiveCap} ryttere, Div {division} cap {maxRiders} + {buffer} buffer i transfervinduet)",
+    "squad_full_bid": "Dit hold er fyldt ({maxRiders} ryttere). Sælg en rytter, før du byder på en ny.",
     "offer_not_found": "Tilbud ikke fundet",
     "not_involved_offer": "Ikke involveret i dette tilbud",
     "only_closed_offers_archivable": "Kun afsluttede tilbud kan arkiveres",

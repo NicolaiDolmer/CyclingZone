@@ -63,6 +63,7 @@
     "cannot_afford_offer": "You can't afford this offer",
     "squad_full": "Your squad is full ({effectiveCap} riders, Div {division} cap {maxRiders})",
     "squad_full_buffer": "Your squad is full ({effectiveCap} riders, Div {division} cap {maxRiders} + {buffer} buffer during the transfer window)",
+    "squad_full_bid": "Your squad is full ({maxRiders} riders). Sell a rider before you bid on a new one.",
     "offer_not_found": "Offer not found",
     "not_involved_offer": "You're not involved in this offer",
     "only_closed_offers_archivable": "Only closed offers can be archived",

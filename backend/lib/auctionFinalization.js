@@ -261,7 +261,7 @@ async function finalizeYouthAuctionRecord({
     bidderId,
     "auction_won",
     "Du vandt ungdomsauktionen! 🎉",
-    `${rider.firstname} ${rider.lastname} er nu i dit akademi for ${price} pts`,
+    `${rider.firstname} ${rider.lastname} er nu i dit akademi for ${price} CZ$`,
     auction.id,
     { riderId: rider.id }
   );
@@ -409,7 +409,7 @@ async function finalizeAuctionRecord({
         effectiveBidderId,
         "auction_lost",
         "Auktion annulleret",
-        `Du havde ikke råd til ${auction.rider.firstname} ${auction.rider.lastname}. Saldo: ${buyer?.balance || 0} pts`,
+        `Du havde ikke råd til ${auction.rider.firstname} ${auction.rider.lastname}. Saldo: ${buyer?.balance || 0} CZ$`,
         auction.id,
         { riderId: auction.rider.id }
       );
@@ -574,7 +574,7 @@ async function finalizeAuctionRecord({
       effectiveBidderId,
       "auction_won",
       "Du vandt auktionen! 🎉",
-      `${auction.rider.firstname} ${auction.rider.lastname} er nu på dit hold for ${price} pts`,
+      `${auction.rider.firstname} ${auction.rider.lastname} er nu på dit hold for ${price} CZ$`,
       auction.id,
       { riderId: auction.rider.id }
     );
@@ -591,8 +591,8 @@ async function finalizeAuctionRecord({
         "auction_won",
         "Auktion afsluttet",
         sellerOwned
-          ? `${auction.rider.firstname} ${auction.rider.lastname} solgt for ${price} pts`
-          : `${auction.rider.firstname} ${auction.rider.lastname} blev købt for ${price} pts`,
+          ? `${auction.rider.firstname} ${auction.rider.lastname} solgt for ${price} CZ$`
+          : `${auction.rider.firstname} ${auction.rider.lastname} blev købt for ${price} CZ$`,
         auction.id,
         { riderId: auction.rider.id }
       );

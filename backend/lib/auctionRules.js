@@ -285,6 +285,47 @@ export function isExpectedPriceStale(expectedPrice, currentPrice) {
   return expected !== Number(currentPrice);
 }
 
+// #1694 HARD block: efter #16 (transfervinduet afskaffet) håndhæver
+// auctionFinalization squad-cap'en HARDT ved tildeling (softCapBuffer:0), fordi
+// squadEnforcement-cron'ens vindue-luk — der før auto-solgte over-cap-ryttere —
+// aldrig fyrer længere (vinduet er altid åbent). Den gamle "byd frit, ryd op ved
+// vindue-luk"-model er derfor død. Bud-gaten SKAL nu matche finalize-gaten:
+// reservér én plads pr. auktion manageren fører (worst case: alle vindes),
+// symmetrisk med pengereservationen i computeWorstCaseCommitment. Ellers kan en
+// manager byde sig til flere vindere end der er plads til og TABE en auktion de
+// fører, fordi pladsen forsvinder ved tildeling (#1694b) — eller få en vundet
+// rytter afvist trods plads, fordi UI lod dem byde (#1694a).
+//
+// baseCount = future_count (SAMME tæller som getIncomingSquadViolation i finalize,
+// så gaterne aldrig divergerer). alreadyLeadingThisAuction tæller IKKE en ekstra
+// plads: at højne sit eget bud på en auktion man allerede fører fylder ikke en ny
+// plads, så et forsvars-bud blokeres aldrig (kerne-kravet i #1694b). activeLeadingCount
+// = antal andre auktioner manageren fører (EXKL. denne).
+//
+// Restrisiko (bevidst ikke dækket her, kræver cross-kanal pladsreservation):
+// hvis truppen fyldes via en ANDEN kanal (akademi-graduation, lån) EFTER manageren
+// allerede fører ≥1 auktion, kan finalize stadig afvise. Sjældent; finalize har
+// fortsat sin hard-gate som defense-in-depth.
+export function getAuctionBidSquadBlock({
+  teamState,
+  activeLeadingCount = 0,
+  alreadyLeadingThisAuction = false,
+} = {}) {
+  const maxRiders = teamState?.squad_limits?.max;
+  if (!maxRiders) return null;
+
+  const baseCount = teamState?.future_count ?? teamState?.total_count ?? 0;
+  const reservedWins = alreadyLeadingThisAuction
+    ? activeLeadingCount
+    : activeLeadingCount + 1;
+  const projected = baseCount + reservedWins;
+
+  if (projected > maxRiders) {
+    return { code: "squad_full_bid", maxRiders, projected };
+  }
+  return null;
+}
+
 // Non-blocking advarsler: manager må stadig byde, men UI viser konsekvensen.
 export function getAuctionBidWarnings({
   teamState,

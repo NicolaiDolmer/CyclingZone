@@ -4,6 +4,41 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "5.96",
+    "date": "2026-06-22",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "A full squad now blocks new bids instead of losing the auction",
+          "body": "When your squad is full you can no longer place a bid on a new rider, with a clear message to sell a rider first. Before, you could keep bidding and then lose an auction you were leading because the slot disappeared when the auction settled. A rider you win is never turned away when there is room."
+        },
+        "da": {
+          "title": "Fuldt hold blokerer nu nye bud i stedet for at du taber auktionen",
+          "body": "Når dit hold er fuldt, kan du ikke længere byde på en ny rytter, og du får en klar besked om at sælge en rytter først. Før kunne du blive ved med at byde og så tabe en auktion du førte, fordi pladsen forsvandt da auktionen blev gjort op. En rytter du vinder, bliver aldrig afvist når der er plads."
+        },
+        "refs": [1694]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "Won-rider price shown in CZ$",
+          "body": "The notification when you win an auction now shows the price in CZ$ instead of \"pts\"."
+        },
+        "da": {
+          "title": "Pris på vundet rytter vises i CZ$",
+          "body": "Beskeden når du vinder en auktion viser nu prisen i CZ$ i stedet for \"pts\"."
+        },
+        "refs": [1693]
+      }
+    ]
+  },
+  {
     "version": "5.95",
     "date": "2026-06-22",
     "label": "Beta",

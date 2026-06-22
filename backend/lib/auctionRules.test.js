@@ -9,6 +9,7 @@ import {
   computeWorstCaseCommitment,
   getAuctionInitialBidderId,
   getAuctionBidIssue,
+  getAuctionBidSquadBlock,
   getAuctionBidWarnings,
   getAuctionStartIssue,
   getAuctionStartPriceIssue,
@@ -266,6 +267,61 @@ test("getAuctionBidWarnings returns empty when within squad cap", () => {
   });
 
   assert.equal(warnings.length, 0);
+});
+
+test("getAuctionBidSquadBlock blocks a new bid when future_count + this win exceeds max (#1694b)", () => {
+  // Fuld trup (30/30), ingen andre føringer → et nyt bud ville give 31 vindere → block.
+  const block = getAuctionBidSquadBlock({
+    teamState: { future_count: 30, squad_limits: { max: 30 } },
+    activeLeadingCount: 0,
+    alreadyLeadingThisAuction: false,
+  });
+  assert.equal(block?.code, "squad_full_bid");
+  assert.equal(block?.maxRiders, 30);
+});
+
+test("getAuctionBidSquadBlock allows a new bid when exactly one slot is free", () => {
+  // 29/30, fører 0 andre → dette bud reserverer den sidste plads → tilladt.
+  const block = getAuctionBidSquadBlock({
+    teamState: { future_count: 29, squad_limits: { max: 30 } },
+    activeLeadingCount: 0,
+    alreadyLeadingThisAuction: false,
+  });
+  assert.equal(block, null);
+});
+
+test("getAuctionBidSquadBlock reserves a slot per led auction (can't bid on more than slots)", () => {
+  // 29/30 (1 plads), fører allerede 1 anden auktion → et NYT bud ville kræve 2 pladser → block.
+  const block = getAuctionBidSquadBlock({
+    teamState: { future_count: 29, squad_limits: { max: 30 } },
+    activeLeadingCount: 1,
+    alreadyLeadingThisAuction: false,
+  });
+  assert.equal(block?.code, "squad_full_bid");
+});
+
+test("getAuctionBidSquadBlock never blocks a defensive bid on an auction you already lead (#1694b)", () => {
+  // Fuld trup, men manageren FØRER allerede denne auktion → at højne buddet fylder
+  // ingen ny plads, så det må aldrig blokeres (ellers taber man en auktion man fører).
+  const block = getAuctionBidSquadBlock({
+    teamState: { future_count: 30, squad_limits: { max: 30 } },
+    activeLeadingCount: 0,
+    alreadyLeadingThisAuction: true,
+  });
+  assert.equal(block, null);
+});
+
+test("getAuctionBidSquadBlock falls back to total_count and no-ops without squad_limits", () => {
+  // Legacy-callsites uden future_count bruger total_count.
+  assert.equal(
+    getAuctionBidSquadBlock({
+      teamState: { total_count: 30, squad_limits: { max: 30 } },
+      activeLeadingCount: 0,
+    })?.code,
+    "squad_full_bid",
+  );
+  // Uden squad_limits er der intet at håndhæve.
+  assert.equal(getAuctionBidSquadBlock({ teamState: { future_count: 99 } }), null);
 });
 
 test("computeReservedBalance uses proxy_max when proxy >= current_price", () => {
