@@ -12,11 +12,12 @@
 //
 // Determinisme: seed pr. pulje = baseSeed XOR pool.id (league_divisions.id er SERIAL),
 // så hver pulje får en varieret men reproducerbar kalender (samme per-pulje-seed-mønster
-// som aiTeamGenerator). selectSeasonRaces er allerede seed-stabil (#1124).
+// som aiTeamGenerator). makeStableShuffler er allerede seed-stabil (#1124).
 
 import {
-  selectSeasonRaces,
+  makeStableShuffler,
   DEFAULT_RACE_DAYS_TARGET,
+  DEFAULT_OVERSHOOT_TOLERANCE,
   FIRST_SEASON_STAGE_RACE_QUOTA,
 } from "./seasonRaceSelection.js";
 
@@ -46,26 +47,42 @@ export function poolHasCalendar(tier, realManagerCount = 0) {
 }
 
 /**
- * Generér en kalender (udvalgte løb) pr. LIVE pulje — GLOBALT de-duplikeret (#1714).
+ * Generér en kalender (udvalgte løb) pr. LIVE pulje — GLOBALT de-duplikeret OG
+ * JÆVNT FORDELT på tværs af puljer der konkurrerer om samme klasse-segment (#1714).
  *
- * Hvert løb (pool_race_id) vælges højst af ÉN pulje på tværs af hele sæsonen: et
- * globalt `Set` af allerede-valgte id'er fjernes fra kataloget før hver efterfølgende
- * puljes `selectSeasonRaces`-kald. Det forhindrer dubletter på tværs af puljer som
- * den tidligere uafhængige-pr-pulje-udvælgelse gav (#1714: fx Volta Algarvia i 5 puljer).
+ * Hvert løb (pool_race_id) vælges højst af ÉN pulje på tværs af hele sæsonen, og
+ * puljer i samme segment får nogenlunde lige mange løb i stedet for at de tidlige
+ * puljer tømmer segmentet (det gamle "fyld-til-target-sekventielt" gav fx 28 løb i
+ * pulje 6 mod 9 i pulje 7, og 0 løb i en hel division — uacceptabelt).
  *
- * Udvælgelses-rækkefølge (deterministisk): mest-begrænset-først — puljer med
- * FÆRREST etapeløb-kandidater i deres klasse-segment vælger først, så de knappe
- * etapeløb (kataloget har ~49 etapeløb total < 7 puljer × 8 quota = 56) ikke
- * "stjæles" af bredere puljer. Ties brydes på tier (top først) så pool.id (stabilt).
+ * ALGORITME — round-robin i to faser på tværs af ALLE live puljer:
  *
- * Determinisme: per-pulje-seed = baseSeed XOR pool.id (uændret). Udvælgelses-
- * rækkefølgen afhænger kun af (pools, catalog) → samme input+seed = samme output.
+ *   For hver pulje bygges to deterministisk prioriterede kandidatlister (filtreret
+ *   på puljens tier-klasser, seedet pr. pulje = baseSeed XOR pool.id):
+ *     • stageQueue  — etapeløb (knappe, værdifulde)
+ *     • fillQueue   — endagsløb + alle resterende løb (til fyld)
+ *
+ *   FASE A (etapeløb): runder hvor hver pulje på skift tager sit næste ikke-taget
+ *   etapeløb fra sit segment, indtil alle har nået stageRaceQuota, segmentet er tomt,
+ *   eller raceDaysTarget nås. Et globalt `taken`-Set giver unikhed → den knappe pulje
+ *   af etapeløb (kataloget har ~49 < 7 puljer × 8 quota = 56) deles JÆVNT (±1 pr. pulje).
+ *
+ *   FASE B (fyld): runder hvor hver pulje på skift tager sit næste ikke-taget løb fra
+ *   sin fillQueue, indtil raceDaysTarget eller kandidaterne er udtømt. Også jævnt:
+ *   ingen pulje fyldes helt op før de andre får en chance.
+ *
+ * Overshoot-disciplin matcher selectSeasonRaces: et løb der ville skyde over
+ * raceDaysTarget + overshootTolerance springes over (puljen kan tage et mindre løb
+ * senere i runden / en senere runde).
+ *
+ * Determinisme: per-pulje-seed = baseSeed XOR pool.id (uændret). Pulje-rækkefølgen i
+ * hver runde er fast (tier, så pool.id) → samme (pools, catalog, baseSeed) = samme output.
  *
  * GRACEFUL FALLBACK (ingen tavs beskæring): hvis et klasse-segment løber tør for
- * etapeløb, får de sidste puljer færre etapeløb end target (suppleret med endags-
- * fyld). Hver beskåret pulje rapporteres i det vedhæftede `truncated`-array, så
- * calleren kan logge det. Return-værdien er ET ARRAY af kalendre (bagud-kompatibelt
- * — materializeren itererer direkte) MED en `truncated`-property hængt på.
+ * etapeløb, får puljerne færre etapeløb end target (suppleret med endags-fyld i fase B).
+ * Hver beskåret pulje rapporteres i det vedhæftede `truncated`-array. Return-værdien er
+ * ET ARRAY af kalendre (bagud-kompatibelt — materializeren itererer direkte) MED en
+ * `truncated`-property hængt på.
  *
  * @param {object}   args
  * @param {Array}    args.pools            league_divisions-rækker beriget med
@@ -73,6 +90,7 @@ export function poolHasCalendar(tier, realManagerCount = 0) {
  * @param {Array}    args.catalog          race_pool-rækker: [{ id, name, race_class, race_type, stages }]
  * @param {object}   [args.tierRaceClasses] tier → includeClasses[] (default DEFAULT_TIER_RACE_CLASSES)
  * @param {number}   [args.raceDaysTarget]  løbsdage pr. division (default 60)
+ * @param {number}   [args.overshootTolerance] hvor mange dage over target et løb må presse (default 5)
  * @param {number}   [args.stageRaceQuota]  garanterede etapeløb pr. division (default 8)
  * @param {number}   [args.baseSeed]        sæson-seed; pr-pulje-seed = baseSeed XOR pool.id
  * @returns {Array<{ leagueDivisionId, tier, label, races, totalRaceDays, candidateCount, stageRaceCount }>
@@ -83,80 +101,184 @@ export function generateDivisionCalendars({
   catalog = [],
   tierRaceClasses = DEFAULT_TIER_RACE_CLASSES,
   raceDaysTarget = DEFAULT_RACE_DAYS_TARGET,
+  overshootTolerance = DEFAULT_OVERSHOOT_TOLERANCE,
   stageRaceQuota = FIRST_SEASON_STAGE_RACE_QUOTA,
   baseSeed = 1,
 } = {}) {
+  const target = Number(raceDaysTarget) || DEFAULT_RACE_DAYS_TARGET;
+  const tolerance = Number(overshootTolerance) || 0;
+  const quota = Number(stageRaceQuota) || 0;
+
   // Kun live puljer indgår i udvælgelsen (samme prædikat som før).
   const livePools = pools.filter(
     (p) => poolHasCalendar(p.tier, Number(p.realManagerCount) || 0),
   );
 
-  // Mest-begrænset-først: tæl hver puljes etapeløb-kandidater i dens klasse-segment.
-  // Puljer med færrest alternativer er mest sårbare for at blive tømt af andre puljer,
-  // så de vælger først. Deterministisk: (færrest kandidater, så top-tier, så pool.id).
-  const stageCandidateCount = (pool) => {
+  // Round-robin-rækkefølge: fast og deterministisk (top-tier først, så pool.id). Det
+  // er KUN rækkefølgen puljerne tager tur i hver runde; HVOR MANGE hver får styres af
+  // round-robin'en, ikke fyld-til-target.
+  const roundRobinOrder = livePools
+    .slice()
+    .sort((a, b) => {
+      if (a.tier !== b.tier) return a.tier - b.tier; // top-tier først
+      return Number(a.id) - Number(b.id);             // stabil tie-break
+    });
+
+  const stagesOf = (race) => Number(race.stages) || 1;
+
+  // Pr.-pulje arbejds-state: deterministisk prioriterede kandidat-køer (filtreret på
+  // tier-klasser + seedet pr. pulje), plus akkumulerede udvalg.
+  const stateById = new Map();
+  for (const pool of roundRobinOrder) {
     const includeClasses = tierRaceClasses[pool.tier] || null;
     const includeSet = includeClasses ? new Set(includeClasses) : null;
-    return catalog.filter(
-      (r) => r.race_type === "stage_race" && (!includeSet || includeSet.has(r.race_class)),
-    ).length;
-  };
-  const order = livePools
-    .map((pool) => ({ pool, stageCands: stageCandidateCount(pool) }))
-    .sort((a, b) => {
-      if (a.stageCands !== b.stageCands) return a.stageCands - b.stageCands; // færrest først
-      if (a.pool.tier !== b.pool.tier) return a.pool.tier - b.pool.tier;     // top-tier først
-      return Number(a.pool.id) - Number(b.pool.id);                          // stabil tie-break
+    const seed = (Number(baseSeed) ^ Number(pool.id)) >>> 0;
+    const shuffle = makeStableShuffler(seed);
+
+    const inSegment = catalog.filter((r) => !includeSet || includeSet.has(r.race_class));
+    // Etapeløb først jævnt (fase A), derefter endagsløb/resten som fyld (fase B).
+    const stageQueue = shuffle(inSegment.filter((r) => r.race_type === "stage_race"));
+    const fillQueue = shuffle(inSegment.filter((r) => r.race_type !== "stage_race"));
+
+    stateById.set(pool.id, {
+      pool,
+      stageQueue,
+      stageCursor: 0,
+      fillQueue,
+      fillCursor: 0,
+      selected: [],
+      selectedIds: new Set(),
+      totalRaceDays: 0,
+      stageRaceCount: 0,
+      candidateCount: inSegment.length,
     });
+  }
 
   const taken = new Set(); // globale pool_race_id'er der allerede er fordelt
-  const byPoolId = new Map();
+
+  const fits = (st, race) => st.totalRaceDays + stagesOf(race) <= target + tolerance;
+  const addToPool = (st, race) => {
+    st.selected.push(race);
+    st.selectedIds.add(race.id);
+    st.totalRaceDays += stagesOf(race);
+    taken.add(race.id);
+  };
+
+  // Tag puljens næste tilgængelige (ikke-taget, ikke-overshoot, room) løb fra en kø.
+  // Avancerer cursoren forbi løb der allerede er taget af en anden pulje. Returnerer
+  // true hvis et løb blev tilføjet i denne tur.
+  const takeNext = (st, queueKey, cursorKey, { capStageRace = false } = {}) => {
+    const queue = st[queueKey];
+    while (st[cursorKey] < queue.length) {
+      const race = queue[st[cursorKey]];
+      if (taken.has(race.id)) {
+        st[cursorKey]++; // taget af en anden pulje → spring permanent over
+        continue;
+      }
+      if (st.totalRaceDays >= target) return false; // ingen mening at fylde mere
+      if (!fits(st, race)) {
+        // Ville skyde over loftet — lad den blive, men prøv et senere (mindre) løb.
+        // Vi rykker IKKE cursoren permanent (et senere løb kan passe nu); i stedet
+        // scanner vi fremad efter et løb der passer i denne tur.
+        let look = st[cursorKey] + 1;
+        while (look < queue.length) {
+          const alt = queue[look];
+          if (taken.has(alt.id)) { look++; continue; }
+          if (fits(st, alt)) {
+            // Byt: tag alt nu (swap så cursor-rækkefølgen forbliver deterministisk
+            // for resten af køen). Vi fjerner alt fra sin plads og indsætter ved cursor.
+            queue.splice(look, 1);
+            queue.splice(st[cursorKey], 0, alt);
+            break;
+          }
+          look++;
+        }
+        if (look >= queue.length) return false; // intet passer længere i denne kø
+        // efter swap peger cursor nu på alt → fald igennem og tag det
+      }
+      const chosen = queue[st[cursorKey]];
+      if (capStageRace && st.stageRaceCount >= quota) return false; // quota nået
+      st[cursorKey]++;
+      addToPool(st, chosen);
+      if (chosen.race_type === "stage_race") st.stageRaceCount++;
+      return true;
+    }
+    return false;
+  };
+
+  // FASE A — etapeløb round-robin op til quota per pulje (eller segment tomt / target).
+  if (quota > 0) {
+    let progressed = true;
+    while (progressed) {
+      progressed = false;
+      for (const pool of roundRobinOrder) {
+        const st = stateById.get(pool.id);
+        if (st.stageRaceCount >= quota) continue;
+        if (st.totalRaceDays >= target) continue;
+        if (takeNext(st, "stageQueue", "stageCursor", { capStageRace: true })) {
+          progressed = true;
+        }
+      }
+    }
+  }
+
+  // FASE B — fyld round-robin op mod raceDaysTarget (endagsløb + resterende etapeløb).
+  // Resterende ikke-taget etapeløb foldes ind i fyld-fasen så de ikke spildes (men
+  // de fordeles stadig jævnt via round-robin'en).
+  for (const pool of roundRobinOrder) {
+    const st = stateById.get(pool.id);
+    const leftoverStages = st.stageQueue
+      .slice(st.stageCursor)
+      .filter((r) => !taken.has(r.id) && !st.selectedIds.has(r.id));
+    if (leftoverStages.length > 0) {
+      // Behold deterministisk rækkefølge: append efter de planlagte endagsløb-fyld.
+      st.fillQueue = st.fillQueue.slice(st.fillCursor).concat(leftoverStages);
+      st.fillCursor = 0;
+    }
+  }
+
+  let progressed = true;
+  while (progressed) {
+    progressed = false;
+    for (const pool of roundRobinOrder) {
+      const st = stateById.get(pool.id);
+      if (st.totalRaceDays >= target) continue;
+      if (takeNext(st, "fillQueue", "fillCursor")) {
+        progressed = true;
+      }
+    }
+  }
+
+  // Byg output + truncated-rapport.
   const truncated = [];
-
-  for (const { pool } of order) {
-    const includeClasses = tierRaceClasses[pool.tier] || null;
-    const seed = (Number(baseSeed) ^ Number(pool.id)) >>> 0;
-
-    // Ekskludér allerede-valgte løb fra kataloget for denne pulje (global de-dup).
-    const remainingCatalog = catalog.filter((r) => !taken.has(r.id));
-
-    const result = selectSeasonRaces({
-      pool: remainingCatalog,
-      includeClasses,
-      raceDaysTarget,
-      stageRaceQuota,
-      seed,
-    });
-
-    for (const r of result.selected) taken.add(r.id);
-
-    const stageRaceCount = result.selected.filter((r) => r.race_type === "stage_race").length;
-
+  const byPoolId = new Map();
+  for (const pool of roundRobinOrder) {
+    const st = stateById.get(pool.id);
     byPoolId.set(pool.id, {
       leagueDivisionId: pool.id,
       tier: pool.tier,
       label: pool.label ?? null,
-      races: result.selected,
-      totalRaceDays: result.totalRaceDays,
-      candidateCount: result.candidateCount,
-      stageRaceCount,
+      races: st.selected,
+      totalRaceDays: st.totalRaceDays,
+      candidateCount: st.candidateCount,
+      stageRaceCount: st.stageRaceCount,
     });
 
     // Beskæring: fik puljen færre etapeløb end quota (target)? Rapportér eksplicit.
-    if (stageRaceCount < stageRaceQuota) {
+    if (st.stageRaceCount < quota) {
       truncated.push({
         leagueDivisionId: pool.id,
         tier: pool.tier,
         label: pool.label ?? null,
-        stageRaceTarget: stageRaceQuota,
-        stageRacesSelected: stageRaceCount,
-        stageRacesShort: stageRaceQuota - stageRaceCount,
+        stageRaceTarget: quota,
+        stageRacesSelected: st.stageRaceCount,
+        stageRacesShort: quota - st.stageRaceCount,
       });
     }
   }
 
-  // Bevar input-puljernes rækkefølge i output (ikke udvælgelses-rækkefølgen), så
-  // calleren ser kalendrene i samme orden som før de-dup'en blev indført.
+  // Bevar input-puljernes rækkefølge i output (ikke round-robin-rækkefølgen), så
+  // calleren ser kalendrene i samme orden som før (materializeren itererer direkte).
   const calendars = livePools
     .map((p) => byPoolId.get(p.id))
     .filter(Boolean);

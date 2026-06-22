@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   selectSeasonRaces,
   selectFirstSeasonRaces,
+  makeStableShuffler,
   DEFAULT_RACE_DAYS_TARGET,
   FIRST_SEASON_STAGE_RACE_QUOTA,
 } from "./seasonRaceSelection.js";
@@ -341,6 +342,36 @@ test("determinisme — quota+boost giver samme output ved gentagne kald", () => 
     a.selected.map((r) => r.name),
     b.selected.map((r) => r.name),
   );
+});
+
+// ─── makeStableShuffler (eksporteret helper, #1714) ──────────────────────────
+
+test("makeStableShuffler — deterministisk pr. seed (samme seed → samme rækkefølge)", () => {
+  const arr = Array.from({ length: 20 }, (_, i) =>
+    makeRace({ id: `r${String(i).padStart(2, "0")}`, name: `R${i}`, race_class: "ProSeries", stages: 1 }),
+  );
+  const a = makeStableShuffler(123)(arr).map((r) => r.id);
+  const b = makeStableShuffler(123)(arr).map((r) => r.id);
+  assert.deepEqual(a, b);
+});
+
+test("makeStableShuffler — forskellige seeds → forskellig rækkefølge", () => {
+  const arr = Array.from({ length: 20 }, (_, i) =>
+    makeRace({ id: `r${String(i).padStart(2, "0")}`, name: `R${i}`, race_class: "ProSeries", stages: 1 }),
+  );
+  const a = makeStableShuffler(1)(arr).map((r) => r.id);
+  const b = makeStableShuffler(2)(arr).map((r) => r.id);
+  assert.notDeepEqual(a, b);
+});
+
+test("makeStableShuffler — input-rækkefølge er ligegyldig (sorterer stabilt på key først)", () => {
+  const base = Array.from({ length: 12 }, (_, i) =>
+    makeRace({ id: `r${String(i).padStart(2, "0")}`, name: `R${i}`, race_class: "ProSeries", stages: 1 }),
+  );
+  const reversed = base.slice().reverse();
+  const a = makeStableShuffler(7)(base).map((r) => r.id);
+  const b = makeStableShuffler(7)(reversed).map((r) => r.id);
+  assert.deepEqual(a, b);
 });
 
 test("#1124 — fill er seedet og varieret (ikke alfabetisk)", () => {
