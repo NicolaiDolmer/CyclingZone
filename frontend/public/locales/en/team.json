@@ -59,7 +59,9 @@
     "potentialLabel": "Potential",
     "tabs": {
       "auction": "Auction",
-      "transfer": "Transfer list"
+      "transfer": "Transfer list",
+      "release": "Release",
+      "extend": "Extend contract"
     },
     "auction": {
       "description": "Start auction. Other managers can bid.",
@@ -74,6 +76,25 @@
       "description": "List for sale at a fixed price.",
       "listButton": "List for sale",
       "successMsg": "Listed for sale!"
+    },
+    "release": {
+      "description": "Terminate this rider's contract and let them go as a free agent.",
+      "feeLabel": "Buyout fee",
+      "balanceLabel": "Your balance",
+      "feeHint": "Half a season's salary for each remaining contract season.",
+      "freeHint": "This rider has no salary, so the release is free.",
+      "confirmButton": "Release rider",
+      "cannotAfford": "You can't afford the buyout fee.",
+      "successMsg": "Rider released."
+    },
+    "extend": {
+      "description": "Extend the contract by one season. The salary is renegotiated from the rider's current value.",
+      "currentSalaryLabel": "Current salary",
+      "newSalaryLabel": "New salary",
+      "newContractLabel": "New contract until",
+      "newContractValue": "S{season}",
+      "confirmButton": "Extend contract",
+      "successMsg": "Contract extended."
     },
     "loadingShort": "...",
     "errorPrefix": ""

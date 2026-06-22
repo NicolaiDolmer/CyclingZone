@@ -7,6 +7,8 @@ import {
   pickContractLength,
   computeContractEndSeason,
   contractOnAcquirePatch,
+  computeReleaseBuyoutFee,
+  computeContractExtension,
   runContractSeed,
 } from "./contractSeed.js";
 import { makeRng } from "./fictionalRiderGenerator.js";
@@ -77,6 +79,94 @@ test("contractOnAcquirePatch: kontraktløs + NULL base_value → fallback salary
   assert.equal(patch.salary, 67);
   assert.equal(patch.contract_length, 2);
   assert.equal(patch.contract_end_season, 2);
+});
+
+// ── computeReleaseBuyoutFee (#1719) ─────────────────────────────────────────
+// Buyout-gebyr (ejer-besluttet): round(salary * max(1, contract_end_season -
+// current_season + 1) * 0.5). Manageren betaler en halv sæson-løn pr.
+// resterende sæson på kontrakten (mindst 1 sæson, så gebyret aldrig bliver 0
+// for en udløbet/samme-sæson-kontrakt med løn).
+
+test("computeReleaseBuyoutFee: 0.5 * salary * resterende sæsoner (mindst 1)", () => {
+  // 3 resterende sæsoner (end=5, current=3 → 5-3+1=3): 100k * 3 * 0.5 = 150k
+  assert.equal(computeReleaseBuyoutFee({ salary: 100_000, contractEndSeason: 5, currentSeason: 3 }), 150_000);
+  // 1 resterende (end=3, current=3 → 1): 100k * 1 * 0.5 = 50k
+  assert.equal(computeReleaseBuyoutFee({ salary: 100_000, contractEndSeason: 3, currentSeason: 3 }), 50_000);
+  // 2 resterende (end=4, current=3 → 2): 80k * 2 * 0.5 = 80k
+  assert.equal(computeReleaseBuyoutFee({ salary: 80_000, contractEndSeason: 4, currentSeason: 3 }), 80_000);
+});
+
+test("computeReleaseBuyoutFee: udløbet/forbi kontrakt → gulv på 1 sæson (max(1, ...))", () => {
+  // end < current → resterende ville være <=0, men max(1,...) gør den til 1 sæson.
+  assert.equal(computeReleaseBuyoutFee({ salary: 60_000, contractEndSeason: 2, currentSeason: 4 }), 30_000);
+  // end == current-1 (lige udløbet): 60k * 1 * 0.5 = 30k
+  assert.equal(computeReleaseBuyoutFee({ salary: 60_000, contractEndSeason: 3, currentSeason: 4 }), 30_000);
+});
+
+test("computeReleaseBuyoutFee: NULL/manglende felter → robust (0-salary → 0 gebyr)", () => {
+  assert.equal(computeReleaseBuyoutFee({ salary: 0, contractEndSeason: 5, currentSeason: 1 }), 0);
+  assert.equal(computeReleaseBuyoutFee({ salary: null, contractEndSeason: null, currentSeason: 1 }), 0);
+  // manglende contract_end_season → behandles som 1 resterende sæson (gulvet)
+  assert.equal(computeReleaseBuyoutFee({ salary: 40_000, contractEndSeason: null, currentSeason: 2 }), 20_000);
+});
+
+test("computeReleaseBuyoutFee: rundes til nærmeste heltal", () => {
+  // 33_333 * 1 * 0.5 = 16_666.5 → round → 16_667
+  assert.equal(computeReleaseBuyoutFee({ salary: 33_333, contractEndSeason: 1, currentSeason: 1 }), 16_667);
+});
+
+// ── computeContractExtension (#1720) ────────────────────────────────────────
+// Forlæng kontrakten 1 sæson + genforhandl lønnen fra rytterens aktuelle
+// markedsværdi (samme SALARY_RATE-formel som signering). contract_end_season
+// +1, contract_length +1 (eller min 1 hvis NULL).
+
+test("computeContractExtension: ny løn fra market_value, end+1, length+1", () => {
+  const next = computeContractExtension({
+    market_value: 1_000_000,
+    contract_end_season: 4,
+    contract_length: 2,
+  });
+  assert.equal(next.salary, 67_000); // 6.7% af 1_000_000 (= computeFrozenSalary)
+  assert.equal(next.contract_end_season, 5); // 4 + 1
+  assert.equal(next.contract_length, 3); // 2 + 1
+});
+
+test("computeContractExtension: bruger base_value+prize hvis market_value mangler", () => {
+  const next = computeContractExtension({
+    base_value: 50_000,
+    prize_earnings_bonus: 5_000,
+    contract_end_season: 2,
+    contract_length: 1,
+  });
+  assert.equal(next.salary, 3_685); // 6.7% af (50_000 + 5_000)
+  assert.equal(next.contract_end_season, 3);
+  assert.equal(next.contract_length, 2);
+});
+
+test("computeContractExtension: NULL contract-felter → end baseres på currentSeason, length=1", () => {
+  // Kontraktløs/NULL end: forlængelsen forankres i currentSeason så den nye
+  // udløbssæson altid ligger i fremtiden (currentSeason + 1).
+  const next = computeContractExtension({
+    market_value: 200_000,
+    contract_end_season: null,
+    contract_length: null,
+    currentSeason: 3,
+  });
+  assert.equal(next.salary, 13_400); // 6.7% af 200_000
+  assert.equal(next.contract_end_season, 4); // currentSeason(3) + 1
+  assert.equal(next.contract_length, 1);
+});
+
+test("computeContractExtension: udløbet kontrakt forlænges fra currentSeason, ikke fortid", () => {
+  // end(2) < currentSeason(5): forlæng fra current, ikke fra fortidens end.
+  const next = computeContractExtension({
+    market_value: 100_000,
+    contract_end_season: 2,
+    contract_length: 2,
+    currentSeason: 5,
+  });
+  assert.equal(next.contract_end_season, 6); // max(end, currentSeason) + 1 = 5 + 1
+  assert.equal(next.contract_length, 3);
 });
 
 // ── runContractSeed wrapper-tests ──────────────────────────────────────────────

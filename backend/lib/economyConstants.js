@@ -233,6 +233,12 @@ export const FINANCE_RELATED_ENTITY = Object.freeze({
 
 // finance_transactions.reason_code — hvorfor pengene flyttede.
 // Klar til 07d Fase B / 07c-RPC der populerer audit-kolonner i alle 16 write-paths.
+//
+// NB om "MUST matche database CHECK constraints" (gælder type/actor_type/
+// related_entity_type): reason_code har BEVIDST INGEN CHECK-constraint i
+// databasen (verificeret 2026-06-22: database/2026-05-09-audit-log-foundation.sql
+// tilføjer KUN CHECK på actor_type + related_entity_type — reason_code er en
+// fri nullable TEXT). En NY reason-værdi her kræver derfor INGEN migration.
 export const FINANCE_REASON = Object.freeze({
   // Sæson-baserede payouts (cron)
   SEASON_START_SPONSOR: "season_start_sponsor",
@@ -253,6 +259,8 @@ export const FINANCE_REASON = Object.freeze({
   TRANSFER_PURCHASE: "transfer_purchase",
   TRANSFER_SALE: "transfer_sale",
   SWAP_CASH_DELTA: "swap_cash_delta",
+  // Rytter-handlinger (manager-initieret)
+  RIDER_RELEASE_BUYOUT: "rider_release_buyout", // #1719 fyrings-/opsigelsesgebyr
   // Lejeaftaler
   LOAN_FEE_PAID: "loan_fee_paid",
   LOAN_FEE_RECEIVED: "loan_fee_received",

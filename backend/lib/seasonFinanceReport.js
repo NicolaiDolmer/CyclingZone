@@ -24,6 +24,7 @@ export const REASON_LABEL = Object.freeze({
   [FINANCE_REASON.TRANSFER_PURCHASE]: "Transfer-køb",
   [FINANCE_REASON.TRANSFER_SALE]: "Transfer-salg",
   [FINANCE_REASON.SWAP_CASH_DELTA]: "Bytte (kontant-difference)",
+  [FINANCE_REASON.RIDER_RELEASE_BUYOUT]: "Opsigelsesgebyr",
   [FINANCE_REASON.LOAN_FEE_PAID]: "Lejegebyr betalt",
   [FINANCE_REASON.LOAN_FEE_RECEIVED]: "Lejegebyr modtaget",
   [FINANCE_REASON.LOAN_FEE_REFUNDED]: "Lejegebyr refunderet",
