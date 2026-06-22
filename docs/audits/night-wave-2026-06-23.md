@@ -40,6 +40,16 @@
 2. **Vercel hobby rate-limit ALLEREDE ramt** ("retry in 24 hours") fra dagens mange merges/preview-builds. Konsekvens: frontend-prod frosset på sidste gode deploy; frontend-merges (inkl. ejerens morgen-merges) går IKKE live før limit'en nulstiller (~24t) eller Vercel Pro. **Backend (Railway) upåvirket** — backend-merges går live. Vercel er ikke en required check.
 3. **#1580/#1591 work-already-done:** det mekaniske arbejde var merged tidligere (#1638-1654 + #1645); agenten verificerede + postede status-kommentarer. Ét åbent punkt på #1591 (founder-copy "Free players stay competitive, forever" — grænser til forbudt "free forever", afventer ejer-formulering).
 
+## Adversarisk dybde-review + hærdning (`wf_33c41d0e-548`)
+4 højeste-risiko-PR'er reviewet adversarisk mod prod-DB (read-only); kommentarer postet på hver. **Ingen blockers — alle mergebare.**
+
+| PR | Fokus | Verdict | Handling |
+|---|---|---|---|
+| #1770 (#1676) | balance | ✅ ship-ready | Recovery-model verificeret sund (træthed sidder aldrig fast); 2 kosmetiske lows. |
+| #1767 (#1746) | auth+migration | 🟡 minor → **hærdet** | MEDIUM: username case-insensitiv unikhed ikke DB-håndhævet (TOCTOU, samme klasse som #1264). **Fix: `users_username_lower_unique_idx` tilføjet til migrationen (`937db230`).** Low (e-mail bypasser app-rate-limit) efterladt. |
+| #1763 (#1666) | security | 🟡 minor → **hærdet** | LOW: `GET /api/achievements` lækkede samme secret-felter. **Fix: hideSecret-redaktion tilføjet (`265cf27c`).** Low (fragil guard) efterladt. |
+| #1759 (#1739) | signup-hook | 🟡 minor | LOW: top-up kan lave 23 AI-hold inline ved første signup i tom entry-pulje (ikke nåbar nu — relevant efter relaunch); nedarvet frozen-team-edge. Begge dokumenteret på PR, ikke ændret. |
+
 ## Afvigelser/læringer
 - **Fleet arvede en rød main.** 16 agenter branchede fra en `origin/main` med en pre-eksisterende test-fejl → `frontend-build` rød på alle. **Læring/forslag:** tilføj et `node --test` + build-sanity-tjek mod `origin/main` i `preflight-night-wave.ps1`, så en pre-eksisterende rød main fanges (NO-GO eller auto-fix) FØR en bølge launches — ellers arver hele fleeten fejlen og det ligner 16 separate regressioner.
 - **Canary-gaten holdt** (billig forsikring): #1735 validerede pipelinen før fanout. Worktree-isolation + `agentType: claude` virkede; 15/15 fanout-agenter åbnede PR (én fandt korrekt at arbejdet allerede var gjort).
