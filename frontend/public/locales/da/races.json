@@ -209,7 +209,7 @@
     },
     "stageProfile": {
       "label": "Terræn",
-      "note": "Vejledende terrænkategori. Fulde højdeprofiler kommer senere."
+      "note": "Vejledende terrænkategori baseret på etapens sværhedsgrad."
     },
     "stageSchedule": {
       "title": "Etapeplan",

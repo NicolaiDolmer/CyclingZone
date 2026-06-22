@@ -339,7 +339,7 @@
       },
       "stageProfile": {
         "title": "Terræn på et resultat",
-        "text": "Når du åbner et resultat, viser hver etape et lille terræn-badge med en skematisk silhuet (fladt, kuperet, bjerge, enkeltstart og så videre) plus den sandsynlige finale. Det er en vejledende terrænkategori, ikke en målt højdeprofil med distance og højdemeter. Fulde ruteprofiler kommer med en senere opdatering."
+        "text": "Når du åbner et resultat, viser hver etape et lille terræn-badge med en skematisk silhuet (fladt, kuperet, bjerge, enkeltstart og så videre) plus den sandsynlige finale. Det er en vejledende terrænkategori baseret på etapens sværhedsgrad, ikke en målt højdeprofil med distance og højdemeter."
       },
       "prizeMoney": {
         "title": "Præmiepenge fra løb",

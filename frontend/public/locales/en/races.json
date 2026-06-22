@@ -209,7 +209,7 @@
     },
     "stageProfile": {
       "label": "Terrain",
-      "note": "Indicative terrain category. Full elevation profiles arrive later."
+      "note": "Indicative terrain category based on each stage's difficulty."
     },
     "stageSchedule": {
       "title": "Stage schedule",

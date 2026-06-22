@@ -339,7 +339,7 @@
       },
       "stageProfile": {
         "title": "Terrain on a result",
-        "text": "When you open a result, each stage shows a small terrain badge with a schematic silhouette (flat, hilly, mountain, time trial and so on) plus the likely finale. This is an indicative terrain category, not a measured elevation profile with distance and climbing metres. Full route profiles arrive with a later update."
+        "text": "When you open a result, each stage shows a small terrain badge with a schematic silhouette (flat, hilly, mountain, time trial and so on) plus the likely finale. This is an indicative terrain category based on the stage's difficulty, not a measured elevation profile with distance and climbing metres."
       },
       "prizeMoney": {
         "title": "Prize money from races",
