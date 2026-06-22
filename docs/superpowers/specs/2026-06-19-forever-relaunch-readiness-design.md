@@ -81,6 +81,8 @@ Nu ─────────────────────────�
 
 ## 6. Forever-gate (exit-kriterier — alt grønt før vinduet fyres)
 
+> **✅ GATEN LUKKET — vinduet FYRET 2026-06-22 (ejer-superviseret).** Permanent frisk sæson 1 er live. Backup `cyclingzone-20260622-153339` (`db:verify-restore`: VERIFIED, 0 issues) + PITR (archive_mode=on) = recovery-net. Post-verify grøn: 7 live puljer per-division-kalender (101 løb scheduled + 432 profiler/etape-tider), AI-fyld 143×8, 25 managers i div 3 (div 4 tom headroom), frisk marked 799, founder-badges 25, board pending_5yr, flags on, #1137-progression aktiveret (PR #1711, peakAge=28). Post-verify fandt + fiksede 2 issues: 886 gamle 18/6-test-ryttere retired (frisk marked) + 564 strandede AI-academy-kuld ryddet (`academyHealSweep` is_ai-fix, PR #1711). **Eneste resterende gate-punkt: spiller-comms (#1278) — bevidst udskudt til ejer-koordinering (ejer-valg 22/6).**
+
 1. **WS1 bevist på beta**: løb afvikles + præmier udbetales + sæson-skift kører ≥1 fuld cyklus uden manuel indgriben.
 2. **WS2 + WS3 merged + deployet**.
 3. **WS4**: granit ejer-frosset (§7) + result_type afklaret + START_DATE parameteriseret.
