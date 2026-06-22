@@ -8,7 +8,6 @@ import {
   getOutgoingSquadViolation,
   getTeamMarketState,
   getTransferWindowOpen,
-  TRANSFER_WINDOW_SOFT_CAP_BUFFER,
 } from "./marketUtils.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
 import { contractOnAcquirePatch } from "./contractSeed.js";
@@ -348,16 +347,15 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
     fetchTeamAuctionCommitment(supabase, offer.buyer_team_id),
   ]);
 
-  // #19/#267: soft-cap buffer (+2) gælder kun midt i et åbent vindue. Når vinduet
-  // er lukket (deferRegistration) bruges hard-cap (buffer 0) — samme paritet som
-  // auktions-finalization uden for vinduet.
+  // #16 altid-åben handel: intet transfervindue → ingen vindue-grace → hard cap (buffer 0)
+  // ved selve handlen, samme paritet som auktions-finalization.
   const issue = getTransferExecutionIssue({
     rider,
     sellerState,
     buyerState,
     price,
     buyerCommitment,
-    buyerSoftCapBuffer: deferRegistration ? 0 : TRANSFER_WINDOW_SOFT_CAP_BUFFER,
+    buyerSoftCapBuffer: 0,
   });
 
   if (issue) {

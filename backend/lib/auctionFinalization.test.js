@@ -374,7 +374,7 @@ function createFinalizeAuctionSupabase({
 // over division-cap. Hard-blokade rammer kun hvis køber allerede er på
 // effective cap (#838: alle divisioner max 30 → soft-cap 32). Auctioneer-cron
 // og admin-finalize matcher samme regel.
-test("finalizeAuctionById blocks a winner whose squad already exceeds soft-cap (windowOpen=true)", async () => {
+test("finalizeAuctionById blocks a winner whose squad would exceed the hard cap (#16 always-open)", async () => {
   const auctionUpdates = [];
   const riderUpdates = [];
   const notifications = [];
@@ -430,13 +430,12 @@ test("finalizeAuctionById blocks a winner whose squad already exceeds soft-cap (
   assert.equal(notifications.length, 2);
   assert.deepEqual(riderUpdates, []);
   assert.equal(notifications[0].teamId, "buyer-team");
-  assert.match(notifications[0].message, /32 ryttere/);
-  assert.match(notifications[0].message, /buffer i transfervinduet/);
+  assert.match(notifications[0].message, /maks\. have 30 ryttere/);
 });
 
 // #267: når transfervinduet er lukket (post-cutoff) er hard-cap igen gældende
 // — totalAfter > maxRiders blokker, selv hvis køber er +1 over cap.
-test("finalizeAuctionById hard-caps when transfer window is closed", async () => {
+test("finalizeAuctionById hard-caps at deal time (#16 always-open, no window grace)", async () => {
   const auctionUpdates = [];
   const riderUpdates = [];
   const notifications = [];
@@ -485,15 +484,14 @@ test("finalizeAuctionById hard-caps when transfer window is closed", async () =>
   assert.equal(result.ok, true);
   assert.equal(result.code, "squad_full");
   assert.equal(notifications.length, 2);
-  assert.match(notifications[0].message, /max have 30 ryttere/);
-  assert.match(notifications[0].message, /uden for transfervinduet/);
+  assert.match(notifications[0].message, /maks\. have 30 ryttere/);
   assert.deepEqual(riderUpdates, []);
 });
 
 // #267: køber +1 over hard-cap (D3 har 11) i åbent vindue må gerne vinde
 // auktion. Rytteren transfereres til team_id (windowOpen) og finance/audit
 // skrives som normalt.
-test("finalizeAuctionById allows winner +1 over hard-cap during open window", async () => {
+test("finalizeAuctionById allows a winner up to the hard cap + registers immediately (#16 always-open)", async () => {
   const auctionUpdates = [];
   const teamUpdates = [];
   const riderUpdates = [];
@@ -535,7 +533,7 @@ test("finalizeAuctionById allows winner +1 over hard-cap during open window", as
       },
       teamMarketCounts: {
         "buyer-team": {
-          riderCount: 30, // ved hard-cap, men under soft-cap (30+2=32)
+          riderCount: 29, // +1 vinder = 30 = hard-cap (tilladt; ingen vindue-buffer længere)
           pendingCount: 0,
           activeLoanCount: 0,
         },
@@ -968,7 +966,7 @@ test("finalizeAuctionById closes open transfer listings when the rider is sold a
 // #822 (lukket vindue): salget er bindende selvom rytteren parkeres på
 // pending_team_id — listingen skal stadig lukkes, ellers kan rytteren
 // dobbelt-sælges via transfermarkedet mens auktionen allerede er betalt.
-test("finalizeAuctionById closes open transfer listings even when the window is closed (#822)", async () => {
+test("finalizeAuctionById closes open transfer listings on finalization (#822)", async () => {
   const riderUpdates = [];
   const listingUpdates = [];
 
@@ -1023,10 +1021,11 @@ test("finalizeAuctionById closes open transfer listings even when the window is 
 
   assert.equal(result.ok, true);
   assert.equal(result.code, "completed");
-  // #1309: kontrakt skrives også på den parkerede (lukket-vindue) rytter, fordi
-  // den generiske pending-flush ved vindue-åbning kun flytter team_id.
+  // #16 altid-åben handel: vinderen får rytteren med det samme (team_id), ikke parkeret.
   assert.deepEqual(riderUpdates, [{
-    pending_team_id: "buyer-team",
+    team_id: "buyer-team",
+    pending_team_id: null,
+    acquired_at: "2026-06-10T11:00:00.000Z",
     salary: 67,
     contract_length: 2,
     contract_end_season: 2,

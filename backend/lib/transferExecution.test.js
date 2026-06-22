@@ -4,7 +4,6 @@ import assert from "node:assert/strict";
 import {
   confirmSwapOffer,
   confirmTransferOffer,
-  flushWindowPendingOffers,
   getListingCancelIssue,
   getListingPriceUpdateIssue,
   getLoanCancelIssue,
@@ -507,8 +506,8 @@ function baseDb({ windowStatus }) {
   };
 }
 
-test("#19: confirmTransferOffer betaler + parkerer (pending_team_id) når vinduet er lukket", async () => {
-  const db = baseDb({ windowStatus: "closed" });
+test("#16: confirmTransferOffer registrerer med det samme — selv med en 'closed' transfer_windows-række (altid-åben handel)", async () => {
+  const db = baseDb({ windowStatus: "closed" }); // ignoreres nu — getTransferWindowOpen er altid true
   db.transfer_offers.push({
     id: "offer-1", rider_id: "rider-1", seller_team_id: "seller", buyer_team_id: "buyer",
     offer_amount: 200, counter_amount: null, status: "awaiting_confirmation",
@@ -522,48 +521,23 @@ test("#19: confirmTransferOffer betaler + parkerer (pending_team_id) når vindue
   });
 
   assert.equal(result.ok, true);
-  assert.equal(result.action, "window_pending");
+  assert.equal(result.action, "accepted", "altid-åben → registreres straks, ikke window_pending");
 
   const rider = db.riders.find((r) => r.id === "rider-1");
-  assert.equal(rider.pending_team_id, "buyer", "rytteren skal parkeres til køber");
-  assert.equal(rider.team_id, "seller", "team_id må IKKE flyttes mens vinduet er lukket");
+  assert.equal(rider.team_id, "buyer", "rytteren flyttes med det samme");
+  assert.equal(rider.pending_team_id, null, "intet parkeres");
 
   assert.equal(db.teams.find((t) => t.id === "buyer").balance, 800, "køber betaler nu");
   assert.equal(db.teams.find((t) => t.id === "seller").balance, 700, "sælger får pengene nu");
 
-  assert.equal(db.transfer_offers[0].status, "window_pending");
+  assert.equal(db.transfer_offers[0].status, "accepted");
   assert.equal(supabase._finance.length, 2, "præcis to finance-posteringer (køber + sælger)");
 });
 
-test("#19: flush registrerer uden at flytte penge igen (ingen dobbeltbetaling)", async () => {
-  const db = baseDb({ windowStatus: "closed" });
-  db.transfer_offers.push({
-    id: "offer-1", rider_id: "rider-1", seller_team_id: "seller", buyer_team_id: "buyer",
-    offer_amount: 200, counter_amount: null, status: "awaiting_confirmation",
-    buyer_confirmed: false, seller_confirmed: true,
-  });
-  const supabase = makeSupabase(db);
-
-  await confirmTransferOffer({
-    supabase, offerId: "offer-1", confirmingTeamId: "buyer", notifyTeamOwner: async () => {},
-  });
-  const buyerAfterPark = db.teams.find((t) => t.id === "buyer").balance;
-  const sellerAfterPark = db.teams.find((t) => t.id === "seller").balance;
-  const financeAfterPark = supabase._finance.length;
-
-  // Simulér vindue-åbning: den generiske pending-flush flytter rytteren først.
-  const rider = db.riders.find((r) => r.id === "rider-1");
-  rider.team_id = "buyer";
-  rider.pending_team_id = null;
-
-  const flushResult = await flushWindowPendingOffers(supabase, {});
-
-  assert.equal(flushResult.transfersProcessed, 1);
-  assert.equal(db.transfer_offers[0].status, "accepted");
-  assert.equal(db.teams.find((t) => t.id === "buyer").balance, buyerAfterPark, "flush må IKKE flytte penge igen");
-  assert.equal(db.teams.find((t) => t.id === "seller").balance, sellerAfterPark);
-  assert.equal(supabase._finance.length, financeAfterPark, "flush opretter ingen nye finance-posteringer");
-});
+// #16: flush-stien (flushWindowPendingOffers efter parkering) er udgået som testscenarie —
+// med altid-åben handel parkeres intet, så confirm-stien udløser aldrig en window_pending-flush.
+// flushWindowPendingOffers-funktionen bevares dvælende (admin-vindue-åbning), men er ikke
+// længere nået fra confirm-stien, så der er intet at dobbelt-betalings-teste her.
 
 test("#19: confirmTransferOffer flytter team_id med det samme når vinduet er åbent", async () => {
   const db = baseDb({ windowStatus: "open" });
@@ -586,8 +560,8 @@ test("#19: confirmTransferOffer flytter team_id med det samme når vinduet er å
   assert.equal(db.teams.find((t) => t.id === "buyer").balance, 800);
 });
 
-test("#19: confirmSwapOffer parkerer begge ryttere når vinduet er lukket", async () => {
-  const db = baseDb({ windowStatus: "closed" });
+test("#16: confirmSwapOffer registrerer begge ryttere med det samme (altid-åben handel)", async () => {
+  const db = baseDb({ windowStatus: "closed" }); // ignoreres — altid-åben
   // Giv modtager-holdet nok ryttere til at afgive én.
   for (let i = 0; i < 9; i++) {
     db.riders.push({ id: `r-rider-${i}`, firstname: "R", lastname: `${i}`, team_id: "buyer", pending_team_id: null });
@@ -605,12 +579,12 @@ test("#19: confirmSwapOffer parkerer begge ryttere når vinduet er lukket", asyn
     supabase, swapId: "swap-1", confirmingTeamId: "buyer", notifyTeamOwner: async () => {},
   });
 
-  assert.equal(result.action, "window_pending");
-  assert.equal(db.riders.find((r) => r.id === "rider-1").pending_team_id, "buyer");
-  assert.equal(db.riders.find((r) => r.id === "rider-1").team_id, "seller");
-  assert.equal(db.riders.find((r) => r.id === "req-rider").pending_team_id, "seller");
-  assert.equal(db.riders.find((r) => r.id === "req-rider").team_id, "buyer");
-  assert.equal(db.swap_offers[0].status, "window_pending");
+  assert.equal(result.action, "accepted", "altid-åben → byttehandel registreres straks");
+  assert.equal(db.riders.find((r) => r.id === "rider-1").team_id, "buyer", "tilbudt rytter flyttet straks");
+  assert.equal(db.riders.find((r) => r.id === "rider-1").pending_team_id, null);
+  assert.equal(db.riders.find((r) => r.id === "req-rider").team_id, "seller", "ønsket rytter flyttet straks");
+  assert.equal(db.riders.find((r) => r.id === "req-rider").pending_team_id, null);
+  assert.equal(db.swap_offers[0].status, "accepted");
 });
 
 // ── #1309 kontrakt-on-acquire (transfer + swap) ──────────────────────────────
