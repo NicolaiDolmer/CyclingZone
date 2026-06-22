@@ -223,6 +223,18 @@ export default function RaceDetailPage() {
         <StageScheduleCard raceId={race.id} stagesCompleted={race.stages_completed ?? 0} />
       )}
 
+      {/* #6 launch-checklist: ruteprofil(er) synlige FØR løbet køres — terræn-
+          silhuet pr. etape (etapeløb) eller for endagsløbet, så manageren kan
+          udtage holdet ud fra parcouren. StageProfileCard degraderer til intet
+          hvis profilen mangler (gamle/PCM-løb). */}
+      {race.status === "scheduled" && (
+        race.race_type === "stage_race"
+          ? Object.keys(profileByStage).map(Number).sort((a, b) => a - b).map((n) => (
+              <StageProfileCard key={n} profile={profileByStage[n]} stageLabel={t("detail.tabStage", { number: n })} />
+            ))
+          : <StageProfileCard profile={profileByStage[1]} />
+      )}
+
       {/* #1307: holdudtagelse for kommende løb — panelet gater selv på
           race-engine-flaget (renderer intet når backend siger enabled=false). */}
       {race.status === "scheduled" && <RaceSelectionPanel raceId={race.id} />}
@@ -346,7 +358,7 @@ function StageTab({ stage, results, profile }) {
 // #1484 — stiliseret terræn-indikator pr. etape. ÆRLIG: kategori-piktogram fra
 // race_stage_profiles.profile_type, IKKE en målt højdeprofil (#1021). Degraderer
 // til intet hvis profil mangler eller terrænet er ukendt — ingen tom/falsk visning.
-function StageProfileCard({ profile }) {
+function StageProfileCard({ profile, stageLabel }) {
   const { t } = useTranslation("races");
   const labelKey = profile && profileLabelKey(profile.profile_type);
   if (!labelKey) return null;
@@ -358,7 +370,7 @@ function StageProfileCard({ profile }) {
       <StageProfileSilhouette profileType={profile.profile_type} />
       <div className="min-w-0">
         <p className="text-cz-3 text-[10px] uppercase tracking-wider font-semibold">
-          {t("detail.stageProfile.label")}
+          {stageLabel || t("detail.stageProfile.label")}
         </p>
         <p className="text-cz-1 text-sm font-semibold leading-tight">
           {t(`detail.${labelKey}`)}
