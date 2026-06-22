@@ -10,7 +10,7 @@
 > - **Ejer-beslutninger (åbne):** #1276 PCM-IP (rytternavne i public repo) · #1278 spiller-comms (founder-voice, du voicer) · #1487-budget (evne-nerf live, budget separat) · #929 leaked-pw · #691 key-rotation · #940 NPS.
 > - **Hygiejne:** #1650 feature-liveness 'audit'-check fejler på alle PRs (6 findings, ikke-required men støj). #1693a lukket by-design (fejringspopup + notifikation = bevidst 2 lag). [PLAN.md](PLAN.md)=SSOT.
 
-> **🤖 Working agent:** Ingen aktiv session.
+> **🤖 Working agent:** Claude · Code (Opus 4.8) · 2026-06-22 — orchestrating 4 parallelle worktree-sessions: #1748/#1740/#1743 (auktion/akademi-korrekthed) + #1744 (akademi-UX) + #1672 (skade-bug) + #1674/#1671 (rytter-visning).
 
 ## Standing context (forever-relaunch)
 
