@@ -18,21 +18,14 @@ import { useScouting } from "../lib/useScouting";
 import { scoutSortValue } from "../lib/scouting";
 import TeamTransferHistoryTab from "../components/TeamTransferHistoryTab";
 import { resolveApiError } from "../lib/apiError";
+import SortTh from "../components/rider/RiderSortTh";
+import { cycleSortState } from "../lib/riderSort";
 import { Card, Button, Input, BikeIcon } from "../components/ui";
 import { buttonClass } from "../components/ui/buttonStyles.js";
 
 // Stat-kolonner = de 15 CZ-evner (delt config lib/abilities.js, importeret som STATS).
 // #1529: erstattede de 14 PCM stat_*-kolonner — visningen viser nu evner.
-
-function SortTh({ children, sortKey, sort, sortDir, onSort, className = "", title }) {
-  const active = sort === sortKey;
-  return (
-    <th onClick={() => onSort(sortKey)} title={title}
-      className={`cursor-pointer select-none transition-colors ${active ? "text-cz-accent-t/80" : "text-cz-3 hover:text-cz-2"} ${className}`}>
-      {children}{active && <span className="ms-0.5 text-[10px]">{sortDir === "desc" ? "↓" : "↑"}</span>}
-    </th>
-  );
-}
+// #1755: SortTh er nu delt (components/rider/RiderSortTh) — fælles sort-adfærd.
 
 function RiderActionModal({ rider, team, scouting, onClose, onAction, ddActive }) {
   const { t } = useTranslation("team");
@@ -321,8 +314,10 @@ function SquadTab({ riders, scouting, onSelectRider, windowOpen }) {
   const sort = riderFilters.filters.sort;
   const sortDir = riderFilters.filters.sort_dir;
   function handleSort(key) {
-    if (sort === key) riderFilters.onChange("sort_dir", sortDir === "desc" ? "asc" : "desc");
-    else { riderFilters.onChange("sort", key); riderFilters.onChange("sort_dir", "desc"); }
+    // #1755: delt cyklus-logik så holdsiden sorterer som de øvrige rytter-tabeller.
+    const next = cycleSortState({ sort, dir: sortDir }, key);
+    riderFilters.onChange("sort", next.sort);
+    riderFilters.onChange("sort_dir", next.dir);
   }
 
   const loanedInRiders  = riders.filter(r => r._isLoanedIn);

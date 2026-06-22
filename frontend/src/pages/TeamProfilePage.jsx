@@ -8,10 +8,13 @@ import { ABILITY_STATS as STATS, ABILITY_SELECT, flattenAbilities } from "../lib
 import { CONDITION_SELECT, flattenCondition, isRiderInjured } from "../lib/training.js";
 import NationCell from "../components/rider/NationCell";
 import RiderBadges from "../components/rider/RiderBadges";
-import { ageBadgeKey } from "../lib/riderAge";
+import RiderTypeBadge from "../components/rider/RiderTypeBadge";
+import { ageBadgeKey, getRiderAge } from "../lib/riderAge";
 import OnlineBadge from "../components/OnlineBadge";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 import { sortRidersForTable } from "../lib/riderTableSort";
+import { cycleSortState } from "../lib/riderSort";
+import SortTh from "../components/rider/RiderSortTh";
 import { formatNumber } from "../lib/intl";
 import TeamTransferHistoryTab from "../components/TeamTransferHistoryTab";
 import TeamResultsTab from "../components/TeamResultsTab";
@@ -22,16 +25,7 @@ const TABS = ["squad", "results", "transfers"];
 // Stat-kolonner = de 15 CZ-evner (delt config lib/abilities.js, importeret som STATS).
 // #1529: erstattede de 14 PCM stat_*-kolonner — visningen viser nu evner. Korte
 // labels = STATS[i].label (ABILITY_SHORT, oversættes ikke, jf. #487).
-
-function SortTh({ children, sortKey, sort, sortDir, onSort, className = "" }) {
-  const active = sort === sortKey;
-  return (
-    <th onClick={() => onSort(sortKey)}
-      className={`cursor-pointer select-none transition-colors ${active ? "text-cz-accent-t/80" : "text-cz-3 hover:text-cz-2"} ${className}`}>
-      {children}{active && <span className="ms-0.5 text-[10px]">{sortDir === "desc" ? "↓" : "↑"}</span>}
-    </th>
-  );
-}
+// #1755: SortTh er nu delt (components/rider/RiderSortTh) — fælles sort-adfærd.
 
 export default function TeamProfilePage() {
   const { id } = useParams();
@@ -54,7 +48,12 @@ export default function TeamProfilePage() {
   });
 
   function handleSort(key) {
-    setTableSort(s => ({ key, dir: s.key === key ? (s.dir === "desc" ? "asc" : "desc") : "desc" }));
+    // #1755: delt cyklus-logik. tableSort bruger {key,dir}; cycleSortState taler
+    // {sort,dir} — oversæt frem og tilbage så samme regel gælder alle tabeller.
+    setTableSort(s => {
+      const next = cycleSortState({ sort: s.key, dir: s.dir }, key);
+      return { key: next.sort, dir: next.dir };
+    });
   }
 
   const loadAll = useCallback(async () => {
@@ -69,13 +68,13 @@ export default function TeamProfilePage() {
         // #1529: evnerne hentes via join (ABILITY_SELECT) + flades op på rytter-objektet
         // med flattenAbilities, så rider.climbing osv. virker i render/sort.
         // #1531: rider_condition(injured_until) embeddes til skade-badget (RLS: alle authenticated).
-        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, ${ABILITY_SELECT}, ${CONDITION_SELECT}`)
+        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, primary_type, secondary_type, ${ABILITY_SELECT}, ${CONDITION_SELECT}`)
         .eq("team_id", id)
         .order("market_value", { ascending: false }),
       supabase.from("riders")
         // #922: incoming-ryttere manglede nationality_code (var med for current på
         // linje 57), så NationCell fik undefined → intet flag på "se andet hold"-siden.
-        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, ${ABILITY_SELECT}, ${CONDITION_SELECT}`)
+        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, primary_type, secondary_type, ${ABILITY_SELECT}, ${CONDITION_SELECT}`)
         .eq("pending_team_id", id)
         .order("market_value", { ascending: false }),
       supabase.from("season_standings")
@@ -262,7 +261,14 @@ export default function TeamProfilePage() {
                     className="px-2 py-3 text-left font-medium uppercase hidden sm:table-cell">{t("profile.thNation")}</SortTh>
                   <SortTh sortKey="firstname" sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
                     className="px-4 py-3 text-left font-medium uppercase sticky left-0 z-20 bg-cz-card border-r border-cz-border">{t("profile.thRider")}</SortTh>
-                  <th className="px-4 py-3 text-left font-medium uppercase hidden sm:table-cell">{t("profile.thBadges")}</th>
+                  {/* #1755: Status sortérbar (alders-tier) + Alder/Type som egne
+                      sorterbare kolonner — på linje med eget hold (#1482/#1674). */}
+                  <SortTh sortKey="is_u25" sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
+                    className="px-4 py-3 text-left font-medium uppercase hidden sm:table-cell">{t("profile.thBadges")}</SortTh>
+                  <SortTh sortKey="birthdate" sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
+                    className="px-3 py-3 text-center font-medium uppercase hidden sm:table-cell">{t("profile.thAge")}</SortTh>
+                  <SortTh sortKey="primary_type" sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
+                    className="px-3 py-3 text-left font-medium uppercase hidden sm:table-cell">{t("profile.thType")}</SortTh>
                   <SortTh sortKey="market_value" sort={tableSort.key} sortDir={tableSort.dir} onSort={handleSort}
                     className="px-4 py-3 text-right font-medium">{t("profile.thValue")}</SortTh>
                   {STATS.map(({ key, label }) => (
@@ -299,6 +305,11 @@ export default function TeamProfilePage() {
                         {/* #1531: skade-badge først i Status-rækken når rytteren er skadet. */}
                         <RiderBadges badges={[isRiderInjured(r.injured_until) && "injured", ageBadgeKey(r), r._isIncoming && "incoming", r._isOutgoing && "outgoing"]} />
                       </div>
+                    </td>
+                    {/* #1755: numerisk alder + ryttertype som egne celler (matcher eget hold). */}
+                    <td className="px-3 py-2.5 hidden sm:table-cell text-center text-cz-2 font-mono text-xs">{getRiderAge(r.birthdate) ?? "—"}</td>
+                    <td className="px-3 py-2.5 hidden sm:table-cell">
+                      <RiderTypeBadge primaryType={r.primary_type} secondaryType={r.secondary_type} />
                     </td>
                     <td className="px-4 py-2.5 text-right text-cz-accent-t font-mono font-bold">
                       {formatCz(getRiderMarketValue(r)).replace(" CZ$", "")}
