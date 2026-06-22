@@ -11,6 +11,7 @@ import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { getSession } from "../../lib/supabase";
 import { toggleRider, validateSelectionClient } from "../../lib/raceSelectionLogic.js";
+import RiderTypeBadge from "../rider/RiderTypeBadge.jsx";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -30,6 +31,9 @@ export default function RaceSelectionPanel({ raceId }) {
   const [status, setStatus] = useState("idle"); // idle | saving | saved | error
   const [errorKey, setErrorKey] = useState(null);
   const [touched, setTouched] = useState(false);
+  // #1747: skjul-skadede-toggle. Default false (skadede vises dæmpet + deaktiveret)
+  // så manageren stadig kan se hvem der er ude — toggler skjuler dem helt.
+  const [hideInjured, setHideInjured] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -70,6 +74,12 @@ export default function RaceSelectionPanel({ raceId }) {
   const atMax = sel.riderIds.length >= size.max;
   const errParams = { min: size.min, max: size.max };
   const saving = status === "saving";
+  // #1747: skjul skadede ryttere. En allerede-udtaget (skadet) rytter forbliver
+  // synlig så manageren ikke mister overblikket over en ugyldig udtagelse.
+  const injuredCount = riders.filter((r) => r.injured).length;
+  const visibleRiders = hideInjured
+    ? riders.filter((r) => !r.injured || sel.riderIds.includes(r.id))
+    : riders;
 
   function update(next) {
     setSel(next);
@@ -143,6 +153,22 @@ export default function RaceSelectionPanel({ raceId }) {
         </span>
       </div>
 
+      {/* #1747: forklaring af egnethedstallet (det "uklare element") + skjul-skadede-toggle. */}
+      <div className="px-4 py-2 border-b border-cz-border flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-cz-subtle">
+        <p className="text-cz-3 text-[11px] leading-snug">{t("selection.suitabilityHelp")}</p>
+        {injuredCount > 0 && (
+          <label className="flex items-center gap-1.5 text-xs text-cz-2 whitespace-nowrap cursor-pointer self-start sm:self-auto">
+            <input
+              type="checkbox"
+              checked={hideInjured}
+              onChange={() => setHideInjured((v) => !v)}
+              className="accent-cz-accent"
+            />
+            {t("selection.hideInjured")}
+          </label>
+        )}
+      </div>
+
       {data.selection?.is_auto_filled && (
         <p className="px-4 py-2 text-xs text-cz-2 bg-cz-subtle border-b border-cz-border">
           {t("selection.autoPicked")}
@@ -154,14 +180,15 @@ export default function RaceSelectionPanel({ raceId }) {
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-cz-border">
-              <th scope="col" className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("approve.thRider")}</th>
+              <th scope="col" className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("selection.thRider")}</th>
+              <th scope="col" className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("selection.type")}</th>
               <th scope="col" className="px-4 py-3 text-right text-cz-3 font-medium text-xs uppercase">{t("selection.suitability")}</th>
               <th scope="col" className="px-4 py-3 text-right text-cz-3 font-medium text-xs uppercase">{t("selection.form")}</th>
               <th scope="col" className="px-4 py-3 text-right text-cz-3 font-medium text-xs uppercase">{t("selection.fatigue")}</th>
             </tr>
           </thead>
           <tbody>
-            {riders.map((rider) => {
+            {visibleRiders.map((rider) => {
               const checked = sel.riderIds.includes(rider.id);
               const disabled = rider.injured || (!checked && atMax) || saving;
               return (
@@ -182,6 +209,9 @@ export default function RaceSelectionPanel({ raceId }) {
                         </span>
                       )}
                     </label>
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <RiderTypeBadge primaryType={rider.primaryType} secondaryType={rider.secondaryType} />
                   </td>
                   <td className="px-4 py-2.5 text-right font-mono text-xs text-cz-2">{rider.suitability ?? "—"}</td>
                   <td className="px-4 py-2.5 text-right font-mono text-xs text-cz-2">{rider.form ?? "—"}</td>

@@ -609,6 +609,10 @@
         "title": "Picking your race squad",
         "text": "Before each race you pick 6-8 riders (Grand Tours use full squads of 8). Open the race page and use the Team selection panel. If you don't pick, your assistant fields a sensible team automatically, so you never miss a race."
       },
+      "suitability": {
+        "title": "Reading the selection table",
+        "text": "Each rider shows their type (such as Sprinter or Climber), a Suitability score from 0 to 100 that rates how well they fit this race's terrain, plus current Form and Fatigue. Higher suitability means a better match for the parcours. Injured riders can't be picked; use Hide injured to remove them from the list while you choose."
+      },
       "roles": {
         "title": "Captain, sprint captain and breakaway hunter",
         "text": "Your captain is protected by the team: strong, fresh helpers boost the captain's chances. On flat stages your sprint captain (if set) gets the protection instead. A breakaway hunter gets a much higher chance of making the day's breakaway."

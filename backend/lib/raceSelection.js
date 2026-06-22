@@ -72,7 +72,8 @@ export async function saveSelection({ supabase, race, teamId, riderIds, captainI
 export async function getSelectionContext({ supabase, race, teamId }) {
   const [ridersRes, profilesRes, entriesRes] = await Promise.all([
     // #1307/#1308: akademiryttere er ikke løbs-berettigede
-    supabase.from("riders").select("id, firstname, lastname")
+    // #1747: ryttertype (primary/secondary) med så fronten kan vise typen ved udtagelsen.
+    supabase.from("riders").select("id, firstname, lastname, primary_type, secondary_type")
       .eq("team_id", teamId).eq("is_academy", false).or("is_retired.is.null,is_retired.eq.false"),
     supabase.from("race_stage_profiles").select("stage_number, profile_type, demand_vector")
       .eq("race_id", race.id).order("stage_number", { ascending: true }),
@@ -101,6 +102,9 @@ export async function getSelectionContext({ supabase, race, teamId }) {
     return {
       id: r.id,
       name: [r.firstname, r.lastname].filter(Boolean).join(" "),
+      // #1747: ryttertype (top-2) til visning i udtagelses-panelet. null = endnu ikke beregnet.
+      primaryType: r.primary_type ?? null,
+      secondaryType: r.secondary_type ?? null,
       suitability: ab && stages.length ? Math.round(suitabilityScore(ab, stages) * 100) : null,
       form: cond?.form ?? null,
       fatigue: cond?.fatigue ?? null,
