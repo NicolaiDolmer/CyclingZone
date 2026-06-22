@@ -16,7 +16,7 @@ import RiderNameCell from "../components/rider/RiderNameCell";
 import RiderBadges from "../components/rider/RiderBadges";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge";
 import TeamCell from "../components/rider/TeamCell";
-import { ageBadgeKey } from "../lib/riderAge";
+import { ageBadgeKey, getRiderAge } from "../lib/riderAge";
 import { getRiderMarketValue, getRiderSalary } from "../lib/marketValues.js";
 import RidersEmptyState from "../components/RidersEmptyState";
 import OnboardingTour from "../components/OnboardingTour";
@@ -191,6 +191,8 @@ function RiderRow({ rider, statCols, onSelect, watchlist, onToggleWatchlist, isI
           <RiderBadges badges={[ageBadgeKey(rider), isInAuction && "auction"]} />
         </div>
       </td>
+      {/* #1674: numerisk alder i egen kolonne (Status-badget viser kun U23/U25-tier). */}
+      <td className="px-3 py-2.5 hidden sm:table-cell text-cz-2 font-mono text-xs">{getRiderAge(rider.birthdate) ?? "—"}</td>
       <td className="px-3 py-2.5 hidden sm:table-cell">
         <RiderTypeBadge primaryType={rider.primary_type} secondaryType={rider.secondary_type} />
       </td>
@@ -450,6 +452,7 @@ export default function RidersPage() {
                       ryttertype som egen sortérbar kolonne (delt fra Status). */}
                   <SortTh sortKey="is_u25" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
                     className="px-3 py-3 text-left font-medium uppercase tracking-wider hidden sm:table-cell">{t("table.badges")}</SortTh>
+                  <th className="px-3 py-3 text-left font-medium uppercase tracking-wider hidden sm:table-cell">{t("table.age")}</th>
                   <SortTh sortKey="primary_type" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
                     className="px-3 py-3 text-left font-medium uppercase tracking-wider hidden sm:table-cell">{t("table.type")}</SortTh>
                   <SortTh sortKey="value" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
@@ -468,7 +471,7 @@ export default function RidersPage() {
               <tbody>
                 {riders.length === 0 ? (
                   <tr>
-                    <td colSpan={9 + visibleStatCols.length} className="px-3 py-12 text-center">
+                    <td colSpan={10 + visibleStatCols.length} className="px-3 py-12 text-center">
                       <p className="text-cz-3 text-sm">{tCommon("controls.noFilterResults")}</p>
                       <button onClick={onReset}
                         className="mt-3 px-3 py-1.5 bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30
