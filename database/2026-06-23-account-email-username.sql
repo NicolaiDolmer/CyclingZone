@@ -5,8 +5,11 @@
 -- BRUGERNAVN: public.users.username har allerede en UNIQUE NOT NULL-constraint
 -- (schema.sql:27 / supabase_setup.sql:18) + "Users can update own profile"-RLS
 -- (auth.uid() = id, live siden tidlig schema). Selve skiftet sker via backend
--- (PUT /api/me/username) med case-insensitivt unikheds-tjek; INGEN ny kolonne
--- og INGEN ny constraint nødvendig her.
+-- (PUT /api/me/username) med case-insensitivt unikheds-tjek. Denne migration
+-- tilføjer ET case-insensitivt unique-index (lower(username)) som DB-backstop:
+-- den eksisterende UNIQUE er case-SENSITIV, så "Alice"/"alice" kunne ellers
+-- begge slippe gennem app-tjekket i en samtidig race (samme klasse som #1264
+-- for holdnavne). Ingen ny kolonne.
 --
 -- E-MAIL: auth.users.email er source-of-truth. Skiftet kører gennem Supabase
 -- Auth (supabase.auth.updateUser({ email })) med Supabase's indbyggede
@@ -23,6 +26,7 @@
 -- Rollback:
 --   DROP TRIGGER IF EXISTS sync_auth_email_to_users ON auth.users;
 --   DROP FUNCTION IF EXISTS public.sync_auth_email_to_users();
+--   DROP INDEX IF EXISTS public.users_username_lower_unique_idx;
 
 -- ── 1. Sync auth.users.email → public.users.email ────────────────
 -- Fires kun ved UPDATE af email (ikke INSERT — handle_new_user dækker
@@ -59,3 +63,15 @@ UPDATE public.users pu
   WHERE pu.id = au.id
     AND au.email IS NOT NULL
     AND pu.email IS DISTINCT FROM au.email;
+
+-- ── 3. Case-insensitiv username-unikhed (backstop mod TOCTOU-race) ───
+-- public.users.username har en case-SENSITIV UNIQUE (users_username_key), men
+-- PUT /api/me/username (+ signup) tjekker case-INSENSITIVT (ilike). To samtidige
+-- requests for "Alice" og "alice" kan derfor begge passere app-tjekket og begge
+-- committe, fordi den case-sensitive constraint ikke ser dem som ens. Dette
+-- lower()-unique-index lukker race'et på DB-niveau — samme mønster som #1264
+-- (teams_name_lower_unique_idx). Route-handleren mapper allerede 23505 → "optaget".
+-- Verificeret 2026-06-23 (read-only): 0 case-kollisioner i prod, så indekset kan
+-- oprettes uden forudgående oprydning. Idempotent via IF NOT EXISTS.
+CREATE UNIQUE INDEX IF NOT EXISTS users_username_lower_unique_idx
+  ON public.users (lower(username));
