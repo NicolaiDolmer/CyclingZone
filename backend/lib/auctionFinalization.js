@@ -7,6 +7,7 @@ import {
   getIncomingSquadViolation,
   getTeamMarketState,
   getTransferWindowOpen,
+  withdrawOpenTransferDealsForRiders,
   MARKET_SQUAD_LIMITS,
 } from "./marketUtils.js";
 import { incrementBalanceWithAudit, DUPLICATE_VIOLATION_CODE } from "./balanceRpc.js";
@@ -515,6 +516,10 @@ async function finalizeAuctionRecord({
     // vindue (pending_team_id): salget er bindende og betalt, så et åbent
     // listing ville kunne dobbelt-sælge rytteren.
     await closeTransferListingsForRiders(supabase, [auction.rider.id], "sold");
+    // #1748 (a): træk OGSÅ åbne transfer-/swap-TILBUD på rytteren tilbage — ikke
+    // kun listings — så en modpart ikke kan bekræfte et gammelt tilbud efter
+    // auktionssalget og forsøge en dobbelt-overdragelse.
+    await withdrawOpenTransferDealsForRiders(supabase, [auction.rider.id]);
 
     // Slice 07c: balance + finance_transactions atomic via RPC.
     // 07d Fase B / #240: cron-finalizer → actor_type=cron, actor_id=null,
@@ -654,6 +659,8 @@ async function finalizeAuctionRecord({
     // #776: guaranteed-sale til banken er også et salg — luk åbne
     // transfer_listings så rytteren ikke står som zombie-"til salg".
     await closeTransferListingsForRiders(supabase, [auction.rider.id], "sold");
+    // #1748 (a): træk også åbne transfer-/swap-tilbud tilbage ved bank-salget.
+    await withdrawOpenTransferDealsForRiders(supabase, [auction.rider.id]);
 
     // Slice 07c: balance + finance_transactions atomic via RPC.
     // 07d Fase B / #240: season_id eksplicit + idempotency_key per auction.

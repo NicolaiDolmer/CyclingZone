@@ -48,6 +48,23 @@ export function getSwapAuctionConflict({
   return null;
 }
 
+// #1748 (a): én rytter må kun kunne anskaffes ad ÉN vej ad gangen. En rytter på
+// en AKTIV auktion (status active/extended) må ikke samtidig kunne købes/bydes på
+// via transfer-markedet — ellers kan samme rytter både vindes på auktionen OG
+// købes via transfer, og en af handlerne efterlader penge bundet / et halvt salg.
+// Symmetrisk med getSwapAuctionConflict (swap-siden) og getAuctionStartSwapIssue
+// (auktion-vs-swap). activeAuctionRiderIds = rider_id'er med status i
+// ACTIVE_AUCTION_STATUSES (kalderen querier auctions for den/de relevante ryttere).
+export function getTransferAuctionConflict({
+  riderId,
+  activeAuctionRiderIds = [],
+} = {}) {
+  if (riderId && new Set(activeAuctionRiderIds).has(riderId)) {
+    return { code: "rider_on_auction" };
+  }
+  return null;
+}
+
 // Symmetrisk gate for POST /api/auctions (#1089): en rytter der er TILBUDT i et
 // åbent swap-tilbud kan ikke sættes på auktion — manageren har selv oprettet
 // swap-tilbuddet og må trække det tilbage først. Vi blokerer bevidst IKKE på

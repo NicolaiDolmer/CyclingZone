@@ -587,6 +587,41 @@ test("#16: confirmSwapOffer registrerer begge ryttere med det samme (altid-åben
   assert.equal(db.swap_offers[0].status, "accepted");
 });
 
+// #1748 (a) TOCTOU-guard: hvis rytteren kommer på en aktiv auktion mellem
+// tilbuds-oprettelse og bekræftelse, skal bekræftelsen ANNULLERE handlen (rytteren
+// må kun anskaffes ad ÉN vej). Auktionen vinder kanalen.
+test("#1748: confirmTransferOffer annullerer handlen når rytteren er kommet på en aktiv auktion", async () => {
+  const db = baseDb({ windowStatus: "open" });
+  db.transfer_offers.push({
+    id: "offer-1", rider_id: "rider-1", seller_team_id: "seller", buyer_team_id: "buyer",
+    offer_amount: 200, counter_amount: null, status: "awaiting_confirmation",
+    buyer_confirmed: false, seller_confirmed: true,
+  });
+  // Rytteren er på en aktiv auktion — den må vinde kanalen.
+  db.auctions.push({ id: "auc-1", rider_id: "rider-1", status: "active" });
+  const supabase = makeSupabase(db);
+
+  const notifs = [];
+  const result = await confirmTransferOffer({
+    supabase, offerId: "offer-1", confirmingTeamId: "buyer",
+    notifyTeamOwner: async (...args) => { notifs.push(args); },
+  });
+
+  assert.equal(result.ok, false);
+  assert.equal(result.code, "rider_on_auction_transfer");
+  assert.equal(result.status, 409);
+
+  const rider = db.riders.find((r) => r.id === "rider-1");
+  assert.equal(rider.team_id, "seller", "rytteren forbliver hos sælgeren — IKKE overført");
+  assert.equal(db.transfer_offers[0].status, "withdrawn", "tilbuddet trækkes tilbage");
+  assert.equal(db.teams.find((t) => t.id === "buyer").balance, 1000, "ingen betaling");
+  assert.equal(db.teams.find((t) => t.id === "seller").balance, 500, "ingen betaling");
+  assert.equal(supabase._finance.length, 0, "ingen finance-postering");
+  // Begge parter får en annullerings-notif.
+  assert.ok(notifs.some((n) => n[0] === "buyer" && n[1] === "transfer_offer_rejected"));
+  assert.ok(notifs.some((n) => n[0] === "seller" && n[1] === "transfer_offer_rejected"));
+});
+
 // ── #1309 kontrakt-on-acquire (transfer + swap) ──────────────────────────────
 
 // Kontraktløs rytter (salary == null) der erhverves via transfer → standard-

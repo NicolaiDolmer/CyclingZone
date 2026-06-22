@@ -188,6 +188,47 @@ test("resolver: A's proxy 100K outbidder B's manuelle bid 80K til 80.001 (Test 1
   assert.equal(supabase.state.auction.current_bidder_id, "team-a");
 });
 
+// #1740: A fører via autobud, B byder under A's loft → A's proxy genvinder.
+// resolveProxyBids skal returnere finalLeaderId === A og IKKE have notificeret A
+// som overbudt. Kalderen bruger dette til at undertrykke den FALSKE overbudt-besked.
+test("resolver (#1740): A's autobud genvinder → finalLeaderId=A, A IKKE notificeret som overbudt", async () => {
+  const auction = {
+    id: "auc-1740",
+    status: "active",
+    calculated_end: FUTURE_END,
+    current_price: 80000,
+    current_bidder_id: "team-b", // B lige bød 80K manuelt (under A's loft)
+    rider: { firstname: "Test", lastname: "Rider", team_id: null },
+    seller_team_id: "ai-team",
+    extension_count: 0,
+  };
+  const proxies = [
+    { team_id: "team-a", max_amount: 100000 }, // A's autobud genvinder
+  ];
+  const supabase = createMockSupabase({ auction, proxies });
+
+  const outbidCalls = [];
+  const result = await resolveProxyBids({
+    supabase,
+    auctionId: "auc-1740",
+    bidTime: BID_TIME,
+    bidCfg: { extension_minutes: 10 },
+    notifyTeamOwner: async (teamId, type) => {
+      if (type === "auction_outbid" || type === "auction_proxy_outbid") {
+        outbidCalls.push({ teamId, type });
+      }
+    },
+    // previousLeader = A (lederen FØR B's udløsende bud).
+    previousLeader: "team-a",
+  });
+
+  // A genvinder føringen.
+  assert.equal(result.finalLeaderId, "team-a");
+  // A er IKKE blandt de overbudt-notificerede (ingen falsk besked).
+  assert.equal(result.outbidNotified.has("team-a"), false, "A må ikke få overbudt-notif når eget autobud genvinder");
+  assert.ok(!outbidCalls.some((c) => c.teamId === "team-a"), "cascaden sender ikke overbudt til A");
+});
+
 test("resolver: A 100K vs B 200K opløses til B leder ved 100.001 (Test 2 fra #171)", async () => {
   const auction = {
     id: "auc-2",

@@ -4,6 +4,7 @@ import {
   expectMaybeSingle,
   expectMutation,
   expectSingle,
+  getActiveAuctionRiderIds,
   getIncomingSquadViolation,
   getOutgoingSquadViolation,
   getTeamMarketState,
@@ -346,6 +347,20 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
     getTeamMarketState(supabase, offer.seller_team_id),
     fetchTeamAuctionCommitment(supabase, offer.buyer_team_id),
   ]);
+
+  // #1748 (a) TOCTOU-guard: hvis rytteren er kommet på en aktiv auktion EFTER
+  // tilbuddet blev oprettet (oprettelses-gaten i api.js fanger det ikke), må
+  // handlen ikke gennemføres — ellers kan rytteren både vindes på auktionen OG
+  // overdrages via transfer. Annullér tilbuddet med en klar besked (samme mønster
+  // som seller_no_longer_owns_rider). Auktionen er den vindende kanal.
+  const onAuction = await getActiveAuctionRiderIds(supabase, [rider.id]);
+  if (onAuction.length > 0) {
+    await withdrawTransferOffer(supabase, offer.id);
+    const auctionMsg = `${rider.firstname} ${rider.lastname} kom på en aktiv auktion — handlen blev annulleret. Byd på auktionen i stedet.`;
+    await notifyTeamOwner(offer.buyer_team_id, "transfer_offer_rejected", "Transfer annulleret", auctionMsg, offer.id, { riderId: rider.id });
+    await notifyTeamOwner(offer.seller_team_id, "transfer_offer_rejected", "Transfer annulleret", auctionMsg, offer.id, { riderId: rider.id });
+    return failure(409, "This rider is on an active auction — the transfer was cancelled. Bid on the auction instead.", "rider_on_auction_transfer");
+  }
 
   // #16 altid-åben handel: intet transfervindue → ingen vindue-grace → hard cap (buffer 0)
   // ved selve handlen, samme paritet som auktions-finalization.
