@@ -1834,7 +1834,7 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
   });
   if (squadBlock) {
     return res.status(400).json({
-      error: `Dit hold er fyldt (${squadBlock.maxRiders} ryttere). Sælg en rytter, før du byder på en ny.`,
+      error: `Your squad is full (${squadBlock.maxRiders} riders). Sell a rider before you bid on a new one.`,
       errorCode: "squad_full_bid",
       errorParams: { maxRiders: squadBlock.maxRiders },
     });
@@ -2088,7 +2088,7 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
     });
     if (squadBlock) {
       return res.status(400).json({
-        error: `Dit hold er fyldt (${squadBlock.maxRiders} ryttere). Sælg en rytter, før du byder på en ny.`,
+        error: `Your squad is full (${squadBlock.maxRiders} riders). Sell a rider before you bid on a new one.`,
         errorCode: "squad_full_bid",
         errorParams: { maxRiders: squadBlock.maxRiders },
       });
