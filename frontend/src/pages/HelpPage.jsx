@@ -95,6 +95,7 @@ const SECTION_DEFS = [
     blocks: [
       { id: "profile", kind: "text" },
       { id: "namesAndInit", kind: "text" },
+      { id: "accountSettings", kind: "text" },
       { id: "theme", kind: "text" },
       { id: "forgotPassword", kind: "text" },
       { id: "inbox", kind: "text" },

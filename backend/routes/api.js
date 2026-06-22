@@ -3827,6 +3827,46 @@ router.patch("/me/discord-dm-enabled", requireAuth, marketWriteLimiter, async (r
   res.json({ ok: true, dm_enabled: enabled });
 });
 
+// PUT /api/me/username — skift brugernavn for den aktuelle bruger (#1746).
+// 3-20 tegn, bogstaver/tal/_/-. Case-insensitivt unikheds-tjek spejler
+// team-name-tjekket i signup-flowet (LoginPage). public.users.username har en
+// UNIQUE-constraint som backstop mod race conditions — 23505 mappes til den
+// samme "optaget"-besked. E-mail-skift går IKKE her: det kører gennem Supabase
+// Auth (supabase.auth.updateUser) med bekraeftelses-flow, fordi e-mail er en
+// auth-credential, ikke et profil-felt.
+const USERNAME_RE = /^[A-Za-z0-9_-]{3,20}$/;
+router.put("/me/username", requireAuth, marketWriteLimiter, async (req, res) => {
+  const raw = typeof req.body?.username === "string" ? req.body.username.trim() : "";
+  if (!USERNAME_RE.test(raw)) {
+    return res.status(400).json({ error: "Brugernavn skal være 3-20 tegn (bogstaver, tal, _ eller -)" });
+  }
+
+  // Case-insensitivt unikheds-tjek, men ekskludér brugeren selv (så de kan
+  // ændre udelukkende casing på deres eget navn).
+  const { data: clash } = await supabase
+    .from("users")
+    .select("id")
+    .ilike("username", raw)
+    .neq("id", req.user.id)
+    .maybeSingle();
+  if (clash) return res.status(409).json({ error: "Brugernavnet er optaget" });
+
+  const { data, error } = await supabase
+    .from("users")
+    .update({ username: raw })
+    .eq("id", req.user.id)
+    .select("username")
+    .single();
+
+  if (error) {
+    // 23505 = unique_violation — tabt race mod et samtidigt skift.
+    if (error.code === "23505") return res.status(409).json({ error: "Brugernavnet er optaget" });
+    return res.status(500).json({ error: error.message });
+  }
+
+  res.json({ ok: true, username: data.username });
+});
+
 // GET /api/me/onboarding-progress — Onboarding v2 step-status for current manager
 router.get("/me/onboarding-progress", requireAuth, async (req, res) => {
   const teamId = req.team?.id;
