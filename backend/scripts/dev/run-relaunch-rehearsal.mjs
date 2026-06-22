@@ -349,6 +349,57 @@ async function main() {
     reAi.created === 0 && reAi.removed === 0,
     `created=${reAi.created} removed=${reAi.removed}`, "0/0");
 
+  // ── PER-DIVISION-KALENDER (#1709 wiring · #1704 materializer) ────────────────
+  // Kalender-materialisering blev wired ind som apply-trin 6.1 (materializeSeasonCalendar)
+  // EFTER denne harness sidst blev rørt — uden disse tjek var kalender-integrationen
+  // end-to-end uverificeret (dry-run springer 6.1 over). Sæson 1 skal åbne med per-
+  // division-kalendre: races m. league_division_id + ruteprofiler (synlige FØR løb) +
+  // etape-schedule pr. LIVE pulje (tier 1+2 altid; tier-3-manager-puljer; div 4 tom).
+  // NB: kræver et seedet race_pool i branchen (materializeren læser katalog-rækkerne).
+  const s1Id = s1Season?.id;
+  const { data: calRaceRows } = s1Id
+    ? await supabase.from("races").select("id, league_division_id, scheduled_for").eq("season_id", s1Id)
+    : { data: [] };
+  const calRaces = calRaceRows || [];
+
+  // (a) races materialiseret m. league_division_id (per-division, ikke null).
+  const racesWithDivision = calRaces.filter((r) => r.league_division_id != null).length;
+  add("Kalender: races materialiseret m. league_division_id",
+    calRaces.length > 0 && racesWithDivision === calRaces.length,
+    `${racesWithDivision}/${calRaces.length} races m. league_division_id`, "alle > 0");
+
+  // (b) alle LIVE puljer (tier 1+2 + tier-3-manager-puljer) har races.
+  const divsWithRaces = new Set(calRaces.map((r) => r.league_division_id));
+  const liveEntryPoolIds = new Set(mgrTeams.map((t) => t.league_division_id));
+  const expectedLivePools = new Set([...t12Pools.map((p) => p.id), ...liveEntryPoolIds]);
+  const liveWithCal = [...expectedLivePools].filter((id) => divsWithRaces.has(id)).length;
+  add("Kalender: alle live puljer (tier 1+2 + manager-puljer) har kalender",
+    expectedLivePools.size > 0 && liveWithCal === expectedLivePools.size,
+    `${liveWithCal}/${expectedLivePools.size} live puljer m. races`, "alle");
+
+  // (c) div 4 (tom headroom) har INGEN races.
+  const div4WithRaces = [...divsWithRaces].filter((id) => tier4PoolIds.has(id)).length;
+  add("Kalender: div 4 (tom) har ingen races", div4WithRaces === 0,
+    `${div4WithRaces} div-4-puljer m. races`, "0");
+
+  // (d) ruteprofiler (race_stage_profiles) materialiseret — synlige FØR løb (#6).
+  const allProfileRows = await fetchAllRows(() =>
+    supabase.from("race_stage_profiles").select("race_id").order("race_id"));
+  const profileRaceIds = new Set(allProfileRows.map((r) => r.race_id));
+  const racesWithProfiles = calRaces.filter((r) => profileRaceIds.has(r.id)).length;
+  add("Kalender: alle races har ruteprofiler (synlige før løb)",
+    calRaces.length > 0 && racesWithProfiles === calRaces.length,
+    `${racesWithProfiles}/${calRaces.length} races m. profiler`, "alle");
+
+  // (e) etape-schedule (race_stage_schedule) + scheduled_for sat → stage-scheduleren afvikler.
+  const allScheduleRows = await fetchAllRows(() =>
+    supabase.from("race_stage_schedule").select("race_id").order("race_id"));
+  const scheduleRaceIds = new Set(allScheduleRows.map((r) => r.race_id));
+  const racesWithSchedule = calRaces.filter((r) => scheduleRaceIds.has(r.id) && r.scheduled_for != null).length;
+  add("Kalender: alle races har etape-schedule + scheduled_for",
+    calRaces.length > 0 && racesWithSchedule === calRaces.length,
+    `${racesWithSchedule}/${calRaces.length} races m. schedule`, "alle");
+
   // Founder-badge overlever en efterfølgende runFullBetaReset
   console.log("\n-- Kører efterfølgende runFullBetaReset (founder-badge survival-tjek) --");
   await runFullBetaReset(supabase, { clearTransactions: true });
