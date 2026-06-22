@@ -59,7 +59,9 @@
     "potentialLabel": "Potentiale",
     "tabs": {
       "auction": "Auktion",
-      "transfer": "Transferliste"
+      "transfer": "Transferliste",
+      "release": "Fyr",
+      "extend": "Forlæng"
     },
     "auction": {
       "description": "Start auktion. Andre managers kan byde.",
@@ -74,6 +76,25 @@
       "description": "Sæt til salg med fast pris.",
       "listButton": "Sæt til salg",
       "successMsg": "Sat på transferlisten!"
+    },
+    "release": {
+      "description": "Ophæv rytterens kontrakt og lad ham gå som fri agent.",
+      "feeLabel": "Opsigelsesgebyr",
+      "balanceLabel": "Din saldo",
+      "feeHint": "En halv sæsonløn for hver resterende kontraktsæson.",
+      "freeHint": "Rytteren har ingen løn, så opsigelsen er gratis.",
+      "confirmButton": "Fyr rytter",
+      "cannotAfford": "Du har ikke råd til opsigelsesgebyret.",
+      "successMsg": "Rytter fyret."
+    },
+    "extend": {
+      "description": "Forlæng kontrakten med én sæson. Lønnen genforhandles ud fra rytterens aktuelle værdi.",
+      "currentSalaryLabel": "Nuværende løn",
+      "newSalaryLabel": "Ny løn",
+      "newContractLabel": "Ny kontrakt indtil",
+      "newContractValue": "S{season}",
+      "confirmButton": "Forlæng kontrakt",
+      "successMsg": "Kontrakt forlænget."
     },
     "loadingShort": "...",
     "errorPrefix": ""

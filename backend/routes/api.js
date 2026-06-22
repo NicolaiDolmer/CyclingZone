@@ -99,7 +99,11 @@ import {
   getBotToken,
 } from "../lib/discordNotifier.js";
 import { getPendingInboxItems } from "../lib/inboxPending.js";
-import { contractOnAcquirePatch } from "../lib/contractSeed.js";
+import {
+  contractOnAcquirePatch,
+  computeReleaseBuyoutFee,
+  computeContractExtension,
+} from "../lib/contractSeed.js";
 import {
   getLoanAgreementAcceptedStatus,
   getLoanBuyoutRiderUpdate,
@@ -934,6 +938,188 @@ router.get("/riders/:id/bid-timeline", requireAuth, async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// RYTTER-HANDLINGER (#1719 fyring/buyout + #1720 kontraktforlængelse)
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// To manager-handlinger på en ejet senior-rytter. Begge deler RiderActionModal
+// på frontend (Min trup). De følger samme guard-mønster som POST /transfers og
+// POST /auctions: requireAuth + marketWriteLimiter + owner-check + retired-check.
+// Akademiryttere har deres EGEN release-flow (academyGraduation.js) og afvises her.
+
+// Delt guard: hent en ejet, ikke-pensioneret SENIOR-rytter (ikke-akademi).
+// Returnerer { rider } ved succes, eller { error: { status, body } } ved guard-fejl.
+async function loadOwnedSeniorRiderForAction(req, riderId) {
+  const { data: rider } = await supabase
+    .from("riders")
+    .select("id, firstname, lastname, team_id, is_retired, is_academy, salary, market_value, base_value, prize_earnings_bonus, contract_length, contract_end_season")
+    .eq("id", riderId)
+    .single();
+  if (!rider || rider.team_id !== req.team.id) {
+    return { error: { status: 403, body: { error: "You don't own this rider", errorCode: "rider_not_owned" } } };
+  }
+  if (rider.is_retired) {
+    return { error: { status: 409, body: { error: "This rider has retired", errorCode: "rider_retired" } } };
+  }
+  if (rider.is_academy) {
+    return { error: { status: 400, body: { error: "Academy riders use the academy release flow", errorCode: "rider_is_academy" } } };
+  }
+  return { rider };
+}
+
+async function getActiveSeasonNumber() {
+  const { data: season } = await supabase
+    .from("seasons").select("number").eq("status", "active").maybeSingle();
+  return season?.number ?? 1;
+}
+
+// GET /api/riders/:id/release-quote — preview af buyout-gebyret før bekræftelse (#1719).
+router.get("/riders/:id/release-quote", requireAuth, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  const result = await loadOwnedSeniorRiderForAction(req, req.params.id);
+  if (result.error) return res.status(result.error.status).json(result.error.body);
+  const { rider } = result;
+  const currentSeason = await getActiveSeasonNumber();
+  const fee = computeReleaseBuyoutFee({
+    salary: rider.salary,
+    contractEndSeason: rider.contract_end_season,
+    currentSeason,
+  });
+  res.json({ fee, balance: req.team.balance ?? 0, affordable: (req.team.balance ?? 0) >= fee });
+});
+
+// GET /api/riders/:id/extend-quote — preview af den genforhandlede løn + ny udløbssæson (#1720).
+router.get("/riders/:id/extend-quote", requireAuth, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  const result = await loadOwnedSeniorRiderForAction(req, req.params.id);
+  if (result.error) return res.status(result.error.status).json(result.error.body);
+  const { rider } = result;
+  const currentSeason = await getActiveSeasonNumber();
+  const next = computeContractExtension({ ...rider, currentSeason });
+  res.json({
+    currentSalary: rider.salary ?? 0,
+    newSalary: next.salary,
+    contract_end_season: next.contract_end_season,
+    contract_length: next.contract_length,
+  });
+});
+
+// POST /api/riders/:id/release — fyr en senior-rytter mod et buyout-gebyr (#1719).
+// Gebyr trækkes via en atomisk finance-transaktion; blokeres (4xx) hvis balance < gebyr.
+// Ved succes frigøres rytteren (team_id = NULL) og kontraktfelterne nulstilles.
+router.post("/riders/:id/release", requireAuth, marketWriteLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  const result = await loadOwnedSeniorRiderForAction(req, req.params.id);
+  if (result.error) return res.status(result.error.status).json(result.error.body);
+  const { rider } = result;
+
+  const { data: season } = await supabase
+    .from("seasons").select("id, number").eq("status", "active").maybeSingle();
+  const currentSeason = season?.number ?? 1;
+  const fee = computeReleaseBuyoutFee({
+    salary: rider.salary,
+    contractEndSeason: rider.contract_end_season,
+    currentSeason,
+  });
+
+  const balance = req.team.balance ?? 0;
+  if (balance < fee) {
+    return res.status(400).json({
+      error: "You can't afford the buyout fee for this rider",
+      errorCode: "cannot_afford_release",
+      errorParams: { fee, balance },
+    });
+  }
+
+  // Frigør rytteren først (concurrency-guard: kun hvis stadig på vores hold) — så
+  // vi ikke debiterer gebyret for en rytter en parallel handel allerede flyttede.
+  const { data: released } = await supabase
+    .from("riders")
+    .update({
+      team_id: null,
+      pending_team_id: null,
+      salary: null,
+      contract_length: null,
+      contract_end_season: null,
+      acquired_at: null,
+    })
+    .eq("id", rider.id)
+    .eq("team_id", req.team.id)
+    .select("id");
+  if (!released || released.length === 0) {
+    return res.status(409).json({ error: "This rider is no longer on your team", errorCode: "rider_state_changed" });
+  }
+
+  // Træk gebyret (kun hvis > 0 — en gratis-kontrakt koster intet). Atomisk RPC.
+  if (fee > 0) {
+    await incrementBalanceWithAudit(supabase, {
+      teamId: req.team.id,
+      delta: -fee,
+      payload: {
+        type: "transfer_out",
+        amount: -fee,
+        description: `Released ${rider.firstname} ${rider.lastname} (buyout fee)`,
+        metadata: {
+          code: "tx.riderRelease",
+          params: { riderName: `${rider.firstname} ${rider.lastname}` },
+        },
+        season_id: season?.id ?? null,
+        actor_type: FINANCE_ACTOR_TYPE.API,
+        actor_id: req.user.id,
+        source_path: "api.riders.release",
+        reason_code: FINANCE_REASON.RIDER_RELEASE_BUYOUT,
+        related_entity_type: FINANCE_RELATED_ENTITY.TRANSFER,
+        related_entity_id: rider.id,
+      },
+    });
+  }
+
+  // Luk evt. aktive transfer-listings for den frigjorte rytter (zombie-guard).
+  await supabase
+    .from("transfer_listings")
+    .update({ status: "withdrawn" })
+    .eq("rider_id", rider.id)
+    .in("status", ["open", "negotiating"]);
+
+  invalidateNamespace("riders");
+  res.json({ success: true, fee, riderId: rider.id });
+});
+
+// POST /api/riders/:id/extend-contract — forlæng kontrakten 1 sæson og genforhandl
+// lønnen fra rytterens aktuelle markedsværdi (#1720). Ingen pengebevægelse — kun
+// kontraktfelterne opdateres. Returnerer den nye løn så frontend kan vise den.
+router.post("/riders/:id/extend-contract", requireAuth, marketWriteLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  const result = await loadOwnedSeniorRiderForAction(req, req.params.id);
+  if (result.error) return res.status(result.error.status).json(result.error.body);
+  const { rider } = result;
+
+  const currentSeason = await getActiveSeasonNumber();
+  const next = computeContractExtension({ ...rider, currentSeason });
+
+  const { data: updated } = await supabase
+    .from("riders")
+    .update({
+      salary: next.salary,
+      contract_length: next.contract_length,
+      contract_end_season: next.contract_end_season,
+    })
+    .eq("id", rider.id)
+    .eq("team_id", req.team.id)
+    .select("id");
+  if (!updated || updated.length === 0) {
+    return res.status(409).json({ error: "This rider is no longer on your team", errorCode: "rider_state_changed" });
+  }
+
+  invalidateNamespace("riders");
+  res.json({
+    success: true,
+    newSalary: next.salary,
+    contract_end_season: next.contract_end_season,
+    contract_length: next.contract_length,
+  });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════

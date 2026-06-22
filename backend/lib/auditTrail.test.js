@@ -544,7 +544,7 @@ const IDEMPOTENT_LITERAL_SOURCE_PATHS = new Set([
 ]);
 
 const CALLSITE_FILES = [
-  { rel: "../routes/api.js", expectedCalls: 8 },
+  { rel: "../routes/api.js", expectedCalls: 9 },
   { rel: "./transferExecution.js", expectedCalls: 4 },
   { rel: "./squadEnforcement.js", expectedCalls: 3 },
   { rel: "./prizePayoutEngine.js", expectedCalls: 1 },

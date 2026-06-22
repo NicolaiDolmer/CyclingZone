@@ -34,7 +34,7 @@ function SortTh({ children, sortKey, sort, sortDir, onSort, className = "", titl
   );
 }
 
-function RiderActionModal({ rider, scouting, onClose, onAction, ddActive }) {
+function RiderActionModal({ rider, team, scouting, onClose, onAction, ddActive }) {
   const { t } = useTranslation("team");
   const riderValue = getRiderMarketValue(rider);
   const [auctionPrice, setAuctionPrice] = useState(riderValue);
@@ -48,9 +48,51 @@ function RiderActionModal({ rider, scouting, onClose, onAction, ddActive }) {
   // #778: flash-auktion (30 min) på egne ryttere — kun synlig under aktivt
   // Deadline Day (samme gating som RiderStatsPage's AuctionButton).
   const [flash, setFlash] = useState(false);
+  // #1719/#1720: server-beregnede previews (gebyr / ny løn) hentes når fanen
+  // åbnes, så manageren ser tallet før bekræftelse.
+  const [releaseQuote, setReleaseQuote] = useState(null);
+  const [extendQuote, setExtendQuote] = useState(null);
 
   // Squad-fanen viser kun egne ryttere → auktion må sættes mellem 0 og Værdi (ikke over).
   const auctionPriceError = auctionPrice > riderValue || auctionPrice < 0;
+
+  // Hent quote ved skift til release/extend-fanen (kun én gang pr. åbning).
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchQuote(path, setter) {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/riders/${rider.id}/${path}`, {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        });
+        if (res.ok && !cancelled) setter(await res.json());
+      } catch { /* preview er valgfri — knappen virker stadig */ }
+    }
+    if (activeTab === "release" && releaseQuote === null) fetchQuote("release-quote", setReleaseQuote);
+    if (activeTab === "extend" && extendQuote === null) fetchQuote("extend-quote", setExtendQuote);
+    return () => { cancelled = true; };
+  }, [activeTab, rider.id, releaseQuote, extendQuote]);
+
+  // #1719/#1720: begge handlinger er body-løse POST'er — serveren beregner
+  // gebyr/løn fra rytter-state. Delt poster så fejl-/success-håndtering er ens.
+  async function postRiderAction(path, successKey) {
+    setLoading(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/riders/${rider.id}/${path}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) { setMsgOk(true); setMsg(t(successKey)); setTimeout(() => { onAction(); onClose(); }, 1500); }
+      else { setMsgOk(false); setMsg(`${t("actionModal.errorPrefix")}${resolveApiError(data, t)}`); }
+    } catch {
+      setMsgOk(false); setMsg(t("auth:error.connectionFailed"));
+    } finally {
+      setLoading(false);
+    }
+  }
 
   async function startAuction() {
     setLoading(true);
@@ -93,6 +135,8 @@ function RiderActionModal({ rider, scouting, onClose, onAction, ddActive }) {
   const tabLabels = {
     auction: t("actionModal.tabs.auction"),
     transfer: t("actionModal.tabs.transfer"),
+    release: t("actionModal.tabs.release"),
+    extend: t("actionModal.tabs.extend"),
   };
 
   return (
@@ -128,7 +172,7 @@ function RiderActionModal({ rider, scouting, onClose, onAction, ddActive }) {
         </div>
         <div className="p-5">
           <div className="flex gap-2 mb-4 flex-wrap">
-            {["auction","transfer"].map(tab => (
+            {["auction","transfer","extend","release"].map(tab => (
               <button key={tab} onClick={() => setActiveTab(tab)}
                 className={`px-3 py-1.5 rounded-cz text-sm font-medium transition-all border
                   ${activeTab === tab ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "text-cz-2 border-cz-border hover:text-cz-1"}`}>
@@ -178,6 +222,67 @@ function RiderActionModal({ rider, scouting, onClose, onAction, ddActive }) {
                   {loading ? t("actionModal.loadingShort") : t("actionModal.transfer.listButton")}
                 </Button>
               </div>
+            </div>
+          )}
+          {/* #1720: Forlæng kontrakt — genforhandlet løn + ny udløbssæson som preview. */}
+          {activeTab === "extend" && (
+            <div>
+              <p className="text-cz-2 text-xs mb-3">{t("actionModal.extend.description")}</p>
+              <div className="space-y-1.5 mb-3 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-cz-3 text-xs">{t("actionModal.extend.currentSalaryLabel")}</span>
+                  <span className="text-cz-2 font-mono">{formatNumber(rider.salary || 0)} CZ$</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-cz-3 text-xs">{t("actionModal.extend.newSalaryLabel")}</span>
+                  <span className="text-cz-1 font-mono font-bold">
+                    {extendQuote ? `${formatNumber(extendQuote.newSalary)} CZ$` : t("actionModal.loadingShort")}
+                  </span>
+                </div>
+                {extendQuote && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-cz-3 text-xs">{t("actionModal.extend.newContractLabel")}</span>
+                    <span className="text-cz-2 font-mono">
+                      {t("actionModal.extend.newContractValue", { season: extendQuote.contract_end_season })}
+                    </span>
+                  </div>
+                )}
+              </div>
+              <Button onClick={() => postRiderAction("extend-contract", "actionModal.extend.successMsg")}
+                disabled={loading} className="w-full">
+                {loading ? t("actionModal.loadingShort") : t("actionModal.extend.confirmButton")}
+              </Button>
+            </div>
+          )}
+          {/* #1719: Fyr rytter — buyout-gebyr som preview + balance-gate. */}
+          {activeTab === "release" && (
+            <div>
+              <p className="text-cz-2 text-xs mb-3">{t("actionModal.release.description")}</p>
+              <div className="space-y-1.5 mb-3 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-cz-3 text-xs">{t("actionModal.release.feeLabel")}</span>
+                  <span className="text-cz-danger font-mono font-bold">
+                    {releaseQuote ? `${formatNumber(releaseQuote.fee)} CZ$` : t("actionModal.loadingShort")}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-cz-3 text-xs">{t("actionModal.release.balanceLabel")}</span>
+                  <span className="text-cz-2 font-mono">{formatNumber(team?.balance ?? 0)} CZ$</span>
+                </div>
+              </div>
+              <p className="text-cz-3 text-xs mb-3">
+                {releaseQuote && releaseQuote.fee === 0
+                  ? t("actionModal.release.freeHint")
+                  : t("actionModal.release.feeHint")}
+              </p>
+              {releaseQuote && releaseQuote.affordable === false && (
+                <p className="text-cz-danger text-xs mb-3">{t("actionModal.release.cannotAfford")}</p>
+              )}
+              <Button onClick={() => postRiderAction("release", "actionModal.release.successMsg")}
+                disabled={loading || (releaseQuote && releaseQuote.affordable === false)}
+                className="w-full !bg-cz-danger !text-white hover:brightness-110">
+                {loading ? t("actionModal.loadingShort") : t("actionModal.release.confirmButton")}
+              </Button>
             </div>
           )}
           {msg && <p className={`text-sm mt-3 ${msgOk ? "text-cz-success" : "text-cz-danger"}`}>{msg}</p>}
@@ -558,7 +663,7 @@ export function TeamPage() {
       )}
 
       {selectedRider && (
-        <RiderActionModal rider={selectedRider} scouting={scouting} onClose={() => setSelectedRider(null)} onAction={loadAll} ddActive={ddActive} />
+        <RiderActionModal rider={selectedRider} team={team} scouting={scouting} onClose={() => setSelectedRider(null)} onAction={loadAll} ddActive={ddActive} />
       )}
     </div>
   );

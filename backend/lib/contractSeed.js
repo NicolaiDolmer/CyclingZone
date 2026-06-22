@@ -53,6 +53,64 @@ export function contractOnAcquirePatch(rider, currentSeasonNumber) {
   };
 }
 
+// #1719 fyrings-/opsigelses-gebyr (ejer-besluttet): manageren betaler en halv
+// sæson-løn pr. resterende kontrakt-sæson for at fyre en rytter før tid.
+//   gebyr = round(salary * max(1, contract_end_season - currentSeason + 1) * 0.5)
+// max(1, ...) sikrer mindst én sæson, så en netop-udløbet/samme-sæson-kontrakt
+// stadig koster et halvt års løn (manageren slipper aldrig gratis for en
+// lønnet rytter). NULL/0-løn → 0 gebyr (gratis-kontrakt). NULL end-sæson
+// behandles som "1 resterende" (gulvet).
+export const RELEASE_BUYOUT_RATE = 0.5;
+
+export function computeReleaseBuyoutFee({ salary, contractEndSeason, currentSeason } = {}) {
+  const wage = Number(salary);
+  if (!Number.isFinite(wage) || wage <= 0) return 0;
+  const end = Number(contractEndSeason);
+  const current = Number(currentSeason) || 1;
+  const remaining = Number.isFinite(end) ? end - current + 1 : 1;
+  const seasons = Math.max(1, remaining);
+  return Math.round(wage * seasons * RELEASE_BUYOUT_RATE);
+}
+
+// #1720 kontraktforlængelse: forlæng kontrakten 1 sæson og genforhandl lønnen
+// fra rytterens AKTUELLE markedsværdi (samme SALARY_RATE-formel som signering,
+// så lønnen følger rytterens nuværende værdi i stedet for den gamle frosne).
+// Returnerer et patch {salary, contract_length, contract_end_season}.
+//
+// Den nye udløbssæson forankres i max(eksisterende end, currentSeason) + 1, så
+// en udløbet eller kontraktløs (NULL end) rytter altid forlænges til en sæson i
+// fremtiden — ikke til en fortidens sæson. contract_length +1 (eller 1 hvis NULL).
+export function computeContractExtension({
+  market_value,
+  base_value,
+  prize_earnings_bonus,
+  contract_end_season,
+  contract_length,
+  currentSeason = 1,
+} = {}) {
+  // Genberegn lønnen fra market_value hvis sat; ellers fra base_value+prize
+  // (samme kilde som computeFrozenSalary / calculateRiderMarketValue).
+  const mv = Number(market_value);
+  const salaryBase = Number.isFinite(mv)
+    ? { base_value: mv, prize_earnings_bonus: 0 }
+    : { base_value, prize_earnings_bonus };
+  const salary = computeFrozenSalary(salaryBase);
+
+  const current = Number(currentSeason) || 1;
+  const end = Number(contract_end_season);
+  const anchor = Number.isFinite(end) ? Math.max(end, current) : current;
+  const newEnd = anchor + 1;
+
+  const len = Number(contract_length);
+  const newLength = (Number.isFinite(len) && len > 0) ? len + 1 : 1;
+
+  return {
+    salary,
+    contract_length: newLength,
+    contract_end_season: newEnd,
+  };
+}
+
 const WRITE_CONCURRENCY = 25;
 
 // DB-wrapper: sæt kontrakt på alle ejede ryttere. Founders → 2 sæsoner; andre
