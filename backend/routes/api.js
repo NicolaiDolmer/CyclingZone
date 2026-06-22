@@ -8810,6 +8810,9 @@ router.post("/academy/free-agent/sign", requireAuth, marketWriteLimiter, async (
     if (msg === "academy_full") return res.status(409).json({ error: "academy_full" });
     if (msg === "not_free_agent") return res.status(409).json({ error: "not_free_agent" });
     if (msg === "not_academy_age") return res.status(409).json({ error: "not_academy_age" });
+    // insufficient_balance er en forventet bruger-tilstand ("ikke råd"), ikke en
+    // fejl — map til 409 og spring captureException over så Sentry ikke larmer (#1735).
+    if (msg === "insufficient_balance") return res.status(409).json({ error: "insufficient_balance" });
     captureException(err);
     res.status(500).json({ error: msg });
   }
