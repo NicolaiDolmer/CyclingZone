@@ -12,6 +12,16 @@ import { ABILITY_SELECT, ABILITY_SHORT, flattenAbilities } from "../lib/abilitie
 import { countTeamPodiums } from "../lib/standingsPodiums";
 import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch";
 import { Card, EmptyState, Spinner, Input, PodiumIcon } from "../components/ui";
+import { RULES_NUMBERS } from "../lib/rulesNumbers";
+
+// #1608/#1688 4-tier-pyramide: divisions-fanerne dækker tier 1..MAX_DIVISION (4).
+// Tier-tallet hentes fra den delte konstant-mirror (rulesNumbers), så frontend ikke
+// drifter fra backend-MAX_DIVISION. ALL_DIVISIONS = [1,2,3,4].
+const ALL_DIVISIONS = Array.from(
+  { length: RULES_NUMBERS.maxDivision - RULES_NUMBERS.minDivision + 1 },
+  (_, i) => RULES_NUMBERS.minDivision + i,
+);
+const POOL_ALL = "all"; // pulje-sub-fane: vis hele tieren samlet.
 
 // Division-markør holdt inden for guld+navy-systemet (ingen fremmede hues):
 // div 1 = fuld guld (--accent), div 2 = dyb guld (--accent-t), div 3 = neutral
@@ -19,7 +29,9 @@ import { Card, EmptyState, Spinner, Input, PodiumIcon } from "../components/ui";
 // navnet og bygger rgb()-strenge med alpha via divColor() — så vi undgår hex-
 // alpha-konkatenering (#rrggbbNN) og holder farverne token-drevne.
 // (#671 anti-drift — erstatter chart-1/chart-2 blaa/violet division-kodning.)
-const DIV_VARS = { 1: "--accent", 2: "--accent-t", 3: "--div-3" };
+// div 4 deler --div-3's neutrale token (begge er "nedre" tiers; holder os i
+// guld+navy-systemet uden et nyt hue, #671 anti-drift).
+const DIV_VARS = { 1: "--accent", 2: "--accent-t", 3: "--div-3", 4: "--div-3" };
 const divColor = (div, alpha = 1) => {
   const v = DIV_VARS[div] || DIV_VARS[1];
   return alpha >= 1 ? `rgb(var(${v}))` : `rgb(var(${v}) / ${alpha})`;
@@ -59,6 +71,10 @@ export default function StandingsPage() {
   const [standings, setStandings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [divTab, setDivTab] = useState(1);
+  // #1688 pulje-sub-faner: valgt pulje inden for tieren (league_division_id) eller
+  // POOL_ALL = hele tieren samlet. league_divisions hentes ved load.
+  const [pools, setPools] = useState([]);
+  const [poolTab, setPoolTab] = useState(POOL_ALL);
   const [myTeamId, setMyTeamId] = useState(null);
   const [season, setSeason] = useState(null);
   const [racePoints, setRacePoints] = useState({});
@@ -94,12 +110,15 @@ export default function StandingsPage() {
     const { data: activeSeason } = await supabase.from("seasons").select("*").eq("status", "active").single();
     setSeason(activeSeason);
 
-    const [teamsRes, standingsRes, racesRes] = await Promise.all([
+    const [teamsRes, standingsRes, racesRes, poolsRes] = await Promise.all([
       // last_seen joinet ind (#1609) til online-prik — samme som TeamsPage.jsx:41.
-      supabase.from("teams").select("id, name, division, user:user_id(last_seen)").eq("is_ai", false).eq("is_test_account", false).eq("is_frozen", false).order("division").order("name"),
+      // #1688: league_division_id med, så holdet kan placeres i sin pulje-sub-fane.
+      supabase.from("teams").select("id, name, division, league_division_id, user:user_id(last_seen)").eq("is_ai", false).eq("is_test_account", false).eq("is_frozen", false).order("division").order("name"),
       activeSeason
         ? supabase.from("season_standings")
-            .select("*, team:team_id(id, name, division, is_ai)")
+            // #1688: league_division_id med (GRANT på plads i league-divisions-pyramid-
+            // migrationen) + join til league_divisions for puljens label.
+            .select("*, team:team_id(id, name, division, is_ai, league_division_id), pool:league_division_id(id, tier, pool_index, label)")
             .eq("season_id", activeSeason.id)
             .order("total_points", { ascending: false })
         : Promise.resolve({ data: [] }),
@@ -107,7 +126,11 @@ export default function StandingsPage() {
         .select("id, name, edition_year, pool_race:pool_race_id(date_text)")
         .eq("season_id", activeSeason?.id || "")
         .order("name"),
+      // #1688: alle 15 puljer (reference-data) til pulje-sub-fanerne. Offentlig
+      // læse-policy findes (league-divisions-pyramid-migrationen).
+      supabase.from("league_divisions").select("id, tier, pool_index, label").order("tier").order("pool_index"),
     ]);
+    setPools(poolsRes.data || []);
 
     // Index actual standings by team_id
     const standingsMap = {};
@@ -267,8 +290,21 @@ export default function StandingsPage() {
   const effectivePts = (s) => ((s?.total_points || 0) - (s?.penalty_points || 0));
   const matchesSearch = (s) => !search || (s.team?.name || "").toLowerCase().includes(search.toLowerCase());
 
+  // Pulje-id pr. række: foretræk holdets pulje (team.league_division_id), fald tilbage
+  // til standings-rækkens egen pulje-akse. Et 0-point-hold (uden standings-række) bærer
+  // pulje på sit team-objekt fra teams-queryen.
+  const rowPoolId = (s) => s.team?.league_division_id ?? s.league_division_id ?? null;
+
+  // Puljerne i den valgte tier (sorteret efter pool_index) → pulje-sub-faner.
+  const tierPools = pools
+    .filter(p => p.tier === divTab)
+    .sort((a, b) => a.pool_index - b.pool_index);
+  const hasPoolSubtabs = tierPools.length > 1;
+
   const divStandingsBase = standings
     .filter(s => s.team?.division === divTab)
+    // #1688: når tieren har flere puljer og en specifik pulje er valgt, filtrér til den.
+    .filter(s => !hasPoolSubtabs || poolTab === POOL_ALL || rowPoolId(s) === poolTab)
     .sort((a, b) => effectivePts(b) - effectivePts(a));
   // Linse B sorteres efter trup-værdi; Linse A efter point. Søgning filtrerer begge.
   const strengthVal = (s) => (strength?.[s.team_id]?.totalValue || 0);
@@ -290,9 +326,11 @@ export default function StandingsPage() {
   const maxValue = lens === LENS_STRENGTH ? (strengthVal(divRanked[0]) || 1) : 1;
   const color = divColor(divTab);
   const colorSoft = divColor(divTab, 0.38); // svarer til den tidligere hex-alpha "60"
-  const canPromote = divTab > 1;
-  const canRelegate = divTab < 3;
-  const divCounts = [1, 2, 3].map(d => ({
+  const canPromote = divTab > RULES_NUMBERS.minDivision;
+  const canRelegate = divTab < RULES_NUMBERS.maxDivision;
+  // #1608/#1688: faner for alle 4 tiers. Tællingen er pr. TIER (på tværs af puljer),
+  // så fanens badge viser holdtallet i hele tieren.
+  const divCounts = ALL_DIVISIONS.map(d => ({
     div: d,
     count: standings.filter(s => s.team?.division === d).length,
   }));
@@ -316,10 +354,10 @@ export default function StandingsPage() {
         </div>
       </div>
 
-      {/* Division tabs */}
+      {/* Division (tier) tabs */}
       <div className="flex gap-2 mb-4 flex-wrap">
         {divCounts.map(({ div, count }) => (
-          <button key={div} onClick={() => setDivTab(div)}
+          <button key={div} onClick={() => { setDivTab(div); setPoolTab(POOL_ALL); }}
             className={`px-4 py-2 rounded-cz text-sm font-medium transition-all border
               ${divTab === div
                 ? "border-opacity-30 text-cz-1"
@@ -330,6 +368,33 @@ export default function StandingsPage() {
           </button>
         ))}
       </div>
+
+      {/* #1688 pulje-sub-faner: kun når den valgte tier har flere puljer (tier 2:2,
+          3:4, 4:8). "All" samler hele tieren; hver pulje-fane filtrerer til puljen. */}
+      {hasPoolSubtabs && (
+        <div className="flex gap-1.5 mb-4 flex-wrap">
+          <button onClick={() => setPoolTab(POOL_ALL)}
+            className={`px-3 py-1.5 rounded-cz text-xs font-medium transition-all border
+              ${poolTab === POOL_ALL
+                ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/40"
+                : "bg-cz-card text-cz-2 border-cz-border hover:text-cz-1"}`}>
+            {t("poolAll")}
+          </button>
+          {tierPools.map(p => {
+            const poolCount = standings.filter(s => s.team?.division === divTab && rowPoolId(s) === p.id).length;
+            return (
+              <button key={p.id} onClick={() => setPoolTab(p.id)}
+                className={`px-3 py-1.5 rounded-cz text-xs font-medium transition-all border
+                  ${poolTab === p.id
+                    ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/40"
+                    : "bg-cz-card text-cz-2 border-cz-border hover:text-cz-1"}`}>
+                {p.label}
+                <span className="ms-1.5 text-[10px] opacity-60">({poolCount})</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* Lens switch + search + compare action */}
       <div className="flex items-center gap-3 mb-5 flex-wrap">

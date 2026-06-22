@@ -25,6 +25,9 @@ function makeDeps(order) {
     runBaseValueBackfill: rec("baseValue"),
     runStarterSquadAllocation: rec("allocation", { teams: 18 }),
     allocateLeaguePools: rec("leaguePools", { allocated: 18, pools: 8 }),
+    // #1688: AI-fyld-genereringen kaldes med ét options-objekt ({ supabase, seed }),
+    // ikke (supabase, opts) — egen stub så call-order-asserten ser den.
+    generateAndAllocateAiTeams: async () => { order.push({ name: "aiTeams" }); return { created: 72, removed: 0, pools: [] }; },
     seedSeasonZero: async (_s, opts = {}) => { order.push({ name: "seedSeason0", dryRun: opts.dryRun }); return { seasonId: computeSeasonUuid(0) }; },
     transitionToNextSeason: async () => { order.push({ name: "transition" }); return { ok: true }; },
     // #1680: bestyrelse låst OP fra start i sæson 1 (startSequentialNegotiation-primitiv).
@@ -46,7 +49,7 @@ test("runRelaunchSeason1 (dryRun): sekvens + dryRun-prop, INGEN reset/sæson-tra
   // dryRun propagerer til alle byggeklodser der modtager opts
   assert.ok(order.filter((o) => "dryRun" in o && o.dryRun !== undefined).every((o) => o.dryRun === true));
   // summary har en nøgle pr. fase
-  for (const k of ["retireLegacy", "reset", "population", "backfills", "allocation", "leaguePools", "season", "academy", "contracts", "founderBadge"]) {
+  for (const k of ["retireLegacy", "reset", "population", "backfills", "allocation", "leaguePools", "aiTeams", "season", "academy", "contracts", "founderBadge"]) {
     assert.ok(k in summary, `summary mangler ${k}`);
   }
   // academy-trinet er flag-gated; uden academy_enabled=true i mock → skipped-form
@@ -60,7 +63,7 @@ test("runRelaunchSeason1 (apply): kalder reset + seedSeason0 + transition i korr
   const names = order.map((o) => o.name);
   assert.deepEqual(names, [
     "retire", "reset", "population", "physiology", "types", "baseValue", "allocation",
-    "leaguePools", "seedSeason0", "transition", "unlockBoard", "contracts", "founder",
+    "leaguePools", "aiTeams", "seedSeason0", "transition", "unlockBoard", "contracts", "founder",
   ]);
 });
 
