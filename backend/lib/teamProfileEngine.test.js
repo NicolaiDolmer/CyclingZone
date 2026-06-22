@@ -15,11 +15,16 @@ import { INITIAL_BALANCE, MANAGER_ENTRY_DIVISION, POOL_TARGET_SIZE, SPONSOR_INCO
 const noopAllocate = async () => ({ assigned: 0, skipped: "test-noop" });
 const noopRunAcademyCohort = async () => ({ skipped: "test-noop", candidates: 0 });
 const academyDisabled = async () => false;
+// #1739: hold AI-fyld-trimmen ude af de eksisterende tests (no-op), så de kun
+// verificerer det de var skrevet til. Tests der vil verificere trim-koblingen
+// sender deres egen recording-stub.
+const noopReconcileAiTeams = async () => ({ created: 0, removed: 0, skipped: "test-noop" });
 function upsert(args) {
   return upsertOwnTeamProfile({
     allocateStarterSquad: noopAllocate,
     runAcademyCohort: noopRunAcademyCohort,
     academyEnabled: academyDisabled,
+    reconcileAiTeams: noopReconcileAiTeams,
     ...args,
   });
 }
@@ -918,6 +923,109 @@ test("akademi: kuld-fejl er IKKE-fatal — signup lykkes og start-truppen er til
   });
 
   assert.equal(result.created, true, "signup lykkes trods akademi-fejl");
+  assert.equal(squadCalls.length, 1, "start-truppen blev tildelt");
+  assert.equal(supabase.state.teams.length, 1, "holdet blev oprettet");
+});
+
+// ── #1739 · AI-fyld-trim koblet til hold-oprettelse ───────────────────────────
+// Når et nyt ægte hold rykker ind i en pulje, skal ét AI-fyld-hold trimmes så
+// pulje-størrelsen holdes konstant. Reconcile-stien er DI'et (reconcileAiTeams)
+// så koblingen kan verificeres uden at mocke hele AI-generator-kæden.
+
+test("#1739 created===true udløser AI-fyld-trim for den pulje holdet landede i", async () => {
+  const pools = seedDiv4Pools();
+  const supabase = createSupabaseDouble({ leagueDivisions: pools });
+  const reconcileCalls = [];
+  const recordingReconcile = async ({ poolId }) => { reconcileCalls.push(poolId); return { created: 0, removed: 1 }; };
+
+  const result = await upsertOwnTeamProfile({
+    supabase,
+    userId: "user-1",
+    name: "Trim Trigger",
+    managerName: "Manager",
+    allocateStarterSquad: noopAllocate,
+    runAcademyCohort: noopRunAcademyCohort,
+    academyEnabled: academyDisabled,
+    reconcileAiTeams: recordingReconcile,
+  });
+
+  assert.equal(result.created, true);
+  assert.equal(reconcileCalls.length, 1, "trim kaldt præcis én gang");
+  assert.equal(reconcileCalls[0], result.team.league_division_id, "trim for holdets pulje-id");
+});
+
+test("#1739 created===false (rename) udløser IKKE AI-fyld-trim", async () => {
+  const supabase = createSupabaseDouble({
+    teams: [{
+      id: "team-1", user_id: "user-1", name: "Old Name", manager_name: "Old Manager",
+      balance: INITIAL_BALANCE, sponsor_income: SPONSOR_INCOME_BASE, league_division_id: 8,
+    }],
+    boardProfiles: [{ id: "board-1", team_id: "team-1" }],
+  });
+  const reconcileCalls = [];
+  const recordingReconcile = async ({ poolId }) => { reconcileCalls.push(poolId); return { created: 0, removed: 0 }; };
+
+  const result = await upsertOwnTeamProfile({
+    supabase,
+    userId: "user-1",
+    existingTeam: clone(supabase.state.teams[0]),
+    name: "New Name",
+    managerName: "New Manager",
+    allocateStarterSquad: noopAllocate,
+    runAcademyCohort: noopRunAcademyCohort,
+    academyEnabled: academyDisabled,
+    reconcileAiTeams: recordingReconcile,
+  });
+
+  assert.equal(result.created, false);
+  assert.equal(reconcileCalls.length, 0, "rename må ikke trimme AI-fyld");
+});
+
+test("#1739 holdet uden pulje (league_division_id=null) udløser IKKE trim", async () => {
+  // Pre-migration / mock-edge: ingen puljer → holdet får league_division_id=null.
+  // Der er intet pulje-felt at trimme mod, så reconcile springes.
+  const supabase = createSupabaseDouble({ leagueDivisions: [] });
+  const reconcileCalls = [];
+  const recordingReconcile = async ({ poolId }) => { reconcileCalls.push(poolId); return { created: 0, removed: 0 }; };
+
+  const result = await upsertOwnTeamProfile({
+    supabase,
+    userId: "user-1",
+    name: "No Pool Trim",
+    managerName: "Manager",
+    allocateStarterSquad: noopAllocate,
+    runAcademyCohort: noopRunAcademyCohort,
+    academyEnabled: academyDisabled,
+    reconcileAiTeams: recordingReconcile,
+  });
+
+  assert.equal(result.created, true);
+  assert.equal(result.team.league_division_id, null);
+  assert.equal(reconcileCalls.length, 0, "ingen pulje → ingen trim");
+});
+
+test("#1739 trim-fejl er IKKE-fatal — signup lykkes og holdet beholder sin trup", async () => {
+  // Bevidst delvis-fejl-adfærd (samme mønster som akademi-kuldet): et utrimmet
+  // AI-hold er en kosmetisk pulje-overfyldning, ikke en blokeret signup. En fejl
+  // fanges og signup fortsætter.
+  const pools = seedDiv4Pools();
+  const supabase = createSupabaseDouble({ leagueDivisions: pools });
+  const squadCalls = [];
+  const recordingAllocate = async (_sb, teamId) => { squadCalls.push(teamId); return { assigned: 8 }; };
+  const failingReconcile = async () => { throw new Error("AI-generator nede"); };
+
+  const result = await upsertOwnTeamProfile({
+    supabase,
+    userId: "user-1",
+    name: "Trim Soft Fail",
+    managerName: "Manager",
+    allocateStarterSquad: recordingAllocate,
+    runAcademyCohort: noopRunAcademyCohort,
+    academyEnabled: academyDisabled,
+    reconcileAiTeams: failingReconcile,
+  });
+
+  assert.equal(result.created, true, "signup lykkes trods trim-fejl");
   assert.equal(squadCalls.length, 1, "start-truppen blev tildelt");
   assert.equal(supabase.state.teams.length, 1, "holdet blev oprettet");
 });
