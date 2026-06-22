@@ -345,3 +345,43 @@ test("rider profile value header stays contained on mobile", async ({ page }) =>
   await expect(value).toHaveText("123,456,789,012");
   await expect(value).toHaveAttribute("title", "123,456,789,012 CZ$");
 });
+
+// #1681: holdudtagelse var begravet 3 klik nede. Dashboard-CTA'en skal vise sig
+// når der findes et kommende (scheduled) løb og linke MANAGEREN DIREKTE til det
+// løbs detalje-side, hvor RaceSelectionPanel bor. Default-fixturen returnerer
+// ingen løb (races → []), så kortet er skjult — denne test overrider races-
+// queryen med ét scheduled løb og verificerer både synlighed og routing.
+test("dashboard team-selection CTA links to the next selectable race", async ({ page }) => {
+  const SCHEDULED_RACE = {
+    id: "race-next-1",
+    name: "Tour Test Prologue",
+    race_type: "one_day",
+    race_class: "Class1",
+    stages: 1,
+    status: "scheduled",
+    season_id: "season-e2e",
+    pool_race: { date_text: "5/7" },
+  };
+
+  // Override OVEN PÅ installNetworkMocks (senest registrerede route vinder).
+  await page.route("**/rest/v1/races?**", (route) => {
+    const request = route.request();
+    if (request.method() === "OPTIONS") {
+      return route.fulfill({ status: 204, headers: corsHeaders(request) });
+    }
+    if (request.method() !== "GET") return route.fallback();
+    return json(route, [SCHEDULED_RACE]);
+  });
+
+  await login(page);
+  await page.goto("/dashboard");
+  await forceEnglish(page);
+
+  const cta = page.getByTestId("team-selection-cta");
+  await expect(cta).toBeVisible();
+  await expect(cta).toContainText(/Pick your race squad/i);
+  await expect(cta).toContainText(/Tour Test Prologue/);
+
+  await cta.getByRole("link", { name: /Set your line-up/i }).click();
+  await expect(page).toHaveURL(/\/races\/race-next-1$/);
+});
