@@ -5,6 +5,7 @@
     "balance": "Balance",
     "loadingAria": "Indlæser transfers"
   },
+  "marketIntro": "Transfermarkedet er hvor managers sætter deres egne ryttere til salg til en fast pris. Køb med det samme eller send et tilbud. Auktioner er noget andet (tidsbestemte bud), og swaps og loans er valgfrie måder at handle på.",
   "window": {
     "open": "Transfervinduet er åbent. Du kan sende og acceptere tilbud",
     "closed": "Transfervinduet er lukket. Transfer-, bytte- og lejeaftaler kan forhandles nu, men rytterregistreringer gennemføres først ved næste åbning.",

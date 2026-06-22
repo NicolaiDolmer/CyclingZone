@@ -590,6 +590,16 @@ export default function AuctionsPage() {
   // efter en fejlet Supabase-write. { text } | null, auto-dismisses.
   const [watchlistError, setWatchlistError] = useState(null);
   const [filter, setFilter] = useState("my-situation");
+  // #1569: ny spiller har ALTID en tom "Min situation" (ingen førende/overbudte/
+  // solgte auktioner), så fladen åbnede på en tom fane og lignede et dødt marked.
+  // Når data er loadet og situationen er tom, defaulter vi ÉN gang til 'all'-fanen
+  // med de faktiske auktioner. Ref'en sikrer at vi kun gør det én gang (og aldrig
+  // kæmper mod et bevidst fane-valg manageren selv tager bagefter).
+  const didDefaultFilterRef = useRef(false);
+  function pickFilter(key) {
+    didDefaultFilterRef.current = true; // manuelt valg → stop auto-default
+    setFilter(key);
+  }
   // Ønskeliste-filter — toggle der viser kun auktioner på ryttere i manager's wishlist.
   // Kombineres oven på den aktive filter-tab (my-situation/all/other).
   const [wishlistOnly, setWishlistOnly] = useState(
@@ -616,6 +626,21 @@ export default function AuctionsPage() {
     }
   }, [showFeed]);
   const [celebration, setCelebration] = useState(null);
+  // #1569: når data er loadet, default ÉN gang til 'all' hvis manageren ingen
+  // situation har (typisk ny spiller). Bruger samme situations-diskriminator som
+  // render-koden nedenfor, så fanen vi åbner matcher den faktiske mySituationCount.
+  useEffect(() => {
+    if (loading || didDefaultFilterRef.current) return;
+    const mySituation = auctions.some(a => {
+      if (isManagerSeller(a, myTeamId)) return true; // sælger
+      const leaderId = getAuctionLeaderId(a);
+      if (leaderId === myTeamId) return true;         // fører
+      if (a.myHighestBid && leaderId !== null && leaderId !== myTeamId) return true; // overbudt
+      return false;
+    });
+    didDefaultFilterRef.current = true; // kør kun denne auto-default én gang
+    if (!mySituation && filter === "my-situation") setFilter("all");
+  }, [loading, auctions, myTeamId, filter]);
   // Stats toggle (persisted i localStorage) — default tomt, manageren vælger selv
   const { visibleStats, toggleStat, showAll, hideAll } = useStatsToggle();
   // Bekræftelses-dialog for bud (auktionsbud, autobud-loft) — { mode, riderName, amount, onConfirm } | null
@@ -1282,7 +1307,7 @@ export default function AuctionsPage() {
       <div className="flex gap-2 mb-4 flex-wrap items-center justify-between">
         <div className="flex gap-2 flex-wrap items-center">
           {FILTER_TABS.map(tab => (
-            <button key={tab.key} onClick={() => setFilter(tab.key)}
+            <button key={tab.key} onClick={() => pickFilter(tab.key)}
               className={`inline-flex items-center min-h-[44px] px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
                 ${filter === tab.key
                   ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"

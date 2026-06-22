@@ -2,10 +2,13 @@ import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
+// #1569: ikon-emoji erstattet af editorial accent-markør (anti-AI-slop). Bemærk:
+// OnboardingModal renderes ikke længere på dashboardet (#1140-konsolidering), men
+// filen beholdes ren for evt. genbrug.
 const CARDS = [
-  { id: "market", icon: "🏪", link: "/riders" },
-  { id: "auctions", icon: "🔨", link: "/auctions" },
-  { id: "board", icon: "🏛️", link: "/board" },
+  { id: "market", link: "/riders" },
+  { id: "auctions", link: "/auctions" },
+  { id: "board", link: "/board" },
 ];
 
 export default function OnboardingModal({ onClose }) {
@@ -46,7 +49,7 @@ export default function OnboardingModal({ onClose }) {
         <div className="grid gap-3 mb-5">
           {CARDS.map(card => (
             <div key={card.id} className="flex items-start gap-3 bg-cz-subtle border border-cz-border rounded-cz p-4">
-              <span className="text-2xl flex-shrink-0 mt-0.5">{card.icon}</span>
+              <span className="w-1 h-8 bg-cz-accent rounded-full flex-shrink-0 mt-0.5" aria-hidden="true" />
               <div className="min-w-0">
                 <p className="text-cz-1 font-semibold text-sm">{t(`onboardingModal.cards.${card.id}.title`)}</p>
                 <p className="text-cz-2 text-xs mt-0.5 mb-2 leading-relaxed">{t(`onboardingModal.cards.${card.id}.desc`)}</p>

@@ -6,10 +6,11 @@
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 
+// #1569: ikon-emoji erstattet af editorial accent-markør (anti-AI-slop).
 const NEXT_LINKS = [
-  { to: "/deadline-day", icon: "🔔", key: "deadlineDay" },
-  { to: "/board", icon: "🏛️", key: "board" },
-  { to: "/help", icon: "📖", key: "help" },
+  { to: "/deadline-day", key: "deadlineDay" },
+  { to: "/board", key: "board" },
+  { to: "/help", key: "help" },
 ];
 
 export default function OnboardingCompletionCard({ onDismiss }) {
@@ -19,7 +20,8 @@ export default function OnboardingCompletionCard({ onDismiss }) {
     <div className="mb-4 px-5 py-4 bg-cz-card border border-cz-success/30 rounded-cz">
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="flex items-start gap-3 flex-1 min-w-0">
-          <span className="text-2xl flex-shrink-0">🎉</span>
+          {/* #1569: editorial accent-markør i stedet for celebration-emoji (anti-AI-slop) */}
+          <span className="w-1 h-10 bg-cz-success rounded-full flex-shrink-0 mt-0.5" aria-hidden="true" />
           <div className="min-w-0">
             <p className="text-cz-1 text-base font-semibold">{t("onboardingComplete.title")}</p>
             <p className="text-cz-2 text-xs mt-0.5">{t("onboardingComplete.body")}</p>
@@ -42,7 +44,7 @@ export default function OnboardingCompletionCard({ onDismiss }) {
             className="bg-cz-subtle border border-cz-border rounded-lg p-3 hover:border-cz-accent/40 transition-all"
           >
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-base">{link.icon}</span>
+              <span className="w-0.5 h-3.5 bg-cz-accent rounded-full flex-shrink-0" aria-hidden="true" />
               <p className="text-cz-1 text-sm font-semibold">{t(`onboardingComplete.nextLinks.${link.key}.label`)}</p>
             </div>
             <p className="text-cz-3 text-xs">{t(`onboardingComplete.nextLinks.${link.key}.desc`)}</p>

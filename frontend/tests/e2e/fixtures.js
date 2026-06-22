@@ -567,14 +567,14 @@ export const ROUTE_READINESS = {
     await expect(page.locator('[role="status"]')).toHaveCount(0);
     // Tab-data loaded ("Aktive (1)" afspejler den ene mockede auktion).
     await expect(page.getByRole("link", { name: /^(Aktive|Active) \(1\)$/ })).toBeVisible();
-    // Default-filter sat ("Min situation (0)").
+    // #1569: fladen defaulter nu til 'All'-fanen for nye spillere (tom "My
+    // situation"), så de lander på de faktiske auktioner i stedet for en tom
+    // fane. 'All (1)'-fanen er aktiv, og listens ene rytter er den endelige
+    // render-tilstand (erstatter den gamle "not involved"-tom-state-gate).
     await expect(
-      page.getByRole("button", { name: /^(Min situation|My situation) \(0\)$/ })
+      page.getByRole("button", { name: /^(Alle|All) \(1\)$/ })
     ).toBeVisible();
-    // Tom-state for "min situation" synlig — den endelige render-tilstand.
-    await expect(
-      page.getByText(/Du er ikke involveret|not involved in any active auctions/i)
-    ).toBeVisible();
+    await expect(page.getByRole("link", { name: /Mikkel Hansen/ }).first()).toBeVisible();
   },
 };
 

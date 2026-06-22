@@ -5,6 +5,7 @@
     "balance": "Balance",
     "loadingAria": "Loading transfers"
   },
+  "marketIntro": "The transfer market is where managers list their own riders for a fixed price. Buy instantly or send an offer. Auctions are separate (timed bidding), and swaps and loans are optional ways to trade.",
   "window": {
     "open": "Transfer window is open. You can send and accept offers",
     "closed": "Transfer window is closed. Transfer, swap and loan deals can still be negotiated now, but rider registrations complete at the next opening.",
