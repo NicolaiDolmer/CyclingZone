@@ -12,15 +12,19 @@ function teamsMock(rows) {
       let isNullCol = null;
       let ltCol = null;
       let ltVal = null;
+      const eqFilters = [];
       const b = {
         select() { return b; },
         is(col, val) { if (val === null) isNullCol = col; return b; },
+        eq(col, val) { eqFilters.push([col, val]); return b; },
         lt(col, val) { ltCol = col; ltVal = val; return b; },
         order() { return b; },
         range() {
           let out = [...rows];
           if (isNullCol) out = out.filter((r) => r[isNullCol] == null);
           if (ltCol) out = out.filter((r) => r[ltCol] < ltVal);
+          // Manglende menneske-flag på en mock-row = false (ikke-AI/bank/frozen/test).
+          for (const [col, val] of eqFilters) out = out.filter((r) => (r[col] ?? false) === val);
           return Promise.resolve({ data: out.map((r) => ({ id: r.id, created_at: r.created_at })), error: null });
         },
       };
@@ -47,6 +51,30 @@ test("#1584 sweep: heler kun markør-NULL hold ældre end alders-guarden, spring
   assert.equal(res.candidates, 1);
   assert.equal(res.healed, 1);
   assert.equal(res.failed, 0);
+});
+
+test("#1584 sweep: springer AI/bank/frozen/test-hold over (akademi er KUN for menneske-managere)", async () => {
+  // Forever-relaunch-bug: efter relaunch havde 143 AI-hold academy_intake_seeded_at=NULL,
+  // og sweep'en (uden menneske-hold-filter) seedede 564 strandede AI-kuld. Akademi er en
+  // menneske-manager-feature (samme diskriminator som academyIntake.js' manager-resolver).
+  const now = new Date("2026-06-20T12:00:00Z");
+  const old = new Date(now.getTime() - 10 * 60 * 1000).toISOString();
+  const mk = (id, extra) => ({ id, created_at: old, academy_intake_seeded_at: null, is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, ...extra });
+  const rows = [
+    mk("human"),
+    mk("ai", { is_ai: true }),
+    mk("bank", { is_bank: true }),
+    mk("frozen", { is_frozen: true }),
+    mk("test", { is_test_account: true }),
+  ];
+  const calls = [];
+  const seedCohort = async (_sb, id) => { calls.push(id); return { teamId: id, candidates: 4 }; };
+
+  const res = await runAcademyHealSweep({ supabase: teamsMock(rows), now, seedCohort });
+
+  assert.deepEqual(calls, ["human"], "kun menneske-hold heales — AI/bank/frozen/test ekskluderet");
+  assert.equal(res.candidates, 1);
+  assert.equal(res.healed, 1);
 });
 
 test("#1584 sweep: alders-guarden bruger HEAL_MIN_AGE_MS", () => {

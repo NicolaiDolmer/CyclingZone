@@ -42,10 +42,19 @@ export async function runAcademyHealSweep({
   // ældre end alders-guarden. runAcademyIntakeForTeam er selv markør-gatet +
   // idempotent, så et hold der når at blive markeret mellem query og kald bliver
   // et no-op (skipped).
+  // Akademi er KUN en menneske-manager-feature — SAMME diskriminator som academyIntake.js'
+  // manager-resolver (is_ai=false, is_bank=false, is_frozen=false, is_test_account=false).
+  // Uden dette filter seedede sweep'en academy-kuld for AI-fyld-hold (#1688): efter forever-
+  // relaunchen havde 143 AI-hold markør=NULL → 564 strandede AI-kuld (ikke synlige, ikke i
+  // marked, men forkert data). AI/bank/frozen/test-hold rekrutterer aldrig fra akademiet.
   const candidates = await fetchAllRows(() =>
     supabase
       .from("teams")
       .select("id, created_at")
+      .eq("is_ai", false)
+      .eq("is_bank", false)
+      .eq("is_frozen", false)
+      .eq("is_test_account", false)
       .is("academy_intake_seeded_at", null)
       .lt("created_at", cutoffIso)
       .order("created_at"));
