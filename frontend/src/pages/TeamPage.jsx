@@ -10,7 +10,7 @@ import { statStyle } from "../lib/statColor";
 import NationCell from "../components/rider/NationCell";
 import RiderBadges from "../components/rider/RiderBadges";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge";
-import { ageBadgeKey } from "../lib/riderAge";
+import { ageBadgeKey, getRiderAge } from "../lib/riderAge";
 import { getRiderMarketValue } from "../lib/marketValues";
 import { formatNumber } from "../lib/intl";
 import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
@@ -420,6 +420,7 @@ function SquadTab({ riders, scouting, onSelectRider, windowOpen }) {
                   {/* #1482: status/badges, ryttertype og kontraktudløb som egne
                       kolonner (Discord-feedback) — U25/ind/ud flyttet ud af navne-cellen. */}
                   <th className="px-3 py-3 text-left text-cz-3 font-medium">{t("squad.headers.badges")}</th>
+                  <th className="px-3 py-3 text-center text-cz-3 font-medium">{t("squad.headers.age")}</th>
                   <SortTh sortKey="primary_type" sort={sort} sortDir={sortDir} onSort={handleSort}
                     className="px-3 py-3 text-left font-medium">{t("squad.headers.type")}</SortTh>
                   <SortTh sortKey="contract_end_season" sort={sort} sortDir={sortDir} onSort={handleSort}
@@ -483,6 +484,8 @@ function SquadTab({ riders, scouting, onSelectRider, windowOpen }) {
                         <RiderBadges badges={[isRiderInjured(r.injured_until) && "injured", ageBadgeKey(r), r._isIncoming && "incoming", r._isOutgoing && "outgoing"]} />
                       </div>
                     </td>
+                    {/* #1674: numerisk alder i egen kolonne (Status-badget viser kun U23/U25-tier). */}
+                    <td className="px-3 py-2.5 text-center text-cz-2 font-mono text-xs">{getRiderAge(r.birthdate) ?? "—"}</td>
                     {/* #1482: Ryttertype i egen kolonne (returnerer null uden type-data). */}
                     <td className="px-3 py-2.5">
                       <RiderTypeBadge primaryType={r.primary_type} secondaryType={r.secondary_type} />

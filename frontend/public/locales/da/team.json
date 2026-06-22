@@ -40,6 +40,7 @@
       "salary": "Løn",
       "potential": "Potentiale",
       "badges": "Status",
+      "age": "Alder",
       "type": "Type",
       "contract": "Kontrakt",
       "contractValue": "Til S{season}",
