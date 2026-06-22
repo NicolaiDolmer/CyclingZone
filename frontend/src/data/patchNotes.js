@@ -4,6 +4,41 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "5.94",
+    "date": "2026-06-22",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Season",
+        "en": {
+          "title": "Season 1 has relaunched",
+          "body": "Season 1 has relaunched as a fresh, permanent season. You start with a new squad in a world of original riders and races, and the season carries on from here."
+        },
+        "da": {
+          "title": "Sæson 1 er genstartet",
+          "body": "Sæson 1 er genstartet som en frisk, permanent sæson. Du starter med en ny trup i en verden af originale ryttere og løb, og sæsonen kører videre herfra."
+        },
+        "refs": [1105]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Each division races its own calendar",
+          "body": "Every division now runs its own race calendar, with the biggest races at the top of the pyramid and the Continental Class 1 and Class 2 circuit further down. Races run on a set daily schedule."
+        },
+        "da": {
+          "title": "Hver division kører sin egen kalender",
+          "body": "Hver division kører nu sin egen løbskalender, med de største løb i toppen af pyramiden og Continental-cirkusets Klasse 1 og Klasse 2 længere nede. Løbene afvikles efter en fast daglig plan."
+        },
+        "refs": [1704]
+      }
+    ]
+  },
+  {
     "version": "5.93",
     "date": "2026-06-22",
     "label": "Beta",
