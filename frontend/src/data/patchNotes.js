@@ -4,6 +4,55 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "5.97",
+    "date": "2026-06-22",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Injury days now count correctly on the Training page",
+          "body": "A rider on the final day of an injury showed \"0 days left\". It now counts the remaining injury days correctly, including the last day."
+        },
+        "da": {
+          "title": "Skadesdage tælles nu korrekt på træningssiden",
+          "body": "En rytter på sidste skadedag viste \"0 dage tilbage\". Den tæller nu de resterende skadesdage korrekt, inklusiv sidste dag."
+        },
+        "refs": [1672]
+      },
+      {
+        "category": "added",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Academy purchases now show the price and ask for confirmation",
+          "body": "Signing a youth rider for cash now shows the price up front and a confirmation with your balance before and after, so you never spend money by accident."
+        },
+        "da": {
+          "title": "Akademi-køb viser nu prisen og beder om bekræftelse",
+          "body": "At signere en ungdomsrytter for penge viser nu prisen tydeligt plus en bekræftelse med din saldo før og efter, så du aldrig bruger penge ved et uheld."
+        },
+        "refs": [1744]
+      },
+      {
+        "category": "added",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Rider age is shown in more places and tables can be sorted by age",
+          "body": "A rider's age now appears on your squad, the rider database and the transfer market, not only the rider page. You can also sort by age on your squad, the rider database and the auction \"All\" tab."
+        },
+        "da": {
+          "title": "Rytterens alder vises flere steder, og tabeller kan sorteres på alder",
+          "body": "En rytters alder vises nu på dit hold, i rytterdatabasen og på transfermarkedet, ikke kun på ryttersiden. Du kan også sortere på alder på dit hold, i rytterdatabasen og på auktionens \"Alle\"-fane."
+        },
+        "refs": [1674, 1671]
+      }
+    ]
+  },
+  {
     "version": "5.96",
     "date": "2026-06-22",
     "label": "Beta",
