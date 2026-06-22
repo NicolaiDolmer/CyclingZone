@@ -16,6 +16,7 @@ import { resolveApiError } from "../lib/apiError";
 import { sortListings, LISTING_SORT_OPTIONS } from "../lib/transferListingSort";
 import { Card, EmptyState, ExchangeIcon, ClipboardIcon, InboxIcon } from "../components/ui";
 import { ABILITY_STATS as LISTING_STATS, flattenAbilities } from "../lib/abilities";
+import { getRiderAge } from "../lib/riderAge";
 import NationCell from "../components/rider/NationCell";
 import RiderNameCell from "../components/rider/RiderNameCell";
 import TeamCell from "../components/rider/TeamCell";
@@ -1117,6 +1118,9 @@ function MarketRow({ listing, myTeamId, statCols, expanded, onToggleExpand, onOf
         <td className="px-3 py-2.5 hidden sm:table-cell">
           <TeamCell team={listing.seller} freeLabel="—" />
         </td>
+        <td className="px-2 py-2.5 text-center hidden md:table-cell">
+          <span className="text-cz-2 font-mono text-xs">{getRiderAge(rider?.birthdate) ?? "—"}</span>
+        </td>
         <td className="px-3 py-2.5 hidden md:table-cell">
           <span className="text-cz-3 text-xs whitespace-nowrap">
             {listing.created_at ? formatDate(listing.created_at, null, { day: "numeric", month: "short" }) : "—"}
@@ -1153,7 +1157,7 @@ function MarketRow({ listing, myTeamId, statCols, expanded, onToggleExpand, onOf
       </tr>
       {expanded && (
         <tr className="border-b border-cz-border bg-cz-subtle">
-          <td colSpan={7 + statCols.length + 1} className="px-3 pb-4 pt-1">
+          <td colSpan={8 + statCols.length + 1} className="px-3 pb-4 pt-1">
             <div className="max-w-xl rounded-lg border border-cz-border bg-cz-card p-3">
               {isOwn ? (
                 <OwnListingActions
@@ -1777,6 +1781,7 @@ export default function TransfersPage() {
                           <th className="px-2 py-3 text-left font-medium uppercase tracking-wider text-cz-3 w-12 hidden sm:table-cell">{t("marketRow.nation")}</th>
                           <th className="px-3 py-3 text-left font-medium uppercase tracking-wider text-cz-3 w-40 sticky left-0 z-30 bg-cz-card border-r border-cz-border">{t("marketRow.rider")}</th>
                           <th className="px-3 py-3 text-left font-medium uppercase tracking-wider text-cz-3 hidden sm:table-cell">{t("marketRow.seller")}</th>
+                          <th className="px-2 py-3 text-center font-medium uppercase tracking-wider text-cz-3 w-12 hidden md:table-cell">{t("marketRow.age")}</th>
                           <th className="px-3 py-3 text-left font-medium uppercase tracking-wider text-cz-3 hidden md:table-cell">{t("marketRow.listed")}</th>
                           <th className="px-3 py-3 text-right font-medium uppercase tracking-wider text-cz-3 w-20">{t("marketRow.value")}</th>
                           <th className="px-3 py-3 text-right font-medium uppercase tracking-wider text-cz-3 w-20 hidden sm:table-cell">{t("marketRow.salary")}</th>

@@ -1443,7 +1443,9 @@ function AuctionTableHead({ visibleStats, activeSort, activeSortDir, handleSort,
           className="px-3 py-3 text-center font-medium uppercase tracking-wider whitespace-nowrap">
           {t("table.timeLeft")}
         </SortTh>
-        <th className="px-2 py-3 text-center text-cz-3 font-medium hidden xl:table-cell">{t("table.age")}</th>
+        <SortTh sortKey="birthdate" sort={activeSort("birthdate") ? "birthdate" : riderFiltersSort}
+          sortDir={activeSortDir("birthdate")} onSort={handleSort}
+          className="px-2 py-3 text-center font-medium hidden xl:table-cell">{t("table.age")}</SortTh>
         <SortTh sortKey="salary" sort={activeSort("salary") ? "salary" : riderFiltersSort}
           sortDir={activeSortDir("salary")} onSort={handleSort}
           className="px-2 py-3 text-right font-medium">{t("table.salary")}</SortTh>
