@@ -5,8 +5,15 @@ import { seededUnit } from "./riderProgression.js";
 import { DAILY_TRAINING_CONFIG } from "./dailyTraining.js";
 
 export const CONDITION_CONFIG = Object.freeze({
-  recoveryBase: 5,            // dagligt trætheds-fradrag alle får
+  // Daglig recovery (#1676): det daglige midnats-tick (assistent-sweep ~kl. 22 dansk
+  // tid, eller manuelt "Træn i dag") trækker recovery fra trætheden hver dag. Modellen
+  // har tre led, så træthed ALDRIG sidder fast på 100: et fast gulv alle får, et evne-
+  // afhængigt bidrag, og et proportionalt led (en andel af den aktuelle træthed
+  // forsvinder pr. dag). Det proportionale led giver en stabil ligevægt UNDER 100 selv
+  // under hård daglig belastning, og er fysiologisk i tråd med ægte træthedshenfald.
+  recoveryBase: 4,            // fast dagligt trætheds-fradrag alle får
   recoveryFromAbility: 4,     // + op til dette × recovery/99
+  recoveryFraction: 0.13,     // + denne andel af aktuel træthed forsvinder pr. dag
   formSweetLo: 25, formSweetHi: 60,   // trætheds-zone hvor form bygges
   formGain: 3, formMildGain: 1, formOverloadLoss: 4, formHighLoss: 1,
   multFormSpan: 0.15,         // form 0↔100 flytter trænings-effekt ±15 %
@@ -21,7 +28,11 @@ export function nextFatigue({ fatigue, intensity, recoveryAbility = 50, raceLoad
   const f = Number(fatigue);
   if (!Number.isFinite(f)) return 50; // korrupt input → neutral fallback
   const load = DAILY_TRAINING_CONFIG.fatigueLoad[intensity] ?? 0;
-  const recovery = cfg.recoveryBase + cfg.recoveryFromAbility * ((Number(recoveryAbility) || 0) / 99);
+  // Daglig recovery = fast gulv + evne-bidrag + andel af aktuel træthed (#1676).
+  const recovery =
+    cfg.recoveryBase +
+    cfg.recoveryFromAbility * ((Number(recoveryAbility) || 0) / 99) +
+    cfg.recoveryFraction * Math.max(0, f);
   const next = f + load + Number(raceLoad || 0) - recovery;
   return Math.max(0, Math.min(100, Math.round(next)));
 }
