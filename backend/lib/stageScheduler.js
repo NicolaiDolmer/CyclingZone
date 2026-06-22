@@ -16,8 +16,15 @@
 // + trackedTick (Sentry-capture) i cron-laget.
 
 import { copenhagenMidnightUTC } from "./copenhagenTime.js";
+import { STAGES_PER_DAY } from "../scripts/backfillRaceScheduledFor.js";
 
-const MAX_STAGES_PER_DAY = 5;
+// Daglig afviklings-cap (loop-prævention, Beslutning D) — skaleret til den tæt-pakkede
+// per-division-cadence: STAGES_PER_DAY etaper/dag × op til 15 league-puljer (1/2/4/8-
+// pyramiden). Den PRIMÆRE throughput-styring er scheduled_at-tiderne (planRaceSchedules);
+// cap'et er en backstop mod runaway. Det tidligere globale 5 var dødt-langsomt med per-
+// division-kalenderen (7 live puljer delte 5/dag → ~0,7 etape/dag/pulje → ~85-dages sæson).
+const TOTAL_LEAGUE_POOLS = 15;
+const MAX_STAGES_PER_DAY = STAGES_PER_DAY * TOTAL_LEAGUE_POOLS;
 
 // Source-markør på race_simulation_runs: KUN scheduler-drevne runs tæller i daglig cap.
 // Skrives af persistRuns via simulateStageByIndex's runSource (sat = 'scheduler' fra
