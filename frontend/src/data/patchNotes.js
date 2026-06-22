@@ -4,6 +4,97 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "5.93",
+    "date": "2026-06-22",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Standings",
+        "en": {
+          "title": "Standings now cover all four divisions",
+          "body": "Standings now cover all four divisions, with sub-tabs for each pool inside a division. AI teams fill out race fields so every pool has real competition, and they step aside automatically when human managers arrive."
+        },
+        "da": {
+          "title": "Ranglisten dækker nu alle fire divisioner",
+          "body": "Ranglisten dækker nu alle fire divisioner, med sub-faner for hver pulje i en division. AI-hold fylder race-felterne ud, så hver pulje har rigtig konkurrence, og de viger automatisk når menneske-managere kommer til."
+        },
+        "refs": [1688]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Team selection is easier to find",
+          "body": "Team selection is now easier to find. A new sidebar entry and a dashboard prompt take you straight to picking your squad for the next race."
+        },
+        "da": {
+          "title": "Holdudtagelse er lettere at finde",
+          "body": "Holdudtagelse er nu lettere at finde. Et nyt menupunkt og en genvej på dashboardet fører dig direkte til at udtage holdet til næste løb."
+        },
+        "refs": [1681]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Onboarding",
+        "en": {
+          "title": "Onboarding streamlined",
+          "body": "Onboarding is streamlined: a single Getting Started guide on the dashboard, and empty pages now point you somewhere useful. Auctions and transfers open on the tabs with riders, and an empty squad links to the market."
+        },
+        "da": {
+          "title": "Onboarding strømlinet",
+          "body": "Onboarding er strømlinet: én Kom-godt-i-gang-guide på dashboardet, og tomme sider guider dig nu videre. Auktioner og transfers åbner på de faner hvor der er ryttere, og en tom trup linker til markedet."
+        },
+        "refs": [1569, 1140]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Transfers",
+        "en": {
+          "title": "Trade any time: the transfer window is gone",
+          "body": "Riders can now change teams at any point in the season. There is no transfer window anymore, so every deal registers immediately and you can buy and sell whenever it suits your plan. If your squad is full, sell a rider before you sign a new one."
+        },
+        "da": {
+          "title": "Handl når som helst: transfervinduet er væk",
+          "body": "Ryttere kan nu skifte hold når som helst i sæsonen. Der er ikke længere et transfervindue, så alle handler registreres med det samme, og du kan købe og sælge når det passer din plan. Er din trup fuld, så sælg en rytter før du henter en ny."
+        },
+        "refs": [1310]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "New race classes: Class 1 and Class 2",
+          "body": "The race calendar now includes Class 1 and Class 2 Continental races, giving the lower divisions their own circuit of one-day races and shorter stage races to compete in."
+        },
+        "da": {
+          "title": "Nye løbsklasser: Klasse 1 og Klasse 2",
+          "body": "Løbskalenderen indeholder nu Klasse 1- og Klasse 2-løb fra Continental-cirkuset, så de lavere divisioner får deres eget program af endagsløb og kortere etapeløb at konkurrere i."
+        },
+        "refs": []
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "See the route profile before you race",
+          "body": "Every upcoming race now shows its terrain profile before it runs (per stage for stage races), so you can pick your squad to suit the parcours."
+        },
+        "da": {
+          "title": "Se ruteprofilen før du kører",
+          "body": "Hvert kommende løb viser nu sin terrænprofil før det køres (pr. etape for etapeløb), så du kan udtage holdet efter parcouren."
+        },
+        "refs": []
+      }
+    ]
+  },
+  {
     "version": "5.92",
     "date": "2026-06-21",
     "label": "Beta",
