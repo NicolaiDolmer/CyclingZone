@@ -420,7 +420,8 @@ function SquadTab({ riders, scouting, onSelectRider, windowOpen }) {
                   {/* #1482: status/badges, ryttertype og kontraktudløb som egne
                       kolonner (Discord-feedback) — U25/ind/ud flyttet ud af navne-cellen. */}
                   <th className="px-3 py-3 text-left text-cz-3 font-medium">{t("squad.headers.badges")}</th>
-                  <th className="px-3 py-3 text-center text-cz-3 font-medium">{t("squad.headers.age")}</th>
+                  <SortTh sortKey="birthdate" sort={sort} sortDir={sortDir} onSort={handleSort}
+                    className="px-3 py-3 text-center font-medium">{t("squad.headers.age")}</SortTh>
                   <SortTh sortKey="primary_type" sort={sort} sortDir={sortDir} onSort={handleSort}
                     className="px-3 py-3 text-left font-medium">{t("squad.headers.type")}</SortTh>
                   <SortTh sortKey="contract_end_season" sort={sort} sortDir={sortDir} onSort={handleSort}

@@ -452,7 +452,8 @@ export default function RidersPage() {
                       ryttertype som egen sortérbar kolonne (delt fra Status). */}
                   <SortTh sortKey="is_u25" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
                     className="px-3 py-3 text-left font-medium uppercase tracking-wider hidden sm:table-cell">{t("table.badges")}</SortTh>
-                  <th className="px-3 py-3 text-left font-medium uppercase tracking-wider hidden sm:table-cell">{t("table.age")}</th>
+                  <SortTh sortKey="birthdate" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
+                    className="px-3 py-3 text-left font-medium uppercase tracking-wider hidden sm:table-cell">{t("table.age")}</SortTh>
                   <SortTh sortKey="primary_type" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
                     className="px-3 py-3 text-left font-medium uppercase tracking-wider hidden sm:table-cell">{t("table.type")}</SortTh>
                   <SortTh sortKey="value" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}
