@@ -25,6 +25,7 @@
     "rider_other_manager": "Denne rytter tilhører en anden manager",
     "rider_has_active_auction": "Rytteren har allerede en aktiv auktion",
     "rider_in_open_swap_auction": "Rytteren er tilbudt i en åben byttehandel. Træk byttetilbuddet tilbage, før du starter en auktion",
+    "rider_on_auction_transfer": "Rytteren er på en aktiv auktion. Byd på auktionen i stedet for at sende et transfertilbud.",
     "invalid_start_price": "Ugyldig startpris",
     "invalid_offer_amount": "Ugyldigt beløb",
     "invalid_loan_amount": "Ugyldigt beløb",

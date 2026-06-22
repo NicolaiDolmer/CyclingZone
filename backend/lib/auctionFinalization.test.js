@@ -92,6 +92,8 @@ function createFinalizeAuctionSupabase({
   riderUpdates = [],
   financeInserts = [],
   listingUpdates = [],
+  offerWithdrawals = [],
+  swapWithdrawals = [],
 } = {}) {
   const bankTeam = Object.values(teams).find(team => team.is_bank) || null;
 
@@ -362,6 +364,46 @@ function createFinalizeAuctionSupabase({
               }),
             }),
           }),
+        };
+      }
+
+      // #1748 (a): salg trækker også åbne transfer-/swap-TILBUD tilbage.
+      // transfer_offers: update().in("rider_id").in("status").
+      if (table === "transfer_offers") {
+        return {
+          update(payload) {
+            return {
+              in(riderColumn, riderIds) {
+                assert.equal(riderColumn, "rider_id");
+                return {
+                  in(statusColumn, statuses) {
+                    assert.equal(statusColumn, "status");
+                    offerWithdrawals.push({ payload, riderIds, statuses });
+                    return Promise.resolve({ error: null });
+                  },
+                };
+              },
+            };
+          },
+        };
+      }
+
+      // swap_offers: update().in("status").or(<offered/requested rider filter>).
+      if (table === "swap_offers") {
+        return {
+          update(payload) {
+            return {
+              in(statusColumn, statuses) {
+                assert.equal(statusColumn, "status");
+                return {
+                  or(filter) {
+                    swapWithdrawals.push({ payload, statuses, filter });
+                    return Promise.resolve({ error: null });
+                  },
+                };
+              },
+            };
+          },
         };
       }
 

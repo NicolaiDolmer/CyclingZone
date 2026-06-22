@@ -25,6 +25,7 @@
     "rider_other_manager": "This rider belongs to another manager",
     "rider_has_active_auction": "This rider already has an active auction",
     "rider_in_open_swap_auction": "This rider is offered in an open swap. Withdraw the swap offer before starting an auction",
+    "rider_on_auction_transfer": "This rider is on an active auction. Bid on the auction instead of making a transfer offer.",
     "invalid_start_price": "Invalid starting price",
     "invalid_offer_amount": "Invalid amount",
     "invalid_loan_amount": "Invalid amount",

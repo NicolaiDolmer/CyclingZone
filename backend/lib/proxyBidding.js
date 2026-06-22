@@ -92,6 +92,22 @@ export async function resolveProxyBids({
   // selv sætte en lavere proxy senere hvis de ønsker).
   const balanceRejectedTeams = new Set();
 
+  // #1740: cascaden ejer ALLE "du er overbudt"-notifikationer (auction_outbid +
+  // auction_proxy_outbid). Vi samler de teams den allerede har notificeret, så
+  // kalderen (POST /bid, PATCH /proxy) IKKE sender en falsk overbudt-besked til en
+  // fører hvis autobud genvinder føringen i denne cascade. Kalderen tjekker
+  // outbidNotified + finalLeaderId i returværdien.
+  const outbidNotified = new Set();
+  // Wrap notifyTeamOwner så vi registrerer hvilke teams der fik en overbudt-notif.
+  const trackedNotify = notifyTeamOwner
+    ? (teamId, type, ...rest) => {
+        if (type === "auction_outbid" || type === "auction_proxy_outbid") {
+          outbidNotified.add(teamId);
+        }
+        return notifyTeamOwner(teamId, type, ...rest);
+      }
+    : notifyTeamOwner;
+
   for (let i = 0; i < MAX_PROXY_ITERATIONS; i++) {
     const { data: auction } = await supabase
       .from("auctions")
@@ -139,7 +155,7 @@ export async function resolveProxyBids({
       if (!canAffordTie) {
         balanceRejectedTeams.add(previousLeader);
         if (notifyTeamOwner) {
-          await notifyTeamOwner(
+          await trackedNotify(
             previousLeader,
             "auction_proxy_outbid",
             "Dit autobud er stoppet",
@@ -178,7 +194,7 @@ export async function resolveProxyBids({
           .eq("id", previousLeader)
           .maybeSingle();
         const leaderName = leaderTeam?.name || "Autobud";
-        await notifyTeamOwner(
+        await trackedNotify(
           currentWinner,
           "auction_outbid",
           "Du er blevet overbudt!",
@@ -268,7 +284,7 @@ export async function resolveProxyBids({
       // var winner eller challenger — meningen er "dit autobud er stoppet".
       const riderName = `${auction.rider.firstname} ${auction.rider.lastname}`;
       if (notifyTeamOwner) {
-        await notifyTeamOwner(
+        await trackedNotify(
           autoBidder,
           "auction_proxy_outbid",
           "Dit autobud er stoppet",
@@ -319,7 +335,7 @@ export async function resolveProxyBids({
     if (notifyTeamOwner) {
       if (exhaustedTeam) {
         // Proxy was beaten by a higher max
-        await notifyTeamOwner(
+        await trackedNotify(
           exhaustedTeam,
           "auction_proxy_outbid",
           "Dit autobud er stoppet",
@@ -329,7 +345,7 @@ export async function resolveProxyBids({
         ).catch((e) => console.error("[proxy-notif] failed", { auctionId, e }));
       } else if (autoBidder !== currentWinner && currentWinner) {
         // Challenger took over, current winner had no proxy (normal outbid via proxy)
-        await notifyTeamOwner(
+        await trackedNotify(
           currentWinner,
           "auction_outbid",
           "Du er blevet overbudt!",
@@ -341,7 +357,7 @@ export async function resolveProxyBids({
 
       // Notify seller (only if real human selling own rider — mirrors manual bid flow)
       if (auction.rider?.team_id && auction.rider.team_id === auction.seller_team_id && auction.seller_team_id !== autoBidder) {
-        await notifyTeamOwner(
+        await trackedNotify(
           auction.seller_team_id,
           "bid_received",
           "New bid received",
@@ -378,4 +394,17 @@ export async function resolveProxyBids({
     // Winner countered challenger successfully — no more iterations needed
     if (autoBidder === currentWinner) break;
   }
+
+  // #1740: returnér hvem der fører efter cascaden + hvilke teams cascaden allerede
+  // har sendt en overbudt-notif til. Kalderen bruger dette til at undgå en FALSK
+  // overbudt-besked til en fører hvis autobud genvandt føringen i denne cascade.
+  const { data: settled } = await supabase
+    .from("auctions")
+    .select("current_bidder_id")
+    .eq("id", auctionId)
+    .single();
+  return {
+    finalLeaderId: settled?.current_bidder_id ?? null,
+    outbidNotified,
+  };
 }

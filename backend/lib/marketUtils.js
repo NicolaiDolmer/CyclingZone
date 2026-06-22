@@ -81,6 +81,52 @@ export async function closeTransferListingsForRiders(supabase, riderIds, status)
   );
 }
 
+// #1748 (a): når en rytter sælges via auktion skal ALLE åbne transfer- OG
+// swap-tilbud på ham også trækkes tilbage — ikke kun transfer_listings. Ellers
+// kan en modpart bekræfte et tidligere tilbud EFTER auktionssalget og forsøge at
+// dobbelt-overdrage rytteren (executeTransferOffer-TOCTOU-guarden fanger det, men
+// at lade tilbuddet stå "aktivt" i UI'et er forvirrende). Idempotent: rammer kun
+// stadig-åbne records. Delt af auctionFinalization (+ kan genbruges af andre
+// salgs-stier). De aktive market-statuser spejler ACTIVE_MARKET_STATUSES i
+// transferExecution.js (pending/countered/awaiting_confirmation).
+export async function withdrawOpenTransferDealsForRiders(supabase, riderIds) {
+  const ids = (riderIds || []).filter(Boolean);
+  if (ids.length === 0) return;
+  const openStatuses = ["pending", "countered", "awaiting_confirmation"];
+  await expectMutation(
+    supabase
+      .from("transfer_offers")
+      .update({ status: "withdrawn" })
+      .in("rider_id", ids)
+      .in("status", openStatuses)
+  );
+  const riderList = ids.join(",");
+  await expectMutation(
+    supabase
+      .from("swap_offers")
+      .update({ status: "withdrawn" })
+      .in("status", openStatuses)
+      .or(`offered_rider_id.in.(${riderList}),requested_rider_id.in.(${riderList})`)
+  );
+}
+
+// #1748 (a): den delte "er denne rytter på en aktiv auktion?"-kilde. Returnerer
+// delmængden af riderIds der har en auktion i status active/extended. Bruges af
+// transfer-køb/-tilbud-gaterne (api.js + transferExecution) så en rytter kun kan
+// anskaffes ad ÉN vej ad gangen — samme single-source-of-truth som auktion-vs-swap
+// (getSwapAuctionConflict). Tom riderIds → tom liste (ingen query).
+export async function getActiveAuctionRiderIds(supabase, riderIds = []) {
+  const ids = (riderIds || []).filter(Boolean);
+  if (ids.length === 0) return [];
+  const { data, error } = await supabase
+    .from("auctions")
+    .select("rider_id")
+    .in("rider_id", ids)
+    .in("status", ["active", "extended"]);
+  ensureNoError(error);
+  return [...new Set((data || []).map((row) => row.rider_id))];
+}
+
 export function calculateRiderMarketValue(rider = {}) {
   const explicit = Number(rider.market_value);
   if (Number.isFinite(explicit)) return explicit;

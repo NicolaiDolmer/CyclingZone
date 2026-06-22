@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   calculateRiderMarketValue,
+  getActiveAuctionRiderIds,
   getIncomingSquadViolation,
   getOutgoingSquadViolation,
   getTeamMarketState,
@@ -10,7 +11,129 @@ import {
   RIDER_BASE_VALUE_FALLBACK,
   resolveRiderSalary,
   TRANSFER_WINDOW_SOFT_CAP_BUFFER,
+  withdrawOpenTransferDealsForRiders,
 } from "./marketUtils.js";
+
+// #1748 (a): getActiveAuctionRiderIds — delmængden af riderIds der er på en aktiv
+// auktion. Minimal mock for auctions.select().in("rider_id").in("status").
+function makeAuctionLookupSupabase(activeRows) {
+  const calls = [];
+  return {
+    calls,
+    from(table) {
+      assert.equal(table, "auctions");
+      return {
+        select(cols) {
+          assert.equal(cols, "rider_id");
+          return {
+            in(col1, ids) {
+              assert.equal(col1, "rider_id");
+              return {
+                in(col2, statuses) {
+                  assert.equal(col2, "status");
+                  calls.push({ ids, statuses });
+                  const data = activeRows.filter(
+                    (r) => ids.includes(r.rider_id) && statuses.includes(r.status),
+                  );
+                  return Promise.resolve({ data, error: null });
+                },
+              };
+            },
+          };
+        },
+      };
+    },
+  };
+}
+
+test("getActiveAuctionRiderIds returns only riders on an active auction (#1748)", async () => {
+  const supabase = makeAuctionLookupSupabase([
+    { rider_id: "r1", status: "active" },
+    { rider_id: "r2", status: "completed" }, // not active
+    { rider_id: "r3", status: "extended" },
+  ]);
+  const result = await getActiveAuctionRiderIds(supabase, ["r1", "r2", "r3", "r4"]);
+  assert.deepEqual(result.sort(), ["r1", "r3"]);
+  // status-filter er active/extended
+  assert.deepEqual(supabase.calls[0].statuses, ["active", "extended"]);
+});
+
+test("getActiveAuctionRiderIds short-circuits on empty input (no query) (#1748)", async () => {
+  let queried = false;
+  const supabase = { from() { queried = true; throw new Error("should not query"); } };
+  assert.deepEqual(await getActiveAuctionRiderIds(supabase, []), []);
+  assert.deepEqual(await getActiveAuctionRiderIds(supabase, [null, undefined]), []);
+  assert.equal(queried, false);
+});
+
+test("getActiveAuctionRiderIds dedupes rider_id (#1748)", async () => {
+  const supabase = makeAuctionLookupSupabase([
+    { rider_id: "r1", status: "active" },
+    { rider_id: "r1", status: "extended" }, // same rider, two rows (defensive)
+  ]);
+  assert.deepEqual(await getActiveAuctionRiderIds(supabase, ["r1"]), ["r1"]);
+});
+
+test("withdrawOpenTransferDealsForRiders withdraws open transfer_offers + swap_offers (#1748)", async () => {
+  const offerUpdates = [];
+  const swapUpdates = [];
+  const supabase = {
+    from(table) {
+      if (table === "transfer_offers") {
+        return {
+          update(payload) {
+            return {
+              in(col1, ids) {
+                assert.equal(col1, "rider_id");
+                return {
+                  in(col2, statuses) {
+                    assert.equal(col2, "status");
+                    offerUpdates.push({ payload, ids, statuses });
+                    return Promise.resolve({ error: null });
+                  },
+                };
+              },
+            };
+          },
+        };
+      }
+      if (table === "swap_offers") {
+        return {
+          update(payload) {
+            return {
+              in(col, statuses) {
+                assert.equal(col, "status");
+                return {
+                  or(filter) {
+                    swapUpdates.push({ payload, statuses, filter });
+                    return Promise.resolve({ error: null });
+                  },
+                };
+              },
+            };
+          },
+        };
+      }
+      throw new Error(`Unexpected table: ${table}`);
+    },
+  };
+  await withdrawOpenTransferDealsForRiders(supabase, ["r1"]);
+  assert.equal(offerUpdates.length, 1);
+  assert.equal(offerUpdates[0].payload.status, "withdrawn");
+  assert.deepEqual(offerUpdates[0].ids, ["r1"]);
+  assert.deepEqual(offerUpdates[0].statuses, ["pending", "countered", "awaiting_confirmation"]);
+  assert.equal(swapUpdates.length, 1);
+  assert.equal(swapUpdates[0].payload.status, "withdrawn");
+  assert.match(swapUpdates[0].filter, /offered_rider_id\.in\.\(r1\)/);
+  assert.match(swapUpdates[0].filter, /requested_rider_id\.in\.\(r1\)/);
+});
+
+test("withdrawOpenTransferDealsForRiders is a no-op on empty input (#1748)", async () => {
+  let queried = false;
+  const supabase = { from() { queried = true; throw new Error("should not query"); } };
+  await withdrawOpenTransferDealsForRiders(supabase, []);
+  assert.equal(queried, false);
+});
 
 test("getIncomingSquadViolation includes pending riders in the max check", () => {
   const issue = getIncomingSquadViolation({

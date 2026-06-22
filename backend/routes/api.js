@@ -42,6 +42,7 @@ import {
   getProxyOpeningBidAmount,
   getSpendIssue,
   getSwapAuctionConflict,
+  getTransferAuctionConflict,
   isExpectedPriceStale,
 } from "../lib/auctionRules.js";
 import {
@@ -217,6 +218,7 @@ import {
 import { isBoardTestModeActive } from "../lib/boardTestMode.js";
 import { openBoardTestMode, openBoardLive, closeBoardTestMode } from "../lib/boardTestModeService.js";
 import {
+  getActiveAuctionRiderIds,
   getIncomingSquadViolation,
   getTeamMarketState,
   TRANSFER_WINDOW_SOFT_CAP_BUFFER,
@@ -1900,23 +1902,11 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
     );
   }
 
-  // Notify previous bidder (outbid)
-  if (auction.current_bidder_id && auction.current_bidder_id !== req.team.id) {
-    await notifyTeamOwner(
-      auction.current_bidder_id,
-      "auction_outbid",
-      "Du er blevet overbudt!",
-      `${req.team.name} bød ${amount} på ${auction.rider.firstname} ${auction.rider.lastname}`,
-      auction.id,
-      { riderId: auction.rider_id }
-    );
-    notifyOutbid({
-      riderName: `${auction.rider.firstname} ${auction.rider.lastname}`,
-      newBid: amount,
-      bidderName: req.team.name,
-      teamId: auction.current_bidder_id,
-    }).catch((e) => console.error("[notifyOutbid] failed", { auctionId: auction.id, error: e.message }));
-  }
+  // #1740: outbid-notifikationen til den forrige fører er FLYTTET til EFTER
+  // proxy-cascaden (se nedenfor). Hvis den forrige fører har et autobud der
+  // genvinder føringen, skal de IKKE få en falsk "du er overbudt"-besked. Vi
+  // sender derfor først efter cascaden har settlet, og kun hvis de reelt endte
+  // overbudt og cascaden ikke allerede har notificeret dem.
 
   // Only notify seller if they're a real human manager selling their own rider
   // Don't spam seller with every bid on AI/free rider auctions
@@ -1936,8 +1926,9 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
   if (bidUser) awardXP(bidUser.id, "bid_placed").catch(() => {});
 
   // Resolve proxy counter-bids — auto-bid on behalf of managers with max-loft
+  let cascadeResult = null;
   try {
-    await resolveProxyBids({
+    cascadeResult = await resolveProxyBids({
       supabase,
       auctionId: auction.id,
       bidTime,
@@ -1950,6 +1941,38 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
     });
   } catch (e) {
     console.error("[resolveProxyBids] failed for auction", auction.id, e);
+  }
+
+  // #1740: send outbid-notif til den forrige fører EFTER cascaden. Kun hvis de
+  // reelt endte overbudt (er ikke den endelige fører) OG cascaden ikke allerede
+  // har notificeret dem (fx via et tie-break/counter-bid). Et autobud der genvandt
+  // føringen → previousLeader === finalLeaderId → ingen besked (fixer #1740).
+  // Fallback: hvis cascaden fejlede (cascadeResult === null) sender vi den
+  // oprindelige besked baseret på den umiddelbare post-bid-tilstand (req.team fører).
+  const finalLeaderId = cascadeResult
+    ? cascadeResult.finalLeaderId
+    : req.team.id;
+  const alreadyNotified = cascadeResult?.outbidNotified ?? new Set();
+  if (
+    previousLeader &&
+    previousLeader !== req.team.id &&
+    previousLeader !== finalLeaderId &&
+    !alreadyNotified.has(previousLeader)
+  ) {
+    await notifyTeamOwner(
+      previousLeader,
+      "auction_outbid",
+      "Du er blevet overbudt!",
+      `${req.team.name} bød ${amount} på ${auction.rider.firstname} ${auction.rider.lastname}`,
+      auction.id,
+      { riderId: auction.rider_id }
+    );
+    notifyOutbid({
+      riderName: `${auction.rider.firstname} ${auction.rider.lastname}`,
+      newBid: amount,
+      bidderName: req.team.name,
+      teamId: previousLeader,
+    }).catch((e) => console.error("[notifyOutbid] failed", { auctionId: auction.id, error: e.message }));
   }
 
   // #257: extend only if the cascade left someone OTHER than previousLeader
@@ -2154,16 +2177,10 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
     }
 
     const riderName = `${auction.rider?.firstname || "Ukendt"} ${auction.rider?.lastname || "rytter"}`.trim();
-    if (auction.current_bidder_id && auction.current_bidder_id !== req.team.id) {
-      await notifyTeamOwner(
-        auction.current_bidder_id,
-        "auction_outbid",
-        "Du er blevet overbudt!",
-        `${req.team.name}'s autobud bød ${openingBidAmount.toLocaleString("da-DK")} CZ$ på ${riderName}`,
-        auction.id,
-        { riderId: auction.rider_id },
-      );
-    }
+    // #1740: outbid-notif til den forrige fører flyttes til EFTER cascaden — et
+    // autobud sat MENS man ikke fører placerer et åbningsbud, men den forrige
+    // fører kan have et autobud der straks genvinder føringen. Sender vi her,
+    // får de en falsk "du er overbudt"-besked.
     if (auction.rider?.team_id === auction.seller_team_id && auction.seller_team_id !== req.team.id) {
       await notifyTeamOwner(
         auction.seller_team_id,
@@ -2176,8 +2193,9 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
     }
     awardXP(req.user.id, "bid_placed").catch(() => {});
   }
+  let proxyCascadeResult = null;
   try {
-    await resolveProxyBids({
+    proxyCascadeResult = await resolveProxyBids({
       supabase,
       auctionId: req.params.id,
       bidTime: proxyBidTime,
@@ -2190,6 +2208,27 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
     });
   } catch (e) {
     console.error("[resolveProxyBids] failed for auction", req.params.id, e);
+  }
+
+  // #1740: send outbid-notif til den forrige fører EFTER cascaden — kun hvis et
+  // åbningsbud blev placeret (openingBidAmount !== null), de reelt endte overbudt
+  // (ikke den endelige fører) og cascaden ikke allerede har notificeret dem.
+  if (openingBidAmount !== null && previousLeader && previousLeader !== req.team.id) {
+    const proxyFinalLeaderId = proxyCascadeResult
+      ? proxyCascadeResult.finalLeaderId
+      : req.team.id;
+    const proxyAlreadyNotified = proxyCascadeResult?.outbidNotified ?? new Set();
+    if (previousLeader !== proxyFinalLeaderId && !proxyAlreadyNotified.has(previousLeader)) {
+      const riderName = `${auction.rider?.firstname || "Ukendt"} ${auction.rider?.lastname || "rytter"}`.trim();
+      await notifyTeamOwner(
+        previousLeader,
+        "auction_outbid",
+        "Du er blevet overbudt!",
+        `${req.team.name}'s autobud bød ${openingBidAmount.toLocaleString("da-DK")} CZ$ på ${riderName}`,
+        auction.id,
+        { riderId: auction.rider_id },
+      );
+    }
   }
 
   // #257: only extend if cascade left a different leader than before.
@@ -2441,6 +2480,20 @@ router.post("/transfers/offer", requireAuth, marketWriteLimiter, async (req, res
     .single();
   if (sellerTeam?.is_bank) {
     return res.status(400).json({ error: "AI riders can't receive direct offers. Start or bid on an auction instead.", errorCode: "ai_rider_no_direct_offer" });
+  }
+
+  // #1748 (a): én anskaffelsesvej ad gangen. En rytter på en aktiv auktion må
+  // ikke samtidig kunne købes via transfer — ellers kan samme rytter både vindes
+  // på auktionen OG købes via transfer. Bid på auktionen i stedet.
+  const transferAuctionConflict = getTransferAuctionConflict({
+    riderId: rider_id,
+    activeAuctionRiderIds: await getActiveAuctionRiderIds(supabase, [rider_id]),
+  });
+  if (transferAuctionConflict) {
+    return res.status(409).json({
+      error: "This rider is on an active auction. Bid on the auction instead of making a transfer offer.",
+      errorCode: "rider_on_auction_transfer",
+    });
   }
 
   // Check buyer balance
@@ -2800,6 +2853,17 @@ router.post("/transfers/:id/offer", requireAuth, marketWriteLimiter, async (req,
     .single();
   if (listingSeller?.is_bank)
     return res.status(400).json({ error: "AI riders can't receive direct offers. Start or bid on an auction instead.", errorCode: "ai_rider_no_direct_offer" });
+  // #1748 (a): én anskaffelsesvej ad gangen — blokér tilbud på en rytter der er
+  // på en aktiv auktion (samme gate som direkte-tilbud-ruten ovenfor).
+  const listingAuctionConflict = getTransferAuctionConflict({
+    riderId: listing.rider_id,
+    activeAuctionRiderIds: await getActiveAuctionRiderIds(supabase, [listing.rider_id]),
+  });
+  if (listingAuctionConflict)
+    return res.status(409).json({
+      error: "This rider is on an active auction. Bid on the auction instead of making a transfer offer.",
+      errorCode: "rider_on_auction_transfer",
+    });
   const listingBuyerState = await getTeamMarketState(supabase, req.team.id);
   if (offer_amount > listingBuyerState.balance)
     return res.status(400).json({ error: "You can't afford this offer", errorCode: "cannot_afford_offer" });
@@ -8497,8 +8561,19 @@ router.get("/academy/me", requireAuth, async (req, res) => {
       }
     }
 
+    // #1748 (b): en 'offered' intake-kandidat der i mellemtiden er blevet anskaffet
+    // ad en anden vej (vundet på ungdomsauktion af et andet hold → is_academy=true /
+    // team_id sat) må IKKE stadig stå som hentbar i intake-listen. Den autoritative
+    // tilgængelighed er rytter-tilstanden, ikke den (potentielt stale) intake-række:
+    // skjul kandidater der allerede har et ejer-hold eller er optaget som akademi-rytter.
+    const acquiredCandidate = (riderId) => {
+      const r = potentialeByRider[riderId] ?? {};
+      return Boolean(r.team_id);
+    };
     // Byg intake-payload: potentiale-estimat (maxLevel → eksakt, men aldrig raw potentiale).
-    const intake = (intakeRows ?? []).map((row) => {
+    const intake = (intakeRows ?? [])
+      .filter((row) => !acquiredCandidate(row.rider_id))
+      .map((row) => {
       const rider = row.riders ?? {};
       const potRow = potentialeByRider[row.rider_id] ?? {};
       const age = (potRow.birthdate ?? rider.birthdate)
