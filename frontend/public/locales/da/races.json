@@ -174,6 +174,12 @@
       "generic": "Udtagelsen kunne ikke gemmes. Prøv igen."
     }
   },
+  "discoverCta": {
+    "title": "Udtag dit løbshold",
+    "bodyStage": "{race} venter forude. Vælg dine ryttere, kaptajn og taktik inden start.",
+    "bodyOneDay": "{race} venter forude. Vælg dine ryttere, kaptajn og taktik inden start.",
+    "action": "Sæt din opstilling"
+  },
   "detail": {
     "backToLibrary": "← Løbsbibliotek",
     "tabOverall": "Samlet",

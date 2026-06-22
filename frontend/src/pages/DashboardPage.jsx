@@ -13,6 +13,7 @@ import { dateTextToDayOfYear } from "../lib/raceCalendar";
 import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch";
 import { useActionSummary } from "../hooks/useActionSummary";
 import NextActionsCard from "../components/NextActionsCard";
+import TeamSelectionCtaCard from "../components/TeamSelectionCtaCard";
 import RiderLink from "../components/RiderLink";
 import { Flag } from "../components/Flag";
 import useDashboardLayout from "../lib/useDashboardLayout";
@@ -554,6 +555,10 @@ export default function DashboardPage() {
         </Card>
         </Link>
       )}
+
+      {/* #1681: holdudtagelse-CTA — synlig genvej direkte til det næste kommende
+          løbs udtagelses-panel. Selv-guarder (intet scheduled løb → null). */}
+      <TeamSelectionCtaCard races={nextRaces} />
 
       {/* Main grid */}
       <div className="grid lg:grid-cols-2 gap-4">

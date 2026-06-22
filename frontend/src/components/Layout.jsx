@@ -68,7 +68,13 @@ function buildNavGroups(team, t, academyEnabled = false) {
         { to: "/resultater",     label: t("nav.item.results") },
         { to: "/standings",      label: t("nav.item.standings") },
         { to: "/rider-rankings", label: t("nav.item.riderRankings") },
-        { to: "/races",          label: t("nav.item.races") },
+        // #1681: excludeQuery så "Races" ikke også lyser op på holdudtagelse-
+        // genvejen (?tab=calendar) — samme mønster som Transfers/Transfer list.
+        { to: "/races",          label: t("nav.item.races"), excludeQuery: "tab=calendar" },
+        // #1681: holdudtagelse var begravet 3 klik nede (Races → vælg løb →
+        // scroll til panel). Top-level genvej → kalender-fanen med de kommende
+        // løb man kan udtage hold til; hvert løb-kort linker til selve panelet.
+        { to: "/races?tab=calendar", label: t("nav.item.teamSelection") },
         { to: "/seasons",        label: t("nav.item.seasons") },
       ],
     },
