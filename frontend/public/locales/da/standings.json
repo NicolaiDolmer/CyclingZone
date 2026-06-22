@@ -4,6 +4,7 @@
   "seasonTooltip": "Nuværende sæson. Ranglisten nulstilles hver sæson.",
   "noActiveSeason": "Ingen aktiv sæson",
   "division": "Division {n}",
+  "poolAll": "Alle",
   "noData": "Ingen data for Division {n} endnu",
   "noMatch": "Ingen hold matcher din søgning",
   "searchPlaceholder": "Søg hold...",

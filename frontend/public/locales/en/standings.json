@@ -4,6 +4,7 @@
   "seasonTooltip": "Current season. Standings reset each season.",
   "noActiveSeason": "No active season",
   "division": "Division {n}",
+  "poolAll": "All",
   "noData": "No data for Division {n} yet",
   "noMatch": "No teams match your search",
   "searchPlaceholder": "Search teams...",

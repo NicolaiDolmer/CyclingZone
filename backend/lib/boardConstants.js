@@ -39,10 +39,18 @@ export const PLAN_PENALTY_MODIFIERS = {
 // (driver bag den 50 % konsekvens-rate, #1187-B-scorecardet). Div 3 (8-10) var
 // allerede launch-passende og bevares. Empirisk verificeret via
 // boardSatisfactionHarness.js --regen-goals (simulér-før-ship).
+// #1688 (forever-relaunch AI-fill + race-scale): EKSPLICIT tier-4-entry. Tier 4 er
+// bunden i 4-tier-pyramiden. Før denne entry faldt getDivisionSquadLimits(4) STILLE
+// tilbage til div-3 (boardIdentity.normalizeDivision returnerede null fordi der ikke
+// fandtes en [4]-nøgle → `?? 3`), så et tier-4-hold blev evalueret med div-3-grænser
+// uden at det var bevidst. Værdien matcher den hidtidige div-3-fallback ({min:8,max:10})
+// så adfærden er UÆNDRET — men nu eksplicit og forward-guarded mod en fremtidig
+// tier-4-rebalance der ellers ville skulle ændre div-3 for at ramme bunden.
 export const DIVISION_SQUAD_LIMITS = {
   1: { min: 10, max: 16 },
   2: { min: 9, max: 13 },
   3: { min: 8, max: 10 },
+  4: { min: 8, max: 10 },
 };
 
 export const CATEGORY_LABELS = {

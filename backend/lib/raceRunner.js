@@ -34,6 +34,7 @@ import { copenhagenDateString } from "./copenhagenTime.js";
 import { applyRaceFatigue, stageEnteringFatigues } from "./raceFatigue.js";
 import { autopickTeamSelection, selectionSizeForRace } from "./raceAutopick.js";
 import { applyStageResultAtomic } from "./stageResultRpc.js";
+import { POOL_TARGET_SIZE } from "./economyConstants.js";
 
 // Intern klassements-point (grøn/bjerg) — afgør KUN rækkefølgen i de respektive
 // trøje-konkurrencer; selve præmie-pointene kommer fra race_points via rank.
@@ -307,24 +308,68 @@ async function loadStageProfiles(supabase, raceId) {
 // for løbet: assistenten udtager 6-8 bedst egnede + kaptajn (spec 8.1 — "vælger du
 // ikke, vælger assistenten fornuftigt; ingen straf for fravær"). Hold MED entries
 // (manager-udtagne) røres ikke. Skadede (injured_until >= i dag) udelades (#1306 6.5).
-async function fillMissingTeamEntries({ supabase, race, stages, existingEntries, persist = true }) {
+//
+// #1688 (forever-relaunch race-scale): to additive felt-garantier oven på #1307:
+//   1. PULJE-FILTER — når løbet har en pulje (race.league_division_id), auto-fyldes
+//      KUN hold i den pulje. Et løb hører til én pulje (race/standings-gruppe, #1608);
+//      hold fra andre puljer hører ikke i feltet. Bærer løbet endnu ingen pulje
+//      (pre-per-pool-race-virkelighed — `races` har ingen pulje-kolonne i dag, og
+//      parallelle pulje-løb-instanser er bevidst out-of-scope), springes filteret
+//      over og hele feltet behandles som én pulje (uændret #1307-adfærd) — men
+//      felt-cap'et nedenfor beskytter stadig mod et urealistisk stort startfelt.
+//   2. FELT-CAP — feltet cappes til POOL_TARGET_SIZE (24, = pulje-target). Er flere
+//      end 24 hold egnede, beholdes de 24 STÆRKESTE målt på aggregeret roster-
+//      base_value (markedsværdi-proxy). Det forener race-feltets størrelse med
+//      pulje-kapaciteten (#1608: pulje-target = race-feltcap = 24).
+export async function fillMissingTeamEntries({ supabase, race, stages, existingEntries, persist = true }) {
   const { data: teams, error: teamErr } = await supabase
     .from("teams")
-    .select("id, is_test_account, is_frozen")
+    .select("id, is_test_account, is_frozen, league_division_id")
     .or("is_test_account.is.null,is_test_account.eq.false");
   if (teamErr) throw new Error(`teams: ${teamErr.message}`);
   const teamsWithEntries = new Set((existingEntries || []).map((e) => e.team_id));
-  const missingTeamIds = (teams || [])
-    .filter((t) => !t.is_frozen && !teamsWithEntries.has(t.id))
-    .map((t) => t.id);
+
+  // #1688 pulje-filter: kun hold i løbets pulje (når løbet har en). NB: DB-eq på
+  // league_division_id kunne gøre dette server-side, men selectInChunks-/teams-stien
+  // henter alle hold; vi filtrerer i app-koden så logikken er testbar og pulje-
+  // semantikken er eksplicit (service_role/bulk bypasser desuden RLS).
+  const racePoolId = race?.league_division_id ?? null;
+  let eligibleTeams = (teams || []).filter((t) => !t.is_frozen && !teamsWithEntries.has(t.id));
+  if (racePoolId != null) {
+    eligibleTeams = eligibleTeams.filter((t) => t.league_division_id === racePoolId);
+  }
+  let missingTeamIds = eligibleTeams.map((t) => t.id);
   if (!missingTeamIds.length) return [];
 
   const { data: riders, error: riderErr } = await selectInChunks({
-    supabase, table: "riders", columns: "id, team_id",
+    supabase, table: "riders", columns: "id, team_id, base_value",
     inColumn: "team_id", ids: missingTeamIds,
     extra: (q) => q.or("is_retired.is.null,is_retired.eq.false"),
   });
   if (riderErr) throw new Error(`riders: ${riderErr.message}`);
+
+  // #1688 felt-cap: er der flere end POOL_TARGET_SIZE egnede hold, behold de 24
+  // stærkeste på aggregeret roster-base_value. Beregnes FØR skade-/abilities-
+  // filtrering, så cap'et følger holdets reelle styrke (ikke det tilfældige antal
+  // skadede den dag). Deterministisk tie-break på team_id, så samme felt hver gang.
+  if (missingTeamIds.length > POOL_TARGET_SIZE) {
+    const strengthByTeam = new Map(missingTeamIds.map((id) => [id, 0]));
+    for (const r of riders || []) {
+      if (strengthByTeam.has(r.team_id)) {
+        strengthByTeam.set(r.team_id, strengthByTeam.get(r.team_id) + (r.base_value || 0));
+      }
+    }
+    const keptIds = new Set(
+      [...missingTeamIds]
+        .sort((a, b) => {
+          const diff = (strengthByTeam.get(b) || 0) - (strengthByTeam.get(a) || 0);
+          return diff !== 0 ? diff : (a < b ? -1 : a > b ? 1 : 0);
+        })
+        .slice(0, POOL_TARGET_SIZE),
+    );
+    missingTeamIds = missingTeamIds.filter((id) => keptIds.has(id));
+  }
+  const keptTeamSet = new Set(missingTeamIds);
 
   // Spec 6.5 (#1306): skadede ryttere (injured_until >= i dag) må ikke auto-fyldes i startfeltet.
   const todayStr = copenhagenDateString();
@@ -334,7 +379,9 @@ async function fillMissingTeamEntries({ supabase, race, stages, existingEntries,
     .gte("injured_until", todayStr);
   if (injErr) throw new Error(`rider_condition (injured): ${injErr.message}`);
   const injuredIds = new Set((injured || []).map((r) => r.rider_id));
-  const candidates = (riders || []).filter((r) => !injuredIds.has(r.id));
+  // #1688: riders blev hentet for hele pre-cap-sættet — behold kun ryttere på de
+  // hold der overlevede felt-cap'et, så cappede hold ikke smutter ind i feltet.
+  const candidates = (riders || []).filter((r) => !injuredIds.has(r.id) && keptTeamSet.has(r.team_id));
   if (!candidates.length) return [];
 
   const candidateIds = candidates.map((r) => r.id);
