@@ -133,7 +133,7 @@ export default function LandingPage() {
       </a>
 
       {/* ───────── Top-bar ───────── */}
-      <header className="sticky top-0 z-sticky border-b border-cz-border bg-cz-body/95">
+      <header className="sticky top-0 z-sticky border-b border-cz-border bg-cz-body">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-3.5 sm:px-8">
           <Wordmark className="h-7 sm:h-8" />
           <div className="flex items-center gap-1.5 sm:gap-3">
