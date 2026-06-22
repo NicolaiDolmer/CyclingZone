@@ -136,10 +136,11 @@ export const SEASON_AUTO_TRANSITION_ENABLED = false;
 // updateRiderValues som foer.
 export const SEASON_VALUE_RECALC_ENABLED = false;
 
-// Passiv rytterudvikling (#1137) ved saeson-start (kun saeson >= 2). Slaaet fra
-// indtil progressions-systemet er faerdigbygget. Naar true: processSeasonStart
-// koerer developRidersForSeason som foer.
-export const SEASON_RIDER_PROGRESSION_ENABLED = false;
+// Passiv rytterudvikling (#1137) ved saeson-start (kun saeson >= 2). AKTIVERET ved
+// forever-relaunch 2026-06-22 (ejer-direktiv): unified peakAge=28 (PROGRESSION_CONFIG).
+// processSeasonStart koerer developRidersForSeason; effektueres foerst ved saeson 1->2-
+// transitionen (~4 uger), saa ryttere aldres/udvikles/pensioneres mod deres peak.
+export const SEASON_RIDER_PROGRESSION_ENABLED = true;
 
 // -- Forever-relaunch saeson-1-opstarts-gates (#1678, ejer-direktiv 2026-06-21) -----
 // To rene applikationskode-flags (samme moenster som SEASON_AUTO_TRANSITION_ENABLED:
