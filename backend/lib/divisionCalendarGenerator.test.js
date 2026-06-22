@@ -89,3 +89,88 @@ test("respekterer raceDaysTarget (~60 løbsdage, indenfor overshoot)", () => {
   const [cal] = generateDivisionCalendars({ pools, catalog: makeCatalog(), baseSeed: 1, raceDaysTarget: 60 });
   assert.ok(cal.totalRaceDays >= 50 && cal.totalRaceDays <= 65, `totalRaceDays=${cal.totalRaceDays} udenfor forventet bånd`);
 });
+
+// ── #1714: global de-dup på tværs af puljer ─────────────────────────────────────
+test("global de-dup: intet pool_race_id går igen på tværs af de genererede puljer", () => {
+  // 7 puljer på tværs af alle tiers, alle live. Med ét delt katalog ville flere
+  // puljer ellers vælge samme løb (fx samme etapeløb i delte klasser).
+  const pools = [
+    { id: 1, tier: 1, label: "T1", realManagerCount: 0 },
+    { id: 2, tier: 2, label: "T2", realManagerCount: 0 },
+    { id: 3, tier: 3, label: "T3-A", realManagerCount: 1 },
+    { id: 4, tier: 3, label: "T3-B", realManagerCount: 1 },
+    { id: 5, tier: 4, label: "T4-A", realManagerCount: 1 },
+    { id: 6, tier: 4, label: "T4-B", realManagerCount: 1 },
+    { id: 7, tier: 4, label: "T4-C", realManagerCount: 1 },
+  ];
+  const cals = generateDivisionCalendars({ pools, catalog: makeCatalog(), baseSeed: 99 });
+  const seen = new Set();
+  for (const cal of cals) {
+    for (const r of cal.races) {
+      assert.ok(!seen.has(r.id), `pool_race_id ${r.id} gik igen på tværs af puljer (pulje ${cal.leagueDivisionId})`);
+      seen.add(r.id);
+    }
+  }
+});
+
+test("global de-dup: knapt etape-segment beskærer de sidste puljer OG rapporteres (ikke tavst)", () => {
+  // Katalog med KUN 2 ProSeries-etapeløb, men 3 tier-3-puljer der hver kræver
+  // stageRaceQuota=8 → segmentet løber tør → mindst én pulje får færre etapeløb
+  // end target, og det MÅ stå i return-objektets truncated[].
+  const scarce = [];
+  let n = 0;
+  const add = (race_class, race_type, stages, count) => {
+    for (let i = 0; i < count; i++) {
+      scarce.push({ id: `s${n++}`, name: `${race_class}-${String(i).padStart(2, "0")}`, race_class, race_type, stages });
+    }
+  };
+  add("ProSeries", "stage_race", 5, 2); // KUN 2 etapeløb i delt klasse
+  add("Class1", "stage_race", 4, 1);    // 1 ekstra (tier 3 har også Class1)
+  add("ProSeries", "single", 1, 60);    // rigeligt fyld
+  add("Class1", "single", 1, 60);
+
+  const pools = [
+    { id: 1, tier: 3, label: "A", realManagerCount: 1 },
+    { id: 2, tier: 3, label: "B", realManagerCount: 1 },
+    { id: 3, tier: 3, label: "C", realManagerCount: 1 },
+  ];
+  // Return-værdien er et array af kalendre MED en truncated-property hængt på.
+  const cals = generateDivisionCalendars({ pools, catalog: scarce, baseSeed: 7, stageRaceQuota: 8 });
+  const truncated = cals.truncated;
+
+  // De-dup holder stadig: ingen etapeløb deles.
+  const seenStage = new Set();
+  for (const cal of cals) {
+    for (const r of cal.races.filter((x) => x.race_type === "stage_race")) {
+      assert.ok(!seenStage.has(r.id), `etapeløb ${r.id} delt på tværs af puljer`);
+      seenStage.add(r.id);
+    }
+  }
+  // 3 etapeløb total, 3 puljer × 8 quota = 24 ønskede → massiv mangel.
+  assert.ok(seenStage.size <= 3, "kan højst fordele 3 unikke etapeløb");
+
+  // KRITISK: beskæring rapporteres eksplicit, ikke tavst.
+  assert.ok(Array.isArray(truncated), "return-objektet skal have et truncated-array");
+  assert.ok(truncated.length > 0, "mindst én pulje skal være rapporteret som beskåret");
+  for (const t of truncated) {
+    assert.ok(t.leagueDivisionId != null, "truncated-entry har leagueDivisionId");
+    assert.ok(typeof t.stageRacesShort === "number" && t.stageRacesShort > 0, "truncated-entry rapporterer hvor mange etapeløb der mangler");
+  }
+});
+
+test("global de-dup: determinisme bevaret (samme input+seed → samme output)", () => {
+  const pools = [
+    { id: 1, tier: 2, label: "T2", realManagerCount: 0 },
+    { id: 2, tier: 3, label: "T3-A", realManagerCount: 1 },
+    { id: 3, tier: 3, label: "T3-B", realManagerCount: 1 },
+    { id: 4, tier: 4, label: "T4", realManagerCount: 1 },
+  ];
+  const calsA = generateDivisionCalendars({ pools, catalog: makeCatalog(), baseSeed: 314 });
+  const calsB = generateDivisionCalendars({ pools, catalog: makeCatalog(), baseSeed: 314 });
+  assert.deepEqual(
+    calsA.map((c) => [c.leagueDivisionId, c.races.map((r) => r.id)]),
+    calsB.map((c) => [c.leagueDivisionId, c.races.map((r) => r.id)]),
+  );
+  // truncated-rapporten skal også være deterministisk.
+  assert.deepEqual(calsA.truncated, calsB.truncated);
+});

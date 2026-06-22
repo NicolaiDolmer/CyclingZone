@@ -122,3 +122,52 @@ test("idempotent: anden kørsel indsætter 0 (allerede materialiseret)", async (
   assert.equal(r2.racesInserted, 0);
   assert.equal(sb.state.races.length, before);
 });
+
+test("#1714: global de-dup — intet pool_race_id går igen på tværs af puljer", async () => {
+  // To live tier-3-puljer (begge med managere) → uden global de-dup ville de
+  // dele etapeløb fra det delte ProSeries/Class1-segment.
+  const s = seed();
+  s.teams = [
+    { id: "t1", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, league_division_id: 4 },
+    { id: "t2", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, league_division_id: 5 },
+    { id: "ai1", is_ai: true, is_bank: false, is_frozen: false, is_test_account: false, league_division_id: 1 },
+  ];
+  const sb = makeSupabase(s);
+  await materializeSeasonCalendar({ supabase: sb, seasonId: "s1", seasonStartDate: "2026-06-22", from: FROM, dryRun: false });
+  const seen = new Set();
+  for (const rc of sb.state.races) {
+    assert.ok(!seen.has(rc.pool_race_id), `pool_race_id ${rc.pool_race_id} materialiseret i mere end én pulje`);
+    seen.add(rc.pool_race_id);
+  }
+});
+
+test("#1714: knapt etape-segment → summary.truncated rapporterer beskårne puljer", async () => {
+  // Minimalt katalog: kun 2 ProSeries-etapeløb men 3 tier-3-puljer der hver vil
+  // have stageRaceQuota=8 → segmentet løber tør → beskæring SKAL rapporteres.
+  const league_divisions = [
+    { id: 1, tier: 3, pool_index: 0, label: "A" },
+    { id: 2, tier: 3, pool_index: 1, label: "B" },
+    { id: 3, tier: 3, pool_index: 2, label: "C" },
+  ];
+  const teams = [1, 2, 3].map((p) => ({
+    id: `t${p}`, is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, league_division_id: p,
+  }));
+  const race_pool = [];
+  let n = 0;
+  const add = (race_class, race_type, stages, count) => {
+    for (let i = 0; i < count; i++) race_pool.push({ id: `rp${n++}`, name: `${race_class}-${i}`, race_class, race_type, stages });
+  };
+  add("ProSeries", "stage_race", 5, 2);
+  add("ProSeries", "single", 1, 80);
+  add("Class1", "single", 1, 80);
+
+  const sb = makeSupabase({ league_divisions, teams, race_pool });
+  const r = await materializeSeasonCalendar({
+    supabase: sb, seasonId: "s1", seasonStartDate: "2026-06-22", from: FROM, dryRun: true, stageRaceQuota: 8,
+  });
+  assert.ok(Array.isArray(r.truncated), "summary skal have truncated-array");
+  assert.ok(r.truncated.length > 0, "mindst én pulje skal rapporteres beskåret");
+  for (const t of r.truncated) {
+    assert.ok(t.stageRacesShort > 0, "truncated-entry rapporterer manglende etapeløb");
+  }
+});
