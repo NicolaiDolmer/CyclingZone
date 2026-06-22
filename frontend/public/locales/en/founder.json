@@ -4,10 +4,9 @@
   "languageLabel": "Language",
   "badgeBeta": "Open beta",
   "badgeFair": "Fair premium",
-  "badgeGdpr": "GDPR-compliant",
   "heroEyebrow": "Open beta, fair premium discussion",
   "heroHeadline": "Build your cycling team. Race the world. Back a fair manager game.",
-  "heroSub": "Cycling Zone is a browser-based cycling manager where tactics, long-term planning and community rivalry matter. I'm exploring premium, but the rule is simple: ",
+  "heroSub": "Cycling Zone is a browser-based cycling manager game where tactics, long-term planning and community rivalry matter. I'm exploring premium, but the rule is simple: ",
   "heroSubStrong": "the game must be fair for everyone. You cannot pay for better riders, faster training, or better results.",
   "ctaPrimary": "Join the Founder waitlist",
   "ctaSecondary": "Read the full promise",
@@ -15,10 +14,10 @@
   "promiseBody": "Premium can unlock identity, convenience, analytics and ways to back development. It cannot unlock better race results, faster training, stronger riders, transfer advantages, improved scouting odds or hidden power.",
   "promiseFootnote": "This promise appears here and near any future pricing info. It's the most important trust message in the whole premium conversation.",
   "tiersTitle": "What might fair premium look like?",
-  "tiersSub": "Nothing here is final. These are the Premium price points I'm considering ({prices}/mo), and joining the waitlist helps me decide.",
+  "tiersSub": "Nothing here is final. The cards below show one possible set of monthly prices. For the Premium tier I'm weighing {prices}/mo, and joining the waitlist helps me decide.",
   "perDayApprox": "≈ {price}/day",
   "founderNoteTitle": "Where does the Founder waitlist fit?",
-  "founderNoteBody": "Founder is not a separate paid tier. It's an early waitlist status for the first 100 players who want to be considered if payment opens later. Joining is non-binding, and you are charged nothing today.",
+  "founderNoteBody": "Founder is not a separate paid tier. It's an early waitlist status for the first 100 players who want to be considered if payment opens later. Joining is non-binding, and you're charged nothing today.",
   "tierFree": {
     "name": "Free Manager",
     "tagline": "New / casual players",
@@ -97,7 +96,7 @@
     { "title": "Vote on non-balance roadmap topics", "desc": "Never about balance or competitive advantage." }
   ],
   "formSectionTitle": "Join the Founder waitlist",
-  "formSectionSub": "It's NOT binding. You are charged nothing today. The goal is to hear whether enough cyclists want to back the project financially before I build payment.",
+  "formSectionSub": "It's NOT binding. You're charged nothing today. The goal is to see whether there is enough interest in financially supporting the project before I add payments.",
   "faqTitle": "Questions I've heard",
   "faqItems": [
     {

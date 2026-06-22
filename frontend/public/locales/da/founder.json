@@ -4,7 +4,6 @@
   "languageLabel": "Sprog",
   "badgeBeta": "Open beta",
   "badgeFair": "Fair premium",
-  "badgeGdpr": "GDPR-compliant",
   "heroEyebrow": "Open beta, fair premium-samtale",
   "heroHeadline": "Byg dit cykelhold. Kør mod verden. Bak et fair managerspil op.",
   "heroSub": "Cycling Zone er et browserbaseret cykelmanagerspil, hvor taktik, langsigtet planlægning og community-rivalitet betyder noget. Jeg undersøger premium, men reglen er enkel: ",
@@ -15,7 +14,7 @@
   "promiseBody": "Premium kan låse op for identitet, bekvemmelighed, analyser og måder at bakke udviklingen op. Det kan IKKE låse op for bedre løbsresultater, hurtigere træning, stærkere ryttere, transfer-fordele, bedre scout-odds eller skjult magt.",
   "promiseFootnote": "Dette løfte vises både her og ved enhver fremtidig pris-info. Det er den vigtigste tillids-besked i hele samtalen om premium.",
   "tiersTitle": "Hvad kunne fair premium se ud som?",
-  "tiersSub": "Intet her er endeligt. Det er de Premium-prispunkter, jeg overvejer ({prices}/md), og din tilmelding hjælper mig med at beslutte.",
+  "tiersSub": "Intet her er endeligt. Kortene nedenfor viser ét muligt sæt månedspriser. For Premium-tier'en overvejer jeg {prices}/md, og din tilmelding hjælper mig med at beslutte.",
   "perDayApprox": "≈ {price}/dag",
   "founderNoteTitle": "Hvor passer Founder-waitlisten ind?",
   "founderNoteBody": "Founder er ikke en separat betalt tier. Det er en early waitlist-status for de første 100 spillere, der vil overvejes, hvis betaling åbner senere. Tilmelding er uforpligtende, og du opkræves ingenting i dag.",
@@ -97,7 +96,7 @@
     { "title": "Stemme på non-balance roadmap-emner", "desc": "Aldrig om balance eller konkurrencefordele." }
   ],
   "formSectionTitle": "Skriv dig på Founder-waitlisten",
-  "formSectionSub": "Det er IKKE bindende. Du opkræves ingenting i dag. Formålet er at høre, om der er nok cyklister, der vil bakke projektet op økonomisk, inden jeg bygger betaling.",
+  "formSectionSub": "Det er IKKE bindende. Du opkræves ingenting i dag. Formålet er at se, om der er nok interesse i at støtte projektet økonomisk, inden jeg tilføjer betaling.",
   "faqTitle": "Spørgsmål vi har hørt",
   "faqItems": [
     {
