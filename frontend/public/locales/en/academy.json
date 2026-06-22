@@ -1,6 +1,7 @@
 {
   "title": "Academy",
   "slots": "Academy: {used} / {max} places",
+  "balance": "Balance: {amount} CZ$",
   "disabledNote": "The Academy is coming soon. Stay tuned.",
   "graduationHeading": "Graduating riders",
   "intakeHeading": "Intake candidates",
@@ -14,6 +15,7 @@
   "ageLabel": "{age} y/o",
   "signBtn": "Sign",
   "signFreeAgentBtn": "Sign to academy",
+  "signFreeAgentBtnPriced": "Sign for {price} CZ$",
   "rejectBtn": "Reject",
   "promoteBtn": "Promote",
   "sellBtn": "Sell",
@@ -27,6 +29,15 @@
   "colAge": "Age",
   "colSalary": "Salary",
   "colContract": "Contract",
+  "signModal": {
+    "title": "Confirm signing",
+    "question": "Sign this rider to your academy for cash:",
+    "priceLabel": "Signing cost",
+    "balanceLabel": "Current balance",
+    "afterLabel": "Balance after",
+    "cannotAfford": "You do not have enough money to sign this rider.",
+    "confirm": "Sign"
+  },
   "error": {
     "academyFull": "Academy is full (8/8). Cannot sign another rider.",
     "insufficientBalance": "Not enough money to sign this rider.",

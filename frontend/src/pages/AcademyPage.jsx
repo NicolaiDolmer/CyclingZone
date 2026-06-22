@@ -13,6 +13,9 @@ import { useAcademy } from "../lib/useAcademy.js";
 import { Flag } from "../components/Flag.jsx";
 import PotentialeStars from "../components/PotentialeStars.jsx";
 import RiderLink from "../components/RiderLink.jsx";
+import { AcademySignConfirmModal } from "../components/AcademySignConfirmModal.jsx";
+import { getRiderMarketValue } from "../lib/marketValues.js";
+import { formatNumber } from "../lib/intl.js";
 
 function calcAge(birthdate) {
   if (!birthdate) return null;
@@ -37,11 +40,15 @@ function daysUntil(deadline) {
 
 export default function AcademyPage() {
   const { t } = useTranslation("academy");
-  const { enabled, slots, roster, intake, freeAgents, graduations, loading, signCandidate, rejectCandidate, signFreeAgent, resolveGraduate } = useAcademy();
+  const { enabled, slots, roster, intake, freeAgents, graduations, balance, loading, signCandidate, rejectCandidate, signFreeAgent, resolveGraduate } = useAcademy();
 
   // Per-kandidat in-flight state + fejlbeskeder.
   const [actionState, setActionState] = useState({}); // { [riderId]: "signing"|"rejecting"|null }
   const [actionErrors, setActionErrors] = useState({}); // { [riderId]: string | null }
+
+  // Bekræftelses-modal for free-agent-køb (#1744): koster penge, så kræv eksplicit
+  // bekræftelse med pris + saldo-effekt. { riderId, riderName, price } | null.
+  const [signConfirm, setSignConfirm] = useState(null);
 
   const isFull = slots.used >= slots.max;
 
@@ -83,11 +90,27 @@ export default function AcademyPage() {
     setActionState(prev => ({ ...prev, [riderId]: null }));
   }
 
-  async function handleSignFreeAgent(riderId) {
+  // Åbn bekræftelses-modal — selve købet sker først i confirmSignFreeAgent (#1744).
+  function handleSignFreeAgent(rider) {
+    setActionErrors(prev => ({ ...prev, [rider.id]: null }));
+    setSignConfirm({
+      riderId: rider.id,
+      riderName: `${rider.firstname} ${rider.lastname}`.trim(),
+      // Optagelsen koster den viste markedsværdi (backend trækker calculateRiderMarketValue,
+      // = market_value; spejlet client-side via getRiderMarketValue). Refs #1713.
+      price: getRiderMarketValue(rider),
+    });
+  }
+
+  async function confirmSignFreeAgent() {
+    if (!signConfirm) return;
+    const riderId = signConfirm.riderId;
     setActionState(prev => ({ ...prev, [riderId]: "signing" }));
     setActionErrors(prev => ({ ...prev, [riderId]: null }));
     const result = await signFreeAgent(riderId);
-    if (!result.ok) {
+    if (result.ok) {
+      setSignConfirm(null);
+    } else {
       const msg = result.error === "academy_full"
         ? t("error.academyFull")
         : result.error === "insufficient_balance"
@@ -98,6 +121,7 @@ export default function AcademyPage() {
               ? t("error.notFreeAgent")
               : t("error.generic");
       setActionErrors(prev => ({ ...prev, [riderId]: msg }));
+      setSignConfirm(null);
     }
     setActionState(prev => ({ ...prev, [riderId]: null }));
   }
@@ -125,12 +149,19 @@ export default function AcademyPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header med slot-tæller */}
+      {/* Header med saldo + slot-tæller */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <h1 className="text-xl font-bold text-cz-1">{t("title")}</h1>
-        <span className="text-sm font-mono text-cz-2">
-          {t("slots", { used: slots.used, max: slots.max })}
-        </span>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+          {balance != null && (
+            <span className="text-sm font-mono text-cz-2">
+              {t("balance", { amount: formatNumber(balance) })}
+            </span>
+          )}
+          <span className="text-sm font-mono text-cz-2">
+            {t("slots", { used: slots.used, max: slots.max })}
+          </span>
+        </div>
       </div>
 
       {/* GRADUERINGS-sektion (#932) — akademiryttere der har passeret 21 og skal
@@ -391,12 +422,14 @@ export default function AcademyPage() {
 
                   <button
                     type="button"
-                    onClick={() => handleSignFreeAgent(rider.id)}
+                    onClick={() => handleSignFreeAgent(rider)}
                     disabled={busy || isFull}
                     title={isFull ? t("fullTooltip") : undefined}
                     className="mt-auto px-3 py-1.5 rounded-lg bg-cz-accent text-white text-xs font-semibold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
                   >
-                    {actionState[rider.id] === "signing" ? t("loading") : t("signFreeAgentBtn")}
+                    {actionState[rider.id] === "signing"
+                      ? t("loading")
+                      : t("signFreeAgentBtnPriced", { price: formatNumber(getRiderMarketValue(rider)) })}
                   </button>
                 </div>
               );
@@ -404,6 +437,20 @@ export default function AcademyPage() {
           </div>
         )}
       </section>
+
+      {/* Bekræftelses-modal for free-agent-køb (#1744) — pris + saldo-effekt. */}
+      <AcademySignConfirmModal
+        show={!!signConfirm}
+        riderName={signConfirm?.riderName}
+        price={signConfirm?.price}
+        balance={balance}
+        busy={signConfirm ? actionState[signConfirm.riderId] === "signing" : false}
+        onCancel={() => {
+          if (signConfirm && actionState[signConfirm.riderId] === "signing") return;
+          setSignConfirm(null);
+        }}
+        onConfirm={confirmSignFreeAgent}
+      />
     </div>
   );
 }
