@@ -4,6 +4,55 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "5.98",
+    "date": "2026-06-23",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "A rider on an active auction can no longer be bought via transfer",
+          "body": "A rider is now locked to one acquisition path at a time. While a rider is on an active auction you cannot also buy or bid on them via transfer, and a rider sold on auction is removed from the academy so they cannot be picked up twice."
+        },
+        "da": {
+          "title": "En rytter på en aktiv auktion kan ikke længere købes via transfer",
+          "body": "En rytter er nu låst til én anskaffelsesvej ad gangen. Mens en rytter er på en aktiv auktion, kan du ikke samtidig købe eller byde på ham via transfer, og en rytter solgt på auktion fjernes fra akademiet, så han ikke kan hentes to gange."
+        },
+        "refs": [1748]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "No more false outbid message when your auto-bid wins the lead back",
+          "body": "If your auto-bid immediately outbids someone again, you no longer get a \"you have been outbid\" notification. You are only notified when you actually end up outbid."
+        },
+        "da": {
+          "title": "Ikke flere falske overbudt-beskeder når dit autobud genvinder føringen",
+          "body": "Hvis dit autobud straks overbyder en anden igen, får du ikke længere en \"du er blevet overbudt\"-besked. Du får kun besked, når du rent faktisk ender overbudt."
+        },
+        "refs": [1740]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Academy prospects are hidden from the rider database until you sign them",
+          "body": "Scouting intake prospects no longer appear in the rider database with full stats before you sign them. You see only what scouting reveals until they join your academy."
+        },
+        "da": {
+          "title": "Akademi-prospekter er skjult fra rytterdatabasen indtil du henter dem",
+          "body": "Spejder-prospekter optræder ikke længere i rytterdatabasen med fulde stats før du henter dem. Du ser kun det spejderne afslører, indtil de kommer på dit akademi."
+        },
+        "refs": [1743]
+      }
+    ]
+  },
+  {
     "version": "5.97",
     "date": "2026-06-22",
     "label": "Beta",
