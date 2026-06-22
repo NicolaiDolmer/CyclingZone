@@ -4,10 +4,9 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (22/6 — LAUNCH LIVE ✅): MERGE #1754 (EJER) — auktion/akademi-korrekthed + RLS-migration venter på dig. Højeste prioritet (#1748 dobbeltadgang rammer spillerne nu). Migration prod-valideret i rollback.** Permanent frisk sæson 1 live; recovery: backup `cyclingzone-20260622-153339` (VERIFIED) + PITR.
-> - **Merged i dag (launch-batch):** kalender-cadence + UX-batch (#1709-1721) · #1694/#1693 auktion-korrekthed · #1697 landing-header · **frontend-fleet: #1672 skades-dage · #1744 akademi-bekræftelse · #1674/#1671 rytter-alder+sort** · v5.93-5.97 patch-notes.
-> - **VENTER PÅ EJER-MERGE: [#1754](https://github.com/NicolaiDolmer/CyclingZone/issues/1754)** (#1748 + #1740 + #1743; RLS-migration `2026-06-22-hide-intake-riders-from-db.sql` auto-applies). Efter merge: tilføj patch-notes v5.98 + flip #1748/#1740/#1743 → done. Worktree `fix-1748-...` beholdt til da.
-> - **Næste prioritet (launch-bugs):** #1742 pensionerede under frie ungdom · #1739 AI-hold bliver i division · #1745 op/nedrykning-visning · #1741 transferhistorik · #1738 bestyrelse-DNA · #1746/#1747/#1749/#1750. Systemisk: **#1755** rytter-oversigt-konsistens + universel sort. Cleanup: #1756 stale academy_intake-rækker.
+> **🎯 Next action (23/6 — LAUNCH LIVE ✅): launch-bug-batch SHIPPED (auktion/akademi-korrekthed #1748/#1740/#1743 verificeret live i prod). Næste = resten af launch-bugs (#1742, #1739, #1745, #1741, #1738 …) — kan køres som ny parallel-fleet.** Permanent frisk sæson 1 live; recovery: backup `cyclingzone-20260622-153339` (VERIFIED) + PITR.
+> - **Merged 22-23/6 (launch-batch):** kalender-cadence + UX-batch (#1709-1721) · #1694/#1693 + **#1748/#1740/#1743 auktion/akademi-korrekthed** (RLS-migration live: 68 intake skjult, 12.604 ryttere læsbare for anon) · #1697 landing-header · **#1672 skades-dage · #1744 akademi-bekræftelse · #1674/#1671 rytter-alder+sort** · v5.93-5.98 patch-notes.
+> - **Næste prioritet (launch-bugs):** #1742 pensionerede under frie ungdom · #1739 AI-hold bliver i division · #1745 op/nedrykning-visning · #1741 transferhistorik · #1738 bestyrelse-DNA · #1746/#1747/#1749/#1750. Systemisk: **#1755** rytter-oversigt-konsistens + universel sort. Cleanup: #1756 stale academy_intake.
 > - **Ejer-beslutninger (åbne):** #1276 PCM-IP · #1278 spiller-comms (du voicer) · #1487-budget · #929 leaked-pw · #691 key-rotation · #940 NPS.
 > - **Hygiejne:** #1650 feature-liveness 'audit'-check fejler på alle PRs (ikke-required støj). #1733 drop prod-backup-tabeller når stabilt. [PLAN.md](PLAN.md)=SSOT.
 
