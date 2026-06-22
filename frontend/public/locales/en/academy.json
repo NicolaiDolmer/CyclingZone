@@ -29,6 +29,7 @@
   "colContract": "Contract",
   "error": {
     "academyFull": "Academy is full (8/8). Cannot sign another rider.",
+    "insufficientBalance": "Not enough money to sign this rider.",
     "notOffered": "This rider has not been offered a place.",
     "notFreeAgent": "This rider is no longer a free agent.",
     "notAcademyAge": "This rider is outside the academy age range (16-21).",
