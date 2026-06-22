@@ -109,8 +109,16 @@ export async function materializeSeasonCalendar({
     baseSeed,
   });
 
+  // Global de-dup (#1714) kan beskære de sidste puljer hvis et klasse-segment løber
+  // tør for etapeløb (katalog-loft: ~49 etapeløb < puljer × quota). Rapportér det
+  // eksplicit i summary + log — ALDRIG tavs beskæring.
+  const truncated = calendars.truncated || [];
+  for (const t of truncated) {
+    log(`  ⚠ pulje ${t.leagueDivisionId} (tier ${t.tier}) beskåret: ${t.stageRacesSelected}/${t.stageRaceTarget} etapeløb (mangler ${t.stageRacesShort})`);
+  }
+
   const editionYear = editionYearFrom(seasonStartDate);
-  const summary = { dryRun, editionYear, racesInserted: 0, stageProfiles: 0, stageSchedules: 0, pools: [] };
+  const summary = { dryRun, editionYear, racesInserted: 0, stageProfiles: 0, stageSchedules: 0, truncated, pools: [] };
 
   // 5. Pr. pulje: skip allerede-materialiserede, insert races → profiler → schedule.
   for (const cal of calendars) {
