@@ -93,9 +93,19 @@ async function main() {
   );
   const academyRiderIds = new Set(intakeRiderRows.map((r) => r.rider_id));
   const fictionalActiveTotal = await countRiders([["is", "pcm_id", null], ["is", "is_retired", false]]);
-  const fictionalMarket = fictionalActiveTotal - academyRiderIds.size;
-  add("~800 fiktive i markedet", fictionalMarket >= 780 && fictionalMarket <= 820,
-    `${fictionalMarket} (total ${fictionalActiveTotal} − ${academyRiderIds.size} academy)`, "~800");
+  // "I markedet" = fiktive UDEN hold (team_id NULL). Startholds-trupperne (#1487
+  // dedikeret weak-pool, 22×8=176 ryttere) + AI-fyld-trupperne (#1688, ~1900) er PÅ
+  // hold og hører IKKE til det åbne marked — kun den genererede markeds-population
+  // (~800) + academy-kuld står uden hold. Det gamle tjek talte ALLE fiktive (lig
+  // markedet dengang trupper blev trukket fra de 800); nu er trupperne en separat
+  // pulje, så vi måler markedet eksplicit (team_id NULL) og ekskluderer academy.
+  const marketRiderRows = await fetchAllRows(() =>
+    supabase.from("riders").select("id").is("pcm_id", null).eq("is_retired", false).is("team_id", null).order("id")
+  );
+  const marketFictional = marketRiderRows.filter((r) => !academyRiderIds.has(r.id)).length;
+  add("~800 fiktive i markedet",
+    marketFictional >= 780 && marketFictional <= 820,
+    `${marketFictional} (marked uden academy; total fiktive ${fictionalActiveTotal})`, "~800");
 
   // #1447: VERIFICÉR via ANON-nøgle (RLS-sti), ikke kun service-role. Tjekket ovenfor
   // tæller via service_role-klienten, der BYPASSER RLS — og var derfor blind for

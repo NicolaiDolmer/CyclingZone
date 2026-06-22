@@ -74,6 +74,16 @@ SELECT ('00000000-0000-4000-9000-' || lpad(to_hex(i), 12, '0'))::uuid,
   CASE WHEN i <= 2 THEN 1 ELSE 0 END
 FROM generate_series(1, 29) i;
 
+-- Backfill league_division_id (spejler migrationens backfill, #1608): map heltals-
+-- division til tier-puljens pulje 0 for ALLE hold — inkl. AI-holdet. Uden dette står
+-- seedens AI-hold uden pulje og overlever relaunchen som et stray AI-hold (usynligt
+-- for AI-fyld'ens pulje-iteration). Prod-AI-holdet HAR en pulje (backfill kørte i
+-- migrationen), så dette gør seeden prod-tro; AI-fyld'ens reconcile rydder så det
+-- pulje-placerede AI-hold korrekt (tier-3-pulje uden manager → 0 AI).
+UPDATE public.teams t SET league_division_id = ld.id
+  FROM public.league_divisions ld
+  WHERE ld.tier = t.division AND ld.pool_index = 0 AND t.league_division_id IS NULL;
+
 -- ── A4 · team_dna + tildeling (verificerer nulling i reset) ──────────────────
 INSERT INTO public.team_dna (key, label, emoji, short_description, long_description, policy_axes)
 VALUES ('attack_dna', 'Attack', '🔥', 'Attack first', 'Attack-minded club DNA', '{}'::jsonb),
