@@ -1,7 +1,7 @@
 // Backfill-script (WS1 Fase 3, Beslutning C-A): retrofit den live beta-sæson så
-// stage-by-stage-scheduleren kan overtage afviklingen. Fordeler alle scheduled løb
-// i den aktive sæson over kommende dage (ét løb/dag fra i morgen, sorteret på name
-// for determinisme) og skriver:
+// stage-by-stage-scheduleren kan overtage afviklingen. Pakker alle scheduled løbs
+// etaper tæt over kommende dage (STAGES_PER_DAY etaper/dag fra i morgen, sorteret på
+// name for determinisme) og skriver:
 //   - races.scheduled_for  = løbets startdag
 //   - race_stage_schedule  = ét synligt CET-tidspunkt pr. etape
 //
@@ -15,11 +15,16 @@ import dotenv from "dotenv";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 
-// Faste danske etape-slots (CET/CEST wall-clock). Flere etaper end slots på samme
-// dag ruller IKKE — vi kører i stedet én etape pr. dag (matcher ejer-direktivet
-// "én etape ad gangen"); slot-listen styrer KUN klokkeslættet for dagens etape.
-// Listen er bevidst > 1 så en fremtidig "flere etaper/dag"-variant kan genbruge den.
+// Faste danske etape-slots (CET/CEST wall-clock), ét slot pr. etape-position på dagen.
 export const STAGE_SLOTS_CET = Object.freeze(["12:30", "15:00", "18:00", "21:00"]);
+
+// Afviklings-cadence: antal etaper der afvikles pr. dag på tværs af en pulje-kalender.
+// Etaperne pakkes TÆT (STAGES_PER_DAY/dag, intet dag-spild mellem løb), så en sæson
+// afvikles i ~total-etaper / STAGES_PER_DAY dage. Launch (60-etape-kalender): 2 → ~30
+// dage ≈ 4-ugers sæson, op fra den dødt-langsomme 1-pr-dag-mod-globalt-cap-5 (som med
+// 7 live puljer gav ~0,7 etape/dag/pulje). Den fulde 140-etaper/5-per-dag-vision er
+// post-launch (kræver race_days_total-rekalibrering af board/økonomi/progression).
+export const STAGES_PER_DAY = 2;
 
 // Copenhagen-offset (minutter, +) for en given UTC-instant. Bruger Intl så DST
 // håndteres korrekt uden tz-bibliotek.
@@ -59,34 +64,42 @@ function copenhagenDatePlusDays(fromUTC, days) {
 }
 
 /**
- * REN planlægning (ingen DB). Fordeler løb ét pr. dag fra i morgen, sorteret på name.
- * Hver etape får et fast CET-slot, én etape pr. dag (etape k → startdag + k).
+ * REN planlægning (ingen DB). Pakker løbenes etaper TÆT over kommende dage, sorteret på
+ * name: STAGES_PER_DAY etaper pr. dag på tværs af HELE pulje-kalenderen (intet dag-spild
+ * mellem løb), så en sæson afvikles i ~total-etaper / STAGES_PER_DAY dage. Hvert løbs
+ * etaper er konsekutive; slot = etape-position på dagen (de første STAGES_PER_DAY slots).
  *
- * @param {{ races: Array<{id,name,stages}>, from?: Date, slots?: string[] }} args
+ * @param {{ races: Array<{id,name,stages}>, from?: Date, slots?: string[], stagesPerDay?: number }} args
  * @returns {{ raceUpdates: Array<{id, scheduled_for}>, stageRows: Array<{race_id, stage_number, scheduled_at}> }}
  */
-export function planRaceSchedules({ races = [], from = new Date(), slots = STAGE_SLOTS_CET }) {
+export function planRaceSchedules({ races = [], from = new Date(), slots = STAGE_SLOTS_CET, stagesPerDay = STAGES_PER_DAY }) {
   const sorted = [...races].sort((a, b) =>
     String(a.name).localeCompare(String(b.name), "en") || String(a.id).localeCompare(String(b.id)),
   );
+  const perDay = Math.max(1, Number(stagesPerDay) || 1);
+  const dayFor = (idx) => copenhagenDatePlusDays(from, Math.floor(idx / perDay) + 1); // +1 = i morgen
+  const slotFor = (idx) => slots[(idx % perDay) % slots.length];
+
   const raceUpdates = [];
   const stageRows = [];
-  sorted.forEach((race, raceIdx) => {
-    const startDay = copenhagenDatePlusDays(from, raceIdx + 1); // +1 = i morgen for første løb
+  let stageCursor = 0; // global etape-tæller → tæt pakning på tværs af alle løb
+  for (const race of sorted) {
     const stageCount = Math.max(1, Number(race.stages) || 1);
-    // Startdagens slot = første slot; løbets scheduled_for = startdagens etape-1-tid.
-    const firstStageAt = copenhagenWallClockToUTC(startDay, slots[0]);
-    raceUpdates.push({ id: race.id, scheduled_for: firstStageAt.toISOString() });
+    // Løbets scheduled_for = dets etape-1-tid.
+    raceUpdates.push({
+      id: race.id,
+      scheduled_for: copenhagenWallClockToUTC(dayFor(stageCursor), slotFor(stageCursor)).toISOString(),
+    });
     for (let s = 0; s < stageCount; s++) {
-      const dayStr = copenhagenDatePlusDays(from, raceIdx + 1 + s); // én etape pr. dag
-      const slot = slots[s % slots.length];
+      const idx = stageCursor + s;
       stageRows.push({
         race_id: race.id,
         stage_number: s + 1,
-        scheduled_at: copenhagenWallClockToUTC(dayStr, slot).toISOString(),
+        scheduled_at: copenhagenWallClockToUTC(dayFor(idx), slotFor(idx)).toISOString(),
       });
     }
-  });
+    stageCursor += stageCount;
+  }
   return { raceUpdates, stageRows };
 }
 

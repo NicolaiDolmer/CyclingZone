@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { runStageScheduler } from "./stageScheduler.js";
+import { runStageScheduler, MAX_STAGES_PER_DAY } from "./stageScheduler.js";
 
 // Mock-supabase med tabel-specifikke svar via en resolver-funktion. Hver from(table)
 // returnerer en kæde-bygger der ved .then() resolver canned[table] (efter at have
@@ -68,12 +68,12 @@ test("race_engine_v2 OFF → skip (ekstra lag)", async () => {
   assert.equal(ran, 0);
 });
 
-test("daglig cap: >= 5 etaper kørt i dag → skip", async () => {
+test("daglig cap: >= MAX_STAGES_PER_DAY etaper kørt i dag → skip", async () => {
   let ran = 0;
   const supabase = makeSupabase({
     seasons: [{ id: "s1" }],
-    // countStagesDoneToday: 5 race_simulation_runs siden midnat CET.
-    race_simulation_runs: [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }, { id: 5 }],
+    // countStagesDoneToday: MAX_STAGES_PER_DAY scheduler-runs siden midnat CET → cap nået.
+    race_simulation_runs: Array.from({ length: MAX_STAGES_PER_DAY }, (_, i) => ({ id: i + 1 })),
   });
   const r = await runStageScheduler({
     supabase, now: NOW,
@@ -82,6 +82,26 @@ test("daglig cap: >= 5 etaper kørt i dag → skip", async () => {
   });
   assert.equal(r.skipped, "daily_cap_reached");
   assert.equal(ran, 0);
+});
+
+test("daglig cap > 5: per-division-cadence afvikler mange etaper/dag (op til MAX_STAGES_PER_DAY)", async () => {
+  // 6 forskellige løb, hver med en forfalden etape 1. Med det gamle globale cap=5 ville kun
+  // 5 køre — den hævede cap (tæt-pakket 2/dag × op til 15 puljer) lader alle 6 afvikles.
+  assert.ok(MAX_STAGES_PER_DAY > 5, "cap skal dække per-division-cadencen, ikke det gamle globale 5");
+  const races = Array.from({ length: 6 }, (_, i) => ({ id: `r${i}`, season_id: "s1", name: `Race ${i}`, stages: 1, stages_completed: 0, status: "scheduled" }));
+  const schedule = races.map((r) => ({ race_id: r.id, stage_number: 1, scheduled_at: "2026-06-21T10:30:00Z" }));
+  const supabase = makeSupabase({
+    seasons: [{ id: "s1" }],
+    race_simulation_runs: [],
+    races,
+    race_stage_schedule: () => schedule,
+  });
+  const r = await runStageScheduler({
+    supabase, now: NOW,
+    isStageSchedulerEnabled: ENABLED, isRaceEngineV2Enabled: ENABLED,
+    runStageFn: async () => ({}),
+  });
+  assert.equal(r.ran, 6, "alle 6 due løb afvikles (cap > 5)");
 });
 
 test("FIX 4: daglig cap tæller KUN source='scheduler'-runs (admin-fuld-sim-runs ignoreres)", async () => {
@@ -197,8 +217,8 @@ test("awaiting-time: etape hvis scheduled_at > now afvikles ikke", async () => {
   assert.equal(r.skipped, "no_due_stages");
 });
 
-test("daglig cap respekteres MIDT i kørsel: kører kun op til 5 (incl. allerede kørte i dag)", async () => {
-  // 4 kørt i dag → kun 1 plads tilbage; 3 due løb → kun 1 afvikles.
+test("daglig cap respekteres MIDT i kørsel: kører kun op til resterende budget (incl. allerede kørte i dag)", async () => {
+  // (MAX_STAGES_PER_DAY - 1) kørt i dag → kun 1 plads tilbage; 3 due løb → kun 1 afvikles.
   const races = [
     { id: "rA", season_id: "s1", name: "Alfa", stages: 1, stages_completed: 0, status: "scheduled" },
     { id: "rB", season_id: "s1", name: "Beta", stages: 1, stages_completed: 0, status: "scheduled" },
@@ -211,7 +231,8 @@ test("daglig cap respekteres MIDT i kørsel: kører kun op til 5 (incl. allerede
   ];
   const supabase = makeSupabase({
     seasons: [{ id: "s1" }],
-    race_simulation_runs: [{ id: 1 }, { id: 2 }, { id: 3 }, { id: 4 }], // 4 kørt i dag
+    // MAX_STAGES_PER_DAY - 1 kørt i dag → 1 plads tilbage.
+    race_simulation_runs: Array.from({ length: MAX_STAGES_PER_DAY - 1 }, (_, i) => ({ id: i + 1 })),
     races,
     race_stage_schedule: () => schedule,
   });
@@ -221,7 +242,7 @@ test("daglig cap respekteres MIDT i kørsel: kører kun op til 5 (incl. allerede
     isStageSchedulerEnabled: ENABLED, isRaceEngineV2Enabled: ENABLED,
     runStageFn: async () => { ran++; return {}; },
   });
-  assert.equal(ran, 1, "kun 1 plads tilbage under daglig cap på 5");
+  assert.equal(ran, 1, "kun 1 plads tilbage under daglig cap");
   assert.equal(r.ran, 1);
 });
 
