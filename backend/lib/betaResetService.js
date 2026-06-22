@@ -3,7 +3,7 @@ import { DEFAULT_SPONSOR_INCOME } from "./economyEngine.js";
 import { FOUNDER_BADGE_KEY } from "./founderBadge.js";
 import { MANAGER_ENTRY_DIVISION } from "./economyConstants.js";
 
-export const DEFAULT_BETA_BALANCE = 800000;
+export const DEFAULT_BETA_BALANCE = 500000; // #1717: sænket 800000 → 500000 (matcher INITIAL_BALANCE)
 
 // --- FK-forward-guard-manifest (#1471 relaunch 18/6 · #1464 forward-guard-spor) ----------
 //

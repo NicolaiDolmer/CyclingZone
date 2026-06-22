@@ -68,7 +68,7 @@ SELECT ('00000000-0000-4000-9000-' || lpad(to_hex(i), 12, '0'))::uuid,
        ELSE 'Rehearsal Team ' || i END,
   i = 23, i = 24, i IN (25, 26), i >= 27,
   CASE WHEN i <= 20 THEN 1 ELSE CASE WHEN i <= 22 THEN 2 ELSE 3 END END,
-  CASE WHEN i <= 22 THEN 45368 + (i * 121317) % 2656575 ELSE 800000 END,
+  CASE WHEN i <= 22 THEN 45368 + (i * 121317) % 2656575 ELSE 500000 END,
   240000,
   CASE WHEN i <= 22 THEN 'Manager ' || i ELSE NULL END,
   CASE WHEN i <= 2 THEN 1 ELSE 0 END

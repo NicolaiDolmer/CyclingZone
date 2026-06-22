@@ -23,7 +23,7 @@ export const RULES_NUMBERS = {
   squadPenaltyPoints: 200, // SQUAD_PENALTY_POINTS
 
   // --- Economy (backend/lib/economyConstants.js) ---
-  startingBalance: 800000, // INITIAL_BALANCE
+  startingBalance: 500000, // INITIAL_BALANCE (#1717)
   sponsorD1: 600000, // SPONSOR_INCOME_BY_DIVISION[1]
   sponsorD2: 400000, // SPONSOR_INCOME_BY_DIVISION[2]
   sponsorD3: 340000, // SPONSOR_INCOME_BY_DIVISION[3]

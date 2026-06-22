@@ -306,7 +306,7 @@ test("resetBetaBalances touches only active manager teams and can clear only the
   const result = await resetBetaBalances(supabase, { clearTransactions: true });
 
   assert.equal(result.reset, 1);
-  assert.equal(supabase.state.teams.find((team) => team.id === "team-1").balance, 800000);
+  assert.equal(supabase.state.teams.find((team) => team.id === "team-1").balance, 500000);
   assert.equal(supabase.state.teams.find((team) => team.id === "team-ai").balance, 999);
   assert.deepEqual(supabase.state.finance_transactions.map((row) => row.id), ["tx-ai"]);
 });

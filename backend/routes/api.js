@@ -6442,7 +6442,7 @@ router.patch("/admin/users/:userId/role", requireAdmin, adminWriteLimiter, async
 // Fase B blev udrullet 2026-05-09 17:00 UTC; rows skrevet før den tid mangler
 // audit-kolonner og er forventede legacy-NULL'er — health-endpointet skelner.
 const PHASE_B_DEPLOY_CUTOFF = "2026-05-09T17:00:00Z";
-const STARTING_BALANCE = 800000; // matcher DEFAULT_BETA_BALANCE i economyConstants
+const STARTING_BALANCE = 500000; // #1717: matcher INITIAL_BALANCE/DEFAULT_BETA_BALANCE (drift-invariant)
 const FINANCE_TX_MAX_LIMIT = 200;
 const FINANCE_TX_DEFAULT_LIMIT = 50;
 
