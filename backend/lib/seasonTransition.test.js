@@ -46,6 +46,7 @@ function createMockSupabase(initialState = {}) {
     admin_log: initialState.admin_log ? [...initialState.admin_log] : [],
     notifications: initialState.notifications ? [...initialState.notifications] : [],
     sponsor_contracts: initialState.sponsor_contracts ? [...initialState.sponsor_contracts] : [],
+    app_config: initialState.app_config ? [...initialState.app_config] : [],
   };
   const calls = { inserts: [], updates: [] };
 
@@ -410,6 +411,69 @@ test("transitionToNextSeason — fornyer sponsor-kontrakter før payout med nye 
   const renewalPhase = result.log.find((p) => p.phase === "sponsor_contracts_renewal");
   assert.ok(renewalPhase, "sponsor_contracts_renewal-fasen skal logges");
   assert.equal(renewalPhase.teams, 2);
+});
+
+// #1704 · Per-division-kalender (forever-sti): når auto_calendar_enabled er ON,
+// materialiseres en frisk kalender for den NYE sæson EFTER season-start (sponsor/payroll)
+// og FØR admin_log. Betinget fase (mønster som reset_board_test_data): logges kun når ON.
+test("transitionToNextSeason — auto_calendar ON: materialiserer kalender for den nye sæson", async () => {
+  let calArgs = null;
+  const supabase = createMockSupabase({
+    seasons: [{ id: "00000000-0000-0000-0000-000000000000", number: 0, status: "active" }],
+    transfer_windows: [{ id: "win-0", season_id: "00000000-0000-0000-0000-000000000000", status: "open", created_at: "2026-05-08" }],
+    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false }],
+  });
+
+  const result = await transitionToNextSeason({
+    supabase,
+    fromSeasonId: "00000000-0000-0000-0000-000000000000",
+    transitionAt: new Date("2026-05-15T06:00:00Z"),
+    deps: {
+      processSeasonStart: async () => ({ sponsor: [], payroll: { results: [], summary: { teams_processed: 0 } } }),
+      notifySeasonEvent: async () => {},
+      expireAndRenewContracts: async () => {},
+      isAutoCalendarEnabled: async () => true,
+      materializeSeasonCalendar: async (args) => { calArgs = args; return { racesInserted: 30, stageProfiles: 90, stageSchedules: 90, pools: [] }; },
+    },
+  });
+
+  assert.equal(result.ok, true);
+  const calPhase = result.log.find((p) => p.phase === "season_calendar");
+  assert.ok(calPhase, "season_calendar-fasen skal logges når flaget er ON");
+  assert.equal(calPhase.racesInserted, 30);
+  assert.ok(calArgs, "materializeSeasonCalendar skal kaldes");
+  assert.equal(calArgs.seasonId, "00000000-0000-0000-0000-000000000001", "kalender for den NYE sæson (plan.to_season.id)");
+  assert.equal(calArgs.dryRun, false, "forever-transition materialiserer med writes");
+  // Rækkefølge: efter sponsor_payout, før admin_log.
+  const idxPayout = result.log.findIndex((p) => p.phase === "sponsor_payout");
+  const idxCal = result.log.findIndex((p) => p.phase === "season_calendar");
+  const idxAdmin = result.log.findIndex((p) => p.phase === "admin_log");
+  assert.ok(idxPayout < idxCal && idxCal < idxAdmin, "kalender-fasen ligger mellem sponsor_payout og admin_log");
+});
+
+test("transitionToNextSeason — auto_calendar OFF (fail-safe default): ingen kalender-fase", async () => {
+  let called = false;
+  const supabase = createMockSupabase({
+    seasons: [{ id: "00000000-0000-0000-0000-000000000000", number: 0, status: "active" }],
+    transfer_windows: [{ id: "win-0", season_id: "00000000-0000-0000-0000-000000000000", status: "open", created_at: "2026-05-08" }],
+    teams: [{ id: "t1", name: "T1", sponsor_income: 240000, division: 3, is_ai: false, is_bank: false, is_frozen: false }],
+  });
+
+  const result = await transitionToNextSeason({
+    supabase,
+    fromSeasonId: "00000000-0000-0000-0000-000000000000",
+    deps: {
+      processSeasonStart: async () => ({ sponsor: [], payroll: { results: [], summary: { teams_processed: 0 } } }),
+      notifySeasonEvent: async () => {},
+      expireAndRenewContracts: async () => {},
+      isAutoCalendarEnabled: async () => false,
+      materializeSeasonCalendar: async () => { called = true; return {}; },
+    },
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.log.find((p) => p.phase === "season_calendar"), undefined, "ingen kalender-fase når flaget er OFF");
+  assert.equal(called, false, "materializeSeasonCalendar må ikke kaldes når flaget er OFF");
 });
 
 // #805 · Board-test-exit: når afgående sæson kørte board_test_mode, nulstilles

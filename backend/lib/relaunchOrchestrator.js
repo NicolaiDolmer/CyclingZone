@@ -27,6 +27,7 @@ import { isAcademyEnabled } from "./academyFlag.js";
 import { grantFounderBadges } from "./founderBadge.js";
 import { transitionToNextSeason, computeSeasonUuid } from "./seasonTransition.js";
 import { startSequentialNegotiation } from "./boardSequentialNegotiation.js";
+import { materializeSeasonCalendar } from "./seasonCalendarMaterializer.js";
 
 const INSERT_BATCH = 500;
 export const RELAUNCH_CONFIRM_TOKEN = "RELAUNCH SEASON 1";
@@ -89,6 +90,7 @@ const DEFAULT_DEPS = {
   generateAndAllocateAiTeams,
   seedSeasonZero,
   transitionToNextSeason,
+  materializeSeasonCalendar,
   startSequentialNegotiation,
   runAcademyIntake,
   runContractSeed,
@@ -152,6 +154,7 @@ export async function runRelaunchSeason1(supabase, {
   }
 
   // 6. Frisk sæson 1 (sæson 0 → transition 0→1). Springes i dry-run (kræver sæson-0-row).
+  let newSeasonId = null;
   if (dryRun) {
     summary.season = { dryRun: true, plan: "insert sæson 0 (active) → transitionToNextSeason 0→1" };
   } else {
@@ -160,6 +163,23 @@ export async function runRelaunchSeason1(supabase, {
     // (fundet i rehearsal #1191, 11/6).
     const s0 = await d.seedSeasonZero(supabase, { startDate, dryRun: false });
     summary.season = await d.transitionToNextSeason({ supabase, fromSeasonId: s0.seasonId, transitionAt: startDate });
+    newSeasonId = summary.season?.plan?.to_season?.id ?? null;
+  }
+
+  // 6.1 #1704 · Per-division-kalender. Materialisér races + ruteprofiler + etape-schedule
+  // pr. LIVE pulje EFTER sæson 1 er aktiv + AI-fyld er kørt (puljerne har felter at køre
+  // løbene i), så sæson 1 åbner med en fuld per-division-kalender. IKKE flag-gatet: relaunchen
+  // materialiserer ALTID eksplicit (auto_calendar_enabled styrer kun forever-transitionerne i
+  // seasonTransition). Springes i dry-run (kræver writes + den aktive sæson-1-row fra apply).
+  if (dryRun) {
+    summary.calendar = { skipped: "dryRun" };
+  } else {
+    summary.calendar = await d.materializeSeasonCalendar({
+      supabase,
+      seasonId: newSeasonId,
+      seasonStartDate: startDate,
+      dryRun: false,
+    });
   }
 
   // 6.2 #1680 · Bestyrelse låst OP fra start i sæson 1 (ejer-direktiv 2026-06-21).

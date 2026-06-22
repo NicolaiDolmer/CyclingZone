@@ -34,6 +34,7 @@ import {
 } from "./sponsorEngine.js";
 import { notifyUser } from "./notificationService.js";
 import { expireAndRenewContracts as defaultExpireAndRenewContracts } from "./sponsorContractsService.js";
+import { isAutoCalendarEnabled } from "./autoCalendarFlag.js";
 
 let processSeasonStartImpl;
 async function getProcessSeasonStart() {
@@ -41,6 +42,17 @@ async function getProcessSeasonStart() {
     processSeasonStartImpl = (await import("./economyEngine.js")).processSeasonStart;
   }
   return processSeasonStartImpl;
+}
+
+// #1704 · Lazy import (samme forsigtigheds-mønster som getProcessSeasonStart):
+// seasonCalendarMaterializer trækker scripts/backfillRaceScheduledFor ind, så vi
+// undgår enhver eager-import-bivirkning ved kun at loade den når flaget er ON.
+let materializeSeasonCalendarImpl;
+async function getMaterializeSeasonCalendar() {
+  if (!materializeSeasonCalendarImpl) {
+    materializeSeasonCalendarImpl = (await import("./seasonCalendarMaterializer.js")).materializeSeasonCalendar;
+  }
+  return materializeSeasonCalendarImpl;
 }
 
 // EN-first fallback (#1068: ingen rå dansk i backend). Locale-aware rendering
@@ -618,6 +630,27 @@ export async function transitionToNextSeason({
   // pensioneringer pr. transition.
   if (seasonStartResult && typeof seasonStartResult === "object" && seasonStartResult.progression) {
     log.push({ phase: "rider_progression", ...seasonStartResult.progression });
+  }
+
+  // #1704 · Per-division-kalender (forever). Gated bag auto_calendar_enabled (fail-safe OFF):
+  // uden flaget sker INTET, så en buggy auto-kalender aldrig spammer en live sæson
+  // (2026-05-21-incident-disciplin). Betinget fase (mønster som reset_board_test_data:
+  // logges kun når aktiv). Kører EFTER season-start (puljerne/standings er sat) og FØR
+  // admin_log, så hver ny sæson åbner med friske per-division-kalendre uden manuel
+  // race-selection. Materializeren er idempotent + skriver kun til LIVE puljer.
+  const isAutoCalendarEnabledFn = deps.isAutoCalendarEnabled ?? isAutoCalendarEnabled;
+  if (await isAutoCalendarEnabledFn(supabase)) {
+    const materializeFn = deps.materializeSeasonCalendar ?? (await getMaterializeSeasonCalendar());
+    log.push({
+      phase: "season_calendar",
+      ...(await materializeFn({
+        supabase,
+        seasonId: plan.to_season.id,
+        seasonStartDate: transitionAtIso,
+        from: transitionAt instanceof Date ? transitionAt : new Date(transitionAtIso),
+        dryRun: false,
+      })),
+    });
   }
 
   log.push({
