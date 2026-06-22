@@ -28,6 +28,8 @@ export const RESET_DELETE_TARGETS = Object.freeze([
   "board_request_log", "team_board_members", "board_consequences", "board_profiles",
   // manager-progression (resetBetaManagerProgress / resetBetaAchievements)
   "xp_log", "manager_achievements",
+  // træningshistorik (resetBetaTrainingHistory · #1716)
+  "training_day_runs",
 ]);
 
 // BLOCKING_FK_BASELINE: hver NO ACTION/RESTRICT-FK der peger på en RESET_DELETE_TARGET og
@@ -558,6 +560,22 @@ export async function resetBetaAchievements(supabase) {
   return { manager_achievements: countRows(achievements) };
 }
 
+// #1716 · Sletter ALL daglig-trænings-historik (training_day_runs) så gamle
+// træningsrapporter ikke overlever en relaunch. Tabellen er per-hold (team_id) med
+// ON DELETE CASCADE; vi sletter alle rækker (også AI) for ren tavle — samme stil som
+// resetBetaRaceCalendar/resetBetaRiderHistory.
+export async function resetBetaTrainingHistory(supabase) {
+  assertSupabase(supabase);
+
+  const trainingRuns = ensureOk(await supabase
+    .from("training_day_runs")
+    .delete()
+    .not("id", "is", null)
+    .select("id"));
+
+  return { training_day_runs: countRows(trainingRuns) };
+}
+
 export async function runFullBetaReset(supabase, options = {}) {
   const resetMode = options.resetMode || "test";
 
@@ -579,6 +597,7 @@ export async function runFullBetaReset(supabase, options = {}) {
   const board_profiles = await resetBetaBoardProfiles(supabase);
   const manager_progress = await resetBetaManagerProgress(supabase);
   const achievements = await resetBetaAchievements(supabase);
+  const training_history = await resetBetaTrainingHistory(supabase);
 
   return {
     reset_mode: resetMode,
@@ -596,5 +615,6 @@ export async function runFullBetaReset(supabase, options = {}) {
     seasons,
     manager_progress,
     achievements,
+    training_history,
   };
 }

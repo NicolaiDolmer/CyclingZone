@@ -12,6 +12,7 @@ import {
   resetBetaRiderHistory,
   resetBetaRosters,
   resetBetaSeasons,
+  resetBetaTrainingHistory,
   resetBetaWishlist,
   runFullBetaReset,
 } from "./betaResetService.js";
@@ -235,6 +236,10 @@ function createInitialState() {
     ],
     board_plan_snapshots: [{ id: "snap-1", team_id: "team-1" }, { id: "snap-ai", team_id: "team-ai" }],
     board_request_log: [{ id: "request-1", team_id: "team-1" }, { id: "request-ai", team_id: "team-ai" }],
+    training_day_runs: [
+      { id: "train-1", team_id: "team-1", tick_date: "2026-06-20", executed_by: "manager" },
+      { id: "train-ai", team_id: "team-ai", tick_date: "2026-06-20", executed_by: "assistant" },
+    ],
     academy_intake: [
       { id: "intake-1", team_id: "team-1", rider_id: "rider-free", season_id: "season-1", status: "offered" },
       { id: "intake-ai", team_id: "team-ai", rider_id: "rider-ai-owned", season_id: "season-1", status: "offered" },
@@ -428,6 +433,9 @@ test("runFullBetaReset completes the full test reset suite without touching AI o
   // #1481: nye felter i summary.
   assert.equal(result.wishlist.rider_watchlist, 1, "manager-ønskeliste ryddet i full-reset");
   assert.equal(result.rosters.pending_cleared, 1, "indkommende manager-handel ryddet i full-reset");
+  // #1716: træningshistorik ryddet i full-reset.
+  assert.equal(result.training_history.training_day_runs, 2, "træningshistorik ryddet i full-reset");
+  assert.deepEqual(supabase.state.training_day_runs, [], "ingen training_day_runs tilbage efter full-reset");
   assert.deepEqual(supabase.state.auctions, []);
   assert.deepEqual(supabase.state.loan_agreements, []);
   // #1608 Task 6: ægte managere placeres i bunden (tier 4) + en div-4-pulje; frosne
@@ -480,6 +488,20 @@ test("resetBetaWishlist sletter manager-brugeres rider_watchlist men ikke AI/fro
     ["wl-frozen", "wl-none"],
     "kun manager-brugeres ønskelister slettes",
   );
+});
+
+test("resetBetaTrainingHistory wipes alle training_day_runs men bevarer riders + teams (#1716)", async () => {
+  const supabase = createBetaResetSupabase(createInitialState());
+  assert.equal(supabase.state.training_day_runs.length, 2, "precondition: træningsrapporter findes");
+
+  const result = await resetBetaTrainingHistory(supabase);
+
+  // Sletter ALLE rækker (også AI), så ingen gammel træningshistorik overlever en relaunch.
+  assert.equal(result.training_day_runs, 2);
+  assert.deepEqual(supabase.state.training_day_runs, [], "training_day_runs ryddet");
+  // Rører ikke ryttere eller hold.
+  assert.equal(supabase.state.riders.length, 5, "ryttere bevares");
+  assert.equal(supabase.state.teams.length, 4, "hold bevares");
 });
 
 // --- #1608 Task 6 · pulje-spredende reset-allokering (allocateLeaguePools) ----------------
