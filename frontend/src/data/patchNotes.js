@@ -65,7 +65,7 @@ export const PATCHES = [
         "refs": [1718]
       },
       {
-        "category": "changed",
+        "category": "improved",
         "audience": "player",
         "topic": "Economy",
         "en": {
