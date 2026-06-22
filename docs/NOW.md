@@ -4,12 +4,11 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (22/6): FOREVER-RELAUNCH + post-relaunch UX-batch GENNEMFØRT ✅ — næste = browser-verify + spiller-comms (ejer-koordineret) + merge #1711.** Permanent frisk sæson 1 LIVE. Recovery-net: backup `cyclingzone-20260622-153339` (verify-restore VERIFIED) + PITR (archive_mode=on). **Post-verify grøn:** 7 live puljer per-division-kalender (101 løb scheduled + 432 profiler/etape-tider), AI-fyld 143×8, 25 managers i div 3 (div 4 tom), frisk marked 799, founder-badges 25, board pending_5yr, flags on, #1137-progression aktiveret (peakAge=28).
-> - **Merged til main i dag:** #1709 (kalender-wiring) · #1710 (cadence-fix tæt-pakket 2/dag) · v5.93 patch-notes (#1708).
-> - **Post-relaunch UX-batch (22/6):** #1713 akademi-pris · #1714 kalender-de-dup (regen'et live, 0 dubletter, alle 7 puljer) · #1716 træning-reset · #1717 startbalance 500k (migration) · #1718 standings div 1+2 · #1719/#1720 fyring+kontraktforlængelse · #1721 board verificeret fuldt aktiv · v5.95 patch-notes. Prod-data ændret m. backups: teams_balance_backup_20260622, dedup_bk_*, training_day_runs_backup_20260622 (drop når stabilt). Browser-verify udestår.
-> - **PR #1711 (relaunch fast-follow, ejer merger):** `academyHealSweep` is_ai-filter (fiksede 564 strandede AI-academy-kuld — ryddet i prod) + `SEASON_RIDER_PROGRESSION_ENABLED` true (#1137, aktiveres sæson 1→2-transition).
-> - **COMMS (bevidst udskudt — ejer-valg 22/6):** in-app broadcast + Discord = ejer voicer (founder-ToV); jeg leverer udkast/fakta når du er klar. Patch-notes v5.93 allerede live.
-> - **FAST-FOLLOW (efter comms):** fuld **140-etaper/5-per-dag/28-dages-rekalibrering** (rører `race_days_total` → board/sponsor/progression, kræver SIMULERING — spawned task) · Discord-sweep #7/#13/#14/#15 · frontend de-slop #3/#4/#8 · ægte højdeprofiler #1021. **Åbne ejer:** #1276 PCM-IP · #929 leaked-pw · #691 key-rotation · #940 NPS. [PLAN.md](PLAN.md)=SSOT.
+> **🎯 Next action (22/6 — LAUNCH LIVE ✅): auktion-korrekthed (#1694/#1693) + landing-header (#1697) merged + deployet. Næste store session = launch-bug-batch fra Discord-feedback (spillere møder dem NU).** Permanent frisk sæson 1 live; recovery: backup `cyclingzone-20260622-153339` (verify-restore VERIFIED) + PITR.
+> - **Merged i dag (launch-batch):** #1709/#1710 kalender-cadence · #1713/#1714/#1716/#1717/#1718/#1719/#1720/#1721 UX-batch · **#1694/#1693 auktion-korrekthed** (squad-fuld hard-blokerer bud + vundet-pris i CZ$) · **#1697 landing-header solid** · v5.93/v5.95/v5.96 patch-notes. Prod-backups: teams_balance_backup_20260622, dedup_bk_*, training_day_runs_backup_20260622 (drop når stabilt — #1733).
+> - **Næste prioritet (launch-bugs, Discord-sweep 22/6):** #1748 rytter-dobbeltadgang (auktion+transfer — beslægtet med #1694) · #1740 auto-bud "overbudt"-fejl · #1742 pensionerede under frie ungdom · #1739 AI-hold bliver i division ved oprykning · #1745/#1750/#1738/#1741/#1746/#1747/#1749/#1743/#1744. Polish: #1672 skades-"0 dage" · #1674 vis alder · #1671 sortér Alle-fane.
+> - **Ejer-beslutninger (åbne):** #1276 PCM-IP (rytternavne i public repo) · #1278 spiller-comms (founder-voice, du voicer) · #1487-budget (evne-nerf live, budget separat) · #929 leaked-pw · #691 key-rotation · #940 NPS.
+> - **Hygiejne:** #1650 feature-liveness 'audit'-check fejler på alle PRs (6 findings, ikke-required men støj). #1693a lukket by-design (fejringspopup + notifikation = bevidst 2 lag). [PLAN.md](PLAN.md)=SSOT.
 
 > **🤖 Working agent:** Ingen aktiv session.
 
