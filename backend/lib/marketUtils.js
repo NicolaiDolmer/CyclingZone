@@ -99,16 +99,19 @@ export function resolveRiderSalary(rider = {}) {
   return Math.max(1, Math.round(calculateRiderMarketValue(rider) * SALARY_RATE));
 }
 
-export async function getTransferWindowOpen(supabase) {
-  const latestWindow = await expectMaybeSingle(
-    supabase
-      .from("transfer_windows")
-      .select("status")
-      .order("created_at", { ascending: false })
-      .limit(1)
-  );
-
-  return latestWindow?.status === "open";
+// Altid-åben handel (launch-checklist punkt 16 · ejer-direktiv 2026-06-22 · #1310 punkt 6):
+// transfervinduet er AFSKAFFET — ryttere kan skifte hold når som helst i sæsonen.
+// Funktionen returnerer derfor ALTID true, så alle confirm-stier (transferExecution,
+// auctionFinalization) registrerer med det samme (deferRegistration=false) og intet
+// parkeres på pending_team_id. transfer_windows-tabellen + admin open/close-endpoints
+// bevares dvælende (ikke længere konsulteret her); fuld kode-oprydning er et separat,
+// valgfrit skridt. Signaturen (async, supabase-arg) bevares så ingen kaldere ændres.
+//
+// SIDEEFFEKT (flagget til ejer): med vinduet altid åbent fyrer squadEnforcement's
+// vindue-luk-cron aldrig, så +2 soft-cap-bufferen ville være permanent. Squad-cap
+// håndhæves derfor ved selve handlen (hard cap, ingen buffer) — se getIncomingSquadViolation.
+export async function getTransferWindowOpen() {
+  return true;
 }
 
 export async function getTeamMarketState(supabase, teamId) {

@@ -8,7 +8,6 @@ import {
   getTeamMarketState,
   getTransferWindowOpen,
   MARKET_SQUAD_LIMITS,
-  TRANSFER_WINDOW_SOFT_CAP_BUFFER,
 } from "./marketUtils.js";
 import { incrementBalanceWithAudit, DUPLICATE_VIOLATION_CODE } from "./balanceRpc.js";
 import { contractOnAcquirePatch } from "./contractSeed.js";
@@ -440,7 +439,8 @@ async function finalizeAuctionRecord({
     // gældende og finalize sender rytteren til pending_team_id.
     const windowOpen = await getTransferWindowOpen(supabase);
     const squadViolation = getIncomingSquadViolation(buyer, {
-      softCapBuffer: windowOpen ? TRANSFER_WINDOW_SOFT_CAP_BUFFER : 0,
+      // #16 altid-åben handel: intet transfervindue → ingen vindue-grace → hard cap ved handlen.
+      softCapBuffer: 0,
     });
     if (squadViolation) {
       await closeAuction({
@@ -451,9 +451,7 @@ async function finalizeAuctionRecord({
         sellerOwned,
       });
 
-      const buyerMessage = windowOpen
-        ? `Dit hold er fyldt (${squadViolation.effectiveCap} ryttere — Div ${buyer.division || 3} cap ${squadViolation.maxRiders} + ${squadViolation.softCapBuffer} buffer i transfervinduet). ${auction.rider.firstname} ${auction.rider.lastname} kunne ikke overdrages.`
-        : `Dit hold (Div ${buyer.division || 3}) kan max have ${squadViolation.maxRiders} ryttere uden for transfervinduet. ${auction.rider.firstname} ${auction.rider.lastname} kunne ikke overdrages.`;
+      const buyerMessage = `Dit hold (Div ${buyer.division || 3}) kan maks. have ${squadViolation.maxRiders} ryttere. ${auction.rider.firstname} ${auction.rider.lastname} kunne ikke overdrages — sælg en rytter først.`;
 
       await notifyTeamOwner(
         effectiveBidderId,
