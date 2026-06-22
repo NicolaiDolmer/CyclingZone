@@ -4,6 +4,83 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "5.95",
+    "date": "2026-06-22",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Squad",
+        "en": {
+          "title": "Release riders and extend contracts",
+          "body": "You can now release a rider from your squad for a buyout fee, or extend a rider's contract with their salary renegotiated to their current market value. Both live in the rider action menu on your team page."
+        },
+        "da": {
+          "title": "Frigiv ryttere og forlæng kontrakter",
+          "body": "Du kan nu frigive en rytter fra din trup mod et buyout-gebyr, eller forlænge en rytters kontrakt med lønnen genforhandlet til den aktuelle markedsværdi. Begge dele findes i rytter-handlingsmenuen på din holdside."
+        },
+        "refs": [1719, 1720]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Signing free youth riders now costs their value",
+          "body": "Signing a free youth rider to your academy now costs the listed value and is blocked if you cannot afford it, instead of being free."
+        },
+        "da": {
+          "title": "Det koster nu at signere frie ungdomsryttere",
+          "body": "At signere en fri ungdomsrytter til dit akademi koster nu den viste værdi og blokeres, hvis du ikke har råd, i stedet for at være gratis."
+        },
+        "refs": [1713]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Each race runs only once per season",
+          "body": "Every race now appears only once across the whole season, so no race is duplicated between divisions. Each division gets its own unique set of races."
+        },
+        "da": {
+          "title": "Hvert løb køres kun én gang per sæson",
+          "body": "Hvert løb optræder nu kun én gang i hele sæsonen, så intet løb går igen mellem divisioner. Hver division får sit eget unikke sæt af løb."
+        },
+        "refs": [1714]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Standings",
+        "en": {
+          "title": "Division 1 and 2 now show their teams",
+          "body": "Standings for Division 1 and 2 now show their teams, including AI teams, so the top divisions are no longer empty."
+        },
+        "da": {
+          "title": "Division 1 og 2 viser nu deres hold",
+          "body": "Ranglisten for Division 1 og 2 viser nu deres hold, inklusive AI-hold, så de øverste divisioner ikke længere står tomme."
+        },
+        "refs": [1718]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Economy",
+        "en": {
+          "title": "Starting balance is now 500,000 CZ$",
+          "body": "Every team now starts the season with 500,000 CZ$, down from 800,000, for a tighter early-season economy."
+        },
+        "da": {
+          "title": "Startkapitalen er nu 500.000 CZ$",
+          "body": "Hvert hold starter nu sæsonen med 500.000 CZ$, ned fra 800.000, for en strammere tidlig-sæson-økonomi."
+        },
+        "refs": [1717]
+      }
+    ]
+  },
+  {
     "version": "5.94",
     "date": "2026-06-22",
     "label": "Beta",
