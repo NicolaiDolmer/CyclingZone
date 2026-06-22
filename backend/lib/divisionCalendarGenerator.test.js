@@ -26,6 +26,50 @@ function makeCatalog() {
   return rows;
 }
 
+// Realistisk katalog der efterligner prod: ~49 etapeløb + ~72 endagsløb fordelt på
+// alle klasser. Bruges af jævnheds-testene (#1714) for at fange den sultende
+// "fyld-tidlige-puljer-helt-først"-fejl mod et katalog tæt på virkeligheden.
+function makeProdLikeCatalog() {
+  const rows = [];
+  let n = 0;
+  const add = (race_class, race_type, stages, count) => {
+    for (let i = 0; i < count; i++) {
+      rows.push({ id: `p${n++}`, name: `${race_class}-${race_type}-${String(i).padStart(2, "0")}`, race_class, race_type, stages });
+    }
+  };
+  // Etapeløb (~49 total): WT-grand-tours + WT-A/B/C + ProSeries + Class1/2.
+  add("TourFrance", "stage_race", 21, 1);
+  add("GiroVuelta", "stage_race", 21, 2);
+  add("OtherWorldTourA", "stage_race", 7, 6);
+  add("OtherWorldTourB", "stage_race", 6, 6);
+  add("OtherWorldTourC", "stage_race", 5, 6);
+  add("ProSeries", "stage_race", 5, 12);
+  add("Class1", "stage_race", 4, 8);
+  add("Class2", "stage_race", 3, 8);
+  // Endagsløb (~72 total).
+  add("Monuments", "single", 1, 5);
+  add("OtherWorldTourA", "single", 1, 8);
+  add("OtherWorldTourB", "single", 1, 8);
+  add("OtherWorldTourC", "single", 1, 8);
+  add("ProSeries", "single", 1, 18);
+  add("Class1", "single", 1, 13);
+  add("Class2", "single", 1, 12);
+  return rows;
+}
+
+// 7 live puljer: 1×tier1, 2×tier2, 4×tier3 (matcher den verificerede prod-form).
+function prodLikePools() {
+  return [
+    { id: 1, tier: 1, label: "Division 1", realManagerCount: 0 },
+    { id: 2, tier: 2, label: "Division 2 — A", realManagerCount: 0 },
+    { id: 3, tier: 2, label: "Division 2 — B", realManagerCount: 0 },
+    { id: 4, tier: 3, label: "Division 3 — A", realManagerCount: 2 },
+    { id: 5, tier: 3, label: "Division 3 — B", realManagerCount: 1 },
+    { id: 6, tier: 3, label: "Division 3 — C", realManagerCount: 1 },
+    { id: 7, tier: 3, label: "Division 3 — D", realManagerCount: 1 },
+  ];
+}
+
 test("poolHasCalendar: tier 1/2 altid; tier 3/4 kun med >=1 ægte manager", () => {
   assert.equal(poolHasCalendar(1, 0), true);
   assert.equal(poolHasCalendar(2, 0), true);
@@ -84,9 +128,10 @@ test("forskellige puljer får forskellige kalendre (seed varierer pr. pulje)", (
   assert.notEqual(a, b, "to puljer bør ikke få identisk kalender");
 });
 
-test("respekterer raceDaysTarget (~60 løbsdage, indenfor overshoot)", () => {
+test("respekterer raceDaysTarget (~60 løbsdage, indenfor overshoot) når katalog er rigeligt", () => {
+  // Enkelt-pulje med rigeligt katalog → fyldes op mod target.
   const pools = [{ id: 2, tier: 3, label: "D3", realManagerCount: 1 }];
-  const [cal] = generateDivisionCalendars({ pools, catalog: makeCatalog(), baseSeed: 1, raceDaysTarget: 60 });
+  const [cal] = generateDivisionCalendars({ pools, catalog: makeProdLikeCatalog(), baseSeed: 1, raceDaysTarget: 60 });
   assert.ok(cal.totalRaceDays >= 50 && cal.totalRaceDays <= 65, `totalRaceDays=${cal.totalRaceDays} udenfor forventet bånd`);
 });
 
@@ -113,10 +158,73 @@ test("global de-dup: intet pool_race_id går igen på tværs af de genererede pu
   }
 });
 
-test("global de-dup: knapt etape-segment beskærer de sidste puljer OG rapporteres (ikke tavst)", () => {
-  // Katalog med KUN 2 ProSeries-etapeløb, men 3 tier-3-puljer der hver kræver
-  // stageRaceQuota=8 → segmentet løber tør → mindst én pulje får færre etapeløb
-  // end target, og det MÅ stå i return-objektets truncated[].
+// ── #1714: JÆVN fordeling på tværs af puljer i samme klasse-segment ──────────────
+test("jævn fordeling: INGEN live pulje ender med 0 løb (prod-lignende katalog + 7 puljer)", () => {
+  const cals = generateDivisionCalendars({
+    pools: prodLikePools(),
+    catalog: makeProdLikeCatalog(),
+    baseSeed: 2026,
+  });
+  assert.equal(cals.length, 7, "alle 7 live puljer skal få en kalender");
+  for (const cal of cals) {
+    assert.ok(cal.races.length > 0, `pulje ${cal.leagueDivisionId} (tier ${cal.tier}) endte med 0 løb`);
+  }
+});
+
+test("jævn fordeling: puljer i samme segment får nogenlunde lige mange løb (ikke 28 vs 9)", () => {
+  const cals = generateDivisionCalendars({
+    pools: prodLikePools(),
+    catalog: makeProdLikeCatalog(),
+    baseSeed: 2026,
+  });
+  const byId = new Map(cals.map((c) => [c.leagueDivisionId, c]));
+
+  // De 2 tier-2-puljer deler segment; de 4 tier-3-puljer deler segment.
+  const tier2Counts = [2, 3].map((id) => byId.get(id).races.length);
+  const tier3Counts = [4, 5, 6, 7].map((id) => byId.get(id).races.length);
+
+  const spread = (arr) => Math.max(...arr) - Math.min(...arr);
+  // Round-robin: spredningen inden for et segment må højst være nogle få løb
+  // (knappe etapeløb deles ujævnt med ±1 → vælg en lille, men ikke-nul tolerance).
+  assert.ok(spread(tier2Counts) <= 3, `tier-2-spredning for stor: ${tier2Counts.join("/")}`);
+  assert.ok(spread(tier3Counts) <= 3, `tier-3-spredning for stor: ${tier3Counts.join("/")}`);
+
+  // Etapeløb skal også deles jævnt (round-robin fase A).
+  const tier3Stage = [4, 5, 6, 7].map(
+    (id) => byId.get(id).races.filter((r) => r.race_type === "stage_race").length,
+  );
+  assert.ok(spread(tier3Stage) <= 1, `tier-3-etapeløb ikke jævnt fordelt: ${tier3Stage.join("/")}`);
+});
+
+test("jævn fordeling: global unikhed bevaret med prod-lignende katalog + 7 puljer", () => {
+  const cals = generateDivisionCalendars({
+    pools: prodLikePools(),
+    catalog: makeProdLikeCatalog(),
+    baseSeed: 2026,
+  });
+  const seen = new Set();
+  for (const cal of cals) {
+    for (const r of cal.races) {
+      assert.ok(!seen.has(r.id), `pool_race_id ${r.id} gik igen (pulje ${cal.leagueDivisionId})`);
+      seen.add(r.id);
+    }
+  }
+});
+
+test("jævn fordeling: determinisme (samme input → samme output to gange)", () => {
+  const a = generateDivisionCalendars({ pools: prodLikePools(), catalog: makeProdLikeCatalog(), baseSeed: 2026 });
+  const b = generateDivisionCalendars({ pools: prodLikePools(), catalog: makeProdLikeCatalog(), baseSeed: 2026 });
+  assert.deepEqual(
+    a.map((c) => [c.leagueDivisionId, c.races.map((r) => r.id)]),
+    b.map((c) => [c.leagueDivisionId, c.races.map((r) => r.id)]),
+  );
+  assert.deepEqual(a.truncated, b.truncated);
+});
+
+test("global de-dup: knapt etape-segment beskærer puljerne JÆVNT OG rapporteres (ikke tavst)", () => {
+  // Katalog med KUN 2 ProSeries-etapeløb + 1 Class1-etapeløb (3 total), men 3
+  // tier-3-puljer der hver kræver stageRaceQuota=8 → segmentet løber tør →
+  // etapeløbene deles round-robin (1 hver), og ALLE puljer rapporteres som beskåret.
   const scarce = [];
   let n = 0;
   const add = (race_class, race_type, stages, count) => {
@@ -134,7 +242,6 @@ test("global de-dup: knapt etape-segment beskærer de sidste puljer OG rapporter
     { id: 2, tier: 3, label: "B", realManagerCount: 1 },
     { id: 3, tier: 3, label: "C", realManagerCount: 1 },
   ];
-  // Return-værdien er et array af kalendre MED en truncated-property hængt på.
   const cals = generateDivisionCalendars({ pools, catalog: scarce, baseSeed: 7, stageRaceQuota: 8 });
   const truncated = cals.truncated;
 
@@ -146,8 +253,18 @@ test("global de-dup: knapt etape-segment beskærer de sidste puljer OG rapporter
       seenStage.add(r.id);
     }
   }
-  // 3 etapeløb total, 3 puljer × 8 quota = 24 ønskede → massiv mangel.
   assert.ok(seenStage.size <= 3, "kan højst fordele 3 unikke etapeløb");
+
+  // JÆVNT: hver pulje fik nogenlunde lige mange etapeløb (3 løb / 3 puljer = 1 hver).
+  const stagePerPool = cals.map(
+    (c) => c.races.filter((r) => r.race_type === "stage_race").length,
+  );
+  assert.ok(Math.max(...stagePerPool) - Math.min(...stagePerPool) <= 1, `etapeløb ikke jævnt: ${stagePerPool.join("/")}`);
+
+  // Ingen pulje sulter trods knaphed (endags-fyld redder dem).
+  for (const cal of cals) {
+    assert.ok(cal.races.length > 0, `pulje ${cal.leagueDivisionId} endte med 0 løb`);
+  }
 
   // KRITISK: beskæring rapporteres eksplicit, ikke tavst.
   assert.ok(Array.isArray(truncated), "return-objektet skal have et truncated-array");
@@ -173,4 +290,13 @@ test("global de-dup: determinisme bevaret (samme input+seed → samme output)", 
   );
   // truncated-rapporten skal også være deterministisk.
   assert.deepEqual(calsA.truncated, calsB.truncated);
+});
+
+test("output bevarer input-puljernes rækkefølge (ikke udvælgelses-rækkefølge)", () => {
+  const pools = prodLikePools();
+  const cals = generateDivisionCalendars({ pools, catalog: makeProdLikeCatalog(), baseSeed: 2026 });
+  assert.deepEqual(
+    cals.map((c) => c.leagueDivisionId),
+    pools.map((p) => p.id),
+  );
 });

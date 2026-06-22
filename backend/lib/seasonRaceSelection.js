@@ -30,7 +30,7 @@ export const DEFAULT_SELECTION_SEED = 1;
 // Nu shuffler vi seedet i stedet: output afhænger kun af (indhold, seed), så hver
 // sæson får en varieret men reproducerbar sammensætning. Whitelist-rækkefølgen
 // (prioriterede etapeløb + boost-singles) shuffles IKKE — den er ejer-valgt.
-function makeStableShuffler(seed) {
+export function makeStableShuffler(seed) {
   const rng = makeRng(seed);
   const keyOf = (r) => r.id ?? `${r.name}|${r.race_class}`;
   return (arr) => {
