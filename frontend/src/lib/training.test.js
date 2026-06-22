@@ -38,27 +38,41 @@ test("injuryDaysLeft returnerer 0 ved null", () => {
   assert.equal(injuryDaysLeft(undefined), 0);
 });
 
-test("injuryDaysLeft returnerer 0 når rask (fortid)", () => {
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  assert.equal(injuryDaysLeft(yesterday.toISOString()), 0);
+test("injuryDaysLeft returnerer 0 når rask (fortid, dagen efter sidste skadedag)", () => {
+  // injured_until = den SIDSTE skadede dag (inklusiv, jf. backend injured_until >= tickDate).
+  // Dagen EFTER (i morgen er rytteren rask) => 0 dage tilbage.
+  const today = new Date("2026-06-12T08:00:00");
+  assert.equal(injuryDaysLeft("2026-06-11", today), 0);
 });
 
-test("injuryDaysLeft returnerer 0 præcis i dag", () => {
-  const today = new Date();
-  assert.equal(injuryDaysLeft(today.toISOString(), new Date(today)), 0);
+// #1672: På den SIDSTE skadedag (today == injured_until) er rytteren STADIG skadet
+// (backend: injured_until >= tickDate => kan ikke træne). UI skal vise "1 dag tilbage",
+// ikke "0 dage tilbage". Den gamle strict >0-logik gav fejlagtigt 0.
+test("injuryDaysLeft returnerer 1 på sidste skadedag (#1672 — ikke 0)", () => {
+  const today = new Date("2026-06-25T08:00:00");
+  assert.equal(injuryDaysLeft("2026-06-25", today), 1);
 });
 
-test("injuryDaysLeft returnerer korrekte dage frem i tid", () => {
-  const today = new Date("2026-06-12T00:00:00Z");
-  const until = new Date("2026-06-15T00:00:00Z");
-  assert.equal(injuryDaysLeft(until.toISOString(), today), 3);
+// #1672: injured_until lagres som DATE-kolonne => PostgREST returnerer ren dato-streng.
+// Reproducér mod en kendt slutdato 3 kalenderdage frem fra dags dato.
+test("injuryDaysLeft tæller inklusiv sidste skadedag (DATE-streng)", () => {
+  // 22/6 i dag, sidste skadedag 25/6 => skadet 22, 23, 24, 25 = 4 dage tilbage.
+  const today = new Date("2026-06-22T08:00:00");
+  assert.equal(injuryDaysLeft("2026-06-25", today), 4);
 });
 
-test("injuryDaysLeft returnerer 1 for næste dag", () => {
-  const today = new Date("2026-06-12T00:00:00Z");
-  const until = new Date("2026-06-13T00:00:00Z");
-  assert.equal(injuryDaysLeft(until.toISOString(), today), 1);
+test("injuryDaysLeft returnerer 2 når sidste skadedag er i morgen", () => {
+  // 22/6 i dag, sidste skadedag 23/6 => skadet 22 + 23 = 2 dage tilbage.
+  const today = new Date("2026-06-22T08:00:00");
+  assert.equal(injuryDaysLeft("2026-06-23", today), 2);
+});
+
+// Robust på tværs af klokkeslæt: ren DATE-streng + vilkårligt klokkeslæt på today
+// må ikke trække en dag af pga. tidszone/normalisering.
+test("injuryDaysLeft er stabil hen over dagen (ingen tidszone-off-by-one)", () => {
+  for (const hh of ["00:30", "08:00", "23:30"]) {
+    assert.equal(injuryDaysLeft("2026-06-25", new Date(`2026-06-22T${hh}:00`)), 4, `kl. ${hh}`);
+  }
 });
 
 // isRiderInjured tests (#1531 — skade-badge)

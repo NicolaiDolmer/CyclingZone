@@ -29,15 +29,34 @@ export function isValidIntensity(intensity) {
   return TRAINING_INTENSITIES.includes(intensity);
 }
 
-// Beregn antal dage til raskmelding givet en injured_until ISO-datostreng og dags dato.
-// Returnerer 0 hvis rask, positivt tal hvis skadet.
+// Beregn antal RESTERENDE skadedage (inklusiv i dag) givet en injured_until dato
+// og dags dato. Returnerer 0 hvis rask, positivt tal hvis skadet.
 // today er en Date (default = new Date()).
+//
+// injured_until er en DATE-kolonne (database/2026-06-12-daily-training.sql) =
+// den SIDSTE skadede dag, inklusiv: backend regner rytteren som skadet så længe
+// injured_until >= dagens dato (dailyTrainingEngine.js: injured_until >= tickDate).
+// Tælleren skal derfor være INKLUSIV den sidste skadedag, ellers viser den "0 dage"
+// på selve injured_until-datoen, hvor rytteren stadig er skadet (#1672).
+//
+// Sammenlign rene KALENDERDAGE, ikke tidsstempler: injured_until er en dato uden
+// klokkeslæt (DATE-kolonne), mens today bærer brugerens lokale klokkeslæt. Vi mapper
+// begge til UTC-midnat ud fra deres respektive kalenderfelter (injured_until i UTC,
+// today i lokal tid) — så hverken tidszone eller sommertid kan flytte en kalenderdag.
+function calendarDayUTC(value, useLocal) {
+  const d = value instanceof Date ? value : new Date(value);
+  return useLocal
+    ? Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())
+    : Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+}
+
 export function injuryDaysLeft(injured_until, today = new Date()) {
   if (!injured_until) return 0;
-  const until = new Date(injured_until);
-  // Kun dagsdato (ingen klokkeslæt) — normaliser begge til midnight UTC.
-  const diffMs = until.setHours(0, 0, 0, 0) - today.setHours(0, 0, 0, 0);
-  return diffMs > 0 ? Math.ceil(diffMs / 86_400_000) : 0;
+  const untilDay = calendarDayUTC(injured_until, false); // UTC-dato fra DB
+  const todayDay = calendarDayUTC(today, true);          // brugerens lokale dag
+  const diffDays = Math.round((untilDay - todayDay) / 86_400_000);
+  // diffDays >= 0 ⇒ stadig skadet i dag; +1 tæller den indeværende skadedag med.
+  return diffDays >= 0 ? diffDays + 1 : 0;
 }
 
 // #1531: er rytteren skadet lige nu? Bruges til skade-badget i Status-kolonnen på
