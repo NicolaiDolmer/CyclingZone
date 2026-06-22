@@ -55,7 +55,7 @@ for (let i = 0; i < 28; i++) {
     manager_name: `Seed Manager ${i}`,
     division: i < 20 ? 1 : 2,
     league_division_id: null,
-    balance: 800000,
+    balance: 500000,
     sponsor_income: 240000,
     is_ai: false,
     is_test_account: false,

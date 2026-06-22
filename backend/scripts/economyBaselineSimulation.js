@@ -34,7 +34,7 @@ const LOCAL_COMPETENT_TEAMS = [
     salary: 1150000,
     prizes: 160000,
     loanInterest: 0,
-    startingBalance: 800000,
+    startingBalance: 500000,
   },
   {
     division: 2,
@@ -43,7 +43,7 @@ const LOCAL_COMPETENT_TEAMS = [
     salary: 650000,
     prizes: 70000,
     loanInterest: 0,
-    startingBalance: 800000,
+    startingBalance: 500000,
   },
   {
     division: 3,
@@ -52,7 +52,7 @@ const LOCAL_COMPETENT_TEAMS = [
     salary: 310000,
     prizes: 25000,
     loanInterest: 0,
-    startingBalance: 800000,
+    startingBalance: 500000,
   },
 ];
 

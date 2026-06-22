@@ -72,7 +72,7 @@ const LOCAL_COMPETENT_TEAMS = [
     salary: 1150000,   // frozen wage bill — 22 riders averaging ~52,300 CZ$/rider
     prizes: 160000,
     loanInterest: 0,
-    startingBalance: 800000,
+    startingBalance: 500000,
   },
   {
     division: 2,
@@ -81,7 +81,7 @@ const LOCAL_COMPETENT_TEAMS = [
     salary: 650000,    // frozen wage bill — 15 riders averaging ~43,300 CZ$/rider
     prizes: 70000,
     loanInterest: 0,
-    startingBalance: 800000,
+    startingBalance: 500000,
   },
   {
     division: 3,
@@ -90,7 +90,7 @@ const LOCAL_COMPETENT_TEAMS = [
     salary: 310000,    // frozen wage bill — 9 riders averaging ~34,400 CZ$/rider
     prizes: 25000,
     loanInterest: 0,
-    startingBalance: 800000,
+    startingBalance: 500000,
   },
 ];
 
@@ -453,7 +453,7 @@ function buildMarkdown({ solvencyByDiv, multiSeason, targets, liveData }) {
     "| Parameter | Value | Rationale |",
     "|-----------|-------|-----------|",
     `| Sponsor income | 240,000 CZ$/season | \`SPONSOR_INCOME_BASE\` from \`economyConstants.js\` (same all divisions) |`,
-    `| Starting balance | 800,000 CZ$ | \`INITIAL_BALANCE\` from \`economyConstants.js\` |`,
+    `| Starting balance | 500,000 CZ$ | \`INITIAL_BALANCE\` from \`economyConstants.js\` |`,
     `| Div 1 frozen wage bill | 1,150,000 CZ$ | 22 riders × ~52,300 CZ$/rider avg |`,
     `| Div 2 frozen wage bill | 650,000 CZ$ | 15 riders × ~43,300 CZ$/rider avg |`,
     `| Div 3 frozen wage bill | 310,000 CZ$ | 9 riders × ~34,400 CZ$/rider avg |`,

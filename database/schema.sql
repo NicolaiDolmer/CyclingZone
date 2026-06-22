@@ -56,7 +56,7 @@ CREATE TABLE teams (
   division INTEGER DEFAULT 4 CHECK (division IN (1, 2, 3, 4)),
   -- Pulje-reference (race/standings-gruppe, #1608). NULL = endnu ikke pulje-allokeret.
   league_division_id INTEGER REFERENCES league_divisions(id),
-  balance BIGINT DEFAULT 800000, -- in points/currency
+  balance BIGINT DEFAULT 500000, -- in points/currency (#1717: 800000 → 500000)
   sponsor_income BIGINT DEFAULT 240000, -- per season
   is_frozen BOOLEAN DEFAULT FALSE,
   is_bank BOOLEAN DEFAULT FALSE,

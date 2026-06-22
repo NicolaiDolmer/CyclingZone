@@ -275,7 +275,7 @@ test("upsertOwnTeamProfile sætter sponsor_income og balance til de delte konsta
   // Slice 07a: locker sponsor_income til SPONSOR_INCOME_BASE (240K) i stedet for stale 260K.
   // Skal fejle hvis nogen rører ved DEFAULT_TEAM_VALUES uden at opdatere DB-default i samme commit.
   assert.equal(SPONSOR_INCOME_BASE, 240000, "DB-default i schema.sql:31 er 240000");
-  assert.equal(INITIAL_BALANCE, 800000, "DB-default i schema.sql:30 er 800000");
+  assert.equal(INITIAL_BALANCE, 500000, "DB-default i schema.sql:59 er 500000 (#1717)");
 
   const supabase = createSupabaseDouble({ leagueDivisions: seedDiv4Pools() });
   const result = await upsert({

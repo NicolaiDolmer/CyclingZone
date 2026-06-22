@@ -51,7 +51,8 @@ export const MAX_BOARD_MODIFIER = 1.20;
 
 // teams.balance DEFAULT i database/schema.sql + 2026-04-25-economy-retuning.sql.
 // Også brugt som DEFAULT_BETA_BALANCE i betaResetService.js.
-export const INITIAL_BALANCE = 800000;
+// #1717 (ejer-besluttet 2026-06-22): sænket 800000 → 500000 (forever-relaunch).
+export const INITIAL_BALANCE = 500000;
 
 // Rytter-værdi (#1101 cutover 2026-06-10): market_value/salary er GENERATED fra
 // base_value (model v3, riderValuationModel.json) — uci_points er afkoblet.

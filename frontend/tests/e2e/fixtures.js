@@ -16,7 +16,7 @@ export const TEST_TEAM = {
   name: "E2E Racing",
   manager_name: "Playwright Manager",
   division: 2,
-  balance: 800000,
+  balance: 500000,
   sponsor_income: 240000,
   is_ai: false,
   is_test_account: true,
