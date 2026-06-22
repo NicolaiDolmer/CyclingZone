@@ -1,6 +1,7 @@
 {
   "title": "Akademi",
   "slots": "Akademi: {used} / {max} pladser",
+  "balance": "Saldo: {amount} CZ$",
   "disabledNote": "Akademiet kommer snart. Hold dig opdateret.",
   "graduationHeading": "Ryttere der forlader akademiet",
   "intakeHeading": "Intake-kandidater",
@@ -14,6 +15,7 @@
   "ageLabel": "{age} år",
   "signBtn": "Signér",
   "signFreeAgentBtn": "Signér til akademi",
+  "signFreeAgentBtnPriced": "Signér for {price} CZ$",
   "rejectBtn": "Afvis",
   "promoteBtn": "Ryk op",
   "sellBtn": "Sælg",
@@ -27,6 +29,15 @@
   "colAge": "Alder",
   "colSalary": "Løn",
   "colContract": "Kontrakt",
+  "signModal": {
+    "title": "Bekræft signering",
+    "question": "Signér denne rytter til dit akademi for penge:",
+    "priceLabel": "Pris ved signering",
+    "balanceLabel": "Nuværende saldo",
+    "afterLabel": "Saldo bagefter",
+    "cannotAfford": "Du har ikke nok penge til at signere denne rytter.",
+    "confirm": "Signér"
+  },
   "error": {
     "academyFull": "Akademiet er fuldt (8/8). Kan ikke signere endnu en rytter.",
     "insufficientBalance": "Ikke nok penge til at signere denne rytter.",

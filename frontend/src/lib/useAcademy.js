@@ -4,7 +4,7 @@
 // + pillar-events academy_sign / academy_reject. Spejler useTraining.
 
 import { useState, useEffect, useCallback } from "react";
-import { getSession } from "./supabase.js";
+import { getSession, supabase } from "./supabase.js";
 import { logEvent } from "./logEvent.js";
 
 const API = import.meta.env.VITE_API_URL;
@@ -23,12 +23,33 @@ export function useAcademy() {
   const [intake, setIntake]     = useState([]);
   const [freeAgents, setFreeAgents] = useState([]);
   const [graduations, setGraduations] = useState([]);
+  const [balance, setBalance]   = useState(null);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState(null);
+
+  // Holdets saldo hentes direkte fra Supabase (samme mønster som AuctionsPage) — så
+  // bekræftelses-modalen (#1744) kan vise saldo-effekt uden en backend-ændring på
+  // /api/academy/me (ejes af en anden fleet-agent). Fejl er ikke-kritiske: saldo-
+  // raekken udelades blot hvis hentningen fejler.
+  const refreshBalance = useCallback(async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.id) return;
+      const { data: team } = await supabase
+        .from("teams")
+        .select("balance")
+        .eq("user_id", user.id)
+        .single();
+      if (team && team.balance != null) setBalance(Number(team.balance));
+    } catch {
+      /* saldo er nice-to-have — behold tidligere state */
+    }
+  }, []);
 
   const refresh = useCallback(async () => {
     const headers = await authHeaders();
     if (!headers) { setLoading(false); return; }
+    refreshBalance();
     try {
       const res = await fetch(`${API}/api/academy/me`, { headers });
       if (res.status === 409) {
@@ -59,7 +80,7 @@ export function useAcademy() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [refreshBalance]);
 
   useEffect(() => { refresh(); }, [refresh]);
 
@@ -144,5 +165,5 @@ export function useAcademy() {
     }
   }, [refresh]);
 
-  return { enabled, slots, roster, intake, freeAgents, graduations, loading, error, signCandidate, rejectCandidate, signFreeAgent, resolveGraduate, refresh };
+  return { enabled, slots, roster, intake, freeAgents, graduations, balance, loading, error, signCandidate, rejectCandidate, signFreeAgent, resolveGraduate, refresh };
 }
