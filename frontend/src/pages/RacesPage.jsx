@@ -5,6 +5,7 @@ import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import RiderLink from "../components/RiderLink";
 import RacePointsPage from "./RacePointsPage";
 import { dateTextToDayOfYear } from "../lib/raceCalendar";
+import { racesForPool } from "../lib/racesByPool";
 import { computeExpectedRacePrize, formatExpectedPrize } from "../lib/expectedPrizeCalculator";
 import {
   Card,
@@ -68,6 +69,10 @@ export default function RacesPage() {
   const [selectedRace, setSelectedRace] = useState(null);
   const [tab, setTab] = useState(initialTab);
   const [isAdmin, setIsAdmin] = useState(false);
+  // #1715 — spillerens egen liga-pulje (teams.league_division_id). Kalender-fanen
+  // filtrerer til denne pulje + fælles (NULL) løb, så de 7 puljers løb ikke
+  // blandes i én liste (gav dublet-lignende visning).
+  const [myPoolId, setMyPoolId] = useState(null);
 
   // Library state (lazy loaded når tab="library" åbnes første gang)
   const [libRaces, setLibRaces] = useState([]);
@@ -103,15 +108,19 @@ export default function RacesPage() {
     const { data: userData } = await supabase.from("users").select("role").eq("id", user.id).single();
     setIsAdmin(userData?.role === "admin");
 
-    const [seasonRes, racesRes, racePointsRes] = await Promise.all([
+    const [seasonRes, racesRes, racePointsRes, myTeamRes] = await Promise.all([
       supabase.from("seasons").select("*").eq("status", "active").single(),
-      supabase.from("races").select("*, results:race_results(id), pool_race:pool_race_id(date_text)").order("name"),
+      // #1715: league_division_id med, så kalenderen kan filtrere til spillerens pulje.
+      supabase.from("races").select("*, league_division_id, results:race_results(id), pool_race:pool_race_id(date_text)").order("name"),
       supabase.from("race_points").select("race_class, result_type, rank, points"),
+      // #1715: spillerens egen pulje (teams.league_division_id) til kalender-filteret.
+      supabase.from("teams").select("league_division_id").eq("user_id", user.id).maybeSingle(),
     ]);
 
     setSeason(seasonRes.data);
     setRaces(racesRes.data || []);
     setRacePoints(racePointsRes.data || []);
+    setMyPoolId(myTeamRes.data?.league_division_id ?? null);
     setLoading(false);
   }
 
@@ -183,11 +192,16 @@ export default function RacesPage() {
     setSelectedRace({ ...race, results, loading: false });
   }
 
+  // #1715: kalenderen viser kun spillerens egen puljes løb + fælles (NULL) løb,
+  // så de 7 puljers løb ikke blandes i én liste. Falder tilbage til alle løb hvis
+  // spilleren ikke har en pulje (myPoolId === null).
+  const myRaces = useMemo(() => racesForPool(races, myPoolId), [races, myPoolId]);
+
   const racesByStatus = {
-    upcoming: races
+    upcoming: myRaces
       .filter(r => !r.results?.length && r.status !== "completed")
       .sort((a, b) => dateTextToDayOfYear(a.pool_race?.date_text) - dateTextToDayOfYear(b.pool_race?.date_text)),
-    completed: races.filter(r => r.results?.length > 0 || r.status === "completed"),
+    completed: myRaces.filter(r => r.results?.length > 0 || r.status === "completed"),
   };
 
   if (loading) return (
@@ -207,8 +221,8 @@ export default function RacesPage() {
               : tab === "points"
               ? t("subtitle.points")
               : season
-              ? t("subtitle.withSeason", { number: season.number, count: races.length })
-              : t("subtitle.noSeasonWithCount", { count: races.length })}
+              ? t("subtitle.withSeason", { number: season.number, count: myRaces.length })
+              : t("subtitle.noSeasonWithCount", { count: myRaces.length })}
           </p>
         </div>
       </div>
@@ -298,7 +312,7 @@ export default function RacesPage() {
               </div>
             )}
 
-            {races.length === 0 && (
+            {myRaces.length === 0 && (
               <EmptyState
                 icon={<FlagIcon size={28} />}
                 title={t("empty.noRacesSeason")}
