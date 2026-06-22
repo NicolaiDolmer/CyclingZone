@@ -16,7 +16,7 @@ import {
   runFullBetaReset,
 } from "./betaResetService.js";
 import { FOUNDER_BADGE_KEY } from "./founderBadge.js";
-import { MAX_DIVISION, POOL_TARGET_SIZE } from "./economyConstants.js";
+import { MANAGER_ENTRY_DIVISION, POOL_TARGET_SIZE } from "./economyConstants.js";
 
 // #1608 Task 6: de 8 div-4-puljer som migration 2026-06-21-league-divisions-pyramid.sql
 // seeder (tier 4 = bunden). id 8..15 spejler seed-rækkefølgen; kun "8 distinkte tier-4-
@@ -24,7 +24,7 @@ import { MAX_DIVISION, POOL_TARGET_SIZE } from "./economyConstants.js";
 function seedDiv4Pools() {
   return Array.from({ length: 8 }, (_, index) => ({
     id: 8 + index,
-    tier: MAX_DIVISION,
+    tier: MANAGER_ENTRY_DIVISION,
     pool_index: index,
     label: `Division 4 — ${String.fromCharCode(65 + index)}`,
   }));
@@ -433,9 +433,9 @@ test("runFullBetaReset completes the full test reset suite without touching AI o
   // #1608 Task 6: ægte managere placeres i bunden (tier 4) + en div-4-pulje; frosne
   // hold er urørt (bevarer division 1 + sin gamle pulje).
   const resetTeam1 = supabase.state.teams.find((team) => team.id === "team-1");
-  assert.equal(resetTeam1.division, MAX_DIVISION, "manager-hold flyttet til bunden (tier 4)");
+  assert.equal(resetTeam1.division, MANAGER_ENTRY_DIVISION, "manager-hold flyttet til bunden (tier 4)");
   assert.ok(
-    supabase.state.league_divisions.some((pool) => pool.id === resetTeam1.league_division_id && pool.tier === MAX_DIVISION),
+    supabase.state.league_divisions.some((pool) => pool.id === resetTeam1.league_division_id && pool.tier === MANAGER_ENTRY_DIVISION),
     "manager-hold placeret i en faktisk div-4-pulje",
   );
   assert.equal(supabase.state.teams.find((team) => team.id === "team-frozen").division, 1);
@@ -500,11 +500,11 @@ test("allocateLeaguePools placerer ægte managere i tier 4 + spreder dem på div
   assert.equal(result.allocated, 4, "alle 4 ægte managere allokeret");
 
   const managerIds = ["team-1", "team-2", "team-3", "team-4"];
-  const pools = supabase.state.league_divisions.filter((p) => p.tier === MAX_DIVISION).map((p) => p.id);
+  const pools = supabase.state.league_divisions.filter((p) => p.tier === MANAGER_ENTRY_DIVISION).map((p) => p.id);
   const usedPools = new Set();
   for (const id of managerIds) {
     const team = supabase.state.teams.find((t) => t.id === id);
-    assert.equal(team.division, MAX_DIVISION, `${id} flyttet til tier 4`);
+    assert.equal(team.division, MANAGER_ENTRY_DIVISION, `${id} flyttet til tier 4`);
     assert.ok(pools.includes(team.league_division_id), `${id} placeret i en div-4-pulje`);
     usedPools.add(team.league_division_id);
   }
@@ -557,11 +557,11 @@ test("allocateLeaguePools blød cap — mange managere fordeles jævnt forbi POO
   const result = await allocateLeaguePools(supabase);
 
   assert.equal(result.allocated, managerCount);
-  const pools = supabase.state.league_divisions.filter((p) => p.tier === MAX_DIVISION).map((p) => p.id);
+  const pools = supabase.state.league_divisions.filter((p) => p.tier === MANAGER_ENTRY_DIVISION).map((p) => p.id);
   const counts = new Map(pools.map((id) => [id, 0]));
   for (let i = 0; i < managerCount; i++) {
     const team = supabase.state.teams.find((t) => t.id === `m-${i}`);
-    assert.equal(team.division, MAX_DIVISION);
+    assert.equal(team.division, MANAGER_ENTRY_DIVISION);
     assert.ok(pools.includes(team.league_division_id), `m-${i} i en div-4-pulje`);
     counts.set(team.league_division_id, counts.get(team.league_division_id) + 1);
   }

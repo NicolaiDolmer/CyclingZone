@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { generateAndAllocateAiTeams, AI_TEAM_NAME_PREFIX } from "./aiTeamGenerator.js";
+import { generateAndAllocateAiTeams, clearAllAiTeams, AI_TEAM_NAME_PREFIX } from "./aiTeamGenerator.js";
 import { POOL_TARGET_SIZE, MAX_DIVISION } from "./economyConstants.js";
 
 // #1688 — AI-fill-generator. Politik (frosset):
@@ -275,4 +275,37 @@ test("returnerer et opsummerings-objekt med created/removed pr. kørsel", async 
   assert.equal(summary.created, POOL_TARGET_SIZE * 3, "1 tier-1-pulje + 2 tier-2-puljer fyldt");
   assert.equal(summary.removed, 0);
   void MAX_DIVISION;
+});
+
+// clearAllAiTeams (#1688): bevidst engangs-wipe FØR AI-fyld i relaunchen, så et phantom
+// AI-hold (fx prod's "AI" i div 1 med 0 ryttere) ikke overlever. Sletter is_ai-hold +
+// deres ryttere; rører aldrig ægte hold.
+test("clearAllAiTeams sletter alle AI-hold + deres ryttere; rører ikke ægte hold", async () => {
+  const supabase = makeSupabase({
+    teams: [
+      { id: "ai-1", is_ai: true, league_division_id: 1 },
+      { id: "ai-2", is_ai: true, league_division_id: 2 },
+      { id: "mgr-1", is_ai: false, league_division_id: 1 },
+    ],
+    riders: [
+      { id: "r-ai1", team_id: "ai-1" },
+      { id: "r-ai2", team_id: "ai-2" },
+      { id: "r-mgr", team_id: "mgr-1" },
+    ],
+  });
+
+  const res = await clearAllAiTeams(supabase);
+
+  assert.equal(res.teams, 2, "2 AI-hold slettet");
+  assert.deepEqual(supabase.state.teams.map((t) => t.id), ["mgr-1"], "kun ægte hold tilbage");
+  assert.deepEqual(supabase.state.riders.map((r) => r.id), ["r-mgr"], "AI-ryttere slettet, ægte rytter bevaret");
+});
+
+test("clearAllAiTeams er no-op uden AI-hold", async () => {
+  const supabase = makeSupabase({ teams: [{ id: "mgr-1", is_ai: false }], riders: [] });
+
+  const res = await clearAllAiTeams(supabase);
+
+  assert.equal(res.teams, 0);
+  assert.deepEqual(supabase.state.teams.map((t) => t.id), ["mgr-1"]);
 });

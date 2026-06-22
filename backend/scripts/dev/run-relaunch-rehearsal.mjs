@@ -24,7 +24,7 @@ import { runFullBetaReset } from "../../lib/betaResetService.js";
 import { runAcademyIntake } from "../../lib/academyIntake.js";
 import { generateAndAllocateAiTeams } from "../../lib/aiTeamGenerator.js";
 import { fetchAllRows } from "../../lib/supabasePagination.js";
-import { INITIAL_BALANCE, POOL_TARGET_SIZE } from "../../lib/economyConstants.js";
+import { INITIAL_BALANCE, POOL_TARGET_SIZE, MANAGER_ENTRY_DIVISION } from "../../lib/economyConstants.js";
 
 const START_DATE = "2026-06-22"; // ejer-besluttet 2026-06-22
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -177,10 +177,12 @@ async function main() {
   // + teams.division (=tier), economyConstants.INITIAL_BALANCE,
   // transfer_windows.board_negotiation_state ('pending_5yr').
 
-  // (a) Pyramide-allokering (#1608/#1690): 15 puljer (tier 1/2/4/8) + ALLE ægte-
-  //     manager-hold i bunden (division/tier 4) med en tier-4-pulje-reference.
+  // (a) Pyramide-allokering (#1608/#1690/#1688): 15 puljer (tier-antal 1/2/4/8). ALLE ægte-
+  //     manager-hold placeres i MANAGER_ENTRY_DIVISION (=3, ejer-besluttet 22/6) — IKKE den
+  //     strukturelle bund (tier 4), som forbliver tom headroom (ingen managers, ingen AI).
   const { data: poolRows } = await supabase.from("league_divisions").select("id, tier");
   const pools = poolRows || [];
+  const entryPoolIds = new Set(pools.filter((p) => p.tier === MANAGER_ENTRY_DIVISION).map((p) => p.id));
   const tier4PoolIds = new Set(pools.filter((p) => p.tier === 4).map((p) => p.id));
   add("Pyramide: 15 league_divisions-puljer", pools.length === 15, pools.length, "15");
 
@@ -188,17 +190,30 @@ async function main() {
     .select("league_division_id, division")
     .eq("is_ai", false).eq("is_bank", false).eq("is_frozen", false).eq("is_test_account", false);
   const mgrTeams = managerTeamRows || [];
-  const allBottomPlaced = mgrTeams.length > 0 && mgrTeams.every(
-    (t) => t.league_division_id !== null && t.division === 4
+  const allEntryPlaced = mgrTeams.length > 0 && mgrTeams.every(
+    (t) => t.league_division_id !== null && t.division === MANAGER_ENTRY_DIVISION
   );
-  const placedInDiv4 = mgrTeams.filter((t) => t.league_division_id !== null && t.division === 4).length;
-  add("Pyramide: alle ægte-manager-hold i bunden (div 4 + pulje)", allBottomPlaced,
-    `${placedInDiv4}/${mgrTeams.length} i div4+pulje`, `${mgrTeams.length}/${mgrTeams.length}`);
+  const placedInEntry = mgrTeams.filter((t) => t.league_division_id !== null && t.division === MANAGER_ENTRY_DIVISION).length;
+  add(`Pyramide: alle ægte-manager-hold i entry-div (div ${MANAGER_ENTRY_DIVISION} + pulje)`, allEntryPlaced,
+    `${placedInEntry}/${mgrTeams.length} i div${MANAGER_ENTRY_DIVISION}+pulje`, `${mgrTeams.length}/${mgrTeams.length}`);
 
-  const allPoolsTier4 = mgrTeams.length > 0 && mgrTeams.every((t) => tier4PoolIds.has(t.league_division_id));
-  const tier4Used = mgrTeams.filter((t) => tier4PoolIds.has(t.league_division_id)).length;
-  add("Pyramide: brugte puljer er tier-4-puljer", allPoolsTier4,
-    `${tier4Used}/${mgrTeams.length} i tier-4-pulje`, `${mgrTeams.length}/${mgrTeams.length}`);
+  const allPoolsEntry = mgrTeams.length > 0 && mgrTeams.every((t) => entryPoolIds.has(t.league_division_id));
+  const entryUsed = mgrTeams.filter((t) => entryPoolIds.has(t.league_division_id)).length;
+  add(`Pyramide: brugte puljer er tier-${MANAGER_ENTRY_DIVISION}-puljer`, allPoolsEntry,
+    `${entryUsed}/${mgrTeams.length} i tier-${MANAGER_ENTRY_DIVISION}-pulje`, `${mgrTeams.length}/${mgrTeams.length}`);
+
+  // (a2) Div 4 (strukturel bund) er TOM headroom: ingen hold (managers ELLER AI) — ejer-
+  //      besluttet 22/6 (#1688). AI-fyld fylder ikke en pulje uden managers, og managers
+  //      bor i div 3, så tier-4-puljerne skal have 0 hold.
+  const { data: allTeamsForDiv4 } = await supabase.from("teams")
+    .select("league_division_id, is_ai, is_bank, is_frozen, is_test_account");
+  const isRaceTeam = (t) => t.is_ai === true
+    || (t.is_ai === false && !t.is_bank && !t.is_frozen && !t.is_test_account);
+  const div4RaceTeams = (allTeamsForDiv4 || []).filter(
+    (t) => tier4PoolIds.has(t.league_division_id) && isRaceTeam(t)
+  ).length;
+  add("Pyramide: div 4 tom (ingen managers/AI — headroom)", div4RaceTeams === 0,
+    `${div4RaceTeams} race-hold i tier-4-puljer`, "0");
 
   // (b) Sæson-1-opstartsøkonomi (#1678): friske ægte-manager-hold beholder uberørt
   //     startkapital — sæson-1-sponsor er IKKE lagt oveni (economyEngine springer
@@ -264,21 +279,28 @@ async function main() {
   const isAiTeamRow = (t) => t.is_ai === true;
   const poolTierById = new Map(aiPools.map((p) => [p.id, p.tier]));
 
-  // (a) tier 1+2: ALTID fyldt til target (24). Managere bor i div 4, så feltet er ren AI.
+  // RACE-FELTET = ægte managere + AI-hold (POOL_TARGET_SIZE=24 capper det). Bank/frosne/
+  // test-hold kan dele en puljes league_division_id (form-frys-backfill) men afvikler ikke
+  // løb — de tælles derfor IKKE med i felt-størrelsen.
+  const raceFieldCount = (poolId) => allTeamsArr.filter(
+    (t) => t.league_division_id === poolId && (isRealMgr(t) || isAiTeamRow(t))
+  ).length;
+
+  // (a) tier 1+2: race-feltet fyldes ALTID til target (24). Managere bor i div 3, så
+  //     tier 1/2-feltet er ren AI.
   const t12Pools = aiPools.filter((p) => p.tier === 1 || p.tier === 2);
-  const t12Filled = t12Pools.filter((p) =>
-    allTeamsArr.filter((t) => t.league_division_id === p.id).length === POOL_TARGET_SIZE);
+  const t12Filled = t12Pools.filter((p) => raceFieldCount(p.id) === POOL_TARGET_SIZE);
   add("AI-fyld: tier 1+2 puljer fyldt til target",
     t12Pools.length > 0 && t12Filled.length === t12Pools.length,
     `${t12Filled.length}/${t12Pools.length} == ${POOL_TARGET_SIZE}`, `alle == ${POOL_TARGET_SIZE}`);
 
-  // (b) tier 3+4: fyldt til target KUN i puljer med >=1 ægte manager; ellers 0 AI.
+  // (b) tier 3+4: race-feltet fyldes til target KUN i puljer med >=1 ægte manager; ellers 0 AI.
   const t34Pools = aiPools.filter((p) => p.tier === 3 || p.tier === 4);
   const t34Ok = t34Pools.filter((p) => {
     const inPool = allTeamsArr.filter((t) => t.league_division_id === p.id);
     const mgrs = inPool.filter(isRealMgr).length;
     const ais = inPool.filter(isAiTeamRow).length;
-    return mgrs >= 1 ? inPool.length === POOL_TARGET_SIZE : ais === 0;
+    return mgrs >= 1 ? raceFieldCount(p.id) === POOL_TARGET_SIZE : ais === 0;
   });
   add("AI-fyld: tier 3+4 fyldt kun hvor >=1 manager (ellers 0 AI)",
     t34Pools.length > 0 && t34Ok.length === t34Pools.length,

@@ -18,7 +18,7 @@ import { generateLaunchPopulation, LAUNCH_POPULATION } from "./fictionalLaunchPo
 import { toInsertPayload } from "./fictionalRiderGenerator.js";
 import { retireLegacyRiders } from "./legacyRiderRetirement.js";
 import { runFullBetaReset, getBetaManagerTeams, allocateLeaguePools } from "./betaResetService.js";
-import { generateAndAllocateAiTeams } from "./aiTeamGenerator.js";
+import { generateAndAllocateAiTeams, clearAllAiTeams } from "./aiTeamGenerator.js";
 import { runPhysiologyBackfill, runRiderTypesBackfill, runBaseValueBackfill } from "./backfillCores.js";
 import { runStarterSquadAllocation } from "./starterSquadAllocator.js";
 import { runContractSeed } from "./contractSeed.js";
@@ -85,6 +85,7 @@ const DEFAULT_DEPS = {
   runBaseValueBackfill,
   runStarterSquadAllocation,
   allocateLeaguePools,
+  clearAllAiTeams,
   generateAndAllocateAiTeams,
   seedSeasonZero,
   transitionToNextSeason,
@@ -136,16 +137,19 @@ export async function runRelaunchSeason1(supabase, {
     ? { skipped: "dryRun" }
     : await d.allocateLeaguePools(supabase);
 
-  // 5.6 #1688 · AI-fyld: fyld puljerne med AI-hold efter den frosne politik (tier 1/2
-  // altid, tier 3/4 kun hvor en ægte manager bor), så hver levende pulje har et
-  // afviklingsbart race-felt. Kører EFTER allocateLeaguePools (managerne er placeret i
-  // deres puljer, så tier-3/4-politikken ser dem) og FØR sæson-transitionen (feltet er
-  // sat når sæson 1 åbner og det første løb skal kunne afvikles). Idempotent +
-  // reconcilende → et gentaget kald top-up'er kun. Springes i dry-run (kræver writes,
-  // jf. reset/transition/leaguePools).
-  summary.aiTeams = dryRun
-    ? { skipped: "dryRun" }
-    : await d.generateAndAllocateAiTeams({ supabase, seed });
+  // 5.6 #1688 · AI-fyld. FØRST ryd alle pre-eksisterende AI-hold: reset'en bevarer is_ai-
+  // hold, og generateAndAllocateAiTeams top-up'er/reconciler kun i puljer — så et phantom
+  // AI-hold (fx prod's "AI" i div 1 med 0 ryttere) ville ellers overleve relaunchen som et
+  // tomt felt-medlem. clear → regenerér hele AI-feltet validt. Derefter fyld per frosset
+  // politik (tier 1/2 altid; tier 3/4 kun hvor en ægte manager bor — med managere i div 3
+  // forbliver div 4 tom). Kører EFTER allocateLeaguePools (managerne er placeret, så tier-3-
+  // politikken ser dem) og FØR sæson-transitionen. Springes i dry-run (kræver writes).
+  if (dryRun) {
+    summary.aiTeams = { skipped: "dryRun" };
+  } else {
+    summary.aiTeamsCleared = await d.clearAllAiTeams(supabase);
+    summary.aiTeams = await d.generateAndAllocateAiTeams({ supabase, seed });
+  }
 
   // 6. Frisk sæson 1 (sæson 0 → transition 0→1). Springes i dry-run (kræver sæson-0-row).
   if (dryRun) {

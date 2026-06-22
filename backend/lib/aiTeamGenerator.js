@@ -103,6 +103,32 @@ async function removeAiTeams(supabase, aiTeams, count) {
 }
 
 /**
+ * Slet ALLE eksisterende AI-hold + deres ryttere. Bruges af relaunch-orchestratoren FØR
+ * AI-fyld, så AI-feltet regenereres validt fra bunden (#1688). Et pre-eksisterende AI-hold
+ * kan ellers overleve relaunchen som et phantom: reset'en bevarer is_ai-hold, og
+ * generateAndAllocateAiTeams top-up'er kun rundt om dem i puljerne — fx prod's "AI"-hold i
+ * div 1 med 0 ryttere ville blive stående som et tomt felt-medlem. Dette er en bevidst
+ * engangs-wipe, IKKE en del af den idempotente reconcile-sti. Idempotent: no-op uden AI-hold.
+ *
+ * @returns {Promise<{teams:number}>}
+ */
+export async function clearAllAiTeams(supabase) {
+  if (!supabase?.from) throw new Error("Supabase client required");
+  const { data: aiTeams, error } = await supabase.from("teams").select("id").eq("is_ai", true);
+  if (error) throw new Error(`clearAllAiTeams (teams read): ${error.message}`);
+  const ids = (aiTeams || []).map((t) => t.id);
+  if (!ids.length) return { teams: 0 };
+  for (let i = 0; i < ids.length; i += INSERT_BATCH) {
+    const batch = ids.slice(i, i + INSERT_BATCH);
+    const { error: rErr } = await supabase.from("riders").delete().in("team_id", batch);
+    if (rErr) throw new Error(`clearAllAiTeams (rider delete): ${rErr.message}`);
+    const { error: tErr } = await supabase.from("teams").delete().in("id", batch);
+    if (tErr) throw new Error(`clearAllAiTeams (team delete): ${tErr.message}`);
+  }
+  return { teams: ids.length };
+}
+
+/**
  * Generér + allokér AI-hold på tværs af alle 15 puljer efter den frosne politik.
  * Idempotent + reconcilende. Rører ALDRIG prod af sig selv (kalderen ejer klienten).
  *
