@@ -133,18 +133,23 @@ function makeFreeAgentSupabase({
   academyCount = 0,
   offeredIntake = false,   // rytteren ligger som 'offered' i et intake-kuld
   activeAuction = false,   // rytteren ligger på en aktiv ungdomsauktion
+  insufficientBalance = false, // RPC afviser pga. manglende råd (#1713)
 } = {}) {
   const riderUpdates = [];
   const rpcCalls = [];
   const supabase = {
-    // #1558: cap-check + rider-update sker nu atomisk i finalize_academy_acquisition
-    // med p_price=0 (gratis optagelse, ingen debit). Mocken replikerer
-    // semantikken og syntetiserer en rider-update i _riderUpdates.
+    // #1713: optagelsen koster nu den viste market_value (p_price > 0). RPC'en
+    // håndterer betaling + balance-tjek og returnerer { ok:false, code:'insufficient_balance' }
+    // hvis holdet ikke har råd. Mocken replikerer cap-check + balance-tjek og
+    // syntetiserer en rider-update i _riderUpdates ved succes.
     rpc(name, args) {
       rpcCalls.push({ name, args });
       assert.equal(name, "finalize_academy_acquisition");
       if (academyCount >= 8) {
         return Promise.resolve({ data: { ok: false, code: "academy_full" }, error: null });
+      }
+      if (insufficientBalance) {
+        return Promise.resolve({ data: { ok: false, code: "insufficient_balance" }, error: null });
       }
       riderUpdates.push({
         team_id: args.p_team_id,
@@ -193,7 +198,7 @@ function makeFreeAgentSupabase({
 
 const NOW_2026 = new Date("2026-06-20T12:00:00Z");
 
-test("signFreeAgentYouth: signer fri ungdom til minimumsløn ind i akademiet (is_academy=true, kontrakt), ingen signing-fee", async () => {
+test("signFreeAgentYouth: signer fri ungdom ind i akademiet (is_academy=true, kontrakt) og betaler den viste market_value", async () => {
   const supabase = makeFreeAgentSupabase({ academyCount: 0 });
   const result = await signFreeAgentYouth(supabase, { teamId: "team-A", riderId: "fa-rider", seasonNumber: 1, now: NOW_2026 });
 
@@ -209,11 +214,23 @@ test("signFreeAgentYouth: signer fri ungdom til minimumsløn ind i akademiet (is
   assert.equal(upd.contract_end_season, 3);
   assert.ok(upd.salary >= 1);
 
-  // #1558: optagelsen går nu gennem den atomære RPC med p_price=0 — så der ER
-  // præcis ét RPC-kald, men det er en gratis optagelse (ingen finance-debit).
-  assert.equal(supabase._rpcCalls.length, 1, "præcis ét RPC-kald (atomær cap+update)");
+  // #1713: optagelsen koster den viste pris (= calculateRiderMarketValue).
+  // market_value=80000 → value=80000. RPC kaldes med p_price=value og en
+  // finance-payload med amount=-value (debit).
+  assert.equal(supabase._rpcCalls.length, 1, "præcis ét RPC-kald (atomær cap+betaling+update)");
   assert.equal(supabase._rpcCalls[0].name, "finalize_academy_acquisition");
-  assert.equal(supabase._rpcCalls[0].args.p_price, 0, "p_price=0 → ingen signing-fee-debit");
+  assert.equal(supabase._rpcCalls[0].args.p_price, 80000, "p_price = den viste market_value");
+  assert.equal(supabase._rpcCalls[0].args.p_finance_payload.type, "academy_signing");
+  assert.equal(supabase._rpcCalls[0].args.p_finance_payload.amount, -80000, "finance-payload debiterer den viste pris");
+});
+
+test("signFreeAgentYouth: propagerer insufficient_balance fra RPC → insufficient_balance (ingen råd, #1713)", async () => {
+  const supabase = makeFreeAgentSupabase({ insufficientBalance: true });
+  await assert.rejects(
+    () => signFreeAgentYouth(supabase, { teamId: "team-A", riderId: "fa-rider", seasonNumber: 1, now: NOW_2026 }),
+    /insufficient_balance/,
+  );
+  assert.equal(supabase._riderUpdates.length, 0, "ingen optagelse når holdet ikke har råd");
 });
 
 test("signFreeAgentYouth: afviser ikke-free-agent (team_id sat) → not_free_agent", async () => {

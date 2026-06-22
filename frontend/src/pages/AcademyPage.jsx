@@ -90,11 +90,13 @@ export default function AcademyPage() {
     if (!result.ok) {
       const msg = result.error === "academy_full"
         ? t("error.academyFull")
-        : result.error === "not_academy_age"
-          ? t("error.notAcademyAge")
-          : result.error === "not_free_agent"
-            ? t("error.notFreeAgent")
-            : t("error.generic");
+        : result.error === "insufficient_balance"
+          ? t("error.insufficientBalance")
+          : result.error === "not_academy_age"
+            ? t("error.notAcademyAge")
+            : result.error === "not_free_agent"
+              ? t("error.notFreeAgent")
+              : t("error.generic");
       setActionErrors(prev => ({ ...prev, [riderId]: msg }));
     }
     setActionState(prev => ({ ...prev, [riderId]: null }));

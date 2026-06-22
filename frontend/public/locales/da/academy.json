@@ -29,6 +29,7 @@
   "colContract": "Kontrakt",
   "error": {
     "academyFull": "Akademiet er fuldt (8/8). Kan ikke signere endnu en rytter.",
+    "insufficientBalance": "Ikke nok penge til at signere denne rytter.",
     "notOffered": "Denne rytter har ikke fået tilbudt en plads.",
     "notFreeAgent": "Denne rytter er ikke længere en free agent.",
     "notAcademyAge": "Denne rytter er uden for akademi-alderen (16-21).",
