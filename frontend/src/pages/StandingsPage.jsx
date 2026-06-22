@@ -10,6 +10,7 @@ import { formatNumber } from "../lib/intl";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 import { ABILITY_SELECT, ABILITY_SHORT, flattenAbilities } from "../lib/abilities";
 import { countTeamPodiums } from "../lib/standingsPodiums";
+import { mergeStandings } from "../lib/standingsMerge";
 import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch";
 import { Card, EmptyState, Spinner, Input, PodiumIcon } from "../components/ui";
 import { RULES_NUMBERS } from "../lib/rulesNumbers";
@@ -113,7 +114,10 @@ export default function StandingsPage() {
     const [teamsRes, standingsRes, racesRes, poolsRes] = await Promise.all([
       // last_seen joinet ind (#1609) til online-prik — samme som TeamsPage.jsx:41.
       // #1688: league_division_id med, så holdet kan placeres i sin pulje-sub-fane.
-      supabase.from("teams").select("id, name, division, league_division_id, user:user_id(last_seen)").eq("is_ai", false).eq("is_test_account", false).eq("is_frozen", false).order("division").order("name"),
+      // #1718: AI-hold MED — divisioner der (næsten) kun er AI fremstod tomme da
+      // is_ai-filteret holdt dem ude. is_ai joines ind så de kan markeres diskret.
+      // Test- og frosne konti holdes stadig ude (de er ikke ægte konkurrenter).
+      supabase.from("teams").select("id, name, division, league_division_id, is_ai, user:user_id(last_seen)").eq("is_test_account", false).eq("is_frozen", false).order("division").order("name"),
       activeSeason
         ? supabase.from("season_standings")
             // #1688: league_division_id med (GRANT på plads i league-divisions-pyramid-
@@ -132,9 +136,10 @@ export default function StandingsPage() {
     ]);
     setPools(poolsRes.data || []);
 
-    // Index actual standings by team_id
+    // Index actual standings by team_id. #1718: AI-rækker beholdes nu — de skal
+    // vises (markeres diskret i tabellen), ikke filtreres væk.
     const standingsMap = {};
-    (standingsRes.data || []).filter(s => !s.team?.is_ai).forEach(s => {
+    (standingsRes.data || []).forEach(s => {
       standingsMap[s.team_id] = s;
     });
 
@@ -148,10 +153,8 @@ export default function StandingsPage() {
     });
     setOnlineIds(online);
 
-    // All human teams, merged with standings (0 points as fallback)
-    const merged = (teamsRes.data || []).map(team => (
-      standingsMap[team.id] || { id: team.id, team_id: team.id, team, total_points: 0, stage_wins: 0 }
-    ));
+    // All teams (#1718: inkl. AI), merged with standings (0 points as fallback).
+    const merged = mergeStandings(teamsRes.data || [], standingsMap);
 
     setStandings(merged);
     setRaces(racesRes.data || []);
@@ -530,6 +533,9 @@ export default function StandingsPage() {
                             <TeamLink id={s.team_id} tab="results" stopPropagation className="font-medium text-cz-1">{s.team?.name}</TeamLink>
                             {isLeader && <LeaderBadge />}
                             {isMe && <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full" style={{ backgroundColor: "rgb(var(--me-badge-bg))", color: "rgb(var(--me-badge-fg))" }}>{t("youBadge")}</span>}
+                            {/* #1718: diskret AI-markør (uden eget hue/emoji, samme dæmpede stil som
+                                rytter-ranglistens AI-tag) — AI-hold vises nu, men skal kunne skelnes. */}
+                            {s.team?.is_ai && <span className="text-[9px] font-medium uppercase text-cz-3 border border-cz-border px-1 py-0.5 rounded">{t("aiBadge")}</span>}
                             {isPromotion && <span className="text-[9px] bg-cz-success-bg text-cz-success px-1.5 py-0.5 rounded font-medium">{t("promotionBadge")}</span>}
                             {isRelegation && <span className="text-[9px] bg-cz-danger-bg text-cz-danger px-1.5 py-0.5 rounded font-medium">{t("relegationBadge")}</span>}
                           </div>

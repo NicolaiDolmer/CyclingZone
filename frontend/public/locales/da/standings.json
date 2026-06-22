@@ -23,6 +23,7 @@
   "thU25": "U25",
   "thTopStar": "Topstjerne",
   "youBadge": "Dig",
+  "aiBadge": "AI",
   "promotionBadge": "↑ Op",
   "relegationBadge": "↓ Ned",
   "penaltyTooltip": "Trupstørrelse-fradrag: {penalty} point ({earned} optjent − {penalty} fradrag)",
