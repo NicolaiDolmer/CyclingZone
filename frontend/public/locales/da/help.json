@@ -360,7 +360,7 @@
       },
       "promotionRelegation": {
         "title": "Op- og nedrykning",
-        "text": "Top 2 i Division 2 og 3 rykker op. Bund 2 i Division 1 og 2 rykker ned. Afgøres automatisk ved sæsonafslutning baseret på sæsonpoint. Divisionerne er låst de første to sæsoner: de første op- og nedrykninger sker når sæson 2 slutter, så alle har tid til at finde sig til rette i en division først."
+        "text": "Op- og nedrykning afgøres pr. pulje: top 2 i hver pulje rykker op, bund 2 rykker ned. Antallet balancerer på tværs af en division, så de hold der rykker op fra puljerne nedenunder svarer til de hold der rykker ned fra puljerne ovenover. Afgøres automatisk ved sæsonafslutning baseret på sæsonpoint. Fanen 'Alle' viser alle puljer i en division samlet med hver puljes egne op-/nedrykningszoner markeret; åbn en enkelt pulje for kun at se dén pulje. Divisionerne er låst de første to sæsoner: de første op- og nedrykninger sker når sæson 2 slutter, så alle har tid til at finde sig til rette først."
       },
       "whenSeasonEnds": {
         "title": "Hvornår kan en sæson afsluttes?",
@@ -422,7 +422,7 @@
       },
       "promotionRelegation": {
         "title": "Op- og nedrykning",
-        "text": "Top 2 rykker op, bund 2 rykker ned i hver division. Rykningsafgørelse sker automatisk ved sæsonafslutning. Divisionerne er låst de første to sæsoner, så de første op- og nedrykninger sker når sæson 2 slutter."
+        "text": "Top 2 rykker op, bund 2 rykker ned i hver pulje. Antallet balancerer på tværs af en division, så oprykninger ind svarer til nedrykninger ud. Afgøres automatisk ved sæsonafslutning. Divisionerne er låst de første to sæsoner, så de første op- og nedrykninger sker når sæson 2 slutter."
       }
     },
     "riders": {

@@ -304,11 +304,50 @@ export default function StandingsPage() {
     .sort((a, b) => a.pool_index - b.pool_index);
   const hasPoolSubtabs = tierPools.length > 1;
 
-  const divStandingsBase = standings
+  // Hele tierens point-sorterede liste (alle puljer). Bruges som kilde til både
+  // den valgte visning OG zone-beregningen, så zonerne altid hænger sammen på
+  // tværs af "Alle" og de enkelte pulje-faner (#1745).
+  const tierStandings = standings
     .filter(s => s.team?.division === divTab)
-    // #1688: når tieren har flere puljer og en specifik pulje er valgt, filtrér til den.
-    .filter(s => !hasPoolSubtabs || poolTab === POOL_ALL || rowPoolId(s) === poolTab)
     .sort((a, b) => effectivePts(b) - effectivePts(a));
+
+  const PROMOTE_N = 2;
+  const RELEGATE_N = 2;
+  const canPromote = divTab > RULES_NUMBERS.minDivision;
+  const canRelegate = divTab < RULES_NUMBERS.maxDivision;
+
+  // #1745: op-/nedrykning afgøres PR. PULJE (top-2/bund-2 i hver pulje), ikke på
+  // tierens samlede liste. Tidligere blev zonen taget af den filtrerede liste, så
+  // "Alle"-fanen viste 2 op / 2 ned for HELE tieren mens hver pulje viste 2 op /
+  // 2 ned igen — tallene stemte ikke. Nu beregnes zone-id'erne én gang pr. pulje,
+  // så de er identiske uanset hvilken fane man står på, og antallet summer korrekt
+  // (N puljer × 2 op, N puljer × 2 ned). Kun puljer med flere hold end op+ned-
+  // pladser tilsammen får en zone (ellers ville hele puljen være markeret).
+  const promoteIds = new Set();
+  const relegateIds = new Set();
+  const standingsByPool = new Map();
+  tierStandings.forEach(s => {
+    const key = rowPoolId(s) ?? "__none__";
+    if (!standingsByPool.has(key)) standingsByPool.set(key, []);
+    standingsByPool.get(key).push(s);
+  });
+  standingsByPool.forEach(poolRows => {
+    if (poolRows.length <= PROMOTE_N + RELEGATE_N) return;
+    if (canPromote) poolRows.slice(0, PROMOTE_N).forEach(s => promoteIds.add(s.team_id));
+    if (canRelegate) poolRows.slice(-RELEGATE_N).forEach(s => relegateIds.add(s.team_id));
+  });
+
+  // Antal op-/nedrykkere i den AKTUELLE visning: i "Alle" tælles på tværs af tierens
+  // puljer; i en enkelt pulje tælles kun dén puljes zone. Bruges til summarie-linjen
+  // så spilleren ser præcis hvor mange der rykker (#1745).
+  const inCurrentPool = (s) => !hasPoolSubtabs || poolTab === POOL_ALL || rowPoolId(s) === poolTab;
+  const promoteCount = tierStandings.filter(s => inCurrentPool(s) && promoteIds.has(s.team_id)).length;
+  const relegateCount = tierStandings.filter(s => inCurrentPool(s) && relegateIds.has(s.team_id)).length;
+  const poolCountInTier = tierPools.length || 1;
+
+  const divStandingsBase = tierStandings
+    // #1688: når tieren har flere puljer og en specifik pulje er valgt, filtrér til den.
+    .filter(inCurrentPool);
   // Linse B sorteres efter trup-værdi; Linse A efter point. Søgning filtrerer begge.
   const strengthVal = (s) => (strength?.[s.team_id]?.totalValue || 0);
   const divRanked = lens === LENS_STRENGTH
@@ -316,21 +355,10 @@ export default function StandingsPage() {
     : divStandingsBase;
   const divStandings = divRanked.filter(matchesSearch);
 
-  // Zone-grænser beregnes på den point-sorterede liste (Linse A's rangering), så
-  // op-/nedrykning altid følger point — også når Linse B viser en anden sortering.
-  // NOTE (#1152): top-2/bund-2 er hardcodet her. Når #1152 fastlægger antal op/ned
-  // + catch-up-regler, parameterisér PROMOTE_N/RELEGATE_N i stedet for konstanterne.
-  const PROMOTE_N = 2;
-  const RELEGATE_N = 2;
-  const promoteIds = new Set(divStandingsBase.slice(0, PROMOTE_N).map(s => s.team_id));
-  const relegateIds = new Set(divStandingsBase.slice(-RELEGATE_N).map(s => s.team_id));
-
   const maxPts = effectivePts(divStandingsBase[0]) || 1;
   const maxValue = lens === LENS_STRENGTH ? (strengthVal(divRanked[0]) || 1) : 1;
   const color = divColor(divTab);
   const colorSoft = divColor(divTab, 0.38); // svarer til den tidligere hex-alpha "60"
-  const canPromote = divTab > RULES_NUMBERS.minDivision;
-  const canRelegate = divTab < RULES_NUMBERS.maxDivision;
   // #1608/#1688: faner for alle 4 tiers. Tællingen er pr. TIER (på tværs af puljer),
   // så fanens badge viser holdtallet i hele tieren.
   const divCounts = ALL_DIVISIONS.map(d => ({
@@ -428,6 +456,35 @@ export default function StandingsPage() {
         </button>
       </div>
 
+      {/* #1745: entydig op-/nedryknings-summarie. Forklarer hvor mange der rykker op
+          og ned, og at det afgøres PR. PULJE — så "Alle"-fanen (på tværs af puljer)
+          og en enkelt pulje-fane ikke længere ser modstridende ud. Vises kun i Linse
+          A uden aktiv søgning, og kun når tieren faktisk har en zone. */}
+      {lens === LENS_STANDINGS && !search && divStandings.length > 0 && (canPromote || canRelegate) && (
+        <div className="mb-4 px-3.5 py-2.5 rounded-cz border border-cz-border bg-cz-card text-xs text-cz-2 flex items-start gap-2">
+          <span className="text-cz-3 flex-shrink-0 mt-px">{t("movement.label")}</span>
+          <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            {canPromote && (
+              <span className="inline-flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-sm bg-cz-success-bg border border-cz-success/40" />
+                {t("movement.up", { count: promoteCount })}
+              </span>
+            )}
+            {canRelegate && (
+              <span className="inline-flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-sm bg-cz-danger-bg border border-cz-danger/40" />
+                {t("movement.down", { count: relegateCount })}
+              </span>
+            )}
+            <span className="text-cz-3">
+              {hasPoolSubtabs && poolTab === POOL_ALL
+                ? t("movement.perPoolAcross", { pools: poolCountInTier, up: PROMOTE_N, down: RELEGATE_N })
+                : t("movement.perPool", { up: PROMOTE_N, down: RELEGATE_N })}
+            </span>
+          </span>
+        </div>
+      )}
+
       {divStandings.length === 0 ? (
         <EmptyState
           icon={<PodiumIcon className="w-8 h-8 text-cz-3" aria-hidden="true" />}
@@ -495,7 +552,12 @@ export default function StandingsPage() {
                   const rowStyle = bars.length ? { boxShadow: bars.join(", ") } : {};
                   // Zone-separatorer (Linse A, ingen aktiv søgning — index-baserede
                   // grænser kræver den uændrede point-sorterede rækkefølge).
-                  const showZoneSeparators = lens === LENS_STANDINGS && !search;
+                  // #1745: vis KUN separator-linjerne når listen er én sammenhængende
+                  // pulje. I "Alle"-fanen med flere puljer fletter rækkerne fra flere
+                  // puljer sammen, så en index-baseret top-2/bund-2-linje ville være
+                  // misvisende — der bærer hver række selv sin grønne/røde zone-bar.
+                  const singlePoolView = !hasPoolSubtabs || poolTab !== POOL_ALL;
+                  const showZoneSeparators = lens === LENS_STANDINGS && !search && singlePoolView;
                   return (
                     <Fragment key={s.id}>
                       {/* Separator before relegation zone */}

@@ -28,8 +28,15 @@
   "relegationBadge": "↓ Down",
   "penaltyTooltip": "Squad size deduction: {penalty} points ({earned} earned − {penalty} deduction)",
   "legendLeader": "Leader (rank 1)",
-  "legendPromotion": "Promotion zone (top 2)",
-  "legendRelegation": "Relegation zone (bottom 2)",
+  "legendPromotion": "Promotion zone (top 2 per pool)",
+  "legendRelegation": "Relegation zone (bottom 2 per pool)",
+  "movement": {
+    "label": "Movement",
+    "up": "{count} promoted",
+    "down": "{count} relegated",
+    "perPool": "Top {up} go up, bottom {down} go down.",
+    "perPoolAcross": "Top {up} up, bottom {down} down in each of the {pools} pools."
+  },
   "legendStrong": "Strong ability ({n}+)",
   "strengthHint": "Sorted by total squad value",
   "racesPlayed": "{count} races played",

@@ -360,7 +360,7 @@
       },
       "promotionRelegation": {
         "title": "Promotion and relegation",
-        "text": "Top 2 in Division 2 and 3 are promoted. Bottom 2 in Division 1 and 2 are relegated. Decided automatically at season end based on season points. Divisions are locked for the first two seasons: the first promotions and relegations happen when season 2 ends, so everyone has time to settle into a division first."
+        "text": "Promotion and relegation are decided per pool: the top 2 in each pool move up, the bottom 2 move down. The numbers balance across a division, so the teams promoted out of the pools below match the teams relegated from the pools above. Decided automatically at season end based on season points. The 'All' tab shows every pool in a division together with each pool's own up/down zones marked; open a single pool to see just that pool. Divisions are locked for the first two seasons: the first promotions and relegations happen when season 2 ends, so everyone has time to settle in first."
       },
       "whenSeasonEnds": {
         "title": "When can a season be ended?",
@@ -422,7 +422,7 @@
       },
       "promotionRelegation": {
         "title": "Promotion and relegation",
-        "text": "Top 2 are promoted, bottom 2 are relegated in each division. Decided automatically at season end. Divisions are locked for the first two seasons, so the first promotions and relegations happen when season 2 ends."
+        "text": "Top 2 are promoted, bottom 2 are relegated in each pool. The numbers balance across a division, so promotions in match relegations out. Decided automatically at season end. Divisions are locked for the first two seasons, so the first promotions and relegations happen when season 2 ends."
       }
     },
     "riders": {

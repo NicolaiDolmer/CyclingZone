@@ -28,8 +28,15 @@
   "relegationBadge": "↓ Ned",
   "penaltyTooltip": "Trupstørrelse-fradrag: {penalty} point ({earned} optjent − {penalty} fradrag)",
   "legendLeader": "Fører (nr. 1)",
-  "legendPromotion": "Oprykningszone (top 2)",
-  "legendRelegation": "Nedrykningszone (bund 2)",
+  "legendPromotion": "Oprykningszone (top 2 pr. pulje)",
+  "legendRelegation": "Nedrykningszone (bund 2 pr. pulje)",
+  "movement": {
+    "label": "Bevægelse",
+    "up": "{count} rykker op",
+    "down": "{count} rykker ned",
+    "perPool": "Top {up} rykker op, bund {down} rykker ned.",
+    "perPoolAcross": "Top {up} op, bund {down} ned i hver af de {pools} puljer."
+  },
   "legendStrong": "Stærk evne ({n}+)",
   "strengthHint": "Sorteret efter samlet holdværdi",
   "racesPlayed": "{count} løb spillet",
