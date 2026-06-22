@@ -87,6 +87,14 @@ export const MIN_DIVISION = 1;
 // nu MIN..4. Pulje-bevidst placering bygges additivt (#1608-children, Task 6/9).
 export const MAX_DIVISION = 4;
 
+// #1688 forever-relaunch (ejer-besluttet 2026-06-22): ægte managere kommer ind i
+// MANAGER_ENTRY_DIVISION — IKKE i den strukturelle bund (MAX_DIVISION). Med nuværende
+// spillertal fyldes div 4 ikke med AI; managerne koncentreres i div 3 (fyldigere felter,
+// ~770 færre fyld-ryttere). Div 4 forbliver tom headroom og aktiveres ved skala (op/-
+// nedrykning + signup-division revurderes når div 3 nærmer sig kapacitet). MAX_DIVISION
+// (=4) er stadig den strukturelle bund for økonomi + op/nedrykning.
+export const MANAGER_ENTRY_DIVISION = 3;
+
 // Mål-antal "rigtige" hold pr. division for fyld-fra-toppen (#962). Kun aktive,
 // ikke-test menneske-hold tæller med — samme filter som ranglisten (AI, test og
 // frosne hold ignoreres). Div 1..MAX_DIVISION-1 har hård cap; bund-divisionen

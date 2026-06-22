@@ -25,8 +25,9 @@ function makeDeps(order) {
     runBaseValueBackfill: rec("baseValue"),
     runStarterSquadAllocation: rec("allocation", { teams: 18 }),
     allocateLeaguePools: rec("leaguePools", { allocated: 18, pools: 8 }),
-    // #1688: AI-fyld-genereringen kaldes med ét options-objekt ({ supabase, seed }),
-    // ikke (supabase, opts) — egen stub så call-order-asserten ser den.
+    // #1688: clear FØR fyld (begge kaldes med options-objekt, ikke (supabase, opts)) —
+    // egne stubs så call-order-asserten ser dem.
+    clearAllAiTeams: async () => { order.push({ name: "clearAiTeams" }); return { teams: 1 }; },
     generateAndAllocateAiTeams: async () => { order.push({ name: "aiTeams" }); return { created: 72, removed: 0, pools: [] }; },
     seedSeasonZero: async (_s, opts = {}) => { order.push({ name: "seedSeason0", dryRun: opts.dryRun }); return { seasonId: computeSeasonUuid(0) }; },
     transitionToNextSeason: async () => { order.push({ name: "transition" }); return { ok: true }; },
@@ -63,7 +64,7 @@ test("runRelaunchSeason1 (apply): kalder reset + seedSeason0 + transition i korr
   const names = order.map((o) => o.name);
   assert.deepEqual(names, [
     "retire", "reset", "population", "physiology", "types", "baseValue", "allocation",
-    "leaguePools", "aiTeams", "seedSeason0", "transition", "unlockBoard", "contracts", "founder",
+    "leaguePools", "clearAiTeams", "aiTeams", "seedSeason0", "transition", "unlockBoard", "contracts", "founder",
   ]);
 });
 

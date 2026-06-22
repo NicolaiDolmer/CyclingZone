@@ -22,8 +22,9 @@ import { runRelaunchSeason1, isProdSupabaseUrl } from "../../lib/relaunchOrchest
 import { reactivateLegacyRiders, retireLegacyRiders } from "../../lib/legacyRiderRetirement.js";
 import { runFullBetaReset } from "../../lib/betaResetService.js";
 import { runAcademyIntake } from "../../lib/academyIntake.js";
+import { generateAndAllocateAiTeams } from "../../lib/aiTeamGenerator.js";
 import { fetchAllRows } from "../../lib/supabasePagination.js";
-import { INITIAL_BALANCE } from "../../lib/economyConstants.js";
+import { INITIAL_BALANCE, POOL_TARGET_SIZE, MANAGER_ENTRY_DIVISION } from "../../lib/economyConstants.js";
 
 const START_DATE = "2026-06-22"; // ejer-besluttet 2026-06-22
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -92,9 +93,19 @@ async function main() {
   );
   const academyRiderIds = new Set(intakeRiderRows.map((r) => r.rider_id));
   const fictionalActiveTotal = await countRiders([["is", "pcm_id", null], ["is", "is_retired", false]]);
-  const fictionalMarket = fictionalActiveTotal - academyRiderIds.size;
-  add("~800 fiktive i markedet", fictionalMarket >= 780 && fictionalMarket <= 820,
-    `${fictionalMarket} (total ${fictionalActiveTotal} − ${academyRiderIds.size} academy)`, "~800");
+  // "I markedet" = fiktive UDEN hold (team_id NULL). Startholds-trupperne (#1487
+  // dedikeret weak-pool, 22×8=176 ryttere) + AI-fyld-trupperne (#1688, ~1900) er PÅ
+  // hold og hører IKKE til det åbne marked — kun den genererede markeds-population
+  // (~800) + academy-kuld står uden hold. Det gamle tjek talte ALLE fiktive (lig
+  // markedet dengang trupper blev trukket fra de 800); nu er trupperne en separat
+  // pulje, så vi måler markedet eksplicit (team_id NULL) og ekskluderer academy.
+  const marketRiderRows = await fetchAllRows(() =>
+    supabase.from("riders").select("id").is("pcm_id", null).eq("is_retired", false).is("team_id", null).order("id")
+  );
+  const marketFictional = marketRiderRows.filter((r) => !academyRiderIds.has(r.id)).length;
+  add("~800 fiktive i markedet",
+    marketFictional >= 780 && marketFictional <= 820,
+    `${marketFictional} (marked uden academy; total fiktive ${fictionalActiveTotal})`, "~800");
 
   // #1447: VERIFICÉR via ANON-nøgle (RLS-sti), ikke kun service-role. Tjekket ovenfor
   // tæller via service_role-klienten, der BYPASSER RLS — og var derfor blind for
@@ -166,10 +177,12 @@ async function main() {
   // + teams.division (=tier), economyConstants.INITIAL_BALANCE,
   // transfer_windows.board_negotiation_state ('pending_5yr').
 
-  // (a) Pyramide-allokering (#1608/#1690): 15 puljer (tier 1/2/4/8) + ALLE ægte-
-  //     manager-hold i bunden (division/tier 4) med en tier-4-pulje-reference.
+  // (a) Pyramide-allokering (#1608/#1690/#1688): 15 puljer (tier-antal 1/2/4/8). ALLE ægte-
+  //     manager-hold placeres i MANAGER_ENTRY_DIVISION (=3, ejer-besluttet 22/6) — IKKE den
+  //     strukturelle bund (tier 4), som forbliver tom headroom (ingen managers, ingen AI).
   const { data: poolRows } = await supabase.from("league_divisions").select("id, tier");
   const pools = poolRows || [];
+  const entryPoolIds = new Set(pools.filter((p) => p.tier === MANAGER_ENTRY_DIVISION).map((p) => p.id));
   const tier4PoolIds = new Set(pools.filter((p) => p.tier === 4).map((p) => p.id));
   add("Pyramide: 15 league_divisions-puljer", pools.length === 15, pools.length, "15");
 
@@ -177,17 +190,30 @@ async function main() {
     .select("league_division_id, division")
     .eq("is_ai", false).eq("is_bank", false).eq("is_frozen", false).eq("is_test_account", false);
   const mgrTeams = managerTeamRows || [];
-  const allBottomPlaced = mgrTeams.length > 0 && mgrTeams.every(
-    (t) => t.league_division_id !== null && t.division === 4
+  const allEntryPlaced = mgrTeams.length > 0 && mgrTeams.every(
+    (t) => t.league_division_id !== null && t.division === MANAGER_ENTRY_DIVISION
   );
-  const placedInDiv4 = mgrTeams.filter((t) => t.league_division_id !== null && t.division === 4).length;
-  add("Pyramide: alle ægte-manager-hold i bunden (div 4 + pulje)", allBottomPlaced,
-    `${placedInDiv4}/${mgrTeams.length} i div4+pulje`, `${mgrTeams.length}/${mgrTeams.length}`);
+  const placedInEntry = mgrTeams.filter((t) => t.league_division_id !== null && t.division === MANAGER_ENTRY_DIVISION).length;
+  add(`Pyramide: alle ægte-manager-hold i entry-div (div ${MANAGER_ENTRY_DIVISION} + pulje)`, allEntryPlaced,
+    `${placedInEntry}/${mgrTeams.length} i div${MANAGER_ENTRY_DIVISION}+pulje`, `${mgrTeams.length}/${mgrTeams.length}`);
 
-  const allPoolsTier4 = mgrTeams.length > 0 && mgrTeams.every((t) => tier4PoolIds.has(t.league_division_id));
-  const tier4Used = mgrTeams.filter((t) => tier4PoolIds.has(t.league_division_id)).length;
-  add("Pyramide: brugte puljer er tier-4-puljer", allPoolsTier4,
-    `${tier4Used}/${mgrTeams.length} i tier-4-pulje`, `${mgrTeams.length}/${mgrTeams.length}`);
+  const allPoolsEntry = mgrTeams.length > 0 && mgrTeams.every((t) => entryPoolIds.has(t.league_division_id));
+  const entryUsed = mgrTeams.filter((t) => entryPoolIds.has(t.league_division_id)).length;
+  add(`Pyramide: brugte puljer er tier-${MANAGER_ENTRY_DIVISION}-puljer`, allPoolsEntry,
+    `${entryUsed}/${mgrTeams.length} i tier-${MANAGER_ENTRY_DIVISION}-pulje`, `${mgrTeams.length}/${mgrTeams.length}`);
+
+  // (a2) Div 4 (strukturel bund) er TOM headroom: ingen hold (managers ELLER AI) — ejer-
+  //      besluttet 22/6 (#1688). AI-fyld fylder ikke en pulje uden managers, og managers
+  //      bor i div 3, så tier-4-puljerne skal have 0 hold.
+  const { data: allTeamsForDiv4 } = await supabase.from("teams")
+    .select("league_division_id, is_ai, is_bank, is_frozen, is_test_account");
+  const isRaceTeam = (t) => t.is_ai === true
+    || (t.is_ai === false && !t.is_bank && !t.is_frozen && !t.is_test_account);
+  const div4RaceTeams = (allTeamsForDiv4 || []).filter(
+    (t) => tier4PoolIds.has(t.league_division_id) && isRaceTeam(t)
+  ).length;
+  add("Pyramide: div 4 tom (ingen managers/AI — headroom)", div4RaceTeams === 0,
+    `${div4RaceTeams} race-hold i tier-4-puljer`, "0");
 
   // (b) Sæson-1-opstartsøkonomi (#1678): friske ægte-manager-hold beholder uberørt
   //     startkapital — sæson-1-sponsor er IKKE lagt oveni (economyEngine springer
@@ -232,6 +258,96 @@ async function main() {
   add("Academy-intake idempotent (re-run = 0 nye)",
     reIntake.teams === 0 && reIntake.candidates === 0,
     `teams=${reIntake.teams} candidates=${reIntake.candidates}`, "0/0");
+
+  // ── AI-FYLD (#1688 · orchestrator-apply-trin 5.6) ───────────────────────────
+  // AI-fyld blev wired ind som apply-trin 5.6 (generateAndAllocateAiTeams, #1701,
+  // 2026-06-22) EFTER denne harness sidst blev rørt (#1698) — uden disse tjek var
+  // HELE reset-kæden med AI-fyld end-to-end uverificeret (dry-run springer 5.6 over,
+  // så koden kørte første gang reelt mod prod). Politik (frosset, #1688): tier 1/2
+  // ALTID op til POOL_TARGET_SIZE (24); tier 3/4 KUN puljer med >=1 ægte manager.
+  // Hvert AI-hold = 8-rytter-trup med fuld derive-hale (base_value +
+  // rider_derived_abilities), is_ai=true, division=pool.tier, balance=INITIAL_BALANCE.
+  // Unit-tests (aiTeamGenerator.test.js) dækker politik-logikken mod en DB-fri fake;
+  // disse tjek beviser INTEGRATIONEN: at trin 5.6 kørte i den ægte orchestrator-apply
+  // mod den ægte DB med den ægte squad-allokering (defaultAllocateSquadForTeam).
+  const { data: aiPoolRows } = await supabase.from("league_divisions").select("id, tier");
+  const aiPools = aiPoolRows || [];
+  const { data: aiAllTeams } = await supabase.from("teams")
+    .select("id, is_ai, is_bank, is_frozen, is_test_account, division, league_division_id, balance");
+  const allTeamsArr = aiAllTeams || [];
+  const isRealMgr = (t) => t.is_ai === false && !t.is_bank && !t.is_frozen && !t.is_test_account;
+  const isAiTeamRow = (t) => t.is_ai === true;
+  const poolTierById = new Map(aiPools.map((p) => [p.id, p.tier]));
+
+  // RACE-FELTET = ægte managere + AI-hold (POOL_TARGET_SIZE=24 capper det). Bank/frosne/
+  // test-hold kan dele en puljes league_division_id (form-frys-backfill) men afvikler ikke
+  // løb — de tælles derfor IKKE med i felt-størrelsen.
+  const raceFieldCount = (poolId) => allTeamsArr.filter(
+    (t) => t.league_division_id === poolId && (isRealMgr(t) || isAiTeamRow(t))
+  ).length;
+
+  // (a) tier 1+2: race-feltet fyldes ALTID til target (24). Managere bor i div 3, så
+  //     tier 1/2-feltet er ren AI.
+  const t12Pools = aiPools.filter((p) => p.tier === 1 || p.tier === 2);
+  const t12Filled = t12Pools.filter((p) => raceFieldCount(p.id) === POOL_TARGET_SIZE);
+  add("AI-fyld: tier 1+2 puljer fyldt til target",
+    t12Pools.length > 0 && t12Filled.length === t12Pools.length,
+    `${t12Filled.length}/${t12Pools.length} == ${POOL_TARGET_SIZE}`, `alle == ${POOL_TARGET_SIZE}`);
+
+  // (b) tier 3+4: race-feltet fyldes til target KUN i puljer med >=1 ægte manager; ellers 0 AI.
+  const t34Pools = aiPools.filter((p) => p.tier === 3 || p.tier === 4);
+  const t34Ok = t34Pools.filter((p) => {
+    const inPool = allTeamsArr.filter((t) => t.league_division_id === p.id);
+    const mgrs = inPool.filter(isRealMgr).length;
+    const ais = inPool.filter(isAiTeamRow).length;
+    return mgrs >= 1 ? raceFieldCount(p.id) === POOL_TARGET_SIZE : ais === 0;
+  });
+  add("AI-fyld: tier 3+4 fyldt kun hvor >=1 manager (ellers 0 AI)",
+    t34Pools.length > 0 && t34Ok.length === t34Pools.length,
+    `${t34Ok.length}/${t34Pools.length} følger politik`, `alle ${t34Pools.length}`);
+
+  // (c) AI-hold-metadata: is_ai=true, division=pool.tier, pulje sat, balance=INITIAL_BALANCE.
+  const aiTeams = allTeamsArr.filter(isAiTeamRow);
+  const metaOk = aiTeams.filter((t) =>
+    t.league_division_id != null
+    && t.division === poolTierById.get(t.league_division_id)
+    && Number(t.balance) === INITIAL_BALANCE);
+  add("AI-fyld: AI-hold-metadata (division=tier + pulje + balance)",
+    aiTeams.length > 0 && metaOk.length === aiTeams.length,
+    `${metaOk.length}/${aiTeams.length} korrekte`, `alle ${aiTeams.length}`);
+
+  // (d) 8-rytter-trup + data-hale. Fetch alle team-tilknyttede ryttere paginate'et og
+  //     filtrér til AI i JS (undgår en kæmpe .in()-URL på hundredvis af id'er).
+  const aiTeamIdSet = new Set(aiTeams.map((t) => t.id));
+  const rosterRows = await fetchAllRows(() =>
+    supabase.from("riders").select("id, team_id, base_value").not("team_id", "is", null).order("id"));
+  const aiRiders = rosterRows.filter((r) => aiTeamIdSet.has(r.team_id));
+  const aiRidersByTeam = {};
+  for (const r of aiRiders) aiRidersByTeam[r.team_id] = (aiRidersByTeam[r.team_id] || 0) + 1;
+  const aiSquadCounts = [...aiTeamIdSet].map((id) => aiRidersByTeam[id] || 0);
+  const allSquads8 = aiSquadCounts.length > 0 && aiSquadCounts.every((c) => c === 8);
+  add("AI-fyld: hvert AI-hold præcis 8 ryttere", allSquads8,
+    `${aiSquadCounts.filter((c) => c === 8).length}/${aiSquadCounts.length} hold med 8`, "alle = 8");
+
+  const aiNoBaseValue = aiRiders.filter((r) => r.base_value === null || r.base_value === undefined).length;
+  add("AI-fyld: alle AI-ryttere har base_value (derive-hale)",
+    aiRiders.length > 0 && aiNoBaseValue === 0,
+    `${aiRiders.length - aiNoBaseValue}/${aiRiders.length} har base_value`, "0 mangler");
+
+  const derivedAbilityRows = await fetchAllRows(() =>
+    supabase.from("rider_derived_abilities").select("rider_id").order("rider_id"));
+  const derivedSet = new Set(derivedAbilityRows.map((r) => r.rider_id));
+  const aiMissingDerived = aiRiders.filter((r) => !derivedSet.has(r.id)).length;
+  add("AI-fyld: alle AI-ryttere har rider_derived_abilities",
+    aiRiders.length > 0 && aiMissingDerived === 0,
+    `${aiMissingDerived} uden derived-abilities`, "0");
+
+  // (e) Idempotent integration: et re-run mod den friske DB må hverken oprette eller
+  //     fjerne hold (puljerne er allerede på target). Samme default-seed som apply.
+  const reAi = await generateAndAllocateAiTeams({ supabase });
+  add("AI-fyld idempotent (re-run = 0 created / 0 removed)",
+    reAi.created === 0 && reAi.removed === 0,
+    `created=${reAi.created} removed=${reAi.removed}`, "0/0");
 
   // Founder-badge overlever en efterfølgende runFullBetaReset
   console.log("\n-- Kører efterfølgende runFullBetaReset (founder-badge survival-tjek) --");

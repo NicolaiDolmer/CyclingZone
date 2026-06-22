@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { upsertOwnTeamProfile } from "./teamProfileEngine.js";
-import { INITIAL_BALANCE, MAX_DIVISION, POOL_TARGET_SIZE, SPONSOR_INCOME_BASE } from "./economyConstants.js";
+import { INITIAL_BALANCE, MANAGER_ENTRY_DIVISION, POOL_TARGET_SIZE, SPONSOR_INCOME_BASE } from "./economyConstants.js";
 
 // #1560: alle eksisterende tests injicerer en no-op starter-squad-allokering, så
 // de ikke rammer den ægte riders/derive-kæde (den dækkes i starterSquadAllocator.test.js).
@@ -45,7 +45,7 @@ function seedTeams({ division, count, league_division_id = null, is_ai = false, 
 function seedDiv4Pools() {
   return Array.from({ length: 8 }, (_, index) => ({
     id: 8 + index,
-    tier: MAX_DIVISION,
+    tier: MANAGER_ENTRY_DIVISION,
     pool_index: index,
     label: `Division 4 — ${String.fromCharCode(65 + index)}`,
   }));
@@ -287,9 +287,9 @@ test("upsertOwnTeamProfile sætter sponsor_income og balance til de delte konsta
 
   assert.equal(result.team.sponsor_income, SPONSOR_INCOME_BASE);
   assert.equal(result.team.balance, INITIAL_BALANCE);
-  // #1608 bund-op: en ny manager kommer ind fra BUNDEN (tier 4 = MAX_DIVISION),
+  // #1608 bund-op: en ny manager kommer ind fra BUNDEN (tier 4 = MANAGER_ENTRY_DIVISION),
   // ikke længere fra toppen (div 1).
-  assert.equal(result.team.division, MAX_DIVISION);
+  assert.equal(result.team.division, MANAGER_ENTRY_DIVISION);
 });
 
 // ── #1608 Task 9 · bund-op pulje-bevidst signup-placering ──────────────────────
@@ -307,7 +307,7 @@ test("#1608 bund-op: første nye manager lander i en div-4-pulje (tier 4), ikke 
     managerName: "Manager",
   });
 
-  assert.equal(result.team.division, MAX_DIVISION, "ny manager kommer ind i tier 4");
+  assert.equal(result.team.division, MANAGER_ENTRY_DIVISION, "ny manager kommer ind i tier 4");
   // Holdet skal være pulje-allokeret (league_division_id sat til en af de 8 div-4-puljer).
   assert.ok(
     pools.some((pool) => pool.id === result.team.league_division_id),
@@ -320,7 +320,7 @@ test("#1608 bund-op: nye managere fordeles på den MINDST-fyldte div-4-pulje", a
   // Forskyd belastningen: første pulje (id 8) har allerede 2 hold, de øvrige 0.
   const supabase = createSupabaseDouble({
     leagueDivisions: pools,
-    teams: seedTeams({ division: MAX_DIVISION, count: 2, league_division_id: pools[0].id }),
+    teams: seedTeams({ division: MANAGER_ENTRY_DIVISION, count: 2, league_division_id: pools[0].id }),
   });
 
   const result = await upsert({
@@ -330,7 +330,7 @@ test("#1608 bund-op: nye managere fordeles på den MINDST-fyldte div-4-pulje", a
     managerName: "Manager",
   });
 
-  assert.equal(result.team.division, MAX_DIVISION);
+  assert.equal(result.team.division, MANAGER_ENTRY_DIVISION);
   // pool[0] har 2 hold → ny manager må IKKE lande der; en tom pulje er mindst-fyldt.
   assert.notEqual(result.team.league_division_id, pools[0].id, "fyldt pulje skal undgås");
   assert.ok(
@@ -345,7 +345,7 @@ test("#1608 bund-op: blød cap — div-4-puljer må vokse forbi POOL_TARGET_SIZE
   // vilkårlig pulje, men placeringen må aldrig fejle eller efterlade NULL pulje.
   const pools = seedDiv4Pools();
   const teams = pools.flatMap((pool) =>
-    seedTeams({ division: MAX_DIVISION, count: POOL_TARGET_SIZE, league_division_id: pool.id }),
+    seedTeams({ division: MANAGER_ENTRY_DIVISION, count: POOL_TARGET_SIZE, league_division_id: pool.id }),
   );
   const supabase = createSupabaseDouble({ leagueDivisions: pools, teams });
 
@@ -356,7 +356,7 @@ test("#1608 bund-op: blød cap — div-4-puljer må vokse forbi POOL_TARGET_SIZE
     managerName: "Manager",
   });
 
-  assert.equal(result.team.division, MAX_DIVISION, "blød cap → stadig tier 4");
+  assert.equal(result.team.division, MANAGER_ENTRY_DIVISION, "blød cap → stadig tier 4");
   assert.ok(
     pools.some((pool) => pool.id === result.team.league_division_id),
     "blød cap → holdet får stadig en faktisk div-4-pulje (ingen NULL)",
@@ -370,9 +370,9 @@ test("#1608 bund-op: AI-, test- og frosne hold tæller ikke mod pulje-fyldningen
   const supabase = createSupabaseDouble({
     leagueDivisions: pools,
     teams: [
-      ...seedTeams({ division: MAX_DIVISION, count: POOL_TARGET_SIZE, league_division_id: pools[0].id, is_ai: true }),
-      ...seedTeams({ division: MAX_DIVISION, count: POOL_TARGET_SIZE, league_division_id: pools[0].id, is_test_account: true }),
-      ...seedTeams({ division: MAX_DIVISION, count: 3, league_division_id: pools[1].id }),
+      ...seedTeams({ division: MANAGER_ENTRY_DIVISION, count: POOL_TARGET_SIZE, league_division_id: pools[0].id, is_ai: true }),
+      ...seedTeams({ division: MANAGER_ENTRY_DIVISION, count: POOL_TARGET_SIZE, league_division_id: pools[0].id, is_test_account: true }),
+      ...seedTeams({ division: MANAGER_ENTRY_DIVISION, count: 3, league_division_id: pools[1].id }),
     ],
   });
 
@@ -383,7 +383,7 @@ test("#1608 bund-op: AI-, test- og frosne hold tæller ikke mod pulje-fyldningen
     managerName: "Manager",
   });
 
-  assert.equal(result.team.division, MAX_DIVISION);
+  assert.equal(result.team.division, MANAGER_ENTRY_DIVISION);
   // pool[0] har 0 RIGTIGE hold (kun AI/test) → den (eller en anden tom pulje) er mindst-
   // fyldt; pool[1] med 3 rigtige hold må ikke vælges over en tom pulje.
   assert.notEqual(result.team.league_division_id, pools[1].id, "ægte filter ignorerer AI/test");
@@ -401,7 +401,7 @@ test("#1608 bund-op: graceful fallback — uden seeded puljer placeres holdet i 
     managerName: "Manager",
   });
 
-  assert.equal(result.team.division, MAX_DIVISION);
+  assert.equal(result.team.division, MANAGER_ENTRY_DIVISION);
   assert.equal(result.team.league_division_id, null);
 });
 

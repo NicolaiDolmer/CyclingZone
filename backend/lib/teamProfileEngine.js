@@ -5,7 +5,7 @@ import { isAcademyEnabled } from "./academyFlag.js";
 import { captureException as sentryCapture } from "./sentry.js";
 import {
   INITIAL_BALANCE,
-  MAX_DIVISION,
+  MANAGER_ENTRY_DIVISION,
   SPONSOR_INCOME_BASE,
 } from "./economyConstants.js";
 import { likeEscape } from "./likeEscape.js";
@@ -156,32 +156,32 @@ function getEconomyRepairValues(team) {
   return repair;
 }
 
-// #1608 Task 9 · bund-op pulje-bevidst placering. ERSTATTER #962 fyld-fra-toppen for
-// ÆGTE nye managere: forever-relaunch-politikken er at managere kommer ind fra BUNDEN
-// (tier 4 = MAX_DIVISION) og rykker op over sæsoner. Et nyt hold placeres i den
-// MINDST-FYLDTE div-4-pulje (league_divisions med tier = MAX_DIVISION), op til
-// POOL_TARGET_SIZE som blød cap (vi lander altid i mindst-fyldte pulje, også når alle
-// er forbi target). Kun "rigtige" hold tæller mod pulje-fyldningen — samme filter som
-// ranglisten (StandingsPage): AI-, test- og frosne hold ignoreres.
+// #1608 Task 9 / #1688 (ejer-besluttet 22/6) · pulje-bevidst placering. ERSTATTER #962
+// fyld-fra-toppen for ÆGTE nye managere: forever-relaunch-politikken er at managere kommer
+// ind i MANAGER_ENTRY_DIVISION (=3, IKKE den strukturelle bund tier 4) og rykker op over
+// sæsoner. Et nyt hold placeres i den MINDST-FYLDTE entry-pulje (league_divisions med tier
+// = MANAGER_ENTRY_DIVISION), op til POOL_TARGET_SIZE som blød cap (vi lander altid i mindst-
+// fyldte pulje, også når alle er forbi target). Kun "rigtige" hold tæller mod pulje-fyldningen
+// — samme filter som ranglisten (StandingsPage): AI-, test- og frosne hold ignoreres.
 //
-// Returnerer { division, leagueDivisionId }. Graceful fallback: hvis ingen div-4-puljer
-// findes (pre-migration / minimal test-mock), placeres holdet stadig i tier 4 med
+// Returnerer { division, leagueDivisionId }. Graceful fallback: hvis ingen entry-puljer
+// findes (pre-migration / minimal test-mock), placeres holdet stadig i entry-divisionen med
 // leagueDivisionId = null (samme NULL-tolerante adfærd som updateStandings, #1608).
 async function pickDivisionForNewTeam(supabase) {
   const { data: pools, error: poolsError } = await supabase
     .from("league_divisions")
     .select("id")
-    .eq("tier", MAX_DIVISION);
+    .eq("tier", MANAGER_ENTRY_DIVISION);
 
   if (poolsError) {
     throw createHttpError(500, poolsError.message);
   }
 
-  const div4Pools = pools || [];
-  if (div4Pools.length === 0) {
+  const entryPools = pools || [];
+  if (entryPools.length === 0) {
     // Pre-migration / mock-edge: ingen puljer at sprede på. Hold kommer stadig ind i
-    // bunden (tier 4); pulje-referencen efter-allokeres når puljerne findes.
-    return { division: MAX_DIVISION, leagueDivisionId: null };
+    // entry-divisionen; pulje-referencen efter-allokeres når puljerne findes.
+    return { division: MANAGER_ENTRY_DIVISION, leagueDivisionId: null };
   }
 
   const { data: teams, error: teamsError } = await supabase
@@ -195,17 +195,17 @@ async function pickDivisionForNewTeam(supabase) {
     throw createHttpError(500, teamsError.message);
   }
 
-  const counts = new Map(div4Pools.map((pool) => [pool.id, 0]));
+  const counts = new Map(entryPools.map((pool) => [pool.id, 0]));
   for (const team of teams || []) {
     if (counts.has(team.league_division_id)) {
       counts.set(team.league_division_id, counts.get(team.league_division_id) + 1);
     }
   }
 
-  // Mindst-fyldte div-4-pulje (deterministisk: laveste pulje-id ved lige fyldning).
-  let chosenPoolId = div4Pools[0].id;
+  // Mindst-fyldte entry-pulje (deterministisk: laveste pulje-id ved lige fyldning).
+  let chosenPoolId = entryPools[0].id;
   let chosenCount = counts.get(chosenPoolId);
-  for (const pool of div4Pools) {
+  for (const pool of entryPools) {
     const count = counts.get(pool.id);
     if (count < chosenCount) {
       chosenPoolId = pool.id;
@@ -213,7 +213,7 @@ async function pickDivisionForNewTeam(supabase) {
     }
   }
 
-  return { division: MAX_DIVISION, leagueDivisionId: chosenPoolId };
+  return { division: MANAGER_ENTRY_DIVISION, leagueDivisionId: chosenPoolId };
 }
 
 async function ensureUniqueTeamName({ supabase, normalizedName, existingTeamId = null }) {
