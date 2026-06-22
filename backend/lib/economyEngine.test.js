@@ -3454,3 +3454,257 @@ function makeUpkeepSupabase(financeRows) {
     },
   };
 }
+
+// ─── #1721 · Bestyrelsen er ÅBEN + FULDT FUNKTIONSDYGTIG i sæson 1 ────────────
+// Ejer-beslutning 2026-06-22: sæson 1 er IKKE en observations-sæson. En forhandlet
+// (ikke-baseline) plan i sæson 1 skal evalueres efter løb, satisfaction skal bevæge
+// sig, og den afledte budget_modifier skal IKKE være låst til 1.0 — den får fuld
+// økonomisk effekt på næste sæsons sponsor. Baselines (observations-rester der lever
+// transient før relaunch-oplåsningen) skal stadig springes over, så sæson-0/pre-unlock
+// adfærd ikke brydes.
+
+// Fyld en realistisk division op med manager-standings (is_ai=false), så
+// loadGoalContextForBoard.divisionManagerCount > 1 og
+// computeResultsCompetitivenessFloor afspejler ægte forhold — ikke en kunstig
+// 1-holds-pulje hvor rank-floor er deaktiveret. Ranks starter ved 4 (over div-3-
+// bonus-grænsen på 3 pladser), så payDivisionBonuses ikke prøver at kreditere dem
+// (kun rank 1-3 får bonus → kun testholdet rammer getTeamById i single-team-mocken).
+function fillDivisionStandings({ division = 3, count = 19 } = {}) {
+  const rows = [];
+  for (let i = 0; i < count; i += 1) {
+    const teamId = `fill-${division}-${i}`;
+    rows.push({
+      season_id: "season-1",
+      team_id: teamId,
+      division,
+      total_points: 80 - i,
+      rank_in_division: i + 4, // rank 1-3 reserveret (bonus-pladser), testhold tager rank 1
+      stage_wins: 0,
+      gc_wins: 0,
+      team: { id: teamId, is_ai: false },
+    });
+  }
+  return rows;
+}
+
+// Hjælper: sæson-1-supabase med en RIGTIG plan (ikke baseline).
+function makeSeason1RealPlanSupabase({ standing, satisfaction = 50, planType = "5yr" } = {}) {
+  return createSeasonEndSupabase({
+    season: { id: "season-1", number: 1, status: "active" },
+    team: {
+      id: "team-s1",
+      name: "Season1 Active CF",
+      is_ai: false,
+      user_id: "user-s1",
+      balance: 800000,
+      sponsor_income: 340000,
+      season_1_identity_basis: { primary_specialization: "gc" },
+      team_dna_key: "skandinavisk_udvikling",
+      riders: [],
+    },
+    board: {
+      id: "board-s1",
+      team_id: "team-s1",
+      plan_type: planType,
+      focus: "balanced",
+      satisfaction,
+      budget_modifier: 1.0,
+      // Resultat- + ranking-mål så performance afgør satisfaction-bevægelsen.
+      current_goals: [
+        { category: "results", type: "min_stage_wins", target: 1, weight: 1 },
+        { category: "ranking", type: "min_division_rank", target: 5, weight: 1 },
+      ],
+      is_baseline: false,
+      seasons_completed: 0,
+      cumulative_stage_wins: 0,
+      cumulative_gc_wins: 0,
+      plan_start_sponsor_income: 340000,
+      plan_start_season_number: 1,
+      plan_end_season_number: getPlanDurationSafe(planType),
+    },
+    standings: [
+      standing,
+      ...fillDivisionStandings({ division: standing.division })
+        // Undgå rang-kollision med testholdet (samme rank_in_division).
+        .filter((row) => row.rank_in_division !== standing.rank_in_division),
+    ],
+  });
+}
+
+function getPlanDurationSafe(planType) {
+  return { "1yr": 1, "3yr": 3, "5yr": 5 }[planType] || 1;
+}
+
+test("#1721: sæson-1 RIGTIG plan evalueres efter løb — satisfaction stiger + modifier > 1.0 ved stærk præstation", async () => {
+  const supabase = makeSeason1RealPlanSupabase({
+    standing: {
+      season_id: "season-1",
+      team_id: "team-s1",
+      division: 3,
+      total_points: 300,
+      rank_in_division: 1,
+      stage_wins: 3,
+      gc_wins: 1,
+      team: { id: "team-s1", is_ai: false },
+    },
+  });
+
+  await processSeasonEnd("season-1", {
+    supabase,
+    ...baseDeps({
+      // Sæson-1-slut trigger sekventiel onboarding; stub så den ikke rører rigtige planer.
+      startSequentialNegotiation: async () => ({ baseline_rows_deleted: 0, window_state: "pending_5yr" }),
+    }),
+  });
+
+  // Bestyrelsen MÅ ikke være i observations-tilstand: et snapshot skal skrives.
+  assert.equal(
+    supabase.state.inserts.board_plan_snapshots.length,
+    1,
+    "Sæson-1-evaluering skal skrive et board_plan_snapshot (ikke springes over som observation)"
+  );
+  // Satisfaction skal have bevæget sig OP fra 50 (stærk præstation).
+  assert.ok(
+    supabase.state.board.satisfaction > 50,
+    `Stærk sæson-1-præstation skal hæve satisfaction over 50 (fik ${supabase.state.board.satisfaction})`
+  );
+  // FULD økonomisk effekt: modifier må IKKE være låst til 1.0.
+  assert.ok(
+    supabase.state.board.budget_modifier > 1.0,
+    `Sæson-1-tilfredshed skal give modifier > 1.0 ved stærk præstation (fik ${supabase.state.board.budget_modifier})`
+  );
+});
+
+test("#1721: sæson-1 RIGTIG plan — svag præstation sænker satisfaction + modifier < 1.0 (fuld økonomisk effekt begge veje)", async () => {
+  const supabase = makeSeason1RealPlanSupabase({
+    satisfaction: 30,
+    standing: {
+      season_id: "season-1",
+      team_id: "team-s1",
+      division: 3,
+      total_points: 5,
+      rank_in_division: 19,
+      stage_wins: 0,
+      gc_wins: 0,
+      team: { id: "team-s1", is_ai: false },
+    },
+  });
+
+  await processSeasonEnd("season-1", {
+    supabase,
+    ...baseDeps({
+      startSequentialNegotiation: async () => ({ baseline_rows_deleted: 0, window_state: "pending_5yr" }),
+    }),
+  });
+
+  assert.equal(supabase.state.inserts.board_plan_snapshots.length, 1, "Svag sæson-1-plan skal stadig evalueres");
+  assert.ok(
+    supabase.state.board.satisfaction < 30,
+    `Svag sæson-1-præstation skal sænke satisfaction under 30 (fik ${supabase.state.board.satisfaction})`
+  );
+  assert.ok(
+    supabase.state.board.budget_modifier < 1.0,
+    `Lav sæson-1-tilfredshed skal give modifier < 1.0 — ikke låst (fik ${supabase.state.board.budget_modifier})`
+  );
+});
+
+test("#1721: sæson-1 BASELINE springes stadig over (pre-unlock observations-rest brydes ikke)", async () => {
+  const supabase = createSeasonEndSupabase({
+    season: { id: "season-1", number: 1, status: "active" },
+    team: {
+      id: "team-bl",
+      name: "Baseline Holdover",
+      is_ai: false,
+      user_id: "user-bl",
+      balance: 800000,
+      sponsor_income: 340000,
+      riders: [],
+    },
+    board: {
+      id: "board-bl",
+      team_id: "team-bl",
+      plan_type: "baseline",
+      focus: "balanced",
+      satisfaction: 50,
+      budget_modifier: 1.0,
+      current_goals: [],
+      is_baseline: true,
+      seasons_completed: 0,
+      cumulative_stage_wins: 0,
+      cumulative_gc_wins: 0,
+      plan_start_sponsor_income: 340000,
+    },
+    standings: [
+      {
+        season_id: "season-1",
+        team_id: "team-bl",
+        division: 3,
+        total_points: 300,
+        rank_in_division: 1,
+        stage_wins: 3,
+        gc_wins: 1,
+        team: { id: "team-bl", is_ai: false },
+      },
+    ],
+  });
+
+  await processSeasonEnd("season-1", {
+    supabase,
+    ...baseDeps({
+      startSequentialNegotiation: async () => ({ baseline_rows_deleted: 1, window_state: "pending_5yr" }),
+    }),
+  });
+
+  // Baseline = observation: intet snapshot, modifier + satisfaction uændret.
+  assert.equal(supabase.state.inserts.board_plan_snapshots.length, 0, "Baseline må ikke evalueres");
+  assert.equal(supabase.state.board.budget_modifier, 1.0, "Baseline-modifier skal forblive 1.0");
+  assert.equal(supabase.state.board.satisfaction, 50, "Baseline-satisfaction skal forblive uændret");
+});
+
+test("#1721: sæson-1-afledt modifier får FULD effekt på sæson-2-sponsor (ikke clampet til 1.0)", async () => {
+  // En plan forhandlet i sæson 1 endte sæson 1 med høj tilfredshed → modifier 1.20
+  // (completed). Ved sæson-2-start skal sponsoren skaleres med 1.20, ikke 1.0.
+  const seasonId = "season-2";
+  const supabase = createSeasonStartSupabase({
+    season: { id: seasonId, number: 2 },
+    prevSeasonId: "season-1",
+    prevStandings: [],
+    team: {
+      id: "team-mod",
+      name: "Modifier Carryover CF",
+      is_ai: false,
+      is_frozen: false,
+      division: 3,
+      // balance != INITIAL_BALANCE → #1678-skip gælder ikke, sponsor udbetales.
+      balance: 500000,
+      sponsor_income: 340000,
+      board_profiles: [
+        {
+          id: "board-mod",
+          team_id: "team-mod",
+          plan_type: "5yr",
+          negotiation_status: "completed",
+          budget_modifier: 1.20,
+          is_baseline: false,
+        },
+      ],
+    },
+  });
+
+  await processSeasonStart(seasonId, {
+    supabase,
+    processLoanAgreementSeasonFees: async () => [],
+    runSeasonPayroll: async () => ({ results: [], summary: {} }),
+  });
+
+  const sponsorRow = supabase.state.financeRows.find((r) => r.type === "sponsor");
+  assert.ok(sponsorRow, "Sponsor skal udbetales i sæson 2");
+  // Modifier 1.20 vs 1.0: beviset er at payouten ligger klart over den umodificerede
+  // gross (intro-sponsor for D3 er division-skaleret). Vi asserter at modifieren reelt
+  // hævede payouten — at den IKKE blev låst til 1.0.
+  const modifierApplied = sponsorRow.amount;
+  assert.ok(
+    modifierApplied > 340000,
+    `Sæson-2-sponsor skal afspejle modifier > 1.0 fra sæson-1-plan (fik ${modifierApplied}, base sponsor_income 340000)`
+  );
+});
