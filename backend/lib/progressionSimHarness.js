@@ -17,7 +17,7 @@
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { RIDER_TYPES } from "./riderTypes.js";
 import {
-  buildCaps, developRiderSeason, seededUnit, peakAgeForType, PROGRESSION_CONFIG,
+  buildCaps, developRiderSeason, seededUnit, PROGRESSION_CONFIG,
 } from "./riderProgression.js";
 
 const TYPE_KEYS = RIDER_TYPES.map((t) => t.key);
