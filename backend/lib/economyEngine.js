@@ -1119,7 +1119,14 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
   // og rytter-værdi-recalc. Se processTeamSeasonPayroll.
 
   // Plan-aware board evaluation — evaluate all active plans
-  // S-02a: Skip baseline-profiler. Sæson 1 = observation, ingen mål/evaluering/modifier-skift.
+  // #1721 (ejer-beslutning 2026-06-22): sæson 1 er IKKE en observations-sæson.
+  // RIGTIGE planer (5yr/3yr/1yr) — som managere signerer fra dag 1 via relaunch-
+  // oplåsningen (pending_5yr) — evalueres fuldt her: satisfaction bevæger sig og
+  // budget_modifier afledes med fuld effekt (anvendes i næste sæsons sponsor).
+  // KUN baseline-profiler springes over: en baseline er en transient observations-
+  // rest der lever før relaunch sletter den (startSequentialNegotiation) eller på en
+  // sæson 0→1-transition uden oplåsning. At skippe dem bevarer sæson-0/pre-unlock-
+  // adfærd uden at dæmpe en rigtig sæson-1-plan.
   for (const board of boards) {
     if (!board || !teamStanding) continue;
     if (board.is_baseline || board.plan_type === "baseline") continue;

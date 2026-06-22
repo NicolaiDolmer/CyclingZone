@@ -19,10 +19,20 @@
  *   processSeasonEnd er irrelevant. Engine antager at processSeasonEnd
  *   ER kørt FØR (for sæson ≥ 1) — for sæson 0 springes det helt over.
  *
- * Sponsor-modifier sæson 1: managers har KUN baseline (completed,
- * budget_modifier=1.0) eller 1yr (pending, ikke completed), så
- * processSeasonStart's `activeBoards.filter(b => b.negotiation_status === "completed")`
- * matcher kun baseline → modifier=1.0 → sæson 1 er fredet by-design.
+ * Sponsor-modifier sæson 1 (#1721, ejer-beslutning 2026-06-22):
+ *   Sæson 1 er IKKE længere en observations-sæson. Ved forever-relaunch oplåses
+ *   forhandling til pending_5yr fra dag 1 (relaunchOrchestrator → startSequential-
+ *   Negotiation: baseline-rows slettes), så managere signerer RIGTIGE planer
+ *   (5yr/3yr/1yr → negotiation_status='completed') i sæson 1. Disse evalueres fuldt
+ *   ved sæson-1-slut (processTeamSeasonEnd springer kun is_baseline/plan_type=
+ *   'baseline' over), satisfaction bevæger sig, og den afledte budget_modifier får
+ *   FULD effekt på sæson-2-sponsoren (processSeasonStart anvender modifier for alle
+ *   completed boards — ingen sæson-nummer-gate). SÆSON-1-SPONSOREN selv betales
+ *   under denne transition FØR nogen plan kan signeres, så den er stadig neutral
+ *   (baseline=completed/modifier=1.0 eller ingen board → 1.0); det er den efter-
+ *   følgende sæson-2-sponsor der bærer sæson-1-tilfredshedens økonomiske effekt.
+ *   En transient baseline (før relaunch-oplåsning, eller sæson 0→1 uden unlock)
+ *   springes stadig over — det bevarer sæson-0/pre-unlock-adfærd.
  */
 
 import { ADMIN_ACTION_TYPE } from "./economyConstants.js";
