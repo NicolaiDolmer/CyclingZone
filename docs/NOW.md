@@ -4,13 +4,14 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (22/6 — LAUNCH LIVE ✅): auktion-korrekthed (#1694/#1693) + landing-header (#1697) merged + deployet. Næste store session = launch-bug-batch fra Discord-feedback (spillere møder dem NU).** Permanent frisk sæson 1 live; recovery: backup `cyclingzone-20260622-153339` (verify-restore VERIFIED) + PITR.
-> - **Merged i dag (launch-batch):** #1709/#1710 kalender-cadence · #1713/#1714/#1716/#1717/#1718/#1719/#1720/#1721 UX-batch · **#1694/#1693 auktion-korrekthed** (squad-fuld hard-blokerer bud + vundet-pris i CZ$) · **#1697 landing-header solid** · v5.93/v5.95/v5.96 patch-notes. Prod-backups: teams_balance_backup_20260622, dedup_bk_*, training_day_runs_backup_20260622 (drop når stabilt — #1733).
-> - **Næste prioritet (launch-bugs, Discord-sweep 22/6):** #1748 rytter-dobbeltadgang (auktion+transfer — beslægtet med #1694) · #1740 auto-bud "overbudt"-fejl · #1742 pensionerede under frie ungdom · #1739 AI-hold bliver i division ved oprykning · #1745/#1750/#1738/#1741/#1746/#1747/#1749/#1743/#1744. Polish: #1672 skades-"0 dage" · #1674 vis alder · #1671 sortér Alle-fane.
-> - **Ejer-beslutninger (åbne):** #1276 PCM-IP (rytternavne i public repo) · #1278 spiller-comms (founder-voice, du voicer) · #1487-budget (evne-nerf live, budget separat) · #929 leaked-pw · #691 key-rotation · #940 NPS.
-> - **Hygiejne:** #1650 feature-liveness 'audit'-check fejler på alle PRs (6 findings, ikke-required men støj). #1693a lukket by-design (fejringspopup + notifikation = bevidst 2 lag). [PLAN.md](PLAN.md)=SSOT.
+> **🎯 Next action (22/6 — LAUNCH LIVE ✅): MERGE #1754 (EJER) — auktion/akademi-korrekthed + RLS-migration venter på dig. Højeste prioritet (#1748 dobbeltadgang rammer spillerne nu). Migration prod-valideret i rollback.** Permanent frisk sæson 1 live; recovery: backup `cyclingzone-20260622-153339` (VERIFIED) + PITR.
+> - **Merged i dag (launch-batch):** kalender-cadence + UX-batch (#1709-1721) · #1694/#1693 auktion-korrekthed · #1697 landing-header · **frontend-fleet: #1672 skades-dage · #1744 akademi-bekræftelse · #1674/#1671 rytter-alder+sort** · v5.93-5.97 patch-notes.
+> - **VENTER PÅ EJER-MERGE: [#1754](https://github.com/NicolaiDolmer/CyclingZone/issues/1754)** (#1748 + #1740 + #1743; RLS-migration `2026-06-22-hide-intake-riders-from-db.sql` auto-applies). Efter merge: tilføj patch-notes v5.98 + flip #1748/#1740/#1743 → done. Worktree `fix-1748-...` beholdt til da.
+> - **Næste prioritet (launch-bugs):** #1742 pensionerede under frie ungdom · #1739 AI-hold bliver i division · #1745 op/nedrykning-visning · #1741 transferhistorik · #1738 bestyrelse-DNA · #1746/#1747/#1749/#1750. Systemisk: **#1755** rytter-oversigt-konsistens + universel sort. Cleanup: #1756 stale academy_intake-rækker.
+> - **Ejer-beslutninger (åbne):** #1276 PCM-IP · #1278 spiller-comms (du voicer) · #1487-budget · #929 leaked-pw · #691 key-rotation · #940 NPS.
+> - **Hygiejne:** #1650 feature-liveness 'audit'-check fejler på alle PRs (ikke-required støj). #1733 drop prod-backup-tabeller når stabilt. [PLAN.md](PLAN.md)=SSOT.
 
-> **🤖 Working agent:** Claude · Code (Opus 4.8) · 2026-06-22 — orchestrating 4 parallelle worktree-sessions: #1748/#1740/#1743 (auktion/akademi-korrekthed) + #1744 (akademi-UX) + #1672 (skade-bug) + #1674/#1671 (rytter-visning).
+> **🤖 Working agent:** Ingen aktiv session.
 
 ## Standing context (forever-relaunch)
 
