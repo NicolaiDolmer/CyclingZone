@@ -281,6 +281,7 @@ import {
   invalidateNamespace,
   getCacheStats,
 } from "../lib/responseCache.js";
+import { runRaceEntryGenerator } from "../lib/raceEntryGenerator.js";
 
 // Cache TTLs (ms). Tunable per ADR docs/decisions/cache-adr.md Phase 1.
 // Riders: 60s — ownership changes propagate within one polling cycle; explicit
@@ -4846,6 +4847,44 @@ router.post("/admin/seasons/:id/rederive-points", requireAdmin, adminWriteLimite
       number: season.number,
       ...result,
     });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Race Hub Fase 0b — manuel kørsel af den proaktive entry-generator for en sæson.
+// ?dryRun=false skriver; default (preview) skriver intet. Idempotent + binding-bevidst
+// (raceEntryGenerator.runRaceEntryGenerator). Normalt kører generatoren automatisk i
+// sæson-transitionen bag auto_entry_generator_enabled; dette er admin-genvejen.
+router.post("/admin/seasons/:id/generate-entries", requireAdmin, adminWriteLimiter, async (req, res) => {
+  try {
+    const seasonId = req.params.id;
+    const dryRun = req.query.dryRun !== "false"; // default true (preview); dryRun=false = apply
+
+    const { data: season, error: seasonError } = await supabase
+      .from("seasons")
+      .select("id, number, status")
+      .eq("id", seasonId)
+      .single();
+    if (seasonError) return res.status(500).json({ error: seasonError.message });
+    if (!season) return res.status(404).json({ error: "Sæson ikke fundet" });
+
+    const result = await runRaceEntryGenerator({ supabase, seasonId, dryRun });
+
+    if (!dryRun) {
+      await logActivity("season_entries_generated", {
+        meta: {
+          season_id: season.id,
+          season_number: season.number,
+          races: result.races,
+          teams: result.teams,
+          generated: result.generated,
+          skipped: result.skipped,
+        },
+      });
+    }
+
+    res.json({ success: true, season_id: season.id, number: season.number, ...result });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
