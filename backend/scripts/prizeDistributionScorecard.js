@@ -19,9 +19,11 @@
 // ════════════════════════════════════════════════════════════════════════════════
 //
 // 1. POPULATION + ROSTERE. Markedet = den låste launch-population (generateLaunchPopulation:
-//    800 ryttere, seed 2026, fuld værdi-pyramide). Et manager-hold modelleres som en
-//    8-rytters trup (= STARTER_SQUAD.SQUAD_SIZE, MIN_RIDERS_FOR_RACE) draftet fra et
-//    REALISTISK værdi-BÅND af pyramiden — IKKE et "scoop alle superstjerner"-felt (de 12
+//    800 ryttere, seed 2026, fuld værdi-pyramide). Den fulde start-trup er nu en 12-rytters
+//    trup (= STARTER_SQUAD.TOTAL_SIZE; 8 kerne + 4 svag hale efter 0c). Scorecardet modellerer
+//    KUN den 8-rytters løbsklare KERNE (= STARTER_SQUAD.CORE_SIZE, MIN_RIDERS_FOR_RACE; se
+//    rosterSize-default), draftet fra et REALISTISK værdi-BÅND af pyramiden — IKKE et
+//    "scoop alle superstjerner"-felt (de 12
 //    superstjerner ≥8M er force-sale-beskyttede og fås ikke billigt på markedet). Bånd pr.
 //    styrke-lag (division), valgt så lønbyrden matcher økonomi-konstanternes kalibrering
 //    (#1441: en frisk roster-lønbyrde ≈ 316k/hold, dvs. 8 × ~40k løn = base_value ~600k):

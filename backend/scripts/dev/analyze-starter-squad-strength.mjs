@@ -83,7 +83,7 @@ const baseVals = (riders) => riders.map((r) => r.base_value).sort((a, b) => a - 
 const fmt = (n) => Math.round(n).toLocaleString("en-US");
 
 console.log(`=== Start-trup-styrke analyse (#1487) — seed ${SEED}, ${TEAMS} hold ===\n`);
-console.log(`Population: ${rows.length} ryttere · SQUAD_SIZE ${STARTER_SQUAD.SQUAD_SIZE} · STAR_CUTOFF ${STARTER_SQUAD.STAR_CUTOFF_FRACTION * 100}%`);
+console.log(`Population: ${rows.length} ryttere · CORE_SIZE ${STARTER_SQUAD.CORE_SIZE} · STAR_CUTOFF ${STARTER_SQUAD.STAR_CUTOFF_FRACTION * 100}%`);
 console.log(`Start-trup-ryttere: ${starterRiders.length} · Marked (resten): ${marketRiders.length}\n`);
 
 console.log("ABILITY-SKALA = 1..99 (synlige evner). Ejer-ønske #1487: start-ryttere max ~10 (evt 15-20).\n");

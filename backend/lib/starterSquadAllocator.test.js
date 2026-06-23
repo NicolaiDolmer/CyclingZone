@@ -4,7 +4,9 @@ import assert from "node:assert/strict";
 import {
   STARTER_SQUAD,
   STARTER_POOL_STAT_WINDOW,
+  STARTER_TAIL_STAT_WINDOW,
   allocateStarterSquads,
+  distributeTailRiders,
   allocateStarterSquadForTeam,
   buildWeakStarterPool,
   computeAge,
@@ -128,9 +130,11 @@ function makePool({ stars = 4, young = 18, dom = 18 } = {}) {
   return pool;
 }
 
-test("STARTER_SQUAD: youth + domestiques = MIN_RIDERS_FOR_RACE", () => {
-  assert.equal(STARTER_SQUAD.YOUTH_PER_TEAM + STARTER_SQUAD.DOMESTIQUE_PER_TEAM, STARTER_SQUAD.SQUAD_SIZE);
-  assert.equal(STARTER_SQUAD.SQUAD_SIZE, MIN_RIDERS_FOR_RACE);
+test("STARTER_SQUAD: kerne = unge + kerne-domestiques = MIN_RIDERS_FOR_RACE; total = kerne + hale", () => {
+  assert.equal(STARTER_SQUAD.YOUTH_PER_TEAM + STARTER_SQUAD.DOMESTIQUE_PER_TEAM, STARTER_SQUAD.CORE_SIZE);
+  assert.equal(STARTER_SQUAD.CORE_SIZE, MIN_RIDERS_FOR_RACE, "kernen forbliver løbs-minimummet");
+  assert.equal(STARTER_SQUAD.TOTAL_SIZE, STARTER_SQUAD.CORE_SIZE + STARTER_SQUAD.TAIL_SIZE);
+  assert.equal(STARTER_SQUAD.TOTAL_SIZE, 12);
 });
 
 test("computeAge regner alder ud fra birthdate vs referenceår", () => {
@@ -138,11 +142,11 @@ test("computeAge regner alder ud fra birthdate vs referenceår", () => {
   assert.equal(computeAge("2000-12-31", 2026), 26);
 });
 
-test("hver manager får præcis SQUAD_SIZE ryttere, ingen overlap", () => {
+test("hver manager får præcis CORE_SIZE ryttere, ingen overlap", () => {
   const teamIds = ["t1", "t2", "t3"];
   const pool = makePool({ stars: 6, young: 30, dom: 30 });
   const { assignments, leftToMarket } = allocateStarterSquads(pool, teamIds, { seed: 2026 });
-  for (const t of teamIds) assert.equal(assignments[t].length, STARTER_SQUAD.SQUAD_SIZE);
+  for (const t of teamIds) assert.equal(assignments[t].length, STARTER_SQUAD.CORE_SIZE);
   const assigned = teamIds.flatMap((t) => assignments[t]);
   assert.equal(new Set(assigned).size, assigned.length, "ingen rytter på to hold");
   assert.equal(assigned.length + leftToMarket.length, pool.length);
@@ -171,11 +175,11 @@ test("komposition: YOUTH_PER_TEAM unge + DOMESTIQUE_PER_TEAM domestiques pr. hol
   }
 });
 
-test("top-up: skæv pool (få unge) giver stadig SQUAD_SIZE pr. hold", () => {
+test("top-up: skæv pool (få unge) giver stadig CORE_SIZE pr. hold", () => {
   const teamIds = ["t1", "t2"];
   const pool = makePool({ stars: 2, young: 2, dom: 40 }); // kun 2 unge til 8 youth-slots
   const { assignments } = allocateStarterSquads(pool, teamIds, { seed: 2026 });
-  for (const t of teamIds) assert.equal(assignments[t].length, STARTER_SQUAD.SQUAD_SIZE);
+  for (const t of teamIds) assert.equal(assignments[t].length, STARTER_SQUAD.CORE_SIZE);
 });
 
 test("seeded: samme seed → identisk allokering (dry-run = apply)", () => {
@@ -192,6 +196,27 @@ test("fairness: holdenes samlede base_value-spænd ≤ tolerance", () => {
   const { stats } = allocateStarterSquads(pool, teamIds, { seed: 2026 });
   assert.ok(stats.maxSquadBaseValue - stats.minSquadBaseValue <= stats.fairnessTolerance,
     `spænd ${stats.maxSquadBaseValue - stats.minSquadBaseValue} > tolerance ${stats.fairnessTolerance}`);
+});
+
+// ── Race-hub 0c · distributeTailRiders (svag hale, snake-draft) ────────────────
+
+test("distributeTailRiders: hvert hold får perTeam hale-ryttere, balanceret, ingen overlap", () => {
+  const teamIds = ["t1", "t2", "t3"];
+  const tailPool = Array.from({ length: 30 }, (_, i) => ({ id: `tail-${i}`, base_value: 7000 - i * 10 }));
+  const { tailAssignments, leftToMarket } = distributeTailRiders(tailPool, teamIds, 4, { seed: 2026 });
+  for (const t of teamIds) assert.equal(tailAssignments[t].length, 4, `${t} hale`);
+  const assigned = teamIds.flatMap((t) => tailAssignments[t]);
+  assert.equal(new Set(assigned).size, assigned.length, "ingen hale-rytter på to hold");
+  assert.equal(assigned.length, 12);
+  assert.equal(leftToMarket.length, 30 - 12, "resten falder ud (skal ikke ske ved korrekt pulje-størrelse)");
+});
+
+test("distributeTailRiders: deterministisk (samme seed → samme resultat)", () => {
+  const teamIds = ["t1", "t2"];
+  const tailPool = Array.from({ length: 8 }, (_, i) => ({ id: `tail-${i}`, base_value: 7000 - i }));
+  const a = distributeTailRiders(tailPool, teamIds, 4, { seed: 2026 });
+  const b = distributeTailRiders(tailPool, teamIds, 4, { seed: 2026 });
+  assert.deepEqual(a.tailAssignments, b.tailAssignments);
 });
 
 // #1487: svag dedikeret start-pool. Stats clampes ind i [50,57] FØR derivation,
@@ -252,7 +277,7 @@ test("starCutoffFraction 0: ingen stjerner ekskluderes — også den dyreste all
 });
 
 test("runStarterSquadAllocation (#1487): generér svag pulje, derive (data-hale), tildel team_id", async () => {
-  // 2 hold × SQUAD_SIZE = 16 startryttere.
+  // 2 hold × TOTAL_SIZE = 24 startryttere (kerne CORE_SIZE + hale TAIL_SIZE pr. hold).
   // Fake-generator: stærke stats (80) som SKAL clampes til vinduets hi før insert.
   const fakeGenerate = ({ count }) => ({
     riders: Array.from({ length: count }, (_, i) => ({
@@ -309,16 +334,16 @@ test("runStarterSquadAllocation (#1487): generér svag pulje, derive (data-hale)
   assert.equal(updates.length, 0, "dry-run skriver intet");
 
   const applied = await runStarterSquadAllocation(supabase, { dryRun: false, seed: 2026, getManagerTeams, deps });
-  assert.equal(inserted.length, 2 * STARTER_SQUAD.SQUAD_SIZE, "16 svage ryttere indsat");
+  assert.equal(inserted.length, 2 * STARTER_SQUAD.TOTAL_SIZE, "24 svage ryttere indsat (12/hold)");
   for (const r of inserted) {
     for (const k of STAT_KEYS) assert.ok(r[k] <= STARTER_POOL_STAT_WINDOW.hi, `${k} ikke clampet`);
   }
-  assert.equal(derived.length, 2 * STARTER_SQUAD.SQUAD_SIZE, "alle nye ryttere derivet (data-hale)");
-  assert.equal(applied.assigned, 2 * STARTER_SQUAD.SQUAD_SIZE);
-  // updates rummer nu både team_id-tildelinger (16) og #1563-markør-skrivninger (2).
+  assert.equal(derived.length, 2 * STARTER_SQUAD.TOTAL_SIZE, "alle nye ryttere derivet (data-hale)");
+  assert.equal(applied.assigned, 2 * STARTER_SQUAD.TOTAL_SIZE);
+  // updates rummer nu både team_id-tildelinger (24) og #1563-markør-skrivninger (2).
   const teamIdUpdates = updates.filter((u) => "team_id" in u);
   const markerUpdates = updates.filter((u) => "starter_squad_allocated_at" in u);
-  assert.equal(teamIdUpdates.length, 2 * STARTER_SQUAD.SQUAD_SIZE, "16 team_id-tildelinger");
+  assert.equal(teamIdUpdates.length, 2 * STARTER_SQUAD.TOTAL_SIZE, "24 team_id-tildelinger");
   assert.ok(teamIdUpdates.every((u) => u.team_id === "t1" || u.team_id === "t2"));
   assert.equal(markerUpdates.length, 2, "#1563: begge hold markeret som start-trup-allokeret");
 });
@@ -333,16 +358,16 @@ test("#1560 hash/seed: deriveTeamSeed er deterministisk + hold-unik", () => {
   assert.ok(Number.isInteger(deriveTeamSeed(2026, "team-a")) && deriveTeamSeed(2026, "team-a") >= 0, "32-bit uint");
 });
 
-test("#1560 single-team happy path: præcis SQUAD_SIZE ryttere med korrekt team_id", async () => {
+test("#1560 single-team happy path: præcis TOTAL_SIZE ryttere med korrekt team_id", async () => {
   const { supabase, store, teams, fakeDerive } = createRidersMock();
   const res = await allocateStarterSquadForTeam(supabase, "new-team-1", {
     seed: 2026, generate: makeFakeGenerate(), derive: fakeDerive,
   });
 
-  assert.equal(res.assigned, STARTER_SQUAD.SQUAD_SIZE, "8 ryttere tildelt");
+  assert.equal(res.assigned, STARTER_SQUAD.TOTAL_SIZE, "12 ryttere tildelt (8 kerne + 4 hale)");
   const onTeam = [...store.values()].filter((r) => r.team_id === "new-team-1");
-  assert.equal(onTeam.length, STARTER_SQUAD.SQUAD_SIZE, "8 ryttere har team_id på holdet");
-  assert.equal(store.size, STARTER_SQUAD.SQUAD_SIZE, "kun de 8 nye ryttere blev oprettet");
+  assert.equal(onTeam.length, STARTER_SQUAD.TOTAL_SIZE, "12 ryttere har team_id på holdet");
+  assert.equal(store.size, STARTER_SQUAD.TOTAL_SIZE, "kun de 12 nye ryttere blev oprettet");
   assert.ok(teams.get("new-team-1").starter_squad_allocated_at, "markør sat efter allokering (#1563)");
   assert.equal([...store.values()].filter((r) => r.team_id == null).length, 0,
     "ingen orphan-ryttere — insert sætter team_id direkte (#1563)");
@@ -360,8 +385,8 @@ test("#1560 single-team happy path: præcis SQUAD_SIZE ryttere med korrekt team_
 test("#1560 forward-guard: single-team gen-kæde → top-evne ≤25 + stats i [50,57]", () => {
   const STAT_DRIVEN = VISIBLE_ABILITIES.filter((k) => k !== "tactics" && k !== "aggression");
   const teamSeed = deriveTeamSeed((2026 + 1487) >>> 0, "fwd-guard-team");
-  const pool = buildWeakStarterPool({ count: STARTER_SQUAD.SQUAD_SIZE, seed: teamSeed, referenceYear: 2026 });
-  assert.equal(pool.length, STARTER_SQUAD.SQUAD_SIZE);
+  const pool = buildWeakStarterPool({ count: STARTER_SQUAD.CORE_SIZE, seed: teamSeed, referenceYear: 2026 });
+  assert.equal(pool.length, STARTER_SQUAD.CORE_SIZE);
 
   let globalMax = 0;
   for (const r of pool) {
@@ -375,6 +400,19 @@ test("#1560 forward-guard: single-team gen-kæde → top-evne ≤25 + stats i [5
     globalMax = Math.max(globalMax, ...STAT_DRIVEN.map((k) => abilities[k]));
   }
   assert.ok(globalMax <= 25, `stærkeste styrke-evne ${globalMax} > 25 — single-team-puljen er ikke svag`);
+
+  // Halen ([50,52]) er endnu svagere end kernen.
+  const tailSeed = deriveTeamSeed((2026 + 1487 + 7) >>> 0, "fwd-guard-team");
+  const tailPool = buildWeakStarterPool({ count: STARTER_SQUAD.TAIL_SIZE, seed: tailSeed, referenceYear: 2026, window: STARTER_TAIL_STAT_WINDOW });
+  let tailMax = 0;
+  for (const r of tailPool) {
+    for (const k of STAT_KEYS) {
+      assert.ok(r[k] >= STARTER_TAIL_STAT_WINDOW.lo && r[k] <= STARTER_TAIL_STAT_WINDOW.hi, `${k}=${r[k]} udenfor hale-vindue`);
+    }
+    const abilities = deriveAbilities({}, r, { asOfYear: 2026 });
+    tailMax = Math.max(tailMax, ...STAT_DRIVEN.map((k) => abilities[k]));
+  }
+  assert.ok(tailMax <= 12, `hale-top-evne ${tailMax} > 12 — halen er ikke ekstra-svag`);
 });
 
 test("#1560 determinisme + variation: forskellige hold → forskellige reproducerbare trupper", async () => {
@@ -397,13 +435,13 @@ test("#1560/#1563 idempotens: kald to gange for samme hold → markør gør ande
   const { supabase, store, fakeDerive } = createRidersMock();
   const generate = makeFakeGenerate();
   const first = await allocateStarterSquadForTeam(supabase, "idem-team", { seed: 2026, generate, derive: fakeDerive });
-  assert.equal(first.assigned, STARTER_SQUAD.SQUAD_SIZE);
+  assert.equal(first.assigned, STARTER_SQUAD.TOTAL_SIZE);
 
   const second = await allocateStarterSquadForTeam(supabase, "idem-team", { seed: 2026, generate, derive: fakeDerive });
   assert.equal(second.assigned, 0, "andet kald allokerer intet");
   assert.equal(second.skipped, "already-allocated");
-  assert.equal(store.size, STARTER_SQUAD.SQUAD_SIZE, "stadig kun 8 ryttere — ingen dobbelt-allokering");
-  assert.equal([...store.values()].filter((r) => r.team_id === "idem-team").length, STARTER_SQUAD.SQUAD_SIZE);
+  assert.equal(store.size, STARTER_SQUAD.TOTAL_SIZE, "stadig kun 12 ryttere — ingen dobbelt-allokering");
+  assert.equal([...store.values()].filter((r) => r.team_id === "idem-team").length, STARTER_SQUAD.TOTAL_SIZE);
 });
 
 test("#1563 idempotens: hold med markør sat (fx backfilled relaunch-trup) røres ikke", async () => {
@@ -435,18 +473,18 @@ test("#1563 exploit-sikker: markør sat + 0 ryttere (ejer har solgt ned) → ING
   assert.equal(store.size, 0, "ingen ryttere oprettet til et hold der selv har solgt ned");
 });
 
-test("#1563 heal fuld fejl: markør null + 0 ryttere → allokér 8 + sæt markør", async () => {
+test("#1563 heal fuld fejl: markør null + 0 ryttere → allokér 12 + sæt markør", async () => {
   const { supabase, store, teams, fakeDerive } = createRidersMock();
   const res = await allocateStarterSquadForTeam(supabase, "stuck-empty", {
     seed: 2026, generate: makeFakeGenerate(), derive: fakeDerive,
   });
-  assert.equal(res.assigned, STARTER_SQUAD.SQUAD_SIZE);
-  assert.equal([...store.values()].filter((r) => r.team_id === "stuck-empty").length, STARTER_SQUAD.SQUAD_SIZE);
+  assert.equal(res.assigned, STARTER_SQUAD.TOTAL_SIZE);
+  assert.equal([...store.values()].filter((r) => r.team_id === "stuck-empty").length, STARTER_SQUAD.TOTAL_SIZE);
   assert.ok(teams.get("stuck-empty").starter_squad_allocated_at, "markør sat efter heal");
 });
 
-test("#1563 heal delvis (derive/markør fejlede): markør null + 8 ryttere → re-derive, INGEN nye, markør sat", async () => {
-  const seedRiders = Array.from({ length: STARTER_SQUAD.SQUAD_SIZE }, (_, i) => ({
+test("#1563 heal delvis (derive/markør fejlede): markør null + 12 ryttere → re-derive, INGEN nye, markør sat", async () => {
+  const seedRiders = Array.from({ length: STARTER_SQUAD.TOTAL_SIZE }, (_, i) => ({
     id: `pre-${i}`, team_id: "derive-failed", firstname: `F${i}`, lastname: `L${i}`,
   }));
   const { supabase, store, teams, fakeDerive } = createRidersMock({ seedRiders });
@@ -454,13 +492,13 @@ test("#1563 heal delvis (derive/markør fejlede): markør null + 8 ryttere → r
     seed: 2026, generate: makeFakeGenerate(), derive: fakeDerive,
   });
   assert.equal(res.recovered, "re-derived");
-  assert.equal(res.assigned, STARTER_SQUAD.SQUAD_SIZE);
-  assert.equal(store.size, STARTER_SQUAD.SQUAD_SIZE, "ingen NYE ryttere — de 8 eksisterende re-derives");
+  assert.equal(res.assigned, STARTER_SQUAD.TOTAL_SIZE);
+  assert.equal(store.size, STARTER_SQUAD.TOTAL_SIZE, "ingen NYE ryttere — de 12 eksisterende re-derives");
   assert.ok(store.get("pre-0").base_value > 0, "fakeDerive kørte (base_value sat)");
   assert.ok(teams.get("derive-failed").starter_squad_allocated_at, "markør sat efter heal");
 });
 
-test("#1563 heal delvis-insert: markør null + 3 ryttere → ryd det halve + re-allokér til 8", async () => {
+test("#1563 heal delvis-insert: markør null + 3 ryttere → ryd det halve + re-allokér til 12", async () => {
   const seedRiders = Array.from({ length: 3 }, (_, i) => ({
     id: `partial-${i}`, team_id: "partial-team", firstname: `F${i}`, lastname: `L${i}`,
   }));
@@ -469,9 +507,9 @@ test("#1563 heal delvis-insert: markør null + 3 ryttere → ryd det halve + re-
     seed: 2026, generate: makeFakeGenerate(), derive: fakeDerive,
   });
   assert.equal(res.recovered, "cleaned-partial");
-  assert.equal(res.assigned, STARTER_SQUAD.SQUAD_SIZE);
-  assert.equal([...store.values()].filter((r) => r.team_id === "partial-team").length, STARTER_SQUAD.SQUAD_SIZE);
-  assert.equal(store.size, STARTER_SQUAD.SQUAD_SIZE, "de 3 delvise ryttere ryddet, 8 friske indsat");
+  assert.equal(res.assigned, STARTER_SQUAD.TOTAL_SIZE);
+  assert.equal([...store.values()].filter((r) => r.team_id === "partial-team").length, STARTER_SQUAD.TOTAL_SIZE);
+  assert.equal(store.size, STARTER_SQUAD.TOTAL_SIZE, "de 3 delvise ryttere ryddet, 12 friske indsat");
   assert.ok(!store.has("partial-0"), "den delvise trup blev ryddet");
   assert.ok(teams.get("partial-team").starter_squad_allocated_at, "markør sat efter heal");
 });

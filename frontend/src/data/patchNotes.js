@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.06",
+    "date": "2026-06-23",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Squads",
+        "en": {
+          "title": "Teams now start with a deeper squad of 12 riders",
+          "body": "Teams now start with a deeper squad of 12 riders so you can field overlapping races. The extra riders are deliberately weak domestiques you will want to upgrade."
+        },
+        "da": {
+          "title": "Hold starter nu med en dybere trup på 12 ryttere",
+          "body": "Hold starter nu med en dybere trup på 12 ryttere, så du kan stille hold til overlappende løb. De ekstra ryttere er bevidst svage domestiques, du vil opgradere."
+        },
+        "refs": [1798]
+      }
+    ]
+  },
+  {
     "version": "6.05",
     "date": "2026-06-23",
     "label": "Beta",

@@ -14,8 +14,10 @@ export const SPONSOR_INCOME_BASE = 240000;
 // kolonne er kun fallback. Sæson-2+ bruger den separate variable-model (sponsorEngine).
 //
 // #1441 A6-kalibrering (2026-06-17): D3 hævet 260k → 340k. Den friske relaunch-
-// population giver HVER trup 8 ryttere (starterSquadAllocator.SQUAD_SIZE, division-
-// blind snake-draft) med en frossen lønbyrde ≈ 316k/hold i ALLE divisioner. D3-sponsoren
+// population giver HVER trup en racing-kerne på 8 ryttere (starterSquadAllocator.CORE_SIZE,
+// division-blind snake-draft) med en frossen lønbyrde ≈ 316k/hold i ALLE divisioner.
+// (Efter race-hub 0c er den fulde starter-trup TOTAL_SIZE=12 = 8 core + 4 svag hale;
+// lønbyrde-kalibreringen herunder regner på de 8 i racing-kernen.) D3-sponsoren
 // (260k) lå under lønbyrden, så D3-net var negativ selv ved upkeep=0 → §4.1 kilde-re-tune
 // var påkrævet for at lukke D3-loopet (spec §3.2/§4.1). Verificeret af moneySupplyScorecard
 // (syntetisk fresh-population-projektion, --synthetic).

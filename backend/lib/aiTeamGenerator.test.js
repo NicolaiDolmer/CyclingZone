@@ -1,8 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { generateAndAllocateAiTeams, clearAllAiTeams, reconcileAiTeamsForPool, AI_TEAM_NAME_PREFIX } from "./aiTeamGenerator.js";
+import { generateAndAllocateAiTeams, clearAllAiTeams, reconcileAiTeamsForPool, AI_TEAM_NAME_PREFIX, __testables } from "./aiTeamGenerator.js";
 import { POOL_TARGET_SIZE, MAX_DIVISION, MANAGER_ENTRY_DIVISION } from "./economyConstants.js";
+import { STARTER_SQUAD, STARTER_POOL_STAT_WINDOW } from "./starterSquadAllocator.js";
+import { STAT_KEYS } from "./fictionalRiderGenerator.js";
 
 // #1688 — AI-fill-generator. Politik (frosset):
 //   tier 1 OG tier 2-puljer  → fyld ALTID med AI op til POOL_TARGET_SIZE (24).
@@ -40,6 +42,12 @@ function makeSupabase(initial = {}) {
       neq(c, v) { filters.push({ t: "neq", c, v }); return builder; },
       in(c, v) { filters.push({ t: "in", c, v }); return builder; },
       order() { return builder; },
+      // fetchAllRows-paginering (supabasePagination.js): én side rummer alt i denne
+      // in-memory mock; from=0 → alle matchende rækker, ellers tom (loopet stopper).
+      range(from) {
+        const data = from === 0 ? rows().filter(matches) : [];
+        return Promise.resolve({ data, error: null });
+      },
       insert(payload) {
         const arr = Array.isArray(payload) ? payload : [payload];
         const inserted = arr.map((r) => ({ id: `${table}-${idSeq++}`, ...r }));
@@ -51,6 +59,19 @@ function makeSupabase(initial = {}) {
           then(res, rej) { return Promise.resolve({ data: null, error: null }).then(res, rej); },
         };
         return ins;
+      },
+      // deriveForRiderIds (backfillCores) upsert'er physiology/abilities på rider_id.
+      // Minimal upsert: erstat på onConflict-nøgle, ellers append. Returnerer {error:null}.
+      upsert(payload, opts = {}) {
+        const arr = Array.isArray(payload) ? payload : [payload];
+        const key = opts.onConflict;
+        for (const r of arr) {
+          const clone = JSON.parse(JSON.stringify(r));
+          const existing = key ? rows().find((row) => row[key] === clone[key]) : null;
+          if (existing) Object.assign(existing, clone);
+          else rows().push(clone);
+        }
+        return Promise.resolve({ data: null, error: null });
       },
       update(payload) {
         const upd = {
@@ -400,4 +421,34 @@ test("#1739 reconcileAiTeamsForPool: ukendt/null pulje er no-op (ingen kast)", a
   assert.equal(missing.created, 0);
   assert.equal(missing.removed, 0);
   assert.equal(missing.tier, null, "ukendt pulje → tier null, ingen handling");
+});
+
+// ── race-hub 0c · defaultAllocateSquadForTeam: lagdelt 12-trup (8 kerne + 4 hale) ─
+// Den ægte PROD-allokering (ikke fakeAllocateSquad) skal give nye AI-hold en lagdelt
+// 12-rytter-trup — kerne [50,57] + ekstra-svag hale [50,52] — spejlende manager-
+// truppen (insertWeakSquadForTeam). Tidligere gav den kun CORE_SIZE (8); 0c hæver
+// den til TOTAL_SIZE (12) for konsistens med managerhold + dybde-top-up.
+test("0c defaultAllocateSquadForTeam giver nye AI-hold en lagdelt TOTAL_SIZE-trup (12) med svage stats", async () => {
+  const pools = seedPools();
+  const t1 = poolByTierIndex(pools, 1, 0);
+  const supabase = makeSupabase({ league_divisions: pools, teams: [], riders: [] });
+
+  const teamId = "ai-prod-1";
+  const insertedIds = await __testables.defaultAllocateSquadForTeam(
+    supabase, teamId, { pool: t1, baseSeed: 2026, ordinal: 0 },
+  );
+
+  // Præcis 12 ryttere (8 kerne + 4 hale), alle bundet til holdet.
+  assert.equal(insertedIds.length, STARTER_SQUAD.TOTAL_SIZE, "TOTAL_SIZE (12) ryttere indsat");
+  const teamRiders = supabase.state.riders.filter((r) => r.team_id === teamId);
+  assert.equal(teamRiders.length, STARTER_SQUAD.TOTAL_SIZE, "12 ryttere har team_id sat");
+
+  // Alle stats ligger i [50,57]: kerne-vinduet rummer både kerne [50,57] og hale
+  // [50,52] (halen er en delmængde af kernens vindue på underkant; hi ≤ 57 for begge).
+  const { lo, hi } = STARTER_POOL_STAT_WINDOW;
+  for (const r of teamRiders) {
+    for (const k of STAT_KEYS) {
+      assert.ok(r[k] >= lo && r[k] <= hi, `${k}=${r[k]} skal være i [${lo},${hi}]`);
+    }
+  }
 });

@@ -7,7 +7,9 @@
 // den, allokerer + skriver team_id.
 //
 // Design (ejer-godkendt, konstanter tunbare):
-//   • SQUAD_SIZE = MIN_RIDERS_FOR_RACE (8): kan stille op til løb fra dag 1.
+//   • CORE_SIZE = MIN_RIDERS_FOR_RACE (8): løbsklar kerne fra dag 1. TOTAL_SIZE
+//     (12 = kerne + hale) er den fulde start-trup (race-hub 0c; halen aktiveres
+//     i senere tasks).
 //   • YOUTH_PER_TEAM unge (18-21, høj potentiale) + DOMESTIQUE_PER_TEAM domestiques.
 //   • #1487 approach B: start-trupperne kommer fra en DEDIKERET SVAG pulje
 //     (STARTER_POOL_STAT_WINDOW), IKKE fra markeds-pyramiden. Markedet (de 800)
@@ -22,14 +24,16 @@ import { foldNameNordic } from "./pcmRiderMatcher.js";
 import { deriveForRiderIds } from "./backfillCores.js";
 
 export const STARTER_SQUAD = Object.freeze({
-  SQUAD_SIZE: MIN_RIDERS_FOR_RACE,        // 8
+  CORE_SIZE: MIN_RIDERS_FOR_RACE,         // 8 — den løbsklare kerne (= løbs-minimum)
+  TAIL_SIZE: 4,                           // ekstra svage hale-domestiques (race-hub 0c)
+  TOTAL_SIZE: MIN_RIDERS_FOR_RACE + 4,    // 12 — fuld start-trup (kerne + hale)
   YOUTH_PER_TEAM: 4,
-  DOMESTIQUE_PER_TEAM: 4,
+  DOMESTIQUE_PER_TEAM: 4,                  // kerne-domestiques (halen er adskilt)
   YOUNG_AGE_MIN: 18,
   YOUNG_AGE_MAX: 21,
   YOUNG_POTENTIAL_MIN: 4.0,
-  STAR_CUTOFF_FRACTION: 0.10,             // top 10% base_value bliver i markedet
-  FAIRNESS_TOLERANCE_FRACTION: 0.15,      // tilladt max-min squad-base_value-spænd
+  STAR_CUTOFF_FRACTION: 0.10,
+  FAIRNESS_TOLERANCE_FRACTION: 0.15,
 });
 
 // #1487 (ejer-valgt 19/6): start-trupperne var alt for stærke (median top-evne 73).
@@ -42,6 +46,11 @@ export const STARTER_SQUAD = Object.freeze({
 // ~7k, ingen stjerner) MEN med bevaret variation (4 distinkte rytter-typer). Lavere
 // vindue = mere uniforme ryttere; [50,57] er ejer-valgt balance (svag + varieret).
 export const STARTER_POOL_STAT_WINDOW = Object.freeze({ lo: 50, hi: 57 });
+
+// Race-hub 0c (ejer-valgt 2026-06-23, sim-kalibreret): hale-ryttere er ENDNU svagere
+// end kernen. [50,52] → afledte top-evner ~7 (mod kernens ~21) via den lineære
+// PCM-fallback-remap. Skarpest "nød-fyldere vs kerne"-tekstur + stærkest byg-selv-pres.
+export const STARTER_TAIL_STAT_WINDOW = Object.freeze({ lo: 50, hi: 52 });
 
 export function computeAge(birthdate, referenceYear) {
   const year = Number(String(birthdate).slice(0, 4));
@@ -126,7 +135,7 @@ export function allocateStarterSquads(pool, teamIds, {
     .sort((a, b) => (b.base_value || 0) - (a.base_value || 0));
   let li = 0;
   for (const t of teamIds) {
-    while (assignments[t].length < C.SQUAD_SIZE && li < leftover.length) {
+    while (assignments[t].length < C.CORE_SIZE && li < leftover.length) {
       assignments[t].push(leftover[li].id);
       totals[t] += leftover[li].base_value || 0;
       li++;
@@ -142,6 +151,21 @@ export function allocateStarterSquads(pool, teamIds, {
     fairnessTolerance: (squadTotals.length ? Math.max(...squadTotals) : 0) * C.FAIRNESS_TOLERANCE_FRACTION,
   };
   return { assignments, leftToMarket, stats };
+}
+
+// Race-hub 0c: snake-draft af den svage HALE (perTeam pr. hold) fra en separat
+// hale-pulje. Adskilt fra allocateStarterSquads (kernen) så kernens fairness/
+// stjerne-logik er urørt; halen er flade domestiques (ingen unge, ingen stjerner)
+// → ren base_value-balanceret snake-draft. Determinisk (seeded shuffle inden for
+// værdi-bånd → sortér desc → snake).
+export function distributeTailRiders(tailPool, teamIds, perTeam, { seed = LAUNCH_POPULATION.seed } = {}) {
+  const rng = makeRng(seed);
+  const prepped = seededShuffle(tailPool, rng).sort((a, b) => (b.base_value || 0) - (a.base_value || 0));
+  const tailAssignments = Object.fromEntries(teamIds.map((t) => [t, []]));
+  const totals = Object.fromEntries(teamIds.map((t) => [t, 0]));
+  const used = snakeDraft(prepped, teamIds, perTeam, tailAssignments, totals);
+  const leftToMarket = prepped.slice(used).map((r) => r.id);
+  return { tailAssignments, leftToMarket };
 }
 
 const WRITE_CONCURRENCY = 25;
@@ -255,17 +279,26 @@ async function setSquadMarker(supabase, teamId, nowIso) {
   if (error) throw new Error(`set starter-squad marker ${teamId}: ${error.message}`);
 }
 
-// #1563: indsæt en frisk svag 8-rytter-pulje DIREKTE med team_id sat (ikke
-// team_id=null + separat assign-skridt). Det lukker orphan-vinduet: fejler noget
-// efter insert, er rytterne EJET (ikke ejerløse i markedet), og en re-derive heler
-// dem. Genbruger den svage pulje-mekanik (#1487) + derive-kæden (data-hale).
+// #1563/race-hub 0c: indsæt en frisk svag TOTAL_SIZE-pulje (8 kerne [50,57] + 4
+// hale [50,52]) DIREKTE med team_id sat (ikke team_id=null + separat assign-skridt).
+// Det lukker orphan-vinduet: fejler noget efter insert, er rytterne EJET (ikke
+// ejerløse i markedet), og en re-derive heler dem. Genbruger den svage pulje-mekanik
+// (#1487) + derive-kæden (data-hale).
 async function insertWeakSquadForTeam(supabase, teamId, { seed, referenceYear, generate, derive }) {
   const existingFoldedNames = await fetchExistingFoldedNames(supabase);
-  // Per-hold seed: basis-offset (+1487, samme som relaunch-puljen) XOR hash(teamId).
-  const teamSeed = deriveTeamSeed((seed + 1487) >>> 0, teamId);
-  const poolPayload = buildWeakStarterPool({
-    count: STARTER_SQUAD.SQUAD_SIZE, seed: teamSeed, referenceYear, existingFoldedNames, generate,
+  // Per-hold seed: basis-offset (+1487, samme som relaunch) XOR hash(teamId).
+  // Eget seed-offset pr. tier (kerne vs hale) → distinkte pools.
+  const coreSeed = deriveTeamSeed((seed + 1487) >>> 0, teamId);
+  const tailSeed = deriveTeamSeed((seed + 1487 + 7) >>> 0, teamId);
+  const corePayload = buildWeakStarterPool({
+    count: STARTER_SQUAD.CORE_SIZE, seed: coreSeed, referenceYear, existingFoldedNames,
+    window: STARTER_POOL_STAT_WINDOW, generate,
   }).map((r) => ({ ...r, team_id: teamId }));
+  const tailPayload = buildWeakStarterPool({
+    count: STARTER_SQUAD.TAIL_SIZE, seed: tailSeed, referenceYear, existingFoldedNames,
+    window: STARTER_TAIL_STAT_WINDOW, generate,
+  }).map((r) => ({ ...r, team_id: teamId }));
+  const poolPayload = [...corePayload, ...tailPayload];
 
   const insertedIds = [];
   for (let i = 0; i < poolPayload.length; i += INSERT_BATCH) {
@@ -290,8 +323,8 @@ async function insertWeakSquadForTeam(supabase, teamId, { seed, referenceYear, g
 //   • Idempotens på MARKØREN starter_squad_allocated_at (#1563), IKKE rytter-antal:
 //     markør sat → no-op (også hvis ejeren selv har solgt ned under 8 → ingen
 //     gratis-trup-exploit). Markør NULL = bootstrap aldrig fuldført → alle holdets
-//     nuværende ryttere (0-8) stammer fra et ufuldstændigt forsøg → bring til præcis
-//     SQUAD_SIZE derive'de ryttere + sæt markøren.
+//     nuværende ryttere (0-12) stammer fra et ufuldstændigt forsøg → bring til præcis
+//     TOTAL_SIZE (8 kerne + 4 hale) derive'de ryttere + sæt markøren.
 //   • insert-med-team_id → intet orphan-vindue ved fejl.
 export async function allocateStarterSquadForTeam(supabase, teamId, {
   seed = LAUNCH_POPULATION.seed,
@@ -310,7 +343,7 @@ export async function allocateStarterSquadForTeam(supabase, teamId, {
 
   const existingIds = await listTeamRiderIds(supabase, teamId);
   const n = existingIds.length;
-  const SIZE = STARTER_SQUAD.SQUAD_SIZE;
+  const SIZE = STARTER_SQUAD.TOTAL_SIZE;
 
   let assigned;
   let recovered = null;
@@ -334,7 +367,7 @@ export async function allocateStarterSquadForTeam(supabase, teamId, {
   return { teamId, assigned, ...(recovered ? { recovered } : {}) };
 }
 
-// DB-wrapper (#1487 approach B): generér en dedikeret svag pulje (N×SQUAD_SIZE),
+// DB-wrapper (#1487 approach B): generér en dedikeret svag pulje (N×CORE_SIZE),
 // indsæt den, kør hele derive-kæden (data-hale-garanti: physiology→abilities→type→
 // base_value), allokér til holdene og skriv team_id. Markeds-pyramiden (de 800)
 // røres IKKE — den forbliver fuldt fri til auktionen.
@@ -356,28 +389,35 @@ export async function runStarterSquadAllocation(supabase, {
     teams = await getBetaManagerTeams(supabase);
   }
   const teamIds = teams.map((t) => t.id).filter(Boolean);
-  const count = teamIds.length * STARTER_SQUAD.SQUAD_SIZE;
+  const corePerPool = teamIds.length * STARTER_SQUAD.CORE_SIZE;
+  const tailPerPool = teamIds.length * STARTER_SQUAD.TAIL_SIZE;
 
   const existingFoldedNames = await fetchExistingFoldedNames(supabase);
 
-  // Eget seed-offset så puljen ikke spejler markeds-populationens første N ryttere.
-  const poolPayload = buildWeakStarterPool({
-    count,
-    seed: (seed + 1487) >>> 0,
-    referenceYear,
-    existingFoldedNames,
-    generate: d.generate,
+  // To svage pools: kerne [50,57] + hale [50,52]. Eget seed-offset pr. pulje.
+  const corePayload = buildWeakStarterPool({
+    count: corePerPool, seed: (seed + 1487) >>> 0, referenceYear,
+    existingFoldedNames, window: STARTER_POOL_STAT_WINDOW, generate: d.generate,
+  });
+  const tailPayload = buildWeakStarterPool({
+    count: tailPerPool, seed: (seed + 1487 + 7) >>> 0, referenceYear,
+    existingFoldedNames, window: STARTER_TAIL_STAT_WINDOW, generate: d.generate,
   });
 
   if (dryRun) {
-    return { dryRun: true, teams: teamIds.length, poolSize: count, assigned: 0, toAssign: count };
+    return { dryRun: true, teams: teamIds.length, poolSize: corePerPool + tailPerPool, assigned: 0, toAssign: corePerPool + tailPerPool };
   }
 
-  // Delt kerne: insert → derive (data-hale) → læs allokerings-pulje tilbage.
-  const pool = await insertDeriveAndReadPool(supabase, poolPayload, { referenceYear, derive: d.derive });
+  // Delt kerne: insert → derive (data-hale) → læs allokerings-pulje tilbage (begge pools).
+  const corePool = await insertDeriveAndReadPool(supabase, corePayload, { referenceYear, derive: d.derive });
+  const tailPool = await insertDeriveAndReadPool(supabase, tailPayload, { referenceYear, derive: d.derive });
 
-  // Allokér (starCutoffFraction 0 — hele puljen er svag, ingen stjerner).
-  const { assignments, leftToMarket, stats } = allocateStarterSquads(pool, teamIds, { seed, starCutoffFraction: 0 });
+  // Kerne: 4 unge + 4 kerne-dom (starCutoffFraction 0 — hele puljen er svag).
+  const { assignments, leftToMarket, stats } = allocateStarterSquads(corePool, teamIds, { seed, starCutoffFraction: 0 });
+  // Hale: 4 ekstra-svage dom pr. hold.
+  const { tailAssignments } = distributeTailRiders(tailPool, teamIds, STARTER_SQUAD.TAIL_SIZE, { seed });
+  for (const t of teamIds) assignments[t].push(...tailAssignments[t]);
+
   const pairs = Object.entries(assignments).flatMap(([teamId, ids]) =>
     ids.map((id) => ({ id, team_id: teamId })));
 
@@ -395,5 +435,5 @@ export async function runStarterSquadAllocation(supabase, {
       console.error(`[runStarterSquadAllocation] markér ${teamId} fejlede:`, err?.message || err);
     })));
 
-  return { dryRun: false, teams: teamIds.length, poolSize: pool.length, assigned, leftToMarket: leftToMarket.length, stats };
+  return { dryRun: false, teams: teamIds.length, poolSize: corePool.length + tailPool.length, assigned, leftToMarket: leftToMarket.length, stats };
 }

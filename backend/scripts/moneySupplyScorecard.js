@@ -54,7 +54,12 @@ const median = (arr) => {
 };
 
 // ── ASSUMPTION: roster-størrelse pr. hold ved relaunch ──────────────────────────
-// Autoritativ kilde: starterSquadAllocator.STARTER_SQUAD.SQUAD_SIZE (= MIN_RIDERS_FOR_RACE = 8).
+// Autoritativ kilde: starterSquadAllocator.STARTER_SQUAD. Den fulde start-trup er nu
+// TOTAL_SIZE (12 = CORE_SIZE 8 kerne + 4 svag hale) efter race-hub 0c.
+// Scorecardet kalder allocateStarterSquads (= den løbsklare KERNE, CORE_SIZE=8/hold);
+// den svage race-hub-0c-hale (TAIL_SIZE=4) allokeres separat og indgår IKKE her.
+// Halen er bevidst dybe domestiques (base_value ~7k / lav løn) → forsvindende lille
+// effekt på money supply, så money-supply-tallet er reelt uændret af de 4 ekstra ryttere.
 // Allokeringen er DIVISION-BLIND (snake-draft på base_value over ALLE manager-hold,
 // fairness-balanceret), så lønbyrden er ~ens pr. hold uanset division. De gamle 22/15/9-
 // rosters i economyContractSimulation.js er MODNE-hold-templates, IKKE den friske relaunch.
@@ -158,7 +163,7 @@ function computeFreshSalaryBurden() {
   return {
     populationSize: pool.length,
     teamCount: RELAUNCH_TEAM_COUNT,
-    squadSize: STARTER_SQUAD.SQUAD_SIZE,
+    squadSize: STARTER_SQUAD.CORE_SIZE,
     minSquadSize: Math.min(...squadSizes),
     maxSquadSize: Math.max(...squadSizes),
     burdenMin: Math.min(...burdens),
@@ -183,7 +188,7 @@ function printSyntheticSection(fresh, overrides) {
   }
 
   console.log("Antagelser (eksplicitte — ejer sanity-tjekker):");
-  console.log(`  • Roster-størrelse        : ${fresh.squadSize} ryttere/hold (starterSquadAllocator.SQUAD_SIZE)`);
+  console.log(`  • Roster-størrelse        : ${fresh.squadSize} ryttere/hold (starterSquadAllocator.CORE_SIZE)`);
   console.log(`                              division-BLIND allokering → samme lønbyrde i alle divisioner`);
   console.log(`  • Lønrate                 : ${SALARY_RATE} × market_value (= base_value ved seed; frossen ved signering)`);
   console.log(`  • Manager-hold ved launch : ${fresh.teamCount} (relaunch-rehearsal 2026-06-11)`);
@@ -312,7 +317,7 @@ function printTiers4Section(fresh, overrides) {
   console.log("Antagelser (eksplicitte — ejer granit-fryser):");
   console.log(`  • Pyramide               : 4 tiers, ${totalPools} puljer (tier 1×${TIERS4_POOLS_BY_DIVISION[1]}/2×${TIERS4_POOLS_BY_DIVISION[2]}/3×${TIERS4_POOLS_BY_DIVISION[3]}/4×${TIERS4_POOLS_BY_DIVISION[4]})`);
   console.log(`  • Population             : ${TIERS4_TARGET_MANAGERS} managers fordelt T1=${managersByDiv[1]}/T2=${managersByDiv[2]}/T3=${managersByDiv[3]}/T4=${managersByDiv[4]} (∝ pulje-antal)`);
-  console.log(`  • Roster-størrelse       : ${fresh.squadSize} ryttere/hold (starterSquadAllocator.SQUAD_SIZE), division-BLIND`);
+  console.log(`  • Roster-størrelse       : ${fresh.squadSize} ryttere/hold (starterSquadAllocator.CORE_SIZE), division-BLIND`);
   console.log(`  • Lønbyrde (repræsentativ): ${fmt(salary)}/hold — SAMME kalibrerede model som D1-D3-gaten`);
   console.log(`                             (egenskab ved kompetent-roster, IKKE ved populationsstørrelse)`);
   console.log(`  • Lønrate                : ${SALARY_RATE} × market_value`);
