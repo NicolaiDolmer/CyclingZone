@@ -13,7 +13,7 @@ const archetypes = ["climber","sprinter","tt","gc","puncheur","brostensrytter","
 function topOf(ab) { return Math.max(...PHYS.map((k) => ab[k] ?? 0)); }
 
 function simulateOne({ rng, potentiale, archetypeType, startAge, seasons }) {
-  const { stats } = generateYouthStats({ rng, age: startAge, archetypeType });
+  const { stats } = generateYouthStats({ rng, age: startAge, potentiale, archetypeType });
   const rider = { id: `sim-${potentiale}-${archetypeType}`, birthdate: `${2026 - startAge}-06-15`, potentiale, height: 178, weight: 66, ...stats };
   let ab = deriveAbilities(seedPhysiologyFromLegacy(rider), rider);
   const { primary, secondary } = computeRiderTypes(ab);
@@ -45,7 +45,7 @@ function main() {
   console.log("\nKARIKATUR-CHECK (16-årige): evner på gulv (≤8) bør være FÅ:");
   let floorCount = 0, n = 0;
   for (const a of archetypes) for (const p of [2, 4, 6]) {
-    const { stats } = generateYouthStats({ rng: makeRng(n + 1), age: 16, archetypeType: a });
+    const { stats } = generateYouthStats({ rng: makeRng(n + 1), age: 16, potentiale: p, archetypeType: a });
     const rider = { id: `c${n}`, birthdate: "2010-06-15", potentiale: p, height: 175, weight: 62, ...stats };
     const ab = deriveAbilities(seedPhysiologyFromLegacy(rider), rider);
     floorCount += PHYS.filter((k) => (ab[k] ?? 0) <= 8).length; n++;

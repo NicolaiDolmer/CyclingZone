@@ -43,7 +43,7 @@ test("nation-bias: identityBasis vægter dominant_nationality højere", () => {
 
 test("generateYouthStats: 16-årig climber → afledt top ~15, bund ~7, ingen evne >25", () => {
   const rng = makeRng(2026);
-  const { stats, archetypeType } = generateYouthStats({ rng, age: 16, archetypeType: "climber" });
+  const { stats, archetypeType } = generateYouthStats({ rng, age: 16, potentiale: 6, archetypeType: "climber" });
   const rider = { id: "y1", birthdate: "2010-06-15", potentiale: 6, height: 175, weight: 60, ...stats };
   const abil = deriveAbilities(seedPhysiologyFromLegacy(rider), rider);
   const phys = ["climbing","time_trial","flat","tempo","sprint","acceleration","punch","endurance","recovery","durability"];
@@ -55,8 +55,8 @@ test("generateYouthStats: 16-årig climber → afledt top ~15, bund ~7, ingen ev
 });
 
 test("generateYouthStats: 19-årig fødes stærkere end 16-årig (alders-skalering)", () => {
-  const young = generateYouthStats({ rng: makeRng(5), age: 16, archetypeType: "sprinter" });
-  const older = generateYouthStats({ rng: makeRng(5), age: 19, archetypeType: "sprinter" });
+  const young = generateYouthStats({ rng: makeRng(5), age: 16, potentiale: 5, archetypeType: "sprinter" });
+  const older = generateYouthStats({ rng: makeRng(5), age: 19, potentiale: 5, archetypeType: "sprinter" });
   const sum = (s) => Object.values(s.stats).reduce((a, b) => a + b, 0);
   assert.ok(sum(older) > sum(young), `19-årig ${sum(older)} skal > 16-årig ${sum(young)}`);
 });
@@ -67,4 +67,30 @@ test("akademi-kandidat har et anlæg (boostet signatur-stat) og lave stats", () 
     const maxStat = Math.max(...["stat_fl","stat_bj","stat_kb","stat_bk","stat_tt","stat_sp","stat_acc","stat_udh","stat_mod","stat_res"].map((k) => c.rider[k]));
     assert.ok(maxStat <= 62, `max stat ${maxStat} skal være i ungdoms-båndet`);
   }
+});
+
+test("generateYouthStats: høj-potentiale TENDERER mod stærkere start (gns), men overlapper", () => {
+  const archetypes = ["climber","sprinter","tt","gc","puncheur","brostensrytter","rouleur","baroudeur"];
+  const avgTop = (pot) => {
+    let sum = 0, n = 0;
+    for (const a of archetypes) for (let s = 0; s < 40; s++) {
+      const { stats } = generateYouthStats({ rng: makeRng(s * 97 + 3), age: 16, potentiale: pot, archetypeType: a });
+      sum += Math.max(...Object.values(stats)); n++;
+    }
+    return sum / n;
+  };
+  assert.ok(avgTop(6) > avgTop(2), "pot6 skal i snit starte stærkere end pot2");
+});
+
+test("generateYouthStats: 16-årig kohorte har INGEN huller (afledt evne ≤3)", () => {
+  const PHYS = ["climbing","time_trial","flat","tempo","sprint","acceleration","punch","endurance","recovery","durability"];
+  const archetypes = ["climber","sprinter","tt","gc","puncheur","brostensrytter","rouleur","baroudeur"];
+  let holes = 0;
+  for (const a of archetypes) for (let s = 0; s < 40; s++) {
+    const { stats } = generateYouthStats({ rng: makeRng(s * 13 + 1), age: 16, potentiale: (s % 6) + 1, archetypeType: a });
+    const rider = { id: `c${s}`, birthdate: "2010-06-15", potentiale: (s % 6) + 1, height: 175, weight: 62, ...stats };
+    const ab = deriveAbilities(seedPhysiologyFromLegacy(rider), rider);
+    holes += PHYS.filter((k) => (ab[k] ?? 0) <= 3).length;
+  }
+  assert.equal(holes, 0, `forventede 0 huller (≤3), fandt ${holes}`);
 });

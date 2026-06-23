@@ -81,12 +81,7 @@ export function generateAcademyCandidates({
     );
     const birthdate = `${referenceYear - age}-06-15`;
 
-    // Stats: lav, anlægs-formet ungdoms-profil (#1791). Anlæg vælges deterministisk;
-    // de lave stats giver via fallback-derivationen lave evner i ungdoms-båndet.
-    const archetypeType = pickYouthArchetype(rng);
-    const { stats } = generateYouthStats({ rng, age, archetypeType });
-
-    // Potentiale: 0.5-trin
+    // Potentiale: 0.5-trin (flyttes FØR generateYouthStats så potentiale kan videregives)
     let pot;
     if (is_serious) {
       pot = 4.5 + rng() * 1.5; // 4.5–6.0
@@ -94,6 +89,11 @@ export function generateAcademyCandidates({
       pot = 2.0 + rng() * 2.5; // 2.0–4.5
     }
     const potentiale = Math.round(pot * 2) / 2;
+
+    // Stats: lav, anlægs-formet, talent-skaleret ungdoms-profil (#1791). Anlæg vælges deterministisk;
+    // de lave stats giver via fallback-derivationen lave evner i ungdoms-båndet.
+    const archetypeType = pickYouthArchetype(rng);
+    const { stats } = generateYouthStats({ rng, age, potentiale, archetypeType });
 
     // Krop: spred højde/vægt så physiology-seedingen ikke defaulter alle til
     // 180cm/70kg (#1478). Neutralt WorldTour-range; weight afledt af plausibel BMI.
@@ -123,31 +123,37 @@ export function generateAcademyCandidates({
 }
 
 export const YOUTH_GEN_CONFIG = Object.freeze({
-  // Basis-stat-niveau ved 16 år (lige over PCM-floor 50 → afledt evne ~1-7).
-  baseStatAt16: 51.5,
-  // Stat-løft pr. år over 16 (alders-skalering = "spol frem").
+  // Pot-1 anker-niveau ved 16 (lige over PCM-floor 50).
+  baseStatAt16: 50.5,
+  // Stat-løft pr. potentiale-trin over 1 → talent-TENDENS i starten (ikke 1:1 aflæseligt pga. startLuck).
+  potStartLift: 0.5,
+  // Per-rytter "start-held": ÉT seeded gaussian-træk der løfter/sænker HELE profilen, så
+  // potentiale-tiers overlapper. Store talenter kan være langsomme startere; små kan starte lidt over middel.
+  startLuckSd: 1.2,
+  // Alders-skalering ("spol kurven frem" til faktisk alder).
   statPerYearOver16: 1.4,
-  // Signatur-løft: arketypens boostede stats løftes (skaleret ned fra voksen-niveau).
-  signatureBoostScale: 0.45,
-  // Spredning (lille → flad profil).
-  sd: 1.2,
-  // Hårde grænser så afledte evner bliver i ungdoms-båndet (stat 50 → evne 1).
-  statFloor: 50,
-  statCeil: 62,
+  // Arketypens signatur-stats løftes (skaleret ned fra voksen-niveau).
+  signatureBoostScale: 0.20,
+  // Per-stat spredning (lille → flad profil).
+  sd: 0.8,
+  // Hårde grænser: gulv → afledt bund ~7 (ingen huller); loft → afledt top mætter ~21.
+  statFloor: 51.5,
+  statCeil: 57,
 });
 
-// Generér lave, anlægs-formede, alders-skalerede stats for én ung.
-// archetypeType: en af de 8 typer (vælges af kalderen via pickYouthArchetype).
-export function generateYouthStats({ rng, age, archetypeType, cfg = YOUTH_GEN_CONFIG }) {
+// Generér lave, anlægs-formede, alders- OG talent-skalerede stats for én ung, med per-rytter start-held.
+export function generateYouthStats({ rng, age, potentiale, archetypeType, cfg = YOUTH_GEN_CONFIG }) {
   const arch = ARCHETYPE_BY_TYPE[archetypeType];
   if (!arch) throw new Error(`generateYouthStats: ukendt arketype ${archetypeType}`);
   const ageLift = Math.max(0, (Number(age) || 16) - 16) * cfg.statPerYearOver16;
-  const base = cfg.baseStatAt16 + ageLift;
+  const potLift = (clamp(Number(potentiale) || 1, 1, 6) - 1) * cfg.potStartLift;
+  const startLuck = gaussian(rng, 0, cfg.startLuckSd); // ÉT træk pr. rytter (coherent profil-shift) — BLØDGØR talent-tendensen
+  const base = cfg.baseStatAt16 + ageLift + potLift + startLuck;
   const stats = {};
   for (const key of STAT_KEYS) {
     let v = gaussian(rng, base, cfg.sd);
     if (arch.boost[key]) v += arch.boost[key] * cfg.signatureBoostScale;
-    else if (arch.damp?.includes(key)) v -= 1; // let dæmpning af modsatte
+    else if (arch.damp?.includes(key)) v -= 1;
     stats[key] = Math.round(clamp(v, cfg.statFloor, cfg.statCeil));
   }
   return { stats, archetypeType };
