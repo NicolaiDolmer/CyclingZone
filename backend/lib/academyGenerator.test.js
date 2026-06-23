@@ -1,7 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { makeRng } from "./fictionalRiderGenerator.js";
-import { generateAcademyCandidates } from "./academyGenerator.js";
+import { generateAcademyCandidates, generateYouthStats, YOUTH_GEN_CONFIG as _YOUTH_GEN_CONFIG } from "./academyGenerator.js";
+import { seedPhysiologyFromLegacy } from "./physiologySeeding.js";
+import { deriveAbilities } from "./abilityDerivation.js";
 
 const REF_YEAR = 2026;
 
@@ -37,4 +39,24 @@ test("nation-bias: identityBasis vægter dominant_nationality højere", () => {
       .filter((c) => c.rider.nationality_code === "DK").length;
   }
   assert.ok(dkBiased > dkPlain, `biased ${dkBiased} skal > plain ${dkPlain}`);
+});
+
+test("generateYouthStats: 16-årig climber → afledt top ~15, bund ~7, ingen evne >25", () => {
+  const rng = makeRng(2026);
+  const { stats, archetypeType } = generateYouthStats({ rng, age: 16, potentiale: 6, archetypeType: "climber" });
+  const rider = { id: "y1", birthdate: "2010-06-15", potentiale: 6, height: 175, weight: 60, ...stats };
+  const abil = deriveAbilities(seedPhysiologyFromLegacy(rider), rider);
+  const phys = ["climbing","time_trial","flat","tempo","sprint","acceleration","punch","endurance","recovery","durability"];
+  const vals = phys.map((k) => abil[k]);
+  const top = Math.max(...vals), bottom = Math.min(...vals);
+  assert.ok(top <= 25, `top-evne ${top} skal være lav for en 16-årig`);
+  assert.ok(bottom >= 1, `bund ${bottom}`);
+  assert.equal(archetypeType, "climber");
+});
+
+test("generateYouthStats: 19-årig fødes stærkere end 16-årig (alders-skalering)", () => {
+  const young = generateYouthStats({ rng: makeRng(5), age: 16, potentiale: 5, archetypeType: "sprinter" });
+  const older = generateYouthStats({ rng: makeRng(5), age: 19, potentiale: 5, archetypeType: "sprinter" });
+  const sum = (s) => Object.values(s.stats).reduce((a, b) => a + b, 0);
+  assert.ok(sum(older) > sum(young), `19-årig ${sum(older)} skal > 16-årig ${sum(young)}`);
 });

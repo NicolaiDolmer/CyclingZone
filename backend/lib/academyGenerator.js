@@ -10,6 +10,7 @@ import {
   weightedPick,
   makeUniqueName,
   DEFAULT_NATIONALITY_WEIGHTS,
+  ARCHETYPE_BY_TYPE,
 } from "./fictionalRiderGenerator.js";
 import { clusterForNationality } from "./fictionalRiderNames.js";
 import { NAME_CLUSTERS } from "./fictionalRiderNames.js";
@@ -115,4 +116,35 @@ export function generateAcademyCandidates({
   }
 
   return candidates;
+}
+
+export const YOUTH_GEN_CONFIG = Object.freeze({
+  // Basis-stat-niveau ved 16 år (lige over PCM-floor 50 → afledt evne ~1-7).
+  baseStatAt16: 51.5,
+  // Stat-løft pr. år over 16 (alders-skalering = "spol frem").
+  statPerYearOver16: 1.4,
+  // Signatur-løft: arketypens boostede stats løftes (skaleret ned fra voksen-niveau).
+  signatureBoostScale: 0.45,
+  // Spredning (lille → flad profil).
+  sd: 1.2,
+  // Hårde grænser så afledte evner bliver i ungdoms-båndet (stat 50 → evne 1).
+  statFloor: 50,
+  statCeil: 62,
+});
+
+// Generér lave, anlægs-formede, alders-skalerede stats for én ung.
+// archetypeType: en af de 8 typer (vælges af kalderen via pickYouthArchetype).
+export function generateYouthStats({ rng, age, archetypeType, cfg = YOUTH_GEN_CONFIG }) {
+  const arch = ARCHETYPE_BY_TYPE[archetypeType];
+  if (!arch) throw new Error(`generateYouthStats: ukendt arketype ${archetypeType}`);
+  const ageLift = Math.max(0, (Number(age) || 16) - 16) * cfg.statPerYearOver16;
+  const base = cfg.baseStatAt16 + ageLift;
+  const stats = {};
+  for (const key of STAT_KEYS) {
+    let v = gaussian(rng, base, cfg.sd);
+    if (arch.boost[key]) v += arch.boost[key] * cfg.signatureBoostScale;
+    else if (arch.damp?.includes(key)) v -= 1; // let dæmpning af modsatte
+    stats[key] = Math.round(clamp(v, cfg.statFloor, cfg.statCeil));
+  }
+  return { stats, archetypeType };
 }
