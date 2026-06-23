@@ -316,21 +316,51 @@ export default function StandingsPage() {
     : divStandingsBase;
   const divStandings = divRanked.filter(matchesSearch);
 
-  // Zone-grænser beregnes på den point-sorterede liste (Linse A's rangering), så
-  // op-/nedrykning altid følger point — også når Linse B viser en anden sortering.
-  // NOTE (#1152): top-2/bund-2 er hardcodet her. Når #1152 fastlægger antal op/ned
-  // + catch-up-regler, parameterisér PROMOTE_N/RELEGATE_N i stedet for konstanterne.
+  const canPromote = divTab > RULES_NUMBERS.minDivision;
+  const canRelegate = divTab < RULES_NUMBERS.maxDivision;
+
+  // #1152/#1760: op-/nedrykning afgøres PR. PULJE — top 2 op til forælder-puljen, bund 4
+  // ned delt til de to børne-puljer (binær-træ-engine, economyEngine.js PROMOTION_SLOTS=2
+  // / RELEGATION_SLOTS=4). Zone-id'erne beregnes én gang fra tierens samlede point-
+  // sorterede liste pr. pulje, så markeringen er identisk uanset hvilken fane man står på
+  // og tallene summer korrekt (N puljer × 2 op, N puljer × 4 ned). Kun puljer med flere
+  // hold end op+ned-pladser tilsammen får en zone (ellers ville hele puljen være markeret).
   const PROMOTE_N = 2;
-  const RELEGATE_N = 2;
-  const promoteIds = new Set(divStandingsBase.slice(0, PROMOTE_N).map(s => s.team_id));
-  const relegateIds = new Set(divStandingsBase.slice(-RELEGATE_N).map(s => s.team_id));
+  const RELEGATE_N = 4;
+  const tierPointSorted = standings
+    .filter(s => s.team?.division === divTab)
+    .sort((a, b) => effectivePts(b) - effectivePts(a));
+  const promoteIds = new Set();
+  const relegateIds = new Set();
+  const standingsByPool = new Map();
+  for (const s of tierPointSorted) {
+    const key = rowPoolId(s) ?? "__none__";
+    if (!standingsByPool.has(key)) standingsByPool.set(key, []);
+    standingsByPool.get(key).push(s);
+  }
+  standingsByPool.forEach(poolRows => {
+    if (poolRows.length <= PROMOTE_N + RELEGATE_N) return;
+    if (canPromote) poolRows.slice(0, PROMOTE_N).forEach(s => promoteIds.add(s.team_id));
+    if (canRelegate) poolRows.slice(-RELEGATE_N).forEach(s => relegateIds.add(s.team_id));
+  });
+
+  // #1760: nedryknings-destinationen (tieren under) kan være dormant — Div4-puljer åbnes
+  // per pulje når en Div3-pulje er all-real (#1152), så Div3 relegerer reelt ikke før
+  // Div4 er åbnet. Zonen vises stadig, men summarie-linjen forklarer udskydelsen.
+  const relegationTargetTier = divTab + 1;
+  const relegationDormant = canRelegate &&
+    standings.filter(s => s.team?.division === relegationTargetTier).length === 0;
+
+  // Antal i den aktuelle visning ("Alle" = hele tieren, ellers kun den valgte pulje), så
+  // summarie-tallene matcher det man faktisk ser på fanen.
+  const inCurrentPool = (s) => !hasPoolSubtabs || poolTab === POOL_ALL || rowPoolId(s) === poolTab;
+  const promoteCount = tierPointSorted.filter(s => inCurrentPool(s) && promoteIds.has(s.team_id)).length;
+  const relegateCount = tierPointSorted.filter(s => inCurrentPool(s) && relegateIds.has(s.team_id)).length;
 
   const maxPts = effectivePts(divStandingsBase[0]) || 1;
   const maxValue = lens === LENS_STRENGTH ? (strengthVal(divRanked[0]) || 1) : 1;
   const color = divColor(divTab);
   const colorSoft = divColor(divTab, 0.38); // svarer til den tidligere hex-alpha "60"
-  const canPromote = divTab > RULES_NUMBERS.minDivision;
-  const canRelegate = divTab < RULES_NUMBERS.maxDivision;
   // #1608/#1688: faner for alle 4 tiers. Tællingen er pr. TIER (på tværs af puljer),
   // så fanens badge viser holdtallet i hele tieren.
   const divCounts = ALL_DIVISIONS.map(d => ({
@@ -428,6 +458,39 @@ export default function StandingsPage() {
         </button>
       </div>
 
+      {/* #1745/#1760: entydig op-/nedryknings-summarie. Tallene er antal i den aktuelle
+          visning; regel-teksten forklarer per-pulje-mekanikken (top 2 op, bund 4 ned).
+          Kun i Linse A uden aktiv søgning, og kun når tieren faktisk kan rykke. */}
+      {lens === LENS_STANDINGS && !search && divStandings.length > 0 && (canPromote || canRelegate) && (
+        <div className="mb-4 px-3.5 py-2.5 rounded-cz border border-cz-border bg-cz-card text-xs text-cz-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+          <span className="text-cz-3 font-medium uppercase tracking-wide text-[10px]">{t("movement.label")}</span>
+          {canPromote && (
+            <span className="inline-flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-sm bg-cz-success-bg border border-cz-success/40" />
+              {t("movement.up", { count: promoteCount })}
+            </span>
+          )}
+          {canRelegate && (
+            <span className="inline-flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-sm bg-cz-danger-bg border border-cz-danger/40" />
+              {t("movement.down", { count: relegateCount })}
+            </span>
+          )}
+          <span className="text-cz-3">
+            {canPromote && canRelegate
+              ? (hasPoolSubtabs && poolTab === POOL_ALL
+                  ? t("movement.ruleBothPerPool", { up: PROMOTE_N, down: RELEGATE_N, pools: tierPools.length })
+                  : t("movement.ruleBoth", { up: PROMOTE_N, down: RELEGATE_N }))
+              : canRelegate
+                ? t("movement.ruleDown", { down: RELEGATE_N })
+                : t("movement.ruleUp", { up: PROMOTE_N })}
+          </span>
+          {relegationDormant && (
+            <span className="text-cz-3 italic">{t("movement.dormant", { n: relegationTargetTier })}</span>
+          )}
+        </div>
+      )}
+
       {divStandings.length === 0 ? (
         <EmptyState
           icon={<PodiumIcon className="w-8 h-8 text-cz-3" aria-hidden="true" />}
@@ -499,7 +562,7 @@ export default function StandingsPage() {
                   return (
                     <Fragment key={s.id}>
                       {/* Separator before relegation zone */}
-                      {showZoneSeparators && i === divStandings.length - RELEGATE_N && canRelegate && divStandings.length > 4 && (
+                      {showZoneSeparators && !(hasPoolSubtabs && poolTab === POOL_ALL) && canRelegate && divStandings.length > PROMOTE_N + RELEGATE_N && i === divStandings.length - RELEGATE_N && (
                         <tr aria-hidden="true">
                           <td colSpan={COLSPAN} style={{ padding: 0, lineHeight: 0, border: 0 }}>
                             <div className="border-t border-cz-danger/30" />
@@ -591,7 +654,7 @@ export default function StandingsPage() {
                         )}
                       </tr>
                       {/* Separator after promotion zone */}
-                      {showZoneSeparators && i === PROMOTE_N - 1 && canPromote && divStandings.length > 2 && (
+                      {showZoneSeparators && !(hasPoolSubtabs && poolTab === POOL_ALL) && canPromote && divStandings.length > PROMOTE_N + RELEGATE_N && i === PROMOTE_N - 1 && (
                         <tr aria-hidden="true">
                           <td colSpan={COLSPAN} style={{ padding: 0, lineHeight: 0, border: 0 }}>
                             <div className="border-t border-cz-success/30" />
@@ -613,10 +676,12 @@ export default function StandingsPage() {
                   <span className="w-2 h-2 rounded-sm bg-cz-accent" />
                   {t("legendLeader")}
                 </div>
-                <div className="flex items-center gap-1.5 text-xs text-cz-success/70">
-                  <span className="w-2 h-2 rounded-sm bg-cz-success-bg border border-cz-success/30" />
-                  {t("legendPromotion")}
-                </div>
+                {canPromote && (
+                  <div className="flex items-center gap-1.5 text-xs text-cz-success/70">
+                    <span className="w-2 h-2 rounded-sm bg-cz-success-bg border border-cz-success/30" />
+                    {t("legendPromotion")}
+                  </div>
+                )}
                 {canRelegate && (
                   <div className="flex items-center gap-1.5 text-xs text-cz-danger/70">
                     <span className="w-2 h-2 rounded-sm bg-cz-danger-bg border border-cz-danger/30" />

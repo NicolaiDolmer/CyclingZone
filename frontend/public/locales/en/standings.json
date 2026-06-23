@@ -29,12 +29,22 @@
   "penaltyTooltip": "Squad size deduction: {penalty} points ({earned} earned − {penalty} deduction)",
   "legendLeader": "Leader (rank 1)",
   "legendPromotion": "Promotion zone (top 2)",
-  "legendRelegation": "Relegation zone (bottom 2)",
+  "legendRelegation": "Relegation zone (bottom 4)",
   "legendStrong": "Strong ability ({n}+)",
   "strengthHint": "Sorted by total squad value",
   "racesPlayed": "{count} races played",
   "onlineNow": "Online now",
   "offline": "Offline",
+  "movement": {
+    "label": "Movement",
+    "up": "{count} promoting",
+    "down": "{count} relegating",
+    "ruleBoth": "Top {up} go up, bottom {down} go down",
+    "ruleBothPerPool": "Top {up} up, bottom {down} down in each of the {pools} pools",
+    "ruleDown": "Bottom {down} go down",
+    "ruleUp": "Top {up} go up",
+    "dormant": "Relegation activates once Division {n} opens"
+  },
   "lens": {
     "standings": "Standings",
     "strength": "Squad strength"

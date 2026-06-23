@@ -330,7 +330,7 @@
           "Admin lukker transfervinduet og starter ny sæson.",
           "Ved sæsonstart: ventende transfers behandles, sponsorpenge udbetales først, dernæst trækkes lånerenter og lønninger (hver løn er frosset ved signering og følger ikke rytterens senere markedsværdi). Nødlån oprettes kun hvis sponsor+balance ikke kan dække.",
           "Løb afvikles af Cycling Zones race-motor, der simulerer hver etape og skriver resultaterne automatisk.",
-          "Ved sæsonafslutning: point tælles op, divisionsbonus udbetales, op/nedrykning afgøres (fra sæson 3 og frem), og bestyrelsesplaner evalueres. Løn og renter trækkes IKKE ved sæsonslut længere. Det er flyttet til næste sæsons start (v3.78)."
+          "Ved sæsonafslutning: point tælles op, divisionsbonus udbetales, op/nedrykning afgøres, og bestyrelsesplaner evalueres. Løn og renter trækkes IKKE ved sæsonslut længere. Det er flyttet til næste sæsons start (v3.78)."
         ]
       },
       "racesAndResults": {
@@ -360,7 +360,7 @@
       },
       "promotionRelegation": {
         "title": "Op- og nedrykning",
-        "text": "Top 2 i Division 2 og 3 rykker op. Bund 2 i Division 1 og 2 rykker ned. Afgøres automatisk ved sæsonafslutning baseret på sæsonpoint. Divisionerne er låst de første to sæsoner: de første op- og nedrykninger sker når sæson 2 slutter, så alle har tid til at finde sig til rette i en division først."
+        "text": "Top 2 i hver pulje rykker en division op, og bund 4 rykker en division ned. Afgøres automatisk ved sæsonafslutning baseret på sæsonpoint. Division 1 er toppen og har ingen oprykning; den nederste division har ingen nedrykning. Antal op = antal ned, så hver pulje forbliver i balance. Division 4 åbner gradvist efterhånden som puljerne fyldes med rigtige managere, så en Division 3-puljes nedrykning aktiveres når dens Division 4-puljer er åbnet."
       },
       "whenSeasonEnds": {
         "title": "Hvornår kan en sæson afsluttes?",
@@ -409,7 +409,7 @@
       "label": "Divisioner",
       "overview": {
         "title": "Divisionsoversigt",
-        "text": "Spillet har 3 divisioner. Division 1 er den højeste. Alle starter i Division 3."
+        "text": "Spillet har 4 divisioner. Division 1 er den højeste. Alle starter i Division 3."
       },
       "sizePerDivision": {
         "title": "Holdstørrelse per division",
@@ -422,7 +422,7 @@
       },
       "promotionRelegation": {
         "title": "Op- og nedrykning",
-        "text": "Top 2 rykker op, bund 2 rykker ned i hver division. Rykningsafgørelse sker automatisk ved sæsonafslutning. Divisionerne er låst de første to sæsoner, så de første op- og nedrykninger sker når sæson 2 slutter."
+        "text": "Top 2 i hver pulje rykker op, og bund 4 rykker ned. Afgøres automatisk ved sæsonafslutning. Division 1 har ingen oprykning, og den nederste division har ingen nedrykning. Division 4 åbner gradvist, så en Division 3-puljes nedrykning starter når dens Division 4-puljer åbner."
       }
     },
     "riders": {
