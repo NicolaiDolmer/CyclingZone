@@ -73,8 +73,11 @@ export const KNOWN_EVENTS = Object.freeze([
   // Feature-impressions — canaries der fanger "deployed feature med 0 brugere"
   // (samme klasse som slice 14 / #279). Detector E i audit-feature-liveness.js
   // alarmerer hvis nogen af disse har 0 events sidste 30 dage.
+  // feature_admin_auction_config_opened fjernet (#1650): blev kun fyret fra den
+  // gamle AdminPage.jsx, som blev slettet som dead code i #1180/#1289 (d8caeda9).
+  // Den nye admin-økonomi-fane (AdminEconomyTab.jsx) re-instrumenteres ikke —
+  // admin-only impressions er ikke et meningsfuldt canary-signal.
   "feature_rider_development_tab_opened",
-  "feature_admin_auction_config_opened",
   "feature_board_consequences_panel_viewed",
   "feature_finance_forecast_card_viewed",
   "feature_hall_of_fame_opened",
@@ -82,6 +85,18 @@ export const KNOWN_EVENTS = Object.freeze([
   "survey_banner_shown",
   "survey_banner_clicked",
   "survey_banner_dismissed",
+  // Academy (#1308/#932) — fyrer fra useAcademy.js når managers håndterer
+  // akademiryttere. Tilføjet til KNOWN_EVENTS i #1669 (var instrumenteret men
+  // canary-blinde). Naturligt 0 indtil academy_enabled flippes ved relaunch.
+  "academy_sign",
+  "academy_reject",
+  "academy_free_agent_sign",
+  "academy_graduate",
+  // Training (#1305) — fyrer fra useTraining.js ved bulk-fokus + daglig træning.
+  // Tilføjet til KNOWN_EVENTS i #1669 (var instrumenteret men canary-blinde).
+  // Naturligt 0 indtil træningsmotoren er aktiv for spillere.
+  "training_focus_set_bulk",
+  "training_run_today",
 ]);
 
 async function _logEvent(name, data) {

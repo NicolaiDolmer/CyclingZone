@@ -244,8 +244,23 @@ const WHITELIST_ZERO_IMPRESSION_EVENTS = new Set([
   "feature_board_consequences_panel_viewed",
   // Survey-CTA-banner (#364) er gated bag admin-preview via app_config-flag
   // indtil Tally-URL flippes (sprint uge 1 ons/tor). Naturlige impressions
-  // begynder efter flag-flip — fjern denne entry når banner går live for alle.
+  // begynder efter flag-flip — fjern disse entries når banner går live for alle.
+  // Begge events fyrer reelt fra SurveyBanner.jsx (dismissed: linje 111,
+  // clicked: linje 105) — survey_banner_clicked whitelistet i #1650 (var listet
+  // i KNOWN_EVENTS men 0 impressions fordi banneret kun vises i admin-preview).
   "survey_banner_dismissed",
+  "survey_banner_clicked",
+  // Academy + training (#1669): events fyrer reelt fra useAcademy.js / useTraining.js,
+  // men starter naturligt på 0 indtil de bagvedliggende motorer (academy_enabled,
+  // træningsmotoren) er aktive for spillere efter relaunch. Tilføjet til KNOWN_EVENTS
+  // i #1669 for canary-dækning; whitelistet her med samme mønster som funnel-events
+  // i PR #1660. Fjern hver entry når dens event flyder (tjek player_events).
+  "academy_sign",
+  "academy_reject",
+  "academy_free_agent_sign",
+  "academy_graduate",
+  "training_focus_set_bulk",
+  "training_run_today",
   // Pillar-event (#1168) instrumenteret 2026-06-10 sammen med firing-stien
   // (useTraining.setPlan). Starter naturligt på 0 indtil spillere sætter fokus
   // — fjern entry når events flyder (tjek player_events for training_focus_set).
