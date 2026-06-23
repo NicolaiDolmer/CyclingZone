@@ -3838,7 +3838,7 @@ const USERNAME_RE = /^[A-Za-z0-9_-]{3,20}$/;
 router.put("/me/username", requireAuth, marketWriteLimiter, async (req, res) => {
   const raw = typeof req.body?.username === "string" ? req.body.username.trim() : "";
   if (!USERNAME_RE.test(raw)) {
-    return res.status(400).json({ error: "Brugernavn skal være 3-20 tegn (bogstaver, tal, _ eller -)" });
+    return res.status(400).json({ error: "Username must be 3-20 characters (letters, numbers, _ or -)", errorCode: "username_invalid" });
   }
 
   // Case-insensitivt unikheds-tjek, men ekskludér brugeren selv (så de kan
@@ -3849,7 +3849,7 @@ router.put("/me/username", requireAuth, marketWriteLimiter, async (req, res) => 
     .ilike("username", raw)
     .neq("id", req.user.id)
     .maybeSingle();
-  if (clash) return res.status(409).json({ error: "Brugernavnet er optaget" });
+  if (clash) return res.status(409).json({ error: "Username is taken", errorCode: "username_taken" });
 
   const { data, error } = await supabase
     .from("users")
@@ -3860,7 +3860,7 @@ router.put("/me/username", requireAuth, marketWriteLimiter, async (req, res) => 
 
   if (error) {
     // 23505 = unique_violation — tabt race mod et samtidigt skift.
-    if (error.code === "23505") return res.status(409).json({ error: "Brugernavnet er optaget" });
+    if (error.code === "23505") return res.status(409).json({ error: "Username is taken", errorCode: "username_taken" });
     return res.status(500).json({ error: error.message });
   }
 
