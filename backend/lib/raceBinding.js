@@ -36,6 +36,35 @@ export function findRiderBindingConflicts({ riderIds = [], thisWindow, otherRace
   return [...bound];
 }
 
+// Efter en reschedule der introducerer overlap: find ryttere udtaget (manuelt) til to
+// tidsoverlappende løb. Pure + deterministisk. Returnerer ét par pr. konflikt med det
+// kronologisk TIDLIGSTE løb som "keep" og det senere som "drop" (resolve = fjern
+// rytteren fra drop-løbet, så holdet ikke dobbeltbookes; det bliver blot underbemandet dér).
+//
+// @param {{ entries: Array<{race_id, rider_id}>, windowByRace: Map<race_id,{start,end}> }} args
+// @returns {Array<{ rider_id, keepRaceId, dropRaceId }>}
+export function findManualOverlapConflicts({ entries = [], windowByRace }) {
+  const byRider = new Map();
+  for (const e of entries) {
+    const w = windowByRace.get(e.race_id);
+    if (!w) continue; // løb uden vindue kan ikke binde
+    if (!byRider.has(e.rider_id)) byRider.set(e.rider_id, []);
+    byRider.get(e.rider_id).push({ race_id: e.race_id, window: w });
+  }
+  const conflicts = [];
+  for (const [rider_id, races] of byRider) {
+    races.sort((a, b) => a.window.start - b.window.start || String(a.race_id).localeCompare(String(b.race_id)));
+    for (let i = 0; i < races.length; i++) {
+      for (let j = i + 1; j < races.length; j++) {
+        if (windowsOverlap(races[i].window, races[j].window)) {
+          conflicts.push({ rider_id, keepRaceId: races[i].race_id, dropRaceId: races[j].race_id });
+        }
+      }
+    }
+  }
+  return conflicts;
+}
+
 // Race-hub pulje-binding (#1798-opfølgning): et hold hører kun til feltet for et løb
 // i sin EGEN pulje. racePoolId = race.league_division_id (null = løbet har ingen pulje
 // → ingen restriktion; spejler autofill-pulje-filteret i raceRunner.js, der springes

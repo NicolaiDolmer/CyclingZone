@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { materializeSeasonCalendar } from "./seasonCalendarMaterializer.js";
+import { raceTimeWindow, windowsOverlap } from "./raceBinding.js";
 
 // Mock-supabase (samme mønster som aiTeamGenerator.test.js), men races.insert().select()
 // returnerer HELE den indsatte række (materializeren skal bruge name/race_type/stages
@@ -112,6 +113,26 @@ test("apply: races m. league_division_id + profiler + schedule, kun live puljer"
   for (const rc of sb.state.races.filter((x) => x.league_division_id === 4)) {
     assert.ok(["ProSeries", "Class1"].includes(rc.race_class), `tier 3 uventet klasse ${rc.race_class}`);
   }
+});
+
+test("materialiseret kalender har tids-overlap i en pulje (binding aktiveres)", async () => {
+  const sb = makeSupabase(seed());
+  await materializeSeasonCalendar({
+    supabase: sb, seasonId: "s1", seasonStartDate: "2026-06-22", from: FROM, dryRun: false,
+  });
+  // Saml vinduer pr. løb i pulje 1 (div1, altid live).
+  const pool1RaceIds = sb.state.races.filter((r) => r.league_division_id === 1).map((r) => r.id);
+  const winByRace = new Map();
+  for (const id of pool1RaceIds) {
+    const sched = sb.state.race_stage_schedule.filter((s) => s.race_id === id);
+    winByRace.set(id, raceTimeWindow(sched));
+  }
+  // Mindst ét par løb i puljen skal overlappe tidsmæssigt.
+  let overlaps = 0;
+  for (let i = 0; i < pool1RaceIds.length; i++)
+    for (let j = i + 1; j < pool1RaceIds.length; j++)
+      if (windowsOverlap(winByRace.get(pool1RaceIds[i]), winByRace.get(pool1RaceIds[j]))) overlaps++;
+  assert.ok(overlaps > 0, `pulje 1 skal have mindst ét overlappende løb-par (fik ${overlaps})`);
 });
 
 test("idempotent: anden kørsel indsætter 0 (allerede materialiseret)", async () => {

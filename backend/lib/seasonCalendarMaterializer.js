@@ -172,9 +172,9 @@ export async function materializeSeasonCalendar({
     }
     summary.stageProfiles += profileRows.length;
 
-    // 5b. Schedule (scheduled_for + race_stage_schedule). NB: hver pulje planlægges fra
-    // samme anker → divisionerne kører parallelt. Den globale MAX_STAGES_PER_DAY-cap i
-    // stageScheduler kan kræve justering ved 15 parallelle puljer (ÅBEN ejer-beslutning).
+    // 5b. Schedule (scheduled_for + race_stage_schedule). planRaceSchedules fordeler
+    // puljens løb på 2 parallelle spor (default) → tids-overlappende løb, så bindingen
+    // (Fase 0a) er aktiv. Throughput uændret (2 etaper/dag/pulje); MAX_STAGES_PER_DAY rører vi ikke.
     const { raceUpdates, stageRows } = planRaceSchedules({ races: insertedRaces, from });
     for (const ru of raceUpdates) {
       const { error } = await supabase.from("races").update({ scheduled_for: ru.scheduled_for }).eq("id", ru.id);

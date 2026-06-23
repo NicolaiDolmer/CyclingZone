@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { raceTimeWindow, windowsOverlap, findRiderBindingConflicts, loadTeamBindingContext, teamInRacePool } from "./raceBinding.js";
+import { raceTimeWindow, windowsOverlap, findRiderBindingConflicts, loadTeamBindingContext, findManualOverlapConflicts, teamInRacePool } from "./raceBinding.js";
 
 test("raceTimeWindow: start=tidligste, end=seneste etape", () => {
   const w = raceTimeWindow([
@@ -84,6 +84,53 @@ test("loadTeamBindingContext: bygger thisWindow + otherRaces grupperet pr. løb"
   assert.equal(ctx.otherRaces.length, 1);
   assert.equal(ctx.otherRaces[0].window.end, Date.parse("2026-06-24T13:00:00Z"));
   assert.deepEqual(ctx.otherRaces[0].riderIds.sort(), ["r1", "r2"]);
+});
+
+test("findManualOverlapConflicts: ingen konflikt når vinduer ikke overlapper", () => {
+  const entries = [
+    { race_id: "A", rider_id: "r1" },
+    { race_id: "B", rider_id: "r1" },
+  ];
+  const windowByRace = new Map([
+    ["A", { start: 100, end: 200 }],
+    ["B", { start: 300, end: 400 }],
+  ]);
+  assert.deepEqual(findManualOverlapConflicts({ entries, windowByRace }), []);
+});
+
+test("findManualOverlapConflicts: samme rytter i to overlappende løb → drop det senere", () => {
+  const entries = [
+    { race_id: "A", rider_id: "r1" },
+    { race_id: "B", rider_id: "r1" },
+  ];
+  const windowByRace = new Map([
+    ["A", { start: 100, end: 300 }],
+    ["B", { start: 200, end: 400 }], // overlapper A
+  ]);
+  const conflicts = findManualOverlapConflicts({ entries, windowByRace });
+  assert.equal(conflicts.length, 1);
+  assert.deepEqual(conflicts[0], { rider_id: "r1", keepRaceId: "A", dropRaceId: "B" });
+});
+
+test("findManualOverlapConflicts: forskellige ryttere giver ingen konflikt", () => {
+  const entries = [
+    { race_id: "A", rider_id: "r1" },
+    { race_id: "B", rider_id: "r2" },
+  ];
+  const windowByRace = new Map([
+    ["A", { start: 100, end: 300 }],
+    ["B", { start: 200, end: 400 }],
+  ]);
+  assert.deepEqual(findManualOverlapConflicts({ entries, windowByRace }), []);
+});
+
+test("findManualOverlapConflicts: løb uden vindue ignoreres", () => {
+  const entries = [
+    { race_id: "A", rider_id: "r1" },
+    { race_id: "B", rider_id: "r1" },
+  ];
+  const windowByRace = new Map([["A", { start: 100, end: 300 }]]); // B mangler vindue
+  assert.deepEqual(findManualOverlapConflicts({ entries, windowByRace }), []);
 });
 
 test("loadTeamBindingContext: ingen andre entries → tom otherRaces", async () => {
