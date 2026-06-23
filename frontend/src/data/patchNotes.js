@@ -9,6 +9,20 @@ export const PATCHES = [
     "label": "Beta",
     "changes": [
       {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Rejecting an academy prospect no longer errors on a fast double-click",
+          "body": "Turning down an academy prospect now reliably lists them on the youth market, even if you tap reject twice in quick succession. Before, a rapid double-tap could show a server error."
+        },
+        "da": {
+          "title": "Afvisning af et akademitalent fejler ikke længere ved hurtigt dobbeltklik",
+          "body": "Når du takker nej til et akademitalent, listes han nu pålideligt på ungdomsmarkedet, også hvis du trykker afvis to gange hurtigt efter hinanden. Før kunne et hurtigt dobbelttryk vise en serverfejl."
+        },
+        "refs": []
+      },
+      {
         "category": "improved",
         "audience": "player",
         "topic": "Training",
