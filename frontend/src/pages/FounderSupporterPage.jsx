@@ -274,10 +274,6 @@ export default function FounderSupporterPage() {
                 <CheckIcon size={14} className="text-cz-accent-t flex-shrink-0" />
                 {t("badgeFair")}
               </li>
-              <li className="inline-flex items-center gap-1.5">
-                <CheckIcon size={14} className="text-cz-accent-t flex-shrink-0" />
-                {t("badgeGdpr")}
-              </li>
             </ul>
           </div>
         </section>
