@@ -209,7 +209,7 @@ async function defaultAllocateSquadForTeam(supabase, teamId, { pool, baseSeed, o
   // hash(pulje:indeks). Deterministisk + hold-unik.
   const teamSeed = deriveTeamSeed((baseSeed + 1688) >>> 0, `${pool.id}:${ordinal}`);
   const poolPayload = buildWeakStarterPool({
-    count: STARTER_SQUAD.SQUAD_SIZE,
+    count: STARTER_SQUAD.CORE_SIZE,
     seed: teamSeed,
     referenceYear,
     existingFoldedNames,
