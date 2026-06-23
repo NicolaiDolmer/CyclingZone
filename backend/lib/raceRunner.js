@@ -35,6 +35,7 @@ import { applyRaceFatigue, stageEnteringFatigues } from "./raceFatigue.js";
 import { autopickTeamSelection, selectionSizeForRace } from "./raceAutopick.js";
 import { applyStageResultAtomic } from "./stageResultRpc.js";
 import { POOL_TARGET_SIZE } from "./economyConstants.js";
+import { loadWithdrawnTeamIds } from "./raceWithdrawal.js";
 
 // Intern klassements-point (grøn/bjerg) — afgør KUN rækkefølgen i de respektive
 // trøje-konkurrencer; selve præmie-pointene kommer fra race_points via rank.
@@ -328,13 +329,17 @@ export async function fillMissingTeamEntries({ supabase, race, stages, existingE
     .or("is_test_account.is.null,is_test_account.eq.false");
   if (teamErr) throw new Error(`teams: ${teamErr.message}`);
   const teamsWithEntries = new Set((existingEntries || []).map((e) => e.team_id));
+  // Fase 0b: hold der har trukket sig fra løbet (frivillig deltagelse) udelades.
+  const withdrawnTeams = await loadWithdrawnTeamIds({ supabase, raceId: race.id });
 
   // #1688 pulje-filter: kun hold i løbets pulje (når løbet har en). NB: DB-eq på
   // league_division_id kunne gøre dette server-side, men selectInChunks-/teams-stien
   // henter alle hold; vi filtrerer i app-koden så logikken er testbar og pulje-
   // semantikken er eksplicit (service_role/bulk bypasser desuden RLS).
   const racePoolId = race?.league_division_id ?? null;
-  let eligibleTeams = (teams || []).filter((t) => !t.is_frozen && !teamsWithEntries.has(t.id));
+  let eligibleTeams = (teams || []).filter(
+    (t) => !t.is_frozen && !teamsWithEntries.has(t.id) && !withdrawnTeams.has(t.id)
+  );
   if (racePoolId != null) {
     eligibleTeams = eligibleTeams.filter((t) => t.league_division_id === racePoolId);
   }

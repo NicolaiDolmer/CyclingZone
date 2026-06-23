@@ -45,6 +45,7 @@ import {
 import { notifyUser } from "./notificationService.js";
 import { expireAndRenewContracts as defaultExpireAndRenewContracts } from "./sponsorContractsService.js";
 import { isAutoCalendarEnabled } from "./autoCalendarFlag.js";
+import { isAutoEntryGeneratorEnabled } from "./autoEntryGeneratorFlag.js";
 
 let processSeasonStartImpl;
 async function getProcessSeasonStart() {
@@ -63,6 +64,14 @@ async function getMaterializeSeasonCalendar() {
     materializeSeasonCalendarImpl = (await import("./seasonCalendarMaterializer.js")).materializeSeasonCalendar;
   }
   return materializeSeasonCalendarImpl;
+}
+
+let runRaceEntryGeneratorImpl;
+async function getRunRaceEntryGenerator() {
+  if (!runRaceEntryGeneratorImpl) {
+    runRaceEntryGeneratorImpl = (await import("./raceEntryGenerator.js")).runRaceEntryGenerator;
+  }
+  return runRaceEntryGeneratorImpl;
 }
 
 // EN-first fallback (#1068: ingen rå dansk i backend). Locale-aware rendering
@@ -661,6 +670,23 @@ export async function transitionToNextSeason({
         dryRun: false,
       })),
     });
+
+    // Fase 0b: proaktiv entry-generator — fyld de friske kalender-løb med assistent-
+    // udtagne hold (binding-bevidst, idempotent). Additivt + bag eget flag (fail-safe
+    // OFF); en fejl må ALDRIG vælte sæson-transitionen (samme disciplin som de øvrige
+    // additive trin). Kører efter materialiseringen, så løbene findes.
+    const isAutoEntryGeneratorEnabledFn = deps.isAutoEntryGeneratorEnabled ?? isAutoEntryGeneratorEnabled;
+    if (await isAutoEntryGeneratorEnabledFn(supabase)) {
+      try {
+        const runGeneratorFn = deps.runRaceEntryGenerator ?? (await getRunRaceEntryGenerator());
+        log.push({
+          phase: "season_entry_generator",
+          ...(await runGeneratorFn({ supabase, seasonId: plan.to_season.id, dryRun: false })),
+        });
+      } catch (err) {
+        log.push({ phase: "season_entry_generator", error: err.message });
+      }
+    }
   }
 
   log.push({
