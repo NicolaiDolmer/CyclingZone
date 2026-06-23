@@ -4867,7 +4867,7 @@ router.post("/admin/seasons/:id/generate-entries", requireAdmin, adminWriteLimit
       .eq("id", seasonId)
       .single();
     if (seasonError) return res.status(500).json({ error: seasonError.message });
-    if (!season) return res.status(404).json({ error: "Sæson ikke fundet" });
+    if (!season) return res.status(404).json({ error: "Season not found" });
 
     const result = await runRaceEntryGenerator({ supabase, seasonId, dryRun });
 
