@@ -113,5 +113,7 @@ out.push(`**Bundle:** ${bundleLine}\n`);
 out.push(`**Findings:** ${red} 🔴, ${yellow} 🟡 (grønne = OK, vist nederst)\n`);
 out.push("| | Område | Note |");
 out.push("|---|---|---|");
-for (const f of findings) out.push(`| ${icon[f.sev]} | ${f.area} | ${f.msg.replace(/\|/g, "\\|")} |`);
+// Escape BÅDE backslash og pipe i ét pass (rækkefølge-sikkert) så backslashes i
+// fx Windows-stier ikke mangler-rendrer tabellen — \\→\\\\, |→\| (js/incomplete-sanitization #164).
+for (const f of findings) out.push(`| ${icon[f.sev]} | ${f.area} | ${f.msg.replace(/[\\|]/g, "\\$&")} |`);
 console.log(out.join("\n"));
