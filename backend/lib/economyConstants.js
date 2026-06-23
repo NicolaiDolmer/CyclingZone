@@ -70,7 +70,14 @@ export const INITIAL_BALANCE = 500000;
 export const STAR_RIDER_MARKET_VALUE = 8_000_000;
 
 // Præmie per UCI-point ved race-import (prizePayoutEngine).
-export const PRIZE_PER_POINT = 1500;
+// #1816 (ejer-besluttet 2026-06-23): sænket 1500 → 75 (÷20). Det gamle niveau gjorde
+// præmie til den dominerende pengekilde i økonomien (D1 ~2,2M/sæson ved 61 løbsdage =
+// 3× sponsoren, ~14× den antagelse #1441-break-even var kalibreret mod). Ved 75 falder
+// præmie til et meningsfuldt SUPPLEMENT (~30-40% af sponsor) i stedet for at oversvømme
+// sponsor/upkeep-balancen — verificeret af prizeDistributionScorecard (CZ_CAL_PRIZE_PER_POINT=75).
+// Rolle-beslutning: præmie = sekundær bonus, sponsor = primær indtægt.
+// Frontend-spejl: expectedPrizeCalculator.js + rulesNumbers.js (separate codebases, hold i sync).
+export const PRIZE_PER_POINT = 75;
 
 // Rente på negativ balance ved sæsonslut.
 export const NEGATIVE_BALANCE_INTEREST_RATE = 0.10;

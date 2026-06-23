@@ -7,6 +7,7 @@ import {
   simulateRace,
 } from "./raceRunner.js";
 import { isRaceEngineV2Enabled } from "./raceEngineFlag.js";
+import { PRIZE_PER_POINT } from "./economyConstants.js";
 import { ABILITY_KEYS } from "./raceSimulator.js";
 import { DEMAND_VECTORS } from "./raceStageProfileGenerator.js";
 
@@ -117,7 +118,7 @@ test("points_earned/prize_money udledes af (result_type, rank) via lookup", () =
   const { resultRows } = buildRaceResults({ race: STAGE_RACE, stages: STAGES_3, entrants: ENTRANTS, pointsLookup: POINTS });
   const gc1 = rowsBy(resultRows, "gc").find((r) => r.rank === 1);
   assert.equal(gc1.points_earned, 160);
-  assert.equal(gc1.prize_money, 160 * 1500);
+  assert.equal(gc1.prize_money, 160 * PRIZE_PER_POINT);
   const gcLast = rowsBy(resultRows, "gc").find((r) => r.rank === 8);
   assert.equal(gcLast.points_earned, 0); // rank 8 ikke seedet → 0
 });
