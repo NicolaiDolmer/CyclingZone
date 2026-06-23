@@ -12,6 +12,8 @@
 #   3. Frisk origin/main (fetch --prune; dirty tree = warn, fetch-fail = NO-GO)
 #   4. Worktree-hygiejne (dry-run prune-rapport) + ledig disk (< MinFreeDiskGB = NO-GO)
 #   5. Toolchain: node + gh + node_modules i main-checkout
+#   6. origin/main test-sanity: frontend 'node --test' mod basen (roed base = NO-GO)
+#      — forhindrer at en hel fleet brancher fra en roed origin/main (natbolge 23/6)
 #
 # Idempotent og read-only som default; -Fix aendrer KUN powercfg-timeouts.
 # Skriver JSON-summary til .codex.local/night-wave-preflight.json.
@@ -32,6 +34,10 @@ param(
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+# Native non-zero exits skal IKKE kaste (vi tjekker $LASTEXITCODE selv overalt).
+# Default er $false i PS 7.6, men nogle PC'er/profiler saetter den $true — saa
+# en roed 'node --test' (check 6) ville afbryde scriptet i stedet for NO-GO-branchet.
+$PSNativeCommandUseErrorActionPreference = $false
 
 # Delt gh-retry-wrapper (#1285) — GraphQL-proben genbruger Test-GhGraphqlWithRetry
 # i stedet for et inline retry-loop her.
@@ -236,6 +242,72 @@ foreach ($dir in @("frontend\node_modules", "backend\node_modules")) {
   }
 }
 
+# --- 6. origin/main test-sanity (forhindrer at en fleet arver en roed base) ---
+Write-Section "origin/main test-sanity (frontend node --test)"
+
+# Natbolge 2026-06-23 (wf_8f8a17e2-dc5): alle 16 fleet-agenter branchede fra en
+# roed origin/main (patchNotes.js v5.97 brugte ugyldig category "added" → frontend
+# node --test braek), saa den required CI-check 'frontend-build' blev roed paa ALLE
+# 15 PR'er. Det lignede 15 separate regressioner og kraevede en unblocker-PR (#1772)
+# + branch-rebases. Dette check koerer den hurtige, deterministiske gate (frontend
+# node --test, ~2s) mod origin/main FOER launch, saa en roed base fanges som NO-GO.
+#
+# Holdt let bevidst: KUN frontend node --test. Build udeladt (CI's required
+# 'frontend-build' daekker det; node --test fanger samme kontrakt-fejlklasse paa ~2s);
+# backend node --test udeladt (~17s, og incident'en var frontend). Vi tester KUN naar
+# arbejdstraeets frontend/ er identisk med origin/main (saa vi faktisk tester den base
+# agenterne brancher fra) — afviger den, kan vi ikke teste basen uden at materialisere
+# den (worktree-isolation), saa det downgrades til en handlingsorienteret WARN.
+
+$mainTestStatus = "skip"
+$feNodeModules = Join-Path $repoRoot "frontend\node_modules"
+$mainTestSkip = $null
+if (-not $originMainSha) {
+  $mainTestSkip = "origin/main blev ikke fetched (se fetch-fejl ovenfor)"
+} elseif (-not $nodeCmd) {
+  $mainTestSkip = "node ikke paa PATH"
+} elseif (-not ((Test-Path $feNodeModules) -and (@(Get-ChildItem $feNodeModules -Directory -ErrorAction SilentlyContinue).Count -gt 0))) {
+  $mainTestSkip = "frontend/node_modules mangler — koer 'npm run sync-deps'"
+}
+
+if ($mainTestSkip) {
+  $warn += "Kunne ikke test-sanity'e origin/main: $mainTestSkip. Verificer manuelt foer launch: cd frontend; node --test."
+  Write-Host "  [warn] springer over: $mainTestSkip" -ForegroundColor Yellow
+} else {
+  # Er arbejdstraeets frontend/ identisk med origin/main's frontend/? (exit 0 = ja, 1 = nej)
+  & git -C $repoRoot diff --quiet origin/main -- frontend 2>$null
+  $diffExit = $LASTEXITCODE
+  if ($diffExit -eq 0) {
+    Write-Host "  [info] frontend/ er identisk med origin/main ($originMainSha) — koerer node --test (~2s)..."
+    Push-Location (Join-Path $repoRoot "frontend")
+    try {
+      $testOut = & $nodeCmd.Source --test 2>&1
+      $testExit = $LASTEXITCODE
+    } finally {
+      Pop-Location
+    }
+    if ($testExit -eq 0) {
+      $mainTestStatus = "green"
+      $ok += "origin/main frontend node --test groen"
+      Write-Host "  [ok] origin/main frontend node --test groen" -ForegroundColor Green
+    } else {
+      $mainTestStatus = "red"
+      $failLines = @($testOut) | Where-Object { $_ -match '(?i)(not ok|fail|✖)' } | Select-Object -First 4
+      $fail += "origin/main FEJLER frontend node --test — en hel fleet ville arve en roed base (jf. natbolge 2026-06-23, #1772). Fix main FOER launch. Foerste fejl: $([string]::Join(' | ', @($failLines)))"
+      Write-Host "  [NO-GO] origin/main frontend node --test FEJLER (en fleet ville arve den roede base):" -ForegroundColor Red
+      @($testOut) | Select-Object -Last 14 | ForEach-Object { Write-Host "    $_" -ForegroundColor Red }
+    }
+  } elseif ($diffExit -eq 1) {
+    $mainTestStatus = "diverged"
+    $warn += "Arbejdstraeets frontend/ afviger fra origin/main ($originMainSha) — sprang direkte test-sanity over for ikke at teste forkert kode. Synk hoved-checkoutet (git checkout main; git pull) og koer preflight igen, ELLER bekraeft at seneste origin/main 'frontend-build' CI-check er groen foer launch."
+    Write-Host "  [warn] frontend/ afviger fra origin/main — kan ikke teste basen direkte (synk checkout og koer igen)" -ForegroundColor Yellow
+  } else {
+    $mainTestStatus = "error"
+    $warn += "Kunne ikke sammenligne frontend/ med origin/main (git diff exit $diffExit). Verificer origin/main manuelt foer launch."
+    Write-Host "  [warn] git diff mod origin/main fejlede (exit $diffExit) — verificer manuelt" -ForegroundColor Yellow
+  }
+}
+
 # --- Summary + JSON-state ---
 Write-Section "Sammenfatning"
 Write-Host "  $($ok.Count) ok / $($warn.Count) advarsler / $($fail.Count) NO-GO"
@@ -259,6 +331,7 @@ $stateFile = Join-Path $stateDir "night-wave-preflight.json"
   hostname            = $env:COMPUTERNAME
   repoRoot            = $repoRoot
   originMainSha       = $originMainSha
+  originMainTest      = $mainTestStatus
   standbyAcSec        = $power.StandbyAcSec
   hibernateAcSec      = $power.HibernateAcSec
   ghProbeSucceededAt  = $ghProbeSucceededAt
