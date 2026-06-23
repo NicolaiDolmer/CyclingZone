@@ -97,3 +97,12 @@ test("skadede ryttere udelades af autopick; persist=false skriver intet", async 
   assert.ok(!entrants.some((e) => e.rider_id === "t1-r0"), "skadet topscorer udeladt");
   assert.equal(supabase.__calls.filter((c) => c.table === "race_entries").length, 0, "dry-run: ingen insert");
 });
+
+test("afmeldt hold autofyldes IKKE", async () => {
+  const state = baseState();
+  state.race_withdrawals = [{ race_id: "race1", team_id: "t2" }];
+  const supabase = makeSupabase(state);
+  const entrants = await loadEntrantsForRace({ supabase, race, stages, persist: true });
+  assert.equal(entrants.filter((e) => e.team_id === "t2").length, 0, "t2 er afmeldt → ingen entries");
+  assert.ok(entrants.filter((e) => e.team_id === "t1").length > 0, "t1 fyldes stadig");
+});
