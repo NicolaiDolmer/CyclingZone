@@ -72,7 +72,7 @@ export const PATCHES = [
         "refs": [1672]
       },
       {
-        "category": "added",
+        "category": "new",
         "audience": "player",
         "topic": "Academy",
         "en": {
@@ -86,7 +86,7 @@ export const PATCHES = [
         "refs": [1744]
       },
       {
-        "category": "added",
+        "category": "new",
         "audience": "player",
         "topic": "Riders",
         "en": {
