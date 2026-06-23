@@ -29,6 +29,8 @@ import {
   deriveTeamSeed,
   buildWeakStarterPool,
   STARTER_SQUAD,
+  STARTER_POOL_STAT_WINDOW,
+  STARTER_TAIL_STAT_WINDOW,
 } from "./starterSquadAllocator.js";
 import { generateFictionalRiders } from "./fictionalRiderGenerator.js";
 import { deriveForRiderIds } from "./backfillCores.js";
@@ -198,23 +200,30 @@ export async function generateAndAllocateAiTeams({ supabase, seed = LAUNCH_POPUL
   return { created, removed, pools: poolSummaries };
 }
 
-// PROD-STI (default): allokér en svag 8-rytter-trup til et AI-hold via den samme
-// dedikerede-svage-pulje-mekanik (#1487) + derive-kæden (data-hale-garanti:
-// physiology→abilities→type→base_value) som start-trupperne. Indsætter med team_id
-// sat (intet orphan-vindue). Deterministisk per-hold seed.
+// PROD-STI (default): allokér en lagdelt svag 12-rytter-trup (8 kerne [50,57] + 4
+// hale [50,52]) til et AI-hold via den samme dedikerede-svage-pulje-mekanik (#1487) +
+// derive-kæden (data-hale-garanti: physiology→abilities→type→base_value) som
+// start-trupperne. Spejler insertWeakSquadForTeam (manager-truppen): nye AI-hold får
+// den samme lagdelte TOTAL_SIZE-trup som managerhold (race-hub 0c) for konsistens.
+// Indsætter med team_id sat (intet orphan-vindue). Deterministisk per-hold seed.
 async function defaultAllocateSquadForTeam(supabase, teamId, { pool, baseSeed, ordinal }) {
   const referenceYear = LAUNCH_POPULATION.referenceYear;
   const existingFoldedNames = await fetchExistingFoldedNamesForAi(supabase);
   // Per-hold seed: basis (+ et AI-offset så det ikke spejler start-trupperne) XOR
-  // hash(pulje:indeks). Deterministisk + hold-unik.
-  const teamSeed = deriveTeamSeed((baseSeed + 1688) >>> 0, `${pool.id}:${ordinal}`);
-  const poolPayload = buildWeakStarterPool({
-    count: STARTER_SQUAD.CORE_SIZE,
-    seed: teamSeed,
-    referenceYear,
-    existingFoldedNames,
-    generate: generateFictionalRiders,
+  // hash(pulje:indeks). Deterministisk + hold-unik. Eget seed-offset pr. tier (kerne
+  // vs hale) → distinkte pools. Kernen bevarer (+1688) så eksisterende AI-holds kerne
+  // forbliver deterministisk; halen bruger (+1688+7).
+  const coreSeed = deriveTeamSeed((baseSeed + 1688) >>> 0, `${pool.id}:${ordinal}`);
+  const tailSeed = deriveTeamSeed((baseSeed + 1688 + 7) >>> 0, `${pool.id}:${ordinal}`);
+  const corePayload = buildWeakStarterPool({
+    count: STARTER_SQUAD.CORE_SIZE, seed: coreSeed, referenceYear, existingFoldedNames,
+    window: STARTER_POOL_STAT_WINDOW, generate: generateFictionalRiders,
   }).map((r) => ({ ...r, team_id: teamId }));
+  const tailPayload = buildWeakStarterPool({
+    count: STARTER_SQUAD.TAIL_SIZE, seed: tailSeed, referenceYear, existingFoldedNames,
+    window: STARTER_TAIL_STAT_WINDOW, generate: generateFictionalRiders,
+  }).map((r) => ({ ...r, team_id: teamId }));
+  const poolPayload = [...corePayload, ...tailPayload];
 
   const insertedIds = [];
   for (let i = 0; i < poolPayload.length; i += INSERT_BATCH) {
