@@ -123,6 +123,7 @@ import { readFlagStage, evaluateFlagStage } from "../lib/featureStage.js";
 import { runTeamTrainingDay } from "../lib/dailyTrainingEngine.js";
 import { refreshChangedRiderValues } from "../lib/riderValueRefresh.js";
 import { validateSelection, saveSelection, getSelectionContext } from "../lib/raceSelection.js";
+import { loadTeamBindingContext, findRiderBindingConflicts } from "../lib/raceBinding.js";
 import { isRaceEngineV2Enabled } from "../lib/raceEngineFlag.js";
 import { injuryRisk } from "../lib/riderCondition.js";
 import { resolveProgram } from "../lib/dailyTraining.js";
@@ -1474,6 +1475,14 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
       availableCount: ctx.availableCount,
     });
     if (!result.ok) return res.status(400).json({ error: result.errors[0], errors: result.errors });
+
+    // Race-hub Fase 0a: håndhæv overlap-binding — en rytter må ikke være udtaget i
+    // et tidsoverlappende løb (et etapeløb binder hele sit vindue).
+    const binding = await loadTeamBindingContext({ supabase, race, teamId: req.team.id });
+    const bound = findRiderBindingConflicts({ riderIds, thisWindow: binding.thisWindow, otherRaces: binding.otherRaces });
+    if (bound.length) {
+      return res.status(409).json({ error: "selection_rider_bound", bound_rider_ids: bound });
+    }
 
     await saveSelection({ supabase, race, teamId: req.team.id, riderIds, captainId, sprintCaptainId, hunterId });
     res.json({ ok: true });
