@@ -11,7 +11,8 @@ export function validateSelection({
   teamRiderIds, injuredRiderIds, sizeRule, availableCount,
 }) {
   const errors = [];
-  // Fejlrækkefølge (errors[0] vises til brugeren): duplikat → størrelse → fremmed → skadet → kaptajn → roller → overlap.
+  // Fejlrækkefølge (errors[0] vises til brugeren): duplikat → størrelse → fremmed → skadet → kaptajn → roller.
+  // (Overlap-binding håndhæves separat i PUT /selection-handleren og returnerer sin egen 409, ikke en errors[]-kode.)
   const unique = new Set(riderIds);
   if (unique.size !== riderIds.length) errors.push("selection_duplicate_rider");
 

@@ -1478,6 +1478,10 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
 
     // Race-hub Fase 0a: håndhæv overlap-binding — en rytter må ikke være udtaget i
     // et tidsoverlappende løb (et etapeløb binder hele sit vindue).
+    // NB: dette er applikationslags-best-effort. Der er ingen cross-race DB-constraint
+    // (race_entries-PK er kun (race_id, rider_id)), så to næsten-samtidige PUT'er til
+    // overlappende løb kan i teorien begge passere. Acceptabelt her (lavfrekvent, ét
+    // hold ad gangen bag marketWriteLimiter); en hård garanti kræver en DB-constraint i en senere fase.
     const binding = await loadTeamBindingContext({ supabase, race, teamId: req.team.id });
     const bound = findRiderBindingConflicts({ riderIds, thisWindow: binding.thisWindow, otherRaces: binding.otherRaces });
     if (bound.length) {
