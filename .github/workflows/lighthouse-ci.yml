@@ -1,0 +1,120 @@
+name: Lighthouse CI
+
+# Perf/SEO-loop Del 2 — regressions-gate pr. PR.
+#   - HARD gate: bundle-size (gzipped JS) via scripts/check-bundle-budget.mjs.
+#     Deterministisk → blokerer merge ved regression over budget+margin.
+#   - ADVISORY: Lighthouse-scores (perf/a11y/best-practices/SEO) på den byggede
+#     frontend, postet som idempotent PR-comment. Scores svinger på CI-hardware
+#     → blokerer ALDRIG. Den autoritative perf-måling er den ugentlige prod-run
+#     (perf-seo-review.yml) + field-CWV i GA4 (web-vitals).
+# Mønster genbrugt fra feature-liveness-audit.yml (Node 24, checkout@v7,
+# setup-node@v6, github-script@v9, Dependabot-skip).
+
+on:
+  pull_request:
+    paths:
+      - 'frontend/**'
+      - 'scripts/check-bundle-budget.mjs'
+      - 'lighthouserc.json'
+      - '.github/workflows/lighthouse-ci.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  perf-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Skip secret-backed steps for Dependabot PRs
+        if: github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]'
+        run: echo "Skipping Lighthouse CI for Dependabot PR (secrets unavailable to Dependabot-triggered workflows)."
+
+      - name: Check out repository
+        if: github.event.pull_request.user.login != 'dependabot[bot]'
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        if: github.event.pull_request.user.login != 'dependabot[bot]'
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        if: github.event.pull_request.user.login != 'dependabot[bot]'
+        run: npm ci
+        working-directory: frontend
+
+      - name: Build frontend
+        if: github.event.pull_request.user.login != 'dependabot[bot]'
+        run: npm run build
+        working-directory: frontend
+
+      # HARD GATE — fejler jobbet (og blokerer merge) ved bundle-regression.
+      - name: Bundle-size budget (hard gate)
+        if: github.event.pull_request.user.login != 'dependabot[bot]'
+        run: node scripts/check-bundle-budget.mjs
+
+      # ADVISORY — må aldrig blokere; continue-on-error så et flaky Lighthouse-run
+      # ikke fejler jobbet.
+      - name: Lighthouse (advisory)
+        id: lighthouse
+        if: github.event.pull_request.user.login != 'dependabot[bot]'
+        continue-on-error: true
+        uses: treosh/lighthouse-ci-action@v12
+        with:
+          configPath: ./lighthouserc.json
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+
+      - name: Comment Lighthouse scores (advisory, idempotent)
+        if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]'
+        continue-on-error: true
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- lighthouse-ci -->';
+            let scoresTable = '_Lighthouse-run producerede intet manifest (se job-loggen). Bundle-gaten er upåvirket._';
+            let reportLink = '';
+            try {
+              const manifest = JSON.parse(fs.readFileSync('.lighthouseci/manifest.json', 'utf8'));
+              const rep = manifest.find(m => m.isRepresentativeRun) || manifest[0];
+              const s = rep.summary;
+              const pct = v => (v == null ? 'n/a' : `${Math.round(v * 100)}`);
+              scoresTable = [
+                '| Kategori | Score |',
+                '|---|---:|',
+                `| Performance | ${pct(s.performance)} |`,
+                `| Accessibility | ${pct(s.accessibility)} |`,
+                `| Best Practices | ${pct(s['best-practices'])} |`,
+                `| SEO | ${pct(s.seo)} |`,
+              ].join('\n');
+              if (rep.url) reportLink = `\n\nFuld rapport-URL i job-artifact \`lighthouse-results\`.`;
+            } catch (e) {
+              core.warning(`Kunne ikke læse Lighthouse-manifest: ${e.message}`);
+            }
+            const body = [
+              marker,
+              '## 🟡 Lighthouse (advisory — blokerer ikke)',
+              '',
+              'Lab-måling af den byggede frontend (`frontend/dist`, desktop-preset, median af 3 runs). Scores svinger ±et par point på CI-hardware og uden prod-env — brug dem til at fange STORE fald, ikke som facit. Bundle-size er den hard gate (separat step). Autoritativ perf-måling: ugentlig prod-run + field-CWV i GA4.',
+              '',
+              scoresTable + reportLink,
+            ].join('\n');
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number, per_page: 100,
+            });
+            const existing = comments.find(c => c.body && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner, repo: context.repo.repo, comment_id: existing.id, body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number, body,
+              });
+            }
