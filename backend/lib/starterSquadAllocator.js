@@ -153,6 +153,21 @@ export function allocateStarterSquads(pool, teamIds, {
   return { assignments, leftToMarket, stats };
 }
 
+// Race-hub 0c: snake-draft af den svage HALE (perTeam pr. hold) fra en separat
+// hale-pulje. Adskilt fra allocateStarterSquads (kernen) så kernens fairness/
+// stjerne-logik er urørt; halen er flade domestiques (ingen unge, ingen stjerner)
+// → ren base_value-balanceret snake-draft. Determinisk (seeded shuffle inden for
+// værdi-bånd → sortér desc → snake).
+export function distributeTailRiders(tailPool, teamIds, perTeam, { seed = LAUNCH_POPULATION.seed } = {}) {
+  const rng = makeRng(seed);
+  const prepped = seededShuffle(tailPool, rng).sort((a, b) => (b.base_value || 0) - (a.base_value || 0));
+  const tailAssignments = Object.fromEntries(teamIds.map((t) => [t, []]));
+  const totals = Object.fromEntries(teamIds.map((t) => [t, 0]));
+  const used = snakeDraft(prepped, teamIds, perTeam, tailAssignments, totals);
+  const leftToMarket = prepped.slice(used).map((r) => r.id);
+  return { tailAssignments, leftToMarket };
+}
+
 const WRITE_CONCURRENCY = 25;
 const INSERT_BATCH = 500;
 

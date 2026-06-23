@@ -5,6 +5,7 @@ import {
   STARTER_SQUAD,
   STARTER_POOL_STAT_WINDOW,
   allocateStarterSquads,
+  distributeTailRiders,
   allocateStarterSquadForTeam,
   buildWeakStarterPool,
   computeAge,
@@ -194,6 +195,27 @@ test("fairness: holdenes samlede base_value-spænd ≤ tolerance", () => {
   const { stats } = allocateStarterSquads(pool, teamIds, { seed: 2026 });
   assert.ok(stats.maxSquadBaseValue - stats.minSquadBaseValue <= stats.fairnessTolerance,
     `spænd ${stats.maxSquadBaseValue - stats.minSquadBaseValue} > tolerance ${stats.fairnessTolerance}`);
+});
+
+// ── Race-hub 0c · distributeTailRiders (svag hale, snake-draft) ────────────────
+
+test("distributeTailRiders: hvert hold får perTeam hale-ryttere, balanceret, ingen overlap", () => {
+  const teamIds = ["t1", "t2", "t3"];
+  const tailPool = Array.from({ length: 30 }, (_, i) => ({ id: `tail-${i}`, base_value: 7000 - i * 10 }));
+  const { tailAssignments, leftToMarket } = distributeTailRiders(tailPool, teamIds, 4, { seed: 2026 });
+  for (const t of teamIds) assert.equal(tailAssignments[t].length, 4, `${t} hale`);
+  const assigned = teamIds.flatMap((t) => tailAssignments[t]);
+  assert.equal(new Set(assigned).size, assigned.length, "ingen hale-rytter på to hold");
+  assert.equal(assigned.length, 12);
+  assert.equal(leftToMarket.length, 30 - 12, "resten falder ud (skal ikke ske ved korrekt pulje-størrelse)");
+});
+
+test("distributeTailRiders: deterministisk (samme seed → samme resultat)", () => {
+  const teamIds = ["t1", "t2"];
+  const tailPool = Array.from({ length: 8 }, (_, i) => ({ id: `tail-${i}`, base_value: 7000 - i }));
+  const a = distributeTailRiders(tailPool, teamIds, 4, { seed: 2026 });
+  const b = distributeTailRiders(tailPool, teamIds, 4, { seed: 2026 });
+  assert.deepEqual(a.tailAssignments, b.tailAssignments);
 });
 
 // #1487: svag dedikeret start-pool. Stats clampes ind i [50,57] FØR derivation,
