@@ -10,7 +10,7 @@ import { formatNumber, formatDate } from "../lib/intl";
 import { renderBackendMessage } from "../lib/backendMessage";
 import { useActionSummary } from "../hooks/useActionSummary";
 import {
-  Button, Spinner, EmptyState,
+  Button, EmptyState, PageLoader,
   Tabs, TabList, Tab,
   LightningIcon, TrophyIcon, UndoIcon, AlertTriangleIcon, StarIcon,
   ExchangeIcon, CheckIcon, XIcon, FlagIcon, RocketIcon, CoinIcon,
@@ -446,9 +446,7 @@ export default function NotificationsPage() {
           </div>
 
           {notifLoading ? (
-            <div className="flex justify-center py-16">
-              <Spinner size={24} className="border-cz-border border-t-cz-accent" />
-            </div>
+            <PageLoader />
           ) : filteredNotifs.length === 0 ? (
             <EmptyState
               icon={<BellIcon size={32} />}
@@ -595,9 +593,7 @@ export default function NotificationsPage() {
       ) : tab === "skal_handles" ? (
         <>
           {pendingLoading && !pendingLoaded ? (
-            <div className="flex justify-center py-16">
-              <Spinner size={24} className="border-cz-border border-t-cz-accent" />
-            </div>
+            <PageLoader />
           ) : pending.counts.total === 0 ? (
             <EmptyState
               icon={<CheckIcon size={32} />}
@@ -648,9 +644,7 @@ export default function NotificationsPage() {
           </div>
 
           {feedLoading ? (
-            <div className="flex justify-center py-16">
-              <Spinner size={24} className="border-cz-border border-t-cz-accent" />
-            </div>
+            <PageLoader />
           ) : filteredEvents.length === 0 ? (
             <EmptyState
               icon={<FlagIcon size={32} aria-hidden="true" />}

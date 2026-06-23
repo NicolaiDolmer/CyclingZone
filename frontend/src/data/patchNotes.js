@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.02",
+    "date": "2026-06-23",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Interface",
+        "en": {
+          "title": "Pages no longer jump while loading",
+          "body": "Across the game, pages now hold their space while data loads, so the content no longer shifts down the moment it appears. That stops clicks from landing in the wrong spot right after a page opens."
+        },
+        "da": {
+          "title": "Sider hopper ikke længere mens de loader",
+          "body": "Overalt i spillet holder siderne nu deres plads mens data hentes, så indholdet ikke længere skubbes ned i det øjeblik det dukker op. Det forhindrer at klik lander forkert lige efter en side er åbnet."
+        },
+        "refs": [1794]
+      }
+    ]
+  },
+  {
     "version": "6.01",
     "date": "2026-06-23",
     "label": "Beta",

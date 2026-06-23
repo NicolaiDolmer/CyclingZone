@@ -12,7 +12,7 @@ import { formatNumber } from "../lib/intl";
 import { riderStatRating } from "../lib/riderRating";
 import { ABILITY_SELECT, flattenAbilities } from "../lib/abilities";
 import { compareNationality } from "../lib/countryUtils";
-import { CalendarIcon, SearchIcon, ArrowUpIcon, ArrowDownIcon } from "../components/ui";
+import { CalendarIcon, SearchIcon, ArrowUpIcon, ArrowDownIcon, PageLoader } from "../components/ui";
 
 // Altid-synlige sejr-kolonner (kategori-sejre) — venstre→højre.
 const WIN_COLS = [
@@ -221,9 +221,7 @@ export default function RiderRankingsPage() {
   const visibleOptionalCols = OPTIONAL_COLS.filter(c => colVisible[c.key]);
 
   if (loading) return (
-    <div className="flex justify-center py-16">
-      <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
-    </div>
+    <PageLoader />
   );
 
   return (

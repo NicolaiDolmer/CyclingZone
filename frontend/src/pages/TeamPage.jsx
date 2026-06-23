@@ -20,7 +20,7 @@ import TeamTransferHistoryTab from "../components/TeamTransferHistoryTab";
 import { resolveApiError } from "../lib/apiError";
 import SortTh from "../components/rider/RiderSortTh";
 import { cycleSortState } from "../lib/riderSort";
-import { Card, Button, Input, BikeIcon } from "../components/ui";
+import { Card, Button, Input, BikeIcon, PageLoader } from "../components/ui";
 import { buttonClass } from "../components/ui/buttonStyles.js";
 
 // Stat-kolonner = de 15 CZ-evner (delt config lib/abilities.js, importeret som STATS).
@@ -605,9 +605,7 @@ export function TeamPage() {
   const outgoingCount = riders.filter(r => r._isOutgoing).length;
 
   if (loading) return (
-    <div className="flex justify-center py-16">
-      <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
-    </div>
+    <PageLoader />
   );
 
   const tabs = [

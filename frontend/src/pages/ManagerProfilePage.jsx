@@ -13,7 +13,6 @@ import {
   CategoryTag,
   StatusBadge,
   EmptyState,
-  Spinner,
   Tabs,
   TabList,
   Tab,
@@ -28,6 +27,7 @@ import {
   ChevronLeftIcon,
   InboxIcon,
   SettingsIcon,
+  PageLoader,
 } from "../components/ui";
 
 const API = import.meta.env.VITE_API_URL;
@@ -118,9 +118,7 @@ export default function ManagerProfilePage() {
   useEffect(() => { loadProfile(); loadMyTeam(); }, [loadProfile, loadMyTeam]);
 
   if (loading) return (
-    <div className="flex justify-center py-16">
-      <Spinner size={24} className="border-cz-border border-t-cz-accent" />
-    </div>
+    <PageLoader />
   );
   if (!data) return (
     <div className="max-w-3xl mx-auto py-8">

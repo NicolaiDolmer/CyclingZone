@@ -7,7 +7,7 @@ import { computeExpectedRacePrize, formatExpectedPrize } from "../lib/expectedPr
 import { formatNumber } from "../lib/intl";
 import { dateTextToDayOfYear } from "../lib/raceCalendar";
 import LeaderBadge from "../components/LeaderBadge";
-import { CoinIcon, BriefcaseIcon, ExchangeIcon, BikeIcon, FlagIcon } from "../components/ui";
+import { CoinIcon, BriefcaseIcon, ExchangeIcon, BikeIcon, FlagIcon, PageLoader } from "../components/ui";
 
 // 2-farve-system: guld bærer division-hierarkiet via faldende opacitet (tema-bevidst),
 // så Div 2/3-tabeller ikke maler sig i fremmed SaaS-blå/lilla. Bruges i rgb()-form
@@ -221,9 +221,7 @@ export default function SeasonEndPage() {
   }, {});
 
   if (loading) return (
-    <div className="flex justify-center py-16">
-      <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
-    </div>
+    <PageLoader />
   );
 
   return (

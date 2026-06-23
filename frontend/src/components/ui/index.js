@@ -14,6 +14,7 @@ export { default as EmptyState } from "./EmptyState.jsx";
 export { default as ErrorState } from "./ErrorState.jsx";
 export { default as Skeleton } from "./Skeleton.jsx";
 export { default as Spinner } from "./Spinner.jsx";
+export { default as PageLoader } from "./PageLoader.jsx";
 export { default as Divider } from "./Divider.jsx";
 export { default as Link } from "./Link.jsx";
 export { default as Portal } from "./Portal.jsx";

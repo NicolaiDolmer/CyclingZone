@@ -43,7 +43,7 @@ import { resolveApiError } from "../lib/apiError";
 import { getRiderSalary } from "../lib/marketValues.js";
 import SortTh from "../components/rider/RiderSortTh";
 import { cycleSortState } from "../lib/riderSort";
-import { Card, TagIcon, EyeIcon, StarIcon } from "../components/ui";
+import { Card, TagIcon, EyeIcon, StarIcon, PageLoader } from "../components/ui";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -1364,9 +1364,7 @@ export default function AuctionsPage() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-16" role="status" aria-label={t("auctions:page.loadingAria")}>
-          <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
-        </div>
+        <PageLoader label={t("auctions:page.loadingAria")} />
       ) : loadError ? (
         // #1350: terminal, retry-bar fejl — aldrig en evig spinner og aldrig en
         // tom-state der ligner "ingen aktive auktioner".

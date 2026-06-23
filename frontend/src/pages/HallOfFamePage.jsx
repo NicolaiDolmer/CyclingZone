@@ -4,7 +4,7 @@ import { supabase } from "../lib/supabase";
 import TeamLink from "../components/TeamLink";
 import { logEvent } from "../lib/logEvent";
 import { formatNumber } from "../lib/intl";
-import { TrophyIcon, LightningIcon, CrownIcon } from "../components/ui";
+import { TrophyIcon, LightningIcon, CrownIcon, PageLoader } from "../components/ui";
 
 const CATEGORIES = [
   { key: "most_points_season", Icon: TrophyIcon, unitKey: "points" },
@@ -111,9 +111,7 @@ export default function HallOfFamePage() {
   });
 
   if (loading) return (
-    <div className="flex justify-center py-16">
-      <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
-    </div>
+    <PageLoader />
   );
 
   return (

@@ -9,7 +9,7 @@ import { formatNumber } from "../lib/intl";
 import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch";
 import {
   Card,
-  Spinner,
+  PageLoader,
   EmptyState,
   TrophyIcon,
   BikeIcon,
@@ -95,9 +95,7 @@ export default function ResultaterPage() {
   useRealtimeRefetch("resultater-live", REALTIME_TABLES, loadAll);
 
   if (loading) return (
-    <div className="flex justify-center py-16" role="status" aria-label={t("loadingAria")}>
-      <Spinner size={24} />
-    </div>
+    <PageLoader label={t("loadingAria")} />
   );
 
   return (

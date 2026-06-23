@@ -21,6 +21,7 @@ import {
   EmptyState,
   Spinner,
   FlagIcon,
+  PageLoader,
 } from "../components/ui";
 import { labelClass } from "../components/ui/fieldStyles.js";
 
@@ -205,9 +206,7 @@ export default function RacesPage() {
   };
 
   if (loading) return (
-    <div className="flex justify-center py-16">
-      <Spinner size={24} />
-    </div>
+    <PageLoader />
   );
 
   return (
@@ -462,9 +461,7 @@ export default function RacesPage() {
           )}
 
           {libLoading ? (
-            <div className="flex justify-center py-16">
-              <Spinner size={24} />
-            </div>
+            <PageLoader />
           ) : filteredLibRaces.length === 0 ? (
             <EmptyState icon={<FlagIcon size={28} />} title={t("empty.noRacesMatch")} />
           ) : (

@@ -34,7 +34,7 @@ import { isOverbidEvent, shouldFlashPrice } from "../lib/auctionsRealtime";
 import { logEvent, logFirstEvent } from "../lib/logEvent";
 import TeamLink from "../components/TeamLink";
 import { aggregateRiderSeasons } from "../lib/riderSeasonStats";
-import { TrophyIcon, ExchangeIcon, ClipboardIcon } from "../components/ui";
+import { TrophyIcon, ExchangeIcon, ClipboardIcon, PageLoader } from "../components/ui";
 
 const API = import.meta.env.VITE_API_URL;
 const RiderDevelopmentTab = lazyWithRetry(() => import("../components/RiderDevelopmentTab"));
@@ -1327,9 +1327,7 @@ export default function RiderStatsPage() {
   }
 
   if (loading) return (
-    <div className="flex justify-center py-16" aria-label={t("page.loadingAria")}>
-      <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
-    </div>
+    <PageLoader label={t("page.loadingAria")} />
   );
 
   if (!rider) return <div className="text-cz-3 text-center py-16">{t("page.notFound")}</div>;

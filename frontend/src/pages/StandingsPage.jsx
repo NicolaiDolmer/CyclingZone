@@ -12,7 +12,7 @@ import { ABILITY_SELECT, ABILITY_SHORT, flattenAbilities } from "../lib/abilitie
 import { countTeamPodiums } from "../lib/standingsPodiums";
 import { mergeStandings } from "../lib/standingsMerge";
 import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch";
-import { Card, EmptyState, Spinner, Input, PodiumIcon } from "../components/ui";
+import { Card, EmptyState, PageLoader, Input, PodiumIcon } from "../components/ui";
 import { RULES_NUMBERS } from "../lib/rulesNumbers";
 
 // #1608/#1688 4-tier-pyramide: divisions-fanerne dækker tier 1..MAX_DIVISION (4).
@@ -371,9 +371,7 @@ export default function StandingsPage() {
   const COLSPAN = lens === LENS_STRENGTH ? 9 : 8;
 
   if (loading) return (
-    <div className="flex justify-center py-16">
-      <Spinner size={24} />
-    </div>
+    <PageLoader />
   );
 
   return (
