@@ -466,6 +466,28 @@ test("more_youth_focus FRA star_signing med høj tilfredshed → fuldt ungdomssp
   assert.ok(result.goal_changes.length > 0);
 });
 
+// #1750 · goal_changes skal bære strukturerede before/after-mål (type + target),
+// så frontend kan type-oversætte i EN i stedet for at lække de danske labels.
+test("goal_changes bærer strukturerede before_goal/after_goal til i18n (#1750)", () => {
+  const result = resolveBoardRequest({
+    board: readyBoard({ focus: "star_signing", satisfaction: 80 }),
+    requestType: "more_youth_focus",
+    team: STRONG_TEAM,
+    standing: STRONG_STANDING,
+    context: openContext({ identityProfile: NEUTRAL_IDENTITY }),
+  });
+  assert.ok(result.goal_changes.length > 0);
+  for (const change of result.goal_changes) {
+    assert.ok(change.before_goal && typeof change.before_goal.type === "string",
+      `before_goal mangler type: ${JSON.stringify(change)}`);
+    assert.ok(change.after_goal && typeof change.after_goal.type === "string",
+      `after_goal mangler type: ${JSON.stringify(change)}`);
+    // De rå labels bevares som fallback for allerede-persisterede requests.
+    assert.equal(typeof change.before_label, "string");
+    assert.equal(typeof change.after_label, "string");
+  }
+});
+
 test("more_youth_focus FRA star_signing med lav tilfredshed → balanced-bridge (gradvis drejning)", () => {
   const result = resolveBoardRequest({
     board: readyBoard({ focus: "star_signing", satisfaction: 50 }),

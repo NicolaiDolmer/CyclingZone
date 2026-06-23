@@ -6,6 +6,8 @@
   "disabledNote": "Daglig træning starter ved relanch. Træningsprogrammer kan sættes op nu.",
   "form": "Form",
   "fatigue": "Træthed",
+  "recoveryNoteTitle": "Får man energi tilbage hver dag?",
+  "recoveryNote": "Ja. Hver nat omkring midnat restituerer hver rytter noget træthed, så den aldrig sidder fast på 100. Hvile- og rolige dage restituerer mest; normal træning lander på et bæredygtigt niveau; hård træning bygger stadig træthed op i løbet af dagen. En høj Recovery-evne gør det hurtigere.",
   "injuryRisk": "Høj skaderisiko",
   "injured": "Skadet: {days} dag tilbage",
   "injured_plural": "Skadet: {days} dage tilbage",

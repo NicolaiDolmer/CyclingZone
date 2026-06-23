@@ -499,7 +499,7 @@
       },
       "formFatigue": {
         "title": "Form and Fatigue",
-        "text": "Every rider has a Form value and a Fatigue value, both on a 0-100 scale, visible on the rider profile. Training and racing build Fatigue. Rest days and easy sessions lower it. Form follows the balance between the two: high Fatigue keeps Form low, while a well-rested rider's Form rises. Both values update daily. In races (active since the season 1 relaunch), form gives a small scoring edge and fatigue a small penalty, capped at about ±3% so favorites still win on ability. Race days build fatigue based on stage profile: mountain stages cost the most, flat stages the least. Injured riders are not entered into races automatically."
+        "text": "Every rider has a Form value and a Fatigue value, both on a 0-100 scale, visible on the rider profile. Training and racing build Fatigue. Every day around midnight each rider also recovers some Fatigue, so it never gets stuck at 100: rest and easy days recover the most, normal training settles at a sustainable level, and hard training still builds it up over the day. A high Recovery rating speeds daily recovery up. Form follows the balance between the two: high Fatigue keeps Form low, while a well-rested rider's Form rises. Both values update daily. In races (active since the season 1 relaunch), form gives a small scoring edge and fatigue a small penalty, capped at about ±3% so favorites still win on ability. Race days build fatigue based on stage profile: mountain stages cost the most, flat stages the least. Injured riders are not entered into races automatically."
       },
       "injuryRisk": {
         "title": "Injury risk",
@@ -608,6 +608,10 @@
       "what": {
         "title": "Picking your race squad",
         "text": "Before each race you pick 6-8 riders (Grand Tours use full squads of 8). Open the race page and use the Team selection panel. If you don't pick, your assistant fields a sensible team automatically, so you never miss a race."
+      },
+      "suitability": {
+        "title": "Reading the selection table",
+        "text": "Each rider shows their type (such as Sprinter or Climber), a Suitability score from 0 to 100 that rates how well they fit this race's terrain, plus current Form and Fatigue. Higher suitability means a better match for the parcours. Injured riders can't be picked; use Hide injured to remove them from the list while you choose."
       },
       "roles": {
         "title": "Captain, sprint captain and breakaway hunter",

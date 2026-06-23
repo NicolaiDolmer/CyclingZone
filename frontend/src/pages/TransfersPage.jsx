@@ -1508,8 +1508,13 @@ export default function TransfersPage() {
     listingSort
   );
 
+  // #1675: market-fanen viser en bred evne-tabel (15 kolonner) — den bruger fuld
+  // content-bredde (Layout giver /transfers max-w-full). De kort-baserede faner
+  // (tilbud/swaps/loans/arkiv) + header cappes til en læsbar kolonne, så kortene
+  // ikke strækkes over hele skærmen.
+  const isMarketTab = tab === "market";
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className={isMarketTab ? "max-w-full" : "max-w-4xl mx-auto"}>
       <ConfettiModal
         show={!!celebration}
         onClose={() => setCelebration(null)}
@@ -1519,7 +1524,7 @@ export default function TransfersPage() {
         icon={celebration?.icon}
       />
 
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5 max-w-4xl">
         <div>
           <h1 className="text-xl font-bold text-cz-1">{t("page.title")}</h1>
           <p className="text-cz-3 text-sm">{t("page.subtitle")}</p>
@@ -1530,7 +1535,7 @@ export default function TransfersPage() {
         </div>
       </div>
 
-      <div className={`mb-4 px-4 py-3 rounded-cz text-sm border flex items-center gap-2
+      <div className={`mb-4 px-4 py-3 rounded-cz text-sm border flex items-center gap-2 max-w-4xl
         ${transferWindow.open
           ? "bg-cz-success-bg0/8 text-cz-success border-cz-success/30"
           : "bg-cz-danger-bg text-cz-danger border-cz-danger/30"}`}>
@@ -1539,7 +1544,7 @@ export default function TransfersPage() {
       </div>
 
       {msg.text && (
-        <div className={`mb-4 px-4 py-3 rounded-cz text-sm border
+        <div className={`mb-4 px-4 py-3 rounded-cz text-sm border max-w-4xl
           ${msg.type === "error"
             ? "bg-cz-danger-bg text-cz-danger border-cz-danger/30"
             : "bg-cz-success-bg text-cz-success border-cz-success/30"}`}>
@@ -1547,7 +1552,7 @@ export default function TransfersPage() {
         </div>
       )}
 
-      <div className="flex gap-2 mb-5 flex-wrap">
+      <div className="flex gap-2 mb-5 flex-wrap max-w-4xl">
         {[
           { key: "received", label: t("tabs.received"), badge: pendingReceived },
           { key: "sent",     label: t("tabs.sent"),     badge: pendingSent },
@@ -1743,14 +1748,18 @@ export default function TransfersPage() {
             <div>
               {/* #1569: kort intro så nye spillere forstår transferlistens marked
                   (vs. auktioner) + at swaps/loans er valgfri. */}
-              <p className="text-cz-3 text-xs mb-3">{t("marketIntro")}</p>
-              <RiderFilters
-                filters={riderFilters.filters}
-                onChange={riderFilters.onChange}
-                onReset={riderFilters.onReset}
-                showTeamFilter={false}
-                nationalities={riderFilters.nationalities}
-              />
+              <p className="text-cz-3 text-xs mb-3 max-w-4xl">{t("marketIntro")}</p>
+              {/* #1675: cap filter-panelet (form-inputs strækkes ikke i fuld bredde —
+                  samme konvention som RidersPage max-w-[1600px]). */}
+              <div className="max-w-[1600px]">
+                <RiderFilters
+                  filters={riderFilters.filters}
+                  onChange={riderFilters.onChange}
+                  onReset={riderFilters.onReset}
+                  showTeamFilter={false}
+                  nationalities={riderFilters.nationalities}
+                />
+              </div>
               {/* #1185: sortér på listing-pris (asking_price) eller nyeste */}
               <div className="flex items-center gap-2 mb-3 flex-wrap">
                 <span className="text-cz-3 text-xs uppercase tracking-wider">{t("marketSort.label")}</span>
