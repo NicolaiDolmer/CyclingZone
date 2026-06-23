@@ -54,9 +54,12 @@ const median = (arr) => {
 };
 
 // ── ASSUMPTION: roster-størrelse pr. hold ved relaunch ──────────────────────────
-// Autoritativ kilde: starterSquadAllocator.STARTER_SQUAD.CORE_SIZE (= MIN_RIDERS_FOR_RACE = 8).
-// Scorecardet kalder allocateStarterSquads (= den løbsklare KERNE, 8/hold); den svage
-// race-hub-0c-hale (TAIL_SIZE) allokeres separat og indgår IKKE her.
+// Autoritativ kilde: starterSquadAllocator.STARTER_SQUAD. Den fulde start-trup er nu
+// TOTAL_SIZE (12 = CORE_SIZE 8 kerne + 4 svag hale) efter race-hub 0c.
+// Scorecardet kalder allocateStarterSquads (= den løbsklare KERNE, CORE_SIZE=8/hold);
+// den svage race-hub-0c-hale (TAIL_SIZE=4) allokeres separat og indgår IKKE her.
+// Halen er bevidst dybe domestiques (base_value ~7k / lav løn) → forsvindende lille
+// effekt på money supply, så money-supply-tallet er reelt uændret af de 4 ekstra ryttere.
 // Allokeringen er DIVISION-BLIND (snake-draft på base_value over ALLE manager-hold,
 // fairness-balanceret), så lønbyrden er ~ens pr. hold uanset division. De gamle 22/15/9-
 // rosters i economyContractSimulation.js er MODNE-hold-templates, IKKE den friske relaunch.
