@@ -107,7 +107,7 @@ export async function signFreeAgentYouth(supabase, { teamId, riderId, seasonNumb
 
   const { data: rider, error } = await supabase
     .from("riders")
-    .select("id, team_id, is_academy, pcm_id, birthdate, base_value, market_value, prize_earnings_bonus")
+    .select("id, team_id, is_academy, is_retired, pcm_id, birthdate, base_value, market_value, prize_earnings_bonus")
     .eq("id", riderId)
     .maybeSingle();
   if (error) throw new Error(`signFreeAgentYouth rider lookup: ${error.message}`);
@@ -115,6 +115,12 @@ export async function signFreeAgentYouth(supabase, { teamId, riderId, seasonNumb
 
   // Skal være en fri rytter (ingen ejer, ikke allerede akademi).
   if (rider.team_id || rider.is_academy) throw new Error("not_free_agent");
+
+  // Forward-guard (#1742): en pensioneret rytter må aldrig kunne signes som fri
+  // ungdom, selv hvis han skulle slippe gennem discovery-listen. Retirement
+  // (legacy-swap #1103 / alders-retirement #1137) efterlader team_id=NULL +
+  // is_academy=false, så grundkriterierne ovenfor fanger ham ikke.
+  if (rider.is_retired) throw new Error("not_free_agent");
 
   // Må KUN være en fiktiv rytter (pcm_id IS NULL). Defense-in-depth mod #1478 bug
   // #1: selv hvis discovery-queryen fixes, må en ægte PCM-rytter ikke kunne signes
