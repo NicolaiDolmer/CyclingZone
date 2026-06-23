@@ -51,6 +51,8 @@ export default function ProfilePage() {
 
   async function loadProfile() {
     const { data: { user: authUser } } = await supabase.auth.getUser();
+    // #1792: udløbet/ugyldig session → authUser=null; stop før authUser.id (auth-flow redirecter til /login)
+    if (!authUser) { setLoading(false); return; }
     const [{ data: userData }, { data: teamData }] = await Promise.all([
       supabase.from("users").select("discord_id, username, email, role").eq("id", authUser.id).single(),
       supabase.from("teams").select("id, name, manager_name").eq("user_id", authUser.id).single(),
@@ -100,6 +102,8 @@ export default function ProfilePage() {
     }
     setSavingDiscord(true);
     const { data: { user: authUser } } = await supabase.auth.getUser();
+    // #1792: udløbet/ugyldig session → authUser=null; stop før authUser.id (auth-flow redirecter til /login)
+    if (!authUser) { setSavingDiscord(false); return; }
     const { error } = await supabase
       .from("users")
       .update({ discord_id: trimmed || null })

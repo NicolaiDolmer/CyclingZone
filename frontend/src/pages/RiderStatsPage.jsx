@@ -989,6 +989,8 @@ export default function RiderStatsPage() {
 
   async function loadMyTeam() {
     const { data: { user } } = await supabase.auth.getUser();
+    // #1792: udløbet/ugyldig session → user=null; stop før user.id (auth-flow redirecter til /login)
+    if (!user) return;
     const { data: t } = await supabase.from("teams").select("id, balance, division, name").eq("user_id", user.id).single();
     if (t) { setMyTeamId(t.id); setMyBalance(t.balance || 0); }
 

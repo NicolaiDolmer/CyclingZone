@@ -226,6 +226,8 @@ export default function NotificationsPage() {
   async function loadNotifications() {
     setNotifLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
+    // #1792: udløbet/ugyldig session → user=null; stop før user.id (auth-flow redirecter til /login)
+    if (!user) { setNotifLoading(false); return; }
     userIdRef.current = user.id;
     const { data } = await supabase
       .from("notifications")

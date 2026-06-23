@@ -26,6 +26,10 @@ export function initSentry() {
     tracesSampleRate: sampleRateFromEnv("VITE_SENTRY_TRACES_SAMPLE_RATE"),
     replaysSessionSampleRate: sampleRateFromEnv("VITE_SENTRY_REPLAY_SAMPLE_RATE"),
     replaysOnErrorSampleRate: sampleRateFromEnv("VITE_SENTRY_REPLAY_ON_ERROR_SAMPLE_RATE", 0.1),
+    // #1792: tredjeparts browser-extensions (fx TronLink → CYCLINGZONE-15) injicerer
+    // kode på vores sider og kaster i deres egen kontekst — det er ikke vores app.
+    // denyUrls dropper events hvis "blame"-frame stammer fra en extension-URL.
+    denyUrls: [/^chrome-extension:\/\//, /^moz-extension:\/\//, /^safari-(web-)?extension:\/\//],
     beforeSend(event) {
       const value = event.exception?.values?.[0]?.value || event.message || "";
       if (/ResizeObserver loop completed|NetworkError when attempting to fetch resource/i.test(value)) {

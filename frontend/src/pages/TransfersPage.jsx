@@ -1242,6 +1242,8 @@ export default function TransfersPage() {
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
+      // #1792: udløbet/ugyldig session → user=null; stop før user.id (finally rydder loading)
+      if (!user) return;
       const { data: team } = await supabase.from("teams").select("id, balance").eq("user_id", user.id).single();
       if (!team) return;
       setMyTeamId(team.id);

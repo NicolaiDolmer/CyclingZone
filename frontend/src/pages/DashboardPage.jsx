@@ -105,6 +105,8 @@ export default function DashboardPage() {
       supabase.auth.getUser(),
       supabase.auth.getSession(),
     ]);
+    // #1792: udløbet/ugyldig session → user=null; stop før user.id (finally rydder loading)
+    if (!user) { return; }
     const { data: teamData } = await supabase
       .from("teams").select("*").eq("user_id", user.id).single();
     if (!teamData) { return; }

@@ -104,6 +104,8 @@ export default function StandingsPage() {
 
   async function loadAll() {
     const { data: { user } } = await supabase.auth.getUser();
+    // #1792: udløbet/ugyldig session → user=null; stop før user.id (auth-flow redirecter til /login)
+    if (!user) { setLoading(false); return; }
     const { data: mine } = await supabase.from("teams").select("id, name, division").eq("user_id", user.id).single();
     setMyTeamId(mine?.id);
     if (mine?.division) setDivTab(mine.division);
