@@ -40,10 +40,12 @@ test("academy page renders intake candidates, slot counter, and roster", async (
   await expect(riderLink).toBeVisible();
   await expect(riderLink).toHaveAttribute("href", /\/riders\//);
 
-  // Free-agent-sektion (#1308 Fase B) — frie ungdomsryttere + "Sign to academy"-knap
+  // Free-agent-sektion (#1308 Fase B) — frie ungdomsryttere + signér-knap.
+  // #1744: free-agent-signering koster penge → knappen viser nu prisen
+  // ("Sign for {price} CZ$" / "Signér for {price} CZ$"), ikke længere "Sign to academy".
   await expect(page.locator("main")).toContainText(/Free youth agents|Frie ungdomsryttere/i);
   await expect(page.locator("main")).toContainText(/Noah Berg/i);
-  await expect(page.getByRole("button", { name: /Sign to academy|Signér til akademi/i }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: /Sign for|Signér for/i }).first()).toBeVisible();
 });
 
 test("academy page shows disabled state gracefully when flag is off", async ({ page }) => {
