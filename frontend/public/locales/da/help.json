@@ -609,6 +609,10 @@
         "title": "Udtag din løbstrup",
         "text": "Inden hvert løb vælger du 6-8 ryttere (Grand Tours bruger fulde trupper på 8). Gå til løbssiden og brug panelet Holdudtagelse. Vælger du ikke selv, stiller din assistent automatisk et fornuftigt hold, så du aldrig misser et løb."
       },
+      "suitability": {
+        "title": "Sådan læser du udtagelses-tabellen",
+        "text": "Hver rytter viser sin type (fx Spurter eller Klatrer), et egnethedstal fra 0 til 100 der angiver hvor godt rytteren passer til løbets terræn, samt aktuel Form og Træthed. Højere egnethed betyder et bedre match til parcouren. Skadede ryttere kan ikke udtages; brug Skjul skadede for at fjerne dem fra listen mens du vælger."
+      },
       "roles": {
         "title": "Kaptajn, spurt-kaptajn og udbruds-jæger",
         "text": "Din kaptajn beskyttes af holdet: stærke, friske hjælpere booster kaptajnens chancer. På flade etaper overtager spurt-kaptajnen (hvis sat) beskyttelsen. En udbruds-jæger har markant højere chance for at komme med i dagens udbrud."
