@@ -5,6 +5,7 @@ import {
   PROGRESSION_CONFIG, seededUnit, signatureFactor, headroomForPotential,
   peakAgeForType, abilityCap, stepAbility, retirementDecision,
   developRiderSeason, buildCaps,
+  youthRoleFactor, YOUTH_PROGRESSION_CONFIG,
 } from "./riderProgression.js";
 
 // ── Determinisme ──────────────────────────────────────────────────────────────
@@ -272,4 +273,19 @@ test("skipGrowth false/udeladt → identisk med default-adfærd (golden test)", 
   const reference = developRiderSeason(rider, ab, caps, 3);
   assert.deepEqual(developRiderSeason(rider, ab, caps, 3, undefined, null, {}), reference, "tom options = uændret");
   assert.deepEqual(developRiderSeason(rider, ab, caps, 3, undefined, null, { skipGrowth: false }), reference, "skipGrowth:false = uændret");
+});
+
+// ── Ungdoms-rolle-faktor (#1791) ──────────────────────────────────────────────
+
+test("youthRoleFactor: primær-naturlig > sekundær-naturlig > neutral > modsat", () => {
+  // climber primary, tt secondary. climbing er primær-naturlig (climber.weights.climbing=3>0).
+  const primary = youthRoleFactor("climber", "tt", "climbing");
+  const secondary = youthRoleFactor("climber", "tt", "time_trial"); // tt.weights.time_trial=3>0, men kun secondary
+  const neutral = youthRoleFactor("climber", "tt", "positioning");  // ingen type-vægt
+  const opposite = youthRoleFactor("climber", "tt", "sprint");      // climber.weights.sprint=-2<0
+  assert.equal(primary, YOUTH_PROGRESSION_CONFIG.naturalPrimaryFactor);
+  assert.equal(secondary, YOUTH_PROGRESSION_CONFIG.naturalSecondaryFactor);
+  assert.equal(neutral, YOUTH_PROGRESSION_CONFIG.neutralFactor);
+  assert.equal(opposite, YOUTH_PROGRESSION_CONFIG.oppositeFactor);
+  assert.ok(primary > secondary && secondary > neutral && neutral > opposite);
 });

@@ -60,6 +60,31 @@ export const PROGRESSION_CONFIG = Object.freeze({
   retirement: Object.freeze({ windowStartAge: 36, guaranteedAge: 40, noticeSeasons: 1 }),
 });
 
+// ── Ungdoms-loft (#akademi-rework 2026-06-23) — START-værdier, kalibreres i Fase D ──
+export const YOUTH_PROGRESSION_CONFIG = Object.freeze({
+  // Mål-niveau på en PRIMÆR naturlig evne ved fuldt indfriet potentiale.
+  loftByPotential: Object.freeze({ 1: 35, 2: 48, 3: 60, 4: 70, 5: 80, 6: 88 }),
+  // Andel af loftet en evne får efter dens rolle ift. de 2 anlægs-retninger.
+  naturalPrimaryFactor: 1.0,
+  naturalSecondaryFactor: 0.82,
+  neutralFactor: 0.45,
+  oppositeFactor: 0.12,
+  // Potentiale → træningsfart-multiplikator (Fase B).
+  rateByPotential: Object.freeze({ 1: 0.6, 2: 0.78, 3: 0.92, 4: 1.06, 5: 1.2, 6: 1.35 }),
+});
+
+// Rolle-faktor for én evne givet primær+sekundær type. Positiv vægt i primary →
+// primær-naturlig; ellers positiv i secondary → sekundær-naturlig; negativ i primary
+// (eller secondary uden positiv) → modsat; ellers neutral.
+export function youthRoleFactor(primaryType, secondaryType, ability, cfg = YOUTH_PROGRESSION_CONFIG) {
+  const wp = WEIGHTS_BY_TYPE[primaryType]?.[ability];
+  const ws = WEIGHTS_BY_TYPE[secondaryType]?.[ability];
+  if (wp > 0) return cfg.naturalPrimaryFactor;
+  if (ws > 0) return cfg.naturalSecondaryFactor;
+  if (wp < 0 || ws < 0) return cfg.oppositeFactor;
+  return cfg.neutralFactor;
+}
+
 // ── Determinisme: FNV-1a → [0,1) fra en streng-nøgle (samme familie som
 //    abilityDerivation.hashNoise; genbrugt så seed er reproducerbart pr. rytter+sæson).
 export function seededUnit(key) {
