@@ -288,7 +288,9 @@
     "label": "Sortering",
     "newest": "Nyeste først",
     "price_asc": "Pris: laveste først",
-    "price_desc": "Pris: højeste først"
+    "price_desc": "Pris: højeste først",
+    "age_asc": "Alder: yngste først",
+    "age_desc": "Alder: ældste først"
   },
   "marketRow": {
     "nation": "Nation",

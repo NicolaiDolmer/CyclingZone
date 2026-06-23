@@ -8,11 +8,14 @@ import { useNavigate } from "react-router-dom";
 import NationCell from "../components/rider/NationCell";
 import RiderNameCell from "../components/rider/RiderNameCell";
 import RiderBadges from "../components/rider/RiderBadges";
+import RiderTypeBadge from "../components/rider/RiderTypeBadge";
 import TeamCell from "../components/rider/TeamCell";
-import { ageBadgeKey } from "../lib/riderAge";
+import { ageBadgeKey, getRiderAge } from "../lib/riderAge";
 import { statStyle } from "../lib/statColor";
 import { formatCz, getRiderMarketValue, getRiderSalary } from "../lib/marketValues.js";
 import { formatNumber } from "../lib/intl";
+import SortTh from "../components/rider/RiderSortTh";
+import { cycleSortState } from "../lib/riderSort";
 import { StarIcon, ExchangeIcon, CheckIcon } from "../components/ui";
 import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
 import { useScouting } from "../lib/useScouting";
@@ -22,16 +25,7 @@ import { CompareToggle, CompareBar, MAX_COMPARE } from "../components/CompareSel
 
 // Stat-kolonner = de 15 CZ-evner (delt config lib/abilities.js, importeret som STATS).
 // #1529: erstattede de 14 PCM stat_*-kolonner — visningen viser nu evner.
-
-function SortTh({ children, sortKey, sort, sortDir, onSort, className = "" }) {
-  const active = sort === sortKey;
-  return (
-    <th onClick={() => onSort(sortKey)}
-      className={`cursor-pointer select-none transition-colors ${active ? "text-cz-accent-t/80" : "text-cz-3 hover:text-cz-2"} ${className}`}>
-      {children}{active && <span className="ms-0.5 text-[10px]">{sortDir === "desc" ? "↓" : "↑"}</span>}
-    </th>
-  );
-}
+// #1755: SortTh er nu delt (components/rider/RiderSortTh) — fælles sort-adfærd.
 
 const PAGE_SIZE = 50;
 
@@ -65,7 +59,7 @@ export default function WatchlistPage() {
       .from("rider_watchlist")
       .select(`id, note, created_at,
         rider:rider_id(id, firstname, lastname, birthdate, market_value, is_u25,
-          salary, team_id, nationality_code, prize_earnings_bonus, ${ABILITY_SELECT},
+          salary, team_id, nationality_code, primary_type, secondary_type, prize_earnings_bonus, ${ABILITY_SELECT},
           team:team_id(id, name))`)
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
@@ -145,8 +139,10 @@ export default function WatchlistPage() {
   const sort = riderFilters.filters.sort;
   const sortDir = riderFilters.filters.sort_dir;
   function handleSort(key) {
-    if (sort === key) riderFilters.onChange("sort_dir", sortDir === "desc" ? "asc" : "desc");
-    else { riderFilters.onChange("sort", key); riderFilters.onChange("sort_dir", "desc"); }
+    // #1755: delt cyklus-logik så watchlist sorterer som de øvrige rytter-tabeller.
+    const next = cycleSortState({ sort, dir: sortDir }, key);
+    riderFilters.onChange("sort", next.sort);
+    riderFilters.onChange("sort_dir", next.dir);
     setPage(1);
   }
   const filtered = entries.filter(e => filteredRiders.has(e.rider.id))
@@ -221,8 +217,17 @@ export default function WatchlistPage() {
                       <ExchangeIcon size={14} aria-hidden="true" className="mx-auto text-cz-3" />
                     </th>
                     <th className="px-2 py-3 w-8" />
-                    <th className="px-3 py-3 text-left text-cz-3 font-medium uppercase tracking-wider hidden sm:table-cell">{t("thTeam")}</th>
-                    <th className="px-3 py-3 text-left text-cz-3 font-medium uppercase tracking-wider hidden sm:table-cell">{t("thBadges")}</th>
+                    {/* #1755: Hold + Status sortérbare (var døde headers) — universel
+                        sortering på linje med rytterdatabasen/holdsiden. */}
+                    <SortTh sortKey="team_id" sort={sort} sortDir={sortDir} onSort={handleSort}
+                      className="px-3 py-3 text-left font-medium uppercase tracking-wider hidden sm:table-cell">{t("thTeam")}</SortTh>
+                    <SortTh sortKey="is_u25" sort={sort} sortDir={sortDir} onSort={handleSort}
+                      className="px-3 py-3 text-left font-medium uppercase tracking-wider hidden sm:table-cell">{t("thBadges")}</SortTh>
+                    {/* #1755: Alder + Type vises + sorteres som de øvrige rytter-oversigter. */}
+                    <SortTh sortKey="birthdate" sort={sort} sortDir={sortDir} onSort={handleSort}
+                      className="px-3 py-3 text-left font-medium uppercase tracking-wider hidden sm:table-cell">{t("thAge")}</SortTh>
+                    <SortTh sortKey="primary_type" sort={sort} sortDir={sortDir} onSort={handleSort}
+                      className="px-3 py-3 text-left font-medium uppercase tracking-wider hidden sm:table-cell">{t("thType")}</SortTh>
                     <SortTh sortKey="value" sort={sort} sortDir={sortDir} onSort={handleSort}
                       className="px-3 py-3 text-right font-medium">{t("thValue")}</SortTh>
                     <SortTh sortKey="salary" sort={sort} sortDir={sortDir} onSort={handleSort}
@@ -240,7 +245,7 @@ export default function WatchlistPage() {
                 <tbody>
                   {filtered.length === 0 && (
                     <tr>
-                      <td colSpan={11 + STATS.length} className="px-3 py-12 text-center">
+                      <td colSpan={13 + STATS.length} className="px-3 py-12 text-center">
                         <p className="text-cz-3 text-sm">{t("common:controls.noFilterResults")}</p>
                         <button onClick={riderFilters.onReset}
                           className="mt-3 px-3 py-1.5 bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30
@@ -279,6 +284,11 @@ export default function WatchlistPage() {
                           <div className="flex flex-wrap items-center gap-1">
                             <RiderBadges badges={[ageBadgeKey(r)]} />
                           </div>
+                        </td>
+                        {/* #1755: numerisk alder + ryttertype som egne celler (matcher /riders). */}
+                        <td className="px-3 py-2.5 hidden sm:table-cell text-cz-2 font-mono text-xs">{getRiderAge(r.birthdate) ?? "—"}</td>
+                        <td className="px-3 py-2.5 hidden sm:table-cell">
+                          <RiderTypeBadge primaryType={r.primary_type} secondaryType={r.secondary_type} />
                         </td>
                         <td className="px-3 py-2.5 text-right text-cz-accent-t font-mono font-bold">
                           {formatCz(getRiderMarketValue(r)).replace(" CZ$", "")}
