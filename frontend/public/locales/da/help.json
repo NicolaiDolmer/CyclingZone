@@ -383,7 +383,7 @@
       "label": "Præmier",
       "formula": {
         "title": "Præmieformlen",
-        "text": "Præmiepenge beregnes direkte fra point: 1 point = 1.500 CZ$. Kun løb med en løbsklasse (Tour de France, Giro/Vuelta, Monumenter, WorldTour, ProSeries, Klasse 1, Klasse 2) genererer præmiepenge. Løb uden klasse giver 0 CZ$."
+        "text": "Præmiepenge beregnes direkte fra point: 1 point = 75 CZ$. Kun løb med en løbsklasse (Tour de France, Giro/Vuelta, Monumenter, WorldTour, ProSeries, Klasse 1, Klasse 2) genererer præmiepenge. Løb uden klasse giver 0 CZ$."
       },
       "examples": {
         "title": "Eksempler på præmiebeløb",
@@ -738,7 +738,7 @@
     },
     "prizeMoneyFaq": {
       "q": "Hvad er præmiepenge, og hvornår udbetales de?",
-      "a": "Præmiepenge er en direkte CZ$-belønning for resultater dine ryttere opnår i løbene. Beregningen er: point for placeringen × 1.500 CZ$. Pengene udbetales automatisk til din balance når admin finaliserer resultaterne og vises som 'prize' i din finance-log. Kun løb med en løbsklasse (Tour de France, WorldTour, ProSeries osv.) genererer præmiepenge. Løb uden løbsklasse giver 0."
+      "a": "Præmiepenge er en direkte CZ$-belønning for resultater dine ryttere opnår i løbene. Beregningen er: point for placeringen × 75 CZ$. Pengene udbetales automatisk til din balance når admin finaliserer resultaterne og vises som 'prize' i din finance-log. Kun løb med en løbsklasse (Tour de France, WorldTour, ProSeries osv.) genererer præmiepenge. Løb uden løbsklasse giver 0."
     },
     "divisionBonusFaq": {
       "q": "Hvad er divisionsbonus, og hvornår udbetales den?",

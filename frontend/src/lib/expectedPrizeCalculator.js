@@ -5,11 +5,12 @@
 //   + per-stage types × stages (Etapeplacering/Forertroje/BjergtrojeDag/PointtrojeDag/UngdomstrojeDag).
 // Single races: finals counted once (Klassiker/Pointtroje/Bjergtroje/Ungdomstroje/KlassikerHold).
 //
-// All sums multiplied by PRIZE_PER_POINT (1500 CZ$/point).
+// All sums multiplied by PRIZE_PER_POINT (75 CZ$/point).
 
 // Frontend single source of truth for PRIZE_PER_POINT. Backend mirror: backend/lib/economyConstants.js
 // (separate codebases — the frontend bundle cannot import backend; keep both in sync). Ref #898.
-export const PRIZE_PER_POINT = 1_500;
+// #1816 (2026-06-23): 1500 → 75 (÷20) — præmie skal være et supplement, ikke den dominerende indtægt.
+export const PRIZE_PER_POINT = 75;
 
 const STAGE_RACE_RESULT_TYPES = {
   finals: ["Klassement", "Pointtroje", "Bjergtroje", "Ungdomstroje", "EtapelobHold"],

@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.05",
+    "date": "2026-06-23",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Economy",
+        "en": {
+          "title": "Prize money rebalanced to a supplement, not the main income",
+          "body": "Prize money was paying out far too much: a strong team could earn several times its sponsor income from results alone, which made sponsor income and running costs almost irrelevant. Prize money per point is now reduced by a factor of 20, so results give a meaningful bonus on top of your sponsor income rather than dominating the economy. Sponsor income is now your primary income, and prizes reward racing well. Prize money already earned this season has been scaled down by the same factor, so every balance reflects the new level. No team was pushed into the red by the adjustment."
+        },
+        "da": {
+          "title": "Præmiepenge rebalanceret til et supplement, ikke hovedindtægten",
+          "body": "Præmiepenge udbetalte alt for meget: et stærkt hold kunne tjene flere gange sin sponsorindtægt på resultater alene, hvilket gjorde sponsorindtægt og driftsomkostninger næsten ligegyldige. Præmie per point er nu sænket med en faktor 20, så resultater giver en meningsfuld bonus oven på din sponsorindtægt i stedet for at dominere økonomien. Sponsorindtægt er nu din primære indtægt, og præmier belønner at køre godt. Præmiepenge der allerede er tjent denne sæson, er skaleret ned med samme faktor, så alle balancer afspejler det nye niveau. Ingen hold blev sendt i minus af justeringen."
+        },
+        "refs": [1816]
+      }
+    ]
+  },
+  {
     "version": "6.04",
     "date": "2026-06-23",
     "label": "Beta",
