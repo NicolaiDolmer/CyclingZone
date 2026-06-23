@@ -7,7 +7,6 @@ import {
   developRiderSeason, buildCaps,
   youthRoleFactor, YOUTH_PROGRESSION_CONFIG,
   youthAbilityCap, buildYouthCaps,
-  youthRateForPotential,
 } from "./riderProgression.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 
