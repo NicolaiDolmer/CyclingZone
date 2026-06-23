@@ -174,6 +174,12 @@ const WHITELIST_EMPTY_TABLES = new Set([
   // Skriv-path verificeret i backend/routes/api.js (PUT /teams/my) + backend/lib/signupAttribution.js.
   // TODO(2026-06-27): fjern denne entry når tabellen har rows (tjek ~1 uge efter launch).
   "signup_attribution",
+  // Afmeld-state (race-hub Fase 0b, #1810): raceWithdrawal.js skriver én row pr.
+  // frivillig afmelding (withdraw/reinstate) bag flaget auto_entry_generator_enabled
+  // (seedet OFF) — og afmeld-UI'et findes først i race-hub Fase 1. Tabellen blev oprettet
+  // ved #1810-merge (migration anvendt) men er bevidst tom indtil afmeldinger sker.
+  // Skriv-path verificeret i raceWithdrawal.js. Fjern denne entry når tabellen har rows.
+  "race_withdrawals",
 ]);
 
 // Detector B: endpoints der er korrekt orphaned i frontend (cron, admin-curl, webhook)
