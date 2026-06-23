@@ -18,6 +18,31 @@ test("recovery-evnen hjælper", () => {
   assert.ok(hi < lo);
 });
 
+test("daglig recovery: træthed sidder ALDRIG fast på 100 (#1676)", () => {
+  // Acceptkriterie #1676: under vedvarende daglig træning skal trætheden falde fra 100,
+  // ikke blive hængende. Den proportionale recovery garanterer en ligevægt under 100.
+  for (const intensity of ["normal", "hard"]) {
+    let fatigue = 100;
+    for (let day = 0; day < 30; day++) {
+      fatigue = nextFatigue({ fatigue, intensity, recoveryAbility: 50 });
+    }
+    assert.ok(
+      fatigue < 100,
+      `${intensity}: træthed skal falde under 100 ved daglig recovery, fik ${fatigue}`
+    );
+  }
+});
+
+test("daglig recovery: normal-træning lander i en stabil mid-ligevægt, ikke 0 og ikke 100 (#1676)", () => {
+  // Ryttere skal stadig kunne blive trætte i løbet af dagen — normal træning bygger
+  // op til en bæredygtig træthed, ikke ned til 0.
+  let fatigue = 0;
+  for (let day = 0; day < 60; day++) {
+    fatigue = nextFatigue({ fatigue, intensity: "normal", recoveryAbility: 50 });
+  }
+  assert.ok(fatigue > 0 && fatigue < 100, `normal-ligevægt skal være 0 < f < 100, fik ${fatigue}`);
+});
+
 test("raceLoad bygger oveni træningsbelastning", () => {
   const without = nextFatigue({ fatigue: 40, intensity: "easy", recoveryAbility: 50 });
   const withRace = nextFatigue({ fatigue: 40, intensity: "easy", recoveryAbility: 50, raceLoad: 18 });

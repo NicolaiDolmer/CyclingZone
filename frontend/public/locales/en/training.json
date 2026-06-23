@@ -6,6 +6,8 @@
   "disabledNote": "Daily training starts at the relaunch. Training programs can be set up now.",
   "form": "Form",
   "fatigue": "Fatigue",
+  "recoveryNoteTitle": "Do riders get energy back every day?",
+  "recoveryNote": "Yes. Every night around midnight each rider recovers some fatigue, so it never gets stuck at 100. Rest and easy days recover the most; normal training settles at a sustainable level; hard training still builds fatigue up over the day. A high Recovery rating speeds it up.",
   "injuryRisk": "High injury risk",
   "injured": "Injured: {days} day left",
   "injured_plural": "Injured: {days} days left",
