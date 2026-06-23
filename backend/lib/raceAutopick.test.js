@@ -12,10 +12,16 @@ const mtnStage = { stage_number: 2, profile_type: "mountain", demand_vector: { c
 const riders = (n, f = () => ({})) =>
   Array.from({ length: n }, (_, i) => ({ rider_id: `r${String(i).padStart(2, "0")}`, abilities: ab(f(i)), fatigue: 0 }));
 
-test("selectionSizeForRace: GT = 8/8, øvrige 6-8", () => {
+test("selectionSizeForRace: 8 (GT), 7 (WorldTour), 6 (øvrige), default 6-8 (ukendt klasse)", () => {
   assert.deepEqual(selectionSizeForRace({ race_class: "TourFrance" }), { min: 8, max: 8 });
   assert.deepEqual(selectionSizeForRace({ race_class: "GiroVuelta" }), { min: 8, max: 8 });
-  assert.deepEqual(selectionSizeForRace({ race_class: "ProSeries" }), { min: 6, max: 8 });
+  assert.deepEqual(selectionSizeForRace({ race_class: "Monuments" }), { min: 7, max: 7 });
+  assert.deepEqual(selectionSizeForRace({ race_class: "OtherWorldTourA" }), { min: 7, max: 7 });
+  assert.deepEqual(selectionSizeForRace({ race_class: "OtherWorldTourC" }), { min: 7, max: 7 });
+  assert.deepEqual(selectionSizeForRace({ race_class: "ProSeries" }), { min: 6, max: 6 });
+  assert.deepEqual(selectionSizeForRace({ race_class: "Class1" }), { min: 6, max: 6 });
+  // Ukendt/manglende klasse → generøs default-fallback (uændret adfærd for legacy/test-løb).
+  assert.deepEqual(selectionSizeForRace({ race_class: null }), { min: 6, max: 8 });
   assert.deepEqual(selectionSizeForRace({}), { min: 6, max: 8 });
 });
 
