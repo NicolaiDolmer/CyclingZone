@@ -14,17 +14,19 @@ Overlap er bygget men **ikke aktiveret**: simuleringen viste at overlap uden dyb
 3. **Hale-sammensætning:** unge fast på **4** uanset N; *al* ekstra dybde er svage domestique-fyldere.
 4. **Eksisterende live-hold toppes op nu** (engangs additiv top-up) så overlap er spilbart for sæson 1 straks.
 5. **`MIN_RIDERS_FOR_RACE = 8` røres ikke.** Løbs-minimummet afkobles fra trup-størrelsen.
-6. **Antal (N) + hale-vindue afgøres empirisk** af simuleringen (§5), ikke gættet. Ejer vælger fra scorecard-tabellen før commit.
+6. **Antal N = 12** (4 unge + 4 kerne-dom + **4 hale-dom**), **hale-vindue [50,52]** (top-evner ~7). Valgt af ejer 2026-06-23 fra sim-scorecardet (§6).
+7. **Top-up dækker ALLE eligible konkurrerende hold** (27 managere + 141 AI; 0 bank), ikke kun managere — så overlap-løb har fulde modstander-felter. Ejer-valg 2026-06-23.
 
 ## 3. Trup-struktur
 
-Hver trup = **4 unge** [50,57] + **4 kerne-domestiques** [50,57] + **hale på (N−8) ekstra-svage domestiques** i et lavere vindue.
+Hver trup = **4 unge** [50,57] + **4 kerne-domestiques** [50,57] + **hale på 4 ekstra-svage domestiques** i vindue [50,52].
 
 Konstanter afkobles fra `MIN_RIDERS_FOR_RACE`:
 - `STARTER_SQUAD.CORE_SIZE = 8` (4 unge + 4 kerne-dom — uændret kerne).
-- `STARTER_SQUAD.TAIL_SIZE = N − 8` (ny — den svage hale; `0` reproducerer nuværende adfærd).
-- `STARTER_TAIL_STAT_WINDOW` (ny — lavere vindue end `STARTER_POOL_STAT_WINDOW = [50,57]`).
-- `SQUAD_SIZE` udfases/omdøbes til `TOTAL_SIZE = CORE_SIZE + TAIL_SIZE`; alle interne brug opdateres.
+- `STARTER_SQUAD.TAIL_SIZE = 4` (ny — den svage hale; `0` reproducerer nuværende adfærd).
+- `STARTER_SQUAD.TOTAL_SIZE = 12` (= CORE_SIZE + TAIL_SIZE; afløser `SQUAD_SIZE` for total-trup; alle interne brug opdateres).
+- `STARTER_TAIL_STAT_WINDOW = { lo: 50, hi: 52 }` (ny — lavere end `STARTER_POOL_STAT_WINDOW = [50,57]`).
+- `MIN_RIDERS_FOR_RACE` (8) forbliver løbs-reglen.
 
 Den eksisterende generator giver allerede 4 distinkte rytter-typer med variation inden for et vindue → naturlig spredning uden yderligere lag.
 
@@ -45,26 +47,24 @@ Re-scheduling af live sæson 1 til overlap kræver at de nuværende hold har dyb
 - **Additiv, ikke re-allokering:** for hvert hold med markør NULL, generér og tilføj **kun hale-domestiques** op til TOTAL_SIZE (giver aldrig gratis kerne-ryttere til hold der har solgt ned). Hold der allerede er ≥ TOTAL_SIZE: sæt blot markøren (no-op).
 - **Insert-med-team_id** (intet orphan-vindue, samme mønster som `insertWeakSquadForTeam`) + derive-kæden + sæt markør.
 - **Script:** `backend/scripts/dev/topup-starter-depth.mjs`, dry-run default (rapporterer hvor mange hold/ryttere der ville tilføjes), `--live` kræver ejer-go. Skriver til prod → **ejer merger PR'en / kører --live.**
-- Samme manager-selector som relaunch (`getBetaManagerTeams`: ikke-AI/bank/frosset/test).
+- **Selector = ALLE eligible konkurrerende hold** (ikke-test, ikke-frosset) — managere **OG** AI (verificeret 0 bank-hold). Ejer-valg 2026-06-23: AI-felter skal også fyldes så overlap-løb har modstandere. (Bemærk: afviger fra relaunchens `getBetaManagerTeams`, som er manager-only.)
 
-## 6. Simulering (simulér-før-ship — næste skridt)
+## 6. Simulering (simulér-før-ship — UDFØRT 2026-06-23)
 
-Udvid `backend/scripts/dev/simulate-overlap-fill.mjs`. I dag måler den de *nuværende* rosters; den skal **modellere top-up'en in-memory**:
+Harness: `backend/scripts/dev/simulate-base-rider-depth.mjs` (read-only, søsker til `simulate-overlap-fill.mjs`). Modellerer top-up'en in-memory: top hvert eligible hold op til N med friskt-genererede hale-ryttere (`buildWeakStarterPool` + pure `deriveAbilities`-fallback, ingen DB-writes), kør `assignTeamAcrossRaces` mod overlap-kalenderen (tracks=2), sweep N × hale-vindue. Fyldning er antals-/binding-drevet (autopick `.slice(0,max)`, ingen kvalitets-tærskel) → window-uafhængig; kun styrke-spredning afhænger af vinduet.
 
-1. For hvert ægte (eligible) hold under N: top op med friskt-genererede hale-ryttere i hale-vinduet, derive **pure in-memory** (ingen DB-writes — find/genbrug den rene `deriveAbilities`-funktion fra derive-modulet; sim'en forbliver read-only).
-2. Kør `assignTeamAcrossRaces` mod overlap-vinduerne (tracks=2) som nu.
-3. **Sweep et grid:**
-   - Trup-størrelse **N** ∈ {8 (baseline), 10, 12, 14, 16}.
-   - Hale-vindue ∈ {[50,57] (uniform-kontrol), [50,54], [50,52]}.
-4. **Scorecard pr. celle:** fuldt hold %, no-show %, styrke-spredning p10–p90, og holdstyrke i det *sekundære* overlap-løb (felt-kvalitet holder?).
+**Resultat (målt på ægte manageres egne felter):**
+- Baseline (intet top-up): 54 % fuldt, 8 % forceret no-show.
+- **N=12: 100 % fuldt, 0 forceret no-show** (knæk-punkt 6+6; N=8/10 = 62 %; N=14/16 tilføjer intet til deltagelse men udvasker valget).
+- Felt-styrke @ N=12 p10/p50/p90: [50,57] 11.6/18.7/22.6 (for stærk) · [50,54] 10.3/17.2/19.9 · **[50,52] 8.5/15.8/19.9** (skarpest trade-off, valgt).
 
-**Mål:** løft 46 % fuldt → acceptabelt, sænk 24 % no-show, uden at felterne bliver for stærke eller for elendige. Peak-concurrency = 2 (verificeret); "fuldt hold" = ≥ `min` (6 for de fleste løb, 8 for grand tours) → ~12 (6+6) er det naturlige udgangspunkt, men træthed/binding æder af puljen → sim afgør 12 vs. 13-14.
+Sæson 1 er 61 ProSeries + 1 GiroVuelta → mest min-6 → N=12 robust for denne sæson; konstanten er tunbar for fremtidige tungere klasse-mix. "Fuldt" (≥ `min`) = kan stille *lovligt* hold; opportunity cost ligger i kvalitet (overflow-løb kører på hale-dregs, p10 8.5), ikke deltagelse.
 
-**Output:** scorecard-tabel → **ejer vælger N + hale-vindue** før commit af de endelige konstanter.
+**Valgt:** N=12, hale-vindue [50,52], top-up af alle eligible hold.
 
 ## 7. Økonomi-sanity
 
-Top-up + dybere start-trup tilføjer ~ (N−8) × 27 billige ryttere til økonomien. `backend/scripts/moneySupplyScorecard.js` + `prizeDistributionScorecard.js` antager 8-trup. Flag + verificér effekten er negligibel (hale-ryttere base_value ~7k, lav løn) + opdatér deres antagelses-kommentarer/konstant-reference.
+Top-up (alle ~168 hold op til 12) + dybere start-trup tilføjer op til ~4 × 168 ≈ 670 billige ryttere til økonomien. `backend/scripts/moneySupplyScorecard.js` + `prizeDistributionScorecard.js` antager 8-trup. Flag + verificér effekten er negligibel (hale-ryttere base_value ~7k, lav løn) + opdatér deres antagelses-kommentarer/konstant-reference.
 
 ## 8. Aktivering (ejer-go, alt sammen samtidig)
 
