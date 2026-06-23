@@ -549,6 +549,8 @@ export function TeamPage() {
   async function loadAll() {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
+    // #1792: udløbet/ugyldig session → user=null; stop før user.id (auth-flow redirecter til /login)
+    if (!user) { setLoading(false); return; }
     const { data: myTeam } = await supabase.from("teams").select("*").eq("user_id", user.id).single();
     if (!myTeam) { setLoading(false); return; }
     setTeam(myTeam);

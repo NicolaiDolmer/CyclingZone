@@ -54,6 +54,8 @@ export default function WatchlistPage() {
   async function loadWatchlist() {
     setLoading(true);
     const { data: { user } } = await supabase.auth.getUser();
+    // #1792: udløbet/ugyldig session → user=null; stop før user.id (auth-flow redirecter til /login)
+    if (!user) { setLoading(false); return; }
     setUserId(user.id);
     const { data } = await supabase
       .from("rider_watchlist")

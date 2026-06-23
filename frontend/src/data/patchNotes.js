@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.03",
+    "date": "2026-06-23",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Stability",
+        "en": {
+          "title": "Pages no longer crash if your sign-in expires while loading",
+          "body": "If your sign-in expired while a page was still loading (most often on mobile after the app had been left open for a while), the page could fail to load. You are now taken to the login screen instead, so you can simply sign back in."
+        },
+        "da": {
+          "title": "Sider crasher ikke længere hvis dit login udløber under indlæsning",
+          "body": "Hvis dit login udløb mens en side stadig indlæste (oftest på mobil efter appen havde stået åben et stykke tid), kunne siden fejle. Du sendes nu til login-skærmen i stedet, så du bare kan logge ind igen."
+        },
+        "refs": [1792]
+      }
+    ]
+  },
+  {
     "version": "6.02",
     "date": "2026-06-23",
     "label": "Beta",
