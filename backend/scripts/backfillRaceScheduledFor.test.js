@@ -104,6 +104,22 @@ test("planRaceSchedules: spor balanceres — spor-længderne afviger højst ét 
   assert.ok(spreadDays <= 5, `spor-længde-spredning ${spreadDays} dage skal være ≤ største løbs etape-antal (5)`);
 });
 
+test("planRaceSchedules: tracks=1 → ren sekventiel stream (1 etape/dag, ét slot)", () => {
+  const { stageRows } = planRaceSchedules({ races: RACES, from: FROM, tracks: 1 });
+  // Alle 6 etaper på ét spor/slot, 1 pr. dag over 6 dage (backward-compat escape hatch).
+  const byDay = {};
+  const slots = new Set();
+  for (const r of stageRows) {
+    const t = new Date(r.scheduled_at);
+    const day = t.toISOString().slice(0, 10);
+    byDay[day] = (byDay[day] || 0) + 1;
+    slots.add(t.toLocaleTimeString("en-GB", { timeZone: "Europe/Copenhagen", hour: "2-digit", minute: "2-digit" }));
+  }
+  assert.equal(Object.keys(byDay).length, 6, "6 etaper / 1 spor = 6 dage");
+  assert.deepEqual(Object.values(byDay), [1, 1, 1, 1, 1, 1], "1 etape/dag");
+  assert.deepEqual([...slots], ["12:30"], "kun ét slot bruges (spor 0)");
+});
+
 test("planRaceSchedules: 30 single-etape-løb → 15 dage (balanceret 2-spors-fordeling)", () => {
   // 30 single-løb fordeles 15/15 på de 2 spor → 15 dage. (Gælder balancerede single-løb;
   // ét enkelt 30-etape-løb ville tage 30 dage, da etaper i samme løb ikke kan paralleliseres.)

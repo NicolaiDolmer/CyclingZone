@@ -7,7 +7,7 @@
 // Kør (LIVE):    infisical run --env=prod -- node backend/scripts/dev/reschedule-overlap.mjs --live
 import { createClient } from "@supabase/supabase-js";
 import { planRaceSchedules } from "../backfillRaceScheduledFor.js";
-import { raceTimeWindow, windowsOverlap, findManualOverlapConflicts } from "../../lib/raceBinding.js";
+import { raceTimeWindow, findManualOverlapConflicts } from "../../lib/raceBinding.js";
 
 const LIVE = process.argv.includes("--live");
 const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
@@ -82,6 +82,9 @@ if (!LIVE) {
 }
 
 // LIVE: opdatér scheduled_for, erstat race_stage_schedule, ryd konflikt-entries.
+// Rækkefølge: scheduled_for → delete stage_schedule → insert nye → drop konflikter. Fejler
+// insert-trinnet, er re-kørsel sikker (quasi-idempotent): løbene er stadig status='scheduled'
+// + stages_completed=0, så safety-gatten ovenfor tillader en ren re-kørsel der genskaber alt.
 for (const ru of allRaceUpdates) {
   const { error } = await sb.from("races").update({ scheduled_for: ru.scheduled_for }).eq("id", ru.id);
   if (error) throw new Error(`races update ${ru.id}: ${error.message}`);
