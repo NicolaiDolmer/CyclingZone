@@ -234,6 +234,7 @@ const SECTION_DEFS = [
     Icon: JerseyIcon,
     blocks: [
       { id: "what", kind: "text" },
+      { id: "suitability", kind: "text" },
       { id: "roles", kind: "text" },
       { id: "breakaway", kind: "text" },
       { id: "fatigue", kind: "text" },

@@ -904,10 +904,17 @@ function SeasonSnapshotGrid({ snapshots }) {
   );
 }
 
-function BoardIdentityCard({ identityProfile, title }) {
+function BoardIdentityCard({ identityProfile, title, teamDna = null }) {
   const { t } = useTranslation("board");
   const resolvedTitle = title || t("identity.defaultTitle");
   if (!identityProfile) return null;
+  // #1738 · Forklar relationen mellem squad-læsningen (denne kort) og det valgte
+  // klub-DNA, så fx "Sprint-hold" + DNA "Britisk all-rounder" ikke føles
+  // selvmodsigende. Squad-specialiseringen er en observation af den nuværende
+  // trup; DNA'et er det valgte langsigtede aftryk der former mål-vægtningen.
+  const dnaRelationNote = teamDna?.key
+    ? t("identity.dnaRelation", { dna: getDnaCopy(t, teamDna, "label") })
+    : t("identity.dnaRelationNoDna");
   const nationalCore = identityProfile.national_core;
   const starProfile = identityProfile.star_profile;
   const nationalCoreCountry = getCountryDisplay(nationalCore?.code);
@@ -999,6 +1006,11 @@ function BoardIdentityCard({ identityProfile, title }) {
           <p className="text-cz-3 text-xs mt-1 break-words">{starProfileSub}</p>
         </div>
       </div>
+      {/* #1738 · Relation mellem squad-læsning og valgt klub-DNA — fjerner den
+          oplevede selvmodsigelse (fx "Sprint-hold" + DNA "Britisk all-rounder"). */}
+      {dnaRelationNote && (
+        <p className="text-cz-3 text-xs mt-4 leading-relaxed border-t border-cz-border pt-3">{dnaRelationNote}</p>
+      )}
     </div>
   );
 }
@@ -1082,8 +1094,19 @@ function BoardRequestPanel({ requestOptions, requestStatus, requestError, reques
                     <div key={`${change.kind}-${index}`} className={`border rounded-lg p-3 ${style.box}`}>
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <p className="text-cz-2 text-sm">{formatBoardCopy(change.before_label)}</p>
-                          <p className="text-cz-3 text-xs mt-1">→ {formatBoardCopy(change.after_label)}</p>
+                          {/* #1750 · Type-oversæt via getBoardGoalLabel når backend
+                              sender strukturerede before/after-mål; ellers fallback
+                              til de rå labels (allerede-persisterede requests). */}
+                          <p className="text-cz-2 text-sm">
+                            {change.before_goal
+                              ? getBoardGoalLabel(t, change.before_goal)
+                              : formatBoardCopy(change.before_label)}
+                          </p>
+                          <p className="text-cz-3 text-xs mt-1">
+                            → {change.after_goal
+                              ? getBoardGoalLabel(t, change.after_goal)
+                              : formatBoardCopy(change.after_label)}
+                          </p>
                         </div>
                         <span className={`text-[10px] font-semibold uppercase tracking-wider ${style.accent}`}>
                           {t(`changeKind.${kind}`)}
@@ -1564,7 +1587,7 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
 
 const FOCUS_KEYS = ["balanced", "youth_development", "star_signing"];
 
-function WizardStep1({ identityProfile, focus, setFocus, planType, previewGoals, previewLoading, previewError, onStart }) {
+function WizardStep1({ identityProfile, teamDna = null, focus, setFocus, planType, previewGoals, previewLoading, previewError, onStart }) {
   const { t } = useTranslation("board");
   const duration = getPlanDuration(planType);
   const preview = previewGoals || [];
@@ -1577,7 +1600,7 @@ function WizardStep1({ identityProfile, focus, setFocus, planType, previewGoals,
         <p className="text-cz-2 text-sm mt-1">{t("wizard.step1Subtitle")}</p>
       </div>
 
-      <BoardIdentityCard identityProfile={identityProfile} title={t("identity.wizardTitle")} />
+      <BoardIdentityCard identityProfile={identityProfile} title={t("identity.wizardTitle")} teamDna={teamDna} />
 
       <div className="bg-cz-card border border-cz-border rounded-cz p-5 mb-4 mt-4">
         <div className="grid grid-cols-2 gap-4">
@@ -2373,7 +2396,7 @@ export default function BoardPage() {
         plans={plans}
       />
 
-      <BoardIdentityCard identityProfile={identityProfile} />
+      <BoardIdentityCard identityProfile={identityProfile} teamDna={teamDna} />
 
       {/* #1663 · Sponsor-CTA — kun når der reelt er åbne tilbud at vælge imellem. */}
       {sponsorState?.negotiable && sponsorState.offers.length > 0 && (
@@ -2606,6 +2629,7 @@ export default function BoardPage() {
             {wizardStep === 1 && (
               <WizardStep1
                 identityProfile={identityProfile}
+                teamDna={teamDna}
                 focus={wizardFocus} setFocus={setWizardFocus}
                 planType={wizardPlanType}
                 previewGoals={previewGoals}

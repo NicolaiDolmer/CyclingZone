@@ -41,6 +41,8 @@ import { useAuctionBidding } from "../lib/useAuctionBidding";
 import { formatNumber } from "../lib/intl";
 import { resolveApiError } from "../lib/apiError";
 import { getRiderSalary } from "../lib/marketValues.js";
+import SortTh from "../components/rider/RiderSortTh";
+import { cycleSortState } from "../lib/riderSort";
 import { Card, TagIcon, EyeIcon, StarIcon } from "../components/ui";
 
 const API = import.meta.env.VITE_API_URL;
@@ -73,15 +75,8 @@ function getAuctionsTourSteps(t) {
   ];
 }
 
-function SortTh({ children, sortKey, sort, sortDir, onSort, className = "" }) {
-  const active = sort === sortKey;
-  return (
-    <th onClick={() => onSort(sortKey)}
-      className={`cursor-pointer select-none transition-colors ${active ? "text-cz-accent-t/80" : "text-cz-3 hover:text-cz-2"} ${className}`}>
-      {children}{active && <span aria-hidden="true" className="ms-0.5 text-[10px]">{sortDir === "desc" ? "↓" : "↑"}</span>}
-    </th>
-  );
-}
+// #1755: SortTh er nu delt (components/rider/RiderSortTh) — fælles sort-adfærd
+// + retnings-ikon på tværs af alle rytter-oversigter (auktion inkl.).
 
 // ── Countdown timer ───────────────────────────────────────────────────────────
 function Countdown({ end, status }) {
@@ -715,13 +710,22 @@ export default function AuctionsPage() {
   }
 
   function handleSort(key) {
+    // #1755: delt cyklus-logik for begge sort-domæner. current_price/calculated_end
+    // er AUKTIONS-niveau (bor på auktionen, ikke rytteren) og styres af auctionSort;
+    // alt andet er rytter-niveau og styres af riderFilters. Begge bruger nu samme
+    // klik-cyklus så retning + nøgle-skift opfører sig ens overalt.
     if (key === "current_price" || key === "calculated_end") {
-      setAuctionSort(s => ({ key, dir: s.key === key ? (s.dir === "desc" ? "asc" : "desc") : "desc" }));
+      setAuctionSort(s => {
+        const next = cycleSortState({ sort: s.key, dir: s.dir }, key);
+        return { key: next.sort, dir: next.dir };
+      });
     } else {
-      const cur = riderFilters.filters.sort;
-      const dir = riderFilters.filters.sort_dir;
-      if (cur === key) riderFilters.onChange("sort_dir", dir === "desc" ? "asc" : "desc");
-      else { riderFilters.onChange("sort", key); riderFilters.onChange("sort_dir", "desc"); }
+      const next = cycleSortState(
+        { sort: riderFilters.filters.sort, dir: riderFilters.filters.sort_dir },
+        key,
+      );
+      riderFilters.onChange("sort", next.sort);
+      riderFilters.onChange("sort_dir", next.dir);
       setAuctionSort({ key: null, dir: "desc" });
     }
   }

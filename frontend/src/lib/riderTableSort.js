@@ -23,10 +23,21 @@ export function sortRidersForTable(riders, { key, dir } = {}) {
       const cmp = compareNationality(a.nationality_code, b.nationality_code);
       return dir === "desc" ? -cmp : cmp;
     }
+    // #1755: ryttertype alfabetisk på primær type (samme fælde som nationality_code
+    // — strenge i den numeriske gren nedenfor ville give NaN). Type-løse i hver ende.
+    if (key === "primary_type") {
+      const cmp = (a.primary_type || "").localeCompare(b.primary_type || "");
+      return dir === "desc" ? -cmp : cmp;
+    }
     let av, bv;
     if (key === "market_value") {
       av = getRiderMarketValue(a);
       bv = getRiderMarketValue(b);
+    } else if (key === "birthdate") {
+      // #1755: alders-sort = på fødselsår (ældre rytter = lavere år = højere alder).
+      // Manglende fødselsdato falder i ældste ende (1970) som i useRiderFilters.
+      av = a.birthdate ? new Date(a.birthdate).getFullYear() : 1970;
+      bv = b.birthdate ? new Date(b.birthdate).getFullYear() : 1970;
     } else {
       av = a[key] || 0;
       bv = b[key] || 0;

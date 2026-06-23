@@ -4,11 +4,11 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (23/6 — LAUNCH LIVE ✅): launch-bug-batch SHIPPED (auktion/akademi-korrekthed #1748/#1740/#1743 verificeret live i prod). Næste = resten af launch-bugs (#1742, #1739, #1745, #1741, #1738 …) — kan køres som ny parallel-fleet.** Permanent frisk sæson 1 live; recovery: backup `cyclingzone-20260622-153339` (VERIFIED) + PITR.
-> - **Merged 22-23/6 (launch-batch):** kalender-cadence + UX-batch (#1709-1721) · #1694/#1693 + **#1748/#1740/#1743 auktion/akademi-korrekthed** (RLS-migration live: 68 intake skjult, 12.604 ryttere læsbare for anon) · #1697 landing-header · **#1672 skades-dage · #1744 akademi-bekræftelse · #1674/#1671 rytter-alder+sort** · v5.93-5.98 patch-notes.
-> - **Næste prioritet (launch-bugs):** #1742 pensionerede under frie ungdom · #1739 AI-hold bliver i division · #1745 op/nedrykning-visning · #1741 transferhistorik · #1738 bestyrelse-DNA · #1746/#1747/#1749/#1750. Systemisk: **#1755** rytter-oversigt-konsistens + universel sort. Cleanup: #1756 stale academy_intake.
+> **🎯 Next action (23/6 morgen — natbølge SHIPPED): 13 PR'er merged til main + patch-note v5.99. Backend live via Railway; frontend afventer Vercel-deploy (hobby rate-limit ~24t → vent på reset eller Vercel Pro). 3 PR'er venter på DIG:** **#1767** (konto e-mail/brugernavn — `database/*.sql`-migration, du merger), **#1764** (academy-reconcile — du kører scriptet), **#1760** (op/nedrykning — KRÆVER beslutning, se nedenfor). Recovery: backup `cyclingzone-20260622-153339` (VERIFIED) + PITR.
+> - **Merged (natbølge `wf_8f8a17e2-dc5` + 2 review-bølger):** #1735, #1742, #1739, #1650/#1669 (backend, live) · #1666 security · #1676 træthed-recovery · #1741, #1738/#1750, #1747, #1749, #1755, #1675 (frontend, afventer Vercel) · #1772 CI-fix. Alle adversarisk reviewet; #1746/#1666/#1755 hærdet efter review. Artifact: [night-wave-2026-06-23](audits/night-wave-2026-06-23.md).
+> - **⚠️ #1760 (op/nedrykning) = needs-fix, KRÆVER beslutning** (per-pulje-visning modsiger backend per-division-mekanik; design-fork bundet til [#1152](https://github.com/NicolaiDolmer/CyclingZone/issues/1152)). Valg A (anbefalet): division-bred zone + "pr. division"-tekst (matcher koden). Valg B: per-pulje-backend + luk #1152 først. #1240 (board fjern/erstat-mål) udskudt til #1187-B.
 > - **Ejer-beslutninger (åbne):** #1276 PCM-IP · #1278 spiller-comms (du voicer) · #1487-budget · #929 leaked-pw · #691 key-rotation · #940 NPS.
-> - **Hygiejne:** #1650 feature-liveness 'audit'-check fejler på alle PRs (ikke-required støj). #1733 drop prod-backup-tabeller når stabilt. [PLAN.md](PLAN.md)=SSOT.
+> - **Hygiejne:** Vercel hobby rate-limit (overvej Pro før næste bølge). `audit`-CI-check er ikke-required støj. #1733 drop prod-backup-tabeller når stabilt. 30 fleet-worktrees ryddes. [PLAN.md](PLAN.md)=SSOT.
 
 > **🤖 Working agent:** Ingen aktiv session.
 

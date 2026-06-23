@@ -77,10 +77,76 @@ test("emptyState KPI copy has no top-N jargon (EN+DA)", () => {
   }
 });
 
-test("unknown goal type falls back to stored label", () => {
-  assert.equal(getBoardGoalLabel(tEn, { type: "no_outstanding_debt", label: "Ingen udestaende gaeld ved saesonslut" }),
-    "Ingen udestaende gaeld ved saesonslut");
+test("null + truly unknown goal type fall back gracefully", () => {
   assert.equal(getBoardGoalLabel(tEn, null), "");
+  // En type uden type-resolver OG uden label_key falder tilbage til lagret label.
+  assert.equal(getBoardGoalLabel(tEn, { type: "totally_made_up", label: "Rå dansk label" }),
+    "Rå dansk label");
+});
+
+// #1750 · Alle øvrige mål-typer skal nu vises på ENGELSK i EN-mode (før lækkede
+// de dansk råtekst fra DB-labelen). Dansk-mode skal stadig vise dansk.
+test("all board goal types resolve to English in EN (no DA leak)", () => {
+  const cases = [
+    [{ type: "stage_wins", target: 1, label: "Mindst 1 etapesejr" }, "At least 1 stage win", "Mindst 1 etapesejr"],
+    [{ type: "stage_wins", target: 3, label: "Mindst 3 etapesejrer" }, "At least 3 stage wins", "Mindst 3 etapesejre"],
+    [{ type: "stage_wins", target: 4, cumulative: true, label: "Mindst 4 etapesejre over planperioden" },
+      "At least 4 stage wins over the plan period", "Mindst 4 etapesejre over planperioden"],
+    [{ type: "gc_wins", target: 1, label: "Mindst 1 samlet sejr" }, "At least 1 overall win", "Mindst 1 samlet sejr"],
+    [{ type: "gc_wins", target: 2, label: "Mindst 2 samlede sejre" }, "At least 2 overall wins", "Mindst 2 samlede sejre"],
+    [{ type: "min_u25_riders", target: 4, label: "Min. 4 U25-ryttere pa holdet" },
+      "Min. 4 U25 riders on the team", "Min. 4 U25-ryttere på holdet"],
+    [{ type: "min_riders", target: 7, label: "Hold pa min. 7 ryttere" },
+      "Keep at least 7 riders", "Hold på min. 7 ryttere"],
+    [{ type: "sponsor_growth", target: 10, label: "Sponsor-indkomst vokset med 10%" },
+      "Sponsor income up 10%", "Sponsor-indkomst vokset med 10%"],
+    [{ type: "sponsor_growth", target: 30, label: "Sponsor-indkomst vokset med 30% over planperioden" },
+      "Sponsor income up 30% over the plan period", "Sponsor-indkomst vokset med 30% over planperioden"],
+    [{ type: "no_outstanding_debt", target: 0, label: "Ingen udestaende gaeld ved saesonslut" },
+      "No outstanding debt at season end", "Ingen udestående gæld ved sæsonslut"],
+    [{ type: "relative_rank", target: 3, label: "Slut foran mindst 3 andre managers i divisionen" },
+      "Finish ahead of at least 3 other managers in the division", "Slut foran mindst 3 andre managers i divisionen"],
+    [{ type: "u25_development_delta", target: 8, label: "Gennemsnitlig U25-udvikling >= 8 points/sæson" },
+      "Average U25 stat gain >= 8 stat points/season", "Gennemsnitlig U25-stat-gevinst >= 8 stat-points/sæson"],
+    [{ type: "jersey_wins", target: 2, label: "Mindst 2 etapeloeb-troejer" },
+      "At least 2 stage-race jerseys (points/mountains/young)", "Mindst 2 etapeløb-trøjer (point/bjerg/young)"],
+    [{ type: "profitable_transfers", target: 500000, label: "Netto transfer-balance >= 500K over planperioden" },
+      "Net transfer balance >= 500K over the plan period", "Netto transfer-balance >= 500K over planperioden"],
+    [{ type: "domestic_dominance", target: 2, label: "Mindst 2 sejre i hjemlandsloeb pr. saeson" },
+      "At least 2 wins in home races per season", "Mindst 2 sejre i hjemlandsløb pr. sæson"],
+  ];
+  for (const [goal, expectedEn, expectedDa] of cases) {
+    assert.equal(getBoardGoalLabel(tEn, goal), expectedEn, `EN for ${goal.type}`);
+    assert.equal(getBoardGoalLabel(tDa, goal), expectedDa, `DA for ${goal.type}`);
+  }
+});
+
+// #1238 · monument_podium med race_scope "classics" honorerer hele
+// klassiker-kategorien (egne keys i begge sprog).
+test("monument_podium classics scope resolves to classics copy in EN+DA", () => {
+  const goal = { type: "monument_podium", target: 1, race_scope: "classics",
+    label: "Top-3 i mindst 1 klassiker-loeb (inkl. Monuments)" };
+  assert.equal(getBoardGoalLabel(tEn, goal), "Top 3 in at least 1 classic race (incl. Monuments)");
+  assert.equal(getBoardGoalLabel(tDa, goal), "Top-3 i mindst 1 klassiker-løb (inkl. Monuments)");
+});
+
+// Regression for #1750: ingen EN-mål må indeholde åbenlys dansk råtekst.
+test("no EN board goal label leaks Danish-only words", () => {
+  const danishMarkers = /\b(ryttere|holdet|divisionen|sæson|saeson|gæld|gaeld|etapesejr|samlet|samlede|vokset|foran|planperioden)\b/i;
+  const goals = [
+    { type: "stage_wins", target: 2, label: "x" },
+    { type: "gc_wins", target: 1, label: "x" },
+    { type: "min_u25_riders", target: 4, label: "x" },
+    { type: "min_riders", target: 7, label: "x" },
+    { type: "sponsor_growth", target: 10, label: "x" },
+    { type: "no_outstanding_debt", target: 0, label: "x" },
+    { type: "relative_rank", target: 3, label: "x" },
+    { type: "u25_development_delta", target: 8, label: "x" },
+  ];
+  for (const goal of goals) {
+    const label = getBoardGoalLabel(tEn, goal);
+    assert.ok(!danishMarkers.test(label), `dansk lækage i EN-label "${label}" (${goal.type})`);
+  }
 });
 
 test("min_national_riders interpolates target + country name", () => {
