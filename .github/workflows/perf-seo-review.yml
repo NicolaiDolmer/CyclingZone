@@ -45,7 +45,7 @@ jobs:
 
       - name: Byg audit-rapport
         run: |
-          LH=$(ls -t .lighthouseci/lhr-*.json 2>/dev/null | head -1 || true)
+          LH=$(find .lighthouseci -maxdepth 1 -name 'lhr-*.json' 2>/dev/null | sort | tail -n1)
           echo "Lighthouse JSON: ${LH:-(ingen — prod-run fejlede, rapport bygges uden lab-scores)}"
           node scripts/audit-perf-seo.mjs "$LH" > perf-seo-report.md
           cat perf-seo-report.md
