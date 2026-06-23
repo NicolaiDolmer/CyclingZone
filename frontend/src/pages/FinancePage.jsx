@@ -14,7 +14,7 @@ import { startTour } from "../lib/onboardingTour";
 import { logEvent } from "../lib/logEvent";
 import {
   Tabs, TabList, Tab, TabPanel,
-  Card, Button, Input, Select, ProgressMeter, Spinner,
+  Card, Button, Input, Select, ProgressMeter, PageLoader,
   ChevronRightIcon, XIcon,
 } from "../components/ui";
 
@@ -315,9 +315,7 @@ export default function FinancePage() {
   }
 
   if (loading) return (
-    <div className="flex justify-center py-16" role="status" aria-label={t("page.loadingAria")}>
-      <Spinner />
-    </div>
+    <PageLoader label={t("page.loadingAria")} />
   );
 
   // #1350: terminal, retry-bar fejl ved fejlet initial load — aldrig en evig

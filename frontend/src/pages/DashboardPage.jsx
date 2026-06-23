@@ -22,7 +22,7 @@ import {
   resolveCategoryLabel,
 } from "../lib/boardCopy";
 import DashboardCustomizeMenu from "../components/DashboardCustomizeMenu";
-import { Card, AlertTriangleIcon, BellIcon, XIcon, ArrowDownIcon } from "../components/ui";
+import { Card, AlertTriangleIcon, BellIcon, XIcon, ArrowDownIcon, PageLoader } from "../components/ui";
 import { flushPendingSignup, logFirstEvent } from "../lib/logEvent";
 
 const API = import.meta.env.VITE_API_URL;
@@ -321,9 +321,7 @@ export default function DashboardPage() {
   }
 
   if (loading) return (
-    <div className="flex justify-center py-16">
-      <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
-    </div>
+    <PageLoader />
   );
 
   const winningAuctions = allAuctions.filter(a => getAuctionLeaderId(a) === team?.id);

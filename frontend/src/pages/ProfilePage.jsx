@@ -11,7 +11,7 @@ import {
   Field,
   Input,
   Toggle,
-  Spinner,
+  PageLoader,
   CheckIcon,
   XIcon,
   AlertTriangleIcon,
@@ -248,9 +248,7 @@ export default function ProfilePage() {
   }
 
   if (loading) return (
-    <div className="flex justify-center py-16">
-      <Spinner size={24} />
-    </div>
+    <PageLoader />
   );
 
   const canEditTeam = Boolean(team) || user?.role === "manager";

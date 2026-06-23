@@ -36,6 +36,7 @@ import {
   EditIcon,
   EyeIcon,
   TrophyIcon,
+  PageLoader,
 } from "../components/ui";
 
 const API = import.meta.env.VITE_API_URL;
@@ -2341,9 +2342,7 @@ export default function BoardPage() {
   const wizardDialogRef = useModalA11y(wizardClosable ? closeWizard : null, Boolean(wizardPlanType));
 
   if (loading) return (
-    <div className="flex justify-center py-16">
-      <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
-    </div>
+    <PageLoader />
   );
 
   // ── Hoved-visning + wizard modal ────────────────────────────────────────────

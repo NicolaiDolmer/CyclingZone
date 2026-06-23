@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Link } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { formatNumber } from "../lib/intl";
-import { Card, Spinner, CoinIcon, InfoIcon } from "../components/ui";
+import { Card, PageLoader, CoinIcon, InfoIcon } from "../components/ui";
 // Frontend single source of truth for PRIZE_PER_POINT (mirrors backend economyConstants.js).
 import { PRIZE_PER_POINT } from "../lib/expectedPrizeCalculator";
 
@@ -85,9 +85,7 @@ export default function RacePointsPage() {
   }
 
   if (loading) return (
-    <div className="flex justify-center py-16">
-      <Spinner size={24} />
-    </div>
+    <PageLoader />
   );
 
   const classData = grouped[activeClass] || {};

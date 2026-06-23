@@ -28,7 +28,7 @@ import { startTour } from "../lib/onboardingTour";
 import { formatNumber } from "../lib/intl";
 import SortTh from "../components/rider/RiderSortTh";
 import { cycleSortState } from "../lib/riderSort";
-import { Card, ExchangeIcon, Select, ArrowUpIcon, ArrowDownIcon, ChevronUpIcon, ChevronDownIcon } from "../components/ui";
+import { Card, ExchangeIcon, Select, ArrowUpIcon, ArrowDownIcon, ChevronUpIcon, ChevronDownIcon, PageLoader } from "../components/ui";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -414,9 +414,7 @@ export default function RidersPage() {
       <AbilityLegend t={t} tRider={tRider} />
 
       {loading ? (
-        <div className="flex justify-center py-16">
-          <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
-        </div>
+        <PageLoader />
       ) : (
         <>
           {/* #9: mobil-sortering — desktop sorterer via kolonne-headers, men de

@@ -18,6 +18,7 @@ import SortTh from "../components/rider/RiderSortTh";
 import { formatNumber } from "../lib/intl";
 import TeamTransferHistoryTab from "../components/TeamTransferHistoryTab";
 import TeamResultsTab from "../components/TeamResultsTab";
+import { PageLoader } from "../components/ui";
 
 // Gyldige tab-nøgler — ?tab= i URL'en (fx ranglistens holdnavn-link → results, #824).
 const TABS = ["squad", "results", "transfers"];
@@ -101,9 +102,7 @@ export default function TeamProfilePage() {
   useEffect(() => { loadAll(); }, [loadAll]);
 
   if (loading) return (
-    <div className="flex justify-center py-16">
-      <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
-    </div>
+    <PageLoader />
   );
 
   if (!team) return <div className="text-center py-16 text-cz-3">{t("profile.notFound")}</div>;

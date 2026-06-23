@@ -7,7 +7,7 @@ import TeamLink from "../components/TeamLink";
 import RaceSelectionPanel from "../components/race/RaceSelectionPanel.jsx";
 import StageScheduleCard from "../components/race/StageScheduleCard.jsx";
 import { Flag } from "../components/Flag";
-import { FlagIcon } from "../components/ui";
+import { FlagIcon, PageLoader } from "../components/ui";
 import { formatNumber } from "../lib/intl";
 import { fetchAllRows } from "../lib/supabasePagination";
 import { logEvent } from "../lib/logEvent";
@@ -184,9 +184,7 @@ export default function RaceDetailPage() {
   }, [isStageRace, stageNumbers, activeTab]);
 
   if (loading) return (
-    <div className="flex justify-center py-16">
-      <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
-    </div>
+    <PageLoader />
   );
 
   if (notFound) return (

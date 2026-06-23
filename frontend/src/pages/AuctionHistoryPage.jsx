@@ -8,7 +8,7 @@ import NationCell from "../components/rider/NationCell";
 import RiderBadges from "../components/rider/RiderBadges";
 import { ageBadgeKey } from "../lib/riderAge";
 import { formatNumber, formatDate } from "../lib/intl";
-import { Card, Button, EmptyState, Spinner, GavelIcon } from "../components/ui";
+import { Card, Button, EmptyState, GavelIcon, PageLoader } from "../components/ui";
 
 function timeAgo(dateStr, t) {
   if (!dateStr) return "—";
@@ -200,9 +200,7 @@ export default function AuctionHistoryPage() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-16">
-          <Spinner size={24} />
-        </div>
+        <PageLoader />
       ) : auctions.length === 0 ? (
         <EmptyState
           icon={<GavelIcon size={28} aria-hidden="true" />}

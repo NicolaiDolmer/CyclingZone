@@ -14,7 +14,7 @@ import { formatCz, getRiderMarketValue, getRiderSalary } from "../lib/marketValu
 import { formatNumber, formatDate } from "../lib/intl";
 import { resolveApiError } from "../lib/apiError";
 import { sortListings, LISTING_SORT_OPTIONS } from "../lib/transferListingSort";
-import { Card, EmptyState, ExchangeIcon, ClipboardIcon, InboxIcon } from "../components/ui";
+import { Card, EmptyState, ExchangeIcon, ClipboardIcon, InboxIcon, PageLoader } from "../components/ui";
 import { ABILITY_STATS as LISTING_STATS, flattenAbilities } from "../lib/abilities";
 import { getRiderAge } from "../lib/riderAge";
 import NationCell from "../components/rider/NationCell";
@@ -1577,9 +1577,7 @@ export default function TransfersPage() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-16">
-          <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
-        </div>
+        <PageLoader />
       ) : (
         <div>
           {tab === "received" && (

@@ -16,7 +16,7 @@ import { formatCz, getRiderMarketValue, getRiderSalary } from "../lib/marketValu
 import { formatNumber } from "../lib/intl";
 import SortTh from "../components/rider/RiderSortTh";
 import { cycleSortState } from "../lib/riderSort";
-import { StarIcon, ExchangeIcon, CheckIcon } from "../components/ui";
+import { StarIcon, ExchangeIcon, CheckIcon, PageLoader } from "../components/ui";
 import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
 import { useScouting } from "../lib/useScouting";
 import { scoutSortValue } from "../lib/scouting";
@@ -160,9 +160,7 @@ export default function WatchlistPage() {
   useEffect(() => { setPage(1); }, [riderFilters.filters]);
 
   if (loading) return (
-    <div className="flex justify-center py-16">
-      <div className="w-6 h-6 border-2 border-cz-border border-t-cz-accent rounded-full animate-spin" />
-    </div>
+    <PageLoader />
   );
 
   return (
