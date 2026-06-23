@@ -330,7 +330,7 @@
           "Admin lukker transfervinduet og starter ny sæson.",
           "Ved sæsonstart: ventende transfers behandles, sponsorpenge udbetales først, dernæst trækkes lånerenter og lønninger (hver løn er frosset ved signering og følger ikke rytterens senere markedsværdi). Nødlån oprettes kun hvis sponsor+balance ikke kan dække.",
           "Løb afvikles af Cycling Zones race-motor, der simulerer hver etape og skriver resultaterne automatisk.",
-          "Ved sæsonafslutning: point tælles op, divisionsbonus udbetales, op/nedrykning afgøres (fra sæson 3 og frem), og bestyrelsesplaner evalueres. Løn og renter trækkes IKKE ved sæsonslut længere. Det er flyttet til næste sæsons start (v3.78)."
+          "Ved sæsonafslutning: point tælles op, divisionsbonus udbetales, op/nedrykning afgøres (hver sæson), og bestyrelsesplaner evalueres. Løn og renter trækkes IKKE ved sæsonslut længere. Det er flyttet til næste sæsons start (v3.78)."
         ]
       },
       "racesAndResults": {
@@ -360,7 +360,7 @@
       },
       "promotionRelegation": {
         "title": "Op- og nedrykning",
-        "text": "Top 2 i Division 2 og 3 rykker op. Bund 2 i Division 1 og 2 rykker ned. Afgøres automatisk ved sæsonafslutning baseret på sæsonpoint. Divisionerne er låst de første to sæsoner: de første op- og nedrykninger sker når sæson 2 slutter, så alle har tid til at finde sig til rette i en division først."
+        "text": "Divisionerne danner en pyramide af puljer: 1 pulje i Division 1, 2 i Division 2, 4 i Division 3 og 8 i Division 4. Ved sæsonafslutning rykker hver pulje sine top 2 hold op til puljen ovenover og relegerer sine bund 4 hold ned, delt ligeligt mellem de to puljer nedenunder. Division 1 rykker ikke op (den er toppen), og bunddivisionen rykker ikke ned. Det afgøres automatisk ud fra din puljes slutstilling, hver sæson. Kun rigtige managere flytter mellem puljer; AI-hold er fyld der fyldes op bagefter."
       },
       "whenSeasonEnds": {
         "title": "Hvornår kan en sæson afsluttes?",
@@ -422,7 +422,7 @@
       },
       "promotionRelegation": {
         "title": "Op- og nedrykning",
-        "text": "Top 2 rykker op, bund 2 rykker ned i hver division. Rykningsafgørelse sker automatisk ved sæsonafslutning. Divisionerne er låst de første to sæsoner, så de første op- og nedrykninger sker når sæson 2 slutter."
+        "text": "Hver pulje rykker sine top 2 op til puljen ovenover og relegerer sine bund 4 ned, delt mellem de to puljer nedenunder. Division 1 rykker ikke op, og bunddivisionen rykker ikke ned. Afgøres automatisk ud fra din puljes slutstilling, hver sæson."
       }
     },
     "riders": {

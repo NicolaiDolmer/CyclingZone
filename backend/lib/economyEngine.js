@@ -35,7 +35,6 @@ import { developRidersForSeason } from "./riderProgressionEngine.js";
 import { U25_ABILITY_KEYS } from "./boardGoals.js";
 import {
   DEBT_CEILING_BY_DIVISION,
-  DIVISION_CAPACITY,
   FINANCE_ACTOR_TYPE,
   FINANCE_REASON,
   FINANCE_RELATED_ENTITY,
@@ -45,6 +44,7 @@ import {
   MIN_DIVISION,
   INITIAL_BALANCE,
   NEGATIVE_BALANCE_INTEREST_RATE,
+  POOL_TARGET_SIZE,
   SEASON1_SKIP_SPONSOR_IF_STARTING_CAPITAL,
   SEASON_RIDER_PROGRESSION_ENABLED,
   SEASON_VALUE_RECALC_ENABLED,
@@ -52,6 +52,7 @@ import {
   UPKEEP_BEFORE_FIRST_RACE_ENABLED,
   UPKEEP_BY_DIVISION,
 } from "./economyConstants.js";
+import { reconcileAiTeamsForPool } from "./aiTeamGenerator.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
 import { closeTransferListingsForRiders } from "./marketUtils.js";
 import { ACADEMY } from "./academyFlag.js";
@@ -79,8 +80,12 @@ async function getDefaultSupabaseClient() {
 // Løn er FROSSEN ved signering (#1309: salary er en plain INTEGER, ikke længere
 // GENERATED). Raten lever i economyConstants.SALARY_RATE (E2: 0.067) og bruges af
 // contractSeed/marketUtils — IKKE her. Sæson-slut læser den stored rider.salary.
-const PROMOTION_SLOTS = 2;         // Top 2 promote
-const RELEGATION_SLOTS = 2;        // Bottom 2 relegate
+// #1152 binær-træ-model (ejer 2026-06-23): per pulje rykker top 2 OP til forælder-
+// puljen, og bund 4 NED delt 2+2 ud i de to børne-puljer. 2 søsterpuljer × 2 op = 4
+// op samlet i forælderen = 4 ned fra forælderen → balancerer eksakt. Kun ægte hold
+// flyttes (AI er fyld der regenereres pr. pulje af reconcileAiTeamsForPool).
+const PROMOTION_SLOTS = 2;         // Top 2 op til forælder-pulje
+const RELEGATION_SLOTS = 4;        // Bund 4 ned, delt 2+2 til de to børne-puljer
 // MIN_DIVISION / MAX_DIVISION lever nu i economyConstants.js (#962) — delt med
 // fyld-fra-toppen i teamProfileEngine, så bounds ikke duplikeres.
 const SUPABASE_PAGE_SIZE = 1000;
@@ -899,21 +904,29 @@ export async function processSeasonEnd(seasonId, deps = {}) {
   // Process each division after finance/board side effects have succeeded.
   // #1608: loop MIN..MAX_DIVISION (nu 4) i stedet for hardcodet [1,2,3], så tier 4
   // ikke tavst springes over ved sæson-slut. MAX_DIVISION lever i economyConstants.
+  // #1152: byg pulje-træet én gang og videregiv til hver processDivisionEnd, så
+  // op/nedrykning kan route til forælder/barn-puljer (binær-træ via pool_index).
+  const poolTree = await buildPoolTree(supabaseClient);
+
   for (let division = MIN_DIVISION; division <= MAX_DIVISION; division++) {
     const divStandings = standings.filter(s => s.division === division);
     await processDivisionEnd(divStandings, division, seasonId, currentSeasonNumber, {
       supabase: supabaseClient,
       now: notificationNow,
+      poolTree,
     });
   }
 
-  // #962 fyld-fra-toppen: komprimér aktive menneske-hold op i tomme topplads-
-  // huller efter op/nedrykning, så de øverste divisioner altid er fyldt til
-  // DIVISION_CAPACITY før en lavere division bruges.
-  await rebalanceDivisions(currentSeasonNumber, standings, {
-    supabase: supabaseClient,
-    now: notificationNow,
-  });
+  // #1152 AI-fyld-sweep efter op/nedrykning: bring hver pulje tilbage til
+  // POOL_TARGET_SIZE (reconcileAiTeamsForPool trimmer/top-up'er AI, rører ALDRIG ægte
+  // hold; tier 3+4-puljer uden ægte hold forbliver tomme/dormant). Erstatter den gamle
+  // tier-fyld-fra-top (rebalanceDivisions) — pulje-modellen fylder med AI, ikke ved at
+  // trække ægte hold op uden for sporten.
+  if (currentSeasonNumber >= FIRST_PROMOTION_RELEGATION_SEASON) {
+    for (const ld of poolTree.byId.values()) {
+      await reconcileAiTeamsForPool({ supabase: supabaseClient, poolId: ld.id });
+    }
+  }
 
   // Mark season as completed
   const { error: completeError } = await supabaseClient.from("seasons")
@@ -1578,159 +1591,146 @@ export async function updateRiderValues(supabaseClient) {
   return { ridersUpdated };
 }
 
-export async function processDivisionEnd(standings, division, seasonId, seasonNumber, deps = {}) {
-  const client = deps.supabase ?? await getDefaultSupabaseClient();
-  const notificationDeps = { supabase: client, now: deps.now };
-  // Gate: open-beta-fasen skal kunne afslutte sæsoner uden at flytte hold mellem
-  // divisioner, indtil vi har fundet en sund langtidsfordeling. Se
-  // FIRST_PROMOTION_RELEGATION_SEASON i economyConstants.js for rationale.
-  if (seasonNumber < FIRST_PROMOTION_RELEGATION_SEASON) {
-    console.log(
-      `  ⏸  Div ${division}: oprykninger sprunget over (sæson ${seasonNumber} < FIRST_PROMOTION_RELEGATION_SEASON=${FIRST_PROMOTION_RELEGATION_SEASON})`
-    );
-    return;
+/**
+ * Bygger pulje-træet (forælder/barn) fra league_divisions' pool_index. Strukturen er
+ * et binært træ (1/2/4/8 puljer): forælder(T,i) = (T-1, ⌊i / ratio⌋); børn = pool_index
+ * i tieren under der mapper tilbage. ratio = puljer(T) / puljer(T-1). Udledt fra data
+ * (robust mod fremtidig pyramide-udvidelse) — INGEN migration nødvendig.
+ */
+export async function buildPoolTree(client) {
+  const { data: lds, error } = await client
+    .from("league_divisions")
+    .select("id, tier, pool_index");
+  throwIfSupabaseError(error, "Could not load league_divisions for pool tree");
+  const byId = new Map();
+  const byTierIdx = new Map();
+  const poolsPerTier = new Map();
+  for (const ld of lds || []) {
+    byId.set(ld.id, ld);
+    byTierIdx.set(`${ld.tier}:${ld.pool_index}`, ld.id);
+    poolsPerTier.set(ld.tier, (poolsPerTier.get(ld.tier) || 0) + 1);
   }
-  if (standings.length < PROMOTION_SLOTS + RELEGATION_SLOTS) return;
-
-  const promotions = [];
-  const relegations = [];
-
-  // Promotion (top teams from div 2 and 3)
-  if (division > MIN_DIVISION) {
-    const promoted = standings.slice(0, PROMOTION_SLOTS);
-    for (const s of promoted) {
-      if (!s.team?.is_ai) {
-        promotions.push(s.team_id);
-        const { error } = await client.from("teams")
-          .update({ division: division - 1 })
-          .eq("id", s.team_id);
-        throwIfSupabaseError(error, `Could not promote team ${s.team_id}`);
-        await notifyManager(
-          s.team_id,
-          "board_update",
-          "Oprykket! 🎉",
-          `Tillykke! Dit hold rykker op til Division ${division - 1}`,
-          notificationDeps
-        );
-      }
+  const parentOf = (poolId) => {
+    const p = byId.get(poolId);
+    if (!p || p.tier <= MIN_DIVISION) return null;
+    const ratio = (poolsPerTier.get(p.tier) || 1) / (poolsPerTier.get(p.tier - 1) || 1) || 1;
+    return byTierIdx.get(`${p.tier - 1}:${Math.floor(p.pool_index / ratio)}`) ?? null;
+  };
+  const childrenOf = (poolId) => {
+    const p = byId.get(poolId);
+    if (!p || p.tier >= MAX_DIVISION) return [];
+    const ratio = (poolsPerTier.get(p.tier + 1) || 1) / (poolsPerTier.get(p.tier) || 1) || 1;
+    const ids = [];
+    for (let k = 0; k < ratio; k++) {
+      const id = byTierIdx.get(`${p.tier + 1}:${p.pool_index * ratio + k}`);
+      if (id != null) ids.push(id);
     }
-  }
-
-  // Relegation (bottom teams from div 1 and 2)
-  if (division < MAX_DIVISION) {
-    const relegated = standings.slice(-RELEGATION_SLOTS);
-    for (const s of relegated) {
-      if (!s.team?.is_ai) {
-        relegations.push(s.team_id);
-        const { error } = await client.from("teams")
-          .update({ division: division + 1 })
-          .eq("id", s.team_id);
-        throwIfSupabaseError(error, `Could not relegate team ${s.team_id}`);
-        await notifyManager(
-          s.team_id,
-          "board_update",
-          "Relegation",
-          `Your team drops to Division ${division + 1}.`,
-          notificationDeps,
-          {
-            titleCode: "notif.divisionRelegated.title",
-            titleParams: {},
-            messageCode: "notif.divisionRelegated.message",
-            messageParams: { division: division + 1 },
-          }
-        );
-      }
-    }
-  }
-
-  if (promotions.length || relegations.length) {
-    console.log(`  📈 Div ${division}: ${promotions.length} promoted, ${relegations.length} relegated`);
-  }
+    return ids;
+  };
+  return { byId, parentOf, childrenOf, poolsPerTier };
 }
 
 /**
- * #962 fyld-fra-toppen — re-balance ved sæson-slut.
+ * Per-pulje op/nedrykning (#1152 binær-træ-model, ejer-besluttet 2026-06-23).
  *
- * Komprimerer aktive menneske-hold op i tomme topplads-huller, så de øverste
- * divisioner altid er fyldt til DIVISION_CAPACITY før en lavere division bruges.
- * Huller opstår når hold fryses/forlader spillet mellem sæsoner.
+ * For HVER pulje i denne tier (division): rykker top PROMOTION_SLOTS op til puljens
+ * FORÆLDER-pulje (tieren over), og relegerer bund RELEGATION_SLOTS delt ligeligt ud i
+ * puljens BØRNE-puljer (tieren under). Sætter BÅDE division (tier) OG league_division_id
+ * (pulje). Kun ægte hold flyttes — AI er fyld der regenereres pr. pulje af
+ * reconcileAiTeamsForPool i AI-fyld-sweepet bagefter (processSeasonEnd).
  *
- * Kører EFTER op/nedrykning (processDivisionEnd) og er gated af samme
- * FIRST_PROMOTION_RELEGATION_SEASON, så open-beta-sæsoner ikke flytter hold før
- * divisionsfordelingen er moden. Kun aktive, ikke-test menneske-hold tæller med i
- * kapaciteten og rykkes — AI-, test- og frosne hold ignoreres (samme filter som
- * ranglisten). Bund-divisionen (MAX_DIVISION) er overflow og trækkes aldrig op fra.
- *
- * Hold trækkes op efter sidste sæsons placering (bedst placeret først) for at
- * gøre den ikke-sportslige flytning så fair som muligt.
+ * Div4-udskydelse (ejer): en Div3-pulje relegerer KUN til sine Div4-børn når den pulje
+ * udelukkende består af ægte managere (ingen AI tilbage). Indtil da er Div3 gulvet og
+ * Div4-puljerne forbliver dormant. Forælder/barn udledes fra pool_index (ingen migration).
  */
-export async function rebalanceDivisions(seasonNumber, standings, deps = {}) {
+export async function processDivisionEnd(standings, division, seasonId, seasonNumber, deps = {}) {
   const client = deps.supabase ?? await getDefaultSupabaseClient();
   const notificationDeps = { supabase: client, now: deps.now };
-
   if (seasonNumber < FIRST_PROMOTION_RELEGATION_SEASON) {
-    return { moved: [] };
+    console.log(`  ⏸  Div ${division}: op/nedrykning sprunget over (sæson ${seasonNumber} < ${FIRST_PROMOTION_RELEGATION_SEASON})`);
+    return;
   }
 
-  const { data: teams, error } = await client
-    .from("teams")
-    .select("id, division")
-    .eq("is_ai", false)
-    .eq("is_test_account", false)
-    .eq("is_frozen", false);
-  throwIfSupabaseError(error, "Could not load teams for division rebalance");
+  const tree = deps.poolTree ?? await buildPoolTree(client);
 
-  // Rank-lookup fra sidste sæsons standings (tidligere indeks = bedre placering).
-  // Hold uden standing sorteres bagest, så de rykkes sidst.
-  const rankByTeam = new Map();
-  let order = 0;
-  for (const s of standings || []) {
-    if (!rankByTeam.has(s.team_id)) rankByTeam.set(s.team_id, order++);
-  }
-  const rankOf = (id) => (rankByTeam.has(id) ? rankByTeam.get(id) : Number.MAX_SAFE_INTEGER);
-
-  // Hold pr. division, bedst placeret først.
-  const byDivision = new Map();
-  for (const team of teams || []) {
-    if (!byDivision.has(team.division)) byDivision.set(team.division, []);
-    byDivision.get(team.division).push(team.id);
-  }
-  for (const list of byDivision.values()) {
-    list.sort((a, b) => rankOf(a) - rankOf(b));
+  // Gruppér tierens standings pr. pulje. rank_in_division er allerede pr. pulje, så vi
+  // sorterer på den (rank 1 = bedst).
+  const byPool = new Map();
+  for (const s of standings) {
+    if (s.league_division_id == null) continue; // pre-pulje-hold (NULL) springes over
+    if (!byPool.has(s.league_division_id)) byPool.set(s.league_division_id, []);
+    byPool.get(s.league_division_id).push(s);
   }
 
-  const moved = [];
-  for (let targetDiv = MIN_DIVISION; targetDiv < MAX_DIVISION; targetDiv++) {
-    if (!byDivision.has(targetDiv)) byDivision.set(targetDiv, []);
-    const targetList = byDivision.get(targetDiv);
+  let promoted = 0;
+  let relegated = 0;
+  for (const [poolId, poolStandings] of byPool) {
+    poolStandings.sort((a, b) => (a.rank_in_division ?? 1e9) - (b.rank_in_division ?? 1e9));
+    if (poolStandings.length < PROMOTION_SLOTS + 1) continue; // for lille pulje at flytte
 
-    for (let sourceDiv = targetDiv + 1; sourceDiv <= MAX_DIVISION && targetList.length < DIVISION_CAPACITY; sourceDiv++) {
-      const sourceList = byDivision.get(sourceDiv) || [];
-      while (targetList.length < DIVISION_CAPACITY && sourceList.length > 0) {
-        const teamId = sourceList.shift();
-        const { error: moveError } = await client
-          .from("teams")
-          .update({ division: targetDiv })
-          .eq("id", teamId);
-        throwIfSupabaseError(moveError, `Could not rebalance team ${teamId}`);
-        targetList.push(teamId);
-        moved.push({ team_id: teamId, from: sourceDiv, to: targetDiv });
-        await notifyManager(
-          teamId,
-          "board_update",
-          "Oprykket! 🎉",
-          `Tillykke! Dit hold rykker op til Division ${targetDiv}`,
-          notificationDeps
-        );
+    // ── OP: top PROMOTION_SLOTS → forælder-pulje ──
+    if (division > MIN_DIVISION) {
+      const parentPoolId = tree.parentOf(poolId);
+      if (parentPoolId != null) {
+        for (const s of poolStandings.slice(0, PROMOTION_SLOTS)) {
+          if (s.team?.is_ai) continue; // AI er fyld — flyttes ikke
+          const { error } = await client.from("teams")
+            .update({ division: division - 1, league_division_id: parentPoolId })
+            .eq("id", s.team_id);
+          throwIfSupabaseError(error, `Could not promote team ${s.team_id}`);
+          await notifyManager(
+            s.team_id, "board_update", "Oprykket! 🎉",
+            `Tillykke! Dit hold rykker op til Division ${division - 1}`, notificationDeps
+          );
+          promoted++;
+        }
+      }
+    }
+
+    // ── NED: bund RELEGATION_SLOTS delt ligeligt → børne-puljer ──
+    if (division < MAX_DIVISION) {
+      const childPoolIds = tree.childrenOf(poolId);
+      // Div4-udskydelse: børn i tier < MAX_DIVISION er altid aktive; Div4-børn (tier ===
+      // MAX_DIVISION) aktiveres først når DENNE pulje er all-real (ingen AI tilbage).
+      const childTier = division + 1;
+      const poolAllReal = poolStandings.length >= POOL_TARGET_SIZE && poolStandings.every((s) => !s.team?.is_ai);
+      const childrenActive = childTier < MAX_DIVISION || poolAllReal;
+      if (childrenActive && childPoolIds.length) {
+        const bottom = poolStandings.slice(Math.max(PROMOTION_SLOTS, poolStandings.length - RELEGATION_SLOTS));
+        let realIdx = 0;
+        for (const s of bottom) {
+          if (s.team?.is_ai) continue;
+          const dest = childPoolIds[realIdx % childPoolIds.length];
+          realIdx++;
+          const { error } = await client.from("teams")
+            .update({ division: division + 1, league_division_id: dest })
+            .eq("id", s.team_id);
+          throwIfSupabaseError(error, `Could not relegate team ${s.team_id}`);
+          await notifyManager(
+            s.team_id, "board_update", "Relegation",
+            `Your team drops to Division ${division + 1}.`, notificationDeps,
+            {
+              titleCode: "notif.divisionRelegated.title",
+              titleParams: {},
+              messageCode: "notif.divisionRelegated.message",
+              messageParams: { division: division + 1 },
+            }
+          );
+          relegated++;
+        }
       }
     }
   }
 
-  if (moved.length) {
-    console.log(`  🧩 Division-rebalance: ${moved.length} hold rykket op for at fylde toppen`);
+  if (promoted || relegated) {
+    console.log(`  📈 Div ${division}: ${promoted} oprykket, ${relegated} relegeret (per pulje)`);
   }
-  return { moved };
 }
+
+// #1152: rebalanceDivisions (#962 tier-fyld-fra-top) er FJERNET — superseded af den
+// per-pulje AI-fyld-sweep i processSeasonEnd (reconcileAiTeamsForPool pr. pulje). Den
+// gamle funktion trak ægte hold op uden for sporten + satte kun division (ikke
+// league_division_id); pulje-modellen fylder huller med AI i stedet.
 
 // ─── Standing Updates ─────────────────────────────────────────────────────────
 
