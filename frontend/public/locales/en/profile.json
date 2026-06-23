@@ -7,7 +7,18 @@
     "title": "Account",
     "email": "Email",
     "username": "Username",
-    "adminBadge": "Admin"
+    "adminBadge": "Admin",
+    "saving": "Saving...",
+    "saveUsername": "Save",
+    "saveEmail": "Change",
+    "usernameHelp": "3-20 characters. Letters, numbers, underscore or hyphen.",
+    "usernameError": "Username must be 3-20 characters (letters, numbers, _ or -)",
+    "usernameTaken": "That username is taken",
+    "usernameSaved": "Username updated!",
+    "emailHelp": "We'll send a confirmation link to the new address. The change takes effect once you click it.",
+    "emailError": "Enter a valid email address",
+    "emailPending": "Confirmation sent to {email}. Click the link to finish the change.",
+    "noSession": "Could not find an active session"
   },
   "appearance": {
     "title": "Appearance",

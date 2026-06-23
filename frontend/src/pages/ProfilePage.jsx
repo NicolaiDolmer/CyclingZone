@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import { mapSupabaseAuthError } from "../lib/authErrors";
 import { useTheme } from "../lib/theme.jsx";
 import { useConsent } from "../lib/consent.jsx";
 import {
@@ -16,6 +17,7 @@ import {
   AlertTriangleIcon,
   ClockIcon,
   DiscordIcon,
+  InboxIcon,
 } from "../components/ui";
 import { buttonClass } from "../components/ui/buttonStyles.js";
 
@@ -24,7 +26,7 @@ const API = import.meta.env.VITE_API_URL;
 const THEME_OPTIONS = ["system", "light", "dark"];
 
 export default function ProfilePage() {
-  const { t } = useTranslation("profile");
+  const { t } = useTranslation(["profile", "errors"]);
   const [user, setUser] = useState(null);
   const [team, setTeam] = useState(null);
   const [discordId, setDiscordId] = useState("");
@@ -33,6 +35,11 @@ export default function ProfilePage() {
   const [testingDm, setTestingDm] = useState(false);
   const [teamName, setTeamName] = useState("");
   const [managerName, setManagerName] = useState("");
+  const [usernameInput, setUsernameInput] = useState("");
+  const [emailInput, setEmailInput] = useState("");
+  const [savingUsername, setSavingUsername] = useState(false);
+  const [savingEmail, setSavingEmail] = useState(false);
+  const [emailNotice, setEmailNotice] = useState("");
   const [loading, setLoading] = useState(true);
   const [savingDiscord, setSavingDiscord] = useState(false);
   const [savingTeam, setSavingTeam] = useState(false);
@@ -50,6 +57,8 @@ export default function ProfilePage() {
     ]);
     setUser(userData);
     setDiscordId(userData?.discord_id || "");
+    setUsernameInput(userData?.username || "");
+    setEmailInput(userData?.email || "");
     setTeam(teamData);
     setTeamName(teamData?.name || "");
     setManagerName(teamData?.manager_name || "");
@@ -99,6 +108,66 @@ export default function ProfilePage() {
     else showMsg(t("discord.idSaved"));
     await refreshDmStatus();
     setSavingDiscord(false);
+  }
+
+  // #1746: skift brugernavn via backend (case-insensitivt unikheds-tjek +
+  // validering). Backend er source-of-truth for unikhed; 3-20 tegn spejles her
+  // for hurtig feedback uden et round-trip.
+  async function saveUsername() {
+    const trimmed = usernameInput.trim();
+    if (trimmed === (user?.username || "")) return;
+    if (!/^[A-Za-z0-9_-]{3,20}$/.test(trimmed)) {
+      showMsg(t("account.usernameError"), "error");
+      return;
+    }
+    setSavingUsername(true);
+    const headers = await getAuthHeaders();
+    if (!headers) {
+      showMsg(t("account.noSession"), "error");
+      setSavingUsername(false);
+      return;
+    }
+    try {
+      const res = await fetch(`${API}/api/me/username`, {
+        method: "PUT",
+        headers,
+        body: JSON.stringify({ username: trimmed }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        showMsg(res.status === 409 ? t("account.usernameTaken") : data.error || t("account.usernameError"), "error");
+      } else {
+        setUser(prev => ({ ...prev, username: data.username }));
+        setUsernameInput(data.username);
+        showMsg(t("account.usernameSaved"));
+      }
+    } catch {
+      showMsg(t("account.noSession"), "error");
+    }
+    setSavingUsername(false);
+  }
+
+  // #1746: skift e-mail gennem Supabase Auth. updateUser({ email }) sender en
+  // bekraeftelsesmail til den NYE adresse (og — afhængigt af projekt-config —
+  // også til den gamle). public.users.email synces først NÅR linket er klikket,
+  // via auth.users-trigger (2026-06-23-account-email-username.sql). Derfor viser
+  // vi en "tjek din indbakke"-besked frem for at ændre visningen optimistisk.
+  async function saveEmail() {
+    const trimmed = emailInput.trim();
+    setEmailNotice("");
+    if (trimmed === (user?.email || "")) return;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      showMsg(t("account.emailError"), "error");
+      return;
+    }
+    setSavingEmail(true);
+    const { error } = await supabase.auth.updateUser({ email: trimmed });
+    if (error) {
+      showMsg(mapSupabaseAuthError(error, t), "error");
+    } else {
+      setEmailNotice(t("account.emailPending", { email: trimmed }));
+    }
+    setSavingEmail(false);
   }
 
   async function toggleDmEnabled(enabled) {
@@ -220,15 +289,66 @@ export default function ProfilePage() {
       {/* Account info */}
       <Card className="p-5 mb-4">
         <h2 className="text-cz-1 font-semibold text-sm mb-4">{t("account.title")}</h2>
-        <div className="space-y-3">
-          <div>
-            <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{t("account.email")}</p>
-            <p className="text-cz-1 text-sm" data-clarity-mask="True">{user?.email}</p>
-          </div>
-          <div>
-            <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{t("account.username")}</p>
-            <p className="text-cz-1 text-sm">{user?.username}</p>
-          </div>
+        <div className="space-y-4">
+          {/* Username */}
+          <Field label={t("account.username")} htmlFor="profile-username">
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Input
+                id="profile-username"
+                type="text"
+                value={usernameInput}
+                onChange={e => setUsernameInput(e.target.value)}
+                minLength={3}
+                maxLength={20}
+                autoComplete="username"
+                className="flex-1"
+              />
+              <Button
+                onClick={saveUsername}
+                loading={savingUsername}
+                disabled={usernameInput.trim() === (user?.username || "")}
+                variant="secondary"
+                className="sm:w-auto"
+              >
+                {savingUsername ? t("account.saving") : t("account.saveUsername")}
+              </Button>
+            </div>
+            <p className="text-cz-3 text-xs mt-2">{t("account.usernameHelp")}</p>
+          </Field>
+
+          {/* Email */}
+          <Field label={t("account.email")} htmlFor="profile-email">
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Input
+                id="profile-email"
+                type="email"
+                value={emailInput}
+                onChange={e => { setEmailInput(e.target.value); setEmailNotice(""); }}
+                autoComplete="email"
+                data-clarity-mask="True"
+                className="flex-1"
+              />
+              <Button
+                onClick={saveEmail}
+                loading={savingEmail}
+                disabled={emailInput.trim() === (user?.email || "")}
+                variant="secondary"
+                className="sm:w-auto"
+              >
+                {savingEmail ? t("account.saving") : t("account.saveEmail")}
+              </Button>
+            </div>
+            <p className="text-cz-3 text-xs mt-2">{t("account.emailHelp")}</p>
+            {emailNotice && (
+              <div className="mt-2 flex items-start gap-2 rounded-cz border border-cz-accent/30 bg-cz-accent/10 px-3 py-2 text-xs text-cz-accent-t">
+                <InboxIcon size={14} className="mt-0.5 shrink-0" />
+                <span>{emailNotice}</span>
+              </div>
+            )}
+          </Field>
+
+          {renderMessageBanner()}
+
           {user?.role === "admin" && (
             <div>
               <span className="text-xs bg-cz-danger-bg text-cz-danger border border-cz-danger/30 px-2 py-0.5 rounded-cz-pill">{t("account.adminBadge")}</span>

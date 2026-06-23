@@ -187,6 +187,10 @@
         "title": "Team name and manager name",
         "text": "On My Profile you can save or edit both team name and manager name. If your account was previously created without a real team, you can also initialise the team from here by saving the team info."
       },
+      "accountSettings": {
+        "title": "Change username or email",
+        "text": "Under My Profile, Account you can change your username and your email. A username is 3-20 characters (letters, numbers, underscore or hyphen) and must be unique. Changing your email sends a confirmation link to the new address; the change takes effect only after you click that link, so your login keeps working until then."
+      },
       "theme": {
         "title": "Theme (light / dark)",
         "text": "Under Settings, Appearance you can pick between 'Follow system' (auto based on your device), 'Light' and 'Dark'. The choice is saved locally in your browser. The sidebar stays dark in both themes for consistency."

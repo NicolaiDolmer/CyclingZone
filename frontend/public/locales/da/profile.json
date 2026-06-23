@@ -7,7 +7,18 @@
     "title": "Konto",
     "email": "Email",
     "username": "Brugernavn",
-    "adminBadge": "Admin"
+    "adminBadge": "Admin",
+    "saving": "Gemmer...",
+    "saveUsername": "Gem",
+    "saveEmail": "Skift",
+    "usernameHelp": "3-20 tegn. Bogstaver, tal, understreg eller bindestreg.",
+    "usernameError": "Brugernavn skal være 3-20 tegn (bogstaver, tal, _ eller -)",
+    "usernameTaken": "Brugernavnet er optaget",
+    "usernameSaved": "Brugernavn opdateret!",
+    "emailHelp": "Vi sender et bekræftelseslink til den nye adresse. Skiftet træder i kraft, når du klikker på det.",
+    "emailError": "Indtast en gyldig emailadresse",
+    "emailPending": "Bekræftelse sendt til {email}. Klik på linket for at fuldføre skiftet.",
+    "noSession": "Kunne ikke finde en aktiv session"
   },
   "appearance": {
     "title": "Udseende",
