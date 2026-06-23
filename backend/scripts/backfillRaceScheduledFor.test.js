@@ -6,6 +6,7 @@ import {
   STAGES_PER_DAY,
   planRaceSchedules,
 } from "./backfillRaceScheduledFor.js";
+import { raceTimeWindow, windowsOverlap } from "../lib/raceBinding.js";
 
 // Tæt-pakket cadence (#cadence-launch-fix): STAGES_PER_DAY etaper pr. dag på tværs af
 // HELE pulje-kalenderen, så en 60-etape-sæson afvikles i ~30 dage (~4 uger) i stedet
@@ -47,13 +48,60 @@ test("planRaceSchedules: scheduled_for sorteret på name (Alfa, Beta, Charlie)",
   assert.deepEqual(raceUpdates.map((r) => r.id), ["rA", "rB", "rC"]);
 });
 
-test("planRaceSchedules: et løbs etaper er konsekutive (sammenhængende blok)", () => {
+test("planRaceSchedules: et løbs etaper er konsekutive, 1 etape/dag i sit spor", () => {
   const { stageRows } = planRaceSchedules({ races: RACES, from: FROM });
   const alfa = stageRows.filter((r) => r.race_id === "rA").sort((a, b) => a.stage_number - b.stage_number);
   assert.deepEqual(alfa.map((r) => r.stage_number), [1, 2, 3]);
-  // Alfa (3 etaper, tæt pakket fra cursor 0 @ 2/dag): dag1, dag1, dag2.
+  // Spor-model: Alfa (3 etaper) ligger i ÉT spor → 1 etape/dag over 3 på hinanden følgende dage.
   const alfaDays = alfa.map((r) => new Date(r.scheduled_at).toISOString().slice(0, 10));
-  assert.deepEqual(alfaDays, ["2026-06-21", "2026-06-21", "2026-06-22"]);
+  assert.deepEqual(alfaDays, ["2026-06-21", "2026-06-22", "2026-06-23"]);
+});
+
+test("planRaceSchedules: to løb i forskellige spor kører samme dag, forskellige slots", () => {
+  const { stageRows } = planRaceSchedules({ races: RACES, from: FROM });
+  // Dag 21/6: Alfa etape 1 (spor 0 → 12:30) + Beta etape 1 (spor 1 → 15:00).
+  const day1 = stageRows.filter((r) => new Date(r.scheduled_at).toISOString().slice(0, 10) === "2026-06-21");
+  const hhmm = (iso) => new Date(iso).toLocaleTimeString("en-GB", { timeZone: "Europe/Copenhagen", hour: "2-digit", minute: "2-digit" });
+  const slots = day1.map((r) => hhmm(r.scheduled_at)).sort();
+  assert.deepEqual(slots, ["12:30", "15:00"], "to forskellige slots samme dag");
+  const races = new Set(day1.map((r) => r.race_id));
+  assert.equal(races.size, 2, "to FORSKELLIGE løb samme dag (overlap)");
+});
+
+test("planRaceSchedules: stage race binder hen over et nabospor-løb (ægte overlap)", () => {
+  // Et langt stage race (spor 0) + flere korte løb (spor 1) → vinduerne overlapper.
+  const races = [
+    { id: "tour", name: "AAA Grand Tour", stages: 7 },
+    { id: "k1", name: "BBB Klassiker 1", stages: 1 },
+    { id: "k2", name: "CCC Klassiker 2", stages: 1 },
+    { id: "k3", name: "DDD Klassiker 3", stages: 1 },
+  ];
+  const { stageRows } = planRaceSchedules({ races, from: FROM });
+  const winFor = (raceId) => raceTimeWindow(stageRows.filter((r) => r.race_id === raceId));
+  const tourWin = winFor("tour");
+  // Mindst ét kort løb skal have sit vindue inde i grand tour'ets span → binding aktiv.
+  const overlaps = ["k1", "k2", "k3"].filter((id) => windowsOverlap(tourWin, winFor(id)));
+  assert.ok(overlaps.length >= 1, `grand tour skal overlappe mindst ét nabospor-løb (fik ${overlaps.length})`);
+});
+
+test("planRaceSchedules: spor balanceres — spor-længderne afviger højst ét løbs etaper", () => {
+  // 10 single-løb + 1 stage race → greedy skal holde sporene nogenlunde lige lange.
+  const races = [
+    ...Array.from({ length: 10 }, (_, i) => ({ id: `s${i}`, name: `Race ${String(i).padStart(2, "0")}`, stages: 1 })),
+    { id: "sr", name: "ZZZ Stage Race", stages: 5 },
+  ];
+  const { stageRows } = planRaceSchedules({ races, from: FROM });
+  // Sidste etape-dag pr. spor (slot) → spor-længder.
+  const lastDayBySlot = {};
+  for (const r of stageRows) {
+    const t = new Date(r.scheduled_at);
+    const slot = t.toLocaleTimeString("en-GB", { timeZone: "Europe/Copenhagen", hour: "2-digit", minute: "2-digit" });
+    const day = t.toISOString().slice(0, 10);
+    if (!lastDayBySlot[slot] || day > lastDayBySlot[slot]) lastDayBySlot[slot] = day;
+  }
+  const days = Object.values(lastDayBySlot).map((d) => Date.parse(d));
+  const spreadDays = (Math.max(...days) - Math.min(...days)) / 86400000;
+  assert.ok(spreadDays <= 5, `spor-længde-spredning ${spreadDays} dage skal være ≤ største løbs etape-antal (5)`);
 });
 
 test("planRaceSchedules: sæson-længde = ceil(total etaper / STAGES_PER_DAY) dage", () => {

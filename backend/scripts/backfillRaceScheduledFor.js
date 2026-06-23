@@ -64,41 +64,49 @@ function copenhagenDatePlusDays(fromUTC, days) {
 }
 
 /**
- * REN planlægning (ingen DB). Pakker løbenes etaper TÆT over kommende dage, sorteret på
- * name: STAGES_PER_DAY etaper pr. dag på tværs af HELE pulje-kalenderen (intet dag-spild
- * mellem løb), så en sæson afvikles i ~total-etaper / STAGES_PER_DAY dage. Hvert løbs
- * etaper er konsekutive; slot = etape-position på dagen (de første STAGES_PER_DAY slots).
+ * REN planlægning (ingen DB). Fordeler løbene på `tracks` parallelle spor og planlægger
+ * hvert spor sekventielt, 1 etape/dag, på sit eget faste dag-slot (spor t → slots[t]).
+ * To løb i forskellige spor på samme dag overlapper i tid → bindingen (Fase 0a) aktiveres.
+ * Løb fordeles greedy-balanceret på kumulativ etape-sum, så sporene afsluttes omtrent
+ * samtidig. Total throughput = tracks etaper/dag/pulje (uændret: tracks default = STAGES_PER_DAY).
  *
- * @param {{ races: Array<{id,name,stages}>, from?: Date, slots?: string[], stagesPerDay?: number }} args
+ * Deterministisk: løb sorteres på name→id; greedy-tie brydes mod laveste spor-index.
+ * `tracks=1` giver én sekventiel stream (1 etape/dag). `raceUpdates` returneres altid i
+ * name-sorteret løbsrækkefølge uanset spor-tildeling.
+ *
+ * @param {{ races: Array<{id,name,stages}>, from?: Date, slots?: string[], tracks?: number }} args
  * @returns {{ raceUpdates: Array<{id, scheduled_for}>, stageRows: Array<{race_id, stage_number, scheduled_at}> }}
  */
-export function planRaceSchedules({ races = [], from = new Date(), slots = STAGE_SLOTS_CET, stagesPerDay = STAGES_PER_DAY }) {
+export function planRaceSchedules({ races = [], from = new Date(), slots = STAGE_SLOTS_CET, tracks = STAGES_PER_DAY }) {
   const sorted = [...races].sort((a, b) =>
     String(a.name).localeCompare(String(b.name), "en") || String(a.id).localeCompare(String(b.id)),
   );
-  const perDay = Math.max(1, Number(stagesPerDay) || 1);
-  const dayFor = (idx) => copenhagenDatePlusDays(from, Math.floor(idx / perDay) + 1); // +1 = i morgen
-  const slotFor = (idx) => slots[(idx % perDay) % slots.length];
+  const trackCount = Math.max(1, Math.min(Number(tracks) || 1, slots.length));
+  const trackDays = new Array(trackCount).fill(0); // næste ledige dag-index (0-baseret) pr. spor
 
   const raceUpdates = [];
   const stageRows = [];
-  let stageCursor = 0; // global etape-tæller → tæt pakning på tværs af alle løb
   for (const race of sorted) {
     const stageCount = Math.max(1, Number(race.stages) || 1);
-    // Løbets scheduled_for = dets etape-1-tid.
+    // Vælg sporet med færrest kumulative dage (tie → laveste index → determinisme).
+    let t = 0;
+    for (let i = 1; i < trackCount; i++) if (trackDays[i] < trackDays[t]) t = i;
+    const startDayIdx = trackDays[t];
+    const slot = slots[t % slots.length];
+
     raceUpdates.push({
       id: race.id,
-      scheduled_for: copenhagenWallClockToUTC(dayFor(stageCursor), slotFor(stageCursor)).toISOString(),
+      scheduled_for: copenhagenWallClockToUTC(copenhagenDatePlusDays(from, startDayIdx + 1), slot).toISOString(),
     });
     for (let s = 0; s < stageCount; s++) {
-      const idx = stageCursor + s;
+      const dayIdx = startDayIdx + s;
       stageRows.push({
         race_id: race.id,
         stage_number: s + 1,
-        scheduled_at: copenhagenWallClockToUTC(dayFor(idx), slotFor(idx)).toISOString(),
+        scheduled_at: copenhagenWallClockToUTC(copenhagenDatePlusDays(from, dayIdx + 1), slot).toISOString(),
       });
     }
-    stageCursor += stageCount;
+    trackDays[t] += stageCount;
   }
   return { raceUpdates, stageRows };
 }
