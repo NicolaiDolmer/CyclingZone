@@ -5,7 +5,7 @@
 //
 // Kør: infisical run --env=prod -- node backend/scripts/dev/snapshot-0c-population.mjs
 import { createClient } from "@supabase/supabase-js";
-import { raceTimeWindow, windowsOverlap } from "../../lib/raceBinding.js";
+import { raceTimeWindow } from "../../lib/raceBinding.js";
 import { ABILITY_KEYS } from "../../lib/raceSimulator.js";
 
 const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;

@@ -35,7 +35,6 @@ console.log(`\nEtape-tider: ${sched.length} total · ${past} i fortiden · ${fut
 console.log(`Næste etape-tid: ${firstFuture ? new Date(firstFuture).toLocaleString("da-DK", { timeZone: "Europe/Copenhagen" }) : "—"}`);
 
 // Igangværende manager-udtagelser (manuelle entries) der ville påvirkes af reschedule?
-const { data: manualEntries } = await sb.from("race_entries").select("race_id", { count: "exact", head: false }).eq("is_auto_filled", false).limit(1);
 const { count: manualCount } = await sb.from("race_entries").select("*", { count: "exact", head: true }).eq("is_auto_filled", false);
 console.log(`\nManuelle (manager-udtagne) entries i alt: ${manualCount ?? "?"}`);
 process.exit(0);

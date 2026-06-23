@@ -18,7 +18,6 @@ for (let i = 0; i < raceIds.length; i += 200) {
 const byRace = new Map();
 for (const s of sched) { if (!byRace.has(s.race_id)) byRace.set(s.race_id, []); byRace.get(s.race_id).push(s); }
 
-const fmt = (ms) => ms == null ? "—" : new Date(ms).toISOString().replace("T", " ").slice(0, 16);
 const dk = (ms) => ms == null ? "—" : new Date(ms).toLocaleString("da-DK", { timeZone: "Europe/Copenhagen", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
 
 // Tæl stage races vs endagsløb totalt.
