@@ -65,6 +65,15 @@ export function findManualOverlapConflicts({ entries = [], windowByRace }) {
   return conflicts;
 }
 
+// Race-hub pulje-binding (#1798-opfølgning): et hold hører kun til feltet for et løb
+// i sin EGEN pulje. racePoolId = race.league_division_id (null = løbet har ingen pulje
+// → ingen restriktion; spejler autofill-pulje-filteret i raceRunner.js, der springes
+// over når løbet er pulje-løst). Pure + deterministisk.
+export function teamInRacePool({ teamDivisionId, racePoolId }) {
+  if (racePoolId == null) return true;
+  return teamDivisionId === racePoolId;
+}
+
 // DB-loader: hent det aktuelle løbs tidsvindue + holdets udtagne ryttere i ANDRE
 // løb (grupperet pr. løb med deres tidsvindue), så findRiderBindingConflicts kan
 // afgøre om en udtagelse dobbeltbooker en rytter. Tynd I/O — al logik er pure ovenfor.

@@ -175,6 +175,7 @@
       "selection_race_not_open": "Selection is closed for this race.",
       "selection_flag_disabled": "Team selection isn't active yet.",
       "selection_invalid_body": "Couldn't save the selection. Try again.",
+      "selection_wrong_pool": "You can only enter races in your own division.",
       "generic": "Couldn't save the selection. Try again."
     }
   },

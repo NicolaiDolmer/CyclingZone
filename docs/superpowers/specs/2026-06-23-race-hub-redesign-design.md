@@ -33,6 +33,7 @@ Dette redesign samler det til **én Løb-hub** bygget op om en ny kernemekanik: 
    - "Prioriteter" = **både** reglerne (HVEM får roller) **og** mål-løbene (HVOR de bedste sættes).
 6. **Frivillig dybde + svage bund-ryttere.** Alle hold får **flere ryttere**, men de der kommer ind fra bunden er **bevidst svagere** — nok til at man *kan* stille hold til overlappende løb, men dårlige nok til at man hurtigt vil bygge sit eget hold (via transfers/academy).
 7. **6 / 7 / 8 ryttere efter løbs-kategori** — som i virkeligheden. `SELECTION_SIZE` udvides til en `race_class → max (6/7/8)`-mapping.
+8. **Pulje-binding.** Et løb hører til **én pulje** (`races.league_division_id`), og et hold kan **kun** være i feltet for løb i sin **egen** pulje. Dette er en hård invariant ved siden af rytter-bindingen: rytter↔tid (overlap) og hold↔pulje (pulje-binding). Et pulje-løst løb (`league_division_id = null`) har ingen restriktion. (Indført som følge af #1798: krydspulje-kontaminering på tværs af divisioner.)
 
 ## 4. Informations-arkitektur
 
@@ -85,6 +86,7 @@ Read-only: vælg en pulje → dens kommende løb + (efter afvikling) resultater/
 3. **Deltag/afmeld-state.** Hold↔løb: deltager / afmeldt / no-show. Persisteres (nyt felt eller afledt — afklares i plan).
 4. **`SELECTION_SIZE` → `race_class → max (6/7/8)`-mapping.** Min/max pr. kategori.
 5. **Trup-økonomi:** bund-ryttere tildeles ved hold-oprettelse/relaunch så alle hold kan stille til overlappende løb, med bevidst lav `base_value`/abilities. Antal + styrke = **balance-kalibrering (simulér-før-ship)**, men modellen er besluttet.
+6. **Pulje-binding håndhæves på alle tre entry-veje.** Et hold må kun i feltet for løb i sin egen pulje (`teamInRacePool` i `raceBinding.js`, pure + testet). De tre veje en `race_entries`-række kan opstå: (a) **autofill** ved afvikling (`fillMissingTeamEntries`) — pulje-filtreret siden #1793; (b) **proaktiv generator** (`raceEntryGenerator.js`) — grupperer løb + hold pr. pulje by design; (c) **manuel udtagelse** (`PUT /selection`) — guardet med `409 selection_wrong_pool` (lukket som #1798-opfølgning; var det åbne hul). Fase 1's nye udtagelses-UI arver guarden, da den kalder samme endpoint; scope-båndet "Min division" er UX-siden af samme invariant.
 
 ## 7. Afgrænsning (ud af scope for dette projekt)
 

@@ -175,6 +175,7 @@
       "selection_race_not_open": "Udtagelsen er lukket for dette løb.",
       "selection_flag_disabled": "Holdudtagelse er ikke aktiv endnu.",
       "selection_invalid_body": "Udtagelsen kunne ikke gemmes. Prøv igen.",
+      "selection_wrong_pool": "Du kan kun deltage i løb i din egen division.",
       "generic": "Udtagelsen kunne ikke gemmes. Prøv igen."
     }
   },

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { raceTimeWindow, windowsOverlap, findRiderBindingConflicts, loadTeamBindingContext, findManualOverlapConflicts } from "./raceBinding.js";
+import { raceTimeWindow, windowsOverlap, findRiderBindingConflicts, loadTeamBindingContext, findManualOverlapConflicts, teamInRacePool } from "./raceBinding.js";
 
 test("raceTimeWindow: start=tidligste, end=seneste etape", () => {
   const w = raceTimeWindow([
@@ -140,4 +140,24 @@ test("loadTeamBindingContext: ingen andre entries → tom otherRaces", async () 
   });
   const ctx = await loadTeamBindingContext({ supabase, race: { id: "race-this" }, teamId: "team-1" });
   assert.deepEqual(ctx.otherRaces, []);
+});
+
+// Race-hub pulje-binding (#1798-opfølgning): et hold må kun være i feltet for et løb
+// i sin EGEN pulje. Komplementerer rytter-bindingen (rytter↔tid) ovenfor med
+// hold↔pulje. Pure spejling af autofill-pulje-filteret (raceRunner.js: racePoolId).
+test("teamInRacePool: samme pulje → true", () => {
+  assert.equal(teamInRacePool({ teamDivisionId: 4, racePoolId: 4 }), true);
+});
+
+test("teamInRacePool: anden pulje → false", () => {
+  assert.equal(teamInRacePool({ teamDivisionId: 5, racePoolId: 4 }), false);
+});
+
+test("teamInRacePool: løb uden pulje (racePoolId null) → true (ingen restriktion, jf. autofill)", () => {
+  assert.equal(teamInRacePool({ teamDivisionId: 4, racePoolId: null }), true);
+  assert.equal(teamInRacePool({ teamDivisionId: null, racePoolId: null }), true);
+});
+
+test("teamInRacePool: hold uden pulje men løb har pulje → false", () => {
+  assert.equal(teamInRacePool({ teamDivisionId: null, racePoolId: 4 }), false);
 });
