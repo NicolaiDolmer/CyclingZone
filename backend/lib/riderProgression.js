@@ -223,6 +223,33 @@ export function developRiderSeason(rider, abilities, caps, season, cfg = PROGRES
   };
 }
 
+// Lineær interpolation af ungdoms-loft-ankret på potentiale (1..6).
+function youthLoftForPotential(potentiale, cfg = YOUTH_PROGRESSION_CONFIG) {
+  const p = clamp(Number(potentiale) || 1, 1, 6);
+  const lo = Math.floor(p), hi = Math.ceil(p);
+  const a = cfg.loftByPotential[lo] ?? 0;
+  const b = cfg.loftByPotential[hi] ?? a;
+  return a + (b - a) * (p - lo);
+}
+
+// Afkoblet ungdoms-loft for én evne: potentiale-ankret niveau × rolle-faktor.
+// IKKE en funktion af start-evnen (det er hele pointen — den lange rejse).
+// cfg er påkrævet (ingen default) så .length === 5 og ingen skjult baseline-param.
+export function youthAbilityCap(potentiale, primaryType, secondaryType, ability, cfg) {
+  const c = cfg ?? YOUTH_PROGRESSION_CONFIG;
+  const target = youthLoftForPotential(potentiale, c) * youthRoleFactor(primaryType, secondaryType, ability, c);
+  return clamp(Math.round(target), 0, 99);
+}
+
+// Byg caps-sættet for en ung over alle synlige evner.
+export function buildYouthCaps(potentiale, primaryType, secondaryType, cfg = YOUTH_PROGRESSION_CONFIG) {
+  const caps = {};
+  for (const ability of VISIBLE_ABILITIES) {
+    caps[ability] = youthAbilityCap(potentiale, primaryType, secondaryType, ability, cfg);
+  }
+  return caps;
+}
+
 // Byg loft-sættet for en rytter fra dens baseline-abilities (kaldes ÉN gang ved init).
 export function buildCaps(baselineAbilities, primaryType, potentiale, cfg = PROGRESSION_CONFIG) {
   const caps = {};

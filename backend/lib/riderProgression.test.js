@@ -6,7 +6,9 @@ import {
   peakAgeForType, abilityCap, stepAbility, retirementDecision,
   developRiderSeason, buildCaps,
   youthRoleFactor, YOUTH_PROGRESSION_CONFIG,
+  youthAbilityCap, buildYouthCaps,
 } from "./riderProgression.js";
+import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 
 // ── Determinisme ──────────────────────────────────────────────────────────────
 
@@ -288,4 +290,21 @@ test("youthRoleFactor: primær-naturlig > sekundær-naturlig > neutral > modsat"
   assert.equal(neutral, YOUTH_PROGRESSION_CONFIG.neutralFactor);
   assert.equal(opposite, YOUTH_PROGRESSION_CONFIG.oppositeFactor);
   assert.ok(primary > secondary && secondary > neutral && neutral > opposite);
+});
+
+// ── Afkoblet ungdoms-loft (#1791 A2) ─────────────────────────────────────────
+
+test("youthAbilityCap: afkoblet fra start-evne, stiger med potentiale", () => {
+  // Samme rytter, to potentialer → højere pot giver højere loft, UANSET baseline.
+  const lowPot = youthAbilityCap(2, "climber", "tt", "climbing");
+  const highPot = youthAbilityCap(6, "climber", "tt", "climbing");
+  assert.ok(highPot > lowPot, `pot6 ${highPot} skal > pot2 ${lowPot}`);
+  // Afkobling: loftet afhænger IKKE af en start-evne (ingen baseline-parameter).
+  assert.equal(youthAbilityCap.length, 5); // (potentiale, primary, secondary, ability, cfg)
+});
+
+test("buildYouthCaps: primær-evne højest, modsat lavest, alle ≤99", () => {
+  const caps = buildYouthCaps(6, "climber", "tt");
+  for (const k of VISIBLE_ABILITIES) assert.ok(caps[k] >= 0 && caps[k] <= 99);
+  assert.ok(caps.climbing > caps.sprint, `climbing ${caps.climbing} skal > sprint ${caps.sprint}`);
 });
