@@ -1,0 +1,112 @@
+name: Perf & SEO review
+
+# Perf/SEO-loop Del 3 — ugentlig AI-drevet review.
+# Måler prod (Lighthouse) + statisk repo-audit, og lader Claude skrive en
+# prioriteret perf+SEO-forbedringsliste i ÉT idempotent inbox-issue. Mønster:
+# quality-inbox.yml (scheduled idempotent issue) + claude.yml (claude-code-action).
+# SCOPE: teknisk perf + on-page SEO. Ranking/keywords er UDEN for scope (ejes af
+# GSC/Ahrefs/Morningscore, jf. docs/seo/2026-06-21-seo-ownership.md).
+
+on:
+  schedule:
+    - cron: '0 5 * * 1' # mandage 05:00 UTC (efter quality-inbox 03:30 + feature-liveness 04:00)
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install + build frontend (for bundle-trend)
+        run: npm ci && npm run build
+        working-directory: frontend
+
+      - name: Lighthouse mod prod
+        id: lighthouse
+        continue-on-error: true
+        uses: treosh/lighthouse-ci-action@v12
+        with:
+          urls: https://cyclingzone.org/
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+
+      - name: Byg audit-rapport
+        run: |
+          LH=$(ls -t .lighthouseci/lhr-*.json 2>/dev/null | head -1 || true)
+          echo "Lighthouse JSON: ${LH:-(ingen — prod-run fejlede, rapport bygges uden lab-scores)}"
+          node scripts/audit-perf-seo.mjs "$LH" > perf-seo-report.md
+          cat perf-seo-report.md
+
+      - name: Sikr inbox-label findes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh label create perf-seo-inbox -c "0E8A16" -d "Ugentlig perf/SEO-review inbox (bot)" --force
+
+      - name: Claude — prioritér + opdatér inbox-issue
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            Du laver den ugentlige Perf & SEO-review for Cycling Zone. INGEN kode-ændringer, INGEN PR — kun ét issue.
+
+            INPUT (allerede genereret i workspace):
+            - `perf-seo-report.md` — deterministisk audit: Lighthouse prod-scores, SEO-regressionsvagt, crawl, bundle-trend.
+            - `.lighthouseci/` — fulde Lighthouse-resultater hvis du vil grave.
+
+            OPGAVE:
+            1. Læs `perf-seo-report.md`.
+            2. Skriv en PRIORITERET perf+SEO-forbedringsliste, impact-sorteret (størst først, maks 8 punkter). Hvert punkt: **hvad** · **hvorfor det betyder noget** · **konkret næste handling + fil/sted**. Fokus: TEKNISK perf (CWV, bundle, render) + ON-PAGE SEO (meta, struktur, crawl). Ranking/keywords er IKKE i scope — de ejes af GSC/Ahrefs/Morningscore (docs/seo/2026-06-21-seo-ownership.md). Hvis et fund er lav-impact, sig det ærligt frem for at opfinde arbejde.
+            3. Opret/opdatér ÉT idempotent inbox-issue:
+               - Find eksisterende: `gh issue list --label perf-seo-inbox --state open --json number -q '.[0].number'`
+               - Body SKAL starte med markøren `<!-- perf-seo-inbox -->`.
+               - Titel: `[bot] Perf & SEO inbox — <YYYY-MM-DD>`.
+               - Body: din prioriterede liste ØVERST, derefter hele tabellen fra `perf-seo-report.md`, og til sidst run-link (`${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}`).
+               - Findes et issue: `gh issue edit <N> --title ... --body-file <fil>`. Ellers `gh issue create --title ... --label "perf-seo-inbox,claude:todo,priority:med" --body-file <fil>`.
+            4. Skriv kun issuet. Stop derefter.
+          claude_args: |
+            --max-turns 30
+            --model claude-sonnet-4-6
+            --allowed-tools Bash(gh issue *),Bash(gh label *),Bash(node *),Bash(ls *),Bash(cat *),Read,Write
+
+      - name: Upload rapport-artifact
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: perf-seo-review
+          path: |
+            perf-seo-report.md
+            .lighthouseci/
+
+      # Sikkerhedsnet: hvis Claude-steppet fejlede, post den rå rapport så loopet
+      # aldrig er tavst (jf. "verificér at baggrunds-arbejde RYKKER").
+      - name: Fallback — rå rapport hvis Claude fejlede
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          {
+            echo "<!-- perf-seo-inbox -->"
+            echo "## ⚠️ Claude-analyse fejlede — rå audit nedenfor (se [run]($RUN_URL))"
+            echo ""
+            cat perf-seo-report.md
+          } > fallback-body.md
+          EXISTING=$(gh issue list --label perf-seo-inbox --state open --json number -q '.[0].number')
+          if [ -n "$EXISTING" ]; then
+            gh issue edit "$EXISTING" --title "[bot] Perf & SEO inbox (rå)" --body-file fallback-body.md
+          else
+            gh issue create --title "[bot] Perf & SEO inbox (rå)" --label "perf-seo-inbox,claude:todo,priority:med" --body-file fallback-body.md
+          fi
