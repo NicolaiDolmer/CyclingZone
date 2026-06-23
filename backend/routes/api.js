@@ -7137,11 +7137,20 @@ router.get("/achievements", requireAuth, async (req, res) => {
   ]);
   const unlockedMap = {};
   (unlocked || []).forEach(u => { unlockedMap[u.achievement_id] = u.unlocked_at; });
-  res.json((all || []).map(a => ({
-    ...a,
-    unlocked: !!unlockedMap[a.id],
-    unlocked_at: unlockedMap[a.id] || null,
-  })));
+  res.json((all || []).map(a => {
+    const unlocked = !!unlockedMap[a.id];
+    // #1666: redaktér title/description for låste, hemmelige achievements — samme
+    // som GET /api/managers/:teamId. Uden dette lå den rå secret-tekst i payloaden
+    // og kunne spoile uoplåste secrets (DevTools → Network), selv for brugeren selv.
+    const hideSecret = !unlocked && a.is_secret;
+    return {
+      ...a,
+      title: hideSecret ? null : a.title,
+      description: hideSecret ? null : a.description,
+      unlocked,
+      unlocked_at: unlockedMap[a.id] || null,
+    };
+  }));
 });
 
 // POST /api/achievements/check — synk achievements mod live runtime-data
@@ -7219,7 +7228,18 @@ router.get("/managers/:teamId", requireAuth, async (req, res) => {
   const achievements = (allAchsRes.data || []).map(a => {
     const unlocked = !!unlockedMap[a.id];
     const progress = !unlocked && !a.is_secret ? progressMap[a.id] || null : null;
-    return { ...a, unlocked, unlocked_at: unlockedMap[a.id] || null, progress };
+    // #1666: redaktér title/description for låste, hemmelige achievements på backend.
+    // Frontend masker dem visuelt med "???", men den rå tekst lå stadig i payloaden
+    // (DevTools → Network) og kunne spoile uoplåste secrets. Send aldrig teksten med.
+    const hideSecret = !unlocked && a.is_secret;
+    return {
+      ...a,
+      title: hideSecret ? null : a.title,
+      description: hideSecret ? null : a.description,
+      unlocked,
+      unlocked_at: unlockedMap[a.id] || null,
+      progress,
+    };
   });
 
   const userData = userRes.data;
