@@ -380,28 +380,35 @@ export async function runStarterSquadAllocation(supabase, {
     teams = await getBetaManagerTeams(supabase);
   }
   const teamIds = teams.map((t) => t.id).filter(Boolean);
-  const count = teamIds.length * STARTER_SQUAD.CORE_SIZE;
+  const corePerPool = teamIds.length * STARTER_SQUAD.CORE_SIZE;
+  const tailPerPool = teamIds.length * STARTER_SQUAD.TAIL_SIZE;
 
   const existingFoldedNames = await fetchExistingFoldedNames(supabase);
 
-  // Eget seed-offset så puljen ikke spejler markeds-populationens første N ryttere.
-  const poolPayload = buildWeakStarterPool({
-    count,
-    seed: (seed + 1487) >>> 0,
-    referenceYear,
-    existingFoldedNames,
-    generate: d.generate,
+  // To svage pools: kerne [50,57] + hale [50,52]. Eget seed-offset pr. pulje.
+  const corePayload = buildWeakStarterPool({
+    count: corePerPool, seed: (seed + 1487) >>> 0, referenceYear,
+    existingFoldedNames, window: STARTER_POOL_STAT_WINDOW, generate: d.generate,
+  });
+  const tailPayload = buildWeakStarterPool({
+    count: tailPerPool, seed: (seed + 1487 + 7) >>> 0, referenceYear,
+    existingFoldedNames, window: STARTER_TAIL_STAT_WINDOW, generate: d.generate,
   });
 
   if (dryRun) {
-    return { dryRun: true, teams: teamIds.length, poolSize: count, assigned: 0, toAssign: count };
+    return { dryRun: true, teams: teamIds.length, poolSize: corePerPool + tailPerPool, assigned: 0, toAssign: corePerPool + tailPerPool };
   }
 
-  // Delt kerne: insert → derive (data-hale) → læs allokerings-pulje tilbage.
-  const pool = await insertDeriveAndReadPool(supabase, poolPayload, { referenceYear, derive: d.derive });
+  // Delt kerne: insert → derive (data-hale) → læs allokerings-pulje tilbage (begge pools).
+  const corePool = await insertDeriveAndReadPool(supabase, corePayload, { referenceYear, derive: d.derive });
+  const tailPool = await insertDeriveAndReadPool(supabase, tailPayload, { referenceYear, derive: d.derive });
 
-  // Allokér (starCutoffFraction 0 — hele puljen er svag, ingen stjerner).
-  const { assignments, leftToMarket, stats } = allocateStarterSquads(pool, teamIds, { seed, starCutoffFraction: 0 });
+  // Kerne: 4 unge + 4 kerne-dom (starCutoffFraction 0 — hele puljen er svag).
+  const { assignments, leftToMarket, stats } = allocateStarterSquads(corePool, teamIds, { seed, starCutoffFraction: 0 });
+  // Hale: 4 ekstra-svage dom pr. hold.
+  const { tailAssignments } = distributeTailRiders(tailPool, teamIds, STARTER_SQUAD.TAIL_SIZE, { seed });
+  for (const t of teamIds) assignments[t].push(...tailAssignments[t]);
+
   const pairs = Object.entries(assignments).flatMap(([teamId, ids]) =>
     ids.map((id) => ({ id, team_id: teamId })));
 
@@ -419,5 +426,5 @@ export async function runStarterSquadAllocation(supabase, {
       console.error(`[runStarterSquadAllocation] markér ${teamId} fejlede:`, err?.message || err);
     })));
 
-  return { dryRun: false, teams: teamIds.length, poolSize: pool.length, assigned, leftToMarket: leftToMarket.length, stats };
+  return { dryRun: false, teams: teamIds.length, poolSize: corePool.length + tailPool.length, assigned, leftToMarket: leftToMarket.length, stats };
 }

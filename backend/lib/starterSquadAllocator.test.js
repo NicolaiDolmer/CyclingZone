@@ -276,7 +276,7 @@ test("starCutoffFraction 0: ingen stjerner ekskluderes — også den dyreste all
 });
 
 test("runStarterSquadAllocation (#1487): generér svag pulje, derive (data-hale), tildel team_id", async () => {
-  // 2 hold × CORE_SIZE = 16 startryttere.
+  // 2 hold × TOTAL_SIZE = 24 startryttere (kerne CORE_SIZE + hale TAIL_SIZE pr. hold).
   // Fake-generator: stærke stats (80) som SKAL clampes til vinduets hi før insert.
   const fakeGenerate = ({ count }) => ({
     riders: Array.from({ length: count }, (_, i) => ({
@@ -333,16 +333,16 @@ test("runStarterSquadAllocation (#1487): generér svag pulje, derive (data-hale)
   assert.equal(updates.length, 0, "dry-run skriver intet");
 
   const applied = await runStarterSquadAllocation(supabase, { dryRun: false, seed: 2026, getManagerTeams, deps });
-  assert.equal(inserted.length, 2 * STARTER_SQUAD.CORE_SIZE, "16 svage ryttere indsat");
+  assert.equal(inserted.length, 2 * STARTER_SQUAD.TOTAL_SIZE, "24 svage ryttere indsat (12/hold)");
   for (const r of inserted) {
     for (const k of STAT_KEYS) assert.ok(r[k] <= STARTER_POOL_STAT_WINDOW.hi, `${k} ikke clampet`);
   }
-  assert.equal(derived.length, 2 * STARTER_SQUAD.CORE_SIZE, "alle nye ryttere derivet (data-hale)");
-  assert.equal(applied.assigned, 2 * STARTER_SQUAD.CORE_SIZE);
-  // updates rummer nu både team_id-tildelinger (16) og #1563-markør-skrivninger (2).
+  assert.equal(derived.length, 2 * STARTER_SQUAD.TOTAL_SIZE, "alle nye ryttere derivet (data-hale)");
+  assert.equal(applied.assigned, 2 * STARTER_SQUAD.TOTAL_SIZE);
+  // updates rummer nu både team_id-tildelinger (24) og #1563-markør-skrivninger (2).
   const teamIdUpdates = updates.filter((u) => "team_id" in u);
   const markerUpdates = updates.filter((u) => "starter_squad_allocated_at" in u);
-  assert.equal(teamIdUpdates.length, 2 * STARTER_SQUAD.CORE_SIZE, "16 team_id-tildelinger");
+  assert.equal(teamIdUpdates.length, 2 * STARTER_SQUAD.TOTAL_SIZE, "24 team_id-tildelinger");
   assert.ok(teamIdUpdates.every((u) => u.team_id === "t1" || u.team_id === "t2"));
   assert.equal(markerUpdates.length, 2, "#1563: begge hold markeret som start-trup-allokeret");
 });
