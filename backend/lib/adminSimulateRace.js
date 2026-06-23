@@ -79,7 +79,11 @@ export async function runAdminSimulateRace({
 
   const { data: race, error } = await supabase
     .from("races")
-    .select("id, season_id, name, race_type, race_class, stages, edition_year, status")
+    // league_division_id SKAL med: fillMissingTeamEntries pulje-filtrerer startfeltet
+    // på den (raceRunner.js #1688). Mangler kolonnen, ser filteret racePoolId=null og
+    // tager de 24 stærkeste hold i HELE ligaen → krydskontaminering på tværs af puljer
+    // (incident 2026-06-23). Bevidst med i SELECT så pulje-id'et bæres frem til motoren.
+    .select("id, season_id, name, race_type, race_class, stages, edition_year, status, league_division_id")
     .eq("id", raceId)
     .maybeSingle();
 
@@ -144,7 +148,10 @@ export async function runAdminSimulateStage({
 
   const { data: race, error } = await supabase
     .from("races")
-    .select("id, season_id, name, race_type, race_class, stages, stages_completed, edition_year, status")
+    // league_division_id SKAL med (samme grund som runAdminSimulateRace ovenfor):
+    // pulje-filteret i fillMissingTeamEntries afhænger af den. Uden kolonnen kører
+    // stage-scheduleren med et globalt felt på tværs af puljer (incident 2026-06-23).
+    .select("id, season_id, name, race_type, race_class, stages, stages_completed, edition_year, status, league_division_id")
     .eq("id", raceId)
     .maybeSingle();
 
