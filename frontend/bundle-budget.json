@@ -1,0 +1,5 @@
+{
+  "_note": "Baseline målt 2026-06-23: total gzipped JS over alle dist/assets/*.js chunks. Gate: scripts/check-bundle-budget.mjs (hard, CI). Hæv total_gzip_kb bevidst — med begrundelse i PR-body — hvis en feature legitimt øger vægten. Outliers værd at trimme på sigt: index ~330KB, PatchNotesPage ~191KB (changelog-data), CategoricalChart ~88KB.",
+  "total_gzip_kb": 945,
+  "margin_pct": 5
+}

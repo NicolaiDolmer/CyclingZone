@@ -14,7 +14,7 @@ import { setSentryUser, clearSentryUser } from "./lib/sentry.jsx";
 // netværkskald før samtykke; lazy-load tager dem også ud af cold-start payload.
 const Layout = lazy(() => import("./components/Layout"));
 const ClarityIntegration = lazy(() => import("./lib/clarityIntegration.jsx"));
-const SpeedInsightsIntegration = lazy(() => import("./lib/speedInsightsIntegration.jsx"));
+const WebVitalsIntegration = lazy(() => import("./lib/webVitalsIntegration.jsx"));
 const VercelAnalyticsIntegration = lazy(() => import("./lib/vercelAnalyticsIntegration.jsx"));
 const GaIntegration = lazy(() => import("./lib/gaIntegration.jsx"));
 
@@ -138,7 +138,7 @@ export default function App() {
     <BrowserRouter future={{ v7_startTransition: true }}>
       <Suspense fallback={null}>
         <ClarityIntegration />
-        <SpeedInsightsIntegration />
+        <WebVitalsIntegration />
         <VercelAnalyticsIntegration />
         <GaIntegration />
       </Suspense>

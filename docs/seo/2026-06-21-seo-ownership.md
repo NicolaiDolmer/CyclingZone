@@ -13,7 +13,8 @@ Hvert værktøj har ÉT ansvar. Ser to værktøjer på "det samme tal" og er uen
 | **GA4** | Hvad folk gør efter de lander: sessions, engagement, funnel, key events / konvertering, attribution | Ranking-position; backlinks | Sat op (#352); admin-toggles mangler — se §3 |
 | **Ahrefs Webmaster Tools** (gratis) | Backlinks + uafhængig teknisk site-audit | Adfærd; konvertering | [EJER-HANDLING] ikke verificeret endnu |
 | **Morningscore** | Keyword-discovery, rank-tracking, konkurrent-overvågning | Real-traffic-tal (brug GA4/GSC) | Planlagt |
-| **Lighthouse-CI** | Core Web Vitals (LCP/INP/CLS) som CI-gate | Trafik/ranking | Post-launch (#1301) |
+| **Lighthouse-CI** | LAB Core Web Vitals + bundle-size som CI-gate (bundle-size hard, scores advisory) + ugentlig prod-review | Field-CWV (brug web-vitals→GA4); trafik/ranking | Implementeret 2026-06-23 (perf-seo-loop) |
+| **web-vitals → GA4** | FIELD Core Web Vitals — rigtige brugeres LCP/INP/CLS/FCP/TTFB | Lab-scores (brug Lighthouse); ranking | Implementeret 2026-06-23 (perf-seo-loop) — gratis erstatning for Vercel Speed Insights |
 | **Microsoft Clarity** | Session-replay + heatmaps (kvalitativ adfærd) | Kvantitativ konvertering (brug GA4) | Sat op (separat fra #1407-scope) |
 
 Tommelfingerregel ved konflikt:
@@ -84,5 +85,5 @@ Definitions-regler:
 - Adfærd/konvertering → **GA4** (og tjek §3 hvis pageview-tal ser for lave ud).
 - Backlinks/teknisk audit → **Ahrefs**.
 - Keyword-research → **Morningscore** + GSC.
-- Core Web Vitals → **Lighthouse-CI**.
+- Core Web Vitals → **Lighthouse-CI** (lab, CI-gate) + **web-vitals→GA4** (field, rigtige brugere).
 - GA4 og GSC's tal matcher aldrig 1:1 — det er by design, ikke en bug.

@@ -1,0 +1,14 @@
+{
+  "ci": {
+    "collect": {
+      "staticDistDir": "frontend/dist",
+      "numberOfRuns": 3,
+      "settings": {
+        "preset": "desktop"
+      }
+    },
+    "upload": {
+      "target": "temporary-public-storage"
+    }
+  }
+}
