@@ -24,15 +24,18 @@ const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 const SIZE = STARTER_SQUAD.TOTAL_SIZE;
 const INSERT_BATCH = 500;
 
-// Eligible konkurrerende hold uden top-up-markør (NULL-tolerant flags; inkl. AI).
+// Eligible konkurrerende hold uden top-up-markør (managere OG AI; ekskl. bank/
+// frosset/test). Ét .or() til test-flag + post-filter for bank/frosset — samme
+// mønster som raceEntryGenerator.js / simulate-base-rider-depth.mjs (de validerede
+// tal). Flere chained .or()-kald sender duplikate PostgREST or=-params hvis adfærd
+// er uspecificeret → kan stille-ignorere filtre; undgås her.
 const { data: teams, error: tErr } = await sb.from("teams")
-  .select("id, starter_depth_topped_up_at")
-  .or("is_bank.is.null,is_bank.eq.false")
-  .or("is_frozen.is.null,is_frozen.eq.false")
+  .select("id, is_bank, is_frozen, is_test_account, starter_depth_topped_up_at")
   .or("is_test_account.is.null,is_test_account.eq.false");
 if (tErr) { console.error("teams:", tErr.message); process.exit(1); }
-const pending = (teams || []).filter((t) => !t.starter_depth_topped_up_at);
-console.log(`${LIVE ? "LIVE" : "DRY-RUN"} — ${pending.length}/${teams.length} hold uden top-up-markør\n`);
+const eligible = (teams || []).filter((t) => !t.is_bank && !t.is_frozen);
+const pending = eligible.filter((t) => !t.starter_depth_topped_up_at);
+console.log(`${LIVE ? "LIVE" : "DRY-RUN"} — ${pending.length}/${eligible.length} eligible hold uden top-up-markør\n`);
 
 // Nuværende rytter-antal pr. hold (ikke-pensioneret).
 const ids = pending.map((t) => t.id);
