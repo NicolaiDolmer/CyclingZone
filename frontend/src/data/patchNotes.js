@@ -4,6 +4,139 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "5.99",
+    "date": "2026-06-23",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Rejecting an academy prospect no longer errors on a fast double-click",
+          "body": "Turning down an academy prospect now reliably lists them on the youth market, even if you tap reject twice in quick succession. Before, a rapid double-tap could show a server error."
+        },
+        "da": {
+          "title": "Afvisning af et akademitalent fejler ikke længere ved hurtigt dobbeltklik",
+          "body": "Når du takker nej til et akademitalent, listes han nu pålideligt på ungdomsmarkedet, også hvis du trykker afvis to gange hurtigt efter hinanden. Før kunne et hurtigt dobbelttryk vise en serverfejl."
+        },
+        "refs": []
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Riders recover fatigue every day",
+          "body": "Fatigue now eases a little every day around midnight, so it no longer gets stuck at full. Rest and easy days recover the most, normal training settles at a sustainable level, and hard training still builds fatigue up. The Daily Training page and Help now explain when and how energy comes back."
+        },
+        "da": {
+          "title": "Ryttere restituerer træthed hver dag",
+          "body": "Træthed falder nu en smule hver dag omkring midnat, så den ikke længere sidder fast på fuld. Hvile- og rolige dage restituerer mest, normal træning lander på et bæredygtigt niveau, og hård træning bygger stadig træthed op. Daglig træning-siden og Hjælp forklarer nu hvornår og hvordan energien vender tilbage."
+        },
+        "refs": [1676]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Team selection",
+        "en": {
+          "title": "Team selection shows rider types and explains the suitability score",
+          "body": "When you pick your team for a race you now see each rider's type, and the suitability score (0 to 100) is explained as how well a rider fits the race terrain. You can also hide injured riders while you choose."
+        },
+        "da": {
+          "title": "Holdudtagelse viser ryttertyper og forklarer egnethedstallet",
+          "body": "Når du udtager dit hold til et løb, ser du nu hver rytters type, og egnethedstallet (0 til 100) forklares som hvor godt en rytter passer til løbets terræn. Du kan også skjule skadede ryttere mens du vælger."
+        },
+        "refs": [1747]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Rider lists sort consistently everywhere",
+          "body": "Every sortable column now works the same way across all rider tables, and the watchlist and other teams' squads now show rider age and type. The transfer market can also be sorted by age."
+        },
+        "da": {
+          "title": "Rytter-lister sorterer ens overalt",
+          "body": "Hver sorterbar kolonne virker nu på samme måde på alle rytter-tabeller, og ønskelisten og andre holds trupper viser nu rytterens alder og type. Transfer-markedet kan også sorteres på alder."
+        },
+        "refs": [1755]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Transfers",
+        "en": {
+          "title": "Transfer history shows whether a rider was bought or sold",
+          "body": "The transfer history now shows a clear direction for each move, so you can tell at a glance whether a rider was bought, sold or swapped."
+        },
+        "da": {
+          "title": "Transferhistorik viser om en rytter blev købt eller solgt",
+          "body": "Transferhistorikken viser nu en tydelig retning for hvert skifte, så du straks kan se om en rytter blev købt, solgt eller byttet."
+        },
+        "refs": [1741]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "Board negotiation targets now read in English",
+          "body": "Negotiation targets on the English site are now shown in English instead of leaking Danish, and the team identity card explains how the board's read of your squad relates to your chosen Club DNA."
+        },
+        "da": {
+          "title": "Bestyrelsens forhandlingsmål vises nu korrekt",
+          "body": "Forhandlingsmål på den engelske side vises nu på engelsk i stedet for at lække dansk, og holdidentitets-kortet forklarer hvordan bestyrelsens læsning af din trup hænger sammen med dit valgte klub-DNA."
+        },
+        "refs": [1738, 1750]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Retired riders no longer appear among free youth riders",
+          "body": "Retired riders are no longer listed in the free youth riders pool in the academy."
+        },
+        "da": {
+          "title": "Pensionerede ryttere optræder ikke længere blandt frie ungdomsryttere",
+          "body": "Pensionerede ryttere står ikke længere på listen over frie ungdomsryttere i akademiet."
+        },
+        "refs": [1742]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Achievements",
+        "en": {
+          "title": "Hidden achievements no longer reveal their details early",
+          "body": "The title and description of a hidden achievement you have not unlocked are no longer sent to the browser, so secret achievements can no longer be spoiled."
+        },
+        "da": {
+          "title": "Skjulte achievements afslører ikke længere detaljer for tidligt",
+          "body": "Titel og beskrivelse på en skjult achievement du ikke har låst op, sendes ikke længere til browseren, så hemmelige achievements ikke kan spoiles."
+        },
+        "refs": [1666]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Interface",
+        "en": {
+          "title": "Wider layout on the transfer list and other teams' pages",
+          "body": "The transfer list and other managers' team pages now use the full content width, matching the rider market, so there is less wasted space."
+        },
+        "da": {
+          "title": "Bredere layout på transferlisten og andre holds sider",
+          "body": "Transferlisten og andre managers holdsider bruger nu den fulde bredde som rytter-markedet, så der er mindre spildt plads."
+        },
+        "refs": [1675]
+      }
+    ]
+  },
+  {
     "version": "5.98",
     "date": "2026-06-23",
     "label": "Beta",
@@ -72,7 +205,7 @@ export const PATCHES = [
         "refs": [1672]
       },
       {
-        "category": "added",
+        "category": "new",
         "audience": "player",
         "topic": "Academy",
         "en": {
@@ -86,7 +219,7 @@ export const PATCHES = [
         "refs": [1744]
       },
       {
-        "category": "added",
+        "category": "new",
         "audience": "player",
         "topic": "Riders",
         "en": {

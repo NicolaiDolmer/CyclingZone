@@ -27,18 +27,41 @@ async function resolveAuctionConfig(supabase, auctionConfig) {
 }
 
 /**
+ * Den ene aktive/extended auktion en rytter må have (uniq_auctions_one_active_per_rider),
+ * eller null. Bruges til idempotens i listRejectedAsYouthAuction.
+ */
+async function findActiveAuctionForRider(supabase, riderId) {
+  const { data } = await supabase
+    .from("auctions")
+    .select("*")
+    .eq("rider_id", riderId)
+    .in("status", ["active", "extended"])
+    .maybeSingle();
+  return data ?? null;
+}
+
+/**
  * Opret en ungdomsauktion for en afvist akademi-kandidat.
  *
  * Ingen sælger (seller_team_id=NULL) — klubben afviste prospektet, så der er
  * ingen at betale ud til. Vinderen betaler sit bud som academy_signing (sink)
  * og får rytteren i sit akademi; ingen bud → rytteren forbliver fri ungdom.
  *
+ * Idempotent (CYCLINGZONE-14): en rytter må kun have én aktiv/extended auktion
+ * (DB-niveau via uniq_auctions_one_active_per_rider). Et dobbeltklik-race på
+ * afvis-knappen sender to requests der begge består intake-tjekket før nogen af
+ * dem skriver — den anden insert ville ellers ramme unique-indexet (23505) og
+ * boble op som en 500. Afvisningens mål ("rytteren ER listet") er allerede
+ * opfyldt i det tilfælde, så vi returnerer den eksisterende auktion i stedet for
+ * at fejle. Samme TOCTOU-løsning som POST /api/auctions (se
+ * database/2026-05-06-auctions-unique-active-rider.sql).
+ *
  * @param {object} supabase
  * @param {object} opts
  * @param {string} opts.riderId
  * @param {Date}   [opts.now=new Date()]      — injicerbar til determinisme i test
  * @param {object} [opts.auctionConfig]       — injicerbar timing-config (test)
- * @returns {Promise<object>} den oprettede auktion
+ * @returns {Promise<object>} den oprettede (eller allerede eksisterende) auktion
  */
 export async function listRejectedAsYouthAuction(supabase, { riderId, now = new Date(), auctionConfig } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
@@ -51,6 +74,12 @@ export async function listRejectedAsYouthAuction(supabase, { riderId, now = new 
     .maybeSingle();
   if (error) throw new Error(`listRejectedAsYouthAuction rider lookup: ${error.message}`);
   if (!rider) throw new Error(`listRejectedAsYouthAuction: rider ${riderId} not found`);
+
+  // Hurtig vej: ligger rytteren allerede på en aktiv auktion (gentaget afvisning
+  // eller dobbeltklik), så er afvisningen idempotent — returnér den i stedet for
+  // at forsøge en dublet-insert der ville fejle på unique-indexet.
+  const existing = await findActiveAuctionForRider(supabase, riderId);
+  if (existing) return existing;
 
   const value = Math.max(1, calculateRiderMarketValue(rider));
   const startPrice = Math.max(1, Math.round(value * YOUTH_AUCTION_START_RATE));
@@ -72,7 +101,16 @@ export async function listRejectedAsYouthAuction(supabase, { riderId, now = new 
     })
     .select()
     .single();
-  if (insErr) throw new Error(`listRejectedAsYouthAuction insert: ${insErr.message}`);
+  if (insErr) {
+    // TOCTOU-race: to afvisninger i sub-sekund-vindue består begge pre-tjekket og
+    // når frem til insert; den anden rammer unique-indexet (23505). Behandl det
+    // idempotent — hent og returnér vinderens auktion frem for at fejle.
+    if (insErr.code === "23505") {
+      const raced = await findActiveAuctionForRider(supabase, riderId);
+      if (raced) return raced;
+    }
+    throw new Error(`listRejectedAsYouthAuction insert: ${insErr.message}`);
+  }
   return auction;
 }
 
@@ -107,7 +145,7 @@ export async function signFreeAgentYouth(supabase, { teamId, riderId, seasonNumb
 
   const { data: rider, error } = await supabase
     .from("riders")
-    .select("id, team_id, is_academy, pcm_id, birthdate, base_value, market_value, prize_earnings_bonus")
+    .select("id, team_id, is_academy, is_retired, pcm_id, birthdate, base_value, market_value, prize_earnings_bonus")
     .eq("id", riderId)
     .maybeSingle();
   if (error) throw new Error(`signFreeAgentYouth rider lookup: ${error.message}`);
@@ -115,6 +153,12 @@ export async function signFreeAgentYouth(supabase, { teamId, riderId, seasonNumb
 
   // Skal være en fri rytter (ingen ejer, ikke allerede akademi).
   if (rider.team_id || rider.is_academy) throw new Error("not_free_agent");
+
+  // Forward-guard (#1742): en pensioneret rytter må aldrig kunne signes som fri
+  // ungdom, selv hvis han skulle slippe gennem discovery-listen. Retirement
+  // (legacy-swap #1103 / alders-retirement #1137) efterlader team_id=NULL +
+  // is_academy=false, så grundkriterierne ovenfor fanger ham ikke.
+  if (rider.is_retired) throw new Error("not_free_agent");
 
   // Må KUN være en fiktiv rytter (pcm_id IS NULL). Defense-in-depth mod #1478 bug
   // #1: selv hvis discovery-queryen fixes, må en ægte PCM-rytter ikke kunne signes

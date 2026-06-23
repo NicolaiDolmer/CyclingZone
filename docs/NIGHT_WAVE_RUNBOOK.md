@@ -25,6 +25,7 @@
 | `git fetch --prune origin` | Fetch fejler | Dirty main-checkout er kun warn (agenter brancher fra origin/main). |
 | Ledig disk C: | < 10 GB | Kør `npm run cleanup:worktrees:run` først. |
 | node på PATH | Mangler | node_modules-mangler er kun warn. |
+| origin/main test-sanity (frontend `node --test`) | Basen fejler frontend `node --test` | Fanger en rød `origin/main` FØR en fleet brancher fra den (natbølge 23/6: ugyldig patch-notes-category brækkede `frontend-build` på ALLE 15 PR'er → unblocker-PR [#1772](https://github.com/NicolaiDolmer/CyclingZone/issues/1772)). Kører kun når arbejdstræets `frontend/` er identisk med `origin/main` (ellers WARN: synk checkout og kør igen). Holdt let (~2s): kun frontend `node --test` — build forbliver CI's required `frontend-build`-gate; backend udeladt (~17s). JSON-state: `originMainTest` = green/red/diverged/skip. |
 
 ## Agent-regler (fra fleet-playbook, bølge 1-3-læringer)
 

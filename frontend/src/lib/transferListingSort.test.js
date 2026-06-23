@@ -38,6 +38,24 @@ test("muterer ikke input og tåler null/ukendt sort-nøgle", () => {
   assert.deepEqual(sortListings(listings, "garbage").map(l => l.id), ["d", "b", "c", "a"]);
 });
 
-test("LISTING_SORT_OPTIONS matcher de tre understøttede nøgler", () => {
-  assert.deepEqual(LISTING_SORT_OPTIONS, ["newest", "price_asc", "price_desc"]);
+test("LISTING_SORT_OPTIONS matcher de understøttede nøgler (#1755: + alder)", () => {
+  assert.deepEqual(LISTING_SORT_OPTIONS, ["newest", "price_asc", "price_desc", "age_asc", "age_desc"]);
+});
+
+// #1755 — alders-sort på rytter-niveau (listing.rider.birthdate). Transferlisten
+// kunne tidligere kun sorteres på pris/dato; universel-sortering kræver alder.
+const ageListings = [
+  { id: "young", asking_price: 1, created_at: "2026-06-01T10:00:00Z", rider: { birthdate: "2004-01-01" } },
+  { id: "old",   asking_price: 1, created_at: "2026-06-01T10:00:00Z", rider: { birthdate: "1992-01-01" } },
+  { id: "mid",   asking_price: 1, created_at: "2026-06-01T10:00:00Z", rider: { birthdate: "1998-01-01" } },
+  // ingen rytter/fødselsdato → falder bagest i begge retninger
+  { id: "unknown", asking_price: 1, created_at: "2026-06-01T10:00:00Z" },
+];
+
+test("age_asc — yngste rytter først, ukendt alder bagest", () => {
+  assert.deepEqual(sortListings(ageListings, "age_asc").map(l => l.id), ["young", "mid", "old", "unknown"]);
+});
+
+test("age_desc — ældste rytter først, ukendt alder bagest", () => {
+  assert.deepEqual(sortListings(ageListings, "age_desc").map(l => l.id), ["old", "mid", "young", "unknown"]);
 });

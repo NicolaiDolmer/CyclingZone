@@ -65,6 +65,36 @@ test("nationality_code — rytter uden nation sorterer sidst i asc", () => {
   assert.equal(withMissing[withMissing.length - 1].id, "e");
 });
 
+// #1755 — alder + ryttertype skal kunne sorteres i de filter-løse trup-tabeller
+// (andre holds trup) præcis som på rytterdatabasen, så sweepet er universelt.
+const ageTypeRiders = [
+  { id: "old",   firstname: "O", lastname: "O", birthdate: "1992-01-01", primary_type: "sprinter" },
+  { id: "young", firstname: "Y", lastname: "Y", birthdate: "2004-01-01", primary_type: "climber" },
+  { id: "mid",   firstname: "M", lastname: "M", birthdate: "1998-01-01", primary_type: "allrounder" },
+];
+
+test("birthdate desc — ældste først (lavest fødselsår), default klik-retning", () => {
+  const sorted = sortRidersForTable(ageTypeRiders, { key: "birthdate", dir: "desc" });
+  assert.deepEqual(sorted.map(r => r.id), ["young", "mid", "old"]);
+});
+
+test("birthdate asc — yngste først; manglende fødselsdato i ældste ende", () => {
+  const sorted = sortRidersForTable(ageTypeRiders, { key: "birthdate", dir: "asc" });
+  assert.deepEqual(sorted.map(r => r.id), ["old", "mid", "young"]);
+  const withMissing = sortRidersForTable(
+    [...ageTypeRiders, { id: "unknown", firstname: "U", lastname: "U" }],
+    { key: "birthdate", dir: "asc" });
+  // 1970-fallback = ældst → først i asc (yngste-først).
+  assert.equal(withMissing[0].id, "unknown");
+});
+
+test("primary_type — alfabetisk på primær type i begge retninger", () => {
+  const asc = sortRidersForTable(ageTypeRiders, { key: "primary_type", dir: "asc" });
+  assert.deepEqual(asc.map(r => r.primary_type), ["allrounder", "climber", "sprinter"]);
+  const desc = sortRidersForTable(ageTypeRiders, { key: "primary_type", dir: "desc" });
+  assert.deepEqual(desc.map(r => r.primary_type), ["sprinter", "climber", "allrounder"]);
+});
+
 test("muterer ikke input-arrayet", () => {
   const input = [...riders];
   sortRidersForTable(input, { key: "market_value", dir: "asc" });

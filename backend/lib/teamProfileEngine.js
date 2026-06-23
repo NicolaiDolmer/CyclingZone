@@ -2,6 +2,7 @@ import { createInitialBoardProfile } from "./boardEngine.js";
 import { allocateStarterSquadForTeam } from "./starterSquadAllocator.js";
 import { runAcademyIntakeForTeam } from "./academyIntake.js";
 import { isAcademyEnabled } from "./academyFlag.js";
+import { reconcileAiTeamsForPool } from "./aiTeamGenerator.js";
 import { captureException as sentryCapture } from "./sentry.js";
 import {
   INITIAL_BALANCE,
@@ -284,6 +285,10 @@ export async function upsertOwnTeamProfile({
   // hele riders/derive-kæden eller app_config.
   runAcademyCohort = runAcademyIntakeForTeam,
   academyEnabled = isAcademyEnabled,
+  // #1739: trim ét AI-fyld-hold fra den pulje det nye hold lander i, så pulje-
+  // størrelsen holdes konstant. DI så testen kan verificere koblingen uden at mocke
+  // hele AI-generator-kæden.
+  reconcileAiTeams = reconcileAiTeamsForPool,
 } = {}) {
   if (!supabase?.from) {
     throw createHttpError(500, "Supabase client is required");
@@ -397,6 +402,32 @@ export async function upsertOwnTeamProfile({
         academyError instanceof Error ? academyError : new Error(String(academyError)),
         { tags: { component: "team-create-academy" }, extra: { teamId: team.id } },
       );
+    }
+
+    // #1739: et nyt ægte hold medregnes nu i puljens felt, så AI-fyld-target falder
+    // med 1 — trim ét overskuds-AI-hold fra netop denne pulje, så pulje-størrelsen
+    // holdes på POOL_TARGET_SIZE i stedet for at vokse. (Tidligere kørte trim-logikken
+    // KUN ved relaunch, så et nyt hold midt i sæsonen efterlod AI-feltet urørt.)
+    //
+    // BEVIDST IKKE-FATAL: et utrimmet AI-hold er en kosmetisk pulje-overfyldning, ikke
+    // en blokeret signup. Fanger vi en fejl, logger vi (Sentry + console.error) og
+    // FORTSÆTTER — holdet er oprettet, har trup + akademi, og signup lykkes. Trimmen
+    // er desuden idempotent (reconcileAiTeamsForPool top-up'er/trimmer mod target hver
+    // gang), så en næste reconcile/relaunch retter en sprunget kørsel. Springes når
+    // holdet ikke landede i en pulje (league_division_id=null, pre-migration / mock).
+    if (team.league_division_id != null) {
+      try {
+        await reconcileAiTeams({ supabase, poolId: team.league_division_id });
+      } catch (reconcileError) {
+        console.error(
+          `[teamProfileEngine] #1739 AI-fyld-trim FEJLEDE for nyt hold ${team.id} i pulje ${team.league_division_id} (ikke-fatal, signup fortsætter):`,
+          reconcileError?.message || reconcileError,
+        );
+        sentryCapture(
+          reconcileError instanceof Error ? reconcileError : new Error(String(reconcileError)),
+          { tags: { component: "team-create-ai-trim" }, extra: { teamId: team.id, poolId: team.league_division_id } },
+        );
+      }
     }
   }
 

@@ -350,6 +350,14 @@ export default function TrainingPage() {
         <p className="text-cz-danger text-sm">{runError}</p>
       )}
 
+      {/* Daglig recovery-forklaring (#1676) — svarer "Får man energi tilbage hver dag?" */}
+      <div className="bg-cz-subtle border border-cz-border rounded-cz px-4 py-3">
+        <p className="text-xs font-semibold uppercase tracking-wide text-cz-2 mb-1">
+          {t("recoveryNoteTitle")}
+        </p>
+        <p className="text-sm text-cz-3 leading-relaxed">{t("recoveryNote")}</p>
+      </div>
+
       {/* Roster-værktøjslinje: gruppér-toggle (#1480) */}
       {!isLoading && riders.length > 0 && (
         <div className="flex flex-wrap items-center justify-end gap-3">

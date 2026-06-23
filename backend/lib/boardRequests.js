@@ -642,6 +642,20 @@ function findGoalIndexByCategory(goals = [], category) {
   return goals.findIndex((goal) => addGoalMetadata(goal).category === category);
 }
 
+// #1750 · Minimal mål-payload til frontend's getBoardGoalLabel — kun de felter
+// type-resolveren bruger (type, target, cumulative, race_scope, nationality_code,
+// label). Holder goal_changes-payloaden lille uden at lække intern goal-state.
+function pickGoalLabelFields(goal = {}) {
+  return {
+    type: goal.type,
+    target: goal.target,
+    cumulative: goal.cumulative ?? false,
+    race_scope: goal.race_scope ?? null,
+    nationality_code: goal.nationality_code ?? null,
+    label: goal.label ?? null,
+  };
+}
+
 function replaceGoal(goals, index, nextGoal, goalChanges = [], kind = "replaced") {
   if (index < 0 || index >= goals.length || !nextGoal) {
     return goals;
@@ -660,6 +674,12 @@ function replaceGoal(goals, index, nextGoal, goalChanges = [], kind = "replaced"
       before_label: previousGoal.label,
       after_label: enrichedGoal.label,
       category: enrichedGoal.category,
+      // #1750 · Strukturerede mål-payloads så frontend kan type-oversætte
+      // before/after via getBoardGoalLabel (EN-mode lækkede ellers de danske
+      // råtekst-labels). De rå *_label-felter bevares som fallback for
+      // allerede-persisterede requests.
+      before_goal: pickGoalLabelFields(previousGoal),
+      after_goal: pickGoalLabelFields(enrichedGoal),
     });
   }
 

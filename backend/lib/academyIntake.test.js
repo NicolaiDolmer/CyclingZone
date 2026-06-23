@@ -750,6 +750,12 @@ function makeDefaultRejectSupabase() {
       }
       if (table === "auctions") {
         return {
+          // Pre-check (findActiveAuctionForRider, CYCLINGZONE-14): ingen eksisterende
+          // aktiv auktion → afvisningen opretter en ny via insert nedenfor.
+          select() {
+            const api = { eq() { return api; }, in() { return api; }, maybeSingle() { return Promise.resolve({ data: null, error: null }); } };
+            return api;
+          },
           insert(row) {
             auctionInserts.push(row);
             return { select() { return { single() { return Promise.resolve({ data: { id: "youth-auction-default", ...row }, error: null }); } }; } };

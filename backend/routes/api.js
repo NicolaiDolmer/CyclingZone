@@ -7137,11 +7137,20 @@ router.get("/achievements", requireAuth, async (req, res) => {
   ]);
   const unlockedMap = {};
   (unlocked || []).forEach(u => { unlockedMap[u.achievement_id] = u.unlocked_at; });
-  res.json((all || []).map(a => ({
-    ...a,
-    unlocked: !!unlockedMap[a.id],
-    unlocked_at: unlockedMap[a.id] || null,
-  })));
+  res.json((all || []).map(a => {
+    const unlocked = !!unlockedMap[a.id];
+    // #1666: redaktér title/description for låste, hemmelige achievements — samme
+    // som GET /api/managers/:teamId. Uden dette lå den rå secret-tekst i payloaden
+    // og kunne spoile uoplåste secrets (DevTools → Network), selv for brugeren selv.
+    const hideSecret = !unlocked && a.is_secret;
+    return {
+      ...a,
+      title: hideSecret ? null : a.title,
+      description: hideSecret ? null : a.description,
+      unlocked,
+      unlocked_at: unlockedMap[a.id] || null,
+    };
+  }));
 });
 
 // POST /api/achievements/check — synk achievements mod live runtime-data
@@ -7219,7 +7228,18 @@ router.get("/managers/:teamId", requireAuth, async (req, res) => {
   const achievements = (allAchsRes.data || []).map(a => {
     const unlocked = !!unlockedMap[a.id];
     const progress = !unlocked && !a.is_secret ? progressMap[a.id] || null : null;
-    return { ...a, unlocked, unlocked_at: unlockedMap[a.id] || null, progress };
+    // #1666: redaktér title/description for låste, hemmelige achievements på backend.
+    // Frontend masker dem visuelt med "???", men den rå tekst lå stadig i payloaden
+    // (DevTools → Network) og kunne spoile uoplåste secrets. Send aldrig teksten med.
+    const hideSecret = !unlocked && a.is_secret;
+    return {
+      ...a,
+      title: hideSecret ? null : a.title,
+      description: hideSecret ? null : a.description,
+      unlocked,
+      unlocked_at: unlockedMap[a.id] || null,
+      progress,
+    };
   });
 
   const userData = userRes.data;
@@ -8625,6 +8645,12 @@ router.get("/academy/me", requireAuth, async (req, res) => {
         .select("id, firstname, lastname, nationality_code, birthdate, market_value")
         .is("team_id", null)
         .eq("is_academy", false)
+        // Pensionerede ryttere må aldrig stå i den frie ungdoms-pulje (#1742).
+        // Samme synligheds-filter som /api/riders (is_retired=false): retirement
+        // (legacy-swap #1103 eller alders-retirement #1137) sætter is_retired=true
+        // men efterlader team_id=NULL/is_academy=false, så uden dette filter slap
+        // pensionerede ryttere igennem free-agent-grundkriterierne.
+        .eq("is_retired", false)
         // KUN fiktive ryttere (pcm_id IS NULL). Ægte PCM-ryttere (pcm_id NOT NULL)
         // der tilfældigvis er frie agenter i akademi-alder må ikke kunne hentes
         // gratis (#1478 bug #1). pcm_id=null er fiktiv-vs-ægte-markøren.
@@ -8810,6 +8836,9 @@ router.post("/academy/free-agent/sign", requireAuth, marketWriteLimiter, async (
     if (msg === "academy_full") return res.status(409).json({ error: "academy_full" });
     if (msg === "not_free_agent") return res.status(409).json({ error: "not_free_agent" });
     if (msg === "not_academy_age") return res.status(409).json({ error: "not_academy_age" });
+    // insufficient_balance er en forventet bruger-tilstand ("ikke råd"), ikke en
+    // fejl — map til 409 og spring captureException over så Sentry ikke larmer (#1735).
+    if (msg === "insufficient_balance") return res.status(409).json({ error: "insufficient_balance" });
     captureException(err);
     res.status(500).json({ error: msg });
   }

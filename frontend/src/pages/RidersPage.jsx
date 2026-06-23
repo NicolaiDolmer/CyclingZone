@@ -26,6 +26,8 @@ import StatsToggle from "../components/StatsToggle";
 import useStatsToggle from "../lib/useStatsToggle";
 import { startTour } from "../lib/onboardingTour";
 import { formatNumber } from "../lib/intl";
+import SortTh from "../components/rider/RiderSortTh";
+import { cycleSortState } from "../lib/riderSort";
 import { Card, ExchangeIcon, Select, ArrowUpIcon, ArrowDownIcon, ChevronUpIcon, ChevronDownIcon } from "../components/ui";
 
 const API = import.meta.env.VITE_API_URL;
@@ -59,15 +61,8 @@ function buildRidersTourSteps(t) {
 // Stat-kolonner = de 15 CZ-evner (delt config lib/abilities.js, importeret som STATS).
 // #1529: erstattede de 14 PCM stat_*-kolonner — visningen viser nu evner.
 
-function SortTh({ children, sortKey, sort, sortDir, onSort, className = "", title }) {
-  const active = sort === sortKey;
-  return (
-    <th onClick={() => onSort(sortKey)} title={title}
-      className={`cursor-pointer select-none transition-colors ${active ? "text-cz-accent-t/80" : "text-cz-3 hover:text-cz-2"} ${className}`}>
-      {children}{active && <span className="ms-0.5 inline-flex align-middle">{sortDir === "desc" ? <ArrowDownIcon size={10} aria-hidden="true" /> : <ArrowUpIcon size={10} aria-hidden="true" />}</span>}
-    </th>
-  );
-}
+// #1755: SortTh er nu en delt komponent (components/rider/RiderSortTh) så alle
+// rytter-oversigter deler præcis samme sorterbare-header-adfærd + retnings-ikon.
 
 // #1592: nye spillere kan ikke afkode de 15 evne-koder (CLM/TT/FLT/…) i kolonne-
 // overskrifterne, og det blokerer det første rytter-valg. Hver stat-header får en
@@ -374,8 +369,10 @@ export default function RidersPage() {
   }
 
   function handleSort(key) {
-    if (filters.sort === key) setFilter("sort_dir", filters.sort_dir === "desc" ? "asc" : "desc");
-    else { setFilter("sort", key); setFilter("sort_dir", "desc"); }
+    // #1755: delt cyklus-logik (klik aktiv nøgle = vend retning; ny nøgle =
+    // skift + default-retning) så alle rytter-tabeller opfører sig ens.
+    const next = cycleSortState({ sort: filters.sort, dir: filters.sort_dir }, key);
+    setFilters(f => ({ ...f, sort: next.sort, sort_dir: next.dir, page: 1 }));
   }
 
   return (
