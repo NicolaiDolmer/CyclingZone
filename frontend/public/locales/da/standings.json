@@ -29,12 +29,22 @@
   "penaltyTooltip": "Trupstørrelse-fradrag: {penalty} point ({earned} optjent − {penalty} fradrag)",
   "legendLeader": "Fører (nr. 1)",
   "legendPromotion": "Oprykningszone (top 2)",
-  "legendRelegation": "Nedrykningszone (bund 2)",
+  "legendRelegation": "Nedrykningszone (bund 4)",
   "legendStrong": "Stærk evne ({n}+)",
   "strengthHint": "Sorteret efter samlet holdværdi",
   "racesPlayed": "{count} løb spillet",
   "onlineNow": "Online nu",
   "offline": "Offline",
+  "movement": {
+    "label": "Bevægelse",
+    "up": "{count} rykker op",
+    "down": "{count} rykker ned",
+    "ruleBoth": "Top {up} op, bund {down} ned",
+    "ruleBothPerPool": "Top {up} op, bund {down} ned i hver af de {pools} puljer",
+    "ruleDown": "Bund {down} ned",
+    "ruleUp": "Top {up} op",
+    "dormant": "Nedrykning aktiveres når Division {n} åbner"
+  },
   "lens": {
     "standings": "Rangliste",
     "strength": "Holdstyrke"

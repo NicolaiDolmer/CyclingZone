@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.01",
+    "date": "2026-06-23",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Divisions",
+        "en": {
+          "title": "Promotion and relegation are now live",
+          "body": "At the end of each season, each pool promotes its top 2 teams up a division and relegates its bottom 4 down. League & standings now marks the up and down zones per pool, with a summary of how many teams move in your current view. Division 1 has no promotion and the bottom division has no relegation. Division 4 opens gradually, so a Division 3 pool's relegation activates once its Division 4 pools open."
+        },
+        "da": {
+          "title": "Op- og nedrykning er nu live",
+          "body": "Ved hver sæsonafslutning rykker hver puljes top 2 hold en division op, og de 4 nederste rykker ned. Liga & rangliste markerer nu op- og nedrykningszonerne pr. pulje, med et resumé af hvor mange hold der rykker i din aktuelle visning. Division 1 har ingen oprykning, og den nederste division har ingen nedrykning. Division 4 åbner gradvist, så en Division 3-puljes nedrykning aktiveres når dens Division 4-puljer åbner."
+        },
+        "refs": [1152, 1745, 1760]
+      }
+    ]
+  },
+  {
     "version": "6.00",
     "date": "2026-06-23",
     "label": "Beta",

@@ -360,7 +360,7 @@
       },
       "promotionRelegation": {
         "title": "Promotion and relegation",
-        "text": "The divisions form a pyramid of pools: 1 pool in Division 1, 2 in Division 2, 4 in Division 3 and 8 in Division 4. At season end each pool promotes its top 2 teams up to the pool above, and relegates its bottom 4 teams down, split evenly between the two pools below it. Division 1 does not promote (it is the top) and the bottom division does not relegate. It is decided automatically from your pool's final standings, every season. Only real managers move between pools; AI teams are filler and are topped up afterwards."
+        "text": "The divisions form a pyramid of pools: 1 pool in Division 1, 2 in Division 2, 4 in Division 3 and 8 in Division 4. At season end each pool promotes its top 2 teams up to the pool above, and relegates its bottom 4 teams down, split evenly between the two pools below it. Division 1 does not promote (it is the top) and the bottom division does not relegate. It is decided automatically from your pool's final standings, every season. Only real managers move between pools; AI teams are filler and are topped up afterwards. Division 4 opens gradually as its pools fill with real managers, so a Division 3 pool's relegation starts once its Division 4 pools open."
       },
       "whenSeasonEnds": {
         "title": "When can a season be ended?",
@@ -409,7 +409,7 @@
       "label": "Divisions",
       "overview": {
         "title": "Division overview",
-        "text": "The game has 3 divisions. Division 1 is the highest. Everyone starts in Division 3."
+        "text": "The game has 4 divisions. Division 1 is the highest. Everyone starts in Division 3."
       },
       "sizePerDivision": {
         "title": "Squad size per division",

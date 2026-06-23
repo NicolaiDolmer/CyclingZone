@@ -360,7 +360,7 @@
       },
       "promotionRelegation": {
         "title": "Op- og nedrykning",
-        "text": "Divisionerne danner en pyramide af puljer: 1 pulje i Division 1, 2 i Division 2, 4 i Division 3 og 8 i Division 4. Ved sæsonafslutning rykker hver pulje sine top 2 hold op til puljen ovenover og relegerer sine bund 4 hold ned, delt ligeligt mellem de to puljer nedenunder. Division 1 rykker ikke op (den er toppen), og bunddivisionen rykker ikke ned. Det afgøres automatisk ud fra din puljes slutstilling, hver sæson. Kun rigtige managere flytter mellem puljer; AI-hold er fyld der fyldes op bagefter."
+        "text": "Divisionerne danner en pyramide af puljer: 1 pulje i Division 1, 2 i Division 2, 4 i Division 3 og 8 i Division 4. Ved sæsonafslutning rykker hver pulje sine top 2 hold op til puljen ovenover og relegerer sine bund 4 hold ned, delt ligeligt mellem de to puljer nedenunder. Division 1 rykker ikke op (den er toppen), og bunddivisionen rykker ikke ned. Det afgøres automatisk ud fra din puljes slutstilling, hver sæson. Kun rigtige managere flytter mellem puljer; AI-hold er fyld der fyldes op bagefter. Division 4 åbner gradvist efterhånden som puljerne fyldes med rigtige managere, så en Division 3-puljes nedrykning starter når dens Division 4-puljer åbner."
       },
       "whenSeasonEnds": {
         "title": "Hvornår kan en sæson afsluttes?",
@@ -409,7 +409,7 @@
       "label": "Divisioner",
       "overview": {
         "title": "Divisionsoversigt",
-        "text": "Spillet har 3 divisioner. Division 1 er den højeste. Alle starter i Division 3."
+        "text": "Spillet har 4 divisioner. Division 1 er den højeste. Alle starter i Division 3."
       },
       "sizePerDivision": {
         "title": "Holdstørrelse per division",
