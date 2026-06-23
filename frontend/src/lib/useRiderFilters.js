@@ -104,6 +104,14 @@ export function useClientRiderFilters(riders = []) {
         const cmp = (a.primary_type || "").localeCompare(b.primary_type || "");
         return filters.sort_dir === "desc" ? -cmp : cmp;
       }
+      // Hold (#1755): team_id er en UUID-streng → den numeriske gren nedenfor
+      // ville give NaN og en død "Hold"-header. Sortér på holdnavn via team-
+      // relationen (hentet som team:team_id(id,name)); frie ryttere (intet hold)
+      // samles i hver sin ende afhængigt af retning.
+      if (filters.sort === "team_id") {
+        const cmp = (a.team?.name || "").localeCompare(b.team?.name || "");
+        return filters.sort_dir === "desc" ? -cmp : cmp;
+      }
       let aVal, bVal;
       if (filters.sort === "birthdate") {
         aVal = a.birthdate ? new Date(a.birthdate).getFullYear() : 1970;
