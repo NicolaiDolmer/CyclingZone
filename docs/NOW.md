@@ -4,12 +4,12 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (23/6 — op/nedrykning LIVE):** **5 PR'er merged + live:** #1782 + #1764 + #1783 (engine) + #1767 (konto, migration verificeret i prod: trigger+backfill+lower(username)-index) + #1787 (#1760-visning, erstatter gl. #1760). **Op/nedrykning er nu live** (patch v6.01). Næste kandidat: **[#1791](https://github.com/NicolaiDolmer/CyclingZone/issues/1791) ungdoms-rytter-evner-rework** (spec+plan klar 23/6, subagent-drevet i frisk session; Fase A-C autonomt → ejer-kalibrerings-gate D → migrering E) eller forever-relaunch-spor eller #1152-rest (newco). Recovery: backup `cyclingzone-20260622-153339` (VERIFIED) + PITR.
-> - **Op/nedrykning (#1152, LIVE 23/6, per-pulje binær-træ):** engine #1783 (top 2 op→forælder, bund 4 delt 2+2→børn; Div4 udskudt til Div3-pulje all-real). Visning #1787 matcher: per-pulje 2-op/4-ned zoner + summarie + dormant-Div4-note (ejer-valgt: vis zone + forklaring) + forward-guard e2e. Spec: [promotion-relegation-design](superpowers/specs/2026-06-23-promotion-relegation-design.md). #1152-epic åben for newco-rest.
-> - **Natbølge 23/6 (merged):** 13 PR'er + #1772 CI-fix. Backend live (Railway); frontend afventer Vercel hobby rate-limit (~24t/Pro). Artifact: [night-wave-2026-06-23](audits/night-wave-2026-06-23.md).
-> - **Clarity-analyse 23/6:** dead-click/CLS-audit → 4 issues: #1794 (CLS=0,83 app-bredt → dead clicks), #1795 (board-sponsorkort ikke klikbart), #1796 (rytter-række klikbar), #1797 (Clarity ser alle som nye). PR for #1794 (delt `PageLoader` + app-bred loader-rollout) i review.
-> - **Ejer-beslutninger (åbne):** #1276 PCM-IP · #1278 spiller-comms (du voicer) · #1487-budget · #929 leaked-pw · #691 key-rotation · #940 NPS.
-> - **Hygiejne:** Vercel hobby rate-limit (overvej Pro). preflight tjekker nu grøn origin/main før bølge (f7b10d0a). [PLAN.md](PLAN.md)=SSOT.
+> **🎯 Next action (23/6 — auto-løb-incident håndteret):** Pulje-filter-bug ([#1798](https://github.com/NicolaiDolmer/CyclingZone/issues/1798), fixet via #1793, live Railway `d168d9cc`): auto-løb 12:30+15:00 trak hold på tværs af divisioner (felt = 24 stærkeste i HELE ligaen, ikke egen pulje). Prod-cleanup: **19,44M præmier tilbageført** (237 tx/30 hold), race-data slettet (3071 results/14 runs/2418 entries), træthed (429)/værdibonus (153)/standings (49)/race-dage nulstillet. De 13 løb **re-scheduleret til 20:00+21:00 i dag**; scheduler+auto-prize re-aktiveret (verificeret 0 due før 20:00). **VERIFICÉR efter 20:00/21:00:** hvert løbs `race_entries` kun egen pulje. Recovery: backup `cyclingzone-20260622-153339` (VERIFIED) + PITR.
+> - **Nye issues (Discord/audit 23/6):** #1799 akademi-signing→senior · #1800 fyret-rytter-i-lineup · #1801 resultatside-forkerte-løb · #1802 multi-løb-udtagelse · #1803 felt-cap>24-udelukker-svage-hold. Patch-note v6.02 udkast klar — afventer ejer-messaging.
+> - **Clarity-analyse 23/6:** dead-click/CLS-audit → #1794 (CLS=0,83 → dead clicks, PR i review), #1795 (board-sponsorkort ikke klikbart), #1796 (rytter-række klikbar), #1797 (Clarity ser alle som nye).
+> - **Næste kandidat (når incident verificeret):** [#1791](https://github.com/NicolaiDolmer/CyclingZone/issues/1791) ungdoms-rytter-evner-rework (spec+plan klar 23/6, subagent-drevet; Fase A-C autonomt → ejer-gate D → migrering E) eller forever-relaunch-spor / #1152-rest.
+> - **Op/nedrykning (#1152, LIVE 23/6):** patch v6.01; #1152-epic åben for newco-rest. Spec: [promotion-relegation-design](superpowers/specs/2026-06-23-promotion-relegation-design.md).
+> - **Ejer-beslutninger (åbne):** #1276 PCM-IP · #1278 spiller-comms · #1487-budget · #929 leaked-pw · #691 key-rotation · #940 NPS. Hygiejne: Vercel hobby rate-limit. [PLAN.md](PLAN.md)=SSOT.
 
 > **🤖 Working agent:** Ingen aktiv session.
 
