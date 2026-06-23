@@ -383,7 +383,7 @@
       "label": "Prizes",
       "formula": {
         "title": "The prize formula",
-        "text": "Prize money is computed directly from points: 1 point = 1,500 CZ$. Only races with a race class (Tour de France, Giro/Vuelta, Monuments, WorldTour, ProSeries, Class 1, Class 2) generate prize money. Races without a class give 0 CZ$."
+        "text": "Prize money is computed directly from points: 1 point = 75 CZ$. Only races with a race class (Tour de France, Giro/Vuelta, Monuments, WorldTour, ProSeries, Class 1, Class 2) generate prize money. Races without a class give 0 CZ$."
       },
       "examples": {
         "title": "Prize amount examples",
@@ -738,7 +738,7 @@
     },
     "prizeMoneyFaq": {
       "q": "What is prize money, and when is it paid out?",
-      "a": "Prize money is a direct CZ$ reward for results your riders achieve in races. The formula is: points for the placing × 1,500 CZ$. The money is paid automatically to your balance when admin finalises results and shows as 'prize' in your finance log. Only races with a race class (Tour de France, WorldTour, ProSeries etc.) generate prize money. Races without a race class give 0."
+      "a": "Prize money is a direct CZ$ reward for results your riders achieve in races. The formula is: points for the placing × 75 CZ$. The money is paid automatically to your balance when admin finalises results and shows as 'prize' in your finance log. Only races with a race class (Tour de France, WorldTour, ProSeries etc.) generate prize money. Races without a race class give 0."
     },
     "divisionBonusFaq": {
       "q": "What is the division bonus, and when is it paid out?",

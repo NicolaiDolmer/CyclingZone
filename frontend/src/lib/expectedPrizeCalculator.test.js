@@ -181,7 +181,7 @@ test("stages=0 on stage_race defaults to 1 stage", () => {
 
 // ---------- computeExpectedRacePrize ----------
 
-test("computeExpectedRacePrize multiplies points by 1500", () => {
+test("computeExpectedRacePrize multiplies points by PRIZE_PER_POINT", () => {
   const racePoints = fixturePoints();
   const result = computeExpectedRacePrize({
     raceClass: "ProSeries",
@@ -189,11 +189,11 @@ test("computeExpectedRacePrize multiplies points by 1500", () => {
     stages: 1,
     racePoints,
   });
-  assert.equal(result, 1308 * 1500); // = 1.962.000 CZ$ (matches audit baseline)
+  assert.equal(result, 1308 * PRIZE_PER_POINT); // 1308 point × 75 = 98.100 CZ$ (#1819 ÷20)
 });
 
-test("PRIZE_PER_POINT is 1500", () => {
-  assert.equal(PRIZE_PER_POINT, 1500);
+test("PRIZE_PER_POINT is 75", () => {
+  assert.equal(PRIZE_PER_POINT, 75);
 });
 
 // ---------- formatExpectedPrize ----------
@@ -205,7 +205,7 @@ test("formatExpectedPrize — millions with one decimal under 10M", () => {
 });
 
 test("formatExpectedPrize — millions without decimal at 10M+", () => {
-  assert.equal(formatExpectedPrize(34_240 * 1500), "~51M CZ$");
+  assert.equal(formatExpectedPrize(51_360_000), "~51M CZ$");
 });
 
 test("formatExpectedPrize — thousands rounded", () => {

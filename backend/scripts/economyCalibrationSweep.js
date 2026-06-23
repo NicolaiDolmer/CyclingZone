@@ -66,7 +66,7 @@ const SPONSOR_GRID = {
   2: [560000, 620000, 680000, 740000],
   3: [360000, 400000, 440000, 480000],
 };
-const PRIZE_PER_POINT_GRID = [1000, 1250, 1500];
+const PRIZE_PER_POINT_GRID = [50, 75, 100]; // #1819: skala ÷20 (var [1000,1250,1500])
 const FLATTEN_GRID = [0, 0.3, 0.5];
 // breadthBoost: 0 = ren GC-kompression (etape/hold uændret); 0.6 = + breadth-boost.
 // Empirisk øger breadth-boost divergens (stærke hold vinder også etaper) → test begge.
