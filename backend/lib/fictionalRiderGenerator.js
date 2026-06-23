@@ -84,7 +84,7 @@ export function toInsertPayload(riders) {
 //       67→49 ≥ guard-tærskler 57/43).
 //   • capSpeciality: loft så rouleur (intet speciale ≥79) ikke guardes ud
 //       (ability 79 ↔ PCM ~78).
-const ARCHETYPES = [
+export const ARCHETYPES = [
   { type: "sprinter",       boost: { stat_sp: 12, stat_acc: 9, stat_fl: 6 },                                   damp: ["stat_bj", "stat_kb", "stat_udh"], heightMean: 182, bmi: 22.8 },
   { type: "tt",             boost: { stat_tt: 12, stat_prl: 10, stat_fl: 5 },                                  damp: ["stat_sp", "stat_bk", "stat_bj"],  heightMean: 185, bmi: 22.2 },
   { type: "climber",        boost: { stat_bj: 12, stat_kb: 8, stat_bk: 5,  stat_udh: 5 },                      damp: ["stat_sp", "stat_acc", "stat_fl"], heightMean: 173, bmi: 19.5 },
@@ -94,7 +94,7 @@ const ARCHETYPES = [
   { type: "rouleur",        boost: { stat_fl: 6,  stat_udh: 5, stat_res: 4 },                                  damp: [],                                 heightMean: 180, bmi: 21.6, capSpeciality: 76 },
   { type: "gc",             boost: { stat_bj: 10, stat_tt: 9, stat_res: 8, stat_kb: 7, stat_udh: 5, stat_mod: 5 }, damp: ["stat_sp"],                   heightMean: 177, bmi: 20.3, minStats: { stat_bj: 72, stat_tt: 67, stat_res: 67 } },
 ];
-const ARCHETYPE_BY_TYPE = Object.fromEntries(ARCHETYPES.map((a) => [a.type, a]));
+export const ARCHETYPE_BY_TYPE = Object.fromEntries(ARCHETYPES.map((a) => [a.type, a]));
 
 // Stats der tæller som "speciale" for rouleur-cap'en (matcher riderTypes.js).
 const SPECIALITY_STATS = ["stat_bj", "stat_kb", "stat_bk", "stat_bro", "stat_tt", "stat_sp"];
