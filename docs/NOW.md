@@ -9,6 +9,7 @@
 > - **Op/nedrykning (#1152, ejer-besluttet 23/6 = aktiv nu, per-pulje binær-træ):** engine = PR #1783 (top 2 op→forælder-pulje, bund 4 delt 2+2→børne-puljer; Div4 udskudt til Div3-pulje all-real; ingen migration). **VISNING (#1760/#1745) = follow-up:** opdatér standings-zoner til **2-op/4-ned per pulje** (matcher engine). Spec: [promotion-relegation-design](superpowers/specs/2026-06-23-promotion-relegation-design.md). #1240 (board fjern/erstat-mål) → #1187-B.
 > - **Ejer-beslutninger (åbne):** #1276 PCM-IP · #1278 spiller-comms (du voicer) · #1487-budget · #929 leaked-pw · #691 key-rotation · #940 NPS.
 > - **Hygiejne:** Vercel hobby rate-limit (overvej Pro). preflight tjekker nu grøn origin/main før bølge (f7b10d0a). #1733 drop prod-backup-tabeller når stabilt. [PLAN.md](PLAN.md)=SSOT.
+> - **Kontrakt-copy (23/6):** trup + forlæng-dialog viser nu "Udløber efter S{n}" (var tvetydigt "Til S{n}"); ren i18n-copy, ingen migration → PR klar til merge.
 
 > **🤖 Working agent:** Ingen aktiv session.
 

@@ -43,7 +43,7 @@
       "age": "Alder",
       "type": "Type",
       "contract": "Kontrakt",
-      "contractValue": "Til S{season}",
+      "contractValue": "Udløber efter S{season}",
       "action": "Handling"
     },
     "tags": {
@@ -92,8 +92,8 @@
       "description": "Forlæng kontrakten med én sæson. Lønnen genforhandles ud fra rytterens aktuelle værdi.",
       "currentSalaryLabel": "Nuværende løn",
       "newSalaryLabel": "Ny løn",
-      "newContractLabel": "Ny kontrakt indtil",
-      "newContractValue": "S{season}",
+      "newContractLabel": "Ny kontrakt",
+      "newContractValue": "Udløber efter S{season}",
       "confirmButton": "Forlæng kontrakt",
       "successMsg": "Kontrakt forlænget."
     },
