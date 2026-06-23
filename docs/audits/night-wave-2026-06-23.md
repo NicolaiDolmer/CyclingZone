@@ -50,6 +50,15 @@
 | #1763 (#1666) | security | 🟡 minor → **hærdet** | LOW: `GET /api/achievements` lækkede samme secret-felter. **Fix: hideSecret-redaktion tilføjet (`265cf27c`).** Low (fragil guard) efterladt. |
 | #1759 (#1739) | signup-hook | 🟡 minor | LOW: top-up kan lave 23 AI-hold inline ved første signup i tom entry-pulje (ikke nåbar nu — relevant efter relaunch); nedarvet frozen-team-edge. Begge dokumenteret på PR, ikke ændret. |
 
+**Review-bølge 2** (`wf_a7d66153-2f2`) — de 7 resterende frontend-PR'er:
+
+| PR | Verdict | Handling |
+|---|---|---|
+| #1766 board, #1765 holdudtagelse, #1761 transferhistorik, #1771 layout | ✅ ship-ready | Kun kosmetiske noter (PR-body-unøjagtigheder). Klar. |
+| #1769 (#1755) sort | 🟡 minor → **hærdet** | MEDIUM: Watchlist "Hold"-header sorterede ikke (team_id UUID → NaN), kamufleret som klikbar. **Fix: team_id→team.name-gren i comparatoren (`58f0556d`).** |
+| #1762 (#1749) founder-copy | ✅ ship-ready | Priser verificeret mod pricing.js (ingen opfundne tal); kun upræcis key-antal i PR-body. |
+| **#1760 (#1745)** op/nedrykning | 🔴 **needs-fix — KRÆVER EJER-BESLUTNING** | HIGH: vist per-pulje-regel (N×2 op/ned) modsiger backend (2 op/2 ned **pr. division**, pulje-blindt; live fra sæson 3). Vildledende. Design-fork bundet til åbne **#1152** (per-pulje promotion, needs-contract). **Valg A** (anbefalet): behold division-bred zone + tekst "pr. division" (matcher koden). **Valg B**: byg per-pulje-backend + luk #1152 først. Ikke auto-fixet — din beslutning. |
+
 ## Afvigelser/læringer
 - **Fleet arvede en rød main.** 16 agenter branchede fra en `origin/main` med en pre-eksisterende test-fejl → `frontend-build` rød på alle. **Læring/forslag:** tilføj et `node --test` + build-sanity-tjek mod `origin/main` i `preflight-night-wave.ps1`, så en pre-eksisterende rød main fanges (NO-GO eller auto-fix) FØR en bølge launches — ellers arver hele fleeten fejlen og det ligner 16 separate regressioner.
 - **Canary-gaten holdt** (billig forsikring): #1735 validerede pipelinen før fanout. Worktree-isolation + `agentType: claude` virkede; 15/15 fanout-agenter åbnede PR (én fandt korrekt at arbejdet allerede var gjort).
