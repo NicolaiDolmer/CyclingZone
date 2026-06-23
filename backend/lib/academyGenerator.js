@@ -20,6 +20,12 @@ function clamp(n, lo, hi) {
   return Math.max(lo, Math.min(hi, n));
 }
 
+// Vælg et ungdoms-anlæg (én af de 8 typer). Holdt enkelt; nation-bias rører ikke type.
+const YOUTH_ARCHETYPE_POOL = ["climber", "sprinter", "tt", "puncheur", "brostensrytter", "baroudeur", "rouleur", "gc"];
+function pickYouthArchetype(rng) {
+  return YOUTH_ARCHETYPE_POOL[Math.floor(rng() * YOUTH_ARCHETYPE_POOL.length)];
+}
+
 /**
  * Generér et akademi-kuld af ungdomskandidater (rører ingen DB).
  *
@@ -75,12 +81,10 @@ export function generateAcademyCandidates({
     );
     const birthdate = `${referenceYear - age}-06-15`;
 
-    // Stats: unge har lavere mean (raw talent) — clampes til [40,85]
-    const statMean = is_serious ? 58 : 52;
-    const stats = {};
-    for (const key of STAT_KEYS) {
-      stats[key] = Math.round(clamp(gaussian(rng, statMean, 6), 40, 85));
-    }
+    // Stats: lav, anlægs-formet ungdoms-profil (#1791). Anlæg vælges deterministisk;
+    // de lave stats giver via fallback-derivationen lave evner i ungdoms-båndet.
+    const archetypeType = pickYouthArchetype(rng);
+    const { stats } = generateYouthStats({ rng, age, archetypeType });
 
     // Potentiale: 0.5-trin
     let pot;
