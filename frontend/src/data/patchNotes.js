@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.00",
+    "date": "2026-06-23",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Squad",
+        "en": {
+          "title": "Contract dates now say when a contract expires",
+          "body": "The squad list now shows \"Expires after S2\" instead of \"Until S2\", so it is clear that a rider is under contract for that whole season and only becomes a free agent afterwards. The extend-contract dialog uses the same wording."
+        },
+        "da": {
+          "title": "Kontraktdatoer viser nu hvornår en kontrakt udløber",
+          "body": "Truplisten viser nu \"Udløber efter S2\" i stedet for \"Til S2\", så det er tydeligt at en rytter er kontraktbundet hele den sæson og først bliver fri agent bagefter. Forlæng kontrakt-dialogen bruger samme formulering."
+        },
+        "refs": []
+      }
+    ]
+  },
+  {
     "version": "5.99",
     "date": "2026-06-23",
     "label": "Beta",

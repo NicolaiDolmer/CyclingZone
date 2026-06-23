@@ -43,7 +43,7 @@
       "age": "Age",
       "type": "Type",
       "contract": "Contract",
-      "contractValue": "Until S{season}",
+      "contractValue": "Expires after S{season}",
       "action": "Action"
     },
     "tags": {
@@ -92,8 +92,8 @@
       "description": "Extend the contract by one season. The salary is renegotiated from the rider's current value.",
       "currentSalaryLabel": "Current salary",
       "newSalaryLabel": "New salary",
-      "newContractLabel": "New contract until",
-      "newContractValue": "S{season}",
+      "newContractLabel": "New contract",
+      "newContractValue": "Expires after S{season}",
       "confirmButton": "Extend contract",
       "successMsg": "Contract extended."
     },
