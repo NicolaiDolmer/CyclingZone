@@ -53,8 +53,8 @@ Detektion: `git worktree list` + `gh pr list --head <branch>` pr. spor. Genopret
 
 ## Vercel deploy-rate-limit (høj-tempo-bølger)
 
-Vercel **hobby-tier** rate-limiter deploys ("retry in 24 hours") når en bølge laver mange merges + preview-builds hurtigt (ramt 2026-06-20 efter ~13 merges). Konsekvens: **frontend-prod fryser på sidste gode deploy**; merged kode er i git men ikke live før reset/Pro/manuel re-deploy. **Railway (backend) er upåvirket** — backend-PR'er går live uanset.
-- **Forebyg:** batch frontend-merges, ELLER opgrad Vercel Pro før en stor bølge.
+**Status 2026-06-23: projektet er på Vercel Pro** — det aggressive hobby-rate-limit ("retry in 24 hours", ramt 2026-06-20 efter ~13 hurtige merges) gælder derfor ikke længere i praksis. *Historisk på hobby-tier:* en høj-tempo-bølge kunne fryse **frontend-prod på sidste gode deploy** indtil reset/manuel re-deploy; **Railway (backend) var upåvirket**. Pro kan teoretisk stadig ramme et loft ved ekstreme bølger — overvåg, men forvent ikke 24t-frys.
+- **Forebyg:** Pro løfter loftet markant; kun ved ekstreme bølger er det relevant at batche frontend-merges.
 - **Detektér:** `gh api repos/<repo>/commits/main/status --jq '.statuses[]|select(.context|test("Vercel"))|.state+" | "+.description'` → "rate limited".
 - **Håndtér:** bloker IKKE merges på Vercel-checken (advisory) — verificér frontend via CI `frontend-build` (required) i stedet. Prioritér backend-arbejde (Railway-deploybart) under lockout. Notér tydeligt i close-out at frontend venter deploy.
 
