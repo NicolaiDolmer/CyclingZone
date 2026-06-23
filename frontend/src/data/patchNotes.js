@@ -4,7 +4,7 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
-    "version": "6.00",
+    "version": "6.01",
     "date": "2026-06-23",
     "label": "Beta",
     "changes": [
@@ -21,6 +21,27 @@ export const PATCHES = [
           "body": "Ved hver sæsonafslutning rykker hver puljes top 2 hold en division op, og de 4 nederste rykker ned. Liga & rangliste markerer nu op- og nedrykningszonerne pr. pulje, med et resumé af hvor mange hold der rykker i din aktuelle visning. Division 1 har ingen oprykning, og den nederste division har ingen nedrykning. Division 4 åbner gradvist, så en Division 3-puljes nedrykning aktiveres når dens Division 4-puljer åbner."
         },
         "refs": [1152, 1745, 1760]
+      }
+    ]
+  },
+  {
+    "version": "6.00",
+    "date": "2026-06-23",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Squad",
+        "en": {
+          "title": "Contract dates now say when a contract expires",
+          "body": "The squad list now shows \"Expires after S2\" instead of \"Until S2\", so it is clear that a rider is under contract for that whole season and only becomes a free agent afterwards. The extend-contract dialog uses the same wording."
+        },
+        "da": {
+          "title": "Kontraktdatoer viser nu hvornår en kontrakt udløber",
+          "body": "Truplisten viser nu \"Udløber efter S2\" i stedet for \"Til S2\", så det er tydeligt at en rytter er kontraktbundet hele den sæson og først bliver fri agent bagefter. Forlæng kontrakt-dialogen bruger samme formulering."
+        },
+        "refs": []
       }
     ]
   },

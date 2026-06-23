@@ -11,14 +11,12 @@ const {
   processSeasonEnd,
   processSeasonStart,
   processTeamSeasonPayroll,
-  rebalanceDivisions,
   repairSeasonEndFinanceAndBoard,
   updateRiderValues,
   updateStandings,
 } = await import("./economyEngine.js");
 
 const {
-  DIVISION_CAPACITY,
   MAX_BOARD_MODIFIER,
   INITIAL_BALANCE,
   UPKEEP_BY_DIVISION,
@@ -569,6 +567,17 @@ function createSeasonEndSupabase({
               ...payload,
             });
             return Promise.resolve({ error: null });
+          },
+        };
+      }
+
+      // #1152: processSeasonEnd bygger nu et pulje-træ + AI-fyld-sweep. Disse board/
+      // finance-tests er ikke promotion-tests; tom league_divisions → tomt træ + tomt
+      // sweep (no-op), så promotion-stien ikke forstyrrer deres assertions.
+      if (table === "league_divisions") {
+        return {
+          select() {
+            return Promise.resolve({ data: [], error: null });
           },
         };
       }
@@ -2128,7 +2137,21 @@ test("payDivisionBonuses credits correct amounts per division rank and is idempo
   assert.equal(financeRows.length, 2);
 });
 
-// ─── processDivisionEnd gating (FIRST_PROMOTION_RELEGATION_SEASON) ────────────
+// ─── processDivisionEnd: per-pulje binær-træ-model (#1152) ────────────────────
+
+// Pulje-træ til tests: tier 1×1 (id1), tier 2×2 (id2,3), tier 3×4 (id4-7),
+// tier 4×8 (id8-15). forælder(T,i)=(T-1,⌊i/2⌋); børn=(T+1,2i),(T+1,2i+1).
+const TEST_POOL_ROWS = [
+  { id: 1, tier: 1, pool_index: 0 },
+  { id: 2, tier: 2, pool_index: 0 }, { id: 3, tier: 2, pool_index: 1 },
+  { id: 4, tier: 3, pool_index: 0 }, { id: 5, tier: 3, pool_index: 1 },
+  { id: 6, tier: 3, pool_index: 2 }, { id: 7, tier: 3, pool_index: 3 },
+  { id: 8, tier: 4, pool_index: 0 }, { id: 9, tier: 4, pool_index: 1 },
+  { id: 10, tier: 4, pool_index: 2 }, { id: 11, tier: 4, pool_index: 3 },
+  { id: 12, tier: 4, pool_index: 4 }, { id: 13, tier: 4, pool_index: 5 },
+  { id: 14, tier: 4, pool_index: 6 }, { id: 15, tier: 4, pool_index: 7 },
+];
+const FIRST_POOL_OF_TIER = { 1: 1, 2: 2, 3: 4, 4: 8 };
 
 function createDivisionEndSupabase() {
   const updates = [];
@@ -2141,12 +2164,12 @@ function createDivisionEndSupabase() {
       return Promise.resolve({ data: 0, error: null });
     },
     from(table) {
+      if (table === "league_divisions") {
+        return { select() { return Promise.resolve({ data: TEST_POOL_ROWS.map(r => ({ ...r })), error: null }); } };
+      }
       if (table === "teams") {
         return {
           select() {
-            // notifyTeamOwner kalder .select("user_id").eq("id", teamId).single() —
-            // returnér user_id=null så notifyUser early-exiter på missing_user uden
-            // at vi behøver mocke notifications-dedup-pathen i sin helhed.
             return {
               eq() {
                 return {
@@ -2179,132 +2202,73 @@ function createDivisionEndSupabase() {
   };
 }
 
-function buildDivStandings(division) {
-  return [
-    { team_id: `${division}-a`, division, rank_in_division: 1, total_points: 400, team: { id: `${division}-a`, is_ai: false } },
-    { team_id: `${division}-b`, division, rank_in_division: 2, total_points: 300, team: { id: `${division}-b`, is_ai: false } },
-    { team_id: `${division}-c`, division, rank_in_division: 3, total_points: 200, team: { id: `${division}-c`, is_ai: false } },
-    { team_id: `${division}-d`, division, rank_in_division: 4, total_points: 100, team: { id: `${division}-d`, is_ai: false } },
-  ];
+// Byg pulje-standings: `count` hold i pulje `poolId`, hvor de `aiCount` dårligste er AI.
+function buildPoolStandings({ division, poolId = FIRST_POOL_OF_TIER[division], count = 8, aiCount = 0 }) {
+  const rows = [];
+  for (let r = 1; r <= count; r++) {
+    const isAi = r > count - aiCount; // AI på de dårligste ranks
+    const id = `t${division}-p${poolId}-r${r}`;
+    rows.push({ team_id: id, division, league_division_id: poolId, rank_in_division: r, total_points: 1000 - r, team: { id, is_ai: isAi } });
+  }
+  return rows;
 }
 
-test("processDivisionEnd skips promotion/relegation for season 1 (gated by FIRST_PROMOTION_RELEGATION_SEASON)", async () => {
+test("#1152 · op/nedrykning er aktiv fra sæson 1 (gate fjernet)", async () => {
   const supabase = createDivisionEndSupabase();
-  await processDivisionEnd(buildDivStandings(2), 2, "season-1", 1, { supabase, now: new Date("2026-05-21T23:00:00Z") });
-  assert.equal(supabase.updates.length, 0, "no team.division writes expected for season 1");
+  await processDivisionEnd(buildPoolStandings({ division: 2 }), 2, "season-1", 1, { supabase, now: new Date("2026-06-23T23:00:00Z") });
+  assert.ok(supabase.updates.length > 0, "promotion/relegation skal ske allerede i sæson 1");
 });
 
-test("processDivisionEnd skips promotion/relegation for season 2 (gated by FIRST_PROMOTION_RELEGATION_SEASON)", async () => {
+test("#1152 · promotion router top 2 op til FORÆLDER-puljen (Div2 pulje0 → Div1 pulje1)", async () => {
   const supabase = createDivisionEndSupabase();
-  await processDivisionEnd(buildDivStandings(2), 2, "season-2", 2, { supabase, now: new Date("2026-06-21T23:00:00Z") });
-  assert.equal(supabase.updates.length, 0, "no team.division writes expected for season 2");
+  await processDivisionEnd(buildPoolStandings({ division: 2, poolId: 2 }), 2, "s", 1, { supabase, now: new Date("2026-06-23T23:00:00Z") });
+  const promoted = supabase.updates.filter(u => u.payload.division === 1);
+  assert.equal(promoted.length, 2, "top 2 oprykket");
+  assert.ok(promoted.every(u => u.payload.league_division_id === 1), "forælder-pulje = Div1 pulje (id 1)");
 });
 
-test("processDivisionEnd performs promotion + relegation for season 3 (gate cleared)", async () => {
+test("#1152 · relegation deler bund 4 ligeligt ud i de to BØRNE-puljer (Div2 pulje0 → Div3 pulje4+5)", async () => {
   const supabase = createDivisionEndSupabase();
-  await processDivisionEnd(buildDivStandings(2), 2, "season-3", 3, { supabase, now: new Date("2026-07-21T23:00:00Z") });
-  // Div 2: top 2 promoted to div 1, bottom 2 relegated to div 3
-  const promotions = supabase.updates.filter(u => u.payload.division === 1).map(u => u.id).sort();
-  const relegations = supabase.updates.filter(u => u.payload.division === 3).map(u => u.id).sort();
-  assert.deepEqual(promotions, ["2-a", "2-b"]);
-  assert.deepEqual(relegations, ["2-c", "2-d"]);
+  await processDivisionEnd(buildPoolStandings({ division: 2, poolId: 2 }), 2, "s", 1, { supabase, now: new Date("2026-06-23T23:00:00Z") });
+  const relegated = supabase.updates.filter(u => u.payload.division === 3);
+  assert.equal(relegated.length, 4, "bund 4 relegeret");
+  const dests = relegated.map(u => u.payload.league_division_id).sort();
+  assert.deepEqual(dests, [4, 4, 5, 5], "delt 2+2 til de to børne-puljer (id 4 og 5)");
 });
 
-// ─── rebalanceDivisions (#962 fyld-fra-toppen) ────────────────────────────────
-
-function createRebalanceSupabase(teams) {
-  const updates = [];
-  return {
-    updates,
-    from(table) {
-      assert.equal(table, "teams", `Unexpected table in rebalance mock: ${table}`);
-      return {
-        select(cols) {
-          if (cols === "user_id") {
-            // notifyManager → notifyTeamOwner path. user_id=null early-exiter.
-            return {
-              eq() {
-                return { single() { return Promise.resolve({ data: { user_id: null }, error: null }); } };
-              },
-            };
-          }
-          // Load-path: .eq("is_ai", false).eq("is_frozen", false) derefter await.
-          const query = {
-            eq() { return query; },
-            then(resolve, reject) {
-              const rows = teams.map(t => ({ id: t.id, division: t.division }));
-              return Promise.resolve({ data: rows, error: null }).then(resolve, reject);
-            },
-          };
-          return query;
-        },
-        update(payload) {
-          return {
-            eq(column, value) {
-              assert.equal(column, "id");
-              updates.push({ id: value, division: payload.division });
-              return Promise.resolve({ error: null });
-            },
-          };
-        },
-      };
-    },
-  };
-}
-
-function buildRebalanceTeams({ div1 = 0, div2 = 0, div3 = 0 } = {}) {
-  const teams = [];
-  for (let i = 0; i < div1; i++) teams.push({ id: `d1-${i}`, division: 1 });
-  for (let i = 0; i < div2; i++) teams.push({ id: `d2-${i}`, division: 2 });
-  for (let i = 0; i < div3; i++) teams.push({ id: `d3-${i}`, division: 3 });
-  return teams;
-}
-
-test("rebalanceDivisions is gated by FIRST_PROMOTION_RELEGATION_SEASON (no moves before season 3)", async () => {
-  const supabase = createRebalanceSupabase(buildRebalanceTeams({ div1: 5, div2: 5, div3: 5 }));
-  const result = await rebalanceDivisions(2, [], { supabase, now: new Date("2026-06-21T23:00:00Z") });
-  assert.equal(supabase.updates.length, 0);
-  assert.deepEqual(result.moved, []);
+test("#1152 · tier 1 (top) relegerer men rykker IKKE op", async () => {
+  const supabase = createDivisionEndSupabase();
+  await processDivisionEnd(buildPoolStandings({ division: 1, poolId: 1 }), 1, "s", 1, { supabase, now: new Date("2026-06-23T23:00:00Z") });
+  assert.equal(supabase.updates.filter(u => u.payload.division === 0).length, 0, "ingen oprykning fra tier 1");
+  const relegated = supabase.updates.filter(u => u.payload.division === 2);
+  assert.equal(relegated.length, 4, "bund 4 relegeret til Div2");
+  assert.deepEqual(relegated.map(u => u.payload.league_division_id).sort(), [2, 2, 3, 3], "børn = Div2 pulje 2+3");
 });
 
-test("rebalanceDivisions pulls the best-ranked team up to fill an empty top slot", async () => {
-  const teams = buildRebalanceTeams({ div1: DIVISION_CAPACITY - 1, div2: 2 });
-  const supabase = createRebalanceSupabase(teams);
-  // Standings: d2-1 placeret bedre end d2-0 → d2-1 skal trækkes op først.
-  const standings = [
-    { team_id: "d2-1" },
-    { team_id: "d2-0" },
-  ];
-
-  const result = await rebalanceDivisions(3, standings, { supabase, now: new Date("2026-07-21T23:00:00Z") });
-
-  // Kun 1 ledig plads i div 1 → den bedst placerede (d2-1) rykkes op.
-  assert.deepEqual(supabase.updates, [{ id: "d2-1", division: 1 }]);
-  assert.deepEqual(result.moved, [{ team_id: "d2-1", from: 2, to: 1 }]);
+test("#1152 · tier 4 (bund) rykker op men relegerer IKKE", async () => {
+  const supabase = createDivisionEndSupabase();
+  await processDivisionEnd(buildPoolStandings({ division: 4, poolId: 8 }), 4, "s", 1, { supabase, now: new Date("2026-06-23T23:00:00Z") });
+  const promoted = supabase.updates.filter(u => u.payload.division === 3);
+  assert.equal(promoted.length, 2, "top 2 oprykket til Div3");
+  assert.ok(promoted.every(u => u.payload.league_division_id === 4), "forælder = Div3 pulje (id 4)");
+  assert.equal(supabase.updates.filter(u => u.payload.division === 5).length, 0, "ingen relegering fra tier 4");
 });
 
-test("rebalanceDivisions cascades: fills div 1 from div 2, then div 2 from div 3", async () => {
-  const teams = buildRebalanceTeams({ div1: DIVISION_CAPACITY - 2, div2: 3, div3: 4 });
-  const supabase = createRebalanceSupabase(teams);
-
-  const result = await rebalanceDivisions(3, [], { supabase, now: new Date("2026-07-21T23:00:00Z") });
-
-  const toDiv1 = supabase.updates.filter(u => u.division === 1).length;
-  const toDiv2 = supabase.updates.filter(u => u.division === 2).length;
-  // 2 ledige i div 1 → 2 fra div 2 op. Div 2 har nu plads → de 4 i div 3 rykker op.
-  assert.equal(toDiv1, 2);
-  assert.equal(toDiv2, 4);
-  assert.equal(result.moved.length, 6);
+test("#1152 · Div3-pulje MED AI relegerer IKKE til Div4 (udskydelse) men rykker stadig op", async () => {
+  const supabase = createDivisionEndSupabase();
+  // 24 hold, 4 AI i bunden → ikke all-real → Div4-relegering udskydes.
+  await processDivisionEnd(buildPoolStandings({ division: 3, poolId: 4, count: 24, aiCount: 4 }), 3, "s", 1, { supabase, now: new Date("2026-06-23T23:00:00Z") });
+  assert.equal(supabase.updates.filter(u => u.payload.division === 4).length, 0, "ingen relegering til Div4 (pulje har AI)");
+  assert.equal(supabase.updates.filter(u => u.payload.division === 2).length, 2, "top 2 rykker stadig op til Div2");
 });
 
-test("rebalanceDivisions makes no moves when top divisions are already full (soft cap respected)", async () => {
-  const teams = buildRebalanceTeams({ div1: DIVISION_CAPACITY, div2: DIVISION_CAPACITY + 5, div3: 3 });
-  const supabase = createRebalanceSupabase(teams);
-
-  const result = await rebalanceDivisions(3, [], { supabase, now: new Date("2026-07-21T23:00:00Z") });
-
-  assert.equal(supabase.updates.length, 0);
-  assert.deepEqual(result.moved, []);
+test("#1152 · Div3-pulje ALL-REAL relegerer til Div4 (aktivering)", async () => {
+  const supabase = createDivisionEndSupabase();
+  // 24 hold, 0 AI → all-real → Div4-børn aktiveres.
+  await processDivisionEnd(buildPoolStandings({ division: 3, poolId: 4, count: 24, aiCount: 0 }), 3, "s", 1, { supabase, now: new Date("2026-06-23T23:00:00Z") });
+  const relegated = supabase.updates.filter(u => u.payload.division === 4);
+  assert.equal(relegated.length, 4, "bund 4 relegeret til Div4");
+  assert.deepEqual(relegated.map(u => u.payload.league_division_id).sort(), [8, 8, 9, 9], "Div4-børn = pulje 8+9");
 });
 
 // ─── Akademi-drift (#1308) ────────────────────────────────────────────────────
@@ -3265,14 +3229,15 @@ test("#1608 · processDivisionEnd promoverer tier-4-hold (MAX_DIVISION=4 → div
   // div-4-hold relegeres (division < MAX_DIVISION er falsk for 4). Før form-frysen
   // (MAX_DIVISION=3 + hardcodet [1,2,3]-loop) ville div 4 aldrig blive behandlet.
   const supabase = createDivisionEndSupabase();
-  await processDivisionEnd(buildDivStandings(4), 4, "season-3", 3, {
-    supabase, now: new Date("2026-07-21T23:00:00Z"),
+  await processDivisionEnd(buildPoolStandings({ division: 4, poolId: 8 }), 4, "s", 1, {
+    supabase, now: new Date("2026-06-23T23:00:00Z"),
   });
 
-  // Top 2 promoveres til div 3; ingen relegering (4 er nu den behandlede bund).
-  const promotions = supabase.updates.filter(u => u.payload.division === 3).map(u => u.id).sort();
+  // Top 2 promoveres til div 3 (forælder-pulje); ingen relegering (4 = behandlet bund).
+  const promotions = supabase.updates.filter(u => u.payload.division === 3);
   const relegations = supabase.updates.filter(u => u.payload.division === 5);
-  assert.deepEqual(promotions, ["4-a", "4-b"], "div-4 top 2 rykker op til div 3");
+  assert.equal(promotions.length, 2, "div-4 top 2 rykker op til div 3");
+  assert.ok(promotions.every(u => u.payload.league_division_id === 4), "forælder = Div3 pulje (id 4)");
   assert.equal(relegations.length, 0, "ingen relegering fra bund-tier (division 5 findes ikke)");
 });
 

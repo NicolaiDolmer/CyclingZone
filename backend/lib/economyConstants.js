@@ -84,8 +84,8 @@ export const DEBT_CEILING_BY_DIVISION = { 1: 1200000, 2: 900000, 3: 600000, 4: 4
 // Centraliseret her (#962) så fyld-fra-toppen og op/nedrykning deler samme bounds.
 export const MIN_DIVISION = 1;
 // #1608 forever-relaunch FORM-FRYS (granit, ejer-godkendt 2026-06-21): 4-tier-pyramide.
-// Tier 4 = bunden. Bevidst retning: pickDivisionForNewTeam + rebalanceDivisions looper
-// nu MIN..4. Pulje-bevidst placering bygges additivt (#1608-children, Task 6/9).
+// Tier 4 = bunden. #1152: per-pulje op/nedrykning (processDivisionEnd) + AI-fyld-sweep
+// (reconcileAiTeamsForPool) håndterer nu hold-bevægelse pr. pulje (binær-træ via pool_index).
 export const MAX_DIVISION = 4;
 
 // #1688 forever-relaunch (ejer-besluttet 2026-06-22): ægte managere kommer ind i
@@ -111,13 +111,13 @@ export const DIVISION_CAPACITY = 20;
 // fyld-fra-toppen indtil pulje-bevidst allokering lander, #1608-children Task 6/9).
 export const POOL_TARGET_SIZE = 24;
 
-// Første sæson-slut hvor op/nedrykninger må ske. Aktiveret 2026-05-21 for at give
-// open-beta tid til at finde en sund langtids-fordeling af hold i divisioner før
-// vi flytter rundt på dem. Med værdi 3 betyder det: sæson 1 og 2 slutter uden
-// division-skifte; først når sæson 2 slutter (transition 2→3) sker oprykninger.
-// Hævelse her kræver ingen migration — gate er ren applikationskode i
-// economyEngine.processDivisionEnd.
-export const FIRST_PROMOTION_RELEGATION_SEASON = 3;
+// Første sæson-slut hvor op/nedrykninger må ske.
+// #1152 (ejer-besluttet 2026-06-23): AKTIVERET NU — intet er låst mere. Op/nedrykning
+// kører fra første sæson-slut (transition 1→2). Den per-pulje binær-træ-model
+// (op 2 → forælder-pulje, ned 4 delt 2+2 → børne-puljer) er gennemregnet + simuleret
+// i superpowers/specs/2026-06-23-promotion-relegation-design.md. Gate er ren
+// applikationskode i economyEngine.processDivisionEnd (ingen migration).
+export const FIRST_PROMOTION_RELEGATION_SEASON = 1;
 
 // -- Saeson-skift kontrol-flags (#1155, ejer-beslutning 2026-06-08) ------------
 // Tre bevidste produktbeslutninger for det foerste rigtige saeson-skift (S1->S2).

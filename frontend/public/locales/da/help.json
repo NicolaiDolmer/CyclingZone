@@ -330,7 +330,7 @@
           "Admin lukker transfervinduet og starter ny sæson.",
           "Ved sæsonstart: ventende transfers behandles, sponsorpenge udbetales først, dernæst trækkes lånerenter og lønninger (hver løn er frosset ved signering og følger ikke rytterens senere markedsværdi). Nødlån oprettes kun hvis sponsor+balance ikke kan dække.",
           "Løb afvikles af Cycling Zones race-motor, der simulerer hver etape og skriver resultaterne automatisk.",
-          "Ved sæsonafslutning: point tælles op, divisionsbonus udbetales, op/nedrykning afgøres, og bestyrelsesplaner evalueres. Løn og renter trækkes IKKE ved sæsonslut længere. Det er flyttet til næste sæsons start (v3.78)."
+          "Ved sæsonafslutning: point tælles op, divisionsbonus udbetales, op/nedrykning afgøres (hver sæson), og bestyrelsesplaner evalueres. Løn og renter trækkes IKKE ved sæsonslut længere. Det er flyttet til næste sæsons start (v3.78)."
         ]
       },
       "racesAndResults": {
@@ -360,7 +360,7 @@
       },
       "promotionRelegation": {
         "title": "Op- og nedrykning",
-        "text": "Top 2 i hver pulje rykker en division op, og bund 4 rykker en division ned. Afgøres automatisk ved sæsonafslutning baseret på sæsonpoint. Division 1 er toppen og har ingen oprykning; den nederste division har ingen nedrykning. Antal op = antal ned, så hver pulje forbliver i balance. Division 4 åbner gradvist efterhånden som puljerne fyldes med rigtige managere, så en Division 3-puljes nedrykning aktiveres når dens Division 4-puljer er åbnet."
+        "text": "Divisionerne danner en pyramide af puljer: 1 pulje i Division 1, 2 i Division 2, 4 i Division 3 og 8 i Division 4. Ved sæsonafslutning rykker hver pulje sine top 2 hold op til puljen ovenover og relegerer sine bund 4 hold ned, delt ligeligt mellem de to puljer nedenunder. Division 1 rykker ikke op (den er toppen), og bunddivisionen rykker ikke ned. Det afgøres automatisk ud fra din puljes slutstilling, hver sæson. Kun rigtige managere flytter mellem puljer; AI-hold er fyld der fyldes op bagefter. Division 4 åbner gradvist efterhånden som puljerne fyldes med rigtige managere, så en Division 3-puljes nedrykning starter når dens Division 4-puljer åbner."
       },
       "whenSeasonEnds": {
         "title": "Hvornår kan en sæson afsluttes?",
@@ -422,7 +422,7 @@
       },
       "promotionRelegation": {
         "title": "Op- og nedrykning",
-        "text": "Top 2 i hver pulje rykker op, og bund 4 rykker ned. Afgøres automatisk ved sæsonafslutning. Division 1 har ingen oprykning, og den nederste division har ingen nedrykning. Division 4 åbner gradvist, så en Division 3-puljes nedrykning starter når dens Division 4-puljer åbner."
+        "text": "Hver pulje rykker sine top 2 op til puljen ovenover og relegerer sine bund 4 ned, delt mellem de to puljer nedenunder. Division 1 rykker ikke op, og bunddivisionen rykker ikke ned. Afgøres automatisk ud fra din puljes slutstilling, hver sæson."
       }
     },
     "riders": {
