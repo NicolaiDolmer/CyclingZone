@@ -25,8 +25,8 @@ const avg = (xs) => (xs.length ? (xs.reduce((a, b) => a + b, 0) / xs.length) : 0
 async function main() {
   const apply = process.argv.includes("--apply");
   const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) { console.error("Mangler SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY i env."); process.exit(1); }
+  const key = process.env.SUPABASE_SERVICE_KEY; // repo-konvention (ikke ..._ROLE_KEY); prod-creds i Infisical (env=prod)
+  if (!url || !key) { console.error("Mangler SUPABASE_URL / SUPABASE_SERVICE_KEY i env."); process.exit(1); }
   const supabase = createClient(url, key);
 
   const riders = await fetchAllRows(() => supabase.from("riders")
