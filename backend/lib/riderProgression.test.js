@@ -7,6 +7,7 @@ import {
   developRiderSeason, buildCaps,
   youthRoleFactor, YOUTH_PROGRESSION_CONFIG,
   youthAbilityCap, buildYouthCaps,
+  youthRateForPotential,
 } from "./riderProgression.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 
@@ -307,4 +308,15 @@ test("buildYouthCaps: primær-evne højest, modsat lavest, alle ≤99", () => {
   const caps = buildYouthCaps(6, "climber", "tt");
   for (const k of VISIBLE_ABILITIES) assert.ok(caps[k] >= 0 && caps[k] <= 99);
   assert.ok(caps.climbing > caps.sprint, `climbing ${caps.climbing} skal > sprint ${caps.sprint}`);
+});
+
+// ── Potentiale-rate i developRiderSeason (#1791 B1) ──────────────────────────
+
+test("potentiale styrer træningsfart: pot6 vokser hurtigere end pot2 fra samme start mod samme loft", () => {
+  const abilities = { climbing: 20 };
+  const caps = { climbing: 80 };
+  const low = developRiderSeason({ id: "r1", primary_type: "climber", potentiale: 2, age: 18 }, abilities, caps, 1);
+  const high = developRiderSeason({ id: "r1", primary_type: "climber", potentiale: 6, age: 18 }, abilities, caps, 1);
+  assert.ok(high.next.climbing > low.next.climbing,
+    `pot6 ${high.next.climbing} skal > pot2 ${low.next.climbing} efter én sæson`);
 });

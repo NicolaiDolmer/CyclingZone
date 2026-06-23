@@ -208,9 +208,10 @@ export function developRiderSeason(rider, abilities, caps, season, cfg = PROGRES
     const isSig = signatureFactor(type, ability, cfg) >= 1.0;
     const cap = caps?.[ability] ?? abilityCap(cur, type, ability, rider.potentiale, cfg);
     const noiseUnit = seededUnit(`grow:${rider.id}:${season}:${ability}`);
-    const growthMult = training
+    const potRate = youthRateForPotential(rider.potentiale);
+    const growthMult = (training
       ? (training.focusAbilities.has(ability) ? training.focusMult : training.offFocusMult)
-      : 1;
+      : 1) * potRate;
     const val = stepAbility(cur, cap, age, peakAge, isSig, noiseUnit, cfg, growthMult);
     next[ability] = val;
     if (val !== Math.round(Number(cur))) changed.push(ability);
@@ -221,6 +222,15 @@ export function developRiderSeason(rider, abilities, caps, season, cfg = PROGRES
     changed,
     retirement: retirementDecision(age, rider.id, season, cfg),
   };
+}
+
+// Potentiale → vækst-rate-multiplikator (lineær interpolation på rateByPotential).
+export function youthRateForPotential(potentiale, cfg = YOUTH_PROGRESSION_CONFIG) {
+  const p = clamp(Number(potentiale) || 1, 1, 6);
+  const lo = Math.floor(p), hi = Math.ceil(p);
+  const a = cfg?.rateByPotential?.[lo] ?? 1;
+  const b = cfg?.rateByPotential?.[hi] ?? a;
+  return a + (b - a) * (p - lo);
 }
 
 // Lineær interpolation af ungdoms-loft-ankret på potentiale (1..6).
