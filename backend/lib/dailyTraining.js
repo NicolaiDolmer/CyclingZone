@@ -2,7 +2,7 @@
 // Genbruger L0'ens budget (growthFractionByAge) delt i daglige bidder med compounding:
 // dag-rate = residual-gap × f(age)/daysPerSeason. Over en sæson ≈ gap×e^(−f) ~ L0's gap×(1−f).
 // dailyBudgetBoost kalibreres i scripts/previewDailyTraining.js så peak rammer 27-28 (spec 5.2).
-import { PROGRESSION_CONFIG, seededUnit } from "./riderProgression.js";
+import { PROGRESSION_CONFIG, seededUnit, youthRateForPotential } from "./riderProgression.js";
 import { TRAINING_CONFIG, TRAINING_FOCUSES } from "./training.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { youthMultiplier } from "./academyFlag.js";
@@ -46,19 +46,20 @@ export function abilityMult(ability, program) {
     : TRAINING_CONFIG.offFocusMult;
 }
 
-export function dailyAbilityDelta({ ability, current, cap, age, program, conditionMult, bonus, noise }) {
+export function dailyAbilityDelta({ ability, current, cap, age, program, conditionMult, bonus, noise, potentiale }) {
   const gap = Math.max(0, (cap ?? current) - current);
   if (gap === 0) return 0;
   const mult = abilityMult(ability, program);
   if (mult === 0) return 0;
   const cfg = DAILY_TRAINING_CONFIG;
   const base = (gap * growthFractionForAge(age) * cfg.dailyBudgetBoost) / cfg.daysPerSeason;
-  return base * mult * conditionMult * youthMultiplier(age) * (bonus ? cfg.bonusMult : 1) * noise;
+  return base * mult * conditionMult * youthMultiplier(age) * youthRateForPotential(potentiale)
+    * (bonus ? cfg.bonusMult : 1) * noise;
 }
 
 // Ét dags-tick for én rytter. Muterer ikke input. Returnerer nye abilities/progress + rapportfelter.
 // caps er PÅKRÆVET: manglende evne-nøgle ⇒ nul vækst for den evne (konservativt, jf. L0's lazy-caps).
-export function applyDailyTick({ riderId, dateStr, age, abilities, caps, progress, program, conditionMult, bonus }) {
+export function applyDailyTick({ riderId, dateStr, age, abilities, caps, progress, program, conditionMult, bonus, potentiale }) {
   const cfg = DAILY_TRAINING_CONFIG;
   const noise = 1 - cfg.noiseSpan + 2 * cfg.noiseSpan * seededUnit(`dtick:${riderId}:${dateStr}`);
   const nextAbilities = { ...abilities };
@@ -70,7 +71,7 @@ export function applyDailyTick({ riderId, dateStr, age, abilities, caps, progres
     const current = Number(nextAbilities[ability] ?? 0);
     if (!Number.isFinite(current)) continue; // korrupt input må ikke forgifte score/progress
     const delta = dailyAbilityDelta({
-      ability, current, cap: caps?.[ability], age, program, conditionMult, bonus, noise,
+      ability, current, cap: caps?.[ability], age, program, conditionMult, bonus, noise, potentiale,
     });
     if (delta <= 0) continue;
     score += delta;

@@ -10,6 +10,7 @@ import {
   weightedPick,
   makeUniqueName,
   DEFAULT_NATIONALITY_WEIGHTS,
+  ARCHETYPE_BY_TYPE,
 } from "./fictionalRiderGenerator.js";
 import { clusterForNationality } from "./fictionalRiderNames.js";
 import { NAME_CLUSTERS } from "./fictionalRiderNames.js";
@@ -17,6 +18,12 @@ import { ACADEMY } from "./academyFlag.js";
 
 function clamp(n, lo, hi) {
   return Math.max(lo, Math.min(hi, n));
+}
+
+// Vælg et ungdoms-anlæg (én af de 8 typer). Holdt enkelt; nation-bias rører ikke type.
+const YOUTH_ARCHETYPE_POOL = ["climber", "sprinter", "tt", "puncheur", "brostensrytter", "baroudeur", "rouleur", "gc"];
+function pickYouthArchetype(rng) {
+  return YOUTH_ARCHETYPE_POOL[Math.floor(rng() * YOUTH_ARCHETYPE_POOL.length)];
 }
 
 /**
@@ -74,14 +81,7 @@ export function generateAcademyCandidates({
     );
     const birthdate = `${referenceYear - age}-06-15`;
 
-    // Stats: unge har lavere mean (raw talent) — clampes til [40,85]
-    const statMean = is_serious ? 58 : 52;
-    const stats = {};
-    for (const key of STAT_KEYS) {
-      stats[key] = Math.round(clamp(gaussian(rng, statMean, 6), 40, 85));
-    }
-
-    // Potentiale: 0.5-trin
+    // Potentiale: 0.5-trin (flyttes FØR generateYouthStats så potentiale kan videregives)
     let pot;
     if (is_serious) {
       pot = 4.5 + rng() * 1.5; // 4.5–6.0
@@ -89,6 +89,11 @@ export function generateAcademyCandidates({
       pot = 2.0 + rng() * 2.5; // 2.0–4.5
     }
     const potentiale = Math.round(pot * 2) / 2;
+
+    // Stats: lav, anlægs-formet, talent-skaleret ungdoms-profil (#1791). Anlæg vælges deterministisk;
+    // de lave stats giver via fallback-derivationen lave evner i ungdoms-båndet.
+    const archetypeType = pickYouthArchetype(rng);
+    const { stats } = generateYouthStats({ rng, age, potentiale, archetypeType });
 
     // Krop: spred højde/vægt så physiology-seedingen ikke defaulter alle til
     // 180cm/70kg (#1478). Neutralt WorldTour-range; weight afledt af plausibel BMI.
@@ -115,4 +120,41 @@ export function generateAcademyCandidates({
   }
 
   return candidates;
+}
+
+export const YOUTH_GEN_CONFIG = Object.freeze({
+  // Pot-1 anker-niveau ved 16 (lige over PCM-floor 50).
+  baseStatAt16: 50.5,
+  // Stat-løft pr. potentiale-trin over 1 → talent-TENDENS i starten (ikke 1:1 aflæseligt pga. startLuck).
+  potStartLift: 0.5,
+  // Per-rytter "start-held": ÉT seeded gaussian-træk der løfter/sænker HELE profilen, så
+  // potentiale-tiers overlapper. Store talenter kan være langsomme startere; små kan starte lidt over middel.
+  startLuckSd: 1.2,
+  // Alders-skalering ("spol kurven frem" til faktisk alder).
+  statPerYearOver16: 1.4,
+  // Arketypens signatur-stats løftes (skaleret ned fra voksen-niveau).
+  signatureBoostScale: 0.20,
+  // Per-stat spredning (lille → flad profil).
+  sd: 0.8,
+  // Hårde grænser: gulv → afledt bund ~7 (ingen huller); loft → afledt top mætter ~21.
+  statFloor: 51.5,
+  statCeil: 57,
+});
+
+// Generér lave, anlægs-formede, alders- OG talent-skalerede stats for én ung, med per-rytter start-held.
+export function generateYouthStats({ rng, age, potentiale, archetypeType, cfg = YOUTH_GEN_CONFIG }) {
+  const arch = ARCHETYPE_BY_TYPE[archetypeType];
+  if (!arch) throw new Error(`generateYouthStats: ukendt arketype ${archetypeType}`);
+  const ageLift = Math.max(0, (Number(age) || 16) - 16) * cfg.statPerYearOver16;
+  const potLift = (clamp(Number(potentiale) || 1, 1, 6) - 1) * cfg.potStartLift;
+  const startLuck = gaussian(rng, 0, cfg.startLuckSd); // ÉT træk pr. rytter (coherent profil-shift) — BLØDGØR talent-tendensen
+  const base = cfg.baseStatAt16 + ageLift + potLift + startLuck;
+  const stats = {};
+  for (const key of STAT_KEYS) {
+    let v = gaussian(rng, base, cfg.sd);
+    if (arch.boost[key]) v += arch.boost[key] * cfg.signatureBoostScale;
+    else if (arch.damp?.includes(key)) v -= 1;
+    stats[key] = Math.round(clamp(v, cfg.statFloor, cfg.statCeil));
+  }
+  return { stats, archetypeType };
 }

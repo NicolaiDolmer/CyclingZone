@@ -4,6 +4,29 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.04",
+    "date": "2026-06-23",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Young riders now start raw and grow into their potential",
+          "body": "Academy and youth riders now begin with low, realistic teenage stats and develop over time toward a ceiling set by their potential. Potential drives both how high a rider can ultimately reach and how fast they improve, so a bigger talent climbs faster and higher while others grow into solid domestiques. Bigger talents tend to start a little stronger, but you cannot read potential directly from a 16-year-old's stats, so scouting still matters. Existing academy riders have been adjusted to this model, as previously announced, which lowers their current ratings and their value."
+        },
+        "da": {
+          "title": "Unge ryttere starter nu råt og vokser mod deres potentiale",
+          "body": "Akademi- og ungdomsryttere begynder nu med lave, realistiske teenage-stats og udvikler sig over tid mod et loft sat af deres potentiale. Potentialet bestemmer både hvor højt en rytter i sidste ende kan nå, og hvor hurtigt de forbedrer sig, så et større talent stiger hurtigere og højere, mens andre vokser til solide hjælpere. Større talenter starter typisk en anelse stærkere, men du kan ikke aflæse potentialet direkte af en 16-årigs stats, så scouting betyder stadig noget. Eksisterende akademiryttere er justeret til denne model, som tidligere varslet, hvilket sænker deres nuværende ratings og deres værdi."
+        },
+        "refs": [
+          1791
+        ]
+      }
+    ]
+  },
+  {
     "version": "6.03",
     "date": "2026-06-23",
     "label": "Beta",

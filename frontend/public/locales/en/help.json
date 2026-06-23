@@ -575,7 +575,7 @@
       },
       "intakeCohort": {
         "title": "Season intake cohort",
-        "text": "At the start of each season the system generates a small cohort of prospects for your club. You can review their stats and potential, then decide how many (if any) to sign. You are never forced to sign anyone."
+        "text": "At the start of each season the system generates a small cohort of prospects for your club. Prospects are teenagers, so they start with low, raw stats: judge them mainly by their potential rather than their current numbers, and scout a prospect to narrow down how far it can go. You can then decide how many (if any) to sign, and you are never forced to sign anyone."
       },
       "signingProspects": {
         "title": "Signing prospects",
@@ -592,7 +592,7 @@
       },
       "dailyTrainingBoost": {
         "title": "Daily training and the youth boost",
-        "text": "Academy riders train every day alongside your senior squad, but they benefit from a youth multiplier that makes them develop faster. The same Daily Training rules apply: set a focus and intensity for each rider, and gains accumulate day by day."
+        "text": "Academy riders are young and start with low, raw stats, not finished pros. Their potential sets both how high their abilities can ultimately reach and how fast they improve: a bigger talent develops quicker and tops out higher, while a smaller talent grows into a solid domestique. They also get an extra youth boost while young that fades toward their mid-twenties. The same Daily Training rules apply: set a focus and intensity for each rider, and gains accumulate day by day toward their potential."
       },
       "youthAuctions": {
         "title": "Youth auctions and free agents",

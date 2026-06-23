@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { runPhysiologyBackfill, runRiderTypesBackfill, runBaseValueBackfill, deriveForRiderIds } from "./backfillCores.js";
+import { runPhysiologyBackfill, runRiderTypesBackfill, runBaseValueBackfill, deriveForRiderIds, computeYouthCapsForRider } from "./backfillCores.js";
 import { STAT_KEYS } from "./fictionalRiderGenerator.js";
 import { ABILITY_KEYS } from "./riderTypes.js";
 
@@ -176,4 +176,13 @@ test("deriveForRiderIds (apply) KASTER ikke når alle id'er fik fuld derive", as
   const supabase = makeMockSupabase({ riders: [makeRider("r1")] });
   const res = await deriveForRiderIds(supabase, ["r1"], { dryRun: false });
   assert.equal(res.valued, 1, "sund derive fuldfører uden at kaste");
+});
+
+// ─── computeYouthCapsForRider (#1791): afkoblede lofter for akademi-alder ───────
+
+test("computeYouthCapsForRider: akademi-alder rytter får afkoblede caps; voksen får null", () => {
+  const youth = computeYouthCapsForRider({ birthdate: "2010-06-15", potentiale: 6 }, "climber", "tt", 2026);
+  assert.ok(youth && youth.climbing >= youth.sprint, "ung climber: climbing-cap ≥ sprint-cap");
+  const adult = computeYouthCapsForRider({ birthdate: "1996-06-15", potentiale: 6 }, "climber", "tt", 2026);
+  assert.equal(adult, null, "voksen (30) får ikke ungdoms-caps");
 });

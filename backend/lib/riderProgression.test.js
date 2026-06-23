@@ -5,7 +5,10 @@ import {
   PROGRESSION_CONFIG, seededUnit, signatureFactor, headroomForPotential,
   peakAgeForType, abilityCap, stepAbility, retirementDecision,
   developRiderSeason, buildCaps,
+  youthRoleFactor, YOUTH_PROGRESSION_CONFIG,
+  youthAbilityCap, buildYouthCaps,
 } from "./riderProgression.js";
+import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 
 // ── Determinisme ──────────────────────────────────────────────────────────────
 
@@ -272,4 +275,47 @@ test("skipGrowth false/udeladt → identisk med default-adfærd (golden test)", 
   const reference = developRiderSeason(rider, ab, caps, 3);
   assert.deepEqual(developRiderSeason(rider, ab, caps, 3, undefined, null, {}), reference, "tom options = uændret");
   assert.deepEqual(developRiderSeason(rider, ab, caps, 3, undefined, null, { skipGrowth: false }), reference, "skipGrowth:false = uændret");
+});
+
+// ── Ungdoms-rolle-faktor (#1791) ──────────────────────────────────────────────
+
+test("youthRoleFactor: primær-naturlig > sekundær-naturlig > neutral > modsat", () => {
+  // climber primary, tt secondary. climbing er primær-naturlig (climber.weights.climbing=3>0).
+  const primary = youthRoleFactor("climber", "tt", "climbing");
+  const secondary = youthRoleFactor("climber", "tt", "time_trial"); // tt.weights.time_trial=3>0, men kun secondary
+  const neutral = youthRoleFactor("climber", "tt", "positioning");  // ingen type-vægt
+  const opposite = youthRoleFactor("climber", "tt", "sprint");      // climber.weights.sprint=-2<0
+  assert.equal(primary, YOUTH_PROGRESSION_CONFIG.naturalPrimaryFactor);
+  assert.equal(secondary, YOUTH_PROGRESSION_CONFIG.naturalSecondaryFactor);
+  assert.equal(neutral, YOUTH_PROGRESSION_CONFIG.neutralFactor);
+  assert.equal(opposite, YOUTH_PROGRESSION_CONFIG.oppositeFactor);
+  assert.ok(primary > secondary && secondary > neutral && neutral > opposite);
+});
+
+// ── Afkoblet ungdoms-loft (#1791 A2) ─────────────────────────────────────────
+
+test("youthAbilityCap: afkoblet fra start-evne, stiger med potentiale", () => {
+  // Samme rytter, to potentialer → højere pot giver højere loft, UANSET baseline.
+  const lowPot = youthAbilityCap(2, "climber", "tt", "climbing");
+  const highPot = youthAbilityCap(6, "climber", "tt", "climbing");
+  assert.ok(highPot > lowPot, `pot6 ${highPot} skal > pot2 ${lowPot}`);
+  // Afkobling: loftet afhænger IKKE af en start-evne (ingen baseline-parameter).
+  assert.equal(youthAbilityCap.length, 5); // (potentiale, primary, secondary, ability, cfg)
+});
+
+test("buildYouthCaps: primær-evne højest, modsat lavest, alle ≤99", () => {
+  const caps = buildYouthCaps(6, "climber", "tt");
+  for (const k of VISIBLE_ABILITIES) assert.ok(caps[k] >= 0 && caps[k] <= 99);
+  assert.ok(caps.climbing > caps.sprint, `climbing ${caps.climbing} skal > sprint ${caps.sprint}`);
+});
+
+// ── Potentiale-rate i developRiderSeason (#1791 B1) ──────────────────────────
+
+test("potentiale styrer træningsfart: pot6 vokser hurtigere end pot2 fra samme start mod samme loft", () => {
+  const abilities = { climbing: 20 };
+  const caps = { climbing: 80 };
+  const low = developRiderSeason({ id: "r1", primary_type: "climber", potentiale: 2, age: 18 }, abilities, caps, 1);
+  const high = developRiderSeason({ id: "r1", primary_type: "climber", potentiale: 6, age: 18 }, abilities, caps, 1);
+  assert.ok(high.next.climbing > low.next.climbing,
+    `pot6 ${high.next.climbing} skal > pot2 ${low.next.climbing} efter én sæson`);
 });

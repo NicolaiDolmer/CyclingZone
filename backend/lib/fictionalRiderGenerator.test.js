@@ -8,6 +8,8 @@ import {
   toInsertPayload,
   DEFAULT_TIER_FRACTIONS,
   DEFAULT_TIER_TYPE_WEIGHTS,
+  ARCHETYPES,
+  ARCHETYPE_BY_TYPE,
 } from "./fictionalRiderGenerator.js";
 import { foldNameNordic } from "./pcmRiderMatcher.js";
 
@@ -324,6 +326,13 @@ test("tierFractions override ændrer tier-kvoterne (elite-dense)", () => {
   // Stadig en gyldig population: summerer til count.
   const total = Object.values(dense).reduce((s, n) => s + n, 0);
   assert.equal(total, 800);
+});
+
+// ── C1: ARCHETYPES + ARCHETYPE_BY_TYPE eksporteret ───────────────────────────
+
+test("ARCHETYPES eksporteret med boost/damp pr. type", () => {
+  assert.ok(Array.isArray(ARCHETYPES) && ARCHETYPES.length === 8);
+  assert.ok(ARCHETYPE_BY_TYPE.climber?.boost?.stat_bj > 0);
 });
 
 test("override bevarer kontrakten (stats i [50,85], pcm_id null)", () => {

@@ -172,6 +172,7 @@ export async function runTeamTrainingDay({
         program,
         conditionMult: condMult,
         bonus,
+        potentiale: rider.potentiale,
       });
     }
 
