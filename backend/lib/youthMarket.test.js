@@ -303,3 +303,18 @@ test("signFreeAgentYouth: afviser rytter på aktiv ungdomsauktion → not_free_a
   );
   assert.equal(supabase._riderUpdates.length, 0, "auktionen må ikke kunne bypasses via direct-sign");
 });
+
+test("signFreeAgentYouth: afviser pensioneret rytter → not_free_agent (forward-guard #1742)", async () => {
+  // En pensioneret rytter (is_retired=true) har team_id=NULL + is_academy=false og
+  // ville ellers passere free-agent-grundkriterierne. Forward-guard'en sikrer at en
+  // pensioneret rytter aldrig kan signes som fri ungdom, selv hvis han skulle slippe
+  // gennem discovery-listen.
+  const supabase = makeFreeAgentSupabase({
+    rider: { id: "fa-rider", team_id: null, is_academy: false, is_retired: true, pcm_id: null, birthdate: "2008-06-15", base_value: 80000, market_value: 80000, prize_earnings_bonus: 0 },
+  });
+  await assert.rejects(
+    () => signFreeAgentYouth(supabase, { teamId: "team-A", riderId: "fa-rider", seasonNumber: 1, now: NOW_2026 }),
+    /not_free_agent/,
+  );
+  assert.equal(supabase._riderUpdates.length, 0, "pensioneret rytter må ikke kunne signes som fri ungdom");
+});

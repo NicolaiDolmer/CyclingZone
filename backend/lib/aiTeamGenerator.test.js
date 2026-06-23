@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { generateAndAllocateAiTeams, clearAllAiTeams, AI_TEAM_NAME_PREFIX } from "./aiTeamGenerator.js";
-import { POOL_TARGET_SIZE, MAX_DIVISION } from "./economyConstants.js";
+import { generateAndAllocateAiTeams, clearAllAiTeams, reconcileAiTeamsForPool, AI_TEAM_NAME_PREFIX } from "./aiTeamGenerator.js";
+import { POOL_TARGET_SIZE, MAX_DIVISION, MANAGER_ENTRY_DIVISION } from "./economyConstants.js";
 
 // #1688 — AI-fill-generator. Politik (frosset):
 //   tier 1 OG tier 2-puljer  → fyld ALTID med AI op til POOL_TARGET_SIZE (24).
@@ -308,4 +308,96 @@ test("clearAllAiTeams er no-op uden AI-hold", async () => {
 
   assert.equal(res.teams, 0);
   assert.deepEqual(supabase.state.teams.map((t) => t.id), ["mgr-1"]);
+});
+
+// ── #1739 · reconcileAiTeamsForPool: trim AI når et nyt ægte hold rykker ind ────
+// Bug'en: trim-logikken (generateAndAllocateAiTeams) kørte KUN ved relaunch, så et
+// nyt hold midt i sæsonen efterlod AI-feltet urørt og puljen voksede forbi target.
+// reconcileAiTeamsForPool afgrænser delta-logikken til én pulje, så holdoprettelses-
+// stien kan trimme uden at scanne hele pyramiden.
+
+test("#1739 reconcileAiTeamsForPool: ny manager i fuld entry-pulje trimmer ét AI-hold (størrelse holder)", async () => {
+  const pools = seedPools();
+  // Entry-puljen er tier 3 (MANAGER_ENTRY_DIVISION) i den frosne pyramide.
+  const t3a = poolByTierIndex(pools, MANAGER_ENTRY_DIVISION, 0);
+  const supabase = makeSupabase({
+    league_divisions: pools,
+    teams: [
+      { id: "first-mgr", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, division: 3, league_division_id: t3a.id },
+    ],
+    riders: [],
+  });
+
+  // Puljen fyldes til target (1 manager + 23 AI = 24).
+  await generateAndAllocateAiTeams({ supabase, seed: 2026, deps: DEPS });
+  assert.equal(countTeamsInPool(supabase.state, t3a.id), POOL_TARGET_SIZE, "puljen er fuld før nyt hold");
+
+  // Et NYT ægte hold rykker ind (simulerer pickDivisionForNewTeam-insertet).
+  supabase.state.teams.push({
+    id: "new-mgr", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false,
+    division: 3, league_division_id: t3a.id,
+  });
+  assert.equal(countTeamsInPool(supabase.state, t3a.id), POOL_TARGET_SIZE + 1, "puljen er over target lige efter join");
+
+  const summary = await reconcileAiTeamsForPool({ supabase, poolId: t3a.id, seed: 2026, deps: DEPS });
+
+  assert.equal(summary.removed, 1, "præcis ét AI-hold trimmet");
+  assert.equal(summary.created, 0);
+  assert.equal(countTeamsInPool(supabase.state, t3a.id), POOL_TARGET_SIZE, "pulje-størrelse tilbage på target");
+  assert.equal(countTeamsInPool(supabase.state, t3a.id, { ai: false }), 2, "begge ægte managere bevaret");
+  assert.equal(countTeamsInPool(supabase.state, t3a.id, { ai: true }), POOL_TARGET_SIZE - 2, "ét AI-hold fjernet");
+  assert.ok(supabase.state.teams.some((t) => t.id === "new-mgr"), "nyt hold aldrig fjernet");
+  assert.ok(supabase.state.teams.some((t) => t.id === "first-mgr"), "eksisterende manager aldrig fjernet");
+});
+
+test("#1739 reconcileAiTeamsForPool: første manager i tom entry-pulje top-up'er feltet", async () => {
+  // En tom tier-3-pulje fyldes IKKE af generatoren (politik), men når den FØRSTE
+  // manager rykker ind skal feltet fyldes op til target (managere medregnes).
+  const pools = seedPools();
+  const t3b = poolByTierIndex(pools, MANAGER_ENTRY_DIVISION, 1);
+  const supabase = makeSupabase({
+    league_divisions: pools,
+    teams: [
+      { id: "lone-mgr", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, division: 3, league_division_id: t3b.id },
+    ],
+    riders: [],
+  });
+
+  const summary = await reconcileAiTeamsForPool({ supabase, poolId: t3b.id, seed: 2026, deps: DEPS });
+
+  assert.equal(summary.created, POOL_TARGET_SIZE - 1, "feltet fyldt op til target (1 manager + 23 AI)");
+  assert.equal(summary.removed, 0);
+  assert.equal(countTeamsInPool(supabase.state, t3b.id), POOL_TARGET_SIZE, "pulje på target");
+  assert.equal(countTeamsInPool(supabase.state, t3b.id, { ai: false }), 1, "manageren bevaret");
+});
+
+test("#1739 reconcileAiTeamsForPool: idempotent — no-op når puljen allerede er på target", async () => {
+  const pools = seedPools();
+  const t3a = poolByTierIndex(pools, MANAGER_ENTRY_DIVISION, 0);
+  const supabase = makeSupabase({
+    league_divisions: pools,
+    teams: [
+      { id: "mgr", is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, division: 3, league_division_id: t3a.id },
+    ],
+    riders: [],
+  });
+
+  await reconcileAiTeamsForPool({ supabase, poolId: t3a.id, seed: 2026, deps: DEPS });
+  const afterFirst = countTeamsInPool(supabase.state, t3a.id);
+  const summary = await reconcileAiTeamsForPool({ supabase, poolId: t3a.id, seed: 2026, deps: DEPS });
+
+  assert.equal(summary.created, 0, "re-run skaber intet");
+  assert.equal(summary.removed, 0, "re-run fjerner intet");
+  assert.equal(countTeamsInPool(supabase.state, t3a.id), afterFirst, "pulje uændret");
+  assert.equal(afterFirst, POOL_TARGET_SIZE);
+});
+
+test("#1739 reconcileAiTeamsForPool: ukendt/null pulje er no-op (ingen kast)", async () => {
+  const pools = seedPools();
+  const supabase = makeSupabase({ league_divisions: pools, teams: [], riders: [] });
+
+  const missing = await reconcileAiTeamsForPool({ supabase, poolId: 9999, seed: 2026, deps: DEPS });
+  assert.equal(missing.created, 0);
+  assert.equal(missing.removed, 0);
+  assert.equal(missing.tier, null, "ukendt pulje → tier null, ingen handling");
 });
