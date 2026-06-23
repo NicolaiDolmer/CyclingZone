@@ -575,7 +575,7 @@
       },
       "intakeCohort": {
         "title": "Sæsonens indtagelseskuld",
-        "text": "Ved starten af hver sæson genererer systemet et lille kuld unge talenter til din klub. Du kan gennemse deres stats og potentiale og derefter beslutte, hvor mange du vil signere. Du er aldrig tvunget til at signere nogen."
+        "text": "Ved starten af hver sæson genererer systemet et lille kuld unge talenter til din klub. Talenterne er teenagere og starter derfor med lave, rå stats: vurdér dem primært på deres potentiale frem for deres nuværende tal, og scout et talent for at indsnævre hvor langt det kan nå. Derefter beslutter du, hvor mange (om nogen) du vil signere, og du er aldrig tvunget til at signere nogen."
       },
       "signingProspects": {
         "title": "Signering af talenter",
@@ -592,7 +592,7 @@
       },
       "dailyTrainingBoost": {
         "title": "Daglig træning og ungdomsboost",
-        "text": "Akademiryttere træner hver dag side om side med din seniorgruppe, men de har glæde af en ungdomsmultiplikator der gør dem hurtigere at udvikle. De samme regler for Daglig træning gælder: sæt et fokus og en intensitet for hver rytter, og fremskridt akkumuleres dag for dag."
+        "text": "Akademiryttere er unge og starter med lave, rå stats, ikke færdige proffer. Deres potentiale bestemmer både hvor højt deres evner i sidste ende kan nå, og hvor hurtigt de forbedrer sig: et større talent udvikler sig hurtigere og topper højere, mens et mindre talent vokser til en solid hjælperytter. De får desuden et ekstra ungdomsboost mens de er unge, som aftager hen mod midten af tyverne. De samme regler for Daglig træning gælder: sæt et fokus og en intensitet for hver rytter, og fremskridt akkumuleres dag for dag mod deres potentiale."
       },
       "youthAuctions": {
         "title": "Ungdomsauktioner og frie agenter",
