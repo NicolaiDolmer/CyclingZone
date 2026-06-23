@@ -27,18 +27,41 @@ async function resolveAuctionConfig(supabase, auctionConfig) {
 }
 
 /**
+ * Den ene aktive/extended auktion en rytter må have (uniq_auctions_one_active_per_rider),
+ * eller null. Bruges til idempotens i listRejectedAsYouthAuction.
+ */
+async function findActiveAuctionForRider(supabase, riderId) {
+  const { data } = await supabase
+    .from("auctions")
+    .select("*")
+    .eq("rider_id", riderId)
+    .in("status", ["active", "extended"])
+    .maybeSingle();
+  return data ?? null;
+}
+
+/**
  * Opret en ungdomsauktion for en afvist akademi-kandidat.
  *
  * Ingen sælger (seller_team_id=NULL) — klubben afviste prospektet, så der er
  * ingen at betale ud til. Vinderen betaler sit bud som academy_signing (sink)
  * og får rytteren i sit akademi; ingen bud → rytteren forbliver fri ungdom.
  *
+ * Idempotent (CYCLINGZONE-14): en rytter må kun have én aktiv/extended auktion
+ * (DB-niveau via uniq_auctions_one_active_per_rider). Et dobbeltklik-race på
+ * afvis-knappen sender to requests der begge består intake-tjekket før nogen af
+ * dem skriver — den anden insert ville ellers ramme unique-indexet (23505) og
+ * boble op som en 500. Afvisningens mål ("rytteren ER listet") er allerede
+ * opfyldt i det tilfælde, så vi returnerer den eksisterende auktion i stedet for
+ * at fejle. Samme TOCTOU-løsning som POST /api/auctions (se
+ * database/2026-05-06-auctions-unique-active-rider.sql).
+ *
  * @param {object} supabase
  * @param {object} opts
  * @param {string} opts.riderId
  * @param {Date}   [opts.now=new Date()]      — injicerbar til determinisme i test
  * @param {object} [opts.auctionConfig]       — injicerbar timing-config (test)
- * @returns {Promise<object>} den oprettede auktion
+ * @returns {Promise<object>} den oprettede (eller allerede eksisterende) auktion
  */
 export async function listRejectedAsYouthAuction(supabase, { riderId, now = new Date(), auctionConfig } = {}) {
   if (!supabase?.from) throw new Error("Supabase client required");
@@ -51,6 +74,12 @@ export async function listRejectedAsYouthAuction(supabase, { riderId, now = new 
     .maybeSingle();
   if (error) throw new Error(`listRejectedAsYouthAuction rider lookup: ${error.message}`);
   if (!rider) throw new Error(`listRejectedAsYouthAuction: rider ${riderId} not found`);
+
+  // Hurtig vej: ligger rytteren allerede på en aktiv auktion (gentaget afvisning
+  // eller dobbeltklik), så er afvisningen idempotent — returnér den i stedet for
+  // at forsøge en dublet-insert der ville fejle på unique-indexet.
+  const existing = await findActiveAuctionForRider(supabase, riderId);
+  if (existing) return existing;
 
   const value = Math.max(1, calculateRiderMarketValue(rider));
   const startPrice = Math.max(1, Math.round(value * YOUTH_AUCTION_START_RATE));
@@ -72,7 +101,16 @@ export async function listRejectedAsYouthAuction(supabase, { riderId, now = new 
     })
     .select()
     .single();
-  if (insErr) throw new Error(`listRejectedAsYouthAuction insert: ${insErr.message}`);
+  if (insErr) {
+    // TOCTOU-race: to afvisninger i sub-sekund-vindue består begge pre-tjekket og
+    // når frem til insert; den anden rammer unique-indexet (23505). Behandl det
+    // idempotent — hent og returnér vinderens auktion frem for at fejle.
+    if (insErr.code === "23505") {
+      const raced = await findActiveAuctionForRider(supabase, riderId);
+      if (raced) return raced;
+    }
+    throw new Error(`listRejectedAsYouthAuction insert: ${insErr.message}`);
+  }
   return auction;
 }
 
