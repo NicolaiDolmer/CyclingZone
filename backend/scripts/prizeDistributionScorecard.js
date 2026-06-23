@@ -20,7 +20,7 @@
 //
 // 1. POPULATION + ROSTERE. Markedet = den låste launch-population (generateLaunchPopulation:
 //    800 ryttere, seed 2026, fuld værdi-pyramide). Et manager-hold modelleres som en
-//    8-rytters trup (= STARTER_SQUAD.SQUAD_SIZE, MIN_RIDERS_FOR_RACE) draftet fra et
+//    8-rytters trup (= STARTER_SQUAD.CORE_SIZE, MIN_RIDERS_FOR_RACE) draftet fra et
 //    REALISTISK værdi-BÅND af pyramiden — IKKE et "scoop alle superstjerner"-felt (de 12
 //    superstjerner ≥8M er force-sale-beskyttede og fås ikke billigt på markedet). Bånd pr.
 //    styrke-lag (division), valgt så lønbyrden matcher økonomi-konstanternes kalibrering

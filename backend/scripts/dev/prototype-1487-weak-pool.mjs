@@ -44,7 +44,7 @@ const SEED = 14_870;          // eget seed til prototypen (ikke launch-2026)
 const POOL_COUNT = 240;       // ≥200 så 176 kan allokeres med 4 youth/4 dom pr. hold
 const REFERENCE_YEAR = 2026;
 const TEAMS = 22;
-const SQUAD = STARTER_SQUAD.SQUAD_SIZE; // 8 → 22×8 = 176
+const SQUAD = STARTER_SQUAD.CORE_SIZE; // 8 → 22×8 = 176 (allocateStarterSquads = kernen)
 
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 
@@ -207,7 +207,7 @@ const BASE_SEED = 2026;                              // launch-seed (som prod-de
 function buildSingleTeamSquad(teamId) {
   const teamSeed = deriveTeamSeed((BASE_SEED + 1487) >>> 0, teamId);
   const { riders } = generateFictionalRiders({
-    seed: teamSeed, count: STARTER_SQUAD.SQUAD_SIZE, referenceYear: REFERENCE_YEAR,
+    seed: teamSeed, count: STARTER_SQUAD.CORE_SIZE, referenceYear: REFERENCE_YEAR,
   });
   return riders.map((r, i) => {
     const clampedStats = {};
@@ -262,7 +262,7 @@ function singleTeamSignupSim(nSignups = 50) {
   for (let s = 0; s < nSignups; s++) {
     const teamId = `strcheck-${s}`;
     const { riders } = generateFictionalRiders({
-      seed: deriveTeamSeed((BASE_SEED + 1487) >>> 0, teamId), count: STARTER_SQUAD.SQUAD_SIZE, referenceYear: REFERENCE_YEAR,
+      seed: deriveTeamSeed((BASE_SEED + 1487) >>> 0, teamId), count: STARTER_SQUAD.CORE_SIZE, referenceYear: REFERENCE_YEAR,
     });
     let sum = 0; let n = 0;
     for (const r of riders) for (const k of STAT_KEYS) { sum += clamp(r[k], SINGLE_TEAM_WINDOW.lo, SINGLE_TEAM_WINDOW.hi); n++; }
