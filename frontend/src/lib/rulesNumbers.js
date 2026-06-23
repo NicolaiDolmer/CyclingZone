@@ -40,7 +40,7 @@ export const RULES_NUMBERS = {
   minDivision: 1, // MIN_DIVISION
   maxDivision: 4, // MAX_DIVISION (#1608 form-frys: tier 4 = bunden)
   divisionCapacity: 20, // DIVISION_CAPACITY
-  firstPromotionSeason: 3, // FIRST_PROMOTION_RELEGATION_SEASON
+  firstPromotionSeason: 1, // FIRST_PROMOTION_RELEGATION_SEASON
 
   // --- Division bonus (backend/lib/economyEngine.js DIVISION_BONUSES) ---
   bonusD1P1: 300000,
