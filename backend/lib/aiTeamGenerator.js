@@ -228,6 +228,93 @@ async function defaultAllocateSquadForTeam(supabase, teamId, { pool, baseSeed, o
   return insertedIds;
 }
 
+/**
+ * Reconcilér AI-fyld i ÉN pulje efter den frosne politik (#1688), efter at puljens
+ * felt har ændret sig løbende (et nyt ægte hold er rykket ind — #1739). Når en ægte
+ * manager joiner en pulje medregnes den i feltet, så AI-target falder med 1 og ét
+ * overskuds-AI-hold trimmes; pulje-størrelsen holdes på POOL_TARGET_SIZE i stedet for
+ * at vokse. Bug'en før dette: generateAndAllocateAiTeams (som ejer trim-logikken) kørte
+ * KUN ved relaunch, så et nyt hold midt i sæsonen efterlod AI-feltet urørt og puljen
+ * for stor. Dette er den samme delta-logik som den fulde generator, men afgrænset til
+ * én pulje — så holdoprettelses-stien kan kalde den uden at scanne hele pyramiden.
+ *
+ * Symmetrisk: trimmer overskuds-AI (delta < 0) OG top-up'er en underfyldt pulje
+ * (delta > 0, fx en tom tier-1/2-pulje), så funktionen også kan reparere drift.
+ * Idempotent: no-op når puljen allerede er på target. Ægte managere tælles FØRST og
+ * fjernes ALDRIG. Rører ALDRIG prod af sig selv (kalderen ejer klienten).
+ *
+ * @param {object}  args
+ * @param {object}  args.supabase  Supabase-klient (service-role i prod-stien).
+ * @param {string|number} args.poolId  league_divisions.id for puljen der skal reconciles.
+ * @param {number} [args.seed]      Basis-seed (default LAUNCH_POPULATION.seed) — kun brugt ved top-up.
+ * @param {object} [args.deps]      { allocateSquadForTeam } — injicérbar for test.
+ * @returns {Promise<{created:number, removed:number, poolId:(string|number), tier:(number|null), realManagers:number, targetAi:number, aiBefore:number, delta:number}>}
+ */
+export async function reconcileAiTeamsForPool({ supabase, poolId, seed = LAUNCH_POPULATION.seed, deps = {} } = {}) {
+  if (!supabase?.from) throw new Error("Supabase client required");
+  if (poolId == null) throw new Error("poolId required");
+  const allocateSquadForTeam = deps.allocateSquadForTeam || defaultAllocateSquadForTeam;
+  const baseSeed = (Number(seed) >>> 0);
+
+  const { data: poolRows, error: poolErr } = await supabase
+    .from("league_divisions")
+    .select("id, tier, pool_index, label")
+    .eq("id", poolId);
+  if (poolErr) throw new Error(`league_divisions (pulje ${poolId}): ${poolErr.message}`);
+  const pool = (poolRows || [])[0];
+  if (!pool) {
+    // Pre-migration / mock-edge: puljen findes ikke (fx nyt hold med league_division_id=null).
+    // Intet felt at reconcile mod → no-op.
+    return { created: 0, removed: 0, poolId, tier: null, realManagers: 0, targetAi: 0, aiBefore: 0, delta: 0 };
+  }
+
+  const { data: inPool, error: teamErr } = await supabase
+    .from("teams")
+    .select("id, name, is_ai, is_bank, is_frozen, is_test_account, division, league_division_id")
+    .eq("league_division_id", pool.id);
+  if (teamErr) throw new Error(`teams (pulje ${pool.id}): ${teamErr.message}`);
+
+  const teamsInPool = inPool || [];
+  const realManagers = teamsInPool.filter(isRealManager);
+  const aiTeams = teamsInPool.filter(isAiTeam);
+  const targetAi = targetAiCountForPool(pool.tier, realManagers.length);
+  const delta = targetAi - aiTeams.length;
+
+  let created = 0;
+  let removed = 0;
+
+  if (delta < 0) {
+    removed = await removeAiTeams(supabase, aiTeams, -delta);
+  } else if (delta > 0) {
+    // Navne-unikhed: hent eksisterende AI-navne globalt (re-run/reconcile-sikkerhed).
+    const { data: allAi, error: aiErr } = await supabase
+      .from("teams").select("name").eq("is_ai", true);
+    if (aiErr) throw new Error(`teams (AI-navne): ${aiErr.message}`);
+    const usedNames = new Set((allAi || []).map((t) => t.name).filter(Boolean));
+    for (let k = 0; k < delta; k++) {
+      await createAiTeam(supabase, {
+        pool,
+        ordinal: aiTeams.length + k,
+        baseSeed,
+        usedNames,
+        allocateSquadForTeam,
+      });
+      created++;
+    }
+  }
+
+  return {
+    created,
+    removed,
+    poolId: pool.id,
+    tier: pool.tier,
+    realManagers: realManagers.length,
+    targetAi,
+    aiBefore: aiTeams.length,
+    delta,
+  };
+}
+
 export const __testables = { targetAiCountForPool, isRealManager, defaultAllocateSquadForTeam };
 
 void MAX_DIVISION; // dokumenterer politik-domænet (tier 1..MAX_DIVISION); ingen direkte brug.
