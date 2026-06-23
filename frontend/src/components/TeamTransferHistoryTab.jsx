@@ -5,7 +5,7 @@ import RiderLink from "./RiderLink";
 import TeamLink from "./TeamLink";
 import { formatNumber, formatDate } from "../lib/intl";
 import { computeTransferProfit } from "../lib/transferProfit.js";
-import { Card, Select, ExchangeIcon } from "./ui";
+import { Card, Select, ExchangeIcon, ArrowDownIcon, ArrowUpIcon } from "./ui";
 
 const TYPE_LABEL_KEY = { auction: "type.auction", transfer: "type.transfer", swap: "type.swap", loan: "type.loan", academy: "type.academy" };
 
@@ -19,13 +19,39 @@ function SortTh({ children, sortKey, current, dir, onSort, align = "left" }) {
   );
 }
 
+// #1741: retning skal kunne aflæses på et øjeblik. Tidligere var det kun en
+// lille farvet tekst (let at overse, "Køb"/"Salg" forveksles). Nu: pil-ikon +
+// tonet pille-baggrund + label. Pil ind (ned) = tilgang/køb, pil ud (op) =
+// afgang/salg, byt-ikon = bytte.
 function DirectionBadge({ direction, noSale = false }) {
   const { t } = useTranslation("transfers");
+  const base = "inline-flex items-center gap-1 rounded-cz px-1.5 py-0.5 text-xs font-medium";
   // #785: auktion uden bud = intet ejerskifte — "Sælg" ville antyde et salg.
-  if (noSale) return <span className="text-cz-3 text-xs font-medium">{t("direction.noSale")}</span>;
-  if (direction === "in") return <span className="text-cz-success text-xs font-medium">{t("direction.in")}</span>;
-  if (direction === "out") return <span className="text-cz-danger text-xs font-medium">{t("direction.out")}</span>;
-  return <span className="text-cz-info text-xs font-medium">{t("direction.swap")}</span>;
+  if (noSale) {
+    return <span className={`${base} text-cz-3`}>{t("direction.noSale")}</span>;
+  }
+  if (direction === "in") {
+    return (
+      <span className={`${base} bg-cz-success-bg text-cz-success`}>
+        <ArrowDownIcon size={12} className="flex-shrink-0" />
+        {t("direction.in")}
+      </span>
+    );
+  }
+  if (direction === "out") {
+    return (
+      <span className={`${base} bg-cz-danger-bg text-cz-danger`}>
+        <ArrowUpIcon size={12} className="flex-shrink-0" />
+        {t("direction.out")}
+      </span>
+    );
+  }
+  return (
+    <span className={`${base} bg-cz-info-bg text-cz-info`}>
+      <ExchangeIcon size={12} className="flex-shrink-0" />
+      {t("direction.swap")}
+    </span>
+  );
 }
 
 function RiderCell({ event }) {
