@@ -14,7 +14,9 @@ import { fileURLToPath } from "node:url";
 import { fetchAllRows } from "./supabasePagination.js";
 import { STAT_KEYS } from "./fictionalRiderGenerator.js";
 import { seedPhysiologyFromLegacy } from "./physiologySeeding.js";
-import { deriveAbilities } from "./abilityDerivation.js";
+import { deriveAbilities, CALIBRATION } from "./abilityDerivation.js";
+import { buildYouthCaps } from "./riderProgression.js";
+import { isAcademyAge } from "./academyFlag.js";
 import { computeRiderTypes, RIDER_TYPE_KEYS, ABILITY_KEYS } from "./riderTypes.js";
 import { predictBaseValue } from "./riderValuation.js";
 import { calculateRiderMarketValue } from "./marketUtils.js";
@@ -120,6 +122,15 @@ export async function runRiderTypesBackfill(supabase, { dryRun = true, baseline,
   return { riders: rows.length, written };
 }
 
+// Ungdoms-caps for akademi-alder-ryttere (16-21). Voksne → null (behold lazy baseline+headroom).
+export function computeYouthCapsForRider(rider, primaryType, secondaryType, asOfYear = CALIBRATION.asOfYear) {
+  const birthYear = rider?.birthdate ? new Date(rider.birthdate).getFullYear() : null;
+  if (!Number.isFinite(birthYear)) return null;
+  const age = asOfYear - birthYear;
+  if (!isAcademyAge(age)) return null;
+  return buildYouthCaps(rider.potentiale, primaryType, secondaryType);
+}
+
 // ── Scoped derive-pipeline for NYE ryttere (#1478) ────────────────────────────
 // Kører hele afled-kæden (physiology → abilities → primary/secondary_type →
 // base_value) for et eksplicit sæt rider-id'er. Bruges ved runtime-intake
@@ -181,7 +192,16 @@ export async function deriveForRiderIds(supabase, riderIds, {
   }
 
   await upsertBatched(supabase, "rider_physiology_profiles", profiles, "rider_id");
-  await upsertBatched(supabase, "rider_derived_abilities", abilities, "rider_id");
+
+  // Ungdoms-caps (#1791): skriv afkoblet loft på akademi-alder-ryttere ved derive
+  // (uforanderligt efter init). Voksne beholder lazy baseline+headroom i progression-motoren.
+  const riderById = new Map(riders.map((r) => [r.id, r]));
+  const abilitiesWithCaps = abilities.map((a) => {
+    const t = typeByRider.get(a.rider_id) || {};
+    const caps = computeYouthCapsForRider(riderById.get(a.rider_id), t.primary_type, t.secondary_type);
+    return caps ? { ...a, ability_caps: caps } : a;
+  });
+  await upsertBatched(supabase, "rider_derived_abilities", abilitiesWithCaps, "rider_id");
   const typedWritten = await updateRidersConcurrent(supabase, riderUpdates);
 
   // ── Kilde-guard (#1673): verificér at ALLE input-id'er faktisk blev derived ──
