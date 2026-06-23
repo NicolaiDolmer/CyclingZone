@@ -279,17 +279,26 @@ async function setSquadMarker(supabase, teamId, nowIso) {
   if (error) throw new Error(`set starter-squad marker ${teamId}: ${error.message}`);
 }
 
-// #1563: indsæt en frisk svag 8-rytter-pulje DIREKTE med team_id sat (ikke
-// team_id=null + separat assign-skridt). Det lukker orphan-vinduet: fejler noget
-// efter insert, er rytterne EJET (ikke ejerløse i markedet), og en re-derive heler
-// dem. Genbruger den svage pulje-mekanik (#1487) + derive-kæden (data-hale).
+// #1563/race-hub 0c: indsæt en frisk svag TOTAL_SIZE-pulje (8 kerne [50,57] + 4
+// hale [50,52]) DIREKTE med team_id sat (ikke team_id=null + separat assign-skridt).
+// Det lukker orphan-vinduet: fejler noget efter insert, er rytterne EJET (ikke
+// ejerløse i markedet), og en re-derive heler dem. Genbruger den svage pulje-mekanik
+// (#1487) + derive-kæden (data-hale).
 async function insertWeakSquadForTeam(supabase, teamId, { seed, referenceYear, generate, derive }) {
   const existingFoldedNames = await fetchExistingFoldedNames(supabase);
-  // Per-hold seed: basis-offset (+1487, samme som relaunch-puljen) XOR hash(teamId).
-  const teamSeed = deriveTeamSeed((seed + 1487) >>> 0, teamId);
-  const poolPayload = buildWeakStarterPool({
-    count: STARTER_SQUAD.CORE_SIZE, seed: teamSeed, referenceYear, existingFoldedNames, generate,
+  // Per-hold seed: basis-offset (+1487, samme som relaunch) XOR hash(teamId).
+  // Eget seed-offset pr. tier (kerne vs hale) → distinkte pools.
+  const coreSeed = deriveTeamSeed((seed + 1487) >>> 0, teamId);
+  const tailSeed = deriveTeamSeed((seed + 1487 + 7) >>> 0, teamId);
+  const corePayload = buildWeakStarterPool({
+    count: STARTER_SQUAD.CORE_SIZE, seed: coreSeed, referenceYear, existingFoldedNames,
+    window: STARTER_POOL_STAT_WINDOW, generate,
   }).map((r) => ({ ...r, team_id: teamId }));
+  const tailPayload = buildWeakStarterPool({
+    count: STARTER_SQUAD.TAIL_SIZE, seed: tailSeed, referenceYear, existingFoldedNames,
+    window: STARTER_TAIL_STAT_WINDOW, generate,
+  }).map((r) => ({ ...r, team_id: teamId }));
+  const poolPayload = [...corePayload, ...tailPayload];
 
   const insertedIds = [];
   for (let i = 0; i < poolPayload.length; i += INSERT_BATCH) {
@@ -314,8 +323,8 @@ async function insertWeakSquadForTeam(supabase, teamId, { seed, referenceYear, g
 //   • Idempotens på MARKØREN starter_squad_allocated_at (#1563), IKKE rytter-antal:
 //     markør sat → no-op (også hvis ejeren selv har solgt ned under 8 → ingen
 //     gratis-trup-exploit). Markør NULL = bootstrap aldrig fuldført → alle holdets
-//     nuværende ryttere (0-8) stammer fra et ufuldstændigt forsøg → bring til præcis
-//     CORE_SIZE derive'de ryttere + sæt markøren.
+//     nuværende ryttere (0-12) stammer fra et ufuldstændigt forsøg → bring til præcis
+//     TOTAL_SIZE (8 kerne + 4 hale) derive'de ryttere + sæt markøren.
 //   • insert-med-team_id → intet orphan-vindue ved fejl.
 export async function allocateStarterSquadForTeam(supabase, teamId, {
   seed = LAUNCH_POPULATION.seed,
@@ -334,7 +343,7 @@ export async function allocateStarterSquadForTeam(supabase, teamId, {
 
   const existingIds = await listTeamRiderIds(supabase, teamId);
   const n = existingIds.length;
-  const SIZE = STARTER_SQUAD.CORE_SIZE;
+  const SIZE = STARTER_SQUAD.TOTAL_SIZE;
 
   let assigned;
   let recovered = null;
