@@ -9,8 +9,10 @@ import { terrainScore } from "./raceSimulator.js";
 // Spec 8.1 + race-hub Fase 0a: startfelt-størrelse pr. kategori — 8 (Grand Tours),
 // 7 (WorldTour-niveau), 6 (øvrige). Nøgler = race_class-værdier (database/2026-05-09-race-pool.sql).
 // KALIBRERBAR: de præcise klasse→antal bekræftes i simulér-før-ship (Fase 0c).
+// default = generøs fallback (6-8) for løb uden kendt race_class (legacy/test); de
+// rigtige sæson-løb har altid en klasse, så fallbacken rammer kun edge-tilfælde.
 export const SELECTION_SIZE = Object.freeze({
-  default:         Object.freeze({ min: 6, max: 6 }),
+  default:         Object.freeze({ min: 6, max: 8 }),
   Class2:          Object.freeze({ min: 6, max: 6 }),
   Class1:          Object.freeze({ min: 6, max: 6 }),
   ProSeries:       Object.freeze({ min: 6, max: 6 }),
