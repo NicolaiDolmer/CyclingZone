@@ -8,7 +8,7 @@
 > - **Op/nedrykning (#1152, LIVE 23/6, per-pulje binær-træ):** engine #1783 (top 2 op→forælder, bund 4 delt 2+2→børn; Div4 udskudt til Div3-pulje all-real). Visning #1787 matcher: per-pulje 2-op/4-ned zoner + summarie + dormant-Div4-note (ejer-valgt: vis zone + forklaring) + forward-guard e2e. Spec: [promotion-relegation-design](superpowers/specs/2026-06-23-promotion-relegation-design.md). #1152-epic åben for newco-rest.
 > - **Natbølge 23/6 (merged):** 13 PR'er + #1772 CI-fix. Backend live (Railway); frontend afventer Vercel hobby rate-limit (~24t/Pro). Artifact: [night-wave-2026-06-23](audits/night-wave-2026-06-23.md).
 > - **Ejer-beslutninger (åbne):** #1276 PCM-IP · #1278 spiller-comms (du voicer) · #1487-budget · #929 leaked-pw · #691 key-rotation · #940 NPS.
-> - **Hygiejne:** Vercel hobby rate-limit (overvej Pro). preflight tjekker nu grøn origin/main før bølge (f7b10d0a). #1733 drop prod-backup-tabeller når stabilt. [PLAN.md](PLAN.md)=SSOT.
+> - **Hygiejne:** Vercel hobby rate-limit (overvej Pro). preflight tjekker nu grøn origin/main før bølge (f7b10d0a). [PLAN.md](PLAN.md)=SSOT.
 
 > **🤖 Working agent:** Ingen aktiv session.
 
