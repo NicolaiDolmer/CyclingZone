@@ -13,10 +13,12 @@ import {
 // getRaceEngineStatus-tælle-queries.
 function makeSupabase(canned = {}) {
   const writes = [];
+  const selects = []; // {table, fields} — så regressions-tests kan inspicere SELECT-strenge
   function from(table) {
     let _count = null;
     const b = {
       select(fields, opts = {}) {
+        selects.push({ table, fields });
         if (opts.count === "exact" && opts.head === true) {
           _count = (canned[table] || []).length;
         }
@@ -46,8 +48,40 @@ function makeSupabase(canned = {}) {
     };
     return b;
   }
-  return { from, __writes: writes };
+  return { from, __writes: writes, __selects: selects };
 }
+
+// ── Regression (incident 2026-06-23): race-SELECT SKAL bære league_division_id ────
+// Pulje-filteret i fillMissingTeamEntries (raceRunner.js #1688) afhænger af
+// race.league_division_id. Da runAdminSimulateStage/runAdminSimulateRace ikke
+// selekterede kolonnen, så filteret racePoolId=null og tog de 24 stærkeste hold i
+// HELE ligaen → krydskontaminering på tværs af puljer. Disse tests fanger
+// regressionen ved at inspicere races-SELECT-strengen + race-objektet videregivet.
+test("runAdminSimulateStage: races-SELECT inkluderer league_division_id (incident 2026-06-23)", async () => {
+  const supabase = makeSupabase({
+    app_config: [{ value: true }],
+    races: [{ id: "r1", season_id: "s1", name: "GP", race_type: "stage_race", race_class: "ProSeries", stages: 1, stages_completed: 0, status: "scheduled", league_division_id: 4 }],
+    race_stage_profiles: [{ id: "p1" }], // 1/1 → profil-guard OK
+  });
+  let captured = null;
+  await runAdminSimulateStage({ supabase, raceId: "r1", simulateStageByIndex: async (args) => { captured = args; return { stageNumber: 1, isFinalStage: true }; } });
+  const racesSelect = supabase.__selects.filter((s) => s.table === "races").map((s) => s.fields).join(" ");
+  assert.ok(racesSelect.includes("league_division_id"), `races-SELECT skal inkludere league_division_id — fik: ${racesSelect}`);
+  assert.equal(captured.race.league_division_id, 4, "pulje-id skal bæres videre til motoren");
+});
+
+test("runAdminSimulateRace: races-SELECT inkluderer league_division_id (incident 2026-06-23)", async () => {
+  const supabase = makeSupabase({
+    app_config: [{ value: true }],
+    races: [{ id: "r1", season_id: "s1", name: "GP", race_type: "stage_race", race_class: "ProSeries", stages: 1, edition_year: 2026, status: "scheduled", league_division_id: 4 }],
+    race_stage_profiles: [{ id: "p1" }], // 1/1 → profil-guard OK
+  });
+  let captured = null;
+  await runAdminSimulateRace({ supabase, raceId: "r1", simulateRace: async (args) => { captured = args; return { rows: 1 }; } });
+  const racesSelect = supabase.__selects.filter((s) => s.table === "races").map((s) => s.fields).join(" ");
+  assert.ok(racesSelect.includes("league_division_id"), `races-SELECT skal inkludere league_division_id — fik: ${racesSelect}`);
+  assert.equal(captured.race.league_division_id, 4, "pulje-id skal bæres videre til motoren");
+});
 
 // ── runAdminSimulateRace ──────────────────────────────────────────────────────
 
