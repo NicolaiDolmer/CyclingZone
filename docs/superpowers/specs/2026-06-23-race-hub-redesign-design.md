@@ -111,4 +111,4 @@ Read-only: vælg en pulje → dens kommende løb + (efter afvikling) resultater/
 
 ## 10. Wireframe-reference
 
-Wireframes udviklet inline i brainstorm-sessionen (Cycling Zone navy/guld/Bebas-stil): kerne-skærm v1, Variant A (løb-centrisk), Variant B (trup-board → Lag 1), IA-navigationskort, taktik-laget (Lag 3). Holdstrategi-laget (Lag 0) er endnu ikke tegnet. Wireframes er reference for det visuelle udtryk; endelig styling bygges i frontendens eget design-system.
+Wireframes udviklet inline i brainstorm-sessionen (Cycling Zone navy/guld/Bebas-stil): kerne-skærm v1, Variant A (løb-centrisk → Lag 2), Variant B (trup-board → Lag 1), IA-navigationskort, taktik-laget (Lag 3) og Holdstrategi-laget (Lag 0). Kun "andre divisioner" (read-only genbrug af eksisterende kalender/standings) er ikke skitseret separat. Wireframes er reference for det visuelle udtryk; endelig styling bygges i frontendens eget design-system.
