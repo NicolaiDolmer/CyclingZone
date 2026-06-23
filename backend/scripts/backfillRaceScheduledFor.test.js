@@ -31,16 +31,16 @@ test("STAGES_PER_DAY = 2 (launch-cadence: ~4-ugers sæson for 60-etape-kalender)
   assert.equal(STAGES_PER_DAY, 2);
 });
 
-test("planRaceSchedules: pakker etaper tæt — STAGES_PER_DAY etaper pr. dag", () => {
+test("planRaceSchedules: 2 spor → 2 etaper/dag total", () => {
   const { stageRows } = planRaceSchedules({ races: RACES, from: FROM });
-  // 6 etaper / 2 pr. dag = 3 dage, 2 etaper pr. dag.
+  // 2 spor × 1 etape/dag = 2 etaper/dag total. 6 etaper → 3 dage.
   const byDay = {};
   for (const r of stageRows) {
     const d = new Date(r.scheduled_at).toISOString().slice(0, 10);
     byDay[d] = (byDay[d] || 0) + 1;
   }
-  assert.equal(Object.keys(byDay).length, 3, "6 etaper / 2 = 3 dage");
-  assert.deepEqual(Object.values(byDay), [2, 2, 2], "2 etaper pr. dag (tæt pakket)");
+  assert.equal(Object.keys(byDay).length, 3, "6 etaper / 2 spor = 3 dage");
+  assert.deepEqual(Object.values(byDay), [2, 2, 2], "2 etaper pr. dag (2 spor)");
 });
 
 test("planRaceSchedules: scheduled_for sorteret på name (Alfa, Beta, Charlie)", () => {
@@ -104,12 +104,13 @@ test("planRaceSchedules: spor balanceres — spor-længderne afviger højst ét 
   assert.ok(spreadDays <= 5, `spor-længde-spredning ${spreadDays} dage skal være ≤ største løbs etape-antal (5)`);
 });
 
-test("planRaceSchedules: sæson-længde = ceil(total etaper / STAGES_PER_DAY) dage", () => {
-  // 30 single-løb = 30 etaper → 15 dage ved 2/dag. (60-etape-kalender → ~30 dage ≈ 4 uger.)
+test("planRaceSchedules: 30 single-etape-løb → 15 dage (balanceret 2-spors-fordeling)", () => {
+  // 30 single-løb fordeles 15/15 på de 2 spor → 15 dage. (Gælder balancerede single-løb;
+  // ét enkelt 30-etape-løb ville tage 30 dage, da etaper i samme løb ikke kan paralleliseres.)
   const many = Array.from({ length: 30 }, (_, i) => ({ id: `s${i}`, name: `Race ${String(i).padStart(2, "0")}`, stages: 1 }));
   const { stageRows } = planRaceSchedules({ races: many, from: FROM });
   const days = new Set(stageRows.map((r) => new Date(r.scheduled_at).toISOString().slice(0, 10)));
-  assert.equal(days.size, 15, "30 etaper / 2 per dag = 15 dage");
+  assert.equal(days.size, 15, "15 løb pr. spor × 1 etape/dag = 15 dage");
 });
 
 test("planRaceSchedules: én stage-row pr. etape med fast CET-slot", () => {

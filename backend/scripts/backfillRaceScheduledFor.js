@@ -72,7 +72,8 @@ function copenhagenDatePlusDays(fromUTC, days) {
  *
  * Deterministisk: løb sorteres på name→id; greedy-tie brydes mod laveste spor-index.
  * `tracks=1` giver én sekventiel stream (1 etape/dag). `raceUpdates` returneres altid i
- * name-sorteret løbsrækkefølge uanset spor-tildeling.
+ * name-sorteret løbsrækkefølge uanset spor-tildeling; `stageRows` følger samme
+ * løbsrækkefølge, etape 1→N inden for hvert løb.
  *
  * @param {{ races: Array<{id,name,stages}>, from?: Date, slots?: string[], tracks?: number }} args
  * @returns {{ raceUpdates: Array<{id, scheduled_for}>, stageRows: Array<{race_id, stage_number, scheduled_at}> }}
