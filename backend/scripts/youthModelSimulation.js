@@ -42,15 +42,19 @@ function main() {
     const r = simulateOne({ rng: makeRng(7), potentiale: p, archetypeType: "climber", startAge: 16, seasons });
     console.log(`  pot ${p}: ${r.journey.map((j) => `${j.age}:${j.top}`).join("  ")}  → loft-nået ${r.endTop}`);
   }
-  console.log("\nKARIKATUR-CHECK (16-årige): evner på gulv (≤8) bør være FÅ:");
-  let floorCount = 0, n = 0;
+  // KARIKATUR-CHECK: ægte "huller" = evner i absolut bund (≤3). En flad, lav profil
+  // med bund ~7 er BY DESIGN (ikke et hul) — derfor måler vi ≤3, ikke ≤8.
+  console.log("\nKARIKATUR-CHECK (16-årige): huller (afledt evne ≤3) skal være ~0; bund er flad-lav by design:");
+  let holeCount = 0, bottomSum = 0, n = 0;
   for (const a of archetypes) for (const p of [2, 4, 6]) {
     const { stats } = generateYouthStats({ rng: makeRng(n + 1), age: 16, potentiale: p, archetypeType: a });
     const rider = { id: `c${n}`, birthdate: "2010-06-15", potentiale: p, height: 175, weight: 62, ...stats };
     const ab = deriveAbilities(seedPhysiologyFromLegacy(rider), rider);
-    floorCount += PHYS.filter((k) => (ab[k] ?? 0) <= 8).length; n++;
+    holeCount += PHYS.filter((k) => (ab[k] ?? 0) <= 3).length;
+    bottomSum += Math.min(...PHYS.map((k) => ab[k] ?? 0));
+    n++;
   }
-  console.log(`  snit fysiske evner på gulv pr. ung: ${(floorCount / n).toFixed(1)} (mål: lavt, < ~1)`);
+  console.log(`  snit huller (≤3) pr. ung: ${(holeCount / n).toFixed(2)} (mål: ~0)  ·  snit bund-evne: ${(bottomSum / n).toFixed(1)} (forventet ~7)`);
 }
 
 main();
