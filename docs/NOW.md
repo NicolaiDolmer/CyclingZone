@@ -4,11 +4,11 @@
 
 ## Aktiv styring
 
-> **🎯 Next action (23/6 morgen — natbølge SHIPPED): 13 PR'er merged til main + patch-note v5.99. Backend live via Railway; frontend afventer Vercel-deploy (hobby rate-limit ~24t → vent på reset eller Vercel Pro). 3 PR'er venter på DIG:** **#1767** (konto e-mail/brugernavn — `database/*.sql`-migration, du merger), **#1764** (academy-reconcile — du kører scriptet), **#1760** (op/nedrykning — KRÆVER beslutning, se nedenfor). Recovery: backup `cyclingzone-20260622-153339` (VERIFIED) + PITR.
-> - **Merged (natbølge `wf_8f8a17e2-dc5` + 2 review-bølger):** #1735, #1742, #1739, #1650/#1669 (backend, live) · #1666 security · #1676 træthed-recovery · #1741, #1738/#1750, #1747, #1749, #1755, #1675 (frontend, afventer Vercel) · #1772 CI-fix. Alle adversarisk reviewet; #1746/#1666/#1755 hærdet efter review. Artifact: [night-wave-2026-06-23](audits/night-wave-2026-06-23.md).
-> - **⚠️ #1760 (op/nedrykning) = needs-fix, KRÆVER beslutning** (per-pulje-visning modsiger backend per-division-mekanik; design-fork bundet til [#1152](https://github.com/NicolaiDolmer/CyclingZone/issues/1152)). Valg A (anbefalet): division-bred zone + "pr. division"-tekst (matcher koden). Valg B: per-pulje-backend + luk #1152 først. #1240 (board fjern/erstat-mål) udskudt til #1187-B.
+> **🎯 Next action (23/6 — op/nedrykning BYGGET): review/merge klare PR'er + byg #1760-visningen. Venter på DIG:** **[#1783](https://github.com/NicolaiDolmer/CyclingZone/pull/1783)** (op/nedrykning-engine — kerne-økonomi, INGEN migration, 2127 tests grønne, ejer-review), **#1767** (konto — `database/*.sql`-migration, du merger), **#1764** (academy-script — du kører), **#1782** (akademi-idempotens, ikke-min). Recovery: backup `cyclingzone-20260622-153339` (VERIFIED) + PITR.
+> - **Natbølge 23/6 (merged):** 13 PR'er (#1735/#1742/#1739/#1650/#1669/#1666/#1676 + frontend #1741/#1738/#1750/#1747/#1749/#1755/#1675 + #1772 CI-fix). Backend live (Railway); frontend afventer Vercel hobby rate-limit (~24t/Pro). Artifact: [night-wave-2026-06-23](audits/night-wave-2026-06-23.md).
+> - **Op/nedrykning (#1152, ejer-besluttet 23/6 = aktiv nu, per-pulje binær-træ):** engine = PR #1783 (top 2 op→forælder-pulje, bund 4 delt 2+2→børne-puljer; Div4 udskudt til Div3-pulje all-real; ingen migration). **VISNING (#1760/#1745) = follow-up:** opdatér standings-zoner til **2-op/4-ned per pulje** (matcher engine). Spec: [promotion-relegation-design](superpowers/specs/2026-06-23-promotion-relegation-design.md). #1240 (board fjern/erstat-mål) → #1187-B.
 > - **Ejer-beslutninger (åbne):** #1276 PCM-IP · #1278 spiller-comms (du voicer) · #1487-budget · #929 leaked-pw · #691 key-rotation · #940 NPS.
-> - **Hygiejne:** Vercel hobby rate-limit (overvej Pro før næste bølge). `audit`-CI-check er ikke-required støj. #1733 drop prod-backup-tabeller når stabilt. 30 fleet-worktrees ryddes. [PLAN.md](PLAN.md)=SSOT.
+> - **Hygiejne:** Vercel hobby rate-limit (overvej Pro). preflight tjekker nu grøn origin/main før bølge (f7b10d0a). #1733 drop prod-backup-tabeller når stabilt. [PLAN.md](PLAN.md)=SSOT.
 
 > **🤖 Working agent:** Ingen aktiv session.
 
