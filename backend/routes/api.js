@@ -123,7 +123,7 @@ import { readFlagStage, evaluateFlagStage } from "../lib/featureStage.js";
 import { runTeamTrainingDay } from "../lib/dailyTrainingEngine.js";
 import { refreshChangedRiderValues } from "../lib/riderValueRefresh.js";
 import { validateSelection, saveSelection, getSelectionContext } from "../lib/raceSelection.js";
-import { loadTeamBindingContext, findRiderBindingConflicts } from "../lib/raceBinding.js";
+import { loadTeamBindingContext, findRiderBindingConflicts, teamInRacePool } from "../lib/raceBinding.js";
 import { isRaceEngineV2Enabled } from "../lib/raceEngineFlag.js";
 import { injuryRisk } from "../lib/riderCondition.js";
 import { resolveProgram } from "../lib/dailyTraining.js";
@@ -1454,12 +1454,19 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
 
     const { data: race, error } = await supabase
       .from("races")
-      .select("id, race_type, race_class, status")
+      .select("id, race_type, race_class, status, league_division_id")
       .eq("id", req.params.raceId)
       .maybeSingle();
     if (error) return res.status(500).json({ error: error.message });
     if (!race) return res.status(404).json({ error: "race_not_found" });
     if (race.status !== "scheduled") return res.status(409).json({ error: "selection_race_not_open" });
+
+    // Race-hub pulje-binding: et hold må kun udtage til løb i sin egen pulje. Backend-
+    // håndhævelse så hverken UI-fejl (#1801/#1802) eller direkte API-kald kan plante en
+    // fremmed-pulje-entry, der overlever autofill-pulje-filteret (#1798-incident-klasse).
+    if (!teamInRacePool({ teamDivisionId: req.team.league_division_id, racePoolId: race.league_division_id })) {
+      return res.status(409).json({ error: "selection_wrong_pool" });
+    }
 
     const { rider_ids: riderIds = [], captain_id: captainId = null, sprint_captain_id: sprintCaptainId = null, hunter_id: hunterId = null } = req.body || {};
 
