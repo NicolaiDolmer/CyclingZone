@@ -1,11 +1,11 @@
 {
   "racehub": {
     "scope": { "mine": "My races", "division": "My division", "others": "Other divisions", "soon": "Coming soon" },
-    "timeline": { "dayOf": "Day {{day}} of {{total}}", "youAreHere": "you are here", "prev": "Previous day", "next": "Next day" },
+    "timeline": { "dayOf": "Day {day} of {total}", "youAreHere": "you are here", "prev": "Previous day", "next": "Next day" },
     "heading": "Squad distribution",
-    "overlap": "{{count}} overlapping races today",
-    "status": { "full": "{{selected}} / {{target}} selected", "understaffed": "{{selected}} / {{target}} · understaffed", "withdrawn": "Withdrawn" },
-    "pool": { "title": "Available riders · {{count}}-squad", "autofill": "Auto-fill again", "bound": "Already racing in an overlapping race" },
+    "overlap": "{count} overlapping races today",
+    "status": { "full": "{selected} / {target} selected", "understaffed": "{selected} / {target} · understaffed", "withdrawn": "Withdrawn" },
+    "pool": { "title": "Available riders · {count}-squad", "autofill": "Auto-fill again", "bound": "Already racing in an overlapping race" },
     "column": { "add": "Add from available", "withdraw": "Withdraw", "reenter": "Re-enter" },
     "popover": { "title": "Add to which race?", "none": "No race available for this rider today" },
     "empty": "No races to plan for this day.",

@@ -1,6 +1,7 @@
-// Race Hub Fase 1 — "ledige ryttere"-pulje. 12-truppen som chips; bundne ryttere
-// grånet + lås (én rytter/ét overlappende løb). Klik en ledig chip → popover med
-// hvilket løb. "Auto-udfyld igen" gen-kører assistenten for dagens løb.
+// Race Hub Fase 1 — "ledige ryttere"-pulje. Hele 12-truppen som chips; ryttere der
+// allerede er udtaget til et af dagens (overlappende) løb er grånet + låst (én rytter/
+// ét løb). Klik en ledig chip → popover med hvilket løb. "Auto-udfyld igen" gen-kører
+// assistenten for dagens løb.
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import AddRiderPopover from "./AddRiderPopover.jsx";
@@ -9,8 +10,9 @@ import { LockIcon } from "../ui";
 export default function AvailableRidersPool({ roster, columns, bindingMap, onAddRiderToRace, onRegenerate, busy }) {
   const { t } = useTranslation("races");
   const [openRiderId, setOpenRiderId] = useState(null);
-  const selectedAnywhere = new Set(columns.flatMap((c) => c.selection?.rider_ids || []));
-  const isBound = (id) => Array.isArray(bindingMap?.[id]) && bindingMap[id].length > 0;
+  // En rytter er låst i puljen hvis han er udtaget til et af dagens løb (committed —
+  // og dermed bundet væk fra de øvrige overlappende løb).
+  const lockedIds = new Set(columns.flatMap((c) => c.selection?.rider_ids || []));
   return (
     <div className="border border-cz-border rounded-cz bg-cz-subtle">
       <div className="px-3 py-2 border-b border-cz-border flex items-center justify-between">
@@ -20,26 +22,24 @@ export default function AvailableRidersPool({ roster, columns, bindingMap, onAdd
       </div>
       <div className="flex flex-wrap gap-2 p-3">
         {roster.map((r) => {
-          const placed = selectedAnywhere.has(r.id);
-          if (placed) return null;
-          const bound = isBound(r.id);
+          const locked = lockedIds.has(r.id);
           return (
             <div key={r.id} className="relative">
               <button
                 type="button"
-                disabled={bound || busy}
-                title={bound ? t("racehub.pool.bound") : undefined}
+                disabled={locked || busy}
+                title={locked ? t("racehub.pool.bound") : undefined}
                 onClick={() => setOpenRiderId(openRiderId === r.id ? null : r.id)}
                 className={`flex items-center gap-1 text-xs px-2.5 py-1 rounded-full border ${
-                  bound
+                  locked
                     ? "border-dashed border-cz-border text-cz-3 opacity-50 cursor-not-allowed"
                     : "border-cz-border bg-cz-card text-cz-1 hover:border-cz-accent/40"
                 }`}
               >
-                {bound && <LockIcon size={11} aria-hidden="true" />}
+                {locked && <LockIcon size={11} aria-hidden="true" />}
                 {r.name} <span className="font-mono text-cz-3">{r.form ?? "—"}</span>
               </button>
-              {openRiderId === r.id && !bound && (
+              {openRiderId === r.id && !locked && (
                 <AddRiderPopover rider={r} columns={columns} bindingMap={bindingMap}
                   onPick={(raceId) => onAddRiderToRace(raceId, r.id)} onClose={() => setOpenRiderId(null)} />
               )}

@@ -56,9 +56,6 @@ export default function RaceColumn({ column, onRemoveRider, onToggleWithdraw, bu
               </button>
             );
           })}
-          {selectedIds.length === 0 && (
-            <p className="text-xs text-cz-3 px-3 py-2">{t("racehub.status.understaffed", { selected: 0, target: column.counts.target })}</p>
-          )}
         </div>
       )}
       <div className="p-2 border-t border-cz-border flex items-center justify-end">
