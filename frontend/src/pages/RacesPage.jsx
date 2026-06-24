@@ -4,6 +4,7 @@ import { supabase } from "../lib/supabase";
 import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import RiderLink from "../components/RiderLink";
 import RacePointsPage from "./RacePointsPage";
+import RaceHubBoard from "../components/racehub/RaceHubBoard.jsx";
 import { dateTextToDayOfYear } from "../lib/raceCalendar";
 import { racesForPool } from "../lib/racesByPool";
 import { computeExpectedRacePrize, formatExpectedPrize } from "../lib/expectedPrizeCalculator";
@@ -244,49 +245,12 @@ export default function RacesPage() {
 
       {/* Calendar tab */}
       {tab === "calendar" && (
-        <div className="grid md:grid-cols-2 gap-4">
+        <div>
+          {/* Race Hub Fase 1 — trup-fordeling-board'et afløser den flade "kommende"-liste
+              som landing (overlap-fordeling pr. dag). Afsluttede løb + resultat-panel under. */}
+          <RaceHubBoard />
+          <div className="grid md:grid-cols-2 gap-4 mt-8">
           <div>
-            {/* Upcoming */}
-            {racesByStatus.upcoming.length > 0 && (
-              <div className="mb-5">
-                <h2 className="text-cz-2 text-xs uppercase tracking-wider mb-3 font-semibold">{t("calendar.upcoming")}</h2>
-                <div className="flex flex-col gap-2">
-                  {racesByStatus.upcoming.map(race => {
-                    const expectedPrize = computeExpectedRacePrize({
-                      raceClass: race.race_class,
-                      raceType: race.race_type,
-                      stages: race.stages,
-                      racePoints,
-                    });
-                    return (
-                    <Card key={race.id} interactive
-                      className={`p-4 cursor-pointer ${selectedRace?.id === race.id ? "border-cz-accent/40" : ""}`}
-                      onClick={() => handleRaceClick(race)}>
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <p className="text-cz-1 font-semibold text-sm">{race.name}</p>
-                          <p className="text-cz-3 text-xs mt-0.5">
-                            {race.race_type === "stage_race" ? t("raceType.stageRaceWithStages", { count: race.stages }) : t("raceType.oneDay")}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          {race.pool_race?.date_text && (
-                            <p className="text-cz-3 text-xs">{race.pool_race.date_text}</p>
-                          )}
-                          {expectedPrize > 0 && (
-                            <p className="text-cz-2 text-xs font-mono mt-0.5" title={t("calendar.expectedPoolTooltip")}>
-                              {t("calendar.expectedPool", { amount: formatExpectedPrize(expectedPrize) })}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </Card>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
             {/* Completed */}
             {racesByStatus.completed.length > 0 && (
               <div>
@@ -401,6 +365,7 @@ export default function RacesPage() {
               </Card>
             )}
           </div>
+        </div>
         </div>
       )}
 
