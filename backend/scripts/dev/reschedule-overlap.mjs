@@ -10,6 +10,11 @@ import { planRaceSchedules } from "../backfillRaceScheduledFor.js";
 import { raceTimeWindow, findManualOverlapConflicts } from "../../lib/raceBinding.js";
 
 const LIVE = process.argv.includes("--live");
+// --allow-partial: reschedule KUN de rene (scheduled/0-afviklet) løb og spring
+// afviklede/igangværende over (bevares urørt). Til mid-sæson-aktivering hvor clean-
+// slate-antagelsen ikke holder. Uden flaget bevares den oprindelige alt-eller-intet-
+// sikkerhed (STOP ved enhver ikke-ren række — sikkert default for friske sæsoner).
+const ALLOW_PARTIAL = process.argv.includes("--allow-partial");
 const { SUPABASE_URL, SUPABASE_SERVICE_KEY } = process.env;
 if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) { console.error("Mangler SUPABASE secrets (infisical run --env=prod)"); process.exit(1); }
 const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
@@ -32,8 +37,12 @@ const { data: races } = await sb.from("races")
   .select("id, name, league_division_id, stages, status, stages_completed").eq("season_id", season.id);
 const reschedulable = races.filter((r) => r.status === "scheduled" && (r.stages_completed || 0) === 0);
 if (reschedulable.length !== races.length) {
-  console.error(`STOP: ${races.length - reschedulable.length} løb er IKKE rene scheduled/0-afviklet. Afbryd og afklar.`);
-  process.exit(1);
+  const skipped = races.length - reschedulable.length;
+  if (!ALLOW_PARTIAL) {
+    console.error(`STOP: ${skipped} løb er IKKE rene scheduled/0-afviklet. Afbryd og afklar (eller --allow-partial for kun at reschedule de rene).`);
+    process.exit(1);
+  }
+  console.log(`--allow-partial: springer ${skipped} ikke-rene løb over (afviklet/igangværende) — kun ${reschedulable.length} rene løb re-schedules; øvrige bevares urørt.\n`);
 }
 
 // Planlæg overlap pr. pulje fra et fælles anker (i morgen).
