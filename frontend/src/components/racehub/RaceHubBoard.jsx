@@ -31,9 +31,11 @@ export default function RaceHubBoard() {
   const load = useCallback(async (day) => {
     const headers = await authHeaders();
     if (!headers) { setLoading(false); return; }
-    const qs = Number.isFinite(day) ? `?day=${day}` : "";
+    // Path som egen literal (query konkateneres separat) — holder /api/races/distribution
+    // matchbar for feature-liveness-auditens frontend-scan (ellers læses qs som path-segment).
+    const url = `${API}/api/races/distribution`;
     try {
-      const res = await fetch(`${API}/api/races/distribution${qs}`, { headers });
+      const res = await fetch(Number.isFinite(day) ? `${url}?day=${day}` : url, { headers });
       if (res.ok) setData(await res.json());
     } catch {
       /* netværk — board forbliver i forrige tilstand */
