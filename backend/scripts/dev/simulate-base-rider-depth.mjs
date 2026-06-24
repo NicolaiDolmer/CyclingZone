@@ -36,13 +36,19 @@ const REFERENCE_YEAR = 2026;
 const MAX_N = Math.max(...TRUP_SIZES, 8);
 
 async function readAllIn(table, cols, inCol, ids, extra) {
-  const out = []; const CH = 200;
+  const out = []; const CH = 200; const PAGE = 1000;
   for (let i = 0; i < ids.length; i += CH) {
-    let q = sb.from(table).select(cols).in(inCol, ids.slice(i, i + CH));
-    if (extra) q = extra(q);
-    const { data, error } = await q;
-    if (error) throw new Error(`${table}: ${error.message}`);
-    out.push(...(data || []));
+    const slice = ids.slice(i, i + CH);
+    // Paginér resultat-rækkerne (PostgREST capper ved 1000/forespørgsel) — ellers
+    // trunkeres ryttere ved skala (>1000 rækker for et chunk) → falsk lave tal.
+    for (let from = 0; ; from += PAGE) {
+      let q = sb.from(table).select(cols).in(inCol, slice).range(from, from + PAGE - 1);
+      if (extra) q = extra(q);
+      const { data, error } = await q;
+      if (error) throw new Error(`${table}: ${error.message}`);
+      out.push(...(data || []));
+      if (!data || data.length < PAGE) break;
+    }
   }
   return out;
 }
