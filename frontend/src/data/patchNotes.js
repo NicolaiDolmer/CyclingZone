@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.07",
+    "date": "2026-06-24",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Plan your squad across overlapping races",
+          "body": "Races on the same day now overlap, and a rider can only start one race at a time. The new squad distribution view on the Races page shows your overlapping races side by side so you can spread your 12-rider squad across them. Riders already racing are locked out of the other races, you can withdraw from a race you want to skip, and the assistant can fill your line-ups again with one click."
+        },
+        "da": {
+          "title": "Fordel din trup på tværs af overlappende løb",
+          "body": "Løb på samme dag overlapper nu, og en rytter kan kun køre ét løb ad gangen. Den nye trup-fordeling på Løb-siden viser dine overlappende løb side om side, så du kan fordele din 12-rytters trup mellem dem. Ryttere der allerede kører, er låst fra de andre løb, du kan afmelde dig et løb du vil springe over, og assistenten kan udfylde dine opstillinger igen med ét klik."
+        },
+        "refs": [1802]
+      }
+    ]
+  },
+  {
     "version": "6.06",
     "date": "2026-06-23",
     "label": "Beta",

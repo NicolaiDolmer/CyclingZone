@@ -302,6 +302,7 @@ const FAQ_KEYS = [
   "deadlineTimelineFaq",
   "squadEnforcementFaq",
   "season1RaceCalendarFaq",
+  "overlappingRaces",
 ];
 
 function buildSections(t) {

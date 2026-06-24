@@ -632,6 +632,10 @@
     }
   },
   "faq": {
+    "overlappingRaces": {
+      "q": "Hvordan virker overlappende løb og trup-fordeling?",
+      "a": "Løb på samme dag overlapper i tid, og en rytter kan kun køre ét løb ad gangen, så det er et strategisk valg at fordele truppen mellem dem. Trup-fordelingen på Løb-siden (Sæson & Resultater -> Løb) viser dine overlappende løb side om side. Tilføj ryttere til et løb fra din pulje af ledige; en rytter du sætter i ét løb, er låst fra de andre løb der overlapper det. Vil du ikke stille op til et løb, så afmeld dig, og du starter simpelthen ikke. Assistenten udfylder dine opstillinger automatisk som udgangspunkt, og du kan få den til at udfylde dem igen med ét klik efter du har redigeret."
+    },
     "relaunchTeamMoney": {
       "q": "Hvad skete der med mit hold og mine penge ved sæson 1-relaunchen?",
       "a": "Ved relaunchen starter alt forfra. Dit tidligere hold, din saldo og dine transfers føres ikke med over i den nye sæson 1. Du får et frisk 8-rytters hold og en startkapital på 800.000 CZ$, præcis som alle andre managers."

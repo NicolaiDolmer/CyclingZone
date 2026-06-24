@@ -123,7 +123,8 @@ import { readFlagStage, evaluateFlagStage } from "../lib/featureStage.js";
 import { runTeamTrainingDay } from "../lib/dailyTrainingEngine.js";
 import { refreshChangedRiderValues } from "../lib/riderValueRefresh.js";
 import { validateSelection, saveSelection, getSelectionContext } from "../lib/raceSelection.js";
-import { loadTeamBindingContext, findRiderBindingConflicts, teamInRacePool } from "../lib/raceBinding.js";
+import { loadTeamBindingContext, findRiderBindingConflicts, teamInRacePool, raceTimeWindow } from "../lib/raceBinding.js";
+import { buildColumnSet, buildBindingMap, seasonDayProjection, dominantTerrain, lockedWindowsFromManualEntries } from "../lib/raceDistribution.js";
 import { isRaceEngineV2Enabled } from "../lib/raceEngineFlag.js";
 import { injuryRisk } from "../lib/riderCondition.js";
 import { resolveProgram } from "../lib/dailyTraining.js";
@@ -281,7 +282,9 @@ import {
   invalidateNamespace,
   getCacheStats,
 } from "../lib/responseCache.js";
-import { runRaceEntryGenerator } from "../lib/raceEntryGenerator.js";
+import { runRaceEntryGenerator, assignTeamAcrossRaces } from "../lib/raceEntryGenerator.js";
+import { selectionSizeForRace } from "../lib/raceAutopick.js";
+import { ABILITY_KEYS as RACE_SIM_ABILITY_KEYS } from "../lib/raceSimulator.js";
 
 // Cache TTLs (ms). Tunable per ADR docs/decisions/cache-adr.md Phase 1.
 // Riders: 60s — ownership changes propagate within one polling cycle; explicit
@@ -1444,6 +1447,141 @@ router.get("/races/:raceId/selection", requireAuth, async (req, res) => {
   }
 });
 
+// Race Hub Fase 1 — GET /api/races/distribution?day=N
+// Aggregat-læsning til trup-fordeling-board'et: dagens egne-pulje overlap-løb som
+// kolonner + holdets trup + binding-map + sæson-tidslinje. Saves går stadig via
+// PUT /races/:raceId/selection (guards bevares). flag OFF → enabled:false.
+router.get("/races/distribution", requireAuth, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const isBetaTester = await isViewerBetaTester(req);
+    const enabled = await isRaceEngineV2Enabled(supabase, { isBetaTester });
+    if (!enabled) return res.json({ enabled: false });
+
+    const { data: season } = await supabase
+      .from("seasons").select("id, number, start_date").eq("status", "active").maybeSingle();
+    if (!season) return res.json({ enabled: true, season: null, columns: [], timeline: null });
+
+    const { data: races } = await supabase
+      .from("races")
+      .select("id, name, race_type, race_class, stages, status, league_division_id, pool_race:pool_race_id(date_text)")
+      .eq("season_id", season.id);
+    const raceIds = (races || []).map((r) => r.id);
+    const { data: schedRows } = await supabase
+      .from("race_stage_schedule").select("race_id, scheduled_at").in("race_id", raceIds.slice(0, 1000));
+    const schedByRace = new Map();
+    for (const s of schedRows || []) {
+      if (!schedByRace.has(s.race_id)) schedByRace.set(s.race_id, []);
+      schedByRace.get(s.race_id).push(s);
+    }
+    const withWindow = (races || []).map((r) => ({ ...r, window: raceTimeWindow(schedByRace.get(r.id)) }));
+
+    const dayParam = Number.parseInt(req.query.day, 10);
+    // Holdets kolonne-egnede løbsdage (scheduled, egen pulje, har vindue) — så board'et
+    // som standard lander på en dag med løb i stedet for et tomt "i dag" (de fleste af de
+    // 60 dage har ingen løb). firstMs gentages fra resolveSeasonDay (1 linje, idempotent).
+    const DAY_MS = 86_400_000;
+    const schedTimes = (schedRows || []).map((s) => Date.parse(s.scheduled_at)).filter(Number.isFinite);
+    const seasonFirstMs = schedTimes.length ? Math.min(...schedTimes) : Date.parse(season.start_date || "2026-01-01");
+    const myRaceDays = [...new Set(
+      withWindow
+        .filter((r) => r.status === "scheduled" && r.window
+          && teamInRacePool({ teamDivisionId: req.team.league_division_id, racePoolId: r.league_division_id }))
+        .map((r) => Math.floor((r.window.start - seasonFirstMs) / DAY_MS) + 1)
+    )].sort((a, b) => a - b);
+
+    const { dayWindow, currentDay, focusDay, totalDays } = resolveSeasonDay({ season, schedRows, dayParam, myRaceDays });
+
+    const cols = buildColumnSet({ races: withWindow, teamDivisionId: req.team.league_division_id, dayWindow });
+
+    const { data: withdrawals } = await supabase
+      .from("race_withdrawals").select("race_id").eq("team_id", req.team.id);
+    const withdrawnSet = new Set((withdrawals || []).map((w) => w.race_id));
+
+    const columns = [];
+    for (const race of cols) {
+      const ctx = await getSelectionContext({ supabase, race, teamId: req.team.id });
+      columns.push({
+        id: race.id, name: race.name, race_class: race.race_class, race_type: race.race_type,
+        stages: race.stages, status: race.status, window: race.window,
+        size: ctx.size, riders: ctx.riders, selection: ctx.selection,
+        withdrawn: withdrawnSet.has(race.id),
+        counts: { selected: ctx.selection?.rider_ids?.length ?? 0, target: ctx.size.max },
+      });
+    }
+
+    const bindingMap = buildBindingMap({
+      columns: columns.map((c) => ({ id: c.id, window: c.window, riderIds: c.selection?.rider_ids || [] })),
+    });
+
+    const timeline = await buildTimeline({
+      supabase, races: withWindow, schedByRace,
+      teamDivisionId: req.team.league_division_id, currentDay, totalDays,
+    });
+
+    res.json({ enabled: true, season: { id: season.id, number: season.number }, currentDay, focusDay, columns, bindingMap, timeline });
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Sæson-dag → CET-døgnvindue. day 1 = sæsonens første race-dag (tidligste scheduled_at).
+// focusDay = den dag board'et viser: eksplicit ?day=N, ellers holdets nærmeste kommende
+// løbsdag (myRaceDays), ellers i dag. Så board'et åbner aldrig tomt når holdet har løb.
+function resolveSeasonDay({ season, schedRows, dayParam, myRaceDays = [] }) {
+  const times = (schedRows || []).map((s) => Date.parse(s.scheduled_at)).filter(Number.isFinite);
+  const firstMs = times.length ? Math.min(...times) : Date.parse(season.start_date || "2026-01-01");
+  const DAY = 86_400_000;
+  const lastMs = times.length ? Math.max(...times) : firstMs;
+  const totalDays = Math.max(1, Math.round((lastMs - firstMs) / DAY) + 1);
+  const today = Math.floor((Date.now() - firstMs) / DAY) + 1;
+  const currentDay = Math.min(Math.max(today, 1), totalDays);
+  let focusDay;
+  if (Number.isFinite(dayParam)) {
+    focusDay = Math.min(Math.max(dayParam, 1), totalDays);
+  } else if (myRaceDays.length) {
+    focusDay = myRaceDays.find((d) => d >= currentDay) ?? myRaceDays[myRaceDays.length - 1];
+  } else {
+    focusDay = currentDay;
+  }
+  const start = firstMs + (focusDay - 1) * DAY;
+  return { dayWindow: { start, end: start + DAY - 1 }, currentDay, focusDay, totalDays };
+}
+
+// Tidslinje-input: terræn-glyf pr. dag (dominerende profil) + om holdet har løb den dag.
+async function buildTimeline({ supabase, races, schedByRace, teamDivisionId, currentDay, totalDays }) {
+  const raceIds = races.map((r) => r.id);
+  const { data: profiles } = await supabase
+    .from("race_stage_profiles").select("race_id, profile_type").in("race_id", raceIds.slice(0, 1000));
+  const profByRace = new Map();
+  for (const p of profiles || []) {
+    if (!profByRace.has(p.race_id)) profByRace.set(p.race_id, []);
+    profByRace.get(p.race_id).push(p.profile_type);
+  }
+  const allTimes = races.flatMap((r) => (schedByRace.get(r.id) || []).map((s) => Date.parse(s.scheduled_at))).filter(Number.isFinite);
+  if (!allTimes.length) return seasonDayProjection({ totalDays, currentDay, dayProfiles: new Map() });
+  const firstMs = Math.min(...allTimes);
+  const DAY = 86_400_000;
+  const dayProfiles = new Map();
+  for (const r of races) {
+    const mine = teamInRacePool({ teamDivisionId, racePoolId: r.league_division_id });
+    for (const s of schedByRace.get(r.id) || []) {
+      const day = Math.floor((Date.parse(s.scheduled_at) - firstMs) / DAY) + 1;
+      const prev = dayProfiles.get(day) || { terrainTypes: [], hasMyRace: false, dateText: null };
+      prev.terrainTypes.push(...(profByRace.get(r.id) || []));
+      if (mine) prev.hasMyRace = true;
+      prev.dateText = r.pool_race?.date_text ?? prev.dateText;
+      dayProfiles.set(day, prev);
+    }
+  }
+  const projected = new Map();
+  for (const [day, v] of dayProfiles) {
+    projected.set(day, { dateText: v.dateText, terrain: dominantTerrain(v.terrainTypes), hasMyRace: v.hasMyRace });
+  }
+  return seasonDayProjection({ totalDays, currentDay, dayProfiles: projected });
+}
+
 // PUT /api/races/:raceId/selection — gem managerens udtagelse (6-8 + roller).
 router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
@@ -1498,6 +1636,135 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
 
     await saveSelection({ supabase, race, teamId: req.team.id, riderIds, captainId, sprintCaptainId, hunterId });
     res.json({ ok: true });
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Race Hub Fase 1 — POST /api/races/:raceId/withdrawal (afmeld). Frivillig deltagelse:
+// holdet trækker sig fra løbet (auto-no-show ved afvikling). Pulje-guard + scheduled-guard.
+router.post("/races/:raceId/withdrawal", requireAuth, marketWriteLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const isBetaTester = await isViewerBetaTester(req);
+    const enabled = await isRaceEngineV2Enabled(supabase, { isBetaTester });
+    if (!enabled) return res.status(409).json({ error: "selection_flag_disabled" });
+    const { data: race, error } = await supabase
+      .from("races").select("id, status, league_division_id").eq("id", req.params.raceId).maybeSingle();
+    if (error) return res.status(500).json({ error: error.message });
+    if (!race) return res.status(404).json({ error: "race_not_found" });
+    if (race.status !== "scheduled") return res.status(409).json({ error: "selection_race_not_open" });
+    if (!teamInRacePool({ teamDivisionId: req.team.league_division_id, racePoolId: race.league_division_id })) {
+      return res.status(409).json({ error: "selection_wrong_pool" });
+    }
+    const { error: upErr } = await supabase
+      .from("race_withdrawals").upsert({ race_id: race.id, team_id: req.team.id }, { onConflict: "race_id,team_id" });
+    if (upErr) return res.status(500).json({ error: upErr.message });
+    res.json({ ok: true, withdrawn: true });
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// DELETE /api/races/:raceId/withdrawal — gen-deltag (fjern afmelding).
+router.delete("/races/:raceId/withdrawal", requireAuth, marketWriteLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const { error: delErr } = await supabase
+      .from("race_withdrawals").delete().eq("race_id", req.params.raceId).eq("team_id", req.team.id);
+    if (delErr) return res.status(500).json({ error: delErr.message });
+    res.json({ ok: true, withdrawn: false });
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Race Hub Fase 1 — POST /api/races/distribution/regenerate?day=N
+// "Auto-udfyld igen" for holdet, scoped til dagens overlap-løb. Genbruger den rene
+// binding-bevidste assignTeamAcrossRaces; manuelle entries i andre løb låses så de
+// ikke dobbeltbookes. Skriver picks som is_auto_filled=true.
+router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const isBetaTester = await isViewerBetaTester(req);
+    const enabled = await isRaceEngineV2Enabled(supabase, { isBetaTester });
+    if (!enabled) return res.status(409).json({ error: "selection_flag_disabled" });
+
+    const { data: season } = await supabase.from("seasons").select("id, start_date").eq("status", "active").maybeSingle();
+    if (!season) return res.status(409).json({ error: "no_active_season" });
+
+    const { data: races } = await supabase
+      .from("races").select("id, race_class, race_type, stages, status, league_division_id").eq("season_id", season.id);
+    const raceIds = (races || []).map((r) => r.id);
+    const { data: schedRows } = await supabase
+      .from("race_stage_schedule").select("race_id, scheduled_at").in("race_id", raceIds.slice(0, 1000));
+    const schedByRace = new Map();
+    for (const s of schedRows || []) {
+      if (!schedByRace.has(s.race_id)) schedByRace.set(s.race_id, []);
+      schedByRace.get(s.race_id).push(s);
+    }
+    const windowByRace = new Map(raceIds.map((id) => [id, raceTimeWindow(schedByRace.get(id))]));
+    const withWindow = (races || []).map((r) => ({ ...r, window: windowByRace.get(r.id) }));
+    const { dayWindow } = resolveSeasonDay({ season, schedRows, dayParam: Number.parseInt(req.query.day, 10) });
+    const cols = buildColumnSet({ races: withWindow, teamDivisionId: req.team.league_division_id, dayWindow });
+    if (!cols.length) return res.json({ ok: true, regenerated: 0 });
+
+    const { data: wRows } = await supabase.from("race_withdrawals").select("race_id").eq("team_id", req.team.id);
+    const withdrawn = new Set((wRows || []).map((w) => w.race_id));
+    const target = cols.filter((r) => !withdrawn.has(r.id));
+    if (!target.length) return res.json({ ok: true, regenerated: 0 });
+
+    const { data: teamRiders } = await supabase.from("riders")
+      .select("id").eq("team_id", req.team.id).eq("is_academy", false).or("is_retired.is.null,is_retired.eq.false");
+    const teamRiderIds = (teamRiders || []).map((r) => r.id);
+    const abilityCols = ["rider_id", ...RACE_SIM_ABILITY_KEYS].join(", ");
+    const [{ data: abilities }, { data: conditions }] = await Promise.all([
+      supabase.from("rider_derived_abilities").select(abilityCols).in("rider_id", teamRiderIds),
+      supabase.from("rider_condition").select("rider_id, fatigue").in("rider_id", teamRiderIds),
+    ]);
+    const abById = new Map((abilities || []).map((a) => [a.rider_id, a]));
+    const fatById = new Map((conditions || []).map((c) => [c.rider_id, c.fatigue]));
+    const riders = teamRiderIds
+      .map((id) => ({ rider_id: id, abilities: abById.get(id), fatigue: fatById.get(id) ?? 0 }))
+      .filter((r) => r.abilities);
+
+    const { data: profs } = await supabase.from("race_stage_profiles")
+      .select("race_id, stage_number, profile_type, finale_type, demand_vector").in("race_id", target.map((r) => r.id));
+    const stagesByRace = new Map();
+    for (const p of profs || []) {
+      if (!stagesByRace.has(p.race_id)) stagesByRace.set(p.race_id, []);
+      stagesByRace.get(p.race_id).push(p);
+    }
+    for (const arr of stagesByRace.values()) arr.sort((a, b) => (a.stage_number || 0) - (b.stage_number || 0));
+
+    const { data: allEntries } = await supabase.from("race_entries")
+      .select("race_id, rider_id, is_auto_filled").eq("team_id", req.team.id);
+    const lockedWindows = lockedWindowsFromManualEntries({
+      entries: allEntries || [], windowByRace, excludeRaceIds: new Set(target.map((r) => r.id)),
+    });
+
+    const assignRaces = target.map((r) => ({
+      race_id: r.id, window: windowByRace.get(r.id), stages: stagesByRace.get(r.id) || [],
+      sizeRule: selectionSizeForRace(r),
+    }));
+    const picksByRace = assignTeamAcrossRaces({ riders, races: assignRaces, lockedWindows });
+
+    let regenerated = 0;
+    for (const race of target) {
+      const picks = picksByRace[race.id] || [];
+      const captainId = picks.find((p) => p.race_role === "captain")?.rider_id ?? picks[0]?.rider_id ?? null;
+      if (!picks.length || !captainId) continue;
+      await supabase.from("race_entries").delete().eq("race_id", race.id).eq("team_id", req.team.id);
+      const rows = picks.map((p) => ({
+        race_id: race.id, rider_id: p.rider_id, team_id: req.team.id, race_role: p.race_role, is_auto_filled: true,
+      }));
+      if (rows.length) await supabase.from("race_entries").insert(rows);
+      regenerated++;
+    }
+    res.json({ ok: true, regenerated });
   } catch (err) {
     captureException(err);
     res.status(500).json({ error: err.message });

@@ -1,4 +1,16 @@
 {
+  "racehub": {
+    "scope": { "mine": "Mine løb", "division": "Min division", "others": "Andre divisioner", "soon": "Kommer snart" },
+    "timeline": { "dayOf": "Dag {day} af {total}", "youAreHere": "du er her", "prev": "Forrige dag", "next": "Næste dag" },
+    "heading": "Trup-fordeling",
+    "overlap": "{count} overlappende løb i dag",
+    "status": { "full": "{selected} / {target} valgt", "understaffed": "{selected} / {target} · underbemandet", "withdrawn": "Afmeldt" },
+    "pool": { "title": "Ledige ryttere · {count}-trup", "autofill": "Auto-udfyld igen", "bound": "Kører allerede et overlappende løb" },
+    "column": { "add": "Tilføj fra ledige", "withdraw": "Afmeld", "reenter": "Deltag igen" },
+    "popover": { "title": "Tilføj til hvilket løb?", "none": "Intet løb tilgængeligt for denne rytter i dag" },
+    "empty": "Ingen løb at planlægge denne dag.",
+    "regenerateWarn": "Dette nulstiller dine manuelle valg på dagens løb til assistentens forslag. Fortsæt?"
+  },
   "title": "Løb",
   "subtitle": {
     "withSeason": "Sæson {number} · {count} løb",
