@@ -123,7 +123,8 @@ import { readFlagStage, evaluateFlagStage } from "../lib/featureStage.js";
 import { runTeamTrainingDay } from "../lib/dailyTrainingEngine.js";
 import { refreshChangedRiderValues } from "../lib/riderValueRefresh.js";
 import { validateSelection, saveSelection, getSelectionContext } from "../lib/raceSelection.js";
-import { loadTeamBindingContext, findRiderBindingConflicts, teamInRacePool } from "../lib/raceBinding.js";
+import { loadTeamBindingContext, findRiderBindingConflicts, teamInRacePool, raceTimeWindow } from "../lib/raceBinding.js";
+import { buildColumnSet, buildBindingMap, seasonDayProjection, dominantTerrain, lockedWindowsFromManualEntries } from "../lib/raceDistribution.js";
 import { isRaceEngineV2Enabled } from "../lib/raceEngineFlag.js";
 import { injuryRisk } from "../lib/riderCondition.js";
 import { resolveProgram } from "../lib/dailyTraining.js";
@@ -1443,6 +1444,119 @@ router.get("/races/:raceId/selection", requireAuth, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// Race Hub Fase 1 — GET /api/races/distribution?day=N
+// Aggregat-læsning til trup-fordeling-board'et: dagens egne-pulje overlap-løb som
+// kolonner + holdets trup + binding-map + sæson-tidslinje. Saves går stadig via
+// PUT /races/:raceId/selection (guards bevares). flag OFF → enabled:false.
+router.get("/races/distribution", requireAuth, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const isBetaTester = await isViewerBetaTester(req);
+    const enabled = await isRaceEngineV2Enabled(supabase, { isBetaTester });
+    if (!enabled) return res.json({ enabled: false });
+
+    const { data: season } = await supabase
+      .from("seasons").select("id, number, start_date").eq("status", "active").maybeSingle();
+    if (!season) return res.json({ enabled: true, season: null, columns: [], timeline: null });
+
+    const { data: races } = await supabase
+      .from("races")
+      .select("id, name, race_type, race_class, stages, status, league_division_id, pool_race:pool_race_id(date_text)")
+      .eq("season_id", season.id);
+    const raceIds = (races || []).map((r) => r.id);
+    const { data: schedRows } = await supabase
+      .from("race_stage_schedule").select("race_id, scheduled_at").in("race_id", raceIds.slice(0, 1000));
+    const schedByRace = new Map();
+    for (const s of schedRows || []) {
+      if (!schedByRace.has(s.race_id)) schedByRace.set(s.race_id, []);
+      schedByRace.get(s.race_id).push(s);
+    }
+    const withWindow = (races || []).map((r) => ({ ...r, window: raceTimeWindow(schedByRace.get(r.id)) }));
+
+    const dayParam = Number.parseInt(req.query.day, 10);
+    const { dayWindow, currentDay, totalDays } = resolveSeasonDay({ season, schedRows, dayParam });
+
+    const cols = buildColumnSet({ races: withWindow, teamDivisionId: req.team.league_division_id, dayWindow });
+
+    const { data: withdrawals } = await supabase
+      .from("race_withdrawals").select("race_id").eq("team_id", req.team.id);
+    const withdrawnSet = new Set((withdrawals || []).map((w) => w.race_id));
+
+    const columns = [];
+    for (const race of cols) {
+      const ctx = await getSelectionContext({ supabase, race, teamId: req.team.id });
+      columns.push({
+        id: race.id, name: race.name, race_class: race.race_class, race_type: race.race_type,
+        stages: race.stages, status: race.status, window: race.window,
+        size: ctx.size, riders: ctx.riders, selection: ctx.selection,
+        withdrawn: withdrawnSet.has(race.id),
+        counts: { selected: ctx.selection?.rider_ids?.length ?? 0, target: ctx.size.max },
+      });
+    }
+
+    const bindingMap = buildBindingMap({
+      columns: columns.map((c) => ({ id: c.id, window: c.window, riderIds: c.selection?.rider_ids || [] })),
+    });
+
+    const timeline = await buildTimeline({
+      supabase, races: withWindow, schedByRace,
+      teamDivisionId: req.team.league_division_id, currentDay, totalDays,
+    });
+
+    res.json({ enabled: true, season: { id: season.id, number: season.number }, currentDay, columns, bindingMap, timeline });
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Sæson-dag → CET-døgnvindue. day 1 = sæsonens første race-dag (tidligste scheduled_at).
+function resolveSeasonDay({ season, schedRows, dayParam }) {
+  const times = (schedRows || []).map((s) => Date.parse(s.scheduled_at)).filter(Number.isFinite);
+  const firstMs = times.length ? Math.min(...times) : Date.parse(season.start_date || "2026-01-01");
+  const DAY = 86_400_000;
+  const lastMs = times.length ? Math.max(...times) : firstMs;
+  const totalDays = Math.max(1, Math.round((lastMs - firstMs) / DAY) + 1);
+  const today = Math.floor((Date.now() - firstMs) / DAY) + 1;
+  const currentDay = Math.min(Math.max(today, 1), totalDays);
+  const day = Number.isFinite(dayParam) ? Math.min(Math.max(dayParam, 1), totalDays) : currentDay;
+  const start = firstMs + (day - 1) * DAY;
+  return { dayWindow: { start, end: start + DAY - 1 }, currentDay, totalDays };
+}
+
+// Tidslinje-input: terræn-glyf pr. dag (dominerende profil) + om holdet har løb den dag.
+async function buildTimeline({ supabase, races, schedByRace, teamDivisionId, currentDay, totalDays }) {
+  const raceIds = races.map((r) => r.id);
+  const { data: profiles } = await supabase
+    .from("race_stage_profiles").select("race_id, profile_type").in("race_id", raceIds.slice(0, 1000));
+  const profByRace = new Map();
+  for (const p of profiles || []) {
+    if (!profByRace.has(p.race_id)) profByRace.set(p.race_id, []);
+    profByRace.get(p.race_id).push(p.profile_type);
+  }
+  const allTimes = races.flatMap((r) => (schedByRace.get(r.id) || []).map((s) => Date.parse(s.scheduled_at))).filter(Number.isFinite);
+  if (!allTimes.length) return seasonDayProjection({ totalDays, currentDay, dayProfiles: new Map() });
+  const firstMs = Math.min(...allTimes);
+  const DAY = 86_400_000;
+  const dayProfiles = new Map();
+  for (const r of races) {
+    const mine = teamInRacePool({ teamDivisionId, racePoolId: r.league_division_id });
+    for (const s of schedByRace.get(r.id) || []) {
+      const day = Math.floor((Date.parse(s.scheduled_at) - firstMs) / DAY) + 1;
+      const prev = dayProfiles.get(day) || { terrainTypes: [], hasMyRace: false, dateText: null };
+      prev.terrainTypes.push(...(profByRace.get(r.id) || []));
+      if (mine) prev.hasMyRace = true;
+      prev.dateText = r.pool_race?.date_text ?? prev.dateText;
+      dayProfiles.set(day, prev);
+    }
+  }
+  const projected = new Map();
+  for (const [day, v] of dayProfiles) {
+    projected.set(day, { dateText: v.dateText, terrain: dominantTerrain(v.terrainTypes), hasMyRace: v.hasMyRace });
+  }
+  return seasonDayProjection({ totalDays, currentDay, dayProfiles: projected });
+}
 
 // PUT /api/races/:raceId/selection — gem managerens udtagelse (6-8 + roller).
 router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (req, res) => {
