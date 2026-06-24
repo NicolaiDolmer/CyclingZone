@@ -11,6 +11,7 @@ import LanguageSwitcher from "./LanguageSwitcher";
 import { Wordmark } from "./Brand";
 import DiscordJoinLink from "./DiscordJoinLink";
 import { MenuIcon, BellIcon, ChevronDownIcon, ChevronLeftIcon } from "./ui/icons";
+import { resolveAcademyNavVisible, readCachedAcademyNav, writeCachedAcademyNav } from "../lib/academyNavVisibility";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -265,7 +266,9 @@ export default function Layout() {
   const [onlineCount, setOnlineCount]       = useState(0);
   const [teamLoaded, setTeamLoaded]         = useState(false);
   const [tickerActive, setTickerActive]     = useState(false);
-  const [academyEnabled, setAcademyEnabled] = useState(false);
+  // Init fra cache (#1792-klasse): vis akademiet med det samme hvis brugeren har
+  // set det før, så et forbigående fetch-hikke ikke skjuler et fungerende akademi.
+  const [academyEnabled, setAcademyEnabled] = useState(readCachedAcademyNav);
   const heartbeatRef = useRef(null);
   const teamId = team?.id;
   const isWideContent = WIDE_CONTENT_ROUTES.has(location.pathname)
@@ -311,11 +314,21 @@ export default function Layout() {
 
       if (!API) { console.error("VITE_API_URL is not set — presence/streak calls skipped"); return; }
       const h = await authHeaders();
-      // Akademi-flag (#1308): let fetch for at bestemme om nav-item vises.
+      // Akademi-nav-synlighed (#1308): bestem via /api/academy/me, men fejl LUKKER
+      // ikke punktet. Kun 200/409 er autoritative (opdater state + cache); 401
+      // (udløbet/fornyende session, #1792), 5xx og netværksfejl bevarer sidst kendte.
       fetch(`${API}/api/academy/me`, { headers: h })
-        .then(res => res.ok ? res.json() : null)
-        .then(data => { if (data?.enabled) setAcademyEnabled(true); })
-        .catch(() => {});
+        .then(async res => {
+          const data = res.status === 200 ? await res.json().catch(() => null) : null;
+          const visible = resolveAcademyNavVisible({
+            status: res.status,
+            enabled: data?.enabled,
+            lastKnown: readCachedAcademyNav(),
+          });
+          setAcademyEnabled(visible);
+          if (res.status === 200 || res.status === 409) writeCachedAcademyNav(visible);
+        })
+        .catch(() => { /* netværksfejl: behold sidst kendte (state uændret) */ });
       fetch(`${API}/api/presence`,     { method: "POST", headers: h }).catch(e => console.error("presence:", e));
       // Login-streak power-mekanik fjernet (#1139) — ingen daglig login-tvang.
       // Achievements-check kører fortsat (kosmetiske unlocks), uafhængigt af streak.

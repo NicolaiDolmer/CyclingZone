@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.08",
+    "date": "2026-06-24",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Academy menu no longer disappears after a connection hiccup",
+          "body": "The Academy link in the left menu could vanish if the one check that loads it happened to fail right as the page opened, for example while your session was refreshing. It now keeps showing the academy once you have seen it and only hides on a clear signal that the feature is off, so a brief network or login hiccup no longer hides a working academy."
+        },
+        "da": {
+          "title": "Akademi-menuen forsvinder ikke længere efter et forbindelses-hikke",
+          "body": "Akademi-linket i menuen til venstre kunne forsvinde, hvis det ene tjek der henter det fejlede præcis da siden åbnede, for eksempel mens din session blev fornyet. Det viser nu akademiet videre, når du først har set det, og skjuler kun linket ved et tydeligt signal om at funktionen er slået fra, så et kortvarigt netværks- eller login-hikke ikke længere skjuler et fungerende akademi."
+        },
+        "refs": [1792]
+      }
+    ]
+  },
+  {
     "version": "6.07",
     "date": "2026-06-24",
     "label": "Beta",
