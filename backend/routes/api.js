@@ -1477,7 +1477,20 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
     const withWindow = (races || []).map((r) => ({ ...r, window: raceTimeWindow(schedByRace.get(r.id)) }));
 
     const dayParam = Number.parseInt(req.query.day, 10);
-    const { dayWindow, currentDay, totalDays } = resolveSeasonDay({ season, schedRows, dayParam });
+    // Holdets kolonne-egnede løbsdage (scheduled, egen pulje, har vindue) — så board'et
+    // som standard lander på en dag med løb i stedet for et tomt "i dag" (de fleste af de
+    // 60 dage har ingen løb). firstMs gentages fra resolveSeasonDay (1 linje, idempotent).
+    const DAY_MS = 86_400_000;
+    const schedTimes = (schedRows || []).map((s) => Date.parse(s.scheduled_at)).filter(Number.isFinite);
+    const seasonFirstMs = schedTimes.length ? Math.min(...schedTimes) : Date.parse(season.start_date || "2026-01-01");
+    const myRaceDays = [...new Set(
+      withWindow
+        .filter((r) => r.status === "scheduled" && r.window
+          && teamInRacePool({ teamDivisionId: req.team.league_division_id, racePoolId: r.league_division_id }))
+        .map((r) => Math.floor((r.window.start - seasonFirstMs) / DAY_MS) + 1)
+    )].sort((a, b) => a - b);
+
+    const { dayWindow, currentDay, focusDay, totalDays } = resolveSeasonDay({ season, schedRows, dayParam, myRaceDays });
 
     const cols = buildColumnSet({ races: withWindow, teamDivisionId: req.team.league_division_id, dayWindow });
 
@@ -1506,7 +1519,7 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
       teamDivisionId: req.team.league_division_id, currentDay, totalDays,
     });
 
-    res.json({ enabled: true, season: { id: season.id, number: season.number }, currentDay, columns, bindingMap, timeline });
+    res.json({ enabled: true, season: { id: season.id, number: season.number }, currentDay, focusDay, columns, bindingMap, timeline });
   } catch (err) {
     captureException(err);
     res.status(500).json({ error: err.message });
@@ -1514,7 +1527,9 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
 });
 
 // Sæson-dag → CET-døgnvindue. day 1 = sæsonens første race-dag (tidligste scheduled_at).
-function resolveSeasonDay({ season, schedRows, dayParam }) {
+// focusDay = den dag board'et viser: eksplicit ?day=N, ellers holdets nærmeste kommende
+// løbsdag (myRaceDays), ellers i dag. Så board'et åbner aldrig tomt når holdet har løb.
+function resolveSeasonDay({ season, schedRows, dayParam, myRaceDays = [] }) {
   const times = (schedRows || []).map((s) => Date.parse(s.scheduled_at)).filter(Number.isFinite);
   const firstMs = times.length ? Math.min(...times) : Date.parse(season.start_date || "2026-01-01");
   const DAY = 86_400_000;
@@ -1522,9 +1537,16 @@ function resolveSeasonDay({ season, schedRows, dayParam }) {
   const totalDays = Math.max(1, Math.round((lastMs - firstMs) / DAY) + 1);
   const today = Math.floor((Date.now() - firstMs) / DAY) + 1;
   const currentDay = Math.min(Math.max(today, 1), totalDays);
-  const day = Number.isFinite(dayParam) ? Math.min(Math.max(dayParam, 1), totalDays) : currentDay;
-  const start = firstMs + (day - 1) * DAY;
-  return { dayWindow: { start, end: start + DAY - 1 }, currentDay, totalDays };
+  let focusDay;
+  if (Number.isFinite(dayParam)) {
+    focusDay = Math.min(Math.max(dayParam, 1), totalDays);
+  } else if (myRaceDays.length) {
+    focusDay = myRaceDays.find((d) => d >= currentDay) ?? myRaceDays[myRaceDays.length - 1];
+  } else {
+    focusDay = currentDay;
+  }
+  const start = firstMs + (focusDay - 1) * DAY;
+  return { dayWindow: { start, end: start + DAY - 1 }, currentDay, focusDay, totalDays };
 }
 
 // Tidslinje-input: terræn-glyf pr. dag (dominerende profil) + om holdet har løb den dag.

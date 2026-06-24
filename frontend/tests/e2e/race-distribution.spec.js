@@ -21,6 +21,7 @@ const DISTRIBUTION = {
   enabled: true,
   season: { id: "s1", number: 1 },
   currentDay: 24,
+  focusDay: 24,
   timeline: {
     totalDays: 60,
     currentDay: 24,

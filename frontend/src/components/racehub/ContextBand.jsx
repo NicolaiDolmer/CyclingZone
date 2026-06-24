@@ -3,10 +3,11 @@
 // RaceHubBoard sender day/scope + callbacks ned.
 import { useTranslation } from "react-i18next";
 
-export default function ContextBand({ scope, day, timeline, onScopeChange, onDayChange }) {
+export default function ContextBand({ scope, day, currentDay, timeline, onScopeChange, onDayChange }) {
   const { t } = useTranslation("races");
   const total = timeline?.totalDays ?? 60;
   const days = timeline?.days ?? [];
+  const focused = days.find((d) => d.day === day);
   const scopes = [
     { key: "mine", enabled: true },
     { key: "division", enabled: false },
@@ -38,25 +39,39 @@ export default function ContextBand({ scope, day, timeline, onScopeChange, onDay
         <button type="button" aria-label={t("racehub.timeline.prev")} disabled={day <= 1}
           onClick={() => onDayChange(day - 1)} className="text-cz-3 hover:text-cz-1 disabled:opacity-30 px-1">‹</button>
         <div className="flex gap-px flex-1" role="group" aria-label={t("racehub.timeline.dayOf", { day, total })}>
-          {days.map((d) => (
-            <button
-              key={d.day}
-              type="button"
-              title={d.dateText || t("racehub.timeline.dayOf", { day: d.day, total })}
-              aria-current={d.day === day ? "true" : undefined}
-              onClick={() => onDayChange(d.day)}
-              className={`flex-1 h-4 rounded-sm transition-colors ${
-                d.day === day ? "bg-cz-accent" : d.hasMyRace ? "bg-cz-card hover:bg-cz-elevated" : "bg-cz-card/40 hover:bg-cz-card"
-              }`}
-            />
-          ))}
+          {days.map((d) => {
+            const isFocus = d.day === day;
+            const isToday = d.day === currentDay;
+            const base = isFocus
+              ? "bg-cz-accent"
+              : d.hasMyRace
+              ? "bg-cz-card hover:bg-cz-elevated"
+              : "bg-cz-card/40 hover:bg-cz-card";
+            // "I dag" markeres med inset-ring når den ikke i forvejen er den fokuserede dag.
+            const todayRing = isToday && !isFocus ? "ring-1 ring-inset ring-cz-accent-t/70" : "";
+            return (
+              <button
+                key={d.day}
+                type="button"
+                title={`${d.dateText || t("racehub.timeline.dayOf", { day: d.day, total })}${isToday ? ` — ${t("racehub.timeline.youAreHere")}` : ""}`}
+                aria-current={isFocus ? "true" : undefined}
+                onClick={() => onDayChange(d.day)}
+                className={`flex-1 h-4 rounded-sm transition-colors ${base} ${todayRing}`}
+              />
+            );
+          })}
         </div>
         <button type="button" aria-label={t("racehub.timeline.next")} disabled={day >= total}
           onClick={() => onDayChange(day + 1)} className="text-cz-3 hover:text-cz-1 disabled:opacity-30 px-1">›</button>
       </div>
       <div className="flex justify-end mt-1.5">
         <span className="text-xs text-cz-accent-t font-medium">
-          {t("racehub.timeline.dayOf", { day, total })} — {t("racehub.timeline.youAreHere")}
+          {t("racehub.timeline.dayOf", { day, total })}
+          {day === currentDay
+            ? ` — ${t("racehub.timeline.youAreHere")}`
+            : focused?.dateText
+            ? ` · ${focused.dateText}`
+            : ""}
         </span>
       </div>
     </div>

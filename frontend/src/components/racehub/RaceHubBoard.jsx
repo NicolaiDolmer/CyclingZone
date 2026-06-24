@@ -46,7 +46,7 @@ export default function RaceHubBoard() {
   if (loading) return <div className="flex justify-center py-10"><Spinner size={20} /></div>;
   if (!data?.enabled) return null; // flag OFF → board skjult (kalender-faner viser stadig)
 
-  const day = Number.isFinite(dayParam) ? dayParam : data.currentDay;
+  const day = Number.isFinite(dayParam) ? dayParam : (data.focusDay ?? data.currentDay);
   const columns = data.columns || [];
   const roster = columns[0]?.riders || [];
 
@@ -111,7 +111,7 @@ export default function RaceHubBoard() {
 
   return (
     <div data-testid="race-hub-board">
-      <ContextBand scope={scope} day={day} timeline={data.timeline} onScopeChange={setScope} onDayChange={setDay} />
+      <ContextBand scope={scope} day={day} currentDay={data.currentDay} timeline={data.timeline} onScopeChange={setScope} onDayChange={setDay} />
       <div className="flex items-baseline justify-between mb-2">
         <h2 className="text-base font-bold text-cz-1">{t("racehub.heading")}</h2>
         <span className="text-xs text-cz-3">{t("racehub.overlap", { count: columns.length })}</span>
