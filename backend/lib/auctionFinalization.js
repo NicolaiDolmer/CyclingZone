@@ -12,6 +12,7 @@ import {
 } from "./marketUtils.js";
 import { incrementBalanceWithAudit, DUPLICATE_VIOLATION_CODE } from "./balanceRpc.js";
 import { contractOnAcquirePatch } from "./contractSeed.js";
+import { buildContractExpiringNotification } from "./notificationService.js";
 import { ACADEMY } from "./academyFlag.js";
 import {
   FINANCE_ACTOR_TYPE,
@@ -583,6 +584,28 @@ async function finalizeAuctionRecord({
       auction.id,
       { riderId: auction.rider.id }
     );
+
+    // #1836 · køb-trigger: hvis den vundne rytters kontrakt udløber i NUVÆRENDE
+    // sæson, advar køberen med det samme ("du købte en rytter hvis kontrakt
+    // udløber i år"). contract_end_season kan netop være sat af winnerContractPatch
+    // (kontraktløs free agent → standard-kontrakt), så vi læser den effektive værdi.
+    const winnerContractEndSeason =
+      winnerContractPatch.contract_end_season ?? auction.rider.contract_end_season;
+    if (winnerContractEndSeason === activeSeasonNumber) {
+      const expiring = buildContractExpiringNotification({
+        riderName: `${auction.rider.firstname} ${auction.rider.lastname}`,
+        riderId: auction.rider.id,
+        seasonNumber: activeSeasonNumber,
+      });
+      await notifyTeamOwner(
+        effectiveBidderId,
+        expiring.type,
+        expiring.title,
+        expiring.message,
+        expiring.relatedId,
+        expiring.metadata
+      );
+    }
 
     discordNotify({
       riderName: `${auction.rider.firstname} ${auction.rider.lastname}`,
