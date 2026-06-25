@@ -417,8 +417,12 @@ export default function Layout() {
         </div>
       )}
 
-      {/* Main content */}
-      <main className="flex-1 md:ms-52 min-h-screen">
+      {/* Main content — min-w-0 så flex-child'en kan krympe til viewporten i
+          stedet for at vokse med bredt indhold (fx en bred tabel i overflow-x-auto).
+          Uden den blæser indholdets min-content MAIN ud over mobil-viewporten →
+          horizontal overflow + shrink-to-fit-skalering → klikpunkter rammer
+          nabolayout (#1872). */}
+      <main className="flex-1 min-w-0 md:ms-52 min-h-screen">
         {/* Mobile topbar — bevidst IKKE sticky: den skal scrolle med indholdet
             og ikke "følge med op" og stjæle plads på små skærme (#1007). */}
         <div className="md:hidden flex items-center justify-between px-4 py-3 bg-cz-sidebar border-b border-cz-sidebar-border">
