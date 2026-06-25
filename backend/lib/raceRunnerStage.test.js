@@ -67,6 +67,8 @@ function makeSupabase(canned = {}, opts = {}) {
       in() { return b; },
       or() { return b; },
       order() { return b; },
+      limit() { return b; },
+      range() { return b; },
       gte() { return b; },
       maybeSingle() { return Promise.resolve({ data: (canned[table] || [])[0] ?? null, error: null }); },
       insert(rows) { writes.push({ table, op: "insert", rows }); return Promise.resolve({ error: null }); },
@@ -288,10 +290,11 @@ test("entries: persist=true KUN ved stageIndex=0 (auto-fill skriver entries kun 
   const insertedAt0 = stageZeroSb.__writes.find((w) => w.table === "race_entries" && w.op === "insert");
   assert.ok(insertedAt0, "etape 1 (stageIndex=0): auto-fill skal persistere race_entries");
 
-  // Samme felt, stageIndex=1: ingen race_entries-insert (persist=false).
+  // stageIndex=1: feltet er allerede persisteret (etape 0). #1844: ingen auto-fill og
+  // intet race_entries-insert ved etape>0 — feltet er låst.
   const stageOneSb = makeSupabase({
     race_stage_profiles: STAGES_3,
-    race_entries: [],
+    race_entries: ENTRANTS.filter((e) => e.team_id === "A").map((e) => ({ rider_id: e.rider_id, team_id: "A" })),
     teams: [{ id: "A", is_test_account: false, is_frozen: false }],
     riders: ENTRANTS.filter((e) => e.team_id === "A").map((e) => ({ id: e.rider_id, team_id: "A", firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
     rider_derived_abilities: ENTRANTS.map((e) => ({ rider_id: e.rider_id, ...e.abilities })),
@@ -300,7 +303,31 @@ test("entries: persist=true KUN ved stageIndex=0 (auto-fill skriver entries kun 
   });
   await simulateStageByIndex({ supabase: stageOneSb, race: STAGE_RACE, stageIndex: 1, ...NOOP_DEPS });
   const insertedAt1 = stageOneSb.__writes.find((w) => w.table === "race_entries" && w.op === "insert");
-  assert.equal(insertedAt1, undefined, "stageIndex=1: må IKKE persistere race_entries (persist=false)");
+  assert.equal(insertedAt1, undefined, "stageIndex=1: må IKKE persistere/auto-fylde race_entries (felt låst, #1844)");
+});
+
+test("#1844: mid-race-intruder (i entries men ikke i etape-1-snapshot) ekskluderes fra resultater", async () => {
+  // Boucles-scenariet: en rytter blev tilføjet entries efter etape 1. Feltet er låst til
+  // etape-1-snapshot'et → intruderen må ikke simuleres/optræde i senere etapers resultater.
+  const intruder = { rider_id: "intruder", team_id: "A" };
+  const allEntries = [...ENTRANTS.map((e) => ({ rider_id: e.rider_id, team_id: e.team_id })), intruder];
+  const sb = makeSupabase({
+    race_stage_profiles: STAGES_3,
+    race_entries: allEntries,
+    riders: [...ENTRANTS, { rider_id: "intruder", team_id: "A", is_u25: false }]
+      .map((e) => ({ id: e.rider_id, team_id: e.team_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
+    rider_derived_abilities: [...ENTRANTS.map((e) => ({ rider_id: e.rider_id, ...e.abilities })), { rider_id: "intruder", ...abil() }],
+    race_points: [],
+    races: [{ id: STAGE_RACE.id, ...STAGE_RACE }],
+    seasons: [{ id: STAGE_RACE.season_id, number: 2, status: "active", race_days_completed: 9, race_days_total: 60 }],
+    // Etape-1-snapshot UDEN intruder → feltet er låst til disse ryttere.
+    race_simulation_runs: [{ stage_number: 1, entrant_snapshot: ENTRANTS.map((e) => e.rider_id) }],
+  });
+  const cap = captureStageResult();
+  await simulateStageByIndex({ supabase: sb, race: STAGE_RACE, stageIndex: 1, ...NOOP_DEPS, applyStageResult: cap.applyStageResult });
+  const riderIdsInResult = new Set((cap.rows() || []).filter((r) => r.rider_id).map((r) => r.rider_id));
+  assert.ok(!riderIdsInResult.has("intruder"), "mid-race-intruder må IKKE optræde i etape-resultater (#1844)");
+  assert.ok(riderIdsInResult.has("climber"), "start-feltets ryttere er stadig med");
 });
 
 // ── Returkontrakt ─────────────────────────────────────────────────────────────
@@ -414,7 +441,7 @@ test("FIX 1: final-etape kører finalization FØR status=completed (rækkefølge
     from(table) {
       const b = {
         select() { return b; }, eq() { return b; }, in() { return b; }, or() { return b; },
-        order() { return b; }, gte() { return b; },
+        order() { return b; }, limit() { return b; }, range() { return b; }, gte() { return b; },
         maybeSingle() {
           const data = table === "seasons"
             ? { id: "s1", number: 2, status: "active", race_days_completed: 9, race_days_total: 60 }
@@ -474,7 +501,7 @@ test("FIX 1 recovery: finalization-pending løb re-kører finalization til compl
       if (table === "race_entries") entriesLoaded++;
       const b = {
         select() { return b; }, eq() { return b; }, in() { return b; }, or() { return b; },
-        order() { return b; }, gte() { return b; },
+        order() { return b; }, limit() { return b; }, range() { return b; }, gte() { return b; },
         maybeSingle() {
           const data = table === "seasons"
             ? { id: "s1", number: 2, status: "active", race_days_completed: 9, race_days_total: 60 } : null;
