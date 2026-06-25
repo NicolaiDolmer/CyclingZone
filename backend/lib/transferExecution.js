@@ -12,6 +12,7 @@ import {
 } from "./marketUtils.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
 import { contractOnAcquirePatch } from "./contractSeed.js";
+import { buildContractExpiringNotification } from "./notificationService.js";
 import {
   FINANCE_ACTOR_TYPE,
   FINANCE_REASON,
@@ -339,7 +340,9 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
   const rider = await expectSingle(
     supabase
       .from("riders")
-      .select("id, firstname, lastname, team_id, salary, base_value, prize_earnings_bonus")
+      // #1836: contract_end_season med så køb-trigger kan afgøre om kontrakten
+      // udløber i indeværende sæson.
+      .select("id, firstname, lastname, team_id, salary, base_value, prize_earnings_bonus, contract_end_season")
       .eq("id", offer.rider_id)
   );
   const [buyerState, sellerState, buyerCommitment] = await Promise.all([
@@ -385,7 +388,8 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
   // hvis kontraktløs (salary == null); ellers arves den uændret. Skrives både ved
   // parkering (lukket vindue) og direkte registrering (åbent vindue), fordi den
   // generiske pending-flush ved vindue-åbning kun flytter team_id.
-  const transferContractPatch = contractOnAcquirePatch(rider, await fetchActiveSeasonNumber(supabase));
+  const activeSeasonNumber = await fetchActiveSeasonNumber(supabase);
+  const transferContractPatch = contractOnAcquirePatch(rider, activeSeasonNumber);
 
   // #19: parkér = sæt pending_team_id (kræver at rytteren ikke allerede er
   // reserveret til en anden handel); registrér = flyt team_id direkte.
@@ -506,6 +510,28 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
     `${rider.firstname} ${rider.lastname} skifter hold for ${price.toLocaleString()} CZ$`, offer.id, { riderId: rider.id });
   await notifyTeamOwner(offer.seller_team_id, "transfer_offer_accepted", "Transfer gennemført!",
     `${rider.firstname} ${rider.lastname} skifter hold for ${price.toLocaleString()} CZ$`, offer.id, { riderId: rider.id });
+
+  // #1836 · køb-trigger: hvis den købte rytters kontrakt udløber i NUVÆRENDE
+  // sæson, advar køberen med det samme. contract_end_season kan netop være sat
+  // af transferContractPatch (kontraktløs free agent → standard-kontrakt), så vi
+  // læser den effektive værdi.
+  const buyerContractEndSeason =
+    transferContractPatch.contract_end_season ?? rider.contract_end_season;
+  if (buyerContractEndSeason === activeSeasonNumber) {
+    const expiring = buildContractExpiringNotification({
+      riderName: `${rider.firstname} ${rider.lastname}`,
+      riderId: rider.id,
+      seasonNumber: activeSeasonNumber,
+    });
+    await notifyTeamOwner(
+      offer.buyer_team_id,
+      expiring.type,
+      expiring.title,
+      expiring.message,
+      expiring.relatedId,
+      expiring.metadata
+    );
+  }
 
   await notifyDiscordHistory({
     riderName: `${rider.firstname} ${rider.lastname}`,
