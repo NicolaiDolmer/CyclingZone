@@ -1,0 +1,107 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+#
+# CodeRabbit-konfiguration for CyclingZone.
+# Rolle: eneste AI-AUTO-reviewer på PR'er (Claude-auto-review pensioneres når
+# CodeRabbit er bevist — se docs/NOW.md / claude-review.yml).
+# Princip: ADVISORY. De hårde merge-gates er de deterministiske CI-checks
+# (backend-tests, frontend-build, dependency-review, i18n, leak-check). CodeRabbit
+# tilføjes IKKE som required status check — det skal aldrig blokere en merge.
+
+language: "en-US"
+early_access: false
+
+reviews:
+  # "chill" = færre nitpicks, fokus på reelle problemer. Matcher anti-slop-smag.
+  profile: "chill"
+  # Post ALDRIG "request changes" der formelt blokerer — review er rådgivende.
+  request_changes_workflow: false
+  high_level_summary: true
+  # Ingen AI-slop-digt.
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+  # Lad CodeRabbit vente på og indregne CI-resultaterne i sit review.
+  changed_files_summary: true
+
+  auto_review:
+    enabled: true
+    # Matcher eksisterende politik: drafts får ikke auto-review.
+    drafts: false
+    base_branches:
+      - "main"
+
+  # Skær støj fra: genereret, binært, lockfiles, snapshots, store data-dumps.
+  path_filters:
+    - "!**/node_modules/**"
+    - "!**/dist/**"
+    - "!**/build/**"
+    - "!**/*.png"
+    - "!**/*.jpg"
+    - "!**/*.svg"
+    - "!**/*-snapshots/**"
+    - "!**/__snapshots__/**"
+    - "!**/test-results/**"
+    - "!**/playwright-report/**"
+    - "!package-lock.json"
+    - "!**/package-lock.json"
+    - "!issues.json"
+    - "!issues_list.txt"
+    - "!issues_summary.txt"
+
+  # Domæne-specifikke review-regler (afspejler repoets hard rules + lærte fælder).
+  path_instructions:
+    - path: "database/**/*.sql"
+      instructions: >-
+        Migrations auto-applies i produktion ved merge. Flag ALTID: (1) nye
+        player-facing kolonner på riders/rider_derived_abilities uden tilsvarende
+        GRANT SELECT (col) TO anon, authenticated i SAMME migration; (2) manglende
+        eller for brede RLS-policies; (3) destruktiv DDL (DROP/TRUNCATE/ALTER der
+        taber data). Mind om at PR'er med database/*.sql aldrig må auto-merges —
+        ejeren merger dem manuelt.
+    - path: "backend/**/*.{js,mjs}"
+      instructions: >-
+        Flag auth/RLS/input-validation-huller og brud på finans-, auktions- og
+        ownership-invarianter. Nye endpoints eller nye SELECT-kolonner skal
+        verificeres mod den reelle DB-skema og håndtere {data,error} eksplicit
+        (throw, ikke tavst `|| []`). Vær opmærksom på PostgREST 1000-rækkers cap i
+        ad-hoc scripts (.in() over mange ids trunkeres stille — kræver paginering).
+    - path: "frontend/**/*.{js,jsx}"
+      instructions: >-
+        Player-facing copy er EN-først, DA-sekundær. Flag opfundet indhold og
+        em-dashes (—) i copy. Ny/ændret spilmekanik kræver opdatering af
+        help.json (en+da) og PatchNotesPage.jsx. Undgå AI-slop-æstetik
+        (rounded-2xl, glows, gradient-blobs, emoji-ikoner). Kun .js relative
+        imports — extensionless imports består Vite men fejler i Node's ESM-loader
+        i CI.
+    - path: "frontend/**/*.test.{js,jsx}"
+      instructions: >-
+        Mocket Playwright/unit-test beviser kun rendering, ikke backend-kontrakten.
+        Flag hvis ny adfærd kun er dækket af mocks uden en reel endpoint-/DB-test.
+    - path: ".github/workflows/**"
+      instructions: >-
+        Flag manglende mindste-privilegium på permissions, hemmeligheder logget i
+        klartekst, og pinning af actions. Vær opmærksom på recursive @claude/bot-loops.
+
+  tools:
+    # CodeRabbit kører repoets egne lint-/sikkerheds-konfigurationer og samler dem
+    # i reviewet (.gitleaks.toml, eslint, yamllint findes allerede).
+    gitleaks:
+      enabled: true
+    eslint:
+      enabled: true
+    yamllint:
+      enabled: true
+    # Indregn GitHub-checks i reviewet (advisory — blokerer ikke).
+    github-checks:
+      enabled: true
+      timeout_ms: 180000
+
+chat:
+  # Tillad "@coderabbitai"-spørgsmål i PR-tråde (og at den lærer af din feedback).
+  auto_reply: true
+
+knowledge_base:
+  learnings:
+    scope: "auto"
+  issues:
+    scope: "auto"
