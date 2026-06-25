@@ -23,6 +23,27 @@ export function getEventSatisfactionTrend(events) {
   return { glyph: "→", color: "text-cz-3", key: "flat", delta: 0 };
 }
 
+/**
+ * #1830 · Board-wide tilfredshed — ÉN delt kilde for både Dashboard-kortet og
+ * Bestyrelse-sidens drivers-panel, så de aldrig kan divergere (fx 65% vs 67%).
+ *
+ * En manager kan have flere aktive planer (1/3/5-år), hver med sin egen
+ * `board.satisfaction`. Den board-brede værdi er gennemsnittet på tværs af de
+ * planer der findes, afrundet. Tager `plans`-mappet ({ "1yr", "3yr", "5yr" })
+ * fra GET /api/board/status. Returnerer null når ingen plan har et tal (fx
+ * sæson-1 baseline-fase), så kaldersiden kan skjule visningen.
+ *
+ * @param {object} plans  { "1yr"?: planData, "3yr"?: planData, "5yr"?: planData }
+ * @returns {number|null} Afrundet gennemsnitlig tilfredshed (0-100), eller null.
+ */
+export function computeOverallBoardSatisfaction(plans) {
+  const sats = Object.values(plans || {})
+    .map((p) => p?.board?.satisfaction)
+    .filter((s) => typeof s === "number");
+  if (!sats.length) return null;
+  return Math.round(sats.reduce((a, b) => a + b, 0) / sats.length);
+}
+
 export function satisfactionToModifier(satisfaction) {
   if (satisfaction >= 80) return 1.20;
   if (satisfaction >= 60) return 1.10;

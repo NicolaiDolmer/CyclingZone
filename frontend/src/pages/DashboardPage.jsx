@@ -7,6 +7,7 @@ import OnboardingCompletionCard from "../components/OnboardingCompletionCard";
 import { FinanceForecastBadge } from "../components/FinanceForecastCard";
 import SurveyBanner from "../components/SurveyBanner";
 import { computeDashboardSquadStats, fetchSquadCountInputs } from "../lib/dashboardSquadStats";
+import { computeOverallBoardSatisfaction } from "../lib/boardUtils";
 import { formatNumber } from "../lib/intl";
 import { dateTextToDayOfYear } from "../lib/raceCalendar";
 import { poolRaceDayTotals, deriveRaceStatus } from "../lib/raceHubLogic.js";
@@ -77,6 +78,9 @@ export default function DashboardPage() {
   const [nextRaces, setNextRaces] = useState([]);
   const [standings, setStandings] = useState([]);
   const [board, setBoard] = useState(null);
+  // #1830 · board-bred tilfredshed (gnsn. på tværs af alle planer) — samme værdi
+  // som Bestyrelse-sidens drivers-panel, så de to flader ikke divergerer.
+  const [boardSatisfaction, setBoardSatisfaction] = useState(null);
   const [boardOutlook, setBoardOutlook] = useState(null);
   const [activeOffers, setActiveOffers] = useState([]);
   const [forecast, setForecast] = useState(null);
@@ -197,6 +201,10 @@ export default function DashboardPage() {
     setNextRaces(sortedRaces);
     const activePlan = boardStatus?.plans?.["1yr"] || boardStatus?.plans?.["3yr"] || boardStatus?.plans?.["5yr"] || null;
     setBoard(activePlan?.board || null);
+    // #1830 · tilfredsheds-tallet aggregeres på tværs af ALLE planer (samme delte
+    // helper som Bestyrelse-siden) — ikke kun den første aktive plan, ellers
+    // viste Dashboard 65% mens Bestyrelse viste 67%.
+    setBoardSatisfaction(computeOverallBoardSatisfaction(boardStatus?.plans));
     setBoardOutlook(activePlan?.outlook || null);
     setActiveOffers([
       ...(offersRes.received || []).map(offer => ({ ...offer, _dir: "received" })),
@@ -390,7 +398,10 @@ export default function DashboardPage() {
     const diff = new Date(a.calculated_end) - new Date();
     return diff > 0 && diff < 3600000;
   }).length;
-  const satisfactionColor = board?.satisfaction >= 70 ? "text-cz-success" : board?.satisfaction >= 40 ? "text-cz-accent-t" : "text-cz-danger";
+  // #1830 · board-bred tilfredshed (delt med Bestyrelse-siden). Fald tilbage til
+  // den aktive plans værdi hvis aggregatet mangler, så kortet aldrig viser tomt.
+  const displaySatisfaction = boardSatisfaction ?? board?.satisfaction ?? null;
+  const satisfactionColor = displaySatisfaction >= 70 ? "text-cz-success" : displaySatisfaction >= 40 ? "text-cz-accent-t" : "text-cz-danger";
 
   // Squad warnings — bug #250: tæller skal forudsige fremtidens hold-størrelse
   // (ejede MINUS pending-out PLUS pending-in PLUS indgående lån), ikke nuværende
@@ -800,10 +811,10 @@ export default function DashboardPage() {
                   <div className="flex items-center gap-3">
                     <div className="flex-1 bg-cz-subtle rounded-full h-2">
                       <div className={`h-2 rounded-full transition-all
-                        ${board.satisfaction >= 70 ? "bg-cz-success" : board.satisfaction >= 40 ? "bg-cz-accent" : "bg-cz-danger"}`}
-                        style={{ width: `${board.satisfaction}%` }} />
+                        ${displaySatisfaction >= 70 ? "bg-cz-success" : displaySatisfaction >= 40 ? "bg-cz-accent" : "bg-cz-danger"}`}
+                        style={{ width: `${displaySatisfaction}%` }} />
                     </div>
-                    <span className={`font-mono font-bold text-sm ${satisfactionColor}`}>{board.satisfaction}%</span>
+                    <span className={`font-mono font-bold text-sm ${satisfactionColor}`}>{displaySatisfaction}%</span>
                   </div>
                 </div>
                 <div>

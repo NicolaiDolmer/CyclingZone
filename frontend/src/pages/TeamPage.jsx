@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import RiderLink from "../components/RiderLink";
 import { useClientRiderFilters } from "../lib/useRiderFilters";
@@ -289,6 +289,10 @@ function SquadTab({ riders, scouting, onSelectRider, windowOpen }) {
   const { t } = useTranslation("team");
   // #1131: fulde stat-navne som native tooltip på de forkortede kolonne-headers.
   const { t: tRider } = useTranslation("rider");
+  // #1796: hele rytter-rækken navigerer til rytter-profilen (flest dead clicks på
+  // /team var klik på værdi-/potentiale-cellen). Samme row-as-link-mønster som
+  // /riders (RiderRow). Navn-linket + Handling-knappen stopper propagation.
+  const navigate = useNavigate();
   // #1095: eksplicit "nuværende" vs "kommende" trup-visning i stedet for
   // vis/skjul-toggles — spillere med ind-/udgående ryttere skal tydeligt
   // kunne se begge tilstande.
@@ -432,7 +436,8 @@ function SquadTab({ riders, scouting, onSelectRider, windowOpen }) {
               <tbody>
                 {displayRiders.map(r => (
                   <tr key={r.id}
-                    className={`border-b border-cz-border hover:bg-cz-subtle
+                    onClick={() => navigate(`/riders/${r.id}`)}
+                    className={`border-b border-cz-border hover:bg-cz-subtle cursor-pointer transition-colors
                       ${r._isIncoming  ? "bg-cz-success-bg0/3"  :
                         r._isOutgoing  ? "bg-cz-danger-bg0/3"    :
                         r._isLoanedIn  ? "bg-cz-info/3" :
@@ -446,7 +451,7 @@ function SquadTab({ riders, scouting, onSelectRider, windowOpen }) {
                         {r._isOutgoing  && <span className="w-2 h-2 rounded-full bg-cz-danger flex-shrink-0" />}
                         {r._isLoanedIn  && <span className="w-2 h-2 rounded-full bg-cz-info flex-shrink-0" />}
                         {r._isLoanedOut && <span className="w-2 h-2 rounded-full bg-cz-warning flex-shrink-0" />}
-                        <RiderLink id={r.id}
+                        <RiderLink id={r.id} stopPropagation
                           className="text-cz-1 text-sm font-medium hover:text-cz-accent-t transition-colors">
                           {r.firstname} {r.lastname}
                         </RiderLink>
@@ -501,7 +506,7 @@ function SquadTab({ riders, scouting, onSelectRider, windowOpen }) {
                     ))}
                     <td className="px-3 py-2.5 text-center">
                       {!r._isIncoming && (
-                        <button onClick={() => onSelectRider(r)}
+                        <button onClick={(e) => { e.stopPropagation(); onSelectRider(r); }}
                           className="px-3 min-h-[44px] bg-cz-subtle hover:bg-cz-subtle text-cz-2 hover:text-cz-1 rounded text-xs transition-all border border-cz-border whitespace-nowrap">
                           {t("squad.actionButton")}
                         </button>
