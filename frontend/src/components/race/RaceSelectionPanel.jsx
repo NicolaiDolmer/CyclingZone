@@ -12,6 +12,8 @@ import { useTranslation } from "react-i18next";
 import { getSession } from "../../lib/supabase";
 import { toggleRider, validateSelectionClient } from "../../lib/raceSelectionLogic.js";
 import RiderTypeBadge from "../rider/RiderTypeBadge.jsx";
+import FitBar from "../racehub/FitBar.jsx";
+import { effectiveStageFit, bestFitRiderId } from "../../lib/lineupInsight.js";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -24,7 +26,7 @@ async function authHeaders() {
   return { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 }
 
-export default function RaceSelectionPanel({ raceId }) {
+export default function RaceSelectionPanel({ raceId, selectedStageIndex = null, selectedStageBucket = null }) {
   const { t } = useTranslation("races");
   const [data, setData] = useState(null);
   const [sel, setSel] = useState(EMPTY_SELECTION);
@@ -71,6 +73,8 @@ export default function RaceSelectionPanel({ raceId }) {
   const { size, riders, availableCount } = data;
   const clientErrors = validateSelectionClient({ ...sel, size, availableCount });
   const selectedRiders = riders.filter((r) => sel.riderIds.includes(r.id));
+  // S4: best-fit-nudge — den valgte rytter med højest rute-match til den valgte etape.
+  const bestId = bestFitRiderId(riders, sel.riderIds, selectedStageIndex);
   const atMax = sel.riderIds.length >= size.max;
   const errParams = { min: size.min, max: size.max };
   const saving = status === "saving";
@@ -169,6 +173,16 @@ export default function RaceSelectionPanel({ raceId }) {
         )}
       </div>
 
+      {/* S4: delt "why this rider"-hint — kobler etapens terræn til dit stærkeste fit. */}
+      {selectedStageBucket && bestId && (
+        <p className="px-4 py-2 text-[11px] leading-snug text-cz-2 bg-cz-subtle border-b border-cz-border">
+          {t("selection.whyBest", {
+            bucket: t(`strategy.buckets.${selectedStageBucket}`),
+            name: riders.find((r) => r.id === bestId)?.name ?? "",
+          })}
+        </p>
+      )}
+
       {data.selection?.is_auto_filled && (
         <p className="px-4 py-2 text-xs text-cz-2 bg-cz-subtle border-b border-cz-border">
           {t("selection.autoPicked")}
@@ -182,7 +196,9 @@ export default function RaceSelectionPanel({ raceId }) {
             <tr className="border-b border-cz-border">
               <th scope="col" className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("selection.thRider")}</th>
               <th scope="col" className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("selection.type")}</th>
-              <th scope="col" className="px-4 py-3 text-right text-cz-3 font-medium text-xs uppercase">{t("selection.suitability")}</th>
+              <th scope="col" className="px-4 py-3 text-right text-cz-3 font-medium text-xs uppercase">
+                {selectedStageIndex != null ? t("selection.routeMatch") : t("selection.suitability")}
+              </th>
               <th scope="col" className="px-4 py-3 text-right text-cz-3 font-medium text-xs uppercase">{t("selection.form")}</th>
               <th scope="col" className="px-4 py-3 text-right text-cz-3 font-medium text-xs uppercase">{t("selection.fatigue")}</th>
             </tr>
@@ -213,7 +229,14 @@ export default function RaceSelectionPanel({ raceId }) {
                   <td className="px-4 py-2.5">
                     <RiderTypeBadge primaryType={rider.primaryType} secondaryType={rider.secondaryType} />
                   </td>
-                  <td className="px-4 py-2.5 text-right font-mono text-xs text-cz-2">{rider.suitability ?? "—"}</td>
+                  <td className="px-4 py-2.5 text-right">
+                    <span className="inline-flex items-center gap-2 justify-end">
+                      {rider.id === bestId && (
+                        <span className="text-[9px] uppercase tracking-wide text-cz-accent-t" title={t("selection.bestForStage")}>{t("selection.best")}</span>
+                      )}
+                      <FitBar score={effectiveStageFit(rider, selectedStageIndex)} />
+                    </span>
+                  </td>
                   <td className="px-4 py-2.5 text-right font-mono text-xs text-cz-2">{rider.form ?? "—"}</td>
                   <td className="px-4 py-2.5 text-right font-mono text-xs text-cz-2">{rider.fatigue ?? "—"}</td>
                 </tr>
