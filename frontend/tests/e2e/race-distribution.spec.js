@@ -86,12 +86,27 @@ test("trup-fordeling-board viser overlappende løb + låst rytter i puljen", asy
   await expect(board.getByRole("button", { name: /Rider 5/ })).toBeEnabled();
 });
 
-// #1823: gem-fejl må IKKE være tavse — board'et viser en mappet fejlbesked.
-test("board surfacer fejlbesked når en udtagelse afvises (#1823)", async ({ page }) => {
+// Fuld 6/6-race-a (alle 6 pladser) — så en GYLDIG ændring (rolle-skift) faktisk PUT'er.
+const FULL_RACE_A = {
+  ...DISTRIBUTION,
+  columns: [
+    {
+      ...DISTRIBUTION.columns[0],
+      counts: { selected: 6, target: 6 },
+      selection: { rider_ids: ["r0", "r1", "r2", "r3", "r4", "r5"], captain_id: "r0", sprint_captain_id: null, hunter_id: null, is_auto_filled: false },
+    },
+    DISTRIBUTION.columns[1],
+  ],
+  bindingMap: { r0: ["race-a"], r1: ["race-a"], r2: ["race-a"], r3: ["race-a"], r4: ["race-a"], r5: ["race-a"] },
+};
+
+// #1823: gem-fejl må IKKE være tavse — når en GYLDIG ændring afvises af serveren,
+// viser board'et en mappet fejlbesked. (Auto-gem-når-gyldig: en rolle-ændring på en
+// fuld trup PUT'er; her mocker vi et 409 og forventer alert'en.)
+test("board surfacer fejlbesked når en gyldig udtagelse afvises (#1823)", async ({ page }) => {
   await stabilizePage(page);
   await installNetworkMocks(page);
-  await mockDistribution(page);
-  // PUT /selection på race-a → 409 selection_wrong_size (fx fjern under min).
+  await mockDistribution(page, FULL_RACE_A);
   await page.route("**/api/races/race-a/selection", (route) => {
     const request = route.request();
     if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
@@ -106,15 +121,44 @@ test("board surfacer fejlbesked når en udtagelse afvises (#1823)", async ({ pag
   const board = page.getByTestId("race-hub-board");
   await expect(board).toBeVisible();
 
-  // Fjern r0 fra race-a (× = "Fjern rytter") → PUT fejler → toast med min/max (6).
-  // force: testen verificerer fejl-toasten (handler→PUT→toast); det lille ×-target kan
-  // på smal mobil-viewport være pointer-interceptet af nabolayout, så vi dispatcher direkte.
+  // Klik en udtagen rytter → rolle-menu → sæt en rolle (gyldig ændring) → PUT → 409 → alert.
+  await board.getByRole("button", { name: /Rider 1/ }).first().click();
+  await board.getByRole("button", { name: /Sprint-kaptajn/ }).click();
+  const alert = board.getByRole("alert");
+  await expect(alert).toBeVisible();
+  await expect(alert).toContainText(/6/); // "Udtag mellem 6 og 6 ryttere" (ikke literal {min})
+});
+
+// Rod A (#1823): auto-gem-når-gyldig — at fjerne en rytter under minimum GEMMER IKKE
+// (ingen PUT, ingen fejl-alert); kolonnen viser blot underbemandet, så man kan redigere
+// videre. Det er det fix der ophæver den hårde 6-og-6-lås.
+test("board: fjern under minimum gemmer ikke + viser underbemandet uden fejl (#1823)", async ({ page }) => {
+  await stabilizePage(page);
+  await installNetworkMocks(page);
+  await mockDistribution(page, FULL_RACE_A);
+  let putCalled = false;
+  await page.route("**/api/races/race-a/selection", (route) => {
+    const request = route.request();
+    if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
+    putCalled = true; // bør ALDRIG ske for en ugyldig (under-min) kladde
+    return route.fulfill({ status: 200, contentType: "application/json", headers: corsHeaders(request), body: JSON.stringify({ ok: true }) });
+  });
+
+  await login(page);
+  await page.goto("/races");
+  const board = page.getByTestId("race-hub-board");
+  await expect(board).toBeVisible();
+  await expect(board.getByText(/6 \/ 6/).first()).toBeVisible();
+
+  // Fjern én rytter fra den fulde 6/6-trup → 5/6.
   const removeBtn = board.getByRole("button", { name: /Fjern rytter/ }).first();
   await removeBtn.scrollIntoViewIfNeeded();
   await removeBtn.click({ force: true });
-  const alert = board.getByRole("alert");
-  await expect(alert).toBeVisible();
-  await expect(alert).toContainText(/6/); // "Vælg mellem 6 og 6 ryttere" (ikke literal {min})
+
+  // Underbemandet vises; INGEN fejl-alert; INGEN PUT (ugyldig kladde gemmes ikke).
+  await expect(board.getByText(/5 \/ 6/).first()).toBeVisible();
+  await expect(board.getByRole("alert")).toHaveCount(0);
+  expect(putCalled).toBe(false);
 });
 
 // #1823: klik en udtagen rytter → rolle-menu (kaptajn/sprint/jæger/kun rytter).
