@@ -83,6 +83,7 @@ export const LOCALE_ALLOWLIST = new Map([
 // player-facing; dual-page privacy og PatchNotes-data er bevidst dansk).
 export const EXEMPT_DIRS = [
   "frontend/src/pages/admin", // Admin-only tabs bag admin-guard — ikke player-facing.
+  "frontend/src/preview", // Preview-only mock-seed (PSH): tree-shakes 100% væk fra prod-bundlen når VITE_PREVIEW_MOCK er unset (verificeret). Ikke player-facing — samme kategori som test-fixtures.
 ];
 export const EXEMPT_FILES = new Map([
   ["frontend/src/lib/legacyFinanceMessage.js", "Parser-only matching of Danish prose already stored in legacy finance rows; recognized text resolves to locale keys before display."],
