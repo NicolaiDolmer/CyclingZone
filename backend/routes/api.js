@@ -1474,6 +1474,27 @@ async function fetchAllScheduleRows(supabase, raceIds) {
   return rows;
 }
 
+// Range-pagineret + id-chunked load af race_stage_profiles. race_stage_profiles-rækker
+// = løb × etaper, så et fuld-sæson-løb-sæt overstiger PostgREST's 1000-rækkers cap; en
+// rå .in() trunkerer TAVST (samme klasse som #1798/#1839). Spejler fetchAllScheduleRows.
+async function fetchAllStageProfiles(supabase, raceIds, columns) {
+  const PAGE = 1000;
+  const ID_CHUNK = 300;
+  const rows = [];
+  for (let i = 0; i < raceIds.length; i += ID_CHUNK) {
+    const chunk = raceIds.slice(i, i + ID_CHUNK);
+    for (let from = 0; ; from += PAGE) {
+      const { data, error } = await supabase
+        .from("race_stage_profiles").select(columns)
+        .in("race_id", chunk).range(from, from + PAGE - 1);
+      if (error) break;
+      rows.push(...(data || []));
+      if (!data || data.length < PAGE) break;
+    }
+  }
+  return rows;
+}
+
 // Race Hub Fase 1 — GET /api/races/distribution?day=N
 // Aggregat-læsning til trup-fordeling-board'et: dagens egne-pulje overlap-løb som
 // kolonner + holdets trup + binding-map + sæson-tidslinje. Saves går stadig via
@@ -1875,9 +1896,9 @@ router.get("/races/strategy", requireAuth, async (req, res) => {
       const myRaces = (races || []).filter((r) =>
         teamInRacePool({ teamDivisionId: req.team.league_division_id, racePoolId: r.league_division_id }));
       const raceIds = myRaces.map((r) => r.id);
-      const { data: profs } = raceIds.length
-        ? await supabase.from("race_stage_profiles").select("race_id, profile_type, demand_vector").in("race_id", raceIds.slice(0, 1000))
-        : { data: [] };
+      const profs = raceIds.length
+        ? await fetchAllStageProfiles(supabase, raceIds, "race_id, profile_type, demand_vector")
+        : [];
       const stageProfiles = (profs || []).map((p) => ({ bucket: terrainBucket(p.profile_type), demand_vector: p.demand_vector }));
       suitabilities = bucketSuitabilities({
         stageProfiles,
@@ -2022,8 +2043,7 @@ router.post("/races/strategy/preview", requireAuth, marketWriteLimiter, async (r
       .map((id) => ({ rider_id: id, abilities: abById.get(id), fatigue: fatById.get(id) ?? 0 }))
       .filter((r) => r.abilities);
 
-    const { data: profs } = await supabase.from("race_stage_profiles")
-      .select("race_id, stage_number, profile_type, finale_type, demand_vector").in("race_id", raceIds.slice(0, 1000));
+    const profs = await fetchAllStageProfiles(supabase, raceIds, "race_id, stage_number, profile_type, finale_type, demand_vector");
     const stagesByRace = new Map();
     for (const p of profs || []) {
       if (!stagesByRace.has(p.race_id)) stagesByRace.set(p.race_id, []);
