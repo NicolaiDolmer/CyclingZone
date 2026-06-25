@@ -23,6 +23,8 @@ export default function StageStripe({ stages = [], activeStage, onSelect, times 
           type="button"
           onClick={() => onSelect("overall")}
           title={t("detail.tabOverall")}
+          aria-label={t("detail.tabOverall")}
+          aria-pressed={activeStage === "overall"}
           className={`flex-1 min-w-0 rounded-cz px-1.5 py-1.5 text-center border transition-colors
             ${activeStage === "overall" ? "border-cz-accent bg-cz-accent/[0.06]" : "border-cz-border bg-cz-card hover:bg-cz-subtle"}`}
         >
@@ -41,6 +43,8 @@ export default function StageStripe({ stages = [], activeStage, onSelect, times 
             type="button"
             onClick={() => onSelect(n)}
             title={label ? t(`detail.${label}`) : undefined}
+            aria-label={t("detail.tabStage", { number: n })}
+            aria-pressed={active}
             className={`flex-1 min-w-0 rounded-cz px-1.5 pt-1.5 pb-1 text-center border transition-colors
               ${active ? "border-cz-accent bg-cz-accent/[0.06]" : "border-cz-border bg-cz-card hover:bg-cz-subtle"}`}
           >

@@ -357,7 +357,7 @@ export default function RaceDetailPage() {
           )
       )}
 
-      {!hasAnyResults && (
+      {!hasAnyResults && race.status !== "scheduled" && (
         <div className="bg-cz-card border border-cz-border rounded-cz p-10 text-center text-cz-3">
           <FlagIcon className="w-8 h-8 mx-auto mb-3" aria-hidden="true" />
           <p className="text-sm">{t("empty.noResultsImportedRace")}</p>
