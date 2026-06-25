@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { computeColumnStatus, freshnessTier } from "../../lib/raceHubLogic.js";
 import FitBar from "./FitBar.jsx";
+import RaceLink from "../RaceLink.jsx";
 import { LockIcon } from "../ui";
 
 const STATUS_CLASS = {
@@ -51,7 +52,7 @@ export default function RaceColumn({ column, onRemoveRider, onToggleWithdraw, on
     <div className="border border-cz-border rounded-cz bg-cz-card flex flex-col">
       <div className="p-3 border-b border-cz-border">
         <div className="flex items-start justify-between gap-2">
-          <p className="text-sm font-semibold text-cz-1">{column.name}</p>
+          <RaceLink id={column.id} state={{ from: "board" }} className="text-sm font-semibold text-cz-1 hover:text-cz-accent-t transition-colors">{column.name}</RaceLink>
           {locked && <LockIcon size={13} className="text-cz-3 mt-0.5 flex-shrink-0" aria-hidden="true" />}
         </div>
         <p className="text-[11px] text-cz-3 mt-0.5">
