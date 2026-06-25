@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.15",
+    "date": "2026-06-25",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Set rider roles with tactics cards that explain the terrain",
+          "body": "Role assignment is now a set of cards instead of a dropdown. Each card tells you why a role fits this race's terrain: who your protected captain leads, when a sprint captain matters, and what the breakaway hunter does. The hunter card shows how likely a breakaway is to stay away here, and the race detail page now explains the hunter role and ranks your best hunters by aggression."
+        },
+        "da": {
+          "title": "Sæt rytter-roller med taktik-kort der forklarer terrænet",
+          "body": "Rolle-tildeling er nu kort i stedet for en dropdown. Hvert kort fortæller hvorfor en rolle passer løbets terræn: hvem din beskyttede kaptajn fører an, hvornår en sprint-kaptajn betyder noget, og hvad udbrudsjægeren gør. Jæger-kortet viser hvor sandsynligt et udbrud er at holde hjem her, og løb-detalje-siden forklarer nu jæger-rollen og rangerer dine bedste jægere efter aggression."
+        },
+        "refs": [1747]
+      }
+    ]
+  },
+  {
     "version": "6.14",
     "date": "2026-06-25",
     "label": "Beta",

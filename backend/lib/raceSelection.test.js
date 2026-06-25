@@ -53,12 +53,13 @@ test("buildRiderRows: hver rytter får stageSuitability-array (længde = antal e
     { stage_number: 2, profile_type: "mountain", demand_vector: { climbing: 0.9, randomness: 0.4 } },
   ];
   const riders = [{ id: "r1", firstname: "A", lastname: "B", primary_type: "climber", secondary_type: null }];
-  const abilityByRider = new Map([["r1", { climbing: 90, sprint: 20 }]]);
+  const abilityByRider = new Map([["r1", { climbing: 90, sprint: 20, aggression: 73 }]]);
   const conditionByRider = new Map([["r1", { form: 60, fatigue: 10, injured_until: null }]]);
   const rows = buildRiderRows({ riders, stages, abilityByRider, conditionByRider, todayStr: "2026-06-25" });
   assert.equal(rows[0].stageSuitability.length, 2);
   assert.ok(rows[0].stageSuitability[1] > rows[0].stageSuitability[0]); // klatrer: bjerg > flad
   assert.equal(typeof rows[0].suitability, "number"); // løb-snit bevaret
+  assert.equal(rows[0].aggression, 73); // S5: aggression surfaced til jæger-rangering
 });
 
 test("buildRiderRows: ingen evner → suitability null + stageSuitability null", () => {
@@ -69,4 +70,5 @@ test("buildRiderRows: ingen evner → suitability null + stageSuitability null",
   });
   assert.equal(rows[0].suitability, null);
   assert.equal(rows[0].stageSuitability, null);
+  assert.equal(rows[0].aggression, null); // ingen evner → aggression null
 });

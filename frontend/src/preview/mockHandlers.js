@@ -16,6 +16,7 @@ import {
   SEED_STAGE_SCHEDULE,
   SEED_RACE_RESULTS,
   SEED_DISTRIBUTION,
+  SEED_SELECTION,
   SEED_STRATEGY,
   SEED_ACADEMY,
 } from "./seedData.js";
@@ -201,6 +202,8 @@ export function apiResponse(pathname) {
   // Race-hub (#prelive-harness, A2): board-aggregat + strategi-flade.
   if (pathname.endsWith("/api/races/distribution")) return SEED_DISTRIBUTION;
   if (pathname.endsWith("/api/races/strategy")) return SEED_STRATEGY;
+  // S5: udtagelses-panel (RaceSelectionPanel + HunterExplainer). /api/races/:id/selection.
+  if (/\/api\/races\/[^/]+\/selection$/.test(pathname)) return SEED_SELECTION;
   if (pathname.endsWith("/api/scouting/me")) {
     return { slots: { total: 3, used: 0, remaining: 3 }, maxLevel: 3, levels: {}, teamId: TEST_TEAM.id };
   }

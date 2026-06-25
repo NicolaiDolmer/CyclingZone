@@ -82,6 +82,9 @@ export function buildRiderRows({ riders, stages, abilityByRider, conditionByRide
       secondaryType: r.secondary_type ?? null,
       suitability: hasFit ? Math.round(suitabilityScore(ab, stages) * 100) : null,
       stageSuitability: hasFit ? stageSuitabilityScores(ab, stages) : null,
+      // S5: aggression (0-99) — driver udbruds-CHANCEN i motoren (raceSimulator.aggressionScore).
+      // Surfaces så HunterExplainer kan rangere jæger-kandidater. null = endnu ikke beregnet.
+      aggression: ab?.aggression ?? null,
       form: cond?.form ?? null,
       fatigue: cond?.fatigue ?? null,
       injured: !!(cond?.injured_until && cond.injured_until >= todayStr),
