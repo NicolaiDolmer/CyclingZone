@@ -1,65 +1,33 @@
 name: Auto PR review
 
+# PENSIONERET 2026-06-25 (#1870): CodeRabbit overtog AI-auto-review via
+# `.coderabbit.yaml`. To AI-auto-reviewere = dobbeltstøj; CodeRabbit er
+# purpose-built (inline-forslag, learnings, husregler) og bevist på ægte PR'er
+# (#1867/#1871/#1873/#1874).
+#
+# Hvorfor no-op i stedet for at SLETTE workflowet: jobbet `review` er en required
+# status check i branch protection. Sletning ville efterlade checken uden
+# rapportering → ALLE PR'er blokeret. Derfor rapporterer dette job bevidst grønt
+# uden at gøre noget. @claude on-demand findes stadig via `claude.yml`.
+#
+# Historik: dette var et Sonnet-baseret advisory risk-review (#877). Fuld
+# tidligere config i git-historikken før denne commit.
+
 on:
   pull_request:
-    # ready_for_review + reopened: så jobbet kører når en draft markeres klar
-    # (ellers ville en draft-åbnet PR aldrig få et review-resultat).
     types: [opened, synchronize, ready_for_review, reopened]
 
 permissions:
   contents: read
-  pull-requests: write
-  issues: write
-  id-token: write
-  actions: read
 
 jobs:
   review:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    # Skip drafts og pure docs-PRs (advisory review giver lille værdi der)
-    if: github.event.pull_request.draft == false
+    timeout-minutes: 2
     steps:
-      - uses: actions/checkout@v7
-      - id: claude_review
-        # advisory (#877/2A): review må IKKE blokere merge. De hårde gates er de
-        # deterministiske checks (backend-tests, frontend-build, dependency-review).
-        # En fail-closed gate afhængig af Anthropic-API/kvote blokerede legitime PR'er
-        # i launch-ugen (#880/#883). Sat advisory indtil efter TdF; revurdér i #877.
-        continue-on-error: true
-        uses: anthropics/claude-code-action@v1
-        with:
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          additional_permissions: |
-            actions: read
-          # Bot's egne kommentarer skal ikke trigge rekursive @claude-loops i andre workflows
-          exclude_comments_by_actor: claude[bot]
-          # Tillad dependabot-PRs at få auto-review (default afviser bot-initierede workflows).
-          # Vi vil have dep-bumps reviewet for risiko (peer-deps, breaking changes).
-          allowed_bots: dependabot
-          prompt: |
-            Review denne PR med kort, risikobaseret scope.
-            Find kun konkrete bugs eller ship-blokkere:
-            1. Auth/RLS/input-validation fejl
-            2. Finans/auction/ownership invariants
-            3. Manglende tests for ændret adfærd
-            4. Release hygiene (NOW, PatchNotes, FEATURE_STATUS hvor relevant)
-
-            Post maksimalt 5 fund med konkrete linje-referencer.
-            Ignorer ren style. Hvis ingen fund: skriv én kort approve-style kommentar.
-          claude_args: |
-            --max-turns 12
-            --model claude-sonnet-4-6
-            --allowed-tools Bash(git diff *),Bash(git show *),Bash(gh pr view *),Read,Glob,Grep
-
-      - name: Notify on failure
-        if: steps.claude_review.outcome == 'failure'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      - name: Retired — CodeRabbit owns AI PR review
         run: |
-          gh pr comment "$PR_NUMBER" --body "🤖 **Auto PR review fejlede** — [se log]($RUN_URL)
-
-          Auto-review er **advisory** (ikke gating) — denne PR kan stadig merges hvis required CI checks (backend-tests, frontend-build) er grønne.
-          For at re-trigge review: push en tom commit eller comment \`@claude review denne PR\`."
+          echo "Claude auto-review pensioneret 2026-06-25 (#1870)."
+          echo "CodeRabbit håndterer nu AI-auto-review via .coderabbit.yaml."
+          echo "Required check 'review' rapporterer grønt som no-op (slet ikke jobbet"
+          echo "— det er en required status check; sletning blokerer alle PR'er)."
