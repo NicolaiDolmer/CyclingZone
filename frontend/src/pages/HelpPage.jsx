@@ -236,6 +236,7 @@ const SECTION_DEFS = [
       { id: "what", kind: "text" },
       { id: "suitability", kind: "text" },
       { id: "roles", kind: "text" },
+      { id: "strategy", kind: "text" },
       { id: "breakaway", kind: "text" },
       { id: "fatigue", kind: "text" },
     ],
@@ -303,6 +304,7 @@ const FAQ_KEYS = [
   "squadEnforcementFaq",
   "season1RaceCalendarFaq",
   "overlappingRaces",
+  "teamStrategyFaq",
 ];
 
 function buildSections(t) {
