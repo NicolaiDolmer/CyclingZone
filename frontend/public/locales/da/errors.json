@@ -51,6 +51,7 @@
     "rate_board": "For mange bestyrelseshandlinger på kort tid. Vent et øjeblik.",
     "rate_request": "For mange forespørgsler på kort tid. Vent et øjeblik.",
     "rider_not_owned": "Du ejer ikke denne rytter",
+    "rider_is_academy": "Akademiryttere styres i dit akademi. Ryk dem op til seniortruppen først.",
     "rider_retired_listing": "Rytteren er pensioneret og kan ikke sættes til salg",
     "rider_already_listed": "Rytteren er allerede til salg på transfermarkedet",
     "listing_not_found": "Listing findes ikke",

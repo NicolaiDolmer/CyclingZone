@@ -20,6 +20,22 @@ export function getRiderSalary(rider = {}) {
   return Math.max(1, Math.round(getRiderMarketValue(rider) * SALARY_RATE));
 }
 
+// #1827: løn-filteret gælder den VISTE løn (getRiderSalary): frossen kontrakt-løn
+// hvis sat, ellers estimatet SALARY_RATE × market_value. De fleste ryttere (alle
+// free agents + 716 kontraktløse seniorer i prod 25/6) har salary == NULL, så et
+// rå `salary <= X`-filter i PostgREST droppede dem stille (NULL matcher hverken
+// gte/lte) — frie agenter forsvandt helt og kun de få med frossen løn blev tilbage.
+//
+// Da PostgREST ikke kan filtrere på et COALESCE-udtryk, oversætter vi løn-grænsen
+// til en market_value-grænse for NULL-løn-grenen (invers af SALARY_RATE) og lader
+// den frosne-løn-gren bruge selve salary-kolonnen. Returnerer null for en grænse
+// der ikke er sat (parseInt-NaN), så kalderen kan springe den gren over.
+export function salaryBoundToValueBound(salaryBound) {
+  const n = parseInt(salaryBound, 10);
+  if (!Number.isFinite(n)) return null;
+  return Math.round(n / SALARY_RATE);
+}
+
 export function formatCz(value) {
   if (value == null || Number.isNaN(Number(value))) return "-";
   return `${formatNumber(Number(value))} CZ$`;

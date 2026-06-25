@@ -3,7 +3,8 @@
  */
 import { useState, useMemo } from "react";
 import { DEFAULT_FILTERS, STAT_KEYS } from "../components/RiderFilters";
-import { getRiderMarketValue } from "./marketValues";
+import { getRiderMarketValue, getRiderSalary } from "./marketValues";
+import { buildSalaryFilterOr } from "./salaryFilter.js";
 import { getRiderAge, isU23 } from "./riderAge";
 import { compareNationality } from "./countryUtils";
 import { applyNameSearch } from "./riderNameSearch";
@@ -41,8 +42,10 @@ export function useClientRiderFilters(riders = []) {
 
     if (filters.min_value) result = result.filter(r => getRiderMarketValue(r) >= parseInt(filters.min_value));
     if (filters.max_value) result = result.filter(r => getRiderMarketValue(r) <= parseInt(filters.max_value));
-    if (filters.min_salary) result = result.filter(r => (r.salary || 0) >= parseInt(filters.min_salary));
-    if (filters.max_salary) result = result.filter(r => (r.salary || 0) <= parseInt(filters.max_salary));
+    // #1827: filtrér på den VISTE løn (getRiderSalary) — frossen løn hvis sat,
+    // ellers estimatet. Et rå `r.salary`-filter droppede free agents (salary NULL).
+    if (filters.min_salary) result = result.filter(r => getRiderSalary(r) >= parseInt(filters.min_salary));
+    if (filters.max_salary) result = result.filter(r => getRiderSalary(r) <= parseInt(filters.max_salary));
 
     if (filters.min_age || filters.max_age) {
       result = result.filter(r => {
@@ -157,8 +160,15 @@ function applyRiderColumnFilters(query, filters, { prefix = "", ref = null } = {
   query = applyNameSearch(query, filters.q, ref ? { referencedTable: ref } : undefined); // #47 token-set
   if (filters.min_value) query = query.gte(col("market_value"), parseInt(filters.min_value));
   if (filters.max_value) query = query.lte(col("market_value"), parseInt(filters.max_value));
-  if (filters.min_salary) query = query.gte(col("salary"), parseInt(filters.min_salary));
-  if (filters.max_salary) query = query.lte(col("salary"), parseInt(filters.max_salary));
+
+  // #1827: løn-filteret gælder den VISTE løn = COALESCE(salary, market_value*RATE).
+  // Rå `salary.gte/lte` droppede stille alle NULL-løn-ryttere (alle free agents +
+  // 716 kontraktløse seniorer i prod) → "fri agent + max-løn" gav næsten 0 hits.
+  const salaryOr = buildSalaryFilterOr(filters);
+  if (salaryOr) {
+    query = ref ? query.or(salaryOr, { referencedTable: ref }) : query.or(salaryOr);
+  }
+
   if (filters.u25) query = query.eq(col("is_u25"), true);
   if (filters.free_agent) query = query.is(col("team_id"), null);
   if (filters.team_id) query = query.eq(col("team_id"), filters.team_id);

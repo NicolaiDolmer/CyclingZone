@@ -45,6 +45,9 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, ddActive }
   // åbnes, så manageren ser tallet før bekræftelse.
   const [releaseQuote, setReleaseQuote] = useState(null);
   const [extendQuote, setExtendQuote] = useState(null);
+  // #1779: hvis quote-kaldet fejler (fx akademirytter → 403 fra extend-quote),
+  // skal feltet vise en forklaring i stedet for evig "indlæser…". { release, extend }.
+  const [quoteError, setQuoteError] = useState({ release: null, extend: null });
 
   // Squad-fanen viser kun egne ryttere → auktion må sættes mellem 0 og Værdi (ikke over).
   const auctionPriceError = auctionPrice > riderValue || auctionPrice < 0;
@@ -52,19 +55,28 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, ddActive }
   // Hent quote ved skift til release/extend-fanen (kun én gang pr. åbning).
   useEffect(() => {
     let cancelled = false;
-    async function fetchQuote(path, setter) {
+    async function fetchQuote(path, setter, errKey) {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         const res = await fetch(`${import.meta.env.VITE_API_URL}/api/riders/${rider.id}/${path}`, {
           headers: { Authorization: `Bearer ${session.access_token}` },
         });
-        if (res.ok && !cancelled) setter(await res.json());
-      } catch { /* preview er valgfri — knappen virker stadig */ }
+        if (cancelled) return;
+        if (res.ok) {
+          setter(await res.json());
+        } else {
+          // #1779: vis fejl-årsagen (fx akademirytter) i stedet for evig "indlæser…".
+          const data = await res.json().catch(() => ({}));
+          setQuoteError(prev => ({ ...prev, [errKey]: resolveApiError(data, t, t("auth:error.connectionFailed")) }));
+        }
+      } catch {
+        if (!cancelled) setQuoteError(prev => ({ ...prev, [errKey]: t("auth:error.connectionFailed") }));
+      }
     }
-    if (activeTab === "release" && releaseQuote === null) fetchQuote("release-quote", setReleaseQuote);
-    if (activeTab === "extend" && extendQuote === null) fetchQuote("extend-quote", setExtendQuote);
+    if (activeTab === "release" && releaseQuote === null && quoteError.release === null) fetchQuote("release-quote", setReleaseQuote, "release");
+    if (activeTab === "extend" && extendQuote === null && quoteError.extend === null) fetchQuote("extend-quote", setExtendQuote, "extend");
     return () => { cancelled = true; };
-  }, [activeTab, rider.id, releaseQuote, extendQuote]);
+  }, [activeTab, rider.id, releaseQuote, extendQuote, quoteError, t]);
 
   // #1719/#1720: begge handlinger er body-løse POST'er — serveren beregner
   // gebyr/løn fra rytter-state. Delt poster så fejl-/success-håndtering er ens.
@@ -221,30 +233,41 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, ddActive }
           {activeTab === "extend" && (
             <div>
               <p className="text-cz-2 text-xs mb-3">{t("actionModal.extend.description")}</p>
-              <div className="space-y-1.5 mb-3 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-cz-3 text-xs">{t("actionModal.extend.currentSalaryLabel")}</span>
-                  <span className="text-cz-2 font-mono">{formatNumber(rider.salary || 0)} CZ$</span>
+              {/* #1779: når quote-kaldet fejler (fx akademirytter) viste lønnen
+                  tidligere evig "indlæser…". Vis i stedet fejl-årsagen + deaktivér
+                  knappen, så det er tydeligt at handlingen ikke er mulig her. */}
+              {quoteError.extend ? (
+                <div className="rounded-cz border border-cz-danger/30 bg-cz-danger-bg px-3 py-2.5 text-cz-danger text-xs">
+                  {quoteError.extend}
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-cz-3 text-xs">{t("actionModal.extend.newSalaryLabel")}</span>
-                  <span className="text-cz-1 font-mono font-bold">
-                    {extendQuote ? `${formatNumber(extendQuote.newSalary)} CZ$` : t("actionModal.loadingShort")}
-                  </span>
-                </div>
-                {extendQuote && (
-                  <div className="flex items-center justify-between">
-                    <span className="text-cz-3 text-xs">{t("actionModal.extend.newContractLabel")}</span>
-                    <span className="text-cz-2 font-mono">
-                      {t("actionModal.extend.newContractValue", { season: extendQuote.contract_end_season })}
-                    </span>
+              ) : (
+                <>
+                  <div className="space-y-1.5 mb-3 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="text-cz-3 text-xs">{t("actionModal.extend.currentSalaryLabel")}</span>
+                      <span className="text-cz-2 font-mono">{formatNumber(rider.salary || 0)} CZ$</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-cz-3 text-xs">{t("actionModal.extend.newSalaryLabel")}</span>
+                      <span className="text-cz-1 font-mono font-bold">
+                        {extendQuote ? `${formatNumber(extendQuote.newSalary)} CZ$` : t("actionModal.loadingShort")}
+                      </span>
+                    </div>
+                    {extendQuote && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-cz-3 text-xs">{t("actionModal.extend.newContractLabel")}</span>
+                        <span className="text-cz-2 font-mono">
+                          {t("actionModal.extend.newContractValue", { season: extendQuote.contract_end_season })}
+                        </span>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-              <Button onClick={() => postRiderAction("extend-contract", "actionModal.extend.successMsg")}
-                disabled={loading} className="w-full">
-                {loading ? t("actionModal.loadingShort") : t("actionModal.extend.confirmButton")}
-              </Button>
+                  <Button onClick={() => postRiderAction("extend-contract", "actionModal.extend.successMsg")}
+                    disabled={loading || !extendQuote} className="w-full">
+                    {loading ? t("actionModal.loadingShort") : t("actionModal.extend.confirmButton")}
+                  </Button>
+                </>
+              )}
             </div>
           )}
           {/* #1719: Fyr rytter — buyout-gebyr som preview + balance-gate. */}

@@ -5,6 +5,7 @@ import {
   formatCz,
   getRiderMarketValue,
   getRiderSalary,
+  salaryBoundToValueBound,
 } from "./marketValues.js";
 
 async function setLanguage(language) {
@@ -76,4 +77,34 @@ test("getRiderSalary — salary 0 bevares (gratis kontrakt)", () => {
 test("getRiderSalary — NULL salary + NULL base_value → fallback 1000 → 67", () => {
   assert.equal(getRiderSalary({ salary: null, base_value: null }), 67);
   assert.equal(getRiderSalary({}), 67);
+});
+
+// #1827: løn-grænse → market_value-grænse (invers af SALARY_RATE 0.067) til
+// estimat-grenen i server-filteret. Holder filteret konsistent med getRiderSalary
+// for de ~785 free agents (i prod 25/6) der har salary == NULL.
+test("salaryBoundToValueBound — invers af SALARY_RATE", () => {
+  // round(5000 / 0.067) = round(74626.86) = 74627 (matcher prod-validering #1827)
+  assert.equal(salaryBoundToValueBound(5000), 74627);
+  assert.equal(salaryBoundToValueBound("5000"), 74627);
+  assert.equal(salaryBoundToValueBound(0), 0);
+});
+
+test("salaryBoundToValueBound — ikke-sat grænse → null (springes over)", () => {
+  assert.equal(salaryBoundToValueBound(""), null);
+  assert.equal(salaryBoundToValueBound(undefined), null);
+  assert.equal(salaryBoundToValueBound(null), null);
+  assert.equal(salaryBoundToValueBound("abc"), null);
+});
+
+// En estimeret løn ≈ getRiderSalary skal lande inden for grænsen når market_value
+// ≤ value-bound — round-trip-konsistens mellem filter og visning.
+test("salaryBoundToValueBound — round-trip mod getRiderSalary", () => {
+  const maxSalary = 5000;
+  const valueBound = salaryBoundToValueBound(maxSalary); // 74627
+  // En free agent lige under value-grænsen har en vist løn ≤ max (med afrunding).
+  const riderAtBound = { salary: null, market_value: valueBound };
+  assert.ok(getRiderSalary(riderAtBound) <= maxSalary + 1);
+  // En free agent over value-grænsen har en vist løn > max.
+  const riderAbove = { salary: null, market_value: valueBound + 20000 };
+  assert.ok(getRiderSalary(riderAbove) > maxSalary);
 });

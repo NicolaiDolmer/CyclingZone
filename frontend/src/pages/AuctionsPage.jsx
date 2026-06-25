@@ -41,6 +41,7 @@ import { useAuctionBidding } from "../lib/useAuctionBidding";
 import { formatNumber } from "../lib/intl";
 import { resolveApiError } from "../lib/apiError";
 import { getRiderSalary } from "../lib/marketValues.js";
+import { ageBadgeKey } from "../lib/riderAge";
 import SortTh from "../components/rider/RiderSortTh";
 import { cycleSortState } from "../lib/riderSort";
 import { Card, TagIcon, EyeIcon, StarIcon, PageLoader } from "../components/ui";
@@ -196,7 +197,13 @@ function AuctionRow({ auction, myTeamId, myBalance, reservedBalance, watchlist, 
                   {t("auctions:badge.flash")}
                 </span>
               )}
-              {r?.is_u25 && (
+              {/* #1824: alders-badge afledt af alder via ageBadgeKey (U23 <23,
+                  U25 23-24, ingen ≥25) — IKKE rå is_u25, der også er true for U23
+                  og derfor aldrig viste U23-badget på auktioner. */}
+              {ageBadgeKey(r) === "u23" && (
+                <span className="text-[9px] uppercase bg-cz-info-bg text-cz-info px-1.5 py-0.5 rounded">{t("auctions:badge.u23")}</span>
+              )}
+              {ageBadgeKey(r) === "u25" && (
                 <span className="text-[9px] uppercase bg-cz-subtle text-cz-3 px-1.5 py-0.5 rounded">{t("auctions:badge.u25")}</span>
               )}
               {auction.is_youth && (
@@ -401,7 +408,9 @@ function AuctionCard({ auction, myTeamId, myBalance, reservedBalance, watchlist,
               {isSeller && <span className="text-[9px] uppercase bg-cz-info-bg text-cz-info px-1.5 py-0.5 rounded">{t("auctions:badge.seller")}</span>}
               {auction.status === "extended" && <span className="text-[9px] uppercase bg-cz-warning-bg text-cz-warning px-1.5 py-0.5 rounded">{t("auctions:badge.extended")}</span>}
               {auction.is_flash && <span className="text-[9px] uppercase bg-cz-danger-bg text-cz-danger px-1.5 py-0.5 rounded">{t("auctions:badge.flash")}</span>}
-              {r?.is_u25 && <span className="text-[9px] uppercase bg-cz-subtle text-cz-2 px-1.5 py-0.5 rounded">{t("auctions:badge.u25")}</span>}
+              {/* #1824: alders-badge via ageBadgeKey (U23 <23, U25 23-24) — ikke rå is_u25. */}
+              {ageBadgeKey(r) === "u23" && <span className="text-[9px] uppercase bg-cz-info-bg text-cz-info px-1.5 py-0.5 rounded">{t("auctions:badge.u23")}</span>}
+              {ageBadgeKey(r) === "u25" && <span className="text-[9px] uppercase bg-cz-subtle text-cz-2 px-1.5 py-0.5 rounded">{t("auctions:badge.u25")}</span>}
               {auction.is_youth && <span className="text-[9px] uppercase bg-cz-accent/15 text-cz-accent-t px-1.5 py-0.5 rounded">{t("auctions:badge.youth")}</span>}
               {age && <span className="text-cz-3 text-xs">{t("auctions:card.ageYears", { age })}</span>}
             </div>
@@ -757,7 +766,7 @@ export default function AuctionsPage() {
         .select(`id, current_price, min_increment, calculated_end, status, is_guaranteed_sale, is_flash, is_youth,
           seller_team_id, current_bidder_id,
           rider:rider_id(id, firstname, lastname, market_value, is_u25, team_id, birthdate, nationality_code,
-            prize_earnings_bonus, salary, contract_length, contract_end_season, ${ABILITY_SELECT}),
+            prize_earnings_bonus, salary, primary_type, secondary_type, contract_length, contract_end_season, ${ABILITY_SELECT}),
           seller:seller_team_id(id, name),
           current_bidder:current_bidder_id(id, name)`)
         .in("status", ["active", "extended"])
