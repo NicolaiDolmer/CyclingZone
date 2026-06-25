@@ -197,7 +197,63 @@
       "selection_flag_disabled": "Holdudtagelse er ikke aktiv endnu.",
       "selection_invalid_body": "Udtagelsen kunne ikke gemmes. Prøv igen.",
       "selection_wrong_pool": "Du kan kun deltage i løb i din egen division.",
+      "strategy_invalid_body": "Din strategi kunne ikke gemmes — ugyldige data.",
+      "strategy_flag_disabled": "Løbs-hubben er ikke aktiv endnu.",
       "generic": "Udtagelsen kunne ikke gemmes. Prøv igen."
+    }
+  },
+  "strategy": {
+    "title": "Holdstrategi",
+    "subtitle": "Stående præferencer din assistent bruger til at bygge hver opstilling.",
+    "back": "Tilbage til trup-board",
+    "open": "Holdstrategi",
+    "save": "Gem strategi",
+    "saved": "Strategi gemt",
+    "regenerate": "Generér forslag igen",
+    "aChain": {
+      "title": "A-kæde",
+      "help": "Dine kerne-ryttere, rangordnet. De prioriteres til dine mål-løb.",
+      "add": "Tilføj rytter",
+      "empty": "Ingen kerne-ryttere endnu. Tilføj de ryttere du bygger holdet op om.",
+      "up": "Flyt op",
+      "down": "Flyt ned",
+      "remove": "Fjern"
+    },
+    "roleRules": {
+      "title": "Faste roller",
+      "help": "Lås en rytter til en rolle hver gang han udtages.",
+      "none": "Ingen fast rolle",
+      "always_captain": "Altid kaptajn",
+      "always_sprint_captain_if_present": "Altid sprint-kaptajn (hvis udtaget)"
+    },
+    "captains": {
+      "title": "Kaptajner pr. terræn",
+      "help": "Rangordnede kaptajn-kandidater pr. terræn. Assistenten vælger den højest-rangerede udtagne rytter.",
+      "suggest": "Auto-foreslå",
+      "rank": "Kaptajn {n}",
+      "empty": "Ingen kandidater endnu"
+    },
+    "buckets": {
+      "flat": "Flad",
+      "hilly": "Bakke",
+      "mountain": "Bjerg",
+      "cobbles": "Brosten",
+      "itt": "Enkeltstart"
+    },
+    "targets": {
+      "title": "Mål-løb",
+      "help": "Marker de løb der betyder mest. Din A-kæde prioriteres her.",
+      "marked": "Mål",
+      "empty": "Ingen kommende løb."
+    },
+    "preview": {
+      "title": "Sådan ændrer din strategi udtagelserne",
+      "run": "Vis ændringer",
+      "none": "Ingen ændringer til kommende auto-udfyldte løb.",
+      "summary": "{changedRaces} løb ændres · +{totalAdded}/−{totalRemoved} ryttere · {captainChanges} kaptajn-skift",
+      "in": "Ind",
+      "out": "Ud",
+      "captain": "Kaptajn → {name}"
     }
   },
   "discoverCta": {

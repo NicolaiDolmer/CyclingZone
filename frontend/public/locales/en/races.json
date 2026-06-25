@@ -197,7 +197,63 @@
       "selection_flag_disabled": "Team selection isn't active yet.",
       "selection_invalid_body": "Couldn't save the selection. Try again.",
       "selection_wrong_pool": "You can only enter races in your own division.",
+      "strategy_invalid_body": "Couldn't save your strategy — invalid data.",
+      "strategy_flag_disabled": "The race hub isn't active yet.",
       "generic": "Couldn't save the selection. Try again."
+    }
+  },
+  "strategy": {
+    "title": "Team strategy",
+    "subtitle": "Standing preferences your assistant uses to build every lineup.",
+    "back": "Back to squad board",
+    "open": "Team strategy",
+    "save": "Save strategy",
+    "saved": "Strategy saved",
+    "regenerate": "Regenerate suggestions",
+    "aChain": {
+      "title": "A-chain",
+      "help": "Your core riders, ranked. They get priority for your target races.",
+      "add": "Add rider",
+      "empty": "No core riders yet. Add the riders you build around.",
+      "up": "Move up",
+      "down": "Move down",
+      "remove": "Remove"
+    },
+    "roleRules": {
+      "title": "Fixed roles",
+      "help": "Lock a rider to a role whenever they're selected.",
+      "none": "No fixed role",
+      "always_captain": "Always captain",
+      "always_sprint_captain_if_present": "Always sprint captain (if selected)"
+    },
+    "captains": {
+      "title": "Captains by terrain",
+      "help": "Ranked captain candidates per terrain. The assistant picks the highest-ranked selected rider.",
+      "suggest": "Auto-suggest",
+      "rank": "Captain {n}",
+      "empty": "No candidates yet"
+    },
+    "buckets": {
+      "flat": "Flat",
+      "hilly": "Hills",
+      "mountain": "Mountains",
+      "cobbles": "Cobbles",
+      "itt": "Time trial"
+    },
+    "targets": {
+      "title": "Target races",
+      "help": "Mark the races that matter most. Your A-chain is prioritized here.",
+      "marked": "Target",
+      "empty": "No upcoming races."
+    },
+    "preview": {
+      "title": "How your strategy changes selections",
+      "run": "Preview changes",
+      "none": "No changes to upcoming auto-filled races.",
+      "summary": "{changedRaces} races change · +{totalAdded}/−{totalRemoved} riders · {captainChanges} captain changes",
+      "in": "In",
+      "out": "Out",
+      "captain": "Captain → {name}"
     }
   },
   "discoverCta": {
