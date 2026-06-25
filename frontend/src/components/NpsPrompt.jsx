@@ -55,8 +55,8 @@ export default function NpsPrompt({ visible, done, submitting, onSubmit, onDismi
               </button>
             </div>
 
-            {/* 0-10-skala — kompakt række af knapper. Endepunkts-labels under. */}
-            <div className="flex flex-wrap gap-1" role="radiogroup" aria-label={t("nps.question")}>
+            {/* 0-10-skala — fast 11-kolonners grid (aldrig wrap), endepunkts-labels under. */}
+            <div className="grid grid-cols-11 gap-1" role="radiogroup" aria-label={t("nps.question")}>
               {SCORES.map((n) => (
                 <button
                   key={n}
@@ -64,9 +64,9 @@ export default function NpsPrompt({ visible, done, submitting, onSubmit, onDismi
                   role="radio"
                   aria-checked={score === n}
                   onClick={() => setScore(n)}
-                  className={`w-8 h-8 rounded-md border text-xs font-mono font-semibold transition-colors
+                  className={`h-8 w-full rounded-md border text-xs font-mono font-semibold transition-colors
                     ${score === n
-                      ? "bg-cz-accent text-white border-cz-accent"
+                      ? "bg-cz-accent text-cz-on-accent border-cz-accent"
                       : "bg-cz-subtle text-cz-2 border-cz-border hover:border-cz-3 hover:text-cz-1"}`}
                 >
                   {n}
@@ -100,7 +100,7 @@ export default function NpsPrompt({ visible, done, submitting, onSubmit, onDismi
                 type="button"
                 onClick={handleSubmit}
                 disabled={score === null || submitting}
-                className="bg-cz-accent text-white font-semibold text-sm rounded-lg px-4 py-1.5 hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                className="bg-cz-accent text-cz-on-accent font-semibold text-sm rounded-lg px-4 py-1.5 hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition"
               >
                 {t("nps.submit")}
               </button>
