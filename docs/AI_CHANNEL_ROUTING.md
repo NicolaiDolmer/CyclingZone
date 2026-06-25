@@ -6,13 +6,13 @@
 
 ## Hvorfor docen findes
 
-Du har 6 AI-kanaler i daglig drift (Claude Code PC1, Claude Code PC2, Claude chat PC, Claude chat mobil, Cowork, Dispatch). Kanal-valg sker implicit hver gang — og det er det største enkelte hul i AI-workflowet per analyse i [#555](https://github.com/NicolaiDolmer/CyclingZone/issues/555). Denne doc gør valget eksplicit: hvilken kanal er optimal til hvilken task, og hvilke aldrig bør bruges.
+Du har 5 Claude-kanaler i daglig drift (Claude Code, Claude chat PC, Claude chat mobil, Cowork, Dispatch). Kanal-valg sker implicit hver gang — og det er det største enkelte hul i AI-workflowet per analyse i [#555](https://github.com/NicolaiDolmer/CyclingZone/issues/555). Denne doc gør valget eksplicit: hvilken kanal er optimal til hvilken task, og hvilke aldrig bør bruges. (Solo Claude-operation siden 2026-06-12 — ingen Codex/Manus-kanaler længere; opdateret 2026-06-25.)
 
 ## Kanal-inventory (kort)
 
 | Kanal | God til | Dårlig til |
 |---|---|---|
-| **Claude Code (PC1/PC2)** | Multi-fil edits, git/npm/tests/builds, hooks, plan mode | Strategi-samtaler, lange research-tasks, visuel review |
+| **Claude Code** | Multi-fil edits, git/npm/tests/builds, hooks, plan mode, lokal verifikation/browser-smoke, connector-checks | Strategi-samtaler, lange research-tasks, visuel review |
 | **Claude chat (PC)** | Project Knowledge søgning, strategi/prioritering, web search, issue-grooming, generere Claude Code-prompts | Direkte fil-edits, lange agentiske workflows |
 | **Claude chat (mobil)** | Læse status, godkende plans, mini-beslutninger, dispatch-trigger | Lange kodeblokke, multi-fil context, komplekse prompts |
 | **Claude Cowork** | Lokale filsystem-tasks der IKKE er kode (Excel, screenshots, doc-formatering) | Kode-implementation, tasks der kræver løbende beslutning |
@@ -35,9 +35,9 @@ Du har 6 AI-kanaler i daglig drift (Claude Code PC1, Claude Code PC2, Claude cha
 | Audit memory drift ([#78](https://github.com/NicolaiDolmer/CyclingZone/issues/78)) | Dispatch (asynk) | PC-chat manuel | Mobil direkte |
 | Review PR | PC-chat | Mobil-chat (skim) | Claude Code |
 | Tjek deploy-status efter push | Mobil-chat (Vercel MCP) | PC-chat | Claude Code (overkill) |
-| Lokal Codex-verifikation af issue/PR | Codex | Claude Code | Mobil |
-| Browser-smoke af lokal frontend | Codex + Browser | Claude Code | Mobil |
-| Vercel/Supabase/Sentry connector-check | Codex | PC-chat | Mobil hvis beslutning kræver context |
+| Lokal verifikation af issue/PR | Claude Code | PC-chat (read-only) | Mobil |
+| Browser-smoke af lokal frontend | Claude Code (preview-tools / Playwright) | — | Mobil |
+| Vercel/Supabase/Sentry connector-check | Claude Code | PC-chat | Mobil hvis beslutning kræver context |
 | Generér postmortem efter incident | PC-chat (kontekst-tung) | Claude Code (læser logs) | Mobil, Cowork |
 | Strategisk overvejelse (fx fuld-tid) | PC-chat (lang dialog) | Mobil-chat (tænk-arbejde) | Claude Code |
 | Doc-konsolidering (fx 3 epics → 1) | PC-chat (planning) + Claude Code (commits) | Claude Code direkte | Mobil |
@@ -72,7 +72,7 @@ Aldrig-kolonnen i matrixen er ikke konvention — det er konkrete fejl-modes vi 
 ## Cross-refs
 
 - Workflow-analyse (kilde): [`docs/archive/2026-05-22-workflow-analyse.md`](archive/2026-05-22-workflow-analyse.md), sektion 3-4.
-- Agent-rolle-matrix (hvem ejer hvilken beslutning + SLA + reassign-protokol): [`docs/AI_COUNCIL.md`](AI_COUNCIL.md) (B12, [#564](https://github.com/NicolaiDolmer/CyclingZone/issues/564)).
+- ~~Agent-rolle-matrix~~ (RETIRED 2026-06-25 — solo Claude, ingen council; gravsten i [`docs/AI_COUNCIL.md`](AI_COUNCIL.md)).
 - Mobile → Claude Code task-format (5-linje template + eksempler): [`docs/prompts/mobile-to-code.md`](prompts/mobile-to-code.md) (B8, [#562](https://github.com/NicolaiDolmer/CyclingZone/issues/562)).
 - Session-prompt templates (når Claude Code modtager en task):
   - Bugfix: [`docs/prompts/bugfix.md`](prompts/bugfix.md) (5-fase flow med gates) — B7, [#561](https://github.com/NicolaiDolmer/CyclingZone/issues/561).
