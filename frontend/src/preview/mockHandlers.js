@@ -11,6 +11,12 @@ import {
   POOL_RACES,
   ROADMAP_ITEMS,
   AUCTIONS,
+  SEED_RACES,
+  SEED_STAGE_PROFILES,
+  SEED_STAGE_SCHEDULE,
+  SEED_RACE_RESULTS,
+  SEED_DISTRIBUTION,
+  SEED_STRATEGY,
 } from "./seedData.js";
 
 // Tager Accept-strengen direkte (ikke et Playwright-request). PostgREST signalerer
@@ -43,15 +49,50 @@ export function restRows(table, requestUrl = "") {
       return AUCTIONS;
     case "roadmap_items":
       return ROADMAP_ITEMS;
-    case "races":
-      // Per-pulje tæller-query (#1829) → puljens løb; alle andre races-queries → tom.
-      return url.search.includes("league_division_id=eq") ? POOL_RACES : [];
+    case "races": {
+      // Per-pulje tæller-query (#1829) → puljens løb (uændret, holder dashboard-
+      // snapshots stabile). id=eq.<id> → ét seed-løb (RaceDetailPage .single()).
+      // Alle andre races-queries → hele race-hub-seedet (strategi/dashboard-lister).
+      if (url.search.includes("league_division_id=eq")) return POOL_RACES;
+      const idMatch = url.search.match(/id=eq\.([^&]+)/);
+      if (idMatch) {
+        const id = decodeURIComponent(idMatch[1]);
+        return SEED_RACES.filter(r => r.id === id);
+      }
+      return SEED_RACES;
+    }
+    case "race_stage_profiles": {
+      const idMatch = url.search.match(/race_id=eq\.([^&]+)/);
+      if (idMatch) {
+        const id = decodeURIComponent(idMatch[1]);
+        return SEED_STAGE_PROFILES.filter(p => p.race_id === id);
+      }
+      return SEED_STAGE_PROFILES;
+    }
+    case "race_stage_schedule": {
+      const idMatch = url.search.match(/race_id=eq\.([^&]+)/);
+      if (idMatch) {
+        const id = decodeURIComponent(idMatch[1]);
+        return SEED_STAGE_SCHEDULE.filter(s => s.race_id === id);
+      }
+      return SEED_STAGE_SCHEDULE;
+    }
+    case "race_results": {
+      // KUN den race-scopede query (RaceDetailPage: race_id=eq.<id>) får seed-
+      // resultater. Alle andre race_results-queries (dashboard/standings/season-
+      // aggregater) → tom, præcis som før → uændrede core-smoke-snapshots.
+      const idMatch = url.search.match(/race_id=eq\.([^&]+)/);
+      if (idMatch) {
+        const id = decodeURIComponent(idMatch[1]);
+        return SEED_RACE_RESULTS.filter(r => r.race_id === id);
+      }
+      return [];
+    }
     case "auction_proxy_bids":
     case "finance_transactions":
     case "loan_agreements":
     case "notifications":
     case "player_events":
-    case "race_results":
     case "rider_watchlist":
     case "roadmap_votes":
     case "season_standings":
@@ -156,6 +197,9 @@ export function apiResponse(pathname) {
   // Objekt-shape ({ items: [] }) crasher DeadlineDayTicker (events.map) når DD er aktiv (#778-probe).
   if (pathname.endsWith("/api/deadline-day/ticker")) return [];
   if (pathname.endsWith("/api/race-pool")) return [];
+  // Race-hub (#prelive-harness, A2): board-aggregat + strategi-flade.
+  if (pathname.endsWith("/api/races/distribution")) return SEED_DISTRIBUTION;
+  if (pathname.endsWith("/api/races/strategy")) return SEED_STRATEGY;
   if (pathname.endsWith("/api/scouting/me")) {
     return { slots: { total: 3, used: 0, remaining: 3 }, maxLevel: 3, levels: {}, teamId: TEST_TEAM.id };
   }

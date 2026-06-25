@@ -174,3 +174,134 @@ export const AUCTIONS = [
     current_bidder: null,
   },
 ];
+
+// ── Race-hub seed (#prelive-harness, A2) ─────────────────────────────────────
+// Realistisk løbs-data så /races/:id + board + strategi rendrer ægte indhold på en
+// Vercel-preview. Dækker hele livscyklussen: 1 kommende stage-race, 1 "I gang"
+// (0 < stages_completed < stages), 2 kørte. Konsumeres via mockHandlers.restRows
+// ("races"/"race_stage_profiles"/"race_stage_schedule"/"race_results") + apiResponse.
+
+// races-tabellen. Embeds (season:season_id, pool_race:pool_race_id) flades på
+// rytte-objektet — RaceDetailPage læser race.season + race.pool_race.
+export const SEED_RACES = [
+  { id: "race-up-1", season_id: ACTIVE_SEASON.id, name: "Tour de Preview", race_type: "stage_race", race_class: "TourFrance", stages: 3, stages_completed: 0, status: "scheduled", edition_year: 2026, league_division_id: TEST_TEAM.league_division_id, season: { id: ACTIVE_SEASON.id, number: ACTIVE_SEASON.season_number }, pool_race: { date_text: "12 Jul" } },
+  { id: "race-live-1", season_id: ACTIVE_SEASON.id, name: "Settimana Preview", race_type: "stage_race", race_class: "ProSeries", stages: 5, stages_completed: 2, status: "scheduled", edition_year: 2026, league_division_id: TEST_TEAM.league_division_id, season: { id: ACTIVE_SEASON.id, number: ACTIVE_SEASON.season_number }, pool_race: { date_text: "20 Jun" } },
+  { id: "race-done-1", season_id: ACTIVE_SEASON.id, name: "Omloop Preview", race_type: "single", race_class: "Monuments", stages: 1, stages_completed: 1, status: "completed", edition_year: 2026, league_division_id: TEST_TEAM.league_division_id, season: { id: ACTIVE_SEASON.id, number: ACTIVE_SEASON.season_number }, pool_race: { date_text: "01 Mar" } },
+  { id: "race-done-2", season_id: ACTIVE_SEASON.id, name: "Giro di Preview", race_type: "stage_race", race_class: "GiroVuelta", stages: 2, stages_completed: 2, status: "completed", edition_year: 2026, league_division_id: TEST_TEAM.league_division_id, season: { id: ACTIVE_SEASON.id, number: ACTIVE_SEASON.season_number }, pool_race: { date_text: "10 May" } },
+];
+
+// race_stage_profiles — ≥1 pr. etape. demand_vector summerer til [0.97, 1.03].
+export const SEED_STAGE_PROFILES = [
+  { race_id: "race-up-1", stage_number: 1, profile_type: "flat", finale_type: "bunch_sprint", demand_vector: { sprint: 0.61, acceleration: 0.15, positioning: 0.08, flat: 0.06, endurance: 0.02, randomness: 0.08 } },
+  { race_id: "race-up-1", stage_number: 2, profile_type: "mountain", finale_type: "long_climb", demand_vector: { climbing: 0.5, endurance: 0.2, tempo: 0.15, recovery: 0.1, randomness: 0.05 } },
+  { race_id: "race-up-1", stage_number: 3, profile_type: "hilly", finale_type: "punch", demand_vector: { punch: 0.45, climbing: 0.25, endurance: 0.15, positioning: 0.1, randomness: 0.05 } },
+  { race_id: "race-live-1", stage_number: 3, profile_type: "rolling", finale_type: "reduced_sprint", demand_vector: { sprint: 0.4, endurance: 0.3, punch: 0.15, positioning: 0.1, randomness: 0.05 } },
+  { race_id: "race-done-1", stage_number: 1, profile_type: "cobbles", finale_type: "breakaway", demand_vector: { cobblestone: 0.4, endurance: 0.25, punch: 0.15, positioning: 0.1, randomness: 0.1 } },
+  { race_id: "race-done-2", stage_number: 1, profile_type: "flat", finale_type: "bunch_sprint", demand_vector: { sprint: 0.58, acceleration: 0.17, positioning: 0.1, flat: 0.07, endurance: 0.03, randomness: 0.05 } },
+  { race_id: "race-done-2", stage_number: 2, profile_type: "mountain", finale_type: "summit_finish", demand_vector: { climbing: 0.55, endurance: 0.22, tempo: 0.13, recovery: 0.05, randomness: 0.05 } },
+];
+
+// race_stage_schedule — scheduled_at pr. etape (driver next-start-countdown).
+export const SEED_STAGE_SCHEDULE = [
+  { race_id: "race-up-1", stage_number: 1, scheduled_at: "2026-07-12T13:00:00.000Z" },
+  { race_id: "race-up-1", stage_number: 2, scheduled_at: "2026-07-13T13:00:00.000Z" },
+  { race_id: "race-up-1", stage_number: 3, scheduled_at: "2026-07-14T13:00:00.000Z" },
+  { race_id: "race-live-1", stage_number: 3, scheduled_at: "2026-06-25T13:00:00.000Z" },
+];
+
+// race_results — stage- + gc-rækker for de KØRTE løb. RaceDetailPage filtrerer
+// result_type ("stage"/"gc"/"points"/"mountain") + højeste stage_number = endeligt klassement.
+export const SEED_RACE_RESULTS = [
+  // race-done-1 (endags-monument) — stage = endelig.
+  { id: "res-d1-s1-1", race_id: "race-done-1", stage_number: 1, result_type: "stage", rank: 1, rider_id: RIDERS[0].id, rider_name: "Ada Pedersen", team_id: TEST_TEAM.id, team_name: TEST_TEAM.name, finish_time: "+0:00", points_earned: 25, prize_money: 100000, in_breakaway: true, breakaway_caught: false, rider: { id: RIDERS[0].id, firstname: "Ada", lastname: "Pedersen", nationality_code: "dk", team: { id: TEST_TEAM.id, name: TEST_TEAM.name } } },
+  { id: "res-d1-s1-2", race_id: "race-done-1", stage_number: 1, result_type: "stage", rank: 2, rider_id: RIDERS[1].id, rider_name: "Mikkel Hansen", team_id: RIVAL_TEAM.id, team_name: RIVAL_TEAM.name, finish_time: "+0:14", points_earned: 20, prize_money: 60000, in_breakaway: false, breakaway_caught: false, rider: { id: RIDERS[1].id, firstname: "Mikkel", lastname: "Hansen", nationality_code: "dk", team: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name } } },
+  // race-done-2 (2-etape stage-race) — stage 2 + samlet GC.
+  { id: "res-d2-s1-1", race_id: "race-done-2", stage_number: 1, result_type: "stage", rank: 1, rider_id: RIDERS[0].id, rider_name: "Ada Pedersen", team_id: TEST_TEAM.id, team_name: TEST_TEAM.name, finish_time: "+0:00", points_earned: 25, prize_money: 80000, in_breakaway: false, breakaway_caught: false, rider: { id: RIDERS[0].id, firstname: "Ada", lastname: "Pedersen", nationality_code: "dk", team: { id: TEST_TEAM.id, name: TEST_TEAM.name } } },
+  { id: "res-d2-s2-1", race_id: "race-done-2", stage_number: 2, result_type: "stage", rank: 1, rider_id: RIDERS[1].id, rider_name: "Mikkel Hansen", team_id: RIVAL_TEAM.id, team_name: RIVAL_TEAM.name, finish_time: "+0:00", points_earned: 25, prize_money: 80000, in_breakaway: false, breakaway_caught: false, rider: { id: RIDERS[1].id, firstname: "Mikkel", lastname: "Hansen", nationality_code: "dk", team: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name } } },
+  { id: "res-d2-gc-1", race_id: "race-done-2", stage_number: 2, result_type: "gc", rank: 1, rider_id: RIDERS[1].id, rider_name: "Mikkel Hansen", team_id: RIVAL_TEAM.id, team_name: RIVAL_TEAM.name, finish_time: "+0:00", points_earned: 50, prize_money: 120000, in_breakaway: false, breakaway_caught: false, rider: { id: RIDERS[1].id, firstname: "Mikkel", lastname: "Hansen", nationality_code: "dk", team: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name } } },
+  { id: "res-d2-gc-2", race_id: "race-done-2", stage_number: 2, result_type: "gc", rank: 2, rider_id: RIDERS[0].id, rider_name: "Ada Pedersen", team_id: TEST_TEAM.id, team_name: TEST_TEAM.name, finish_time: "+0:22", points_earned: 40, prize_money: 90000, in_breakaway: false, breakaway_caught: false, rider: { id: RIDERS[0].id, firstname: "Ada", lastname: "Pedersen", nationality_code: "dk", team: { id: TEST_TEAM.id, name: TEST_TEAM.name } } },
+];
+
+// GET /api/races/distribution — board-aggregat. ≥1 tids-overlap-kolonne (begge
+// kolonner deler bindingWindow → bindingMap binder en rytter væk fra den anden).
+// roster = column[0].riders (RaceHubBoard: roster = columns[0]?.riders).
+const SEED_BOARD_ROSTER = RIDERS.filter((r) => r.team_id === TEST_TEAM.id).map((r) => ({
+  id: r.id, firstname: r.firstname, lastname: r.lastname,
+  primary_type: r.primary_type, secondary_type: r.secondary_type, nationality_code: r.nationality_code,
+}));
+export const SEED_DISTRIBUTION = {
+  enabled: true,
+  season: { id: ACTIVE_SEASON.id, number: ACTIVE_SEASON.season_number },
+  currentDay: 12,
+  focusDay: 12,
+  columns: [
+    {
+      id: "race-up-1", name: "Tour de Preview", race_class: "TourFrance", race_type: "stage_race",
+      stages: 3, stages_completed: 0, status: "scheduled", window: { day: 12 }, bindingWindow: 12,
+      size: { min: 6, max: 8 }, riders: SEED_BOARD_ROSTER,
+      selection: { rider_ids: [RIDERS[0].id], captain_id: RIDERS[0].id, sprint_captain_id: null, hunter_id: null, is_auto_filled: false },
+      withdrawn: false, lineup_locked: false,
+      counts: { selected: 1, target: 8 },
+    },
+    {
+      // Tids-overlap med race-up-1 (samme bindingWindow=12) → én-rytter/ét-løb-binding.
+      id: "race-overlap-1", name: "Critérium Preview", race_class: "ProSeries", race_type: "single",
+      stages: 1, stages_completed: 0, status: "scheduled", window: { day: 12 }, bindingWindow: 12,
+      size: { min: 6, max: 7 }, riders: SEED_BOARD_ROSTER,
+      selection: { rider_ids: [], captain_id: null, sprint_captain_id: null, hunter_id: null, is_auto_filled: false },
+      withdrawn: false, lineup_locked: false,
+      counts: { selected: 0, target: 7 },
+    },
+  ],
+  // bindingMap: rider_id → liste af race_ids den er bundet til (samme-dag-overlap).
+  bindingMap: { [RIDERS[0].id]: ["race-up-1", "race-overlap-1"] },
+  timeline: {
+    totalDays: 28,
+    currentDay: 12,
+    days: [
+      { day: 10, dateText: "10 Jul" },
+      { day: 11, dateText: "11 Jul" },
+      { day: 12, dateText: "12 Jul" },
+      { day: 13, dateText: "13 Jul" },
+      { day: 14, dateText: "14 Jul" },
+    ],
+  },
+};
+
+// GET /api/races/strategy — holdets strategi + roster + kommende mål-løb.
+// Modelleret på api.js res.json (~L1935): roster[{id,name,primaryType,secondaryType,
+// suitabilities}], a_chain, captain_priorities, role_rules, target_race_ids, upcoming.
+export const SEED_STRATEGY = {
+  enabled: true,
+  roster: RIDERS.filter((r) => r.team_id === TEST_TEAM.id).map((r) => ({
+    id: r.id, name: `${r.firstname} ${r.lastname}`,
+    primaryType: r.primary_type ?? null, secondaryType: r.secondary_type ?? null,
+    suitabilities: { flat: 82, hills: 64, mountains: 41, cobbles: 55, time_trial: 60 },
+  })),
+  a_chain: [RIDERS[0].id],
+  captain_priorities: { flat: RIDERS[0].id, hills: RIDERS[0].id, mountains: null, cobbles: RIDERS[0].id, time_trial: null },
+  role_rules: [
+    { rider_id: RIDERS[0].id, bucket: "flat", role: "captain" },
+  ],
+  target_race_ids: ["race-up-1"],
+  upcoming: [
+    { id: "race-up-1", name: "Tour de Preview", race_class: "TourFrance", status: "scheduled", stages: 3, stages_completed: 0, bucket: "flat", is_target: true },
+    { id: "race-live-1", name: "Settimana Preview", race_class: "ProSeries", status: "scheduled", stages: 5, stages_completed: 2, bucket: "hills", is_target: false },
+  ],
+};
+
+// GET /api/academy/me — genbruger formen fra apiResponse("/api/academy/me").
+export const SEED_ACADEMY = {
+  enabled: true,
+  slots: { used: 2, max: 8 },
+  roster: [
+    { id: "acad-r1", firstname: "Jonas", lastname: "Svensson", birthdate: "2008-03-15", nationality_code: "se", team_id: TEST_TEAM.id, is_academy: true, salary: 12000, contract_length: 2, contract_end_season: 3 },
+    { id: "acad-r2", firstname: "Luca", lastname: "Morel", birthdate: "2007-11-22", nationality_code: "fr", team_id: TEST_TEAM.id, is_academy: true, salary: 10000, contract_length: 2, contract_end_season: 3 },
+  ],
+  intake: [
+    { intakeId: "intake-1", riderId: "prospect-1", is_serious: true, status: "offered", created_at: "2026-06-13T10:00:00.000Z", rider: { id: "prospect-1", firstname: "Emil", lastname: "Kristiansen", birthdate: "2009-06-05", nationality_code: "dk", base_value: 200000, market_value: 200000, prize_earnings_bonus: 0, team_id: null }, potentialEstimate: { lo: 3.5, hi: 5.0, exact: false, scoutLevel: 1 } },
+  ],
+  freeAgents: [
+    { id: "fa-1", firstname: "Noah", lastname: "Berg", nationality_code: "no", birthdate: "2007-04-12", market_value: 95000 },
+  ],
+};
