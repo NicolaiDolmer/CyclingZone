@@ -15,6 +15,7 @@ import { LockIcon } from "../ui";
 const STATUS_CLASS = {
   full: "bg-cz-success-bg text-cz-success border-cz-success/30",
   understaffed: "bg-cz-warning-bg text-cz-warning border-cz-warning/40",
+  overfull: "bg-cz-danger/10 text-cz-danger border-cz-danger/40",
   withdrawn: "bg-cz-subtle text-cz-3 border-cz-border",
   locked: "bg-cz-subtle text-cz-2 border-cz-border",
 };
@@ -48,7 +49,7 @@ export default function RaceColumn({ column, onRemoveRider, onToggleWithdraw, on
   };
   const status = locked
     ? { kind: "locked" }
-    : computeColumnStatus({ selected: column.counts.selected, target: column.counts.target, withdrawn: column.withdrawn });
+    : computeColumnStatus({ selected: column.counts.selected, target: column.counts.target, max: column.size?.max, withdrawn: column.withdrawn });
   const statusLabel = status.kind === "locked"
     ? t("racehub.status.locked")
     : t(`racehub.status.${status.kind}`, { selected: status.selected, target: status.target });

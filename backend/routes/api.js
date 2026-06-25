@@ -1595,6 +1595,7 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
 
     const bindingMap = buildBindingMap({
       columns: columns.map((c) => ({ id: c.id, window: c.bindingWindow, riderIds: c.selection?.rider_ids || [] })),
+      withdrawnIds: withdrawnSet, // Rod A: afmeldte kolonner binder ikke
     });
 
     const timeline = await buildTimeline({
@@ -1851,8 +1852,10 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
 
     // Lås ALLE committede ryttere i løb der IKKE regenereres (binding-vinduer): andre
     // dages overlap (1b-fix), igangværende, og — i mode=missing — de manuelt-skippede.
+    // Rod A (#1823): afmeldte løb låser IKKE (rytterne er frie) → med i excludeRaceIds.
     const lockedWindows = lockedWindowsFromEntries({
-      entries: allEntries || [], windowByRace: bindingWindowByRace, excludeRaceIds: new Set(target.map((r) => r.id)),
+      entries: allEntries || [], windowByRace: bindingWindowByRace,
+      excludeRaceIds: new Set([...target.map((r) => r.id), ...withdrawn]),
     });
 
     // S3: holdets strategi som deterministisk præference-lag. Ingen row → null (uændret).

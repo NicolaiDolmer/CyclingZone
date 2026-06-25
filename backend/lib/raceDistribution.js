@@ -19,10 +19,14 @@ export function buildColumnSet({ races = [], teamDivisionId, dayWindow }) {
 
 // For hver rytter: de kolonne-løb han er udtaget i, der overlapper MINDST ét andet
 // kolonne-løb (dvs. binder ham væk fra det andet). `columns` = [{id, window, riderIds}].
-export function buildBindingMap({ columns = [] }) {
+export function buildBindingMap({ columns = [], withdrawnIds } = {}) {
+  // Rod A (#1823): afmeldte kolonne-løb binder ikke — deres ryttere er frie til de
+  // overlappende løb. Filtrér dem ud før overlap-beregningen.
+  const withdrawn = withdrawnIds instanceof Set ? withdrawnIds : new Set(withdrawnIds || []);
+  const active = columns.filter((c) => !withdrawn.has(c.id));
   const map = {};
-  for (const col of columns) {
-    const overlapsAnother = columns.some((o) => o.id !== col.id && windowsOverlap(col.window, o.window));
+  for (const col of active) {
+    const overlapsAnother = active.some((o) => o.id !== col.id && windowsOverlap(col.window, o.window));
     if (!overlapsAnother) continue;
     for (const rid of col.riderIds || []) {
       if (!map[rid]) map[rid] = [];

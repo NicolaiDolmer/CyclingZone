@@ -56,7 +56,7 @@ function baseState() {
   for (const t of ["t1", "t2"]) {
     for (let i = 0; i < 10; i++) {
       const id = `${t}-r${i}`;
-      state.riders.push({ id, team_id: t, firstname: "A", lastname: id, is_u25: false, is_retired: false });
+      state.riders.push({ id, team_id: t, firstname: "A", lastname: id, is_u25: false, is_retired: false, is_academy: false });
       state.rider_derived_abilities.push({ rider_id: id, ...ab(80 - i * 3) });
     }
   }
@@ -96,6 +96,42 @@ test("skadede ryttere udelades af autopick; persist=false skriver intet", async 
   const entrants = await loadEntrantsForRace({ supabase, race, stages, persist: false });
   assert.ok(!entrants.some((e) => e.rider_id === "t1-r0"), "skadet topscorer udeladt");
   assert.equal(supabase.__calls.filter((c) => c.table === "race_entries").length, 0, "dry-run: ingen insert");
+});
+
+// Rod B (#1742/#1800): sim-tids-autofill må KUN vælge løbs-berettigede ryttere.
+// fillMissingTeamEntries manglede is_academy-filteret (kun is_retired).
+test("autofill vælger ALDRIG akademiryttere (Rod B)", async () => {
+  const state = baseState();
+  // Stærkeste rytter på t1 er akademi → ville blive valgt hvis ufiltreret.
+  state.riders.push({ id: "t1-academy", team_id: "t1", firstname: "A", lastname: "cad", is_u25: false, is_retired: false, is_academy: true });
+  state.rider_derived_abilities.push({ rider_id: "t1-academy", ...ab(99) });
+  const supabase = makeSupabase(state);
+  const entrants = await loadEntrantsForRace({ supabase, race, stages, persist: false });
+  assert.ok(!entrants.some((e) => e.rider_id === "t1-academy"), "akademirytter aldrig autopicket");
+});
+
+// Rod B: committede ghost-entries (rytter solgt/fyret/blevet akademi/pensioneret EFTER
+// udtagelse) skal falde ud af startfeltet — ellers kører en fremmed rytter for et hold
+// han ikke længere er på (151 off-team i prod 2026-06-25). Forbrugs-punkt-gyldighed.
+test("committede ghost-entries droppes fra startfeltet (Rod B)", async () => {
+  const state = baseState();
+  // t1 har en manuel lineup, men to af rytterne er nu ghosts:
+  //  - t1-sold er solgt til t2 (rytterens nuværende team_id ≠ entry.team_id)
+  //  - t1-r5 er blevet akademirytter efter udtagelsen
+  state.riders.find((r) => r.id === "t1-r1").team_id = "t2"; // solgt videre
+  state.riders.find((r) => r.id === "t1-r5").is_academy = true;
+  state.race_entries = [
+    { race_id: "race1", rider_id: "t1-r0", team_id: "t1", race_role: "captain", is_auto_filled: false },
+    { race_id: "race1", rider_id: "t1-r1", team_id: "t1", race_role: "helper", is_auto_filled: false }, // ghost: solgt
+    { race_id: "race1", rider_id: "t1-r5", team_id: "t1", race_role: "helper", is_auto_filled: false }, // ghost: akademi
+    { race_id: "race1", rider_id: "t1-r2", team_id: "t1", race_role: "helper", is_auto_filled: false },
+  ];
+  const supabase = makeSupabase(state);
+  const entrants = await loadEntrantsForRace({ supabase, race, stages, persist: false });
+  const t1Ids = entrants.filter((e) => e.team_id === "t1").map((e) => e.rider_id);
+  assert.ok(!t1Ids.includes("t1-r1"), "solgt rytter droppet fra t1's felt");
+  assert.ok(!t1Ids.includes("t1-r5"), "akademi-rytter droppet fra t1's felt");
+  assert.ok(t1Ids.includes("t1-r0") && t1Ids.includes("t1-r2"), "gyldige ryttere bevaret");
 });
 
 test("afmeldt hold autofyldes IKKE", async () => {

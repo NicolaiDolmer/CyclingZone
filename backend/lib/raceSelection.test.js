@@ -1,7 +1,7 @@
 // backend/lib/raceSelection.test.js
 import test from "node:test";
 import assert from "node:assert/strict";
-import { validateSelection, buildRiderRows } from "./raceSelection.js";
+import { validateSelection, buildRiderRows, getSelectionContext } from "./raceSelection.js";
 
 const base = {
   riderIds: ["r1", "r2", "r3", "r4", "r5", "r6"],
@@ -44,6 +44,61 @@ test("fremmede, skadede og duplikerede ryttere afvises", () => {
   assert.ok(validateSelection({ ...base, riderIds: [...base.riderIds.slice(0, 5), "alien"] }).errors.includes("selection_rider_not_on_team"));
   assert.ok(validateSelection({ ...base, injuredRiderIds: new Set(["r2"]) }).errors.includes("selection_rider_injured"));
   assert.ok(validateSelection({ ...base, riderIds: ["r1", "r1", "r2", "r3", "r4", "r5"] }).errors.includes("selection_duplicate_rider"));
+});
+
+// Rod B (#1800/#1742): getSelectionContext må kun vise/tælle løbs-berettigede ryttere.
+// Mock-supabase: thenable builder pr. tabel; eq/in/or registreres så riders-queriet
+// kan respektere is_academy-filteret (akademiryttere ekskluderes fra rosteren).
+function makeSelectionSupabase(state) {
+  function from(table) {
+    const f = { eqs: {}, ins: {} };
+    const b = {
+      select() { return b; },
+      eq(col, val) { f.eqs[col] = val; return b; },
+      in(col, vals) { f.ins[col] = vals; return b; },
+      or() { f.orRetired = true; return b; },
+      order() { return b; },
+      then(resolve, reject) {
+        let rows = state[table] || [];
+        if (table === "riders") {
+          rows = rows.filter((r) =>
+            (f.eqs.team_id === undefined || r.team_id === f.eqs.team_id) &&
+            (f.eqs.is_academy === undefined || r.is_academy === f.eqs.is_academy) &&
+            (!f.orRetired || r.is_retired == null || r.is_retired === false)
+          );
+        } else if (f.eqs.race_id !== undefined) {
+          rows = rows.filter((r) => r.race_id === f.eqs.race_id && (f.eqs.team_id === undefined || r.team_id === f.eqs.team_id));
+        } else if (f.ins.rider_id) {
+          rows = rows.filter((r) => f.ins.rider_id.includes(r.rider_id));
+        }
+        return Promise.resolve({ data: rows, error: null }).then(resolve, reject);
+      },
+    };
+    return b;
+  }
+  return { from };
+}
+
+test("getSelectionContext: ghost-entries (akademi/off-roster) udelades fra selection + counts", async () => {
+  const teamId = "t1";
+  const state = {
+    riders: [
+      ...["r1", "r2", "r3", "r4", "r5"].map((id) => ({ id, team_id: teamId, is_academy: false, is_retired: false, firstname: id, lastname: "X" })),
+      { id: "academy", team_id: teamId, is_academy: true, is_retired: false, firstname: "A", lastname: "Cad" },
+    ],
+    race_stage_profiles: [{ race_id: "race1", stage_number: 1, profile_type: "flat", demand_vector: { sprint: 0.8 } }],
+    race_entries: [
+      ...["r1", "r2", "r3", "r4", "r5"].map((id) => ({ race_id: "race1", team_id: teamId, rider_id: id, race_role: id === "r1" ? "captain" : "helper", is_auto_filled: false })),
+      { race_id: "race1", team_id: teamId, rider_id: "academy", race_role: "helper", is_auto_filled: false }, // ghost: udtaget før akademi-status
+    ],
+    rider_derived_abilities: ["r1", "r2", "r3", "r4", "r5"].map((id) => ({ rider_id: id, climbing: 50, sprint: 50, aggression: 40 })),
+    rider_condition: [],
+  };
+  const supabase = makeSelectionSupabase(state);
+  const ctx = await getSelectionContext({ supabase, race: { id: "race1", race_class: "Class2" }, teamId });
+  assert.ok(!ctx.selection.rider_ids.includes("academy"), "akademi-ghost udeladt af selection");
+  assert.equal(ctx.selection.rider_ids.length, 5, "kun de 5 gyldige tæller (ærlig count)");
+  assert.ok(!ctx.riders.some((r) => r.id === "academy"), "akademirytter ikke i rosteren");
 });
 
 // S4: per-etape rute-match — buildRiderRows mapper evner+profiler til riderRows.

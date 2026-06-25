@@ -95,7 +95,7 @@ test("findRiderBindingConflicts: intet vindue → ingen konflikter", () => {
 
 // Mock-supabase: svarer pr. tabel; ignorerer filtre (testen verificerer kombinations-
 // logikken, ikke query-filtrene). Mønster fra raceFatigue.test.js.
-function makeSupabase({ scheduleByRace = {}, teamEntries = [] } = {}) {
+function makeSupabase({ scheduleByRace = {}, teamEntries = [], withdrawnRaceIds = [] } = {}) {
   function from(table) {
     const f = {};
     const b = {
@@ -110,6 +110,8 @@ function makeSupabase({ scheduleByRace = {}, teamEntries = [] } = {}) {
           else if (f.in_race_id) data = f.in_race_id.flatMap((id) => scheduleByRace[id] || []);
         } else if (table === "race_entries") {
           data = teamEntries;
+        } else if (table === "race_withdrawals") {
+          data = withdrawnRaceIds.map((race_id) => ({ race_id }));
         }
         return Promise.resolve({ data, error: null }).then(resolve, reject);
       },
@@ -140,6 +142,27 @@ test("loadTeamBindingContext: bygger thisWindow + otherRaces grupperet pr. løb"
   assert.equal(ctx.otherRaces.length, 1);
   assert.equal(ctx.otherRaces[0].window.end, ORD("2026-06-24")); // sidste etape 13:00Z = 15:00 CEST 24/6
   assert.deepEqual(ctx.otherRaces[0].riderIds.sort(), ["r1", "r2"]);
+});
+
+// Rod A (#1823): et afmeldt løb binder IKKE — dets ryttere er frie til det
+// overlappende løb. Tidligere blev afmeldte løbs entries stadig regnet som binding,
+// så "afmeld frigør ikke låsen" (testere @friisisch/@zootne, 2026-06-25).
+test("loadTeamBindingContext: afmeldt løb udelades fra otherRaces (frigør binding)", async () => {
+  const supabase = makeSupabase({
+    scheduleByRace: {
+      "race-this": [{ race_id: "race-this", scheduled_at: "2026-06-23T10:30:00Z" }],
+      "race-a": [{ race_id: "race-a", scheduled_at: "2026-06-23T13:00:00Z" }], // samme dag → overlapper
+    },
+    teamEntries: [
+      { race_id: "race-a", rider_id: "r1" },
+      { race_id: "race-a", rider_id: "r2" },
+    ],
+    withdrawnRaceIds: ["race-a"], // holdet har trukket sig fra race-a
+  });
+  const ctx = await loadTeamBindingContext({ supabase, race: { id: "race-this" }, teamId: "team-1" });
+  assert.deepEqual(ctx.otherRaces, [], "afmeldt race-a binder ikke");
+  assert.deepEqual(findRiderBindingConflicts({ riderIds: ["r1", "r2"], thisWindow: ctx.thisWindow, otherRaces: ctx.otherRaces }), [],
+    "r1/r2 er frie til race-this efter afmelding af race-a");
 });
 
 test("findManualOverlapConflicts: ingen konflikt når vinduer ikke overlapper", () => {

@@ -38,6 +38,19 @@ test("buildBindingMap: rytter udtaget i ét kolonne-løb bindes i de overlappend
   assert.equal(map["r9"], undefined);
 });
 
+// Rod A (#1823): et afmeldt kolonne-løb binder ikke — dets ryttere er frie til de
+// overlappende løb (puljen viser dem ikke som låst).
+test("buildBindingMap: afmeldt kolonne binder ikke (frigør ryttere)", () => {
+  const columns = [
+    { id: "a", window: W("12"), riderIds: ["r1", "r2"] },
+    { id: "b", window: W("12"), riderIds: ["r3"] }, // overlapper a
+  ];
+  const map = buildBindingMap({ columns, withdrawnIds: new Set(["a"]) });
+  assert.equal(map["r1"], undefined, "r1 i afmeldt a binder ikke");
+  assert.equal(map["r2"], undefined);
+  assert.equal(map["r3"], undefined, "b overlapper kun det afmeldte a → r3 fri");
+});
+
 test("dominantTerrain: flertal vinder, lige → mixed", () => {
   assert.equal(dominantTerrain(["flat", "flat", "hills"]), "flat");
   assert.equal(dominantTerrain(["flat", "hills"]), "mixed");

@@ -12,8 +12,10 @@ export default function AvailableRidersPool({ roster, columns, bindingMap, onAdd
   const [openRiderId, setOpenRiderId] = useState(null);
   // Låst i puljen = udtaget til et af dagens løb (committed → bundet væk fra de øvrige).
   // Navngiv bindingen (#1823 WC): hvilket løb kører rytteren? (første kolonne han er i).
+  // Rod A (#1823): afmeldte kolonner låser IKKE — rytterne er frie til de øvrige løb.
   const raceByRider = new Map();
   for (const c of columns) {
+    if (c.withdrawn) continue;
     for (const id of c.selection?.rider_ids || []) if (!raceByRider.has(id)) raceByRider.set(id, c.name);
   }
   const lockedIds = new Set(raceByRider.keys());
