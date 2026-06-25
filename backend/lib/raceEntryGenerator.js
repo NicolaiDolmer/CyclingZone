@@ -56,14 +56,22 @@ export function assignTeamAcrossRaces({ riders = [], races = [], lockedWindows =
 // rammer det 414/proxy-grænser. Batch derfor alle id-opslag i bidder. (kopieret fra
 // raceRunner.js, hvor den er modul-privat — #1307-review.)
 const IN_CHUNK_SIZE = 200;
+const PAGE_SIZE = 1000;
 async function selectInChunks({ supabase, table, columns, inColumn, ids, extra = null }) {
   const out = [];
   for (let i = 0; i < ids.length; i += IN_CHUNK_SIZE) {
-    let q = supabase.from(table).select(columns).in(inColumn, ids.slice(i, i + IN_CHUNK_SIZE));
-    if (extra) q = extra(q);
-    const { data, error } = await q;
-    if (error) return { data: null, error };
-    out.push(...(data || []));
+    const chunk = ids.slice(i, i + IN_CHUNK_SIZE);
+    // Range-paginer hver chunk: PostgREST's default 1000-rækkers cap trunkerer ellers
+    // TAVST (fx race_entries: 168 hold × 6-8 ryttere ≫ 1000 rækker pr. løb-chunk) →
+    // manglende manuelle entries blev overskrevet (captain-constraint-brud). Bidt 25/6.
+    for (let from = 0; ; from += PAGE_SIZE) {
+      let q = supabase.from(table).select(columns).in(inColumn, chunk).range(from, from + PAGE_SIZE - 1);
+      if (extra) q = extra(q);
+      const { data, error } = await q;
+      if (error) return { data: null, error };
+      out.push(...(data || []));
+      if (!data || data.length < PAGE_SIZE) break;
+    }
   }
   return { data: out, error: null };
 }
@@ -145,23 +153,31 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
   // 6. Manuelle entries: (race,team) hvor manageren selv har udtaget — generér ALDRIG der.
   // Vi gemmer også rytter-id'erne, så manuelle løb forbruger rytterens tid og et
   // overlappende auto-løb ikke dobbeltbooker samme rytter (binding-bevidsthed).
-  const { data: entryRows, error: entryErr } = await selectInChunks({
-    supabase, table: "race_entries", columns: "race_id, team_id, rider_id, is_auto_filled",
-    inColumn: "race_id", ids: raceIds,
+  // Kun MANUELLE entries (is_auto_filled=false) — langt færre rækker end alle entries,
+  // så vi undgår at hente ~200k auto-rækker bare for at finde de manuelle.
+  const { data: manualRows, error: entryErr } = await selectInChunks({
+    supabase, table: "race_entries", columns: "race_id, team_id, rider_id",
+    inColumn: "race_id", ids: raceIds, extra: (q) => q.eq("is_auto_filled", false),
   });
   if (entryErr) throw new Error(`race_entries (manual scan): ${entryErr.message}`);
   const manualByRaceTeam = new Set();
   const manualRidersByRaceTeam = new Map(); // "race|team" → [rider_id]
-  const startedRidersByRaceTeam = new Map(); // "race|team" → [rider_id] (igangværende løb)
-  for (const e of entryRows || []) {
+  for (const e of manualRows || []) {
     const key = `${e.race_id}|${e.team_id}`;
-    if (e.is_auto_filled === false) {
-      manualByRaceTeam.add(key);
-      if (!manualRidersByRaceTeam.has(key)) manualRidersByRaceTeam.set(key, []);
-      manualRidersByRaceTeam.get(key).push(e.rider_id);
-    }
-    // Igangværende løb: alle ryttere (auto eller manuel) låses så de ikke dobbeltbookes.
-    if (startedRaceIds.has(e.race_id)) {
+    manualByRaceTeam.add(key);
+    if (!manualRidersByRaceTeam.has(key)) manualRidersByRaceTeam.set(key, []);
+    manualRidersByRaceTeam.get(key).push(e.rider_id);
+  }
+  // Igangværende løbs entries (alle roller) → binding-lås. Kun de få startede løb.
+  const startedRidersByRaceTeam = new Map(); // "race|team" → [rider_id]
+  if (startedRaceIds.size) {
+    const { data: startedRows, error: sErr } = await selectInChunks({
+      supabase, table: "race_entries", columns: "race_id, team_id, rider_id",
+      inColumn: "race_id", ids: [...startedRaceIds],
+    });
+    if (sErr) throw new Error(`race_entries (started lock): ${sErr.message}`);
+    for (const e of startedRows || []) {
+      const key = `${e.race_id}|${e.team_id}`;
       if (!startedRidersByRaceTeam.has(key)) startedRidersByRaceTeam.set(key, []);
       startedRidersByRaceTeam.get(key).push(e.rider_id);
     }

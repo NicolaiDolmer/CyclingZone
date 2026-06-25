@@ -63,6 +63,7 @@ function makeSupabase(state) {
       in(col, vals) { q.filters.push(["in", col, vals]); return api; },
       or() { return api; },
       gte(col, val) { q.filters.push(["gte", col, val]); return api; },
+      range() { return api; }, // mock ignorer paginering (test-data < 1000 rækker)
       order() { return api; },
       delete() { q.op = "delete"; return api; },
       insert(rows) { calls.push({ table, insert: rows }); state[table] = [...(state[table] || []), ...rows]; return Promise.resolve({ error: null }); },
