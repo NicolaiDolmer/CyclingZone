@@ -29,8 +29,9 @@
     "discord": 22
   },
   "deferred_tools_breakdown_notes": {
-    "github_mcp": "CUT 2026-05-29 (#741). Var 43 tools på DolmerPC; disconnected på claude.ai/connectors. `gh` CLI dækker 1:1 — kanonisk vej i CLAUDE.md close-protokol. Matcher nu NicolaiPC (også cut).",
-    "sentry_mcp": "CUT 2026-05-29 (#741). Var 25 tools; disconnected på claude.ai/connectors. Episodisk brug (<10% sessioner); re-connect ad hoc ved prod-incident.",
+    "github_mcp": "GENINDFOERT + AKTIVT BRUGT — #741's CUT er FORAELDET. 4-ugers-maaling 2026-06-25: 92 tool_use-kald; enabledPlugins github=true. Behold. (gh CLI bruges OGSAA tungt parallelt — begge er live.)",
+    "sentry_mcp": "GENINDFOERT + BRUGT — #741's CUT er FORAELDET. 4-ugers-maaling 2026-06-25: 53 tool_use-kald; enabledPlugins sentry=true. Behold.",
+    "marketplace_connectors_2026_06_25": "Marketing/PM/productivity/engineering/data-connectors (Klaviyo/HubSpot/Asana/Linear/Notion/Datadog/BigQuery/Hex m.fl.) optraeder KUN i Cowork/hosted-kanal-sessioner — IKKE lokalt (ikke i installed_plugins.json). 0 kald paa 4 uger. Kan IKKE disables via repo .claude/settings.json; toggle i Cowork-app'ens connector-UI. Se memory reference_cowork_channel_injects_marketplace_connectors. DENNE snapshot traenger re-maaling (token-tal fra 2026-05-29 fanger ikke github/sentry re-connect).",
     "vercel": "Vercel MCP-connector (18 tools) BEHOLDT — faktiske deploy/log/deployment-operationer, matcher reelt workflow (#727). Adskilt fra Vercel-PLUGINET (skills), som blev disabled.",
     "gmail": "Ikke connected (0 tools) — matcher NicolaiPC Phase-B-cut."
   },

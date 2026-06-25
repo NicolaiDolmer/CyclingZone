@@ -6,6 +6,26 @@ Baseret på faktisk brug i 66 sessioner (data: `.codex.local/token-baseline-befo
 
 ---
 
+## ⭐ Måling 2026-06-25 — forbrugsbaseret vurdering (læs FØRST, supersederer estimaterne nedenfor)
+
+Ejer-princip: **vurder connectors mod faktisk forbrug, ikke gamle planer.** 4-ugers transcript-måling (321 sessioner, 31.818 `tool_use`-kald, 28/5–25/6) — eksakte `"name":"mcp__..."`-tool_use-navne, ikke substring-grep (sidstnævnte gav falske positiver: canva→canvas, ahrefs→`a href`, hex→hex-farver, resend→ordet).
+
+**Brugt (behold alle):** Supabase 881 · Claude_Preview 217 · ccd_session(+mgmt) 230 · **GitHub-MCP 92** · visualize 72 · Playwright 71 · Vercel-MCP 60 · **Sentry-MCP 53** · Discord 50 · Clarity 30 · Chrome 24 · **Railway-MCP 20** · scheduled-tasks 9 · Calendar 3 · Drive 1.
+
+**Korrektioner til denne playbook:**
+- **GitHub-MCP + Sentry-MCP er IKKE cut** længere (Phase-2-tabellen + DolmerPC-cut #2/#3 er forældede): 92 + 53 kald, begge `enabledPlugins=true`. Behold.
+- **Railway-MCP bruges (20 kald)** — ikke ren CLI-only som memory antog.
+- **Clarity (30) + Calendar (3) + Drive (1)** har reel om end lav brug — Phase-2's "0 kald, disconnect" er forældet for Clarity.
+
+**Marketplace-connectorerne (marketing/PM/productivity/engineering/data: Klaviyo, HubSpot, Asana, Linear, Notion, Monday, ClickUp, Atlassian, Intercom, Pendo, Amplitude, Figma, Fireflies, Ahrefs, Canva, Similarweb, Supermetrics, Datadog, PagerDuty, BigQuery, Definite, Hex) + mcp-registry + computer-use + Resend-connector:** 0 kald hver.
+- **De er IKKE i `installed_plugins.json`** (lokal kanon = 16 dev-plugins). De injiceres af **Cowork/hosted-kanalen**, ikke lokal config → de æder IKKE tokens i lokale Claude Code-sessioner (kun i Cowork-kanal-sessioner).
+- **Kan IKKE disables via repo `.claude/settings.json`** — project-settings havde allerede marketing/PM/design/productivity=`false`, men connectorerne optrådte stadig i Cowork-sessionen. Toggle dem i **Cowork/Claude-app'ens connector/plugin-UI**. Foreslå ALDRIG "skær dem via .claude/settings.json" — no-op.
+- **Resend-connector:** 0 kald, men bevidst behold (ejer-beslutning 25/6) — relevant kapacitet til kommende email-ops (welcome-sekvenser/deliverability), modsat marketplace-junk.
+
+**Snapshot-status:** `harness-snapshot-DOLMERPC.json` token-tal er fra 29/5 og fanger ikke github/sentry-re-connect → trænger re-måling. Se memory `reference_cowork_channel_injects_marketplace_connectors`.
+
+---
+
 ## Desktop-kanal drift — mekanisme og fix (#1286, fundet 11/6)
 
 **Problem:** Plugins installeret via Claude Code Desktop-kanalen har separat plugin-state der ignorerer `enabledPlugins`-nøgler i `~/.claude/settings.json` (user-level). Disablede plugins kan drifte tilbage og æde cold-start-tokens uden at det er synligt i settings-filen.
