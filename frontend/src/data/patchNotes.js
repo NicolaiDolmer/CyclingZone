@@ -4,7 +4,7 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
-    "version": "6.14",
+    "version": "6.15",
     "date": "2026-06-25",
     "label": "Beta",
     "changes": [
@@ -21,7 +21,14 @@ export const PATCHES = [
           "body": "Rolle-tildeling er nu kort i stedet for en dropdown. Hvert kort fortæller hvorfor en rolle passer løbets terræn: hvem din beskyttede kaptajn fører an, hvornår en sprint-kaptajn betyder noget, og hvad udbrudsjægeren gør. Jæger-kortet viser hvor sandsynligt et udbrud er at holde hjem her, og løb-detalje-siden forklarer nu jæger-rollen og rangerer dine bedste jægere efter aggression."
         },
         "refs": [1747]
-      },
+      }
+    ]
+  },
+  {
+    "version": "6.14",
+    "date": "2026-06-25",
+    "label": "Beta",
+    "changes": [
       {
         "category": "fixed",
         "audience": "player",
