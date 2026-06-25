@@ -2,11 +2,27 @@
 // Race Hub Fase 1: rene UI-helpers til trup-fordeling-board'et. Holder komponenterne
 // thin + giver node --test-dækning. Ingen React, ingen I/O.
 
-// Status-chip for en kolonne. withdrawn vinder; ellers full vs understaffed mod target.
-export function computeColumnStatus({ selected, target, withdrawn }) {
+// Status-chip for en kolonne. withdrawn vinder; ellers under/over/præcis target.
+// `max` (valgfri) = øvre grænse; uden den behandles target som max (uændret adfærd).
+// Rod A (#1823): kladde-redigering kan transient gå OVER max (add-først-bytte på en
+// fuld 6/6-trup), så vi skelner "overfull" fra "full" → ærlig "for mange"-besked.
+export function computeColumnStatus({ selected, target, withdrawn, max }) {
   if (withdrawn) return { kind: "withdrawn", selected, target };
+  const upper = Number.isFinite(max) ? max : target;
+  if (selected > upper) return { kind: "overfull", selected, target };
   if (selected >= target) return { kind: "full", selected, target };
   return { kind: "understaffed", selected, target };
+}
+
+// Rod A (#1823): er kladden klar til at GEMMES? Auto-gem-når-gyldig — størrelsen skal
+// være inden for [effectiveMin, max]. effectiveMin sænkes til antal tilgængelige
+// ryttere (spejler backend's lille-trup-lempelse i raceSelection.validateSelection),
+// så et lille hold også kan gemme. Mens kladden er ugyldig (fx 5 eller 7 på en 6/6)
+// gemmes intet → manageren kan redigere frit uden at kunne "godkende" under minimum.
+export function isSelectionSavable({ count, min, max, available }) {
+  const lo = Number.isFinite(min) ? min : 0;
+  const effMin = Math.min(lo, Number.isFinite(available) ? available : lo);
+  return count >= effMin && count <= (Number.isFinite(max) ? max : Infinity);
 }
 
 // Er rytteren bundet væk fra `forRaceId` (udtaget i et ANDET overlappende kolonne-løb)?

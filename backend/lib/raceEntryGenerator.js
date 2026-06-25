@@ -9,6 +9,7 @@ import { windowsOverlap, raceBindingWindow } from "./raceBinding.js";
 import { ABILITY_KEYS } from "./raceSimulator.js";
 import { raceTerrainBucket } from "./raceTerrain.js";
 import { loadStrategiesForTeams } from "./raceStrategy.js";
+import { applyRiderEligibilityFilter } from "./riderEligibility.js";
 
 /**
  * @param {{ riders: Array<{rider_id, abilities, fatigue?}>,
@@ -213,7 +214,9 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
   if (eligibleTeamIds.length) {
     const { data: riders, error: riderErr } = await selectInChunks({
       supabase, table: "riders", columns: "id, team_id", inColumn: "team_id",
-      ids: eligibleTeamIds, extra: (q) => q.or("is_retired.is.null,is_retired.eq.false"),
+      // Rod B: ét delt eligibility-filter (ikke-akademi + ikke-pensioneret). Tidligere
+      // manglede is_academy her → akademiryttere blev auto-valgt (#1742/#1800).
+      ids: eligibleTeamIds, extra: (q) => applyRiderEligibilityFilter(q),
     });
     if (riderErr) throw new Error(`riders: ${riderErr.message}`);
     const riderIds = (riders || []).map((r) => r.id);

@@ -94,7 +94,7 @@ const flatProfile = (n) => ({ stage_number: n, profile_type: "flat", finale_type
 function seedTeamRiders(state, teamId, count = 8) {
   for (let i = 0; i < count; i++) {
     const id = `${teamId}-r${i}`;
-    state.riders.push({ id, team_id: teamId, is_retired: false });
+    state.riders.push({ id, team_id: teamId, is_retired: false, is_academy: false });
     state.rider_derived_abilities.push({ rider_id: id, ...ab(80 - i * 3) });
     state.rider_condition.push({ rider_id: id, fatigue: 0 });
   }
@@ -266,6 +266,33 @@ test("runRaceEntryGenerator: igangværende løb (stages_completed>0) regenereres
   const bRiders = state.race_entries.filter((e) => e.race_id === "B" && e.is_auto_filled === true);
   assert.ok(bRiders.length > 0, "B genereret");
   for (const e of bRiders) assert.ok(!lRiders.has(e.rider_id), `${e.rider_id} dobbeltbooket med igangværende L`);
+});
+
+// Rod B (#1742/#1800): assistenten må KUN vælge løbs-berettigede ryttere. Generatoren
+// manglede is_academy-filteret (kun is_retired), så en akademirytter med stærke evner
+// blev auto-valgt (264 ghosts i prod 2026-06-25). Repro: stærkeste rytter er akademi.
+test("runRaceEntryGenerator: akademiryttere auto-vælges ALDRIG (Rod B)", async () => {
+  const state = emptyState();
+  const seasonId = "season1";
+  state.races = [{ id: "A", season_id: seasonId, race_class: "Class2", league_division_id: 1 }];
+  state.race_stage_schedule = [
+    { race_id: "A", stage_number: 1, scheduled_at: "2026-07-01T10:00:00Z" },
+    { race_id: "A", stage_number: 2, scheduled_at: "2026-07-02T10:00:00Z" },
+  ];
+  state.race_stage_profiles = [{ race_id: "A", ...flatProfile(1) }, { race_id: "A", ...flatProfile(2) }];
+  state.teams = [{ id: "t1", is_test_account: false, is_frozen: false, league_division_id: 1 }];
+  seedTeamRiders(state, "t1", 8);
+  // Stærkeste rytter på holdet er akademi → autopick ville vælge ham hvis ufiltreret.
+  state.riders.push({ id: "t1-academy", team_id: "t1", is_retired: false, is_academy: true });
+  state.rider_derived_abilities.push({ rider_id: "t1-academy", ...ab(99) });
+  state.rider_condition.push({ rider_id: "t1-academy", fatigue: 0 });
+
+  const supabase = makeSupabase(state);
+  await runRaceEntryGenerator({ supabase, seasonId, dryRun: false });
+
+  const picked = state.race_entries.filter((e) => e.race_id === "A").map((e) => e.rider_id);
+  assert.ok(picked.length > 0, "A blev autofyldt");
+  assert.ok(!picked.includes("t1-academy"), "akademirytter må ALDRIG auto-vælges");
 });
 
 test("runRaceEntryGenerator: dryRun=true skriver intet", async () => {

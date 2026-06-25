@@ -1,12 +1,25 @@
 // frontend/src/lib/raceHubLogic.test.js
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { computeColumnStatus, isRiderBound, deriveRaceStatus, poolRaceDayTotals, fitTier, freshnessTier } from "./raceHubLogic.js";
+import { computeColumnStatus, isSelectionSavable, isRiderBound, deriveRaceStatus, poolRaceDayTotals, fitTier, freshnessTier } from "./raceHubLogic.js";
 
 test("computeColumnStatus: full / understaffed / withdrawn", () => {
   assert.deepEqual(computeColumnStatus({ selected: 6, target: 6, withdrawn: false }), { kind: "full", selected: 6, target: 6 });
   assert.deepEqual(computeColumnStatus({ selected: 5, target: 7, withdrawn: false }), { kind: "understaffed", selected: 5, target: 7 });
   assert.deepEqual(computeColumnStatus({ selected: 0, target: 8, withdrawn: true }), { kind: "withdrawn", selected: 0, target: 8 });
+  // Rod A: transient over max (kladde-bytte på fuld trup) → overfull, ikke full.
+  assert.deepEqual(computeColumnStatus({ selected: 7, target: 6, max: 6, withdrawn: false }), { kind: "overfull", selected: 7, target: 6 });
+  assert.deepEqual(computeColumnStatus({ selected: 6, target: 6, max: 6, withdrawn: false }), { kind: "full", selected: 6, target: 6 });
+});
+
+// Rod A (#1823): auto-gem-når-gyldig — kun gyldige størrelser persisteres.
+test("isSelectionSavable: kun gyldig størrelse gemmes (transient 5/7 på 6/6 → nej)", () => {
+  // 6/6-løb, fuld trup tilgængelig
+  assert.equal(isSelectionSavable({ count: 6, min: 6, max: 6, available: 12 }), true);
+  assert.equal(isSelectionSavable({ count: 5, min: 6, max: 6, available: 12 }), false, "under min → ikke gemt");
+  assert.equal(isSelectionSavable({ count: 7, min: 6, max: 6, available: 12 }), false, "over max → ikke gemt");
+  // Lille trup: kun 4 tilgængelige → effectiveMin=4, så 4 er nok (mirror backend).
+  assert.equal(isSelectionSavable({ count: 4, min: 6, max: 6, available: 4 }), true);
 });
 
 test("isRiderBound: rytter bundet i et ANDET kolonne-løb end det aktuelle", () => {

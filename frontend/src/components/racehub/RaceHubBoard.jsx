@@ -12,6 +12,7 @@ import { getSession } from "../../lib/supabase";
 import ContextBand from "./ContextBand.jsx";
 import RaceColumn from "./RaceColumn.jsx";
 import AvailableRidersPool from "./AvailableRidersPool.jsx";
+import { isSelectionSavable } from "../../lib/raceHubLogic.js";
 import { Spinner, EmptyState, FlagIcon } from "../ui";
 
 const API = import.meta.env.VITE_API_URL;
@@ -31,6 +32,11 @@ export default function RaceHubBoard() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null); // { code, params } | null
+  // Rod A (#1823): lokal redigerings-kladde pr. kolonne. add/remove/rolle muterer
+  // kladden med det samme; den PUT'es kun når den er en GYLDIG udtagelse (auto-gem-
+  // når-gyldig). En ugyldig mellemtilstand (5 eller 7 på en 6/6) lever lokalt uden at
+  // gemmes, så manageren kan redigere/bytte frit uden den hårde 6-og-6-lås.
+  const [drafts, setDrafts] = useState({}); // raceId → { rider_ids, captain_id, sprint_captain_id, hunter_id }
 
   const load = useCallback(async (day) => {
     const headers = await authHeaders();
@@ -48,6 +54,8 @@ export default function RaceHubBoard() {
   }, []);
 
   useEffect(() => { load(Number.isFinite(dayParam) ? dayParam : undefined); }, [load, dayParam]);
+  // Skift af dag/scope viser andre kolonner → ryd kladder (de hører til de gamle løb).
+  useEffect(() => { setDrafts({}); }, [dayParam, scope]);
 
   if (loading) return <div className="flex justify-center py-10"><Spinner size={20} /></div>;
   if (!data?.enabled) return null; // flag OFF → board skjult (kalender-faner viser stadig)
@@ -80,28 +88,57 @@ export default function RaceHubBoard() {
     }
   }
 
-  function putSelection(column, riderIds, roles = {}) {
-    const sel = column.selection || {};
+  // Kladden for en kolonne: lokal redigering hvis den findes, ellers server-sandheden.
+  const draftOf = (col) => drafts[col.id] || {
+    rider_ids: col.selection?.rider_ids || [],
+    captain_id: col.selection?.captain_id ?? null,
+    sprint_captain_id: col.selection?.sprint_captain_id ?? null,
+    hunter_id: col.selection?.hunter_id ?? null,
+  };
+  const availableCount = (col) => (col.riders || []).filter((r) => !r.injured).length;
+
+  // Gem kladden til serveren (kun kaldt når den er gyldig). Rydder kolonnens kladde
+  // bagefter, så visningen re-synkes til server-sandheden (mutate re-henter board'et).
+  async function persistDraft(col, sel) {
+    const ids = sel.rider_ids;
     const body = {
-      rider_ids: riderIds,
-      captain_id: "captain_id" in roles ? roles.captain_id : (riderIds.includes(sel.captain_id) ? sel.captain_id : riderIds[0] ?? null),
-      sprint_captain_id: "sprint_captain_id" in roles ? roles.sprint_captain_id : (riderIds.includes(sel.sprint_captain_id) ? sel.sprint_captain_id : null),
-      hunter_id: "hunter_id" in roles ? roles.hunter_id : (riderIds.includes(sel.hunter_id) ? sel.hunter_id : null),
+      rider_ids: ids,
+      captain_id: ids.includes(sel.captain_id) ? sel.captain_id : (ids[0] ?? null),
+      sprint_captain_id: ids.includes(sel.sprint_captain_id) ? sel.sprint_captain_id : null,
+      hunter_id: ids.includes(sel.hunter_id) ? sel.hunter_id : null,
     };
-    return mutate(
-      (headers) => fetch(`${API}/api/races/${column.id}/selection`, { method: "PUT", headers, body: JSON.stringify(body) }),
-      { min: column.size?.min, max: column.size?.max });
+    await mutate(
+      (headers) => fetch(`${API}/api/races/${col.id}/selection`, { method: "PUT", headers, body: JSON.stringify(body) }),
+      { min: col.size?.min, max: col.size?.max });
+    setDrafts((d) => { const next = { ...d }; delete next[col.id]; return next; });
+  }
+
+  // Sæt kladden + auto-gem hvis den nu er en gyldig udtagelse (størrelse inden for
+  // [effectiveMin, max]). Ugyldig → bliver liggende lokalt (vises som mangler/for mange).
+  function commitDraft(col, sel) {
+    setDrafts((d) => ({ ...d, [col.id]: sel }));
+    if (isSelectionSavable({ count: sel.rider_ids.length, min: col.size?.min, max: col.size?.max, available: availableCount(col) })) {
+      persistDraft(col, sel);
+    }
   }
 
   const addRider = (raceId, riderId) => {
     const col = columns.find((c) => c.id === raceId);
     if (!col) return;
-    putSelection(col, [...(col.selection?.rider_ids || []), riderId]);
+    const cur = draftOf(col);
+    if (cur.rider_ids.includes(riderId)) return;
+    commitDraft(col, { ...cur, rider_ids: [...cur.rider_ids, riderId] });
   };
   const removeRider = (raceId, riderId) => {
     const col = columns.find((c) => c.id === raceId);
     if (!col) return;
-    putSelection(col, (col.selection?.rider_ids || []).filter((id) => id !== riderId));
+    const cur = draftOf(col);
+    commitDraft(col, {
+      rider_ids: cur.rider_ids.filter((id) => id !== riderId),
+      captain_id: cur.captain_id === riderId ? null : cur.captain_id,
+      sprint_captain_id: cur.sprint_captain_id === riderId ? null : cur.sprint_captain_id,
+      hunter_id: cur.hunter_id === riderId ? null : cur.hunter_id,
+    });
   };
 
   // Klik rytter → rolle: ryd rytteren fra alle roller, sæt den valgte. Kaptajn er
@@ -110,7 +147,7 @@ export default function RaceHubBoard() {
   function setRole(raceId, riderId, role) {
     const col = columns.find((c) => c.id === raceId);
     if (!col) return;
-    const sel = col.selection || {};
+    const sel = draftOf(col);
     const riderIds = sel.rider_ids || [];
     if (!riderIds.includes(riderId)) return;
     let captain = sel.captain_id, sprint = sel.sprint_captain_id, hunter = sel.hunter_id;
@@ -131,7 +168,7 @@ export default function RaceHubBoard() {
         if (captain === hunter) hunter = null;
       }
     }
-    putSelection(col, riderIds, { captain_id: captain, sprint_captain_id: sprint, hunter_id: hunter });
+    commitDraft(col, { rider_ids: riderIds, captain_id: captain, sprint_captain_id: sprint, hunter_id: hunter });
   }
 
   const toggleWithdraw = (raceId, withdraw) =>
@@ -146,6 +183,18 @@ export default function RaceHubBoard() {
     return mutate((headers) =>
       fetch(`${API}/api/races/distribution/regenerate?day=${day}&mode=${mode}`, { method: "POST", headers }));
   }
+
+  // Effektive kolonner: kladde-selection overlejret server-data + counts afledt af
+  // kladden, så transiente tilstande (5/6 mangler, 7/6 for mange) vises mens man
+  // redigerer. RaceColumn + puljen renderer disse, så lås/status følger kladden.
+  const effectiveColumns = columns.map((c) => {
+    const sel = draftOf(c);
+    return {
+      ...c,
+      selection: { ...sel, is_auto_filled: c.selection?.is_auto_filled ?? false },
+      counts: { selected: sel.rider_ids.length, target: c.size?.max ?? sel.rider_ids.length },
+    };
+  });
 
   return (
     <div data-testid="race-hub-board">
@@ -168,11 +217,11 @@ export default function RaceHubBoard() {
       ) : (
         <>
           <div className="grid sm:grid-cols-2 gap-3 mb-4">
-            {columns.map((c) => (
+            {effectiveColumns.map((c) => (
               <RaceColumn key={c.id} column={c} busy={busy} onRemoveRider={removeRider} onSetRole={setRole} onToggleWithdraw={toggleWithdraw} />
             ))}
           </div>
-          <AvailableRidersPool roster={roster} columns={columns} bindingMap={data.bindingMap || {}}
+          <AvailableRidersPool roster={roster} columns={effectiveColumns} bindingMap={data.bindingMap || {}}
             onAddRiderToRace={addRider} onRegenerate={regenerate} busy={busy} />
         </>
       )}

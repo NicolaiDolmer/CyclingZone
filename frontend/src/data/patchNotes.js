@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.17",
+    "date": "2026-06-26",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Squad editing for overlapping races works again — swap riders freely, no more ghost riders",
+          "body": "Editing your squad for races on the same day was stuck: you couldn't swap a rider, withdrawing didn't release anyone, and free riders couldn't be added. You can now edit freely while building a squad — remove and add riders even when a race is full; it simply won't save below the minimum until you fill it back up. Withdrawing one of two overlapping races now frees those riders for the other race. And riders who left your team — sold, released, retired, or moved to the academy — no longer show up as blank locked slots in your lineup or get auto-picked by the assistant."
+        },
+        "da": {
+          "title": "Trup-redigering til overlappende løb virker igen — byt ryttere frit, ingen spøgelses-ryttere",
+          "body": "Det var låst at redigere truppen til løb på samme dag: man kunne ikke bytte en rytter, afmelding frigjorde ingen, og ledige ryttere kunne ikke tilføjes. Du kan nu redigere frit mens du bygger truppen — fjern og tilføj ryttere selv når et løb er fuldt; det gemmes bare ikke under minimum, før du fylder op igen. Afmelder du det ene af to overlappende løb, frigøres rytterne nu til det andet løb. Og ryttere der har forladt holdet — solgt, frigivet, pensioneret eller flyttet til akademiet — optræder ikke længere som blanke, låste pladser i din trup eller bliver auto-valgt af assistenten."
+        },
+        "refs": [1823, 1800, 1742]
+      }
+    ]
+  },
+  {
     "version": "6.16",
     "date": "2026-06-25",
     "label": "Beta",

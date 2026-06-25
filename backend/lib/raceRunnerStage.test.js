@@ -111,7 +111,7 @@ function cannedFor(race = STAGE_RACE, stages = STAGES_3, extra = {}, opts = {}) 
   return makeSupabase({
     race_stage_profiles: stages,
     race_entries: ENTRANTS.map((e) => ({ rider_id: e.rider_id, team_id: e.team_id })),
-    riders: ENTRANTS.map((e) => ({ id: e.rider_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
+    riders: ENTRANTS.map((e) => ({ id: e.rider_id, team_id: e.team_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
     rider_derived_abilities: ENTRANTS.map((e) => ({ rider_id: e.rider_id, ...e.abilities })),
     race_points: [],
     races: [{ id: race.id, ...race }],
@@ -467,7 +467,7 @@ test("FIX 1: final-etape kører finalization FØR status=completed (rækkefølge
           const map = {
             race_stage_profiles: STAGES_3,
             race_entries: ENTRANTS.map((e) => ({ rider_id: e.rider_id, team_id: e.team_id })),
-            riders: ENTRANTS.map((e) => ({ id: e.rider_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
+            riders: ENTRANTS.map((e) => ({ id: e.rider_id, team_id: e.team_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
             rider_derived_abilities: ENTRANTS.map((e) => ({ rider_id: e.rider_id, ...e.abilities })),
             race_points: [],
             race_results: [],

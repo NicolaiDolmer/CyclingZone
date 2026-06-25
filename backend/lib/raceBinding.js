@@ -117,13 +117,22 @@ export async function loadTeamBindingContext({ supabase, race, teamId }) {
   if (e1) throw new Error(`race_stage_schedule (this): ${e1.message}`);
   const thisWindow = raceBindingWindow(thisSched);
 
-  // Holdets entries i ANDRE løb end dette.
+  // Rod A (#1823): holdets afmeldte løb binder IKKE — de udtagne ryttere er frie til
+  // det overlappende løb. Entries bevares (gen-tilmelding giver samme trup), men de
+  // tæller ikke som optaget tid. Tidligere låste afmeldte løb stadig rytterne.
+  const { data: wRows, error: eW } = await supabase
+    .from("race_withdrawals").select("race_id").eq("team_id", teamId);
+  if (eW) throw new Error(`race_withdrawals (binding): ${eW.message}`);
+  const withdrawn = new Set((wRows || []).map((w) => w.race_id));
+
+  // Holdets entries i ANDRE løb end dette (afmeldte udeladt).
   const { data: entries, error: e2 } = await supabase
     .from("race_entries").select("race_id, rider_id").eq("team_id", teamId).neq("race_id", race.id);
   if (e2) throw new Error(`race_entries (binding): ${e2.message}`);
 
   const ridersByRace = new Map();
   for (const e of entries || []) {
+    if (withdrawn.has(e.race_id)) continue;
     if (!ridersByRace.has(e.race_id)) ridersByRace.set(e.race_id, []);
     ridersByRace.get(e.race_id).push(e.rider_id);
   }

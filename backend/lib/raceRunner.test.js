@@ -235,8 +235,8 @@ test("loadEntrantsForRace: beriger entries med navn, is_u25 + abilities", async 
   const supabase = makeSupabase({
     race_entries: [{ rider_id: "r1", team_id: "T1" }, { rider_id: "r2", team_id: "T1" }],
     riders: [
-      { id: "r1", firstname: "Anna", lastname: "Berg", is_u25: true },
-      { id: "r2", firstname: "Bo", lastname: "Dahl", is_u25: false },
+      { id: "r1", team_id: "T1", firstname: "Anna", lastname: "Berg", is_u25: true },
+      { id: "r2", team_id: "T1", firstname: "Bo", lastname: "Dahl", is_u25: false },
     ],
     rider_derived_abilities: [
       { rider_id: "r1", ...abil({ climbing: 80 }) },
@@ -270,8 +270,8 @@ test("loadEntrantsForRace: form/fatigue merges fra rider_condition når rækker 
   const supabase = makeSupabase({
     race_entries: [{ rider_id: "r1", team_id: "T1" }, { rider_id: "r2", team_id: "T1" }],
     riders: [
-      { id: "r1", firstname: "Anna", lastname: "Berg", is_u25: false },
-      { id: "r2", firstname: "Bo", lastname: "Dahl", is_u25: false },
+      { id: "r1", team_id: "T1", firstname: "Anna", lastname: "Berg", is_u25: false },
+      { id: "r2", team_id: "T1", firstname: "Bo", lastname: "Dahl", is_u25: false },
     ],
     rider_derived_abilities: [
       { rider_id: "r1", ...abil() },
@@ -332,7 +332,7 @@ test("simulateRace: bygger rækker, sletter idempotent pr. etape, kalder applyRa
   const supabase = makeSupabase({
     race_stage_profiles: STAGES_3,
     race_entries: ENTRANTS.map((e) => ({ rider_id: e.rider_id, team_id: e.team_id })),
-    riders: ENTRANTS.map((e) => ({ id: e.rider_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
+    riders: ENTRANTS.map((e) => ({ id: e.rider_id, team_id: e.team_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
     rider_derived_abilities: ENTRANTS.map((e) => ({ rider_id: e.rider_id, ...e.abilities })),
     race_points: [],
   });
@@ -361,7 +361,7 @@ test("simulateRace: kalder processBoardWeekend med prev/ny race-days (#1187)", a
   const supabase = makeSupabase({
     race_stage_profiles: STAGES_3,
     race_entries: ENTRANTS.map((e) => ({ rider_id: e.rider_id, team_id: e.team_id })),
-    riders: ENTRANTS.map((e) => ({ id: e.rider_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
+    riders: ENTRANTS.map((e) => ({ id: e.rider_id, team_id: e.team_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
     rider_derived_abilities: ENTRANTS.map((e) => ({ rider_id: e.rider_id, ...e.abilities })),
     race_points: [],
     seasons: [{ id: STAGE_RACE.season_id, number: 2, status: "active", race_days_completed: 9, race_days_total: 60 }],
@@ -386,7 +386,7 @@ test("simulateRace: processBoardWeekend-fejl vælter ikke afviklingen (#1187)", 
   const supabase = makeSupabase({
     race_stage_profiles: STAGES_3,
     race_entries: ENTRANTS.map((e) => ({ rider_id: e.rider_id, team_id: e.team_id })),
-    riders: ENTRANTS.map((e) => ({ id: e.rider_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
+    riders: ENTRANTS.map((e) => ({ id: e.rider_id, team_id: e.team_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
     rider_derived_abilities: ENTRANTS.map((e) => ({ rider_id: e.rider_id, ...e.abilities })),
     race_points: [],
     seasons: [{ id: STAGE_RACE.season_id, number: 2, status: "active", race_days_completed: 9, race_days_total: 60 }],
@@ -406,7 +406,7 @@ test("simulateRace dryRun: returnerer preview uden DB-writes", async () => {
   const supabase = makeSupabase({
     race_stage_profiles: STAGES_3,
     race_entries: ENTRANTS.map((e) => ({ rider_id: e.rider_id, team_id: e.team_id })),
-    riders: ENTRANTS.map((e) => ({ id: e.rider_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
+    riders: ENTRANTS.map((e) => ({ id: e.rider_id, team_id: e.team_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
     rider_derived_abilities: ENTRANTS.map((e) => ({ rider_id: e.rider_id, ...e.abilities })),
     race_points: [],
     seasons: [{ id: STAGE_RACE.season_id, number: 2, status: "active", race_days_completed: 9, race_days_total: 60 }],
@@ -465,7 +465,7 @@ test("simulateRace: dryRun=true → applyFatigue kaldes IKKE", async () => {
   const supabase = makeSupabase({
     race_stage_profiles: STAGES_3,
     race_entries: ENTRANTS.map((e) => ({ rider_id: e.rider_id, team_id: e.team_id })),
-    riders: ENTRANTS.map((e) => ({ id: e.rider_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
+    riders: ENTRANTS.map((e) => ({ id: e.rider_id, team_id: e.team_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
     rider_derived_abilities: ENTRANTS.map((e) => ({ rider_id: e.rider_id, ...e.abilities })),
     race_points: [],
   });
@@ -486,7 +486,7 @@ test("simulateRace: persisted run → applyFatigue kaldt én gang pr. etape med 
   const supabase = makeSupabase({
     race_stage_profiles: STAGES_3,
     race_entries: ENTRANTS.map((e) => ({ rider_id: e.rider_id, team_id: e.team_id })),
-    riders: ENTRANTS.map((e) => ({ id: e.rider_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
+    riders: ENTRANTS.map((e) => ({ id: e.rider_id, team_id: e.team_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
     rider_derived_abilities: ENTRANTS.map((e) => ({ rider_id: e.rider_id, ...e.abilities })),
     race_points: [],
     seasons: [{ id: STAGE_RACE.season_id, number: 2, status: "active", race_days_completed: 5, race_days_total: 60 }],
@@ -518,7 +518,7 @@ test("simulateRace: applyFatigue-fejl vælter ikke afviklingen (#1306)", async (
   const supabase = makeSupabase({
     race_stage_profiles: STAGES_3,
     race_entries: ENTRANTS.map((e) => ({ rider_id: e.rider_id, team_id: e.team_id })),
-    riders: ENTRANTS.map((e) => ({ id: e.rider_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
+    riders: ENTRANTS.map((e) => ({ id: e.rider_id, team_id: e.team_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
     rider_derived_abilities: ENTRANTS.map((e) => ({ rider_id: e.rider_id, ...e.abilities })),
     race_points: [],
   });

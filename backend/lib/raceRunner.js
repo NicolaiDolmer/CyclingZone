@@ -38,6 +38,7 @@ import { POOL_TARGET_SIZE } from "./economyConstants.js";
 import { loadWithdrawnTeamIds } from "./raceWithdrawal.js";
 import { raceBindingWindow } from "./raceBinding.js";
 import { freezeEntrantsToStartField, excludeBoundRiders, filterEntriesToRaceDivision } from "./raceFieldIntegrity.js";
+import { applyRiderEligibilityFilter, filterEligibleEntries } from "./riderEligibility.js";
 
 // Intern klassements-point (grøn/bjerg) — afgør KUN rækkefølgen i de respektive
 // trøje-konkurrencer; selve præmie-pointene kommer fra race_points via rank.
@@ -433,8 +434,10 @@ export async function fillMissingTeamEntries({ supabase, race, stages, existingE
 
   const { data: riders, error: riderErr } = await selectInChunks({
     supabase, table: "riders", columns: "id, team_id, base_value",
+    // Rod B: delt eligibility-filter (ikke-akademi + ikke-pensioneret). Manglede
+    // is_academy → akademiryttere kunne sim-tids-autofyldes (#1742/#1800).
     inColumn: "team_id", ids: missingTeamIds,
-    extra: (q) => q.or("is_retired.is.null,is_retired.eq.false"),
+    extra: (q) => applyRiderEligibilityFilter(q),
   });
   if (riderErr) throw new Error(`riders: ${riderErr.message}`);
 
@@ -542,6 +545,21 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
     const { data: teamDivs } = await supabase.from("teams").select("id, league_division_id").in("id", teamIds);
     const teamDivisionById = new Map((teamDivs || []).map((t) => [t.id, t.league_division_id]));
     existingEntries = filterEntriesToRaceDivision({ entries: existingEntries, teamDivisionById, raceDivisionId: race.league_division_id });
+  }
+  // Rod B (#1742/#1800): drop committede ghost-entries — rytter solgt/fyret (off-team),
+  // blevet akademi eller pensioneret EFTER udtagelse. Krydses mod rytterens NUVÆRENDE
+  // tilstand, så en fremmed/uegnet rytter aldrig kører for et hold han har forladt
+  // (forbrugs-punkt-gyldighed; spejler #1846-divisions-filteret ovenfor). Ingen query-
+  // eligibility-filter her — vi henter netop akademi/pensioneret-rækkerne for at se dem.
+  if (existingEntries.length) {
+    const entryRiderIds = [...new Set(existingEntries.map((e) => e.rider_id))];
+    const { data: entryRiders, error: erErr } = await selectInChunks({
+      supabase, table: "riders", columns: "id, team_id, is_academy, is_retired",
+      inColumn: "id", ids: entryRiderIds,
+    });
+    if (erErr) throw new Error(`riders (eligibility): ${erErr.message}`);
+    const ridersById = new Map((entryRiders || []).map((r) => [r.id, r]));
+    existingEntries = filterEligibleEntries({ entries: existingEntries, ridersById });
   }
   // #1307: autopick for hold UDEN entries. #1844: KUN ved etape 1 (allowAutofill) — et
   // igangværende etapeløb må ikke få nye ryttere fyldt ind mellem etaper (feltet er låst).

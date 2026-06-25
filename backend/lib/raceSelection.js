@@ -5,6 +5,7 @@
 import { selectionSizeForRace, suitabilityScore, stageSuitabilityScores } from "./raceAutopick.js";
 import { ABILITY_KEYS } from "./raceSimulator.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
+import { applyRiderEligibilityFilter } from "./riderEligibility.js";
 
 export function validateSelection({
   riderIds = [], captainId = null, sprintCaptainId = null, hunterId = null,
@@ -98,10 +99,11 @@ export function buildRiderRows({ riders, stages, abilityByRider, conditionByRide
 // (ingen chunking nødvendig — i modsætning til raceRunner's full-field-opslag).
 export async function getSelectionContext({ supabase, race, teamId }) {
   const [ridersRes, profilesRes, entriesRes] = await Promise.all([
-    // #1307/#1308: akademiryttere er ikke løbs-berettigede
+    // #1307/#1308: akademiryttere er ikke løbs-berettigede. Rod B: delt eligibility-filter.
     // #1747: ryttertype (primary/secondary) med så fronten kan vise typen ved udtagelsen.
-    supabase.from("riders").select("id, firstname, lastname, primary_type, secondary_type")
-      .eq("team_id", teamId).eq("is_academy", false).or("is_retired.is.null,is_retired.eq.false"),
+    applyRiderEligibilityFilter(
+      supabase.from("riders").select("id, firstname, lastname, primary_type, secondary_type").eq("team_id", teamId)
+    ),
     supabase.from("race_stage_profiles").select("stage_number, profile_type, demand_vector")
       .eq("race_id", race.id).order("stage_number", { ascending: true }),
     supabase.from("race_entries").select("rider_id, race_role, is_auto_filled")
@@ -125,7 +127,12 @@ export async function getSelectionContext({ supabase, race, teamId }) {
 
   const riderRows = buildRiderRows({ riders, stages, abilityByRider, conditionByRider, todayStr });
 
-  const entries = entriesRes.data || [];
+  // Rod B (#1800/#1742): kryds committede entries mod den gyldige roster. En ghost
+  // (rytter udtaget FØR han blev solgt/fyret/akademi/pensioneret) er ikke i `riders`
+  // (eligibility-filtreret ovenfor) og må hverken vises eller tælle med — ellers
+  // renderer den blank i kolonnen (intet ×), tæller i 6/6, og låser redigeringen.
+  const eligibleIds = new Set(riderRows.map((r) => r.id));
+  const entries = (entriesRes.data || []).filter((e) => eligibleIds.has(e.rider_id));
   const selection = entries.length
     ? {
         rider_ids: entries.map((e) => e.rider_id),

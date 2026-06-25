@@ -4,7 +4,7 @@
     "timeline": { "dayOf": "Day {day} of {total}", "youAreHere": "you are here", "prev": "Previous day", "next": "Next day" },
     "heading": "Squad distribution",
     "overlap": "{count} overlapping races today",
-    "status": { "full": "{selected} / {target} selected", "understaffed": "{selected} / {target} · understaffed", "withdrawn": "Withdrawn", "locked": "Lineup locked" },
+    "status": { "full": "{selected} / {target} selected", "understaffed": "{selected} / {target} · understaffed", "overfull": "{selected} / {target} · too many", "withdrawn": "Withdrawn", "locked": "Lineup locked" },
     "pool": { "title": "Available riders · {count}-squad", "autofill": "Auto-fill", "fillMissing": "Fill gaps", "fillAll": "Rebuild all", "bound": "Already racing in an overlapping race" },
     "column": { "add": "Add from available", "withdraw": "Withdraw", "reenter": "Re-enter", "remove": "Remove rider" },
     "popover": { "title": "Add to which race?", "none": "No race available for this rider today", "understaffed": "needs riders" },
