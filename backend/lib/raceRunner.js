@@ -37,7 +37,7 @@ import { applyStageResultAtomic } from "./stageResultRpc.js";
 import { POOL_TARGET_SIZE } from "./economyConstants.js";
 import { loadWithdrawnTeamIds } from "./raceWithdrawal.js";
 import { raceBindingWindow } from "./raceBinding.js";
-import { freezeEntrantsToStartField, excludeBoundRiders } from "./raceFieldIntegrity.js";
+import { freezeEntrantsToStartField, excludeBoundRiders, filterEntriesToRaceDivision } from "./raceFieldIntegrity.js";
 
 // Intern klassements-point (grøn/bjerg) — afgør KUN rækkefølgen i de respektive
 // trøje-konkurrencer; selve præmie-pointene kommer fra race_points via rank.
@@ -534,7 +534,15 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
     .eq("race_id", race.id);
   if (error) throw new Error(`race_entries: ${error.message}`);
 
-  const existingEntries = existing || [];
+  let existingEntries = existing || [];
+  // #1846: drop stale cross-division entries — et hold der har skiftet division (op/nedrykning)
+  // efterlod entries i den gamle divisions løb. Kun hold i løbets EGEN division må være i feltet.
+  if (race.league_division_id != null && existingEntries.length) {
+    const teamIds = [...new Set(existingEntries.map((e) => e.team_id).filter(Boolean))];
+    const { data: teamDivs } = await supabase.from("teams").select("id, league_division_id").in("id", teamIds);
+    const teamDivisionById = new Map((teamDivs || []).map((t) => [t.id, t.league_division_id]));
+    existingEntries = filterEntriesToRaceDivision({ entries: existingEntries, teamDivisionById, raceDivisionId: race.league_division_id });
+  }
   // #1307: autopick for hold UDEN entries. #1844: KUN ved etape 1 (allowAutofill) — et
   // igangværende etapeløb må ikke få nye ryttere fyldt ind mellem etaper (feltet er låst).
   const autopicked = allowAutofill
