@@ -37,6 +37,13 @@ export function suitabilityScore(abilities, stages) {
   return sum / stages.length;
 }
 
+// Per-etape egnethed (0-100) — samme terrainScore som suitabilityScore, men ÉT tal
+// pr. etape i stedet for snittet. Til S4 rute-match: rytter mod hver etapes krav.
+export function stageSuitabilityScores(abilities, stages) {
+  if (!Array.isArray(stages)) return [];
+  return stages.map((s) => Math.round(terrainScore(abilities, s.demand_vector || {}) * 100));
+}
+
 // Flade etaper (sprint-stages) bruges ikke til GC-captain-udvælgelse.
 // Captain = bedst på non-sprint etaper (bjerg/TT/etc.); sprint_captain = bedste
 // sprinter på flat stages der ikke allerede er captain.
