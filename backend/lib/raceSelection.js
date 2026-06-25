@@ -2,7 +2,7 @@
 // #1307: manager-udtagelse — ren validering + DB-operationer (kaldes fra api.js).
 // Fejl returneres som snake_case-koder (frontend oversætter; mønster fra training-ruterne).
 
-import { selectionSizeForRace, suitabilityScore } from "./raceAutopick.js";
+import { selectionSizeForRace, suitabilityScore, stageSuitabilityScores } from "./raceAutopick.js";
 import { ABILITY_KEYS } from "./raceSimulator.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
 
@@ -66,6 +66,29 @@ export async function saveSelection({ supabase, race, teamId, riderIds, captainI
   return rows;
 }
 
+// Ren mapping af evner+kondition+profiler → riderRows (testbar uden DB).
+// suitability = løb-snit (0-100); stageSuitability = per-etape (0-100) til S4 rute-match.
+// Ingen evner → begge null (graceful degrade på klienten).
+export function buildRiderRows({ riders, stages, abilityByRider, conditionByRider, todayStr }) {
+  return riders.map((r) => {
+    const cond = conditionByRider.get(r.id);
+    const ab = abilityByRider.get(r.id);
+    const hasFit = ab && stages.length;
+    return {
+      id: r.id,
+      name: [r.firstname, r.lastname].filter(Boolean).join(" "),
+      // #1747: ryttertype (top-2) til visning i udtagelses-panelet. null = endnu ikke beregnet.
+      primaryType: r.primary_type ?? null,
+      secondaryType: r.secondary_type ?? null,
+      suitability: hasFit ? Math.round(suitabilityScore(ab, stages) * 100) : null,
+      stageSuitability: hasFit ? stageSuitabilityScores(ab, stages) : null,
+      form: cond?.form ?? null,
+      fatigue: cond?.fatigue ?? null,
+      injured: !!(cond?.injured_until && cond.injured_until >= todayStr),
+    };
+  });
+}
+
 // Kontekst til GET-endpointet: holdets ryttere (raske/skadede markeret, suitability
 // pr. løbets profiler), nuværende udtagelse, størrelses-regel.
 // Holdet har maks ~30 ryttere, så plain .in() er tilstrækkeligt her
@@ -97,21 +120,7 @@ export async function getSelectionContext({ supabase, race, teamId }) {
   const conditionByRider = new Map((conditionRes.data || []).map((c) => [c.rider_id, c]));
   const todayStr = copenhagenDateString();
 
-  const riderRows = riders.map((r) => {
-    const cond = conditionByRider.get(r.id);
-    const ab = abilityByRider.get(r.id);
-    return {
-      id: r.id,
-      name: [r.firstname, r.lastname].filter(Boolean).join(" "),
-      // #1747: ryttertype (top-2) til visning i udtagelses-panelet. null = endnu ikke beregnet.
-      primaryType: r.primary_type ?? null,
-      secondaryType: r.secondary_type ?? null,
-      suitability: ab && stages.length ? Math.round(suitabilityScore(ab, stages) * 100) : null,
-      form: cond?.form ?? null,
-      fatigue: cond?.fatigue ?? null,
-      injured: !!(cond?.injured_until && cond.injured_until >= todayStr),
-    };
-  });
+  const riderRows = buildRiderRows({ riders, stages, abilityByRider, conditionByRider, todayStr });
 
   const entries = entriesRes.data || [];
   const selection = entries.length

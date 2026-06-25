@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, useParams, useSearchParams, useLocation } from "react-router-dom";
 import RiderLink from "../components/RiderLink";
 import TeamLink from "../components/TeamLink";
 import RaceSelectionPanel from "../components/race/RaceSelectionPanel.jsx";
-import StageScheduleCard from "../components/race/StageScheduleCard.jsx";
+import StageStripe from "../components/race/StageStripe.jsx";
+import StageDetailPanel from "../components/race/StageDetailPanel.jsx";
 import { Flag } from "../components/Flag";
 import { FlagIcon, PageLoader } from "../components/ui";
 import { formatNumber } from "../lib/intl";
@@ -13,6 +14,8 @@ import { fetchAllRows } from "../lib/supabasePagination";
 import { logEvent } from "../lib/logEvent";
 import { profileShape, profileLabelKey, finaleLabelKey } from "../lib/stageProfileConfig";
 import { deriveRaceStatus } from "../lib/raceHubLogic.js";
+import { bucketCounts, terrainBucket } from "../lib/stageTerrain.js";
+import { RACE_TIMEZONE, countdownParts, countdownSegments } from "../lib/stageScheduleConfig.js";
 
 // #959 Etape-resultater V1 — detaljeret pr.-etape-visning.
 //
@@ -75,13 +78,32 @@ function byRank(a, b) {
   return (a.rank ?? 9999) - (b.rank ?? 9999);
 }
 
+// Etape-tid i København-tid (HH:MM) — kompakt til stribe-chip + header.
+function formatStageTime(date, locale) {
+  try {
+    return new Intl.DateTimeFormat(locale || "en", { timeZone: RACE_TIMEZONE, hour: "2-digit", minute: "2-digit" }).format(date);
+  } catch { return ""; }
+}
+
+// Live countdown-tekst ("in 2h 14m") — genbruger stageScheduleConfig-helpers + i18n.
+function countdownText(date, nowMs, t) {
+  const parts = countdownParts(date.getTime() - nowMs);
+  if (!parts) return t("detail.stageSchedule.startingNow");
+  const segments = countdownSegments(parts).map((s) =>
+    t(`detail.stageSchedule.countdown${s.unit[0].toUpperCase()}${s.unit.slice(1)}`, { count: s.count }));
+  return `${t("detail.stageSchedule.countdownPrefix")} ${segments.join(" ")}`;
+}
+
 export default function RaceDetailPage() {
-  const { t } = useTranslation("races");
+  const { t, i18n } = useTranslation("races");
   const { raceId } = useParams();
+  const location = useLocation();
 
   const [race, setRace] = useState(null);
   const [results, setResults] = useState([]);
   const [stageProfiles, setStageProfiles] = useState([]);
+  const [schedule, setSchedule] = useState([]);
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -131,13 +153,22 @@ export default function RaceDetailPage() {
     // en fejl/tom tabel → ingen profil-badges, ingen fejl-UI.
     const { data: profiles } = await supabase
       .from("race_stage_profiles")
-      .select("stage_number, profile_type, finale_type")
+      .select("stage_number, profile_type, finale_type, demand_vector")
       .eq("race_id", raceId)
       .order("stage_number");
+
+    // #1597 → S4: etape-kalenderen foldes ind i etape-striben (per-etape-tid) +
+    // næste-start-countdown i headeren. Degraderer pænt (tom = ingen tider).
+    const { data: scheduleRows } = await supabase
+      .from("race_stage_schedule")
+      .select("stage_number, scheduled_at")
+      .eq("race_id", raceId)
+      .order("stage_number", { ascending: true });
 
     setRace(raceRow);
     setResults(rows);
     setStageProfiles(profiles ?? []);
+    setSchedule(scheduleRows ?? []);
     setLoading(false);
   }, [raceId]);
 
@@ -146,6 +177,12 @@ export default function RaceDetailPage() {
   useEffect(() => {
     if (race?.id) logEvent("race_viewed", { race_id: race.id });
   }, [race?.id]);
+
+  // Et 30s-tick rækker til en kalender-countdown (vi viser ikke sekunder).
+  useEffect(() => {
+    const id = setInterval(() => setNowMs(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, []);
 
   // Etaper med faktiske etape-data (result_type="stage"), sorteret.
   const stageNumbers = useMemo(() => {
@@ -163,6 +200,43 @@ export default function RaceDetailPage() {
     for (const p of stageProfiles) out[p.stage_number ?? 1] = p;
     return out;
   }, [stageProfiles]);
+
+  const locale = i18n.language || "en";
+
+  // S4: valgt etape på kommende-fladen (delelig via ?stage=N; default = laveste etape).
+  const scheduledStageNums = useMemo(
+    () => stageProfiles.map((p) => p.stage_number ?? 1),
+    [stageProfiles],
+  );
+  const stageParam = Number(searchParams.get("stage"));
+  const scheduledStage = scheduledStageNums.includes(stageParam) ? stageParam : (scheduledStageNums[0] ?? 1);
+  const changeStage = useCallback((n) => {
+    const next = new URLSearchParams(searchParams);
+    next.set("stage", String(n));
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  // Etape-tider til striben + næste-start til headeren (København-tid).
+  const stripeTimes = useMemo(() => {
+    const out = {};
+    for (const s of schedule) {
+      const d = new Date(s.scheduled_at);
+      if (!Number.isNaN(d.getTime())) out[s.stage_number] = { timeLabel: formatStageTime(d, locale) };
+    }
+    return out;
+  }, [schedule, locale]);
+
+  const nextStart = useMemo(() => {
+    const next = schedule.find((s) => (s.stage_number ?? 1) > (race?.stages_completed ?? 0));
+    if (!next) return null;
+    const d = new Date(next.scheduled_at);
+    return Number.isNaN(d.getTime()) ? null : { stageNumber: next.stage_number, date: d };
+  }, [schedule, race?.stages_completed]);
+
+  // Kontekst-bevarende tilbage-link (board/dashboard/bibliotek).
+  const backFrom = location.state?.from;
+  const backTo = backFrom === "board" ? "/races" : backFrom === "dashboard" ? "/dashboard" : "/races?tab=library";
+  const backLabel = backFrom ? t("detail.back") : t("detail.backToLibrary");
 
   // Endeligt klassement pr. type = rækkerne ved højeste etape-nummer for den type
   // (robust mod fremtidige pr.-etape-snapshots; i dag findes kun det endelige).
@@ -190,7 +264,7 @@ export default function RaceDetailPage() {
 
   if (notFound) return (
     <div className="max-w-4xl mx-auto">
-      <Link to="/races?tab=library" className="text-xs text-cz-accent-t hover:underline mb-4 inline-block">{t("detail.backToLibrary")}</Link>
+      <Link to={backTo} className="text-xs text-cz-accent-t hover:underline mb-4 inline-block">{backLabel}</Link>
       <div className="text-center py-16 text-cz-3">
         <FlagIcon className="w-8 h-8 mx-auto mb-3" aria-hidden="true" />
         <p>{t("empty.raceNotFound")}</p>
@@ -204,7 +278,7 @@ export default function RaceDetailPage() {
     <div className="max-w-4xl mx-auto space-y-5">
       {/* Header */}
       <div>
-        <Link to="/races?tab=library" className="text-xs text-cz-accent-t hover:underline mb-2 inline-block">{t("detail.backToLibrary")}</Link>
+        <Link to={backTo} className="text-xs text-cz-accent-t hover:underline mb-2 inline-block">{backLabel}</Link>
         <div className="flex items-center gap-2 flex-wrap">
           <h1 className="text-xl font-bold text-cz-1">{race.name}</h1>
           {(() => {
@@ -230,29 +304,42 @@ export default function RaceDetailPage() {
           {race.season?.number != null && ` · ${t("library.seasonOption", { number: race.season.number })}`}
           {race.pool_race?.date_text && ` · ${race.pool_race.date_text}`}
         </p>
+        {race.status === "scheduled" && nextStart && (
+          <p className="text-cz-accent-t text-xs font-mono mt-1 tabular-nums">
+            {t("detail.stageSchedule.nextStageLabel")}: {formatStageTime(nextStart.date, locale)} · {countdownText(nextStart.date, nowMs, t)}
+          </p>
+        )}
       </div>
 
-      {/* #1597: synlig etape-kalender for kommende løb — kortet henter
-          race_stage_schedule selv og skjuler sig hvis der ikke findes en
-          kalender (gamle/PCM-løb, eller scheduler ikke aktiveret). */}
+      {/* S4: kommende løb — race-DNA-gestalt + etape-stribe + valgt-etape-panel
+          (silhuet + finale-markør + terrain-DNA). Erstatter de stablede profilkort
+          + det separate skema-kort (tider foldet ind i striben). Degraderer pænt
+          hvis profilen mangler (gamle/PCM-løb → StageDetailPanel renderer intet). */}
       {race.status === "scheduled" && (
-        <StageScheduleCard raceId={race.id} stagesCompleted={race.stages_completed ?? 0} />
-      )}
-
-      {/* #6 launch-checklist: ruteprofil(er) synlige FØR løbet køres — terræn-
-          silhuet pr. etape (etapeløb) eller for endagsløbet, så manageren kan
-          udtage holdet ud fra parcouren. StageProfileCard degraderer til intet
-          hvis profilen mangler (gamle/PCM-løb). */}
-      {race.status === "scheduled" && (
-        race.race_type === "stage_race"
-          ? Object.keys(profileByStage).map(Number).sort((a, b) => a - b).map((n) => (
-              <StageProfileCard key={n} profile={profileByStage[n]} stageLabel={t("detail.tabStage", { number: n })} />
-            ))
-          : <StageProfileCard profile={profileByStage[1]} />
+        <div className="space-y-3">
+          {scheduledStageNums.length > 1 && (() => {
+            const counts = bucketCounts(stageProfiles);
+            return counts.length ? (
+              <p className="text-cz-3 text-[11px]">
+                <span className="uppercase tracking-wider font-semibold">{t("detail.raceDnaLabel")}</span>
+                {" "}
+                {counts.map((c, i) => (
+                  <span key={c.bucket}>{i > 0 && " · "}{c.count} {t(`strategy.buckets.${c.bucket}`)}</span>
+                ))}
+              </p>
+            ) : null;
+          })()}
+          <StageStripe stages={stageProfiles} activeStage={scheduledStage} onSelect={changeStage} times={stripeTimes} />
+          <StageDetailPanel
+            profile={profileByStage[scheduledStage]}
+            stageLabel={scheduledStageNums.length > 1 ? t("detail.tabStage", { number: scheduledStage }) : undefined}
+          />
+        </div>
       )}
 
       {/* #1307: holdudtagelse for kommende løb — panelet gater selv på
-          race-engine-flaget (renderer intet når backend siger enabled=false). */}
+          race-engine-flaget (renderer intet når backend siger enabled=false).
+          S4: per-etape rute-match mod den valgte etape. */}
       {race.status === "scheduled" && (
         deriveRaceStatus(race.status, race.stages_completed, race.stages) === "live"
           ? (
@@ -261,10 +348,16 @@ export default function RaceDetailPage() {
               <p className="text-xs text-cz-3 mt-0.5">{t("racehub.lineupLocked.note")}</p>
             </div>
           )
-          : <RaceSelectionPanel raceId={race.id} />
+          : (
+            <RaceSelectionPanel
+              raceId={race.id}
+              selectedStageIndex={scheduledStageNums.indexOf(scheduledStage) >= 0 ? scheduledStageNums.indexOf(scheduledStage) : 0}
+              selectedStageBucket={terrainBucket(profileByStage[scheduledStage]?.profile_type)}
+            />
+          )
       )}
 
-      {!hasAnyResults && (
+      {!hasAnyResults && race.status !== "scheduled" && (
         <div className="bg-cz-card border border-cz-border rounded-cz p-10 text-center text-cz-3">
           <FlagIcon className="w-8 h-8 mx-auto mb-3" aria-hidden="true" />
           <p className="text-sm">{t("empty.noResultsImportedRace")}</p>
@@ -273,17 +366,14 @@ export default function RaceDetailPage() {
 
       {hasAnyResults && isStageRace && (
         <>
-          {/* Tabs: Samlet + Etape 1..N */}
-          <div className="flex gap-2 flex-wrap">
-            <TabButton active={activeTab === "samlet"} onClick={() => changeTab("samlet")}>
-              {t("detail.tabOverall")}
-            </TabButton>
-            {stageNumbers.map(n => (
-              <TabButton key={n} active={activeTab === `stage-${n}`} onClick={() => changeTab(`stage-${n}`)}>
-                {t("detail.tabStage", { number: n })}
-              </TabButton>
-            ))}
-          </div>
+          {/* S4: visuel etape-stribe erstatter tekst-fanerne — ét navigations-mønster
+              på kommende OG kørte løb (terræn synligt pr. etape før klik). */}
+          <StageStripe
+            stages={stageNumbers.map((n) => profileByStage[n] || { stage_number: n, profile_type: "flat" })}
+            activeStage={activeTab === "samlet" ? "overall" : Number(activeTab.slice("stage-".length))}
+            showOverall
+            onSelect={(v) => changeTab(v === "overall" ? "samlet" : `stage-${v}`)}
+          />
 
           {activeTab === "samlet" && <OverallTab finalByType={finalByType} />}
           {stageNumbers.map(n => activeTab === `stage-${n}` && (
@@ -306,16 +396,6 @@ export default function RaceDetailPage() {
         </div>
       )}
     </div>
-  );
-}
-
-function TabButton({ active, onClick, children }) {
-  return (
-    <button onClick={onClick}
-      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
-        ${active ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
-      {children}
-    </button>
   );
 }
 

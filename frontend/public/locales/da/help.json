@@ -345,6 +345,10 @@
         "title": "Terræn på et resultat",
         "text": "Når du åbner et resultat, viser hver etape et lille terræn-badge med en skematisk silhuet (fladt, kuperet, bjerge, enkeltstart og så videre) plus den sandsynlige finale. Det er en vejledende terrænkategori baseret på etapens sværhedsgrad, ikke en målt højdeprofil med distance og højdemeter."
       },
+      "raceDetail": {
+        "title": "Åbn et løb: rute, terræn-DNA og din opstilling",
+        "text": "Løbsnavne er klikbare overalt i spillet. Når du åbner et løb, ser du resultaterne hvis det er kørt, eller for et kommende løb ruteprofilen pr. etape, en terræn-DNA-bar over hvilke evner hver etape belønner, og din egen opstilling med en rute-match pr. etape, så du kan vælge ryttere der passer parcouren. Vælg en etape i etape-striben for at skifte profil og rute-match. Terrænet er en vejledende kategori, ikke en målt højdeprofil."
+      },
       "prizeMoney": {
         "title": "Præmiepenge fra løb",
         "text": "Hvert resultat der tilhører en rytter på dit hold genererer præmiepenge: point for placeringen × 1.500 CZ$. Præmiepengene udbetales automatisk til dit holds balance når admin finaliserer resultaterne og vises som 'prize'-transaktion i din finance-log. Point til sæsonranglisten og præmier beregnes separat: pointene bestemmer ranglisten, mens CZ$-præmien kun påvirker din balance. Løb uden løbsklasse genererer ingen præmiepenge. Se den fulde pointtabel under Sæson & Resultater, Løb, Point & præmier."

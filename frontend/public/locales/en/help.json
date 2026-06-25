@@ -345,6 +345,10 @@
         "title": "Terrain on a result",
         "text": "When you open a result, each stage shows a small terrain badge with a schematic silhouette (flat, hilly, mountain, time trial and so on) plus the likely finale. This is an indicative terrain category based on the stage's difficulty, not a measured elevation profile with distance and climbing metres."
       },
+      "raceDetail": {
+        "title": "Open a race: route, terrain DNA and your lineup",
+        "text": "Race names are clickable across the game. Opening a race shows its results if it has run, or for an upcoming race the route profile per stage, a terrain-DNA bar of which abilities each stage rewards, and your own lineup with a route match per stage so you can pick riders that suit the parcours. Pick a stage from the stage stripe to switch the profile and the route match. The terrain is an indicative category, not a measured elevation profile."
+      },
       "prizeMoney": {
         "title": "Prize money from races",
         "text": "Each result for a rider on your team generates prize money: points for the placing × 1,500 CZ$. Prize money is paid automatically to your team balance when admin finalises the results and shows as a 'prize' transaction in your finance log. Points for the season leaderboard and prize money are computed separately: points decide the leaderboard, while the CZ$ prize only affects your balance. Races without a race class generate no prize money. See the full points table under Season & Results, Races, Points & prizes."

@@ -736,7 +736,7 @@ export default function DashboardPage() {
           ) : (
             <div className="flex flex-col gap-2">
               {nextRaces.map((race) => (
-                <Link key={race.id} to="/races"
+                <Link key={race.id} to={`/races/${race.id}`} state={{ from: "dashboard" }}
                   className="flex items-center justify-between py-2.5 border-b border-cz-border last:border-0 cursor-pointer hover:bg-cz-subtle rounded px-1 -mx-1 transition-all">
                   <div>
                     <p className="text-cz-1 text-sm font-medium">{race.name}</p>

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { autopickTeamSelection, selectionSizeForRace } from "./raceAutopick.js";
+import { autopickTeamSelection, selectionSizeForRace, stageSuitabilityScores, suitabilityScore } from "./raceAutopick.js";
 
 const ab = (over = {}) => ({
   climbing: 50, time_trial: 50, sprint: 50, punch: 50, endurance: 50,
@@ -181,4 +181,22 @@ test("S3 determinisme: to kørsler med samme input giver identisk output", () =>
   const a = autopickTeamSelection({ riders: s3riders, stages: [s3mtn], sizeRule: s3size, preference });
   const b = autopickTeamSelection({ riders: s3riders, stages: [s3mtn], sizeRule: s3size, preference });
   assert.deepEqual(a, b);
+});
+
+// S4: per-etape suitability til rute-match på løbs-detaljen.
+test("stageSuitabilityScores: ét 0-100-tal pr. etape, samme skala som suitabilityScore-snit", () => {
+  const climber = ab({ climbing: 90, sprint: 20 });
+  const stages = [flatStage, mtnStage];
+  const perStage = stageSuitabilityScores(climber, stages);
+  assert.equal(perStage.length, 2);
+  // Klatrer scorer højere på bjerg-etapen end på flad.
+  assert.ok(perStage[1] > perStage[0]);
+  // Snit af per-etape ≈ det eksisterende løb-snit (×100), tolerance for afrunding.
+  const avg = (perStage[0] + perStage[1]) / 2;
+  assert.ok(Math.abs(avg - Math.round(suitabilityScore(climber, stages) * 100)) <= 1);
+});
+
+test("stageSuitabilityScores: tom stages → tom liste; manglende demand_vector → 0", () => {
+  assert.deepEqual(stageSuitabilityScores(ab(), []), []);
+  assert.deepEqual(stageSuitabilityScores(ab(), [{ stage_number: 1 }]), [0]);
 });
