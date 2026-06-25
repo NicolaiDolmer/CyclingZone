@@ -21,6 +21,20 @@ export const PATCHES = [
           "body": "Rolle-tildeling er nu kort i stedet for en dropdown. Hvert kort fortæller hvorfor en rolle passer løbets terræn: hvem din beskyttede kaptajn fører an, hvornår en sprint-kaptajn betyder noget, og hvad udbrudsjægeren gør. Jæger-kortet viser hvor sandsynligt et udbrud er at holde hjem her, og løb-detalje-siden forklarer nu jæger-rollen og rangerer dine bedste jægere efter aggression."
         },
         "refs": [1747]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Mobile",
+        "en": {
+          "title": "Pages now fit your screen properly on mobile",
+          "body": "Some pages, including the rider database, your team and the race pages, could render too wide on a phone and push content off the right edge or shrink the whole layout to fit. They now size correctly to your screen, and wide tables scroll on their own instead of stretching the page."
+        },
+        "da": {
+          "title": "Sider passer nu korrekt til din skærm på mobil",
+          "body": "Nogle sider, blandt andet rytterdatabasen, dit hold og løbssiderne, kunne blive for brede på en telefon og skubbe indhold ud over højre kant eller skrumpe hele layoutet for at få plads. De passer nu korrekt til din skærm, og brede tabeller scroller selv i stedet for at strække siden."
+        },
+        "refs": []
       }
     ]
   },

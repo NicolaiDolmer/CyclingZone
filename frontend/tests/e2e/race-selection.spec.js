@@ -123,6 +123,20 @@ test("manager kan udtage hold og gemme", async ({ page }) => {
   // Sæt kaptajn — første combobox er kaptajn-select, vælg index 1 (første rytteroption).
   await panel.getByRole("combobox").first().selectOption({ index: 1 });
 
+  // Forward-guard (#1834): ingen efterkommer i panelet må overflowe vandret.
+  // En 5-kolonne rytter-tabel tvang en overflow-x-scroll-container på 393px-
+  // viewporten; under Pixel 5 (isMobile) skævvred det Playwrights elementFromPoint
+  // hit-test på gem-knappen nedenunder → klik "intercepted". Stablede mobil-kort
+  // fjerner overflow'en. Denne deterministiske check fanger en regression FØR det
+  // bliver et flaky hit-test-timeout (CI-font-afhængigt, advisory frontend-smoke).
+  const horizOverflow = await panel.evaluate((section) => {
+    const vw = document.documentElement.clientWidth;
+    return [...section.querySelectorAll("*")]
+      .filter((e) => e.scrollWidth - e.clientWidth > 1 || e.getBoundingClientRect().right > vw + 1)
+      .map((e) => `${e.tagName}.${(typeof e.className === "string" ? e.className : "").slice(0, 30)}`);
+  });
+  expect(horizOverflow, "panelet må ikke overflowe vandret på mobil").toEqual([]);
+
   // Gem-knappen skal nu være aktiveret (6 ryttere ≥ min=6 + kaptajn sat).
   // Tekst er "Gem udtagelse" i DA-locale.
   const saveBtn = panel.getByRole("button", { name: /gem udtagelse/i });
