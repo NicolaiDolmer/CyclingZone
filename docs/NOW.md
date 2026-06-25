@@ -13,6 +13,7 @@
 > - **Op/nedrykning (#1152, LIVE 23/6):** patch v6.01; #1152-epic åben for newco-rest. Spec: [promotion-relegation-design](superpowers/specs/2026-06-23-promotion-relegation-design.md).
 > - **Ejer-beslutninger (åbne):** #1276 PCM-IP · #1278 spiller-comms · #1487-budget · #929 leaked-pw · #691 key-rotation. Hygiejne: Vercel hobby rate-limit. [PLAN.md](PLAN.md)=SSOT.
 
+> - **CI/DX 25/6:** #1870 pensioneret — `claude-review.yml` no-op'et via #1877 (squash-merged). `review`-required-check grøn på 5s; CodeRabbit eneste auto-reviewer. `@claude` on-demand bevaret via `claude.yml`.
 > **🤖 Working agent:** Ingen aktiv session.
 
 ## Standing context (forever-relaunch)
