@@ -1,20 +1,690 @@
 {
-  "generated": "2026-06-06T20:17:02.2341432+02:00",
+  "generated": "2026-06-25T19:45:44.7804196+02:00",
   "memory_dir": "C:\\Users\\Nicolai\\.claude\\projects\\C--Dev-CyclingZone\\memory",
-  "file_count": 164,
+  "file_count": 211,
   "refs": {
-    "feedback_pr_body_brugerverifikation.md": [
-      "#279",
-      "#328",
-      "#340"
+    "reference_weekly_planning_guide_location.md": [],
+    "project_slice07_complete.md": [
+      "#239",
+      "#240"
     ],
-    "feedback_rls_verify_authenticated.md": [
-      "#279"
+    "MEMORY.md": [
+      "#1101",
+      "#1102",
+      "#1137",
+      "#1162",
+      "#1308",
+      "#1309",
+      "#1464",
+      "#1791",
+      "#1798",
+      "#1816",
+      "#1834",
+      "#1840",
+      "#1841",
+      "#1844",
+      "#1851",
+      "#1852",
+      "#296",
+      "#412",
+      "#481",
+      "#49",
+      "#620",
+      "#668",
+      "#671",
+      "#672",
+      "#986",
+      "feedback_anti_ai_slop_design_taste.md",
+      "feedback_ask_questions_domain_calibration.md",
+      "feedback_audit_close_aggressive.md",
+      "feedback_backwards_check_forward_guard.md",
+      "feedback_bash_no_powershell_heredoc.md",
+      "feedback_column_privilege_grant_new_columns.md",
+      "feedback_explain_issues_in_plain_language.md",
+      "feedback_extrapolate_balance_sim_to_full_season.md",
+      "feedback_founder_voice_owner_writes.md",
+      "feedback_full_ci_gate_before_pr.md",
+      "feedback_git_push.md",
+      "feedback_guide_complex_features_decision_order.md",
+      "feedback_language_priority.md",
+      "feedback_local_logged_in_verify_via_playwright_mocks.md",
+      "feedback_mark_issues_done_after_ship.md",
+      "feedback_match_ui_filter_for_capacity_logic.md",
+      "feedback_max_autonomy_backup_over_restriction.md",
+      "feedback_migrate_per_flade_with_github_sweep.md",
+      "feedback_no_block_polling_ci.md",
+      "feedback_owner_must_be_able_to_test_on_preview.md",
+      "feedback_patch_notes.md",
+      "feedback_pillars_quality_over_mvp.md",
+      "feedback_pr_body_brugerverifikation.md",
+      "feedback_rating_tendency_not_readable.md",
+      "feedback_refresh_core_smoke_snapshots.md",
+      "feedback_reproduce_locally_before_push.md",
+      "feedback_rerun_unfair_races.md",
+      "feedback_runtime_verify_first.md",
+      "feedback_secret_leak_prevention.md",
+      "feedback_session_rhythm.md",
+      "feedback_ship_and_let_self_correcting_systems_glide.md",
+      "feedback_show_visuals_proactively_during_work.md",
+      "feedback_show_visuals_via_widget_not_read.md",
+      "feedback_simple_pros_cons.md",
+      "feedback_simulate_before_ship_balance.md",
+      "feedback_teach_gamedesign_proactive_improvement.md",
+      "feedback_test_real_endpoint_not_just_mocked.md",
+      "feedback_timezone_copenhagen.md",
+      "feedback_track_followup_when_silencing_freshness_alarm.md",
+      "feedback_velocity_estimate_calibration.md",
+      "feedback_verify_background_progress.md",
+      "feedback_verify_before_push.md",
+      "feedback_verify_branch_before_commit_shared_checkout.md",
+      "feedback_verify_deploy_state_not_check_status.md",
+      "feedback_verify_each_edit_landed.md",
+      "feedback_world_class_standards.md",
+      "MEMORY_REFERENCE.md",
+      "README.md",
+      "reference_postgrest_1000_row_cap_in_scripts.md",
+      "reference_railway_cli_vs_mcp.md"
+    ],
+    "project_economy_scaling.md": [],
+    "feedback_no_block_polling_ci.md": [
+      "#962"
+    ],
+    "feedback_show_visuals_proactively_during_work.md": [],
+    "feedback_rerun_unfair_races.md": [],
+    "project_discord_new_server.md": [
+      "#8784"
+    ],
+    "feedback_guide_complex_features_decision_order.md": [
+      "#1102",
+      "#1122"
+    ],
+    "feedback_no_password_manager_tasks.md": [],
+    "project_data_dense_page_width.md": [
+      "#1027",
+      "#1028",
+      "#864"
+    ],
+    "reference_board_fixture_baseline_phase.md": [
+      "#1030",
+      "#1066"
+    ],
+    "feedback_max_autonomy_backup_over_restriction.md": [],
+    "reference_widgets_no_external_cdn.md": [],
+    "reference_cowork_channel_injects_marketplace_connectors.md": [
+      "#741"
+    ],
+    "reference_supabase_key_system.md": [
+      "#296"
+    ],
+    "feedback_verify_third_party_integration.md": [],
+    "feedback_patch_notes_version_collision.md": [
+      "#10",
+      "#153",
+      "#154",
+      "#51"
+    ],
+    "feedback_discord_triage_dont_self_close.md": [
+      "#267"
+    ],
+    "feedback_session_rhythm.md": [],
+    "project_uci_ip_risk.md": [],
+    "feedback_classifier_needs_plaintext_for_destructive_writes.md": [],
+    "feedback_bash_no_powershell_heredoc.md": [
+      "#504",
+      "#852"
+    ],
+    "feedback_read_code_comments_first.md": [],
+    "project_24_7_automation.md": [
+      "#182"
+    ],
+    "project_race_engine_live_test_riders_parked.md": [
+      "#1105"
+    ],
+    "project_beta_tools_priority.md": [],
+    "feedback_verify_deploy_state_not_check_status.md": [],
+    "feedback_chrome_mcp_saas_overpromise.md": [],
+    "feedback_organic_community_growth.md": [
+      "#423"
+    ],
+    "reference_da_encoding_aeoeaa.md": [
+      "#1084",
+      "#1085",
+      "#678"
+    ],
+    "feedback_hook_lifecycle_restart.md": [
+      "#72"
+    ],
+    "reference_vercel_cli_installed.md": [],
+    "reference_supabase_realtime_publication.md": [
+      "#195",
+      "#196"
+    ],
+    "feedback_teach_gamedesign_proactive_improvement.md": [],
+    "reference_claude_code_routines.md": [
+      "#622",
+      "#638"
+    ],
+    "feedback_verify_background_progress.md": [],
+    "reference_sentry_triage_last_seen_not_cumulative.md": [
+      "#1345",
+      "#906"
+    ],
+    "reference_google_sheets_creds_location.md": [],
+    "feedback_parallel_session_worktree.md": [
+      "#203",
+      "#44"
+    ],
+    "reference_uci_sheet_forbidden.md": [],
+    "feedback_no_supabase_key_rotation_nag.md": [
+      "#201"
+    ],
+    "feedback_auto_merge_after_ci_green.md": [
+      "#153"
+    ],
+    "feedback_column_privilege_grant_new_columns.md": [
+      "#1162",
+      "#1308",
+      "#1309"
+    ],
+    "feedback_github_mcp_issue_write_403.md": [
+      "#554",
+      "#555"
+    ],
+    "feedback_session_working_method.md": [],
+    "project_brand_sidebar_hover_microinteraction.md": [
+      "#481"
+    ],
+    "feedback_railway_cli_leaks_secrets.md": [
+      "#620"
+    ],
+    "feedback_verify_test_port_owner_in_worktree.md": [
+      "#792"
     ],
     "reference_playwright_snapshot_tolerance_no_rewrite.md": [
       "#1018"
     ],
+    "project_brand_email_swap_24_juni.md": [
+      "#1576",
+      "#1587"
+    ],
+    "feedback_explain_issues_in_plain_language.md": [
+      "#667",
+      "#668",
+      "#677"
+    ],
+    "reference_backfill_forgotten_stage.md": [
+      "#866",
+      "#867"
+    ],
+    "reference_dependabot_rebase_replaces_grouped_prs.md": [
+      "#211",
+      "#212",
+      "#215",
+      "#303",
+      "#318",
+      "#319"
+    ],
+    "feedback_confirm_before_state_change.md": [
+      "#68"
+    ],
+    "feedback_verify_issue_before_refs.md": [
+      "#178",
+      "feedback_runtime_verify_first.md"
+    ],
+    "feedback_audit_workflow_pr_runs_design.md": [
+      "#304"
+    ],
+    "reference_workflow_args_may_arrive_as_string.md": [
+      "#1594"
+    ],
+    "feedback_local_logged_in_verify_via_playwright_mocks.md": [],
+    "project_business_strategy.md": [],
+    "project_multiagent_fleet_playbook.md": [
+      "#1249",
+      "#1258",
+      "#776",
+      "#822"
+    ],
+    "feedback_worktree_path_unreliable.md": [],
+    "reference_discord_triage_routine.md": [
+      "#814",
+      "#828",
+      "#829",
+      "#831",
+      "#832",
+      "#833",
+      "#834"
+    ],
+    "project_slice07_economy_overhaul.md": [
+      "#80",
+      "#82"
+    ],
+    "reference_anthropic_memory_stores.md": [
+      "#622"
+    ],
+    "feedback_secret_leak_prevention.md": [
+      "#296",
+      "#563",
+      "#620",
+      "#634"
+    ],
+    "project_renown_reputation_system.md": [
+      "#1099",
+      "#1100",
+      "#955",
+      "#957"
+    ],
+    "feedback_rider_views_consistency_and_universal_sort.md": [
+      "#1674"
+    ],
+    "reference_frontend_smoke_teardown_flake.md": [
+      "#1342",
+      "#1385",
+      "#907"
+    ],
+    "feedback_audit_close_aggressive.md": [
+      "#1464",
+      "#383",
+      "#627",
+      "#684",
+      "#721",
+      "#741"
+    ],
+    "project_pcm_to_cz_abilities_display.md": [
+      "#1523",
+      "#1529"
+    ],
+    "project_auto_close_live.md": [
+      "#627",
+      "#746"
+    ],
+    "project_season_zero_seeded.md": [
+      "#239"
+    ],
+    "project_time_tracker.md": [
+      "#390"
+    ],
+    "project_tooling_state.md": [],
+    "feedback_cleanup_background_tasks.md": [
+      "#152",
+      "#153"
+    ],
+    "project_discord_github_bridge.md": [
+      "#48",
+      "#8784"
+    ],
+    "feedback_db_trigger_for_race_windows.md": [
+      "#269"
+    ],
+    "feedback_worktree_edit_main_checkout_path.md": [
+      "#1062",
+      "#948"
+    ],
+    "feedback_match_ui_filter_for_capacity_logic.md": [
+      "#669",
+      "#962"
+    ],
+    "feedback_patch_notes_version_merge_conflict.md": [
+      "#959",
+      "#983"
+    ],
+    "project_architecture.md": [],
+    "project_market_readiness_go.md": [
+      "#1278",
+      "#1563",
+      "#1566",
+      "#1568",
+      "#1581",
+      "#46",
+      "#940"
+    ],
+    "feedback_supabase_status_must_match_check.md": [
+      "#270"
+    ],
+    "feedback_no_auto_cleanup_no_chained_destructive.md": [],
+    "reference_railway_cli_vs_mcp.md": [],
+    "feedback_gh_jq_no_escaped_quotes.md": [
+      "#743"
+    ],
+    "project_fulltime_validation_sprint.md": [],
+    "feedback_untracked_check_origin.md": [],
+    "feedback_owner_must_be_able_to_test_on_preview.md": [
+      "#1834",
+      "#1863"
+    ],
+    "feedback_velocity_estimate_calibration.md": [
+      "#671"
+    ],
+    "feedback_rider_value_salary.md": [],
+    "project_slice14_uci_history.md": [
+      "#136",
+      "#279"
+    ],
+    "feedback_verify_before_push.md": [],
+    "feedback_keep_asking_questions.md": [],
+    "feedback_webfetch_no_js_execution.md": [
+      "#348"
+    ],
+    "feedback_reproduce_locally_before_push.md": [
+      "#412",
+      "#536",
+      "#743",
+      "#752"
+    ],
+    "project_clarity_mcp_pending.md": [
+      "#670",
+      "#864"
+    ],
+    "feedback_backlog_discipline_launch_value.md": [],
+    "project_polish_sprint_2026_05.md": [
+      "#158",
+      "#163",
+      "#169",
+      "#171",
+      "#172",
+      "#173",
+      "#174",
+      "#175",
+      "#176",
+      "#178"
+    ],
+    "feedback_review_agents_readonly_agenttype.md": [],
+    "feedback_verify_branch_before_commit_shared_checkout.md": [
+      "#1122",
+      "#1180",
+      "#1309"
+    ],
+    "feedback_chrome_mcp_token_safety.md": [
+      "#87"
+    ],
+    "feedback_default_simpler_implementation.md": [],
+    "feedback_language_priority.md": [],
+    "reference_postgrest_1000_row_cap_in_scripts.md": [
+      "#1798",
+      "#1839",
+      "#1841",
+      "#1849"
+    ],
+    "feedback_pr_flow_for_features.md": [
+      "#485",
+      "#486",
+      "#487",
+      "#488"
+    ],
+    "feedback_simulate_before_ship_balance.md": [
+      "#1101",
+      "#1137"
+    ],
+    "feedback_hardlink_edit_breaks_sync.md": [],
+    "feedback_worktree_before_parallel_commits.md": [
+      "#559",
+      "#669",
+      "#777",
+      "#844"
+    ],
+    "feedback_preview_branch_workflow.md": [],
+    "feedback_branch_hygiene.md": [],
+    "feedback_pillars_quality_over_mvp.md": [],
+    "feedback_trigger_over_callsites.md": [
+      "#240"
+    ],
+    "feedback_board_work_requires_discord_sweep.md": [],
+    "feedback_uci_no_data_loss.md": [],
+    "feedback_bot_pr_tracking_sdk_consent_gate.md": [
+      "#371",
+      "#372"
+    ],
+    "feedback_pr_with_migration_owner_merges.md": [
+      "#1361"
+    ],
+    "project_rls_audit_guard.md": [
+      "#279",
+      "#284",
+      "#285"
+    ],
+    "feedback_worktree_cleanup.md": [],
+    "feedback_vite_dep_cache_stale.md": [
+      "#410"
+    ],
+    "feedback_worktree_repair.md": [],
+    "project_race_hub_redesign.md": [
+      "#1808",
+      "#1810",
+      "#1814"
+    ],
     "feedback_calendar_planning.md": [],
+    "project_alunta_payment_stack.md": [
+      "#673"
+    ],
+    "project_discord_i18n_strategy.md": [
+      "#462"
+    ],
+    "feedback_preview_verify_before_merge.md": [
+      "#665"
+    ],
+    "feedback_readonly_prep_during_concurrent_work.md": [
+      "#194"
+    ],
+    "feedback_discord_bridge_after_close.md": [],
+    "project_race_engine_v1.md": [
+      "#1021",
+      "#1101",
+      "#1102",
+      "#1103",
+      "#1105",
+      "#49",
+      "#669",
+      "#675",
+      "#676",
+      "#677"
+    ],
+    "reference_worlddb_rider_import.md": [
+      "#669"
+    ],
+    "feedback_manual_verification.md": [],
+    "feedback_whitelist_new_empty_tables_in_ship_pr.md": [
+      "#1305",
+      "#1306",
+      "#1308",
+      "#1403",
+      "#1408",
+      "#1410",
+      "#1411",
+      "#963"
+    ],
+    "reference_projects_pat_rotation.md": [],
+    "project_progression_core_pivot.md": [
+      "#1122",
+      "#1136",
+      "#1137",
+      "#1138",
+      "#1139",
+      "#1140",
+      "#1141",
+      "#1142",
+      "#1143",
+      "#669",
+      "#813",
+      "#918",
+      "#930",
+      "#931",
+      "#932",
+      "#934",
+      "#958"
+    ],
+    "feedback_respect_pre_existing_agreements.md": [
+      "#634"
+    ],
+    "feedback_use_subagents_for_broad_work.md": [
+      "#68"
+    ],
+    "feedback_verify_each_edit_landed.md": [
+      "#1202",
+      "#668"
+    ],
+    "feedback_ask_questions_domain_calibration.md": [
+      "#1101",
+      "#49"
+    ],
+    "project_tdf_2026_launch.md": [
+      "#1021",
+      "#1101",
+      "#1102",
+      "#1103",
+      "#1104",
+      "#1105",
+      "#1122",
+      "#1471",
+      "#352",
+      "#672",
+      "#678",
+      "#954"
+    ],
+    "feedback_rls_verify_authenticated.md": [
+      "#279"
+    ],
+    "feedback_verify_issue_state_before_recommending.md": [
+      "#286",
+      "#287",
+      "#289"
+    ],
+    "feedback_timezone_copenhagen.md": [],
+    "feedback_compare_content_not_timestamp.md": [],
+    "feedback_world_class_standards.md": [
+      "#157",
+      "#166"
+    ],
+    "feedback_execute_end_to_end.md": [],
+    "feedback_verify_observability_pipeline_live.md": [
+      "#348",
+      "#614"
+    ],
+    "feedback_prod_url_canonical.md": [
+      "#1296"
+    ],
+    "project_youth_rider_progression_rework.md": [
+      "#1487",
+      "#1791"
+    ],
+    "project_launch_context.md": [],
+    "project_node24_ci_followup.md": [
+      "#718",
+      "#755",
+      "#807"
+    ],
+    "feedback_ship_and_let_self_correcting_systems_glide.md": [
+      "#1101"
+    ],
+    "feedback_player_facing_copy_rules.md": [
+      "#475"
+    ],
+    "feedback_ai_to_ai_workflow.md": [],
+    "feedback_anti_ai_slop_design_taste.md": [
+      "#1390",
+      "#481",
+      "#671",
+      "#672"
+    ],
+    "reference_needs_user_action_label.md": [],
+    "reference_onedrive_context.md": [],
+    "feedback_i18n_icu_brace_syntax.md": [
+      "#505"
+    ],
+    "feedback_pr_body_brugerverifikation.md": [
+      "#1193",
+      "#1393",
+      "#279",
+      "#328",
+      "#340"
+    ],
+    "feedback_no_ai_substitute_for_human_verification.md": [],
+    "feedback_manager_rename_wizard.md": [],
+    "reference_main_branch_protection.md": [
+      "#303"
+    ],
+    "feedback_infer_tier_from_cost_signals.md": [],
+    "feedback_diagnose_check_prs.md": [
+      "#100",
+      "#131"
+    ],
+    "feedback_rating_tendency_not_readable.md": [
+      "#1791"
+    ],
+    "feedback_runtime_verify_first.md": [],
+    "feedback_evidence_before_fix.md": [
+      "#181",
+      "#197"
+    ],
+    "feedback_founder_voice_owner_writes.md": [
+      "#1217"
+    ],
+    "project_tier_names_locked.md": [],
+    "reference_i18n_icu_single_brace.md": [],
+    "feedback_remote_routines.md": [],
+    "feedback_create_policy_idempotent.md": [],
+    "feedback_git_push.md": [],
+    "feedback_github_action_bot_post_commit_hang.md": [
+      "#327"
+    ],
+    "feedback_github_close_protocol.md": [
+      "#580",
+      "#68",
+      "#70",
+      "#72",
+      "#882",
+      "#887"
+    ],
+    "reference_user_discord_id.md": [],
+    "feedback_branch_strategy_questions.md": [],
+    "reference_i18n_single_brace_interpolation.md": [
+      "#960"
+    ],
+    "feedback_lint_staged_untracked_sweep.md": [],
+    "project_forever_relaunch_readiness.md": [
+      "#1137",
+      "#1140",
+      "#1487",
+      "#1499",
+      "#1523",
+      "#1524",
+      "#1525",
+      "#1569",
+      "#1595",
+      "#1608",
+      "#1673",
+      "#1678",
+      "#1680",
+      "#1681",
+      "#1682",
+      "#1684",
+      "#1685",
+      "#1688",
+      "#1698"
+    ],
+    "feedback_migrate_per_flade_with_github_sweep.md": [
+      "#1031",
+      "#1140",
+      "#671",
+      "#986"
+    ],
+    "feedback_backwards_check_forward_guard.md": [
+      "#279",
+      "#285",
+      "#289"
+    ],
+    "project_no_iphone.md": [
+      "#367"
+    ],
+    "reference_deploy_pipeline_auto_migrate.md": [
+      "#1101",
+      "#1201"
+    ],
+    "reference_hex_hashes_trigger_secret_hook.md": [
+      "#634"
+    ],
+    "feedback_label_state_not_live_state.md": [
+      "#339"
+    ],
     "README.md": [
       "#239",
       "#240",
@@ -22,146 +692,46 @@
       "#743",
       "#753"
     ],
-    "feedback_world_class_standards.md": [
-      "#157",
-      "#166"
+    "feedback_pin_auth_redirects.md": [
+      "#307",
+      "#35"
     ],
-    "project_clarity_mcp_pending.md": [
-      "#670",
-      "#864"
-    ],
-    "project_time_tracker.md": [
-      "#390"
-    ],
-    "reference_uci_sheet.md": [],
-    "reference_board_fixture_baseline_phase.md": [
-      "#1030",
-      "#1066"
-    ],
-    "feedback_simple_pros_cons.md": [],
-    "project_fulltime_validation_sprint.md": [],
-    "feedback_bash_no_powershell_heredoc.md": [
-      "#504",
-      "#852"
-    ],
-    "feedback_preview_verify_before_merge.md": [
-      "#665"
-    ],
-    "feedback_worktree_path_unreliable.md": [],
-    "reference_i18n_icu_single_brace.md": [],
-    "project_24_7_automation.md": [
-      "#182"
-    ],
-    "feedback_default_simpler_implementation.md": [],
-    "feedback_runtime_verify_first.md": [],
-    "feedback_reproduce_locally_before_push.md": [
-      "#412",
-      "#536",
-      "#743",
-      "#752"
-    ],
-    "reference_uci_sheet_forbidden.md": [],
-    "feedback_patch_notes_version_merge_conflict.md": [
-      "#959",
-      "#983"
-    ],
-    "feedback_db_trigger_for_race_windows.md": [
-      "#269"
-    ],
-    "project_data_dense_page_width.md": [
-      "#1027",
-      "#1028",
-      "#864"
-    ],
-    "feedback_classifier_needs_plaintext_for_destructive_writes.md": [],
-    "project_race_engine_v1.md": [
-      "#1021",
-      "#1101",
-      "#1102",
-      "#1103",
-      "#1105",
-      "#669",
-      "#675",
-      "#676",
-      "#677"
-    ],
-    "feedback_discord_bridge_after_close.md": [],
-    "feedback_worktree_edit_main_checkout_path.md": [
-      "#1062",
-      "#948"
-    ],
-    "feedback_chrome_mcp_saas_overpromise.md": [],
-    "feedback_memory_tier_default.md": [],
-    "feedback_no_password_manager_tasks.md": [],
-    "feedback_worktree_repair.md": [],
-    "feedback_railway_cli_leaks_secrets.md": [
-      "#620"
-    ],
-    "feedback_worktree_before_parallel_commits.md": [
-      "#559",
-      "#669",
-      "#777",
-      "#844"
-    ],
-    "reference_claude_code_routines.md": [
-      "#622",
-      "#638"
-    ],
-    "feedback_create_policy_idempotent.md": [],
-    "project_uci_ip_risk.md": [],
-    "project_auto_close_live.md": [
-      "#627",
-      "#746"
-    ],
-    "project_alunta_payment_stack.md": [
-      "#673"
-    ],
-    "feedback_worktree_cleanup.md": [],
-    "feedback_language_priority.md": [],
-    "feedback_branch_hygiene.md": [],
-    "feedback_compare_content_not_timestamp.md": [],
-    "reference_da_encoding_aeoeaa.md": [
-      "#1084",
-      "#1085",
-      "#678"
-    ],
-    "feedback_no_block_polling_ci.md": [
-      "#962"
-    ],
-    "feedback_verify_before_push.md": [],
-    "project_tooling_state.md": [],
-    "project_beta_tools_priority.md": [],
-    "feedback_refresh_core_smoke_snapshots.md": [
-      "#271",
-      "#481"
-    ],
-    "feedback_bot_pr_tracking_sdk_consent_gate.md": [
-      "#371",
-      "#372"
-    ],
-    "reference_weekly_planning_guide_location.md": [],
     "project_github_milestone_model.md": [
       "#1019",
       "#323"
     ],
-    "feedback_local_logged_in_verify_via_playwright_mocks.md": [],
-    "feedback_migration_ordering_within_day.md": [
-      "#25691365815",
-      "#304",
-      "#305"
-    ],
-    "feedback_discord_triage_dont_self_close.md": [
-      "#267"
-    ],
-    "project_discord_i18n_strategy.md": [
+    "feedback_curl_unicode_use_file.md": [
       "#462"
     ],
+    "feedback_track_followup_when_silencing_freshness_alarm.md": [
+      "#1840",
+      "#1841",
+      "#1852",
+      "#279"
+    ],
+    "feedback_mark_issues_done_after_ship.md": [],
     "MEMORY_REFERENCE.md": [
       "#100",
       "#1018",
+      "#1021",
       "#1027",
       "#1099",
+      "#1101",
+      "#1102",
+      "#1103",
+      "#1105",
+      "#1122",
+      "#1136",
+      "#1137",
+      "#1408",
+      "#1410",
+      "#1411",
+      "#1529",
+      "#1568",
+      "#1594",
       "#178",
+      "#1791",
+      "#1808",
       "#197",
       "#210",
       "#239",
@@ -187,6 +757,7 @@
       "#410",
       "#412",
       "#423",
+      "#46",
       "#462",
       "#481",
       "#488",
@@ -202,12 +773,15 @@
       "#634",
       "#636",
       "#670",
+      "#741",
       "#743",
       "#755",
       "#792",
       "#815",
       "#864",
       "#87",
+      "#906",
+      "#932",
       "#948",
       "#957",
       "#959",
@@ -220,6 +794,7 @@
       "feedback_backlog_discipline_launch_value.md",
       "feedback_backwards_check_forward_guard.md",
       "feedback_bash_no_powershell_heredoc.md",
+      "feedback_board_work_requires_discord_sweep.md",
       "feedback_bot_pr_tracking_sdk_consent_gate.md",
       "feedback_branch_hygiene.md",
       "feedback_branch_strategy_questions.md",
@@ -297,6 +872,7 @@
       "feedback_verify_third_party_integration.md",
       "feedback_vite_dep_cache_stale.md",
       "feedback_webfetch_no_js_execution.md",
+      "feedback_whitelist_new_empty_tables_in_ship_pr.md",
       "feedback_worktree_before_parallel_commits.md",
       "feedback_worktree_cleanup.md",
       "feedback_worktree_edit_main_checkout_path.md",
@@ -316,14 +892,22 @@
       "project_dependabot_advisory_only.md",
       "project_discord_github_bridge.md",
       "project_discord_i18n_strategy.md",
+      "project_discord_new_server.md",
       "project_economy_scaling.md",
+      "project_forever_relaunch_readiness.md",
       "project_fulltime_validation_sprint.md",
       "project_github_milestone_model.md",
       "project_launch_context.md",
+      "project_market_readiness_go.md",
+      "project_multiagent_fleet_playbook.md",
       "project_no_iphone.md",
       "project_node24_ci_followup.md",
+      "project_pcm_to_cz_abilities_display.md",
       "project_polish_sprint_2026_05.md",
+      "project_progression_core_pivot.md",
+      "project_race_engine_live_test_riders_parked.md",
       "project_race_engine_v1.md",
+      "project_race_hub_redesign.md",
       "project_renown_reputation_system.md",
       "project_rls_audit_guard.md",
       "project_season_zero_seeded.md",
@@ -331,17 +915,21 @@
       "project_slice07_complete.md",
       "project_slice07_economy_overhaul.md",
       "project_slice14_uci_history.md",
+      "project_tdf_2026_launch.md",
       "project_tier_names_locked.md",
       "project_time_tracker.md",
       "project_tooling_state.md",
       "project_uci_ip_risk.md",
       "project_workflow_analysis_2026_05_22.md",
+      "project_youth_rider_progression_rework.md",
       "reference_anthropic_memory_stores.md",
       "reference_backfill_forgotten_stage.md",
       "reference_board_fixture_baseline_phase.md",
       "reference_claude_code_routines.md",
+      "reference_cowork_channel_injects_marketplace_connectors.md",
       "reference_da_encoding_aeoeaa.md",
       "reference_dependabot_rebase_replaces_grouped_prs.md",
+      "reference_deploy_pipeline_auto_migrate.md",
       "reference_discord_mcp_setup.md",
       "reference_discord_triage_routine.md",
       "reference_frontend_smoke_teardown_flake.md",
@@ -354,6 +942,8 @@
       "reference_onedrive_context.md",
       "reference_playwright_snapshot_tolerance_no_rewrite.md",
       "reference_projects_pat_rotation.md",
+      "reference_sentry_triage_last_seen_not_cumulative.md",
+      "reference_supabase_cli_resend_smtp.md",
       "reference_supabase_key_system.md",
       "reference_supabase_pooler.md",
       "reference_supabase_realtime_publication.md",
@@ -362,242 +952,34 @@
       "reference_user_discord_id.md",
       "reference_vercel_cli_installed.md",
       "reference_weekly_planning_guide_location.md",
+      "reference_widgets_no_external_cdn.md",
+      "reference_workflow_args_may_arrive_as_string.md",
       "reference_worlddb_rider_import.md"
     ],
-    "feedback_trigger_over_callsites.md": [
-      "#240"
+    "feedback_extrapolate_balance_sim_to_full_season.md": [
+      "#1441",
+      "#1816"
     ],
-    "feedback_curl_unicode_use_file.md": [
-      "#462"
+    "feedback_test_real_endpoint_not_just_mocked.md": [
+      "#1840",
+      "#1851"
     ],
-    "feedback_remote_routines.md": [],
-    "project_launch_context.md": [],
-    "feedback_no_supabase_key_rotation_nag.md": [
-      "#201"
+    "feedback_migration_ordering_within_day.md": [
+      "#25691365815",
+      "#304",
+      "#305"
     ],
-    "project_economy_scaling.md": [],
-    "feedback_audit_close_aggressive.md": [
-      "#383",
-      "#627",
-      "#684",
-      "#721",
-      "#741"
+    "feedback_refresh_core_smoke_snapshots.md": [
+      "#271",
+      "#481"
     ],
-    "reference_projects_pat_rotation.md": [],
-    "project_architecture.md": [],
-    "feedback_no_auto_cleanup_no_chained_destructive.md": [],
-    "feedback_verify_observability_pipeline_live.md": [
-      "#348",
-      "#614"
-    ],
-    "feedback_audit_workflow_pr_runs_design.md": [
-      "#304"
-    ],
-    "feedback_git_push.md": [],
     "reference_discord_mcp_setup.md": [
       "#8784"
     ],
-    "project_discord_github_bridge.md": [
-      "#48",
-      "#8784"
-    ],
-    "feedback_cleanup_background_tasks.md": [
-      "#152",
-      "#153"
-    ],
-    "feedback_github_mcp_issue_write_403.md": [
-      "#554",
-      "#555"
-    ],
-    "project_rls_audit_guard.md": [
-      "#279",
-      "#284",
-      "#285"
-    ],
-    "feedback_github_close_protocol.md": [
-      "#580",
-      "#68",
-      "#70",
-      "#72",
-      "#882",
-      "#887"
-    ],
-    "project_slice07_complete.md": [
-      "#239",
-      "#240"
-    ],
-    "feedback_keep_asking_questions.md": [],
-    "feedback_lint_staged_untracked_sweep.md": [],
-    "project_slice14_uci_history.md": [
-      "#136",
-      "#279"
-    ],
-    "feedback_webfetch_no_js_execution.md": [
-      "#348"
-    ],
-    "reference_supabase_key_system.md": [
-      "#296"
-    ],
-    "reference_dependabot_rebase_replaces_grouped_prs.md": [
-      "#211",
-      "#212",
-      "#215",
-      "#303",
-      "#318",
-      "#319"
-    ],
-    "feedback_github_action_bot_post_commit_hang.md": [
-      "#327"
-    ],
-    "feedback_secret_leak_prevention.md": [
-      "#296",
-      "#563",
-      "#620",
+    "reference_supabase_cli_resend_smtp.md": [
       "#634"
     ],
-    "feedback_player_facing_copy_rules.md": [
-      "#475"
-    ],
-    "feedback_verify_issue_state_before_recommending.md": [
-      "#286",
-      "#287",
-      "#289"
-    ],
-    "feedback_prod_url_canonical.md": [],
-    "MEMORY.md": [
-      "#1021",
-      "#1101",
-      "#1102",
-      "#1103",
-      "#1105",
-      "#296",
-      "#412",
-      "#620",
-      "#668",
-      "feedback_audit_close_aggressive.md",
-      "feedback_backwards_check_forward_guard.md",
-      "feedback_bash_no_powershell_heredoc.md",
-      "feedback_explain_issues_in_plain_language.md",
-      "feedback_git_push.md",
-      "feedback_language_priority.md",
-      "feedback_local_logged_in_verify_via_playwright_mocks.md",
-      "feedback_match_ui_filter_for_capacity_logic.md",
-      "feedback_no_block_polling_ci.md",
-      "feedback_patch_notes.md",
-      "feedback_pr_body_brugerverifikation.md",
-      "feedback_refresh_core_smoke_snapshots.md",
-      "feedback_reproduce_locally_before_push.md",
-      "feedback_runtime_verify_first.md",
-      "feedback_secret_leak_prevention.md",
-      "feedback_session_rhythm.md",
-      "feedback_simple_pros_cons.md",
-      "feedback_timezone_copenhagen.md",
-      "feedback_verify_before_push.md",
-      "feedback_verify_each_edit_landed.md",
-      "feedback_world_class_standards.md",
-      "MEMORY_REFERENCE.md",
-      "project_tdf_2026_launch.md",
-      "README.md"
-    ],
-    "feedback_manager_rename_wizard.md": [],
-    "reference_vercel_cli_installed.md": [],
-    "reference_supabase_pooler.md": [],
-    "feedback_label_state_not_live_state.md": [
-      "#339"
-    ],
-    "reference_google_sheets_creds_location.md": [],
-    "feedback_timezone_copenhagen.md": [],
-    "project_business_strategy.md": [],
-    "feedback_no_ai_substitute_for_human_verification.md": [],
-    "reference_main_branch_protection.md": [
-      "#303"
-    ],
-    "project_board_parallel_plans.md": [],
-    "feedback_vite_dep_cache_stale.md": [
-      "#410"
-    ],
-    "feedback_branch_strategy_questions.md": [],
-    "feedback_use_subagents_for_broad_work.md": [
-      "#68"
-    ],
-    "feedback_review_agents_readonly_agenttype.md": [],
-    "reference_supabase_realtime_publication.md": [
-      "#195",
-      "#196"
-    ],
-    "project_no_iphone.md": [
-      "#367"
-    ],
-    "reference_hex_hashes_trigger_secret_hook.md": [
-      "#634"
-    ],
-    "feedback_hook_lifecycle_restart.md": [
-      "#72"
-    ],
-    "feedback_infer_tier_from_cost_signals.md": [],
-    "reference_anthropic_memory_stores.md": [
-      "#622"
-    ],
-    "project_slice07_economy_overhaul.md": [
-      "#80",
-      "#82"
-    ],
-    "feedback_match_ui_filter_for_capacity_logic.md": [
-      "#669",
-      "#962"
-    ],
-    "project_node24_ci_followup.md": [
-      "#718",
-      "#755",
-      "#807"
-    ],
-    "feedback_ai_to_ai_workflow.md": [],
-    "feedback_i18n_icu_brace_syntax.md": [
-      "#505"
-    ],
-    "project_renown_reputation_system.md": [
-      "#1099",
-      "#1100",
-      "#955",
-      "#957"
-    ],
-    "feedback_verify_each_edit_landed.md": [
-      "#668"
-    ],
-    "feedback_verify_issue_before_refs.md": [
-      "#178",
-      "feedback_runtime_verify_first.md"
-    ],
-    "project_polish_sprint_2026_05.md": [
-      "#158",
-      "#163",
-      "#169",
-      "#171",
-      "#172",
-      "#173",
-      "#174",
-      "#175",
-      "#176",
-      "#178"
-    ],
-    "reference_backfill_forgotten_stage.md": [
-      "#866",
-      "#867"
-    ],
-    "feedback_session_working_method.md": [],
-    "feedback_manual_verification.md": [],
-    "feedback_readonly_prep_during_concurrent_work.md": [
-      "#194"
-    ],
-    "feedback_diagnose_check_prs.md": [
-      "#100",
-      "#131"
-    ],
-    "feedback_pin_auth_redirects.md": [
-      "#307",
-      "#35"
-    ],
-    "feedback_execute_end_to_end.md": [],
+    "feedback_patch_notes.md": [],
     "project_workflow_analysis_2026_05_22.md": [
       "#323",
       "#346",
@@ -612,122 +994,31 @@
       "#563",
       "#567"
     ],
-    "reference_discord_triage_routine.md": [
-      "#814",
-      "#828",
-      "#829",
-      "#831",
-      "#832",
-      "#833",
-      "#834"
+    "feedback_memory_tier_default.md": [],
+    "feedback_simple_pros_cons.md": [],
+    "feedback_show_visuals_via_widget_not_read.md": [
+      "#481",
+      "#671"
     ],
-    "feedback_patch_notes.md": [],
-    "feedback_untracked_check_origin.md": [],
-    "reference_needs_user_action_label.md": [],
-    "feedback_session_rhythm.md": [],
-    "reference_onedrive_context.md": [],
-    "feedback_gh_jq_no_escaped_quotes.md": [
-      "#743"
-    ],
-    "feedback_pr_flow_for_features.md": [
-      "#485",
-      "#486",
-      "#487",
-      "#488"
+    "feedback_admin_log_forensics_before_reactive_vs_proactive.md": [
+      "#578"
     ],
     "project_dependabot_advisory_only.md": [
       "#178",
       "#196",
       "#210"
     ],
-    "feedback_supabase_status_must_match_check.md": [
-      "#270"
+    "reference_supabase_pooler.md": [],
+    "project_board_parallel_plans.md": [],
+    "feedback_full_ci_gate_before_pr.md": [
+      "#1309",
+      "#1366",
+      "#438"
     ],
-    "feedback_organic_community_growth.md": [
-      "#423"
-    ],
-    "feedback_preview_branch_workflow.md": [],
-    "feedback_evidence_before_fix.md": [
-      "#181",
-      "#197"
-    ],
-    "feedback_parallel_session_worktree.md": [
-      "#203",
-      "#44"
-    ],
-    "feedback_rider_value_salary.md": [],
-    "reference_worlddb_rider_import.md": [
-      "#669"
-    ],
-    "project_tier_names_locked.md": [],
+    "reference_uci_sheet.md": [],
     "project_seo_pending_domain.md": [
       "#351",
       "#352"
-    ],
-    "feedback_hardlink_edit_breaks_sync.md": [],
-    "reference_frontend_smoke_teardown_flake.md": [
-      "#884",
-      "#907"
-    ],
-    "reference_user_discord_id.md": [],
-    "feedback_patch_notes_version_collision.md": [
-      "#10",
-      "#153",
-      "#154",
-      "#51"
-    ],
-    "feedback_backwards_check_forward_guard.md": [
-      "#279",
-      "#285",
-      "#289"
-    ],
-    "feedback_respect_pre_existing_agreements.md": [
-      "#634"
-    ],
-    "feedback_chrome_mcp_token_safety.md": [
-      "#87"
-    ],
-    "project_tdf_2026_launch.md": [
-      "#1021",
-      "#1101",
-      "#1102",
-      "#1103",
-      "#1104",
-      "#1105",
-      "#352",
-      "#672",
-      "#678",
-      "#954"
-    ],
-    "feedback_auto_merge_after_ci_green.md": [
-      "#153"
-    ],
-    "project_season_zero_seeded.md": [
-      "#239"
-    ],
-    "reference_i18n_single_brace_interpolation.md": [
-      "#960"
-    ],
-    "feedback_explain_issues_in_plain_language.md": [
-      "#667",
-      "#668",
-      "#677"
-    ],
-    "feedback_read_code_comments_first.md": [],
-    "feedback_admin_log_forensics_before_reactive_vs_proactive.md": [
-      "#578"
-    ],
-    "project_brand_sidebar_hover_microinteraction.md": [
-      "#481"
-    ],
-    "feedback_uci_no_data_loss.md": [],
-    "feedback_verify_test_port_owner_in_worktree.md": [
-      "#792"
-    ],
-    "feedback_confirm_before_state_change.md": [
-      "#68"
-    ],
-    "feedback_verify_third_party_integration.md": [],
-    "feedback_backlog_discipline_launch_value.md": []
+    ]
   }
 }
