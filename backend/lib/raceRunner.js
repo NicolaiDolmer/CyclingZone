@@ -36,6 +36,8 @@ import { autopickTeamSelection, selectionSizeForRace } from "./raceAutopick.js";
 import { applyStageResultAtomic } from "./stageResultRpc.js";
 import { POOL_TARGET_SIZE } from "./economyConstants.js";
 import { loadWithdrawnTeamIds } from "./raceWithdrawal.js";
+import { raceBindingWindow } from "./raceBinding.js";
+import { freezeEntrantsToStartField, excludeBoundRiders } from "./raceFieldIntegrity.js";
 
 // Intern klassements-point (grøn/bjerg) — afgør KUN rækkefølgen i de respektive
 // trøje-konkurrencer; selve præmie-pointene kommer fra race_points via rank.
@@ -305,6 +307,89 @@ async function loadStageProfiles(supabase, raceId) {
   return data || [];
 }
 
+// Range-pagineret fetch (PostgREST default-cap = 1000 rækker → tavs trunkering; #1839).
+const PAGE_SIZE = 1000;
+async function fetchAllPaged(query) {
+  const out = [];
+  for (let from = 0; ; from += PAGE_SIZE) {
+    const { data, error } = await query().range(from, from + PAGE_SIZE - 1);
+    if (error) return { data: null, error };
+    out.push(...(data || []));
+    if (!data || data.length < PAGE_SIZE) break;
+  }
+  return { data: out, error: null };
+}
+
+// #1845: binding-kontekst for runtime auto-fill — dette løbs CET-dag-vindue + hvert holds
+// ryttere udtaget i ANDRE løb (med deres vinduer), så excludeBoundRiders kan udelukke en
+// rytter der allerede er bundet i et tidsoverlappende løb (inkl. igangværende). Tynd I/O.
+async function loadFieldBindingContext({ supabase, race, teamIds }) {
+  const empty = { thisWindow: null, otherRacesByTeam: new Map() };
+  if (!teamIds?.length) return empty;
+
+  const { data: thisSched, error: e0 } = await supabase
+    .from("race_stage_schedule").select("scheduled_at").eq("race_id", race.id);
+  if (e0) throw new Error(`race_stage_schedule (binding this): ${e0.message}`);
+  const thisWindow = raceBindingWindow(thisSched);
+  if (!thisWindow) return empty; // dette løb har intet vindue → kan ikke binde
+
+  // Holdenes entries i ANDRE løb (range-pagineret mod 1000-cap'en).
+  const { data: entries, error: e1 } = await fetchAllPaged(() =>
+    supabase.from("race_entries").select("race_id, team_id, rider_id").in("team_id", teamIds).neq("race_id", race.id)
+  );
+  if (e1) throw new Error(`race_entries (binding others): ${e1.message}`);
+  if (!entries.length) return { thisWindow, otherRacesByTeam: new Map() };
+
+  const otherRaceIds = [...new Set(entries.map((e) => e.race_id))];
+  const scheds = [];
+  for (let i = 0; i < otherRaceIds.length; i += 200) {
+    const chunk = otherRaceIds.slice(i, i + 200);
+    const { data, error } = await fetchAllPaged(() =>
+      supabase.from("race_stage_schedule").select("race_id, scheduled_at").in("race_id", chunk)
+    );
+    if (error) throw new Error(`race_stage_schedule (binding others): ${error.message}`);
+    scheds.push(...data);
+  }
+  const schedByRace = new Map();
+  for (const s of scheds) {
+    if (!schedByRace.has(s.race_id)) schedByRace.set(s.race_id, []);
+    schedByRace.get(s.race_id).push(s);
+  }
+  const windowByRace = new Map();
+  for (const rid of otherRaceIds) windowByRace.set(rid, raceBindingWindow(schedByRace.get(rid)));
+
+  const byTeamRace = new Map(); // teamId → Map(raceId → [rider_id])
+  for (const e of entries) {
+    if (!byTeamRace.has(e.team_id)) byTeamRace.set(e.team_id, new Map());
+    const m = byTeamRace.get(e.team_id);
+    if (!m.has(e.race_id)) m.set(e.race_id, []);
+    m.get(e.race_id).push(e.rider_id);
+  }
+  const otherRacesByTeam = new Map();
+  for (const [teamId, raceMap] of byTeamRace) {
+    const arr = [];
+    for (const [rid, riderIds] of raceMap) {
+      const w = windowByRace.get(rid);
+      if (w) arr.push({ window: w, riderIds });
+    }
+    otherRacesByTeam.set(teamId, arr);
+  }
+  return { thisWindow, otherRacesByTeam };
+}
+
+// #1844: rider_ids fra et løbs FØRSTE etape-simulering (race_simulation_runs) = det
+// frosne start-felt. Bruges til at låse senere etapers felt. Legacy/single-løb uden
+// snapshot → null (ingen frysning). Håndterer både string-array og {rider_id}-objekter.
+async function loadStartFieldRiderIds({ supabase, raceId }) {
+  const { data, error } = await supabase
+    .from("race_simulation_runs").select("stage_number, entrant_snapshot")
+    .eq("race_id", raceId).order("stage_number", { ascending: true }).limit(1);
+  if (error) throw new Error(`race_simulation_runs (start field): ${error.message}`);
+  const snap = data?.[0]?.entrant_snapshot;
+  if (!Array.isArray(snap)) return null;
+  return snap.map((x) => (typeof x === "string" ? x : x?.rider_id)).filter(Boolean);
+}
+
 // #1307: per-hold autopick. For hvert egnet hold (ikke test/frosset) UDEN entries
 // for løbet: assistenten udtager 6-8 bedst egnede + kaptajn (spec 8.1 — "vælger du
 // ikke, vælger assistenten fornuftigt; ingen straf for fravær"). Hold MED entries
@@ -415,8 +500,18 @@ export async function fillMissingTeamEntries({ supabase, race, stages, existingE
     if (!byTeam.has(r.team_id)) byTeam.set(r.team_id, []);
     byTeam.get(r.team_id).push({ rider_id: r.id, abilities: abRow, fatigue: fatigueByRider.get(r.id) });
   }
+  // #1845: cross-race binding — runtime auto-fill MÅ ikke vælge en rytter der allerede
+  // er bundet i et tidsoverlappende løb (samme CET-dag, inkl. IGANGVÆRENDE løb). Uden
+  // dette fyldte fx Tour des Alpes Suisses med den igangværende La Corsas ryttere
+  // (142 dobbeltbookinger 25/6). Spejler raceEntryGenerator.assignTeamAcrossRaces.
+  const { thisWindow, otherRacesByTeam } = await loadFieldBindingContext({
+    supabase, race, teamIds: [...byTeam.keys()],
+  });
   for (const [teamId, teamRiders] of byTeam) {
-    for (const pick of autopickTeamSelection({ riders: teamRiders, stages, sizeRule })) {
+    const available = excludeBoundRiders({
+      riders: teamRiders, thisWindow, otherRaces: otherRacesByTeam.get(teamId) || [],
+    });
+    for (const pick of autopickTeamSelection({ riders: available, stages, sizeRule })) {
       rows.push({ race_id: race.id, rider_id: pick.rider_id, team_id: teamId, race_role: pick.race_role, is_auto_filled: true });
     }
   }
@@ -432,7 +527,7 @@ export async function fillMissingTeamEntries({ supabase, race, stages, existingE
 // med navn, is_u25, abilities + race_role. Hold MED manager-udtagne entries røres ikke.
 // persist=false (#1102 dryRun): auto-fill beregnes i hukommelsen — ingen DB-insert.
 // stages bruges af autopick til egnethedsscore (suitabilityScore pr. terrain).
-export async function loadEntrantsForRace({ supabase, race, stages = [], persist = true }) {
+export async function loadEntrantsForRace({ supabase, race, stages = [], persist = true, allowAutofill = true }) {
   const { data: existing, error } = await supabase
     .from("race_entries")
     .select("rider_id, team_id, race_role")
@@ -440,9 +535,11 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
   if (error) throw new Error(`race_entries: ${error.message}`);
 
   const existingEntries = existing || [];
-  // #1307: autopick for hold UDEN entries — ALTID kaldt (ikke kun når feltets tomt).
-  // Returnerer kun nyindsat; hold med eksisterende entries røres ikke.
-  const autopicked = await fillMissingTeamEntries({ supabase, race, stages, existingEntries, persist });
+  // #1307: autopick for hold UDEN entries. #1844: KUN ved etape 1 (allowAutofill) — et
+  // igangværende etapeløb må ikke få nye ryttere fyldt ind mellem etaper (feltet er låst).
+  const autopicked = allowAutofill
+    ? await fillMissingTeamEntries({ supabase, race, stages, existingEntries, persist })
+    : [];
   const entries = [...existingEntries, ...autopicked];
   if (!entries.length) return [];
 
@@ -747,7 +844,25 @@ export async function simulateStageByIndex({
   let applied = { rowsImported: 0 };
 
   if (!finalizationPending) {
-    entrants = await loadEntrantsForRace({ supabase, race, stages, persist: persistEntries });
+    // #1844: auto-fyld KUN ved etape 1. Senere etaper må ikke tilføje nye ryttere.
+    entrants = await loadEntrantsForRace({ supabase, race, stages, persist: persistEntries, allowAutofill: stageIndex === 0 });
+
+    // #1844: frys feltet til etape-1-snapshot. Et igangværende etapeløbs felt MÅ ikke
+    // ændre sig mellem etaper — en rytter der kom ind midt i løbet (manuelt edit pre-#1838,
+    // rytter-tilføjelse, eller anden drift) blev ellers simuleret retroaktivt gennem alle
+    // etaper og kunne vinde GC (Boucles Mayennaises). Etape 1 / legacy-løb uden snapshot
+    // → loadStartFieldRiderIds=null → ingen frysning.
+    if (stageIndex > 0) {
+      const startField = await loadStartFieldRiderIds({ supabase, raceId: race.id });
+      const { frozen, added, missing } = freezeEntrantsToStartField(entrants, startField);
+      if (added.length) {
+        console.error(`  ⚠️  race ${race.id} etape ${stageNumber}: ${added.length} mid-race-rytter(e) ekskluderet fra GC (#1844): ${added.slice(0, 5).join(",")}${added.length > 5 ? "…" : ""}`);
+      }
+      if (missing.length) {
+        console.error(`  ⚠️  race ${race.id} etape ${stageNumber}: ${missing.length} start-felt-rytter(e) forsvundet (#1844/#1847): ${missing.slice(0, 5).join(",")}${missing.length > 5 ? "…" : ""}`);
+      }
+      entrants = frozen;
+    }
     if (!entrants.length) throw new Error(`No start list for race ${race.id}`);
 
     const racePoints = await loadRacePoints(supabase, race.race_class);
