@@ -44,6 +44,7 @@
     "ended": "Season has ended",
     "daysLeftSuffix": "days until season ends",
     "raceDays": "{completed}/{total} race days",
+    "raceDaysLive": "{count} live",
     "viewCalendar": "View calendar →",
     "transferWindow": {
       "open": "✓ Transfer window open",
@@ -78,7 +79,8 @@
       "empty": "No scheduled races",
       "stages": "{count, plural, one {1 stage} other {# stages}}",
       "oneDay": "One-day race",
-      "dateTbd": "Date TBD"
+      "dateTbd": "Date TBD",
+      "live": "Live"
     },
     "standings": {
       "title": "Division {division} · Standings",

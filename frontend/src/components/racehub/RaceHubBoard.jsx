@@ -1,7 +1,10 @@
 // Race Hub Fase 1 — orkestrator for trup-fordeling-board'et. Henter aggregat-
 // endpointet GET /api/races/distribution, ejer URL-params (day/scope), og gemmer
 // via det eksisterende PUT /selection pr. løb (guards bevares). Afmeld via
-// withdrawal-endpoint; "auto-udfyld igen" via regenerate-endpoint.
+// withdrawal-endpoint; "auto-udfyld" (dual-mode) via regenerate-endpoint.
+//
+// #1823: alle mutationer tjekker res.ok, viser en mappet fejlbesked (toast), og
+// re-henter board'et bagefter (server-sandhed = optimistisk rollback ved fejl).
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
@@ -27,6 +30,7 @@ export default function RaceHubBoard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null); // { code, params } | null
 
   const load = useCallback(async (day) => {
     const headers = await authHeaders();
@@ -55,23 +59,38 @@ export default function RaceHubBoard() {
   const setDay = (d) => { params.set("day", String(d)); setParams(params, { replace: true }); };
   const setScope = (s) => { params.set("scope", s); setParams(params, { replace: true }); };
 
-  async function putSelection(column, riderIds) {
+  // Fælles mutations-wrapper: tjek res.ok, surfacér fejlkode (+ evt. params til ICU-
+  // beskeden, fx min/max ved selection_wrong_size), re-hent (rollback) bagefter.
+  async function mutate(req, errParams = {}) {
     const headers = await authHeaders();
     if (!headers) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await req(headers);
+      if (res && !res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setError({ code: body.error || "generic", params: errParams });
+      }
+    } catch {
+      setError({ code: "generic", params: errParams });
+    } finally {
+      await load(day);
+      setBusy(false);
+    }
+  }
+
+  function putSelection(column, riderIds, roles = {}) {
     const sel = column.selection || {};
     const body = {
       rider_ids: riderIds,
-      captain_id: riderIds.includes(sel.captain_id) ? sel.captain_id : riderIds[0] ?? null,
-      sprint_captain_id: riderIds.includes(sel.sprint_captain_id) ? sel.sprint_captain_id : null,
-      hunter_id: riderIds.includes(sel.hunter_id) ? sel.hunter_id : null,
+      captain_id: "captain_id" in roles ? roles.captain_id : (riderIds.includes(sel.captain_id) ? sel.captain_id : riderIds[0] ?? null),
+      sprint_captain_id: "sprint_captain_id" in roles ? roles.sprint_captain_id : (riderIds.includes(sel.sprint_captain_id) ? sel.sprint_captain_id : null),
+      hunter_id: "hunter_id" in roles ? roles.hunter_id : (riderIds.includes(sel.hunter_id) ? sel.hunter_id : null),
     };
-    setBusy(true);
-    try {
-      await fetch(`${API}/api/races/${column.id}/selection`, { method: "PUT", headers, body: JSON.stringify(body) });
-      await load(day);
-    } finally {
-      setBusy(false);
-    }
+    return mutate(
+      (headers) => fetch(`${API}/api/races/${column.id}/selection`, { method: "PUT", headers, body: JSON.stringify(body) }),
+      { min: column.size?.min, max: column.size?.max });
   }
 
   const addRider = (raceId, riderId) => {
@@ -85,35 +104,58 @@ export default function RaceHubBoard() {
     putSelection(col, (col.selection?.rider_ids || []).filter((id) => id !== riderId));
   };
 
-  async function toggleWithdraw(raceId, withdraw) {
-    const headers = await authHeaders();
-    if (!headers) return;
-    setBusy(true);
-    try {
-      await fetch(`${API}/api/races/${raceId}/withdrawal`, { method: withdraw ? "POST" : "DELETE", headers });
-      await load(day);
-    } finally {
-      setBusy(false);
+  // Klik rytter → rolle: ryd rytteren fra alle roller, sæt den valgte. Kaptajn er
+  // påkrævet, så hvis vi rydder kaptajnen uden at sætte en ny, falder vi tilbage til
+  // første rytter der ikke har en anden rolle (matcher backend-validering).
+  function setRole(raceId, riderId, role) {
+    const col = columns.find((c) => c.id === raceId);
+    if (!col) return;
+    const sel = col.selection || {};
+    const riderIds = sel.rider_ids || [];
+    if (!riderIds.includes(riderId)) return;
+    let captain = sel.captain_id, sprint = sel.sprint_captain_id, hunter = sel.hunter_id;
+    if (captain === riderId) captain = null;
+    if (sprint === riderId) sprint = null;
+    if (hunter === riderId) hunter = null;
+    if (role === "captain") captain = riderId;
+    else if (role === "sprint_captain") sprint = riderId;
+    else if (role === "hunter") hunter = riderId;
+    // Kaptajn er påkrævet og skal være forskellig fra sprint/jæger. Find en rytter uden
+    // anden rolle; findes ingen (lille trup hvor alle har en rolle), tag den første og
+    // fjern dens evt. anden rolle, så trekanten forbliver distinkt (ellers role_overlap).
+    if (!captain) {
+      captain = riderIds.find((id) => id !== sprint && id !== hunter) ?? null;
+      if (!captain) {
+        captain = riderIds[0] ?? null;
+        if (captain === sprint) sprint = null;
+        if (captain === hunter) hunter = null;
+      }
     }
+    putSelection(col, riderIds, { captain_id: captain, sprint_captain_id: sprint, hunter_id: hunter });
   }
 
-  async function regenerate() {
-    const hasManual = columns.some((c) => c.selection && c.selection.is_auto_filled === false);
-    if (hasManual && !window.confirm(t("racehub.regenerateWarn"))) return;
-    const headers = await authHeaders();
-    if (!headers) return;
-    setBusy(true);
-    try {
-      await fetch(`${API}/api/races/distribution/regenerate?day=${day}`, { method: "POST", headers });
-      await load(day);
-    } finally {
-      setBusy(false);
+  const toggleWithdraw = (raceId, withdraw) =>
+    mutate((headers) => fetch(`${API}/api/races/${raceId}/withdrawal`, { method: withdraw ? "POST" : "DELETE", headers }));
+
+  function regenerate(mode) {
+    // "all" overskriver alle (også manuelle) → bekræft. "missing" bevarer manuelle.
+    if (mode === "all") {
+      const hasManual = columns.some((c) => c.selection && c.selection.is_auto_filled === false);
+      if (hasManual && !window.confirm(t("racehub.regenerateWarn"))) return;
     }
+    return mutate((headers) =>
+      fetch(`${API}/api/races/distribution/regenerate?day=${day}&mode=${mode}`, { method: "POST", headers }));
   }
 
   return (
     <div data-testid="race-hub-board">
       <ContextBand scope={scope} day={day} currentDay={data.currentDay} timeline={data.timeline} onScopeChange={setScope} onDayChange={setDay} />
+      {error && (
+        <div role="alert" className="mb-3 flex items-start justify-between gap-3 rounded-cz border border-cz-danger/30 bg-cz-danger/10 px-3 py-2">
+          <span className="text-xs text-cz-danger">{t([`selection.errors.${error.code}`, "selection.errors.generic"], error.params)}</span>
+          <button type="button" onClick={() => setError(null)} aria-label={t("racehub.dismiss")} className="text-cz-danger/70 hover:text-cz-danger text-sm leading-none">×</button>
+        </div>
+      )}
       <div className="flex items-baseline justify-between mb-2">
         <h2 className="text-base font-bold text-cz-1">{t("racehub.heading")}</h2>
         <span className="text-xs text-cz-3">{t("racehub.overlap", { count: columns.length })}</span>
@@ -124,7 +166,7 @@ export default function RaceHubBoard() {
         <>
           <div className="grid sm:grid-cols-2 gap-3 mb-4">
             {columns.map((c) => (
-              <RaceColumn key={c.id} column={c} busy={busy} onRemoveRider={removeRider} onToggleWithdraw={toggleWithdraw} />
+              <RaceColumn key={c.id} column={c} busy={busy} onRemoveRider={removeRider} onSetRole={setRole} onToggleWithdraw={toggleWithdraw} />
             ))}
           </div>
           <AvailableRidersPool roster={roster} columns={columns} bindingMap={data.bindingMap || {}}

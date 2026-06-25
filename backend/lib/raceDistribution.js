@@ -53,13 +53,38 @@ export function dominantTerrain(profileTypes = []) {
   return sorted[0][0];
 }
 
-// Manuelle entries (is_auto_filled=false) i ANDRE løb end de synlige → lockedWindows til
-// assignTeamAcrossRaces, så regenerering af de synlige løb ikke dobbeltbooker en rytter
-// holdet bevidst har forpligtet et overlappende sted. `excludeRaceIds` = de løb der regenereres.
-export function lockedWindowsFromManualEntries({ entries = [], windowByRace, excludeRaceIds = new Set() }) {
+// ALLE committede entries (manuelle OG auto-filled) i ANDRE løb end de der regenereres
+// → lockedWindows til assignTeamAcrossRaces, så regenerering ikke dobbeltbooker en rytter
+// holdet allerede er forpligtet med et overlappende sted. `excludeRaceIds` = de løb der
+// regenereres (deres ryttere skal jo netop gen-tildeles, så de udelades).
+//
+// #1823 1b: tidligere låste vi KUN manuelle entries (`is_auto_filled === false`). Det
+// efterlod et hul: en auto-filled rytter i et ikke-regenereret men tidsoverlappende løb
+// (typisk et multi-dag-etapeløb der rækker ind i nabodagen) blev ikke låst → dobbeltbooking.
+// Vi låser nu alle committede entries. Genbruges også til dual-mode "missing": de manuelt-
+// udtagne kolonner holdes ude af regenererings-target og låses dermed her.
+// Vælg hvilke af dagens kolonne-løb der skal regenereres (#1823 dual-mode + #1825 frys).
+// `target` = de løb assistenten genudfylder; `skipped` = antal sprunget over af frys/manuel.
+// Afmeldte løb tæller IKKE som skipped (de er bevidst ude). Igangværende (stages_completed>0)
+// fryses ALTID; manuelt-udtagne springes kun over i mode=missing (og låses andetsteds).
+// Pure + deterministisk.
+export function partitionRegenTargets({ cols = [], withdrawnIds, manualRaceIds, mode = "missing" }) {
+  const withdrawn = withdrawnIds instanceof Set ? withdrawnIds : new Set(withdrawnIds || []);
+  const manual = manualRaceIds instanceof Set ? manualRaceIds : new Set(manualRaceIds || []);
+  const target = [];
+  let skipped = 0;
+  for (const r of cols) {
+    if (withdrawn.has(r.id)) continue;
+    if ((r.stages_completed ?? 0) > 0) { skipped += 1; continue; } // frys (#1825)
+    if (mode === "missing" && manual.has(r.id)) { skipped += 1; continue; }
+    target.push(r);
+  }
+  return { target, skipped };
+}
+
+export function lockedWindowsFromEntries({ entries = [], windowByRace, excludeRaceIds = new Set() }) {
   const ridersByRace = new Map();
   for (const e of entries) {
-    if (e.is_auto_filled !== false) continue;
     if (excludeRaceIds.has(e.race_id)) continue;
     if (!ridersByRace.has(e.race_id)) ridersByRace.set(e.race_id, []);
     ridersByRace.get(e.race_id).push(e.rider_id);

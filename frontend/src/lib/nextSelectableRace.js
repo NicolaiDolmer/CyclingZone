@@ -7,11 +7,14 @@
 // genbruger dateTextToDayOfYear (samme rækkefølge som "Kommende løb"-kortet).
 
 import { dateTextToDayOfYear } from "./raceCalendar.js";
+import { deriveRaceStatus } from "./raceHubLogic.js";
 
-// Løb manageren kan udtage hold til lige nu = status "scheduled".
+// Løb manageren kan udtage hold til lige nu = status "scheduled" OG ikke gået i gang.
+// Et igangværende etapeløb beholder status "scheduled" men har låst trup (#1825), så
+// det er IKKE udtageligt — ellers ville dashboard-CTA'en linke til et "trup låst"-panel.
 export function selectableRaces(races) {
   if (!Array.isArray(races)) return [];
-  return races.filter((r) => r?.status === "scheduled");
+  return races.filter((r) => deriveRaceStatus(r?.status, r?.stages_completed, r?.stages) === "scheduled");
 }
 
 // Det tidligste scheduled-løb (efter kalenderdato), eller null hvis intet findes.

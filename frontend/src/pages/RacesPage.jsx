@@ -7,6 +7,7 @@ import RacePointsPage from "./RacePointsPage";
 import RaceHubBoard from "../components/racehub/RaceHubBoard.jsx";
 import { dateTextToDayOfYear } from "../lib/raceCalendar";
 import { racesForPool } from "../lib/racesByPool";
+import { deriveRaceStatus } from "../lib/raceHubLogic.js";
 import { computeExpectedRacePrize, formatExpectedPrize } from "../lib/expectedPrizeCalculator";
 import {
   Card,
@@ -146,7 +147,7 @@ export default function RacesPage() {
     const [racesRes, seasonsRes] = await Promise.all([
       supabase
         .from("races")
-        .select("id, name, race_type, race_class, stages, status, edition_year, pool_race:pool_race_id(date_text), season:season_id(id, number, status)")
+        .select("id, name, race_type, race_class, stages, stages_completed, status, edition_year, pool_race:pool_race_id(date_text), season:season_id(id, number, status)")
         .order("name"),
       supabase
         .from("seasons")
@@ -447,7 +448,8 @@ export default function RacesPage() {
                 <tbody>
                   {filteredLibRaces.map(r => {
                     const classMeta = RACE_CLASS_OPTIONS.find(c => c.value === r.race_class);
-                    const statusMeta = RACE_STATUS_OPTIONS.find(s => s.value === r.status);
+                    // Afled visnings-status (#1828): igangværende etapeløb vises "Live", ikke "Kommende".
+                    const derivedStatus = deriveRaceStatus(r.status, r.stages_completed, r.stages);
                     return (
                       <Tr key={r.id}
                         onClick={() => navigate(`/race-archive/${encodeURIComponent(r.name)}`)}
@@ -473,10 +475,10 @@ export default function RacesPage() {
                         </Td>
                         <Td className="text-xs">
                           <span className={`inline-block px-2 py-0.5 rounded-full border text-[10px] uppercase
-                            ${r.status === "completed" ? "bg-cz-success-bg text-cz-success border-cz-success/30"
-                              : r.status === "active" ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
+                            ${derivedStatus === "completed" ? "bg-cz-success-bg text-cz-success border-cz-success/30"
+                              : derivedStatus === "live" ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
                               : "bg-cz-subtle text-cz-3 border-cz-border"}`}>
-                            {statusMeta ? t(`status.${r.status}`) : r.status}
+                            {t(`status.${derivedStatus}`)}
                           </span>
                         </Td>
                       </Tr>

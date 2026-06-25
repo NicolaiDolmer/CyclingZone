@@ -634,7 +634,7 @@
   "faq": {
     "overlappingRaces": {
       "q": "How do overlapping races and squad distribution work?",
-      "a": "Races on the same day overlap in time, and a rider can only start one race at a time, so spreading your squad across them is a strategic choice. The squad distribution view on the Races page (Season & Results -> Races) shows your overlapping races side by side. Add riders to a race from your available pool; a rider you put in one race is locked out of the other races that overlap it. If you do not want to enter a race, withdraw from it and you simply do not start. The assistant fills your line-ups automatically as a starting point, and you can have it fill them again with one click after editing."
+      "a": "Races on the same day overlap in time, and a rider can only start one race at a time, so spreading your squad across them is a strategic choice. The squad distribution view on the Races page (Season & Results -> Races) shows your overlapping races side by side. Add riders to a race from your available pool; a rider you put in one race is locked out of the other races that overlap it. If you do not want to enter a race, withdraw from it and you simply do not start. The assistant fills your line-ups automatically as a starting point, and you can have it fill them again: choose Fill gaps to keep the picks you set by hand, or Rebuild all to replace every pick with the assistant's suggestion. Once a race has started, its line-up is final and can no longer be changed."
     },
     "relaunchTeamMoney": {
       "q": "What happened to my team and money in the Season 1 relaunch?",

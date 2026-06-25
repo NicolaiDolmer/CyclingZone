@@ -4,12 +4,17 @@
     "timeline": { "dayOf": "Dag {day} af {total}", "youAreHere": "du er her", "prev": "Forrige dag", "next": "Næste dag" },
     "heading": "Trup-fordeling",
     "overlap": "{count} overlappende løb i dag",
-    "status": { "full": "{selected} / {target} valgt", "understaffed": "{selected} / {target} · underbemandet", "withdrawn": "Afmeldt" },
-    "pool": { "title": "Ledige ryttere · {count}-trup", "autofill": "Auto-udfyld igen", "bound": "Kører allerede et overlappende løb" },
-    "column": { "add": "Tilføj fra ledige", "withdraw": "Afmeld", "reenter": "Deltag igen" },
-    "popover": { "title": "Tilføj til hvilket løb?", "none": "Intet løb tilgængeligt for denne rytter i dag" },
+    "status": { "full": "{selected} / {target} valgt", "understaffed": "{selected} / {target} · underbemandet", "withdrawn": "Afmeldt", "locked": "Trup låst" },
+    "pool": { "title": "Ledige ryttere · {count}-trup", "autofill": "Auto-udfyld", "fillMissing": "Udfyld manglende", "fillAll": "Genopbyg alt", "bound": "Kører allerede et overlappende løb" },
+    "column": { "add": "Tilføj fra ledige", "withdraw": "Afmeld", "reenter": "Deltag igen", "remove": "Fjern rytter" },
+    "popover": { "title": "Tilføj til hvilket løb?", "none": "Intet løb tilgængeligt for denne rytter i dag", "understaffed": "mangler ryttere" },
+    "role": { "hint": "Tryk på en rytter for at sætte kaptajn eller rolle", "captain": "Kaptajn", "sprintCaptain": "Sprint-kaptajn", "hunter": "Udbrudsjæger", "rider": "Kun rytter" },
+    "fit": { "label": "Match", "strong": "Stærk", "average": "Middel", "poor": "Svag" },
+    "boundNamed": "Låst · kører {race}",
+    "lineupLocked": { "title": "Trup låst", "note": "Løbet er gået i gang. Truppen er endelig." },
+    "dismiss": "Afvis",
     "empty": "Ingen løb at planlægge denne dag.",
-    "regenerateWarn": "Dette nulstiller dine manuelle valg på dagens løb til assistentens forslag. Fortsæt?"
+    "regenerateWarn": "Dette erstatter alle valg på dagens løb med assistentens forslag. Fortsæt?"
   },
   "title": "Løb",
   "subtitle": {
@@ -52,9 +57,11 @@
   },
   "status": {
     "completed": "Afsluttet",
-    "active": "Igang",
+    "active": "I gang",
+    "live": "I gang",
     "scheduled": "Kommende"
   },
+  "liveProgress": "Etape {done} / {total}",
   "common": {
     "free": "Fri",
     "dash": "—",
@@ -185,6 +192,8 @@
       "selection_rider_not_on_team": "Du kan kun udtage dine egne ryttere.",
       "selection_duplicate_rider": "Hver rytter kan kun udtages én gang.",
       "selection_race_not_open": "Udtagelsen er lukket for dette løb.",
+      "selection_race_started": "Løbet er gået i gang, så truppen er låst.",
+      "selection_rider_bound": "Rytteren kører allerede et overlappende løb.",
       "selection_flag_disabled": "Holdudtagelse er ikke aktiv endnu.",
       "selection_invalid_body": "Udtagelsen kunne ikke gemmes. Prøv igen.",
       "selection_wrong_pool": "Du kan kun deltage i løb i din egen division.",

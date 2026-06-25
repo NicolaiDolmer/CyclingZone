@@ -5,7 +5,7 @@
 // stabilt på vindue-start, så race_id). Pure — ingen DB.
 
 import { autopickTeamSelection, selectionSizeForRace } from "./raceAutopick.js";
-import { windowsOverlap, raceTimeWindow } from "./raceBinding.js";
+import { windowsOverlap, raceBindingWindow } from "./raceBinding.js";
 import { ABILITY_KEYS } from "./raceSimulator.js";
 
 /**
@@ -96,8 +96,10 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
     if (!schedByRace.has(row.race_id)) schedByRace.set(row.race_id, []);
     schedByRace.get(row.race_id).push(row);
   }
+  // Binding-vindue (dag-granulært): én rytter pr. CET-dag. Instant-vinduer (raceTimeWindow)
+  // fik to samme-dag-løb til ikke at overlappe → dobbeltbooking (#1823).
   const windowByRace = new Map();
-  for (const id of raceIds) windowByRace.set(id, raceTimeWindow(schedByRace.get(id)));
+  for (const id of raceIds) windowByRace.set(id, raceBindingWindow(schedByRace.get(id)));
 
   // 3. Etapeprofiler pr. løb (autopick scorer på dem), sorteret på stage_number.
   const { data: profileRows, error: profileErr } = await selectInChunks({

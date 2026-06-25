@@ -9,6 +9,8 @@ import SurveyBanner from "../components/SurveyBanner";
 import { computeDashboardSquadStats, fetchSquadCountInputs } from "../lib/dashboardSquadStats";
 import { formatNumber } from "../lib/intl";
 import { dateTextToDayOfYear } from "../lib/raceCalendar";
+import { poolRaceDayTotals, deriveRaceStatus } from "../lib/raceHubLogic.js";
+import { countdownParts, countdownSegments } from "../lib/stageScheduleConfig.js";
 import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch";
 import { useActionSummary } from "../hooks/useActionSummary";
 import NextActionsCard from "../components/NextActionsCard";
@@ -29,6 +31,16 @@ const API = import.meta.env.VITE_API_URL;
 // Realtime: sæson-fremskridt (race_days_completed) + resultat-afledte tal skal
 // opdatere uden hård reload når et løb finaliseres (#783).
 const REALTIME_TABLES = ["seasons", "race_results"];
+
+// #1828: countdown til næste etape for et igangværende løb. Genbruger de delte rene
+// helpers + races-namespacets countdown-strenge (samme tekst som StageScheduleCard).
+function nextStageCountdown(scheduledMs, nowMs, t) {
+  const parts = countdownParts(scheduledMs - nowMs);
+  if (!parts) return t("races:detail.stageSchedule.startingNow");
+  const segs = countdownSegments(parts).map((s) =>
+    t(`races:detail.stageSchedule.countdown${s.unit[0].toUpperCase()}${s.unit.slice(1)}`, { count: s.count }));
+  return `${t("races:detail.stageSchedule.countdownPrefix")} ${segs.join(" ")}`;
+}
 
 function isAuctionSeller(auction, teamId) {
   return auction?.seller_team_id === teamId && auction?.rider?.team_id === teamId;
@@ -71,6 +83,9 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   const [seasonInfo, setSeasonInfo] = useState(null);
+  const [poolRaceDays, setPoolRaceDays] = useState(null); // #1829: per-pulje løbsdage-tæller
+  const [nextStageByRace, setNextStageByRace] = useState({}); // #1828: live-løb → næste etapes ms-tid
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const [transferWindow, setTransferWindow] = useState(null);
   const [discordNudgeDismissed, setDiscordNudgeDismissed] = useState(
     () => typeof window !== "undefined" && localStorage.getItem("cz-dashboard-discord-nudge-dismissed") === "1"
@@ -125,7 +140,15 @@ export default function DashboardPage() {
       }).then(async (response) => (response.ok ? response.json() : null))
       : Promise.resolve(null);
 
-    const [teamsRes, ridersRes, squadCountInputs, auctionsRes, racesRes, standingsRes, boardStatus, offersRes] = await Promise.all([
+    // #1829: per-pulje løbsdage-tæller — ALLE løb i managerens egen pulje (inkl. afsluttede),
+    // så vi kan vise kørt/muligt for puljen i stedet for det sæson-globale tal. Klient-side
+    // (races er public-read via RLS); ingen migration.
+    const poolRacesPromise = activeSeason && teamData.league_division_id != null
+      ? supabase.from("races").select("stages, stages_completed, status")
+          .eq("season_id", activeSeason.id).eq("league_division_id", teamData.league_division_id)
+      : Promise.resolve({ data: [] });
+
+    const [teamsRes, ridersRes, squadCountInputs, auctionsRes, racesRes, standingsRes, boardStatus, offersRes, poolRacesRes] = await Promise.all([
       supabase.from("teams")
         .select("id, name, division, is_ai")
         .eq("is_ai", false)
@@ -159,9 +182,11 @@ export default function DashboardPage() {
       token
         ? fetch(`${API}/api/transfers/my-offers`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json())
         : Promise.resolve({ sent: [], received: [] }),
+      poolRacesPromise,
     ]);
 
     setSeasonInfo(activeSeason || null);
+    setPoolRaceDays(poolRaceDayTotals(poolRacesRes.data || []));
     setRiders(ridersRes.data || []);
     setPendingIncomingCount(squadCountInputs.pendingIncomingCount);
     setIncomingLoanCount(squadCountInputs.incomingLoanCount);
@@ -259,6 +284,33 @@ export default function DashboardPage() {
 
   useEffect(() => { loadAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useRealtimeRefetch("dashboard-live", REALTIME_TABLES, loadAll);
+
+  // #1828: for igangværende etapeløb i "Kommende løb"-kortet, hent næste etapes
+  // tidspunkt så vi kan vise en countdown. Få live-løb → lille direkte query.
+  useEffect(() => {
+    const live = nextRaces.filter((r) => deriveRaceStatus(r.status, r.stages_completed, r.stages) === "live");
+    if (!live.length) { setNextStageByRace({}); return undefined; }
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.from("race_stage_schedule")
+        .select("race_id, stage_number, scheduled_at").in("race_id", live.map((r) => r.id));
+      if (cancelled) return;
+      const map = {};
+      for (const r of live) {
+        const next = (data || []).find((s) => s.race_id === r.id && s.stage_number === (r.stages_completed ?? 0) + 1);
+        const ms = next ? Date.parse(next.scheduled_at) : NaN;
+        if (Number.isFinite(ms)) map[r.id] = ms;
+      }
+      setNextStageByRace(map);
+    })();
+    return () => { cancelled = true; };
+  }, [nextRaces]);
+
+  // Et minut-tick rækker til en kalender-countdown (vi viser ikke sekunder).
+  useEffect(() => {
+    const id = setInterval(() => setNowMs(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
 
   // #1583: flush en ventende signup når brugeren er authenticated på dashboardet.
   // Dækker confirm-on-flowet (prod), hvor LoginPage ingen session havde i selve
@@ -517,17 +569,19 @@ export default function DashboardPage() {
             );
           })()}
 
-          {(seasonInfo.race_days_total || 0) > 0 && (
+          {/* #1829: per-pulje løbsdage (kørt inkl. igangværende / puljens total), ikke det
+              sæson-globale tal. Falder bort hvis puljen ingen løb har (fx pulje-løst hold). */}
+          {(poolRaceDays?.total || 0) > 0 && (
             <div className="flex items-center gap-2">
               <span className="text-cz-3 text-xs whitespace-nowrap">
-                {t("dashboard:seasonBanner.raceDays", {
-                  completed: seasonInfo.race_days_completed || 0,
-                  total: seasonInfo.race_days_total,
-                })}
+                {t("dashboard:seasonBanner.raceDays", { completed: poolRaceDays.completed, total: poolRaceDays.total })}
+                {poolRaceDays.inProgress > 0 && (
+                  <span className="text-cz-accent-t ms-1">· {t("dashboard:seasonBanner.raceDaysLive", { count: poolRaceDays.inProgress })}</span>
+                )}
               </span>
               <div className="w-20 bg-cz-subtle rounded-full h-1.5">
                 <div className="h-1.5 rounded-full bg-cz-accent transition-all"
-                  style={{ width: `${Math.min(100, ((seasonInfo.race_days_completed || 0) / seasonInfo.race_days_total) * 100)}%` }} />
+                  style={{ width: `${Math.min(100, (poolRaceDays.completed / poolRaceDays.total) * 100)}%` }} />
               </div>
             </div>
           )}
@@ -674,7 +728,20 @@ export default function DashboardPage() {
                     </p>
                   </div>
                   <div className="text-right">
-                    {race.pool_race?.date_text
+                    {/* #1828: et igangværende etapeløb vises "Live" + etape-fremdrift i stedet for datoen. */}
+                    {deriveRaceStatus(race.status, race.stages_completed, race.stages) === "live" ? (
+                      <span className="inline-flex flex-col items-end gap-0.5">
+                        <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full border bg-cz-accent/10 text-cz-accent-t border-cz-accent/30">
+                          {t("dashboard:cards.races.live")}
+                          {race.race_type === "stage_race" && (
+                            <span className="font-mono normal-case tracking-normal">{race.stages_completed}/{race.stages}</span>
+                          )}
+                        </span>
+                        {nextStageByRace[race.id] && (
+                          <span className="text-[10px] text-cz-3 tabular-nums">{nextStageCountdown(nextStageByRace[race.id], nowMs, t)}</span>
+                        )}
+                      </span>
+                    ) : race.pool_race?.date_text
                       ? <p className="text-cz-2 text-sm">{race.pool_race.date_text}</p>
                       : <p className="text-cz-3 text-sm">{t("dashboard:cards.races.dateTbd")}</p>}
                   </div>

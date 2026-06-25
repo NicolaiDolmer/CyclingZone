@@ -4,6 +4,55 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.09",
+    "date": "2026-06-25",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Auto-fill no longer puts the same rider in two overlapping races",
+          "body": "When two of your races fell on the same day, the assistant could pick the same riders for both, so only half your squad was used. Same-day races now count as overlapping, so each rider is placed in at most one of them and every spot is filled with a different rider. You can also remove riders and change a captain after auto-fill, and if a save is rejected you now see the reason instead of a silent failure."
+        },
+        "da": {
+          "title": "Auto-udfyld sætter ikke længere samme rytter i to overlappende løb",
+          "body": "Når to af dine løb lå på samme dag, kunne assistenten vælge de samme ryttere til begge, så kun halvdelen af din trup blev brugt. Løb på samme dag tæller nu som overlappende, så hver rytter sættes i højst ét af dem, og hver plads fyldes med en forskellig rytter. Du kan også fjerne ryttere og skifte kaptajn efter auto-udfyld, og hvis et gem afvises, ser du nu årsagen i stedet for en tavs fejl."
+        },
+        "refs": [1823]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Races in progress now show as Live",
+          "body": "A stage race that has started but is not finished now shows as Live with its stage progress, for example stage 3 of 7, instead of still saying Upcoming. Once a race starts, its line-up locks so the field stays the same through every stage."
+        },
+        "da": {
+          "title": "Løb i gang vises nu som I gang",
+          "body": "Et etapeløb der er startet men ikke afsluttet vises nu som I gang med etape-fremdrift, for eksempel etape 3 af 7, i stedet for stadig at stå som Kommende. Når et løb starter, låses dets trup, så feltet er det samme gennem alle etaper."
+        },
+        "refs": [1828, 1825]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "Race-days counter now tracks your own division",
+          "body": "The race-days counter on your dashboard now counts the race days run in your own division, including a stage race that is currently underway, instead of a season-wide total."
+        },
+        "da": {
+          "title": "Løbsdage-tælleren følger nu din egen division",
+          "body": "Løbsdage-tælleren på dit dashboard tæller nu de løbsdage der er kørt i din egen division, inklusive et etapeløb der er i gang lige nu, i stedet for et sæson-bredt samlet tal."
+        },
+        "refs": [1829]
+      }
+    ]
+  },
+  {
     "version": "6.08",
     "date": "2026-06-24",
     "label": "Beta",

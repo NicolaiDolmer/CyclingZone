@@ -21,6 +21,21 @@ test("selectableRaces beholder kun scheduled-løb", () => {
   assert.deepEqual(ids, ["a", "d"]);
 });
 
+test("selectableRaces udelukker igangværende etapeløb (scheduled men ≥1 etape kørt) — #1825 frys", () => {
+  const live = { id: "live", status: "scheduled", stages: 7, stages_completed: 3, pool_race: { date_text: "1/7" } };
+  const upcoming = { id: "up", status: "scheduled", stages: 7, stages_completed: 0, pool_race: { date_text: "5/7" } };
+  const ids = selectableRaces([live, upcoming]).map((r) => r.id);
+  assert.deepEqual(ids, ["up"]); // det igangværende løb har låst trup → ikke udtageligt
+});
+
+test("pickNextSelectableRace springer et igangværende (tidligere) løb over (#1825)", () => {
+  const races = [
+    { id: "live-first", status: "scheduled", stages: 7, stages_completed: 2, pool_race: { date_text: "1/7" } },
+    { id: "next", status: "scheduled", stages: 7, stages_completed: 0, pool_race: { date_text: "9/7" } },
+  ];
+  assert.equal(pickNextSelectableRace(races)?.id, "next");
+});
+
 test("pickNextSelectableRace vælger det tidligste scheduled-løb efter dato", () => {
   const races = [
     race("late", "scheduled", "20/7"),

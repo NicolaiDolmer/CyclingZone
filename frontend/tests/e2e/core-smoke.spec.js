@@ -390,3 +390,44 @@ test("dashboard team-selection CTA links to the next selectable race", async ({ 
   await cta.getByRole("link", { name: /Set your line-up/i }).click();
   await expect(page).toHaveURL(/\/races\/race-next-1$/);
 });
+
+test("dashboard shows per-pool race-days counter incl. in-progress (#1829)", async ({ page }) => {
+  await login(page);
+  await page.goto("/dashboard");
+  // POOL_RACES (fixtures): completed-løbsdage = 1+1+2 = 4, total = 11, igangværende = 2
+  // → tælleren viser "4/11 ... · 2 live/i gang" (per-pulje, ikke det sæson-globale 0/28).
+  await expect(page.getByText(/4\/11/).first()).toBeVisible();
+  await expect(page.getByText(/2\s+(live|i gang)/i).first()).toBeVisible();
+});
+
+test("dashboard marks an in-progress stage race as Live with stage progress (#1828)", async ({ page }) => {
+  const LIVE_RACE = {
+    id: "race-live", name: "La Corsa dei Due Mari", race_type: "stage_race", race_class: "OtherWorldTourA",
+    stages: 7, stages_completed: 3, status: "scheduled", season_id: "season-e2e",
+    league_division_id: 2, pool_race: { date_text: "24/6" },
+  };
+  // Override OVEN PÅ installNetworkMocks: alle races-queries → ét igangværende etapeløb.
+  await page.route("**/rest/v1/races?**", (route) => {
+    const request = route.request();
+    if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
+    if (request.method() !== "GET") return route.fallback();
+    return json(route, [LIVE_RACE]);
+  });
+  // Næste etape (4) langt ude i fremtiden → countdown rendrer uden at være tids-skørt.
+  await page.route("**/rest/v1/race_stage_schedule?**", (route) => {
+    const request = route.request();
+    if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
+    if (request.method() !== "GET") return route.fallback();
+    return json(route, [{ race_id: "race-live", stage_number: 4, scheduled_at: "2099-06-24T13:00:00Z" }]);
+  });
+
+  await login(page);
+  await page.goto("/dashboard");
+  await forceEnglish(page);
+
+  await expect(page.getByText("La Corsa dei Due Mari")).toBeVisible();
+  // Live-badge + 3/7 etape-fremdrift i "Kommende løb"-kortet (scoped til løb-rækken).
+  const row = page.locator("text=La Corsa dei Due Mari").locator("xpath=ancestor::a");
+  await expect(row.getByText(/Live/i)).toBeVisible();
+  await expect(row.getByText("3/7")).toBeVisible();
+});

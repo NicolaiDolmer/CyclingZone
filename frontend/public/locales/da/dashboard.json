@@ -44,6 +44,7 @@
     "ended": "Sæsonslut passeret",
     "daysLeftSuffix": "dage til sæsonslut",
     "raceDays": "{completed}/{total} løbsdage",
+    "raceDaysLive": "{count} i gang",
     "viewCalendar": "Se kalender →",
     "transferWindow": {
       "open": "✓ Transfervindue åbent",
@@ -78,7 +79,8 @@
       "empty": "Ingen planlagte løb",
       "stages": "{count, plural, one {1 etape} other {# etaper}}",
       "oneDay": "Enkeltdagsløb",
-      "dateTbd": "Dato TBD"
+      "dateTbd": "Dato TBD",
+      "live": "I gang"
     },
     "standings": {
       "title": "Division {division} · Stilling",

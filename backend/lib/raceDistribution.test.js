@@ -5,7 +5,8 @@ import {
   buildColumnSet,
   buildBindingMap,
   dominantTerrain,
-  lockedWindowsFromManualEntries,
+  lockedWindowsFromEntries,
+  partitionRegenTargets,
 } from "./raceDistribution.js";
 
 const W = (h) => ({ start: Date.parse(`2026-07-04T${h}:00Z`), end: Date.parse(`2026-07-04T${h}:00Z`) });
@@ -43,22 +44,66 @@ test("dominantTerrain: flertal vinder, lige → mixed", () => {
   assert.equal(dominantTerrain([]), null);
 });
 
-test("lockedWindowsFromManualEntries: kun manuelle entries (is_auto_filled=false), grupperet pr. løb", () => {
+// lockedWindowsFromEntries (#1823 1b + dual-mode): låser ALLE committede entries
+// (manuelle OG auto-filled) i løb der IKKE regenereres (excludeRaceIds). Det lukker
+// hullet hvor en auto-filled rytter i et ikke-synligt overlappende løb (fx et multi-
+// dag-etapeløb) blev dobbeltbooket fordi kun manuelle entries blev låst.
+test("lockedWindowsFromEntries: låser ALLE committede entries (manuelle + auto) i ikke-regenererede løb", () => {
   const entries = [
     { race_id: "x", rider_id: "r1", is_auto_filled: false },
     { race_id: "x", rider_id: "r2", is_auto_filled: false },
-    { race_id: "y", rider_id: "r3", is_auto_filled: true }, // auto → ignoreres
+    { race_id: "y", rider_id: "r3", is_auto_filled: true }, // auto i ANDET løb → låses nu (1b-fix)
   ];
   const windowByRace = new Map([["x", { start: 1, end: 2 }], ["y", { start: 3, end: 4 }]]);
-  const locks = lockedWindowsFromManualEntries({ entries, windowByRace, excludeRaceIds: new Set() });
-  assert.equal(locks.length, 1);
-  assert.deepEqual(locks[0].window, { start: 1, end: 2 });
-  assert.deepEqual(locks[0].riderIds.sort(), ["r1", "r2"]);
+  const locks = lockedWindowsFromEntries({ entries, windowByRace, excludeRaceIds: new Set() });
+  const byWindow = Object.fromEntries(locks.map((l) => [l.window.start, l.riderIds.sort()]));
+  assert.deepEqual(byWindow[1], ["r1", "r2"]);
+  assert.deepEqual(byWindow[3], ["r3"]);
 });
 
-test("lockedWindowsFromManualEntries: excludeRaceIds (de synlige løb) udelades", () => {
-  const entries = [{ race_id: "x", rider_id: "r1", is_auto_filled: false }];
-  const windowByRace = new Map([["x", { start: 1, end: 2 }]]);
-  const locks = lockedWindowsFromManualEntries({ entries, windowByRace, excludeRaceIds: new Set(["x"]) });
+test("lockedWindowsFromEntries: excludeRaceIds (de regenererede løb) udelades", () => {
+  const entries = [
+    { race_id: "x", rider_id: "r1", is_auto_filled: false },
+    { race_id: "y", rider_id: "r3", is_auto_filled: true },
+  ];
+  const windowByRace = new Map([["x", { start: 1, end: 2 }], ["y", { start: 3, end: 4 }]]);
+  const locks = lockedWindowsFromEntries({ entries, windowByRace, excludeRaceIds: new Set(["y"]) });
+  assert.equal(locks.length, 1);
+  assert.deepEqual(locks[0].riderIds, ["r1"]);
+});
+
+test("lockedWindowsFromEntries: løb uden vindue ignoreres", () => {
+  const entries = [{ race_id: "z", rider_id: "r1", is_auto_filled: true }];
+  const locks = lockedWindowsFromEntries({ entries, windowByRace: new Map(), excludeRaceIds: new Set() });
   assert.equal(locks.length, 0);
+});
+
+// partitionRegenTargets (#1823 dual-mode + #1825 frys): hvilke kolonner regenereres.
+const COLS = [
+  { id: "auto", stages_completed: 0 },     // assistent-udfyldt (eller tom)
+  { id: "manual", stages_completed: 0 },    // manuelt udtaget
+  { id: "started", stages_completed: 3 },   // igangværende → frys
+  { id: "withdrawn", stages_completed: 0 }, // afmeldt
+];
+test("partitionRegenTargets mode=missing: springer manuelle + igangværende over, afmeldte tæller ikke som skipped", () => {
+  const { target, skipped } = partitionRegenTargets({
+    cols: COLS, withdrawnIds: new Set(["withdrawn"]), manualRaceIds: new Set(["manual"]), mode: "missing",
+  });
+  assert.deepEqual(target.map((r) => r.id), ["auto"]);
+  assert.equal(skipped, 2); // manual + started (afmeldt tæller IKKE)
+});
+
+test("partitionRegenTargets mode=all: regenererer også manuelle, men aldrig igangværende", () => {
+  const { target, skipped } = partitionRegenTargets({
+    cols: COLS, withdrawnIds: new Set(["withdrawn"]), manualRaceIds: new Set(["manual"]), mode: "all",
+  });
+  assert.deepEqual(target.map((r) => r.id).sort(), ["auto", "manual"]);
+  assert.equal(skipped, 1); // kun started (frys gælder uanset mode)
+});
+
+test("partitionRegenTargets: igangværende løb fryses i begge modes", () => {
+  for (const mode of ["missing", "all"]) {
+    const { target } = partitionRegenTargets({ cols: COLS, withdrawnIds: new Set(), manualRaceIds: new Set(), mode });
+    assert.ok(!target.find((r) => r.id === "started"), `started fryses i mode=${mode}`);
+  }
 });
