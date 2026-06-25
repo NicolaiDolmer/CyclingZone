@@ -315,13 +315,16 @@ test("transitionToNextSeason — real run udfører alle 6 faser", async () => {
       notifySeasonEvent: async () => {},
       // #1663: kontrakt-fornyelse stubbet — egen unit-test dækker DB-laget.
       expireAndRenewContracts: async () => {},
+      // #1836: kontraktudløb-notifikationer stubbet — egen unit-test dækker emit-logikken.
+      emitContractExpiringNotifications: async () => ({ eligible: 0, delivered: 0, deduped: 0, failed: 0 }),
     },
   });
 
   assert.equal(result.ok, true);
   assert.equal(result.dryRun, false);
-  // #535: 8 faser; #1357: +season_started_notifications; #1663: +sponsor_contracts_renewal = 10
-  assert.equal(result.log.length, 10);
+  // #535: 8 faser; #1357: +season_started_notifications; #1663: +sponsor_contracts_renewal;
+  // #1836: +contract_expiring_notifications = 11
+  assert.equal(result.log.length, 11);
   assert.equal(result.log[0].phase, "insert_next_season");
   assert.equal(result.log[0].inserted, true);
   assert.equal(result.log[1].phase, "mark_previous_completed");
@@ -342,6 +345,7 @@ test("transitionToNextSeason — real run udfører alle 6 faser", async () => {
   assert.equal(result.log[8].phase, "discord_broadcast");
   assert.equal(result.log[8].sent, true);
   assert.equal(result.log[9].phase, "season_started_notifications");
+  assert.equal(result.log[10].phase, "contract_expiring_notifications");
 
   assert.deepEqual(sponsorCalls, ["00000000-0000-0000-0000-000000000001"]);
 

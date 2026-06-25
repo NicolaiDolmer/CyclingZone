@@ -26,7 +26,7 @@ import {
 } from "../lib/boardCopy";
 import DashboardCustomizeMenu from "../components/DashboardCustomizeMenu";
 import { Card, AlertTriangleIcon, BellIcon, XIcon, ArrowDownIcon, PageLoader } from "../components/ui";
-import { flushPendingSignup, logFirstEvent } from "../lib/logEvent";
+import { flushPendingSignup, logFirstEvent, logTeamDrafted } from "../lib/logEvent";
 
 const API = import.meta.env.VITE_API_URL;
 // Realtime: sæson-fremskridt (race_days_completed) + resultat-afledte tal skal
@@ -336,6 +336,14 @@ export default function DashboardPage() {
       logFirstEvent("onboarding_completed", { completed_count, total_count });
     }
   }, [onboardingProgress]);
+
+  // #940: team_drafted-funnel-event — fyrer FØRSTE gang manageren har en løbsklar
+  // trup (≥ DRAFTED_SQUAD_THRESHOLD ejede ryttere). riders = ejede ryttere på
+  // holdet nu (samme kilde som ownedNow). logTeamDrafted gater på tærsklen +
+  // de-dup'er pr. bruger via logFirstEvent, så eventet kun lander én gang.
+  useEffect(() => {
+    if (team?.id) logTeamDrafted(riders.length);
+  }, [team?.id, riders.length]);
 
   // #1005: hent de to nye moduler fra deres aggregat-endpoints — kun når modulet
   // er synligt, så managere der har skjult dem ikke betaler omkostningen. Endpoints

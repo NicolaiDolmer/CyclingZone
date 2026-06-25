@@ -42,7 +42,7 @@ import {
   computeSponsorForSeason,
   FIRST_VARIABLE_SPONSOR_SEASON,
 } from "./sponsorEngine.js";
-import { notifyUser } from "./notificationService.js";
+import { notifyUser, emitContractExpiringNotifications } from "./notificationService.js";
 import { expireAndRenewContracts as defaultExpireAndRenewContracts } from "./sponsorContractsService.js";
 import { isAutoCalendarEnabled } from "./autoCalendarFlag.js";
 import { isAutoEntryGeneratorEnabled } from "./autoEntryGeneratorFlag.js";
@@ -726,6 +726,24 @@ export async function transitionToNextSeason({
       toSeason: plan.to_season,
     })),
   });
+
+  // Phase 7c: #1836 · kontraktudløb-notifikationer. For hver ejet rytter hvis
+  // contract_end_season = den KOMMENDE sæson får ejeren en advarsel om at
+  // kontrakten udløber ved sæsonens udgang. Additivt + isoleret: en fejl her
+  // må aldrig vælte transitionen (samme disciplin som de øvrige notif-trin).
+  const emitContractExpiring =
+    deps.emitContractExpiringNotifications ?? emitContractExpiringNotifications;
+  try {
+    log.push({
+      phase: "contract_expiring_notifications",
+      ...(await emitContractExpiring({
+        supabase,
+        seasonNumber: plan.to_season.number,
+      })),
+    });
+  } catch (err) {
+    log.push({ phase: "contract_expiring_notifications", error: err.message });
+  }
 
   return { ok: true, dryRun: false, plan, log };
 }
