@@ -106,3 +106,79 @@ test("autopick: deterministisk uafhængigt af input-rækkefølge", () => {
   const b = autopickTeamSelection({ riders: [...pool].reverse(), stages: [mtnStage], sizeRule: { min: 6, max: 8 } });
   assert.deepEqual(a, b);
 });
+
+// ── S3 præference-lag (Holdstrategi) ──────────────────────────────────────────
+const abAll = (v) => ({
+  climbing: v, time_trial: v, sprint: v, punch: v, endurance: v,
+  cobblestone: v, acceleration: v, recovery: v, tactics: v, positioning: v,
+  flat: v, tempo: v, durability: v, aggression: v, descending: v,
+});
+const s3flat = { profile_type: "flat", demand_vector: { sprint: 0.8, endurance: 0.2, randomness: 0.5 } };
+const s3mtn = { profile_type: "mountain", demand_vector: { climbing: 0.9, endurance: 0.1, randomness: 0.5 } };
+// r0 stærkest → r5 svagest.
+const s3riders = Array.from({ length: 6 }, (_, i) => ({ rider_id: `r${i}`, abilities: abAll(80 - i * 10), fatigue: 0 }));
+const s3size = { min: 3, max: 3 };
+
+test("S3 preference=null ≡ ingen preference (idempotens)", () => {
+  const a = autopickTeamSelection({ riders: s3riders, stages: [s3flat], sizeRule: s3size });
+  const b = autopickTeamSelection({ riders: s3riders, stages: [s3flat], sizeRule: s3size, preference: null });
+  assert.deepEqual(a, b);
+});
+
+test("S3 mål-løb: A-kæde sorteres FØRST (rang), uanset score (Fork A)", () => {
+  // r4,r5 er svagest, men A-kæde-rang 0,1 → de skal med på mål-løbet.
+  const preference = { aChain: ["r5", "r4"], captains: [], roleRules: {}, isTargetRace: true };
+  const picks = autopickTeamSelection({ riders: s3riders, stages: [s3flat], sizeRule: s3size, preference });
+  const ids = picks.map((p) => p.rider_id);
+  assert.ok(ids.includes("r5") && ids.includes("r4"), "A-kæde-ryttere udtaget på mål-løb");
+});
+
+test("S3 ikke-mål-løb: A-kæde giver INGEN boost (score-rækkefølge uændret)", () => {
+  const preference = { aChain: ["r5", "r4"], captains: [], roleRules: {}, isTargetRace: false };
+  const withPref = autopickTeamSelection({ riders: s3riders, stages: [s3flat], sizeRule: s3size, preference });
+  const noPref = autopickTeamSelection({ riders: s3riders, stages: [s3flat], sizeRule: s3size });
+  assert.deepEqual(withPref, noPref, "ikke-mål-løb uændret af A-kæde");
+});
+
+test("S3 rolle-regel always_captain vinder over score-baseret kaptajn", () => {
+  const preference = { aChain: [], captains: [], roleRules: { r2: "always_captain" }, isTargetRace: false };
+  const picks = autopickTeamSelection({ riders: s3riders, stages: [s3mtn], sizeRule: s3size, preference });
+  assert.equal(picks.find((p) => p.race_role === "captain")?.rider_id, "r2");
+});
+
+test("S3 kaptajn-prioritet pr. terræn: første i listen der er udtaget bliver kaptajn", () => {
+  // r9 ikke i trup → springes; r1 er i top-3 → kaptajn.
+  const preference = { aChain: [], captains: ["r9", "r1"], roleRules: {}, isTargetRace: false };
+  const picks = autopickTeamSelection({ riders: s3riders, stages: [s3mtn], sizeRule: s3size, preference });
+  assert.equal(picks.find((p) => p.race_role === "captain")?.rider_id, "r1");
+});
+
+test("S3 kaptajn-fallback: ingen regel/prioritet matcher → GC-kaptajn (uændret)", () => {
+  const preference = { aChain: [], captains: ["r9"], roleRules: {}, isTargetRace: false };
+  const withPref = autopickTeamSelection({ riders: s3riders, stages: [s3mtn], sizeRule: s3size, preference });
+  const noPref = autopickTeamSelection({ riders: s3riders, stages: [s3mtn], sizeRule: s3size });
+  assert.equal(
+    withPref.find((p) => p.race_role === "captain")?.rider_id,
+    noPref.find((p) => p.race_role === "captain")?.rider_id
+  );
+});
+
+test("S3 always_sprint_captain_if_present: udtaget + ikke kaptajn → sprint_captain", () => {
+  const preference = { aChain: [], captains: ["r0"], roleRules: { r1: "always_sprint_captain_if_present" }, isTargetRace: false };
+  const picks = autopickTeamSelection({ riders: s3riders, stages: [s3flat], sizeRule: s3size, preference });
+  assert.equal(picks.find((p) => p.race_role === "sprint_captain")?.rider_id, "r1");
+});
+
+test("S3 stale A-kæde-id (ikke i trup) ignoreres tavst", () => {
+  const preference = { aChain: ["ghost", "r0"], captains: [], roleRules: {}, isTargetRace: true };
+  const picks = autopickTeamSelection({ riders: s3riders, stages: [s3flat], sizeRule: s3size, preference });
+  assert.ok(!picks.some((p) => p.rider_id === "ghost"));
+  assert.ok(picks.some((p) => p.rider_id === "r0"));
+});
+
+test("S3 determinisme: to kørsler med samme input giver identisk output", () => {
+  const preference = { aChain: ["r3", "r1"], captains: ["r1"], roleRules: { r2: "always_captain" }, isTargetRace: true };
+  const a = autopickTeamSelection({ riders: s3riders, stages: [s3mtn], sizeRule: s3size, preference });
+  const b = autopickTeamSelection({ riders: s3riders, stages: [s3mtn], sizeRule: s3size, preference });
+  assert.deepEqual(a, b);
+});

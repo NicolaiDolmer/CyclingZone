@@ -6,7 +6,7 @@
 // #1823: alle mutationer tjekker res.ok, viser en mappet fejlbesked (toast), og
 // re-henter board'et bagefter (server-sandhed = optimistisk rollback ved fejl).
 import { useState, useEffect, useCallback } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { getSession } from "../../lib/supabase";
 import ContextBand from "./ContextBand.jsx";
@@ -158,7 +158,10 @@ export default function RaceHubBoard() {
       )}
       <div className="flex items-baseline justify-between mb-2">
         <h2 className="text-base font-bold text-cz-1">{t("racehub.heading")}</h2>
-        <span className="text-xs text-cz-3">{t("racehub.overlap", { count: columns.length })}</span>
+        <span className="flex items-baseline gap-3">
+          <Link to="/races/strategy" className="text-xs text-cz-accent-t hover:underline">{t("strategy.open")}</Link>
+          <span className="text-xs text-cz-3">{t("racehub.overlap", { count: columns.length })}</span>
+        </span>
       </div>
       {columns.length === 0 ? (
         <EmptyState icon={<FlagIcon size={24} />} title={t("racehub.empty")} />
