@@ -4,7 +4,7 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
-    "version": "6.11",
+    "version": "6.12",
     "date": "2026-06-25",
     "label": "Beta",
     "changes": [
@@ -21,7 +21,14 @@ export const PATCHES = [
           "body": "Løbsnavne er nu klikbare overalt. Hvert løb åbner en detalje-visning: resultater hvis det er kørt, ellers ruteprofilen pr. etape med en terræn-DNA-opdeling af hvad hver etape belønner, plus din opstillings rute-match pr. etape. Etaper navigeres med én visuel etape-stribe på både kommende og kørte løb."
         },
         "refs": [1834, 1747]
-      },
+      }
+    ]
+  },
+  {
+    "version": "6.11",
+    "date": "2026-06-25",
+    "label": "Beta",
+    "changes": [
       {
         "category": "new",
         "audience": "player",
