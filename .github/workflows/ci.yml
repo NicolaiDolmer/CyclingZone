@@ -155,3 +155,28 @@ jobs:
 
       - name: Run idempotency guard
         run: node scripts/lint-migration-idempotency.mjs
+
+  postgrest-cap-guard:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # Forward-guard mod PostgREST 1000-rækkers-cap-trunkering. Samme bug
+    # shippet 3× (#1798, #1839, #1841): en `.in("col", ids.slice(0, N))` capper
+    # id-listen, PostgREST capper svaret ved 1000 rows — begge trunkerer TAVST,
+    # så tal/aggregater læser falsk lavt uden fejl. Flagger nye forekomster i
+    # backend + frontend/src; range-paginer + id-chunk i stedet (fetchAllRows /
+    # fetchAll*-helpers). Opt-out: `postgrest-cap-ok`-kommentar med begrundelse.
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Test postgrest-cap guard
+        run: node --test scripts/lint-postgrest-in-cap.test.mjs
+
+      - name: Run postgrest-cap guard
+        run: node scripts/lint-postgrest-in-cap.mjs
