@@ -621,6 +621,10 @@
         "title": "Kaptajn, spurt-kaptajn og udbruds-jæger",
         "text": "Din kaptajn beskyttes af holdet: stærke, friske hjælpere booster kaptajnens chancer. På flade etaper overtager spurt-kaptajnen (hvis sat) beskyttelsen. En udbruds-jæger har markant højere chance for at komme med i dagens udbrud."
       },
+      "strategy": {
+        "title": "Holdstrategi (stående præferencer)",
+        "text": "Åbn Holdstrategi fra trup-boardet for at sætte præferencer din assistent følger, når den auto-udfylder kalenderen. Rangordn en A-kæde af kerne-ryttere — de prioriteres til de løb du markerer som mål. Giv en rytter en fast rolle (altid kaptajn, eller altid sprint-kaptajn når udtaget). Rangordn kaptajner 1/2/3 for hver terræntype (flad, bakke, bjerg, brosten, enkeltstart); assistenten vælger den højest-rangerede rytter der kommer med i det løbs opstilling. Marker dine mål-løb, så dine stærkeste ryttere kører dér. Forhåndsvisning viser præcis hvordan din strategi ændrer udtagelserne, før du gemmer, og Generér forslag igen anvender den uden at røre de valg du selv har sat."
+      },
       "breakaway": {
         "title": "Udbrud",
         "text": "På flade, kuperede og mellembjergs-etaper får et lille udbrud chance for at holde hjem. De fleste bliver hentet, men indimellem holder bruddet. Aggressive ryttere og udpegede jægere kommer med i udbrud oftere. Etaperesultater markerer ryttere der var i udbruddet med et flag, og viser om de holdt hjem til mål eller blev indhentet af feltet."
@@ -635,6 +639,10 @@
     "overlappingRaces": {
       "q": "Hvordan virker overlappende løb og trup-fordeling?",
       "a": "Løb på samme dag overlapper i tid, og en rytter kan kun køre ét løb ad gangen, så det er et strategisk valg at fordele truppen mellem dem. Trup-fordelingen på Løb-siden (Sæson & Resultater -> Løb) viser dine overlappende løb side om side. Tilføj ryttere til et løb fra din pulje af ledige; en rytter du sætter i ét løb, er låst fra de andre løb der overlapper det. Vil du ikke stille op til et løb, så afmeld dig, og du starter simpelthen ikke. Assistenten udfylder dine opstillinger automatisk som udgangspunkt, og du kan få den til at udfylde dem igen: vælg Udfyld manglende for at beholde de valg du selv har sat, eller Genopbyg alt for at erstatte alle valg med assistentens forslag. Når et løb er gået i gang, er dets trup endelig og kan ikke længere ændres."
+    },
+    "teamStrategyFaq": {
+      "q": "Hvordan får jeg assistenten til at vælge mine bedste ryttere til de store løb?",
+      "a": "Åbn Holdstrategi fra trup-boardet. Tilføj dine bedste ryttere til A-kæden og marker de vigtigste løb som mål — så prioriterer assistenten din A-kæde til de løb. Du kan også rangordne kaptajner 1/2/3 pr. terræn og give ryttere en fast rolle. Brug Vis ændringer for at se præcis hvordan det påvirker dine opstillinger, og derefter Gem og Generér forslag igen. Valg du selv har sat, overskrives aldrig."
     },
     "relaunchTeamMoney": {
       "q": "Hvad skete der med mit hold og mine penge ved sæson 1-relaunchen?",
