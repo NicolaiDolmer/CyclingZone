@@ -49,6 +49,15 @@ test("riders har IKKE en `overall`-kolonne (fidelitets-beviset bag #1840)", asyn
   );
 });
 
+test("academy_intake findes (BEGIN/COMMIT-transaktioner i academy-mvp loader korrekt i PGlite)", async () => {
+  // 2026-06-13-academy-mvp.sql wrapper sin DDL i en eksplicit BEGIN/COMMIT. Hvis
+  // PGlite's exec() nogensinde ændrer transaktions-semantik, ville academy_intake
+  // tavst udeblive og en fremtidig /academy/me-contract-test fejle med en forvirrende
+  // "table not found" i stedet for en kolonne-kontrakt-fejl. Verificér eksplicit.
+  const { rows } = await db.query("SELECT to_regclass('public.academy_intake') AS reg");
+  assert.ok(rows[0].reg, "academy_intake mangler — BEGIN/COMMIT i 2026-06-13-academy-mvp.sql loadede ikke korrekt");
+});
+
 test("RACE_HUB_SCHEMA_FILES er en ikke-tom ordnet liste der starter med schema.sql", () => {
   assert.ok(Array.isArray(RACE_HUB_SCHEMA_FILES));
   assert.ok(RACE_HUB_SCHEMA_FILES.length >= 7, "mindst de planlagte tabel-skabende filer");

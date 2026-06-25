@@ -30,6 +30,16 @@ const DATABASE_DIR = join(__dirname, "..", "..", "..", "database");
 //
 // rider-types loades tidligt fordi strategi-rosterens projektion (primary_type /
 // secondary_type) afhænger af de kolonner — uden den fejler fidelitets-meta-testen.
+//
+// ⚠️ DRIFT-RISIKO (drift-gap, jf. spec §7 "Lag 2 skema-samling"): denne liste er
+// HÅND-VEDLIGEHOLDT. Fidelitets-meta-testen beviser KUN at KENDTE kolonner findes —
+// den fanger IKKE at listen er ufuldstændig. Hvis en ny `ADD COLUMN`-migration lander
+// på en tabel et contract-testet endpoint projicerer (riders/races/…), SKAL filen
+// tilføjes her i dato-rækkefølge — ellers giver harnessen falsk-grøn (kolonnen findes
+// i prod men ikke i det loadede skema). Tilføj OGSÅ en kolonne-assertion i den
+// relevante contract-test, så et glemt fil-tilføj fanges. Robustere fremtid (load alle
+// database/*.sql i dato-orden, fejl loud ved inkompatibel migration) er en tracket
+// opfølgning, ikke gjort her.
 export const RACE_HUB_SCHEMA_FILES = [
   "schema.sql",
   "2026-06-06-rider-types.sql",
