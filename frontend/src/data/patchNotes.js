@@ -4,7 +4,7 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
-    "version": "6.14",
+    "version": "6.16",
     "date": "2026-06-25",
     "label": "Beta",
     "changes": [
@@ -21,6 +21,48 @@ export const PATCHES = [
           "body": "Du kan nu flytte ryttere mellem dit akademi og din senior-trup når som helst. På Akademi-siden kan du rykke en akademi-rytter op i senior-truppen: rytteren optager en senior-plads og -kontrakt, og lønnen bliver senior-lønnen. På din holdside kan du flytte en senior-rytter på 22 år eller derunder ned i akademiet: rytteren frigør en senior-plads, falder til ungdomsløn og fjernes fra alle kommende løb, vedkommende var udtaget til. Begge handlinger viser hele effekten (trup-pladser, løn, ryddede løb) i en bekræftelse, før du udfører dem."
         },
         "refs": [932]
+      }
+    ]
+  },
+  {
+    "version": "6.15",
+    "date": "2026-06-25",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Set rider roles with tactics cards that explain the terrain",
+          "body": "Role assignment is now a set of cards instead of a dropdown. Each card tells you why a role fits this race's terrain: who your protected captain leads, when a sprint captain matters, and what the breakaway hunter does. The hunter card shows how likely a breakaway is to stay away here, and the race detail page now explains the hunter role and ranks your best hunters by aggression."
+        },
+        "da": {
+          "title": "Sæt rytter-roller med taktik-kort der forklarer terrænet",
+          "body": "Rolle-tildeling er nu kort i stedet for en dropdown. Hvert kort fortæller hvorfor en rolle passer løbets terræn: hvem din beskyttede kaptajn fører an, hvornår en sprint-kaptajn betyder noget, og hvad udbrudsjægeren gør. Jæger-kortet viser hvor sandsynligt et udbrud er at holde hjem her, og løb-detalje-siden forklarer nu jæger-rollen og rangerer dine bedste jægere efter aggression."
+        },
+        "refs": [1747]
+      }
+    ]
+  },
+  {
+    "version": "6.14",
+    "date": "2026-06-25",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Mobile",
+        "en": {
+          "title": "Pages now fit your screen properly on mobile",
+          "body": "Some pages, including the rider database, your team and the race pages, could render too wide on a phone and push content off the right edge or shrink the whole layout to fit. They now size correctly to your screen, and wide tables scroll on their own instead of stretching the page."
+        },
+        "da": {
+          "title": "Sider passer nu korrekt til din skærm på mobil",
+          "body": "Nogle sider, blandt andet rytterdatabasen, dit hold og løbssiderne, kunne blive for brede på en telefon og skubbe indhold ud over højre kant eller skrumpe hele layoutet for at få plads. De passer nu korrekt til din skærm, og brede tabeller scroller selv i stedet for at strække siden."
+        },
+        "refs": []
       }
     ]
   },

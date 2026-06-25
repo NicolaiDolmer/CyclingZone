@@ -79,10 +79,13 @@ test("upcoming race detail: stage stripe + terrain DNA + per-stage route match",
   await expect(page.getByText(/Terræn-DNA/)).toBeVisible();
   await expect(page.getByText("Massespurt")).toBeVisible();
 
-  // Opstilling med per-etape rute-match (kolonne-header skifter til "Rute-match").
+  // Opstilling med per-etape rute-match: label skifter fra "Egnethed" til
+  // "Rute-match". Responsivt panel viser etiketten i tabel-headeren (sm+) ELLER
+  // som per-rytter-label i mobil-kortlisten (<sm) — assertér den synlige variant
+  // uanset layout (#1834 mobil-kort).
   const panel = page.getByTestId("race-selection-panel");
   await expect(panel).toBeVisible();
-  await expect(panel.getByText("Rute-match")).toBeVisible();
+  await expect(panel.getByText("Rute-match").filter({ visible: true }).first()).toBeVisible();
 
   // Skift til etape 2 (høj bjerg) → profil + finale + rute-match opdateres.
   await page.getByRole("button", { name: "Etape 2" }).click();

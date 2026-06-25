@@ -13,6 +13,7 @@ import { getSession } from "../../lib/supabase";
 import { toggleRider, validateSelectionClient } from "../../lib/raceSelectionLogic.js";
 import RiderTypeBadge from "../rider/RiderTypeBadge.jsx";
 import FitBar from "../racehub/FitBar.jsx";
+import HunterExplainer from "./HunterExplainer.jsx";
 import { effectiveStageFit, bestFitRiderId } from "../../lib/lineupInsight.js";
 
 const API = import.meta.env.VITE_API_URL;
@@ -26,7 +27,13 @@ async function authHeaders() {
   return { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 }
 
-export default function RaceSelectionPanel({ raceId, selectedStageIndex = null, selectedStageBucket = null }) {
+export default function RaceSelectionPanel({
+  raceId,
+  selectedStageIndex = null,
+  selectedStageBucket = null,
+  selectedStageProfileType = null,
+  selectedStageFinaleType = null,
+}) {
   const { t } = useTranslation("races");
   const [data, setData] = useState(null);
   const [sel, setSel] = useState(EMPTY_SELECTION);
@@ -189,8 +196,63 @@ export default function RaceSelectionPanel({ raceId, selectedStageIndex = null, 
         </p>
       )}
 
-      {/* Rytterliste */}
-      <div className="overflow-x-auto">
+      {/* Rytterliste — responsivt. På mobil (<sm) en stablet liste: en 5-kolonne
+          tabel kræver ~488px og tvinger en vandret scroll-container på 393px-
+          viewporten. Under Playwrights Pixel 5 (isMobile) emulering skævvrider
+          den overflow-container hit-testet på "Gem udtagelse"-knappen nedenunder,
+          så klikket rammer en tabel-celle i stedet (#1834, frontend-smoke rød på
+          CI). Stablede kort fjerner overflow'en helt + er bedre mobil-UX.
+          Fra sm og op vises den klassiske tabel. */}
+      <ul className="sm:hidden divide-y divide-cz-border">
+        {visibleRiders.map((rider) => {
+          const checked = sel.riderIds.includes(rider.id);
+          const disabled = rider.injured || (!checked && atMax) || saving;
+          const fitLabel = selectedStageIndex != null ? t("selection.routeMatch") : t("selection.suitability");
+          return (
+            <li key={rider.id} className={rider.injured ? "opacity-60" : ""}>
+              <label className={`flex items-start gap-3 px-4 py-3 ${disabled ? "cursor-not-allowed" : "cursor-pointer"}`}>
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  disabled={disabled}
+                  onChange={() => update(toggleRider(sel, rider.id, size.max))}
+                  className="accent-cz-accent disabled:cursor-not-allowed mt-1 shrink-0"
+                />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-cz-1 font-medium">{rider.name}</span>
+                    {rider.injured && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-cz-danger/10 text-cz-danger border border-cz-danger/20">
+                        {t("selection.injured")}
+                      </span>
+                    )}
+                    <RiderTypeBadge primaryType={rider.primaryType} secondaryType={rider.secondaryType} />
+                  </div>
+                  <div className="mt-1.5 flex items-center gap-x-4 gap-y-1 flex-wrap text-xs text-cz-2">
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="text-cz-3 uppercase text-[10px] tracking-wide">{fitLabel}</span>
+                      {rider.id === bestId && (
+                        <span className="text-[9px] uppercase tracking-wide text-cz-accent-t" title={t("selection.bestForStage")}>{t("selection.best")}</span>
+                      )}
+                      <FitBar score={effectiveStageFit(rider, selectedStageIndex)} />
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <span className="text-cz-3 uppercase text-[10px] tracking-wide">{t("selection.form")}</span>
+                      <span className="font-mono tabular-nums text-cz-2">{rider.form ?? "—"}</span>
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <span className="text-cz-3 uppercase text-[10px] tracking-wide">{t("selection.fatigue")}</span>
+                      <span className="font-mono tabular-nums text-cz-2">{rider.fatigue ?? "—"}</span>
+                    </span>
+                  </div>
+                </div>
+              </label>
+            </li>
+          );
+        })}
+      </ul>
+
+      <div className="hidden sm:block overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-cz-border">
@@ -301,6 +363,15 @@ export default function RaceSelectionPanel({ raceId, selectedStageIndex = null, 
           </button>
         </div>
       </div>
+
+      {/* S5 (Lag 3): forklar jæger-rollen + terræn-bevidst udbruds-styrke + bedste
+          jæger-kandidater (rangeret efter aggression) fra den valgte trup. */}
+      <HunterExplainer
+        riders={selectedRiders}
+        profileType={selectedStageProfileType}
+        finaleType={selectedStageFinaleType}
+        hunterId={sel.hunterId}
+      />
     </section>
   );
 }

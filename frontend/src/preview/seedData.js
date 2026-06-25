@@ -225,9 +225,11 @@ export const SEED_RACE_RESULTS = [
 // GET /api/races/distribution — board-aggregat. ≥1 tids-overlap-kolonne (begge
 // kolonner deler bindingWindow → bindingMap binder en rytter væk fra den anden).
 // roster = column[0].riders (RaceHubBoard: roster = columns[0]?.riders).
-const SEED_BOARD_ROSTER = RIDERS.filter((r) => r.team_id === TEST_TEAM.id).map((r) => ({
+const SEED_BOARD_ROSTER = RIDERS.filter((r) => r.team_id === TEST_TEAM.id).map((r, i) => ({
   id: r.id, firstname: r.firstname, lastname: r.lastname,
   primary_type: r.primary_type, secondary_type: r.secondary_type, nationality_code: r.nationality_code,
+  // S5: suitability + aggression + kondition så RoleCards/FitBar/jæger-chip har data i preview.
+  suitability: 78 - i * 9, aggression: 72 - i * 6, form: 60 - i * 3, fatigue: 12 + i * 7,
 }));
 export const SEED_DISTRIBUTION = {
   enabled: true,
@@ -238,6 +240,8 @@ export const SEED_DISTRIBUTION = {
     {
       id: "race-up-1", name: "Tour de Preview", race_class: "TourFrance", race_type: "stage_race",
       stages: 3, stages_completed: 0, status: "scheduled", window: { day: 12 }, bindingWindow: 12,
+      // S5: fladt løb → jæger-chip = høj udbruds-chance.
+      primaryProfileType: "flat", primaryFinaleType: null,
       size: { min: 6, max: 8 }, riders: SEED_BOARD_ROSTER,
       selection: { rider_ids: [RIDERS[0].id], captain_id: RIDERS[0].id, sprint_captain_id: null, hunter_id: null, is_auto_filled: false },
       withdrawn: false, lineup_locked: false,
@@ -247,6 +251,8 @@ export const SEED_DISTRIBUTION = {
       // Tids-overlap med race-up-1 (samme bindingWindow=12) → én-rytter/ét-løb-binding.
       id: "race-overlap-1", name: "Critérium Preview", race_class: "ProSeries", race_type: "single",
       stages: 1, stages_completed: 0, status: "scheduled", window: { day: 12 }, bindingWindow: 12,
+      // S5: bjerg-løb med summit-finale → jæger-chip = lav udbruds-chance (favoritterne afgør).
+      primaryProfileType: "high_mountain", primaryFinaleType: "long_climb",
       size: { min: 6, max: 7 }, riders: SEED_BOARD_ROSTER,
       selection: { rider_ids: [], captain_id: null, sprint_captain_id: null, hunter_id: null, is_auto_filled: false },
       withdrawn: false, lineup_locked: false,
@@ -266,6 +272,37 @@ export const SEED_DISTRIBUTION = {
       { day: 14, dateText: "14 Jul" },
     ],
   },
+};
+
+// GET /api/races/:raceId/selection — udtagelses-panelet (RaceSelectionPanel).
+// S5: riders bærer aggression så HunterExplainer kan rangere jæger-kandidater; én
+// rytter forud-valgt som hunter så jæger-chippen + kandidat-listen er synlig i preview.
+export const SEED_SELECTION = {
+  enabled: true,
+  race: { id: "race-up-1", status: "scheduled" },
+  size: { min: 6, max: 8 },
+  availableCount: 8,
+  riders: SEED_BOARD_ROSTER.map((r, i) => ({
+    id: r.id,
+    name: `${r.firstname} ${r.lastname}`,
+    primaryType: r.primary_type ?? null,
+    secondaryType: r.secondary_type ?? null,
+    suitability: r.suitability,
+    stageSuitability: null,
+    aggression: r.aggression,
+    form: r.form,
+    fatigue: r.fatigue,
+    injured: i === SEED_BOARD_ROSTER.length - 1,
+  })),
+  selection: SEED_BOARD_ROSTER.length
+    ? {
+        rider_ids: SEED_BOARD_ROSTER.slice(0, Math.min(6, SEED_BOARD_ROSTER.length)).map((r) => r.id),
+        captain_id: SEED_BOARD_ROSTER[0].id,
+        sprint_captain_id: SEED_BOARD_ROSTER[1]?.id ?? null,
+        hunter_id: SEED_BOARD_ROSTER[2]?.id ?? null,
+        is_auto_filled: false,
+      }
+    : null,
 };
 
 // GET /api/races/strategy — holdets strategi + roster + kommende mål-løb.

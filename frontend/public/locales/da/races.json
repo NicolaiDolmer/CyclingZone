@@ -9,6 +9,67 @@
     "column": { "add": "Tilføj fra ledige", "withdraw": "Afmeld", "reenter": "Deltag igen", "remove": "Fjern rytter" },
     "popover": { "title": "Tilføj til hvilket løb?", "none": "Intet løb tilgængeligt for denne rytter i dag", "understaffed": "mangler ryttere" },
     "role": { "hint": "Tryk på en rytter for at sætte kaptajn eller rolle", "captain": "Kaptajn", "sprintCaptain": "Sprint-kaptajn", "hunter": "Udbrudsjæger", "rider": "Kun rytter" },
+    "roleCard": {
+      "heading": "Taktik",
+      "subhead": "Giv hver rytter en opgave. Hintet viser hvorfor rollen passer terrænet.",
+      "captain": {
+        "title": "Kaptajn",
+        "hint": {
+          "flat": "Din beskyttede leder. Holdet kører for at sætte ham af på den flade mål.",
+          "hilly": "Din beskyttede leder på stigningerne. Holdet dækker ham til det bakkede mål.",
+          "mountain": "Din beskyttede leder i bjergene. Holdet trækker ham op til toppen.",
+          "cobbles": "Din beskyttede leder over brostenene. Holdet holder ham ude af problemer.",
+          "itt": "Rytteren du satser på i enkeltstarten. Ingen holdstøtte gælder her."
+        }
+      },
+      "sprint_captain": {
+        "title": "Sprint-kaptajn",
+        "hint": {
+          "flat": "Din afslutter til en massespurt. Holdet leder ham ud på det flade.",
+          "hilly": "Din afslutter hvis bakkerne ender i en reduceret spurt.",
+          "mountain": "Spurter afgør sjældent en bjergetape. Kun nyttig ved en tidlig spurt.",
+          "cobbles": "Din afslutter hvis brostenene samler feltet til en spurt.",
+          "itt": "En spurt-rolle har ingen effekt i en enkeltstart."
+        }
+      },
+      "hunter": {
+        "title": "Udbrudsjæger",
+        "hint": {
+          "flat": "Sender rytteren med i udbruddet. På flade mål kan et udbrud holde hjem.",
+          "hilly": "Sender rytteren i angreb. Bakkede finaler belønner en jæger.",
+          "mountain": "Sender rytteren væk. Et bjergudbrud kan holde til stregen.",
+          "cobbles": "Sender rytteren med i bro-udbruddet. Det kan holde til mål.",
+          "itt": "Der er intet udbrud i en enkeltstart."
+        }
+      },
+      "rider": {
+        "title": "Kun rytter",
+        "hint": {
+          "flat": "Ingen særlig rolle. Kører som hjælper for kaptajn og spurter.",
+          "hilly": "Ingen særlig rolle. Kører som hjælper på stigningerne.",
+          "mountain": "Ingen særlig rolle. Trækker og beskytter din leder i bjergene.",
+          "cobbles": "Ingen særlig rolle. Hjælper med at placere dine ledere over brostenene.",
+          "itt": "Ingen særlig rolle. Hver rytter kører enkeltstarten alene."
+        }
+      }
+    },
+    "breakawayStrength": {
+      "label": "Udbruds-chance",
+      "high": "Høj",
+      "medium": "Middel",
+      "low": "Lav",
+      "none": "Ingen",
+      "tooltip": "Hvor sandsynligt et udbrud er at holde hjem på dette terræn. Jægeren er altid udbruds-kandidat."
+    },
+    "hunterExplainer": {
+      "title": "Sådan virker udbrudsjægeren",
+      "body": "Jægeren sendes altid med i dagens udbrud og kører hårdere for at holde sig væk. Om udbruddet holder til mål afhænger af terrænet.",
+      "strengthLine": "På dette løbs terræn har et udbrud {strength} chance for at holde hjem.",
+      "candidatesTitle": "Bedste jægere i din trup",
+      "candidatesHint": "Rangeret efter aggression: lysten til at angribe og satse på et ryk.",
+      "noCandidates": "Vælg ryttere til løbet for at se dine bedste jægere.",
+      "aggression": "Aggression"
+    },
     "fit": { "label": "Match", "strong": "Stærk", "average": "Middel", "poor": "Svag" },
     "boundNamed": "Låst · kører {race}",
     "lineupLocked": { "title": "Trup låst", "note": "Løbet er gået i gang. Truppen er endelig." },

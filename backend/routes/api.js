@@ -1557,9 +1557,25 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
       .from("race_withdrawals").select("race_id").eq("team_id", req.team.id);
     const withdrawnSet = new Set((withdrawals || []).map((w) => w.race_id));
 
+    // S5 (Lag 3): dominerende terræn pr. kolonne-løb → profil-bevidste rolle-hints
+    // (RoleCard). Kun dagens overlap-løb (cols) — lille sæt, genbruger timeline-profilernes
+    // fetchAllStageProfiles-mønster. finale_type følger med så jæger-chippen kan vise
+    // finale-bevidst udbruds-styrke når der kun er én etape (ellers profilens _default).
+    const colRaceIds = cols.map((r) => r.id);
+    const colProfiles = await fetchAllStageProfiles(supabase, colRaceIds, "race_id, profile_type, finale_type");
+    const profTypesByRace = new Map();
+    const finaleByRace = new Map();
+    for (const p of colProfiles || []) {
+      if (!profTypesByRace.has(p.race_id)) profTypesByRace.set(p.race_id, []);
+      profTypesByRace.get(p.race_id).push(p.profile_type);
+      // finale_type bruges kun ved 1-etape-løb (én profil) — sæt den fra første profil.
+      if (!finaleByRace.has(p.race_id)) finaleByRace.set(p.race_id, p.finale_type ?? null);
+    }
+
     const columns = [];
     for (const race of cols) {
       const ctx = await getSelectionContext({ supabase, race, teamId: req.team.id });
+      const profTypes = profTypesByRace.get(race.id) || [];
       // Frys (#1825): et igangværende etapeløb (stages_completed>0) har låst trup —
       // board'et viser "Lineup locked" og deaktiverer redigering. bindingWindow bruges
       // til bindingMap så samme-dag-løb regnes som overlappende (#1823).
@@ -1567,6 +1583,9 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
         id: race.id, name: race.name, race_class: race.race_class, race_type: race.race_type,
         stages: race.stages, stages_completed: race.stages_completed ?? 0, status: race.status,
         window: race.window, bindingWindow: bindingWindowByRace.get(race.id),
+        // S5: dominerende terræn (+ finale ved 1-etape) til rolle-hints/jæger-chip.
+        primaryProfileType: dominantTerrain(profTypes),
+        primaryFinaleType: profTypes.length === 1 ? finaleByRace.get(race.id) ?? null : null,
         size: ctx.size, riders: ctx.riders, selection: ctx.selection,
         withdrawn: withdrawnSet.has(race.id),
         lineup_locked: (race.stages_completed ?? 0) > 0,

@@ -9,6 +9,67 @@
     "column": { "add": "Add from available", "withdraw": "Withdraw", "reenter": "Re-enter", "remove": "Remove rider" },
     "popover": { "title": "Add to which race?", "none": "No race available for this rider today", "understaffed": "needs riders" },
     "role": { "hint": "Tap a rider to set captain or role", "captain": "Captain", "sprintCaptain": "Sprint captain", "hunter": "Breakaway hunter", "rider": "Rider only" },
+    "roleCard": {
+      "heading": "Tactics",
+      "subhead": "Give each rider a job. The hint shows why the role fits this terrain.",
+      "captain": {
+        "title": "Captain",
+        "hint": {
+          "flat": "Your protected leader. The team rides to deliver them to the flat finish.",
+          "hilly": "Your protected leader on the climbs. The team shelters them to the hilly finish.",
+          "mountain": "Your protected leader in the mountains. The team paces them to the summit.",
+          "cobbles": "Your protected leader over the cobbles. The team keeps them out of trouble.",
+          "itt": "The rider you back for the time trial. No team support applies here."
+        }
+      },
+      "sprint_captain": {
+        "title": "Sprint captain",
+        "hint": {
+          "flat": "Your finisher for a bunch sprint. The team leads them out on the flat.",
+          "hilly": "Your finisher if the hills end in a reduced sprint.",
+          "mountain": "Sprints rarely decide a mountain stage. Useful only for an early sprint.",
+          "cobbles": "Your finisher if the cobbles come back together for a sprint.",
+          "itt": "A sprint role has no effect in a time trial."
+        }
+      },
+      "hunter": {
+        "title": "Breakaway hunter",
+        "hint": {
+          "flat": "Sends this rider up the road. On flat finishes a breakaway can stay away.",
+          "hilly": "Sends this rider on the attack. Hilly finales reward a hunter.",
+          "mountain": "Sends this rider clear. A mountain breakaway can hold to the line.",
+          "cobbles": "Sends this rider into the cobbled break. It can stick to the finish.",
+          "itt": "There is no breakaway in a time trial."
+        }
+      },
+      "rider": {
+        "title": "Rider only",
+        "hint": {
+          "flat": "No special role. Rides in support of your captain and sprinter.",
+          "hilly": "No special role. Rides in support on the climbs.",
+          "mountain": "No special role. Paces and protects your leader in the mountains.",
+          "cobbles": "No special role. Helps position your leaders over the cobbles.",
+          "itt": "No special role. Each rider races the time trial alone."
+        }
+      }
+    },
+    "breakawayStrength": {
+      "label": "Breakaway odds",
+      "high": "High",
+      "medium": "Medium",
+      "low": "Low",
+      "none": "None",
+      "tooltip": "How likely a breakaway is to stay away on this terrain. The hunter is always a breakaway candidate."
+    },
+    "hunterExplainer": {
+      "title": "How the breakaway hunter works",
+      "body": "The hunter is always sent into the day's breakaway and rides harder to stay clear. Whether the move holds to the finish depends on the terrain.",
+      "strengthLine": "On this race's terrain, a breakaway has {strength} odds of staying away.",
+      "candidatesTitle": "Best hunters in your squad",
+      "candidatesHint": "Ranked by aggression: the urge to attack and commit to a move.",
+      "noCandidates": "Pick riders for this race to see your best hunters.",
+      "aggression": "Aggression"
+    },
     "fit": { "label": "Fit", "strong": "Strong", "average": "Average", "poor": "Poor" },
     "boundNamed": "Locked · racing in {race}",
     "lineupLocked": { "title": "Lineup locked", "note": "This race has started. The lineup is final." },

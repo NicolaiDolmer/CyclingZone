@@ -5,7 +5,10 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { computeColumnStatus, freshnessTier } from "../../lib/raceHubLogic.js";
+import { terrainBucket } from "../../lib/stageTerrain.js";
+import { ROLE_KEYS } from "../../lib/roleHint.js";
 import FitBar from "./FitBar.jsx";
+import RoleCard from "./RoleCard.jsx";
 import RaceLink from "../RaceLink.jsx";
 import { LockIcon } from "../ui";
 
@@ -17,7 +20,6 @@ const STATUS_CLASS = {
 };
 const ROLE_KEY = { captain: "captain", sprint_captain: "sprintCaptain", hunter: "hunter" };
 const FRESH_CLASS = { fresh: "text-cz-success", ok: "text-cz-2", tired: "text-cz-warning" };
-const ROLE_OPTIONS = ["captain", "sprint_captain", "hunter", "rider"];
 
 function RoleBadge({ t, role }) {
   return (
@@ -33,6 +35,9 @@ export default function RaceColumn({ column, onRemoveRider, onToggleWithdraw, on
   const selectedIds = column.selection?.rider_ids || [];
   const ridersById = new Map(column.riders.map((r) => [r.id, r]));
   const locked = !!column.lineup_locked;
+  // S5: profil-bevidste rolle-hints. primaryProfileType = løbets dominerende terræn
+  // (backend); mangler det (gamle løb) → terrainBucket defaulter til "flat".
+  const bucket = terrainBucket(column.primaryProfileType);
   const roleOf = (id) => {
     const s = column.selection;
     if (!s) return null;
@@ -106,17 +111,18 @@ export default function RaceColumn({ column, onRemoveRider, onToggleWithdraw, on
                   </span>
                 </div>
                 {roleMenuFor === id && (
-                  <div className="absolute z-dropdown right-3 mt-0.5 bg-cz-elevated border border-cz-border rounded-cz shadow-overlay p-1 min-w-[150px]">
-                    {ROLE_OPTIONS.map((opt) => {
-                      const active = role === opt || (opt === "rider" && !role);
-                      return (
-                        <button key={opt} type="button"
-                          onClick={() => { onSetRole(column.id, id, opt); setRoleMenuFor(null); }}
-                          className={`block w-full text-left text-xs px-2 py-1.5 rounded hover:bg-cz-subtle ${active ? "text-cz-accent-t font-medium" : "text-cz-1"}`}>
-                          {t(`racehub.role.${opt === "sprint_captain" ? "sprintCaptain" : opt}`)}
-                        </button>
-                      );
-                    })}
+                  <div className="absolute z-dropdown right-3 mt-0.5 bg-cz-elevated border border-cz-border rounded-cz shadow-overlay p-2 w-[19rem] max-w-[calc(100vw-2rem)]">
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {ROLE_KEYS.map((opt) => (
+                        <RoleCard key={opt} role={opt}
+                          active={role === opt || (opt === "rider" && !role)}
+                          terrainBucket={bucket}
+                          profileType={column.primaryProfileType}
+                          finaleType={column.primaryFinaleType}
+                          disabled={busy}
+                          onClick={() => { onSetRole(column.id, id, opt); setRoleMenuFor(null); }} />
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>

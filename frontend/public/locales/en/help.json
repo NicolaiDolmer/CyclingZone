@@ -627,7 +627,7 @@
       },
       "roles": {
         "title": "Captain, sprint captain and breakaway hunter",
-        "text": "Your captain is protected by the team: strong, fresh helpers boost the captain's chances. On flat stages your sprint captain (if set) gets the protection instead. A breakaway hunter gets a much higher chance of making the day's breakaway."
+        "text": "You give each selected rider a role using tactics cards, and each card explains why the role fits this race's terrain. Your captain is protected by the team: strong, fresh helpers boost the captain's chances. On flat stages your sprint captain (if set) gets the protection instead. A breakaway hunter is always sent into the day's breakaway and rides harder to stay clear. The hunter card shows how likely a breakaway is to stay away on this terrain, and the race detail page ranks your best hunters by aggression, the urge to attack."
       },
       "strategy": {
         "title": "Team strategy (standing preferences)",

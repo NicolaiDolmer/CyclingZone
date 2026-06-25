@@ -627,7 +627,7 @@
       },
       "roles": {
         "title": "Kaptajn, spurt-kaptajn og udbruds-jæger",
-        "text": "Din kaptajn beskyttes af holdet: stærke, friske hjælpere booster kaptajnens chancer. På flade etaper overtager spurt-kaptajnen (hvis sat) beskyttelsen. En udbruds-jæger har markant højere chance for at komme med i dagens udbrud."
+        "text": "Du giver hver udtaget rytter en rolle med taktik-kort, og hvert kort forklarer hvorfor rollen passer løbets terræn. Din kaptajn beskyttes af holdet: stærke, friske hjælpere booster kaptajnens chancer. På flade etaper overtager spurt-kaptajnen (hvis sat) beskyttelsen. En udbruds-jæger sendes altid med i dagens udbrud og kører hårdere for at holde sig væk. Jæger-kortet viser hvor sandsynligt et udbrud er at holde hjem på dette terræn, og løb-detalje-siden rangerer dine bedste jægere efter aggression, lysten til at angribe."
       },
       "strategy": {
         "title": "Holdstrategi (stående præferencer)",

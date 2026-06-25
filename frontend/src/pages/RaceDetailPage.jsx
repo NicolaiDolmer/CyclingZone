@@ -353,6 +353,8 @@ export default function RaceDetailPage() {
               raceId={race.id}
               selectedStageIndex={scheduledStageNums.indexOf(scheduledStage) >= 0 ? scheduledStageNums.indexOf(scheduledStage) : 0}
               selectedStageBucket={terrainBucket(profileByStage[scheduledStage]?.profile_type)}
+              selectedStageProfileType={profileByStage[scheduledStage]?.profile_type ?? null}
+              selectedStageFinaleType={profileByStage[scheduledStage]?.finale_type ?? null}
             />
           )
       )}
