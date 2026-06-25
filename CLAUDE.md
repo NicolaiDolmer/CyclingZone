@@ -8,7 +8,7 @@ Gælder også Claude Code, selvom `AGENTS.md` ikke auto-loades her: verificér r
 
 ## Auto-loaded (intet at gøre)
 
-- `~/.claude/.../memory/MEMORY.md` — HOT-tier auto-memory (~3.600 tok pr. 2026-06-25; budget-mål ≤1.500 — drevet over, trænger re-trim). Tier-disciplin i `memory/README.md`. WARM-tier: `MEMORY_REFERENCE.md` (on-demand).
+- `~/.claude/.../memory/MEMORY.md` — HOT-tier auto-memory (~2.800 tok pr. 2026-06-25, re-trimmet fra 3.600). Gate: `check-agent-token-hygiene.ps1` fejler >3.200 tok / >54 linjer. Tier-disciplin i `memory/README.md`. WARM-tier: `MEMORY_REFERENCE.md` (on-demand).
 - `.codex.local/SESSION_CONTEXT.md` — bounded, regenererbar cache af aktivt GitHub-issue (~500 tok) via `scripts/session-prefetch-issue.sh`. Ikke source of truth.
 
 ## Start (eksplicit)
