@@ -1869,10 +1869,14 @@ router.get("/races/strategy", requireAuth, async (req, res) => {
     const enabled = await isRaceEngineV2Enabled(supabase, { isBetaTester });
     if (!enabled) return res.json({ enabled: false });
 
-    // Roster (løbs-berettigede ryttere) + abilities.
-    const { data: riders } = await supabase
-      .from("riders").select("id, firstname, lastname, primary_type, secondary_type, overall")
+    // Roster (løbs-berettigede ryttere) + abilities. NB: `riders` har INGEN `overall`-
+    // kolonne — et select med en ikke-eksisterende kolonne fejler hele queryen og gav
+    // tom roster → fladen kortsluttede til empty-state (#1840 hotfix). Surfacér fejl
+    // loud i stedet for tavst tom (samme klasse som verify-før-claim).
+    const { data: riders, error: ridersErr } = await supabase
+      .from("riders").select("id, firstname, lastname, primary_type, secondary_type")
       .eq("team_id", req.team.id).eq("is_academy", false).or("is_retired.is.null,is_retired.eq.false");
+    if (ridersErr) throw new Error(`riders (strategy roster): ${ridersErr.message}`);
     const rosterIds = new Set((riders || []).map((r) => r.id));
     const riderIdList = [...rosterIds];
     const abilityCols = ["rider_id", ...RACE_SIM_ABILITY_KEYS].join(", ");
@@ -1926,7 +1930,6 @@ router.get("/races/strategy", requireAuth, async (req, res) => {
       roster: (riders || []).map((r) => ({
         id: r.id, name: [r.firstname, r.lastname].filter(Boolean).join(" "),
         primaryType: r.primary_type ?? null, secondaryType: r.secondary_type ?? null,
-        overall: r.overall ?? null,
         suitabilities: suitabilities[r.id] || {},
       })),
       a_chain: strategy.aChain,
