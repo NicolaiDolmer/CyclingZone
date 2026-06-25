@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   RIDERS,
   TEST_TEAM,
+  RIVAL_TEAM,
   SEED_RACES,
   SEED_STAGE_PROFILES,
   SEED_STAGE_SCHEDULE,
@@ -44,10 +45,14 @@ test("hver demand_vector summerer ~1.0", () => {
   }
 });
 
-test("ingen dangling FK i race_results (race findes)", () => {
+test("ingen dangling FK i race_results (race/rider/team findes)", () => {
   const raceIds = new Set(SEED_RACES.map(r => r.id));
+  const riderIds = new Set(RIDERS.map(r => r.id));
+  const teamIds = new Set([TEST_TEAM.id, RIVAL_TEAM.id]);
   for (const res of SEED_RACE_RESULTS) {
     assert.ok(raceIds.has(res.race_id), `result peger på ukendt race ${res.race_id}`);
+    assert.ok(riderIds.has(res.rider_id), `result peger på ukendt rider ${res.rider_id}`);
+    assert.ok(teamIds.has(res.team_id), `result peger på ukendt team ${res.team_id}`);
   }
 });
 

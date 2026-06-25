@@ -61,6 +61,10 @@ export function installPreviewMock() {
         });
       }
       if (/\/auth\/v1\/user/.test(url)) return jsonResponse(TEST_USER);
+      // Catch-all for øvrige Supabase-auth-kald (signup, logout, recover, …) så
+      // de bliver inde i mocken — ellers falder fx sign-out igennem til ægte
+      // fetch mod sentinel-URL'en og fejler i preview.
+      if (/\/auth\/v1\//.test(url)) return jsonResponse({ message: "ok" });
 
       // Supabase REST (PostgREST).
       if (/\/rest\/v1\//.test(url)) {

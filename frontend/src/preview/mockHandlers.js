@@ -17,6 +17,7 @@ import {
   SEED_RACE_RESULTS,
   SEED_DISTRIBUTION,
   SEED_STRATEGY,
+  SEED_ACADEMY,
 } from "./seedData.js";
 
 // Tager Accept-strengen direkte (ikke et Playwright-request). PostgREST signalerer
@@ -204,115 +205,7 @@ export function apiResponse(pathname) {
     return { slots: { total: 3, used: 0, remaining: 3 }, maxLevel: 3, levels: {}, teamId: TEST_TEAM.id };
   }
 
-  if (pathname.endsWith("/api/academy/me")) {
-    return {
-      enabled: true,
-      slots: { used: 2, max: 8 },
-      roster: [
-        {
-          id: "acad-r1",
-          firstname: "Jonas",
-          lastname: "Svensson",
-          birthdate: "2008-03-15",
-          nationality_code: "se",
-          team_id: TEST_TEAM.id,
-          is_academy: true,
-          salary: 12000,
-          contract_length: 2,
-          contract_end_season: 3,
-        },
-        {
-          id: "acad-r2",
-          firstname: "Luca",
-          lastname: "Morel",
-          birthdate: "2007-11-22",
-          nationality_code: "fr",
-          team_id: TEST_TEAM.id,
-          is_academy: true,
-          salary: 10000,
-          contract_length: 2,
-          contract_end_season: 3,
-        },
-      ],
-      intake: [
-        {
-          intakeId: "intake-1",
-          riderId: "prospect-1",
-          is_serious: true,
-          status: "offered",
-          created_at: "2026-06-13T10:00:00.000Z",
-          rider: {
-            id: "prospect-1",
-            firstname: "Emil",
-            lastname: "Kristiansen",
-            birthdate: "2009-06-05",
-            nationality_code: "dk",
-            base_value: 200000,
-            market_value: 200000,
-            prize_earnings_bonus: 0,
-            team_id: null,
-          },
-          potentialEstimate: { lo: 3.5, hi: 5.0, exact: false, scoutLevel: 1 },
-        },
-        {
-          intakeId: "intake-2",
-          riderId: "prospect-2",
-          is_serious: false,
-          status: "offered",
-          created_at: "2026-06-13T10:00:00.000Z",
-          rider: {
-            id: "prospect-2",
-            firstname: "Axel",
-            lastname: "Bergström",
-            birthdate: "2010-02-18",
-            nationality_code: "se",
-            base_value: 150000,
-            market_value: 150000,
-            prize_earnings_bonus: 0,
-            team_id: null,
-          },
-          potentialEstimate: { lo: 2.0, hi: 4.0, exact: false, scoutLevel: 0 },
-        },
-        {
-          intakeId: "intake-3",
-          riderId: "prospect-3",
-          is_serious: false,
-          status: "offered",
-          created_at: "2026-06-13T10:00:00.000Z",
-          rider: {
-            id: "prospect-3",
-            firstname: "Marco",
-            lastname: "De Luca",
-            birthdate: "2008-09-30",
-            nationality_code: "it",
-            base_value: 180000,
-            market_value: 180000,
-            prize_earnings_bonus: 0,
-            team_id: null,
-          },
-          potentialEstimate: { lo: 3.0, hi: 3.0, exact: true, scoutLevel: 3 },
-        },
-      ],
-      freeAgents: [
-        {
-          id: "fa-1",
-          firstname: "Noah",
-          lastname: "Berg",
-          nationality_code: "no",
-          birthdate: "2007-04-12",
-          market_value: 95000,
-        },
-        {
-          id: "fa-2",
-          firstname: "Lukas",
-          lastname: "Meyer",
-          nationality_code: "de",
-          birthdate: "2009-11-03",
-          market_value: 72000,
-        },
-      ],
-    };
-  }
+  if (pathname.endsWith("/api/academy/me")) return SEED_ACADEMY;
 
   return {};
 }

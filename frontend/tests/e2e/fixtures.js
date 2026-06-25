@@ -2,6 +2,8 @@ import { expect } from "@playwright/test";
 import {
   TEST_USER,
   TEST_TEAM,
+  RIVAL_TEAM,
+  ACTIVE_SEASON,
   RIDERS,
   ROADMAP_ITEMS,
   AUCTIONS,
@@ -17,7 +19,7 @@ import {
 // Re-export så eksisterende spec-imports (import { TEST_USER, ... } from "./fixtures.js")
 // stadig virker efter flytningen af data + matchers til src/preview/ (#prelive-harness).
 // Datakilden er nu seedData.js — fixtures.js holder kun de Playwright-bundne helpers.
-export { TEST_USER, TEST_TEAM, RIDERS, ROADMAP_ITEMS, AUCTIONS };
+export { TEST_USER, TEST_TEAM, RIVAL_TEAM, ACTIVE_SEASON, RIDERS, ROADMAP_ITEMS, AUCTIONS };
 
 // WebKit håndhæver CORS strikst — echo origin + allow credentials, så Supabase-js
 // fetch (credentials: "include") accepterer mock-responses. Chromium er mere lempelig
