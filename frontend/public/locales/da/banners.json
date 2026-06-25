@@ -6,6 +6,18 @@
     "regionAriaLabel": "Undersøgelses-invitation",
     "adminPreviewHint": "(Admin-preview, kun synligt for dig indtil flag flippes)"
   },
+  "nps": {
+    "question": "Hvor sandsynligt er det, at du vil anbefale Cycling Zone til en ven?",
+    "scaleLow": "Slet ikke",
+    "scaleHigh": "Meget",
+    "reasonLabel": "Hvad er hovedårsagen? (valgfrit)",
+    "reasonPlaceholder": "Fortæl os det i en sætning eller to",
+    "submit": "Send",
+    "notNow": "Ikke nu",
+    "thanks": "Tak for din feedback.",
+    "regionAriaLabel": "Feedback-prompt",
+    "dismissAriaLabel": "Luk feedback-prompt"
+  },
   "consent": {
     "title": "Vi bruger data til at gøre spillet bedre",
     "intro": "Du bestemmer hvad vi må måle. Du kan altid skifte valg i din profil under \"Privatliv\".",

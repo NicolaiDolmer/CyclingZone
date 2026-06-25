@@ -6,6 +6,18 @@
     "regionAriaLabel": "Survey invitation",
     "adminPreviewHint": "(Admin preview, only visible to you until flag is flipped)"
   },
+  "nps": {
+    "question": "How likely are you to recommend Cycling Zone to a friend?",
+    "scaleLow": "Not likely",
+    "scaleHigh": "Very likely",
+    "reasonLabel": "What's the main reason? (optional)",
+    "reasonPlaceholder": "Tell us in a sentence or two",
+    "submit": "Send",
+    "notNow": "Not now",
+    "thanks": "Thanks for the feedback.",
+    "regionAriaLabel": "Feedback prompt",
+    "dismissAriaLabel": "Dismiss feedback prompt"
+  },
   "consent": {
     "title": "We use data to make the game better",
     "intro": "You decide what we may measure. You can always change your choices in your profile under \"Privacy\".",

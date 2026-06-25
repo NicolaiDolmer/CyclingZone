@@ -5,6 +5,8 @@ import { supabase } from "../lib/supabase";
 import { fetchAllRows } from "../lib/supabasePagination";
 import RiderLink from "./RiderLink";
 import { formatNumber } from "../lib/intl";
+import { useNpsPrompt } from "../hooks/useNpsPrompt";
+import NpsPrompt from "./NpsPrompt";
 
 // #824 (Discord-feedback): Holdets resultatliste — kun pointgivende resultater,
 // med rytternavn pr. resultat. Attribution = race_results.team_id (holdet på
@@ -36,7 +38,7 @@ function typeLabel(r, t) {
   return label === key ? r.result_type : label;
 }
 
-export default function TeamResultsTab({ teamId }) {
+export default function TeamResultsTab({ teamId, isOwnTeam = false }) {
   const { t } = useTranslation("team");
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -45,6 +47,9 @@ export default function TeamResultsTab({ teamId }) {
   const [sortKey, setSortKey] = useState("points");
   const [sortDir, setSortDir] = useState("desc");
   const [currentSeason, setCurrentSeason] = useState(null);
+  // #940 In-app NPS: trigger efter første løb-resultat (eget hold + ≥1 resultat).
+  const nps = useNpsPrompt();
+  const { markRaceResultSeen } = nps;
 
   useEffect(() => {
     let cancelled = false;
@@ -75,6 +80,13 @@ export default function TeamResultsTab({ teamId }) {
     load();
     return () => { cancelled = true; };
   }, [teamId, t]);
+
+  // #940: når en bruger ser sit EGET holds resultater (mindst ét), trigg NPS-
+  // gatingen. markRaceResultSeen er idempotent; gatingen (consent + throttle +
+  // allerede-svaret) sker i useNpsPrompt.
+  useEffect(() => {
+    if (isOwnTeam && results.length > 0) markRaceResultSeen();
+  }, [isOwnTeam, results.length, markRaceResultSeen]);
 
   const availableSeasons = useMemo(() => {
     const set = new Set(results.map((r) => r.race?.season?.number).filter((n) => n != null));
@@ -123,6 +135,7 @@ export default function TeamResultsTab({ teamId }) {
   const noResults = results.length === 0;
 
   return (
+    <>
     <div className="bg-cz-card border border-cz-border rounded-cz p-5">
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <div>
@@ -220,5 +233,16 @@ export default function TeamResultsTab({ teamId }) {
         </div>
       )}
     </div>
+    {isOwnTeam && (
+      <NpsPrompt
+        visible={nps.visible}
+        done={nps.done}
+        submitting={nps.submitting}
+        onSubmit={nps.submit}
+        onDismiss={nps.dismiss}
+        onClose={nps.close}
+      />
+    )}
+    </>
   );
 }

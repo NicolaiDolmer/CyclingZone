@@ -223,7 +223,7 @@ export default function TeamProfilePage() {
       </div>
 
       {activeTab === "results" && (
-        <TeamResultsTab teamId={id} />
+        <TeamResultsTab teamId={id} isOwnTeam={isMyTeam} />
       )}
 
       {activeTab === "transfers" && (
