@@ -1608,8 +1608,7 @@ function resolveSeasonDay({ season, schedRows, dayParam, myRaceDays = [] }) {
 // Tidslinje-input: terræn-glyf pr. dag (dominerende profil) + om holdet har løb den dag.
 async function buildTimeline({ supabase, races, schedByRace, teamDivisionId, currentDay, totalDays }) {
   const raceIds = races.map((r) => r.id);
-  const { data: profiles } = await supabase
-    .from("race_stage_profiles").select("race_id, profile_type").in("race_id", raceIds.slice(0, 1000));
+  const profiles = await fetchAllStageProfiles(supabase, raceIds, "race_id, profile_type");
   const profByRace = new Map();
   for (const p of profiles || []) {
     if (!profByRace.has(p.race_id)) profByRace.set(p.race_id, []);
