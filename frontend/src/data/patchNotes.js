@@ -9,6 +9,20 @@ export const PATCHES = [
     "label": "Beta",
     "changes": [
       {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Click any race to see its route, terrain and your lineup",
+          "body": "Race names are now clickable everywhere. Each race opens a detail view: results if it has run, or the route profile per stage with a terrain-DNA breakdown of what each stage rewards, plus your lineup's route match per stage. Stages are navigated with one visual stage stripe on both upcoming and finished races."
+        },
+        "da": {
+          "title": "Klik et løb for at se rute, terræn og din opstilling",
+          "body": "Løbsnavne er nu klikbare overalt. Hvert løb åbner en detalje-visning: resultater hvis det er kørt, ellers ruteprofilen pr. etape med en terræn-DNA-opdeling af hvad hver etape belønner, plus din opstillings rute-match pr. etape. Etaper navigeres med én visuel etape-stribe på både kommende og kørte løb."
+        },
+        "refs": [1834, 1747]
+      },
+      {
         "category": "new",
         "audience": "player",
         "topic": "Account",
