@@ -11,7 +11,7 @@
 // Kør: infisical run --env=prod -- node backend/scripts/dev/rerun-corrupt-races-dryrun.mjs
 import { createClient } from "@supabase/supabase-js";
 import { buildRaceResults } from "../../lib/raceRunner.js";
-import { buildRacePointsLookup, PRIZE_PER_POINT } from "../../lib/raceResultsEngine.js";
+import { buildRacePointsLookup } from "../../lib/raceResultsEngine.js";
 import { ABILITY_KEYS } from "../../lib/raceSimulator.js";
 import { raceBindingWindow, windowsOverlap } from "../../lib/raceBinding.js";
 import { excludeBoundRiders } from "../../lib/raceFieldIntegrity.js";
