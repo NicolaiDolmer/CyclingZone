@@ -611,6 +611,90 @@ test("finalizeAuctionById allows a winner up to the hard cap + registers immedia
   assert.equal(financeInserts[0].amount, -30000);
 });
 
+// #1872 forward-guard: en kontraktudløb-notifikation der kaster (fx fordi DB-
+// constraint'en mangler typen) må ALDRIG forhindre finaliseringen i at nå
+// closeAuction. Tidligere efterlod throw'et — efter at køber var debiteret og
+// sælger krediteret — auktionen i en evig cron-retry-loop ("Udløbet" men aldrig
+// completed). Guarden skal sluge fejlen og fuldføre handlen.
+test("finalizeAuctionById completes even if the contract-expiring notification throws (#1872)", async () => {
+  const auctionUpdates = [];
+  const teamUpdates = [];
+  const riderUpdates = [];
+  const financeInserts = [];
+  const notifications = [];
+
+  const result = await finalizeAuctionById({
+    supabase: createFinalizeAuctionSupabase({
+      auction: {
+        id: "auction-contract-expiring-throw",
+        status: "active",
+        current_bidder_id: "buyer-team",
+        current_price: 7575,
+        seller_team_id: "seller-team",
+        rider: {
+          id: "rider-expiring",
+          firstname: "Wei",
+          lastname: "Luo",
+          team_id: "seller-team",
+          // Allerede kontraktbundet (salary != null) → contractOnAcquirePatch er
+          // en no-op, så contract_end_season=1 arves og rammer activeSeasonNumber
+          // (default 1) → #1836-køb-triggeren fyrer.
+          salary: 100,
+          contract_length: 1,
+          contract_end_season: 1,
+        },
+      },
+      teams: {
+        "buyer-team": {
+          id: "buyer-team",
+          name: "Buyer",
+          balance: 500000,
+          division: 3,
+          user_id: "user-buyer",
+        },
+        "seller-team": {
+          id: "seller-team",
+          name: "Seller",
+          balance: 100000,
+          division: 3,
+          user_id: "user-seller",
+          is_ai: false,
+        },
+      },
+      teamMarketCounts: {
+        "buyer-team": { riderCount: 5, pendingCount: 0, activeLoanCount: 0 },
+      },
+      auctionUpdates,
+      teamUpdates,
+      riderUpdates,
+      financeInserts,
+    }),
+    auctionId: "auction-contract-expiring-throw",
+    notifyTeamOwner: async (teamId, type, title, message, entityId) => {
+      if (type === "contract_expiring") {
+        // Simulér DB-constraint-violation (den oprindelige #1872-fejl).
+        throw new Error("new row for relation \"notifications\" violates check constraint");
+      }
+      notifications.push({ teamId, type, title, message, entityId });
+    },
+    now: new Date("2026-06-25T18:10:43.000Z"),
+  });
+
+  // Guarden virker: handlen er fuldført trods notifikations-throw.
+  assert.equal(result.ok, true);
+  assert.equal(result.code, "completed");
+  // closeAuction blev nået → auktionen er sat completed (ikke efterladt active).
+  const completedUpdate = auctionUpdates.find((u) => u.status === "completed");
+  assert.ok(completedUpdate, "auktionen skal lukkes completed trods notify-throw");
+  // Begge finansielle posteringer kørte (debit + kredit) — de ligger før guarden.
+  assert.equal(financeInserts.length, 2);
+  // "Auktion afsluttet"-notifikationen (efter guarden) blev stadig sendt.
+  assert.ok(
+    notifications.some((n) => n.title === "Auktion afsluttet"),
+    "post-guard-notifikationer skal stadig sendes"
+  );
+});
+
 test("finalizeAuctionById pays the actual AI owner instead of the initiator", async () => {
   const auctionUpdates = [];
   const teamUpdates = [];

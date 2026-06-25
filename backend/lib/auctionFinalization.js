@@ -597,14 +597,26 @@ async function finalizeAuctionRecord({
         riderId: auction.rider.id,
         seasonNumber: activeSeasonNumber,
       });
-      await notifyTeamOwner(
-        effectiveBidderId,
-        expiring.type,
-        expiring.title,
-        expiring.message,
-        expiring.relatedId,
-        expiring.metadata
-      );
+      // #1872: en kosmetisk kontrakt-notifikation må ALDRIG kunne rulle en
+      // allerede-committet finalisering (køber debiteret, sælger krediteret,
+      // rytter flyttet) tilbage. Finalize er ikke atomisk på tværs af RPC-kald,
+      // så et throw her efterlod auktionen i en evig cron-retry-loop ("Udløbet"
+      // men aldrig completed). Sluges + logges; closeAuction skal altid nås.
+      try {
+        await notifyTeamOwner(
+          effectiveBidderId,
+          expiring.type,
+          expiring.title,
+          expiring.message,
+          expiring.relatedId,
+          expiring.metadata
+        );
+      } catch (notifyErr) {
+        console.error(
+          `  ⚠️  Kontraktudløb-notifikation fejlede for auktion ${auction.id} (ikke-fatal):`,
+          notifyErr.message
+        );
+      }
     }
 
     discordNotify({

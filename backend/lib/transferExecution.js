@@ -523,14 +523,24 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
       riderId: rider.id,
       seasonNumber: activeSeasonNumber,
     });
-    await notifyTeamOwner(
-      offer.buyer_team_id,
-      expiring.type,
-      expiring.title,
-      expiring.message,
-      expiring.relatedId,
-      expiring.metadata
-    );
+    // #1872: ikke-fatal — et notifikations-throw må aldrig rulle en committet
+    // transfer-execution tilbage. Samme klasse-fejl som auktion-finalize (#1872);
+    // sluges + logges. Se .claude/learnings/2026-06-25-contract-expiring-*.
+    try {
+      await notifyTeamOwner(
+        offer.buyer_team_id,
+        expiring.type,
+        expiring.title,
+        expiring.message,
+        expiring.relatedId,
+        expiring.metadata
+      );
+    } catch (notifyErr) {
+      console.error(
+        `  ⚠️  Kontraktudløb-notifikation fejlede for transfer ${offer.id} (ikke-fatal):`,
+        notifyErr.message
+      );
+    }
   }
 
   await notifyDiscordHistory({

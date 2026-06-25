@@ -78,6 +78,10 @@ async function finalizeExpiredAuctions() {
     now: new Date(),
     onError: ({ auctionId, error }) => {
       console.error(`  ❌ Failed to finalize auction ${auctionId}:`, error.message);
+      // #1872: en fastlåst auktion kørte ~25 min i en cron-retry-loop uden alarm,
+      // fordi denne sti tidligere kun console.error'ede. Surfacér nu i Sentry, så
+      // en gentaget finalize-fejl opdages med det samme i stedet for tavst.
+      sentryCapture(error, { tags: { cron: "auctions" }, extra: { auctionId } });
     },
   });
 

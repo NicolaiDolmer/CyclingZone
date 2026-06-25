@@ -8,7 +8,7 @@ Gælder også Claude Code, selvom `AGENTS.md` ikke auto-loades her: verificér r
 
 ## Auto-loaded (intet at gøre)
 
-- `~/.claude/.../memory/MEMORY.md` — HOT-tier auto-memory (~3.600 tok pr. 2026-06-25; budget-mål ≤1.500 — drevet over, trænger re-trim). Tier-disciplin i `memory/README.md`. WARM-tier: `MEMORY_REFERENCE.md` (on-demand).
+- `~/.claude/.../memory/MEMORY.md` — HOT-tier auto-memory (~2.800 tok pr. 2026-06-25, re-trimmet fra 3.600). Gate: `check-agent-token-hygiene.ps1` fejler >3.200 tok / >54 linjer. Tier-disciplin i `memory/README.md`. WARM-tier: `MEMORY_REFERENCE.md` (on-demand).
 - `.codex.local/SESSION_CONTEXT.md` — bounded, regenererbar cache af aktivt GitHub-issue (~500 tok) via `scripts/session-prefetch-issue.sh`. Ikke source of truth.
 
 ## Start (eksplicit)
@@ -38,7 +38,7 @@ Fuld doc-index: [`docs/META_DOCS_INDEX.md`](docs/META_DOCS_INDEX.md). Top-3 hits
 3. **FEATURE_STATUS.md:** opdatér hvis kontrakter eller features ændret.
 4. **PatchNotesPage.jsx:** opdatér ved enhver brugerrettet ændring (eller skriv hvorfor ikke). **Hjælp/FAQ samme rutine** (#1171): ny/ændret spilmekanik → opdatér `help.json` (en+da) eller skriv hvorfor ikke.
 5. **Postmortem:** ved bugfix → `.claude/learnings/<dato>-<slug>.md`.
-6. **Token-hygiejne:** kør `pwsh -File scripts/check-agent-token-hygiene.ps1` ved lange sessioner.
+6. **Token-hygiejne (obligatorisk ved close-out):** kør `pwsh -File scripts/check-agent-token-hygiene.ps1` — den `exit 1`'er hvis MEMORY.md/NOW.md/docs er over budget. Tilføjede du HOT-memory denne session, demotér lav-frekvens-entries til `MEMORY_REFERENCE.md` FØR du lukker. (`scripts/hooks/check-memory-budget.sh` surfacer MEMORY.md-status ved session-start når wiret ind i SessionStart-hooken.)
 
 Ingen lokal-only handoff: projekt-state, beslutninger og næste skridt skal være i GitHub (`docs/NOW.md`, issues, slice-docs) eller OneDrive-context. Lokale transcripts, Codex memories og `.codex.local/SESSION_CONTEXT.md` er caches/pointers.
 
