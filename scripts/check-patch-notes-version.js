@@ -6,6 +6,15 @@ const path = require("node:path");
 
 const PATCH_FILE = "frontend/src/data/patchNotes.js";
 const NOW_FILE = "docs/NOW.md";
+// Forward-guard mod stille core-smoke patch-notes-snapshot-drift (#1853→#1862,
+// #1864→#1874): /patch-notes åbner nyeste entry by default, så en ny top-version
+// vokser first paint forbi den maskede visual-diff-threshold. frontend-smoke er
+// kun ADVISORY → driften blokerede ikke merge og slap igennem 2×. Denne required
+// guard (kører i frontend-build) kræver at snapshots refreshes i SAMME PR.
+const SNAPSHOT_PREFIX = "frontend/tests/e2e/core-smoke.spec.js-snapshots/patch-notes-";
+// Escape-hatch til den sjældne nye top-entry der er verificeret sub-threshold:
+// sæt token'en i en commit-besked i PR'en.
+const SNAPSHOT_OPT_OUT = "[patch-notes-snapshot-ok]";
 
 function run(command, args, options = {}) {
   return execFileSync(command, args, {
@@ -55,6 +64,11 @@ function changedFiles(baseRef) {
   return diff ? diff.split(/\r?\n/).filter(Boolean) : [];
 }
 
+function commitMessages(baseRef) {
+  // To-dot range: kun commits på HEAD som ikke er i baseRef (PR'ens egne commits).
+  return tryRun("git", ["log", "--format=%B", `${baseRef}..HEAD`]);
+}
+
 function fail(message) {
   console.error(`patch-notes-check: ${message}`);
   process.exitCode = 1;
@@ -89,11 +103,27 @@ if (versions.length === 0) {
   if (patchNotesChanged && baseVersions.length > 0) {
     const currentTop = versions[0];
     const baseTop = baseVersions[0];
-    if (compareVersion(currentTop, baseTop) <= 0) {
+    const addedNewTopVersion = compareVersion(currentTop, baseTop) > 0;
+    if (!addedNewTopVersion) {
       fail(`Top PatchNotes version ${currentTop} must be greater than ${baseRef}'s ${baseTop}.`);
     }
     if (!nowChanged && eventName === "pull_request") {
       fail(`${NOW_FILE} must be updated when ${PATCH_FILE} changes.`);
+    }
+    // En ny top-version flytter /patch-notes' first paint → core-smoke-snapshots
+    // SKAL refreshes i samme PR, ellers driver de stille (advisory frontend-smoke).
+    if (addedNewTopVersion && eventName === "pull_request") {
+      const snapshotChanged = changed.some((file) => file.startsWith(SNAPSHOT_PREFIX));
+      const optedOut = commitMessages(baseRef).includes(SNAPSHOT_OPT_OUT);
+      if (!snapshotChanged && !optedOut) {
+        fail(
+          `New PatchNotes version ${currentTop} added but core-smoke snapshots were not ` +
+          `refreshed. /patch-notes opens the newest entry by default, so a new version grows ` +
+          `first paint past the visual-diff threshold. Run \`cd frontend && npm run ` +
+          `test:e2e:update\` and commit the updated ${SNAPSHOT_PREFIX}*.png files ` +
+          `(or add ${SNAPSHOT_OPT_OUT} to a commit message if the new entry is verified sub-threshold).`
+        );
+      }
     }
   }
 }
