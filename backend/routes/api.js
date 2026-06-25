@@ -285,6 +285,8 @@ import {
 import { runRaceEntryGenerator, assignTeamAcrossRaces } from "../lib/raceEntryGenerator.js";
 import { selectionSizeForRace } from "../lib/raceAutopick.js";
 import { ABILITY_KEYS as RACE_SIM_ABILITY_KEYS } from "../lib/raceSimulator.js";
+import { terrainBucket, raceTerrainBucket } from "../lib/raceTerrain.js";
+import { loadTeamStrategy, bucketSuitabilities, diffAssignments } from "../lib/raceStrategy.js";
 
 // Cache TTLs (ms). Tunable per ADR docs/decisions/cache-adr.md Phase 1.
 // Riders: 60s — ownership changes propagate within one polling cycle; explicit
@@ -1806,11 +1808,14 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
       entries: allEntries || [], windowByRace: bindingWindowByRace, excludeRaceIds: new Set(target.map((r) => r.id)),
     });
 
+    // S3: holdets strategi som deterministisk præference-lag. Ingen row → null (uændret).
+    const strategy = await loadTeamStrategy({ supabase, teamId: req.team.id, rosterIds: new Set(teamRiderIds) });
+
     const assignRaces = target.map((r) => ({
       race_id: r.id, window: bindingWindowByRace.get(r.id), stages: stagesByRace.get(r.id) || [],
       sizeRule: selectionSizeForRace(r),
     }));
-    const picksByRace = assignTeamAcrossRaces({ riders, races: assignRaces, lockedWindows });
+    const picksByRace = assignTeamAcrossRaces({ riders, races: assignRaces, lockedWindows, strategy });
 
     let regenerated = 0;
     for (const race of target) {
@@ -1829,6 +1834,237 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
       regenerated++;
     }
     res.json({ ok: true, regenerated, skipped, mode });
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Race Hub S3 — GET /api/races/strategy
+// Holdets strategi + roster + suitability pr. terræn-bucket + kommende løb (til mål-løb).
+router.get("/races/strategy", requireAuth, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const isBetaTester = await isViewerBetaTester(req);
+    const enabled = await isRaceEngineV2Enabled(supabase, { isBetaTester });
+    if (!enabled) return res.json({ enabled: false });
+
+    // Roster (løbs-berettigede ryttere) + abilities.
+    const { data: riders } = await supabase
+      .from("riders").select("id, firstname, lastname, primary_type, secondary_type, overall")
+      .eq("team_id", req.team.id).eq("is_academy", false).or("is_retired.is.null,is_retired.eq.false");
+    const rosterIds = new Set((riders || []).map((r) => r.id));
+    const riderIdList = [...rosterIds];
+    const abilityCols = ["rider_id", ...RACE_SIM_ABILITY_KEYS].join(", ");
+    const { data: abilities } = riderIdList.length
+      ? await supabase.from("rider_derived_abilities").select(abilityCols).in("rider_id", riderIdList)
+      : { data: [] };
+    const abById = new Map((abilities || []).map((a) => [a.rider_id, a]));
+
+    // Strategi (normaliseret mod roster).
+    const strategy = await loadTeamStrategy({ supabase, teamId: req.team.id, rosterIds });
+
+    // Sæsonens stage-profiler → bucket-suitability pr. rytter + kommende løb til mål-løb.
+    const { data: season } = await supabase.from("seasons").select("id, start_date").eq("status", "active").maybeSingle();
+    let suitabilities = {};
+    let upcoming = [];
+    if (season) {
+      const { data: races } = await supabase
+        .from("races").select("id, name, race_class, stages, stages_completed, status, league_division_id")
+        .eq("season_id", season.id);
+      const myRaces = (races || []).filter((r) =>
+        teamInRacePool({ teamDivisionId: req.team.league_division_id, racePoolId: r.league_division_id }));
+      const raceIds = myRaces.map((r) => r.id);
+      const { data: profs } = raceIds.length
+        ? await supabase.from("race_stage_profiles").select("race_id, profile_type, demand_vector").in("race_id", raceIds.slice(0, 1000))
+        : { data: [] };
+      const stageProfiles = (profs || []).map((p) => ({ bucket: terrainBucket(p.profile_type), demand_vector: p.demand_vector }));
+      suitabilities = bucketSuitabilities({
+        stageProfiles,
+        riders: riderIdList.map((id) => ({ rider_id: id, abilities: abById.get(id) })).filter((r) => r.abilities),
+      });
+      const profsByRace = new Map();
+      for (const p of profs || []) {
+        if (!profsByRace.has(p.race_id)) profsByRace.set(p.race_id, []);
+        profsByRace.get(p.race_id).push(p);
+      }
+      // Kommende = ikke afsluttet. "Completed" = status='completed' ELLER alle etaper kørt.
+      // Rå felter returneres; frontend afleder display-status via sin egen deriveRaceStatus (DRY).
+      const isCompleted = (r) => r.status === "completed" || (r.stages_completed ?? 0) >= (r.stages || 1);
+      upcoming = myRaces
+        .filter((r) => !isCompleted(r))
+        .map((r) => ({
+          id: r.id, name: r.name, race_class: r.race_class,
+          status: r.status, stages: r.stages, stages_completed: r.stages_completed ?? 0,
+          bucket: raceTerrainBucket(profsByRace.get(r.id) || []),
+          is_target: strategy.targetRaceIds.has(r.id),
+        }));
+    }
+
+    res.json({
+      enabled: true,
+      roster: (riders || []).map((r) => ({
+        id: r.id, name: [r.firstname, r.lastname].filter(Boolean).join(" "),
+        primaryType: r.primary_type ?? null, secondaryType: r.secondary_type ?? null,
+        overall: r.overall ?? null,
+        suitabilities: suitabilities[r.id] || {},
+      })),
+      a_chain: strategy.aChain,
+      captain_priorities: strategy.captainPriorities,
+      role_rules: strategy.roleRules,
+      target_race_ids: [...strategy.targetRaceIds],
+      upcoming,
+    });
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Race Hub S3 — PUT /api/races/strategy. Gemmer strategi (upsert) + erstatter rolle-regler.
+// Skriver IKKE entries (preview/regenerate er separate handlinger). Ukendte rider/race-ids
+// droppes tavst mod holdets roster + sæsonens løb (robust mod roster/kalender-ændringer).
+router.put("/races/strategy", requireAuth, marketWriteLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const isBetaTester = await isViewerBetaTester(req);
+    const enabled = await isRaceEngineV2Enabled(supabase, { isBetaTester });
+    if (!enabled) return res.status(409).json({ error: "selection_flag_disabled" });
+
+    const body = req.body || {};
+    const aChainIn = body.a_chain, capIn = body.captain_priorities, targetIn = body.target_race_ids, rulesIn = body.role_rules;
+    if (aChainIn != null && !Array.isArray(aChainIn)) return res.status(400).json({ error: "strategy_invalid_body" });
+    if (targetIn != null && !Array.isArray(targetIn)) return res.status(400).json({ error: "strategy_invalid_body" });
+    if (capIn != null && (typeof capIn !== "object" || Array.isArray(capIn))) return res.status(400).json({ error: "strategy_invalid_body" });
+    if (rulesIn != null && (typeof rulesIn !== "object" || Array.isArray(rulesIn))) return res.status(400).json({ error: "strategy_invalid_body" });
+
+    const { data: riders } = await supabase
+      .from("riders").select("id").eq("team_id", req.team.id).eq("is_academy", false).or("is_retired.is.null,is_retired.eq.false");
+    const rosterIds = new Set((riders || []).map((r) => r.id));
+    const { data: season } = await supabase.from("seasons").select("id").eq("status", "active").maybeSingle();
+    let raceIds = new Set();
+    if (season) {
+      const { data: races } = await supabase.from("races").select("id, league_division_id").eq("season_id", season.id);
+      raceIds = new Set((races || [])
+        .filter((r) => teamInRacePool({ teamDivisionId: req.team.league_division_id, racePoolId: r.league_division_id }))
+        .map((r) => r.id));
+    }
+    const filterRoster = (arr) => (Array.isArray(arr) ? arr : []).filter((id) => rosterIds.has(id));
+    const aChain = filterRoster(aChainIn);
+    const captain_priorities = {};
+    for (const [bucket, list] of Object.entries(capIn || {})) captain_priorities[bucket] = filterRoster(list);
+    const target_race_ids = (Array.isArray(targetIn) ? targetIn : []).filter((id) => raceIds.has(id));
+
+    const VALID = new Set(["always_captain", "always_sprint_captain_if_present"]);
+    const ruleRows = Object.entries(rulesIn || {})
+      .filter(([rid, rule]) => rosterIds.has(rid) && VALID.has(rule))
+      .map(([rider_id, role_rule]) => ({ team_id: req.team.id, rider_id, role_rule }));
+
+    const { error: upErr } = await supabase.from("team_race_strategy").upsert(
+      { team_id: req.team.id, a_chain: aChain, captain_priorities, target_race_ids, updated_at: new Date().toISOString() },
+      { onConflict: "team_id" });
+    if (upErr) return res.status(500).json({ error: upErr.message });
+
+    const { error: delErr } = await supabase.from("team_rider_role_rules").delete().eq("team_id", req.team.id);
+    if (delErr) return res.status(500).json({ error: delErr.message });
+    if (ruleRows.length) {
+      const { error: insErr } = await supabase.from("team_rider_role_rules").insert(ruleRows);
+      if (insErr) return res.status(500).json({ error: insErr.message });
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Race Hub S3 — POST /api/races/strategy/preview. Live preview-diff: kør generatoren mod
+// holdets kommende, ikke-startede, ikke-manuelle løb under den FORESLÅEDE strategi (i body,
+// samme form som PUT) og differ mod nuværende entries. Skriver intet.
+router.post("/races/strategy/preview", requireAuth, marketWriteLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const isBetaTester = await isViewerBetaTester(req);
+    const enabled = await isRaceEngineV2Enabled(supabase, { isBetaTester });
+    if (!enabled) return res.status(409).json({ error: "selection_flag_disabled" });
+
+    const { data: season } = await supabase.from("seasons").select("id").eq("status", "active").maybeSingle();
+    if (!season) return res.json({ ok: true, diff: {} });
+
+    const { data: races } = await supabase
+      .from("races").select("id, race_class, race_type, stages, stages_completed, status, league_division_id").eq("season_id", season.id);
+    const myRaces = (races || []).filter((r) =>
+      r.status === "scheduled" &&
+      teamInRacePool({ teamDivisionId: req.team.league_division_id, racePoolId: r.league_division_id }));
+    const raceIds = myRaces.map((r) => r.id);
+    if (!raceIds.length) return res.json({ ok: true, diff: {} });
+
+    const schedRows = await fetchAllScheduleRows(supabase, raceIds);
+    const schedByRace = new Map();
+    for (const s of schedRows || []) {
+      if (!schedByRace.has(s.race_id)) schedByRace.set(s.race_id, []);
+      schedByRace.get(s.race_id).push(s);
+    }
+    const bindingWindowByRace = new Map(raceIds.map((id) => [id, raceBindingWindow(schedByRace.get(id))]));
+
+    const { data: riders } = await supabase
+      .from("riders").select("id").eq("team_id", req.team.id).eq("is_academy", false).or("is_retired.is.null,is_retired.eq.false");
+    const teamRiderIds = (riders || []).map((r) => r.id);
+    const abilityCols = ["rider_id", ...RACE_SIM_ABILITY_KEYS].join(", ");
+    const [{ data: abilities }, { data: conditions }, { data: allEntries }] = await Promise.all([
+      supabase.from("rider_derived_abilities").select(abilityCols).in("rider_id", teamRiderIds),
+      supabase.from("rider_condition").select("rider_id, fatigue").in("rider_id", teamRiderIds),
+      supabase.from("race_entries").select("race_id, rider_id, race_role, is_auto_filled").eq("team_id", req.team.id),
+    ]);
+    const abById = new Map((abilities || []).map((a) => [a.rider_id, a]));
+    const fatById = new Map((conditions || []).map((c) => [c.rider_id, c.fatigue]));
+    const riderObjs = teamRiderIds
+      .map((id) => ({ rider_id: id, abilities: abById.get(id), fatigue: fatById.get(id) ?? 0 }))
+      .filter((r) => r.abilities);
+
+    const { data: profs } = await supabase.from("race_stage_profiles")
+      .select("race_id, stage_number, profile_type, finale_type, demand_vector").in("race_id", raceIds.slice(0, 1000));
+    const stagesByRace = new Map();
+    for (const p of profs || []) {
+      if (!stagesByRace.has(p.race_id)) stagesByRace.set(p.race_id, []);
+      stagesByRace.get(p.race_id).push(p);
+    }
+    for (const arr of stagesByRace.values()) arr.sort((a, b) => (a.stage_number || 0) - (b.stage_number || 0));
+
+    // Target = kommende, ikke-startede, ikke-manuelle løb. Manuelle/startede → lockedWindows.
+    const manualRaceIds = new Set((allEntries || []).filter((e) => e.is_auto_filled === false).map((e) => e.race_id));
+    const target = myRaces.filter((r) => (r.stages_completed ?? 0) === 0 && !manualRaceIds.has(r.id) && bindingWindowByRace.get(r.id));
+    const lockedWindows = lockedWindowsFromEntries({
+      entries: allEntries || [], windowByRace: bindingWindowByRace, excludeRaceIds: new Set(target.map((r) => r.id)),
+    });
+
+    // Normalisér foreslået strategi mod roster + sæson-løb.
+    const rosterIds = new Set(teamRiderIds);
+    const filterRoster = (arr) => (Array.isArray(arr) ? arr : []).filter((id) => rosterIds.has(id));
+    const capIn = req.body?.captain_priorities || {};
+    const captainPriorities = {};
+    for (const [b, list] of Object.entries(capIn)) captainPriorities[b] = filterRoster(list);
+    const proposedStrategy = {
+      aChain: filterRoster(req.body?.a_chain),
+      captainPriorities,
+      roleRules: Object.fromEntries(Object.entries(req.body?.role_rules || {}).filter(([rid]) => rosterIds.has(rid))),
+      targetRaceIds: new Set((Array.isArray(req.body?.target_race_ids) ? req.body.target_race_ids : []).filter((id) => raceIds.includes(id))),
+    };
+
+    const assignRaces = target.map((r) => ({
+      race_id: r.id, window: bindingWindowByRace.get(r.id), stages: stagesByRace.get(r.id) || [],
+      sizeRule: selectionSizeForRace(r),
+    }));
+    const proposed = assignTeamAcrossRaces({ riders: riderObjs, races: assignRaces, lockedWindows, strategy: proposedStrategy });
+
+    const current = {};
+    for (const e of allEntries || []) {
+      if (!target.find((r) => r.id === e.race_id)) continue;
+      if (!current[e.race_id]) current[e.race_id] = [];
+      current[e.race_id].push({ rider_id: e.rider_id, race_role: e.race_role });
+    }
+    const diff = diffAssignments({ current, proposed });
+    res.json({ ok: true, diff });
   } catch (err) {
     captureException(err);
     res.status(500).json({ error: err.message });
