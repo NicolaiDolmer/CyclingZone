@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { assignTeamAcrossRaces, runRaceEntryGenerator } from "./raceEntryGenerator.js";
+import { raceTerrainBucket } from "./raceTerrain.js";
 
 const ab = (v) => ({
   climbing: v, time_trial: v, sprint: v, punch: v, endurance: v,
@@ -104,6 +105,7 @@ function emptyState() {
     races: [], race_stage_schedule: [], race_stage_profiles: [],
     teams: [], riders: [], rider_derived_abilities: [], rider_condition: [],
     race_entries: [], race_withdrawals: [],
+    team_race_strategy: [], team_rider_role_rules: [],
   };
 }
 
@@ -286,4 +288,79 @@ test("runRaceEntryGenerator: dryRun=true skriver intet", async () => {
   assert.equal(state.race_entries.length, 0, "race_entries uændret i dry-run");
   assert.equal(res.dryRun, true);
   assert.ok(res.generated > 0, "preview-count > 0");
+});
+
+// ── S3 strategi-lag (assignTeamAcrossRaces) ───────────────────────────────────
+
+test("assignTeamAcrossRaces: strategy=null ≡ ingen strategy (idempotens)", () => {
+  const races = [
+    { race_id: "A", window: { start: 100, end: 200 }, stages: [flat], sizeRule: { min: 6, max: 6 } },
+    { race_id: "B", window: { start: 300, end: 400 }, stages: [flat], sizeRule: { min: 6, max: 6 } },
+  ];
+  const a = assignTeamAcrossRaces({ riders, races });
+  const b = assignTeamAcrossRaces({ riders, races, strategy: null });
+  assert.deepEqual(a, b);
+});
+
+test("assignTeamAcrossRaces: tom strategi ≡ null-adfærd", () => {
+  const races = [{ race_id: "A", window: { start: 100, end: 200 }, stages: [flat], sizeRule: { min: 6, max: 6 } }];
+  const empty = { aChain: [], captainPriorities: {}, roleRules: {}, targetRaceIds: new Set() };
+  assert.deepEqual(assignTeamAcrossRaces({ riders, races, strategy: empty }), assignTeamAcrossRaces({ riders, races }));
+});
+
+test("assignTeamAcrossRaces: mål-løb får A-kæde-ryttere (selv svage)", () => {
+  // r9 er svagest af de 10; A-kæde-rang 0 + mål-løb → med på A.
+  const races = [{ race_id: "A", window: { start: 100, end: 200 }, stages: [flat], sizeRule: { min: 6, max: 6 } }];
+  const strategy = { aChain: ["r9", "r8"], captainPriorities: {}, roleRules: {}, targetRaceIds: new Set(["A"]) };
+  const out = assignTeamAcrossRaces({ riders, races, strategy });
+  const ids = out.A.map((e) => e.rider_id);
+  assert.ok(ids.includes("r9") && ids.includes("r8"), "A-kæde på mål-løb");
+});
+
+test("assignTeamAcrossRaces: kaptajn-prioritet bruger løbets terræn-bucket", () => {
+  const mtn = { profile_type: "mountain", demand_vector: { climbing: 0.9, randomness: 0.5 } };
+  const races = [{ race_id: "A", window: { start: 100, end: 200 }, stages: [mtn], sizeRule: { min: 6, max: 6 } }];
+  // captainPriorities pr. bucket: mountain → r3 først.
+  const strategy = { aChain: [], captainPriorities: { mountain: ["r3"] }, roleRules: {}, targetRaceIds: new Set() };
+  const out = assignTeamAcrossRaces({ riders, races, strategy });
+  assert.equal(out.A.find((e) => e.race_role === "captain")?.rider_id, "r3");
+  assert.equal(raceTerrainBucket(races[0].stages), "mountain"); // sanity
+});
+
+// ── S3 strategi-loading (runRaceEntryGenerator) ───────────────────────────────
+
+test("runRaceEntryGenerator: holdets A-kæde-mål-løb prioriterer kerne-ryttere", async () => {
+  const state = emptyState();
+  const seasonId = "season1";
+  state.races = [{ id: "A", season_id: seasonId, race_class: "Class2", league_division_id: 1 }];
+  state.race_stage_schedule = [{ race_id: "A", stage_number: 1, scheduled_at: "2026-07-01T10:00:00Z" }];
+  state.race_stage_profiles = [{ race_id: "A", ...flatProfile(1) }];
+  state.teams = [{ id: "t1", is_test_account: false, is_frozen: false, league_division_id: 1 }];
+  seedTeamRiders(state, "t1", 8); // t1-r0 stærkest … t1-r7 svagest
+  // A-kæde: svageste rytter som rang 0 + A er mål-løb → han SKAL udtages.
+  state.team_race_strategy = [{ team_id: "t1", a_chain: ["t1-r7"], captain_priorities: {}, target_race_ids: ["A"] }];
+  state.team_rider_role_rules = [];
+
+  const supabase = makeSupabase(state);
+  await runRaceEntryGenerator({ supabase, seasonId, dryRun: false });
+  const aIds = state.race_entries.filter((e) => e.race_id === "A").map((e) => e.rider_id);
+  assert.ok(aIds.includes("t1-r7"), "A-kæde-rytter på mål-løb trods lav score");
+});
+
+test("runRaceEntryGenerator: hold UDEN strategi-row → uændret (strategy=null)", async () => {
+  const state = emptyState();
+  const seasonId = "season1";
+  state.races = [{ id: "A", season_id: seasonId, race_class: "Class2", league_division_id: 1 }];
+  state.race_stage_schedule = [{ race_id: "A", stage_number: 1, scheduled_at: "2026-07-01T10:00:00Z" }];
+  state.race_stage_profiles = [{ race_id: "A", ...flatProfile(1) }];
+  state.teams = [{ id: "t1", is_test_account: false, is_frozen: false, league_division_id: 1 }];
+  seedTeamRiders(state, "t1", 8);
+  state.team_race_strategy = [];
+  state.team_rider_role_rules = [];
+
+  const supabase = makeSupabase(state);
+  await runRaceEntryGenerator({ supabase, seasonId, dryRun: false });
+  const aIds = state.race_entries.filter((e) => e.race_id === "A").map((e) => e.rider_id).sort();
+  // Class2 = 6 ryttere; uden strategi = top-6 på score = t1-r0..t1-r5.
+  assert.deepEqual(aIds, ["t1-r0", "t1-r1", "t1-r2", "t1-r3", "t1-r4", "t1-r5"]);
 });
