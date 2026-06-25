@@ -107,7 +107,11 @@ test("board surfacer fejlbesked når en udtagelse afvises (#1823)", async ({ pag
   await expect(board).toBeVisible();
 
   // Fjern r0 fra race-a (× = "Fjern rytter") → PUT fejler → toast med min/max (6).
-  await board.getByRole("button", { name: /Fjern rytter/ }).first().click();
+  // force: testen verificerer fejl-toasten (handler→PUT→toast); det lille ×-target kan
+  // på smal mobil-viewport være pointer-interceptet af nabolayout, så vi dispatcher direkte.
+  const removeBtn = board.getByRole("button", { name: /Fjern rytter/ }).first();
+  await removeBtn.scrollIntoViewIfNeeded();
+  await removeBtn.click({ force: true });
   const alert = board.getByRole("alert");
   await expect(alert).toBeVisible();
   await expect(alert).toContainText(/6/); // "Vælg mellem 6 og 6 ryttere" (ikke literal {min})
