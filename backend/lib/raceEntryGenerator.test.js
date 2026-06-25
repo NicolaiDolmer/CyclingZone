@@ -200,6 +200,71 @@ test("runRaceEntryGenerator: afmeldte hold får ingen entries", async () => {
   assert.ok(res.skipped >= 1, "afmeldingen tæller som skipped (race,team)-par");
 });
 
+test("runRaceEntryGenerator: to løb samme CET-dag deler ALDRIG en rytter (#1823 regression)", async () => {
+  const state = emptyState();
+  const seasonId = "season1";
+  // Endagsløb H kl. 22:00 CEST + etapeløb L (etape 1 kl. 23:00 CEST samme aften, etape 2 dagen efter).
+  // Med det gamle instant-vindue overlappede de IKKE (H slutter 22:00 før L starter 23:00),
+  // så generatoren dobbeltbookede de stærkeste ryttere i begge — præcis prod-bug'en.
+  state.races = [
+    { id: "H", season_id: seasonId, race_class: "Class2", league_division_id: 1 },
+    { id: "L", season_id: seasonId, race_class: "Class2", league_division_id: 1 },
+  ];
+  state.race_stage_schedule = [
+    { race_id: "H", stage_number: 1, scheduled_at: "2026-06-23T20:00:00Z" }, // 22:00 CEST 23/6
+    { race_id: "L", stage_number: 1, scheduled_at: "2026-06-23T21:00:00Z" }, // 23:00 CEST 23/6
+    { race_id: "L", stage_number: 2, scheduled_at: "2026-06-24T13:00:00Z" }, // 24/6
+  ];
+  state.race_stage_profiles = [
+    { race_id: "H", ...flatProfile(1) },
+    { race_id: "L", ...flatProfile(1) }, { race_id: "L", ...flatProfile(2) },
+  ];
+  state.teams = [{ id: "t1", is_test_account: false, is_frozen: false, league_division_id: 1 }];
+  seedTeamRiders(state, "t1", 12); // stor nok trup til 6+6 distinkte
+
+  const supabase = makeSupabase(state);
+  await runRaceEntryGenerator({ supabase, seasonId, dryRun: false });
+
+  const hRiders = new Set(state.race_entries.filter((e) => e.race_id === "H").map((e) => e.rider_id));
+  const lRiders = state.race_entries.filter((e) => e.race_id === "L").map((e) => e.rider_id);
+  assert.ok(hRiders.size > 0 && lRiders.length > 0, "begge løb fik et hold");
+  for (const rid of lRiders) assert.ok(!hRiders.has(rid), `${rid} dobbeltbooket H↔L (samme CET-dag)`);
+});
+
+test("runRaceEntryGenerator: igangværende løb (stages_completed>0) regenereres IKKE + dets ryttere låses (#1825)", async () => {
+  const state = emptyState();
+  const seasonId = "season1";
+  // L = igangværende etapeløb (3 etaper kørt), B = ikke-startet, samme dag → overlap.
+  state.races = [
+    { id: "L", season_id: seasonId, race_class: "Class2", league_division_id: 1, stages_completed: 3 },
+    { id: "B", season_id: seasonId, race_class: "Class2", league_division_id: 1, stages_completed: 0 },
+  ];
+  state.race_stage_schedule = [
+    { race_id: "L", stage_number: 1, scheduled_at: "2026-07-01T10:00:00Z" },
+    { race_id: "B", stage_number: 1, scheduled_at: "2026-07-01T14:00:00Z" }, // samme dag → binder
+  ];
+  state.race_stage_profiles = [{ race_id: "L", ...flatProfile(1) }, { race_id: "B", ...flatProfile(1) }];
+  state.teams = [{ id: "t1", is_test_account: false, is_frozen: false, league_division_id: 1 }];
+  seedTeamRiders(state, "t1", 8);
+  // L har allerede en (auto-filled) igangværende lineup.
+  state.race_entries = [
+    { race_id: "L", rider_id: "t1-r0", team_id: "t1", race_role: "captain", is_auto_filled: true },
+    { race_id: "L", rider_id: "t1-r1", team_id: "t1", race_role: "helper", is_auto_filled: true },
+  ];
+
+  const supabase = makeSupabase(state);
+  await runRaceEntryGenerator({ supabase, seasonId, dryRun: false });
+
+  // L's igangværende lineup er URØRT — præcis de oprindelige ryttere, ikke regenereret.
+  const lEntries = state.race_entries.filter((e) => e.race_id === "L");
+  assert.deepEqual(lEntries.map((e) => e.rider_id).sort(), ["t1-r0", "t1-r1"], "L's lineup uændret");
+  // B er genereret, men deler ALDRIG en rytter med det frosne L (binding-lås).
+  const lRiders = new Set(lEntries.map((e) => e.rider_id));
+  const bRiders = state.race_entries.filter((e) => e.race_id === "B" && e.is_auto_filled === true);
+  assert.ok(bRiders.length > 0, "B genereret");
+  for (const e of bRiders) assert.ok(!lRiders.has(e.rider_id), `${e.rider_id} dobbeltbooket med igangværende L`);
+});
+
 test("runRaceEntryGenerator: dryRun=true skriver intet", async () => {
   const state = emptyState();
   const seasonId = "season1";

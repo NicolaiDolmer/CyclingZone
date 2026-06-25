@@ -4,12 +4,17 @@
     "timeline": { "dayOf": "Day {day} of {total}", "youAreHere": "you are here", "prev": "Previous day", "next": "Next day" },
     "heading": "Squad distribution",
     "overlap": "{count} overlapping races today",
-    "status": { "full": "{selected} / {target} selected", "understaffed": "{selected} / {target} · understaffed", "withdrawn": "Withdrawn" },
-    "pool": { "title": "Available riders · {count}-squad", "autofill": "Auto-fill again", "bound": "Already racing in an overlapping race" },
-    "column": { "add": "Add from available", "withdraw": "Withdraw", "reenter": "Re-enter" },
-    "popover": { "title": "Add to which race?", "none": "No race available for this rider today" },
+    "status": { "full": "{selected} / {target} selected", "understaffed": "{selected} / {target} · understaffed", "withdrawn": "Withdrawn", "locked": "Lineup locked" },
+    "pool": { "title": "Available riders · {count}-squad", "autofill": "Auto-fill", "fillMissing": "Fill gaps", "fillAll": "Rebuild all", "bound": "Already racing in an overlapping race" },
+    "column": { "add": "Add from available", "withdraw": "Withdraw", "reenter": "Re-enter", "remove": "Remove rider" },
+    "popover": { "title": "Add to which race?", "none": "No race available for this rider today", "understaffed": "needs riders" },
+    "role": { "hint": "Tap a rider to set captain or role", "captain": "Captain", "sprintCaptain": "Sprint captain", "hunter": "Breakaway hunter", "rider": "Rider only" },
+    "fit": { "label": "Fit", "strong": "Strong", "average": "Average", "poor": "Poor" },
+    "boundNamed": "Locked · racing in {race}",
+    "lineupLocked": { "title": "Lineup locked", "note": "This race has started. The lineup is final." },
+    "dismiss": "Dismiss",
     "empty": "No races to plan for this day.",
-    "regenerateWarn": "This resets your manual picks on today's races to the assistant's suggestion. Continue?"
+    "regenerateWarn": "This replaces every pick on today's races with the assistant's suggestion. Continue?"
   },
   "title": "Races",
   "subtitle": {
@@ -53,8 +58,10 @@
   "status": {
     "completed": "Completed",
     "active": "Live",
+    "live": "Live",
     "scheduled": "Upcoming"
   },
+  "liveProgress": "Stage {done} / {total}",
   "common": {
     "free": "Free",
     "dash": "—",
@@ -185,6 +192,8 @@
       "selection_rider_not_on_team": "You can only select your own riders.",
       "selection_duplicate_rider": "Each rider can only be selected once.",
       "selection_race_not_open": "Selection is closed for this race.",
+      "selection_race_started": "This race has started, so the lineup is locked.",
+      "selection_rider_bound": "This rider is already racing in an overlapping race.",
       "selection_flag_disabled": "Team selection isn't active yet.",
       "selection_invalid_body": "Couldn't save the selection. Try again.",
       "selection_wrong_pool": "You can only enter races in your own division.",

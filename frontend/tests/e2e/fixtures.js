@@ -16,11 +16,23 @@ export const TEST_TEAM = {
   name: "E2E Racing",
   manager_name: "Playwright Manager",
   division: 2,
+  league_division_id: 2,
   balance: 500000,
   sponsor_income: 240000,
   is_ai: false,
   is_test_account: true,
 };
+
+// #1829: puljens løb til den per-pulje løbsdage-tæller på dashboardet. Returneres KUN
+// for tæller-queryen (league_division_id=eq-filter), så "kommende løb"-listen + RacesPage
+// stadig ser en tom races-tabel (uændrede snapshots dér).
+const POOL_RACES = [
+  { status: "completed", stages: 1, stages_completed: 1, league_division_id: 2 },
+  { status: "completed", stages: 1, stages_completed: 1, league_division_id: 2 },
+  { status: "scheduled", stages: 7, stages_completed: 2, league_division_id: 2 },
+  { status: "scheduled", stages: 1, stages_completed: 0, league_division_id: 2 },
+  { status: "scheduled", stages: 1, stages_completed: 0, league_division_id: 2 },
+];
 
 const RIVAL_TEAM = {
   id: "team-rival",
@@ -214,13 +226,15 @@ function restRows(table, requestUrl = "") {
       return AUCTIONS;
     case "roadmap_items":
       return ROADMAP_ITEMS;
+    case "races":
+      // Per-pulje tæller-query (#1829) → puljens løb; alle andre races-queries → tom.
+      return url.search.includes("league_division_id=eq") ? POOL_RACES : [];
     case "auction_proxy_bids":
     case "finance_transactions":
     case "loan_agreements":
     case "notifications":
     case "player_events":
     case "race_results":
-    case "races":
     case "rider_watchlist":
     case "roadmap_votes":
     case "season_standings":

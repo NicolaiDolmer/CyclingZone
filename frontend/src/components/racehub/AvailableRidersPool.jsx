@@ -1,7 +1,7 @@
-// Race Hub Fase 1 — "ledige ryttere"-pulje. Hele 12-truppen som chips; ryttere der
-// allerede er udtaget til et af dagens (overlappende) løb er grånet + låst (én rytter/
-// ét løb). Klik en ledig chip → popover med hvilket løb. "Auto-udfyld igen" gen-kører
-// assistenten for dagens løb.
+// Race Hub Fase 1 — "ledige ryttere"-pulje. Hele truppen som chips; ryttere udtaget til
+// et af dagens (overlappende) løb er grånet + låst (én rytter/ét løb, inkl. frosne løb).
+// Klik en ledig chip → smart popover. Auto-udfyld er to-tilstands (#1823 D1): "Udfyld
+// manglende" (bevarer manuelle) eller "Genopbyg alt" (overskriver alt).
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import AddRiderPopover from "./AddRiderPopover.jsx";
@@ -10,15 +10,25 @@ import { LockIcon } from "../ui";
 export default function AvailableRidersPool({ roster, columns, bindingMap, onAddRiderToRace, onRegenerate, busy }) {
   const { t } = useTranslation("races");
   const [openRiderId, setOpenRiderId] = useState(null);
-  // En rytter er låst i puljen hvis han er udtaget til et af dagens løb (committed —
-  // og dermed bundet væk fra de øvrige overlappende løb).
-  const lockedIds = new Set(columns.flatMap((c) => c.selection?.rider_ids || []));
+  // Låst i puljen = udtaget til et af dagens løb (committed → bundet væk fra de øvrige).
+  // Navngiv bindingen (#1823 WC): hvilket løb kører rytteren? (første kolonne han er i).
+  const raceByRider = new Map();
+  for (const c of columns) {
+    for (const id of c.selection?.rider_ids || []) if (!raceByRider.has(id)) raceByRider.set(id, c.name);
+  }
+  const lockedIds = new Set(raceByRider.keys());
   return (
     <div className="border border-cz-border rounded-cz bg-cz-subtle">
-      <div className="px-3 py-2 border-b border-cz-border flex items-center justify-between">
+      <div className="px-3 py-2 border-b border-cz-border flex items-center justify-between gap-2">
         <span className="text-[11px] uppercase tracking-wide text-cz-2">{t("racehub.pool.title", { count: roster.length })}</span>
-        <button type="button" onClick={onRegenerate} disabled={busy}
-          className="text-xs text-cz-accent-t hover:underline disabled:opacity-50">{t("racehub.pool.autofill")}</button>
+        <span className="flex items-center gap-1.5">
+          <span className="text-[10px] uppercase tracking-wide text-cz-3">{t("racehub.pool.autofill")}</span>
+          <button type="button" onClick={() => onRegenerate("missing")} disabled={busy}
+            className="text-xs text-cz-accent-t hover:underline disabled:opacity-50">{t("racehub.pool.fillMissing")}</button>
+          <span className="text-cz-border" aria-hidden="true">·</span>
+          <button type="button" onClick={() => onRegenerate("all")} disabled={busy}
+            className="text-xs text-cz-3 hover:text-cz-1 hover:underline disabled:opacity-50">{t("racehub.pool.fillAll")}</button>
+        </span>
       </div>
       <div className="flex flex-wrap gap-2 p-3">
         {roster.map((r) => {
@@ -28,7 +38,7 @@ export default function AvailableRidersPool({ roster, columns, bindingMap, onAdd
               <button
                 type="button"
                 disabled={locked || busy}
-                title={locked ? t("racehub.pool.bound") : undefined}
+                title={locked ? t("racehub.boundNamed", { race: raceByRider.get(r.id) }) : undefined}
                 onClick={() => setOpenRiderId(openRiderId === r.id ? null : r.id)}
                 className={`flex items-center gap-1 text-xs px-2.5 py-1 rounded-full border ${
                   locked

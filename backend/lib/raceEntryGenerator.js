@@ -5,7 +5,7 @@
 // stabilt på vindue-start, så race_id). Pure — ingen DB.
 
 import { autopickTeamSelection, selectionSizeForRace } from "./raceAutopick.js";
-import { windowsOverlap, raceTimeWindow } from "./raceBinding.js";
+import { windowsOverlap, raceBindingWindow } from "./raceBinding.js";
 import { ABILITY_KEYS } from "./raceSimulator.js";
 
 /**
@@ -80,10 +80,14 @@ async function selectInChunks({ supabase, table, columns, inColumn, ids, extra =
 export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true }) {
   // 1. Sæsonens løb.
   const { data: races, error: raceErr } = await supabase
-    .from("races").select("id, race_class, league_division_id").eq("season_id", seasonId);
+    .from("races").select("id, race_class, league_division_id, stages_completed").eq("season_id", seasonId);
   if (raceErr) throw new Error(`races: ${raceErr.message}`);
   if (!races || !races.length) return { dryRun, races: 0, teams: 0, generated: 0, skipped: 0 };
   const raceIds = races.map((r) => r.id);
+  // Frys (#1825): et igangværende etapeløb (stages_completed>0) må ALDRIG regenereres —
+  // dets trup er låst midt i afviklingen. Vi springer det over for ALLE hold og låser
+  // dets ryttere, så et overlappende ikke-startet løb ikke dobbeltbooker dem.
+  const startedRaceIds = new Set((races || []).filter((r) => (r.stages_completed ?? 0) > 0).map((r) => r.id));
 
   // 2. Tidsvinduer pr. løb (fra race_stage_schedule). Løb uden vindue kan ikke binde.
   const { data: schedRows, error: schedErr } = await selectInChunks({
@@ -96,8 +100,10 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
     if (!schedByRace.has(row.race_id)) schedByRace.set(row.race_id, []);
     schedByRace.get(row.race_id).push(row);
   }
+  // Binding-vindue (dag-granulært): én rytter pr. CET-dag. Instant-vinduer (raceTimeWindow)
+  // fik to samme-dag-løb til ikke at overlappe → dobbeltbooking (#1823).
   const windowByRace = new Map();
-  for (const id of raceIds) windowByRace.set(id, raceTimeWindow(schedByRace.get(id)));
+  for (const id of raceIds) windowByRace.set(id, raceBindingWindow(schedByRace.get(id)));
 
   // 3. Etapeprofiler pr. løb (autopick scorer på dem), sorteret på stage_number.
   const { data: profileRows, error: profileErr } = await selectInChunks({
@@ -146,12 +152,18 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
   if (entryErr) throw new Error(`race_entries (manual scan): ${entryErr.message}`);
   const manualByRaceTeam = new Set();
   const manualRidersByRaceTeam = new Map(); // "race|team" → [rider_id]
+  const startedRidersByRaceTeam = new Map(); // "race|team" → [rider_id] (igangværende løb)
   for (const e of entryRows || []) {
+    const key = `${e.race_id}|${e.team_id}`;
     if (e.is_auto_filled === false) {
-      const key = `${e.race_id}|${e.team_id}`;
       manualByRaceTeam.add(key);
       if (!manualRidersByRaceTeam.has(key)) manualRidersByRaceTeam.set(key, []);
       manualRidersByRaceTeam.get(key).push(e.rider_id);
+    }
+    // Igangværende løb: alle ryttere (auto eller manuel) låses så de ikke dobbeltbookes.
+    if (startedRaceIds.has(e.race_id)) {
+      if (!startedRidersByRaceTeam.has(key)) startedRidersByRaceTeam.set(key, []);
+      startedRidersByRaceTeam.get(key).push(e.rider_id);
     }
   }
 
@@ -221,10 +233,12 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
         const key = `${race.id}|${team.id}`;
         const isWithdrawn = withdrawnByRace.get(race.id)?.has(team.id);
         const hasManual = manualByRaceTeam.has(key);
-        if (isWithdrawn || hasManual) {
+        const isStarted = startedRaceIds.has(race.id);
+        if (isWithdrawn || hasManual || isStarted) {
           skipped += 1;
-          // Et manuelt løb låser stadig sine ryttere i sit tidsvindue (afmeldte gør ikke).
+          // Manuelt ELLER igangværende løb låser sine ryttere i sit vindue (afmeldte gør ikke).
           if (hasManual) lockedWindows.push({ window, riderIds: manualRidersByRaceTeam.get(key) || [] });
+          else if (isStarted) lockedWindows.push({ window, riderIds: startedRidersByRaceTeam.get(key) || [] });
           continue;
         }
         teamRaces.push({

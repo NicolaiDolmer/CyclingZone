@@ -12,6 +12,7 @@ import { formatNumber } from "../lib/intl";
 import { fetchAllRows } from "../lib/supabasePagination";
 import { logEvent } from "../lib/logEvent";
 import { profileShape, profileLabelKey, finaleLabelKey } from "../lib/stageProfileConfig";
+import { deriveRaceStatus } from "../lib/raceHubLogic.js";
 
 // #959 Etape-resultater V1 — detaljeret pr.-etape-visning.
 //
@@ -204,7 +205,24 @@ export default function RaceDetailPage() {
       {/* Header */}
       <div>
         <Link to="/races?tab=library" className="text-xs text-cz-accent-t hover:underline mb-2 inline-block">{t("detail.backToLibrary")}</Link>
-        <h1 className="text-xl font-bold text-cz-1">{race.name}</h1>
+        <div className="flex items-center gap-2 flex-wrap">
+          <h1 className="text-xl font-bold text-cz-1">{race.name}</h1>
+          {(() => {
+            // Visnings-status (#1828): igangværende etapeløb vises "Live" + etape-fremdrift.
+            const ds = deriveRaceStatus(race.status, race.stages_completed, race.stages);
+            return (
+              <span className={`inline-flex items-center gap-1.5 text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full border
+                ${ds === "completed" ? "bg-cz-success-bg text-cz-success border-cz-success/30"
+                  : ds === "live" ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
+                  : "bg-cz-subtle text-cz-3 border-cz-border"}`}>
+                {t(`status.${ds}`)}
+                {ds === "live" && race.race_type === "stage_race" && (
+                  <span className="font-mono normal-case tracking-normal">· {t("liveProgress", { done: race.stages_completed ?? 0, total: race.stages })}</span>
+                )}
+              </span>
+            );
+          })()}
+        </div>
         <p className="text-cz-3 text-sm">
           {race.race_type === "stage_race"
             ? t("raceType.stageRaceWithStages", { count: race.stages })
@@ -235,7 +253,16 @@ export default function RaceDetailPage() {
 
       {/* #1307: holdudtagelse for kommende løb — panelet gater selv på
           race-engine-flaget (renderer intet når backend siger enabled=false). */}
-      {race.status === "scheduled" && <RaceSelectionPanel raceId={race.id} />}
+      {race.status === "scheduled" && (
+        deriveRaceStatus(race.status, race.stages_completed, race.stages) === "live"
+          ? (
+            <div className="bg-cz-card border border-cz-border rounded-cz px-4 py-3">
+              <p className="text-sm font-semibold text-cz-1">{t("racehub.lineupLocked.title")}</p>
+              <p className="text-xs text-cz-3 mt-0.5">{t("racehub.lineupLocked.note")}</p>
+            </div>
+          )
+          : <RaceSelectionPanel raceId={race.id} />
+      )}
 
       {!hasAnyResults && (
         <div className="bg-cz-card border border-cz-border rounded-cz p-10 text-center text-cz-3">

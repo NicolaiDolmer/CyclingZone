@@ -2,8 +2,15 @@
 // Race-hub Fase 0a: rytter-binding. En rytter kan kun køre ÉT løb ad gangen.
 // Et etapeløb binder fra første til sidste etape (hele tidsvinduet).
 
+import { copenhagenDateString } from "./copenhagenTime.js";
+
+const DAY_MS = 86_400_000;
+
 // Et løbs tidsvindue = [tidligste etape-tid, seneste etape-tid] som epoch-ms.
 // Tom/ugyldig schedule → null (løbet kan ikke binde noget).
+// BEMÆRK: bruges KUN til DISPLAY (hvilke løb er kolonner på den valgte dag, sæson-
+// tidslinje). Til BINDING/overlap — om to løb konflikter for en rytter — brug
+// raceBindingWindow (dag-granulær), så samme-dag-løb regnes som overlappende (#1823).
 export function raceTimeWindow(scheduleRows) {
   if (!scheduleRows?.length) return null;
   const times = scheduleRows
@@ -11,6 +18,33 @@ export function raceTimeWindow(scheduleRows) {
     .filter((t) => Number.isFinite(t));
   if (!times.length) return null;
   return { start: Math.min(...times), end: Math.max(...times) };
+}
+
+// CET-dag-ordinal for ét scheduled_at: stabilt heltal pr. dansk kalenderdag.
+// DST-robust — vi udleder den danske DATO (copenhagenDateString) og mapper den til
+// et dag-nummer; den faktiske UTC-offset (CET vs CEST) er irrelevant. UTC-midnat for
+// en dato er altid et multiplum af DAY_MS, så divisionen giver et eksakt heltal.
+function cetDayOrdinal(scheduledAt) {
+  const ms = Date.parse(scheduledAt);
+  if (!Number.isFinite(ms)) return null;
+  const dayStr = copenhagenDateString(new Date(ms)); // "YYYY-MM-DD" i dansk tid
+  return Date.parse(`${dayStr}T00:00:00Z`) / DAY_MS;
+}
+
+// Binding-vindue (#1823): en rytter kan kun køre ét løb pr. CET-KALENDERDAG
+// (design §2/§3 — "hver division kører typisk 2 løb samme dag … én rytter ét løb").
+// Returnerer { start, end } i CET-dag-ordinaler (heltal). Et endagsløb optager hele
+// sin danske dag (start===end); et etapeløb optager fra første til sidste etapes
+// danske dag. To løb konflikter iff dag-spans overlapper (windowsOverlap er unit-
+// agnostisk). Erstatter raceTimeWindow PRÆCIS hvor binding afgøres — instant-vinduer
+// fik to samme-dag-løb til ikke at overlappe → dobbeltbooking. Tom/ugyldig → null.
+export function raceBindingWindow(scheduleRows) {
+  if (!scheduleRows?.length) return null;
+  const ordinals = scheduleRows
+    .map((r) => cetDayOrdinal(r.scheduled_at))
+    .filter((o) => Number.isFinite(o));
+  if (!ordinals.length) return null;
+  return { start: Math.min(...ordinals), end: Math.max(...ordinals) };
 }
 
 // To vinduer overlapper hvis de deler mindst ét tidspunkt (inklusiv ender —
@@ -81,7 +115,7 @@ export async function loadTeamBindingContext({ supabase, race, teamId }) {
   const { data: thisSched, error: e1 } = await supabase
     .from("race_stage_schedule").select("race_id, scheduled_at").eq("race_id", race.id);
   if (e1) throw new Error(`race_stage_schedule (this): ${e1.message}`);
-  const thisWindow = raceTimeWindow(thisSched);
+  const thisWindow = raceBindingWindow(thisSched);
 
   // Holdets entries i ANDRE løb end dette.
   const { data: entries, error: e2 } = await supabase
@@ -107,7 +141,7 @@ export async function loadTeamBindingContext({ supabase, race, teamId }) {
   }
 
   const otherRaces = otherRaceIds
-    .map((rid) => ({ window: raceTimeWindow(schedByRace.get(rid)), riderIds: ridersByRace.get(rid) }))
+    .map((rid) => ({ window: raceBindingWindow(schedByRace.get(rid)), riderIds: ridersByRace.get(rid) }))
     .filter((o) => o.window); // løb uden schedule kan ikke binde
   return { thisWindow, otherRaces };
 }

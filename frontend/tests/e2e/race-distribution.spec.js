@@ -44,10 +44,7 @@ const DISTRIBUTION = {
   bindingMap: { r0: ["race-a"] },
 };
 
-test("trup-fordeling-board viser overlappende løb + låst rytter i puljen", async ({ page }) => {
-  await stabilizePage(page);
-  await installNetworkMocks(page);
-
+async function mockDistribution(page, dist = DISTRIBUTION) {
   await page.route("**/api/races/distribution**", (route) => {
     const request = route.request();
     if (request.method() === "OPTIONS") {
@@ -57,9 +54,15 @@ test("trup-fordeling-board viser overlappende løb + låst rytter i puljen", asy
       status: 200,
       contentType: "application/json",
       headers: corsHeaders(request),
-      body: JSON.stringify(DISTRIBUTION),
+      body: JSON.stringify(dist),
     });
   });
+}
+
+test("trup-fordeling-board viser overlappende løb + låst rytter i puljen", async ({ page }) => {
+  await stabilizePage(page);
+  await installNetworkMocks(page);
+  await mockDistribution(page);
 
   await login(page);
   await page.goto("/races");
@@ -81,4 +84,74 @@ test("trup-fordeling-board viser overlappende løb + låst rytter i puljen", asy
 
   // En ledig rytter (ikke udtaget nogen steder) er klikbar i puljen.
   await expect(board.getByRole("button", { name: /Rider 5/ })).toBeEnabled();
+});
+
+// #1823: gem-fejl må IKKE være tavse — board'et viser en mappet fejlbesked.
+test("board surfacer fejlbesked når en udtagelse afvises (#1823)", async ({ page }) => {
+  await stabilizePage(page);
+  await installNetworkMocks(page);
+  await mockDistribution(page);
+  // PUT /selection på race-a → 409 selection_wrong_size (fx fjern under min).
+  await page.route("**/api/races/race-a/selection", (route) => {
+    const request = route.request();
+    if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
+    return route.fulfill({
+      status: 409, contentType: "application/json", headers: corsHeaders(request),
+      body: JSON.stringify({ error: "selection_wrong_size" }),
+    });
+  });
+
+  await login(page);
+  await page.goto("/races");
+  const board = page.getByTestId("race-hub-board");
+  await expect(board).toBeVisible();
+
+  // Fjern r0 fra race-a (× = "Fjern rytter") → PUT fejler → toast med min/max (6).
+  // force: testen verificerer fejl-toasten (handler→PUT→toast); det lille ×-target kan
+  // på smal mobil-viewport være pointer-interceptet af nabolayout, så vi dispatcher direkte.
+  const removeBtn = board.getByRole("button", { name: /Fjern rytter/ }).first();
+  await removeBtn.scrollIntoViewIfNeeded();
+  await removeBtn.click({ force: true });
+  const alert = board.getByRole("alert");
+  await expect(alert).toBeVisible();
+  await expect(alert).toContainText(/6/); // "Vælg mellem 6 og 6 ryttere" (ikke literal {min})
+});
+
+// #1823: klik en udtagen rytter → rolle-menu (kaptajn/sprint/jæger/kun rytter).
+test("board: klik udtagen rytter åbner rolle-vælger (#1823)", async ({ page }) => {
+  await stabilizePage(page);
+  await installNetworkMocks(page);
+  await mockDistribution(page);
+  await login(page);
+  await page.goto("/races");
+  const board = page.getByTestId("race-hub-board");
+  await expect(board).toBeVisible();
+
+  // Kolonne-rytteren (r0) ligger før pulje-chip'en i DOM → .first() = kolonne-knappen.
+  await board.getByRole("button", { name: /Rider 0/ }).first().click();
+  // Rolle-menuens valg vises (rene menu-labels, ikke andre steder på board'et).
+  await expect(board.getByRole("button", { name: /Kun rytter/ })).toBeVisible();
+  await expect(board.getByRole("button", { name: /Sprint-kaptajn/ })).toBeVisible();
+});
+
+// #1825: frosset løb (lineup_locked) vises som "Trup låst" og redigering er væk.
+test("board: igangværende løb vises som trup-låst (#1825)", async ({ page }) => {
+  await stabilizePage(page);
+  await installNetworkMocks(page);
+  const locked = {
+    ...DISTRIBUTION,
+    columns: [
+      { ...DISTRIBUTION.columns[0], lineup_locked: true, stages_completed: 3 },
+      DISTRIBUTION.columns[1],
+    ],
+  };
+  await mockDistribution(page, locked);
+  await login(page);
+  await page.goto("/races");
+  const board = page.getByTestId("race-hub-board");
+  await expect(board).toBeVisible();
+
+  // Status-chip "Trup låst" + låse-note; ingen fjern-knap i det frosne løb.
+  await expect(board.getByText("Trup låst").first()).toBeVisible();
+  await expect(board.getByText(/Truppen er endelig/)).toBeVisible();
 });

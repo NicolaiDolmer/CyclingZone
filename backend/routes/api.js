@@ -123,8 +123,8 @@ import { readFlagStage, evaluateFlagStage } from "../lib/featureStage.js";
 import { runTeamTrainingDay } from "../lib/dailyTrainingEngine.js";
 import { refreshChangedRiderValues } from "../lib/riderValueRefresh.js";
 import { validateSelection, saveSelection, getSelectionContext } from "../lib/raceSelection.js";
-import { loadTeamBindingContext, findRiderBindingConflicts, teamInRacePool, raceTimeWindow } from "../lib/raceBinding.js";
-import { buildColumnSet, buildBindingMap, seasonDayProjection, dominantTerrain, lockedWindowsFromManualEntries } from "../lib/raceDistribution.js";
+import { loadTeamBindingContext, findRiderBindingConflicts, teamInRacePool, raceTimeWindow, raceBindingWindow } from "../lib/raceBinding.js";
+import { buildColumnSet, buildBindingMap, seasonDayProjection, dominantTerrain, lockedWindowsFromEntries, partitionRegenTargets } from "../lib/raceDistribution.js";
 import { isRaceEngineV2Enabled } from "../lib/raceEngineFlag.js";
 import { injuryRisk } from "../lib/riderCondition.js";
 import { resolveProgram } from "../lib/dailyTraining.js";
@@ -1447,6 +1447,31 @@ router.get("/races/:raceId/selection", requireAuth, async (req, res) => {
   }
 });
 
+// Hent ALLE race_stage_schedule-rækker for en liste race-ids uden tavs trunkering.
+// Det gamle `.in(race_ids.slice(0,1000))` ramte BÅDE id-listens 1000-grænse OG
+// PostgREST's 1000-RÆKKERS default-cap (race_stage_schedule har én række pr. etape,
+// så en etape-tung sæson sprænger 1000 rækker længe før 1000 løb). En trunkeret
+// schedule giver et null binding-vindue → en committed rytter i et overlappende løb
+// låses ikke → dobbeltbooking (#1823's 1b-hul). Chunk id-listen + range-paginer hver
+// chunk (jf. reference_postgrest_1000_row_cap_in_scripts). Degraderer som før ved fejl.
+async function fetchAllScheduleRows(supabase, raceIds) {
+  const PAGE = 1000;
+  const ID_CHUNK = 300;
+  const rows = [];
+  for (let i = 0; i < raceIds.length; i += ID_CHUNK) {
+    const chunk = raceIds.slice(i, i + ID_CHUNK);
+    for (let from = 0; ; from += PAGE) {
+      const { data, error } = await supabase
+        .from("race_stage_schedule").select("race_id, scheduled_at")
+        .in("race_id", chunk).range(from, from + PAGE - 1);
+      if (error) break;
+      rows.push(...(data || []));
+      if (!data || data.length < PAGE) break;
+    }
+  }
+  return rows;
+}
+
 // Race Hub Fase 1 — GET /api/races/distribution?day=N
 // Aggregat-læsning til trup-fordeling-board'et: dagens egne-pulje overlap-løb som
 // kolonner + holdets trup + binding-map + sæson-tidslinje. Saves går stadig via
@@ -1464,17 +1489,20 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
 
     const { data: races } = await supabase
       .from("races")
-      .select("id, name, race_type, race_class, stages, status, league_division_id, pool_race:pool_race_id(date_text)")
+      .select("id, name, race_type, race_class, stages, stages_completed, status, league_division_id, pool_race:pool_race_id(date_text)")
       .eq("season_id", season.id);
     const raceIds = (races || []).map((r) => r.id);
-    const { data: schedRows } = await supabase
-      .from("race_stage_schedule").select("race_id, scheduled_at").in("race_id", raceIds.slice(0, 1000));
+    const schedRows = await fetchAllScheduleRows(supabase, raceIds);
     const schedByRace = new Map();
     for (const s of schedRows || []) {
       if (!schedByRace.has(s.race_id)) schedByRace.set(s.race_id, []);
       schedByRace.get(s.race_id).push(s);
     }
+    // To vinduer pr. løb: raceTimeWindow (ms) til DISPLAY (hvilke løb er kolonner på
+    // den valgte dag) og raceBindingWindow (CET-dag-ordinal) til BINDING (bindingMap —
+    // hvilke ryttere er låst pga. samme-dag-overlap, #1823).
     const withWindow = (races || []).map((r) => ({ ...r, window: raceTimeWindow(schedByRace.get(r.id)) }));
+    const bindingWindowByRace = new Map(raceIds.map((id) => [id, raceBindingWindow(schedByRace.get(id))]));
 
     const dayParam = Number.parseInt(req.query.day, 10);
     // Holdets kolonne-egnede løbsdage (scheduled, egen pulje, har vindue) — så board'et
@@ -1501,17 +1529,22 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
     const columns = [];
     for (const race of cols) {
       const ctx = await getSelectionContext({ supabase, race, teamId: req.team.id });
+      // Frys (#1825): et igangværende etapeløb (stages_completed>0) har låst trup —
+      // board'et viser "Lineup locked" og deaktiverer redigering. bindingWindow bruges
+      // til bindingMap så samme-dag-løb regnes som overlappende (#1823).
       columns.push({
         id: race.id, name: race.name, race_class: race.race_class, race_type: race.race_type,
-        stages: race.stages, status: race.status, window: race.window,
+        stages: race.stages, stages_completed: race.stages_completed ?? 0, status: race.status,
+        window: race.window, bindingWindow: bindingWindowByRace.get(race.id),
         size: ctx.size, riders: ctx.riders, selection: ctx.selection,
         withdrawn: withdrawnSet.has(race.id),
+        lineup_locked: (race.stages_completed ?? 0) > 0,
         counts: { selected: ctx.selection?.rider_ids?.length ?? 0, target: ctx.size.max },
       });
     }
 
     const bindingMap = buildBindingMap({
-      columns: columns.map((c) => ({ id: c.id, window: c.window, riderIds: c.selection?.rider_ids || [] })),
+      columns: columns.map((c) => ({ id: c.id, window: c.bindingWindow, riderIds: c.selection?.rider_ids || [] })),
     });
 
     const timeline = await buildTimeline({
@@ -1592,12 +1625,18 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
 
     const { data: race, error } = await supabase
       .from("races")
-      .select("id, race_type, race_class, status, league_division_id")
+      .select("id, race_type, race_class, stages, stages_completed, status, league_division_id")
       .eq("id", req.params.raceId)
       .maybeSingle();
     if (error) return res.status(500).json({ error: error.message });
     if (!race) return res.status(404).json({ error: "race_not_found" });
     if (race.status !== "scheduled") return res.status(409).json({ error: "selection_race_not_open" });
+    // Frys (#1825): når et etapeløb er i gang (≥1 etape kørt, ikke alle) må truppen IKKE
+    // ændres — buildRaceResults re-simulerer fra etape 1 med faste seeds, så et ændret
+    // startfelt gør viste etaperesultater inkonsistente. status forbliver 'scheduled' hele
+    // afviklingen, så vi gater på stages_completed. service_role-autofill (raceRunner,
+    // stageIndex=0) rammer ikke dette endpoint, så systemets felt-udfyldning er upåvirket.
+    if ((race.stages_completed ?? 0) > 0) return res.status(409).json({ error: "selection_race_started" });
 
     // Race-hub pulje-binding: et hold må kun udtage til løb i sin egen pulje. Backend-
     // håndhævelse så hverken UI-fejl (#1801/#1802) eller direkte API-kald kan plante en
@@ -1651,10 +1690,12 @@ router.post("/races/:raceId/withdrawal", requireAuth, marketWriteLimiter, async 
     const enabled = await isRaceEngineV2Enabled(supabase, { isBetaTester });
     if (!enabled) return res.status(409).json({ error: "selection_flag_disabled" });
     const { data: race, error } = await supabase
-      .from("races").select("id, status, league_division_id").eq("id", req.params.raceId).maybeSingle();
+      .from("races").select("id, status, stages_completed, league_division_id").eq("id", req.params.raceId).maybeSingle();
     if (error) return res.status(500).json({ error: error.message });
     if (!race) return res.status(404).json({ error: "race_not_found" });
     if (race.status !== "scheduled") return res.status(409).json({ error: "selection_race_not_open" });
+    // Frys (#1825): afmelding midt i et igangværende etapeløb ville ændre startfeltet.
+    if ((race.stages_completed ?? 0) > 0) return res.status(409).json({ error: "selection_race_started" });
     if (!teamInRacePool({ teamDivisionId: req.team.league_division_id, racePoolId: race.league_division_id })) {
       return res.status(409).json({ error: "selection_wrong_pool" });
     }
@@ -1672,6 +1713,10 @@ router.post("/races/:raceId/withdrawal", requireAuth, marketWriteLimiter, async 
 router.delete("/races/:raceId/withdrawal", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
+    // Frys (#1825): gen-deltagelse i et igangværende etapeløb ville ændre startfeltet.
+    const { data: race } = await supabase
+      .from("races").select("status, stages_completed").eq("id", req.params.raceId).maybeSingle();
+    if (race && (race.stages_completed ?? 0) > 0) return res.status(409).json({ error: "selection_race_started" });
     const { error: delErr } = await supabase
       .from("race_withdrawals").delete().eq("race_id", req.params.raceId).eq("team_id", req.team.id);
     if (delErr) return res.status(500).json({ error: delErr.message });
@@ -1682,10 +1727,13 @@ router.delete("/races/:raceId/withdrawal", requireAuth, marketWriteLimiter, asyn
   }
 });
 
-// Race Hub Fase 1 — POST /api/races/distribution/regenerate?day=N
+// Race Hub Fase 1 — POST /api/races/distribution/regenerate?day=N&mode=missing|all
 // "Auto-udfyld igen" for holdet, scoped til dagens overlap-løb. Genbruger den rene
-// binding-bevidste assignTeamAcrossRaces; manuelle entries i andre løb låses så de
-// ikke dobbeltbookes. Skriver picks som is_auto_filled=true.
+// binding-bevidste assignTeamAcrossRaces; ALLE committede entries i løb der ikke
+// regenereres låses så de ikke dobbeltbookes. Skriver picks som is_auto_filled=true.
+//   mode=missing (default): springer manuelt-udtagne kolonner over (bevarer dem).
+//   mode=all:               overskriver også manuelle kolonner med assistentens forslag.
+// Frys (#1825): igangværende etapeløb (stages_completed>0) springes ALTID over.
 router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!req.team) return res.status(400).json({ error: "No team found" });
   try {
@@ -1693,29 +1741,41 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
     const enabled = await isRaceEngineV2Enabled(supabase, { isBetaTester });
     if (!enabled) return res.status(409).json({ error: "selection_flag_disabled" });
 
+    const mode = req.query.mode === "all" ? "all" : "missing";
+
     const { data: season } = await supabase.from("seasons").select("id, start_date").eq("status", "active").maybeSingle();
     if (!season) return res.status(409).json({ error: "no_active_season" });
 
     const { data: races } = await supabase
-      .from("races").select("id, race_class, race_type, stages, status, league_division_id").eq("season_id", season.id);
+      .from("races").select("id, race_class, race_type, stages, stages_completed, status, league_division_id").eq("season_id", season.id);
     const raceIds = (races || []).map((r) => r.id);
-    const { data: schedRows } = await supabase
-      .from("race_stage_schedule").select("race_id, scheduled_at").in("race_id", raceIds.slice(0, 1000));
+    const schedRows = await fetchAllScheduleRows(supabase, raceIds);
     const schedByRace = new Map();
     for (const s of schedRows || []) {
       if (!schedByRace.has(s.race_id)) schedByRace.set(s.race_id, []);
       schedByRace.get(s.race_id).push(s);
     }
+    // ms til display (buildColumnSet), CET-dag-ordinal til binding (#1823).
     const windowByRace = new Map(raceIds.map((id) => [id, raceTimeWindow(schedByRace.get(id))]));
+    const bindingWindowByRace = new Map(raceIds.map((id) => [id, raceBindingWindow(schedByRace.get(id))]));
     const withWindow = (races || []).map((r) => ({ ...r, window: windowByRace.get(r.id) }));
     const { dayWindow } = resolveSeasonDay({ season, schedRows, dayParam: Number.parseInt(req.query.day, 10) });
     const cols = buildColumnSet({ races: withWindow, teamDivisionId: req.team.league_division_id, dayWindow });
-    if (!cols.length) return res.json({ ok: true, regenerated: 0 });
+    if (!cols.length) return res.json({ ok: true, regenerated: 0, skipped: 0, mode });
 
     const { data: wRows } = await supabase.from("race_withdrawals").select("race_id").eq("team_id", req.team.id);
     const withdrawn = new Set((wRows || []).map((w) => w.race_id));
-    const target = cols.filter((r) => !withdrawn.has(r.id));
-    if (!target.length) return res.json({ ok: true, regenerated: 0 });
+
+    // Holdets entries på tværs af alle løb: bruges til (a) manuel-detektion i mode=missing,
+    // (b) låsning af committede ryttere i løb der ikke regenereres.
+    const { data: allEntries } = await supabase.from("race_entries")
+      .select("race_id, rider_id, is_auto_filled").eq("team_id", req.team.id);
+    const manualRaceIds = new Set((allEntries || []).filter((e) => e.is_auto_filled === false).map((e) => e.race_id));
+
+    // Regenererings-target: dagens kolonner minus afmeldte, minus igangværende (frys),
+    // og i mode=missing minus manuelt-udtagne (de bevares + låses). Pure helper (testet).
+    const { target, skipped } = partitionRegenTargets({ cols, withdrawnIds: withdrawn, manualRaceIds, mode });
+    if (!target.length) return res.json({ ok: true, regenerated: 0, skipped, mode });
 
     const { data: teamRiders } = await supabase.from("riders")
       .select("id").eq("team_id", req.team.id).eq("is_academy", false).or("is_retired.is.null,is_retired.eq.false");
@@ -1740,14 +1800,14 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
     }
     for (const arr of stagesByRace.values()) arr.sort((a, b) => (a.stage_number || 0) - (b.stage_number || 0));
 
-    const { data: allEntries } = await supabase.from("race_entries")
-      .select("race_id, rider_id, is_auto_filled").eq("team_id", req.team.id);
-    const lockedWindows = lockedWindowsFromManualEntries({
-      entries: allEntries || [], windowByRace, excludeRaceIds: new Set(target.map((r) => r.id)),
+    // Lås ALLE committede ryttere i løb der IKKE regenereres (binding-vinduer): andre
+    // dages overlap (1b-fix), igangværende, og — i mode=missing — de manuelt-skippede.
+    const lockedWindows = lockedWindowsFromEntries({
+      entries: allEntries || [], windowByRace: bindingWindowByRace, excludeRaceIds: new Set(target.map((r) => r.id)),
     });
 
     const assignRaces = target.map((r) => ({
-      race_id: r.id, window: windowByRace.get(r.id), stages: stagesByRace.get(r.id) || [],
+      race_id: r.id, window: bindingWindowByRace.get(r.id), stages: stagesByRace.get(r.id) || [],
       sizeRule: selectionSizeForRace(r),
     }));
     const picksByRace = assignTeamAcrossRaces({ riders, races: assignRaces, lockedWindows });
@@ -1757,14 +1817,18 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
       const picks = picksByRace[race.id] || [];
       const captainId = picks.find((p) => p.race_role === "captain")?.rider_id ?? picks[0]?.rider_id ?? null;
       if (!picks.length || !captainId) continue;
-      await supabase.from("race_entries").delete().eq("race_id", race.id).eq("team_id", req.team.id);
       const rows = picks.map((p) => ({
         race_id: race.id, rider_id: p.rider_id, team_id: req.team.id, race_role: p.race_role, is_auto_filled: true,
       }));
-      if (rows.length) await supabase.from("race_entries").insert(rows);
+      // Surfacér delete/insert-fejl i stedet for tavst at efterlade et løb med 0 entries
+      // (ægte atomicitet kræver en RPC; her gør vi i det mindste fejlen synlig + retry-bar).
+      const { error: delErr } = await supabase.from("race_entries").delete().eq("race_id", race.id).eq("team_id", req.team.id);
+      if (delErr) throw new Error(`race_entries delete (${race.id}): ${delErr.message}`);
+      const { error: insErr } = await supabase.from("race_entries").insert(rows);
+      if (insErr) throw new Error(`race_entries insert (${race.id}): ${insErr.message}`);
       regenerated++;
     }
-    res.json({ ok: true, regenerated });
+    res.json({ ok: true, regenerated, skipped, mode });
   } catch (err) {
     captureException(err);
     res.status(500).json({ error: err.message });

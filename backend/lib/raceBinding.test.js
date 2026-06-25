@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { raceTimeWindow, windowsOverlap, findRiderBindingConflicts, loadTeamBindingContext, findManualOverlapConflicts, teamInRacePool } from "./raceBinding.js";
+import { raceTimeWindow, raceBindingWindow, windowsOverlap, findRiderBindingConflicts, loadTeamBindingContext, findManualOverlapConflicts, teamInRacePool } from "./raceBinding.js";
 
 test("raceTimeWindow: start=tidligste, end=seneste etape", () => {
   const w = raceTimeWindow([
@@ -15,6 +15,60 @@ test("raceTimeWindow: start=tidligste, end=seneste etape", () => {
 test("raceTimeWindow: tom/ugyldig → null", () => {
   assert.equal(raceTimeWindow([]), null);
   assert.equal(raceTimeWindow(null), null);
+});
+
+// raceBindingWindow (#1823): binding er pr. CET-KALENDERDAG, ikke pr. instant. Et
+// endagsløb optager hele sin danske dag; et etapeløb optager fra første til sidste
+// etapes danske dag. Rod-årsag for prod-dobbeltbookingen: instant-vinduer fik to
+// samme-dag-løb (fx Hamburger 22:00 + La Corsa etape 1 23:00) til IKKE at overlappe.
+test("raceBindingWindow: endagsløb spænder præcis én CET-dag (instant → hel dag)", () => {
+  const w = raceBindingWindow([{ scheduled_at: "2026-06-23T20:00:00Z" }]); // 22:00 CEST
+  assert.equal(w.start, w.end, "endagsløb = én dag");
+});
+
+test("raceBindingWindow: to løb samme CET-dag overlapper (regression for #1823)", () => {
+  const hamburger = raceBindingWindow([{ scheduled_at: "2026-06-23T20:00:00Z" }]); // 22:00 CEST 23/6
+  const laCorsa = raceBindingWindow([
+    { scheduled_at: "2026-06-23T21:00:00Z" }, // 23:00 CEST etape 1, 23/6
+    { scheduled_at: "2026-06-26T13:00:00Z" }, // etape 7, 26/6
+  ]);
+  assert.equal(windowsOverlap(hamburger, laCorsa), true, "samme-dag-løb bindes (må ikke dobbeltbookes)");
+});
+
+test("raceBindingWindow: etapeløb spænder fra første til sidste CET-dag", () => {
+  const w = raceBindingWindow([
+    { scheduled_at: "2026-06-23T21:00:00Z" },
+    { scheduled_at: "2026-06-26T13:00:00Z" },
+  ]);
+  assert.equal(w.end - w.start, 3, "Jun23→Jun26 = 3 dages span");
+});
+
+test("raceBindingWindow: forskellige CET-dage overlapper ikke", () => {
+  const jun23 = raceBindingWindow([{ scheduled_at: "2026-06-23T20:00:00Z" }]);
+  const jun24 = raceBindingWindow([{ scheduled_at: "2026-06-24T20:00:00Z" }]);
+  assert.equal(windowsOverlap(jun23, jun24), false);
+});
+
+test("raceBindingWindow: CET-midnatsgrænse (sommer) — 00:30 CEST hører til den danske dag, ikke UTC-dagen før", () => {
+  const tidlig24 = raceBindingWindow([{ scheduled_at: "2026-06-23T22:30:00Z" }]); // 00:30 CEST 24/6
+  const jun24 = raceBindingWindow([{ scheduled_at: "2026-06-24T12:00:00Z" }]);
+  const jun23 = raceBindingWindow([{ scheduled_at: "2026-06-23T12:00:00Z" }]);
+  assert.equal(windowsOverlap(tidlig24, jun24), true, "00:30 CEST = samme danske dag som middag 24/6");
+  assert.equal(windowsOverlap(tidlig24, jun23), false, "00:30 CEST 24/6 ≠ 23/6");
+});
+
+test("raceBindingWindow: DST-robust — vinter-midnatsgrænse (CET=UTC+1)", () => {
+  const tidlig16 = raceBindingWindow([{ scheduled_at: "2026-12-15T23:30:00Z" }]); // 00:30 CET 16/12
+  const dec16 = raceBindingWindow([{ scheduled_at: "2026-12-16T12:00:00Z" }]);
+  const dec15 = raceBindingWindow([{ scheduled_at: "2026-12-15T12:00:00Z" }]);
+  assert.equal(windowsOverlap(tidlig16, dec16), true);
+  assert.equal(windowsOverlap(tidlig16, dec15), false);
+});
+
+test("raceBindingWindow: tom/ugyldig → null", () => {
+  assert.equal(raceBindingWindow([]), null);
+  assert.equal(raceBindingWindow(null), null);
+  assert.equal(raceBindingWindow([{ scheduled_at: "not-a-date" }]), null);
 });
 
 test("windowsOverlap: deler tidspunkt → true; adskilte → false", () => {
@@ -79,10 +133,12 @@ test("loadTeamBindingContext: bygger thisWindow + otherRaces grupperet pr. løb"
       { race_id: "race-a", rider_id: "r2" },
     ],
   });
+  // Binding-vinduer er CET-dag-ordinaler (#1823), ikke ms.
+  const ORD = (d) => Date.parse(`${d}T00:00:00Z`) / 86_400_000;
   const ctx = await loadTeamBindingContext({ supabase, race: { id: "race-this" }, teamId: "team-1" });
-  assert.equal(ctx.thisWindow.start, Date.parse("2026-06-23T10:30:00Z"));
+  assert.equal(ctx.thisWindow.start, ORD("2026-06-23")); // 10:30Z = 12:30 CEST 23/6
   assert.equal(ctx.otherRaces.length, 1);
-  assert.equal(ctx.otherRaces[0].window.end, Date.parse("2026-06-24T13:00:00Z"));
+  assert.equal(ctx.otherRaces[0].window.end, ORD("2026-06-24")); // sidste etape 13:00Z = 15:00 CEST 24/6
   assert.deepEqual(ctx.otherRaces[0].riderIds.sort(), ["r1", "r2"]);
 });
 

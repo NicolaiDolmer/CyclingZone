@@ -16,3 +16,75 @@ export function isRiderBound({ bindingMap, riderId, forRaceId }) {
   if (!races || !races.length) return false;
   return races.some((id) => id !== forRaceId);
 }
+
+// Visnings-status for et løb (#1828). Backend SKRIVER ALDRIG 'active' (det ville bryde
+// finalization-invarianterne); i stedet afledes "live" af fremdriften: et etapeløb er
+// "live" når mindst én — men ikke alle — etaper er kørt. Pure → delt af Dashboard,
+// RaceDetailPage og RacesPage-badge, så de tre flader aldrig kan vise hver sin status.
+//   "completed"  — status='completed', ELLER alle etaper kørt (status-flip undervejs)
+//   "live"       — status='scheduled' og 0 < stages_completed < stages
+//   "scheduled"  — status='scheduled' og endnu ingen etaper kørt
+//   (anden status passeres uændret igennem)
+export function deriveRaceStatus(status, stagesCompleted, stages) {
+  const completed = Number.isFinite(stagesCompleted) ? stagesCompleted : 0;
+  const total = Number.isFinite(stages) && stages > 0 ? stages : 1;
+  if (status === "completed") return "completed";
+  if (status === "scheduled") {
+    if (completed >= total) return "completed";
+    if (completed > 0) return "live";
+    return "scheduled";
+  }
+  return status;
+}
+
+// Per-pulje løbsdage-tæller (#1829). Ét race day = én etape. Den gamle tæller var
+// sæson-GLOBAL (seasons.race_days_completed = sum(stages) over completede løb) og
+// viste forkert tal for managerens egen pulje. Her summeres KUN puljens egne løb,
+// og igangværende etaper TÆLLER med (i modsætning til sum-completed-mønsteret), så
+// "kørt / muligt" er ærligt mens et etapeløb stadig kører. Pure → testbar + klient-
+// side (ingen migration). `races` = puljens løb [{ status, stages, stages_completed }].
+//   completed  — løbsdage kørt: completede løb tæller alle stages, igangværende
+//                tæller stages_completed (klampet til [0, stages])
+//   total      — puljens samlede løbsdage = sum(stages)
+//   inProgress — løbsdage der hører til løb som STADIG kører (delmængde af completed)
+export function poolRaceDayTotals(races = []) {
+  let completed = 0;
+  let total = 0;
+  let inProgress = 0;
+  for (const r of races || []) {
+    const rawStages = Number(r?.stages);
+    const stages = Number.isFinite(rawStages) && rawStages > 0 ? rawStages : 1;
+    const done = Math.min(Math.max(Number(r?.stages_completed) || 0, 0), stages);
+    total += stages;
+    const view = deriveRaceStatus(r?.status, done, stages);
+    if (view === "completed") {
+      completed += stages;
+    } else if (view === "live") {
+      completed += done;
+      inProgress += done;
+    }
+    // "scheduled" → 0 løbsdage kørt
+  }
+  return { completed, total, inProgress };
+}
+
+// Fit-tier fra suitability-score (0-100): ord-anker til den delte fit-bar (Strong/
+// Average/Poor). Heuristiske tærskler, centraliseret så de er nemme at rekalibrere.
+// null hvis score mangler (rytter uden beregnet egnethed).
+export function fitTier(score) {
+  if (!Number.isFinite(score)) return null;
+  if (score >= 66) return "strong";
+  if (score >= 40) return "average";
+  return "poor";
+}
+
+// Friskheds-tier fra fatigue (0-100). Erstatter det magiske `fatigue>50` (RaceColumn)
+// med én delt, læsbar skala. null hvis fatigue mangler.
+export function freshnessTier(fatigue) {
+  if (fatigue == null) return null;
+  const f = Number(fatigue);
+  if (!Number.isFinite(f)) return null;
+  if (f >= 67) return "tired";
+  if (f >= 34) return "ok";
+  return "fresh";
+}
