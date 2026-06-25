@@ -125,3 +125,98 @@ export async function notifyTeamOwner({
     now,
   });
 }
+
+// ─── #1836 · Kontraktudløb-notifikation ───────────────────────────────────────
+
+export const CONTRACT_EXPIRING_TYPE = "contract_expiring";
+
+/**
+ * #1836 · Byg payloaden for en "kontrakt udløber"-notifikation (tone:danger i UI).
+ * Én kilde til ordlyd + metadata-koder + dedup-nøgle, så de tre triggere
+ * (sæsonskift, auktion-køb, transfer-køb) producerer identiske rækker.
+ *
+ * Idempotens: related_id = riderId, og sæson-nummeret indgår i fallback-message
+ * (#666-dedup matcher på type+title+message+related_id), så samme rytter i samme
+ * sæson dedup'es, men en ny sæson giver en ny række.
+ *
+ * EN-first fallback (#1068: ingen rå dansk i backend). Locale-aware rendering
+ * sker via backendMessages-koderne i metadata (#666).
+ */
+export function buildContractExpiringNotification({ riderName, riderId, seasonNumber }) {
+  return {
+    type: CONTRACT_EXPIRING_TYPE,
+    title: "Contract expiring",
+    message: `${riderName}'s contract expires at the end of season ${seasonNumber}.`,
+    relatedId: riderId ?? null,
+    metadata: {
+      riderId: riderId ?? null,
+      titleCode: "notif.contractExpiring.title",
+      titleParams: {},
+      messageCode: "notif.contractExpiring.message",
+      messageParams: { rider: riderName, season: seasonNumber },
+    },
+  };
+}
+
+/**
+ * #1836 · Sæsonskift-trigger: for hver ejet rytter hvis contract_end_season =
+ * den kommende sæson, send en kontraktudløb-notifikation til ejeren.
+ *
+ * Samme menneske-manager-diskriminator som resten af motoren (is_ai=false,
+ * is_frozen=false; akademi-/free-agent-ryttere har team_id der ikke matcher et
+ * menneske-hold og udelukkes via joinen). notifyUser dedup'er per (manager,
+ * rytter, sæson) inden for 24t. Fejl pr. notifikation isoleres (tælles, stopper
+ * ikke resten). `notify` + `fetchOwnedExpiringRiders` er injicerbare for test.
+ */
+export async function emitContractExpiringNotifications({
+  supabase,
+  seasonNumber,
+  notify = notifyUser,
+  fetchOwnedExpiringRiders = defaultFetchOwnedExpiringRiders,
+}) {
+  const stats = { eligible: 0, delivered: 0, deduped: 0, failed: 0 };
+  const riders = await fetchOwnedExpiringRiders({ supabase, seasonNumber });
+  const eligible = (riders || []).filter((r) => r.user_id && r.id);
+  stats.eligible = eligible.length;
+
+  for (const rider of eligible) {
+    const riderName = `${rider.firstname ?? ""} ${rider.lastname ?? ""}`.trim();
+    const payload = buildContractExpiringNotification({
+      riderName,
+      riderId: rider.id,
+      seasonNumber,
+    });
+    try {
+      const res = await notify({ supabase, userId: rider.user_id, ...payload });
+      if (res?.delivered) stats.delivered += 1;
+      else if (res?.deduped) stats.deduped += 1;
+    } catch {
+      stats.failed += 1;
+    }
+  }
+  return stats;
+}
+
+/**
+ * Hent ejede ryttere hvis kontrakt udløber i `seasonNumber`, joinet med ejerens
+ * user_id (kun menneske-, ikke-frosne hold). Standard-implementering; injicérbar
+ * i test for at undgå DB.
+ */
+async function defaultFetchOwnedExpiringRiders({ supabase, seasonNumber }) {
+  const { data, error } = await supabase
+    .from("riders")
+    .select("id, firstname, lastname, team:team_id!inner(user_id, is_ai, is_frozen)")
+    .eq("contract_end_season", seasonNumber)
+    .not("team_id", "is", null)
+    .eq("team.is_ai", false)
+    .eq("team.is_frozen", false);
+  if (error) {
+    throw new Error(`Could not load owned expiring-contract riders: ${error.message}`);
+  }
+  return (data || []).map((r) => ({
+    id: r.id,
+    firstname: r.firstname,
+    lastname: r.lastname,
+    user_id: r.team?.user_id ?? null,
+  }));
+}

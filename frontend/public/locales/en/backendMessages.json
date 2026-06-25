@@ -130,6 +130,10 @@
       "title": "Season {number} has started",
       "message": "A new season has begun. Check your dashboard for your board's goals and your squad for the season ahead."
     },
+    "contractExpiring": {
+      "title": "Contract expiring",
+      "message": "{rider}'s contract expires at the end of season {season}."
+    },
     "boardT1Reminder": {
       "title": "Last chance: {planLabel}",
       "messageSingle": "The board takes over in {raceDaysLeft} race day. Open the Board page and negotiate your {planLabel} now.",
