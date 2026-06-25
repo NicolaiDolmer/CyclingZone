@@ -46,8 +46,8 @@ Før kodning på systemer der kræver kravafklaring (flow-redesign, ny automatis
 
 ## Cadence-regler (efter høj-velocity sessioner)
 
-### AI-Autopilot (Fase 2)
-**Krav:** Alle PR'er skal have et gennemført Auto-PR-review (Loop D) og passere alle CI-tests før merge. Manus orkestrerer komplekse features ved at splitte dem i sub-tasks (Loop F).
+### PR-review-gate
+**Krav:** Alle PR'er skal passere alle CI-tests før merge. Automatisk PR-review er kandidat til CodeRabbit (Claude-model) — endnu ikke opsat pr. 2026-06-25; ville supplere, ikke erstatte, simulér-før-ship-disciplinen for balance-systemer. (Tidligere "AI-Autopilot Fase 2"/Manus-orkestrering udfaset 2026-06-25 — solo Claude-operation.)
 
 ### Soak-gate
 **Trigger:** Forrige session shippede ≥3 user-facing slices (ikke patches, ikke docs).  

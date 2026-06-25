@@ -4,11 +4,11 @@
 
 ## Hard rules (fælles — fuld tekst i AGENTS.md)
 
-Gælder også Claude Code, selvom `AGENTS.md` ikke auto-loades her: verificér repo-root (`git rev-parse --show-toplevel`) før edit · delt context i GitHub/OneDrive, aldrig lokal-only · verificér runtime før du lister noget som TODO/bug · spørg ved tvivl (70-95%) · patch notes ved enhver brugerrettet ændring · auto-push efter commit · re-link OneDrive-hardlinks efter manuel edit (`scripts/link-onedrive-context.ps1`). Fuld tekst + slice-close-out-reglen: [`AGENTS.md`](AGENTS.md) (lean core). Rolle-matrix, cross-PC-detaljer, session-rytme-signaler + loops-quick-ref: [`docs/AI_OPS_REFERENCE.md`](docs/AI_OPS_REFERENCE.md) (WARM, on-demand — split per [#733](https://github.com/NicolaiDolmer/CyclingZone/issues/733)).
+Gælder også Claude Code, selvom `AGENTS.md` ikke auto-loades her: verificér repo-root (`git rev-parse --show-toplevel`) før edit · delt context i GitHub/OneDrive, aldrig lokal-only · verificér runtime før du lister noget som TODO/bug · spørg ved tvivl (70-95%) · patch notes ved enhver brugerrettet ændring · auto-push efter commit · re-link OneDrive-hardlinks efter manuel edit (`scripts/link-onedrive-context.ps1`). Fuld tekst + slice-close-out-reglen: [`AGENTS.md`](AGENTS.md) (lean core). Cross-PC-detaljer, session-rytme-signaler + loops-quick-ref: [`docs/AI_OPS_REFERENCE.md`](docs/AI_OPS_REFERENCE.md) (WARM, on-demand — split per [#733](https://github.com/NicolaiDolmer/CyclingZone/issues/733)).
 
 ## Auto-loaded (intet at gøre)
 
-- `~/.claude/.../memory/MEMORY.md` — HOT-tier auto-memory (~1,100 tok efter Phase 1 reduktion). Tier-disciplin i `memory/README.md`. WARM-tier: `MEMORY_REFERENCE.md` (on-demand).
+- `~/.claude/.../memory/MEMORY.md` — HOT-tier auto-memory (~3.600 tok pr. 2026-06-25; budget-mål ≤1.500 — drevet over, trænger re-trim). Tier-disciplin i `memory/README.md`. WARM-tier: `MEMORY_REFERENCE.md` (on-demand).
 - `.codex.local/SESSION_CONTEXT.md` — bounded, regenererbar cache af aktivt GitHub-issue (~500 tok) via `scripts/session-prefetch-issue.sh`. Ikke source of truth.
 
 ## Start (eksplicit)
@@ -30,7 +30,6 @@ Fuld doc-index: [`docs/META_DOCS_INDEX.md`](docs/META_DOCS_INDEX.md). Top-3 hits
 - `docs/NIGHT_WAVE_RUNBOOK.md` — Natbølge-pipeline: `scripts/preflight-night-wave.ps1 -Fix` (GO/NO-GO), launch i samme tur som ejer-go, launch-bevis, merge-protokol, recovery. Læs FØR enhver natbølge.
 - `docs/AI_CHANNEL_ROUTING.md` — Kanal-til-task-matrix (Code vs chat vs Cowork vs Dispatch); læs ved tvivl om hvilken AI-kanal en task hører til
 - `docs/VERDENSKLASSE_ROADMAP.md` — Konsolideret AI/Ops + skalerings-roadmap (Track A vs Epic #323); læs før du picker AI-ops/cross-PC/scaling-issues
-- `docs/AI_COUNCIL.md` — Rolle-matrix, SLA, fallback-protokol for Claude/Codex/Manus; læs ved tvivl om hvem der ejer en beslutning ([#564](https://github.com/NicolaiDolmer/CyclingZone/issues/564))
 
 ## Close-out (per session)
 

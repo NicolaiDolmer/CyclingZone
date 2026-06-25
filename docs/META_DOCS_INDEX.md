@@ -20,10 +20,10 @@ Læs disse docs på behov — de auto-loader ikke. Indekset er flyttet hertil fr
 | `docs/WORKTREE_WORKFLOW.md` | Setup af parallelle Claude Code-sessioner via git worktrees · `new-worktree.ps1` / `remove-worktree.ps1` · node_modules-sharing · memory-junction · branch-collision gotchas |
 | `docs/PARALLEL_WORKTREE_ORCHESTRATION.md` | 7-step protokol for parallel worktree-orchestration (3+ subagents, ~30 min wall-clock vs. 2-3h sekventielt) · candidate-selection · sub-agent prompt template · token-budget · pitfalls |
 | `docs/AI_CHANNEL_ROUTING.md` | Tvivl om kanal-valg (Claude Code vs chat vs Cowork vs Dispatch) · use-case→kanal matrix · anti-patterns |
-| `docs/AI_COUNCIL.md` | Tvivl om hvem (Claude/Codex/Manus) ejer en beslutning · SLA pr. rolle · fallback-protokol når en agent ikke leverer · issue→agent mapping (B12, [#564](https://github.com/NicolaiDolmer/CyclingZone/issues/564)) |
+| `docs/AI_COUNCIL.md` | **RETIRED 2026-06-25** — gravsten. 3-AI-council (Claude/Codex/Manus) udfaset; solo Claude-operation, Claude ejer alle beslutninger. |
 | `docs/DISPATCH_PLAYBOOK.md` | Før mobil→PC agentic dispatch (scheduled-tasks, Claude mobile app Dispatch, RemoteTrigger) · safe/forbidden tasks · pre-flight checklist · verification on return |
 | `docs/VERDENSKLASSE_ROADMAP.md` | Konsolideret AI/Ops + skalerings-roadmap (Track A token-reduktion + cross-PC vs Track B Epic #323) · overlap-mapping · anbefalet eksekvering |
-| `docs/AI_OPS_REFERENCE.md` | WARM-tier udfasning af `AGENTS.md` (split [#733](https://github.com/NicolaiDolmer/CyclingZone/issues/733)) · rolle-fordeling (kort) · AI-ejerskab-skift · cross-PC setup-detaljer · session-rytme-signaler + close-out-tjeklister · token-effektiv kontekst-tabel · loops quick-ref A-I |
+| `docs/AI_OPS_REFERENCE.md` | WARM-tier udfasning af `AGENTS.md` (split [#733](https://github.com/NicolaiDolmer/CyclingZone/issues/733)) · cross-PC setup-detaljer · session-rytme-signaler + close-out-tjeklister · token-effektiv kontekst-tabel · loops quick-ref A-I (rolle-fordeling/AI-ejerskab udfaset 2026-06-25 — solo Claude) |
 | `docs/AI_OPS_DISABLE_PLAYBOOK.md` | MCP/skills audit + disable-handlinger |
 | `docs/AI_OPS_QUALITY_CANARIES.md` | Regression-tjek efter token-reduktion |
 | `docs/AI_OPS_TOKEN_BUDGET.md` | Token-budget regler + tier-system |

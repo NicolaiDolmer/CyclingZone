@@ -28,60 +28,17 @@ Supabase-inspektion: start med målrettede `npm run db:ai:*` frem for brede dump
 
 ---
 
-## Rolle-fordeling mellem AI-assistenter (Verdensklasse AI-Standard)
+## Rolle-fordeling mellem AI-assistenter — RETIRED (2026-06-25)
 
-> **Full council-kontrakt** (SLA pr. rolle, fallback-protokol når en agent ikke leverer, og issue→agent eksempler): [`docs/AI_COUNCIL.md`](AI_COUNCIL.md) ([#564](https://github.com/NicolaiDolmer/CyclingZone/issues/564)). Sektionerne nedenfor er den korte version; AI_COUNCIL.md er sandheden for reassign-beslutninger.
-
-### Manus (The Architect & Coordinator)
-**Primær brug:** Strategisk planlægning, orkestrering af komplekse workflows, og cross-domain koordinering. Manus er "ejeren" af den overordnede projekt-konfiguration og AI-Autopilot (Fase 2).
-
-**Stærk i:**
-- Udarbejdelse af køreplaner og skalerings-strategier.
-- Håndtering af projekt-niveau indstillinger og connectors.
-- **Orkestrering:** Ansvarlig for Loop D (Auto-PR-review) og Loop F (Subagent-orkestrering).
-- Sikre at alle agents følger `AGENTS.md` og `GUARDRAILS_CORE.md`.
-
-### Claude (The Lead Developer)
-**Primær brug:** Kernearkitektur, komplekse features, refactors, og dybdegående research. Claude er "ejeren" af kontrakt-sikkerhed.
-
-**Stærk i:**
-- Kompleks feature-redesign (AskUserQuestion-sessioner).
-- Multi-tabel migrations og backend-logik.
-- Udarbejdelse af `docs/slices/` kontrakter.
-
-### Codex (The Speed Runner)
-**Primær brug:** Hurtige bugfixes, UI-polish, og automatiserede tests. Codex sikrer høj hastighed uden at gå på kompromis med kvaliteten.
-
-**Stærk i:**
-- Single-file bugfixes og små UI-rettelser.
-- Skrivning af unit- og integrationstests.
-- Hurtig eksekvering af repetitive opgaver.
-
-**AI-First Workflow:** Start altid komplekse opgaver hos Manus (Plan), lad Claude bygge (Build), og lad Codex validere/teste (Test).
-
-**Kontekst-disciplin:** GitHub (`docs/NOW.md`, issues, slice-docs) er canonical handoff for alle agents/enheder. `.codex.local/SUPABASE_CONTEXT.md` + `supabase-readonly.env` er hardlinkede via OneDrive-context. `.codex.local/SESSION_CONTEXT.md` er kun auto-genereret cache og må ikke skrives manuelt af Codex som varigt handoff.
-
-### Microsoft Clarity (UX analytics, IKKE en AI)
-**Primær brug:** Runtime user-behavior data → input til Claude/Codex via loop I i AI_LOOPS.md.
-
-**Output:** Heatmaps, session recordings, dead/rage-click rapporter → konverteres til slices i ugentlig review.
-
----
-
-## Hvornår skifter AI-ejerskab
-
-| Scenario | Foreslået AI |
-|---|---|
-| Multi-file refactor med kontrakt-implikationer | Claude |
-| Single-file bugfix med klar root cause | Codex |
-| Ny feature med uklar spec | Claude (AskUserQuestion-session) |
-| Tilføj test til eksisterende feature | Codex |
-| Migration der rører >2 tabeller | Claude |
-| Lint-fix, formattering | Codex |
-| Audit-session der spænder kodebasen | Claude (med Explore-subagents) |
-| Implementér loop fra `docs/AI_LOOPS.md` | Claude (kompleks) eller Codex (simpel B/C) |
-
-**Konflikt-resolution:** Hvis begge AI'er har rørt samme fil i samme session → den AI der ejede slice-doc'en vinder; den anden's ændringer flyttes til separat slice.
+> **Solo Claude-operation siden 2026-06-12.** Ingen Codex, ingen Manus. Claude ejer alle
+> beslutninger og al eksekvering; der er ingen council-roster, AI-ejerskabs-tabel eller
+> reassign-protokol mere. Den fulde historiske 3-AI-kontrakt er gravsten i
+> [`docs/AI_COUNCIL.md`](AI_COUNCIL.md) (+ git-historik).
+>
+> **Microsoft Clarity** (UX-data → slice-input via loop I i `AI_LOOPS.md`) er ikke en AI og er uberørt.
+>
+> **Konflikt-resolution gælder nu kun parallelle Claude-sessioner samme PC** (worktrees):
+> se [`docs/AGENT_ARCHITECTURE.md §Parallel-session-safety`](AGENT_ARCHITECTURE.md).
 
 ---
 
