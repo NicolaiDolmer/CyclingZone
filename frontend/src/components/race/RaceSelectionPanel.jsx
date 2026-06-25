@@ -13,6 +13,7 @@ import { getSession } from "../../lib/supabase";
 import { toggleRider, validateSelectionClient } from "../../lib/raceSelectionLogic.js";
 import RiderTypeBadge from "../rider/RiderTypeBadge.jsx";
 import FitBar from "../racehub/FitBar.jsx";
+import HunterExplainer from "./HunterExplainer.jsx";
 import { effectiveStageFit, bestFitRiderId } from "../../lib/lineupInsight.js";
 
 const API = import.meta.env.VITE_API_URL;
@@ -26,7 +27,13 @@ async function authHeaders() {
   return { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
 }
 
-export default function RaceSelectionPanel({ raceId, selectedStageIndex = null, selectedStageBucket = null }) {
+export default function RaceSelectionPanel({
+  raceId,
+  selectedStageIndex = null,
+  selectedStageBucket = null,
+  selectedStageProfileType = null,
+  selectedStageFinaleType = null,
+}) {
   const { t } = useTranslation("races");
   const [data, setData] = useState(null);
   const [sel, setSel] = useState(EMPTY_SELECTION);
@@ -301,6 +308,15 @@ export default function RaceSelectionPanel({ raceId, selectedStageIndex = null, 
           </button>
         </div>
       </div>
+
+      {/* S5 (Lag 3): forklar jæger-rollen + terræn-bevidst udbruds-styrke + bedste
+          jæger-kandidater (rangeret efter aggression) fra den valgte trup. */}
+      <HunterExplainer
+        riders={selectedRiders}
+        profileType={selectedStageProfileType}
+        finaleType={selectedStageFinaleType}
+        hunterId={sel.hunterId}
+      />
     </section>
   );
 }
