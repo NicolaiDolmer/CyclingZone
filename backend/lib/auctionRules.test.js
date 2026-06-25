@@ -43,6 +43,33 @@ test("getAuctionStartIssue blocks retired rider", () => {
   assert.deepEqual(issue, { code: "rider_retired" });
 });
 
+// #1824: akademiryttere må aldrig på auktion — heller ikke et frit/AI-akademi-
+// prospekt (det slap ellers forbi den human-only ejer-check i route-handleren).
+test("getAuctionStartIssue blocks academy rider (own team)", () => {
+  const issue = getAuctionStartIssue({
+    rider: { id: "r1", team_id: "my-team", pending_team_id: null, is_retired: false, is_academy: true },
+  });
+  assert.deepEqual(issue, { code: "rider_is_academy" });
+});
+
+test("getAuctionStartIssue blocks academy rider that is a free agent / AI-owned prospect", () => {
+  assert.deepEqual(
+    getAuctionStartIssue({ rider: { id: "r1", team_id: null, pending_team_id: null, is_retired: false, is_academy: true } }),
+    { code: "rider_is_academy" },
+  );
+  assert.deepEqual(
+    getAuctionStartIssue({ rider: { id: "r1", team_id: "ai-team", pending_team_id: null, is_retired: false, is_academy: true } }),
+    { code: "rider_is_academy" },
+  );
+});
+
+test("getAuctionStartIssue allows a senior (non-academy) rider", () => {
+  assert.equal(
+    getAuctionStartIssue({ rider: { id: "r1", team_id: "my-team", pending_team_id: null, is_retired: false, is_academy: false } }),
+    null,
+  );
+});
+
 test("getAuctionStartIssue allows rider without pending transfer", () => {
   assert.equal(
     getAuctionStartIssue({ rider: { id: "r1", team_id: "ai-team", pending_team_id: null, is_retired: false } }),

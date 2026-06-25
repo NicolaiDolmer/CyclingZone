@@ -2146,7 +2146,7 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
   // Verify rider belongs to this team
   const { data: rider } = await supabase
     .from("riders")
-    .select("id, firstname, lastname, team_id, pending_team_id, is_retired, market_value")
+    .select("id, firstname, lastname, team_id, pending_team_id, is_retired, is_academy, market_value")
     .eq("id", rider_id)
     .single();
 
@@ -2155,11 +2155,18 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
   // #1447: #669-auktions-gaten fjernet — efter relaunch (#1105) er fiktive ryttere
   // den aktive bestand og skal kunne auktioneres/handles af alle managere.
 
-  // Block: rider awaits transfer to a previous auction winner.
+  // Block: retired / academy / rider awaits transfer to a previous auction winner.
+  // #1824: akademiryttere hører IKKE på det åbne auktionsmarked — de ejes/udvikles
+  // via akademi-flowet og må først rykkes til senior-truppen (graduation) før de kan
+  // handles. getAuctionStartIssue fanger det (rider_is_academy) før den human-only
+  // ejer-check nedenfor, så et AI-/frit akademi-prospekt ikke længere slipper forbi.
   const auctionStartIssue = getAuctionStartIssue({ rider });
   if (auctionStartIssue) {
     if (auctionStartIssue.code === "rider_retired") {
       return res.status(409).json({ error: "This rider has retired and can't be put up for auction", errorCode: "rider_retired_auction" });
+    }
+    if (auctionStartIssue.code === "rider_is_academy") {
+      return res.status(400).json({ error: "Academy riders can't be auctioned. Graduate them to your senior squad first.", errorCode: "rider_is_academy" });
     }
     return res.status(409).json({ error: "This rider was won at auction and is awaiting transfer to the new team", errorCode: "rider_pending_transfer_auction" });
   }
@@ -2920,7 +2927,7 @@ router.get("/transfers", requireAuth, async (req, res) => {
   const { data, error } = await supabase
     .from("transfer_listings")
     .select(`id, asking_price, status, created_at,
-      rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, is_u25, nationality_code, birthdate,
+      rider:rider_id(id, firstname, lastname, market_value, prize_earnings_bonus, is_u25, nationality_code, birthdate, salary, primary_type, secondary_type,
         rider_derived_abilities(climbing, time_trial, flat, tempo, sprint, acceleration, punch, endurance, recovery, durability, descending, cobblestone, positioning, aggression, tactics)),
       seller:seller_team_id(id, name)`)
     .eq("status", status)
@@ -2937,11 +2944,16 @@ router.post("/transfers", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!assertTeamNotTransferFrozen(req, res)) return;
   const { rider_id, asking_price } = req.body;
   const { data: rider } = await supabase
-    .from("riders").select("id, team_id, firstname, lastname, is_retired").eq("id", rider_id).single();
+    .from("riders").select("id, team_id, firstname, lastname, is_retired, is_academy").eq("id", rider_id).single();
   if (!rider || rider.team_id !== req.team.id)
     return res.status(403).json({ error: "Du ejer ikke denne rytter", errorCode: "rider_not_owned" });
   if (rider.is_retired)
     return res.status(409).json({ error: "This rider has retired and can't be listed for sale", errorCode: "rider_retired_listing" });
+  // #1824: akademiryttere må ikke sælges på det åbne transfermarked — de ejes/
+  // udvikles via akademi-flowet og skal først rykkes til senior-truppen (graduation)
+  // før de kan handles. Spejler is_academy-GUARD i POST /auctions + rider-actions.
+  if (rider.is_academy)
+    return res.status(400).json({ error: "Academy riders can't be listed for sale. Graduate them to your senior squad first.", errorCode: "rider_is_academy" });
 
   // #247: maks én aktiv listing pr. rytter. Tjekkes først her, og DB-niveau
   // partial unique index (uniq_transfer_listings_one_active_per_rider) fanger

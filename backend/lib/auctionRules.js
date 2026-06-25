@@ -13,6 +13,14 @@ export function getAuctionStartIssue({ rider } = {}) {
   if (rider?.is_retired) {
     return { code: "rider_retired" };
   }
+  // #1824: akademiryttere hører ikke på det åbne auktionsmarked — de ejes/udvikles
+  // via akademi-flowet og skal først rykkes til senior-truppen (graduation) før de
+  // kan handles. Uden denne gate slap et frit/AI-akademi-prospekt forbi den human-
+  // only ejer-check i route-handleren og kunne auktioneres af enhver. Spejler is_-
+  // academy-GUARD i POST /transfers + loadOwnedSeniorRiderForAction.
+  if (rider?.is_academy) {
+    return { code: "rider_is_academy" };
+  }
   if (rider?.pending_team_id) {
     return { code: "rider_pending_transfer" };
   }
