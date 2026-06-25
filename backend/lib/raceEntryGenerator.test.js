@@ -231,6 +231,40 @@ test("runRaceEntryGenerator: to løb samme CET-dag deler ALDRIG en rytter (#1823
   for (const rid of lRiders) assert.ok(!hRiders.has(rid), `${rid} dobbeltbooket H↔L (samme CET-dag)`);
 });
 
+test("runRaceEntryGenerator: igangværende løb (stages_completed>0) regenereres IKKE + dets ryttere låses (#1825)", async () => {
+  const state = emptyState();
+  const seasonId = "season1";
+  // L = igangværende etapeløb (3 etaper kørt), B = ikke-startet, samme dag → overlap.
+  state.races = [
+    { id: "L", season_id: seasonId, race_class: "Class2", league_division_id: 1, stages_completed: 3 },
+    { id: "B", season_id: seasonId, race_class: "Class2", league_division_id: 1, stages_completed: 0 },
+  ];
+  state.race_stage_schedule = [
+    { race_id: "L", stage_number: 1, scheduled_at: "2026-07-01T10:00:00Z" },
+    { race_id: "B", stage_number: 1, scheduled_at: "2026-07-01T14:00:00Z" }, // samme dag → binder
+  ];
+  state.race_stage_profiles = [{ race_id: "L", ...flatProfile(1) }, { race_id: "B", ...flatProfile(1) }];
+  state.teams = [{ id: "t1", is_test_account: false, is_frozen: false, league_division_id: 1 }];
+  seedTeamRiders(state, "t1", 8);
+  // L har allerede en (auto-filled) igangværende lineup.
+  state.race_entries = [
+    { race_id: "L", rider_id: "t1-r0", team_id: "t1", race_role: "captain", is_auto_filled: true },
+    { race_id: "L", rider_id: "t1-r1", team_id: "t1", race_role: "helper", is_auto_filled: true },
+  ];
+
+  const supabase = makeSupabase(state);
+  await runRaceEntryGenerator({ supabase, seasonId, dryRun: false });
+
+  // L's igangværende lineup er URØRT — præcis de oprindelige ryttere, ikke regenereret.
+  const lEntries = state.race_entries.filter((e) => e.race_id === "L");
+  assert.deepEqual(lEntries.map((e) => e.rider_id).sort(), ["t1-r0", "t1-r1"], "L's lineup uændret");
+  // B er genereret, men deler ALDRIG en rytter med det frosne L (binding-lås).
+  const lRiders = new Set(lEntries.map((e) => e.rider_id));
+  const bRiders = state.race_entries.filter((e) => e.race_id === "B" && e.is_auto_filled === true);
+  assert.ok(bRiders.length > 0, "B genereret");
+  for (const e of bRiders) assert.ok(!lRiders.has(e.rider_id), `${e.rider_id} dobbeltbooket med igangværende L`);
+});
+
 test("runRaceEntryGenerator: dryRun=true skriver intet", async () => {
   const state = emptyState();
   const seasonId = "season1";
