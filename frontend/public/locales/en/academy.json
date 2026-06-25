@@ -29,6 +29,8 @@
   "colAge": "Age",
   "colSalary": "Salary",
   "colContract": "Contract",
+  "colAction": "Action",
+  "promoteSeniorFullTooltip": "Your senior squad is full. Free a senior place first.",
   "signModal": {
     "title": "Confirm signing",
     "question": "Sign this rider to your academy for cash:",
@@ -37,6 +39,22 @@
     "afterLabel": "Balance after",
     "cannotAfford": "You do not have enough money to sign this rider.",
     "confirm": "Sign"
+  },
+  "transferModal": {
+    "promoteTitle": "Promote to senior squad",
+    "promoteQuestion": "Promote this academy rider to your senior squad:",
+    "promoteConfirm": "Promote",
+    "promoteNote": "They take a senior place and a senior contract. Their academy salary is replaced by the senior wage shown above.",
+    "demoteTitle": "Move to academy",
+    "demoteQuestion": "Move this senior rider down to your academy:",
+    "demoteConfirm": "Move to academy",
+    "demoteNote": "They free a senior place and stop counting toward your senior squad. They are pulled from any upcoming races they were entered in.",
+    "seniorSalaryLabel": "Senior salary",
+    "youthSalaryLabel": "Youth salary",
+    "currentSalaryLabel": "Current salary",
+    "seniorCapLabel": "Senior squad",
+    "academyCapLabel": "Academy places",
+    "racesClearedLabel": "Upcoming races cleared"
   },
   "error": {
     "academyFull": "Academy is full (8/8). Cannot sign another rider.",

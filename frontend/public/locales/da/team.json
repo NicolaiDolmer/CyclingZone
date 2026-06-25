@@ -62,7 +62,8 @@
       "auction": "Auktion",
       "transfer": "Transferliste",
       "release": "Fyr",
-      "extend": "Forlæng"
+      "extend": "Forlæng",
+      "demote": "Til akademi"
     },
     "auction": {
       "description": "Start auktion. Andre managers kan byde.",
@@ -96,6 +97,13 @@
       "newContractValue": "Udløber efter S{season}",
       "confirmButton": "Forlæng kontrakt",
       "successMsg": "Kontrakt forlænget."
+    },
+    "demote": {
+      "description": "Flyt denne U23-rytter ned i dit akademi. Kun muligt for ryttere på 22 år eller derunder.",
+      "currentSalaryLabel": "Nuværende løn",
+      "youthSalaryLabel": "Ungdomsløn",
+      "hint": "Rytteren tæller ikke længere mod din senior-trup og fjernes fra alle kommende løb. Du bekræfter hele effekten i næste trin.",
+      "confirmButton": "Flyt til akademi"
     },
     "loadingShort": "...",
     "errorPrefix": ""

@@ -10,9 +10,10 @@ import { statStyle } from "../lib/statColor";
 import NationCell from "../components/rider/NationCell";
 import RiderBadges from "../components/rider/RiderBadges";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge";
-import { ageBadgeKey, getRiderAge } from "../lib/riderAge";
-import { getRiderMarketValue } from "../lib/marketValues";
+import { ageBadgeKey, getRiderAge, isU23 } from "../lib/riderAge";
+import { getRiderMarketValue, projectYouthSalary } from "../lib/marketValues";
 import { formatNumber } from "../lib/intl";
+import { AcademyTransferConfirmModal } from "../components/AcademyTransferConfirmModal";
 import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
 import { useScouting } from "../lib/useScouting";
 import { scoutSortValue } from "../lib/scouting";
@@ -27,8 +28,11 @@ import { buttonClass } from "../components/ui/buttonStyles.js";
 // #1529: erstattede de 14 PCM stat_*-kolonner — visningen viser nu evner.
 // #1755: SortTh er nu delt (components/rider/RiderSortTh) — fælles sort-adfærd.
 
-function RiderActionModal({ rider, team, scouting, onClose, onAction, ddActive }) {
+function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, ddActive }) {
   const { t } = useTranslation("team");
+  // #932 S7: demote (senior → akademi) er kun muligt for U23-seniorer (alder ≤ 22,
+  // ikke allerede akademi). Samme grænse som backend D5-gaten.
+  const canDemote = !rider.is_academy && isU23(rider.birthdate);
   const riderValue = getRiderMarketValue(rider);
   const [auctionPrice, setAuctionPrice] = useState(riderValue);
   const [transferPrice, setTransferPrice] = useState(riderValue);
@@ -142,7 +146,9 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, ddActive }
     transfer: t("actionModal.tabs.transfer"),
     release: t("actionModal.tabs.release"),
     extend: t("actionModal.tabs.extend"),
+    demote: t("actionModal.tabs.demote"),
   };
+  const tabKeys = ["auction", "transfer", "extend", "release", ...(canDemote ? ["demote"] : [])];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -177,7 +183,7 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, ddActive }
         </div>
         <div className="p-5">
           <div className="flex gap-2 mb-4 flex-wrap">
-            {["auction","transfer","extend","release"].map(tab => (
+            {tabKeys.map(tab => (
               <button key={tab} onClick={() => setActiveTab(tab)}
                 className={`px-3 py-1.5 rounded-cz text-sm font-medium transition-all border
                   ${activeTab === tab ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "text-cz-2 border-cz-border hover:text-cz-1"}`}>
@@ -298,6 +304,30 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, ddActive }
                 disabled={loading || (releaseQuote && releaseQuote.affordable === false)}
                 className="w-full !bg-cz-danger !text-white hover:brightness-110">
                 {loading ? t("actionModal.loadingShort") : t("actionModal.release.confirmButton")}
+              </Button>
+            </div>
+          )}
+          {/* #932 S7: Demote til akademi — kun U23-seniorer. Selve bekræftelsen
+              (cap + løn-delta + løb ryddet) sker i AcademyTransferConfirmModal på
+              holdsiden; her forklarer vi handlingen og overdrager til forælderen. */}
+          {activeTab === "demote" && canDemote && (
+            <div>
+              <p className="text-cz-2 text-xs mb-3">{t("actionModal.demote.description")}</p>
+              <div className="space-y-1.5 mb-3 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-cz-3 text-xs">{t("actionModal.demote.currentSalaryLabel")}</span>
+                  <span className="text-cz-2 font-mono">{formatNumber(rider.salary || 0)} CZ$</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-cz-3 text-xs">{t("actionModal.demote.youthSalaryLabel")}</span>
+                  <span className="text-cz-1 font-mono font-bold">{formatNumber(projectYouthSalary(rider))} CZ$</span>
+                </div>
+              </div>
+              <p className="text-cz-3 text-xs mb-3">{t("actionModal.demote.hint")}</p>
+              <Button onClick={() => { onClose(); onDemote(rider); }}
+                disabled={loading}
+                className="w-full !bg-cz-warning !text-cz-on-accent hover:brightness-110">
+                {t("actionModal.demote.confirmButton")}
               </Button>
             </div>
           )}
@@ -556,8 +586,64 @@ export function TeamPage() {
   const [selectedRider, setSelectedRider] = useState(null);
   const [loading, setLoading] = useState(true);
   const [ddActive, setDdActive] = useState(false);
+  // #932 S7: demote-bekræftelse (senior → akademi). { rider, racesCleared } | null.
+  const [demoteConfirm, setDemoteConfirm] = useState(null);
+  const [demoteBusy, setDemoteBusy] = useState(false);
+  const [demoteError, setDemoteError] = useState(null);
 
   useEffect(() => { loadAll(); loadDdStatus(); }, []);
+
+  // Åbn demote-bekræftelsen: tæl fremtidige løb rytteren ville blive fjernet fra
+  // (scheduled + stages_completed=0), så dialogen kan vise konsekvensen FØR confirm.
+  async function handleDemote(rider) {
+    setDemoteError(null);
+    let racesCleared = 0;
+    let academyCount = null;
+    try {
+      const [entriesRes, academyRes] = await Promise.all([
+        supabase
+          .from("race_entries")
+          .select("race_id, races!inner(status, stages_completed)")
+          .eq("rider_id", rider.id)
+          .eq("races.status", "scheduled")
+          .eq("races.stages_completed", 0),
+        // Akademi-cap-effekt: tæl holdets nuværende akademiryttere (8-cap).
+        team?.id
+          ? supabase.from("riders").select("id", { count: "exact", head: true })
+              .eq("team_id", team.id).eq("is_academy", true)
+          : Promise.resolve({ count: null }),
+      ]);
+      racesCleared = (entriesRes.data || []).length;
+      academyCount = academyRes.count ?? null;
+    } catch { /* count er nice-to-have; vis dialogen uanset */ }
+    setDemoteConfirm({ rider, racesCleared, academyCount });
+  }
+
+  async function confirmDemote() {
+    if (!demoteConfirm) return;
+    const rider = demoteConfirm.rider;
+    setDemoteBusy(true);
+    setDemoteError(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/academy/demote`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+        body: JSON.stringify({ riderId: rider.id }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setDemoteConfirm(null);
+        loadAll();
+      } else {
+        setDemoteError(resolveApiError(data, t, t("auth:error.connectionFailed")));
+      }
+    } catch {
+      setDemoteError(t("auth:error.connectionFailed"));
+    } finally {
+      setDemoteBusy(false);
+    }
+  }
 
   // #778: action-modal'en skal vide om Deadline Day er aktiv for at kunne
   // tilbyde flash-auktion (30 min) — samme status-endpoint som RiderStatsPage.
@@ -585,11 +671,11 @@ export function TeamPage() {
 
     const [ridersRes, pendingRes, windowRes, loansOutRes, loansInRes] = await Promise.all([
       supabase.from("riders")
-        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, primary_type, secondary_type, contract_end_season, ${ABILITY_SELECT}, ${CONDITION_SELECT}`)
+        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, is_academy, base_value, pending_team_id, nationality_code, primary_type, secondary_type, contract_end_season, ${ABILITY_SELECT}, ${CONDITION_SELECT}`)
         .eq("team_id", myTeam.id)
         .order("market_value", { ascending: false }),
       supabase.from("riders")
-        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, primary_type, secondary_type, contract_end_season, ${ABILITY_SELECT}, ${CONDITION_SELECT}`)
+        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, is_academy, base_value, pending_team_id, nationality_code, primary_type, secondary_type, contract_end_season, ${ABILITY_SELECT}, ${CONDITION_SELECT}`)
         .eq("pending_team_id", myTeam.id)
         .order("market_value", { ascending: false }),
       supabase.from("transfer_windows")
@@ -690,7 +776,28 @@ export function TeamPage() {
       )}
 
       {selectedRider && (
-        <RiderActionModal rider={selectedRider} team={team} scouting={scouting} onClose={() => setSelectedRider(null)} onAction={loadAll} ddActive={ddActive} />
+        <RiderActionModal rider={selectedRider} team={team} scouting={scouting} onClose={() => setSelectedRider(null)} onAction={loadAll} onDemote={handleDemote} ddActive={ddActive} />
+      )}
+
+      {/* #932 S7: Demote-bekræftelse (senior → akademi) — løn-delta + akademi-cap +
+          fremtidige løb der ryddes. Genbruger den delte AcademyTransferConfirmModal. */}
+      <AcademyTransferConfirmModal
+        show={!!demoteConfirm}
+        direction="demote"
+        riderName={demoteConfirm ? `${demoteConfirm.rider.firstname} ${demoteConfirm.rider.lastname}`.trim() : ""}
+        newSalary={demoteConfirm ? projectYouthSalary(demoteConfirm.rider) : 0}
+        currentSalary={demoteConfirm?.rider?.salary ?? 0}
+        capLabel={demoteConfirm?.academyCount != null ? `${demoteConfirm.academyCount} / 8` : null}
+        capAfterLabel={demoteConfirm?.academyCount != null ? `${demoteConfirm.academyCount + 1} / 8` : null}
+        racesCleared={demoteConfirm?.racesCleared ?? 0}
+        busy={demoteBusy}
+        onCancel={() => { if (!demoteBusy) { setDemoteConfirm(null); setDemoteError(null); } }}
+        onConfirm={confirmDemote}
+      />
+      {demoteError && (
+        <p className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-cz px-4 py-2 text-sm shadow-lg">
+          {demoteError}
+        </p>
       )}
     </div>
   );

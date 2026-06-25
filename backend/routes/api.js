@@ -9253,7 +9253,7 @@ router.get("/academy/me", requireAuth, async (req, res) => {
     // Akademi-ryttere (ejede, is_academy=true)
     const { data: rosterRaw, error: rosterErr } = await supabase
       .from("riders")
-      .select("id, firstname, lastname, birthdate, nationality_code, team_id, is_academy, salary, contract_length, contract_end_season")
+      .select("id, firstname, lastname, birthdate, nationality_code, team_id, is_academy, salary, contract_length, contract_end_season, base_value, market_value, prize_earnings_bonus")
       .eq("team_id", teamId)
       .eq("is_academy", true);
     if (rosterErr) throw new Error(rosterErr.message);

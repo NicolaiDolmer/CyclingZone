@@ -609,6 +609,10 @@
       "graduation": {
         "title": "At forlade akademiet ved 22",
         "text": "Når en akademirytter fylder 22, forlader de Akademiet, og du træffer et valg for hver enkelt: ryk dem op i din senior-trup (kræver en ledig senior-plads og giver dem en senior-kontrakt), sælg dem på transfermarkedet, eller slip dem som free agent. Du får et vindue til at beslutte; handler du ikke i tide, vælger klubben et fornuftigt standardvalg for dig (ryk op når der er plads, ellers sælg). Sådan får hjemmeavlet talent en klar vej til din senior-trup."
+      },
+      "promoteDemote": {
+        "title": "Ryk op og flyt ryttere ned",
+        "text": "Du behøver ikke vente på, at de forlader akademiet. På Akademi-siden kan du rykke enhver akademirytter direkte op i din senior-trup, når du har en ledig senior-plads; rytteren får en senior-kontrakt og senior-lønnen. Det modsatte virker også: på din holdside kan enhver senior-rytter på 22 år eller derunder flyttes ned i dit akademi (så længe akademiet har en ledig plads, og rytteren ikke er på en auktion eller transferliste). En nedrykket rytter falder til ungdomsløn, tæller ikke længere mod din senior-trup og fjernes fra alle kommende løb, vedkommende var udtaget til. Begge handlinger viser hele effekten, før du bekræfter."
       }
     },
     "raceSelection": {

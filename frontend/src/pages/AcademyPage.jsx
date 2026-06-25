@@ -14,7 +14,8 @@ import { Flag } from "../components/Flag.jsx";
 import PotentialeStars from "../components/PotentialeStars.jsx";
 import RiderLink from "../components/RiderLink.jsx";
 import { AcademySignConfirmModal } from "../components/AcademySignConfirmModal.jsx";
-import { getRiderMarketValue } from "../lib/marketValues.js";
+import { AcademyTransferConfirmModal } from "../components/AcademyTransferConfirmModal.jsx";
+import { getRiderMarketValue, projectSeniorSalary } from "../lib/marketValues.js";
 import { formatNumber } from "../lib/intl.js";
 
 function calcAge(birthdate) {
@@ -40,7 +41,7 @@ function daysUntil(deadline) {
 
 export default function AcademyPage() {
   const { t } = useTranslation("academy");
-  const { enabled, slots, roster, intake, freeAgents, graduations, balance, loading, signCandidate, rejectCandidate, signFreeAgent, resolveGraduate } = useAcademy();
+  const { enabled, slots, seniorCount, seniorMax, roster, intake, freeAgents, graduations, balance, loading, signCandidate, rejectCandidate, signFreeAgent, resolveGraduate, promoteRider } = useAcademy();
 
   // Per-kandidat in-flight state + fejlbeskeder.
   const [actionState, setActionState] = useState({}); // { [riderId]: "signing"|"rejecting"|null }
@@ -50,7 +51,13 @@ export default function AcademyPage() {
   // bekræftelse med pris + saldo-effekt. { riderId, riderName, price } | null.
   const [signConfirm, setSignConfirm] = useState(null);
 
+  // #932 S7: promote-bekræftelse (akademi → senior). Konsekvens-bevidst: viser
+  // senior-cap-effekt + projiceret senior-løn. { riderId, riderName, newSalary } | null.
+  const [promoteConfirm, setPromoteConfirm] = useState(null);
+
   const isFull = slots.used >= slots.max;
+  // Senior-truppen er fuld → promote blokeres (en op-rykning ville sprænge cap'en).
+  const seniorFull = seniorCount >= seniorMax;
 
   async function handleSign(riderId) {
     setActionState(prev => ({ ...prev, [riderId]: "signing" }));
@@ -122,6 +129,34 @@ export default function AcademyPage() {
               : t("error.generic");
       setActionErrors(prev => ({ ...prev, [riderId]: msg }));
       setSignConfirm(null);
+    }
+    setActionState(prev => ({ ...prev, [riderId]: null }));
+  }
+
+  // Åbn promote-bekræftelse (#932 S7) — selve op-rykningen sker i confirmPromote.
+  function handlePromote(rider) {
+    setActionErrors(prev => ({ ...prev, [rider.id]: null }));
+    setPromoteConfirm({
+      riderId: rider.id,
+      riderName: `${rider.firstname} ${rider.lastname}`.trim(),
+      newSalary: projectSeniorSalary(rider),
+    });
+  }
+
+  async function confirmPromote() {
+    if (!promoteConfirm) return;
+    const riderId = promoteConfirm.riderId;
+    setActionState(prev => ({ ...prev, [riderId]: "promoting" }));
+    setActionErrors(prev => ({ ...prev, [riderId]: null }));
+    const result = await promoteRider(riderId);
+    if (result.ok) {
+      setPromoteConfirm(null);
+    } else {
+      const msg = result.error === "squad_cap_violation"
+        ? t("error.squadFull")
+        : t("error.generic");
+      setActionErrors(prev => ({ ...prev, [riderId]: msg }));
+      setPromoteConfirm(null);
     }
     setActionState(prev => ({ ...prev, [riderId]: null }));
   }
@@ -343,11 +378,14 @@ export default function AcademyPage() {
                     <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("colAge")}</th>
                     <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("colSalary")}</th>
                     <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("colContract")}</th>
+                    <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs uppercase">{t("colAction")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {roster.map((rider) => {
                     const age = calcAge(rider.birthdate);
+                    const busy = actionState[rider.id] != null;
+                    const err = actionErrors[rider.id];
                     return (
                       <tr key={rider.id} className="border-b border-cz-border last:border-0 hover:bg-cz-subtle">
                         <td className="px-4 py-3">
@@ -359,6 +397,7 @@ export default function AcademyPage() {
                               {rider.firstname} {rider.lastname}
                             </RiderLink>
                           </div>
+                          {err && <p className="text-xs text-cz-danger mt-1">{err}</p>}
                         </td>
                         <td className="px-4 py-3 text-cz-2">
                           {age != null ? age : "–"}
@@ -370,6 +409,19 @@ export default function AcademyPage() {
                           {rider.contract_end_season != null
                             ? t("contractUntil", { season: rider.contract_end_season })
                             : "–"}
+                        </td>
+                        {/* #932 S7: promote-handlingen lever HER (på akademi-rosteret),
+                            ikke på holdsiden. Blokeres når senior-truppen er fuld. */}
+                        <td className="px-4 py-3 text-right">
+                          <button
+                            type="button"
+                            onClick={() => handlePromote(rider)}
+                            disabled={busy || seniorFull}
+                            title={seniorFull ? t("promoteSeniorFullTooltip") : undefined}
+                            className="px-3 py-1.5 rounded-lg bg-cz-accent text-cz-on-accent text-xs font-semibold hover:brightness-110 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                          >
+                            {actionState[rider.id] === "promoting" ? t("loading") : t("promoteBtn")}
+                          </button>
                         </td>
                       </tr>
                     );
@@ -450,6 +502,22 @@ export default function AcademyPage() {
           setSignConfirm(null);
         }}
         onConfirm={confirmSignFreeAgent}
+      />
+
+      {/* Promote-bekræftelse (#932 S7) — senior-cap-effekt + projiceret senior-løn. */}
+      <AcademyTransferConfirmModal
+        show={!!promoteConfirm}
+        direction="promote"
+        riderName={promoteConfirm?.riderName}
+        newSalary={promoteConfirm?.newSalary}
+        capLabel={`${seniorCount} / ${seniorMax}`}
+        capAfterLabel={`${seniorCount + 1} / ${seniorMax}`}
+        busy={promoteConfirm ? actionState[promoteConfirm.riderId] === "promoting" : false}
+        onCancel={() => {
+          if (promoteConfirm && actionState[promoteConfirm.riderId] === "promoting") return;
+          setPromoteConfirm(null);
+        }}
+        onConfirm={confirmPromote}
       />
     </div>
   );

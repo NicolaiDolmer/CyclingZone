@@ -29,6 +29,8 @@
   "colAge": "Alder",
   "colSalary": "Løn",
   "colContract": "Kontrakt",
+  "colAction": "Handling",
+  "promoteSeniorFullTooltip": "Din senior-trup er fuld. Frigør en senior-plads først.",
   "signModal": {
     "title": "Bekræft signering",
     "question": "Signér denne rytter til dit akademi for penge:",
@@ -37,6 +39,22 @@
     "afterLabel": "Saldo bagefter",
     "cannotAfford": "Du har ikke nok penge til at signere denne rytter.",
     "confirm": "Signér"
+  },
+  "transferModal": {
+    "promoteTitle": "Ryk op i senior-truppen",
+    "promoteQuestion": "Ryk denne akademi-rytter op i din senior-trup:",
+    "promoteConfirm": "Ryk op",
+    "promoteNote": "Rytteren optager en senior-plads og får en senior-kontrakt. Akademi-lønnen erstattes af senior-lønnen vist ovenfor.",
+    "demoteTitle": "Flyt til akademi",
+    "demoteQuestion": "Flyt denne senior-rytter ned i dit akademi:",
+    "demoteConfirm": "Flyt til akademi",
+    "demoteNote": "Rytteren frigør en senior-plads og tæller ikke længere mod din senior-trup. Rytteren fjernes fra alle kommende løb, vedkommende var udtaget til.",
+    "seniorSalaryLabel": "Senior-løn",
+    "youthSalaryLabel": "Ungdomsløn",
+    "currentSalaryLabel": "Nuværende løn",
+    "seniorCapLabel": "Senior-trup",
+    "academyCapLabel": "Akademi-pladser",
+    "racesClearedLabel": "Kommende løb ryddet"
   },
   "error": {
     "academyFull": "Akademiet er fuldt (8/8). Kan ikke signere endnu en rytter.",

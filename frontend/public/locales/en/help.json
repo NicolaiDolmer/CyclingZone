@@ -609,6 +609,10 @@
       "graduation": {
         "title": "Graduating at 22",
         "text": "When an academy rider turns 22 they age out of the Academy and you make a choice for each one: promote them into your senior squad (needs a free senior place and gives them a senior contract), sell them on the transfer market, or release them as a free agent. You get a window to decide; if you do not act in time, the club picks a sensible default for you (promote when there is room, otherwise sell). This gives home-grown talent a clear path to your senior team."
+      },
+      "promoteDemote": {
+        "title": "Promoting up and moving riders down",
+        "text": "You do not have to wait for graduation. On the Academy page you can promote any academy rider straight into your senior squad whenever you have a free senior place; they take a senior contract and the senior wage. The reverse also works: on your team page, any senior rider aged 22 or under can be moved down into your academy (as long as the academy has a free place and the rider is not on an auction or transfer list). A demoted rider drops to a youth salary, stops counting toward your senior squad, and is pulled from any upcoming races they were entered in. Both actions show the full effect before you confirm."
       }
     },
     "raceSelection": {
