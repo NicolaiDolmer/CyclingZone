@@ -4,6 +4,153 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.11",
+    "date": "2026-06-25",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Account",
+        "en": {
+          "title": "Change your email and username from account settings",
+          "body": "You can now change your email address and username yourself from the account settings on your profile, without contacting support. Usernames are checked so no two managers share the same one."
+        },
+        "da": {
+          "title": "Skift e-mail og brugernavn fra konto-indstillinger",
+          "body": "Du kan nu selv skifte din e-mailadresse og dit brugernavn fra konto-indstillingerne på din profil, uden at kontakte support. Brugernavne tjekkes, så to managere ikke deler det samme."
+        },
+        "refs": [1746]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "Auctions now show the correct U23 badge",
+          "body": "Riders under 23 now show a U23 badge in auctions, riders aged 23 to 24 show U25, and riders 25 and older show no age badge. Previously U23 riders were missing their badge."
+        },
+        "da": {
+          "title": "Auktioner viser nu det rigtige U23-badge",
+          "body": "Ryttere under 23 viser nu et U23-badge i auktioner, ryttere på 23 til 24 viser U25, og ryttere på 25 og derover viser intet alders-badge. Tidligere manglede U23-ryttere deres badge."
+        },
+        "refs": [1824]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Transfers",
+        "en": {
+          "title": "Rider-type filters no longer empty the list",
+          "body": "Choosing a rider type in the filter on the transfer list and in auctions now filters correctly instead of making every rider disappear."
+        },
+        "da": {
+          "title": "Ryttertype-filteret tømmer ikke længere listen",
+          "body": "At vælge en ryttertype i filteret på transferlisten og i auktioner filtrerer nu korrekt i stedet for at få alle ryttere til at forsvinde."
+        },
+        "refs": [1826]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Transfers",
+        "en": {
+          "title": "The salary filter now includes free agents",
+          "body": "Setting a maximum salary and filtering for free agents now returns the thousands of available free agents, not just the few already on a team. The filter now uses each rider's shown salary, including free agents whose salary is estimated from their value."
+        },
+        "da": {
+          "title": "Løn-filteret medtager nu frie agenter",
+          "body": "At sætte en maks-løn og filtrere på frie agenter henter nu de tusindvis af tilgængelige frie agenter, ikke kun de få der allerede er på et hold. Filteret bruger nu hver rytters viste løn, inklusive frie agenter hvis løn er estimeret ud fra deres værdi."
+        },
+        "refs": [1827]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Academy riders can no longer be auctioned or listed",
+          "body": "Riders in an academy can no longer be put up for auction or listed for sale. They are managed in your academy until you promote them to your senior squad."
+        },
+        "da": {
+          "title": "Akademiryttere kan ikke længere sættes på auktion eller til salg",
+          "body": "Ryttere i et akademi kan ikke længere sættes på auktion eller til salg. De styres i dit akademi, indtil du rykker dem op til din seniortrup."
+        },
+        "refs": [1824]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Team",
+        "en": {
+          "title": "Contract extension no longer hangs for academy riders",
+          "body": "Opening the extend tab for an academy rider now shows a clear explanation instead of spinning forever on the new salary. Senior riders under contract into a future season show their new salary correctly."
+        },
+        "da": {
+          "title": "Kontraktforlængelse hænger ikke længere for akademiryttere",
+          "body": "At åbne forlæng-fanen for en akademirytter viser nu en tydelig forklaring i stedet for at hænge i indlæsning på den nye løn. Seniorryttere med kontrakt ind i en fremtidig sæson viser deres nye løn korrekt."
+        },
+        "refs": [1779]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "The sponsor-offer card is now fully clickable",
+          "body": "On the Board page, the whole sponsor-offer card now opens the offer, not just the button on it."
+        },
+        "da": {
+          "title": "Sponsortilbud-kortet er nu klikbart på hele kortet",
+          "body": "På Bestyrelse-siden åbner hele sponsortilbud-kortet nu tilbuddet, ikke kun knappen på det."
+        },
+        "refs": [1795]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Team",
+        "en": {
+          "title": "Click anywhere on a rider's row to open their profile",
+          "body": "On My Team, clicking anywhere on a rider's row now opens their profile, not just the name. The name link and the Sell or Auction button still do what they did before."
+        },
+        "da": {
+          "title": "Klik hvor som helst på en rytters række for at åbne profilen",
+          "body": "På Mit Hold åbner et klik hvor som helst på en rytters række nu profilen, ikke kun navnet. Navne-linket og Sælg- eller Auktion-knappen gør stadig som før."
+        },
+        "refs": [1796]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "Squad satisfaction now matches on the Dashboard and Board",
+          "body": "Squad satisfaction now shows the same percentage on the Dashboard and the Board page. Previously the two could differ, for example 65 percent versus 67 percent, because they were calculated differently."
+        },
+        "da": {
+          "title": "Holdtilfredshed stemmer nu overens på Dashboard og Bestyrelse",
+          "body": "Holdtilfredshed viser nu samme procent på Dashboard og Bestyrelse-siden. Tidligere kunne de to afvige, for eksempel 65 procent mod 67 procent, fordi de blev beregnet forskelligt."
+        },
+        "refs": [1830]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Privacy",
+        "en": {
+          "title": "Returning visitors are now recognised across sessions",
+          "body": "Our anonymous analytics now recognise returning visitors across sessions, so we can measure how people come back over time. Nothing new is tracked, it stays anonymous, and it only runs after you accept the Analytics cookie category."
+        },
+        "da": {
+          "title": "Tilbagevendende besøgende genkendes nu på tværs af sessioner",
+          "body": "Vores anonyme analytics genkender nu tilbagevendende besøgende på tværs af sessioner, så vi kan måle hvordan folk kommer tilbage over tid. Intet nyt spores, det forbliver anonymt, og det kører kun efter du har accepteret Analytics-cookiekategorien."
+        },
+        "refs": [1797]
+      }
+    ]
+  },
+  {
     "version": "6.10",
     "date": "2026-06-25",
     "label": "Beta",
