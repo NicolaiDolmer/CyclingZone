@@ -52,3 +52,25 @@ export function excludeBoundRiders({ riders = [], thisWindow = null, otherRaces 
   if (!bound.size) return riders;
   return riders.filter((r) => !bound.has(r.rider_id));
 }
+
+/**
+ * #1846: et hold kan kun være i et løbs felt hvis det tilhører løbets EGEN division.
+ * Op/nedrykning ændrer teams.league_division_id, men efterlod stale race_entries i den
+ * gamle divisions endnu-ikke-afviklede løb (Clássica da Figueira: 64 cross-division-rækker)
+ * → holdets ryttere "kørte" et løb de ikke var i + forurenede binding for deres rigtige løb.
+ * Defensiv guard på afviklings-stien: drop entries fra hold der IKKE er i løbets division.
+ *
+ * Konservativ: løb uden division (raceDivisionId == null) filtreres ikke; et hold hvis
+ * division er UKENDT (ikke i map'et, fx fejlet opslag) beholdes — vi fjerner kun entries
+ * vi POSITIVT ved er fra en anden division.
+ *
+ * @param {{ entries: Array<{team_id:string}>, teamDivisionById: Map<string,number|null>, raceDivisionId: number|null }} args
+ * @returns {object[]} entries fra hold i løbets division (+ ukendte)
+ */
+export function filterEntriesToRaceDivision({ entries = [], teamDivisionById = new Map(), raceDivisionId = null }) {
+  if (raceDivisionId == null) return entries;
+  return entries.filter((e) => {
+    if (!teamDivisionById.has(e.team_id)) return true; // ukendt division → behold (konservativt)
+    return teamDivisionById.get(e.team_id) === raceDivisionId;
+  });
+}

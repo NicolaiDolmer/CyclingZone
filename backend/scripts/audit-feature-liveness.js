@@ -297,6 +297,13 @@ const WHITELIST_ZERO_IMPRESSION_EVENTS = new Set([
   "onboarding_completed",
   "first_bid",
   "first_transfer",
+  // Funnel-events instrumenteret 2026-06-25 (#940 målebølge) sammen med firing-
+  // stierne (team_drafted: DashboardPage når truppen er løbsklar; first_race_
+  // result_viewed: TeamResultsTab når en bruger ser sit EGET holds resultater).
+  // Starter naturligt på 0 indtil nye managere passerer trinene — fjern hver
+  // entry når dens event flyder (tjek player_events).
+  "team_drafted",
+  "first_race_result_viewed",
 ]);
 
 // Detector D: prod-tabeller vi accepterer uden CREATE TABLE i repo
