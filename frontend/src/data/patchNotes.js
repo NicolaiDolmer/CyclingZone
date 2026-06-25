@@ -13,11 +13,11 @@ export const PATCHES = [
         "audience": "player",
         "topic": "Races",
         "en": {
-          "title": "Team strategy — tell your assistant how to build every lineup",
+          "title": "Team strategy: tell your assistant how to build every lineup",
           "body": "A new Team strategy page lets you set standing preferences your assistant follows when it auto-fills the calendar: a ranked A-chain of core riders, fixed roles per rider (always captain, or always sprint captain when selected), captains ranked 1/2/3 for each terrain type (flat, hills, mountains, cobbles, time trial) with real suitability data and an auto-suggest, and which races are your targets. Your A-chain gets priority for target races. Preview exactly how your strategy changes selections before you save, then regenerate suggestions. Manual picks are never overwritten."
         },
         "da": {
-          "title": "Holdstrategi — fortæl din assistent hvordan hver opstilling bygges",
+          "title": "Holdstrategi: fortæl din assistent hvordan hver opstilling bygges",
           "body": "En ny Holdstrategi-side lader dig sætte stående præferencer din assistent følger, når den auto-udfylder kalenderen: en rangordnet A-kæde af kerne-ryttere, faste roller pr. rytter (altid kaptajn, eller altid sprint-kaptajn når udtaget), kaptajner rangordnet 1/2/3 for hver terræntype (flad, bakke, bjerg, brosten, enkeltstart) med ægte egnethedsdata og auto-foreslå, og hvilke løb der er dine mål. Din A-kæde prioriteres til mål-løbene. Se præcis hvordan din strategi ændrer udtagelserne, før du gemmer, og generér så forslag igen. Manuelle udtagelser overskrives aldrig."
         },
         "refs": [1802]

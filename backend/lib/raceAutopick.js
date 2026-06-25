@@ -84,7 +84,7 @@ export function autopickTeamSelection({ riders = [], stages = [], sizeRule, pref
   const pickedIds = new Set(picked.map((p) => p.rider_id));
 
   const captainId = resolveCaptain({ picked, pickedIds, stages, preference });
-  const sprintCaptainId = resolveSprintCaptain({ picked, pickedIds, stages, captainId, preference });
+  const sprintCaptainId = resolveSprintCaptain({ picked, stages, captainId, preference });
 
   return picked.map((p) => ({
     rider_id: p.rider_id,
@@ -120,7 +120,7 @@ function resolveCaptain({ picked, pickedIds, stages, preference }) {
 
 // Sprint-kaptajn: fast regel (always_sprint_captain_if_present, ikke == kaptajn) >
 // feltets bedste sprinter på flade etaper (ikke == kaptajn). preference==null → kun fallback.
-function resolveSprintCaptain({ picked, pickedIds, stages, captainId, preference }) {
+function resolveSprintCaptain({ picked, stages, captainId, preference }) {
   if (preference) {
     const forced = picked
       .filter((p) => p.rider_id !== captainId

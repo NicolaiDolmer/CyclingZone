@@ -197,7 +197,7 @@
       "selection_flag_disabled": "Holdudtagelse er ikke aktiv endnu.",
       "selection_invalid_body": "Udtagelsen kunne ikke gemmes. Prøv igen.",
       "selection_wrong_pool": "Du kan kun deltage i løb i din egen division.",
-      "strategy_invalid_body": "Din strategi kunne ikke gemmes — ugyldige data.",
+      "strategy_invalid_body": "Din strategi kunne ikke gemmes: ugyldige data.",
       "strategy_flag_disabled": "Løbs-hubben er ikke aktiv endnu.",
       "generic": "Udtagelsen kunne ikke gemmes. Prøv igen."
     }
