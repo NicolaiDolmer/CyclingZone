@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { isBoardGoalAchieved, satisfactionToModifier, getPlanDuration, getEventSatisfactionTrend } from "./boardUtils.js";
+import { isBoardGoalAchieved, satisfactionToModifier, getPlanDuration, getEventSatisfactionTrend, computeOverallBoardSatisfaction } from "./boardUtils.js";
 
 // #55 · De 7 nye S-02d-måltyper faldt før til default:false i frontendens egen
 // evaluator, så header-tæller + top-3-ikoner undertalte opnåede mål. Fixet
@@ -135,4 +135,43 @@ test("getEventSatisfactionTrend: seneste event styrer pilen", () => {
 });
 test("getEventSatisfactionTrend: tom liste → null", () => {
   assert.equal(getEventSatisfactionTrend([]), null);
+});
+
+// #1830 · Board-bred tilfredshed — ÉN delt kilde for Dashboard + Bestyrelse.
+// Dashboard viste før den FØRSTE aktive plans tal (1yr→3yr→5yr), mens Bestyrelse
+// viste gennemsnittet på tværs af planerne → 65% vs 67%. Begge skal nu kalde
+// denne helper og få samme værdi.
+test("computeOverallBoardSatisfaction: gennemsnit på tværs af planer (afrundet)", () => {
+  // Reproducerer den rapporterede divergens: Dashboard tog 1yr=65 (først i
+  // prioritet), Bestyrelse tog round((65+69)/2)=67. Nu giver helperen 67 begge steder.
+  const plans = {
+    "1yr": { board: { satisfaction: 65 } },
+    "3yr": { board: { satisfaction: 69 } },
+    "5yr": null,
+  };
+  assert.equal(computeOverallBoardSatisfaction(plans), 67);
+});
+
+test("computeOverallBoardSatisfaction: én plan → den plans tal", () => {
+  assert.equal(
+    computeOverallBoardSatisfaction({ "1yr": { board: { satisfaction: 65 } }, "3yr": null, "5yr": null }),
+    65,
+  );
+});
+
+test("computeOverallBoardSatisfaction: ingen planer / baseline-fase → null", () => {
+  assert.equal(computeOverallBoardSatisfaction({ "1yr": null, "3yr": null, "5yr": null }), null);
+  assert.equal(computeOverallBoardSatisfaction({}), null);
+  assert.equal(computeOverallBoardSatisfaction(null), null);
+  assert.equal(computeOverallBoardSatisfaction(undefined), null);
+});
+
+test("computeOverallBoardSatisfaction: ignorerer planer uden numerisk satisfaction", () => {
+  const plans = {
+    "1yr": { board: { satisfaction: 80 } },
+    "3yr": { board: {} },          // mangler satisfaction
+    "5yr": { board: { satisfaction: 60 } },
+  };
+  // Kun de to numeriske tæller: round((80+60)/2)=70.
+  assert.equal(computeOverallBoardSatisfaction(plans), 70);
 });

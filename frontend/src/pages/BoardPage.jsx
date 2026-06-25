@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useTranslation, Trans } from "react-i18next";
 import { supabase } from "../lib/supabase";
-import { satisfactionToModifier, getPlanDuration, isBoardGoalAchieved, getEventSatisfactionTrend } from "../lib/boardUtils";
+import { satisfactionToModifier, getPlanDuration, isBoardGoalAchieved, getEventSatisfactionTrend, computeOverallBoardSatisfaction } from "../lib/boardUtils";
 import { getBoardGoalLabel } from "../lib/boardGoalLabel";
 import { getWizardBackState, canResumeNegotiation } from "../lib/boardWizardNav";
 import { getCountryDisplay } from "../lib/countryUtils";
@@ -383,11 +383,10 @@ function ClubDnaBadge({ dna, onSelect }) {
 function BoardDriversPanel({ dna, plans }) {
   const { t } = useTranslation("board");
 
-  // #165 · aggregér satisfaction fra de planer der findes (1yr/3yr/5yr).
-  const sats = Object.values(plans || {})
-    .map((p) => p?.board?.satisfaction)
-    .filter((s) => typeof s === "number");
-  const overall = sats.length ? Math.round(sats.reduce((a, b) => a + b, 0) / sats.length) : null;
+  // #165/#1830 · aggregér satisfaction fra de planer der findes (1yr/3yr/5yr).
+  // Delt kilde med Dashboard-kortet (computeOverallBoardSatisfaction) så de to
+  // flader aldrig kan divergere.
+  const overall = computeOverallBoardSatisfaction(plans);
   const benchmark = overall != null ? getBenchmarkMeta(t, overall) : null;
   const barColor = overall == null ? "bg-cz-3/30"
     : overall >= 70 ? "bg-cz-success" : overall >= 40 ? "bg-cz-accent" : "bg-cz-danger";
@@ -2397,9 +2396,18 @@ export default function BoardPage() {
 
       <BoardIdentityCard identityProfile={identityProfile} teamDna={teamDna} />
 
-      {/* #1663 · Sponsor-CTA — kun når der reelt er åbne tilbud at vælge imellem. */}
+      {/* #1663 · Sponsor-CTA — kun når der reelt er åbne tilbud at vælge imellem.
+          #1795 · HELE kortet er klik-target (var flest rage clicks i spillet: kortet
+          så klikbart ud, men kun knappen virkede). Følger ClubDnaBadge-mønstret —
+          ydre <button> + den indre CTA som visuel affordance (span, ikke nested
+          knap, som er ugyldig HTML). */}
       {sponsorState?.negotiable && sponsorState.offers.length > 0 && (
-        <div className="bg-cz-card border border-cz-border rounded-cz p-5 mt-5">
+        <button
+          type="button"
+          onClick={() => setSponsorModalOpen(true)}
+          className="w-full text-left bg-cz-card border border-cz-border rounded-cz p-5 mt-5
+            hover:border-cz-accent/40 hover:bg-cz-subtle/40 transition-colors group"
+        >
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="min-w-0">
               <h2 className="text-cz-1 font-semibold text-sm">
@@ -2411,15 +2419,13 @@ export default function BoardPage() {
                 {sponsorState.pendingVariant ? tSponsor("cta.pendingBody") : tSponsor("cta.body")}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => setSponsorModalOpen(true)}
-              className="flex-shrink-0 py-2 px-4 bg-cz-accent text-cz-on-accent text-sm font-semibold rounded-cz hover:brightness-110 transition-all"
+            <span
+              className="flex-shrink-0 py-2 px-4 bg-cz-accent text-cz-on-accent text-sm font-semibold rounded-cz group-hover:brightness-110 transition-all"
             >
               {sponsorState.pendingVariant ? tSponsor("cta.changeButton") : tSponsor("cta.button")}
-            </button>
+            </span>
           </div>
-        </div>
+        </button>
       )}
 
       {/* S-02f · Klub-DNA */}
