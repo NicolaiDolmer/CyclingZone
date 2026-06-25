@@ -2,7 +2,7 @@
 // Rene funktioner — ingen DB. RED-first.
 import test from "node:test";
 import assert from "node:assert/strict";
-import { freezeEntrantsToStartField, excludeBoundRiders } from "./raceFieldIntegrity.js";
+import { freezeEntrantsToStartField, excludeBoundRiders, filterEntriesToRaceDivision } from "./raceFieldIntegrity.js";
 
 // ── #1844: feltet må ikke ændre sig mellem etaper ──────────────────────────────
 test("freezeEntrantsToStartField udelukker en rytter der IKKE var med fra start (mid-race-intruder)", () => {
@@ -55,4 +55,30 @@ test("excludeBoundRiders uden vindue/binding lader feltet uændret", () => {
   const riders = [{ rider_id: "r1" }, { rider_id: "r2" }];
   assert.equal(excludeBoundRiders({ riders, thisWindow: null, otherRaces: [] }).length, 2);
   assert.equal(excludeBoundRiders({ riders, thisWindow: { start: 1, end: 1 }, otherRaces: [] }).length, 2);
+});
+
+// ── #1846: cross-division stale entries (efter op/nedrykning) ───────────────────
+test("filterEntriesToRaceDivision dropper entries fra hold i en ANDEN division", () => {
+  // Hold tA er i løbets division (6); tB flyttede til division 4 → stale entry skal væk.
+  const entries = [
+    { rider_id: "r1", team_id: "tA" },
+    { rider_id: "r2", team_id: "tB" }, // stale: tB er nu i div 4
+  ];
+  const teamDivisionById = new Map([["tA", 6], ["tB", 4]]);
+  const kept = filterEntriesToRaceDivision({ entries, teamDivisionById, raceDivisionId: 6 });
+  assert.deepEqual(kept.map((e) => e.team_id), ["tA"], "kun hold i løbets egen division beholdes");
+});
+
+test("filterEntriesToRaceDivision uden løbs-division (null) lader alt stå", () => {
+  const entries = [{ rider_id: "r1", team_id: "tA" }, { rider_id: "r2", team_id: "tB" }];
+  const teamDivisionById = new Map([["tA", 6], ["tB", 4]]);
+  assert.equal(filterEntriesToRaceDivision({ entries, teamDivisionById, raceDivisionId: null }).length, 2);
+});
+
+test("filterEntriesToRaceDivision beholder entries med ukendt holds-division (konservativt)", () => {
+  // Manglende division-data → drop IKKE (undgå at fjerne legit entries pga. fejlet opslag).
+  const entries = [{ rider_id: "r1", team_id: "tA" }, { rider_id: "r2", team_id: "tUnknown" }];
+  const teamDivisionById = new Map([["tA", 6]]);
+  const kept = filterEntriesToRaceDivision({ entries, teamDivisionById, raceDivisionId: 6 });
+  assert.deepEqual(kept.map((e) => e.team_id).sort(), ["tA", "tUnknown"]);
 });
