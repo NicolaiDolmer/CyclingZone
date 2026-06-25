@@ -131,6 +131,7 @@ import { resolveProgram } from "../lib/dailyTraining.js";
 import { copenhagenDateString } from "../lib/copenhagenTime.js";
 import { ACADEMY, isAcademyEnabled } from "../lib/academyFlag.js";
 import { resolveGraduation } from "../lib/academyGraduation.js";
+import { promote as promoteAcademyRider, demote as demoteAcademyRider } from "../lib/academyTransfer.js";
 import { buildFictionalPopulationPreview } from "../lib/fictionalPopulationPreview.js";
 import { getFinalWhistleReport } from "../lib/deadlineDayReport.js";
 import {
@@ -9278,7 +9279,7 @@ router.get("/academy/me", requireAuth, async (req, res) => {
     // Akademi-ryttere (ejede, is_academy=true)
     const { data: rosterRaw, error: rosterErr } = await supabase
       .from("riders")
-      .select("id, firstname, lastname, birthdate, nationality_code, team_id, is_academy, salary, contract_length, contract_end_season")
+      .select("id, firstname, lastname, birthdate, nationality_code, team_id, is_academy, salary, contract_length, contract_end_season, base_value, market_value, prize_earnings_bonus")
       .eq("team_id", teamId)
       .eq("is_academy", true);
     if (rosterErr) throw new Error(rosterErr.message);
@@ -9293,6 +9294,13 @@ router.get("/academy/me", requireAuth, async (req, res) => {
 
     // Antal brugte akademi-pladser
     const used = await getTeamAcademyCount(supabase, teamId);
+
+    // #932 S7: senior-trup-tæller til demote-confirm (cap-effekt). future_count
+    // (getTeamMarketState) tæller ikke-akademi-ryttere mod division-cap'en;
+    // squad_limits.max er division-cap'en. Bruges af holdsidens demote-dialog.
+    const seniorState = await getTeamMarketState(supabase, teamId);
+    const seniorCount = seniorState?.future_count ?? seniorState?.rider_count ?? 0;
+    const seniorMax = seniorState?.squad_limits?.max ?? 30;
 
     // Hent potentiale-værdier separat til estimat-beregning (#1162 whitelist: id, potentiale, birthdate, team_id).
     const candidateIds = (intakeRows ?? []).map((r) => r.rider_id).filter(Boolean);
@@ -9421,6 +9429,8 @@ router.get("/academy/me", requireAuth, async (req, res) => {
     res.json({
       enabled: true,
       slots: { used, max: ACADEMY.SLOTS },
+      seniorCount,
+      seniorMax,
       roster,
       intake,
       freeAgents,
@@ -9565,6 +9575,73 @@ router.post("/academy/free-agent/sign", requireAuth, marketWriteLimiter, async (
     // insufficient_balance er en forventet bruger-tilstand ("ikke råd"), ikke en
     // fejl — map til 409 og spring captureException over så Sentry ikke larmer (#1735).
     if (msg === "insufficient_balance") return res.status(409).json({ error: "insufficient_balance" });
+    captureException(err);
+    res.status(500).json({ error: msg });
+  }
+});
+
+// POST /api/academy/promote — promovér en akademi-rytter til senior-truppen (#932 S7).
+// Body: { riderId }. Lever på AcademyPage's roster (op-handlingen).
+router.post("/academy/promote", requireAuth, marketWriteLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const isBetaTester = await isViewerBetaTester(req);
+    const enabled = await isAcademyEnabled(supabase, { isBetaTester });
+    if (!enabled) return res.status(409).json({ error: "academy_disabled" });
+
+    const { riderId } = req.body || {};
+    if (!riderId) return res.status(400).json({ error: "riderId required" });
+
+    const { data: season } = await supabase
+      .from("seasons").select("number").eq("status", "active").maybeSingle();
+    const seasonNumber = season?.number ?? 1;
+
+    const result = await promoteAcademyRider(supabase, {
+      teamId: req.team.id,
+      riderId,
+      seasonNumber,
+    });
+    res.json(result);
+  } catch (err) {
+    const msg = err?.message ?? "";
+    if (msg === "rider_not_found") return res.status(404).json({ error: msg });
+    if (msg === "not_owned") return res.status(403).json({ error: msg });
+    if (["not_academy", "squad_cap_violation"].includes(msg)) return res.status(409).json({ error: msg });
+    captureException(err);
+    res.status(500).json({ error: msg });
+  }
+});
+
+// POST /api/academy/demote — flyt en U23-senior-rytter NED i akademiet (#932 S7, D5).
+// Body: { riderId }. Lever på holdsiden (ned-handlingen). RPC under advisory-lås.
+router.post("/academy/demote", requireAuth, marketWriteLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const isBetaTester = await isViewerBetaTester(req);
+    const enabled = await isAcademyEnabled(supabase, { isBetaTester });
+    if (!enabled) return res.status(409).json({ error: "academy_disabled" });
+
+    const { riderId } = req.body || {};
+    if (!riderId) return res.status(400).json({ error: "riderId required" });
+
+    const { data: season } = await supabase
+      .from("seasons").select("number").eq("status", "active").maybeSingle();
+    const seasonNumber = season?.number ?? 1;
+
+    const result = await demoteAcademyRider(supabase, {
+      teamId: req.team.id,
+      riderId,
+      seasonNumber,
+    });
+    res.json(result);
+  } catch (err) {
+    const msg = err?.message ?? "";
+    if (msg === "rider_not_found") return res.status(404).json({ error: msg });
+    if (msg === "not_owned") return res.status(403).json({ error: msg });
+    // age/market/listed/cap/full → 409 (forventede bruger-tilstande, ikke Sentry-larm).
+    if (["already_academy", "not_u23", "rider_on_market", "rider_listed", "academy_full"].includes(msg)) {
+      return res.status(409).json({ error: msg });
+    }
     captureException(err);
     res.status(500).json({ error: msg });
   }

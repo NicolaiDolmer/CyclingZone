@@ -333,6 +333,9 @@ export const SEED_STRATEGY = {
 export const SEED_ACADEMY = {
   enabled: true,
   slots: { used: 2, max: 8 },
+  // #932 S7: senior-cap-tæller til promote/demote-confirm-dialogerne.
+  seniorCount: 18,
+  seniorMax: 30,
   roster: [
     {
       id: "acad-r1",
@@ -345,6 +348,9 @@ export const SEED_ACADEMY = {
       salary: 12000,
       contract_length: 2,
       contract_end_season: 3,
+      base_value: 180000,
+      market_value: 180000,
+      prize_earnings_bonus: 0,
     },
     {
       id: "acad-r2",
@@ -357,6 +363,9 @@ export const SEED_ACADEMY = {
       salary: 10000,
       contract_length: 2,
       contract_end_season: 3,
+      base_value: 150000,
+      market_value: 150000,
+      prize_earnings_bonus: 0,
     },
   ],
   intake: [

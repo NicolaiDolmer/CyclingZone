@@ -23,6 +23,8 @@ export function useAcademy() {
   const [intake, setIntake]     = useState([]);
   const [freeAgents, setFreeAgents] = useState([]);
   const [graduations, setGraduations] = useState([]);
+  const [seniorCount, setSeniorCount] = useState(0);
+  const [seniorMax, setSeniorMax] = useState(30);
   const [balance, setBalance]   = useState(null);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState(null);
@@ -74,6 +76,8 @@ export function useAcademy() {
       setIntake(data.intake ?? []);
       setFreeAgents(data.freeAgents ?? []);
       setGraduations(data.graduations ?? []);
+      setSeniorCount(data.seniorCount ?? 0);
+      setSeniorMax(data.seniorMax ?? 30);
       setError(null);
     } catch {
       /* netværk — behold tidligere state */
@@ -165,5 +169,45 @@ export function useAcademy() {
     }
   }, [refresh]);
 
-  return { enabled, slots, roster, intake, freeAgents, graduations, balance, loading, error, signCandidate, rejectCandidate, signFreeAgent, resolveGraduate, refresh };
+  // Promovér en akademi-rytter til senior-truppen (#932 S7). Returnerer { ok, error? }.
+  const promoteRider = useCallback(async (riderId) => {
+    const headers = await authHeaders();
+    if (!headers) return { ok: false, error: "auth" };
+    try {
+      const res = await fetch(`${API}/api/academy/promote`, {
+        method: "POST", headers, body: JSON.stringify({ riderId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return { ok: false, error: data.error || "failed" };
+      }
+      logEvent("academy_promote", { riderId });
+      await refresh();
+      return { ok: true, result: data };
+    } catch {
+      return { ok: false, error: "network" };
+    }
+  }, [refresh]);
+
+  // Flyt en U23-senior-rytter ned i akademiet (#932 S7). Returnerer { ok, error?, result? }.
+  const demoteRider = useCallback(async (riderId) => {
+    const headers = await authHeaders();
+    if (!headers) return { ok: false, error: "auth" };
+    try {
+      const res = await fetch(`${API}/api/academy/demote`, {
+        method: "POST", headers, body: JSON.stringify({ riderId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return { ok: false, error: data.error || "failed" };
+      }
+      logEvent("academy_demote", { riderId });
+      await refresh();
+      return { ok: true, result: data };
+    } catch {
+      return { ok: false, error: "network" };
+    }
+  }, [refresh]);
+
+  return { enabled, slots, seniorCount, seniorMax, roster, intake, freeAgents, graduations, balance, loading, error, signCandidate, rejectCandidate, signFreeAgent, resolveGraduate, promoteRider, demoteRider, refresh };
 }

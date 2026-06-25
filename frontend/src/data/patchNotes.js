@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.16",
+    "date": "2026-06-25",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Promote academy riders up, or move U23 seniors down to the academy",
+          "body": "You can now move riders between your academy and your senior squad at any time. On the Academy page, promote an academy rider into your senior squad: they take a senior place and contract, and their salary becomes the senior wage. On your team page, move a senior rider aged 22 or under down to your academy: they free a senior place, drop to a youth salary, and are pulled from any upcoming races they were entered in. Both actions show the full effect (squad places, salary, races cleared) in a confirmation before you commit."
+        },
+        "da": {
+          "title": "Ryk akademi-ryttere op, eller flyt U23-seniorer ned i akademiet",
+          "body": "Du kan nu flytte ryttere mellem dit akademi og din senior-trup når som helst. På Akademi-siden kan du rykke en akademi-rytter op i senior-truppen: rytteren optager en senior-plads og -kontrakt, og lønnen bliver senior-lønnen. På din holdside kan du flytte en senior-rytter på 22 år eller derunder ned i akademiet: rytteren frigør en senior-plads, falder til ungdomsløn og fjernes fra alle kommende løb, vedkommende var udtaget til. Begge handlinger viser hele effekten (trup-pladser, løn, ryddede løb) i en bekræftelse, før du udfører dem."
+        },
+        "refs": [932]
+      }
+    ]
+  },
+  {
     "version": "6.15",
     "date": "2026-06-25",
     "label": "Beta",

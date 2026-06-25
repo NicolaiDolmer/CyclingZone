@@ -20,6 +20,25 @@ export function getRiderSalary(rider = {}) {
   return Math.max(1, Math.round(getRiderMarketValue(rider) * SALARY_RATE));
 }
 
+// #932 S7: projektér den SENIOR-løn en akademi-rytter ville fryses til ved en
+// promotion. Spejler backend computeFrozenSalary (base_value+prize × SALARY_RATE),
+// IGNORERER rytterens nuværende (akademi-)salary — derfor ikke getRiderSalary, som
+// returnerer den eksisterende akademi-løn. Kun til VISNING i promote-dialogen;
+// backend beregner den autoritative værdi.
+export function projectSeniorSalary(rider = {}) {
+  return Math.max(1, Math.round(getRiderMarketValue(rider) * SALARY_RATE));
+}
+
+// #932 S7: projektér den UNGDOMS-løn en senior-rytter ville få ved en demote.
+// Spejler backend academyTransfer.demoteSalary = ACADEMY.SALARY_RATE (0.10) ×
+// base_value (IGNORERER prize-bonus → bruger base_value, ikke market_value).
+// Kun til VISNING i demote-dialogen; backend-RPC'en beregner den autoritative værdi.
+const ACADEMY_SALARY_RATE = 0.10;
+export function projectYouthSalary(rider = {}) {
+  const base = Number(rider?.base_value) > 0 ? Number(rider.base_value) : 0;
+  return Math.max(1, Math.round(base * ACADEMY_SALARY_RATE));
+}
+
 // #1827: løn-filteret gælder den VISTE løn (getRiderSalary): frossen kontrakt-løn
 // hvis sat, ellers estimatet SALARY_RATE × market_value. De fleste ryttere (alle
 // free agents + 716 kontraktløse seniorer i prod 25/6) har salary == NULL, så et

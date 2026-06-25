@@ -62,7 +62,8 @@
       "auction": "Auction",
       "transfer": "Transfer list",
       "release": "Release",
-      "extend": "Extend contract"
+      "extend": "Extend contract",
+      "demote": "To academy"
     },
     "auction": {
       "description": "Start auction. Other managers can bid.",
@@ -96,6 +97,13 @@
       "newContractValue": "Expires after S{season}",
       "confirmButton": "Extend contract",
       "successMsg": "Contract extended."
+    },
+    "demote": {
+      "description": "Move this U23 rider down into your academy. Available only for riders aged 22 or under.",
+      "currentSalaryLabel": "Current salary",
+      "youthSalaryLabel": "Youth salary",
+      "hint": "They stop counting toward your senior squad and are pulled from any upcoming races. You confirm the full effect next.",
+      "confirmButton": "Move to academy"
     },
     "loadingShort": "...",
     "errorPrefix": ""
