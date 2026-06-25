@@ -4,6 +4,41 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.13",
+    "date": "2026-06-25",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Inbox",
+        "en": {
+          "title": "Your inbox now warns you when a rider's contract is about to expire",
+          "body": "You get an inbox notification when one of your riders' contracts is about to run out: at the season rollover for any rider whose deal ends next season, and right after you sign a rider whose contract expires this season."
+        },
+        "da": {
+          "title": "Din indbakke advarer dig nu, når en rytters kontrakt er ved at udløbe",
+          "body": "Du får en indbakke-notifikation, når en af dine rytteres kontrakter er ved at løbe ud: ved sæsonskift for enhver rytter hvis aftale slutter næste sæson, og lige efter du henter en rytter hvis kontrakt udløber i denne sæson."
+        },
+        "refs": [1836]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Feedback",
+        "en": {
+          "title": "A quick feedback prompt after a race result",
+          "body": "Once in a while, after you have seen a race result, we now ask with a quick 0 to 10 prompt how likely you are to recommend Cycling Zone, plus an optional reason. It is easy to dismiss, shows at most once every 90 days, and only appears if you have accepted the Analytics cookie category."
+        },
+        "da": {
+          "title": "En hurtig feedback-prompt efter et løb-resultat",
+          "body": "En sjælden gang, efter du har set et løb-resultat, spørger vi nu med en hurtig 0 til 10-prompt hvor sandsynligt det er at du vil anbefale Cycling Zone, plus en valgfri begrundelse. Den er nem at lukke, vises højst én gang hver 90. dag, og kun hvis du har accepteret Analytics-cookiekategorien."
+        },
+        "refs": [940]
+      }
+    ]
+  },
+  {
     "version": "6.12",
     "date": "2026-06-25",
     "label": "Beta",
