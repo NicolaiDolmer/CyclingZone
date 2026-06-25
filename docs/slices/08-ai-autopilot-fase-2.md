@@ -1,24 +1,13 @@
-# Slice 08 — AI-Autopilot Fase 2
+# Slice 08 — AI-Autopilot Fase 2 — RETIRED (2026-06-25)
 
-## Mål
-Etablering af world-class AI-autopilot workflow (Fase 2 af skalerings-roadmap). Dette inkluderer automatiserede tests ved hvert push og integration af Manus som den centrale orkestrator for loop D (Auto-PR-review) og Loop F (Subagent-orkestrering).
+> **Denne slice er udfaset.** Målet var en "world-class AI-autopilot" med **Manus** som
+> central orkestrator for Loop D (Auto-PR-review) og Loop F (Subagent-orkestrering). Med
+> **solo Claude-operation** siden 2026-06-12 (ingen Manus) findes orkestratoren ikke.
 
-## Runtime-evidens
-- `.github/workflows/ci.yml`: Eksisterende CI-workflow kører tests på push/PR.
-- `docs/GITHUB_WORKFLOW.md`: Beskriver visionen for agent-loopet.
-- `docs/AI_LOOPS.md`: Definerer Loop D og F som fremtidige mål.
+Den bevarede del af visionen lever videre i en ny form:
+- **Auto-PR-review** → CodeRabbit (Claude-model), `.coderabbit.yaml` (advisory), 2026-06-25.
+- **Subagent-orkestrering** → Claude kører selv Explore/Plan-subagents + worktree-parallelisme
+  (`docs/PARALLEL_WORKTREE_ORCHESTRATION.md`).
+- **Invarianten** "ingen merge til main uden grønne tests" håndhæves uændret af CI.
 
-## Invariant der beskyttes
-- Ingen kode merges til `main` uden at passere alle tests.
-- AI-genereret kode skal gennemgå et automatiseret review-loop før merge.
-- Projekt-invarianter (økonomi, squad limits, ownership) skal verificeres automatisk.
-
-## Minimal change
-1.  **Opdatér `ci.yml`**: Tilføj eksplicit Manus-trigger og optimér cache-håndtering.
-2.  **Etabler Loop D**: Implementér en wrapper eller instruktion til Manus om at køre `/review` automatisk ved PR-oprettelse.
-3.  **Dokumentation**: Opdatér `AGENTS.md` og `GUARDRAILS_CORE.md` til at reflektere den nye AI-orkestrerings-disciplin.
-
-## Verification path
-1.  Push en test-branch med en bevidst fejl → CI skal fejle.
-2.  Opret en PR → Manus skal (via workflow) trigge review eller give feedback.
-3.  Verificér at `auto-merge` label fungerer sammen med de nye checks.
+Historik: `git log --follow docs/slices/08-ai-autopilot-fase-2.md`.
