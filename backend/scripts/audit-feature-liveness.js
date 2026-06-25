@@ -182,6 +182,15 @@ const WHITELIST_EMPTY_TABLES = new Set([
   // Skriv-path verificeret i backend/routes/api.js (PUT /teams/my) + backend/lib/signupAttribution.js.
   // TODO(2026-06-27): fjern denne entry når tabellen har rows (tjek ~1 uge efter launch).
   "signup_attribution",
+  // In-app NPS (#940, shippet 2026-06-25): nps_responses fyldes KUN når en bruger
+  // afgiver et NPS-svar (0-10 + valgfri fritekst). Skriv-path verificeret: klienten
+  // insert'er via RLS-policy nps_responses_insert_own (eget user_id, fejl surfacet —
+  // ingen stilfærdig rollback); frontend når den via NpsPrompt-toasten der trigges
+  // efter første løb-resultat (TeamResultsTab, eget hold). Bevidst tom indtil den
+  // første bruger svarer — ikke broken. Samme "write-but-no-data indtil brugerne
+  // handler"-mønster som team_race_strategy ovenfor (#1840). Fjern denne entry når
+  // tabellen har rows.
+  "nps_responses",
   // Afmeld-state (race-hub Fase 0b, #1810): raceWithdrawal.js skriver én row pr.
   // frivillig afmelding (withdraw/reinstate) bag flaget auto_entry_generator_enabled
   // (seedet OFF) — og afmeld-UI'et findes først i race-hub Fase 1. Tabellen blev oprettet

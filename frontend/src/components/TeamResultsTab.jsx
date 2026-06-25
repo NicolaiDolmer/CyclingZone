@@ -5,6 +5,8 @@ import { supabase } from "../lib/supabase";
 import { fetchAllRows } from "../lib/supabasePagination";
 import RiderLink from "./RiderLink";
 import { formatNumber } from "../lib/intl";
+import { useNpsPrompt } from "../hooks/useNpsPrompt";
+import NpsPrompt from "./NpsPrompt";
 import { logFirstEvent } from "../lib/logEvent";
 import { pickFirstRaceResultPayload } from "../lib/firstRaceResult";
 
@@ -47,6 +49,9 @@ export default function TeamResultsTab({ teamId, isOwnTeam = false }) {
   const [sortKey, setSortKey] = useState("points");
   const [sortDir, setSortDir] = useState("desc");
   const [currentSeason, setCurrentSeason] = useState(null);
+  // #940 In-app NPS: trigger efter første løb-resultat (eget hold + ≥1 resultat).
+  const nps = useNpsPrompt();
+  const { markRaceResultSeen } = nps;
 
   useEffect(() => {
     let cancelled = false;
@@ -78,8 +83,8 @@ export default function TeamResultsTab({ teamId, isOwnTeam = false }) {
     return () => { cancelled = true; };
   }, [teamId, t]);
 
-  // #940: first_race_result_viewed — fyrer FØRSTE gang en bruger ser et af sine
-  // EGNE holds løbsresultater (kun isOwnTeam, kun når der findes mindst ét
+  // first_race_result_viewed (funnel, #940): fyrer FØRSTE gang en bruger ser et
+  // af sine EGNE holds løbsresultater (kun isOwnTeam, kun når der findes mindst ét
   // attribuérbart resultat). Logikken (vælg bedste placering) ligger i
   // pickFirstRaceResultPayload; logFirstEvent de-dup'er pr. bruger.
   useEffect(() => {
@@ -87,6 +92,13 @@ export default function TeamResultsTab({ teamId, isOwnTeam = false }) {
     const payload = pickFirstRaceResultPayload(results);
     if (payload) logFirstEvent("first_race_result_viewed", payload);
   }, [isOwnTeam, results]);
+
+  // #940 NPS: når en bruger ser sit EGET holds resultater (mindst ét), trigg NPS-
+  // gatingen. markRaceResultSeen er idempotent; gatingen (consent + throttle +
+  // allerede-svaret) sker i useNpsPrompt.
+  useEffect(() => {
+    if (isOwnTeam && results.length > 0) markRaceResultSeen();
+  }, [isOwnTeam, results.length, markRaceResultSeen]);
 
   const availableSeasons = useMemo(() => {
     const set = new Set(results.map((r) => r.race?.season?.number).filter((n) => n != null));
@@ -135,6 +147,7 @@ export default function TeamResultsTab({ teamId, isOwnTeam = false }) {
   const noResults = results.length === 0;
 
   return (
+    <>
     <div className="bg-cz-card border border-cz-border rounded-cz p-5">
       <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
         <div>
@@ -232,5 +245,16 @@ export default function TeamResultsTab({ teamId, isOwnTeam = false }) {
         </div>
       )}
     </div>
+    {isOwnTeam && (
+      <NpsPrompt
+        visible={nps.visible}
+        done={nps.done}
+        submitting={nps.submitting}
+        onSubmit={nps.submit}
+        onDismiss={nps.dismiss}
+        onClose={nps.close}
+      />
+    )}
+    </>
   );
 }
