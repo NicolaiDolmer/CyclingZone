@@ -51,7 +51,7 @@ function gcStages(stages) {
  * @param {{riders:Array<{rider_id:string, abilities:object, fatigue?:number}>, stages:Array, sizeRule:{min:number,max:number}}} args
  * @returns {Array<{rider_id:string, race_role:string}>} tom hvis ingen ryttere.
  */
-export function autopickTeamSelection({ riders = [], stages = [], sizeRule }) {
+export function autopickTeamSelection({ riders = [], stages = [], sizeRule, preference = null }) {
   const rule = sizeRule || SELECTION_SIZE.default;
 
   // Samlet egnethed (alle etaper) bruges til holdudvælgelsen.
@@ -65,28 +65,26 @@ export function autopickTeamSelection({ riders = [], stages = [], sizeRule }) {
     })
     .sort((a, b) => b.score - a.score || String(a.rider_id).localeCompare(String(b.rider_id)));
 
-  const picked = scored.slice(0, Math.min(rule.max, scored.length));
-  if (!picked.length) return [];
-
-  // Captain = bedst egnede på GC-etaper (non-flat); sprint og flad-topspeedvinding
-  // hører til sprint_captain. Tiebreak: rider_id-rækkefølge.
-  const gcStagesToUse = gcStages(stages);
-  const captainId = [...picked]
-    .sort((a, b) =>
-      suitabilityScore(b.abilities, gcStagesToUse) - suitabilityScore(a.abilities, gcStagesToUse) ||
-      String(a.rider_id).localeCompare(String(b.rider_id))
-    )[0].rider_id;
-
-  // Sprint-kaptajn: kun hvis løbet har flade etaper og feltets bedste sprinter
-  // ikke allerede ER kaptajnen (assistenten holder det simpelt).
-  let sprintCaptainId = null;
-  if (stages.some((s) => FLAT_PROFILES.has(s.profile_type)) && picked.length > 1) {
-    const bestSprint = [...picked].sort((a, b) =>
-      (Number(b.abilities?.sprint) || 0) - (Number(a.abilities?.sprint) || 0) ||
-      String(a.rider_id).localeCompare(String(b.rider_id))
-    )[0];
-    if (bestSprint.rider_id !== captainId) sprintCaptainId = bestSprint.rider_id;
+  // S3 præference-lag (Fork A): ved MÅL-LØB sorteres A-kæden FØRST (rang→score→rider_id),
+  // så managerens kerne-ryttere garanteres pladser dér. preference==null ELLER ikke-mål-løb
+  // ELLER tom A-kæde → uændret score-rækkefølge (idempotens: byte-identisk gammel adfærd).
+  let ordered = scored;
+  if (preference?.isTargetRace && preference.aChain?.length) {
+    const rank = new Map(preference.aChain.map((id, i) => [id, i]));
+    ordered = [...scored].sort((a, b) => {
+      const ra = rank.has(a.rider_id) ? rank.get(a.rider_id) : Infinity;
+      const rb = rank.has(b.rider_id) ? rank.get(b.rider_id) : Infinity;
+      if (ra !== rb) return ra - rb;
+      return b.score - a.score || String(a.rider_id).localeCompare(String(b.rider_id));
+    });
   }
+
+  const picked = ordered.slice(0, Math.min(rule.max, ordered.length));
+  if (!picked.length) return [];
+  const pickedIds = new Set(picked.map((p) => p.rider_id));
+
+  const captainId = resolveCaptain({ picked, pickedIds, stages, preference });
+  const sprintCaptainId = resolveSprintCaptain({ picked, pickedIds, stages, captainId, preference });
 
   return picked.map((p) => ({
     rider_id: p.rider_id,
@@ -94,4 +92,49 @@ export function autopickTeamSelection({ riders = [], stages = [], sizeRule }) {
       : p.rider_id === sprintCaptainId ? "sprint_captain"
       : "helper",
   }));
+}
+
+// A-kæde-rang som tiebreak blandt lige kandidater (lavere index = højere prioritet).
+function aChainRank(id, preference) {
+  const i = preference?.aChain?.indexOf(id);
+  return i == null || i < 0 ? Infinity : i;
+}
+
+// Kaptajn-præcedens (L6): fast regel (always_captain) > terræn-prioritet (captains-liste)
+// > GC-fallback (bedst på non-flat etaper). preference==null → kun GC-fallback (uændret).
+function resolveCaptain({ picked, pickedIds, stages, preference }) {
+  if (preference) {
+    const forced = picked
+      .filter((p) => preference.roleRules?.[p.rider_id] === "always_captain")
+      .sort((a, b) => aChainRank(a.rider_id, preference) - aChainRank(b.rider_id, preference)
+        || String(a.rider_id).localeCompare(String(b.rider_id)));
+    if (forced.length) return forced[0].rider_id;
+    for (const id of preference.captains || []) if (pickedIds.has(id)) return id;
+  }
+  const gcStagesToUse = gcStages(stages);
+  return [...picked].sort((a, b) =>
+    suitabilityScore(b.abilities, gcStagesToUse) - suitabilityScore(a.abilities, gcStagesToUse) ||
+    String(a.rider_id).localeCompare(String(b.rider_id))
+  )[0].rider_id;
+}
+
+// Sprint-kaptajn: fast regel (always_sprint_captain_if_present, ikke == kaptajn) >
+// feltets bedste sprinter på flade etaper (ikke == kaptajn). preference==null → kun fallback.
+function resolveSprintCaptain({ picked, pickedIds, stages, captainId, preference }) {
+  if (preference) {
+    const forced = picked
+      .filter((p) => p.rider_id !== captainId
+        && preference.roleRules?.[p.rider_id] === "always_sprint_captain_if_present")
+      .sort((a, b) => aChainRank(a.rider_id, preference) - aChainRank(b.rider_id, preference)
+        || String(a.rider_id).localeCompare(String(b.rider_id)));
+    if (forced.length) return forced[0].rider_id;
+  }
+  if (stages.some((s) => FLAT_PROFILES.has(s.profile_type)) && picked.length > 1) {
+    const bestSprint = [...picked].sort((a, b) =>
+      (Number(b.abilities?.sprint) || 0) - (Number(a.abilities?.sprint) || 0) ||
+      String(a.rider_id).localeCompare(String(b.rider_id))
+    )[0];
+    if (bestSprint.rider_id !== captainId) return bestSprint.rider_id;
+  }
+  return null;
 }
