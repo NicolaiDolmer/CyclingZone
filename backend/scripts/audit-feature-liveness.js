@@ -131,6 +131,14 @@ const WHITELIST_EMPTY_TABLES = new Set([
   // fyldes når brugere scouter ryttere (slots/sæson). Skriv-path verificeret i
   // POST /api/scouting/:riderId. Fjern denne whitelist-entry når tabellen har rows.
   "scout_actions",
+  // Race Hub S3 Holdstrategi (#1840, shippet 2026-06-25): manager-gemt strategi +
+  // per-rytter rolle-regler. Begge er gated bag RACE_ENGINE_V2_ENABLED og skrives kun
+  // via PUT /api/races/strategy (upsert/insert med fejl surfacet — verificeret api.js).
+  // Bevidst tom indtil en bruger gemmer sin første strategi efter S3-launch — ikke
+  // broken. Samme flag-gated freshness-mønster som race_simulation_runs ovenfor.
+  // Fjern disse to entries når tabellerne har rows.
+  "team_race_strategy",
+  "team_rider_role_rules",
   // Discord DM-retry-kø (#1115): rows enqueues KUN når en DM fejler og slettes
   // igen når den leveres (processDmOutboxDrain). Tom = sund steady-state — alle
   // DM'er leveret. Detector A's "write-but-no-data" mis-fyrer på dræn-til-tom-

@@ -621,6 +621,10 @@
         "title": "Captain, sprint captain and breakaway hunter",
         "text": "Your captain is protected by the team: strong, fresh helpers boost the captain's chances. On flat stages your sprint captain (if set) gets the protection instead. A breakaway hunter gets a much higher chance of making the day's breakaway."
       },
+      "strategy": {
+        "title": "Team strategy (standing preferences)",
+        "text": "Open Team strategy from the squad board to set preferences your assistant follows when it auto-fills the calendar. Rank an A-chain of core riders. They get priority for the races you mark as targets. Give a rider a fixed role (always captain, or always sprint captain when selected). Rank captains 1/2/3 for each terrain type (flat, hills, mountains, cobbles, time trial); the assistant picks the highest-ranked rider who makes that race's lineup. Mark your target races so your strongest riders go there. Preview shows exactly how your strategy changes selections before you save, and Regenerate suggestions applies it without touching the picks you made by hand."
+      },
       "breakaway": {
         "title": "Breakaways",
         "text": "On flat, rolling and medium mountain stages a small breakaway gets a chance to stay away. Most get caught, but sometimes the break makes it. Aggressive riders and designated hunters join breaks more often. Stage results mark riders who were in the breakaway with a flag, showing whether they stayed away to the finish or were caught by the bunch."
@@ -635,6 +639,10 @@
     "overlappingRaces": {
       "q": "How do overlapping races and squad distribution work?",
       "a": "Races on the same day overlap in time, and a rider can only start one race at a time, so spreading your squad across them is a strategic choice. The squad distribution view on the Races page (Season & Results -> Races) shows your overlapping races side by side. Add riders to a race from your available pool; a rider you put in one race is locked out of the other races that overlap it. If you do not want to enter a race, withdraw from it and you simply do not start. The assistant fills your line-ups automatically as a starting point, and you can have it fill them again: choose Fill gaps to keep the picks you set by hand, or Rebuild all to replace every pick with the assistant's suggestion. Once a race has started, its line-up is final and can no longer be changed."
+    },
+    "teamStrategyFaq": {
+      "q": "How do I make the assistant pick my best riders for big races?",
+      "a": "Open Team strategy from the squad board. Add your best riders to the A-chain and mark the races that matter most as targets, and the assistant then prioritizes your A-chain for those races. You can also rank captains 1/2/3 per terrain and give riders a fixed role. Use Preview changes to see exactly how it affects your lineups, then Save and Regenerate suggestions. Picks you set by hand are never overwritten."
     },
     "relaunchTeamMoney": {
       "q": "What happened to my team and money in the Season 1 relaunch?",

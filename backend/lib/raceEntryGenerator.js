@@ -7,6 +7,8 @@
 import { autopickTeamSelection, selectionSizeForRace } from "./raceAutopick.js";
 import { windowsOverlap, raceBindingWindow } from "./raceBinding.js";
 import { ABILITY_KEYS } from "./raceSimulator.js";
+import { raceTerrainBucket } from "./raceTerrain.js";
+import { loadStrategiesForTeams } from "./raceStrategy.js";
 
 /**
  * @param {{ riders: Array<{rider_id, abilities, fatigue?}>,
@@ -20,7 +22,7 @@ import { ABILITY_KEYS } from "./raceSimulator.js";
  * men der skrives ingen picks for selve det låste løb. Tom default → uændret adfærd
  * for eksisterende kald.
  */
-export function assignTeamAcrossRaces({ riders = [], races = [], lockedWindows = [] }) {
+export function assignTeamAcrossRaces({ riders = [], races = [], lockedWindows = [], strategy = null }) {
   // Kronologisk, stabil rækkefølge: tidligste vindue først, så race_id.
   const ordered = [...races].sort(
     (a, b) => (a.window?.start ?? 0) - (b.window?.start ?? 0) || String(a.race_id).localeCompare(String(b.race_id))
@@ -42,7 +44,17 @@ export function assignTeamAcrossRaces({ riders = [], races = [], lockedWindows =
       const windows = busy.get(r.rider_id) || [];
       return !windows.some((w) => windowsOverlap(w, race.window));
     });
-    const picks = autopickTeamSelection({ riders: available, stages: race.stages, sizeRule: race.sizeRule });
+    // S3: udled per-race preference fra team-niveau strategi. null → uændret autopick
+    // (idempotens: strategy=null ≡ bit-for-bit gammel adfærd).
+    const preference = strategy
+      ? {
+          aChain: strategy.aChain || [],
+          captains: strategy.captainPriorities?.[raceTerrainBucket(race.stages)] || [],
+          roleRules: strategy.roleRules || {},
+          isTargetRace: !!strategy.targetRaceIds?.has(race.race_id),
+        }
+      : null;
+    const picks = autopickTeamSelection({ riders: available, stages: race.stages, sizeRule: race.sizeRule, preference });
     out[race.race_id] = picks;
     for (const p of picks) {
       if (!busy.has(p.rider_id)) busy.set(p.rider_id, []);
@@ -234,6 +246,14 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
     }
   }
 
+  // 8b. S3: load holdstrategier for egnede hold. rosterByTeam = holdets ryttere (til
+  // stale-filter). Hold uden strategi-row/regler → null → uændret generator-adfærd.
+  const rosterByTeam = new Map();
+  for (const [teamId, list] of ridersByTeam) rosterByTeam.set(teamId, new Set(list.map((r) => r.rider_id)));
+  const strategyByTeam = await loadStrategiesForTeams({
+    supabase, teamIds: eligibleTeamIds, rosterByTeam, selectInChunks,
+  });
+
   // 9. Pr. pulje, pr. hold: byg holdets løb-liste (vindue + ikke-afmeldt + ikke-manuel),
   // kald kernen, og stage de idempotente skrivninger.
   const staged = []; // { race_id, team_id, picks }
@@ -263,7 +283,10 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
           sizeRule: selectionSizeForRace(race),
         });
       }
-      const assignment = assignTeamAcrossRaces({ riders: ridersByTeam.get(team.id) || [], races: teamRaces, lockedWindows });
+      const assignment = assignTeamAcrossRaces({
+        riders: ridersByTeam.get(team.id) || [], races: teamRaces, lockedWindows,
+        strategy: strategyByTeam.get(team.id) ?? null,
+      });
       for (const [race_id, picks] of Object.entries(assignment)) {
         if (picks.length) staged.push({ race_id, team_id: team.id, picks });
       }
