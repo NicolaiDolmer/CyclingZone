@@ -355,6 +355,13 @@ try {
   RIDER_TYPES_BASELINE = null;
 }
 
+// Strategi-rosterens kolonne-projektion (GET /api/races/strategy). Delt konstant
+// så projektionen kan kontrakt-testes mod det reelle skema (PGlite-harness,
+// raceStrategy.contract.integration.test.js). `riders` har INGEN `overall`-kolonne
+// — et select af en ikke-eksisterende kolonne fejler hele queryen og gav tom roster
+// → blank strategi-flade (#1840). Hold denne liste = endpointets faktiske select.
+export const STRATEGY_ROSTER_COLUMNS = "id, firstname, lastname, primary_type, secondary_type";
+
 // Log to public activity feed
 async function logActivity(type, data = {}) {
   try {
@@ -1875,7 +1882,7 @@ router.get("/races/strategy", requireAuth, async (req, res) => {
     // tom roster → fladen kortsluttede til empty-state (#1840 hotfix). Surfacér fejl
     // loud i stedet for tavst tom (samme klasse som verify-før-claim).
     const { data: riders, error: ridersErr } = await supabase
-      .from("riders").select("id, firstname, lastname, primary_type, secondary_type")
+      .from("riders").select(STRATEGY_ROSTER_COLUMNS)
       .eq("team_id", req.team.id).eq("is_academy", false).or("is_retired.is.null,is_retired.eq.false");
     if (ridersErr) throw new Error(`riders (strategy roster): ${ridersErr.message}`);
     const rosterIds = new Set((riders || []).map((r) => r.id));

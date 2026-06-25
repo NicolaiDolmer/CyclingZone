@@ -95,6 +95,15 @@ reviews:
     github-checks:
       enabled: true
       timeout_ms: 180000
+    # 25+ GitHub workflows — fang workflow-bugs/sikkerhed med lav støj.
+    actionlint:
+      enabled: true
+    # Slå støj fra: grammatik-tjek rammer danske kommentarer/copy med falske
+    # positiver, og markdownlint larmer på de mange docs/*.md. (anti-slop)
+    languagetool:
+      enabled: false
+    markdownlint:
+      enabled: false
 
 chat:
   # Tillad "@coderabbitai"-spørgsmål i PR-tråde (og at den lærer af din feedback).
@@ -105,3 +114,11 @@ knowledge_base:
     scope: "auto"
   issues:
     scope: "auto"
+  # Lad CodeRabbit reviewe efter repoets EGNE husregler, ikke kun generiske.
+  code_guidelines:
+    enabled: true
+    filePatterns:
+      - "AGENTS.md"
+      - "CLAUDE.md"
+      - "docs/GUARDRAILS_CORE.md"
+      - "docs/GAME_INVARIANTS.md"
