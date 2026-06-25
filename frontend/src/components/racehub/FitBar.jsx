@@ -15,10 +15,13 @@ export default function FitBar({ score, className = "" }) {
   const tier = fitTier(score);
   if (tier == null) return <span className="text-cz-3 text-[10px] font-mono">—</span>;
   const pct = Math.max(0, Math.min(100, score));
+  const label = `${t("racehub.fit.label")} ${score} · ${t(`racehub.fit.${tier}`)}`;
   return (
     <span
+      role="img"
+      aria-label={label}
       className={`inline-flex items-center gap-1.5 ${className}`}
-      title={`${t("racehub.fit.label")} ${score} · ${t(`racehub.fit.${tier}`)}`}
+      title={label}
     >
       <span className="relative inline-block w-9 h-1 rounded-full bg-cz-border/60 overflow-hidden align-middle">
         <span className={`absolute inset-y-0 left-0 rounded-full ${TIER_FILL[tier]}`} style={{ width: `${pct}%` }} />
