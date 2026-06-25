@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { isSquadDrafted } from "./teamDrafted.js";
 
 // Player-events baseline (#137). Fire-and-forget instrumentation der respekterer
 // analytics-consent (samme gate som Clarity). Skriver til public.player_events
@@ -60,6 +61,12 @@ export const KNOWN_EVENTS = Object.freeze([
   "onboarding_completed",
   "first_bid",
   "first_transfer",
+  // team_drafted: ny manager har FØRSTE gang en løbsklar trup (≥ MIN_RIDERS_FOR_RACE=8
+  // ryttere — starter-squad-størrelsen, relaunch-design). first_race_result_viewed:
+  // brugeren ser FØRSTE gang et af sine EGNE holds løbsresultater (placering). Begge
+  // via logFirstEvent (de-dup pr. bruger). Instrumenteret 2026-06-25 (#940 målebølge).
+  "team_drafted",
+  "first_race_result_viewed",
   // Game-events — engagement / retention-signal
   "session_started",
   "auction_view",
@@ -155,6 +162,15 @@ export function logFirstEvent(name, data = {}) {
   _logFirstEvent(name, data).catch(() => {
     // Instrumentation must never break the user flow.
   });
+}
+
+// --- Aktiverings-funnel: team_drafted (#940) ----------------------------
+// Tærsklen ligger i lib/teamDrafted.js (pure, unit-testbar uden Supabase-import);
+// her kobles den til logFirstEvent, så eventet de-dup'es pr. bruger og kun lander
+// én gang. Kaldes med antallet af ejede ryttere fra dashboardets squad-stats.
+export function logTeamDrafted(riderCount) {
+  if (!isSquadDrafted(riderCount)) return;
+  logFirstEvent("team_drafted", { rider_count: riderCount });
 }
 
 // --- Signup-funnel-event (#1583) -----------------------------------------

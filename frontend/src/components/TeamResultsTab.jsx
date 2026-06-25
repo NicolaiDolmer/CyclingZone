@@ -5,6 +5,8 @@ import { supabase } from "../lib/supabase";
 import { fetchAllRows } from "../lib/supabasePagination";
 import RiderLink from "./RiderLink";
 import { formatNumber } from "../lib/intl";
+import { logFirstEvent } from "../lib/logEvent";
+import { pickFirstRaceResultPayload } from "../lib/firstRaceResult";
 
 // #824 (Discord-feedback): Holdets resultatliste — kun pointgivende resultater,
 // med rytternavn pr. resultat. Attribution = race_results.team_id (holdet på
@@ -36,7 +38,7 @@ function typeLabel(r, t) {
   return label === key ? r.result_type : label;
 }
 
-export default function TeamResultsTab({ teamId }) {
+export default function TeamResultsTab({ teamId, isOwnTeam = false }) {
   const { t } = useTranslation("team");
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -75,6 +77,16 @@ export default function TeamResultsTab({ teamId }) {
     load();
     return () => { cancelled = true; };
   }, [teamId, t]);
+
+  // #940: first_race_result_viewed — fyrer FØRSTE gang en bruger ser et af sine
+  // EGNE holds løbsresultater (kun isOwnTeam, kun når der findes mindst ét
+  // attribuérbart resultat). Logikken (vælg bedste placering) ligger i
+  // pickFirstRaceResultPayload; logFirstEvent de-dup'er pr. bruger.
+  useEffect(() => {
+    if (!isOwnTeam || results.length === 0) return;
+    const payload = pickFirstRaceResultPayload(results);
+    if (payload) logFirstEvent("first_race_result_viewed", payload);
+  }, [isOwnTeam, results]);
 
   const availableSeasons = useMemo(() => {
     const set = new Set(results.map((r) => r.race?.season?.number).filter((n) => n != null));
