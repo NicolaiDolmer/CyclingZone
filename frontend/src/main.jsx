@@ -31,18 +31,29 @@ initSentry();
 // SPA navigation changes document.referrer. First visit wins; persisted at signup.
 captureFirstTouch();
 
-ReactDOM.createRoot(document.getElementById("root")).render(
-  <React.StrictMode>
-    <SentryBoundary>
-      <I18nextProvider i18n={i18n}>
-        <ThemeProvider>
-          <ConsentProvider>
-            <LanguageProvider>
-              <App />
-            </LanguageProvider>
-          </ConsentProvider>
-        </ThemeProvider>
-      </I18nextProvider>
-    </SentryBoundary>
-  </React.StrictMode>
-);
+// Preview-mock (#prelive-harness): KUN når VITE_PREVIEW_MOCK er sat (Vercel
+// preview-scope). Den dynamiske import bag build-time-guarden ⇒ prod-bundlen
+// tree-shaker hele preview/-mappen væk (0 bytes i production). Async IIFE så vi
+// kan afvente installeringen FØR createRoot uden top-level await i entry-modulet.
+(async () => {
+  if (import.meta.env.VITE_PREVIEW_MOCK) {
+    const { installPreviewMock } = await import("./preview/installPreviewMock.js");
+    installPreviewMock();
+  }
+
+  ReactDOM.createRoot(document.getElementById("root")).render(
+    <React.StrictMode>
+      <SentryBoundary>
+        <I18nextProvider i18n={i18n}>
+          <ThemeProvider>
+            <ConsentProvider>
+              <LanguageProvider>
+                <App />
+              </LanguageProvider>
+            </ConsentProvider>
+          </ThemeProvider>
+        </I18nextProvider>
+      </SentryBoundary>
+    </React.StrictMode>
+  );
+})();
