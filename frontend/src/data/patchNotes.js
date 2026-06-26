@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.19",
+    "date": "2026-06-26",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "added",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Scout rival start lists across every division",
+          "body": "You can now switch the race hub to 'My division' or 'Other divisions' and browse any pool's upcoming start lists, read-only. Start lists open seven days before each race and show gross squads only (which riders a team has entered), so you can scout the expected field and plan tactically. Roles, form and fatigue stay hidden, and races further out stay locked until their start list opens."
+        },
+        "da": {
+          "title": "Scout modstandernes startlister på tværs af alle divisioner",
+          "body": "Du kan nu skifte race hub'en til 'Min division' eller 'Andre divisioner' og se enhver puljes kommende startlister, skrivebeskyttet. Startlister åbner syv dage før hvert løb og viser kun bruttotrupper (hvilke ryttere et hold har meldt til), så du kan scoute det forventede felt og planlægge taktisk. Roller, form og træthed forbliver skjult, og løb længere ude er låst, indtil deres startliste åbner."
+        },
+        "refs": [1835]
+      }
+    ]
+  },
+  {
     "version": "6.18",
     "date": "2026-06-26",
     "label": "Beta",

@@ -640,6 +640,10 @@
       "fatigue": {
         "title": "Fatigue matters",
         "text": "Tired helpers support their captain less, and racing builds fatigue. Rotating your squad between races keeps your stars fresh for the days that matter."
+      },
+      "scouting": {
+        "title": "Scouting other divisions",
+        "text": "Switch the race hub to 'My division' or 'Other divisions' to browse any pool's upcoming start lists, read-only. Start lists open seven days before each race and show gross squads only (which riders a team has entered), so you can size up the expected field. Roles, form and fatigue stay hidden, and races further out stay locked until their start list opens."
       }
     }
   },

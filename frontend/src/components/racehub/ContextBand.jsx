@@ -1,6 +1,7 @@
 // Race Hub Fase 1 — delt kontekstbånd: scope-pills + sæson-tidslinje.
-// "mine" er funktionel; "division"/"others" er deaktiveret (Fase 5). Ejer ikke URL —
-// RaceHubBoard sender day/scope + callbacks ned.
+// Fase 5 (#1835 / S6): "division"/"others" er nu aktive (read-only browse via
+// DivisionStartLists). Ejer ikke URL — RaceHubBoard/DivisionStartLists sender
+// day/scope + callbacks ned.
 import { useTranslation } from "react-i18next";
 
 export default function ContextBand({ scope, day, currentDay, timeline, onScopeChange, onDayChange }) {
@@ -10,8 +11,8 @@ export default function ContextBand({ scope, day, currentDay, timeline, onScopeC
   const focused = days.find((d) => d.day === day);
   const scopes = [
     { key: "mine", enabled: true },
-    { key: "division", enabled: false },
-    { key: "others", enabled: false },
+    { key: "division", enabled: true },
+    { key: "others", enabled: true },
   ];
   return (
     <div className="bg-cz-subtle border border-cz-border rounded-cz px-4 py-3 mb-4">
