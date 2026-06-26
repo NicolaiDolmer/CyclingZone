@@ -96,44 +96,42 @@ export function useTraining() {
     }
   }, []);
 
-  // Bulk-anvend samme fokus+intensitet på flere ryttere (#1480). Looper
-  // sekventielt med ÉT POST pr. rytter (fokus+intensitet i samme body, samme
-  // route som setPlan) for at undgå at sprænge marketWriteLimiter (30/min) med
-  // dobbelt-kald. Stopper IKKE ved en enkelt rytter-fejl: samler delvist
-  // resultat så UI kan vise "X af Y opdateret" + hvilke der fejlede.
-  // Returnerer { ok, applied, failed: [{ riderId, error }] }.
+  // Bulk-anvend samme fokus+intensitet på flere ryttere (#1480/#1885). ÉT POST
+  // mod /api/training/bulk — backend partitionerer mod ejerskab + slots og
+  // upserter alle gyldige i én batch. Tidligere loopede vi ét POST pr. rytter,
+  // hvilket sprængte marketWriteLimiter (30/min) på en fuld trup (30+) → de
+  // sidste ryttere fik 429 og blev tabt ("det åd den ikke"). Returnerer
+  // { ok, applied, failed: [{ riderId, error }] } — uændret kontrakt mod
+  // TrainingPage, hvor failed = de oversprungne (ikke-ejet / ingen slots).
   const setPlanBulk = useCallback(async (riderIds, focus, intensity) => {
     const headers = await authHeaders();
     if (!headers) return { ok: false, applied: 0, failed: [], error: "auth" };
     const ids = Array.isArray(riderIds) ? riderIds : [];
-    const failed = [];
-    const updated = {};
-    let latestSlots = null;
+    if (ids.length === 0) return { ok: true, applied: 0, failed: [] };
     setBulkApplying(true);
     try {
-      for (const riderId of ids) {
-        try {
-          const res = await fetch(`${API}/api/training/${riderId}`, {
-            method: "POST", headers, body: JSON.stringify({ focus, intensity }),
-          });
-          const data = await res.json().catch(() => ({}));
-          if (!res.ok) {
-            failed.push({ riderId, error: data.error || "failed" });
-            continue;
-          }
-          if (data.slots) latestSlots = data.slots;
-          updated[riderId] = data.plan ?? { focus, intensity };
-        } catch {
-          failed.push({ riderId, error: "network" });
-        }
+      const res = await fetch(`${API}/api/training/bulk`, {
+        method: "POST", headers, body: JSON.stringify({ riderIds: ids, focus, intensity }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        // Hele requestet fejlede (auth/validering/rate/5xx) → alle markeres fejlet,
+        // så UI'et beholder dem valgt til et nyt forsøg.
+        const error = data.error || "failed";
+        return { ok: false, applied: 0, failed: ids.map((riderId) => ({ riderId, error })), error };
       }
-      if (Object.keys(updated).length > 0) {
-        setPlans((prev) => ({ ...prev, ...updated }));
-      }
-      if (latestSlots) setSlots(latestSlots);
-      const applied = Object.keys(updated).length;
+      if (data.plans) setPlans(data.plans);
+      if (data.slots) setSlots(data.slots);
+      const applied = data.applied ?? 0;
+      const skipped = [
+        ...((data.skipped?.notOwned) ?? []),
+        ...((data.skipped?.noSlots) ?? []),
+      ];
+      const failed = skipped.map((riderId) => ({ riderId, error: "skipped" }));
       if (applied > 0) logEvent("training_focus_set_bulk", { focus, intensity, applied });
       return { ok: failed.length === 0, applied, failed };
+    } catch {
+      return { ok: false, applied: 0, failed: ids.map((riderId) => ({ riderId, error: "network" })), error: "network" };
     } finally {
       setBulkApplying(false);
     }

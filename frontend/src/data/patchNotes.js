@@ -4,6 +4,55 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.18",
+    "date": "2026-06-26",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "Riders you won at auction are no longer shown as if you were selling them",
+          "body": "When you start an auction to buy a free rider, you place the opening bid yourself. After you won, those riders briefly showed up under 'Selling' even though you had bought them. The auction screen now tells buying and selling apart correctly, so a rider you won never appears as one you are selling."
+        },
+        "da": {
+          "title": "Ryttere du har vundet på auktion vises ikke længere som om du sælger dem",
+          "body": "Når du starter en auktion for at købe en ledig rytter, lægger du selv åbningsbuddet. Efter du havde vundet, dukkede de ryttere kortvarigt op under 'Sælger', selvom du havde købt dem. Auktions-skærmen skelner nu korrekt mellem at købe og sælge, så en rytter du har vundet, aldrig fremstår som en du sælger."
+        },
+        "refs": [1886]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Set training for your whole squad at once",
+          "body": "Applying a training focus to a large squad could silently fail partway through, leaving the last riders without a plan. Bulk training now sends one request for all selected riders, so you can set up your entire roster in a single step, however big it is."
+        },
+        "da": {
+          "title": "Sæt træning op for hele truppen på én gang",
+          "body": "At anvende et træningsfokus på en stor trup kunne fejle halvvejs uden besked, så de sidste ryttere stod uden en plan. Bulk-træning sender nu én forespørgsel for alle valgte ryttere, så du kan sætte hele truppen op i ét trin, uanset hvor stor den er."
+        },
+        "refs": [1885]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "My Team",
+        "en": {
+          "title": "Squad count now shows senior riders against the cap, with academy listed separately",
+          "body": "Your team header used to count academy riders in the total, which could look like you were over the 30-rider cap when you were not. It now shows your senior riders against the cap (for example 29/30) and lists academy riders separately, since academy riders never count toward the senior cap."
+        },
+        "da": {
+          "title": "Trup-tælleren viser nu senior-ryttere mod cap'en, med akademi opført separat",
+          "body": "Din holdheader talte før akademi-ryttere med i totalen, hvilket kunne ligne at du var over 30-rytter-cap'en, selvom du ikke var. Den viser nu dine senior-ryttere mod cap'en (for eksempel 29/30) og opfører akademi-ryttere separat, da akademi-ryttere aldrig tæller mod senior-cap'en."
+        },
+        "refs": [1886]
+      }
+    ]
+  },
+  {
     "version": "6.17",
     "date": "2026-06-26",
     "label": "Beta",

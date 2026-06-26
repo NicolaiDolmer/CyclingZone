@@ -117,7 +117,7 @@ import { buildRiderHistory } from "../lib/riderHistory.js";
 import { buildTeamTransferHistory } from "../lib/teamTransferHistory.js";
 import { buildRiderBidTimeline } from "../lib/riderBidTimeline.js";
 import { SCOUTING_CONFIG, deriveScoutState, canScout, buildScoutEstimate, estimatePotentialRange } from "../lib/scouting.js";
-import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity } from "../lib/training.js";
+import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity, partitionBulkTrainingTargets, BULK_TRAINING_MAX_RIDERS } from "../lib/training.js";
 import { isDailyTrainingEnabled, DAILY_TRAINING_FLAG_KEY } from "../lib/dailyTrainingFlag.js";
 import { readFlagStage, evaluateFlagStage } from "../lib/featureStage.js";
 import { runTeamTrainingDay } from "../lib/dailyTrainingEngine.js";
@@ -1368,6 +1368,73 @@ router.post("/training/run-today", requireAuth, marketWriteLimiter, async (req, 
     res.json({ ok: true, tickDate: result.tickDate, report: result.report });
   } catch (err) {
     captureException(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/training/bulk — sæt SAMME fokus+intensitet på flere egne ryttere i
+// ÉT request (#1885). Frontend's "anvend på hele truppen" sendte før ét POST pr.
+// rytter, hvilket sprængte marketWriteLimiter (30/min) på en fuld trup (30+) →
+// de sidste ryttere fik 429 ("det åd den ikke"). Ét batch-request = én rate-enhed
+// + én atomisk upsert. SKAL stå FØR POST /training/:riderId så Express ikke
+// matcher "bulk" som et :riderId (samme rækkefølge-regel som run-today, #1479).
+router.post("/training/bulk", requireAuth, marketWriteLimiter, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  const { riderIds, focus, intensity } = req.body ?? {};
+  if (!Array.isArray(riderIds) || riderIds.length === 0) {
+    return res.status(400).json({ error: "no_riders" });
+  }
+  if (riderIds.length > BULK_TRAINING_MAX_RIDERS) {
+    return res.status(400).json({ error: "too_many_riders" });
+  }
+  // #1897 (CodeRabbit): valider element-typer før DB-query. Uden dette ryger en
+  // malformet payload (fx [{}, 123]) ned i .in("id", …) mod UUID-kolonnen og
+  // fejler som 500 med rå DB-besked i stedet for et rent 400.
+  if (!riderIds.every((id) => typeof id === "string" && id)) {
+    return res.status(400).json({ error: "invalid_rider_ids" });
+  }
+  if (!isValidFocus(focus)) return res.status(400).json({ error: "invalid_focus" });
+  if (!isValidIntensity(intensity)) return res.status(400).json({ error: "invalid_intensity" });
+  try {
+    const { activeSeasonId, state } = await loadTrainingState(req.team.id);
+    if (!activeSeasonId) return res.status(409).json({ error: "No active season" });
+
+    const uniqueIds = [...new Set(riderIds)];
+    // Ejer-guard: træning er KUN for egne ryttere (akademi inkl. — de indgår i
+    // daglig træning). Slå de ejede op i DB og partitionér mod slot-budgettet.
+    const { data: ownedRows, error: ownErr } = await supabase
+      .from("riders").select("id").eq("team_id", req.team.id).in("id", uniqueIds);
+    if (ownErr) throw new Error(ownErr.message);
+    const ownedSet = new Set((ownedRows ?? []).map(r => r.id));
+
+    const { toApply, skippedNotOwned, skippedNoSlots } = partitionBulkTrainingTargets({
+      riderIds: uniqueIds,
+      ownedRiderIds: ownedSet,
+      plannedRiderIds: Object.keys(state.plans),
+      slotsRemaining: state.slots.remaining,
+    });
+
+    if (toApply.length > 0) {
+      const now = new Date().toISOString();
+      const rows = toApply.map(rider_id => ({
+        team_id: req.team.id, rider_id, season_id: activeSeasonId, focus, intensity, updated_at: now,
+      }));
+      const { error: upErr } = await supabase
+        .from("training_plans")
+        .upsert(rows, { onConflict: "team_id,rider_id,season_id" });
+      if (upErr) throw new Error(upErr.message);
+    }
+
+    const { state: next } = await loadTrainingState(req.team.id);
+    res.json({
+      ok: skippedNotOwned.length === 0 && skippedNoSlots.length === 0,
+      applied: toApply.length,
+      appliedRiderIds: toApply,
+      skipped: { notOwned: skippedNotOwned, noSlots: skippedNoSlots },
+      plans: next.plans,
+      slots: next.slots,
+    });
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
