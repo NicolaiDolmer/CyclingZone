@@ -12,6 +12,8 @@ import { Wordmark } from "./Brand";
 import DiscordJoinLink from "./DiscordJoinLink";
 import { MenuIcon, BellIcon, ChevronDownIcon, ChevronLeftIcon } from "./ui/icons";
 import { resolveAcademyNavVisible, readCachedAcademyNav, writeCachedAcademyNav } from "../lib/academyNavVisibility";
+import ProBadge from "./ProBadge";
+import { useSubscription } from "../lib/useSubscription";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -175,7 +177,10 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
             Bredere nav-header/IA-restructure spores i #1027. */}
         <div className="min-w-0">
           <Wordmark forceDark className="h-5 w-auto" alt="" />
-          <p className="text-cz-sidebar-3 text-[10px] truncate mt-1">{team?.name || "…"}</p>
+          <div className="flex items-center gap-1.5 mt-1">
+            <p className="text-cz-sidebar-3 text-[10px] truncate">{team?.name || "…"}</p>
+            {isPro && <ProBadge isFounder={isFounder} />}
+          </div>
         </div>
       </button>
 
@@ -271,6 +276,7 @@ export default function Layout() {
   const [academyEnabled, setAcademyEnabled] = useState(readCachedAcademyNav);
   const heartbeatRef = useRef(null);
   const teamId = team?.id;
+  const { isPro, isFounder } = useSubscription(teamId);
   const isWideContent = WIDE_CONTENT_ROUTES.has(location.pathname)
     || WIDE_CONTENT_PREFIXES.some(p => location.pathname.startsWith(p));
 
