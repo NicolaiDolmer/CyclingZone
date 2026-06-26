@@ -51,8 +51,11 @@ function editionYearFrom(startDate) {
  * @param {number} [args.baseSeed]         sæson-seed (per-pulje = baseSeed XOR pool.id).
  * @param {Date}   [args.from]             schedule-anker (etape 1 = from + 1 dag).
  * @param {object} [args.tierRaceClasses]  override af klasse-mix pr. tier.
- * @param {number} [args.raceDaysTarget]   løbsdage pr. division.
+ * @param {number} [args.raceDaysTarget]   løbsdage pr. division (videregives til generateDivisionCalendars).
  * @param {number} [args.stageRaceQuota]   garanterede etapeløb pr. division.
+ * @param {number} [args.tracks]           parallelle schedule-spor (videregives til planRaceSchedules;
+ *                                         default = STAGES_PER_DAY i backfillRaceScheduledFor).
+ * @param {number} [args.onlyDivisionId]   kun materialisér denne division (default null = alle live puljer).
  * @param {boolean}[args.dryRun=true]      true = preview uden writes.
  * @returns {Promise<object>} summary { dryRun, racesInserted, stageProfiles, stageSchedules, pools[] }
  */
@@ -65,6 +68,8 @@ export async function materializeSeasonCalendar({
   tierRaceClasses,
   raceDaysTarget,
   stageRaceQuota,
+  tracks,
+  onlyDivisionId = null,
   dryRun = true,
   log = () => {},
 } = {}) {
@@ -118,10 +123,17 @@ export async function materializeSeasonCalendar({
   }
 
   const editionYear = editionYearFrom(seasonStartDate);
-  const summary = { dryRun, editionYear, racesInserted: 0, stageProfiles: 0, stageSchedules: 0, truncated, pools: [] };
+  const summary = { dryRun, editionYear, onlyDivisionId, racesInserted: 0, stageProfiles: 0, stageSchedules: 0, truncated, pools: [] };
+
+  // onlyDivisionId: generér STADIG mod hele pulje-sættet (global de-dup #1714 skal se
+  // alle puljer, ellers ville en enkelt-divisions-regen vælge etapeløb der kolliderer
+  // med andre puljers eksisterende races) — men materialisér KUN den ønskede division.
+  const targetCalendars = onlyDivisionId == null
+    ? calendars
+    : calendars.filter((cal) => cal.leagueDivisionId === onlyDivisionId);
 
   // 5. Pr. pulje: skip allerede-materialiserede, insert races → profiler → schedule.
-  for (const cal of calendars) {
+  for (const cal of targetCalendars) {
     const fresh = cal.races.filter((r) => !existingKey.has(`${cal.leagueDivisionId}:${r.id}`));
     const line = { pool_id: cal.leagueDivisionId, tier: cal.tier, selected: cal.races.length, fresh: fresh.length, inserted: 0 };
 
@@ -175,7 +187,11 @@ export async function materializeSeasonCalendar({
     // 5b. Schedule (scheduled_for + race_stage_schedule). planRaceSchedules fordeler
     // puljens løb på 2 parallelle spor (default) → tids-overlappende løb, så bindingen
     // (Fase 0a) er aktiv. Throughput uændret (2 etaper/dag/pulje); MAX_STAGES_PER_DAY rører vi ikke.
-    const { raceUpdates, stageRows } = planRaceSchedules({ races: insertedRaces, from });
+    const { raceUpdates, stageRows } = planRaceSchedules({
+      races: insertedRaces,
+      from,
+      ...(tracks != null ? { tracks } : {}),
+    });
     for (const ru of raceUpdates) {
       const { error } = await supabase.from("races").update({ scheduled_for: ru.scheduled_for }).eq("id", ru.id);
       if (error) throw new Error(`races scheduled_for update ${ru.id}: ${error.message}`);

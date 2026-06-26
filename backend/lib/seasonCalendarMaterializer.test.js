@@ -162,6 +162,47 @@ test("#1714: global de-dup — intet pool_race_id går igen på tværs af puljer
   }
 });
 
+test("onlyDivisionId: materialiserer KUN den ønskede division (Task 4)", async () => {
+  const sb = makeSupabase(seed());
+  // Live puljer er normalt 1 (altid) + 4 (managere). Begræns til pulje 1.
+  const r = await materializeSeasonCalendar({
+    supabase: sb, seasonId: "s1", seasonStartDate: "2026-06-22", from: FROM, dryRun: false,
+    onlyDivisionId: 1,
+  });
+  assert.equal(r.onlyDivisionId, 1);
+  const divs = [...new Set(sb.state.races.map((x) => x.league_division_id))];
+  assert.deepEqual(divs, [1], "kun pulje 1 må have races");
+  assert.ok(r.racesInserted > 0);
+  // summary.pools indeholder kun den materialiserede division.
+  assert.deepEqual(r.pools.map((p) => p.pool_id), [1]);
+});
+
+test("onlyDivisionId for ikke-live pulje → 0 races (dryRun previewer 0)", async () => {
+  const sb = makeSupabase(seed());
+  // Pulje 5 (div3-B) er ikke live (0 managere) → ingen kalender genereres for den.
+  const r = await materializeSeasonCalendar({
+    supabase: sb, seasonId: "s1", seasonStartDate: "2026-06-22", from: FROM, dryRun: true,
+    onlyDivisionId: 5,
+  });
+  assert.equal(r.racesInserted, 0);
+  assert.deepEqual(r.pools.map((p) => p.pool_id), []);
+});
+
+test("tracks videregives til planRaceSchedules (default-adfærd uændret uden tracks)", async () => {
+  // tracks=1 → alle etaper i ét enkelt dag-slot (12:30). Med default (2 spor) bruger
+  // schedulen mindst to forskellige slots. Vi verificerer at tracks når igennem ved
+  // at observere at ALLE etape-tider deler samme klokkeslæt når tracks=1.
+  const sb = makeSupabase(seed());
+  await materializeSeasonCalendar({
+    supabase: sb, seasonId: "s1", seasonStartDate: "2026-06-22", from: FROM, dryRun: false,
+    onlyDivisionId: 1, tracks: 1,
+  });
+  const slots = new Set(
+    sb.state.race_stage_schedule.map((s) => new Date(s.scheduled_at).toISOString().slice(11, 16)),
+  );
+  assert.equal(slots.size, 1, `tracks=1 skal give præcis ét dag-slot, fik ${[...slots].join(",")}`);
+});
+
 test("#1714: knapt etape-segment → summary.truncated rapporterer beskårne puljer", async () => {
   // Minimalt katalog: kun 2 ProSeries-etapeløb men 3 tier-3-puljer der hver vil
   // have stageRaceQuota=8 → segmentet løber tør → beskæring SKAL rapporteres.
