@@ -131,14 +131,6 @@ const WHITELIST_EMPTY_TABLES = new Set([
   // fyldes når brugere scouter ryttere (slots/sæson). Skriv-path verificeret i
   // POST /api/scouting/:riderId. Fjern denne whitelist-entry når tabellen har rows.
   "scout_actions",
-  // Race Hub S3 Holdstrategi (#1840, shippet 2026-06-25): manager-gemt strategi +
-  // per-rytter rolle-regler. Begge er gated bag RACE_ENGINE_V2_ENABLED og skrives kun
-  // via PUT /api/races/strategy (upsert/insert med fejl surfacet — verificeret api.js).
-  // Bevidst tom indtil en bruger gemmer sin første strategi efter S3-launch — ikke
-  // broken. Samme flag-gated freshness-mønster som race_simulation_runs ovenfor.
-  // Fjern disse to entries når tabellerne har rows.
-  "team_race_strategy",
-  "team_rider_role_rules",
   // Discord DM-retry-kø (#1115): rows enqueues KUN når en DM fejler og slettes
   // igen når den leveres (processDmOutboxDrain). Tom = sund steady-state — alle
   // DM'er leveret. Detector A's "write-but-no-data" mis-fyrer på dræn-til-tom-
@@ -188,7 +180,7 @@ const WHITELIST_EMPTY_TABLES = new Set([
   // ingen stilfærdig rollback); frontend når den via NpsPrompt-toasten der trigges
   // efter første løb-resultat (TeamResultsTab, eget hold). Bevidst tom indtil den
   // første bruger svarer — ikke broken. Samme "write-but-no-data indtil brugerne
-  // handler"-mønster som team_race_strategy ovenfor (#1840). Fjern denne entry når
+  // handler"-mønster som scout_actions ovenfor. Fjern denne entry når
   // tabellen har rows.
   "nps_responses",
   // Afmeld-state (race-hub Fase 0b, #1810): raceWithdrawal.js skriver én row pr.
