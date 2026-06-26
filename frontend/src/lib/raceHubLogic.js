@@ -110,3 +110,16 @@ export function freshnessTier(fatigue) {
   if (f >= 34) return "ok";
   return "fresh";
 }
+
+// #1925: kladde-bevidst binding. Boardets kolonner overlapper alle den valgte dag
+// (#1823 dag-granulær binding), så en rytter er "bundet væk" fra et løb hvis han er i
+// en ANDEN ikke-afmeldt kolonnes kladde-selection. Erstatter den stale server-bindingMap
+// i popover/pulje, så live-redigeringer (fjern/flyt) afspejles med det samme.
+export function draftBindingMap(columns = []) {
+  const map = {};
+  for (const c of columns) {
+    if (c.withdrawn) continue;
+    for (const id of c.selection?.rider_ids || []) (map[id] ||= []).push(c.id);
+  }
+  return map;
+}

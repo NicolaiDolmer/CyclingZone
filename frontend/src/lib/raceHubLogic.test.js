@@ -1,7 +1,18 @@
 // frontend/src/lib/raceHubLogic.test.js
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { computeColumnStatus, isSelectionSavable, isRiderBound, deriveRaceStatus, poolRaceDayTotals, fitTier, freshnessTier } from "./raceHubLogic.js";
+import { computeColumnStatus, isSelectionSavable, isRiderBound, deriveRaceStatus, poolRaceDayTotals, fitTier, freshnessTier, draftBindingMap } from "./raceHubLogic.js";
+
+test("draftBindingMap: binder rytter til de kolonner han er i kladden (ekskl. afmeldte)", () => {
+  const cols = [
+    { id: "A", withdrawn: false, selection: { rider_ids: ["r1", "r2"] } },
+    { id: "B", withdrawn: false, selection: { rider_ids: ["r2"] } },
+    { id: "C", withdrawn: true, selection: { rider_ids: ["r1"] } },
+  ];
+  const map = draftBindingMap(cols);
+  assert.deepEqual(map.r1, ["A"]); // C er afmeldt → tæller ikke
+  assert.deepEqual(map.r2.sort(), ["A", "B"]);
+});
 
 test("computeColumnStatus: full / understaffed / withdrawn", () => {
   assert.deepEqual(computeColumnStatus({ selected: 6, target: 6, withdrawn: false }), { kind: "full", selected: 6, target: 6 });
