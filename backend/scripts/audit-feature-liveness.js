@@ -241,6 +241,9 @@ const WHITELIST_ORPHANED_ENDPOINTS = new Set([
   // afhænger af dem. Intentional orphaned, ikke drift; slettes i WS2-followup.
   "POST /admin/approve-results",
   "POST /admin/import-results-pcm",
+  // CZ Pro billing: Alunta-webhook er EKSTERN (kaldes af Alunta efter betaling,
+  // ikke af frontend). Intentional orphaned, ikke drift (#1903).
+  "POST /billing/alunta-webhook",
 ]);
 
 // Detector C: schema-files der er committed men IKKE migrations (pre-workflow dumps).
