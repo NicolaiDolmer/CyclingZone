@@ -5,6 +5,7 @@ import {
   TRAINING_CONFIG, TRAINING_FOCUSES, TRAINING_FOCUS_KEYS,
   deriveTrainingState, canTrain, resolveTrainingModifier,
   isValidFocus, isValidIntensity,
+  partitionBulkTrainingTargets, BULK_TRAINING_MAX_RIDERS,
 } from "./training.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 
@@ -26,6 +27,67 @@ test("validatorer afviser ukendte fokus/intensiteter", () => {
   assert.ok(!isValidIntensity("brutal"));
   // #1305: "rest" er nu gyldig daglig intensitet
   assert.ok(isValidIntensity("rest"));
+});
+
+// ── #1885: bulk-træning partitionering ──────────────────────────────────────────
+
+test("partitionBulkTrainingTargets — fuld trup (>30) anvendes i ÉT kald med unlimited slots", () => {
+  // Kernescenariet bag #1885: en fuld trup på 32 ryttere. Med unlimitedSlots
+  // (slotsRemaining=null) skal ALLE ejede ryttere anvendes — ingen tabes.
+  const riderIds = Array.from({ length: 32 }, (_, i) => `r${i}`);
+  const owned = new Set(riderIds);
+  const { toApply, skippedNotOwned, skippedNoSlots } = partitionBulkTrainingTargets({
+    riderIds,
+    ownedRiderIds: owned,
+    plannedRiderIds: [],
+    slotsRemaining: null,
+  });
+  assert.equal(toApply.length, 32);
+  assert.deepEqual(skippedNotOwned, []);
+  assert.deepEqual(skippedNoSlots, []);
+});
+
+test("partitionBulkTrainingTargets — ikke-ejede ryttere springes over (ejer-guard)", () => {
+  const { toApply, skippedNotOwned } = partitionBulkTrainingTargets({
+    riderIds: ["mine1", "rival", "mine2"],
+    ownedRiderIds: ["mine1", "mine2"],
+  });
+  assert.deepEqual(toApply, ["mine1", "mine2"]);
+  assert.deepEqual(skippedNotOwned, ["rival"]);
+});
+
+test("partitionBulkTrainingTargets — dubletter og null ignoreres, rækkefølge bevares", () => {
+  const { toApply } = partitionBulkTrainingTargets({
+    riderIds: ["a", null, "a", "b", undefined],
+    ownedRiderIds: ["a", "b"],
+  });
+  assert.deepEqual(toApply, ["a", "b"]);
+});
+
+test("partitionBulkTrainingTargets — slot-grænse: nye planer kappes, re-targeting er gratis", () => {
+  // 2 resterende slots. r1+r2 har allerede plan (gratis); r3 forbruger 1, r4
+  // forbruger 1, r5 mangler slot → skipped.
+  const { toApply, skippedNoSlots } = partitionBulkTrainingTargets({
+    riderIds: ["r1", "r2", "r3", "r4", "r5"],
+    ownedRiderIds: ["r1", "r2", "r3", "r4", "r5"],
+    plannedRiderIds: ["r1", "r2"],
+    slotsRemaining: 2,
+  });
+  assert.deepEqual(toApply, ["r1", "r2", "r3", "r4"]);
+  assert.deepEqual(skippedNoSlots, ["r5"]);
+});
+
+test("partitionBulkTrainingTargets — tom/manglende input giver tomme lister", () => {
+  assert.deepEqual(partitionBulkTrainingTargets({}), { toApply: [], skippedNotOwned: [], skippedNoSlots: [] });
+  assert.deepEqual(
+    partitionBulkTrainingTargets({ riderIds: [], ownedRiderIds: [] }),
+    { toApply: [], skippedNotOwned: [], skippedNoSlots: [] },
+  );
+});
+
+test("BULK_TRAINING_MAX_RIDERS dækker en lovlig fuld trup med margin", () => {
+  // 30 senior-cap + akademi; grænsen skal ligge komfortabelt over.
+  assert.ok(BULK_TRAINING_MAX_RIDERS >= 50);
 });
 
 // ── deriveTrainingState ─────────────────────────────────────────────────────────

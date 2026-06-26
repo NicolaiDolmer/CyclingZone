@@ -87,3 +87,15 @@ test("POST /training/run-today registreres FØR POST /training/:riderId (#1479)"
     `run-today (idx ${runTodayIdx}) skal stå før :riderId (idx ${riderIdIdx}) — ellers blokeres træning af invalid_focus`,
   );
 });
+
+test("POST /training/bulk registreres FØR POST /training/:riderId (#1885)", () => {
+  const bulkIdx = postRouteIndex("/training/bulk");
+  const riderIdIdx = postRouteIndex("/training/:riderId");
+
+  assert.notEqual(bulkIdx, -1, "bulk POST-route skal være registreret");
+  assert.notEqual(riderIdIdx, -1, ":riderId POST-route skal være registreret");
+  assert.ok(
+    bulkIdx < riderIdIdx,
+    `bulk (idx ${bulkIdx}) skal stå før :riderId (idx ${riderIdIdx}) — ellers matcher :riderId "bulk" som et rytter-id`,
+  );
+});

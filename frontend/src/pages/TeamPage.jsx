@@ -12,6 +12,7 @@ import RiderBadges from "../components/rider/RiderBadges";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge";
 import { ageBadgeKey, getRiderAge, isU23 } from "../lib/riderAge";
 import { getRiderMarketValue, projectYouthSalary } from "../lib/marketValues";
+import { getSquadLimits } from "../lib/dashboardSquadStats";
 import { formatNumber } from "../lib/intl";
 import { AcademyTransferConfirmModal } from "../components/AcademyTransferConfirmModal";
 import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
@@ -719,6 +720,12 @@ export function TeamPage() {
   const totalValue  = currentRiders.reduce((s, r) => s + getRiderMarketValue(r), 0);
   const incomingCount = riders.filter(r => r._isIncoming).length;
   const outgoingCount = riders.filter(r => r._isOutgoing).length;
+  // #1886: kun senior-ryttere tæller mod squad-cap'en (30). Akademiryttere vises
+  // i listen men er uden for cap'en — gør det eksplicit så en trup på fx 29+3
+  // ikke ligner et cap-brud på 30.
+  const seniorCount  = currentRiders.filter(r => !r.is_academy).length;
+  const academyCount = currentRiders.filter(r =>  r.is_academy).length;
+  const squadCap     = getSquadLimits(team?.division).max;
 
   if (loading) return (
     <PageLoader />
@@ -750,7 +757,8 @@ export function TeamPage() {
         <div className="flex gap-4 mt-1 flex-wrap text-sm">
           <span className="text-cz-accent-t font-mono font-bold" title={t("page.balanceTooltip")}>{t("page.balance", { value: formatNumber(team?.balance ?? 0) })}</span>
           <span className="text-cz-3" title={t("page.divisionTooltip")}>{t("page.division", { n: team?.division })}</span>
-          <span className="text-cz-3">{t("page.ridersCount", { count: currentRiders.length })}</span>
+          <span className={`text-cz-3${seniorCount > squadCap ? " text-cz-danger" : ""}`} title={t("page.seniorCapTooltip", { cap: squadCap })}>{t("page.ridersCount", { count: seniorCount, cap: squadCap })}</span>
+          {academyCount > 0 && <span className="text-cz-3 text-xs" title={t("page.academyCapTooltip", { cap: squadCap })}>{t("page.academyCount", { count: academyCount })}</span>}
           {incomingCount > 0 && <span className="text-cz-success text-xs">{t("page.incomingCount", { count: incomingCount })}</span>}
           {outgoingCount > 0 && <span className="text-cz-danger text-xs">{t("page.outgoingCount", { count: outgoingCount })}</span>}
           <span className="text-cz-3" title={t("page.salaryPerSeasonTooltip")}>{t("page.salaryPerSeason", { value: formatNumber(totalSalary) })}</span>

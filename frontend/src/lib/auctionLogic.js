@@ -4,8 +4,16 @@
 
 import { formatNumber } from "./intl.js";
 
+// #1886: seller_team_id = auktionens INITIATOR (api.js), ikke nødvendigvis den
+// økonomiske sælger. Når man starter en auktion for at KØBE en free agent/AI-
+// rytter, bliver man selv seller_team_id OG current_bidder_id. Efter man vinder
+// bliver rytteren ens (rider.team_id===mig), så de to første betingelser bliver
+// sande — men man er KØBEREN. En ægte sælger byder aldrig på sin egen rytter, så
+// current_bidder_id===teamId afslører entydigt en vundet købs-auktion.
 export function isManagerSeller(auction, teamId) {
-  return auction?.seller_team_id === teamId && auction?.rider?.team_id === teamId;
+  return auction?.seller_team_id === teamId
+    && auction?.rider?.team_id === teamId
+    && auction?.current_bidder_id !== teamId;
 }
 
 export function getAuctionLeaderId(auction) {
@@ -23,7 +31,14 @@ export function getAuctionLeaderName(auction) {
 }
 
 export function getAuctionSellerLabel(auction) {
-  if (auction?.seller_team_id && auction?.rider?.team_id === auction.seller_team_id) {
+  // #1886: udeluk vundne købs-auktioner (initiator===vinder) — se isManagerSeller.
+  // Rytteren kom fra en fri agent/AI, så sælger-kolonnen skal vise "AI", ikke
+  // køberens eget holdnavn.
+  if (
+    auction?.seller_team_id
+    && auction?.rider?.team_id === auction.seller_team_id
+    && auction?.current_bidder_id !== auction.seller_team_id
+  ) {
     return auction?.seller?.name || "Manager";
   }
   return "AI";

@@ -102,6 +102,54 @@ export function canTrain(hasPlan, slotsRemaining, cfg = TRAINING_CONFIG) {
   return { ok: true, reason: null };
 }
 
+// #1885: øvre grænse for hvor mange ryttere ét bulk-træningsrequest må røre.
+// En lovlig trup er 30 senior + akademi (~realistisk < 50); 100 er en rummelig
+// DoS-bund uden at ramme nogen legitim "anvend på hele truppen"-handling.
+export const BULK_TRAINING_MAX_RIDERS = 100;
+
+// #1885: resolver ét bulk-træningsrequest. Frontend sender de ønskede riderIds;
+// vi partitionerer dem mod hvad holdet faktisk ejer + slot-budgettet, så route-
+// handleren kan upserte ALLE gyldige i ÉT kald (i stedet for ét HTTP-request pr.
+// rytter, der sprængte marketWriteLimiter på en fuld trup).
+//   riderIds        : ønskede rytter-ids (kan have dubletter/null)
+//   ownedRiderIds   : Set/array af ids holdet ejer (kalderen slår op i DB)
+//   plannedRiderIds : ids der ALLEREDE har en aktiv plan (re-targeting = gratis slot)
+//   slotsRemaining  : tilbageværende slots (null = ubegrænset; default-konfig)
+// Returnerer { toApply, skippedNotOwned, skippedNoSlots } — alle arrays, deduped,
+// i input-rækkefølge. Slot-grenen er inert når slotsRemaining=null (unlimitedSlots).
+export function partitionBulkTrainingTargets({
+  riderIds,
+  ownedRiderIds,
+  plannedRiderIds = [],
+  slotsRemaining = null,
+} = {}) {
+  const owned = ownedRiderIds instanceof Set ? ownedRiderIds : new Set(ownedRiderIds ?? []);
+  const planned = plannedRiderIds instanceof Set ? plannedRiderIds : new Set(plannedRiderIds ?? []);
+  const seen = new Set();
+  const toApply = [];
+  const skippedNotOwned = [];
+  const skippedNoSlots = [];
+  let remaining = slotsRemaining; // null = ubegrænset
+  for (const id of riderIds ?? []) {
+    if (id == null || seen.has(id)) continue;
+    seen.add(id);
+    if (!owned.has(id)) {
+      skippedNotOwned.push(id);
+      continue;
+    }
+    const isNewPlan = !planned.has(id);
+    if (isNewPlan && remaining != null) {
+      if (remaining <= 0) {
+        skippedNoSlots.push(id);
+        continue;
+      }
+      remaining -= 1;
+    }
+    toApply.push(id);
+  }
+  return { toApply, skippedNotOwned, skippedNoSlots };
+}
+
 // Resolvér en plan til en bias-modifier som riderProgression.developRiderSeason
 // konsumerer. Seeder tilbageslags-rullet deterministisk pr. (rytter, sæson, plan).
 //   plan         : { focus, intensity } | null

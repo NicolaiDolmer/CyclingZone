@@ -33,6 +33,25 @@ test("isManagerSeller — kræver både seller_team_id og rider.team_id match", 
   assert.equal(isManagerSeller(null, SELLER), false);
 });
 
+test("isManagerSeller — vundet KØB-auktion (initiator = vinder) er IKKE et salg (#1886)", () => {
+  // seller_team_id = auktionens initiator (api.js), ikke den økonomiske sælger.
+  // Når man starter en auktion for at KØBE en free agent, bliver man selv
+  // seller_team_id OG current_bidder_id. Efter man vinder bliver rytteren ens,
+  // så seller_team_id===mig && rider.team_id===mig — men man er KØBEREN, ikke
+  // sælgeren. Diskriminator: en ægte sælger byder aldrig på sin egen rytter.
+  const wonBuyAuction = auction({
+    seller_team_id: BUYER,
+    rider: { team_id: BUYER },
+    current_bidder_id: BUYER,
+  });
+  assert.equal(isManagerSeller(wonBuyAuction, BUYER), false);
+
+  // Ægte salg: man lister sin egen rytter; rival byder (eller ingen byder endnu).
+  // current_bidder_id er aldrig én selv, så det forbliver et salg.
+  assert.equal(isManagerSeller(auction({ current_bidder_id: null }), SELLER), true);
+  assert.equal(isManagerSeller(auction({ current_bidder_id: RIVAL }), SELLER), true);
+});
+
 test("getAuctionLeaderId — aktiv bidder vinder over seller fallback", () => {
   assert.equal(
     getAuctionLeaderId(auction({ current_bidder_id: BUYER })),
@@ -76,6 +95,19 @@ test("getAuctionSellerLabel — manager-listing viser holdnavn, ellers AI", () =
   assert.equal(getAuctionSellerLabel(auction({ seller: null })), "Manager");
   assert.equal(getAuctionSellerLabel(auction({ rider: { team_id: RIVAL } })), "AI");
   assert.equal(getAuctionSellerLabel(auction({ seller_team_id: null })), "AI");
+});
+
+test("getAuctionSellerLabel — vundet KØB-auktion viser AI, ikke initiatorens navn (#1886)", () => {
+  // Samme conflation som isManagerSeller: initiator==vinder på en købt rytter.
+  // Sælger-kolonnen skal vise "AI" (rytteren kom fra fri agent/AI), ikke
+  // køberens eget holdnavn.
+  const wonBuyAuction = auction({
+    seller_team_id: BUYER,
+    rider: { team_id: BUYER },
+    current_bidder_id: BUYER,
+    seller: { name: "Buyer Team" },
+  });
+  assert.equal(getAuctionSellerLabel(wonBuyAuction), "AI");
 });
 
 test("formatBidWarning — squad-cap warning resolver i18n-key med beregnet bøde og point (#1170)", () => {
