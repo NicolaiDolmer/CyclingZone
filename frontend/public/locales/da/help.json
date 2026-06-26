@@ -497,6 +497,10 @@
           "Der er ingen cap på hvor mange ryttere der kan have et program: du kan sætte ét for hele troppen."
         ]
       },
+      "focusAbilities": {
+        "title": "Hvad hvert fokus træner",
+        "text": "Hvert fokus udvikler et bestemt sæt evner hurtigere mod deres loft, mens rytterens øvrige evner stadig forbedres en smule langsommere. Alle udvikler sig bredt, bare hurtigst i den valgte retning. Retningerne er: VO2max træner Klatring, Punch og Tempo. Tærskel/TT træner Enkeltstart og Tempo. Spurt træner Spurt og Acceleration. Udholdenhed træner Udholdenhed, Restitution og Modstandskraft. Teknik træner Nedkørsel, Positionering og Brosten. Aero træner Enkeltstart og Fladt. Intensitet sætter tempoet: Let er langsomst men sikker, Normal er den balancerede standard med en lille risiko for tilbageslag, og Hård er hurtigst men risikerer et tilbageslag eller en skade når rytterens træthed allerede er høj."
+      },
       "trainToday": {
         "title": "Træn i dag og +25%-boostet",
         "text": "Klik 'Træn i dag' én gang om dagen for at køre alle aktive programmer med +25% træningsboost. Springer du knappen over, kører assistenten træningen automatisk efter kl. 22. Du mister aldrig en træningsdag. Kun boostet går tabt, når du ikke klikker."

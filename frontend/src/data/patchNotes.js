@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.24",
+    "date": "2026-06-26",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Daily Training",
+        "en": {
+          "title": "See what each training focus develops",
+          "body": "The Daily Training page and the Help section now spell out exactly which abilities each focus trains: VO2max (Climbing, Punch, Tempo), Threshold/TT (Time trial, Tempo), Sprint (Sprint, Acceleration), Endurance (Endurance, Recovery, Durability), Technique (Descending, Positioning, Cobbles) and Aero (Time trial, Flat). Your other abilities keep improving a little more slowly, so riders develop across the board, just fastest in the chosen direction."
+        },
+        "da": {
+          "title": "Se hvad hvert træningsfokus udvikler",
+          "body": "Siden Daglig træning og Hjælp-sektionen viser nu præcis hvilke evner hvert fokus træner: VO2max (Klatring, Punch, Tempo), Tærskel/TT (Enkeltstart, Tempo), Spurt (Spurt, Acceleration), Udholdenhed (Udholdenhed, Restitution, Modstandskraft), Teknik (Nedkørsel, Positionering, Brosten) og Aero (Enkeltstart, Fladt). Dine øvrige evner forbedres stadig en smule langsommere, så ryttere udvikler sig bredt, bare hurtigst i den valgte retning."
+        },
+        "refs": [1908]
+      }
+    ]
+  },
+  {
     "version": "6.23",
     "date": "2026-06-26",
     "label": "Beta",
