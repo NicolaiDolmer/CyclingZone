@@ -105,19 +105,6 @@ const WHITELIST_EMPTY_TABLES = new Set([
   "board_consequences",
   "board_request_log",
   "team_board_members",
-  // Løbende bestyrelses-tilfredshed event-log (#1451/#1187): boardWeekendFinalization.js
-  // upserter én row pr. (board, race) ved board-weekend-finalization — wired ind i begge
-  // finalization-stier (raceRunner.simulateRace + pcmResultsImport.importPcmResults), "én
-  // opdatering pr. finaliserings-event (typisk = én løbsweekend)". Samme milestone-gating
-  // som board-tabellerne ovenfor: bevidst tom indtil første weekend-finalization med et race
-  // fylder den (race-motoren er gated bag RACE_ENGINE_V2_ENABLED indtil 20/6-relaunch, #1103).
-  // Skriv-path verificeret i boardWeekendFinalization.js. Fjern denne entry når tabellen har rows.
-  "board_satisfaction_events",
-  // Besøgs-log (#963) — bevidst tom ved oprettelse. Fyldes når PR #992-koden er
-  // deployet og rigtige brugere åbner rytter-profiler; hele pointen er at BEGYNDE
-  // at opsamle nu, så popularitet (#957) har historik. Skriv-path verificeret i
-  // POST /api/riders/:id/view. Fjern denne whitelist-entry når tabellen har rows.
-  "rider_profile_views",
   // Light race-motor (#1102) skriver run-snapshots når RACE_ENGINE_V2_ENABLED er ON;
   // flaget er seedet OFF, så tabellen er bevidst tom indtil motoren aktiveres.
   // Skriv-path verificeret i raceRunner.js. Fjern når flag tændes + tabellen har rows.
@@ -127,10 +114,6 @@ const WHITELIST_EMPTY_TABLES = new Set([
   // launch fylder den. Skriv-path verificeret i riderProgressionEngine.js. Fjern når
   // tabellen har rows.
   "rider_development_log",
-  // Scouting L1 (#1138) skriver én row pr. scout-handling. Bevidst tom ved oprettelse —
-  // fyldes når brugere scouter ryttere (slots/sæson). Skriv-path verificeret i
-  // POST /api/scouting/:riderId. Fjern denne whitelist-entry når tabellen har rows.
-  "scout_actions",
   // Discord DM-retry-kø (#1115): rows enqueues KUN når en DM fejler og slettes
   // igen når den leveres (processDmOutboxDrain). Tom = sund steady-state — alle
   // DM'er leveret. Detector A's "write-but-no-data" mis-fyrer på dræn-til-tom-
@@ -150,10 +133,6 @@ const WHITELIST_EMPTY_TABLES = new Set([
   // tabellen er bevidst tom indtil flaget flippes og backfillen kører. Skriv-path verificeret
   // i backend/scripts/backfillRaceScheduledFor.js. Fjern denne entry når tabellen har rows.
   "race_stage_schedule",
-  // Daglig træning #1305 Fase A: dailyTrainingEngine.js skriver run-log pr.
-  // træningsdag, gated af isDailyTrainingEnabled (DB-flag, seedet OFF indtil
-  // 20/6-relaunch, #1103). Fjern når flag tændes + tabellen har rows.
-  "training_day_runs",
   // Akademi-MVP #1308: academyIntake.js skriver intake-kuld (runAcademyIntake) gated
   // af academy_enabled (DB-flag, seedet OFF indtil 20/6-relaunch, #1103). Tabellen blev
   // oprettet ved Fase A-merge (migration anvendt), men fyldes først når flaget flippes
@@ -174,15 +153,6 @@ const WHITELIST_EMPTY_TABLES = new Set([
   // Skriv-path verificeret i backend/routes/api.js (PUT /teams/my) + backend/lib/signupAttribution.js.
   // TODO(2026-06-27): fjern denne entry når tabellen har rows (tjek ~1 uge efter launch).
   "signup_attribution",
-  // In-app NPS (#940, shippet 2026-06-25): nps_responses fyldes KUN når en bruger
-  // afgiver et NPS-svar (0-10 + valgfri fritekst). Skriv-path verificeret: klienten
-  // insert'er via RLS-policy nps_responses_insert_own (eget user_id, fejl surfacet —
-  // ingen stilfærdig rollback); frontend når den via NpsPrompt-toasten der trigges
-  // efter første løb-resultat (TeamResultsTab, eget hold). Bevidst tom indtil den
-  // første bruger svarer — ikke broken. Samme "write-but-no-data indtil brugerne
-  // handler"-mønster som scout_actions ovenfor. Fjern denne entry når
-  // tabellen har rows.
-  "nps_responses",
   // Afmeld-state (race-hub Fase 0b, #1810): raceWithdrawal.js skriver én row pr.
   // frivillig afmelding (withdraw/reinstate) bag flaget auto_entry_generator_enabled
   // (seedet OFF) — og afmeld-UI'et findes først i race-hub Fase 1. Tabellen blev oprettet
