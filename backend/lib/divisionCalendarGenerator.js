@@ -78,6 +78,36 @@ export function poolHasCalendar(tier, realManagerCount = 0) {
   return (Number(realManagerCount) || 0) >= 1;
 }
 
+// 0/1 subset-sum (DP): find en delmængde af `items` hvis størrelses-sum er PRÆCIST
+// `targetSum`. Returnér delmængden (array) eller null hvis ingen eksakt kombination
+// findes. targetSum er lille (≤ raceDaysTarget) → DP er billig. Deterministisk: items
+// behandles i input-rækkefølge. Bruges til "PRÆCIST target"-kalenderen (#1856): vælg
+// etapeløb der lukker resten eksakt, så endagsløb kan maksimere blandingen.
+export function pickStagesForExactSum(items = [], targetSum, sizeOf = (r) => Number(r?.stages) || 1) {
+  if (targetSum < 0) return null;
+  if (targetSum === 0) return [];
+  // reach[s] = { prevSum, itemIdx } for første måde at nå sum s (0/1 — hver item én gang).
+  const reach = new Array(targetSum + 1).fill(null);
+  reach[0] = { prevSum: -1, itemIdx: -1 };
+  for (let i = 0; i < items.length; i++) {
+    const w = Math.max(1, Number(sizeOf(items[i])) || 1);
+    for (let s = targetSum; s >= w; s--) {
+      if (reach[s] === null && reach[s - w] !== null) {
+        reach[s] = { prevSum: s - w, itemIdx: i };
+      }
+    }
+    if (reach[targetSum] !== null) break; // tidlig exit når target er nået
+  }
+  if (reach[targetSum] === null) return null;
+  const chosen = [];
+  for (let s = targetSum; s > 0; ) {
+    const node = reach[s];
+    chosen.push(items[node.itemIdx]);
+    s = node.prevSum;
+  }
+  return chosen;
+}
+
 /**
  * Generér en kalender (udvalgte løb) pr. LIVE pulje — GLOBALT de-duplikeret OG
  * JÆVNT FORDELT på tværs af puljer der konkurrerer om samme klasse-segment (#1714).
@@ -217,6 +247,10 @@ export function generateDivisionCalendars({
       singleRaceCount: 0,
       monumentCount: 0,
       singleQuota,
+      // singlesBudget: dage reserveret til endagsløb-finjustering i fase C, så vi rammer
+      // PRÆCIST target. Begrænset af både den tunede single-kvote OG hvor mange unikke
+      // endagsløb puljen faktisk har (gap kan aldrig overstige dette → ingen løb-gentagelse).
+      singlesBudget: Math.min(singleQueue.length, singleQuota),
       monumentMin,
       candidateCount: inSegment.length,
     });
@@ -301,34 +335,64 @@ export function generateDivisionCalendars({
   // pulje FØR etapeløb spiser budgettet (sikrer Tier 1 har monument-højdepunkter).
   runRoundRobin("monumentQueue", "monumentCursor", (st) => st.monumentCount >= st.monumentMin);
 
-  // FASE A1 — single-kvote round-robin: garantér en andel (SINGLE_RACE_MIN_SHARE)
-  // endagsløb pr. pulje. Dette er #1856-rettelsen: endagsplads reserveres FØR
-  // etapeløb-fyld, så vi aldrig ender med en ren etapeløb-sæson. Monumenter fra A0
-  // tæller med i singleRaceCount, så A1 supplerer kun op til kvoten.
-  runRoundRobin("singleQueue", "singleCursor", (st) => st.singleRaceCount >= st.singleQuota);
+  if (allowReuseAcrossPools) {
+    // EXACT-FIT pr. pulje (#1856 ejer-krav 26/6: "PRÆCIST target" + max blanding). Da
+    // genbrug er til, konkurrerer puljerne IKKE om kataloget → hver kan behandles
+    // uafhængigt: vælg en ETAPELØB-delmængde der summerer EKSAKT (subset-sum/DP), så
+    // 1-dags endagsløb fylder resten op til target. Flest endagsløb først (max blanding;
+    // etapeløb lukker resten eksakt) → virkelighedstro blanding + altid nøjagtig target.
+    for (const pool of roundRobinOrder) {
+      const st = stateById.get(pool.id);
+      const remaining = target - st.totalRaceDays; // efter A0-monumenter
+      if (remaining <= 0) continue;
+      const avail = (queue) => queue.filter((r) => !st.selectedIds.has(r.id));
+      const availStages = avail(st.stageQueue);
+      const availSingles = avail(st.singleQueue);
+      const maxSingles = Math.min(st.singlesBudget, availSingles.length, remaining);
 
-  // FASE A2 — etapeløb round-robin op til quota per pulje (eller segment tomt / target).
-  if (quota > 0) {
-    runRoundRobin("stageQueue", "stageCursor", (st) => st.stageRaceCount >= quota);
+      let pickedStages = null;
+      let singlesUsed = 0;
+      for (let s = maxSingles; s >= 0; s--) {
+        const stageNeed = remaining - s;
+        if (stageNeed === 0) { pickedStages = []; singlesUsed = s; break; }
+        const subset = pickStagesForExactSum(availStages, stageNeed, stagesOf);
+        if (subset) { pickedStages = subset; singlesUsed = s; break; }
+      }
+
+      if (pickedStages) {
+        for (const r of pickedStages) addToPool(st, r);
+        for (let k = 0; k < singlesUsed; k++) addToPool(st, availSingles[k]);
+      } else {
+        // Fallback (bør ikke ske: tier-katalog ≥ target): grådig fyld, aldrig over target.
+        for (const r of [...availStages, ...availSingles]) {
+          if (st.totalRaceDays + stagesOf(r) > target) continue;
+          addToPool(st, r);
+        }
+      }
+    }
+  } else {
+    // ROUND-ROBIN (#1714, reuse=false): puljerne KONKURRERER om kataloget (global de-dup),
+    // så jævn fordeling kræver round-robin. Bevarer den oprindelige adfærd + tests.
+    // FASE A1 — single-kvote (endagsplads reserveres FØR etapeløb → ikke ren etapeløb).
+    runRoundRobin("singleQueue", "singleCursor", (st) => st.singleRaceCount >= st.singleQuota);
+    // FASE A2 — etapeløb op til quota.
+    if (quota > 0) {
+      runRoundRobin("stageQueue", "stageCursor", (st) => st.stageRaceCount >= quota);
+    }
+    // FASE B — fyld op mod target (resterende endagsløb + etapeløb), jævnt via round-robin.
+    for (const pool of roundRobinOrder) {
+      const st = stateById.get(pool.id);
+      const leftoverSingles = st.singleQueue
+        .slice(st.singleCursor)
+        .filter((r) => !isTakenGlobally(r.id) && !st.selectedIds.has(r.id));
+      const leftoverStages = st.stageQueue
+        .slice(st.stageCursor)
+        .filter((r) => !isTakenGlobally(r.id) && !st.selectedIds.has(r.id));
+      st.fillQueue = leftoverSingles.concat(leftoverStages);
+      st.fillCursor = 0;
+    }
+    runRoundRobin("fillQueue", "fillCursor");
   }
-
-  // FASE B — fyld round-robin op mod raceDaysTarget (resterende endagsløb + etapeløb).
-  // Resterende ikke-taget etapeløb + endagsløb foldes ind i fyld-fasen så de ikke
-  // spildes (men de fordeles stadig jævnt via round-robin'en).
-  for (const pool of roundRobinOrder) {
-    const st = stateById.get(pool.id);
-    const leftoverSingles = st.singleQueue
-      .slice(st.singleCursor)
-      .filter((r) => !isTakenGlobally(r.id) && !st.selectedIds.has(r.id));
-    const leftoverStages = st.stageQueue
-      .slice(st.stageCursor)
-      .filter((r) => !isTakenGlobally(r.id) && !st.selectedIds.has(r.id));
-    // Behold deterministisk rækkefølge: resterende endagsløb (fyld) først, så etapeløb.
-    st.fillQueue = leftoverSingles.concat(leftoverStages);
-    st.fillCursor = 0;
-  }
-
-  runRoundRobin("fillQueue", "fillCursor");
 
   // Byg output + truncated-rapport.
   const truncated = [];
