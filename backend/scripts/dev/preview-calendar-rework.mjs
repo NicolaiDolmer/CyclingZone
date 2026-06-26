@@ -65,6 +65,7 @@ async function main() {
     pools: poolsWithCounts,
     catalog: catalog || [],
     raceDaysTarget: RACE_DAYS_TARGET,
+    allowReuseAcrossPools: true, // parallelle puljer må genbruge løb (ejer-beslutning 26/6)
   });
   const truncated = calendars.truncated || [];
   const truncByDiv = new Map(truncated.map((t) => [t.leagueDivisionId, t]));
@@ -78,7 +79,7 @@ async function main() {
     const monuments = cal.races.filter(isMonument).length;
 
     // Schedule puljens løb på TRACKS parallelle spor.
-    const { stageRows } = planRaceSchedules({ races: cal.races, from: SCHEDULE_FROM, tracks: TRACKS });
+    const { stageRows } = planRaceSchedules({ races: cal.races, from: SCHEDULE_FROM, tracks: TRACKS, stageRaceTracks: 2 });
     const stageByRace = new Map();
     for (const s of stageRows) {
       if (!stageByRace.has(s.race_id)) stageByRace.set(s.race_id, []);

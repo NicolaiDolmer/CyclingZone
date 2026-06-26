@@ -69,6 +69,8 @@ export async function materializeSeasonCalendar({
   raceDaysTarget,
   stageRaceQuota,
   tracks,
+  stageRaceTracks = null,
+  allowReuseAcrossPools = false,
   onlyDivisionId = null,
   dryRun = true,
   log = () => {},
@@ -111,6 +113,7 @@ export async function materializeSeasonCalendar({
     ...(tierRaceClasses ? { tierRaceClasses } : {}),
     ...(raceDaysTarget ? { raceDaysTarget } : {}),
     ...(stageRaceQuota != null ? { stageRaceQuota } : {}),
+    allowReuseAcrossPools,
     baseSeed,
   });
 
@@ -191,6 +194,7 @@ export async function materializeSeasonCalendar({
       races: insertedRaces,
       from,
       ...(tracks != null ? { tracks } : {}),
+      ...(stageRaceTracks != null ? { stageRaceTracks } : {}),
     });
     for (const ru of raceUpdates) {
       const { error } = await supabase.from("races").update({ scheduled_for: ru.scheduled_for }).eq("id", ru.id);
