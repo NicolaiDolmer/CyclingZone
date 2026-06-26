@@ -164,6 +164,7 @@ function NavItem({ to, label, badge, onClick, location, unread, exact, excludeQu
 
 function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups, bottomItems, openGroups, toggleGroup, signOut, location, unread, logoutLabel }) {
   const { t } = useTranslation("common");
+  const { isPro, isFounder } = useSubscription(team?.id);
   return (
     <div className="flex flex-col h-full">
       {/* Logo + team */}
@@ -276,7 +277,6 @@ export default function Layout() {
   const [academyEnabled, setAcademyEnabled] = useState(readCachedAcademyNav);
   const heartbeatRef = useRef(null);
   const teamId = team?.id;
-  const { isPro, isFounder } = useSubscription(teamId);
   const isWideContent = WIDE_CONTENT_ROUTES.has(location.pathname)
     || WIDE_CONTENT_PREFIXES.some(p => location.pathname.startsWith(p));
 
