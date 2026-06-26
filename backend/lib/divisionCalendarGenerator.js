@@ -38,6 +38,38 @@ export const DEFAULT_TIER_RACE_CLASSES = Object.freeze({
   4: ["Class1", "Class2"],
 });
 
+// ── #1856: VIRKELIGHEDSTRO blanding — garanteret andel endagsløb pr. tier ─────────
+// Roden til problemet: Fase A garanterede etapeløb-kvoten, men endagsløb fik kun
+// "rest" i fyld-fasen. For Tier 1 fyldte 8 etapeløb (op til 21 etaper) hele dags-
+// budgettet → 0 kommende endagsløb (ren etapeløb-sæson — elendigt). Vi reserverer nu
+// endagsplads FØR etapeløb-fyld løber budgettet tørt.
+//
+// SINGLE_RACE_MIN_SHARE: minimum-andel af raceDaysTarget der garanteres som endagsløb
+// (race_type='single'), pr. tier. Endagsløb = 1 dag hver, så denne andel = antal
+// garanterede endagsløb / raceDaysTarget. ~25-40%: top-tier kører flere store
+// etapeløb (lavere single-share), bund-tier flere endagsklassikere (højere share).
+// EJER-TUNBAR — konstanter så de kan kalibreres mod en ægte sæson senere.
+export const DEFAULT_TIER_SINGLE_RACE_MIN_SHARE = Object.freeze({
+  1: 0.25, // Tier 1: grand tours dominerer, men min. 25% endagsklassikere/monumenter
+  2: 0.3,
+  3: 0.35,
+  4: 0.4,  // Tier 4: mest endagsløb (Class 1/2-klassikere)
+});
+
+// MONUMENT_MIN: minimum antal Monuments (de prestigefyldte endags-monumenter) pr.
+// tier. Kun Tier 1 kører Monuments-klassen (jf. DEFAULT_TIER_RACE_CLASSES), så øvrige
+// tiers står til 0. Tier 1 garanteres >=2 så sæsonen altid har monument-højdepunkter.
+export const DEFAULT_TIER_MONUMENT_MIN = Object.freeze({
+  1: 2,
+  2: 0,
+  3: 0,
+  4: 0,
+});
+
+// Race-klassen der repræsenterer monumenter (endags-monumenter). Holdt som konstant
+// så monument-logikken ikke hardcoder en streng flere steder.
+export const MONUMENT_RACE_CLASS = "Monuments";
+
 // Spejler aiTeamGenerator: tier 1/2 altid live; tier 3/4 kun med >=1 ægte manager.
 // (Holdt som lokal kopi for at undgå import af aiTeamGenerator's __testables; samme
 //  prædikat — hold dem i sync hvis politikken ændres.)
@@ -55,21 +87,28 @@ export function poolHasCalendar(tier, realManagerCount = 0) {
  * puljer tømmer segmentet (det gamle "fyld-til-target-sekventielt" gav fx 28 løb i
  * pulje 6 mod 9 i pulje 7, og 0 løb i en hel division — uacceptabelt).
  *
- * ALGORITME — round-robin i to faser på tværs af ALLE live puljer:
+ * ALGORITME — round-robin i FIRE faser på tværs af ALLE live puljer (#1856):
  *
- *   For hver pulje bygges to deterministisk prioriterede kandidatlister (filtreret
+ *   For hver pulje bygges deterministisk prioriterede kandidatlister (filtreret
  *   på puljens tier-klasser, seedet pr. pulje = baseSeed XOR pool.id):
- *     • stageQueue  — etapeløb (knappe, værdifulde)
- *     • fillQueue   — endagsløb + alle resterende løb (til fyld)
+ *     • monumentQueue — endags-monumenter (Monuments-klassen, prestige)
+ *     • singleQueue   — alle endagsløb (inkl. monumenter) til single-kvoten
+ *     • stageQueue    — etapeløb (knappe, værdifulde)
+ *     • fillQueue     — alt resterende (til fyld op mod target)
  *
- *   FASE A (etapeløb): runder hvor hver pulje på skift tager sit næste ikke-taget
- *   etapeløb fra sit segment, indtil alle har nået stageRaceQuota, segmentet er tomt,
- *   eller raceDaysTarget nås. Et globalt `taken`-Set giver unikhed → den knappe pulje
- *   af etapeløb (kataloget har ~49 < 7 puljer × 8 quota = 56) deles JÆVNT (±1 pr. pulje).
+ *   FASE A0 (monument-min): hver pulje garanteres MONUMENT_MIN endags-monumenter FØR
+ *   etapeløb spiser budgettet. Sikrer at Tier 1 altid har monument-højdepunkter.
+ *
+ *   FASE A1 (single-kvote): hver pulje garanteres en andel (SINGLE_RACE_MIN_SHARE ×
+ *   target) endagsløb. Dette er rettelsen på "ren etapeløb-sæson": endagsplads
+ *   RESERVERES før etapeløb-fyld, ikke kun som rest. Round-robin → jævn fordeling.
+ *
+ *   FASE A2 (etapeløb-kvote): som før — hver pulje tager op til stageRaceQuota etapeløb
+ *   round-robin. Det globale `taken`-Set giver unikhed → knappe etapeløb deles JÆVNT.
  *
  *   FASE B (fyld): runder hvor hver pulje på skift tager sit næste ikke-taget løb fra
- *   sin fillQueue, indtil raceDaysTarget eller kandidaterne er udtømt. Også jævnt:
- *   ingen pulje fyldes helt op før de andre får en chance.
+ *   sin fillQueue (resterende endagsløb + etapeløb), indtil raceDaysTarget eller
+ *   kandidaterne er udtømt. Også jævnt: ingen pulje fyldes helt op før de andre.
  *
  * Overshoot-disciplin matcher selectSeasonRaces: et løb der ville skyde over
  * raceDaysTarget + overshootTolerance springes over (puljen kan tage et mindre løb
@@ -89,11 +128,13 @@ export function poolHasCalendar(tier, realManagerCount = 0) {
  *                                         realManagerCount: [{ id, tier, pool_index?, label?, realManagerCount }]
  * @param {Array}    args.catalog          race_pool-rækker: [{ id, name, race_class, race_type, stages }]
  * @param {object}   [args.tierRaceClasses] tier → includeClasses[] (default DEFAULT_TIER_RACE_CLASSES)
- * @param {number}   [args.raceDaysTarget]  løbsdage pr. division (default 60)
+ * @param {number}   [args.raceDaysTarget]  løbsdage pr. division (default 140)
  * @param {number}   [args.overshootTolerance] hvor mange dage over target et løb må presse (default 5)
  * @param {number}   [args.stageRaceQuota]  garanterede etapeløb pr. division (default 8)
+ * @param {object}   [args.tierSingleRaceMinShare] tier → min-andel endagsløb (default DEFAULT_TIER_SINGLE_RACE_MIN_SHARE)
+ * @param {object}   [args.tierMonumentMin] tier → min antal Monuments (default DEFAULT_TIER_MONUMENT_MIN)
  * @param {number}   [args.baseSeed]        sæson-seed; pr-pulje-seed = baseSeed XOR pool.id
- * @returns {Array<{ leagueDivisionId, tier, label, races, totalRaceDays, candidateCount, stageRaceCount }>
+ * @returns {Array<{ leagueDivisionId, tier, label, races, totalRaceDays, candidateCount, stageRaceCount, singleRaceCount }>
  *           & { truncated: Array<{ leagueDivisionId, tier, label, stageRaceTarget, stageRacesSelected, stageRacesShort }> }}
  */
 export function generateDivisionCalendars({
@@ -103,6 +144,8 @@ export function generateDivisionCalendars({
   raceDaysTarget = DEFAULT_RACE_DAYS_TARGET,
   overshootTolerance = DEFAULT_OVERSHOOT_TOLERANCE,
   stageRaceQuota = FIRST_SEASON_STAGE_RACE_QUOTA,
+  tierSingleRaceMinShare = DEFAULT_TIER_SINGLE_RACE_MIN_SHARE,
+  tierMonumentMin = DEFAULT_TIER_MONUMENT_MIN,
   baseSeed = 1,
 } = {}) {
   const target = Number(raceDaysTarget) || DEFAULT_RACE_DAYS_TARGET;
@@ -125,6 +168,8 @@ export function generateDivisionCalendars({
     });
 
   const stagesOf = (race) => Number(race.stages) || 1;
+  const isMonument = (race) =>
+    race.race_class === MONUMENT_RACE_CLASS && race.race_type === "single";
 
   // Pr.-pulje arbejds-state: deterministisk prioriterede kandidat-køer (filtreret på
   // tier-klasser + seedet pr. pulje), plus akkumulerede udvalg.
@@ -136,20 +181,36 @@ export function generateDivisionCalendars({
     const shuffle = makeStableShuffler(seed);
 
     const inSegment = catalog.filter((r) => !includeSet || includeSet.has(r.race_class));
-    // Etapeløb først jævnt (fase A), derefter endagsløb/resten som fyld (fase B).
+    // Køer pr. fase: monumenter (A0), endagsløb (A1), etapeløb (A2), resten (B-fyld).
+    // singleQueue rummer ALLE endagsløb (inkl. monumenter); monumentQueue er delmængden.
+    const singles = inSegment.filter((r) => r.race_type === "single");
+    const monumentQueue = shuffle(singles.filter(isMonument));
+    const singleQueue = shuffle(singles);
     const stageQueue = shuffle(inSegment.filter((r) => r.race_type === "stage_race"));
-    const fillQueue = shuffle(inSegment.filter((r) => r.race_type !== "stage_race"));
+
+    // #1856: garanteret endagsløb-kvote (andel af target) + monument-min pr. tier.
+    const share = Number(tierSingleRaceMinShare?.[pool.tier]) || 0;
+    const singleQuota = Math.round(share * target); // endagsløb = 1 dag → antal = dage
+    const monumentMin = Number(tierMonumentMin?.[pool.tier]) || 0;
 
     stateById.set(pool.id, {
       pool,
+      monumentQueue,
+      monumentCursor: 0,
+      singleQueue,
+      singleCursor: 0,
       stageQueue,
       stageCursor: 0,
-      fillQueue,
+      fillQueue: [], // rebuilt fra leftover singles + stages før Fase B
       fillCursor: 0,
       selected: [],
       selectedIds: new Set(),
       totalRaceDays: 0,
       stageRaceCount: 0,
+      singleRaceCount: 0,
+      monumentCount: 0,
+      singleQuota,
+      monumentMin,
       candidateCount: inSegment.length,
     });
   }
@@ -161,18 +222,23 @@ export function generateDivisionCalendars({
     st.selected.push(race);
     st.selectedIds.add(race.id);
     st.totalRaceDays += stagesOf(race);
+    if (race.race_type === "stage_race") st.stageRaceCount++;
+    if (race.race_type === "single") st.singleRaceCount++;
+    if (isMonument(race)) st.monumentCount++;
     taken.add(race.id);
   };
 
   // Tag puljens næste tilgængelige (ikke-taget, ikke-overshoot, room) løb fra en kø.
   // Avancerer cursoren forbi løb der allerede er taget af en anden pulje. Returnerer
-  // true hvis et løb blev tilføjet i denne tur.
-  const takeNext = (st, queueKey, cursorKey, { capStageRace = false } = {}) => {
+  // true hvis et løb blev tilføjet i denne tur. `cap` er en valgfri predikat(st) der
+  // — hvis sand — stopper puljen fra at tage flere i denne fase (kvote nået).
+  const takeNext = (st, queueKey, cursorKey, { cap = null } = {}) => {
+    if (cap && cap(st)) return false; // fase-kvote allerede nået
     const queue = st[queueKey];
     while (st[cursorKey] < queue.length) {
       const race = queue[st[cursorKey]];
-      if (taken.has(race.id)) {
-        st[cursorKey]++; // taget af en anden pulje → spring permanent over
+      if (taken.has(race.id) || st.selectedIds.has(race.id)) {
+        st[cursorKey]++; // taget af en anden pulje (eller af denne pulje i en tidligere fase)
         continue;
       }
       if (st.totalRaceDays >= target) return false; // ingen mening at fylde mere
@@ -183,7 +249,7 @@ export function generateDivisionCalendars({
         let look = st[cursorKey] + 1;
         while (look < queue.length) {
           const alt = queue[look];
-          if (taken.has(alt.id)) { look++; continue; }
+          if (taken.has(alt.id) || st.selectedIds.has(alt.id)) { look++; continue; }
           if (fits(st, alt)) {
             // Byt: tag alt nu (swap så cursor-rækkefølgen forbliver deterministisk
             // for resten af køen). Vi fjerner alt fra sin plads og indsætter ved cursor.
@@ -197,57 +263,61 @@ export function generateDivisionCalendars({
         // efter swap peger cursor nu på alt → fald igennem og tag det
       }
       const chosen = queue[st[cursorKey]];
-      if (capStageRace && st.stageRaceCount >= quota) return false; // quota nået
       st[cursorKey]++;
       addToPool(st, chosen);
-      if (chosen.race_type === "stage_race") st.stageRaceCount++;
       return true;
     }
     return false;
   };
 
-  // FASE A — etapeløb round-robin op til quota per pulje (eller segment tomt / target).
-  if (quota > 0) {
+  // Generisk round-robin-runde-løkke: hver pulje på skift tager sit næste løb fra en
+  // kø indtil ingen pulje gør fremskridt. Holder fordelingen JÆVN på tværs af puljer.
+  const runRoundRobin = (queueKey, cursorKey, capFn = null) => {
     let progressed = true;
     while (progressed) {
       progressed = false;
       for (const pool of roundRobinOrder) {
         const st = stateById.get(pool.id);
-        if (st.stageRaceCount >= quota) continue;
         if (st.totalRaceDays >= target) continue;
-        if (takeNext(st, "stageQueue", "stageCursor", { capStageRace: true })) {
+        if (takeNext(st, queueKey, cursorKey, { cap: capFn })) {
           progressed = true;
         }
       }
     }
+  };
+
+  // FASE A0 — monument-min round-robin: garantér MONUMENT_MIN endags-monumenter pr.
+  // pulje FØR etapeløb spiser budgettet (sikrer Tier 1 har monument-højdepunkter).
+  runRoundRobin("monumentQueue", "monumentCursor", (st) => st.monumentCount >= st.monumentMin);
+
+  // FASE A1 — single-kvote round-robin: garantér en andel (SINGLE_RACE_MIN_SHARE)
+  // endagsløb pr. pulje. Dette er #1856-rettelsen: endagsplads reserveres FØR
+  // etapeløb-fyld, så vi aldrig ender med en ren etapeløb-sæson. Monumenter fra A0
+  // tæller med i singleRaceCount, så A1 supplerer kun op til kvoten.
+  runRoundRobin("singleQueue", "singleCursor", (st) => st.singleRaceCount >= st.singleQuota);
+
+  // FASE A2 — etapeløb round-robin op til quota per pulje (eller segment tomt / target).
+  if (quota > 0) {
+    runRoundRobin("stageQueue", "stageCursor", (st) => st.stageRaceCount >= quota);
   }
 
-  // FASE B — fyld round-robin op mod raceDaysTarget (endagsløb + resterende etapeløb).
-  // Resterende ikke-taget etapeløb foldes ind i fyld-fasen så de ikke spildes (men
-  // de fordeles stadig jævnt via round-robin'en).
+  // FASE B — fyld round-robin op mod raceDaysTarget (resterende endagsløb + etapeløb).
+  // Resterende ikke-taget etapeløb + endagsløb foldes ind i fyld-fasen så de ikke
+  // spildes (men de fordeles stadig jævnt via round-robin'en).
   for (const pool of roundRobinOrder) {
     const st = stateById.get(pool.id);
+    const leftoverSingles = st.singleQueue
+      .slice(st.singleCursor)
+      .filter((r) => !taken.has(r.id) && !st.selectedIds.has(r.id));
     const leftoverStages = st.stageQueue
       .slice(st.stageCursor)
       .filter((r) => !taken.has(r.id) && !st.selectedIds.has(r.id));
-    if (leftoverStages.length > 0) {
-      // Behold deterministisk rækkefølge: append efter de planlagte endagsløb-fyld.
-      st.fillQueue = st.fillQueue.slice(st.fillCursor).concat(leftoverStages);
-      st.fillCursor = 0;
-    }
+    // Behold deterministisk rækkefølge: resterende endagsløb (fyld) først, så etapeløb.
+    st.fillQueue = leftoverSingles.concat(leftoverStages);
+    st.fillCursor = 0;
   }
 
-  let progressed = true;
-  while (progressed) {
-    progressed = false;
-    for (const pool of roundRobinOrder) {
-      const st = stateById.get(pool.id);
-      if (st.totalRaceDays >= target) continue;
-      if (takeNext(st, "fillQueue", "fillCursor")) {
-        progressed = true;
-      }
-    }
-  }
+  runRoundRobin("fillQueue", "fillCursor");
 
   // Byg output + truncated-rapport.
   const truncated = [];
@@ -262,6 +332,7 @@ export function generateDivisionCalendars({
       totalRaceDays: st.totalRaceDays,
       candidateCount: st.candidateCount,
       stageRaceCount: st.stageRaceCount,
+      singleRaceCount: st.singleRaceCount,
     });
 
     // Beskæring: fik puljen færre etapeløb end quota (target)? Rapportér eksplicit.

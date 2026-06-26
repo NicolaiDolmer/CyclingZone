@@ -19,7 +19,11 @@
 import { WORLD_TOUR_CLASSES } from "./racePoolImport.js";
 import { makeRng } from "./fictionalRiderGenerator.js";
 
-export const DEFAULT_RACE_DAYS_TARGET = 60;
+// #1856: hævet 60→140 for en VIRKELIGHEDSTRO fuld-sæsons-kalender (grand tours +
+// etapeløb + endagsklassikere/monumenter). 60 var for lavt: Tier 1's 8 garanterede
+// etapeløb (7-21 etaper) fyldte næsten hele budgettet alene → 0 endagsløb. Stadig
+// override-bar pr. kald (raceDaysTarget-param). Matcher en hel cykelsæson i dage.
+export const DEFAULT_RACE_DAYS_TARGET = 140;
 export const DEFAULT_OVERSHOOT_TOLERANCE = 5;
 export const DEFAULT_STAGE_RACE_QUOTA = 0;
 export const FIRST_SEASON_STAGE_RACE_QUOTA = 8;

@@ -86,8 +86,8 @@ test("selectSeasonRaces — includeClasses begrænser kandidater", () => {
   assert.equal(result.selected[0].name, "A");
 });
 
-test("selectSeasonRaces — DEFAULT_RACE_DAYS_TARGET = 60 (matcher seasons.race_days_total)", () => {
-  assert.equal(DEFAULT_RACE_DAYS_TARGET, 60);
+test("selectSeasonRaces — DEFAULT_RACE_DAYS_TARGET = 140 (fuld virkelighedstro sæson, #1856)", () => {
+  assert.equal(DEFAULT_RACE_DAYS_TARGET, 140);
 });
 
 test("selectFirstSeasonRaces — accepterer override af raceDaysTarget", () => {
