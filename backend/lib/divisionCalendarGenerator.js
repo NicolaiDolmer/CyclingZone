@@ -134,6 +134,12 @@ export function poolHasCalendar(tier, realManagerCount = 0) {
  * @param {object}   [args.tierSingleRaceMinShare] tier → min-andel endagsløb (default DEFAULT_TIER_SINGLE_RACE_MIN_SHARE)
  * @param {object}   [args.tierMonumentMin] tier → min antal Monuments (default DEFAULT_TIER_MONUMENT_MIN)
  * @param {number}   [args.baseSeed]        sæson-seed; pr-pulje-seed = baseSeed XOR pool.id
+ * @param {boolean}  [args.allowReuseAcrossPools] når true droppes de-dup MELLEM puljer:
+ *                                         hver pulje vælger uafhængigt fra sit tier-katalog,
+ *                                         så parallelle puljer på samme tier må køre samme løb
+ *                                         (hver med sin egen instans). Per-pulje selectedIds
+ *                                         forhindrer stadig duplikat INDEN FOR samme pulje.
+ *                                         Default false = NØJAGTIG nuværende #1714-adfærd.
  * @returns {Array<{ leagueDivisionId, tier, label, races, totalRaceDays, candidateCount, stageRaceCount, singleRaceCount }>
  *           & { truncated: Array<{ leagueDivisionId, tier, label, stageRaceTarget, stageRacesSelected, stageRacesShort }> }}
  */
@@ -147,6 +153,7 @@ export function generateDivisionCalendars({
   tierSingleRaceMinShare = DEFAULT_TIER_SINGLE_RACE_MIN_SHARE,
   tierMonumentMin = DEFAULT_TIER_MONUMENT_MIN,
   baseSeed = 1,
+  allowReuseAcrossPools = false,
 } = {}) {
   const target = Number(raceDaysTarget) || DEFAULT_RACE_DAYS_TARGET;
   const tolerance = Number(overshootTolerance) || 0;
@@ -216,6 +223,10 @@ export function generateDivisionCalendars({
   }
 
   const taken = new Set(); // globale pool_race_id'er der allerede er fordelt
+  // #1856 (overlap): når reuse er til, springer vi de-dup MELLEM puljer over —
+  // et løb regnes kun "taget" hvis DENNE pulje allerede valgte det (selectedIds).
+  // Per-pulje selectedIds bevares ALTID, så ingen pulje får samme løb to gange.
+  const isTakenGlobally = (id) => !allowReuseAcrossPools && taken.has(id);
 
   const fits = (st, race) => st.totalRaceDays + stagesOf(race) <= target + tolerance;
   const addToPool = (st, race) => {
@@ -237,7 +248,7 @@ export function generateDivisionCalendars({
     const queue = st[queueKey];
     while (st[cursorKey] < queue.length) {
       const race = queue[st[cursorKey]];
-      if (taken.has(race.id) || st.selectedIds.has(race.id)) {
+      if (isTakenGlobally(race.id) || st.selectedIds.has(race.id)) {
         st[cursorKey]++; // taget af en anden pulje (eller af denne pulje i en tidligere fase)
         continue;
       }
@@ -249,7 +260,7 @@ export function generateDivisionCalendars({
         let look = st[cursorKey] + 1;
         while (look < queue.length) {
           const alt = queue[look];
-          if (taken.has(alt.id) || st.selectedIds.has(alt.id)) { look++; continue; }
+          if (isTakenGlobally(alt.id) || st.selectedIds.has(alt.id)) { look++; continue; }
           if (fits(st, alt)) {
             // Byt: tag alt nu (swap så cursor-rækkefølgen forbliver deterministisk
             // for resten af køen). Vi fjerner alt fra sin plads og indsætter ved cursor.
@@ -308,10 +319,10 @@ export function generateDivisionCalendars({
     const st = stateById.get(pool.id);
     const leftoverSingles = st.singleQueue
       .slice(st.singleCursor)
-      .filter((r) => !taken.has(r.id) && !st.selectedIds.has(r.id));
+      .filter((r) => !isTakenGlobally(r.id) && !st.selectedIds.has(r.id));
     const leftoverStages = st.stageQueue
       .slice(st.stageCursor)
-      .filter((r) => !taken.has(r.id) && !st.selectedIds.has(r.id));
+      .filter((r) => !isTakenGlobally(r.id) && !st.selectedIds.has(r.id));
     // Behold deterministisk rækkefølge: resterende endagsløb (fyld) først, så etapeløb.
     st.fillQueue = leftoverSingles.concat(leftoverStages);
     st.fillCursor = 0;

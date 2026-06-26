@@ -6,7 +6,12 @@ import {
   STAGES_PER_DAY,
   planRaceSchedules,
 } from "./backfillRaceScheduledFor.js";
-import { raceTimeWindow, windowsOverlap } from "../lib/raceBinding.js";
+import {
+  raceTimeWindow,
+  windowsOverlap,
+  raceBindingWindow,
+  peakConcurrentStageRaces,
+} from "../lib/raceBinding.js";
 
 // Tæt-pakket cadence (#cadence-launch-fix): STAGES_PER_DAY etaper pr. dag på tværs af
 // HELE pulje-kalenderen, så en 60-etape-sæson afvikles i ~30 dage (~4 uger) i stedet
@@ -184,4 +189,96 @@ test("planRaceSchedules: tomt løb-input → tomme planer", () => {
   const { raceUpdates, stageRows } = planRaceSchedules({ races: [], from: FROM });
   assert.deepEqual(raceUpdates, []);
   assert.deepEqual(stageRows, []);
+});
+
+// ── Kapacitets-bevidst tildeling (#1856): max N samtidige etapeløb pr. division ──
+// Ejer-beslutning: højst 2 samtidige etapeløb pr. division; endagsløb fylder de øvrige
+// daglige slots (op til 5 etaper/dag i alt). stageRaceTracks sætter etape-spor-loftet.
+
+// Blanding: 4 etapeløb à 7 etaper + 6 endagsløb. tracks=5, stageRaceTracks=2.
+const MIXED = [
+  ...Array.from({ length: 4 }, (_, i) => ({ id: `tour${i}`, name: `Tour ${String(i).padStart(2, "0")}`, stages: 7 })),
+  ...Array.from({ length: 6 }, (_, i) => ({ id: `one${i}`, name: `One Day ${String(i).padStart(2, "0")}`, stages: 1 })),
+];
+
+test("planRaceSchedules: stageRaceTracks=2 holder højst 2 samtidige etapeløb pr. division", () => {
+  const { stageRows } = planRaceSchedules({ races: MIXED, from: FROM, tracks: 5, stageRaceTracks: 2 });
+  const DIV = "div-X";
+  // Byg pr. race et binding-vindue (CET-dag-ordinaler) fra dens stageRows; alle races i
+  // samme division så peakConcurrentStageRaces ser dem som konkurrerende.
+  const list = MIXED.map((race) => {
+    const rows = stageRows.filter((r) => r.race_id === race.id);
+    return {
+      league_division_id: DIV,
+      race_type: race.stages > 1 ? "stage_race" : "one_day",
+      window: raceBindingWindow(rows),
+    };
+  });
+  const peak = peakConcurrentStageRaces(list, { divisionId: DIV });
+  assert.ok(peak <= 2, `samtidige etapeløb skal være ≤ 2 (fik ${peak})`);
+});
+
+test("planRaceSchedules: endagsløb i bageste spor (slots[2..4]), etapeløb i slots[0..1]", () => {
+  const { stageRows } = planRaceSchedules({ races: MIXED, from: FROM, tracks: 5, stageRaceTracks: 2 });
+  const hhmm = (iso) => new Date(iso).toLocaleTimeString("en-GB", { timeZone: "Europe/Copenhagen", hour: "2-digit", minute: "2-digit" });
+  const stageSlots = STAGE_SLOTS_CET.slice(0, 2); // ["12:30","15:00"]
+  const oneDaySlots = STAGE_SLOTS_CET.slice(2, 5); // ["18:00","21:00","09:00"]
+
+  const stageRaceIds = new Set(MIXED.filter((r) => r.stages > 1).map((r) => r.id));
+  const oneDayIds = new Set(MIXED.filter((r) => r.stages === 1).map((r) => r.id));
+
+  for (const r of stageRows) {
+    const slot = hhmm(r.scheduled_at);
+    if (stageRaceIds.has(r.race_id)) {
+      assert.ok(stageSlots.includes(slot), `etapeløb ${r.race_id} skal ligge i forreste spor, fik slot ${slot}`);
+    } else if (oneDayIds.has(r.race_id)) {
+      assert.ok(oneDaySlots.includes(slot), `endagsløb ${r.race_id} skal ligge i bageste spor, fik slot ${slot}`);
+    }
+  }
+});
+
+test("planRaceSchedules: begge typer planlægges fra dag 1 (kører parallelt)", () => {
+  const { stageRows } = planRaceSchedules({ races: MIXED, from: FROM, tracks: 5, stageRaceTracks: 2 });
+  // Dag 1 (21/6) skal have BÅDE etapeløb-etaper og endagsløb → op til tracks etaper/dag.
+  const day1 = stageRows.filter((r) => new Date(r.scheduled_at).toISOString().slice(0, 10) === "2026-06-21");
+  const day1Races = new Set(day1.map((r) => r.race_id));
+  const stageRaceIds = new Set(MIXED.filter((r) => r.stages > 1).map((r) => r.id));
+  const oneDayIds = new Set(MIXED.filter((r) => r.stages === 1).map((r) => r.id));
+  assert.ok([...day1Races].some((id) => stageRaceIds.has(id)), "mindst ét etapeløb dag 1");
+  assert.ok([...day1Races].some((id) => oneDayIds.has(id)), "mindst ét endagsløb dag 1");
+});
+
+test("planRaceSchedules: stageRaceTracks kræver < tracks (mindst ét endagsløb-spor)", () => {
+  assert.throws(
+    () => planRaceSchedules({ races: MIXED, from: FROM, tracks: 2, stageRaceTracks: 2 }),
+    /stageRaceTracks/,
+  );
+});
+
+test("planRaceSchedules: stageRaceTracks kræver tracks <= slots.length", () => {
+  assert.throws(
+    () => planRaceSchedules({ races: MIXED, from: FROM, tracks: 6, stageRaceTracks: 2 }),
+    /tracks/,
+  );
+});
+
+test("planRaceSchedules: stageRaceTracks=2 er deterministisk (dry-run == apply)", () => {
+  const a = planRaceSchedules({ races: MIXED, from: FROM, tracks: 5, stageRaceTracks: 2 });
+  const b = planRaceSchedules({ races: MIXED, from: FROM, tracks: 5, stageRaceTracks: 2 });
+  assert.deepEqual(a, b);
+});
+
+test("planRaceSchedules: default (stageRaceTracks=null) er uændret — 2 spor → 2 etaper/dag", () => {
+  // Genbrug det eksisterende default-scenarie: stageRaceTracks=null skal give NØJAGTIG
+  // samme output som uden parameteren overhovedet.
+  const withNull = planRaceSchedules({ races: RACES, from: FROM, stageRaceTracks: null });
+  const without = planRaceSchedules({ races: RACES, from: FROM });
+  assert.deepEqual(withNull, without);
+  // Og det matcher den oprindelige 2-spors-forventning: 6 etaper / 2 spor = 3 dage.
+  const byDay = {};
+  for (const r of withNull.stageRows) {
+    const d = new Date(r.scheduled_at).toISOString().slice(0, 10);
+    byDay[d] = (byDay[d] || 0) + 1;
+  }
+  assert.deepEqual(Object.values(byDay), [2, 2, 2]);
 });

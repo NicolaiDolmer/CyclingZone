@@ -66,44 +66,21 @@ function copenhagenDatePlusDays(fromUTC, days) {
   return fmt.format(shifted);
 }
 
-/**
- * REN planlægning (ingen DB). Fordeler løbene på `tracks` parallelle spor og planlægger
- * hvert spor sekventielt, 1 etape/dag, på sit eget faste dag-slot (spor t → slots[t]).
- * To løb i forskellige spor på samme dag overlapper i tid → bindingen (Fase 0a) aktiveres.
- * Løb fordeles greedy-balanceret på kumulativ etape-sum, så sporene afsluttes omtrent
- * samtidig. Total throughput = tracks etaper/dag/pulje (uændret: tracks default = STAGES_PER_DAY).
- *
- * Deterministisk: løb sorteres på name→id; greedy-tie brydes mod laveste spor-index.
- * `tracks=1` giver én sekventiel stream (1 etape/dag). `raceUpdates` returneres altid i
- * name-sorteret løbsrækkefølge uanset spor-tildeling; `stageRows` følger samme
- * løbsrækkefølge, etape 1→N inden for hvert løb.
- *
- * @param {{ races: Array<{id,name,stages}>, from?: Date, slots?: string[], tracks?: number }} args
- * @returns {{ raceUpdates: Array<{id, scheduled_for}>, stageRows: Array<{race_id, stage_number, scheduled_at}> }}
- */
-export function planRaceSchedules({ races = [], from = new Date(), slots = STAGE_SLOTS_CET, tracks = STAGES_PER_DAY }) {
-  const sorted = [...races].sort((a, b) =>
-    String(a.name).localeCompare(String(b.name), "en") || String(a.id).localeCompare(String(b.id)),
-  );
-  // Un-clamp (#1856/#1712): tidligere clampede vi tracks til slots.length, hvilket
-  // gav stille slot-wraparound (spor 4 → slot[0]) og duplikat-tider der brød
-  // race-binding. Kræv eksplicit nok slots i stedet.
-  const requestedTracks = Math.max(1, Number(tracks) || 1);
-  if (requestedTracks > slots.length) {
-    throw new Error(
-      `planRaceSchedules: tracks=${requestedTracks} > slots=${slots.length} — tilføj flere STAGE_SLOTS_CET`,
-    );
-  }
-  const trackCount = requestedTracks;
-  const trackDays = new Array(trackCount).fill(0); // næste ledige dag-index (0-baseret) pr. spor
-
-  const raceUpdates = [];
-  const stageRows = [];
-  for (const race of sorted) {
+// Greedy-balanceret tildeling af én løbs-pulje på et SAMMENHÆNGENDE bånd af spor
+// [trackOffset .. trackOffset+trackCount-1]. Hvert spor planlægges sekventielt,
+// 1 etape/dag, på sit faste dag-slot (spor t → slots[t]). Løb lægges i sporet med
+// færrest kumulative dage (tie → laveste absolut spor-index → determinisme), så
+// sporene afsluttes omtrent samtidig. `trackDays` indekseres med ABSOLUT spor-index
+// og deles mellem flere bånd, så et endagsløb-bånd ikke kolliderer med etape-båndet.
+// Muterer raceUpdates/stageRows/trackDays in-place. Pure mht. input-løb.
+function assignTracksGreedy({ races, from, slots, trackOffset, trackCount, trackDays, raceUpdates, stageRows }) {
+  for (const race of races) {
     const stageCount = Math.max(1, Number(race.stages) || 1);
-    // Vælg sporet med færrest kumulative dage (tie → laveste index → determinisme).
-    let t = 0;
-    for (let i = 1; i < trackCount; i++) if (trackDays[i] < trackDays[t]) t = i;
+    // Vælg sporet (inden for båndet) med færrest kumulative dage; tie → laveste index.
+    let t = trackOffset;
+    for (let i = trackOffset + 1; i < trackOffset + trackCount; i++) {
+      if (trackDays[i] < trackDays[t]) t = i;
+    }
     const startDayIdx = trackDays[t];
     const slot = slots[t % slots.length];
 
@@ -121,6 +98,85 @@ export function planRaceSchedules({ races = [], from = new Date(), slots = STAGE
     }
     trackDays[t] += stageCount;
   }
+}
+
+/**
+ * REN planlægning (ingen DB). Fordeler løbene på `tracks` parallelle spor og planlægger
+ * hvert spor sekventielt, 1 etape/dag, på sit eget faste dag-slot (spor t → slots[t]).
+ * To løb i forskellige spor på samme dag overlapper i tid → bindingen (Fase 0a) aktiveres.
+ * Løb fordeles greedy-balanceret på kumulativ etape-sum, så sporene afsluttes omtrent
+ * samtidig. Total throughput = tracks etaper/dag/pulje (uændret: tracks default = STAGES_PER_DAY).
+ *
+ * Deterministisk: løb sorteres på name→id; greedy-tie brydes mod laveste spor-index.
+ * `tracks=1` giver én sekventiel stream (1 etape/dag). `raceUpdates` returneres altid i
+ * name-sorteret løbsrækkefølge uanset spor-tildeling; `stageRows` følger samme
+ * løbsrækkefølge, etape 1→N inden for hvert løb.
+ *
+ * KAPACITETS-BEVIDST (#1856): `stageRaceTracks` (default null = uændret blandet adfærd).
+ * Når sat (fx 2) tildeles TYPE-BEVIDST: etapeløb (stages>1) lægges KUN på de forreste
+ * `stageRaceTracks` spor (slots[0..stageRaceTracks-1]) → garanterer højst stageRaceTracks
+ * SAMTIDIGE etapeløb pr. division; endagsløb (stages===1) lægges på de resterende spor
+ * (slots[stageRaceTracks..tracks-1]). Begge bånd ankres fra samme `from` (dag 1) → kører
+ * parallelt, op til `tracks` etaper/dag. Kræver `stageRaceTracks < tracks` (mindst ét
+ * endagsløb-spor). Determinisme bevaret; dry-run == apply.
+ *
+ * @param {{ races: Array<{id,name,stages}>, from?: Date, slots?: string[], tracks?: number, stageRaceTracks?: number|null }} args
+ * @returns {{ raceUpdates: Array<{id, scheduled_for}>, stageRows: Array<{race_id, stage_number, scheduled_at}> }}
+ */
+export function planRaceSchedules({ races = [], from = new Date(), slots = STAGE_SLOTS_CET, tracks = STAGES_PER_DAY, stageRaceTracks = null }) {
+  const sorted = [...races].sort((a, b) =>
+    String(a.name).localeCompare(String(b.name), "en") || String(a.id).localeCompare(String(b.id)),
+  );
+  // Un-clamp (#1856/#1712): tidligere clampede vi tracks til slots.length, hvilket
+  // gav stille slot-wraparound (spor 4 → slot[0]) og duplikat-tider der brød
+  // race-binding. Kræv eksplicit nok slots i stedet.
+  const requestedTracks = Math.max(1, Number(tracks) || 1);
+  if (requestedTracks > slots.length) {
+    throw new Error(
+      `planRaceSchedules: tracks=${requestedTracks} > slots=${slots.length} — tilføj flere STAGE_SLOTS_CET`,
+    );
+  }
+  const trackCount = requestedTracks;
+  const trackDays = new Array(trackCount).fill(0); // næste ledige dag-index (0-baseret) pr. spor
+
+  const raceUpdates = [];
+  const stageRows = [];
+
+  if (stageRaceTracks == null) {
+    // DEFAULT: alle løb blandet på alle `tracks` spor (uændret adfærd).
+    assignTracksGreedy({
+      races: sorted, from, slots, trackOffset: 0, trackCount,
+      trackDays, raceUpdates, stageRows,
+    });
+    return { raceUpdates, stageRows };
+  }
+
+  // TYPE-BEVIDST: separate spor-bånd for etapeløb vs endagsløb.
+  const stageTracks = Math.max(1, Number(stageRaceTracks) || 1);
+  if (stageTracks >= trackCount) {
+    throw new Error(
+      `planRaceSchedules: stageRaceTracks=${stageTracks} skal være < tracks=${trackCount} (mindst ét endagsløb-spor)`,
+    );
+  }
+  const stageRaces = sorted.filter((r) => Math.max(1, Number(r.stages) || 1) > 1);
+  const oneDayRaces = sorted.filter((r) => Math.max(1, Number(r.stages) || 1) === 1);
+
+  // Etapeløb → forreste `stageTracks` spor (slots[0..stageTracks-1]). Greedy-balanceret,
+  // sekventielt → højst stageTracks samtidige etapeløb. Endagsløb → resterende spor.
+  assignTracksGreedy({
+    races: stageRaces, from, slots, trackOffset: 0, trackCount: stageTracks,
+    trackDays, raceUpdates, stageRows,
+  });
+  assignTracksGreedy({
+    races: oneDayRaces, from, slots, trackOffset: stageTracks, trackCount: trackCount - stageTracks,
+    trackDays, raceUpdates, stageRows,
+  });
+
+  // Bevar name-sorteret output-rækkefølge (uafhængigt af type-opdelingen ovenfor).
+  const order = new Map(sorted.map((r, i) => [r.id, i]));
+  raceUpdates.sort((a, b) => order.get(a.id) - order.get(b.id));
+  stageRows.sort((a, b) => order.get(a.race_id) - order.get(b.race_id) || a.stage_number - b.stage_number);
+
   return { raceUpdates, stageRows };
 }
 

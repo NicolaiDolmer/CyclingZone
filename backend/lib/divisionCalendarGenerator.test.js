@@ -233,6 +233,146 @@ test("#1856: determinisme bevaret ved 140-target + single-kvote", () => {
   );
 });
 
+// ── allowReuseAcrossPools: parallelle puljer på samme tier må køre samme løb ──────
+// Problem: parallelle puljer på SAMME niveau (fx 4 tier-3-divisioner) deler ét lille
+// tier-katalog → global de-dup sulter de senere puljer (de når kun ~30-50 af 140 dage).
+// Med allowReuseAcrossPools=true må hver pulje vælge uafhængigt fra sit tier-katalog.
+
+// Lille tier-3-katalog: bevidst for lille til at 4 puljer kan nå 140 dage HVER med
+// global de-dup. Rigeligt for ÉN pulje, men deles det globalt sulter de senere.
+function makeSmallTier3Catalog() {
+  const rows = [];
+  let n = 0;
+  const add = (race_class, race_type, stages, count) => {
+    for (let i = 0; i < count; i++) {
+      rows.push({ id: `t${n++}`, name: `${race_class}-${race_type}-${String(i).padStart(2, "0")}`, race_class, race_type, stages });
+    }
+  };
+  // Lige nok til at ÉN tier-3-pulje (ProSeries+Class1) kan nå ~140 dage:
+  add("ProSeries", "stage_race", 5, 8);
+  add("Class1", "stage_race", 4, 6);
+  add("ProSeries", "single", 1, 80);
+  add("Class1", "single", 1, 60);
+  return rows;
+}
+
+// 4 parallelle tier-3-puljer der konkurrerer om det samme lille tier-3-katalog.
+function fourTier3Pools() {
+  return [
+    { id: 10, tier: 3, label: "D3 — A", realManagerCount: 1 },
+    { id: 11, tier: 3, label: "D3 — B", realManagerCount: 1 },
+    { id: 12, tier: 3, label: "D3 — C", realManagerCount: 1 },
+    { id: 13, tier: 3, label: "D3 — D", realManagerCount: 1 },
+  ];
+}
+
+test("allowReuseAcrossPools=true: HVER af 4 parallelle puljer når ~140 race-dage (lille katalog)", () => {
+  const cals = generateDivisionCalendars({
+    pools: fourTier3Pools(),
+    catalog: makeSmallTier3Catalog(),
+    baseSeed: 2026,
+    raceDaysTarget: 140,
+    allowReuseAcrossPools: true,
+  });
+  assert.equal(cals.length, 4, "alle 4 puljer skal få en kalender");
+  for (const cal of cals) {
+    assert.ok(
+      cal.totalRaceDays >= 130,
+      `pulje ${cal.leagueDivisionId} kun ${cal.totalRaceDays} dage — genbrug burde lade den nå ~140`,
+    );
+  }
+});
+
+test("allowReuseAcrossPools=false (default): senere puljer sulter på samme lille katalog (kontrast)", () => {
+  const cals = generateDivisionCalendars({
+    pools: fourTier3Pools(),
+    catalog: makeSmallTier3Catalog(),
+    baseSeed: 2026,
+    raceDaysTarget: 140,
+    // allowReuseAcrossPools udeladt → default false
+  });
+  assert.equal(cals.length, 4);
+  const days = cals.map((c) => c.totalRaceDays);
+  // Med global de-dup tømmer de tidlige puljer det lille katalog → mindst én senere
+  // pulje kommer MARKANT under target. Beviser kontrasten mod reuse=true.
+  assert.ok(
+    Math.min(...days) < 130,
+    `forventede at mindst én pulje sultede under de-dup, men alle nåede ~target: ${days.join("/")}`,
+  );
+  // Samlet bevis: total dage med de-dup << 4×140 (puljerne deler ét lille katalog).
+  const total = days.reduce((a, b) => a + b, 0);
+  assert.ok(total < 4 * 130, `de-dup burde begrænse samlet udbud: total=${total}`);
+});
+
+test("allowReuseAcrossPools: kontrasten true vs false på SAMME input (reuse giver markant flere dage)", () => {
+  const base = {
+    pools: fourTier3Pools(),
+    catalog: makeSmallTier3Catalog(),
+    baseSeed: 2026,
+    raceDaysTarget: 140,
+  };
+  const reuse = generateDivisionCalendars({ ...base, allowReuseAcrossPools: true });
+  const dedup = generateDivisionCalendars({ ...base, allowReuseAcrossPools: false });
+  const sum = (cals) => cals.reduce((a, c) => a + c.totalRaceDays, 0);
+  assert.ok(
+    sum(reuse) > sum(dedup),
+    `reuse (${sum(reuse)}) burde give flere samlede dage end de-dup (${sum(dedup)})`,
+  );
+  // Den dårligst stillede pulje skal være markant bedre med reuse.
+  const minReuse = Math.min(...reuse.map((c) => c.totalRaceDays));
+  const minDedup = Math.min(...dedup.map((c) => c.totalRaceDays));
+  assert.ok(minReuse > minDedup, `dårligst-stillede pulje: reuse=${minReuse} vs de-dup=${minDedup}`);
+});
+
+test("allowReuseAcrossPools=true: bevarer determinisme (samme input → samme output)", () => {
+  const opts = {
+    pools: fourTier3Pools(),
+    catalog: makeSmallTier3Catalog(),
+    baseSeed: 2026,
+    raceDaysTarget: 140,
+    allowReuseAcrossPools: true,
+  };
+  const a = generateDivisionCalendars(opts);
+  const b = generateDivisionCalendars(opts);
+  assert.deepEqual(
+    a.map((c) => [c.leagueDivisionId, c.races.map((r) => r.id)]),
+    b.map((c) => [c.leagueDivisionId, c.races.map((r) => r.id)]),
+  );
+});
+
+test("allowReuseAcrossPools=true: ingen duplikat INDEN FOR samme pulje (selectedIds bevaret)", () => {
+  const cals = generateDivisionCalendars({
+    pools: fourTier3Pools(),
+    catalog: makeSmallTier3Catalog(),
+    baseSeed: 2026,
+    raceDaysTarget: 140,
+    allowReuseAcrossPools: true,
+  });
+  for (const cal of cals) {
+    const ids = cal.races.map((r) => r.id);
+    assert.equal(new Set(ids).size, ids.length, `pulje ${cal.leagueDivisionId} har duplikat-løb internt`);
+  }
+});
+
+test("allowReuseAcrossPools=true: puljer deler løb på tværs (genbrug rent faktisk sker)", () => {
+  const cals = generateDivisionCalendars({
+    pools: fourTier3Pools(),
+    catalog: makeSmallTier3Catalog(),
+    baseSeed: 2026,
+    raceDaysTarget: 140,
+    allowReuseAcrossPools: true,
+  });
+  const seen = new Set();
+  let reused = false;
+  for (const cal of cals) {
+    for (const r of cal.races) {
+      if (seen.has(r.id)) reused = true;
+      seen.add(r.id);
+    }
+  }
+  assert.ok(reused, "med reuse + lille katalog burde mindst ét løb gå igen på tværs af puljer");
+});
+
 // ── #1714: global de-dup på tværs af puljer ─────────────────────────────────────
 test("global de-dup: intet pool_race_id går igen på tværs af de genererede puljer", () => {
   // 7 puljer på tværs af alle tiers, alle live. Med ét delt katalog ville flere
