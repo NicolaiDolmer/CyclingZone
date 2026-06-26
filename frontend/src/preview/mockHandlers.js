@@ -56,7 +56,14 @@ export function restRows(table, requestUrl = "") {
       // Per-pulje tæller-query (#1829) → puljens løb (uændret, holder dashboard-
       // snapshots stabile). id=eq.<id> → ét seed-løb (RaceDetailPage .single()).
       // Alle andre races-queries → hele race-hub-seedet (strategi/dashboard-lister).
-      if (url.search.includes("league_division_id=eq")) return POOL_RACES;
+      if (url.search.includes("league_division_id=eq")) {
+        // #1906: Dashboards "næste løb"-liste joiner nu pool_race OG filtrerer på
+        // puljen — den skal stadig se det fulde seed (SEED_RACES er alle i testholdets
+        // pulje). Kun den rene tæller-query (#1829, selecter kun stages/status, intet
+        // pool_race-join) får de minimale POOL_RACES-rows.
+        if (url.search.includes("pool_race")) return SEED_RACES;
+        return POOL_RACES;
+      }
       const idMatch = url.search.match(/id=eq\.([^&]+)/);
       if (idMatch) {
         const id = decodeURIComponent(idMatch[1]);

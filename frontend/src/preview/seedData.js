@@ -27,8 +27,9 @@ export const TEST_TEAM = {
 };
 
 // #1829: puljens løb til den per-pulje løbsdage-tæller på dashboardet. Returneres KUN
-// for tæller-queryen (league_division_id=eq-filter), så "kommende løb"-listen + RacesPage
-// stadig ser en tom races-tabel (uændrede snapshots dér).
+// for den rene tæller-query (league_division_id=eq UDEN pool_race-join). Dashboards
+// "næste løb"-liste joiner pool_race og får SEED_RACES (#1906), så den nu — korrekt —
+// viser holdets kommende løb i stedet for en tom tabel.
 export const POOL_RACES = [
   { status: "completed", stages: 1, stages_completed: 1, league_division_id: 2 },
   { status: "completed", stages: 1, stages_completed: 1, league_division_id: 2 },
