@@ -23,10 +23,10 @@
           "Create an account and log in.",
           "Pick a team name and a manager name in the welcome wizard. Both fields are required before you can continue.",
           "The welcome modal opens automatically the first time and walks you through the three core features: Market, Auctions and Board. It links directly to Help & Rules.",
-          "You start in Division 3 with a starting budget of 800,000 CZ$.",
+          "You start in Division 3 with a starting budget of 500,000 CZ$.",
           "Go to Riders and find free riders you want to bid on.",
           "Start an auction on a rider. If you win the auction, the rider is yours.",
-          "You begin with a starting squad. No minimum squad size is enforced, but you need riders on your roster to field a team in races."
+          "You begin with a 12-rider starting squad. No minimum squad size is enforced, but you need riders on your roster to field a team in races."
         ]
       }
     },
@@ -347,7 +347,7 @@
       },
       "prizeMoney": {
         "title": "Prize money from races",
-        "text": "Each result for a rider on your team generates prize money: points for the placing × 1,500 CZ$. Prize money is paid automatically to your team balance when admin finalises the results and shows as a 'prize' transaction in your finance log. Points for the season leaderboard and prize money are computed separately: points decide the leaderboard, while the CZ$ prize only affects your balance. Races without a race class generate no prize money. See the full points table under Season & Results, Races, Points & prizes."
+        "text": "Each result for a rider on your team generates prize money: points for the placing × 75 CZ$. Prize money is paid automatically to your team balance when admin finalises the results and shows as a 'prize' transaction in your finance log. Points for the season leaderboard and prize money are computed separately: points decide the leaderboard, while the CZ$ prize only affects your balance. Races without a race class generate no prize money. See the full points table under Season & Results, Races, Points & prizes."
       },
       "divisionBonus": {
         "title": "Division bonus at season end",
@@ -389,12 +389,12 @@
         "title": "Prize amount examples",
         "rows": [
           ["Win", "Points", "Prize"],
-          ["Tour de France win", "1,300", "1,950,000 CZ$"],
-          ["Monument win", "800", "1,200,000 CZ$"],
-          ["Stage win (Tour de France)", "210", "315,000 CZ$"],
-          ["ProSeries win", "200", "300,000 CZ$"],
-          ["Class 1 win", "125", "187,500 CZ$"],
-          ["Class 2 win", "40", "60,000 CZ$"]
+          ["Tour de France win", "1,300", "97,500 CZ$"],
+          ["Monument win", "800", "60,000 CZ$"],
+          ["Stage win (Tour de France)", "210", "15,750 CZ$"],
+          ["ProSeries win", "200", "15,000 CZ$"],
+          ["Class 1 win", "125", "9,375 CZ$"],
+          ["Class 2 win", "40", "3,000 CZ$"]
         ]
       },
       "payout": {
@@ -654,7 +654,7 @@
     },
     "relaunchTeamMoney": {
       "q": "What happened to my team and money in the Season 1 relaunch?",
-      "a": "At the relaunch everything starts over. Your previous squad, balance and transfers do not carry into the new Season 1. You receive a fresh 8-rider squad and a starting budget of 800,000 CZ$, the same as every other manager."
+      "a": "At the relaunch everything starts over. Your previous squad, balance and transfers do not carry into the new Season 1. You receive a fresh 12-rider squad and a starting budget of 500,000 CZ$, the same as every other manager."
     },
     "relaunchRiderNames": {
       "q": "Why are the rider names different after the relaunch?",

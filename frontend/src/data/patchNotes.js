@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.23",
+    "date": "2026-06-26",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Help",
+        "en": {
+          "title": "Fixed outdated numbers in the in-game Help",
+          "body": "A few figures in Help & Rules were left over from older settings. The starting budget now correctly reads 500,000 CZ$ (not 800,000), the relaunch squad is described as 12 riders (not 8), and the prize-money section now matches the live payout of 75 CZ$ per point — the examples (e.g. a Tour de France win) and the 'points × 1,500' line were still showing the old, 20× higher amounts. The actual gameplay was always correct; only the Help text was wrong."
+        },
+        "da": {
+          "title": "Rettet forældede tal i in-game-hjælpen",
+          "body": "Et par tal i Hjælp & Regler var rester fra ældre indstillinger. Startbudgettet står nu korrekt som 500.000 CZ$ (ikke 800.000), relaunch-truppen beskrives som 12 ryttere (ikke 8), og præmie-afsnittet matcher nu den faktiske udbetaling på 75 CZ$ per point — eksemplerne (fx en Tour de France-sejr) og 'point × 1.500'-linjen viste stadig de gamle beløb, der var 20× for høje. Selve spillet var altid korrekt; kun hjælpeteksten var forkert."
+        },
+        "refs": [1907, 1819]
+      }
+    ]
+  },
+  {
     "version": "6.22",
     "date": "2026-06-26",
     "label": "Beta",
