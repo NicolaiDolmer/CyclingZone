@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.20",
+    "date": "2026-06-26",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Transfers",
+        "en": {
+          "title": "Removed the leftover transfer window labels and Deadline Day page",
+          "body": "Trading in Cycling Zone has been always-open for a while, but some screens still showed 'transfer window open/closed' labels and a Deadline Day page that no longer did anything. We have removed those leftovers across the dashboard, transfers, your team and the rider pages, so nothing tells you the window is closed when you can trade freely. Your squad cap is a hard limit: a deal that would take you over your division's maximum is simply rejected, with no buffer or penalty."
+        },
+        "da": {
+          "title": "Fjernet resterne af transfervindue-mærkater og Deadline Day-siden",
+          "body": "Handel i Cycling Zone har været altid-åben et stykke tid, men nogle skærme viste stadig 'transfervindue åbent/lukket'-mærkater og en Deadline Day-side, der ikke længere gjorde noget. Vi har fjernet de rester på tværs af dashboard, transfers, dit hold og ryttersiderne, så intet fortæller dig at vinduet er lukket, når du frit kan handle. Din trup-cap er en hård grænse: en handel der ville bringe dig over divisionens max, bliver simpelthen afvist, uden buffer eller bøde."
+        },
+        "refs": [1898]
+      }
+    ]
+  },
+  {
     "version": "6.19",
     "date": "2026-06-26",
     "label": "Beta",

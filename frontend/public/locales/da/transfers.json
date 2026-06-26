@@ -6,12 +6,6 @@
     "loadingAria": "Indlæser transfers"
   },
   "marketIntro": "Transfermarkedet er hvor managers sætter deres egne ryttere til salg til en fast pris. Køb med det samme eller send et tilbud. Auktioner er noget andet (tidsbestemte bud), og swaps og loans er valgfrie måder at handle på.",
-  "window": {
-    "open": "Transfervinduet er åbent. Du kan sende og acceptere tilbud",
-    "closed": "Transfervinduet er lukket. Transfer-, bytte- og lejeaftaler kan forhandles nu, men rytterregistreringer gennemføres først ved næste åbning.",
-    "closedShort": "Transfervindue lukket",
-    "windowClosed": "Vindue lukket"
-  },
   "tabs": {
     "received": "Modtagne tilbud",
     "sent": "Sendte tilbud",
@@ -24,7 +18,6 @@
     "pending": "Afventer svar",
     "countered": "Modbud sendt",
     "awaitingConfirmation": "Afventer bekræftelse",
-    "windowPending": "Aftalt · afventer vindue",
     "accepted": "Accepteret",
     "rejected": "Afvist",
     "withdrawn": "Trukket tilbage"
@@ -91,8 +84,7 @@
     },
     "awaiting": {
       "sellerAccepted": "Du har accepteret · afventer købers bekræftelse",
-      "buyerConfirmed": "Du har bekræftet · afventer sælgers bekræftelse",
-      "windowPending": "Handel aftalt · gennemføres ved transfervinduets åbning"
+      "buyerConfirmed": "Du har bekræftet · afventer sælgers bekræftelse"
     }
   },
   "swapCard": {
@@ -119,8 +111,7 @@
       "cashPayLabel": "Kontantbetaling (CZ$) · positiv = du betaler, negativ = du modtager"
     },
     "awaiting": {
-      "selfConfirmed": "Du har bekræftet · afventer den anden part",
-      "windowPending": "Byttehandel aftalt · gennemføres ved transfervinduets åbning"
+      "selfConfirmed": "Du har bekræftet · afventer den anden part"
     }
   },
   "loanCard": {
@@ -141,7 +132,6 @@
     "bindingNote": "Aktive lejeaftaler er bindende og kan kun annulleres af en admin."
   },
   "transferCard": {
-    "windowPendingHint": "Vinduet er lukket: Tilbuddet kan sendes nu, og en aftalt handel gennemføres når vinduet åbner.",
     "send": "Send",
     "messagePlaceholder": "Besked (valgfri)...",
     "removeListing": "🗑️ Fjern fra transferlisten",
@@ -307,43 +297,5 @@
     "close": "Luk",
     "offerAria": "Send tilbud på {riderName}",
     "manageAria": "Administrér annonce for {riderName}"
-  },
-  "deadlineDay": {
-    "title": "Deadline Day",
-    "subtitle": "Alle holds truppestørrelse vs. divisions-minimum. Opdateres hvert 30. sekund.",
-    "fetchErrorTitle": "Kunne ikke hente Deadline Day-status",
-    "fetchErrorRetry": "Prøver igen om 30 sekunder",
-    "inactiveTitle": "Deadline Day er kun aktivt når transfervinduet lukker",
-    "inactiveSubtitle": "Vend tilbage når transfervinduet nærmer sig lukketid",
-    "allOkTitle": "Alle hold er over minimum",
-    "allOkSubtitle": "Ingen handling påkrævet",
-    "sectionCritical": "Under minimum, {count, plural, one {1 hold} other {# hold}}",
-    "sectionWarning": "Tæt på minimum, {count, plural, one {1 hold} other {# hold}}",
-    "sectionOk": "OK, {count, plural, one {1 hold} other {# hold}}",
-    "statusCritical": "Under minimum",
-    "statusWarning": "Tæt på minimum",
-    "statusOk": "OK",
-    "thTeam": "Hold",
-    "thDivision": "Div",
-    "thMin": "Min",
-    "thStatus": "Status"
-  },
-  "finalWhistle": {
-    "subtitle": "Transfervinduet er lukket. Her er Final Whistle-opsummeringen af den seneste Deadline Day.",
-    "heading": "Final Whistle",
-    "seasonLabel": "Sæson {number}",
-    "seasonFallback": "Sæson",
-    "noDeals": "Ingen handler blev gennemført under denne Deadline Day.",
-    "statDeals": "Handler",
-    "statVolume": "Volumen",
-    "statPanic": "Panikhandler",
-    "dealsBreakdown": "{auctions} auktioner · {transfers} transfers",
-    "biggestAuction": "Største auktion",
-    "biggestTransfer": "Største transfer",
-    "mostActive": "Mest aktive",
-    "bidCount": "{count, plural, one {1 bud} other {# bud}}",
-    "panicMoves": "Panikhandler",
-    "panicLabel": "Panik",
-    "freePool": "fri pulje"
   }
 }

@@ -336,12 +336,10 @@
     },
     "priceError": "Startpris skal mindst matche Værdi ({amount} CZ$)",
     "priceErrorOwn": "Startpris skal være mellem 0 og Værdi ({amount} CZ$)",
-    "squadWarning": "Auktion startet.\n\nOBS: leder nu auktioner svarende til {total} ryttere (max {max}). Hvis du stadig er {exceedBy} over ved vindue-luk: auto-salg + {fine} CZ$ bøde + {points} fradrag-points."
+    "squadWarning": "Auktion startet.\n\nOBS: leder nu auktioner svarende til {total} ryttere (max {max}). Loftet er en hård grænse, så du kan ikke vinde flere ryttere end din trup kan rumme."
   },
   "directOffer": {
     "buttonOpen": "↔ Send transfertilbud",
-    "windowClosed": "Transfervindue lukket",
-    "windowPendingHint": "Transfervinduet er lukket: Du kan sende tilbuddet nu. Hvis handlen bliver aftalt, gennemføres rytterskiftet når vinduet åbner.",
     "amountPlaceholder": "Tilbudsbeløb i CZ$",
     "messagePlaceholder": "Besked (valgfri)",
     "submit": "Send tilbud",
@@ -373,8 +371,6 @@
   },
   "swapOffer": {
     "buttonOpen": "⇄ Foreslå byttehandel",
-    "windowClosed": "Transfervindue lukket",
-    "windowPendingHint": "Transfervinduet er lukket: Du kan foreslå byttet nu. Hvis begge parter accepterer, gennemføres rytterskiftet når vinduet åbner.",
     "selectRider": "Vælg rytter du tilbyder",
     "cashLabel": "Kontantbetaling (CZ$)",
     "cashHint": "Positiv: du betaler. Negativ: du modtager.",
@@ -387,8 +383,6 @@
   },
   "loanOffer": {
     "buttonOpen": "📋 Foreslå lejeaftale",
-    "windowClosed": "Transfervindue lukket",
-    "windowPendingHint": "Transfervinduet er lukket: Du kan foreslå lejeaftalen nu. Hvis udlejeren accepterer, betales gebyret nu, og lejen starter når vinduet åbner.",
     "seasonPlaceholder": "Sæsonnummer (fx. 3)",
     "feePlaceholder": "Lejegebyr (CZ$)",
     "buyOptionPlaceholder": "Købsoption (CZ$), valgfri",

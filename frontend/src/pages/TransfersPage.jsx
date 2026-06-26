@@ -55,7 +55,6 @@ const STATUS_STYLE = {
   pending:                { color: "text-cz-accent-t",   bg: "bg-cz-accent/10 border-cz-accent/30" },
   countered:              { color: "text-cz-warning",  bg: "bg-cz-warning-bg border-cz-warning/30" },
   awaiting_confirmation:  { color: "text-cz-info",    bg: "bg-cz-info/20 border-cz-info/30" },
-  window_pending:         { color: "text-cz-warning",  bg: "bg-cz-warning-bg border-cz-warning/30" },
   accepted:               { color: "text-cz-success",   bg: "bg-cz-success-bg border-cz-success/30" },
   rejected:               { color: "text-cz-danger",     bg: "bg-cz-danger-bg border-cz-danger/30" },
   withdrawn:              { color: "text-cz-3",   bg: "bg-cz-subtle border-cz-border" },
@@ -65,7 +64,6 @@ const STATUS_LABEL_KEY = {
   pending: "status.pending",
   countered: "status.countered",
   awaiting_confirmation: "status.awaitingConfirmation",
-  window_pending: "status.windowPending",
   accepted: "status.accepted",
   rejected: "status.rejected",
   withdrawn: "status.withdrawn",
@@ -88,7 +86,6 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
 
   const isPending = offer.status === "pending";
   const isAwaiting = offer.status === "awaiting_confirmation";
-  const isWindowPending = offer.status === "window_pending";
   const canArchive = showArchive && ["accepted", "rejected", "withdrawn"].includes(offer.status);
   const cfg = statusCfg(t, offer.status);
   const priceNum = offer.counter_amount || offer.offer_amount;
@@ -106,7 +103,7 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
 
   return (
     <div className={`bg-cz-card border rounded-cz p-5 transition-all
-      ${isAwaiting ? "border-cz-info/30" : isWindowPending ? "border-cz-warning/30" : isPending ? "border-cz-accent/30" : "border-cz-border opacity-70"}`}>
+      ${isAwaiting ? "border-cz-info/30" : isPending ? "border-cz-accent/30" : "border-cz-border opacity-70"}`}>
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-3">
         <div className="min-w-0">
           <RiderLink id={offer.rider?.id}
@@ -221,20 +218,6 @@ function ReceivedOfferCard({ offer, onAction, showArchive = true }) {
         </div>
       )}
 
-      {isWindowPending && (
-        <div className="flex flex-col gap-2">
-          <div className="bg-cz-warning-bg border border-cz-warning/30 rounded-lg px-4 py-3 text-center">
-            <p className="text-cz-warning text-sm font-medium">{t("offerCard.awaiting.windowPending")}</p>
-            <p className="text-cz-3 text-xs mt-1">{price} CZ$</p>
-          </div>
-          <button onClick={() => doAction("cancel")} disabled={loading}
-            className="min-h-[44px] w-full py-2 bg-cz-danger-bg0/5 text-cz-danger/70 border border-cz-danger/15 rounded-lg text-sm
-              hover:bg-cz-danger-bg hover:text-cz-danger hover:border-cz-danger/30 transition-all disabled:opacity-50">
-            {t("offerCard.buttons.cancelDeal")}
-          </button>
-        </div>
-      )}
-
       {canArchive && (
         <button onClick={() => doAction("archive")} disabled={loading}
           className="min-h-[44px] mt-3 w-full py-2 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-sm hover:bg-cz-border transition-all disabled:opacity-50">
@@ -257,7 +240,6 @@ function SentOfferCard({ offer, onAction, showArchive = true }) {
   const isCountered = offer.status === "countered";
   const isPending = offer.status === "pending";
   const isAwaiting = offer.status === "awaiting_confirmation";
-  const isWindowPending = offer.status === "window_pending";
   const isActive = isCountered || isPending || isAwaiting;
   const canArchive = showArchive && ["accepted", "rejected", "withdrawn"].includes(offer.status);
   const cfg = statusCfg(t, offer.status);
@@ -276,7 +258,7 @@ function SentOfferCard({ offer, onAction, showArchive = true }) {
 
   return (
     <div className={`bg-cz-card border rounded-cz p-5 transition-all
-      ${isAwaiting ? "border-cz-info/30" : isWindowPending ? "border-cz-warning/30" : isCountered ? "border-cz-warning/30" : isActive ? "border-cz-border" : "border-cz-border opacity-60"}`}>
+      ${isAwaiting ? "border-cz-info/30" : isCountered ? "border-cz-warning/30" : isActive ? "border-cz-border" : "border-cz-border opacity-60"}`}>
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-3">
         <div className="min-w-0">
           <RiderLink id={offer.rider?.id}
@@ -388,20 +370,6 @@ function SentOfferCard({ offer, onAction, showArchive = true }) {
         </div>
       )}
 
-      {isWindowPending && (
-        <div className="flex flex-col gap-2">
-          <div className="bg-cz-warning-bg border border-cz-warning/30 rounded-lg px-4 py-3 text-center">
-            <p className="text-cz-warning text-sm font-medium">{t("offerCard.awaiting.windowPending")}</p>
-            <p className="text-cz-3 text-xs mt-1">{price} CZ$</p>
-          </div>
-          <button onClick={() => doAction("cancel")} disabled={loading}
-            className="min-h-[44px] w-full py-2 bg-cz-danger-bg0/5 text-cz-danger/70 border border-cz-danger/15 rounded-lg text-sm
-              hover:bg-cz-danger-bg hover:text-cz-danger hover:border-cz-danger/30 transition-all disabled:opacity-50">
-            {t("offerCard.buttons.cancelDeal")}
-          </button>
-        </div>
-      )}
-
       {canArchive && (
         <button onClick={() => doAction("archive")} disabled={loading}
           className="min-h-[44px] mt-3 w-full py-2 bg-cz-subtle text-cz-2 border border-cz-border rounded-lg text-sm hover:bg-cz-border transition-all disabled:opacity-50">
@@ -424,7 +392,6 @@ function SwapCard({ swap, myTeamId, onAction }) {
   const isPending       = swap.status === "pending";
   const isCountered     = swap.status === "countered";
   const isAwaiting      = swap.status === "awaiting_confirmation";
-  const isWindowPending = swap.status === "window_pending";
   const cfg = statusCfg(t, swap.status);
 
   const effectiveCash = isCountered ? swap.counter_cash : swap.cash_adjustment;
@@ -444,7 +411,7 @@ function SwapCard({ swap, myTeamId, onAction }) {
 
   return (
     <div className={`bg-cz-card border rounded-cz p-5 transition-all
-      ${isAwaiting ? "border-cz-info/30" : isWindowPending ? "border-cz-warning/30" : isCountered ? "border-cz-warning/30" : isPending ? "border-cz-border" : "border-cz-border opacity-60"}`}>
+      ${isAwaiting ? "border-cz-info/30" : isCountered ? "border-cz-warning/30" : isPending ? "border-cz-border" : "border-cz-border opacity-60"}`}>
 
       <div className="flex items-start justify-between mb-3">
         <div>
@@ -580,19 +547,6 @@ function SwapCard({ swap, myTeamId, onAction }) {
               {t("swapCard.buttons.confirmSwap")}
             </button>
           )}
-          <button onClick={() => doAction("cancel")} disabled={loading}
-            className="min-h-[44px] w-full py-2 bg-cz-danger-bg0/5 text-cz-danger/70 border border-cz-danger/15 rounded-lg text-sm
-              hover:bg-cz-danger-bg hover:text-cz-danger hover:border-cz-danger/30 transition-all disabled:opacity-50">
-            {t("swapCard.buttons.cancelSwap")}
-          </button>
-        </div>
-      )}
-
-      {isWindowPending && (
-        <div className="flex flex-col gap-2">
-          <div className="bg-cz-warning-bg border border-cz-warning/30 rounded-lg px-4 py-3 text-center">
-            <p className="text-cz-warning text-sm font-medium">{t("swapCard.awaiting.windowPending")}</p>
-          </div>
           <button onClick={() => doAction("cancel")} disabled={loading}
             className="min-h-[44px] w-full py-2 bg-cz-danger-bg0/5 text-cz-danger/70 border border-cz-danger/15 rounded-lg text-sm
               hover:bg-cz-danger-bg hover:text-cz-danger hover:border-cz-danger/30 transition-all disabled:opacity-50">
@@ -1046,7 +1000,7 @@ function MarketStatBar({ value }) {
 }
 
 // Bud-form (ikke-egen listing) — samme felter/validering som TransferCard.
-function MarketOfferForm({ listing, windowOpen, onOffer }) {
+function MarketOfferForm({ listing, onOffer }) {
   const { t } = useTranslation("transfers");
   const [offerAmt, setOfferAmt] = useState(listing.asking_price || 0);
   const [msg, setMsg] = useState("");
@@ -1066,11 +1020,6 @@ function MarketOfferForm({ listing, windowOpen, onOffer }) {
 
   return (
     <div className="flex flex-col gap-2">
-      {!windowOpen && (
-        <p className="rounded-lg border border-cz-border bg-cz-card px-3 py-2 text-xs text-cz-2">
-          {t("transferCard.windowPendingHint")}
-        </p>
-      )}
       <div className="flex flex-col sm:flex-row gap-2">
         <input type="number" value={offerAmt}
           onChange={e => setOfferAmt(parseInt(e.target.value) || 0)}
@@ -1100,7 +1049,7 @@ function MarketOfferForm({ listing, windowOpen, onOffer }) {
 }
 
 // Én listing = én rytterrække (+ optionel action-expander-række under).
-function MarketRow({ listing, myTeamId, statCols, expanded, onToggleExpand, onOffer, onRemove, onUpdatePrice, windowOpen }) {
+function MarketRow({ listing, myTeamId, statCols, expanded, onToggleExpand, onOffer, onRemove, onUpdatePrice }) {
   const { t } = useTranslation("transfers");
   const rider = listing.rider;
   const isOwn = listing.seller?.id === myTeamId;
@@ -1167,7 +1116,7 @@ function MarketRow({ listing, myTeamId, statCols, expanded, onToggleExpand, onOf
                   onUpdatePrice={onUpdatePrice}
                 />
               ) : (
-                <MarketOfferForm listing={listing} windowOpen={windowOpen} onOffer={onOffer} />
+                <MarketOfferForm listing={listing} onOffer={onOffer} />
               )}
             </div>
           </td>
@@ -1210,7 +1159,6 @@ export default function TransfersPage() {
   const [loading, setLoading] = useState(true);
   const [celebration, setCelebration] = useState(null);
   const [msg, setMsg] = useState({ text: "", type: "success" });
-  const [transferWindow, setTransferWindow] = useState({ open: true, status: "open" });
   const [listingSort, setListingSort] = useState("newest"); // #1185: market-tab sortering
   const [expandedListingId, setExpandedListingId] = useState(null); // #1523: åben action-række i market-tabellen
 
@@ -1252,13 +1200,12 @@ export default function TransfersPage() {
       const { data: { session } } = await supabase.auth.getSession();
       const headers = { Authorization: `Bearer ${session.access_token}` };
 
-      const [listingsRes, offersRes, swapsRes, loansRes, ridersRes, windowRes] = await Promise.all([
+      const [listingsRes, offersRes, swapsRes, loansRes, ridersRes] = await Promise.all([
         fetch(`${API}/api/transfers`, { headers }).then(r => r.json()),
         fetch(`${API}/api/transfers/my-offers`, { headers }).then(r => r.json()),
         fetch(`${API}/api/transfers/swaps`, { headers }).then(r => r.json()),
         fetch(`${API}/api/loans`, { headers }).then(r => r.json()),
         supabase.from("riders").select("id, firstname, lastname, market_value").eq("team_id", team.id).eq("is_retired", false).order("lastname"),
-        fetch(`${API}/api/transfer-window`, { headers }).then(r => r.json()),
       ]);
 
       // #1529: backend leverer rider.rider_derived_abilities (nested) — flad evnerne op
@@ -1275,7 +1222,6 @@ export default function TransfersPage() {
       setLendingLoans((loansRes.lending || []).map(flatRider));
       setBorrowingLoans((loansRes.borrowing || []).map(flatRider));
       setMyRiders(ridersRes.data || []);
-      setTransferWindow(windowRes?.open !== undefined ? windowRes : { open: true, status: "open" });
     } catch {
       showMsg(t("auth:error.connectionFailed"), "error");
     } finally {
@@ -1535,14 +1481,6 @@ export default function TransfersPage() {
           <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("page.balance")}</p>
           <p className="text-cz-accent-t font-mono font-bold text-sm">{formatNumber(myBalance)} CZ$</p>
         </div>
-      </div>
-
-      <div className={`mb-4 px-4 py-3 rounded-cz text-sm border flex items-center gap-2 max-w-4xl
-        ${transferWindow.open
-          ? "bg-cz-success-bg0/8 text-cz-success border-cz-success/30"
-          : "bg-cz-danger-bg text-cz-danger border-cz-danger/30"}`}>
-        <span className={`w-2 h-2 rounded-full flex-shrink-0 ${transferWindow.open ? "bg-cz-success" : "bg-cz-danger"}`} />
-        {transferWindow.open ? t("window.open") : t("window.closed")}
       </div>
 
       {msg.text && (
@@ -1813,7 +1751,6 @@ export default function TransfersPage() {
                             onOffer={(riderId, amt, msg) => handleOffer(riderId, amt, msg)}
                             onRemove={handleRemoveListing}
                             onUpdatePrice={handleUpdateListingPrice}
-                            windowOpen={transferWindow.open}
                           />
                         ))}
                       </tbody>

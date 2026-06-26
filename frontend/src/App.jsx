@@ -65,7 +65,6 @@ const FinancePage = lazy(() => import("./pages/FinancePage"));
 const SeasonFinanceReport = lazy(() => import("./pages/SeasonFinanceReport"));
 const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 const RacePointsPage = lazy(() => import("./pages/RacePointsPage"));
-const DeadlineDayBoard = lazy(() => import("./pages/DeadlineDayBoard"));
 const TrainingPage = lazy(() => import("./pages/TrainingPage"));
 const AcademyPage = lazy(() => import("./pages/AcademyPage"));
 
@@ -214,7 +213,6 @@ export default function App() {
             <Route path="admin/attribution" element={<AdminAttributionPage />} />
             <Route path="training" element={<TrainingPage />} />
             <Route path="academy" element={<AcademyPage />} />
-            <Route path="deadline-day" element={<DeadlineDayBoard />} />
 
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Route>

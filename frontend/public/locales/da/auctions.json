@@ -205,6 +205,6 @@
     "insufficientBalance": "Buddet overstiger din tilgængelige saldo"
   },
   "warning": {
-    "squadCapacity": "OBS: leder nu auktioner svarende til {totalAfter} ryttere (max {maxRiders}). Hvis du stadig er {exceedBy} over ved vindue-luk: auto-salg + {fine} CZ$ bøde + {points} fradrag-points."
+    "squadCapacity": "OBS: leder nu auktioner svarende til {totalAfter} ryttere (max {maxRiders}). Loftet er en hård grænse, så du kan ikke vinde flere ryttere end din trup kan rumme."
   }
 }

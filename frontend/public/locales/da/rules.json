@@ -14,13 +14,9 @@
           "title": "Trup-loft",
           "text": "Du kan have højst {squadCap} ryttere, det samme i alle divisioner. Der er intet minimum: du kan sælge helt ned til 0 ryttere uden straf."
         },
-        "window": {
-          "title": "Transfervindue-buffer",
-          "text": "Mens et transfervindue er åbent må du midlertidigt være {windowBuffer} ryttere over loftet (op til {squadCapPlusBuffer}). Når vinduet lukker auto-sælges overskuddet ned til {squadCap}."
-        },
         "enforcement": {
-          "title": "Håndhævelse ved overskridelse",
-          "text": "Når vinduet lukker udløser hver rytter over loftet et auto-salg af din senest erhvervede rytter til fuld markedsværdi, plus en bøde på {squadFine} CZ$ og {squadPenaltyPoints} strafpoint i stillingen pr. overskydende rytter."
+          "title": "Hårdt loft",
+          "text": "Loftet er en hård grænse. Du kan ikke købe, byde eller leje ud over din divisions maksimum på {squadCap} ryttere. Der er ingen buffer, ingen bøde og intet auto-salg: en handel der ville bringe dig over loftet bliver simpelthen afvist."
         },
         "academyExempt": {
           "title": "Akademiryttere er adskilt",
@@ -103,10 +99,6 @@
         "loansCount": {
           "title": "Lån tæller med i loftet",
           "text": "Aktive lejeaftaler tæller med i din trupstørrelse, så en fuld trup kan afvises på lån, auktioner eller andre indgående handler."
-        },
-        "deadlineWarnings": {
-          "title": "Deadline-day-tidslinje",
-          "text": "Op mod lukketiden viser Deadline Day-tavlen din zone (grøn/gul/rød). Inden for 5 minutter efter lukketiden låses vinduet, en Final Whistle-rapport offentliggøres, trup-håndhævelsen kører, og cirka 10–15 minutter senere starter næste sæson med sponsorpenge der lander på hvert hold."
         }
       }
     },
@@ -185,8 +177,6 @@
     "debtCeiling": "Hvad er gældsloftet, og hvornår gælder det?",
     "prizeMoneyFaq": "Hvad er præmiepenge, og hvornår udbetales de?",
     "divisionBonusFaq": "Hvad er divisionsbonussen, og hvornår udbetales den?",
-    "squadEnforcementFaq": "Hvad sker der hvis jeg er over max ryttere ved deadline?",
-    "auctionExpiry": "Hvornår udløber en auktion?",
-    "deadlineTimelineFaq": "Hvad sker der præcist når transfervinduet lukker?"
+    "auctionExpiry": "Hvornår udløber en auktion?"
   }
 }

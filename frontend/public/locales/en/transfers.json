@@ -6,12 +6,6 @@
     "loadingAria": "Loading transfers"
   },
   "marketIntro": "The transfer market is where managers list their own riders for a fixed price. Buy instantly or send an offer. Auctions are separate (timed bidding), and swaps and loans are optional ways to trade.",
-  "window": {
-    "open": "Transfer window is open. You can send and accept offers",
-    "closed": "Transfer window is closed. Transfer, swap and loan deals can still be negotiated now, but rider registrations complete at the next opening.",
-    "closedShort": "Transfer window closed",
-    "windowClosed": "Window closed"
-  },
   "tabs": {
     "received": "Received offers",
     "sent": "Sent offers",
@@ -24,7 +18,6 @@
     "pending": "Awaiting response",
     "countered": "Counter sent",
     "awaitingConfirmation": "Awaiting confirmation",
-    "windowPending": "Agreed · awaiting window",
     "accepted": "Accepted",
     "rejected": "Rejected",
     "withdrawn": "Withdrawn"
@@ -91,8 +84,7 @@
     },
     "awaiting": {
       "sellerAccepted": "You accepted · awaiting buyer's confirmation",
-      "buyerConfirmed": "You confirmed · awaiting seller's confirmation",
-      "windowPending": "Deal agreed · completes when transfer window opens"
+      "buyerConfirmed": "You confirmed · awaiting seller's confirmation"
     }
   },
   "swapCard": {
@@ -119,8 +111,7 @@
       "cashPayLabel": "Cash payment (CZ$) · positive = you pay, negative = you receive"
     },
     "awaiting": {
-      "selfConfirmed": "You confirmed · awaiting the other party",
-      "windowPending": "Swap agreed · completes when transfer window opens"
+      "selfConfirmed": "You confirmed · awaiting the other party"
     }
   },
   "loanCard": {
@@ -141,7 +132,6 @@
     "bindingNote": "Active loans are binding and can only be cancelled by an admin."
   },
   "transferCard": {
-    "windowPendingHint": "The window is closed: You can send the offer now, and an agreed deal completes when the window opens.",
     "send": "Send",
     "messagePlaceholder": "Message (optional)...",
     "removeListing": "🗑️ Remove from transfer list",
@@ -307,43 +297,5 @@
     "close": "Close",
     "offerAria": "Send offer on {riderName}",
     "manageAria": "Manage listing for {riderName}"
-  },
-  "deadlineDay": {
-    "title": "Deadline Day",
-    "subtitle": "Every team's squad size vs. division minimum. Updates every 30 seconds.",
-    "fetchErrorTitle": "Could not load Deadline Day status",
-    "fetchErrorRetry": "Retrying in 30 seconds",
-    "inactiveTitle": "Deadline Day is only active when the transfer window is closing",
-    "inactiveSubtitle": "Check back when the transfer window approaches closing time",
-    "allOkTitle": "All teams are above minimum",
-    "allOkSubtitle": "No action required",
-    "sectionCritical": "Below minimum, {count, plural, one {1 team} other {# teams}}",
-    "sectionWarning": "Close to minimum, {count, plural, one {1 team} other {# teams}}",
-    "sectionOk": "OK, {count, plural, one {1 team} other {# teams}}",
-    "statusCritical": "Below minimum",
-    "statusWarning": "Close to minimum",
-    "statusOk": "OK",
-    "thTeam": "Team",
-    "thDivision": "Div",
-    "thMin": "Min",
-    "thStatus": "Status"
-  },
-  "finalWhistle": {
-    "subtitle": "The transfer window has closed. Here is the Final Whistle summary of the last Deadline Day.",
-    "heading": "Final Whistle",
-    "seasonLabel": "Season {number}",
-    "seasonFallback": "Season",
-    "noDeals": "No deals went through during this Deadline Day.",
-    "statDeals": "Deals",
-    "statVolume": "Volume",
-    "statPanic": "Panic moves",
-    "dealsBreakdown": "{auctions} auctions · {transfers} transfers",
-    "biggestAuction": "Biggest auction",
-    "biggestTransfer": "Biggest transfer",
-    "mostActive": "Most active",
-    "bidCount": "{count, plural, one {1 bid} other {# bids}}",
-    "panicMoves": "Panic moves",
-    "panicLabel": "Panic",
-    "freePool": "free pool"
   }
 }

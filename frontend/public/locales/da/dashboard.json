@@ -25,15 +25,6 @@
     "cta": "Tilføj",
     "dismissAria": "Skjul"
   },
-  "deadlineDay": {
-    "title": "DEADLINE DAY",
-    "closesIn": "Transfervinduet lukker om {h}t {m}m",
-    "cta": "Gå til transfers →"
-  },
-  "deadlineDayBanner": {
-    "title": "Deadline Day",
-    "countdownHours": "{h}t {m}m {s}s"
-  },
   "seasonBanner": {
     "title": "Sæson {number}",
     "status": {
@@ -45,11 +36,7 @@
     "daysLeftSuffix": "dage til sæsonslut",
     "raceDays": "{completed}/{total} løbsdage",
     "raceDaysLive": "{count} i gang",
-    "viewCalendar": "Se kalender →",
-    "transferWindow": {
-      "open": "✓ Transfervindue åbent",
-      "closed": "✗ Transfervindue lukket"
-    }
+    "viewCalendar": "Se kalender →"
   },
   "cards": {
     "auctions": {
@@ -67,7 +54,6 @@
       "linkAll": "Se alle →",
       "empty": "Ingen ventende transfers",
       "incomingCount": "{count, plural, one {1 indgående transfer} other {# indgående transfers}}",
-      "awaitingWindow": "Afventer vindue",
       "from": "Fra: {name}",
       "to": "Til: {name}",
       "needsAction": "Kræver handling",
@@ -225,12 +211,8 @@
   },
   "onboardingComplete": {
     "title": "Du er klar. Grundforløbet er gennemført",
-    "body": "Alle fire kom-i-gang-trin er afkrydset. Næste fase er at bygge dit hold over flere sæsoner. Følg Deadline Day, lever på bestyrelsens mål, og kæmp for oprykning.",
+    "body": "Alle fire kom-i-gang-trin er afkrydset. Næste fase er at bygge dit hold over flere sæsoner. Lever på bestyrelsens mål, og kæmp for oprykning.",
     "nextLinks": {
-      "deadlineDay": {
-        "label": "Deadline Day",
-        "desc": "Følg transfervinduet når det lukker"
-      },
       "board": {
         "label": "Bestyrelse",
         "desc": "Forhandl 1yr/3yr/5yr-planer parallelt"
