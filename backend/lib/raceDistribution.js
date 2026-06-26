@@ -4,6 +4,8 @@
 // allerede er bundet i) og season-dag-projektion til tidslinjen. Pure — ingen DB.
 import { windowsOverlap, teamInRacePool } from "./raceBinding.js";
 
+const DAY_MS = 86_400_000;
+
 // Løb der bliver kolonner: status scheduled, holdets egen pulje (eller pulje-løs),
 // og tidsvindue overlapper den valgte dag. `races` = [{id, league_division_id, status, window}].
 export function buildColumnSet({ races = [], teamDivisionId, dayWindow }) {
@@ -99,4 +101,57 @@ export function lockedWindowsFromEntries({ entries = [], windowByRace, excludeRa
     if (window) locks.push({ window, riderIds });
   }
   return locks;
+}
+
+// Race Hub Fase 5 (#1835 / S6): read-only "andre divisioner"-browse.
+// Bruttotrupper (PCS-style startlister) for en FREMMED pulje — strippet for roller,
+// form, træthed og egnethed, og tidsgated til et kort vindue frem (default 7 dage),
+// så man kan scoute forventede deltagere uden at læse modstanderens fulde taktik.
+export const STARTLIST_HORIZON_DAYS = 7;
+
+// Er et løbs startliste synlig endnu? Synlig når løbet starter inden for horisonten
+// (default 7 dage) fra nu. Løb længere ude er låst (kun navn + nedtælling vises) —
+// så man ikke kan se modstandernes fulde sæsonplan, kun det nært forestående.
+export function startListVisible({ startMs, nowMs, horizonDays = STARTLIST_HORIZON_DAYS }) {
+  if (!Number.isFinite(startMs) || !Number.isFinite(nowMs)) return false;
+  return startMs <= nowMs + horizonDays * DAY_MS;
+}
+
+// Hele dage til løbsstart (afrundet op). 0/negativ → løbet er i gang/i dag. Pure.
+export function daysUntilStart({ startMs, nowMs }) {
+  if (!Number.isFinite(startMs) || !Number.isFinite(nowMs)) return null;
+  return Math.ceil((startMs - nowMs) / DAY_MS);
+}
+
+// Strippet bruttotrup-projektion pr. hold for ÉT løb. Tager RÅ entries (kun
+// {team_id, rider_id}) + opslag og returnerer [{ team, riders }] UDEN race_role,
+// form, træthed, egnethed eller andre felter (#1835: kun startliste = hvem stiller op).
+// Ryttere uden opslag eller entries uden hold springes over. Deterministisk: hold
+// sorteret efter navn, ryttere efter efternavn+fornavn.
+export function groupGrossSquads({ entries = [], ridersById = new Map(), teamsById = new Map() }) {
+  const byTeam = new Map();
+  for (const e of entries) {
+    if (e.team_id == null) continue;
+    const r = ridersById.get(e.rider_id);
+    if (!r) continue;
+    if (!byTeam.has(e.team_id)) byTeam.set(e.team_id, []);
+    byTeam.get(e.team_id).push({
+      id: r.id,
+      firstname: r.firstname ?? null,
+      lastname: r.lastname ?? null,
+      nationality_code: r.nationality_code ?? null,
+    });
+  }
+  const out = [];
+  for (const [teamId, riders] of byTeam) {
+    const team = teamsById.get(teamId) || null;
+    riders.sort(
+      (a, b) =>
+        String(a.lastname ?? "").localeCompare(String(b.lastname ?? "")) ||
+        String(a.firstname ?? "").localeCompare(String(b.firstname ?? ""))
+    );
+    out.push({ team: { id: team?.id ?? teamId, name: team?.name ?? null }, riders });
+  }
+  out.sort((a, b) => String(a.team.name ?? "").localeCompare(String(b.team.name ?? "")));
+  return out;
 }

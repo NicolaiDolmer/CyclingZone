@@ -7,6 +7,9 @@ import {
   dominantTerrain,
   lockedWindowsFromEntries,
   partitionRegenTargets,
+  startListVisible,
+  daysUntilStart,
+  groupGrossSquads,
 } from "./raceDistribution.js";
 
 const W = (h) => ({ start: Date.parse(`2026-07-04T${h}:00Z`), end: Date.parse(`2026-07-04T${h}:00Z`) });
@@ -119,4 +122,69 @@ test("partitionRegenTargets: igangværende løb fryses i begge modes", () => {
     const { target } = partitionRegenTargets({ cols: COLS, withdrawnIds: new Set(), manualRaceIds: new Set(), mode });
     assert.ok(!target.find((r) => r.id === "started"), `started fryses i mode=${mode}`);
   }
+});
+
+// Race Hub Fase 5 (#1835 / S6): read-only "andre divisioner"-browse — bruttotrupper.
+const DAY = 86_400_000;
+const NOW = Date.parse("2026-07-04T12:00:00Z");
+
+test("startListVisible: synlig inden for horisonten, låst udenfor", () => {
+  assert.equal(startListVisible({ startMs: NOW + 2 * DAY, nowMs: NOW }), true);
+  assert.equal(startListVisible({ startMs: NOW + 6 * DAY, nowMs: NOW }), true);
+  assert.equal(startListVisible({ startMs: NOW + 7 * DAY, nowMs: NOW }), true, "lige på horisonten = synlig");
+  assert.equal(startListVisible({ startMs: NOW + 8 * DAY, nowMs: NOW }), false, "ud over 7 dage = låst");
+  assert.equal(startListVisible({ startMs: NOW - 1 * DAY, nowMs: NOW }), true, "allerede startet = synlig");
+});
+
+test("startListVisible: kortere horisont kan sættes; ugyldige tider → ikke synlig", () => {
+  assert.equal(startListVisible({ startMs: NOW + 5 * DAY, nowMs: NOW, horizonDays: 3 }), false);
+  assert.equal(startListVisible({ startMs: NOW + 2 * DAY, nowMs: NOW, horizonDays: 3 }), true);
+  assert.equal(startListVisible({ startMs: NaN, nowMs: NOW }), false);
+  assert.equal(startListVisible({ startMs: NOW, nowMs: NaN }), false);
+});
+
+test("daysUntilStart: afrunder op til hele dage", () => {
+  assert.equal(daysUntilStart({ startMs: NOW + 2 * DAY, nowMs: NOW }), 2);
+  assert.equal(daysUntilStart({ startMs: NOW + 2 * DAY + 3_600_000, nowMs: NOW }), 3, "delvis dag rundes op");
+  assert.equal(daysUntilStart({ startMs: NOW - 1 * DAY, nowMs: NOW }), -1);
+  assert.equal(daysUntilStart({ startMs: NaN, nowMs: NOW }), null);
+});
+
+test("groupGrossSquads: grupperer pr. hold, kun navn + nationalitet (ingen roller/form/fit)", () => {
+  const ridersById = new Map([
+    ["r1", { id: "r1", firstname: "Lars", lastname: "Aerts", nationality_code: "BE", race_role: "captain", form: 90, fatigue: 12, suitability: 88 }],
+    ["r2", { id: "r2", firstname: "Mads", lastname: "Vos", nationality_code: "NL" }],
+    ["r3", { id: "r3", firstname: "Tom", lastname: "Garnier", nationality_code: "FR" }],
+  ]);
+  const teamsById = new Map([
+    ["tA", { id: "tA", name: "Maas Wielerploeg" }],
+    ["tB", { id: "tB", name: "Équipe Lorraine" }],
+  ]);
+  const entries = [
+    { race_id: "x", team_id: "tA", rider_id: "r2", race_role: "sprint_captain" },
+    { race_id: "x", team_id: "tA", rider_id: "r1", race_role: "captain" },
+    { race_id: "x", team_id: "tB", rider_id: "r3", race_role: null },
+  ];
+  const out = groupGrossSquads({ entries, ridersById, teamsById });
+  // Hold sorteret efter navn: "Équipe Lorraine" < "Maas Wielerploeg".
+  assert.deepEqual(out.map((g) => g.team.name), ["Équipe Lorraine", "Maas Wielerploeg"]);
+  // Maas-trup sorteret efter efternavn: Aerts før Vos.
+  const maas = out.find((g) => g.team.id === "tA");
+  assert.deepEqual(maas.riders.map((r) => r.lastname), ["Aerts", "Vos"]);
+  // KUN strippede felter — ingen race_role/form/fatigue/suitability lækket.
+  assert.deepEqual(Object.keys(maas.riders[0]).sort(), ["firstname", "id", "lastname", "nationality_code"]);
+});
+
+test("groupGrossSquads: springer ukendte ryttere + hold-løse entries over", () => {
+  const ridersById = new Map([["r1", { id: "r1", firstname: "A", lastname: "One", nationality_code: "DK" }]]);
+  const entries = [
+    { team_id: "t1", rider_id: "r1" },
+    { team_id: "t1", rider_id: "ghost" }, // ukendt rytter → udeladt
+    { team_id: null, rider_id: "r1" },     // ingen hold → udeladt
+  ];
+  const out = groupGrossSquads({ entries, ridersById });
+  assert.equal(out.length, 1);
+  assert.equal(out[0].riders.length, 1);
+  assert.equal(out[0].team.name, null, "manglende team-opslag → navn null (id bevares)");
+  assert.equal(out[0].team.id, "t1");
 });

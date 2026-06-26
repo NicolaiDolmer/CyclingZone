@@ -48,3 +48,19 @@ test("/api/races/strategy returnerer strategi-payload", () => {
   assert.equal(r.enabled, true);
   assert.ok(Array.isArray(r.roster));
 });
+
+// S6 (#1835): browse-routen er mere specifik end /distribution → må ikke fanges af den.
+test("/api/races/distribution/browse returnerer read-only browse-payload (ikke board)", () => {
+  const r = apiResponse("/api/races/distribution/browse");
+  assert.ok(r && r.enabled === true);
+  assert.ok(Array.isArray(r.pools) && r.pools.length >= 1, "pulje-vælger har puljer");
+  assert.ok(r.pool && r.horizonDays === 7);
+  assert.ok(Array.isArray(r.columns) && r.columns.length >= 1);
+  // Bruttotrup: ryttere bærer KUN navn + nationalitet, ingen roller/form/træthed.
+  const withTeams = r.columns.find((c) => c.visible && c.teams.length);
+  assert.ok(withTeams, "mindst ét synligt løb med hold");
+  const rider = withTeams.teams[0].riders[0];
+  assert.deepEqual(Object.keys(rider).sort(), ["firstname", "id", "lastname", "nationality_code"]);
+  // Mindst ét låst løb (uden for 7-dages-vinduet) uden hold-data.
+  assert.ok(r.columns.some((c) => c.visible === false && c.teams.length === 0));
+});

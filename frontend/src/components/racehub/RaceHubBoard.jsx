@@ -12,6 +12,7 @@ import { getSession } from "../../lib/supabase";
 import ContextBand from "./ContextBand.jsx";
 import RaceColumn from "./RaceColumn.jsx";
 import AvailableRidersPool from "./AvailableRidersPool.jsx";
+import DivisionStartLists from "./DivisionStartLists.jsx";
 import { isSelectionSavable } from "../../lib/raceHubLogic.js";
 import { Spinner, EmptyState, FlagIcon } from "../ui";
 
@@ -53,9 +54,18 @@ export default function RaceHubBoard() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { load(Number.isFinite(dayParam) ? dayParam : undefined); }, [load, dayParam]);
+  // Mine-board hentes kun i "mine"-scope; browse-scopes (division/others, S6) bruger
+  // DivisionStartLists med sit eget read-only endpoint.
+  useEffect(() => { if (scope === "mine") load(Number.isFinite(dayParam) ? dayParam : undefined); }, [load, dayParam, scope]);
   // Skift af dag/scope viser andre kolonner → ryd kladder (de hører til de gamle løb).
   useEffect(() => { setDrafts({}); }, [dayParam, scope]);
+
+  const setDay = (d) => { params.set("day", String(d)); setParams(params, { replace: true }); };
+  const setScope = (s) => { params.set("scope", s); setParams(params, { replace: true }); };
+
+  // Fase 5 (#1835 / S6): read-only "andre divisioner" — pulje-vælger + bruttotrupper.
+  // Egen render-gren (eget endpoint + URL-state), så mine-board'et er uændret.
+  if (scope !== "mine") return <DivisionStartLists scope={scope} onScopeChange={setScope} />;
 
   if (loading) return <div className="flex justify-center py-10"><Spinner size={20} /></div>;
   if (!data?.enabled) return null; // flag OFF → board skjult (kalender-faner viser stadig)
@@ -63,9 +73,6 @@ export default function RaceHubBoard() {
   const day = Number.isFinite(dayParam) ? dayParam : (data.focusDay ?? data.currentDay);
   const columns = data.columns || [];
   const roster = columns[0]?.riders || [];
-
-  const setDay = (d) => { params.set("day", String(d)); setParams(params, { replace: true }); };
-  const setScope = (s) => { params.set("scope", s); setParams(params, { replace: true }); };
 
   // Fælles mutations-wrapper: tjek res.ok, surfacér fejlkode (+ evt. params til ICU-
   // beskeden, fx min/max ved selection_wrong_size), re-hent (rollback) bagefter.

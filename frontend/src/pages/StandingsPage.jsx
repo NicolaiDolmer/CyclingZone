@@ -14,6 +14,7 @@ import { mergeStandings } from "../lib/standingsMerge";
 import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch";
 import { Card, EmptyState, PageLoader, Input, PodiumIcon } from "../components/ui";
 import { RULES_NUMBERS } from "../lib/rulesNumbers";
+import { divColor } from "../lib/divisionColors.js";
 
 // #1608/#1688 4-tier-pyramide: divisions-fanerne dækker tier 1..MAX_DIVISION (4).
 // Tier-tallet hentes fra den delte konstant-mirror (rulesNumbers), så frontend ikke
@@ -30,13 +31,7 @@ const POOL_ALL = "all"; // pulje-sub-fane: vis hele tieren samlet.
 // navnet og bygger rgb()-strenge med alpha via divColor() — så vi undgår hex-
 // alpha-konkatenering (#rrggbbNN) og holder farverne token-drevne.
 // (#671 anti-drift — erstatter chart-1/chart-2 blaa/violet division-kodning.)
-// div 4 deler --div-3's neutrale token (begge er "nedre" tiers; holder os i
-// guld+navy-systemet uden et nyt hue, #671 anti-drift).
-const DIV_VARS = { 1: "--accent", 2: "--accent-t", 3: "--div-3", 4: "--div-3" };
-const divColor = (div, alpha = 1) => {
-  const v = DIV_VARS[div] || DIV_VARS[1];
-  return alpha >= 1 ? `rgb(var(${v}))` : `rgb(var(${v}) / ${alpha})`;
-};
+// DIV_VARS + divColor flyttet til ../lib/divisionColors.js (delt med race-hub S6-browse).
 // Realtime: opdatér ranglisten live når en resultat-import skriver nye rækker (#783).
 const REALTIME_TABLES = ["season_standings", "race_results"];
 // Online-prik: bruger anses som online hvis last_seen < 5 min (foldet ind fra

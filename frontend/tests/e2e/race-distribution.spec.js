@@ -178,6 +178,75 @@ test("board: klik udtagen rytter åbner rolle-vælger (#1823)", async ({ page })
   await expect(board.getByRole("button", { name: /Sprint-kaptajn/ })).toBeVisible();
 });
 
+// S6 (#1835): read-only "andre divisioner" — pulje-vælger + PCS-style bruttotrupper.
+// Browse-endpointet er mere specifikt end /distribution → registreres SIDST (Playwright
+// LIFO: sidst-registrerede route tjekkes først) så det vinder for /distribution/browse,
+// mens /distribution stadig falder til mine-board-mocken.
+const BROWSE = {
+  enabled: true,
+  season: { id: "s1", number: 1 },
+  pools: [
+    { id: 1, tier: 1, pool_index: 0, label: "Pool A" },
+    { id: 2, tier: 2, pool_index: 0, label: "Pool A" },
+    { id: 3, tier: 2, pool_index: 1, label: "Pool B" },
+  ],
+  pool: { id: 2, tier: 2, pool_index: 0, label: "Pool A" },
+  ownPoolId: 2,
+  currentDay: 24, focusDay: 24, horizonDays: 7,
+  timeline: { totalDays: 60, currentDay: 24, days: Array.from({ length: 60 }, (_, i) => ({ day: i + 1, dateText: null, terrain: "flat", hasMyRace: i === 23 })) },
+  columns: [
+    {
+      id: "race-x", name: "Tour de Browse", race_class: "ProSeries", race_type: "single",
+      stages: 1, stages_completed: 0, status: "scheduled", window: { start: 1, end: 1 },
+      primaryProfileType: "flat", visible: true, daysUntilStart: 2, opensInDays: 0, teamCount: 1,
+      teams: [{ team: { id: "t-rival", name: "Regression VC" }, riders: [
+        { id: "rb1", firstname: "Lars", lastname: "Aerts", nationality_code: "be" },
+        { id: "rb2", firstname: "Tom", lastname: "Garnier", nationality_code: "fr" },
+      ] }],
+    },
+    {
+      id: "race-locked", name: "GP des Préviews", race_class: "Class1", race_type: "single",
+      stages: 1, stages_completed: 0, status: "scheduled", window: { start: 30, end: 30 },
+      primaryProfileType: "hilly", visible: false, daysUntilStart: 11, opensInDays: 4, teamCount: 0, teams: [],
+    },
+  ],
+};
+
+async function mockBrowse(page, payload = BROWSE) {
+  await page.route("**/api/races/distribution/browse**", (route) => {
+    const request = route.request();
+    if (request.method() === "OPTIONS") return route.fulfill({ status: 204, headers: corsHeaders(request) });
+    return route.fulfill({ status: 200, contentType: "application/json", headers: corsHeaders(request), body: JSON.stringify(payload) });
+  });
+}
+
+test("browse: 'Andre divisioner' viser read-only startlister (bruttotrupper) + låst løb (#1835)", async ({ page }) => {
+  await stabilizePage(page);
+  await installNetworkMocks(page);
+  await mockDistribution(page); // mine-board initial-load (/distribution)
+  await mockBrowse(page);       // /distribution/browse — registreret sidst → vinder (LIFO)
+
+  await login(page);
+  await page.goto("/races");
+  await expect(page.getByTestId("race-hub-board")).toBeVisible();
+
+  // Skift til "Andre divisioner" → read-only browse-flade.
+  await page.getByRole("button", { name: "Andre divisioner" }).click();
+  const browse = page.getByTestId("race-hub-browse");
+  await expect(browse).toBeVisible();
+
+  // Read-only-mærkat + en startliste (bruttotrup) med hold + rytter (PCS-style "L. Aerts").
+  await expect(browse.getByText("Skrivebeskyttet")).toBeVisible();
+  await expect(browse.getByText("Regression VC")).toBeVisible();
+  await expect(browse.getByText("L. Aerts")).toBeVisible();
+  await expect(browse.getByText("Tour de Browse")).toBeVisible();
+
+  // Det fjerne løb er låst (uden for 7-dages-vinduet) → "Åbner om 4 dage", ingen trup.
+  await expect(browse.getByText(/Åbner om 4 dage/)).toBeVisible();
+
+  await browse.screenshot({ path: "test-results/race-hub-browse-s6.png" });
+});
+
 // #1825: frosset løb (lineup_locked) vises som "Trup låst" og redigering er væk.
 test("board: igangværende løb vises som trup-låst (#1825)", async ({ page }) => {
   await stabilizePage(page);
