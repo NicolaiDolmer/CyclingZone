@@ -430,5 +430,23 @@
     "noWins": "Ingen sejre",
     "accumulatedTitle": "Akkumuleret point-total",
     "accumulatedSub": "Top ryttere efter samlede point på tværs af alle udgaver"
+  },
+  "browse": {
+    "readonly": "Skrivebeskyttet",
+    "heading": "{division} · {pool}",
+    "headingGeneric": "Startlister",
+    "horizonNote": "Startlister åbner {count} dage før hvert løb. Roller, form og træthed forbliver skjult.",
+    "empty": "Ingen løb i denne pulje på denne dag.",
+    "noEntries": "Ingen startliste endnu.",
+    "grossOnly": "Kun bruttotrupper. Roller, form og træthed er skjult.",
+    "inDays": "{count, plural, one {om # dag} other {om # dage}}",
+    "opensIn": "{count, plural, one {Åbner om # dag} other {Åbner om # dage}}",
+    "teamCount": "{count, plural, one {# hold} other {# hold}}",
+    "division": "Div {n}",
+    "poolN": "Pulje {n}",
+    "divisionPicker": "Division",
+    "poolPicker": "Pulje",
+    "you": "dig",
+    "unknownTeam": "Ukendt"
   }
 }

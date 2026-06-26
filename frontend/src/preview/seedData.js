@@ -274,6 +274,70 @@ export const SEED_DISTRIBUTION = {
   },
 };
 
+// GET /api/races/distribution/browse — read-only "andre divisioner" (S6, #1835).
+// PCS-style bruttotrupper: KUN {firstname,lastname,nationality_code} pr. rytter (ingen
+// roller/form/træthed/egnethed). Ét synligt løb (to hold) + ét låst løb (uden for
+// 7-dages-vinduet). Pulje-vælger: tier 1 (1 pulje) + tier 2 (2 puljer); egen = pulje 2.
+const PREVIEW_SQUAD_RIVAL = [
+  { id: "pb-r1", firstname: "Lars", lastname: "Aerts", nationality_code: "be" },
+  { id: "pb-r2", firstname: "Tom", lastname: "Garnier", nationality_code: "fr" },
+  { id: "pb-r3", firstname: "Pieter", lastname: "Janssen", nationality_code: "nl" },
+  { id: "pb-r4", firstname: "Mads", lastname: "Holt", nationality_code: "dk" },
+  { id: "pb-r5", firstname: "Nuno", lastname: "Costa", nationality_code: "pt" },
+  { id: "pb-r6", firstname: "Karl", lastname: "Brandt", nationality_code: "de" },
+];
+const PREVIEW_SQUAD_OWN = [
+  { id: "pb-o1", firstname: "Ada", lastname: "Pedersen", nationality_code: "dk" },
+  { id: "pb-o2", firstname: "Mikkel", lastname: "Hansen", nationality_code: "dk" },
+  { id: "pb-o3", firstname: "Sven", lastname: "Vossen", nationality_code: "nl" },
+  { id: "pb-o4", firstname: "Remi", lastname: "Laurent", nationality_code: "fr" },
+  { id: "pb-o5", firstname: "Otto", lastname: "Keller", nationality_code: "de" },
+  { id: "pb-o6", firstname: "Iván", lastname: "Mbeki", nationality_code: "za" },
+];
+export const SEED_BROWSE = {
+  enabled: true,
+  season: { id: ACTIVE_SEASON.id, number: ACTIVE_SEASON.season_number },
+  pools: [
+    { id: 1, tier: 1, pool_index: 0, label: "Pool A" },
+    { id: 2, tier: 2, pool_index: 0, label: "Pool A" },
+    { id: 3, tier: 2, pool_index: 1, label: "Pool B" },
+  ],
+  pool: { id: 2, tier: 2, pool_index: 0, label: "Pool A" },
+  ownPoolId: 2,
+  currentDay: 12,
+  focusDay: 12,
+  horizonDays: 7,
+  timeline: {
+    totalDays: 28,
+    currentDay: 12,
+    days: [
+      { day: 10, dateText: "10 Jul", hasMyRace: false },
+      { day: 11, dateText: "11 Jul", hasMyRace: false },
+      { day: 12, dateText: "12 Jul", hasMyRace: true },
+      { day: 13, dateText: "13 Jul", hasMyRace: false },
+      { day: 14, dateText: "14 Jul", hasMyRace: false },
+    ],
+  },
+  columns: [
+    {
+      id: "race-up-1", name: "Tour de Preview", race_class: "ProSeries", race_type: "single",
+      stages: 1, stages_completed: 0, status: "scheduled", window: { day: 12 },
+      primaryProfileType: "flat", visible: true, daysUntilStart: 2, opensInDays: 0,
+      teamCount: 2,
+      teams: [
+        { team: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name }, riders: PREVIEW_SQUAD_RIVAL },
+        { team: { id: TEST_TEAM.id, name: TEST_TEAM.name }, riders: PREVIEW_SQUAD_OWN },
+      ],
+    },
+    {
+      id: "race-locked-1", name: "GP des Préviews", race_class: "Class1", race_type: "single",
+      stages: 1, stages_completed: 0, status: "scheduled", window: { day: 23 },
+      primaryProfileType: "hilly", visible: false, daysUntilStart: 11, opensInDays: 4,
+      teamCount: 0, teams: [],
+    },
+  ],
+};
+
 // GET /api/races/:raceId/selection — udtagelses-panelet (RaceSelectionPanel).
 // S5: riders bærer aggression så HunterExplainer kan rangere jæger-kandidater; én
 // rytter forud-valgt som hunter så jæger-chippen + kandidat-listen er synlig i preview.

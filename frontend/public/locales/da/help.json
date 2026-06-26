@@ -636,6 +636,10 @@
       "fatigue": {
         "title": "Træthed betyder noget",
         "text": "Trætte hjælpere støtter kaptajnen mindre, og løbsdage opbygger træthed. Roter din trup mellem løb for at holde dine stjerner friske til de dage der tæller."
+      },
+      "scouting": {
+        "title": "Scout andre divisioner",
+        "text": "Skift race hub'en til 'Min division' eller 'Andre divisioner' for at se enhver puljes kommende startlister, skrivebeskyttet. Startlister åbner syv dage før hvert løb og viser kun bruttotrupper (hvilke ryttere et hold har meldt til), så du kan vurdere det forventede felt. Roller, form og træthed forbliver skjult, og løb længere ude er låst, indtil deres startliste åbner."
       }
     }
   },
