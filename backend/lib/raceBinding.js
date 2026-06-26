@@ -54,6 +54,34 @@ export function windowsOverlap(a, b) {
   return a.start <= b.end && b.start <= a.end;
 }
 
+// peakConcurrentStageRaces (#1856): max antal SAMTIDIGE etapeløb i én division,
+// medregnet igangværende (in-flight) løb. Kun race_type='stage_race' tæller —
+// endagsløb binder kun sin egen dag og lægger ikke fler-dages concurrency-pres.
+// races: [{ league_division_id, race_type, window:{start,end} }] hvor window er
+// CET-dag-ordinaler (raceBindingWindow), inklusive ender. Sweep-linje over
+// dag-vinduer; én afslutning (end+1, -1) sorteres FØR en samtidig start (+1), så
+// et løb der slutter dag X ikke tælles overlappende med ét der starter dag X+1.
+// Pure + deterministisk. Tom → 0.
+export function peakConcurrentStageRaces(races = [], { divisionId } = {}) {
+  const windows = races
+    .filter((r) => r?.race_type === "stage_race" && r.league_division_id === divisionId && r.window)
+    .map((r) => r.window);
+  if (!windows.length) return 0;
+  const events = [];
+  for (const w of windows) {
+    events.push([w.start, 1]);
+    events.push([w.end + 1, -1]);
+  }
+  events.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  let cur = 0;
+  let peak = 0;
+  for (const [, delta] of events) {
+    cur += delta;
+    if (cur > peak) peak = cur;
+  }
+  return peak;
+}
+
 // Givet det løb man udtager til (thisWindow) og holdets andre løb (otherRaces:
 // [{ window, riderIds }]), returnér de rider_ids fra `riderIds` der allerede er
 // bundet i et tidsoverlappende løb. Pure + deterministisk.

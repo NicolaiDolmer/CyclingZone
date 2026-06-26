@@ -16,7 +16,10 @@ import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 
 // Faste danske etape-slots (CET/CEST wall-clock), ét slot pr. etape-position på dagen.
-export const STAGE_SLOTS_CET = Object.freeze(["12:30", "15:00", "18:00", "21:00"]);
+// Slot-index = spor-nummer. 09:00 ligger SIDST (= spor 4, kun brugt ved 5/dag) for at
+// bevare bagudkompatibilitet: spor 0-3 = 12:30/15:00/18:00/21:00, så eksisterende
+// 2-spors-kalendre er uændrede. Kronologisk på dagen: 09:00 < 12:30 < ... < 21:00.
+export const STAGE_SLOTS_CET = Object.freeze(["12:30", "15:00", "18:00", "21:00", "09:00"]);
 
 // Afviklings-cadence: antal etaper der afvikles pr. dag på tværs af en pulje-kalender.
 // Etaperne pakkes TÆT (STAGES_PER_DAY/dag, intet dag-spild mellem løb), så en sæson
@@ -82,7 +85,16 @@ export function planRaceSchedules({ races = [], from = new Date(), slots = STAGE
   const sorted = [...races].sort((a, b) =>
     String(a.name).localeCompare(String(b.name), "en") || String(a.id).localeCompare(String(b.id)),
   );
-  const trackCount = Math.max(1, Math.min(Number(tracks) || 1, slots.length));
+  // Un-clamp (#1856/#1712): tidligere clampede vi tracks til slots.length, hvilket
+  // gav stille slot-wraparound (spor 4 → slot[0]) og duplikat-tider der brød
+  // race-binding. Kræv eksplicit nok slots i stedet.
+  const requestedTracks = Math.max(1, Number(tracks) || 1);
+  if (requestedTracks > slots.length) {
+    throw new Error(
+      `planRaceSchedules: tracks=${requestedTracks} > slots=${slots.length} — tilføj flere STAGE_SLOTS_CET`,
+    );
+  }
+  const trackCount = requestedTracks;
   const trackDays = new Array(trackCount).fill(0); // næste ledige dag-index (0-baseret) pr. spor
 
   const raceUpdates = [];

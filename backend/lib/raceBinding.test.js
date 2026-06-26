@@ -1,6 +1,36 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { raceTimeWindow, raceBindingWindow, windowsOverlap, findRiderBindingConflicts, loadTeamBindingContext, findManualOverlapConflicts, teamInRacePool } from "./raceBinding.js";
+import { raceTimeWindow, raceBindingWindow, windowsOverlap, findRiderBindingConflicts, loadTeamBindingContext, findManualOverlapConflicts, teamInRacePool, peakConcurrentStageRaces } from "./raceBinding.js";
+
+// peakConcurrentStageRaces (#1856): max antal SAMTIDIGE etapeløb i én division,
+// medregnet igangværende (in-flight) løb. Endagsløb tæller ikke (binder kun én dag).
+// Window = CET-dag-ordinal-vindue {start,end} (fra raceBindingWindow), inklusive ender.
+test("peakConcurrentStageRaces: 3 overlappende etapeløb i div → peak 3 (ignorerer endagsløb + anden division)", () => {
+  const races = [
+    { league_division_id: 1, race_type: "stage_race", window: { start: 0, end: 6 } },
+    { league_division_id: 1, race_type: "stage_race", window: { start: 2, end: 6 } },
+    { league_division_id: 1, race_type: "stage_race", window: { start: 2, end: 8 } },
+    { league_division_id: 1, race_type: "single", window: { start: 3, end: 3 } },
+    { league_division_id: 2, race_type: "stage_race", window: { start: 2, end: 8 } },
+  ];
+  assert.equal(peakConcurrentStageRaces(races, { divisionId: 1 }), 3);
+});
+
+test("peakConcurrentStageRaces: ikke-overlappende etapeløb → peak 1", () => {
+  const races = [
+    { league_division_id: 1, race_type: "stage_race", window: { start: 0, end: 4 } },
+    { league_division_id: 1, race_type: "stage_race", window: { start: 5, end: 9 } },
+  ];
+  assert.equal(peakConcurrentStageRaces(races, { divisionId: 1 }), 1);
+});
+
+test("peakConcurrentStageRaces: kun endagsløb → peak 0", () => {
+  const races = [
+    { league_division_id: 1, race_type: "single", window: { start: 1, end: 1 } },
+    { league_division_id: 1, race_type: "single", window: { start: 1, end: 1 } },
+  ];
+  assert.equal(peakConcurrentStageRaces(races, { divisionId: 1 }), 0);
+});
 
 test("raceTimeWindow: start=tidligste, end=seneste etape", () => {
   const w = raceTimeWindow([

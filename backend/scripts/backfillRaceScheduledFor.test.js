@@ -31,6 +31,28 @@ test("STAGES_PER_DAY = 2 (launch-cadence: ~4-ugers sæson for 60-etape-kalender)
   assert.equal(STAGES_PER_DAY, 2);
 });
 
+// 5/dag-infrastruktur (#1712): der skal være 5 slots så en division kan afvikle 5
+// etaper/dag. 09:00 ligger SIDST i arrayet (= spor 4) for at bevare bagudkompatibilitet:
+// spor 0-3 forbliver 12:30/15:00/18:00/21:00, så eksisterende kalendre (tracks<=4) er
+// uændrede. Kronologisk på dagen er rækkefølgen stadig 09:00 < 12:30 < ... < 21:00.
+test("STAGE_SLOTS_CET har 5 slots (5/dag-kapacitet)", () => {
+  assert.equal(STAGE_SLOTS_CET.length, 5);
+});
+
+test("planRaceSchedules: tracks=5 lægger 5 endagsløb på SAMME dag i 5 distinkte slots (ingen wraparound)", () => {
+  const races = Array.from({ length: 5 }, (_, i) => ({ id: `r${i}`, name: `R${i}`, stages: 1 }));
+  const { stageRows } = planRaceSchedules({ races, from: new Date("2026-07-01T00:00:00Z"), tracks: 5 });
+  const dates = new Set(stageRows.map((s) => s.scheduled_at.slice(0, 10)));
+  assert.equal(dates.size, 1, "alle 5 løb på samme dag (5 parallelle spor)");
+  const times = new Set(stageRows.map((s) => s.scheduled_at));
+  assert.equal(times.size, 5, "5 distinkte etape-tider — ingen duplikat-slot");
+});
+
+test("planRaceSchedules: tracks > slots kaster (ingen stille wraparound)", () => {
+  const races = [{ id: "r1", name: "R1", stages: 1 }];
+  assert.throws(() => planRaceSchedules({ races, from: new Date("2026-07-01T00:00:00Z"), tracks: 6 }), /tracks/);
+});
+
 test("planRaceSchedules: 2 spor → 2 etaper/dag total", () => {
   const { stageRows } = planRaceSchedules({ races: RACES, from: FROM });
   // 2 spor × 1 etape/dag = 2 etaper/dag total. 6 etaper → 3 dage.
