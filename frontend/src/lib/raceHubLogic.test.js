@@ -12,14 +12,14 @@ test("computeColumnStatus: full / understaffed / withdrawn", () => {
   assert.deepEqual(computeColumnStatus({ selected: 6, target: 6, max: 6, withdrawn: false }), { kind: "full", selected: 6, target: 6 });
 });
 
-// Rod A (#1823): auto-gem-når-gyldig — kun gyldige størrelser persisteres.
-test("isSelectionSavable: kun gyldig størrelse gemmes (transient 5/7 på 6/6 → nej)", () => {
-  // 6/6-løb, fuld trup tilgængelig
-  assert.equal(isSelectionSavable({ count: 6, min: 6, max: 6, available: 12 }), true);
-  assert.equal(isSelectionSavable({ count: 5, min: 6, max: 6, available: 12 }), false, "under min → ikke gemt");
-  assert.equal(isSelectionSavable({ count: 7, min: 6, max: 6, available: 12 }), false, "over max → ikke gemt");
-  // Lille trup: kun 4 tilgængelige → effectiveMin=4, så 4 er nok (mirror backend).
-  assert.equal(isSelectionSavable({ count: 4, min: 6, max: 6, available: 4 }), true);
+// #1906: auto-gem KUN ved fuld opstilling (count === max). Delvis trup gemmes aldrig.
+test("isSelectionSavable: kun en KOMPLET trup gemmes (count === max)", () => {
+  assert.equal(isSelectionSavable({ count: 6, max: 6 }), true);
+  assert.equal(isSelectionSavable({ count: 5, max: 6 }), false, "under fuld → ikke gemt");
+  assert.equal(isSelectionSavable({ count: 7, max: 6 }), false, "over fuld → ikke gemt");
+  // Lille trup (kun 4 ryttere på en 6/6) gemmes IKKE længere — manageren skal afmelde
+  // eller hente fri-agenter. (Tidligere lempelse fjernet, ejer-beslutning 26/6.)
+  assert.equal(isSelectionSavable({ count: 4, max: 6 }), false);
 });
 
 test("isRiderBound: rytter bundet i et ANDET kolonne-løb end det aktuelle", () => {

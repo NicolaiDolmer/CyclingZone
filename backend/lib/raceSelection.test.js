@@ -3,6 +3,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { validateSelection, buildRiderRows, getSelectionContext } from "./raceSelection.js";
 
+// #1906: fuld opstilling KRÆVES — en 6/6-klasse skal have præcis 6 udtagne.
 const base = {
   riderIds: ["r1", "r2", "r3", "r4", "r5", "r6"],
   captainId: "r1",
@@ -10,25 +11,36 @@ const base = {
   hunterId: null,
   teamRiderIds: new Set(["r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9"]),
   injuredRiderIds: new Set(),
-  sizeRule: { min: 6, max: 8 },
+  sizeRule: { min: 6, max: 6 },
   availableCount: 9,
 };
 
-test("gyldig udtagelse passerer", () => {
+test("gyldig (fuld) udtagelse passerer", () => {
   assert.deepEqual(validateSelection(base), { ok: true, errors: [] });
 });
 
-test("størrelse håndhæves (for få / for mange / effectiveMin ved lille trup)", () => {
+test("fuld opstilling håndhæves (#1906): delvis trup afvises, fuld passerer", () => {
+  // For få (2 af 6) → wrong_size.
   assert.ok(validateSelection({ ...base, riderIds: ["r1", "r2"] }).errors.includes("selection_wrong_size"));
-  assert.ok(validateSelection({ ...base, riderIds: ["r1","r2","r3","r4","r5","r6","r7","r8","r9"] }).errors.includes("selection_wrong_size"));
-  // Kun 5 raske på holdet → 5 er nok (effectiveMin).
+  // For mange (7 af 6) → wrong_size.
+  assert.ok(validateSelection({ ...base, riderIds: ["r1","r2","r3","r4","r5","r6","r7"] }).errors.includes("selection_wrong_size"));
+  // Default-klasse {6,8}: fuld = 8 pladser. 6 udtagne → wrong_size; 8 → ok.
+  const eight = ["r1","r2","r3","r4","r5","r6","r7","r8"];
+  assert.ok(validateSelection({ ...base, sizeRule: { min: 6, max: 8 }, riderIds: ["r1","r2","r3","r4","r5","r6"] }).errors.includes("selection_wrong_size"));
+  assert.equal(validateSelection({ ...base, sizeRule: { min: 6, max: 8 }, riderIds: eight }).ok, true);
+});
+
+test("for få raske ryttere til fuld opstilling → selection_insufficient_riders (afmeld/hent fri-agenter)", () => {
+  // Kun 5 berettigede raske ryttere, men løbet har 6 pladser → kan ikke fylde.
   const small = validateSelection({
     ...base,
     riderIds: ["r1", "r2", "r3", "r4", "r5"],
     teamRiderIds: new Set(["r1", "r2", "r3", "r4", "r5"]),
     availableCount: 5,
   });
-  assert.equal(small.ok, true);
+  assert.equal(small.ok, false);
+  assert.ok(small.errors.includes("selection_insufficient_riders"));
+  assert.ok(!small.errors.includes("selection_wrong_size"), "insufficient er distinkt fra wrong_size");
 });
 
 test("kaptajn kræves, skal være udtaget, roller skal være distinkte", () => {

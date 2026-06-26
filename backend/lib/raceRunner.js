@@ -39,6 +39,7 @@ import { loadWithdrawnTeamIds } from "./raceWithdrawal.js";
 import { raceBindingWindow } from "./raceBinding.js";
 import { freezeEntrantsToStartField, excludeBoundRiders, filterEntriesToRaceDivision } from "./raceFieldIntegrity.js";
 import { applyRiderEligibilityFilter, filterEligibleEntries } from "./riderEligibility.js";
+import { loadEligibleEntries, loadLoanedOutRiderIds } from "./raceEntriesLoader.js";
 
 // Intern klassements-point (grøn/bjerg) — afgør KUN rækkefølgen i de respektive
 // trøje-konkurrencer; selve præmie-pointene kommer fra race_points via rank.
@@ -334,10 +335,14 @@ async function loadFieldBindingContext({ supabase, race, teamIds }) {
   const thisWindow = raceBindingWindow(thisSched);
   if (!thisWindow) return empty; // dette løb har intet vindue → kan ikke binde
 
-  // Holdenes entries i ANDRE løb (range-pagineret mod 1000-cap'en).
-  const { data: entries, error: e1 } = await fetchAllPaged(() =>
-    supabase.from("race_entries").select("race_id, team_id, rider_id").in("team_id", teamIds).neq("race_id", race.id)
-  );
+  // Holdenes entries i ANDRE løb (range-pagineret mod 1000-cap'en). #1906: gennem den
+  // delte eligibility-loader, så en ghost/udlånt rytter ikke phantom-låser en ægte
+  // rytter væk fra det aktuelle løbs felt under runtime auto-fill (excludeBoundRiders).
+  const { data: entries, error: e1 } = await loadEligibleEntries({
+    supabase, paged: true,
+    baseQuery: () =>
+      supabase.from("race_entries").select("race_id, team_id, rider_id").in("team_id", teamIds).neq("race_id", race.id),
+  });
   if (e1) throw new Error(`race_entries (binding others): ${e1.message}`);
   if (!entries.length) return { thisWindow, otherRacesByTeam: new Map() };
 
@@ -559,7 +564,11 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
     });
     if (erErr) throw new Error(`riders (eligibility): ${erErr.message}`);
     const ridersById = new Map((entryRiders || []).map((r) => [r.id, r]));
-    existingEntries = filterEligibleEntries({ entries: existingEntries, ridersById });
+    // #1906 loan-aware: en udlånt rytter kører for låneren — han må ikke stå i ejer-
+    // holdets faktiske startfelt (ellers kører han for det forkerte hold / dobbelt).
+    const { data: loanedOutRiderIds, error: loErr } = await loadLoanedOutRiderIds({ supabase, riderIds: entryRiderIds });
+    if (loErr) throw new Error(`loan_agreements (eligibility): ${loErr.message}`);
+    existingEntries = filterEligibleEntries({ entries: existingEntries, ridersById, loanedOutRiderIds });
   }
   // #1307: autopick for hold UDEN entries. #1844: KUN ved etape 1 (allowAutofill) — et
   // igangværende etapeløb må ikke få nye ryttere fyldt ind mellem etaper (feltet er låst).

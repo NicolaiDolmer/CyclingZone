@@ -13,10 +13,14 @@ test("toggleRider: tilføjer/fjerner og respekterer max + rydder roller for fjer
   assert.equal(toggleRider(full, "i", 8), full, "max nået → uændret state");
 });
 
-test("validateSelectionClient: spejl af backend-koderne", () => {
-  const ok = validateSelectionClient({ riderIds: ["a", "b", "c", "d", "e", "f"], captainId: "a", sprintCaptainId: null, hunterId: null, size: { min: 6, max: 8 }, availableCount: 10 });
+test("validateSelectionClient: spejl af backend-koderne (#1906 fuld opstilling)", () => {
+  // Fuld trup (8 på {6,8}) + kaptajn → ingen fejl.
+  const ok = validateSelectionClient({ riderIds: ["a","b","c","d","e","f","g","h"], captainId: "a", sprintCaptainId: null, hunterId: null, size: { min: 6, max: 8 }, availableCount: 10 });
   assert.deepEqual(ok, []);
-  assert.ok(validateSelectionClient({ riderIds: ["a"], captainId: "a", sprintCaptainId: null, hunterId: null, size: { min: 6, max: 8 }, availableCount: 10 }).includes("selection_wrong_size"));
-  assert.ok(validateSelectionClient({ riderIds: ["a", "b", "c", "d", "e", "f"], captainId: null, sprintCaptainId: null, hunterId: null, size: { min: 6, max: 8 }, availableCount: 10 }).includes("selection_captain_required"));
-  assert.ok(validateSelectionClient({ riderIds: ["a", "b", "c", "d", "e", "f"], captainId: "a", sprintCaptainId: "a", hunterId: null, size: { min: 6, max: 8 }, availableCount: 10 }).includes("selection_role_overlap"));
+  // Delvis trup (6 af 8 pladser) → wrong_size.
+  assert.ok(validateSelectionClient({ riderIds: ["a","b","c","d","e","f"], captainId: "a", sprintCaptainId: null, hunterId: null, size: { min: 6, max: 8 }, availableCount: 10 }).includes("selection_wrong_size"));
+  // For få raske ryttere (kun 5 til 8 pladser) → insufficient (afmeld/hent fri-agenter).
+  assert.ok(validateSelectionClient({ riderIds: ["a","b","c","d","e"], captainId: "a", sprintCaptainId: null, hunterId: null, size: { min: 6, max: 8 }, availableCount: 5 }).includes("selection_insufficient_riders"));
+  assert.ok(validateSelectionClient({ riderIds: ["a","b","c","d","e","f","g","h"], captainId: null, sprintCaptainId: null, hunterId: null, size: { min: 6, max: 8 }, availableCount: 10 }).includes("selection_captain_required"));
+  assert.ok(validateSelectionClient({ riderIds: ["a","b","c","d","e","f","g","h"], captainId: "a", sprintCaptainId: "a", hunterId: null, size: { min: 6, max: 8 }, availableCount: 10 }).includes("selection_role_overlap"));
 });

@@ -4,6 +4,41 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.25",
+    "date": "2026-06-26",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Team selection",
+        "en": {
+          "title": "Field a full team for every race",
+          "body": "You now pick a complete lineup for each race you enter. If you would rather sit a race out, withdraw from it; if you are short on riders, sign free agents to fill the gaps. This keeps every start list complete, and the assistant's auto-fill is the quick way to a full squad."
+        },
+        "da": {
+          "title": "Stil et fuldt hold til hvert løb",
+          "body": "Du udtager nu en komplet opstilling til hvert løb, du stiller op i. Vil du hellere stå over, så afmeld dig løbet; mangler du ryttere, så hent fri-agenter til at fylde pladserne. Det holder alle startlister fulde, og assistentens auto-udfyld er den hurtige vej til et fuldt hold."
+        },
+        "refs": [1906]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Team selection",
+        "en": {
+          "title": "Lineups save reliably again",
+          "body": "Sold, released, retired or loaned-out riders could leave a stale entry in an overlapping race that wrongly locked a real rider and stopped you from saving your lineup. Those entries are now cleared automatically, so saving a squad and the assistant's auto-fill work as expected."
+        },
+        "da": {
+          "title": "Opstillinger gemmes pålideligt igen",
+          "body": "Solgte, frigivne, pensionerede eller udlånte ryttere kunne efterlade en forældet tilmelding i et overlappende løb, der fejlagtigt låste en ægte rytter og forhindrede dig i at gemme din opstilling. De tilmeldinger ryddes nu automatisk, så det at gemme en trup og assistentens auto-udfyld virker som forventet."
+        },
+        "refs": [1823, 1800]
+      }
+    ]
+  },
+  {
     "version": "6.24",
     "date": "2026-06-26",
     "label": "Beta",

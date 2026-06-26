@@ -12,6 +12,7 @@ import {
 } from "./marketUtils.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
 import { contractOnAcquirePatch } from "./contractSeed.js";
+import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 import { buildContractExpiringNotification } from "./notificationService.js";
 import {
   FINANCE_ACTOR_TYPE,
@@ -426,6 +427,14 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
     return failure(409, "Rytteren skiftede status under bekræftelsen — handlen er annulleret", "stale_rider_state");
   }
 
+  // #1906 defense-in-depth: når rytteren reelt skifter hold (team_id flyttet ved
+  // direkte registrering), ryd hans fremtidige ghost-race_entries med det samme.
+  // I deferRegistration-stien flyttes kun pending_team_id (team_id bliver hos
+  // sælger), så ingen ghost dannes endnu — derfor kun her.
+  if (!deferRegistration) {
+    await clearFutureRaceEntriesSafe({ supabase, riderId: rider.id, label: "transfer" });
+  }
+
   // Slice 07c: balance + finance_transactions atomic via RPC.
   // 07d Fase B / #240: actor flyder gennem auditCtx (api fra confirmTransferOffer,
   // cron fra flushWindowPendingOffers). season_id sættes eksplicit fra activeSeason.
@@ -672,6 +681,14 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
     await notifyTeamOwner(swap.receiving_team_id, "transfer_offer_rejected", "Byttehandel annulleret",
       `${requested.firstname} ${requested.lastname} ændrede status under bekræftelsen.`, swap.id);
     return failure(409, "Den ønskede rytter ændrede status under bekræftelsen — byttehandlen er annulleret", "stale_requested_rider_state");
+  }
+
+  // #1906 defense-in-depth: begge byttede ryttere skifter hold ved direkte
+  // registrering (team_id flyttet) → ryd hver deres fremtidige ghost-race_entries.
+  // I deferRegistration-stien flyttes kun pending_team_id, så ingen ghost dannes endnu.
+  if (!deferRegistration) {
+    await clearFutureRaceEntriesSafe({ supabase, riderId: offered.id, label: "swap" });
+    await clearFutureRaceEntriesSafe({ supabase, riderId: requested.id, label: "swap" });
   }
 
   if (cash !== 0) {
