@@ -12,7 +12,7 @@ import RiderBadges from "../components/rider/RiderBadges";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge";
 import { ageBadgeKey, getRiderAge, isU23 } from "../lib/riderAge";
 import { getRiderMarketValue, projectYouthSalary } from "../lib/marketValues";
-import { getSquadLimits } from "../lib/dashboardSquadStats";
+import { getSquadLimits } from "../lib/dashboardSquadStats.js";
 import { formatNumber } from "../lib/intl";
 import { AcademyTransferConfirmModal } from "../components/AcademyTransferConfirmModal";
 import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";

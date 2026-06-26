@@ -1387,6 +1387,12 @@ router.post("/training/bulk", requireAuth, marketWriteLimiter, async (req, res) 
   if (riderIds.length > BULK_TRAINING_MAX_RIDERS) {
     return res.status(400).json({ error: "too_many_riders" });
   }
+  // #1897 (CodeRabbit): valider element-typer før DB-query. Uden dette ryger en
+  // malformet payload (fx [{}, 123]) ned i .in("id", …) mod UUID-kolonnen og
+  // fejler som 500 med rå DB-besked i stedet for et rent 400.
+  if (!riderIds.every((id) => typeof id === "string" && id)) {
+    return res.status(400).json({ error: "invalid_rider_ids" });
+  }
   if (!isValidFocus(focus)) return res.status(400).json({ error: "invalid_focus" });
   if (!isValidIntensity(intensity)) return res.status(400).json({ error: "invalid_intensity" });
   try {
