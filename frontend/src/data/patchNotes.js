@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.26",
+    "date": "2026-06-26",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Team selection",
+        "en": {
+          "title": "Move riders between races by dragging",
+          "body": "On desktop you can now drag a rider straight from one race to another, or to and from the free-rider pool. The race you move them out of shows as understaffed until you fill it again, and the assistant's Auto-fill makes that quick. On phones the tap flow does the same thing, and a rider can no longer get stuck in a race you have already moved them out of."
+        },
+        "da": {
+          "title": "Flyt ryttere mellem løb ved at trække",
+          "body": "På desktop kan du nu trække en rytter direkte fra ét løb til et andet, eller til og fra puljen af ledige ryttere. Det løb du flytter ham ud af, vises som underbemandet indtil du fylder det igen, og assistentens Auto-udfyld gør det hurtigt. På mobil gør tap-flowet det samme, og en rytter kan ikke længere sidde fast i et løb du allerede har flyttet ham ud af."
+        },
+        "refs": [1925]
+      }
+    ]
+  },
+  {
     "version": "6.25",
     "date": "2026-06-26",
     "label": "Beta",

@@ -13,7 +13,8 @@ import ContextBand from "./ContextBand.jsx";
 import RaceColumn from "./RaceColumn.jsx";
 import AvailableRidersPool from "./AvailableRidersPool.jsx";
 import DivisionStartLists from "./DivisionStartLists.jsx";
-import { isSelectionSavable } from "../../lib/raceHubLogic.js";
+import { isSelectionSavable, draftBindingMap } from "../../lib/raceHubLogic.js";
+import { decodeDrag, dropAction } from "../../lib/raceHubDnd.js";
 import { Spinner, EmptyState, FlagIcon } from "../ui";
 
 const API = import.meta.env.VITE_API_URL;
@@ -129,9 +130,22 @@ export default function RaceHubBoard() {
     }
   }
 
+  // #1925: atomisk flyt-til-løb (evicter rytteren fra et overlappende kilde-løb i DB).
+  async function moveRiderToRace(riderId, toRaceId) {
+    await mutate((headers) => fetch(`${API}/api/races/lineup/move`, {
+      method: "POST", headers, body: JSON.stringify({ riderId, toRaceId }),
+    }));
+  }
+
   const addRider = (raceId, riderId) => {
     const col = columns.find((c) => c.id === raceId);
     if (!col) return;
+    // #1925: er rytteren udtaget i et ANDET (overlappende) løb iflg. SERVER-tilstanden? Så
+    // er det et MOVE (atomisk eviction + indsæt) — ikke en lokal kladde-add, ellers afviser
+    // backend gemmet med selection_rider_bound-409. data.bindingMap er serverens binding;
+    // den kladde-bevidste binding bruges kun til at TILBYDE mål i popoveren.
+    const serverBound = (data.bindingMap?.[riderId] || []).some((id) => id !== raceId);
+    if (serverBound) { moveRiderToRace(riderId, raceId); return; }
     const cur = draftOf(col);
     if (cur.rider_ids.includes(riderId)) return;
     commitDraft(col, { ...cur, rider_ids: [...cur.rider_ids, riderId] });
@@ -203,6 +217,21 @@ export default function RaceHubBoard() {
     };
   });
 
+  // #1925: kladde-bevidst binding til pulje/popover (afspejler dine live-redigeringer).
+  const liveBindingMap = draftBindingMap(effectiveColumns);
+
+  // #1925: oversæt et drag-and-drop til board-handling (add / move / remove).
+  function handleDrop(toKind, toRaceId, raw) {
+    const payload = decodeDrag(raw);
+    if (!payload) return;
+    const target = effectiveColumns.find((c) => c.id === toRaceId);
+    const targetFull = target ? target.counts.selected >= (target.size?.max ?? Infinity) : false;
+    const targetLocked = target ? (!!target.lineup_locked || (target.stages_completed ?? 0) > 0 || !!target.withdrawn) : false;
+    const action = dropAction({ fromRaceId: payload.fromRaceId, toRaceId, toKind, targetFull, targetLocked });
+    if (action === "add" || action === "move") addRider(toRaceId, payload.riderId);
+    else if (action === "remove") removeRider(payload.fromRaceId, payload.riderId);
+  }
+
   return (
     <div data-testid="race-hub-board">
       <ContextBand scope={scope} day={day} currentDay={data.currentDay} timeline={data.timeline} onScopeChange={setScope} onDayChange={setDay} />
@@ -225,11 +254,13 @@ export default function RaceHubBoard() {
         <>
           <div className="grid sm:grid-cols-2 gap-3 mb-4">
             {effectiveColumns.map((c) => (
-              <RaceColumn key={c.id} column={c} busy={busy} onRemoveRider={removeRider} onSetRole={setRole} onToggleWithdraw={toggleWithdraw} />
+              <RaceColumn key={c.id} column={c} busy={busy} onRemoveRider={removeRider} onSetRole={setRole}
+                onToggleWithdraw={toggleWithdraw} onDropRider={(raw) => handleDrop("column", c.id, raw)} />
             ))}
           </div>
-          <AvailableRidersPool roster={roster} columns={effectiveColumns} bindingMap={data.bindingMap || {}}
-            onAddRiderToRace={addRider} onRegenerate={regenerate} busy={busy} />
+          <AvailableRidersPool roster={roster} columns={effectiveColumns} bindingMap={liveBindingMap}
+            onAddRiderToRace={addRider} onRegenerate={regenerate} busy={busy}
+            onDropRider={(raw) => handleDrop("pool", null, raw)} />
         </>
       )}
     </div>

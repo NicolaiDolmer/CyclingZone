@@ -250,6 +250,12 @@
     "errors": {
       "selection_wrong_size": "Pick all {max} riders to field a full team.",
       "selection_insufficient_riders": "You don't have enough available riders for a full team. Withdraw from this race or sign free agents.",
+      "move_target_full": "That race is already full. Remove a rider there first.",
+      "move_target_locked": "That race has started, so its lineup is locked.",
+      "move_wrong_pool": "You can only enter races in your own division.",
+      "move_rider_ineligible": "That rider can't race for your team right now.",
+      "move_invalid_body": "Couldn't move the rider. Try again.",
+      "move_failed": "Couldn't move the rider. Try again.",
       "selection_captain_required": "Pick a captain among your selected riders.",
       "selection_captain_not_selected": "Your captain must be one of the selected riders.",
       "selection_role_not_selected": "Role riders must be part of the selection.",

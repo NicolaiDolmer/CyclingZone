@@ -6,10 +6,12 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import AddRiderPopover from "./AddRiderPopover.jsx";
 import { LockIcon } from "../ui";
+import { encodeDrag } from "../../lib/raceHubDnd.js";
 
-export default function AvailableRidersPool({ roster, columns, bindingMap, onAddRiderToRace, onRegenerate, busy }) {
+export default function AvailableRidersPool({ roster, columns, bindingMap, onAddRiderToRace, onRegenerate, busy, onDropRider }) {
   const { t } = useTranslation("races");
   const [openRiderId, setOpenRiderId] = useState(null);
+  const [dragOver, setDragOver] = useState(false); // #1925: pulje-drop-zone (fjern rytter ved drop)
   // Låst i puljen = udtaget til et af dagens løb (committed → bundet væk fra de øvrige).
   // Navngiv bindingen (#1823 WC): hvilket løb kører rytteren? (første kolonne han er i).
   // Rod A (#1823): afmeldte kolonner låser IKKE — rytterne er frie til de øvrige løb.
@@ -33,7 +35,13 @@ export default function AvailableRidersPool({ roster, columns, bindingMap, onAdd
             className="text-xs text-cz-3 hover:text-cz-1 hover:underline disabled:opacity-50">{t("racehub.pool.fillAll")}</button>
         </span>
       </div>
-      <div className="flex flex-wrap gap-2 p-3">
+      {/* #1925: puljen er en drop-zone — slip en rytter her for at fjerne ham fra hans løb. */}
+      <div
+        className={`flex flex-wrap gap-2 p-3 transition-colors ${dragOver ? "bg-cz-accent/10" : ""}`}
+        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={(e) => { e.preventDefault(); setDragOver(false); onDropRider?.(e.dataTransfer.getData("text/plain")); }}
+      >
         {roster.map((r) => {
           const locked = lockedIds.has(r.id);
           return (
@@ -41,6 +49,8 @@ export default function AvailableRidersPool({ roster, columns, bindingMap, onAdd
               <button
                 type="button"
                 disabled={locked || busy}
+                draggable={!locked && !busy}
+                onDragStart={(e) => e.dataTransfer.setData("text/plain", encodeDrag({ riderId: r.id, fromRaceId: null }))}
                 title={locked ? t("racehub.boundNamed", { race: raceByRider.get(r.id) }) : undefined}
                 onClick={() => setOpenRiderId(openRiderId === r.id ? null : r.id)}
                 className={`flex items-center gap-1 text-xs px-2.5 py-1 rounded-full border ${
