@@ -248,7 +248,7 @@
     "saving": "Gemmer…",
     "saved": "Udtagelsen er gemt.",
     "errors": {
-      "selection_wrong_size": "Stil et fuldt hold — udtag alle {max} ryttere.",
+      "selection_wrong_size": "Udtag alle {max} ryttere for at stille et fuldt hold.",
       "selection_insufficient_riders": "Du har ikke nok ledige ryttere til et fuldt hold. Afmeld dig løbet, eller hent fri-agenter.",
       "selection_captain_required": "Vælg en kaptajn blandt de udtagne ryttere.",
       "selection_captain_not_selected": "Kaptajnen skal være blandt de udtagne ryttere.",
