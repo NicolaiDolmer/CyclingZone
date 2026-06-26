@@ -250,6 +250,12 @@
     "errors": {
       "selection_wrong_size": "Udtag alle {max} ryttere for at stille et fuldt hold.",
       "selection_insufficient_riders": "Du har ikke nok ledige ryttere til et fuldt hold. Afmeld dig løbet, eller hent fri-agenter.",
+      "move_target_full": "Det løb er allerede fuldt. Fjern en rytter der først.",
+      "move_target_locked": "Det løb er startet, så opstillingen er låst.",
+      "move_wrong_pool": "Du kan kun stille op i din egen divisions løb.",
+      "move_rider_ineligible": "Den rytter kan ikke køre for dit hold lige nu.",
+      "move_invalid_body": "Kunne ikke flytte rytteren. Prøv igen.",
+      "move_failed": "Kunne ikke flytte rytteren. Prøv igen.",
       "selection_captain_required": "Vælg en kaptajn blandt de udtagne ryttere.",
       "selection_captain_not_selected": "Kaptajnen skal være blandt de udtagne ryttere.",
       "selection_role_not_selected": "Rolle-ryttere skal være en del af udtagelsen.",
