@@ -23,10 +23,10 @@
           "Create an account and log in.",
           "Pick a team name and a manager name in the welcome wizard. Both fields are required before you can continue.",
           "The welcome modal opens automatically the first time and walks you through the three core features: Market, Auctions and Board. It links directly to Help & Rules.",
-          "You start in Division 3 with a starting budget of 800,000 CZ$.",
+          "You start in Division 3 with a starting budget of 500,000 CZ$.",
           "Go to Riders and find free riders you want to bid on.",
           "Start an auction on a rider. If you win the auction, the rider is yours.",
-          "You begin with a starting squad. No minimum squad size is enforced, but you need riders on your roster to field a team in races."
+          "You begin with a 12-rider starting squad. No minimum squad size is enforced, but you need riders on your roster to field a team in races."
         ]
       }
     },
@@ -125,7 +125,7 @@
       },
       "squadAndAuctions": {
         "title": "Squad size and auctions",
-        "text": "Squad limits still apply per division. Active auctions where you lead reserve both balance and a potential squad slot, so you can't lead more auctions than your squad can hold. If the transfer window is closed at completion, the rider is queued for the next window opening instead of switching immediately."
+        "text": "Squad limits still apply per division. Active auctions where you lead reserve both balance and a potential squad slot, so you can't lead more auctions than your squad can hold."
       }
     },
     "transfers": {
@@ -163,10 +163,6 @@
       "privacy": {
         "title": "Privacy",
         "text": "Offers are private. Only you and the seller can see your negotiation. Other managers cannot see who has bid on the same rider."
-      },
-      "transferWindow": {
-        "title": "Transfer window",
-        "text": "You can negotiate and confirm direct transfers and swap deals even when the transfer window is closed. Once both parties accept, the deal is parked as 'Agreed, awaiting window' and runs automatically when admin opens the transfer window. A parked deal cannot be cancelled by either manager, but the system still re-checks ownership, balance and squad limits before it goes through."
       },
       "loansAndSquad": {
         "title": "Loan deals and squad limits",
@@ -351,7 +347,7 @@
       },
       "prizeMoney": {
         "title": "Prize money from races",
-        "text": "Each result for a rider on your team generates prize money: points for the placing × 1,500 CZ$. Prize money is paid automatically to your team balance when admin finalises the results and shows as a 'prize' transaction in your finance log. Points for the season leaderboard and prize money are computed separately: points decide the leaderboard, while the CZ$ prize only affects your balance. Races without a race class generate no prize money. See the full points table under Season & Results, Races, Points & prizes."
+        "text": "Each result for a rider on your team generates prize money: points for the placing × 75 CZ$. Prize money is paid automatically to your team balance when admin finalises the results and shows as a 'prize' transaction in your finance log. Points for the season leaderboard and prize money are computed separately: points decide the leaderboard, while the CZ$ prize only affects your balance. Races without a race class generate no prize money. See the full points table under Season & Results, Races, Points & prizes."
       },
       "divisionBonus": {
         "title": "Division bonus at season end",
@@ -393,12 +389,12 @@
         "title": "Prize amount examples",
         "rows": [
           ["Win", "Points", "Prize"],
-          ["Tour de France win", "1,300", "1,950,000 CZ$"],
-          ["Monument win", "800", "1,200,000 CZ$"],
-          ["Stage win (Tour de France)", "210", "315,000 CZ$"],
-          ["ProSeries win", "200", "300,000 CZ$"],
-          ["Class 1 win", "125", "187,500 CZ$"],
-          ["Class 2 win", "40", "60,000 CZ$"]
+          ["Tour de France win", "1,300", "97,500 CZ$"],
+          ["Monument win", "800", "60,000 CZ$"],
+          ["Stage win (Tour de France)", "210", "15,750 CZ$"],
+          ["ProSeries win", "200", "15,000 CZ$"],
+          ["Class 1 win", "125", "9,375 CZ$"],
+          ["Class 2 win", "40", "3,000 CZ$"]
         ]
       },
       "payout": {
@@ -640,6 +636,10 @@
       "fatigue": {
         "title": "Fatigue matters",
         "text": "Tired helpers support their captain less, and racing builds fatigue. Rotating your squad between races keeps your stars fresh for the days that matter."
+      },
+      "scouting": {
+        "title": "Scouting other divisions",
+        "text": "Switch the race hub to 'My division' or 'Other divisions' to browse any pool's upcoming start lists, read-only. Start lists open seven days before each race and show gross squads only (which riders a team has entered), so you can size up the expected field. Roles, form and fatigue stay hidden, and races further out stay locked until their start list opens."
       }
     }
   },
@@ -654,7 +654,7 @@
     },
     "relaunchTeamMoney": {
       "q": "What happened to my team and money in the Season 1 relaunch?",
-      "a": "At the relaunch everything starts over. Your previous squad, balance and transfers do not carry into the new Season 1. You receive a fresh 8-rider squad and a starting budget of 800,000 CZ$, the same as every other manager."
+      "a": "At the relaunch everything starts over. Your previous squad, balance and transfers do not carry into the new Season 1. You receive a fresh 12-rider squad and a starting budget of 500,000 CZ$, the same as every other manager."
     },
     "relaunchRiderNames": {
       "q": "Why are the rider names different after the relaunch?",
@@ -682,11 +682,11 @@
     },
     "riderTransferTiming": {
       "q": "When does a rider switch teams after a transfer?",
-      "a": "If the transfer window is open, the deal goes through immediately after both parties confirm. If the window is closed, the deal is parked and runs automatically at the next window opening."
+      "a": "The deal goes through immediately after both parties confirm. Trading is always open, so there is no waiting for a transfer window."
     },
     "cancelParkedTransfer": {
-      "q": "Can I cancel a parked transfer?",
-      "a": "No. Once both parties have accepted, the deal is locked. The system can still cancel it at window opening if ownership, balance or squad limits no longer hold."
+      "q": "Can I cancel a transfer after both parties accept?",
+      "a": "No. Once both parties have accepted, the deal is locked and completes right away. The system re-checks ownership, balance and squad limits just before it goes through."
     },
     "aiDirectOffers": {
       "q": "Can I buy AI riders with a direct offer?",
@@ -699,10 +699,6 @@
     "flashAuction": {
       "q": "What is a Flash Auction?",
       "a": "Flash Auctions are a special auction type that's only available during Deadline Day. They run for exactly 30 minutes from the start time, regardless of active window. You find the option on the rider's stats page when Deadline Day is active."
-    },
-    "transferWindowNotifications": {
-      "q": "Do I get notified before the transfer window closes?",
-      "a": "Yes. When Deadline Day is active, the system sends automatic notifications 24 hours, 2 hours and 30 minutes before the window closes. When the window closes, a Final Whistle report appears on the Deadline Day page in-app (and is also posted to Discord) with the day's biggest deal, most active manager and the count of panic moves."
     },
     "minBidAmount": {
       "q": "How much do I need to bid above the current price?",
@@ -883,14 +879,6 @@
     "season0To1Special": {
       "q": "What happens at the transition from season 0 to season 1?",
       "a": "Season 0 is the opening phase with no races, points or salaries. When season 1 starts you already hold your founding budget, so the system does not pay a season-1 sponsor on top (that would be double income at the start), and running costs (upkeep) are held back until the season is actually underway. From season 2 onwards the normal cycle runs at season start: 1) sponsor is paid out, 2) loan interest is deducted, 3) salaries are deducted, 4) upkeep is deducted, 5) an emergency loan is taken if there's still a shortfall. Season end only handles division bonus, promotion/relegation and board plan evaluation."
-    },
-    "deadlineTimelineFaq": {
-      "q": "What exactly happens when the transfer window closes?",
-      "a": "Expected timeline once the close time hits: (1) within 5 minutes the window is automatically locked and no more bids or accepted offers go through. (2) A Final Whistle report appears on the Deadline Day page in-app and posts in Discord with the day's biggest deals, most active managers and panic moves. (3) Squad enforcement runs: teams over their division's maximum get an auto-sell + fine (there is no minimum squad size). (4) About 10-15 minutes after the close time, season 1 starts and sponsor money lands on every team. You get an inbox notification when sponsor has been paid."
-    },
-    "squadEnforcementFaq": {
-      "q": "What happens if I'm over max riders at deadline?",
-      "a": "When the transfer window closes, the system enforces the maximum squad size of 30 riders (the same in every division). There is no minimum squad size: you can sell down to 0 riders without penalty. Over maximum: the system auto-sells your most recently acquired rider for full market value, and applies a fine of 100,000 CZ$ per excess rider plus 200 penalty points in the season standings. Check the 'Deadline Day' board approaching the close time to see whether your team is in the green, yellow or red zone."
     },
     "season1RaceCalendarFaq": {
       "q": "Which races run in season 1?",

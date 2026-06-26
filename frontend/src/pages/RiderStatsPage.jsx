@@ -194,17 +194,6 @@ function SwapOfferButton({ rider, myTeamId }) {
   const [cash, setCash]         = useState(0);
   const [loading, setLoading]   = useState(false);
   const [result, setResult]     = useState(null);
-  const [windowOpen, setWindowOpen] = useState(true);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) return;
-      fetch(`${API}/api/transfer-window`, { headers: { Authorization: `Bearer ${session.access_token}` } })
-        .then(r => r.json())
-        .then(d => setWindowOpen(d?.open !== false))
-        .catch(() => {});
-    });
-  }, []);
 
   async function loadMyRiders() {
     const { data } = await supabase
@@ -258,11 +247,6 @@ function SwapOfferButton({ rider, myTeamId }) {
       </button>
       {show && (
         <div className="mt-3 flex flex-col gap-2">
-          {!windowOpen && (
-            <p className="rounded-lg border border-cz-border bg-cz-subtle px-3 py-2 text-xs text-cz-2">
-              {t("swapOffer.windowPendingHint")}
-            </p>
-          )}
           <select value={offeredId} onChange={e => setOfferedId(e.target.value)}
             className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-base sm:text-sm focus:outline-none focus:border-cz-accent">
             <option value="">{t("swapOffer.selectRider")}</option>
@@ -294,17 +278,6 @@ function LoanOfferButton({ rider }) {
   const [buyOption, setBuyOption] = useState("");
   const [loading, setLoading]   = useState(false);
   const [result, setResult]     = useState(null);
-  const [windowOpen, setWindowOpen] = useState(true);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) return;
-      fetch(`${API}/api/transfer-window`, { headers: { Authorization: `Bearer ${session.access_token}` } })
-        .then(r => r.json())
-        .then(d => setWindowOpen(d?.open !== false))
-        .catch(() => {});
-    });
-  }, []);
 
   async function sendLoan() {
     if (!season) return;
@@ -350,11 +323,6 @@ function LoanOfferButton({ rider }) {
       </button>
       {show && (
         <div className="mt-3 flex flex-col gap-2">
-          {!windowOpen && (
-            <p className="text-xs text-cz-3 bg-cz-warning-bg border border-cz-warning/25 rounded-lg px-3 py-2">
-              {t("loanOffer.windowPendingHint")}
-            </p>
-          )}
           <input type="number" value={season} onChange={e => setSeason(e.target.value)}
             placeholder={t("loanOffer.seasonPlaceholder")}
             className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-base sm:text-sm focus:outline-none focus:border-cz-accent" />
@@ -381,17 +349,7 @@ function DirectOfferButton({ rider }) {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult]   = useState(null);
-  const [windowOpen, setWindowOpen] = useState(true);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) return;
-      fetch(`${API}/api/transfer-window`, { headers: { Authorization: `Bearer ${session.access_token}` } })
-        .then(r => r.json())
-        .then(d => setWindowOpen(d?.open !== false))
-        .catch(() => {});
-    });
-  }, []);
 
   async function performSendOffer() {
     setLoading(true);
@@ -440,11 +398,6 @@ function DirectOfferButton({ rider }) {
       </button>
       {show && (
         <div className="mt-3 flex flex-col gap-2">
-          {!windowOpen && (
-            <p className="rounded-lg border border-cz-border bg-cz-subtle px-3 py-2 text-xs text-cz-2">
-              {t("directOffer.windowPendingHint")}
-            </p>
-          )}
           <input type="number" value={amount} min={1} onChange={e => setAmount(parseInt(e.target.value) || 0)}
             placeholder={t("directOffer.amountPlaceholder")}
             className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-base sm:text-sm focus:outline-none focus:border-cz-accent" />

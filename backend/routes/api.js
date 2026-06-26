@@ -126,7 +126,7 @@ import { runTeamTrainingDay } from "../lib/dailyTrainingEngine.js";
 import { refreshChangedRiderValues } from "../lib/riderValueRefresh.js";
 import { validateSelection, saveSelection, getSelectionContext } from "../lib/raceSelection.js";
 import { loadTeamBindingContext, findRiderBindingConflicts, teamInRacePool, raceTimeWindow, raceBindingWindow } from "../lib/raceBinding.js";
-import { buildColumnSet, buildBindingMap, seasonDayProjection, dominantTerrain, lockedWindowsFromEntries, partitionRegenTargets } from "../lib/raceDistribution.js";
+import { buildColumnSet, buildBindingMap, seasonDayProjection, dominantTerrain, lockedWindowsFromEntries, partitionRegenTargets, startListVisible, daysUntilStart, groupGrossSquads, STARTLIST_HORIZON_DAYS } from "../lib/raceDistribution.js";
 import { isRaceEngineV2Enabled } from "../lib/raceEngineFlag.js";
 import { injuryRisk } from "../lib/riderCondition.js";
 import { resolveProgram } from "../lib/dailyTraining.js";
@@ -1680,6 +1680,129 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
     });
 
     res.json({ enabled: true, season: { id: season.id, number: season.number }, currentDay, focusDay, columns, bindingMap, timeline });
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Race Hub Fase 5 (#1835 / S6) — GET /api/races/distribution/browse?pool=<id>&day=N
+// Read-only "andre divisioner": PCS-style startlister (bruttotrupper) for en valgt
+// pulje. Strippet for roller/form/træthed/egnethed + tidsgated (7 dage frem), så man
+// kan scoute forventede deltagere uden at læse modstanderens fulde taktik. Ingen
+// mutation rammer denne flade (read-only by design).
+router.get("/races/distribution/browse", requireAuth, async (req, res) => {
+  try {
+    const isBetaTester = await isViewerBetaTester(req);
+    const enabled = await isRaceEngineV2Enabled(supabase, { isBetaTester });
+    if (!enabled) return res.json({ enabled: false });
+
+    // Pulje-træ til vælgeren (tier → puljer), genbrugt fra standings-vokabularet.
+    const { data: pools } = await supabase
+      .from("league_divisions").select("id, tier, pool_index, label").order("tier").order("pool_index");
+    const poolList = pools || [];
+
+    const { data: season } = await supabase
+      .from("seasons").select("id, number, start_date").eq("status", "active").maybeSingle();
+    if (!season) return res.json({ enabled: true, season: null, pools: poolList, pool: null, columns: [], timeline: null });
+
+    // Valgt pulje: eksplicit ?pool, ellers managerens egen, ellers første i træet.
+    // league_division_id er et heltal, men ?pool kommer som streng → sammenlign som streng.
+    const requestedPool = req.query.pool ?? req.team?.league_division_id ?? poolList[0]?.id ?? null;
+    const pool = poolList.find((p) => String(p.id) === String(requestedPool)) || null;
+    if (!pool) return res.json({ enabled: true, season: { id: season.id, number: season.number }, pools: poolList, pool: null, ownPoolId: req.team?.league_division_id ?? null, columns: [], timeline: null });
+
+    const { data: races } = await supabase
+      .from("races")
+      .select("id, name, race_type, race_class, stages, stages_completed, status, league_division_id, pool_race:pool_race_id(date_text)")
+      .eq("season_id", season.id);
+    const raceIds = (races || []).map((r) => r.id);
+    const schedRows = await fetchAllScheduleRows(supabase, raceIds);
+    const schedByRace = new Map();
+    for (const s of schedRows || []) {
+      if (!schedByRace.has(s.race_id)) schedByRace.set(s.race_id, []);
+      schedByRace.get(s.race_id).push(s);
+    }
+    const withWindow = (races || []).map((r) => ({ ...r, window: raceTimeWindow(schedByRace.get(r.id)) }));
+
+    const dayParam = Number.parseInt(req.query.day, 10);
+    // Puljens kolonne-egnede løbsdage → board'et åbner på en dag med løb i puljen.
+    const DAY_MS = 86_400_000;
+    const schedTimes = (schedRows || []).map((s) => Date.parse(s.scheduled_at)).filter(Number.isFinite);
+    const seasonFirstMs = schedTimes.length ? Math.min(...schedTimes) : Date.parse(season.start_date || "2026-01-01");
+    const poolRaceDays = [...new Set(
+      withWindow
+        .filter((r) => r.status === "scheduled" && r.window
+          && teamInRacePool({ teamDivisionId: pool.id, racePoolId: r.league_division_id }))
+        .map((r) => Math.floor((r.window.start - seasonFirstMs) / DAY_MS) + 1)
+    )].sort((a, b) => a - b);
+
+    const { dayWindow, currentDay, focusDay, totalDays } = resolveSeasonDay({ season, schedRows, dayParam, myRaceDays: poolRaceDays });
+    const cols = buildColumnSet({ races: withWindow, teamDivisionId: pool.id, dayWindow });
+
+    // Terræn-glyf pr. kolonne-løb (genbrug stage-profil-mønsteret fra hoved-endpointet).
+    const colRaceIds = cols.map((r) => r.id);
+    const colProfiles = await fetchAllStageProfiles(supabase, colRaceIds, "race_id, profile_type");
+    const profTypesByRace = new Map();
+    for (const p of colProfiles || []) {
+      if (!profTypesByRace.has(p.race_id)) profTypesByRace.set(p.race_id, []);
+      profTypesByRace.get(p.race_id).push(p.profile_type);
+    }
+
+    // Tidsgate: kun synlige løb (inden for horisonten) henter startlister.
+    const nowMs = Date.now();
+    const visibleIds = cols.filter((r) => r.window && startListVisible({ startMs: r.window.start, nowMs })).map((r) => r.id);
+
+    // Bruttotrupper: KUN {team_id, rider_id} fra entries (ingen race_role), navn +
+    // nationalitet fra riders (intet form/træthed/egnethed). Hold-navne fra teams.
+    const squadsByRace = new Map();
+    if (visibleIds.length) {
+      const { data: entries } = await supabase
+        .from("race_entries").select("race_id, team_id, rider_id").in("race_id", visibleIds);
+      const entryRows = entries || [];
+      const ids = [...new Set(entryRows.map((e) => e.rider_id))];
+      const teamIds = [...new Set(entryRows.map((e) => e.team_id).filter(Boolean))];
+      const [{ data: riders }, { data: teams }] = await Promise.all([
+        ids.length ? supabase.from("riders").select("id, firstname, lastname, nationality_code").in("id", ids) : Promise.resolve({ data: [] }),
+        teamIds.length ? supabase.from("teams").select("id, name").in("id", teamIds) : Promise.resolve({ data: [] }),
+      ]);
+      const ridersById = new Map((riders || []).map((r) => [r.id, r]));
+      const teamsById = new Map((teams || []).map((t) => [t.id, t]));
+      const entriesByRace = new Map();
+      for (const e of entryRows) {
+        if (!entriesByRace.has(e.race_id)) entriesByRace.set(e.race_id, []);
+        entriesByRace.get(e.race_id).push(e);
+      }
+      for (const rid of visibleIds) {
+        squadsByRace.set(rid, groupGrossSquads({ entries: entriesByRace.get(rid) || [], ridersById, teamsById }));
+      }
+    }
+
+    const columns = cols.map((race) => {
+      const profTypes = profTypesByRace.get(race.id) || [];
+      const visible = race.window ? startListVisible({ startMs: race.window.start, nowMs }) : false;
+      const until = race.window ? daysUntilStart({ startMs: race.window.start, nowMs }) : null;
+      const teams = visible ? (squadsByRace.get(race.id) || []) : [];
+      return {
+        id: race.id, name: race.name, race_class: race.race_class, race_type: race.race_type,
+        stages: race.stages, stages_completed: race.stages_completed ?? 0, status: race.status,
+        window: race.window, primaryProfileType: dominantTerrain(profTypes),
+        visible, daysUntilStart: until,
+        opensInDays: visible || until == null ? 0 : Math.max(0, until - STARTLIST_HORIZON_DAYS),
+        teamCount: teams.length, teams,
+      };
+    });
+
+    const timeline = await buildTimeline({
+      supabase, races: withWindow, schedByRace,
+      teamDivisionId: pool.id, currentDay, totalDays,
+    });
+
+    res.json({
+      enabled: true, season: { id: season.id, number: season.number },
+      pools: poolList, pool, ownPoolId: req.team?.league_division_id ?? null,
+      currentDay, focusDay, horizonDays: STARTLIST_HORIZON_DAYS, timeline, columns,
+    });
   } catch (err) {
     captureException(err);
     res.status(500).json({ error: err.message });

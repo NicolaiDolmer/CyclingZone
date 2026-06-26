@@ -2,8 +2,6 @@
   "page": {
     "fallbackTitle": "Mit Hold",
     "managerLabel": "Manager: {name}",
-    "windowOpen": "Transfervindue åbent",
-    "windowClosed": "Transfervindue lukket",
     "ridersCount": "{count}/{cap} senior-ryttere",
     "academyCount": "+{count} akademi (uden for cap)",
     "seniorCapTooltip": "Trup-cap er {cap} senior-ryttere. Akademiryttere tæller ikke med.",
@@ -30,7 +28,6 @@
     },
     "loanedIn": "Lejede ryttere ({count})",
     "loanedOut": "Udlejede ryttere ({count})",
-    "windowClosedHint": "Transfervindue lukket. Skift træder i kraft ved næste åbning",
     "emptyState": "Din trup er tom",
     "emptyStateBody": "Skriv dine første ryttere fra markedet og begynd at bygge dit hold.",
     "emptyStateCta": "Find ryttere",

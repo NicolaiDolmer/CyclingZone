@@ -16,6 +16,7 @@ import {
   SEED_STAGE_SCHEDULE,
   SEED_RACE_RESULTS,
   SEED_DISTRIBUTION,
+  SEED_BROWSE,
   SEED_SELECTION,
   SEED_STRATEGY,
   SEED_ACADEMY,
@@ -55,7 +56,14 @@ export function restRows(table, requestUrl = "") {
       // Per-pulje tæller-query (#1829) → puljens løb (uændret, holder dashboard-
       // snapshots stabile). id=eq.<id> → ét seed-løb (RaceDetailPage .single()).
       // Alle andre races-queries → hele race-hub-seedet (strategi/dashboard-lister).
-      if (url.search.includes("league_division_id=eq")) return POOL_RACES;
+      if (url.search.includes("league_division_id=eq")) {
+        // #1906: Dashboards "næste løb"-liste joiner nu pool_race OG filtrerer på
+        // puljen — den skal stadig se det fulde seed (SEED_RACES er alle i testholdets
+        // pulje). Kun den rene tæller-query (#1829, selecter kun stages/status, intet
+        // pool_race-join) får de minimale POOL_RACES-rows.
+        if (url.search.includes("pool_race")) return SEED_RACES;
+        return POOL_RACES;
+      }
       const idMatch = url.search.match(/id=eq\.([^&]+)/);
       if (idMatch) {
         const id = decodeURIComponent(idMatch[1]);
@@ -177,10 +185,6 @@ export function apiResponse(pathname) {
     };
   }
 
-  if (pathname.endsWith("/api/transfer-window")) {
-    return { open: true, status: "open" };
-  }
-
   if (pathname.endsWith("/api/online-count")) return { count: 1 };
   if (pathname.endsWith("/api/notifications")) return [];
   if (pathname.endsWith("/api/auctions")) return AUCTIONS;
@@ -194,12 +198,11 @@ export function apiResponse(pathname) {
     return { steps: [], completed_steps: [], completion_pct: 0 };
   }
   if (pathname.endsWith("/api/me/discord-status")) return { enabled: false, connected: false };
-  if (pathname.endsWith("/api/deadline-day/status")) return { active: false };
-  // Backend returnerer et ARRAY af events (api.js: res.json(events.slice(0, 20))).
-  // Objekt-shape ({ items: [] }) crasher DeadlineDayTicker (events.map) når DD er aktiv (#778-probe).
-  if (pathname.endsWith("/api/deadline-day/ticker")) return [];
   if (pathname.endsWith("/api/race-pool")) return [];
   // Race-hub (#prelive-harness, A2): board-aggregat + strategi-flade.
+  // S6 (#1835): read-only "andre divisioner"-browse. Tjekkes FØR distribution (mere
+  // specifik path) — selvom endsWith ikke ville krydse, holder rækkefølgen den tydelig.
+  if (pathname.endsWith("/api/races/distribution/browse")) return SEED_BROWSE;
   if (pathname.endsWith("/api/races/distribution")) return SEED_DISTRIBUTION;
   if (pathname.endsWith("/api/races/strategy")) return SEED_STRATEGY;
   // S5: udtagelses-panel (RaceSelectionPanel + HunterExplainer). /api/races/:id/selection.

@@ -23,10 +23,10 @@
           "Opret en konto og log ind.",
           "Vælg holdnavn og managernavn i velkomst-wizarden. Du skal udfylde begge felter for at fortsætte.",
           "Velkomstmodalen vises automatisk første gang og gennemgår de tre vigtigste funktioner: Marked, Auktioner og Bestyrelse. Den linker direkte til Hjælp & Regler.",
-          "Du starter i Division 3 med et startbudget på 800.000 CZ$.",
+          "Du starter i Division 3 med et startbudget på 500.000 CZ$.",
           "Gå til Ryttere og find frie ryttere du vil byde på.",
           "Start en auktion på en rytter. Vinder du auktionen, er rytteren din.",
-          "Du begynder med en start-trup. Der håndhæves ingen minimumsholdstørrelse, men du skal have ryttere på holdet for at stille op i løb."
+          "Du begynder med en 12-rytters start-trup. Der håndhæves ingen minimumsholdstørrelse, men du skal have ryttere på holdet for at stille op i løb."
         ]
       }
     },
@@ -125,7 +125,7 @@
       },
       "squadAndAuctions": {
         "title": "Holdstørrelse og auktioner",
-        "text": "Holdgrænser gælder stadig per division. Aktive auktioner hvor du fører, reserverer både balance og en mulig trupplads, så du ikke kan føre flere auktioner end dit hold kan rumme. Hvis transfervinduet er lukket ved afslutning, bliver rytteren markeret til næste vindueåbning i stedet for at skifte med det samme."
+        "text": "Holdgrænser gælder stadig per division. Aktive auktioner hvor du fører, reserverer både balance og en mulig trupplads, så du ikke kan føre flere auktioner end dit hold kan rumme."
       }
     },
     "transfers": {
@@ -163,10 +163,6 @@
       "privacy": {
         "title": "Privathed",
         "text": "Tilbud er private. Kun du og sælger kan se jeres forhandling. Andre managers kan ikke se hvem der har budt på samme rytter."
-      },
-      "transferWindow": {
-        "title": "Transfervindue",
-        "text": "Du kan forhandle og bekræfte direkte transfers og byttehandler, selv når transfervinduet er lukket. Når begge parter har accepteret, parkeres handlen som 'Aftalt, afventer vindue' og gennemføres automatisk når admin åbner transfervinduet. En parkeret handel kan ikke annulleres af manager, men systemet tjekker stadig ejerskab, saldo og holdgrænser før den gennemføres."
       },
       "loansAndSquad": {
         "title": "Lejeaftaler og holdgrænser",
@@ -351,7 +347,7 @@
       },
       "prizeMoney": {
         "title": "Præmiepenge fra løb",
-        "text": "Hvert resultat der tilhører en rytter på dit hold genererer præmiepenge: point for placeringen × 1.500 CZ$. Præmiepengene udbetales automatisk til dit holds balance når admin finaliserer resultaterne og vises som 'prize'-transaktion i din finance-log. Point til sæsonranglisten og præmier beregnes separat: pointene bestemmer ranglisten, mens CZ$-præmien kun påvirker din balance. Løb uden løbsklasse genererer ingen præmiepenge. Se den fulde pointtabel under Sæson & Resultater, Løb, Point & præmier."
+        "text": "Hvert resultat der tilhører en rytter på dit hold genererer præmiepenge: point for placeringen × 75 CZ$. Præmiepengene udbetales automatisk til dit holds balance når admin finaliserer resultaterne og vises som 'prize'-transaktion i din finance-log. Point til sæsonranglisten og præmier beregnes separat: pointene bestemmer ranglisten, mens CZ$-præmien kun påvirker din balance. Løb uden løbsklasse genererer ingen præmiepenge. Se den fulde pointtabel under Sæson & Resultater, Løb, Point & præmier."
       },
       "divisionBonus": {
         "title": "Divisionsbonus ved sæsonafslutning",
@@ -393,12 +389,12 @@
         "title": "Eksempler på præmiebeløb",
         "rows": [
           ["Sejr", "Point", "Præmie"],
-          ["Tour de France-sejr", "1.300", "1.950.000 CZ$"],
-          ["Monument-sejr", "800", "1.200.000 CZ$"],
-          ["Etapesejr (Tour de France)", "210", "315.000 CZ$"],
-          ["ProSeries-sejr", "200", "300.000 CZ$"],
-          ["Klasse 1-sejr", "125", "187.500 CZ$"],
-          ["Klasse 2-sejr", "40", "60.000 CZ$"]
+          ["Tour de France-sejr", "1.300", "97.500 CZ$"],
+          ["Monument-sejr", "800", "60.000 CZ$"],
+          ["Etapesejr (Tour de France)", "210", "15.750 CZ$"],
+          ["ProSeries-sejr", "200", "15.000 CZ$"],
+          ["Klasse 1-sejr", "125", "9.375 CZ$"],
+          ["Klasse 2-sejr", "40", "3.000 CZ$"]
         ]
       },
       "payout": {
@@ -640,6 +636,10 @@
       "fatigue": {
         "title": "Træthed betyder noget",
         "text": "Trætte hjælpere støtter kaptajnen mindre, og løbsdage opbygger træthed. Roter din trup mellem løb for at holde dine stjerner friske til de dage der tæller."
+      },
+      "scouting": {
+        "title": "Scout andre divisioner",
+        "text": "Skift race hub'en til 'Min division' eller 'Andre divisioner' for at se enhver puljes kommende startlister, skrivebeskyttet. Startlister åbner syv dage før hvert løb og viser kun bruttotrupper (hvilke ryttere et hold har meldt til), så du kan vurdere det forventede felt. Roller, form og træthed forbliver skjult, og løb længere ude er låst, indtil deres startliste åbner."
       }
     }
   },
@@ -654,7 +654,7 @@
     },
     "relaunchTeamMoney": {
       "q": "Hvad skete der med mit hold og mine penge ved sæson 1-relaunchen?",
-      "a": "Ved relaunchen starter alt forfra. Dit tidligere hold, din saldo og dine transfers føres ikke med over i den nye sæson 1. Du får et frisk 8-rytters hold og en startkapital på 800.000 CZ$, præcis som alle andre managers."
+      "a": "Ved relaunchen starter alt forfra. Dit tidligere hold, din saldo og dine transfers føres ikke med over i den nye sæson 1. Du får et frisk 12-rytters hold og en startkapital på 500.000 CZ$, præcis som alle andre managers."
     },
     "relaunchRiderNames": {
       "q": "Hvorfor er rytternavnene anderledes efter relaunchen?",
@@ -682,11 +682,11 @@
     },
     "riderTransferTiming": {
       "q": "Hvornår skifter en rytter hold efter en transfer?",
-      "a": "Hvis transfervinduet er åbent, gennemføres handlen straks efter begge parter har bekræftet. Hvis vinduet er lukket, parkeres handlen og gennemføres automatisk ved næste vindueåbning."
+      "a": "Handlen gennemføres straks efter begge parter har bekræftet. Handel er altid åben, så der er ingen ventetid på et transfervindue."
     },
     "cancelParkedTransfer": {
-      "q": "Kan jeg annullere en parkeret transfer?",
-      "a": "Nej. Når begge parter har accepteret, er handlen låst. Systemet kan stadig annullere den ved vindueåbning, hvis ejerskab, saldo eller holdgrænser ikke længere holder."
+      "q": "Kan jeg annullere en transfer efter begge parter har accepteret?",
+      "a": "Nej. Når begge parter har accepteret, er handlen låst og gennemføres med det samme. Systemet tjekker ejerskab, saldo og holdgrænser igen lige før den gennemføres."
     },
     "aiDirectOffers": {
       "q": "Kan jeg købe AI-ryttere med direkte tilbud?",
@@ -699,10 +699,6 @@
     "flashAuction": {
       "q": "Hvad er en Flash Auktion?",
       "a": "Flash Auktioner er en særlig auktionstype der kun er tilgængelig under Deadline Day. De varer præcis 30 minutter fra starttidspunktet, uanset aktivt vindue. Du finder muligheden på rytterens statistikside, når Deadline Day er aktivt."
-    },
-    "transferWindowNotifications": {
-      "q": "Får jeg besked før transfervinduet lukker?",
-      "a": "Ja. Når Deadline Day er aktivt, sender systemet automatiske notifikationer 24 timer, 2 timer og 30 minutter før vinduet lukker. Når vinduet lukker, vises en Final Whistle-rapport på Deadline Day-siden i appen (og sendes også til Discord) med dagens største handel, mest aktive manager og antal panikhandler."
     },
     "minBidAmount": {
       "q": "Hvor meget skal jeg byde over i en auktion?",
@@ -883,14 +879,6 @@
     "season0To1Special": {
       "q": "Hvad sker der ved overgangen fra sæson 0 til sæson 1?",
       "a": "Sæson 0 er åbnings-fasen uden løb, point eller lønninger. Når sæson 1 starter, har du allerede din startkapital, så systemet udbetaler ikke en sæson-1-sponsor oveni (det ville være dobbelt-indkomst ved opstart), og driftsomkostninger (upkeep) holdes tilbage indtil sæsonen reelt er i gang. Fra sæson 2 og frem kører den normale cyklus ved sæsonstart: 1) sponsor udbetales, 2) lånerenter trækkes, 3) lønninger trækkes, 4) upkeep trækkes, 5) nødlån oprettes hvis stadig shortfall. Sæsonslut håndterer kun divisionsbonus, op/nedrykning og bestyrelsesplaner."
-    },
-    "deadlineTimelineFaq": {
-      "q": "Hvad sker der præcist når transfervinduet lukker?",
-      "a": "Forventet tidslinje når lukketiden rammer: (1) inden for 5 minutter låses vinduet automatisk, og der kan ikke længere placeres bud eller accepteres tilbud. (2) En Final Whistle-rapport vises på Deadline Day-siden i appen og poster i Discord med dagens største handler, mest aktive managers og panik-handler. (3) Squad enforcement kører: hold der er over maksimum for deres division får auto-salg + bøde (der er ingen minimumsholdstørrelse). (4) Cirka 10-15 minutter efter lukketiden går sæson 1 i gang, og sponsorpenge lander på alle holds konti. Du får besked i Indbakken når sponsor er udbetalt."
-    },
-    "squadEnforcementFaq": {
-      "q": "Hvad sker der hvis jeg er over max ryttere ved deadline?",
-      "a": "Når transfervinduet lukker, håndhæver systemet den maksimale holdstørrelse på 30 ryttere (den samme i alle divisioner). Der er ingen minimumsholdstørrelse: du kan sælge helt ned til 0 ryttere uden straf. Over maksimum: systemet auto-sælger din senest erhvervede rytter til fuld markedsværdi og tilskriver en bøde på 100.000 CZ$ pr. overskydende rytter samt 200 fradragspoint i sæsonstillingen. Tjek 'Deadline Day'-tavlen op til lukketid for at se om dit hold er i grøn, gul eller rød zone."
     },
     "season1RaceCalendarFaq": {
       "q": "Hvilke løb køres i sæson 1?",

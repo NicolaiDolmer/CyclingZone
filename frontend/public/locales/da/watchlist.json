@@ -26,5 +26,5 @@
   "pagination": "Viser {from}–{to} af {total}",
   "prev": "← Forrige",
   "next": "Næste →",
-  "auctionStarted": "Auktion startet.\n\nOBS: leder nu auktioner svarende til {total} ryttere (max {max}). Hvis du stadig er {exceed} over ved vindue-luk: auto-salg + {fine} CZ$ bøde + {points} fradrag-points."
+  "auctionStarted": "Auktion startet.\n\nOBS: leder nu auktioner svarende til {total} ryttere (max {max}). Loftet er en hård grænse, så du kan ikke vinde flere ryttere end din trup kan rumme."
 }

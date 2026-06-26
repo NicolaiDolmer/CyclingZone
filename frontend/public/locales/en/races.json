@@ -430,5 +430,23 @@
     "noWins": "No wins",
     "accumulatedTitle": "Accumulated points total",
     "accumulatedSub": "Top riders by total points across all editions"
+  },
+  "browse": {
+    "readonly": "Read-only",
+    "heading": "{division} · {pool}",
+    "headingGeneric": "Start lists",
+    "horizonNote": "Start lists open {count} days before each race. Roles, form and fatigue stay hidden.",
+    "empty": "No races in this pool on this day.",
+    "noEntries": "No start list yet.",
+    "grossOnly": "Gross squads only. Roles, form and fatigue hidden.",
+    "inDays": "{count, plural, one {in # day} other {in # days}}",
+    "opensIn": "{count, plural, one {Opens in # day} other {Opens in # days}}",
+    "teamCount": "{count, plural, one {# team} other {# teams}}",
+    "division": "Div {n}",
+    "poolN": "Pool {n}",
+    "divisionPicker": "Division",
+    "poolPicker": "Pool",
+    "you": "you",
+    "unknownTeam": "Unknown"
   }
 }

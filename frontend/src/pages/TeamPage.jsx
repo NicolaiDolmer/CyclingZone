@@ -339,7 +339,7 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, 
   );
 }
 
-function SquadTab({ riders, scouting, onSelectRider, windowOpen }) {
+function SquadTab({ riders, scouting, onSelectRider }) {
   const { t } = useTranslation("team");
   // #1131: fulde stat-navne som native tooltip på de forkortede kolonne-headers.
   const { t: tRider } = useTranslation("rider");
@@ -413,11 +413,6 @@ function SquadTab({ riders, scouting, onSelectRider, windowOpen }) {
             <span className="flex items-center gap-2 px-3 py-1.5 text-xs bg-cz-warning/10 text-cz-warning border border-cz-warning/20 rounded-cz">
               <span className="w-2 h-2 rounded-full bg-cz-warning" />
               {t("squad.loanedOut", { count: loanedOutRiders.length })}
-            </span>
-          )}
-          {!windowOpen && (
-            <span className="px-3 py-1.5 text-xs text-cz-3 bg-cz-subtle border border-cz-border rounded-cz">
-              {t("squad.windowClosedHint")}
             </span>
           )}
         </div>
@@ -582,7 +577,6 @@ export function TeamPage() {
   const scouting = useScouting();
   const [team, setTeam] = useState(null);
   const [riders, setRiders] = useState([]);
-  const [windowOpen, setWindowOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("squad");
   const [selectedRider, setSelectedRider] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -670,7 +664,7 @@ export function TeamPage() {
     if (!myTeam) { setLoading(false); return; }
     setTeam(myTeam);
 
-    const [ridersRes, pendingRes, windowRes, loansOutRes, loansInRes] = await Promise.all([
+    const [ridersRes, pendingRes, loansOutRes, loansInRes] = await Promise.all([
       supabase.from("riders")
         .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, is_academy, base_value, pending_team_id, nationality_code, primary_type, secondary_type, contract_end_season, ${ABILITY_SELECT}, ${CONDITION_SELECT}`)
         .eq("team_id", myTeam.id)
@@ -679,8 +673,6 @@ export function TeamPage() {
         .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, is_academy, base_value, pending_team_id, nationality_code, primary_type, secondary_type, contract_end_season, ${ABILITY_SELECT}, ${CONDITION_SELECT}`)
         .eq("pending_team_id", myTeam.id)
         .order("market_value", { ascending: false }),
-      supabase.from("transfer_windows")
-        .select("status").order("created_at", { ascending: false }).limit(1).single(),
       // Riders we're lending out
       supabase.from("loan_agreements")
         .select("rider_id, to_team:to_team_id(name), start_season, end_season")
@@ -711,7 +703,6 @@ export function TeamPage() {
     }));
 
     setRiders([...currentRiders, ...incomingRiders, ...loanedInRiders]);
-    setWindowOpen(windowRes.data?.status === "open");
     setLoading(false);
   }
 
@@ -743,13 +734,6 @@ export function TeamPage() {
       <div className="mb-5">
         <div className="flex items-center gap-3 flex-wrap">
           <h1 className="text-xl font-bold text-cz-1">{team?.name || t("page.fallbackTitle")}</h1>
-          <span className={`inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full border ${
-            windowOpen
-              ? "bg-cz-success-bg text-cz-success border-cz-success/30"
-              : "bg-cz-subtle text-cz-3 border-cz-border"}`}>
-            <span className={`w-2 h-2 rounded-full ${windowOpen ? "bg-cz-success" : "bg-cz-3"}`} aria-hidden="true" />
-            {windowOpen ? t("page.windowOpen") : t("page.windowClosed")}
-          </span>
         </div>
         {team?.manager_name && (
           <p className="text-cz-2 text-sm mt-0.5">{t("page.managerLabel", { name: team.manager_name })}</p>
@@ -777,7 +761,7 @@ export function TeamPage() {
       </div>
 
       {activeTab === "squad" && (
-        <SquadTab riders={riders} scouting={scouting} onSelectRider={setSelectedRider} windowOpen={windowOpen} />
+        <SquadTab riders={riders} scouting={scouting} onSelectRider={setSelectedRider} />
       )}
       {activeTab === "transfers" && team?.id && (
         <TeamTransferHistoryTab teamId={team.id} />

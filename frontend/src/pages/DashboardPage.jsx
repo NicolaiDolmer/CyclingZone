@@ -25,7 +25,7 @@ import {
   resolveCategoryLabel,
 } from "../lib/boardCopy";
 import DashboardCustomizeMenu from "../components/DashboardCustomizeMenu";
-import { Card, AlertTriangleIcon, BellIcon, XIcon, ArrowDownIcon, PageLoader } from "../components/ui";
+import { Card, AlertTriangleIcon, XIcon, ArrowDownIcon, PageLoader } from "../components/ui";
 import { flushPendingSignup, logFirstEvent, logTeamDrafted } from "../lib/logEvent";
 
 const API = import.meta.env.VITE_API_URL;
@@ -90,7 +90,6 @@ export default function DashboardPage() {
   const [poolRaceDays, setPoolRaceDays] = useState(null); // #1829: per-pulje løbsdage-tæller
   const [nextStageByRace, setNextStageByRace] = useState({}); // #1828: live-løb → næste etapes ms-tid
   const [nowMs, setNowMs] = useState(() => Date.now());
-  const [transferWindow, setTransferWindow] = useState(null);
   const [discordNudgeDismissed, setDiscordNudgeDismissed] = useState(
     () => typeof window !== "undefined" && localStorage.getItem("cz-dashboard-discord-nudge-dismissed") === "1"
   );
@@ -171,10 +170,17 @@ export default function DashboardPage() {
         .select("id, current_price, calculated_end, status, is_guaranteed_sale, seller_team_id, current_bidder_id, rider:rider_id(firstname, lastname, team_id)")
         .in("status", ["active", "extended"]),
       activeSeason
-        ? supabase.from("races").select("*, pool_race:pool_race_id(date_text)")
+        ? // #1906: filtrér på holdets egen pulje (league_division_id), så Dashboards
+          // "næste løb" matcher holdudtagelse (RaceHub /api/races/distribution bruger
+          // teamInRacePool). Uden filteret viste Dashboard løb fra ANDRE divisioner som
+          // brugeren ikke kan udtage til. 0 pulje-løse fremtidige løb i prod, så strict
+          // .eq() er ækvivalent med teamInRacePool. Hentet bredt (pulje har ~14 løb) så
+          // den klient-side dato-sortering nedenfor ser alle holdets kommende løb.
+          supabase.from("races").select("*, pool_race:pool_race_id(date_text)")
             .eq("season_id", activeSeason.id)
+            .eq("league_division_id", teamData.league_division_id)
             .not("status", "eq", "completed")
-            .order("name").limit(10)
+            .order("name").limit(50)
         : Promise.resolve({ data: [] }),
       activeSeason
         ? supabase.from("season_standings")
@@ -240,12 +246,6 @@ export default function DashboardPage() {
       }
     ));
     setStandings(mergedStandings);
-
-    // Transfer window status
-    const { data: tw } = await supabase
-      .from("transfer_windows").select("*")
-      .order("created_at", { ascending: false }).limit(1).single();
-    setTransferWindow(tw);
 
     // #1140: OnboardingModal (det redundante 3-korts intro-modal) er konsolideret
     // væk — OnboardingProgressCard nedenfor er nu den ENESTE kanoniske dashboard-
@@ -532,33 +532,6 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Deadline Day banner */}
-      {transferWindow?.status === "open" && (() => {
-        const closes = transferWindow.closes_at ? new Date(transferWindow.closes_at) : null;
-        if (!closes) return null;
-        const diff = closes - new Date();
-        if (diff <= 0 || diff > 86400000 * 2) return null; // Only show last 48h
-        const h = Math.floor(diff / 3600000);
-        const m = Math.floor((diff % 3600000) / 60000);
-        return (
-          <div className="mb-4 px-4 py-3 bg-cz-danger-bg border border-cz-danger/30 rounded-cz
-            flex items-center justify-between animate-pulse">
-            <div className="flex items-center gap-2">
-              <BellIcon size={18} className="text-cz-danger flex-shrink-0" />
-              <div>
-                <p className="text-cz-danger font-bold text-sm">{t("dashboard:deadlineDay.title")}</p>
-                <p className="text-cz-danger/70 text-xs">{t("dashboard:deadlineDay.closesIn", { h, m })}</p>
-              </div>
-            </div>
-            <Link to="/transfers"
-              className="px-3 py-1.5 bg-cz-danger-bg text-cz-danger border border-cz-danger/30
-                rounded-lg text-xs font-bold hover:bg-cz-danger-bg0/30 transition-all">
-              {t("dashboard:deadlineDay.cta")}
-            </Link>
-          </div>
-        );
-      })()}
-
       {/* #1140: OnboardingModal er konsolideret væk — OnboardingProgressCard
           ovenfor er den kanoniske onboarding-UI. Filen beholdes (genbruges evt.
           senere), men monteres ikke længere her. */}
@@ -606,16 +579,6 @@ export default function DashboardPage() {
           )}
 
           <div className="ms-auto flex items-center gap-3">
-            {transferWindow && (
-              <span className={`text-[10px] px-2 py-1 rounded-full border font-medium
-                ${transferWindow.status === "open"
-                  ? "bg-cz-success-bg text-cz-success border-cz-success/30"
-                  : "bg-cz-subtle text-cz-2 border-cz-border"}`}>
-                {transferWindow.status === "open"
-                  ? t("dashboard:seasonBanner.transferWindow.open")
-                  : t("dashboard:seasonBanner.transferWindow.closed")}
-              </span>
-            )}
             <span className="text-xs text-cz-accent-t group-hover:underline whitespace-nowrap">{t("dashboard:seasonBanner.viewCalendar")}</span>
           </div>
         </Card>
@@ -690,7 +653,6 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-3 py-2 border-b border-cz-border">
                   <ArrowDownIcon aria-hidden="true" className="text-cz-success w-4 h-4 flex-shrink-0" />
                   <p className="text-cz-1 text-sm">{t("dashboard:cards.transfers.incomingCount", { count: pendingIncoming })}</p>
-                  <span className="ms-auto text-[9px] bg-cz-success-bg text-cz-success border border-cz-success/30 px-2 py-0.5 rounded-full">{t("dashboard:cards.transfers.awaitingWindow")}</span>
                 </div>
               )}
               {activeMarketOffers.slice(0, 4).map(o => {
@@ -711,9 +673,7 @@ export default function DashboardPage() {
                       <span className={`text-[9px] ${needsAction ? "text-cz-warning" : "text-cz-3"}`}>
                         {needsAction
                           ? t("dashboard:cards.transfers.needsAction")
-                          : o.status === "window_pending"
-                            ? t("dashboard:cards.transfers.awaitingWindow")
-                            : t("dashboard:cards.transfers.active")}
+                          : t("dashboard:cards.transfers.active")}
                       </span>
                     </div>
                   </div>

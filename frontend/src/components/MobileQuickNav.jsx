@@ -68,14 +68,13 @@ const TABS = [
   },
 ];
 
-export default function MobileQuickNav({ unread, tickerActive }) {
+export default function MobileQuickNav({ unread }) {
   const location = useLocation();
   const { t } = useTranslation("common");
 
   return (
     <nav
-      className={`fixed left-0 right-0 z-30 md:hidden bg-cz-sidebar border-t border-cz-sidebar-border transition-all duration-200
-        ${tickerActive ? "bottom-8" : "bottom-0"}`}
+      className="fixed left-0 right-0 bottom-0 z-30 md:hidden bg-cz-sidebar border-t border-cz-sidebar-border transition-all duration-200"
       style={{ height: "56px" }}
     >
       <div className="flex h-full">

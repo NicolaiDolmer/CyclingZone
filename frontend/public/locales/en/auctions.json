@@ -205,6 +205,6 @@
     "insufficientBalance": "Bid exceeds your available balance"
   },
   "warning": {
-    "squadCapacity": "Heads up: you are now leading auctions equivalent to {totalAfter} riders (max {maxRiders}). If you are still {exceedBy} over when the window closes: auto-sale + {fine} CZ$ fine + {points} penalty points."
+    "squadCapacity": "Heads up: you are now leading auctions equivalent to {totalAfter} riders (max {maxRiders}). The cap is a hard limit, so you cannot win more riders than your squad can hold."
   }
 }

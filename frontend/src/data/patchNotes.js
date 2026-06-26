@@ -4,6 +4,111 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.23",
+    "date": "2026-06-26",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Help",
+        "en": {
+          "title": "Fixed outdated numbers in the in-game Help",
+          "body": "A few figures in Help & Rules were left over from older settings. The starting budget now correctly reads 500,000 CZ$ (not 800,000), the relaunch squad is described as 12 riders (not 8), and the prize-money section now matches the live payout of 75 CZ$ per point — the examples (e.g. a Tour de France win) and the 'points × 1,500' line were still showing the old, 20× higher amounts. The actual gameplay was always correct; only the Help text was wrong."
+        },
+        "da": {
+          "title": "Rettet forældede tal i in-game-hjælpen",
+          "body": "Et par tal i Hjælp & Regler var rester fra ældre indstillinger. Startbudgettet står nu korrekt som 500.000 CZ$ (ikke 800.000), relaunch-truppen beskrives som 12 ryttere (ikke 8), og præmie-afsnittet matcher nu den faktiske udbetaling på 75 CZ$ per point — eksemplerne (fx en Tour de France-sejr) og 'point × 1.500'-linjen viste stadig de gamle beløb, der var 20× for høje. Selve spillet var altid korrekt; kun hjælpeteksten var forkert."
+        },
+        "refs": [1907, 1819]
+      }
+    ]
+  },
+  {
+    "version": "6.22",
+    "date": "2026-06-26",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Academy rider ages now match the rest of the game",
+          "body": "A young rider's age could read one year lower on the Academy page than on their profile, because the Academy page counted age differently. The Academy now uses the same age as every other screen (and as the academy eligibility rules), so a rider shows the same age everywhere."
+        },
+        "da": {
+          "title": "Akademirytteres alder matcher nu resten af spillet",
+          "body": "En ung rytters alder kunne stå ét år lavere på Akademi-siden end på rytterprofilen, fordi Akademi-siden talte alder anderledes. Akademiet bruger nu samme alder som alle andre skærme (og som akademiets aldersregler), så en rytter viser samme alder overalt."
+        },
+        "refs": [1831]
+      }
+    ]
+  },
+  {
+    "version": "6.21",
+    "date": "2026-06-26",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "Dashboard now shows your own division's next races",
+          "body": "The 'Next races' card on the dashboard was listing races from every division, so it could show events you are not actually entered in — and it disagreed with the team-selection page about which races were coming up. It now filters to your own pool, so the dashboard and team selection always agree on your next races."
+        },
+        "da": {
+          "title": "Dashboardet viser nu din egen divisions næste løb",
+          "body": "'Næste løb'-kortet på dashboardet listede løb fra alle divisioner, så det kunne vise løb du slet ikke er tilmeldt — og det var uenigt med holdudtagelse-siden om hvilke løb der var på vej. Det filtrerer nu til din egen pulje, så dashboard og holdudtagelse altid er enige om dine næste løb."
+        },
+        "refs": [1906]
+      }
+    ]
+  },
+  {
+    "version": "6.20",
+    "date": "2026-06-26",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Transfers",
+        "en": {
+          "title": "Removed the leftover transfer window labels and Deadline Day page",
+          "body": "Trading in Cycling Zone has been always-open for a while, but some screens still showed 'transfer window open/closed' labels and a Deadline Day page that no longer did anything. We have removed those leftovers across the dashboard, transfers, your team and the rider pages, so nothing tells you the window is closed when you can trade freely. Your squad cap is a hard limit: a deal that would take you over your division's maximum is simply rejected, with no buffer or penalty."
+        },
+        "da": {
+          "title": "Fjernet resterne af transfervindue-mærkater og Deadline Day-siden",
+          "body": "Handel i Cycling Zone har været altid-åben et stykke tid, men nogle skærme viste stadig 'transfervindue åbent/lukket'-mærkater og en Deadline Day-side, der ikke længere gjorde noget. Vi har fjernet de rester på tværs af dashboard, transfers, dit hold og ryttersiderne, så intet fortæller dig at vinduet er lukket, når du frit kan handle. Din trup-cap er en hård grænse: en handel der ville bringe dig over divisionens max, bliver simpelthen afvist, uden buffer eller bøde."
+        },
+        "refs": [1898]
+      }
+    ]
+  },
+  {
+    "version": "6.19",
+    "date": "2026-06-26",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Scout rival start lists across every division",
+          "body": "You can now switch the race hub to 'My division' or 'Other divisions' and browse any pool's upcoming start lists, read-only. Start lists open seven days before each race and show gross squads only (which riders a team has entered), so you can scout the expected field and plan tactically. Roles, form and fatigue stay hidden, and races further out stay locked until their start list opens."
+        },
+        "da": {
+          "title": "Scout modstandernes startlister på tværs af alle divisioner",
+          "body": "Du kan nu skifte race hub'en til 'Min division' eller 'Andre divisioner' og se enhver puljes kommende startlister, skrivebeskyttet. Startlister åbner syv dage før hvert løb og viser kun bruttotrupper (hvilke ryttere et hold har meldt til), så du kan scoute det forventede felt og planlægge taktisk. Roller, form og træthed forbliver skjult, og løb længere ude er låst, indtil deres startliste åbner."
+        },
+        "refs": [1835]
+      }
+    ]
+  },
+  {
     "version": "6.18",
     "date": "2026-06-26",
     "label": "Beta",

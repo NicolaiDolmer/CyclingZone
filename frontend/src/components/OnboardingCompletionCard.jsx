@@ -8,7 +8,6 @@ import { useTranslation } from "react-i18next";
 
 // #1569: ikon-emoji erstattet af editorial accent-markør (anti-AI-slop).
 const NEXT_LINKS = [
-  { to: "/deadline-day", key: "deadlineDay" },
   { to: "/board", key: "board" },
   { to: "/help", key: "help" },
 ];

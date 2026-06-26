@@ -2,8 +2,6 @@
   "page": {
     "fallbackTitle": "My Team",
     "managerLabel": "Manager: {name}",
-    "windowOpen": "Transfer window open",
-    "windowClosed": "Transfer window closed",
     "ridersCount": "{count}/{cap} senior riders",
     "academyCount": "+{count} academy (off-cap)",
     "seniorCapTooltip": "Squad cap is {cap} senior riders. Academy riders don't count toward it.",
@@ -30,7 +28,6 @@
     },
     "loanedIn": "Loaned riders ({count})",
     "loanedOut": "Riders on loan out ({count})",
-    "windowClosedHint": "Transfer window closed. Changes take effect at the next opening",
     "emptyState": "Your squad is empty",
     "emptyStateBody": "Sign your first riders from the market to start building your team.",
     "emptyStateCta": "Browse riders",

@@ -4,8 +4,6 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { formatNumber } from "../lib/intl";
 import SetupWizardModal from "./SetupWizardModal";
-import DeadlineDayBanner from "./DeadlineDayBanner";
-import DeadlineDayTicker from "./DeadlineDayTicker";
 import MobileQuickNav from "./MobileQuickNav";
 import LanguageSwitcher from "./LanguageSwitcher";
 import { Wordmark } from "./Brand";
@@ -64,7 +62,6 @@ function buildNavGroups(team, t, academyEnabled = false) {
         // transferliste-genvejen (?tab=market) — kun én af de to er aktiv.
         { to: "/transfers",    label: t("nav.item.transfers"), excludeQuery: "tab=market" },
         { to: "/transfers?tab=market", label: t("nav.item.transferList") },
-        { to: "/deadline-day", label: t("nav.item.deadlineDay"), title: t("nav.tooltip.deadlineDay") },
         { to: "/watchlist",    label: t("nav.item.watchlist") },
         { to: "/activity",     label: t("nav.item.activity") },
       ],
@@ -271,7 +268,6 @@ export default function Layout() {
   const [openGroups, setOpenGroups]         = useState({});
   const [onlineCount, setOnlineCount]       = useState(0);
   const [teamLoaded, setTeamLoaded]         = useState(false);
-  const [tickerActive, setTickerActive]     = useState(false);
   // Init fra cache (#1792-klasse): vis akademiet med det samme hvis brugeren har
   // set det før, så et forbigående fetch-hikke ikke skjuler et fungerende akademi.
   const [academyEnabled, setAcademyEnabled] = useState(readCachedAcademyNav);
@@ -449,15 +445,13 @@ export default function Layout() {
           </div>
         </div>
 
-        <DeadlineDayBanner />
         <div className={`p-4 md:p-6 pb-24 md:pb-10 mx-auto ${isWideContent ? "max-w-full" : "max-w-6xl"}`}>
           <Outlet />
         </div>
       </main>
 
-      <MobileQuickNav unread={unread} tickerActive={tickerActive} />
+      <MobileQuickNav unread={unread} />
       {needsSetup && <SetupWizardModal onComplete={handleSetupComplete} />}
-      <DeadlineDayTicker onActiveChange={setTickerActive} />
     </div>
   );
 }

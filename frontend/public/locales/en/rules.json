@@ -14,13 +14,9 @@
           "title": "Squad cap",
           "text": "You can hold a maximum of {squadCap} riders, the same in every division. There is no minimum: you can sell down to 0 riders without penalty."
         },
-        "window": {
-          "title": "Transfer-window buffer",
-          "text": "While a transfer window is open you may temporarily go {windowBuffer} riders over the cap (up to {squadCapPlusBuffer}). When the window closes the surplus is auto-sold back down to {squadCap}."
-        },
         "enforcement": {
-          "title": "Over-cap enforcement",
-          "text": "When the window closes, every rider over the cap triggers an auto-sale of your most recently acquired rider for full market value, plus a fine of {squadFine} CZ$ and {squadPenaltyPoints} penalty points in the standings per excess rider."
+          "title": "Hard cap",
+          "text": "The cap is a hard limit. You cannot buy, bid or loan past your division's maximum of {squadCap} riders. There is no buffer, no fine and no auto-sale: a deal that would take you over the cap is simply rejected."
         },
         "academyExempt": {
           "title": "Academy riders are separate",
@@ -103,10 +99,6 @@
         "loansCount": {
           "title": "Loans count towards the cap",
           "text": "Active loan deals count towards your squad size, so a full squad can be rejected on loans, auctions or other incoming deals."
-        },
-        "deadlineWarnings": {
-          "title": "Deadline-day timeline",
-          "text": "Approaching the close, the Deadline Day board shows your zone (green/yellow/red). Within 5 minutes of the close time the window locks, a Final Whistle report is posted, squad enforcement runs, and about 10–15 minutes later the next season starts with sponsor money landing on every team."
         }
       }
     },
@@ -185,8 +177,6 @@
     "debtCeiling": "What is the debt ceiling, and when does it apply?",
     "prizeMoneyFaq": "What is prize money, and when is it paid out?",
     "divisionBonusFaq": "What is the division bonus, and when is it paid out?",
-    "squadEnforcementFaq": "What happens if I'm over max riders at deadline?",
-    "auctionExpiry": "When does an auction expire?",
-    "deadlineTimelineFaq": "What exactly happens when the transfer window closes?"
+    "auctionExpiry": "When does an auction expire?"
   }
 }
