@@ -170,10 +170,17 @@ export default function DashboardPage() {
         .select("id, current_price, calculated_end, status, is_guaranteed_sale, seller_team_id, current_bidder_id, rider:rider_id(firstname, lastname, team_id)")
         .in("status", ["active", "extended"]),
       activeSeason
-        ? supabase.from("races").select("*, pool_race:pool_race_id(date_text)")
+        ? // #1906: filtrér på holdets egen pulje (league_division_id), så Dashboards
+          // "næste løb" matcher holdudtagelse (RaceHub /api/races/distribution bruger
+          // teamInRacePool). Uden filteret viste Dashboard løb fra ANDRE divisioner som
+          // brugeren ikke kan udtage til. 0 pulje-løse fremtidige løb i prod, så strict
+          // .eq() er ækvivalent med teamInRacePool. Hentet bredt (pulje har ~14 løb) så
+          // den klient-side dato-sortering nedenfor ser alle holdets kommende løb.
+          supabase.from("races").select("*, pool_race:pool_race_id(date_text)")
             .eq("season_id", activeSeason.id)
+            .eq("league_division_id", teamData.league_division_id)
             .not("status", "eq", "completed")
-            .order("name").limit(10)
+            .order("name").limit(50)
         : Promise.resolve({ data: [] }),
       activeSeason
         ? supabase.from("season_standings")

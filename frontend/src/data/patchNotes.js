@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.21",
+    "date": "2026-06-26",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Dashboard",
+        "en": {
+          "title": "Dashboard now shows your own division's next races",
+          "body": "The 'Next races' card on the dashboard was listing races from every division, so it could show events you are not actually entered in — and it disagreed with the team-selection page about which races were coming up. It now filters to your own pool, so the dashboard and team selection always agree on your next races."
+        },
+        "da": {
+          "title": "Dashboardet viser nu din egen divisions næste løb",
+          "body": "'Næste løb'-kortet på dashboardet listede løb fra alle divisioner, så det kunne vise løb du slet ikke er tilmeldt — og det var uenigt med holdudtagelse-siden om hvilke løb der var på vej. Det filtrerer nu til din egen pulje, så dashboard og holdudtagelse altid er enige om dine næste løb."
+        },
+        "refs": [1906]
+      }
+    ]
+  },
+  {
     "version": "6.20",
     "date": "2026-06-26",
     "label": "Beta",
