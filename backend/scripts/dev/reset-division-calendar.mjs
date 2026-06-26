@@ -25,7 +25,9 @@ import { planDivisionReset } from "../../lib/divisionReset.js";
 
 // --- CLI-args -------------------------------------------------------------
 function parseArgs(argv) {
-  const out = { live: false, force: false };
+  // Den vedtagne kalender-model (ejer-beslutning 26/6): genbrug på tværs af puljer +
+  // max 2 samtidige etapeløb. Defaults afspejler det; kan overstyres pr. kald.
+  const out = { live: false, force: false, stageTracks: 2, reuse: true };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     const next = () => argv[++i];
@@ -35,6 +37,8 @@ function parseArgs(argv) {
     else if (a === "--divisionId") out.divisionId = next();
     else if (a === "--tracks") out.tracks = Number.parseInt(next(), 10);
     else if (a === "--race-days") out.raceDays = Number.parseInt(next(), 10);
+    else if (a === "--stage-tracks") out.stageTracks = Number.parseInt(next(), 10);
+    else if (a === "--no-reuse") out.reuse = false;
   }
   return out;
 }
@@ -107,7 +111,7 @@ let entriesCount = 0;
 if (raceIds.length > 0) {
   const { count, error } = await supabase
     .from("race_entries")
-    .select("id", { count: "exact", head: true })
+    .select("rider_id", { count: "exact", head: true }) // race_entries-PK = (race_id, rider_id); ingen id-kolonne
     .in("race_id", raceIds);
   if (error) console.warn(`(kunne ikke tælle race_entries: ${error.message})`);
   else entriesCount = count || 0;
@@ -142,6 +146,8 @@ if (!args.live) {
     seasonStartDate: season.start_date,
     dryRun: true,
     onlyDivisionId: divisionId,
+    allowReuseAcrossPools: args.reuse,
+    stageRaceTracks: args.stageTracks,
     ...(args.raceDays != null ? { raceDaysTarget: args.raceDays } : {}),
     ...(args.tracks != null ? { tracks: args.tracks } : {}),
     log: (m) => console.log(m),
@@ -197,6 +203,8 @@ const summary = await materializeSeasonCalendar({
   seasonStartDate: season.start_date,
   dryRun: false,
   onlyDivisionId: divisionId,
+  allowReuseAcrossPools: args.reuse,
+  stageRaceTracks: args.stageTracks,
   ...(args.raceDays != null ? { raceDaysTarget: args.raceDays } : {}),
   ...(args.tracks != null ? { tracks: args.tracks } : {}),
   log: (m) => console.log(m),
