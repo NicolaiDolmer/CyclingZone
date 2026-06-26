@@ -13,7 +13,7 @@
 > - **Race-hub 0b + overlap + bund-rytter-dybde (0c) — SHIPPED + AKTIVERET 24/6:** Hele backend-mekanikken er live. 0b entry-generator + overlap-mekanik ([#1810](https://github.com/NicolaiDolmer/CyclingZone/pull/1810)/[#1814](https://github.com/NicolaiDolmer/CyclingZone/pull/1814)) + **0c bund-rytter-dybde** ([#1820](https://github.com/NicolaiDolmer/CyclingZone/pull/1820)): trup 8→12 (4 unge + 4 kerne [50,57] + 4 svag hale [50,52]) i allocator (relaunch/signup/AI). **Aktivering kørt 24/6:** top-up live (626 hale-ryttere → alle 168 hold ≥12), `reschedule-overlap.mjs --live --allow-partial` (89 rene løb → overlap peak=2 i alle 7 puljer; 13 afviklede/igangværende sprunget over; 0 udtagelser ryddet), flag `auto_entry_generator_enabled` = ON. **Verificeret live:** sim-baseline ægte-manager **100% fuldt, 0 forceret no-show** (felt-styrke p10/p50/p90 9.6/18.8/25.7 — svag hale = bevaret opportunity cost). Specs: `2026-06-23-race-hub-base-riders-design.md` + `-calendar-overlap-design.md` + redesign §9 (frontend-faser).
 > - **Ejer-beslutninger (åbne):** #1276 PCM-IP · #1278 spiller-comms · #1487-budget · #929 leaked-pw · #691 key-rotation. Hygiejne: Vercel hobby rate-limit. [PLAN.md](PLAN.md)=SSOT.
 
-> **🤖 Working agent:** Ingen aktiv session.
+> **🤖 Working agent:** Claude Code (Opus 4.8) — race-cluster: #1856 (kalender-overlap forward-guard, primær) + ghost-cleanup #1823/#1800/#1742 + race-audit #1844/#1845/#1848. Worktree `race-overlap-1856`. Aktiv 26/6. (Akut: Alpes Suisses + Émirats etaper parkeret til 2036 så dagens korrupte etaper ikke kører; La Corsa kører færdig.)
 
 ## Standing context (forever-relaunch)
 
