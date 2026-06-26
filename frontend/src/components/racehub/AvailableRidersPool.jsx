@@ -23,10 +23,11 @@ export default function AvailableRidersPool({ roster, columns, bindingMap, onAdd
     <div className="border border-cz-border rounded-cz bg-cz-subtle">
       <div className="px-3 py-2 border-b border-cz-border flex items-center justify-between gap-2">
         <span className="text-[11px] uppercase tracking-wide text-cz-2">{t("racehub.pool.title", { count: roster.length })}</span>
+        {/* #1919: "Auto-udfyld"-labelen var en død <span> (Clarity dead-clicks) — den er nu
+            selve den primære knap (udfyld manglende), så begge handlinger er ægte knapper. */}
         <span className="flex items-center gap-1.5">
-          <span className="text-[10px] uppercase tracking-wide text-cz-3">{t("racehub.pool.autofill")}</span>
           <button type="button" onClick={() => onRegenerate("missing")} disabled={busy}
-            className="text-xs text-cz-accent-t hover:underline disabled:opacity-50">{t("racehub.pool.fillMissing")}</button>
+            className="text-[11px] uppercase tracking-wide font-medium text-cz-accent-t hover:underline disabled:opacity-50">{t("racehub.pool.autofill")}</button>
           <span className="text-cz-border" aria-hidden="true">·</span>
           <button type="button" onClick={() => onRegenerate("all")} disabled={busy}
             className="text-xs text-cz-3 hover:text-cz-1 hover:underline disabled:opacity-50">{t("racehub.pool.fillAll")}</button>

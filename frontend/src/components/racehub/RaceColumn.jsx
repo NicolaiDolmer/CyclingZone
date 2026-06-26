@@ -98,9 +98,14 @@ export default function RaceColumn({ column, onRemoveRider, onToggleWithdraw, on
             return (
               <div key={id} className="relative">
                 <div className="w-full flex items-center justify-between gap-2 px-3 py-1.5 hover:bg-cz-subtle">
+                  {/* #1919: rolle-tildeling lå skjult bag rytter-navnet uden nogen affordance
+                      (Clarity: dead-clicks fordi navnet ikke så interaktivt ud). Chevron +
+                      aria-haspopup + hover-farve gør nu tydeligt at navnet åbner rolle-menuen. */}
                   <button type="button" onClick={() => setRoleMenuFor(roleMenuFor === id ? null : id)} disabled={busy}
-                    className="flex items-center text-left min-w-0 disabled:opacity-50">
-                    <span className="text-xs text-cz-1 truncate">{r.name}</span>
+                    aria-haspopup="menu" aria-expanded={roleMenuFor === id}
+                    className="group/role flex items-center gap-1 text-left min-w-0 disabled:opacity-50">
+                    <span aria-hidden="true" className={`text-cz-3 text-[10px] flex-shrink-0 transition-transform ${roleMenuFor === id ? "rotate-180" : ""}`}>▾</span>
+                    <span className="text-xs text-cz-1 truncate transition-colors group-hover/role:text-cz-accent-t">{r.name}</span>
                     {role && <RoleBadge t={t} role={role} />}
                   </button>
                   <span className="flex items-center gap-2 flex-shrink-0">

@@ -21,9 +21,13 @@ export default function ContextBand({ scope, day, currentDay, timeline, onScopeC
           <button
             key={s.key}
             type="button"
+            role="tab"
+            aria-selected={scope === s.key}
             disabled={!s.enabled}
             title={s.enabled ? undefined : t("racehub.scope.soon")}
-            onClick={() => s.enabled && onScopeChange(s.key)}
+            // #1919: klik på den allerede-aktive pill er en no-op (ingen state-skift) →
+            // talte som "dead click" i Clarity. Spring kaldet over når den er valgt.
+            onClick={() => { if (s.enabled && scope !== s.key) onScopeChange(s.key); }}
             className={`text-xs uppercase tracking-wide px-3 py-1.5 rounded-full border transition-colors ${
               scope === s.key
                 ? "bg-cz-accent text-cz-on-accent border-cz-accent"
@@ -56,7 +60,8 @@ export default function ContextBand({ scope, day, currentDay, timeline, onScopeC
                 type="button"
                 title={`${d.dateText || t("racehub.timeline.dayOf", { day: d.day, total })}${isToday ? ` — ${t("racehub.timeline.youAreHere")}` : ""}`}
                 aria-current={isFocus ? "true" : undefined}
-                onClick={() => onDayChange(d.day)}
+                // #1919: klik på den allerede-fokuserede dag er en no-op → dead click.
+                onClick={() => { if (d.day !== day) onDayChange(d.day); }}
                 className={`flex-1 h-4 rounded-sm transition-colors ${base} ${todayRing}`}
               />
             );
