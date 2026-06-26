@@ -51,6 +51,7 @@ const RulesPage = lazy(() => import("./pages/RulesPage"));
 const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicyPage"));
 const PrivacyPolicyPageEn = lazy(() => import("./pages/PrivacyPolicyPageEn"));
 const FounderSupporterPage = lazy(() => import("./pages/FounderSupporterPage"));
+const ProUpgradePage = lazy(() => import("./pages/ProUpgradePage"));
 const LandingPage = lazy(() => import("./pages/LandingPage"));
 const KitchenSinkPage = lazy(() => import("./pages/KitchenSinkPage"));
 const RacesPage = lazy(() => import("./pages/RacesPage"));
@@ -176,6 +177,8 @@ export default function App() {
             <Route path="notifications" element={<NotificationsPage />} />
             <Route path="compare" element={<RiderComparePage />} />
             <Route path="profile" element={<ProfilePage />} />
+            <Route path="pro" element={<ProUpgradePage />} />
+            <Route path="pro/success" element={<ProUpgradePage />} />
             <Route path="activity" element={<ActivityPage />} />
             <Route path="activity-feed" element={<Navigate to="/notifications" replace />} />
             <Route path="watchlist" element={<WatchlistPage />} />
