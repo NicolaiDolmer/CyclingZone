@@ -65,29 +65,32 @@ Hvorfor A frem for "byg Pro færdigt først" (B) eller "vent på skala" (C): A e
 1. **Auto-bud sælges ikke** — auktioner forbliver tilstedeværelses-baserede. En *bud-påmindelse* ("X lukker snart") kan gives gratis til alle.
 2. **Pro-analytics afslører aldrig eksklusive fakta** — kun rigere grafer/historik af data der allerede findes råt for gratis-spillere.
 
-## 7. Prissætning (anbefalet — ejer bekræfter før go-live)
+## 7. Prissætning (ejer-besluttet 2026-06-26)
 
-Kollaps v1 til **én betalt pris** (drop free/supporter/pro/patron-firkløveret til start; udvid tiers senere). De eksisterende 49/89/149 kr/md er i den stejle ende for genren.
+Kollaps v1 til **ét betalt produkt** (drop free/supporter/pro/patron-firkløveret til start; udvid tiers senere). 49 kr/md er ankeret.
 
-- **Anbefalet launch:** led med **årspris ~349–399 kr/år** (Hattrick-anker; cash up-front, bedre tidlig konvertering) + valgfri **månedspris ~49 kr/md**.
-- **Founder-hook:** livstids-rabat (Founder-prisen følger dig) + Founder-badge, kun for dem der køber i launch-vinduet.
-- Højere "Patron"-tier til dem der vil give mere: senere, ikke v1.
+**Launch (Fase 1) — to intervaller:**
+| Plan | Pris | Pr. md | Rabat |
+|---|---|---|---|
+| Månedlig | 49 kr/md | 49 kr | — |
+| 6 måneder | 265 kr | ~44 kr | ~10% |
 
-*Eksakte tal låses som et lille separat skridt før Stripe-produktet oprettes.*
+- **Ingen livstids-rabat** (ejer-besluttet) — kan altid laves som tidsbegrænset kampagne senere. Founder-hook'et er **status (badge)**, ikke pris.
+- **Årlig (490 kr, 2 mdr gratis / 17%) introduceres i Fase 2**, når der er fornyelsesdata + tillid. Et helt år up-front er en svær sælger på et ubevist beta. Alunta-planer har `renewal_interval` → at tilføje årlig senere er trivielt.
+- Niveau-note: hold øje med konvertering; juster på data.
 
 ## 8. Faseplan
 
 **Fase 0 — Lås & forbered (dage, mest beslutninger)**
-- ✅ Model, jernregel, værdideling, gråzoner — låst.
-- Lås eksakte priser (§7).
-- Opret Stripe-konto (test + live), Product "CZ Pro" m. annual + monthly Price + Founder-coupon.
-- Jura: ToS + refund-politik (EU 14-dages fortrydelse + digital-content-waiver). Privatlivspolitik findes.
+- ✅ Model, jernregel, værdideling, gråzoner, priser (§7), provider (Alunta) — låst.
+- Alunta: opret CZ Pro-plan m. renewal-intervaller (månedlig + 6-mdr), API-token → **Infisical** (aldrig i koden), webhook-endpoint registreret.
+- Jura: ToS + refund-politik (EU 14-dages fortrydelse + digital-content-waiver). Privatlivspolitik findes. (Alunta håndterer moms/fakturering/bogføring.)
 
 **Fase 1 — Founders-medlemskab (uger) — build-scope for første implementeringsplan**
-- Stripe Checkout + webhook + entitlement i Supabase (§9).
+- Alunta hosted checkout + webhook + entitlement (`is_pro`) i Supabase (§9).
 - Byg v1 Pro-perks: Founder-badge, kit/logo-designer, Pro-analytics-views, early-access-flag, komfort-features.
-- Konvertér Founder-siden: venteliste-form → "Bliv Founder"-CTA → Stripe Checkout.
-- Tilbyd de 39 Founder-medlemskab m. livstids-rabat.
+- Konvertér Founder-siden: venteliste-form → "Bliv Founder"-CTA → Alunta checkout.
+- Tilbyd de 39 Founder-medlemskab (status-hook, ingen pris-rabat).
 - Mål: læring (hvem/hvad/pris) + første kroner + goodwill.
 
 **Fase 2 — Det rigtige Pro-produkt (måneder, vokser med basen)**
@@ -101,28 +104,41 @@ Kollaps v1 til **én betalt pris** (drop free/supporter/pro/patron-firkløveret 
 
 ## 9. Teknisk arkitektur (Fase 1)
 
-Stack: React/Vite (Vercel) · Node/Express (Railway) · Supabase (Postgres, Auth, RLS) · Stripe.
+Stack: React/Vite (Vercel) · Node/Express (Railway) · Supabase (Postgres, Auth, RLS) · **Alunta** (kort via Stripe + MobilePay + Betalingsservice).
 
-**Stripe**
-- Product "CZ Pro" m. to Prices (annual, monthly) + Founder-coupon (livstids-rabat).
-- **Stripe Tax** slået til → automatisk EU-moms + momspligtige kvitteringer/fakturaer.
-- Billing Portal til self-service (opsig/skift kort).
+**Provider-valg: Alunta — men provider-agnostisk.** Entitlement = `is_pro` i egen DB, flippet af webhook. `external_customer_id`/`external_subscription_id` mapper til CZ-team-id. → ikke låst inde; kan skifte til Stripe-direkte ved international skala uden at rive entitlement-laget op.
+
+**Alunta API (verificeret 2026-06-26, OpenAPI v1)**
+- Base `https://app.alunta.com/api/v1` · Auth `Authorization: Bearer <token>` (token i **Infisical**).
+- Plan "CZ Pro" m. renewal-intervaller (månedlig + 6-mdr) oprettes i Alunta.
+- Alunta håndterer moms/kvitteringer/bogføring automatisk.
+
+**Korrekt flow (opgradering, IKKE signup)**
+1. Signup → intet betalings-relateret; brugeren er gratis.
+2. "Bliv Pro/Founder" → backend sikrer Alunta-kunde (`POST /customers`, `external_customer_id`=team-id) + opretter `POST /checkout-sessions` (`plan_id`, `success_url`, `back_url`) → returnerer `checkout_url`.
+3. Redirect til `checkout_url`; brugeren betaler (kort/MobilePay/Betalingsservice).
+4. Webhook (`checkout.completed`/`invoice.paid`) → flip `is_pro`. `subscription.cancelled` → nedgradér ved periodeudløb.
 
 **Backend (Express)**
-- `POST /api/billing/checkout` — opretter Checkout Session (`mode=subscription`) for den autentificerede bruger; `client_reference_id` = team/user-id; success/cancel-URLs. Returnerer session-URL.
-- `POST /api/billing/webhook` — rå body, verificér signatur, idempotent (gem event-id). Håndtér `checkout.session.completed`, `customer.subscription.updated|deleted`, `invoice.paid|payment_failed` → opdatér entitlement.
-- `POST /api/billing/portal` — Billing Portal-session.
+- `POST /api/billing/checkout` — sikrer kunde + opretter checkout-session for autentificeret team; returnerer `checkout_url`.
+- `POST /api/billing/alunta-webhook` — **svar 2xx < 3 sek.** (Aluntas grænse), gør DB-arbejdet hurtigt/efter svar; idempotent (gem event/UUID); verificér ægthed. Retry op til 8× ~24t; replay via `POST /webhooks/replay/{uuid}`.
 - Gate Pro-endpoints med `isPro(team)`-helper.
+- Self-service opsigelse: Alunta Portal (`Portal`-endpoint-gruppe) — bekræft i test_mode.
 
 **Supabase (skema)**
-- Ny tabel `subscriptions`: `user_id`/`team_id`, `stripe_customer_id`, `stripe_subscription_id`, `status`, `tier`, `current_period_end`, `is_founder`, `created_at`. Afledt `is_pro` / `pro_until` til hurtige checks.
+- Ny tabel `subscriptions`: `team_id`, `alunta_customer_id`, `alunta_subscription_id`, `status`, `plan_interval`, `current_period_end`, `is_founder`, `created_at`. Afledt `is_pro` / `pro_until`.
 - RLS: bruger læser egen subscription; **kun service_role (webhook) skriver**.
 - Migration auto-applies i prod → **ejer merger PR'en med SQL** (jf. hard rule).
 
 **Frontend**
 - `isPro`-helper (delt logik) gater Pro-UI: badge, kit-designer, Pro-analytics, early-access-flag.
-- Founder-side: behold stillads, skift form → Checkout-CTA.
-- Billing-indgang i profil/settings → Portal.
+- Founder-side: behold stillads, skift venteliste-form → "Bliv Founder"-CTA → checkout.
+- Billing-indgang i profil/settings → Alunta Portal.
+
+**Åbne tekniske afklaringer (test_mode før prod)**
+- Eksakte feltnavne (`plan_id` vs `plan_uuid` i checkout vs subscriptions-create).
+- Webhook-ægthedsverifikation (signatur-header?).
+- Portal-session-endpoint til self-service opsigelse.
 
 ## 10. Succesmål / scorecard (Fase 1)
 
@@ -146,7 +162,8 @@ Ikke en omsætnings-target. Mål:
 - **Pris for høj for genren:** start lavt/årligt, juster på data.
 - **Webhook-fejl → forkert entitlement:** idempotens + signatur-verifikation + service_role-only writes.
 
-## 13. Åbne beslutninger (ejer)
+## 13. Åbne punkter
 
-1. Eksakte priser (§7) — anbefalet ~349–399 kr/år + ~49 kr/md.
-2. Launch-vinduets længde for Founder-livstids-rabat.
+- **Ejer-handlinger (gater build/test):** opret CZ Pro-plan i Alunta (månedlig + 6-mdr), generér API-token → Infisical.
+- **Verificér i test_mode:** API-feltnavne, webhook-ægthed, Portal-endpoint (§9).
+- **Launch-vindue:** hvor længe Founder-badge'et kan opnås (fx første 30 dage / 50 købere) — ejer beslutter.
