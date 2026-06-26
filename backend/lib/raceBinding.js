@@ -3,6 +3,7 @@
 // Et etapeløb binder fra første til sidste etape (hele tidsvinduet).
 
 import { copenhagenDateString } from "./copenhagenTime.js";
+import { loadEligibleEntries } from "./raceEntriesLoader.js";
 
 const DAY_MS = 86_400_000;
 
@@ -125,9 +126,16 @@ export async function loadTeamBindingContext({ supabase, race, teamId }) {
   if (eW) throw new Error(`race_withdrawals (binding): ${eW.message}`);
   const withdrawn = new Set((wRows || []).map((w) => w.race_id));
 
-  // Holdets entries i ANDRE løb end dette (afmeldte udeladt).
-  const { data: entries, error: e2 } = await supabase
-    .from("race_entries").select("race_id, rider_id").eq("team_id", teamId).neq("race_id", race.id);
+  // Holdets entries i ANDRE løb end dette (afmeldte udeladt). #1906/#1823 rod-årsag:
+  // kryds gennem den delte eligibility-loader, så en ghost/udlånt rytter (solgt/fyret/
+  // akademi/pensioneret/udlånt EFTER udtagelse) IKKE phantom-binder en ægte rytter og
+  // får PUT /selection til at afvise med 409 selection_rider_bound. team_id tages med så
+  // loaderen kan krydse entry'ens hold mod rytterens nuværende hold.
+  const { data: entries, error: e2 } = await loadEligibleEntries({
+    supabase,
+    baseQuery: () => supabase
+      .from("race_entries").select("race_id, rider_id, team_id").eq("team_id", teamId).neq("race_id", race.id),
+  });
   if (e2) throw new Error(`race_entries (binding): ${e2.message}`);
 
   const ridersByRace = new Map();

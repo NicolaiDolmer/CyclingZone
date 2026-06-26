@@ -41,6 +41,7 @@ import {
   FINANCE_RELATED_ENTITY,
 } from "./economyConstants.js";
 import { contractOnAcquirePatch } from "./contractSeed.js";
+import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 
 // #1309: aktiv sæson-number til contract_end_season-beregning.
 // Spejler transferExecution.fetchActiveSeasonNumber — default 1 som edge-case.
@@ -241,6 +242,10 @@ async function executeAutoSale({
       })
       .eq("id", rider.id)
   );
+
+  // #1906 defense-in-depth: rytteren forlod holdet (tvangssalg til AI/fri agent) —
+  // ryd hans fremtidige race_entries så de ikke hænger ved som ghost.
+  await clearFutureRaceEntriesSafe({ supabase, riderId: rider.id, label: "squad_auto_sale" });
 
   // #776/#822 forward-guard: auto-salg til AI/fri agent er også et salg —
   // luk åbne transfer_listings så rytteren ikke står som zombie-"til salg".

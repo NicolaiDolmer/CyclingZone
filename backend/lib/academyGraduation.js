@@ -13,6 +13,7 @@ import { notifyTeamOwner } from "./notificationService.js";
 import { computeFrozenSalary, computeContractEndSeason, CONTRACT } from "./contractSeed.js";
 import { getTeamMarketState, calculateRiderMarketValue } from "./marketUtils.js";
 import { calculateAuctionEnd, DEFAULT_AUCTION_CONFIG } from "./auctionEngine.js";
+import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 
 export const GRADUATION = Object.freeze({
   GRADUATE_AGE: 22,   // alder hvor akademi-ophold slutter (MAX_AGE 21 + 1)
@@ -129,6 +130,8 @@ export async function resolveGraduation(supabase, {
   const { error } = await supabase.from("riders")
     .update({ team_id: null, is_academy: false }).eq("id", riderId);
   if (error) throw new Error(`resolveGraduation release update: ${error.message}`);
+  // #1906 defense-in-depth: ryd rytterens fremtidige race_entries så de ikke hænger ved som ghost.
+  await clearFutureRaceEntriesSafe({ supabase, riderId, label: "academy_release" });
   await finishGraduation(supabase, { gradId: grad.id, status: "released", teamId, rider, now, action, notify });
   return { riderId, action: "released" };
 }

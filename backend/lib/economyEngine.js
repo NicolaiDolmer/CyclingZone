@@ -32,6 +32,7 @@ import {
 import { notifyTeamOwner as notifyTeamOwnerShared } from "./notificationService.js";
 import { isBoardTestModeActive } from "./boardTestMode.js";
 import { developRidersForSeason } from "./riderProgressionEngine.js";
+import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 import { U25_ABILITY_KEYS } from "./boardGoals.js";
 import {
   DEBT_CEILING_BY_DIVISION,
@@ -613,6 +614,9 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
             })
             .eq("id", rider.id);
           throwIfSupabaseError(riderUpdateError, `Could not move rider ${rider.id} after forced debt sale`);
+
+          // #1906 defense-in-depth: ryd den solgte rytters fremtidige race_entries (ghost-guard)
+          await clearFutureRaceEntriesSafe({ supabase: supabaseClient, riderId: rider.id, label: "forcedDebtSale" });
 
           await closeTransferListingsForRiders(supabaseClient, [rider.id], "sold");
 

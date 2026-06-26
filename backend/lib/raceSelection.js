@@ -6,6 +6,7 @@ import { selectionSizeForRace, suitabilityScore, stageSuitabilityScores } from "
 import { ABILITY_KEYS } from "./raceSimulator.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
 import { applyRiderEligibilityFilter } from "./riderEligibility.js";
+import { loadLoanedOutRiderIds } from "./raceEntriesLoader.js";
 
 export function validateSelection({
   riderIds = [], captainId = null, sprintCaptainId = null, hunterId = null,
@@ -17,9 +18,19 @@ export function validateSelection({
   const unique = new Set(riderIds);
   if (unique.size !== riderIds.length) errors.push("selection_duplicate_rider");
 
-  // Lille-trup-lempelse: min sænkes til antal tilgængelige (autopick-paritet).
-  const effectiveMin = Math.min(sizeRule.min, Number.isFinite(availableCount) ? availableCount : sizeRule.min);
-  if (riderIds.length < effectiveMin || riderIds.length > sizeRule.max) errors.push("selection_wrong_size");
+  // Fuld opstilling KRÆVES (#1906, ejer-beslutning 26/6): man kan ikke gemme en delvis
+  // trup — vil/kan man ikke stille fuldt hold til et løb, afmelder man sig i stedet, eller
+  // henter fri-agenter. `required` = løbets pladsantal (sizeRule.max == feltstørrelsen for
+  // alle rigtige klasser). To distinkte fejl, så UI kan guide forskelligt:
+  //   - selection_insufficient_riders: holdet har fysisk for få raske, berettigede ryttere
+  //     til en fuld opstilling → vis afmeld + link til fri transfers.
+  //   - selection_wrong_size: holdet KAN fylde, men har valgt for få/mange → fyld op.
+  const required = sizeRule.max;
+  if (Number.isFinite(availableCount) && availableCount < required) {
+    errors.push("selection_insufficient_riders");
+  } else if (riderIds.length !== required) {
+    errors.push("selection_wrong_size");
+  }
 
   for (const id of riderIds) {
     if (!teamRiderIds.has(id)) { errors.push("selection_rider_not_on_team"); break; }
@@ -112,8 +123,16 @@ export async function getSelectionContext({ supabase, race, teamId }) {
   for (const [name, res] of [["riders", ridersRes], ["race_stage_profiles", profilesRes], ["race_entries", entriesRes]]) {
     if (res.error) throw new Error(`${name}: ${res.error.message}`);
   }
-  const riders = ridersRes.data || [];
+  const allRiders = ridersRes.data || [];
   const stages = profilesRes.data || [];
+  // Loan-aware (#1906): en udlånt rytter beholder ejer-holdets team_id men kører for
+  // låneren — udelad ham fra ejerens valgbare trup, så han hverken vises, tæller i
+  // kapacitet eller kan udtages (ellers fantom-rytter + mulig dobbelt-feltning).
+  const { data: loanedOut, error: loanErr } = await loadLoanedOutRiderIds({
+    supabase, riderIds: allRiders.map((r) => r.id),
+  });
+  if (loanErr) throw new Error(`loan_agreements: ${loanErr.message}`);
+  const riders = allRiders.filter((r) => !loanedOut.has(r.id));
   const riderIds = riders.map((r) => r.id);
 
   const abilityCols = ["rider_id", ...ABILITY_KEYS].join(", ");

@@ -248,7 +248,8 @@
     "saving": "Saving…",
     "saved": "Selection saved.",
     "errors": {
-      "selection_wrong_size": "Pick between {min} and {max} riders.",
+      "selection_wrong_size": "Field a full team — pick all {max} riders.",
+      "selection_insufficient_riders": "You don't have enough available riders for a full team. Withdraw from this race or sign free agents.",
       "selection_captain_required": "Pick a captain among your selected riders.",
       "selection_captain_not_selected": "Your captain must be one of the selected riders.",
       "selection_role_not_selected": "Role riders must be part of the selection.",
