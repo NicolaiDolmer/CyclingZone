@@ -17,16 +17,7 @@ import { AcademySignConfirmModal } from "../components/AcademySignConfirmModal.j
 import { AcademyTransferConfirmModal } from "../components/AcademyTransferConfirmModal.jsx";
 import { getRiderMarketValue, projectSeniorSalary } from "../lib/marketValues.js";
 import { formatNumber } from "../lib/intl.js";
-
-function calcAge(birthdate) {
-  if (!birthdate) return null;
-  const birth = new Date(birthdate);
-  const today = new Date();
-  let age = today.getFullYear() - birth.getFullYear();
-  const m = today.getMonth() - birth.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
-  return age;
-}
+import { getRiderAge } from "../lib/riderAge.js";
 
 function formatSalary(salary) {
   if (salary == null) return "–";
@@ -275,7 +266,7 @@ export default function AcademyPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {intake.map((item) => {
               const rider = item.rider;
-              const age = calcAge(rider.birthdate);
+              const age = getRiderAge(rider.birthdate);
               const busy = actionState[rider.id] != null;
               const err = actionErrors[rider.id];
               const potential = item.potentialEstimate;
@@ -383,7 +374,7 @@ export default function AcademyPage() {
                 </thead>
                 <tbody>
                   {roster.map((rider) => {
-                    const age = calcAge(rider.birthdate);
+                    const age = getRiderAge(rider.birthdate);
                     const busy = actionState[rider.id] != null;
                     const err = actionErrors[rider.id];
                     return (
@@ -444,7 +435,7 @@ export default function AcademyPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {freeAgents.map((rider) => {
-              const age = calcAge(rider.birthdate);
+              const age = getRiderAge(rider.birthdate);
               const busy = actionState[rider.id] != null;
               const err = actionErrors[rider.id];
               return (

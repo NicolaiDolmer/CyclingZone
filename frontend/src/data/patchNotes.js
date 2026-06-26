@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.22",
+    "date": "2026-06-26",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Academy rider ages now match the rest of the game",
+          "body": "A young rider's age could read one year lower on the Academy page than on their profile, because the Academy page counted age differently. The Academy now uses the same age as every other screen (and as the academy eligibility rules), so a rider shows the same age everywhere."
+        },
+        "da": {
+          "title": "Akademirytteres alder matcher nu resten af spillet",
+          "body": "En ung rytters alder kunne stå ét år lavere på Akademi-siden end på rytterprofilen, fordi Akademi-siden talte alder anderledes. Akademiet bruger nu samme alder som alle andre skærme (og som akademiets aldersregler), så en rytter viser samme alder overalt."
+        },
+        "refs": [1831]
+      }
+    ]
+  },
+  {
     "version": "6.21",
     "date": "2026-06-26",
     "label": "Beta",
