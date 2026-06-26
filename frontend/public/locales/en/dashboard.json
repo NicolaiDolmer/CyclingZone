@@ -25,15 +25,6 @@
     "cta": "Add",
     "dismissAria": "Hide"
   },
-  "deadlineDay": {
-    "title": "DEADLINE DAY",
-    "closesIn": "Transfer window closes in {h}h {m}m",
-    "cta": "Go to transfers →"
-  },
-  "deadlineDayBanner": {
-    "title": "Deadline Day",
-    "countdownHours": "{h}h {m}m {s}s"
-  },
   "seasonBanner": {
     "title": "Season {number}",
     "status": {
@@ -45,11 +36,7 @@
     "daysLeftSuffix": "days until season ends",
     "raceDays": "{completed}/{total} race days",
     "raceDaysLive": "{count} live",
-    "viewCalendar": "View calendar →",
-    "transferWindow": {
-      "open": "✓ Transfer window open",
-      "closed": "✗ Transfer window closed"
-    }
+    "viewCalendar": "View calendar →"
   },
   "cards": {
     "auctions": {
@@ -67,7 +54,6 @@
       "linkAll": "See all →",
       "empty": "No pending transfers",
       "incomingCount": "{count, plural, one {1 incoming transfer} other {# incoming transfers}}",
-      "awaitingWindow": "Awaiting window",
       "from": "From: {name}",
       "to": "To: {name}",
       "needsAction": "Needs action",
@@ -225,12 +211,8 @@
   },
   "onboardingComplete": {
     "title": "You're ready. The basics are done",
-    "body": "All four getting-started steps are checked off. Next phase is building your team across multiple seasons. Follow Deadline Day, deliver on the board's targets, and fight for promotion.",
+    "body": "All four getting-started steps are checked off. Next phase is building your team across multiple seasons. Deliver on the board's targets and fight for promotion.",
     "nextLinks": {
-      "deadlineDay": {
-        "label": "Deadline Day",
-        "desc": "Follow the transfer window when it closes"
-      },
       "board": {
         "label": "Board",
         "desc": "Negotiate 1yr/3yr/5yr plans in parallel"

@@ -20,7 +20,6 @@
       "auctions": "Auctions",
       "transfers": "Transfers",
       "transferList": "Transfer list",
-      "deadlineDay": "Deadline Day",
       "watchlist": "Watchlist",
       "activity": "My Activity",
       "results": "Overview",
@@ -40,9 +39,6 @@
       "waitlist": "Waitlist",
       "sprintMetrics": "Sprint metrics",
       "attribution": "Attribution"
-    },
-    "tooltip": {
-      "deadlineDay": "A transfer window where 30-minute flash auctions open up."
     }
   },
   "sidebar": {
@@ -95,10 +91,6 @@
   },
   "race": {
     "editionYear": "{year} edition"
-  },
-  "deadlineTicker": {
-    "pause": "Pause ticker",
-    "resume": "Resume ticker"
   },
   "a11y": {
     "openMenu": "Open menu",

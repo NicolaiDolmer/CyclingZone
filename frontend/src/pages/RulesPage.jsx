@@ -27,7 +27,7 @@ import {
 // Section → block ids + block kind. "table" blocks render rules[].rows; the rest
 // render a single interpolated paragraph. Order here is the display order.
 const SECTION_DEFS = [
-  { key: "squad", icon: TeamIcon, blocks: ["cap", "window", "enforcement", "academyExempt"] },
+  { key: "squad", icon: TeamIcon, blocks: ["cap", "enforcement", "academyExempt"] },
   {
     key: "economy",
     icon: CoinIcon,
@@ -43,7 +43,7 @@ const SECTION_DEFS = [
     ],
   },
   { key: "auctions", icon: TagIcon, blocks: ["duration", "minBid", "extension", "proxy"] },
-  { key: "transfers", icon: ExchangeIcon, blocks: ["contractInherited", "loansCount", "deadlineWarnings"] },
+  { key: "transfers", icon: ExchangeIcon, blocks: ["contractInherited", "loansCount"] },
   { key: "races", icon: FlagIcon, blocks: ["prize", "resultType", "freeAgentPrize"] },
   { key: "season", icon: CalendarIcon, blocks: ["structure", "promotion", "transition"] },
   // Academy is gated behind academy_enabled (see RulesPage props). When the flag
@@ -60,9 +60,7 @@ const FAQ_LINKS = [
   "debtCeiling",
   "prizeMoneyFaq",
   "divisionBonusFaq",
-  "squadEnforcementFaq",
   "auctionExpiry",
-  "deadlineTimelineFaq",
 ];
 
 // Pre-format every number into a locale-aware display string so rules.json prose
@@ -72,8 +70,6 @@ function buildVars(n) {
   for (const [k, v] of Object.entries(n)) {
     vars[k] = typeof v === "number" && Math.abs(v) >= 1000 ? formatNumber(v) : v;
   }
-  // Derived display-only value (cap + buffer) used in the squad window block.
-  vars.squadCapPlusBuffer = formatNumber(n.squadCap + n.windowBuffer);
   return vars;
 }
 

@@ -94,9 +94,9 @@ const TRANSLATED_PAGE_SMOKE = [
   },
   {
     path: "/team",
-    en: [/Transfer window open/i, /Squad \(/i],
-    da: [/Transfervindue åbent/i, /Trup \(/i],
-    rawKeys: ["team:page.windowOpen", "page.windowOpen", "tabs.squad"],
+    en: [/Squad \(/i],
+    da: [/Trup \(/i],
+    rawKeys: ["tabs.squad"],
   },
   {
     path: "/finance",

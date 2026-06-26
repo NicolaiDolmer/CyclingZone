@@ -177,10 +177,6 @@ export function apiResponse(pathname) {
     };
   }
 
-  if (pathname.endsWith("/api/transfer-window")) {
-    return { open: true, status: "open" };
-  }
-
   if (pathname.endsWith("/api/online-count")) return { count: 1 };
   if (pathname.endsWith("/api/notifications")) return [];
   if (pathname.endsWith("/api/auctions")) return AUCTIONS;
@@ -194,10 +190,6 @@ export function apiResponse(pathname) {
     return { steps: [], completed_steps: [], completion_pct: 0 };
   }
   if (pathname.endsWith("/api/me/discord-status")) return { enabled: false, connected: false };
-  if (pathname.endsWith("/api/deadline-day/status")) return { active: false };
-  // Backend returnerer et ARRAY af events (api.js: res.json(events.slice(0, 20))).
-  // Objekt-shape ({ items: [] }) crasher DeadlineDayTicker (events.map) når DD er aktiv (#778-probe).
-  if (pathname.endsWith("/api/deadline-day/ticker")) return [];
   if (pathname.endsWith("/api/race-pool")) return [];
   // Race-hub (#prelive-harness, A2): board-aggregat + strategi-flade.
   if (pathname.endsWith("/api/races/distribution")) return SEED_DISTRIBUTION;

@@ -26,5 +26,5 @@
   "pagination": "Showing {from}–{to} of {total}",
   "prev": "← Previous",
   "next": "Next →",
-  "auctionStarted": "Auction started.\n\nNote: you now lead auctions equal to {total} riders (max {max}). If you're still {exceed} over at window close: auto-sale + {fine} CZ$ fine + {points} deduction points."
+  "auctionStarted": "Auction started.\n\nNote: you now lead auctions equal to {total} riders (max {max}). The cap is a hard limit, so you cannot win more riders than your squad can hold."
 }

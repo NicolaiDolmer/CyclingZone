@@ -20,7 +20,6 @@
       "auctions": "Auktioner",
       "transfers": "Transfers",
       "transferList": "Transferliste",
-      "deadlineDay": "Deadline Day",
       "watchlist": "Ønskeliste",
       "activity": "Min Aktivitet",
       "results": "Overblik",
@@ -40,9 +39,6 @@
       "waitlist": "Waitlist",
       "sprintMetrics": "Sprint-metrics",
       "attribution": "Attribution"
-    },
-    "tooltip": {
-      "deadlineDay": "Et transfervindue hvor 30-minutters flash-auktioner åbner."
     }
   },
   "sidebar": {
@@ -95,10 +91,6 @@
   },
   "race": {
     "editionYear": "{year}-udgave"
-  },
-  "deadlineTicker": {
-    "pause": "Pause ticker",
-    "resume": "Genoptag ticker"
   },
   "a11y": {
     "openMenu": "Åbn menu",
