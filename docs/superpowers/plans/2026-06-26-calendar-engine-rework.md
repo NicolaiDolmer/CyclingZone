@@ -133,6 +133,27 @@ Verificér mod ægte rytter-population at den nye kalender er bemandbar FØR pro
 
 ---
 
+## Simulerings-fund + beslutninger (26/6, efter Task 5 dry-run mod prod)
+
+Read-only preview (`preview-calendar-rework.mjs`) mod prod-kataloget afslørede to ting FØR prod blev rørt:
+
+1. **Div 1 reddet:** med single-kvoten får Div 1 nu 13 endagsløb + 5 monumenter (op fra 0). #1856-fixet virker. ✅
+2. **Kataloget for lille:** 376 race-dage i `race_pool` vs 7×140 = 980 behov (38%). Med global de-dup (#1714) sulter parallelle puljer på samme tier hinanden → ingen division nåede 140 (Div 1 = 117, svageste = 30). 🔴
+3. **Peak = 5 samtidige etapeløb:** `tracks=5` lagde blindt 5 parallelle løb → ikke bemandbart, ikke virkelighedstro. 🔴
+
+**Ejer-beslutninger (26/6):**
+- **Concurrency:** fast **max 2 samtidige etapeløb** pr. division; endagsløb fylder de øvrige daglige slots op til 5 etaper/dag. → Task 7.
+- **Katalog:** **genbrug på tværs af puljer** — parallelle puljer på samme niveau må køre samme løb (egen instans hver; usynligt for spillere). → Task 6.
+
+### Task 6: Generator — `allowReuseAcrossPools`
+`generateDivisionCalendars`: ny param (default false = #1714-adfærd bevaret). True → drop de-dup MELLEM puljer (per-pulje `selectedIds` beholdes), så hver pulje kan nå 140 fra sit tier-katalog. TDD: kontrast true vs false.
+
+### Task 7: Planlægger — `stageRaceTracks` (kapacitets-bevidst)
+`planRaceSchedules`: ny param `stageRaceTracks` (default null = nuværende blandede adfærd). Sat (=2) → etapeløb kun på de første 2 spor, endagsløb på de resterende 3 → garanteret peak ≤ 2 etapeløb, op til 5 etaper/dag. TDD: assertér `peakConcurrentStageRaces ≤ 2`.
+
+### Task 8: Integrér + re-simulér
+Materializer/reset sender `allowReuseAcrossPools:true` + `stageRaceTracks:2`. Re-kør preview → bekræft peak ≤ 2 + alle divisioner ~140 → vis ejeren → prod.
+
 # GATE → Fase 2
 
 Fase 2 starter KUN når: (a) Div 1–3 har kørt automatisk i ≥2 døgn uden scheduler-fejl, (b) felterne er bemandbare i praksis (verificeret), (c) ejeren har set og godkendt resultatet i UI (kræver Fase 3).
