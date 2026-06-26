@@ -497,6 +497,10 @@
           "There is no cap on how many riders can have a program: you can set one for your entire squad."
         ]
       },
+      "focusAbilities": {
+        "title": "What each focus trains",
+        "text": "Each focus develops a specific set of abilities faster toward their ceiling, while a rider's other abilities keep improving a little more slowly. Everyone develops across the board, just fastest in the chosen direction. The directions are: VO2max trains Climbing, Punch and Tempo. Threshold/TT trains Time trial and Tempo. Sprint trains Sprint and Acceleration. Endurance trains Endurance, Recovery and Durability. Technique trains Descending, Positioning and Cobbles. Aero trains Time trial and Flat. Intensity sets the pace: Easy is slowest but safe, Normal is the balanced default with a small setback risk, and Hard is fastest but risks a setback or injury when a rider's fatigue is already high."
+      },
       "trainToday": {
         "title": "Train today and the +25% boost",
         "text": "Click 'Train today' once per day to run all active programs with a +25% training boost. If you skip the button, the assistant runs training automatically after 22:00. You never lose a day of training. Only the boost is missed when you don't click."
