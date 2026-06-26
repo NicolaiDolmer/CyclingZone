@@ -345,6 +345,10 @@
         "title": "Open a race: route, terrain DNA and your lineup",
         "text": "Race names are clickable across the game. Opening a race shows its results if it has run, or for an upcoming race the route profile per stage, a terrain-DNA bar of which abilities each stage rewards, and your own lineup with a route match per stage so you can pick riders that suit the parcours. Pick a stage from the stage stripe to switch the profile and the route match. The terrain is an indicative category, not a measured elevation profile."
       },
+      "teamSelection": {
+        "title": "Pick your team and move riders between races",
+        "text": "For each race you enter you field a full team: pick every rider slot the race has. If you would rather sit a race out, withdraw from it; if you are short on riders, sign free agents from the Transfers page. When two of your races overlap on the same day, a rider can only be in one of them. On the Squad distribution board you can move a rider from one race to another by dragging the rider on desktop, or by tapping the rider and choosing the other race on phones. The race you move them out of shows as understaffed until you fill it again, and the assistant's Auto-fill does that quickly."
+      },
       "prizeMoney": {
         "title": "Prize money from races",
         "text": "Each result for a rider on your team generates prize money: points for the placing × 75 CZ$. Prize money is paid automatically to your team balance when admin finalises the results and shows as a 'prize' transaction in your finance log. Points for the season leaderboard and prize money are computed separately: points decide the leaderboard, while the CZ$ prize only affects your balance. Races without a race class generate no prize money. See the full points table under Season & Results, Races, Points & prizes."
