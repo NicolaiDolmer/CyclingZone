@@ -4,13 +4,11 @@
 
 ## Aktiv styring
 
-> **⚠️ MOTOR SLUKKET — INGEN LØB KØRER (27/6, KRITISK):** `race_engine_v2_enabled` + `stage_scheduler_enabled` + `auto_prize_enabled` = **off** i `app_config`. **Tænd dem ALDRIG uden eksplicit ejer-go** (ejer-direktiv 27/6). **Sæson 1's løb genstarter mandag 29/6** — ejeren beslutter selve gen-tændingen. Managers skal kunne SE kalenderen + planlægge trup inden da.
+> **🟢 MOTOR TÆNDT — løb genstarter man 29/6 08:00 (27/6):** `race_engine_v2_enabled` + `stage_scheduler_enabled` + `auto_prize_enabled` = **on**. Verificeret garanti ved tænding (ejer-betinget go): tidligste løb man 29/6 08:00, **0 forfaldne før mandag** → intet kører i weekenden. Nødstop = sæt `race_engine_v2_enabled='off'` (kill-switch).
 >
-> **Division 3-nulstilling (27/6 — udført, IKKE live-valideret):** D3 (puljer 4-7, 40 ægte hold) nulstillet fra bunden: 58 gamle løb slettet, præmie reverseret (1.328.625), 6 reset-lån (238.603, 0% rente), ny 28-dags-kalender materialiseret (116 løb m. `game_day`), board/træthed/stillinger/værdier genberegnet, rytter + indkøb beholdt. **Backup:** `backup_d3_reset_20260627_*` (6 tabeller). Migration anvendt. Spec/branch/script: `superpowers/specs/2026-06-27-race-calendar-model-design.md` · branch `feat/race-calendar-rebuild` · `backend/scripts/dev/reset-division-3.mjs`.
+> **All-division kalender-rebuild (27/6 — udført + verificeret):** Hele sæson 1 sat på den korrekte game_day-model: 185 gamle løb slettet, **209 nye** (Div 1=33, Div 2=30/pulje, Div 3=29/pulje), dato-synkrone fra man 29/6. AI-præmie af-linket (balancer **urørt**, sum 89.135.982); ægte spillere upåvirkede; 6 D3 reset-lån (238.603) intakte. Div 1 reproducerer ejer-godkendt pack (3 Grand Tours som rygrad), 0 dubletter på tværs af divisioner. **Backup:** `backup_allreset_20260627_*` (10 tabeller) + `backup_d3_reset_20260627_*`. Rod-årsags-fix (from-anker · cross-tier dedup · GT-rygrad) + in-game kalender-feature i **PR [#1945](https://github.com/NicolaiDolmer/CyclingZone/pull/1945)** (rører ikke race-runneren → sikker at merge; mandag kører på nuværende prod-scheduler uanset).
 >
-> **⚠️ HÆNDELSE + TODO (gated, ny session):** timing-fejl (kalender fra sæson-start i fortiden) → scheduleren **blitzede ~12 D3-løb**, **fuldt ryddet op** (resultater + 693k præmie reverseret, D3 ren). Postmortem: `.claude/learnings/2026-06-27-d3-reset-blitz.md`. **Før gen-tænding:** (1) ret `reset-division-3.mjs` `from` (sæson-start → fremtid); (2) flyt D3-kalenderens 1. etape fra **søn 28/6 → man 29/6**; (3) se kalenderen LIVE; (4) ejeren tænder motoren mandag. Bredere rerun (#1848/#1861) + rollout = senere, gated.
->
-> **💰 CZ Pro Slice 1 — PR [#1909](https://github.com/NicolaiDolmer/CyclingZone/pull/1909) afventer ejer-merge** (har `database/*.sql`). **27/6 ellers done:** #1926/#1916/#1904 (08–24 live). **Åbne ejer-beslutninger:** #1276 · #1278 · #1487 · #929 · #691. [PLAN.md](PLAN.md)=SSOT.
+> **💰 CZ Pro Slice 1 — PR [#1909](https://github.com/NicolaiDolmer/CyclingZone/pull/1909) afventer ejer-merge** (har `database/*.sql`). **Åbne ejer-beslutninger:** #1276 · #1278 · #1487 · #929 · #691. [PLAN.md](PLAN.md)=SSOT.
 
 > **🤖 Working agent:** Ingen aktiv session.
 
