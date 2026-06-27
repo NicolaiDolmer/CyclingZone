@@ -126,6 +126,7 @@ import { validateSelection, saveSelection, getSelectionContext } from "../lib/ra
 import { loadTeamBindingContext, findRiderBindingConflicts, teamInRacePool, raceTimeWindow, raceBindingWindow } from "../lib/raceBinding.js";
 import { buildColumnSet, buildBindingMap, seasonDayProjection, dominantTerrain, lockedWindowsFromEntries, partitionRegenTargets, startListVisible, daysUntilStart, groupGrossSquads, STARTLIST_HORIZON_DAYS } from "../lib/raceDistribution.js";
 import { isRaceEngineV2Enabled } from "../lib/raceEngineFlag.js";
+import { buildCalendarModel } from "../lib/raceCalendar.js";
 import { injuryRisk } from "../lib/riderCondition.js";
 import { resolveProgram } from "../lib/dailyTraining.js";
 import { copenhagenDateString } from "../lib/copenhagenTime.js";
@@ -1459,6 +1460,115 @@ async function fetchAllStageProfiles(supabase, raceIds, columns) {
   }
   return rows;
 }
+
+// Range-pagineret + id-chunked load af race_stage_schedule MED game_day + stage_number.
+// fetchAllScheduleRows ovenfor henter kun (race_id, scheduled_at) til binding-vinduer;
+// kalenderen har brug for game_day (in-game-dag = kalender-sandheden) + stage_number.
+// Samme cap-sikre mønster (#1823/#1798) så fuld-sæson-schedule ikke trunkeres tavst.
+async function fetchAllScheduleRowsWithGameDay(supabase, raceIds) {
+  const PAGE = 1000;
+  const ID_CHUNK = 300;
+  const rows = [];
+  for (let i = 0; i < raceIds.length; i += ID_CHUNK) {
+    const chunk = raceIds.slice(i, i + ID_CHUNK);
+    for (let from = 0; ; from += PAGE) {
+      const { data, error } = await supabase
+        .from("race_stage_schedule").select("race_id, stage_number, scheduled_at, game_day")
+        .in("race_id", chunk).range(from, from + PAGE - 1);
+      if (error) throw new Error(`race_stage_schedule (calendar): ${error.message}`);
+      rows.push(...(data || []));
+      if (!data || data.length < PAGE) break;
+    }
+  }
+  return rows;
+}
+
+// GET /api/races/calendar — spiller-vendt månedlig løbskalender (#in-game-race-calendar).
+//
+// AFKOBLET FRA RACE-MOTOREN: i modsætning til /races/distribution er denne læse-sti
+// IKKE gated på isRaceEngineV2Enabled. Kalenderen skal kunne renderes selv når
+// race_engine_v2_enabled='off' (kill-switch) — den viser hvad der ER planlagt i
+// sæsonen, uafhængigt af om simuleringen kører. Gaten her er udelukkende "der findes
+// en aktiv sæson med planlagte løb". Selve motorens/schedulerens gates røres ALDRIG.
+//
+// game_day (in-game-dag-ordinal) er sandheden for hvilken kalenderdag et løb ligger
+// på; scheduled_at bruges kun til at udlede CET-datoen for hver game_day. Read-only —
+// ingen mutation rammer denne flade.
+router.get("/races/calendar", requireAuth, async (req, res) => {
+  try {
+    const { data: season, error: seasonErr } = await supabase
+      .from("seasons")
+      .select("id, number, start_date, race_days_total, race_days_completed")
+      .eq("status", "active").maybeSingle();
+    if (seasonErr) throw new Error(`seasons (calendar): ${seasonErr.message}`);
+    if (!season) {
+      return res.json({ season: null, entries: [], days: [], divisions: [], ownPoolId: req.team?.league_division_id ?? null });
+    }
+
+    const [racesRes, divisionsRes] = await Promise.all([
+      supabase
+        .from("races")
+        .select("id, name, race_type, race_class, stages, status, league_division_id, game_day_start")
+        .eq("season_id", season.id),
+      supabase
+        .from("league_divisions")
+        .select("id, tier, pool_index, label")
+        .order("tier").order("pool_index"),
+    ]);
+    if (racesRes.error) throw new Error(`races (calendar): ${racesRes.error.message}`);
+    if (divisionsRes.error) throw new Error(`league_divisions (calendar): ${divisionsRes.error.message}`);
+    const races = racesRes.data;
+    const divisions = divisionsRes.data;
+
+    const raceList = races || [];
+    const raceIds = raceList.map((r) => r.id);
+    const [scheduleRows, profileRows] = await Promise.all([
+      fetchAllScheduleRowsWithGameDay(supabase, raceIds),
+      fetchAllStageProfiles(supabase, raceIds, "race_id, stage_number, profile_type"),
+    ]);
+
+    // Holdets entries i sæsonens løb → "mit holds løb" + "din leder"-flag. En leder er
+    // sat når holdet har en kaptajn/sprint-kaptajn-entry i løbet. Service-role bypasser
+    // RLS, så vi filtrerer eksplicit på team_id (#match-ui-filter-klassen).
+    const teamEntryRaceIds = new Set();
+    const teamLeaderRaceIds = new Set();
+    if (req.team?.id && raceIds.length) {
+      const { data: entries } = await supabase
+        .from("race_entries")
+        .select("race_id, race_role")
+        .eq("team_id", req.team.id)
+        .in("race_id", raceIds);
+      for (const e of entries || []) {
+        teamEntryRaceIds.add(e.race_id);
+        if (e.race_role === "captain" || e.race_role === "sprint_captain") teamLeaderRaceIds.add(e.race_id);
+      }
+    }
+
+    const model = buildCalendarModel({
+      races: raceList,
+      scheduleRows,
+      profileRows,
+      divisions: divisions || [],
+      teamDivisionId: req.team?.league_division_id ?? null,
+      teamEntryRaceIds,
+      teamLeaderRaceIds,
+    });
+
+    res.json({
+      season: {
+        id: season.id,
+        number: season.number,
+        raceDaysTotal: season.race_days_total ?? null,
+        raceDaysCompleted: season.race_days_completed ?? null,
+      },
+      ownPoolId: req.team?.league_division_id ?? null,
+      ...model,
+    });
+  } catch (err) {
+    captureException(err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // Race Hub Fase 1 — GET /api/races/distribution?day=N
 // Aggregat-læsning til trup-fordeling-board'et: dagens egne-pulje overlap-løb som

@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.28",
+    "date": "2026-06-27",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Race calendar",
+        "en": {
+          "title": "Race calendars rebuilt: one shared programme per division",
+          "body": "Each division now runs its own season programme, the same across its pools and synchronised on dates with the other divisions. The top divisions feature the Grand Tours as a spread-out spine with classics layered on top, and no race appears in two divisions anymore. Season 1's races restart Monday 29 June. Open the new Calendar to see the full programme and plan your squad ahead of time."
+        },
+        "da": {
+          "title": "Løbskalenderne er bygget om: ét fælles program pr. division",
+          "body": "Hver division kører nu sit eget sæson-program, ens på tværs af dens puljer og dato-synkroniseret med de andre divisioner. Top-divisionerne har Grand Tour-løbene som en spredt rygrad med klassikere ovenpå, og intet løb optræder længere i to divisioner. Sæson 1's løb genstarter mandag 29. juni. Åbn den nye Kalender for at se hele programmet og planlægge din trup i forvejen."
+        },
+        "refs": [1945]
+      }
+    ]
+  },
+  {
     "version": "6.27",
     "date": "2026-06-27",
     "label": "Beta",

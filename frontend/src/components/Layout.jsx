@@ -20,7 +20,7 @@ const API = import.meta.env.VITE_API_URL;
 // "/team" tilføjet per #1186 — trup-tabellen (14 stat-kolonner) var klemt i max-w-5xl.
 // "/transfers" tilføjet per #1675 — market-fanens evne-tabel + listen havde for meget
 // side-whitespace i den smalle max-w-4xl; cards/header cappes per-side i selve siden.
-const WIDE_CONTENT_ROUTES = new Set(["/riders", "/rider-rankings", "/watchlist", "/auctions", "/team", "/transfers"]);
+const WIDE_CONTENT_ROUTES = new Set(["/riders", "/rider-rankings", "/watchlist", "/auctions", "/team", "/transfers", "/calendar"]);
 // Prefix-ruter: dynamiske paths (fx /teams/<id>) matcher ikke exact i settet
 // ovenfor. #1675 — andre managers holdside (/teams/:id) har samme brede
 // trup-tabel som "/team" og skal bruge fuld bredde i stedet for max-w-4xl.
@@ -70,6 +70,7 @@ function buildNavGroups(team, t, academyEnabled = false) {
       key: "saeson-resultater", label: t("nav.group.saeson"),
       items: [
         { to: "/resultater",     label: t("nav.item.results") },
+        { to: "/calendar",       label: t("nav.item.calendar") },
         { to: "/standings",      label: t("nav.item.standings") },
         { to: "/rider-rankings", label: t("nav.item.riderRankings") },
         // #1681: excludeQuery så "Races" ikke også lyser op på holdudtagelse-

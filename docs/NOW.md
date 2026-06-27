@@ -4,13 +4,13 @@
 
 ## Aktiv styring
 
-> **💰 CZ Pro Slice 1 — PR [#1909](https://github.com/NicolaiDolmer/CyclingZone/pull/1909) afventer ejer-merge:** Billing-rails (Alunta hosted checkout + entitlement `is_pro` + Founder-badge, [#1903](https://github.com/NicolaiDolmer/CyclingZone/issues/1903)). Har `database/*.sql` → **ejer merger**. Før go-live: opret CZ Pro-plan i Alunta (49/md + 265/6mdr) + `ALUNTA_API_TOKEN`/`_WEBHOOK_SECRET`/plan-id'er → Infisical.
+> **🟢 MOTOR TÆNDT — løb genstarter man 29/6 08:00 (27/6):** `race_engine_v2_enabled` + `stage_scheduler_enabled` + `auto_prize_enabled` = **on**. Verificeret garanti ved tænding (ejer-betinget go): tidligste løb man 29/6 08:00, **0 forfaldne før mandag** → intet kører i weekenden. Nødstop = sæt `race_engine_v2_enabled='off'` (kill-switch).
 >
-> **🎯 Next action (27/6 — 3 PRs MERGED):** #1926→[#1935](https://github.com/NicolaiDolmer/CyclingZone/pull/1935) (orphaned endpoints fjernet, audit-gate grøn) + #1916→[#1939](https://github.com/NicolaiDolmer/CyclingZone/pull/1939) (help-tal pinnet) = **done**. #1904→[#1940](https://github.com/NicolaiDolmer/CyclingZone/pull/1940) merged + **config flippet 27/6 (08–24 live i prod, 0 aktive auktioner ved cutover)** + patch note v6.27 ([#1943](https://github.com/NicolaiDolmer/CyclingZone/pull/1943)) → **#1904 LUKKET, 08–24 live**. **Din hånd venter på:** holdudtagelse #1906/#1823/#1800 (real-konto-bekræftelse), CZ Pro [#1909](https://github.com/NicolaiDolmer/CyclingZone/pull/1909). **Næste kandidater:** [#1941](https://github.com/NicolaiDolmer/CyclingZone/issues/1941) (grace=0-beslutning), [#1922](https://github.com/NicolaiDolmer/CyclingZone/issues/1922) træningsfokus, [#1875](https://github.com/NicolaiDolmer/CyclingZone/issues/1875) Vercel preview-env, race-hub S2b (#1825/#1712).
+> **All-division kalender-rebuild (27/6 — udført + verificeret):** Hele sæson 1 sat på den korrekte game_day-model: 185 gamle løb slettet, **209 nye** (Div 1=33, Div 2=30/pulje, Div 3=29/pulje), dato-synkrone fra man 29/6. AI-præmie af-linket (balancer **urørt**, sum 89.135.982); ægte spillere upåvirkede; 6 D3 reset-lån (238.603) intakte. Div 1 reproducerer ejer-godkendt pack (3 Grand Tours som rygrad), 0 dubletter på tværs af divisioner. **Backup:** `backup_allreset_20260627_*` (10 tabeller) + `backup_d3_reset_20260627_*`. Rod-årsags-fix (from-anker · cross-tier dedup · GT-rygrad) + in-game kalender-feature i **PR [#1945](https://github.com/NicolaiDolmer/CyclingZone/pull/1945)** (rører ikke race-runneren → sikker at merge; mandag kører på nuværende prod-scheduler uanset).
 >
-> **Issue-hygiejne (27/6):** Nye follow-up-fund: [#1941](https://github.com/NicolaiDolmer/CyclingZone/issues/1941) (prod auktions-grace=0, mangler kolonne — ejer-beslutning) + [#1942](https://github.com/NicolaiDolmer/CyclingZone/issues/1942) (orphan FAQ-key). [#1927](https://github.com/NicolaiDolmer/CyclingZone/issues/1927) (frossen løn) **holder åben** — systemisk salary-refresh + demote-gulv mangler.
->
-> **Ejer-beslutninger (åbne):** #1276 PCM-IP · #1278 spiller-comms · #1487-budget · #929 leaked-pw · #691 key-rotation. [PLAN.md](PLAN.md)=SSOT.
+> **💰 CZ Pro Slice 1 — PR [#1909](https://github.com/NicolaiDolmer/CyclingZone/pull/1909) afventer ejer-merge** (har `database/*.sql`). **Åbne ejer-beslutninger:** #1276 · #1278 · #1487 · #929 · #691. [PLAN.md](PLAN.md)=SSOT.
+
+> **🎯 Next action:** Tjek + merge PR [#1945](https://github.com/NicolaiDolmer/CyclingZone/pull/1945) (kalender-feature live for spillere) · verificér at mandagens genstart (29/6 08:00) kører rent · drop `backup_allreset_*`/`backup_d3_reset_*` når stabil.
 
 > **🤖 Working agent:** Ingen aktiv session.
 

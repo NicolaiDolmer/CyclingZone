@@ -54,6 +54,7 @@ const FounderSupporterPage = lazy(() => import("./pages/FounderSupporterPage"));
 const LandingPage = lazy(() => import("./pages/LandingPage"));
 const KitchenSinkPage = lazy(() => import("./pages/KitchenSinkPage"));
 const RacesPage = lazy(() => import("./pages/RacesPage"));
+const CalendarPage = lazy(() => import("./pages/CalendarPage"));
 const StrategyPage = lazy(() => import("./pages/StrategyPage"));
 const SeasonEndPage = lazy(() => import("./pages/SeasonEndPage"));
 const ResultaterPage = lazy(() => import("./pages/ResultaterPage"));
@@ -192,6 +193,7 @@ export default function App() {
             <Route path="seasons/:seasonId" element={<SeasonEndPage />} />
             <Route path="season-end" element={<Navigate to="/seasons" replace />} />
             <Route path="resultater" element={<ResultaterPage />} />
+            <Route path="calendar" element={<CalendarPage />} />
             <Route path="rider-rankings" element={<RiderRankingsPage />} />
             <Route path="race-archive" element={<Navigate to="/races?tab=library" replace />} />
             <Route path="race-archive/:raceSlug" element={<RaceHistoryPage />} />

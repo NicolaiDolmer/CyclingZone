@@ -20,6 +20,7 @@ import {
   SEED_SELECTION,
   SEED_STRATEGY,
   SEED_ACADEMY,
+  SEED_CALENDAR,
 } from "./seedData.js";
 
 // Tager Accept-strengen direkte (ikke et Playwright-request). PostgREST signalerer
@@ -202,6 +203,7 @@ export function apiResponse(pathname) {
   // Race-hub (#prelive-harness, A2): board-aggregat + strategi-flade.
   // S6 (#1835): read-only "andre divisioner"-browse. Tjekkes FØR distribution (mere
   // specifik path) — selvom endsWith ikke ville krydse, holder rækkefølgen den tydelig.
+  if (pathname.endsWith("/api/races/calendar")) return SEED_CALENDAR;
   if (pathname.endsWith("/api/races/distribution/browse")) return SEED_BROWSE;
   if (pathname.endsWith("/api/races/distribution")) return SEED_DISTRIBUTION;
   if (pathname.endsWith("/api/races/strategy")) return SEED_STRATEGY;

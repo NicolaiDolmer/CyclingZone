@@ -71,6 +71,48 @@ test("raceBindingWindow: tom/ugyldig → null", () => {
   assert.equal(raceBindingWindow([{ scheduled_at: "not-a-date" }]), null);
 });
 
+// Kalender-rebuild (2026-06-27): binding nøgler på IN-GAME løbsdagen (game_day) når den
+// findes. Flere løb komprimeret til samme real-eftermiddag har forskellige game_day → en
+// rytter må køre flere af dem (rod-årsag-fixet). Samme game_day → binder stadig.
+test("raceBindingWindow: nøgler på game_day når den findes", () => {
+  const w = raceBindingWindow([
+    { scheduled_at: "2026-06-27T07:00:00Z", game_day: 5 },
+    { scheduled_at: "2026-06-27T10:30:00Z", game_day: 9 },
+  ]);
+  assert.equal(w.start, 5);
+  assert.equal(w.end, 9);
+});
+
+test("raceBindingWindow: samme real-dag, forskellig game_day overlapper IKKE (rod-årsag-fix)", () => {
+  const a = raceBindingWindow([{ scheduled_at: "2026-06-27T07:00:00Z", game_day: 1 }]);
+  const b = raceBindingWindow([{ scheduled_at: "2026-06-27T10:30:00Z", game_day: 2 }]);
+  assert.equal(windowsOverlap(a, b), false, "forskellige in-game-dage → rytter må køre begge");
+});
+
+test("raceBindingWindow: samme game_day binder selv ved forskellige real-tider", () => {
+  const a = raceBindingWindow([{ scheduled_at: "2026-06-27T07:00:00Z", game_day: 3 }]);
+  const b = raceBindingWindow([{ scheduled_at: "2026-06-28T21:00:00Z", game_day: 3 }]);
+  assert.equal(windowsOverlap(a, b), true, "samme in-game-dag → kun ét løb");
+});
+
+test("raceBindingWindow: fallback til CET-dag når game_day mangler (legacy rows)", () => {
+  const jun23 = raceBindingWindow([{ scheduled_at: "2026-06-23T20:00:00Z" }]);
+  const jun24 = raceBindingWindow([{ scheduled_at: "2026-06-24T20:00:00Z" }]);
+  assert.equal(windowsOverlap(jun23, jun24), false);
+  assert.equal(jun23.start, jun23.end);
+});
+
+test("raceBindingWindow: delvist-backfillet løb blander IKKE game_day + CET-ordinaler (CodeRabbit #2)", () => {
+  // Ét løb med én række MED game_day + én UDEN → må ALDRIG give et [5, ~20000]-vindue.
+  // Hele løbet falder tilbage til CET-dag (begge rækker = 27/6 → ét-dags vindue).
+  const w = raceBindingWindow([
+    { scheduled_at: "2026-06-27T07:00:00Z", game_day: 5 },
+    { scheduled_at: "2026-06-27T10:30:00Z" }, // mangler game_day
+  ]);
+  assert.equal(w.start, w.end, "ét nøgle-rum → ét-dags vindue, ikke sæson-langt");
+  assert.ok(w.end - w.start < 2, `vindue ${w.start}..${w.end} må ikke spænde sæson-langt`);
+});
+
 test("windowsOverlap: deler tidspunkt → true; adskilte → false", () => {
   const a = { start: 100, end: 200 };
   assert.equal(windowsOverlap(a, { start: 150, end: 300 }), true);  // overlap
