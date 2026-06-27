@@ -31,6 +31,7 @@ export function packDivisionCalendar({
   maxStagesPerRealDay = 5,
   maxConcurrentStageRaces = 2,
   forcedOverlaps = [],
+  spineMinStages = Infinity,
 } = {}) {
   const load = new Array(realDays).fill(0);
   const stageLoad = new Array(realDays).fill(0);
@@ -71,15 +72,30 @@ export function packDivisionCalendar({
     startById.set(race.id, start);
   }
 
-  // Søg udad fra en foretrukken startdag (pref, pref+1, pref-1, pref+2, …) efter første gyldige plads.
-  function placeNear(race, pref) {
-    const clamped = Math.max(0, Math.min(pref, realDays - lenOf(race)));
-    for (let off = 0; off < realDays; off++) {
-      for (const start of (off === 0 ? [clamped] : [clamped + off, clamped - off])) {
-        if (validAt(race, start)) { commit(race, start); return start; }
+  // Søg udad fra en foretrukken startdag efter en plads. preferClean: prøv FØRST en plads helt
+  // uden etape-på-etape-overlap (holder dage på ≤1 etapeløb → plads til klassikere ovenpå);
+  // ellers (eller hvis ingen ren plads findes) første gyldige plads.
+  function placeNear(race, pref, { preferClean = false } = {}) {
+    const len = lenOf(race);
+    const clamped = Math.max(0, Math.min(pref, realDays - len));
+    const scan = (test) => {
+      for (let off = 0; off < realDays; off++) {
+        for (const start of (off === 0 ? [clamped] : [clamped + off, clamped - off])) {
+          if (start >= 0 && start + len <= realDays && test(start)) { commit(race, start); return start; }
+        }
       }
+      return -1;
+    };
+    if (preferClean) {
+      const cleanAt = (start) => {
+        if (!validAt(race, start)) return false;
+        for (let d = start; d < start + len; d++) if (stageLoad[d] !== 0) return false;
+        return true;
+      };
+      const r = scan(cleanAt);
+      if (r !== -1) return r;
     }
-    return -1;
+    return scan((start) => validAt(race, start));
   }
 
   // Rækkefølge: solo først (rene vinduer), så størst-først; deterministisk på id.
@@ -91,10 +107,17 @@ export function packDivisionCalendar({
   const secondOf = new Map(); // sekundærId -> primærId (lægges oven på primær til sidst)
   for (const [primary, second] of forcedOverlaps) secondOf.set(second, primary);
 
-  // 1) placér primære/solo-løb SPREDT (foretrukken start = jævn fordeling over sæsonen).
+  // 1) placér primære løb SPREDT. RYGRAD (store etapeløb ≥ spineMinStages, fx Grand Tours)
+  // fordeles jævnt over HELE sæsonen FØRST — de er kalenderens spine og må ikke klumpe. Derefter
+  // de øvrige primære etapeløb, der foretrækker rene dage (mindst overlap → plads til klassikere).
   const primaries = ordered.filter((r) => !secondOf.has(r.id));
-  primaries.forEach((race, i) => {
-    placeNear(race, Math.floor(((i + 0.5) * realDays) / Math.max(1, primaries.length)));
+  const spine = primaries.filter((r) => (Number(r.stages) || 1) >= spineMinStages);
+  const fillPrimaries = primaries.filter((r) => (Number(r.stages) || 1) < spineMinStages);
+  spine.forEach((race, k) => {
+    placeNear(race, Math.round(((k + 0.5) * realDays) / Math.max(1, spine.length)));
+  });
+  fillPrimaries.forEach((race, k) => {
+    placeNear(race, Math.floor(((k + 0.5) * realDays) / Math.max(1, fillPrimaries.length)), { preferClean: true });
   });
 
   // 2) placér forced-overlap-sekundærer oven på deres primær (eller nærmest).

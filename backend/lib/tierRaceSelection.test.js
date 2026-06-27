@@ -54,6 +54,20 @@ test("selectTierRaceSet: deterministisk (samme seed) + seed-følsom", () => {
   assert.notEqual(a, b, "forskellig seed bør give forskelligt udvalg");
 });
 
+test("selectTierRaceSet: alle Grand Tours (store etapeløb ≥15 etaper) garanteres i udvalget, uanset seed", () => {
+  // Tier 1's 3 Grand Tours skal ALTID med (rygraden), selv når stageRaceCount < antal etapeløb
+  // i kataloget — ellers kan seed-rækkefølgen droppe en Grand Tour (som den gjorde i prod: 2/3).
+  const cat = [];
+  for (let i = 0; i < 3; i++) cat.push({ id: `gt-${i}`, race_class: "WT", race_type: "stage_race", stages: 21 });
+  for (let i = 0; i < 12; i++) cat.push({ id: `sr-${i}`, race_class: "WT", race_type: "stage_race", stages: 6 });
+  for (let i = 0; i < 30; i++) cat.push({ id: `od-${i}`, race_class: "WT", race_type: "single", stages: 1 });
+  for (const seed of [0, 1, 7, 42, 99]) {
+    const sel = selectTierRaceSet({ catalog: cat, raceClasses: ["WT"], seed, stageRaceCount: 8, singleCount: 21, soloStageCount: 0, overlapPairCount: 2 });
+    const gtIds = sel.stageRaces.filter((r) => r.stages >= 15).map((r) => r.id);
+    assert.equal(gtIds.length, 3, `seed ${seed}: alle 3 Grand Tours skal være med (fik ${gtIds.length})`);
+  }
+});
+
 test("selectTierRaceSet: beskærer + rapporterer når kataloget er for lille (tier 4-loft)", () => {
   const small = { catalog: catalog(), raceClasses: ["Class2"], seed: 1, stageRaceCount: 8, singleCount: 16, soloStageCount: 2, overlapPairCount: 1 };
   const r = selectTierRaceSet(small);

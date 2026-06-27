@@ -67,6 +67,32 @@ test("plan: deterministisk", () => {
   assert.deepEqual(a, b);
 });
 
+test("plan: intet løb deles på tværs af tiers (cross-division dedup — løb adskiller sig pr. division)", () => {
+  // Delte klasser: tier1∩tier2 = OtherWorldTourA; tier2∩tier3 = ProSeries. Uden dedup ville
+  // de samme løb kunne vælges af to tiers samtidig (Div 1 og Div 2 kører samme løb — forkert).
+  const cat = [];
+  for (let i = 0; i < 14; i++) cat.push({ id: `owa-sr-${i}`, name: `OWA SR ${i}`, race_class: "OtherWorldTourA", race_type: "stage_race", stages: 6 });
+  for (let i = 0; i < 16; i++) cat.push({ id: `ps-sr-${i}`, name: `PS SR ${i}`, race_class: "ProSeries", race_type: "stage_race", stages: 6 });
+  for (let i = 0; i < 6; i++) cat.push({ id: `c1-sr-${i}`, name: `C1 SR ${i}`, race_class: "Class1", race_type: "stage_race", stages: 4 });
+  for (let i = 0; i < 10; i++) cat.push({ id: `mon-${i}`, name: `Mon ${i}`, race_class: "Monuments", race_type: "single", stages: 1 });
+  for (let i = 0; i < 30; i++) cat.push({ id: `owa-od-${i}`, name: `OWA OD ${i}`, race_class: "OtherWorldTourA", race_type: "single", stages: 1 });
+  for (let i = 0; i < 70; i++) cat.push({ id: `ps-od-${i}`, name: `PS OD ${i}`, race_class: "ProSeries", race_type: "single", stages: 1 });
+  for (let i = 0; i < 10; i++) cat.push({ id: `c1-od-${i}`, name: `C1 OD ${i}`, race_class: "Class1", race_type: "single", stages: 1 });
+  const multiPools = [
+    { id: 1, tier: 1, realManagerCount: 5 },
+    { id: 2, tier: 2, realManagerCount: 5 },
+    { id: 4, tier: 3, realManagerCount: 5 },
+  ];
+  const { tierPlans } = buildTierMaterializationPlan({ pools: multiPools, catalog: cat, from: FROM });
+  const idSets = tierPlans.map((tp) => new Set(tp.pools[0].raceRows.map((r) => r.pool_race_id)));
+  for (let i = 0; i < idSets.length; i++) {
+    for (let j = i + 1; j < idSets.length; j++) {
+      const shared = [...idSets[i]].filter((id) => idSets[j].has(id));
+      assert.equal(shared.length, 0, `tier ${tierPlans[i].tier} & ${tierPlans[j].tier} deler løb: ${shared.slice(0, 3).join(", ")}`);
+    }
+  }
+});
+
 test("plan: alt passer på 28 dage → unplaced 0 (eksponeret, ikke tavs cap)", () => {
   const { tierPlans } = buildTierMaterializationPlan({ pools, catalog: catalog(), from: FROM, baseSeed: 6 });
   assert.equal(tierPlans[0].unplacedStages, 0);

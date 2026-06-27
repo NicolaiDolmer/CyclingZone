@@ -11,7 +11,7 @@
 // Idempotens-nøgle (uændret): `${league_division_id}:${pool_race_id}`.
 
 import { poolHasCalendar, DEFAULT_TIER_RACE_CLASSES } from "./divisionCalendarGenerator.js";
-import { selectTierRaceSet, DEFAULT_TIER_CALENDAR } from "./tierRaceSelection.js";
+import { selectTierRaceSet, DEFAULT_TIER_CALENDAR, GRAND_TOUR_MIN_STAGES } from "./tierRaceSelection.js";
 import { packDivisionCalendar } from "./raceCalendarPacker.js";
 import { buildScheduleRows } from "./raceCalendarScheduling.js";
 import { generateRaceStageProfiles, GENERATOR_VERSION } from "./raceStageProfileGenerator.js";
@@ -57,14 +57,23 @@ export function buildTierMaterializationPlan({
     liveByTier.get(p.tier).push(p);
   }
 
+  // Cross-tier dedup: tiers behandles STIGENDE (øverste division først), og hver tier udelukker
+  // løb allerede valgt af en højere tier — så samme løb aldrig kører i to divisioner (spec:
+  // "løbene adskiller sig pr. division"). Tier-rækkefølgen SKAL sorteres på tier-tallet (a[0]),
+  // ikke på entry-arrayet, ellers er dedup-rækkefølgen ikke-deterministisk.
+  const usedRaceIds = new Set();
   const tierPlans = [];
-  for (const [tier, tierPools] of [...liveByTier.entries()].sort((a, b) => a - b)) {
+  for (const [tier, tierPools] of [...liveByTier.entries()].sort((a, b) => a[0] - b[0])) {
+    const availableCatalog = usedRaceIds.size ? catalog.filter((c) => !usedRaceIds.has(c.id)) : catalog;
     const sel = selectTierRaceSet({
-      catalog, raceClasses: tierRaceClasses[tier] || [],
+      catalog: availableCatalog, raceClasses: tierRaceClasses[tier] || [],
       seed: (baseSeed ^ tier) >>> 0, ...(tierConfig[tier] || {}),
     });
+    for (const r of sel.stageRaces) usedRaceIds.add(r.id);
+    for (const r of sel.oneDayRaces) usedRaceIds.add(r.id);
     const packed = packDivisionCalendar({
       stageRaces: sel.stageRaces, oneDayRaces: sel.oneDayRaces, forcedOverlaps: sel.forcedOverlaps, realDays,
+      spineMinStages: GRAND_TOUR_MIN_STAGES,
     });
     const { raceUpdates, stageRows } = buildScheduleRows({ placements: packed.placements, from });
 
