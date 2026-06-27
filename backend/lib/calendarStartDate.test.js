@@ -30,6 +30,13 @@ test("resolveCalendarFrom: default = næste mandag (anti-blitz: aldrig sæson-st
   assert.equal(day0CopenhagenDate(from), "2026-06-29");
 });
 
+test("resolveCalendarFrom: default på en MANDAG kaster ikke — rykker til næste uges mandag", () => {
+  // nextMonday(mandag) = i dag → default-stien ville ellers throw'e (CodeRabbit-finding #1).
+  const MON = new Date("2026-06-29T13:00:00Z"); // mandag 29/6
+  const from = resolveCalendarFrom({ now: MON });
+  assert.equal(day0CopenhagenDate(from), "2026-07-06"); // næste mandag, ikke i dag
+});
+
 test("resolveCalendarFrom: afviser en første løbsdag i fortiden (rod-årsag for 27/6-blitzen)", () => {
   assert.throws(
     () => resolveCalendarFrom({ firstRaceDate: "2026-06-22", now: SAT_27 }),

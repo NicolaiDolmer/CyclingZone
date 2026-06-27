@@ -102,6 +102,17 @@ test("raceBindingWindow: fallback til CET-dag når game_day mangler (legacy rows
   assert.equal(jun23.start, jun23.end);
 });
 
+test("raceBindingWindow: delvist-backfillet løb blander IKKE game_day + CET-ordinaler (CodeRabbit #2)", () => {
+  // Ét løb med én række MED game_day + én UDEN → må ALDRIG give et [5, ~20000]-vindue.
+  // Hele løbet falder tilbage til CET-dag (begge rækker = 27/6 → ét-dags vindue).
+  const w = raceBindingWindow([
+    { scheduled_at: "2026-06-27T07:00:00Z", game_day: 5 },
+    { scheduled_at: "2026-06-27T10:30:00Z" }, // mangler game_day
+  ]);
+  assert.equal(w.start, w.end, "ét nøgle-rum → ét-dags vindue, ikke sæson-langt");
+  assert.ok(w.end - w.start < 2, `vindue ${w.start}..${w.end} må ikke spænde sæson-langt`);
+});
+
 test("windowsOverlap: deler tidspunkt → true; adskilte → false", () => {
   const a = { start: 100, end: 200 };
   assert.equal(windowsOverlap(a, { start: 150, end: 300 }), true);  // overlap

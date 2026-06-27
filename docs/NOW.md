@@ -10,6 +10,8 @@
 >
 > **💰 CZ Pro Slice 1 — PR [#1909](https://github.com/NicolaiDolmer/CyclingZone/pull/1909) afventer ejer-merge** (har `database/*.sql`). **Åbne ejer-beslutninger:** #1276 · #1278 · #1487 · #929 · #691. [PLAN.md](PLAN.md)=SSOT.
 
+> **🎯 Next action:** Tjek + merge PR [#1945](https://github.com/NicolaiDolmer/CyclingZone/pull/1945) (kalender-feature live for spillere) · verificér at mandagens genstart (29/6 08:00) kører rent · drop `backup_allreset_*`/`backup_d3_reset_*` når stabil.
+
 > **🤖 Working agent:** Ingen aktiv session.
 
 ## Standing context (forever-relaunch)

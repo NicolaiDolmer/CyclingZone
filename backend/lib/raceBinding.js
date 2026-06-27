@@ -32,14 +32,14 @@ function cetDayOrdinal(scheduledAt) {
   return Date.parse(`${dayStr}T00:00:00Z`) / DAY_MS;
 }
 
-// Binding-nøgle pr. schedule-row: den IN-GAME løbsdag (game_day) når den findes, ellers
-// fallback til CET-kalenderdag-ordinalen af scheduled_at (legacy/ikke-backfillede rows).
-// Rod-årsag for kalender-rebuilden (2026-06-27): binding MÅ nøgle på in-game-dagen, ikke
-// på det IRL-tidspunkt simuleringen tilfældigvis kører — flere løb komprimeret til samme
-// real-eftermiddag er forskellige in-game-dage, så en rytter må gerne køre flere af dem.
-function bindingDayKey(row) {
-  if (Number.isFinite(row?.game_day)) return row.game_day;
-  return cetDayOrdinal(row?.scheduled_at);
+// Binding-nøgle pr. schedule-row i ÉT valgt nøgle-rum: in-game-dagen (game_day) når hele
+// løbet er backfillet, ellers CET-kalenderdag-ordinalen af scheduled_at (legacy). `useGameDay`
+// vælges ÉN gang pr. løb (se raceBindingWindow) — vi blander ALDRIG de to rum i samme løb.
+// Rod-årsag for kalender-rebuilden (2026-06-27): binding MÅ nøgle på in-game-dagen, ikke på
+// det IRL-tidspunkt simuleringen tilfældigvis kører — flere løb komprimeret til samme real-
+// eftermiddag er forskellige in-game-dage, så en rytter må gerne køre flere af dem.
+function bindingDayKey(row, useGameDay) {
+  return useGameDay ? row.game_day : cetDayOrdinal(row?.scheduled_at);
 }
 
 // Binding-vindue: en rytter kan kun køre ét løb pr. IN-GAME løbsdag (#1823 + kalender-
@@ -47,10 +47,15 @@ function bindingDayKey(row) {
 // én in-game-dag (start===end); et etapeløb fra første til sidste etapes in-game-dag. To
 // FORSKELLIGE løb konflikter iff in-game-dag-spans overlapper (windowsOverlap er unit-
 // agnostisk). Et løbs egne etaper binder aldrig mod hinanden (samme race_id). Tom/ugyldig → null.
+//
+// ÉT nøgle-rum pr. løb: game_day kun hvis ALLE rækker har den (ellers ville et delvist-
+// backfillet løb blande relative game_day-værdier (fx 5) med absolutte CET-ordinaler (~20k)
+// → Math.min/max blæser det op til et sæson-langt vindue → falsk binding).
 export function raceBindingWindow(scheduleRows) {
   if (!scheduleRows?.length) return null;
+  const useGameDay = scheduleRows.every((row) => Number.isFinite(row?.game_day));
   const keys = scheduleRows
-    .map(bindingDayKey)
+    .map((row) => bindingDayKey(row, useGameDay))
     .filter((o) => Number.isFinite(o));
   if (!keys.length) return null;
   return { start: Math.min(...keys), end: Math.max(...keys) };

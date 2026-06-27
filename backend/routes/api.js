@@ -1475,7 +1475,7 @@ async function fetchAllScheduleRowsWithGameDay(supabase, raceIds) {
       const { data, error } = await supabase
         .from("race_stage_schedule").select("race_id, stage_number, scheduled_at, game_day")
         .in("race_id", chunk).range(from, from + PAGE - 1);
-      if (error) break;
+      if (error) throw new Error(`race_stage_schedule (calendar): ${error.message}`);
       rows.push(...(data || []));
       if (!data || data.length < PAGE) break;
     }
@@ -1496,15 +1496,16 @@ async function fetchAllScheduleRowsWithGameDay(supabase, raceIds) {
 // ingen mutation rammer denne flade.
 router.get("/races/calendar", requireAuth, async (req, res) => {
   try {
-    const { data: season } = await supabase
+    const { data: season, error: seasonErr } = await supabase
       .from("seasons")
       .select("id, number, start_date, race_days_total, race_days_completed")
       .eq("status", "active").maybeSingle();
+    if (seasonErr) throw new Error(`seasons (calendar): ${seasonErr.message}`);
     if (!season) {
       return res.json({ season: null, entries: [], days: [], divisions: [], ownPoolId: req.team?.league_division_id ?? null });
     }
 
-    const [{ data: races }, { data: divisions }] = await Promise.all([
+    const [racesRes, divisionsRes] = await Promise.all([
       supabase
         .from("races")
         .select("id, name, race_type, race_class, stages, status, league_division_id, game_day_start")
@@ -1514,6 +1515,10 @@ router.get("/races/calendar", requireAuth, async (req, res) => {
         .select("id, tier, pool_index, label")
         .order("tier").order("pool_index"),
     ]);
+    if (racesRes.error) throw new Error(`races (calendar): ${racesRes.error.message}`);
+    if (divisionsRes.error) throw new Error(`league_divisions (calendar): ${divisionsRes.error.message}`);
+    const races = racesRes.data;
+    const divisions = divisionsRes.data;
 
     const raceList = races || [];
     const raceIds = raceList.map((r) => r.id);

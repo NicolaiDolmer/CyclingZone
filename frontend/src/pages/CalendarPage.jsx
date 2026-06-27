@@ -111,7 +111,15 @@ export default function CalendarPage() {
 
   return (
     <div className="mx-auto max-w-[1100px]">
-      <CalendarHeader t={t} season={data.season} division={division} onDivision={setDivision} data={data} />
+      {/* Header-divisionsvælgeren skifter til Divisioner-tabben, så valget altid har en effekt
+          (ellers var den virkningsløs på Mit hold / Alle hold — CodeRabbit #14). */}
+      <CalendarHeader
+        t={t}
+        season={data.season}
+        division={division}
+        onDivision={(v) => { setDivision(v); setTab("divisions"); }}
+        data={data}
+      />
 
       {/* Tab group + month navigation */}
       <div className="mt-5 mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-cz-border pb-3">
