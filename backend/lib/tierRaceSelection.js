@@ -1,100 +1,71 @@
 // backend/lib/tierRaceSelection.js
-// Kalender-rebuild (2026-06-27): vælg ÉT løb-sæt PR. TIER (division) fra race_pool-kataloget,
-// skaleret per tier. Output fodres til packDivisionCalendar (raceCalendarPacker.js) og
-// materialiseres derefter identisk i hver LIVE pulje i tieren ("Division 3 kører samme løb
-// som Division 3, parallelt i sine 4 puljer"). REN + deterministisk (ingen DB/Date/random).
+// Kalender-rebuild (2026-06-27, prestige/spredning-spec): vælg ÉT løb-sæt PR. DIVISION (tier) fra
+// race_pool-kataloget — DE STØRSTE løb den kan få op til en PRÆCIS game-day-kvote (Div 1=140,
+// Div 2=112, Div 3=84, Div 4=56). Output (stageRaces + oneDayRaces) fodres til packLaneCalendar,
+// der komprimerer + spreder + fylder til præcis density. REN + deterministisk (ingen DB/Date/random).
 //
-// Skalering per tier (ejer-låst form 2026-06-27): top-tier flest/største løb + mest overlap,
-// faldende ned ad pyramiden. Tallene er katalog-loft-bevidste (tier 4 har kun ~8 etapeløb).
+// Cross-tier dedup håndteres af tierCalendarMaterializer (øverste tier vælger først; lavere fra resten).
 
-// Per-tier kalender-form. Tunbar; beskæres automatisk hvis kataloget ikke kan levere.
-export const DEFAULT_TIER_CALENDAR = Object.freeze({
-  // Tier 1: 3 Grand Tours (rygrad, garanteret) + 9 mindre etapeløb + 21 klassikere = 33 løb, alle
-  // på 28 dage. soloStageCount=0 (Grand Tours kører som rygrad MED overlap, ikke solo — en solo
-  // Grand Tour ville blokere ~5 dage og smide klassikere ud); overlapPairCount=2 (lidt etape-på-
-  // etape, men nok 1-løbs-dage til at alle 21 klassikere får plads). Reproducerer den godkendte pack.
-  1: { stageRaceCount: 12, singleCount: 21, soloStageCount: 0, overlapPairCount: 2 },
-  2: { stageRaceCount: 10, singleCount: 20, soloStageCount: 3, overlapPairCount: 3 },
-  3: { stageRaceCount: 9, singleCount: 20, soloStageCount: 3, overlapPairCount: 2 },
-  4: { stageRaceCount: 8, singleCount: 16, soloStageCount: 2, overlapPairCount: 1 },
+// Prestige-rang (ejer-låst 2026-06-27): "de største løb" = højeste prestige først, IKKE flest
+// etaper. Derfor havner monumenterne (1 etape) i Division 1.
+export const PRESTIGE_RANK = Object.freeze({
+  TourFrance: 0, GiroVuelta: 0, Monuments: 1,
+  OtherWorldTourA: 2, OtherWorldTourB: 3, OtherWorldTourC: 4,
+  ProSeries: 5, Class1: 6, Class2: 7,
 });
 
-// Et "Grand Tour" = et ~3-ugers etapeløb. Det er en divisions RYGRAD og garanteres altid i
-// udvalget (vælges før de mindre etapeløb), så seed-tilfældighed aldrig dropper en Grand Tour
-// (prod-bug 27/6: tier 1 fik kun 2 af 3 Grand Tours fordi udvælgelsen var ren seed-rækkefølge).
+// Et "Grand Tour" = ~3-ugers etapeløb (≥15 etaper) — pakkerens rygrad (spredt, komprimeret).
 export const GRAND_TOUR_MIN_STAGES = 15;
 
-// Deterministisk seed-varieret nøgle pr. (id, seed) — stabil rækkefølge uden DB/random.
-// FNV-1a over `${seed}:${id}`: seed-præfikset propagerer gennem hele hashen, så seed
-// faktisk ændrer den RELATIVE rækkefølge (ikke bare et konstant offset for ens-længde-id'er).
+// Game-day-kvote pr. tier (ejer-låst). Pr. pulje; alle puljer i en tier kører samme sæt.
+export const TIER_GAME_DAY_QUOTA = Object.freeze({ 1: 140, 2: 112, 3: 84, 4: 56 });
+
+// Deterministisk seed-varieret nøgle — varierer KUN rækkefølgen inden for samme prestige+størrelse.
 function seededKey(id, seed) {
   let h = 2166136261 >>> 0;
   const s = `${(Number(seed) || 0) >>> 0}:${id}`;
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i);
-    h = Math.imul(h, 16777619) >>> 0;
-  }
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
   return h >>> 0;
 }
+const prestigeOf = (rc) => PRESTIGE_RANK[rc] ?? 99;
 
 /**
- * @param {{
- *   catalog?: Array<{id, race_class, race_type, stages}>,
- *   raceClasses?: string[],
- *   seed?: number,
- *   stageRaceCount?: number, singleCount?: number,
- *   soloStageCount?: number, overlapPairCount?: number,
- * }} args
- * @returns {{ stageRaces, oneDayRaces, forcedOverlaps, stageRaceCount, singleCount, stageDays, truncatedStages, truncatedSingles }}
+ * Vælg en divisions løb op til en præcis game-day-kvote, prestige-først.
+ *
+ * @param {{ catalog?: Array<{id,name,race_class,race_type,stages}>, quota?: number, seed?: number }} args
+ * @returns {{ stageRaces, oneDayRaces, stageGameDays, totalGameDays, quotaHit, shortfall }}
  */
-export function selectTierRaceSet({
-  catalog = [],
-  raceClasses = [],
-  seed = 1,
-  stageRaceCount = 9,
-  singleCount = 20,
-  soloStageCount = 3,
-  overlapPairCount = 2,
-} = {}) {
-  const classSet = new Set(raceClasses);
-  const inTier = catalog.filter((r) => classSet.has(r.race_class));
-  const order = (rows) => [...rows].sort((a, b) =>
-    (seededKey(a.id, seed) - seededKey(b.id, seed)) || String(a.id).localeCompare(String(b.id)));
+export function selectTierRaceSet({ catalog = [], quota = 0, seed = 1 } = {}) {
+  // Rang: prestige asc → størrelse desc (de største af samme prestige først) → seed → id.
+  const ranked = [...catalog].sort((a, b) => {
+    const ra = prestigeOf(a.race_class), rb = prestigeOf(b.race_class);
+    if (ra !== rb) return ra - rb;
+    const sa = Math.max(1, Number(a.stages) || 1), sb = Math.max(1, Number(b.stages) || 1);
+    if (sa !== sb) return sb - sa;
+    const ka = seededKey(a.id, seed), kb = seededKey(b.id, seed);
+    if (ka !== kb) return ka - kb;
+    return String(a.id).localeCompare(String(b.id));
+  });
 
-  // Grand Tours (rygraden) først — garanteret med op til stageRaceCount — derefter de mindre
-  // etapeløb i seed-rækkefølge. Lavere tiers har ingen Grand Tours → uændret seed-udvælgelse.
-  const allStages = inTier.filter((r) => r.race_type === "stage_race");
-  const stagePool = [
-    ...order(allStages.filter((r) => (Number(r.stages) || 1) >= GRAND_TOUR_MIN_STAGES)),
-    ...order(allStages.filter((r) => (Number(r.stages) || 1) < GRAND_TOUR_MIN_STAGES)),
-  ];
-  const singlePool = order(inTier.filter((r) => r.race_type === "single"));
-
-  const stageRaces = stagePool.slice(0, stageRaceCount)
-    .map((r) => ({ id: r.id, stages: Math.max(1, Number(r.stages) || 1) }));
-
-  // Signatur-solo = de STØRSTE valgte etapeløb (et "grand tour"-agtigt løb kører alene).
-  const bySize = [...stageRaces].sort((a, b) => (b.stages - a.stages) || String(a.id).localeCompare(String(b.id)));
-  const soloN = Math.min(soloStageCount, Math.max(0, stageRaces.length - 2 * overlapPairCount));
-  const soloIds = new Set(bySize.slice(0, soloN).map((s) => s.id));
-  for (const s of stageRaces) if (soloIds.has(s.id)) s.solo = true;
-
-  // Bevidste etapeløb-på-etapeløb par — fra de ikke-solo MINDRE løb (aldrig Grand Tours: to
-  // Grand Tours bør ikke køre samtidig, og GT-rygraden skal kunne bære klassikere ovenpå).
-  const pairable = stageRaces.filter((s) => !s.solo && (Number(s.stages) || 1) < GRAND_TOUR_MIN_STAGES).map((s) => s.id);
-  const forcedOverlaps = [];
-  for (let p = 0; p < overlapPairCount && (2 * p + 1) < pairable.length; p++) {
-    forcedOverlaps.push([pairable[2 * p], pairable[2 * p + 1]]);
+  const stageRaces = [];
+  const oneDayRaces = [];
+  let total = 0;
+  // Grådigt prestige-walk: tag hvert løb der PASSER inden for kvoten; et løb der ville skyde over
+  // springes (et senere, mindre løb lukker resten præcist). 1-etape-løb i overflod → eksakt.
+  for (const r of ranked) {
+    if (total >= quota) break;
+    const st = Math.max(1, Number(r.stages) || 1);
+    if (total + st > quota) continue;
+    const row = { id: r.id, name: r.name ?? null, race_class: r.race_class, stages: st };
+    if (st >= 2) stageRaces.push(row); else oneDayRaces.push(row);
+    total += st;
   }
 
-  const oneDayRaces = singlePool.slice(0, singleCount).map((r) => ({ id: r.id }));
-
   return {
-    stageRaces, oneDayRaces, forcedOverlaps,
-    stageRaceCount: stageRaces.length,
-    singleCount: oneDayRaces.length,
-    stageDays: stageRaces.reduce((s, r) => s + r.stages, 0),
-    truncatedStages: Math.max(0, stageRaceCount - stageRaces.length),
-    truncatedSingles: Math.max(0, singleCount - oneDayRaces.length),
+    stageRaces, oneDayRaces,
+    stageGameDays: stageRaces.reduce((s, r) => s + r.stages, 0),
+    totalGameDays: total,
+    quotaHit: total === quota,
+    shortfall: Math.max(0, quota - total),
   };
 }

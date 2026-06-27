@@ -1,23 +1,37 @@
 // backend/lib/tierCalendarMaterializer.js
-// Kalender-rebuild (2026-06-27): bind den rene pipeline (udvælgelse → pakker → schedule)
-// sammen til en MATERIALISERINGS-PLAN pr. division (tier), og fan-out den IDENTISKE kalender
-// til hver LIVE pulje i tieren ("Division 3 kører samme løb, parallelt i sine 4 puljer").
+// Kalender-rebuild (2026-06-27, prestige/spredning-spec + ejer-billede): bind den rene pipeline
+// sammen til en MATERIALISERINGS-PLAN pr. division (tier) og fan-out den IDENTISKE kalender til
+// hver LIVE pulje ("Division 3 kører samme løb, parallelt i sine 4 puljer").
 //
-// buildTierMaterializationPlan er REN (ingen DB) → testbar. materializeTierCalendars er den
-// tynde I/O-wrapper (gated: dryRun returnerer planen, apply skriver). Skema-noter fra recon:
-//   races: season_id, league_division_id, pool_race_id, name, race_class, race_type, stages,
-//          edition_year, status='scheduled', game_day_start (NY kolonne), scheduled_for
-//   race_stage_schedule: race_id, stage_number, scheduled_at, game_day (NY kolonne)
-// Idempotens-nøgle (uændret): `${league_division_id}:${pool_race_id}`.
+// Form (ejer-låst): hver division fylder en PRÆCIS game-day-kvote (140/112/84/56) med DE STØRSTE
+// løb (prestige), pakket så HVER IRL-dag rammer præcis density (5/4/3/2) stage-events: Grand Tours
+// komprimeret som spredt rygrad MED overlap, klassikere fylder op. Hver etape kører i sin banes
+// faste tids-slot (div 3 = 12/15/18). Monumenter binding-fri (game_day i højt bånd).
+//
+// buildTierMaterializationPlan er REN (ingen DB) → testbar. materializeTierCalendars = I/O-wrapper.
 
-import { poolHasCalendar, DEFAULT_TIER_RACE_CLASSES } from "./divisionCalendarGenerator.js";
-import { selectTierRaceSet, DEFAULT_TIER_CALENDAR, GRAND_TOUR_MIN_STAGES } from "./tierRaceSelection.js";
-import { packDivisionCalendar } from "./raceCalendarPacker.js";
+import { poolHasCalendar } from "./divisionCalendarGenerator.js";
+import { selectTierRaceSet, TIER_GAME_DAY_QUOTA, GRAND_TOUR_MIN_STAGES } from "./tierRaceSelection.js";
+import { packLaneCalendar, MONUMENT_GAMEDAY_BASE } from "./raceCalendarLanePacker.js";
 import { buildScheduleRows } from "./raceCalendarScheduling.js";
 import { generateRaceStageProfiles, GENERATOR_VERSION } from "./raceStageProfileGenerator.js";
 
+export { MONUMENT_GAMEDAY_BASE };
+
 const INSERT_BATCH = 500;
-// Samme "ægte manager"-diskriminator som seasonCalendarMaterializer/aiTeamGenerator — HOLD I SYNC.
+
+// Tæthed pr. division (= "løbsdage kørt om dagen", ejer-låst). quota = density × realDays.
+export const TIER_DENSITY = Object.freeze({ 1: 5, 2: 4, 3: 3, 4: 2 });
+
+// Etape-tids-slots pr. division: bane k → slots[k] (ejer-låst: div 3 = 12/15/18). Antal slots =
+// density, så en dag aldrig har flere etaper end slots.
+export const TIER_STAGE_SLOTS = Object.freeze({
+  1: ["11:00", "13:00", "15:00", "17:00", "19:00"],
+  2: ["12:00", "14:00", "16:00", "18:00"],
+  3: ["12:00", "15:00", "18:00"],
+  4: ["12:00", "18:00"],
+});
+
 function isRealManagerRow(t) {
   return t.is_ai === false && !t.is_bank && !t.is_frozen && !t.is_test_account;
 }
@@ -28,24 +42,17 @@ function editionYearFrom(startDate) {
 }
 
 /**
- * @param {{
- *   pools: Array<{id, tier, realManagerCount?, label?}>,
- *   catalog: Array<{id, name, race_class, race_type, stages}>,
- *   from?: Date, realDays?: number,
- *   tierRaceClasses?: object, tierConfig?: object, baseSeed?: number,
- * }} args
- * @returns {{ tierPlans: Array<{ tier, emptyDays, truncatedStages, truncatedSingles,
- *   pools: Array<{ leagueDivisionId, tier, raceRows, stageRows }> }> }}
- *   raceRows: { pool_race_id, name, race_class, race_type, stages, game_day_start, scheduled_for }
- *   stageRows: { pool_race_id, stage_number, scheduled_at, game_day }  (pool_race_id remappes til race.id ved write)
+ * @param {{ pools, catalog, from?, realDays?, quotas?, density?, slots?, baseSeed? }} args
+ * @returns {{ tierPlans: Array<object> }}
  */
 export function buildTierMaterializationPlan({
   pools = [],
   catalog = [],
   from = new Date(),
   realDays = 28,
-  tierRaceClasses = DEFAULT_TIER_RACE_CLASSES,
-  tierConfig = DEFAULT_TIER_CALENDAR,
+  quotas = TIER_GAME_DAY_QUOTA,
+  density = TIER_DENSITY,
+  slots = TIER_STAGE_SLOTS,
   baseSeed = 1,
 } = {}) {
   const catalogById = new Map(catalog.map((c) => [c.id, c]));
@@ -57,65 +64,51 @@ export function buildTierMaterializationPlan({
     liveByTier.get(p.tier).push(p);
   }
 
-  // Cross-tier dedup: tiers behandles STIGENDE (øverste division først), og hver tier udelukker
-  // løb allerede valgt af en højere tier — så samme løb aldrig kører i to divisioner (spec:
-  // "løbene adskiller sig pr. division"). Tier-rækkefølgen SKAL sorteres på tier-tallet (a[0]),
-  // ikke på entry-arrayet, ellers er dedup-rækkefølgen ikke-deterministisk.
+  // Cross-tier dedup: øverste tier vælger først (de største løb), lavere fra resten.
   const usedRaceIds = new Set();
   const tierPlans = [];
   for (const [tier, tierPools] of [...liveByTier.entries()].sort((a, b) => a[0] - b[0])) {
     const availableCatalog = usedRaceIds.size ? catalog.filter((c) => !usedRaceIds.has(c.id)) : catalog;
-    const sel = selectTierRaceSet({
-      catalog: availableCatalog, raceClasses: tierRaceClasses[tier] || [],
-      seed: (baseSeed ^ tier) >>> 0, ...(tierConfig[tier] || {}),
-    });
+    const quota = quotas[tier] ?? 0;
+    const dens = density[tier] ?? 1;
+    const tierSlots = slots[tier] ?? slots[3];
+
+    const sel = selectTierRaceSet({ catalog: availableCatalog, quota, seed: (baseSeed ^ tier) >>> 0 });
     for (const r of sel.stageRaces) usedRaceIds.add(r.id);
     for (const r of sel.oneDayRaces) usedRaceIds.add(r.id);
-    const packed = packDivisionCalendar({
-      stageRaces: sel.stageRaces, oneDayRaces: sel.oneDayRaces, forcedOverlaps: sel.forcedOverlaps, realDays,
-      spineMinStages: GRAND_TOUR_MIN_STAGES,
-    });
-    const { raceUpdates, stageRows } = buildScheduleRows({ placements: packed.placements, from });
+
+    const packed = packLaneCalendar({ stageRaces: sel.stageRaces, oneDayRaces: sel.oneDayRaces, density: dens, days: realDays, spineMinStages: GRAND_TOUR_MIN_STAGES });
+    const { raceUpdates, stageRows } = buildScheduleRows({ placements: packed.placements, from, slots: tierSlots });
 
     const scheduledForById = new Map(raceUpdates.map((u) => [u.id, u.scheduled_for]));
+    // game_day_start = løbets første IRL-dag (real_day), IKKE binding-nøglen (monumenter har bånd).
     const gameDayStartById = new Map();
-    for (const pl of packed.placements) {
-      const g = Math.min(...pl.stagesPlaced.map((s) => s.game_day));
-      gameDayStartById.set(pl.id, g);
-    }
+    for (const pl of packed.placements) gameDayStartById.set(pl.id, Math.min(...pl.stagesPlaced.map((s) => s.real_day)));
 
-    // Samme races-/stage-rækker materialiseres i hver live pulje i tieren.
-    const poolPlans = tierPools
-      .slice()
-      .sort((a, b) => a.id - b.id)
-      .map((pool) => {
-        const raceRows = packed.placements.map((pl) => {
-          const cat = catalogById.get(pl.id) || {};
-          return {
-            pool_race_id: pl.id,
-            name: cat.name ?? null,
-            race_class: cat.race_class ?? null,
-            race_type: cat.race_type ?? (pl.type === "single" ? "single" : "stage_race"),
-            stages: pl.stages,
-            game_day_start: gameDayStartById.get(pl.id),
-            scheduled_for: scheduledForById.get(pl.id) ?? null,
-          };
-        });
-        const poolStageRows = stageRows.map((s) => ({
-          pool_race_id: s.race_id, stage_number: s.stage_number, scheduled_at: s.scheduled_at, game_day: s.game_day,
-        }));
-        return { leagueDivisionId: pool.id, tier, raceRows, stageRows: poolStageRows };
+    const poolPlans = tierPools.slice().sort((a, b) => a.id - b.id).map((pool) => {
+      const raceRows = packed.placements.map((pl) => {
+        const cat = catalogById.get(pl.id) || {};
+        return {
+          pool_race_id: pl.id,
+          name: cat.name ?? null,
+          race_class: cat.race_class ?? pl.race_class ?? null,
+          race_type: cat.race_type ?? (pl.type === "single" ? "single" : "stage_race"),
+          stages: pl.stages,
+          game_day_start: gameDayStartById.get(pl.id),
+          scheduled_for: scheduledForById.get(pl.id) ?? null,
+        };
       });
+      const poolStageRows = stageRows.map((s) => ({ pool_race_id: s.race_id, stage_number: s.stage_number, scheduled_at: s.scheduled_at, game_day: s.game_day }));
+      return { leagueDivisionId: pool.id, tier, raceRows, stageRows: poolStageRows };
+    });
 
     tierPlans.push({
-      tier,
-      emptyDays: packed.emptyDays,
-      truncatedStages: sel.truncatedStages,
-      truncatedSingles: sel.truncatedSingles,
-      // Løb der blev VALGT men ikke kunne pakkes ind på real-dagene (28-dages-cap) — eksponeret
-      // så callere/scripts ikke tavst tror sættet passede (jf. "ingen tavse caps").
-      unplacedStages: packed.unplacedStages.length,
-      unplacedSingles: packed.unplacedSingles.length,
+      tier, quota, density: dens,
+      totalGameDays: sel.totalGameDays, quotaHit: sel.quotaHit, shortfall: sel.shortfall,
+      raceCount: packed.placements.length,
+      load: packed.load, emptyDays: packed.emptyDays, underfilledDays: packed.underfilledDays,
+      overlapDays: packed.overlapDays,
+      unplacedStages: packed.unplaced.length, unplacedSingles: packed.leftoverSingles.length,
       pools: poolPlans,
     });
   }
@@ -124,11 +117,8 @@ export function buildTierMaterializationPlan({
 }
 
 /**
- * I/O-wrapper: byg planen mod live data og (apply) skriv den pr. pulje.
- * dryRun=true returnerer kun summary (ingen writes). tiers=[3] scoper til Division 3.
- * KRÆVER migration (game_day-kolonner) for apply — dryRun kører uden.
- *
- * @param {{ supabase, seasonId, seasonStartDate?, from?, baseSeed?, tiers?: number[]|null, dryRun?, log? }} args
+ * I/O-wrapper: byg planen mod live data og (apply) skriv den pr. pulje. dryRun=true → ingen writes.
+ * Kræver at season-løb er ryddet først for en ren rebuild.
  */
 export async function materializeTierCalendars({
   supabase, seasonId, seasonStartDate = null, from = new Date(),
@@ -156,7 +146,11 @@ export async function materializeTierCalendars({
 
   for (const tierPlan of tierPlans) {
     if (tiers && !tiers.includes(tierPlan.tier)) continue;
-    const tLine = { tier: tierPlan.tier, emptyDays: tierPlan.emptyDays, truncatedStages: tierPlan.truncatedStages, truncatedSingles: tierPlan.truncatedSingles, unplacedStages: tierPlan.unplacedStages, unplacedSingles: tierPlan.unplacedSingles, pools: [] };
+    const tLine = {
+      tier: tierPlan.tier, quota: tierPlan.quota, totalGameDays: tierPlan.totalGameDays, quotaHit: tierPlan.quotaHit,
+      shortfall: tierPlan.shortfall, emptyDays: tierPlan.emptyDays, overlapDays: tierPlan.overlapDays,
+      unplacedStages: tierPlan.unplacedStages, unplacedSingles: tierPlan.unplacedSingles, pools: [],
+    };
     for (const poolPlan of tierPlan.pools) {
       const fresh = poolPlan.raceRows.filter((r) => !existingKey.has(`${poolPlan.leagueDivisionId}:${r.pool_race_id}`));
       const pLine = { pool_id: poolPlan.leagueDivisionId, selected: poolPlan.raceRows.length, fresh: fresh.length, inserted: 0 };
