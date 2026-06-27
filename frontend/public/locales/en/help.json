@@ -23,10 +23,10 @@
           "Create an account and log in.",
           "Pick a team name and a manager name in the welcome wizard. Both fields are required before you can continue.",
           "The welcome modal opens automatically the first time and walks you through the three core features: Market, Auctions and Board. It links directly to Help & Rules.",
-          "You start in Division 3 with a starting budget of 500,000 CZ$.",
+          "You start in Division 3 with a starting budget of {startingBalance} CZ$.",
           "Go to Riders and find free riders you want to bid on.",
           "Start an auction on a rider. If you win the auction, the rider is yours.",
-          "You begin with a 12-rider starting squad. No minimum squad size is enforced, but you need riders on your roster to field a team in races."
+          "You begin with a {initialSquad}-rider starting squad. No minimum squad size is enforced, but you need riders on your roster to field a team in races."
         ]
       }
     },
@@ -351,7 +351,7 @@
       },
       "prizeMoney": {
         "title": "Prize money from races",
-        "text": "Each result for a rider on your team generates prize money: points for the placing × 75 CZ$. Prize money is paid automatically to your team balance when admin finalises the results and shows as a 'prize' transaction in your finance log. Points for the season leaderboard and prize money are computed separately: points decide the leaderboard, while the CZ$ prize only affects your balance. Races without a race class generate no prize money. See the full points table under Season & Results, Races, Points & prizes."
+        "text": "Each result for a rider on your team generates prize money: points for the placing × {prizePerPoint} CZ$. Prize money is paid automatically to your team balance when admin finalises the results and shows as a 'prize' transaction in your finance log. Points for the season leaderboard and prize money are computed separately: points decide the leaderboard, while the CZ$ prize only affects your balance. Races without a race class generate no prize money. See the full points table under Season & Results, Races, Points & prizes."
       },
       "divisionBonus": {
         "title": "Division bonus at season end",
@@ -387,7 +387,7 @@
       "label": "Prizes",
       "formula": {
         "title": "The prize formula",
-        "text": "Prize money is computed directly from points: 1 point = 75 CZ$. Only races with a race class (Tour de France, Giro/Vuelta, Monuments, WorldTour, ProSeries, Class 1, Class 2) generate prize money. Races without a class give 0 CZ$."
+        "text": "Prize money is computed directly from points: 1 point = {prizePerPoint} CZ$. Only races with a race class (Tour de France, Giro/Vuelta, Monuments, WorldTour, ProSeries, Class 1, Class 2) generate prize money. Races without a class give 0 CZ$."
       },
       "examples": {
         "title": "Prize amount examples",
@@ -596,7 +596,7 @@
       },
       "academySize": {
         "title": "Academy size (8 places)",
-        "text": "Your Academy holds up to 8 riders. These 8 places are completely separate from your senior squad cap of 30. Academy riders never count toward your senior squad limit and are not eligible for races."
+        "text": "Your Academy holds up to {academySlots} riders. These {academySlots} places are completely separate from your senior squad cap of {squadCap}. Academy riders never count toward your senior squad limit and are not eligible for races."
       },
       "dailyTrainingBoost": {
         "title": "Daily training and the youth boost",
@@ -608,7 +608,7 @@
       },
       "upkeepCost": {
         "title": "Academy upkeep",
-        "text": "Running the Academy costs an upkeep fee per occupied slot, charged automatically at season payroll alongside your senior salaries. Plan your budget accordingly: a full Academy of 8 riders carries a noticeable running cost each season."
+        "text": "Running the Academy costs an upkeep fee per occupied slot, charged automatically at season payroll alongside your senior salaries. Plan your budget accordingly: a full Academy of {academySlots} riders carries a noticeable running cost each season."
       },
       "graduation": {
         "title": "Graduating at 22",
@@ -662,7 +662,7 @@
     },
     "relaunchTeamMoney": {
       "q": "What happened to my team and money in the Season 1 relaunch?",
-      "a": "At the relaunch everything starts over. Your previous squad, balance and transfers do not carry into the new Season 1. You receive a fresh 12-rider squad and a starting budget of 500,000 CZ$, the same as every other manager."
+      "a": "At the relaunch everything starts over. Your previous squad, balance and transfers do not carry into the new Season 1. You receive a fresh {initialSquad}-rider squad and a starting budget of {startingBalance} CZ$, the same as every other manager."
     },
     "relaunchRiderNames": {
       "q": "Why are the rider names different after the relaunch?",
@@ -762,7 +762,7 @@
     },
     "prizeMoneyFaq": {
       "q": "What is prize money, and when is it paid out?",
-      "a": "Prize money is a direct CZ$ reward for results your riders achieve in races. The formula is: points for the placing × 75 CZ$. The money is paid automatically to your balance when admin finalises results and shows as 'prize' in your finance log. Only races with a race class (Tour de France, WorldTour, ProSeries etc.) generate prize money. Races without a race class give 0."
+      "a": "Prize money is a direct CZ$ reward for results your riders achieve in races. The formula is: points for the placing × {prizePerPoint} CZ$. The money is paid automatically to your balance when admin finalises results and shows as 'prize' in your finance log. Only races with a race class (Tour de France, WorldTour, ProSeries etc.) generate prize money. Races without a race class give 0."
     },
     "divisionBonusFaq": {
       "q": "What is the division bonus, and when is it paid out?",

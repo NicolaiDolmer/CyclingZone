@@ -17,6 +17,7 @@
 export const RULES_NUMBERS = {
   // --- Squad (backend/lib/marketUtils.js) ---
   squadCap: 30, // MAX_SQUAD_SIZE
+  initialSquadSize: 12, // STARTER_SQUAD.TOTAL_SIZE (= MIN_RIDERS_FOR_RACE + 4)
   windowBuffer: 2, // TRANSFER_WINDOW_SOFT_CAP_BUFFER
   // --- Squad enforcement (backend/lib/squadEnforcement.js) ---
   squadFine: 100000, // SQUAD_FINE_AMOUNT

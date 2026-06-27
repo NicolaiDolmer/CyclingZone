@@ -23,10 +23,10 @@
           "Opret en konto og log ind.",
           "Vælg holdnavn og managernavn i velkomst-wizarden. Du skal udfylde begge felter for at fortsætte.",
           "Velkomstmodalen vises automatisk første gang og gennemgår de tre vigtigste funktioner: Marked, Auktioner og Bestyrelse. Den linker direkte til Hjælp & Regler.",
-          "Du starter i Division 3 med et startbudget på 500.000 CZ$.",
+          "Du starter i Division 3 med et startbudget på {startingBalance} CZ$.",
           "Gå til Ryttere og find frie ryttere du vil byde på.",
           "Start en auktion på en rytter. Vinder du auktionen, er rytteren din.",
-          "Du begynder med en 12-rytters start-trup. Der håndhæves ingen minimumsholdstørrelse, men du skal have ryttere på holdet for at stille op i løb."
+          "Du begynder med en {initialSquad}-rytters start-trup. Der håndhæves ingen minimumsholdstørrelse, men du skal have ryttere på holdet for at stille op i løb."
         ]
       }
     },
@@ -351,7 +351,7 @@
       },
       "prizeMoney": {
         "title": "Præmiepenge fra løb",
-        "text": "Hvert resultat der tilhører en rytter på dit hold genererer præmiepenge: point for placeringen × 75 CZ$. Præmiepengene udbetales automatisk til dit holds balance når admin finaliserer resultaterne og vises som 'prize'-transaktion i din finance-log. Point til sæsonranglisten og præmier beregnes separat: pointene bestemmer ranglisten, mens CZ$-præmien kun påvirker din balance. Løb uden løbsklasse genererer ingen præmiepenge. Se den fulde pointtabel under Sæson & Resultater, Løb, Point & præmier."
+        "text": "Hvert resultat der tilhører en rytter på dit hold genererer præmiepenge: point for placeringen × {prizePerPoint} CZ$. Præmiepengene udbetales automatisk til dit holds balance når admin finaliserer resultaterne og vises som 'prize'-transaktion i din finance-log. Point til sæsonranglisten og præmier beregnes separat: pointene bestemmer ranglisten, mens CZ$-præmien kun påvirker din balance. Løb uden løbsklasse genererer ingen præmiepenge. Se den fulde pointtabel under Sæson & Resultater, Løb, Point & præmier."
       },
       "divisionBonus": {
         "title": "Divisionsbonus ved sæsonafslutning",
@@ -387,7 +387,7 @@
       "label": "Præmier",
       "formula": {
         "title": "Præmieformlen",
-        "text": "Præmiepenge beregnes direkte fra point: 1 point = 75 CZ$. Kun løb med en løbsklasse (Tour de France, Giro/Vuelta, Monumenter, WorldTour, ProSeries, Klasse 1, Klasse 2) genererer præmiepenge. Løb uden klasse giver 0 CZ$."
+        "text": "Præmiepenge beregnes direkte fra point: 1 point = {prizePerPoint} CZ$. Kun løb med en løbsklasse (Tour de France, Giro/Vuelta, Monumenter, WorldTour, ProSeries, Klasse 1, Klasse 2) genererer præmiepenge. Løb uden klasse giver 0 CZ$."
       },
       "examples": {
         "title": "Eksempler på præmiebeløb",
@@ -596,7 +596,7 @@
       },
       "academySize": {
         "title": "Akademistørrelse (8 pladser)",
-        "text": "Dit Akademi rummer op til 8 ryttere. Disse 8 pladser er fuldstændig adskilt fra din seniorgruppe på maks. 30. Akademiryttere tæller aldrig med i din seniorgruppegrænse og er ikke berettiget til løb."
+        "text": "Dit Akademi rummer op til {academySlots} ryttere. Disse {academySlots} pladser er fuldstændig adskilt fra din seniorgruppe på maks. {squadCap}. Akademiryttere tæller aldrig med i din seniorgruppegrænse og er ikke berettiget til løb."
       },
       "dailyTrainingBoost": {
         "title": "Daglig træning og ungdomsboost",
@@ -608,7 +608,7 @@
       },
       "upkeepCost": {
         "title": "Akademiomkostninger",
-        "text": "Det koster et driftsgebyr per besat plads at drive Akademiet. Gebyret trækkes automatisk ved sæsonlønkørslen side om side med dine seniorlønninger. Planlæg dit budget derefter: et fuldt Akademi med 8 ryttere har en mærkbar løbende omkostning hver sæson."
+        "text": "Det koster et driftsgebyr per besat plads at drive Akademiet. Gebyret trækkes automatisk ved sæsonlønkørslen side om side med dine seniorlønninger. Planlæg dit budget derefter: et fuldt Akademi med {academySlots} ryttere har en mærkbar løbende omkostning hver sæson."
       },
       "graduation": {
         "title": "At forlade akademiet ved 22",
@@ -662,7 +662,7 @@
     },
     "relaunchTeamMoney": {
       "q": "Hvad skete der med mit hold og mine penge ved sæson 1-relaunchen?",
-      "a": "Ved relaunchen starter alt forfra. Dit tidligere hold, din saldo og dine transfers føres ikke med over i den nye sæson 1. Du får et frisk 12-rytters hold og en startkapital på 500.000 CZ$, præcis som alle andre managers."
+      "a": "Ved relaunchen starter alt forfra. Dit tidligere hold, din saldo og dine transfers føres ikke med over i den nye sæson 1. Du får et frisk {initialSquad}-rytters hold og en startkapital på {startingBalance} CZ$, præcis som alle andre managers."
     },
     "relaunchRiderNames": {
       "q": "Hvorfor er rytternavnene anderledes efter relaunchen?",
@@ -762,7 +762,7 @@
     },
     "prizeMoneyFaq": {
       "q": "Hvad er præmiepenge, og hvornår udbetales de?",
-      "a": "Præmiepenge er en direkte CZ$-belønning for resultater dine ryttere opnår i løbene. Beregningen er: point for placeringen × 75 CZ$. Pengene udbetales automatisk til din balance når admin finaliserer resultaterne og vises som 'prize' i din finance-log. Kun løb med en løbsklasse (Tour de France, WorldTour, ProSeries osv.) genererer præmiepenge. Løb uden løbsklasse giver 0."
+      "a": "Præmiepenge er en direkte CZ$-belønning for resultater dine ryttere opnår i løbene. Beregningen er: point for placeringen × {prizePerPoint} CZ$. Pengene udbetales automatisk til din balance når admin finaliserer resultaterne og vises som 'prize' i din finance-log. Kun løb med en løbsklasse (Tour de France, WorldTour, ProSeries osv.) genererer præmiepenge. Løb uden løbsklasse giver 0."
     },
     "divisionBonusFaq": {
       "q": "Hvad er divisionsbonus, og hvornår udbetales den?",
