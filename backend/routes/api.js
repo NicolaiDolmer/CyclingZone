@@ -133,7 +133,6 @@ import { ACADEMY, isAcademyEnabled } from "../lib/academyFlag.js";
 import { resolveGraduation } from "../lib/academyGraduation.js";
 import { promote as promoteAcademyRider, demote as demoteAcademyRider } from "../lib/academyTransfer.js";
 import { buildFictionalPopulationPreview } from "../lib/fictionalPopulationPreview.js";
-import { getFinalWhistleReport } from "../lib/deadlineDayReport.js";
 import {
   getTeamAcademyCount,
   signAcademyCandidate,
@@ -671,12 +670,6 @@ async function flushWindowPendingLoans() {
   return { loansProcessed, loanBuyoutsProcessed };
 }
 
-// GET /api/transfer-window — current window status (public, auth required)
-router.get("/transfer-window", requireAuth, async (req, res) => {
-  const { open, window: tw } = await getTransferWindowStatus();
-  res.json({ open, status: tw?.status || "closed", season_id: tw?.season_id || null });
-});
-
 // ── Deadline Day ──────────────────────────────────────────────────────────────
 
 function computeDeadlineDayPhase(closesAt) {
@@ -722,112 +715,6 @@ router.get("/deadline-day/status", requireAuth, async (req, res) => {
       return res.json({ active: false, phase: null, closes_at: closesAt, seconds_remaining, override });
     }
     res.json({ active: true, phase, closes_at: closesAt, seconds_remaining, override });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-// GET /api/deadline-day/ticker
-router.get("/deadline-day/ticker", requireAuth, async (req, res) => {
-  try {
-    const { data: tw } = await supabase
-      .from("transfer_windows")
-      .select("closes_at")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
-    // Use the actual DD window start (closes_at - 24h) so the ticker only shows
-    // events from the current Deadline Day period, not random prior activity.
-    const since = tw?.closes_at
-      ? new Date(new Date(tw.closes_at).getTime() - 24 * 60 * 60 * 1000).toISOString()
-      : new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    const [{ data: bids }, { data: sold }, { data: transfers }] = await Promise.all([
-      supabase
-        .from("auction_bids")
-        .select("id, amount, bid_time, team:team_id(name), auction:auction_id(rider:rider_id(firstname, lastname))")
-        .gte("bid_time", since)
-        .order("bid_time", { ascending: false })
-        .limit(15),
-      supabase
-        .from("auctions")
-        .select("id, current_price, actual_end, winner:current_bidder_id(name), rider:rider_id(firstname, lastname)")
-        .eq("status", "completed")
-        .gte("actual_end", since)
-        .order("actual_end", { ascending: false })
-        .limit(10),
-      supabase
-        .from("transfer_offers")
-        .select("id, offer_amount, updated_at, buyer:buyer_team_id(name), rider:rider_id(firstname, lastname), seller:seller_team_id(name)")
-        .eq("status", "accepted")
-        .gte("updated_at", since)
-        .order("updated_at", { ascending: false })
-        .limit(10),
-    ]);
-
-    const events = [];
-    const fmt = n => Math.round(n / 1000) + "K";
-
-    for (const b of (bids || [])) {
-      const rider = b.auction?.rider;
-      if (!rider) continue;
-      events.push({ type: "bid", text: `${b.team?.name ?? "–"} bød ${fmt(b.amount)} på ${rider.firstname} ${rider.lastname}`, timestamp: b.bid_time });
-    }
-    for (const a of (sold || [])) {
-      if (!a.winner || !a.rider) continue;
-      events.push({ type: "sold", text: `${a.rider.firstname} ${a.rider.lastname} solgt til ${a.winner.name} for ${fmt(a.current_price)}`, timestamp: a.actual_end });
-    }
-    for (const t of (transfers || [])) {
-      if (!t.rider || !t.buyer) continue;
-      const sellerPart = t.seller ? ` fra ${t.seller.name}` : "";
-      events.push({ type: "transfer", text: `${t.buyer.name} køber ${t.rider.firstname} ${t.rider.lastname}${sellerPart} for ${fmt(t.offer_amount)}`, timestamp: t.updated_at });
-    }
-
-    events.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-    res.json(events.slice(0, 20));
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-// GET /api/deadline-day/squads
-router.get("/deadline-day/squads", requireAuth, async (req, res) => {
-  try {
-    // Roster-floor fjernet 2026-06-05: min=0 → Panic Board flagger aldrig "critical"/"warning" for under-min.
-    // #1614: ét fælles roster-loft (30) for alle divisioner — matcher håndhævelsen i marketUtils.MARKET_SQUAD_LIMITS.
-    const LIMITS = { 1: { min: 0, max: 30 }, 2: { min: 0, max: 30 }, 3: { min: 0, max: 30 } };
-    const [{ data: teams }, { data: riders }] = await Promise.all([
-      // Filter matcher v3.83 cron-fix (a57b8d9): kun aktive manager-hold tæller mod
-      // squad-minimum. Frosne hold (is_frozen=true) + AI-hold + bank + eierløse rows
-      // ekskluderes så Panic Board ikke flagger hold som ikke deltager i sæsonen.
-      supabase.from("teams")
-        .select("id, name, division")
-        .eq("is_bank", false)
-        .eq("is_ai", false)
-        .eq("is_frozen", false)
-        .not("user_id", "is", null)
-        .order("division").order("name"),
-      // #1308: akademiryttere tæller ikke mod senior-cap i Panic Board
-      supabase.from("riders").select("team_id").not("team_id", "is", null).eq("is_academy", false),
-    ]);
-    if (!teams || !riders) throw new Error("data missing");
-
-    const countByTeam = {};
-    for (const r of riders) countByTeam[r.team_id] = (countByTeam[r.team_id] || 0) + 1;
-
-    const squads = teams.map(t => {
-      const count = countByTeam[t.id] || 0;
-      const { min, max } = LIMITS[t.division] || { min: 0, max: 30 };
-      // min=0 (roster-floor fjernet) → aldrig critical/warning; kun et reelt min>0 flagger.
-      const status = min > 0 && count < min ? "critical" : min > 0 && count <= min + 1 ? "warning" : "ok";
-      return { id: t.id, name: t.name, division: t.division, riders: count, min, max, status };
-    });
-    res.json(squads);
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-// GET /api/deadline-day/final-whistle — read-only Final Whistle-rapport (#1354)
-// Genberegner samme payload som Discord-embed'et. Returnerer { available: false }
-// indtil transfervinduet faktisk er lukket, så frontend kan vise en empty-state.
-router.get("/deadline-day/final-whistle", requireAuth, async (req, res) => {
-  try {
-    const result = await getFinalWhistleReport({ supabase });
-    res.json(result);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
