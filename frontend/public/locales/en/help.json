@@ -113,7 +113,7 @@
       },
       "whenExpires": {
         "title": "When does an auction expire?",
-        "text": "An auction runs for 6 active hours. Night hours don't count. The active window is weekdays (Mon to Fri) 16:00 to 22:00 and weekends (Sat to Sun) 08:00 to 23:00. If you bid at 19:40 on a Tuesday, the auction ends Wednesday at 19:40 (2h20m Tuesday + 3h40m Wednesday). If you bid at 19:40 on a Saturday, it ends Sunday at 10:40 (3h20m Saturday + 2h40m Sunday)."
+        "text": "An auction runs for 1 active hour. Night hours don't count: the active window is 08:00 to 24:00 every day, and trading pauses 00:00 to 08:00. If you bid at 19:40, the auction ends the same evening at 20:40. If you bid at 23:30, the remaining time carries over the night and the auction ends the next morning at 08:30."
       },
       "flashAuction": {
         "title": "Flash Auction (Deadline Day)",
@@ -121,7 +121,7 @@
       },
       "tenMinExtend": {
         "title": "10-minute extension",
-        "text": "If a bid is placed within the last 10 minutes of an auction, the auction is automatically extended by 10 minutes from the bid time. This continues until no bid is placed in the final 10 minutes. The extension may exceed that day's window close by up to 1 hour, so e.g. a weekday (close 22:00) auction can be extended all the way to 23:00. If a bid in the extra hour would push the end further, the remaining minutes roll over to the next window opening (e.g. a Friday bid at 22:55, the auction ends Saturday at 08:05)."
+        "text": "If a bid is placed within the last 10 minutes of an auction, the auction is automatically extended by 10 minutes from the bid time. This continues until no bid is placed in the final 10 minutes. The extension may exceed the day's close (24:00) by up to 1 hour, so an auction can run until 01:00. If a bid in that extra hour would push the end further, the remaining minutes roll over to the next window opening (e.g. a bid at 00:55, the auction ends at 08:05)."
       },
       "squadAndAuctions": {
         "title": "Squad size and auctions",
@@ -702,7 +702,7 @@
     },
     "auctionExpiry": {
       "q": "When does an auction expire?",
-      "a": "An auction runs for 6 active hours. Night hours don't count: weekdays (Mon to Fri) have active time 16:00 to 22:00, weekends (Sat to Sun) 08:00 to 23:00. Example: an auction started Tuesday 19:40 ends Wednesday 19:40. An auction started Saturday 19:40 ends Sunday 10:40."
+      "a": "An auction runs for 1 active hour. Night hours don't count: the active window is 08:00 to 24:00 every day. Example: an auction started at 19:40 ends the same evening at 20:40. An auction started at 23:30 ends the next morning at 08:30."
     },
     "flashAuction": {
       "q": "What is a Flash Auction?",

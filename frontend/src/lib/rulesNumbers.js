@@ -66,7 +66,7 @@ export const RULES_NUMBERS = {
 
   // --- Admin-configurable display defaults (NOT pinned; from DB config) ---
   minBidStep: 1, // +1 CZ$ minimum step (auctionRules mirror)
-  auctionActiveHours: 6, // default auction_config active hours
+  auctionActiveHours: 1, // default auction_config active hours (#1904: 6→1, window 08–24)
   auctionExtensionMinutes: 10, // default last-minute extension
 };
 

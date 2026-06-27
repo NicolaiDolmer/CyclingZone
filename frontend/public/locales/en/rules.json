@@ -73,7 +73,7 @@
       "blocks": {
         "duration": {
           "title": "Auction length",
-          "text": "An auction runs for {auctionActiveHours} active hours. Night hours don't count: weekdays (Mon–Fri) are active 16:00–22:00, weekends (Sat–Sun) 08:00–23:00. These windows are admin-configurable."
+          "text": "An auction runs for {auctionActiveHours, plural, one {# active hour} other {# active hours}}. Night hours don't count: trading is active 08:00–24:00 every day (paused 00:00–08:00). These windows are admin-configurable."
         },
         "minBid": {
           "title": "Minimum bid",
