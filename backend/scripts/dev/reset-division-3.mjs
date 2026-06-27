@@ -1,9 +1,10 @@
 // backend/scripts/dev/reset-division-3.mjs
 //
-// ⚠️ KØR IKKE IGEN UDEN AT RETTE `from` (postmortem 2026-06-27): scriptet materialiserer
-// kalenderen fra `season.start_date`. På en IGANGVÆRENDE sæson giver det scheduled_at i
-// FORTIDEN → race-scheduleren blitzer løb. `from` SKAL være en fremtidig dato (parametriseret)
-// før genbrug. Se .claude/learnings/2026-06-27-d3-reset-blitz.md.
+// `from`-håndtering rettet (postmortem 2026-06-27): kalenderen materialiseres nu fra
+// resolveCalendarFrom({ firstRaceDate }) — default næste mandag, ALDRIG season.start_date.
+// Vælg dag-0 eksplicit med --first-day=YYYY-MM-DD (dansk dato). Guarden afviser en dato i
+// fortiden/i dag, så blitz-fejlklassen (scheduled_at <= now på et live spil) ikke kan gentages.
+// Se .claude/learnings/2026-06-27-d3-reset-blitz.md.
 //
 // Division 3-nulstilling "fra bunden af" (ejer-godkendt 2026-06-27, spec
 // superpowers/specs/2026-06-27-race-calendar-model-design.md).
@@ -24,8 +25,9 @@
 // KRÆVER migration FØRST (ejer-applied): race_stage_schedule.game_day + races.game_day_start
 // + loan_config 'reset'-rows (0% rente/fee). Se migrations-SQL i bunden af denne fil.
 //
-// Brug:  node backend/scripts/dev/reset-division-3.mjs            (dry-run, intet skrives)
-//        node backend/scripts/dev/reset-division-3.mjs --apply    (udfører — KUN efter ejer-go)
+// Brug:  node backend/scripts/dev/reset-division-3.mjs                         (dry-run, intet skrives)
+//        node backend/scripts/dev/reset-division-3.mjs --first-day=2026-06-29  (vælg dag-0; default næste mandag)
+//        node backend/scripts/dev/reset-division-3.mjs --apply                 (udfører — KUN efter ejer-go)
 
 import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
@@ -34,9 +36,11 @@ import { createLoan } from "../../lib/loanEngine.js";
 import { incrementBalanceWithAudit } from "../../lib/balanceRpc.js";
 import { updateStandings, updateRiderValues } from "../../lib/economyEngine.js";
 import { recomputeSeasonRaceDays } from "../../lib/seasonRaceDays.js";
+import { resolveCalendarFrom, nextMonday } from "../../lib/calendarStartDate.js";
 
 dotenv.config();
 const APPLY = process.argv.includes("--apply");
+const FIRST_DAY = (process.argv.find((a) => a.startsWith("--first-day=")) || "").split("=")[1] || undefined;
 const D3 = [4, 5, 6, 7]; // tier 3-puljer
 const fmt = (n) => Math.round(Number(n) || 0).toLocaleString("da-DK");
 
@@ -45,6 +49,11 @@ async function main() {
 
   const { data: season, error: sErr } = await supabase.from("seasons").select("id, number, start_date").eq("status", "active").maybeSingle();
   if (sErr || !season) throw new Error(`aktiv sæson ikke fundet: ${sErr?.message}`);
+
+  // Dag-0-anker: vælg en FREMTIDIG første løbsdag (default næste mandag), aldrig sæson-start.
+  // resolveCalendarFrom kaster hvis datoen er i fortiden/i dag → blitz-fejlklassen umuliggjort.
+  const firstRaceDay = FIRST_DAY || nextMonday();
+  const from = resolveCalendarFrom({ firstRaceDate: firstRaceDay });
 
   const { data: d3Races } = await supabase.from("races").select("id, prize_paid_at").eq("season_id", season.id).in("league_division_id", D3);
   const d3RaceIds = (d3Races || []).map((r) => r.id);
@@ -79,10 +88,11 @@ async function main() {
 
   const cal = await materializeTierCalendars({
     supabase, seasonId: season.id, seasonStartDate: season.start_date,
-    from: new Date(season.start_date), tiers: [3], dryRun: true,
+    from, tiers: [3], dryRun: true,
   });
 
   console.log(`\n=== Division 3-nulstilling — sæson ${season.number} (${APPLY ? "APPLY" : "DRY-RUN"}) ===`);
+  console.log(`Første løbsdag (dag 0): ${firstRaceDay}${FIRST_DAY ? "" : " (default: næste mandag)"}`);
   console.log(`D3-løb (gamle): ${d3RaceIds.length}  ·  ægte D3-hold: ${teamRows.length}`);
   console.log(`Præmie at reversere (kun D3-hold): ${fmt(totalReverse)}  ·  udefra-præmie-txns at af-linke: ${crossDivTxIds.length}`);
   console.log(`Hold i minus efter reversering: ${negatives.length}  ·  0%-lån i alt: ${fmt(totalLoans)}`);
@@ -142,7 +152,7 @@ async function main() {
   // 9. Materialisér den nye D3-kalender.
   const applied = await materializeTierCalendars({
     supabase, seasonId: season.id, seasonStartDate: season.start_date,
-    from: new Date(season.start_date), tiers: [3], dryRun: false, log: (m) => console.log(m),
+    from, tiers: [3], dryRun: false, log: (m) => console.log(m),
   });
   console.log(`\nFÆRDIG: nye løb ${applied.racesInserted}, etape-tider ${applied.stageSchedules}, profiler ${applied.stageProfiles}, lån ${negatives.length}.`);
 }
