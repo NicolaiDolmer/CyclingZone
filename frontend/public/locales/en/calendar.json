@@ -1,0 +1,59 @@
+{
+  "title": "Race Calendar",
+  "eyebrow": "Season {number} · {days} race days",
+  "eyebrowNoDays": "Season {number}",
+  "loadingAria": "Loading race calendar",
+  "noSeason": {
+    "title": "No active season",
+    "desc": "The race calendar appears here once a season is scheduled."
+  },
+  "empty": {
+    "title": "No races this month",
+    "desc": "Use the month arrows to find scheduled races."
+  },
+  "tabs": {
+    "mine": "My team",
+    "all": "All teams",
+    "divisions": "Divisions"
+  },
+  "division": "Division {n}",
+  "divisionMenu": {
+    "label": "Division",
+    "all": "All divisions"
+  },
+  "filter": {
+    "mine": "My team's races"
+  },
+  "chip": {
+    "stages": "{count, plural, one {# stage} other {# stages}}",
+    "oneStage": "1 stage",
+    "leader": "lineup set",
+    "noLeader": "no lineup"
+  },
+  "weekday": {
+    "mon": "MON",
+    "tue": "TUE",
+    "wed": "WED",
+    "thu": "THU",
+    "fri": "FRI",
+    "sat": "SAT",
+    "sun": "SUN"
+  },
+  "today": "Today",
+  "legend": {
+    "title": "Terrain",
+    "sprint": "Sprint",
+    "hilly": "Hilly",
+    "mountain": "Mountain",
+    "itt": "Time trial"
+  },
+  "terrain": {
+    "sprint": "Sprint",
+    "hilly": "Hilly",
+    "mountain": "Mountain",
+    "itt": "Time trial"
+  },
+  "moreRaces": "+{count} more",
+  "prevMonth": "Previous month",
+  "nextMonth": "Next month"
+}

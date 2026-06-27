@@ -1,0 +1,59 @@
+{
+  "title": "Race Calendar",
+  "eyebrow": "Sæson {number} · {days} løbsdage",
+  "eyebrowNoDays": "Sæson {number}",
+  "loadingAria": "Indlæser løbskalender",
+  "noSeason": {
+    "title": "Ingen aktiv sæson",
+    "desc": "Løbskalenderen vises her, når en sæson er planlagt."
+  },
+  "empty": {
+    "title": "Ingen løb denne måned",
+    "desc": "Brug måneds-pilene til at finde planlagte løb."
+  },
+  "tabs": {
+    "mine": "Mit hold",
+    "all": "Alle hold",
+    "divisions": "Divisioner"
+  },
+  "division": "Division {n}",
+  "divisionMenu": {
+    "label": "Division",
+    "all": "Alle divisioner"
+  },
+  "filter": {
+    "mine": "Mit holds løb"
+  },
+  "chip": {
+    "stages": "{count, plural, one {# etape} other {# etaper}}",
+    "oneStage": "1 etape",
+    "leader": "din leder",
+    "noLeader": "ingen leder"
+  },
+  "weekday": {
+    "mon": "MAN",
+    "tue": "TIR",
+    "wed": "ONS",
+    "thu": "TOR",
+    "fri": "FRE",
+    "sat": "LØR",
+    "sun": "SØN"
+  },
+  "today": "I dag",
+  "legend": {
+    "title": "Terræn",
+    "sprint": "Sprint",
+    "hilly": "Kuperet",
+    "mountain": "Bjerge",
+    "itt": "Enkeltstart"
+  },
+  "terrain": {
+    "sprint": "Sprint",
+    "hilly": "Kuperet",
+    "mountain": "Bjerge",
+    "itt": "Enkeltstart"
+  },
+  "moreRaces": "+{count} flere",
+  "prevMonth": "Forrige måned",
+  "nextMonth": "Næste måned"
+}
