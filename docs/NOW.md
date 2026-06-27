@@ -12,7 +12,7 @@
 >
 > **Ejer-beslutninger (åbne):** #1276 PCM-IP · #1278 spiller-comms · #1487-budget · #929 leaked-pw · #691 key-rotation. [PLAN.md](PLAN.md)=SSOT.
 
-> **🤖 Working agent:** Ingen aktiv session.
+> **🤖 Working agent:** Claude (Opus) — race-kalender-rebuild + Division 3-nulstilling (Fase 1: read-only recon → build/dry-run → ejer-godkendelses-gate FØR prod). Spec: `superpowers/specs/2026-06-27-race-calendar-model-design.md`. Intet rører prod før ejer-go.
 
 ## Standing context (forever-relaunch)
 

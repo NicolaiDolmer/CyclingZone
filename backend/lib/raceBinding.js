@@ -32,20 +32,28 @@ function cetDayOrdinal(scheduledAt) {
   return Date.parse(`${dayStr}T00:00:00Z`) / DAY_MS;
 }
 
-// Binding-vindue (#1823): en rytter kan kun køre ét løb pr. CET-KALENDERDAG
-// (design §2/§3 — "hver division kører typisk 2 løb samme dag … én rytter ét løb").
-// Returnerer { start, end } i CET-dag-ordinaler (heltal). Et endagsløb optager hele
-// sin danske dag (start===end); et etapeløb optager fra første til sidste etapes
-// danske dag. To løb konflikter iff dag-spans overlapper (windowsOverlap er unit-
-// agnostisk). Erstatter raceTimeWindow PRÆCIS hvor binding afgøres — instant-vinduer
-// fik to samme-dag-løb til ikke at overlappe → dobbeltbooking. Tom/ugyldig → null.
+// Binding-nøgle pr. schedule-row: den IN-GAME løbsdag (game_day) når den findes, ellers
+// fallback til CET-kalenderdag-ordinalen af scheduled_at (legacy/ikke-backfillede rows).
+// Rod-årsag for kalender-rebuilden (2026-06-27): binding MÅ nøgle på in-game-dagen, ikke
+// på det IRL-tidspunkt simuleringen tilfældigvis kører — flere løb komprimeret til samme
+// real-eftermiddag er forskellige in-game-dage, så en rytter må gerne køre flere af dem.
+function bindingDayKey(row) {
+  if (Number.isFinite(row?.game_day)) return row.game_day;
+  return cetDayOrdinal(row?.scheduled_at);
+}
+
+// Binding-vindue: en rytter kan kun køre ét løb pr. IN-GAME løbsdag (#1823 + kalender-
+// rebuild). Returnerer { start, end } i in-game-dag-nøgler (heltal). Et endagsløb optager
+// én in-game-dag (start===end); et etapeløb fra første til sidste etapes in-game-dag. To
+// FORSKELLIGE løb konflikter iff in-game-dag-spans overlapper (windowsOverlap er unit-
+// agnostisk). Et løbs egne etaper binder aldrig mod hinanden (samme race_id). Tom/ugyldig → null.
 export function raceBindingWindow(scheduleRows) {
   if (!scheduleRows?.length) return null;
-  const ordinals = scheduleRows
-    .map((r) => cetDayOrdinal(r.scheduled_at))
+  const keys = scheduleRows
+    .map(bindingDayKey)
     .filter((o) => Number.isFinite(o));
-  if (!ordinals.length) return null;
-  return { start: Math.min(...ordinals), end: Math.max(...ordinals) };
+  if (!keys.length) return null;
+  return { start: Math.min(...keys), end: Math.max(...keys) };
 }
 
 // To vinduer overlapper hvis de deler mindst ét tidspunkt (inklusiv ender —
@@ -114,7 +122,7 @@ export function teamInRacePool({ teamDivisionId, racePoolId }) {
 // afgøre om en udtagelse dobbeltbooker en rytter. Tynd I/O — al logik er pure ovenfor.
 export async function loadTeamBindingContext({ supabase, race, teamId }) {
   const { data: thisSched, error: e1 } = await supabase
-    .from("race_stage_schedule").select("race_id, scheduled_at").eq("race_id", race.id);
+    .from("race_stage_schedule").select("race_id, scheduled_at, game_day").eq("race_id", race.id);
   if (e1) throw new Error(`race_stage_schedule (this): ${e1.message}`);
   const thisWindow = raceBindingWindow(thisSched);
 
@@ -148,7 +156,7 @@ export async function loadTeamBindingContext({ supabase, race, teamId }) {
   if (!otherRaceIds.length) return { thisWindow, otherRaces: [] };
 
   const { data: scheds, error: e3 } = await supabase
-    .from("race_stage_schedule").select("race_id, scheduled_at").in("race_id", otherRaceIds);
+    .from("race_stage_schedule").select("race_id, scheduled_at, game_day").in("race_id", otherRaceIds);
   if (e3) throw new Error(`race_stage_schedule (others): ${e3.message}`);
 
   const schedByRace = new Map();
