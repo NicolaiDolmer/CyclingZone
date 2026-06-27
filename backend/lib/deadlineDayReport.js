@@ -243,47 +243,6 @@ export async function loadFinalWhistleData({ supabase, window }) {
   return { auctionDeals, transferDeals, bids: bidsForReport, panicTeamIds };
 }
 
-// ── Read-only: recompute Final Whistle-rapporten for in-app-visning (#1354) ──
-// Genberegner samme payload som Discord-embed'et fra kilde-tabellerne — ingen
-// persistering, ingen Discord-send, ingen final_whistle_sent_at-claim. Bruges af
-// GET /api/deadline-day/final-whistle. Returnerer { available: false } indtil et
-// vindue faktisk er lukket (status='closed' med en deadline-historik), så frontend
-// kan vise en empty-state mens vinduet stadig er åbent.
-export async function getFinalWhistleReport({ supabase }) {
-  const { data: window } = await supabase
-    .from("transfer_windows")
-    .select("id, season_id, status, closes_at, closed_at, created_at, final_whistle_sent_at")
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .single();
-
-  if (!window) return { available: false };
-
-  // Racing-windows (closes_at=null + closed_at=null) var aldrig en deadline day —
-  // samme guard som processDeadlineDayCron. Ingen rapport at vise.
-  if (!window.closes_at && !window.closed_at) return { available: false };
-
-  // Kun et faktisk lukket vindue har en færdig rapport. Et åbent vindue (Deadline
-  // Day i gang) har endnu ingen final-tal.
-  if (window.status !== "closed") return { available: false };
-
-  const { auctionDeals, transferDeals, bids, panicTeamIds } = await loadFinalWhistleData({ supabase, window });
-  const report = computeFinalWhistleReport({ auctionDeals, transferDeals, bids, panicTeamIds });
-
-  let seasonNumber = null;
-  if (window.season_id) {
-    const { data: season } = await supabase.from("seasons").select("number").eq("id", window.season_id).single();
-    seasonNumber = season?.number ?? null;
-  }
-
-  return {
-    available: true,
-    report,
-    seasonNumber,
-    closedAt: window.closed_at || window.closes_at || null,
-  };
-}
-
 // ── Auto-close: flip status open → closed når closes_at er passeret ─────────
 // Sikkerhedsnet så vinduet rammer deadline præcist selv hvis admin sover.
 // Atomic claim: kun UPDATE hvis row stadig er open (race-safe mod manuel close).
