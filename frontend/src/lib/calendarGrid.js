@@ -55,13 +55,70 @@ export function groupEntriesByDate(entries) {
   return map;
 }
 
-// The set of months (as {year, month}) that contain at least one entry, sorted.
-// Lets the page default to the first month with races and bound month navigation.
+// Expands each race entry into ONE event PER STAGE (from entry.stageSchedule), so a stage race
+// shows up on every day it runs ("1. etape" on its day, "2. etape" the next, …). Falls back to a
+// single event on the entry's start date if no per-stage schedule is present (defensive).
+export function expandStageEvents(entries) {
+  const out = [];
+  for (const e of entries || []) {
+    const sched = e.stageSchedule && e.stageSchedule.length
+      ? e.stageSchedule
+      : (e.date ? [{ stage: 1, date: e.date, time: null, terrain: e.terrain }] : []);
+    for (const s of sched) {
+      if (!s.date) continue;
+      out.push({
+        raceId: e.id,
+        name: e.name,
+        raceType: e.raceType,
+        stages: e.stages,
+        stage: s.stage,
+        date: s.date,
+        time: s.time || null,
+        terrain: s.terrain || e.terrain || null,
+        division: e.division,
+        poolLabel: e.poolLabel,
+        isMine: e.isMine,
+        leaderSet: e.leaderSet,
+      });
+    }
+  }
+  return out;
+}
+
+// Filters stage events to a single month (and optionally a division/tier + "mine only").
+export function filterStageEvents(events, { year, month, division = null, mineOnly = false } = {}) {
+  const prefix = `${year}-${pad2(month)}`;
+  return (events || []).filter((ev) => {
+    if (!ev.date || !ev.date.startsWith(prefix)) return false;
+    if (division != null && ev.division !== division) return false;
+    if (mineOnly && !ev.isMine) return false;
+    return true;
+  });
+}
+
+// Groups stage events by ISO date → Map<iso, event[]>, sorted by time-of-day within a day so the
+// cell reads top-to-bottom chronologically (12:00 før 15:00 før 18:00).
+export function groupStageEventsByDate(events) {
+  const map = new Map();
+  for (const ev of events || []) {
+    if (!ev.date) continue;
+    if (!map.has(ev.date)) map.set(ev.date, []);
+    map.get(ev.date).push(ev);
+  }
+  for (const list of map.values()) {
+    list.sort((a, b) => (a.time || "").localeCompare(b.time || "") || a.name.localeCompare(b.name) || (a.stage - b.stage));
+  }
+  return map;
+}
+
+// The set of months (as {year, month}) that contain at least one stage event, sorted. Lets the
+// page default to the first month with races. Uses per-stage dates so a stage race that spills
+// into the next month is counted there too.
 export function monthsWithRaces(entries) {
   const seen = new Set();
-  for (const e of entries || []) {
-    if (!e.date) continue;
-    seen.add(e.date.slice(0, 7)); // "YYYY-MM"
+  for (const ev of expandStageEvents(entries)) {
+    if (!ev.date) continue;
+    seen.add(ev.date.slice(0, 7)); // "YYYY-MM"
   }
   return [...seen]
     .sort()

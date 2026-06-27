@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { PageLoader, EmptyState, Select, Checkbox, CalendarIcon, ChevronLeftIcon, ChevronRightIcon } from "../components/ui";
 import TerrainGlyph from "../components/calendar/TerrainGlyph.jsx";
 import {
   buildMonthGrid,
-  groupEntriesByDate,
+  expandStageEvents,
+  filterStageEvents,
+  groupStageEventsByDate,
   monthsWithRaces,
   stepMonth,
-  filterEntries,
 } from "../lib/calendarGrid.js";
 
 const API = import.meta.env.VITE_API_URL;
@@ -82,17 +84,19 @@ export default function CalendarPage() {
   // checkbox ("Mit holds løb") provides the same filter on the other tabs.
   const effectiveMineOnly = tab === "mine" || mineOnly;
 
-  const monthEntries = useMemo(() => {
+  // Hver etape er sin egen kalender-event (på sin dag), så et etapeløb vises på hver dag det køres.
+  const allStageEvents = useMemo(() => expandStageEvents(data?.entries || []), [data]);
+  const stageEvents = useMemo(() => {
     if (!cursor) return [];
-    return filterEntries(data?.entries || [], {
+    return filterStageEvents(allStageEvents, {
       year: cursor.year,
       month: cursor.month,
       division: activeDivision,
       mineOnly: effectiveMineOnly,
     });
-  }, [data, cursor, activeDivision, effectiveMineOnly]);
+  }, [allStageEvents, cursor, activeDivision, effectiveMineOnly]);
 
-  const byDate = useMemo(() => groupEntriesByDate(monthEntries), [monthEntries]);
+  const byDate = useMemo(() => groupStageEventsByDate(stageEvents), [stageEvents]);
   const weeks = useMemo(() => (cursor ? buildMonthGrid(cursor.year, cursor.month) : []), [cursor]);
 
   if (loading) return <PageLoader label={t("loadingAria")} />;
@@ -201,7 +205,7 @@ export default function CalendarPage() {
         ))}
       </div>
 
-      {monthEntries.length === 0 && (
+      {stageEvents.length === 0 && (
         <div className="mt-4">
           <EmptyState icon={<CalendarIcon size={28} aria-hidden="true" />} title={t("empty.title")} description={t("empty.desc")} />
         </div>
@@ -277,7 +281,7 @@ function DayCell({ cell, entries, todayISO, t }) {
   }
   const isToday = cell.iso === todayISO;
   const list = entries || [];
-  const shown = list.slice(0, 3);
+  const shown = list.slice(0, 4);
   const overflow = list.length - shown.length;
 
   return (
@@ -294,8 +298,8 @@ function DayCell({ cell, entries, todayISO, t }) {
         )}
       </div>
       <div className="space-y-1">
-        {shown.map((e) => (
-          <RaceChip key={e.id} entry={e} t={t} />
+        {shown.map((ev) => (
+          <StageChip key={`${ev.raceId}:${ev.stage}`} ev={ev} t={t} />
         ))}
         {overflow > 0 && (
           <p className="px-0.5 text-[10px] text-cz-3">{t("moreRaces", { count: overflow })}</p>
@@ -305,42 +309,40 @@ function DayCell({ cell, entries, todayISO, t }) {
   );
 }
 
-// ── race chip ────────────────────────────────────────────────────────────────
+// ── stage chip ───────────────────────────────────────────────────────────────
+// Én chip pr. etape: klikbar ind på løbets planlægningsside (?stage=N), med terræn-glyf,
+// løbsnavn og en anden linje med "N. etape · HH:MM" (endagsløb: kun klokkeslæt).
 
-function RaceChip({ entry, t }) {
-  const mine = entry.isMine;
-  const stagesLabel = entry.raceType === "stage_race"
-    ? t("chip.stages", { count: entry.stages })
-    : t("chip.oneStage");
-  const secondLine = mine
-    ? `${stagesLabel} · ${entry.leaderSet ? t("chip.leader") : t("chip.noLeader")}`
-    : stagesLabel;
+function StageChip({ ev, t }) {
+  const mine = ev.isMine;
+  const isStageRace = ev.raceType === "stage_race";
+  const stageLabel = isStageRace ? t("chip.stageNum", { n: ev.stage }) : null;
+  const secondLine = [stageLabel, ev.time].filter(Boolean).join(" · ");
 
-  // Full name + meta is always the accessible name (the visible name truncates hard
-  // in narrow cells, especially on mobile) — so screen readers and tests get the
-  // whole title even when the cell only fits a few glyphs. Terrain label included so
-  // the silhouette glyph is not the only carrier of terrain meaning.
-  const a11yLabel = `${entry.name} · ${t(`terrain.${entry.terrain || "sprint"}`)} · ${secondLine}${entry.poolLabel ? ` · ${entry.poolLabel}` : ""}`;
+  // Full name + meta is always the accessible name (visible name truncates hard in narrow cells).
+  const a11yLabel = `${ev.name} · ${t(`terrain.${ev.terrain || "sprint"}`)}${secondLine ? ` · ${secondLine}` : ""}${ev.poolLabel ? ` · ${ev.poolLabel}` : ""}`;
 
   return (
-    <div
+    <Link
+      to={`/races/${ev.raceId}${isStageRace ? `?stage=${ev.stage}` : ""}`}
       data-testid="calendar-race-chip"
-      role="group"
-      aria-label={a11yLabel}
-      className={`rounded-[3px] border px-1.5 py-1 leading-tight
+      aria-label={t("chip.openRace", { name: ev.name })}
+      title={a11yLabel}
+      className={`block rounded-[3px] border px-1.5 py-1 leading-tight transition-colors
         ${mine
-          ? "border-cz-accent/40 bg-cz-accent/[0.07]"
-          : "border-cz-border bg-cz-subtle/50 opacity-70"}`}
-      title={`${entry.name} · ${entry.poolLabel ?? ""}`}
+          ? "border-cz-accent/40 bg-cz-accent/[0.07] hover:bg-cz-accent/[0.14]"
+          : "border-cz-border bg-cz-subtle/50 opacity-80 hover:opacity-100 hover:bg-cz-subtle"}`}
     >
       <div className="flex items-center gap-1.5">
-        <TerrainGlyph bucket={entry.terrain || "sprint"} width={18} height={10} className={mine ? "text-cz-1" : "text-cz-3"} />
-        <span className={`truncate text-[11px] font-medium ${mine ? "text-cz-1" : "text-cz-2"}`}>{entry.name}</span>
+        <TerrainGlyph bucket={ev.terrain || "sprint"} width={18} height={10} className={mine ? "text-cz-1" : "text-cz-3"} />
+        <span className={`truncate text-[11px] font-medium ${mine ? "text-cz-1" : "text-cz-2"}`}>{ev.name}</span>
       </div>
-      <p className={`mt-0.5 truncate text-[9px] ${mine ? "text-cz-accent-t font-medium" : "text-cz-3"}`}>
-        {secondLine}
-      </p>
-    </div>
+      {secondLine && (
+        <p className={`mt-0.5 truncate text-[9px] tabular-nums ${mine ? "text-cz-accent-t font-medium" : "text-cz-3"}`}>
+          {secondLine}
+        </p>
+      )}
+    </Link>
   );
 }
 

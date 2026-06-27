@@ -94,6 +94,17 @@ export function toCopenhagenISODate(epochMs) {
   return CPH_DATE_FMT.format(new Date(epochMs));
 }
 
+// Epoch-ms → "HH:MM" i Europe/Copenhagen (24-timers). Til per-etape-visning på kalenderen.
+const CPH_TIME_FMT = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Europe/Copenhagen",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+export function toCopenhagenTime(epochMs) {
+  return CPH_TIME_FMT.format(new Date(epochMs));
+}
+
 // "YYYY-MM-DD" → { year, month (1-12), day }. Ingen Date-parsing (undgår TZ-skred).
 export function splitISODate(iso) {
   if (typeof iso !== "string") return null;
@@ -142,6 +153,33 @@ export function buildCalendarModel({
     if (!profilesByRace.has(row.race_id)) profilesByRace.set(row.race_id, []);
     profilesByRace.get(row.race_id).push(row.profile_type);
   }
+  // terræn-bucket pr. (race, stage_number) — til per-etape-chips på kalenderen.
+  const terrainByRaceStage = new Map();
+  for (const row of profileRows || []) {
+    terrainByRaceStage.set(`${row.race_id}:${row.stage_number}`, calendarTerrainBucket(row.profile_type));
+  }
+
+  // Per-etape-plan pr. løb: { stage, date, time, terrain } sorteret efter faktisk tidspunkt.
+  // Afledt DIREKTE fra scheduled_at (IRL), så den korrekte kalenderdag+tid vises selv for
+  // monumenter (hvis game_day ligger i binding-fri båndet). Frontend ekspanderer hver etape
+  // til sin egen dag-celle, så spilleren ser "1. etape 12:30", "2. etape 15:00" osv.
+  const stageScheduleByRace = new Map();
+  for (const row of scheduleRows || []) {
+    const ms = Date.parse(row.scheduled_at);
+    if (!Number.isFinite(ms)) continue;
+    if (!stageScheduleByRace.has(row.race_id)) stageScheduleByRace.set(row.race_id, []);
+    stageScheduleByRace.get(row.race_id).push({
+      stage: row.stage_number,
+      date: toCopenhagenISODate(ms),
+      time: toCopenhagenTime(ms),
+      terrain: terrainByRaceStage.get(`${row.race_id}:${row.stage_number}`) || null,
+      _ms: ms,
+    });
+  }
+  for (const list of stageScheduleByRace.values()) {
+    list.sort((a, b) => a._ms - b._ms || a.stage - b.stage);
+    for (const s of list) delete s._ms;
+  }
 
   const divById = new Map(divisions.map((d) => [d.id, d]));
 
@@ -176,6 +214,7 @@ export function buildCalendarModel({
       date,
       terrain: dominantCalendarBucket(profileTypes),
       terrainStages: profileTypes.map(calendarTerrainBucket),
+      stageSchedule: stageScheduleByRace.get(race.id) || [],
       isMine,
       leaderSet: teamLeaderRaceIds.has(race.id),
       entered: teamEntryRaceIds.has(race.id),

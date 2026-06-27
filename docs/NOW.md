@@ -6,11 +6,11 @@
 
 > **🟢 MOTOR TÆNDT — løb genstarter man 29/6 08:00 (27/6):** `race_engine_v2_enabled` + `stage_scheduler_enabled` + `auto_prize_enabled` = **on**. Verificeret garanti ved tænding (ejer-betinget go): tidligste løb man 29/6 08:00, **0 forfaldne før mandag** → intet kører i weekenden. Nødstop = sæt `race_engine_v2_enabled='off'` (kill-switch).
 >
-> **All-division kalender-rebuild (27/6 — udført + verificeret):** Hele sæson 1 sat på den korrekte game_day-model: 185 gamle løb slettet, **209 nye** (Div 1=33, Div 2=30/pulje, Div 3=29/pulje), dato-synkrone fra man 29/6. AI-præmie af-linket (balancer **urørt**, sum 89.135.982); ægte spillere upåvirkede; 6 D3 reset-lån (238.603) intakte. Div 1 reproducerer ejer-godkendt pack (3 Grand Tours som rygrad), 0 dubletter på tværs af divisioner. **Backup:** `backup_allreset_20260627_*` (10 tabeller) + `backup_d3_reset_20260627_*`. Rod-årsags-fix (from-anker · cross-tier dedup · GT-rygrad) + in-game kalender-feature i **PR [#1945](https://github.com/NicolaiDolmer/CyclingZone/pull/1945)** (rører ikke race-runneren → sikker at merge; mandag kører på nuværende prod-scheduler uanset).
+> **Prestige-kalender-rebuild (27/6 — anvendt + verificeret i prod):** Hele sæson 1 ombygget til ejer-spec'en (140/112/84/56 løbsdage = 5/4/3/2 etaper/dag, præcist). Prestige-rang (Grand Tour→Monument→World Tour→ProSeries→Class), Grand Tours komprimeret som spredt rygrad MED overlap, monumenter binding-fri, div 3 fuld af overlap. **263 løb, 700 etape-tider; alle divisioner præcis, 0 tomme/droppede.** Første løb man 29/6. Klikbar per-etape-kalender-UI (etaper pr. dag + tidspunkt → planlægningsside) i **PR [#1946](https://github.com/NicolaiDolmer/CyclingZone/pull/1946)**. **Backup:** `backup_calrebuild_20260627_*`. Spec: `docs/superpowers/specs/2026-06-27-calendar-prestige-stage-spread-design.md`.
 >
 > **💰 CZ Pro Slice 1 — PR [#1909](https://github.com/NicolaiDolmer/CyclingZone/pull/1909) afventer ejer-merge** (har `database/*.sql`). **Åbne ejer-beslutninger:** #1276 · #1278 · #1487 · #929 · #691. [PLAN.md](PLAN.md)=SSOT.
 
-> **🎯 Next action:** Tjek + merge PR [#1945](https://github.com/NicolaiDolmer/CyclingZone/pull/1945) (kalender-feature live for spillere) · verificér at mandagens genstart (29/6 08:00) kører rent · drop `backup_allreset_*`/`backup_d3_reset_*` når stabil.
+> **🎯 Next action:** Merge PR [#1946](https://github.com/NicolaiDolmer/CyclingZone/pull/1946) → backend (Railway) + frontend (Vercel) deployer den klikbare per-etape-kalender · ejer review'er live · verificér mandagens genstart (29/6) kører rent · drop `backup_calrebuild_*` når stabil.
 
 > **🤖 Working agent:** Ingen aktiv session.
 
@@ -20,4 +20,4 @@
 - **Sikkerhed:** [#691](https://github.com/NicolaiDolmer/CyclingZone/issues/691) SERVICE_KEY-rotation · #929 leaked-password — åbne.
 - **Skalering:** infra bærer 100 managers; Supabase Pro (#1181). Perf post-launch (#1375).
 
-_Trimmet 27/6 close-out (token-gate #1275); fuld historik i git-log + issue-tråde._
+_Trimmet 27/6 close-out (prestige-kalender-rebuild); fuld historik i git-log + issue-tråde._
