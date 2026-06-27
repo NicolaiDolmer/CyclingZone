@@ -4,15 +4,15 @@
 
 ## Aktiv styring
 
-> **💰 CZ Pro Slice 1 — PR [#1909](https://github.com/NicolaiDolmer/CyclingZone/pull/1909) afventer ejer-merge:** Billing-rails (Alunta hosted checkout + entitlement `is_pro` + Founder-badge, [#1903](https://github.com/NicolaiDolmer/CyclingZone/issues/1903)). Har `database/*.sql` → **ejer merger**. Før go-live: opret CZ Pro-plan i Alunta (49/md + 265/6mdr) + `ALUNTA_API_TOKEN`/`_WEBHOOK_SECRET`/plan-id'er → Infisical.
+> **⚠️ MOTOR SLUKKET — INGEN LØB KØRER (27/6, KRITISK):** `race_engine_v2_enabled` + `stage_scheduler_enabled` + `auto_prize_enabled` = **off** i `app_config`. **Tænd dem ALDRIG uden eksplicit ejer-go** (ejer-direktiv 27/6). **Sæson 1's løb genstarter mandag 29/6** — ejeren beslutter selve gen-tændingen. Managers skal kunne SE kalenderen + planlægge trup inden da.
 >
-> **🎯 Next action (27/6 — 3 PRs MERGED):** #1926→[#1935](https://github.com/NicolaiDolmer/CyclingZone/pull/1935) (orphaned endpoints fjernet, audit-gate grøn) + #1916→[#1939](https://github.com/NicolaiDolmer/CyclingZone/pull/1939) (help-tal pinnet) = **done**. #1904→[#1940](https://github.com/NicolaiDolmer/CyclingZone/pull/1940) merged + **config flippet 27/6 (08–24 live i prod, 0 aktive auktioner ved cutover)** + patch note v6.27 ([#1943](https://github.com/NicolaiDolmer/CyclingZone/pull/1943)) → **#1904 LUKKET, 08–24 live**. **Din hånd venter på:** holdudtagelse #1906/#1823/#1800 (real-konto-bekræftelse), CZ Pro [#1909](https://github.com/NicolaiDolmer/CyclingZone/pull/1909). **Næste kandidater:** [#1941](https://github.com/NicolaiDolmer/CyclingZone/issues/1941) (grace=0-beslutning), [#1922](https://github.com/NicolaiDolmer/CyclingZone/issues/1922) træningsfokus, [#1875](https://github.com/NicolaiDolmer/CyclingZone/issues/1875) Vercel preview-env, race-hub S2b (#1825/#1712).
+> **Division 3-nulstilling (27/6 — udført, IKKE live-valideret):** D3 (puljer 4-7, 40 ægte hold) nulstillet fra bunden: 58 gamle løb slettet, præmie reverseret (1.328.625), 6 reset-lån (238.603, 0% rente), ny 28-dags-kalender materialiseret (116 løb m. `game_day`), board/træthed/stillinger/værdier genberegnet, rytter + indkøb beholdt. **Backup:** `backup_d3_reset_20260627_*` (6 tabeller). Migration anvendt. Spec/branch/script: `superpowers/specs/2026-06-27-race-calendar-model-design.md` · branch `feat/race-calendar-rebuild` · `backend/scripts/dev/reset-division-3.mjs`.
 >
-> **Issue-hygiejne (27/6):** Nye follow-up-fund: [#1941](https://github.com/NicolaiDolmer/CyclingZone/issues/1941) (prod auktions-grace=0, mangler kolonne — ejer-beslutning) + [#1942](https://github.com/NicolaiDolmer/CyclingZone/issues/1942) (orphan FAQ-key). [#1927](https://github.com/NicolaiDolmer/CyclingZone/issues/1927) (frossen løn) **holder åben** — systemisk salary-refresh + demote-gulv mangler.
+> **⚠️ HÆNDELSE + TODO (gated, ny session):** timing-fejl (kalender fra sæson-start i fortiden) → scheduleren **blitzede ~12 D3-løb**, **fuldt ryddet op** (resultater + 693k præmie reverseret, D3 ren). Postmortem: `.claude/learnings/2026-06-27-d3-reset-blitz.md`. **Før gen-tænding:** (1) ret `reset-division-3.mjs` `from` (sæson-start → fremtid); (2) flyt D3-kalenderens 1. etape fra **søn 28/6 → man 29/6**; (3) se kalenderen LIVE; (4) ejeren tænder motoren mandag. Bredere rerun (#1848/#1861) + rollout = senere, gated.
 >
-> **Ejer-beslutninger (åbne):** #1276 PCM-IP · #1278 spiller-comms · #1487-budget · #929 leaked-pw · #691 key-rotation. [PLAN.md](PLAN.md)=SSOT.
+> **💰 CZ Pro Slice 1 — PR [#1909](https://github.com/NicolaiDolmer/CyclingZone/pull/1909) afventer ejer-merge** (har `database/*.sql`). **27/6 ellers done:** #1926/#1916/#1904 (08–24 live). **Åbne ejer-beslutninger:** #1276 · #1278 · #1487 · #929 · #691. [PLAN.md](PLAN.md)=SSOT.
 
-> **🤖 Working agent:** Claude (Opus) — race-kalender-rebuild + Division 3-nulstilling (Fase 1: read-only recon → build/dry-run → ejer-godkendelses-gate FØR prod). Spec: `superpowers/specs/2026-06-27-race-calendar-model-design.md`. Intet rører prod før ejer-go.
+> **🤖 Working agent:** Ingen aktiv session.
 
 ## Standing context (forever-relaunch)
 

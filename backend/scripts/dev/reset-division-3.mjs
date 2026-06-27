@@ -1,4 +1,10 @@
 // backend/scripts/dev/reset-division-3.mjs
+//
+// ⚠️ KØR IKKE IGEN UDEN AT RETTE `from` (postmortem 2026-06-27): scriptet materialiserer
+// kalenderen fra `season.start_date`. På en IGANGVÆRENDE sæson giver det scheduled_at i
+// FORTIDEN → race-scheduleren blitzer løb. `from` SKAL være en fremtidig dato (parametriseret)
+// før genbrug. Se .claude/learnings/2026-06-27-d3-reset-blitz.md.
+//
 // Division 3-nulstilling "fra bunden af" (ejer-godkendt 2026-06-27, spec
 // superpowers/specs/2026-06-27-race-calendar-model-design.md).
 //
@@ -96,11 +102,11 @@ async function main() {
       teamId: t.id, delta: -t.prize,
       payload: {
         type: "admin_adjustment", amount: -t.prize, description: "Division 3-nulstilling: præmie-reversering",
-        season_id: season.id, actor_type: "SYSTEM", actor_id: null, source_path: "reset-division-3",
+        season_id: season.id, actor_type: "system", actor_id: null, source_path: "reset-division-3",
         reason_code: "D3_RESET_PRIZE_CLAWBACK", idempotency_key: `d3_reset_clawback:${t.id}`,
         metadata: { code: "tx.d3ResetClawback" },
       },
-    });
+    }, { allowDuplicate: true });
   }
   // 2. Slet D3-holds præmie-txns.
   await supabase.from("finance_transactions").delete().eq("type", "prize").in("race_id", d3RaceIds).in("team_id", [...d3TeamIds]);
@@ -129,7 +135,9 @@ async function main() {
   await recomputeSeasonRaceDays({ supabase, seasonId: season.id });
   // 8. 0%-reset-lån til de hold der gik i minus (skadesløs dækning, tilbagebetales af fremtidig præmie).
   for (const t of negatives) {
-    await createLoan(t.id, "reset", t.loan, supabase, { actorType: "SYSTEM", actorId: null });
+    const { data: existingLoan } = await supabase.from("loans").select("id").eq("team_id", t.id).eq("loan_type", "reset").eq("status", "active").limit(1);
+    if (existingLoan && existingLoan.length) { console.log(`   reset-lån findes allerede for ${t.name} — springer over`); continue; }
+    await createLoan(t.id, "reset", t.loan, supabase, { actorType: "system", actorId: null });
   }
   // 9. Materialisér den nye D3-kalender.
   const applied = await materializeTierCalendars({
