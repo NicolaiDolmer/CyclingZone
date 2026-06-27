@@ -4,6 +4,41 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.29",
+    "date": "2026-06-27",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Race calendar",
+        "en": {
+          "title": "Click into any race — stages now shown by day and time",
+          "body": "Every race on the calendar is now clickable: tap a race to open its planning page. Stage races are split out across the days they run, each stage shown on its own day with its start time (for example \"stage 1 · 12:00\", \"stage 2 · 15:00\"), so you can see exactly when each stage goes off and plan your squad for it."
+        },
+        "da": {
+          "title": "Klik ind på et hvilket som helst løb — etaper vises nu pr. dag og tidspunkt",
+          "body": "Hvert løb i kalenderen er nu klikbart: tryk på et løb for at åbne dets planlægningsside. Etapeløb er delt ud over de dage de køres, og hver etape vises på sin egen dag med sit starttidspunkt (for eksempel \"1. etape · 12:00\", \"2. etape · 15:00\"), så du kan se præcis hvornår hver etape køres og planlægge din trup til den."
+        },
+        "refs": [1945]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Race calendar",
+        "en": {
+          "title": "Tighter, more varied race programme per division",
+          "body": "Each division's season programme now has a precise number of race-days that scales down the pyramid, with more racing and more overlapping races in Division 3 so there is always something to ride. Grand Tours run as a spread-out spine with other races alongside them, and the monuments are free to start — your best riders are never locked inside a stage race when a monument comes up."
+        },
+        "da": {
+          "title": "Strammere, mere varieret løbsprogram pr. division",
+          "body": "Hver divisions sæson-program har nu et præcist antal løbsdage der skalerer ned ad pyramiden, med mere racing og flere overlappende løb i Division 3, så der altid er noget at køre. Grand Tour-løbene kører som en spredt rygrad med andre løb ved siden af, og monumenterne er frie at stille til — dine bedste ryttere er aldrig låst inde i et etapeløb, når et monument dukker op."
+        },
+        "refs": [1945]
+      }
+    ]
+  },
+  {
     "version": "6.28",
     "date": "2026-06-27",
     "label": "Beta",
