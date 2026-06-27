@@ -159,6 +159,16 @@ test("buildCalendarModel udleder dominerende terræn + start/slut-dag for etapel
   assert.equal(stage.leaderSet, false);
 });
 
+test("buildCalendarModel: stageSchedule giver per-etape dato+tid+terræn fra scheduled_at", () => {
+  const { entries } = buildCalendarModel(sampleInput());
+  const stage = entries.find((e) => e.id === "r-stage");
+  assert.equal(stage.stageSchedule.length, 2, "to scheduled etaper");
+  assert.deepEqual(stage.stageSchedule[0], { stage: 1, date: "2026-06-30", time: "08:00", terrain: "mountain" });
+  assert.deepEqual(stage.stageSchedule[1], { stage: 5, date: "2026-07-01", time: "08:00", terrain: null });
+  const single = entries.find((e) => e.id === "r-single");
+  assert.deepEqual(single.stageSchedule, [{ stage: 1, date: "2026-06-28", time: "08:00", terrain: "sprint" }]);
+});
+
 test("buildCalendarModel: isMine=false når holdet ingen pulje har", () => {
   const { entries } = buildCalendarModel(sampleInput({ teamDivisionId: null }));
   assert.ok(entries.every((e) => e.isMine === false));

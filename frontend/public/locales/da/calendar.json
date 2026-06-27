@@ -27,8 +27,10 @@
   "chip": {
     "stages": "{count, plural, one {# etape} other {# etaper}}",
     "oneStage": "1 etape",
+    "stageNum": "{n}. etape",
     "leader": "din leder",
-    "noLeader": "ingen leder"
+    "noLeader": "ingen leder",
+    "openRace": "Åbn planlægning for {name}"
   },
   "weekday": {
     "mon": "MAN",
