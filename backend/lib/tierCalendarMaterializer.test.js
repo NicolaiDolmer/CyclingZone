@@ -66,3 +66,18 @@ test("plan: deterministisk", () => {
   const b = buildTierMaterializationPlan({ pools, catalog: catalog(), from: FROM, baseSeed: 6 });
   assert.deepEqual(a, b);
 });
+
+test("plan: alt passer på 28 dage → unplaced 0 (eksponeret, ikke tavs cap)", () => {
+  const { tierPlans } = buildTierMaterializationPlan({ pools, catalog: catalog(), from: FROM, baseSeed: 6 });
+  assert.equal(tierPlans[0].unplacedStages, 0);
+  assert.equal(tierPlans[0].unplacedSingles, 0);
+});
+
+test("plan: løb der ikke kan pakkes rapporteres som unplaced (ingen tavs beskæring)", () => {
+  // 3 real-dage kan umuligt rumme tier-3-sættet (9 etape + 20 endags) → pakkeren MÅ droppe,
+  // og det skal eksponeres i planen, ikke skjules (jf. "ingen tavse caps").
+  const { tierPlans } = buildTierMaterializationPlan({ pools, catalog: catalog(), from: FROM, baseSeed: 6, realDays: 3 });
+  const t = tierPlans[0];
+  assert.ok(Number.isInteger(t.unplacedStages) && Number.isInteger(t.unplacedSingles), "unplaced-felter eksponeret som heltal");
+  assert.ok(t.unplacedStages + t.unplacedSingles > 0, "droppede løb rapporteret");
+});

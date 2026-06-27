@@ -103,6 +103,10 @@ export function buildTierMaterializationPlan({
       emptyDays: packed.emptyDays,
       truncatedStages: sel.truncatedStages,
       truncatedSingles: sel.truncatedSingles,
+      // Løb der blev VALGT men ikke kunne pakkes ind på real-dagene (28-dages-cap) — eksponeret
+      // så callere/scripts ikke tavst tror sættet passede (jf. "ingen tavse caps").
+      unplacedStages: packed.unplacedStages.length,
+      unplacedSingles: packed.unplacedSingles.length,
       pools: poolPlans,
     });
   }
@@ -143,7 +147,7 @@ export async function materializeTierCalendars({
 
   for (const tierPlan of tierPlans) {
     if (tiers && !tiers.includes(tierPlan.tier)) continue;
-    const tLine = { tier: tierPlan.tier, emptyDays: tierPlan.emptyDays, truncatedStages: tierPlan.truncatedStages, truncatedSingles: tierPlan.truncatedSingles, pools: [] };
+    const tLine = { tier: tierPlan.tier, emptyDays: tierPlan.emptyDays, truncatedStages: tierPlan.truncatedStages, truncatedSingles: tierPlan.truncatedSingles, unplacedStages: tierPlan.unplacedStages, unplacedSingles: tierPlan.unplacedSingles, pools: [] };
     for (const poolPlan of tierPlan.pools) {
       const fresh = poolPlan.raceRows.filter((r) => !existingKey.has(`${poolPlan.leagueDivisionId}:${r.pool_race_id}`));
       const pLine = { pool_id: poolPlan.leagueDivisionId, selected: poolPlan.raceRows.length, fresh: fresh.length, inserted: 0 };
