@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.27",
+    "date": "2026-06-27",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "Auctions now run 08:00 to 24:00 every day",
+          "body": "The active auction window is now 08:00 to 24:00 every day, up from 10:00 to 22:00. An auction still counts one active hour, but it can now run later into the evening, with the only dead hours being 00:00 to 08:00. An auction started at 23:30, for example, finishes at 08:30 the next morning."
+        },
+        "da": {
+          "title": "Auktioner kører nu 08:00 til 24:00 alle dage",
+          "body": "Det aktive auktionsvindue er nu 08:00 til 24:00 alle dage, op fra 10:00 til 22:00. En auktion tæller stadig én aktiv time, men kan nu køre længere ud på aftenen, og de eneste døde timer er 00:00 til 08:00. En auktion startet kl. 23:30 slutter for eksempel kl. 08:30 næste morgen."
+        },
+        "refs": [1904]
+      }
+    ]
+  },
+  {
     "version": "6.26",
     "date": "2026-06-26",
     "label": "Beta",
