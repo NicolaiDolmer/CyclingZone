@@ -623,7 +623,7 @@
       "label": "Team selection",
       "what": {
         "title": "Picking your race squad",
-        "text": "Before each race you pick 6-8 riders (Grand Tours use full squads of 8). Open the race page and use the Team selection panel. If you don't pick, your assistant fields a sensible team automatically, so you never miss a race."
+        "text": "Every race needs a complete lineup: the full field size for its class (6 in most races, 7 in the bigger World Tour races and Monuments, 8 in Grand Tours). Open the race page and use the Team selection panel. You can't save a partial squad. To sit a race out, withdraw from it; if you're short on healthy riders, sign free agents to fill the gaps. If you don't pick, your assistant auto-fills a full lineup from your available riders, so you never miss a race."
       },
       "suitability": {
         "title": "Reading the selection table",

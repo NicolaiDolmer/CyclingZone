@@ -623,7 +623,7 @@
       "label": "Holdudtagelse",
       "what": {
         "title": "Udtag din løbstrup",
-        "text": "Inden hvert løb vælger du 6-8 ryttere (Grand Tours bruger fulde trupper på 8). Gå til løbssiden og brug panelet Holdudtagelse. Vælger du ikke selv, stiller din assistent automatisk et fornuftigt hold, så du aldrig misser et løb."
+        "text": "Hvert løb kræver en komplet opstilling: den fulde feltstørrelse for løbets klasse (6 i de fleste løb, 7 i de større World Tour-løb og Monumenter, 8 i Grand Tours). Gå til løbssiden og brug panelet Holdudtagelse. Du kan ikke gemme en delvis trup. Vil du stå over et løb, så afmeld dig det; mangler du raske ryttere, så hent fri-agenter til at fylde pladserne. Vælger du ikke selv, fylder din assistent automatisk en fuld opstilling fra dine tilgængelige ryttere, så du aldrig misser et løb."
       },
       "suitability": {
         "title": "Sådan læser du udtagelses-tabellen",
