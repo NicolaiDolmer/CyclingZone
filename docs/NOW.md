@@ -6,11 +6,11 @@
 
 > **🟢 MOTOR TÆNDT — løb genstarter man 29/6 08:00 (27/6):** `race_engine_v2_enabled` + `stage_scheduler_enabled` + `auto_prize_enabled` = **on**. Verificeret garanti ved tænding (ejer-betinget go): tidligste løb man 29/6 08:00, **0 forfaldne før mandag** → intet kører i weekenden. Nødstop = sæt `race_engine_v2_enabled='off'` (kill-switch).
 >
-> **Prestige-kalender-rebuild (27/6 — anvendt + verificeret i prod):** Hele sæson 1 ombygget til ejer-spec'en (140/112/84/56 løbsdage = 5/4/3/2 etaper/dag, præcist). Prestige-rang (Grand Tour→Monument→World Tour→ProSeries→Class), Grand Tours komprimeret som spredt rygrad MED overlap, monumenter binding-fri, div 3 fuld af overlap. **263 løb, 700 etape-tider; alle divisioner præcis, 0 tomme/droppede.** Første løb man 29/6. Klikbar per-etape-kalender-UI (etaper pr. dag + tidspunkt → planlægningsside) i **PR [#1946](https://github.com/NicolaiDolmer/CyclingZone/pull/1946)**. **Backup:** `backup_calrebuild_20260627_*`. Spec: `docs/superpowers/specs/2026-06-27-calendar-prestige-stage-spread-design.md`.
+> **Prestige-kalender-rebuild (27/6 — anvendt + verificeret i prod):** Hele sæson 1 ombygget til ejer-spec'en (140/112/84/56 løbsdage = 5/4/3/2 etaper/dag, præcist). Prestige-rang (Grand Tour→Monument→World Tour→ProSeries→Class), Grand Tours komprimeret som spredt rygrad MED overlap, monumenter binding-fri, div 3 fuld af overlap. **263 løb, 700 etape-tider; alle divisioner præcis, 0 tomme/droppede.** Første løb man 29/6. Klikbar per-etape-kalender-UI (etaper pr. dag + tidspunkt → planlægningsside) **merged + live i prod (`a6aec718`)** ([#1946](https://github.com/NicolaiDolmer/CyclingZone/pull/1946)). **Backup:** `backup_calrebuild_20260627_*`. Spec: `docs/superpowers/specs/2026-06-27-calendar-prestige-stage-spread-design.md`.
 >
 > **💰 CZ Pro Slice 1 — PR [#1909](https://github.com/NicolaiDolmer/CyclingZone/pull/1909) afventer ejer-merge** (har `database/*.sql`). **Åbne ejer-beslutninger:** #1276 · #1278 · #1487 · #929 · #691. [PLAN.md](PLAN.md)=SSOT.
 
-> **🎯 Next action:** Merge PR [#1946](https://github.com/NicolaiDolmer/CyclingZone/pull/1946) → backend (Railway) + frontend (Vercel) deployer den klikbare per-etape-kalender · ejer review'er live · verificér mandagens genstart (29/6) kører rent · drop `backup_calrebuild_*` når stabil.
+> **🎯 Next action:** Genstart-verifikation OK (27/6): 3 flag `on` · **0 etaper før man 08:00** (tidligste 29/6 11:00) · 263 løb/700 etaper/28 dage uden huller · tiers præcis (140/112/84 pr. pulje) · kalender-UI live (`a6aec718`). Rest: ejer review'er live · drop `backup_calrebuild_*` når stabil. Næste session: brændende backlog — #1941 (auktion-grace=0 i prod) / #1927 (frossen løn ej opdateret ved stat-nerf).
 
 > **🤖 Working agent:** Ingen aktiv session.
 
