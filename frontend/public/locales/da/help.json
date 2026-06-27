@@ -113,7 +113,7 @@
       },
       "whenExpires": {
         "title": "Hvornår udløber en auktion?",
-        "text": "En auktion løber i 6 aktive timer. Nattimer tæller ikke med. Det aktive vindue er hverdage (man til fre) kl. 16 til 22 og weekender (lør til søn) kl. 08 til 23. Byder du kl. 19:40 en tirsdag, slutter auktionen onsdag kl. 19:40 (2t20m tirsdag + 3t40m onsdag). Byder du kl. 19:40 en lørdag, slutter den søndag kl. 10:40 (3t20m lørdag + 2t40m søndag)."
+        "text": "En auktion løber i 1 aktiv time. Nattetimer tæller ikke med: det aktive vindue er kl. 08 til 24 alle dage, og handel holder pause kl. 00 til 08. Byder du kl. 19:40, slutter auktionen samme aften kl. 20:40. Byder du kl. 23:30, bæres den resterende tid over natten, og auktionen slutter næste morgen kl. 08:30."
       },
       "flashAuction": {
         "title": "Flash Auktion (Deadline Day)",
@@ -121,7 +121,7 @@
       },
       "tenMinExtend": {
         "title": "10-minutters forlængelse",
-        "text": "Hvis der afgives et bud inden for de sidste 10 minutter af en auktion, forlænges auktionen automatisk med 10 minutter fra budtidspunktet. Dette fortsætter, indtil der ikke afgives bud i de sidste 10 minutter. Forlængelsen må overskride dagens vindueslukning med op til 1 time, så fx en hverdag (close 22:00) kan auktionen forlænges helt op til 23:00. Hvis et bud i den ekstra time ville skubbe slutningen længere, ruller de resterende minutter over til næste vindues åbning (fx fredag bud kl. 22:55, auktionen slutter lørdag kl. 08:05)."
+        "text": "Hvis der afgives et bud inden for de sidste 10 minutter af en auktion, forlænges auktionen automatisk med 10 minutter fra budtidspunktet. Dette fortsætter, indtil der ikke afgives bud i de sidste 10 minutter. Forlængelsen må overskride dagens lukning (kl. 24) med op til 1 time, så en auktion kan køre til kl. 01. Hvis et bud i den ekstra time ville skubbe slutningen længere, ruller de resterende minutter over til næste vindues åbning (fx bud kl. 00:55, auktionen slutter kl. 08:05)."
       },
       "squadAndAuctions": {
         "title": "Holdstørrelse og auktioner",
@@ -702,7 +702,7 @@
     },
     "auctionExpiry": {
       "q": "Hvornår udløber en auktion?",
-      "a": "En auktion varer 6 aktive timer. Nattimer tæller ikke: hverdage (man til fre) er der aktiv tid kl. 16 til 22, weekender (lør til søn) kl. 08 til 23. Eksempel: auktion startet tirsdag 19:40 slutter onsdag 19:40. Auktion startet lørdag 19:40 slutter søndag 10:40."
+      "a": "En auktion varer 1 aktiv time. Nattetimer tæller ikke: det aktive vindue er kl. 08 til 24 alle dage. Eksempel: en auktion startet kl. 19:40 slutter samme aften kl. 20:40. En auktion startet kl. 23:30 slutter næste morgen kl. 08:30."
     },
     "flashAuction": {
       "q": "Hvad er en Flash Auktion?",
