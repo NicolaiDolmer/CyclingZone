@@ -10,6 +10,8 @@ import { Wordmark } from "./Brand";
 import DiscordJoinLink from "./DiscordJoinLink";
 import { MenuIcon, BellIcon, ChevronDownIcon, ChevronLeftIcon } from "./ui/icons";
 import { resolveAcademyNavVisible, readCachedAcademyNav, writeCachedAcademyNav } from "../lib/academyNavVisibility";
+import ProBadge from "./ProBadge";
+import { useSubscription } from "../lib/useSubscription";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -159,6 +161,7 @@ function NavItem({ to, label, badge, onClick, location, unread, exact, excludeQu
 
 function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups, bottomItems, openGroups, toggleGroup, signOut, location, unread, logoutLabel }) {
   const { t } = useTranslation("common");
+  const { isPro, isFounder } = useSubscription(team?.id);
   return (
     <div className="flex flex-col h-full">
       {/* Logo + team */}
@@ -172,7 +175,10 @@ function SidebarContent({ onNav, navigate, team, balance, onlineCount, navGroups
             Bredere nav-header/IA-restructure spores i #1027. */}
         <div className="min-w-0">
           <Wordmark forceDark className="h-5 w-auto" alt="" />
-          <p className="text-cz-sidebar-3 text-[10px] truncate mt-1">{team?.name || "…"}</p>
+          <div className="flex items-center gap-1.5 mt-1">
+            <p className="text-cz-sidebar-3 text-[10px] truncate">{team?.name || "…"}</p>
+            {isPro && <ProBadge isFounder={isFounder} />}
+          </div>
         </div>
       </button>
 

@@ -24,6 +24,8 @@ import {
   DEFAULT_AUCTION_CONFIG,
 } from "../lib/auctionEngine.js";
 import { applyNameSearch } from "../lib/riderNameSearch.js";
+import { handleAluntaWebhook } from "../lib/aluntaWebhook.js";
+import { createCheckoutHandler } from "../lib/billingCheckout.js";
 import {
   ACTIVE_AUCTION_STATUSES,
   OPEN_SWAP_STATUSES,
@@ -517,6 +519,13 @@ async function requireAdmin(req, res, next) {
     next();
   });
 }
+
+// ── Billing (CZ Pro / Alunta) ─────────────────────────────────────────────────
+// Webhook er EKSTERN (Alunta) → INGEN requireAuth; verificeres via delt secret.
+// Rå body wired i server.js (express.raw på pathen før express.json).
+const billingCheckout = createCheckoutHandler();
+router.post("/billing/alunta-webhook", (req, res) => handleAluntaWebhook({ req, res, supabase }));
+router.post("/billing/checkout", requireAuth, (req, res) => billingCheckout(req, res));
 
 // Lightweight admin-check til endpoints der betjener BÅDE admin og ikke-admin
 // (modsat requireAdmin, som blokerer ikke-admin helt). Bruges nu til at maskere

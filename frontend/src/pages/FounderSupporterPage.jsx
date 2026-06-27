@@ -251,12 +251,12 @@ export default function FounderSupporterPage() {
             </p>
 
             <div className="mt-8 flex flex-wrap items-center gap-3">
-              <a
-                href="#waitlist"
+              <Link
+                to="/pro"
                 className="inline-flex items-center justify-center px-6 py-3 bg-cz-accent text-cz-on-accent font-bold rounded-cz text-sm hover:brightness-110 transition-all"
               >
                 {t("ctaPrimary")}
-              </a>
+              </Link>
               <a
                 href="#promise"
                 className="inline-flex items-center justify-center px-6 py-3 border border-cz-border text-cz-1 font-medium rounded-cz text-sm hover:bg-cz-subtle transition-all"
