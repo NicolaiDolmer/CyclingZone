@@ -6,9 +6,14 @@
 // race_stage_profiles; race-simulatoren (slice 2) scorer rider_derived_abilities
 // mod demand_vector.
 //
-// Determinisme: seed = stableSeed(race.id) (override via opts.seed i test), kørt
-// gennem makeRng (mulberry32, genbrugt fra fictionalRiderGenerator.js). Samme løb
-// → samme etaper hver gang, så resultater er reproducerbare.
+// Determinisme: seed = stableSeed(seedIdentityFor(race)) (override via opts.seed i
+// test), kørt gennem makeRng (mulberry32, genbrugt fra fictionalRiderGenerator.js).
+// Seed-NØGLEN er løbets VIRKELIGE identitet (external_id), IKKE den per-pulje/
+// per-sæson races-række (race.id): det SAMME rigtige løb skal have det SAMME
+// parcours i alle en divisions parallelle puljer ("Division 3 kører samme løb")
+// og på tværs af kalender-rebuilds. v1 seedede på race.id, så hver pulje fik sit
+// EGET tilfældige parcours i nominelt samme løb (urimeligt for kryds-pulje-
+// sammenligning/oprykning) — rettet i v2.
 //
 // demand_vector: normaliserede vægte (sum 1.0) over de 10 rider_derived_abilities-
 // kolonner + 'randomness' (variations-skalar brugt af simulatoren). Vægtene er
@@ -16,7 +21,12 @@
 
 import { makeRng } from "./fictionalRiderGenerator.js";
 
-export const GENERATOR_VERSION = 1;
+// v1: #1102-launch (seedet på race.id). v2 (2026-06-28): seedet på løbets virkelige
+// identitet (external_id) via seedIdentityFor — samme løb = samme parcours i alle en
+// divisions puljer + på tværs af rebuilds. KUN seed-kilden ændret; terræn-logik +
+// demand-vektorer er uændrede. Bump'et stempler regenererede rækker, så de kan skelnes
+// fra v1-rækker (ingen runtime-guard afhænger af tallet — kun et persisteret stempel).
+export const GENERATOR_VERSION = 2;
 
 // rider_derived_abilities-kolonnerne (scoring-dimensioner). demand_vector-nøgler
 // skal være ⊆ disse ∪ {"randomness"}.
@@ -96,7 +106,7 @@ const STAGE_ORDER_HINT = Object.freeze({
   flat: 1, rolling: 2, cobbles: 3, hilly: 3, classic: 4, itt: 5, ttt: 5, mountain: 6, high_mountain: 7,
 });
 
-// FNV-1a 32-bit → heltals-seed fra race.id (UUID-streng). Deterministisk.
+// FNV-1a 32-bit → heltals-seed fra seed-nøglen (streng). Deterministisk.
 function stableSeed(str) {
   let h = 0x811c9dc5;
   for (let i = 0; i < str.length; i++) {
@@ -104,6 +114,20 @@ function stableSeed(str) {
     h = Math.imul(h, 0x01000193);
   }
   return h >>> 0;
+}
+
+// Seed-nøgle = løbets stabile, virkelige identitet. external_id (race_pool-import-
+// nøglen) er mest stabil — uændret på tværs af kalender-rebuilds og katalog-reimports.
+// pool_race_id (katalog-PK/UUID) er næstbedst; race.id (per-instans-UUID) er sidste
+// udvej for ad-hoc-løb uden katalog-binding. ALLE kopier af samme løb i en divisions
+// puljer deler external_id → identisk parcours. Eksporteret for testbarhed.
+//
+// Tom/whitespace-streng behandles som FRAVÆRENDE (ikke kun null/undefined): en
+// fremtidig katalog-import med blanke external_id må ikke kollapse distinkte løb til
+// samme parcours (`??` alene fanger ikke "").
+const presentKey = (v) => (typeof v === "string" ? (v.trim() === "" ? null : v) : v ?? null);
+export function seedIdentityFor(race) {
+  return presentKey(race?.external_id) ?? presentKey(race?.pool_race_id) ?? race?.id;
 }
 
 function pick(rng, arr) {
@@ -164,14 +188,16 @@ function buildStageRace(rng, stages) {
 
 /**
  * Generér stage-profiler for ét løb (rør ingen DB).
- * @param {{id:string, race_type?:string, stages?:number}} race
- * @param {{seed?:number}} [opts]  override-seed (default: stableSeed(race.id))
+ * @param {{id:string, race_type?:string, stages?:number, external_id?:string, pool_race_id?:string}} race
+ *   Seedes på external_id ?? pool_race_id ?? id (se seedIdentityFor) — så alle kopier
+ *   af samme rigtige løb (en divisions parallelle puljer) får IDENTISK parcours.
+ * @param {{seed?:number}} [opts]  override-seed (default: stableSeed(seedIdentityFor(race)))
  * @returns {Array<{stage_number:number, profile_type:string, finale_type:(string|null), demand_vector:object}>}
  */
 export function generateRaceStageProfiles(race, { seed } = {}) {
   if (!race?.id) throw new Error("race.id kræves");
   const isStageRace = race.race_type === "stage_race";
   const stages = isStageRace ? Math.max(2, Number(race.stages) || 2) : 1;
-  const rng = makeRng(Number.isInteger(seed) ? seed >>> 0 : stableSeed(String(race.id)));
+  const rng = makeRng(Number.isInteger(seed) ? seed >>> 0 : stableSeed(String(seedIdentityFor(race))));
   return isStageRace ? buildStageRace(rng, stages) : buildSingle(rng);
 }

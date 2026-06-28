@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   generateRaceStageProfiles,
+  seedIdentityFor,
   finaleFor,
   DEMAND_VECTORS,
   ABILITY_DIMENSIONS,
@@ -24,8 +25,54 @@ function stageRace(stages, id = `race-stage-${stages}`) {
   return { id, race_type: "stage_race", stages };
 }
 
-test("GENERATOR_VERSION er sat", () => {
-  assert.equal(GENERATOR_VERSION, 1);
+test("GENERATOR_VERSION er sat (v2: seedet på external_id, ikke race.id)", () => {
+  assert.equal(GENERATOR_VERSION, 2);
+});
+
+// ── v2 seed-identitet (#fix): samme rigtige løb → samme parcours i alle puljer ──
+test("seedIdentityFor: external_id > pool_race_id > id", () => {
+  assert.equal(seedIdentityFor({ id: "i", pool_race_id: "p", external_id: "e" }), "e");
+  assert.equal(seedIdentityFor({ id: "i", pool_race_id: "p" }), "p");
+  assert.equal(seedIdentityFor({ id: "i" }), "i");
+});
+
+test("v2: samme external_id, FORSKELLIG race.id → IDENTISK parcours (kernen i fixet)", () => {
+  // En divisions puljer har hver sin races.id for samme rigtige løb. Før v2 gav det
+  // hver pulje sit eget parcours; nu binder external_id dem sammen.
+  const poolA = { id: "pool-A-uuid", external_id: "tour-de-x", race_type: "stage_race", stages: 5 };
+  const poolB = { id: "pool-B-uuid", external_id: "tour-de-x", race_type: "stage_race", stages: 5 };
+  assert.deepEqual(generateRaceStageProfiles(poolA), generateRaceStageProfiles(poolB));
+});
+
+test("v2: FORSKELLIG external_id → forskelligt parcours (variation mellem løb bevaret)", () => {
+  const raceA = { id: "x", external_id: "race-1", race_type: "stage_race", stages: 6 };
+  const raceB = { id: "x", external_id: "race-2", race_type: "stage_race", stages: 6 };
+  assert.notDeepEqual(generateRaceStageProfiles(raceA), generateRaceStageProfiles(raceB));
+});
+
+test("v2 fallback: uden external_id/pool_race_id seedes på race.id (bagudkompatibel)", () => {
+  // Seed-nøglen er ren streng: id="race-stage-5" og external_id="race-stage-5" → samme output.
+  const byId = generateRaceStageProfiles({ id: "race-stage-5", race_type: "stage_race", stages: 5 });
+  const byExternal = generateRaceStageProfiles({ id: "anden-uuid", external_id: "race-stage-5", race_type: "stage_race", stages: 5 });
+  assert.deepEqual(byId, byExternal);
+});
+
+test("v2 fallback-trin: samme pool_race_id (uden external_id), FORSKELLIG race.id → identisk", () => {
+  // Sæson-rollover-stien kan ramme dette hvis en legacy-katalog-række mangler external_id.
+  const a = { id: "pool-A", pool_race_id: "rp-42", race_type: "stage_race", stages: 4 };
+  const b = { id: "pool-B", pool_race_id: "rp-42", race_type: "stage_race", stages: 4 };
+  assert.deepEqual(generateRaceStageProfiles(a), generateRaceStageProfiles(b));
+  assert.equal(seedIdentityFor(a), "rp-42");
+});
+
+test("v2 hærdning: tom/whitespace external_id behandles som fraværende → falder til pool_race_id", () => {
+  assert.equal(seedIdentityFor({ id: "i", pool_race_id: "p", external_id: "" }), "p");
+  assert.equal(seedIdentityFor({ id: "i", pool_race_id: "p", external_id: "   " }), "p");
+  assert.equal(seedIdentityFor({ id: "i", external_id: "" }), "i");
+  // To DISTINKTE løb med blank external_id må IKKE kollapse til samme parcours.
+  const x = { id: "race-x", pool_race_id: "rp-x", external_id: "", race_type: "stage_race", stages: 5 };
+  const y = { id: "race-y", pool_race_id: "rp-y", external_id: "", race_type: "stage_race", stages: 5 };
+  assert.notDeepEqual(generateRaceStageProfiles(x), generateRaceStageProfiles(y));
 });
 
 test("alle DEMAND_VECTORS er normaliserede + gyldige nøgler", () => {

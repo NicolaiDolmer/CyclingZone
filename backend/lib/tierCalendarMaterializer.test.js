@@ -1,8 +1,48 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildTierMaterializationPlan, MONUMENT_GAMEDAY_BASE } from "./tierCalendarMaterializer.js";
+import { buildTierMaterializationPlan, MONUMENT_GAMEDAY_BASE, materializeTierCalendars } from "./tierCalendarMaterializer.js";
+import { generateRaceStageProfiles } from "./raceStageProfileGenerator.js";
 
 const FROM = new Date("2026-06-28T00:00:00Z");
+
+// Mock-supabase (samme mønster som seasonCalendarMaterializer.test.js): insert().select()
+// returnerer HELE den indsatte række, så materializeren får pool_race_id + name/stages.
+function makeSupabase(initial = {}) {
+  let idSeq = 1;
+  const state = {
+    league_divisions: [], teams: [], race_pool: [],
+    races: [], race_stage_profiles: [], race_stage_schedule: [],
+    ...JSON.parse(JSON.stringify(initial)),
+  };
+  function from(table) {
+    if (!state[table]) state[table] = [];
+    const rows = () => state[table];
+    const filters = [];
+    const matches = (row) => filters.every((f) =>
+      f.t === "eq" ? row[f.c] === f.v : f.t === "in" ? f.v.includes(row[f.c]) : true);
+    const builder = {
+      select() { return builder; },
+      eq(c, v) { filters.push({ t: "eq", c, v }); return builder; },
+      in(c, v) { filters.push({ t: "in", c, v }); return builder; },
+      order() { return builder; },
+      insert(payload) {
+        const arr = Array.isArray(payload) ? payload : [payload];
+        const inserted = arr.map((r) => ({ id: `${table}-${idSeq++}`, ...r }));
+        rows().push(...inserted.map((r) => JSON.parse(JSON.stringify(r))));
+        return {
+          select() { return Promise.resolve({ data: inserted.map((r) => ({ ...r })), error: null }); },
+          then(res, rej) { return Promise.resolve({ data: null, error: null }).then(res, rej); },
+        };
+      },
+      then(res, rej) { return Promise.resolve({ data: rows().filter(matches), error: null }).then(res, rej); },
+    };
+    return builder;
+  }
+  return { from, state };
+}
+
+const routeStr = (profiles) => profiles.slice().sort((a, b) => a.stage_number - b.stage_number)
+  .map((p) => `${p.stage_number}:${p.profile_type}|${p.finale_type ?? ""}`).join(">");
 
 // Tier-3-katalog: ProSeries + Class1, > kvote 84.
 function tier3Catalog() {
@@ -152,4 +192,53 @@ test("plan: overlap-cap pr. division — Div 1/2 max 3, Div 3 max 2", () => {
   assert.ok(byTier[1].maxOverlap <= 3, `div1 maxOverlap ${byTier[1].maxOverlap}`);
   assert.ok(byTier[2].maxOverlap <= 3, `div2 maxOverlap ${byTier[2].maxOverlap}`);
   assert.ok(byTier[3].maxOverlap <= 2, `div3 maxOverlap ${byTier[3].maxOverlap}`);
+});
+
+// ── I/O-wrapper: seed-threading (v2-fix) — samme løb = samme parcours i alle puljer ──
+test("apply: en divisions puljer får IDENTISK parcours pr. løb, seedet på external_id", async () => {
+  // To LIVE tier-3-puljer → den IDENTISKE kalender fan-out'es til begge. Hvert delt
+  // pool_race_id skal give samme parcours (kernen i v2-fixet), og parcourset skal være
+  // external_id-seedet (ikke race.id/pool_race_id) — så en revert af threading fanges.
+  const catalog = tier3Catalog().map((c) => ({ ...c, external_id: `ext-${c.id}` }));
+  const externalById = new Map(catalog.map((c) => [c.id, c.external_id]));
+  const metaById = new Map(catalog.map((c) => [c.id, c]));
+  const league_divisions = [
+    { id: 4, tier: 3, pool_index: 0, label: "Division 3 — A" },
+    { id: 5, tier: 3, pool_index: 1, label: "Division 3 — B" },
+  ];
+  const mgr = (id, pool) => ({ id, is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, league_division_id: pool });
+  const teams = [mgr("a1", 4), mgr("a2", 4), mgr("a3", 4), mgr("b1", 5), mgr("b2", 5), mgr("b3", 5)];
+  const sb = makeSupabase({ league_divisions, teams, race_pool: catalog });
+
+  const summary = await materializeTierCalendars({ supabase: sb, seasonId: "s1", seasonStartDate: "2026-06-22", from: FROM, dryRun: false });
+  assert.ok(summary.racesInserted > 0, "der skal indsættes løb");
+
+  // generator_version stemplet 2 på hver profil.
+  for (const p of sb.state.race_stage_profiles) assert.equal(p.generator_version, 2);
+
+  const profByRaceId = new Map();
+  for (const p of sb.state.race_stage_profiles) {
+    if (!profByRaceId.has(p.race_id)) profByRaceId.set(p.race_id, []);
+    profByRaceId.get(p.race_id).push(p);
+  }
+  const racesByPoolRace = new Map();
+  for (const r of sb.state.races) {
+    if (!racesByPoolRace.has(r.pool_race_id)) racesByPoolRace.set(r.pool_race_id, []);
+    racesByPoolRace.get(r.pool_race_id).push(r);
+  }
+
+  let shared = 0;
+  for (const [poolRaceId, rs] of racesByPoolRace) {
+    if (rs.length < 2) continue; // kun løb der optræder i begge puljer
+    shared++;
+    // (1) Identisk parcours på tværs af puljerne.
+    const variants = new Set(rs.map((r) => routeStr(profByRaceId.get(r.id) || [])));
+    assert.equal(variants.size, 1, `pool_race ${poolRaceId}: parcours afviger mellem puljer`);
+    // (2) Parcourset er external_id-seedet (ikke pool_race_id/race.id). external_id != pool_race_id
+    // i denne fixture, så en revert til en anden seed-kilde ville give et andet parcours.
+    const meta = metaById.get(poolRaceId);
+    const expected = routeStr(generateRaceStageProfiles({ id: "ignored", external_id: externalById.get(poolRaceId), race_type: meta.race_type, stages: meta.stages }));
+    assert.equal([...variants][0], expected, `pool_race ${poolRaceId}: parcours er ikke seedet på external_id`);
+  }
+  assert.ok(shared > 0, "mindst ét løb skal optræde i begge puljer (fan-out)");
 });
