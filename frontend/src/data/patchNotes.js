@@ -49,6 +49,20 @@ export const PATCHES = [
           "body": "Trup-fordelings-board'et auto-gemmer ikke længere ved hver ændring. Rediger frit i vilkårlig rækkefølge: fjern en rytter, og han er straks ledig til et andet løb (også et ikke-overlappende løb samme dag), byt ryttere, sæt roller. Når du er tilfreds, tryk Gem ændringer; en advarsel dukker op hvis du prøver at forlade siden med ugemte ændringer. Du kan nu også gemme en delvis trup. De pladser du lader stå åbne, fyldes automatisk fra dine ledige ryttere når løbet køres."
         },
         "refs": []
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Every race now has a route that fits it, identical for all groups in a division",
+          "body": "Each race now follows a parcours that fits its real character. The cobbled classics are run on cobbles, the mountain tours climb, and the flat sprinters' weeks stay flat, while stage races build toward the mountains. And inside a division, every group now races the exact same route in the same race, so the standings come down to your team's strength rather than which group you were placed in. Routes also vary from one season to the next within each race's character."
+        },
+        "da": {
+          "title": "Hvert løb har nu en rute der passer, ens for alle grupper i en division",
+          "body": "Hvert løb følger nu et parcours der passer til dets virkelige karakter. Brosten-klassikerne køres på brosten, bjerg-rundene klatrer, og de flade sprinter-uger forbliver flade, mens etapeløb bygger op mod bjergene. Og inden i en division kører hver gruppe nu nøjagtig samme rute i det samme løb, så stillingen afgøres af dit holds styrke i stedet for hvilken gruppe du blev placeret i. Ruterne varierer også fra sæson til sæson inden for hvert løbs karakter."
+        },
+        "refs": [1962, 1963]
       }
     ]
   },
