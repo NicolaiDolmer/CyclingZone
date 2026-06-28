@@ -22,11 +22,11 @@
 import { makeRng } from "./fictionalRiderGenerator.js";
 
 // v1: #1102-launch (seedet på race.id). v2 (2026-06-28): seedet på løbets virkelige
-// identitet (external_id) via seedIdentityFor — samme løb = samme parcours i alle en
-// divisions puljer + på tværs af rebuilds. KUN seed-kilden ændret; terræn-logik +
-// demand-vektorer er uændrede. Bump'et stempler regenererede rækker, så de kan skelnes
-// fra v1-rækker (ingen runtime-guard afhænger af tallet — kun et persisteret stempel).
-export const GENERATOR_VERSION = 2;
+// identitet (external_id) via seedIdentityFor. v3 (2026-06-28): arketype-drevet
+// terrænfordeling (ARCHETYPE_PROFILES) + sæson-akse i seed'en (variation pr. sæson).
+// Bump'et stempler regenererede rækker, så de kan skelnes fra ældre (intet
+// runtime-guard afhænger af tallet — kun et persisteret stempel).
+export const GENERATOR_VERSION = 3;
 
 // rider_derived_abilities-kolonnerne (scoring-dimensioner). demand_vector-nøgler
 // skal være ⊆ disse ∪ {"randomness"}.
@@ -204,20 +204,34 @@ function buildSingle(rng, cfg) {
   return [toStage(rng, weightedPick(rng, weights), 1)];
 }
 
-// Etapeløb: multiset af N terræn (garanteret ≥1 flad + ≥1 bjerg; kort TT muligt
-// ved N≥5), ordnet "mod klimaks" (sprint tidligt, bjerg sent).
-function buildStageRace(rng, stages) {
-  const types = ["flat", "mountain"]; // garanterede roller
-  if (stages >= 5 && rng() < 0.7) types.push("itt"); // kort TT relevant i længere løb
-  while (types.length < stages) types.push(weightedPick(rng, STAGE_FILLER_WEIGHTS));
-  types.length = stages; // defensiv trim (garantier kan ikke overstige stages ved stages>=2)
-
+// Ordn "mod klimaks" (sprint tidligt, bjerg sent) + map til etaper. Delt af begge stier.
+function orderAndBuild(rng, types, stages) {
+  types.length = stages; // defensiv trim
   const ordered = types
     .map((t) => ({ t, key: STAGE_ORDER_HINT[t] + rng() * 0.5 }))
     .sort((a, b) => a.key - b.key)
     .map((x) => x.t);
-
   return ordered.map((profileType, i) => toStage(rng, profileType, i + 1));
+}
+
+// Generisk (uændret adfærd): garanterer ≥1 flad + ≥1 bjerg; kort TT muligt ved N≥5.
+function buildStageRaceGeneric(rng, stages) {
+  const types = ["flat", "mountain"];
+  if (stages >= 5 && rng() < 0.7) types.push("itt");
+  while (types.length < stages) types.push(weightedPick(rng, STAGE_FILLER_WEIGHTS));
+  return orderAndBuild(rng, types, stages);
+}
+
+// Arketype-drevet: garantier (force-include, trimmet til stages) + filler-vægte.
+function buildStageRaceArchetype(rng, stages, cfg) {
+  const types = cfg.guarantees.slice(0, stages);
+  while (types.length < stages) types.push(weightedPick(rng, cfg.filler));
+  return orderAndBuild(rng, types, stages);
+}
+
+// Etapeløb: arketype-sti hvis kendt arketype, ellers generisk.
+function buildStageRace(rng, stages, cfg) {
+  return cfg?.kind === "stage" ? buildStageRaceArchetype(rng, stages, cfg) : buildStageRaceGeneric(rng, stages);
 }
 
 /**
@@ -234,5 +248,5 @@ export function generateRaceStageProfiles(race, { seed } = {}) {
   const stages = isStageRace ? Math.max(2, Number(race.stages) || 2) : 1;
   const cfg = archetypeFor(race);
   const rng = makeRng(Number.isInteger(seed) ? seed >>> 0 : stableSeed(seedKeyFor(race)));
-  return isStageRace ? buildStageRace(rng, stages) : buildSingle(rng, cfg);
+  return isStageRace ? buildStageRace(rng, stages, cfg) : buildSingle(rng, cfg);
 }

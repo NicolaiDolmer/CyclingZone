@@ -27,8 +27,8 @@ function stageRace(stages, id = `race-stage-${stages}`) {
   return { id, race_type: "stage_race", stages };
 }
 
-test("GENERATOR_VERSION er sat (v2: seedet på external_id, ikke race.id)", () => {
-  assert.equal(GENERATOR_VERSION, 2);
+test("GENERATOR_VERSION er 3 (arketype-seedet + sæson-akse)", () => {
+  assert.equal(GENERATOR_VERSION, 3);
 });
 
 // ── v2 seed-identitet (#fix): samme rigtige løb → samme parcours i alle puljer ──
@@ -127,6 +127,45 @@ test("archetypeFor: kendt arketype → config, ukendt → null", () => {
   assert.equal(archetypeFor({ terrain_archetype: "vrøvl" }), null);
   assert.equal(archetypeFor({}), null);
   assert.ok(ARCHETYPE_PROFILES.grand_tour, "grand_tour findes");
+});
+
+// ── Arketype: etapeløb ──
+test("arketype etapeløb: sprinters_week → mest flad, ingen high_mountain", () => {
+  const counts = {};
+  for (let s = 1; s <= 30; s++) {
+    for (const p of generateRaceStageProfiles({ id: "r", external_id: `e${s}`, terrain_archetype: "sprinters_week", race_type: "stage_race", stages: 6 })) {
+      counts[p.profile_type] = (counts[p.profile_type] || 0) + 1;
+    }
+  }
+  assert.equal(counts.high_mountain || 0, 0, "sprinters_week må ikke have high_mountain");
+  assert.ok((counts.flat || 0) > (counts.mountain || 0), `flad skal dominere: ${JSON.stringify(counts)}`);
+});
+
+test("arketype etapeløb: mountain_tour garanterer ≥2 bjerg-etaper + ≥1 flad", () => {
+  for (let s = 1; s <= 30; s++) {
+    const types = generateRaceStageProfiles({ id: "r", external_id: `e${s}`, terrain_archetype: "mountain_tour", race_type: "stage_race", stages: 6 }).map((p) => p.profile_type);
+    const climby = types.filter((t) => ["mountain", "high_mountain"].includes(t)).length;
+    assert.ok(climby >= 2, `mountain_tour ${s}: kun ${climby} bjerg-etaper`);
+    assert.ok(types.includes("flat"), `mountain_tour ${s}: ingen flad`);
+  }
+});
+
+test("arketype etapeløb: grand_tour (21) har ≥2 high_mountain + ≥1 itt", () => {
+  for (let s = 1; s <= 20; s++) {
+    const types = generateRaceStageProfiles({ id: "r", external_id: `e${s}`, terrain_archetype: "grand_tour", race_type: "stage_race", stages: 21 }).map((p) => p.profile_type);
+    assert.ok(types.filter((t) => t === "high_mountain").length >= 2, `gt ${s}: <2 high_mountain`);
+    assert.ok(types.includes("itt"), `gt ${s}: ingen itt`);
+  }
+});
+
+test("ukendt/NULL arketype etapeløb → uændret generisk adfærd (garanterer flad+bjerg)", () => {
+  for (const n of [2, 4, 5, 6]) {
+    for (let seed = 1; seed <= 20; seed++) {
+      const types = generateRaceStageProfiles({ id: "x", race_type: "stage_race", stages: n }, { seed }).map((p) => p.profile_type);
+      assert.ok(types.some((t) => ["flat", "rolling"].includes(t)), `n=${n} seed=${seed}: ingen flad`);
+      assert.ok(types.some((t) => ["mountain", "high_mountain"].includes(t)), `n=${n} seed=${seed}: ingen bjerg`);
+    }
+  }
 });
 
 test("alle DEMAND_VECTORS er normaliserede + gyldige nøgler", () => {
