@@ -94,7 +94,7 @@ async function main() {
   for (const d of divisions || []) poolCountByTier.set(d.tier, (poolCountByTier.get(d.tier) || 0) + 1);
 
   const races = await fetchAllRows(() => supabase.from("races").select("id, pool_race_id, race_type, stages, league_division_id").eq("season_id", season.id).order("id"));
-  const externalIdByPoolRace = new Map((await fetchAllRows(() => supabase.from("race_pool").select("id, external_id").order("id"))).map((r) => [r.id, r.external_id ?? null]));
+  const catMeta = new Map((await fetchAllRows(() => supabase.from("race_pool").select("id, external_id, terrain_archetype").order("id"))).map((r) => [r.id, { external_id: r.external_id ?? null, terrain_archetype: r.terrain_archetype ?? null }]));
 
   // NUVÆRENDE DB-profiler.
   const dbProfiles = await fetchAllRows(() => supabase.from("race_stage_profiles").select("race_id, stage_number, profile_type, finale_type, is_manual").order("race_id").order("stage_number"));
@@ -111,7 +111,7 @@ async function main() {
   // (external_id, eller mindst pool_race_id). Et løb der KUN har race.id falder tilbage
   // til per-pulje-seed og KAN divergere mellem puljer — fang det højlydt.
   const blank = (v) => v == null || (typeof v === "string" && v.trim() === "");
-  const noSharedKey = races.filter((r) => blank(externalIdByPoolRace.get(r.pool_race_id)) && blank(r.pool_race_id));
+  const noSharedKey = races.filter((r) => blank((catMeta.get(r.pool_race_id) || {}).external_id) && blank(r.pool_race_id));
   if (noSharedKey.length) {
     console.log(`⚠️  ${noSharedKey.length} løb mangler både external_id og pool_race_id — seedes på race.id, kan divergere. AFTER=0 er IKKE garanteret.\n`);
   }
@@ -121,7 +121,8 @@ async function main() {
   const freshByRaceId = new Map();
   for (const r of races) {
     if (manualRaceIds.has(r.id)) { freshByRaceId.set(r.id, currentByRaceId.get(r.id) || []); continue; }
-    const seedRace = { id: r.id, race_type: r.race_type, stages: r.stages, pool_race_id: r.pool_race_id, external_id: externalIdByPoolRace.get(r.pool_race_id) ?? null };
+    const m = catMeta.get(r.pool_race_id) || {};
+    const seedRace = { id: r.id, race_type: r.race_type, stages: r.stages, pool_race_id: r.pool_race_id, external_id: m.external_id, terrain_archetype: m.terrain_archetype, season_id: season.id };
     freshByRaceId.set(r.id, generateRaceStageProfiles(seedRace));
   }
 
@@ -147,6 +148,9 @@ async function main() {
   }
   console.log(`\nLøb i alt: ${races.length} · profil-rækker: ${dbProfiles.length} · håndredigerede (springes over): ${manualRaceIds.size}`);
   console.log(`Løb hvis parcours ÆNDRES ved regenerering: ${racesChanged}/${races.length}`);
+
+  const noArch = races.filter((r) => !(catMeta.get(r.pool_race_id) || {}).terrain_archetype).length;
+  console.log(`Arketype-dækning: ${races.length - noArch}/${races.length} løb har en arketype${noArch ? ` (${noArch} mangler → generisk fordeling)` : ""}.`);
 
   const totalAfter = [...after.values()].reduce((s, x) => s + x.divergingSlots, 0);
   if (totalAfter === 0) console.log(`\n✅ EFTER: 0 divergerende slots i alle divisioner — alle puljer deler parcours.`);
