@@ -100,8 +100,8 @@
     "stageRaceParen": "Stage race ({count})"
   },
   "classOption": {
-    "TourFrance": "Tour de France",
-    "GiroVuelta": "Giro / Vuelta",
+    "TourFrance": "Grand Tour",
+    "GiroVuelta": "Major Tour",
     "Monuments": "Monuments",
     "OtherWorldTourA": "WorldTour A",
     "OtherWorldTourB": "WorldTour B",
@@ -151,7 +151,7 @@
   },
   "library": {
     "searchLabel": "Search races",
-    "searchPlaceholder": "Tour, Giro, Roubaix…",
+    "searchPlaceholder": "Klassiker, Gran Premio, Trofeo…",
     "seasonLabel": "Season",
     "allSeasons": "All seasons",
     "seasonOption": "Season {number}",
@@ -201,9 +201,9 @@
     "showLess": "Hide ↑",
     "showAll": "Show all {count} ranks ↓",
     "prizeExample": {
-      "tourWin": "Tour de France win",
+      "tourWin": "Grand Tour win",
       "monumentWin": "Monument win",
-      "tourStageWin": "Stage win (TdF)",
+      "tourStageWin": "Stage win (Grand Tour)",
       "proSeriesWin": "ProSeries win",
       "class1Win": "Class 1 win",
       "class2Win": "Class 2 win"
