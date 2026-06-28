@@ -25,6 +25,27 @@ export const PATCHES = [
     ]
   },
   {
+    "version": "6.30",
+    "date": "2026-06-28",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Finance",
+        "en": {
+          "title": "Loans are now automatic — the manual loan button is gone",
+          "body": "You no longer take out loans yourself. If your sponsor income and balance can't cover salaries or interest at season start, the game now grants an emergency loan automatically, so you're never caught short. Any loans you already hold are unaffected and can still be repaid from the Finance page."
+        },
+        "da": {
+          "title": "Lån er nu automatiske — den manuelle låneknap er væk",
+          "body": "Du optager ikke længere selv lån. Hvis din sponsorindtægt og saldo ikke kan dække løn eller renter ved sæsonstart, giver spillet nu automatisk et nødlån, så du aldrig kommer til at stå og mangle. De lån du allerede har, er uændrede og kan stadig tilbagebetales fra Finans-siden."
+        },
+        "refs": [1948]
+      }
+    ]
+  },
+  {
     "version": "6.29",
     "date": "2026-06-27",
     "label": "Beta",
