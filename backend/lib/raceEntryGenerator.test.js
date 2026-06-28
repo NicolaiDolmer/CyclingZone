@@ -142,16 +142,25 @@ test("runRaceEntryGenerator: idempotent — manuelle entries bevares, auto-fille
     assert.ok(state.race_entries.find((e) => e.race_id === "A" && e.rider_id === m.rider_id && e.is_auto_filled === false),
       `manuel entry ${m.rider_id} på A bevaret`);
   }
-  // Generator må IKKE have lavet auto-entries på A (manager har udtaget der).
-  assert.equal(state.race_entries.filter((e) => e.race_id === "A" && e.is_auto_filled === true).length, 0,
-    "ingen auto-entries på A (manuelt hold)");
-  // B har fået auto-filled entries.
+  // Ejer 28/6: delvis manuel trup på A (2/6) → TOP-FYLDT til fuld (4 auto-fill), manuelle bevaret.
+  const aRiders = new Set(manualA.map((m) => m.rider_id));
+  const aAuto = state.race_entries.filter((e) => e.race_id === "A" && e.is_auto_filled === true);
+  assert.equal(aAuto.length, 4, "A top-fyldt med 4 auto-entries (2 manuelle + 4 = fuld 6)");
+  for (const e of aAuto) assert.ok(!aRiders.has(e.rider_id), `top-up ${e.rider_id} genbruger en manuel rytter`);
+  const aAll = new Set(state.race_entries.filter((e) => e.race_id === "A").map((e) => e.rider_id));
+  assert.equal(aAll.size, 6, "A er fuld (6) efter top-fyld");
+  // CodeRabbit (Major): top-up må IKKE udpege en 2. kaptajn/sprint-kaptajn — den manuelle
+  // trup ejer special-rollerne. Auto-fyldte top-up-ryttere skal alle være "helper".
+  for (const e of aAuto) assert.equal(e.race_role, "helper", `top-up ${e.rider_id} fik special-rolle ${e.race_role}`);
+  const aCaptains = state.race_entries.filter((e) => e.race_id === "A" && e.race_role === "captain");
+  assert.equal(aCaptains.length, 1, "præcis én kaptajn på A efter top-fyld");
+  assert.equal(aCaptains[0].rider_id, "t1-r0", "den manuelle kaptajn bevares");
+  // B har fået auto-filled entries (A+B overlapper → B får de resterende ledige).
   const bAuto = state.race_entries.filter((e) => e.race_id === "B" && e.is_auto_filled === true);
   assert.ok(bAuto.length > 0, "B autofyldt");
   assert.ok(bAuto.every((e) => e.is_auto_filled === true));
-  // B's ryttere overlapper IKKE A's manuelle ryttere (binding: A og B er tidsoverlappende).
-  const aRiders = new Set(manualA.map((m) => m.rider_id));
-  for (const e of bAuto) assert.ok(!aRiders.has(e.rider_id), `${e.rider_id} dobbeltbooket A↔B`);
+  // B's ryttere overlapper IKKE A's ryttere (manuelle ELLER top-up) — binding håndhævet.
+  for (const e of bAuto) assert.ok(!aAll.has(e.rider_id), `${e.rider_id} dobbeltbooket A↔B`);
   assert.equal(res.dryRun, false);
   assert.ok(res.generated > 0);
 
@@ -173,6 +182,23 @@ test("runRaceEntryGenerator: idempotent — manuelle entries bevares, auto-fille
     assert.ok(d.filters.some(([op, col, val]) => op === "eq" && col === "is_auto_filled" && val === true),
       "delete-filter er afgrænset til is_auto_filled=true");
   }
+});
+
+test("runRaceEntryGenerator: FULD manuel trup (6/6) top-fyldes IKKE", async () => {
+  const state = emptyState();
+  const seasonId = "season1";
+  state.races = [{ id: "A", season_id: seasonId, race_class: "Class2", league_division_id: 1 }];
+  state.race_stage_schedule = [{ race_id: "A", stage_number: 1, scheduled_at: "2026-07-01T10:00:00Z" }];
+  state.race_stage_profiles = [{ race_id: "A", ...flatProfile(1) }];
+  state.teams = [{ id: "t1", is_test_account: false, is_frozen: false, league_division_id: 1 }];
+  seedTeamRiders(state, "t1", 8);
+  state.race_entries = ["t1-r0", "t1-r1", "t1-r2", "t1-r3", "t1-r4", "t1-r5"].map((rid, i) => (
+    { race_id: "A", rider_id: rid, team_id: "t1", race_role: i === 0 ? "captain" : "helper", is_auto_filled: false }
+  ));
+  const supabase = makeSupabase(state);
+  await runRaceEntryGenerator({ supabase, seasonId, dryRun: false });
+  assert.equal(state.race_entries.filter((e) => e.race_id === "A" && e.is_auto_filled === true).length, 0, "fuld manuel → ingen top-up");
+  assert.equal(state.race_entries.filter((e) => e.race_id === "A").length, 6, "stadig præcis de 6 manuelle");
 });
 
 test("runRaceEntryGenerator: afmeldte hold får ingen entries", async () => {

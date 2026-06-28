@@ -102,10 +102,9 @@ const FULL_RACE_A = {
   bindingMap: { r0: ["race-a"], r1: ["race-a"], r2: ["race-a"], r3: ["race-a"], r4: ["race-a"], r5: ["race-a"] },
 };
 
-// #1823: gem-fejl må IKKE være tavse — når en GYLDIG ændring afvises af serveren,
-// viser board'et en mappet fejlbesked. (Auto-gem-når-gyldig: en rolle-ændring på en
-// fuld trup PUT'er; her mocker vi et 409 og forventer alert'en.)
-test("board surfacer fejlbesked når en gyldig udtagelse afvises (#1823)", async ({ page }) => {
+// Gem-fejl må IKKE være tavse — når serveren afviser et Gem, viser board'et en mappet
+// fejlbesked. (Ejer 28/6: eksplicit Gem-knap PUT'er; her mocker vi et 409 og forventer alert'en.)
+test("board surfacer fejlbesked når et gem afvises (#1823)", async ({ page }) => {
   await stabilizePage(page);
   await installNetworkMocks(page);
   await mockDistribution(page, FULL_RACE_A);
@@ -123,18 +122,20 @@ test("board surfacer fejlbesked når en gyldig udtagelse afvises (#1823)", async
   const board = page.getByTestId("race-hub-board");
   await expect(board).toBeVisible();
 
-  // Klik en udtagen rytter → rolle-menu → sæt en rolle (gyldig ændring) → PUT → 409 → alert.
+  // Klik en udtagen rytter → rolle-menu → sæt en rolle (kladde-ændring, intet PUT endnu).
   await board.getByRole("button", { name: /Rider 1/ }).first().click();
   await board.getByRole("button", { name: /Sprint-kaptajn/ }).click();
+  // Ejer 28/6: ingen auto-gem — den eksplicitte "Gem ændringer"-knap udløser PUT (→ mocket 409 → alert).
+  await board.getByRole("button", { name: /Gem ændringer/ }).click();
   const alert = board.getByRole("alert");
   await expect(alert).toBeVisible();
-  await expect(alert).toContainText(/6/); // "Udtag mellem 6 og 6 ryttere" (ikke literal {min})
+  // Specifik mapping (ikke bare "indeholder 6"): den mappede selection_wrong_size-streng.
+  await expect(alert).toContainText(/højst udtage/);
 });
 
-// Rod A (#1823): auto-gem-når-gyldig — at fjerne en rytter under minimum GEMMER IKKE
-// (ingen PUT, ingen fejl-alert); kolonnen viser blot underbemandet, så man kan redigere
-// videre. Det er det fix der ophæver den hårde 6-og-6-lås.
-test("board: fjern under minimum gemmer ikke + viser underbemandet uden fejl (#1823)", async ({ page }) => {
+// Ejer 28/6: redigering PUT'er ALDRIG af sig selv (ingen auto-gem). At fjerne en rytter
+// viser blot underbemandet (5/6) lokalt — intet PUT, ingen fejl-alert — indtil man trykker Gem.
+test("board: redigering gemmer ikke før Gem (underbemandet vises lokalt)", async ({ page }) => {
   await stabilizePage(page);
   await installNetworkMocks(page);
   await mockDistribution(page, FULL_RACE_A);

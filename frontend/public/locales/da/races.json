@@ -4,6 +4,10 @@
     "timeline": { "dayOf": "Dag {day} af {total}", "youAreHere": "du er her", "prev": "Forrige dag", "next": "Næste dag" },
     "heading": "Trup-fordeling",
     "overlap": "{count} løb i dag",
+    "save": "Gem ændringer",
+    "discard": "Kassér",
+    "unsaved": "Du har ugemte ændringer",
+    "leaveUnsaved": "Du har ugemte ændringer. Forlad uden at gemme?",
     "status": { "full": "{selected} / {target} valgt", "understaffed": "{selected} / {target} · underbemandet", "overfull": "{selected} / {target} · for mange", "withdrawn": "Afmeldt", "locked": "Trup låst" },
     "pool": { "title": "Ledige ryttere · {count}-trup", "autofill": "Auto-udfyld", "fillMissing": "Udfyld manglende", "fillAll": "Genopbyg alt", "bound": "Kører allerede et overlappende løb" },
     "column": { "add": "Tilføj fra ledige", "withdraw": "Afmeld", "reenter": "Deltag igen", "remove": "Fjern rytter" },
@@ -225,7 +229,7 @@
   },
   "selection": {
     "title": "Holdudtagelse",
-    "subtitle": "Udtag {min}-{max} ryttere til løbet. Vælger du ikke, stiller assistenten et fornuftigt hold. Ingen straf.",
+    "subtitle": "Udtag op til {max} ryttere til løbet. Du kan gemme en delvis trup, og assistenten stiller resten når løbet køres. Ingen straf.",
     "count": "{count}/{max} udtaget",
     "captain": "Kaptajn",
     "sprintCaptain": "Spurt-kaptajn (valgfri)",
@@ -248,7 +252,7 @@
     "saving": "Gemmer…",
     "saved": "Udtagelsen er gemt.",
     "errors": {
-      "selection_wrong_size": "Udtag alle {max} ryttere for at stille et fuldt hold.",
+      "selection_wrong_size": "Du kan højst udtage {max} ryttere.",
       "selection_insufficient_riders": "Du har ikke nok ledige ryttere til et fuldt hold. Afmeld dig løbet, eller hent fri-agenter.",
       "move_target_full": "Det løb er allerede fuldt. Fjern en rytter der først.",
       "move_target_locked": "Det løb er startet, så opstillingen er låst.",

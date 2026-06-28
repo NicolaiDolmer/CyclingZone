@@ -260,6 +260,11 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
   // 9. Pr. pulje, pr. hold: byg holdets løb-liste (vindue + ikke-afmeldt + ikke-manuel),
   // kald kernen, og stage de idempotente skrivninger.
   const staged = []; // { race_id, team_id, picks }
+  // Top-up-løb (delvis manuel trup): den manuelle trup ejer ALLEREDE special-rollerne
+  // (validering kræver en kaptajn ved ≥1 rytter). Auto-fyldet må derfor IKKE udpege en
+  // anden kaptajn/sprint-kaptajn → ellers dobbelt special-rolle pr. (race,team). De
+  // top-fyldte ryttere skrives som "helper".
+  const topUpKeys = new Set(); // "race|team"
   let skipped = 0;
   for (const [poolKey, poolRaces] of racesByPool) {
     const poolTeams = teamsByPool.get(poolKey) || [];
@@ -273,17 +278,25 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
         const isWithdrawn = withdrawnByRace.get(race.id)?.has(team.id);
         const hasManual = manualByRaceTeam.has(key);
         const isStarted = startedRaceIds.has(race.id);
-        if (isWithdrawn || hasManual || isStarted) {
+        const sizeRule = selectionSizeForRace(race);
+        const manualRiders = manualRidersByRaceTeam.get(key) || [];
+        const fullManual = hasManual && manualRiders.length >= sizeRule.max;
+        // Afmeldt, igangværende, eller FULD manuel trup → spring over (lås rytter-tid).
+        if (isWithdrawn || fullManual || isStarted) {
           skipped += 1;
           // Manuelt ELLER igangværende løb låser sine ryttere i sit vindue (afmeldte gør ikke).
-          if (hasManual) lockedWindows.push({ window, riderIds: manualRidersByRaceTeam.get(key) || [] });
+          if (hasManual) lockedWindows.push({ window, riderIds: manualRiders });
           else if (isStarted) lockedWindows.push({ window, riderIds: startedRidersByRaceTeam.get(key) || [] });
           continue;
         }
+        // Delvis manuel trup (ejer 28/6): TOP-FYLD gabet — lås de manuelle rytteres tid (så de
+        // ikke genbruges i et overlappende løb) og generér KUN de resterende pladser. De manuelle
+        // entries (is_auto_filled=false) bevares; top-up er is_auto_filled=true.
+        if (hasManual) { lockedWindows.push({ window, riderIds: manualRiders }); topUpKeys.add(key); }
         teamRaces.push({
           race_id: race.id, window,
           stages: stagesByRace.get(race.id) || [],
-          sizeRule: selectionSizeForRace(race),
+          sizeRule: { min: Math.max(0, sizeRule.min - manualRiders.length), max: sizeRule.max - manualRiders.length },
         });
       }
       const assignment = assignTeamAcrossRaces({
@@ -291,7 +304,12 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
         strategy: strategyByTeam.get(team.id) ?? null,
       });
       for (const [race_id, picks] of Object.entries(assignment)) {
-        if (picks.length) staged.push({ race_id, team_id: team.id, picks });
+        if (!picks.length) continue;
+        // Top-up: neutralisér roller til "helper" (manuel trup ejer kaptajn/sprint-kaptajn).
+        const finalPicks = topUpKeys.has(`${race_id}|${team.id}`)
+          ? picks.map((p) => ({ ...p, race_role: "helper" }))
+          : picks;
+        staged.push({ race_id, team_id: team.id, picks: finalPicks });
       }
     }
   }

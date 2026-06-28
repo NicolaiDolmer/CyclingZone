@@ -10,7 +10,7 @@ import { loadLoanedOutRiderIds } from "./raceEntriesLoader.js";
 
 export function validateSelection({
   riderIds = [], captainId = null, sprintCaptainId = null, hunterId = null,
-  teamRiderIds, injuredRiderIds, sizeRule, availableCount,
+  teamRiderIds, injuredRiderIds, sizeRule,
 }) {
   const errors = [];
   // Fejlrækkefølge (errors[0] vises til brugeren): duplikat → størrelse → fremmed → skadet → kaptajn → roller.
@@ -18,19 +18,10 @@ export function validateSelection({
   const unique = new Set(riderIds);
   if (unique.size !== riderIds.length) errors.push("selection_duplicate_rider");
 
-  // Fuld opstilling KRÆVES (#1906, ejer-beslutning 26/6): man kan ikke gemme en delvis
-  // trup — vil/kan man ikke stille fuldt hold til et løb, afmelder man sig i stedet, eller
-  // henter fri-agenter. `required` = løbets pladsantal (sizeRule.max == feltstørrelsen for
-  // alle rigtige klasser). To distinkte fejl, så UI kan guide forskelligt:
-  //   - selection_insufficient_riders: holdet har fysisk for få raske, berettigede ryttere
-  //     til en fuld opstilling → vis afmeld + link til fri transfers.
-  //   - selection_wrong_size: holdet KAN fylde, men har valgt for få/mange → fyld op.
-  const required = sizeRule.max;
-  if (Number.isFinite(availableCount) && availableCount < required) {
-    errors.push("selection_insufficient_riders");
-  } else if (riderIds.length !== required) {
-    errors.push("selection_wrong_size");
-  }
+  // Delvis trup TILLADT (ejer 28/6, afløser #1906): manageren gemmer sine egne picks frit;
+  // er truppen ikke fuld ved race-tid, top-fylder raceEntryGenerator gabet automatisk fra
+  // holdets ledige ryttere. Derfor afvises KUN for-mange (over feltstørrelsen) ved gem.
+  if (riderIds.length > sizeRule.max) errors.push("selection_wrong_size");
 
   for (const id of riderIds) {
     if (!teamRiderIds.has(id)) { errors.push("selection_rider_not_on_team"); break; }
@@ -39,8 +30,14 @@ export function validateSelection({
     if (injuredRiderIds.has(id)) { errors.push("selection_rider_injured"); break; }
   }
 
-  if (!captainId) errors.push("selection_captain_required");
-  else if (!unique.has(captainId)) errors.push("selection_captain_not_selected");
+  // Kaptajn kræves kun når der ER manuelt udtagne ryttere (en tom trup = ren auto-udtagelse).
+  // En tom trup må dog ikke bære en forældet kaptajn-reference uden for trupperne (input-hul).
+  if (riderIds.length === 0) {
+    if (captainId) errors.push("selection_captain_not_selected");
+  } else {
+    if (!captainId) errors.push("selection_captain_required");
+    else if (!unique.has(captainId)) errors.push("selection_captain_not_selected");
+  }
 
   for (const roleId of [sprintCaptainId, hunterId]) {
     if (roleId && !unique.has(roleId)) errors.push("selection_role_not_selected");

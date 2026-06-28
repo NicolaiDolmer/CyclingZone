@@ -285,9 +285,6 @@ import {
 } from "../lib/responseCache.js";
 import { runRaceEntryGenerator, assignTeamAcrossRaces } from "../lib/raceEntryGenerator.js";
 import { selectionSizeForRace } from "../lib/raceAutopick.js";
-import { isEligibleRider } from "../lib/riderEligibility.js";
-import { loadLoanedOutRiderIds } from "../lib/raceEntriesLoader.js";
-import { findOverlappingSourceRaceId, validateMoveTarget } from "../lib/raceLineupMove.js";
 import { ABILITY_KEYS as RACE_SIM_ABILITY_KEYS } from "../lib/raceSimulator.js";
 import { terrainBucket, raceTerrainBucket } from "../lib/raceTerrain.js";
 import { loadTeamStrategy, bucketSuitabilities, diffAssignments } from "../lib/raceStrategy.js";
@@ -1921,72 +1918,9 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
   }
 });
 
-// POST /api/races/lineup/move — flyt rytter til et løb (#1925). Evicter rytteren fra et
-// tids-overlappende kilde-løb (hvis et findes) og indsætter i mål-løbet i ÉN transaktion
-// (move_race_entry-RPC). Undgår #1924's selection_rider_bound-409 ved rearrange: rytteren
-// er aldrig i to overlappende løb samtidig. Kilde-løbet må gerne ende underbemandet.
-router.post("/races/lineup/move", requireAuth, marketWriteLimiter, async (req, res) => {
-  if (!req.team) return res.status(400).json({ error: "No team found" });
-  try {
-    const isBetaTester = await isViewerBetaTester(req);
-    const enabled = await isRaceEngineV2Enabled(supabase, { isBetaTester });
-    if (!enabled) return res.status(409).json({ error: "selection_flag_disabled" });
-
-    const { riderId, toRaceId } = req.body || {};
-    if (!riderId || !toRaceId) return res.status(400).json({ error: "move_invalid_body" });
-
-    const { data: toRace, error: raceErr } = await supabase
-      .from("races")
-      .select("id, race_class, status, stages_completed, league_division_id")
-      .eq("id", toRaceId)
-      .maybeSingle();
-    if (raceErr) return res.status(500).json({ error: raceErr.message });
-    if (!toRace) return res.status(404).json({ error: "race_not_found" });
-
-    const frozen = toRace.status !== "scheduled" || (toRace.stages_completed ?? 0) > 0;
-    const teamInPool = teamInRacePool({ teamDivisionId: req.team.league_division_id, racePoolId: toRace.league_division_id });
-
-    // Rytter-berettigelse (genbrug #1924-eligibility incl. loan-aware).
-    const { data: riderRow } = await supabase
-      .from("riders").select("id, team_id, is_academy, is_retired").eq("id", riderId).maybeSingle();
-    const { data: loanedOut } = await loadLoanedOutRiderIds({ supabase, riderIds: [riderId] });
-    const eligible = isEligibleRider(riderRow, { teamId: req.team.id, loanedOutRiderIds: loanedOut });
-
-    const { count: targetCount } = await supabase
-      .from("race_entries").select("rider_id", { count: "exact", head: true })
-      .eq("race_id", toRaceId).eq("team_id", req.team.id);
-    const fieldSize = selectionSizeForRace(toRace).max;
-
-    const check = validateMoveTarget({ targetCount: targetCount ?? 0, fieldSize, teamInPool, frozen, eligible });
-    if (!check.ok) return res.status(409).json({ error: check.error });
-
-    // Find overlappende kilde via rytterens egne entries + deres CET-dag-vinduer.
-    const { data: riderEntries } = await supabase
-      .from("race_entries").select("race_id").eq("team_id", req.team.id).eq("rider_id", riderId);
-    const riderRaceIds = (riderEntries || []).map((e) => e.race_id);
-    const raceIds = [...new Set([toRaceId, ...riderRaceIds])];
-    const { data: scheds } = await supabase
-      .from("race_stage_schedule").select("race_id, scheduled_at").in("race_id", raceIds);
-    const schedByRace = {};
-    for (const s of scheds || []) (schedByRace[s.race_id] ||= []).push(s);
-    const windowByRace = {};
-    for (const id of raceIds) windowByRace[id] = raceBindingWindow(schedByRace[id]);
-
-    const fromRaceId = findOverlappingSourceRaceId({ riderRaceIds, toRaceId, windowByRace });
-
-    const { error: rpcErr } = await supabase.rpc("move_race_entry", {
-      p_team_id: req.team.id, p_rider_id: riderId, p_from_race_id: fromRaceId, p_to_race_id: toRaceId, p_max: fieldSize,
-    });
-    if (rpcErr) {
-      if (/move_target_full/.test(rpcErr.message || "")) return res.status(409).json({ error: "move_target_full" });
-      return res.status(500).json({ error: "move_failed" });
-    }
-    res.json({ ok: true, fromRaceId, toRaceId });
-  } catch (err) {
-    captureException(err);
-    res.status(500).json({ error: err.message });
-  }
-});
+// (POST /api/races/lineup/move udgået 28/6: flyt er nu en ren kladde-operation i board'et —
+// fjern fra kilde + tilføj til mål lokalt, persistér binding-sikkert via "Gem ændringer".
+// `move_race_entry`-RPC'en ligger uberørt i DB som ubrugt levn, kan ryddes i en senere migration.)
 
 // Race Hub Fase 1 — POST /api/races/:raceId/withdrawal (afmeld). Frivillig deltagelse:
 // holdet trækker sig fra løbet (auto-no-show ved afvikling). Pulje-guard + scheduled-guard.
