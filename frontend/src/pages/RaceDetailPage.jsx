@@ -10,6 +10,8 @@ import StageDetailPanel from "../components/race/StageDetailPanel.jsx";
 import { Flag } from "../components/Flag";
 import { FlagIcon, PageLoader } from "../components/ui";
 import { formatNumber } from "../lib/intl";
+import { resultEntity } from "../lib/raceResultEntity.js";
+import { buildRaceRecap } from "../lib/raceRecap.js";
 import { fetchAllRows } from "../lib/supabasePagination";
 import { logEvent } from "../lib/logEvent";
 import { profileShape, profileLabelKey, finaleLabelKey } from "../lib/stageProfileConfig";
@@ -143,7 +145,7 @@ export default function RaceDetailPage() {
     const rows = await fetchAllRows(() =>
       supabase
         .from("race_results")
-        .select("id, stage_number, result_type, rank, rider_id, rider_name, team_id, team_name, finish_time, points_earned, prize_money, in_breakaway, breakaway_caught, rider:rider_id(id, firstname, lastname, nationality_code, team:team_id(id, name))")
+        .select("id, stage_number, result_type, rank, rider_id, rider_name, team_id, team_name, finish_time, points_earned, prize_money, in_breakaway, breakaway_caught, rider:rider_id(id, firstname, lastname, nationality_code, team:team_id(id, name)), team:team_id(id, name)")
         .eq("race_id", raceId)
         .order("id")
     );
@@ -377,7 +379,12 @@ export default function RaceDetailPage() {
             onSelect={(v) => changeTab(v === "overall" ? "samlet" : `stage-${v}`)}
           />
 
-          {activeTab === "samlet" && <OverallTab finalByType={finalByType} />}
+          {activeTab === "samlet" && (
+            <div className="space-y-5">
+              <RaceRecap results={results} scopeType="overall" />
+              <OverallTab finalByType={finalByType} />
+            </div>
+          )}
           {stageNumbers.map(n => activeTab === `stage-${n}` && (
             <StageTab key={n} stage={n} results={results} profile={profileByStage[n]} />
           ))}
@@ -388,15 +395,42 @@ export default function RaceDetailPage() {
       {hasAnyResults && !isStageRace && (
         <div className="space-y-5">
           <StageProfileCard profile={profileByStage[1]} />
+          <RaceRecap results={results} scopeType="overall" />
           <ResultTable
             title={t("detail.tableResult")}
             rows={(finalByType.gc?.length ? finalByType.gc : results.filter(r => r.result_type === "stage").sort(byRank))}
           />
           {finalByType.team?.length > 0 && (
-            <ResultTable title={t("detail.classification.team")} rows={finalByType.team} />
+            <ResultTable title={t("detail.classification.team")} rows={finalByType.team} highlightWinner />
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// #1311 Tekst-recap: skabelon-fortælling udledt af persisterede race_results (ren
+// præsentation, ingen ny sim-mekanik). Renderer intet hvis intet kan udledes ærligt.
+function RaceRecap({ results, scopeType, stageNumber }) {
+  const { t } = useTranslation("races");
+  const moments = useMemo(
+    () => buildRaceRecap({ results, scope: { type: scopeType, stageNumber } }),
+    [results, scopeType, stageNumber],
+  );
+  if (!moments.length) return null;
+  return (
+    <div className="bg-cz-card border border-cz-border rounded-cz p-4">
+      <div className="flex items-center gap-2 mb-2">
+        <FlagIcon size={14} className="text-cz-3" aria-hidden="true" />
+        <p className="text-cz-2 text-xs uppercase tracking-wider font-semibold">{t("detail.recap.title")}</p>
+      </div>
+      <ul className="space-y-1.5">
+        {moments.map((m, i) => (
+          <li key={`${m.key}-${i}`} className="text-cz-1 text-sm leading-relaxed">
+            {t(`detail.recap.${m.key}`, m.params)}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
@@ -414,7 +448,7 @@ function OverallTab({ finalByType }) {
       {CLASSIFICATIONS.map(c => {
         const rows = finalByType[c.key];
         if (!rows?.length) return null;
-        return <ResultTable key={c.key} title={t(`detail.classification.${c.key}`)} rows={rows} />;
+        return <ResultTable key={c.key} title={t(`detail.classification.${c.key}`)} rows={rows} highlightWinner={c.key === "team"} />;
       })}
     </div>
   );
@@ -433,6 +467,7 @@ function StageTab({ stage, results, profile }) {
   return (
     <div className="space-y-5">
       <StageProfileCard profile={profile} />
+      <RaceRecap results={results} scopeType="stage" stageNumber={stage} />
       {jerseys.length > 0 && (
         <div className="bg-cz-card border border-cz-border rounded-cz p-4">
           <p className="text-cz-2 text-xs uppercase tracking-wider mb-3 font-semibold">{t("detail.jerseysAfterStage")}</p>
@@ -513,12 +548,48 @@ function StageProfileSilhouette({ profileType }) {
   );
 }
 
-function ResultTable({ title, rows }) {
+// #1485 Holdklassement-række: holdet ER entiteten (ingen rytter, ingen flag/breakaway).
+// highlightWinner = true på holdklassementet → rank 1 får accent + "Winner"-markør,
+// så man kan SE hvem der vandt holdkonkurrencen i stedet for at grave i en tabel.
+function ResultEntityCell({ row, highlightWinner, t }) {
+  const entity = resultEntity(row);
+  const isWinner = highlightWinner && row.rank === 1;
+  if (entity.kind === "team") {
+    return (
+      <span className="inline-flex items-center gap-2">
+        <TeamLink id={entity.linkId}
+          className={`hover:text-cz-accent-t transition-colors ${isWinner ? "text-cz-accent-t font-semibold" : "text-cz-1"}`}>
+          {entity.name || "—"}
+        </TeamLink>
+        {isWinner && (
+          <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wide text-cz-accent-t"
+            aria-label={t("detail.team.winner")}>
+            <FlagIcon size={11} aria-hidden="true" />{t("detail.team.winner")}
+          </span>
+        )}
+      </span>
+    );
+  }
+  return (
+    <RiderLink id={entity.linkId}
+      className="cursor-pointer hover:text-cz-accent-t transition-colors block">
+      <span className="text-cz-1">
+        {entity.nationality && (<Flag code={entity.nationality} className="me-1" />)}
+        {entity.name || "—"}
+        <BreakawayMarker result={row} t={t} />
+      </span>
+    </RiderLink>
+  );
+}
+
+function ResultTable({ title, rows, highlightWinner = false }) {
   const { t } = useTranslation("races");
   const showPoints = rows.some(r => (r.points_earned ?? 0) > 0);
   // Gap-kolonne kun når motoren har skrevet tider (stage/gc fra Race Engine v2);
   // gamle PCM-løb og point/bjerg/ungdom/hold-klassementer har tom finish_time.
   const showTime = rows.some(r => r.finish_time);
+  // Holdklassement (rider_id=null) har ingen rytter-team-kolonne at vise.
+  const showTeamCol = rows.some(r => resultEntity(r).kind === "rider");
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
       <div className="px-4 py-3 border-b border-cz-border">
@@ -529,26 +600,23 @@ function ResultTable({ title, rows }) {
       ) : (
         <table className="w-full text-sm">
           <tbody className="divide-y divide-cz-border">
-            {rows.map(r => (
-              <tr key={r.id} className="hover:bg-cz-subtle transition-colors">
-                <td className="px-4 py-2 w-10 text-cz-3 font-mono text-xs">{r.rank ?? "—"}</td>
+            {rows.map(r => {
+              const isWinner = highlightWinner && r.rank === 1;
+              return (
+              <tr key={r.id} className={`transition-colors ${isWinner ? "bg-cz-accent/10" : "hover:bg-cz-subtle"}`}>
+                <td className={`px-4 py-2 w-10 font-mono text-xs ${isWinner ? "text-cz-accent-t" : "text-cz-3"}`}>{r.rank ?? "—"}</td>
                 <td className="px-2 py-2">
-                  <RiderLink id={r.rider?.id}
-                    className="cursor-pointer hover:text-cz-accent-t transition-colors block">
-                    <span className="text-cz-1">
-                      {r.rider?.nationality_code && (
-                        <Flag code={r.rider.nationality_code} className="me-1" />
-                      )}
-                      {riderName(r)}
-                      <BreakawayMarker result={r} t={t} />
-                    </span>
-                  </RiderLink>
+                  <ResultEntityCell row={r} highlightWinner={highlightWinner} t={t} />
                 </td>
-                <td className="px-2 py-2 text-cz-3 text-xs">
-                  <TeamLink id={r.rider?.team?.id} className="hover:text-cz-accent-t transition-colors">
-                    {r.rider?.team?.name || r.team_name || t("common.free")}
-                  </TeamLink>
-                </td>
+                {showTeamCol && (
+                  <td className="px-2 py-2 text-cz-3 text-xs">
+                    {resultEntity(r).kind === "rider" && (
+                      <TeamLink id={r.rider?.team?.id} className="hover:text-cz-accent-t transition-colors">
+                        {r.rider?.team?.name || r.team_name || t("common.free")}
+                      </TeamLink>
+                    )}
+                  </td>
+                )}
                 {showTime && (
                   <td className="px-3 py-2 text-right text-cz-2 font-mono text-xs whitespace-nowrap tabular-nums">
                     {r.finish_time || ""}
@@ -560,7 +628,8 @@ function ResultTable({ title, rows }) {
                   </td>
                 )}
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       )}

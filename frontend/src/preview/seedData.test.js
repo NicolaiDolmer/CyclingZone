@@ -51,8 +51,13 @@ test("ingen dangling FK i race_results (race/rider/team findes)", () => {
   const teamIds = new Set([TEST_TEAM.id, RIVAL_TEAM.id]);
   for (const res of SEED_RACE_RESULTS) {
     assert.ok(raceIds.has(res.race_id), `result peger på ukendt race ${res.race_id}`);
-    assert.ok(riderIds.has(res.rider_id), `result peger på ukendt rider ${res.rider_id}`);
     assert.ok(teamIds.has(res.team_id), `result peger på ukendt team ${res.team_id}`);
+    if (res.result_type === "team") {
+      // #1485 Holdklassement-række: holdet ER entiteten, ingen rytter.
+      assert.equal(res.rider_id, null, `team-række ${res.id} må ikke have rider_id`);
+    } else {
+      assert.ok(riderIds.has(res.rider_id), `result peger på ukendt rider ${res.rider_id}`);
+    }
   }
 });
 
