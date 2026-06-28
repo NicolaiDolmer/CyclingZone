@@ -77,7 +77,6 @@ import {
 } from "../lib/marketPause.js";
 import { resolveProxyBids } from "../lib/proxyBidding.js";
 import {
-  createLoan,
   repayLoan,
   getLoanConfig,
   getTotalDebt,
