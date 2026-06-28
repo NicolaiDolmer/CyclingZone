@@ -75,6 +75,25 @@ test("v2 hærdning: tom/whitespace external_id behandles som fraværende → fal
   assert.notDeepEqual(generateRaceStageProfiles(x), generateRaceStageProfiles(y));
 });
 
+// ── Sæson-akse: variation pr. sæson, konsistens inden for en sæson ──
+test("sæson-akse: samme løb + samme sæson, FORSKELLIG races.id → identisk (konsistens bevaret)", () => {
+  const a = { id: "pool-A", external_id: "tour-x", season_id: "s1", race_type: "stage_race", stages: 5 };
+  const b = { id: "pool-B", external_id: "tour-x", season_id: "s1", race_type: "stage_race", stages: 5 };
+  assert.deepEqual(generateRaceStageProfiles(a), generateRaceStageProfiles(b));
+});
+
+test("sæson-akse: samme løb, FORSKELLIG sæson → forskelligt parcours (variation pr. sæson)", () => {
+  const s1 = { id: "x", external_id: "tour-x", season_id: "s1", race_type: "stage_race", stages: 6 };
+  const s2 = { id: "x", external_id: "tour-x", season_id: "s2", race_type: "stage_race", stages: 6 };
+  assert.notDeepEqual(generateRaceStageProfiles(s1), generateRaceStageProfiles(s2));
+});
+
+test("sæson-akse: uden season_id seedes på identitet alene (bagudkompatibel)", () => {
+  const withSeason = { id: "x", external_id: "tour-x", race_type: "stage_race", stages: 5 };
+  const same = { id: "y", external_id: "tour-x", race_type: "stage_race", stages: 5 };
+  assert.deepEqual(generateRaceStageProfiles(withSeason), generateRaceStageProfiles(same));
+});
+
 test("alle DEMAND_VECTORS er normaliserede + gyldige nøgler", () => {
   for (const profileType of PROFILE_TYPES) {
     const vec = DEMAND_VECTORS[profileType];

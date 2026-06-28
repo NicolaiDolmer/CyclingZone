@@ -130,6 +130,14 @@ export function seedIdentityFor(race) {
   return presentKey(race?.external_id) ?? presentKey(race?.pool_race_id) ?? race?.id;
 }
 
+// Fuld seed-nøgle = løb-identitet + sæson. Alle grupper i en sæson deler nøglen
+// (konsistens); en ny sæson giver en ny nøgle (variation pr. sæson, jf. spec §5.1).
+// Uden season_id seedes på identitet alene (bagudkompatibel — tests/ad-hoc).
+function seedKeyFor(race) {
+  const id = String(seedIdentityFor(race));
+  return race?.season_id ? `${id}::${race.season_id}` : id;
+}
+
 function pick(rng, arr) {
   return arr[Math.floor(rng() * arr.length)];
 }
@@ -198,6 +206,6 @@ export function generateRaceStageProfiles(race, { seed } = {}) {
   if (!race?.id) throw new Error("race.id kræves");
   const isStageRace = race.race_type === "stage_race";
   const stages = isStageRace ? Math.max(2, Number(race.stages) || 2) : 1;
-  const rng = makeRng(Number.isInteger(seed) ? seed >>> 0 : stableSeed(String(seedIdentityFor(race))));
+  const rng = makeRng(Number.isInteger(seed) ? seed >>> 0 : stableSeed(seedKeyFor(race)));
   return isStageRace ? buildStageRace(rng, stages) : buildSingle(rng);
 }
