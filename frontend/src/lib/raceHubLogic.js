@@ -14,22 +14,8 @@ export function computeColumnStatus({ selected, target, withdrawn, max }) {
   return { kind: "understaffed", selected, target };
 }
 
-// Er kladden klar til at GEMMES? Auto-gem-når-gyldig. #1906 (ejer 26/6): fuld opstilling
-// KRÆVES — board'et auto-gemmer KUN en komplet trup (count === pladsantal = max). En
-// delvis trup gemmes aldrig; vil/kan man ikke stille fuldt hold afmelder man løbet eller
-// henter fri-agenter. Spejler backend raceSelection.validateSelection (required = size.max).
-export function isSelectionSavable({ count, max }) {
-  const required = Number.isFinite(max) ? max : count;
-  return count === required;
-}
-
-// #1906: kan holdet OVERHOVEDET fylde en fuld opstilling? false → vis afmeld + link til
-// fri transfers (man har for få raske, berettigede ryttere). `available` = antal raske,
-// berettigede ryttere; `max` = løbets pladsantal. Spejler backend's selection_insufficient_riders.
-export function canFieldFullLineup({ available, max }) {
-  if (!Number.isFinite(max)) return true;
-  return Number.isFinite(available) ? available >= max : true;
-}
+// (Auto-gem-når-fuld + canFieldFullLineup udgået 28/6: board'et bruger nu eksplicit Gem +
+// tillader delvis trup. Se RaceHubBoard.saveAll + backend validateSelection.)
 
 // To in-game-dag-vinduer overlapper hvis de deler mindst én game-dag (inkl. ender).
 // Spejler backend raceBinding.windowsOverlap. Defensiv mod null (intet vindue → ingen binding).

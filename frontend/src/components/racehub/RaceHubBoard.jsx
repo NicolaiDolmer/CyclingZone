@@ -13,9 +13,9 @@ import ContextBand from "./ContextBand.jsx";
 import RaceColumn from "./RaceColumn.jsx";
 import AvailableRidersPool from "./AvailableRidersPool.jsx";
 import DivisionStartLists from "./DivisionStartLists.jsx";
-import { isSelectionSavable, draftBindingMap, windowsOverlap } from "../../lib/raceHubLogic.js";
+import { draftBindingMap } from "../../lib/raceHubLogic.js";
 import { decodeDrag, dropAction } from "../../lib/raceHubDnd.js";
-import { Spinner, EmptyState, FlagIcon } from "../ui";
+import { Spinner, EmptyState, FlagIcon, Button } from "../ui";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -23,6 +23,19 @@ async function authHeaders() {
   const { data } = await getSession();
   const token = data?.session?.access_token;
   return token ? { Authorization: `Bearer ${token}`, "Content-Type": "application/json" } : null;
+}
+
+// Er en kolonnes kladde forskellig fra server-sandheden? (ugemte ændringer). Pure → delt af
+// dirty-tælleren (UI) og beforeunload-vagten, så de aldrig divergerer.
+function selectionDirty(draft, serverSel) {
+  if (!draft) return false;
+  const s = serverSel || {};
+  const a = [...(draft.rider_ids || [])].sort().join(",");
+  const b = [...(s.rider_ids || [])].sort().join(",");
+  return a !== b
+    || (draft.captain_id ?? null) !== (s.captain_id ?? null)
+    || (draft.sprint_captain_id ?? null) !== (s.sprint_captain_id ?? null)
+    || (draft.hunter_id ?? null) !== (s.hunter_id ?? null);
 }
 
 export default function RaceHubBoard() {
@@ -60,6 +73,15 @@ export default function RaceHubBoard() {
   useEffect(() => { if (scope === "mine") load(Number.isFinite(dayParam) ? dayParam : undefined); }, [load, dayParam, scope]);
   // Skift af dag/scope viser andre kolonner → ryd kladder (de hører til de gamle løb).
   useEffect(() => { setDrafts({}); }, [dayParam, scope]);
+  // Forlad-vagt (ejer 28/6): advar ved luk/genindlæsning hvis der er ugemte ændringer.
+  // (BrowserRouter → ingen useBlocker; beforeunload dækker browser-niveau, dirty-baren dækker in-app.)
+  useEffect(() => {
+    const cols = data?.columns || [];
+    if (!cols.some((col) => selectionDirty(drafts[col.id], col.selection))) return;
+    const handler = (e) => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [drafts, data]);
 
   const setDay = (d) => { params.set("day", String(d)); setParams(params, { replace: true }); };
   const setScope = (s) => { params.set("scope", s); setParams(params, { replace: true }); };
@@ -103,53 +125,63 @@ export default function RaceHubBoard() {
     sprint_captain_id: col.selection?.sprint_captain_id ?? null,
     hunter_id: col.selection?.hunter_id ?? null,
   };
-  const availableCount = (col) => (col.riders || []).filter((r) => !r.injured).length;
+  // Ugemte ændringer (ejer 28/6: INGEN auto-gem — eksplicit Gem-knap).
+  const columnDirty = (col) => selectionDirty(drafts[col.id], col.selection);
+  const dirtyColumns = columns.filter(columnDirty);
+  const isDirty = dirtyColumns.length > 0;
 
-  // Gem kladden til serveren (kun kaldt når den er gyldig). Rydder kolonnens kladde
-  // bagefter, så visningen re-synkes til server-sandheden (mutate re-henter board'et).
-  async function persistDraft(col, sel) {
-    const ids = sel.rider_ids;
-    const body = {
-      rider_ids: ids,
-      captain_id: ids.includes(sel.captain_id) ? sel.captain_id : (ids[0] ?? null),
-      sprint_captain_id: ids.includes(sel.sprint_captain_id) ? sel.sprint_captain_id : null,
-      hunter_id: ids.includes(sel.hunter_id) ? sel.hunter_id : null,
-    };
-    await mutate(
-      (headers) => fetch(`${API}/api/races/${col.id}/selection`, { method: "PUT", headers, body: JSON.stringify(body) }),
-      { min: col.size?.min, max: col.size?.max });
-    setDrafts((d) => { const next = { ...d }; delete next[col.id]; return next; });
-  }
-
-  // Sæt kladden + auto-gem hvis den nu er en gyldig udtagelse (størrelse inden for
-  // [effectiveMin, max]). Ugyldig → bliver liggende lokalt (vises som mangler/for mange).
+  // commitDraft muterer KUN den lokale kladde. Persistering sker udelukkende via "Gem ændringer".
+  // Rediger frit i vilkårlig rækkefølge — fjern en rytter → han er straks fri i kladden til et andet løb.
   function commitDraft(col, sel) {
     setDrafts((d) => ({ ...d, [col.id]: sel }));
-    if (isSelectionSavable({ count: sel.rider_ids.length, min: col.size?.min, max: col.size?.max, available: availableCount(col) })) {
-      persistDraft(col, sel);
+  }
+
+  // Gem ALLE ændrede kolonner. Binding-sikker rækkefølge: kolonner med færrest TILFØJEDE ryttere
+  // gemmes først, så serveren frigør en flyttet rytter (fjernet fra kilde-løbet) FØR mål-løbet
+  // tilføjer ham → undgår selection_rider_bound-409 ved flyt mellem overlappende løb. Delvis trup
+  // er nu gyldig (backend); top-fyldes ved race-tid. Fejl pr. kolonne stopper og bevarer kladderne.
+  async function saveAll() {
+    const headers = await authHeaders();
+    if (!headers) return;
+    setBusy(true); setError(null);
+    const addedCount = (col) => {
+      const before = new Set(col.selection?.rider_ids || []);
+      return draftOf(col).rider_ids.filter((id) => !before.has(id)).length;
+    };
+    const ordered = [...dirtyColumns].sort((a, b) => addedCount(a) - addedCount(b));
+    const savedIds = [];
+    try {
+      for (const col of ordered) {
+        const ids = draftOf(col).rider_ids;
+        const sel = draftOf(col);
+        const body = {
+          rider_ids: ids,
+          captain_id: ids.includes(sel.captain_id) ? sel.captain_id : (ids[0] ?? null),
+          sprint_captain_id: ids.includes(sel.sprint_captain_id) ? sel.sprint_captain_id : null,
+          hunter_id: ids.includes(sel.hunter_id) ? sel.hunter_id : null,
+        };
+        const res = await fetch(`${API}/api/races/${col.id}/selection`, { method: "PUT", headers, body: JSON.stringify(body) });
+        if (res && !res.ok) {
+          const b = await res.json().catch(() => ({}));
+          setError({ code: b.error || "generic", params: { min: col.size?.min, max: col.size?.max } });
+          break;
+        }
+        savedIds.push(col.id);
+      }
+    } catch {
+      setError({ code: "generic" });
+    } finally {
+      await load(day);
+      setDrafts((d) => { const next = { ...d }; for (const id of savedIds) delete next[id]; return next; });
+      setBusy(false);
     }
   }
 
-  // #1925: atomisk flyt-til-løb (evicter rytteren fra et overlappende kilde-løb i DB).
-  async function moveRiderToRace(riderId, toRaceId) {
-    await mutate((headers) => fetch(`${API}/api/races/lineup/move`, {
-      method: "POST", headers, body: JSON.stringify({ riderId, toRaceId }),
-    }));
-  }
+  const discardAll = () => { setDrafts({}); setError(null); };
 
   const addRider = (raceId, riderId) => {
     const col = columns.find((c) => c.id === raceId);
     if (!col) return;
-    // #1925 + kronologi-rebuild: er rytteren udtaget i et ANDET løb hvis in-game-dage OVERLAPPER
-    // målløbet iflg. SERVER-tilstanden? Så er det et MOVE (atomisk eviction + indsæt). Et committet
-    // løb på en ANDEN game-dag (samme IRL-dag, ingen overlap) binder ikke → almindelig kladde-add,
-    // så rytteren må køre begge. data.bindingMap er serverens binding (rider → kolonne-ids).
-    const serverBound = (data.bindingMap?.[riderId] || []).some((id) => {
-      if (id === raceId) return false;
-      const other = columns.find((c) => c.id === id);
-      return other && windowsOverlap(other.bindingWindow, col.bindingWindow);
-    });
-    if (serverBound) { moveRiderToRace(riderId, raceId); return; }
     const cur = draftOf(col);
     if (cur.rider_ids.includes(riderId)) return;
     commitDraft(col, { ...cur, rider_ids: [...cur.rider_ids, riderId] });
@@ -232,7 +264,10 @@ export default function RaceHubBoard() {
     const targetFull = target ? target.counts.selected >= (target.size?.max ?? Infinity) : false;
     const targetLocked = target ? (!!target.lineup_locked || (target.stages_completed ?? 0) > 0 || !!target.withdrawn) : false;
     const action = dropAction({ fromRaceId: payload.fromRaceId, toRaceId, toKind, targetFull, targetLocked });
-    if (action === "add" || action === "move") addRider(toRaceId, payload.riderId);
+    // Flyt = ren kladde-operation (ejer 28/6): fjern fra kilde + tilføj til mål. Ingen server-
+    // move undervejs; binding håndhæves ved Gem. Kilde-løbet må gerne ende underbemandet.
+    if (action === "add") addRider(toRaceId, payload.riderId);
+    else if (action === "move") { removeRider(payload.fromRaceId, payload.riderId); addRider(toRaceId, payload.riderId); }
     else if (action === "remove") removeRider(payload.fromRaceId, payload.riderId);
   }
 
@@ -252,6 +287,16 @@ export default function RaceHubBoard() {
           <span className="text-xs text-cz-3">{t("racehub.overlap", { count: columns.length })}</span>
         </span>
       </div>
+      {/* Ejer 28/6: eksplicit Gem (ingen auto-save). Sticky dirty-bar med Gem/Kassér + forlad-vagt. */}
+      {isDirty && (
+        <div className="sticky top-2 z-10 mb-3 flex items-center justify-between gap-3 rounded-cz border border-cz-accent/40 bg-cz-accent/10 px-3 py-2">
+          <span className="text-xs text-cz-1">{t("racehub.unsaved", { count: dirtyColumns.length })}</span>
+          <span className="flex items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={discardAll} disabled={busy}>{t("racehub.discard")}</Button>
+            <Button variant="primary" size="sm" onClick={saveAll} loading={busy}>{t("racehub.save")}</Button>
+          </span>
+        </div>
+      )}
       {columns.length === 0 ? (
         <EmptyState icon={<FlagIcon size={24} />} title={t("racehub.empty")} />
       ) : (

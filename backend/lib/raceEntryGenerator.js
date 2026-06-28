@@ -273,17 +273,25 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
         const isWithdrawn = withdrawnByRace.get(race.id)?.has(team.id);
         const hasManual = manualByRaceTeam.has(key);
         const isStarted = startedRaceIds.has(race.id);
-        if (isWithdrawn || hasManual || isStarted) {
+        const sizeRule = selectionSizeForRace(race);
+        const manualRiders = manualRidersByRaceTeam.get(key) || [];
+        const fullManual = hasManual && manualRiders.length >= sizeRule.max;
+        // Afmeldt, igangværende, eller FULD manuel trup → spring over (lås rytter-tid).
+        if (isWithdrawn || fullManual || isStarted) {
           skipped += 1;
           // Manuelt ELLER igangværende løb låser sine ryttere i sit vindue (afmeldte gør ikke).
-          if (hasManual) lockedWindows.push({ window, riderIds: manualRidersByRaceTeam.get(key) || [] });
+          if (hasManual) lockedWindows.push({ window, riderIds: manualRiders });
           else if (isStarted) lockedWindows.push({ window, riderIds: startedRidersByRaceTeam.get(key) || [] });
           continue;
         }
+        // Delvis manuel trup (ejer 28/6): TOP-FYLD gabet — lås de manuelle rytteres tid (så de
+        // ikke genbruges i et overlappende løb) og generér KUN de resterende pladser. De manuelle
+        // entries (is_auto_filled=false) bevares; top-up er is_auto_filled=true.
+        if (hasManual) lockedWindows.push({ window, riderIds: manualRiders });
         teamRaces.push({
           race_id: race.id, window,
           stages: stagesByRace.get(race.id) || [],
-          sizeRule: selectionSizeForRace(race),
+          sizeRule: { min: Math.max(0, sizeRule.min - manualRiders.length), max: sizeRule.max - manualRiders.length },
         });
       }
       const assignment = assignTeamAcrossRaces({

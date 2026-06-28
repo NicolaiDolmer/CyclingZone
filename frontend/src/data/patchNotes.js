@@ -35,6 +35,20 @@ export const PATCHES = [
           "body": "Vi har bygget sæsonkalenderen om, så løbs-kronologien er ærlig. Hver etape ligger nu på sin egen in-game-løbsdag, så et etapeløb kan køre flere etaper på samme kalenderdato, mens en rytter kun er bundet til ét løb pr. in-game-dag. I Division 3 møder du nu højst to løb der kæmper om en rytter samtidig (det var tre før), og nogle løb kører solo. Grand Tours er nu fuldlængde-commitments. Fordi kalenderen er ændret, er de opstillinger du satte tidligere blevet ryddet, så sæt dem igen på Løb-siden."
         },
         "refs": []
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Squad selection",
+        "en": {
+          "title": "Set your line-ups freely, then save",
+          "body": "The squad-distribution board no longer auto-saves on every change. Edit freely in any order: remove a rider and he's immediately available for another race (including a non-overlapping race on the same day), swap riders, set roles. When you're happy, press Save changes; a banner warns you if you try to leave with unsaved edits. You can now save a partial line-up too. Any slots you leave open are filled automatically from your available riders when the race runs."
+        },
+        "da": {
+          "title": "Sæt dine opstillinger frit, og gem så",
+          "body": "Trup-fordelings-board'et auto-gemmer ikke længere ved hver ændring. Rediger frit i vilkårlig rækkefølge: fjern en rytter, og han er straks ledig til et andet løb (også et ikke-overlappende løb samme dag), byt ryttere, sæt roller. Når du er tilfreds, tryk Gem ændringer; en advarsel dukker op hvis du prøver at forlade siden med ugemte ændringer. Du kan nu også gemme en delvis trup. De pladser du lader stå åbne, fyldes automatisk fra dine ledige ryttere når løbet køres."
+        },
+        "refs": []
       }
     ]
   },

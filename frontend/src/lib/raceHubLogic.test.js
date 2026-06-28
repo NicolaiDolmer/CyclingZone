@@ -1,7 +1,7 @@
 // frontend/src/lib/raceHubLogic.test.js
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { computeColumnStatus, isSelectionSavable, isRiderBound, deriveRaceStatus, poolRaceDayTotals, fitTier, freshnessTier, draftBindingMap, windowsOverlap, canAddRiderToColumn } from "./raceHubLogic.js";
+import { computeColumnStatus, isRiderBound, deriveRaceStatus, poolRaceDayTotals, fitTier, freshnessTier, draftBindingMap, windowsOverlap, canAddRiderToColumn } from "./raceHubLogic.js";
 
 const W = (g) => ({ start: g, end: g }); // 1-dags in-game-vindue på game-dag g
 
@@ -30,16 +30,6 @@ test("computeColumnStatus: full / understaffed / withdrawn", () => {
   // Rod A: transient over max (kladde-bytte på fuld trup) → overfull, ikke full.
   assert.deepEqual(computeColumnStatus({ selected: 7, target: 6, max: 6, withdrawn: false }), { kind: "overfull", selected: 7, target: 6 });
   assert.deepEqual(computeColumnStatus({ selected: 6, target: 6, max: 6, withdrawn: false }), { kind: "full", selected: 6, target: 6 });
-});
-
-// #1906: auto-gem KUN ved fuld opstilling (count === max). Delvis trup gemmes aldrig.
-test("isSelectionSavable: kun en KOMPLET trup gemmes (count === max)", () => {
-  assert.equal(isSelectionSavable({ count: 6, max: 6 }), true);
-  assert.equal(isSelectionSavable({ count: 5, max: 6 }), false, "under fuld → ikke gemt");
-  assert.equal(isSelectionSavable({ count: 7, max: 6 }), false, "over fuld → ikke gemt");
-  // Lille trup (kun 4 ryttere på en 6/6) gemmes IKKE længere — manageren skal afmelde
-  // eller hente fri-agenter. (Tidligere lempelse fjernet, ejer-beslutning 26/6.)
-  assert.equal(isSelectionSavable({ count: 4, max: 6 }), false);
 });
 
 test("isRiderBound: kun bundet når game-dag-vinduer overlapper (samme IRL-dag ≠ binding)", () => {
