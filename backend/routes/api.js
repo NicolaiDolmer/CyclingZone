@@ -77,6 +77,7 @@ import {
 } from "../lib/marketPause.js";
 import { resolveProxyBids } from "../lib/proxyBidding.js";
 import {
+  createLoan,
   repayLoan,
   getLoanConfig,
   getTotalDebt,
@@ -6777,19 +6778,35 @@ router.get("/finance/loans", requireAuth, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// POST /api/finance/loans — DEAKTIVERET (#1948).
-// Spiller-initierede finanslån er fjernet: managere kan ikke længere selv optage lån.
-// Nødlån gives automatisk ved sæsonstart (createEmergencyLoan, kaldt fra cron) når
-// sponsor + saldo ikke kan dække løn/renter. UI-knappen er fjernet; dette endpoint
-// bevares som en hård 403-guard mod direkte API-kald (defense-in-depth). Tilbagebetaling
-// af eksisterende lån sker fortsat via POST /finance/loans/:id/repay.
-// Forward-guard: backend/lib/loanAmountValidation.routes.test.js sikrer at ruten forbliver
-// deaktiveret og ikke gen-aktiverer createLoan, så misbrugsvinduet ikke kan snige sig tilbage.
-router.post("/finance/loans", requireAuth, async (_req, res) => {
-  return res.status(403).json({
-    error: "Player-initiated loans are disabled",
-    errorCode: "player_loans_disabled",
-  });
+// POST /api/finance/loans — optag nyt finanslån
+router.post("/finance/loans", requireAuth, marketWriteLimiter, async (req, res) => {
+  try {
+    if (!req.team) return res.status(400).json({ error: "No team found" });
+    if (!(await assertMarketOpen(req, res, "market"))) return;
+    if (!assertTeamNotTransferFrozen(req, res)) return;
+    const { loan_type } = req.body;
+    if (!["short", "long"].includes(loan_type))
+      return res.status(400).json({ error: "Ugyldig låntype — brug short eller long" });
+    // Security-hardening (2026-06-20): parsér beløbet til et heltal FØR validering
+    // (følger #1554). Tidligere ramte `!amount || amount < 1` den rå body-værdi, så en
+    // ikke-numerisk streng eller decimal slap forbi og gav NaN i parseInt(amount) nedenfor.
+    const amount = Number.parseInt(req.body.amount, 10);
+    if (!Number.isInteger(amount) || amount < 1)
+      return res.status(400).json({ error: "Invalid amount", errorCode: "invalid_loan_amount" });
+    const loan = await createLoan(req.team.id, loan_type, amount, null, {
+      actorType: FINANCE_ACTOR_TYPE.API,
+      actorId: req.user.id,
+    });
+    res.json({ success: true, loan });
+  } catch (e) {
+    // #1012: propagér loanEngine's strukturerede kode (fx error.debtCapReached)
+    // så frontend kan rendere lokaliseret via backendMessages-namespacet.
+    res.status(400).json({
+      error: e.message,
+      ...(e.code ? { errorCode: e.code } : {}),
+      ...(e.params ? { errorParams: e.params } : {}),
+    });
+  }
 });
 
 // POST /api/finance/loans/:id/repay — betal rate på finanslån
