@@ -2,7 +2,9 @@
 // Backfill race_stage_profiles (#1102 slice 1).
 //
 // Idempotent + deterministisk: genererer terræn + demand_vector pr. etape for
-// hvert løb via raceStageProfileGenerator.js (seed = race.id) og persisterer dem.
+// hvert løb via raceStageProfileGenerator.js (seed = løbets external_id, jf.
+// seedIdentityFor) og persisterer dem. Samme rigtige løb → samme parcours i alle
+// en divisions puljer; en re-run efter v2-fixet reparerer v1's pulje-divergens.
 // Påvirker INTET i runtime endnu — race-simulatoren (slice 2) læser kolonnerne
 // bag RACE_ENGINE_V2_ENABLED. Spiller-synlig visning er slice 3.
 //
@@ -44,10 +46,19 @@ async function loadRaces() {
     seasonId = data.id;
   }
   return fetchAllRows(() => {
-    let q = supabase.from("races").select("id, name, race_type, stages, season_id").order("id");
+    let q = supabase.from("races").select("id, name, race_type, stages, season_id, pool_race_id").order("id");
     if (seasonId) q = q.eq("season_id", seasonId);
     return q;
   });
+}
+
+// Katalog-meta pr. pool_race_id → { external_id (seed-identitet), terrain_archetype
+// (terrænkarakter) }. Et løb uden pool_race_id (legacy/ad-hoc) får intet match →
+// generatoren falder tilbage til race.id + generisk fordeling.
+async function loadCatalogMeta() {
+  const rows = await fetchAllRows(() =>
+    supabase.from("race_pool").select("id, external_id, terrain_archetype").order("id"));
+  return new Map((rows || []).map((r) => [r.id, { external_id: r.external_id ?? null, terrain_archetype: r.terrain_archetype ?? null }]));
 }
 
 // race_id'er der har mindst én håndredigeret etape → spring løbet helt over.
@@ -60,6 +71,7 @@ async function loadManualRaceIds() {
 async function main() {
   console.log(`=== Backfill race_stage_profiles ${DRY_RUN ? "(DRY-RUN)" : "(APPLY)"}${SEASON != null ? ` — sæson ${SEASON}` : ""} — generator v${GENERATOR_VERSION} ===`);
   const races = await loadRaces();
+  const catalogMeta = await loadCatalogMeta();
   const manualRaceIds = DRY_RUN ? new Set() : await loadManualRaceIds();
 
   const dist = Object.fromEntries(PROFILE_TYPES.map((p) => [p, 0]));
@@ -71,7 +83,10 @@ async function main() {
   for (const race of races) {
     if (manualRaceIds.has(race.id)) { racesSkippedManual++; continue; }
 
-    const profiles = generateRaceStageProfiles(race);
+    const meta = catalogMeta.get(race.pool_race_id) || {};
+    // race.season_id er allerede på rækken → indgår i seed via seedKeyFor (sæson-akse).
+    const seedRace = { ...race, external_id: meta.external_id ?? null, terrain_archetype: meta.terrain_archetype ?? null };
+    const profiles = generateRaceStageProfiles(seedRace);
     for (const p of profiles) dist[p.profile_type]++;
     if (sample.length < 12) {
       sample.push(`  ${race.name}${race.race_type === "stage_race" ? ` (${profiles.length} etaper)` : ""}: ${profiles.map((p) => p.profile_type).join(" → ")}`);
