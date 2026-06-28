@@ -10,7 +10,7 @@
 >
 > **💰 CZ Pro Slice 1 — PR [#1909](https://github.com/NicolaiDolmer/CyclingZone/pull/1909) afventer ejer-merge** (har `database/*.sql`). **Åbne ejer-beslutninger:** #1276 · #1278 · #1487 · #929 · #691. [PLAN.md](PLAN.md)=SSOT.
 
-> **🎯 Next action:** Genstart-verifikation OK (27/6): 3 flag `on` · **0 etaper før man 08:00** (tidligste 29/6 11:00) · 263 løb/700 etaper/28 dage uden huller · tiers præcis (140/112/84 pr. pulje) · kalender-UI live (`a6aec718`). Rest: ejer review'er live · drop `backup_calrebuild_*` når stabil. Næste session: brændende backlog — #1941 (auktion-grace=0 i prod) / #1927 (frossen løn ej opdateret ved stat-nerf).
+> **🎯 Next action:** Pre-live audit (28/6, multi-agent) → mandags-gate **GRØN** (0 forfaldne, 0 overlap-kollision i samme division, økonomi koherent efter ÷20, 0 negative). **Shippet før mandag:** ex-akademi frie agenter frigjort (#1947) · 2 ghost-auktioner annulleret (#1773) · spiller-lån-knap fjernet + endpoint deaktiveret (#1948→PR #1955 merged) · løbskategorier→fiktive (#1780→PR #1956 merged). Backups: `backup_academy_freeagent_fix_20260628`, `backup_ghost_auctions_fix_20260628`. Ejer-valg: lån står · omkørsel #1861/#1848 = lad stå · form #1949 = accepter nuværende. **Weekend-polish (ikke mandags-blockers — bundt til 1 PR):** #1781 · #1832 · #1936/#1937 · #1954 · #1949 (reset-script form-nulstilling).
 
 > **🤖 Working agent:** Ingen aktiv session.
 
