@@ -374,6 +374,20 @@
       "young": "Young rider",
       "team": "Team classification"
     },
+    "team": {
+      "winner": "Winner"
+    },
+    "recap": {
+      "title": "Race recap",
+      "win": "{rider} took the win.",
+      "soloWin": "{rider} soloed clear to win by {marginText}.",
+      "sprintWin": "{rider} won the sprint.",
+      "breakawaySurvived": "{count, plural, one {A lone rider stayed away to the finish.} other {A #-rider breakaway stayed away to the finish.}}",
+      "breakawayCaught": "{count, plural, one {The lone breakaway rider was caught before the line.} other {The breakaway (# riders) was caught before the line.}}",
+      "teamDay": "{team} led the team classification with {count} riders in the top 10.",
+      "teamWon": "{team} won the team classification.",
+      "jerseys": "Jersey leaders: {points} in points, {mountain} in the mountains."
+    },
     "jersey": {
       "leader": "Leader",
       "points_day": "Points",

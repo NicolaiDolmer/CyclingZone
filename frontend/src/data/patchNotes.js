@@ -4,6 +4,41 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.32",
+    "date": "2026-06-29",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "See who won the team competition in race results",
+          "body": "Finished races now show the team classification winner by name, highlighted at the top of the team standings. The team competition was already scored, but the winning team was not shown, so you could not tell who had won it."
+        },
+        "da": {
+          "title": "Se hvem der vandt holdkonkurrencen i løbsresultaterne",
+          "body": "Afsluttede løb viser nu holdkonkurrencens vinder ved navn, fremhævet øverst i holdklassementet. Holdkonkurrencen blev allerede afgjort, men det vindende hold blev ikke vist, så man kunne ikke se hvem der havde vundet den."
+        },
+        "refs": [1485]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Race recaps: a short story of how each race unfolded",
+          "body": "Each finished race and stage now opens with a short recap that pulls the key moments out of the result: how the winner took it, whether a breakaway stayed away or was caught, and which team had the best day. It is built from the existing race data, so there is no change to how races are decided."
+        },
+        "da": {
+          "title": "Løbsreferater: en kort fortælling om hvordan løbet udspillede sig",
+          "body": "Hvert afsluttet løb og hver etape åbner nu med et kort referat der trækker nøglemomenterne ud af resultatet: hvordan vinderen tog den, om et udbrud holdt hjem eller blev hentet, og hvilket hold der havde den bedste dag. Det bygger på de eksisterende løbsdata, så der er ingen ændring i hvordan løb afgøres."
+        },
+        "refs": [1311]
+      }
+    ]
+  },
+  {
     "version": "6.31",
     "date": "2026-06-28",
     "label": "Beta",

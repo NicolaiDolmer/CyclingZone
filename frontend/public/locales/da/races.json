@@ -374,6 +374,20 @@
       "young": "Ungdom",
       "team": "Holdkonkurrence"
     },
+    "team": {
+      "winner": "Vinder"
+    },
+    "recap": {
+      "title": "Løbsreferat",
+      "win": "{rider} tog sejren.",
+      "soloWin": "{rider} kørte solo og vandt med {marginText}.",
+      "sprintWin": "{rider} vandt spurten.",
+      "breakawaySurvived": "{count, plural, one {En enkelt rytter holdt hjem til mål.} other {Et udbrud på # ryttere holdt hjem til mål.}}",
+      "breakawayCaught": "{count, plural, one {Den udbrudte rytter blev hentet før stregen.} other {Udbruddet (# ryttere) blev hentet før stregen.}}",
+      "teamDay": "{team} førte holdkonkurrencen med {count} ryttere i top 10.",
+      "teamWon": "{team} vandt holdkonkurrencen.",
+      "jerseys": "Trøjeførere: {points} i point, {mountain} i bjerg."
+    },
     "jersey": {
       "leader": "Fører",
       "points_day": "Point",
