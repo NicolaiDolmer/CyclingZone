@@ -240,7 +240,8 @@ export const SEED_DISTRIBUTION = {
   columns: [
     {
       id: "race-up-1", name: "Tour de Preview", race_class: "TourFrance", race_type: "stage_race",
-      stages: 3, stages_completed: 0, status: "scheduled", window: { day: 12 }, bindingWindow: 12,
+      // Etapeløb gd 12-14 (bindingWindow = in-game-dag-span, samme shape som API'en).
+      stages: 3, stages_completed: 0, status: "scheduled", window: { day: 12 }, bindingWindow: { start: 12, end: 14 },
       // S5: fladt løb → jæger-chip = høj udbruds-chance.
       primaryProfileType: "flat", primaryFinaleType: null,
       size: { min: 6, max: 8 }, riders: SEED_BOARD_ROSTER,
@@ -249,9 +250,9 @@ export const SEED_DISTRIBUTION = {
       counts: { selected: 1, target: 8 },
     },
     {
-      // Tids-overlap med race-up-1 (samme bindingWindow=12) → én-rytter/ét-løb-binding.
+      // In-game-dag-overlap med race-up-1 (gd 12 ⊂ 12-14) → én-rytter/ét-løb-binding.
       id: "race-overlap-1", name: "Critérium Preview", race_class: "ProSeries", race_type: "single",
-      stages: 1, stages_completed: 0, status: "scheduled", window: { day: 12 }, bindingWindow: 12,
+      stages: 1, stages_completed: 0, status: "scheduled", window: { day: 12 }, bindingWindow: { start: 12, end: 12 },
       // S5: bjerg-løb med summit-finale → jæger-chip = lav udbruds-chance (favoritterne afgør).
       primaryProfileType: "high_mountain", primaryFinaleType: "long_climb",
       size: { min: 6, max: 7 }, riders: SEED_BOARD_ROSTER,
@@ -259,9 +260,20 @@ export const SEED_DISTRIBUTION = {
       withdrawn: false, lineup_locked: false,
       counts: { selected: 0, target: 7 },
     },
+    {
+      // Kronologi-rebuild: samme IRL-dag, men in-game-dag 15 (efter race-up-1's span) → binder
+      // IKKE race-up-1's ryttere. En rytter i Tour de Preview KAN derfor også stilles her.
+      id: "race-free-1", name: "Klassiker Preview", race_class: "ProSeries", race_type: "single",
+      stages: 1, stages_completed: 0, status: "scheduled", window: { day: 12 }, bindingWindow: { start: 15, end: 15 },
+      primaryProfileType: "cobbles", primaryFinaleType: null,
+      size: { min: 6, max: 7 }, riders: SEED_BOARD_ROSTER,
+      selection: { rider_ids: [], captain_id: null, sprint_captain_id: null, hunter_id: null, is_auto_filled: false },
+      withdrawn: false, lineup_locked: false,
+      counts: { selected: 0, target: 7 },
+    },
   ],
-  // bindingMap: rider_id → liste af race_ids den er bundet til (samme-dag-overlap).
-  bindingMap: { [RIDERS[0].id]: ["race-up-1", "race-overlap-1"] },
+  // bindingMap (server): rider_id → kolonne-løb rytteren er i som overlapper et andet (game-dag).
+  bindingMap: { [RIDERS[0].id]: ["race-up-1"] },
   timeline: {
     totalDays: 28,
     currentDay: 12,

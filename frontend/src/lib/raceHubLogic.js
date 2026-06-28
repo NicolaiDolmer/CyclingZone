@@ -31,12 +31,30 @@ export function canFieldFullLineup({ available, max }) {
   return Number.isFinite(available) ? available >= max : true;
 }
 
-// Er rytteren bundet væk fra `forRaceId` (udtaget i et ANDET overlappende kolonne-løb)?
-// Bruges i AddRiderPopover til at filtrere hvilke løb en ledig rytter kan tilføjes til.
-export function isRiderBound({ bindingMap, riderId, forRaceId }) {
-  const races = bindingMap?.[riderId];
-  if (!races || !races.length) return false;
-  return races.some((id) => id !== forRaceId);
+// To in-game-dag-vinduer overlapper hvis de deler mindst én game-dag (inkl. ender).
+// Spejler backend raceBinding.windowsOverlap. Defensiv mod null (intet vindue → ingen binding).
+export function windowsOverlap(a, b) {
+  if (!a || !b) return false;
+  return a.start <= b.end && b.start <= a.end;
+}
+
+// Er rytteren bundet væk fra `forRaceId` (udtaget i et ANDET kolonne-løb hvis IN-GAME-dag-
+// vindue overlapper forRaceId's)? Kronologi-rebuild (2026-06-28): to løb på samme IRL-dag
+// binder KUN hvis deres game-dage overlapper — så en rytter må gerne køre to løb på samme
+// kalenderdato når de ligger på forskellige in-game-dage. `bindingMap[riderId]` = liste af
+// { id, window } (game-dag-vindue pr. kolonne rytteren er i). `forWindow` = forRaceId's vindue.
+export function isRiderBound({ bindingMap, riderId, forRaceId, forWindow }) {
+  const entries = bindingMap?.[riderId];
+  if (!entries || !entries.length) return false;
+  return entries.some((e) => e.id !== forRaceId && windowsOverlap(e.window, forWindow));
+}
+
+// Kan rytteren tilføjes kolonne-løbet? (ikke afmeldt/låst, ikke allerede udtaget, ikke
+// game-dag-bundet i et andet kolonne-løb). Delt af puljen (lås-tilstand) + popover (mål-liste).
+export function canAddRiderToColumn({ column, bindingMap, riderId }) {
+  if (!column || column.withdrawn || column.lineup_locked) return false;
+  if ((column.selection?.rider_ids || []).includes(riderId)) return false;
+  return !isRiderBound({ bindingMap, riderId, forRaceId: column.id, forWindow: column.bindingWindow });
 }
 
 // Visnings-status for et løb (#1828). Backend SKRIVER ALDRIG 'active' (det ville bryde
@@ -111,15 +129,15 @@ export function freshnessTier(fatigue) {
   return "fresh";
 }
 
-// #1925: kladde-bevidst binding. Boardets kolonner overlapper alle den valgte dag
-// (#1823 dag-granulær binding), så en rytter er "bundet væk" fra et løb hvis han er i
-// en ANDEN ikke-afmeldt kolonnes kladde-selection. Erstatter den stale server-bindingMap
-// i popover/pulje, så live-redigeringer (fjern/flyt) afspejles med det samme.
+// #1925 + kronologi-rebuild: kladde-bevidst binding. Pr. rytter: de IKKE-afmeldte kolonne-løb
+// han er i kladden, MED hvert løbs in-game-dag-vindue, så isRiderBound kun binder mod løb hvis
+// game-dage faktisk overlapper (samme IRL-dag ≠ binding når game-dagene er forskellige).
+// Erstatter den stale server-bindingMap i popover/pulje, så live-redigeringer afspejles straks.
 export function draftBindingMap(columns = []) {
   const map = {};
   for (const c of columns) {
     if (c.withdrawn) continue;
-    for (const id of c.selection?.rider_ids || []) (map[id] ||= []).push(c.id);
+    for (const id of c.selection?.rider_ids || []) (map[id] ||= []).push({ id: c.id, window: c.bindingWindow ?? null });
   }
   return map;
 }

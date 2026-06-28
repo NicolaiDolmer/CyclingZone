@@ -13,7 +13,7 @@ import ContextBand from "./ContextBand.jsx";
 import RaceColumn from "./RaceColumn.jsx";
 import AvailableRidersPool from "./AvailableRidersPool.jsx";
 import DivisionStartLists from "./DivisionStartLists.jsx";
-import { isSelectionSavable, draftBindingMap } from "../../lib/raceHubLogic.js";
+import { isSelectionSavable, draftBindingMap, windowsOverlap } from "../../lib/raceHubLogic.js";
 import { decodeDrag, dropAction } from "../../lib/raceHubDnd.js";
 import { Spinner, EmptyState, FlagIcon } from "../ui";
 
@@ -140,11 +140,15 @@ export default function RaceHubBoard() {
   const addRider = (raceId, riderId) => {
     const col = columns.find((c) => c.id === raceId);
     if (!col) return;
-    // #1925: er rytteren udtaget i et ANDET (overlappende) løb iflg. SERVER-tilstanden? Så
-    // er det et MOVE (atomisk eviction + indsæt) — ikke en lokal kladde-add, ellers afviser
-    // backend gemmet med selection_rider_bound-409. data.bindingMap er serverens binding;
-    // den kladde-bevidste binding bruges kun til at TILBYDE mål i popoveren.
-    const serverBound = (data.bindingMap?.[riderId] || []).some((id) => id !== raceId);
+    // #1925 + kronologi-rebuild: er rytteren udtaget i et ANDET løb hvis in-game-dage OVERLAPPER
+    // målløbet iflg. SERVER-tilstanden? Så er det et MOVE (atomisk eviction + indsæt). Et committet
+    // løb på en ANDEN game-dag (samme IRL-dag, ingen overlap) binder ikke → almindelig kladde-add,
+    // så rytteren må køre begge. data.bindingMap er serverens binding (rider → kolonne-ids).
+    const serverBound = (data.bindingMap?.[riderId] || []).some((id) => {
+      if (id === raceId) return false;
+      const other = columns.find((c) => c.id === id);
+      return other && windowsOverlap(other.bindingWindow, col.bindingWindow);
+    });
     if (serverBound) { moveRiderToRace(riderId, raceId); return; }
     const cur = draftOf(col);
     if (cur.rider_ids.includes(riderId)) return;
