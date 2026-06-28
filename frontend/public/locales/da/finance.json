@@ -67,25 +67,9 @@
       "repayingBtn": "...",
       "cancelRepayAria": "Annullér"
     },
-    "take": {
-      "title": "Optag lån",
-      "noConfig": "Ingen lånekonfiguration fundet for Division {division}",
-      "typeLabel": "Låntype",
-      "amountLabel": "Beløb (CZ$)",
-      "amountPlaceholder": "f.eks. 500",
-      "feeLabel": "Gebyr ({pct}%)",
-      "feeValue": "{value} CZ$",
-      "interestLabel": "Rente/sæson",
-      "interestValue": "{pct}%",
-      "totalLabel": "Total tilbagebetaling",
-      "totalValue": "{value} CZ$",
-      "maxBorrowable": "Max lån lige nu: {value} CZ$",
-      "maxBorrowableDetail": "Gebyret på {fee} CZ$ lægges oveni din gæld, så den rammer {total} CZ$ af loftet på {ceiling} CZ$.",
-      "useMax": "Brug max",
-      "maxZero": "Ikke plads til et nyt lån. Din gæld er på divisionens loft på {ceiling} CZ$.",
-      "exceedsMax": "Dette vil skubbe dig over gældsloftet, fordi gebyret tæller med. Max lån lige nu: {value} CZ$.",
-      "submit": "Optag lån",
-      "processing": "Behandler..."
+    "auto": {
+      "title": "Lån",
+      "text": "Lån er ikke noget du selv optager. Hvis sponsorindtægt og din saldo ikke kan dække løn eller renter ved sæsonstart, giver systemet automatisk et nødlån. Du kan tilbagebetale aktive lån nedenfor."
     },
     "terms": {
       "title": "Lånebetingelser, Division {division}",
@@ -127,7 +111,6 @@
     "days": "{d}d siden"
   },
   "msg": {
-    "loanCreated": "Lån på {amount} CZ$ oprettet",
     "loanRepaidFull": "Lån fuldt tilbagebetalt!",
     "loanRepaidPartial": "{paid} CZ$ betalt, {remaining} CZ$ resterende",
     "errorPrefix": ""
