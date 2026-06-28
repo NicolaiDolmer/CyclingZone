@@ -4,6 +4,8 @@ import assert from "node:assert/strict";
 import {
   generateRaceStageProfiles,
   seedIdentityFor,
+  ARCHETYPE_PROFILES,
+  archetypeFor,
   finaleFor,
   DEMAND_VECTORS,
   ABILITY_DIMENSIONS,
@@ -92,6 +94,39 @@ test("sæson-akse: uden season_id seedes på identitet alene (bagudkompatibel)",
   const withSeason = { id: "x", external_id: "tour-x", race_type: "stage_race", stages: 5 };
   const same = { id: "y", external_id: "tour-x", race_type: "stage_race", stages: 5 };
   assert.deepEqual(generateRaceStageProfiles(withSeason), generateRaceStageProfiles(same));
+});
+
+// ── Arketype: endagsløb ──
+test("arketype endagsløb: cobbled_classic → brosten-domineret", () => {
+  const seen = {};
+  for (let s = 1; s <= 60; s++) {
+    const p = generateRaceStageProfiles({ id: "r", external_id: `e${s}`, terrain_archetype: "cobbled_classic", race_type: "single", stages: 1 })[0];
+    seen[p.profile_type] = (seen[p.profile_type] || 0) + 1;
+  }
+  assert.ok((seen.cobbles || 0) >= 45, `forventede mest cobbles, fik ${JSON.stringify(seen)}`);
+});
+
+test("arketype endagsløb: flat_sprint → fladt + bunch_sprint dominerer", () => {
+  let sprint = 0;
+  for (let s = 1; s <= 60; s++) {
+    const p = generateRaceStageProfiles({ id: "r", external_id: `e${s}`, terrain_archetype: "flat_sprint", race_type: "single", stages: 1 })[0];
+    assert.ok(["flat", "rolling"].includes(p.profile_type), `uventet ${p.profile_type}`);
+    if (p.finale_type === "bunch_sprint") sprint++;
+  }
+  assert.ok(sprint >= 30, `forventede mange bunch_sprint, fik ${sprint}`);
+});
+
+test("ukendt/NULL arketype endagsløb → generisk fordeling (bagudkompatibel)", () => {
+  const a = generateRaceStageProfiles({ id: "x", race_type: "single", stages: 1, external_id: "race-single-1" });
+  const b = generateRaceStageProfiles({ id: "x", race_type: "single", stages: 1, external_id: "race-single-1", terrain_archetype: "ukendt_xyz" });
+  assert.deepEqual(a, b);
+});
+
+test("archetypeFor: kendt arketype → config, ukendt → null", () => {
+  assert.ok(archetypeFor({ terrain_archetype: "cobbled_classic" }));
+  assert.equal(archetypeFor({ terrain_archetype: "vrøvl" }), null);
+  assert.equal(archetypeFor({}), null);
+  assert.ok(ARCHETYPE_PROFILES.grand_tour, "grand_tour findes");
 });
 
 test("alle DEMAND_VECTORS er normaliserede + gyldige nøgler", () => {

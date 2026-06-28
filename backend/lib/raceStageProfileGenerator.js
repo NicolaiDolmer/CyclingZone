@@ -106,6 +106,31 @@ const STAGE_ORDER_HINT = Object.freeze({
   flat: 1, rolling: 2, cobbles: 3, hilly: 3, classic: 4, itt: 5, ttt: 5, mountain: 6, high_mountain: 7,
 });
 
+// Arketype-fordelinger (jf. spec §4). kind:"single" → endagsløbs-profilvægte;
+// kind:"stage" → garantier (force-include, trimmet til stages) + filler-vægte.
+// Vægte = samme format som weightedPick. Tunbar ÉT sted (jf. spec §12). Et løb
+// uden (kendt) terrain_archetype → null → generatoren falder tilbage til de
+// generiske vægte ovenfor (bagudkompatibelt).
+export const ARCHETYPE_PROFILES = Object.freeze({
+  flat_sprint:         { kind: "single", weights: [{ value: "flat", weight: 80 }, { value: "rolling", weight: 20 }] },
+  cobbled_classic:     { kind: "single", weights: [{ value: "cobbles", weight: 90 }, { value: "flat", weight: 10 }] },
+  puncheur:            { kind: "single", weights: [{ value: "hilly", weight: 85 }, { value: "classic", weight: 15 }] },
+  hilly_classic:       { kind: "single", weights: [{ value: "hilly", weight: 50 }, { value: "classic", weight: 35 }, { value: "rolling", weight: 15 }] },
+  mountain_classic:    { kind: "single", weights: [{ value: "mountain", weight: 60 }, { value: "high_mountain", weight: 30 }, { value: "hilly", weight: 10 }] },
+  long_sprint_classic: { kind: "single", weights: [{ value: "rolling", weight: 60 }, { value: "flat", weight: 25 }, { value: "hilly", weight: 15 }] },
+
+  grand_tour:     { kind: "stage", guarantees: ["flat", "flat", "flat", "itt", "mountain", "high_mountain", "high_mountain"], filler: [{ value: "flat", weight: 26 }, { value: "rolling", weight: 12 }, { value: "hilly", weight: 14 }, { value: "mountain", weight: 20 }, { value: "high_mountain", weight: 14 }, { value: "itt", weight: 12 }, { value: "ttt", weight: 2 }] },
+  mountain_tour:  { kind: "stage", guarantees: ["flat", "mountain", "mountain"], filler: [{ value: "flat", weight: 16 }, { value: "rolling", weight: 14 }, { value: "hilly", weight: 14 }, { value: "mountain", weight: 34 }, { value: "high_mountain", weight: 16 }, { value: "itt", weight: 6 }] },
+  hilly_tour:     { kind: "stage", guarantees: ["flat", "hilly", "hilly"], filler: [{ value: "flat", weight: 18 }, { value: "rolling", weight: 22 }, { value: "hilly", weight: 34 }, { value: "mountain", weight: 14 }, { value: "high_mountain", weight: 4 }, { value: "itt", weight: 8 }] },
+  sprinters_week: { kind: "stage", guarantees: ["flat", "mountain"], filler: [{ value: "flat", weight: 50 }, { value: "rolling", weight: 22 }, { value: "hilly", weight: 12 }, { value: "mountain", weight: 10 }, { value: "itt", weight: 6 }] },
+  balanced_week:  { kind: "stage", guarantees: ["flat", "mountain"], filler: [{ value: "flat", weight: 30 }, { value: "rolling", weight: 20 }, { value: "hilly", weight: 18 }, { value: "mountain", weight: 18 }, { value: "high_mountain", weight: 4 }, { value: "itt", weight: 10 }] },
+});
+
+// Opslag: terrain_archetype → config (eller null ved ukendt/manglende → generisk).
+export function archetypeFor(race) {
+  return ARCHETYPE_PROFILES[race?.terrain_archetype] ?? null;
+}
+
 // FNV-1a 32-bit → heltals-seed fra seed-nøglen (streng). Deterministisk.
 function stableSeed(str) {
   let h = 0x811c9dc5;
@@ -173,9 +198,10 @@ function toStage(rng, profileType, stageNumber) {
   };
 }
 
-// Endagsløb: ét terræn fra den vægtede fordeling.
-function buildSingle(rng) {
-  return [toStage(rng, weightedPick(rng, SINGLE_PROFILE_WEIGHTS), 1)];
+// Endagsløb: ét terræn fra arketypens (eller den generiske) vægtede fordeling.
+function buildSingle(rng, cfg) {
+  const weights = cfg?.kind === "single" ? cfg.weights : SINGLE_PROFILE_WEIGHTS;
+  return [toStage(rng, weightedPick(rng, weights), 1)];
 }
 
 // Etapeløb: multiset af N terræn (garanteret ≥1 flad + ≥1 bjerg; kort TT muligt
@@ -206,6 +232,7 @@ export function generateRaceStageProfiles(race, { seed } = {}) {
   if (!race?.id) throw new Error("race.id kræves");
   const isStageRace = race.race_type === "stage_race";
   const stages = isStageRace ? Math.max(2, Number(race.stages) || 2) : 1;
+  const cfg = archetypeFor(race);
   const rng = makeRng(Number.isInteger(seed) ? seed >>> 0 : stableSeed(seedKeyFor(race)));
-  return isStageRace ? buildStageRace(rng, stages) : buildSingle(rng);
+  return isStageRace ? buildStageRace(rng, stages) : buildSingle(rng, cfg);
 }
