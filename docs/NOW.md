@@ -10,7 +10,7 @@
 >
 > **💰 CZ Pro Slice 1 — PR [#1909](https://github.com/NicolaiDolmer/CyclingZone/pull/1909) afventer ejer-merge** (har `database/*.sql`). **Åbne ejer-beslutninger:** #1276 · #1278 · #1487 · #929 · #691. [PLAN.md](PLAN.md)=SSOT.
 
-> **🎯 Next action:** Pre-live audit (28/6, multi-agent) → mandags-gate **GRØN** (0 forfaldne, 0 overlap-kollision i samme division, økonomi koherent efter ÷20, 0 negative). **Shippet før mandag:** ex-akademi frie agenter frigjort (#1947) · 2 ghost-auktioner annulleret (#1773) · spiller-lån-knap fjernet + endpoint deaktiveret (#1948→PR #1955 merged) · løbskategorier→fiktive (#1780→PR #1956 merged). Backups: `backup_academy_freeagent_fix_20260628`, `backup_ghost_auctions_fix_20260628`. Ejer-valg: lån står · omkørsel #1861/#1848 = lad stå · form #1949 = accepter nuværende. **Weekend-polish (ikke mandags-blockers — bundt til 1 PR):** #1781 · #1832 · #1936/#1937 · #1954 · #1949 (reset-script form-nulstilling).
+> **🎯 Next action:** Pre-live audit (28/6, multi-agent) → mandags-gate **GRØN** (0 forfaldne, 0 overlap-kollision i samme division, økonomi koherent efter ÷20, 0 negative). **Shippet før mandag:** ex-akademi frie agenter frigjort (#1947) · 2 ghost-auktioner annulleret (#1773) · rentefrit 'reset'-lån skjult fra UI + kort/langt lån bevaret (#1948→#1957; #1955 var for bred → reverteret) · løbskategorier→fiktive (#1780→PR #1956 merged). Backups: `backup_academy_freeagent_fix_20260628`, `backup_ghost_auctions_fix_20260628`. Ejer-valg: lån står · omkørsel #1861/#1848 = lad stå · form #1949 = accepter nuværende. **Weekend-polish (ikke mandags-blockers — bundt til 1 PR):** #1781 · #1832 · #1936/#1937 · #1954 · #1949 (reset-script form-nulstilling).
 
 > **🤖 Working agent:** Ingen aktiv session.
 
