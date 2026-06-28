@@ -16,7 +16,7 @@
 
 > **🎯 Next action:** Løb genstarter man 29/6 08:00 (mandags-gate var GRØN: 0 forfaldne/overlap-kollision, økonomi koherent). Næste kandidater: **weekend-polish-bundt** (#1781 · #1832 · #1936/#1937 · #1954 · #1949) · **op/nedrykning** ([#1152](https://github.com/NicolaiDolmer/CyclingZone/issues/1152), spec afventer godkendelse) · **CZ Pro** PR #1909 (ejer-merge). Ejer-valg: lån står · omkørsel #1861/#1848 = lad stå · form #1949 = accepter. Backups 28/6: `backup_seedfix_*`, `backup_chronrebuild_*`, `backup_academy_freeagent_*`, `backup_ghost_auctions_*`.
 
-> **🤖 Working agent:** Ingen aktiv session.
+> **🤖 Working agent:** Claude Code (Opus) — race-results-synlighed slice: #1485 (holdvinder synlig) + #1311 (tekst-recaps). Spec: `2026-06-28-race-results-team-visibility-and-recaps-design.md`. Frontend-only, ingen motor/migration.
 
 ## Standing context (forever-relaunch)
 
