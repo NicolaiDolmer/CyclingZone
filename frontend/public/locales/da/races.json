@@ -100,8 +100,8 @@
     "stageRaceParen": "Etapeløb ({count})"
   },
   "classOption": {
-    "TourFrance": "Tour de France",
-    "GiroVuelta": "Giro / Vuelta",
+    "TourFrance": "Grand Tour",
+    "GiroVuelta": "Major Tour",
     "Monuments": "Monuments",
     "OtherWorldTourA": "WorldTour A",
     "OtherWorldTourB": "WorldTour B",
@@ -151,7 +151,7 @@
   },
   "library": {
     "searchLabel": "Søg løb",
-    "searchPlaceholder": "Tour, Giro, Roubaix…",
+    "searchPlaceholder": "Klassiker, Gran Premio, Trofeo…",
     "seasonLabel": "Sæson",
     "allSeasons": "Alle sæsoner",
     "seasonOption": "Sæson {number}",
@@ -201,9 +201,9 @@
     "showLess": "Skjul ↑",
     "showAll": "Vis alle {count} pladser ↓",
     "prizeExample": {
-      "tourWin": "Tour de France-sejr",
+      "tourWin": "Grand Tour-sejr",
       "monumentWin": "Monument-sejr",
-      "tourStageWin": "Etapesejr (TdF)",
+      "tourStageWin": "Etapesejr (Grand Tour)",
       "proSeriesWin": "ProSeries-sejr",
       "class1Win": "Klasse 1-sejr",
       "class2Win": "Klasse 2-sejr"

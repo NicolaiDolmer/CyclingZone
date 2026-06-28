@@ -107,7 +107,7 @@
       "blocks": {
         "prize": {
           "title": "Præmiepenge",
-          "text": "Præmiepenge udbetales pr. resultat: point for placeringen × {prizePerPoint} CZ$. Kun løb med en løbsklasse (Tour de France, WorldTour, ProSeries osv.) genererer præmiepenge; løb uden klasse giver 0."
+          "text": "Præmiepenge udbetales pr. resultat: point for placeringen × {prizePerPoint} CZ$. Kun løb med en løbsklasse (Grand Tour, WorldTour, ProSeries osv.) genererer præmiepenge; løb uden klasse giver 0."
         },
         "resultType": {
           "title": "Resultattype",

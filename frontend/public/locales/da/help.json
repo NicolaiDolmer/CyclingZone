@@ -387,15 +387,15 @@
       "label": "Præmier",
       "formula": {
         "title": "Præmieformlen",
-        "text": "Præmiepenge beregnes direkte fra point: 1 point = {prizePerPoint} CZ$. Kun løb med en løbsklasse (Tour de France, Giro/Vuelta, Monumenter, WorldTour, ProSeries, Klasse 1, Klasse 2) genererer præmiepenge. Løb uden klasse giver 0 CZ$."
+        "text": "Præmiepenge beregnes direkte fra point: 1 point = {prizePerPoint} CZ$. Kun løb med en løbsklasse (Grand Tour, Major Tour, Monumenter, WorldTour, ProSeries, Klasse 1, Klasse 2) genererer præmiepenge. Løb uden klasse giver 0 CZ$."
       },
       "examples": {
         "title": "Eksempler på præmiebeløb",
         "rows": [
           ["Sejr", "Point", "Præmie"],
-          ["Tour de France-sejr", "1.300", "97.500 CZ$"],
+          ["Grand Tour-sejr", "1.300", "97.500 CZ$"],
           ["Monument-sejr", "800", "60.000 CZ$"],
-          ["Etapesejr (Tour de France)", "210", "15.750 CZ$"],
+          ["Etapesejr (Grand Tour)", "210", "15.750 CZ$"],
           ["ProSeries-sejr", "200", "15.000 CZ$"],
           ["Klasse 1-sejr", "125", "9.375 CZ$"],
           ["Klasse 2-sejr", "40", "3.000 CZ$"]
@@ -762,7 +762,7 @@
     },
     "prizeMoneyFaq": {
       "q": "Hvad er præmiepenge, og hvornår udbetales de?",
-      "a": "Præmiepenge er en direkte CZ$-belønning for resultater dine ryttere opnår i løbene. Beregningen er: point for placeringen × {prizePerPoint} CZ$. Pengene udbetales automatisk til din balance når admin finaliserer resultaterne og vises som 'prize' i din finance-log. Kun løb med en løbsklasse (Tour de France, WorldTour, ProSeries osv.) genererer præmiepenge. Løb uden løbsklasse giver 0."
+      "a": "Præmiepenge er en direkte CZ$-belønning for resultater dine ryttere opnår i løbene. Beregningen er: point for placeringen × {prizePerPoint} CZ$. Pengene udbetales automatisk til din balance når admin finaliserer resultaterne og vises som 'prize' i din finance-log. Kun løb med en løbsklasse (Grand Tour, WorldTour, ProSeries osv.) genererer præmiepenge. Løb uden løbsklasse giver 0."
     },
     "divisionBonusFaq": {
       "q": "Hvad er divisionsbonus, og hvornår udbetales den?",

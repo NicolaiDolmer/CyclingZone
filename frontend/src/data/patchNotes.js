@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.31",
+    "date": "2026-06-28",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Race categories renamed to fit Cycling Zone's own world",
+          "body": "The race-class categories no longer borrow real-world race names. \"Tour de France\" is now \"Grand Tour\" and \"Giro / Vuelta\" is now \"Major Tour\" across the calendar, race library, and points & prizes. Points, prizes and which races fall in each class are unchanged — only the labels."
+        },
+        "da": {
+          "title": "Løbskategorier omdøbt så de passer til Cycling Zones egen verden",
+          "body": "Løbsklasse-kategorierne låner ikke længere navne fra rigtige løb. \"Tour de France\" hedder nu \"Grand Tour\" og \"Giro / Vuelta\" hedder nu \"Major Tour\" på tværs af kalenderen, løbsbiblioteket og point & præmier. Point, præmier og hvilke løb der ligger i hver klasse er uændrede — kun etiketterne."
+        },
+        "refs": [1780]
+      }
+    ]
+  },
+  {
     "version": "6.29",
     "date": "2026-06-27",
     "label": "Beta",
