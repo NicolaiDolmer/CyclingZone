@@ -21,6 +21,20 @@ export const PATCHES = [
           "body": "Løbsklasse-kategorierne låner ikke længere navne fra rigtige løb. \"Tour de France\" hedder nu \"Grand Tour\" og \"Giro / Vuelta\" hedder nu \"Major Tour\" på tværs af kalenderen, løbsbiblioteket og point & præmier. Point, præmier og hvilke løb der ligger i hver klasse er uændrede — kun etiketterne."
         },
         "refs": [1780]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Race calendar",
+        "en": {
+          "title": "Calendar reworked so at most two races compete for a rider at once",
+          "body": "We rebuilt the season calendar so racing chronology is honest. Each stage now sits on its own in-game race-day, so a stage race can run several stages on the same calendar date while a rider is only ever committed to one race per in-game day. In Division 3 you now face at most two races competing for a rider at the same time (it used to be three), and some races run solo. Grand Tours are now full-length commitments. Because the calendar changed, any line-ups you set earlier have been cleared, so set them again on the Races page."
+        },
+        "da": {
+          "title": "Kalenderen bygget om så højst to løb kæmper om en rytter ad gangen",
+          "body": "Vi har bygget sæsonkalenderen om, så løbs-kronologien er ærlig. Hver etape ligger nu på sin egen in-game-løbsdag, så et etapeløb kan køre flere etaper på samme kalenderdato, mens en rytter kun er bundet til ét løb pr. in-game-dag. I Division 3 møder du nu højst to løb der kæmper om en rytter samtidig (det var tre før), og nogle løb kører solo. Grand Tours er nu fuldlængde-commitments. Fordi kalenderen er ændret, er de opstillinger du satte tidligere blevet ryddet, så sæt dem igen på Løb-siden."
+        },
+        "refs": []
       }
     ]
   },
