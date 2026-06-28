@@ -12,13 +12,13 @@
 >
 > **Trup-board: eksplicit Gem + delvis trup (28/6):** auto-gem afløst af "Gem ændringer"-knap + forlad-vagt; redigér frit (fjern → straks genbrugbar); delvis trup gemmes nu og **top-fyldes auto ved race-tid** (`raceEntryGenerator` gap-fill med helper-rolle, `validateSelection` lempet). **Merged + live** ([#1961](https://github.com/NicolaiDolmer/CyclingZone/pull/1961)). Spec: `2026-06-28-racehub-save-ux-redesign-design.md`.
 >
-> **Race-resultater: holdvinder synlig + tekst-recaps (29/6 — PR åben):** holdklassementets vinder vises nu med navn + fremhævning (#1485 — team-rækker joines direkte; var "—" fordi `team_name`/rytter-join manglede); tekst-recaps pr. løb/etape udledt af persisterede `race_results` (#1311 — margin/udbrud/holdets dag, ICU-plural EN/DA). Frontend-only, ingen motor/migration. Verificeret i mock-preview. Spec: `2026-06-28-race-results-team-visibility-and-recaps-design.md`.
+> **Race-resultater: holdvinder synlig + tekst-recaps (29/6 — merged + live):** holdklassementets vinder vises nu med navn + fremhævning (#1485 — team-rækker joines direkte; var "—" fordi `team_name`/rytter-join manglede); tekst-recaps pr. løb/etape udledt af persisterede `race_results` (#1311 — margin/udbrud/holdets dag, ICU-plural EN/DA). Frontend-only, ingen motor/migration. **Merged+live** ([#1964](https://github.com/NicolaiDolmer/CyclingZone/pull/1964)). Spec: `2026-06-28-race-results-team-visibility-and-recaps-design.md`. Læring: kør `race-detail.spec.js` lokalt ved RaceDetailPage-ændringer (recap-tekst kolliderede med `getByText`).
 >
 > **💰 CZ Pro Slice 1 — PR [#1909](https://github.com/NicolaiDolmer/CyclingZone/pull/1909) afventer ejer-merge** (har `database/*.sql`). **Åbne ejer-beslutninger:** #1276 · #1278 · #1487 · #929 · #691. [PLAN.md](PLAN.md)=SSOT.
 
 > **🎯 Next action:** Løb genstarter man 29/6 08:00 (mandags-gate var GRØN: 0 forfaldne/overlap-kollision, økonomi koherent). Næste kandidater: **weekend-polish-bundt** (#1781 · #1832 · #1936/#1937 · #1954 · #1949) · **op/nedrykning** ([#1152](https://github.com/NicolaiDolmer/CyclingZone/issues/1152), spec afventer godkendelse) · **CZ Pro** PR #1909 (ejer-merge). Ejer-valg: lån står · omkørsel #1861/#1848 = lad stå · form #1949 = accepter. Backups 28/6: `backup_seedfix_*`, `backup_chronrebuild_*`, `backup_academy_freeagent_*`, `backup_ghost_auctions_*`.
 
-> **🤖 Working agent:** Claude Code (Opus) — race-results-synlighed slice: #1485 (holdvinder synlig) + #1311 (tekst-recaps). Spec: `2026-06-28-race-results-team-visibility-and-recaps-design.md`. Frontend-only, ingen motor/migration.
+> **🤖 Working agent:** Ingen aktiv session.
 
 ## Standing context (forever-relaunch)
 
