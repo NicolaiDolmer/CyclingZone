@@ -129,7 +129,8 @@ test("board surfacer fejlbesked når et gem afvises (#1823)", async ({ page }) =
   await board.getByRole("button", { name: /Gem ændringer/ }).click();
   const alert = board.getByRole("alert");
   await expect(alert).toBeVisible();
-  await expect(alert).toContainText(/6/); // "Udtag mellem 6 og 6 ryttere"
+  // Specifik mapping (ikke bare "indeholder 6"): den mappede selection_wrong_size-streng.
+  await expect(alert).toContainText(/højst udtage/);
 });
 
 // Ejer 28/6: redigering PUT'er ALDRIG af sig selv (ingen auto-gem). At fjerne en rytter

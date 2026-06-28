@@ -24,6 +24,8 @@ test("delvis trup tilladt (ejer 28/6): under-fuld + tom passerer, over-fuld afvi
   assert.equal(validateSelection({ ...base, riderIds: ["r1", "r2"], captainId: "r1" }).ok, true);
   // Tom trup (ingen manuelle picks) → OK; kaptajn ikke krævet.
   assert.equal(validateSelection({ ...base, riderIds: [], captainId: null }).ok, true);
+  // ...men en tom trup med en forældet kaptajn-reference afvises (input-hul, CodeRabbit).
+  assert.ok(validateSelection({ ...base, riderIds: [], captainId: "r1" }).errors.includes("selection_captain_not_selected"));
   // For mange (7 af 6) → wrong_size (over feltstørrelsen).
   assert.ok(validateSelection({ ...base, riderIds: ["r1","r2","r3","r4","r5","r6","r7"] }).errors.includes("selection_wrong_size"));
   // Default-klasse {6,8}: 6 af 8 = delvis → OK; 9 → wrong_size.

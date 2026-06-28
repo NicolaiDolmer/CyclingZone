@@ -149,6 +149,12 @@ test("runRaceEntryGenerator: idempotent — manuelle entries bevares, auto-fille
   for (const e of aAuto) assert.ok(!aRiders.has(e.rider_id), `top-up ${e.rider_id} genbruger en manuel rytter`);
   const aAll = new Set(state.race_entries.filter((e) => e.race_id === "A").map((e) => e.rider_id));
   assert.equal(aAll.size, 6, "A er fuld (6) efter top-fyld");
+  // CodeRabbit (Major): top-up må IKKE udpege en 2. kaptajn/sprint-kaptajn — den manuelle
+  // trup ejer special-rollerne. Auto-fyldte top-up-ryttere skal alle være "helper".
+  for (const e of aAuto) assert.equal(e.race_role, "helper", `top-up ${e.rider_id} fik special-rolle ${e.race_role}`);
+  const aCaptains = state.race_entries.filter((e) => e.race_id === "A" && e.race_role === "captain");
+  assert.equal(aCaptains.length, 1, "præcis én kaptajn på A efter top-fyld");
+  assert.equal(aCaptains[0].rider_id, "t1-r0", "den manuelle kaptajn bevares");
   // B har fået auto-filled entries (A+B overlapper → B får de resterende ledige).
   const bAuto = state.race_entries.filter((e) => e.race_id === "B" && e.is_auto_filled === true);
   assert.ok(bAuto.length > 0, "B autofyldt");

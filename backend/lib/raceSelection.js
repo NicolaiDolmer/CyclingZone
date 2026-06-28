@@ -31,7 +31,10 @@ export function validateSelection({
   }
 
   // Kaptajn kræves kun når der ER manuelt udtagne ryttere (en tom trup = ren auto-udtagelse).
-  if (riderIds.length > 0) {
+  // En tom trup må dog ikke bære en forældet kaptajn-reference uden for trupperne (input-hul).
+  if (riderIds.length === 0) {
+    if (captainId) errors.push("selection_captain_not_selected");
+  } else {
     if (!captainId) errors.push("selection_captain_required");
     else if (!unique.has(captainId)) errors.push("selection_captain_not_selected");
   }

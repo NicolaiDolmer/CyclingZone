@@ -71,20 +71,24 @@ export default function RaceHubBoard() {
   // Mine-board hentes kun i "mine"-scope; browse-scopes (division/others, S6) bruger
   // DivisionStartLists med sit eget read-only endpoint.
   useEffect(() => { if (scope === "mine") load(Number.isFinite(dayParam) ? dayParam : undefined); }, [load, dayParam, scope]);
+  // Ugemte ændringer på board'et (afledt; delt af forlad-vagt + dag/scope-guard + UI-bar).
+  const boardDirty = (data?.columns || []).some((col) => selectionDirty(drafts[col.id], col.selection));
   // Skift af dag/scope viser andre kolonner → ryd kladder (de hører til de gamle løb).
   useEffect(() => { setDrafts({}); }, [dayParam, scope]);
   // Forlad-vagt (ejer 28/6): advar ved luk/genindlæsning hvis der er ugemte ændringer.
-  // (BrowserRouter → ingen useBlocker; beforeunload dækker browser-niveau, dirty-baren dækker in-app.)
+  // (BrowserRouter → ingen useBlocker; beforeunload dækker browser-niveau.)
   useEffect(() => {
-    const cols = data?.columns || [];
-    if (!cols.some((col) => selectionDirty(drafts[col.id], col.selection))) return;
+    if (!boardDirty) return;
     const handler = (e) => { e.preventDefault(); e.returnValue = ""; };
     window.addEventListener("beforeunload", handler);
     return () => window.removeEventListener("beforeunload", handler);
-  }, [drafts, data]);
+  }, [boardDirty]);
 
-  const setDay = (d) => { params.set("day", String(d)); setParams(params, { replace: true }); };
-  const setScope = (s) => { params.set("scope", s); setParams(params, { replace: true }); };
+  // In-app dag/scope-skift rydder kladderne (effekten ovenfor) → bekræft FØRST hvis ugemt,
+  // ellers ryger ændringerne tavst (CodeRabbit). Afbryder manageren, sker skiftet ikke.
+  const confirmLeaveIfDirty = () => !boardDirty || window.confirm(t("racehub.leaveUnsaved"));
+  const setDay = (d) => { if (!confirmLeaveIfDirty()) return; params.set("day", String(d)); setParams(params, { replace: true }); };
+  const setScope = (s) => { if (!confirmLeaveIfDirty()) return; params.set("scope", s); setParams(params, { replace: true }); };
 
   // Fase 5 (#1835 / S6): read-only "andre divisioner" — pulje-vælger + bruttotrupper.
   // Egen render-gren (eget endpoint + URL-state), så mine-board'et er uændret.
@@ -136,36 +140,50 @@ export default function RaceHubBoard() {
     setDrafts((d) => ({ ...d, [col.id]: sel }));
   }
 
-  // Gem ALLE ændrede kolonner. Binding-sikker rækkefølge: kolonner med færrest TILFØJEDE ryttere
-  // gemmes først, så serveren frigør en flyttet rytter (fjernet fra kilde-løbet) FØR mål-løbet
-  // tilføjer ham → undgår selection_rider_bound-409 ved flyt mellem overlappende løb. Delvis trup
-  // er nu gyldig (backend); top-fyldes ved race-tid. Fejl pr. kolonne stopper og bevarer kladderne.
+  // Gem ALLE ændrede kolonner i to faser, så ryttere kan flyttes mellem OVERLAPPENDE løb —
+  // inkl. 2-vejs-bytte, hvor en simpel sortering deadlocker (begge løb beholder deres tilføjede
+  // rytter indtil det andets PUT kører). Fase 1 frigiver (gem beholdt sæt for løb der fjerner),
+  // fase 2 binder (gem fuld endelig trup). Delvis trup er gyldig (backend, top-fyldes ved race-tid).
+  // Fejl pr. kolonne stopper og bevarer de resterende kladder.
   async function saveAll() {
     const headers = await authHeaders();
     if (!headers) return;
     setBusy(true); setError(null);
-    const addedCount = (col) => {
-      const before = new Set(col.selection?.rider_ids || []);
-      return draftOf(col).rider_ids.filter((id) => !before.has(id)).length;
+    const serverIdsOf = (col) => new Set(col.selection?.rider_ids || []);
+    const draftIdsOf = (col) => draftOf(col).rider_ids;
+    const addedCount = (col) => { const s = serverIdsOf(col); return draftIdsOf(col).filter((id) => !s.has(id)).length; };
+    const removedCount = (col) => { const d = new Set(draftIdsOf(col)); return [...serverIdsOf(col)].filter((id) => !d.has(id)).length; };
+    const putColumn = async (col, ids) => {
+      const sel = draftOf(col);
+      const body = {
+        rider_ids: ids,
+        captain_id: ids.includes(sel.captain_id) ? sel.captain_id : (ids[0] ?? null),
+        sprint_captain_id: ids.includes(sel.sprint_captain_id) ? sel.sprint_captain_id : null,
+        hunter_id: ids.includes(sel.hunter_id) ? sel.hunter_id : null,
+      };
+      const res = await fetch(`${API}/api/races/${col.id}/selection`, { method: "PUT", headers, body: JSON.stringify(body) });
+      if (res && !res.ok) {
+        const b = await res.json().catch(() => ({}));
+        setError({ code: b.error || "generic", params: { min: col.size?.min, max: col.size?.max } });
+        return false;
+      }
+      return true;
     };
-    const ordered = [...dirtyColumns].sort((a, b) => addedCount(a) - addedCount(b));
     const savedIds = [];
+    const releasedFinal = new Set(); // rene fjernelser: endelige allerede efter fase 1
+    let failed = false;
     try {
-      for (const col of ordered) {
-        const ids = draftOf(col).rider_ids;
-        const sel = draftOf(col);
-        const body = {
-          rider_ids: ids,
-          captain_id: ids.includes(sel.captain_id) ? sel.captain_id : (ids[0] ?? null),
-          sprint_captain_id: ids.includes(sel.sprint_captain_id) ? sel.sprint_captain_id : null,
-          hunter_id: ids.includes(sel.hunter_id) ? sel.hunter_id : null,
-        };
-        const res = await fetch(`${API}/api/races/${col.id}/selection`, { method: "PUT", headers, body: JSON.stringify(body) });
-        if (res && !res.ok) {
-          const b = await res.json().catch(() => ({}));
-          setError({ code: b.error || "generic", params: { min: col.size?.min, max: col.size?.max } });
-          break;
-        }
+      // Fase 1 (frigiv): løb der fjerner ryttere → gem deres beholdte sæt (kladde ∩ server) først.
+      for (const col of dirtyColumns) {
+        if (removedCount(col) === 0) continue;
+        const retained = draftIdsOf(col).filter((id) => serverIdsOf(col).has(id));
+        if (!(await putColumn(col, retained))) { failed = true; break; }
+        if (addedCount(col) === 0) { releasedFinal.add(col.id); savedIds.push(col.id); }
+      }
+      // Fase 2 (bind): gem fuld endelig trup for resten — tilføjede ryttere er nu frie på serveren.
+      if (!failed) for (const col of dirtyColumns) {
+        if (releasedFinal.has(col.id)) continue;
+        if (!(await putColumn(col, draftIdsOf(col)))) { failed = true; break; }
         savedIds.push(col.id);
       }
     } catch {

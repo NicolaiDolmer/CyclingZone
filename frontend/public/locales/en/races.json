@@ -7,6 +7,7 @@
     "save": "Save changes",
     "discard": "Discard",
     "unsaved": "You have unsaved changes",
+    "leaveUnsaved": "You have unsaved changes. Leave without saving?",
     "status": { "full": "{selected} / {target} selected", "understaffed": "{selected} / {target} · understaffed", "overfull": "{selected} / {target} · too many", "withdrawn": "Withdrawn", "locked": "Lineup locked" },
     "pool": { "title": "Available riders · {count}-squad", "autofill": "Auto-fill", "fillMissing": "Fill gaps", "fillAll": "Rebuild all", "bound": "Already racing in an overlapping race" },
     "column": { "add": "Add from available", "withdraw": "Withdraw", "reenter": "Re-enter", "remove": "Remove rider" },
@@ -251,7 +252,7 @@
     "saving": "Saving…",
     "saved": "Selection saved.",
     "errors": {
-      "selection_wrong_size": "Pick all {max} riders to field a full team.",
+      "selection_wrong_size": "You can pick at most {max} riders.",
       "selection_insufficient_riders": "You don't have enough available riders for a full team. Withdraw from this race or sign free agents.",
       "move_target_full": "That race is already full. Remove a rider there first.",
       "move_target_locked": "That race has started, so its lineup is locked.",

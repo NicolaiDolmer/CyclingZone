@@ -7,6 +7,7 @@
     "save": "Gem ændringer",
     "discard": "Kassér",
     "unsaved": "Du har ugemte ændringer",
+    "leaveUnsaved": "Du har ugemte ændringer. Forlad uden at gemme?",
     "status": { "full": "{selected} / {target} valgt", "understaffed": "{selected} / {target} · underbemandet", "overfull": "{selected} / {target} · for mange", "withdrawn": "Afmeldt", "locked": "Trup låst" },
     "pool": { "title": "Ledige ryttere · {count}-trup", "autofill": "Auto-udfyld", "fillMissing": "Udfyld manglende", "fillAll": "Genopbyg alt", "bound": "Kører allerede et overlappende løb" },
     "column": { "add": "Tilføj fra ledige", "withdraw": "Afmeld", "reenter": "Deltag igen", "remove": "Fjern rytter" },
@@ -251,7 +252,7 @@
     "saving": "Gemmer…",
     "saved": "Udtagelsen er gemt.",
     "errors": {
-      "selection_wrong_size": "Udtag alle {max} ryttere for at stille et fuldt hold.",
+      "selection_wrong_size": "Du kan højst udtage {max} ryttere.",
       "selection_insufficient_riders": "Du har ikke nok ledige ryttere til et fuldt hold. Afmeld dig løbet, eller hent fri-agenter.",
       "move_target_full": "Det løb er allerede fuldt. Fjern en rytter der først.",
       "move_target_locked": "Det løb er startet, så opstillingen er låst.",
