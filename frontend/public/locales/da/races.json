@@ -229,7 +229,7 @@
   },
   "selection": {
     "title": "Holdudtagelse",
-    "subtitle": "Udtag op til {max} ryttere til løbet. Du kan gemme en delvis trup — assistenten stiller resten når løbet køres. Ingen straf.",
+    "subtitle": "Udtag op til {max} ryttere til løbet. Du kan gemme en delvis trup, og assistenten stiller resten når løbet køres. Ingen straf.",
     "count": "{count}/{max} udtaget",
     "captain": "Kaptajn",
     "sprintCaptain": "Spurt-kaptajn (valgfri)",
