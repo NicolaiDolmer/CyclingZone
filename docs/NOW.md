@@ -8,7 +8,7 @@
 >
 > **Kalender-kronologi-rebuild (28/6 — anvendt + verificeret i prod):** `game_day` adskilt fra IRL-dag; hver etape = sin egen game-dag (GT = 21 game-dage = fuldt commitment). **Overlap-cap pr. division: Div 1/2 = 3, Div 3/4 = 2** — Div 3's x3 fjernet (blanding solo+2, 0 straddle, verificeret max 2 i prod). Tæthed præcis 5/4/3/2, 0 tomme dage, kvoter 140/112/84. **263 løb, 700 etape-tider.** Binding-kode uændret (nøgler på game_day). Manuelle lineups nulstillet (8 hold må sætte trup igen). Backup `backup_chronrebuild_20260628_*`. **Merged + live ([#1958](https://github.com/NicolaiDolmer/CyclingZone/pull/1958)/#1960).** Spec: `2026-06-28-race-calendar-chronology-rebuild-design.md`.
 >
-> **Trup-board: eksplicit Gem + delvis trup (28/6):** auto-gem afløst af "Gem ændringer"-knap + forlad-vagt; redigér frit (fjern → straks genbrugbar); delvis trup gemmes nu og **top-fyldes auto ved race-tid** (`raceEntryGenerator` gap-fill, `validateSelection` lempet). Branch `feat/racehub-save-ux` (afventer PR-merge). Spec: `2026-06-28-racehub-save-ux-redesign-design.md`.
+> **Trup-board: eksplicit Gem + delvis trup (28/6):** auto-gem afløst af "Gem ændringer"-knap + forlad-vagt; redigér frit (fjern → straks genbrugbar); delvis trup gemmes nu og **top-fyldes auto ved race-tid** (`raceEntryGenerator` gap-fill, `validateSelection` lempet). PR [#1961](https://github.com/NicolaiDolmer/CyclingZone/pull/1961) (afventer merge). Spec: `2026-06-28-racehub-save-ux-redesign-design.md`.
 >
 > **💰 CZ Pro Slice 1 — PR [#1909](https://github.com/NicolaiDolmer/CyclingZone/pull/1909) afventer ejer-merge** (har `database/*.sql`). **Åbne ejer-beslutninger:** #1276 · #1278 · #1487 · #929 · #691. [PLAN.md](PLAN.md)=SSOT.
 
