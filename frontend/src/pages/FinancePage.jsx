@@ -107,11 +107,6 @@ export default function FinancePage() {
   const [loadError, setLoadError] = useState(false);
   const [msg, setMsg] = useState({ text: "", type: "" });
 
-  // Optag lån
-  const [loanType, setLoanType] = useState("short");
-  const [loanAmount, setLoanAmount] = useState("");
-  const [takingLoan, setTakingLoan] = useState(false);
-
   // Betal lån
   const [repayId, setRepayId] = useState(null);
   const [repayAmount, setRepayAmount] = useState("");
@@ -249,37 +244,6 @@ export default function FinancePage() {
     setTimeout(() => setMsg({ text: "" }), 5000);
   }
 
-  async function handleTakeLoan(e) {
-    e.preventDefault();
-    if (!loanAmount || parseInt(loanAmount) < 1) return;
-    setTakingLoan(true);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(`${API}/api/finance/loans`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify({ loan_type: loanType, amount: parseInt(loanAmount) }),
-      });
-      const result = await res.json().catch(() => ({}));
-      if (res.ok) {
-        showMsg(t("msg.loanCreated", { amount: formatNumber(parseInt(loanAmount)) }));
-        setLoanAmount("");
-        loadAll();
-      } else {
-        // #1012: strukturerede engine-fejl (error.debtCapReached m.fl.) renderes
-        // lokaliseret via backendMessages; rå error-string er fallback.
-        const errText = result.errorCode
-          ? renderBackendMessage({ code: result.errorCode, params: result.errorParams }, tBackend, result.error)
-          : result.error;
-        showMsg(`${t("msg.errorPrefix")}${errText}`, "error");
-      }
-    } catch {
-      showMsg(t("auth:error.connectionFailed"), "error");
-    } finally {
-      setTakingLoan(false);
-    }
-  }
-
   async function handleRepay(loanId, amount) {
     if (!amount || parseInt(amount) < 1) return;
     setRepaying(true);
@@ -302,8 +266,8 @@ export default function FinancePage() {
         setRepayAmount("");
         loadAll();
       } else {
-        // #1012: samme lokaliserede fejl-rendering som handleTakeLoan
-        // (fx error.repayInsufficient med { available }).
+        // #1012: lokaliseret engine-fejl-rendering (fx error.repayInsufficient
+        // med { available }) via backendMessages; rå error-string er fallback.
         const errText = result.errorCode
           ? renderBackendMessage({ code: result.errorCode, params: result.errorParams }, tBackend, result.error)
           : result.error;
@@ -333,13 +297,6 @@ export default function FinancePage() {
   );
 
   const activeLoans = (loanData?.loans || []).filter(l => l.status === "active");
-  const configs = (loanData?.configs || []).filter(c => c.loan_type !== "emergency");
-  const selectedConfig = configs.find(c => c.loan_type === loanType);
-  const loanAmountNum = parseInt(loanAmount) || 0;
-  // #1012: max_principal/max_fee/max_total_debt kommer fra backend (samme formel
-  // som serverens loft-validering — ingen klient-kopi der kan drifte).
-  const maxPrincipal = selectedConfig?.max_principal ?? null;
-  const exceedsMax = maxPrincipal != null && loanAmountNum > maxPrincipal;
   const debtHeadroom = loanData?.debt_ceiling != null
     ? Math.max(0, loanData.debt_ceiling - (loanData?.total_debt || 0))
     : null;
@@ -567,93 +524,11 @@ export default function FinancePage() {
             )}
           </Card>
 
-          {/* Optag lån */}
+          {/* #1948: spiller-initierede lån er fjernet — nødlån gives automatisk
+              ved sæsonstart hvis sponsor + saldo ikke kan dække løn/renter. */}
           <Card className="p-5 mb-4">
-            <h2 className="text-cz-1 font-semibold text-sm mb-4">{t("loans.take.title")}</h2>
-            {configs.length === 0 ? (
-              <p className="text-cz-3 text-sm">{t("loans.take.noConfig", { division: team?.division })}</p>
-            ) : (
-              <form onSubmit={handleTakeLoan}>
-                <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div>
-                    <label className="block text-cz-3 text-xs mb-1">{t("loans.take.typeLabel")}</label>
-                    <Select value={loanType} onChange={e => setLoanType(e.target.value)} className="w-full">
-                      {configs.map(c => (
-                        <option key={c.loan_type} value={c.loan_type}>{loanLabel(c.loan_type)}</option>
-                      ))}
-                    </Select>
-                  </div>
-                  <div>
-                    <label className="block text-cz-3 text-xs mb-1">{t("loans.take.amountLabel")}</label>
-                    <Input type="number" required min={1} value={loanAmount}
-                      onChange={e => setLoanAmount(e.target.value)}
-                      placeholder={t("loans.take.amountPlaceholder")}
-                      className="w-full" />
-                  </div>
-                </div>
-
-                {/* #1012: max lånbart lige nu (gebyr-inkl.) — tal fra serverens egen formel */}
-                {maxPrincipal != null && (
-                  maxPrincipal > 0 ? (
-                    <div className="flex items-center justify-between gap-2 -mt-2 mb-4">
-                      <p className="text-cz-3 text-xs leading-snug">
-                        {t("loans.take.maxBorrowable", { value: formatNumber(maxPrincipal) })}
-                        <br />
-                        <span className="text-cz-3/70">
-                          {t("loans.take.maxBorrowableDetail", {
-                            fee: formatNumber(selectedConfig.max_fee || 0),
-                            total: formatNumber(selectedConfig.max_total_debt || 0),
-                            ceiling: formatNumber(selectedConfig.debt_ceiling || 0),
-                          })}
-                        </span>
-                      </p>
-                      <Button type="button" variant="secondary" size="sm"
-                        onClick={() => setLoanAmount(String(maxPrincipal))}
-                        className="flex-shrink-0">
-                        {t("loans.take.useMax")}
-                      </Button>
-                    </div>
-                  ) : (
-                    <p className="text-cz-danger text-xs -mt-2 mb-4 leading-snug">
-                      {t("loans.take.maxZero", { ceiling: formatNumber(selectedConfig.debt_ceiling || 0) })}
-                    </p>
-                  )
-                )}
-
-                {selectedConfig && loanAmountNum > 0 && (
-                  <div className="bg-cz-subtle border border-cz-border rounded-cz p-3 mb-4">
-                    <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                      <div>
-                        <p className="text-cz-3">{t("loans.take.feeLabel", { pct: (selectedConfig.origination_fee_pct * 100).toFixed(0) })}</p>
-                        <p className="text-cz-2 font-mono mt-0.5">
-                          {t("loans.take.feeValue", { value: formatNumber(Math.round(loanAmountNum * selectedConfig.origination_fee_pct)) })}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-cz-3">{t("loans.take.interestLabel")}</p>
-                        <p className="text-cz-2 font-mono mt-0.5">{t("loans.take.interestValue", { pct: (selectedConfig.interest_rate_pct * 100).toFixed(0) })}</p>
-                      </div>
-                      <div>
-                        <p className="text-cz-3">{t("loans.take.totalLabel")}</p>
-                        <p className="text-cz-accent-t font-mono mt-0.5">
-                          {t("loans.take.totalValue", { value: formatNumber(loanAmountNum + Math.round(loanAmountNum * selectedConfig.origination_fee_pct)) })}
-                        </p>
-                      </div>
-                    </div>
-                    {exceedsMax && (
-                      <p className="text-cz-danger text-xs mt-2 text-center leading-snug">
-                        {t("loans.take.exceedsMax", { value: formatNumber(maxPrincipal) })}
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                <Button type="submit" variant="primary" fullWidth
-                  disabled={takingLoan || !loanAmount || exceedsMax}>
-                  {takingLoan ? t("loans.take.processing") : t("loans.take.submit")}
-                </Button>
-              </form>
-            )}
+            <h2 className="text-cz-1 font-semibold text-sm mb-2">{t("loans.auto.title")}</h2>
+            <p className="text-cz-3 text-sm leading-snug">{t("loans.auto.text")}</p>
           </Card>
 
           {/* Lånebetingelser */}

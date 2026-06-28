@@ -67,25 +67,9 @@
       "repayingBtn": "...",
       "cancelRepayAria": "Cancel"
     },
-    "take": {
-      "title": "Take out a loan",
-      "noConfig": "No loan configuration available for Division {division}",
-      "typeLabel": "Loan type",
-      "amountLabel": "Amount (CZ$)",
-      "amountPlaceholder": "e.g. 500",
-      "feeLabel": "Fee ({pct}%)",
-      "feeValue": "{value} CZ$",
-      "interestLabel": "Interest/season",
-      "interestValue": "{pct}%",
-      "totalLabel": "Total repayment",
-      "totalValue": "{value} CZ$",
-      "maxBorrowable": "Max loan right now: {value} CZ$",
-      "maxBorrowableDetail": "The fee of {fee} CZ$ is added to your debt, so it reaches {total} CZ$ of the {ceiling} CZ$ cap.",
-      "useMax": "Use max",
-      "maxZero": "No room for a new loan. Your debt is at the division cap of {ceiling} CZ$.",
-      "exceedsMax": "This would push you over the debt cap, because the fee counts towards it. Max loan right now: {value} CZ$.",
-      "submit": "Take loan",
-      "processing": "Processing..."
+    "auto": {
+      "title": "Loans",
+      "text": "Loans aren't something you apply for. If sponsor income and your balance can't cover salaries or interest at season start, the system grants an emergency loan automatically. You can repay any active loans below."
     },
     "terms": {
       "title": "Loan terms, Division {division}",
@@ -127,7 +111,6 @@
     "days": "{d}d ago"
   },
   "msg": {
-    "loanCreated": "Loan of {amount} CZ$ created",
     "loanRepaidFull": "Loan fully repaid!",
     "loanRepaidPartial": "{paid} CZ$ paid, {remaining} CZ$ remaining",
     "errorPrefix": ""
