@@ -30,13 +30,15 @@ test("kalenderen renderer header, faner, måneds-grid og legend", async ({ page 
   await expect(page.getByText("MAN", { exact: true })).toBeVisible();
   await expect(page.getByText("SØN", { exact: true })).toBeVisible();
 
-  // Holdets eget løb + "din leder"-anden-linje på "Mit hold"-fanen. Chip-navnet
-  // trunkeres visuelt i smalle celler (især mobil), så vi asserter på chip'ens
-  // tilgængelige navn (aria-label), der altid bærer hele titlen + meta.
-  const namurChip = page.getByRole("group", { name: /Grand Prix de Namur/ }).first();
+  // Holdets egne løb vises som klikbare per-etape-chips (#1946). Chip-navnet trunkeres
+  // visuelt i smalle celler (især mobil), så vi asserter på chip'ens tilgængelige navn
+  // (aria-label "Åbn planlægning for {navn}"), der altid bærer hele løbsnavnet — og på at
+  // chip'en linker ind på løbets planlægningsside.
+  const namurChip = page.getByRole("link", { name: /Grand Prix de Namur/ }).first();
   await expect(namurChip).toBeVisible();
-  await expect(namurChip).toHaveAccessibleName(/din leder/);
-  await expect(page.getByRole("group", { name: /Tour des Hauts Plateaux.*8 etaper/ }).first()).toBeVisible();
+  await expect(namurChip).toHaveAttribute("href", "/races/cal-1");
+  // Etapeløbet vises også som en klikbar chip.
+  await expect(page.getByRole("link", { name: /Tour des Hauts Plateaux/ }).first()).toBeVisible();
 
   // Legend med terræn-typer.
   await expect(page.getByText("Bjerge", { exact: true })).toBeVisible();
@@ -50,13 +52,13 @@ test("'Alle hold'-fanen viser andre divisioners løb (dæmpet)", async ({ page }
   // Mit holds-løb-filteret dukker op på ikke-"mit hold"-faner.
   await expect(page.getByText("Mit holds løb")).toBeVisible();
   // Flere instanser af samme løbsnavn (egen pulje + andre divisioner) → flere chips.
-  await expect(page.getByRole("group", { name: /Grand Prix de Namur/ }).first()).toBeVisible();
-  expect(await page.getByRole("group", { name: /Grand Prix de Namur/ }).count()).toBeGreaterThan(1);
+  await expect(page.getByRole("link", { name: /Grand Prix de Namur/ }).first()).toBeVisible();
+  expect(await page.getByRole("link", { name: /Grand Prix de Namur/ }).count()).toBeGreaterThan(1);
 });
 
 test("snapshot: kalender-flade", async ({ page }) => {
   await gotoCalendar(page);
-  await expect(page.getByRole("group", { name: /Grand Prix de Namur/ }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: /Grand Prix de Namur/ }).first()).toBeVisible();
   await page.evaluate(async () => { if (document.fonts?.ready) await document.fonts.ready; });
   await expect(page.locator("main")).toHaveScreenshot("calendar-page.png", {
     maxDiffPixelRatio: 0.02,

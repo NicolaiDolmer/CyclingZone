@@ -232,8 +232,9 @@ test("browse: 'Andre divisioner' viser read-only startlister (bruttotrupper) + l
   await page.goto("/races");
   await expect(page.getByTestId("race-hub-board")).toBeVisible();
 
-  // Skift til "Andre divisioner" → read-only browse-flade.
-  await page.getByRole("button", { name: "Andre divisioner" }).click();
+  // Skift til "Andre divisioner" → read-only browse-flade. Scope-pillerne er
+  // ARIA-faner (role="tab", #1924), ikke generiske knapper.
+  await page.getByRole("tab", { name: "Andre divisioner" }).click();
   const browse = page.getByTestId("race-hub-browse");
   await expect(browse).toBeVisible();
 
