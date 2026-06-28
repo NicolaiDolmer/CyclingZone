@@ -97,13 +97,23 @@ test("sæson-akse: uden season_id seedes på identitet alene (bagudkompatibel)",
 });
 
 // ── Arketype: endagsløb ──
-test("arketype endagsløb: cobbled_classic → brosten-domineret", () => {
+test("arketype endagsløb: cobbled_classic → ALTID brosten (fast karakter, intet flad-flip)", () => {
   const seen = {};
   for (let s = 1; s <= 60; s++) {
     const p = generateRaceStageProfiles({ id: "r", external_id: `e${s}`, terrain_archetype: "cobbled_classic", race_type: "single", stages: 1 })[0];
     seen[p.profile_type] = (seen[p.profile_type] || 0) + 1;
   }
-  assert.ok((seen.cobbles || 0) >= 45, `forventede mest cobbles, fik ${JSON.stringify(seen)}`);
+  assert.equal(seen.cobbles || 0, 60, `cobbled_classic skal ALTID være brosten, fik ${JSON.stringify(seen)}`);
+});
+
+test("arketype endagsløb: fast kerneterræn — ingen karakterskift på tværs af seeds", () => {
+  const allowed = { flat_sprint: ["flat"], cobbled_classic: ["cobbles"], puncheur: ["hilly"], hilly_classic: ["hilly", "classic"], mountain_classic: ["mountain", "high_mountain"], long_sprint_classic: ["rolling"] };
+  for (const [arch, ok] of Object.entries(allowed)) {
+    for (let s = 1; s <= 40; s++) {
+      const t = generateRaceStageProfiles({ id: "r", external_id: `e${s}`, terrain_archetype: arch, race_type: "single", stages: 1 })[0].profile_type;
+      assert.ok(ok.includes(t), `${arch} seed ${s}: uventet ${t} (tilladt: ${ok.join("/")})`);
+    }
+  }
 });
 
 test("arketype endagsløb: flat_sprint → fladt + bunch_sprint dominerer", () => {
