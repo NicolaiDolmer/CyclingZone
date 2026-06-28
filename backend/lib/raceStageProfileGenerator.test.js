@@ -158,6 +158,15 @@ test("arketype etapeløb: grand_tour (21) har ≥2 high_mountain + ≥1 itt", ()
   }
 });
 
+test("arketype etapeløb: sprinter_tour_summits → præcis 1 TT + 2 bjerg, resten flad/rullende", () => {
+  for (let s = 1; s <= 30; s++) {
+    const types = generateRaceStageProfiles({ id: "r", external_id: `e${s}`, terrain_archetype: "sprinter_tour_summits", race_type: "stage_race", stages: 7 }).map((p) => p.profile_type);
+    assert.equal(types.filter((t) => t === "itt").length, 1, `s${s}: TT-antal`);
+    assert.equal(types.filter((t) => ["mountain", "high_mountain"].includes(t)).length, 2, `s${s}: bjerg-antal`);
+    assert.ok(types.filter((t) => ["flat", "rolling"].includes(t)).length >= 3, `s${s}: for få flade`);
+  }
+});
+
 test("ukendt/NULL arketype etapeløb → uændret generisk adfærd (garanterer flad+bjerg)", () => {
   for (const n of [2, 4, 5, 6]) {
     for (let seed = 1; seed <= 20; seed++) {

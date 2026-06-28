@@ -124,6 +124,9 @@ export const ARCHETYPE_PROFILES = Object.freeze({
   hilly_tour:     { kind: "stage", guarantees: ["flat", "hilly", "hilly"], filler: [{ value: "flat", weight: 18 }, { value: "rolling", weight: 22 }, { value: "hilly", weight: 34 }, { value: "mountain", weight: 14 }, { value: "high_mountain", weight: 4 }, { value: "itt", weight: 8 }] },
   sprinters_week: { kind: "stage", guarantees: ["flat", "mountain"], filler: [{ value: "flat", weight: 50 }, { value: "rolling", weight: 22 }, { value: "hilly", weight: 12 }, { value: "mountain", weight: 10 }, { value: "itt", weight: 6 }] },
   balanced_week:  { kind: "stage", guarantees: ["flat", "mountain"], filler: [{ value: "flat", weight: 30 }, { value: "rolling", weight: 20 }, { value: "hilly", weight: 18 }, { value: "mountain", weight: 18 }, { value: "high_mountain", weight: 4 }, { value: "itt", weight: 10 }] },
+  // Ørken/sprinter-tur med faste bjergankomster: garanteret 1 TT + 2 bjerg, resten
+  // flad/rullende (fx UAE Tour). Filler kun flad/rullende → "resten er flade".
+  sprinter_tour_summits: { kind: "stage", guarantees: ["flat", "itt", "mountain", "mountain"], filler: [{ value: "flat", weight: 78 }, { value: "rolling", weight: 22 }] },
 });
 
 // Opslag: terrain_archetype → config (eller null ved ukendt/manglende → generisk).
