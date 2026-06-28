@@ -90,11 +90,12 @@ export async function materializeSeasonCalendar({
 
   // 2. Verdens-katalog (race_pool).
   const { data: catalog, error: catErr } = await supabase
-    .from("race_pool").select("id, external_id, name, race_class, race_type, stages");
+    .from("race_pool").select("id, external_id, terrain_archetype, name, race_class, race_type, stages");
   if (catErr) throw new Error(`race_pool: ${catErr.message}`);
   // Seed-nøgle pr. katalog-løb (external_id) → identisk parcours i alle en divisions
-  // puljer + på tværs af sæson-rebuilds (jf. seedIdentityFor i raceStageProfileGenerator.js).
+  // puljer; terrain_archetype driver terrænfordelingen (jf. raceStageProfileGenerator.js).
   const externalIdByPoolRace = new Map((catalog || []).map((c) => [c.id, c.external_id ?? null]));
+  const archetypeByPoolRace = new Map((catalog || []).map((c) => [c.id, c.terrain_archetype ?? null]));
 
   // 3. Eksisterende races i sæsonen → idempotens-nøgle (pulje:pool_race).
   const { data: existing, error: exErr } = await supabase
@@ -159,7 +160,7 @@ export async function materializeSeasonCalendar({
     // identitet, så puljerne i en division deler parcours.
     const profileRows = [];
     for (const race of insertedRaces) {
-      const seedRace = { ...race, external_id: externalIdByPoolRace.get(race.pool_race_id) ?? null };
+      const seedRace = { ...race, external_id: externalIdByPoolRace.get(race.pool_race_id) ?? null, terrain_archetype: archetypeByPoolRace.get(race.pool_race_id) ?? null, season_id: seasonId };
       for (const p of generateRaceStageProfiles(seedRace)) {
         profileRows.push({
           race_id: race.id,

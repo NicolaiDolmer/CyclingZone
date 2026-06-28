@@ -143,12 +143,13 @@ export async function materializeTierCalendars({
   for (const t of teams || []) if (isRealManagerRow(t) && t.league_division_id != null) realByDiv.set(t.league_division_id, (realByDiv.get(t.league_division_id) || 0) + 1);
   const pools = (divisions || []).map((d) => ({ id: d.id, tier: d.tier, label: d.label, realManagerCount: realByDiv.get(d.id) || 0 }));
 
-  const { data: catalog, error: cErr } = await supabase.from("race_pool").select("id, external_id, name, race_class, race_type, stages");
+  const { data: catalog, error: cErr } = await supabase.from("race_pool").select("id, external_id, terrain_archetype, name, race_class, race_type, stages");
   if (cErr) throw new Error(`race_pool: ${cErr.message}`);
   // Seed-nøgle pr. katalog-løb: external_id binder parcours til løbets VIRKELIGE
-  // identitet, så en divisions parallelle puljer får IDENTISK parcours (jf.
-  // seedIdentityFor i raceStageProfileGenerator.js — ellers fik hver pulje sit eget).
+  // identitet (identisk parcours i en divisions puljer); terrain_archetype driver
+  // terrænfordelingen (jf. raceStageProfileGenerator.js).
   const externalIdByPoolRace = new Map((catalog || []).map((c) => [c.id, c.external_id ?? null]));
+  const archetypeByPoolRace = new Map((catalog || []).map((c) => [c.id, c.terrain_archetype ?? null]));
 
   const { data: existing, error: exErr } = await supabase.from("races").select("league_division_id, pool_race_id").eq("season_id", seasonId);
   if (exErr) throw new Error(`races (existing): ${exErr.message}`);
@@ -185,8 +186,9 @@ export async function materializeTierCalendars({
 
       const profileRows = [];
       for (const race of inserted) {
-        // external_id fra kataloget (race.pool_race_id → external_id) → samme parcours i alle puljer.
-        const seedRace = { ...race, external_id: externalIdByPoolRace.get(race.pool_race_id) ?? null };
+        // external_id (samme parcours i alle puljer) + terrain_archetype (terrænkarakter)
+        // + season_id (variation pr. sæson) fra konteksten.
+        const seedRace = { ...race, external_id: externalIdByPoolRace.get(race.pool_race_id) ?? null, terrain_archetype: archetypeByPoolRace.get(race.pool_race_id) ?? null, season_id: seasonId };
         for (const p of generateRaceStageProfiles(seedRace)) {
           profileRows.push({ race_id: race.id, stage_number: p.stage_number, profile_type: p.profile_type, finale_type: p.finale_type, demand_vector: p.demand_vector, generator_version: GENERATOR_VERSION, is_manual: false });
         }

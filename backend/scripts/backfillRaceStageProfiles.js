@@ -52,12 +52,13 @@ async function loadRaces() {
   });
 }
 
-// Katalog-nøgle → external_id (seed-identitet, jf. seedIdentityFor). Et løb uden
-// pool_race_id (legacy/ad-hoc) får null → generatoren falder tilbage til race.id.
-async function loadExternalIdByPoolRace() {
+// Katalog-meta pr. pool_race_id → { external_id (seed-identitet), terrain_archetype
+// (terrænkarakter) }. Et løb uden pool_race_id (legacy/ad-hoc) får intet match →
+// generatoren falder tilbage til race.id + generisk fordeling.
+async function loadCatalogMeta() {
   const rows = await fetchAllRows(() =>
-    supabase.from("race_pool").select("id, external_id").order("id"));
-  return new Map((rows || []).map((r) => [r.id, r.external_id ?? null]));
+    supabase.from("race_pool").select("id, external_id, terrain_archetype").order("id"));
+  return new Map((rows || []).map((r) => [r.id, { external_id: r.external_id ?? null, terrain_archetype: r.terrain_archetype ?? null }]));
 }
 
 // race_id'er der har mindst én håndredigeret etape → spring løbet helt over.
@@ -70,7 +71,7 @@ async function loadManualRaceIds() {
 async function main() {
   console.log(`=== Backfill race_stage_profiles ${DRY_RUN ? "(DRY-RUN)" : "(APPLY)"}${SEASON != null ? ` — sæson ${SEASON}` : ""} — generator v${GENERATOR_VERSION} ===`);
   const races = await loadRaces();
-  const externalIdByPoolRace = await loadExternalIdByPoolRace();
+  const catalogMeta = await loadCatalogMeta();
   const manualRaceIds = DRY_RUN ? new Set() : await loadManualRaceIds();
 
   const dist = Object.fromEntries(PROFILE_TYPES.map((p) => [p, 0]));
@@ -82,7 +83,9 @@ async function main() {
   for (const race of races) {
     if (manualRaceIds.has(race.id)) { racesSkippedManual++; continue; }
 
-    const seedRace = { ...race, external_id: externalIdByPoolRace.get(race.pool_race_id) ?? null };
+    const meta = catalogMeta.get(race.pool_race_id) || {};
+    // race.season_id er allerede på rækken → indgår i seed via seedKeyFor (sæson-akse).
+    const seedRace = { ...race, external_id: meta.external_id ?? null, terrain_archetype: meta.terrain_archetype ?? null };
     const profiles = generateRaceStageProfiles(seedRace);
     for (const p of profiles) dist[p.profile_type]++;
     if (sample.length < 12) {

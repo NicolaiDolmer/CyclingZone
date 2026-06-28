@@ -213,8 +213,8 @@ test("apply: en divisions puljer får IDENTISK parcours pr. løb, seedet på ext
   const summary = await materializeTierCalendars({ supabase: sb, seasonId: "s1", seasonStartDate: "2026-06-22", from: FROM, dryRun: false });
   assert.ok(summary.racesInserted > 0, "der skal indsættes løb");
 
-  // generator_version stemplet 2 på hver profil.
-  for (const p of sb.state.race_stage_profiles) assert.equal(p.generator_version, 2);
+  // generator_version stemplet 3 på hver profil.
+  for (const p of sb.state.race_stage_profiles) assert.equal(p.generator_version, 3);
 
   const profByRaceId = new Map();
   for (const p of sb.state.race_stage_profiles) {
@@ -237,8 +237,30 @@ test("apply: en divisions puljer får IDENTISK parcours pr. løb, seedet på ext
     // (2) Parcourset er external_id-seedet (ikke pool_race_id/race.id). external_id != pool_race_id
     // i denne fixture, så en revert til en anden seed-kilde ville give et andet parcours.
     const meta = metaById.get(poolRaceId);
-    const expected = routeStr(generateRaceStageProfiles({ id: "ignored", external_id: externalById.get(poolRaceId), race_type: meta.race_type, stages: meta.stages }));
-    assert.equal([...variants][0], expected, `pool_race ${poolRaceId}: parcours er ikke seedet på external_id`);
+    // season_id "s1" matcher materializerens seedRace (sæson-akse, Task 6).
+    const expected = routeStr(generateRaceStageProfiles({ id: "ignored", external_id: externalById.get(poolRaceId), race_type: meta.race_type, stages: meta.stages, season_id: "s1" }));
+    assert.equal([...variants][0], expected, `pool_race ${poolRaceId}: parcours er ikke seedet på external_id+sæson`);
   }
   assert.ok(shared > 0, "mindst ét løb skal optræde i begge puljer (fan-out)");
+});
+
+test("apply: arketype driver parcours (cobbled_classic endagsløb → brosten dominerer)", async () => {
+  const catalog = tier3Catalog().map((c) => ({ ...c, external_id: `ext-${c.id}`, terrain_archetype: c.race_type === "stage_race" ? "mountain_tour" : "cobbled_classic" }));
+  const league_divisions = [
+    { id: 4, tier: 3, pool_index: 0, label: "Division 3 — A" },
+    { id: 5, tier: 3, pool_index: 1, label: "Division 3 — B" },
+  ];
+  const mgr = (id, pool) => ({ id, is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, league_division_id: pool });
+  const teams = [mgr("a1", 4), mgr("a2", 4), mgr("a3", 4), mgr("b1", 5), mgr("b2", 5), mgr("b3", 5)];
+  const sb = makeSupabase({ league_divisions, teams, race_pool: catalog });
+  await materializeTierCalendars({ supabase: sb, seasonId: "s1", seasonStartDate: "2026-06-22", from: FROM, dryRun: false });
+
+  const oneDayProfiles = sb.state.race_stage_profiles.filter((p) => {
+    const r = sb.state.races.find((x) => x.id === p.race_id);
+    const meta = catalog.find((c) => c.id === r.pool_race_id);
+    return meta && meta.race_type === "single";
+  });
+  const cobbles = oneDayProfiles.filter((p) => p.profile_type === "cobbles").length;
+  assert.ok(oneDayProfiles.length > 0, "der skal være endagsløb");
+  assert.ok(cobbles >= oneDayProfiles.length * 0.6, `forventede brosten-dominans, fik ${cobbles}/${oneDayProfiles.length}`);
 });
