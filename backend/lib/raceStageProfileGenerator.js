@@ -112,12 +112,15 @@ const STAGE_ORDER_HINT = Object.freeze({
 // uden (kendt) terrain_archetype → null → generatoren falder tilbage til de
 // generiske vægte ovenfor (bagudkompatibelt).
 export const ARCHETYPE_PROFILES = Object.freeze({
-  flat_sprint:         { kind: "single", weights: [{ value: "flat", weight: 80 }, { value: "rolling", weight: 20 }] },
-  cobbled_classic:     { kind: "single", weights: [{ value: "cobbles", weight: 90 }, { value: "flat", weight: 10 }] },
-  puncheur:            { kind: "single", weights: [{ value: "hilly", weight: 85 }, { value: "classic", weight: 15 }] },
-  hilly_classic:       { kind: "single", weights: [{ value: "hilly", weight: 50 }, { value: "classic", weight: 35 }, { value: "rolling", weight: 15 }] },
-  mountain_classic:    { kind: "single", weights: [{ value: "mountain", weight: 60 }, { value: "high_mountain", weight: 30 }, { value: "hilly", weight: 10 }] },
-  long_sprint_classic: { kind: "single", weights: [{ value: "rolling", weight: 60 }, { value: "flat", weight: 25 }, { value: "hilly", weight: 15 }] },
+  // Endagsløb: kerneterrænet er FAST — et endagsløbs karakter ændrer sig ikke år til
+  // år (variation-pr-sæson gælder kun etapeløb). Hvor to profiler er listet, er de
+  // SAMME karakter (tekstur, ikke karakterskift): hilly↔classic, mountain↔high_mountain.
+  flat_sprint:         { kind: "single", weights: [{ value: "flat", weight: 1 }] },
+  cobbled_classic:     { kind: "single", weights: [{ value: "cobbles", weight: 1 }] },
+  puncheur:            { kind: "single", weights: [{ value: "hilly", weight: 1 }] },
+  hilly_classic:       { kind: "single", weights: [{ value: "hilly", weight: 60 }, { value: "classic", weight: 40 }] },
+  mountain_classic:    { kind: "single", weights: [{ value: "high_mountain", weight: 50 }, { value: "mountain", weight: 50 }] },
+  long_sprint_classic: { kind: "single", weights: [{ value: "rolling", weight: 1 }] },
 
   grand_tour:     { kind: "stage", guarantees: ["flat", "flat", "flat", "itt", "mountain", "high_mountain", "high_mountain"], filler: [{ value: "flat", weight: 26 }, { value: "rolling", weight: 12 }, { value: "hilly", weight: 14 }, { value: "mountain", weight: 20 }, { value: "high_mountain", weight: 14 }, { value: "itt", weight: 12 }, { value: "ttt", weight: 2 }] },
   mountain_tour:  { kind: "stage", guarantees: ["flat", "mountain", "mountain"], filler: [{ value: "flat", weight: 16 }, { value: "rolling", weight: 14 }, { value: "hilly", weight: 14 }, { value: "mountain", weight: 34 }, { value: "high_mountain", weight: 16 }, { value: "itt", weight: 6 }] },
