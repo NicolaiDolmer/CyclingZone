@@ -113,11 +113,19 @@ test("plan: Div 1 får alle 3 Grand Tours + alle 5 monumenter; div 3 ingen Grand
   assert.ok(!div3.some((r) => ["TourFrance", "GiroVuelta"].includes(r.race_class)), "ingen GT i div3");
 });
 
-test("plan: Grand Tour komprimeres til ceil(21/5)=5 dage (rygrad, ikke 1 etape/dag)", () => {
+test("plan: Grand Tour spænder 21 game-dage (kronologi) men komprimeres i IRL (>1 etape/dag)", () => {
   const div1 = buildTierMaterializationPlan({ pools: fullPools, catalog: fullCatalog(), from: FROM }).tierPlans.find((t) => t.tier === 1).pools[0];
   for (const id of ["gt-0", "gt-1", "gt-2"]) {
-    const days = new Set(div1.stageRows.filter((s) => s.pool_race_id === id).map((s) => Date.parse(s.scheduled_at) - (Date.parse(s.scheduled_at) % 86400000)));
-    assert.ok(days.size <= 6, `Grand Tour ${id} spænder ${days.size} dage (forventet ~5, komprimeret)`);
+    const rows = div1.stageRows.filter((s) => s.pool_race_id === id);
+    // Kronologi: 21 etaper = 21 forskellige game-dage, sammenhængende.
+    const gds = [...new Set(rows.map((s) => s.game_day))].sort((a, b) => a - b);
+    assert.equal(gds.length, 21, `${id}: ${gds.length} game-dage (forventet 21)`);
+    assert.equal(gds[20] - gds[0], 20, `${id}: game-dage ikke sammenhængende`);
+    // IRL-komprimering: GT komprimeres (>1 etape på mindst én IRL-dag), ikke 1 etape/dag i 21 dage.
+    const byIrl = {};
+    for (const s of rows) { const d = Date.parse(s.scheduled_at) - (Date.parse(s.scheduled_at) % 86400000); byIrl[d] = (byIrl[d] || 0) + 1; }
+    assert.ok(Object.keys(byIrl).length < 21, `${id}: ikke komprimeret (${Object.keys(byIrl).length} IRL-dage)`);
+    assert.ok(Math.max(...Object.values(byIrl)) >= 2, `${id}: ingen IRL-dag med >1 etape (ingen komprimering)`);
   }
 });
 
@@ -130,7 +138,18 @@ test("plan: monumenter får game_day i binding-fri båndet; game_day_start = alm
     const sched = div1.stageRows.filter((s) => s.pool_race_id === m.pool_race_id);
     assert.ok(sched.every((s) => s.game_day >= MONUMENT_GAMEDAY_BASE), "monument schedule game_day i båndet");
   }
-  // ikke-monumenter: game_day = real_day (lille ordinal)
+  // ikke-monumenter: game_day = tidslinje-ordinal (lille, IKKE i båndet), adskilt fra real_day.
   const gt = div1.stageRows.filter((s) => s.pool_race_id === "gt-0");
-  assert.ok(gt.every((s) => s.game_day < 28), "Grand Tour game_day = real_day");
+  assert.ok(gt.every((s) => s.game_day < MONUMENT_GAMEDAY_BASE), "Grand Tour game_day uden for monument-bånd");
+  assert.equal(new Set(gt.map((s) => s.game_day)).size, 21, "Grand Tour = 21 unikke game-dage");
+});
+
+test("plan: overlap-cap pr. division — Div 1/2 max 3, Div 3 max 2", () => {
+  const tp = buildTierMaterializationPlan({ pools: fullPools, catalog: fullCatalog(), from: FROM }).tierPlans;
+  const byTier = Object.fromEntries(tp.map((t) => [t.tier, t]));
+  assert.equal(byTier[1].overlapCap, 3);
+  assert.equal(byTier[3].overlapCap, 2);
+  assert.ok(byTier[1].maxOverlap <= 3, `div1 maxOverlap ${byTier[1].maxOverlap}`);
+  assert.ok(byTier[2].maxOverlap <= 3, `div2 maxOverlap ${byTier[2].maxOverlap}`);
+  assert.ok(byTier[3].maxOverlap <= 2, `div3 maxOverlap ${byTier[3].maxOverlap}`);
 });

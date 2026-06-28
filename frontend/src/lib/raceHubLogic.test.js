@@ -1,17 +1,26 @@
 // frontend/src/lib/raceHubLogic.test.js
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { computeColumnStatus, isSelectionSavable, isRiderBound, deriveRaceStatus, poolRaceDayTotals, fitTier, freshnessTier, draftBindingMap } from "./raceHubLogic.js";
+import { computeColumnStatus, isSelectionSavable, isRiderBound, deriveRaceStatus, poolRaceDayTotals, fitTier, freshnessTier, draftBindingMap, windowsOverlap, canAddRiderToColumn } from "./raceHubLogic.js";
 
-test("draftBindingMap: binder rytter til de kolonner han er i kladden (ekskl. afmeldte)", () => {
+const W = (g) => ({ start: g, end: g }); // 1-dags in-game-vindue på game-dag g
+
+test("draftBindingMap: binder rytter til de kolonner han er i kladden, med game-dag-vindue (ekskl. afmeldte)", () => {
   const cols = [
-    { id: "A", withdrawn: false, selection: { rider_ids: ["r1", "r2"] } },
-    { id: "B", withdrawn: false, selection: { rider_ids: ["r2"] } },
-    { id: "C", withdrawn: true, selection: { rider_ids: ["r1"] } },
+    { id: "A", withdrawn: false, bindingWindow: W(4), selection: { rider_ids: ["r1", "r2"] } },
+    { id: "B", withdrawn: false, bindingWindow: W(4), selection: { rider_ids: ["r2"] } },
+    { id: "C", withdrawn: true, bindingWindow: W(5), selection: { rider_ids: ["r1"] } },
   ];
   const map = draftBindingMap(cols);
-  assert.deepEqual(map.r1, ["A"]); // C er afmeldt → tæller ikke
-  assert.deepEqual(map.r2.sort(), ["A", "B"]);
+  assert.deepEqual(map.r1, [{ id: "A", window: W(4) }]); // C er afmeldt → tæller ikke
+  assert.deepEqual(map.r2.map((e) => e.id).sort(), ["A", "B"]);
+});
+
+test("windowsOverlap: deler game-dag → true; forskellige game-dage → false", () => {
+  assert.equal(windowsOverlap(W(4), W(4)), true);
+  assert.equal(windowsOverlap(W(4), W(5)), false);
+  assert.equal(windowsOverlap({ start: 4, end: 8 }, W(5)), true); // etapeløb-span dækker gd5
+  assert.equal(windowsOverlap(null, W(4)), false);
 });
 
 test("computeColumnStatus: full / understaffed / withdrawn", () => {
@@ -33,11 +42,23 @@ test("isSelectionSavable: kun en KOMPLET trup gemmes (count === max)", () => {
   assert.equal(isSelectionSavable({ count: 4, max: 6 }), false);
 });
 
-test("isRiderBound: rytter bundet i et ANDET kolonne-løb end det aktuelle", () => {
-  const bindingMap = { r1: ["a"], r2: ["b"] };
-  assert.equal(isRiderBound({ bindingMap, riderId: "r1", forRaceId: "b" }), true); // r1 er i a, bundet ift. b
-  assert.equal(isRiderBound({ bindingMap, riderId: "r1", forRaceId: "a" }), false); // r1 ER a's egen
-  assert.equal(isRiderBound({ bindingMap, riderId: "r9", forRaceId: "b" }), false);
+test("isRiderBound: kun bundet når game-dag-vinduer overlapper (samme IRL-dag ≠ binding)", () => {
+  // r1 er i a (gd4); b er gd4 (overlapper → bundet); c er gd5 (samme IRL-dag, anden game-dag → IKKE bundet).
+  const bindingMap = { r1: [{ id: "a", window: W(4) }] };
+  assert.equal(isRiderBound({ bindingMap, riderId: "r1", forRaceId: "b", forWindow: W(4) }), true);
+  assert.equal(isRiderBound({ bindingMap, riderId: "r1", forRaceId: "c", forWindow: W(5) }), false, "anden game-dag → fri");
+  assert.equal(isRiderBound({ bindingMap, riderId: "r1", forRaceId: "a", forWindow: W(4) }), false); // a er hans eget løb
+  assert.equal(isRiderBound({ bindingMap, riderId: "r9", forRaceId: "b", forWindow: W(4) }), false);
+});
+
+test("canAddRiderToColumn: game-dag-fri kolonne på samme IRL-dag er tilføjbar", () => {
+  const bindingMap = { r1: [{ id: "a", window: W(4) }] };
+  const colB = { id: "b", bindingWindow: W(4), selection: { rider_ids: [] } }; // gd4 → bundet
+  const colC = { id: "c", bindingWindow: W(5), selection: { rider_ids: [] } }; // gd5 → fri
+  assert.equal(canAddRiderToColumn({ column: colB, bindingMap, riderId: "r1" }), false);
+  assert.equal(canAddRiderToColumn({ column: colC, bindingMap, riderId: "r1" }), true);
+  assert.equal(canAddRiderToColumn({ column: { ...colC, withdrawn: true }, bindingMap, riderId: "r1" }), false);
+  assert.equal(canAddRiderToColumn({ column: { ...colC, selection: { rider_ids: ["r1"] } }, bindingMap, riderId: "r1" }), false);
 });
 
 // deriveRaceStatus (#1828): visnings-status afledt af stages_completed. Backend

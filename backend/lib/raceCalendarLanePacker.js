@@ -1,128 +1,229 @@
 // backend/lib/raceCalendarLanePacker.js
-// Kalender-rebuild (2026-06-27, prestige/spredning-spec + ejer-billede): pak en divisions valgte
-// løb ind i et `density`-baner × `days` gitter, så HVER dag fyldes til PRÆCIS density stage-events
-// (= "5/4/3/2 løbsdage kørt om dagen"), uden tomme dage og uden droppede løb.
+// Kalender-kronologi-rebuild (2026-06-28): adskil IN-GAME-dagen (game_day) fra IRL-dagen (real_day).
+// Spec: docs/superpowers/specs/2026-06-28-race-calendar-chronology-rebuild-design.md.
 //
-// Form (ejer-godkendt billede 2026-06-27):
-//   - Grand Tours (≥ spineMinStages) er RYGRAD: komprimeret over (density-1) baner/dag (lader 1
-//     bane fri til overlap), spredt jævnt så de IKKE overlapper hinanden, men mindre løb +
-//     klassikere kører samtidig undervejs.
-//   - Øvrige etapeløb: adaptiv komprimering (mindst muligt baner → mest spredning/overlap, men nok
-//     til at passe i et frit vindue). 1 etape/bane/dag pr. bane løbet bruger.
-//   - Klassikere (inkl. monumenter) fylder hver resterende celle → hver dag rammer præcis density.
+// HVER etape får sin EGEN game-dag (et 21-etapers løb spænder 21 game-dage = fuldt commitment).
+// Binding (raceBinding.js) nøgler på game_day → uændret kode. To layout-strategier, valgt automatisk:
 //
-// Binding nøgler på game_day (raceBinding.js). game_day = real_day for almindelige løb. MONUMENTER
-// er binding-fri: game_day i et højt bånd (overlapper aldrig andre løb), men afvikles på delt
-// IRL-dato og optager en dag-plads. Hver etape får en `lane` → mapper til et fast tids-slot.
+//   BANDED (foretrukket — Div 2/3/4): B "baseline"-spor dækker hele tidslinjen + en overlay på R af
+//     hver IRL-dags K game-dage. Hver IRL-dag = K HELE game-dage → går præcist op i density UDEN
+//     straddle, og giver en bevidst BLANDING (fx Div 3: skiftevis 1 og 2 samtidige løb). Kræver nok
+//     endagsløb og ingen binding-fri monumenter (de hører i Div 1).
+//   STREAM (fallback — Div 1): least-loaded på `cap` spor + game-dag-ordnet komprimering. Håndterer
+//     Grand Tour-rygrad + binding-fri monumenter; kan have lidt straddle. Bruges når BANDED ikke kan
+//     realiseres (for få endagsløb / monumenter til stede).
+//
 // REN + deterministisk (ingen DB/Date/random).
 
 export const MONUMENT_GAMEDAY_BASE = 100000;
 
-export function packLaneCalendar({ stageRaces = [], oneDayRaces = [], density = 1, days = 28, spineMinStages = 15, gtReserveLanes = 1 } = {}) {
-  const D = Math.max(0, density);
-  const grid = Array.from({ length: days }, () => new Array(D).fill(null));
-  const free = (day, lane) => day >= 0 && day < days && lane >= 0 && lane < D && grid[day][lane] === null;
-  const placements = [];
-  const unplaced = [];
-  const lenOf = (r) => Math.max(1, Number(r.stages) || 1);
+const lenOf = (r) => Math.max(1, Number(r.stages) || 1);
+const byBigThenId = (a, b) => lenOf(b) - lenOf(a) || String(a.id).localeCompare(String(b.id));
 
-  const freeLanesOn = (day) => {
-    const out = [];
-    for (let l = 0; l < D; l++) if (grid[day][l] === null) out.push(l);
-    return out;
-  };
-
-  // Forsøg at placere et løb dag-for-dag fra `start`: hver dag tages op til `maxPerDay` ledige baner
-  // (≥1, ellers hul → mislykkes), indtil alle etaper er lagt. Fleksibelt (ikke stift rektangel), så
-  // det fylder fragmenteret plads omkring Grand Tours. Returnerer cells eller null.
-  function tryFlexible(stages, start, maxPerDay) {
-    const cells = [];
-    let s = 0;
-    for (let day = start; s < stages; day++) {
-      if (day >= days) return null;
-      const avail = freeLanesOn(day);
-      if (avail.length === 0) return null; // hul i etapeløbet ikke tilladt
-      const take = Math.min(maxPerDay, avail.length, stages - s);
-      for (let i = 0; i < take; i++) { cells.push({ day, lane: avail[i], stage_number: s + 1 }); s++; }
-    }
-    return cells;
+// Fletter to lister jævnt (a typisk etapeløb, b klassikere) så b spredes ud mellem a.
+function interleave(a, b) {
+  const out = [];
+  let ia = 0, ib = 0;
+  for (let i = 0, n = a.length + b.length; i < n; i++) {
+    const wantA = b.length === 0 || (a.length > 0 && ia / a.length <= ib / Math.max(1, b.length));
+    if (wantA && ia < a.length) out.push(a[ia++]);
+    else if (ib < b.length) out.push(b[ib++]);
+    else if (ia < a.length) out.push(a[ia++]);
   }
+  return out;
+}
 
-  // Søg en placering nær `prefStart` (spredt). maxPerDayList prøves i rækkefølge: lav cap først
-  // (mest spredning/overlap), højere cap kun hvis det ikke kan passe (komprimér for at få plads).
-  function place(race, prefStart, maxPerDayList) {
-    const S = lenOf(race);
-    for (const maxPerDay of maxPerDayList) {
-      const span = Math.ceil(S / maxPerDay);
-      const clamped = Math.max(0, Math.min(prefStart, days - span));
-      for (let off = 0; off < days; off++) {
-        for (const start of off === 0 ? [clamped] : [clamped + off, clamped - off]) {
-          if (start < 0 || start >= days) continue;
-          const cells = tryFlexible(S, start, maxPerDay);
-          if (cells) {
-            for (const c of cells) grid[c.day][c.lane] = race.id;
-            placements.push({ id: race.id, type: "stage_race", race_class: race.race_class ?? null, stages: S, startRealDay: start, stagesPlaced: cells.map((c) => ({ stage_number: c.stage_number, real_day: c.day, game_day: c.day, lane: c.lane })) });
-            return true;
-          }
-        }
+// ---- BANDED: B baseline-spor + overlay; hele game-dage pr. IRL-dag (straddle-fri) ----
+// Returnerer { placements, timelineLength } eller null hvis ikke realiserbart.
+function layoutBanded({ stageRaces, classics, density: D, days, cap }) {
+  if (D < 1 || days < 1) return null;
+  const K = Math.ceil(D / cap);          // game-dage pr. IRL-dag
+  const B = Math.floor(D / K);           // baseline-niveau (spor der dækker hele tidslinjen)
+  const R = D - B * K;                    // ekstra overlay-events pr. IRL-dag (på R af de K game-dage)
+  const T = K * days;                     // tidslinje-længde i game-dage
+  if (B < 1) return null;
+  const stageEvents = stageRaces.reduce((s, r) => s + lenOf(r), 0);
+  if (stageEvents > B * T) return null;            // for mange etape-game-dage til baseline
+  if (stageRaces.some((r) => lenOf(r) > T)) return null;
+  const overlayCount = R * days;
+  const baselineClassics = B * T - stageEvents;
+  if (baselineClassics < 0) return null;
+  if (classics.length !== baselineClassics + overlayCount) return null; // skal gå præcist op (kvote)
+
+  // Bin-pack etapeløb i B spor (FFD, kapacitet T).
+  const chains = Array.from({ length: B }, () => ({ items: [], used: 0 }));
+  for (const r of [...stageRaces].sort(byBigThenId)) {
+    let best = -1;
+    for (let c = 0; c < B; c++) if (chains[c].used + lenOf(r) <= T && (best === -1 || chains[c].used < chains[best].used)) best = c;
+    if (best === -1) return null;
+    chains[best].items.push(r);
+    chains[best].used += lenOf(r);
+  }
+  // Fyld hvert spor til T med baseline-klassikere (interleaved for spredning).
+  const pool = [...classics];
+  for (const chain of chains) {
+    const fill = pool.splice(0, T - chain.used);
+    chain.seq = interleave(chain.items, fill); // rækkefølge af race-objekter
+  }
+  const overlay = pool; // resterende = overlayCount
+
+  // chainAt[c][g] = { race, stage_number } for game-dag g i spor c.
+  const chainAt = chains.map((chain) => {
+    const arr = new Array(T).fill(null);
+    let g = 0;
+    for (const race of chain.seq) {
+      const L = lenOf(race);
+      for (let k = 0; k < L; k++) { arr[g] = { race, stage_number: k + 1 }; g++; }
+    }
+    return arr;
+  });
+
+  // Komprimering: IRL-dag d = game-dage [d*K, d*K+K). Overlay på de første R game-dage i hver IRL-dag.
+  const placementsById = new Map();
+  const ensure = (race) => {
+    if (!placementsById.has(race.id)) placementsById.set(race.id, { id: race.id, type: lenOf(race) > 1 ? "stage_race" : "single", race_class: race.race_class ?? null, stages: lenOf(race), startRealDay: Infinity, stagesPlaced: [] });
+    return placementsById.get(race.id);
+  };
+  let oi = 0;
+  for (let d = 0; d < days; d++) {
+    let lane = 0;
+    for (let k = 0; k < K; k++) {
+      const g = d * K + k;
+      for (let c = 0; c < B; c++) {
+        const cell = chainAt[c][g];
+        const p = ensure(cell.race);
+        p.stagesPlaced.push({ stage_number: cell.stage_number, real_day: d, game_day: g, lane: lane++ });
+        p.startRealDay = Math.min(p.startRealDay, d);
+      }
+      if (k < R && oi < overlay.length) {
+        const race = overlay[oi++];
+        const p = ensure(race);
+        p.stagesPlaced.push({ stage_number: 1, real_day: d, game_day: g, lane: lane++ });
+        p.startRealDay = Math.min(p.startRealDay, d);
       }
     }
-    return false;
+  }
+  const placements = [...placementsById.values()];
+  for (const p of placements) p.stagesPlaced.sort((a, b) => a.stage_number - b.stage_number);
+  return { placements, timelineLength: T };
+}
+
+// ---- STREAM: least-loaded på `cap` spor + game-dag-ordnet komprimering (håndterer GT + monumenter) ----
+function layoutStream({ stageRaces, classics, monuments, density: D, days, cap, spineMinStages }) {
+  const gts = stageRaces.filter((r) => lenOf(r) >= spineMinStages).sort(byBigThenId);
+  const others = stageRaces.filter((r) => lenOf(r) < spineMinStages).sort(byBigThenId);
+  const streamCursor = new Array(cap).fill(0);
+  const raceSpan = new Map();
+  const placeStream = (s, race) => { const start = streamCursor[s]; streamCursor[s] = start + lenOf(race); raceSpan.set(race.id, { start, len: lenOf(race), stream: s, race }); };
+  const rest = interleave(others, classics);
+
+  if (gts.length) {
+    const perGap = Math.floor(Math.floor(rest.length / 2) / gts.length);
+    let ri = 0;
+    gts.forEach((gt) => { placeStream(0, gt); for (let k = 0; k < perGap && ri < rest.length; k++) placeStream(0, rest[ri++]); });
+    for (; ri < rest.length; ri++) { let s = 0; for (let t = 1; t < cap; t++) if (streamCursor[t] < streamCursor[s]) s = t; placeStream(s, rest[ri]); }
+  } else {
+    for (const race of rest) { let s = 0; for (let t = 1; t < cap; t++) if (streamCursor[t] < streamCursor[s]) s = t; placeStream(s, race); }
+  }
+  const timelineLength = Math.max(0, ...streamCursor);
+
+  // Events ordnet efter game-dag, så spor (stabil).
+  const events = [];
+  for (const { start, len, stream, race } of raceSpan.values()) {
+    const type = len > 1 ? "stage_race" : "single";
+    for (let k = 0; k < len; k++) events.push({ race, type, stage_number: k + 1, game_day: start + k, stream });
+  }
+  events.sort((a, b) => a.game_day - b.game_day || a.stream - b.stream || String(a.race.id).localeCompare(String(b.race.id)) || a.stage_number - b.stage_number);
+
+  const totalSlots = D * days;
+  const monSlot = new Set();
+  if (monuments.length) {
+    const stepF = totalSlots / monuments.length;
+    for (let i = 0; i < monuments.length; i++) { let slot = Math.min(totalSlots - 1, Math.floor(i * stepF + stepF / 2)); while (monSlot.has(slot)) slot = (slot + 1) % totalSlots; monSlot.add(slot); }
+  }
+  const placementsById = new Map();
+  const ensure = (race, type, stages) => { if (!placementsById.has(race.id)) placementsById.set(race.id, { id: race.id, type, race_class: race.race_class ?? null, stages, startRealDay: Infinity, stagesPlaced: [] }); return placementsById.get(race.id); };
+  let ei = 0, monIdx = 0, monGameDay = MONUMENT_GAMEDAY_BASE;
+  for (let slot = 0; slot < totalSlots; slot++) {
+    const real_day = Math.floor(slot / D), lane = slot % D;
+    if (monSlot.has(slot) && monIdx < monuments.length) {
+      const m = monuments[monIdx++];
+      const p = ensure(m, "single", 1);
+      p.stagesPlaced.push({ stage_number: 1, real_day, game_day: monGameDay++, lane }); p.startRealDay = Math.min(p.startRealDay, real_day);
+      continue;
+    }
+    if (ei < events.length) {
+      const ev = events[ei++];
+      const p = ensure(ev.race, ev.type, lenOf(ev.race));
+      p.stagesPlaced.push({ stage_number: ev.stage_number, real_day, game_day: ev.game_day, lane }); p.startRealDay = Math.min(p.startRealDay, real_day);
+    }
+  }
+  const placements = [...placementsById.values()];
+  for (const p of placements) p.stagesPlaced.sort((a, b) => a.stage_number - b.stage_number);
+  return { placements, timelineLength };
+}
+
+// Diagnostik fra placements (ÆGTE binding-overlap fra game-dag-spans, uafhængigt af layout).
+function diagnose(placements, days, D, cap, timelineLength, layoutMode) {
+  const load = new Array(days).fill(0);
+  const racesOnDay = Array.from({ length: days }, () => new Set());
+  for (const p of placements) for (const st of p.stagesPlaced) { load[st.real_day] += 1; racesOnDay[st.real_day].add(p.id); }
+
+  const spans = placements
+    .filter((p) => p.stagesPlaced.every((s) => s.game_day < MONUMENT_GAMEDAY_BASE))
+    .map((p) => [Math.min(...p.stagesPlaced.map((s) => s.game_day)), Math.max(...p.stagesPlaced.map((s) => s.game_day))]);
+  const hi = spans.length ? Math.max(...spans.map((s) => s[1])) : -1;
+  const overlapHistogram = {};
+  let maxOverlap = 0;
+  for (let g = 0; g <= hi; g++) {
+    const n = spans.filter(([a, b]) => a <= g && b >= g).length;
+    overlapHistogram[n] = (overlapHistogram[n] || 0) + 1;
+    if (n > maxOverlap) maxOverlap = n;
   }
 
-  // 1) Grand Tours (rygrad): spredt, komprimeret over density-1 baner/dag (1 bane fri til overlap).
-  const gtLanes = Math.max(1, D - gtReserveLanes);
-  const gts = stageRaces.filter((r) => lenOf(r) >= spineMinStages).sort((a, b) => (lenOf(b) - lenOf(a)) || String(a.id).localeCompare(String(b.id)));
-  const others = stageRaces.filter((r) => lenOf(r) < spineMinStages).sort((a, b) => (lenOf(b) - lenOf(a)) || String(a.id).localeCompare(String(b.id)));
-  gts.forEach((gt, k) => {
-    const span = Math.ceil(lenOf(gt) / gtLanes);
-    const pref = Math.round(((k + 0.5) * days) / Math.max(1, gts.length)) - Math.floor(span / 2);
-    if (!place(gt, pref, [gtLanes])) unplaced.push(gt.id);
-  });
-
-  // 2) Øvrige etapeløb: prøv 1 etape/dag (mest spredning) først, ellers komprimér gradvist op til density.
-  others.forEach((race, k) => {
-    const pref = Math.round(((k + 0.5) * days) / Math.max(1, others.length));
-    if (!place(race, pref, Array.from({ length: D }, (_, i) => i + 1))) unplaced.push(race.id);
-  });
-
-  // 3) Klassikere (monumenter spredt) fylder hver resterende celle → præcis density/dag.
-  const freeCells = [];
-  for (let d = 0; d < days; d++) for (let l = 0; l < D; l++) if (free(d, l)) freeCells.push({ day: d, lane: l });
-  const monuments = oneDayRaces.filter((r) => r.race_class === "Monuments");
-  const regular = oneDayRaces.filter((r) => r.race_class !== "Monuments");
-  const assign = new Array(freeCells.length).fill(null);
-  const monStep = monuments.length ? freeCells.length / monuments.length : 0;
-  monuments.forEach((m, i) => {
-    let idx = Math.min(freeCells.length - 1, Math.floor(i * monStep + monStep / 2));
-    while (idx < freeCells.length && assign[idx]) idx++;
-    if (idx >= freeCells.length) idx = assign.findIndex((x) => !x);
-    if (idx >= 0) assign[idx] = m;
-  });
-  let ri = 0;
-  for (let i = 0; i < freeCells.length; i++) { if (assign[i] || ri >= regular.length) continue; assign[i] = regular[ri++]; }
-  let monCounter = 0;
-  for (let i = 0; i < freeCells.length; i++) {
-    const r = assign[i];
-    if (!r) continue;
-    const c = freeCells[i];
-    grid[c.day][c.lane] = r.id;
-    const isMon = r.race_class === "Monuments";
-    const game_day = isMon ? MONUMENT_GAMEDAY_BASE + monCounter++ : c.day;
-    placements.push({ id: r.id, type: "single", race_class: r.race_class ?? null, stages: 1, startRealDay: c.day, stagesPlaced: [{ stage_number: 1, real_day: c.day, game_day, lane: c.lane }] });
+  const irlByGameDay = new Map();
+  for (const p of placements) for (const st of p.stagesPlaced) {
+    if (st.game_day >= MONUMENT_GAMEDAY_BASE) continue;
+    if (!irlByGameDay.has(st.game_day)) irlByGameDay.set(st.game_day, new Set());
+    irlByGameDay.get(st.game_day).add(st.real_day);
   }
-  const placedSingleIds = new Set(placements.filter((p) => p.type === "single").map((p) => p.id));
-  const leftoverSingles = oneDayRaces.filter((r) => !placedSingleIds.has(r.id)).map((r) => r.id);
-
-  const load = grid.map((col) => col.filter((x) => x !== null).length);
-  // Antal forskellige løb pr. dag (overlap-mål).
-  const racesPerDay = grid.map((col) => new Set(col.filter((x) => x !== null)).size);
+  let straddleGameDays = 0;
+  for (const set of irlByGameDay.values()) if (set.size > 1) straddleGameDays += 1;
 
   return {
-    placements, load, racesPerDay, days, density: D,
+    load, racesPerDay: racesOnDay.map((s) => s.size), days, density: D, overlapCap: cap, layoutMode, timelineLength,
     emptyDays: load.filter((x) => x === 0).length,
     underfilledDays: load.filter((x) => x < D).length,
-    overlapDays: racesPerDay.filter((n) => n >= 2).length,
-    unplaced, leftoverSingles,
+    overlapDays: racesOnDay.map((s) => s.size).filter((n) => n >= 2).length,
+    maxOverlap, overlapHistogram, straddleGameDays,
+  };
+}
+
+/**
+ * @param {{ stageRaces?, oneDayRaces?, density?, days?, overlapCap?, spineMinStages?, seed? }} args
+ */
+export function packLaneCalendar({
+  stageRaces = [], oneDayRaces = [], density = 1, days = 28,
+  overlapCap = 2, spineMinStages = 15,
+} = {}) {
+  const D = Math.max(1, density);
+  const cap = Math.max(1, overlapCap);
+  const monuments = oneDayRaces.filter((r) => r.race_class === "Monuments");
+  const classics = oneDayRaces.filter((r) => r.race_class !== "Monuments");
+
+  // Foretræk BANDED (straddle-fri blanding) når ingen monumenter; ellers STREAM.
+  let layoutMode = "banded";
+  let res = monuments.length === 0 ? layoutBanded({ stageRaces, classics, density: D, days, cap }) : null;
+  if (!res) { layoutMode = "stream"; res = layoutStream({ stageRaces, classics, monuments, density: D, days, cap, spineMinStages }); }
+
+  const placements = res.placements;
+  const diag = diagnose(placements, days, D, cap, res.timelineLength, layoutMode);
+
+  const placedIds = new Set(placements.map((p) => p.id));
+  return {
+    placements,
+    ...diag,
+    unplaced: stageRaces.filter((r) => !placedIds.has(r.id)).map((r) => r.id),
+    leftoverSingles: oneDayRaces.filter((r) => !placedIds.has(r.id)).map((r) => r.id),
   };
 }

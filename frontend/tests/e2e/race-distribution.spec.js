@@ -30,13 +30,15 @@ const DISTRIBUTION = {
   columns: [
     {
       id: "race-a", name: "Hamburger Klassiker", race_class: "ProSeries", race_type: "single",
-      stages: 1, status: "scheduled", window: { start: 1, end: 1 },
+      // bindingWindow = in-game-dag-span (samme shape som API'en); race-a og race-b deler
+      // game-dag 1 → de binder → r0 (i race-a) er låst fra race-b i puljen.
+      stages: 1, status: "scheduled", window: { start: 1, end: 1 }, bindingWindow: { start: 1, end: 1 },
       size: { min: 6, max: 6 }, withdrawn: false, counts: { selected: 1, target: 6 },
       riders: ROSTER, selection: { rider_ids: ["r0"], captain_id: "r0", sprint_captain_id: null, hunter_id: null, is_auto_filled: true },
     },
     {
       id: "race-b", name: "La Corsa dei Due Mari", race_class: "OtherWorldTourA", race_type: "stage_race",
-      stages: 7, status: "scheduled", window: { start: 1, end: 1 },
+      stages: 7, status: "scheduled", window: { start: 1, end: 1 }, bindingWindow: { start: 1, end: 1 },
       size: { min: 8, max: 8 }, withdrawn: false, counts: { selected: 0, target: 8 },
       riders: ROSTER, selection: null,
     },

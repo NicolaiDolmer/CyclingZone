@@ -7,20 +7,22 @@ import { useTranslation } from "react-i18next";
 import AddRiderPopover from "./AddRiderPopover.jsx";
 import { LockIcon } from "../ui";
 import { encodeDrag } from "../../lib/raceHubDnd.js";
+import { canAddRiderToColumn } from "../../lib/raceHubLogic.js";
 
 export default function AvailableRidersPool({ roster, columns, bindingMap, onAddRiderToRace, onRegenerate, busy, onDropRider }) {
   const { t } = useTranslation("races");
   const [openRiderId, setOpenRiderId] = useState(null);
   const [dragOver, setDragOver] = useState(false); // #1925: pulje-drop-zone (fjern rytter ved drop)
-  // Låst i puljen = udtaget til et af dagens løb (committed → bundet væk fra de øvrige).
-  // Navngiv bindingen (#1823 WC): hvilket løb kører rytteren? (første kolonne han er i).
-  // Rod A (#1823): afmeldte kolonner låser IKKE — rytterne er frie til de øvrige løb.
+  // Hvilket løb kører rytteren (til lås-titlen)? Første ikke-afmeldte kolonne han er i.
+  // Rod A (#1823): afmeldte kolonner låser IKKE. Kronologi-rebuild: en rytter er kun LÅST
+  // i puljen hvis han ikke kan tilføjes NOGEN kolonne — dvs. game-dag-bundet i alle dagens
+  // løb. Er der en game-dag-fri kolonne (samme IRL-dag, anden in-game-dag) er chippen aktiv.
   const raceByRider = new Map();
   for (const c of columns) {
     if (c.withdrawn) continue;
     for (const id of c.selection?.rider_ids || []) if (!raceByRider.has(id)) raceByRider.set(id, c.name);
   }
-  const lockedIds = new Set(raceByRider.keys());
+  const isLocked = (riderId) => !columns.some((c) => canAddRiderToColumn({ column: c, bindingMap, riderId }));
   return (
     <div className="border border-cz-border rounded-cz bg-cz-subtle">
       <div className="px-3 py-2 border-b border-cz-border flex items-center justify-between gap-2">
@@ -43,7 +45,7 @@ export default function AvailableRidersPool({ roster, columns, bindingMap, onAdd
         onDrop={(e) => { e.preventDefault(); setDragOver(false); onDropRider?.(e.dataTransfer.getData("text/plain")); }}
       >
         {roster.map((r) => {
-          const locked = lockedIds.has(r.id);
+          const locked = isLocked(r.id);
           return (
             <div key={r.id} className="relative">
               <button
@@ -51,7 +53,7 @@ export default function AvailableRidersPool({ roster, columns, bindingMap, onAdd
                 disabled={locked || busy}
                 draggable={!locked && !busy}
                 onDragStart={(e) => e.dataTransfer.setData("text/plain", encodeDrag({ riderId: r.id, fromRaceId: null }))}
-                title={locked ? t("racehub.boundNamed", { race: raceByRider.get(r.id) }) : undefined}
+                title={locked && raceByRider.has(r.id) ? t("racehub.boundNamed", { race: raceByRider.get(r.id) }) : undefined}
                 onClick={() => setOpenRiderId(openRiderId === r.id ? null : r.id)}
                 className={`flex items-center gap-1 text-xs px-2.5 py-1 rounded-full border ${
                   locked

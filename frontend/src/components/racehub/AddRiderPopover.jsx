@@ -2,19 +2,13 @@
 // rytteren ikke er bundet, ikke allerede udtaget og ikke frosset. Smart (#1823 WC):
 // rangeret efter rytterens egnethed (fit) for hvert løb + flag for underbemandede.
 import { useTranslation } from "react-i18next";
-import { isRiderBound } from "../../lib/raceHubLogic.js";
+import { canAddRiderToColumn } from "../../lib/raceHubLogic.js";
 import FitBar from "./FitBar.jsx";
 
 export default function AddRiderPopover({ rider, columns, bindingMap, onPick, onClose }) {
   const { t } = useTranslation("races");
   const targets = columns
-    .filter(
-      (c) =>
-        !c.withdrawn &&
-        !c.lineup_locked &&
-        !isRiderBound({ bindingMap, riderId: rider.id, forRaceId: c.id }) &&
-        !(c.selection?.rider_ids || []).includes(rider.id)
-    )
+    .filter((c) => canAddRiderToColumn({ column: c, bindingMap, riderId: rider.id }))
     .map((c) => ({
       c,
       fit: c.riders.find((x) => x.id === rider.id)?.suitability ?? null,
