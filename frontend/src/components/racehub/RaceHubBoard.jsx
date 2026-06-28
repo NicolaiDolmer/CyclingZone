@@ -155,12 +155,18 @@ export default function RaceHubBoard() {
     const removedCount = (col) => { const d = new Set(draftIdsOf(col)); return [...serverIdsOf(col)].filter((id) => !d.has(id)).length; };
     const putColumn = async (col, ids) => {
       const sel = draftOf(col);
-      const body = {
-        rider_ids: ids,
-        captain_id: ids.includes(sel.captain_id) ? sel.captain_id : (ids[0] ?? null),
-        sprint_captain_id: ids.includes(sel.sprint_captain_id) ? sel.sprint_captain_id : null,
-        hunter_id: ids.includes(sel.hunter_id) ? sel.hunter_id : null,
-      };
+      // Roller skal være distinkte (backend afviser captain==sprint/hunter med role_overlap).
+      // Når fase 1's beholdte sæt IKKE indeholder draft-kaptajnen, vælg en fallback der ikke
+      // kolliderer med sprint/jæger; tvinges vi til ids[0] som er en anden rolle, ryd den rolle.
+      let sprint = ids.includes(sel.sprint_captain_id) ? sel.sprint_captain_id : null;
+      let hunter = ids.includes(sel.hunter_id) ? sel.hunter_id : null;
+      let captain = ids.includes(sel.captain_id) ? sel.captain_id : null;
+      if (!captain && ids.length) {
+        captain = ids.find((id) => id !== sprint && id !== hunter) ?? ids[0];
+        if (captain === sprint) sprint = null;
+        if (captain === hunter) hunter = null;
+      }
+      const body = { rider_ids: ids, captain_id: captain ?? null, sprint_captain_id: sprint, hunter_id: hunter };
       const res = await fetch(`${API}/api/races/${col.id}/selection`, { method: "PUT", headers, body: JSON.stringify(body) });
       if (res && !res.ok) {
         const b = await res.json().catch(() => ({}));

@@ -229,7 +229,7 @@
   },
   "selection": {
     "title": "Team selection",
-    "subtitle": "Pick {min}-{max} riders for this race. If you don't pick, your assistant fields a sensible team. No penalty.",
+    "subtitle": "Pick up to {max} riders for this race. You can save a partial team — your assistant fields the rest when the race runs. No penalty.",
     "count": "{count}/{max} selected",
     "captain": "Captain",
     "sprintCaptain": "Sprint captain (optional)",
