@@ -3,7 +3,7 @@
     "scope": { "mine": "Mine løb", "division": "Min division", "others": "Andre divisioner", "soon": "Kommer snart" },
     "timeline": { "dayOf": "Dag {day} af {total}", "youAreHere": "du er her", "prev": "Forrige dag", "next": "Næste dag" },
     "heading": "Trup-fordeling",
-    "overlap": "{count} overlappende løb i dag",
+    "overlap": "{count} løb i dag",
     "status": { "full": "{selected} / {target} valgt", "understaffed": "{selected} / {target} · underbemandet", "overfull": "{selected} / {target} · for mange", "withdrawn": "Afmeldt", "locked": "Trup låst" },
     "pool": { "title": "Ledige ryttere · {count}-trup", "autofill": "Auto-udfyld", "fillMissing": "Udfyld manglende", "fillAll": "Genopbyg alt", "bound": "Kører allerede et overlappende løb" },
     "column": { "add": "Tilføj fra ledige", "withdraw": "Afmeld", "reenter": "Deltag igen", "remove": "Fjern rytter" },
