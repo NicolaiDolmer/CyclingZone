@@ -23,6 +23,11 @@ const INSERT_BATCH = 500;
 // Tæthed pr. division (= "løbsdage kørt om dagen", ejer-låst). quota = density × realDays.
 export const TIER_DENSITY = Object.freeze({ 1: 5, 2: 4, 3: 3, 4: 2 });
 
+// Overlap-cap pr. division (ejer-låst 2026-06-28): max antal FORSKELLIGE løb der må binde en rytter
+// samtidig (= samtidige løb pr. in-game-dag). Div 1/2 = 3, Div 3/4 = 2. Adskilt fra tæthed: tætheden
+// er pacing (etaper/IRL-dag), cap'en er binding-tryk (forskellige løb/game-dag).
+export const TIER_OVERLAP_CAP = Object.freeze({ 1: 3, 2: 3, 3: 2, 4: 2 });
+
 // Etape-tids-slots pr. division: bane k → slots[k] (ejer-låst: div 3 = 12/15/18). Antal slots =
 // density, så en dag aldrig har flere etaper end slots.
 export const TIER_STAGE_SLOTS = Object.freeze({
@@ -52,6 +57,7 @@ export function buildTierMaterializationPlan({
   realDays = 28,
   quotas = TIER_GAME_DAY_QUOTA,
   density = TIER_DENSITY,
+  overlapCaps = TIER_OVERLAP_CAP,
   slots = TIER_STAGE_SLOTS,
   baseSeed = 1,
 } = {}) {
@@ -71,13 +77,14 @@ export function buildTierMaterializationPlan({
     const availableCatalog = usedRaceIds.size ? catalog.filter((c) => !usedRaceIds.has(c.id)) : catalog;
     const quota = quotas[tier] ?? 0;
     const dens = density[tier] ?? 1;
+    const cap = overlapCaps[tier] ?? 2;
     const tierSlots = slots[tier] ?? slots[3];
 
     const sel = selectTierRaceSet({ catalog: availableCatalog, quota, seed: (baseSeed ^ tier) >>> 0 });
     for (const r of sel.stageRaces) usedRaceIds.add(r.id);
     for (const r of sel.oneDayRaces) usedRaceIds.add(r.id);
 
-    const packed = packLaneCalendar({ stageRaces: sel.stageRaces, oneDayRaces: sel.oneDayRaces, density: dens, days: realDays, spineMinStages: GRAND_TOUR_MIN_STAGES });
+    const packed = packLaneCalendar({ stageRaces: sel.stageRaces, oneDayRaces: sel.oneDayRaces, density: dens, days: realDays, overlapCap: cap, spineMinStages: GRAND_TOUR_MIN_STAGES });
     const { raceUpdates, stageRows } = buildScheduleRows({ placements: packed.placements, from, slots: tierSlots });
 
     const scheduledForById = new Map(raceUpdates.map((u) => [u.id, u.scheduled_for]));
@@ -103,11 +110,13 @@ export function buildTierMaterializationPlan({
     });
 
     tierPlans.push({
-      tier, quota, density: dens,
+      tier, quota, density: dens, overlapCap: cap,
       totalGameDays: sel.totalGameDays, quotaHit: sel.quotaHit, shortfall: sel.shortfall,
       raceCount: packed.placements.length,
       load: packed.load, emptyDays: packed.emptyDays, underfilledDays: packed.underfilledDays,
-      overlapDays: packed.overlapDays,
+      overlapDays: packed.overlapDays, maxOverlap: packed.maxOverlap,
+      overlapHistogram: packed.overlapHistogram, timelineLength: packed.timelineLength,
+      straddleGameDays: packed.straddleGameDays,
       unplacedStages: packed.unplaced.length, unplacedSingles: packed.leftoverSingles.length,
       pools: poolPlans,
     });
