@@ -25,11 +25,7 @@
     "mine": "My team's races"
   },
   "chip": {
-    "stages": "{count, plural, one {# stage} other {# stages}}",
-    "oneStage": "1 stage",
     "stageNum": "stage {n}",
-    "leader": "lineup set",
-    "noLeader": "no lineup",
     "openRace": "Open {name} planning"
   },
   "weekday": {

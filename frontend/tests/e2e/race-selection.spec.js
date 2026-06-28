@@ -4,8 +4,8 @@
 //   - Supabase REST-laget (races + race_results) så RaceDetailPage loader et
 //     "scheduled" løb og renderer RaceSelectionPanel.
 //   - GET /api/races/:id/selection så panelet henter rytterliste + størrelsesgrænser.
-//   - PUT /api/races/:id/selection — fanger request-body og asserterer 6 rider_ids
-//     + captain_id.
+//   - PUT /api/races/:id/selection — fanger request-body og asserterer 8 rider_ids
+//     (fuld trup, #1906) + captain_id.
 //
 // Mønster følger race-detail.spec.js: stabilizePage → installNetworkMocks →
 // spec-specifikke overrides (LIFO, senest registrerede matcher først) → login → goto.
@@ -112,13 +112,15 @@ test("manager kan udtage hold og gemme", async ({ page }) => {
   // Skadet rytter (Rider 8) skal være disabled fra starten.
   await expect(panel.getByRole("checkbox", { name: /Rider 8/ })).toBeDisabled();
 
-  // Vælg 6 ryttere (Rider 0-5 — navn-bundne selectors, sorterings-robuste).
-  for (let i = 0; i < 6; i++) {
+  // Vælg den fulde trup — 8 raske ryttere (Rider 0-7; Rider 8 er skadet).
+  // #1906 ("hård fuld opstilling"): validateSelectionClient kræver size.max ryttere,
+  // ikke kun size.min, så save først aktiveres ved en komplet trup.
+  for (let i = 0; i < 8; i++) {
     await panel.getByRole("checkbox", { name: new RegExp(`Rider ${i}`) }).check();
   }
 
-  // Tæller viser "6/8 udtaget" (DA-locale — stabilizePage sætter cz_lang=da).
-  await expect(panel.getByText(/6\/8/)).toBeVisible();
+  // Tæller viser "8/8 udtaget" (DA-locale — stabilizePage sætter cz_lang=da).
+  await expect(panel.getByText(/8\/8/)).toBeVisible();
 
   // Sæt kaptajn — første combobox er kaptajn-select, vælg index 1 (første rytteroption).
   await panel.getByRole("combobox").first().selectOption({ index: 1 });
@@ -137,7 +139,7 @@ test("manager kan udtage hold og gemme", async ({ page }) => {
   });
   expect(horizOverflow, "panelet må ikke overflowe vandret på mobil").toEqual([]);
 
-  // Gem-knappen skal nu være aktiveret (6 ryttere ≥ min=6 + kaptajn sat).
+  // Gem-knappen skal nu være aktiveret (fuld trup på 8 = max + kaptajn sat).
   // Tekst er "Gem udtagelse" i DA-locale.
   const saveBtn = panel.getByRole("button", { name: /gem udtagelse/i });
   await expect(saveBtn).toBeEnabled();
@@ -146,10 +148,10 @@ test("manager kan udtage hold og gemme", async ({ page }) => {
   // Succesbesked vises: "Udtagelsen er gemt." i DA-locale.
   await expect(panel.getByText(/udtagelsen er gemt/i)).toBeVisible();
 
-  // Assertér PUT-body: 6 rider_ids + captain_id sat.
+  // Assertér PUT-body: 8 rider_ids (fuld trup) + captain_id sat.
   expect(capturedBody).not.toBeNull();
   expect(Array.isArray(capturedBody.rider_ids)).toBe(true);
-  expect(capturedBody.rider_ids).toHaveLength(6);
+  expect(capturedBody.rider_ids).toHaveLength(8);
   expect(capturedBody.captain_id).not.toBeNull();
   expect(capturedBody.captain_id).not.toBe("");
   // Captain skal være én af de valgte ryttere.
