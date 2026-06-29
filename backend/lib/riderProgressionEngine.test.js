@@ -77,6 +77,39 @@ test("ung høj-pot rytter udvikler sig + base_value stiger + caps initialiseres"
   assert.equal(state.rider_development_log.length, 1, "snapshot skrevet til dev-log");
 });
 
+test("ability-history: season-transition skriver én season-snapshot pr. udviklet rytter (#2000)", async () => {
+  const state = seedState({
+    riders: [{ id: "r1", primary_type: "climber", potentiale: 5, birthdate: "2005-01-01", base_value: 100000, is_u25: true, is_retired: false, team_id: null, firstname: "Ung", lastname: "Talent" }],
+    abilities: [{ rider_id: "r1", climbing: 55, tempo: 55, endurance: 55, ability_caps: null }],
+  });
+  const supabase = createMockSupabase(state);
+  await developRidersForSeason({
+    supabase, seasonId: "s2", seasonNumber: 2, model: MODEL,
+    now: new Date("2026-06-12T10:00:00+02:00"),
+  });
+
+  const hist = state.rider_derived_ability_history ?? [];
+  assert.equal(hist.length, 1, "én season-snapshot for den udviklede rytter");
+  const row = hist[0];
+  assert.equal(row.rider_id, "r1");
+  assert.equal(row.source, "season_transition");
+  assert.equal(row.snapshot_date, "2026-06-12");
+  assert.equal(row.season_number, 2);
+  assert.ok(row.abilities && row.abilities.climbing > 55, "snapshot = post-udviklings-vektor");
+});
+
+test("ability-history: idempotent — anden season-kørsel skriver ingen ny snapshot", async () => {
+  const state = seedState({
+    riders: [{ id: "r1", primary_type: "climber", potentiale: 5, birthdate: "2005-01-01", base_value: 100000, is_u25: true, is_retired: false, team_id: null, firstname: "A", lastname: "B" }],
+    abilities: [{ rider_id: "r1", climbing: 55, ability_caps: null }],
+  });
+  const supabase = createMockSupabase(state);
+  const args = { supabase, seasonId: "s2", seasonNumber: 2, model: MODEL, now: new Date("2026-06-12T10:00:00+02:00") };
+  await developRidersForSeason(args);
+  await developRidersForSeason(args); // 2. kørsel: alle allerede udviklet → ingen nye logRows
+  assert.equal((state.rider_derived_ability_history ?? []).length, 1, "kun én snapshot trods to kørsler");
+});
+
 test("idempotent: anden kørsel skipper alle og muterer intet yderligere", async () => {
   const state = seedState({
     riders: [{ id: "r1", primary_type: "climber", potentiale: 5, birthdate: "2005-01-01", base_value: 100000, is_u25: true, is_retired: false, team_id: null, firstname: "A", lastname: "B" }],
