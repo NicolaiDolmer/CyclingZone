@@ -4,7 +4,7 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
-    "version": "6.32",
+    "version": "6.33",
     "date": "2026-06-29",
     "label": "Beta",
     "changes": [
@@ -14,14 +14,21 @@ export const PATCHES = [
         "topic": "Races",
         "en": {
           "title": "Clearer team selection when races overlap on the same day",
-          "body": "When two races fall on the same day, the available-riders list now shows, per rider, which of the day's races they can join and which are locked because the rider is already in an overlapping race — with the blocking race named. Clicking a locked rider now explains why instead of doing nothing, and the overlap error names the rider and race so you can fix it. Riders can still be used in same-day races that don't actually overlap."
+          "body": "When two races fall on the same day, the available-riders list now shows, per rider, which of the day's races they can join and which are locked because the rider is already in an overlapping race, with the blocking race named. Clicking a locked rider now explains why instead of doing nothing, and the overlap error names the rider and race so you can fix it. Riders can still be used in same-day races that don't actually overlap."
         },
         "da": {
           "title": "Klarere holdudtagelse når løb overlapper samme dag",
-          "body": "Når to løb ligger samme dag, viser listen af ledige ryttere nu pr. rytter hvilke af dagens løb han kan køre, og hvilke der er låst fordi han allerede kører et overlappende løb — med det blokerende løb navngivet. Klikker du en låst rytter, forklares hvorfor nu i stedet for ingenting, og overlap-fejlen navngiver rytter og løb, så du kan rette den. Ryttere kan stadig bruges i samme-dags-løb der ikke reelt overlapper."
+          "body": "Når to løb ligger samme dag, viser listen af ledige ryttere nu pr. rytter hvilke af dagens løb han kan køre, og hvilke der er låst fordi han allerede kører et overlappende løb, med det blokerende løb navngivet. Klikker du en låst rytter, forklares hvorfor nu i stedet for ingenting, og overlap-fejlen navngiver rytter og løb, så du kan rette den. Ryttere kan stadig bruges i samme-dags-løb der ikke reelt overlapper."
         },
         "refs": [1984, 1983]
-      },
+      }
+    ]
+  },
+  {
+    "version": "6.32",
+    "date": "2026-06-29",
+    "label": "Beta",
+    "changes": [
       {
         "category": "improved",
         "audience": "player",

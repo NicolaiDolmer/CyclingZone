@@ -88,9 +88,11 @@ test("trup-fordeling-board viser overlappende løb + låst rytter i puljen", asy
   await expect(lockedChip).toBeEnabled();
   await expect(lockedChip).toHaveAttribute("title", /Hamburger Klassiker/);
 
-  // #1984/C: klik den låste chip → popoveren viser HVORFOR (optaget i overlappende løb).
+  // #1984/C: klik den låste chip → popoveren viser HVORFOR (optaget i overlappende løb)
+  // + navngiver det konkrete blokerende løb (verificerer blockedReason-interpolationen).
   await lockedChip.click();
   await expect(board.getByText("Optaget i overlappende løb")).toBeVisible();
+  await expect(board.getByText("Overlapper Hamburger Klassiker")).toBeVisible();
 
   // En ledig rytter (ikke udtaget nogen steder) er klikbar i puljen.
   await expect(board.getByRole("button", { name: /Rider 5/ })).toBeEnabled();

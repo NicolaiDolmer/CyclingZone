@@ -176,7 +176,12 @@ export default function RaceHubBoard() {
           const draftCols = columns.map((c) => ({ ...c, selection: { rider_ids: draftOf(c).rider_ids } }));
           const overlaps = findSelectionOverlaps({ columns: draftCols });
           const boundIds = new Set(b.bound_rider_ids || []);
-          const conf = overlaps.find((o) => boundIds.has(o.riderId)) || overlaps[0];
+          // Vælg KONFLIKTEN der involverer netop dette løb (col) — ikke bare en hvilken som
+          // helst overlap-par med en bundet rytter (CodeRabbit): en rytter kan optræde i flere
+          // overlap-par, så filtrér på col.id først, ellers navngives det forkerte blokerende løb.
+          const conf =
+            overlaps.find((o) => o.raceIds.includes(col.id) && boundIds.has(o.riderId)) ||
+            overlaps.find((o) => o.raceIds.includes(col.id));
           if (conf) {
             const riderName = roster.find((r) => r.id === conf.riderId)?.name || "—";
             const otherName = conf.raceIds[0] === col.id ? conf.raceNames[1] : conf.raceNames[0];
