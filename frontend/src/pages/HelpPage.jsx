@@ -184,7 +184,6 @@ const SECTION_DEFS = [
     blocks: [
       { id: "valueAndPrice", kind: "text" },
       { id: "salary", kind: "text" },
-      { id: "stats", kind: "text" },
       { id: "abilitiesExplained", kind: "rows" },
       { id: "development", kind: "text" },
       { id: "trainingFocus", kind: "text" },
