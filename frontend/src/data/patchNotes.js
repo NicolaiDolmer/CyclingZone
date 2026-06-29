@@ -35,6 +35,20 @@ export const PATCHES = [
           "body": "Hvert afsluttet løb og hver etape åbner nu med et kort referat der trækker nøglemomenterne ud af resultatet: hvordan vinderen tog den, om et udbrud holdt hjem eller blev hentet, og hvilket hold der havde den bedste dag. Det bygger på de eksisterende løbsdata, så der er ingen ændring i hvordan løb afgøres."
         },
         "refs": [1311]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Removed the misleading \"best skill\" line from rider profiles",
+          "body": "The rider profile's top-right corner showed a \"Best: …\" line that was still derived from the old skill ratings, not the current Cycling Zone abilities, so it could be outdated and misleading. We removed the line entirely — the abilities tab is the accurate source — with no replacement, to keep the profile uncluttered."
+        },
+        "da": {
+          "title": "Fjernet det misvisende \"bedste evne\"-felt fra rytterprofilen",
+          "body": "Rytterprofilens øverste højre hjørne viste en \"Bedste: …\"-linje der stadig var udledt af de gamle evne-tal, ikke de nuværende Cycling Zone-evner, så den kunne være forældet og misvisende. Vi har fjernet linjen helt — Evner-fanen er den korrekte kilde — uden erstatning, så profilen ikke bliver overfyldt."
+        },
+        "refs": [1781]
       }
     ]
   },
