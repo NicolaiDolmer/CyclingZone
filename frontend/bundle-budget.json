@@ -1,5 +1,5 @@
 {
-  "_note": "Baseline målt 2026-06-23: total gzipped JS over alle dist/assets/*.js chunks. Gate: scripts/check-bundle-budget.mjs (hard, CI). Hæv total_gzip_kb bevidst — med begrundelse i PR-body — hvis en feature legitimt øger vægten. Outliers værd at trimme på sigt: index ~330KB, PatchNotesPage ~206KB (changelog-data), CategoricalChart ~88KB. 2026-06-29 (#1485/#1311): 945->950, +~3KB for holdvinder-synlighed + tekst-recaps + patch notes 6.32.",
-  "total_gzip_kb": 950,
+  "_note": "Baseline målt 2026-06-23: total gzipped JS over alle dist/assets/*.js chunks. Gate: scripts/check-bundle-budget.mjs (hard, CI). Hæv total_gzip_kb bevidst — med begrundelse i PR-body — hvis en feature legitimt øger vægten. Outliers værd at trimme på sigt: index ~330KB, PatchNotesPage ~206KB (changelog-data), CategoricalChart ~88KB. 2026-06-29 (#1485/#1311): 945->950, +~3KB for holdvinder-synlighed + tekst-recaps + patch notes 6.32. 2026-06-29 (#2000 slice 1): 950->951, +0.4KB legitim feature-vægt på RiderStatsPage (grupperet Physical/Mental/Technical evne-visning + ABILITY_ICONS + progress-barer).",
+  "total_gzip_kb": 951,
   "margin_pct": 5
 }
