@@ -77,6 +77,20 @@ export const PATCHES = [
           "body": "I den daglige træningsrapport blev ryttere på en hviledag vist som \"Intet fokus valgt\" i Næste +1-kolonnen, selvom et fokus stadig var valgt — det fik det til at se ud som om fokusset var gået tabt. Hviledage står nu som \"Hviledag\" der, og fokus-kolonnen viser fortsat det valgte fokus."
         },
         "refs": [1937]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Races in other divisions no longer offer a line-up that fails on save",
+          "body": "Opening a scheduled race from another division used to show a full, selectable line-up panel that only failed once you tried to save it. That race now shows a short read-only note explaining it belongs to another division, so you don't build a line-up that can't be saved."
+        },
+        "da": {
+          "title": "Løb i andre divisioner tilbyder ikke længere en opstilling der fejler ved gem",
+          "body": "Når man åbnede et planlagt løb i en anden division, viste det et fuldt udtageligt opstillings-panel der først fejlede når man forsøgte at gemme. Sådan et løb viser nu en kort read-only besked om at det hører til en anden division, så du ikke bygger en opstilling der ikke kan gemmes."
+        },
+        "refs": [1954]
       }
     ]
   },

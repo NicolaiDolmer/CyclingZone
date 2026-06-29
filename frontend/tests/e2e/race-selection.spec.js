@@ -157,3 +157,48 @@ test("manager kan udtage hold og gemme", async ({ page }) => {
   // Captain skal være én af de valgte ryttere.
   expect(capturedBody.rider_ids).toContain(capturedBody.captain_id);
 });
+
+// #1954: et løb i en ANDEN pulje/division (backend GET → eligible:false) må ikke
+// vise et fuldt udtageligt panel der først fejler ved gem — kun en read-only forklaring.
+test("fremmed-pulje-løb viser read-only forklaring, ikke et udtageligt panel", async ({ page }) => {
+  await stabilizePage(page);
+  await installNetworkMocks(page);
+
+  await page.route("**/rest/v1/races**", (route) => {
+    const wantsObject = (route.request().headers().accept || "").includes("vnd.pgrst.object");
+    return json(route, wantsObject ? SCHEDULED_RACE : [SCHEDULED_RACE]);
+  });
+  await page.route("**/rest/v1/race_results**", (route) => json(route, []));
+
+  await page.route(`**/api/races/${RACE_ID}/selection`, async (route) => {
+    const request = route.request();
+    if (request.method() === "OPTIONS") {
+      return route.fulfill({ status: 204, headers: corsHeaders(request) });
+    }
+    // GET → eligible:false (fremmed pulje). PUT bør aldrig kaldes fra denne tilstand.
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      headers: corsHeaders(request),
+      body: JSON.stringify({
+        enabled: true,
+        eligible: false,
+        race: SCHEDULED_RACE,
+        size: { min: 6, max: 8 },
+        selection: null,
+        riders: SELECTION_RIDERS,
+        availableCount: 8,
+      }),
+    });
+  });
+
+  await login(page);
+  await page.goto(`/races/${RACE_ID}`);
+
+  // Read-only forklaring vises; det fulde udtagelses-panel gør IKKE.
+  await expect(page.getByTestId("race-selection-wrong-pool")).toBeVisible();
+  await expect(page.getByText(/anden division/i)).toBeVisible();
+  await expect(page.getByTestId("race-selection-panel")).toHaveCount(0);
+  // Ingen gem-knap at fejle på.
+  await expect(page.getByRole("button", { name: /gem udtagelse/i })).toHaveCount(0);
+});

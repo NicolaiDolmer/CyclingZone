@@ -1397,15 +1397,19 @@ router.get("/races/:raceId/selection", requireAuth, async (req, res) => {
     const enabled = await isRaceEngineV2Enabled(supabase, { isBetaTester });
     const { data: race, error } = await supabase
       .from("races")
-      .select("id, name, race_type, race_class, stages, status, season_id")
+      .select("id, name, race_type, race_class, stages, status, season_id, league_division_id")
       .eq("id", req.params.raceId)
       .maybeSingle();
     if (error) return res.status(500).json({ error: error.message });
     if (!race) return res.status(404).json({ error: "race_not_found" });
     if (!enabled) return res.json({ enabled: false, race: { id: race.id, status: race.status } });
 
+    // #1954: pulje-eligibility op-front (samme gate som PUT, lib/raceBinding.teamInRacePool)
+    // så UI kan vise et read-only "ikke dit løb"-panel i stedet for at lade en hel
+    // opstilling bygges og fejle ved gem med selection_wrong_pool.
+    const eligible = teamInRacePool({ teamDivisionId: req.team.league_division_id, racePoolId: race.league_division_id });
     const ctx = await getSelectionContext({ supabase, race, teamId: req.team.id });
-    res.json({ enabled: true, race, ...ctx });
+    res.json({ enabled: true, eligible, race, ...ctx });
   } catch (err) {
     captureException(err);
     res.status(500).json({ error: err.message });

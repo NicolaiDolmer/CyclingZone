@@ -251,6 +251,10 @@
     "save": "Gem udtagelse",
     "saving": "Gemmer…",
     "saved": "Udtagelsen er gemt.",
+    "wrongPool": {
+      "title": "Dette løb er i en anden division",
+      "note": "Du kan kun udtage hold til løb i din egen division, så der er ingen opstilling at sætte her."
+    },
     "errors": {
       "selection_wrong_size": "Du kan højst udtage {max} ryttere.",
       "selection_insufficient_riders": "Du har ikke nok ledige ryttere til et fuldt hold. Afmeld dig løbet, eller hent fri-agenter.",
