@@ -18,11 +18,14 @@
 -- users (specialtilfaelde): 2 SELECT-policies ("Admins can read all users" TO
 -- authenticated USING is_admin()  +  "Users can read own profile" TO public
 -- USING auth.uid()=id) konsolideres til ÉN. Den SKAL vaere TO authenticated:
--- is_admin() har KUN EXECUTE for `authenticated` (verificeret 29/6), saa en
--- TO public-variant ville fejle for anon ("permission denied for function
--- is_admin"). anon faar 0 rows uanset (auth.uid() er null), saa adgangen er
--- identisk. is_admin() bruges (ikke en inline EXISTS) fordi en users-policy der
--- selv laeser users ville rekursere; is_admin() er SECURITY DEFINER og bypasser.
+-- is_admin() har IKKE EXECUTE for anon (revoked 29/6 i
+-- 2026-06-29-secure-securitydefiner-rpc-grants.sql; live-verificeret 29/6:
+-- anon=false, authenticated=true, service_role=true). En TO public-variant
+-- ville derfor fejle for anon ("permission denied for function is_admin");
+-- service_role har execute men bypasser RLS og er irrelevant for policy-eval.
+-- anon faar 0 rows uanset (auth.uid() er null), saa TO authenticated bevarer
+-- identisk adgang. is_admin() bruges (ikke en inline EXISTS) fordi en users-
+-- policy der selv laeser users ville rekursere; is_admin() er SECURITY DEFINER.
 -- UPDATE-policyen "Users can update own profile" roeres IKKE.
 --
 -- Quals verificeret 1:1 mod live (pg_policies 29/6). De 7 authenticated-
