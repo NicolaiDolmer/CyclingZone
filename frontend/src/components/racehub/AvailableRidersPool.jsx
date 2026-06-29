@@ -39,32 +39,40 @@ export default function AvailableRidersPool({ roster, columns, bindingMap, onAdd
       </div>
       {/* #1925: puljen er en drop-zone — slip en rytter her for at fjerne ham fra hans løb. */}
       <div
-        className={`flex flex-wrap gap-2 p-3 transition-colors ${dragOver ? "bg-cz-accent/10" : ""}`}
+        className={`flex flex-wrap items-start gap-2 p-3 transition-colors ${dragOver ? "bg-cz-accent/10" : ""}`}
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
         onDrop={(e) => { e.preventDefault(); setDragOver(false); onDropRider?.(e.dataTransfer.getData("text/plain")); }}
       >
         {roster.map((r) => {
           const locked = isLocked(r.id);
+          // #1984: låst chip kan stadig klikkes → popoveren forklarer HVORFOR (overlappende løb).
+          // Lås-grunden vises også inline (ikke kun som hover-titel), så det er synligt med det samme.
+          const boundRace = locked && raceByRider.has(r.id) ? raceByRider.get(r.id) : null;
           return (
-            <div key={r.id} className="relative">
+            <div key={r.id} className="relative flex flex-col items-start gap-0.5">
               <button
                 type="button"
-                disabled={locked || busy}
+                disabled={busy}
                 draggable={!locked && !busy}
                 onDragStart={(e) => e.dataTransfer.setData("text/plain", encodeDrag({ riderId: r.id, fromRaceId: null }))}
-                title={locked && raceByRider.has(r.id) ? t("racehub.boundNamed", { race: raceByRider.get(r.id) }) : undefined}
+                title={boundRace ? t("racehub.boundNamed", { race: boundRace }) : undefined}
                 onClick={() => setOpenRiderId(openRiderId === r.id ? null : r.id)}
                 className={`flex items-center gap-1 text-xs px-2.5 py-1 rounded-full border ${
                   locked
-                    ? "border-dashed border-cz-border text-cz-3 opacity-50 cursor-not-allowed"
+                    ? "border-dashed border-cz-border text-cz-3 opacity-60 hover:opacity-90"
                     : "border-cz-border bg-cz-card text-cz-1 hover:border-cz-accent/40"
                 }`}
               >
                 {locked && <LockIcon size={11} aria-hidden="true" />}
                 {r.name} <span className="font-mono text-cz-3">{r.form ?? "—"}</span>
               </button>
-              {openRiderId === r.id && !locked && (
+              {boundRace && (
+                <span className="pl-1.5 text-[9px] text-cz-3 flex items-center gap-1 max-w-[160px] truncate">
+                  <LockIcon size={9} aria-hidden="true" />{t("racehub.boundNamed", { race: boundRace })}
+                </span>
+              )}
+              {openRiderId === r.id && (
                 <AddRiderPopover rider={r} columns={columns} bindingMap={bindingMap}
                   onPick={(raceId) => onAddRiderToRace(raceId, r.id)} onClose={() => setOpenRiderId(null)} />
               )}
