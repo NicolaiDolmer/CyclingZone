@@ -1,4 +1,5 @@
 import { STAR_RIDER_MARKET_VALUE } from "./economyConstants.js";
+import { normalizeSupabaseErrorMessage } from "./supabaseErrorNormalize.js";
 
 const AUCTION_WIN_THRESHOLDS = [
   ["auction_first_win", 1],
@@ -53,13 +54,13 @@ function toNumber(value) {
 
 async function readMany(query) {
   const { data, error } = await query;
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(normalizeSupabaseErrorMessage(error.message));
   return data || [];
 }
 
 async function readMaybeSingle(query) {
   const { data, error } = await query;
-  if (error) throw new Error(error.message);
+  if (error) throw new Error(normalizeSupabaseErrorMessage(error.message));
   return data || null;
 }
 

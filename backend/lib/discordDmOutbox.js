@@ -12,6 +12,8 @@
  * Kun service_role rører tabellen (RLS enabled, ingen policies).
  */
 
+import { normalizeSupabaseErrorMessage } from "./supabaseErrorNormalize.js";
+
 // Backoff-skema pr. attempt-nummer (1-indekseret). Sidste værdi genbruges.
 // Samlet horisont ≈ 27 timer — dækker selv lange Cloudflare-IP-ban-vinduer.
 const RETRY_SCHEDULE_MS = [
@@ -91,8 +93,11 @@ export async function processDmOutboxDrain({
     .limit(DRAIN_BATCH_SIZE);
 
   if (error) {
-    console.error("[discord-dm:outbox] drain-select fejlede", { error: error.message });
-    captureExceptionFn?.(new Error(`Discord DM-outbox drain-select fejlede: ${error.message}`), {
+    // #2023: normalisér en evt. Cloudflare/HTML-fejlside ned til én linje, så en
+    // Supabase-outage ikke fylder Sentry med ulæselige HTML-dump-issues.
+    const reason = normalizeSupabaseErrorMessage(error.message);
+    console.error("[discord-dm:outbox] drain-select fejlede", { error: reason });
+    captureExceptionFn?.(new Error(`Discord DM-outbox drain-select fejlede: ${reason}`), {
       tags: { component: "discord-dm-outbox" },
     });
     return { processed: 0, sent: 0, rescheduled: 0, dead: 0 };
