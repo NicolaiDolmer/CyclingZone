@@ -8034,12 +8034,15 @@ router.delete("/admin/races/:raceId", requireAdmin, adminWriteLimiter, async (re
 // PRESENCE & ONLINE STATUS
 // ═══════════════════════════════════════════════════════════════════════════════
 
-// POST /api/presence — heartbeat, opdater last_seen
+// POST /api/presence — heartbeat, opdater last_seen (throttlet)
+// Bruger touch_user_presence-RPC der KUN skriver hvis last_seen er >60s gammelt,
+// så heartbeat-spam ikke laver en row-write (+WAL+dead tuple) ved hvert kald.
+// Online-prik, /online-count og "sidst set" bruger alle 5-min-granularitet, så
+// 60s-throttle er funktionelt usynlig. Rettede en disk-IO write-amplification
+// (281k UPDATEs) — se database/2026-06-29-db-io-temp-spills-presence.sql.
 router.post("/presence", requireAuth, presencePulseLimiter, async (req, res) => {
-  const { error } = await supabase.from("users")
-    .update({ last_seen: new Date().toISOString() })
-    .eq("id", req.user.id);
-  if (error) console.error("[presence] update failed:", error.message);
+  const { error } = await supabase.rpc("touch_user_presence", { p_user_id: req.user.id });
+  if (error) console.error("[presence] touch failed:", error.message);
   res.json({ ok: true, user_id: req.user.id, error: error?.message || null });
 });
 
