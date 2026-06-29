@@ -12,19 +12,31 @@
 // Loop-prævention (3 lag, mod 2026-05-21-incidenten):
 //   1. stage_scheduler_enabled-flag (fail-safe OFF).
 //   2. race_engine_v2-flag (ekstra lag — afvikling sker via samme motor).
-//   3. countStagesDoneToday >= MAX_STAGES_PER_DAY hard-cap (Beslutning D: maks 5/dag).
+//   3. countStagesDoneToday >= MAX_STAGES_PER_DAY hard-cap (Beslutning D: runaway-backstop,
+//      sat over reel fuld-pyramide-peak — se MAX_STAGES_PER_DAY nedenfor).
 // + trackedTick (Sentry-capture) i cron-laget.
 
 import { copenhagenMidnightUTC } from "./copenhagenTime.js";
-import { STAGES_PER_DAY } from "../scripts/backfillRaceScheduledFor.js";
 
-// Daglig afviklings-cap (loop-prævention, Beslutning D) — skaleret til den tæt-pakkede
-// per-division-cadence: STAGES_PER_DAY etaper/dag × op til 15 league-puljer (1/2/4/8-
-// pyramiden). Den PRIMÆRE throughput-styring er scheduled_at-tiderne (planRaceSchedules);
-// cap'et er en backstop mod runaway. Det tidligere globale 5 var dødt-langsomt med per-
-// division-kalenderen (7 live puljer delte 5/dag → ~0,7 etape/dag/pulje → ~85-dages sæson).
-const TOTAL_LEAGUE_POOLS = 15;
-const MAX_STAGES_PER_DAY = STAGES_PER_DAY * TOTAL_LEAGUE_POOLS;
+// Daglig afviklings-cap (loop-prævention, Beslutning D). Cap'et er en runaway-BACKSTOP
+// (mod cron-loop-incidenten 2026-05-21), IKKE throughput-styring — den PRIMÆRE styring er
+// scheduled_at-tiderne (planRaceSchedules). Derfor skal cap'et sidde KOMFORTABELT over
+// reel peak-efterspørgsel, aldrig under.
+//
+// Reel peak ved fuld 1/2/4/8-pyramide med prestige-kalenderens tæthed 5/4/3/2 (28/6-rebuild):
+//   Div 1: 5 etaper/dag × 1 pulje  =  5
+//   Div 2: 4 etaper/dag × 2 puljer =  8
+//   Div 3: 3 etaper/dag × 4 puljer = 12
+//   Div 4: 2 etaper/dag × 8 puljer = 16
+//                                  ── = 41 etaper/dag ved fuld belægning
+//
+// Den gamle formel STAGES_PER_DAY(2) × 15 puljer = 30 antog FLADT 2/pulje/dag og lå derfor
+// UNDER den reelle 5/4/3/2-peak: den ville begynde at throttle allerede ved ~3 aktive Div-4-
+// puljer (25/dag i dag + 3×2 = 31 > 30) og bygge en voksende backlog. Vi sætter nu cap'et
+// til peak + ~50% margin, så det forbliver en ægte runaway-guard uden at klippe legitim
+// afvikling ved fuld liga.
+const FULL_PYRAMID_PEAK_STAGES_PER_DAY = 5 * 1 + 4 * 2 + 3 * 4 + 2 * 8; // = 41
+const MAX_STAGES_PER_DAY = Math.ceil(FULL_PYRAMID_PEAK_STAGES_PER_DAY * 1.5); // = 62
 
 // Source-markør på race_simulation_runs: KUN scheduler-drevne runs tæller i daglig cap.
 // Skrives af persistRuns via simulateStageByIndex's runSource (sat = 'scheduler' fra
