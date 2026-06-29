@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { upsertOwnTeamProfile } from "./teamProfileEngine.js";
+import { upsertOwnTeamProfile, ensureSeasonIdentityBasis } from "./teamProfileEngine.js";
 import { INITIAL_BALANCE, MANAGER_ENTRY_DIVISION, POOL_TARGET_SIZE, SPONSOR_INCOME_BASE } from "./economyConstants.js";
 
 // #1560: alle eksisterende tests injicerer en no-op starter-squad-allokering, så
@@ -74,6 +74,11 @@ function matchesFilters(row, filters = []) {
       return String(row?.[filter.column] ?? "").toLowerCase() === String(filter.value ?? "").toLowerCase();
     }
 
+    if (filter.type === "is") {
+      // Kun null-tilfældet bruges (race-sikker guard: WHERE col IS NULL).
+      return filter.value === null ? (row?.[filter.column] == null) : row?.[filter.column] === filter.value;
+    }
+
     return true;
   });
 }
@@ -82,11 +87,13 @@ function matchesFilters(row, filters = []) {
 // forbruges pr. forsøg. Modellerer #1264-racet: applikations-precheck (select)
 // ser INTET, men DB'en afviser insert/update med 23505 fordi en samtidig
 // transaktion nåede at committe (seedRows = den samtidige vinders rækker).
-function createSupabaseDouble({ teams = [], boardProfiles = [], leagueDivisions = [], insertErrors = {}, updateErrors = {} } = {}) {
+function createSupabaseDouble({ teams = [], boardProfiles = [], leagueDivisions = [], riders = [], insertErrors = {}, updateErrors = {} } = {}) {
   const state = {
     teams: clone(teams),
     board_profiles: clone(boardProfiles),
     league_divisions: clone(leagueDivisions),
+    riders: clone(riders),
+    seasons: [],
     updates: [],
     inserts: [],
     insertErrorQueues: clone(insertErrors),
@@ -180,6 +187,10 @@ function createSupabaseDouble({ teams = [], boardProfiles = [], leagueDivisions 
     const query = {
       eq(column, value) {
         filters.push({ type: "eq", column, value });
+        return query;
+      },
+      is(column, value) {
+        filters.push({ type: "is", column, value });
         return query;
       },
       select() {
@@ -1028,4 +1039,61 @@ test("#1739 trim-fejl er IKKE-fatal — signup lykkes og holdet beholder sin tru
   assert.equal(result.created, true, "signup lykkes trods trim-fejl");
   assert.equal(squadCalls.length, 1, "start-truppen blev tildelt");
   assert.equal(supabase.state.teams.length, 1, "holdet blev oprettet");
+});
+
+// ── #2022 · Sæson-agnostisk board-dannelse ────────────────────────────────────
+// Et nyt holds identitets-grundlag skal sættes ved DANNELSE (uanset global sæson),
+// ikke kun ved sæson-1-slut — ellers er en sæson-2+-nykommer permanent låst ude
+// af DNA-valg. ensureSeasonIdentityBasis er den sæson-agnostiske skrive-sti.
+
+test("#2022 ensureSeasonIdentityBasis beregner og skriver basis fra truppen for et nyt hold", async () => {
+  const team = { id: "team-1", division: 3, season_1_identity_basis: null };
+  const riders = Array.from({ length: 5 }, (_, i) => ({
+    id: `r-${i}`, team_id: "team-1", nationality_code: "DK", is_u25: i < 2,
+    stat_fl: 70, stat_sp: 60, market_value: 200000,
+  }));
+  const supabase = createSupabaseDouble({ teams: [team], riders });
+
+  const written = await ensureSeasonIdentityBasis({ supabase, team });
+
+  assert.equal(written, true, "basis skrives for et hold uden basis");
+  const stored = supabase.state.teams[0].season_1_identity_basis;
+  assert.ok(stored, "season_1_identity_basis skal være sat på team-rowen");
+  assert.equal(stored.rider_count, 5, "basis afspejler den faktiske trup-størrelse");
+});
+
+test("#2022 ensureSeasonIdentityBasis er idempotent — rører ikke et hold der allerede har basis", async () => {
+  const existing = { rider_count: 99, primary_specialization: "gc" };
+  const team = { id: "team-1", division: 3, season_1_identity_basis: existing };
+  const supabase = createSupabaseDouble({ teams: [team] });
+
+  const written = await ensureSeasonIdentityBasis({ supabase, team });
+
+  assert.equal(written, false, "et hold med basis skal ikke overskrives");
+  assert.deepEqual(supabase.state.teams[0].season_1_identity_basis, existing);
+});
+
+test("#2022 upsertOwnTeamProfile sætter identitets-grundlag fra start-truppen ved dannelse", async () => {
+  const pools = seedDiv4Pools();
+  const supabase = createSupabaseDouble({ leagueDivisions: pools });
+  // Allokerings-stub der seeder en faktisk start-trup, så vi kan verificere at
+  // grundlaget beregnes EFTER allokering (rider_count > 0), ikke på en tom trup.
+  const allocateWithRiders = async (sb, teamId) => {
+    await sb.from("riders").insert(
+      Array.from({ length: 6 }, (_, i) => ({ id: `r-${teamId}-${i}`, team_id: teamId, nationality_code: "DK" })),
+    );
+    return { assigned: 6 };
+  };
+
+  const result = await upsertOwnTeamProfile({
+    supabase, userId: "user-1", name: "Identity At Birth", managerName: "Manager",
+    allocateStarterSquad: allocateWithRiders,
+    runAcademyCohort: noopRunAcademyCohort,
+    academyEnabled: academyDisabled,
+    reconcileAiTeams: noopReconcileAiTeams,
+  });
+
+  const stored = supabase.state.teams.find((t) => t.id === result.team.id)?.season_1_identity_basis;
+  assert.ok(stored, "et nyt hold skal have season_1_identity_basis sat ved dannelse");
+  assert.equal(stored.rider_count, 6, "grundlaget beregnes fra den allokerede start-trup, ikke en tom trup");
 });
