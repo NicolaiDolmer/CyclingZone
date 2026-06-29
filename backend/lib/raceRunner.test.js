@@ -180,6 +180,32 @@ test("guards: kaster ved manglende stages/entrants/race.id", () => {
   assert.throws(() => buildRaceResults({ race: {}, stages: STAGES_3, entrants: ENTRANTS }), /race\.id/);
 });
 
+// #1993: team_name-snapshot på løbstidspunktet. Entrants beriges med team_name i
+// loadEntrantsForRace; buildRaceResults skal kopiere det ud på hver resultatrække
+// (både indiv- og hold-rækker), og falde til null når entranten mangler navnet.
+test("#1993 buildRaceResults snapshots team_name from entrant onto every result row", () => {
+  const teamNameByTeam = { A: "Team Alpha", B: "Team Bravo" };
+  const namedEntrants = ENTRANTS.map((e) => ({ ...e, team_name: teamNameByTeam[e.team_id] }));
+  const { resultRows } = buildRaceResults({ race: STAGE_RACE, stages: STAGES_3, entrants: namedEntrants, pointsLookup: POINTS });
+
+  // Individual rows carry the snapshot of their rider's team name.
+  for (const r of resultRows.filter((row) => row.rider_id)) {
+    assert.equal(r.team_name, teamNameByTeam[r.team_id], `indiv-række for ${r.rider_id} mangler korrekt team_name`);
+  }
+  // Team rows (rider_id null) also carry the snapshot for their team.
+  for (const r of resultRows.filter((row) => row.result_type === "team")) {
+    assert.equal(r.team_name, teamNameByTeam[r.team_id], `hold-række for ${r.team_id} mangler korrekt team_name`);
+  }
+});
+
+test("#1993 buildRaceResults sets team_name null when entrant lacks it", () => {
+  // Entrants WITHOUT team_name (as legacy/un-enriched entrants would be).
+  const { resultRows } = buildRaceResults({ race: STAGE_RACE, stages: STAGES_3, entrants: ENTRANTS, pointsLookup: POINTS });
+  for (const r of resultRows) {
+    assert.equal(r.team_name, null, `række ${r.result_type}/${r.rider_id ?? r.team_id} burde have team_name null`);
+  }
+});
+
 // ── Mock-supabase ─────────────────────────────────────────────────────────────
 function makeSupabase(canned = {}) {
   const writes = [];
@@ -250,6 +276,54 @@ test("loadEntrantsForRace: beriger entries med navn, is_u25 + abilities", async 
   assert.equal(r1.is_u25, true);
   assert.equal(r1.team_id, "T1");
   assert.equal(r1.abilities.climbing, 80);
+});
+
+// #1993: entrants beriges med team_name (holdets navn på løbstidspunktet) så
+// buildRaceResults kan snapshotte det. Navnet hentes fra teams, ikke fra rytteren.
+test("#1993 loadEntrantsForRace: beriger entrants med team_name fra teams", async () => {
+  const supabase = makeSupabase({
+    race_entries: [{ rider_id: "r1", team_id: "T1" }, { rider_id: "r2", team_id: "T2" }],
+    riders: [
+      { id: "r1", team_id: "T1", firstname: "Anna", lastname: "Berg", is_u25: false },
+      { id: "r2", team_id: "T2", firstname: "Bo", lastname: "Dahl", is_u25: false },
+    ],
+    rider_derived_abilities: [
+      { rider_id: "r1", ...abil() },
+      { rider_id: "r2", ...abil() },
+    ],
+    teams: [
+      { id: "T1", name: "Team Alpha" },
+      { id: "T2", name: "Team Bravo" },
+    ],
+  });
+  const entrants = await loadEntrantsForRace({ supabase, race: { id: "race-x" } });
+  const r1 = entrants.find((e) => e.rider_id === "r1");
+  const r2 = entrants.find((e) => e.rider_id === "r2");
+  assert.equal(r1.team_name, "Team Alpha");
+  assert.equal(r2.team_name, "Team Bravo");
+});
+
+// #1993 / #1844 regression: motoren binder hver entrants team_id til
+// race_entries-SNAPSHOT'et (teamByRider bygges fra `entries`, raceRunner.js), så
+// en re-run efter et rytter-salg bevarer det oprindelige team_id og historikken
+// ikke flytter stille. Beviset her: race_entries siger T_SNAPSHOT, og entranten
+// bærer netop T_SNAPSHOT — og team_name slås op ud fra DET (frosne) team_id, ikke
+// rytterens nuværende hold. (Ghost-eligibility-filteret kræver at rytter-rækken
+// matcher entry'ens team_id for at overleve, så de holdes konsistente her; selve
+// snapshot-bindingen vises ved at output-team_id === race_entries-værdien.)
+test("#1993/#1844 loadEntrantsForRace: entrant.team_id + team_name kommer fra race_entries-snapshot", async () => {
+  const supabase = makeSupabase({
+    race_entries: [{ rider_id: "r1", team_id: "T_SNAPSHOT" }],
+    riders: [{ id: "r1", team_id: "T_SNAPSHOT", firstname: "Frozen", lastname: "Rider", is_u25: false }],
+    rider_derived_abilities: [{ rider_id: "r1", ...abil() }],
+    teams: [{ id: "T_SNAPSHOT", name: "Snapshot Squad" }],
+  });
+  const entrants = await loadEntrantsForRace({ supabase, race: { id: "race-x" } });
+  const r1 = entrants.find((e) => e.rider_id === "r1");
+  // Snapshot vinder: team_id frosset til race_entries-værdien.
+  assert.equal(r1.team_id, "T_SNAPSHOT");
+  // team_name slås op ud fra det frosne team_id (teams.name), ikke nogen rider-felt.
+  assert.equal(r1.team_name, "Snapshot Squad");
 });
 
 test("loadEntrantsForRace: tomt felt → auto-fill skriver race_entries", async () => {
