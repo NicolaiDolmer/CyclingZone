@@ -81,7 +81,7 @@ Plads til foto — laves på sigt (ejer: senere).
 - **Mockups (session 29/6):** beskrevet i `mockups/README.md` — palmarès, abilities-v2 (P/M/T + progress), FM-hover-profil, V1-i-kontekst, før/efter-bar, ét-tal-vs-to-scores. Bygget med Ayoub Cherifs ægte data.
 
 ## Issue-kort
-EPIC [#2000](https://github.com/NicolaiDolmer/CyclingZone/issues/2000) · Slice 1 #2003 ✅ · Slice 2 rating #2006/#2013 ✅ · Slice 3 handlinger #2007 · Slice 4 Development #2008 (datalag #2012 ✅) · Slice 5 hover #2009 · Slice 6 History/Interesse #2010 · Konsistens #2002 · Type-kalibrering #1378 + utypet #2014 (senest 30/6) · Fundament #1993/#1998 ✅ · Datagap #2001/#2004 ✅.
+EPIC [#2000](https://github.com/NicolaiDolmer/CyclingZone/issues/2000) · Slice 1 #2003 ✅ · Slice 2 rating #2006/#2013 ✅ · Slice 3 handlinger #2007 (PR #2019) · Slice 4 Development #2008 (datalag #2012 ✅) · Slice 5 hover #2009 · Slice 6 History/Interesse #2010 · Konsistens #2002 · Type-kalibrering #1378 + utypet #2014 (senest 30/6) · Fundament #1993/#1998 ✅ · Datagap #2001/#2004 ✅.
 
 ## Status (29/6)
-**Live:** fundament (hold-attribution), Slice 1 (P/M/T + progress-barer), Slice 2 (overall-rating). **Næste:** Slice 3 handlinger (#2007, anbefalet) eller Slice 5 hover (#2009). **Prioriteret:** #1378/#2014 utypet-tilstand senest 30/6.
+**Live:** fundament (hold-attribution), Slice 1 (P/M/T + progress-barer), Slice 2 (overall-rating). **PR åben:** Slice 3 handlinger ([#2007](https://github.com/NicolaiDolmer/CyclingZone/issues/2007) → PR [#2019](https://github.com/NicolaiDolmer/CyclingZone/pull/2019); forlæng/fyr/akademi op-ned action-first på profilen, afventer ejer-test+merge). **Næste:** Slice 5 hover (#2009) eller konsistens (#2002). **Prioriteret:** #1378/#2014 utypet-tilstand senest 30/6.
