@@ -136,6 +136,46 @@ test("deriveForRiderIds (apply) upserter physiology + abilities OG sætter type 
   }
 });
 
+test("deriveForRiderIds (apply) skriver ability_caps + ability_progress for ALLE ryttere (#2001)", async () => {
+  // makeRider er født 2000-01-01 → voksen (26 ved asOfYear 2026). Tidligere fik voksne
+  // NULL caps her (kun akademi-alder fik youth-caps); #2001 wirer fulde caps + nul-progress.
+  const supabase = makeMockSupabase({ riders: [makeRider("r1")] });
+  await deriveForRiderIds(supabase, ["r1"], { dryRun: false });
+
+  const abUpsert = supabase.writes.upserts.find((u) => u.table === "rider_derived_abilities");
+  assert.ok(abUpsert, "abilities upsertes");
+  const row = abUpsert.rows[0];
+
+  // ability_caps: et objekt med en cap pr. synlig evne (voksen → buildCaps fra baseline).
+  assert.ok(row.ability_caps && typeof row.ability_caps === "object", "ability_caps sat (ikke null)");
+  for (const k of ABILITY_KEYS) {
+    assert.ok(Number.isFinite(row.ability_caps[k]), `cap for ${k} er et tal`);
+    assert.ok(row.ability_caps[k] >= 0 && row.ability_caps[k] <= 99, `cap for ${k} ∈ [0,99]`);
+  }
+
+  // ability_progress: nul-initialiseret over alle synlige evner (ikke null).
+  assert.ok(row.ability_progress && typeof row.ability_progress === "object", "ability_progress sat (ikke null)");
+  for (const k of ABILITY_KEYS) {
+    assert.equal(row.ability_progress[k], 0, `progress for ${k} initialiseres til 0`);
+  }
+});
+
+test("deriveForRiderIds (apply) BEVARER eksisterende caps + progress ved re-derive (#2001 no-regress)", async () => {
+  // Heal-sweep kan re-derive en EKSISTERENDE rytter. Hvis han allerede har akkumuleret
+  // progress/caps (motoren/træning satte dem), må re-derive IKKE nulstille dem.
+  const existingCaps = { climbing: 95, sprint: 30 };
+  const existingProgress = { climbing: 0.42 };
+  const supabase = makeMockSupabase({
+    riders: [makeRider("r1")],
+    rider_derived_abilities: [{ rider_id: "r1", ability_caps: existingCaps, ability_progress: existingProgress }],
+  });
+  await deriveForRiderIds(supabase, ["r1"], { dryRun: false });
+  const abUpsert = supabase.writes.upserts.find((u) => u.table === "rider_derived_abilities");
+  const row = abUpsert.rows[0];
+  assert.deepEqual(row.ability_caps, existingCaps, "eksisterende caps bevares (ikke nulstillet)");
+  assert.deepEqual(row.ability_progress, existingProgress, "eksisterende progress bevares (ikke nulstillet)");
+});
+
 test("deriveForRiderIds (dryRun) skriver intet men rapporterer beregningerne", async () => {
   const supabase = makeMockSupabase({ riders: [makeRider("r1")] });
   const res = await deriveForRiderIds(supabase, ["r1"], { dryRun: true });

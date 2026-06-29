@@ -7,6 +7,7 @@ import {
   developRiderSeason, buildCaps,
   youthRoleFactor, YOUTH_PROGRESSION_CONFIG,
   youthAbilityCap, buildYouthCaps,
+  buildCapsForRider, buildProgressInit,
 } from "./riderProgression.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 
@@ -318,4 +319,44 @@ test("potentiale styrer træningsfart: pot6 vokser hurtigere end pot2 fra samme 
   const high = developRiderSeason({ id: "r1", primary_type: "climber", potentiale: 6, age: 18 }, abilities, caps, 1);
   assert.ok(high.next.climbing > low.next.climbing,
     `pot6 ${high.next.climbing} skal > pot2 ${low.next.climbing} efter én sæson`);
+});
+
+// ── buildProgressInit + buildCapsForRider (#2001) ────────────────────────────
+// ability_caps + ability_progress var NULL for ryttere der aldrig blev udviklet/
+// trænet. Disse helpers giver derive-stien + backfill ÉN delt init der matcher
+// præcis det motoren ellers lazy-initerede.
+
+test("buildProgressInit: nul-fyldt over alle 15 synlige evner", () => {
+  const p = buildProgressInit();
+  assert.equal(Object.keys(p).length, VISIBLE_ABILITIES.length);
+  for (const k of VISIBLE_ABILITIES) assert.equal(p[k], 0, `${k} skal initialiseres til 0`);
+});
+
+test("buildCapsForRider (voksen): identisk med buildCaps fra baseline (samme som motorens lazy-init)", () => {
+  const abilities = { climbing: 60, sprint: 40, flat: 50, time_trial: 55, tempo: 45,
+    acceleration: 42, punch: 48, endurance: 52, recovery: 50, durability: 47,
+    descending: 44, cobblestone: 41, positioning: 46, aggression: 43, tactics: 49 };
+  const viaHelper = buildCapsForRider(abilities, { potentiale: 5, age: 28 }, "climber", "tt");
+  const viaBuildCaps = buildCaps(abilities, "climber", 5);
+  assert.deepEqual(viaHelper, viaBuildCaps, "voksen-stien skal matche buildCaps eksakt");
+  for (const k of VISIBLE_ABILITIES) assert.ok(viaHelper[k] >= 0 && viaHelper[k] <= 99);
+});
+
+test("buildCapsForRider (akademi-alder): afkoblede ungdoms-caps (buildYouthCaps), ikke baseline-bundet", () => {
+  const lowBaseline = { climbing: 10, sprint: 5, flat: 8, time_trial: 7, tempo: 6,
+    acceleration: 5, punch: 6, endurance: 9, recovery: 7, durability: 6,
+    descending: 5, cobblestone: 4, positioning: 6, aggression: 5, tactics: 7 };
+  // 18-årig (akademi-alder ved asOfYear via age-param) climber med højt potentiale.
+  const caps = buildCapsForRider(lowBaseline, { potentiale: 6, age: 18 }, "climber", "tt");
+  const expected = buildYouthCaps(6, "climber", "tt");
+  assert.deepEqual(caps, expected, "akademi-alder skal bruge buildYouthCaps");
+  // Afkoblet: loftet er IKKE bundet til den lave baseline (skal ligge langt over 10).
+  assert.ok(caps.climbing > lowBaseline.climbing + 20,
+    `ungdoms-loft ${caps.climbing} skal ligge langt over baseline ${lowBaseline.climbing}`);
+});
+
+test("buildCapsForRider: cap ≥ baseline for voksen signatur-evne (current kan vokse mod loft)", () => {
+  const abilities = { climbing: 60, sprint: 30 };
+  const caps = buildCapsForRider(abilities, { potentiale: 5, age: 30 }, "climber");
+  assert.ok(caps.climbing >= 60, `signatur-cap ${caps.climbing} skal ≥ baseline 60`);
 });
