@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { lazyWithRetry } from "../lib/lazyWithRetry.js";
 import { supabase } from "../lib/supabase";
+import { getAuthedUser } from "../lib/getAuthedUser.js";
 import { getCountryName } from "../lib/countryUtils";
 import { Flag } from "../components/Flag";
 import { formatCz, getRiderMarketValue, getRiderSalary } from "../lib/marketValues.js";
@@ -867,7 +868,8 @@ export default function RiderStatsPage() {
   useEffect(() => { myTeamIdRef.current = myTeamId; }, [myTeamId]);
 
   async function loadWatchlistStatus() {
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getAuthedUser();
+    if (!user) return;
     const { data } = await supabase.from("rider_watchlist")
       .select("id").eq("user_id", user.id).eq("rider_id", id).single();
     if (data) { setOnWatchlist(true); setWatchlistId(data.id); }
@@ -893,7 +895,8 @@ export default function RiderStatsPage() {
   }
 
   async function toggleWatchlist() {
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getAuthedUser();
+    if (!user) return;
     if (onWatchlist) {
       await supabase.from("rider_watchlist").delete().eq("id", watchlistId);
       setOnWatchlist(false); setWatchlistId(null);
