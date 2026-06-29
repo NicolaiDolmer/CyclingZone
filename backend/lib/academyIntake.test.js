@@ -159,6 +159,12 @@ function makeIntakeSupabase({
       if (table === "rider_physiology_profiles" || table === "rider_derived_abilities") {
         const api = {
           upsert() { return Promise.resolve({ error: null }); },
+          // deriveForRiderIds læser eksisterende caps/progress for at bevare dem ved
+          // re-derive (#2001). Nye akademi-ryttere har ingen → tom liste (fresh init).
+          select() { return api; },
+          in() { return api; },
+          order() { return api; },
+          range() { return Promise.resolve({ data: [], error: null }); },
         };
         return api;
       }
