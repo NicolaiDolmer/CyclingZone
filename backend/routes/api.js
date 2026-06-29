@@ -4410,7 +4410,7 @@ router.post("/admin/approve-results", requireAdmin, adminWriteLimiter, async (re
 
     const { data: rows, error: rowsError } = await supabase
       .from("pending_race_result_rows")
-      .select("*, rider:rider_id(team_id, firstname, lastname)")
+      .select("*, rider:rider_id(team_id, firstname, lastname, team:team_id(name))")
       .eq("pending_id", pending_id);
     if (rowsError) return res.status(500).json({ error: rowsError.message });
     if (!rows?.length) return res.status(400).json({ error: "No rows found" });

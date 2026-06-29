@@ -57,13 +57,17 @@ export function buildRaceResultsFromPending({ pendingRows = [], pointsLookup = {
     const pts = pointsLookup[`${row.result_type}__${row.rank}`] || 0;
     const teamId = row.rider?.team_id || null;
     const riderName = row.rider ? `${row.rider.firstname} ${row.rider.lastname}` : null;
+    // #1993: snapshot holdnavnet på løbstidspunktet, så attributionen overlever
+    // holdsletning/omdøbning (team_id-FK er ON DELETE SET NULL). Læses fra det
+    // joinede team (rider:rider_id(..., team:team_id(name))); null hvis ingen join.
+    const teamName = row.rider?.team?.name ?? null;
 
     return {
       race_id: raceId,
       rider_id: row.rider_id,
       rider_name: riderName,
       team_id: teamId,
-      team_name: null,
+      team_name: teamName,
       result_type: row.result_type,
       rank: row.rank,
       stage_number: row.stage_number || 1,
