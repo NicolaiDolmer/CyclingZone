@@ -376,6 +376,42 @@
       "errorPrefix": "❌"
     }
   },
+  "manage": {
+    "extend": {
+      "button": "Extend contract",
+      "description": "Extend this rider's contract by one season at a renegotiated salary.",
+      "currentSalary": "Current salary",
+      "newSalary": "New salary",
+      "newContract": "New contract",
+      "newContractValue": "Through season {season}",
+      "confirm": "Confirm extension",
+      "success": "Contract extended.",
+      "errorPrefix": "Couldn't extend:"
+    },
+    "release": {
+      "button": "Release rider",
+      "description": "End this rider's contract. They leave your squad and become a free agent.",
+      "fee": "Buyout fee",
+      "balance": "Your balance",
+      "feeHint": "The buyout fee is half the salary left on the contract.",
+      "freeHint": "This rider is out of contract, so there's no buyout fee.",
+      "cannotAfford": "You can't afford the buyout fee.",
+      "confirm": "Release rider",
+      "cancel": "Cancel",
+      "success": "Rider released.",
+      "errorPrefix": "Couldn't release:"
+    },
+    "promote": {
+      "button": "Promote to senior squad",
+      "success": "Rider promoted to your senior squad.",
+      "errorPrefix": "Couldn't promote:"
+    },
+    "demote": {
+      "button": "Move to academy",
+      "success": "Rider moved to your academy.",
+      "errorPrefix": "Couldn't move rider:"
+    }
+  },
   "swapOffer": {
     "buttonOpen": "⇄ Propose swap",
     "selectRider": "Select rider to offer",

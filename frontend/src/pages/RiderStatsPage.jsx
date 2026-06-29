@@ -18,6 +18,7 @@ import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
 import TrainingFocus from "../components/rider/TrainingFocus";
 import RiderTrainingHistory from "../components/rider/RiderTrainingHistory.jsx";
 import ConditionChips from "../components/rider/ConditionChips.jsx";
+import RiderManageActions from "../components/rider/RiderManageActions.jsx";
 import { useScouting } from "../lib/useScouting";
 import { useTraining } from "../lib/useTraining";
 import { useTrainingHistory } from "../lib/useTrainingHistory";
@@ -1009,7 +1010,7 @@ export default function RiderStatsPage() {
       // udledte evner (rider_derived_abilities, hentet nedenfor). Ingen andre
       // visnings-flader på rytterprofilen læser riders.stat_* længere.
       supabase.from("riders").select(`id, pcm_id, firstname, lastname, birthdate, height, weight,
-        market_value, base_value, prize_earnings_bonus, salary, contract_length, contract_end_season, is_u25, is_retired, pending_team_id,
+        market_value, base_value, prize_earnings_bonus, salary, contract_length, contract_end_season, is_u25, is_retired, is_academy, pending_team_id,
         nationality_code, primary_type, secondary_type, team_id, acquired_at,
         team:team_id(id, name, is_ai, is_bank),
         pending_team:pending_team_id(id, name)`).eq("id", id).single(),
@@ -1288,12 +1289,18 @@ export default function RiderStatsPage() {
   // RIDER_TYPE_KEYS; rating beregnes i tabben.
   const developmentTypes = RIDER_TYPE_KEYS.map((key, i) => ({ key, label: tTypes(`types.${key}`), color: chartColor(i) }));
   const isMyRider  = rider.team_id === myTeamId;
+  // #2007: en egen AKADEMI-rytter har sit eget flow (promovér) — den kan ikke
+  // sættes på auktion/transferliste/fyres (backend afviser rider_is_academy).
+  const isAcademyRider = Boolean(rider.is_academy);
+  const isMySeniorRider = isMyRider && !isAcademyRider;
   const isFreeAgent = !rider.team_id;
   const isBankRider = Boolean(rider.team?.is_bank);
   const isAiRider = Boolean(rider.team?.is_ai);
   const isPendingTransfer = Boolean(rider.pending_team_id);
   const isRetired = Boolean(rider.is_retired);
-  const canAuction  = (isFreeAgent || isMyRider || isBankRider || isAiRider) && !isPendingTransfer && !isRetired;
+  // #2007: akademi-ryttere ekskluderes fra auktion (kun frie agenter, egne
+  // SENIOR-ryttere, samt bank/AI-ryttere kan sættes på auktion).
+  const canAuction  = (isFreeAgent || isMySeniorRider || isBankRider || isAiRider) && !isPendingTransfer && !isRetired;
   const canDirectOffer = rider.team_id && rider.team_id !== myTeamId && !isBankRider && !isAiRider && !isPendingTransfer && !isRetired;
   const auctionLabel = isMyRider
     ? t("auctionStart.label.myRider")
@@ -1530,8 +1537,11 @@ export default function RiderStatsPage() {
               isFlashing={priceFlash}
             />
           )}
-          {/* #1185: egne ryttere kan sættes til salg på transferlisten direkte herfra */}
-          {isMyRider && !isPendingTransfer && !isRetired && <TransferListButton rider={rider} />}
+          {/* #1185: egne SENIOR-ryttere kan sættes til salg på transferlisten direkte herfra */}
+          {isMySeniorRider && !isPendingTransfer && !isRetired && <TransferListButton rider={rider} />}
+          {/* #2007: egen-rytter-handlinger (forlæng/fyr/akademi op-ned) — samme flow
+              som holdsidens RiderActionModal, men action-first på selve profilen. */}
+          {isMyRider && !isPendingTransfer && !isRetired && <RiderManageActions rider={rider} onChanged={loadRider} />}
           {canDirectOffer && <DirectOfferButton rider={rider} />}
           {canDirectOffer && <SwapOfferButton rider={rider} myTeamId={myTeamId} />}
           {canDirectOffer && <LoanOfferButton rider={rider} />}

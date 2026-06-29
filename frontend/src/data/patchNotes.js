@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.36",
+    "date": "2026-06-29",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Manage your riders straight from their profile",
+          "body": "You can now extend a contract, release a rider, and move a rider between your senior squad and your academy directly from the rider profile, next to the auction, transfer-list and bidding actions that were already there. Every action a manager can take on a rider now lives in one place, so you no longer have to go back to your squad page to manage a contract. Academy riders correctly show only the promote action."
+        },
+        "da": {
+          "title": "Håndtér dine ryttere direkte fra deres profil",
+          "body": "Du kan nu forlænge en kontrakt, fyre en rytter og flytte en rytter mellem din senior-trup og dit akademi direkte fra rytterprofilen, ved siden af auktion, transferliste og bud som allerede lå der. Alt hvad en manager kan gøre ved en rytter ligger nu ét sted, så du ikke længere skal tilbage til holdsiden for at håndtere en kontrakt. Akademi-ryttere viser korrekt kun op-rykning."
+        },
+        "refs": [2007, 2000]
+      }
+    ]
+  },
+  {
     "version": "6.35",
     "date": "2026-06-29",
     "label": "Beta",
