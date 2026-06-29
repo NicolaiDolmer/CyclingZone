@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useLocation } from "react-router-dom";
 import { useConsent } from "./consent.jsx";
 import { supabase } from "./supabase";
+import { getAuthedUser } from "./getAuthedUser.js";
 import { getAnonymousId } from "./anonymousId.js";
 
 const PROJECT_ID = import.meta.env.VITE_CLARITY_PROJECT_ID;
@@ -60,7 +61,7 @@ async function identifyClarity(customId) {
 // per-device anonymous id when logged out. Async because auth state is async.
 async function resolveCustomId() {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const user = await getAuthedUser();
     if (user?.id) return user.id;
   } catch { /* fall through to anonymous id */ }
   return getAnonymousId();
@@ -131,7 +132,7 @@ export default function ClarityIntegration() {
     let cancelled = false;
 
     async function tagFromSession() {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getAuthedUser();
       if (!user || cancelled) return;
 
       const { data: team } = await supabase

@@ -11,6 +11,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "./supabase";
+import { getAuthedUser } from "./getAuthedUser.js";
 
 // Vinduet historikken dækker (dage tilbage). Matcher idx_training_day_runs_team_date.
 export const HISTORY_DAYS = 30;
@@ -30,7 +31,7 @@ export function useTrainingHistory() {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getAuthedUser();
       if (!user) { setRuns([]); return; }
       const { data: myTeam } = await supabase
         .from("teams")
