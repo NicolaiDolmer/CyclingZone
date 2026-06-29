@@ -21,6 +21,7 @@
   "gainJump": "{from} → {to} {ability}",
   "noGains": "Ingen fremgang i dag",
   "noFocus": "Intet fokus valgt",
+  "restDay": "Hviledag",
   "toGo": "{pct}% til næste +1 i {ability}",
   "sharpDay": "Skarp dag",
   "flatDay": "Flad dag",

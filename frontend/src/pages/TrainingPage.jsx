@@ -611,7 +611,7 @@ export default function TrainingPage() {
                       <td className="px-4 py-2.5">
                         <FocusProgress
                           info={prog}
-                          emptyLabel={t("noFocus")}
+                          emptyLabel={row.intensity === "rest" ? t("restDay") : t("noFocus")}
                           tRider={tRider}
                           toGoLabel={(o) => t("toGo", o)}
                         />

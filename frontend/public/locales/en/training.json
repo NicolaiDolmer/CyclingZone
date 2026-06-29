@@ -21,6 +21,7 @@
   "gainJump": "{from} → {to} {ability}",
   "noGains": "No gains today",
   "noFocus": "No focus set",
+  "restDay": "Rest day",
   "toGo": "{pct}% to next +1 in {ability}",
   "sharpDay": "Sharp day",
   "flatDay": "Flat day",
