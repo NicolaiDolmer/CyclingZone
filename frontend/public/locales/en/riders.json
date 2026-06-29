@@ -114,7 +114,7 @@
     "legendPcl": "PCL = points classification",
     "legendMtn": "Mtn = mountains classification",
     "legendU25": "U25 = youth classification",
-    "legendRating": "Rating = average of all rider stats",
+    "legendRating": "Rating = overall ability (1-99), weighted toward the rider's best type",
     "legendSort": "Click a column to sort"
   }
 }

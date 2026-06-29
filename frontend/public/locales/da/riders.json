@@ -114,7 +114,7 @@
     "legendPcl": "PKL = pointklassement",
     "legendMtn": "Bjerg = bjergklassement",
     "legendU25": "U25 = ungdomsklassement",
-    "legendRating": "Rating = gennemsnit af rytterens stats",
+    "legendRating": "Rating = samlet evne (1-99), vægtet mod rytterens bedste type",
     "legendSort": "Klik kolonne for at sortere"
   }
 }
