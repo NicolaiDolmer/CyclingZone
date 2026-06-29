@@ -443,10 +443,6 @@
         "title": "Løn",
         "text": "Hver rytters årsløn fastsættes ved signering til ca. 6,7% af markedsværdien på det tidspunkt og fryses derefter: den ændrer sig ikke automatisk efterhånden som rytteren udvikler sig. Lønnen er synlig som en separat kolonne i Rytterdatabasen og på ønskelisten. Lønninger betales automatisk ved næste sæsons start, lige efter sponsor er udbetalt. Kan sponsor + din eksisterende balance ikke dække lønningerne, optager systemet automatisk et nødlån."
       },
-      "stats": {
-        "title": "Rytterstatistik",
-        "text": "Hver rytter har 14 stats: FL (Flad), BJ (Bjerg), KB (Mellembjerg), BK (Bakke), TT (Enkeltstart), PRL (Prolog), BRO (Brosten), SP (Sprint), ACC (Acceleration), NED (Nedkørsel), UDH (Udholdenhed), MOD (Modstandsdygtighed), RES (Restituering), FTR (Fighter)."
-      },
       "abilitiesExplained": {
         "title": "De 15 evner, og hvor de betyder noget",
         "rows": [
@@ -470,7 +466,7 @@
       },
       "development": {
         "title": "Udvikling over tid",
-        "text": "På en rytters statistikside ligger fanen 'Udvikling'. Her kan du vælge en af de 14 stats, følge stat-udviklingen som graf og se de seneste historiske datapunkter. Nye datapunkter kommer til når ryttere udvikler sig, fx ved sæsonskifte. Hvis fanen er tom, har rytteren endnu ingen registreret udvikling."
+        "text": "På en rytters statistikside ligger fanen 'Udvikling'. Her kan du vælge en evne, følge udviklingen som graf og se de seneste historiske datapunkter. Nye datapunkter kommer til når ryttere udvikler sig, fx ved sæsonskifte. Hvis fanen er tom, har rytteren endnu ingen registreret udvikling."
       },
       "trainingFocus": {
         "title": "Træningsfokus",

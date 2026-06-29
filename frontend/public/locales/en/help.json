@@ -443,10 +443,6 @@
         "title": "Salary",
         "text": "Each rider's annual salary is set at signing as about 6.7% of their market value at that moment, and is then frozen: it does not change automatically as the rider develops. The salary is visible as a separate column in the Rider Database and on the watchlist. Salaries are paid automatically at the start of the next season, right after sponsor money lands. If sponsor + your existing balance can't cover the salaries, the system automatically takes an emergency loan."
       },
-      "stats": {
-        "title": "Rider stats",
-        "text": "Each rider has 14 stats: FL (Flat), BJ (Mountain), KB (Mid-mountain), BK (Hill), TT (Time trial), PRL (Prologue), BRO (Cobbles), SP (Sprint), ACC (Acceleration), NED (Descent), UDH (Stamina), MOD (Resistance), RES (Recovery), FTR (Fighter)."
-      },
       "abilitiesExplained": {
         "title": "The 15 abilities and where they matter",
         "rows": [
@@ -470,7 +466,7 @@
       },
       "development": {
         "title": "Development over time",
-        "text": "On a rider's stats page there's a 'Development' tab. Here you can pick one of the 14 stats, follow its development as a graph, and see recent historical data points. New data points are added as riders develop, for example at season changes. If the tab is empty, the rider has no recorded development yet."
+        "text": "On a rider's stats page there's a 'Development' tab. Here you can pick an ability, follow its development as a graph, and see recent historical data points. New data points are added as riders develop, for example at season changes. If the tab is empty, the rider has no recorded development yet."
       },
       "trainingFocus": {
         "title": "Training focus",

@@ -49,6 +49,20 @@ export const PATCHES = [
           "body": "Rytterprofilens øverste højre hjørne viste en \"Bedste: …\"-linje der stadig var udledt af de gamle evne-tal, ikke de nuværende Cycling Zone-evner, så den kunne være forældet og misvisende. Vi har fjernet linjen helt — Evner-fanen er den korrekte kilde — uden erstatning, så profilen ikke bliver overfyldt."
         },
         "refs": [1781]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Help",
+        "en": {
+          "title": "Help page now shows only the current rider abilities",
+          "body": "The Riders section of the help page still listed the old 14 skill abbreviations (FL, BJ, KB …) above the 15 current Cycling Zone abilities, which was confusing. We removed the outdated list — the help page now explains only the 15 abilities the game actually uses."
+        },
+        "da": {
+          "title": "Hjælp-siden viser nu kun de nuværende rytter-evner",
+          "body": "Rytter-sektionen på hjælp-siden listede stadig de gamle 14 evne-forkortelser (FL, BJ, KB …) oven over de 15 nuværende Cycling Zone-evner, hvilket var forvirrende. Vi har fjernet den forældede liste — hjælp-siden forklarer nu kun de 15 evner spillet faktisk bruger."
+        },
+        "refs": [1832]
       }
     ]
   },
