@@ -20,7 +20,7 @@
 >
 > **⏳ Afventer ejer-merge (har `database/*.sql`):** PR [#1909](https://github.com/NicolaiDolmer/CyclingZone/pull/1909) (CZ Pro Slice 1). **Åbne ejer-beslutninger:** #1276 · #1278 · #1487 · #929 · #691. [PLAN.md](PLAN.md)=SSOT.
 
-> **🎯 Next action:** Løb genstarter man 29/6 08:00 (mandags-gate var GRØN). Næste kandidater: **op/nedrykning** ([#1152](https://github.com/NicolaiDolmer/CyclingZone/issues/1152), spec afventer godkendelse) · **CZ Pro** PR #1909 (ejer-merge) · **træning-rework** (bundter #1936). Ejer-valg: lån står · omkørsel #1861/#1848 = lad stå. Backups 28/6: `backup_seedfix_*`, `backup_chronrebuild_*`, `backup_academy_freeagent_*`, `backup_ghost_auctions_*`.
+> **🎯 Next action:** Løb genstarter man 29/6 08:00 (mandags-gate var GRØN). Næste kandidater: **#2000 Part 2** (Development-tab fra PCM→derived; spec `2026-06-29-rider-derived-ability-history-design.md` afventer ejer-review; Part 1=[PR #2005](https://github.com/NicolaiDolmer/CyclingZone/pull/2005)) · **op/nedrykning** ([#1152](https://github.com/NicolaiDolmer/CyclingZone/issues/1152), spec afventer godkendelse) · **CZ Pro** PR #1909 (ejer-merge) · **træning-rework** (bundter #1936). Ejer-valg: lån står · omkørsel #1861/#1848 = lad stå. Backups 28/6: `backup_seedfix_*`, `backup_chronrebuild_*`, `backup_academy_freeagent_*`, `backup_ghost_auctions_*`.
 
 > **🤖 Working agent:** Ingen aktiv session.
 
