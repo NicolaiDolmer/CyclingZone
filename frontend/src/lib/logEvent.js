@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import { getAuthedUser } from "./getAuthedUser.js";
 import { isSquadDrafted } from "./teamDrafted.js";
 
 // Player-events baseline (#137). Fire-and-forget instrumentation der respekterer
@@ -39,7 +40,7 @@ function hasAnalyticsConsent() {
 async function ensureIdentity() {
   installAuthListener();
   if (cachedUserId) return { userId: cachedUserId, teamId: cachedTeamId };
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthedUser();
   if (!user) return null;
   cachedUserId = user.id;
   const { data: team } = await supabase

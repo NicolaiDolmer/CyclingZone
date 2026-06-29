@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../lib/supabase";
+import { getAuthedUser } from "../lib/getAuthedUser.js";
 import { useConsent } from "../lib/consent.jsx";
 import { shouldPromptNps, normalizeNpsSubmission } from "../lib/npsGating.js";
 
@@ -38,7 +39,7 @@ export function useNpsPrompt() {
     let cancelled = false;
 
     (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getAuthedUser();
       if (cancelled || !user) return;
 
       const [{ data: userRow }, { data: existing }] = await Promise.all([
@@ -71,7 +72,7 @@ export function useNpsPrompt() {
     if (!normalized) return false;
     setSubmitting(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getAuthedUser();
       if (!user) return false;
       const { error } = await supabase.from("nps_responses").insert({
         user_id: user.id,

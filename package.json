@@ -30,6 +30,8 @@
     "check:ui-slop-baseline": "node scripts/lint-ui-slop.mjs --update-baseline",
     "lint:postgrest-cap": "node scripts/lint-postgrest-in-cap.mjs",
     "test:lint-postgrest-cap": "node --test scripts/lint-postgrest-in-cap.test.mjs",
+    "lint:getuser-guard": "node scripts/lint-getuser-guard.mjs",
+    "test:lint-getuser-guard": "node --test scripts/lint-getuser-guard.test.mjs",
     "test:setup": "node scripts/setup-test-accounts.mjs",
     "test:smoke": "node scripts/smoke-test-prod.mjs",
     "test:token": "node scripts/get-test-token.mjs",

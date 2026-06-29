@@ -180,3 +180,28 @@ jobs:
 
       - name: Run postgrest-cap guard
         run: node scripts/lint-postgrest-in-cap.mjs
+
+  getuser-guard:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # Forward-guard mod getUser()→null-deref-crashklassen (#1792, Sentry
+    # CYCLINGZONE-16): en udløbet session giver `user = null`, og en bar
+    # `user.id`-deref vælter hele siden. #1792 tilføjede inline-guards overalt,
+    # men forhindrer ikke en NY side i at glemme guarden. Flagger `getUser()` /
+    # `getAuthedUser()` hvis resultatet deref'es før en null-guard. Brug helper +
+    # guard (frontend/src/lib/getAuthedUser.js). Opt-out: `getuser-guard-ok`.
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Test getuser guard
+        run: node --test scripts/lint-getuser-guard.test.mjs
+
+      - name: Run getuser guard
+        run: node scripts/lint-getuser-guard.mjs
