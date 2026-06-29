@@ -43,6 +43,22 @@ const TRAINING_ME = {
           focus: "vo2max",
           intensity: "hard",
         },
+        {
+          // #1937: hviledags-rytter MED valgt fokus — må ikke vises som "uden fokus".
+          rider_id: "rider-2",
+          name: "Ming Zhou",
+          score: 0,
+          gains: {},
+          gains_detail: {},
+          status: "neutral",
+          form: 60,
+          fatigue: 30,
+          fatigue_delta: 0,
+          injured: false,
+          injury_days: 0,
+          focus: "endurance",
+          intensity: "rest",
+        },
       ],
     },
   },
@@ -79,4 +95,9 @@ test("training report shows day summary, progress and breakthrough jump", async 
 
   // Roster viser progress-kolonnen mod næste +1 (anticipation).
   await expect(page.getByRole("columnheader", { name: "Næste +1" }).first()).toBeVisible();
+
+  // #1937: en hviledags-rytter MED valgt fokus vises som "Hviledag" i Næste +1,
+  // ikke som "Intet fokus valgt". Fokus-kolonnen viser stadig fokusset.
+  await expect(page.getByText("Hviledag")).toBeVisible();
+  await expect(page.getByText("Intet fokus valgt")).toHaveCount(0);
 });

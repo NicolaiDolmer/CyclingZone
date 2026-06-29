@@ -63,6 +63,20 @@ export const PATCHES = [
           "body": "Rytter-sektionen på hjælp-siden listede stadig de gamle 14 evne-forkortelser (FL, BJ, KB …) oven over de 15 nuværende Cycling Zone-evner, hvilket var forvirrende. Vi har fjernet den forældede liste — hjælp-siden forklarer nu kun de 15 evner spillet faktisk bruger."
         },
         "refs": [1832]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Rest days no longer look like a lost training focus",
+          "body": "In the daily training report, riders on a rest day were shown as \"No focus set\" in the Next +1 column even though a focus was still selected, which made it look like the focus had been lost. Rest days now read \"Rest day\" there, and the focus column keeps showing the chosen focus."
+        },
+        "da": {
+          "title": "Hviledage ligner ikke længere et tabt træningsfokus",
+          "body": "I den daglige træningsrapport blev ryttere på en hviledag vist som \"Intet fokus valgt\" i Næste +1-kolonnen, selvom et fokus stadig var valgt — det fik det til at se ud som om fokusset var gået tabt. Hviledage står nu som \"Hviledag\" der, og fokus-kolonnen viser fortsat det valgte fokus."
+        },
+        "refs": [1937]
       }
     ]
   },
