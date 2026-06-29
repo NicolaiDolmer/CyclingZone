@@ -46,6 +46,7 @@
     "heightCm": "{height} cm",
     "weightKg": "{weight} kg",
     "potential": "Potential",
+    "overall": "Rating",
     "teamPrefix": "Team:",
     "freeAgent": "Free agent",
     "nextSeasonPrefix": "Next season:",

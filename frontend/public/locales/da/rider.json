@@ -53,6 +53,7 @@
     "activeAuctionBadge": "⚡ Aktiv auktion",
     "highestBidLabel": "Højeste bud: {amount} CZ$",
     "valueLabel": "Værdi CZ$",
+    "overall": "Rating",
     "contractSalary": "Løn CZ$",
     "contractLength": "{count, plural, one {1 sæson} other {# sæsoner}}",
     "contractExpires": "Udløber efter sæson {season}",

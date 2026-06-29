@@ -8,7 +8,8 @@ import { getCountryName } from "../lib/countryUtils";
 import { Flag } from "../components/Flag";
 import { formatCz, getRiderMarketValue, getRiderSalary } from "../lib/marketValues.js";
 import { ageBadgeKey } from "../lib/riderAge";
-import { statColor } from "../lib/statColor";
+import { statColor, statTextColor } from "../lib/statColor";
+import { riderOverallRating } from "../lib/riderRating";
 import { formatNumber, formatDate, formatDateTime } from "../lib/intl";
 import { resolveApiError } from "../lib/apiError";
 import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
@@ -118,6 +119,29 @@ function StatRow({ label, icon, value, progressFraction, progressHint }) {
 // Evne-visning v2 (#1122/#1529/#2000): de 15 synlige evner grupperet i kategorier
 // (Physical/Mental/Technical) via den delte SSOT i lib/abilities.js
 // (ABILITY_CATEGORIES + ABILITY_ICONS). hidden_potential er skjult per design.
+
+// "Vurdering"-cirkel (#2000 slice 2 / #2006): rytterens 1-99 overall-rating,
+// farvet efter samme evne-gradient (statColor) som alle andre rating-tal. Tom
+// (—) hvis rating ikke kan beregnes (ingen evner). rating-værdien beregnes af
+// riderOverallRating (type-bevidst, samme blendede output O som værdimodellen).
+function RatingCircle({ rating, label }) {
+  const has = Number.isFinite(rating) && rating > 0;
+  const bg = has ? statColor(rating) : "var(--cz-subtle)";
+  const fg = has ? statTextColor(rating) : undefined;
+  return (
+    <div className="flex flex-col items-center sm:items-end gap-1">
+      <div
+        data-testid="rider-overall-rating"
+        className="flex items-center justify-center rounded-full w-14 h-14 font-mono font-bold text-2xl tabular-nums shadow-sm ring-1 ring-cz-border"
+        style={{ backgroundColor: bg, color: fg }}
+        title={label}
+      >
+        {has ? rating : "—"}
+      </div>
+      <span className="text-cz-3 text-[10px] uppercase tracking-wider">{label}</span>
+    </div>
+  );
+}
 
 // Ét nøgletal (watt/W·kg) i effektprofil-grid'et.
 function PowerStat({ label, value, unit }) {
@@ -1309,6 +1333,13 @@ export default function RiderStatsPage() {
   })();
   const riderValueLabel = formatCz(getRiderMarketValue(rider));
   const riderValueAmount = riderValueLabel.replace(" CZ$", "");
+  // #2006: Overall 1-99-rating. Evnerne ligger på rider.abilities (rå rad fra
+  // rider_derived_abilities) — riderOverallRating læser rider.climbing osv., så
+  // vi fladter abilities ind sammen med den lagrede primary_type (ejer-direktiv:
+  // samme type-model som den viste primær/sekundær-type).
+  const overallRating = rider.abilities
+    ? riderOverallRating({ ...rider.abilities, primary_type: rider.primary_type })
+    : 0;
   // Sæson-totaler fra ALLE rytterens rækker (ikke kun de 20 i resultat-listen),
   // med sejre opdelt pr. type. Se lib/riderSeasonStats.js.
   const bySeason = aggregateRiderSeasons(seasonRows);
@@ -1448,6 +1479,10 @@ export default function RiderStatsPage() {
             )}
           </div>
           <div className="min-w-0 sm:text-right bg-cz-subtle sm:bg-transparent rounded-lg sm:rounded-none px-3 py-2 sm:p-0">
+            {/* #2006: Vurdering-cirkel — 1-99 overall-rating, farvet efter værdi. */}
+            <div className="flex justify-center sm:justify-end mb-3">
+              <RatingCircle rating={overallRating} label={t("header.overall")} />
+            </div>
             <p
               className="block max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-cz-accent-t font-mono font-bold tabular-nums text-lg sm:text-2xl"
               data-testid="rider-value-amount"

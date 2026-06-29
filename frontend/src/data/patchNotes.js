@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.34",
+    "date": "2026-06-29",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Rider rating: a single 1-99 score for how good a rider is",
+          "body": "Every rider now has an overall rating from 1 to 99, shown as a coloured circle on the rider profile and as a sortable column in the rider rankings. The rating blends how strong the rider is at their best type (climber, sprinter, GC, and so on) with their all-round ability, using the same model that drives their displayed type and value, so the three stay consistent. The scale is anchored to the whole rider pool, so the very best riders sit near 99 and the field spreads out below them."
+        },
+        "da": {
+          "title": "Rytter-rating: ét 1-99-tal for hvor god en rytter er",
+          "body": "Hver rytter har nu en samlet rating fra 1 til 99, vist som en farvet cirkel på rytterprofilen og som en sorterbar kolonne i rytter-ranglisten. Ratingen blander hvor stærk rytteren er i sin bedste type (klatrer, spurter, GC og så videre) med hans alsidighed, og bruger samme model som den viste type og værdi, så de tre hænger sammen. Skalaen er ankret mod hele rytterfeltet, så de allerbedste ryttere ligger tæt på 99, og resten spreder sig nedenunder."
+        },
+        "refs": [2006, 2000]
+      }
+    ]
+  },
+  {
     "version": "6.33",
     "date": "2026-06-29",
     "label": "Beta",
