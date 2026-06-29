@@ -11,6 +11,7 @@ import { ageBadgeKey } from "../lib/riderAge";
 import { statColor, statTextColor } from "../lib/statColor";
 import { riderOverallRating } from "../lib/riderRating";
 import { RIDER_TYPE_KEYS } from "../lib/riderTypeKeys.js";
+import { chartColor } from "../lib/chartPalette.js";
 import { formatNumber, formatDate, formatDateTime } from "../lib/intl";
 import { resolveApiError } from "../lib/apiError";
 import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
@@ -62,14 +63,6 @@ async function fetchAllRiderSeasonRows(riderId) {
   }
   return all;
 }
-
-// #2000 Part 2 / #918: distinkte linje-farver pr. ryttertype til Udvikling-fanens
-// type-rating-graf (kategori-palette; Recharts er SVG, så hex er fint). Rækkefølge =
-// RIDER_TYPE_KEYS. Type-labels kommer fra riderTypes-i18n; ratingen fra rating-SSOT.
-const TYPE_COLORS = {
-  sprinter: "#2a78d6", tt: "#1baf7a", climber: "#eda100", puncheur: "#008300",
-  brostensrytter: "#4a3aa7", baroudeur: "#e34948", rouleur: "#e87ba4", gc: "#eb6834",
-};
 
 async function authHeaders() {
   const { data: { session } } = await supabase.auth.getSession();
@@ -1287,9 +1280,10 @@ export default function RiderStatsPage() {
 
   if (!rider) return <div className="text-cz-3 text-center py-16">{t("page.notFound")}</div>;
 
-  // #2000 Part 2 / #918: type-meta (label + linje-farve) til Udvikling-fanens
-  // type-rating-graf. Rækkefølge = RIDER_TYPE_KEYS; rating beregnes i tabben.
-  const developmentTypes = RIDER_TYPE_KEYS.map((key) => ({ key, label: tTypes(`types.${key}`), color: TYPE_COLORS[key] }));
+  // #2000 Part 2 / #918: type-meta (label + token-backet linje-farve fra den delte
+  // chart-palette, ingen raw hex) til Udvikling-fanens type-rating-graf. Rækkefølge =
+  // RIDER_TYPE_KEYS; rating beregnes i tabben.
+  const developmentTypes = RIDER_TYPE_KEYS.map((key, i) => ({ key, label: tTypes(`types.${key}`), color: chartColor(i) }));
   const isMyRider  = rider.team_id === myTeamId;
   const isFreeAgent = !rider.team_id;
   const isBankRider = Boolean(rider.team?.is_bank);
