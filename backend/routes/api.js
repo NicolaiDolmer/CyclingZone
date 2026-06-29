@@ -846,6 +846,26 @@ router.get("/riders/:id/bid-timeline", requireAuth, async (req, res) => {
   }
 });
 
+// GET /api/riders/:id/development — evne-udviklings-historik til Udvikling-fanen (#2000/#918).
+// rider_derived_ability_history er RLS-lukket (service-role-only), så læsning går via
+// dette endpoint. Returnerer per-snapshot evnevektorer kronologisk; type-ratingen pr.
+// ryttertype beregnes i frontend fra abilities (rating-SSOT). limit(200) ≈ ½ sæsons
+// daglige punkter — rigeligt til kurven.
+router.get("/riders/:id/development", requireAuth, async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from("rider_derived_ability_history")
+      .select("snapshot_date, season_number, source, abilities")
+      .eq("rider_id", req.params.id)
+      .order("snapshot_date", { ascending: true })
+      .limit(200);
+    if (error) throw new Error(error.message);
+    res.json(data ?? []);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // RYTTER-HANDLINGER (#1719 fyring/buyout + #1720 kontraktforlængelse)
 // ═══════════════════════════════════════════════════════════════════════════════

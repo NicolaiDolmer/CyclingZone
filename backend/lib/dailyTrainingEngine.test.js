@@ -55,6 +55,10 @@ function createMockSupabase(state, opts = {}) {
         return Promise.resolve({ error: null });
       },
       upsert(rows, upsertOpts = {}) {
+        // Best-effort-test: simulér fejl på historik-upserten (må ikke kaste).
+        if (table === "rider_derived_ability_history" && opts.injectHistoryError) {
+          return Promise.resolve({ error: { message: "history boom" } });
+        }
         state[table] ??= [];
         const conflict = (upsertOpts.onConflict || "").split(",").map((s) => s.trim()).filter(Boolean);
         for (const r of (Array.isArray(rows) ? rows : [rows])) {
@@ -434,4 +438,72 @@ test("rapport-række inkluderer gains_detail med from/to pr. gevinst", async () 
   // Kun evner med gevinst er i gains_detail.
   const positiveGains = Object.keys(rr.gains).filter((k) => rr.gains[k] > 0).length;
   assert.equal(Object.keys(rr.gains_detail).length, positiveGains, "gains_detail dækker netop de positive gevinster");
+});
+
+// ── Test 11: #2000 — gevinst-dag snapshotter den fulde evnevektor til historik ──
+test("ability-history: en tick m. gevinst skriver én daily_training-snapshot m. fuld vektor", async () => {
+  const state = seedState({
+    // climbing-progress 0.999 → ét vo2max/hard-tick tipper climbing +1 (samme trick som Test 10).
+    abilities: [makeAbilityRow("r1", { ability_progress: { climbing: 0.999 } })],
+    plans: [{ rider_id: "r1", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" }],
+  });
+  const supabase = createMockSupabase(state);
+
+  const result = await runTeamTrainingDay({
+    supabase, teamId: TEAM_ID, seasonId: SEASON_ID, seasonNumber: SEASON_NUMBER,
+    executedBy: "manager", now: NOW,
+  });
+
+  const rr = result.report.riders[0];
+  assert.ok(rr.gains.climbing >= 1, "forudsætning: rytteren fik en gevinst");
+
+  const hist = state.rider_derived_ability_history ?? [];
+  assert.equal(hist.length, 1, "præcis én historik-række for den ene rytter m. gevinst");
+  const row = hist[0];
+  assert.equal(row.rider_id, "r1");
+  assert.equal(row.source, "daily_training");
+  assert.equal(row.snapshot_date, "2026-06-12");
+  assert.equal(row.season_number, SEASON_NUMBER);
+  // Fuld 15-evne-vektor, post-tick (climbing = pre 50 + gevinst).
+  for (const k of VISIBLE_ABILITIES) {
+    assert.equal(typeof row.abilities[k], "number", `abilities.${k} er et tal`);
+  }
+  assert.equal(row.abilities.climbing, 50 + rr.gains.climbing, "snapshot = post-tick værdi");
+});
+
+// ── Test 12: #2000 — flad dag (ingen gevinst) giver INGEN historik-række ────────
+test("ability-history: en flad dag (skadet rytter, ingen gevinst) skriver ingen snapshot", async () => {
+  const state = seedState({
+    conditions: [makeCondition("r1", { injured_until: "2026-06-20" })], // skadet → no gains
+    plans: [{ rider_id: "r1", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" }],
+  });
+  const supabase = createMockSupabase(state);
+
+  await runTeamTrainingDay({
+    supabase, teamId: TEAM_ID, seasonId: SEASON_ID, seasonNumber: SEASON_NUMBER,
+    executedBy: "manager", now: NOW,
+  });
+
+  assert.equal((state.rider_derived_ability_history ?? []).length, 0, "ingen historik på en flad dag");
+});
+
+// ── Test 13: #2000 — historik-fejl er best-effort (kaster ikke, dagen committer) ─
+test("ability-history: en upsert-fejl kaster ikke — træningsdagen committes alligevel", async () => {
+  const state = seedState({
+    abilities: [makeAbilityRow("r1", { ability_progress: { climbing: 0.999 } })],
+    plans: [{ rider_id: "r1", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" }],
+  });
+  const supabase = createMockSupabase(state, { injectHistoryError: true });
+
+  const result = await runTeamTrainingDay({
+    supabase, teamId: TEAM_ID, seasonId: SEASON_ID, seasonNumber: SEASON_NUMBER,
+    executedBy: "manager", now: NOW,
+  });
+
+  // Trænings-dagen er committet trods historik-fejlen (best-effort).
+  assert.equal(result.alreadyRan, false);
+  assert.ok(result.report, "rapport returneret trods historik-fejl");
+  const runRow = state.training_day_runs.find((r) => r.team_id === TEAM_ID);
+  assert.ok(runRow?.report?.tick_date, "training_day_runs committet");
+  assert.equal((state.rider_derived_ability_history ?? []).length, 0, "historik ikke skrevet (fejlen blev slugt)");
 });
