@@ -9,6 +9,7 @@ import { Flag } from "../components/Flag";
 import { formatCz, getRiderMarketValue, getRiderSalary } from "../lib/marketValues.js";
 import { ageBadgeKey } from "../lib/riderAge";
 import { statColor } from "../lib/statColor";
+import { topAbilityKey } from "../lib/abilities.js";
 import { formatNumber, formatDate, formatDateTime } from "../lib/intl";
 import { resolveApiError } from "../lib/apiError";
 import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
@@ -1026,11 +1027,12 @@ export default function RiderStatsPage() {
       // #1162: eksplicit kolonneliste — `select=*` på riders afvises efter
       // column-privilege-migrationen (potentiale er server-skjult; klienter får
       // kun det maskerede estimat via POST /api/scouting/estimates).
+      // #2000: PCM stat_* droppet fra denne select — typeLabel afleder nu af de
+      // udledte evner (rider_derived_abilities, hentet nedenfor). Ingen andre
+      // visnings-flader på rytterprofilen læser riders.stat_* længere.
       supabase.from("riders").select(`id, pcm_id, firstname, lastname, birthdate, height, weight,
         market_value, base_value, prize_earnings_bonus, salary, contract_length, contract_end_season, is_u25, is_retired, pending_team_id,
         nationality_code, primary_type, secondary_type, team_id, acquired_at,
-        stat_fl, stat_bj, stat_kb, stat_bk, stat_tt, stat_prl, stat_bro, stat_sp,
-        stat_acc, stat_ned, stat_udh, stat_mod, stat_res, stat_ftr,
         team:team_id(id, name, is_ai, is_bank),
         pending_team:pending_team_id(id, name)`).eq("id", id).single(),
       // Seneste 20 til "Løbsresultater"-listen (visning).
@@ -1290,7 +1292,8 @@ export default function RiderStatsPage() {
 
   if (!rider) return <div className="text-cz-3 text-center py-16">{t("page.notFound")}</div>;
 
-  // Lokaliserede skill-labels — bruges til typeLabel + StatRow rendering.
+  // Lokaliserede PCM-skill-labels — bruges KUN af Development-tabben (rider_stat_history
+  // er stadig PCM-baseret; per-evne-historik afventer backend-arbejde, #2000 Part 2).
   const localizedSkills = buildSkillsLocalized(t);
   const isMyRider  = rider.team_id === myTeamId;
   const isFreeAgent = !rider.team_id;
@@ -1312,10 +1315,11 @@ export default function RiderStatsPage() {
   const age = rider.birthdate
     ? new Date().getFullYear() - new Date(rider.birthdate).getFullYear()
     : null;
+  // #2000: type-label-fallbacken (vist når primary_type mangler) afledes nu af de
+  // udledte CZ-evner via abilities.js-SSOT'en — ikke længere af PCM stat_*-kolonner.
   const typeLabel = (() => {
-    const vals = localizedSkills.map(s => rider[s.key] || 0);
-    const max = Math.max(...vals);
-    return localizedSkills[vals.indexOf(max)]?.label || t("header.typeDefault");
+    const key = topAbilityKey(rider.abilities);
+    return key ? t(`racePreview.derived.${key}`) : t("header.typeDefault");
   })();
   const riderValueLabel = formatCz(getRiderMarketValue(rider));
   const riderValueAmount = riderValueLabel.replace(" CZ$", "");
