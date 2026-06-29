@@ -72,17 +72,25 @@ test("trup-fordeling-board viser overlappende løb + låst rytter i puljen", asy
   const board = page.getByTestId("race-hub-board");
   await expect(board).toBeVisible();
 
-  // Begge overlappende løb vises som kolonner.
-  await expect(board.getByText("Hamburger Klassiker")).toBeVisible();
-  await expect(board.getByText("La Corsa dei Due Mari")).toBeVisible();
+  // Begge overlappende løb vises som kolonner. (#1984: race-navnet optræder nu også i
+  // pulje-chip'ens inline lås-grund, så vi peger entydigt på kolonne-headeren = link.)
+  await expect(board.getByRole("link", { name: "Hamburger Klassiker" })).toBeVisible();
+  await expect(board.getByRole("link", { name: "La Corsa dei Due Mari" })).toBeVisible();
 
   // Underbemandet-status på race-b (0/8).
   await expect(board.getByText(/0 \/ 8/)).toBeVisible();
 
-  // r0 er udtaget til race-a → låst (disabled) i puljen. Pulje-chip'en bærer
-  // bound-title; kolonne-knappen for samme rytter gør ikke (entydig selector).
+  // r0 er udtaget til race-a → låst i puljen. Pulje-chip'en bærer bound-title;
+  // kolonne-knappen for samme rytter gør ikke (entydig selector).
+  // #1984: chip'en er nu KLIKBAR (popoveren forklarer hvorfor) men markeret som låst
+  // via bound-title + en inline lås-grund ("kører <løb>").
   const lockedChip = board.locator("button[title]").filter({ hasText: "Rider 0" });
-  await expect(lockedChip).toBeDisabled();
+  await expect(lockedChip).toBeEnabled();
+  await expect(lockedChip).toHaveAttribute("title", /Hamburger Klassiker/);
+
+  // #1984/C: klik den låste chip → popoveren viser HVORFOR (optaget i overlappende løb).
+  await lockedChip.click();
+  await expect(board.getByText("Optaget i overlappende løb")).toBeVisible();
 
   // En ledig rytter (ikke udtaget nogen steder) er klikbar i puljen.
   await expect(board.getByRole("button", { name: /Rider 5/ })).toBeEnabled();

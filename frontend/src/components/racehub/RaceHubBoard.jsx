@@ -13,7 +13,7 @@ import ContextBand from "./ContextBand.jsx";
 import RaceColumn from "./RaceColumn.jsx";
 import AvailableRidersPool from "./AvailableRidersPool.jsx";
 import DivisionStartLists from "./DivisionStartLists.jsx";
-import { draftBindingMap } from "../../lib/raceHubLogic.js";
+import { draftBindingMap, findSelectionOverlaps } from "../../lib/raceHubLogic.js";
 import { decodeDrag, dropAction } from "../../lib/raceHubDnd.js";
 import { Spinner, EmptyState, FlagIcon, Button } from "../ui";
 
@@ -170,6 +170,20 @@ export default function RaceHubBoard() {
       const res = await fetch(`${API}/api/races/${col.id}/selection`, { method: "PUT", headers, body: JSON.stringify(body) });
       if (res && !res.ok) {
         const b = await res.json().catch(() => ({}));
+        // #1983/#1984: backend's overlap-afvisning er opak ("en rytter kører et overlappende løb").
+        // Den NAVNGIVES her — rytter + det konkrete overlappende løb — udledt af kladden + bound_rider_ids.
+        if (b.error === "selection_rider_bound") {
+          const draftCols = columns.map((c) => ({ ...c, selection: { rider_ids: draftOf(c).rider_ids } }));
+          const overlaps = findSelectionOverlaps({ columns: draftCols });
+          const boundIds = new Set(b.bound_rider_ids || []);
+          const conf = overlaps.find((o) => boundIds.has(o.riderId)) || overlaps[0];
+          if (conf) {
+            const riderName = roster.find((r) => r.id === conf.riderId)?.name || "—";
+            const otherName = conf.raceIds[0] === col.id ? conf.raceNames[1] : conf.raceNames[0];
+            setError({ code: "selection_rider_bound_named", params: { rider: riderName, race: otherName } });
+            return false;
+          }
+        }
         setError({ code: b.error || "generic", params: { min: col.size?.min, max: col.size?.max } });
         return false;
       }

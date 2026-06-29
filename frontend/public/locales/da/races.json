@@ -11,7 +11,7 @@
     "status": { "full": "{selected} / {target} valgt", "understaffed": "{selected} / {target} · underbemandet", "overfull": "{selected} / {target} · for mange", "withdrawn": "Afmeldt", "locked": "Trup låst" },
     "pool": { "title": "Ledige ryttere · {count}-trup", "autofill": "Auto-udfyld", "fillMissing": "Udfyld manglende", "fillAll": "Genopbyg alt", "bound": "Kører allerede et overlappende løb" },
     "column": { "add": "Tilføj fra ledige", "withdraw": "Afmeld", "reenter": "Deltag igen", "remove": "Fjern rytter" },
-    "popover": { "title": "Tilføj til hvilket løb?", "none": "Intet løb tilgængeligt for denne rytter i dag", "understaffed": "mangler ryttere" },
+    "popover": { "title": "Tilføj til hvilket løb?", "none": "Intet løb tilgængeligt for denne rytter i dag", "understaffed": "mangler ryttere", "availableGroup": "Ledig til", "blockedGroup": "Optaget i overlappende løb", "blockedReason": "Overlapper {race}" },
     "role": { "hint": "Tryk på en rytter for at sætte kaptajn eller rolle", "captain": "Kaptajn", "sprintCaptain": "Sprint-kaptajn", "hunter": "Udbrudsjæger", "rider": "Kun rytter" },
     "roleCard": {
       "heading": "Taktik",
@@ -274,6 +274,7 @@
       "selection_race_not_open": "Udtagelsen er lukket for dette løb.",
       "selection_race_started": "Løbet er gået i gang, så truppen er låst.",
       "selection_rider_bound": "Rytteren kører allerede et overlappende løb.",
+      "selection_rider_bound_named": "{rider} kører allerede {race}, som overlapper. Fjern ham der, eller vælg en anden rytter.",
       "selection_flag_disabled": "Holdudtagelse er ikke aktiv endnu.",
       "selection_invalid_body": "Udtagelsen kunne ikke gemmes. Prøv igen.",
       "selection_wrong_pool": "Du kan kun deltage i løb i din egen division.",
