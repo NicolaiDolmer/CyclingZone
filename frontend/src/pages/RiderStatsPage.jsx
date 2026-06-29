@@ -126,7 +126,7 @@ function StatRow({ label, icon, value, progressFraction, progressHint }) {
 // riderOverallRating (type-bevidst, samme blendede output O som værdimodellen).
 function RatingCircle({ rating, label }) {
   const has = Number.isFinite(rating) && rating > 0;
-  const bg = has ? statColor(rating) : "var(--cz-subtle, #2a2c36)";
+  const bg = has ? statColor(rating) : "var(--cz-subtle)";
   const fg = has ? statTextColor(rating) : undefined;
   return (
     <div className="flex flex-col items-center sm:items-end gap-1">

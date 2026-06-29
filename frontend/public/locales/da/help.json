@@ -898,7 +898,7 @@
     },
     "riderRating": {
       "q": "Hvad betyder en rytters samlede rating?",
-      "a": "Ratingen er ét 1-99-tal for hvor god en rytter er, vist som en farvet cirkel på rytterprofilen og som en sorterbar kolonne i rytter-ranglisten. Den blander to ting ligeligt: hvor stærk rytteren er i sin bedste type (klatrer, spurter, GC og så videre) og hans alsidighed på tværs af alle evner. Den bruger samme model som rytterens viste type og markedsværdi, så de tre altid hænger sammen. Skalaen er ankret mod hele rytterfeltet i stedet for mod et fast maksimum, så de allerbedste ryttere ligger tæt på 99, og resten af feltet spreder sig nedenunder. Ratingen afspejler kun nuværende evne — den er ikke potentiale, og den medregner ikke form, træthed eller hvor godt rytteren passer til et bestemt løb."
+      "a": "Ratingen er ét 1-99-tal for hvor god en rytter er, vist som en farvet cirkel på rytterprofilen og som en sorterbar kolonne i rytter-ranglisten. Den blander to ting ligeligt: hvor stærk rytteren er i sin bedste type (klatrer, spurter, GC og så videre) og hans alsidighed på tværs af alle evner. Den bruger samme model som rytterens viste type og markedsværdi, så de tre altid hænger sammen. Skalaen er ankret mod hele rytterfeltet i stedet for mod et fast maksimum, så de allerbedste ryttere ligger tæt på 99, og resten af feltet spreder sig nedenunder. Ratingen afspejler kun nuværende evne. Den er ikke potentiale, og den medregner ikke form, træthed eller hvor godt rytteren passer til et bestemt løb."
     }
   }
 }

@@ -898,7 +898,7 @@
     },
     "riderRating": {
       "q": "What does a rider's overall rating mean?",
-      "a": "The rating is a single 1-99 score for how good a rider is, shown as a coloured circle on the rider profile and as a sortable column in the rider rankings. It blends two things equally: how strong the rider is at their best type (climber, sprinter, GC and so on) and their all-round ability across all skills. It uses the same model that decides the rider's displayed type and market value, so the three always agree. The scale is anchored to the whole rider pool rather than to a fixed maximum, so the very best riders sit near 99 and the rest of the field spreads out below them. The rating reflects current ability only — it is not potential, and it does not include form, fatigue or how well the rider suits a specific race."
+      "a": "The rating is a single 1-99 score for how good a rider is, shown as a coloured circle on the rider profile and as a sortable column in the rider rankings. It blends two things equally: how strong the rider is at their best type (climber, sprinter, GC and so on) and their all-round ability across all skills. It uses the same model that decides the rider's displayed type and market value, so the three always agree. The scale is anchored to the whole rider pool rather than to a fixed maximum, so the very best riders sit near 99 and the rest of the field spreads out below them. The rating reflects current ability only. It is not potential, and it does not include form, fatigue or how well the rider suits a specific race."
     }
   }
 }
