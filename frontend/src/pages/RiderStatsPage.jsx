@@ -912,6 +912,9 @@ export default function RiderStatsPage() {
     // (rider_derived_ability_history) via backend-endpoint — erstatter den døde
     // PCM rider_stat_history-feed. Type-ratingen pr. ryttertype beregnes i
     // RiderDevelopmentTab via rating-SSOT'en (riderRating.js).
+    // Ryd up-front (CodeRabbit #2015) så et rytter-skift ALDRIG viser forrige rytters
+    // kurve, og en non-ok-respons efterlader ikke stale data.
+    setStatHistory([]);
     try {
       const h = await authHeaders();
       const res = await fetch(`${API}/api/riders/${id}/development`, { headers: h });
