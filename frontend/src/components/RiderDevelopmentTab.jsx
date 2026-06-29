@@ -9,7 +9,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { formatDate } from "../lib/intl";
+import { formatDate } from "../lib/intl.js";
 import { riderTypeRating } from "../lib/riderRating.js";
 
 // #2000 Part 2 / #918: Udvikling-fanen viser nu udviklingen i rytterens OVERALL-
