@@ -251,6 +251,10 @@
     "save": "Save selection",
     "saving": "Saving…",
     "saved": "Selection saved.",
+    "wrongPool": {
+      "title": "This race is in another division",
+      "note": "You can only enter races in your own division, so there's no line-up to set here."
+    },
     "errors": {
       "selection_wrong_size": "You can pick at most {max} riders.",
       "selection_insufficient_riders": "You don't have enough available riders for a full team. Withdraw from this race or sign free agents.",

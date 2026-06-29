@@ -77,6 +77,18 @@ export default function RaceSelectionPanel({
   // Flag OFF eller løbet ikke længere åbent → intet panel.
   if (!data?.enabled || data.race?.status !== "scheduled") return null;
 
+  // #1954: løbet hører til en anden pulje/division end spillerens egen. Backend
+  // afviser alligevel et gem (409 selection_wrong_pool), så vis en tydelig read-only
+  // forklaring i stedet for et fuldt udtageligt panel der først fejler ved gem.
+  if (data.eligible === false) {
+    return (
+      <section data-testid="race-selection-wrong-pool" className="bg-cz-card border border-cz-border rounded-cz px-4 py-3">
+        <p className="text-sm font-semibold text-cz-1">{t("selection.wrongPool.title")}</p>
+        <p className="text-xs text-cz-3 mt-0.5">{t("selection.wrongPool.note")}</p>
+      </section>
+    );
+  }
+
   const { size, riders, availableCount } = data;
   const clientErrors = validateSelectionClient({ ...sel, size, availableCount });
   const selectedRiders = riders.filter((r) => sel.riderIds.includes(r.id));
