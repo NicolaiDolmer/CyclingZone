@@ -78,7 +78,12 @@
   "stats": {
     "potentialRow": "Potentiale",
     "abilitiesPending": "Evner endnu ikke beregnet",
-    "loadingDevelopment": "Indlæser udvikling..."
+    "loadingDevelopment": "Indlæser udvikling...",
+    "categories": {
+      "physical": "Fysiske",
+      "mental": "Mentale",
+      "technical": "Tekniske"
+    }
   },
   "racePreview": {
     "title": "Cycling Zones",
