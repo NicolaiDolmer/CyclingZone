@@ -208,9 +208,11 @@
   },
   "development": {
     "progressHint": "Progress toward next point",
-    "empty": "No history yet. Data accumulates from the next weekly sync",
-    "statsTitle": "Skill development",
-    "statsSubtitle": "Pick a skill and see how it changes over time",
+    "empty": "No history yet. Ratings build up as the rider trains and seasons progress.",
+    "statsTitle": "Rider-type rating over time",
+    "statsSubtitle": "How the rider's overall rating develops in each rider type. Click a type to toggle it.",
+    "filterAll": "All types",
+    "filterNone": "None",
     "recentTitle": "Latest data points",
     "table": {
       "date": "Date"

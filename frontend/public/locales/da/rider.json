@@ -208,9 +208,11 @@
   },
   "development": {
     "progressHint": "Fremskridt mod næste point",
-    "empty": "Ingen historik endnu. Data akkumuleres fra næste ugentlige sync",
-    "statsTitle": "Stats-udvikling",
-    "statsSubtitle": "Vælg evne og se ændringen over tid",
+    "empty": "Ingen historik endnu. Ratings bygges op efterhånden som rytteren træner og sæsoner går.",
+    "statsTitle": "Ryttertype-rating over tid",
+    "statsSubtitle": "Hvordan rytterens overall-rating udvikler sig i hver ryttertype. Klik en type for at slå den til/fra.",
+    "filterAll": "Alle typer",
+    "filterNone": "Ingen",
     "recentTitle": "Seneste datapunkter",
     "table": {
       "date": "Dato"

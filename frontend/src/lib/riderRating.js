@@ -120,15 +120,24 @@ export function riderBlendedOutput(rider = {}, primaryType = rider?.primary_type
     + (1 - RATING_ALPHA) * meanAbility(rider);
 }
 
-// Overall 1-99-rating. Bruger rytterens STORED primary_type (ejer-direktiv:
-// samme model som den viste type). Rytter-objektet skal have evnerne fladet op
-// (rider.climbing osv.) via flattenAbilities(). Ingen brugbare evner → 0
-// (sorterer nederst som riderStatRating). Ellers lineær map O_MIN→1, O_ELITE→99,
-// klampet [1,99] og afrundet.
-export function riderOverallRating(rider = {}) {
+// Per-type 1-99-rating (#2000 Part 2 / #918): "hvor højt ville rytteren rates SOM
+// `typeKey`". SAMME model + ankre som overall-ratingen, men for en VILKÅRLIG type
+// i stedet for rytterens stored primary_type — så Udvikling-fanen kan tegne én
+// linje pr. ryttertype. Forbruger riderBlendedOutput + RATING_O_MIN/ELITE → ingen
+// ny rating-formel (ÉN overall-vurdering i appen, ejer-krav). Lineær map O_MIN→1,
+// O_ELITE→99, klampet [1,99] og afrundet. Ingen brugbare evner → 0.
+export function riderTypeRating(rider = {}, typeKey = null) {
   const hasAny = RATING_ABILITY_KEYS.some((k) => Number.isFinite(Number(rider?.[k])));
   if (!hasAny) return 0;
-  const o = riderBlendedOutput(rider, rider?.primary_type ?? null);
+  const o = riderBlendedOutput(rider, typeKey);
   const scaled = 1 + 98 * (o - RATING_O_MIN) / (RATING_O_ELITE - RATING_O_MIN);
   return Math.round(Math.max(1, Math.min(99, scaled)));
+}
+
+// Overall 1-99-rating = rating for rytterens STORED primary_type (ejer-direktiv:
+// samme model som den viste type). Rytter-objektet skal have evnerne fladet op
+// (rider.climbing osv.) via flattenAbilities(). Ingen brugbare evner → 0
+// (sorterer nederst som riderStatRating).
+export function riderOverallRating(rider = {}) {
+  return riderTypeRating(rider, rider?.primary_type ?? null);
 }

@@ -10,6 +10,7 @@ import { formatCz, getRiderMarketValue, getRiderSalary } from "../lib/marketValu
 import { ageBadgeKey } from "../lib/riderAge";
 import { statColor, statTextColor } from "../lib/statColor";
 import { riderOverallRating } from "../lib/riderRating";
+import { RIDER_TYPE_KEYS } from "../lib/riderTypeKeys.js";
 import { formatNumber, formatDate, formatDateTime } from "../lib/intl";
 import { resolveApiError } from "../lib/apiError";
 import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
@@ -62,29 +63,13 @@ async function fetchAllRiderSeasonRows(riderId) {
   return all;
 }
 
-// Skill-rows konstanteres med en stabil i18n-`slug` der mapper til `rider.skills.<slug>.short/long`.
-// `key` er DB-kolonnen (stat_fl ...), `icon` er ASCII/unicode-symbolet vi viser foran labelen.
-// Holder samme rækkefølge som tidligere så typeLabel-arithmetic ikke ændres.
-const STATS = [
-  { key: "stat_fl",  slug: "fl",  icon: "═" },
-  { key: "stat_bj",  slug: "bj",  icon: "▲" },
-  { key: "stat_kb",  slug: "kb",  icon: "△" },
-  { key: "stat_bk",  slug: "bk",  icon: "∧" },
-  { key: "stat_tt",  slug: "tt",  icon: "◴" },
-  { key: "stat_prl", slug: "prl", icon: "◷" },
-  { key: "stat_bro", slug: "bro", icon: "⬡" },
-  { key: "stat_sp",  slug: "sp",  icon: "↯" },
-  { key: "stat_acc", slug: "acc", icon: "▷" },
-  { key: "stat_ned", slug: "ned", icon: "↓" },
-  { key: "stat_udh", slug: "udh", icon: "◎" },
-  { key: "stat_mod", slug: "mod", icon: "◈" },
-  { key: "stat_res", slug: "res", icon: "↺" },
-  { key: "stat_ftr", slug: "ftr", icon: "★" },
-];
-
-function buildSkillsLocalized(t) {
-  return STATS.map(s => ({ ...s, label: t(`skills.${s.slug}.long`) }));
-}
+// #2000 Part 2 / #918: distinkte linje-farver pr. ryttertype til Udvikling-fanens
+// type-rating-graf (kategori-palette; Recharts er SVG, så hex er fint). Rækkefølge =
+// RIDER_TYPE_KEYS. Type-labels kommer fra riderTypes-i18n; ratingen fra rating-SSOT.
+const TYPE_COLORS = {
+  sprinter: "#2a78d6", tt: "#1baf7a", climber: "#eda100", puncheur: "#008300",
+  brostensrytter: "#4a3aa7", baroudeur: "#e34948", rouleur: "#e87ba4", gc: "#eb6834",
+};
 
 async function authHeaders() {
   const { data: { session } } = await supabase.auth.getSession();
@@ -825,6 +810,7 @@ export default function RiderStatsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { t, i18n } = useTranslation("rider");
+  const { t: tTypes } = useTranslation("riderTypes");
 
   const scouting = useScouting();
   const training = useTraining();
@@ -929,16 +915,15 @@ export default function RiderStatsPage() {
   }
 
   async function loadDevelopmentHistory() {
-    // #1101 cutover: rider_uci_history hentes ikke længere — uci_points er
-    // afkoblet og vises ikke player-facing. Kun stats-udvikling vises.
-    const statColumns = STATS.map(s => s.key).join(", ");
-    const { data } = await supabase.from("rider_stat_history")
-      .select(`synced_at, ${statColumns}`)
-      .eq("rider_id", id)
-      .order("synced_at", { ascending: true })
-      .limit(52);
-
-    setStatHistory(data || []);
+    // #2000 Part 2 / #918: evnevektor-snapshots fra det RLS-lukkede datalag
+    // (rider_derived_ability_history) via backend-endpoint — erstatter den døde
+    // PCM rider_stat_history-feed. Type-ratingen pr. ryttertype beregnes i
+    // RiderDevelopmentTab via rating-SSOT'en (riderRating.js).
+    try {
+      const h = await authHeaders();
+      const res = await fetch(`${API}/api/riders/${id}/development`, { headers: h });
+      if (res.ok) setStatHistory(await res.json());
+    } catch { /* non-critical: Udvikling-tabben falder tilbage til empty-state */ }
   }
 
   async function loadMyTeam() {
@@ -1302,9 +1287,9 @@ export default function RiderStatsPage() {
 
   if (!rider) return <div className="text-cz-3 text-center py-16">{t("page.notFound")}</div>;
 
-  // Lokaliserede PCM-skill-labels — bruges KUN af Development-tabben (rider_stat_history
-  // er stadig PCM-baseret; per-evne-historik afventer backend-arbejde, #2000 Part 2).
-  const localizedSkills = buildSkillsLocalized(t);
+  // #2000 Part 2 / #918: type-meta (label + linje-farve) til Udvikling-fanens
+  // type-rating-graf. Rækkefølge = RIDER_TYPE_KEYS; rating beregnes i tabben.
+  const developmentTypes = RIDER_TYPE_KEYS.map((key) => ({ key, label: tTypes(`types.${key}`), color: TYPE_COLORS[key] }));
   const isMyRider  = rider.team_id === myTeamId;
   const isFreeAgent = !rider.team_id;
   const isBankRider = Boolean(rider.team?.is_bank);
@@ -1713,7 +1698,7 @@ export default function RiderStatsPage() {
         <Suspense fallback={<div className="bg-cz-card border border-cz-border rounded-cz p-5 text-cz-3 text-center py-8">{t("stats.loadingDevelopment")}</div>}>
           {isMyRider && !isRetired && <TrainingFocus rider={rider} training={training} />}
           {isMyRider && <RiderTrainingHistory riderId={rider.id} history={trainingHistory} />}
-          <RiderDevelopmentTab statHistory={statHistory} stats={localizedSkills} />
+          <RiderDevelopmentTab history={statHistory} types={developmentTypes} />
         </Suspense>
       )}
     </div>
