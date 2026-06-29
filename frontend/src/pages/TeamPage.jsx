@@ -20,6 +20,7 @@ import { useScouting } from "../lib/useScouting";
 import { scoutSortValue } from "../lib/scouting";
 import TeamTransferHistoryTab from "../components/TeamTransferHistoryTab";
 import { resolveApiError } from "../lib/apiError";
+import { fetchRiderQuote, postRiderContractAction } from "../lib/riderContractActions.js";
 import SortTh from "../components/rider/RiderSortTh";
 import { cycleSortState } from "../lib/riderSort";
 import { Card, Button, Input, BikeIcon, PageLoader } from "../components/ui";
@@ -62,16 +63,14 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, 
     let cancelled = false;
     async function fetchQuote(path, setter, errKey) {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/riders/${rider.id}/${path}`, {
-          headers: { Authorization: `Bearer ${session.access_token}` },
-        });
+        // #2007: delt fetch-helper (riderContractActions.js) — samme implementering
+        // som rytter-profilens RiderManageActions, ingen dobbelt token-/fetch-kode.
+        const { ok, data } = await fetchRiderQuote(rider.id, path);
         if (cancelled) return;
-        if (res.ok) {
-          setter(await res.json());
+        if (ok) {
+          setter(data);
         } else {
           // #1779: vis fejl-årsagen (fx akademirytter) i stedet for evig "indlæser…".
-          const data = await res.json().catch(() => ({}));
           setQuoteError(prev => ({ ...prev, [errKey]: resolveApiError(data, t, t("auth:error.connectionFailed")) }));
         }
       } catch {
@@ -88,14 +87,9 @@ function RiderActionModal({ rider, team, scouting, onClose, onAction, onDemote, 
   async function postRiderAction(path, successKey) {
     setLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/riders/${rider.id}/${path}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-        body: JSON.stringify({}),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok) { setMsgOk(true); setMsg(t(successKey)); setTimeout(() => { onAction(); onClose(); }, 1500); }
+      // #2007: delt body-løs POST-helper (riderContractActions.js).
+      const { ok, data } = await postRiderContractAction(rider.id, path);
+      if (ok) { setMsgOk(true); setMsg(t(successKey)); setTimeout(() => { onAction(); onClose(); }, 1500); }
       else { setMsgOk(false); setMsg(`${t("actionModal.errorPrefix")}${resolveApiError(data, t)}`); }
     } catch {
       setMsgOk(false); setMsg(t("auth:error.connectionFailed"));

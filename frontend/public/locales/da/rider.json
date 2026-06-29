@@ -376,6 +376,42 @@
       "errorPrefix": "❌"
     }
   },
+  "manage": {
+    "extend": {
+      "button": "Forlæng kontrakt",
+      "description": "Forlæng rytterens kontrakt med én sæson til en genforhandlet løn.",
+      "currentSalary": "Nuværende løn",
+      "newSalary": "Ny løn",
+      "newContract": "Ny kontrakt",
+      "newContractValue": "Til og med sæson {season}",
+      "confirm": "Bekræft forlængelse",
+      "success": "Kontrakt forlænget.",
+      "errorPrefix": "Kunne ikke forlænge:"
+    },
+    "release": {
+      "button": "Fyr rytter",
+      "description": "Afslut rytterens kontrakt. Rytteren forlader din trup og bliver fri agent.",
+      "fee": "Buyout-gebyr",
+      "balance": "Din saldo",
+      "feeHint": "Buyout-gebyret er halvdelen af den resterende løn på kontrakten.",
+      "freeHint": "Rytteren er uden kontrakt, så der er intet buyout-gebyr.",
+      "cannotAfford": "Du har ikke råd til buyout-gebyret.",
+      "confirm": "Fyr rytter",
+      "cancel": "Annullér",
+      "success": "Rytter fyret.",
+      "errorPrefix": "Kunne ikke fyre:"
+    },
+    "promote": {
+      "button": "Ryk op i senior-truppen",
+      "success": "Rytter rykket op i din senior-trup.",
+      "errorPrefix": "Kunne ikke rykke op:"
+    },
+    "demote": {
+      "button": "Flyt til akademi",
+      "success": "Rytter flyttet til dit akademi.",
+      "errorPrefix": "Kunne ikke flytte rytter:"
+    }
+  },
   "swapOffer": {
     "buttonOpen": "⇄ Foreslå byttehandel",
     "selectRider": "Vælg rytter du tilbyder",
