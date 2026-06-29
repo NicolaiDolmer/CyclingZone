@@ -58,7 +58,6 @@
     "contractExpires": "Expires after season {season}",
     "noContract": "Free agent (no contract)",
     "estSalary": "Est. salary CZ$",
-    "bestStat": "Best: {label} ({value})",
     "typeDefault": "All-rounder",
     "newValueBeta": "New value (beta): {amount} CZ$",
     "newValueBetaTooltip": "Preview of the upcoming ability-based valuation. Not yet used for buying, selling or salary."

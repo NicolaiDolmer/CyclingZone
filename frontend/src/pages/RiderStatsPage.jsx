@@ -61,7 +61,7 @@ async function fetchAllRiderSeasonRows(riderId) {
 
 // Skill-rows konstanteres med en stabil i18n-`slug` der mapper til `rider.skills.<slug>.short/long`.
 // `key` er DB-kolonnen (stat_fl ...), `icon` er ASCII/unicode-symbolet vi viser foran labelen.
-// Holder samme rækkefølge som tidligere så bestStat/typeLabel-arithmetic ikke ændres.
+// Holder samme rækkefølge som tidligere så typeLabel-arithmetic ikke ændres.
 const STATS = [
   { key: "stat_fl",  slug: "fl",  icon: "═" },
   { key: "stat_bj",  slug: "bj",  icon: "▲" },
@@ -1287,9 +1287,8 @@ export default function RiderStatsPage() {
 
   if (!rider) return <div className="text-cz-3 text-center py-16">{t("page.notFound")}</div>;
 
-  // Lokaliserede skill-labels — bruges til bestStat/typeLabel + StatRow rendering.
+  // Lokaliserede skill-labels — bruges til typeLabel + StatRow rendering.
   const localizedSkills = buildSkillsLocalized(t);
-  const bestStat = localizedSkills.map(s => ({ ...s, val: rider[s.key] || 0 })).sort((a, b) => b.val - a.val)[0];
   const isMyRider  = rider.team_id === myTeamId;
   const isFreeAgent = !rider.team_id;
   const isBankRider = Boolean(rider.team?.is_bank);
@@ -1472,7 +1471,8 @@ export default function RiderStatsPage() {
                 </span>
               </p>
             )}
-            {bestStat && <p className="text-cz-2 text-xs mt-2">{t("header.bestStat", { label: bestStat.label, value: rider[bestStat.key] })}</p>}
+            {/* #1781: "bedste evne"-feltet fjernet — stammede fra gamle PCM-stats (stat_*),
+                ikke de nye CZ-evner. Bevidst ingen erstatning (undgå overfyldt side). */}
             {/* #1309: kontrakt-info */}
             <div className="mt-2 pt-2 border-t border-cz-border/50">
               {rider.contract_length != null ? (
@@ -1559,7 +1559,7 @@ export default function RiderStatsPage() {
               </div>
             )}
             {/* #1529: de 15 CZ-evner er nu den primære stat-visning (var PCM stat_*).
-                PCM beholdes kun internt til bestStat/typeLabel-afledningen. */}
+                PCM beholdes kun internt til typeLabel-afledningen. */}
             {rider.abilities
               ? DERIVED_ABILITIES.map((a) => {
                   const frac = isMyRider ? training.progress?.[rider.id]?.[a.key] : undefined;
