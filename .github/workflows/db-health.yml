@@ -1,0 +1,84 @@
+name: DB Health
+
+# Ugentligt disk-IO / performance-helbredstjek mod prod-DB.
+# scripts/db-health.sql returnerer kun tærskel-brud; ikke-tomt output →
+# opretter (eller kommenterer på) et GitHub-issue med label claude:todo.
+# Genbruger SUPABASE_DB_URL-secret (samme som auto-migrate.yml).
+# Baggrund: 2026-06-29 disk-IO-budget-drain (temp-spills + write-amplification).
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'   # mandag 06:00 UTC
+  workflow_dispatch:
+
+concurrency:
+  group: db-health
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Verify SUPABASE_DB_URL is configured
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          if [ -z "${DB_URL:-}" ]; then
+            echo "❌ SUPABASE_DB_URL secret missing — see docs/AUTO_MIGRATION_SETUP.md"
+            exit 1
+          fi
+
+      - name: Run db-health checks
+        id: check
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          set -euo pipefail
+          FINDINGS=$(psql "$DB_URL" -tA -F '|' -v ON_ERROR_STOP=1 -f scripts/db-health.sql | sed '/^$/d')
+          if [ -z "$FINDINGS" ]; then
+            echo "✅ DB health OK — ingen tærskel-brud."
+            echo "has_findings=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "⚠️ Fund:"
+            printf '%s\n' "$FINDINGS"
+            echo "has_findings=true" >> "$GITHUB_OUTPUT"
+            {
+              echo "findings<<DBHEALTH_EOF"
+              printf '%s\n' "$FINDINGS"
+              echo "DBHEALTH_EOF"
+            } >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open or update issue on findings
+        if: steps.check.outputs.has_findings == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FINDINGS: ${{ steps.check.outputs.findings }}
+        run: |
+          set -euo pipefail
+          TITLE="[db-health] Disk-IO/performance tærskel-brud"
+          {
+            echo "Automatisk db-health-tjek fandt tærskel-brud (scripts/db-health.sql):"
+            echo ""
+            echo '```'
+            printf '%s\n' "$FINDINGS"
+            echo '```'
+            echo ""
+            echo "Format: severity | check | detail"
+            echo "Diagnose-mønster: database/2026-06-29-db-io-temp-spills-presence.sql"
+            echo "Workflow: .github/workflows/db-health.yml"
+          } > db-health-body.md
+          EXISTING=$(gh issue list --state open --search "db-health in:title" --json number --jq '.[0].number' 2>/dev/null || echo "")
+          if [ -n "${EXISTING:-}" ] && [ "$EXISTING" != "null" ]; then
+            echo "↳ Åbent issue #$EXISTING findes — tilføjer kommentar."
+            gh issue comment "$EXISTING" --body-file db-health-body.md
+          else
+            echo "↳ Opretter nyt issue."
+            gh issue create --title "$TITLE" --body-file db-health-body.md --label "claude:todo"
+          fi
