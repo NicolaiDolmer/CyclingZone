@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   STAT_KEYS, riderStatRating,
-  riderOverallRating, riderBlendedOutput,
+  riderOverallRating, riderTypeRating, riderBlendedOutput,
   RATING_ALPHA, RATING_O_ELITE, RATING_O_MIN,
 } from "./riderRating.js";
 
@@ -110,4 +110,40 @@ test("riderBlendedOutput: matcher 0.5*speciale + 0.5*snit for kendt profil", () 
   const spec = rider.time_trial; // eneste positive tt-vægt
   const expected = 0.5 * spec + 0.5 * mean;
   assert.ok(Math.abs(riderBlendedOutput(rider) - expected) < 1e-9);
+});
+
+// --- riderTypeRating (per-type 1-99) — #2000 Part 2 / #918 -------------------
+
+const PROFILE = {
+  climbing: 20, time_trial: 30, flat: 70, tempo: 25, sprint: 90, acceleration: 88,
+  punch: 40, endurance: 55, recovery: 50, durability: 75, descending: 45,
+  cobblestone: 40, aggression: 50,
+};
+
+test("riderTypeRating: overall = rating for rytterens egen primary_type (ÉN model)", () => {
+  // riderOverallRating MÅ være identisk med riderTypeRating(rider, primary_type) —
+  // ellers findes der to overall-vurderinger (ejer-krav: kun én).
+  for (const type of ["sprinter", "climber", "gc", "tt"]) {
+    const rider = { ...PROFILE, primary_type: type };
+    assert.equal(riderOverallRating(rider), riderTypeRating(rider, type),
+      `overall != typeRating for ${type}`);
+  }
+});
+
+test("riderTypeRating: type-bevidst — spurter-profil rates højere SOM sprinter end SOM climber", () => {
+  // Uafhængigt af stored primary_type: vi spørger 'hvor god som X'.
+  assert.ok(riderTypeRating(PROFILE, "sprinter") > riderTypeRating(PROFILE, "climber"),
+    "spurter-profil skal rate højere som sprinter end som climber");
+});
+
+test("riderTypeRating: alle 8 typer giver en gyldig 1-99-rating for en rytter m. evner", () => {
+  for (const type of ["sprinter", "tt", "climber", "puncheur", "brostensrytter", "baroudeur", "rouleur", "gc"]) {
+    const r = riderTypeRating(PROFILE, type);
+    assert.ok(Number.isInteger(r) && r >= 1 && r <= 99, `${type} → ${r} udenfor [1,99]`);
+  }
+});
+
+test("riderTypeRating: ingen brugbare evner -> 0", () => {
+  assert.equal(riderTypeRating({}, "gc"), 0);
+  assert.equal(riderTypeRating(null, "sprinter"), 0);
 });

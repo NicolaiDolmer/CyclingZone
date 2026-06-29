@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.35",
+    "date": "2026-06-29",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Development tab now tracks your rider's rating in every rider type",
+          "body": "The rider's Development tab now charts how good they are in each of the eight rider types (sprinter, climber, GC and the rest) on the same 1 to 99 scale as their overall rating, and how it moves over time. Use the type filter to focus on the types you care about, or show them all at once. The chart builds up as the rider trains day to day and develops across seasons, replacing the old skill history."
+        },
+        "da": {
+          "title": "Udvikling-fanen følger nu din rytters rating i hver ryttertype",
+          "body": "Rytterens Udvikling-fane viser nu hvor god han er i hver af de otte ryttertyper (spurter, klatrer, GC og resten) på samme 1 til 99-skala som hans samlede rating, og hvordan det bevæger sig over tid. Brug type-filteret til at fokusere på de typer du går op i, eller vis dem alle på én gang. Grafen bygges op efterhånden som rytteren træner fra dag til dag og udvikler sig over sæsoner, og erstatter den gamle færdighedshistorik."
+        },
+        "refs": [2000, 918]
+      }
+    ]
+  },
+  {
     "version": "6.34",
     "date": "2026-06-29",
     "label": "Beta",
