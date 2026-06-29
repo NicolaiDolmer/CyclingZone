@@ -19,6 +19,7 @@
 
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { RIDER_TYPES } from "./riderTypes.js";
+import { isAcademyAge } from "./academyFlag.js";
 
 // ── EJER-JUSTERBARE KONSTANTER (kalibreres i previewRiderProgression.js) ────────
 export const PROGRESSION_CONFIG = Object.freeze({
@@ -269,4 +270,36 @@ export function buildCaps(baselineAbilities, primaryType, potentiale, cfg = PROG
     caps[ability] = abilityCap(base, primaryType, ability, potentiale, cfg);
   }
   return caps;
+}
+
+// ── Init-helpers for ability_caps + ability_progress (#2001) ─────────────────
+// ability_caps + ability_progress var KUN populeret lazily ved første sæson-
+// progression (riderProgressionEngine) eller daglig trænings-tick (dailyTrainingEngine).
+// Ryttere der aldrig blev udviklet/trænet (free agents, ikke-tickede hold) endte med
+// begge NULL — den nye rytter-side kan så ikke vise progress-bar/caps ægte. Disse
+// helpers giver derive-stien (backfillCores) + en backfill-script ÉN delt, ren init
+// der matcher præcis det loft motoren ellers ville lazy-initте.
+
+// Det fulde caps-sæt for EN VILKÅRLIG rytter (init-tid):
+//   • akademi-alder (16-21): afkoblet ungdoms-loft (youthAbilityCap, IKKE baseline-bundet)
+//   • voksen: baseline-abilities + headroom×signatur (buildCaps) — samme som motoren lazy-initer.
+// Returnerer et 15-nøgle objekt (alle VISIBLE_ABILITIES rytteren har en baseline for).
+//   baselineAbilities : { climbing, sprint, ... } current/afledte evner
+//   rider             : { potentiale, age }  (age = nuværende alder; bruges kun til akademi-gate)
+//   primaryType/secondaryType : ryttertype-nøgler (secondaryType kun brugt for ungdom)
+export function buildCapsForRider(baselineAbilities, { potentiale, age } = {}, primaryType, secondaryType) {
+  if (isAcademyAge(age)) {
+    return buildYouthCaps(potentiale, primaryType, secondaryType);
+  }
+  return buildCaps(baselineAbilities, primaryType, potentiale);
+}
+
+// Nul-initialiseret progress-objekt over alle synlige evner: { climbing: 0, ... }.
+// En aldrig-trænet rytter HAR ægte nul akkumuleret træning, så 0 er sandt (ikke en
+// placeholder). Frontend viser kun en bar når fraktion > 0 → nul = ingen bar endnu,
+// men feltet er nu et velformet, ikke-NULL objekt som rework-siden kan læse direkte.
+export function buildProgressInit() {
+  const progress = {};
+  for (const ability of VISIBLE_ABILITIES) progress[ability] = 0;
+  return progress;
 }

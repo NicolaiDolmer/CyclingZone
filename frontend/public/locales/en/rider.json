@@ -78,7 +78,12 @@
   "stats": {
     "potentialRow": "Potential",
     "abilitiesPending": "Abilities not yet available",
-    "loadingDevelopment": "Loading development..."
+    "loadingDevelopment": "Loading development...",
+    "categories": {
+      "physical": "Physical",
+      "mental": "Mental",
+      "technical": "Technical"
+    }
   },
   "racePreview": {
     "title": "Cycling Zones",
