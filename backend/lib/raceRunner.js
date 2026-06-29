@@ -127,12 +127,18 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
   const pointsComp = new Map();
   const komComp = new Map();
   const byId = new Map();
+  // #1993: holdnavn-snapshot pr. team_id (fra de berigede entrants). Bruges til hold-
+  // rækker (pushTeam), der ikke har en enkelt entrant at læse navnet fra.
+  const teamNameByTeam = new Map();
   for (const e of entrants) {
     cumTime.set(e.rider_id, 0);
     posSum.set(e.rider_id, 0);
     pointsComp.set(e.rider_id, 0);
     komComp.set(e.rider_id, 0);
     byId.set(e.rider_id, e);
+    if (e?.team_id != null && e?.team_name != null && !teamNameByTeam.has(e.team_id)) {
+      teamNameByTeam.set(e.team_id, e.team_name);
+    }
   }
   const add = (m, k, v) => m.set(k, (m.get(k) || 0) + v);
 
@@ -153,7 +159,7 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
       rider_id,
       rider_name: e?.rider_name ?? null,
       team_id: e?.team_id ?? null,
-      team_name: null,
+      team_name: e?.team_name ?? null,
       finish_time,
       points_earned: pts,
       prize_money: pts * PRIZE_PER_POINT,
@@ -171,7 +177,7 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
       rider_id: null,
       rider_name: null,
       team_id,
-      team_name: null,
+      team_name: teamNameByTeam.get(team_id) ?? null,
       finish_time: null,
       points_earned: pts,
       prize_money: pts * PRIZE_PER_POINT,
@@ -610,13 +616,34 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
     conditionByRider = new Map((conditions || []).map((c) => [c.rider_id, c]));
   }
 
+  // #1993: snapshot holdnavnet på løbstidspunktet ind på hver entrant, så
+  // buildRaceResults kan skrive et immutabelt team_name på race_results. Navnet
+  // hentes fra teams ud fra entry'ens (frosne) team_id — IKKE fra rytterens
+  // nuværende hold (team_id-snapshottet i race_entries er #1844-beskyttet).
+  const teamIds = [...new Set([...teamByRider.values()].filter(Boolean))];
+  let teamNameById = new Map();
+  if (teamIds.length) {
+    const { data: teamRows, error: teamErr } = await selectInChunks({
+      supabase, table: "teams", columns: "id, name",
+      inColumn: "id", ids: teamIds,
+    });
+    if (teamErr) {
+      // Additiv berigelse: degradér til null frem for at blokere finalization.
+      console.error(`team_name-berigelse fejlede (degraderer til null): ${teamErr.message}`);
+    } else {
+      teamNameById = new Map((teamRows || []).map((t) => [t.id, t.name]));
+    }
+  }
+
   const entrants = [];
   for (const r of riders || []) {
     const ab = abilityByRider.get(r.id);
     if (!ab) continue; // uden abilities kan rytteren ikke scores → udelad (defensivt)
+    const teamId = teamByRider.get(r.id) ?? null;
     const entrant = {
       rider_id: r.id,
-      team_id: teamByRider.get(r.id) ?? null,
+      team_id: teamId,
+      team_name: teamId != null ? (teamNameById.get(teamId) ?? null) : null,
       rider_name: [r.firstname, r.lastname].filter(Boolean).join(" ") || null,
       is_u25: !!r.is_u25,
       abilities: ab,

@@ -144,6 +144,7 @@ test("buildRaceResultsFromPending separates points_earned and prize_money", () =
           team_id: "team-1",
           firstname: "Jonas",
           lastname: "Vingegaard",
+          team: { name: "Team Visma" },
         },
       },
     ],
@@ -157,7 +158,7 @@ test("buildRaceResultsFromPending separates points_earned and prize_money", () =
       rider_id: "rider-1",
       rider_name: "Jonas Vingegaard",
       team_id: "team-1",
-      team_name: null,
+      team_name: "Team Visma",
       result_type: "stage",
       rank: 1,
       stage_number: 2,
@@ -166,6 +167,62 @@ test("buildRaceResultsFromPending separates points_earned and prize_money", () =
       prize_money: 50 * PRIZE_PER_POINT,
     },
   ]);
+});
+
+test("buildRaceResultsFromPending snapshots team_name from the joined rider's team", () => {
+  const rows = buildRaceResultsFromPending({
+    pendingRows: [
+      {
+        rider_id: "rider-1",
+        result_type: "gc",
+        rank: 1,
+        rider: {
+          team_id: "team-7",
+          firstname: "Tadej",
+          lastname: "Pogacar",
+          team: { name: "UAE Emirates" },
+        },
+      },
+    ],
+    pointsLookup: {},
+    raceId: "race-2",
+  });
+
+  assert.equal(rows[0].team_name, "UAE Emirates");
+  assert.equal(rows[0].team_id, "team-7");
+});
+
+test("buildRaceResultsFromPending sets team_name null when rider has no team join", () => {
+  const rows = buildRaceResultsFromPending({
+    pendingRows: [
+      // rider with team_id but no nested team object (join missing/absent)
+      {
+        rider_id: "rider-1",
+        result_type: "stage",
+        rank: 2,
+        rider: { team_id: "team-1", firstname: "A", lastname: "B" },
+      },
+      // rider entirely without a team
+      {
+        rider_id: "rider-2",
+        result_type: "stage",
+        rank: 3,
+        rider: { firstname: "C", lastname: "D", team: null },
+      },
+      // no rider join at all
+      {
+        rider_id: "rider-3",
+        result_type: "stage",
+        rank: 4,
+      },
+    ],
+    pointsLookup: {},
+    raceId: "race-3",
+  });
+
+  assert.equal(rows[0].team_name, null);
+  assert.equal(rows[1].team_name, null);
+  assert.equal(rows[2].team_name, null);
 });
 
 test("applyRaceResults inserts results and recalculates standings without touching finance", async () => {

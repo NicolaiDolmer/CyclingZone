@@ -21,6 +21,20 @@ export const PATCHES = [
           "body": "Når to løb ligger samme dag, viser listen af ledige ryttere nu pr. rytter hvilke af dagens løb han kan køre, og hvilke der er låst fordi han allerede kører et overlappende løb, med det blokerende løb navngivet. Klikker du en låst rytter, forklares hvorfor nu i stedet for ingenting, og overlap-fejlen navngiver rytter og løb, så du kan rette den. Ryttere kan stadig bruges i samme-dags-løb der ikke reelt overlapper."
         },
         "refs": [1984, 1983]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Race results keep the team you won them with",
+          "body": "Each race result now stores the name of the team you raced for at the time, captured the moment the result is recorded. Previously results relied only on a live link to the team, so if a team was later deleted, the result lost all team attribution and its prize money was silently skipped. Existing results have been backfilled, so a rider's history correctly shows which team they earned each result with, even after squad changes."
+        },
+        "da": {
+          "title": "Løbsresultater bevarer det hold du vandt dem med",
+          "body": "Hvert løbsresultat gemmer nu navnet på det hold du kørte for på løbstidspunktet, taget i det øjeblik resultatet registreres. Før hang resultatet kun på et live-link til holdet, så hvis et hold senere blev slettet, mistede resultatet al hold-tilknytning, og dets præmiepenge blev sprunget over uden besked. Eksisterende resultater er fyldt bagud, så en rytters historik korrekt viser hvilket hold han vandt hvert resultat med, også efter trup-ændringer."
+        },
+        "refs": [1993]
       }
     ]
   },
