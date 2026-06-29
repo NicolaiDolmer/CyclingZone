@@ -1,4 +1,6 @@
 import { createInitialBoardProfile } from "./boardEngine.js";
+import { computeSeasonOneIdentity } from "./boardIdentity.js";
+import { BOARD_IDENTITY_RIDER_SELECT } from "./boardConstants.js";
 import { allocateStarterSquadForTeam } from "./starterSquadAllocator.js";
 import { runAcademyIntakeForTeam } from "./academyIntake.js";
 import { isAcademyEnabled } from "./academyFlag.js";
@@ -271,6 +273,46 @@ async function ensureBoardProfile({ supabase, team }) {
   return true;
 }
 
+// #2022 · Sæson-agnostisk identitets-grundlag. Et nyt holds board-identitet
+// (grundlaget DNA-forslagene udledes af) skal sættes ved DANNELSE — uanset
+// hvilken global sæson holdet starter i — så en sæson-2+-nykommer ikke låses ude
+// af DNA-valg. Tidligere skrev kun startSequentialNegotiation feltet (ved sæson-1-
+// slut). Idempotent: skriver kun når feltet stadig er NULL, så den ikke
+// overskriver et frosset grundlag (samme guard som backfill-stien).
+export async function ensureSeasonIdentityBasis({ supabase, team, seasonNumber = 1 } = {}) {
+  if (!team?.id) {
+    throw createHttpError(500, "team is required for identity basis");
+  }
+  if (team.season_1_identity_basis) {
+    return false;
+  }
+
+  const { data: riders, error: ridersError } = await supabase
+    .from("riders")
+    .select(BOARD_IDENTITY_RIDER_SELECT)
+    .eq("team_id", team.id);
+  if (ridersError) {
+    throw createHttpError(500, ridersError.message);
+  }
+
+  const basis = computeSeasonOneIdentity({
+    team,
+    riders: riders || [],
+    seasonNumber: seasonNumber ?? 1,
+  });
+
+  const { error: updateError } = await supabase
+    .from("teams")
+    .update({ season_1_identity_basis: basis })
+    .eq("id", team.id)
+    .is("season_1_identity_basis", null);
+  if (updateError) {
+    throw createHttpError(500, updateError.message);
+  }
+
+  return true;
+}
+
 export async function upsertOwnTeamProfile({
   supabase,
   userId,
@@ -374,6 +416,25 @@ export async function upsertOwnTeamProfile({
         allocError?.message || allocError,
       );
       throw createHttpError(500, `Holdet blev oprettet, men start-truppen kunne ikke tildeles: ${allocError?.message || allocError}`);
+    }
+
+    // #2022: beregn holdets identitets-grundlag fra den netop-tildelte start-trup,
+    // så board+DNA er valgbart fra dag 1 — uanset global sæson. Skal køre EFTER
+    // allokeringen (ellers tom trup). BEVIDST IKKE-FATAL: et manglende grundlag er
+    // en blødere blindgyde end en tom trup (backfill-stien i
+    // startSequentialNegotiation + boardIdentityBackfillDryRun.js fanger det), så
+    // en fejl her må ikke blokere signup.
+    try {
+      await ensureSeasonIdentityBasis({ supabase, team });
+    } catch (basisError) {
+      console.error(
+        `[teamProfileEngine] #2022 identitets-grundlag FEJLEDE for nyt hold ${team.id} (ikke-fatal, signup fortsætter):`,
+        basisError?.message || basisError,
+      );
+      sentryCapture(
+        basisError instanceof Error ? basisError : new Error(String(basisError)),
+        { tags: { component: "team-create-identity-basis" }, extra: { teamId: team.id } },
+      );
     }
 
     // Forever-relaunch (spejler #1560): et NYT hold får også ét akademi-kuld
