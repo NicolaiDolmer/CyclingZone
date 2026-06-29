@@ -85,3 +85,26 @@ EPIC [#2000](https://github.com/NicolaiDolmer/CyclingZone/issues/2000) · Slice 
 
 ## Status (29/6)
 **Live:** fundament (hold-attribution), Slice 1 (P/M/T + progress-barer), Slice 2 (overall-rating), Slice 3 handlinger ([#2007](https://github.com/NicolaiDolmer/CyclingZone/issues/2007) / PR [#2019](https://github.com/NicolaiDolmer/CyclingZone/pull/2019) merged+live: forlæng/fyr/akademi op-ned action-first på profilen). **Næste:** Slice 5 hover (#2009) eller konsistens (#2002). **Prioriteret:** #1378/#2014 utypet-tilstand senest 30/6.
+
+## Capstone: visuelt hero re-layout (Slice 7) — plan + grounding (29/6)
+> Ejer-besluttet 29/6: det manglende stykke er det visuelle/editoriale hero-LAYOUT (FM/VM-mockups), ikke flere features. **Snit-beslutning: hero-først.** Grounding-pass (29/6) viste at det er **komposition, ikke ny infra**: cz-tokens (cz-card = cream #fcfbf7), Bebas (`font-display`, allerede brugt på CalendarPage), RatingCircle (#2006), ProgressMeter, RiderTypeBadge, Flag, statColor findes alle. PowerStat-mønstret → udtræk delt `MetricCard`. **Største risiko: mobil** — hero SKAL kollapse rent til 1 kolonne (~380px); kør alle 3 Playwright-projekter.
+
+**Slice-plan:**
+- **7a — Editorial hero (komposition + ÆGTE data, responsiv):** Bebas-navn, skaleret rating-cirkel, potential-ceiling (egne), metric-kort (inkl. ranking-pts), where-he-wins-strip, action-knapper (#2007 findes), fallback-avatar. *Trinnet hvor "det ligner wireframet".*
+- **7b — Racing strength-lag:** ny SSOT-konstant `ABILITY_ROLES` i `abilities.js` **afledt af `riderTypes.js`-vægte** (ikke ad-hoc) → Sprint&Punch / Engine / Climbing&TT; + "where he wins" afledt af terræn-motoren.
+- **7c — Division-baseline:** nyt datalag (per-division snit pr. evne; filtrér ægte hold) → benchmark-barer. Balance-følsomt → **simulér mod ægte population før ship**.
+- **7d — Scout verdict:** deterministisk template-generator (type+rating+potential+alder+kontrakt), ikke fri LLM-tekst (i18n + "ingen invented content").
+
+**Data-virkelighed (grounding 29/6 — undgå tomme flader):**
+| Element | Status | Kilde / arbejde |
+|---|---|---|
+| Rating, wins/races, potential-ceiling | ✅ findes | `riderRating`, `riderSeasonStats`, `ability_caps`/`hidden_potential` (ceiling kun egne/scoutede) |
+| Where he wins | 🟡 motor findes | `terrainScore`+`DEMAND_VECTORS`+`bucketSuitabilities` (backend) → afled top-buckets + portér til frontend-util/endpoint (M) |
+| Ranking pts | ✅ findes, ANDET tal | `race_results.points_earned` (sæson-aggr., ≠ rating). `riders.uci_points` er LEGACY/død — brug ikke |
+| Scout verdict | ❌ byg | deterministisk template (M) |
+| Division-baseline | ❌ byg | nyt datalag (M-L), simulér før ship |
+| Rytterfoto | ❌ senere | fallback-avatar (initialer+flag) indtil da |
+
+**Evne-gruppering (anbefalet beslutning — FM-modellen, to lag):** behold **P/M/T** som eneste RÅ evne-liste overalt (bar = træningsprogress, #2002 intakt) + tilføj **rolle-grupperet "racing strength"** som SEPARAT afledt lag KUN på fuld profil (bar = magnitude vs. division). Bland aldrig de to bar-betydninger. Kun RiderStatsPage forbruger selve P/M/T-grupperingen i dag (blast-radius = 1 fil). Opdatér #2002-direktivet til at blesse rolle-laget som tilladt afledt lag.
+
+**Åbne ejer-beslutninger (afventer):** evne-lag = A to-lag (anbefalet) / B kun-rolle / C kun-P/M/T · ranking-pts = ægte point (anbefalet) / drop. **Status: ejer genererer hero-wireframe i Claude Design** (prompt leveret 29/6). På retur: kod 7a mod ægte komponenter + skriv spec for 7b-7d. Claude Design-projekt-ref: `c231b6a1-8397-4a6f-bf6d-2bbcae14211a`.
