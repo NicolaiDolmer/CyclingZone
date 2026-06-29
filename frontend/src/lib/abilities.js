@@ -78,3 +78,21 @@ export function flattenAbilities(rider) {
   delete out.rider_derived_abilities;
   return out;
 }
+
+// Nøglen på rytterens højest-vurderede evne (#2000). Bruges som type-label-fallback
+// på rytterprofilen når riders.primary_type mangler — erstatter den tidligere
+// PCM-stat_*-afledning. `abilities` er en rider_derived_abilities-række (eller det
+// fladtgjorte rider-objekt). Itererer ABILITY_KEYS i SSOT-rækkefølge, så uafgjorte
+// maxima bryder mod den FØRSTE evne (samme tie-break som den gamle indexOf-logik).
+// Returnerer null hvis ingen evne-række/numeriske værdier findes → kalderen falder
+// tilbage til sin egen default-label.
+export function topAbilityKey(abilities) {
+  if (!abilities) return null;
+  let bestKey = null;
+  let bestVal = -Infinity;
+  for (const key of ABILITY_KEYS) {
+    const v = abilities[key];
+    if (typeof v === "number" && v > bestVal) { bestVal = v; bestKey = key; }
+  }
+  return bestKey;
+}
