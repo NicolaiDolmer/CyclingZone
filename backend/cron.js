@@ -20,6 +20,7 @@ import { getMarketPauseState, isAuctionsBlocked } from "./lib/marketPause.js";
 import {
   notifyTeamOwner as notifyTeamOwnerShared,
   notifyUser as notifyUserShared,
+  emitRaceResultNotifications, // #1952
 } from "./lib/notificationService.js";
 import {
   notifyAuctionWon,
@@ -470,6 +471,10 @@ async function runStageSchedulerCron() {
         const embed = buildRaceSimEmbed({ race, resultRows });
         await sendWebhook(url, { embeds: [{ ...embed, footer: { text: "Cycling Zone" } }] });
       };
+      // #1952 · In-app resultat-notifikation til deltagende menneske-managers.
+      const notifyInApp = async ({ race }) => {
+        await emitRaceResultNotifications({ supabase, race });
+      };
       return runAdminSimulateStage({
         supabase,
         raceId,
@@ -478,6 +483,7 @@ async function runStageSchedulerCron() {
         ensureSeasonStandings: ensureSeasonStandingsCron,
         updateStandings,
         notifyDiscord,
+        notifyInApp,
       });
     },
   });

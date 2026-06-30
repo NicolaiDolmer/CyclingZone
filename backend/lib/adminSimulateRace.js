@@ -73,6 +73,7 @@ export async function runAdminSimulateRace({
   ensureSeasonStandings,
   updateStandings,
   notifyDiscord = null,
+  notifyInApp = null,
   simulateRace = simulateRaceDefault,
 }) {
   if (!raceId) throw httpError(400, "race_id required");
@@ -125,6 +126,7 @@ export async function runAdminSimulateRace({
     ensureSeasonStandings,
     updateStandings,
     notifyDiscord,
+    notifyInApp,
   });
 }
 
@@ -142,6 +144,7 @@ export async function runAdminSimulateStage({
   ensureSeasonStandings,
   updateStandings,
   notifyDiscord = null,
+  notifyInApp = null,
   simulateStageByIndex = simulateStageByIndexDefault,
 }) {
   if (!raceId) throw httpError(400, "race_id required");
@@ -193,6 +196,7 @@ export async function runAdminSimulateStage({
     ensureSeasonStandings,
     updateStandings,
     notifyDiscord,
+    notifyInApp,
   });
 }
 

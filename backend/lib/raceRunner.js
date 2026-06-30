@@ -706,6 +706,7 @@ export async function simulateRace({
   recomputeRaceDays = recomputeSeasonRaceDays,
   processBoardWeekend = processBoardWeekendFinalizationShared,
   notifyDiscord = null,
+  notifyInApp = null,
   applyFatigue = applyRaceFatigue,
 }) {
   if (!supabase?.from) throw new Error("supabase client required");
@@ -809,6 +810,16 @@ export async function simulateRace({
     }
   }
 
+  // #1952 · In-app resultat-notifikation til hver deltagende menneske-manager.
+  // Samme fejl-isolation som Discord: en notif-fejl må ikke vælte afviklingen.
+  if (notifyInApp) {
+    try {
+      await notifyInApp({ race });
+    } catch {
+      // In-app notif-fejl må ikke vælte afviklingen.
+    }
+  }
+
   return {
     rowsImported: applied.rowsImported,
     rows: resultRows.length,
@@ -851,6 +862,7 @@ export async function simulateStageByIndex({
   recomputeRaceDays = recomputeSeasonRaceDays,
   processBoardWeekend = processBoardWeekendFinalizationShared,
   notifyDiscord = null,
+  notifyInApp = null,
   applyFatigue = applyRaceFatigue,
   applyStageResult = applyStageResultAtomic,
 }) {
@@ -1048,6 +1060,17 @@ export async function simulateStageByIndex({
       }
     } catch {
       // Discord-fejl må ikke vælte afviklingen.
+    }
+  }
+
+  // #1952 · In-app resultat-notifikation til hver deltagende menneske-manager,
+  // KUN på den faktiske final-etape (samme finalizationPending-guard som Discord:
+  // undgå dobbelt-send ved recovery-genkørsel; notifyUser dedup'er desuden 24t).
+  if (notifyInApp && !finalizationPending) {
+    try {
+      await notifyInApp({ race });
+    } catch {
+      // In-app notif-fejl må ikke vælte afviklingen.
     }
   }
 
