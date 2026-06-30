@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation, useSearchParams } from "react-router-dom";
 import { Suspense, useEffect, useState } from "react";
 // #881: lazyWithRetry erstatter React.lazy så stale-chunk-fejl efter deploy bliver
 // recoverable (retry + genkendelig ChunkLoadError -> auto-reload via SentryBoundary).
@@ -7,6 +7,7 @@ import { supabase } from "./lib/supabase";
 import CookieBanner from "./components/CookieBanner.jsx";
 import { logEvent } from "./lib/logEvent";
 import { setSentryUser, clearSentryUser } from "./lib/sentry.jsx";
+import { safeNextPath } from "./lib/safeNextPath.js";
 
 // Layout + analytics integrations lazy-loaded for #479: public routes
 // (/founder-supporter, /login, /privacy-*) ikke betaler for app-shell + Clarity/Vercel
@@ -86,8 +87,24 @@ function RouteFallback() {
 }
 
 function ProtectedRoute({ children, session }) {
-  if (!session) return <Navigate to="/login" replace />;
+  const location = useLocation();
+  if (!session) {
+    // #2042: bevar deep-link-destinationen så cold trafik der opretter en konto
+    // lander på det de kom for, ikke en generisk /dashboard-omvej.
+    const next = encodeURIComponent(location.pathname + location.search);
+    return <Navigate to={`/login?next=${next}`} replace />;
+  }
   return children;
+}
+
+// #2042: kontekst-bevidst /login-rute. En logget-ind bruger (eller en der lige har
+// oprettet konto / logget ind) sendes til sin oprindelige ?next-destination.
+function LoginRoute({ session }) {
+  const [params] = useSearchParams();
+  if (session) {
+    return <Navigate to={safeNextPath(params.get("next")) || "/dashboard"} replace />;
+  }
+  return <LoginPage />;
 }
 
 export default function App() {
@@ -145,7 +162,7 @@ export default function App() {
       </Suspense>
       <Suspense fallback={<RouteFallback />}>
         <Routes>
-          <Route path="/login" element={session ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
+          <Route path="/login" element={<LoginRoute session={session} />} />
           <Route path="/reset-password" element={<ResetPasswordPage session={session} />} />
           <Route path="/privatlivspolitik" element={<PrivacyPolicyPage />} />
           <Route path="/privacy-policy" element={<PrivacyPolicyPageEn />} />
