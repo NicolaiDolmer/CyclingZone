@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.37",
+    "date": "2026-06-30",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "Your board's squad-size goal now matches your actual team",
+          "body": "When you start a new team, your board now sets its expectations from your real squad instead of a fixed number. New teams used to be handed a 'field at least 15 riders' goal that an 8-rider starting squad could never reach, which quietly dragged down board satisfaction without anything you could do about it. The squad-size goal now follows your division's normal range, so it is achievable from day one. Existing teams that were still carrying the old fixed goal have been updated to match too."
+        },
+        "da": {
+          "title": "Din bestyrelses trup-størrelses-mål passer nu til dit faktiske hold",
+          "body": "Når du starter et nyt hold, sætter din bestyrelse nu sine forventninger ud fra din faktiske trup i stedet for et fast tal. Nye hold fik før et mål om mindst 15 ryttere, som en 8-rytters start-trup aldrig kunne nå, og det trak stille bestyrelsens tilfredshed ned uden du kunne gøre noget ved det. Trup-størrelses-målet følger nu divisionens normale spænd, så det er opnåeligt fra dag ét. Eksisterende hold der stadig havde det gamle faste mål er også opdateret."
+        },
+        "refs": [2022]
+      }
+    ]
+  },
+  {
     "version": "6.36",
     "date": "2026-06-29",
     "label": "Beta",
