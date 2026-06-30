@@ -243,8 +243,6 @@ function scenariosFor(divTeamCount) {
 
 // ─── Rapport ───────────────────────────────────────────────────────────────────
 
-const da = (v, d = 1) => (v == null ? "—" : Number(v).toFixed(d).replace(".", ","));
-
 function buildReport({ population, today }) {
   const lines = [];
   const entries = [...population.pendingBoards, syntheticEntryTeam()];
