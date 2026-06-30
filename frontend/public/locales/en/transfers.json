@@ -279,8 +279,29 @@
     "newest": "Newest first",
     "price_asc": "Price: lowest first",
     "price_desc": "Price: highest first",
+    "value_desc": "Value: highest first",
+    "value_asc": "Value: lowest first",
     "age_asc": "Age: youngest first",
-    "age_desc": "Age: oldest first"
+    "age_desc": "Age: oldest first",
+    "abilityLabel": "Sort by ability",
+    "abilityPlaceholder": "By ability",
+    "abilities": {
+      "climbing": "Climbing",
+      "tempo": "Tempo",
+      "punch": "Punch",
+      "sprint": "Sprint",
+      "acceleration": "Acceleration",
+      "flat": "Flat",
+      "time_trial": "Time trial",
+      "endurance": "Endurance",
+      "durability": "Durability",
+      "recovery": "Recovery",
+      "aggression": "Aggression",
+      "tactics": "Tactics",
+      "descending": "Descending",
+      "cobblestone": "Cobbles",
+      "positioning": "Positioning"
+    }
   },
   "marketRow": {
     "nation": "Nation",
