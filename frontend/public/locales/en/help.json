@@ -804,6 +804,10 @@
       "q": "Where do I see the board's current assessment?",
       "a": "The Dashboard shows a short board outlook with status and category scores, while the Board page shows the more detailed assessment. The Board page also shows the board's read of the team with specialisation, U25 share, national core, star profile and squad status, now with country name and flag on the national core. The Board page now also explains more clearly why the board reacts, by showing which categories drive the assessment, what's holding it back, and which signals from history, identity or profiles play in. The two places read the same board data from the backend, so they share the same truth."
     },
+    "boardProfileRiders": {
+      "q": "Who are my team's profile riders?",
+      "a": "The Board page now names them. Under the star profile tile, the board's read of the team lists each rider it counts as a star, with a star score. A rider qualifies as a star when popularity plus UCI points clear the star threshold. Popularity weighs more than results (roughly 70/30), so a well-known rider can be a star even without big point hauls, while a strong but anonymous worker usually is not. The list is your current squad, so it changes as you sign or sell riders. If no rider clears the threshold yet, the card says so instead of listing names."
+    },
     "season1BaselineFaq": {
       "q": "Is the board available in season 1?",
       "a": "Yes. The board is unlocked from the start of season 1, so you can pick your Club DNA and negotiate your 5-year, 3-year and 1-year plans right away. Until you sign your first plan the sponsor modifier stays at 1.0×, so the season-1 sponsor is neutral while you set up. The board also *reads* your team (which nation dominates, how large the U25 share is, which specialisation the team points towards, and how visible your stars are) and saves this 'identity snapshot' on your team permanently as the basis for your 5-year plan suggestions."

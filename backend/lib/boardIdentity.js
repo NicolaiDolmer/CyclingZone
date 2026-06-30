@@ -194,7 +194,17 @@ export function normalizeBoardRider(rider = {}) {
     "stat_ftr",
   ];
 
+  const firstname = typeof rider.firstname === "string" ? rider.firstname.trim() : "";
+  const lastname = typeof rider.lastname === "string" ? rider.lastname.trim() : "";
+
   const normalizedRider = {
+    // #1889 · Bær rytter-identitet med så star_profile kan navngive profilrytterne
+    // (Board-kortet viste før kun et antal). id/firstname/lastname kommer fra
+    // BOARD_IDENTITY_RIDER_SELECT; tilstedeværende kolonner, ingen migration.
+    id: rider.id ?? null,
+    firstname,
+    lastname,
+    name: `${firstname} ${lastname}`.trim(),
     is_u25: Boolean(rider.is_u25),
     nationality_code: typeof rider.nationality_code === "string"
       ? rider.nationality_code.trim().toUpperCase()
@@ -318,6 +328,11 @@ function calculateNationalCore(riders = []) {
   };
 }
 
+// #1889 · Frosset star-rider-tærskel (score >= STAR_RIDER_SCORE_THRESHOLD).
+// Vægtning + tærskel er låst per boardConstants.js / #1205 — Board-kortet
+// navngiver nu de kvalificerende ryttere men ÆNDRER IKKE udvælgelsen.
+const STAR_RIDER_SCORE_THRESHOLD = 68;
+
 function calculateStarProfile(riders = []) {
   if (!riders.length) {
     return {
@@ -327,15 +342,28 @@ function calculateStarProfile(riders = []) {
       headline_score: 0,
       star_rider_count: 0,
       share_pct: 0,
+      star_riders: [],
     };
   }
 
-  const starScores = riders.map((rider) => calculateRiderStarScore(rider));
+  const scoredRiders = riders.map((rider) => ({
+    id: rider.id ?? null,
+    name: rider.name || `${rider.firstname || ""} ${rider.lastname || ""}`.trim(),
+    firstname: rider.firstname || "",
+    lastname: rider.lastname || "",
+    score: calculateRiderStarScore(rider),
+  }));
+  const starScores = scoredRiders.map((rider) => rider.score);
   const headlineScores = [...starScores]
     .sort((a, b) => b - a)
     .slice(0, Math.min(3, starScores.length));
   const headlineScore = averageNumbers(headlineScores);
-  const starRiderCount = starScores.filter((score) => score >= 68).length;
+  // #1889 · Selvsamme tærskel som star_rider_count — de navngivne ryttere
+  // ER tællingen, ikke en separat liste, så antal og navne aldrig divergerer.
+  const starRiders = scoredRiders
+    .filter((rider) => rider.score >= STAR_RIDER_SCORE_THRESHOLD)
+    .sort((a, b) => b.score - a.score);
+  const starRiderCount = starRiders.length;
   const sharePct = Math.round((starRiderCount / riders.length) * 100);
 
   let level = "low";
@@ -359,6 +387,7 @@ function calculateStarProfile(riders = []) {
     headline_score: Math.round(headlineScore),
     star_rider_count: starRiderCount,
     share_pct: sharePct,
+    star_riders: starRiders,
   };
 }
 

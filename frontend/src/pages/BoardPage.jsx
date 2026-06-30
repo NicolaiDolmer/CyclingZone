@@ -994,6 +994,10 @@ function BoardIdentityCard({ identityProfile, title, teamDna = null }) {
   const starProfileSub = starProfile?.star_rider_count
     ? t("identity.starProfileSub", { count: starProfile.star_rider_count })
     : t("identity.starProfileNone");
+  // #1889 · Vis HVILKE ryttere bestyrelsen læser som profilryttere (før kun et
+  // antal). Liste + score kommer fra backend (calculateStarProfile); tom liste
+  // håndteres som "ingen tydelige profiler endnu".
+  const starRiders = Array.isArray(starProfile?.star_riders) ? starProfile.star_riders : [];
   const primarySpecializationLabel = resolveBoardCopy(
     t, identityProfile.primary_specialization_label_key, identityProfile.primary_specialization_label
   );
@@ -1068,6 +1072,32 @@ function BoardIdentityCard({ identityProfile, title, teamDna = null }) {
           <p className="text-cz-1 text-sm font-medium mt-1 break-words">{starProfileValue}</p>
           <p className="text-cz-3 text-xs mt-1 break-words">{starProfileSub}</p>
         </div>
+      </div>
+      {/* #1889 · Navngiv profilrytterne under stjerneprofil-flisen, så kortet
+          viser HVEM bestyrelsen læser som stjerner — ikke kun et antal. Følger
+          det editorielle kort-look (subtil sektion + mono-score, ingen glow). */}
+      <div className="mt-4 border-t border-cz-border pt-3">
+        <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("identity.starRidersHeading")}</p>
+        {starRiders.length > 0 ? (
+          <ul className="mt-2 space-y-1.5">
+            {starRiders.map((rider, index) => (
+              <li
+                key={rider.id ?? `${rider.name}-${index}`}
+                className="flex items-baseline justify-between gap-3 min-w-0"
+              >
+                <span className="text-cz-1 text-sm break-words min-w-0">
+                  {rider.name || t("identity.starRiderUnnamed")}
+                </span>
+                <span className="text-cz-2 text-xs font-mono flex-shrink-0">
+                  {t("identity.starRiderScore", { score: Math.round(rider.score ?? 0) })}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-cz-3 text-sm mt-2 break-words">{t("identity.starRidersEmpty")}</p>
+        )}
+        <p className="text-cz-3 text-xs mt-2 leading-relaxed">{t("identity.starRidersExplainer")}</p>
       </div>
       {/* #1738 · Relation mellem squad-læsning og valgt klub-DNA — fjerner den
           oplevede selvmodsigelse (fx "Sprint-hold" + DNA "Britisk all-rounder"). */}
