@@ -10,8 +10,6 @@ import { RIDER_TYPE_KEYS } from "../lib/riderTypeKeys.js";
 import { chartColor } from "../lib/chartPalette.js";
 import { formatNumber, formatDate, formatDateTime } from "../lib/intl";
 import { resolveApiError } from "../lib/apiError";
-import TrainingFocus from "../components/rider/TrainingFocus";
-import RiderTrainingHistory from "../components/rider/RiderTrainingHistory.jsx";
 import RiderManageActions from "../components/rider/RiderManageActions.jsx";
 import { useScouting } from "../lib/useScouting";
 import { useTraining } from "../lib/useTraining";
@@ -42,6 +40,7 @@ import RiderAbilityColumns from "../components/rider/profile/RiderAbilityColumns
 import RiderTypeRadar from "../components/rider/profile/RiderTypeRadar.jsx";
 import RiderOverviewPhysiology from "../components/rider/profile/RiderOverviewPhysiology.jsx";
 import RiderPhysiologyTab from "../components/rider/profile/RiderPhysiologyTab.jsx";
+import RiderTrainingTab from "../components/rider/profile/RiderTrainingTab.jsx";
 
 const API = import.meta.env.VITE_API_URL;
 const RiderDevelopmentTab = lazyWithRetry(() => import("../components/RiderDevelopmentTab"));
@@ -1572,10 +1571,19 @@ export default function RiderStatsPage() {
         </div>
       )}
 
-      {(tab === "development" || tab === "training") && (
+      {tab === "training" && (
+        <RiderTrainingTab
+          rider={rider}
+          training={training}
+          trainingHistory={trainingHistory}
+          progress={overviewProgress}
+          viewer={isMyRider ? "own" : "scouting"}
+          isRetired={isRetired}
+        />
+      )}
+
+      {tab === "development" && (
         <Suspense fallback={<div className="bg-cz-card border border-cz-border rounded-cz p-5 text-cz-3 text-center py-8">{t("stats.loadingDevelopment")}</div>}>
-          {isMyRider && !isRetired && <TrainingFocus rider={rider} training={training} />}
-          {isMyRider && <RiderTrainingHistory riderId={rider.id} history={trainingHistory} />}
           <RiderDevelopmentTab history={statHistory} types={developmentTypes} />
         </Suspense>
       )}

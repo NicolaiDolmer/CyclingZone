@@ -77,6 +77,58 @@
     "development": "Udvikling"
   },
   "profile": {
+    "training": {
+      "title": "Træningsfokus",
+      "slotsUsed": "{used} / {total} slots brugt",
+      "loading": "Henter træning…",
+      "focus": {
+        "vo2max": "VO2max",
+        "threshold": "Tærskel",
+        "sprint": "Spurt",
+        "endurance": "Udholdenhed",
+        "technique": "Teknik",
+        "aero": "Aero"
+      },
+      "active": "Aktiv: {focus} · {intensity} — træner {abilities}",
+      "activeRest": "Hviler — {focus}-fokus på pause",
+      "progressTo": "{ability} {from} → {to} · {pct}% mod næste +1",
+      "progressPending": "Bygger fremgang mod næste +1",
+      "effectNote": "opdateres dagligt",
+      "riskNote": "Højere intensitet vokser hurtigst, men har ~{risk}% risiko for tilbageslag der koster en del af sæsonens fremgang.",
+      "noRiskNote": "Let intensitet vokser støt uden risiko for tilbageslag.",
+      "restNote": "Ingen evne-vækst på en hviledag; træthed falder.",
+      "emptyFocus": "Vælg et fokus for at tildele træning.",
+      "focusRefTitle": "Hvert fokus træner",
+      "log": {
+        "title": "Daglig træning · sidste 7 dage",
+        "empty": "Ingen træningsdage endnu.",
+        "today": "I dag",
+        "sharp": "Skarp dag",
+        "flat": "Flad dag",
+        "gains": "+{count} evner"
+      },
+      "trend": {
+        "title": "Træning · seneste 30 dage",
+        "trained": "Gennemførte pas",
+        "breakthroughs": "Gennembrud",
+        "sharp": "Skarpe dage",
+        "note": "En sammenlignelig træningsscore er på vej."
+      },
+      "form": {
+        "title": "Form & restitution",
+        "healthy": "Skadefri",
+        "healthyHint": "Klar til at træne hårdt",
+        "pending": "Ingen form-data endnu."
+      },
+      "locked": {
+        "title": "Træning er skjult",
+        "body": "Du kan ikke se eller styre en fremmed rytters træning, form eller træthed. Køb ham, så låser det op."
+      },
+      "retired": {
+        "title": "Pensioneret rytter",
+        "body": "Pensionerede ryttere trænes ikke, så der er intet aktivt program, form eller træthed at vise."
+      }
+    },
     "tabs": {
       "overview": "Overblik",
       "physiology": "Fysiologi",

@@ -77,6 +77,58 @@
     "development": "Development"
   },
   "profile": {
+    "training": {
+      "title": "Training focus",
+      "slotsUsed": "{used} / {total} slots used",
+      "loading": "Loading training…",
+      "focus": {
+        "vo2max": "VO2max",
+        "threshold": "Threshold",
+        "sprint": "Sprint",
+        "endurance": "Endurance",
+        "technique": "Technique",
+        "aero": "Aero"
+      },
+      "active": "Active: {focus} · {intensity} — trains {abilities}",
+      "activeRest": "Resting — {focus} focus paused",
+      "progressTo": "{ability} {from} → {to} · {pct}% to next +1",
+      "progressPending": "Building progress toward the next +1",
+      "effectNote": "updates daily",
+      "riskNote": "Higher intensity grows fastest, but carries ~{risk}% risk of a setback that costs part of the season's progress.",
+      "noRiskNote": "Easy intensity grows steadily with no setback risk.",
+      "restNote": "No ability growth on a rest day; fatigue recovers.",
+      "emptyFocus": "Pick a focus to assign training.",
+      "focusRefTitle": "Each focus trains",
+      "log": {
+        "title": "Daily training · last 7 days",
+        "empty": "No training days yet.",
+        "today": "Today",
+        "sharp": "Sharp day",
+        "flat": "Flat day",
+        "gains": "+{count} abilities"
+      },
+      "trend": {
+        "title": "Training · last 30 days",
+        "trained": "Sessions trained",
+        "breakthroughs": "Breakthroughs",
+        "sharp": "Sharp days",
+        "note": "A comparable training score is coming."
+      },
+      "form": {
+        "title": "Form & recovery",
+        "healthy": "Injury-free",
+        "healthyHint": "Ready to train hard",
+        "pending": "No condition data yet."
+      },
+      "locked": {
+        "title": "Training is hidden",
+        "body": "You can't see or manage another team's rider training, form or fatigue. Sign him and it unlocks."
+      },
+      "retired": {
+        "title": "Retired rider",
+        "body": "Retired riders aren't trained, so there's no active program, form or fatigue to show."
+      }
+    },
     "tabs": {
       "overview": "Overview",
       "physiology": "Physiology",
