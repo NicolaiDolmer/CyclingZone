@@ -15,6 +15,7 @@ const CATEGORIES = [
 export default function CookieBanner() {
   const { t, i18n } = useTranslation("banners");
   const { bannerOpen, closeBanner, consent, saveConsent, acceptAll, rejectAll, hasResponded } = useConsent();
+  const [mounted, setMounted] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [draft, setDraft] = useState(() => ({
     analytics: consent.analytics,
@@ -32,7 +33,16 @@ export default function CookieBanner() {
     setExpanded(false);
   }, [bannerOpen, consent.analytics, consent.marketing, consent.email_marketing]);
 
-  if (!bannerOpen) return null;
+  // Render intet før efter mount: den offentlige landing prerendres (SSR), hvor
+  // localStorage-consent er ukendt — et banner i server-HTML ville give et
+  // hydration-mismatch for tilbagevendende brugere (de har consent → intet banner).
+  // Banneret er en fixed overlay, så det giver ingen CLS når det dukker op et tick
+  // efter mount.
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted || !bannerOpen) return null;
 
   // Dual-page-mønster (jf. WaitlistConsentText): EN har sin egen privacy-side.
   const privacyPath = i18n.language?.startsWith("da") ? "/privatlivspolitik" : "/privacy-policy";

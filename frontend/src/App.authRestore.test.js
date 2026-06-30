@@ -34,11 +34,17 @@ test("catch-handleren sætter en terminal (ikke-undefined) session-state (#1347)
   );
 });
 
-test("App render stadig LoadingScreen KUN mens session === undefined (#1347)", () => {
+test("loader-gaten er session === undefined → LoadingScreen (#1347)", () => {
   // Sikrer at terminal-staten (null) faktisk slipper forbi loader-gaten.
+  // Gaten bor nu i ProtectedRoute (ikke længere globalt i App): de offentlige
+  // ruter renderer straks — forudsætning for at den prerendrede landing kan
+  // hydreres rent — mens beskyttede ruter venter på session. #1347-garantien er
+  // bevaret: setSession(null) → ProtectedRoute ser !session → Navigate til /login,
+  // så spinneren afsluttes i stedet for at hænge. Regexen matcher både blok- og
+  // enkelt-linje-formen af gaten.
   assert.match(
     appSource,
-    /if\s*\(\s*session\s*===\s*undefined\s*\)\s*\{[\s\S]*?return\s*<LoadingScreen\s*\/>/,
+    /if\s*\(\s*session\s*===\s*undefined\s*\)\s*\{?\s*return\s*<LoadingScreen\s*\/>/,
     "loader-gaten skal være session === undefined; ellers ville setSession(null) ikke afslutte spinneren",
   );
 });
