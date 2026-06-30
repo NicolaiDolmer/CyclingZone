@@ -14,12 +14,13 @@ import App from "./App.jsx";
 // som renderToString ikke eksekverer), så App renderer LandingPage — præcis som
 // klientens første render gør.
 //
-// Prerender låses til EN (primært sprog). En EN-klient hydrerer 1:1; en
-// DA-klient får en hurtig client-rerender af tekst-noderne (ingen layout-shift,
-// da markuppet er identisk). LCP er allerede malet fra den prerendrede HTML.
-export async function render(url = "/") {
-  if (i18n.language !== "en") {
-    await i18n.changeLanguage("en");
+// Renderes én gang pr. sprog (prerender.mjs → index.en.html + index.da.html).
+// Vercel serverer den variant der matcher browserens Accept-Language, så en kold
+// besøgende får sit sprog fra første maling — samme sprog som klientens i18n
+// vælger (begge kommer fra browser-sproget) → ingen EN↔DA-flash.
+export async function render(url = "/", lng = "en") {
+  if (i18n.language !== lng) {
+    await i18n.changeLanguage(lng);
   }
   return renderToString(
     <AppProviders>
