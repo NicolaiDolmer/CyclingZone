@@ -147,6 +147,20 @@ export const PATCHES = [
           "body": "Et direkte link til en rytter eller et løb åbnede før en tom login-skærm hvis man ikke var logget ind. De dybe links viser nu en ordentlig kontekst-bevidst login, så et delt eller bogmærket link fører et brugbart sted hen i stedet for en blindgyde."
         },
         "refs": [2042]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Leagues",
+        "en": {
+          "title": "Division 4 is now open",
+          "body": "New managers may now start their club in Division 4 once Division 3 is full. Division 4 has its own full season of races, just like the other divisions."
+        },
+        "da": {
+          "title": "Division 4 er nu åben",
+          "body": "Nye managere kan nu starte deres klub i division 4, når division 3 er fuld. Division 4 har sin egen fulde sæson af løb, ligesom de andre divisioner."
+        },
+        "refs": []
       }
     ]
   },

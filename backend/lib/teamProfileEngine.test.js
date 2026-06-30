@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 import { upsertOwnTeamProfile, ensureSeasonIdentityBasis, ensureBoardGoalsCalibrated } from "./teamProfileEngine.js";
 import { generateBoardGoals } from "./boardGoals.js";
-import { INITIAL_BALANCE, MANAGER_ENTRY_DIVISION, POOL_TARGET_SIZE, SPONSOR_INCOME_BASE } from "./economyConstants.js";
+import { INITIAL_BALANCE, MANAGER_ENTRY_DIVISION, MAX_DIVISION, POOL_TARGET_SIZE, SPONSOR_INCOME_BASE } from "./economyConstants.js";
 
 // #1560: alle eksisterende tests injicerer en no-op starter-squad-allokering, så
 // de ikke rammer den ægte riders/derive-kæde (den dækkes i starterSquadAllocator.test.js).
@@ -384,6 +384,96 @@ test("#1608 bund-op: blød cap — div-4-puljer må vokse forbi POOL_TARGET_SIZE
   assert.ok(
     pools.some((pool) => pool.id === result.team.league_division_id),
     "blød cap → holdet får stadig en faktisk div-4-pulje (ingen NULL)",
+  );
+});
+
+function seedMaxDivisionPools() {
+  return Array.from({ length: 8 }, (_, index) => ({
+    id: 100 + index,
+    tier: MAX_DIVISION,
+    pool_index: index,
+    label: `Division 4 — ${String.fromCharCode(65 + index)}`,
+  }));
+}
+
+test("overflow: alle entry-puljer ved POOL_TARGET_SIZE OG MAX_DIVISION-puljer findes → ny manager lander i MAX_DIVISION", async () => {
+  const entryPools = seedDiv4Pools();
+  const overflowPools = seedMaxDivisionPools();
+  const teams = entryPools.flatMap((pool) =>
+    seedTeams({ division: MANAGER_ENTRY_DIVISION, count: POOL_TARGET_SIZE, league_division_id: pool.id }),
+  );
+  const supabase = createSupabaseDouble({ leagueDivisions: [...entryPools, ...overflowPools], teams });
+
+  const result = await upsert({
+    supabase, userId: "user-overflow", name: "Overflow Team", managerName: "Manager",
+  });
+
+  assert.equal(result.team.division, MAX_DIVISION, "entry-tier mættet → fald igennem til MAX_DIVISION");
+  assert.ok(
+    overflowPools.some((p) => p.id === result.team.league_division_id),
+    "holdet skal lande i en faktisk MAX_DIVISION-pulje",
+  );
+});
+
+test("overflow: vælger den mindst-fyldte MAX_DIVISION-pulje (samme determinisme som entry-puljerne)", async () => {
+  const entryPools = seedDiv4Pools();
+  const overflowPools = seedMaxDivisionPools();
+  const teams = [
+    ...entryPools.flatMap((pool) =>
+      seedTeams({ division: MANAGER_ENTRY_DIVISION, count: POOL_TARGET_SIZE, league_division_id: pool.id }),
+    ),
+    ...seedTeams({ division: MAX_DIVISION, count: 5, league_division_id: overflowPools[0].id }),
+  ];
+  const supabase = createSupabaseDouble({ leagueDivisions: [...entryPools, ...overflowPools], teams });
+
+  const result = await upsert({
+    supabase, userId: "user-overflow-2", name: "Least Filled Overflow", managerName: "Manager",
+  });
+
+  assert.notEqual(result.team.league_division_id, overflowPools[0].id, "fyldt MAX_DIVISION-pulje skal undgås");
+  assert.ok(overflowPools.slice(1).some((p) => p.id === result.team.league_division_id));
+});
+
+test("overflow: division 3 har stadig plads → MAX_DIVISION-puljer IGNORERES, selvom de findes", async () => {
+  const entryPools = seedDiv4Pools();
+  const overflowPools = seedMaxDivisionPools();
+  // Kun 5 rigtige managers i den første entry-pulje — langt under POOL_TARGET_SIZE.
+  const teams = seedTeams({ division: MANAGER_ENTRY_DIVISION, count: 5, league_division_id: entryPools[0].id });
+  const supabase = createSupabaseDouble({ leagueDivisions: [...entryPools, ...overflowPools], teams });
+
+  const result = await upsert({
+    supabase, userId: "user-no-overflow", name: "Still Division 3", managerName: "Manager",
+  });
+
+  assert.equal(result.team.division, MANAGER_ENTRY_DIVISION, "entry-tier har plads → ingen overflow, selvom MAX_DIVISION-puljer findes");
+});
+
+test("overflow: kun 7 af 8 entry-puljer mættet (1 ved 23) → ALDRIG overflow, lander i den ene under-fyldte pulje", async () => {
+  // Låser .every()-semantikken: saturation kræver at HVER pulje individuelt er ved
+  // POOL_TARGET_SIZE, ikke et aggregat/gennemsnit. 7 puljer ved 24 + 1 pulje ved 23
+  // (lige under target) skal stadig give "ikke mættet" → ingen overflow til MAX_DIVISION.
+  const entryPools = seedDiv4Pools();
+  const overflowPools = seedMaxDivisionPools();
+  const underFilledPool = entryPools[entryPools.length - 1];
+  const saturatedPools = entryPools.slice(0, -1);
+
+  const teams = [
+    ...saturatedPools.flatMap((pool) =>
+      seedTeams({ division: MANAGER_ENTRY_DIVISION, count: POOL_TARGET_SIZE, league_division_id: pool.id }),
+    ),
+    ...seedTeams({ division: MANAGER_ENTRY_DIVISION, count: POOL_TARGET_SIZE - 1, league_division_id: underFilledPool.id }),
+  ];
+  const supabase = createSupabaseDouble({ leagueDivisions: [...entryPools, ...overflowPools], teams });
+
+  const result = await upsert({
+    supabase, userId: "user-near-overflow", name: "Almost Saturated", managerName: "Manager",
+  });
+
+  assert.equal(result.team.division, MANAGER_ENTRY_DIVISION, "7/8 puljer mættet er IKKE nok → ingen overflow");
+  assert.equal(
+    result.team.league_division_id,
+    underFilledPool.id,
+    "holdet skal lande i den ene under-fyldte pulje (23 < POOL_TARGET_SIZE), ikke en mættet eller en overflow-pulje",
   );
 });
 

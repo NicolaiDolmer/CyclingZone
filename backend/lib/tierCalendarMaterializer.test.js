@@ -264,3 +264,37 @@ test("apply: arketype driver parcours (cobbled_classic endagsløb → brosten do
   assert.ok(oneDayProfiles.length > 0, "der skal være endagsløb");
   assert.ok(cobbles >= oneDayProfiles.length * 0.6, `forventede brosten-dominans, fik ${cobbles}/${oneDayProfiles.length}`);
 });
+
+test("forceTiers: en tier-4-pulje uden rigtige managers får alligevel en kalender, når tier 4 er i forceTiers", () => {
+  const pools = [
+    { id: 1, tier: 1, label: "Division 1", realManagerCount: 5 },
+    { id: 8, tier: 4, label: "Division 4 — A", realManagerCount: 0 },
+    { id: 9, tier: 4, label: "Division 4 — B", realManagerCount: 0 },
+  ];
+  const catalog = [
+    { id: "r1", name: "Test Tour", race_class: "TourFrance", race_type: "stage_race", stages: 21 },
+    { id: "r2", name: "Test Class2", race_class: "Class2", race_type: "single", stages: 1 },
+  ];
+
+  const { tierPlans } = buildTierMaterializationPlan({
+    pools, catalog, quotas: { 1: 21, 4: 1 }, forceTiers: [4],
+  });
+
+  const tier4Plan = tierPlans.find((p) => p.tier === 4);
+  assert.ok(tier4Plan, "tier 4 skal have en plan, selvom realManagerCount=0, fordi forceTiers inkluderer den");
+  assert.equal(tier4Plan.pools.length, 2, "begge tier-4-puljer skal have fået samme plan");
+});
+
+test("forceTiers: uden flaget (default) springes en mandagsløs tier-4-pulje stadig over (uændret adfærd)", () => {
+  const pools = [
+    { id: 1, tier: 1, label: "Division 1", realManagerCount: 5 },
+    { id: 8, tier: 4, label: "Division 4 — A", realManagerCount: 0 },
+  ];
+  const catalog = [
+    { id: "r1", name: "Test Tour", race_class: "TourFrance", race_type: "stage_race", stages: 21 },
+  ];
+
+  const { tierPlans } = buildTierMaterializationPlan({ pools, catalog, quotas: { 1: 21, 4: 1 } });
+
+  assert.equal(tierPlans.find((p) => p.tier === 4), undefined, "uden forceTiers er adfærden uændret: tier 4 uden managers får ingen plan");
+});
