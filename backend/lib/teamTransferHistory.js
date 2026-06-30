@@ -14,6 +14,18 @@ function buildSeasonResolver(seasons) {
   const sorted = [...(seasons || [])]
     .filter((s) => s.start_date)
     .sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
+  // #1776: en NUL-bred sæson (start_date === end_date) der deler sin grænsedag
+  // med en senere sæsons start_date må IKKE indfange den dags events. Eksempel:
+  // launch-dagen havde en afsluttet sæson 0 (start=end=2026-06-22) og en aktiv
+  // sæson 1 (start=2026-06-22). Ascending-sorteringen lod sæson 0 vinde, så alle
+  // launch-dags-transfers blev fejl-tagget til sæson 0. Vi springer derfor en
+  // nul-bred sæson over på dens grænsedag når en senere sæson starter samme dag,
+  // så den aktive/senere sæson vinder.
+  const dayKey = (dt) => `${dt.getUTCFullYear()}-${dt.getUTCMonth()}-${dt.getUTCDate()}`;
+  const laterStartDays = new Set();
+  for (let i = 1; i < sorted.length; i++) {
+    laterStartDays.add(dayKey(new Date(sorted[i].start_date)));
+  }
   return function resolveSeason(dateStr) {
     if (!dateStr) return null;
     const d = new Date(dateStr);
@@ -29,6 +41,17 @@ function buildSeasonResolver(seasons) {
       if (s.end_date) {
         end = new Date(s.end_date);
         end.setUTCHours(23, 59, 59, 999);
+      }
+      // #1776: spring en nul-bred sæson (start_date === end_date) over på dens
+      // grænsedag hvis en senere sæson starter samme dag — den aktive/senere
+      // sæson skal vinde grænsedagen, ikke den nul-brede afsluttede sæson.
+      if (
+        s.end_date &&
+        dayKey(start) === dayKey(new Date(s.end_date)) &&
+        dayKey(d) === dayKey(start) &&
+        laterStartDays.has(dayKey(start))
+      ) {
+        continue;
       }
       if (d >= start && (!end || d <= end)) return s.number;
     }
@@ -71,14 +94,16 @@ export async function buildTeamTransferHistory(supabase, teamId) {
       .select("id, number, start_date, end_date")
       .order("number", { ascending: true }),
 
-    // #1525: akademi-intake = forfremmelse af egen akademirytter til førsteholdet.
-    // Vises som tilgang ("Academy"-kilde, ingen pris). Kun status='promoted' — solgte
-    // akademiryttere optræder via deres auktion, frigivne er ingen tilgang. Service-role
-    // (api.js) bypasser RLS, så posten vises også på ANDRE holds historik (#1525).
-    supabase.from("academy_graduation")
+    // #1776: akademi-hentning = signing af egen akademirytter til førsteholdet.
+    // Vises som tilgang ("Academy"-kilde, ingen pris). Kun status='signed' —
+    // tilbudte/afviste intakes er ingen tilgang. (Tidligere blev academy_graduation
+    // med status='promoted' brugt, men den tabel har 0 rows i prod; de reelle
+    // hentninger ligger i academy_intake.) Service-role (api.js) bypasser RLS, så
+    // posten vises også på ANDRE holds historik (#1525).
+    supabase.from("academy_intake")
       .select("id, status, resolved_at, created_at, rider:rider_id(id, firstname, lastname)")
       .eq("team_id", teamId)
-      .eq("status", "promoted")
+      .eq("status", "signed")
       .order("resolved_at", { ascending: false }),
   ]);
 
@@ -90,7 +115,7 @@ export async function buildTeamTransferHistory(supabase, teamId) {
     swap_offers: swapsRes,
     loan_agreements: loansRes,
     seasons: seasonsRes,
-    academy_graduation: academyRes,
+    academy_intake: academyRes,
   }, "buildTeamTransferHistory");
 
   const resolveSeason = buildSeasonResolver(seasonsRes.data || []);
@@ -184,7 +209,7 @@ export async function buildTeamTransferHistory(supabase, teamId) {
     });
   }
 
-  // #1525: akademi-intake (forfremmelse til førsteholdet) som tilgang uden pris.
+  // #1776: akademi-hentning (signing til førsteholdet) som tilgang uden pris.
   for (const g of academyRes.data || []) {
     const date = g.resolved_at || g.created_at;
     events.push({
