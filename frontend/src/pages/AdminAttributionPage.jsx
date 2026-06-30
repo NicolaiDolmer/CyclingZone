@@ -100,6 +100,7 @@ export default function AdminAttributionPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [limit, setLimit] = useState(100);
+  const [metrics, setMetrics] = useState(null); // #2040 engagement-scorecard
 
   useEffect(() => {
     (async () => {
@@ -115,12 +116,15 @@ export default function AdminAttributionPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API}/api/admin/attribution?limit=${limit}`, {
-        headers: await getAuth(),
-      });
+      const auth = await getAuth();
+      const [res, mRes] = await Promise.all([
+        fetch(`${API}/api/admin/attribution?limit=${limit}`, { headers: auth }),
+        fetch(`${API}/api/admin/metrics?days=30`, { headers: auth }),
+      ]);
       const json = await readAdminJson(res);
       if (res.ok) setData(json);
       else setError(adminErrorMessage(json, res));
+      if (mRes.ok) setMetrics(await readAdminJson(mRes));
     } catch (e) {
       setError(e.message || "Forbindelsen fejlede");
     } finally {
@@ -221,6 +225,20 @@ export default function AdminAttributionPage() {
           sub={topReferrer ? `${topReferrer.count} (${pct(topReferrer.count, total)})` : undefined}
         />
       </div>
+
+      {metrics && (
+        <div>
+          <p className="text-cz-3 text-xs uppercase tracking-wide mb-2">
+            Engagement · førsteparts, bot-ekskluderet (seneste {metrics.days}d) — #2040
+          </p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <KpiCard label="Public visits" value={metrics.traffic.humanVisits} sub={`${Math.round(metrics.traffic.botShare * 100)}% bots ekskluderet`} />
+            <KpiCard label="Engaged" value={metrics.traffic.engagedVisits} sub={`${Math.round(metrics.traffic.engagedRate * 100)}% engaged-rate`} />
+            <KpiCard label="Public bounce" value={`${Math.round(metrics.traffic.bounceRate * 100)}%`} sub="ægte, bot-ekskluderet" />
+            <KpiCard label="Signups" value={metrics.signups} sub={`seneste ${metrics.days}d`} />
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
         <BreakdownCard title="Pr. kilde (utm_source)" items={aggregates.by_source} total={total} />

@@ -94,6 +94,17 @@ export function LanguageProvider({ children }) {
     };
   }, [i18n, language]);
 
+  // #2039: bind <html lang> til det aktive UI-sprog APP-BREDT. Uden dette beholdt
+  // app-ruterne (som ikke kalder useDocumentHead) index.html's statiske default
+  // mens indholdet er engelsk → Chrome auto-oversætter mismatchet → DOM-mutation →
+  // React insertBefore/removeChild-crash (CYCLINGZONE-1P m.fl.). Sætter lang ved
+  // hvert sprogskift, så translate-triggeren forsvinder for hele appen.
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      document.documentElement.lang = language;
+    }
+  }, [language]);
+
   const setLanguage = useCallback(
     async (lng) => {
       if (!SUPPORTED.includes(lng)) return;

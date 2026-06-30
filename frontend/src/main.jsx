@@ -4,6 +4,7 @@ import App from "./App.jsx";
 import { AppProviders } from "./AppProviders.jsx";
 import { initSentry } from "./lib/sentry.jsx";
 import { installChunkReloadHandlers } from "./lib/chunkErrors.js";
+import { installTranslationResilience } from "./lib/translationResilience.js";
 import { captureFirstTouch } from "./lib/attribution.js";
 import { BrowserRouter } from "react-router-dom";
 import i18n from "./i18n";
@@ -22,6 +23,10 @@ installChunkReloadHandlers({
   storage: window.sessionStorage,
   reload: () => window.location.reload(),
 });
+
+// #2039: gør DOM-mutation fra browser-oversættelse non-fatal (belt-and-suspenders
+// til <html lang>-fixet i LanguageProvider). Skal installeres FØR React renders.
+installTranslationResilience();
 
 initSentry();
 

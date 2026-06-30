@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation, useSearchParams } from "react-router-dom";
 import { Suspense, useEffect, useState } from "react";
 // #881: lazyWithRetry erstatter React.lazy så stale-chunk-fejl efter deploy bliver
 // recoverable (retry + genkendelig ChunkLoadError -> auto-reload via SentryBoundary).
@@ -9,8 +9,9 @@ import CookieBanner from "./components/CookieBanner.jsx";
 // så komponenten SKAL være synkront tilgængelig ved klientens første render —
 // en lazy-suspense-fallback ville ellers give et hydration-mismatch.
 import LandingPage from "./pages/LandingPage.jsx";
-import { logEvent } from "./lib/logEvent";
+import { logSessionStart } from "./lib/logEvent";
 import { setSentryUser, clearSentryUser } from "./lib/sentry.jsx";
+import { safeNextPath } from "./lib/safeNextPath.js";
 
 // Layout + analytics integrations lazy-loaded for #479: public routes
 // (/founder-supporter, /login, /privacy-*) ikke betaler for app-shell + Clarity/Vercel
@@ -21,6 +22,9 @@ const ClarityIntegration = lazy(() => import("./lib/clarityIntegration.jsx"));
 const WebVitalsIntegration = lazy(() => import("./lib/webVitalsIntegration.jsx"));
 const VercelAnalyticsIntegration = lazy(() => import("./lib/vercelAnalyticsIntegration.jsx"));
 const GaIntegration = lazy(() => import("./lib/gaIntegration.jsx"));
+// #2040: anonym, storage-less engagement-beacon for den logget-UD cold-population
+// (logget-ind måles via player_events). Consent-uafhængig, ingen storage på enheden.
+const TrafficBeacon = lazy(() => import("./components/TrafficBeacon.jsx"));
 
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
@@ -89,13 +93,29 @@ function RouteFallback() {
 }
 
 function ProtectedRoute({ children, session }) {
-  // session === undefined = endnu ukendt (getSession kører). Vis loader frem for
-  // straks at redirecte, så en allerede indlogget bruger ikke blinker forbi login.
-  // Tidligere gatede App globalt på dette; nu gør kun beskyttede ruter det, så de
-  // offentlige ruter (landing/login) kan males uden at vente på auth-kaldet.
+  const location = useLocation();
+  // #1347: session === undefined = endnu ukendt (getSession kører). Vis loader frem
+  // for straks at redirecte, så en allerede indlogget bruger ikke blinker forbi login.
+  // Var tidligere en GLOBAL gate i App; flyttet hertil så de offentlige ruter
+  // (landing/login) kan males straks — forudsætning for ren prerender-hydration på "/".
   if (session === undefined) return <LoadingScreen />;
-  if (!session) return <Navigate to="/login" replace />;
+  if (!session) {
+    // #2042: bevar deep-link-destinationen så cold trafik der opretter en konto
+    // lander på det de kom for, ikke en generisk /dashboard-omvej.
+    const next = encodeURIComponent(location.pathname + location.search);
+    return <Navigate to={`/login?next=${next}`} replace />;
+  }
   return children;
+}
+
+// #2042: kontekst-bevidst /login-rute. En logget-ind bruger (eller en der lige har
+// oprettet konto / logget ind) sendes til sin oprindelige ?next-destination.
+function LoginRoute({ session }) {
+  const [params] = useSearchParams();
+  if (session) {
+    return <Navigate to={safeNextPath(params.get("next")) || "/dashboard"} replace />;
+  }
+  return <LoginPage />;
 }
 
 export default function App() {
@@ -111,7 +131,7 @@ export default function App() {
         // #621 item 2 — tag Sentry-events med user.id (UUID, ingen PII) så
         // "Affected users"-counter virker. Initial session-restore-path.
         setSentryUser(session.user?.id);
-        logEvent("session_started");
+        logSessionStart();
       }
     }).catch((err) => {
       // #1347 — getSession() kan reject ved offline/network-fejl eller en
@@ -126,7 +146,7 @@ export default function App() {
       setSession(session);
       if (event === "SIGNED_IN") {
         setSentryUser(session?.user?.id);
-        logEvent("session_started");
+        logSessionStart();
       } else if (event === "TOKEN_REFRESHED" && session?.user?.id) {
         // Token-refresh kan ske efter cold-start uden SIGNED_IN — sørg for at
         // user-context aldrig taber sig pga. en refresh.
@@ -143,29 +163,28 @@ export default function App() {
   }, []);
 
   // Ingen global session-gate længere: offentlige ruter (/, /login, ...) renderer
-  // straks (session === undefined → falsy → landing/login vises). Beskyttede ruter
-  // venter på session i ProtectedRoute. Det er forudsætningen for at den prerendrede
-  // landing kan hydreres rent — klientens første render på "/" giver LandingPage,
-  // præcis som build-time-prerenderen gjorde.
+  // straks (session === undefined → falsy → landing/login). Beskyttede ruter venter
+  // på session i ProtectedRoute. Forudsætning for at den prerendrede landing kan
+  // hydreres rent — klientens første render på "/" giver LandingPage.
   return (
     // Routeren leveres af entry'et (BrowserRouter i main.jsx, StaticRouter i
-    // entry-server.jsx). #969-flaget v7_startTransition bor nu på den BrowserRouter.
+    // entry-server.jsx). #969 v7_startTransition bor nu på den BrowserRouter.
     <>
-      {/* Analytics er client-only (consent-gated, browser-API'er) og lazy. Mount
-          dem FØRST efter hydration, så de ikke indgår i prerenderens server-render
-          — en lazy Suspense-boundary kan ikke fuldføres på serveren og ville give
-          React #419 ved hydration. */}
+      {/* Analytics + traffic-beacon er client-only (consent/browser-API'er) og lazy.
+          Mount FØRST efter hydration, så de ikke indgår i prerenderens server-render
+          — en lazy Suspense-boundary kan ikke fuldføres på serveren → React #419. */}
       {mounted && (
         <Suspense fallback={null}>
           <ClarityIntegration />
           <WebVitalsIntegration />
           <VercelAnalyticsIntegration />
           <GaIntegration />
+          <TrafficBeacon session={session} />
         </Suspense>
       )}
       <Suspense fallback={<RouteFallback />}>
         <Routes>
-          <Route path="/login" element={session ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
+          <Route path="/login" element={<LoginRoute session={session} />} />
           <Route path="/reset-password" element={<ResetPasswordPage session={session} />} />
           <Route path="/privatlivspolitik" element={<PrivacyPolicyPage />} />
           <Route path="/privacy-policy" element={<PrivacyPolicyPageEn />} />

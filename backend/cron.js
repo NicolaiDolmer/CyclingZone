@@ -486,6 +486,16 @@ async function runStageSchedulerCron() {
   }
 }
 
+// ─── Traffic-events retention: hold rå anonyme web-events ≤180 dage (#2040) ───
+// traffic_events er bevidst PII-fri, men rå events skal ikke leve for evigt.
+// Idempotent delete; service_role bypasser RLS.
+
+async function runTrafficRetentionCron() {
+  const cutoff = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString();
+  const { error } = await supabase.from("traffic_events").delete().lt("occurred_at", cutoff);
+  if (error) console.error("  ❌ traffic_events retention fejlede:", error.message);
+}
+
 // ─── In-flight tracking for graceful shutdown ────────────────────────────────
 // SIGTERM (Railway-deploy) skal ikke afbryde en transition mid-tick. server.js
 // kalder awaitCronsIdle() i sin SIGTERM-handler så processen venter til ticks
@@ -601,6 +611,9 @@ export function startCron() {
   // Bevidst INGEN immediate-run: det periodiske tick er nok, og en etape skal ikke
   // fyre ved hver genstart (mirror auto-prize-mønstret).
   setInterval(trackedTick("stage scheduler", runStageSchedulerCron), 5 * 60 * 1000);
+
+  // Every 24 hours: traffic_events retention (#2040 — slet rå anonyme events >180 dage).
+  setInterval(trackedTick("traffic retention", runTrafficRetentionCron), 24 * 60 * 60 * 1000);
 
   // Run immediately on start
   trackedTick("auctions", finalizeExpiredAuctions)();
