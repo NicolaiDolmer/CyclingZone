@@ -5,7 +5,7 @@ import { Suspense, useEffect, useState } from "react";
 import { lazyWithRetry as lazy } from "./lib/lazyWithRetry.js";
 import { supabase } from "./lib/supabase";
 import CookieBanner from "./components/CookieBanner.jsx";
-import { logEvent } from "./lib/logEvent";
+import { logSessionStart } from "./lib/logEvent";
 import { setSentryUser, clearSentryUser } from "./lib/sentry.jsx";
 
 // Layout + analytics integrations lazy-loaded for #479: public routes
@@ -17,6 +17,9 @@ const ClarityIntegration = lazy(() => import("./lib/clarityIntegration.jsx"));
 const WebVitalsIntegration = lazy(() => import("./lib/webVitalsIntegration.jsx"));
 const VercelAnalyticsIntegration = lazy(() => import("./lib/vercelAnalyticsIntegration.jsx"));
 const GaIntegration = lazy(() => import("./lib/gaIntegration.jsx"));
+// #2040: anonym, storage-less engagement-beacon for den logget-UD cold-population
+// (logget-ind måles via player_events). Consent-uafhængig, ingen storage på enheden.
+const TrafficBeacon = lazy(() => import("./components/TrafficBeacon.jsx"));
 
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
@@ -100,7 +103,7 @@ export default function App() {
         // #621 item 2 — tag Sentry-events med user.id (UUID, ingen PII) så
         // "Affected users"-counter virker. Initial session-restore-path.
         setSentryUser(session.user?.id);
-        logEvent("session_started");
+        logSessionStart();
       }
     }).catch((err) => {
       // #1347 — getSession() kan reject ved offline/network-fejl eller en
@@ -115,7 +118,7 @@ export default function App() {
       setSession(session);
       if (event === "SIGNED_IN") {
         setSentryUser(session?.user?.id);
-        logEvent("session_started");
+        logSessionStart();
       } else if (event === "TOKEN_REFRESHED" && session?.user?.id) {
         // Token-refresh kan ske efter cold-start uden SIGNED_IN — sørg for at
         // user-context aldrig taber sig pga. en refresh.
@@ -142,6 +145,7 @@ export default function App() {
         <WebVitalsIntegration />
         <VercelAnalyticsIntegration />
         <GaIntegration />
+        <TrafficBeacon session={session} />
       </Suspense>
       <Suspense fallback={<RouteFallback />}>
         <Routes>
