@@ -60,12 +60,14 @@ export function buildTierMaterializationPlan({
   overlapCaps = TIER_OVERLAP_CAP,
   slots = TIER_STAGE_SLOTS,
   baseSeed = 1,
+  forceTiers = [],
 } = {}) {
   const catalogById = new Map(catalog.map((c) => [c.id, c]));
+  const forced = new Set(forceTiers);
 
   const liveByTier = new Map();
   for (const p of pools) {
-    if (!poolHasCalendar(p.tier, p.realManagerCount)) continue;
+    if (!poolHasCalendar(p.tier, p.realManagerCount) && !forced.has(p.tier)) continue;
     if (!liveByTier.has(p.tier)) liveByTier.set(p.tier, []);
     liveByTier.get(p.tier).push(p);
   }
@@ -131,7 +133,7 @@ export function buildTierMaterializationPlan({
  */
 export async function materializeTierCalendars({
   supabase, seasonId, seasonStartDate = null, from = new Date(),
-  baseSeed = 1, tiers = null, dryRun = true, log = () => {},
+  baseSeed = 1, tiers = null, forceTiers = [], dryRun = true, log = () => {},
 } = {}) {
   const editionYear = editionYearFrom(seasonStartDate);
 
@@ -155,7 +157,7 @@ export async function materializeTierCalendars({
   if (exErr) throw new Error(`races (existing): ${exErr.message}`);
   const existingKey = new Set((existing || []).map((r) => `${r.league_division_id}:${r.pool_race_id}`));
 
-  const { tierPlans } = buildTierMaterializationPlan({ pools, catalog: catalog || [], from, baseSeed });
+  const { tierPlans } = buildTierMaterializationPlan({ pools, catalog: catalog || [], from, baseSeed, forceTiers });
   const summary = { dryRun, editionYear, racesInserted: 0, stageProfiles: 0, stageSchedules: 0, tiers: [] };
 
   for (const tierPlan of tierPlans) {
