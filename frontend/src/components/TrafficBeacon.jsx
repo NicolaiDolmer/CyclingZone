@@ -5,25 +5,39 @@ import { makeEngagementTracker, sendBeacon } from "../lib/trafficBeacon.js";
 // Måler den logget-UD cold-population (logget-ind måles via player_events, #2040).
 // Storage-less + consent-uafhængig: ingen cookie/localStorage/sessionStorage på
 // enheden — serveren dedup'er via visit_hash. Mountes inde i BrowserRouter.
+//
+// Al ref-init + Date.now() sker i EFFECTS (ikke i render) for react-hooks-renhed
+// (react-hooks/purity + react-hooks/refs).
 export default function TrafficBeacon({ session }) {
   const loc = useLocation();
-  const tracker = useRef(null);
-  const loadTs = useRef(Date.now());
-  if (!tracker.current) {
-    tracker.current = makeEngagementTracker(() => sendBeacon("engaged", loc.pathname));
-  }
+  const trackerRef = useRef(null);
+  const loadTsRef = useRef(0);
+  const pathRef = useRef(loc.pathname);
+
+  // Hold seneste path tilgængelig for engaged-beaconen uden ref-skriv i render.
+  useEffect(() => {
+    pathRef.current = loc.pathname;
+  }, [loc.pathname]);
+
+  // Init tracker + load-timestamp én gang ved mount (Date.now i effect, ikke render).
+  useEffect(() => {
+    loadTsRef.current = Date.now();
+    trackerRef.current = makeEngagementTracker(() => sendBeacon("engaged", pathRef.current));
+  }, []);
 
   // pageview pr. route-skift — kun logget-ud.
   useEffect(() => {
     if (session) return;
     sendBeacon("pageview", loc.pathname);
-    tracker.current.pageview();
+    trackerRef.current?.pageview();
   }, [session, loc.pathname]);
 
   // 10s + interaktion → engaged (kun logget-ud).
   useEffect(() => {
     if (session) return undefined;
-    const onInteract = () => tracker.current.interaction(Date.now() - loadTs.current);
+    const onInteract = () => {
+      trackerRef.current?.interaction(Date.now() - loadTsRef.current);
+    };
     window.addEventListener("scroll", onInteract, { passive: true });
     window.addEventListener("click", onInteract);
     return () => {
