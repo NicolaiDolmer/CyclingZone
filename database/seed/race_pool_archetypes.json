@@ -126,5 +126,20 @@
   { "external_id": "376978090cd54610", "name": "Københavns Klassiker", "country": "Denmark", "terrain_archetype": "flat_sprint" },
   { "external_id": "9206e19f82e2393e", "name": "Ocean Road Classic", "country": "Australia", "terrain_archetype": "hilly_classic" },
   { "external_id": "71f874621d924b5e", "name": "Taunus-Klassiker", "country": "Germany", "terrain_archetype": "hilly_classic" },
-  { "external_id": "870ce2ec9a0e7752", "name": "Vlaamse Doortocht", "country": "Belgium", "terrain_archetype": "cobbled_classic" }
+  { "external_id": "870ce2ec9a0e7752", "name": "Vlaamse Doortocht", "country": "Belgium", "terrain_archetype": "cobbled_classic" },
+  { "external_id": "675cc3db58920886", "name": "Trofeo Camp de Morvedre Nuevo", "country": "Spain", "terrain_archetype": "flat_sprint" },
+  { "external_id": "0d66fbfbeaf44973", "name": "Grand Prix Criquielion Nouveau", "country": "Belgium", "terrain_archetype": "puncheur" },
+  { "external_id": "80bb2a632ae10e4d", "name": "Rund um Köln Neu", "country": "Germany", "terrain_archetype": "flat_sprint" },
+  { "external_id": "92f20de262004754", "name": "Famenne-Ardenne Classique Nouvelle", "country": "Belgium", "terrain_archetype": "hilly_classic" },
+  { "external_id": "459b40b640ed5b1a", "name": "Étoile de Bessèges Mineure", "country": "France", "terrain_archetype": "balanced_week" },
+  { "external_id": "8fe98b9f788c3b06", "name": "Giro d'Abruzzo Nuovo", "country": "Italy", "terrain_archetype": "mountain_tour" },
+  { "external_id": "8f40dfb81187fab3", "name": "Tour de l'Ain Nouveau", "country": "France", "terrain_archetype": "hilly_tour" },
+  { "external_id": "b4b0dd1c17aeedc0", "name": "Paris-Camembert Mineur", "country": "France", "terrain_archetype": "hilly_classic" },
+  { "external_id": "1b465e0459ee24eb", "name": "La Roue Tourangelle Mineure", "country": "France", "terrain_archetype": "flat_sprint" },
+  { "external_id": "e06857d6c132e271", "name": "Cholet Agglo Classique", "country": "France", "terrain_archetype": "flat_sprint" },
+  { "external_id": "3c0b2191b1672b4b", "name": "Antwerp Port Epic Mineur", "country": "Belgium", "terrain_archetype": "cobbled_classic" },
+  { "external_id": "3721d97b66d6a76a", "name": "Région Pays de la Loire Tour Mineur", "country": "France", "terrain_archetype": "sprinters_week" },
+  { "external_id": "4f43b6e0843c1380", "name": "O Gran Camiño Menor", "country": "Spain", "terrain_archetype": "mountain_tour" },
+  { "external_id": "339f4f05e3d8d96b", "name": "Settimana di Coppi e Bartali Minore", "country": "Italy", "terrain_archetype": "hilly_tour" },
+  { "external_id": "a15a0038c23d0c69", "name": "Tour de la Provence Mineur", "country": "France", "terrain_archetype": "hilly_tour" }
 ]
