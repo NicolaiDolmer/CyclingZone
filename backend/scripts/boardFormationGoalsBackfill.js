@@ -24,6 +24,7 @@ import { BOARD_IDENTITY_RIDER_SELECT } from "../lib/boardConstants.js";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const args = process.argv.slice(2);
 const APPLY = args.includes("--apply");
+const EMIT_SQL = args.includes("--sql"); // read-only: print UPDATE-statements, skriv intet
 function argValue(flag, fallback) {
   const idx = args.indexOf(flag);
   return idx !== -1 && args[idx + 1] !== undefined ? args[idx + 1] : fallback;
@@ -73,15 +74,16 @@ async function main() {
     ridersByTeam.get(r.team_id).push(fields);
   }
 
-  console.log(`${APPLY ? "🔴 APPLY" : "🟡 DRY-RUN"} · ${(boardsRes.data || []).length} pending formations-boards\n`);
+  if (!EMIT_SQL) console.log(`${APPLY ? "🔴 APPLY" : "🟡 DRY-RUN"} · ${(boardsRes.data || []).length} pending formations-boards\n`);
   let changed = 0;
   let applied = 0;
+  const sqlValues = [];
 
   for (const board of boardsRes.data || []) {
     const team = teamById.get(board.team_id);
     const riders = ridersByTeam.get(board.team_id) || [];
     if (!riders.length) {
-      console.log(`  ⏭️  ${team?.name}: tom trup → springes over (defensivt)`);
+      if (!EMIT_SQL) console.log(`  ⏭️  ${team?.name}: tom trup → springes over (defensivt)`);
       continue;
     }
     const calibrated = generateBoardGoals({
@@ -93,11 +95,15 @@ async function main() {
     const afterMin = minRidersTarget(calibrated);
     const willChange = JSON.stringify(board.current_goals) !== JSON.stringify(calibrated);
     if (!willChange) {
-      console.log(`  =  ${team?.name} (div ${team.division}, ${riders.length} ryt.): allerede kalibreret`);
+      if (!EMIT_SQL) console.log(`  =  ${team?.name} (div ${team.division}, ${riders.length} ryt.): allerede kalibreret`);
       continue;
     }
     changed += 1;
-    console.log(`  Δ  ${team?.name} (div ${team.division}, ${riders.length} ryt.): min_riders ${beforeMin}→${afterMin}`);
+    if (!EMIT_SQL) console.log(`  Δ  ${team?.name} (div ${team.division}, ${riders.length} ryt.): min_riders ${beforeMin}→${afterMin}`);
+
+    // --sql: emit en VALUES-row (read-only). JSON enkelt-quote-escapes ('' for ').
+    const jsonLit = JSON.stringify(calibrated).replace(/'/g, "''");
+    sqlValues.push(`  (${typeof board.id === "number" ? board.id : `'${String(board.id).replace(/'/g, "''")}'`}, '${jsonLit}'::jsonb)`);
 
     if (APPLY) {
       const { error: upErr } = await supabase
@@ -105,6 +111,12 @@ async function main() {
       if (upErr) throw new Error(`update ${board.id}: ${upErr.message}`);
       applied += 1;
     }
+  }
+
+  if (EMIT_SQL) {
+    if (!sqlValues.length) { console.log("-- ingen ændringer"); return; }
+    console.log(`UPDATE board_profiles AS bp SET current_goals = v.goals\nFROM (VALUES\n${sqlValues.join(",\n")}\n) AS v(id, goals)\nWHERE bp.id = v.id;`);
+    return;
   }
 
   console.log(`\n${APPLY ? `✅ Skrev ${applied} boards.` : `🟡 ${changed} boards ville ændres. Kør med --apply for at skrive.`}`);
