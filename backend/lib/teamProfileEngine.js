@@ -1,4 +1,4 @@
-import { createInitialBoardProfile } from "./boardEngine.js";
+import { createInitialBoardProfile, generateBoardGoals } from "./boardEngine.js";
 import { computeSeasonOneIdentity } from "./boardIdentity.js";
 import { BOARD_IDENTITY_RIDER_SELECT } from "./boardConstants.js";
 import { allocateStarterSquadForTeam } from "./starterSquadAllocator.js";
@@ -313,6 +313,76 @@ export async function ensureSeasonIdentityBasis({ supabase, team, seasonNumber =
   return true;
 }
 
+// #2022 fase 2 · Kalibrér et nyt holds formations-board-mål mod den faktiske
+// start-trup. createInitialBoardProfile genererer STATISKE fallback-mål (fx
+// min_riders 15) fordi boardet oprettes FØR truppen findes — for et 8-rytters
+// entry-hold er det strukturelt uopnåeligt og straffer satisfaction uden at
+// manageren kan nå det (#2022's rod-klage). Denne funktion kører EFTER
+// allokeringen og erstatter målene på det PENDING formations-board med dem
+// generateBoardGoals giver MED trup-kontekst — præcis den kalibrering relaunch-/
+// forhandlings-stien allerede bruger; vi lukker blot hullet hvor dannelse omgik den.
+//
+// Kun pending, ikke-baseline boards røres (forhandlede/baseline-mål bevares).
+// Idempotent (samme trup → samme kalibrerede mål) + defensiv (tom trup → no-op,
+// behold de statiske mål frem for at nulstille til en tom-trup-kalibrering).
+export async function ensureBoardGoalsCalibrated({ supabase, team } = {}) {
+  if (!team?.id) {
+    throw createHttpError(500, "team is required for goal calibration");
+  }
+
+  const { data: boards, error: boardsError } = await supabase
+    .from("board_profiles")
+    .select("id, plan_type, focus")
+    .eq("team_id", team.id)
+    .eq("is_baseline", false)
+    .eq("negotiation_status", "pending");
+  if (boardsError) {
+    throw createHttpError(500, boardsError.message);
+  }
+  if (!(boards || []).length) {
+    return false;
+  }
+
+  const { data: riders, error: ridersError } = await supabase
+    .from("riders")
+    .select(BOARD_IDENTITY_RIDER_SELECT)
+    .eq("team_id", team.id);
+  if (ridersError) {
+    throw createHttpError(500, ridersError.message);
+  }
+  if (!(riders || []).length) {
+    return false;
+  }
+
+  const teamContext = {
+    division: team.division,
+    sponsor_income: team.sponsor_income,
+    balance: team.balance,
+    riders,
+  };
+
+  let calibratedAny = false;
+  for (const board of boards) {
+    const calibratedGoals = generateBoardGoals({
+      focus: board.focus,
+      planType: board.plan_type,
+      team: teamContext,
+      riders,
+      standing: null,
+    });
+    const { error: updateError } = await supabase
+      .from("board_profiles")
+      .update({ current_goals: calibratedGoals })
+      .eq("id", board.id);
+    if (updateError) {
+      throw createHttpError(500, updateError.message);
+    }
+    calibratedAny = true;
+  }
+
+  return calibratedAny;
+}
+
 export async function upsertOwnTeamProfile({
   supabase,
   userId,
@@ -434,6 +504,25 @@ export async function upsertOwnTeamProfile({
       sentryCapture(
         basisError instanceof Error ? basisError : new Error(String(basisError)),
         { tags: { component: "team-create-identity-basis" }, extra: { teamId: team.id } },
+      );
+    }
+
+    // #2022 fase 2: kalibrér formations-board-målene mod den netop-tildelte
+    // start-trup, så et entry-hold ikke fastlåses af et strukturelt uopnåeligt
+    // statisk mål (min_riders 15 på en 8-rytters trup). Skal køre EFTER
+    // allokeringen (ellers tom trup → no-op). BEVIDST IKKE-FATAL: ukalibrerede
+    // mål er en blødere blindgyde end en tom trup — boardet virker, blot med de
+    // statiske mål — så en fejl her må ikke blokere signup.
+    try {
+      await ensureBoardGoalsCalibrated({ supabase, team });
+    } catch (calibrationError) {
+      console.error(
+        `[teamProfileEngine] #2022 board-mål-kalibrering FEJLEDE for nyt hold ${team.id} (ikke-fatal, signup fortsætter):`,
+        calibrationError?.message || calibrationError,
+      );
+      sentryCapture(
+        calibrationError instanceof Error ? calibrationError : new Error(String(calibrationError)),
+        { tags: { component: "team-create-board-goal-calibration" }, extra: { teamId: team.id } },
       );
     }
 

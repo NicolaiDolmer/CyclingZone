@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { upsertOwnTeamProfile, ensureSeasonIdentityBasis } from "./teamProfileEngine.js";
+import { upsertOwnTeamProfile, ensureSeasonIdentityBasis, ensureBoardGoalsCalibrated } from "./teamProfileEngine.js";
+import { generateBoardGoals } from "./boardGoals.js";
 import { INITIAL_BALANCE, MANAGER_ENTRY_DIVISION, POOL_TARGET_SIZE, SPONSOR_INCOME_BASE } from "./economyConstants.js";
 
 // #1560: alle eksisterende tests injicerer en no-op starter-squad-allokering, så
@@ -1096,4 +1097,91 @@ test("#2022 upsertOwnTeamProfile sætter identitets-grundlag fra start-truppen v
   const stored = supabase.state.teams.find((t) => t.id === result.team.id)?.season_1_identity_basis;
   assert.ok(stored, "et nyt hold skal have season_1_identity_basis sat ved dannelse");
   assert.equal(stored.rider_count, 6, "grundlaget beregnes fra den allokerede start-trup, ikke en tom trup");
+});
+
+// ── #2022 fase 2 · Board-mål kalibreret ved dannelse ──────────────────────────
+// createInitialBoardProfile genererer statiske fallback-mål (min_riders 15) fordi
+// det kaldes FØR start-truppen findes. ensureBoardGoalsCalibrated kører EFTER
+// allokeringen og erstatter et pending formations-boards mål med dem
+// generateBoardGoals giver MED trup-kontekst — så et entry-hold ikke fastlåses af
+// et strukturelt uopnåeligt min_riders-mål (#2022 fase 1's postmortem).
+
+test("#2022 ensureBoardGoalsCalibrated kalibrerer et pending formations-boards mål mod truppen", async () => {
+  const team = { id: "team-1", division: 3, sponsor_income: 100, balance: 0 };
+  const staticGoals = generateBoardGoals({ focus: "balanced", planType: "1yr" });
+  assert.equal(staticGoals.find((g) => g.type === "min_riders").target, 15, "udgangspunkt: statisk min_riders er 15");
+  const board = {
+    id: "bp-1", team_id: "team-1", plan_type: "1yr", focus: "balanced",
+    is_baseline: false, negotiation_status: "pending", current_goals: staticGoals,
+  };
+  const nats = ["FR", "IT", "ES", "BE", "NL", "DE", "GB", "DK", "SE"];
+  const riders = Array.from({ length: 9 }, (_, i) => ({
+    id: `r-${i}`, team_id: "team-1", nationality_code: nats[i], is_u25: i < 3, stat_fl: 60,
+  }));
+  const supabase = createSupabaseDouble({ teams: [team], boardProfiles: [board], riders });
+
+  const updated = await ensureBoardGoalsCalibrated({ supabase, team });
+
+  assert.equal(updated, true, "et pending formations-board kalibreres");
+  const stored = supabase.state.board_profiles[0].current_goals;
+  const minRiders = stored.find((g) => g.type === "min_riders");
+  assert.ok(minRiders.target <= riders.length, "kalibreret min_riders er opnåeligt for truppen");
+  assert.notEqual(minRiders.target, 15, "den statiske 15 er erstattet");
+});
+
+test("#2022 ensureBoardGoalsCalibrated rører ikke et completed/forhandlet board", async () => {
+  const team = { id: "team-1", division: 3, sponsor_income: 100, balance: 0 };
+  const negotiated = generateBoardGoals({ focus: "balanced", planType: "1yr" });
+  const board = {
+    id: "bp-1", team_id: "team-1", plan_type: "1yr", focus: "balanced",
+    is_baseline: false, negotiation_status: "completed", current_goals: negotiated,
+  };
+  const riders = [{ id: "r-0", team_id: "team-1", is_u25: false }];
+  const supabase = createSupabaseDouble({ teams: [team], boardProfiles: [board], riders });
+
+  const updated = await ensureBoardGoalsCalibrated({ supabase, team });
+
+  assert.equal(updated, false, "kun pending formations-boards kalibreres");
+  assert.deepEqual(supabase.state.board_profiles[0].current_goals, negotiated, "forhandlede mål bevares");
+});
+
+test("#2022 ensureBoardGoalsCalibrated er no-op når truppen endnu er tom (defensivt)", async () => {
+  const team = { id: "team-1", division: 3, sponsor_income: 100, balance: 0 };
+  const staticGoals = generateBoardGoals({ focus: "balanced", planType: "1yr" });
+  const board = {
+    id: "bp-1", team_id: "team-1", plan_type: "1yr", focus: "balanced",
+    is_baseline: false, negotiation_status: "pending", current_goals: staticGoals,
+  };
+  const supabase = createSupabaseDouble({ teams: [team], boardProfiles: [board], riders: [] });
+
+  const updated = await ensureBoardGoalsCalibrated({ supabase, team });
+
+  assert.equal(updated, false, "uden trup beholdes de statiske mål");
+  assert.deepEqual(supabase.state.board_profiles[0].current_goals, staticGoals);
+});
+
+test("#2022 upsertOwnTeamProfile kalibrerer board-mål mod start-truppen ved dannelse", async () => {
+  const pools = seedDiv4Pools();
+  const supabase = createSupabaseDouble({ leagueDivisions: pools });
+  const allocateWithRiders = async (sb, teamId) => {
+    const nats = ["FR", "IT", "ES", "BE", "NL", "DE", "GB", "DK"];
+    await sb.from("riders").insert(
+      Array.from({ length: 8 }, (_, i) => ({ id: `r-${teamId}-${i}`, team_id: teamId, nationality_code: nats[i], is_u25: i < 3 })),
+    );
+    return { assigned: 8 };
+  };
+
+  const result = await upsertOwnTeamProfile({
+    supabase, userId: "user-1", name: "Calibrated At Birth", managerName: "Manager",
+    allocateStarterSquad: allocateWithRiders,
+    runAcademyCohort: noopRunAcademyCohort,
+    academyEnabled: academyDisabled,
+    reconcileAiTeams: noopReconcileAiTeams,
+  });
+
+  const board = supabase.state.board_profiles.find((b) => b.team_id === result.team.id);
+  const minRiders = board.current_goals.find((g) => g.type === "min_riders");
+  assert.ok(minRiders, "formations-boardet har et min_riders-mål");
+  assert.ok(minRiders.target <= 8, "min_riders kalibreret til start-truppen (≤8), ikke statisk 15");
+  assert.notEqual(minRiders.target, 15, "den statiske 15 omgås nu ved dannelse");
 });
