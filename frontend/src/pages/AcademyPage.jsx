@@ -12,6 +12,8 @@ import { useTranslation } from "react-i18next";
 import { useAcademy } from "../lib/useAcademy.js";
 import { Flag } from "../components/Flag.jsx";
 import PotentialeStars from "../components/PotentialeStars.jsx";
+import ScoutablePotentiale from "../components/rider/ScoutablePotentiale.jsx";
+import { useScouting } from "../lib/useScouting.js";
 import RiderLink from "../components/RiderLink.jsx";
 import { AcademySignConfirmModal } from "../components/AcademySignConfirmModal.jsx";
 import { AcademyTransferConfirmModal } from "../components/AcademyTransferConfirmModal.jsx";
@@ -32,6 +34,7 @@ function daysUntil(deadline) {
 
 export default function AcademyPage() {
   const { t } = useTranslation("academy");
+  const scouting = useScouting();
   const { enabled, slots, seniorCount, seniorMax, roster, intake, freeAgents, graduations, balance, loading, signCandidate, rejectCandidate, signFreeAgent, resolveGraduate, promoteRider } = useAcademy();
 
   // Per-kandidat in-flight state + fejlbeskeder.
@@ -367,6 +370,7 @@ export default function AcademyPage() {
                   <tr className="border-b border-cz-border">
                     <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("colRider")}</th>
                     <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("colAge")}</th>
+                    <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("potential")}</th>
                     <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("colSalary")}</th>
                     <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("colContract")}</th>
                     <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs uppercase">{t("colAction")}</th>
@@ -392,6 +396,9 @@ export default function AcademyPage() {
                         </td>
                         <td className="px-4 py-3 text-cz-2">
                           {age != null ? age : "–"}
+                        </td>
+                        <td className="px-4 py-3">
+                          <ScoutablePotentiale rider={rider} scouting={scouting} />
                         </td>
                         <td className="px-4 py-3 font-mono text-cz-2">
                           {formatSalary(rider.salary)} CZ$
@@ -459,6 +466,12 @@ export default function AcademyPage() {
                     <span className="flex-shrink-0 text-xs font-mono text-cz-2">
                       {formatSalary(rider.market_value)} CZ$
                     </span>
+                  </div>
+
+                  {/* Potentiale — scout-gated for ikke-egne ryttere (#1162/#1543). */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-cz-3">{t("potential")}</span>
+                    <ScoutablePotentiale rider={rider} scouting={scouting} showScout />
                   </div>
 
                   {err && <p className="text-xs text-cz-danger">{err}</p>}
