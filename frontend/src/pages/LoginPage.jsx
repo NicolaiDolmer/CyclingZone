@@ -12,6 +12,7 @@ import { Card, Button, Input, CheckIcon, InboxIcon } from "../components/ui";
 import { labelClass, helperClass } from "../components/ui/fieldStyles.js";
 import { getAttribution } from "../lib/attribution";
 import { markPendingSignup } from "../lib/logEvent";
+import { safeNextPath } from "../lib/safeNextPath.js";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -28,9 +29,13 @@ export default function LoginPage() {
   const navigate = useNavigate();
   // #672: landing kan deep-linke til signup-mode via ?mode=signup (Opret bruger-CTA).
   const [searchParams] = useSearchParams();
+  // #2042: cold deep-link-trafik ankommer med ?next= → default til signup-mode
+  // (de har sjældent en konto endnu), så CTA'en matcher intentionen.
+  const nextPath = safeNextPath(searchParams.get("next"));
   const [mode, setMode] = useState(() => {
     const requested = searchParams.get("mode");
-    return requested === "signup" || requested === "forgot" ? requested : "login";
+    if (requested === "signup" || requested === "forgot" || requested === "login") return requested;
+    return nextPath ? "signup" : "login";
   });
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -217,7 +222,7 @@ export default function LoginPage() {
       // #1570: holdet er oprettet og spilleren har en aktiv session → direkte ind
       // i spillet. SetupWizard/onboarding på dashboardet guider videre — ingen
       // selvmodsigende "dit hold er klar, men log ind igen"-success-skærm.
-      navigate("/dashboard");
+      navigate(nextPath || "/dashboard");
     } catch (err) {
       // #1348 — login/signup/forgot brugte try/finally uden catch: et rejected
       // Supabase-kald (offline/dropped connection) clearede loading men
@@ -264,6 +269,12 @@ export default function LoginPage() {
             <Wordmark className="mx-auto h-9 w-auto" />
           </h1>
           <p className="mt-4 text-sm text-cz-2">{subtitle}</p>
+          {nextPath && (
+            <div className="mt-5 rounded-cz border border-cz-border bg-cz-subtle px-4 py-3 text-left">
+              <p className="text-sm font-semibold text-cz-1">{t("auth:context.title")}</p>
+              <p className="mt-1 text-xs text-cz-2">{t("auth:context.body")}</p>
+            </div>
+          )}
         </div>
 
         <Card className="p-6">
