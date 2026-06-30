@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { toggleRider, validateSelectionClient } from "./raceSelectionLogic.js";
+import { toggleRider, validateSelectionClient, pickFallbackCaptain } from "./raceSelectionLogic.js";
 
 test("toggleRider: tilføjer/fjerner og respekterer max + rydder roller for fjernet rytter", () => {
   const s0 = { riderIds: [], captainId: null, sprintCaptainId: null, hunterId: null };
@@ -23,4 +23,25 @@ test("validateSelectionClient: spejl af backend-koderne (#1906 fuld opstilling)"
   assert.ok(validateSelectionClient({ riderIds: ["a","b","c","d","e"], captainId: "a", sprintCaptainId: null, hunterId: null, size: { min: 6, max: 8 }, availableCount: 5 }).includes("selection_insufficient_riders"));
   assert.ok(validateSelectionClient({ riderIds: ["a","b","c","d","e","f","g","h"], captainId: null, sprintCaptainId: null, hunterId: null, size: { min: 6, max: 8 }, availableCount: 10 }).includes("selection_captain_required"));
   assert.ok(validateSelectionClient({ riderIds: ["a","b","c","d","e","f","g","h"], captainId: "a", sprintCaptainId: "a", hunterId: null, size: { min: 6, max: 8 }, availableCount: 10 }).includes("selection_role_overlap"));
+});
+
+test("pickFallbackCaptain: vælger højest suitability, ekskl. sprint/jæger (#2028)", () => {
+  const suit = { a: 40, b: 90, c: 70, d: 95 };
+  const suitabilityOf = (id) => suit[id];
+  // d højest (95) men er jæger → ekskluderes; b næsthøjest (90) bliver kaptajn.
+  assert.equal(pickFallbackCaptain({ riderIds: ["a", "b", "c", "d"], sprintId: null, hunterId: "d", suitabilityOf }), "b");
+});
+
+test("pickFallbackCaptain: tiebreak rider_id asc ved lige suitability (deterministisk)", () => {
+  assert.equal(pickFallbackCaptain({ riderIds: ["c", "a", "b"], suitabilityOf: () => 50 }), "a");
+});
+
+test("pickFallbackCaptain: alle kandidater har anden rolle → fald tilbage til hele feltet", () => {
+  const suit = { a: 30, b: 80 };
+  assert.equal(pickFallbackCaptain({ riderIds: ["a", "b"], sprintId: "a", hunterId: "b", suitabilityOf: (id) => suit[id] }), "b");
+});
+
+test("pickFallbackCaptain: tom trup → null; manglende suitability → deterministisk (id asc)", () => {
+  assert.equal(pickFallbackCaptain({ riderIds: [], suitabilityOf: () => 0 }), null);
+  assert.equal(pickFallbackCaptain({ riderIds: ["b", "a"], suitabilityOf: () => undefined }), "a");
 });
