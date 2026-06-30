@@ -17,7 +17,6 @@
 
 import { useTranslation } from "react-i18next";
 import { riderTypeRating } from "../../../lib/riderRating.js";
-import ScoutablePotentiale from "../ScoutablePotentiale.jsx";
 
 // Spektrum-orden (flade spurtere → klatrere) så beslægtede typer ligger ved siden af
 // hinanden og polygonen får en aflæselig form. Nøgler = RIDER_TYPE_KEYS (SSOT).
@@ -31,7 +30,7 @@ const CY = 112;
 const R = 82;
 const angleAt = (i, n) => -Math.PI / 2 + (i * 2 * Math.PI) / n;
 
-export default function RiderTypeRadar({ rider, scouting, onGoScouting }) {
+export default function RiderTypeRadar({ rider, onGoScouting }) {
   const { t } = useTranslation("rider");
   const { t: tTypes } = useTranslation("riderTypes");
 
@@ -52,7 +51,7 @@ export default function RiderTypeRadar({ rider, scouting, onGoScouting }) {
   }));
   const rings = [R / 3, (2 * R) / 3, R].map((r) => r.toFixed(1));
 
-  // Bedste type = højeste type-rating (tie-break = først i SSOT-orden).
+  // Bedste type = højeste type-rating (tie-break = først i RADAR_ORDER/visnings-orden).
   const bestIdx = ratings.reduce((best, v, i) => (v > ratings[best] ? i : best), 0);
   const bestKey = RADAR_ORDER[bestIdx];
 
@@ -65,7 +64,7 @@ export default function RiderTypeRadar({ rider, scouting, onGoScouting }) {
   });
 
   return (
-    <div className="bg-cz-card border border-cz-border rounded-cz p-4">
+    <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
       <div className="flex items-baseline justify-between gap-2 mb-0.5">
         <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0">
           {t("profile.overview.radar.title")}
@@ -73,8 +72,7 @@ export default function RiderTypeRadar({ rider, scouting, onGoScouting }) {
         <span className="text-[10.5px] text-cz-3">{t("profile.overview.radar.subtitle")}</span>
       </div>
 
-      <svg viewBox="0 0 280 230" className="block w-full max-w-[430px] h-auto mx-auto mt-0.5" role="img"
-        aria-label={t("profile.overview.radar.title")}>
+      <svg viewBox="0 0 280 230" className="block w-full max-w-[430px] h-auto mx-auto mt-0.5" aria-hidden="true">
         {rings.map((r, i) => (
           <circle key={`ring-${i}`} cx={CX} cy={CY} r={r} fill="none" stroke="var(--border)" strokeWidth="1" />
         ))}
@@ -97,7 +95,7 @@ export default function RiderTypeRadar({ rider, scouting, onGoScouting }) {
             fontWeight="700"
             letterSpacing="0.3"
             fill={l.isBest ? "rgb(var(--accent-t))" : "var(--text-3)"}
-            fontFamily="var(--font-data)"
+            fontFamily='"Inter Tight", "Inter Tight Fallback", system-ui, sans-serif'
             textAnchor={l.anchor}
           >
             {tTypes(`short.${l.key}`)}
@@ -112,18 +110,20 @@ export default function RiderTypeRadar({ rider, scouting, onGoScouting }) {
         </span>
       </div>
 
+      {/* Per-type potentiale-stjerner UDELADT her (samme grund som loft-polygonen:
+          per-type potentiale findes ikke i klienten — kun ét overall-estimat). At vise
+          overall-potentialet her ville implicere et per-type loft vi ikke har. Footer
+          viser bedste type + link til Scouting; overall-potentialet står i hero'en.
+          Tilføjes når per-type potentiale-data findes (talentspejder). */}
       <div className="mt-3 pt-3 border-t border-cz-border flex items-center gap-2.5 flex-wrap">
         <span className="font-mono text-[9.5px] font-bold uppercase tracking-[0.1em] text-cz-3">
           {t("profile.overview.radar.bestAs")}
         </span>
         <span className="font-bold text-[13.5px] text-cz-1">{tTypes(`types.${bestKey}`)}</span>
-        {scouting && (
-          <ScoutablePotentiale rider={rider} scouting={scouting} showScout={false} />
-        )}
         <button
           type="button"
           onClick={onGoScouting}
-          className="ms-auto text-[11px] text-cz-accent-t hover:underline"
+          className="ms-auto py-1 -my-1 text-[11px] text-cz-accent-t hover:underline"
         >
           {t("profile.overview.radar.allTypes")}
         </button>

@@ -40,7 +40,7 @@ function AbilityRow({ label, value, progressFraction, showProgress, progressHint
   const frac = Number.isFinite(rawFrac) ? Math.max(0, Math.min(1, rawFrac)) : 0;
   const pct = showProgress ? Math.round(frac * 100) : 0;
   return (
-    <div className="flex items-center gap-2.5 py-[3.5px]">
+    <div className="flex items-center gap-[9px] py-[3.5px]">
       <span className="flex-1 min-w-0 text-[11.5px] text-cz-2 truncate">{label}</span>
       <div
         className="relative flex-none w-11 h-1 bg-cz-subtle rounded-full overflow-hidden"
@@ -66,10 +66,10 @@ export default function RiderAbilityColumns({ abilities, progressByKey = {}, isO
   const { t } = useTranslation("rider");
 
   return (
-    <div className="flex flex-col gap-3">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-start">
+    <div className="flex flex-col gap-[13px]">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-[13px] items-start">
         {ABILITY_CATEGORIES.map((cat) => (
-          <div key={cat.key} className="bg-cz-card border border-cz-border rounded-cz p-4">
+          <div key={cat.key} className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
             <div className="flex items-center gap-2 pb-2 mb-1 border-b-2 border-cz-accent/50">
               <span className="flex text-cz-accent-t">
                 <IconBase size={16}>{CATEGORY_ICON_PATHS[cat.key]}</IconBase>
@@ -95,8 +95,9 @@ export default function RiderAbilityColumns({ abilities, progressByKey = {}, isO
         ))}
       </div>
 
-      {/* Legend — de to bjælke/tal-betydninger holdt visuelt adskilt (spec). */}
-      <div className="flex items-center gap-1.5 flex-wrap text-[10.5px] text-cz-3">
+      {/* Legend — de to bjælke/tal-betydninger holdt visuelt adskilt (spec). -mt-1
+          trækker den tæt op under grid'et som en caption (design: margin-top -4px). */}
+      <div className="-mt-1 flex items-center gap-1.5 flex-wrap text-[10.5px] text-cz-3">
         <span>{t("profile.overview.legend.level")}</span>
         <span aria-hidden="true">·</span>
         <span className="inline-flex items-center gap-1.5">

@@ -1423,16 +1423,15 @@ export default function RiderStatsPage() {
           scout-verdikt her (det lever i Scouting). */}
       {tab === "overview" && (
         rider.abilities ? (
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-[13px]">
             <RiderAbilityColumns
               abilities={rider.abilities}
               progressByKey={overviewProgress}
               isOwnRider={isMyRider}
             />
-            <div className={`grid grid-cols-1 ${rider.physiology ? "lg:grid-cols-2" : ""} gap-3 items-start`}>
+            <div className={`grid grid-cols-1 ${rider.physiology ? "lg:grid-cols-2" : ""} gap-[13px] items-start`}>
               <RiderTypeRadar
                 rider={rider}
-                scouting={scouting}
                 onGoScouting={() => setTab("scouting")}
               />
               {rider.physiology && (

@@ -16,23 +16,25 @@ import { useTranslation } from "react-i18next";
 
 // Universelle forkortelser (oversættes ikke, jf. abilities.js' korte labels).
 const STAT_DEFS = [
-  { key: "ftp_wkg", label: "FTP", unit: "W/kg", digits: 1 },
+  { key: "ftp_watts", label: "FTP", unit: "W", digits: 0 },
   { key: "vo2max_power_wkg", label: "VO₂max", unit: "W/kg", digits: 1 },
   { key: "pmax_watts", label: "Pmax", unit: "W", digits: 0 },
 ];
 
-function fmt(value, digits) {
+// digits>0 → fast decimal (W/kg). digits=0 → heltal med tusind-gruppering efter det
+// aktive sprog (ikke hardcodet locale — appen er EN-først med runtime-sprogskift).
+function fmt(value, digits, locale) {
   const num = Number(value);
   if (!Number.isFinite(num)) return "—";
-  return digits > 0 ? num.toFixed(digits) : Math.round(num).toLocaleString("da-DK");
+  return digits > 0 ? num.toFixed(digits) : Math.round(num).toLocaleString(locale);
 }
 
 export default function RiderOverviewPhysiology({ physiology, weight, onGoFysiologi }) {
-  const { t } = useTranslation("rider");
+  const { t, i18n } = useTranslation("rider");
   if (!physiology) return null;
 
   return (
-    <div className="bg-cz-card border border-cz-border rounded-cz p-4">
+    <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
       <div className="flex items-baseline justify-between gap-2 mb-2.5">
         <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0">
           {t("profile.overview.physio.title")}
@@ -44,13 +46,13 @@ export default function RiderOverviewPhysiology({ physiology, weight, onGoFysiol
         )}
       </div>
 
-      <div className="flex flex-col gap-2.5">
+      <div className="flex flex-col gap-[11px]">
         {STAT_DEFS.map((s) => (
           <div key={s.key} className="flex items-baseline justify-between gap-2">
             <span className="text-[11.5px] text-cz-2">{s.label}</span>
             <div className="flex items-baseline gap-1.5">
               <span className="font-mono tabular-nums font-bold text-[15px] text-cz-1">
-                {fmt(physiology[s.key], s.digits)}
+                {fmt(physiology[s.key], s.digits, i18n.language)}
               </span>
               <span className="text-[10px] text-cz-3">{s.unit}</span>
             </div>
@@ -61,7 +63,7 @@ export default function RiderOverviewPhysiology({ physiology, weight, onGoFysiol
       <button
         type="button"
         onClick={onGoFysiologi}
-        className="mt-3 inline-flex items-center gap-1.5 text-[11.5px] font-semibold text-cz-accent-t hover:underline bg-transparent border-0 p-0"
+        className="mt-3 inline-flex items-center gap-1.5 py-1 text-[11.5px] font-semibold text-cz-accent-t hover:underline bg-transparent border-0"
       >
         {t("profile.overview.physio.link")}
       </button>
