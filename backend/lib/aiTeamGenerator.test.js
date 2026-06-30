@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 
 import { generateAndAllocateAiTeams, clearAllAiTeams, reconcileAiTeamsForPool, AI_TEAM_NAME_PREFIX, __testables } from "./aiTeamGenerator.js";
 import { POOL_TARGET_SIZE, MAX_DIVISION, MANAGER_ENTRY_DIVISION } from "./economyConstants.js";
-import { STARTER_SQUAD, STARTER_POOL_STAT_WINDOW } from "./starterSquadAllocator.js";
+import { AI_SQUAD, AI_TIER_STAT_WINDOWS, AI_TIER_VALUE_CAP } from "./starterSquadAllocator.js";
 import { STAT_KEYS } from "./fictionalRiderGenerator.js";
 
 // #1688 — AI-fill-generator. Politik (frosset):
@@ -423,12 +423,12 @@ test("#1739 reconcileAiTeamsForPool: ukendt/null pulje er no-op (ingen kast)", a
   assert.equal(missing.tier, null, "ukendt pulje → tier null, ingen handling");
 });
 
-// ── race-hub 0c · defaultAllocateSquadForTeam: lagdelt 12-trup (8 kerne + 4 hale) ─
-// Den ægte PROD-allokering (ikke fakeAllocateSquad) skal give nye AI-hold en lagdelt
-// 12-rytter-trup — kerne [50,57] + ekstra-svag hale [50,52] — spejlende manager-
-// truppen (insertWeakSquadForTeam). Tidligere gav den kun CORE_SIZE (8); 0c hæver
-// den til TOTAL_SIZE (12) for konsistens med managerhold + dybde-top-up.
-test("0c defaultAllocateSquadForTeam giver nye AI-hold en lagdelt TOTAL_SIZE-trup (12) med svage stats", async () => {
+// ── 2026-06-30 · defaultAllocateSquadForTeam: 24-trup, divisions-kvalitet via
+// AI_TIER_FRACTIONS (tier 1/2) eller clamp-vindue (tier 3/4). #2065-postmortem:
+// v1 klampede ALLE stats i ét smalt vindue for alle tiers → urealistisk alsidige
+// (og dermed grotesk overprissatte) ryttere. Denne test guarder MOD den regression
+// ved at kræve reel spredning mellem en rytters stærkeste og svageste evne. ──────
+test("defaultAllocateSquadForTeam giver nye AI-hold en AI_SQUAD.TOTAL_SIZE-trup (24) med REALISTISK specialisering for tier 1", async () => {
   const pools = seedPools();
   const t1 = poolByTierIndex(pools, 1, 0);
   const supabase = makeSupabase({ league_divisions: pools, teams: [], riders: [] });
@@ -438,17 +438,57 @@ test("0c defaultAllocateSquadForTeam giver nye AI-hold en lagdelt TOTAL_SIZE-tru
     supabase, teamId, { pool: t1, baseSeed: 2026, ordinal: 0 },
   );
 
-  // Præcis 12 ryttere (8 kerne + 4 hale), alle bundet til holdet.
-  assert.equal(insertedIds.length, STARTER_SQUAD.TOTAL_SIZE, "TOTAL_SIZE (12) ryttere indsat");
+  assert.equal(insertedIds.length, AI_SQUAD.TOTAL_SIZE, "TOTAL_SIZE (24) ryttere indsat");
   const teamRiders = supabase.state.riders.filter((r) => r.team_id === teamId);
-  assert.equal(teamRiders.length, STARTER_SQUAD.TOTAL_SIZE, "12 ryttere har team_id sat");
+  assert.equal(teamRiders.length, AI_SQUAD.TOTAL_SIZE, "24 ryttere har team_id sat");
 
-  // Alle stats ligger i [50,57]: kerne-vinduet rummer både kerne [50,57] og hale
-  // [50,52] (halen er en delmængde af kernens vindue på underkant; hi ≤ 57 for begge).
-  const { lo, hi } = STARTER_POOL_STAT_WINDOW;
+  // #2065-regressionsvagt: en uniformt klampet rytter har næsten ingen spredning
+  // mellem stats (v1-bug'en, ~5-8 point, ALLE ryttere). Den ægte arketype-generator
+  // (selv domestique-tieren, som dominerer tier-1-blandingen efter v2-fixet) giver
+  // hver rytter et speciale (boost) + dæmpede off-type-stats (damp) → mærkbart
+  // bredere spredning for langt de fleste. Tærsklen er bevidst lav (10, ikke 15) og
+  // kravet 50% (ikke 80%) — den skal fange REGRESSION til uniform clamping, ikke
+  // håndhæve en præcis statistisk fordeling.
+  const spreads = teamRiders.map((r) => {
+    const vals = STAT_KEYS.map((k) => r[k]);
+    return Math.max(...vals) - Math.min(...vals);
+  });
+  const wideSpread = spreads.filter((s) => s >= 10).length;
+  assert.ok(wideSpread >= teamRiders.length * 0.5,
+    `mindst 50% af ryttere skal have realistisk stat-spredning (≥10) — fik ${wideSpread}/${teamRiders.length}`);
+
+  // #2065-regressionsvagt (kerneincidentet): INGEN rytter må overstige
+  // AI_TIER_VALUE_CAP — det var det der gik galt (8,16 mio CZ$ for én "AI-bænk"-
+  // rytter). generateAiRiderBatchWithCap garanterer dette ved at forkaste/rerulle.
+  for (const r of teamRiders) {
+    assert.ok(r.base_value <= AI_TIER_VALUE_CAP[1],
+      `${r.firstname} ${r.lastname}: base_value ${r.base_value} overstiger loftet ${AI_TIER_VALUE_CAP[1]}`);
+  }
+});
+
+// Division 4 (strukturel bund, pre-aktivering) skal stadig give en spilbar, men
+// svag, AI-trup — samme TOTAL_SIZE (24), men tier-4-vinduet (lavest i pyramiden).
+test("defaultAllocateSquadForTeam bruger tier-4-vinduet for en tier-4-pulje", async () => {
+  const pools = seedPools();
+  const t4 = poolByTierIndex(pools, 4, 0);
+  const supabase = makeSupabase({ league_divisions: pools, teams: [], riders: [] });
+
+  const teamId = "ai-prod-tier4";
+  const insertedIds = await __testables.defaultAllocateSquadForTeam(
+    supabase, teamId, { pool: t4, baseSeed: 2026, ordinal: 0 },
+  );
+
+  assert.equal(insertedIds.length, AI_SQUAD.TOTAL_SIZE, "TOTAL_SIZE (24) ryttere indsat");
+  const teamRiders = supabase.state.riders.filter((r) => r.team_id === teamId);
+  const { core, tail } = AI_TIER_STAT_WINDOWS[4];
+  const lo = Math.min(core.lo, tail.lo);
+  const hi = Math.max(core.hi, tail.hi);
   for (const r of teamRiders) {
     for (const k of STAT_KEYS) {
       assert.ok(r[k] >= lo && r[k] <= hi, `${k}=${r[k]} skal være i [${lo},${hi}]`);
     }
   }
+  // Sanity: tier-4-vinduet skal være strengt svagere end tier-3's (division-realisme).
+  const t3Window = AI_TIER_STAT_WINDOWS[3];
+  assert.ok(core.hi < t3Window.core.hi, "tier-4 kerne-loft skal være under tier-3's");
 });

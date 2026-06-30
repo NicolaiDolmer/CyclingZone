@@ -2437,17 +2437,22 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
 
   // Allow auction if:
   // 1. Rider is on manager's own team, OR
-  // 2. Rider is a free agent (no team_id) — AI/unowned rider
-  // Block if rider belongs to another manager's team
+  // 2. Rider is a free agent (no team_id)
+  // Block if rider belongs to another manager's team OR an AI-controlled team.
+  // 2026-06-30: AI-trupper er nu divisions-skalerede (op til 24 stærke ryttere i
+  // div 1-2, se aiTeamGenerator.js) — de må IKKE kunne auktioneres/vindes af en
+  // manager (ellers headhuntes hele opgraderingen med det samme). Tidligere tillod
+  // denne gate eksplicit AI-ejede ryttere ("AI/unowned rider") — det er nu lukket.
   if (rider.team_id && rider.team_id !== req.team.id) {
-    // Check if the owning team is a human team
     const { data: owningTeam } = await supabase
       .from("teams")
-      .select("is_ai, user_id")
+      .select("is_ai, is_bank, user_id")
       .eq("id", rider.team_id)
       .single();
-    // If owned by a human manager (not AI), block the auction
-    if (owningTeam && !owningTeam.is_ai && owningTeam.user_id) {
+    if (owningTeam?.is_ai || owningTeam?.is_bank) {
+      return res.status(403).json({ error: "AI-owned riders can't be put up for auction.", errorCode: "ai_rider_no_auction" });
+    }
+    if (owningTeam && owningTeam.user_id) {
       return res.status(403).json({ error: "This rider belongs to another manager", errorCode: "rider_other_manager" });
     }
   }
@@ -3361,11 +3366,13 @@ router.post("/transfers/offer", requireAuth, marketWriteLimiter, async (req, res
 
   const { data: sellerTeam } = await supabase
     .from("teams")
-    .select("is_bank")
+    .select("is_bank, is_ai")
     .eq("id", rider.team_id)
     .single();
-  if (sellerTeam?.is_bank) {
-    return res.status(400).json({ error: "AI riders can't receive direct offers. Start or bid on an auction instead.", errorCode: "ai_rider_no_direct_offer" });
+  // 2026-06-30: tjekkede tidligere kun is_bank — is_ai-ejede ryttere (de almindelige
+  // AI-modstander-hold) slap igennem, selvom fejlbeskeden allerede sagde "AI riders".
+  if (sellerTeam?.is_bank || sellerTeam?.is_ai) {
+    return res.status(400).json({ error: "AI riders can't receive direct offers.", errorCode: "ai_rider_no_direct_offer" });
   }
 
   // #1748 (a): én anskaffelsesvej ad gangen. En rytter på en aktiv auktion må
@@ -3836,11 +3843,12 @@ router.post("/transfers/swaps", requireAuth, marketWriteLimiter, async (req, res
     return res.status(400).json({ error: "Du kan ikke bytte med dig selv", errorCode: "cannot_swap_self" });
   const { data: requestedTeam } = await supabase
     .from("teams")
-    .select("is_bank")
+    .select("is_bank, is_ai")
     .eq("id", requested.team_id)
     .single();
-  if (requestedTeam?.is_bank)
-    return res.status(400).json({ error: "AI riders can't take part in direct swaps. Use auctions instead.", errorCode: "ai_rider_no_swap" });
+  // 2026-06-30: tjekkede tidligere kun is_bank — samme is_ai-hul som direct-offer-gaten.
+  if (requestedTeam?.is_bank || requestedTeam?.is_ai)
+    return res.status(400).json({ error: "AI riders can't take part in direct swaps.", errorCode: "ai_rider_no_swap" });
 
   // #1089: dobbelt-salgs-guard — en rytter på aktiv auktion kan ikke samtidig
   // indgå i en byttehandel (samme rytter ville kunne sælges to gange).
@@ -4088,6 +4096,13 @@ router.post("/loans", requireAuth, marketWriteLimiter, async (req, res) => {
     return res.status(409).json({ error: "Rytteren er pensioneret og kan ikke lejes", errorCode: "rider_retired_loan" });
   if (rider.team_id === req.team.id)
     return res.status(400).json({ error: "Du kan ikke leje din egen rytter", errorCode: "cannot_loan_own_rider" });
+
+  // 2026-06-30: AI-ejede ryttere må ikke kunne lejes — samme is_ai-spærre som
+  // auktion/direct-offer/swap, ellers er lånevejen et åbent hul ind i AI-trupperne.
+  const { data: lenderTeam } = await supabase
+    .from("teams").select("is_bank, is_ai").eq("id", rider.team_id).single();
+  if (lenderTeam?.is_bank || lenderTeam?.is_ai)
+    return res.status(400).json({ error: "AI riders can't be loaned.", errorCode: "ai_rider_no_loan" });
 
   // Check no active loan already exists for this rider
   const { data: existing } = await supabase.from("loan_agreements")
