@@ -95,6 +95,22 @@ test("primary_type — alfabetisk på primær type i begge retninger", () => {
   assert.deepEqual(desc.map(r => r.primary_type), ["sprinter", "climber", "allrounder"]);
 });
 
+// #1950 — navne-sortering skal være collation-stabil og matche Postgres
+// .order('lastname') (literal 'aa'). Bar localeCompare() i en dansk browser
+// resolver til da-DK og behandler 'aa' som 'å' → 'Aamodt' ville ende SIDST,
+// så DB-listen og klient-listen var uenige. Pinnet til 'en': 'aa' sorteres
+// bogstaveligt og 'Aamodt'/'Saadi' står FØR 'Sato'.
+const collationRiders = [
+  { id: "sato",   firstname: "S", lastname: "Sato" },
+  { id: "aamodt", firstname: "A", lastname: "Aamodt" },
+  { id: "saadi",  firstname: "S", lastname: "Saadi" },
+];
+
+test("firstname — 'aa' sorteres bogstaveligt (Aamodt/Saadi før Sato), ikke som 'å'", () => {
+  const asc = sortRidersForTable(collationRiders, { key: "firstname", dir: "asc" });
+  assert.deepEqual(asc.map(r => r.lastname), ["Aamodt", "Saadi", "Sato"]);
+});
+
 test("muterer ikke input-arrayet", () => {
   const input = [...riders];
   sortRidersForTable(input, { key: "market_value", dir: "asc" });

@@ -92,7 +92,11 @@ export function useClientRiderFilters(riders = []) {
       if (filters.sort === "firstname") {
         const aName = `${a.lastname} ${a.firstname}`.toLowerCase();
         const bName = `${b.lastname} ${b.firstname}`.toLowerCase();
-        return filters.sort_dir === "desc" ? bName.localeCompare(aName) : aName.localeCompare(bName);
+        // #1950: pin to 'en' so the client-side name sort matches the server
+        // path (applyRiderColumnSort → Postgres .order('lastname'), literal
+        // 'aa'). Bare localeCompare() resolves to da-DK in a Danish browser and
+        // treats 'aa' as 'å', so the server-vs-client split disagreed on order.
+        return filters.sort_dir === "desc" ? bName.localeCompare(aName, "en") : aName.localeCompare(bName, "en");
       }
       // Nation sorteres på den viste IOC-kode (#802) — den generiske numeriske
       // gren ville give NaN på strenge og dermed ustabil rækkefølge.
