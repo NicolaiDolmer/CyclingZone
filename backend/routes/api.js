@@ -10,7 +10,7 @@
  */
 
 import express from "express";
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { createClient } from "@supabase/supabase-js";
 import { config } from "dotenv";
 import { fileURLToPath } from "url";
@@ -244,6 +244,9 @@ import { captureException, setSentryUser } from "../lib/sentry.js";
 import { upsertOwnTeamProfile } from "../lib/teamProfileEngine.js";
 import { buildAttributionRow } from "../lib/signupAttribution.js";
 import { aggregateAttribution } from "../lib/attributionDashboard.js";
+import { isBotUserAgent } from "../lib/botDetection.js";
+import { computeVisitHash, dayString } from "../lib/visitHash.js";
+import { aggregateTraffic } from "../lib/trafficMetrics.js";
 import { parseRacePoolCsv, summarizePool, WORLD_TOUR_CLASSES } from "../lib/racePoolImport.js";
 import {
   UCI_MEN_RACE_CLASSES,
@@ -335,6 +338,21 @@ const adminApiLimiter = rateLimit({
   },
 });
 router.use("/admin", adminApiLimiter);
+
+// #2040 anonym, consent-uafhængig web-telemetri. Offentligt + ikke-autentificeret
+// → direkte rateLimit() (ikke buildLimiter-factory'en) så CodeQL
+// js/missing-rate-limiting kan spore den. IP-nøgle; storage-less dedup server-side.
+const collectLimiter = rateLimit({
+  windowMs: 60_000,
+  limit: 120,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  keyGenerator: (req) => `collect:${ipKeyGenerator(req.ip)}`,
+  skip: () => process.env.RATE_LIMIT_DISABLED === "1",
+  handler: (_req, res) => res.status(429).json({ code: "rate_limited" }),
+});
+const COLLECT_EVENTS = new Set(["pageview", "engaged"]);
+const TRAFFIC_SALT = process.env.TRAFFIC_SALT || "cz-traffic-v1";
 
 // #1101 rider-valuation model (committet JSON). Indlæses én gang ved opstart;
 // mangler den (fx før første fit), degraderer valuation-fladerne pænt (null).
@@ -4598,6 +4616,53 @@ router.put("/teams/my", requireAuth, marketWriteLimiter, async (req, res) => {
     res.status(result.created ? 201 : 200).json(result);
   } catch (error) {
     res.status(error.statusCode || 500).json({ error: error.message || "Kunne ikke gemme holdprofil" });
+  }
+});
+
+// POST /api/collect — anonym, consent-uafhængig web-telemetri (#2040). Storage-less
+// dedup via visit_hash; bots flagges men tælles. Fire-and-forget; må aldrig fejle
+// for klienten. INGEN PII gemmes (ingen rå IP/UA, intet bruger-id).
+router.post("/collect", collectLimiter, async (req, res) => {
+  res.status(204).end(); // svar straks; resten er best-effort
+  try {
+    const { event, path: evPath, deviceType } = req.body || {};
+    if (!COLLECT_EVENTS.has(event)) return;
+    const ua = req.headers["user-agent"] || "";
+    const ip = req.ip || "";
+    await supabase.from("traffic_events").insert({
+      event,
+      path: typeof evPath === "string" ? evPath.slice(0, 200) : null,
+      device: typeof deviceType === "string" ? deviceType.slice(0, 20) : null,
+      is_bot: isBotUserAgent(ua),
+      visit_hash: computeVisitHash({ ip, ua, day: dayString(), secret: TRAFFIC_SALT }),
+    });
+  } catch (e) {
+    console.error("[collect] insert fejlede:", e?.message);
+  }
+});
+
+// GET /api/admin/metrics — førsteparts engagement-scorecard (#2040). Grupperer
+// traffic_events pr. visit i SQL (traffic_visit_rollup) + tæller signups fra
+// player_events. Bot-ekskluderet headline; bot-andel synlig separat.
+router.get("/admin/metrics", requireAdmin, async (req, res) => {
+  try {
+    const days = Math.min(Math.max(parseInt(req.query.days, 10) || 30, 1), 90);
+    const since = new Date(Date.now() - days * 86400_000).toISOString();
+
+    const { data: visitRows, error: vErr } = await supabase.rpc("traffic_visit_rollup", { since_ts: since });
+    if (vErr) throw vErr;
+    const traffic = aggregateTraffic(visitRows || []);
+
+    const { count: signups } = await supabase
+      .from("player_events")
+      .select("*", { count: "exact", head: true })
+      .eq("event_name", "signup")
+      .gte("created_at", since);
+
+    res.json({ days, traffic, signups: signups || 0 });
+  } catch (e) {
+    console.error("[admin/metrics] fejl:", e?.message);
+    res.status(500).json({ error: "metrics_failed" });
   }
 });
 
