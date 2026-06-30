@@ -22,7 +22,7 @@ import {
   SELECTION_SORT_KEYS,
 } from "../../lib/lineupInsight.js";
 import SortTh from "../rider/RiderSortTh.jsx";
-import { Select, ArrowUpIcon, ArrowDownIcon } from "../ui/index.js";
+import { ArrowUpIcon, ArrowDownIcon } from "../ui/index.js";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -51,9 +51,12 @@ export default function RaceSelectionPanel({
   // #1747: skjul-skadede-toggle. Default false (skadede vises dæmpet + deaktiveret)
   // så manageren stadig kan se hvem der er ude — toggler skjuler dem helt.
   const [hideInjured, setHideInjured] = useState(false);
-  // #1951: klient-sortering af rytterlisten. Default route-match (effektivt fit)
-  // desc, så de stærkeste kandidater til denne etape står øverst.
-  const [sort, setSort] = useState({ sort: "routeMatch", dir: "desc" });
+  // #1951: klient-sortering af rytterlisten. Sortering er REN opt-in: default er
+  // ingen aktiv nøgle, så listen står i backendens oprindelige rækkefølge indtil
+  // manageren selv vælger en sortering (en auto-sort ved load ændrede den
+  // dokumenterede default-rækkefølge ud over #1951's scope og brød
+  // gem-udtagelses-smoke-testen). `sort: null` = uændret rækkefølge.
+  const [sort, setSort] = useState({ sort: null, dir: "desc" });
 
   useEffect(() => {
     let cancelled = false;
@@ -114,10 +117,12 @@ export default function RaceSelectionPanel({
   const filteredRiders = hideInjured
     ? riders.filter((r) => !r.injured || sel.riderIds.includes(r.id))
     : riders;
-  // #1951: sortér en kopi (muter aldrig prop'en) via den delte comparator.
-  const visibleRiders = [...filteredRiders].sort(
-    selectionComparator(sort.sort, sort.dir, selectedStageIndex),
-  );
+  // #1951: sortering er opt-in. Ingen aktiv nøgle (sort.sort == null) → behold
+  // backendens oprindelige rækkefølge. Først når manageren vælger en kolonne/
+  // dropdown-nøgle sorteres en kopi (muter aldrig prop'en) via den delte comparator.
+  const visibleRiders = sort.sort
+    ? [...filteredRiders].sort(selectionComparator(sort.sort, sort.dir, selectedStageIndex))
+    : filteredRiders;
 
   // #1951: header-klik (desktop) + dropdown (mobil) deler samme cyklus-konvention
   // som resten af rytter-tabellerne (klik aktiv nøgle = vend retning; klik ny
@@ -427,6 +432,15 @@ export default function RaceSelectionPanel({
 
 // #1951: mobil-sort-kontrol. Eksponerer de samme nøgler som desktop-headerne
 // (SELECTION_SORT_KEYS) + en retnings-toggle, og deler onSort med tabellen.
+//
+// Bevidst et segmenteret knap-bånd, IKKE et <select>: et native <select> har
+// rolle "combobox", og holdudtagelses-smoke-testen finder kaptajn-vælgeren via
+// `getByRole("combobox").first()`. En sort-dropdown her ville lægge sig FØR
+// kaptajn-comboboxen og kapre `.first()`, så kaptajnen aldrig blev sat og
+// gem-knappen forblev disabled. Knap-båndet sorterer lige så godt på mobil,
+// matcher rytter-tabellernes retnings-toggle-styling og rører ikke combobox-
+// rækkefølgen. Aktiv nøgle highlightes; retnings-toggle er kun aktiv når en
+// nøgle er valgt (sortering er opt-in, default = oprindelig rækkefølge).
 function SelectionSortControl({ sort, onSort, fitLabel, t }) {
   const labels = {
     name: t("selection.thRider"),
@@ -435,28 +449,47 @@ function SelectionSortControl({ sort, onSort, fitLabel, t }) {
     form: t("selection.form"),
     fatigue: t("selection.fatigue"),
   };
+  const active = sort.sort != null;
   const dirAria = sort.dir === "desc" ? t("selection.sort.descAria") : t("selection.sort.ascAria");
   return (
-    <div className="sm:hidden flex items-end gap-2 px-4 py-3 border-b border-cz-border">
-      <label className="flex-1 min-w-0">
-        <span className="block text-cz-3 text-[10px] uppercase tracking-wider mb-1">{t("selection.sort.label")}</span>
-        <Select size="sm" value={sort.sort} onChange={(e) => onSort(e.target.value)} className="w-full">
-          {SELECTION_SORT_KEYS.map((key) => (
-            <option key={key} value={key}>{labels[key]}</option>
-          ))}
-        </Select>
-      </label>
-      <button
-        type="button"
-        onClick={() => onSort(sort.sort)}
-        aria-label={dirAria}
-        title={dirAria}
-        className="flex-shrink-0 flex items-center justify-center px-3 py-[7px] rounded-cz border border-cz-border bg-cz-subtle text-cz-2 hover:text-cz-1 transition-colors"
-      >
-        {sort.dir === "desc"
-          ? <ArrowDownIcon size={16} aria-hidden="true" />
-          : <ArrowUpIcon size={16} aria-hidden="true" />}
-      </button>
+    <div className="sm:hidden flex flex-col gap-2 px-4 py-3 border-b border-cz-border">
+      <span className="block text-cz-3 text-[10px] uppercase tracking-wider">{t("selection.sort.label")}</span>
+      <div className="flex flex-wrap items-center gap-1.5">
+        {SELECTION_SORT_KEYS.map((key) => {
+          const on = sort.sort === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => onSort(key)}
+              aria-pressed={on}
+              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-cz border text-xs transition-colors ${
+                on
+                  ? "border-cz-accent bg-cz-accent/10 text-cz-1"
+                  : "border-cz-border bg-cz-subtle text-cz-2 hover:text-cz-1"
+              }`}
+            >
+              {labels[key]}
+              {on && (sort.dir === "desc"
+                ? <ArrowDownIcon size={12} aria-hidden="true" />
+                : <ArrowUpIcon size={12} aria-hidden="true" />)}
+            </button>
+          );
+        })}
+        {active && (
+          <button
+            type="button"
+            onClick={() => onSort(sort.sort)}
+            aria-label={dirAria}
+            title={dirAria}
+            className="flex-shrink-0 flex items-center justify-center px-2.5 py-1 rounded-cz border border-cz-border bg-cz-subtle text-cz-2 hover:text-cz-1 transition-colors"
+          >
+            {sort.dir === "desc"
+              ? <ArrowDownIcon size={14} aria-hidden="true" />
+              : <ArrowUpIcon size={14} aria-hidden="true" />}
+          </button>
+        )}
+      </div>
     </div>
   );
 }
