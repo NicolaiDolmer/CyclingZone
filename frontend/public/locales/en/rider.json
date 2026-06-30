@@ -76,6 +76,55 @@
     "history": "History",
     "development": "Development"
   },
+  "profile": {
+    "tabs": {
+      "overview": "Overview",
+      "physiology": "Physiology",
+      "training": "Training",
+      "development": "Development",
+      "scouting": "Scouting",
+      "history": "History",
+      "results": "Results",
+      "interest": "Interest"
+    },
+    "switcher": {
+      "hint": "‹ › switch rider"
+    },
+    "hero": {
+      "ratingEyebrow": "Rating /99",
+      "divisionChip": "DIV {division}",
+      "photoFallback": "Photo",
+      "potentialOwn": "Potential · ceiling",
+      "potentialScouted": "Scouted ceiling",
+      "valueEyebrow": "Market value",
+      "salary": "Salary",
+      "contract": "Contract",
+      "contractSeason": "Season {season}",
+      "aiTag": "AI",
+      "winsOn": "Wins on"
+    },
+    "banner": {
+      "listed": "On the transfer list · price {price}",
+      "auction": "In auction · ends in {endsIn} · highest bid {highBid}",
+      "academy": "Academy rider",
+      "expiry": "Contract expires after Season {season}."
+    },
+    "tabPlaceholder": "This tab is being rebuilt in the redesign.",
+    "interest": {
+      "followers": "Followers",
+      "views": "Views (7d)"
+    }
+  },
+  "terrain": {
+    "flatSprint": "Flat bunch sprints",
+    "rolling": "Rolling roads",
+    "punchy": "Punchy finishes",
+    "mountain": "Mountain stages",
+    "stageRace": "Stage races",
+    "timeTrial": "Time trials",
+    "breakaway": "Breakaways",
+    "cobbles": "Cobbles"
+  },
   "stats": {
     "potentialRow": "Potential",
     "abilitiesPending": "Abilities not yet available",

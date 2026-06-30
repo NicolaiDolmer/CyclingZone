@@ -76,6 +76,55 @@
     "history": "Historik",
     "development": "Udvikling"
   },
+  "profile": {
+    "tabs": {
+      "overview": "Overblik",
+      "physiology": "Fysiologi",
+      "training": "Træning",
+      "development": "Udvikling",
+      "scouting": "Scouting",
+      "history": "Historik",
+      "results": "Resultater",
+      "interest": "Interesse"
+    },
+    "switcher": {
+      "hint": "‹ › skift rytter"
+    },
+    "hero": {
+      "ratingEyebrow": "Rating /99",
+      "divisionChip": "DIV {division}",
+      "photoFallback": "Foto",
+      "potentialOwn": "Potentiale · loft",
+      "potentialScouted": "Scoutet loft",
+      "valueEyebrow": "Markedsværdi",
+      "salary": "Løn",
+      "contract": "Kontrakt",
+      "contractSeason": "Sæson {season}",
+      "aiTag": "AI",
+      "winsOn": "Vinder på"
+    },
+    "banner": {
+      "listed": "På transferlisten · pris {price}",
+      "auction": "I auktion · slutter om {endsIn} · højeste bud {highBid}",
+      "academy": "Akademirytter",
+      "expiry": "Kontrakt udløber efter Sæson {season}."
+    },
+    "tabPlaceholder": "Denne fane bygges om i redesignet.",
+    "interest": {
+      "followers": "Følgere",
+      "views": "Visninger (7d)"
+    }
+  },
+  "terrain": {
+    "flatSprint": "Flade massespurter",
+    "rolling": "Bølgede ruter",
+    "punchy": "Stejle finaler",
+    "mountain": "Bjergetaper",
+    "stageRace": "Etapeløb",
+    "timeTrial": "Enkeltstart",
+    "breakaway": "Udbrud",
+    "cobbles": "Brosten"
+  },
   "stats": {
     "potentialRow": "Potentiale",
     "abilitiesPending": "Evner endnu ikke beregnet",
