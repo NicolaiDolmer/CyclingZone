@@ -9,6 +9,8 @@ import { captureException as sentryCapture } from "./sentry.js";
 import {
   INITIAL_BALANCE,
   MANAGER_ENTRY_DIVISION,
+  MAX_DIVISION,
+  POOL_TARGET_SIZE,
   SPONSOR_INCOME_BASE,
 } from "./economyConstants.js";
 import { likeEscape } from "./likeEscape.js";
@@ -173,14 +175,17 @@ function getEconomyRepairValues(team) {
 async function pickDivisionForNewTeam(supabase) {
   const { data: pools, error: poolsError } = await supabase
     .from("league_divisions")
-    .select("id")
-    .eq("tier", MANAGER_ENTRY_DIVISION);
+    .select("id, tier")
+    .in("tier", [MANAGER_ENTRY_DIVISION, MAX_DIVISION]);
 
   if (poolsError) {
     throw createHttpError(500, poolsError.message);
   }
 
-  const entryPools = pools || [];
+  const allPools = pools || [];
+  const entryPools = allPools.filter((pool) => pool.tier === MANAGER_ENTRY_DIVISION);
+  const overflowPools = allPools.filter((pool) => pool.tier === MAX_DIVISION);
+
   if (entryPools.length === 0) {
     // Pre-migration / mock-edge: ingen puljer at sprede på. Hold kommer stadig ind i
     // entry-divisionen; pulje-referencen efter-allokeres når puljerne findes.
@@ -198,17 +203,27 @@ async function pickDivisionForNewTeam(supabase) {
     throw createHttpError(500, teamsError.message);
   }
 
-  const counts = new Map(entryPools.map((pool) => [pool.id, 0]));
+  const counts = new Map(allPools.map((pool) => [pool.id, 0]));
   for (const team of teams || []) {
     if (counts.has(team.league_division_id)) {
       counts.set(team.league_division_id, counts.get(team.league_division_id) + 1);
     }
   }
 
-  // Mindst-fyldte entry-pulje (deterministisk: laveste pulje-id ved lige fyldning).
-  let chosenPoolId = entryPools[0].id;
+  // #2055 overflow: hvis ALLE entry-puljer er ved/over POOL_TARGET_SIZE (rigtige
+  // managers, AI tæller ikke med — den er evict-bar), og der findes mindst én
+  // MAX_DIVISION-pulje, fald igennem dertil. Ellers: uændret blød-cap-adfærd i
+  // entry-divisionen (graceful fallback, fx pre-migration/test-mock uden
+  // MAX_DIVISION-puljer).
+  const entryIsSaturated = entryPools.every((pool) => counts.get(pool.id) >= POOL_TARGET_SIZE);
+  const useOverflow = entryIsSaturated && overflowPools.length > 0;
+  const targetPools = useOverflow ? overflowPools : entryPools;
+  const targetDivision = useOverflow ? MAX_DIVISION : MANAGER_ENTRY_DIVISION;
+
+  // Mindst-fyldte målpulje (deterministisk: laveste pulje-id ved lige fyldning).
+  let chosenPoolId = targetPools[0].id;
   let chosenCount = counts.get(chosenPoolId);
-  for (const pool of entryPools) {
+  for (const pool of targetPools) {
     const count = counts.get(pool.id);
     if (count < chosenCount) {
       chosenPoolId = pool.id;
@@ -216,7 +231,7 @@ async function pickDivisionForNewTeam(supabase) {
     }
   }
 
-  return { division: MANAGER_ENTRY_DIVISION, leagueDivisionId: chosenPoolId };
+  return { division: targetDivision, leagueDivisionId: chosenPoolId };
 }
 
 async function ensureUniqueTeamName({ supabase, normalizedName, existingTeamId = null }) {
