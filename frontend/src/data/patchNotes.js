@@ -119,6 +119,34 @@ export const PATCHES = [
           "body": "Rytterlister sorteret efter navn kunne ordne navne med dobbelt-a forskelligt fra side til side. Navnesortering bruger nu den samme regel overalt, så de samme ryttere sorteres ens på alle sider."
         },
         "refs": [1950]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "General",
+        "en": {
+          "title": "Fixed a crash when your browser auto-translates the game",
+          "body": "If your browser offered to translate the page (common in Chrome when the site language did not match your browser), the game could crash to a blank screen. The app now tells the browser its real language and is resilient to translation tools, so auto-translate no longer breaks the page."
+        },
+        "da": {
+          "title": "Rettet et crash når browseren auto-oversætter spillet",
+          "body": "Hvis din browser tilbød at oversætte siden (typisk i Chrome når sidens sprog ikke matchede din browser), kunne spillet crashe til en blank skærm. Appen fortæller nu browseren sit rigtige sprog og er modstandsdygtig over for oversættelses-værktøjer, så auto-oversæt ikke længere ødelægger siden."
+        },
+        "refs": [2039]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "General",
+        "en": {
+          "title": "Shared links to riders and races no longer hit a blank login wall",
+          "body": "Opening a direct link to a rider or race while signed out used to land on an empty login screen. Those deep links now show a proper context-aware sign-in, so a shared or bookmarked link leads somewhere useful instead of a dead end."
+        },
+        "da": {
+          "title": "Delte links til ryttere og løb rammer ikke længere en blank login-væg",
+          "body": "Et direkte link til en rytter eller et løb åbnede før en tom login-skærm hvis man ikke var logget ind. De dybe links viser nu en ordentlig kontekst-bevidst login, så et delt eller bogmærket link fører et brugbart sted hen i stedet for en blindgyde."
+        },
+        "refs": [2042]
       }
     ]
   },
