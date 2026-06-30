@@ -39,9 +39,24 @@ tidligere undersøgelse rapporterede forkert 25 managers i Pool A pga.
 manglende test/frozen-filter — rettet ved direkte SQL-verifikation.
 
 Løbskatalog (`race_pool`): 121 distinkte løbstyper, genbruges på tværs af alle
-pools/divisioner hver sæson (division 3's 4 pools har allerede materialiseret
-184 løb ud fra de 121 skabeloner). Ingen knaphed — division 4 mangler kun selve
-materialiseringen, ikke kildemateriale.
+pools/divisioner hver sæson via prestige-rangeret udvælgelse
+(`tierRaceSelection.js`/`tierCalendarMaterializer.js`): øverste tier vælger
+de største løb først (Tour de France/Giro/Vuelta → Monumenter →
+OtherWorldTourA/B/C → ProSeries → Class1 → Class2), og hver lavere tier
+arver resten. Simuleret håndholdt mod det faktiske katalog (matcher
+division 3's reelle 46 løb/pool præcist):
+
+| Division | Game-day-kvote | Reelt tilgængeligt efter højere tiers | Status |
+|---|---|---|---|
+| 1 | 140 | 376 (hele kataloget) | Opfyldt |
+| 2 | 112 | 236 | Opfyldt |
+| 3 | 84 | 124 | Opfyldt (46 løb/pool, verificeret) |
+| 4 | 56 | **40** | **Mangler 16 game-days (29%)** |
+
+Når division 1-3 har taget deres del, er kun Class1+Class2 tilbage til
+division 4 (24 løb, 40 game-days) — utilstrækkeligt til 56-kvoten. Uden
+flere løb ville "2 løb/dag" kun holde ca. 20 af sæsonens ~28 dage.
+Løses ved katalog-udvidelse, se afsnit 4.
 
 ## Design
 
@@ -96,6 +111,64 @@ allerede `targetAiCountForPool(tier, realManagers.length)`, som er
 tier-agnostisk for tier 3/4 (0 AI uden managers, ellers op til 24). Udløses
 automatisk ved team-oprettelse. Verificeres som en del af test-/QA-trinnet
 i implementeringsplanen, ikke bygget separat.
+
+### 4. Løbskatalog-udvidelse (Class1/Class2)
+
+**Filer:** `scripts/race_pool_seed.csv`, `database/seed/race_pool_archetypes.json`.
+
+Lukker 16-game-day-hullet (afsnit "Verificeret nu-tilstand") med margin.
+Tilføjer 15 nye løb baseret på rigtige UCI 1.1/1.2/2.1/2.2-løb (matcher
+spillets Class1="1.1/2.1" og Class2="1.2/2.2"-definition,
+`frontend/src/lib/uciRaceClasses.js:9-10`), navngivet efter samme
+fiktionaliserings-mønster som det eksisterende katalog (rigtigt løb + et
+"minor/ny"-tilnavn på lokalsproget, fx "Giro del Trentino Nuovo" findes
+allerede) — undgår at bruge et rigtigt løbs eksakte navn/varemærke direkte.
+
+**Class1 (7 nye løb, 15 game-days):**
+
+| Navn | Land | Etaper | Arketype | Baseret på |
+|---|---|---|---|---|
+| Trofeo Camp de Morvedre Nuevo | Spanien | 1 | flat_sprint | Clàssica Camp de Morvedre |
+| Grand Prix Criquielion Nouveau | Belgien | 1 | puncheur | Grand Prix Criquielion |
+| Rund um Köln Neu | Tyskland | 1 | flat_sprint | Rund um Köln |
+| Famenne-Ardenne Classique Nouvelle | Belgien | 1 | hilly_classic | Lotto Famenne Ardenne Classic |
+| Étoile de Bessèges Mineure | Frankrig | 4 | balanced_week | Étoile de Bessèges |
+| Giro d'Abruzzo Nuovo | Italien | 4 | mountain_tour | Il Giro d'Abruzzo |
+| Tour de l'Ain Nouveau | Frankrig | 3 | hilly_tour | Tour de l'Ain |
+
+**Class2 (8 nye løb, 18 game-days):**
+
+| Navn | Land | Etaper | Arketype | Baseret på |
+|---|---|---|---|---|
+| Paris-Camembert Mineur | Frankrig | 1 | hilly_classic | Paris–Camembert |
+| La Roue Tourangelle Mineure | Frankrig | 1 | flat_sprint | La Roue Tourangelle |
+| Cholet Agglo Classique | Frankrig | 1 | flat_sprint | Cholet Agglo Tour |
+| Antwerp Port Epic Mineur | Belgien | 1 | cobbled_classic | Antwerp Port Epic |
+| Région Pays de la Loire Tour Mineur | Frankrig | 3 | sprinters_week | Région Pays de la Loire Tour |
+| O Gran Camiño Menor | Spanien | 4 | mountain_tour | O Gran Camiño |
+| Settimana di Coppi e Bartali Minore | Italien | 4 | hilly_tour | Settimana Internazionale Coppi e Bartali |
+| Tour de la Provence Mineur | Frankrig | 3 | hilly_tour | Tour de la Provence |
+
+15 løb / 33 game-days i alt (40 eksisterende + 33 nye = 73 til rådighed mod
+56-kvoten — margin til pakke-algoritmens "spring over hvis det overskyder
+kvoten"-grådighed og fremtidig vækst).
+
+**Forbehold (ejer-godkendt 2026-06-30):** navnene er ægte løb tilpasset
+kataloget mønster, ikke eksakte virkelige navne. Et par etape-tal er
+nedjusteret fra det virkelige forbillede for at passe budgettet (fx Étoile
+de Bessèges er reelt 5 etaper, sat til 4 her). Terræn-arketyper er sat ud
+fra løbenes geografi/karakter — eget skøn, ikke autoritativ kilde.
+
+**Implementering:**
+1. Tilføj rækker til `scripts/race_pool_seed.csv` (Dato, Løb, Etaper,
+   Kategori, Type).
+2. Kør `node backend/scripts/seedRacePool.js` (upsert via `external_id`,
+   idempotent).
+3. Tilføj `country`+`terrain_archetype` til
+   `database/seed/race_pool_archetypes.json`.
+4. Kør `node backend/scripts/applyRacePoolArchetypes.js --apply`.
+5. Ingen andre tabeller/migrationer nødvendige — materialiseringen i
+   afsnit 2 plukker automatisk de nye løb op.
 
 ## Fejlhåndtering
 
