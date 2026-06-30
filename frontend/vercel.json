@@ -1,8 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
-    { "source": "/", "has": [{ "type": "header", "key": "accept-language", "value": "^da" }], "destination": "/index.da.html" },
-    { "source": "/", "destination": "/index.en.html" },
     { "source": "/(.*)", "destination": "/app.html" }
   ],
   "headers": [
