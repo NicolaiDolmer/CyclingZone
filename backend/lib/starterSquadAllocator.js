@@ -174,7 +174,7 @@ export function generateAiRiderBatchWithCap({
     }
   }
   if (accepted.length < count) {
-    throw new Error(`generateAiRiderBatchWithCap: kun ${accepted.length}/${count} ryttere under loftet ${valueCap} efter ${attempts} forsøg`);
+    throw new Error(`generateAiRiderBatchWithCap: only ${accepted.length}/${count} riders under cap ${valueCap} after ${attempts} attempts`);
   }
   return toInsertPayload(accepted);
 }
