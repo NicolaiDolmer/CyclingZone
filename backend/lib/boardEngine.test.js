@@ -63,6 +63,8 @@ test("deriveTeamIdentityProfile reads a sprint-heavy squad and exposes board-fac
 test("deriveTeamIdentityProfile exposes national core and star profile markers", () => {
   const riders = Array.from({ length: 8 }, (_, index) => ({
     id: `core-${index}`,
+    firstname: `Star${index}`,
+    lastname: `Rider${index}`,
     is_u25: index < 2,
     nationality_code: index < 5 ? "DK" : index === 5 ? "NO" : "SE",
     popularity: index < 2 ? 85 - (index * 5) : 30,
@@ -97,6 +99,46 @@ test("deriveTeamIdentityProfile exposes national core and star profile markers",
   assert.equal(profile.star_profile.label_key, "starProfileLevel.high");
   assert.equal(profile.summary_params.nationalCoreCode, "DK");
   assert.equal(profile.summary_params.starProfileLevel, "high");
+  // #1889 · star_profile navngiver nu de kvalificerende profilryttere; listen
+  // matcher star_rider_count, er sorteret faldende på score og bærer id + navn.
+  assert.equal(profile.star_profile.star_riders.length, profile.star_profile.star_rider_count);
+  assert.ok(profile.star_profile.star_riders.length >= 1);
+  assert.ok(profile.star_profile.star_riders.every((rider) => rider.score >= 68));
+  assert.equal(profile.star_profile.star_riders[0].id, "core-0");
+  assert.equal(profile.star_profile.star_riders[0].name, "Star0 Rider0");
+  assert.ok(
+    profile.star_profile.star_riders[0].score >= profile.star_profile.star_riders.at(-1).score
+  );
+});
+
+test("deriveTeamIdentityProfile returns an empty star_riders list when no rider clears the threshold", () => {
+  const riders = Array.from({ length: 8 }, (_, index) => ({
+    id: `domestique-${index}`,
+    firstname: `Worker${index}`,
+    lastname: `Bee${index}`,
+    is_u25: false,
+    nationality_code: "DK",
+    popularity: 20,
+    uci_points: 10,
+    stat_fl: 50,
+    stat_bj: 50,
+    stat_kb: 50,
+    stat_bk: 50,
+    stat_tt: 50,
+    stat_bro: 50,
+    stat_sp: 50,
+    stat_acc: 50,
+    stat_udh: 50,
+    stat_mod: 50,
+    stat_res: 50,
+    stat_ftr: 50,
+  }));
+
+  const profile = deriveTeamIdentityProfile({ team: { division: 3 }, riders });
+
+  assert.equal(profile.star_profile.level, "low");
+  assert.equal(profile.star_profile.star_rider_count, 0);
+  assert.deepEqual(profile.star_profile.star_riders, []);
 });
 
 test("buildBoardProposal keeps squad-size goals inside division limits", () => {

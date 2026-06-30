@@ -804,6 +804,10 @@
       "q": "Hvor ser jeg bestyrelsens aktuelle vurdering?",
       "a": "Dashboardet viser et kort bestyrelses-outlook med status og category-scores, mens Bestyrelsessiden viser den mere detaljerede vurdering. Bestyrelsessiden viser også bestyrelsens læsning af holdet med specialisering, U25-andel, national kerne, stjerneprofil og trupstatus, nu med landenavn og flag på den nationale kerne. Derudover forklarer Board-siden nu tydeligere hvorfor bestyrelsen reagerer, ved at vise hvilke kategorier der driver vurderingen, hvad der holder den tilbage, og hvilke signaler fra historik, identitet eller profiler der spiller ind. De to steder læser samme board-data fra backend, så de bruger den samme sandhed."
     },
+    "boardProfileRiders": {
+      "q": "Hvem er mit holds profilryttere?",
+      "a": "Bestyrelsessiden navngiver dem nu. Under stjerneprofil-flisen viser bestyrelsens læsning af holdet hver rytter den tæller som en stjerne, med en stjerne-score. En rytter kvalificerer som stjerne når popularitet plus UCI-point er over stjernetærsklen. Popularitet vejer tungere end resultater (cirka 70/30), så en velkendt rytter kan være en stjerne selv uden store pointhøst, mens en stærk men anonym arbejdsrytter som regel ikke er det. Listen er din nuværende trup, så den ændrer sig når du køber eller sælger ryttere. Hvis ingen rytter rammer tærsklen endnu, siger kortet det i stedet for at liste navne."
+    },
     "season1BaselineFaq": {
       "q": "Er bestyrelsen tilgængelig i sæson 1?",
       "a": "Ja. Bestyrelsen er låst op fra starten af sæson 1, så du kan vælge dit Klub-DNA og forhandle dine 5-, 3- og 1-årsplaner med det samme. Indtil du signer din første plan holdes sponsor-modifier på 1.0×, så sæson-1-sponsoren er neutral mens du sætter op. Bestyrelsen *læser* også dit hold (hvilken nation dominerer, hvor stor er U25-andelen, hvilken specialisering peger holdet mod, og hvor synlige er dine stjerner) og gemmer dette 'identity-snapshot' på dit hold permanent som grundlag for dine 5-årsplan-forslag."
