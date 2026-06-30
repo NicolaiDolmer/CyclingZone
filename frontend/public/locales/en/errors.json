@@ -135,7 +135,7 @@
     "board_renegotiation_locked_window": "The season's final phase has begun. The board plan can't be renegotiated in the last {raceDays} race days.",
     "board_renegotiation_locked_progress": "The board plan can't be renegotiated mid-season (once {percent}% of the season has been raced). Wait until the plan expires or the season ends.",
     "board_unavailable": "Board features aren't available yet",
-    "dna_requires_season_1": "You must finish season 1 before choosing your club DNA",
+    "dna_requires_identity_basis": "Your club identity isn't ready yet. Try again in a moment.",
     "dna_already_chosen": "Your club DNA is already set and can't be changed yet",
     "invalid_asking_price": "The asking price must be a positive whole number",
     "team_transfer_frozen": "Your team is frozen because its debt is over the division ceiling. Reduce your debt before trading."

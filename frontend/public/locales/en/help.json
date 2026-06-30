@@ -60,7 +60,7 @@
       },
       "clubDna": {
         "title": "Club DNA",
-        "text": "At the start of season 1 you pick one of 5 club DNA archetypes before the board is assembled: Scandinavian development team, Italian classics traditionalist, Sprint-focused commercial, French climber heritage, British all-rounder. DNA affects three things: (1) 5-year plans get an extra tradition target (e.g. a podium in a classic, incl. Monuments, for italian_classics), (2) targets matching DNA priorities get boosted satisfaction bonus and penalty, (3) board members and future chairman swaps tip towards matching archetypes."
+        "text": "When your team is created you pick one of 5 club DNA archetypes before the board is assembled: Scandinavian development team, Italian classics traditionalist, Sprint-focused commercial, French climber heritage, British all-rounder. DNA affects three things: (1) 5-year plans get an extra tradition target (e.g. a podium in a classic, incl. Monuments, for italian_classics), (2) targets matching DNA priorities get boosted satisfaction bonus and penalty, (3) board members and future chairman swaps tip towards matching archetypes. You can still change your DNA until your first season ends; after that it's locked in. Switching re-assigns your board members and target weighting."
       },
       "consequenceTiers": {
         "title": "Consequence tiers (6 layers)",
