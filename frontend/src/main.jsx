@@ -1,14 +1,12 @@
 import React from "react";
-import ReactDOM from "react-dom/client";
-import { I18nextProvider } from "react-i18next";
+import { hydrateRoot, createRoot } from "react-dom/client";
 import App from "./App.jsx";
-import { ThemeProvider } from "./lib/theme.jsx";
-import { ConsentProvider } from "./lib/consent.jsx";
-import { LanguageProvider } from "./lib/language.jsx";
-import { initSentry, SentryBoundary } from "./lib/sentry.jsx";
+import { AppProviders } from "./AppProviders.jsx";
+import { initSentry } from "./lib/sentry.jsx";
 import { installChunkReloadHandlers } from "./lib/chunkErrors.js";
 import { installTranslationResilience } from "./lib/translationResilience.js";
 import { captureFirstTouch } from "./lib/attribution.js";
+import { BrowserRouter } from "react-router-dom";
 import i18n from "./i18n";
 import "./index.css";
 import "flag-icons/css/flag-icons.min.css";
@@ -39,26 +37,52 @@ captureFirstTouch();
 // Preview-mock (#prelive-harness): KUN når VITE_PREVIEW_MOCK er sat (Vercel
 // preview-scope). Den dynamiske import bag build-time-guarden ⇒ prod-bundlen
 // tree-shaker hele preview/-mappen væk (0 bytes i production). Async IIFE så vi
-// kan afvente installeringen FØR createRoot uden top-level await i entry-modulet.
+// kan afvente installeringen FØR mount uden top-level await i entry-modulet.
 (async () => {
   if (import.meta.env.VITE_PREVIEW_MOCK) {
     const { installPreviewMock } = await import("./preview/installPreviewMock.js");
     installPreviewMock();
   }
 
-  ReactDOM.createRoot(document.getElementById("root")).render(
+  // i18n initialiseres ved import, men .init() resolver i en microtask. Vent på
+  // at den er klar FØR vi monterer — ellers renderer klientens første pass
+  // oversættelses-keys (eller tom tekst) hvor den prerendrede markup har fuldt
+  // oversat tekst → hydration-mismatch (React #418/#423). Resolver straks hvis
+  // allerede initialiseret (inline resources gør den typisk synkron-klar).
+  await new Promise((resolve) => {
+    if (i18n.isInitialized) resolve();
+    else i18n.on("initialized", resolve);
+  });
+
+  const rootEl = document.getElementById("root");
+
+  // Providers ligger i AppProviders, så client-mount og build-time prerender
+  // (entry-server.jsx) deler nøjagtig samme træ — det er forudsætningen for ren
+  // hydration på landing.
+  const tree = (
     <React.StrictMode>
-      <SentryBoundary>
-        <I18nextProvider i18n={i18n}>
-          <ThemeProvider>
-            <ConsentProvider>
-              <LanguageProvider>
-                <App />
-              </LanguageProvider>
-            </ConsentProvider>
-          </ThemeProvider>
-        </I18nextProvider>
-      </SentryBoundary>
+      <AppProviders>
+        {/* #969: v7_startTransition gør sidebar-nav interruptible. Routeren bor
+            HER (ikke inde i App), så client-træet er identisk med prerenderens
+            (entry-server bruger StaticRouter om samme <App/>) → ren hydration. */}
+        <BrowserRouter future={{ v7_startTransition: true }}>
+          <App />
+        </BrowserRouter>
+      </AppProviders>
     </React.StrictMode>
   );
+
+  // Hydrér KUN når "/" faktisk ER serveret som den prerendrede landing (#root har
+  // markup). På alle andre ruter laver vi en frisk client-render: den tomme
+  // app-shell i prod, ELLER et miljø der — uden Vercel-rewriten — fejlserverer
+  // landing-index.html for en app-rute (fx `vite preview` i e2e). Uden pathname-
+  // gaten ville React forsøge at hydrere landing-markup mod en app-side → mismatch
+  // (#418/#422). Vi rydder stale markup før createRoot, så app-ruten ikke arver et
+  // glimt af landing.
+  if (rootEl.firstElementChild && window.location.pathname === "/") {
+    hydrateRoot(rootEl, tree);
+  } else {
+    if (rootEl.firstElementChild) rootEl.replaceChildren();
+    createRoot(rootEl).render(tree);
+  }
 })();
