@@ -67,12 +67,17 @@ captureFirstTouch();
     </React.StrictMode>
   );
 
-  // "/" serveres som prerendret landing (dist/index.html med markup i #root) →
-  // hydrér oven på den, så hero/LCP allerede er malet før JS booter. Alle andre
-  // ruter får den tomme app-shell (dist/app.html) → frisk createRoot.
-  if (rootEl.firstElementChild) {
+  // Hydrér KUN når "/" faktisk ER serveret som den prerendrede landing (#root har
+  // markup). På alle andre ruter laver vi en frisk client-render: den tomme
+  // app-shell i prod, ELLER et miljø der — uden Vercel-rewriten — fejlserverer
+  // landing-index.html for en app-rute (fx `vite preview` i e2e). Uden pathname-
+  // gaten ville React forsøge at hydrere landing-markup mod en app-side → mismatch
+  // (#418/#422). Vi rydder stale markup før createRoot, så app-ruten ikke arver et
+  // glimt af landing.
+  if (rootEl.firstElementChild && window.location.pathname === "/") {
     hydrateRoot(rootEl, tree);
   } else {
+    if (rootEl.firstElementChild) rootEl.replaceChildren();
     createRoot(rootEl).render(tree);
   }
 })();
