@@ -94,6 +94,7 @@ export {
   regenerateBoardMembersForTeam,
   repairBoardMembersAfterDna,
   chooseDnaForTeam,
+  isWithinFirstSeasonForTeam,
   selectDominantMember,
   sampleReactionForFeedback,
   sampleReactionForGoal,

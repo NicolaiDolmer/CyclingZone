@@ -88,13 +88,13 @@ function matchesFilters(row, filters = []) {
 // forbruges pr. forsøg. Modellerer #1264-racet: applikations-precheck (select)
 // ser INTET, men DB'en afviser insert/update med 23505 fordi en samtidig
 // transaktion nåede at committe (seedRows = den samtidige vinders rækker).
-function createSupabaseDouble({ teams = [], boardProfiles = [], leagueDivisions = [], riders = [], insertErrors = {}, updateErrors = {} } = {}) {
+function createSupabaseDouble({ teams = [], boardProfiles = [], leagueDivisions = [], riders = [], seasons = [], insertErrors = {}, updateErrors = {} } = {}) {
   const state = {
     teams: clone(teams),
     board_profiles: clone(boardProfiles),
     league_divisions: clone(leagueDivisions),
     riders: clone(riders),
-    seasons: [],
+    seasons: clone(seasons),
     updates: [],
     inserts: [],
     insertErrorQueues: clone(insertErrors),
@@ -138,6 +138,13 @@ function createSupabaseDouble({ teams = [], boardProfiles = [], leagueDivisions 
         return query;
       },
       single() {
+        const result = execute();
+        return Promise.resolve({
+          data: result.data[0] || null,
+          error: null,
+        });
+      },
+      maybeSingle() {
         const result = execute();
         return Promise.resolve({
           data: result.data[0] || null,
@@ -1072,6 +1079,33 @@ test("#2022 ensureSeasonIdentityBasis er idempotent — rører ikke et hold der 
 
   assert.equal(written, false, "et hold med basis skal ikke overskrives");
   assert.deepEqual(supabase.state.teams[0].season_1_identity_basis, existing);
+});
+
+test("#2022 ensureSeasonIdentityBasis stempler den FAKTISKE aktive sæson i grundlaget (ikke hardcoded 1)", async () => {
+  const team = { id: "team-1", division: 4, season_1_identity_basis: null };
+  const riders = [{ id: "r-0", team_id: "team-1", nationality_code: "DK", stat_fl: 60 }];
+  // En sæson-3-nykommer: grundlaget skal observere sæson 3, ikke sæson 1.
+  const supabase = createSupabaseDouble({
+    teams: [team], riders,
+    seasons: [{ id: "s-3", number: 3, status: "active" }],
+  });
+
+  const written = await ensureSeasonIdentityBasis({ supabase, team });
+
+  assert.equal(written, true);
+  const stored = supabase.state.teams[0].season_1_identity_basis;
+  assert.equal(stored.season_number_observed, 3, "grundlaget afspejler den sæson holdet rent faktisk dannes i");
+});
+
+test("#2022 ensureSeasonIdentityBasis falder tilbage til sæson 1 når ingen aktiv sæson findes", async () => {
+  const team = { id: "team-1", division: 4, season_1_identity_basis: null };
+  const riders = [{ id: "r-0", team_id: "team-1", nationality_code: "DK", stat_fl: 60 }];
+  const supabase = createSupabaseDouble({ teams: [team], riders, seasons: [] });
+
+  await ensureSeasonIdentityBasis({ supabase, team });
+
+  const stored = supabase.state.teams[0].season_1_identity_basis;
+  assert.equal(stored.season_number_observed, 1, "uden aktiv sæson defaulter vi defensivt til 1");
 });
 
 test("#2022 upsertOwnTeamProfile sætter identitets-grundlag fra start-truppen ved dannelse", async () => {

@@ -1843,9 +1843,11 @@ test("chooseDnaForTeam is idempotent: recovers a dna-set-but-boardless team with
   assert.equal(state.team_board_members.filter((m) => m.team_id === "team-1").length, TEAM_BOARD_MEMBERS_COUNT);
 });
 
-test("chooseDnaForTeam rejects re-choice when DNA is set and board already exists", async () => {
+test("chooseDnaForTeam rejects re-choice once the team has completed its first season (#2022)", async () => {
   const state = {
     teams: [{ id: "team-1", team_dna_key: "fransk_klatrer", team_dna_chosen_at: "2026-06-01T00:00:00Z", season_1_identity_basis: FRENCH_GC_BASIS }],
+    // seasons_completed >= 1 → holdet er forbi sin første sæson → DNA er låst.
+    board_profiles: [{ id: "bp-1", team_id: "team-1", plan_type: "1yr", seasons_completed: 1 }],
     team_board_members: [
       { id: "m-1", team_id: "team-1", archetype_key: "klassiker_purist", selection_kind: "identity", alignment_score: 4, is_chairman: true },
     ],
@@ -1865,7 +1867,46 @@ test("chooseDnaForTeam rejects re-choice when DNA is set and board already exist
   assert.equal(state.team_board_members.filter((m) => m.team_id === "team-1").length, 1);
 });
 
-test("chooseDnaForTeam refuses when season 1 identity basis is missing", async () => {
+test("chooseDnaForTeam allows re-choice during the first season and re-assigns members (#2022)", async () => {
+  const state = {
+    teams: [{ id: "team-1", team_dna_key: "fransk_klatrer", team_dna_chosen_at: "2026-06-01T00:00:00Z", season_1_identity_basis: FRENCH_GC_BASIS }],
+    // seasons_completed === 0 → holdet er stadig i sin første sæson → DNA er om-vælgeligt.
+    board_profiles: [{ id: "bp-1", team_id: "team-1", plan_type: "1yr", seasons_completed: 0 }],
+    team_board_members: [
+      { id: "m-1", team_id: "team-1", archetype_key: "klassiker_purist", selection_kind: "identity", alignment_score: 4, is_chairman: true },
+    ],
+  };
+  const supabase = makeFakeSupabase(state);
+
+  const result = await chooseDnaForTeam({ supabase, teamId: "team-1", dnaKey: "italiensk_klassiker" });
+
+  assert.equal(result.rechosen, true, "et skift i sæson 1 rapporteres som rechosen");
+  assert.equal(result.dnaKey, "italiensk_klassiker", "den nye nøgle er valgt");
+  assert.equal(state.teams[0].team_dna_key, "italiensk_klassiker", "team_dna_key er opdateret");
+  assert.notEqual(state.teams[0].team_dna_chosen_at, "2026-06-01T00:00:00Z", "chosen_at opdateres ved skift");
+  // De gamle medlemmer er erstattet af et nyt sæt for den nye DNA.
+  assert.equal(state.team_board_members.filter((m) => m.team_id === "team-1").length, TEAM_BOARD_MEMBERS_COUNT);
+  assert.equal(state.team_board_members.some((m) => m.id === "m-1"), false, "gamle medlemmer er ryddet");
+});
+
+test("chooseDnaForTeam re-picking the SAME DNA in the first season is an idempotent no-op (#2022)", async () => {
+  const state = {
+    teams: [{ id: "team-1", team_dna_key: "fransk_klatrer", team_dna_chosen_at: "2026-06-01T00:00:00Z", season_1_identity_basis: FRENCH_GC_BASIS }],
+    board_profiles: [{ id: "bp-1", team_id: "team-1", plan_type: "1yr", seasons_completed: 0 }],
+    team_board_members: [
+      { id: "m-1", team_id: "team-1", archetype_key: "klassiker_purist", selection_kind: "identity", alignment_score: 4, is_chairman: true },
+    ],
+  };
+  const supabase = makeFakeSupabase(state);
+
+  const result = await chooseDnaForTeam({ supabase, teamId: "team-1", dnaKey: "fransk_klatrer" });
+
+  assert.equal(result.dnaKey, "fransk_klatrer", "DNA er uændret");
+  assert.equal(state.teams[0].team_dna_key, "fransk_klatrer");
+  assert.equal(state.team_board_members.filter((m) => m.team_id === "team-1").length, TEAM_BOARD_MEMBERS_COUNT);
+});
+
+test("chooseDnaForTeam refuses with the season-agnostic code when identity basis is missing (#2022)", async () => {
   const state = {
     teams: [{ id: "team-1", team_dna_key: null, team_dna_chosen_at: null, season_1_identity_basis: null }],
     team_board_members: [],
@@ -1876,6 +1917,7 @@ test("chooseDnaForTeam refuses when season 1 identity basis is missing", async (
     () => chooseDnaForTeam({ supabase, teamId: "team-1", dnaKey: "italiensk_klassiker" }),
     (err) => {
       assert.equal(err.status, 409);
+      assert.equal(err.errorCode, "dna_requires_identity_basis", "sæson-agnostisk error-kode, ikke dna_requires_season_1");
       return true;
     },
   );

@@ -279,7 +279,7 @@ async function ensureBoardProfile({ supabase, team }) {
 // af DNA-valg. Tidligere skrev kun startSequentialNegotiation feltet (ved sæson-1-
 // slut). Idempotent: skriver kun når feltet stadig er NULL, så den ikke
 // overskriver et frosset grundlag (samme guard som backfill-stien).
-export async function ensureSeasonIdentityBasis({ supabase, team, seasonNumber = 1 } = {}) {
+export async function ensureSeasonIdentityBasis({ supabase, team, seasonNumber } = {}) {
   if (!team?.id) {
     throw createHttpError(500, "team is required for identity basis");
   }
@@ -295,10 +295,26 @@ export async function ensureSeasonIdentityBasis({ supabase, team, seasonNumber =
     throw createHttpError(500, ridersError.message);
   }
 
+  // #2022: stempl den FAKTISKE sæson holdet dannes i (ikke hardcoded 1), så
+  // season_number_observed er sandt for en sæson-2+-nykommer. Slås op når kalderen
+  // ikke selv har et tal; defaulter defensivt til 1 hvis ingen aktiv sæson findes.
+  let resolvedSeasonNumber = seasonNumber;
+  if (resolvedSeasonNumber == null) {
+    const { data: activeSeason, error: seasonError } = await supabase
+      .from("seasons")
+      .select("number")
+      .eq("status", "active")
+      .maybeSingle();
+    if (seasonError) {
+      throw createHttpError(500, seasonError.message);
+    }
+    resolvedSeasonNumber = activeSeason?.number ?? 1;
+  }
+
   const basis = computeSeasonOneIdentity({
     team,
     riders: riders || [],
-    seasonNumber: seasonNumber ?? 1,
+    seasonNumber: resolvedSeasonNumber,
   });
 
   const { error: updateError } = await supabase

@@ -200,6 +200,7 @@ import {
   isValidDnaKey,
   loadGoalContextForBoard,
   chooseDnaForTeam,
+  isWithinFirstSeasonForTeam,
   resolveBoardRequest,
 } from "../lib/boardEngine.js";
 import {
@@ -8643,7 +8644,18 @@ router.get("/board/status", requireAuth, async (req, res) => {
     // allerede 404 før vi når hertil for non-manager teams).
     const teamDnaKey = teamRes.data?.team_dna_key || null;
     const dnaArchetype = teamDnaKey ? getDnaByKey(teamDnaKey) : null;
-    const dnaSuggestions = !teamDnaKey && identityBasis && !isBaselinePhase
+    // #2022 fase 2: DNA er om-vælgeligt indtil holdet har afsluttet sin første
+    // sæson. Når valgt-men-om-vælgeligt eksponerer vi stadig forslagene, så
+    // frontend kan tilbyde et skift; can_rechoose styrer "Skift DNA"-affordancen.
+    let dnaCanRechoose = false;
+    if (teamDnaKey && identityBasis && !isBaselinePhase) {
+      try {
+        dnaCanRechoose = await isWithinFirstSeasonForTeam({ supabase, teamId: req.team.id });
+      } catch (e) {
+        console.warn(`[board/status] isWithinFirstSeasonForTeam failed:`, e?.message);
+      }
+    }
+    const dnaSuggestions = ((!teamDnaKey || dnaCanRechoose) && identityBasis && !isBaselinePhase)
       ? computeDnaSuggestions(identityBasis)
       : [];
 
@@ -8674,6 +8686,7 @@ router.get("/board/status", requireAuth, async (req, res) => {
         goal_weighting: dnaArchetype.goal_weighting || {},
       } : null,
       dna_suggestions: dnaSuggestions,
+      dna_can_rechoose: dnaCanRechoose,
       active_loans_count: activeLoanCount,
       season: activeSeason ? {
         id: activeSeason.id,
@@ -8815,8 +8828,17 @@ router.get("/board/dna-suggestions", requireAuth, async (req, res) => {
 
     if (team.team_dna_key) {
       const dna = getDnaByKey(team.team_dna_key);
+      // #2022 fase 2: om-vælgeligt indtil første sæson er afsluttet → eksponér
+      // forslagene igen, så manageren kan skifte.
+      let canRechoose = false;
+      try {
+        canRechoose = await isWithinFirstSeasonForTeam({ supabase, teamId: req.team.id });
+      } catch (e) {
+        console.warn(`[board/dna-suggestions] isWithinFirstSeasonForTeam failed:`, e?.message);
+      }
       return res.json({
         already_chosen: true,
+        can_rechoose: canRechoose,
         team_dna: dna ? {
           key: dna.key,
           label: dna.label,
@@ -8825,7 +8847,9 @@ router.get("/board/dna-suggestions", requireAuth, async (req, res) => {
           short_description: dna.short_description,
           short_description_key: `dna.${dna.key}.shortDescription`,
         } : null,
-        suggestions: [],
+        suggestions: canRechoose && team.season_1_identity_basis
+          ? computeDnaSuggestions(team.season_1_identity_basis)
+          : [],
       });
     }
 

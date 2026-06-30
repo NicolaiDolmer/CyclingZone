@@ -221,3 +221,43 @@ test("DNA selection card renders suggestions and choosing posts dna_key (#1076)"
   await expect(page.getByText("Klubbens DNA")).toBeVisible();
   await expect(page.getByText("3 medlemmer")).toBeVisible();
 });
+
+test("first-season teams can re-choose their club DNA (#2022)", async ({ page }) => {
+  // Forslagene inkluderer det allerede valgte DNA (skandinavisk = makeBoardStatus-
+  // default) + to alternativer. dna_can_rechoose=true → holdet er stadig i sin
+  // første sæson, så "Skift klub-DNA"-affordancen vises.
+  const suggestions = [
+    { key: "skandinavisk_udvikling", emoji: "🌱", suggestion_slot: "national_match" },
+    { key: "italiensk_klassiker", emoji: "🏛️", suggestion_slot: "specialization_match" },
+    { key: "sprint_kommerciel", emoji: "💨", suggestion_slot: "wildcard" },
+  ];
+  const boardStatus = makeBoardStatus({ dna_can_rechoose: true, dna_suggestions: suggestions });
+  let postedBody = null;
+
+  await stabilizePage(page);
+  await installNetworkMocks(page);
+  await installBoardStatusMock(page, () => boardStatus);
+  await page.route("**/api/board/dna-choose", route => {
+    postedBody = JSON.parse(route.request().postData() || "{}");
+    return json(route, { ok: true, team_dna: boardStatus.team_dna, team_members: boardStatus.team_members });
+  });
+
+  await login(page);
+  await page.goto("/board");
+
+  // Det valgte DNA vises som badge + re-valg-toggle. Forslagene er kollapset by default.
+  await expect(page.getByText("Klubbens DNA")).toBeVisible();
+  const toggle = page.getByRole("button", { name: "Skift klub-DNA" });
+  await expect(toggle).toBeVisible();
+  await expect(page.getByRole("button", { name: "Skift til dette DNA" })).toHaveCount(0);
+
+  await toggle.click();
+
+  // Udfoldet: det nuværende DNA er markeret (ingen skift-knap), de to andre kan vælges.
+  await expect(page.getByText("Skift dit klub-DNA")).toBeVisible();
+  await expect(page.getByText("Nuværende", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Skift til dette DNA" })).toHaveCount(2);
+
+  await page.getByRole("button", { name: "Skift til dette DNA" }).first().click();
+  expect(postedBody).toEqual({ dna_key: "italiensk_klassiker" });
+});

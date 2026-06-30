@@ -219,9 +219,18 @@
     },
     "saving": "Saving…",
     "choose": "Choose this DNA",
+    "switch": "Switch to this DNA",
+    "current": "Current",
     "badge": {
       "label": "Club DNA",
       "viewHint": "View club DNA"
+    },
+    "rechoose": {
+      "hint": "You can still change your club DNA until your first season ends. After that it's locked in.",
+      "toggle": "Change club DNA",
+      "sectionLabel": "Club DNA",
+      "heading": "Change your club DNA",
+      "intro": "Pick a different direction while you're still in your first season. Switching re-assigns your board members and target weighting."
     },
     "locked": {
       "heading": "Locked for the season",

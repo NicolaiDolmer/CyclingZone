@@ -213,6 +213,31 @@ export async function regenerateBoardMembersForTeam({ supabase, teamId, identity
  *
  * Kaster fejl med `.status` (+ valgfri `.code`) som route'en kan mappe til HTTP.
  */
+/**
+ * #2022 fase 2 · Er holdet stadig i sin FØRSTE sæson (DNA om-vælgeligt)?
+ *
+ * Per-hold-signal: et boards `seasons_completed` inkrementeres ved hver sæson-
+ * overgang (economyEngine.processTeamSeasonEnd). Et nyt hold har board-rows med
+ * seasons_completed=0 indtil dets første sæson-overgang. Vi kræver mindst én row
+ * (ægte hold har altid et formations-board) OG at alle står på 0 — så et hold
+ * uden board-rows (degenereret/test-tilstand) defensivt behandles som låst.
+ *
+ * @returns {Promise<boolean>}
+ */
+export async function isWithinFirstSeasonForTeam({ supabase, teamId } = {}) {
+  if (!supabase?.from) throw new Error("Supabase client is required");
+  if (!teamId) throw new Error("teamId is required");
+
+  const { data, error } = await supabase
+    .from("board_profiles")
+    .select("seasons_completed")
+    .eq("team_id", teamId);
+  throwIfSupabaseError(error, "Could not read board seasons for DNA re-choose");
+
+  const rows = data || [];
+  return rows.length > 0 && rows.every((row) => Number(row.seasons_completed || 0) === 0);
+}
+
 export async function chooseDnaForTeam({ supabase, teamId, dnaKey } = {}) {
   if (!supabase?.from) throw new Error("Supabase client is required");
   if (!teamId) throw new Error("teamId is required");
@@ -234,13 +259,18 @@ export async function chooseDnaForTeam({ supabase, teamId, dnaKey } = {}) {
   }
 
   if (!existing.season_1_identity_basis) {
-    const err = new Error("Du skal afslutte sæson 1 før DNA kan vælges");
+    // #2022: sæson-agnostisk. Grundlaget sættes ved holddannelse (uanset global
+    // sæson) — så denne sti er en sjælden "endnu ikke klar"-tilstand, ikke en
+    // sæson-1-gate. Tidligere kode-/copy lød "Du skal afslutte sæson 1", hvilket
+    // var forkert for en sæson-2+-nykommer.
+    const err = new Error("Dit holds identitet er ikke klar endnu. Prøv igen om lidt.");
     err.status = 409;
-    err.errorCode = "dna_requires_season_1"; // #678 Track 3 — EN-resolve via resolveApiError
+    err.errorCode = "dna_requires_identity_basis"; // #678 Track 3 — EN-resolve via resolveApiError
     throw err;
   }
 
-  // DNA er allerede sat: enten afvis (board findes) eller gen-generér (board tomt).
+  // DNA er allerede sat: idempotent gen-generering (samme nøgle), re-valg (sæson 1)
+  // eller afvisning (låst efter første sæson) / recovery (board tomt).
   if (existing.team_dna_key) {
     const { data: members, error: membersError } = await supabase
       .from("team_board_members")
@@ -253,11 +283,68 @@ export async function chooseDnaForTeam({ supabase, teamId, dnaKey } = {}) {
     }
 
     if ((members || []).length > 0) {
-      const err = new Error("Klub-DNA er allerede valgt og kan ikke skiftes (drift kommer i senere slice)");
-      err.status = 409;
-      err.code = "DNA_ALREADY_CHOSEN";
-      err.errorCode = "dna_already_chosen"; // #678 Track 3 — EN-resolve via resolveApiError
-      throw err;
+      // Samme DNA valgt igen → idempotent: gen-generér deterministisk på den
+      // valgte nøgle (samme members) i stedet for at fejle eller skifte.
+      if (existing.team_dna_key === dnaKey) {
+        const sameResult = await regenerateBoardMembersForTeam({
+          supabase,
+          teamId,
+          identityBasis: existing.season_1_identity_basis,
+          dnaKey: existing.team_dna_key,
+        });
+        return { recovered: true, dnaKey: existing.team_dna_key, members: sameResult.members || [] };
+      }
+
+      // #2022 fase 2: DNA er om-vælgeligt indtil holdet har afsluttet sin FØRSTE
+      // sæson (ejer-valg 2026-06-29). Efter da er det låst (drift = senere slice).
+      // Gaten er per-hold (seasons_completed på board-rows), ikke en global sæson-
+      // tæller — så reglen holder for en nykommer i en levende liga.
+      const canRechoose = await isWithinFirstSeasonForTeam({ supabase, teamId });
+      if (!canRechoose) {
+        const err = new Error("Klub-DNA er allerede valgt og kan ikke skiftes (drift kommer i senere slice)");
+        err.status = 409;
+        err.code = "DNA_ALREADY_CHOSEN";
+        err.errorCode = "dna_already_chosen"; // #678 Track 3 — EN-resolve via resolveApiError
+        throw err;
+      }
+
+      // Re-valg: skift nøgle + regenerér board-medlemmer på den NYE nøgle.
+      // Goal_weighting læses live fra team_dna_key ved evaluering → ingen migration.
+      // Rul tilbage til forrige nøgle (+ regenerér på den) hvis regenereringen
+      // kaster, så holdet aldrig efterlades med ny nøgle men board fra den gamle.
+      const previousKey = existing.team_dna_key;
+      const { error: switchError } = await supabase
+        .from("teams")
+        .update({ team_dna_key: dnaKey, team_dna_chosen_at: new Date().toISOString() })
+        .eq("id", teamId);
+      if (switchError) {
+        const err = new Error(switchError.message);
+        err.status = 500;
+        throw err;
+      }
+
+      let switchedMembers;
+      try {
+        switchedMembers = await regenerateBoardMembersForTeam({
+          supabase,
+          teamId,
+          identityBasis: existing.season_1_identity_basis,
+          dnaKey,
+        });
+      } catch (regenError) {
+        await supabase
+          .from("teams")
+          .update({ team_dna_key: previousKey })
+          .eq("id", teamId);
+        await regenerateBoardMembersForTeam({
+          supabase,
+          teamId,
+          identityBasis: existing.season_1_identity_basis,
+          dnaKey: previousKey,
+        }).catch(() => {});
+        throw regenError;
+      }
+      return { rechosen: true, dnaKey, members: switchedMembers.members || [] };
     }
 
     // Recovery: DNA sat men board tomt → kør regenerering på den allerede valgte nøgle.

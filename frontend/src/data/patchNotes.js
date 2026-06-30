@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.38",
+    "date": "2026-06-30",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "Change your club DNA during your first season",
+          "body": "You can now change your club DNA at any point during your first season, not just the moment you first pick it. Open your board, expand 'Change club DNA' and switch to another identity. Your board members and target weighting update to match. Once your first season ends the choice locks in, as before. This also fixes a wrong message that told newer teams they had to 'finish season 1' before choosing DNA, even though the board is ready from day one."
+        },
+        "da": {
+          "title": "Skift dit klub-DNA i din første sæson",
+          "body": "Du kan nu skifte dit klub-DNA når som helst i din første sæson, ikke kun i det øjeblik du først vælger det. Åbn din bestyrelse, fold 'Skift klub-DNA' ud og vælg en anden identitet. Dine bestyrelsesmedlemmer og målvægtning opdateres til at passe. Når din første sæson slutter, låses valget som før. Det retter også en forkert besked der fortalte nyere hold at de skulle 'afslutte sæson 1' før de kunne vælge DNA, selvom bestyrelsen er klar fra dag ét."
+        },
+        "refs": [2022]
+      }
+    ]
+  },
+  {
     "version": "6.37",
     "date": "2026-06-30",
     "label": "Beta",
