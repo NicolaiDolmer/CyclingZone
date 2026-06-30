@@ -14,7 +14,15 @@ import { toggleRider, validateSelectionClient } from "../../lib/raceSelectionLog
 import RiderTypeBadge from "../rider/RiderTypeBadge.jsx";
 import FitBar from "../racehub/FitBar.jsx";
 import HunterExplainer from "./HunterExplainer.jsx";
-import { effectiveStageFit, bestFitRiderId } from "../../lib/lineupInsight.js";
+import {
+  effectiveStageFit,
+  bestFitRiderId,
+  selectionComparator,
+  selectionDefaultSortDir,
+  SELECTION_SORT_KEYS,
+} from "../../lib/lineupInsight.js";
+import SortTh from "../rider/RiderSortTh.jsx";
+import { Select, ArrowUpIcon, ArrowDownIcon } from "../ui/index.js";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -43,6 +51,9 @@ export default function RaceSelectionPanel({
   // #1747: skjul-skadede-toggle. Default false (skadede vises dæmpet + deaktiveret)
   // så manageren stadig kan se hvem der er ude — toggler skjuler dem helt.
   const [hideInjured, setHideInjured] = useState(false);
+  // #1951: klient-sortering af rytterlisten. Default route-match (effektivt fit)
+  // desc, så de stærkeste kandidater til denne etape står øverst.
+  const [sort, setSort] = useState({ sort: "routeMatch", dir: "desc" });
 
   useEffect(() => {
     let cancelled = false;
@@ -100,9 +111,27 @@ export default function RaceSelectionPanel({
   // #1747: skjul skadede ryttere. En allerede-udtaget (skadet) rytter forbliver
   // synlig så manageren ikke mister overblikket over en ugyldig udtagelse.
   const injuredCount = riders.filter((r) => r.injured).length;
-  const visibleRiders = hideInjured
+  const filteredRiders = hideInjured
     ? riders.filter((r) => !r.injured || sel.riderIds.includes(r.id))
     : riders;
+  // #1951: sortér en kopi (muter aldrig prop'en) via den delte comparator.
+  const visibleRiders = [...filteredRiders].sort(
+    selectionComparator(sort.sort, sort.dir, selectedStageIndex),
+  );
+
+  // #1951: header-klik (desktop) + dropdown (mobil) deler samme cyklus-konvention
+  // som resten af rytter-tabellerne (klik aktiv nøgle = vend retning; klik ny
+  // nøgle = nøglens default-retning). routeMatch-kolonnen viser "Suitability"
+  // når ingen etape er valgt — sort-nøglen er den samme (effektivt fit falder
+  // tilbage til løb-snittet).
+  function handleSort(key) {
+    setSort((s) => (s.sort === key
+      ? { sort: key, dir: s.dir === "desc" ? "asc" : "desc" }
+      : { sort: key, dir: selectionDefaultSortDir(key) }));
+  }
+  // Label for fit-kolonnen/sort-nøglen: rute-match når en etape er valgt, ellers
+  // generel egnethed.
+  const fitSortLabel = selectedStageIndex != null ? t("selection.routeMatch") : t("selection.suitability");
 
   function update(next) {
     setSel(next);
@@ -215,6 +244,10 @@ export default function RaceSelectionPanel({
           så klikket rammer en tabel-celle i stedet (#1834, frontend-smoke rød på
           CI). Stablede kort fjerner overflow'en helt + er bedre mobil-UX.
           Fra sm og op vises den klassiske tabel. */}
+      {/* #1951: mobil-sortering — desktop sorterer via kolonne-headers, men på
+          mobil er der ingen header-række. Denne kontrol eksponerer samme sort-
+          nøgler og deler handleSort med tabellen (ingen ny sort-logik). */}
+      <SelectionSortControl sort={sort} onSort={handleSort} fitLabel={fitSortLabel} t={t} />
       <ul className="sm:hidden divide-y divide-cz-border">
         {visibleRiders.map((rider) => {
           const checked = sel.riderIds.includes(rider.id);
@@ -267,14 +300,18 @@ export default function RaceSelectionPanel({
       <div className="hidden sm:block overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
+            {/* #1951: klikbare, sorterbare headers (delt SortTh + retnings-ikon). */}
             <tr className="border-b border-cz-border">
-              <th scope="col" className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("selection.thRider")}</th>
-              <th scope="col" className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("selection.type")}</th>
-              <th scope="col" className="px-4 py-3 text-right text-cz-3 font-medium text-xs uppercase">
-                {selectedStageIndex != null ? t("selection.routeMatch") : t("selection.suitability")}
-              </th>
-              <th scope="col" className="px-4 py-3 text-right text-cz-3 font-medium text-xs uppercase">{t("selection.form")}</th>
-              <th scope="col" className="px-4 py-3 text-right text-cz-3 font-medium text-xs uppercase">{t("selection.fatigue")}</th>
+              <SortTh sortKey="name" sort={sort.sort} sortDir={sort.dir} onSort={handleSort}
+                className="px-4 py-3 text-left font-medium text-xs uppercase">{t("selection.thRider")}</SortTh>
+              <SortTh sortKey="primaryType" sort={sort.sort} sortDir={sort.dir} onSort={handleSort}
+                className="px-4 py-3 text-left font-medium text-xs uppercase">{t("selection.type")}</SortTh>
+              <SortTh sortKey="routeMatch" sort={sort.sort} sortDir={sort.dir} onSort={handleSort}
+                className="px-4 py-3 text-right font-medium text-xs uppercase">{fitSortLabel}</SortTh>
+              <SortTh sortKey="form" sort={sort.sort} sortDir={sort.dir} onSort={handleSort}
+                className="px-4 py-3 text-right font-medium text-xs uppercase">{t("selection.form")}</SortTh>
+              <SortTh sortKey="fatigue" sort={sort.sort} sortDir={sort.dir} onSort={handleSort}
+                className="px-4 py-3 text-right font-medium text-xs uppercase">{t("selection.fatigue")}</SortTh>
             </tr>
           </thead>
           <tbody>
@@ -385,6 +422,42 @@ export default function RaceSelectionPanel({
         hunterId={sel.hunterId}
       />
     </section>
+  );
+}
+
+// #1951: mobil-sort-kontrol. Eksponerer de samme nøgler som desktop-headerne
+// (SELECTION_SORT_KEYS) + en retnings-toggle, og deler onSort med tabellen.
+function SelectionSortControl({ sort, onSort, fitLabel, t }) {
+  const labels = {
+    name: t("selection.thRider"),
+    primaryType: t("selection.type"),
+    routeMatch: fitLabel,
+    form: t("selection.form"),
+    fatigue: t("selection.fatigue"),
+  };
+  const dirAria = sort.dir === "desc" ? t("selection.sort.descAria") : t("selection.sort.ascAria");
+  return (
+    <div className="sm:hidden flex items-end gap-2 px-4 py-3 border-b border-cz-border">
+      <label className="flex-1 min-w-0">
+        <span className="block text-cz-3 text-[10px] uppercase tracking-wider mb-1">{t("selection.sort.label")}</span>
+        <Select size="sm" value={sort.sort} onChange={(e) => onSort(e.target.value)} className="w-full">
+          {SELECTION_SORT_KEYS.map((key) => (
+            <option key={key} value={key}>{labels[key]}</option>
+          ))}
+        </Select>
+      </label>
+      <button
+        type="button"
+        onClick={() => onSort(sort.sort)}
+        aria-label={dirAria}
+        title={dirAria}
+        className="flex-shrink-0 flex items-center justify-center px-3 py-[7px] rounded-cz border border-cz-border bg-cz-subtle text-cz-2 hover:text-cz-1 transition-colors"
+      >
+        {sort.dir === "desc"
+          ? <ArrowDownIcon size={16} aria-hidden="true" />
+          : <ArrowUpIcon size={16} aria-hidden="true" />}
+      </button>
+    </div>
   );
 }
 

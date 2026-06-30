@@ -241,6 +241,11 @@
     "hideInjured": "Hide injured",
     "suitability": "Suitability",
     "routeMatch": "Route match",
+    "sort": {
+      "label": "Sort by",
+      "ascAria": "Sorting ascending, tap for descending",
+      "descAria": "Sorting descending, tap for ascending"
+    },
     "best": "Best",
     "bestForStage": "Your strongest fit for this stage",
     "whyBest": "This {bucket} stage rewards your strongest fit: {name}.",
