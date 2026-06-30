@@ -41,6 +41,7 @@ import { winsOnTerrainKeys } from "../lib/riderTerrain.js";
 import RiderAbilityColumns from "../components/rider/profile/RiderAbilityColumns.jsx";
 import RiderTypeRadar from "../components/rider/profile/RiderTypeRadar.jsx";
 import RiderOverviewPhysiology from "../components/rider/profile/RiderOverviewPhysiology.jsx";
+import RiderPhysiologyTab from "../components/rider/profile/RiderPhysiologyTab.jsx";
 
 const API = import.meta.env.VITE_API_URL;
 const RiderDevelopmentTab = lazyWithRetry(() => import("../components/RiderDevelopmentTab"));
@@ -739,6 +740,7 @@ export default function RiderStatsPage() {
   const [auctionError, setAuctionError]     = useState(null);
   const [history, setHistory]               = useState([]);
   const [statHistory, setStatHistory]       = useState([]);
+  const [physBenchmark, setPhysBenchmark]   = useState(null);
   const [ddActive, setDdActive]             = useState(false);
   // #195: live bud-timeline for seneste auktion (aktiv eller completed).
   // Privacy-låst: backend lækker aldrig proxy_max — frontend respekterer samme kontrakt.
@@ -774,6 +776,25 @@ export default function RiderStatsPage() {
     })();
     return () => { cancelled = true; };
   }, [rider?.team_id]);
+
+  // #2000 stykke 3: divisions-fysiologi-snit til Fysiologi-fanens benchmarks.
+  // Hentes lazily når fanen åbnes (backend cacher pr. division). Fri agent/ingen
+  // division → intet snit (fanen viser egne tal uden sammenligning). Non-kritisk.
+  useEffect(() => {
+    if (tab !== "physiology") return;
+    const division = rider?.team?.division;
+    if (!division) { setPhysBenchmark(null); return; }
+    if (physBenchmark?.division === division) return; // allerede hentet
+    let cancelled = false;
+    (async () => {
+      try {
+        const h = await authHeaders();
+        const res = await fetch(`${API}/api/physiology/division-benchmark?division=${division}`, { headers: h });
+        if (res.ok && !cancelled) setPhysBenchmark(await res.json());
+      } catch { /* non-kritisk: fanen falder tilbage til egne tal uden sammenligning */ }
+    })();
+    return () => { cancelled = true; };
+  }, [tab, rider?.team?.division, physBenchmark?.division]);
 
   async function loadWatchlistStatus() {
     const user = await getAuthedUser();
@@ -1559,7 +1580,11 @@ export default function RiderStatsPage() {
         </Suspense>
       )}
 
-      {(tab === "physiology" || tab === "scouting") && (
+      {tab === "physiology" && (
+        <RiderPhysiologyTab physiology={rider.physiology} benchmark={physBenchmark} />
+      )}
+
+      {tab === "scouting" && (
         <div className="bg-cz-card border border-cz-border rounded-cz p-5">
           <p className="text-cz-3 text-sm text-center py-8">{t("profile.tabPlaceholder")}</p>
         </div>

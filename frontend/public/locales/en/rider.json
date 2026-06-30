@@ -132,6 +132,59 @@
         "weight": "{kg} kg",
         "link": "Power curve & zones →"
       }
+    },
+    "physio": {
+      "pending": "Physiology not yet available",
+      "over": "over",
+      "under": "under",
+      "divMean": "Div mean {value}",
+      "divMeanShort": "vs Div {division}",
+      "head": {
+        "ftp": "FTP",
+        "ftpSub": "Threshold (~1 hour) · {wkg} W/kg",
+        "vo2": "VO₂max",
+        "vo2Sub": "Aerobic ceiling (W/kg)",
+        "pmax": "Pmax",
+        "pmaxSub": "Peak sprint power",
+        "zone2": "Zone 2",
+        "zone2Sub": "Endurance base"
+      },
+      "curve": {
+        "title": "Power curve",
+        "subtitle": "Max power per duration · log scale",
+        "hisZone": "HIS ZONE",
+        "rider": "Rider"
+      },
+      "profile": {
+        "title": "Power profile",
+        "note": {
+          "sprint": "Sprint top",
+          "anaerobic": "Anaerobic",
+          "vo2": "VO₂",
+          "thresholdPlus": "Threshold+",
+          "threshold": "Threshold",
+          "hour": "1 hour"
+        }
+      },
+      "cp": {
+        "title": "Critical Power model",
+        "cp": "CP (critical power)",
+        "wprime": "W′ anaerobic capacity",
+        "read": "W′ is the anaerobic reserve above CP — the work you can spend before fading; CP is the power you can hold almost indefinitely."
+      },
+      "zones": {
+        "title": "Power zones",
+        "derived": "Derived from FTP {ftp} W (Coggan zones)",
+        "name": {
+          "Z1": "Active recovery",
+          "Z2": "Endurance",
+          "Z3": "Tempo",
+          "Z4": "Threshold",
+          "Z5": "VO₂max",
+          "Z6": "Anaerobic",
+          "Z7": "Neuromuscular"
+        }
+      }
     }
   },
   "terrain": {

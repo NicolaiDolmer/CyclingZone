@@ -132,6 +132,59 @@
         "weight": "{kg} kg",
         "link": "Watt-kurve & zoner →"
       }
+    },
+    "physio": {
+      "pending": "Fysiologi ikke tilgængelig endnu",
+      "over": "over",
+      "under": "under",
+      "divMean": "Div-snit {value}",
+      "divMeanShort": "vs Div {division}",
+      "head": {
+        "ftp": "FTP",
+        "ftpSub": "Tærskel (~1 time) · {wkg} W/kg",
+        "vo2": "VO₂max",
+        "vo2Sub": "Aerobt loft (W/kg)",
+        "pmax": "Pmax",
+        "pmaxSub": "Maks. spurt-effekt",
+        "zone2": "Zone 2",
+        "zone2Sub": "Udholdenheds-base"
+      },
+      "curve": {
+        "title": "Watt-kurve",
+        "subtitle": "Maks. effekt pr. varighed · log-skala",
+        "hisZone": "HANS ZONE",
+        "rider": "Rytter"
+      },
+      "profile": {
+        "title": "Watt-profil",
+        "note": {
+          "sprint": "Spurt-top",
+          "anaerobic": "Anaerob",
+          "vo2": "VO₂",
+          "thresholdPlus": "Tærskel+",
+          "threshold": "Tærskel",
+          "hour": "1 time"
+        }
+      },
+      "cp": {
+        "title": "Critical Power-model",
+        "cp": "CP (critical power)",
+        "wprime": "W′ anaerob kapacitet",
+        "read": "W′ er den anaerobe reserve over CP — arbejdet du kan bruge før du falder af; CP er den effekt du kan holde næsten i det uendelige."
+      },
+      "zones": {
+        "title": "Effekt-zoner",
+        "derived": "Afledt af FTP {ftp} W (Coggan-zoner)",
+        "name": {
+          "Z1": "Aktiv restitution",
+          "Z2": "Udholdenhed",
+          "Z3": "Tempo",
+          "Z4": "Tærskel",
+          "Z5": "VO₂max",
+          "Z6": "Anaerob",
+          "Z7": "Neuromuskulær"
+        }
+      }
     }
   },
   "terrain": {
