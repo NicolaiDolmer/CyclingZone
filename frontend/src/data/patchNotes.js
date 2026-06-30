@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.39",
+    "date": "2026-06-30",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Auto-picked race captain is now your strongest rider",
+          "body": "When a captain has to be filled in for you on the team-selection board — because you removed your captain or never set one — the board now picks your strongest rider for that race instead of whoever happened to be first in the list. Previously it could quietly hand the captaincy to a weaker rider and push aside your intended leader. A captain you have chosen yourself is always kept. Note: roles still lock once a race is under way, so this affects upcoming races only."
+        },
+        "da": {
+          "title": "Auto-valgt løbskaptajn er nu din stærkeste rytter",
+          "body": "Når en kaptajn skal udfyldes for dig på udtagelses-board'et — fordi du fjernede din kaptajn eller aldrig satte en — vælger board'et nu din stærkeste rytter til løbet i stedet for tilfældigvis den første i listen. Før kunne det stille give kaptajnsbindet til en svagere rytter og skubbe din tiltænkte leder til side. En kaptajn du selv har valgt, bevares altid. Bemærk: roller låses stadig når et løb er i gang, så dette gælder kun kommende løb."
+        },
+        "refs": [2028]
+      }
+    ]
+  },
+  {
     "version": "6.38",
     "date": "2026-06-30",
     "label": "Beta",

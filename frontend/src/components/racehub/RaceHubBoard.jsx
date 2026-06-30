@@ -15,6 +15,7 @@ import AvailableRidersPool from "./AvailableRidersPool.jsx";
 import DivisionStartLists from "./DivisionStartLists.jsx";
 import { draftBindingMap, findSelectionOverlaps } from "../../lib/raceHubLogic.js";
 import { decodeDrag, dropAction } from "../../lib/raceHubDnd.js";
+import { pickFallbackCaptain } from "../../lib/raceSelectionLogic.js";
 import { Spinner, EmptyState, FlagIcon, Button } from "../ui";
 
 const API = import.meta.env.VITE_API_URL;
@@ -162,7 +163,9 @@ export default function RaceHubBoard() {
       let hunter = ids.includes(sel.hunter_id) ? sel.hunter_id : null;
       let captain = ids.includes(sel.captain_id) ? sel.captain_id : null;
       if (!captain && ids.length) {
-        captain = ids.find((id) => id !== sprint && id !== hunter) ?? ids[0];
+        // #2028: fortjenst-baseret fallback (stærkeste rytter), ikke positionel ids[0].
+        const suitabilityOf = (id) => col.riders?.find((r) => r.id === id)?.suitability;
+        captain = pickFallbackCaptain({ riderIds: ids, sprintId: sprint, hunterId: hunter, suitabilityOf });
         if (captain === sprint) sprint = null;
         if (captain === hunter) hunter = null;
       }
@@ -261,12 +264,11 @@ export default function RaceHubBoard() {
     // anden rolle; findes ingen (lille trup hvor alle har en rolle), tag den første og
     // fjern dens evt. anden rolle, så trekanten forbliver distinkt (ellers role_overlap).
     if (!captain) {
-      captain = riderIds.find((id) => id !== sprint && id !== hunter) ?? null;
-      if (!captain) {
-        captain = riderIds[0] ?? null;
-        if (captain === sprint) sprint = null;
-        if (captain === hunter) hunter = null;
-      }
+      // #2028: fortjenst-baseret fallback (stærkeste rytter), ikke positionel ids[0].
+      const suitabilityOf = (id) => col.riders?.find((r) => r.id === id)?.suitability;
+      captain = pickFallbackCaptain({ riderIds, sprintId: sprint, hunterId: hunter, suitabilityOf });
+      if (captain === sprint) sprint = null;
+      if (captain === hunter) hunter = null;
     }
     commitDraft(col, { rider_ids: riderIds, captain_id: captain, sprint_captain_id: sprint, hunter_id: hunter });
   }
