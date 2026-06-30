@@ -113,6 +113,25 @@
     "interest": {
       "followers": "Følgere",
       "views": "Visninger (7d)"
+    },
+    "overview": {
+      "skillCount": "{count} evner",
+      "legend": {
+        "level": "Tal = niveau 1–99",
+        "progress": "træningsfremgang mod næste +1"
+      },
+      "radar": {
+        "title": "Ryttertyper",
+        "subtitle": "rating pr. type",
+        "legendNow": "Nu",
+        "bestAs": "Bedst som",
+        "allTypes": "Alle typer →"
+      },
+      "physio": {
+        "title": "Fysiologi",
+        "weight": "{kg} kg",
+        "link": "Watt-kurve & zoner →"
+      }
     }
   },
   "terrain": {

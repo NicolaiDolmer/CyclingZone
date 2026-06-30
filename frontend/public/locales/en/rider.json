@@ -113,6 +113,25 @@
     "interest": {
       "followers": "Followers",
       "views": "Views (7d)"
+    },
+    "overview": {
+      "skillCount": "{count} abilities",
+      "legend": {
+        "level": "Number = level 1–99",
+        "progress": "training progress to next +1"
+      },
+      "radar": {
+        "title": "Rider types",
+        "subtitle": "rating per type",
+        "legendNow": "Now",
+        "bestAs": "Best as",
+        "allTypes": "All types →"
+      },
+      "physio": {
+        "title": "Physiology",
+        "weight": "{kg} kg",
+        "link": "Power curve & zones →"
+      }
     }
   },
   "terrain": {

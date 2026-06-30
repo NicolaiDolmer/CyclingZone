@@ -16,5 +16,15 @@
     "baroudeur": "Baroudeur",
     "rouleur": "Rouleur",
     "gc": "Etapeløbsrytter"
+  },
+  "short": {
+    "sprinter": "Spurt",
+    "tt": "ITT",
+    "climber": "Klatrer",
+    "puncheur": "Punch",
+    "brostensrytter": "Brosten",
+    "baroudeur": "Baroud",
+    "rouleur": "Rouleur",
+    "gc": "GC"
   }
 }

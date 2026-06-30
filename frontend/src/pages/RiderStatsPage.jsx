@@ -5,13 +5,11 @@ import { lazyWithRetry } from "../lib/lazyWithRetry.js";
 import { supabase } from "../lib/supabase";
 import { getAuthedUser } from "../lib/getAuthedUser.js";
 import { formatCz, getRiderMarketValue, getRiderSalary } from "../lib/marketValues.js";
-import { statColor } from "../lib/statColor";
 import { riderOverallRating } from "../lib/riderRating";
 import { RIDER_TYPE_KEYS } from "../lib/riderTypeKeys.js";
 import { chartColor } from "../lib/chartPalette.js";
 import { formatNumber, formatDate, formatDateTime } from "../lib/intl";
 import { resolveApiError } from "../lib/apiError";
-import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
 import TrainingFocus from "../components/rider/TrainingFocus";
 import RiderTrainingHistory from "../components/rider/RiderTrainingHistory.jsx";
 import RiderManageActions from "../components/rider/RiderManageActions.jsx";
@@ -34,12 +32,15 @@ import { isOverbidEvent, shouldFlashPrice } from "../lib/auctionsRealtime";
 import { logEvent, logFirstEvent } from "../lib/logEvent";
 import TeamLink from "../components/TeamLink";
 import { aggregateRiderSeasons } from "../lib/riderSeasonStats";
-import { ABILITY_CATEGORIES, ABILITY_ICONS, topAbilityKey } from "../lib/abilities.js";
+import { ABILITY_KEYS, topAbilityKey } from "../lib/abilities.js";
 import { TrophyIcon, ExchangeIcon, ClipboardIcon, PageLoader } from "../components/ui";
 import RiderProfileHero from "../components/rider/profile/RiderProfileHero.jsx";
 import RiderSwitcherBar from "../components/rider/profile/RiderSwitcherBar.jsx";
 import RiderProfileTabs from "../components/rider/profile/RiderProfileTabs.jsx";
 import { winsOnTerrainKeys } from "../lib/riderTerrain.js";
+import RiderAbilityColumns from "../components/rider/profile/RiderAbilityColumns.jsx";
+import RiderTypeRadar from "../components/rider/profile/RiderTypeRadar.jsx";
+import RiderOverviewPhysiology from "../components/rider/profile/RiderOverviewPhysiology.jsx";
 
 const API = import.meta.env.VITE_API_URL;
 const RiderDevelopmentTab = lazyWithRetry(() => import("../components/RiderDevelopmentTab"));
@@ -69,76 +70,10 @@ async function authHeaders() {
   return { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` };
 }
 
-// Evne-række (#2000 slice 1): TALLET viser 1-99-evneværdien; BJÆLKEN viser
-// træningsprogress mod næste +1 (ability_progress-fraktion 0..1, pr. evne-key).
-// Vises for ALLE ryttere. Manglende/null/ikke-numerisk progress = tom/neutral
-// bjælke (rytteren har ikke trænet evnen endnu) — må aldrig crashe.
-function StatRow({ label, icon, value, progressFraction, progressHint }) {
-  const color = statColor(value);
-  // Klamp defensivt: ugyldig fraktion → 0 (tom bjælke), ellers 0..1.
-  const rawFrac = Number(progressFraction);
-  const frac = Number.isFinite(rawFrac) ? Math.max(0, Math.min(1, rawFrac)) : 0;
-  const pct = Math.round(frac * 100);
-  return (
-    <div className="flex items-center gap-3 py-2">
-      <span className="text-cz-3 w-4 text-center text-sm">{icon}</span>
-      <span className="text-cz-2 text-sm w-28 sm:w-36 flex-shrink-0">{label}</span>
-      <div className="flex-1 bg-cz-subtle rounded-full h-2" title={progressHint} aria-hidden="true">
-        <div
-          className="h-2 rounded-full bg-cz-accent/60 transition-all duration-500"
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-      <span className="font-mono text-sm font-bold w-8 text-right flex-shrink-0" style={{ color }}>{value ?? "-"}</span>
-    </div>
-  );
-}
-
-// Evne-visning v2 (#1122/#1529/#2000): de 15 synlige evner grupperet i kategorier
-// (Physical/Mental/Technical) via den delte SSOT i lib/abilities.js
-// (ABILITY_CATEGORIES + ABILITY_ICONS). hidden_potential er skjult per design.
-
-// Ét nøgletal (watt/W·kg) i effektprofil-grid'et.
-function PowerStat({ label, value, unit }) {
-  return (
-    <div className="bg-cz-subtle rounded-lg px-3 py-2 flex flex-col">
-      <span className="text-cz-3 text-xs uppercase tracking-wide truncate">{label}</span>
-      <span className="font-mono text-cz-1 text-lg font-bold">
-        {value ?? "-"}
-        <span className="text-cz-3 text-xs font-normal ms-1">{unit}</span>
-      </span>
-    </div>
-  );
-}
-
-// Preview af race-engine-fundamentet (#676): cycling-zones/watt + udledte abilities,
-// tydeligt mærket som beta. Påvirker ikke resultater (PCM kører sæson 2). Data fra
-// GET /api/riders/:id (physiology/abilities) — null indtil backfill er kørt, så
-// rendres komponenten slet ikke før fundamentet findes.
-// abilityProgress: optional { <ability>: 0..1 } fra useTraining().progress[riderId]
-// for egne ryttere. undefined/null = ingen progress bars.
-// Power-profil (race-engine v2): watt/W·kg-nøgletal. Vises kun når fysiologi findes.
-// #1529: tidligere et "beta"-preview der OGSÅ wrappede de udledte evner — evnerne er nu
-// hoved-visningen på stats-fanen, og denne sektion er ren (de-beta'et) power-profil.
-function RacePhysiologyPreview({ physiology }) {
-  const { t } = useTranslation("rider");
-  if (!physiology) return null;
-  return (
-    <div className="bg-cz-card border border-cz-border rounded-cz p-5 mt-4">
-      <h3 className="text-cz-1 font-semibold mb-3">{t("racePreview.powerProfile")}</h3>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <PowerStat label={t("racePreview.zones.zone2")}  value={physiology.zone2_power_wkg}  unit="W/kg" />
-        <PowerStat label={t("racePreview.zones.ftp")}    value={physiology.ftp_wkg}          unit="W/kg" />
-        <PowerStat label={t("racePreview.zones.vo2max")} value={physiology.vo2max_power_wkg} unit="W/kg" />
-        <PowerStat label={t("racePreview.zones.pmax")}   value={physiology.pmax_watts}       unit="W" />
-        <PowerStat label={t("racePreview.curve.p5s")}    value={physiology.power_5s_wkg}     unit="W/kg" />
-        <PowerStat label={t("racePreview.curve.p15s")}   value={physiology.power_15s_wkg}    unit="W/kg" />
-        <PowerStat label={t("racePreview.curve.p1m")}    value={physiology.power_1m_wkg}     unit="W/kg" />
-        <PowerStat label={t("racePreview.curve.p5m")}    value={physiology.power_5m_wkg}     unit="W/kg" />
-      </div>
-    </div>
-  );
-}
+// Evne-rækker, power-stat-grid og race-physiology-preview er flyttet til de
+// dedikerede Overblik-komponenter under components/rider/profile/ (#2000 stykke 2):
+// RiderAbilityColumns (3-kort evne-grid), RiderTypeRadar (ryttertype-spider) og
+// RiderOverviewPhysiology (compact fysiologi-teaser).
 
 function SwapOfferButton({ rider, myTeamId }) {
   const { t } = useTranslation("rider");
@@ -1281,6 +1216,17 @@ export default function RiderStatsPage() {
   const isAiRider = Boolean(rider.team?.is_ai);
   const isPendingTransfer = Boolean(rider.pending_team_id);
   const isRetired = Boolean(rider.is_retired);
+
+  // #2000 stykke 2: progress-fraktion pr. evne til Overblik-evnekolonnerne.
+  // Egne ryttere foretrækker den friske training.progress (optimistisk efter et
+  // tick); ellers DB'ens ability_progress. Bygges i SSOT-evne-rækkefølge.
+  const overviewProgress = {};
+  if (rider.abilities) {
+    for (const key of ABILITY_KEYS) {
+      const ownFrac = isMyRider ? training.progress?.[rider.id]?.[key] : undefined;
+      overviewProgress[key] = ownFrac != null ? ownFrac : rider.abilityProgress?.[key];
+    }
+  }
   // #2007: akademi-ryttere ekskluderes fra auktion (kun frie agenter, egne
   // SENIOR-ryttere, samt bank/AI-ryttere kan sættes på auktion).
   const canAuction  = (isFreeAgent || isMySeniorRider || isBankRider || isAiRider) && !isPendingTransfer && !isRetired;
@@ -1472,48 +1418,37 @@ export default function RiderStatsPage() {
         }}
       />
 
+      {/* #2000 stykke 2 — Overblik: objektivt snapshot. Evne-kolonner (3 kort) +
+          ryttertype-radar (ægte type-ratings) + compact fysiologi-teaser. Intet
+          scout-verdikt her (det lever i Scouting). */}
       {tab === "overview" && (
-        <>
-          <div className="bg-cz-card border border-cz-border rounded-cz p-5">
-            {scouting.estimateFor(rider.id) !== null && (
-              <div className="flex items-center gap-3 py-2 mb-1 border-b border-cz-border">
-                <span className="text-cz-3 w-4 text-center text-sm">◆</span>
-                <span className="text-cz-2 text-sm w-28 sm:w-36 flex-shrink-0">{t("stats.potentialRow")}</span>
-                <ScoutablePotentiale rider={rider} scouting={scouting} />
-              </div>
-            )}
-            {/* #2000: de 15 CZ-evner grupperet i kategorier (Physical/Mental/
-                Technical) via den delte SSOT (lib/abilities.js). TALLET = 1-99-
-                evneværdien; BJÆLKEN = træningsprogress mod næste +1 (ability_progress,
-                0..1 pr. evne) — vist for ALLE ryttere. PCM stat_* vises ikke her.
-                Egne ryttere foretrækker den friske training.progress (optimistisk
-                opdateret efter et tick); ellers DB'ens ability_progress. */}
-            {rider.abilities
-              ? ABILITY_CATEGORIES.map((cat) => (
-                  <div key={cat.key}>
-                    <h3 className="text-cz-3 text-[11px] font-semibold uppercase tracking-widest mt-3 first:mt-0 mb-1">
-                      {t(`stats.categories.${cat.key}`)}
-                    </h3>
-                    {cat.keys.map((key) => {
-                      const ownFrac = isMyRider ? training.progress?.[rider.id]?.[key] : undefined;
-                      const frac = ownFrac != null ? ownFrac : rider.abilityProgress?.[key];
-                      return (
-                        <StatRow
-                          key={key}
-                          label={t(`racePreview.derived.${key}`)}
-                          icon={ABILITY_ICONS[key]}
-                          value={rider.abilities[key]}
-                          progressFraction={frac}
-                          progressHint={t("development.progressHint")}
-                        />
-                      );
-                    })}
-                  </div>
-                ))
-              : <p className="text-cz-3 text-sm py-2">{t("stats.abilitiesPending")}</p>}
+        rider.abilities ? (
+          <div className="flex flex-col gap-3">
+            <RiderAbilityColumns
+              abilities={rider.abilities}
+              progressByKey={overviewProgress}
+              isOwnRider={isMyRider}
+            />
+            <div className={`grid grid-cols-1 ${rider.physiology ? "lg:grid-cols-2" : ""} gap-3 items-start`}>
+              <RiderTypeRadar
+                rider={rider}
+                scouting={scouting}
+                onGoScouting={() => setTab("scouting")}
+              />
+              {rider.physiology && (
+                <RiderOverviewPhysiology
+                  physiology={rider.physiology}
+                  weight={rider.weight}
+                  onGoFysiologi={() => setTab("physiology")}
+                />
+              )}
+            </div>
           </div>
-          <RacePhysiologyPreview physiology={rider.physiology} />
-        </>
+        ) : (
+          <div className="bg-cz-card border border-cz-border rounded-cz p-5">
+            <p className="text-cz-3 text-sm py-2">{t("stats.abilitiesPending")}</p>
+          </div>
+        )
       )}
 
       {tab === "results" && (
