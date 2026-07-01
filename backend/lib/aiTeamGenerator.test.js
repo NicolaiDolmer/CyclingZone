@@ -464,6 +464,23 @@ test("defaultAllocateSquadForTeam giver nye AI-hold en AI_SQUAD.TOTAL_SIZE-trup 
     assert.ok(r.base_value <= AI_TIER_VALUE_CAP[1],
       `${r.firstname} ${r.lastname}: base_value ${r.base_value} overstiger loftet ${AI_TIER_VALUE_CAP[1]}`);
   }
+
+  // 2026-07-01-regressionsvagt: generateFictionalRiders' GUARANTEED-nationalitets-
+  // liste (["CN","JP","KR","CO","DZ","ER"]) sikrer repræsentation i EN STOR pulje —
+  // men kaldt med count=1 ad gangen bliver "garantien" til HELE resultatet (den
+  // forreste nation vinder hver gang). Ramte prod: alle 300 division-1-ryttere
+  // fik nationality_code="CN". Kræv mindst 3 DISTINKTE nationer i en 24-trup.
+  const distinctNationalities = new Set(teamRiders.map((r) => r.nationality_code));
+  assert.ok(distinctNationalities.size >= 3,
+    `truppen skal have mindst 3 distinkte nationaliteter — fik ${distinctNationalities.size} (${[...distinctNationalities]})`);
+
+  // 2026-07-01-regressionsvagt (ejer-ønske): ryttertype-klassifikatorens catch-
+  // all-skævhed (#1378/#2014) gjorde 249/300 division-1-ryttere til "sprinter" i
+  // det oprindelige forsøg. typeShareCap i generateAiRiderBatchWithCap skal give
+  // reel variation — kræv mindst 3 distinkte primær-typer i en 24-trup.
+  const distinctTypes = new Set(teamRiders.map((r) => r.primary_type));
+  assert.ok(distinctTypes.size >= 3,
+    `truppen skal have mindst 3 distinkte ryttertyper — fik ${distinctTypes.size} (${[...distinctTypes]})`);
 });
 
 // Division 4 (strukturel bund, pre-aktivering) skal stadig give en spilbar, men
