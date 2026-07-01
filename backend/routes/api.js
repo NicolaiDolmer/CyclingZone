@@ -116,6 +116,7 @@ import {
 import { buildRiderHistory } from "../lib/riderHistory.js";
 import { buildTeamTransferHistory } from "../lib/teamTransferHistory.js";
 import { buildRiderBidTimeline } from "../lib/riderBidTimeline.js";
+import { meanPhysiology, BENCHMARK_FIELDS } from "../lib/physiologyBenchmark.js";
 import { SCOUTING_CONFIG, deriveScoutState, canScout, buildScoutEstimate, estimatePotentialRange } from "../lib/scouting.js";
 import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity, partitionBulkTrainingTargets, BULK_TRAINING_MAX_RIDERS } from "../lib/training.js";
 import { isDailyTrainingEnabled, DAILY_TRAINING_FLAG_KEY } from "../lib/dailyTrainingFlag.js";
@@ -304,6 +305,8 @@ const CACHE_TTL = {
   racePoints: 600_000,
   dashboardRecentResults: 60_000,
   dashboardRiderRanking: 60_000,
+  // Divisions-fysiologi-snit ændrer sig kun ved sæsonskift/træning — 10 min er rigeligt.
+  physiologyBenchmark: 600_000,
 };
 
 // Load .env from backend root
@@ -884,6 +887,54 @@ router.get("/riders/:id/development", requireAuth, async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// GET /api/physiology/division-benchmark?division=N — divisions-snit af fysiologien
+// (#2000 Fysiologi-fane). Driver "vs division"-bjælkerne + watt-kurve-overlayet.
+// Read-only aggregat (ingen game-effekt), cachet pr. division (key = URL+query).
+// Population = ikke-pensionerede ryttere på ikke-bank-hold i divisionen — samme felt
+// rytteren rent faktisk kører imod (matcher UI-diskriminatoren). En division kan
+// overstige 1000 ryttere (Div 3 ~1460 i prod) → rytter-loadet pagineres og
+// physiology-.in() chunkes for at undgå PostgRESTs stille 1000-cap + URL-længde.
+router.get("/physiology/division-benchmark", requireAuth, cached({ namespace: "physiology-benchmark", ttlMs: CACHE_TTL.physiologyBenchmark }, async (req, res) => {
+  const division = Number(req.query.division);
+  if (!Number.isInteger(division) || division < 1 || division > 4) {
+    return res.status(400).json({ error: "Ugyldig division" });
+  }
+  try {
+    const { data: teams, error: teamErr } = await supabase
+      .from("teams").select("id").eq("division", division).eq("is_bank", false);
+    if (teamErr) throw new Error(teamErr.message);
+    const teamIds = (teams || []).map((t) => t.id);
+    if (teamIds.length === 0) return res.json({ division, sampleSize: 0, mean: null });
+
+    // En division kan have >1000 ryttere (Div 3 ~1460 i prod) → PostgREST capper
+    // stille ved 1000. Paginer rytter-loadet (stabil .order) så snittet ikke
+    // beregnes på en tavst trunkeret delmængde.
+    const riderRows = await fetchAllRows(() =>
+      supabase.from("riders").select("id").in("team_id", teamIds)
+        .or("is_retired.is.null,is_retired.eq.false").order("id"));
+    const riderIds = riderRows.map((r) => r.id);
+    if (riderIds.length === 0) return res.json({ division, sampleSize: 0, mean: null });
+
+    // Hent fysiologien i chunks: et .in() med ~1500 UUID'er ville sprænge URL-længden.
+    // Hver chunk < 1000 rækker (ingen cap-trunkering), batches concat'es før snittet.
+    const CHUNK = 200;
+    const rows = [];
+    for (let i = 0; i < riderIds.length; i += CHUNK) {
+      const batch = riderIds.slice(i, i + CHUNK);
+      const { data, error: physErr } = await supabase
+        .from("rider_physiology_profiles")
+        .select(BENCHMARK_FIELDS.join(", "))
+        .in("rider_id", batch);
+      if (physErr) throw new Error(physErr.message);
+      rows.push(...(data || []));
+    }
+
+    res.json({ division, sampleSize: rows.length, mean: meanPhysiology(rows) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}));
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // RYTTER-HANDLINGER (#1719 fyring/buyout + #1720 kontraktforlængelse)

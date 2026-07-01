@@ -16,5 +16,15 @@
     "baroudeur": "Baroudeur",
     "rouleur": "Rouleur",
     "gc": "GC contender"
+  },
+  "short": {
+    "sprinter": "Sprint",
+    "tt": "ITT",
+    "climber": "Climb",
+    "puncheur": "Punch",
+    "brostensrytter": "Cobbles",
+    "baroudeur": "Break",
+    "rouleur": "Rouleur",
+    "gc": "GC"
   }
 }

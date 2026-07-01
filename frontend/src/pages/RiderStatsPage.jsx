@@ -4,25 +4,16 @@ import { useTranslation } from "react-i18next";
 import { lazyWithRetry } from "../lib/lazyWithRetry.js";
 import { supabase } from "../lib/supabase";
 import { getAuthedUser } from "../lib/getAuthedUser.js";
-import { getCountryName } from "../lib/countryUtils";
-import { Flag } from "../components/Flag";
 import { formatCz, getRiderMarketValue, getRiderSalary } from "../lib/marketValues.js";
-import { ageBadgeKey } from "../lib/riderAge";
-import { statColor, statTextColor } from "../lib/statColor";
 import { riderOverallRating } from "../lib/riderRating";
 import { RIDER_TYPE_KEYS } from "../lib/riderTypeKeys.js";
 import { chartColor } from "../lib/chartPalette.js";
 import { formatNumber, formatDate, formatDateTime } from "../lib/intl";
 import { resolveApiError } from "../lib/apiError";
-import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
-import TrainingFocus from "../components/rider/TrainingFocus";
-import RiderTrainingHistory from "../components/rider/RiderTrainingHistory.jsx";
-import ConditionChips from "../components/rider/ConditionChips.jsx";
 import RiderManageActions from "../components/rider/RiderManageActions.jsx";
 import { useScouting } from "../lib/useScouting";
 import { useTraining } from "../lib/useTraining";
 import { useTrainingHistory } from "../lib/useTrainingHistory";
-import RiderTypeBadge from "../components/rider/RiderTypeBadge";
 import { BidConfirmModal } from "../components/BidConfirmModal";
 import { RacePriceModal } from "../components/RacePriceModal";
 import { ConfettiModal } from "../components/ConfettiModal";
@@ -39,8 +30,17 @@ import { isOverbidEvent, shouldFlashPrice } from "../lib/auctionsRealtime";
 import { logEvent, logFirstEvent } from "../lib/logEvent";
 import TeamLink from "../components/TeamLink";
 import { aggregateRiderSeasons } from "../lib/riderSeasonStats";
-import { ABILITY_CATEGORIES, ABILITY_ICONS, topAbilityKey } from "../lib/abilities.js";
+import { ABILITY_KEYS, topAbilityKey } from "../lib/abilities.js";
 import { TrophyIcon, ExchangeIcon, ClipboardIcon, PageLoader } from "../components/ui";
+import RiderProfileHero from "../components/rider/profile/RiderProfileHero.jsx";
+import RiderSwitcherBar from "../components/rider/profile/RiderSwitcherBar.jsx";
+import RiderProfileTabs from "../components/rider/profile/RiderProfileTabs.jsx";
+import { winsOnTerrainKeys } from "../lib/riderTerrain.js";
+import RiderAbilityColumns from "../components/rider/profile/RiderAbilityColumns.jsx";
+import RiderTypeRadar from "../components/rider/profile/RiderTypeRadar.jsx";
+import RiderOverviewPhysiology from "../components/rider/profile/RiderOverviewPhysiology.jsx";
+import RiderPhysiologyTab from "../components/rider/profile/RiderPhysiologyTab.jsx";
+import RiderTrainingTab from "../components/rider/profile/RiderTrainingTab.jsx";
 
 const API = import.meta.env.VITE_API_URL;
 const RiderDevelopmentTab = lazyWithRetry(() => import("../components/RiderDevelopmentTab"));
@@ -70,99 +70,10 @@ async function authHeaders() {
   return { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` };
 }
 
-// Evne-række (#2000 slice 1): TALLET viser 1-99-evneværdien; BJÆLKEN viser
-// træningsprogress mod næste +1 (ability_progress-fraktion 0..1, pr. evne-key).
-// Vises for ALLE ryttere. Manglende/null/ikke-numerisk progress = tom/neutral
-// bjælke (rytteren har ikke trænet evnen endnu) — må aldrig crashe.
-function StatRow({ label, icon, value, progressFraction, progressHint }) {
-  const color = statColor(value);
-  // Klamp defensivt: ugyldig fraktion → 0 (tom bjælke), ellers 0..1.
-  const rawFrac = Number(progressFraction);
-  const frac = Number.isFinite(rawFrac) ? Math.max(0, Math.min(1, rawFrac)) : 0;
-  const pct = Math.round(frac * 100);
-  return (
-    <div className="flex items-center gap-3 py-2">
-      <span className="text-cz-3 w-4 text-center text-sm">{icon}</span>
-      <span className="text-cz-2 text-sm w-28 sm:w-36 flex-shrink-0">{label}</span>
-      <div className="flex-1 bg-cz-subtle rounded-full h-2" title={progressHint} aria-hidden="true">
-        <div
-          className="h-2 rounded-full bg-cz-accent/60 transition-all duration-500"
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-      <span className="font-mono text-sm font-bold w-8 text-right flex-shrink-0" style={{ color }}>{value ?? "-"}</span>
-    </div>
-  );
-}
-
-// Evne-visning v2 (#1122/#1529/#2000): de 15 synlige evner grupperet i kategorier
-// (Physical/Mental/Technical) via den delte SSOT i lib/abilities.js
-// (ABILITY_CATEGORIES + ABILITY_ICONS). hidden_potential er skjult per design.
-
-// "Vurdering"-cirkel (#2000 slice 2 / #2006): rytterens 1-99 overall-rating,
-// farvet efter samme evne-gradient (statColor) som alle andre rating-tal. Tom
-// (—) hvis rating ikke kan beregnes (ingen evner). rating-værdien beregnes af
-// riderOverallRating (type-bevidst, samme blendede output O som værdimodellen).
-function RatingCircle({ rating, label }) {
-  const has = Number.isFinite(rating) && rating > 0;
-  const bg = has ? statColor(rating) : "var(--cz-subtle)";
-  const fg = has ? statTextColor(rating) : undefined;
-  return (
-    <div className="flex flex-col items-center sm:items-end gap-1">
-      <div
-        data-testid="rider-overall-rating"
-        className="flex items-center justify-center rounded-full w-14 h-14 font-mono font-bold text-2xl tabular-nums shadow-sm ring-1 ring-cz-border"
-        style={{ backgroundColor: bg, color: fg }}
-        title={label}
-      >
-        {has ? rating : "—"}
-      </div>
-      <span className="text-cz-3 text-[10px] uppercase tracking-wider">{label}</span>
-    </div>
-  );
-}
-
-// Ét nøgletal (watt/W·kg) i effektprofil-grid'et.
-function PowerStat({ label, value, unit }) {
-  return (
-    <div className="bg-cz-subtle rounded-lg px-3 py-2 flex flex-col">
-      <span className="text-cz-3 text-xs uppercase tracking-wide truncate">{label}</span>
-      <span className="font-mono text-cz-1 text-lg font-bold">
-        {value ?? "-"}
-        <span className="text-cz-3 text-xs font-normal ms-1">{unit}</span>
-      </span>
-    </div>
-  );
-}
-
-// Preview af race-engine-fundamentet (#676): cycling-zones/watt + udledte abilities,
-// tydeligt mærket som beta. Påvirker ikke resultater (PCM kører sæson 2). Data fra
-// GET /api/riders/:id (physiology/abilities) — null indtil backfill er kørt, så
-// rendres komponenten slet ikke før fundamentet findes.
-// abilityProgress: optional { <ability>: 0..1 } fra useTraining().progress[riderId]
-// for egne ryttere. undefined/null = ingen progress bars.
-// Power-profil (race-engine v2): watt/W·kg-nøgletal. Vises kun når fysiologi findes.
-// #1529: tidligere et "beta"-preview der OGSÅ wrappede de udledte evner — evnerne er nu
-// hoved-visningen på stats-fanen, og denne sektion er ren (de-beta'et) power-profil.
-function RacePhysiologyPreview({ physiology }) {
-  const { t } = useTranslation("rider");
-  if (!physiology) return null;
-  return (
-    <div className="bg-cz-card border border-cz-border rounded-cz p-5 mt-4">
-      <h3 className="text-cz-1 font-semibold mb-3">{t("racePreview.powerProfile")}</h3>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <PowerStat label={t("racePreview.zones.zone2")}  value={physiology.zone2_power_wkg}  unit="W/kg" />
-        <PowerStat label={t("racePreview.zones.ftp")}    value={physiology.ftp_wkg}          unit="W/kg" />
-        <PowerStat label={t("racePreview.zones.vo2max")} value={physiology.vo2max_power_wkg} unit="W/kg" />
-        <PowerStat label={t("racePreview.zones.pmax")}   value={physiology.pmax_watts}       unit="W" />
-        <PowerStat label={t("racePreview.curve.p5s")}    value={physiology.power_5s_wkg}     unit="W/kg" />
-        <PowerStat label={t("racePreview.curve.p15s")}   value={physiology.power_15s_wkg}    unit="W/kg" />
-        <PowerStat label={t("racePreview.curve.p1m")}    value={physiology.power_1m_wkg}     unit="W/kg" />
-        <PowerStat label={t("racePreview.curve.p5m")}    value={physiology.power_5m_wkg}     unit="W/kg" />
-      </div>
-    </div>
-  );
-}
+// Evne-rækker, power-stat-grid og race-physiology-preview er flyttet til de
+// dedikerede Overblik-komponenter under components/rider/profile/ (#2000 stykke 2):
+// RiderAbilityColumns (3-kort evne-grid), RiderTypeRadar (ryttertype-spider) og
+// RiderOverviewPhysiology (compact fysiologi-teaser).
 
 function SwapOfferButton({ rider, myTeamId }) {
   const { t } = useTranslation("rider");
@@ -803,7 +714,7 @@ function AuctionButton({ rider, auctionLabel, onStart, ddActive, isOwnRider }) {
 export default function RiderStatsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { t, i18n } = useTranslation("rider");
+  const { t } = useTranslation("rider");
   const { t: tTypes } = useTranslation("riderTypes");
 
   const scouting = useScouting();
@@ -811,7 +722,6 @@ export default function RiderStatsPage() {
   // #1533: træningsrapport-historik (egne ryttere) — vises i Development-fanen.
   const trainingHistory = useTrainingHistory();
   const [rider, setRider]                   = useState(null);
-  const [riderCondition, setRiderCondition] = useState(null);
   const [onWatchlist, setOnWatchlist]       = useState(false);
   const [watchlistId, setWatchlistId]       = useState(null);
   const [watchlistCount, setWatchlistCount] = useState(0);
@@ -819,7 +729,9 @@ export default function RiderStatsPage() {
   const [results, setResults]               = useState([]);
   const [seasonRows, setSeasonRows]         = useState([]);
   const [loading, setLoading]               = useState(true);
-  const [tab, setTab]                       = useState("stats");
+  const [tab, setTab]                       = useState("overview");
+  // Roster for switcher-baren (#2000): det VISTE holds trup, til prev/next + index.
+  const [roster, setRoster]                 = useState([]);
   const [myTeamId, setMyTeamId]             = useState(null);
   const [myBalance, setMyBalance]           = useState(0);
   const [myReservedBalance, setMyReservedBalance] = useState(0);
@@ -827,6 +739,7 @@ export default function RiderStatsPage() {
   const [auctionError, setAuctionError]     = useState(null);
   const [history, setHistory]               = useState([]);
   const [statHistory, setStatHistory]       = useState([]);
+  const [physBenchmark, setPhysBenchmark]   = useState(null);
   const [ddActive, setDdActive]             = useState(false);
   // #195: live bud-timeline for seneste auktion (aktiv eller completed).
   // Privacy-låst: backend lækker aldrig proxy_max — frontend respekterer samme kontrakt.
@@ -844,6 +757,43 @@ export default function RiderStatsPage() {
   const myTeamIdRef      = useRef(null);
   useEffect(() => { activeAuctionRef.current = activeAuction; }, [activeAuction]);
   useEffect(() => { myTeamIdRef.current = myTeamId; }, [myTeamId]);
+
+  // #2000: hent det VISTE holds trup til switcher-baren (prev/next + index).
+  // Non-kritisk — fejler stille (switcheren skjules bare hvis rosteret mangler).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const teamId = rider?.team_id;
+      if (!teamId) { setRoster([]); return; }
+      const { data } = await supabase
+        .from("riders")
+        .select("id, firstname, lastname")
+        .eq("team_id", teamId)
+        .or("is_retired.is.null,is_retired.eq.false")
+        .order("lastname");
+      if (!cancelled) setRoster(data || []);
+    })();
+    return () => { cancelled = true; };
+  }, [rider?.team_id]);
+
+  // #2000 stykke 3: divisions-fysiologi-snit til Fysiologi-fanens benchmarks.
+  // Hentes lazily når fanen åbnes (backend cacher pr. division). Fri agent/ingen
+  // division → intet snit (fanen viser egne tal uden sammenligning). Non-kritisk.
+  useEffect(() => {
+    if (tab !== "physiology") return;
+    const division = rider?.team?.division;
+    if (!division) { setPhysBenchmark(null); return; }
+    if (physBenchmark?.division === division) return; // allerede hentet
+    let cancelled = false;
+    (async () => {
+      try {
+        const h = await authHeaders();
+        const res = await fetch(`${API}/api/physiology/division-benchmark?division=${division}`, { headers: h });
+        if (res.ok && !cancelled) setPhysBenchmark(await res.json());
+      } catch { /* non-kritisk: fanen falder tilbage til egne tal uden sammenligning */ }
+    })();
+    return () => { cancelled = true; };
+  }, [tab, rider?.team?.division, physBenchmark?.division]);
 
   async function loadWatchlistStatus() {
     const user = await getAuthedUser();
@@ -1012,7 +962,7 @@ export default function RiderStatsPage() {
       supabase.from("riders").select(`id, pcm_id, firstname, lastname, birthdate, height, weight,
         market_value, base_value, prize_earnings_bonus, salary, contract_length, contract_end_season, is_u25, is_retired, is_academy, pending_team_id,
         nationality_code, primary_type, secondary_type, team_id, acquired_at,
-        team:team_id(id, name, is_ai, is_bank),
+        team:team_id(id, name, is_ai, is_bank, division),
         pending_team:pending_team_id(id, name)`).eq("id", id).single(),
       // Seneste 20 til "Løbsresultater"-listen (visning).
       supabase.from("race_results")
@@ -1049,18 +999,6 @@ export default function RiderStatsPage() {
       : riderRes.data);
     setResults(resultsRes.data || []);
     setSeasonRows(seasonRowsAll);
-
-    // Condition (form/træthed/skade) — transparent per spildesign, vises for alle ryttere.
-    // SELECT-for-authenticated RLS: en simpel maybeSingle() er nok.
-    // Manglende rad = neutral defaults — komponent håndterer null.
-    if (riderRes.data?.id) {
-      try {
-        const { data: condData } = await safe(
-          supabase.from("rider_condition").select("form, fatigue, injured_until").eq("rider_id", riderRes.data.id).maybeSingle()
-        );
-        setRiderCondition(condData ?? null);
-      } catch { /* non-critical — chips vises med neutrale defaults */ }
-    }
 
     await loadActiveAuctionFull(riderRes.data);
     setLoading(false);
@@ -1298,6 +1236,17 @@ export default function RiderStatsPage() {
   const isAiRider = Boolean(rider.team?.is_ai);
   const isPendingTransfer = Boolean(rider.pending_team_id);
   const isRetired = Boolean(rider.is_retired);
+
+  // #2000 stykke 2: progress-fraktion pr. evne til Overblik-evnekolonnerne.
+  // Egne ryttere foretrækker den friske training.progress (optimistisk efter et
+  // tick); ellers DB'ens ability_progress. Bygges i SSOT-evne-rækkefølge.
+  const overviewProgress = {};
+  if (rider.abilities) {
+    for (const key of ABILITY_KEYS) {
+      const ownFrac = isMyRider ? training.progress?.[rider.id]?.[key] : undefined;
+      overviewProgress[key] = ownFrac != null ? ownFrac : rider.abilityProgress?.[key];
+    }
+  }
   // #2007: akademi-ryttere ekskluderes fra auktion (kun frie agenter, egne
   // SENIOR-ryttere, samt bank/AI-ryttere kan sættes på auktion).
   const canAuction  = (isFreeAgent || isMySeniorRider || isBankRider || isAiRider) && !isPendingTransfer && !isRetired;
@@ -1333,8 +1282,43 @@ export default function RiderStatsPage() {
   // med sejre opdelt pr. type. Se lib/riderSeasonStats.js.
   const bySeason = aggregateRiderSeasons(seasonRows);
 
+  // ── #2000 redesign — afledte hero-felter (ren visning, ingen ny data) ────────
+  const divisionLabel = rider.team?.division != null
+    ? t("profile.hero.divisionChip", { division: rider.team.division })
+    : null;
+  // #1287/#950: kommende hold ved handel til næste sæson — skjult ved self-pending
+  // (pending_team == nuværende hold, fx intern handel — ikke et reelt holdskifte).
+  const pendingTeam = rider.pending_team?.name && rider.pending_team.id !== rider.team?.id
+    ? rider.pending_team
+    : null;
+  const salaryText = rider.contract_length != null
+    ? `${formatNumber(rider.salary)} ${t("header.contractSalary")}`
+    : `${formatNumber(getRiderSalary(rider))} ${t("header.estSalary")}`;
+  const winsOnText = winsOnTerrainKeys(rider.primary_type, rider.secondary_type)
+    .map((k) => t(`terrain.${k}`)).join(", ") || null;
+  // Status-banner: auktion > akademi > kontrakt-udløb (egne ryttere).
+  let statusBanner = null;
+  if (activeAuction) {
+    const diff = new Date(activeAuction.calculated_end) - new Date();
+    const h = Math.max(0, Math.floor(diff / 3600000));
+    const m = Math.max(0, Math.floor((diff % 3600000) / 60000));
+    statusBanner = {
+      kind: "auction",
+      endsIn: diff > 0 ? (h > 0 ? `${h}t ${m}m` : `${m}m`) : "—",
+      highBid: formatNumber(activeAuction.current_price),
+    };
+  } else if (isAcademyRider) {
+    statusBanner = { kind: "academy" };
+  } else if (isMyRider && rider.contract_end_season != null) {
+    statusBanner = { kind: "expiry", season: rider.contract_end_season };
+  }
+  // Switcher: rytterens position i det viste holds trup.
+  const rosterIdx = roster.findIndex((r) => String(r.id) === String(rider.id));
+  const prevRider = rosterIdx > 0 ? roster[rosterIdx - 1] : null;
+  const nextRider = rosterIdx >= 0 && rosterIdx < roster.length - 1 ? roster[rosterIdx + 1] : null;
+
   return (
-    <div className="max-w-2xl mx-auto min-w-0">
+    <div className="max-w-5xl mx-auto min-w-0">
       {/* #254: Bid-modaler — confirm før bud, race-confirm ved 409 stale price, confetti på win, overbid-toast */}
       <BidConfirmModal
         show={!!bidConfirm}
@@ -1363,256 +1347,130 @@ export default function RiderStatsPage() {
 
       <button onClick={() => navigate(-1)} className="text-cz-3 hover:text-cz-1 text-sm mb-4 flex items-center gap-1">{t("page.back")}</button>
 
-      <div className="bg-cz-card border border-cz-border rounded-cz p-5 mb-4">
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-2">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-start gap-3">
-              <h1 className="text-2xl font-bold text-cz-1 break-words">{rider.firstname} {rider.lastname}</h1>
-              <button onClick={toggleWatchlist} title={onWatchlist ? t("header.watchlistRemove") : t("header.watchlistAdd")}
-                className={`text-2xl flex-shrink-0 transition-all hover:scale-110 ${onWatchlist ? "text-cz-accent-t" : "text-cz-3 hover:text-cz-2"}`}>
-                {onWatchlist ? "★" : "☆"}
-              </button>
-              <button onClick={() => navigate(`/compare?ids=${rider.id}`)} title={t("header.compareTitle")}
-                className="flex-shrink-0 px-2 py-1 rounded-lg text-xs font-medium border border-cz-border text-cz-2 hover:text-cz-1 hover:border-cz-accent/40 transition-all">
-                {t("header.compare")}
-              </button>
-            </div>
-            {watchlistCount > 0 && (
-              <p className="text-cz-3 text-xs mt-1">{t("header.watchlistCount", { count: watchlistCount })}</p>
-            )}
-            {visits && visits.views7d > 0 && (
-              <p className="text-cz-3 text-xs mt-1 flex items-center gap-1.5 flex-wrap">
-                <span>{t("header.visitors", { count: visits.views7d })}</span>
-                {visits.isNew ? (
-                  <span className="text-[10px] uppercase font-semibold bg-cz-info-bg0/20 text-cz-info px-1.5 py-0.5 rounded">
-                    {t("header.visitorsNew")}
-                  </span>
-                ) : visits.trend7dPct != null && visits.trend7dPct !== 0 ? (
-                  <span
-                    className={visits.trend7dPct > 0 ? "text-cz-success" : "text-cz-danger"}
-                    title={t(visits.trend7dPct > 0 ? "header.visitorsTrendUp" : "header.visitorsTrendDown", { pct: Math.abs(visits.trend7dPct) })}
-                  >
-                    {visits.trend7dPct > 0 ? "↑" : "↓"}{Math.abs(visits.trend7dPct)}%
-                  </span>
-                ) : null}
-                <span className="text-cz-3 opacity-50" aria-hidden="true">·</span>
-                <span>{t("header.visitors24h", { count: visits.views24h })}</span>
-              </p>
-            )}
-            <div className="flex items-center gap-2 mt-2 flex-wrap">
-              {/* #42: alders-badge afledes fra alder (single source of truth, #837):
-                  <23 → U23, 23-24 → U25, ≥25 → ingen. Tidligere brugt rå is_u25, der
-                  også er true for U23-ryttere, så detalje-siden viste "U25" på en U23. */}
-              {(() => {
-                const ageTier = ageBadgeKey(rider);
-                return ageTier ? (
-                  <span className="text-xs uppercase bg-cz-info-bg0/20 text-cz-info px-2 py-0.5 rounded">{t(`header.${ageTier}`)}</span>
-                ) : null;
-              })()}
-              {isRetired && <span className="text-xs uppercase bg-cz-danger-bg0/20 text-cz-danger px-2 py-0.5 rounded">{t("header.retired")}</span>}
-              {rider.primary_type
-                ? <RiderTypeBadge primaryType={rider.primary_type} secondaryType={rider.secondary_type} size="md" />
-                : <span className="text-xs uppercase bg-cz-subtle text-cz-2 px-2 py-0.5 rounded font-medium">{typeLabel}</span>}
-              {rider.nationality_code && (
-                <span className="text-cz-2 text-sm inline-flex items-center gap-1">
-                  <Flag code={rider.nationality_code} /> {getCountryName(rider.nationality_code, i18n.language)}
-                </span>
-              )}
-              {age && <span className="text-cz-3 text-sm">{t("header.ageYears", { age })}</span>}
-              {rider.height && <span className="text-cz-3 text-sm">{t("header.heightCm", { height: rider.height })}</span>}
-              {rider.weight && <span className="text-cz-3 text-sm">{t("header.weightKg", { weight: rider.weight })}</span>}
-            </div>
-            {/* Condition-chips: form/træthed/skade — transparent for alle ryttere.
-                Egne ryttere: bruger training.condition (allerede hentet).
-                Andre ryttere: bruger riderCondition fra direkte fetch ovenfor. */}
-            {(() => {
-              const ownCond = isMyRider ? (training.condition?.[rider.id] ?? null) : null;
-              const shownCond = ownCond ?? riderCondition;
-              return <ConditionChips condition={shownCond} />;
-            })()}
-            {scouting.estimateFor(rider.id) !== null && (
-              <div className="flex items-center gap-2 mt-2">
-                <span className="text-cz-3 text-xs uppercase tracking-wider">{t("header.potential")}</span>
-                <ScoutablePotentiale rider={rider} scouting={scouting} showScout large />
-              </div>
-            )}
-            <p className="text-cz-2 text-sm mt-2">
-              {rider.team
-                ? <span>{t("header.teamPrefix")} <TeamLink id={rider.team.id} className="hover:text-cz-accent-t transition-colors">{rider.team.name}</TeamLink></span>
-                : t("header.freeAgent")}
-            </p>
-            {/* #1287: handlet til næste sæson → vis kommende hold under det nuværende.
-                Self-pending (intern handel, pending == nuværende hold) er ikke et
-                holdskifte og vises ikke — samme guard som TeamCell (#950). */}
-            {rider.pending_team?.name && rider.pending_team.id !== rider.team?.id && (
-              <p className="text-cz-2 text-sm mt-1">
-                <span
-                  className="inline-flex items-center gap-1.5 rounded bg-cz-accent/15 px-2 py-0.5 text-xs text-cz-accent-t"
-                  title={t("header.pendingTransfer", { team: rider.pending_team.name })}
-                >
-                  <span aria-hidden="true">→</span>
-                  <span>{t("header.nextSeasonPrefix")}</span>
-                  <TeamLink id={rider.pending_team.id} className="font-semibold hover:underline">{rider.pending_team.name}</TeamLink>
-                </span>
-              </p>
-            )}
-            {activeAuction && (
-              <div className="mt-2 flex items-center gap-2">
-                <span className="text-xs bg-cz-accent/15 text-cz-accent-t px-2 py-0.5 rounded font-medium">
-                  {t("header.activeAuctionBadge")}
-                </span>
-                <span className="text-xs text-cz-3">
-                  {t("header.highestBidLabel", { amount: formatNumber(activeAuction.current_price) })}
-                </span>
-              </div>
-            )}
-          </div>
-          <div className="min-w-0 sm:text-right bg-cz-subtle sm:bg-transparent rounded-lg sm:rounded-none px-3 py-2 sm:p-0">
-            {/* #2006: Vurdering-cirkel — 1-99 overall-rating, farvet efter værdi. */}
-            <div className="flex justify-center sm:justify-end mb-3">
-              <RatingCircle rating={overallRating} label={t("header.overall")} />
-            </div>
-            <p
-              className="block max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-cz-accent-t font-mono font-bold tabular-nums text-lg sm:text-2xl"
-              data-testid="rider-value-amount"
-              title={riderValueLabel}
-            >
-              {riderValueAmount}
-            </p>
-            <p className="text-cz-3 text-xs mt-0.5">{t("header.valueLabel")}</p>
-            {/* #1101 SHADOW: data-drevet ny værdi som beta-chip — påvirker intet endnu. */}
-            {rider.base_value_preview != null && (
-              <p className="mt-1 sm:flex sm:justify-end" title={t("header.newValueBetaTooltip")}>
-                <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30 text-[11px] font-mono">
-                  {t("header.newValueBeta", { amount: formatNumber(rider.base_value_preview) })}
-                </span>
-              </p>
-            )}
-            {/* #1781: "bedste evne"-feltet fjernet — stammede fra gamle PCM-stats (stat_*),
-                ikke de nye CZ-evner. Bevidst ingen erstatning (undgå overfyldt side). */}
-            {/* #1309: kontrakt-info */}
-            <div className="mt-2 pt-2 border-t border-cz-border/50">
-              {rider.contract_length != null ? (
-                <>
-                  <p className="text-cz-accent-t font-mono font-semibold text-sm">{formatNumber(rider.salary)} <span className="text-cz-3 text-xs font-normal">{t("header.contractSalary")}</span></p>
-                  <p className="text-cz-3 text-xs mt-0.5">{t("header.contractLength", { count: rider.contract_length })} · {t("header.contractExpires", { season: rider.contract_end_season })}</p>
-                </>
-              ) : (
-                <>
-                  <p className="text-cz-2 font-mono text-sm">{formatNumber(getRiderSalary(rider))} <span className="text-cz-3 text-xs font-normal">{t("header.estSalary")}</span></p>
-                  <p className="text-cz-3 text-xs mt-0.5">{t("header.noContract")}</p>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-        {auctionError && (
-          <div className="mt-3 px-3 py-2 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-lg text-sm">
-            {auctionError}
-          </div>
-        )}
-        <div className="mt-5 pt-5 border-t border-cz-border flex flex-col gap-3">
-          {isPendingTransfer && (
-            <p className="text-cz-3 text-xs text-center py-2 bg-cz-subtle rounded-lg border border-cz-border">
-              {t("blocked.pendingTransfer")}
-            </p>
-          )}
-          {isRetired && (
-            <p className="text-cz-3 text-xs text-center py-2 bg-cz-subtle rounded-lg border border-cz-border">
-              {t("blocked.retired")}
-            </p>
-          )}
-          {canAuction && !activeAuction && <AuctionButton rider={rider} auctionLabel={auctionLabel} onStart={startAuction} ddActive={ddActive} isOwnRider={isMyRider} />}
-          {activeAuction && (
-            <RiderBidPanel
-              auction={activeAuction}
-              myTeamId={myTeamId}
-              myBalance={myBalance}
-              reservedBalance={myReservedBalance}
-              riderName={`${rider.firstname} ${rider.lastname}`}
-              onBid={handleAuctionBid}
-              onSetProxy={handleSetProxy}
-              onRemoveProxy={handleRemoveProxy}
-              requestBidConfirm={requestBidConfirm}
-              isFlashing={priceFlash}
-            />
-          )}
-          {/* #1185: egne SENIOR-ryttere kan sættes til salg på transferlisten direkte herfra */}
-          {isMySeniorRider && !isPendingTransfer && !isRetired && <TransferListButton rider={rider} />}
-          {/* #2007: egen-rytter-handlinger (forlæng/fyr/akademi op-ned) — samme flow
-              som holdsidens RiderActionModal, men action-first på selve profilen. */}
-          {isMyRider && !isPendingTransfer && !isRetired && <RiderManageActions rider={rider} onChanged={loadRider} />}
-          {canDirectOffer && <DirectOfferButton rider={rider} />}
-          {canDirectOffer && <SwapOfferButton rider={rider} myTeamId={myTeamId} />}
-          {canDirectOffer && <LoanOfferButton rider={rider} />}
-        </div>
-      </div>
-
-      <div className="flex gap-2 mb-4 flex-wrap">
-        {[
-          { key: "stats", label: t("tabs.stats") },
-          { key: "season", label: t("tabs.season") },
-          { key: "results", label: t("tabs.results") },
-          { key: "bids", label: t("tabs.bids") },
-          { key: "history", label: t("tabs.history") },
-          { key: "development", label: t("tabs.development") },
-        ].map(tabDef => (
-          <button key={tabDef.key} onClick={() => {
-            setTab(tabDef.key);
-            if (tabDef.key === "development") logEvent("feature_rider_development_tab_opened", { rider_id: rider.id });
-          }}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
-              ${tab === tabDef.key ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "text-cz-2 border-cz-border hover:text-cz-1 hover:border-cz-border"}`}>
-            {tabDef.label}
-          </button>
-        ))}
-      </div>
-
-      {tab === "stats" && (
-        <>
-          <div className="bg-cz-card border border-cz-border rounded-cz p-5">
-            {scouting.estimateFor(rider.id) !== null && (
-              <div className="flex items-center gap-3 py-2 mb-1 border-b border-cz-border">
-                <span className="text-cz-3 w-4 text-center text-sm">◆</span>
-                <span className="text-cz-2 text-sm w-28 sm:w-36 flex-shrink-0">{t("stats.potentialRow")}</span>
-                <ScoutablePotentiale rider={rider} scouting={scouting} />
-              </div>
-            )}
-            {/* #2000: de 15 CZ-evner grupperet i kategorier (Physical/Mental/
-                Technical) via den delte SSOT (lib/abilities.js). TALLET = 1-99-
-                evneværdien; BJÆLKEN = træningsprogress mod næste +1 (ability_progress,
-                0..1 pr. evne) — vist for ALLE ryttere. PCM stat_* vises ikke her.
-                Egne ryttere foretrækker den friske training.progress (optimistisk
-                opdateret efter et tick); ellers DB'ens ability_progress. */}
-            {rider.abilities
-              ? ABILITY_CATEGORIES.map((cat) => (
-                  <div key={cat.key}>
-                    <h3 className="text-cz-3 text-[11px] font-semibold uppercase tracking-widest mt-3 first:mt-0 mb-1">
-                      {t(`stats.categories.${cat.key}`)}
-                    </h3>
-                    {cat.keys.map((key) => {
-                      const ownFrac = isMyRider ? training.progress?.[rider.id]?.[key] : undefined;
-                      const frac = ownFrac != null ? ownFrac : rider.abilityProgress?.[key];
-                      return (
-                        <StatRow
-                          key={key}
-                          label={t(`racePreview.derived.${key}`)}
-                          icon={ABILITY_ICONS[key]}
-                          value={rider.abilities[key]}
-                          progressFraction={frac}
-                          progressHint={t("development.progressHint")}
-                        />
-                      );
-                    })}
-                  </div>
-                ))
-              : <p className="text-cz-3 text-sm py-2">{t("stats.abilitiesPending")}</p>}
-          </div>
-          <RacePhysiologyPreview physiology={rider.physiology} />
-        </>
+      {roster.length > 1 && rosterIdx >= 0 && (
+        <RiderSwitcherBar
+          prevRider={prevRider}
+          nextRider={nextRider}
+          teamName={rider.team?.name ?? t("header.freeAgent")}
+          index={rosterIdx + 1}
+          total={roster.length}
+          onNavigate={(rid) => navigate(`/riders/${rid}`)}
+        />
       )}
 
-      {tab === "season" && (
+      <div className="mb-4">
+        <RiderProfileHero
+          rider={rider}
+          viewer={isMyRider ? "own" : "scouting"}
+          overallRating={overallRating}
+          age={age}
+          typeLabel={typeLabel}
+          divisionLabel={divisionLabel}
+          valueAmount={riderValueAmount}
+          valueLabel={riderValueLabel}
+          salaryText={salaryText}
+          winsOnText={winsOnText}
+          isAiTeam={isAiRider}
+          pendingTeam={pendingTeam}
+          banner={statusBanner}
+          scouting={scouting}
+          onWatchlist={onWatchlist}
+          onToggleWatchlist={toggleWatchlist}
+          actions={
+            <div className="flex flex-col gap-3">
+              {isPendingTransfer && (
+                <p className="text-cz-3 text-xs text-center py-2 bg-cz-subtle rounded-lg border border-cz-border">
+                  {t("blocked.pendingTransfer")}
+                </p>
+              )}
+              {isRetired && (
+                <p className="text-cz-3 text-xs text-center py-2 bg-cz-subtle rounded-lg border border-cz-border">
+                  {t("blocked.retired")}
+                </p>
+              )}
+              {auctionError && (
+                <div className="px-3 py-2 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-lg text-sm">
+                  {auctionError}
+                </div>
+              )}
+              {canAuction && !activeAuction && <AuctionButton rider={rider} auctionLabel={auctionLabel} onStart={startAuction} ddActive={ddActive} isOwnRider={isMyRider} />}
+              {activeAuction && (
+                <RiderBidPanel
+                  auction={activeAuction}
+                  myTeamId={myTeamId}
+                  myBalance={myBalance}
+                  reservedBalance={myReservedBalance}
+                  riderName={`${rider.firstname} ${rider.lastname}`}
+                  onBid={handleAuctionBid}
+                  onSetProxy={handleSetProxy}
+                  onRemoveProxy={handleRemoveProxy}
+                  requestBidConfirm={requestBidConfirm}
+                  isFlashing={priceFlash}
+                />
+              )}
+              {/* #1185: egne SENIOR-ryttere kan sættes til salg direkte herfra */}
+              {isMySeniorRider && !isPendingTransfer && !isRetired && <TransferListButton rider={rider} />}
+              {/* #2007: egen-rytter-handlinger (forlæng/fyr/akademi op-ned). */}
+              {isMyRider && !isPendingTransfer && !isRetired && <RiderManageActions rider={rider} onChanged={loadRider} />}
+              {canDirectOffer && <DirectOfferButton rider={rider} />}
+              {canDirectOffer && <SwapOfferButton rider={rider} myTeamId={myTeamId} />}
+              {canDirectOffer && <LoanOfferButton rider={rider} />}
+            </div>
+          }
+        />
+      </div>
+
+      <RiderProfileTabs
+        tabs={[
+          { key: "overview",    label: t("profile.tabs.overview") },
+          { key: "physiology",  label: t("profile.tabs.physiology") },
+          { key: "training",    label: t("profile.tabs.training") },
+          { key: "development", label: t("profile.tabs.development") },
+          { key: "scouting",    label: t("profile.tabs.scouting") },
+          { key: "history",     label: t("profile.tabs.history") },
+          { key: "results",     label: t("profile.tabs.results") },
+          { key: "interest",    label: t("profile.tabs.interest") },
+        ]}
+        activeTab={tab}
+        onSelect={(key) => {
+          setTab(key);
+          if (key === "development") logEvent("feature_rider_development_tab_opened", { rider_id: rider.id });
+        }}
+      />
+
+      {/* #2000 stykke 2 — Overblik: objektivt snapshot. Evne-kolonner (3 kort) +
+          ryttertype-radar (ægte type-ratings) + compact fysiologi-teaser. Intet
+          scout-verdikt her (det lever i Scouting). */}
+      {tab === "overview" && (
+        rider.abilities ? (
+          <div className="flex flex-col gap-[13px]">
+            <RiderAbilityColumns
+              abilities={rider.abilities}
+              progressByKey={overviewProgress}
+              isOwnRider={isMyRider}
+            />
+            <div className={`grid grid-cols-1 ${rider.physiology ? "lg:grid-cols-2" : ""} gap-[13px] items-start`}>
+              <RiderTypeRadar
+                rider={rider}
+                onGoScouting={() => setTab("scouting")}
+              />
+              {rider.physiology && (
+                <RiderOverviewPhysiology
+                  physiology={rider.physiology}
+                  weight={rider.weight}
+                  onGoFysiologi={() => setTab("physiology")}
+                />
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="bg-cz-card border border-cz-border rounded-cz p-5">
+            <p className="text-cz-3 text-sm py-2">{t("stats.abilitiesPending")}</p>
+          </div>
+        )
+      )}
+
+      {tab === "results" && (
         <div className="bg-cz-card border border-cz-border rounded-cz p-5">
           {Object.keys(bySeason).length === 0 ? (
             <p className="text-cz-3 text-center py-8">{t("season.empty")}</p>
@@ -1687,8 +1545,20 @@ export default function RiderStatsPage() {
         </div>
       )}
 
-      {tab === "bids" && (
-        <BidTimelineTab timeline={bidTimeline} />
+      {tab === "interest" && (
+        <div className="flex flex-col gap-4">
+          <div className="bg-cz-card border border-cz-border rounded-cz p-5 grid grid-cols-2 sm:grid-cols-3 gap-4">
+            <div>
+              <p className="text-cz-3 text-[10px] uppercase tracking-[0.14em] font-semibold">{t("profile.interest.followers")}</p>
+              <p className="text-cz-1 font-mono font-bold text-2xl tabular-nums mt-0.5">{watchlistCount}</p>
+            </div>
+            <div>
+              <p className="text-cz-3 text-[10px] uppercase tracking-[0.14em] font-semibold">{t("profile.interest.views")}</p>
+              <p className="text-cz-1 font-mono font-bold text-2xl tabular-nums mt-0.5">{visits?.views7d ?? 0}</p>
+            </div>
+          </div>
+          <BidTimelineTab timeline={bidTimeline} />
+        </div>
       )}
 
       {tab === "history" && (
@@ -1701,12 +1571,31 @@ export default function RiderStatsPage() {
         </div>
       )}
 
+      {tab === "training" && (
+        <RiderTrainingTab
+          rider={rider}
+          training={training}
+          trainingHistory={trainingHistory}
+          progress={overviewProgress}
+          viewer={isMyRider ? "own" : "scouting"}
+          isRetired={isRetired}
+        />
+      )}
+
       {tab === "development" && (
         <Suspense fallback={<div className="bg-cz-card border border-cz-border rounded-cz p-5 text-cz-3 text-center py-8">{t("stats.loadingDevelopment")}</div>}>
-          {isMyRider && !isRetired && <TrainingFocus rider={rider} training={training} />}
-          {isMyRider && <RiderTrainingHistory riderId={rider.id} history={trainingHistory} />}
           <RiderDevelopmentTab history={statHistory} types={developmentTypes} />
         </Suspense>
+      )}
+
+      {tab === "physiology" && (
+        <RiderPhysiologyTab physiology={rider.physiology} benchmark={physBenchmark} />
+      )}
+
+      {tab === "scouting" && (
+        <div className="bg-cz-card border border-cz-border rounded-cz p-5">
+          <p className="text-cz-3 text-sm text-center py-8">{t("profile.tabPlaceholder")}</p>
+        </div>
       )}
     </div>
   );
