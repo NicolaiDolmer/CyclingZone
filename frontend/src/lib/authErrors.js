@@ -11,7 +11,11 @@ const PATTERNS = [
   [/password should be at least/i, "errors:supabase.passwordTooShort"],
   [/email rate limit/i, "errors:supabase.rateLimited"],
   [/over email send rate limit/i, "errors:supabase.rateLimited"],
-  [/for security purposes, you can only request this once/i, "errors:supabase.rateLimited"],
+  // #2068: live test mod prod viste "...you can only request this after 54
+  // seconds" — den dynamiske N-sekunder-variant matchede ikke det gamle
+  // "...this once"-mønster, så resend-rate-limits faldt igennem til den rå
+  // engelske Supabase-besked i stedet for den oversatte rateLimited-copy.
+  [/for security purposes, you can only request this (once|after \d+ seconds?)/i, "errors:supabase.rateLimited"],
   [/unable to validate email address/i, "errors:supabase.invalidEmail"],
   [/auth session missing/i, "errors:supabase.sessionMissing"],
   [/token has expired/i, "errors:supabase.tokenExpired"],
