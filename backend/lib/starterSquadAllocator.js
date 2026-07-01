@@ -141,42 +141,67 @@ export function aiValueCapForTier(tier) {
   return AI_TIER_VALUE_CAP[tier] ?? null;
 }
 
-// #2065-sikkerhedsnet: generér ÉN rytter ad gangen, beregn værdien LOKALT (samme
-// kæde som deriveForRiderIds: seedPhysiologyFromLegacy → deriveAbilities →
-// computeRiderTypes → predictBaseValue) FØR den accepteres, og forkast/rerul
-// enhver rytter over valueCap. Garanterer loftet uanset tierFractions' statistiske
-// hale (en tier-blanding kan IKKE garantere et loft, kun et sandsynligt gennemsnit).
+// Sikkerhedsnet: beregn værdien + PRIMÆR TYPE LOKALT (samme kæde som
+// deriveForRiderIds: seedPhysiologyFromLegacy → deriveAbilities →
+// computeRiderTypes → predictBaseValue) FØR en rytter accepteres, og forkast/
+// rerul enhver rytter over valueCap ELLER over typeShareCap for sin primære
+// type. Garanterer begge grænser uanset tierFractions' statistiske hale (en
+// tier-blanding kan IKKE garantere en grænse, kun et sandsynligt gennemsnit).
+//
+// GENERERER I RUNDER (ikke én ad gangen — 2026-07-01-fix): generateFictionalRiders
+// har en GUARANTEED-nationalitets-liste (["CN","JP","KR","CO","DZ","ER"]) der
+// sikrer repræsentation af sjældne nationer i EN STOR pulje — men med count=1
+// pr. kald bliver "garantien" til HELE resultatet (nationaliteten forreste på
+// listen vinder hver gang, den vægtede fordeling kommer aldrig i spil). Ramte
+// prod 2026-06-30: alle 300 division-1-ryttere fik nationality_code="CN".
+// Generering i runder (batchStørrelse ≥ 10) lader GUARANTEED opføre sig som
+// tiltænkt (kun forreste håndfuld nationer i en STOR batch, resten vægtet).
+//
+// TYPE-DIVERSITET (2026-07-01, ejer-ønske): rytter-type-klassifikatoren
+// (riderTypes.js) har en kendt catch-all-skævhed (#1378/#2014 — ~80%+ af en
+// tilfældig batch klassificeres som "sprinter", uanset arketype-intention).
+// typeShareCap (default 0,4) forhindrer at én type dominerer TRUPPEN — ikke en
+// fix af klassifikatoren selv (det er #1378's scope), men et lokalt loft der
+// giver reel variation i AI-holdenes trup uden at røre den delte model.
 // Returnerer ren INSERT-payload (samme form som buildWeakStarterPool).
 export function generateAiRiderBatchWithCap({
   count, tierFractions, valueCap, seed, referenceYear,
   existingFoldedNames = new Set(), generate = generateFictionalRiders,
-  maxAttempts = Math.max(count * 10, 50),
+  typeShareCap = 0.4, maxRounds = 60,
 }) {
   const accepted = [];
+  const typeCounts = new Map();
+  const maxPerType = Math.max(1, Math.ceil(count * typeShareCap));
   const usedNames = new Set(existingFoldedNames);
   let attemptSeed = (seed >>> 0);
-  let attempts = 0;
-  while (accepted.length < count && attempts < maxAttempts) {
-    attempts++;
+  let round = 0;
+  while (accepted.length < count && round < maxRounds) {
+    round++;
+    const needed = count - accepted.length;
+    const batchSize = Math.max(needed * 6, 30);
     const { riders } = generate({
-      seed: attemptSeed, count: 1, referenceYear, existingFoldedNames: usedNames, tierFractions,
+      seed: attemptSeed, count: batchSize, referenceYear, existingFoldedNames: usedNames, tierFractions,
     });
-    attemptSeed = (attemptSeed + 104729) >>> 0; // næste forsøgs-seed (primtal-spring)
-    const candidate = riders[0];
-    if (!candidate) continue;
-    const physiology = seedPhysiologyFromLegacy(candidate);
-    const abilities = deriveAbilities(physiology, candidate);
-    const { primary } = computeRiderTypes(abilities, TYPES_BASELINE);
-    const value = predictBaseValue({ ...candidate, primary_type: primary.key }, abilities, VALUATION_MODEL);
-    if (value == null || valueCap == null || value <= valueCap) {
-      usedNames.add(foldNameNordic(`${candidate.firstname} ${candidate.lastname}`));
-      accepted.push(candidate);
+    attemptSeed = (attemptSeed + 104729) >>> 0; // næste rundes seed (primtal-spring)
+    for (const candidate of riders) {
+      if (accepted.length >= count) break;
+      const physiology = seedPhysiologyFromLegacy(candidate);
+      const abilities = deriveAbilities(physiology, candidate);
+      const { primary } = computeRiderTypes(abilities, TYPES_BASELINE);
+      const value = predictBaseValue({ ...candidate, primary_type: primary.key }, abilities, VALUATION_MODEL);
+      const withinValueCap = value == null || valueCap == null || value <= valueCap;
+      const withinTypeCap = (typeCounts.get(primary.key) || 0) < maxPerType;
+      if (withinValueCap && withinTypeCap) {
+        usedNames.add(foldNameNordic(`${candidate.firstname} ${candidate.lastname}`));
+        typeCounts.set(primary.key, (typeCounts.get(primary.key) || 0) + 1);
+        accepted.push(candidate);
+      }
     }
   }
   if (accepted.length < count) {
-    throw new Error(`generateAiRiderBatchWithCap: only ${accepted.length}/${count} riders under cap ${valueCap} after ${attempts} attempts`);
+    throw new Error(`generateAiRiderBatchWithCap: only ${accepted.length}/${count} riders under cap ${valueCap} after ${round} rounds`);
   }
-  return toInsertPayload(accepted);
+  return toInsertPayload(accepted.slice(0, count));
 }
 
 export function computeAge(birthdate, referenceYear) {
