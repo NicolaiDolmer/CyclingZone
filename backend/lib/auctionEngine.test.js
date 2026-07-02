@@ -431,3 +431,74 @@ test("isLateBidTriggerError: null/undefined → false", () => {
 test("isLateBidTriggerError: error uden message-felt → false", () => {
   assert.equal(isLateBidTriggerError({ code: "P0001" }), false);
 });
+
+// ── Config-merge: prod-rækken oven på defaults (#1941) ─────────────────────────
+// getAuctionConfig (api.js), resolveAuctionConfig (academyGraduation.js) og
+// resolveAuctionConfig (youthMarket.js) bygger alle config med DET SAMME udtryk:
+//   { ...DEFAULT_AUCTION_CONFIG, ...(data || {}) }
+// Tidligere brugte de `data || DEFAULT_AUCTION_CONFIG`, som kastede HELE defaults
+// væk når prod-rækken fandtes — inkl. extension_grace_minutes, der IKKE findes som
+// kolonne i auction_timing_config. Resultat: grace faldt til 0 (hard cap = close),
+// ikke 60 min. mergeAuctionConfig gengiver det delte produktions-udtryk.
+const mergeAuctionConfig = (data) => ({ ...DEFAULT_AUCTION_CONFIG, ...(data || {}) });
+
+test("config-merge: prod-værdi (duration_hours/weekday_close_hour) overstyrer default", () => {
+  // Ægte prod-række fra auction_timing_config id=1 (verificeret read-only via execute_sql):
+  // duration=1, close=24, INGEN extension_grace_minutes-kolonne.
+  const prodRow = {
+    id: 1,
+    duration_hours: 1,
+    weekday_open_hour: 8,
+    weekday_close_hour: 24,
+    weekend_open_hour: 8,
+    weekend_close_hour: 24,
+    extension_minutes: 10,
+  };
+  const cfg = mergeAuctionConfig(prodRow);
+  // Prod-kolonner vinder over defaults (6 / 22):
+  assert.equal(cfg.duration_hours, 1);
+  assert.equal(cfg.weekday_close_hour, 24);
+  // Felt der mangler i prod-rækken backfilles fra defaults — regressionen i #1941:
+  assert.equal(cfg.extension_grace_minutes, DEFAULT_AUCTION_CONFIG.extension_grace_minutes);
+  assert.equal(cfg.extension_grace_minutes, 60);
+});
+
+test("config-merge: null/manglende række falder tilbage på defaults", () => {
+  const cfg = mergeAuctionConfig(null);
+  assert.deepEqual(cfg, DEFAULT_AUCTION_CONFIG);
+});
+
+test("config-merge: grace bevares (60 min) i checkBidExtension via merged prod-config", () => {
+  // Bevis for at bugfixet virker HELE vejen: en merged prod-config giver 60 min grace,
+  // så et bud 21:55 kan forlænge PAST close til 22:05 (indenfor grace) — ikke kappes ved close.
+  // Uden merge (rå prod-række) ville extension_grace_minutes være undefined → graceMs=0 →
+  // hard cap = close (22:00) → newEnd kappet til 22:00.
+  // Prod-rækken har ALLE window-timer men INGEN extension_grace_minutes (findes ikke som kolonne).
+  const rawProdRow = {
+    id: 1,
+    duration_hours: 6,
+    weekday_open_hour: 16,
+    weekday_close_hour: 22,
+    weekend_open_hour: 8,
+    weekend_close_hour: 23,
+    extension_minutes: 10,
+  };
+  const merged = mergeAuctionConfig(rawProdRow);
+
+  const end = iso("2026-05-08T20:00:00.000Z"); // Fri 22:00 CEST (close)
+  const bid = iso("2026-05-08T19:55:00.000Z"); // Fri 21:55 CEST
+
+  // Med merge: grace backfilles til 60 → forlænger til 22:05 (indenfor grace).
+  const withMerge = checkBidExtension(bid, end, merged);
+  assert.equal(withMerge.shouldExtend, true);
+  assert.equal(withMerge.newEnd.toISOString(), "2026-05-08T20:05:00.000Z"); // 22:05 — grace virker
+
+  // Regressions-kontrast: rå prod-række uden grace → graceMs=0 → hard cap = close (22:00).
+  // extendedEnd (22:05) passerer hard cap, så de 5 overflow-min ruller over til næste
+  // vindues-åbning (Sat 08:00) + 5 = Sat 08:05 CEST. Dvs. buggen kaster auktionen ~10 timer
+  // frem i stedet for de tilsigtede 5 min — helt anderledes end det merged resultat ovenfor.
+  const withoutMerge = checkBidExtension(bid, end, rawProdRow);
+  assert.equal(withoutMerge.shouldExtend, true);
+  assert.equal(withoutMerge.newEnd.toISOString(), "2026-05-09T06:05:00.000Z"); // Sat 08:05 — buggen
+  assert.notEqual(withoutMerge.newEnd.toISOString(), withMerge.newEnd.toISOString());
+});

@@ -203,5 +203,7 @@ async function createGraduateAuction(supabase, { teamId, rider, now = new Date()
 
 async function resolveAuctionConfig(supabase) {
   const { data } = await supabase.from("auction_timing_config").select("*").eq("id", 1).single();
-  return data || DEFAULT_AUCTION_CONFIG;
+  // Merge prod-rækken oven på defaults: prod-kolonner vinder, men manglende felter
+  // (fx extension_grace_minutes findes ikke som kolonne) backfilles fra defaults (#1941).
+  return { ...DEFAULT_AUCTION_CONFIG, ...(data || {}) };
 }
