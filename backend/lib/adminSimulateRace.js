@@ -141,6 +141,11 @@ export async function runAdminSimulateStage({
   raceId,
   dryRun = false,
   runSource = null,
+  // #2090: når sat (scheduler-kald), må der KUN afvikles præcis denne etape.
+  // Beskytter mod stale/overlappende ticks: er løbet imens bumpet af et andet
+  // run, matcher den friske stages_completed ikke længere → 409 i stedet for at
+  // køre en etape hvis scheduled_at ligger i fremtiden.
+  expectedStageIndex = null,
   ensureSeasonStandings,
   updateStandings,
   notifyDiscord = null,
@@ -179,6 +184,14 @@ export async function runAdminSimulateStage({
       throw httpError(409, `All ${totalStages} stages already simulated (stages_completed=${race.stages_completed})`);
     }
     stageIndex = totalStages - 1;
+  }
+
+  // #2090 stale-tick-guard: kaldet var møntet på en bestemt etape, men løbets
+  // friske tilstand peger på en anden (et andet run har bumpet stages_completed
+  // i mellemtiden). Kør ALDRIG en anden etape end den udvalgte — den kan ligge
+  // i fremtiden (Volta Algarvia-hændelsen 2/7: 10 etaper kørt før scheduled_at).
+  if (expectedStageIndex != null && stageIndex !== expectedStageIndex) {
+    throw httpError(409, `Stale tick: expected stage index ${expectedStageIndex}, race is at ${stageIndex} — skipping`);
   }
 
   // Delvise profiler må ikke kunne afvikles — samme guard som runAdminSimulateRace.
