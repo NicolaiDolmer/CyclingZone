@@ -4,6 +4,41 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.41",
+    "date": "2026-07-02",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Race results, standings and prize money are flowing again",
+          "body": "From June 30 to July 2 a backend fault stopped races from finishing properly: finished races were not marked complete, prize money was not paid out, and the team standings froze. The fault is fixed and everything has caught up automatically. All held prize money (about 1.7M) has been paid, the standings now include every result, and 13 stuck races including Vuelta Burgalesa have been finalized. We have also added monitoring so a fault like this alerts us within minutes instead of days. Thanks to the managers who reported it."
+        },
+        "da": {
+          "title": "Løbsresultater, rangliste og præmiepenge kører igen",
+          "body": "Fra 30. juni til 2. juli stoppede en backend-fejl løb i at blive gjort ordentligt færdige: kørte løb blev ikke markeret som afsluttede, præmiepenge blev ikke udbetalt, og holdranglisten frøs fast. Fejlen er rettet, og alt er indhentet automatisk. Alle tilbageholdte præmiepenge (ca. 1,7M) er udbetalt, ranglisten tæller nu alle resultater med, og 13 fastlåste løb inklusive Vuelta Burgalesa er finaliseret. Vi har også tilføjet overvågning, så en fejl som denne alarmerer os på minutter i stedet for dage. Tak til de managers der meldte det ind."
+        },
+        "refs": [2071, 2087]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Account",
+        "en": {
+          "title": "Smoother sign-up: resend the confirmation email and skip the double setup",
+          "body": "If your confirmation email does not arrive, you can now press Send it again on the sign-up screen or at log-in. And once you confirm your email, your team is created automatically from what you entered at sign-up, so you no longer have to type your manager and team name a second time."
+        },
+        "da": {
+          "title": "Nemmere oprettelse: gensend bekræftelsesmailen og slip for dobbelt opsætning",
+          "body": "Hvis din bekræftelsesmail ikke dukker op, kan du nu trykke Send den igen på oprettelsesskærmen eller ved login. Og når du bekræfter din e-mail, oprettes dit hold automatisk ud fra det du indtastede ved oprettelsen, så du ikke længere skal skrive manager- og holdnavn en gang til."
+        },
+        "refs": [2068, 2069]
+      }
+    ]
+  },
+  {
     "version": "6.40",
     "date": "2026-06-30",
     "label": "Beta",

@@ -189,6 +189,11 @@ const WHITELIST_EMPTY_TABLES = new Set([
   // ved #1810-merge (migration anvendt) men er bevidst tom indtil afmeldinger sker.
   // Skriv-path verificeret i raceWithdrawal.js. Fjern denne entry når tabellen har rows.
   "race_withdrawals",
+  // CZ Pro billing-rails (#1903, PR #1909 merged 2/7): subscriptions fyldes først når
+  // Alunta-checkout/webhook går live (ejer-opsætning planlagt senest 6/7: plan + tokens
+  // i Infisical + test_mode-verify). Skriv-path verificeret i backend/lib/aluntaWebhook.js
+  // (upsert på team_id). Bevidst tom indtil go-live. Fjern denne entry når tabellen har rows.
+  "subscriptions",
 ]);
 
 // Detector B: endpoints der er korrekt orphaned i frontend (cron, admin-curl, webhook)
