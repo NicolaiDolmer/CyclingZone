@@ -1,5 +1,6 @@
-import { Routes, Route, Navigate, useLocation, useSearchParams } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation, useSearchParams, useNavigate } from "react-router-dom";
 import { Suspense, useEffect, useState } from "react";
+import { parseAuthErrorHash, isExpiredOrDeniedAuthError } from "./lib/authErrorHash.js";
 // #881: lazyWithRetry erstatter React.lazy så stale-chunk-fejl efter deploy bliver
 // recoverable (retry + genkendelig ChunkLoadError -> auto-reload via SentryBoundary).
 import { lazyWithRetry as lazy } from "./lib/lazyWithRetry.js";
@@ -124,6 +125,23 @@ export default function App() {
   // Client-only mount-flag: holder lazy/analytics-Suspense ude af prerenderens
   // server-render (renderToString kan ikke fuldføre en lazy boundary → React #419).
   const [mounted, setMounted] = useState(false);
+  const navigate = useNavigate();
+
+  // #2078: en udløbet/ugyldig email-confirm-link redirecter til Site URL ("/")
+  // med fejlen i hash'et (#error=access_denied&error_code=otp_expired...) og
+  // UDEN session. Uden dette landede brugeren tavst på landing page. Vi fanger
+  // fejl-hash'et ved mount, fjerner det fra URL'en (så et refresh ikke gentager
+  // det) og sender brugeren til /login med en klar besked + resend-adgang.
+  // Kør FØR getSession-effekten så vi ikke blinker forbi landing-flowet.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const parsed = parseAuthErrorHash(window.location.hash);
+    if (!isExpiredOrDeniedAuthError(parsed)) return;
+    // Ryd hash'et (bevar path + query) så beskeden ikke gentages ved refresh og
+    // fejl-fragmentet ikke lækker videre i historikken.
+    window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    navigate("/login", { replace: true, state: { authLinkError: parsed.errorCode || parsed.error } });
+  }, [navigate]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {

@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.48",
+    "date": "2026-07-03",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Onboarding",
+        "en": {
+          "title": "An expired confirmation link no longer dumps you on a blank page",
+          "body": "If you clicked your email confirmation link too late, it had expired - and the app just landed you silently on the front page with no explanation, while login kept saying your account wasn't confirmed. Now an expired or invalid link takes you straight to the login screen with a clear message: log in with your email and, if your account still needs confirming, we'll offer to send you a fresh link.",
+        },
+        "da": {
+          "title": "Et udløbet bekræftelseslink smider dig ikke længere af på en blank side",
+          "body": "Hvis du klikkede på dit bekræftelseslink for sent, var det udløbet - og appen landede dig bare tavst på forsiden uden forklaring, mens login blev ved med at sige at din konto ikke var bekræftet. Nu sender et udløbet eller ugyldigt link dig direkte til login-skærmen med en klar besked: log ind med din email, og hvis din konto stadig mangler bekræftelse, tilbyder vi at sende dig et nyt link.",
+        },
+        "refs": [2078]
+      }
+    ]
+  },
+  {
     "version": "6.47",
     "date": "2026-07-03",
     "label": "Beta",
