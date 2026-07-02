@@ -348,6 +348,18 @@ export default function Layout() {
               const bootstrapped = await res.json();
               setTeam(bootstrapped.team);
               setBalance(bootstrapped.team.balance);
+              // #2102: siderne (fx DashboardPage) mountede PARALLELT med denne
+              // bootstrap og fandt intet hold i deres egen fetch — de bailer
+              // stille og refetcher aldrig → spilleren så et tomt spil med
+              // holdnavn i topbaren (Team CSC 2/7). Én hård reload efter
+              // succesfuld oprettelse remounter alt med holdet i DB.
+              // sessionStorage-guard: reload højst én gang pr. session, så en
+              // utænkelig teamData-læsefejl + ok-PUT (upsert) aldrig kan loope.
+              if (!sessionStorage.getItem("cz-bootstrap-reloaded")) {
+                sessionStorage.setItem("cz-bootstrap-reloaded", "1");
+                window.location.reload();
+                return;
+              }
             } else {
               console.warn("[auto-bootstrap] holdoprettelse fejlede, falder tilbage til SetupWizard", res.status);
             }
