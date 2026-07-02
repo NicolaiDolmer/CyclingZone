@@ -1772,13 +1772,26 @@ export async function updateStandings(seasonId, raceId = null, deps = {}) {
     // rækker). Et naivt .select().in() returnerer KUN de første 1000 → standings
     // underberegnes systematisk (point tabt for hold hvis rækker falder uden for
     // første side). fetchAllRows paginerer; .order("id") gør siderne stabile.
-    const results = await fetchAllRows(() => (
-      supabaseClient
-        .from("race_results")
-        .select("race_id, team_id, result_type, rank, points_earned, rider:rider_id(team_id)")
-        .in("race_id", raceIds)
-        .order("id", { ascending: true })
-    ));
+    //
+    // P0 2/7: .in() med ALLE sæsonens race-ids skalerer med kalenderen — ved 455
+    // løb (efter division 4-aktiveringen) blev querystrengen ~17K tegn og selve
+    // fetchen fejlede hårdt ("fetch failed"/HTML-fejlside fra gatewayen, Sentry
+    // CYCLINGZONE-1J/1K/1H). Kæden efter result-write knækkede dermed på HVERT
+    // etape-run: rangliste frosset, finalization/præmier kørte aldrig. Chunk
+    // derfor id-listen; 120 ids ≈ 4,5K tegn URL — robust uanset kalender-vækst.
+    const IN_CHUNK = 120;
+    const results = [];
+    for (let i = 0; i < raceIds.length; i += IN_CHUNK) {
+      const chunk = raceIds.slice(i, i + IN_CHUNK);
+      const rows = await fetchAllRows(() => (
+        supabaseClient
+          .from("race_results")
+          .select("race_id, team_id, result_type, rank, points_earned, rider:rider_id(team_id)")
+          .in("race_id", chunk)
+          .order("id", { ascending: true })
+      ));
+      results.push(...rows);
+    }
 
     for (const result of results || []) {
       const teamId = result.team_id || result.rider?.team_id;

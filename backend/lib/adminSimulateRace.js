@@ -166,9 +166,19 @@ export async function runAdminSimulateStage({
   }
 
   const totalStages = race.stages || 1;
-  const stageIndex = race.stages_completed || 0;
+  let stageIndex = race.stages_completed || 0;
   if (stageIndex >= totalStages) {
-    throw httpError(409, `All ${totalStages} stages already simulated (stages_completed=${race.stages_completed})`);
+    // P0 2/7 (recovery): alle etaper ER kørt, men status blev aldrig flippet til
+    // 'completed' (crash mellem stages_completed-bump og finalization — incidenten
+    // 30/6-2/7 efterlod 13 løb her). Fald igennem til simulateStageByIndex'
+    // idempotente finalizationPending-sti med final-etapens index i stedet for at
+    // 409'e — ellers er recovery-stien uopnåelig og løbene sidder fast for evigt
+    // (ingen præmier/notifikationer/status-flip). dryRun har ingen recovery-
+    // semantik → 409 bevares dér.
+    if (dryRun) {
+      throw httpError(409, `All ${totalStages} stages already simulated (stages_completed=${race.stages_completed})`);
+    }
+    stageIndex = totalStages - 1;
   }
 
   // Delvise profiler må ikke kunne afvikles — samme guard som runAdminSimulateRace.

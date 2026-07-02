@@ -487,8 +487,8 @@ async function runStageSchedulerCron() {
       });
     },
   });
-  if (result.ran || result.errors) {
-    console.log(`🚵 Stage-scheduler: ${result.ran} etape(r) afviklet, ${result.errors} fejl`);
+  if (result.ran || result.errors || result.recovered) {
+    console.log(`🚵 Stage-scheduler: ${result.ran} etape(r) afviklet, ${result.recovered || 0} finalization-recovery, ${result.errors} fejl`);
   }
 }
 

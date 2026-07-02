@@ -17,6 +17,12 @@
 // + trackedTick (Sentry-capture) i cron-laget.
 
 import { copenhagenMidnightUTC } from "./copenhagenTime.js";
+import { captureException } from "./sentry.js";
+
+// P0 2/7: per-løb-per-dag-dedup for Sentry-captures i per-løb-catchen (17 fejlende
+// løb × 288 ticks/døgn må ikke spamme). Process-lokal er fint — formålet er at få
+// ÉT synligt event pr. løb pr. dag, ikke fuld tælling.
+const sentryCapturedRaces = new Set();
 
 // Daglig afviklings-cap (loop-prævention, Beslutning D). Cap'et er en runaway-BACKSTOP
 // (mod cron-loop-incidenten 2026-05-21), IKKE throughput-styring — den PRIMÆRE styring er
@@ -89,39 +95,108 @@ export async function runStageScheduler({
   if (budget <= 0) return { ran: 0, errors: 0, skipped: "daily_cap_reached" };
 
   // Forfaldne etape-tider: scheduled_at <= now. Sorteret på tid → ældste først.
+  // P0 2/7: races!inner-join filtrerer completede løbs rækker fra SERVER-SIDE.
+  // Uden filteret bliver færdige løbs rækker liggende i svaret for evigt, og
+  // PostgRESTs 1000-rækkers cap ville sidst på sæsonen (sæson-slots 1.148 > 1.000)
+  // skygge for de reelt actionable etaper → afvikling går i stå ~dag 25-26.
   const { data: dueSchedule, error: schErr } = await supabase
     .from("race_stage_schedule")
-    .select("race_id, stage_number, scheduled_at")
+    .select("race_id, stage_number, scheduled_at, races!inner(status)")
     .lte("scheduled_at", now.toISOString())
+    .neq("races.status", "completed")
     .order("scheduled_at", { ascending: true });
   if (schErr) throw new Error(`race_stage_schedule: ${schErr.message}`);
-  if (!dueSchedule?.length) return { ran: 0, errors: 0, skipped: "no_due_stages" };
 
   // Aktive (ikke-completede) løb i sæsonen, indekseret på id.
   const { data: races, error: rErr } = await supabase
     .from("races")
-    .select("id, season_id, name, stages, stages_completed, status")
+    .select("id, season_id, name, stages, stages_completed, status, league_division_id")
     .eq("season_id", season.id)
     .neq("status", "completed");
   if (rErr) throw new Error(`races: ${rErr.message}`);
   const raceById = new Map((races || []).map((r) => [r.id, r]));
 
+  // P0 2/7: puljer uden hold (fx division 4-puljerne 8-15 mellem kalender-
+  // materialisering og første manager/AI-fyld) må ikke give "No start list"-fejl
+  // hvert tick (~4.600 tavse fejlforsøg/døgn). Fail-open: returnerer teams-tabellen
+  // 0 rækker TOTALT (tom test-DB/mock) springes filteret over.
+  const { data: teamPools, error: tpErr } = await supabase
+    .from("teams")
+    .select("league_division_id");
+  if (tpErr) throw new Error(`teams: ${tpErr.message}`);
+  const teamsPerPool = new Map();
+  for (const t of teamPools || []) {
+    if (t.league_division_id == null) continue;
+    teamsPerPool.set(t.league_division_id, (teamsPerPool.get(t.league_division_id) || 0) + 1);
+  }
+  const poolFilterActive = (teamPools || []).length > 0;
+  const inEmptyPool = (race) => (
+    poolFilterActive
+    && race.league_division_id != null
+    && !(teamsPerPool.get(race.league_division_id) > 0)
+  );
+
+  // P0 2/7: finalization-pending recovery. Løb hvor ALLE etaper er kørt men status
+  // aldrig blev flippet til 'completed' (crash mellem trin — incidenten 30/6-2/7
+  // efterlod 13 løb sådan) har intet "næste etape"-slot og blev derfor aldrig
+  // genoptaget. runAdminSimulateStage falder nu igennem til den idempotente
+  // finalization-sti, så scheduleren skal blot udvælge dem. Tælles IKKE i den
+  // daglige stage-cap (ingen ny etape simuleres — kun finalization).
+  const RECOVERY_MAX_PER_TICK = 20;
+  const recoveryRaces = (races || [])
+    .filter((r) => (r.stages_completed || 0) >= (r.stages || 1) && !inEmptyPool(r))
+    .slice(0, RECOVERY_MAX_PER_TICK);
+
+  if (!dueSchedule?.length && !recoveryRaces.length) {
+    return { ran: 0, errors: 0, recovered: 0, skipped: "no_due_stages" };
+  }
+
   // Vælg PRÆCIS de schedule-rækker hvis stage_number = løbets næste uafviklede etape.
   // Maks én etape pr. løb pr. tick (Beslutning D). Dedup på race_id.
   const seen = new Set();
   const dueRaces = [];
-  for (const s of dueSchedule) {
+  let skippedEmptyPool = 0;
+  for (const s of dueSchedule || []) {
     if (seen.has(s.race_id)) continue;
     const race = raceById.get(s.race_id);
     if (!race) continue;
     const nextStageNumber = (race.stages_completed || 0) + 1;
     if (s.stage_number !== nextStageNumber) continue; // ikke næste etape → ikke due endnu
+    if (inEmptyPool(race)) { seen.add(s.race_id); skippedEmptyPool++; continue; }
     seen.add(s.race_id);
     dueRaces.push(race);
+  }
+  if (skippedEmptyPool > 0) {
+    // Én linje pr. tick (ikke pr. løb) — bevidst downgrade fra fejl til info.
+    console.log(`  ⏭️ stage-scheduler: ${skippedEmptyPool} due løb sprunget over (pulje uden hold)`);
   }
 
   let ran = 0;
   let errors = 0;
+  let recovered = 0;
+  const failRace = (race, err) => {
+    errors++;
+    console.error(`  ❌ stage-scheduler: race ${race.name ?? race.id} failed: ${err.message}`);
+    // P0 2/7 forward-guard: per-løb-fejl var 100% tavse (kun console.error) —
+    // incidenten 30/6-2/7 kørte usynligt i ~44 timer. Capture til Sentry med
+    // per-løb-per-dag-dedup så gentagne ticks ikke spammer.
+    const dedupeKey = `${race.id}:${now.toISOString().slice(0, 10)}`;
+    if (!sentryCapturedRaces.has(dedupeKey)) {
+      if (sentryCapturedRaces.size > 500) sentryCapturedRaces.clear();
+      sentryCapturedRaces.add(dedupeKey);
+      captureException(err, { tags: { cron: "stage-scheduler" }, raceId: race.id, raceName: race.name });
+    }
+  };
+
+  for (const race of recoveryRaces) {
+    try {
+      await runStageFn({ raceId: race.id, stageIndex: Math.max((race.stages || 1) - 1, 0), recovery: true });
+      recovered++;
+    } catch (err) {
+      failRace(race, err);
+    }
+  }
+
   for (const race of dueRaces) {
     if (budget <= 0) break; // daglig cap-loft
     try {
@@ -129,11 +204,10 @@ export async function runStageScheduler({
       ran++;
       budget--;
     } catch (err) {
-      errors++;
-      console.error(`  ❌ stage-scheduler: race ${race.name ?? race.id} failed: ${err.message}`);
+      failRace(race, err);
     }
   }
-  return { ran, errors };
+  return { ran, errors, recovered };
 }
 
 export { MAX_STAGES_PER_DAY };
