@@ -1,20 +1,62 @@
 name: Playwright Smoke
 
+# Kører den FULDE Playwright-suite (alle specs i frontend/tests/e2e,
+# chromium-projekterne) — navnet "smoke" er historisk.
+#
+# Værn mod stille e2e-spec-rot (2026-07-02): da rytterprofil-redesignet (#2000,
+# PR #2037) fjernede "Effektprofil"-sektionen, FANGEDE dette job regressionen i
+# race-physiology-preview.spec.js — men PR'en blev merget alligevel, fordi
+# frontend-smoke ikke er et required check og auto-merge kun venter på required
+# checks. Fixet i PR #2114; postmortem:
+# .claude/learnings/2026-07-02-e2e-spec-rot-ci-gater-kun-core-smoke.md
+#
+# Derfor: intet `paths:`-filter på workflow-niveau. Path-filteret ligger i
+# `changes`-jobbet, så frontend-smoke ALTID rapporterer en konklusion (skipped
+# tæller som grøn for branch protection) og dermed kan gøres til required
+# check. Et workflow-niveau paths-filter ville efterlade et required check som
+# "Expected" for evigt på docs-/backend-PR'er og blokere merge.
+
 on:
   pull_request:
-    paths:
-      - "frontend/**"
-      - ".github/workflows/playwright-smoke.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
+  # Letvægts-path-filter (~10s ubuntu-job) i stedet for workflow-niveau `paths:`
+  # — se kommentaren øverst. Matcher det gamle filter: frontend/** + denne fil.
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - name: Detect frontend changes
+        id: filter
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          FILES=$(gh api "repos/${{ github.repository }}/pulls/$PR_NUMBER/files?per_page=100" --paginate --jq '.[].filename')
+          # Ikke `grep -q`: tidlig exit + pipefail kan SIGPIPE printf og vende
+          # svaret til falsk "ingen frontend-ændringer". >/dev/null læser alt.
+          if printf '%s\n' "$FILES" | grep -E '^(frontend/|\.github/workflows/playwright-smoke\.yml$)' > /dev/null; then
+            echo "frontend=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "frontend=false" >> "$GITHUB_OUTPUT"
+          fi
+
   frontend-smoke:
+    needs: changes
+    if: github.event_name == 'workflow_dispatch' || needs.changes.outputs.frontend == 'true'
     runs-on: windows-latest
     permissions:
       contents: read
+      pull-requests: write # fejl-kommentar på PR'en (rød suite må ikke være stille)
     defaults:
       run:
         working-directory: frontend
@@ -66,3 +108,20 @@ jobs:
           name: playwright-report
           path: frontend/playwright-report/
           retention-days: 7
+
+      # Rød suite skal være synlig i PR-samtalen (også på mobil, hvor
+      # checks-boksen let overses — #2037 blev merget med rød frontend-smoke).
+      # continue-on-error: fork-PR'er har read-only token; kommentaren er
+      # best-effort og må aldrig maskere selve test-resultatet.
+      - name: Comment on PR on failure
+        if: failure() && github.event_name == 'pull_request'
+        continue-on-error: true
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body "❌ **frontend-smoke fejlede** — den fulde Playwright-suite fandt regressioner. [Se run + playwright-report-artifact]($RUN_URL).
+
+          Rød e2e må ikke merges stille (#2000-spec-rot → PR #2114): fix koden eller opdatér spec'en i samme PR. Auto-merge venter nu eksplicit på dette check."

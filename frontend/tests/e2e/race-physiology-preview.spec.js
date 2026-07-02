@@ -1,10 +1,11 @@
 import { test, expect } from "@playwright/test";
 import { installNetworkMocks, login, stabilizePage, json } from "./fixtures.js";
 
-// Race Engine (#676) — renderer-regression for evner + power-profil på rytter-profilen
-// (/riders/:id, stats-fanen). #1529: de udledte CZ-evner er nu den PRIMÆRE stat-visning
-// (var PCM-stats), og power-profilen er en ren sektion uden "beta"-mærke. Mocker
-// fundamentet for rider-1 og verificerer evne-label, effektprofil-tal + at beta er væk.
+// Race Engine (#676) — renderer-regression for evner + fysiologi på rytter-profilen
+// (/riders/:id). #2000-redesignet delte profilen op i faner: Overblik (default) viser
+// evne-kolonnerne + en compact fysiologi-teaser; den fulde effekt-visning (watt-kurve,
+// CP-model, zoner) bor i Fysiologi-fanen. Mocker fundamentet for rider-1 og verificerer
+// at begge flader renderer mock-tallene — og at "Beta"/"Udledte evner" (#1529) er væk.
 
 const PHYS = {
   rider_id: "rider-1",
@@ -39,16 +40,22 @@ test("rider profile shows race-engine physiology + abilities preview", async ({ 
   await login(page);
   await page.goto("/riders/rider-1");
 
-  // Stats-fanen er default. #1529: de udledte evner er nu den PRIMÆRE visning i
-  // hoved-kortet, og power-profilen er en ren sektion uden "beta".
-  await expect(page.getByText("Klatring")).toBeVisible(); // climbing-evne-label (DA), primær visning
-  await expect(page.getByText("Effektprofil")).toBeVisible(); // power-profil-sektion (de-beta'et)
-  await expect(page.getByText("5.42")).toBeVisible();   // FTP W/kg
+  // Overblik-fanen er default (#2000): evne-kolonnerne er den primære visning,
+  // og fysiologi-teaseren (FTP/VO₂max/Pmax + link til fanen) står ved siden af.
+  await expect(page.getByText("Klatring")).toBeVisible(); // climbing-evne-label (DA)
+  await expect(page.getByRole("heading", { name: "Fysiologi" })).toBeVisible(); // teaser-kortets titel
+  await expect(page.getByText("Watt-kurve & zoner")).toBeVisible(); // teaserens link til fanen
 
-  // "beta"-mærket + "Udledte evner"-underoverskrift er fjernet (#1529).
+  // "beta"-mærket + "Udledte evner"-underoverskrift må ikke genopstå (#1529).
   await expect(page.getByText("Beta", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Udledte evner")).toHaveCount(0);
 
-  await page.getByText("Effektprofil").scrollIntoViewIfNeeded();
+  // Fysiologi-fanen: fuld effekt-visning bygget på mock-fundamentet.
+  await page.getByRole("tab", { name: "Fysiologi" }).click();
+  await expect(page.getByRole("heading", { name: "Watt-kurve", exact: true })).toBeVisible();
+  await expect(page.getByText("5.4 W/kg")).toBeVisible(); // FTP-kortets W/kg-sub (ftp_wkg fra mocken)
+  await expect(page.getByRole("heading", { name: "Critical Power-model" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Effekt-zoner" })).toBeVisible();
+
   await page.screenshot({ path: "C:/Users/Nicolai/AppData/Local/Temp/race-preview.png", fullPage: true });
 });
