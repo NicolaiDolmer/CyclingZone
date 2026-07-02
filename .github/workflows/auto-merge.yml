@@ -51,7 +51,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
-          gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body "🚀 **Auto-merge i kø** — venter synkront på required checks (\`backend-tests\`, \`frontend-build\`, \`dependency-review\`) + advisory AI-review. Squash-merger automatisk når grøn, og trigger deploy-verify bagefter. Fjern \`auto-merge\` label for at annullere."
+          gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body "🚀 **Auto-merge i kø** — venter synkront på required checks (\`backend-tests\`, \`frontend-build\`, \`dependency-review\` m.fl.) + \`frontend-smoke\` (fuld Playwright-suite) + advisory AI-review. Squash-merger automatisk når grøn, og trigger deploy-verify bagefter. Fjern \`auto-merge\` label for at annullere."
 
       - name: Wait for required checks (backend-tests + frontend-build)
         env:
@@ -59,6 +59,42 @@ jobs:
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: |
           gh pr checks "$PR_NUMBER" --repo "${{ github.repository }}" --watch --fail-fast --required
+
+      # Værn mod stille e2e-spec-rot (2026-07-02): PR #2037 og #2110 blev merget
+      # med RØD frontend-smoke, fordi `gh pr checks --required` kun venter på
+      # required checks. Indtil frontend-smoke er flippet til required i branch
+      # protection, ventes der eksplicit her. skipped/neutral = OK (docs-/
+      # backend-PR'er skipper suiten via changes-jobbet i playwright-smoke.yml).
+      # Postmortem: .claude/learnings/2026-07-02-e2e-spec-rot-ci-gater-kun-core-smoke.md
+      - name: Wait for frontend-smoke (fuld Playwright-suite)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          HEAD_SHA=$(gh pr view "$PR_NUMBER" --repo "${{ github.repository }}" --json headRefOid --jq .headRefOid)
+          # 60 × 15s = 15 min — suiten tager ~4-5 min, men kan starte sent i køen.
+          for _ in $(seq 1 60); do
+            SMOKE_JSON=$(gh api "repos/${{ github.repository }}/commits/$HEAD_SHA/check-runs?check_name=frontend-smoke" --jq '.check_runs[0] // empty')
+            if [ -z "$SMOKE_JSON" ]; then
+              echo "No frontend-smoke check found for $HEAD_SHA; continuing."
+              exit 0
+            fi
+            STATUS=$(echo "$SMOKE_JSON" | jq -r '.status')
+            CONCLUSION=$(echo "$SMOKE_JSON" | jq -r '.conclusion // ""')
+            if [ "$STATUS" = "completed" ]; then
+              if [ "$CONCLUSION" = "success" ] || [ "$CONCLUSION" = "neutral" ] || [ "$CONCLUSION" = "skipped" ]; then
+                echo "frontend-smoke concluded: ${CONCLUSION:-<none>}"
+                exit 0
+              fi
+              gh pr edit "$PR_NUMBER" --repo "${{ github.repository }}" --remove-label "auto-merge" || true
+              gh pr comment "$PR_NUMBER" --repo "${{ github.repository }}" --body "⛔ **Auto-merge stoppet** — \`frontend-smoke\` (fuld Playwright-suite) endte med \`$CONCLUSION\`. Rød e2e må ikke merges stille (#2000-spec-rot → PR #2114): fix koden eller opdatér spec'en, og tilføj \`auto-merge\` igen."
+              exit 1
+            fi
+            sleep 15
+          done
+          echo "frontend-smoke is still running after 15 min; leaving PR open for manual follow-up."
+          exit 1
 
       - name: Wait for advisory AI review if present
         env:
