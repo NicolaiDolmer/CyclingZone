@@ -505,6 +505,48 @@ export async function fillMissingTeamEntries({ supabase, race, stages, existingE
   return rows.map((r) => ({ rider_id: r.rider_id, team_id: r.team_id, race_role: r.race_role }));
 }
 
+// U25 afledt SÆSON-korrekt fra birthdate (#109/#2073). Den lagrede riders.is_u25-
+// kolonne er statisk (DEFAULT FALSE) og re-deriveres aldrig → 16-18-årige oprettet
+// uden flag (akademi/intake/generatorer) forblev false for evigt og manglede i
+// ungdomsklassementet. Konventionen matcher fictionalRiderGenerator + import_riders.py:
+//   U25 = fødselsår > referenceår - 25  ⇔  (referenceår − fødselsår) < 25.
+// referenceåret er SÆSONENS år (seasons.start_date), ikke wall-clock — så gaten er
+// sæson-drevet. Manglende birthdate/ugyldigt referenceår → false (kan ikke bekræftes).
+export function deriveIsU25FromBirthdate(birthdate, seasonYear) {
+  if (!birthdate || !Number.isFinite(seasonYear)) return false;
+  const birthYear = new Date(birthdate).getFullYear();
+  if (!Number.isFinite(birthYear)) return false;
+  return birthYear > seasonYear - 25;
+}
+
+// Sæsonens referenceår = året for seasons.start_date. Additiv/degraderende opslag
+// (som condition-/team_name-berigelsen): fejler det, falder vi tilbage til at bruge
+// det lagrede is_u25-flag frem for at blokere finalization. race.season_id er
+// garanteret af kalderne (runRaceFinalization/finalizeRaceStage kaster uden det).
+async function loadSeasonReferenceYear({ supabase, seasonId }) {
+  if (!seasonId) return null;
+  try {
+    // Await query-builderen direkte (thenable) frem for .maybeSingle() — så
+    // opslaget virker mod både den ægte klient og de minimale test-mocks, og
+    // enhver uventet throw degraderer til null (fallback til lagret is_u25).
+    const { data, error } = await supabase
+      .from("seasons")
+      .select("start_date")
+      .eq("id", seasonId);
+    if (error) {
+      console.error(`season-referenceår-opslag fejlede (falder til lagret is_u25): ${error.message}`);
+      return null;
+    }
+    const startDate = Array.isArray(data) ? data[0]?.start_date : data?.start_date;
+    if (!startDate) return null;
+    const year = new Date(startDate).getFullYear();
+    return Number.isFinite(year) ? year : null;
+  } catch (e) {
+    console.error(`season-referenceår-opslag kastede (falder til lagret is_u25): ${e.message}`);
+    return null;
+  }
+}
+
 // Indlæs startfeltet (race_entries → per-hold autopick for hold UDEN entries) beriget
 // med navn, is_u25, abilities + race_role. Hold MED manager-udtagne entries røres ikke.
 // persist=false (#1102 dryRun): auto-fill beregnes i hukommelsen — ingen DB-insert.
@@ -557,10 +599,15 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
   const riderIds = entries.map((e) => e.rider_id);
 
   const { data: riders, error: rErr } = await selectInChunks({
-    supabase, table: "riders", columns: "id, firstname, lastname, is_u25",
+    supabase, table: "riders", columns: "id, firstname, lastname, is_u25, birthdate",
     inColumn: "id", ids: riderIds,
   });
   if (rErr) throw new Error(`riders: ${rErr.message}`);
+
+  // #109/#2073: U25 afledes sæson-korrekt fra birthdate frem for det stale
+  // riders.is_u25-flag. Referenceåret hentes fra sæsonen (additivt/degraderende:
+  // fejler opslaget, falder vi tilbage til det lagrede flag pr. rytter nedenfor).
+  const seasonRefYear = await loadSeasonReferenceYear({ supabase, seasonId: race.season_id });
 
   const abilityCols = ["rider_id", ...ABILITY_KEYS].join(", ");
   const { data: abilities, error: aErr } = await selectInChunks({
@@ -613,7 +660,10 @@ export async function loadEntrantsForRace({ supabase, race, stages = [], persist
       team_id: teamId,
       team_name: teamId != null ? (teamNameById.get(teamId) ?? null) : null,
       rider_name: [r.firstname, r.lastname].filter(Boolean).join(" ") || null,
-      is_u25: !!r.is_u25,
+      // #109/#2073: sæson-afledt U25 (referenceår − fødselsår < 25). Kun hvis
+      // sæson-referenceåret kunne læses; ellers fald tilbage til det lagrede flag
+      // (degraderende — blokerer aldrig finalization).
+      is_u25: seasonRefYear != null ? deriveIsU25FromBirthdate(r.birthdate, seasonRefYear) : !!r.is_u25,
       abilities: ab,
     };
     const role = roleByRider.get(r.id);

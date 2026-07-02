@@ -5,6 +5,7 @@ import {
   buildRaceResults,
   loadEntrantsForRace,
   simulateRace,
+  deriveIsU25FromBirthdate,
 } from "./raceRunner.js";
 import { isRaceEngineV2Enabled } from "./raceEngineFlag.js";
 import { PRIZE_PER_POINT } from "./economyConstants.js";
@@ -293,6 +294,65 @@ test("loadEntrantsForRace: beriger entries med navn, is_u25 + abilities", async 
   assert.equal(r1.is_u25, true);
   assert.equal(r1.team_id, "T1");
   assert.equal(r1.abilities.climbing, 80);
+});
+
+// ── U25 sæson-derivering (#109/#2073) ─────────────────────────────────────────
+// Den lagrede riders.is_u25 er statisk (DEFAULT FALSE) og re-deriveres aldrig →
+// 16-18-årige oprettet uden flag manglede i ungdomsklassementet. U25 udledes nu
+// sæson-korrekt fra birthdate: fødselsår > sæsonens år - 25.
+test("deriveIsU25FromBirthdate: fødselsår > referenceår-25 ⇔ U25", () => {
+  assert.equal(deriveIsU25FromBirthdate("2010-06-15", 2026), true);  // 16
+  assert.equal(deriveIsU25FromBirthdate("2002-01-01", 2026), true);  // 24
+  assert.equal(deriveIsU25FromBirthdate("2001-01-01", 2026), false); // 25 (boundary)
+  assert.equal(deriveIsU25FromBirthdate("1990-01-01", 2026), false); // 36
+});
+
+test("deriveIsU25FromBirthdate: sæson-drevet — samme rytter skifter ved sæsonskift", () => {
+  assert.equal(deriveIsU25FromBirthdate("2002-06-15", 2026), true);  // 24
+  assert.equal(deriveIsU25FromBirthdate("2002-06-15", 2027), false); // 25
+});
+
+test("deriveIsU25FromBirthdate: robust ved manglende birthdate/referenceår", () => {
+  assert.equal(deriveIsU25FromBirthdate(null, 2026), false);
+  assert.equal(deriveIsU25FromBirthdate(undefined, 2026), false);
+  assert.equal(deriveIsU25FromBirthdate("2010-06-15", null), false);
+  assert.equal(deriveIsU25FromBirthdate("2010-06-15", NaN), false);
+});
+
+// Kernefix #2073: en 16-årig med det STALE is_u25=false skal alligevel være U25 i
+// startfeltet, fordi motoren udleder fra birthdate + sæsonens referenceår.
+test("loadEntrantsForRace: is_u25 sæson-afledt fra birthdate (overstyrer stale flag)", async () => {
+  const supabase = makeSupabase({
+    seasons: [{ start_date: "2026-06-22" }],
+    race_entries: [{ rider_id: "young", team_id: "T1" }, { rider_id: "old", team_id: "T1" }],
+    riders: [
+      // Stale flag=false men 16 år (født 2010) → skal blive U25 via birthdate.
+      { id: "young", team_id: "T1", firstname: "Jiho", lastname: "Cho", is_u25: false, birthdate: "2010-06-15" },
+      // Stale flag=true men 36 år (født 1990) → skal blive IKKE-U25 via birthdate.
+      { id: "old", team_id: "T1", firstname: "Old", lastname: "Guard", is_u25: true, birthdate: "1990-06-15" },
+    ],
+    rider_derived_abilities: [
+      { rider_id: "young", ...abil() },
+      { rider_id: "old", ...abil() },
+    ],
+  });
+  const entrants = await loadEntrantsForRace({ supabase, race: { id: "race-x", season_id: "s1" } });
+  assert.equal(entrants.find((e) => e.rider_id === "young").is_u25, true, "16-årig med stale flag=false skal være U25");
+  assert.equal(entrants.find((e) => e.rider_id === "old").is_u25, false, "36-årig med stale flag=true må ikke være U25");
+});
+
+// Degraderende: kan sæson-referenceåret ikke læses (intet seasons-row), falder vi
+// tilbage til det lagrede is_u25-flag frem for at blokere finalization.
+test("loadEntrantsForRace: falder tilbage til lagret is_u25 når sæson-år mangler", async () => {
+  const supabase = makeSupabase({
+    // Ingen seasons-canned → maybeSingle giver null → fallback til lagret flag.
+    race_entries: [{ rider_id: "r1", team_id: "T1" }],
+    riders: [{ id: "r1", team_id: "T1", firstname: "Anna", lastname: "Berg", is_u25: true, birthdate: "1990-06-15" }],
+    rider_derived_abilities: [{ rider_id: "r1", ...abil() }],
+  });
+  const entrants = await loadEntrantsForRace({ supabase, race: { id: "race-x", season_id: "s1" } });
+  // Trods 36 år bevares det lagrede flag=true, fordi sæson-året ikke kunne læses.
+  assert.equal(entrants.find((e) => e.rider_id === "r1").is_u25, true);
 });
 
 // #1993: entrants beriges med team_name (holdets navn på løbstidspunktet) så

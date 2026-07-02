@@ -5,7 +5,7 @@ import { useState, useMemo } from "react";
 import { DEFAULT_FILTERS, STAT_KEYS } from "../components/RiderFilters";
 import { getRiderMarketValue, getRiderSalary } from "./marketValues";
 import { buildSalaryFilterOr } from "./salaryFilter.js";
-import { getRiderAge, isU23 } from "./riderAge";
+import { getRiderAge, isU23, isU25 } from "./riderAge";
 import { compareNationality } from "./countryUtils";
 import { applyNameSearch } from "./riderNameSearch";
 import {
@@ -57,7 +57,10 @@ export function useClientRiderFilters(riders = []) {
       });
     }
 
-    if (filters.u25) result = result.filter(r => r.is_u25);
+    // U25 = sæson-afledt fra birthdate (#109/#2073), IKKE det lagrede is_u25-flag
+    // (statisk DEFAULT FALSE → 16-18-årige oprettet uden flag forblev false for
+    // evigt). isU25: sæson-alder < 25. CURRENT_YEAR er klientens sæson-referenceår.
+    if (filters.u25) result = result.filter(r => isU25(r.birthdate, CURRENT_YEAR));
     // U23 = samme grænse som u23-badge (isU23: alder < 23, dvs. ≤22 år) — delt
     // helper så filter + badge aldrig divergerer. En 23-årig bærer u25-badge og
     // må derfor IKKE matche U23-filteret (#42).
@@ -173,7 +176,14 @@ function applyRiderColumnFilters(query, filters, { prefix = "", ref = null } = {
     query = ref ? query.or(salaryOr, { referencedTable: ref }) : query.or(salaryOr);
   }
 
-  if (filters.u25) query = query.eq(col("is_u25"), true);
+  if (filters.u25) {
+    // U25 = sæson-afledt fra birthdate (#109/#2073), IKKE det lagrede is_u25-flag
+    // (statisk DEFAULT FALSE → aldrig re-deriveret; 368 unge havde false i prod).
+    // Sæson-alder < 25 ⇔ fødselsår > CURRENT_YEAR-25 ⇔ født ≥ (CURRENT_YEAR-24)-01-01.
+    // Spejler u23-birthdate-grænsen nedenfor så server- og klient-filter er ens.
+    const minBirth = new Date(`${CURRENT_YEAR - 24}-01-01`).toISOString().split("T")[0];
+    query = query.gte(col("birthdate"), minBirth);
+  }
   if (filters.free_agent) query = query.is(col("team_id"), null);
   if (filters.team_id) query = query.eq(col("team_id"), filters.team_id);
   if (filters.nationality_code) query = query.eq(col("nationality_code"), filters.nationality_code);
