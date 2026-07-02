@@ -89,8 +89,8 @@
         "technique": "Technique",
         "aero": "Aero"
       },
-      "active": "Active: {focus} · {intensity} — trains {abilities}",
-      "activeRest": "Resting — {focus} focus paused",
+      "active": "Active: {focus} · {intensity} · trains {abilities}",
+      "activeRest": "Resting ({focus} focus paused)",
       "progressTo": "{ability} {from} → {to} · {pct}% to next +1",
       "progressPending": "Building progress toward the next +1",
       "effectNote": "updates daily",
@@ -345,7 +345,7 @@
         "title": "Critical Power model",
         "cp": "CP (critical power)",
         "wprime": "W′ anaerobic capacity",
-        "read": "W′ is the anaerobic reserve above CP — the work you can spend before fading; CP is the power you can hold almost indefinitely."
+        "read": "W′ is the anaerobic reserve above CP: the work you can spend before fading; CP is the power you can hold almost indefinitely."
       },
       "zones": {
         "title": "Power zones",

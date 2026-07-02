@@ -17,6 +17,7 @@ import { Flag } from "../../Flag";
 import { statColor, statTextColor } from "../../../lib/statColor";
 import RiderTypeBadge from "../RiderTypeBadge";
 import ScoutablePotentiale from "../ScoutablePotentiale";
+import { AlertTriangleIcon } from "../../ui";
 
 // Division-chip — ENESTE rå-hex-undtagelse (spec): brand-uafhængig divisions-blå.
 const DIVISION_CHIP = "rgb(96 165 250)";
@@ -82,7 +83,7 @@ function StatusBanner({ banner }) {
 
   return (
     <div className={`mt-4 flex items-center gap-2 rounded-cz border px-3.5 py-2.5 text-sm ${tone}`}>
-      {banner.kind === "expiry" && <span aria-hidden="true">⚠</span>}
+      {banner.kind === "expiry" && <AlertTriangleIcon size={16} aria-hidden="true" className="flex-shrink-0" />}
       <span>{text}</span>
     </div>
   );

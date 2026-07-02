@@ -89,8 +89,8 @@
         "technique": "Teknik",
         "aero": "Aero"
       },
-      "active": "Aktiv: {focus} · {intensity} — træner {abilities}",
-      "activeRest": "Hviler — {focus}-fokus på pause",
+      "active": "Aktiv: {focus} · {intensity} · træner {abilities}",
+      "activeRest": "Hviler ({focus}-fokus på pause)",
       "progressTo": "{ability} {from} → {to} · {pct}% mod næste +1",
       "progressPending": "Bygger fremgang mod næste +1",
       "effectNote": "opdateres dagligt",
@@ -345,7 +345,7 @@
         "title": "Critical Power-model",
         "cp": "CP (critical power)",
         "wprime": "W′ anaerob kapacitet",
-        "read": "W′ er den anaerobe reserve over CP — arbejdet du kan bruge før du falder af; CP er den effekt du kan holde næsten i det uendelige."
+        "read": "W′ er den anaerobe reserve over CP: arbejdet du kan bruge før du falder af; CP er den effekt du kan holde næsten i det uendelige."
       },
       "zones": {
         "title": "Effekt-zoner",
