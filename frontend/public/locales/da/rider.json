@@ -76,10 +76,305 @@
     "history": "Historik",
     "development": "Udvikling"
   },
+  "profile": {
+    "training": {
+      "title": "Træningsfokus",
+      "slotsUsed": "{used} / {total} slots brugt",
+      "loading": "Henter træning…",
+      "focus": {
+        "vo2max": "VO2max",
+        "threshold": "Tærskel",
+        "sprint": "Spurt",
+        "endurance": "Udholdenhed",
+        "technique": "Teknik",
+        "aero": "Aero"
+      },
+      "active": "Aktiv: {focus} · {intensity} · træner {abilities}",
+      "activeRest": "Hviler ({focus}-fokus på pause)",
+      "progressTo": "{ability} {from} → {to} · {pct}% mod næste +1",
+      "progressPending": "Bygger fremgang mod næste +1",
+      "effectNote": "opdateres dagligt",
+      "riskNote": "Højere intensitet vokser hurtigst, men har ~{risk}% risiko for tilbageslag der koster en del af sæsonens fremgang.",
+      "noRiskNote": "Let intensitet vokser støt uden risiko for tilbageslag.",
+      "restNote": "Ingen evne-vækst på en hviledag; træthed falder.",
+      "emptyFocus": "Vælg et fokus for at tildele træning.",
+      "focusRefTitle": "Hvert fokus træner",
+      "log": {
+        "title": "Daglig træning · sidste 7 dage",
+        "empty": "Ingen træningsdage endnu.",
+        "today": "I dag",
+        "sharp": "Skarp dag",
+        "flat": "Flad dag",
+        "gains": "+{count} evner"
+      },
+      "trend": {
+        "title": "Træning · seneste 30 dage",
+        "trained": "Gennemførte pas",
+        "breakthroughs": "Gennembrud",
+        "sharp": "Skarpe dage",
+        "note": "En sammenlignelig træningsscore er på vej."
+      },
+      "form": {
+        "title": "Form & restitution",
+        "healthy": "Skadefri",
+        "healthyHint": "Klar til at træne hårdt",
+        "pending": "Ingen form-data endnu."
+      },
+      "locked": {
+        "title": "Træning er skjult",
+        "body": "Du kan ikke se eller styre en fremmed rytters træning, form eller træthed. Køb ham, så låser det op."
+      },
+      "retired": {
+        "title": "Pensioneret rytter",
+        "body": "Pensionerede ryttere trænes ikke, så der er intet aktivt program, form eller træthed at vise."
+      }
+    },
+    "tabs": {
+      "overview": "Overblik",
+      "physiology": "Fysiologi",
+      "training": "Træning",
+      "development": "Udvikling",
+      "scouting": "Scouting",
+      "history": "Historik",
+      "results": "Resultater",
+      "interest": "Interesse"
+    },
+    "switcher": {
+      "hint": "‹ › skift rytter"
+    },
+    "hero": {
+      "ratingEyebrow": "Rating /99",
+      "divisionChip": "DIV {division}",
+      "photoFallback": "Foto",
+      "potentialOwn": "Potentiale · loft",
+      "potentialScouted": "Scoutet loft",
+      "valueEyebrow": "Markedsværdi",
+      "salary": "Løn",
+      "contract": "Kontrakt",
+      "contractSeason": "Sæson {season}",
+      "aiTag": "AI",
+      "winsOn": "Vinder på"
+    },
+    "banner": {
+      "listed": "På transferlisten · pris {price}",
+      "auction": "I auktion · slutter om {endsIn} · højeste bud {highBid}",
+      "academy": "Akademirytter",
+      "expiry": "Kontrakt udløber efter Sæson {season}."
+    },
+    "history": {
+      "loading": "Henter historik...",
+      "chipBid": "Bud",
+      "bidBy": "bød",
+      "table": {
+        "date": "Dato",
+        "type": "Type",
+        "event": "Begivenhed",
+        "amount": "Beløb"
+      },
+      "loadError": "Handelshistorikken kunne ikke hentes lige nu."
+    },
+    "results": {
+      "totalsTitle": "Sæson-totaler",
+      "filterLabel": "Sæsonfilter",
+      "filterAll": "Alle",
+      "totals": {
+        "wins": "Sejre",
+        "races": "Løb",
+        "top5": "Top 5",
+        "jerseys": "Trøjer",
+        "points": "Ranking-point",
+        "prize": "Præmiepenge"
+      },
+      "table": {
+        "date": "Dato",
+        "race": "Løb",
+        "class": "Klasse",
+        "terrain": "Terræn",
+        "pos": "Plac.",
+        "points": "Point",
+        "prize": "Præmie"
+      },
+      "terrain": {
+        "flat_sprint": "Fladt",
+        "long_sprint_classic": "Rullende",
+        "cobbled_classic": "Brosten",
+        "puncheur": "Bakket",
+        "hilly_classic": "Bakket",
+        "mountain_classic": "Bjerg"
+      },
+      "stagesCount": "{n} etaper",
+      "stageRow": "Etape {n}",
+      "overallRow": "Samlet (GC)",
+      "expandHint": "Tryk på et etapeløb for at folde alle etaper ud.",
+      "emptySeason": "Ingen resultater i denne sæson.",
+      "seasonShort": "S{n}",
+      "loadError": "Resultaterne kunne ikke hentes lige nu."
+    },
+    "scouting": {
+      "comingEyebrow": "På vej",
+      "comingTitle": "Scouting",
+      "comingBody": "En dedikeret scouting-fane er under opbygning: din spejders vurdering af rytteren og hans potentiale pr. ryttertype. Indtil da bor potentiale-estimatet og scout-knappen i toppen af profilen.",
+      "roadmapHint": "Vil du have indflydelse på hvad der bygges først? Afgiv din stemme på roadmappet.",
+      "roadmapCta": "Åbn roadmappet"
+    },
+    "interest": {
+      "loading": "Henter interesse...",
+      "loadError": "Interesse-data kunne ikke hentes lige nu.",
+      "trendNew": "nye data",
+      "trendFlat": "stabilt",
+      "seasonShort": "S{n}",
+      "stats": {
+        "followers": "Følger",
+        "views7d": "Profilvisninger (7d)",
+        "scoutedBy": "Scoutet af"
+      },
+      "followersSub": "{count, plural, one {manager} other {managere}}",
+      "scoutedBySub": "{count, plural, one {rivalhold} other {rivalhold}}",
+      "summary": {
+        "own": "{followers, plural, =0 {Ingen managere følger ham endnu} one {1 manager følger ham} other {# managere følger ham}} · scoutet af {scouted, plural, =0 {ingen rivaler} one {1 rivalhold} other {# rivalhold}} · {views, plural, =0 {ingen unikke besøg} one {1 unik besøgende} other {# unikke besøgende}} de seneste 7 dage.",
+        "ownQuiet": "Ingen har vist interesse endnu. Han flyver under radaren indtil videre.",
+        "scouting": "{followers, plural, =0 {Ingen managere følger ham endnu} one {1 manager følger ham} other {# managere følger ham}} · scoutet af {scouted, plural, =0 {ingen rivaler} one {1 rivalhold} other {# rivalhold}} · {views, plural, =0 {ingen unikke besøg} one {1 unik besøgende} other {# unikke besøgende}} de seneste 7 dage.",
+        "scoutingQuiet": "Ingen synlig interesse endnu."
+      },
+      "whoScouts": {
+        "title": "Hvem scouter din rytter?",
+        "body": "{count, plural, one {1 rivalhold har brugt scout-slots på ham.} other {# rivalhold har brugt scout-slots på ham.}}",
+        "empty": "Ingen rivaler har scoutet ham endnu.",
+        "level": "Niveau {level}"
+      },
+      "feed": {
+        "title": "Aktivitet",
+        "scout": "{team} scoutede ham",
+        "scoutAnon": "En rival scoutede ham",
+        "watch": "Føjet til en managers liste",
+        "viewsTrend": "Profilvisninger {pct}% mod forrige 7 dage",
+        "viewsTrendMeta": "seneste 7 dage",
+        "empty": "Ingen aktivitet endnu"
+      }
+    },
+    "overview": {
+      "skillCount": "{count} evner",
+      "legend": {
+        "level": "Tal = niveau 1–99",
+        "progress": "træningsfremgang mod næste +1"
+      },
+      "radar": {
+        "title": "Ryttertyper",
+        "subtitle": "rating pr. type",
+        "legendNow": "Nu",
+        "bestAs": "Bedst som",
+        "allTypes": "Alle typer →"
+      },
+      "physio": {
+        "title": "Fysiologi",
+        "weight": "{kg} kg",
+        "link": "Watt-kurve & zoner →"
+      }
+    },
+    "development": {
+      "empty": "Ingen registreret udvikling endnu. Kurven bygges op, når rytteren træner og sæsonerne går.",
+      "loading": "Indlæser udvikling...",
+      "chart": {
+        "title": "Rating pr. type · over sæsoner",
+        "caption": "registreret udvikling · daglige snapshots",
+        "season": "S{n}",
+        "seasonNow": "S{n} nu"
+      },
+      "growth": {
+        "title": "Vækst denne sæson",
+        "typeRating": "{type}-rating",
+        "thisSeason": "{delta} denne sæson",
+        "abilityPoints": "Evne-point vundet",
+        "trackedSince": "Målt siden"
+      },
+      "reading": {
+        "title": "Læsning",
+        "own": {
+          "rising": "Han har hentet {delta} i {type}-rating denne sæson. Træningen flytter ham.",
+          "flat": "Ingen målt fremgang endnu denne sæson. Kurven bygges op, når han træner."
+        },
+        "scouting": {
+          "rising": "Stigende kurve denne sæson. Træningsplaner er skjult for fremmede ryttere.",
+          "flat": "Flad kurve indtil videre denne sæson. Træningsplaner er skjult for fremmede ryttere."
+        }
+      },
+      "log": {
+        "title": "Udviklingslog",
+        "hint": "træning → evne-gevinst pr. sæson",
+        "seasonNow": "Sæson {n} · nu",
+        "delta": "{delta} rating",
+        "note": "fremgang på {days} af de seneste {window} dage",
+        "noTraining": "ingen træning registreret",
+        "scoutingHidden": "Den træningsdrevne udviklingslog er skjult for fremmede ryttere. Du ser kun den registrerede trend ovenfor."
+      }
+    },
+    "physio": {
+      "pending": "Fysiologi ikke tilgængelig endnu",
+      "over": "over",
+      "under": "under",
+      "divMean": "Div-snit {value}",
+      "divMeanShort": "vs Div {division}",
+      "head": {
+        "ftp": "FTP",
+        "ftpSub": "Tærskel (~1 time) · {wkg} W/kg",
+        "vo2": "VO₂max",
+        "vo2Sub": "Aerobt loft (W/kg)",
+        "pmax": "Pmax",
+        "pmaxSub": "Maks. spurt-effekt",
+        "zone2": "Zone 2",
+        "zone2Sub": "Udholdenheds-base"
+      },
+      "curve": {
+        "title": "Watt-kurve",
+        "subtitle": "Maks. effekt pr. varighed · log-skala",
+        "hisZone": "HANS ZONE",
+        "rider": "Rytter"
+      },
+      "profile": {
+        "title": "Watt-profil",
+        "note": {
+          "sprint": "Spurt-top",
+          "anaerobic": "Anaerob",
+          "vo2": "VO₂",
+          "thresholdPlus": "Tærskel+",
+          "threshold": "Tærskel",
+          "hour": "1 time"
+        }
+      },
+      "cp": {
+        "title": "Critical Power-model",
+        "cp": "CP (critical power)",
+        "wprime": "W′ anaerob kapacitet",
+        "read": "W′ er den anaerobe reserve over CP: arbejdet du kan bruge før du falder af; CP er den effekt du kan holde næsten i det uendelige."
+      },
+      "zones": {
+        "title": "Effekt-zoner",
+        "derived": "Afledt af FTP {ftp} W (Coggan-zoner)",
+        "name": {
+          "Z1": "Aktiv restitution",
+          "Z2": "Udholdenhed",
+          "Z3": "Tempo",
+          "Z4": "Tærskel",
+          "Z5": "VO₂max",
+          "Z6": "Anaerob",
+          "Z7": "Neuromuskulær"
+        }
+      }
+    }
+  },
+  "terrain": {
+    "flatSprint": "Flade massespurter",
+    "rolling": "Bølgede ruter",
+    "punchy": "Stejle finaler",
+    "mountain": "Bjergetaper",
+    "stageRace": "Etapeløb",
+    "timeTrial": "Enkeltstart",
+    "breakaway": "Udbrud",
+    "cobbles": "Brosten"
+  },
   "stats": {
     "potentialRow": "Potentiale",
     "abilitiesPending": "Evner endnu ikke beregnet",
-    "loadingDevelopment": "Indlæser udvikling...",
     "categories": {
       "physical": "Fysiske",
       "mental": "Mentale",
@@ -182,56 +477,19 @@
     }
   },
   "season": {
-    "empty": "Ingen historik endnu",
-    "table": {
-      "wins": "Sejre",
-      "top3": "Top 3",
-      "stageWins": "Etapesejre",
-      "gcWins": "GC-sejre",
-      "classicWins": "Klassikersejre",
-      "pointsJersey": "Pointtrøje",
-      "mountainJersey": "Bjergtrøje",
-      "prizes": "Præmier",
-      "season": "Sæson"
-    },
     "row": "Sæson {n}"
   },
   "results": {
     "empty": "Ingen løbsresultater endnu",
-    "table": {
-      "race": "Løb",
-      "type": "Type",
-      "position": "Plac.",
-      "prize": "Præmie"
-    },
     "fallbackDash": "-"
   },
   "development": {
-    "progressHint": "Fremskridt mod næste point",
-    "empty": "Ingen historik endnu. Ratings bygges op efterhånden som rytteren træner og sæsoner går.",
-    "statsTitle": "Ryttertype-rating over tid",
-    "statsSubtitle": "Hvordan rytterens overall-rating udvikler sig i hver ryttertype. Klik en type for at slå den til/fra.",
-    "filterAll": "Alle typer",
-    "filterNone": "Ingen",
-    "recentTitle": "Seneste datapunkter",
-    "table": {
-      "date": "Dato"
-    },
-    "fallbackDash": "-"
+    "progressHint": "Fremskridt mod næste point"
   },
   "bids": {
-    "noAuction": "Ingen aktuel auktion for denne rytter",
-    "noBids": "Ingen bud endnu",
-    "soldLabel": "Solgt",
-    "soldFor": "for",
-    "winnerFallback": "Ukendt køber",
-    "sellerPrefix": "Sælger:",
-    "activeAuction": "⚡ Aktiv auktion",
-    "fallbackDash": "-",
     "row": {
       "teamFallback": "Ukendt",
-      "autoBidTag": "Autobud",
-      "highestTag": "Højest"
+      "autoBidTag": "Autobud"
     }
   },
   "history": {

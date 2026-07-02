@@ -27,9 +27,15 @@ import { fetchRiderQuote, postRiderContractAction } from "../../lib/riderContrac
 import { useAcademy } from "../../lib/useAcademy.js";
 import { AcademyTransferConfirmModal } from "../AcademyTransferConfirmModal.jsx";
 import { supabase } from "../../lib/supabase.js";
+import { buttonClass } from "../ui/buttonStyles.js";
 
-// Knap-stilarter (cz-tokens, matcher rytter-sidens øvrige inline-knapper).
-const BTN_NEUTRAL = "w-full min-h-[44px] py-2.5 rounded-cz text-sm font-bold transition-all border bg-cz-subtle text-cz-2 border-cz-border hover:text-cz-1";
+// Trigger-knapper (ejer-feedback 3/7): appens delte buttonStyles, kompakt
+// auto-bredde — komponenten renderes med display:contents så knapperne indgår
+// direkte i hero'ens horisontale handlingsrække. Udvidede paneler/feedback
+// lægger sig i fuld bredde UNDER hele rækken (order-2, spejler RiderStatsPage's
+// ACTION_PANEL) — den tintede/ring-markerede trigger viser tilhørsforholdet.
+const ACTION_PANEL = "order-2 w-full";
+// Bekræft-knap inde i udfoldede paneler (fuld bredde i panelet).
 const BTN_PRIMARY = "w-full min-h-[44px] py-2 rounded-lg text-sm font-bold transition-all bg-cz-accent text-cz-on-accent hover:brightness-110 disabled:opacity-50";
 
 // Akademi returnerer rå fejl-koder i `error` (ikke { errorCode }) — pak dem så
@@ -106,13 +112,12 @@ function RiderAcademyActions({ rider, isAcademyRider, canDemote, onResult, onCha
   return (
     <>
       {isAcademyRider && (
-        <button onClick={openPromote} className={BTN_NEUTRAL}>
+        <button type="button" onClick={openPromote} className={buttonClass({ variant: "primary" })}>
           {t("manage.promote.button")}
         </button>
       )}
       {!isAcademyRider && canDemote && (
-        <button onClick={openDemote}
-          className="w-full min-h-[44px] py-2.5 rounded-cz text-sm font-bold transition-all border bg-cz-warning-bg text-cz-warning border-cz-warning/30 hover:brightness-105">
+        <button type="button" onClick={openDemote} className={buttonClass({ variant: "secondary" })}>
           {t("manage.demote.button")}
         </button>
       )}
@@ -133,7 +138,7 @@ function RiderAcademyActions({ rider, isAcademyRider, canDemote, onResult, onCha
   );
 }
 
-export default function RiderManageActions({ rider, onChanged }) {
+export default function RiderManageActions({ rider, onChanged, marketActions = null }) {
   const { t } = useTranslation("rider");
 
   const isAcademyRider = Boolean(rider.is_academy);
@@ -215,28 +220,34 @@ export default function RiderManageActions({ rider, onChanged }) {
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    /* display:contents — knapperne bliver direkte flex-items i hero'ens
+       handlingsrække; paneler/feedback tager selv fuld bredde. */
+    <div className="contents">
       {result && (
-        <div className={`px-3 py-2 rounded-lg text-sm border
+        <div className={`${ACTION_PANEL} px-3 py-2 rounded-lg text-sm border
           ${result.ok ? "bg-cz-success-bg text-cz-success border-cz-success/30" : "bg-cz-danger-bg text-cz-danger border-cz-danger/30"}`}>
           {result.msg}
         </div>
       )}
 
       {isAcademyRider ? (
-        /* Akademi-rytter: kun promovér (egen flow — ikke auktion/transfer/fyr). */
-        <RiderAcademyActions rider={rider} isAcademyRider onResult={flashResult} onChanged={onChanged} />
+        /* Akademi-rytter: promovér (egen flow) + evt. markeds-handlinger fra parent. */
+        <>
+          <RiderAcademyActions rider={rider} isAcademyRider onResult={flashResult} onChanged={onChanged} />
+          {marketActions}
+        </>
       ) : (
-        /* Senior-rytter: forlæng · (flyt til akademi, kun U23) · fyr (destruktiv sidst). */
+        /* Senior-rytter, prototypens rækkefølge: forlæng (guld) · flyt til akademi
+           (kun U23) · markeds-handlinger (salg/auktion, injiceret) · fyr (destruktiv sidst). */
         <>
           {/* Forlæng kontrakt */}
-          <div>
-            <button onClick={openExtend}
-              className={`${BTN_NEUTRAL} ${extendOpen ? "!bg-cz-accent/10 !text-cz-accent-t !border-cz-accent/25" : ""}`}>
+          <div className="contents">
+            <button type="button" onClick={openExtend}
+              className={`${buttonClass({ variant: "primary" })} ${extendOpen ? "ring-1 ring-cz-accent/60" : ""}`}>
               {t("manage.extend.button")}
             </button>
             {extendOpen && (
-              <div className="mt-3 flex flex-col gap-2">
+              <div className={`${ACTION_PANEL} flex flex-col gap-2`}>
                 <p className="text-cz-3 text-xs">{t("manage.extend.description")}</p>
                 {extendErr ? (
                   <div className="rounded-cz border border-cz-danger/30 bg-cz-danger-bg px-3 py-2.5 text-cz-danger text-xs">{extendErr}</div>
@@ -276,16 +287,18 @@ export default function RiderManageActions({ rider, onChanged }) {
             <RiderAcademyActions rider={rider} isAcademyRider={false} canDemote onResult={flashResult} onChanged={onChanged} />
           )}
 
+          {/* Markeds-handlinger (sæt til salg · start auktion) — injiceret af
+              parent så den destruktive Frigiv står SIDST i rækken. */}
+          {marketActions}
+
           {/* Fyr rytter (destruktiv) — udvid (viser gebyr som speed-bump) → bekræft/annullér. */}
-          <div>
-            <button onClick={openRelease}
-              className={`w-full min-h-[44px] py-2.5 rounded-cz text-sm font-bold transition-all border
-                bg-cz-danger-bg text-cz-danger border-cz-danger/30 hover:brightness-105
-                ${releaseOpen ? "ring-1 ring-cz-danger/40" : ""}`}>
+          <div className="contents">
+            <button type="button" onClick={openRelease}
+              className={`${buttonClass({ variant: "danger" })} ${releaseOpen ? "ring-1 ring-cz-danger/40" : ""}`}>
               {t("manage.release.button")}
             </button>
             {releaseOpen && (
-              <div className="mt-3 flex flex-col gap-2">
+              <div className={`${ACTION_PANEL} flex flex-col gap-2`}>
                 {releaseErr ? (
                   <div className="rounded-cz border border-cz-danger/30 bg-cz-danger-bg px-3 py-2.5 text-cz-danger text-xs">{releaseErr}</div>
                 ) : (

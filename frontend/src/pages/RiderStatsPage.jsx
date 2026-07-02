@@ -1,28 +1,18 @@
-import { Suspense, useState, useEffect, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { lazyWithRetry } from "../lib/lazyWithRetry.js";
 import { supabase } from "../lib/supabase";
 import { getAuthedUser } from "../lib/getAuthedUser.js";
-import { getCountryName } from "../lib/countryUtils";
-import { Flag } from "../components/Flag";
 import { formatCz, getRiderMarketValue, getRiderSalary } from "../lib/marketValues.js";
-import { ageBadgeKey } from "../lib/riderAge";
-import { statColor, statTextColor } from "../lib/statColor";
 import { riderOverallRating } from "../lib/riderRating";
 import { RIDER_TYPE_KEYS } from "../lib/riderTypeKeys.js";
 import { chartColor } from "../lib/chartPalette.js";
-import { formatNumber, formatDate, formatDateTime } from "../lib/intl";
+import { formatNumber } from "../lib/intl";
 import { resolveApiError } from "../lib/apiError";
-import ScoutablePotentiale from "../components/rider/ScoutablePotentiale";
-import TrainingFocus from "../components/rider/TrainingFocus";
-import RiderTrainingHistory from "../components/rider/RiderTrainingHistory.jsx";
-import ConditionChips from "../components/rider/ConditionChips.jsx";
 import RiderManageActions from "../components/rider/RiderManageActions.jsx";
 import { useScouting } from "../lib/useScouting";
 import { useTraining } from "../lib/useTraining";
 import { useTrainingHistory } from "../lib/useTrainingHistory";
-import RiderTypeBadge from "../components/rider/RiderTypeBadge";
 import { BidConfirmModal } from "../components/BidConfirmModal";
 import { RacePriceModal } from "../components/RacePriceModal";
 import { ConfettiModal } from "../components/ConfettiModal";
@@ -37,32 +27,51 @@ import {
 import { useAuctionBidding } from "../lib/useAuctionBidding";
 import { isOverbidEvent, shouldFlashPrice } from "../lib/auctionsRealtime";
 import { logEvent, logFirstEvent } from "../lib/logEvent";
-import TeamLink from "../components/TeamLink";
-import { aggregateRiderSeasons } from "../lib/riderSeasonStats";
-import { ABILITY_CATEGORIES, ABILITY_ICONS, topAbilityKey } from "../lib/abilities.js";
-import { TrophyIcon, ExchangeIcon, ClipboardIcon, PageLoader } from "../components/ui";
+import { ABILITY_KEYS, topAbilityKey } from "../lib/abilities.js";
+import { PageLoader } from "../components/ui";
+import { buttonClass } from "../components/ui/buttonStyles.js";
+import RiderProfileHero from "../components/rider/profile/RiderProfileHero.jsx";
+import RiderSwitcherBar from "../components/rider/profile/RiderSwitcherBar.jsx";
+import RiderProfileTabs from "../components/rider/profile/RiderProfileTabs.jsx";
+import { winsOnTerrainKeys } from "../lib/riderTerrain.js";
+import RiderAbilityColumns from "../components/rider/profile/RiderAbilityColumns.jsx";
+import RiderTypeRadar from "../components/rider/profile/RiderTypeRadar.jsx";
+import RiderOverviewPhysiology from "../components/rider/profile/RiderOverviewPhysiology.jsx";
+import RiderPhysiologyTab from "../components/rider/profile/RiderPhysiologyTab.jsx";
+import RiderTrainingTab from "../components/rider/profile/RiderTrainingTab.jsx";
+import RiderDevelopmentTab from "../components/rider/profile/RiderDevelopmentTab.jsx";
+import RiderHistoryTab from "../components/rider/profile/RiderHistoryTab.jsx";
+import RiderResultsTab from "../components/rider/profile/RiderResultsTab.jsx";
+import RiderInterestTab from "../components/rider/profile/RiderInterestTab.jsx";
 
 const API = import.meta.env.VITE_API_URL;
-const RiderDevelopmentTab = lazyWithRetry(() => import("../components/RiderDevelopmentTab"));
 
-// Hent ALLE en rytters race_results (lette kolonner) til sæson-aggregeringen.
+// Hent ALLE en rytters race_results til Resultater-fanen (PCS-tabel + totaler).
 // Pagineret fordi PostgREST capper ved 1000 rækker/side — uden det ville en
 // rytter med mange resultater få trunkerede sejrs-/præmie-totaler.
+// #2000: udvidet med stage/point/løbs-metadata + terræn via race_pool
+// (races.pool_race_id → race_pool.terrain_archetype; public-read, verificeret
+// mod prod 2026-07-03). Grupperingen sker i lib/riderResultsTab.js.
+// Returnerer { rows, failed } — en query-fejl (side 1 ELLER en senere side) må
+// ikke ligne "ingen/få resultater" (#1338-princippet, review-fund): fanen viser
+// en eksplicit fejl-tilstand i stedet for stille trunkerede totaler.
 async function fetchAllRiderSeasonRows(riderId) {
   const PAGE = 1000;
-  const all = [];
+  const rows = [];
   for (let from = 0; ; from += PAGE) {
     const { data, error } = await supabase
       .from("race_results")
-      .select("rank, prize_money, result_type, race:race_id(race_type, season:season_id(number))")
+      .select(`rank, prize_money, points_earned, result_type, stage_number,
+        race:race_id(id, name, race_type, race_class, stages, status, scheduled_for,
+          season:season_id(number), pool:pool_race_id(terrain_archetype))`)
       .eq("rider_id", riderId)
       .order("id", { ascending: true })
       .range(from, from + PAGE - 1);
-    if (error || !data) break;
-    all.push(...data);
+    if (error || !data) return { rows, failed: true };
+    rows.push(...data);
     if (data.length < PAGE) break;
   }
-  return all;
+  return { rows, failed: false };
 }
 
 async function authHeaders() {
@@ -70,99 +79,21 @@ async function authHeaders() {
   return { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` };
 }
 
-// Evne-række (#2000 slice 1): TALLET viser 1-99-evneværdien; BJÆLKEN viser
-// træningsprogress mod næste +1 (ability_progress-fraktion 0..1, pr. evne-key).
-// Vises for ALLE ryttere. Manglende/null/ikke-numerisk progress = tom/neutral
-// bjælke (rytteren har ikke trænet evnen endnu) — må aldrig crashe.
-function StatRow({ label, icon, value, progressFraction, progressHint }) {
-  const color = statColor(value);
-  // Klamp defensivt: ugyldig fraktion → 0 (tom bjælke), ellers 0..1.
-  const rawFrac = Number(progressFraction);
-  const frac = Number.isFinite(rawFrac) ? Math.max(0, Math.min(1, rawFrac)) : 0;
-  const pct = Math.round(frac * 100);
-  return (
-    <div className="flex items-center gap-3 py-2">
-      <span className="text-cz-3 w-4 text-center text-sm">{icon}</span>
-      <span className="text-cz-2 text-sm w-28 sm:w-36 flex-shrink-0">{label}</span>
-      <div className="flex-1 bg-cz-subtle rounded-full h-2" title={progressHint} aria-hidden="true">
-        <div
-          className="h-2 rounded-full bg-cz-accent/60 transition-all duration-500"
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-      <span className="font-mono text-sm font-bold w-8 text-right flex-shrink-0" style={{ color }}>{value ?? "-"}</span>
-    </div>
-  );
-}
+// Hero-handlingsrækkens trigger-knapper (ejer-feedback 3/7): kompakte, auto-
+// bredde og med appens delte buttonStyles i stedet for fuldbredde-bjælker.
+// Åben-tilstand = accent-tint så den udfoldede formular kobles visuelt til sin knap.
+const TRIGGER_OPEN = "!border-cz-accent/40 !text-cz-accent-t !bg-cz-accent/5";
+const triggerClass = (open, variant = "secondary") =>
+  `${buttonClass({ variant })} ${open ? TRIGGER_OPEN : ""}`;
+// Udfoldede paneler/feedback: komponent-roden er display:contents, så panelet
+// lægger sig i FULD bredde UNDER hele trigger-rækken (order-2) i stedet for at
+// splitte rækken. Den tintede trigger viser hvilken knap panelet hører til.
+const ACTION_PANEL = "order-2 w-full";
 
-// Evne-visning v2 (#1122/#1529/#2000): de 15 synlige evner grupperet i kategorier
-// (Physical/Mental/Technical) via den delte SSOT i lib/abilities.js
-// (ABILITY_CATEGORIES + ABILITY_ICONS). hidden_potential er skjult per design.
-
-// "Vurdering"-cirkel (#2000 slice 2 / #2006): rytterens 1-99 overall-rating,
-// farvet efter samme evne-gradient (statColor) som alle andre rating-tal. Tom
-// (—) hvis rating ikke kan beregnes (ingen evner). rating-værdien beregnes af
-// riderOverallRating (type-bevidst, samme blendede output O som værdimodellen).
-function RatingCircle({ rating, label }) {
-  const has = Number.isFinite(rating) && rating > 0;
-  const bg = has ? statColor(rating) : "var(--cz-subtle)";
-  const fg = has ? statTextColor(rating) : undefined;
-  return (
-    <div className="flex flex-col items-center sm:items-end gap-1">
-      <div
-        data-testid="rider-overall-rating"
-        className="flex items-center justify-center rounded-full w-14 h-14 font-mono font-bold text-2xl tabular-nums shadow-sm ring-1 ring-cz-border"
-        style={{ backgroundColor: bg, color: fg }}
-        title={label}
-      >
-        {has ? rating : "—"}
-      </div>
-      <span className="text-cz-3 text-[10px] uppercase tracking-wider">{label}</span>
-    </div>
-  );
-}
-
-// Ét nøgletal (watt/W·kg) i effektprofil-grid'et.
-function PowerStat({ label, value, unit }) {
-  return (
-    <div className="bg-cz-subtle rounded-lg px-3 py-2 flex flex-col">
-      <span className="text-cz-3 text-xs uppercase tracking-wide truncate">{label}</span>
-      <span className="font-mono text-cz-1 text-lg font-bold">
-        {value ?? "-"}
-        <span className="text-cz-3 text-xs font-normal ms-1">{unit}</span>
-      </span>
-    </div>
-  );
-}
-
-// Preview af race-engine-fundamentet (#676): cycling-zones/watt + udledte abilities,
-// tydeligt mærket som beta. Påvirker ikke resultater (PCM kører sæson 2). Data fra
-// GET /api/riders/:id (physiology/abilities) — null indtil backfill er kørt, så
-// rendres komponenten slet ikke før fundamentet findes.
-// abilityProgress: optional { <ability>: 0..1 } fra useTraining().progress[riderId]
-// for egne ryttere. undefined/null = ingen progress bars.
-// Power-profil (race-engine v2): watt/W·kg-nøgletal. Vises kun når fysiologi findes.
-// #1529: tidligere et "beta"-preview der OGSÅ wrappede de udledte evner — evnerne er nu
-// hoved-visningen på stats-fanen, og denne sektion er ren (de-beta'et) power-profil.
-function RacePhysiologyPreview({ physiology }) {
-  const { t } = useTranslation("rider");
-  if (!physiology) return null;
-  return (
-    <div className="bg-cz-card border border-cz-border rounded-cz p-5 mt-4">
-      <h3 className="text-cz-1 font-semibold mb-3">{t("racePreview.powerProfile")}</h3>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        <PowerStat label={t("racePreview.zones.zone2")}  value={physiology.zone2_power_wkg}  unit="W/kg" />
-        <PowerStat label={t("racePreview.zones.ftp")}    value={physiology.ftp_wkg}          unit="W/kg" />
-        <PowerStat label={t("racePreview.zones.vo2max")} value={physiology.vo2max_power_wkg} unit="W/kg" />
-        <PowerStat label={t("racePreview.zones.pmax")}   value={physiology.pmax_watts}       unit="W" />
-        <PowerStat label={t("racePreview.curve.p5s")}    value={physiology.power_5s_wkg}     unit="W/kg" />
-        <PowerStat label={t("racePreview.curve.p15s")}   value={physiology.power_15s_wkg}    unit="W/kg" />
-        <PowerStat label={t("racePreview.curve.p1m")}    value={physiology.power_1m_wkg}     unit="W/kg" />
-        <PowerStat label={t("racePreview.curve.p5m")}    value={physiology.power_5m_wkg}     unit="W/kg" />
-      </div>
-    </div>
-  );
-}
+// Evne-rækker, power-stat-grid og race-physiology-preview er flyttet til de
+// dedikerede Overblik-komponenter under components/rider/profile/ (#2000 stykke 2):
+// RiderAbilityColumns (3-kort evne-grid), RiderTypeRadar (ryttertype-spider) og
+// RiderOverviewPhysiology (compact fysiologi-teaser).
 
 function SwapOfferButton({ rider, myTeamId }) {
   const { t } = useTranslation("rider");
@@ -209,22 +140,18 @@ function SwapOfferButton({ rider, myTeamId }) {
   }
 
   return (
-    <div>
+    <div className="contents">
       {result && (
-        <div className={`mb-2 px-3 py-2 rounded-lg text-sm border
+        <div className={`${ACTION_PANEL} px-3 py-2 rounded-lg text-sm border
           ${result.ok ? "bg-cz-success-bg text-cz-success border-cz-success/30" : "bg-cz-danger-bg text-cz-danger border-cz-danger/30"}`}>
           {result.msg}
         </div>
       )}
-      <button onClick={openForm}
-        className={`w-full min-h-[44px] py-2.5 rounded-cz text-sm font-bold transition-all border
-          ${show
-              ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/25"
-              : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle hover:text-cz-1"}`}>
+      <button type="button" onClick={openForm} className={triggerClass(show)}>
         {t("swapOffer.buttonOpen")}
       </button>
       {show && (
-        <div className="mt-3 flex flex-col gap-2">
+        <div className={`${ACTION_PANEL} flex flex-col gap-2`}>
           <select value={offeredId} onChange={e => setOfferedId(e.target.value)}
             className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-base sm:text-sm focus:outline-none focus:border-cz-accent">
             <option value="">{t("swapOffer.selectRider")}</option>
@@ -285,22 +212,18 @@ function LoanOfferButton({ rider }) {
   }
 
   return (
-    <div>
+    <div className="contents">
       {result && (
-        <div className={`mb-2 px-3 py-2 rounded-lg text-sm border
+        <div className={`${ACTION_PANEL} px-3 py-2 rounded-lg text-sm border
           ${result.ok ? "bg-cz-success-bg text-cz-success border-cz-success/30" : "bg-cz-danger-bg text-cz-danger border-cz-danger/30"}`}>
           {result.msg}
         </div>
       )}
-      <button onClick={() => setShow(!show)}
-        className={`w-full min-h-[44px] py-2.5 rounded-cz text-sm font-bold transition-all border
-          ${show
-              ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/25"
-              : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle hover:text-cz-1"}`}>
+      <button type="button" onClick={() => setShow(!show)} className={triggerClass(show)}>
         {t("loanOffer.buttonOpen")}
       </button>
       {show && (
-        <div className="mt-3 flex flex-col gap-2">
+        <div className={`${ACTION_PANEL} flex flex-col gap-2`}>
           <input type="number" value={season} onChange={e => setSeason(e.target.value)}
             placeholder={t("loanOffer.seasonPlaceholder")}
             className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-base sm:text-sm focus:outline-none focus:border-cz-accent" />
@@ -360,22 +283,19 @@ function DirectOfferButton({ rider }) {
     setConfirmOpen(true);
   }
   return (
-    <div>
+    <div className="contents">
       {result && (
-        <div className={`mb-2 px-3 py-2 rounded-lg text-sm border
+        <div className={`${ACTION_PANEL} px-3 py-2 rounded-lg text-sm border
           ${result.ok ? "bg-cz-success-bg text-cz-success border-cz-success/30" : "bg-cz-danger-bg text-cz-danger border-cz-danger/30"}`}>
           {result.msg}
         </div>
       )}
-      <button onClick={() => setShow(!show)}
-        className={`w-full min-h-[44px] py-2.5 rounded-cz text-sm font-bold transition-all border
-          ${show
-              ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/25"
-              : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle hover:text-cz-1"}`}>
+      {/* Primær CTA i scouting-visningen (én accent-knap pr. kontekst). */}
+      <button type="button" onClick={() => setShow(!show)} className={triggerClass(false, "primary")}>
         {t("directOffer.buttonOpen")}
       </button>
       {show && (
-        <div className="mt-3 flex flex-col gap-2">
+        <div className={`${ACTION_PANEL} flex flex-col gap-2`}>
           <input type="number" value={amount} min={1} onChange={e => setAmount(parseInt(e.target.value) || 0)}
             placeholder={t("directOffer.amountPlaceholder")}
             className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-base sm:text-sm focus:outline-none focus:border-cz-accent" />
@@ -497,15 +417,15 @@ function TransferListButton({ rider }) {
   }
 
   return (
-    <div>
+    <div className="contents">
       {result && (
-        <div className={`mb-2 px-3 py-2 rounded-lg text-sm border
+        <div className={`${ACTION_PANEL} px-3 py-2 rounded-lg text-sm border
           ${result.ok ? "bg-cz-success-bg text-cz-success border-cz-success/30" : "bg-cz-danger-bg text-cz-danger border-cz-danger/30"}`}>
           {result.msg}
         </div>
       )}
       {listing ? (
-        <div className="rounded-cz border border-cz-border bg-cz-subtle p-3 flex flex-col gap-2">
+        <div className={`${ACTION_PANEL} rounded-cz border border-cz-border bg-cz-subtle p-3 flex flex-col gap-2`}>
           <p className="text-cz-2 text-sm">
             {t("sellRider.listedStatus", { amount: formatNumber(listing.asking_price) })}
           </p>
@@ -534,16 +454,12 @@ function TransferListButton({ rider }) {
           )}
         </div>
       ) : (
-        <button onClick={() => setShow(!show)}
-          className={`w-full min-h-[44px] py-2.5 rounded-cz text-sm font-bold transition-all border
-            ${show
-                ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/25"
-                : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle hover:text-cz-1"}`}>
+        <button type="button" onClick={() => setShow(!show)} className={triggerClass(show)}>
           {t("sellRider.buttonOpen")}
         </button>
       )}
       {show && (
-        <div className="mt-3 flex flex-col gap-2">
+        <div className={`${ACTION_PANEL} flex flex-col gap-2`}>
           <p className="text-cz-3 text-xs">{t("sellRider.description")}</p>
           <input type="number" value={price} min={1}
             onChange={e => { const v = parseInt(e.target.value, 10); setPrice(Number.isNaN(v) ? 0 : v); }}
@@ -749,6 +665,10 @@ function RiderBidPanel({ auction, myTeamId, myBalance, reservedBalance, riderNam
 function AuctionButton({ rider, auctionLabel, onStart, ddActive, isOwnRider }) {
   const { t } = useTranslation("rider");
   const riderValue      = getRiderMarketValue(rider);
+  // Ejer-feedback 3/7: pris-formularen var altid udfoldet og fyldte hero'en —
+  // nu en kompakt trigger-knap der folder formularen ud (samme mønster som
+  // salgs-/bud-knapperne).
+  const [open, setOpen]             = useState(false);
   const [price, setPrice]           = useState(riderValue);
   const [loading, setLoading]       = useState(false);
   const [flash, setFlash]           = useState(false);
@@ -757,44 +677,48 @@ function AuctionButton({ rider, auctionLabel, onStart, ddActive, isOwnRider }) {
   const priceError      = isOwnRider ? (price > riderValue || price < 0) : (price < riderValue);
 
   return (
-    <div>
-      <p className="text-cz-3 text-xs uppercase tracking-widest mb-2">
+    <div className="contents">
+      <button type="button" onClick={() => setOpen(!open)} className={triggerClass(open)}>
         {auctionLabel}
-      </p>
-      {ddActive && (
-        <label className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-3 cursor-pointer select-none">
-          <div className="flex items-center gap-2">
-            <input type="checkbox" checked={flash} onChange={e => setFlash(e.target.checked)}
-              className="rounded accent-cz-danger" />
-            <span className="text-sm text-cz-danger font-medium">{t("auctionStart.flash.label")}</span>
+      </button>
+      {open && (
+        <div className={ACTION_PANEL}>
+          {ddActive && (
+            <label className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-3 cursor-pointer select-none">
+              <div className="flex items-center gap-2">
+                <input type="checkbox" checked={flash} onChange={e => setFlash(e.target.checked)}
+                  className="rounded accent-cz-danger" />
+                <span className="text-sm text-cz-danger font-medium">{t("auctionStart.flash.label")}</span>
+              </div>
+              <span className="text-xs text-cz-3 sm:ms-0 ms-6">{t("auctionStart.flash.hint")}</span>
+            </label>
+          )}
+          <div className="flex flex-col sm:flex-row gap-2">
+            <input
+              type="number"
+              value={price}
+              min={isOwnRider ? 0 : riderValue}
+              max={isOwnRider ? riderValue : undefined}
+              onChange={e => { const v = parseInt(e.target.value, 10); setPrice(Number.isNaN(v) ? (isOwnRider ? 0 : riderValue) : v); }}
+              className={`min-w-0 flex-1 min-h-[44px] bg-cz-subtle border rounded-lg px-3 py-2 text-cz-1 text-base sm:text-sm font-mono focus:outline-none
+                ${priceError
+                  ? "border-cz-danger/40 focus:border-cz-danger"
+                  : "border-cz-border focus:border-cz-accent"}`}
+            />
+            <button
+              onClick={async () => { setLoading(true); await onStart(price, flash); setLoading(false); }}
+              disabled={loading || priceError}
+              className={`w-full sm:w-auto min-h-[44px] px-4 py-2 font-bold rounded-lg text-sm transition-all disabled:opacity-50
+                ${flash ? "bg-cz-danger text-white hover:brightness-110" : "bg-cz-accent text-cz-on-accent hover:brightness-110"}`}>
+              {loading ? t("auctionStart.buttons.loading") : flash ? t("auctionStart.buttons.startFlash") : t("auctionStart.buttons.start")}
+            </button>
           </div>
-          <span className="text-xs text-cz-3 sm:ms-0 ms-6">{t("auctionStart.flash.hint")}</span>
-        </label>
-      )}
-      <div className="flex flex-col sm:flex-row gap-2">
-        <input
-          type="number"
-          value={price}
-          min={isOwnRider ? 0 : riderValue}
-          max={isOwnRider ? riderValue : undefined}
-          onChange={e => { const v = parseInt(e.target.value, 10); setPrice(Number.isNaN(v) ? (isOwnRider ? 0 : riderValue) : v); }}
-          className={`min-w-0 flex-1 min-h-[44px] bg-cz-subtle border rounded-lg px-3 py-2 text-cz-1 text-base sm:text-sm font-mono focus:outline-none
-            ${priceError
-              ? "border-cz-danger/40 focus:border-cz-danger"
-              : "border-cz-border focus:border-cz-accent"}`}
-        />
-        <button
-          onClick={async () => { setLoading(true); await onStart(price, flash); setLoading(false); }}
-          disabled={loading || priceError}
-          className={`w-full sm:w-auto min-h-[44px] px-4 py-2 font-bold rounded-lg text-sm transition-all disabled:opacity-50
-            ${flash ? "bg-cz-danger text-white hover:brightness-110" : "bg-cz-accent text-cz-on-accent hover:brightness-110"}`}>
-          {loading ? t("auctionStart.buttons.loading") : flash ? t("auctionStart.buttons.startFlash") : t("auctionStart.buttons.start")}
-        </button>
-      </div>
-      {priceError && (
-        <p className="text-cz-danger text-xs mt-1.5">
-          {t(isOwnRider ? "auctionStart.priceErrorOwn" : "auctionStart.priceError", { amount: formatNumber(riderValue) })}
-        </p>
+          {priceError && (
+            <p className="text-cz-danger text-xs mt-1.5">
+              {t(isOwnRider ? "auctionStart.priceErrorOwn" : "auctionStart.priceError", { amount: formatNumber(riderValue) })}
+            </p>
+          )}
+        </div>
       )}
     </div>
   );
@@ -803,7 +727,7 @@ function AuctionButton({ rider, auctionLabel, onStart, ddActive, isOwnRider }) {
 export default function RiderStatsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { t, i18n } = useTranslation("rider");
+  const { t } = useTranslation("rider");
   const { t: tTypes } = useTranslation("riderTypes");
 
   const scouting = useScouting();
@@ -811,22 +735,29 @@ export default function RiderStatsPage() {
   // #1533: træningsrapport-historik (egne ryttere) — vises i Development-fanen.
   const trainingHistory = useTrainingHistory();
   const [rider, setRider]                   = useState(null);
-  const [riderCondition, setRiderCondition] = useState(null);
   const [onWatchlist, setOnWatchlist]       = useState(false);
   const [watchlistId, setWatchlistId]       = useState(null);
   const [watchlistCount, setWatchlistCount] = useState(0);
   const [visits, setVisits]                 = useState(null);
-  const [results, setResults]               = useState([]);
   const [seasonRows, setSeasonRows]         = useState([]);
+  // Fejl-flag for resultat-hentningen (#1338-princippet): en query-fejl må ikke
+  // ligne "ingen resultater" eller stille trunkerede totaler.
+  const [seasonRowsFailed, setSeasonRowsFailed] = useState(false);
+  // #2000 Interesse: null = loader (fanen viser spinner, ikke "ingen interesse").
+  const [interest, setInterest]             = useState(null);
   const [loading, setLoading]               = useState(true);
-  const [tab, setTab]                       = useState("stats");
+  const [tab, setTab]                       = useState("overview");
+  // Roster for switcher-baren (#2000): det VISTE holds trup, til prev/next + index.
+  const [roster, setRoster]                 = useState([]);
   const [myTeamId, setMyTeamId]             = useState(null);
   const [myBalance, setMyBalance]           = useState(0);
   const [myReservedBalance, setMyReservedBalance] = useState(0);
   const [activeAuction, setActiveAuction]   = useState(null);
   const [auctionError, setAuctionError]     = useState(null);
-  const [history, setHistory]               = useState([]);
-  const [statHistory, setStatHistory]       = useState([]);
+  // #2000 Historik: null = loader — [] betyder ægte "ingen handelshistorik".
+  const [history, setHistory]               = useState(null);
+  const [statHistory, setStatHistory]       = useState(null); // null = loader endnu
+  const [physBenchmark, setPhysBenchmark]   = useState(null);
   const [ddActive, setDdActive]             = useState(false);
   // #195: live bud-timeline for seneste auktion (aktiv eller completed).
   // Privacy-låst: backend lækker aldrig proxy_max — frontend respekterer samme kontrakt.
@@ -842,8 +773,57 @@ export default function RiderStatsPage() {
   // Refs så channel-callback kan se nyeste state uden at re-subscribe
   const activeAuctionRef = useRef(null);
   const myTeamIdRef      = useRef(null);
+  // #2000 stykke 5: stale-guard for development-fetchen (hurtig prev/next-switch).
+  const developmentFetchIdRef = useRef(null);
+  // #2000 sidste faner: samme stale-guards for historik + interesse + de
+  // datastroemme fanerne konsumerer (bid-timeline, visits, watchlist-count,
+  // rider/seasonRows) — review-fund: uden guards kan hurtig prev/next i
+  // switcheren lade forrige rytters sene svar overskrive den nyes.
+  const historyFetchIdRef = useRef(null);
+  const interestFetchIdRef = useRef(null);
+  const bidTimelineFetchIdRef = useRef(null);
+  const visitsFetchIdRef = useRef(null);
+  const watchlistCountFetchIdRef = useRef(null);
+  const riderFetchIdRef = useRef(null);
   useEffect(() => { activeAuctionRef.current = activeAuction; }, [activeAuction]);
   useEffect(() => { myTeamIdRef.current = myTeamId; }, [myTeamId]);
+
+  // #2000: hent det VISTE holds trup til switcher-baren (prev/next + index).
+  // Non-kritisk — fejler stille (switcheren skjules bare hvis rosteret mangler).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const teamId = rider?.team_id;
+      if (!teamId) { setRoster([]); return; }
+      const { data } = await supabase
+        .from("riders")
+        .select("id, firstname, lastname")
+        .eq("team_id", teamId)
+        .or("is_retired.is.null,is_retired.eq.false")
+        .order("lastname");
+      if (!cancelled) setRoster(data || []);
+    })();
+    return () => { cancelled = true; };
+  }, [rider?.team_id]);
+
+  // #2000 stykke 3: divisions-fysiologi-snit til Fysiologi-fanens benchmarks.
+  // Hentes lazily når fanen åbnes (backend cacher pr. division). Fri agent/ingen
+  // division → intet snit (fanen viser egne tal uden sammenligning). Non-kritisk.
+  useEffect(() => {
+    if (tab !== "physiology") return;
+    const division = rider?.team?.division;
+    if (!division) { setPhysBenchmark(null); return; }
+    if (physBenchmark?.division === division) return; // allerede hentet
+    let cancelled = false;
+    (async () => {
+      try {
+        const h = await authHeaders();
+        const res = await fetch(`${API}/api/physiology/division-benchmark?division=${division}`, { headers: h });
+        if (res.ok && !cancelled) setPhysBenchmark(await res.json());
+      } catch { /* non-kritisk: fanen falder tilbage til egne tal uden sammenligning */ }
+    })();
+    return () => { cancelled = true; };
+  }, [tab, rider?.team?.division, physBenchmark?.division]);
 
   async function loadWatchlistStatus() {
     const user = await getAuthedUser();
@@ -855,21 +835,34 @@ export default function RiderStatsPage() {
   }
 
   async function loadWatchlistCount() {
+    // Reset kun ved rytter-skift (toggleWatchlist genkalder for SAMME rytter —
+    // et ubetinget reset ville flashe tallet). Stale-guard mod sene svar.
+    const fetchId = id;
+    if (watchlistCountFetchIdRef.current !== fetchId) setWatchlistCount(0);
+    watchlistCountFetchIdRef.current = fetchId;
     try {
       const h = await authHeaders();
-      const res = await fetch(`${API}/api/riders/${id}/watchlist-count`, { headers: h });
+      const res = await fetch(`${API}/api/riders/${fetchId}/watchlist-count`, { headers: h });
       const data = await res.json();
+      if (watchlistCountFetchIdRef.current !== fetchId) return;
       setWatchlistCount(data.count || 0);
-    } catch { /* non-critical: count badge stays at previous value */ }
+    } catch { /* non-critical: tallet forbliver 0 for den nye rytter */ }
   }
 
-  // Popularitet (#957): unikke besøgende 24t/7d + trend. Non-critical — fejler stille.
+  // Popularitet (#957): unikke besøgende 24t/7d + trend. Non-critical — fejler
+  // stille, men reset + stale-guard sikrer at Interesse-fanen aldrig viser
+  // forrige rytters visningstal/trend.
   async function loadVisits() {
+    const fetchId = id;
+    visitsFetchIdRef.current = fetchId;
+    setVisits(null);
     try {
       const h = await authHeaders();
-      const res = await fetch(`${API}/api/riders/${id}/view-count`, { headers: h });
-      setVisits(await res.json());
-    } catch { /* non-critical: visit line just stays hidden */ }
+      const res = await fetch(`${API}/api/riders/${fetchId}/view-count`, { headers: h });
+      const data = await res.json();
+      if (visitsFetchIdRef.current !== fetchId) return;
+      setVisits(data);
+    } catch { /* non-critical: TrendSub/summary håndterer visits=null */ }
   }
 
   async function toggleWatchlist() {
@@ -893,19 +886,62 @@ export default function RiderStatsPage() {
   }
 
   async function loadHistory() {
+    // Reset up-front + stale-guard (samme mønster som loadDevelopmentHistory):
+    // et rytter-skift må hverken vise forrige rytters historik eller lade et
+    // sent svar overskrive den nyes.
+    const fetchId = id;
+    historyFetchIdRef.current = fetchId;
+    setHistory(null);
     try {
       const h = await authHeaders();
-      const res = await fetch(`${API}/api/riders/${id}/history`, { headers: h });
-      if (res.ok) setHistory(await res.json());
-    } catch { /* non-critical: history section stays empty */ }
+      const res = await fetch(`${API}/api/riders/${fetchId}/history`, { headers: h });
+      // Fejl må ikke ligne "ingen handelshistorik" (#1338-princippet) — fanen
+      // viser en eksplicit kunne-ikke-hentes-tilstand i stedet for tom liste.
+      const data = res.ok ? await res.json() : { error: true };
+      if (historyFetchIdRef.current !== fetchId) return;
+      setHistory(Array.isArray(data) || data?.error ? data : []);
+    } catch {
+      if (historyFetchIdRef.current === fetchId) setHistory({ error: true });
+    }
+  }
+
+  async function loadInterest() {
+    // #2000 Interesse: scoutet-af + aktivitetsfeed (backend aggregerer +
+    // håndhæver privacy — team-navne kun til ejeren). Samme stale-guard.
+    const fetchId = id;
+    interestFetchIdRef.current = fetchId;
+    setInterest(null);
+    try {
+      const h = await authHeaders();
+      const res = await fetch(`${API}/api/riders/${fetchId}/interest`, { headers: h });
+      // Fejl må ikke ligne "ingen interesse" (#1338-princippet) — fanen viser
+      // en eksplicit kunne-ikke-hentes-tilstand i stedet for nuller.
+      const data = res.ok ? await res.json() : { error: true };
+      if (interestFetchIdRef.current !== fetchId) return;
+      setInterest(data);
+    } catch {
+      if (interestFetchIdRef.current === fetchId) setInterest({ error: true });
+    }
   }
 
   async function loadBidTimeline() {
+    // Bud-rækkerne flettes ind i Historik-tabellen (review-fund): reset ved
+    // rytter-skift + stale-guard, så forrige rytters bud aldrig optræder i den
+    // nyes handelshistorik. Reset er BETINGET — realtime-callbacks genkalder
+    // loadBidTimeline for SAMME rytter ved hvert live-bud, og et ubetinget
+    // null-reset ville flashe rækkerne væk midt i en auktion.
+    const fetchId = id;
+    if (bidTimelineFetchIdRef.current !== fetchId) setBidTimeline(null);
+    bidTimelineFetchIdRef.current = fetchId;
     try {
       const h = await authHeaders();
-      const res = await fetch(`${API}/api/riders/${id}/bid-timeline`, { headers: h });
-      if (res.ok) setBidTimeline(await res.json());
-    } catch { /* non-critical: bid-timeline tab falls back to empty state */ }
+      const res = await fetch(`${API}/api/riders/${fetchId}/bid-timeline`, { headers: h });
+      const data = res.ok ? await res.json() : { auction_id: null, status: null };
+      if (bidTimelineFetchIdRef.current !== fetchId) return;
+      setBidTimeline(data);
+    } catch {
+      if (bidTimelineFetchIdRef.current === fetchId) setBidTimeline({ auction_id: null, status: null });
+    }
   }
 
   async function loadDevelopmentHistory() {
@@ -913,14 +949,23 @@ export default function RiderStatsPage() {
     // (rider_derived_ability_history) via backend-endpoint — erstatter den døde
     // PCM rider_stat_history-feed. Type-ratingen pr. ryttertype beregnes i
     // RiderDevelopmentTab via rating-SSOT'en (riderRating.js).
-    // Ryd up-front (CodeRabbit #2015) så et rytter-skift ALDRIG viser forrige rytters
-    // kurve, og en non-ok-respons efterlader ikke stale data.
-    setStatHistory([]);
+    // null = loader (fanen viser spinner, ikke misvisende empty-state); ryd
+    // up-front (CodeRabbit #2015) så et rytter-skift ALDRIG viser forrige rytters
+    // kurve. Stale-guard via ref: hurtig prev/next i switcheren må ikke lade et
+    // SENT svar fra forrige rytter overskrive den nyes data (roster-mønstret).
+    const fetchId = id;
+    developmentFetchIdRef.current = fetchId;
+    setStatHistory(null);
     try {
       const h = await authHeaders();
-      const res = await fetch(`${API}/api/riders/${id}/development`, { headers: h });
-      if (res.ok) setStatHistory(await res.json());
-    } catch { /* non-critical: Udvikling-tabben falder tilbage til empty-state */ }
+      const res = await fetch(`${API}/api/riders/${fetchId}/development`, { headers: h });
+      const data = res.ok ? await res.json() : [];
+      if (developmentFetchIdRef.current !== fetchId) return; // stale svar — ny rytter er i gang
+      setStatHistory(data);
+    } catch {
+      // non-critical: Udvikling-tabben falder tilbage til empty-state
+      if (developmentFetchIdRef.current === fetchId) setStatHistory([]);
+    }
   }
 
   async function loadMyTeam() {
@@ -1001,8 +1046,12 @@ export default function RiderStatsPage() {
     // Race-engine-fundamentet (#676) hentes fejl-tolerant ved siden af rytteren, så
     // en manglende tabel/profil (fx i deploy-vinduet før migrationen er kørt, eller
     // for ryttere uden backfill) aldrig brækker rytter-siden — preview vises bare ikke.
+    // Stale-guard (review-fund): hurtig prev/next må ikke lade forrige rytters
+    // sene svar overskrive rider/seasonRows for den nye.
+    const fetchId = id;
+    riderFetchIdRef.current = fetchId;
     const safe = async (q) => { try { return await q; } catch { return { data: null }; } };
-    const [riderRes, resultsRes, seasonRowsAll, physRes, abilRes, progressRes] = await Promise.all([
+    const [riderRes, seasonRowsAll, physRes, abilRes, progressRes] = await Promise.all([
       // #1162: eksplicit kolonneliste — `select=*` på riders afvises efter
       // column-privilege-migrationen (potentiale er server-skjult; klienter får
       // kun det maskerede estimat via POST /api/scouting/estimates).
@@ -1012,14 +1061,11 @@ export default function RiderStatsPage() {
       supabase.from("riders").select(`id, pcm_id, firstname, lastname, birthdate, height, weight,
         market_value, base_value, prize_earnings_bonus, salary, contract_length, contract_end_season, is_u25, is_retired, is_academy, pending_team_id,
         nationality_code, primary_type, secondary_type, team_id, acquired_at,
-        team:team_id(id, name, is_ai, is_bank),
+        team:team_id(id, name, is_ai, is_bank, division),
         pending_team:pending_team_id(id, name)`).eq("id", id).single(),
-      // Seneste 20 til "Løbsresultater"-listen (visning).
-      supabase.from("race_results")
-        .select(`*, race:race_id(name, race_type, season:season_id(number))`)
-        .eq("rider_id", id).order("imported_at", { ascending: false }).limit(20),
-      // ALLE rækker (lette kolonner, pagineret) til sæson-aggregeringen — ellers
-      // ville .limit(20) trunkere sejre/præmie-totalerne (PostgREST capper ved 1000).
+      // ALLE rækker (pagineret) til Resultater-fanen — både PCS-tabellen og
+      // totalerne bygger på det fulde sæt (en .limit(20) ville trunkere begge).
+      // #2000: den gamle separate "seneste 20"-visningsquery er fjernet.
       fetchAllRiderSeasonRows(id),
       safe(supabase.from("rider_physiology_profiles").select("*").eq("rider_id", id).maybeSingle()),
       // #1162: eksplicit kolonneliste — hidden_potential er server-skjult (eksakt
@@ -1037,6 +1083,7 @@ export default function RiderStatsPage() {
       safe(supabase.from("rider_derived_abilities")
         .select("ability_progress").eq("rider_id", id).maybeSingle()),
     ]);
+    if (riderFetchIdRef.current !== fetchId) return; // stale svar — ny rytter er i gang
     setRider(riderRes.data
       ? {
           ...riderRes.data,
@@ -1047,22 +1094,11 @@ export default function RiderStatsPage() {
           abilityProgress: progressRes.data?.ability_progress || null,
         }
       : riderRes.data);
-    setResults(resultsRes.data || []);
-    setSeasonRows(seasonRowsAll);
-
-    // Condition (form/træthed/skade) — transparent per spildesign, vises for alle ryttere.
-    // SELECT-for-authenticated RLS: en simpel maybeSingle() er nok.
-    // Manglende rad = neutral defaults — komponent håndterer null.
-    if (riderRes.data?.id) {
-      try {
-        const { data: condData } = await safe(
-          supabase.from("rider_condition").select("form, fatigue, injured_until").eq("rider_id", riderRes.data.id).maybeSingle()
-        );
-        setRiderCondition(condData ?? null);
-      } catch { /* non-critical — chips vises med neutrale defaults */ }
-    }
+    setSeasonRows(seasonRowsAll.rows);
+    setSeasonRowsFailed(seasonRowsAll.failed);
 
     await loadActiveAuctionFull(riderRes.data);
+    if (riderFetchIdRef.current !== fetchId) return;
     setLoading(false);
     loadWatchlistCount();
 
@@ -1071,7 +1107,7 @@ export default function RiderStatsPage() {
     // Fyrer én gang pr. profil-mount (useEffect [id]) — ikke pr. re-render.
     if (riderRes.data?.id) {
       const h = await authHeaders();
-      fetch(`${API}/api/riders/${id}/view`, { method: "POST", headers: h }).catch(() => {});
+      fetch(`${API}/api/riders/${fetchId}/view`, { method: "POST", headers: h }).catch(() => {});
     }
   }
 
@@ -1086,7 +1122,7 @@ export default function RiderStatsPage() {
     } catch { /* non-critical: deadline-day banner falls back to inactive */ }
   }
 
-  useEffect(() => { loadRider(); loadMyTeam(); loadWatchlistStatus(); loadHistory(); loadDevelopmentHistory(); loadDdStatus(); loadBidTimeline(); loadVisits(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { loadRider(); loadMyTeam(); loadWatchlistStatus(); loadHistory(); loadDevelopmentHistory(); loadDdStatus(); loadBidTimeline(); loadVisits(); loadInterest(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function pushOverbidToast({ riderName, amount }) {
     const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -1298,6 +1334,17 @@ export default function RiderStatsPage() {
   const isAiRider = Boolean(rider.team?.is_ai);
   const isPendingTransfer = Boolean(rider.pending_team_id);
   const isRetired = Boolean(rider.is_retired);
+
+  // #2000 stykke 2: progress-fraktion pr. evne til Overblik-evnekolonnerne.
+  // Egne ryttere foretrækker den friske training.progress (optimistisk efter et
+  // tick); ellers DB'ens ability_progress. Bygges i SSOT-evne-rækkefølge.
+  const overviewProgress = {};
+  if (rider.abilities) {
+    for (const key of ABILITY_KEYS) {
+      const ownFrac = isMyRider ? training.progress?.[rider.id]?.[key] : undefined;
+      overviewProgress[key] = ownFrac != null ? ownFrac : rider.abilityProgress?.[key];
+    }
+  }
   // #2007: akademi-ryttere ekskluderes fra auktion (kun frie agenter, egne
   // SENIOR-ryttere, samt bank/AI-ryttere kan sættes på auktion).
   const canAuction  = (isFreeAgent || isMySeniorRider || isBankRider || isAiRider) && !isPendingTransfer && !isRetired;
@@ -1329,12 +1376,46 @@ export default function RiderStatsPage() {
   const overallRating = rider.abilities
     ? riderOverallRating({ ...rider.abilities, primary_type: rider.primary_type })
     : 0;
-  // Sæson-totaler fra ALLE rytterens rækker (ikke kun de 20 i resultat-listen),
-  // med sejre opdelt pr. type. Se lib/riderSeasonStats.js.
-  const bySeason = aggregateRiderSeasons(seasonRows);
+  // ── #2000 redesign — afledte hero-felter (ren visning, ingen ny data) ────────
+  const divisionLabel = rider.team?.division != null
+    ? t("profile.hero.divisionChip", { division: rider.team.division })
+    : null;
+  // #1287/#950: kommende hold ved handel til næste sæson — skjult ved self-pending
+  // (pending_team == nuværende hold, fx intern handel — ikke et reelt holdskifte).
+  const pendingTeam = rider.pending_team?.name && rider.pending_team.id !== rider.team?.id
+    ? rider.pending_team
+    : null;
+  // Hero'en sætter selv "Løn"-etiketten — værdien er kun beløbet (~ = estimat
+  // for fri agent). Før gav header.contractSalary ("Salary CZ$") dublet-tekst:
+  // "Salary 42,000 Salary CZ$".
+  const salaryText = rider.contract_length != null
+    ? `${formatNumber(rider.salary)} CZ$`
+    : `~${formatNumber(getRiderSalary(rider))} CZ$`;
+  const winsOnText = winsOnTerrainKeys(rider.primary_type, rider.secondary_type)
+    .map((k) => t(`terrain.${k}`)).join(", ") || null;
+  // Status-banner: auktion > akademi > kontrakt-udløb (egne ryttere).
+  let statusBanner = null;
+  if (activeAuction) {
+    const diff = new Date(activeAuction.calculated_end) - new Date();
+    const h = Math.max(0, Math.floor(diff / 3600000));
+    const m = Math.max(0, Math.floor((diff % 3600000) / 60000));
+    statusBanner = {
+      kind: "auction",
+      endsIn: diff > 0 ? (h > 0 ? `${h}t ${m}m` : `${m}m`) : "—",
+      highBid: formatNumber(activeAuction.current_price),
+    };
+  } else if (isAcademyRider) {
+    statusBanner = { kind: "academy" };
+  } else if (isMyRider && rider.contract_end_season != null) {
+    statusBanner = { kind: "expiry", season: rider.contract_end_season };
+  }
+  // Switcher: rytterens position i det viste holds trup.
+  const rosterIdx = roster.findIndex((r) => String(r.id) === String(rider.id));
+  const prevRider = rosterIdx > 0 ? roster[rosterIdx - 1] : null;
+  const nextRider = rosterIdx >= 0 && rosterIdx < roster.length - 1 ? roster[rosterIdx + 1] : null;
 
   return (
-    <div className="max-w-2xl mx-auto min-w-0">
+    <div className="max-w-5xl mx-auto min-w-0">
       {/* #254: Bid-modaler — confirm før bud, race-confirm ved 409 stale price, confetti på win, overbid-toast */}
       <BidConfirmModal
         show={!!bidConfirm}
@@ -1363,588 +1444,220 @@ export default function RiderStatsPage() {
 
       <button onClick={() => navigate(-1)} className="text-cz-3 hover:text-cz-1 text-sm mb-4 flex items-center gap-1">{t("page.back")}</button>
 
-      <div className="bg-cz-card border border-cz-border rounded-cz p-5 mb-4">
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-2">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-start gap-3">
-              <h1 className="text-2xl font-bold text-cz-1 break-words">{rider.firstname} {rider.lastname}</h1>
-              <button onClick={toggleWatchlist} title={onWatchlist ? t("header.watchlistRemove") : t("header.watchlistAdd")}
-                className={`text-2xl flex-shrink-0 transition-all hover:scale-110 ${onWatchlist ? "text-cz-accent-t" : "text-cz-3 hover:text-cz-2"}`}>
-                {onWatchlist ? "★" : "☆"}
-              </button>
-              <button onClick={() => navigate(`/compare?ids=${rider.id}`)} title={t("header.compareTitle")}
-                className="flex-shrink-0 px-2 py-1 rounded-lg text-xs font-medium border border-cz-border text-cz-2 hover:text-cz-1 hover:border-cz-accent/40 transition-all">
-                {t("header.compare")}
-              </button>
-            </div>
-            {watchlistCount > 0 && (
-              <p className="text-cz-3 text-xs mt-1">{t("header.watchlistCount", { count: watchlistCount })}</p>
-            )}
-            {visits && visits.views7d > 0 && (
-              <p className="text-cz-3 text-xs mt-1 flex items-center gap-1.5 flex-wrap">
-                <span>{t("header.visitors", { count: visits.views7d })}</span>
-                {visits.isNew ? (
-                  <span className="text-[10px] uppercase font-semibold bg-cz-info-bg0/20 text-cz-info px-1.5 py-0.5 rounded">
-                    {t("header.visitorsNew")}
-                  </span>
-                ) : visits.trend7dPct != null && visits.trend7dPct !== 0 ? (
-                  <span
-                    className={visits.trend7dPct > 0 ? "text-cz-success" : "text-cz-danger"}
-                    title={t(visits.trend7dPct > 0 ? "header.visitorsTrendUp" : "header.visitorsTrendDown", { pct: Math.abs(visits.trend7dPct) })}
-                  >
-                    {visits.trend7dPct > 0 ? "↑" : "↓"}{Math.abs(visits.trend7dPct)}%
-                  </span>
-                ) : null}
-                <span className="text-cz-3 opacity-50" aria-hidden="true">·</span>
-                <span>{t("header.visitors24h", { count: visits.views24h })}</span>
-              </p>
-            )}
-            <div className="flex items-center gap-2 mt-2 flex-wrap">
-              {/* #42: alders-badge afledes fra alder (single source of truth, #837):
-                  <23 → U23, 23-24 → U25, ≥25 → ingen. Tidligere brugt rå is_u25, der
-                  også er true for U23-ryttere, så detalje-siden viste "U25" på en U23. */}
-              {(() => {
-                const ageTier = ageBadgeKey(rider);
-                return ageTier ? (
-                  <span className="text-xs uppercase bg-cz-info-bg0/20 text-cz-info px-2 py-0.5 rounded">{t(`header.${ageTier}`)}</span>
-                ) : null;
-              })()}
-              {isRetired && <span className="text-xs uppercase bg-cz-danger-bg0/20 text-cz-danger px-2 py-0.5 rounded">{t("header.retired")}</span>}
-              {rider.primary_type
-                ? <RiderTypeBadge primaryType={rider.primary_type} secondaryType={rider.secondary_type} size="md" />
-                : <span className="text-xs uppercase bg-cz-subtle text-cz-2 px-2 py-0.5 rounded font-medium">{typeLabel}</span>}
-              {rider.nationality_code && (
-                <span className="text-cz-2 text-sm inline-flex items-center gap-1">
-                  <Flag code={rider.nationality_code} /> {getCountryName(rider.nationality_code, i18n.language)}
-                </span>
+      {roster.length > 1 && rosterIdx >= 0 && (
+        <RiderSwitcherBar
+          prevRider={prevRider}
+          nextRider={nextRider}
+          teamName={rider.team?.name ?? t("header.freeAgent")}
+          index={rosterIdx + 1}
+          total={roster.length}
+          onNavigate={(rid) => navigate(`/riders/${rid}`)}
+        />
+      )}
+
+      <div className="mb-4">
+        <RiderProfileHero
+          rider={rider}
+          viewer={isMyRider ? "own" : "scouting"}
+          overallRating={overallRating}
+          age={age}
+          typeLabel={typeLabel}
+          divisionLabel={divisionLabel}
+          valueAmount={riderValueAmount}
+          valueLabel={riderValueLabel}
+          salaryText={salaryText}
+          winsOnText={winsOnText}
+          isAiTeam={isAiRider}
+          pendingTeam={pendingTeam}
+          banner={statusBanner}
+          scouting={scouting}
+          onWatchlist={onWatchlist}
+          onToggleWatchlist={toggleWatchlist}
+          actions={
+            /* Ejer-feedback 3/7: kompakt horisontal handlingsrække (prototypens
+               action row) — udvidede formularer folder ud i fuld bredde under
+               rækken (hver komponents wrapper skifter selv til w-full). Fuld-
+               bredde-elementer (notiser, fejl, bid-panel) er w-full-børn. */
+            <div className="flex flex-wrap items-start gap-2">
+              {isPendingTransfer && (
+                <p className="w-full text-cz-3 text-xs text-center py-2 bg-cz-subtle rounded-lg border border-cz-border">
+                  {t("blocked.pendingTransfer")}
+                </p>
               )}
-              {age && <span className="text-cz-3 text-sm">{t("header.ageYears", { age })}</span>}
-              {rider.height && <span className="text-cz-3 text-sm">{t("header.heightCm", { height: rider.height })}</span>}
-              {rider.weight && <span className="text-cz-3 text-sm">{t("header.weightKg", { weight: rider.weight })}</span>}
-            </div>
-            {/* Condition-chips: form/træthed/skade — transparent for alle ryttere.
-                Egne ryttere: bruger training.condition (allerede hentet).
-                Andre ryttere: bruger riderCondition fra direkte fetch ovenfor. */}
-            {(() => {
-              const ownCond = isMyRider ? (training.condition?.[rider.id] ?? null) : null;
-              const shownCond = ownCond ?? riderCondition;
-              return <ConditionChips condition={shownCond} />;
-            })()}
-            {scouting.estimateFor(rider.id) !== null && (
-              <div className="flex items-center gap-2 mt-2">
-                <span className="text-cz-3 text-xs uppercase tracking-wider">{t("header.potential")}</span>
-                <ScoutablePotentiale rider={rider} scouting={scouting} showScout large />
-              </div>
-            )}
-            <p className="text-cz-2 text-sm mt-2">
-              {rider.team
-                ? <span>{t("header.teamPrefix")} <TeamLink id={rider.team.id} className="hover:text-cz-accent-t transition-colors">{rider.team.name}</TeamLink></span>
-                : t("header.freeAgent")}
-            </p>
-            {/* #1287: handlet til næste sæson → vis kommende hold under det nuværende.
-                Self-pending (intern handel, pending == nuværende hold) er ikke et
-                holdskifte og vises ikke — samme guard som TeamCell (#950). */}
-            {rider.pending_team?.name && rider.pending_team.id !== rider.team?.id && (
-              <p className="text-cz-2 text-sm mt-1">
-                <span
-                  className="inline-flex items-center gap-1.5 rounded bg-cz-accent/15 px-2 py-0.5 text-xs text-cz-accent-t"
-                  title={t("header.pendingTransfer", { team: rider.pending_team.name })}
-                >
-                  <span aria-hidden="true">→</span>
-                  <span>{t("header.nextSeasonPrefix")}</span>
-                  <TeamLink id={rider.pending_team.id} className="font-semibold hover:underline">{rider.pending_team.name}</TeamLink>
-                </span>
-              </p>
-            )}
-            {activeAuction && (
-              <div className="mt-2 flex items-center gap-2">
-                <span className="text-xs bg-cz-accent/15 text-cz-accent-t px-2 py-0.5 rounded font-medium">
-                  {t("header.activeAuctionBadge")}
-                </span>
-                <span className="text-xs text-cz-3">
-                  {t("header.highestBidLabel", { amount: formatNumber(activeAuction.current_price) })}
-                </span>
-              </div>
-            )}
-          </div>
-          <div className="min-w-0 sm:text-right bg-cz-subtle sm:bg-transparent rounded-lg sm:rounded-none px-3 py-2 sm:p-0">
-            {/* #2006: Vurdering-cirkel — 1-99 overall-rating, farvet efter værdi. */}
-            <div className="flex justify-center sm:justify-end mb-3">
-              <RatingCircle rating={overallRating} label={t("header.overall")} />
-            </div>
-            <p
-              className="block max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-cz-accent-t font-mono font-bold tabular-nums text-lg sm:text-2xl"
-              data-testid="rider-value-amount"
-              title={riderValueLabel}
-            >
-              {riderValueAmount}
-            </p>
-            <p className="text-cz-3 text-xs mt-0.5">{t("header.valueLabel")}</p>
-            {/* #1101 SHADOW: data-drevet ny værdi som beta-chip — påvirker intet endnu. */}
-            {rider.base_value_preview != null && (
-              <p className="mt-1 sm:flex sm:justify-end" title={t("header.newValueBetaTooltip")}>
-                <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30 text-[11px] font-mono">
-                  {t("header.newValueBeta", { amount: formatNumber(rider.base_value_preview) })}
-                </span>
-              </p>
-            )}
-            {/* #1781: "bedste evne"-feltet fjernet — stammede fra gamle PCM-stats (stat_*),
-                ikke de nye CZ-evner. Bevidst ingen erstatning (undgå overfyldt side). */}
-            {/* #1309: kontrakt-info */}
-            <div className="mt-2 pt-2 border-t border-cz-border/50">
-              {rider.contract_length != null ? (
-                <>
-                  <p className="text-cz-accent-t font-mono font-semibold text-sm">{formatNumber(rider.salary)} <span className="text-cz-3 text-xs font-normal">{t("header.contractSalary")}</span></p>
-                  <p className="text-cz-3 text-xs mt-0.5">{t("header.contractLength", { count: rider.contract_length })} · {t("header.contractExpires", { season: rider.contract_end_season })}</p>
-                </>
+              {isRetired && (
+                <p className="w-full text-cz-3 text-xs text-center py-2 bg-cz-subtle rounded-lg border border-cz-border">
+                  {t("blocked.retired")}
+                </p>
+              )}
+              {auctionError && (
+                <div className="w-full px-3 py-2 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-lg text-sm">
+                  {auctionError}
+                </div>
+              )}
+              {activeAuction && (
+                <div className="w-full">
+                  <RiderBidPanel
+                    auction={activeAuction}
+                    myTeamId={myTeamId}
+                    myBalance={myBalance}
+                    reservedBalance={myReservedBalance}
+                    riderName={`${rider.firstname} ${rider.lastname}`}
+                    onBid={handleAuctionBid}
+                    onSetProxy={handleSetProxy}
+                    onRemoveProxy={handleRemoveProxy}
+                    requestBidConfirm={requestBidConfirm}
+                    isFlashing={priceFlash}
+                  />
+                </div>
+              )}
+              {/* #2007: egen-rytter-handlinger. Rækkefølge som prototypen:
+                  Forlæng (guld) · Akademi · Sæt til salg · Start auktion · Frigiv
+                  — markeds-knapperne injiceres FØR den destruktive Frigiv. */}
+              {isMyRider && !isPendingTransfer && !isRetired ? (
+                <RiderManageActions
+                  rider={rider}
+                  onChanged={loadRider}
+                  marketActions={
+                    <>
+                      {/* #1185: egne SENIOR-ryttere kan sættes til salg direkte herfra */}
+                      {isMySeniorRider && <TransferListButton rider={rider} />}
+                      {canAuction && !activeAuction && <AuctionButton rider={rider} auctionLabel={auctionLabel} onStart={startAuction} ddActive={ddActive} isOwnRider={isMyRider} />}
+                    </>
+                  }
+                />
               ) : (
-                <>
-                  <p className="text-cz-2 font-mono text-sm">{formatNumber(getRiderSalary(rider))} <span className="text-cz-3 text-xs font-normal">{t("header.estSalary")}</span></p>
-                  <p className="text-cz-3 text-xs mt-0.5">{t("header.noContract")}</p>
-                </>
+                canAuction && !activeAuction && <AuctionButton rider={rider} auctionLabel={auctionLabel} onStart={startAuction} ddActive={ddActive} isOwnRider={isMyRider} />
+              )}
+              {canDirectOffer && <DirectOfferButton rider={rider} />}
+              {canDirectOffer && <SwapOfferButton rider={rider} myTeamId={myTeamId} />}
+              {canDirectOffer && <LoanOfferButton rider={rider} />}
+            </div>
+          }
+        />
+      </div>
+
+      <RiderProfileTabs
+        tabs={[
+          { key: "overview",    label: t("profile.tabs.overview") },
+          { key: "physiology",  label: t("profile.tabs.physiology") },
+          { key: "training",    label: t("profile.tabs.training") },
+          { key: "development", label: t("profile.tabs.development") },
+          // Scouting-fanen bygges i egen slice (#2000) — viser indtil da en
+          // "på vej"-flade med link til roadmappet (ejer-beslutning 3/7).
+          { key: "scouting",    label: t("profile.tabs.scouting") },
+          { key: "history",     label: t("profile.tabs.history") },
+          { key: "results",     label: t("profile.tabs.results") },
+          { key: "interest",    label: t("profile.tabs.interest") },
+        ]}
+        activeTab={tab}
+        onSelect={(key) => {
+          setTab(key);
+          // Telemetri pr. redesign-fane (#2000) — samme mønster som Udvikling.
+          if (key === "development") logEvent("feature_rider_development_tab_opened", { rider_id: rider.id });
+          if (key === "history") logEvent("feature_rider_history_tab_opened", { rider_id: rider.id });
+          if (key === "results") logEvent("feature_rider_results_tab_opened", { rider_id: rider.id });
+          if (key === "interest") logEvent("feature_rider_interest_tab_opened", { rider_id: rider.id });
+        }}
+      />
+
+      {/* #2000 stykke 2 — Overblik: objektivt snapshot. Evne-kolonner (3 kort) +
+          ryttertype-radar (ægte type-ratings) + compact fysiologi-teaser. Intet
+          scout-verdikt her (det lever i Scouting). */}
+      {tab === "overview" && (
+        rider.abilities ? (
+          <div className="flex flex-col gap-[13px]">
+            <RiderAbilityColumns
+              abilities={rider.abilities}
+              progressByKey={overviewProgress}
+              isOwnRider={isMyRider}
+            />
+            <div className={`grid grid-cols-1 ${rider.physiology ? "lg:grid-cols-2" : ""} gap-[13px] items-start`}>
+              <RiderTypeRadar
+                rider={rider}
+                onGoScouting={() => setTab("scouting")}
+              />
+              {rider.physiology && (
+                <RiderOverviewPhysiology
+                  physiology={rider.physiology}
+                  weight={rider.weight}
+                  onGoFysiologi={() => setTab("physiology")}
+                />
               )}
             </div>
           </div>
-        </div>
-        {auctionError && (
-          <div className="mt-3 px-3 py-2 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-lg text-sm">
-            {auctionError}
-          </div>
-        )}
-        <div className="mt-5 pt-5 border-t border-cz-border flex flex-col gap-3">
-          {isPendingTransfer && (
-            <p className="text-cz-3 text-xs text-center py-2 bg-cz-subtle rounded-lg border border-cz-border">
-              {t("blocked.pendingTransfer")}
-            </p>
-          )}
-          {isRetired && (
-            <p className="text-cz-3 text-xs text-center py-2 bg-cz-subtle rounded-lg border border-cz-border">
-              {t("blocked.retired")}
-            </p>
-          )}
-          {canAuction && !activeAuction && <AuctionButton rider={rider} auctionLabel={auctionLabel} onStart={startAuction} ddActive={ddActive} isOwnRider={isMyRider} />}
-          {activeAuction && (
-            <RiderBidPanel
-              auction={activeAuction}
-              myTeamId={myTeamId}
-              myBalance={myBalance}
-              reservedBalance={myReservedBalance}
-              riderName={`${rider.firstname} ${rider.lastname}`}
-              onBid={handleAuctionBid}
-              onSetProxy={handleSetProxy}
-              onRemoveProxy={handleRemoveProxy}
-              requestBidConfirm={requestBidConfirm}
-              isFlashing={priceFlash}
-            />
-          )}
-          {/* #1185: egne SENIOR-ryttere kan sættes til salg på transferlisten direkte herfra */}
-          {isMySeniorRider && !isPendingTransfer && !isRetired && <TransferListButton rider={rider} />}
-          {/* #2007: egen-rytter-handlinger (forlæng/fyr/akademi op-ned) — samme flow
-              som holdsidens RiderActionModal, men action-first på selve profilen. */}
-          {isMyRider && !isPendingTransfer && !isRetired && <RiderManageActions rider={rider} onChanged={loadRider} />}
-          {canDirectOffer && <DirectOfferButton rider={rider} />}
-          {canDirectOffer && <SwapOfferButton rider={rider} myTeamId={myTeamId} />}
-          {canDirectOffer && <LoanOfferButton rider={rider} />}
-        </div>
-      </div>
-
-      <div className="flex gap-2 mb-4 flex-wrap">
-        {[
-          { key: "stats", label: t("tabs.stats") },
-          { key: "season", label: t("tabs.season") },
-          { key: "results", label: t("tabs.results") },
-          { key: "bids", label: t("tabs.bids") },
-          { key: "history", label: t("tabs.history") },
-          { key: "development", label: t("tabs.development") },
-        ].map(tabDef => (
-          <button key={tabDef.key} onClick={() => {
-            setTab(tabDef.key);
-            if (tabDef.key === "development") logEvent("feature_rider_development_tab_opened", { rider_id: rider.id });
-          }}
-            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all border
-              ${tab === tabDef.key ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "text-cz-2 border-cz-border hover:text-cz-1 hover:border-cz-border"}`}>
-            {tabDef.label}
-          </button>
-        ))}
-      </div>
-
-      {tab === "stats" && (
-        <>
+        ) : (
           <div className="bg-cz-card border border-cz-border rounded-cz p-5">
-            {scouting.estimateFor(rider.id) !== null && (
-              <div className="flex items-center gap-3 py-2 mb-1 border-b border-cz-border">
-                <span className="text-cz-3 w-4 text-center text-sm">◆</span>
-                <span className="text-cz-2 text-sm w-28 sm:w-36 flex-shrink-0">{t("stats.potentialRow")}</span>
-                <ScoutablePotentiale rider={rider} scouting={scouting} />
-              </div>
-            )}
-            {/* #2000: de 15 CZ-evner grupperet i kategorier (Physical/Mental/
-                Technical) via den delte SSOT (lib/abilities.js). TALLET = 1-99-
-                evneværdien; BJÆLKEN = træningsprogress mod næste +1 (ability_progress,
-                0..1 pr. evne) — vist for ALLE ryttere. PCM stat_* vises ikke her.
-                Egne ryttere foretrækker den friske training.progress (optimistisk
-                opdateret efter et tick); ellers DB'ens ability_progress. */}
-            {rider.abilities
-              ? ABILITY_CATEGORIES.map((cat) => (
-                  <div key={cat.key}>
-                    <h3 className="text-cz-3 text-[11px] font-semibold uppercase tracking-widest mt-3 first:mt-0 mb-1">
-                      {t(`stats.categories.${cat.key}`)}
-                    </h3>
-                    {cat.keys.map((key) => {
-                      const ownFrac = isMyRider ? training.progress?.[rider.id]?.[key] : undefined;
-                      const frac = ownFrac != null ? ownFrac : rider.abilityProgress?.[key];
-                      return (
-                        <StatRow
-                          key={key}
-                          label={t(`racePreview.derived.${key}`)}
-                          icon={ABILITY_ICONS[key]}
-                          value={rider.abilities[key]}
-                          progressFraction={frac}
-                          progressHint={t("development.progressHint")}
-                        />
-                      );
-                    })}
-                  </div>
-                ))
-              : <p className="text-cz-3 text-sm py-2">{t("stats.abilitiesPending")}</p>}
+            <p className="text-cz-3 text-sm py-2">{t("stats.abilitiesPending")}</p>
           </div>
-          <RacePhysiologyPreview physiology={rider.physiology} />
-        </>
+        )
       )}
 
-      {tab === "season" && (
-        <div className="bg-cz-card border border-cz-border rounded-cz p-5">
-          {Object.keys(bySeason).length === 0 ? (
-            <p className="text-cz-3 text-center py-8">{t("season.empty")}</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead><tr className="border-b border-cz-border">
-                  <th className="py-2 text-left text-cz-3 text-xs uppercase whitespace-nowrap">{t("season.table.season")}</th>
-                  <th className="py-2 px-2 text-right text-cz-3 text-xs uppercase whitespace-nowrap">{t("season.table.stageWins")}</th>
-                  <th className="py-2 px-2 text-right text-cz-3 text-xs uppercase whitespace-nowrap">{t("season.table.gcWins")}</th>
-                  <th className="py-2 px-2 text-right text-cz-3 text-xs uppercase whitespace-nowrap">{t("season.table.classicWins")}</th>
-                  <th className="py-2 px-2 text-right text-cz-3 text-xs uppercase whitespace-nowrap">{t("season.table.pointsJersey")}</th>
-                  <th className="py-2 px-2 text-right text-cz-3 text-xs uppercase whitespace-nowrap">{t("season.table.mountainJersey")}</th>
-                  <th className="py-2 pl-2 text-right text-cz-3 text-xs uppercase whitespace-nowrap">{t("season.table.prizes")}</th>
-                </tr></thead>
-                <tbody>
-                  {Object.entries(bySeason)
-                    .sort((a, b) => (b[1].season ?? -1) - (a[1].season ?? -1))
-                    .map(([key, d]) => (
-                    <tr key={key} className="border-b border-cz-border">
-                      <td className="py-2 text-cz-2 whitespace-nowrap">{d.season != null ? t("season.row", { n: d.season }) : t("results.fallbackDash")}</td>
-                      <td className="py-2 px-2 text-right text-cz-accent-t font-mono">{d.stageWins}</td>
-                      <td className="py-2 px-2 text-right text-cz-1 font-mono">{d.gcWins}</td>
-                      <td className="py-2 px-2 text-right text-cz-1 font-mono">{d.classicWins}</td>
-                      <td className="py-2 px-2 text-right text-cz-2 font-mono">{d.pointsJerseys}</td>
-                      <td className="py-2 px-2 text-right text-cz-2 font-mono">{d.mountainJerseys}</td>
-                      <td className="py-2 pl-2 text-right text-cz-success font-mono text-xs whitespace-nowrap">+{formatNumber(d.totalPrize)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+      {/* #2000 sidste faner — Resultater (PCS-stil: totaler + udfoldelige etapeløb),
+          Interesse (ægte interesse-signaler) og Historik (kompakt handels-tabel).
+          key={id} nulstiller fanens lokale state (filter/udfoldning) ved rytter-skift. */}
+      {tab === "results" && <RiderResultsTab key={rider.id} seasonRows={seasonRows} loadFailed={seasonRowsFailed} />}
+
+      {tab === "interest" && (
+        <RiderInterestTab
+          viewer={isMyRider ? "own" : "scouting"}
+          watchlistCount={watchlistCount}
+          visits={visits}
+          interest={interest}
+        />
       )}
 
-      {tab === "results" && (
-        <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
-          {results.length === 0 ? (
-            <p className="text-cz-3 text-center py-8">{t("results.empty")}</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead><tr className="border-b border-cz-border">
-                  <th className="px-4 py-3 text-left text-cz-3 text-[10px] uppercase">{t("results.table.race")}</th>
-                  <th className="px-4 py-3 text-center text-cz-3 text-[10px] uppercase">{t("results.table.type")}</th>
-                  <th className="px-4 py-3 text-right text-cz-3 text-[10px] uppercase">{t("results.table.position")}</th>
-                  <th className="px-4 py-3 text-right text-cz-3 text-[10px] uppercase">{t("results.table.prize")}</th>
-                </tr></thead>
-                <tbody>
-                  {results.map(r => (
-                    <tr key={r.id} className="border-b border-cz-border last:border-0">
-                      <td className="px-4 py-3">
-                        <p className="text-cz-1 text-sm">{r.race?.name || t("results.fallbackDash")}</p>
-                        <p className="text-cz-3 text-xs">{r.race?.season?.number != null ? t("season.row", { n: r.race.season.number }) : t("results.fallbackDash")}</p>
-                      </td>
-                      <td className="px-4 py-3 text-center text-cz-2 text-xs">{r.result_type || t("results.fallbackDash")}</td>
-                      <td className="px-4 py-3 text-right">
-                        <span className={`font-mono font-bold text-sm ${r.rank === 1 ? "text-cz-accent-t" : r.rank <= 3 ? "text-cz-1" : "text-cz-2"}`}>
-                          #{r.rank}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-right text-cz-success font-mono text-xs">
-                        {r.prize_money ? `+${formatNumber(r.prize_money)}` : t("results.fallbackDash")}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
+      {tab === "history" && <RiderHistoryTab events={history} bidTimeline={bidTimeline} />}
+
+      {tab === "training" && (
+        <RiderTrainingTab
+          rider={rider}
+          training={training}
+          trainingHistory={trainingHistory}
+          progress={overviewProgress}
+          viewer={isMyRider ? "own" : "scouting"}
+          isRetired={isRetired}
+        />
       )}
 
-      {tab === "bids" && (
-        <BidTimelineTab timeline={bidTimeline} />
-      )}
-
-      {tab === "history" && (
-        <div className="bg-cz-card border border-cz-border rounded-cz divide-y divide-cz-border">
-          {history.length === 0 ? (
-            <p className="text-cz-3 text-center py-8">{t("history.empty")}</p>
-          ) : history.map((e, i) => (
-            <HistoryEvent key={i} event={e} />
-          ))}
-        </div>
-      )}
-
+      {/* #2000 stykke 5 — Udvikling: registreret rating-udvikling pr. type +
+          vækst denne sæson + træningsdrevet udviklingslog (kun egne ryttere).
+          Loft/projektion er BEVIDST udskudt til ejer-review (balance-følsomt). */}
       {tab === "development" && (
-        <Suspense fallback={<div className="bg-cz-card border border-cz-border rounded-cz p-5 text-cz-3 text-center py-8">{t("stats.loadingDevelopment")}</div>}>
-          {isMyRider && !isRetired && <TrainingFocus rider={rider} training={training} />}
-          {isMyRider && <RiderTrainingHistory riderId={rider.id} history={trainingHistory} />}
-          <RiderDevelopmentTab history={statHistory} types={developmentTypes} />
-        </Suspense>
+        <RiderDevelopmentTab
+          rider={rider}
+          history={statHistory}
+          types={developmentTypes}
+          trainingHistory={trainingHistory}
+          viewer={isMyRider ? "own" : "scouting"}
+        />
       )}
-    </div>
-  );
-}
 
-function BidTimelineTab({ timeline }) {
-  const { t } = useTranslation("rider");
-  if (!timeline || timeline.auction_id === null) {
-    return (
-      <div className="bg-cz-card border border-cz-border rounded-cz p-5">
-        <p className="text-cz-3 text-center py-8">{t("bids.noAuction")}</p>
-      </div>
-    );
-  }
+      {tab === "physiology" && (
+        <RiderPhysiologyTab physiology={rider.physiology} benchmark={physBenchmark} />
+      )}
 
-  if (timeline.status === "completed") {
-    const completedDate = timeline.completed_at
-      ? formatDateTime(timeline.completed_at)
-      : t("bids.fallbackDash");
-    return (
-      <div className="bg-cz-card border border-cz-border rounded-cz p-5">
-        <div className="flex items-start gap-3">
-          <TrophyIcon size={24} aria-hidden="true" className="text-cz-accent-t mt-0.5 flex-shrink-0" />
-          <div className="flex-1 min-w-0">
-            <p className="text-xs uppercase tracking-wider text-cz-accent-t font-medium mb-1">{t("bids.soldLabel")}</p>
-            <p className="text-cz-1 text-base">
-              <TeamLink id={timeline.winner_team_id} className="font-semibold hover:text-cz-accent-t transition-colors">{timeline.winner_name || t("bids.winnerFallback")}</TeamLink>
-              <span className="text-cz-3"> {t("bids.soldFor")} </span>
-              <span className="font-mono font-bold text-cz-accent-t">
-                {formatNumber(timeline.final_bid)} CZ$
-              </span>
-            </p>
-            {timeline.seller_name && (
-              <p className="text-cz-2 text-sm mt-1">
-                <span className="text-cz-3">{t("bids.sellerPrefix")} </span>
-                <TeamLink id={timeline.seller_team_id} className="hover:text-cz-accent-t transition-colors">{timeline.seller_name}</TeamLink>
-              </p>
-            )}
-            <p className="text-cz-3 text-xs mt-1">{completedDate}</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const bids = timeline.bid_timeline || [];
-  // Vis nyeste først så aktuelle bud står øverst
-  const ordered = [...bids].reverse();
-
-  return (
-    <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
-      <div className="px-5 py-3 border-b border-cz-border flex items-center justify-between">
-        <span className="text-xs uppercase tracking-wider text-cz-accent-t font-medium">{t("bids.activeAuction")}</span>
-        {timeline.current_price != null && (
-          <span className="text-cz-1 font-mono font-bold text-sm">
-            {formatNumber(timeline.current_price)} CZ$
+      {/* Scouting bygges i egen slice — "på vej"-flade med roadmap-link +
+          stemme-opfordring (ejer-beslutning 3/7). Scout-flowet (estimat +
+          scout-knap) lever indtil da i hero'en. */}
+      {tab === "scouting" && (
+        <div className="bg-cz-card border border-cz-border border-l-2 border-l-cz-accent rounded-cz py-[15px] px-[17px]">
+          <span className="font-mono text-[9.5px] font-bold uppercase tracking-[0.12em] text-cz-accent-t">
+            {t("profile.scouting.comingEyebrow")}
           </span>
-        )}
-      </div>
-      {ordered.length === 0 ? (
-        <p className="text-cz-3 text-center py-8">{t("bids.noBids")}</p>
-      ) : (
-        <ul className="divide-y divide-cz-border">
-          {ordered.map((b, i) => (
-            <BidTimelineRow key={`${b.bid_time}-${i}`} bid={b} isLatest={i === 0} />
-          ))}
-        </ul>
+          <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0 mt-2">
+            {t("profile.scouting.comingTitle")}
+          </h3>
+          <p className="text-cz-2 text-[12.5px] leading-[1.55] mt-2 mb-0 max-w-prose">
+            {t("profile.scouting.comingBody")}
+          </p>
+          <div className="mt-4 pt-3.5 border-t border-cz-border flex items-center gap-x-3 gap-y-2 flex-wrap">
+            <p className="text-cz-3 text-xs m-0">{t("profile.scouting.roadmapHint")}</p>
+            <Link to="/roadmap" className={buttonClass({ variant: "secondary", size: "sm" })}>
+              {t("profile.scouting.roadmapCta")}
+            </Link>
+          </div>
+        </div>
       )}
     </div>
   );
-}
-
-function BidTimelineRow({ bid, isLatest }) {
-  const { t } = useTranslation("rider");
-  const time = bid.bid_time
-    ? formatDateTime(bid.bid_time, { dateStyle: "medium", timeStyle: "short" })
-    : t("bids.fallbackDash");
-  return (
-    <li className={`px-5 py-3 flex items-center justify-between gap-3 ${isLatest ? "bg-cz-accent/[0.04]" : ""}`}>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <TeamLink id={bid.team_id} stopPropagation className="text-cz-1 text-sm font-medium truncate hover:text-cz-accent-t transition-colors">{bid.team_name || t("bids.row.teamFallback")}</TeamLink>
-          {bid.is_proxy && (
-            <span className="text-[10px] uppercase bg-cz-info-bg text-cz-info px-1.5 py-0.5 rounded">
-              {t("bids.row.autoBidTag")}
-            </span>
-          )}
-          {isLatest && (
-            <span className="text-[10px] uppercase bg-cz-accent/15 text-cz-accent-t px-1.5 py-0.5 rounded">
-              {t("bids.row.highestTag")}
-            </span>
-          )}
-        </div>
-        <p className="text-cz-3 text-xs mt-0.5">{time}</p>
-      </div>
-      <span className="text-cz-1 font-mono font-bold text-sm whitespace-nowrap">
-        {formatNumber(bid.amount)} CZ$
-      </span>
-    </li>
-  );
-}
-
-function HistoryEvent({ event }) {
-  const { t } = useTranslation("rider");
-  const date = event.date
-    ? formatDate(event.date)
-    : t("history.fallbackDash");
-
-  if (event.type === "auction") {
-    const typeLabel = event.is_ai_sale
-      ? t("history.auction.labelAi")
-      : event.is_guaranteed_sale
-        ? t("history.auction.labelGuaranteed")
-        : t("history.auction.labelDefault");
-
-    // #785: auktion uden bud = intet salg. Vis det eksplicit i stedet for
-    // "Ukendt vandt af X" + umødt startpris, som antød et salg til ingen.
-    if (event.no_sale) {
-      return (
-        <div className="px-4 py-3 flex items-start gap-3">
-          <span className="text-cz-3 text-lg mt-0.5">◌</span>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-xs uppercase tracking-wider text-cz-3 font-medium">{typeLabel}</span>
-              <span className="text-[10px] uppercase px-1.5 py-0.5 rounded bg-cz-subtle text-cz-3 border border-cz-border font-medium">
-                {t("history.auction.noSaleTag")}
-              </span>
-              <span className="text-cz-3 text-xs">{date}</span>
-            </div>
-            <p className="text-cz-2 text-sm mt-0.5">
-              <TeamLink id={event.seller?.id} className="font-medium hover:text-cz-accent-t transition-colors">{event.seller?.name || t("history.auction.sellerFallback")}</TeamLink>
-              <span className="text-cz-3"> {t("history.auction.noSaleBody")}</span>
-            </p>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <div className="px-4 py-3 flex items-start gap-3">
-        <TrophyIcon size={18} aria-hidden="true" className="text-cz-accent-t mt-0.5 flex-shrink-0" />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs uppercase tracking-wider text-cz-accent-t font-medium">{typeLabel}</span>
-            <span className="text-cz-3 text-xs">{date}</span>
-          </div>
-          <p className="text-cz-2 text-sm mt-0.5">
-            <TeamLink id={event.buyer?.id} className="font-medium hover:text-cz-accent-t transition-colors">{event.buyer?.name || t("history.auction.buyerFallback")}</TeamLink>
-            <span className="text-cz-3"> {t("history.auction.wonBy")} </span>
-            <TeamLink id={event.seller?.id} className="font-medium hover:text-cz-accent-t transition-colors">{event.seller?.name || (event.is_ai_sale ? t("history.auction.sellerFallbackAi") : t("history.auction.sellerFallback"))}</TeamLink>
-          </p>
-          {event.price != null && (
-            <p className="text-cz-accent-t font-mono text-xs mt-0.5">{formatNumber(event.price)} CZ$</p>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  if (event.type === "transfer") {
-    return (
-      <div className="px-4 py-3 flex items-start gap-3">
-        <ExchangeIcon size={18} aria-hidden="true" className="text-cz-info mt-0.5 flex-shrink-0" />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs uppercase tracking-wider text-cz-info font-medium">{t("history.transfer.label")}</span>
-            <span className="text-cz-3 text-xs">{date}</span>
-          </div>
-          <p className="text-cz-2 text-sm mt-0.5">
-            <TeamLink id={event.buyer?.id} className="font-medium hover:text-cz-accent-t transition-colors">{event.buyer?.name || t("history.transfer.buyerFallback")}</TeamLink>
-            <span className="text-cz-3"> {t("history.transfer.buys")} </span>
-            <TeamLink id={event.seller?.id} className="font-medium hover:text-cz-accent-t transition-colors">{event.seller?.name || t("history.transfer.sellerFallback")}</TeamLink>
-          </p>
-          {event.price != null && (
-            <p className="text-cz-accent-t font-mono text-xs mt-0.5">{formatNumber(event.price)} CZ$</p>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  if (event.type === "swap") {
-    return (
-      <div className="px-4 py-3 flex items-start gap-3">
-        <ExchangeIcon size={18} aria-hidden="true" className="text-cz-info mt-0.5 flex-shrink-0" />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs uppercase tracking-wider text-cz-info font-medium">{t("history.swap.label")}</span>
-            <span className="text-cz-3 text-xs">{date}</span>
-          </div>
-          <p className="text-cz-2 text-sm mt-0.5">
-            <TeamLink id={event.proposing_team?.id} className="font-medium hover:text-cz-accent-t transition-colors">{event.proposing_team?.name || t("history.swap.teamFallback")}</TeamLink>
-            <ExchangeIcon size={12} aria-hidden="true" className="text-cz-3 inline-block mx-1 align-middle" />
-            <TeamLink id={event.receiving_team?.id} className="font-medium hover:text-cz-accent-t transition-colors">{event.receiving_team?.name || t("history.swap.teamFallback")}</TeamLink>
-          </p>
-          {event.cash_adjustment !== 0 && event.cash_adjustment != null && (
-            <p className="text-cz-2 font-mono text-xs mt-0.5">
-              {t("history.swap.cashAdjustment", { amount: `${event.cash_adjustment > 0 ? "+" : ""}${formatNumber(event.cash_adjustment)}` })}
-            </p>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  if (event.type === "loan") {
-    const statusColors = {
-      active: "text-cz-success",
-      completed: "text-cz-3",
-      buyout: "text-cz-accent-t",
-      pending: "text-cz-info",
-      cancelled: "text-cz-danger",
-      rejected: "text-cz-danger",
-    };
-    const statusKey = event.status && `history.loan.status.${event.status}`;
-    const statusLabel = statusKey ? t(statusKey, { defaultValue: event.status }) : "";
-    return (
-      <div className="px-4 py-3 flex items-start gap-3">
-        <ClipboardIcon size={18} aria-hidden="true" className="text-cz-3 mt-0.5 flex-shrink-0" />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs uppercase tracking-wider text-cz-2 font-medium">{t("history.loan.label")}</span>
-            <span className={`text-xs font-medium ${statusColors[event.status] || "text-cz-3"}`}>{statusLabel}</span>
-            <span className="text-cz-3 text-xs">{date}</span>
-          </div>
-          <p className="text-cz-2 text-sm mt-0.5">
-            <TeamLink id={event.to_team?.id} className="font-medium hover:text-cz-accent-t transition-colors">{event.to_team?.name || t("history.loan.toFallback")}</TeamLink>
-            <span className="text-cz-3"> {t("history.loan.borrows")} </span>
-            <TeamLink id={event.from_team?.id} className="font-medium hover:text-cz-accent-t transition-colors">{event.from_team?.name || t("history.loan.fromFallback")}</TeamLink>
-          </p>
-          <p className="text-cz-3 text-xs mt-0.5">
-            {t("history.loan.seasonRange", { start: event.start_season, end: event.end_season })}
-            {event.loan_fee ? ` ${t("history.loan.feeSuffix", { amount: formatNumber(event.loan_fee) })}` : ""}
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  return null;
 }

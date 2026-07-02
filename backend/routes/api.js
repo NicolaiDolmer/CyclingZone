@@ -116,8 +116,10 @@ import {
   PARKED_LOAN_STATUSES,
 } from "../lib/loanAgreementWindowing.js";
 import { buildRiderHistory } from "../lib/riderHistory.js";
+import { buildRiderInterest } from "../lib/riderInterest.js";
 import { buildTeamTransferHistory } from "../lib/teamTransferHistory.js";
 import { buildRiderBidTimeline } from "../lib/riderBidTimeline.js";
+import { meanPhysiology, BENCHMARK_FIELDS } from "../lib/physiologyBenchmark.js";
 import { SCOUTING_CONFIG, deriveScoutState, canScout, buildScoutEstimate, estimatePotentialRange } from "../lib/scouting.js";
 import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity, partitionBulkTrainingTargets, BULK_TRAINING_MAX_RIDERS } from "../lib/training.js";
 import { isDailyTrainingEnabled, DAILY_TRAINING_FLAG_KEY } from "../lib/dailyTrainingFlag.js";
@@ -306,6 +308,8 @@ const CACHE_TTL = {
   racePoints: 600_000,
   dashboardRecentResults: 60_000,
   dashboardRiderRanking: 60_000,
+  // Divisions-fysiologi-snit ændrer sig kun ved sæsonskift/træning — 10 min er rigeligt.
+  physiologyBenchmark: 600_000,
 };
 
 // Load .env from backend root
@@ -849,6 +853,40 @@ router.get("/riders/:id/history", requireAuth, async (req, res) => {
   }
 });
 
+// GET /api/riders/:id/interest — Interesse-fanen (#2000): scoutet-af + feed.
+// Aggregering + privacy-kontrakt (team-navne kun til ejeren, watchlist altid
+// anonym, ejerholdet filtreret ud) i lib/riderInterest.js. Følger/visninger
+// dækkes af de eksisterende watchlist-count/view-count-endpoints.
+router.get("/riders/:id/interest", requireAuth, async (req, res) => {
+  if (!UUID_RE.test(req.params.id)) {
+    return res.status(400).json({ error: "Ugyldigt rytter-id" });
+  }
+  try {
+    const [riderRes, scoutRes, watchRes] = await Promise.all([
+      supabase.from("riders").select("id, team_id").eq("id", req.params.id).maybeSingle(),
+      supabase.from("scout_actions")
+        .select("team_id, created_at, team:team_id(id, name), season:season_id(number)")
+        .eq("rider_id", req.params.id)
+        .order("created_at", { ascending: false }),
+      supabase.from("rider_watchlist")
+        .select("created_at")
+        .eq("rider_id", req.params.id)
+        .order("created_at", { ascending: false })
+        .limit(20),
+    ]);
+    if (riderRes.error || scoutRes.error || watchRes.error) {
+      // Fejl må ikke ligne "ingen interesse" (samme princip som buildRiderHistory, #1338).
+      throw new Error(riderRes.error?.message || scoutRes.error?.message || watchRes.error?.message);
+    }
+    if (!riderRes.data) return res.status(404).json({ error: "Rytter ikke fundet" });
+    const ownerTeamId = riderRes.data.team_id ?? null;
+    const isOwner = Boolean(req.team?.id && ownerTeamId === req.team.id);
+    res.json(buildRiderInterest({ scoutRows: scoutRes.data || [], watchRows: watchRes.data || [], isOwner, ownerTeamId }));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/teams/:id/transfer-history — komplet handelshistorik for ét hold (#25)
 router.get("/teams/:id/transfer-history", requireAuth, async (req, res) => {
   if (!UUID_RE.test(req.params.id)) {
@@ -877,22 +915,71 @@ router.get("/riders/:id/bid-timeline", requireAuth, async (req, res) => {
 // GET /api/riders/:id/development — evne-udviklings-historik til Udvikling-fanen (#2000/#918).
 // rider_derived_ability_history er RLS-lukket (service-role-only), så læsning går via
 // dette endpoint. Returnerer per-snapshot evnevektorer kronologisk; type-ratingen pr.
-// ryttertype beregnes i frontend fra abilities (rating-SSOT). limit(200) ≈ ½ sæsons
-// daglige punkter — rigeligt til kurven.
+// ryttertype beregnes i frontend fra abilities (rating-SSOT). Hentes DESC + reverses:
+// limit(200) skal beholde de NYESTE punkter — ASC+limit ville fryse kurven ved
+// snapshot nr. 200 og klippe al senere udvikling af (daily-snapshots vokser ubegrænset).
 router.get("/riders/:id/development", requireAuth, async (req, res) => {
   try {
     const { data, error } = await supabase
       .from("rider_derived_ability_history")
       .select("snapshot_date, season_number, source, abilities")
       .eq("rider_id", req.params.id)
-      .order("snapshot_date", { ascending: true })
+      .order("snapshot_date", { ascending: false })
       .limit(200);
     if (error) throw new Error(error.message);
-    res.json(data ?? []);
+    res.json((data ?? []).reverse());
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
+
+// GET /api/physiology/division-benchmark?division=N — divisions-snit af fysiologien
+// (#2000 Fysiologi-fane). Driver "vs division"-bjælkerne + watt-kurve-overlayet.
+// Read-only aggregat (ingen game-effekt), cachet pr. division (key = URL+query).
+// Population = ikke-pensionerede ryttere på ikke-bank-hold i divisionen — samme felt
+// rytteren rent faktisk kører imod (matcher UI-diskriminatoren). En division kan
+// overstige 1000 ryttere (Div 3 ~1460 i prod) → rytter-loadet pagineres og
+// physiology-.in() chunkes for at undgå PostgRESTs stille 1000-cap + URL-længde.
+router.get("/physiology/division-benchmark", requireAuth, cached({ namespace: "physiology-benchmark", ttlMs: CACHE_TTL.physiologyBenchmark }, async (req, res) => {
+  const division = Number(req.query.division);
+  if (!Number.isInteger(division) || division < 1 || division > 4) {
+    return res.status(400).json({ error: "Ugyldig division" });
+  }
+  try {
+    const { data: teams, error: teamErr } = await supabase
+      .from("teams").select("id").eq("division", division).eq("is_bank", false);
+    if (teamErr) throw new Error(teamErr.message);
+    const teamIds = (teams || []).map((t) => t.id);
+    if (teamIds.length === 0) return res.json({ division, sampleSize: 0, mean: null });
+
+    // En division kan have >1000 ryttere (Div 3 ~1460 i prod) → PostgREST capper
+    // stille ved 1000. Paginer rytter-loadet (stabil .order) så snittet ikke
+    // beregnes på en tavst trunkeret delmængde.
+    const riderRows = await fetchAllRows(() =>
+      supabase.from("riders").select("id").in("team_id", teamIds)
+        .or("is_retired.is.null,is_retired.eq.false").order("id"));
+    const riderIds = riderRows.map((r) => r.id);
+    if (riderIds.length === 0) return res.json({ division, sampleSize: 0, mean: null });
+
+    // Hent fysiologien i chunks: et .in() med ~1500 UUID'er ville sprænge URL-længden.
+    // Hver chunk < 1000 rækker (ingen cap-trunkering), batches concat'es før snittet.
+    const CHUNK = 200;
+    const rows = [];
+    for (let i = 0; i < riderIds.length; i += CHUNK) {
+      const batch = riderIds.slice(i, i + CHUNK);
+      const { data, error: physErr } = await supabase
+        .from("rider_physiology_profiles")
+        .select(BENCHMARK_FIELDS.join(", "))
+        .in("rider_id", batch);
+      if (physErr) throw new Error(physErr.message);
+      rows.push(...(data || []));
+    }
+
+    res.json({ division, sampleSize: rows.length, mean: meanPhysiology(rows) });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+}));
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // RYTTER-HANDLINGER (#1719 fyring/buyout + #1720 kontraktforlængelse)
