@@ -284,3 +284,57 @@ test("én løbs-fejl isolerer ikke de andre (per-løb try/catch)", async () => {
   assert.equal(r.errors, 1);
   assert.equal(r.ran, 1);
 });
+
+// ── P0 2/7: puljer uden hold + finalization-recovery ─────────────────────────
+
+test("P0 2/7: due løb i pulje uden hold springes over (ingen 'No start list'-forsøg)", async () => {
+  const races = [
+    { id: "rTom", season_id: "s1", name: "Div4-løb", stages: 1, stages_completed: 0, status: "scheduled", league_division_id: 9 },
+    { id: "rOk", season_id: "s1", name: "Div1-løb", stages: 1, stages_completed: 0, status: "scheduled", league_division_id: 1 },
+  ];
+  const schedule = [
+    { race_id: "rTom", stage_number: 1, scheduled_at: "2026-06-21T10:30:00Z" },
+    { race_id: "rOk", stage_number: 1, scheduled_at: "2026-06-21T10:30:00Z" },
+  ];
+  const supabase = makeSupabase({
+    seasons: [{ id: "s1" }],
+    race_simulation_runs: [],
+    races,
+    race_stage_schedule: () => schedule,
+    teams: [{ league_division_id: 1 }, { league_division_id: 1 }], // pulje 9 = 0 hold
+  });
+  const started = [];
+  const r = await runStageScheduler({
+    supabase, now: NOW,
+    isStageSchedulerEnabled: ENABLED, isRaceEngineV2Enabled: ENABLED,
+    runStageFn: async ({ raceId }) => { started.push(raceId); },
+  });
+  assert.deepEqual(started, ["rOk"], "kun løbet i puljen MED hold afvikles");
+  assert.equal(r.ran, 1);
+  assert.equal(r.errors, 0, "tom pulje er et skip, ikke en fejl");
+});
+
+test("P0 2/7: finalization-pending løb (alle etaper kørt, ikke completed) genoptages uden stage-budget", async () => {
+  const races = [
+    { id: "rStuck", season_id: "s1", name: "Fastlåst", stages: 5, stages_completed: 5, status: "scheduled", league_division_id: 1 },
+  ];
+  const supabase = makeSupabase({
+    seasons: [{ id: "s1" }],
+    race_simulation_runs: [],
+    races,
+    race_stage_schedule: () => [], // intet due slot — recovery må IKKE afhænge af schedule
+    teams: [{ league_division_id: 1 }],
+  });
+  const calls = [];
+  const r = await runStageScheduler({
+    supabase, now: NOW,
+    isStageSchedulerEnabled: ENABLED, isRaceEngineV2Enabled: ENABLED,
+    runStageFn: async (args) => { calls.push(args); },
+  });
+  assert.equal(calls.length, 1, "recovery-løbet skal genoptages");
+  assert.equal(calls[0].raceId, "rStuck");
+  assert.equal(calls[0].stageIndex, 4, "final-etapens index (stages-1)");
+  assert.equal(calls[0].recovery, true);
+  assert.equal(r.recovered, 1);
+  assert.equal(r.ran, 0);
+});

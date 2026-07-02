@@ -1,12 +1,17 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation, useSearchParams } from "react-router-dom";
 import { Suspense, useEffect, useState } from "react";
 // #881: lazyWithRetry erstatter React.lazy så stale-chunk-fejl efter deploy bliver
 // recoverable (retry + genkendelig ChunkLoadError -> auto-reload via SentryBoundary).
 import { lazyWithRetry as lazy } from "./lib/lazyWithRetry.js";
 import { supabase } from "./lib/supabase";
 import CookieBanner from "./components/CookieBanner.jsx";
-import { logEvent } from "./lib/logEvent";
+// LandingPage er eager (ikke lazy): den prerendres ved build og hydreres på "/",
+// så komponenten SKAL være synkront tilgængelig ved klientens første render —
+// en lazy-suspense-fallback ville ellers give et hydration-mismatch.
+import LandingPage from "./pages/LandingPage.jsx";
+import { logSessionStart } from "./lib/logEvent";
 import { setSentryUser, clearSentryUser } from "./lib/sentry.jsx";
+import { safeNextPath } from "./lib/safeNextPath.js";
 
 // Layout + analytics integrations lazy-loaded for #479: public routes
 // (/founder-supporter, /login, /privacy-*) ikke betaler for app-shell + Clarity/Vercel
@@ -17,6 +22,9 @@ const ClarityIntegration = lazy(() => import("./lib/clarityIntegration.jsx"));
 const WebVitalsIntegration = lazy(() => import("./lib/webVitalsIntegration.jsx"));
 const VercelAnalyticsIntegration = lazy(() => import("./lib/vercelAnalyticsIntegration.jsx"));
 const GaIntegration = lazy(() => import("./lib/gaIntegration.jsx"));
+// #2040: anonym, storage-less engagement-beacon for den logget-UD cold-population
+// (logget-ind måles via player_events). Consent-uafhængig, ingen storage på enheden.
+const TrafficBeacon = lazy(() => import("./components/TrafficBeacon.jsx"));
 
 const LoginPage = lazy(() => import("./pages/LoginPage"));
 const ResetPasswordPage = lazy(() => import("./pages/ResetPasswordPage"));
@@ -51,7 +59,7 @@ const RulesPage = lazy(() => import("./pages/RulesPage"));
 const PrivacyPolicyPage = lazy(() => import("./pages/PrivacyPolicyPage"));
 const PrivacyPolicyPageEn = lazy(() => import("./pages/PrivacyPolicyPageEn"));
 const FounderSupporterPage = lazy(() => import("./pages/FounderSupporterPage"));
-const LandingPage = lazy(() => import("./pages/LandingPage"));
+const ProUpgradePage = lazy(() => import("./pages/ProUpgradePage"));
 const KitchenSinkPage = lazy(() => import("./pages/KitchenSinkPage"));
 const RacesPage = lazy(() => import("./pages/RacesPage"));
 const CalendarPage = lazy(() => import("./pages/CalendarPage"));
@@ -86,12 +94,36 @@ function RouteFallback() {
 }
 
 function ProtectedRoute({ children, session }) {
-  if (!session) return <Navigate to="/login" replace />;
+  const location = useLocation();
+  // #1347: session === undefined = endnu ukendt (getSession kører). Vis loader frem
+  // for straks at redirecte, så en allerede indlogget bruger ikke blinker forbi login.
+  // Var tidligere en GLOBAL gate i App; flyttet hertil så de offentlige ruter
+  // (landing/login) kan males straks — forudsætning for ren prerender-hydration på "/".
+  if (session === undefined) return <LoadingScreen />;
+  if (!session) {
+    // #2042: bevar deep-link-destinationen så cold trafik der opretter en konto
+    // lander på det de kom for, ikke en generisk /dashboard-omvej.
+    const next = encodeURIComponent(location.pathname + location.search);
+    return <Navigate to={`/login?next=${next}`} replace />;
+  }
   return children;
+}
+
+// #2042: kontekst-bevidst /login-rute. En logget-ind bruger (eller en der lige har
+// oprettet konto / logget ind) sendes til sin oprindelige ?next-destination.
+function LoginRoute({ session }) {
+  const [params] = useSearchParams();
+  if (session) {
+    return <Navigate to={safeNextPath(params.get("next")) || "/dashboard"} replace />;
+  }
+  return <LoginPage />;
 }
 
 export default function App() {
   const [session, setSession] = useState(undefined);
+  // Client-only mount-flag: holder lazy/analytics-Suspense ude af prerenderens
+  // server-render (renderToString kan ikke fuldføre en lazy boundary → React #419).
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -100,7 +132,7 @@ export default function App() {
         // #621 item 2 — tag Sentry-events med user.id (UUID, ingen PII) så
         // "Affected users"-counter virker. Initial session-restore-path.
         setSentryUser(session.user?.id);
-        logEvent("session_started");
+        logSessionStart();
       }
     }).catch((err) => {
       // #1347 — getSession() kan reject ved offline/network-fejl eller en
@@ -115,7 +147,7 @@ export default function App() {
       setSession(session);
       if (event === "SIGNED_IN") {
         setSentryUser(session?.user?.id);
-        logEvent("session_started");
+        logSessionStart();
       } else if (event === "TOKEN_REFRESHED" && session?.user?.id) {
         // Token-refresh kan ske efter cold-start uden SIGNED_IN — sørg for at
         // user-context aldrig taber sig pga. en refresh.
@@ -127,25 +159,33 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  if (session === undefined) {
-    return <LoadingScreen />;
-  }
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
+  // Ingen global session-gate længere: offentlige ruter (/, /login, ...) renderer
+  // straks (session === undefined → falsy → landing/login). Beskyttede ruter venter
+  // på session i ProtectedRoute. Forudsætning for at den prerendrede landing kan
+  // hydreres rent — klientens første render på "/" giver LandingPage.
   return (
-    // #969: v7_startTransition wrapper alle router-state-opdateringer i React.startTransition,
-    // så sidebar-klik ikke blokerer paint mens destinationssidens første render kører
-    // (INP 248ms -> klik-respons males straks, tung render bliver interruptible).
-    // Kræver at alle lazy()-kald ligger på module-scope — verificeret 2026-06-10.
-    <BrowserRouter future={{ v7_startTransition: true }}>
-      <Suspense fallback={null}>
-        <ClarityIntegration />
-        <WebVitalsIntegration />
-        <VercelAnalyticsIntegration />
-        <GaIntegration />
-      </Suspense>
+    // Routeren leveres af entry'et (BrowserRouter i main.jsx, StaticRouter i
+    // entry-server.jsx). #969 v7_startTransition bor nu på den BrowserRouter.
+    <>
+      {/* Analytics + traffic-beacon er client-only (consent/browser-API'er) og lazy.
+          Mount FØRST efter hydration, så de ikke indgår i prerenderens server-render
+          — en lazy Suspense-boundary kan ikke fuldføres på serveren → React #419. */}
+      {mounted && (
+        <Suspense fallback={null}>
+          <ClarityIntegration />
+          <WebVitalsIntegration />
+          <VercelAnalyticsIntegration />
+          <GaIntegration />
+          <TrafficBeacon session={session} />
+        </Suspense>
+      )}
       <Suspense fallback={<RouteFallback />}>
         <Routes>
-          <Route path="/login" element={session ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
+          <Route path="/login" element={<LoginRoute session={session} />} />
           <Route path="/reset-password" element={<ResetPasswordPage session={session} />} />
           <Route path="/privatlivspolitik" element={<PrivacyPolicyPage />} />
           <Route path="/privacy-policy" element={<PrivacyPolicyPageEn />} />
@@ -176,6 +216,8 @@ export default function App() {
             <Route path="notifications" element={<NotificationsPage />} />
             <Route path="compare" element={<RiderComparePage />} />
             <Route path="profile" element={<ProfilePage />} />
+            <Route path="pro" element={<ProUpgradePage />} />
+            <Route path="pro/success" element={<ProUpgradePage />} />
             <Route path="activity" element={<ActivityPage />} />
             <Route path="activity-feed" element={<Navigate to="/notifications" replace />} />
             <Route path="watchlist" element={<WatchlistPage />} />
@@ -223,6 +265,6 @@ export default function App() {
         </Routes>
       </Suspense>
       <CookieBanner />
-    </BrowserRouter>
+    </>
   );
 }

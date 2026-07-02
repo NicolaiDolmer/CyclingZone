@@ -1,5 +1,9 @@
 <!DOCTYPE html>
-<html lang="da">
+<!-- #2039: EN-first default. Den autoritative app-bredte lang sættes runtime af
+     LanguageProvider (document.documentElement.lang = aktivt UI-sprog). En statisk
+     lang="da" på engelsk indhold fik browsere til at auto-oversætte → DOM-mutation
+     → React-crash. -->
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />

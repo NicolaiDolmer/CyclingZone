@@ -16,6 +16,7 @@ import { fetchAllRows } from "../lib/supabasePagination";
 import { logEvent } from "../lib/logEvent";
 import { profileShape, profileLabelKey, finaleLabelKey } from "../lib/stageProfileConfig";
 import { deriveRaceStatus } from "../lib/raceHubLogic.js";
+import { buildLiveStandings } from "../lib/raceLiveStandings.js";
 import { bucketCounts, terrainBucket } from "../lib/stageTerrain.js";
 import { RACE_TIMEZONE, countdownParts, countdownSegments } from "../lib/stageScheduleConfig.js";
 
@@ -253,6 +254,13 @@ export default function RaceDetailPage() {
     return out;
   }, [results]);
 
+  // #2081: løbende stilling mens etapeløbet er i gang — fra de fulde dag-rækker
+  // ved seneste kørte etape. Når slut-klassementet findes (gc skrevet), viger den.
+  const liveStandings = useMemo(() => {
+    if (race?.race_type !== "stage_race" || finalByType.gc?.length) return null;
+    return buildLiveStandings(results);
+  }, [race?.race_type, finalByType, results]);
+
   // Sørg for at active tab altid er gyldig når data skifter.
   useEffect(() => {
     if (!isStageRace) return;
@@ -382,7 +390,9 @@ export default function RaceDetailPage() {
           {activeTab === "samlet" && (
             <div className="space-y-5">
               <RaceRecap results={results} scopeType="overall" />
-              <OverallTab finalByType={finalByType} />
+              {liveStandings
+                ? <LiveOverallTab byType={liveStandings.byType} stage={liveStandings.stage} />
+                : <OverallTab finalByType={finalByType} />}
             </div>
           )}
           {stageNumbers.map(n => activeTab === `stage-${n}` && (
@@ -454,14 +464,36 @@ function OverallTab({ finalByType }) {
   );
 }
 
+// #2081: løbende klassementer for et igangværende etapeløb — samme tabeller som
+// det endelige klassement, med eksplicit "stillingen efter etape N"-ramme så
+// ingen forveksler den med slutresultatet.
+function LiveOverallTab({ byType, stage }) {
+  const { t } = useTranslation("races");
+  return (
+    <div className="space-y-5">
+      <div className="bg-cz-card border border-cz-border rounded-cz px-4 py-3">
+        <p className="text-sm font-semibold text-cz-1">{t("detail.liveStandings.title", { number: stage })}</p>
+        <p className="text-xs text-cz-3 mt-0.5">{t("detail.liveStandings.note")}</p>
+      </div>
+      {CLASSIFICATIONS.map(c => {
+        const rows = byType[c.key];
+        if (!rows?.length) return null;
+        return <ResultTable key={c.key} title={t(`detail.classification.${c.key}`)} rows={rows} highlightWinner={c.key === "team"} />;
+      })}
+    </div>
+  );
+}
+
 function StageTab({ stage, results, profile }) {
   const { t } = useTranslation("races");
   const rows = results
     .filter(r => r.result_type === "stage" && (r.stage_number ?? 1) === stage)
     .sort(byRank);
 
+  // #2081: dag-rækkerne er nu FULDE klassementer (rank 1..N pr. etape) — trøje-
+  // bæreren er eksplicit rank 1 (legacy-etaper har kun rank-1-rækker; samme filter).
   const jerseys = JERSEYS
-    .map(j => ({ ...j, holder: results.find(r => r.result_type === j.dayType && (r.stage_number ?? 1) === stage) }))
+    .map(j => ({ ...j, holder: results.find(r => r.result_type === j.dayType && (r.stage_number ?? 1) === stage && (r.rank ?? 1) === 1) }))
     .filter(j => j.holder);
 
   return (

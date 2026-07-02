@@ -220,3 +220,81 @@ async function defaultFetchOwnedExpiringRiders({ supabase, seasonNumber }) {
     user_id: r.team?.user_id ?? null,
   }));
 }
+
+// ─── #1952 · Resultat-notifikation når et løb er kørt ─────────────────────────
+
+export const RACE_RESULT_TYPE = "race_result";
+
+/**
+ * #1952 · Indsæt in-app "et af dine løb er kørt"-notifikationer til hver
+ * menneske-manager der deltog i det netop afviklede løb.
+ *
+ * Deltager-sættet udledes via race_results -> riders -> teams (samme menneske-
+ * manager-diskriminator som resten af motoren: is_ai=false, is_frozen=false), og
+ * vi notificerer DISTINCT teams.user_id — én notifikation pr. manager, ikke pr.
+ * rytter/etape. related_id = race.id, og metadata deep-linker til løbets resultat
+ * (#666 locale-aware rendering via backendMessages-koderne).
+ *
+ * Idempotens: notifyUser dedup'er på (type, title, message, related_id) inden for
+ * 24t, så en gen-finalisering eller recovery-genkørsel ikke dublerer. Fejl pr.
+ * manager isoleres (tælles, stopper ikke resten). `notify` +
+ * `fetchParticipatingManagers` er injicerbare for test.
+ */
+export async function emitRaceResultNotifications({
+  supabase,
+  race,
+  notify = notifyUser,
+  fetchParticipatingManagers = defaultFetchParticipatingManagers,
+}) {
+  const stats = { eligible: 0, delivered: 0, deduped: 0, failed: 0 };
+  if (!race?.id) return stats;
+
+  const userIds = await fetchParticipatingManagers({ supabase, raceId: race.id });
+  const eligible = [...new Set((userIds || []).filter(Boolean))];
+  stats.eligible = eligible.length;
+
+  const raceName = race.name ?? "your race";
+  for (const userId of eligible) {
+    try {
+      const res = await notify({
+        supabase,
+        userId,
+        type: RACE_RESULT_TYPE,
+        title: "Race result is in",
+        message: `${raceName} has been run. View the result.`,
+        relatedId: race.id,
+        metadata: {
+          raceId: race.id,
+          titleCode: "notif.raceResult.title",
+          titleParams: {},
+          messageCode: "notif.raceResult.message",
+          messageParams: { race: raceName },
+        },
+      });
+      if (res?.delivered) stats.delivered += 1;
+      else if (res?.deduped) stats.deduped += 1;
+    } catch {
+      stats.failed += 1;
+    }
+  }
+  return stats;
+}
+
+/**
+ * Hent DISTINCT menneske-manager-user_ids der deltog i løbet, via
+ * race_results -> riders -> teams (kun menneske-, ikke-frosne hold). Bruger
+ * rytter-joinet (riders.team_id) som specificeret; FK-hints disambiguerer
+ * riders' flere team-relationer. Standard-implementering; injicérbar i test.
+ */
+async function defaultFetchParticipatingManagers({ supabase, raceId }) {
+  const { data, error } = await supabase
+    .from("race_results")
+    .select("rider:rider_id!inner(team:team_id!inner(user_id, is_ai, is_frozen))")
+    .eq("race_id", raceId)
+    .eq("rider.team.is_ai", false)
+    .eq("rider.team.is_frozen", false);
+  if (error) {
+    throw new Error(`Could not load participating managers for race ${raceId}: ${error.message}`);
+  }
+  return (data || []).map((row) => row.rider?.team?.user_id ?? null);
+}

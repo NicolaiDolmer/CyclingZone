@@ -68,6 +68,20 @@ test("mapSupabaseAuthError bevarer den eksisterende Supabase-fejlmapping (#1348)
   );
 });
 
+test("mapSupabaseAuthError mapper begge rate-limit-varianter til rateLimited (#2068)", () => {
+  // Live test mod prod (resend-knap) viste Supabases dynamiske "...after N
+  // seconds"-variant — kun "...this once" var dækket før, så det faldt
+  // igennem til den rå engelske besked i stedet for den oversatte copy.
+  assert.equal(
+    mapSupabaseAuthError({ message: "For security purposes, you can only request this once every 60 seconds" }, t),
+    "errors:supabase.rateLimited",
+  );
+  assert.equal(
+    mapSupabaseAuthError({ message: "For security purposes, you can only request this after 54 seconds" }, t),
+    "errors:supabase.rateLimited",
+  );
+});
+
 test("mapSupabaseAuthError falder tilbage til unknown ved tom besked (#1348)", () => {
   assert.equal(mapSupabaseAuthError({}, t), "errors:supabase.unknown");
 });

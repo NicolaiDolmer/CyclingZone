@@ -189,6 +189,11 @@ const WHITELIST_EMPTY_TABLES = new Set([
   // ved #1810-merge (migration anvendt) men er bevidst tom indtil afmeldinger sker.
   // Skriv-path verificeret i raceWithdrawal.js. Fjern denne entry når tabellen har rows.
   "race_withdrawals",
+  // CZ Pro billing-rails (#1903, PR #1909 merged 2/7): subscriptions fyldes først når
+  // Alunta-checkout/webhook går live (ejer-opsætning planlagt senest 6/7: plan + tokens
+  // i Infisical + test_mode-verify). Skriv-path verificeret i backend/lib/aluntaWebhook.js
+  // (upsert på team_id). Bevidst tom indtil go-live. Fjern denne entry når tabellen har rows.
+  "subscriptions",
 ]);
 
 // Detector B: endpoints der er korrekt orphaned i frontend (cron, admin-curl, webhook)
@@ -241,6 +246,9 @@ const WHITELIST_ORPHANED_ENDPOINTS = new Set([
   // afhænger af dem. Intentional orphaned, ikke drift; slettes i WS2-followup.
   "POST /admin/approve-results",
   "POST /admin/import-results-pcm",
+  // CZ Pro billing: Alunta-webhook er EKSTERN (kaldes af Alunta efter betaling,
+  // ikke af frontend). Intentional orphaned, ikke drift (#1903).
+  "POST /billing/alunta-webhook",
 ]);
 
 // Detector C: schema-files der er committed men IKKE migrations (pre-workflow dumps).

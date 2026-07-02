@@ -61,17 +61,31 @@ test("alle emitterede result_types er blandt de 10 tilladte", () => {
   for (const r of resultRows) assert.ok(ALLOWED_RESULT_TYPES.has(r.result_type), `ugyldig type ${r.result_type}`);
 });
 
-test("etapeløb: emission matcher PCM (stage hver etape, dag-ledere mellem, fulde trøjer til sidst)", () => {
+test("etapeløb: emission — stage hver etape, FULDE dag-klassementer mellem (#2081), fulde trøjer til sidst", () => {
   const { resultRows } = buildRaceResults({ race: STAGE_RACE, stages: STAGES_3, entrants: ENTRANTS, pointsLookup: POINTS });
   const N = ENTRANTS.length; // 8
   // 'stage' for alle ryttere på hver af de 3 etaper.
   assert.equal(rowsBy(resultRows, "stage").length, N * 3);
-  // Dag-ledere kun på de 2 mellem-etaper (rank 1).
-  for (const t of ["leader", "points_day", "mountain_day", "young_day"]) {
+  // #2081: FULDE løbende klassementer på de 2 mellem-etaper (rank 1..N pr. etape).
+  for (const t of ["leader", "points_day", "mountain_day"]) {
     const rows = rowsBy(resultRows, t);
-    assert.equal(rows.length, 2, `${t} forventet 2`);
-    assert.ok(rows.every((r) => r.rank === 1), `${t} skal være rank 1`);
+    assert.equal(rows.length, N * 2, `${t} forventet ${N * 2} (fuldt felt × 2 mellem-etaper)`);
+    for (const stage of [1, 2]) {
+      const ranks = rows.filter((r) => r.stage_number === stage).map((r) => r.rank).sort((a, b) => a - b);
+      assert.deepEqual(ranks, [1, 2, 3, 4, 5, 6, 7, 8], `${t} etape ${stage}: rank 1..N`);
+    }
   }
+  assert.equal(rowsBy(resultRows, "young_day").length, 2 * 2); // 2 U25 × 2 mellem-etaper
+  // Payout-neutralitet: kun rank 1 af dag-typerne har race_points-opslag → rank 2+ = 0 point.
+  for (const t of ["leader", "points_day", "mountain_day", "young_day"]) {
+    for (const r of rowsBy(resultRows, t).filter((row) => row.rank > 1)) {
+      assert.equal(r.points_earned, 0, `${t} rank ${r.rank} skal have 0 point`);
+      assert.equal(r.prize_money, 0, `${t} rank ${r.rank} skal have 0 præmie`);
+    }
+  }
+  // INGEN 'team'-rækker på mellem-etaper (race_points har team__1 → ville udbetale
+  // pr. etape under rederiveSeasonRacePoints). Hold-stilling undervejs deriveres på læsetidspunkt.
+  assert.ok(rowsBy(resultRows, "team").every((r) => r.stage_number === 3), "team-rækker kun på slut-etapen");
   // Ingen gc på mellem-etaper — kun fuld gc på slut-etapen.
   assert.equal(rowsBy(resultRows, "gc").length, N);
   assert.equal(rowsBy(resultRows, "points").length, N);
@@ -123,15 +137,18 @@ test("points_earned/prize_money udledes af (result_type, rank) via lookup", () =
   assert.equal(gcLast.points_earned, 0); // rank 8 ikke seedet → 0
 });
 
-test("finish_time: sat på stage+gc (display), null på trøje/hold", () => {
+test("finish_time: sat på stage+gc+leader (display), null på øvrige trøjer/hold", () => {
   const { resultRows } = buildRaceResults({ race: STAGE_RACE, stages: STAGES_3, entrants: ENTRANTS, pointsLookup: POINTS });
   for (const r of rowsBy(resultRows, "stage")) assert.match(r.finish_time, /^\+\d+:\d{2}$/);
   for (const r of rowsBy(resultRows, "gc")) assert.match(r.finish_time, /^\+\d+:\d{2}$/);
-  for (const t of ["points", "mountain", "young", "team", "leader"]) {
+  // #2081: leader-rækker (løbende GC) bærer gap til display.
+  for (const r of rowsBy(resultRows, "leader")) assert.match(r.finish_time, /^\+\d+:\d{2}$/);
+  for (const t of ["points", "mountain", "young", "team", "points_day", "mountain_day", "young_day"]) {
     for (const r of rowsBy(resultRows, t)) assert.equal(r.finish_time, null);
   }
-  // GC-leder har +0:00.
+  // GC-leder har +0:00 — også undervejs.
   assert.equal(rowsBy(resultRows, "gc").find((r) => r.rank === 1).finish_time, "+0:00");
+  assert.equal(rowsBy(resultRows, "leader").find((r) => r.rank === 1 && r.stage_number === 1).finish_time, "+0:00");
 });
 
 test("determinisme: samme input → identiske resultRows + runs", () => {

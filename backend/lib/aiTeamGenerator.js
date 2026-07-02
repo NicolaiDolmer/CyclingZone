@@ -28,9 +28,11 @@ import { LAUNCH_POPULATION } from "./fictionalLaunchPopulation.js";
 import {
   deriveTeamSeed,
   buildWeakStarterPool,
-  STARTER_SQUAD,
-  STARTER_POOL_STAT_WINDOW,
-  STARTER_TAIL_STAT_WINDOW,
+  AI_SQUAD,
+  aiStatWindowsForTier,
+  aiTierFractionsForTier,
+  aiValueCapForTier,
+  generateAiRiderBatchWithCap,
 } from "./starterSquadAllocator.js";
 import { generateFictionalRiders } from "./fictionalRiderGenerator.js";
 import { deriveForRiderIds } from "./backfillCores.js";
@@ -200,30 +202,46 @@ export async function generateAndAllocateAiTeams({ supabase, seed = LAUNCH_POPUL
   return { created, removed, pools: poolSummaries };
 }
 
-// PROD-STI (default): allokér en lagdelt svag 12-rytter-trup (8 kerne [50,57] + 4
-// hale [50,52]) til et AI-hold via den samme dedikerede-svage-pulje-mekanik (#1487) +
-// derive-kæden (data-hale-garanti: physiology→abilities→type→base_value) som
-// start-trupperne. Spejler insertWeakSquadForTeam (manager-truppen): nye AI-hold får
-// den samme lagdelte TOTAL_SIZE-trup som managerhold (race-hub 0c) for konsistens.
+// PROD-STI (default): allokér en 24-rytter-trup til et AI-hold, divisions-kvalitet
+// afhængig af pool.tier (ejer 2026-06-30). To stier (#2065-postmortem — v1 klampede
+// ALLE stats ind i et smalt vindue for alle tiers, hvilket gav urealistisk alsidige
+// (og dermed grotesk overprissatte) ryttere for tier 1/2):
+//   • tier 1/2: AI_TIER_FRACTIONS → den ÆGTE arketype-generator (samme tier-system
+//     som det frie marked) i ÉT hug (ingen kerne/hale-opdeling — kvaliteten er
+//     ensartet divisions-niveau, ikke "kerne vs reserve").
+//   • tier 3/4: uændret clamp-vindue-sti (kerne+hale, lagdelt) — proven i prod.
+// Gælder KUN nye AI-hold; eksisterende AI-rosters er urørte (ejer-beslutning).
 // Indsætter med team_id sat (intet orphan-vindue). Deterministisk per-hold seed.
 async function defaultAllocateSquadForTeam(supabase, teamId, { pool, baseSeed, ordinal }) {
   const referenceYear = LAUNCH_POPULATION.referenceYear;
   const existingFoldedNames = await fetchExistingFoldedNamesForAi(supabase);
-  // Per-hold seed: basis (+ et AI-offset så det ikke spejler start-trupperne) XOR
-  // hash(pulje:indeks). Deterministisk + hold-unik. Eget seed-offset pr. tier (kerne
-  // vs hale) → distinkte pools. Kernen bevarer (+1688) så eksisterende AI-holds kerne
-  // forbliver deterministisk; halen bruger (+1688+7).
-  const coreSeed = deriveTeamSeed((baseSeed + 1688) >>> 0, `${pool.id}:${ordinal}`);
-  const tailSeed = deriveTeamSeed((baseSeed + 1688 + 7) >>> 0, `${pool.id}:${ordinal}`);
-  const corePayload = buildWeakStarterPool({
-    count: STARTER_SQUAD.CORE_SIZE, seed: coreSeed, referenceYear, existingFoldedNames,
-    window: STARTER_POOL_STAT_WINDOW, generate: generateFictionalRiders,
-  }).map((r) => ({ ...r, team_id: teamId }));
-  const tailPayload = buildWeakStarterPool({
-    count: STARTER_SQUAD.TAIL_SIZE, seed: tailSeed, referenceYear, existingFoldedNames,
-    window: STARTER_TAIL_STAT_WINDOW, generate: generateFictionalRiders,
-  }).map((r) => ({ ...r, team_id: teamId }));
-  const poolPayload = [...corePayload, ...tailPayload];
+  const tierFractions = aiTierFractionsForTier(pool.tier);
+
+  let poolPayload;
+  if (tierFractions) {
+    const seed = deriveTeamSeed((baseSeed + 1688) >>> 0, `${pool.id}:${ordinal}`);
+    poolPayload = generateAiRiderBatchWithCap({
+      count: AI_SQUAD.TOTAL_SIZE, tierFractions, valueCap: aiValueCapForTier(pool.tier),
+      seed, referenceYear, existingFoldedNames,
+    }).map((r) => ({ ...r, team_id: teamId }));
+  } else {
+    const { core: coreWindow, tail: tailWindow } = aiStatWindowsForTier(pool.tier);
+    // Per-hold seed: basis (+ et AI-offset så det ikke spejler start-trupperne) XOR
+    // hash(pulje:indeks). Deterministisk + hold-unik. Eget seed-offset pr. tier (kerne
+    // vs hale) → distinkte pools. Kernen bevarer (+1688) så eksisterende AI-holds kerne
+    // forbliver deterministisk; halen bruger (+1688+7).
+    const coreSeed = deriveTeamSeed((baseSeed + 1688) >>> 0, `${pool.id}:${ordinal}`);
+    const tailSeed = deriveTeamSeed((baseSeed + 1688 + 7) >>> 0, `${pool.id}:${ordinal}`);
+    const corePayload = buildWeakStarterPool({
+      count: AI_SQUAD.CORE_SIZE, seed: coreSeed, referenceYear, existingFoldedNames,
+      window: coreWindow, generate: generateFictionalRiders,
+    }).map((r) => ({ ...r, team_id: teamId }));
+    const tailPayload = buildWeakStarterPool({
+      count: AI_SQUAD.TAIL_SIZE, seed: tailSeed, referenceYear, existingFoldedNames,
+      window: tailWindow, generate: generateFictionalRiders,
+    }).map((r) => ({ ...r, team_id: teamId }));
+    poolPayload = [...corePayload, ...tailPayload];
+  }
 
   const insertedIds = [];
   for (let i = 0; i < poolPayload.length; i += INSERT_BATCH) {

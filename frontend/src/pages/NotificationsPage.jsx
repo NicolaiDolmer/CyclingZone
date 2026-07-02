@@ -53,6 +53,7 @@ const TYPE_CONFIG = {
   watchlist_rider_listed:    { Icon: StarIcon,         color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/transfers" },
   contract_expiring:         { Icon: AlertTriangleIcon, color: "text-cz-danger",   bg: "bg-cz-danger-bg0/8 border-cz-danger/15",    link: "/team" },
   new_race:                  { Icon: FlagIcon,         color: "text-cz-1",        bg: "bg-cz-subtle border-cz-border",           link: "/races" },
+  race_result:               { Icon: PodiumIcon,       color: "text-cz-accent-t", bg: "bg-cz-accent/10 border-cz-accent/15",     link: "/resultater" },
   season_started:            { Icon: RocketIcon,       color: "text-cz-success",  bg: "bg-cz-success-bg0/8 border-cz-success/15", link: "/dashboard" },
   season_ended:              { Icon: FlagIcon,         color: "text-cz-1",        bg: "bg-cz-subtle border-cz-border",           link: "/seasons" },
   salary_paid:               { Icon: CoinIcon,         color: "text-cz-warning",  bg: "bg-cz-warning-bg0/8 border-cz-warning/15", link: "/finance" },
@@ -478,7 +479,10 @@ export default function NotificationsPage() {
                           ? `/riders/${n.metadata.riderId}`
                           : n.type === "transfer_interest" && n.related_id
                             ? `/riders/${n.related_id}`
-                            : config.link;
+                            // #1952: resultat-notifikation deep-linker direkte til løbets resultatside
+                            : n.type === "race_result" && (n.metadata?.raceId || n.related_id)
+                              ? `/races/${n.metadata?.raceId || n.related_id}`
+                              : config.link;
                         if (link) navigate(link);
                       }}>
                       <div className={`w-9 h-9 rounded-cz bg-cz-subtle flex items-center justify-center

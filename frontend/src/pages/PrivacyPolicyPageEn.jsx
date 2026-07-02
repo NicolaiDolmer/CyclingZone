@@ -54,6 +54,7 @@ export default function PrivacyPolicyPageEn() {
             <li><strong>Technical:</strong> IP address in access logs for up to 30 days, used for operations and security.</li>
             <li><strong>Analytics (consent only):</strong> anonymous behavioural data via Microsoft Clarity (e.g. where users click in vain or scroll in frustration) and anonymous traffic/source statistics via Google Analytics (e.g. which page you arrived from). Used only to fix bad UX and understand where players find the game.</li>
             <li><strong>Acquisition source (legitimate interest):</strong> when you create an account we record how you first reached the site (a referring link, any campaign tags in the URL, and the page you landed on) so we can see which channels bring new players. First-party only, no cross-site tracking, and you can object at any time.</li>
+            <li><strong>Aggregate traffic statistics (no consent needed):</strong> we count anonymous, aggregated page views and engagement (e.g. how many visitors a page received and whether they engaged) without cookies and without storing IP addresses or any data that can identify you. Because it cannot be linked to you, this requires no consent.</li>
           </ul>
         </Section>
 

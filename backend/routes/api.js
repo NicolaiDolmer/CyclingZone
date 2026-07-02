@@ -10,7 +10,7 @@
  */
 
 import express from "express";
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { createClient } from "@supabase/supabase-js";
 import { config } from "dotenv";
 import { fileURLToPath } from "url";
@@ -24,6 +24,8 @@ import {
   DEFAULT_AUCTION_CONFIG,
 } from "../lib/auctionEngine.js";
 import { applyNameSearch } from "../lib/riderNameSearch.js";
+import { handleAluntaWebhook } from "../lib/aluntaWebhook.js";
+import { createCheckoutHandler } from "../lib/billingCheckout.js";
 import {
   ACTIVE_AUCTION_STATUSES,
   OPEN_SWAP_STATUSES,
@@ -245,6 +247,9 @@ import { captureException, setSentryUser } from "../lib/sentry.js";
 import { upsertOwnTeamProfile } from "../lib/teamProfileEngine.js";
 import { buildAttributionRow } from "../lib/signupAttribution.js";
 import { aggregateAttribution } from "../lib/attributionDashboard.js";
+import { isBotUserAgent } from "../lib/botDetection.js";
+import { computeVisitHash, dayString } from "../lib/visitHash.js";
+import { aggregateTraffic } from "../lib/trafficMetrics.js";
 import { parseRacePoolCsv, summarizePool, WORLD_TOUR_CLASSES } from "../lib/racePoolImport.js";
 import {
   UCI_MEN_RACE_CLASSES,
@@ -338,6 +343,21 @@ const adminApiLimiter = rateLimit({
   },
 });
 router.use("/admin", adminApiLimiter);
+
+// #2040 anonym, consent-uafhængig web-telemetri. Offentligt + ikke-autentificeret
+// → direkte rateLimit() (ikke buildLimiter-factory'en) så CodeQL
+// js/missing-rate-limiting kan spore den. IP-nøgle; storage-less dedup server-side.
+const collectLimiter = rateLimit({
+  windowMs: 60_000,
+  limit: 120,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  keyGenerator: (req) => `collect:${ipKeyGenerator(req.ip)}`,
+  skip: () => process.env.RATE_LIMIT_DISABLED === "1",
+  handler: (_req, res) => res.status(429).json({ code: "rate_limited" }),
+});
+const COLLECT_EVENTS = new Set(["pageview", "engaged"]);
+const TRAFFIC_SALT = process.env.TRAFFIC_SALT || "cz-traffic-v1";
 
 // #1101 rider-valuation model (committet JSON). Indlæses én gang ved opstart;
 // mangler den (fx før første fit), degraderer valuation-fladerne pænt (null).
@@ -518,6 +538,13 @@ async function requireAdmin(req, res, next) {
     next();
   });
 }
+
+// ── Billing (CZ Pro / Alunta) ─────────────────────────────────────────────────
+// Webhook er EKSTERN (Alunta) → INGEN requireAuth; verificeres via delt secret.
+// Rå body wired i server.js (express.raw på pathen før express.json).
+const billingCheckout = createCheckoutHandler();
+router.post("/billing/alunta-webhook", (req, res) => handleAluntaWebhook({ req, res, supabase }));
+router.post("/billing/checkout", requireAuth, (req, res) => billingCheckout(req, res));
 
 // Lightweight admin-check til endpoints der betjener BÅDE admin og ikke-admin
 // (modsat requireAdmin, som blokerer ikke-admin helt). Bruges nu til at maskere
@@ -2470,17 +2497,22 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
 
   // Allow auction if:
   // 1. Rider is on manager's own team, OR
-  // 2. Rider is a free agent (no team_id) — AI/unowned rider
-  // Block if rider belongs to another manager's team
+  // 2. Rider is a free agent (no team_id)
+  // Block if rider belongs to another manager's team OR an AI-controlled team.
+  // 2026-06-30: AI-trupper er nu divisions-skalerede (op til 24 stærke ryttere i
+  // div 1-2, se aiTeamGenerator.js) — de må IKKE kunne auktioneres/vindes af en
+  // manager (ellers headhuntes hele opgraderingen med det samme). Tidligere tillod
+  // denne gate eksplicit AI-ejede ryttere ("AI/unowned rider") — det er nu lukket.
   if (rider.team_id && rider.team_id !== req.team.id) {
-    // Check if the owning team is a human team
     const { data: owningTeam } = await supabase
       .from("teams")
-      .select("is_ai, user_id")
+      .select("is_ai, is_bank, user_id")
       .eq("id", rider.team_id)
       .single();
-    // If owned by a human manager (not AI), block the auction
-    if (owningTeam && !owningTeam.is_ai && owningTeam.user_id) {
+    if (owningTeam?.is_ai || owningTeam?.is_bank) {
+      return res.status(403).json({ error: "AI-owned riders can't be put up for auction.", errorCode: "ai_rider_no_auction" });
+    }
+    if (owningTeam && owningTeam.user_id) {
       return res.status(403).json({ error: "This rider belongs to another manager", errorCode: "rider_other_manager" });
     }
   }
@@ -3394,11 +3426,13 @@ router.post("/transfers/offer", requireAuth, marketWriteLimiter, async (req, res
 
   const { data: sellerTeam } = await supabase
     .from("teams")
-    .select("is_bank")
+    .select("is_bank, is_ai")
     .eq("id", rider.team_id)
     .single();
-  if (sellerTeam?.is_bank) {
-    return res.status(400).json({ error: "AI riders can't receive direct offers. Start or bid on an auction instead.", errorCode: "ai_rider_no_direct_offer" });
+  // 2026-06-30: tjekkede tidligere kun is_bank — is_ai-ejede ryttere (de almindelige
+  // AI-modstander-hold) slap igennem, selvom fejlbeskeden allerede sagde "AI riders".
+  if (sellerTeam?.is_bank || sellerTeam?.is_ai) {
+    return res.status(400).json({ error: "AI riders can't receive direct offers.", errorCode: "ai_rider_no_direct_offer" });
   }
 
   // #1748 (a): én anskaffelsesvej ad gangen. En rytter på en aktiv auktion må
@@ -3869,11 +3903,12 @@ router.post("/transfers/swaps", requireAuth, marketWriteLimiter, async (req, res
     return res.status(400).json({ error: "Du kan ikke bytte med dig selv", errorCode: "cannot_swap_self" });
   const { data: requestedTeam } = await supabase
     .from("teams")
-    .select("is_bank")
+    .select("is_bank, is_ai")
     .eq("id", requested.team_id)
     .single();
-  if (requestedTeam?.is_bank)
-    return res.status(400).json({ error: "AI riders can't take part in direct swaps. Use auctions instead.", errorCode: "ai_rider_no_swap" });
+  // 2026-06-30: tjekkede tidligere kun is_bank — samme is_ai-hul som direct-offer-gaten.
+  if (requestedTeam?.is_bank || requestedTeam?.is_ai)
+    return res.status(400).json({ error: "AI riders can't take part in direct swaps.", errorCode: "ai_rider_no_swap" });
 
   // #1089: dobbelt-salgs-guard — en rytter på aktiv auktion kan ikke samtidig
   // indgå i en byttehandel (samme rytter ville kunne sælges to gange).
@@ -4121,6 +4156,13 @@ router.post("/loans", requireAuth, marketWriteLimiter, async (req, res) => {
     return res.status(409).json({ error: "Rytteren er pensioneret og kan ikke lejes", errorCode: "rider_retired_loan" });
   if (rider.team_id === req.team.id)
     return res.status(400).json({ error: "Du kan ikke leje din egen rytter", errorCode: "cannot_loan_own_rider" });
+
+  // 2026-06-30: AI-ejede ryttere må ikke kunne lejes — samme is_ai-spærre som
+  // auktion/direct-offer/swap, ellers er lånevejen et åbent hul ind i AI-trupperne.
+  const { data: lenderTeam } = await supabase
+    .from("teams").select("is_bank, is_ai").eq("id", rider.team_id).single();
+  if (lenderTeam?.is_bank || lenderTeam?.is_ai)
+    return res.status(400).json({ error: "AI riders can't be loaned.", errorCode: "ai_rider_no_loan" });
 
   // Check no active loan already exists for this rider
   const { data: existing } = await supabase.from("loan_agreements")
@@ -4649,6 +4691,53 @@ router.put("/teams/my", requireAuth, marketWriteLimiter, async (req, res) => {
     res.status(result.created ? 201 : 200).json(result);
   } catch (error) {
     res.status(error.statusCode || 500).json({ error: error.message || "Kunne ikke gemme holdprofil" });
+  }
+});
+
+// POST /api/collect — anonym, consent-uafhængig web-telemetri (#2040). Storage-less
+// dedup via visit_hash; bots flagges men tælles. Fire-and-forget; må aldrig fejle
+// for klienten. INGEN PII gemmes (ingen rå IP/UA, intet bruger-id).
+router.post("/collect", collectLimiter, async (req, res) => {
+  res.status(204).end(); // svar straks; resten er best-effort
+  try {
+    const { event, path: evPath, deviceType } = req.body || {};
+    if (!COLLECT_EVENTS.has(event)) return;
+    const ua = req.headers["user-agent"] || "";
+    const ip = req.ip || "";
+    await supabase.from("traffic_events").insert({
+      event,
+      path: typeof evPath === "string" ? evPath.slice(0, 200) : null,
+      device: typeof deviceType === "string" ? deviceType.slice(0, 20) : null,
+      is_bot: isBotUserAgent(ua),
+      visit_hash: computeVisitHash({ ip, ua, day: dayString(), secret: TRAFFIC_SALT }),
+    });
+  } catch (e) {
+    console.error("[collect] insert fejlede:", e?.message);
+  }
+});
+
+// GET /api/admin/metrics — førsteparts engagement-scorecard (#2040). Grupperer
+// traffic_events pr. visit i SQL (traffic_visit_rollup) + tæller signups fra
+// player_events. Bot-ekskluderet headline; bot-andel synlig separat.
+router.get("/admin/metrics", requireAdmin, async (req, res) => {
+  try {
+    const days = Math.min(Math.max(parseInt(req.query.days, 10) || 30, 1), 90);
+    const since = new Date(Date.now() - days * 86400_000).toISOString();
+
+    const { data: visitRows, error: vErr } = await supabase.rpc("traffic_visit_rollup", { since_ts: since });
+    if (vErr) throw vErr;
+    const traffic = aggregateTraffic(visitRows || []);
+
+    const { count: signups } = await supabase
+      .from("player_events")
+      .select("*", { count: "exact", head: true })
+      .eq("event_name", "signup")
+      .gte("created_at", since);
+
+    res.json({ days, traffic, signups: signups || 0 });
+  } catch (e) {
+    console.error("[admin/metrics] fejl:", e?.message);
+    res.status(500).json({ error: "metrics_failed" });
   }
 });
 

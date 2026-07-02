@@ -20,10 +20,11 @@ const RIDER_B = "rider-B";
 
 function createSupabase({
   auctions = [], transferOffers = [], swapOffers = [], loanAgreements = [], seasons = [],
+  academyIntake = [],
 } = {}) {
   const tableData = {
     auctions, transfer_offers: transferOffers, swap_offers: swapOffers,
-    loan_agreements: loanAgreements, seasons,
+    loan_agreements: loanAgreements, seasons, academy_intake: academyIntake,
   };
 
   function matchOr(expr, row) {
@@ -89,6 +90,14 @@ function swapRow({ id, proposing, receiving, cash = 0, date, status = "accepted"
     receiving: { id: receiving, name: `Team ${receiving}`, is_ai: false },
     offered_rider: { id: RIDER, firstname: "A", lastname: "Rider" },
     requested_rider: { id: RIDER_B, firstname: "B", lastname: "Rider" },
+  };
+}
+
+function academyIntakeRow({ id, team, date, status = "signed" }) {
+  return {
+    id, status, team_id: team,
+    resolved_at: date, created_at: date,
+    rider: { id: RIDER, firstname: "A", lastname: "Rider" },
   };
 }
 
@@ -301,4 +310,56 @@ test("teamTransferHistory — private statuses ekskluderes (#105 kontrakt)", asy
   assert.ok(ids.includes("transfer:T-accepted"));
   assert.ok(ids.includes("loan:L-active"));
   assert.ok(!ids.some((id) => id.includes("rejected") || id.includes("pending")));
+});
+
+test("teamTransferHistory — akademi-hentninger (academy_intake, status='signed') vises som tilgang uden pris (#1776)", async () => {
+  // De reelle akademi-hentninger ligger i academy_intake (status='signed'),
+  // ikke i academy_graduation (0 rows i prod). De skal optræde som type='academy',
+  // direction='in', uden pris og uden modpartshold.
+  const supabase = createSupabase({
+    academyIntake: [
+      academyIntakeRow({ id: "AC1", team: TEAM, date: "2026-06-22T12:00:00Z" }),
+      // Ikke-signede intakes (tilbudt/afvist) er ingen tilgang og må ikke vises.
+      academyIntakeRow({ id: "AC-offered", team: TEAM, date: "2026-06-22T13:00:00Z", status: "offered" }),
+      academyIntakeRow({ id: "AC-rejected", team: TEAM, date: "2026-06-22T14:00:00Z", status: "rejected" }),
+    ],
+  });
+  const events = await buildTeamTransferHistory(supabase, TEAM);
+  const ids = events.map((e) => e.id);
+  assert.ok(ids.includes("academy:AC1"), "signet akademi-hentning skal vises");
+  assert.ok(!ids.includes("academy:AC-offered"), "tilbudt intake må ikke vises");
+  assert.ok(!ids.includes("academy:AC-rejected"), "afvist intake må ikke vises");
+
+  const byId = Object.fromEntries(events.map((e) => [e.id, e]));
+  const ac = byId["academy:AC1"];
+  assert.equal(ac.type, "academy");
+  assert.equal(ac.direction, "in");
+  assert.equal(ac.amount, null, "akademi-hentning har ingen pris");
+  assert.equal(ac.cash_flow, null, "akademi-hentning har ingen pengestrøm");
+  assert.equal(ac.counterparty, null, "kilde = akademiet, ikke et modpartshold");
+});
+
+test("teamTransferHistory — nul-bred afsluttet sæson på delt grænsedag indfanger ikke launch-dagens events (#1776)", async () => {
+  // Prod ved launch: sæson 0 (afsluttet, start=end=2026-06-22) og sæson 1
+  // (aktiv, start=2026-06-22, end=null). Ascending-sorteringen lod den nul-brede
+  // sæson 0 vinde grænsedagen, så sæson 1-transfers fejlagtigt blev tagget til
+  // sæson 0. Launch-dagens events skal tilhøre den aktive sæson 1.
+  const supabase = createSupabase({
+    auctions: [
+      auctionRow({ id: "A-launch", seller: OTHER, winner: TEAM, price: 50000, date: "2026-06-22T09:30:00Z" }),
+      auctionRow({ id: "A-later", seller: OTHER, winner: TEAM, price: 60000, date: "2026-06-25T10:00:00Z" }),
+    ],
+    academyIntake: [
+      academyIntakeRow({ id: "AC-launch", team: TEAM, date: "2026-06-22T12:00:00Z" }),
+    ],
+    seasons: [
+      { id: "s0", number: 0, start_date: "2026-06-22", end_date: "2026-06-22" },
+      { id: "s1", number: 1, start_date: "2026-06-22", end_date: null },
+    ],
+  });
+  const events = await buildTeamTransferHistory(supabase, TEAM);
+  const byId = Object.fromEntries(events.map((e) => [e.id, e]));
+  assert.equal(byId["auction:A-launch"].season_number, 1, "grænsedags-event → aktiv sæson 1, ikke nul-bred sæson 0");
+  assert.equal(byId["academy:AC-launch"].season_number, 1, "akademi-hentning på grænsedagen → aktiv sæson 1");
+  assert.equal(byId["auction:A-later"].season_number, 1, "senere event → sæson 1");
 });

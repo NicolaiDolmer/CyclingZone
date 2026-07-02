@@ -56,6 +56,7 @@ export default function PrivacyPolicyPage() {
             <li><strong>Teknisk:</strong> IP-adresse i adgangslogs i op til 30 dage til drift og sikkerhed.</li>
             <li><strong>Analyse (kun med dit samtykke):</strong> anonyme adfærdsdata via Microsoft Clarity (fx hvor brugere klikker forgæves eller skroller frustreret) og anonym trafik-/kildestatistik via Google Analytics (fx hvilken side du kom fra). Bruges udelukkende til at rette dårlig UX og forstå hvor spillere finder spillet.</li>
             <li><strong>Tilmeldingskilde (legitim interesse):</strong> når du opretter en konto, registrerer vi hvordan du først nåede siden (et henvisende link, eventuelle kampagne-tags i URL&apos;en og den side du landede på), så vi kan se hvilke kanaler der bringer nye spillere. Kun first-party, ingen cross-site-tracking, og du kan til enhver tid gøre indsigelse.</li>
+            <li><strong>Aggregeret trafikstatistik (kræver ikke samtykke):</strong> vi tæller anonyme, aggregerede sidevisninger og engagement (fx hvor mange besøgende en side fik, og om de engagerede sig) uden cookies og uden at gemme IP-adresser eller andre data der kan identificere dig. Da det ikke kan henføres til dig, kræver det ikke samtykke.</li>
           </ul>
         </Section>
 

@@ -9,7 +9,7 @@ Hvert værktøj har ÉT ansvar. Ser to værktøjer på "det samme tal" og er uen
 
 | Værktøj | Ejer (sandheds-kilde for) | Ejer IKKE | Status (per #1407) |
 |---|---|---|---|
-| **Google Search Console (GSC)** | Hvad vi rankerer på: impressions, clicks, CTR, gennemsnitlig position, query-liste, indeksdækning (Coverage/Pages) | Adfærd efter landing; konvertering | Sat op (#352, #1302) |
+| **Google Search Console (GSC)** | Hvad vi rankerer på: impressions, clicks, CTR, gennemsnitlig position, query-liste, indeksdækning (Coverage/Pages) | Adfærd efter landing; konvertering | Sat op (#352, #1302); domæne-property DNS-verificeret 2026-06-30 — se §6 |
 | **GA4** | Hvad folk gør efter de lander: sessions, engagement, funnel, key events / konvertering, attribution | Ranking-position; backlinks | Sat op (#352); admin-toggles mangler — se §3 |
 | **Ahrefs Webmaster Tools** (gratis) | Backlinks + uafhængig teknisk site-audit | Adfærd; konvertering | [EJER-HANDLING] ikke verificeret endnu |
 | **Morningscore** | Keyword-discovery, rank-tracking, konkurrent-overvågning | Real-traffic-tal (brug GA4/GSC) | Planlagt |
@@ -87,3 +87,19 @@ Definitions-regler:
 - Keyword-research → **Morningscore** + GSC.
 - Core Web Vitals → **Lighthouse-CI** (lab, CI-gate) + **web-vitals→GA4** (field, rigtige brugere).
 - GA4 og GSC's tal matcher aldrig 1:1 — det er by design, ikke en bug.
+
+## 6. GSC domæne-property — DNS-verificering (2026-06-30)
+
+Ud over den oprindelige URL-præfiks-property (#352/#1302) er der nu oprettet en **domæne-property** for `cyclingzone.org` i Search Console. En domæne-property dækker alle subdomæner (`www.`, `api.`, …) og både `http`/`https` under ét — bredere end en URL-præfiks-property, og den verificeres via en DNS-TXT-record på roden.
+
+DNS for `cyclingzone.org` ligger hos **Vercel** (`ns1/ns2.vercel-dns.com`), team-scope `nicolai-dolmers-projects`. Verificerings-recorden blev tilføjet via Vercel CLI:
+
+```
+vercel dns add cyclingzone.org "@" TXT "google-site-verification=…" --scope nicolai-dolmers-projects
+```
+
+- **Type/navn:** `TXT` på roden (`@`)
+- **Værdi:** `google-site-verification=ZJ5UDpjchfIx-x3X_uku_GzF25NDm5aMjIEPA-0cMbg`
+- **Vercel record-id:** `rec_dc5575dee9ce28c770bc0b29`
+
+> ⚠️ **Slet ALDRIG denne TXT-record.** Google gen-tjekker DNS-verificeringen løbende; fjernes recorden, mister property'en sin verificering, og GSC-data (impressions/clicks/coverage) holder op med at opdatere. Recorden er additiv og rører hverken site-routing (ALIAS) eller email-records (SPF/DKIM/DMARC).

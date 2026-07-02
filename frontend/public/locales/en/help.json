@@ -335,7 +335,7 @@
       },
       "racesAndResults": {
         "title": "Races and results",
-        "text": "Races are run by the Cycling Zone race engine. It simulates each stage from rider abilities, form and tactics, then writes the standings and prize money automatically. Prize money lands on your team balance as soon as a race is finalised. You can follow every result under Season & Results, Races."
+        "text": "Races are run by the Cycling Zone race engine. It simulates each stage from rider abilities, form and tactics, then writes the standings and prize money automatically. Prize money lands on your team balance as soon as a race is finalised. You can follow every result under Season & Results, Races. While a stage race is in progress, the race page also shows the full running standings after each completed stage: GC, points, mountains, youth and team. The final GC is always the sum of the published stage gaps, so you can verify it yourself."
       },
       "stageProfile": {
         "title": "Terrain on a result",
@@ -803,6 +803,10 @@
     "boardCurrentAssessment": {
       "q": "Where do I see the board's current assessment?",
       "a": "The Dashboard shows a short board outlook with status and category scores, while the Board page shows the more detailed assessment. The Board page also shows the board's read of the team with specialisation, U25 share, national core, star profile and squad status, now with country name and flag on the national core. The Board page now also explains more clearly why the board reacts, by showing which categories drive the assessment, what's holding it back, and which signals from history, identity or profiles play in. The two places read the same board data from the backend, so they share the same truth."
+    },
+    "boardProfileRiders": {
+      "q": "Who are my team's profile riders?",
+      "a": "The Board page now names them. Under the star profile tile, the board's read of the team lists each rider it counts as a star, with a star score. A rider qualifies as a star when popularity plus UCI points clear the star threshold. Popularity weighs more than results (roughly 70/30), so a well-known rider can be a star even without big point hauls, while a strong but anonymous worker usually is not. The list is your current squad, so it changes as you sign or sell riders. If no rider clears the threshold yet, the card says so instead of listing names."
     },
     "season1BaselineFaq": {
       "q": "Is the board available in season 1?",

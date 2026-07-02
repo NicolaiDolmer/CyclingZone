@@ -130,6 +130,10 @@
       "title": "Sæson {number} er begyndt",
       "message": "En ny sæson er begyndt. Tjek dit dashboard for bestyrelsens mål og din trup til den kommende sæson."
     },
+    "raceResult": {
+      "title": "Resultat er klar",
+      "message": "{race} er kørt. Se resultatet."
+    },
     "contractExpiring": {
       "title": "Kontrakt udløber",
       "message": "{rider}s kontrakt udløber ved udgangen af sæson {season}."

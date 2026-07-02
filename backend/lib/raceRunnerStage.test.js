@@ -1,10 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import {
-  buildRaceResults,
-  simulateStageByIndex,
-} from "./raceRunner.js";
+import { simulateStageByIndex } from "./raceRunner.js";
 import { ABILITY_KEYS } from "./raceSimulator.js";
 import { DEMAND_VECTORS } from "./raceStageProfileGenerator.js";
 
@@ -70,6 +67,7 @@ function makeSupabase(canned = {}, opts = {}) {
       limit() { return b; },
       range() { return b; },
       gte() { return b; },
+      lt() { return b; },
       maybeSingle() { return Promise.resolve({ data: (canned[table] || [])[0] ?? null, error: null }); },
       insert(rows) { writes.push({ table, op: "insert", rows }); return Promise.resolve({ error: null }); },
       upsert(rows) { writes.push({ table, op: "upsert", rows }); return Promise.resolve({ error: null }); },
@@ -137,26 +135,183 @@ function captureStageResult() {
   return { applyStageResult, rows: () => captured };
 }
 
-// ── Determinisme (KRITISK): stage-N-via-index == samme stage fra helt-løb ──────
-test("determinisme: simulateStageByIndex persisterer PRÆCIS de rækker helt-løbet ville for samme etape", async () => {
-  // Reference: helt-løbets rækker filtreret til hver etape. cannedFor() har
-  // race_points: [] → tom pointsLookup, så referencen bygges med samme tomme
-  // lookup (points_earned/prize_money er afledte; row-identiteten er determinisme-
-  // egenskaben vi beviser bit-for-bit).
-  const whole = buildRaceResults({ race: STAGE_RACE, stages: STAGES_3, entrants: ENTRANTS, pointsLookup: {} });
-  for (let idx = 0; idx < STAGES_3.length; idx++) {
-    const stageNumber = idx + 1;
-    const supabase = cannedFor();
-    const cap = captureStageResult();
-    await simulateStageByIndex({
-      supabase, race: STAGE_RACE, stageIndex: idx,
-      ...NOOP_DEPS,
-      applyStageResult: cap.applyStageResult,
-    });
-    const expected = whole.resultRows.filter((r) => r.stage_number === stageNumber);
-    assert.ok(cap.rows(), `etape ${stageNumber}: apply_stage_result fik ingen rækker`);
-    assert.deepEqual(cap.rows(), expected, `etape ${stageNumber}: stage-by-stage != helt-løb (bit-for-bit)`);
+// ── #2072 KRITISK: dagens etape simuleres ISOLERET; klassementer AKKUMULERES ────
+// fra persisterede etaperækker — kørte etaper re-simuleres ALDRIG.
+
+// Byg canned race_results-etaperækker (som DB'en ville have dem persisteret).
+function stageRow(stageNumber, riderId, rank, gapStr, teamId = null) {
+  const team = teamId ?? ENTRANTS.find((e) => e.rider_id === riderId)?.team_id ?? null;
+  return {
+    stage_number: stageNumber, result_type: "stage", rank, rider_id: riderId,
+    team_id: team, finish_time: gapStr,
+  };
+}
+function parseGap(s) {
+  const m = String(s).match(/^\+?(\d+):(\d{1,2})$/);
+  return m ? Number(m[1]) * 60 + Number(m[2]) : 0;
+}
+
+test("#2072 determinisme: dagens etape = isoleret simulateStage (samme seed, nuværende fatigue) — bit-for-bit", async () => {
+  // Reference: buildStageRowsAccumulated er den rene kerne simulateStageByIndex
+  // SKAL bruge for etapeløb. Med tomme prior-rows (etape 1) verificerer vi at
+  // orchestratoren sender præcis kernens rækker til den atomære RPC.
+  const { buildStageRowsAccumulated } = await import("./raceRunner.js");
+  const expected = buildStageRowsAccumulated({
+    race: STAGE_RACE, stagesSorted: STAGES_3, stageIndex: 0, entrants: ENTRANTS,
+    pointsLookup: {}, priorStageRows: [],
+  });
+  const supabase = cannedFor();
+  const cap = captureStageResult();
+  await simulateStageByIndex({
+    supabase, race: STAGE_RACE, stageIndex: 0,
+    ...NOOP_DEPS,
+    applyStageResult: cap.applyStageResult,
+  });
+  assert.ok(cap.rows(), "etape 1: apply_stage_result fik ingen rækker");
+  assert.deepEqual(cap.rows(), expected.resultRows, "etape 1: orchestrator != ren kerne (bit-for-bit)");
+});
+
+test("#2072: klassementer på mellem-etape = akkumulering af persisterede gaps + dagens etape", async () => {
+  // Persisteret etape 1 med håndlavede gaps: b4 fører suverænt, climber er nr. 2.
+  const prior = [
+    stageRow(1, "b4", 1, "+0:00"),
+    stageRow(1, "climber", 2, "+0:10"),
+    stageRow(1, "sprinter", 3, "+5:00"),
+    stageRow(1, "a3", 4, "+5:00"),
+    stageRow(1, "a4", 5, "+5:00"),
+    stageRow(1, "b1", 6, "+5:00"),
+    stageRow(1, "b2", 7, "+5:00"),
+    stageRow(1, "b3", 8, "+5:00"),
+  ];
+  const race = { ...STAGE_RACE, stages_completed: 1 };
+  const supabase = cannedFor(race, STAGES_3, { race_results: prior });
+  const cap = captureStageResult();
+  await simulateStageByIndex({
+    supabase, race, stageIndex: 1, // etape 2 (mellem-etape)
+    ...NOOP_DEPS,
+    applyStageResult: cap.applyStageResult,
+  });
+  const rows = cap.rows();
+  const leaderRows = rows.filter((r) => r.result_type === "leader").sort((a, b) => a.rank - b.rank);
+  // FULDT felt (#2081), ikke kun rank 1.
+  assert.equal(leaderRows.length, ENTRANTS.length, "leader-rækker skal dække hele feltet");
+  // Løbende GC = persisteret etape-1-gap + dagens etape-2-gap (parsede, afrundede).
+  const todayGapById = new Map(rows.filter((r) => r.result_type === "stage").map((r) => [r.rider_id, parseGap(r.finish_time)]));
+  const cumById = new Map(prior.map((p) => [p.rider_id, parseGap(p.finish_time) + (todayGapById.get(p.rider_id) || 0)]));
+  const minCum = Math.min(...cumById.values());
+  for (const lr of leaderRows) {
+    assert.equal(parseGap(lr.finish_time), cumById.get(lr.rider_id) - minCum,
+      `leader-gap for ${lr.rider_id} skal være summen af publicerede etape-gaps`);
   }
+  // Sorteringen følger de akkumulerede gaps (b4 og climber har 4:50+ forspring).
+  assert.ok(["b4", "climber"].includes(leaderRows[0].rider_id), "akkumuleret føring skal respekteres");
+  // Payout-neutral: rank 2+ dag-rækker har 0 point (cannedFor har tom race_points).
+  for (const r of rows.filter((row) => ["leader", "points_day", "mountain_day", "young_day"].includes(row.result_type))) {
+    assert.equal(r.stage_number, 2, "klassement-rækker bærer dagens stage_number");
+  }
+  // INGEN team-rækker på mellem-etape.
+  assert.ok(!rows.some((r) => r.result_type === "team"), "mellem-etape må ikke skrive team-rækker");
+});
+
+test("#2072 accept: slut-GC = sum af persisterede etape-gaps — modsiger ALDRIG publicerede resultater", async () => {
+  // Vuelta Burgalesa-formen: de persisterede etaper siger at 'climber' samlet står
+  // LANGT foran alle. En frisk re-simulation (gamle arkitektur) kunne sige noget
+  // andet — akkumuleringen SKAL følge de publicerede gaps.
+  const prior = [];
+  for (const stage of [1, 2]) {
+    prior.push(stageRow(stage, "climber", 1, "+0:00"));
+    let rank = 2;
+    for (const e of ENTRANTS.filter((x) => x.rider_id !== "climber")) {
+      prior.push(stageRow(stage, e.rider_id, rank, "+20:00"));
+      rank++;
+    }
+  }
+  const race = { ...STAGE_RACE, stages_completed: 2 };
+  const supabase = cannedFor(race, STAGES_3, { race_results: prior });
+  const cap = captureStageResult();
+  await simulateStageByIndex({
+    supabase, race, stageIndex: 2, // etape 3 = final
+    ...NOOP_DEPS,
+    applyStageResult: cap.applyStageResult,
+  });
+  const gcRows = cap.rows().filter((r) => r.result_type === "gc").sort((a, b) => a.rank - b.rank);
+  assert.equal(gcRows.length, ENTRANTS.length);
+  // 40 minutters persisteret forspring kan ingen enkelt-etape re-sim udligne.
+  assert.equal(gcRows[0].rider_id, "climber", "slut-GC skal følge de persisterede etape-gaps");
+  // GC-gap = akkumulerede publicerede gaps (rank 2+ ligger 40:00+ efter minus dagens forskel).
+  const todayGapById = new Map(cap.rows().filter((r) => r.result_type === "stage").map((r) => [r.rider_id, parseGap(r.finish_time)]));
+  for (const g of gcRows.slice(1)) {
+    const expected = (2 * 20 * 60 + (todayGapById.get(g.rider_id) || 0)) - (todayGapById.get("climber") || 0);
+    assert.equal(parseGap(g.finish_time), expected, `gc-gap for ${g.rider_id} = sum af publicerede gaps`);
+  }
+});
+
+// ── #2072 accept/regression: feltet ændrer sig mellem etaper (Vuelta Burgalesa) ──
+test("#2072 regression: solgt/slettet rytter beholder kørte etaper men udgår af slut-GC; feltets øvrige GC er ren gap-sum", async () => {
+  // 'leaver' kørte etape 1-2 (persisteret), men er væk fra feltet før etape 3
+  // (solgt/slettet — ikke længere i race_entries/riders). #1844-frysningen
+  // rapporterer ham missing; akkumuleringen skal (a) IKKE slette hans etaperækker,
+  // (b) udelade ham af slut-klassementerne, (c) beregne de øvriges GC som ren gap-sum.
+  const prior = [];
+  for (const stage of [1, 2]) {
+    prior.push(stageRow(stage, "leaver", 1, "+0:00", "B"));
+    let rank = 2;
+    for (const e of ENTRANTS) {
+      prior.push(stageRow(stage, e.rider_id, rank, `+${rank}:00`));
+      rank++;
+    }
+  }
+  const race = { ...STAGE_RACE, stages_completed: 2 };
+  const supabase = makeSupabase({
+    race_stage_profiles: STAGES_3,
+    // Feltet NU: kun ENTRANTS — leaver er væk (solgt/slettet).
+    race_entries: ENTRANTS.map((e) => ({ rider_id: e.rider_id, team_id: e.team_id })),
+    riders: ENTRANTS.map((e) => ({ id: e.rider_id, team_id: e.team_id, firstname: e.rider_id, lastname: "", is_u25: e.is_u25 })),
+    rider_derived_abilities: ENTRANTS.map((e) => ({ rider_id: e.rider_id, ...e.abilities })),
+    race_points: [],
+    races: [{ id: race.id, ...race }],
+    seasons: [{ id: race.season_id, number: 2, status: "active", race_days_completed: 9, race_days_total: 60 }],
+    // Etape-1-snapshot INKLUDERER leaver (han var i startfeltet).
+    race_simulation_runs: [{ stage_number: 1, entrant_snapshot: [...ENTRANTS.map((e) => e.rider_id), "leaver"] }],
+    race_results: prior,
+  });
+  let capturedArgs = null;
+  const rpc = await simulateStageByIndex({
+    supabase, race, stageIndex: 2, // final
+    ...NOOP_DEPS,
+    applyStageResult: async (_client, args) => {
+      capturedArgs = args;
+      return { lockWon: true, rowsImported: args.resultRows.length };
+    },
+  });
+  assert.equal(rpc.isFinalStage, true);
+  const rows = capturedArgs.resultRows;
+  // (b) leaver optræder IKKE i nogen slut-klassement-række (gc/points/mountain/young/team).
+  for (const t of ["gc", "points", "mountain", "young", "stage"]) {
+    assert.ok(!rows.some((r) => r.result_type === t && r.rider_id === "leaver"),
+      `leaver må ikke optræde i ${t}-rækker for etape 3`);
+  }
+  // (a) hans persisterede etaperækker røres ikke: skrivningen er afgrænset til etape 3
+  // (RPC'ens idempotente delete-then-insert scoper på stageNumber).
+  assert.equal(capturedArgs.stageNumber, 3, "kun etape 3 skrives/slettes");
+  assert.ok(rows.every((r) => r.stage_number === 3), "ingen rækker uden for etape 3");
+  // (c) slut-GC for de tilbageværende = ren sum af publicerede gaps.
+  const gcRows = rows.filter((r) => r.result_type === "gc").sort((a, b) => a.rank - b.rank);
+  assert.equal(gcRows.length, ENTRANTS.length, "alle fuldførende ryttere er i slut-GC");
+  const todayGapById = new Map(rows.filter((r) => r.result_type === "stage").map((r) => [r.rider_id, parseGap(r.finish_time)]));
+  const priorSumById = new Map(ENTRANTS.map((e) => {
+    const sum = prior.filter((p) => p.rider_id === e.rider_id).reduce((s, p) => s + parseGap(p.finish_time), 0);
+    return [e.rider_id, sum];
+  }));
+  const cumById = new Map(ENTRANTS.map((e) => [e.rider_id, priorSumById.get(e.rider_id) + (todayGapById.get(e.rider_id) || 0)]));
+  const minCum = Math.min(...cumById.values());
+  for (const g of gcRows) {
+    assert.equal(parseGap(g.finish_time), cumById.get(g.rider_id) - minCum,
+      `slut-GC-gap for ${g.rider_id} skal være summen af hans publicerede etape-gaps`);
+  }
+  // young-klassementet er fortsat kun U25 blandt de fuldførende.
+  const young = rows.filter((r) => r.result_type === "young");
+  assert.deepEqual(young.map((r) => r.rider_id).sort(), ["b2", "climber"], "young = de 2 fuldførende U25");
 });
 
 // ── Fatigue: PRÆCIS ét applyFatigue-kald pr. invokation (ingen dobbelt-akkumulering) ──
@@ -441,7 +596,7 @@ test("FIX 1: final-etape kører finalization FØR status=completed (rækkefølge
     from(table) {
       const b = {
         select() { return b; }, eq() { return b; }, in() { return b; }, or() { return b; },
-        order() { return b; }, limit() { return b; }, range() { return b; }, gte() { return b; },
+        order() { return b; }, limit() { return b; }, range() { return b; }, gte() { return b; }, lt() { return b; },
         maybeSingle() {
           const data = table === "seasons"
             ? { id: "s1", number: 2, status: "active", race_days_completed: 9, race_days_total: 60 }
@@ -501,7 +656,7 @@ test("FIX 1 recovery: finalization-pending løb re-kører finalization til compl
       if (table === "race_entries") entriesLoaded++;
       const b = {
         select() { return b; }, eq() { return b; }, in() { return b; }, or() { return b; },
-        order() { return b; }, limit() { return b; }, range() { return b; }, gte() { return b; },
+        order() { return b; }, limit() { return b; }, range() { return b; }, gte() { return b; }, lt() { return b; },
         maybeSingle() {
           const data = table === "seasons"
             ? { id: "s1", number: 2, status: "active", race_days_completed: 9, race_days_total: 60 } : null;

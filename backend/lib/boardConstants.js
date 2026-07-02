@@ -187,6 +187,10 @@ export const STAR_PROFILE_SPONSOR_PRESSURE_BY_LEVEL = {
 // kalibrerings-beslutning, se #1205 out-of-scope).
 export const BOARD_IDENTITY_RIDER_SELECT = [
   "id",
+  // #1889 · firstname/lastname så star_profile kan navngive profilrytterne på
+  // Board-kortet (kolonnerne findes allerede på riders — ingen migration).
+  "firstname",
+  "lastname",
   "is_u25",
   "salary",
   "market_value",

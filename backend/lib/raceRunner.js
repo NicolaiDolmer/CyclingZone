@@ -8,10 +8,16 @@
 //      hold med manager-udtagne entries røres ikke).
 //   2. Simulér hver etape (seed = stableSeed(`${race.id}:${stage}`)).
 //   3. Aggregér på tværs af etaper: GC efter kumulativ tid (F3=B), + point/bjerg/
-//      ungdom/hold-klassementer. EMISSION matcher pcmResultsImport.js PRÆCIST:
+//      ungdom/hold-klassementer. Emission (superset af pcmResultsImport.js — #2081
+//      udvidede mellem-etaperne fra rank-1-trøjeholdere til FULDE klassementer;
+//      rank 2+ har ingen race_points-rækker → points_earned 0, payout uændret):
 //        single        → gc + team
-//        mellem-etape  → stage + leader/points_day/mountain_day/young_day (rank 1)
+//        mellem-etape  → stage + fulde leader/points_day/mountain_day/young_day
 //        slut-etape    → stage + fulde gc/points/mountain/young + team
+//      #2072: stage-by-stage-stien (simulateStageByIndex) simulerer KUN dagens
+//      etape og AKKUMULERER klassementerne fra de persisterede race_results-
+//      etaperækker (buildStageRowsAccumulated) — kørte etaper re-simuleres ALDRIG,
+//      så slut-GC kan ikke modsige de publicerede etape-gaps (Vuelta Burgalesa).
 //   4. Idempotent delete-then-insert pr. (race_id, stage_number) → applyRaceResults
 //      (UÆNDRET) → standings/prize. + recomputeSeasonRaceDays + status=completed
 //      + import_log (paritet med PCM-stien, undgår #804-regression).
@@ -40,67 +46,65 @@ import { raceBindingWindow } from "./raceBinding.js";
 import { freezeEntrantsToStartField, excludeBoundRiders, filterEntriesToRaceDivision } from "./raceFieldIntegrity.js";
 import { applyRiderEligibilityFilter, filterEligibleEntries } from "./riderEligibility.js";
 import { loadEligibleEntries, loadLoanedOutRiderIds } from "./raceEntriesLoader.js";
+// #2072: klassements-kernen (ranking, tie-breaks, gap-parsing, akkumulering) er
+// udtrukket til raceClassifications.js så helt-løb-stien og stage-by-stage-
+// akkumuleringsstien deler PRÆCIS samme semantik.
+import {
+  classPointsForRank,
+  CLIMB_PROFILES,
+  formatGap,
+  rankByCumTimeAsc,
+  rankByCompDesc,
+  teamClassification,
+  accumulateStageRows,
+  filterCompletedEntrants,
+} from "./raceClassifications.js";
 
-// Intern klassements-point (grøn/bjerg) — afgør KUN rækkefølgen i de respektive
-// trøje-konkurrencer; selve præmie-pointene kommer fra race_points via rank.
-// Top-15 aftagende (samme form som rigtige point/bjerg-konkurrencer). Tunbar ÉT sted.
-const CLASSIFICATION_POINTS = Object.freeze([25, 20, 16, 14, 12, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]);
-function classPointsForRank(rank) {
-  return CLASSIFICATION_POINTS[rank - 1] || 0;
-}
-
-// Bjerg-point uddeles kun på klatre-egnede etaper (KOM-logik).
-const CLIMB_PROFILES = new Set(["mountain", "high_mountain", "hilly"]);
-
-// "+M:SS" tids-gab til display (F3). 0 → "+0:00".
-function formatGap(seconds) {
-  const s = Math.max(0, Math.round(Number(seconds) || 0));
-  const m = Math.floor(s / 60);
-  return `+${m}:${String(s % 60).padStart(2, "0")}`;
-}
-
-// GC: kumulativ tid asc. Tids-ties brydes på countback (sum af etapeplaceringer),
-// så etapevinderen leder efter en felt-finish (flad etape: alle gap=0). Til sidst
-// rider_id for fuld determinisme.
-function rankByCumTimeAsc(entrants, cumTime, posSum) {
-  return entrants
-    .map((e) => ({
-      rider_id: e.rider_id,
-      team_id: e.team_id,
-      time: cumTime.get(e.rider_id) || 0,
-      pos: posSum.get(e.rider_id) || 0,
-    }))
-    .sort((a, b) =>
-      a.time - b.time ||
-      a.pos - b.pos ||
-      String(a.rider_id).localeCompare(String(b.rider_id))
-    )
-    .map((e, i) => ({ ...e, rank: i + 1 }));
-}
-
-function rankByCompDesc(entrants, compMap) {
-  return entrants
-    .map((e) => ({ rider_id: e.rider_id, team_id: e.team_id, score: compMap.get(e.rider_id) || 0 }))
-    .sort((a, b) => b.score - a.score || String(a.rider_id).localeCompare(String(b.rider_id)))
-    .map((e, i) => ({ ...e, rank: i + 1 }));
-}
-
-// Holdklassement: sum af holdets BEDSTE 3 rytteres kumulative tid, lavest vinder.
-function teamClassification(entrants, cumTime) {
-  const byTeam = new Map();
-  for (const e of entrants) {
-    if (!e.team_id) continue;
-    if (!byTeam.has(e.team_id)) byTeam.set(e.team_id, []);
-    byTeam.get(e.team_id).push(cumTime.get(e.rider_id) || 0);
-  }
-  const rows = [];
-  for (const [team_id, times] of byTeam) {
-    times.sort((a, b) => a - b);
-    rows.push({ team_id, time: times.slice(0, 3).reduce((s, t) => s + t, 0) });
-  }
-  return rows
-    .sort((a, b) => a.time - b.time || String(a.team_id).localeCompare(String(b.team_id)))
-    .map((r, i) => ({ ...r, rank: i + 1 }));
+// Fælles race_results-række-byggere — definerer rækkens form ét sted (deles af
+// buildRaceResults og buildStageRowsAccumulated). points_earned/prize_money
+// udledes ALTID af (result_type, rank) via pointsLookup — motoren opfinder aldrig point.
+// #1499: in_breakaway/breakaway_caught er DESKRIPTIVE udbruds-etiketter (ren read
+// af motorens egne tal — påvirker IKKE rang/point/finish_time). Default false, så
+// alle ikke-etape-rækker (gc/points/trøjer/team) bærer dem som false.
+function makeResultRowPushers({ race, byId, teamNameByTeam, pointsLookup, resultRows }) {
+  const pushIndiv = ({ result_type, rank, rider_id, stage_number, finish_time = null, in_breakaway = false, breakaway_caught = false }) => {
+    const e = byId.get(rider_id);
+    const pts = pointsLookup[`${result_type}__${rank}`] || 0;
+    resultRows.push({
+      race_id: race.id,
+      stage_number,
+      result_type,
+      rank,
+      rider_id,
+      rider_name: e?.rider_name ?? null,
+      team_id: e?.team_id ?? null,
+      team_name: e?.team_name ?? null,
+      finish_time,
+      points_earned: pts,
+      prize_money: pts * PRIZE_PER_POINT,
+      in_breakaway,
+      breakaway_caught,
+    });
+  };
+  const pushTeam = ({ rank, team_id, stage_number }) => {
+    const pts = pointsLookup[`team__${rank}`] || 0;
+    resultRows.push({
+      race_id: race.id,
+      stage_number,
+      result_type: "team",
+      rank,
+      rider_id: null,
+      rider_name: null,
+      team_id,
+      team_name: teamNameByTeam.get(team_id) ?? null,
+      finish_time: null,
+      points_earned: pts,
+      prize_money: pts * PRIZE_PER_POINT,
+      in_breakaway: false,
+      breakaway_caught: false,
+    });
+  };
+  return { pushIndiv, pushTeam };
 }
 
 /**
@@ -145,46 +149,7 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
   const resultRows = [];
   const runs = [];
 
-  // #1499: in_breakaway/breakaway_caught er DESKRIPTIVE udbruds-etiketter (ren read
-  // af motorens egne tal — påvirker IKKE rang/point/finish_time). Default false, så
-  // alle ikke-etape-rækker (gc/points/trøjer/team) bærer dem som false.
-  const pushIndiv = ({ result_type, rank, rider_id, stage_number, finish_time = null, in_breakaway = false, breakaway_caught = false }) => {
-    const e = byId.get(rider_id);
-    const pts = pointsLookup[`${result_type}__${rank}`] || 0;
-    resultRows.push({
-      race_id: race.id,
-      stage_number,
-      result_type,
-      rank,
-      rider_id,
-      rider_name: e?.rider_name ?? null,
-      team_id: e?.team_id ?? null,
-      team_name: e?.team_name ?? null,
-      finish_time,
-      points_earned: pts,
-      prize_money: pts * PRIZE_PER_POINT,
-      in_breakaway,
-      breakaway_caught,
-    });
-  };
-  const pushTeam = ({ rank, team_id, stage_number }) => {
-    const pts = pointsLookup[`team__${rank}`] || 0;
-    resultRows.push({
-      race_id: race.id,
-      stage_number,
-      result_type: "team",
-      rank,
-      rider_id: null,
-      rider_name: null,
-      team_id,
-      team_name: teamNameByTeam.get(team_id) ?? null,
-      finish_time: null,
-      points_earned: pts,
-      prize_money: pts * PRIZE_PER_POINT,
-      in_breakaway: false,
-      breakaway_caught: false,
-    });
-  };
+  const { pushIndiv, pushTeam } = makeResultRowPushers({ race, byId, teamNameByTeam, pointsLookup, resultRows });
 
   // #1306-fix + #1307: form/fatigue/race_role SKAL med ind i simulatoren — det er
   // præcis condition-berigelsen og rollerne der adskiller prod-stien fra rå abilities.
@@ -257,14 +222,17 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
     }
 
     if (!isFinal) {
-      // Mellem-etape: trøje-LEDERE (rank 1) for "at holde trøjen".
+      // Mellem-etape (#2081): FULDE løbende klassementer under dag-typerne — rank 1
+      // beholder "holder trøjen"-pointet (race_points har KUN rank 1 for dag-typerne);
+      // rank 2+ har intet opslag → points_earned 0, også under rederiveSeasonRacePoints.
+      // leader-rækker bærer GC-gap (display af løbende samlet stilling).
       const young = rankByCumTimeAsc(entrants.filter((e) => e.is_u25), cumTime, posSum);
       const pointsCls = rankByCompDesc(entrants, pointsComp);
       const komCls = rankByCompDesc(entrants, komComp);
-      if (gc[0]) pushIndiv({ result_type: "leader", rank: 1, rider_id: gc[0].rider_id, stage_number: stageNumber });
-      if (pointsCls[0]) pushIndiv({ result_type: "points_day", rank: 1, rider_id: pointsCls[0].rider_id, stage_number: stageNumber });
-      if (komCls[0]) pushIndiv({ result_type: "mountain_day", rank: 1, rider_id: komCls[0].rider_id, stage_number: stageNumber });
-      if (young[0]) pushIndiv({ result_type: "young_day", rank: 1, rider_id: young[0].rider_id, stage_number: stageNumber });
+      for (const g of gc) pushIndiv({ result_type: "leader", rank: g.rank, rider_id: g.rider_id, stage_number: stageNumber, finish_time: gcFinish(g) });
+      for (const p of pointsCls) pushIndiv({ result_type: "points_day", rank: p.rank, rider_id: p.rider_id, stage_number: stageNumber });
+      for (const k of komCls) pushIndiv({ result_type: "mountain_day", rank: k.rank, rider_id: k.rider_id, stage_number: stageNumber });
+      for (const y of young) pushIndiv({ result_type: "young_day", rank: y.rank, rider_id: y.rider_id, stage_number: stageNumber });
     } else {
       // Slut-etape: hele klassementet udbetales.
       const young = rankByCumTimeAsc(entrants.filter((e) => e.is_u25), cumTime, posSum);
@@ -706,6 +674,7 @@ export async function simulateRace({
   recomputeRaceDays = recomputeSeasonRaceDays,
   processBoardWeekend = processBoardWeekendFinalizationShared,
   notifyDiscord = null,
+  notifyInApp = null,
   applyFatigue = applyRaceFatigue,
 }) {
   if (!supabase?.from) throw new Error("supabase client required");
@@ -809,6 +778,16 @@ export async function simulateRace({
     }
   }
 
+  // #1952 · In-app resultat-notifikation til hver deltagende menneske-manager.
+  // Samme fejl-isolation som Discord: en notif-fejl må ikke vælte afviklingen.
+  if (notifyInApp) {
+    try {
+      await notifyInApp({ race });
+    } catch {
+      // In-app notif-fejl må ikke vælte afviklingen.
+    }
+  }
+
   return {
     rowsImported: applied.rowsImported,
     rows: resultRows.length,
@@ -818,11 +797,154 @@ export async function simulateRace({
   };
 }
 
+// ── #2072: stage-by-stage klassements-akkumulering ────────────────────────────
+
+// Persisterede etaperækker fra tidligere etaper — SSOT for klassementerne.
+// Range-pagineret (startfelter på 100-200 ryttere × mange etaper overstiger
+// PostgREST's 1000-cap). Defensivt client-side-filter oveni query-filtrene:
+// akkumuleringen må KUN se 'stage'-rækker fra FØR dagens etape.
+async function loadPriorStageRows({ supabase, raceId, beforeStageNumber }) {
+  const { data, error } = await fetchAllPaged(() =>
+    supabase
+      .from("race_results")
+      .select("stage_number, result_type, rank, rider_id, team_id, finish_time")
+      .eq("race_id", raceId)
+      .eq("result_type", "stage")
+      .lt("stage_number", beforeStageNumber)
+      .order("id", { ascending: true })
+  );
+  if (error) throw new Error(`race_results (prior stages): ${error.message}`);
+  return (data || []).filter(
+    (r) => r.result_type === "stage" && (r.stage_number || 1) < beforeStageNumber && r.rider_id
+  );
+}
+
+/**
+ * #2072-kerne (etapeløb, stage-by-stage): simulér PRÆCIS dagens etape og AKKUMULÉR
+ * klassementerne (GC/point/bjerg/ungdom/hold) fra de persisterede race_results-
+ * etaperækker + dagens resultat. Slut-GC og alle klassementer er dermed ALTID
+ * summen af de publicerede etape-gaps — aldrig en frisk re-simulation med dagens
+ * felt/form/træthed (rod-årsagen bag Vuelta Burgalesa: etape-resultater og slut-GC
+ * kom fra 4-5 forskellige simulationer, og spillerne kunne regne modstriden ud).
+ *
+ * Træthed: dagens sim kører på rytterens NUVÆRENDE rider_condition.fatigue — den
+ * indeholder allerede tidligere etapers belastning (applyRaceFatigue efter hver
+ * etape) plus evt. restitution mellem etapedage. stageEnteringFatigues-re-
+ * akkumulering oveni ville dobbelt-tælle de kørte etaper (del af #2072).
+ *
+ * Feltændringer håndteres af data-formen selv: en rytter der forlod feltet
+ * (solgt/slettet/udlånt) beholder sine persisterede etaperækker og præmier, men
+ * mangler en etape → udgår af klassementerne (filterCompletedEntrants).
+ *
+ * priorStageRows injiceres af kalderen (I/O adskilt fra beregning — testbar kerne).
+ * Ren + deterministisk givet (race.id, stagesSorted, entrants, priorStageRows).
+ *
+ * @returns {{ resultRows, runs }}  alle rækker bærer stage_number = dagens etape,
+ *   så apply_stage_result-RPC'ens idempotente delete-then-insert dækker dem.
+ */
+export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entrants = [], pointsLookup = {}, priorStageRows = [] }) {
+  if (!race?.id) throw new Error("race.id required");
+  if (!stagesSorted?.length) throw new Error("no stage profiles");
+  if (!entrants.length) throw new Error("no entrants");
+  const thisStage = stagesSorted[stageIndex];
+  if (!thisStage) throw new Error(`stageIndex ${stageIndex} out of range`);
+  const stageNumber = thisStage.stage_number || stageIndex + 1;
+  const isFinal = stageIndex === stagesSorted.length - 1;
+
+  const byId = new Map();
+  const teamNameByTeam = new Map();
+  for (const e of entrants) {
+    byId.set(e.rider_id, e);
+    if (e?.team_id != null && e?.team_name != null && !teamNameByTeam.has(e.team_id)) {
+      teamNameByTeam.set(e.team_id, e.team_name);
+    }
+  }
+
+  const resultRows = [];
+  const { pushIndiv, pushTeam } = makeResultRowPushers({ race, byId, teamNameByTeam, pointsLookup, resultRows });
+
+  const simEntrants = entrants.map((e) => ({
+    rider_id: e.rider_id,
+    team_id: e.team_id,
+    abilities: e.abilities,
+    ...(e.form != null ? { form: e.form } : {}),
+    fatigue: Math.max(0, Math.min(100, Number(e.fatigue) || 0)),
+    ...(e.race_role ? { race_role: e.race_role } : {}),
+  }));
+
+  const seed = stableSeed(`${race.id}:${stageNumber}`);
+  const { ranked } = simulateStage({ entrants: simEntrants, stageProfile: thisStage, seed });
+  // #1499: deskriptive udbruds-etiketter for dagens finish-order (ren read).
+  const breakawayStatus = deriveBreakawayStatus(ranked);
+  const bwOf = (riderId) => breakawayStatus.get(riderId) || { in_breakaway: false, breakaway_caught: false };
+
+  const runs = [{
+    stage_number: stageNumber,
+    seed,
+    engine_version: ENGINE_VERSION,
+    entrant_snapshot: simEntrants.map((e) => e.rider_id).sort(),
+    input_checksum: stableSeed(JSON.stringify({
+      ids: simEntrants.map((e) => e.rider_id).sort(),
+      roles: simEntrants.filter((e) => e.race_role).map((e) => [e.rider_id, e.race_role]).sort(),
+      demand: thisStage.demand_vector,
+      profile: thisStage.profile_type,
+    })),
+  }];
+
+  // Dagens etaperækker (samme form som buildRaceResults' stage-emission).
+  for (const r of ranked) {
+    pushIndiv({ result_type: "stage", rank: r.rank, rider_id: r.rider_id, stage_number: stageNumber, finish_time: formatGap(r.stageGap), ...bwOf(r.rider_id) });
+  }
+
+  // Klassementer akkumuleres fra persisterede + dagens rækker — dagens gap går
+  // igennem formatGap FØRST, så klassementet bygger på PRÆCIS de afrundede gaps
+  // spillerne ser publiceret (sum af etape-gaps = GC, altid).
+  const todayStageRows = ranked.map((r) => ({
+    stage_number: stageNumber,
+    result_type: "stage",
+    rank: r.rank,
+    rider_id: r.rider_id,
+    team_id: byId.get(r.rider_id)?.team_id ?? null,
+    finish_time: formatGap(r.stageGap),
+  }));
+  const profileTypeByStage = new Map(stagesSorted.map((s) => [s.stage_number || 1, s.profile_type]));
+  const acc = accumulateStageRows({ stageRows: [...priorStageRows, ...todayStageRows], profileTypeByStage });
+  const classified = filterCompletedEntrants(entrants, acc.stagesByRider, acc.stageNumbers);
+  if (!classified.length && entrants.length) {
+    console.error(`  ⚠️  race ${race.id} stage ${stageNumber}: no riders completed all ${acc.stageNumbers.size} ridden stages — classifications omitted`);
+  }
+
+  const gc = rankByCumTimeAsc(classified, acc.cumTime, acc.posSum);
+  const leaderTime = gc.length ? gc[0].time : 0;
+  const gcFinish = (entry) => formatGap(entry.time - leaderTime);
+  const young = rankByCumTimeAsc(classified.filter((e) => e.is_u25), acc.cumTime, acc.posSum);
+  const pointsCls = rankByCompDesc(classified, acc.pointsComp);
+  const komCls = rankByCompDesc(classified, acc.komComp);
+
+  if (!isFinal) {
+    // Mellem-etape (#2081): fulde løbende klassementer under dag-typerne (se
+    // buildRaceResults for payout-noten: kun rank 1 har race_points-opslag).
+    for (const g of gc) pushIndiv({ result_type: "leader", rank: g.rank, rider_id: g.rider_id, stage_number: stageNumber, finish_time: gcFinish(g) });
+    for (const p of pointsCls) pushIndiv({ result_type: "points_day", rank: p.rank, rider_id: p.rider_id, stage_number: stageNumber });
+    for (const k of komCls) pushIndiv({ result_type: "mountain_day", rank: k.rank, rider_id: k.rider_id, stage_number: stageNumber });
+    for (const y of young) pushIndiv({ result_type: "young_day", rank: y.rank, rider_id: y.rider_id, stage_number: stageNumber });
+  } else {
+    // Slut-etape: hele klassementet udbetales — fra AKKUMULERINGEN, ikke en re-sim.
+    for (const g of gc) pushIndiv({ result_type: "gc", rank: g.rank, rider_id: g.rider_id, stage_number: stageNumber, finish_time: gcFinish(g) });
+    for (const p of pointsCls) pushIndiv({ result_type: "points", rank: p.rank, rider_id: p.rider_id, stage_number: stageNumber });
+    for (const k of komCls) pushIndiv({ result_type: "mountain", rank: k.rank, rider_id: k.rider_id, stage_number: stageNumber });
+    for (const y of young) pushIndiv({ result_type: "young", rank: y.rank, rider_id: y.rider_id, stage_number: stageNumber });
+    for (const t of teamClassification(classified, acc.cumTime)) pushTeam({ rank: t.rank, team_id: t.team_id, stage_number: stageNumber });
+  }
+
+  return { resultRows, runs };
+}
+
 /**
  * Stage-by-stage afvikling (WS1 Fase 3): afvikl PRÆCIS én etape (0-indekseret
- * stageIndex). Determinismen i buildRaceResults gør dette korrekt og billigt:
- * vi re-simulerer hele løbet fra etape 1 (seeds = stableSeed(`${race.id}:${stage}`)
- * er faste), men persisterer KUN etape stageIndex+1. Etape 1..N-1's DB-rækker
+ * stageIndex). #2072: dagens etape simuleres ISOLERET (seed = stableSeed(
+ * `${race.id}:${stageNumber}`) er uændret); klassementerne akkumuleres fra de
+ * persisterede etaperækker via buildStageRowsAccumulated. Etape 1..N-1's DB-rækker
  * røres ikke — den idempotente delete-then-insert er afgrænset til denne etape.
  *
  * KORREKTHED:
@@ -851,6 +973,7 @@ export async function simulateStageByIndex({
   recomputeRaceDays = recomputeSeasonRaceDays,
   processBoardWeekend = processBoardWeekendFinalizationShared,
   notifyDiscord = null,
+  notifyInApp = null,
   applyFatigue = applyRaceFatigue,
   applyStageResult = applyStageResultAtomic,
 }) {
@@ -930,10 +1053,22 @@ export async function simulateStageByIndex({
     const racePoints = await loadRacePoints(supabase, race.race_class);
     const pointsLookup = buildRacePointsLookup({ racePoints, raceType: race.race_type });
 
-    // Determinisme: byg HELE løbet (faste seeds), filtrér til kun denne etape.
-    const { resultRows: allRows, runs: allRuns } = buildRaceResults({ race, stages, entrants, pointsLookup });
-    resultRows = allRows.filter((r) => r.stage_number === stageNumber);
-    runs = allRuns.filter((r) => r.stage_number === stageNumber);
+    if (race.race_type === "stage_race") {
+      // #2072: simulér KUN dagens etape; klassementer akkumuleres fra de
+      // persisterede etaperækker — slut-GC kan aldrig modsige publicerede gaps.
+      const priorStageRows = stageIndex > 0
+        ? await loadPriorStageRows({ supabase, raceId: race.id, beforeStageNumber: stageNumber })
+        : [];
+      ({ resultRows, runs } = buildStageRowsAccumulated({
+        race, stagesSorted, stageIndex, entrants, pointsLookup, priorStageRows,
+      }));
+    } else {
+      // Endagsløb (1 etape): buildRaceResults ER allerede én selv-konsistent
+      // simulation af præcis denne dag — ingen akkumulering at hente.
+      const { resultRows: allRows, runs: allRuns } = buildRaceResults({ race, stages, entrants, pointsLookup });
+      resultRows = allRows.filter((r) => r.stage_number === stageNumber);
+      runs = allRuns.filter((r) => r.stage_number === stageNumber);
+    }
 
     if (dryRun) {
       const stageWinner = resultRows.find((r) => r.result_type === "stage" && r.rank === 1);
@@ -1048,6 +1183,17 @@ export async function simulateStageByIndex({
       }
     } catch {
       // Discord-fejl må ikke vælte afviklingen.
+    }
+  }
+
+  // #1952 · In-app resultat-notifikation til hver deltagende menneske-manager,
+  // KUN på den faktiske final-etape (samme finalizationPending-guard som Discord:
+  // undgå dobbelt-send ved recovery-genkørsel; notifyUser dedup'er desuden 24t).
+  if (notifyInApp && !finalizationPending) {
+    try {
+      await notifyInApp({ race });
+    } catch {
+      // In-app notif-fejl må ikke vælte afviklingen.
     }
   }
 

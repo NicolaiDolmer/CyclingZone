@@ -4,6 +4,258 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.43",
+    "date": "2026-07-02",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Onboarding",
+        "en": {
+          "title": "Signing up now finishes cleanly after you confirm your email",
+          "body": "A few of you hit a wall right after signup: click the confirmation link, and instead of landing in the game you were asked to type your team and manager name all over again. That's fixed - your team is now created automatically the moment you confirm, using exactly what you entered when you signed up. If your first confirmation email doesn't show up, there's now a \"Send it again\" link on the confirmation screen and on the login error when it says your email isn't confirmed yet.",
+        },
+        "da": {
+          "title": "Oprettelse af konto afsluttes nu rent efter du bekræfter din email",
+          "body": "Nogle af jer ramte en mur lige efter signup: klik på bekræftelseslinket, og i stedet for at lande i spillet blev I bedt om at skrive hold- og managernavn igen. Det er rettet - dit hold oprettes nu automatisk i det øjeblik du bekræfter, med præcis det du skrev ved signup. Kommer din første bekræftelsesmail ikke frem, er der nu et \"Send den igen\"-link på bekræftelsesskærmen og ved login-fejlen når den siger din email ikke er bekræftet endnu.",
+        },
+        "refs": [2068, 2069]
+      }
+    ]
+  },
+  {
+    "version": "6.42",
+    "date": "2026-07-02",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Stage-race GC now always matches the published stage results",
+          "body": "Some of you did the maths on Vuelta Burgalesa and caught a real bug: the final GC could contradict the stage results we had already published. The engine used to re-simulate the whole race on every stage day, so the final overall standings came from a different simulation than the stage results you saw. That is fixed: the overall standings are now calculated by adding up the published stage gaps, exactly the way you would check it yourself. A rider who leaves the game mid-race keeps the results and prize money already earned, but no longer appears in the final classifications. Already-finished races keep their published results. Thanks to the managers who double-checked our numbers - that is exactly the scrutiny the game needs.",
+        },
+        "da": {
+          "title": "Etapeløbs samlede stilling matcher nu altid de publicerede etaperesultater",
+          "body": "Nogle af jer regnede efter på Vuelta Burgalesa og fangede en ægte fejl: den endelige samlede stilling kunne modsige de etaperesultater vi allerede havde publiceret. Motoren re-simulerede før hele løbet på hver etapedag, så slutstillingen kom fra en anden simulation end de etaperesultater I så. Det er rettet: den samlede stilling beregnes nu ved at lægge de publicerede etape-gaps sammen, præcis som I selv ville tjekke det. En rytter der forlader spillet midt i et løb beholder de resultater og præmiepenge han allerede har kørt hjem, men optræder ikke længere i slutklassementerne. Allerede afsluttede løb beholder deres publicerede resultater. Tak til de managers der regnede efter - det er præcis den vagtsomhed spillet har brug for.",
+        },
+        "refs": [2072]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Follow the overall standings while a stage race is running",
+          "body": "You no longer have to wait for the final stage to see who leads a stage race. The race page now shows the full running standings after each stage: GC with time gaps, the points, mountains and youth competitions, and the team classification. Open any race in progress and the Overall tab shows the standings after the latest completed stage, clearly marked so you know the race is not finished yet.",
+        },
+        "da": {
+          "title": "Følg den samlede stilling mens et etapeløb er i gang",
+          "body": "Du skal ikke længere vente på sidste etape for at se hvem der fører et etapeløb. Løbssiden viser nu den fulde løbende stilling efter hver etape: GC med tidsgab, point-, bjerg- og ungdomskonkurrencen samt holdkonkurrencen. Åbn et igangværende løb, så viser Samlet-fanen stillingen efter den senest kørte etape, tydeligt markeret så du ved at løbet ikke er slut endnu.",
+        },
+        "refs": [2081]
+      }
+    ]
+  },
+  {
+    "version": "6.41",
+    "date": "2026-07-02",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Race results, standings and prize money are flowing again",
+          "body": "From June 30 to July 2 a backend fault stopped races from finishing properly: finished races were not marked complete, prize money was not paid out, and the team standings froze. The fault is fixed and everything has caught up automatically. All held prize money (about 1.7M) has been paid, the standings now include every result, and 13 stuck races including Vuelta Burgalesa have been finalized. We have also added monitoring so a fault like this alerts us within minutes instead of days. Thanks to the managers who reported it."
+        },
+        "da": {
+          "title": "Løbsresultater, rangliste og præmiepenge kører igen",
+          "body": "Fra 30. juni til 2. juli stoppede en backend-fejl løb i at blive gjort ordentligt færdige: kørte løb blev ikke markeret som afsluttede, præmiepenge blev ikke udbetalt, og holdranglisten frøs fast. Fejlen er rettet, og alt er indhentet automatisk. Alle tilbageholdte præmiepenge (ca. 1,7M) er udbetalt, ranglisten tæller nu alle resultater med, og 13 fastlåste løb inklusive Vuelta Burgalesa er finaliseret. Vi har også tilføjet overvågning, så en fejl som denne alarmerer os på minutter i stedet for dage. Tak til de managers der meldte det ind."
+        },
+        "refs": [2071, 2087]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Account",
+        "en": {
+          "title": "Smoother sign-up: resend the confirmation email and skip the double setup",
+          "body": "If your confirmation email does not arrive, you can now press Send it again on the sign-up screen or at log-in. And once you confirm your email, your team is created automatically from what you entered at sign-up, so you no longer have to type your manager and team name a second time."
+        },
+        "da": {
+          "title": "Nemmere oprettelse: gensend bekræftelsesmailen og slip for dobbelt opsætning",
+          "body": "Hvis din bekræftelsesmail ikke dukker op, kan du nu trykke Send den igen på oprettelsesskærmen eller ved login. Og når du bekræfter din e-mail, oprettes dit hold automatisk ud fra det du indtastede ved oprettelsen, så du ikke længere skal skrive manager- og holdnavn en gang til."
+        },
+        "refs": [2068, 2069]
+      }
+    ]
+  },
+  {
+    "version": "6.40",
+    "date": "2026-06-30",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Get a notification when one of your races has been run",
+          "body": "When a race your team took part in is finished, you now get an in-app notification so you know there is a result to look at. Open it to jump straight to that race's result. Until now the only sign a race had run was spotting it yourself on the dashboard or results page."
+        },
+        "da": {
+          "title": "Få besked når et af dine løb er kørt",
+          "body": "Når et løb dit hold deltog i er afviklet, får du nu en notifikation i appen, så du ved der er et resultat at se på. Åbn den for at hoppe direkte til løbets resultat. Indtil nu var det eneste tegn på et kørt løb at du selv opdagede det på dashboardet eller resultatsiden."
+        },
+        "refs": [1952]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "See which riders are your club's star riders",
+          "body": "Your board's star-profile tile used to tell you how many star riders you have, but not who they were. It now lists them by name, with a short note on how they are picked (rider popularity plus UCI points). If you have no star riders yet, it says so clearly."
+        },
+        "da": {
+          "title": "Se hvilke ryttere der er din klubs stjerneryttere",
+          "body": "Din bestyrelses stjerneprofil-felt fortalte før hvor mange stjerneryttere du har, men ikke hvem de var. Det viser dem nu ved navn, med en kort note om hvordan de vælges (rytter-popularitet plus UCI-point). Har du ingen stjerneryttere endnu, står det tydeligt."
+        },
+        "refs": [1889]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Rider potential now shown on the Academy page",
+          "body": "The Academy page now shows each rider's potential next to them, both in your signed academy squad and among the free youth riders. Riders you own show their exact potential; riders you do not own yet show the scouted range, the same way it works elsewhere."
+        },
+        "da": {
+          "title": "Rytter-potentiale vises nu på akademi-siden",
+          "body": "Akademi-siden viser nu hver rytters potentiale ved siden af dem, både i din signerede akademi-trup og blandt de frie ungdomsryttere. Ryttere du ejer viser deres præcise potentiale; ryttere du endnu ikke ejer viser det spejdede spænd, som det fungerer andre steder."
+        },
+        "refs": [1978]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Sort your riders when picking a race lineup",
+          "body": "On the team-selection board you can now sort your riders by name, type, route match, form and fatigue, so it is easier to find the right rider for the race. Click a column header on desktop or use the sort menu on mobile."
+        },
+        "da": {
+          "title": "Sortér dine ryttere når du udtager til et løb",
+          "body": "På udtagelses-board'et kan du nu sortere dine ryttere efter navn, type, rute-match, form og træthed, så det er nemmere at finde den rigtige rytter til løbet. Klik en kolonneoverskrift på desktop, eller brug sorterings-menuen på mobil."
+        },
+        "refs": [1951]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Transfers",
+        "en": {
+          "title": "Sort the transfer market by rider ability",
+          "body": "The transfer market can now be sorted by any rider ability, as well as by value, on top of the existing price, age and newest sorting. Pick an ability from the new dropdown to put the strongest riders in that skill at the top."
+        },
+        "da": {
+          "title": "Sortér transfermarkedet efter rytter-evne",
+          "body": "Transfermarkedet kan nu sorteres efter enhver rytter-evne, samt efter værdi, oven på den eksisterende sortering på pris, alder og nyeste. Vælg en evne i den nye dropdown for at lægge de stærkeste ryttere i den evne øverst."
+        },
+        "refs": [2031]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Transfers",
+        "en": {
+          "title": "Transfer history now shows academy signings and the correct season",
+          "body": "Your transfer history was missing every academy signing and filed launch-day deals under the wrong season. Academy riders you have signed now appear in the history, and deals made on the season's first day are filed under the right season instead of the empty season before it."
+        },
+        "da": {
+          "title": "Transferhistorik viser nu akademi-signeringer og den rigtige sæson",
+          "body": "Din transferhistorik manglede alle akademi-signeringer og lagde handler fra sæsonens første dag under den forkerte sæson. Akademi-ryttere du har signeret vises nu i historikken, og handler lavet på sæsonens første dag ligger nu under den rigtige sæson i stedet for den tomme sæson før."
+        },
+        "refs": [1776]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "Back button keeps your auctions tab",
+          "body": "Opening a rider profile from the auctions page and pressing back used to always drop you on the 'My situation' tab. The auctions page now remembers which tab you were on, so back takes you where you expect, and you can share or bookmark a specific tab."
+        },
+        "da": {
+          "title": "Tilbage-knappen bevarer din auktions-fane",
+          "body": "Når du åbnede en rytterprofil fra auktionssiden og trykkede tilbage, landede du før altid på fanen 'Min situation'. Auktionssiden husker nu hvilken fane du var på, så tilbage fører dig hen hvor du forventer, og du kan dele eller bogmærke en bestemt fane."
+        },
+        "refs": [1777]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Consistent rider name sorting across pages",
+          "body": "Rider lists sorted by name could order names with a double 'a' differently from one page to the next. Name sorting now uses the same rule everywhere, so the same riders sort the same way on every page."
+        },
+        "da": {
+          "title": "Ensartet sortering af rytternavne på tværs af sider",
+          "body": "Rytterlister sorteret efter navn kunne ordne navne med dobbelt-a forskelligt fra side til side. Navnesortering bruger nu den samme regel overalt, så de samme ryttere sorteres ens på alle sider."
+        },
+        "refs": [1950]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "General",
+        "en": {
+          "title": "Fixed a crash when your browser auto-translates the game",
+          "body": "If your browser offered to translate the page (common in Chrome when the site language did not match your browser), the game could crash to a blank screen. The app now tells the browser its real language and is resilient to translation tools, so auto-translate no longer breaks the page."
+        },
+        "da": {
+          "title": "Rettet et crash når browseren auto-oversætter spillet",
+          "body": "Hvis din browser tilbød at oversætte siden (typisk i Chrome når sidens sprog ikke matchede din browser), kunne spillet crashe til en blank skærm. Appen fortæller nu browseren sit rigtige sprog og er modstandsdygtig over for oversættelses-værktøjer, så auto-oversæt ikke længere ødelægger siden."
+        },
+        "refs": [2039]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "General",
+        "en": {
+          "title": "Shared links to riders and races no longer hit a blank login wall",
+          "body": "Opening a direct link to a rider or race while signed out used to land on an empty login screen. Those deep links now show a proper context-aware sign-in, so a shared or bookmarked link leads somewhere useful instead of a dead end."
+        },
+        "da": {
+          "title": "Delte links til ryttere og løb rammer ikke længere en blank login-væg",
+          "body": "Et direkte link til en rytter eller et løb åbnede før en tom login-skærm hvis man ikke var logget ind. De dybe links viser nu en ordentlig kontekst-bevidst login, så et delt eller bogmærket link fører et brugbart sted hen i stedet for en blindgyde."
+        },
+        "refs": [2042]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Leagues",
+        "en": {
+          "title": "Division 4 is now open",
+          "body": "New managers may now start their club in Division 4 once Division 3 is full. Division 4 has its own full season of races, just like the other divisions."
+        },
+        "da": {
+          "title": "Division 4 er nu åben",
+          "body": "Nye managere kan nu starte deres klub i division 4, når division 3 er fuld. Division 4 har sin egen fulde sæson af løb, ligesom de andre divisioner."
+        },
+        "refs": []
+      }
+    ]
+  },
+  {
     "version": "6.39",
     "date": "2026-06-30",
     "label": "Beta",

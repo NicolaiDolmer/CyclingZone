@@ -73,6 +73,7 @@ export async function runAdminSimulateRace({
   ensureSeasonStandings,
   updateStandings,
   notifyDiscord = null,
+  notifyInApp = null,
   simulateRace = simulateRaceDefault,
 }) {
   if (!raceId) throw httpError(400, "race_id required");
@@ -125,6 +126,7 @@ export async function runAdminSimulateRace({
     ensureSeasonStandings,
     updateStandings,
     notifyDiscord,
+    notifyInApp,
   });
 }
 
@@ -139,9 +141,15 @@ export async function runAdminSimulateStage({
   raceId,
   dryRun = false,
   runSource = null,
+  // #2090: når sat (scheduler-kald), må der KUN afvikles præcis denne etape.
+  // Beskytter mod stale/overlappende ticks: er løbet imens bumpet af et andet
+  // run, matcher den friske stages_completed ikke længere → 409 i stedet for at
+  // køre en etape hvis scheduled_at ligger i fremtiden.
+  expectedStageIndex = null,
   ensureSeasonStandings,
   updateStandings,
   notifyDiscord = null,
+  notifyInApp = null,
   simulateStageByIndex = simulateStageByIndexDefault,
 }) {
   if (!raceId) throw httpError(400, "race_id required");
@@ -163,9 +171,27 @@ export async function runAdminSimulateStage({
   }
 
   const totalStages = race.stages || 1;
-  const stageIndex = race.stages_completed || 0;
+  let stageIndex = race.stages_completed || 0;
   if (stageIndex >= totalStages) {
-    throw httpError(409, `All ${totalStages} stages already simulated (stages_completed=${race.stages_completed})`);
+    // P0 2/7 (recovery): alle etaper ER kørt, men status blev aldrig flippet til
+    // 'completed' (crash mellem stages_completed-bump og finalization — incidenten
+    // 30/6-2/7 efterlod 13 løb her). Fald igennem til simulateStageByIndex'
+    // idempotente finalizationPending-sti med final-etapens index i stedet for at
+    // 409'e — ellers er recovery-stien uopnåelig og løbene sidder fast for evigt
+    // (ingen præmier/notifikationer/status-flip). dryRun har ingen recovery-
+    // semantik → 409 bevares dér.
+    if (dryRun) {
+      throw httpError(409, `All ${totalStages} stages already simulated (stages_completed=${race.stages_completed})`);
+    }
+    stageIndex = totalStages - 1;
+  }
+
+  // #2090 stale-tick-guard: kaldet var møntet på en bestemt etape, men løbets
+  // friske tilstand peger på en anden (et andet run har bumpet stages_completed
+  // i mellemtiden). Kør ALDRIG en anden etape end den udvalgte — den kan ligge
+  // i fremtiden (Volta Algarvia-hændelsen 2/7: 10 etaper kørt før scheduled_at).
+  if (expectedStageIndex != null && stageIndex !== expectedStageIndex) {
+    throw httpError(409, `Stale tick: expected stage index ${expectedStageIndex}, race is at ${stageIndex} — skipping`);
   }
 
   // Delvise profiler må ikke kunne afvikles — samme guard som runAdminSimulateRace.
@@ -193,6 +219,7 @@ export async function runAdminSimulateStage({
     ensureSeasonStandings,
     updateStandings,
     notifyDiscord,
+    notifyInApp,
   });
 }
 

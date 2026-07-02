@@ -335,7 +335,7 @@
       },
       "racesAndResults": {
         "title": "Løb og resultater",
-        "text": "Løb afvikles af Cycling Zones race-motor. Den simulerer hver etape ud fra rytternes evner, form og taktik, og skriver derefter stillingen og præmiepengene automatisk. Præmiepengene lander på dit holds balance, så snart et løb er finaliseret. Du kan følge alle resultater under Sæson & Resultater, Løb."
+        "text": "Løb afvikles af Cycling Zones race-motor. Den simulerer hver etape ud fra rytternes evner, form og taktik, og skriver derefter stillingen og præmiepengene automatisk. Præmiepengene lander på dit holds balance, så snart et løb er finaliseret. Du kan følge alle resultater under Sæson & Resultater, Løb. Mens et etapeløb er i gang, viser løbssiden også den fulde løbende stilling efter hver kørt etape: GC, point, bjerg, ungdom og hold. Slut-GC er altid summen af de publicerede etape-gaps, så du selv kan regne efter."
       },
       "stageProfile": {
         "title": "Terræn på et resultat",
@@ -803,6 +803,10 @@
     "boardCurrentAssessment": {
       "q": "Hvor ser jeg bestyrelsens aktuelle vurdering?",
       "a": "Dashboardet viser et kort bestyrelses-outlook med status og category-scores, mens Bestyrelsessiden viser den mere detaljerede vurdering. Bestyrelsessiden viser også bestyrelsens læsning af holdet med specialisering, U25-andel, national kerne, stjerneprofil og trupstatus, nu med landenavn og flag på den nationale kerne. Derudover forklarer Board-siden nu tydeligere hvorfor bestyrelsen reagerer, ved at vise hvilke kategorier der driver vurderingen, hvad der holder den tilbage, og hvilke signaler fra historik, identitet eller profiler der spiller ind. De to steder læser samme board-data fra backend, så de bruger den samme sandhed."
+    },
+    "boardProfileRiders": {
+      "q": "Hvem er mit holds profilryttere?",
+      "a": "Bestyrelsessiden navngiver dem nu. Under stjerneprofil-flisen viser bestyrelsens læsning af holdet hver rytter den tæller som en stjerne, med en stjerne-score. En rytter kvalificerer som stjerne når popularitet plus UCI-point er over stjernetærsklen. Popularitet vejer tungere end resultater (cirka 70/30), så en velkendt rytter kan være en stjerne selv uden store pointhøst, mens en stærk men anonym arbejdsrytter som regel ikke er det. Listen er din nuværende trup, så den ændrer sig når du køber eller sælger ryttere. Hvis ingen rytter rammer tærsklen endnu, siger kortet det i stedet for at liste navne."
     },
     "season1BaselineFaq": {
       "q": "Er bestyrelsen tilgængelig i sæson 1?",

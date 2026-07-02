@@ -40,6 +40,7 @@ function createIlikeCapturingSupabase() {
     const q = {
       select() { return q; },
       eq() { return q; },
+      in() { return q; },
       limit() { return q; },
       ilike(column, value) {
         if (table === "teams" && column === "name") captured.ilikeValues.push(value);

@@ -16,12 +16,24 @@
 //     forbliver fuldt frit → managere bygger op via auktion/træning/ungdom.
 //   • Stratificeret-lige: snake-draft på base_value → ~lige (svage) hold.
 
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { makeRng, generateFictionalRiders, toInsertPayload, STAT_KEYS } from "./fictionalRiderGenerator.js";
 import { MIN_RIDERS_FOR_RACE } from "./marketUtils.js";
 import { fetchAllRows } from "./supabasePagination.js";
 import { LAUNCH_POPULATION } from "./fictionalLaunchPopulation.js";
 import { foldNameNordic } from "./pcmRiderMatcher.js";
 import { deriveForRiderIds } from "./backfillCores.js";
+import { seedPhysiologyFromLegacy } from "./physiologySeeding.js";
+import { deriveAbilities } from "./abilityDerivation.js";
+import { computeRiderTypes } from "./riderTypes.js";
+import { predictBaseValue } from "./riderValuation.js";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const TYPES_BASELINE = JSON.parse(readFileSync(join(__dirname, "./riderTypesBaseline.json"), "utf8"));
+const VALUATION_MODEL = JSON.parse(readFileSync(join(__dirname, "./riderValuationModel.json"), "utf8"));
 
 export const STARTER_SQUAD = Object.freeze({
   CORE_SIZE: MIN_RIDERS_FOR_RACE,         // 8 — den løbsklare kerne (= løbs-minimum)
@@ -51,6 +63,146 @@ export const STARTER_POOL_STAT_WINDOW = Object.freeze({ lo: 50, hi: 57 });
 // end kernen. [50,52] → afledte top-evner ~7 (mod kernens ~21) via den lineære
 // PCM-fallback-remap. Skarpest "nød-fyldere vs kerne"-tekstur + stærkest byg-selv-pres.
 export const STARTER_TAIL_STAT_WINDOW = Object.freeze({ lo: 50, hi: 52 });
+
+// AI-rytter-realisme pr. division (ejer-besluttet 2026-06-30, sim-kalibreret via
+// scripts/simAiRosterTierWindows.js — READ-ONLY, ingen prod-mutation): AI-truppens
+// styrke skal afspejle divisionens niveau, ikke være ensartet svag på tværs af hele
+// pyramiden. KUN nye AI-hold (fremadrettet) — eksisterende AI-rosters røres IKKE
+// (ejer-beslutning: "ikke fordi du behøver at lave alle de ryttere om").
+//
+// INCIDENT 2026-06-30 (#2065): v1 klampede ALLE 14 stat-felter ind i et smalt, højt
+// vindue (som tier 3/4 nedenfor) for tier 1/2 — det gav ryttere der var gode til ALT
+// samtidig (urealistisk alsidighed), som værdimodellens mean-of-all-abilities-led
+// belønnede voldsomt (900 ryttere, gns. 364k CZ$, enkelte over 3 mio — over
+// Pogačar-niveau). Rullet tilbage samme dag.
+//
+// FIX: tier 1/2 bruger nu den ÆGTE arketype-generator (fictionalRiderGenerator.js)
+// via dens eksisterende, allerede kalibrerede styrke-TIERS (samme mekanisme som
+// genererer den fri markeds-population) — se AI_TIER_FRACTIONS. Realistisk
+// specialisering (høj signatur-stat, dæmpede andre) + en allerede betroet værdi-
+// kurve, ingen custom clamping. tier 3/4 er UÆNDRET (vindue-clamp, lavt nok til at
+// være sikkert — proven i prod, se #2065-postmortem).
+export const AI_TIER_STAT_WINDOWS = Object.freeze({
+  3: { core: STARTER_POOL_STAT_WINDOW, tail: STARTER_TAIL_STAT_WINDOW },
+  4: { core: Object.freeze({ lo: 51, hi: 55 }), tail: Object.freeze({ lo: 51, hi: 53 }) },
+});
+
+// tier → tierFractions for generateFictionalRiders (samme format som #1420 mix-
+// presets). domestique er altid resten (#1420-kontrakt) — eksplicit 0 på
+// superstar/star udelukker dem (for stærke til AI-modstandere).
+//
+// INCIDENT 2026-06-30 v2 (#2065, anden runde): 100% "solid" til hele tier-1-
+// batchen (300 ryttere) gav gns. 1,52 mio CZ$ og enkelte op til 8,16 mio (over
+// Pogačar) — "solid"-tierens konvekse værdikurve + sd=2,75 ruller af og til en
+// ekstrem outlier. Harmløst i det frie marked (kun 230/800, spredt over hele
+// pyramiden); farligt når SAMME tier bruges til en hel divisions AI-bænk på én
+// gang (300 uafhængige ruller = mange chancer for en outlier). FIX: lavere
+// solid-andel (25%, ikke 100%) + AI_TIER_VALUE_CAP nedenfor som hårdt
+// sikkerhedsnet (se generateAiRiderBatchWithCap) — loftet garanterer grænsen
+// UANSET tier-blandingens statistiske hale.
+//   tier 1: 25% "solid" / 75% domestique — et mærkbart løft uden at oversvømme
+//     divisionen med solid-tierens højre-hale-risiko.
+//   tier 2: 100% "domestique" (= ingen eksplicit fraktion → ren rest) — et hak
+//     stærkere end tier 3/4's deciderede-svage clamp-vindue, men stadig beskeden.
+export const AI_TIER_FRACTIONS = Object.freeze({
+  1: Object.freeze({ superstar: 0, star: 0, solid: 0.25 }),
+  2: Object.freeze({ superstar: 0, star: 0, solid: 0 }),
+});
+
+// Hårdt værdiloft pr. tier (CZ$) — sikkerhedsnet mod #2065-klassen af outliers.
+// Garanteres af generateAiRiderBatchWithCap (forkaster + rerruller over loftet),
+// IKKE af tierFractions alene (statistik kan ikke garantere et loft).
+export const AI_TIER_VALUE_CAP = Object.freeze({ 1: 200000, 2: 100000 });
+
+// AI-trup-størrelse (ejer 2026-06-30: "op til 24 ryttere på holdene"). Adskilt fra
+// STARTER_SQUAD (manager-truppen, urørt på 12) — kun AI-holds nye trupper vokser.
+// CORE_SIZE uændret (8, race-klar kerne); hele væksten lægges i halen (4→16), så
+// AI-holdet får en dyb, divisions-passende bænk uden at ændre kerne-fairness-logikken.
+export const AI_SQUAD = Object.freeze({
+  CORE_SIZE: STARTER_SQUAD.CORE_SIZE,
+  TAIL_SIZE: 16,
+  TOTAL_SIZE: STARTER_SQUAD.CORE_SIZE + 16,
+});
+
+// Stat-vindue for en given tier — falder tilbage til tier 3 (dagens svage standard)
+// for ukendte/fremtidige tiers, så funktionen aldrig kaster på et uventet pool.tier.
+// Bruges KUN for tier 3/4 (clamp-vindue-stien); tier 1/2 bruger aiTierFractionsForTier.
+export function aiStatWindowsForTier(tier) {
+  return AI_TIER_STAT_WINDOWS[tier] || AI_TIER_STAT_WINDOWS[3];
+}
+
+// tierFractions for en given tier — null hvis tieren bruger clamp-vindue-stien
+// (tier 3/4) i stedet for den ægte arketype-generator.
+export function aiTierFractionsForTier(tier) {
+  return AI_TIER_FRACTIONS[tier] || null;
+}
+
+export function aiValueCapForTier(tier) {
+  return AI_TIER_VALUE_CAP[tier] ?? null;
+}
+
+// Sikkerhedsnet: beregn værdien + PRIMÆR TYPE LOKALT (samme kæde som
+// deriveForRiderIds: seedPhysiologyFromLegacy → deriveAbilities →
+// computeRiderTypes → predictBaseValue) FØR en rytter accepteres, og forkast/
+// rerul enhver rytter over valueCap ELLER over typeShareCap for sin primære
+// type. Garanterer begge grænser uanset tierFractions' statistiske hale (en
+// tier-blanding kan IKKE garantere en grænse, kun et sandsynligt gennemsnit).
+//
+// GENERERER I RUNDER (ikke én ad gangen — 2026-07-01-fix): generateFictionalRiders
+// har en GUARANTEED-nationalitets-liste (["CN","JP","KR","CO","DZ","ER"]) der
+// sikrer repræsentation af sjældne nationer i EN STOR pulje — men med count=1
+// pr. kald bliver "garantien" til HELE resultatet (nationaliteten forreste på
+// listen vinder hver gang, den vægtede fordeling kommer aldrig i spil). Ramte
+// prod 2026-06-30: alle 300 division-1-ryttere fik nationality_code="CN".
+// Generering i runder (batchStørrelse ≥ 10) lader GUARANTEED opføre sig som
+// tiltænkt (kun forreste håndfuld nationer i en STOR batch, resten vægtet).
+//
+// TYPE-DIVERSITET (2026-07-01, ejer-ønske): rytter-type-klassifikatoren
+// (riderTypes.js) har en kendt catch-all-skævhed (#1378/#2014 — ~80%+ af en
+// tilfældig batch klassificeres som "sprinter", uanset arketype-intention).
+// typeShareCap (default 0,4) forhindrer at én type dominerer TRUPPEN — ikke en
+// fix af klassifikatoren selv (det er #1378's scope), men et lokalt loft der
+// giver reel variation i AI-holdenes trup uden at røre den delte model.
+// Returnerer ren INSERT-payload (samme form som buildWeakStarterPool).
+export function generateAiRiderBatchWithCap({
+  count, tierFractions, valueCap, seed, referenceYear,
+  existingFoldedNames = new Set(), generate = generateFictionalRiders,
+  typeShareCap = 0.4, maxRounds = 60,
+}) {
+  const accepted = [];
+  const typeCounts = new Map();
+  const maxPerType = Math.max(1, Math.ceil(count * typeShareCap));
+  const usedNames = new Set(existingFoldedNames);
+  let attemptSeed = (seed >>> 0);
+  let round = 0;
+  while (accepted.length < count && round < maxRounds) {
+    round++;
+    const needed = count - accepted.length;
+    const batchSize = Math.max(needed * 6, 30);
+    const { riders } = generate({
+      seed: attemptSeed, count: batchSize, referenceYear, existingFoldedNames: usedNames, tierFractions,
+    });
+    attemptSeed = (attemptSeed + 104729) >>> 0; // næste rundes seed (primtal-spring)
+    for (const candidate of riders) {
+      if (accepted.length >= count) break;
+      const physiology = seedPhysiologyFromLegacy(candidate);
+      const abilities = deriveAbilities(physiology, candidate);
+      const { primary } = computeRiderTypes(abilities, TYPES_BASELINE);
+      const value = predictBaseValue({ ...candidate, primary_type: primary.key }, abilities, VALUATION_MODEL);
+      const withinValueCap = value == null || valueCap == null || value <= valueCap;
+      const withinTypeCap = (typeCounts.get(primary.key) || 0) < maxPerType;
+      if (withinValueCap && withinTypeCap) {
+        usedNames.add(foldNameNordic(`${candidate.firstname} ${candidate.lastname}`));
+        typeCounts.set(primary.key, (typeCounts.get(primary.key) || 0) + 1);
+        accepted.push(candidate);
+      }
+    }
+  }
+  if (accepted.length < count) {
+    throw new Error(`generateAiRiderBatchWithCap: only ${accepted.length}/${count} riders under cap ${valueCap} after ${round} rounds`);
+  }
+  return toInsertPayload(accepted.slice(0, count));
+}
 
 export function computeAge(birthdate, referenceYear) {
   const year = Number(String(birthdate).slice(0, 4));

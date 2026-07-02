@@ -241,6 +241,11 @@
     "hideInjured": "Skjul skadede",
     "suitability": "Egnethed",
     "routeMatch": "Rute-match",
+    "sort": {
+      "label": "Sortér efter",
+      "ascAria": "Sorterer stigende, tryk for faldende",
+      "descAria": "Sorterer faldende, tryk for stigende"
+    },
     "best": "Bedst",
     "bestForStage": "Dit stærkeste fit til denne etape",
     "whyBest": "Denne {bucket}-etape belønner dit stærkeste fit: {name}.",
@@ -370,6 +375,10 @@
     "noOverall": "Ingen samlede klassementer registreret",
     "tableResult": "Resultat",
     "jerseysAfterStage": "Trøjer efter etapen",
+    "liveStandings": {
+      "title": "Stillingen efter {number}. etape",
+      "note": "Løbet er stadig i gang. Stillingen opdateres efter hver etape."
+    },
     "stageFinishOrder": "Etape {number} · målrækkefølge",
     "noResults": "Ingen resultater",
     "classification": {
