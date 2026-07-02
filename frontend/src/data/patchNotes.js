@@ -4,7 +4,7 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
-    "version": "6.46",
+    "version": "6.47",
     "date": "2026-07-03",
     "label": "Beta",
     "changes": [
@@ -21,6 +21,27 @@ export const PATCHES = [
           "body": "Ryttersiden er nu den beslutningsflade den bør være: hvem er han, hvad kan han, hvad er han på vej til at blive, og hvem ellers vil have ham. En ny header viser rating, potentiale-stjerner, markedsværdi og kontrakt med det samme, med frem/tilbage-pile (og tastaturets piletaster) til at bladre gennem hele truppen. Under den otte faner: Overblik (alle 15 evner med træningsfremgang plus en ryttertype-radar), Fysiologi (watt-kurve, powerzoner og critical power mod din division), Træning og Udvikling (den registrerede vækst sæson for sæson), Historik (hver auktion, hvert bud, transfer, bytte og leje i én kompakt tabel), Resultater (PCS-stil: sæson-totaler øverst, og etapeløb foldes ud så du ser hver etape) og Interesse (hvem følger ham, profilvisninger med trend, og - for dine egne ryttere - hvilke rivaler der har brugt scout-slots på ham). Scouting-fanen er på vej; indtil den lander linker den til roadmappet, hvor du kan stemme på hvad der bygges først. Kigger du på en rivals rytter, er det scouting bør skjule stadig skjult.",
         },
         "refs": [2000]
+      }
+    ]
+  },
+  {
+    "version": "6.46",
+    "date": "2026-07-02",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Onboarding",
+        "en": {
+          "title": "Your very first login no longer shows an empty game",
+          "body": "Right after confirming your email, the app creates your team in the background - but the dashboard could load a split second earlier, find no team yet, and then just sit there empty: no riders, no league, nothing, even though the top bar showed your team name. Logging out and back in fixed it, which is a terrible first impression. The app now refreshes itself once your team is ready, so your first look at the game is the real thing.",
+        },
+        "da": {
+          "title": "Dit allerførste login viser ikke længere et tomt spil",
+          "body": "Lige efter du bekræfter din email, opretter appen dit hold i baggrunden - men dashboardet kunne nå at loade et splitsekund tidligere, finde intet hold endnu, og så bare stå tomt: ingen ryttere, ingen liga, ingenting, selvom topbaren viste dit holdnavn. Log ud og ind igen løste det, hvilket er et elendigt førstehåndsindtryk. Appen genindlæser nu sig selv når dit hold er klar, så dit første kig på spillet er det rigtige.",
+        },
+        "refs": [2102]
       }
     ]
   },
