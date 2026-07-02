@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, useNavigate, useSearchParams, useLocation } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { useLanguage } from "../lib/language";
@@ -27,6 +27,16 @@ export default function LoginPage() {
   const { t } = useTranslation(["auth", "errors"]);
   const { language } = useLanguage();
   const navigate = useNavigate();
+  const location = useLocation();
+  // #2078: App fanger en udløbet/ugyldig confirm-link (#error=...&error_code=otp_expired)
+  // og sender hertil med fejlkoden i router-state. Vis en klar besked øverst, så
+  // brugeren ved hvorfor linket ikke virkede og kan få en frisk mail (log ind med
+  // en ubekræftet konto → resend-knappen dukker op, jf. #2068).
+  // Engangs-flash: fang fejlkoden i state ÉN gang ved mount. react-router gemmer
+  // location.state i window.history.state, så uden clearing ville banneret
+  // genopstå ved hvert reload af /login i samme session. Vi rydder derfor
+  // router-state (nedenfor), mens den lokale kopi holder beskeden synlig.
+  const [authLinkError] = useState(() => location.state?.authLinkError || null);
   // #672: landing kan deep-linke til signup-mode via ?mode=signup (Opret bruger-CTA).
   const [searchParams] = useSearchParams();
   // #2042: cold deep-link-trafik ankommer med ?next= → default til signup-mode
@@ -61,6 +71,16 @@ export default function LoginPage() {
     canonical: "https://cyclingzone.org/login",
     lang: language === "da" ? "da" : "en",
   });
+
+  // #2078: ryd fejl-koden ud af router-state efter mount, så den ikke lever
+  // videre i window.history.state og gen-viser banneret ved reload. authLinkError
+  // (useState ovenfor) holder beskeden synlig i denne mount. No-op når state
+  // allerede er tom (fx normalt /login-besøg).
+  useEffect(() => {
+    if (location.state?.authLinkError) {
+      navigate(location.pathname + location.search, { replace: true, state: null });
+    }
+  }, [location, navigate]);
 
   const isLoginMode = mode === "login";
   const isSignupMode = mode === "signup";
@@ -191,6 +211,11 @@ export default function LoginPage() {
         return;
       }
 
+      // #2078: bevidst INGEN emailRedirectTo her. En custom redirect-URL skal stå
+      // i Supabases "Redirect URLs"-allowlist (dashboard) for at blive respekteret,
+      // ellers afvises den — og det er en dashboard-config-ændring uden for denne
+      // opgaves scope. Confirm-links går derfor fortsat til Site URL ("/"), og
+      // App fanger nu et evt. udløbet-link-fejl-hash der (parseAuthErrorHash).
       const { data, error: signUpError } = await supabase.auth.signUp({
         email: email.trim(),
         password,
@@ -317,6 +342,15 @@ export default function LoginPage() {
         </div>
 
         <Card className="p-6">
+          {authLinkError && !success && (
+            <div
+              role="status"
+              className="mb-4 rounded-cz border border-cz-border bg-cz-subtle px-4 py-3 text-left"
+            >
+              <p className="text-sm font-semibold text-cz-1">{t("auth:linkError.title")}</p>
+              <p className="mt-1 text-xs text-cz-2">{t("auth:linkError.body")}</p>
+            </div>
+          )}
           {success ? (
             <div className="py-4 text-center" role="status">
               <div className="mb-4 flex justify-center">
