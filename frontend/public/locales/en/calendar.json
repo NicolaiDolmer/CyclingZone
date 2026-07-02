@@ -43,13 +43,15 @@
     "sprint": "Sprint",
     "hilly": "Hilly",
     "mountain": "Mountain",
-    "itt": "Time trial"
+    "itt": "Time trial",
+    "ttt": "Team time trial"
   },
   "terrain": {
     "sprint": "Sprint",
     "hilly": "Hilly",
     "mountain": "Mountain",
-    "itt": "Time trial"
+    "itt": "Time trial",
+    "ttt": "Team time trial"
   },
   "moreRaces": "+{count} more",
   "prevMonth": "Previous month",

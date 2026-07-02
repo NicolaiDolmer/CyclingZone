@@ -17,10 +17,11 @@ export function tierToDivision(tier) {
   return Number.isFinite(tier) ? tier : null;
 }
 
-// 9 profile_types → 4 spiller-vendte terræn-buckets der matcher legend'en
-// (Sprint · Kuperet · Bjerge · Enkeltstart). Spejler frontend/src/lib/stageTerrain.js'
-// 9→5-mapping, men folder cobbles+classic ind i de 4 viste kategorier (cobbles er
-// fladt-med-rumlen → sprint-bucket; classic er kuperet → hilly). itt+ttt = enkeltstart.
+// 9 profile_types → 5 spiller-vendte terræn-buckets der matcher legend'en
+// (Sprint · Kuperet · Bjerge · Enkeltstart · Holdstart). Folder cobbles+classic ind i
+// de viste kategorier (cobbles er fladt-med-rumlen → sprint-bucket; classic er kuperet →
+// hilly). itt=enkeltstart, ttt=holdstart — hver sin glyf på kalenderen, så en enkeltstart
+// ikke ligner en flad sprint og en holdstart skelnes fra enkeltstart (#1953).
 const PROFILE_TO_CAL_BUCKET = {
   flat: "sprint",
   rolling: "sprint",
@@ -30,10 +31,10 @@ const PROFILE_TO_CAL_BUCKET = {
   mountain: "mountain",
   high_mountain: "mountain",
   itt: "itt",
-  ttt: "itt",
+  ttt: "ttt",
 };
 
-export const CALENDAR_TERRAIN_BUCKETS = Object.freeze(["sprint", "hilly", "mountain", "itt"]);
+export const CALENDAR_TERRAIN_BUCKETS = Object.freeze(["sprint", "hilly", "mountain", "itt", "ttt"]);
 
 export function calendarTerrainBucket(profileType) {
   return PROFILE_TO_CAL_BUCKET[profileType] || "sprint";

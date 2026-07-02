@@ -40,9 +40,11 @@ test("kalenderen renderer header, faner, måneds-grid og legend", async ({ page 
   // Etapeløbet vises også som en klikbar chip.
   await expect(page.getByRole("link", { name: /Tour des Hauts Plateaux/ }).first()).toBeVisible();
 
-  // Legend med terræn-typer.
+  // Legend med terræn-typer. Enkeltstart (ITT) og Holdstart (TTT) er nu distinkte
+  // legend-poster med hver sin glyf (#1953).
   await expect(page.getByText("Bjerge", { exact: true })).toBeVisible();
   await expect(page.getByText("Enkeltstart", { exact: true })).toBeVisible();
+  await expect(page.getByText("Holdstart", { exact: true })).toBeVisible();
 });
 
 test("'Alle hold'-fanen viser andre divisioners løb (dæmpet)", async ({ page }) => {
