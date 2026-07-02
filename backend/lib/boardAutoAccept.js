@@ -34,6 +34,22 @@ export const AUTO_ACCEPT_THRESHOLDS = {
   AUTO_ACCEPT: 5, // race_days_completed >= 5 → bestyrelsen tager over
 };
 
+// #2104: race_days_completed er et GLOBALT sæson-ur — et hold oprettet midt i
+// sæsonen ville uden skånefrist stå "over deadline" fra minut ét og få DNA +
+// plan tvangsvalgt af næste cron-tick (ramte Team CSC 2/7: DNA + 5yr-plan
+// auto-valgt 29 min efter signup, 3yr-planen 9 min senere — uden at én eneste
+// T-3/T-1-reminder var afsendt). Etaper afvikles ~1 pr. kalenderdag, så
+// NEW_TEAM_GRACE_DAYS kalenderdage ≈ samme forhandlingsvindue (5 race-days)
+// som hold der var med fra sæsonstart.
+export const NEW_TEAM_GRACE_DAYS = 5;
+
+export function isWithinNewTeamGrace(createdAt, now = new Date()) {
+  if (!createdAt) return false;
+  const createdMs = new Date(createdAt).getTime();
+  if (Number.isNaN(createdMs)) return false;
+  return now.getTime() - createdMs < NEW_TEAM_GRACE_DAYS * 24 * 60 * 60 * 1000;
+}
+
 /**
  * Cron-entry: tjek alle human teams for pending board-planer og send
  * reminders / auto-accept baseret på race_days_completed.
@@ -90,7 +106,7 @@ export async function processBoardAutoAcceptCron({
 
   const { data: humanTeams, error: teamsError } = await supabase
     .from("teams")
-    .select("id, user_id, name, balance, sponsor_income, division, season_1_identity_basis, team_dna_key")
+    .select("id, user_id, name, balance, sponsor_income, division, season_1_identity_basis, team_dna_key, created_at")
     .eq("is_ai", false)
     .eq("is_bank", false)
     .eq("is_frozen", false)
@@ -134,6 +150,10 @@ async function processTeamAutoAccept({
   now,
 }) {
   const result = { reminder_sent: false, auto_accepted: false };
+
+  // #2104: nyoprettede hold får deres eget forhandlingsvindue — hverken
+  // reminders eller auto-accept før skånefristen er udløbet.
+  if (isWithinNewTeamGrace(team.created_at, now)) return result;
 
   // Find første pending plan_type i 5yr→3yr→1yr-orden.
   const { data: boards, error: boardsError } = await supabase

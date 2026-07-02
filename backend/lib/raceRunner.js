@@ -1048,7 +1048,22 @@ export async function simulateStageByIndex({
       }
       entrants = frozen;
     }
-    if (!entrants.length) throw new Error(`No start list for race ${race.id}`);
+    // #2103: skeln datakorruption fra tomt felt. Et løb midt i afviklingen
+    // (stages_completed > 0) UDEN entries betyder at en anden skriver har bumpet
+    // counteren/resultaterne uden om motoren (La Corsa dei Due Mari 30/6: to
+    // fantom-etaper med arketype-ryttere, ingen race_entries/sim-runs) — det kan
+    // ikke self-heale (autofill er bevidst låst efter etape 1, #1844) og kræver
+    // data-reparation: slet fantom-resultater + nulstil stages_completed.
+    if (!entrants.length) {
+      if (stageIndex > 0) {
+        throw new Error(
+          `No start list for race ${race.id} at stage ${stageNumber} — `
+          + `${completedBefore} stage(s) marked completed but race_entries is empty `
+          + `(data integrity: results written outside the engine? Reset the race — see #2103)`
+        );
+      }
+      throw new Error(`No start list for race ${race.id}`);
+    }
 
     const racePoints = await loadRacePoints(supabase, race.race_class);
     const pointsLookup = buildRacePointsLookup({ racePoints, raceType: race.race_type });

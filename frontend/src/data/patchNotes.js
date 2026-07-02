@@ -4,7 +4,7 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
-    "version": "6.44",
+    "version": "6.46",
     "date": "2026-07-03",
     "label": "Beta",
     "changes": [
@@ -21,6 +21,48 @@ export const PATCHES = [
           "body": "Ryttersiden er nu den beslutningsflade den bør være: hvem er han, hvad kan han, hvad er han på vej til at blive, og hvem ellers vil have ham. En ny header viser rating, potentiale-stjerner, markedsværdi og kontrakt med det samme, med frem/tilbage-pile (og tastaturets piletaster) til at bladre gennem hele truppen. Under den syv faner: Overblik (alle 15 evner med træningsfremgang plus en ryttertype-radar), Fysiologi (watt-kurve, powerzoner og critical power mod din division), Træning og Udvikling (den registrerede vækst sæson for sæson), Historik (hver auktion, hvert bud, transfer, bytte og leje i én kompakt tabel), Resultater (PCS-stil: sæson-totaler øverst, og etapeløb foldes ud så du ser hver etape) og Interesse (hvem følger ham, profilvisninger med trend, og - for dine egne ryttere - hvilke rivaler der har brugt scout-slots på ham). Kigger du på en rivals rytter, er det scouting bør skjule stadig skjult.",
         },
         "refs": [2000]
+      }
+    ]
+  },
+  {
+    "version": "6.45",
+    "date": "2026-07-02",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "La Corsa dei Due Mari (Division 1) restarts with a real start field",
+          "body": "The first two stages of La Corsa dei Due Mari were produced by a stray simulation with placeholder riders that do not exist in the game - none of the Division 1 squads actually rode them, and the race then stalled because the engine refused to continue from a start list it never built. We have removed the phantom results and reset the race, so it starts over from stage 1 with the real Division 1 field. Standings recalculate automatically. The engine also reports this kind of inconsistency much more precisely now, so a stuck race gets caught and fixed faster.",
+        },
+        "da": {
+          "title": "La Corsa dei Due Mari (Division 1) starter forfra med et ægte startfelt",
+          "body": "De første to etaper af La Corsa dei Due Mari kom fra en vildfaren simulering med pladsholder-ryttere der ikke findes i spillet - ingen af Division 1-holdene kørte dem faktisk, og løbet gik derefter i stå fordi motoren nægtede at fortsætte fra et startfelt den aldrig selv havde bygget. Vi har fjernet fantom-resultaterne og nulstillet løbet, så det starter forfra fra etape 1 med det rigtige Division 1-felt. Stillingerne genberegnes automatisk. Motoren rapporterer også denne slags uoverensstemmelser langt mere præcist nu, så et fastlåst løb bliver fanget og rettet hurtigere.",
+        },
+        "refs": [2103]
+      }
+    ]
+  },
+  {
+    "version": "6.44",
+    "date": "2026-07-02",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "New teams choose their club DNA before the board plan wizard",
+          "body": "If you created a brand-new team, the Board page could throw you straight into the 5-year-plan wizard - with the start button locked behind the club DNA requirement and no way to close the window. The DNA choice now comes first, and the plan wizard opens right after you have picked it. The board also no longer decides your DNA and long-term plans for you minutes after signup: brand-new teams get their own 5-day negotiation window before the board steps in.",
+        },
+        "da": {
+          "title": "Nye hold vælger deres klub-DNA før bestyrelsens plan-wizard",
+          "body": "Oprettede du et helt nyt hold, kunne Bestyrelses-siden kaste dig direkte ind i 5-årsplan-wizarden - med start-knappen låst bag klub-DNA-kravet og ingen mulighed for at lukke vinduet. DNA-valget kommer nu først, og plan-wizarden åbner lige efter du har valgt. Bestyrelsen beslutter heller ikke længere dit DNA og dine langsigtede planer for dig få minutter efter signup: helt nye hold får deres eget 5-dages forhandlingsvindue før bestyrelsen tager over.",
+        },
+        "refs": [2104]
       }
     ]
   },

@@ -1,0 +1,38 @@
+-- =============================================================================
+-- 2026-07-02 — Fjern klient-læsning af ability_caps (#2098)
+-- =============================================================================
+-- PROBLEM (verificeret mod live DB 2026-07-02 via column_privileges + pg_policy):
+-- rider_derived_abilities har SELECT-policy `USING (true)` for authenticated og
+-- kolonne-SELECT-grant på ability_caps → enhver indlogget spiller kan læse
+-- eksakte evne-lofter for ALLE ryttere direkte via PostgREST:
+--   /rest/v1/rider_derived_abilities?select=rider_id,ability_caps
+-- Cappen er afledt som baseline + headroomByPotential{1:4..6:38} × signatur-vægt
+-- (backend/lib/riderProgression.js), så eksakt cap er INVERTÉRBAR til det
+-- server-skjulte potentiale — i strid med #1162 (potentiale når kun klienten
+-- som fuzzy scouting-estimat) og underminerer scouting-økonomien.
+--
+-- GRANT-TOPOLOGI (live): tabellen har INGEN tabel-level SELECT-grant til
+-- anon/authenticated — SELECT ligger som kolonne-grants ("alt undtagen
+-- hidden_potential", jf. 2026-06-10-migrationen). En kolonne-REVOKE er derfor
+-- tilstrækkelig og præcis.
+--
+-- HVAD DENNE MIGRATION GØR (REVOKE-only; ingen data, policies eller writes røres):
+-- Fjerner kolonne-SELECT på ability_caps fra anon + authenticated. service_role
+-- (backend: progression-/trænings-motorer + et kommende fuzzy loft-endpoint,
+-- #2000-opfølgning) beholder fuld adgang. Frontend læser IKKE kolonnen i dag
+-- (verificeret via grep 2026-07-02: 0 hits i frontend/src) → ingen spiller-
+-- vendt flade påvirkes.
+--
+-- BEVIDST IKKE MED (jf. #2098):
+-- - ability_progress: læses legitimt af Overblik-fanens progress-bars i dag;
+--   scoping til egne ryttere kræver endpoint-flytning (opfølgning i #2098).
+-- - INSERT/UPDATE-grants: RLS-policies (is_admin()) gater allerede writes, og
+--   admin-flows kører som authenticated — bred revoke ville knække dem.
+
+REVOKE SELECT (ability_caps) ON public.rider_derived_abilities FROM anon, authenticated;
+
+-- VERIFIKATION (efter apply):
+--   SELECT grantee, privilege_type FROM information_schema.column_privileges
+--   WHERE table_name = 'rider_derived_abilities' AND column_name = 'ability_caps'
+--     AND grantee IN ('anon', 'authenticated') AND privilege_type = 'SELECT';
+--   → 0 rækker. Spiller-smoke: profil-siden (Overblik/Udvikling) uændret.

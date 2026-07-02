@@ -45,3 +45,16 @@ export function canResumeNegotiation({ proposedGoals, previewGoals, finalGoals }
     && finalGoals.length === proposedGoals.length
   );
 }
+
+/**
+ * #2104 · Auto-åbn KUN setup-wizarden når klub-DNA allerede er valgt.
+ *
+ * Nye hold (mid-season signup) lander på Board-siden uden DNA. Wizardens
+ * "Start forhandling" er så låst af DNA-kravet, og i setup-mode har modalen
+ * ingen luk-knap → spilleren fanges i en deadlock OVEN PÅ det DNA-valg-kort
+ * den skygger for. DNA-valget skal derfor være det første skridt; wizarden
+ * auto-åbner via refetch så snart team_dna er sat.
+ */
+export function shouldAutoOpenSetupWizard({ isBaselinePhase, setupNextPlanType, hasAnyPlan, teamDna } = {}) {
+  return Boolean(!isBaselinePhase && setupNextPlanType && hasAnyPlan && teamDna);
+}
