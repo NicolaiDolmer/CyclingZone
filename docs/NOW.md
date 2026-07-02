@@ -12,7 +12,7 @@
 
 > **🎯 Next action:** (1) **Post-merge-verify GC-fix 3/7 ~18:05** (PR #2093 merged + deploy-verificeret 2/7; #2072 done, #2081 slice 1): Volta Algarvia etape 4 → løbende stilling synlig på løbssiden; efter finalen 4/7: `node backend/scripts/gcAccumulationScorecard.js --name=Algarvia` → 0 modstrid, derefter lukkes #2072. #2081-rest (staged reveal · holdfilter · top-10/"se alle") er fortsat åben. (2) **#2000 PR #2037: KOMPLET + ejer-feedback indarbejdet 3/7** (Historik+Resultater+Interesse `7bf2a22c`; feedback-runde `b9d6cd2c`: kompakt handlingsrække i hero + Scouting-fane som "på vej" m. roadmap-link; browser-verificeret, patch note v6.47) — **EJER: sidste kig på Vercel-preview + merge.** Rest på #2000: Scouting-slice + capstone/ejer-wireframe + loft (#2100). (3) #2080 kampagne-drafts + #2079 attribution før 4/7. (4) Ejer-klikliste: #2076 uptime · #2085 mail-kapacitet · #1784 spend-cap · #929 · #2092 RAILWAY_TOKEN (#2098 caps-læk: fixet+verificeret 2/7, opfølgning #2101; loft-forslag gemt i #2100 — ejer-udskudt). Verify i aften: 18:00-slottet kører KUN due etaper (#2090 lukkes derefter). Shipped 2/7: P0 #2071 · overlap-guard #2091 · patch notes v6.41+v6.43 · CZ Pro-rails #1909. Beslutnings-dag 6/7: Alunta/CZ Pro + VMan + Discord-migration + trænings-scorecard (#2082: harness 5/7, ship 7-9/7; **ejer-mål: ~50 % af gap på 5-7 sæsoner, peak 27-28**). Marketing: ~10k DKK juli, 2026 maks 50k — først når #2079 måler. Discord-posts kræver ALTID ejer-godkendt tekst.
 
-> **🤖 Working agent:** Ingen aktiv session.
+> **🤖 Working agent:** Claude Code (3/7) — merger PR #2037 (ejer-go) + post-merge-verify.
 
 ## Standing context (forever-relaunch)
 
