@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.45",
+    "date": "2026-07-02",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "La Corsa dei Due Mari (Division 1) restarts with a real start field",
+          "body": "The first two stages of La Corsa dei Due Mari were produced by a stray simulation with placeholder riders that do not exist in the game - none of the Division 1 squads actually rode them, and the race then stalled because the engine refused to continue from a start list it never built. We have removed the phantom results and reset the race, so it starts over from stage 1 with the real Division 1 field. Standings recalculate automatically. The engine also reports this kind of inconsistency much more precisely now, so a stuck race gets caught and fixed faster.",
+        },
+        "da": {
+          "title": "La Corsa dei Due Mari (Division 1) starter forfra med et ægte startfelt",
+          "body": "De første to etaper af La Corsa dei Due Mari kom fra en vildfaren simulering med pladsholder-ryttere der ikke findes i spillet - ingen af Division 1-holdene kørte dem faktisk, og løbet gik derefter i stå fordi motoren nægtede at fortsætte fra et startfelt den aldrig selv havde bygget. Vi har fjernet fantom-resultaterne og nulstillet løbet, så det starter forfra fra etape 1 med det rigtige Division 1-felt. Stillingerne genberegnes automatisk. Motoren rapporterer også denne slags uoverensstemmelser langt mere præcist nu, så et fastlåst løb bliver fanget og rettet hurtigere.",
+        },
+        "refs": [2103]
+      }
+    ]
+  },
+  {
     "version": "6.44",
     "date": "2026-07-02",
     "label": "Beta",
