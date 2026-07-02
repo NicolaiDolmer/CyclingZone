@@ -2,9 +2,11 @@ import { test, expect } from "@playwright/test";
 import { installNetworkMocks, login, stabilizePage, json } from "./fixtures.js";
 
 // Race Engine (#676) — renderer-regression for evner + power-profil på rytter-profilen
-// (/riders/:id, stats-fanen). #1529: de udledte CZ-evner er nu den PRIMÆRE stat-visning
-// (var PCM-stats), og power-profilen er en ren sektion uden "beta"-mærke. Mocker
-// fundamentet for rider-1 og verificerer evne-label, effektprofil-tal + at beta er væk.
+// (/riders/:id). #1529: de udledte CZ-evner er den PRIMÆRE stat-visning (var PCM-stats),
+// og power-profilen er en ren sektion uden "beta"-mærke. #2000-redesignet flyttede
+// profilen til faner: evnerne bor nu på Overblik (default), og fysiologien/effektprofilen
+// bor på Fysiologi-fanen. Mocker fundamentet for rider-1 og verificerer evne-label på
+// Overblik + watt-profil/FTP på Fysiologi + at beta er væk.
 
 const PHYS = {
   rider_id: "rider-1",
@@ -39,16 +41,22 @@ test("rider profile shows race-engine physiology + abilities preview", async ({ 
   await login(page);
   await page.goto("/riders/rider-1");
 
-  // Stats-fanen er default. #1529: de udledte evner er nu den PRIMÆRE visning i
-  // hoved-kortet, og power-profilen er en ren sektion uden "beta".
+  // Overblik-fanen er default (#2000). #1529: de udledte evner er den PRIMÆRE visning
+  // i evne-kolonnerne — climbing-evne-labellen bevises her.
   await expect(page.getByText("Klatring")).toBeVisible(); // climbing-evne-label (DA), primær visning
-  await expect(page.getByText("Effektprofil")).toBeVisible(); // power-profil-sektion (de-beta'et)
-  await expect(page.getByText("5.42")).toBeVisible();   // FTP W/kg
 
-  // "beta"-mærket + "Udledte evner"-underoverskrift er fjernet (#1529).
+  // Effektprofilen bor nu på Fysiologi-fanen (#2000). Skift dertil og bevis
+  // watt-profil-sektionen (de-beta'et) + FTP W/kg. FTP W/kg formateres med 1 decimal
+  // i redesignet (fmtWkg → toFixed(1)), så 5.42 renders som "5.4".
+  await page.getByRole("tab", { name: "Fysiologi" }).click();
+  await expect(page.getByText("Watt-profil")).toBeVisible(); // power-profil-sektion (de-beta'et)
+  await expect(page.getByText(/5\.4 W\/kg/)).toBeVisible();   // FTP W/kg (headline-sub)
+
+  // "beta"-mærket + "Udledte evner"-underoverskrift er fjernet (#1529) — også efter
+  // #2000-redesignet, hvor den gamle "Cycling Zones"-panel-copy udgik helt.
   await expect(page.getByText("Beta", { exact: true })).toHaveCount(0);
   await expect(page.getByText("Udledte evner")).toHaveCount(0);
 
-  await page.getByText("Effektprofil").scrollIntoViewIfNeeded();
+  await page.getByText("Watt-profil").scrollIntoViewIfNeeded();
   await page.screenshot({ path: "C:/Users/Nicolai/AppData/Local/Temp/race-preview.png", fullPage: true });
 });
