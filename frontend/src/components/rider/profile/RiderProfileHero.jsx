@@ -14,6 +14,7 @@
 
 import { useTranslation } from "react-i18next";
 import { Flag } from "../../Flag";
+import TeamLink from "../../TeamLink";
 import { statColor, statTextColor } from "../../../lib/statColor";
 import RiderTypeBadge from "../RiderTypeBadge";
 import ScoutablePotentiale from "../ScoutablePotentiale";
@@ -174,7 +175,7 @@ export default function RiderProfileHero({
 
                 {/* Hold (+ AI-tag) */}
                 <p className="text-cz-2 text-sm font-semibold mt-2 inline-flex items-center gap-1.5">
-                  {teamName}
+                  <TeamLink id={rider.team?.id} className="hover:text-cz-accent-t transition-colors">{teamName}</TeamLink>
                   {isAiTeam && (
                     <span className="text-[9px] uppercase font-bold tracking-wide bg-cz-subtle text-cz-3 border border-cz-border px-1 py-0.5 rounded">
                       {t("profile.hero.aiTag")}
@@ -187,7 +188,7 @@ export default function RiderProfileHero({
                   <p className="text-cz-2 text-xs mt-1.5 inline-flex items-center gap-1.5">
                     <span aria-hidden="true" className="text-cz-accent-t">→</span>
                     <span className="text-cz-3">{t("header.nextSeasonPrefix")}</span>
-                    <span className="font-semibold text-cz-accent-t">{pendingTeam.name}</span>
+                    <TeamLink id={pendingTeam.id} className="font-semibold text-cz-accent-t hover:underline">{pendingTeam.name}</TeamLink>
                   </p>
                 )}
 

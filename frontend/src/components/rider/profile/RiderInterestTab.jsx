@@ -14,6 +14,7 @@
 // bud lever i Historik-fanen (BUD-rækker) og hero'ens bid-panel.
 
 import { useTranslation } from "react-i18next";
+import TeamLink from "../../TeamLink";
 import { StarIcon, EyeIcon, SearchIcon } from "../../ui";
 import { formatDate, formatNumber } from "../../../lib/intl.js";
 
@@ -127,7 +128,9 @@ export default function RiderInterestTab({ viewer = "own", watchlistCount = 0, v
               {interest.scouts.map((s) => (
                 <div key={s.team_id} className="flex items-center gap-2.5 py-2 min-h-[44px] border-t border-cz-border">
                   <SearchIcon size={15} aria-hidden="true" className="text-cz-3 flex-shrink-0" />
-                  <span className="flex-1 text-[12.5px] text-cz-1 truncate">{s.team_name ?? t("bids.row.teamFallback")}</span>
+                  <span className="flex-1 text-[12.5px] text-cz-1 truncate">
+                    <TeamLink id={s.team_id} className="hover:text-cz-accent-t transition-colors">{s.team_name ?? t("bids.row.teamFallback")}</TeamLink>
+                  </span>
                   <span className="text-[11px] text-cz-3 whitespace-nowrap">
                     {t("profile.interest.whoScouts.level", { level: s.level })}
                     {s.season != null ? ` · ${t("profile.interest.seasonShort", { n: s.season })}` : ""}
