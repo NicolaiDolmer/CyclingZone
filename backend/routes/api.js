@@ -127,6 +127,7 @@ import { readFlagStage, evaluateFlagStage } from "../lib/featureStage.js";
 import { runTeamTrainingDay } from "../lib/dailyTrainingEngine.js";
 import { refreshChangedRiderValues } from "../lib/riderValueRefresh.js";
 import { validateSelection, saveSelection, getSelectionContext } from "../lib/raceSelection.js";
+import { isRaceLineupFrozen } from "../lib/raceActiveGuard.js";
 import { loadTeamBindingContext, findRiderBindingConflicts, teamInRacePool, raceTimeWindow, raceBindingWindow } from "../lib/raceBinding.js";
 import { buildColumnSet, buildBindingMap, seasonDayProjection, dominantTerrain, lockedWindowsFromEntries, partitionRegenTargets, startListVisible, daysUntilStart, groupGrossSquads, STARTLIST_HORIZON_DAYS } from "../lib/raceDistribution.js";
 import { isRaceEngineV2Enabled } from "../lib/raceEngineFlag.js";
@@ -2205,6 +2206,9 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
       const rows = picks.map((p) => ({
         race_id: race.id, rider_id: p.rider_id, team_id: req.team.id, race_role: p.race_role, is_auto_filled: true,
       }));
+      // Forward-guard (#2074): target er allerede filtreret til stages_completed===0, men
+      // gør invarianten lokal til delete'en så et igangværende felt aldrig nulstilles.
+      if (isRaceLineupFrozen(race)) continue;
       // Surfacér delete/insert-fejl i stedet for tavst at efterlade et løb med 0 entries
       // (ægte atomicitet kræver en RPC; her gør vi i det mindste fejlen synlig + retry-bar).
       const { error: delErr } = await supabase.from("race_entries").delete().eq("race_id", race.id).eq("team_id", req.team.id);

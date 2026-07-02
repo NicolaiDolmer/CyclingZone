@@ -18,6 +18,7 @@
 
 import { copenhagenMidnightUTC } from "./copenhagenTime.js";
 import { captureException } from "./sentry.js";
+import { detectInFlightRacesWithoutEntries } from "./raceActiveGuard.js";
 
 // P0 2/7: per-løb-per-dag-dedup for Sentry-captures i per-løb-catchen (17 fejlende
 // løb × 288 ticks/døgn må ikke spamme). Process-lokal er fint — formålet er at få
@@ -88,6 +89,15 @@ export async function runStageScheduler({
     .from("seasons").select("id").eq("status", "active").maybeSingle();
   if (sErr) throw new Error(`seasons: ${sErr.message}`);
   if (!season) return { ran: 0, errors: 0, skipped: "no_active_season" };
+
+  // #2074 forward-guard (DETEKTION): alarmér hvis et igangværende løb har mistet sit
+  // startfelt (0 race_entries). Read-only + best-effort — en fejl her må ALDRIG stoppe
+  // etape-afviklingen. Genopretning er ejer-only (dette er kun en alarm, ingen mutation).
+  try {
+    await detectInFlightRacesWithoutEntries({ supabase, seasonId: season.id, now });
+  } catch (err) {
+    console.error(`  ⚠️ stage-scheduler: startfelt-detektion fejlede (ikke-fatal): ${err.message}`);
+  }
 
   // Hard-cap: hvor mange etaper er allerede afviklet i dag? (loop-prævention)
   const doneToday = await countStagesDoneToday(supabase, now);

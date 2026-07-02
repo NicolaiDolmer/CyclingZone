@@ -322,6 +322,13 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
       race_id, rider_id: p.rider_id, team_id, race_role: p.race_role, is_auto_filled: true,
     }));
     if (!dryRun) {
+      // Forward-guard (#2074): et igangværende løb (frosset felt) må ALDRIG få slettet
+      // entries. staged indeholder allerede aldrig startede løb (skip-grenen ovenfor),
+      // men vi gør invarianten lokal til delete'en så en fremtidig refaktor ikke kan
+      // nulstille et aktivt startfelt. startedRaceIds er allerede beregnet (ingen query).
+      if (startedRaceIds.has(race_id)) {
+        throw new Error(`race_lineup_frozen: nægter at slette race_entries for igangværende løb ${race_id} (raceEntryGenerator)`);
+      }
       const { error: delErr } = await supabase
         .from("race_entries").delete()
         .eq("race_id", race_id).eq("team_id", team_id).eq("is_auto_filled", true);
