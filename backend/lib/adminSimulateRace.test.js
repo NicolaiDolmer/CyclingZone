@@ -300,8 +300,27 @@ test("runAdminSimulateStage: stageIndex = stages_completed; stub kaldt med korre
   assert.equal(result.stageNumber, 2);
 });
 
-// stages_completed >= stages → 409 (alle etaper kørt); stub ikke kaldt.
-test("runAdminSimulateStage: alle etaper kørt (stages_completed=stages) → 409, stub ikke kaldt", async () => {
+// P0 2/7: stages_completed >= stages + status != completed = finalization-pending →
+// recovery: stub kaldes med FINAL-etapens index (simulateStageByIndex' finalization-
+// Pending-sti er idempotent). Tidligere 409'ede denne tilstand → 13 løb sad fast for evigt.
+test("runAdminSimulateStage: alle etaper kørt men ikke completed → recovery med final-etapens index", async () => {
+  const supabase = makeSupabase({
+    app_config: [{ value: true }],
+    races: [{ id: "r1", season_id: "s1", name: "Test GP", race_type: "stage_race", race_class: "ProSeries", stages: 3, stages_completed: 3, status: "scheduled" }],
+    race_stage_profiles: [{ id: "p1" }, { id: "p2" }, { id: "p3" }],
+  });
+  let captured = null;
+  const result = await runAdminSimulateStage({
+    supabase, raceId: "r1",
+    simulateStageByIndex: async (args) => { captured = args; return { stageNumber: 3, isFinalStage: true }; },
+  });
+  assert.ok(captured, "stub SKAL kaldes (recovery)");
+  assert.equal(captured.stageIndex, 2, "recovery skal bruge final-etapens index (stages-1)");
+  assert.equal(result.stageNumber, 3);
+});
+
+// dryRun har ingen recovery-semantik → 409 bevares dér.
+test("runAdminSimulateStage: alle etaper kørt + dryRun → stadig 409, stub ikke kaldt", async () => {
   const supabase = makeSupabase({
     app_config: [{ value: true }],
     races: [{ id: "r1", season_id: "s1", name: "Test GP", race_type: "stage_race", race_class: "ProSeries", stages: 3, stages_completed: 3, status: "scheduled" }],
@@ -310,11 +329,11 @@ test("runAdminSimulateStage: alle etaper kørt (stages_completed=stages) → 409
   let stubCalled = false;
   let err = null;
   try {
-    await runAdminSimulateStage({ supabase, raceId: "r1", simulateStageByIndex: async () => { stubCalled = true; return {}; } });
+    await runAdminSimulateStage({ supabase, raceId: "r1", dryRun: true, simulateStageByIndex: async () => { stubCalled = true; return {}; } });
   } catch (e) { err = e; }
   assert.ok(err, "skal kaste");
   assert.equal(err.status, 409);
-  assert.equal(stubCalled, false, "stub må ikke kaldes når alle etaper er kørt");
+  assert.equal(stubCalled, false, "stub må ikke kaldes ved dryRun-409");
 });
 
 // status=completed → 409.
