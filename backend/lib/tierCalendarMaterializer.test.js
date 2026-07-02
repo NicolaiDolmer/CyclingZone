@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildTierMaterializationPlan, MONUMENT_GAMEDAY_BASE, materializeTierCalendars } from "./tierCalendarMaterializer.js";
+import { buildTierMaterializationPlan, MONUMENT_GAMEDAY_BASE, materializeTierCalendars, assertNewRaceClearsInFlight } from "./tierCalendarMaterializer.js";
 import { generateRaceStageProfiles } from "./raceStageProfileGenerator.js";
 
 const FROM = new Date("2026-06-28T00:00:00Z");
@@ -297,4 +297,95 @@ test("forceTiers: uden flaget (default) springes en mandagsløs tier-4-pulje sta
   const { tierPlans } = buildTierMaterializationPlan({ pools, catalog, quotas: { 1: 21, 4: 1 } });
 
   assert.equal(tierPlans.find((p) => p.tier === 4), undefined, "uden forceTiers er adfærden uændret: tier 4 uden managers får ingen plan");
+});
+
+// ── #1856: in-flight overlap-guard ──
+test("assertNewRaceClearsInFlight: intet in-flight vindue eller intet nyt-vindue → ok", () => {
+  assert.equal(assertNewRaceClearsInFlight({ newRaceWindow: { start: 10, end: 12 }, inFlightWindows: [] }), true);
+  assert.equal(assertNewRaceClearsInFlight({ newRaceWindow: null, inFlightWindows: [{ start: 10, end: 12 }] }), true);
+});
+
+test("assertNewRaceClearsInFlight: nyt løb helt efter in-flight resterende vindue → ok", () => {
+  assert.equal(assertNewRaceClearsInFlight({
+    newRaceWindow: { start: 20, end: 25 },
+    newRaceId: "new",
+    inFlightWindows: [{ start: 10, end: 15, raceId: "la-corsa" }],
+  }), true);
+});
+
+test("assertNewRaceClearsInFlight: nyt løb overlapper in-flight resterende vindue → kaster (#1856)", () => {
+  assert.throws(
+    () => assertNewRaceClearsInFlight({
+      newRaceWindow: { start: 14, end: 18 },
+      newRaceId: "new-stage-race",
+      inFlightWindows: [{ start: 10, end: 15, raceId: "la-corsa" }],
+    }),
+    /in-flight overlap invariant.*new-stage-race.*la-corsa/s,
+  );
+});
+
+// Fuld apply-path: en division har et IGANGVÆRENDE etapeløb hvis RESTERENDE vindue dækker de
+// dage hvor materializeren placerer nye løb → guarden skal kaste FØR nogen insert (fail-closed).
+// Ville have forhindret prod-overlappen (nyt etapeløb schedulet oven på den igangværende La Corsa).
+function inFlightApplyFixture() {
+  const catalog = tier3Catalog();
+  const league_divisions = [{ id: 4, tier: 3, pool_index: 0, label: "Division 3 — A" }];
+  const mgr = (id) => ({ id, is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, league_division_id: 4 });
+  const teams = [mgr("a1"), mgr("a2"), mgr("a3")];
+  // In-flight etapeløb (status='scheduled', 6/7 afviklet) i division 4. RESTERENDE etape 7 er
+  // planlagt bredt over de dage materializeren fylder (FROM=28/6 → nye løb starter 29/6).
+  const inflightRace = {
+    id: "inflight-1", season_id: "s1", league_division_id: 4, pool_race_id: "was-la-corsa",
+    name: "La Corsa (in-flight)", race_type: "stage_race", stages: 7, stages_completed: 6, status: "scheduled",
+  };
+  // 7 schedule-rækker; kun etape 7 (resterende) tæller. Læg den 29/6 (samme CET-dag som nye løbs dag 0).
+  const race_stage_schedule = [
+    { race_id: "inflight-1", stage_number: 1, scheduled_at: "2026-06-23T10:00:00Z", game_day: 0 },
+    { race_id: "inflight-1", stage_number: 2, scheduled_at: "2026-06-24T10:00:00Z", game_day: 1 },
+    { race_id: "inflight-1", stage_number: 3, scheduled_at: "2026-06-25T10:00:00Z", game_day: 2 },
+    { race_id: "inflight-1", stage_number: 4, scheduled_at: "2026-06-26T10:00:00Z", game_day: 3 },
+    { race_id: "inflight-1", stage_number: 5, scheduled_at: "2026-06-27T10:00:00Z", game_day: 4 },
+    { race_id: "inflight-1", stage_number: 6, scheduled_at: "2026-06-28T10:00:00Z", game_day: 5 },
+    { race_id: "inflight-1", stage_number: 7, scheduled_at: "2026-06-29T10:00:00Z", game_day: 6 }, // resterende → binder 29/6
+  ];
+  return { catalog, league_divisions, teams, races: [inflightRace], race_stage_schedule };
+}
+
+test("apply: guard kaster når et nyt løb placeres oven på et in-flight løbs resterende vindue (#1856)", async () => {
+  const fx = inFlightApplyFixture();
+  const sb = makeSupabase({
+    league_divisions: fx.league_divisions, teams: fx.teams, race_pool: fx.catalog,
+    races: fx.races, race_stage_schedule: fx.race_stage_schedule,
+  });
+  await assert.rejects(
+    () => materializeTierCalendars({ supabase: sb, seasonId: "s1", seasonStartDate: "2026-06-22", from: FROM, dryRun: false }),
+    /in-flight overlap invariant/,
+    "materialize skal afbryde når et nyt løb overlapper det in-flight løbs resterende vindue",
+  );
+  // Fail-closed: intet nyt løb blev indsat i den ramte division (kun det pre-seedede in-flight løb består).
+  const div4Races = sb.state.races.filter((r) => r.league_division_id === 4);
+  assert.deepEqual(div4Races.map((r) => r.id), ["inflight-1"], "ingen nye løb må være indsat før guarden kastede");
+});
+
+test("apply: guard rører IKKE dry-run (ingen writes, ingen kast)", async () => {
+  const fx = inFlightApplyFixture();
+  const sb = makeSupabase({
+    league_divisions: fx.league_divisions, teams: fx.teams, race_pool: fx.catalog,
+    races: fx.races, race_stage_schedule: fx.race_stage_schedule,
+  });
+  // dryRun (default) inserter aldrig → guarden (som sidder på insert-stien) rammes ikke.
+  const summary = await materializeTierCalendars({ supabase: sb, seasonId: "s1", seasonStartDate: "2026-06-22", from: FROM, dryRun: true });
+  assert.equal(summary.racesInserted, 0, "dry-run skriver ikke");
+});
+
+test("apply: et completed (afviklet) løb binder IKKE — nye løb placeres frit ovenpå", async () => {
+  const fx = inFlightApplyFixture();
+  // Gør in-flight-løbet completed (afviklet) → det binder ikke fremad; materialize skal lykkes.
+  const completed = { ...fx.races[0], stages_completed: 7, status: "completed" };
+  const sb = makeSupabase({
+    league_divisions: fx.league_divisions, teams: fx.teams, race_pool: fx.catalog,
+    races: [completed], race_stage_schedule: fx.race_stage_schedule,
+  });
+  const summary = await materializeTierCalendars({ supabase: sb, seasonId: "s1", seasonStartDate: "2026-06-22", from: FROM, dryRun: false });
+  assert.ok(summary.racesInserted > 0, "afviklet løb må ikke blokere ny materialisering");
 });

@@ -15,6 +15,7 @@ import { selectTierRaceSet, TIER_GAME_DAY_QUOTA, GRAND_TOUR_MIN_STAGES } from ".
 import { packLaneCalendar, MONUMENT_GAMEDAY_BASE } from "./raceCalendarLanePacker.js";
 import { buildScheduleRows } from "./raceCalendarScheduling.js";
 import { generateRaceStageProfiles, GENERATOR_VERSION } from "./raceStageProfileGenerator.js";
+import { isRaceInFlight, raceRemainingTimeWindow, windowsOverlap } from "./raceBinding.js";
 
 export { MONUMENT_GAMEDAY_BASE };
 
@@ -39,6 +40,32 @@ export const TIER_STAGE_SLOTS = Object.freeze({
 
 function isRealManagerRow(t) {
   return t.is_ai === false && !t.is_bank && !t.is_frozen && !t.is_test_account;
+}
+
+/**
+ * #1856 forward-guard (I/O-uafhængig, testbar): givet et NYT løbs vindue (CET-kalenderdag) og
+ * en liste af IGANGVÆRENDE løbs RESTERENDE vinduer i SAMME division, kast hvis det nye løb
+ * overlapper et in-flight løb. Rod-årsag: kalender/scheduler startede et nyt etapeløb der
+ * overlappede den igangværende La Corsa (Div 1) → felterne kunne ikke bemandes ("én rytter pr.
+ * løbsdag" → for få ryttere). Vinduerne SKAL ligge på samme akse (CET-dag-ordinal), fordi et
+ * fuldt rebuild giver nye løb et 0-baseret game_day-rum mens in-flight-løb bærer det gamle rum.
+ *
+ * @param {{ newRaceWindow: {start,end}|null, newRaceId?, inFlightWindows?: Array<{start,end,raceId?}> }} args
+ * @throws {Error} ved overlap.
+ * @returns {true} hvis ingen overlap (eller intet vindue at tjekke).
+ */
+export function assertNewRaceClearsInFlight({ newRaceWindow, newRaceId, inFlightWindows = [] } = {}) {
+  if (!newRaceWindow || !inFlightWindows.length) return true;
+  for (const occ of inFlightWindows) {
+    if (windowsOverlap(newRaceWindow, occ)) {
+      throw new Error(
+        `in-flight overlap invariant (#1856): new race ${newRaceId ?? "?"} ` +
+        `(CET-day ${newRaceWindow.start}..${newRaceWindow.end}) overlaps in-flight race ` +
+        `${occ.raceId ?? "?"} remaining window ${occ.start}..${occ.end} in same division`,
+      );
+    }
+  }
+  return true;
 }
 function editionYearFrom(startDate) {
   if (!startDate) return null;
@@ -153,9 +180,37 @@ export async function materializeTierCalendars({
   const externalIdByPoolRace = new Map((catalog || []).map((c) => [c.id, c.external_id ?? null]));
   const archetypeByPoolRace = new Map((catalog || []).map((c) => [c.id, c.terrain_archetype ?? null]));
 
-  const { data: existing, error: exErr } = await supabase.from("races").select("league_division_id, pool_race_id").eq("season_id", seasonId);
+  const { data: existing, error: exErr } = await supabase.from("races").select("id, league_division_id, pool_race_id, status, stages, stages_completed").eq("season_id", seasonId);
   if (exErr) throw new Error(`races (existing): ${exErr.message}`);
   const existingKey = new Set((existing || []).map((r) => `${r.league_division_id}:${r.pool_race_id}`));
+
+  // #1856 forward-guard: byg pr. division et sæt af IGANGVÆRENDE (in-flight) løbs RESTERENDE
+  // vinduer (CET-kalenderdag). Et nyt løb må ALDRIG placeres oven på et in-flight løbs
+  // resterende vindue i samme division — det gjorde felterne ubemandbare (rod-årsag #1856).
+  const inFlight = (existing || []).filter(isRaceInFlight);
+  const inFlightWindowsByDiv = new Map();
+  if (inFlight.length) {
+    const ifIds = inFlight.map((r) => r.id);
+    const ifSched = [];
+    for (let i = 0; i < ifIds.length; i += 200) {
+      const { data, error } = await supabase.from("race_stage_schedule")
+        .select("race_id, stage_number, scheduled_at").in("race_id", ifIds.slice(i, i + 200));
+      if (error) throw new Error(`race_stage_schedule (in-flight): ${error.message}`);
+      ifSched.push(...(data || []));
+    }
+    const schedByRace = new Map();
+    for (const s of ifSched) {
+      if (!schedByRace.has(s.race_id)) schedByRace.set(s.race_id, []);
+      schedByRace.get(s.race_id).push(s);
+    }
+    for (const r of inFlight) {
+      const win = raceRemainingTimeWindow(schedByRace.get(r.id), r.stages_completed);
+      if (!win) continue; // alle etaper afviklet / intet resterende vindue
+      const div = r.league_division_id;
+      if (!inFlightWindowsByDiv.has(div)) inFlightWindowsByDiv.set(div, []);
+      inFlightWindowsByDiv.get(div).push({ start: win.start, end: win.end, raceId: r.id });
+    }
+  }
 
   const { tierPlans } = buildTierMaterializationPlan({ pools, catalog: catalog || [], from, baseSeed, forceTiers });
   const summary = { dryRun, editionYear, racesInserted: 0, stageProfiles: 0, stageSchedules: 0, tiers: [] };
@@ -171,6 +226,24 @@ export async function materializeTierCalendars({
       const fresh = poolPlan.raceRows.filter((r) => !existingKey.has(`${poolPlan.leagueDivisionId}:${r.pool_race_id}`));
       const pLine = { pool_id: poolPlan.leagueDivisionId, selected: poolPlan.raceRows.length, fresh: fresh.length, inserted: 0 };
       if (dryRun || fresh.length === 0) { tLine.pools.push(pLine); continue; }
+
+      // #1856 forward-guard: intet nyt løb må placeres oven på et in-flight løbs resterende
+      // vindue i samme division. Kast FØR nogen insert (fail-closed) — det er billigere at
+      // afbryde end at skabe endnu en ubemandbar dobbeltbooking (#1845).
+      const divInFlight = inFlightWindowsByDiv.get(poolPlan.leagueDivisionId) || [];
+      if (divInFlight.length) {
+        const freshRaceIds = new Set(fresh.map((r) => r.pool_race_id));
+        const rowsByRace = new Map();
+        for (const s of poolPlan.stageRows) {
+          if (!freshRaceIds.has(s.pool_race_id)) continue;
+          if (!rowsByRace.has(s.pool_race_id)) rowsByRace.set(s.pool_race_id, []);
+          rowsByRace.get(s.pool_race_id).push({ stage_number: s.stage_number, scheduled_at: s.scheduled_at });
+        }
+        for (const [poolRaceId, rows] of rowsByRace) {
+          const win = raceRemainingTimeWindow(rows, 0);
+          assertNewRaceClearsInFlight({ newRaceWindow: win, newRaceId: poolRaceId, inFlightWindows: divInFlight });
+        }
+      }
 
       const toInsert = fresh.map((r) => ({
         season_id: seasonId, league_division_id: poolPlan.leagueDivisionId, pool_race_id: r.pool_race_id,

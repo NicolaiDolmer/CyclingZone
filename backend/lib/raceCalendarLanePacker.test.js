@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { packLaneCalendar, MONUMENT_GAMEDAY_BASE } from "./raceCalendarLanePacker.js";
+import { packLaneCalendar, MONUMENT_GAMEDAY_BASE, assertNoInFlightOverlap } from "./raceCalendarLanePacker.js";
 
 // Div 1: 3 Grand Tours (21) + mindre etapeløb + 5 monumenter + klassikere = 140 events (5×28).
 function div1() {
@@ -135,4 +135,42 @@ test("packer: tom input → ingen placements, alle dage tomme", () => {
   const r = packLaneCalendar({ density: 3, days: 10, overlapCap: 2 });
   assert.deepEqual(r.placements, []);
   assert.equal(r.emptyDays, 10);
+});
+
+// #1856 forward-guard: en invariant der kaster hvis et NYT løb placeres oven i et
+// IGANGVÆRENDE løbs resterende game_day-vindue (samme nøglerum). Ville have fanget den
+// oprindelige overlap (nyt etapeløb schedulet oven på den igangværende La Corsa).
+const gd = (id, gds) => ({ id, stagesPlaced: gds.map((g, i) => ({ stage_number: i + 1, game_day: g })) });
+
+test("assertNoInFlightOverlap: intet optaget vindue → altid ok", () => {
+  assert.equal(assertNoInFlightOverlap({ placements: [gd("new", [0, 1, 2])], occupiedWindows: [] }), true);
+  assert.equal(assertNoInFlightOverlap({ placements: [gd("new", [0, 1, 2])] }), true);
+});
+
+test("assertNoInFlightOverlap: nyt løb der IKKE rører in-flight vinduet → ok", () => {
+  // In-flight optager game_day 5..6; nyt løb 0..3 → ingen overlap.
+  assert.equal(assertNoInFlightOverlap({
+    placements: [gd("new", [0, 1, 2, 3])],
+    occupiedWindows: [{ start: 5, end: 6, raceId: "la-corsa" }],
+  }), true);
+});
+
+test("assertNoInFlightOverlap: nyt løb oven på in-flight vinduet → kaster (regression #1856)", () => {
+  // In-flight La Corsa resterende game_day 6..6; nyt etapeløb 4..7 overlapper på game_day 6/7.
+  assert.throws(
+    () => assertNoInFlightOverlap({
+      placements: [gd("new-stage-race", [4, 5, 6, 7])],
+      occupiedWindows: [{ start: 6, end: 6, raceId: "la-corsa" }],
+    }),
+    /in-flight overlap invariant.*new-stage-race.*la-corsa/s,
+    "nyt løb oven på in-flight vindue skal kaste",
+  );
+});
+
+test("assertNoInFlightOverlap: monument-etaper (game_day i bånd) binder ikke → ok trods 'overlap'", () => {
+  const monument = { id: "mon", stagesPlaced: [{ stage_number: 1, game_day: MONUMENT_GAMEDAY_BASE + 3 }] };
+  assert.equal(assertNoInFlightOverlap({
+    placements: [monument],
+    occupiedWindows: [{ start: MONUMENT_GAMEDAY_BASE + 3, end: MONUMENT_GAMEDAY_BASE + 3 }],
+  }), true, "monument er binding-fri (game_day i bånd) → ingen invariant-brud");
 });

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { raceTimeWindow, raceBindingWindow, windowsOverlap, findRiderBindingConflicts, loadTeamBindingContext, findManualOverlapConflicts, teamInRacePool } from "./raceBinding.js";
+import { raceTimeWindow, raceBindingWindow, windowsOverlap, findRiderBindingConflicts, loadTeamBindingContext, findManualOverlapConflicts, teamInRacePool, isRaceInFlight, raceRemainingBindingWindow, raceRemainingTimeWindow } from "./raceBinding.js";
 
 test("raceTimeWindow: start=tidligste, end=seneste etape", () => {
   const w = raceTimeWindow([
@@ -321,4 +321,89 @@ test("teamInRacePool: løb uden pulje (racePoolId null) → true (ingen restrikt
 
 test("teamInRacePool: hold uden pulje men løb har pulje → false", () => {
   assert.equal(teamInRacePool({ teamDivisionId: null, racePoolId: 4 }), false);
+});
+
+// #1856: in-flight-detektion. Skemaet har INGEN started_at/completed_at — in-flight udledes
+// af status='scheduled' + 0 < stages_completed < stages (spejler #1825-frysen). Verificeret mod
+// prod 2026-07-03: La Corsa dei Due Mari (6/7), Vuelta Ibérica (7/21) var in-flight scheduled-løb.
+test("isRaceInFlight: scheduled etapeløb med delvist afviklede etaper = in-flight", () => {
+  assert.equal(isRaceInFlight({ status: "scheduled", stages: 7, stages_completed: 6 }), true, "La Corsa 6/7");
+  assert.equal(isRaceInFlight({ status: "scheduled", stages: 21, stages_completed: 7 }), true, "Vuelta 7/21");
+});
+
+test("isRaceInFlight: ikke-startet, afviklet, completed eller uden data = ikke in-flight", () => {
+  assert.equal(isRaceInFlight({ status: "scheduled", stages: 7, stages_completed: 0 }), false, "ikke startet");
+  assert.equal(isRaceInFlight({ status: "scheduled", stages: 7, stages_completed: 7 }), false, "alle etaper kørt (finalization-pending)");
+  assert.equal(isRaceInFlight({ status: "completed", stages: 7, stages_completed: 7 }), false, "afviklet");
+  assert.equal(isRaceInFlight(null), false);
+  assert.equal(isRaceInFlight({}), false);
+});
+
+// #1856 rod-årsag: kun de ENDNU IKKE afviklede etaper binder fremadrettet. Et in-flight løbs
+// resterende vindue = game_day-span af etaper med stage_number > stages_completed.
+test("raceRemainingBindingWindow: kun uafviklede etaper tæller (game_day-akse)", () => {
+  const sched = [
+    { stage_number: 1, scheduled_at: "2026-06-20T10:00:00Z", game_day: 0 },
+    { stage_number: 2, scheduled_at: "2026-06-21T10:00:00Z", game_day: 1 },
+    { stage_number: 3, scheduled_at: "2026-06-22T10:00:00Z", game_day: 2 },
+    { stage_number: 4, scheduled_at: "2026-06-23T10:00:00Z", game_day: 3 },
+  ];
+  const w = raceRemainingBindingWindow(sched, 2); // etape 1-2 kørt → 3-4 resterer
+  assert.equal(w.start, 2);
+  assert.equal(w.end, 3);
+});
+
+test("raceRemainingBindingWindow: stagesCompleted<=0 → hele vinduet (ikke-startet løb)", () => {
+  const sched = [
+    { stage_number: 1, game_day: 5 },
+    { stage_number: 2, game_day: 6 },
+  ];
+  assert.deepEqual(raceRemainingBindingWindow(sched, 0), { start: 5, end: 6 });
+  assert.deepEqual(raceRemainingBindingWindow(sched), { start: 5, end: 6 });
+});
+
+test("raceRemainingBindingWindow: alle etaper afviklet → null (binder ikke fremad)", () => {
+  const sched = [
+    { stage_number: 1, game_day: 5 },
+    { stage_number: 2, game_day: 6 },
+  ];
+  assert.equal(raceRemainingBindingWindow(sched, 2), null);
+  assert.equal(raceRemainingBindingWindow([], 0), null);
+  assert.equal(raceRemainingBindingWindow(null, 3), null);
+});
+
+// #1856: resterende vindue på fysisk CET-kalenderdag (bruges når to løb ligger i forskellige
+// game_day-nøglerum, fx en rebuild). La Corsa: 6/7 kørt → kun etape 7 (26/6) binder fremad.
+test("raceRemainingTimeWindow: resterende CET-dag-vindue for in-flight etapeløb", () => {
+  const ORD = (d) => Date.parse(`${d}T00:00:00Z`) / 86_400_000;
+  const sched = [
+    { stage_number: 6, scheduled_at: "2026-06-25T11:00:00Z" }, // 25/6 (kørt)
+    { stage_number: 7, scheduled_at: "2026-06-26T11:00:00Z" }, // 26/6 (resterer)
+  ];
+  const w = raceRemainingTimeWindow(sched, 6);
+  assert.equal(w.start, ORD("2026-06-26"));
+  assert.equal(w.end, ORD("2026-06-26"), "kun sidste etape binder fremad");
+});
+
+test("raceRemainingTimeWindow: et nyt løb der starter samme CET-dag overlapper det resterende vindue", () => {
+  // In-flight La Corsa: sidste etape 26/6. Nyt løb med etape 1 også 26/6 → skal overlappe.
+  const laCorsaRemaining = raceRemainingTimeWindow([
+    { stage_number: 6, scheduled_at: "2026-06-25T11:00:00Z" },
+    { stage_number: 7, scheduled_at: "2026-06-26T11:00:00Z" },
+  ], 6);
+  const newRace = raceRemainingTimeWindow([
+    { stage_number: 1, scheduled_at: "2026-06-26T13:00:00Z" },
+    { stage_number: 2, scheduled_at: "2026-06-27T13:00:00Z" },
+  ], 0);
+  assert.equal(windowsOverlap(laCorsaRemaining, newRace), true, "nyt løb overlapper in-flight resterende vindue");
+});
+
+test("raceRemainingTimeWindow: et nyt løb helt efter det resterende vindue overlapper IKKE", () => {
+  const laCorsaRemaining = raceRemainingTimeWindow([
+    { stage_number: 7, scheduled_at: "2026-06-26T11:00:00Z" },
+  ], 6);
+  const newRace = raceRemainingTimeWindow([
+    { stage_number: 1, scheduled_at: "2026-06-27T13:00:00Z" },
+  ], 0);
+  assert.equal(windowsOverlap(laCorsaRemaining, newRace), false, "nyt løb dagen efter binder ikke");
 });

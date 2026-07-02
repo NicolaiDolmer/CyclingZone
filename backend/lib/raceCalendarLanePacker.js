@@ -199,6 +199,47 @@ function diagnose(placements, days, D, cap, timelineLength, layoutMode) {
   };
 }
 
+// #1856: binding-game_day-span for én placement (min..max game_day på tværs af dens etaper).
+// Monument-etaper (game_day i højt bånd) binder ikke → udeladt. Tom → null.
+function placementBindingSpan(p) {
+  const gds = (p.stagesPlaced || [])
+    .map((s) => s.game_day)
+    .filter((g) => Number.isFinite(g) && g < MONUMENT_GAMEDAY_BASE);
+  if (!gds.length) return null;
+  return { start: Math.min(...gds), end: Math.max(...gds) };
+}
+
+/**
+ * #1856 forward-guard: en invariant der forhindrer at pakkeren placerer et NYT løb oven i et
+ * IGANGVÆRENDE (in-flight) løbs resterende vindue i samme game_day-nøglerum. Ren + deterministisk.
+ *
+ * Bruges når kalenderen genopbygges i det SAMME game_day-rum som de igangværende løb (fx en
+ * in-place reschedule). Til en fuld rebuild hvor game_day er 0-baseret pr. division og in-flight-
+ * løbet bærer et andet game_day-rum, sammenlignes i stedet på fysisk CET-kalenderdag (se
+ * tierCalendarMaterializer.js / raceRemainingTimeWindow).
+ *
+ * @param {{ placements: Array<{id, stagesPlaced}>, occupiedWindows?: Array<{start, end, raceId?}> }} args
+ * @throws {Error} hvis en placement overlapper et optaget (in-flight) vindue.
+ * @returns {true} hvis ingen overlap.
+ */
+export function assertNoInFlightOverlap({ placements = [], occupiedWindows = [] } = {}) {
+  if (!occupiedWindows.length) return true;
+  for (const p of placements) {
+    const span = placementBindingSpan(p);
+    if (!span) continue;
+    for (const occ of occupiedWindows) {
+      if (occ && span.start <= occ.end && occ.start <= span.end) {
+        throw new Error(
+          `in-flight overlap invariant: race ${p.id} (game_day ${span.start}..${span.end}) ` +
+          `overlaps in-flight window ${occ.start}..${occ.end}` +
+          (occ.raceId ? ` (race ${occ.raceId})` : ""),
+        );
+      }
+    }
+  }
+  return true;
+}
+
 /**
  * @param {{ stageRaces?, oneDayRaces?, density?, days?, overlapCap?, spineMinStages?, seed? }} args
  */

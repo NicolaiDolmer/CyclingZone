@@ -68,6 +68,55 @@ export function windowsOverlap(a, b) {
   return a.start <= b.end && b.start <= a.end;
 }
 
+// #1856: er et løb IGANGVÆRENDE (in-flight)? Kanonisk definition (spejler #1825-frysen i
+// raceEntryGenerator.js / raceDistribution.js): status='scheduled' MEN mindst én etape er
+// afviklet og ikke alle er kørt endnu. Bemærk: races-skemaet har INGEN started_at/completed_at
+// (verificeret mod prod 2026-07-03) — in-flight udledes af stages_completed vs stages + status.
+// Et 'completed'-løb er afviklet (binder ikke fremadrettet); et scheduled/0-afviklet er ikke startet.
+export function isRaceInFlight(race) {
+  if (!race) return false;
+  const sc = Number(race.stages_completed) || 0;
+  const total = Number(race.stages) || 0;
+  return race.status === "scheduled" && sc > 0 && (total <= 0 || sc < total);
+}
+
+// #1856: RESTERENDE binding-vindue for et (evt. igangværende) løb — kun de etaper der ENDNU
+// IKKE er afviklet binder fremadrettet. stagesCompleted etaper er kørt; etaper med
+// stage_number > stagesCompleted optager stadig deres in-game-dag og skal derfor tælle som
+// OPTAGET når kalenderen placerer nye løb. Rod-årsag (#1856): overlap-detektionen så kun
+// scheduled-vs-scheduled og ignorerede at et in-flight løbs resterende vindue binder → nye
+// etapeløb blev schedulet oven på den igangværende La Corsa.
+//
+// stagesCompleted<=0 (eller udeladt) → hele løbets vindue (uændret opførsel for ikke-startede løb).
+// Alle etaper afviklet → null (intet resterende vindue; løbet binder ikke længere).
+export function raceRemainingBindingWindow(scheduleRows, stagesCompleted = 0) {
+  if (!scheduleRows?.length) return null;
+  const done = Number(stagesCompleted) || 0;
+  if (done <= 0) return raceBindingWindow(scheduleRows);
+  const remaining = scheduleRows.filter((r) => (Number(r?.stage_number) || 0) > done);
+  if (!remaining.length) return null; // alle etaper afviklet → binder ikke fremadrettet
+  return raceBindingWindow(remaining);
+}
+
+// #1856: samme som raceRemainingBindingWindow, men på RÅ tidspunkter (scheduled_at) frem for
+// in-game-dag-nøgler. Bruges når man sammenligner et in-flight løbs resterende vindue mod et
+// NYT løbs vindue på tværs af to forskellige game_day-nøglerum (fx en kalender-rebuild hvor
+// game_day er 0-baseret pr. division, mens in-flight-løbet bærer den GAMLE schedules game_day):
+// den fælles, sammenlignelige akse er den fysiske CET-kalenderdag som etaperne fysisk optager.
+export function raceRemainingTimeWindow(scheduleRows, stagesCompleted = 0) {
+  if (!scheduleRows?.length) return null;
+  const done = Number(stagesCompleted) || 0;
+  const remaining = done > 0
+    ? scheduleRows.filter((r) => (Number(r?.stage_number) || 0) > done)
+    : scheduleRows;
+  if (!remaining.length) return null;
+  const ordinals = remaining
+    .map((r) => cetDayOrdinal(r?.scheduled_at))
+    .filter((o) => Number.isFinite(o));
+  if (!ordinals.length) return null;
+  return { start: Math.min(...ordinals), end: Math.max(...ordinals) };
+}
+
 // Givet det løb man udtager til (thisWindow) og holdets andre løb (otherRaces:
 // [{ window, riderIds }]), returnér de rider_ids fra `riderIds` der allerede er
 // bundet i et tidsoverlappende løb. Pure + deterministisk.
