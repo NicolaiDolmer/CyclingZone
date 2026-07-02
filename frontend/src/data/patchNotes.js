@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.43",
+    "date": "2026-07-02",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Onboarding",
+        "en": {
+          "title": "Signing up now finishes cleanly after you confirm your email",
+          "body": "A few of you hit a wall right after signup: click the confirmation link, and instead of landing in the game you were asked to type your team and manager name all over again. That's fixed - your team is now created automatically the moment you confirm, using exactly what you entered when you signed up. If your first confirmation email doesn't show up, there's now a \"Send it again\" link on the confirmation screen and on the login error when it says your email isn't confirmed yet.",
+        },
+        "da": {
+          "title": "Oprettelse af konto afsluttes nu rent efter du bekræfter din email",
+          "body": "Nogle af jer ramte en mur lige efter signup: klik på bekræftelseslinket, og i stedet for at lande i spillet blev I bedt om at skrive hold- og managernavn igen. Det er rettet - dit hold oprettes nu automatisk i det øjeblik du bekræfter, med præcis det du skrev ved signup. Kommer din første bekræftelsesmail ikke frem, er der nu et \"Send den igen\"-link på bekræftelsesskærmen og ved login-fejlen når den siger din email ikke er bekræftet endnu.",
+        },
+        "refs": [2068, 2069]
+      }
+    ]
+  },
+  {
     "version": "6.42",
     "date": "2026-07-02",
     "label": "Beta",
