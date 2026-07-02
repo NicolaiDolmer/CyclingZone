@@ -185,6 +185,43 @@
         "link": "Power curve & zones →"
       }
     },
+    "development": {
+      "empty": "No recorded development yet. The curve builds as the rider trains and seasons pass.",
+      "loading": "Loading development...",
+      "chart": {
+        "title": "Rating by type · over seasons",
+        "caption": "recorded development · daily snapshots",
+        "season": "S{n}",
+        "seasonNow": "S{n} now"
+      },
+      "growth": {
+        "title": "Growth this season",
+        "typeRating": "{type} rating",
+        "thisSeason": "{delta} this season",
+        "abilityPoints": "Ability points gained",
+        "trackedSince": "Tracked since"
+      },
+      "reading": {
+        "title": "Reading",
+        "own": {
+          "rising": "He has gained {delta} in {type} rating this season. Training is paying off.",
+          "flat": "No measured gain yet this season. The curve builds as he trains."
+        },
+        "scouting": {
+          "rising": "Rising curve this season. Training plans are hidden for rival riders.",
+          "flat": "Flat curve so far this season. Training plans are hidden for rival riders."
+        }
+      },
+      "log": {
+        "title": "Development log",
+        "hint": "training → ability gains per season",
+        "seasonNow": "Season {n} · now",
+        "delta": "{delta} rating",
+        "note": "gains on {days} of the last {window} days",
+        "noTraining": "no training recorded",
+        "scoutingHidden": "The training-driven development log is hidden for rival riders. You only see the recorded trend above."
+      }
+    },
     "physio": {
       "pending": "Physiology not yet available",
       "over": "over",
@@ -252,7 +289,6 @@
   "stats": {
     "potentialRow": "Potential",
     "abilitiesPending": "Abilities not yet available",
-    "loadingDevelopment": "Loading development...",
     "categories": {
       "physical": "Physical",
       "mental": "Mental",
@@ -380,17 +416,7 @@
     "fallbackDash": "-"
   },
   "development": {
-    "progressHint": "Progress toward next point",
-    "empty": "No history yet. Ratings build up as the rider trains and seasons progress.",
-    "statsTitle": "Rider-type rating over time",
-    "statsSubtitle": "How the rider's overall rating develops in each rider type. Click a type to toggle it.",
-    "filterAll": "All types",
-    "filterNone": "None",
-    "recentTitle": "Latest data points",
-    "table": {
-      "date": "Date"
-    },
-    "fallbackDash": "-"
+    "progressHint": "Progress toward next point"
   },
   "bids": {
     "noAuction": "No current auction for this rider",

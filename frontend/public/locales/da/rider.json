@@ -185,6 +185,43 @@
         "link": "Watt-kurve & zoner →"
       }
     },
+    "development": {
+      "empty": "Ingen registreret udvikling endnu. Kurven bygges op, når rytteren træner og sæsonerne går.",
+      "loading": "Indlæser udvikling...",
+      "chart": {
+        "title": "Rating pr. type · over sæsoner",
+        "caption": "registreret udvikling · daglige snapshots",
+        "season": "S{n}",
+        "seasonNow": "S{n} nu"
+      },
+      "growth": {
+        "title": "Vækst denne sæson",
+        "typeRating": "{type}-rating",
+        "thisSeason": "{delta} denne sæson",
+        "abilityPoints": "Evne-point vundet",
+        "trackedSince": "Målt siden"
+      },
+      "reading": {
+        "title": "Læsning",
+        "own": {
+          "rising": "Han har hentet {delta} i {type}-rating denne sæson. Træningen flytter ham.",
+          "flat": "Ingen målt fremgang endnu denne sæson. Kurven bygges op, når han træner."
+        },
+        "scouting": {
+          "rising": "Stigende kurve denne sæson. Træningsplaner er skjult for fremmede ryttere.",
+          "flat": "Flad kurve indtil videre denne sæson. Træningsplaner er skjult for fremmede ryttere."
+        }
+      },
+      "log": {
+        "title": "Udviklingslog",
+        "hint": "træning → evne-gevinst pr. sæson",
+        "seasonNow": "Sæson {n} · nu",
+        "delta": "{delta} rating",
+        "note": "fremgang på {days} af de seneste {window} dage",
+        "noTraining": "ingen træning registreret",
+        "scoutingHidden": "Den træningsdrevne udviklingslog er skjult for fremmede ryttere. Du ser kun den registrerede trend ovenfor."
+      }
+    },
     "physio": {
       "pending": "Fysiologi ikke tilgængelig endnu",
       "over": "over",
@@ -252,7 +289,6 @@
   "stats": {
     "potentialRow": "Potentiale",
     "abilitiesPending": "Evner endnu ikke beregnet",
-    "loadingDevelopment": "Indlæser udvikling...",
     "categories": {
       "physical": "Fysiske",
       "mental": "Mentale",
@@ -380,17 +416,7 @@
     "fallbackDash": "-"
   },
   "development": {
-    "progressHint": "Fremskridt mod næste point",
-    "empty": "Ingen historik endnu. Ratings bygges op efterhånden som rytteren træner og sæsoner går.",
-    "statsTitle": "Ryttertype-rating over tid",
-    "statsSubtitle": "Hvordan rytterens overall-rating udvikler sig i hver ryttertype. Klik en type for at slå den til/fra.",
-    "filterAll": "Alle typer",
-    "filterNone": "Ingen",
-    "recentTitle": "Seneste datapunkter",
-    "table": {
-      "date": "Dato"
-    },
-    "fallbackDash": "-"
+    "progressHint": "Fremskridt mod næste point"
   },
   "bids": {
     "noAuction": "Ingen aktuel auktion for denne rytter",

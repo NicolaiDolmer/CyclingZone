@@ -880,18 +880,19 @@ router.get("/riders/:id/bid-timeline", requireAuth, async (req, res) => {
 // GET /api/riders/:id/development — evne-udviklings-historik til Udvikling-fanen (#2000/#918).
 // rider_derived_ability_history er RLS-lukket (service-role-only), så læsning går via
 // dette endpoint. Returnerer per-snapshot evnevektorer kronologisk; type-ratingen pr.
-// ryttertype beregnes i frontend fra abilities (rating-SSOT). limit(200) ≈ ½ sæsons
-// daglige punkter — rigeligt til kurven.
+// ryttertype beregnes i frontend fra abilities (rating-SSOT). Hentes DESC + reverses:
+// limit(200) skal beholde de NYESTE punkter — ASC+limit ville fryse kurven ved
+// snapshot nr. 200 og klippe al senere udvikling af (daily-snapshots vokser ubegrænset).
 router.get("/riders/:id/development", requireAuth, async (req, res) => {
   try {
     const { data, error } = await supabase
       .from("rider_derived_ability_history")
       .select("snapshot_date, season_number, source, abilities")
       .eq("rider_id", req.params.id)
-      .order("snapshot_date", { ascending: true })
+      .order("snapshot_date", { ascending: false })
       .limit(200);
     if (error) throw new Error(error.message);
-    res.json(data ?? []);
+    res.json((data ?? []).reverse());
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

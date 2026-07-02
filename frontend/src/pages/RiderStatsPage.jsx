@@ -1,7 +1,6 @@
-import { Suspense, useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { lazyWithRetry } from "../lib/lazyWithRetry.js";
 import { supabase } from "../lib/supabase";
 import { getAuthedUser } from "../lib/getAuthedUser.js";
 import { formatCz, getRiderMarketValue, getRiderSalary } from "../lib/marketValues.js";
@@ -41,9 +40,9 @@ import RiderTypeRadar from "../components/rider/profile/RiderTypeRadar.jsx";
 import RiderOverviewPhysiology from "../components/rider/profile/RiderOverviewPhysiology.jsx";
 import RiderPhysiologyTab from "../components/rider/profile/RiderPhysiologyTab.jsx";
 import RiderTrainingTab from "../components/rider/profile/RiderTrainingTab.jsx";
+import RiderDevelopmentTab from "../components/rider/profile/RiderDevelopmentTab.jsx";
 
 const API = import.meta.env.VITE_API_URL;
-const RiderDevelopmentTab = lazyWithRetry(() => import("../components/RiderDevelopmentTab"));
 
 // Hent ALLE en rytters race_results (lette kolonner) til sæson-aggregeringen.
 // Pagineret fordi PostgREST capper ved 1000 rækker/side — uden det ville en
@@ -738,7 +737,7 @@ export default function RiderStatsPage() {
   const [activeAuction, setActiveAuction]   = useState(null);
   const [auctionError, setAuctionError]     = useState(null);
   const [history, setHistory]               = useState([]);
-  const [statHistory, setStatHistory]       = useState([]);
+  const [statHistory, setStatHistory]       = useState(null); // null = loader endnu
   const [physBenchmark, setPhysBenchmark]   = useState(null);
   const [ddActive, setDdActive]             = useState(false);
   // #195: live bud-timeline for seneste auktion (aktiv eller completed).
@@ -755,6 +754,8 @@ export default function RiderStatsPage() {
   // Refs så channel-callback kan se nyeste state uden at re-subscribe
   const activeAuctionRef = useRef(null);
   const myTeamIdRef      = useRef(null);
+  // #2000 stykke 5: stale-guard for development-fetchen (hurtig prev/next-switch).
+  const developmentFetchIdRef = useRef(null);
   useEffect(() => { activeAuctionRef.current = activeAuction; }, [activeAuction]);
   useEffect(() => { myTeamIdRef.current = myTeamId; }, [myTeamId]);
 
@@ -863,14 +864,23 @@ export default function RiderStatsPage() {
     // (rider_derived_ability_history) via backend-endpoint — erstatter den døde
     // PCM rider_stat_history-feed. Type-ratingen pr. ryttertype beregnes i
     // RiderDevelopmentTab via rating-SSOT'en (riderRating.js).
-    // Ryd up-front (CodeRabbit #2015) så et rytter-skift ALDRIG viser forrige rytters
-    // kurve, og en non-ok-respons efterlader ikke stale data.
-    setStatHistory([]);
+    // null = loader (fanen viser spinner, ikke misvisende empty-state); ryd
+    // up-front (CodeRabbit #2015) så et rytter-skift ALDRIG viser forrige rytters
+    // kurve. Stale-guard via ref: hurtig prev/next i switcheren må ikke lade et
+    // SENT svar fra forrige rytter overskrive den nyes data (roster-mønstret).
+    const fetchId = id;
+    developmentFetchIdRef.current = fetchId;
+    setStatHistory(null);
     try {
       const h = await authHeaders();
-      const res = await fetch(`${API}/api/riders/${id}/development`, { headers: h });
-      if (res.ok) setStatHistory(await res.json());
-    } catch { /* non-critical: Udvikling-tabben falder tilbage til empty-state */ }
+      const res = await fetch(`${API}/api/riders/${fetchId}/development`, { headers: h });
+      const data = res.ok ? await res.json() : [];
+      if (developmentFetchIdRef.current !== fetchId) return; // stale svar — ny rytter er i gang
+      setStatHistory(data);
+    } catch {
+      // non-critical: Udvikling-tabben falder tilbage til empty-state
+      if (developmentFetchIdRef.current === fetchId) setStatHistory([]);
+    }
   }
 
   async function loadMyTeam() {
@@ -1582,10 +1592,17 @@ export default function RiderStatsPage() {
         />
       )}
 
+      {/* #2000 stykke 5 — Udvikling: registreret rating-udvikling pr. type +
+          vækst denne sæson + træningsdrevet udviklingslog (kun egne ryttere).
+          Loft/projektion er BEVIDST udskudt til ejer-review (balance-følsomt). */}
       {tab === "development" && (
-        <Suspense fallback={<div className="bg-cz-card border border-cz-border rounded-cz p-5 text-cz-3 text-center py-8">{t("stats.loadingDevelopment")}</div>}>
-          <RiderDevelopmentTab history={statHistory} types={developmentTypes} />
-        </Suspense>
+        <RiderDevelopmentTab
+          rider={rider}
+          history={statHistory}
+          types={developmentTypes}
+          trainingHistory={trainingHistory}
+          viewer={isMyRider ? "own" : "scouting"}
+        />
       )}
 
       {tab === "physiology" && (
