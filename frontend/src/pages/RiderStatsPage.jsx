@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { getAuthedUser } from "../lib/getAuthedUser.js";
@@ -29,6 +29,7 @@ import { isOverbidEvent, shouldFlashPrice } from "../lib/auctionsRealtime";
 import { logEvent, logFirstEvent } from "../lib/logEvent";
 import { ABILITY_KEYS, topAbilityKey } from "../lib/abilities.js";
 import { PageLoader } from "../components/ui";
+import { buttonClass } from "../components/ui/buttonStyles.js";
 import RiderProfileHero from "../components/rider/profile/RiderProfileHero.jsx";
 import RiderSwitcherBar from "../components/rider/profile/RiderSwitcherBar.jsx";
 import RiderProfileTabs from "../components/rider/profile/RiderProfileTabs.jsx";
@@ -77,6 +78,17 @@ async function authHeaders() {
   const { data: { session } } = await supabase.auth.getSession();
   return { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token}` };
 }
+
+// Hero-handlingsrækkens trigger-knapper (ejer-feedback 3/7): kompakte, auto-
+// bredde og med appens delte buttonStyles i stedet for fuldbredde-bjælker.
+// Åben-tilstand = accent-tint så den udfoldede formular kobles visuelt til sin knap.
+const TRIGGER_OPEN = "!border-cz-accent/40 !text-cz-accent-t !bg-cz-accent/5";
+const triggerClass = (open, variant = "secondary") =>
+  `${buttonClass({ variant })} ${open ? TRIGGER_OPEN : ""}`;
+// Udfoldede paneler/feedback: komponent-roden er display:contents, så panelet
+// lægger sig i FULD bredde UNDER hele trigger-rækken (order-2) i stedet for at
+// splitte rækken. Den tintede trigger viser hvilken knap panelet hører til.
+const ACTION_PANEL = "order-2 w-full";
 
 // Evne-rækker, power-stat-grid og race-physiology-preview er flyttet til de
 // dedikerede Overblik-komponenter under components/rider/profile/ (#2000 stykke 2):
@@ -128,22 +140,18 @@ function SwapOfferButton({ rider, myTeamId }) {
   }
 
   return (
-    <div>
+    <div className="contents">
       {result && (
-        <div className={`mb-2 px-3 py-2 rounded-lg text-sm border
+        <div className={`${ACTION_PANEL} px-3 py-2 rounded-lg text-sm border
           ${result.ok ? "bg-cz-success-bg text-cz-success border-cz-success/30" : "bg-cz-danger-bg text-cz-danger border-cz-danger/30"}`}>
           {result.msg}
         </div>
       )}
-      <button onClick={openForm}
-        className={`w-full min-h-[44px] py-2.5 rounded-cz text-sm font-bold transition-all border
-          ${show
-              ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/25"
-              : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle hover:text-cz-1"}`}>
+      <button type="button" onClick={openForm} className={triggerClass(show)}>
         {t("swapOffer.buttonOpen")}
       </button>
       {show && (
-        <div className="mt-3 flex flex-col gap-2">
+        <div className={`${ACTION_PANEL} flex flex-col gap-2`}>
           <select value={offeredId} onChange={e => setOfferedId(e.target.value)}
             className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-base sm:text-sm focus:outline-none focus:border-cz-accent">
             <option value="">{t("swapOffer.selectRider")}</option>
@@ -204,22 +212,18 @@ function LoanOfferButton({ rider }) {
   }
 
   return (
-    <div>
+    <div className="contents">
       {result && (
-        <div className={`mb-2 px-3 py-2 rounded-lg text-sm border
+        <div className={`${ACTION_PANEL} px-3 py-2 rounded-lg text-sm border
           ${result.ok ? "bg-cz-success-bg text-cz-success border-cz-success/30" : "bg-cz-danger-bg text-cz-danger border-cz-danger/30"}`}>
           {result.msg}
         </div>
       )}
-      <button onClick={() => setShow(!show)}
-        className={`w-full min-h-[44px] py-2.5 rounded-cz text-sm font-bold transition-all border
-          ${show
-              ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/25"
-              : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle hover:text-cz-1"}`}>
+      <button type="button" onClick={() => setShow(!show)} className={triggerClass(show)}>
         {t("loanOffer.buttonOpen")}
       </button>
       {show && (
-        <div className="mt-3 flex flex-col gap-2">
+        <div className={`${ACTION_PANEL} flex flex-col gap-2`}>
           <input type="number" value={season} onChange={e => setSeason(e.target.value)}
             placeholder={t("loanOffer.seasonPlaceholder")}
             className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-base sm:text-sm focus:outline-none focus:border-cz-accent" />
@@ -279,22 +283,19 @@ function DirectOfferButton({ rider }) {
     setConfirmOpen(true);
   }
   return (
-    <div>
+    <div className="contents">
       {result && (
-        <div className={`mb-2 px-3 py-2 rounded-lg text-sm border
+        <div className={`${ACTION_PANEL} px-3 py-2 rounded-lg text-sm border
           ${result.ok ? "bg-cz-success-bg text-cz-success border-cz-success/30" : "bg-cz-danger-bg text-cz-danger border-cz-danger/30"}`}>
           {result.msg}
         </div>
       )}
-      <button onClick={() => setShow(!show)}
-        className={`w-full min-h-[44px] py-2.5 rounded-cz text-sm font-bold transition-all border
-          ${show
-              ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/25"
-              : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle hover:text-cz-1"}`}>
+      {/* Primær CTA i scouting-visningen (én accent-knap pr. kontekst). */}
+      <button type="button" onClick={() => setShow(!show)} className={triggerClass(false, "primary")}>
         {t("directOffer.buttonOpen")}
       </button>
       {show && (
-        <div className="mt-3 flex flex-col gap-2">
+        <div className={`${ACTION_PANEL} flex flex-col gap-2`}>
           <input type="number" value={amount} min={1} onChange={e => setAmount(parseInt(e.target.value) || 0)}
             placeholder={t("directOffer.amountPlaceholder")}
             className="w-full min-h-[44px] bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 font-mono text-base sm:text-sm focus:outline-none focus:border-cz-accent" />
@@ -416,15 +417,15 @@ function TransferListButton({ rider }) {
   }
 
   return (
-    <div>
+    <div className="contents">
       {result && (
-        <div className={`mb-2 px-3 py-2 rounded-lg text-sm border
+        <div className={`${ACTION_PANEL} px-3 py-2 rounded-lg text-sm border
           ${result.ok ? "bg-cz-success-bg text-cz-success border-cz-success/30" : "bg-cz-danger-bg text-cz-danger border-cz-danger/30"}`}>
           {result.msg}
         </div>
       )}
       {listing ? (
-        <div className="rounded-cz border border-cz-border bg-cz-subtle p-3 flex flex-col gap-2">
+        <div className={`${ACTION_PANEL} rounded-cz border border-cz-border bg-cz-subtle p-3 flex flex-col gap-2`}>
           <p className="text-cz-2 text-sm">
             {t("sellRider.listedStatus", { amount: formatNumber(listing.asking_price) })}
           </p>
@@ -453,16 +454,12 @@ function TransferListButton({ rider }) {
           )}
         </div>
       ) : (
-        <button onClick={() => setShow(!show)}
-          className={`w-full min-h-[44px] py-2.5 rounded-cz text-sm font-bold transition-all border
-            ${show
-                ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/25"
-                : "bg-cz-subtle text-cz-2 border-cz-border hover:bg-cz-subtle hover:text-cz-1"}`}>
+        <button type="button" onClick={() => setShow(!show)} className={triggerClass(show)}>
           {t("sellRider.buttonOpen")}
         </button>
       )}
       {show && (
-        <div className="mt-3 flex flex-col gap-2">
+        <div className={`${ACTION_PANEL} flex flex-col gap-2`}>
           <p className="text-cz-3 text-xs">{t("sellRider.description")}</p>
           <input type="number" value={price} min={1}
             onChange={e => { const v = parseInt(e.target.value, 10); setPrice(Number.isNaN(v) ? 0 : v); }}
@@ -668,6 +665,10 @@ function RiderBidPanel({ auction, myTeamId, myBalance, reservedBalance, riderNam
 function AuctionButton({ rider, auctionLabel, onStart, ddActive, isOwnRider }) {
   const { t } = useTranslation("rider");
   const riderValue      = getRiderMarketValue(rider);
+  // Ejer-feedback 3/7: pris-formularen var altid udfoldet og fyldte hero'en —
+  // nu en kompakt trigger-knap der folder formularen ud (samme mønster som
+  // salgs-/bud-knapperne).
+  const [open, setOpen]             = useState(false);
   const [price, setPrice]           = useState(riderValue);
   const [loading, setLoading]       = useState(false);
   const [flash, setFlash]           = useState(false);
@@ -676,44 +677,48 @@ function AuctionButton({ rider, auctionLabel, onStart, ddActive, isOwnRider }) {
   const priceError      = isOwnRider ? (price > riderValue || price < 0) : (price < riderValue);
 
   return (
-    <div>
-      <p className="text-cz-3 text-xs uppercase tracking-widest mb-2">
+    <div className="contents">
+      <button type="button" onClick={() => setOpen(!open)} className={triggerClass(open)}>
         {auctionLabel}
-      </p>
-      {ddActive && (
-        <label className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-3 cursor-pointer select-none">
-          <div className="flex items-center gap-2">
-            <input type="checkbox" checked={flash} onChange={e => setFlash(e.target.checked)}
-              className="rounded accent-cz-danger" />
-            <span className="text-sm text-cz-danger font-medium">{t("auctionStart.flash.label")}</span>
+      </button>
+      {open && (
+        <div className={ACTION_PANEL}>
+          {ddActive && (
+            <label className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-3 cursor-pointer select-none">
+              <div className="flex items-center gap-2">
+                <input type="checkbox" checked={flash} onChange={e => setFlash(e.target.checked)}
+                  className="rounded accent-cz-danger" />
+                <span className="text-sm text-cz-danger font-medium">{t("auctionStart.flash.label")}</span>
+              </div>
+              <span className="text-xs text-cz-3 sm:ms-0 ms-6">{t("auctionStart.flash.hint")}</span>
+            </label>
+          )}
+          <div className="flex flex-col sm:flex-row gap-2">
+            <input
+              type="number"
+              value={price}
+              min={isOwnRider ? 0 : riderValue}
+              max={isOwnRider ? riderValue : undefined}
+              onChange={e => { const v = parseInt(e.target.value, 10); setPrice(Number.isNaN(v) ? (isOwnRider ? 0 : riderValue) : v); }}
+              className={`min-w-0 flex-1 min-h-[44px] bg-cz-subtle border rounded-lg px-3 py-2 text-cz-1 text-base sm:text-sm font-mono focus:outline-none
+                ${priceError
+                  ? "border-cz-danger/40 focus:border-cz-danger"
+                  : "border-cz-border focus:border-cz-accent"}`}
+            />
+            <button
+              onClick={async () => { setLoading(true); await onStart(price, flash); setLoading(false); }}
+              disabled={loading || priceError}
+              className={`w-full sm:w-auto min-h-[44px] px-4 py-2 font-bold rounded-lg text-sm transition-all disabled:opacity-50
+                ${flash ? "bg-cz-danger text-white hover:brightness-110" : "bg-cz-accent text-cz-on-accent hover:brightness-110"}`}>
+              {loading ? t("auctionStart.buttons.loading") : flash ? t("auctionStart.buttons.startFlash") : t("auctionStart.buttons.start")}
+            </button>
           </div>
-          <span className="text-xs text-cz-3 sm:ms-0 ms-6">{t("auctionStart.flash.hint")}</span>
-        </label>
-      )}
-      <div className="flex flex-col sm:flex-row gap-2">
-        <input
-          type="number"
-          value={price}
-          min={isOwnRider ? 0 : riderValue}
-          max={isOwnRider ? riderValue : undefined}
-          onChange={e => { const v = parseInt(e.target.value, 10); setPrice(Number.isNaN(v) ? (isOwnRider ? 0 : riderValue) : v); }}
-          className={`min-w-0 flex-1 min-h-[44px] bg-cz-subtle border rounded-lg px-3 py-2 text-cz-1 text-base sm:text-sm font-mono focus:outline-none
-            ${priceError
-              ? "border-cz-danger/40 focus:border-cz-danger"
-              : "border-cz-border focus:border-cz-accent"}`}
-        />
-        <button
-          onClick={async () => { setLoading(true); await onStart(price, flash); setLoading(false); }}
-          disabled={loading || priceError}
-          className={`w-full sm:w-auto min-h-[44px] px-4 py-2 font-bold rounded-lg text-sm transition-all disabled:opacity-50
-            ${flash ? "bg-cz-danger text-white hover:brightness-110" : "bg-cz-accent text-cz-on-accent hover:brightness-110"}`}>
-          {loading ? t("auctionStart.buttons.loading") : flash ? t("auctionStart.buttons.startFlash") : t("auctionStart.buttons.start")}
-        </button>
-      </div>
-      {priceError && (
-        <p className="text-cz-danger text-xs mt-1.5">
-          {t(isOwnRider ? "auctionStart.priceErrorOwn" : "auctionStart.priceError", { amount: formatNumber(riderValue) })}
-        </p>
+          {priceError && (
+            <p className="text-cz-danger text-xs mt-1.5">
+              {t(isOwnRider ? "auctionStart.priceErrorOwn" : "auctionStart.priceError", { amount: formatNumber(riderValue) })}
+            </p>
+          )}
+        </div>
       )}
     </div>
   );
@@ -1380,9 +1385,12 @@ export default function RiderStatsPage() {
   const pendingTeam = rider.pending_team?.name && rider.pending_team.id !== rider.team?.id
     ? rider.pending_team
     : null;
+  // Hero'en sætter selv "Løn"-etiketten — værdien er kun beløbet (~ = estimat
+  // for fri agent). Før gav header.contractSalary ("Salary CZ$") dublet-tekst:
+  // "Salary 42,000 Salary CZ$".
   const salaryText = rider.contract_length != null
-    ? `${formatNumber(rider.salary)} ${t("header.contractSalary")}`
-    : `${formatNumber(getRiderSalary(rider))} ${t("header.estSalary")}`;
+    ? `${formatNumber(rider.salary)} CZ$`
+    : `~${formatNumber(getRiderSalary(rider))} CZ$`;
   const winsOnText = winsOnTerrainKeys(rider.primary_type, rider.secondary_type)
     .map((k) => t(`terrain.${k}`)).join(", ") || null;
   // Status-banner: auktion > akademi > kontrakt-udløb (egne ryttere).
@@ -1466,41 +1474,60 @@ export default function RiderStatsPage() {
           onWatchlist={onWatchlist}
           onToggleWatchlist={toggleWatchlist}
           actions={
-            <div className="flex flex-col gap-3">
+            /* Ejer-feedback 3/7: kompakt horisontal handlingsrække (prototypens
+               action row) — udvidede formularer folder ud i fuld bredde under
+               rækken (hver komponents wrapper skifter selv til w-full). Fuld-
+               bredde-elementer (notiser, fejl, bid-panel) er w-full-børn. */
+            <div className="flex flex-wrap items-start gap-2">
               {isPendingTransfer && (
-                <p className="text-cz-3 text-xs text-center py-2 bg-cz-subtle rounded-lg border border-cz-border">
+                <p className="w-full text-cz-3 text-xs text-center py-2 bg-cz-subtle rounded-lg border border-cz-border">
                   {t("blocked.pendingTransfer")}
                 </p>
               )}
               {isRetired && (
-                <p className="text-cz-3 text-xs text-center py-2 bg-cz-subtle rounded-lg border border-cz-border">
+                <p className="w-full text-cz-3 text-xs text-center py-2 bg-cz-subtle rounded-lg border border-cz-border">
                   {t("blocked.retired")}
                 </p>
               )}
               {auctionError && (
-                <div className="px-3 py-2 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-lg text-sm">
+                <div className="w-full px-3 py-2 bg-cz-danger-bg text-cz-danger border border-cz-danger/30 rounded-lg text-sm">
                   {auctionError}
                 </div>
               )}
-              {canAuction && !activeAuction && <AuctionButton rider={rider} auctionLabel={auctionLabel} onStart={startAuction} ddActive={ddActive} isOwnRider={isMyRider} />}
               {activeAuction && (
-                <RiderBidPanel
-                  auction={activeAuction}
-                  myTeamId={myTeamId}
-                  myBalance={myBalance}
-                  reservedBalance={myReservedBalance}
-                  riderName={`${rider.firstname} ${rider.lastname}`}
-                  onBid={handleAuctionBid}
-                  onSetProxy={handleSetProxy}
-                  onRemoveProxy={handleRemoveProxy}
-                  requestBidConfirm={requestBidConfirm}
-                  isFlashing={priceFlash}
-                />
+                <div className="w-full">
+                  <RiderBidPanel
+                    auction={activeAuction}
+                    myTeamId={myTeamId}
+                    myBalance={myBalance}
+                    reservedBalance={myReservedBalance}
+                    riderName={`${rider.firstname} ${rider.lastname}`}
+                    onBid={handleAuctionBid}
+                    onSetProxy={handleSetProxy}
+                    onRemoveProxy={handleRemoveProxy}
+                    requestBidConfirm={requestBidConfirm}
+                    isFlashing={priceFlash}
+                  />
+                </div>
               )}
-              {/* #1185: egne SENIOR-ryttere kan sættes til salg direkte herfra */}
-              {isMySeniorRider && !isPendingTransfer && !isRetired && <TransferListButton rider={rider} />}
-              {/* #2007: egen-rytter-handlinger (forlæng/fyr/akademi op-ned). */}
-              {isMyRider && !isPendingTransfer && !isRetired && <RiderManageActions rider={rider} onChanged={loadRider} />}
+              {/* #2007: egen-rytter-handlinger. Rækkefølge som prototypen:
+                  Forlæng (guld) · Akademi · Sæt til salg · Start auktion · Frigiv
+                  — markeds-knapperne injiceres FØR den destruktive Frigiv. */}
+              {isMyRider && !isPendingTransfer && !isRetired ? (
+                <RiderManageActions
+                  rider={rider}
+                  onChanged={loadRider}
+                  marketActions={
+                    <>
+                      {/* #1185: egne SENIOR-ryttere kan sættes til salg direkte herfra */}
+                      {isMySeniorRider && <TransferListButton rider={rider} />}
+                      {canAuction && !activeAuction && <AuctionButton rider={rider} auctionLabel={auctionLabel} onStart={startAuction} ddActive={ddActive} isOwnRider={isMyRider} />}
+                    </>
+                  }
+                />
+              ) : (
+                canAuction && !activeAuction && <AuctionButton rider={rider} auctionLabel={auctionLabel} onStart={startAuction} ddActive={ddActive} isOwnRider={isMyRider} />
+              )}
               {canDirectOffer && <DirectOfferButton rider={rider} />}
               {canDirectOffer && <SwapOfferButton rider={rider} myTeamId={myTeamId} />}
               {canDirectOffer && <LoanOfferButton rider={rider} />}
@@ -1515,10 +1542,9 @@ export default function RiderStatsPage() {
           { key: "physiology",  label: t("profile.tabs.physiology") },
           { key: "training",    label: t("profile.tabs.training") },
           { key: "development", label: t("profile.tabs.development") },
-          // Scouting-fanen er udskudt til egen slice (#2000) — skjult frem for
-          // at shippe en "bygges om"-placeholder til spillerne. Scout-flowet
-          // (estimat + scout-knap) lever fortsat i hero'en. Genindsæt her når
-          // fanen bygges: { key: "scouting", label: t("profile.tabs.scouting") }.
+          // Scouting-fanen bygges i egen slice (#2000) — viser indtil da en
+          // "på vej"-flade med link til roadmappet (ejer-beslutning 3/7).
+          { key: "scouting",    label: t("profile.tabs.scouting") },
           { key: "history",     label: t("profile.tabs.history") },
           { key: "results",     label: t("profile.tabs.results") },
           { key: "interest",    label: t("profile.tabs.interest") },
@@ -1546,9 +1572,10 @@ export default function RiderStatsPage() {
               isOwnRider={isMyRider}
             />
             <div className={`grid grid-cols-1 ${rider.physiology ? "lg:grid-cols-2" : ""} gap-[13px] items-start`}>
-              {/* onGoScouting udeladt: Scouting-fanen er udskudt (egen slice) —
-                  radar-footerens link genaktiveres sammen med fanen. */}
-              <RiderTypeRadar rider={rider} />
+              <RiderTypeRadar
+                rider={rider}
+                onGoScouting={() => setTab("scouting")}
+              />
               {rider.physiology && (
                 <RiderOverviewPhysiology
                   physiology={rider.physiology}
@@ -1609,6 +1636,28 @@ export default function RiderStatsPage() {
         <RiderPhysiologyTab physiology={rider.physiology} benchmark={physBenchmark} />
       )}
 
+      {/* Scouting bygges i egen slice — "på vej"-flade med roadmap-link +
+          stemme-opfordring (ejer-beslutning 3/7). Scout-flowet (estimat +
+          scout-knap) lever indtil da i hero'en. */}
+      {tab === "scouting" && (
+        <div className="bg-cz-card border border-cz-border border-l-2 border-l-cz-accent rounded-cz py-[15px] px-[17px]">
+          <span className="font-mono text-[9.5px] font-bold uppercase tracking-[0.12em] text-cz-accent-t">
+            {t("profile.scouting.comingEyebrow")}
+          </span>
+          <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0 mt-2">
+            {t("profile.scouting.comingTitle")}
+          </h3>
+          <p className="text-cz-2 text-[12.5px] leading-[1.55] mt-2 mb-0 max-w-prose">
+            {t("profile.scouting.comingBody")}
+          </p>
+          <div className="mt-4 pt-3.5 border-t border-cz-border flex items-center gap-x-3 gap-y-2 flex-wrap">
+            <p className="text-cz-3 text-xs m-0">{t("profile.scouting.roadmapHint")}</p>
+            <Link to="/roadmap" className={buttonClass({ variant: "secondary", size: "sm" })}>
+              {t("profile.scouting.roadmapCta")}
+            </Link>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

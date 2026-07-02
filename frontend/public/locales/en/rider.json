@@ -210,6 +210,13 @@
       "seasonShort": "S{n}",
       "loadError": "Results could not be loaded right now."
     },
+    "scouting": {
+      "comingEyebrow": "On the way",
+      "comingTitle": "Scouting",
+      "comingBody": "A dedicated scouting tab is being built: your scout's read on the rider and his potential per rider type. Until then, the potential estimate and the scout button live at the top of the profile.",
+      "roadmapHint": "Want a say in what gets built first? Cast your vote on the roadmap.",
+      "roadmapCta": "Open the roadmap"
+    },
     "interest": {
       "loading": "Loading interest...",
       "loadError": "Interest data could not be loaded right now.",

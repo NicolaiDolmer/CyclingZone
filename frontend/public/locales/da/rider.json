@@ -210,6 +210,13 @@
       "seasonShort": "S{n}",
       "loadError": "Resultaterne kunne ikke hentes lige nu."
     },
+    "scouting": {
+      "comingEyebrow": "På vej",
+      "comingTitle": "Scouting",
+      "comingBody": "En dedikeret scouting-fane er under opbygning: din spejders vurdering af rytteren og hans potentiale pr. ryttertype. Indtil da bor potentiale-estimatet og scout-knappen i toppen af profilen.",
+      "roadmapHint": "Vil du have indflydelse på hvad der bygges først? Afgiv din stemme på roadmappet.",
+      "roadmapCta": "Åbn roadmappet"
+    },
     "interest": {
       "loading": "Henter interesse...",
       "loadError": "Interesse-data kunne ikke hentes lige nu.",
