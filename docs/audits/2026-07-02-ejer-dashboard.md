@@ -80,15 +80,21 @@ Division 4-aktiveringen (263→455 løb) fik `updateStandings` til at fejle på 
 - **Dagligt (eksisterende):** housekeeping-routine #627 · drift-monitor. **Nyt:** stall-watchdog #2077.
 - **Værdi-opdatering i spillet:** kører allerede via riderValueRefresh ved evne-ændringer (#1364-verificeret) — ingen ny rutine nødvendig, men punktet bekræftes i metrics-review.
 
-## Åbne ejer-beslutninger (samlet — svar når du kan)
-1. **Merge #2087** (P0). Anbefaling: JA, nu.
-2. **Kill-liste (42) + medium-dubletter (14):** listet på ledger #627 (kommentar 2/7) — godkend hele/dele; jeg eksekverer.
-3. **CZ Pro go-live-timing:** A) åbn salg så snart Alunta-test er grøn (midt i TdF-vinduet — anbefalet) / B) efter TdF-ugen.
-4. **Betalt annoncering:** anbefaling 0 kr. uge 1 (organisk + attribution først), derefter 1-3k DKK/md test. Budget-ramme?
-5. **VMan-ejeren:** hvad er målet med kontakten (partnerskab, omtale, erfaring)? Så skriver jeg udkastet.
-6. **Discord-migration:** frys til 27/7? Anbefaling: JA.
-7. **Annoncer på hjemmesiden:** anbefaling NEJ (fair-premium-brand + lav trafik = småpenge, skader konvertering). OK?
-8. **Trænings-nerf-mål:** bekræft målet "peak-alder 27-28, ~35-50 % gap-lukning pr. sæson" som scorecard-kriterium.
+## Ejer-beslutninger (afgjort 2/7 — opdateret samme dag)
+1. **#2087 merged** af ejer 09:56Z; selv-heling verificeret komplet (1,69M CZ$ udbetalt, rangliste frisk, afvikling kører).
+2. **Kill-liste godkendt og eksekveret** (40 kills + 13 dubletter lukket; cirkulært par #1774/#1975 rettet). **Undtaget: #671 + #680** — kigges sammen med ejeren.
+3. **CZ Pro/Alunta: ejeren ser på det SENEST 6/7** (plan + tokens + test_mode); go-live-beslutning samme dag.
+4. **Marketing-budget:** organisk fokus NU; ejer klar til betalt snart — primært **Meta + Reddit + lidt Google Ads**. Ramme: **~10.000 DKK i juli** (hvis kampagnen viser fortsat trafik), **2026 i alt maks 50.000 DKK (evt. 25.000)**. Betalt aktiveres kun mens attribution (#2079) beviser effekt.
+5. **VMan-kontakt: beslutning 6/7.**
+6. **Discord-migration: afgøres senest 6/7** (frys indtil da).
+7. **Annoncer på hjemmesiden: NEJ** (bekræftet).
+8. **Trænings-nerf-mål:** afventer ejerens bekræftelse af "peak 27-28 + 35-50 % gap-lukning/sæson" (forklaring givet 2/7). Tidsplan #2082: harness 5/7 → scorecard-review 6/7 → ship 7-9/7.
+
+## Nye ejer-deadlines (2/7)
+- **#2072 GC-akkumulering + #2081 GC undervejs: I DAG (2/7).**
+- **#2000 rytterside-rework (PR #2037-fanerne): senest 3/7** (capstone/hero undtaget — afventer wireframe).
+- **NPS-admin-flade: #2089** (nyt issue).
+- **Patch notes:** Claude holder rytmen løbende + leverer EN-notat til Discord-patch-notes-kanalen ved hver ny version (bot kan poste direkte; ingen webhook nødvendig).
 
 ---
 *Bilag herunder: fuld horisont-klassifikation af alle 339 issues (genereret af audit-workflowen).*

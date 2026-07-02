@@ -10,7 +10,7 @@
 >
 > **TdF-vinduet åbner 4/7:** kampagne-pakke [#2080](https://github.com/NicolaiDolmer/CyclingZone/issues/2080) + attribution-fix [#2079](https://github.com/NicolaiDolmer/CyclingZone/issues/2079) (UTM har været 100 % død siden 15/6) FØR første post. Ejer-kvarter: #2076 uptime · #2085 mail-kapacitet · #1784 spend-cap · #929 · `railway login` · Alunta-tokens. Div 3 = 22/24 i alle puljer → [#2075](https://github.com/NicolaiDolmer/CyclingZone/issues/2075) div 4-beredskab haster.
 
-> **🎯 Next action:** Ejer merger #2087 → Claude kører prod-verify + incident-comms → #2080 kampagne-drafts + #2079 attribution. Derefter 7-dages-listen i ejer-dashboardet (GC-fix #2072+#2081 før 14/7). Åbne ejer-beslutninger: dashboardets pkt. 1-8 (kill-liste #627, CZ Pro-timing, ads-budget, VMan, Discord-frys, trænings-nerf-mål).
+> **🎯 Next action (ejer-besluttet 2/7 eftermiddag):** (1) **#2072+#2081 GC-fix I DAG** — ny session/worktree, akkumulér GC fra persisterede race_results + persistér klassementer pr. etape. (2) **#2000 rytterside-faner (PR #2037) færdige senest 3/7.** (3) #2080 kampagne-drafts + #2079 attribution før 4/7. P0 #2071 er LUKKET (heling verificeret: 1,69M udbetalt, rangliste frisk). Patch-note-PR #2088 afventer ejer-merge. Beslutnings-dag 6/7: Alunta/CZ Pro + VMan + Discord-migration + trænings-scorecard (#2082: harness 5/7, ship 7-9/7). Marketing: ~10k DKK juli, 2026 maks 50k (Meta/Reddit/Google) — først når #2079 måler. Kill-liste eksekveret (−53 issues; #671+#680 undtaget, ejer kigger med).
 
 > **🤖 Working agent:** Ingen aktiv session.
 
