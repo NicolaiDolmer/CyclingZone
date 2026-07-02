@@ -23,10 +23,10 @@
           "Create an account and log in.",
           "Pick a team name and a manager name in the welcome wizard. Both fields are required before you can continue.",
           "The welcome modal opens automatically the first time and walks you through the three core features: Market, Auctions and Board. It links directly to Help & Rules.",
-          "You start in Division 3 with a starting budget of 500,000 CZ$.",
+          "You start in Division 3 with a starting budget of {startingBalance} CZ$.",
           "Go to Riders and find free riders you want to bid on.",
           "Start an auction on a rider. If you win the auction, the rider is yours.",
-          "You begin with a 12-rider starting squad. No minimum squad size is enforced, but you need riders on your roster to field a team in races."
+          "You begin with a {initialSquad}-rider starting squad. No minimum squad size is enforced, but you need riders on your roster to field a team in races."
         ]
       }
     },
@@ -60,7 +60,7 @@
       },
       "clubDna": {
         "title": "Club DNA",
-        "text": "At the start of season 1 you pick one of 5 club DNA archetypes before the board is assembled: Scandinavian development team, Italian classics traditionalist, Sprint-focused commercial, French climber heritage, British all-rounder. DNA affects three things: (1) 5-year plans get an extra tradition target (e.g. a podium in a classic, incl. Monuments, for italian_classics), (2) targets matching DNA priorities get boosted satisfaction bonus and penalty, (3) board members and future chairman swaps tip towards matching archetypes."
+        "text": "When your team is created you pick one of 5 club DNA archetypes before the board is assembled: Scandinavian development team, Italian classics traditionalist, Sprint-focused commercial, French climber heritage, British all-rounder. DNA affects three things: (1) 5-year plans get an extra tradition target (e.g. a podium in a classic, incl. Monuments, for italian_classics), (2) targets matching DNA priorities get boosted satisfaction bonus and penalty, (3) board members and future chairman swaps tip towards matching archetypes. You can still change your DNA until your first season ends; after that it's locked in. Switching re-assigns your board members and target weighting."
       },
       "consequenceTiers": {
         "title": "Consequence tiers (6 layers)",
@@ -113,7 +113,7 @@
       },
       "whenExpires": {
         "title": "When does an auction expire?",
-        "text": "An auction runs for 6 active hours. Night hours don't count. The active window is weekdays (Mon to Fri) 16:00 to 22:00 and weekends (Sat to Sun) 08:00 to 23:00. If you bid at 19:40 on a Tuesday, the auction ends Wednesday at 19:40 (2h20m Tuesday + 3h40m Wednesday). If you bid at 19:40 on a Saturday, it ends Sunday at 10:40 (3h20m Saturday + 2h40m Sunday)."
+        "text": "An auction runs for 1 active hour. Night hours don't count: the active window is 08:00 to 24:00 every day, and trading pauses 00:00 to 08:00. If you bid at 19:40, the auction ends the same evening at 20:40. If you bid at 23:30, the remaining time carries over the night and the auction ends the next morning at 08:30."
       },
       "flashAuction": {
         "title": "Flash Auction (Deadline Day)",
@@ -121,7 +121,7 @@
       },
       "tenMinExtend": {
         "title": "10-minute extension",
-        "text": "If a bid is placed within the last 10 minutes of an auction, the auction is automatically extended by 10 minutes from the bid time. This continues until no bid is placed in the final 10 minutes. The extension may exceed that day's window close by up to 1 hour, so e.g. a weekday (close 22:00) auction can be extended all the way to 23:00. If a bid in the extra hour would push the end further, the remaining minutes roll over to the next window opening (e.g. a Friday bid at 22:55, the auction ends Saturday at 08:05)."
+        "text": "If a bid is placed within the last 10 minutes of an auction, the auction is automatically extended by 10 minutes from the bid time. This continues until no bid is placed in the final 10 minutes. The extension may exceed the day's close (24:00) by up to 1 hour, so an auction can run until 01:00. If a bid in that extra hour would push the end further, the remaining minutes roll over to the next window opening (e.g. a bid at 00:55, the auction ends at 08:05)."
       },
       "squadAndAuctions": {
         "title": "Squad size and auctions",
@@ -345,9 +345,13 @@
         "title": "Open a race: route, terrain DNA and your lineup",
         "text": "Race names are clickable across the game. Opening a race shows its results if it has run, or for an upcoming race the route profile per stage, a terrain-DNA bar of which abilities each stage rewards, and your own lineup with a route match per stage so you can pick riders that suit the parcours. Pick a stage from the stage stripe to switch the profile and the route match. The terrain is an indicative category, not a measured elevation profile."
       },
+      "teamSelection": {
+        "title": "Pick your team and move riders between races",
+        "text": "For each race you enter you field a full team: pick every rider slot the race has. If you would rather sit a race out, withdraw from it; if you are short on riders, sign free agents from the Transfers page. When two of your races overlap on the same day, a rider can only be in one of them. On the Squad distribution board you can move a rider from one race to another by dragging the rider on desktop, or by tapping the rider and choosing the other race on phones. The race you move them out of shows as understaffed until you fill it again, and the assistant's Auto-fill does that quickly."
+      },
       "prizeMoney": {
         "title": "Prize money from races",
-        "text": "Each result for a rider on your team generates prize money: points for the placing × 75 CZ$. Prize money is paid automatically to your team balance when admin finalises the results and shows as a 'prize' transaction in your finance log. Points for the season leaderboard and prize money are computed separately: points decide the leaderboard, while the CZ$ prize only affects your balance. Races without a race class generate no prize money. See the full points table under Season & Results, Races, Points & prizes."
+        "text": "Each result for a rider on your team generates prize money: points for the placing × {prizePerPoint} CZ$. Prize money is paid automatically to your team balance when admin finalises the results and shows as a 'prize' transaction in your finance log. Points for the season leaderboard and prize money are computed separately: points decide the leaderboard, while the CZ$ prize only affects your balance. Races without a race class generate no prize money. See the full points table under Season & Results, Races, Points & prizes."
       },
       "divisionBonus": {
         "title": "Division bonus at season end",
@@ -383,15 +387,15 @@
       "label": "Prizes",
       "formula": {
         "title": "The prize formula",
-        "text": "Prize money is computed directly from points: 1 point = 75 CZ$. Only races with a race class (Tour de France, Giro/Vuelta, Monuments, WorldTour, ProSeries, Class 1, Class 2) generate prize money. Races without a class give 0 CZ$."
+        "text": "Prize money is computed directly from points: 1 point = {prizePerPoint} CZ$. Only races with a race class (Grand Tour, Major Tour, Monuments, WorldTour, ProSeries, Class 1, Class 2) generate prize money. Races without a class give 0 CZ$."
       },
       "examples": {
         "title": "Prize amount examples",
         "rows": [
           ["Win", "Points", "Prize"],
-          ["Tour de France win", "1,300", "97,500 CZ$"],
+          ["Grand Tour win", "1,300", "97,500 CZ$"],
           ["Monument win", "800", "60,000 CZ$"],
-          ["Stage win (Tour de France)", "210", "15,750 CZ$"],
+          ["Stage win (Grand Tour)", "210", "15,750 CZ$"],
           ["ProSeries win", "200", "15,000 CZ$"],
           ["Class 1 win", "125", "9,375 CZ$"],
           ["Class 2 win", "40", "3,000 CZ$"]
@@ -439,10 +443,6 @@
         "title": "Salary",
         "text": "Each rider's annual salary is set at signing as about 6.7% of their market value at that moment, and is then frozen: it does not change automatically as the rider develops. The salary is visible as a separate column in the Rider Database and on the watchlist. Salaries are paid automatically at the start of the next season, right after sponsor money lands. If sponsor + your existing balance can't cover the salaries, the system automatically takes an emergency loan."
       },
-      "stats": {
-        "title": "Rider stats",
-        "text": "Each rider has 14 stats: FL (Flat), BJ (Mountain), KB (Mid-mountain), BK (Hill), TT (Time trial), PRL (Prologue), BRO (Cobbles), SP (Sprint), ACC (Acceleration), NED (Descent), UDH (Stamina), MOD (Resistance), RES (Recovery), FTR (Fighter)."
-      },
       "abilitiesExplained": {
         "title": "The 15 abilities and where they matter",
         "rows": [
@@ -466,7 +466,7 @@
       },
       "development": {
         "title": "Development over time",
-        "text": "On a rider's stats page there's a 'Development' tab. Here you can pick one of the 14 stats, follow its development as a graph, and see recent historical data points. New data points are added as riders develop, for example at season changes. If the tab is empty, the rider has no recorded development yet."
+        "text": "On a rider's stats page there's a 'Development' tab. Here you can pick an ability, follow its development as a graph, and see recent historical data points. New data points are added as riders develop, for example at season changes. If the tab is empty, the rider has no recorded development yet."
       },
       "trainingFocus": {
         "title": "Training focus",
@@ -496,6 +496,10 @@
           "Save. The program runs every day until you change it.",
           "There is no cap on how many riders can have a program: you can set one for your entire squad."
         ]
+      },
+      "focusAbilities": {
+        "title": "What each focus trains",
+        "text": "Each focus develops a specific set of abilities faster toward their ceiling, while a rider's other abilities keep improving a little more slowly. Everyone develops across the board, just fastest in the chosen direction. The directions are: VO2max trains Climbing, Punch and Tempo. Threshold/TT trains Time trial and Tempo. Sprint trains Sprint and Acceleration. Endurance trains Endurance, Recovery and Durability. Technique trains Descending, Positioning and Cobbles. Aero trains Time trial and Flat. Intensity sets the pace: Easy is slowest but safe, Normal is the balanced default with a small setback risk, and Hard is fastest but risks a setback or injury when a rider's fatigue is already high."
       },
       "trainToday": {
         "title": "Train today and the +25% boost",
@@ -588,7 +592,7 @@
       },
       "academySize": {
         "title": "Academy size (8 places)",
-        "text": "Your Academy holds up to 8 riders. These 8 places are completely separate from your senior squad cap of 30. Academy riders never count toward your senior squad limit and are not eligible for races."
+        "text": "Your Academy holds up to {academySlots} riders. These {academySlots} places are completely separate from your senior squad cap of {squadCap}. Academy riders never count toward your senior squad limit and are not eligible for races."
       },
       "dailyTrainingBoost": {
         "title": "Daily training and the youth boost",
@@ -600,7 +604,7 @@
       },
       "upkeepCost": {
         "title": "Academy upkeep",
-        "text": "Running the Academy costs an upkeep fee per occupied slot, charged automatically at season payroll alongside your senior salaries. Plan your budget accordingly: a full Academy of 8 riders carries a noticeable running cost each season."
+        "text": "Running the Academy costs an upkeep fee per occupied slot, charged automatically at season payroll alongside your senior salaries. Plan your budget accordingly: a full Academy of {academySlots} riders carries a noticeable running cost each season."
       },
       "graduation": {
         "title": "Graduating at 22",
@@ -608,14 +612,14 @@
       },
       "promoteDemote": {
         "title": "Promoting up and moving riders down",
-        "text": "You do not have to wait for graduation. On the Academy page you can promote any academy rider straight into your senior squad whenever you have a free senior place; they take a senior contract and the senior wage. The reverse also works: on your team page, any senior rider aged 22 or under can be moved down into your academy (as long as the academy has a free place and the rider is not on an auction or transfer list). A demoted rider drops to a youth salary, stops counting toward your senior squad, and is pulled from any upcoming races they were entered in. Both actions show the full effect before you confirm."
+        "text": "You do not have to wait for graduation. On the Academy page you can promote any academy rider straight into your senior squad whenever you have a free senior place; they take a senior contract and the senior wage. The reverse also works: on your team page, any senior rider aged 22 or under can be moved down into your academy (as long as the academy has a free place and the rider is not on an auction or transfer list). A demoted rider drops to a youth salary, stops counting toward your senior squad, and is pulled from any upcoming races they were entered in. Both actions show the full effect before you confirm. You can also extend a contract, release a rider, or move riders between your senior squad and academy straight from a rider's own profile page."
       }
     },
     "raceSelection": {
       "label": "Team selection",
       "what": {
         "title": "Picking your race squad",
-        "text": "Before each race you pick 6-8 riders (Grand Tours use full squads of 8). Open the race page and use the Team selection panel. If you don't pick, your assistant fields a sensible team automatically, so you never miss a race."
+        "text": "Every race needs a complete lineup: the full field size for its class (6 in most races, 7 in the bigger World Tour races and Monuments, 8 in Grand Tours). Open the race page and use the Team selection panel. You can't save a partial squad. To sit a race out, withdraw from it; if you're short on healthy riders, sign free agents to fill the gaps. If you don't pick, your assistant auto-fills a full lineup from your available riders, so you never miss a race."
       },
       "suitability": {
         "title": "Reading the selection table",
@@ -646,7 +650,7 @@
   "faq": {
     "overlappingRaces": {
       "q": "How do overlapping races and squad distribution work?",
-      "a": "Races on the same day overlap in time, and a rider can only start one race at a time, so spreading your squad across them is a strategic choice. The squad distribution view on the Races page (Season & Results -> Races) shows your overlapping races side by side. Add riders to a race from your available pool; a rider you put in one race is locked out of the other races that overlap it. If you do not want to enter a race, withdraw from it and you simply do not start. The assistant fills your line-ups automatically as a starting point, and you can have it fill them again: choose Fill gaps to keep the picks you set by hand, or Rebuild all to replace every pick with the assistant's suggestion. Once a race has started, its line-up is final and can no longer be changed."
+      "a": "Races overlap when their stages fall on the same in-game race-day, and a rider can only start one race per in-game day, so spreading your squad across overlapping races is a strategic choice. Several races can share the same calendar date without conflicting when they sit on different in-game days. The squad distribution view on the Races page (Season & Results -> Races) shows your overlapping races side by side. Add riders to a race from your available pool; a rider you put in one race is locked out of the other races that overlap it, but remove him and he is immediately available again for another race. Your edits are kept locally until you press Save changes (a banner warns you if you try to leave with unsaved edits). You can save a partial line-up too: any slots you leave open are filled automatically from your available riders when the race runs. If you do not want to enter a race, withdraw from it and you simply do not start. The assistant fills your line-ups automatically as a starting point, and you can have it fill them again: choose Fill gaps to keep the picks you set by hand, or Rebuild all to replace every pick with the assistant's suggestion. Once a race has started, its line-up is final and can no longer be changed."
     },
     "teamStrategyFaq": {
       "q": "How do I make the assistant pick my best riders for big races?",
@@ -654,7 +658,7 @@
     },
     "relaunchTeamMoney": {
       "q": "What happened to my team and money in the Season 1 relaunch?",
-      "a": "At the relaunch everything starts over. Your previous squad, balance and transfers do not carry into the new Season 1. You receive a fresh 12-rider squad and a starting budget of 500,000 CZ$, the same as every other manager."
+      "a": "At the relaunch everything starts over. Your previous squad, balance and transfers do not carry into the new Season 1. You receive a fresh {initialSquad}-rider squad and a starting budget of {startingBalance} CZ$, the same as every other manager."
     },
     "relaunchRiderNames": {
       "q": "Why are the rider names different after the relaunch?",
@@ -694,7 +698,7 @@
     },
     "auctionExpiry": {
       "q": "When does an auction expire?",
-      "a": "An auction runs for 6 active hours. Night hours don't count: weekdays (Mon to Fri) have active time 16:00 to 22:00, weekends (Sat to Sun) 08:00 to 23:00. Example: an auction started Tuesday 19:40 ends Wednesday 19:40. An auction started Saturday 19:40 ends Sunday 10:40."
+      "a": "An auction runs for 1 active hour. Night hours don't count: the active window is 08:00 to 24:00 every day. Example: an auction started at 19:40 ends the same evening at 20:40. An auction started at 23:30 ends the next morning at 08:30."
     },
     "flashAuction": {
       "q": "What is a Flash Auction?",
@@ -754,7 +758,7 @@
     },
     "prizeMoneyFaq": {
       "q": "What is prize money, and when is it paid out?",
-      "a": "Prize money is a direct CZ$ reward for results your riders achieve in races. The formula is: points for the placing × 75 CZ$. The money is paid automatically to your balance when admin finalises results and shows as 'prize' in your finance log. Only races with a race class (Tour de France, WorldTour, ProSeries etc.) generate prize money. Races without a race class give 0."
+      "a": "Prize money is a direct CZ$ reward for results your riders achieve in races. The formula is: points for the placing × {prizePerPoint} CZ$. The money is paid automatically to your balance when admin finalises results and shows as 'prize' in your finance log. Only races with a race class (Grand Tour, WorldTour, ProSeries etc.) generate prize money. Races without a race class give 0."
     },
     "divisionBonusFaq": {
       "q": "What is the division bonus, and when is it paid out?",
@@ -799,6 +803,10 @@
     "boardCurrentAssessment": {
       "q": "Where do I see the board's current assessment?",
       "a": "The Dashboard shows a short board outlook with status and category scores, while the Board page shows the more detailed assessment. The Board page also shows the board's read of the team with specialisation, U25 share, national core, star profile and squad status, now with country name and flag on the national core. The Board page now also explains more clearly why the board reacts, by showing which categories drive the assessment, what's holding it back, and which signals from history, identity or profiles play in. The two places read the same board data from the backend, so they share the same truth."
+    },
+    "boardProfileRiders": {
+      "q": "Who are my team's profile riders?",
+      "a": "The Board page now names them. Under the star profile tile, the board's read of the team lists each rider it counts as a star, with a star score. A rider qualifies as a star when popularity plus UCI points clear the star threshold. Popularity weighs more than results (roughly 70/30), so a well-known rider can be a star even without big point hauls, while a strong but anonymous worker usually is not. The list is your current squad, so it changes as you sign or sell riders. If no rider clears the threshold yet, the card says so instead of listing names."
     },
     "season1BaselineFaq": {
       "q": "Is the board available in season 1?",
@@ -886,11 +894,15 @@
     },
     "howToWinRace": {
       "q": "How do I win a race, and what decides the result?",
-      "a": "Results are decided by how well your riders' abilities fit the terrain. Every race is split into stages, and each stage has a terrain type (flat, hilly, mountain, time trial, cobbles and so on) that asks for specific abilities. A flat stage rewards Sprint above all; a mountain stage rewards Climbing; a time trial rewards Time trial; a cobbled stage rewards Cobbles; a hilly stage rewards Punch. For each rider the engine adds up the matching abilities, weighted by what the stage demands, into a stage score. On top of that score sit a few smaller effects: good form gives a small edge and high fatigue a small penalty (each capped at about ±3%, so a fresh rider beats a tired one of equal ability but a favourite still wins on class), a captain protected by strong, fresh helpers gets a boost, breakaways occasionally stay away on the right terrain, and a small random factor means the strongest rider wins most of the time but not always. Across a stage race, the time gaps from every stage add up into the overall classification: mountains and time trials open the biggest gaps and usually decide the GC, while flat stages finish in a bunch. Finishing positions become points, and points become both your leaderboard score and your prize money. The practical takeaway: match each rider to the stages that suit him, keep your stars rested for the days that matter, and set the right captain in Team selection."
+      "a": "Results are decided by how well your riders' abilities fit the terrain. Every race is split into stages, and each stage has a terrain type (flat, hilly, mountain, time trial, cobbles and so on) that asks for specific abilities. A flat stage rewards Sprint above all; a mountain stage rewards Climbing; a time trial rewards Time trial; a cobbled stage rewards Cobbles; a hilly stage rewards Punch. For each rider the engine adds up the matching abilities, weighted by what the stage demands, into a stage score. On top of that score sit a few smaller effects: good form gives a small edge and high fatigue a small penalty (each capped at about ±3%, so a fresh rider beats a tired one of equal ability but a favourite still wins on class), a captain protected by strong, fresh helpers gets a boost, breakaways occasionally stay away on the right terrain, and a small random factor means the strongest rider wins most of the time but not always. Across a stage race, the time gaps from every stage add up into the overall classification: mountains and time trials open the biggest gaps and usually decide the GC, while flat stages finish in a bunch. Finishing positions become points, and points become both your leaderboard score and your prize money. The practical takeaway: match each rider to the stages that suit him, keep your stars rested for the days that matter, and set the right captain in Team selection. Each race also has a team classification, won by the team whose best three riders have the lowest combined time."
     },
     "riderAbilities": {
       "q": "What do the 15 rider abilities mean?",
       "a": "Every rider is rated 1-99 on 15 abilities, grouped in three families. Physical (10): Climbing (long ascents and mountain stages), Time trial (riding alone against the clock), Flat (holding speed on flat roads as a rouleur), Tempo (sustained efforts on mid-mountain and rolling terrain), Sprint (top-end speed for a bunch finish), Acceleration (the explosive kick to launch a sprint or jump a gap), Punch (short steep climbs and hilly finales), Endurance (lasting the full distance of long and hard days), Recovery (bouncing back between stages and days), and Durability (resisting fatigue so the rider fades less late in hard races). Technical (3): Descending (a small edge on stages that finish on a downhill), Cobbles (the bike-handling and power for cobbled classics), and Positioning (staying near the front to avoid splits, and a factor in time trials). Tactical/mental (2): Aggression (the willingness to attack and get into breakaways) and Tactics (race-craft that helps in team time trials and reading a race). The race engine matches these to each stage's terrain, so the same rider can be a star on one profile and ordinary on another. Tip: a balanced squad covering several profiles scores more consistently across a calendar than a one-trick team."
+    },
+    "riderRating": {
+      "q": "What does a rider's overall rating mean?",
+      "a": "The rating is a single 1-99 score for how good a rider is, shown as a coloured circle on the rider profile and as a sortable column in the rider rankings. It blends two things equally: how strong the rider is at their best type (climber, sprinter, GC and so on) and their all-round ability across all skills. It uses the same model that decides the rider's displayed type and market value, so the three always agree. The scale is anchored to the whole rider pool rather than to a fixed maximum, so the very best riders sit near 99 and the rest of the field spreads out below them. The rating reflects current ability only. It is not potential, and it does not include form, fatigue or how well the rider suits a specific race."
     }
   }
 }

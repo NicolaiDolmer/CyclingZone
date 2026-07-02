@@ -85,11 +85,14 @@ test("race detail page renders stage tabs, jerseys and overall classifications",
   await expect(page.getByRole("button", { name: "Etape 1" })).toBeVisible();
   await expect(page.getByRole("button", { name: "Etape 2" })).toBeVisible();
 
-  // Samlet-fane (default): alle 5 klassementer + kumulativt GC-gab (#959 gaps)
-  await expect(page.getByText("Samlet (GC)")).toBeVisible();
-  await expect(page.getByText("Pointkonkurrence")).toBeVisible();
-  await expect(page.getByText("Bjergkonkurrence")).toBeVisible();
-  await expect(page.getByText("Holdkonkurrence")).toBeVisible();
+  // Samlet-fane (default): tekst-recap (#1311) + alle 5 klassementer + kumulativt GC-gab (#959 gaps).
+  // #1485/#1311: klassement-titler matches på heading-rollen — recap-teksten
+  // ("...førte holdkonkurrencen...") matcher ellers getByText("Holdkonkurrence") (strict-mode-kollision).
+  await expect(page.getByText("Løbsreferat")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Samlet (GC)" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Pointkonkurrence" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Bjergkonkurrence" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Holdkonkurrence" })).toBeVisible();
   await expect(page.getByText("+0:09")).toBeVisible();
 
   // Etape 1: trøje-badges + målrækkefølge + pr.-etape-gab (#959 gaps)

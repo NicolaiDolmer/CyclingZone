@@ -1,4 +1,6 @@
-import { createInitialBoardProfile } from "./boardEngine.js";
+import { createInitialBoardProfile, generateBoardGoals } from "./boardEngine.js";
+import { computeSeasonOneIdentity } from "./boardIdentity.js";
+import { BOARD_IDENTITY_RIDER_SELECT } from "./boardConstants.js";
 import { allocateStarterSquadForTeam } from "./starterSquadAllocator.js";
 import { runAcademyIntakeForTeam } from "./academyIntake.js";
 import { isAcademyEnabled } from "./academyFlag.js";
@@ -7,6 +9,8 @@ import { captureException as sentryCapture } from "./sentry.js";
 import {
   INITIAL_BALANCE,
   MANAGER_ENTRY_DIVISION,
+  MAX_DIVISION,
+  POOL_TARGET_SIZE,
   SPONSOR_INCOME_BASE,
 } from "./economyConstants.js";
 import { likeEscape } from "./likeEscape.js";
@@ -171,14 +175,17 @@ function getEconomyRepairValues(team) {
 async function pickDivisionForNewTeam(supabase) {
   const { data: pools, error: poolsError } = await supabase
     .from("league_divisions")
-    .select("id")
-    .eq("tier", MANAGER_ENTRY_DIVISION);
+    .select("id, tier")
+    .in("tier", [MANAGER_ENTRY_DIVISION, MAX_DIVISION]);
 
   if (poolsError) {
     throw createHttpError(500, poolsError.message);
   }
 
-  const entryPools = pools || [];
+  const allPools = pools || [];
+  const entryPools = allPools.filter((pool) => pool.tier === MANAGER_ENTRY_DIVISION);
+  const overflowPools = allPools.filter((pool) => pool.tier === MAX_DIVISION);
+
   if (entryPools.length === 0) {
     // Pre-migration / mock-edge: ingen puljer at sprede på. Hold kommer stadig ind i
     // entry-divisionen; pulje-referencen efter-allokeres når puljerne findes.
@@ -196,17 +203,27 @@ async function pickDivisionForNewTeam(supabase) {
     throw createHttpError(500, teamsError.message);
   }
 
-  const counts = new Map(entryPools.map((pool) => [pool.id, 0]));
+  const counts = new Map(allPools.map((pool) => [pool.id, 0]));
   for (const team of teams || []) {
     if (counts.has(team.league_division_id)) {
       counts.set(team.league_division_id, counts.get(team.league_division_id) + 1);
     }
   }
 
-  // Mindst-fyldte entry-pulje (deterministisk: laveste pulje-id ved lige fyldning).
-  let chosenPoolId = entryPools[0].id;
+  // #2055 overflow: hvis ALLE entry-puljer er ved/over POOL_TARGET_SIZE (rigtige
+  // managers, AI tæller ikke med — den er evict-bar), og der findes mindst én
+  // MAX_DIVISION-pulje, fald igennem dertil. Ellers: uændret blød-cap-adfærd i
+  // entry-divisionen (graceful fallback, fx pre-migration/test-mock uden
+  // MAX_DIVISION-puljer).
+  const entryIsSaturated = entryPools.every((pool) => counts.get(pool.id) >= POOL_TARGET_SIZE);
+  const useOverflow = entryIsSaturated && overflowPools.length > 0;
+  const targetPools = useOverflow ? overflowPools : entryPools;
+  const targetDivision = useOverflow ? MAX_DIVISION : MANAGER_ENTRY_DIVISION;
+
+  // Mindst-fyldte målpulje (deterministisk: laveste pulje-id ved lige fyldning).
+  let chosenPoolId = targetPools[0].id;
   let chosenCount = counts.get(chosenPoolId);
-  for (const pool of entryPools) {
+  for (const pool of targetPools) {
     const count = counts.get(pool.id);
     if (count < chosenCount) {
       chosenPoolId = pool.id;
@@ -214,7 +231,7 @@ async function pickDivisionForNewTeam(supabase) {
     }
   }
 
-  return { division: MANAGER_ENTRY_DIVISION, leagueDivisionId: chosenPoolId };
+  return { division: targetDivision, leagueDivisionId: chosenPoolId };
 }
 
 async function ensureUniqueTeamName({ supabase, normalizedName, existingTeamId = null }) {
@@ -269,6 +286,132 @@ async function ensureBoardProfile({ supabase, team }) {
   }
 
   return true;
+}
+
+// #2022 · Sæson-agnostisk identitets-grundlag. Et nyt holds board-identitet
+// (grundlaget DNA-forslagene udledes af) skal sættes ved DANNELSE — uanset
+// hvilken global sæson holdet starter i — så en sæson-2+-nykommer ikke låses ude
+// af DNA-valg. Tidligere skrev kun startSequentialNegotiation feltet (ved sæson-1-
+// slut). Idempotent: skriver kun når feltet stadig er NULL, så den ikke
+// overskriver et frosset grundlag (samme guard som backfill-stien).
+export async function ensureSeasonIdentityBasis({ supabase, team, seasonNumber } = {}) {
+  if (!team?.id) {
+    throw createHttpError(500, "team is required for identity basis");
+  }
+  if (team.season_1_identity_basis) {
+    return false;
+  }
+
+  const { data: riders, error: ridersError } = await supabase
+    .from("riders")
+    .select(BOARD_IDENTITY_RIDER_SELECT)
+    .eq("team_id", team.id);
+  if (ridersError) {
+    throw createHttpError(500, ridersError.message);
+  }
+
+  // #2022: stempl den FAKTISKE sæson holdet dannes i (ikke hardcoded 1), så
+  // season_number_observed er sandt for en sæson-2+-nykommer. Slås op når kalderen
+  // ikke selv har et tal; defaulter defensivt til 1 hvis ingen aktiv sæson findes.
+  let resolvedSeasonNumber = seasonNumber;
+  if (resolvedSeasonNumber == null) {
+    const { data: activeSeason, error: seasonError } = await supabase
+      .from("seasons")
+      .select("number")
+      .eq("status", "active")
+      .maybeSingle();
+    if (seasonError) {
+      throw createHttpError(500, seasonError.message);
+    }
+    resolvedSeasonNumber = activeSeason?.number ?? 1;
+  }
+
+  const basis = computeSeasonOneIdentity({
+    team,
+    riders: riders || [],
+    seasonNumber: resolvedSeasonNumber,
+  });
+
+  const { error: updateError } = await supabase
+    .from("teams")
+    .update({ season_1_identity_basis: basis })
+    .eq("id", team.id)
+    .is("season_1_identity_basis", null);
+  if (updateError) {
+    throw createHttpError(500, updateError.message);
+  }
+
+  return true;
+}
+
+// #2022 fase 2 · Kalibrér et nyt holds formations-board-mål mod den faktiske
+// start-trup. createInitialBoardProfile genererer STATISKE fallback-mål (fx
+// min_riders 15) fordi boardet oprettes FØR truppen findes — for et 8-rytters
+// entry-hold er det strukturelt uopnåeligt og straffer satisfaction uden at
+// manageren kan nå det (#2022's rod-klage). Denne funktion kører EFTER
+// allokeringen og erstatter målene på det PENDING formations-board med dem
+// generateBoardGoals giver MED trup-kontekst — præcis den kalibrering relaunch-/
+// forhandlings-stien allerede bruger; vi lukker blot hullet hvor dannelse omgik den.
+//
+// Kun pending, ikke-baseline boards røres (forhandlede/baseline-mål bevares).
+// Idempotent (samme trup → samme kalibrerede mål) + defensiv (tom trup → no-op,
+// behold de statiske mål frem for at nulstille til en tom-trup-kalibrering).
+export async function ensureBoardGoalsCalibrated({ supabase, team } = {}) {
+  if (!team?.id) {
+    throw createHttpError(500, "team is required for goal calibration");
+  }
+
+  const { data: boards, error: boardsError } = await supabase
+    .from("board_profiles")
+    .select("id, plan_type, focus")
+    .eq("team_id", team.id)
+    .eq("is_baseline", false)
+    .eq("negotiation_status", "pending");
+  if (boardsError) {
+    throw createHttpError(500, boardsError.message);
+  }
+  if (!(boards || []).length) {
+    return false;
+  }
+
+  const { data: riders, error: ridersError } = await supabase
+    .from("riders")
+    .select(BOARD_IDENTITY_RIDER_SELECT)
+    .eq("team_id", team.id);
+  if (ridersError) {
+    throw createHttpError(500, ridersError.message);
+  }
+  if (!(riders || []).length) {
+    return false;
+  }
+
+  const teamContext = {
+    division: team.division,
+    sponsor_income: team.sponsor_income,
+    balance: team.balance,
+    riders,
+  };
+
+  let calibratedAny = false;
+  for (const board of boards) {
+    const calibratedGoals = generateBoardGoals({
+      focus: board.focus,
+      planType: board.plan_type,
+      team: teamContext,
+      riders,
+      standing: null,
+    });
+    const { error: updateError } = await supabase
+      .from("board_profiles")
+      .update({ current_goals: calibratedGoals })
+      .eq("id", board.id);
+    if (updateError) {
+      throw createHttpError(500, updateError.message);
+    }
+    calibratedAny = true;
+  }
+
+  return calibratedAny;
 }
 
 export async function upsertOwnTeamProfile({
@@ -374,6 +517,44 @@ export async function upsertOwnTeamProfile({
         allocError?.message || allocError,
       );
       throw createHttpError(500, `Holdet blev oprettet, men start-truppen kunne ikke tildeles: ${allocError?.message || allocError}`);
+    }
+
+    // #2022: beregn holdets identitets-grundlag fra den netop-tildelte start-trup,
+    // så board+DNA er valgbart fra dag 1 — uanset global sæson. Skal køre EFTER
+    // allokeringen (ellers tom trup). BEVIDST IKKE-FATAL: et manglende grundlag er
+    // en blødere blindgyde end en tom trup (backfill-stien i
+    // startSequentialNegotiation + boardIdentityBackfillDryRun.js fanger det), så
+    // en fejl her må ikke blokere signup.
+    try {
+      await ensureSeasonIdentityBasis({ supabase, team });
+    } catch (basisError) {
+      console.error(
+        `[teamProfileEngine] #2022 identitets-grundlag FEJLEDE for nyt hold ${team.id} (ikke-fatal, signup fortsætter):`,
+        basisError?.message || basisError,
+      );
+      sentryCapture(
+        basisError instanceof Error ? basisError : new Error(String(basisError)),
+        { tags: { component: "team-create-identity-basis" }, extra: { teamId: team.id } },
+      );
+    }
+
+    // #2022 fase 2: kalibrér formations-board-målene mod den netop-tildelte
+    // start-trup, så et entry-hold ikke fastlåses af et strukturelt uopnåeligt
+    // statisk mål (min_riders 15 på en 8-rytters trup). Skal køre EFTER
+    // allokeringen (ellers tom trup → no-op). BEVIDST IKKE-FATAL: ukalibrerede
+    // mål er en blødere blindgyde end en tom trup — boardet virker, blot med de
+    // statiske mål — så en fejl her må ikke blokere signup.
+    try {
+      await ensureBoardGoalsCalibrated({ supabase, team });
+    } catch (calibrationError) {
+      console.error(
+        `[teamProfileEngine] #2022 board-mål-kalibrering FEJLEDE for nyt hold ${team.id} (ikke-fatal, signup fortsætter):`,
+        calibrationError?.message || calibrationError,
+      );
+      sentryCapture(
+        calibrationError instanceof Error ? calibrationError : new Error(String(calibrationError)),
+        { tags: { component: "team-create-board-goal-calibration" }, extra: { teamId: team.id } },
+      );
     }
 
     // Forever-relaunch (spejler #1560): et NYT hold får også ét akademi-kuld

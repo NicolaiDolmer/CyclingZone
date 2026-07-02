@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 
 import {
   applyLeaderShiftExtension,
+  calculateAuctionEnd,
   checkBidExtension,
   DEFAULT_AUCTION_CONFIG,
   isLateBidTriggerError,
@@ -106,6 +107,73 @@ test("checkBidExtension: bud i grace-zonen ud over close — næste forlængelse
   const result = checkBidExtension(bid, end, CFG);
   assert.equal(result.shouldExtend, true);
   assert.equal(result.newEnd.toISOString(), "2026-05-08T20:35:00.000Z"); // Fri 22:35 CEST
+});
+
+// =============================================================================
+// calculateAuctionEnd — active-window duration accounting (#1904)
+// =============================================================================
+
+// 08–24 alle dage, 1 aktiv time (config #1904 flipper prod hertil). Test-tider i
+// CEST (juni, Copenhagen = UTC+2). close_hour=24 = midnat (00:00 næste kalenderdag).
+const C24 = {
+  duration_hours: 1,
+  weekday_open_hour: 8, weekday_close_hour: 24,
+  weekend_open_hour: 8, weekend_close_hour: 24,
+  extension_minutes: 10, extension_grace_minutes: 60,
+};
+const cph = (d) => d.toLocaleString("sv-SE", { timeZone: "Europe/Copenhagen" });
+
+test("calculateAuctionEnd: close=24 — start 23:30 ender 08:30 NÆSTE dag (ikke to dage senere)", () => {
+  // Kerne-bug'en (#1904): nextWindowOpenTime(wClose) sprang en dag over fordi
+  // wClose=00:00 allerede lå på næste kalenderdag. Fre 23:30 CPH, 1h aktiv.
+  assert.equal(cph(calculateAuctionEnd(iso("2026-06-26T21:30:00Z"), C24)), "2026-06-27 08:30:00");
+});
+
+test("calculateAuctionEnd: close=24 — 1h passer indenfor samme aften (22:30 → 23:30)", () => {
+  assert.equal(cph(calculateAuctionEnd(iso("2026-06-26T20:30:00Z"), C24)), "2026-06-26 23:30:00");
+});
+
+test("calculateAuctionEnd: close=24 — start 23:00 lander præcis på midnat-close", () => {
+  assert.equal(cph(calculateAuctionEnd(iso("2026-06-26T21:00:00Z"), C24)), "2026-06-27 00:00:00");
+});
+
+test("calculateAuctionEnd: close=24 — start i dead-hours (03:00) snapper til 08:00-open", () => {
+  // 00:00–08:00 er dead time; auktionen begynder at tælle ved dagens open.
+  assert.equal(cph(calculateAuctionEnd(iso("2026-06-27T01:00:00Z"), C24)), "2026-06-27 09:00:00");
+});
+
+test("calculateAuctionEnd: close=24 — 2h fra 23:00 spænder over midnat til næste dags vindue", () => {
+  // 1h tilbage til midnat-close + 1h næste dag fra 08:00.
+  assert.equal(cph(calculateAuctionEnd(iso("2026-06-26T21:00:00Z"), { ...C24, duration_hours: 2 })), "2026-06-27 09:00:00");
+});
+
+test("calculateAuctionEnd: default-config (close=22) uændret — Tir 19:40 → Ons 19:40", () => {
+  // 2h20 Tir (til 22:00) + 3h40 Ons (fra 16:00). Beskytter close≤23-stien mod #1904-fixet.
+  assert.equal(cph(calculateAuctionEnd(iso("2026-05-05T17:40:00Z"), CFG)), "2026-05-06 19:40:00");
+});
+
+test("calculateAuctionEnd: default-config (weekend close=23) uændret — Lør 19:40 → Søn 10:40", () => {
+  assert.equal(cph(calculateAuctionEnd(iso("2026-05-09T17:40:00Z"), CFG)), "2026-05-10 10:40:00");
+});
+
+test("checkBidExtension: close=24 — forlæng forbi midnat indenfor grace (23:53 bud → 00:03)", () => {
+  const r = checkBidExtension(iso("2026-06-26T21:53:00Z"), iso("2026-06-26T21:55:00Z"), C24);
+  assert.equal(r.shouldExtend, true);
+  assert.equal(cph(r.newEnd), "2026-06-27 00:03:00");
+});
+
+test("checkBidExtension: close=24 — kæde i post-midnat-grace forbliver indenfor grace (00:01 bud → 00:11)", () => {
+  // windowForEnd re-ankrer end=00:03 til forrige dags vindue, så hard cap forbliver
+  // 01:00 i stedet for et helt døgn for sent (#1904, linje 148/154).
+  const r = checkBidExtension(iso("2026-06-26T22:01:00Z"), iso("2026-06-26T22:03:00Z"), C24);
+  assert.equal(r.shouldExtend, true);
+  assert.equal(cph(r.newEnd), "2026-06-27 00:11:00");
+});
+
+test("checkBidExtension: close=24 — bud forbi grace-cap (00:53, end 00:55) ruller til 08:03", () => {
+  const r = checkBidExtension(iso("2026-06-26T22:53:00Z"), iso("2026-06-26T22:55:00Z"), C24);
+  assert.equal(r.shouldExtend, true);
+  assert.equal(cph(r.newEnd), "2026-06-27 08:03:00");
 });
 
 // =============================================================================

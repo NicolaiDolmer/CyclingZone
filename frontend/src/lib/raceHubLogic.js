@@ -14,23 +14,77 @@ export function computeColumnStatus({ selected, target, withdrawn, max }) {
   return { kind: "understaffed", selected, target };
 }
 
-// Rod A (#1823): er kladden klar til at GEMMES? Auto-gem-når-gyldig — størrelsen skal
-// være inden for [effectiveMin, max]. effectiveMin sænkes til antal tilgængelige
-// ryttere (spejler backend's lille-trup-lempelse i raceSelection.validateSelection),
-// så et lille hold også kan gemme. Mens kladden er ugyldig (fx 5 eller 7 på en 6/6)
-// gemmes intet → manageren kan redigere frit uden at kunne "godkende" under minimum.
-export function isSelectionSavable({ count, min, max, available }) {
-  const lo = Number.isFinite(min) ? min : 0;
-  const effMin = Math.min(lo, Number.isFinite(available) ? available : lo);
-  return count >= effMin && count <= (Number.isFinite(max) ? max : Infinity);
+// (Auto-gem-når-fuld + canFieldFullLineup udgået 28/6: board'et bruger nu eksplicit Gem +
+// tillader delvis trup. Se RaceHubBoard.saveAll + backend validateSelection.)
+
+// To in-game-dag-vinduer overlapper hvis de deler mindst én game-dag (inkl. ender).
+// Spejler backend raceBinding.windowsOverlap. Defensiv mod null (intet vindue → ingen binding).
+export function windowsOverlap(a, b) {
+  if (!a || !b) return false;
+  return a.start <= b.end && b.start <= a.end;
 }
 
-// Er rytteren bundet væk fra `forRaceId` (udtaget i et ANDET overlappende kolonne-løb)?
-// Bruges i AddRiderPopover til at filtrere hvilke løb en ledig rytter kan tilføjes til.
-export function isRiderBound({ bindingMap, riderId, forRaceId }) {
-  const races = bindingMap?.[riderId];
-  if (!races || !races.length) return false;
-  return races.some((id) => id !== forRaceId);
+// Er rytteren bundet væk fra `forRaceId` (udtaget i et ANDET kolonne-løb hvis IN-GAME-dag-
+// vindue overlapper forRaceId's)? Kronologi-rebuild (2026-06-28): to løb på samme IRL-dag
+// binder KUN hvis deres game-dage overlapper — så en rytter må gerne køre to løb på samme
+// kalenderdato når de ligger på forskellige in-game-dage. `bindingMap[riderId]` = liste af
+// { id, window } (game-dag-vindue pr. kolonne rytteren er i). `forWindow` = forRaceId's vindue.
+export function isRiderBound({ bindingMap, riderId, forRaceId, forWindow }) {
+  const entries = bindingMap?.[riderId];
+  if (!entries || !entries.length) return false;
+  return entries.some((e) => e.id !== forRaceId && windowsOverlap(e.window, forWindow));
+}
+
+// Kan rytteren tilføjes kolonne-løbet? (ikke afmeldt/låst, ikke allerede udtaget, ikke
+// game-dag-bundet i et andet kolonne-løb). Delt af puljen (lås-tilstand) + popover (mål-liste).
+export function canAddRiderToColumn({ column, bindingMap, riderId }) {
+  if (!column || column.withdrawn || column.lineup_locked) return false;
+  if ((column.selection?.rider_ids || []).includes(riderId)) return false;
+  return !isRiderBound({ bindingMap, riderId, forRaceId: column.id, forWindow: column.bindingWindow });
+}
+
+// #1984: hvilket ANDET kolonne-løb blokerer rytteren fra `column` (det overlappende løb han
+// allerede er i)? Returnerer kolonnen {id, name, ...} eller null. Bruges af popover/pulje til
+// at sige HVORFOR en rytter er optaget — ikke bare at han er det.
+export function overlapConflictColumn({ column, columns = [], bindingMap, riderId }) {
+  if (!column) return null;
+  const entries = bindingMap?.[riderId];
+  if (!entries || !entries.length) return null;
+  const hit = entries.find((e) => e.id !== column.id && windowsOverlap(e.window, column.bindingWindow));
+  if (!hit) return null;
+  return columns.find((c) => c.id === hit.id) || { id: hit.id, name: null };
+}
+
+// #1984: klassificér en rytters forhold til ét kolonne-løb i dag. Driver tilgængeligheds-UI'et:
+//   "riding"    — allerede udtaget i løbet
+//   "locked"    — løbet er afmeldt/startet (kan ikke ændres)
+//   "overlap"   — blokeret fordi rytteren er i et tids-overlappende løb
+//   "available" — kan tilføjes
+export function riderColumnState({ column, bindingMap, riderId }) {
+  if (!column) return "locked";
+  if ((column.selection?.rider_ids || []).includes(riderId)) return "riding";
+  if (column.withdrawn || column.lineup_locked) return "locked";
+  if (isRiderBound({ bindingMap, riderId, forRaceId: column.id, forWindow: column.bindingWindow })) return "overlap";
+  return "available";
+}
+
+// #1984/#1983: alle ægte overlap-konflikter i kladden — en rytter udtaget i to løb hvis game-dag-
+// vinduer overlapper. Driver den NAVNGIVNE gem-fejl (i stedet for backendens opake kode) + en
+// proaktiv advarsel. Returnerer [{ riderId, raceIds:[a,b], raceNames:[a,b] }] (afmeldte løb tæller ikke).
+export function findSelectionOverlaps({ columns = [] }) {
+  const out = [];
+  const active = columns.filter((c) => c && !c.withdrawn);
+  for (let i = 0; i < active.length; i++) {
+    for (let j = i + 1; j < active.length; j++) {
+      const a = active[i], b = active[j];
+      if (!windowsOverlap(a.bindingWindow, b.bindingWindow)) continue;
+      const setB = new Set(b.selection?.rider_ids || []);
+      for (const id of a.selection?.rider_ids || []) {
+        if (setB.has(id)) out.push({ riderId: id, raceIds: [a.id, b.id], raceNames: [a.name, b.name] });
+      }
+    }
+  }
+  return out;
 }
 
 // Visnings-status for et løb (#1828). Backend SKRIVER ALDRIG 'active' (det ville bryde
@@ -103,4 +157,17 @@ export function freshnessTier(fatigue) {
   if (f >= 67) return "tired";
   if (f >= 34) return "ok";
   return "fresh";
+}
+
+// #1925 + kronologi-rebuild: kladde-bevidst binding. Pr. rytter: de IKKE-afmeldte kolonne-løb
+// han er i kladden, MED hvert løbs in-game-dag-vindue, så isRiderBound kun binder mod løb hvis
+// game-dage faktisk overlapper (samme IRL-dag ≠ binding når game-dagene er forskellige).
+// Erstatter den stale server-bindingMap i popover/pulje, så live-redigeringer afspejles straks.
+export function draftBindingMap(columns = []) {
+  const map = {};
+  for (const c of columns) {
+    if (c.withdrawn) continue;
+    for (const id of c.selection?.rider_ids || []) (map[id] ||= []).push({ id: c.id, window: c.bindingWindow ?? null });
+  }
+  return map;
 }

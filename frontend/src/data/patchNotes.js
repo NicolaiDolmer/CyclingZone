@@ -4,6 +4,636 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.40",
+    "date": "2026-06-30",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Get a notification when one of your races has been run",
+          "body": "When a race your team took part in is finished, you now get an in-app notification so you know there is a result to look at. Open it to jump straight to that race's result. Until now the only sign a race had run was spotting it yourself on the dashboard or results page."
+        },
+        "da": {
+          "title": "Få besked når et af dine løb er kørt",
+          "body": "Når et løb dit hold deltog i er afviklet, får du nu en notifikation i appen, så du ved der er et resultat at se på. Åbn den for at hoppe direkte til løbets resultat. Indtil nu var det eneste tegn på et kørt løb at du selv opdagede det på dashboardet eller resultatsiden."
+        },
+        "refs": [1952]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "See which riders are your club's star riders",
+          "body": "Your board's star-profile tile used to tell you how many star riders you have, but not who they were. It now lists them by name, with a short note on how they are picked (rider popularity plus UCI points). If you have no star riders yet, it says so clearly."
+        },
+        "da": {
+          "title": "Se hvilke ryttere der er din klubs stjerneryttere",
+          "body": "Din bestyrelses stjerneprofil-felt fortalte før hvor mange stjerneryttere du har, men ikke hvem de var. Det viser dem nu ved navn, med en kort note om hvordan de vælges (rytter-popularitet plus UCI-point). Har du ingen stjerneryttere endnu, står det tydeligt."
+        },
+        "refs": [1889]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Rider potential now shown on the Academy page",
+          "body": "The Academy page now shows each rider's potential next to them, both in your signed academy squad and among the free youth riders. Riders you own show their exact potential; riders you do not own yet show the scouted range, the same way it works elsewhere."
+        },
+        "da": {
+          "title": "Rytter-potentiale vises nu på akademi-siden",
+          "body": "Akademi-siden viser nu hver rytters potentiale ved siden af dem, både i din signerede akademi-trup og blandt de frie ungdomsryttere. Ryttere du ejer viser deres præcise potentiale; ryttere du endnu ikke ejer viser det spejdede spænd, som det fungerer andre steder."
+        },
+        "refs": [1978]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Sort your riders when picking a race lineup",
+          "body": "On the team-selection board you can now sort your riders by name, type, route match, form and fatigue, so it is easier to find the right rider for the race. Click a column header on desktop or use the sort menu on mobile."
+        },
+        "da": {
+          "title": "Sortér dine ryttere når du udtager til et løb",
+          "body": "På udtagelses-board'et kan du nu sortere dine ryttere efter navn, type, rute-match, form og træthed, så det er nemmere at finde den rigtige rytter til løbet. Klik en kolonneoverskrift på desktop, eller brug sorterings-menuen på mobil."
+        },
+        "refs": [1951]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Transfers",
+        "en": {
+          "title": "Sort the transfer market by rider ability",
+          "body": "The transfer market can now be sorted by any rider ability, as well as by value, on top of the existing price, age and newest sorting. Pick an ability from the new dropdown to put the strongest riders in that skill at the top."
+        },
+        "da": {
+          "title": "Sortér transfermarkedet efter rytter-evne",
+          "body": "Transfermarkedet kan nu sorteres efter enhver rytter-evne, samt efter værdi, oven på den eksisterende sortering på pris, alder og nyeste. Vælg en evne i den nye dropdown for at lægge de stærkeste ryttere i den evne øverst."
+        },
+        "refs": [2031]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Transfers",
+        "en": {
+          "title": "Transfer history now shows academy signings and the correct season",
+          "body": "Your transfer history was missing every academy signing and filed launch-day deals under the wrong season. Academy riders you have signed now appear in the history, and deals made on the season's first day are filed under the right season instead of the empty season before it."
+        },
+        "da": {
+          "title": "Transferhistorik viser nu akademi-signeringer og den rigtige sæson",
+          "body": "Din transferhistorik manglede alle akademi-signeringer og lagde handler fra sæsonens første dag under den forkerte sæson. Akademi-ryttere du har signeret vises nu i historikken, og handler lavet på sæsonens første dag ligger nu under den rigtige sæson i stedet for den tomme sæson før."
+        },
+        "refs": [1776]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "Back button keeps your auctions tab",
+          "body": "Opening a rider profile from the auctions page and pressing back used to always drop you on the 'My situation' tab. The auctions page now remembers which tab you were on, so back takes you where you expect, and you can share or bookmark a specific tab."
+        },
+        "da": {
+          "title": "Tilbage-knappen bevarer din auktions-fane",
+          "body": "Når du åbnede en rytterprofil fra auktionssiden og trykkede tilbage, landede du før altid på fanen 'Min situation'. Auktionssiden husker nu hvilken fane du var på, så tilbage fører dig hen hvor du forventer, og du kan dele eller bogmærke en bestemt fane."
+        },
+        "refs": [1777]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Consistent rider name sorting across pages",
+          "body": "Rider lists sorted by name could order names with a double 'a' differently from one page to the next. Name sorting now uses the same rule everywhere, so the same riders sort the same way on every page."
+        },
+        "da": {
+          "title": "Ensartet sortering af rytternavne på tværs af sider",
+          "body": "Rytterlister sorteret efter navn kunne ordne navne med dobbelt-a forskelligt fra side til side. Navnesortering bruger nu den samme regel overalt, så de samme ryttere sorteres ens på alle sider."
+        },
+        "refs": [1950]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "General",
+        "en": {
+          "title": "Fixed a crash when your browser auto-translates the game",
+          "body": "If your browser offered to translate the page (common in Chrome when the site language did not match your browser), the game could crash to a blank screen. The app now tells the browser its real language and is resilient to translation tools, so auto-translate no longer breaks the page."
+        },
+        "da": {
+          "title": "Rettet et crash når browseren auto-oversætter spillet",
+          "body": "Hvis din browser tilbød at oversætte siden (typisk i Chrome når sidens sprog ikke matchede din browser), kunne spillet crashe til en blank skærm. Appen fortæller nu browseren sit rigtige sprog og er modstandsdygtig over for oversættelses-værktøjer, så auto-oversæt ikke længere ødelægger siden."
+        },
+        "refs": [2039]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "General",
+        "en": {
+          "title": "Shared links to riders and races no longer hit a blank login wall",
+          "body": "Opening a direct link to a rider or race while signed out used to land on an empty login screen. Those deep links now show a proper context-aware sign-in, so a shared or bookmarked link leads somewhere useful instead of a dead end."
+        },
+        "da": {
+          "title": "Delte links til ryttere og løb rammer ikke længere en blank login-væg",
+          "body": "Et direkte link til en rytter eller et løb åbnede før en tom login-skærm hvis man ikke var logget ind. De dybe links viser nu en ordentlig kontekst-bevidst login, så et delt eller bogmærket link fører et brugbart sted hen i stedet for en blindgyde."
+        },
+        "refs": [2042]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Leagues",
+        "en": {
+          "title": "Division 4 is now open",
+          "body": "New managers may now start their club in Division 4 once Division 3 is full. Division 4 has its own full season of races, just like the other divisions."
+        },
+        "da": {
+          "title": "Division 4 er nu åben",
+          "body": "Nye managere kan nu starte deres klub i division 4, når division 3 er fuld. Division 4 har sin egen fulde sæson af løb, ligesom de andre divisioner."
+        },
+        "refs": []
+      }
+    ]
+  },
+  {
+    "version": "6.39",
+    "date": "2026-06-30",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Auto-picked race captain is now your strongest rider",
+          "body": "When a captain has to be filled in for you on the team-selection board — because you removed your captain or never set one — the board now picks your strongest rider for that race instead of whoever happened to be first in the list. Previously it could quietly hand the captaincy to a weaker rider and push aside your intended leader. A captain you have chosen yourself is always kept. Note: roles still lock once a race is under way, so this affects upcoming races only."
+        },
+        "da": {
+          "title": "Auto-valgt løbskaptajn er nu din stærkeste rytter",
+          "body": "Når en kaptajn skal udfyldes for dig på udtagelses-board'et — fordi du fjernede din kaptajn eller aldrig satte en — vælger board'et nu din stærkeste rytter til løbet i stedet for tilfældigvis den første i listen. Før kunne det stille give kaptajnsbindet til en svagere rytter og skubbe din tiltænkte leder til side. En kaptajn du selv har valgt, bevares altid. Bemærk: roller låses stadig når et løb er i gang, så dette gælder kun kommende løb."
+        },
+        "refs": [2028]
+      }
+    ]
+  },
+  {
+    "version": "6.38",
+    "date": "2026-06-30",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "Change your club DNA during your first season",
+          "body": "You can now change your club DNA at any point during your first season, not just the moment you first pick it. Open your board, expand 'Change club DNA' and switch to another identity. Your board members and target weighting update to match. Once your first season ends the choice locks in, as before. This also fixes a wrong message that told newer teams they had to 'finish season 1' before choosing DNA, even though the board is ready from day one."
+        },
+        "da": {
+          "title": "Skift dit klub-DNA i din første sæson",
+          "body": "Du kan nu skifte dit klub-DNA når som helst i din første sæson, ikke kun i det øjeblik du først vælger det. Åbn din bestyrelse, fold 'Skift klub-DNA' ud og vælg en anden identitet. Dine bestyrelsesmedlemmer og målvægtning opdateres til at passe. Når din første sæson slutter, låses valget som før. Det retter også en forkert besked der fortalte nyere hold at de skulle 'afslutte sæson 1' før de kunne vælge DNA, selvom bestyrelsen er klar fra dag ét."
+        },
+        "refs": [2022]
+      }
+    ]
+  },
+  {
+    "version": "6.37",
+    "date": "2026-06-30",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "Your board's squad-size goal now matches your actual team",
+          "body": "When you start a new team, your board now sets its expectations from your real squad instead of a fixed number. New teams used to be handed a 'field at least 15 riders' goal that an 8-rider starting squad could never reach, which quietly dragged down board satisfaction without anything you could do about it. The squad-size goal now follows your division's normal range, so it is achievable from day one. Existing teams that were still carrying the old fixed goal have been updated to match too."
+        },
+        "da": {
+          "title": "Din bestyrelses trup-størrelses-mål passer nu til dit faktiske hold",
+          "body": "Når du starter et nyt hold, sætter din bestyrelse nu sine forventninger ud fra din faktiske trup i stedet for et fast tal. Nye hold fik før et mål om mindst 15 ryttere, som en 8-rytters start-trup aldrig kunne nå, og det trak stille bestyrelsens tilfredshed ned uden du kunne gøre noget ved det. Trup-størrelses-målet følger nu divisionens normale spænd, så det er opnåeligt fra dag ét. Eksisterende hold der stadig havde det gamle faste mål er også opdateret."
+        },
+        "refs": [2022]
+      }
+    ]
+  },
+  {
+    "version": "6.36",
+    "date": "2026-06-29",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Manage your riders straight from their profile",
+          "body": "You can now extend a contract, release a rider, and move a rider between your senior squad and your academy directly from the rider profile, next to the auction, transfer-list and bidding actions that were already there. Every action a manager can take on a rider now lives in one place, so you no longer have to go back to your squad page to manage a contract. Academy riders correctly show only the promote action."
+        },
+        "da": {
+          "title": "Håndtér dine ryttere direkte fra deres profil",
+          "body": "Du kan nu forlænge en kontrakt, fyre en rytter og flytte en rytter mellem din senior-trup og dit akademi direkte fra rytterprofilen, ved siden af auktion, transferliste og bud som allerede lå der. Alt hvad en manager kan gøre ved en rytter ligger nu ét sted, så du ikke længere skal tilbage til holdsiden for at håndtere en kontrakt. Akademi-ryttere viser korrekt kun op-rykning."
+        },
+        "refs": [2007, 2000]
+      }
+    ]
+  },
+  {
+    "version": "6.35",
+    "date": "2026-06-29",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Development tab now tracks your rider's rating in every rider type",
+          "body": "The rider's Development tab now charts how good they are in each of the eight rider types (sprinter, climber, GC and the rest) on the same 1 to 99 scale as their overall rating, and how it moves over time. Use the type filter to focus on the types you care about, or show them all at once. The chart builds up as the rider trains day to day and develops across seasons, replacing the old skill history."
+        },
+        "da": {
+          "title": "Udvikling-fanen følger nu din rytters rating i hver ryttertype",
+          "body": "Rytterens Udvikling-fane viser nu hvor god han er i hver af de otte ryttertyper (spurter, klatrer, GC og resten) på samme 1 til 99-skala som hans samlede rating, og hvordan det bevæger sig over tid. Brug type-filteret til at fokusere på de typer du går op i, eller vis dem alle på én gang. Grafen bygges op efterhånden som rytteren træner fra dag til dag og udvikler sig over sæsoner, og erstatter den gamle færdighedshistorik."
+        },
+        "refs": [2000, 918]
+      }
+    ]
+  },
+  {
+    "version": "6.34",
+    "date": "2026-06-29",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Rider rating: a single 1-99 score for how good a rider is",
+          "body": "Every rider now has an overall rating from 1 to 99, shown as a coloured circle on the rider profile and as a sortable column in the rider rankings. The rating blends how strong the rider is at their best type (climber, sprinter, GC, and so on) with their all-round ability, using the same model that drives their displayed type and value, so the three stay consistent. The scale is anchored to the whole rider pool, so the very best riders sit near 99 and the field spreads out below them."
+        },
+        "da": {
+          "title": "Rytter-rating: ét 1-99-tal for hvor god en rytter er",
+          "body": "Hver rytter har nu en samlet rating fra 1 til 99, vist som en farvet cirkel på rytterprofilen og som en sorterbar kolonne i rytter-ranglisten. Ratingen blander hvor stærk rytteren er i sin bedste type (klatrer, spurter, GC og så videre) med hans alsidighed, og bruger samme model som den viste type og værdi, så de tre hænger sammen. Skalaen er ankret mod hele rytterfeltet, så de allerbedste ryttere ligger tæt på 99, og resten spreder sig nedenunder."
+        },
+        "refs": [2006, 2000]
+      }
+    ]
+  },
+  {
+    "version": "6.33",
+    "date": "2026-06-29",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Clearer team selection when races overlap on the same day",
+          "body": "When two races fall on the same day, the available-riders list now shows, per rider, which of the day's races they can join and which are locked because the rider is already in an overlapping race, with the blocking race named. Clicking a locked rider now explains why instead of doing nothing, and the overlap error names the rider and race so you can fix it. Riders can still be used in same-day races that don't actually overlap."
+        },
+        "da": {
+          "title": "Klarere holdudtagelse når løb overlapper samme dag",
+          "body": "Når to løb ligger samme dag, viser listen af ledige ryttere nu pr. rytter hvilke af dagens løb han kan køre, og hvilke der er låst fordi han allerede kører et overlappende løb, med det blokerende løb navngivet. Klikker du en låst rytter, forklares hvorfor nu i stedet for ingenting, og overlap-fejlen navngiver rytter og løb, så du kan rette den. Ryttere kan stadig bruges i samme-dags-løb der ikke reelt overlapper."
+        },
+        "refs": [1984, 1983]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Race results keep the team you won them with",
+          "body": "Each race result now stores the name of the team you raced for at the time, captured the moment the result is recorded. Previously results relied only on a live link to the team, so if a team was later deleted, the result lost all team attribution and its prize money was silently skipped. Existing results have been backfilled, so a rider's history correctly shows which team they earned each result with, even after squad changes."
+        },
+        "da": {
+          "title": "Løbsresultater bevarer det hold du vandt dem med",
+          "body": "Hvert løbsresultat gemmer nu navnet på det hold du kørte for på løbstidspunktet, taget i det øjeblik resultatet registreres. Før hang resultatet kun på et live-link til holdet, så hvis et hold senere blev slettet, mistede resultatet al hold-tilknytning, og dets præmiepenge blev sprunget over uden besked. Eksisterende resultater er fyldt bagud, så en rytters historik korrekt viser hvilket hold han vandt hvert resultat med, også efter trup-ændringer."
+        },
+        "refs": [1993]
+      }
+    ]
+  },
+  {
+    "version": "6.32",
+    "date": "2026-06-29",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "See who won the team competition in race results",
+          "body": "Finished races now show the team classification winner by name, highlighted at the top of the team standings. The team competition was already scored, but the winning team was not shown, so you could not tell who had won it."
+        },
+        "da": {
+          "title": "Se hvem der vandt holdkonkurrencen i løbsresultaterne",
+          "body": "Afsluttede løb viser nu holdkonkurrencens vinder ved navn, fremhævet øverst i holdklassementet. Holdkonkurrencen blev allerede afgjort, men det vindende hold blev ikke vist, så man kunne ikke se hvem der havde vundet den."
+        },
+        "refs": [1485]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Race recaps: a short story of how each race unfolded",
+          "body": "Each finished race and stage now opens with a short recap that pulls the key moments out of the result: how the winner took it, whether a breakaway stayed away or was caught, and which team had the best day. It is built from the existing race data, so there is no change to how races are decided."
+        },
+        "da": {
+          "title": "Løbsreferater: en kort fortælling om hvordan løbet udspillede sig",
+          "body": "Hvert afsluttet løb og hver etape åbner nu med et kort referat der trækker nøglemomenterne ud af resultatet: hvordan vinderen tog den, om et udbrud holdt hjem eller blev hentet, og hvilket hold der havde den bedste dag. Det bygger på de eksisterende løbsdata, så der er ingen ændring i hvordan løb afgøres."
+        },
+        "refs": [1311]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Removed the misleading \"best skill\" line from rider profiles",
+          "body": "The rider profile's top-right corner showed a \"Best: …\" line that was still derived from the old skill ratings, not the current Cycling Zone abilities, so it could be outdated and misleading. We removed the line entirely — the abilities tab is the accurate source — with no replacement, to keep the profile uncluttered."
+        },
+        "da": {
+          "title": "Fjernet det misvisende \"bedste evne\"-felt fra rytterprofilen",
+          "body": "Rytterprofilens øverste højre hjørne viste en \"Bedste: …\"-linje der stadig var udledt af de gamle evne-tal, ikke de nuværende Cycling Zone-evner, så den kunne være forældet og misvisende. Vi har fjernet linjen helt — Evner-fanen er den korrekte kilde — uden erstatning, så profilen ikke bliver overfyldt."
+        },
+        "refs": [1781]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Help",
+        "en": {
+          "title": "Help page now shows only the current rider abilities",
+          "body": "The Riders section of the help page still listed the old 14 skill abbreviations (FL, BJ, KB …) above the 15 current Cycling Zone abilities, which was confusing. We removed the outdated list — the help page now explains only the 15 abilities the game actually uses."
+        },
+        "da": {
+          "title": "Hjælp-siden viser nu kun de nuværende rytter-evner",
+          "body": "Rytter-sektionen på hjælp-siden listede stadig de gamle 14 evne-forkortelser (FL, BJ, KB …) oven over de 15 nuværende Cycling Zone-evner, hvilket var forvirrende. Vi har fjernet den forældede liste — hjælp-siden forklarer nu kun de 15 evner spillet faktisk bruger."
+        },
+        "refs": [1832]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Rest days no longer look like a lost training focus",
+          "body": "In the daily training report, riders on a rest day were shown as \"No focus set\" in the Next +1 column even though a focus was still selected, which made it look like the focus had been lost. Rest days now read \"Rest day\" there, and the focus column keeps showing the chosen focus."
+        },
+        "da": {
+          "title": "Hviledage ligner ikke længere et tabt træningsfokus",
+          "body": "I den daglige træningsrapport blev ryttere på en hviledag vist som \"Intet fokus valgt\" i Næste +1-kolonnen, selvom et fokus stadig var valgt — det fik det til at se ud som om fokusset var gået tabt. Hviledage står nu som \"Hviledag\" der, og fokus-kolonnen viser fortsat det valgte fokus."
+        },
+        "refs": [1937]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Races in other divisions no longer offer a line-up that fails on save",
+          "body": "Opening a scheduled race from another division used to show a full, selectable line-up panel that only failed once you tried to save it. That race now shows a short read-only note explaining it belongs to another division, so you don't build a line-up that can't be saved."
+        },
+        "da": {
+          "title": "Løb i andre divisioner tilbyder ikke længere en opstilling der fejler ved gem",
+          "body": "Når man åbnede et planlagt løb i en anden division, viste det et fuldt udtageligt opstillings-panel der først fejlede når man forsøgte at gemme. Sådan et løb viser nu en kort read-only besked om at det hører til en anden division, så du ikke bygger en opstilling der ikke kan gemmes."
+        },
+        "refs": [1954]
+      }
+    ]
+  },
+  {
+    "version": "6.31",
+    "date": "2026-06-28",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Race categories renamed to fit Cycling Zone's own world",
+          "body": "The race-class categories no longer borrow real-world race names. \"Tour de France\" is now \"Grand Tour\" and \"Giro / Vuelta\" is now \"Major Tour\" across the calendar, race library, and points & prizes. Points, prizes and which races fall in each class are unchanged — only the labels."
+        },
+        "da": {
+          "title": "Løbskategorier omdøbt så de passer til Cycling Zones egen verden",
+          "body": "Løbsklasse-kategorierne låner ikke længere navne fra rigtige løb. \"Tour de France\" hedder nu \"Grand Tour\" og \"Giro / Vuelta\" hedder nu \"Major Tour\" på tværs af kalenderen, løbsbiblioteket og point & præmier. Point, præmier og hvilke løb der ligger i hver klasse er uændrede — kun etiketterne."
+        },
+        "refs": [1780]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Race calendar",
+        "en": {
+          "title": "Calendar reworked so at most two races compete for a rider at once",
+          "body": "We rebuilt the season calendar so racing chronology is honest. Each stage now sits on its own in-game race-day, so a stage race can run several stages on the same calendar date while a rider is only ever committed to one race per in-game day. In Division 3 you now face at most two races competing for a rider at the same time (it used to be three), and some races run solo. Grand Tours are now full-length commitments. Because the calendar changed, any line-ups you set earlier have been cleared, so set them again on the Races page."
+        },
+        "da": {
+          "title": "Kalenderen bygget om så højst to løb kæmper om en rytter ad gangen",
+          "body": "Vi har bygget sæsonkalenderen om, så løbs-kronologien er ærlig. Hver etape ligger nu på sin egen in-game-løbsdag, så et etapeløb kan køre flere etaper på samme kalenderdato, mens en rytter kun er bundet til ét løb pr. in-game-dag. I Division 3 møder du nu højst to løb der kæmper om en rytter samtidig (det var tre før), og nogle løb kører solo. Grand Tours er nu fuldlængde-commitments. Fordi kalenderen er ændret, er de opstillinger du satte tidligere blevet ryddet, så sæt dem igen på Løb-siden."
+        },
+        "refs": []
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Squad selection",
+        "en": {
+          "title": "Set your line-ups freely, then save",
+          "body": "The squad-distribution board no longer auto-saves on every change. Edit freely in any order: remove a rider and he's immediately available for another race (including a non-overlapping race on the same day), swap riders, set roles. When you're happy, press Save changes; a banner warns you if you try to leave with unsaved edits. You can now save a partial line-up too. Any slots you leave open are filled automatically from your available riders when the race runs."
+        },
+        "da": {
+          "title": "Sæt dine opstillinger frit, og gem så",
+          "body": "Trup-fordelings-board'et auto-gemmer ikke længere ved hver ændring. Rediger frit i vilkårlig rækkefølge: fjern en rytter, og han er straks ledig til et andet løb (også et ikke-overlappende løb samme dag), byt ryttere, sæt roller. Når du er tilfreds, tryk Gem ændringer; en advarsel dukker op hvis du prøver at forlade siden med ugemte ændringer. Du kan nu også gemme en delvis trup. De pladser du lader stå åbne, fyldes automatisk fra dine ledige ryttere når løbet køres."
+        },
+        "refs": []
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Every race now has a route that fits it, identical for all groups in a division",
+          "body": "Each race now follows a parcours that fits its real character. The cobbled classics are run on cobbles, the mountain tours climb, and the flat sprinters' weeks stay flat, while stage races build toward the mountains. And inside a division, every group now races the exact same route in the same race, so the standings come down to your team's strength rather than which group you were placed in. Routes also vary from one season to the next within each race's character."
+        },
+        "da": {
+          "title": "Hvert løb har nu en rute der passer, ens for alle grupper i en division",
+          "body": "Hvert løb følger nu et parcours der passer til dets virkelige karakter. Brosten-klassikerne køres på brosten, bjerg-rundene klatrer, og de flade sprinter-uger forbliver flade, mens etapeløb bygger op mod bjergene. Og inden i en division kører hver gruppe nu nøjagtig samme rute i det samme løb, så stillingen afgøres af dit holds styrke i stedet for hvilken gruppe du blev placeret i. Ruterne varierer også fra sæson til sæson inden for hvert løbs karakter."
+        },
+        "refs": [1962, 1963]
+      }
+    ]
+  },
+  {
+    "version": "6.29",
+    "date": "2026-06-27",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Race calendar",
+        "en": {
+          "title": "Click into any race — stages now shown by day and time",
+          "body": "Every race on the calendar is now clickable: tap a race to open its planning page. Stage races are split out across the days they run, each stage shown on its own day with its start time (for example \"stage 1 · 12:00\", \"stage 2 · 15:00\"), so you can see exactly when each stage goes off and plan your squad for it."
+        },
+        "da": {
+          "title": "Klik ind på et hvilket som helst løb — etaper vises nu pr. dag og tidspunkt",
+          "body": "Hvert løb i kalenderen er nu klikbart: tryk på et løb for at åbne dets planlægningsside. Etapeløb er delt ud over de dage de køres, og hver etape vises på sin egen dag med sit starttidspunkt (for eksempel \"1. etape · 12:00\", \"2. etape · 15:00\"), så du kan se præcis hvornår hver etape køres og planlægge din trup til den."
+        },
+        "refs": [1945]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Race calendar",
+        "en": {
+          "title": "Tighter, more varied race programme per division",
+          "body": "Each division's season programme now has a precise number of race-days that scales down the pyramid, with more racing and more overlapping races in Division 3 so there is always something to ride. Grand Tours run as a spread-out spine with other races alongside them, and the monuments are free to start — your best riders are never locked inside a stage race when a monument comes up."
+        },
+        "da": {
+          "title": "Strammere, mere varieret løbsprogram pr. division",
+          "body": "Hver divisions sæson-program har nu et præcist antal løbsdage der skalerer ned ad pyramiden, med mere racing og flere overlappende løb i Division 3, så der altid er noget at køre. Grand Tour-løbene kører som en spredt rygrad med andre løb ved siden af, og monumenterne er frie at stille til — dine bedste ryttere er aldrig låst inde i et etapeløb, når et monument dukker op."
+        },
+        "refs": [1945]
+      }
+    ]
+  },
+  {
+    "version": "6.28",
+    "date": "2026-06-27",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Race calendar",
+        "en": {
+          "title": "Race calendars rebuilt: one shared programme per division",
+          "body": "Each division now runs its own season programme, the same across its pools and synchronised on dates with the other divisions. The top divisions feature the Grand Tours as a spread-out spine with classics layered on top, and no race appears in two divisions anymore. Season 1's races restart Monday 29 June. Open the new Calendar to see the full programme and plan your squad ahead of time."
+        },
+        "da": {
+          "title": "Løbskalenderne er bygget om: ét fælles program pr. division",
+          "body": "Hver division kører nu sit eget sæson-program, ens på tværs af dens puljer og dato-synkroniseret med de andre divisioner. Top-divisionerne har Grand Tour-løbene som en spredt rygrad med klassikere ovenpå, og intet løb optræder længere i to divisioner. Sæson 1's løb genstarter mandag 29. juni. Åbn den nye Kalender for at se hele programmet og planlægge din trup i forvejen."
+        },
+        "refs": [1945]
+      }
+    ]
+  },
+  {
+    "version": "6.27",
+    "date": "2026-06-27",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "Auctions now run 08:00 to 24:00 every day",
+          "body": "The active auction window is now 08:00 to 24:00 every day, up from 10:00 to 22:00. An auction still counts one active hour, but it can now run later into the evening, with the only dead hours being 00:00 to 08:00. An auction started at 23:30, for example, finishes at 08:30 the next morning."
+        },
+        "da": {
+          "title": "Auktioner kører nu 08:00 til 24:00 alle dage",
+          "body": "Det aktive auktionsvindue er nu 08:00 til 24:00 alle dage, op fra 10:00 til 22:00. En auktion tæller stadig én aktiv time, men kan nu køre længere ud på aftenen, og de eneste døde timer er 00:00 til 08:00. En auktion startet kl. 23:30 slutter for eksempel kl. 08:30 næste morgen."
+        },
+        "refs": [1904]
+      }
+    ]
+  },
+  {
+    "version": "6.26",
+    "date": "2026-06-26",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Team selection",
+        "en": {
+          "title": "Move riders between races by dragging",
+          "body": "On desktop you can now drag a rider straight from one race to another, or to and from the free-rider pool. The race you move them out of shows as understaffed until you fill it again, and the assistant's Auto-fill makes that quick. On phones the tap flow does the same thing, and a rider can no longer get stuck in a race you have already moved them out of."
+        },
+        "da": {
+          "title": "Flyt ryttere mellem løb ved at trække",
+          "body": "På desktop kan du nu trække en rytter direkte fra ét løb til et andet, eller til og fra puljen af ledige ryttere. Det løb du flytter ham ud af, vises som underbemandet indtil du fylder det igen, og assistentens Auto-udfyld gør det hurtigt. På mobil gør tap-flowet det samme, og en rytter kan ikke længere sidde fast i et løb du allerede har flyttet ham ud af."
+        },
+        "refs": [1925]
+      }
+    ]
+  },
+  {
+    "version": "6.25",
+    "date": "2026-06-26",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Team selection",
+        "en": {
+          "title": "Field a full team for every race",
+          "body": "You now pick a complete lineup for each race you enter. If you would rather sit a race out, withdraw from it; if you are short on riders, sign free agents to fill the gaps. This keeps every start list complete, and the assistant's auto-fill is the quick way to a full squad."
+        },
+        "da": {
+          "title": "Stil et fuldt hold til hvert løb",
+          "body": "Du udtager nu en komplet opstilling til hvert løb, du stiller op i. Vil du hellere stå over, så afmeld dig løbet; mangler du ryttere, så hent fri-agenter til at fylde pladserne. Det holder alle startlister fulde, og assistentens auto-udfyld er den hurtige vej til et fuldt hold."
+        },
+        "refs": [1906]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Team selection",
+        "en": {
+          "title": "Lineups save reliably again",
+          "body": "Sold, released, retired or loaned-out riders could leave a stale entry in an overlapping race that wrongly locked a real rider and stopped you from saving your lineup. Those entries are now cleared automatically, so saving a squad and the assistant's auto-fill work as expected."
+        },
+        "da": {
+          "title": "Opstillinger gemmes pålideligt igen",
+          "body": "Solgte, frigivne, pensionerede eller udlånte ryttere kunne efterlade en forældet tilmelding i et overlappende løb, der fejlagtigt låste en ægte rytter og forhindrede dig i at gemme din opstilling. De tilmeldinger ryddes nu automatisk, så det at gemme en trup og assistentens auto-udfyld virker som forventet."
+        },
+        "refs": [1823, 1800]
+      }
+    ]
+  },
+  {
+    "version": "6.24",
+    "date": "2026-06-26",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Daily Training",
+        "en": {
+          "title": "See what each training focus develops",
+          "body": "The Daily Training page and the Help section now spell out exactly which abilities each focus trains: VO2max (Climbing, Punch, Tempo), Threshold/TT (Time trial, Tempo), Sprint (Sprint, Acceleration), Endurance (Endurance, Recovery, Durability), Technique (Descending, Positioning, Cobbles) and Aero (Time trial, Flat). Your other abilities keep improving a little more slowly, so riders develop across the board, just fastest in the chosen direction."
+        },
+        "da": {
+          "title": "Se hvad hvert træningsfokus udvikler",
+          "body": "Siden Daglig træning og Hjælp-sektionen viser nu præcis hvilke evner hvert fokus træner: VO2max (Klatring, Punch, Tempo), Tærskel/TT (Enkeltstart, Tempo), Spurt (Spurt, Acceleration), Udholdenhed (Udholdenhed, Restitution, Modstandskraft), Teknik (Nedkørsel, Positionering, Brosten) og Aero (Enkeltstart, Fladt). Dine øvrige evner forbedres stadig en smule langsommere, så ryttere udvikler sig bredt, bare hurtigst i den valgte retning."
+        },
+        "refs": [1908]
+      }
+    ]
+  },
+  {
     "version": "6.23",
     "date": "2026-06-26",
     "label": "Beta",

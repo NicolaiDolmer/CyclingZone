@@ -11,6 +11,7 @@ import {
   MARKET_SQUAD_LIMITS,
 } from "./marketUtils.js";
 import { incrementBalanceWithAudit, DUPLICATE_VIOLATION_CODE } from "./balanceRpc.js";
+import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 import { contractOnAcquirePatch } from "./contractSeed.js";
 import { buildContractExpiringNotification } from "./notificationService.js";
 import { ACADEMY } from "./academyFlag.js";
@@ -512,6 +513,10 @@ async function finalizeAuctionRecord({
         .eq("id", auction.rider.id)
     );
 
+    // #1906 defense-in-depth: rytteren forlod sælgeren — ryd hans fremtidige
+    // race_entries så de ikke hænger ved som ghost og phantom-binder en ægte rytter.
+    await clearFutureRaceEntriesSafe({ supabase, riderId: auction.rider.id, label: "auction_win" });
+
     // #822: rytteren er solgt — luk alle åbne transfer_listings så han ikke
     // står som zombie-"til salg" på transfermarkedet. Gælder også ved lukket
     // vindue (pending_team_id): salget er bindende og betalt, så et åbent
@@ -690,6 +695,10 @@ async function finalizeAuctionRecord({
         })
         .eq("id", auction.rider.id)
     );
+
+    // #1906 defense-in-depth: rytteren forlod sælgeren (solgt til banken) — ryd hans
+    // fremtidige race_entries så de ikke hænger ved som ghost og phantom-binder en ægte rytter.
+    await clearFutureRaceEntriesSafe({ supabase, riderId: auction.rider.id, label: "auction_bank_sale" });
 
     // #776: guaranteed-sale til banken er også et salg — luk åbne
     // transfer_listings så rytteren ikke står som zombie-"til salg".

@@ -90,8 +90,12 @@ export async function materializeSeasonCalendar({
 
   // 2. Verdens-katalog (race_pool).
   const { data: catalog, error: catErr } = await supabase
-    .from("race_pool").select("id, name, race_class, race_type, stages");
+    .from("race_pool").select("id, external_id, terrain_archetype, name, race_class, race_type, stages");
   if (catErr) throw new Error(`race_pool: ${catErr.message}`);
+  // Seed-nøgle pr. katalog-løb (external_id) → identisk parcours i alle en divisions
+  // puljer; terrain_archetype driver terrænfordelingen (jf. raceStageProfileGenerator.js).
+  const externalIdByPoolRace = new Map((catalog || []).map((c) => [c.id, c.external_id ?? null]));
+  const archetypeByPoolRace = new Map((catalog || []).map((c) => [c.id, c.terrain_archetype ?? null]));
 
   // 3. Eksisterende races i sæsonen → idempotens-nøgle (pulje:pool_race).
   const { data: existing, error: exErr } = await supabase
@@ -145,16 +149,19 @@ export async function materializeSeasonCalendar({
     const insertedRaces = [];
     for (let i = 0; i < toInsert.length; i += INSERT_BATCH) {
       const { data, error } = await supabase
-        .from("races").insert(toInsert.slice(i, i + INSERT_BATCH)).select("id, name, race_type, stages");
+        .from("races").insert(toInsert.slice(i, i + INSERT_BATCH)).select("id, pool_race_id, name, race_type, stages");
       if (error) throw new Error(`races insert (pulje ${cal.leagueDivisionId}): ${error.message}`);
       insertedRaces.push(...(data || []));
     }
     summary.racesInserted += insertedRaces.length;
 
-    // 5a. Stage-profiler (deterministisk pr. race.id) — synlige FØR løb (#6).
+    // 5a. Stage-profiler (deterministisk pr. løbets external_id, jf. seedIdentityFor)
+    // — synlige FØR løb (#6). external_id binder parcours til den virkelige løbs-
+    // identitet, så puljerne i en division deler parcours.
     const profileRows = [];
     for (const race of insertedRaces) {
-      for (const p of generateRaceStageProfiles(race)) {
+      const seedRace = { ...race, external_id: externalIdByPoolRace.get(race.pool_race_id) ?? null, terrain_archetype: archetypeByPoolRace.get(race.pool_race_id) ?? null, season_id: seasonId };
+      for (const p of generateRaceStageProfiles(seedRace)) {
         profileRows.push({
           race_id: race.id,
           stage_number: p.stage_number,

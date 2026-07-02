@@ -1,7 +1,7 @@
 ﻿import { useState, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
-import { NavLink } from "react-router-dom";
+import { NavLink, useSearchParams } from "react-router-dom";
 import RiderLink from "../components/RiderLink";
 import RiderFilters from "../components/RiderFilters";
 import { useClientRiderFilters } from "../lib/useRiderFilters";
@@ -58,6 +58,11 @@ const BID_FEED_WINDOW_MS = 15 * 60 * 1000;
 // (til visibleStats-filter + join-select), labels via ABILITY_SHORT.
 const STATS = ABILITY_STATS.map(s => s.key);
 const STAT_LABEL_BY_KEY = ABILITY_SHORT;
+
+// #1777: aktiv fane lever i URL'en (?tab=) så browser-back fra en rytter-profil
+// lander tilbage på den fane manageren stod på — ikke altid "Min situation".
+const VALID_FILTERS = ["my-situation", "all", "other"];
+const DEFAULT_FILTER = "my-situation";
 
 // Onboarding v2 Slice 1b — tour-trin på /auctions (aktiveres fra Dashboard "Vis mig hvordan").
 // i18n Fase 3b: konstrueres via t() ved render-tid så sproget følger user's locale.
@@ -593,7 +598,15 @@ export default function AuctionsPage() {
   // #1351: lokaliseret feedback når en optimistisk watchlist-toggle rulles tilbage
   // efter en fejlet Supabase-write. { text } | null, auto-dismisses.
   const [watchlistError, setWatchlistError] = useState(null);
-  const [filter, setFilter] = useState("my-situation");
+  // #1777: aktiv fane lever i URL'en (?tab=) — browser-back fra en rytter-profil
+  // genskaber da den fane manageren stod på i stedet for altid at falde tilbage
+  // til "Min situation". Default-fanen udelader param'en (ren /auctions-URL).
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get("tab");
+  const filter = VALID_FILTERS.includes(tabParam) ? tabParam : DEFAULT_FILTER;
+  function setFilter(key) {
+    setSearchParams(key === DEFAULT_FILTER ? {} : { tab: key }, { replace: true });
+  }
   // #1569: ny spiller har ALTID en tom "Min situation" (ingen førende/overbudte/
   // solgte auktioner), så fladen åbnede på en tom fane og lignede et dødt marked.
   // Når data er loadet og situationen er tom, defaulter vi ÉN gang til 'all'-fanen
@@ -634,7 +647,9 @@ export default function AuctionsPage() {
   // situation har (typisk ny spiller). Bruger samme situations-diskriminator som
   // render-koden nedenfor, så fanen vi åbner matcher den faktiske mySituationCount.
   useEffect(() => {
-    if (loading || didDefaultFilterRef.current) return;
+    // #1777: spring auto-default over hvis manageren selv har deep-linket/back-
+    // navigeret til en fane (?tab= i URL'en), så vi ikke overskriver det valg.
+    if (loading || didDefaultFilterRef.current || tabParam) return;
     const mySituation = auctions.some(a => {
       if (isManagerSeller(a, myTeamId)) return true; // sælger
       const leaderId = getAuctionLeaderId(a);
@@ -644,7 +659,7 @@ export default function AuctionsPage() {
     });
     didDefaultFilterRef.current = true; // kør kun denne auto-default én gang
     if (!mySituation && filter === "my-situation") setFilter("all");
-  }, [loading, auctions, myTeamId, filter]);
+  }, [loading, auctions, myTeamId, filter, tabParam]); // eslint-disable-line react-hooks/exhaustive-deps
   // Stats toggle (persisted i localStorage) — default tomt, manageren vælger selv
   const { visibleStats, toggleStat, showAll, hideAll } = useStatsToggle();
   // Bekræftelses-dialog for bud (auktionsbud, autobud-loft) — { mode, riderName, amount, onConfirm } | null

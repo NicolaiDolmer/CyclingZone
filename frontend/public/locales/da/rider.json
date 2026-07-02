@@ -53,12 +53,12 @@
     "activeAuctionBadge": "⚡ Aktiv auktion",
     "highestBidLabel": "Højeste bud: {amount} CZ$",
     "valueLabel": "Værdi CZ$",
+    "overall": "Rating",
     "contractSalary": "Løn CZ$",
     "contractLength": "{count, plural, one {1 sæson} other {# sæsoner}}",
     "contractExpires": "Udløber efter sæson {season}",
     "noContract": "Free agent (ingen kontrakt)",
     "estSalary": "Anslået løn CZ$",
-    "bestStat": "Bedste: {label} ({value})",
     "typeDefault": "Allround",
     "newValueBeta": "Ny værdi (beta): {amount} CZ$",
     "newValueBetaTooltip": "Forhåndsvisning af det kommende evne-baserede værdisystem. Bruges endnu ikke til køb, salg eller løn."
@@ -79,7 +79,12 @@
   "stats": {
     "potentialRow": "Potentiale",
     "abilitiesPending": "Evner endnu ikke beregnet",
-    "loadingDevelopment": "Indlæser udvikling..."
+    "loadingDevelopment": "Indlæser udvikling...",
+    "categories": {
+      "physical": "Fysiske",
+      "mental": "Mentale",
+      "technical": "Tekniske"
+    }
   },
   "racePreview": {
     "title": "Cycling Zones",
@@ -203,9 +208,11 @@
   },
   "development": {
     "progressHint": "Fremskridt mod næste point",
-    "empty": "Ingen historik endnu. Data akkumuleres fra næste ugentlige sync",
-    "statsTitle": "Stats-udvikling",
-    "statsSubtitle": "Vælg evne og se ændringen over tid",
+    "empty": "Ingen historik endnu. Ratings bygges op efterhånden som rytteren træner og sæsoner går.",
+    "statsTitle": "Ryttertype-rating over tid",
+    "statsSubtitle": "Hvordan rytterens overall-rating udvikler sig i hver ryttertype. Klik en type for at slå den til/fra.",
+    "filterAll": "Alle typer",
+    "filterNone": "Ingen",
     "recentTitle": "Seneste datapunkter",
     "table": {
       "date": "Dato"
@@ -367,6 +374,42 @@
       "priceUpdated": "✅ Pris opdateret",
       "removed": "✅ Fjernet fra transferlisten",
       "errorPrefix": "❌"
+    }
+  },
+  "manage": {
+    "extend": {
+      "button": "Forlæng kontrakt",
+      "description": "Forlæng rytterens kontrakt med én sæson til en genforhandlet løn.",
+      "currentSalary": "Nuværende løn",
+      "newSalary": "Ny løn",
+      "newContract": "Ny kontrakt",
+      "newContractValue": "Til og med sæson {season}",
+      "confirm": "Bekræft forlængelse",
+      "success": "Kontrakt forlænget.",
+      "errorPrefix": "Kunne ikke forlænge:"
+    },
+    "release": {
+      "button": "Fyr rytter",
+      "description": "Afslut rytterens kontrakt. Rytteren forlader din trup og bliver fri agent.",
+      "fee": "Buyout-gebyr",
+      "balance": "Din saldo",
+      "feeHint": "Buyout-gebyret er halvdelen af den resterende løn på kontrakten.",
+      "freeHint": "Rytteren er uden kontrakt, så der er intet buyout-gebyr.",
+      "cannotAfford": "Du har ikke råd til buyout-gebyret.",
+      "confirm": "Fyr rytter",
+      "cancel": "Annullér",
+      "success": "Rytter fyret.",
+      "errorPrefix": "Kunne ikke fyre:"
+    },
+    "promote": {
+      "button": "Ryk op i senior-truppen",
+      "success": "Rytter rykket op i din senior-trup.",
+      "errorPrefix": "Kunne ikke rykke op:"
+    },
+    "demote": {
+      "button": "Flyt til akademi",
+      "success": "Rytter flyttet til dit akademi.",
+      "errorPrefix": "Kunne ikke flytte rytter:"
     }
   },
   "swapOffer": {

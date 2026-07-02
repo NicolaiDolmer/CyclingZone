@@ -333,7 +333,10 @@ export default function FinancePage() {
   );
 
   const activeLoans = (loanData?.loans || []).filter(l => l.status === "active");
-  const configs = (loanData?.configs || []).filter(c => c.loan_type !== "emergency");
+  // #1948: vis kun spiller-takbare lån (kort/langt). 'reset' (rentefrit, admin-givet til
+  // minus-spillere efter præmie-fjernelse) og 'emergency' (auto-nødlån) må aldrig kunne
+  // vælges eller optages af spillere — backend afviser dem også, dette skjuler dem i UI.
+  const configs = (loanData?.configs || []).filter(c => c.loan_type === "short" || c.loan_type === "long");
   const selectedConfig = configs.find(c => c.loan_type === loanType);
   const loanAmountNum = parseInt(loanAmount) || 0;
   // #1012: max_principal/max_fee/max_total_debt kommer fra backend (samme formel
@@ -656,8 +659,8 @@ export default function FinancePage() {
             )}
           </Card>
 
-          {/* Lånebetingelser */}
-          {loanData?.configs?.length > 0 && (
+          {/* Lånebetingelser — kun spiller-takbare typer (kort/langt), jf. #1948 */}
+          {configs.length > 0 && (
             <Card className="p-5 mb-4">
               <h2 className="text-cz-1 font-semibold text-sm mb-3">
                 {t("loans.terms.title", { division: team?.division })}
@@ -674,7 +677,7 @@ export default function FinancePage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {loanData.configs.map(c => (
+                    {configs.map(c => (
                       <tr key={`${c.division}-${c.loan_type}`} className="border-b border-cz-border">
                         <td className="px-3 py-2 text-cz-1 font-medium">{loanLabel(c.loan_type)}</td>
                         <td className="px-3 py-2 text-end text-cz-2">{(c.origination_fee_pct * 100).toFixed(0)}%</td>

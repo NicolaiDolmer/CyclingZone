@@ -67,7 +67,12 @@ export default function WatchlistPage() {
       .order("created_at", { ascending: false });
     // Evnerne joines via rider_derived_abilities + flades op på rytter-objektet
     // (rider.climbing osv.) så render + klient-sort virker uændret (#1529).
-    const list = (data || []).map(e => ({ ...e, rider: flattenAbilities(e.rider) }));
+    // #1918: et orphaned rider_id-join (slettet rytter) giver rider=null. Frasortér
+    // ved kilden, så hverken filter-map (l.~138), render-loopet eller sort kan
+    // deref'e e.rider.id på null og vælte hele siden.
+    const list = (data || [])
+      .filter(e => e.rider)
+      .map(e => ({ ...e, rider: flattenAbilities(e.rider) }));
     setEntries(list);
 
     // #251: markér ryttere der allerede er i en aktiv auktion, så vi kan vise

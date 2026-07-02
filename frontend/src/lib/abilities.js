@@ -3,20 +3,34 @@
 // (riders.stat_*) bliver i datamodellen som derive-kilde (backend/lib/abilityDerivation.js);
 // kun VISNINGEN bruger disse evner. Ren .js uden JSX-imports, så `node --test` kan loade.
 //
-// Rækkefølge = RiderStatsPage DERIVED_ABILITIES (fysiske → tekniske → taktisk/mentale).
-// `prolog` er udeladt (merget i time_trial per abilityDerivation). Korte labels =
-// kolonne-overskrifter (oversættes ikke, jf. #487); fulde navne via i18n
-// rider.json racePreview.derived.<key>.
+// Rækkefølge = ejer-bekræftet kategori-gruppering (Physical → Mental → Technical),
+// jf. EPIC #2000 slice 1. `prolog` er udeladt (merget i time_trial per
+// abilityDerivation). Korte labels = kolonne-overskrifter (oversættes ikke, jf.
+// #487); fulde navne via i18n rider.json racePreview.derived.<key>.
 
-export const ABILITY_KEYS = [
-  // Fysiske
-  "climbing", "time_trial", "flat", "tempo", "sprint", "acceleration",
-  "punch", "endurance", "recovery", "durability",
-  // Tekniske
-  "descending", "cobblestone", "positioning",
-  // Taktisk/mentale
-  "aggression", "tactics",
+// Kategori-gruppering — ÉN kilde til sandhed for grupperet visning (RiderStatsPage).
+// Rækkefølgen af grupperne OG nøglerne i hver gruppe er ejer-bekræftet (#2000).
+export const ABILITY_CATEGORIES = [
+  {
+    key: "physical",
+    keys: [
+      "climbing", "tempo", "punch", "sprint", "acceleration",
+      "flat", "time_trial", "endurance", "durability", "recovery",
+    ],
+  },
+  {
+    key: "mental",
+    keys: ["aggression", "tactics"],
+  },
+  {
+    key: "technical",
+    keys: ["descending", "cobblestone", "positioning"],
+  },
 ];
+
+// Flad liste af alle 15 evne-keys i kategori-rækkefølge. Afledt af
+// ABILITY_CATEGORIES så de to aldrig kan divergere.
+export const ABILITY_KEYS = ABILITY_CATEGORIES.flatMap((c) => c.keys);
 
 // Korte, distinkte kolonne-labels (2-3 tegn) — som PCM-labels (FL/BJ/...) var.
 export const ABILITY_SHORT = {
@@ -24,6 +38,14 @@ export const ABILITY_SHORT = {
   sprint: "SPR", acceleration: "ACC", punch: "PCH", endurance: "END",
   recovery: "REC", durability: "DUR", descending: "DSC", cobblestone: "COB",
   positioning: "POS", aggression: "AGR", tactics: "TAC",
+};
+
+// Glyf-ikoner pr. evne — genbruger samme visuelle sprog som de traditionelle
+// skills. Vises foran labelen på RiderStatsPage's grupperede evne-visning.
+export const ABILITY_ICONS = {
+  climbing: "▲", tempo: "◈", punch: "✦", sprint: "↯", acceleration: "▷",
+  flat: "▬", time_trial: "◴", endurance: "◎", durability: "⬣", recovery: "↺",
+  aggression: "➹", tactics: "⌖", descending: "▽", cobblestone: "⬡", positioning: "⊹",
 };
 
 // {key,label}-form til tabeller der itererer STATS = [{key,label}].
@@ -55,4 +77,22 @@ export function flattenAbilities(rider) {
   out.abilities = { ...(rider.abilities || {}), ...abil };
   delete out.rider_derived_abilities;
   return out;
+}
+
+// Nøglen på rytterens højest-vurderede evne (#2000). Bruges som type-label-fallback
+// på rytterprofilen når riders.primary_type mangler — erstatter den tidligere
+// PCM-stat_*-afledning. `abilities` er en rider_derived_abilities-række (eller det
+// fladtgjorte rider-objekt). Itererer ABILITY_KEYS i SSOT-rækkefølge, så uafgjorte
+// maxima bryder mod den FØRSTE evne (samme tie-break som den gamle indexOf-logik).
+// Returnerer null hvis ingen evne-række/numeriske værdier findes → kalderen falder
+// tilbage til sin egen default-label.
+export function topAbilityKey(abilities) {
+  if (!abilities) return null;
+  let bestKey = null;
+  let bestVal = -Infinity;
+  for (const key of ABILITY_KEYS) {
+    const v = abilities[key];
+    if (typeof v === "number" && v > bestVal) { bestVal = v; bestKey = key; }
+  }
+  return bestKey;
 }

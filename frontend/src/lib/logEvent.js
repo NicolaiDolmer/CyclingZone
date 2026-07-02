@@ -1,5 +1,7 @@
 import { supabase } from "./supabase";
+import { getAuthedUser } from "./getAuthedUser.js";
 import { isSquadDrafted } from "./teamDrafted.js";
+import { getSessionId } from "./sessionId.js";
 
 // Player-events baseline (#137). Fire-and-forget instrumentation der respekterer
 // analytics-consent (samme gate som Clarity). Skriver til public.player_events
@@ -39,7 +41,7 @@ function hasAnalyticsConsent() {
 async function ensureIdentity() {
   installAuthListener();
   if (cachedUserId) return { userId: cachedUserId, teamId: cachedTeamId };
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = await getAuthedUser();
   if (!user) return null;
   cachedUserId = user.id;
   const { data: team } = await supabase
@@ -122,6 +124,18 @@ export function logEvent(name, data = {}) {
   _logEvent(name, data).catch(() => {
     // Instrumentation must never break the user flow.
   });
+}
+
+// session_started fyrede før ved HVER getSession() + HVER SIGNED_IN → 25.280
+// events fra 50 brugere (#2040). Dedup pr. ægte session-id (30-min vindue) så
+// reloads/auth-re-init/token-refresh ikke fragmenterer én session i tusindvis.
+let lastSessionStartId = null;
+export function logSessionStart() {
+  let sid;
+  try { sid = getSessionId(); } catch { sid = null; }
+  if (sid && sid === lastSessionStartId) return;
+  lastSessionStartId = sid;
+  logEvent("session_started", sid ? { sid } : {});
 }
 
 // --- Funnel "first"-events (#1583) ---------------------------------------

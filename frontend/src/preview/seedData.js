@@ -221,6 +221,12 @@ export const SEED_RACE_RESULTS = [
   { id: "res-d2-s2-1", race_id: "race-done-2", stage_number: 2, result_type: "stage", rank: 1, rider_id: RIDERS[1].id, rider_name: "Mikkel Hansen", team_id: RIVAL_TEAM.id, team_name: RIVAL_TEAM.name, finish_time: "+0:00", points_earned: 25, prize_money: 80000, in_breakaway: false, breakaway_caught: false, rider: { id: RIDERS[1].id, firstname: "Mikkel", lastname: "Hansen", nationality_code: "dk", team: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name } } },
   { id: "res-d2-gc-1", race_id: "race-done-2", stage_number: 2, result_type: "gc", rank: 1, rider_id: RIDERS[1].id, rider_name: "Mikkel Hansen", team_id: RIVAL_TEAM.id, team_name: RIVAL_TEAM.name, finish_time: "+0:00", points_earned: 50, prize_money: 120000, in_breakaway: false, breakaway_caught: false, rider: { id: RIDERS[1].id, firstname: "Mikkel", lastname: "Hansen", nationality_code: "dk", team: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name } } },
   { id: "res-d2-gc-2", race_id: "race-done-2", stage_number: 2, result_type: "gc", rank: 2, rider_id: RIDERS[0].id, rider_name: "Ada Pedersen", team_id: TEST_TEAM.id, team_name: TEST_TEAM.name, finish_time: "+0:22", points_earned: 40, prize_money: 90000, in_breakaway: false, breakaway_caught: false, rider: { id: RIDERS[0].id, firstname: "Ada", lastname: "Pedersen", nationality_code: "dk", team: { id: TEST_TEAM.id, name: TEST_TEAM.name } } },
+  // #1485 Holdklassement-rækker — faithful ift. prod: rider_id/rider_name/team_name=null,
+  // finish_time=null; KUN team_id + det direkte team:team_id-join driver visningen.
+  { id: "res-d1-team-1", race_id: "race-done-1", stage_number: 1, result_type: "team", rank: 1, rider_id: null, rider_name: null, team_id: TEST_TEAM.id, team_name: null, finish_time: null, points_earned: 20, prize_money: 40000, in_breakaway: false, breakaway_caught: false, rider: null, team: { id: TEST_TEAM.id, name: TEST_TEAM.name } },
+  { id: "res-d1-team-2", race_id: "race-done-1", stage_number: 1, result_type: "team", rank: 2, rider_id: null, rider_name: null, team_id: RIVAL_TEAM.id, team_name: null, finish_time: null, points_earned: 15, prize_money: 24000, in_breakaway: false, breakaway_caught: false, rider: null, team: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name } },
+  { id: "res-d2-team-1", race_id: "race-done-2", stage_number: 2, result_type: "team", rank: 1, rider_id: null, rider_name: null, team_id: RIVAL_TEAM.id, team_name: null, finish_time: null, points_earned: 20, prize_money: 40000, in_breakaway: false, breakaway_caught: false, rider: null, team: { id: RIVAL_TEAM.id, name: RIVAL_TEAM.name } },
+  { id: "res-d2-team-2", race_id: "race-done-2", stage_number: 2, result_type: "team", rank: 2, rider_id: null, rider_name: null, team_id: TEST_TEAM.id, team_name: null, finish_time: null, points_earned: 15, prize_money: 24000, in_breakaway: false, breakaway_caught: false, rider: null, team: { id: TEST_TEAM.id, name: TEST_TEAM.name } },
 ];
 
 // GET /api/races/distribution — board-aggregat. ≥1 tids-overlap-kolonne (begge
@@ -240,7 +246,8 @@ export const SEED_DISTRIBUTION = {
   columns: [
     {
       id: "race-up-1", name: "Tour de Preview", race_class: "TourFrance", race_type: "stage_race",
-      stages: 3, stages_completed: 0, status: "scheduled", window: { day: 12 }, bindingWindow: 12,
+      // Etapeløb gd 12-14 (bindingWindow = in-game-dag-span, samme shape som API'en).
+      stages: 3, stages_completed: 0, status: "scheduled", window: { day: 12 }, bindingWindow: { start: 12, end: 14 },
       // S5: fladt løb → jæger-chip = høj udbruds-chance.
       primaryProfileType: "flat", primaryFinaleType: null,
       size: { min: 6, max: 8 }, riders: SEED_BOARD_ROSTER,
@@ -249,9 +256,9 @@ export const SEED_DISTRIBUTION = {
       counts: { selected: 1, target: 8 },
     },
     {
-      // Tids-overlap med race-up-1 (samme bindingWindow=12) → én-rytter/ét-løb-binding.
+      // In-game-dag-overlap med race-up-1 (gd 12 ⊂ 12-14) → én-rytter/ét-løb-binding.
       id: "race-overlap-1", name: "Critérium Preview", race_class: "ProSeries", race_type: "single",
-      stages: 1, stages_completed: 0, status: "scheduled", window: { day: 12 }, bindingWindow: 12,
+      stages: 1, stages_completed: 0, status: "scheduled", window: { day: 12 }, bindingWindow: { start: 12, end: 12 },
       // S5: bjerg-løb med summit-finale → jæger-chip = lav udbruds-chance (favoritterne afgør).
       primaryProfileType: "high_mountain", primaryFinaleType: "long_climb",
       size: { min: 6, max: 7 }, riders: SEED_BOARD_ROSTER,
@@ -259,9 +266,20 @@ export const SEED_DISTRIBUTION = {
       withdrawn: false, lineup_locked: false,
       counts: { selected: 0, target: 7 },
     },
+    {
+      // Kronologi-rebuild: samme IRL-dag, men in-game-dag 15 (efter race-up-1's span) → binder
+      // IKKE race-up-1's ryttere. En rytter i Tour de Preview KAN derfor også stilles her.
+      id: "race-free-1", name: "Klassiker Preview", race_class: "ProSeries", race_type: "single",
+      stages: 1, stages_completed: 0, status: "scheduled", window: { day: 12 }, bindingWindow: { start: 15, end: 15 },
+      primaryProfileType: "cobbles", primaryFinaleType: null,
+      size: { min: 6, max: 7 }, riders: SEED_BOARD_ROSTER,
+      selection: { rider_ids: [], captain_id: null, sprint_captain_id: null, hunter_id: null, is_auto_filled: false },
+      withdrawn: false, lineup_locked: false,
+      counts: { selected: 0, target: 7 },
+    },
   ],
-  // bindingMap: rider_id → liste af race_ids den er bundet til (samme-dag-overlap).
-  bindingMap: { [RIDERS[0].id]: ["race-up-1", "race-overlap-1"] },
+  // bindingMap (server): rider_id → kolonne-løb rytteren er i som overlapper et andet (game-dag).
+  bindingMap: { [RIDERS[0].id]: ["race-up-1"] },
   timeline: {
     totalDays: 28,
     currentDay: 12,
@@ -509,5 +527,52 @@ export const SEED_ACADEMY = {
       birthdate: "2009-11-03",
       market_value: 72000,
     },
+  ],
+};
+
+// Race-kalender-seed (#in-game-race-calendar). Matcher GET /api/races/calendar's
+// response-shape: { season, ownPoolId, entries[], days[], divisions[] }. Datoer ligger
+// i en fast måned (juli 2026) så preview/E2E er deterministisk uafhængigt af "i dag".
+// Holdet (TEST_TEAM) er i pulje 2 (Division 2 — A) → de entries får isMine=true.
+function calEntry(o) {
+  return {
+    raceClass: "ProSeries",
+    status: "scheduled",
+    poolIndex: 0,
+    gameDayEnd: o.gameDayStart,
+    terrainStages: [o.terrain],
+    entered: !!o.isMine,
+    leaderSet: false,
+    ...o,
+  };
+}
+
+export const SEED_CALENDAR = {
+  season: { id: ACTIVE_SEASON.id, number: ACTIVE_SEASON.season_number, raceDaysTotal: 60, raceDaysCompleted: 14 },
+  ownPoolId: TEST_TEAM.league_division_id,
+  divisions: [
+    { division: 1, pools: [{ id: 1, label: "Division 1", poolIndex: 0 }] },
+    { division: 2, pools: [{ id: 2, label: "Division 2 — A", poolIndex: 0 }, { id: 3, label: "Division 2 — B", poolIndex: 1 }] },
+    { division: 3, pools: [{ id: 4, label: "Division 3 — A", poolIndex: 0 }, { id: 5, label: "Division 3 — B", poolIndex: 1 }] },
+  ],
+  days: [
+    { gameDay: 12, date: "2026-07-02" }, { gameDay: 14, date: "2026-07-04" },
+    { gameDay: 17, date: "2026-07-07" }, { gameDay: 20, date: "2026-07-10" },
+    { gameDay: 22, date: "2026-07-12" }, { gameDay: 26, date: "2026-07-16" },
+    { gameDay: 30, date: "2026-07-20" },
+  ],
+  entries: [
+    // Holdets egne løb (Division 2 — A) — fremhævet, guld-accent.
+    calEntry({ id: "cal-1", name: "Grand Prix de Namur", raceType: "single", stages: 1, division: 2, poolId: 2, poolLabel: "Division 2 — A", gameDayStart: 12, date: "2026-07-02", terrain: "sprint", isMine: true, leaderSet: true }),
+    calEntry({ id: "cal-2", name: "Tour des Hauts Plateaux", raceType: "stage_race", stages: 8, division: 2, poolId: 2, poolLabel: "Division 2 — A", gameDayStart: 14, gameDayEnd: 17, date: "2026-07-04", terrain: "mountain", terrainStages: ["mountain", "mountain", "hilly"], isMine: true, leaderSet: true, raceClass: "WorldTour" }),
+    calEntry({ id: "cal-3", name: "Giro Veneto", raceType: "single", stages: 1, division: 2, poolId: 2, poolLabel: "Division 2 — A", gameDayStart: 20, date: "2026-07-10", terrain: "hilly", isMine: true, leaderSet: false }),
+    calEntry({ id: "cal-4", name: "Klasika Bizkaia", raceType: "single", stages: 1, division: 2, poolId: 2, poolLabel: "Division 2 — A", gameDayStart: 22, date: "2026-07-12", terrain: "itt", isMine: true, leaderSet: true }),
+    calEntry({ id: "cal-5", name: "Vuelta a Burgos", raceType: "stage_race", stages: 5, division: 2, poolId: 2, poolLabel: "Division 2 — A", gameDayStart: 26, gameDayEnd: 30, date: "2026-07-16", terrain: "mountain", terrainStages: ["mountain", "mountain", "sprint", "hilly", "mountain"], isMine: true, leaderSet: false, raceClass: "ProSeries" }),
+    // Andre divisioner — dæmpet/grå.
+    calEntry({ id: "cal-6", name: "Grand Prix de Namur", raceType: "single", stages: 1, division: 1, poolId: 1, poolLabel: "Division 1", gameDayStart: 12, date: "2026-07-02", terrain: "sprint", isMine: false }),
+    calEntry({ id: "cal-7", name: "Grand Prix de Namur", raceType: "single", stages: 1, division: 3, poolId: 4, poolLabel: "Division 3 — A", gameDayStart: 12, date: "2026-07-02", terrain: "sprint", isMine: false }),
+    calEntry({ id: "cal-8", name: "Tour des Hauts Plateaux", raceType: "stage_race", stages: 8, division: 1, poolId: 1, poolLabel: "Division 1", gameDayStart: 14, gameDayEnd: 17, date: "2026-07-04", terrain: "mountain", isMine: false }),
+    calEntry({ id: "cal-9", name: "Giro Veneto", raceType: "single", stages: 1, division: 3, poolId: 5, poolLabel: "Division 3 — B", gameDayStart: 20, date: "2026-07-10", terrain: "hilly", isMine: false }),
+    calEntry({ id: "cal-10", name: "Klasika Bizkaia", raceType: "single", stages: 1, division: 1, poolId: 1, poolLabel: "Division 1", gameDayStart: 22, date: "2026-07-12", terrain: "itt", isMine: false }),
   ],
 };

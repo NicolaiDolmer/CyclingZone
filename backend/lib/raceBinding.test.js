@@ -71,6 +71,48 @@ test("raceBindingWindow: tom/ugyldig → null", () => {
   assert.equal(raceBindingWindow([{ scheduled_at: "not-a-date" }]), null);
 });
 
+// Kalender-rebuild (2026-06-27): binding nøgler på IN-GAME løbsdagen (game_day) når den
+// findes. Flere løb komprimeret til samme real-eftermiddag har forskellige game_day → en
+// rytter må køre flere af dem (rod-årsag-fixet). Samme game_day → binder stadig.
+test("raceBindingWindow: nøgler på game_day når den findes", () => {
+  const w = raceBindingWindow([
+    { scheduled_at: "2026-06-27T07:00:00Z", game_day: 5 },
+    { scheduled_at: "2026-06-27T10:30:00Z", game_day: 9 },
+  ]);
+  assert.equal(w.start, 5);
+  assert.equal(w.end, 9);
+});
+
+test("raceBindingWindow: samme real-dag, forskellig game_day overlapper IKKE (rod-årsag-fix)", () => {
+  const a = raceBindingWindow([{ scheduled_at: "2026-06-27T07:00:00Z", game_day: 1 }]);
+  const b = raceBindingWindow([{ scheduled_at: "2026-06-27T10:30:00Z", game_day: 2 }]);
+  assert.equal(windowsOverlap(a, b), false, "forskellige in-game-dage → rytter må køre begge");
+});
+
+test("raceBindingWindow: samme game_day binder selv ved forskellige real-tider", () => {
+  const a = raceBindingWindow([{ scheduled_at: "2026-06-27T07:00:00Z", game_day: 3 }]);
+  const b = raceBindingWindow([{ scheduled_at: "2026-06-28T21:00:00Z", game_day: 3 }]);
+  assert.equal(windowsOverlap(a, b), true, "samme in-game-dag → kun ét løb");
+});
+
+test("raceBindingWindow: fallback til CET-dag når game_day mangler (legacy rows)", () => {
+  const jun23 = raceBindingWindow([{ scheduled_at: "2026-06-23T20:00:00Z" }]);
+  const jun24 = raceBindingWindow([{ scheduled_at: "2026-06-24T20:00:00Z" }]);
+  assert.equal(windowsOverlap(jun23, jun24), false);
+  assert.equal(jun23.start, jun23.end);
+});
+
+test("raceBindingWindow: delvist-backfillet løb blander IKKE game_day + CET-ordinaler (CodeRabbit #2)", () => {
+  // Ét løb med én række MED game_day + én UDEN → må ALDRIG give et [5, ~20000]-vindue.
+  // Hele løbet falder tilbage til CET-dag (begge rækker = 27/6 → ét-dags vindue).
+  const w = raceBindingWindow([
+    { scheduled_at: "2026-06-27T07:00:00Z", game_day: 5 },
+    { scheduled_at: "2026-06-27T10:30:00Z" }, // mangler game_day
+  ]);
+  assert.equal(w.start, w.end, "ét nøgle-rum → ét-dags vindue, ikke sæson-langt");
+  assert.ok(w.end - w.start < 2, `vindue ${w.start}..${w.end} må ikke spænde sæson-langt`);
+});
+
 test("windowsOverlap: deler tidspunkt → true; adskilte → false", () => {
   const a = { start: 100, end: 200 };
   assert.equal(windowsOverlap(a, { start: 150, end: 300 }), true);  // overlap
@@ -95,7 +137,10 @@ test("findRiderBindingConflicts: intet vindue → ingen konflikter", () => {
 
 // Mock-supabase: svarer pr. tabel; ignorerer filtre (testen verificerer kombinations-
 // logikken, ikke query-filtrene). Mønster fra raceFatigue.test.js.
-function makeSupabase({ scheduleByRace = {}, teamEntries = [], withdrawnRaceIds = [] } = {}) {
+// Loaderen (#1906) henter nu riders + loan_agreements til eligibility-krydsning: default
+// returnerer den alle entry-ryttere som berettigede (team_id=teamId, ej akademi/pensioneret)
+// og ingen udlån. ghostRiderIds/loanedOutRiderIds gør specifikke ryttere ubrettigede.
+function makeSupabase({ scheduleByRace = {}, teamEntries = [], withdrawnRaceIds = [], teamId = "team-1", ghostRiderIds = [], loanedOutRiderIds = [] } = {}) {
   function from(table) {
     const f = {};
     const b = {
@@ -109,7 +154,18 @@ function makeSupabase({ scheduleByRace = {}, teamEntries = [], withdrawnRaceIds 
           if (f.race_id) data = scheduleByRace[f.race_id] || [];
           else if (f.in_race_id) data = f.in_race_id.flatMap((id) => scheduleByRace[id] || []);
         } else if (table === "race_entries") {
-          data = teamEntries;
+          // Loaderens baseQuery henter entries med team_id; stamp det så eligibility-
+          // krydsningen (entry.team_id vs rider.team_id) matcher som i prod.
+          data = teamEntries.map((e) => ({ team_id: teamId, ...e }));
+        } else if (table === "riders") {
+          // Entry-ryttere: berettigede som default; ghosts markeres off-team (team_id=null).
+          const ids = f.in_id || [];
+          data = ids.map((id) => ({
+            id, team_id: ghostRiderIds.includes(id) ? null : teamId, is_academy: false, is_retired: false,
+          }));
+        } else if (table === "loan_agreements") {
+          const ids = f.in_rider_id || [];
+          data = ids.filter((id) => loanedOutRiderIds.includes(id)).map((rider_id) => ({ rider_id, status: "active" }));
         } else if (table === "race_withdrawals") {
           data = withdrawnRaceIds.map((race_id) => ({ race_id }));
         }
@@ -163,6 +219,32 @@ test("loadTeamBindingContext: afmeldt løb udelades fra otherRaces (frigør bind
   assert.deepEqual(ctx.otherRaces, [], "afmeldt race-a binder ikke");
   assert.deepEqual(findRiderBindingConflicts({ riderIds: ["r1", "r2"], thisWindow: ctx.thisWindow, otherRaces: ctx.otherRaces }), [],
     "r1/r2 er frie til race-this efter afmelding af race-a");
+});
+
+// #1906/#1823 rod-årsag: en ghost-entry (rytter solgt/fyret efter udtagelse) eller en
+// udlånt rytter må IKKE phantom-binde. Tidligere læste loadTeamBindingContext rå entries
+// → den ægte rytter blev rapporteret bundet → PUT /selection afviste med 409.
+test("loadTeamBindingContext: ghost- og udlåns-entries phantom-binder ikke (rod-årsag)", async () => {
+  const supabase = makeSupabase({
+    scheduleByRace: {
+      "race-this": [{ race_id: "race-this", scheduled_at: "2026-06-23T10:30:00Z" }],
+      "race-a": [{ race_id: "race-a", scheduled_at: "2026-06-23T13:00:00Z" }], // samme dag → overlapper
+    },
+    teamEntries: [
+      { race_id: "race-a", rider_id: "r1" }, // gyldig
+      { race_id: "race-a", rider_id: "ghost" }, // solgt/fyret efter udtagelse
+      { race_id: "race-a", rider_id: "onloan" }, // udlånt
+    ],
+    ghostRiderIds: ["ghost"],
+    loanedOutRiderIds: ["onloan"],
+  });
+  const ctx = await loadTeamBindingContext({ supabase, race: { id: "race-this" }, teamId: "team-1" });
+  assert.equal(ctx.otherRaces.length, 1);
+  assert.deepEqual(ctx.otherRaces[0].riderIds, ["r1"], "kun den gyldige rytter binder; ghost+udlånt droppet");
+  // ghost/onloan er frie til race-this (ingen falsk 409).
+  assert.deepEqual(
+    findRiderBindingConflicts({ riderIds: ["ghost", "onloan"], thisWindow: ctx.thisWindow, otherRaces: ctx.otherRaces }),
+    [], "ghost+udlånt rytter er frie til det overlappende løb");
 });
 
 test("findManualOverlapConflicts: ingen konflikt når vinduer ikke overlapper", () => {

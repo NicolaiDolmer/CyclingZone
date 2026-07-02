@@ -4,10 +4,13 @@ import { supabase } from "../lib/supabase";
 
 const API = import.meta.env.VITE_API_URL;
 
-export default function SetupWizardModal({ onComplete }) {
+export default function SetupWizardModal({ onComplete, initialTeamName = "", initialManagerName = "" }) {
   const { t } = useTranslation("auth");
-  const [teamName, setTeamName] = useState("");
-  const [managerName, setManagerName] = useState("");
+  // #2068: præudfyldt fra signup-metadata når auto-bootstrap i Layout fejlede
+  // (fx holdnavn taget i mellemtiden) — brugeren retter kun det der gik galt,
+  // i stedet for at starte forfra med tomme felter.
+  const [teamName, setTeamName] = useState(initialTeamName);
+  const [managerName, setManagerName] = useState(initialManagerName);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 

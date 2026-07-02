@@ -14,6 +14,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { fetchAllRows } from "./supabasePagination.js";
+import { copenhagenDateString } from "./copenhagenTime.js";
 import { predictBaseValue } from "./riderValuation.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { developRiderSeason, buildCaps } from "./riderProgression.js";
@@ -213,6 +214,35 @@ export async function developRidersForSeason({
         .from("rider_development_log")
         .upsert(logRows.slice(i, i + 500), { onConflict: "rider_id,season_id", ignoreDuplicates: true });
       if (error) throw new Error(`dev-log upsert: ${error.message}`);
+    }
+  }
+
+  // #2000 Udvikling-fane: season-snapshot af evnevektoren for ALLE udviklede ryttere
+  // (dækker AI/free-agents + giver ejede ryttere et rent sæson-grænsepunkt). Best-
+  // effort: en historik-fejl må ALDRIG kaste her (season-transition er kritisk spil-
+  // state; historik er afledt visning). Idempotent via UNIQUE(rider_id,snapshot_date,source).
+  if (logRows.length) {
+    const snapshotDate = copenhagenDateString(now);
+    const historyRows = logRows.map((lr) => {
+      const abilities = {};
+      for (const k of VISIBLE_ABILITIES) abilities[k] = lr.abilities?.[k];
+      return {
+        rider_id: lr.rider_id,
+        snapshot_date: snapshotDate,
+        source: "season_transition",
+        season_number: lr.season_number,
+        abilities,
+      };
+    });
+    try {
+      for (let i = 0; i < historyRows.length; i += 500) {
+        const { error } = await supabase
+          .from("rider_derived_ability_history")
+          .upsert(historyRows.slice(i, i + 500), { onConflict: "rider_id,snapshot_date,source", ignoreDuplicates: true });
+        if (error) throw new Error(error.message);
+      }
+    } catch (histErr) {
+      console.error(`  ⚠️ ability-history snapshot (season) fejlede:`, histErr.message);
     }
   }
   await runBatched(abilityUpdates, 25, ({ id, patch }) =>

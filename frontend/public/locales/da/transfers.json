@@ -279,8 +279,29 @@
     "newest": "Nyeste først",
     "price_asc": "Pris: laveste først",
     "price_desc": "Pris: højeste først",
+    "value_desc": "Værdi: højeste først",
+    "value_asc": "Værdi: laveste først",
     "age_asc": "Alder: yngste først",
-    "age_desc": "Alder: ældste først"
+    "age_desc": "Alder: ældste først",
+    "abilityLabel": "Sortér efter evne",
+    "abilityPlaceholder": "Efter evne",
+    "abilities": {
+      "climbing": "Bjerge",
+      "tempo": "Tempo",
+      "punch": "Punch",
+      "sprint": "Sprint",
+      "acceleration": "Acceleration",
+      "flat": "Flade",
+      "time_trial": "Enkeltstart",
+      "endurance": "Udholdenhed",
+      "durability": "Robusthed",
+      "recovery": "Restitution",
+      "aggression": "Aggression",
+      "tactics": "Taktik",
+      "descending": "Nedkørsel",
+      "cobblestone": "Brosten",
+      "positioning": "Positionering"
+    }
   },
   "marketRow": {
     "nation": "Nation",

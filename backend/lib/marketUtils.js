@@ -1,4 +1,5 @@
 import { SALARY_RATE } from "./economyConstants.js";
+import { normalizeSupabaseErrorMessage } from "./supabaseErrorNormalize.js";
 
 // #838: ét fælles roster-loft for alle divisioner. Max er ensrettet til 30.
 // Roster-FLOOR fjernet 2026-06-05: ingen division kræver længere et minimum
@@ -33,7 +34,9 @@ const DEFAULT_DIVISION = 3;
 
 export function ensureNoError(error) {
   if (error) {
-    throw new Error(error.message);
+    // #2023: kog en evt. Cloudflare/HTML-fejlside ned til én kort, grupperbar
+    // linje, så en Supabase-outage ikke fylder Sentry med ulæselige issues.
+    throw new Error(normalizeSupabaseErrorMessage(error.message));
   }
 }
 

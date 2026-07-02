@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-const { notifyUser, notifyTeamOwner } = await import("./notificationService.js");
+const { notifyUser, notifyTeamOwner, emitRaceResultNotifications, RACE_RESULT_TYPE } =
+  await import("./notificationService.js");
 
 function createNotificationSupabase({
   teams = [],
@@ -156,4 +157,104 @@ test("notifyTeamOwner resolves the team owner and inserts a fresh notification",
       related_id: "auction-1",
     },
   ]);
+});
+
+// ─── #1952 · emitRaceResultNotifications ──────────────────────────────────────
+
+function makeRaceNotifyRecorder(behavior = () => ({ delivered: true })) {
+  const calls = [];
+  const notify = async (args) => {
+    calls.push(args);
+    return behavior(args);
+  };
+  return { notify, calls };
+}
+
+const RACE = { id: "race-1", name: "Clásica de Prueba" };
+
+test("emitRaceResult: notificerer DISTINCT deltagende managers (dedup'er flere ryttere pr. manager)", async () => {
+  const { notify, calls } = makeRaceNotifyRecorder();
+  // u1 har to ryttere i løbet → kun ÉN notifikation; u3=null springes over.
+  const fetchParticipatingManagers = async ({ raceId }) => {
+    assert.equal(raceId, "race-1");
+    return ["u1", "u2", "u1", null];
+  };
+
+  const stats = await emitRaceResultNotifications({
+    supabase: {},
+    race: RACE,
+    notify,
+    fetchParticipatingManagers,
+  });
+
+  assert.equal(calls.length, 2, "kun distinct user_ids notificeres");
+  assert.deepEqual(stats, { eligible: 2, delivered: 2, deduped: 0, failed: 0 });
+});
+
+test("emitRaceResult: korrekt type, related_id og locale-aware metadata-koder", async () => {
+  const { notify, calls } = makeRaceNotifyRecorder();
+
+  await emitRaceResultNotifications({
+    supabase: {},
+    race: RACE,
+    notify,
+    fetchParticipatingManagers: async () => ["u1"],
+  });
+
+  const call = calls[0];
+  assert.equal(call.type, RACE_RESULT_TYPE);
+  assert.equal(call.type, "race_result");
+  assert.equal(call.userId, "u1");
+  assert.equal(call.relatedId, "race-1", "related_id = race.id → idempotent per løb");
+  assert.equal(call.metadata.raceId, "race-1", "metadata bærer raceId til deep-link");
+  assert.equal(call.metadata.titleCode, "notif.raceResult.title");
+  assert.equal(call.metadata.messageCode, "notif.raceResult.message");
+  assert.deepEqual(call.metadata.messageParams, { race: "Clásica de Prueba" });
+  assert.ok(call.title.length > 0, "EN-first fallback-title er sat");
+  assert.match(call.message, /Clásica de Prueba/, "EN-first fallback-message indeholder løbsnavnet");
+});
+
+test("emitRaceResult: deduped tælles separat fra delivered (idempotens)", async () => {
+  const { notify } = makeRaceNotifyRecorder((args) =>
+    args.userId === "u1" ? { delivered: false, deduped: true } : { delivered: true },
+  );
+
+  const stats = await emitRaceResultNotifications({
+    supabase: {},
+    race: RACE,
+    notify,
+    fetchParticipatingManagers: async () => ["u1", "u2"],
+  });
+
+  assert.deepEqual(stats, { eligible: 2, delivered: 1, deduped: 1, failed: 0 });
+});
+
+test("emitRaceResult: en fejl pr. manager isoleres og stopper ikke resten", async () => {
+  const { notify } = makeRaceNotifyRecorder((args) => {
+    if (args.userId === "u1") throw new Error("transient insert error");
+    return { delivered: true };
+  });
+
+  const stats = await emitRaceResultNotifications({
+    supabase: {},
+    race: RACE,
+    notify,
+    fetchParticipatingManagers: async () => ["u1", "u2"],
+  });
+
+  assert.deepEqual(stats, { eligible: 2, delivered: 1, deduped: 0, failed: 1 });
+});
+
+test("emitRaceResult: manglende race.id giver nul-stats uden at hente deltagere", async () => {
+  const { notify, calls } = makeRaceNotifyRecorder();
+  let fetched = false;
+  const stats = await emitRaceResultNotifications({
+    supabase: {},
+    race: {},
+    notify,
+    fetchParticipatingManagers: async () => { fetched = true; return []; },
+  });
+  assert.equal(fetched, false, "ingen deltager-fetch uden race.id");
+  assert.equal(calls.length, 0);
+  assert.deepEqual(stats, { eligible: 0, delivered: 0, deduped: 0, failed: 0 });
 });

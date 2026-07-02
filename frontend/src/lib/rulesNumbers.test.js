@@ -31,6 +31,7 @@ import {
 } from "../../../backend/lib/economyConstants.js";
 import {
   MAX_SQUAD_SIZE,
+  MIN_RIDERS_FOR_RACE,
   TRANSFER_WINDOW_SOFT_CAP_BUFFER,
 } from "../../../backend/lib/marketUtils.js";
 import {
@@ -53,6 +54,11 @@ test("squad numbers match backend constants", () => {
   assert.equal(RULES_NUMBERS.windowBuffer, TRANSFER_WINDOW_SOFT_CAP_BUFFER);
   assert.equal(RULES_NUMBERS.squadFine, SQUAD_FINE_AMOUNT);
   assert.equal(RULES_NUMBERS.squadPenaltyPoints, SQUAD_PENALTY_POINTS);
+  // starterSquadAllocator.STARTER_SQUAD.TOTAL_SIZE = MIN_RIDERS_FOR_RACE + TAIL_SIZE(4).
+  // That module pulls in supabase/generator deps that don't load under a frontend
+  // node --test, so we mirror the +4 tail here (same approach as DIVISION_BONUSES
+  // below). If TAIL_SIZE changes in starterSquadAllocator.js, update both.
+  assert.equal(RULES_NUMBERS.initialSquadSize, MIN_RIDERS_FOR_RACE + 4);
 });
 
 test("economy numbers match backend constants", () => {

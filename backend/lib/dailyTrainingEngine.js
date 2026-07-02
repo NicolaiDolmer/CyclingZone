@@ -79,7 +79,7 @@ export async function runTeamTrainingDay({
 
   // ── Phase 1: Loads + ren beregning (ingen writes) ────────────────────────────
   // Ved fejl her slettes reservationen, så holdet kan retrye samme dag.
-  let abilityUpdates, conditionUpserts, reportRiders;
+  let abilityUpdates, conditionUpserts, reportRiders, historyRows;
   try {
   // ── 2) Load riders (ikke-pensionerede, dette hold) ──────────────────────────
   const { data: riders, error: ridersError } = await supabase
@@ -125,6 +125,7 @@ export async function runTeamTrainingDay({
   abilityUpdates = []; // { riderId, patch }
   conditionUpserts = []; // { rider_id, form, fatigue, injured_until, injury_cause, updated_at }
   reportRiders = [];
+  historyRows = []; // { rider_id, snapshot_date, source, season_number, abilities } — #2000 Udvikling-fane
 
   for (const rider of riders) {
     const abRow = abilityByRider.get(rider.id);
@@ -228,6 +229,22 @@ export async function runTeamTrainingDay({
       abilityUpdates.push({ riderId: rider.id, patch: abilityPatch });
     }
 
+    // #2000 Udvikling-fane: snapshot den fulde post-tick evnevektor de dage rytteren
+    // FAKTISK fik en evne-gevinst (mindst én VISIBLE_ABILITIES-nøgle i patchen — ikke
+    // bare progress/caps). Flade dage springes over; Recharts connectNulls + season-/
+    // baseline-punkter holder kurven sammenhængende. Persisteres best-effort i Phase 2.
+    if (tickResult && VISIBLE_ABILITIES.some((k) => k in abilityPatch)) {
+      const snapshot = {};
+      for (const k of VISIBLE_ABILITIES) snapshot[k] = tickResult.abilities[k];
+      historyRows.push({
+        rider_id: rider.id,
+        snapshot_date: tickDate,
+        source: "daily_training",
+        season_number: seasonNumber,
+        abilities: snapshot,
+      });
+    }
+
     // Gennembruds-detalje (#1305 polish): faktisk tal-spring pr. gevinst, så
     // rapporten kan vise "71 → 72" frem for flad "+1". from = pre-tick, to = post-tick.
     const gainsDetail = {};
@@ -291,6 +308,22 @@ export async function runTeamTrainingDay({
       .then(({ error }) => {
         if (error) throw new Error(`abilities update ${riderId}: ${error.message}`);
       }));
+
+  // #2000 Udvikling-fane: best-effort historik-snapshot EFTER abilities er persisteret.
+  // En fejl her må ALDRIG kaste/rulle træningsdagen tilbage (afledt visning, ikke
+  // spil-state) → fang + log. Idempotent via UNIQUE(rider_id,snapshot_date,source).
+  if (historyRows.length > 0) {
+    try {
+      for (let i = 0; i < historyRows.length; i += 500) {
+        const { error } = await supabase
+          .from("rider_derived_ability_history")
+          .upsert(historyRows.slice(i, i + 500), { onConflict: "rider_id,snapshot_date,source", ignoreDuplicates: true });
+        if (error) throw new Error(error.message);
+      }
+    } catch (histErr) {
+      console.error(`  ⚠️ ability-history snapshot (daily) fejlede for hold ${teamId}:`, histErr.message);
+    }
+  }
 
   // Condition upserts.
   if (conditionUpserts.length) {

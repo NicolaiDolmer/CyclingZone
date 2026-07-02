@@ -219,9 +219,18 @@
     },
     "saving": "Gemmer…",
     "choose": "Vælg dette DNA",
+    "switch": "Skift til dette DNA",
+    "current": "Nuværende",
     "badge": {
       "label": "Klubbens DNA",
       "viewHint": "Se klubbens DNA"
+    },
+    "rechoose": {
+      "hint": "Du kan stadig ændre dit klub-DNA indtil din første sæson slutter. Derefter er det låst.",
+      "toggle": "Skift klub-DNA",
+      "sectionLabel": "Klubbens DNA",
+      "heading": "Skift dit klub-DNA",
+      "intro": "Vælg en anden retning mens du stadig er i din første sæson. Et skift gentildeler dine bestyrelsesmedlemmer og målvægtning."
     },
     "locked": {
       "heading": "Låst for sæsonen",
@@ -291,6 +300,11 @@
     "starProfileUnknown": "Ukendt",
     "starProfileNone": "Ingen klare profiler endnu",
     "starProfileSub": "{count, plural, one {1 profilrytter} other {# profilryttere}}",
+    "starRidersHeading": "Profilryttere",
+    "starRidersEmpty": "Ingen rytter er endnu profileret nok til at bestyrelsen læser ham som en stjerne.",
+    "starRidersExplainer": "Bestyrelsen læser disse ryttere som dine stjerner: hver kombinerer høj popularitet med UCI-point over stjernetærsklen. Popularitet vejer tungere end resultater, så en velkendt rytter kan være en stjerne selv uden store pointhøst.",
+    "starRiderScore": "Score {score}",
+    "starRiderUnnamed": "Unavngiven rytter",
     "dnaRelation": "Dette afspejler din nuværende trup, ikke dit valgte klub-DNA ({dna}). Bestyrelsen læser de ryttere du har nu; DNA'et former de langsigtede mål du forhandler.",
     "dnaRelationNoDna": "Dette afspejler din nuværende trup. Bestyrelsen læser de ryttere du har nu."
   },

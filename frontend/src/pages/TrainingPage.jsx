@@ -12,7 +12,7 @@ import RiderLink from "../components/RiderLink.jsx";
 import RiderTypeBadge from "../components/rider/RiderTypeBadge.jsx";
 import { useTraining } from "../lib/useTraining.js";
 import { useTrainingHistory } from "../lib/useTrainingHistory.js";
-import { TRAINING_FOCUS_KEYS, TRAINING_INTENSITIES, injuryDaysLeft } from "../lib/training.js";
+import { TRAINING_FOCUS_KEYS, TRAINING_FOCUS_ABILITIES, TRAINING_INTENSITIES, injuryDaysLeft } from "../lib/training.js";
 import { groupRidersByType, UNTYPED_KEY } from "../lib/trainingRoster.js";
 import { focusProgress, daySummary, breakthroughJumps, isBreakthrough, NEAR_BREAKTHROUGH } from "../lib/trainingReport.js";
 import TrainingHistory from "../components/training/TrainingHistory.jsx";
@@ -358,6 +358,29 @@ export default function TrainingPage() {
         <p className="text-sm text-cz-3 leading-relaxed">{t("recoveryNote")}</p>
       </div>
 
+      {/* Fokus-guide (#1908) — hvad træner hvert fokus. Svarer den gentagne spiller-
+          forvirring ("Teknik = brosten? Aero = nedkørsel?"). Bygges fra den delte
+          TRAINING_FOCUS_ABILITIES + eksisterende i18n, så det aldrig driver fra motoren. */}
+      <details className="bg-cz-subtle border border-cz-border rounded-cz px-4 py-3">
+        <summary className="text-xs font-semibold uppercase tracking-wide text-cz-2 cursor-pointer select-none">
+          {t("focusGuideTitle")}
+        </summary>
+        <p className="text-sm text-cz-3 leading-relaxed mt-2">{t("focusGuideIntro")}</p>
+        <ul className="mt-2 space-y-1">
+          {TRAINING_FOCUS_KEYS.map((k) => (
+            <li key={k} className="text-sm text-cz-2">
+              <span className="font-medium text-cz-1">{tRider(`training.focus_${k}`)}:</span>{" "}
+              <span className="text-cz-3">
+                {(TRAINING_FOCUS_ABILITIES[k] ?? [])
+                  .map((a) => tRider(`racePreview.derived.${a}`))
+                  .join(" · ")}
+              </span>
+            </li>
+          ))}
+        </ul>
+        <p className="text-xs text-cz-3 leading-relaxed mt-2">{t("focusGuideIntensity")}</p>
+      </details>
+
       {/* Roster-værktøjslinje: gruppér-toggle (#1480) */}
       {!isLoading && riders.length > 0 && (
         <div className="flex flex-wrap items-center justify-end gap-3">
@@ -588,7 +611,7 @@ export default function TrainingPage() {
                       <td className="px-4 py-2.5">
                         <FocusProgress
                           info={prog}
-                          emptyLabel={t("noFocus")}
+                          emptyLabel={row.intensity === "rest" ? t("restDay") : t("noFocus")}
                           tRider={tRider}
                           toGoLabel={(o) => t("toGo", o)}
                         />

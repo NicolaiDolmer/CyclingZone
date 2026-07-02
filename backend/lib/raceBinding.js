@@ -3,6 +3,7 @@
 // Et etapeløb binder fra første til sidste etape (hele tidsvinduet).
 
 import { copenhagenDateString } from "./copenhagenTime.js";
+import { loadEligibleEntries } from "./raceEntriesLoader.js";
 
 const DAY_MS = 86_400_000;
 
@@ -31,20 +32,33 @@ function cetDayOrdinal(scheduledAt) {
   return Date.parse(`${dayStr}T00:00:00Z`) / DAY_MS;
 }
 
-// Binding-vindue (#1823): en rytter kan kun køre ét løb pr. CET-KALENDERDAG
-// (design §2/§3 — "hver division kører typisk 2 løb samme dag … én rytter ét løb").
-// Returnerer { start, end } i CET-dag-ordinaler (heltal). Et endagsløb optager hele
-// sin danske dag (start===end); et etapeløb optager fra første til sidste etapes
-// danske dag. To løb konflikter iff dag-spans overlapper (windowsOverlap er unit-
-// agnostisk). Erstatter raceTimeWindow PRÆCIS hvor binding afgøres — instant-vinduer
-// fik to samme-dag-løb til ikke at overlappe → dobbeltbooking. Tom/ugyldig → null.
+// Binding-nøgle pr. schedule-row i ÉT valgt nøgle-rum: in-game-dagen (game_day) når hele
+// løbet er backfillet, ellers CET-kalenderdag-ordinalen af scheduled_at (legacy). `useGameDay`
+// vælges ÉN gang pr. løb (se raceBindingWindow) — vi blander ALDRIG de to rum i samme løb.
+// Rod-årsag for kalender-rebuilden (2026-06-27): binding MÅ nøgle på in-game-dagen, ikke på
+// det IRL-tidspunkt simuleringen tilfældigvis kører — flere løb komprimeret til samme real-
+// eftermiddag er forskellige in-game-dage, så en rytter må gerne køre flere af dem.
+function bindingDayKey(row, useGameDay) {
+  return useGameDay ? row.game_day : cetDayOrdinal(row?.scheduled_at);
+}
+
+// Binding-vindue: en rytter kan kun køre ét løb pr. IN-GAME løbsdag (#1823 + kalender-
+// rebuild). Returnerer { start, end } i in-game-dag-nøgler (heltal). Et endagsløb optager
+// én in-game-dag (start===end); et etapeløb fra første til sidste etapes in-game-dag. To
+// FORSKELLIGE løb konflikter iff in-game-dag-spans overlapper (windowsOverlap er unit-
+// agnostisk). Et løbs egne etaper binder aldrig mod hinanden (samme race_id). Tom/ugyldig → null.
+//
+// ÉT nøgle-rum pr. løb: game_day kun hvis ALLE rækker har den (ellers ville et delvist-
+// backfillet løb blande relative game_day-værdier (fx 5) med absolutte CET-ordinaler (~20k)
+// → Math.min/max blæser det op til et sæson-langt vindue → falsk binding).
 export function raceBindingWindow(scheduleRows) {
   if (!scheduleRows?.length) return null;
-  const ordinals = scheduleRows
-    .map((r) => cetDayOrdinal(r.scheduled_at))
+  const useGameDay = scheduleRows.every((row) => Number.isFinite(row?.game_day));
+  const keys = scheduleRows
+    .map((row) => bindingDayKey(row, useGameDay))
     .filter((o) => Number.isFinite(o));
-  if (!ordinals.length) return null;
-  return { start: Math.min(...ordinals), end: Math.max(...ordinals) };
+  if (!keys.length) return null;
+  return { start: Math.min(...keys), end: Math.max(...keys) };
 }
 
 // To vinduer overlapper hvis de deler mindst ét tidspunkt (inklusiv ender —
@@ -113,7 +127,7 @@ export function teamInRacePool({ teamDivisionId, racePoolId }) {
 // afgøre om en udtagelse dobbeltbooker en rytter. Tynd I/O — al logik er pure ovenfor.
 export async function loadTeamBindingContext({ supabase, race, teamId }) {
   const { data: thisSched, error: e1 } = await supabase
-    .from("race_stage_schedule").select("race_id, scheduled_at").eq("race_id", race.id);
+    .from("race_stage_schedule").select("race_id, scheduled_at, game_day").eq("race_id", race.id);
   if (e1) throw new Error(`race_stage_schedule (this): ${e1.message}`);
   const thisWindow = raceBindingWindow(thisSched);
 
@@ -125,9 +139,16 @@ export async function loadTeamBindingContext({ supabase, race, teamId }) {
   if (eW) throw new Error(`race_withdrawals (binding): ${eW.message}`);
   const withdrawn = new Set((wRows || []).map((w) => w.race_id));
 
-  // Holdets entries i ANDRE løb end dette (afmeldte udeladt).
-  const { data: entries, error: e2 } = await supabase
-    .from("race_entries").select("race_id, rider_id").eq("team_id", teamId).neq("race_id", race.id);
+  // Holdets entries i ANDRE løb end dette (afmeldte udeladt). #1906/#1823 rod-årsag:
+  // kryds gennem den delte eligibility-loader, så en ghost/udlånt rytter (solgt/fyret/
+  // akademi/pensioneret/udlånt EFTER udtagelse) IKKE phantom-binder en ægte rytter og
+  // får PUT /selection til at afvise med 409 selection_rider_bound. team_id tages med så
+  // loaderen kan krydse entry'ens hold mod rytterens nuværende hold.
+  const { data: entries, error: e2 } = await loadEligibleEntries({
+    supabase,
+    baseQuery: () => supabase
+      .from("race_entries").select("race_id, rider_id, team_id").eq("team_id", teamId).neq("race_id", race.id),
+  });
   if (e2) throw new Error(`race_entries (binding): ${e2.message}`);
 
   const ridersByRace = new Map();
@@ -140,7 +161,7 @@ export async function loadTeamBindingContext({ supabase, race, teamId }) {
   if (!otherRaceIds.length) return { thisWindow, otherRaces: [] };
 
   const { data: scheds, error: e3 } = await supabase
-    .from("race_stage_schedule").select("race_id, scheduled_at").in("race_id", otherRaceIds);
+    .from("race_stage_schedule").select("race_id, scheduled_at, game_day").in("race_id", otherRaceIds);
   if (e3) throw new Error(`race_stage_schedule (others): ${e3.message}`);
 
   const schedByRace = new Map();

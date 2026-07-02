@@ -6,52 +6,73 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import AddRiderPopover from "./AddRiderPopover.jsx";
 import { LockIcon } from "../ui";
+import { encodeDrag } from "../../lib/raceHubDnd.js";
+import { canAddRiderToColumn } from "../../lib/raceHubLogic.js";
 
-export default function AvailableRidersPool({ roster, columns, bindingMap, onAddRiderToRace, onRegenerate, busy }) {
+export default function AvailableRidersPool({ roster, columns, bindingMap, onAddRiderToRace, onRegenerate, busy, onDropRider }) {
   const { t } = useTranslation("races");
   const [openRiderId, setOpenRiderId] = useState(null);
-  // Låst i puljen = udtaget til et af dagens løb (committed → bundet væk fra de øvrige).
-  // Navngiv bindingen (#1823 WC): hvilket løb kører rytteren? (første kolonne han er i).
-  // Rod A (#1823): afmeldte kolonner låser IKKE — rytterne er frie til de øvrige løb.
+  const [dragOver, setDragOver] = useState(false); // #1925: pulje-drop-zone (fjern rytter ved drop)
+  // Hvilket løb kører rytteren (til lås-titlen)? Første ikke-afmeldte kolonne han er i.
+  // Rod A (#1823): afmeldte kolonner låser IKKE. Kronologi-rebuild: en rytter er kun LÅST
+  // i puljen hvis han ikke kan tilføjes NOGEN kolonne — dvs. game-dag-bundet i alle dagens
+  // løb. Er der en game-dag-fri kolonne (samme IRL-dag, anden in-game-dag) er chippen aktiv.
   const raceByRider = new Map();
   for (const c of columns) {
     if (c.withdrawn) continue;
     for (const id of c.selection?.rider_ids || []) if (!raceByRider.has(id)) raceByRider.set(id, c.name);
   }
-  const lockedIds = new Set(raceByRider.keys());
+  const isLocked = (riderId) => !columns.some((c) => canAddRiderToColumn({ column: c, bindingMap, riderId }));
   return (
     <div className="border border-cz-border rounded-cz bg-cz-subtle">
       <div className="px-3 py-2 border-b border-cz-border flex items-center justify-between gap-2">
         <span className="text-[11px] uppercase tracking-wide text-cz-2">{t("racehub.pool.title", { count: roster.length })}</span>
+        {/* #1919: "Auto-udfyld"-labelen var en død <span> (Clarity dead-clicks) — den er nu
+            selve den primære knap (udfyld manglende), så begge handlinger er ægte knapper. */}
         <span className="flex items-center gap-1.5">
-          <span className="text-[10px] uppercase tracking-wide text-cz-3">{t("racehub.pool.autofill")}</span>
           <button type="button" onClick={() => onRegenerate("missing")} disabled={busy}
-            className="text-xs text-cz-accent-t hover:underline disabled:opacity-50">{t("racehub.pool.fillMissing")}</button>
+            className="text-[11px] uppercase tracking-wide font-medium text-cz-accent-t hover:underline disabled:opacity-50">{t("racehub.pool.autofill")}</button>
           <span className="text-cz-border" aria-hidden="true">·</span>
           <button type="button" onClick={() => onRegenerate("all")} disabled={busy}
             className="text-xs text-cz-3 hover:text-cz-1 hover:underline disabled:opacity-50">{t("racehub.pool.fillAll")}</button>
         </span>
       </div>
-      <div className="flex flex-wrap gap-2 p-3">
+      {/* #1925: puljen er en drop-zone — slip en rytter her for at fjerne ham fra hans løb. */}
+      <div
+        className={`flex flex-wrap items-start gap-2 p-3 transition-colors ${dragOver ? "bg-cz-accent/10" : ""}`}
+        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={(e) => { e.preventDefault(); setDragOver(false); onDropRider?.(e.dataTransfer.getData("text/plain")); }}
+      >
         {roster.map((r) => {
-          const locked = lockedIds.has(r.id);
+          const locked = isLocked(r.id);
+          // #1984: låst chip kan stadig klikkes → popoveren forklarer HVORFOR (overlappende løb).
+          // Lås-grunden vises også inline (ikke kun som hover-titel), så det er synligt med det samme.
+          const boundRace = locked && raceByRider.has(r.id) ? raceByRider.get(r.id) : null;
           return (
-            <div key={r.id} className="relative">
+            <div key={r.id} className="relative flex flex-col items-start gap-0.5">
               <button
                 type="button"
-                disabled={locked || busy}
-                title={locked ? t("racehub.boundNamed", { race: raceByRider.get(r.id) }) : undefined}
+                disabled={busy}
+                draggable={!locked && !busy}
+                onDragStart={(e) => e.dataTransfer.setData("text/plain", encodeDrag({ riderId: r.id, fromRaceId: null }))}
+                title={boundRace ? t("racehub.boundNamed", { race: boundRace }) : undefined}
                 onClick={() => setOpenRiderId(openRiderId === r.id ? null : r.id)}
                 className={`flex items-center gap-1 text-xs px-2.5 py-1 rounded-full border ${
                   locked
-                    ? "border-dashed border-cz-border text-cz-3 opacity-50 cursor-not-allowed"
+                    ? "border-dashed border-cz-border text-cz-3 opacity-60 hover:opacity-90"
                     : "border-cz-border bg-cz-card text-cz-1 hover:border-cz-accent/40"
                 }`}
               >
                 {locked && <LockIcon size={11} aria-hidden="true" />}
                 {r.name} <span className="font-mono text-cz-3">{r.form ?? "—"}</span>
               </button>
-              {openRiderId === r.id && !locked && (
+              {boundRace && (
+                <span className="pl-1.5 text-[9px] text-cz-3 flex items-center gap-1 max-w-[160px] truncate">
+                  <LockIcon size={9} aria-hidden="true" />{t("racehub.boundNamed", { race: boundRace })}
+                </span>
+              )}
+              {openRiderId === r.id && (
                 <AddRiderPopover rider={r} columns={columns} bindingMap={bindingMap}
                   onPick={(raceId) => onAddRiderToRace(raceId, r.id)} onClose={() => setOpenRiderId(null)} />
               )}

@@ -9,7 +9,7 @@ import RiderNameCell from "../components/rider/RiderNameCell";
 import RiderBadges from "../components/rider/RiderBadges";
 import { ageBadgeKey } from "../lib/riderAge";
 import { formatNumber } from "../lib/intl";
-import { riderStatRating } from "../lib/riderRating";
+import { riderOverallRating } from "../lib/riderRating";
 import { ABILITY_SELECT, flattenAbilities } from "../lib/abilities";
 import { compareNationality } from "../lib/countryUtils";
 import { CalendarIcon, SearchIcon, ArrowUpIcon, ArrowDownIcon, PageLoader } from "../components/ui";
@@ -109,14 +109,18 @@ export default function RiderRankingsPage() {
         .order("id", { ascending: true })),
       fetchAllRows(() => supabase
         .from("riders")
-        .select(`id, ${ABILITY_SELECT}`)
+        .select(`id, primary_type, ${ABILITY_SELECT}`)
         .eq("is_retired", false)
         .order("id", { ascending: true }))
         .catch(() => []),
     ]);
 
+    // #2006: Rating-kolonnen er nu den type-bevidste 1-99 overall-rating
+    // (riderOverallRating) — samme blendede output O som værdimodellen, ankret
+    // mod populationen. primary_type følger med så ratingen bruger rytterens
+    // lagrede type (ejer-direktiv: samme model som den viste type).
     const ratingByRider = new Map(
-      (abilityRows || []).map(r => [r.id, riderStatRating(flattenAbilities(r))]),
+      (abilityRows || []).map(r => [r.id, riderOverallRating(flattenAbilities(r))]),
     );
 
     const agg = {};

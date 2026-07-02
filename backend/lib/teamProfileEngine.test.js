@@ -1,8 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { upsertOwnTeamProfile } from "./teamProfileEngine.js";
-import { INITIAL_BALANCE, MANAGER_ENTRY_DIVISION, POOL_TARGET_SIZE, SPONSOR_INCOME_BASE } from "./economyConstants.js";
+import { upsertOwnTeamProfile, ensureSeasonIdentityBasis, ensureBoardGoalsCalibrated } from "./teamProfileEngine.js";
+import { generateBoardGoals } from "./boardGoals.js";
+import { INITIAL_BALANCE, MANAGER_ENTRY_DIVISION, MAX_DIVISION, POOL_TARGET_SIZE, SPONSOR_INCOME_BASE } from "./economyConstants.js";
 
 // #1560: alle eksisterende tests injicerer en no-op starter-squad-allokering, så
 // de ikke rammer den ægte riders/derive-kæde (den dækkes i starterSquadAllocator.test.js).
@@ -74,6 +75,11 @@ function matchesFilters(row, filters = []) {
       return String(row?.[filter.column] ?? "").toLowerCase() === String(filter.value ?? "").toLowerCase();
     }
 
+    if (filter.type === "is") {
+      // Kun null-tilfældet bruges (race-sikker guard: WHERE col IS NULL).
+      return filter.value === null ? (row?.[filter.column] == null) : row?.[filter.column] === filter.value;
+    }
+
     return true;
   });
 }
@@ -82,11 +88,13 @@ function matchesFilters(row, filters = []) {
 // forbruges pr. forsøg. Modellerer #1264-racet: applikations-precheck (select)
 // ser INTET, men DB'en afviser insert/update med 23505 fordi en samtidig
 // transaktion nåede at committe (seedRows = den samtidige vinders rækker).
-function createSupabaseDouble({ teams = [], boardProfiles = [], leagueDivisions = [], insertErrors = {}, updateErrors = {} } = {}) {
+function createSupabaseDouble({ teams = [], boardProfiles = [], leagueDivisions = [], riders = [], seasons = [], insertErrors = {}, updateErrors = {} } = {}) {
   const state = {
     teams: clone(teams),
     board_profiles: clone(boardProfiles),
     league_divisions: clone(leagueDivisions),
+    riders: clone(riders),
+    seasons: clone(seasons),
     updates: [],
     inserts: [],
     insertErrorQueues: clone(insertErrors),
@@ -130,6 +138,13 @@ function createSupabaseDouble({ teams = [], boardProfiles = [], leagueDivisions 
         return query;
       },
       single() {
+        const result = execute();
+        return Promise.resolve({
+          data: result.data[0] || null,
+          error: null,
+        });
+      },
+      maybeSingle() {
         const result = execute();
         return Promise.resolve({
           data: result.data[0] || null,
@@ -180,6 +195,10 @@ function createSupabaseDouble({ teams = [], boardProfiles = [], leagueDivisions 
     const query = {
       eq(column, value) {
         filters.push({ type: "eq", column, value });
+        return query;
+      },
+      is(column, value) {
+        filters.push({ type: "is", column, value });
         return query;
       },
       select() {
@@ -365,6 +384,96 @@ test("#1608 bund-op: blød cap — div-4-puljer må vokse forbi POOL_TARGET_SIZE
   assert.ok(
     pools.some((pool) => pool.id === result.team.league_division_id),
     "blød cap → holdet får stadig en faktisk div-4-pulje (ingen NULL)",
+  );
+});
+
+function seedMaxDivisionPools() {
+  return Array.from({ length: 8 }, (_, index) => ({
+    id: 100 + index,
+    tier: MAX_DIVISION,
+    pool_index: index,
+    label: `Division 4 — ${String.fromCharCode(65 + index)}`,
+  }));
+}
+
+test("overflow: alle entry-puljer ved POOL_TARGET_SIZE OG MAX_DIVISION-puljer findes → ny manager lander i MAX_DIVISION", async () => {
+  const entryPools = seedDiv4Pools();
+  const overflowPools = seedMaxDivisionPools();
+  const teams = entryPools.flatMap((pool) =>
+    seedTeams({ division: MANAGER_ENTRY_DIVISION, count: POOL_TARGET_SIZE, league_division_id: pool.id }),
+  );
+  const supabase = createSupabaseDouble({ leagueDivisions: [...entryPools, ...overflowPools], teams });
+
+  const result = await upsert({
+    supabase, userId: "user-overflow", name: "Overflow Team", managerName: "Manager",
+  });
+
+  assert.equal(result.team.division, MAX_DIVISION, "entry-tier mættet → fald igennem til MAX_DIVISION");
+  assert.ok(
+    overflowPools.some((p) => p.id === result.team.league_division_id),
+    "holdet skal lande i en faktisk MAX_DIVISION-pulje",
+  );
+});
+
+test("overflow: vælger den mindst-fyldte MAX_DIVISION-pulje (samme determinisme som entry-puljerne)", async () => {
+  const entryPools = seedDiv4Pools();
+  const overflowPools = seedMaxDivisionPools();
+  const teams = [
+    ...entryPools.flatMap((pool) =>
+      seedTeams({ division: MANAGER_ENTRY_DIVISION, count: POOL_TARGET_SIZE, league_division_id: pool.id }),
+    ),
+    ...seedTeams({ division: MAX_DIVISION, count: 5, league_division_id: overflowPools[0].id }),
+  ];
+  const supabase = createSupabaseDouble({ leagueDivisions: [...entryPools, ...overflowPools], teams });
+
+  const result = await upsert({
+    supabase, userId: "user-overflow-2", name: "Least Filled Overflow", managerName: "Manager",
+  });
+
+  assert.notEqual(result.team.league_division_id, overflowPools[0].id, "fyldt MAX_DIVISION-pulje skal undgås");
+  assert.ok(overflowPools.slice(1).some((p) => p.id === result.team.league_division_id));
+});
+
+test("overflow: division 3 har stadig plads → MAX_DIVISION-puljer IGNORERES, selvom de findes", async () => {
+  const entryPools = seedDiv4Pools();
+  const overflowPools = seedMaxDivisionPools();
+  // Kun 5 rigtige managers i den første entry-pulje — langt under POOL_TARGET_SIZE.
+  const teams = seedTeams({ division: MANAGER_ENTRY_DIVISION, count: 5, league_division_id: entryPools[0].id });
+  const supabase = createSupabaseDouble({ leagueDivisions: [...entryPools, ...overflowPools], teams });
+
+  const result = await upsert({
+    supabase, userId: "user-no-overflow", name: "Still Division 3", managerName: "Manager",
+  });
+
+  assert.equal(result.team.division, MANAGER_ENTRY_DIVISION, "entry-tier har plads → ingen overflow, selvom MAX_DIVISION-puljer findes");
+});
+
+test("overflow: kun 7 af 8 entry-puljer mættet (1 ved 23) → ALDRIG overflow, lander i den ene under-fyldte pulje", async () => {
+  // Låser .every()-semantikken: saturation kræver at HVER pulje individuelt er ved
+  // POOL_TARGET_SIZE, ikke et aggregat/gennemsnit. 7 puljer ved 24 + 1 pulje ved 23
+  // (lige under target) skal stadig give "ikke mættet" → ingen overflow til MAX_DIVISION.
+  const entryPools = seedDiv4Pools();
+  const overflowPools = seedMaxDivisionPools();
+  const underFilledPool = entryPools[entryPools.length - 1];
+  const saturatedPools = entryPools.slice(0, -1);
+
+  const teams = [
+    ...saturatedPools.flatMap((pool) =>
+      seedTeams({ division: MANAGER_ENTRY_DIVISION, count: POOL_TARGET_SIZE, league_division_id: pool.id }),
+    ),
+    ...seedTeams({ division: MANAGER_ENTRY_DIVISION, count: POOL_TARGET_SIZE - 1, league_division_id: underFilledPool.id }),
+  ];
+  const supabase = createSupabaseDouble({ leagueDivisions: [...entryPools, ...overflowPools], teams });
+
+  const result = await upsert({
+    supabase, userId: "user-near-overflow", name: "Almost Saturated", managerName: "Manager",
+  });
+
+  assert.equal(result.team.division, MANAGER_ENTRY_DIVISION, "7/8 puljer mættet er IKKE nok → ingen overflow");
+  assert.equal(
+    result.team.league_division_id,
+    underFilledPool.id,
+    "holdet skal lande i den ene under-fyldte pulje (23 < POOL_TARGET_SIZE), ikke en mættet eller en overflow-pulje",
   );
 });
 
@@ -1028,4 +1137,175 @@ test("#1739 trim-fejl er IKKE-fatal — signup lykkes og holdet beholder sin tru
   assert.equal(result.created, true, "signup lykkes trods trim-fejl");
   assert.equal(squadCalls.length, 1, "start-truppen blev tildelt");
   assert.equal(supabase.state.teams.length, 1, "holdet blev oprettet");
+});
+
+// ── #2022 · Sæson-agnostisk board-dannelse ────────────────────────────────────
+// Et nyt holds identitets-grundlag skal sættes ved DANNELSE (uanset global sæson),
+// ikke kun ved sæson-1-slut — ellers er en sæson-2+-nykommer permanent låst ude
+// af DNA-valg. ensureSeasonIdentityBasis er den sæson-agnostiske skrive-sti.
+
+test("#2022 ensureSeasonIdentityBasis beregner og skriver basis fra truppen for et nyt hold", async () => {
+  const team = { id: "team-1", division: 3, season_1_identity_basis: null };
+  const riders = Array.from({ length: 5 }, (_, i) => ({
+    id: `r-${i}`, team_id: "team-1", nationality_code: "DK", is_u25: i < 2,
+    stat_fl: 70, stat_sp: 60, market_value: 200000,
+  }));
+  const supabase = createSupabaseDouble({ teams: [team], riders });
+
+  const written = await ensureSeasonIdentityBasis({ supabase, team });
+
+  assert.equal(written, true, "basis skrives for et hold uden basis");
+  const stored = supabase.state.teams[0].season_1_identity_basis;
+  assert.ok(stored, "season_1_identity_basis skal være sat på team-rowen");
+  assert.equal(stored.rider_count, 5, "basis afspejler den faktiske trup-størrelse");
+});
+
+test("#2022 ensureSeasonIdentityBasis er idempotent — rører ikke et hold der allerede har basis", async () => {
+  const existing = { rider_count: 99, primary_specialization: "gc" };
+  const team = { id: "team-1", division: 3, season_1_identity_basis: existing };
+  const supabase = createSupabaseDouble({ teams: [team] });
+
+  const written = await ensureSeasonIdentityBasis({ supabase, team });
+
+  assert.equal(written, false, "et hold med basis skal ikke overskrives");
+  assert.deepEqual(supabase.state.teams[0].season_1_identity_basis, existing);
+});
+
+test("#2022 ensureSeasonIdentityBasis stempler den FAKTISKE aktive sæson i grundlaget (ikke hardcoded 1)", async () => {
+  const team = { id: "team-1", division: 4, season_1_identity_basis: null };
+  const riders = [{ id: "r-0", team_id: "team-1", nationality_code: "DK", stat_fl: 60 }];
+  // En sæson-3-nykommer: grundlaget skal observere sæson 3, ikke sæson 1.
+  const supabase = createSupabaseDouble({
+    teams: [team], riders,
+    seasons: [{ id: "s-3", number: 3, status: "active" }],
+  });
+
+  const written = await ensureSeasonIdentityBasis({ supabase, team });
+
+  assert.equal(written, true);
+  const stored = supabase.state.teams[0].season_1_identity_basis;
+  assert.equal(stored.season_number_observed, 3, "grundlaget afspejler den sæson holdet rent faktisk dannes i");
+});
+
+test("#2022 ensureSeasonIdentityBasis falder tilbage til sæson 1 når ingen aktiv sæson findes", async () => {
+  const team = { id: "team-1", division: 4, season_1_identity_basis: null };
+  const riders = [{ id: "r-0", team_id: "team-1", nationality_code: "DK", stat_fl: 60 }];
+  const supabase = createSupabaseDouble({ teams: [team], riders, seasons: [] });
+
+  await ensureSeasonIdentityBasis({ supabase, team });
+
+  const stored = supabase.state.teams[0].season_1_identity_basis;
+  assert.equal(stored.season_number_observed, 1, "uden aktiv sæson defaulter vi defensivt til 1");
+});
+
+test("#2022 upsertOwnTeamProfile sætter identitets-grundlag fra start-truppen ved dannelse", async () => {
+  const pools = seedDiv4Pools();
+  const supabase = createSupabaseDouble({ leagueDivisions: pools });
+  // Allokerings-stub der seeder en faktisk start-trup, så vi kan verificere at
+  // grundlaget beregnes EFTER allokering (rider_count > 0), ikke på en tom trup.
+  const allocateWithRiders = async (sb, teamId) => {
+    await sb.from("riders").insert(
+      Array.from({ length: 6 }, (_, i) => ({ id: `r-${teamId}-${i}`, team_id: teamId, nationality_code: "DK" })),
+    );
+    return { assigned: 6 };
+  };
+
+  const result = await upsertOwnTeamProfile({
+    supabase, userId: "user-1", name: "Identity At Birth", managerName: "Manager",
+    allocateStarterSquad: allocateWithRiders,
+    runAcademyCohort: noopRunAcademyCohort,
+    academyEnabled: academyDisabled,
+    reconcileAiTeams: noopReconcileAiTeams,
+  });
+
+  const stored = supabase.state.teams.find((t) => t.id === result.team.id)?.season_1_identity_basis;
+  assert.ok(stored, "et nyt hold skal have season_1_identity_basis sat ved dannelse");
+  assert.equal(stored.rider_count, 6, "grundlaget beregnes fra den allokerede start-trup, ikke en tom trup");
+});
+
+// ── #2022 fase 2 · Board-mål kalibreret ved dannelse ──────────────────────────
+// createInitialBoardProfile genererer statiske fallback-mål (min_riders 15) fordi
+// det kaldes FØR start-truppen findes. ensureBoardGoalsCalibrated kører EFTER
+// allokeringen og erstatter et pending formations-boards mål med dem
+// generateBoardGoals giver MED trup-kontekst — så et entry-hold ikke fastlåses af
+// et strukturelt uopnåeligt min_riders-mål (#2022 fase 1's postmortem).
+
+test("#2022 ensureBoardGoalsCalibrated kalibrerer et pending formations-boards mål mod truppen", async () => {
+  const team = { id: "team-1", division: 3, sponsor_income: 100, balance: 0 };
+  const staticGoals = generateBoardGoals({ focus: "balanced", planType: "1yr" });
+  assert.equal(staticGoals.find((g) => g.type === "min_riders").target, 15, "udgangspunkt: statisk min_riders er 15");
+  const board = {
+    id: "bp-1", team_id: "team-1", plan_type: "1yr", focus: "balanced",
+    is_baseline: false, negotiation_status: "pending", current_goals: staticGoals,
+  };
+  const nats = ["FR", "IT", "ES", "BE", "NL", "DE", "GB", "DK", "SE"];
+  const riders = Array.from({ length: 9 }, (_, i) => ({
+    id: `r-${i}`, team_id: "team-1", nationality_code: nats[i], is_u25: i < 3, stat_fl: 60,
+  }));
+  const supabase = createSupabaseDouble({ teams: [team], boardProfiles: [board], riders });
+
+  const updated = await ensureBoardGoalsCalibrated({ supabase, team });
+
+  assert.equal(updated, true, "et pending formations-board kalibreres");
+  const stored = supabase.state.board_profiles[0].current_goals;
+  const minRiders = stored.find((g) => g.type === "min_riders");
+  assert.ok(minRiders.target <= riders.length, "kalibreret min_riders er opnåeligt for truppen");
+  assert.notEqual(minRiders.target, 15, "den statiske 15 er erstattet");
+});
+
+test("#2022 ensureBoardGoalsCalibrated rører ikke et completed/forhandlet board", async () => {
+  const team = { id: "team-1", division: 3, sponsor_income: 100, balance: 0 };
+  const negotiated = generateBoardGoals({ focus: "balanced", planType: "1yr" });
+  const board = {
+    id: "bp-1", team_id: "team-1", plan_type: "1yr", focus: "balanced",
+    is_baseline: false, negotiation_status: "completed", current_goals: negotiated,
+  };
+  const riders = [{ id: "r-0", team_id: "team-1", is_u25: false }];
+  const supabase = createSupabaseDouble({ teams: [team], boardProfiles: [board], riders });
+
+  const updated = await ensureBoardGoalsCalibrated({ supabase, team });
+
+  assert.equal(updated, false, "kun pending formations-boards kalibreres");
+  assert.deepEqual(supabase.state.board_profiles[0].current_goals, negotiated, "forhandlede mål bevares");
+});
+
+test("#2022 ensureBoardGoalsCalibrated er no-op når truppen endnu er tom (defensivt)", async () => {
+  const team = { id: "team-1", division: 3, sponsor_income: 100, balance: 0 };
+  const staticGoals = generateBoardGoals({ focus: "balanced", planType: "1yr" });
+  const board = {
+    id: "bp-1", team_id: "team-1", plan_type: "1yr", focus: "balanced",
+    is_baseline: false, negotiation_status: "pending", current_goals: staticGoals,
+  };
+  const supabase = createSupabaseDouble({ teams: [team], boardProfiles: [board], riders: [] });
+
+  const updated = await ensureBoardGoalsCalibrated({ supabase, team });
+
+  assert.equal(updated, false, "uden trup beholdes de statiske mål");
+  assert.deepEqual(supabase.state.board_profiles[0].current_goals, staticGoals);
+});
+
+test("#2022 upsertOwnTeamProfile kalibrerer board-mål mod start-truppen ved dannelse", async () => {
+  const pools = seedDiv4Pools();
+  const supabase = createSupabaseDouble({ leagueDivisions: pools });
+  const allocateWithRiders = async (sb, teamId) => {
+    const nats = ["FR", "IT", "ES", "BE", "NL", "DE", "GB", "DK"];
+    await sb.from("riders").insert(
+      Array.from({ length: 8 }, (_, i) => ({ id: `r-${teamId}-${i}`, team_id: teamId, nationality_code: nats[i], is_u25: i < 3 })),
+    );
+    return { assigned: 8 };
+  };
+
+  const result = await upsertOwnTeamProfile({
+    supabase, userId: "user-1", name: "Calibrated At Birth", managerName: "Manager",
+    allocateStarterSquad: allocateWithRiders,
+    runAcademyCohort: noopRunAcademyCohort,
+    academyEnabled: academyDisabled,
+    reconcileAiTeams: noopReconcileAiTeams,
+  });
+
+  const board = supabase.state.board_profiles.find((b) => b.team_id === result.team.id);
+  const minRiders = board.current_goals.find((g) => g.type === "min_riders");
+  assert.ok(minRiders, "formations-boardet har et min_riders-mål");
+  assert.ok(minRiders.target <= 8, "min_riders kalibreret til start-truppen (≤8), ikke statisk 15");
+  assert.notEqual(minRiders.target, 15, "den statiske 15 omgås nu ved dannelse");
 });

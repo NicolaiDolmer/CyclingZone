@@ -84,6 +84,21 @@ function nextWindowOpenTime(d, cfg) {
   return windowOpenTime(nextDayUTC, cfg);
 }
 
+// Resolve the active window an auction END belongs to: its window close + the
+// next window's open. Normally that's just end's own calendar-day window. But
+// when close_hour=24 the grace period can push an end past midnight into the
+// early hours of the NEXT calendar day (e.g. 00:30); such an end still belongs
+// to the PREVIOUS day's window. Detect that via "end is before its own day's
+// open" and re-anchor, so the hard cap and rollover use the right window (#1904).
+function windowForEnd(end, cfg) {
+  const openToday = windowOpenTime(end, cfg);
+  if (end >= openToday) {
+    return { close: windowCloseTime(end, cfg), nextOpen: nextWindowOpenTime(end, cfg) };
+  }
+  const prevDay = new Date(end.getTime() - 24 * 60 * 60 * 1000);
+  return { close: windowCloseTime(prevDay, cfg), nextOpen: openToday };
+}
+
 /**
  * Calculate auction end time given a start time.
  * Counts only active-window hours toward the duration.
@@ -117,7 +132,10 @@ export function calculateAuctionEnd(startTime, cfg = DEFAULT_AUCTION_CONFIG) {
     }
 
     remaining -= availableMs;
-    current = nextWindowOpenTime(wClose, cfg);
+    // Derive next-open from `current` (always inside today's window), NOT from
+    // wClose: when close_hour=24, wClose lands on 00:00 of the NEXT calendar day,
+    // so nextWindowOpenTime(wClose) would skip a whole day (#1904).
+    current = nextWindowOpenTime(current, cfg);
   }
 
   throw new Error("Cannot calculate auction end within 14 days");
@@ -145,13 +163,12 @@ export function checkBidExtension(bidTime, currentEnd, cfg = DEFAULT_AUCTION_CON
   if (timeLeft > extensionMs) return { shouldExtend: false, newEnd: null };
 
   const extendedEnd = new Date(bid.getTime() + extensionMs);
-  const wClose = windowCloseTime(end, cfg);
+  const { close: wClose, nextOpen } = windowForEnd(end, cfg);
   const hardCap = new Date(wClose.getTime() + graceMs);
 
   let newEnd;
   if (extendedEnd > hardCap) {
     const overflowMs = extendedEnd.getTime() - hardCap.getTime();
-    const nextOpen = nextWindowOpenTime(end, cfg);
     newEnd = new Date(nextOpen.getTime() + overflowMs);
   } else {
     newEnd = extendedEnd;

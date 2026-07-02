@@ -12,6 +12,7 @@ import { MenuIcon, BellIcon, ChevronDownIcon, ChevronLeftIcon } from "./ui/icons
 import { resolveAcademyNavVisible, readCachedAcademyNav, writeCachedAcademyNav } from "../lib/academyNavVisibility";
 import ProBadge from "./ProBadge";
 import { useSubscription } from "../lib/useSubscription";
+import { getAttribution } from "../lib/attribution";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -22,7 +23,7 @@ const API = import.meta.env.VITE_API_URL;
 // "/team" tilføjet per #1186 — trup-tabellen (14 stat-kolonner) var klemt i max-w-5xl.
 // "/transfers" tilføjet per #1675 — market-fanens evne-tabel + listen havde for meget
 // side-whitespace i den smalle max-w-4xl; cards/header cappes per-side i selve siden.
-const WIDE_CONTENT_ROUTES = new Set(["/riders", "/rider-rankings", "/watchlist", "/auctions", "/team", "/transfers"]);
+const WIDE_CONTENT_ROUTES = new Set(["/riders", "/rider-rankings", "/watchlist", "/auctions", "/team", "/transfers", "/calendar"]);
 // Prefix-ruter: dynamiske paths (fx /teams/<id>) matcher ikke exact i settet
 // ovenfor. #1675 — andre managers holdside (/teams/:id) har samme brede
 // trup-tabel som "/team" og skal bruge fuld bredde i stedet for max-w-4xl.
@@ -72,6 +73,7 @@ function buildNavGroups(team, t, academyEnabled = false) {
       key: "saeson-resultater", label: t("nav.group.saeson"),
       items: [
         { to: "/resultater",     label: t("nav.item.results") },
+        { to: "/calendar",       label: t("nav.item.calendar") },
         { to: "/standings",      label: t("nav.item.standings") },
         { to: "/rider-rankings", label: t("nav.item.riderRankings") },
         // #1681: excludeQuery så "Races" ikke også lyser op på holdudtagelse-
@@ -268,6 +270,10 @@ export default function Layout() {
   const [openGroups, setOpenGroups]         = useState({});
   const [onlineCount, setOnlineCount]       = useState(0);
   const [teamLoaded, setTeamLoaded]         = useState(false);
+  // #2068: fallback-værdier til SetupWizardModal hvis auto-bootstrap (nedenfor)
+  // ikke kan fuldføre stille (fx holdnavnet blev taget i mellemtiden) — modalen
+  // skal så starte forudfyldt med det spilleren skrev ved signup, ikke tomt.
+  const [setupPrefill, setSetupPrefill]     = useState({ teamName: "", managerName: "" });
   // Init fra cache (#1792-klasse): vis akademiet med det samme hvis brugeren har
   // set det før, så et forbigående fetch-hikke ikke skjuler et fungerende akademi.
   const [academyEnabled, setAcademyEnabled] = useState(readCachedAcademyNav);
@@ -310,7 +316,46 @@ export default function Layout() {
         .select("role, username").eq("id", session.user.id).single();
       setIsAdmin(userData?.role === "admin");
       const { data: teamData } = await supabase.from("teams").select("id, name, balance, division, manager_name").eq("user_id", session.user.id).single();
-      if (teamData) { setTeam(teamData); setBalance(teamData.balance); }
+      if (teamData) {
+        setTeam(teamData);
+        setBalance(teamData.balance);
+      } else {
+        // #2068: ingen hold endnu — dette er (næsten altid) en confirm-on-bruger
+        // der lige har klikket bekræftelseslinket. Signup gemte team_name +
+        // manager_name i auth-metadata; brug dem til at oprette holdet STILLE her
+        // i stedet for at bede spilleren skrive navnene igen i SetupWizard.
+        // Fejler det (fx holdnavnet blev taget i mellemtiden, eller metadata
+        // mangler for en ældre/anden konto-type) falder vi tilbage til modalen,
+        // forudfyldt med det vi har.
+        const meta = session.user.user_metadata || {};
+        const metaTeamName = (meta.team_name || "").trim();
+        const metaManagerName = (meta.manager_name || "").trim();
+        setSetupPrefill({ teamName: metaTeamName, managerName: metaManagerName });
+
+        if (metaTeamName && metaManagerName && API) {
+          try {
+            const h = await authHeaders();
+            const res = await fetch(`${API}/api/teams/my`, {
+              method: "PUT",
+              headers: h,
+              body: JSON.stringify({
+                name: metaTeamName,
+                manager_name: metaManagerName,
+                attribution: getAttribution(),
+              }),
+            });
+            if (res.ok) {
+              const bootstrapped = await res.json();
+              setTeam(bootstrapped.team);
+              setBalance(bootstrapped.team.balance);
+            } else {
+              console.warn("[auto-bootstrap] holdoprettelse fejlede, falder tilbage til SetupWizard", res.status);
+            }
+          } catch (err) {
+            console.warn("[auto-bootstrap] holdoprettelse fejlede, falder tilbage til SetupWizard", err);
+          }
+        }
+      }
       setTeamLoaded(true);
       setUnread(await fetchUnreadCount(session.user.id));
 
@@ -451,7 +496,13 @@ export default function Layout() {
       </main>
 
       <MobileQuickNav unread={unread} />
-      {needsSetup && <SetupWizardModal onComplete={handleSetupComplete} />}
+      {needsSetup && (
+        <SetupWizardModal
+          onComplete={handleSetupComplete}
+          initialTeamName={setupPrefill.teamName}
+          initialManagerName={setupPrefill.managerName}
+        />
+      )}
     </div>
   );
 }

@@ -20,6 +20,7 @@ import { getMarketPauseState, isAuctionsBlocked } from "./lib/marketPause.js";
 import {
   notifyTeamOwner as notifyTeamOwnerShared,
   notifyUser as notifyUserShared,
+  emitRaceResultNotifications, // #1952
 } from "./lib/notificationService.js";
 import {
   notifyAuctionWon,
@@ -470,6 +471,10 @@ async function runStageSchedulerCron() {
         const embed = buildRaceSimEmbed({ race, resultRows });
         await sendWebhook(url, { embeds: [{ ...embed, footer: { text: "Cycling Zone" } }] });
       };
+      // #1952 · In-app resultat-notifikation til deltagende menneske-managers.
+      const notifyInApp = async ({ race }) => {
+        await emitRaceResultNotifications({ supabase, race });
+      };
       return runAdminSimulateStage({
         supabase,
         raceId,
@@ -478,12 +483,23 @@ async function runStageSchedulerCron() {
         ensureSeasonStandings: ensureSeasonStandingsCron,
         updateStandings,
         notifyDiscord,
+        notifyInApp,
       });
     },
   });
   if (result.ran || result.errors) {
     console.log(`🚵 Stage-scheduler: ${result.ran} etape(r) afviklet, ${result.errors} fejl`);
   }
+}
+
+// ─── Traffic-events retention: hold rå anonyme web-events ≤180 dage (#2040) ───
+// traffic_events er bevidst PII-fri, men rå events skal ikke leve for evigt.
+// Idempotent delete; service_role bypasser RLS.
+
+async function runTrafficRetentionCron() {
+  const cutoff = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000).toISOString();
+  const { error } = await supabase.from("traffic_events").delete().lt("occurred_at", cutoff);
+  if (error) console.error("  ❌ traffic_events retention fejlede:", error.message);
 }
 
 // ─── In-flight tracking for graceful shutdown ────────────────────────────────
@@ -601,6 +617,9 @@ export function startCron() {
   // Bevidst INGEN immediate-run: det periodiske tick er nok, og en etape skal ikke
   // fyre ved hver genstart (mirror auto-prize-mønstret).
   setInterval(trackedTick("stage scheduler", runStageSchedulerCron), 5 * 60 * 1000);
+
+  // Every 24 hours: traffic_events retention (#2040 — slet rå anonyme events >180 dage).
+  setInterval(trackedTick("traffic retention", runTrafficRetentionCron), 24 * 60 * 60 * 1000);
 
   // Run immediately on start
   trackedTick("auctions", finalizeExpiredAuctions)();

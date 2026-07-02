@@ -11,6 +11,7 @@ import FitBar from "./FitBar.jsx";
 import RoleCard from "./RoleCard.jsx";
 import RaceLink from "../RaceLink.jsx";
 import { LockIcon } from "../ui";
+import { encodeDrag } from "../../lib/raceHubDnd.js";
 
 const STATUS_CLASS = {
   full: "bg-cz-success-bg text-cz-success border-cz-success/30",
@@ -30,9 +31,10 @@ function RoleBadge({ t, role }) {
   );
 }
 
-export default function RaceColumn({ column, onRemoveRider, onToggleWithdraw, onSetRole, busy }) {
+export default function RaceColumn({ column, onRemoveRider, onToggleWithdraw, onSetRole, busy, onDropRider }) {
   const { t } = useTranslation("races");
   const [roleMenuFor, setRoleMenuFor] = useState(null);
+  const [dragOver, setDragOver] = useState(false); // #1925: kolonne-drop-zone
   const selectedIds = column.selection?.rider_ids || [];
   const ridersById = new Map(column.riders.map((r) => [r.id, r]));
   const locked = !!column.lineup_locked;
@@ -54,8 +56,16 @@ export default function RaceColumn({ column, onRemoveRider, onToggleWithdraw, on
     ? t("racehub.status.locked")
     : t(`racehub.status.${status.kind}`, { selected: status.selected, target: status.target });
 
+  // #1925: kolonnen er en drop-zone — slip en rytter her for at tilføje/flytte ham hertil.
+  // Frosne/afmeldte løb tager ikke imod drops (forælderen validerer også via dropAction).
+  const acceptsDrop = !locked && !column.withdrawn;
   return (
-    <div className="border border-cz-border rounded-cz bg-cz-card flex flex-col">
+    <div
+      className={`border rounded-cz bg-cz-card flex flex-col transition-colors ${dragOver && acceptsDrop ? "border-cz-accent" : "border-cz-border"}`}
+      onDragOver={acceptsDrop ? (e) => { e.preventDefault(); setDragOver(true); } : undefined}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={acceptsDrop ? (e) => { e.preventDefault(); setDragOver(false); onDropRider?.(e.dataTransfer.getData("text/plain")); } : undefined}
+    >
       <div className="p-3 border-b border-cz-border">
         <div className="flex items-start justify-between gap-2">
           <RaceLink id={column.id} state={{ from: "board" }} className="text-sm font-semibold text-cz-1 hover:text-cz-accent-t transition-colors">{column.name}</RaceLink>
@@ -97,10 +107,18 @@ export default function RaceColumn({ column, onRemoveRider, onToggleWithdraw, on
             const fresh = freshnessTier(r.fatigue);
             return (
               <div key={id} className="relative">
-                <div className="w-full flex items-center justify-between gap-2 px-3 py-1.5 hover:bg-cz-subtle">
+                {/* #1925: rækken kan trækkes til et andet løb (flyt) eller til puljen (fjern). */}
+                <div className="w-full flex items-center justify-between gap-2 px-3 py-1.5 hover:bg-cz-subtle"
+                  draggable={!busy}
+                  onDragStart={(e) => e.dataTransfer.setData("text/plain", encodeDrag({ riderId: id, fromRaceId: column.id }))}>
+                  {/* #1919: rolle-tildeling lå skjult bag rytter-navnet uden nogen affordance
+                      (Clarity: dead-clicks fordi navnet ikke så interaktivt ud). Chevron +
+                      aria-haspopup + hover-farve gør nu tydeligt at navnet åbner rolle-menuen. */}
                   <button type="button" onClick={() => setRoleMenuFor(roleMenuFor === id ? null : id)} disabled={busy}
-                    className="flex items-center text-left min-w-0 disabled:opacity-50">
-                    <span className="text-xs text-cz-1 truncate">{r.name}</span>
+                    aria-haspopup="menu" aria-expanded={roleMenuFor === id}
+                    className="group/role flex items-center gap-1 text-left min-w-0 disabled:opacity-50">
+                    <span aria-hidden="true" className={`text-cz-3 text-[10px] flex-shrink-0 transition-transform ${roleMenuFor === id ? "rotate-180" : ""}`}>▾</span>
+                    <span className="text-xs text-cz-1 truncate transition-colors group-hover/role:text-cz-accent-t">{r.name}</span>
                     {role && <RoleBadge t={t} role={role} />}
                   </button>
                   <span className="flex items-center gap-2 flex-shrink-0">

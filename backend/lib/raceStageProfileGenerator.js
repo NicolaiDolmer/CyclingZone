@@ -6,9 +6,14 @@
 // race_stage_profiles; race-simulatoren (slice 2) scorer rider_derived_abilities
 // mod demand_vector.
 //
-// Determinisme: seed = stableSeed(race.id) (override via opts.seed i test), kørt
-// gennem makeRng (mulberry32, genbrugt fra fictionalRiderGenerator.js). Samme løb
-// → samme etaper hver gang, så resultater er reproducerbare.
+// Determinisme: seed = stableSeed(seedIdentityFor(race)) (override via opts.seed i
+// test), kørt gennem makeRng (mulberry32, genbrugt fra fictionalRiderGenerator.js).
+// Seed-NØGLEN er løbets VIRKELIGE identitet (external_id), IKKE den per-pulje/
+// per-sæson races-række (race.id): det SAMME rigtige løb skal have det SAMME
+// parcours i alle en divisions parallelle puljer ("Division 3 kører samme løb")
+// og på tværs af kalender-rebuilds. v1 seedede på race.id, så hver pulje fik sit
+// EGET tilfældige parcours i nominelt samme løb (urimeligt for kryds-pulje-
+// sammenligning/oprykning) — rettet i v2.
 //
 // demand_vector: normaliserede vægte (sum 1.0) over de 10 rider_derived_abilities-
 // kolonner + 'randomness' (variations-skalar brugt af simulatoren). Vægtene er
@@ -16,7 +21,12 @@
 
 import { makeRng } from "./fictionalRiderGenerator.js";
 
-export const GENERATOR_VERSION = 1;
+// v1: #1102-launch (seedet på race.id). v2 (2026-06-28): seedet på løbets virkelige
+// identitet (external_id) via seedIdentityFor. v3 (2026-06-28): arketype-drevet
+// terrænfordeling (ARCHETYPE_PROFILES) + sæson-akse i seed'en (variation pr. sæson).
+// Bump'et stempler regenererede rækker, så de kan skelnes fra ældre (intet
+// runtime-guard afhænger af tallet — kun et persisteret stempel).
+export const GENERATOR_VERSION = 3;
 
 // rider_derived_abilities-kolonnerne (scoring-dimensioner). demand_vector-nøgler
 // skal være ⊆ disse ∪ {"randomness"}.
@@ -96,7 +106,38 @@ const STAGE_ORDER_HINT = Object.freeze({
   flat: 1, rolling: 2, cobbles: 3, hilly: 3, classic: 4, itt: 5, ttt: 5, mountain: 6, high_mountain: 7,
 });
 
-// FNV-1a 32-bit → heltals-seed fra race.id (UUID-streng). Deterministisk.
+// Arketype-fordelinger (jf. spec §4). kind:"single" → endagsløbs-profilvægte;
+// kind:"stage" → garantier (force-include, trimmet til stages) + filler-vægte.
+// Vægte = samme format som weightedPick. Tunbar ÉT sted (jf. spec §12). Et løb
+// uden (kendt) terrain_archetype → null → generatoren falder tilbage til de
+// generiske vægte ovenfor (bagudkompatibelt).
+export const ARCHETYPE_PROFILES = Object.freeze({
+  // Endagsløb: kerneterrænet er FAST — et endagsløbs karakter ændrer sig ikke år til
+  // år (variation-pr-sæson gælder kun etapeløb). Hvor to profiler er listet, er de
+  // SAMME karakter (tekstur, ikke karakterskift): hilly↔classic, mountain↔high_mountain.
+  flat_sprint:         { kind: "single", weights: [{ value: "flat", weight: 1 }] },
+  cobbled_classic:     { kind: "single", weights: [{ value: "cobbles", weight: 1 }] },
+  puncheur:            { kind: "single", weights: [{ value: "hilly", weight: 1 }] },
+  hilly_classic:       { kind: "single", weights: [{ value: "hilly", weight: 60 }, { value: "classic", weight: 40 }] },
+  mountain_classic:    { kind: "single", weights: [{ value: "high_mountain", weight: 50 }, { value: "mountain", weight: 50 }] },
+  long_sprint_classic: { kind: "single", weights: [{ value: "rolling", weight: 1 }] },
+
+  grand_tour:     { kind: "stage", guarantees: ["flat", "flat", "flat", "itt", "mountain", "high_mountain", "high_mountain"], filler: [{ value: "flat", weight: 26 }, { value: "rolling", weight: 12 }, { value: "hilly", weight: 14 }, { value: "mountain", weight: 20 }, { value: "high_mountain", weight: 14 }, { value: "itt", weight: 12 }, { value: "ttt", weight: 2 }] },
+  mountain_tour:  { kind: "stage", guarantees: ["flat", "mountain", "mountain"], filler: [{ value: "flat", weight: 16 }, { value: "rolling", weight: 14 }, { value: "hilly", weight: 14 }, { value: "mountain", weight: 34 }, { value: "high_mountain", weight: 16 }, { value: "itt", weight: 6 }] },
+  hilly_tour:     { kind: "stage", guarantees: ["flat", "hilly", "hilly"], filler: [{ value: "flat", weight: 18 }, { value: "rolling", weight: 22 }, { value: "hilly", weight: 34 }, { value: "mountain", weight: 14 }, { value: "high_mountain", weight: 4 }, { value: "itt", weight: 8 }] },
+  sprinters_week: { kind: "stage", guarantees: ["flat", "mountain"], filler: [{ value: "flat", weight: 50 }, { value: "rolling", weight: 22 }, { value: "hilly", weight: 12 }, { value: "mountain", weight: 10 }, { value: "itt", weight: 6 }] },
+  balanced_week:  { kind: "stage", guarantees: ["flat", "mountain"], filler: [{ value: "flat", weight: 30 }, { value: "rolling", weight: 20 }, { value: "hilly", weight: 18 }, { value: "mountain", weight: 18 }, { value: "high_mountain", weight: 4 }, { value: "itt", weight: 10 }] },
+  // Ørken/sprinter-tur med faste bjergankomster: garanteret 1 TT + 2 bjerg, resten
+  // flad/rullende (fx UAE Tour). Filler kun flad/rullende → "resten er flade".
+  sprinter_tour_summits: { kind: "stage", guarantees: ["flat", "itt", "mountain", "mountain"], filler: [{ value: "flat", weight: 78 }, { value: "rolling", weight: 22 }] },
+});
+
+// Opslag: terrain_archetype → config (eller null ved ukendt/manglende → generisk).
+export function archetypeFor(race) {
+  return ARCHETYPE_PROFILES[race?.terrain_archetype] ?? null;
+}
+
+// FNV-1a 32-bit → heltals-seed fra seed-nøglen (streng). Deterministisk.
 function stableSeed(str) {
   let h = 0x811c9dc5;
   for (let i = 0; i < str.length; i++) {
@@ -104,6 +145,28 @@ function stableSeed(str) {
     h = Math.imul(h, 0x01000193);
   }
   return h >>> 0;
+}
+
+// Seed-nøgle = løbets stabile, virkelige identitet. external_id (race_pool-import-
+// nøglen) er mest stabil — uændret på tværs af kalender-rebuilds og katalog-reimports.
+// pool_race_id (katalog-PK/UUID) er næstbedst; race.id (per-instans-UUID) er sidste
+// udvej for ad-hoc-løb uden katalog-binding. ALLE kopier af samme løb i en divisions
+// puljer deler external_id → identisk parcours. Eksporteret for testbarhed.
+//
+// Tom/whitespace-streng behandles som FRAVÆRENDE (ikke kun null/undefined): en
+// fremtidig katalog-import med blanke external_id må ikke kollapse distinkte løb til
+// samme parcours (`??` alene fanger ikke "").
+const presentKey = (v) => (typeof v === "string" ? (v.trim() === "" ? null : v) : v ?? null);
+export function seedIdentityFor(race) {
+  return presentKey(race?.external_id) ?? presentKey(race?.pool_race_id) ?? race?.id;
+}
+
+// Fuld seed-nøgle = løb-identitet + sæson. Alle grupper i en sæson deler nøglen
+// (konsistens); en ny sæson giver en ny nøgle (variation pr. sæson, jf. spec §5.1).
+// Uden season_id seedes på identitet alene (bagudkompatibel — tests/ad-hoc).
+function seedKeyFor(race) {
+  const id = String(seedIdentityFor(race));
+  return race?.season_id ? `${id}::${race.season_id}` : id;
 }
 
 function pick(rng, arr) {
@@ -141,37 +204,55 @@ function toStage(rng, profileType, stageNumber) {
   };
 }
 
-// Endagsløb: ét terræn fra den vægtede fordeling.
-function buildSingle(rng) {
-  return [toStage(rng, weightedPick(rng, SINGLE_PROFILE_WEIGHTS), 1)];
+// Endagsløb: ét terræn fra arketypens (eller den generiske) vægtede fordeling.
+function buildSingle(rng, cfg) {
+  const weights = cfg?.kind === "single" ? cfg.weights : SINGLE_PROFILE_WEIGHTS;
+  return [toStage(rng, weightedPick(rng, weights), 1)];
 }
 
-// Etapeløb: multiset af N terræn (garanteret ≥1 flad + ≥1 bjerg; kort TT muligt
-// ved N≥5), ordnet "mod klimaks" (sprint tidligt, bjerg sent).
-function buildStageRace(rng, stages) {
-  const types = ["flat", "mountain"]; // garanterede roller
-  if (stages >= 5 && rng() < 0.7) types.push("itt"); // kort TT relevant i længere løb
-  while (types.length < stages) types.push(weightedPick(rng, STAGE_FILLER_WEIGHTS));
-  types.length = stages; // defensiv trim (garantier kan ikke overstige stages ved stages>=2)
-
+// Ordn "mod klimaks" (sprint tidligt, bjerg sent) + map til etaper. Delt af begge stier.
+function orderAndBuild(rng, types, stages) {
+  types.length = stages; // defensiv trim
   const ordered = types
     .map((t) => ({ t, key: STAGE_ORDER_HINT[t] + rng() * 0.5 }))
     .sort((a, b) => a.key - b.key)
     .map((x) => x.t);
-
   return ordered.map((profileType, i) => toStage(rng, profileType, i + 1));
+}
+
+// Generisk (uændret adfærd): garanterer ≥1 flad + ≥1 bjerg; kort TT muligt ved N≥5.
+function buildStageRaceGeneric(rng, stages) {
+  const types = ["flat", "mountain"];
+  if (stages >= 5 && rng() < 0.7) types.push("itt");
+  while (types.length < stages) types.push(weightedPick(rng, STAGE_FILLER_WEIGHTS));
+  return orderAndBuild(rng, types, stages);
+}
+
+// Arketype-drevet: garantier (force-include, trimmet til stages) + filler-vægte.
+function buildStageRaceArchetype(rng, stages, cfg) {
+  const types = cfg.guarantees.slice(0, stages);
+  while (types.length < stages) types.push(weightedPick(rng, cfg.filler));
+  return orderAndBuild(rng, types, stages);
+}
+
+// Etapeløb: arketype-sti hvis kendt arketype, ellers generisk.
+function buildStageRace(rng, stages, cfg) {
+  return cfg?.kind === "stage" ? buildStageRaceArchetype(rng, stages, cfg) : buildStageRaceGeneric(rng, stages);
 }
 
 /**
  * Generér stage-profiler for ét løb (rør ingen DB).
- * @param {{id:string, race_type?:string, stages?:number}} race
- * @param {{seed?:number}} [opts]  override-seed (default: stableSeed(race.id))
+ * @param {{id:string, race_type?:string, stages?:number, external_id?:string, pool_race_id?:string}} race
+ *   Seedes på external_id ?? pool_race_id ?? id (se seedIdentityFor) — så alle kopier
+ *   af samme rigtige løb (en divisions parallelle puljer) får IDENTISK parcours.
+ * @param {{seed?:number}} [opts]  override-seed (default: stableSeed(seedIdentityFor(race)))
  * @returns {Array<{stage_number:number, profile_type:string, finale_type:(string|null), demand_vector:object}>}
  */
 export function generateRaceStageProfiles(race, { seed } = {}) {
   if (!race?.id) throw new Error("race.id kræves");
   const isStageRace = race.race_type === "stage_race";
   const stages = isStageRace ? Math.max(2, Number(race.stages) || 2) : 1;
-  const rng = makeRng(Number.isInteger(seed) ? seed >>> 0 : stableSeed(String(race.id)));
-  return isStageRace ? buildStageRace(rng, stages) : buildSingle(rng);
+  const cfg = archetypeFor(race);
+  const rng = makeRng(Number.isInteger(seed) ? seed >>> 0 : stableSeed(seedKeyFor(race)));
+  return isStageRace ? buildStageRace(rng, stages, cfg) : buildSingle(rng, cfg);
 }

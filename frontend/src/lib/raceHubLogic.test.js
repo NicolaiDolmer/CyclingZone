@@ -1,7 +1,27 @@
 // frontend/src/lib/raceHubLogic.test.js
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { computeColumnStatus, isSelectionSavable, isRiderBound, deriveRaceStatus, poolRaceDayTotals, fitTier, freshnessTier } from "./raceHubLogic.js";
+import { computeColumnStatus, isRiderBound, deriveRaceStatus, poolRaceDayTotals, fitTier, freshnessTier, draftBindingMap, windowsOverlap, canAddRiderToColumn, overlapConflictColumn, riderColumnState, findSelectionOverlaps } from "./raceHubLogic.js";
+
+const W = (g) => ({ start: g, end: g }); // 1-dags in-game-vindue på game-dag g
+
+test("draftBindingMap: binder rytter til de kolonner han er i kladden, med game-dag-vindue (ekskl. afmeldte)", () => {
+  const cols = [
+    { id: "A", withdrawn: false, bindingWindow: W(4), selection: { rider_ids: ["r1", "r2"] } },
+    { id: "B", withdrawn: false, bindingWindow: W(4), selection: { rider_ids: ["r2"] } },
+    { id: "C", withdrawn: true, bindingWindow: W(5), selection: { rider_ids: ["r1"] } },
+  ];
+  const map = draftBindingMap(cols);
+  assert.deepEqual(map.r1, [{ id: "A", window: W(4) }]); // C er afmeldt → tæller ikke
+  assert.deepEqual(map.r2.map((e) => e.id).sort(), ["A", "B"]);
+});
+
+test("windowsOverlap: deler game-dag → true; forskellige game-dage → false", () => {
+  assert.equal(windowsOverlap(W(4), W(4)), true);
+  assert.equal(windowsOverlap(W(4), W(5)), false);
+  assert.equal(windowsOverlap({ start: 4, end: 8 }, W(5)), true); // etapeløb-span dækker gd5
+  assert.equal(windowsOverlap(null, W(4)), false);
+});
 
 test("computeColumnStatus: full / understaffed / withdrawn", () => {
   assert.deepEqual(computeColumnStatus({ selected: 6, target: 6, withdrawn: false }), { kind: "full", selected: 6, target: 6 });
@@ -12,21 +32,23 @@ test("computeColumnStatus: full / understaffed / withdrawn", () => {
   assert.deepEqual(computeColumnStatus({ selected: 6, target: 6, max: 6, withdrawn: false }), { kind: "full", selected: 6, target: 6 });
 });
 
-// Rod A (#1823): auto-gem-når-gyldig — kun gyldige størrelser persisteres.
-test("isSelectionSavable: kun gyldig størrelse gemmes (transient 5/7 på 6/6 → nej)", () => {
-  // 6/6-løb, fuld trup tilgængelig
-  assert.equal(isSelectionSavable({ count: 6, min: 6, max: 6, available: 12 }), true);
-  assert.equal(isSelectionSavable({ count: 5, min: 6, max: 6, available: 12 }), false, "under min → ikke gemt");
-  assert.equal(isSelectionSavable({ count: 7, min: 6, max: 6, available: 12 }), false, "over max → ikke gemt");
-  // Lille trup: kun 4 tilgængelige → effectiveMin=4, så 4 er nok (mirror backend).
-  assert.equal(isSelectionSavable({ count: 4, min: 6, max: 6, available: 4 }), true);
+test("isRiderBound: kun bundet når game-dag-vinduer overlapper (samme IRL-dag ≠ binding)", () => {
+  // r1 er i a (gd4); b er gd4 (overlapper → bundet); c er gd5 (samme IRL-dag, anden game-dag → IKKE bundet).
+  const bindingMap = { r1: [{ id: "a", window: W(4) }] };
+  assert.equal(isRiderBound({ bindingMap, riderId: "r1", forRaceId: "b", forWindow: W(4) }), true);
+  assert.equal(isRiderBound({ bindingMap, riderId: "r1", forRaceId: "c", forWindow: W(5) }), false, "anden game-dag → fri");
+  assert.equal(isRiderBound({ bindingMap, riderId: "r1", forRaceId: "a", forWindow: W(4) }), false); // a er hans eget løb
+  assert.equal(isRiderBound({ bindingMap, riderId: "r9", forRaceId: "b", forWindow: W(4) }), false);
 });
 
-test("isRiderBound: rytter bundet i et ANDET kolonne-løb end det aktuelle", () => {
-  const bindingMap = { r1: ["a"], r2: ["b"] };
-  assert.equal(isRiderBound({ bindingMap, riderId: "r1", forRaceId: "b" }), true); // r1 er i a, bundet ift. b
-  assert.equal(isRiderBound({ bindingMap, riderId: "r1", forRaceId: "a" }), false); // r1 ER a's egen
-  assert.equal(isRiderBound({ bindingMap, riderId: "r9", forRaceId: "b" }), false);
+test("canAddRiderToColumn: game-dag-fri kolonne på samme IRL-dag er tilføjbar", () => {
+  const bindingMap = { r1: [{ id: "a", window: W(4) }] };
+  const colB = { id: "b", bindingWindow: W(4), selection: { rider_ids: [] } }; // gd4 → bundet
+  const colC = { id: "c", bindingWindow: W(5), selection: { rider_ids: [] } }; // gd5 → fri
+  assert.equal(canAddRiderToColumn({ column: colB, bindingMap, riderId: "r1" }), false);
+  assert.equal(canAddRiderToColumn({ column: colC, bindingMap, riderId: "r1" }), true);
+  assert.equal(canAddRiderToColumn({ column: { ...colC, withdrawn: true }, bindingMap, riderId: "r1" }), false);
+  assert.equal(canAddRiderToColumn({ column: { ...colC, selection: { rider_ids: ["r1"] } }, bindingMap, riderId: "r1" }), false);
 });
 
 // deriveRaceStatus (#1828): visnings-status afledt af stages_completed. Backend
@@ -109,4 +131,54 @@ test("freshnessTier: fresh/ok/tired + null ved manglende værdi", () => {
   assert.equal(freshnessTier(66), "ok");
   assert.equal(freshnessTier(67), "tired");
   assert.equal(freshnessTier(null), null);
+});
+
+test("overlapConflictColumn: returnerer det overlappende løb rytteren allerede er i (#1984)", () => {
+  const colBur = { id: "bur", name: "Burgalesa", bindingWindow: W(3), selection: { rider_ids: ["yonas"] } };
+  const colChe = { id: "che", name: "Chesapeake", bindingWindow: W(3), selection: { rider_ids: [] } };
+  const colMun = { id: "mun", name: "Münsterland", bindingWindow: W(5), selection: { rider_ids: [] } };
+  const columns = [colBur, colChe, colMun];
+  const bindingMap = draftBindingMap(columns);
+  // Yonas blokeret fra Chesapeake (gd3) → konflikt er Burgalesa.
+  assert.deepEqual(
+    overlapConflictColumn({ column: colChe, columns, bindingMap, riderId: "yonas" }),
+    colBur,
+  );
+  // Münsterland (gd5) overlapper ikke → ingen konflikt.
+  assert.equal(overlapConflictColumn({ column: colMun, columns, bindingMap, riderId: "yonas" }), null);
+  // Ukendt rytter → null.
+  assert.equal(overlapConflictColumn({ column: colChe, columns, bindingMap, riderId: "nobody" }), null);
+});
+
+test("riderColumnState: riding / overlap / available / locked (#1984)", () => {
+  const colBur = { id: "bur", name: "Burgalesa", bindingWindow: W(3), selection: { rider_ids: ["yonas"] } };
+  const colChe = { id: "che", name: "Chesapeake", bindingWindow: W(3), selection: { rider_ids: [] } };
+  const colMun = { id: "mun", name: "Münsterland", bindingWindow: W(5), selection: { rider_ids: [] } };
+  const colDone = { id: "done", name: "Started", bindingWindow: W(5), lineup_locked: true, selection: { rider_ids: [] } };
+  const bindingMap = draftBindingMap([colBur, colChe, colMun, colDone]);
+  assert.equal(riderColumnState({ column: colBur, bindingMap, riderId: "yonas" }), "riding");
+  assert.equal(riderColumnState({ column: colChe, bindingMap, riderId: "yonas" }), "overlap");
+  assert.equal(riderColumnState({ column: colMun, bindingMap, riderId: "yonas" }), "available");
+  assert.equal(riderColumnState({ column: colDone, bindingMap, riderId: "yonas" }), "locked");
+});
+
+test("findSelectionOverlaps: én rytter i to overlappende løb → konflikt med begge navne (#1983/#1984)", () => {
+  const cols = [
+    { id: "bur", name: "Burgalesa", bindingWindow: W(3), selection: { rider_ids: ["yonas", "theo"] } },
+    { id: "che", name: "Chesapeake", bindingWindow: W(3), selection: { rider_ids: ["yonas"] } },
+    { id: "mun", name: "Münsterland", bindingWindow: W(5), selection: { rider_ids: ["yonas"] } },
+    { id: "wd", name: "Withdrawn", withdrawn: true, bindingWindow: W(3), selection: { rider_ids: ["theo"] } },
+  ];
+  const overlaps = findSelectionOverlaps({ columns: cols });
+  assert.equal(overlaps.length, 1, "kun Burgalesa∩Chesapeake (gd3); Münsterland gd5 overlapper ikke; afmeldt tæller ikke");
+  assert.equal(overlaps[0].riderId, "yonas");
+  assert.deepEqual(overlaps[0].raceNames.sort(), ["Burgalesa", "Chesapeake"]);
+});
+
+test("findSelectionOverlaps: ingen overlap → tom liste", () => {
+  const cols = [
+    { id: "a", name: "A", bindingWindow: W(3), selection: { rider_ids: ["r1"] } },
+    { id: "b", name: "B", bindingWindow: W(5), selection: { rider_ids: ["r1"] } },
+  ];
+  assert.deepEqual(findSelectionOverlaps({ columns: cols }), []);
 });

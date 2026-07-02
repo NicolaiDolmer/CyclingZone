@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { getSession, supabase } from "./supabase.js";
+import { getAuthedUser } from "./getAuthedUser.js";
 import { logEvent } from "./logEvent.js";
 
 const API = import.meta.env.VITE_API_URL;
@@ -35,7 +36,7 @@ export function useAcademy() {
   // raekken udelades blot hvis hentningen fejler.
   const refreshBalance = useCallback(async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getAuthedUser();
       if (!user?.id) return;
       const { data: team } = await supabase
         .from("teams")

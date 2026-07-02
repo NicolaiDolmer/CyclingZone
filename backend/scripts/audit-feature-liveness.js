@@ -593,6 +593,9 @@ async function detectorD() {
   const findings = [];
   for (const tbl of prodTables) {
     if (WHITELIST_PROD_ONLY_TABLES.has(tbl)) continue;
+    // Transiente sikkerheds-backups (backup_<slug>_<dato>_*): oprettes FØR destruktive
+    // prod-indgreb og slettes efter verifikation — aldrig skema, så de flagges ikke som drift.
+    if (tbl.startsWith("backup_")) continue;
     if (repoTables.has(tbl)) continue;
     findings.push({
       detector: "D",

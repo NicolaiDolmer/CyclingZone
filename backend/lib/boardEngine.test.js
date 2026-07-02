@@ -63,6 +63,8 @@ test("deriveTeamIdentityProfile reads a sprint-heavy squad and exposes board-fac
 test("deriveTeamIdentityProfile exposes national core and star profile markers", () => {
   const riders = Array.from({ length: 8 }, (_, index) => ({
     id: `core-${index}`,
+    firstname: `Star${index}`,
+    lastname: `Rider${index}`,
     is_u25: index < 2,
     nationality_code: index < 5 ? "DK" : index === 5 ? "NO" : "SE",
     popularity: index < 2 ? 85 - (index * 5) : 30,
@@ -97,6 +99,46 @@ test("deriveTeamIdentityProfile exposes national core and star profile markers",
   assert.equal(profile.star_profile.label_key, "starProfileLevel.high");
   assert.equal(profile.summary_params.nationalCoreCode, "DK");
   assert.equal(profile.summary_params.starProfileLevel, "high");
+  // #1889 · star_profile navngiver nu de kvalificerende profilryttere; listen
+  // matcher star_rider_count, er sorteret faldende på score og bærer id + navn.
+  assert.equal(profile.star_profile.star_riders.length, profile.star_profile.star_rider_count);
+  assert.ok(profile.star_profile.star_riders.length >= 1);
+  assert.ok(profile.star_profile.star_riders.every((rider) => rider.score >= 68));
+  assert.equal(profile.star_profile.star_riders[0].id, "core-0");
+  assert.equal(profile.star_profile.star_riders[0].name, "Star0 Rider0");
+  assert.ok(
+    profile.star_profile.star_riders[0].score >= profile.star_profile.star_riders.at(-1).score
+  );
+});
+
+test("deriveTeamIdentityProfile returns an empty star_riders list when no rider clears the threshold", () => {
+  const riders = Array.from({ length: 8 }, (_, index) => ({
+    id: `domestique-${index}`,
+    firstname: `Worker${index}`,
+    lastname: `Bee${index}`,
+    is_u25: false,
+    nationality_code: "DK",
+    popularity: 20,
+    uci_points: 10,
+    stat_fl: 50,
+    stat_bj: 50,
+    stat_kb: 50,
+    stat_bk: 50,
+    stat_tt: 50,
+    stat_bro: 50,
+    stat_sp: 50,
+    stat_acc: 50,
+    stat_udh: 50,
+    stat_mod: 50,
+    stat_res: 50,
+    stat_ftr: 50,
+  }));
+
+  const profile = deriveTeamIdentityProfile({ team: { division: 3 }, riders });
+
+  assert.equal(profile.star_profile.level, "low");
+  assert.equal(profile.star_profile.star_rider_count, 0);
+  assert.deepEqual(profile.star_profile.star_riders, []);
 });
 
 test("buildBoardProposal keeps squad-size goals inside division limits", () => {
@@ -1843,9 +1885,11 @@ test("chooseDnaForTeam is idempotent: recovers a dna-set-but-boardless team with
   assert.equal(state.team_board_members.filter((m) => m.team_id === "team-1").length, TEAM_BOARD_MEMBERS_COUNT);
 });
 
-test("chooseDnaForTeam rejects re-choice when DNA is set and board already exists", async () => {
+test("chooseDnaForTeam rejects re-choice once the team has completed its first season (#2022)", async () => {
   const state = {
     teams: [{ id: "team-1", team_dna_key: "fransk_klatrer", team_dna_chosen_at: "2026-06-01T00:00:00Z", season_1_identity_basis: FRENCH_GC_BASIS }],
+    // seasons_completed >= 1 → holdet er forbi sin første sæson → DNA er låst.
+    board_profiles: [{ id: "bp-1", team_id: "team-1", plan_type: "1yr", seasons_completed: 1 }],
     team_board_members: [
       { id: "m-1", team_id: "team-1", archetype_key: "klassiker_purist", selection_kind: "identity", alignment_score: 4, is_chairman: true },
     ],
@@ -1865,7 +1909,46 @@ test("chooseDnaForTeam rejects re-choice when DNA is set and board already exist
   assert.equal(state.team_board_members.filter((m) => m.team_id === "team-1").length, 1);
 });
 
-test("chooseDnaForTeam refuses when season 1 identity basis is missing", async () => {
+test("chooseDnaForTeam allows re-choice during the first season and re-assigns members (#2022)", async () => {
+  const state = {
+    teams: [{ id: "team-1", team_dna_key: "fransk_klatrer", team_dna_chosen_at: "2026-06-01T00:00:00Z", season_1_identity_basis: FRENCH_GC_BASIS }],
+    // seasons_completed === 0 → holdet er stadig i sin første sæson → DNA er om-vælgeligt.
+    board_profiles: [{ id: "bp-1", team_id: "team-1", plan_type: "1yr", seasons_completed: 0 }],
+    team_board_members: [
+      { id: "m-1", team_id: "team-1", archetype_key: "klassiker_purist", selection_kind: "identity", alignment_score: 4, is_chairman: true },
+    ],
+  };
+  const supabase = makeFakeSupabase(state);
+
+  const result = await chooseDnaForTeam({ supabase, teamId: "team-1", dnaKey: "italiensk_klassiker" });
+
+  assert.equal(result.rechosen, true, "et skift i sæson 1 rapporteres som rechosen");
+  assert.equal(result.dnaKey, "italiensk_klassiker", "den nye nøgle er valgt");
+  assert.equal(state.teams[0].team_dna_key, "italiensk_klassiker", "team_dna_key er opdateret");
+  assert.notEqual(state.teams[0].team_dna_chosen_at, "2026-06-01T00:00:00Z", "chosen_at opdateres ved skift");
+  // De gamle medlemmer er erstattet af et nyt sæt for den nye DNA.
+  assert.equal(state.team_board_members.filter((m) => m.team_id === "team-1").length, TEAM_BOARD_MEMBERS_COUNT);
+  assert.equal(state.team_board_members.some((m) => m.id === "m-1"), false, "gamle medlemmer er ryddet");
+});
+
+test("chooseDnaForTeam re-picking the SAME DNA in the first season is an idempotent no-op (#2022)", async () => {
+  const state = {
+    teams: [{ id: "team-1", team_dna_key: "fransk_klatrer", team_dna_chosen_at: "2026-06-01T00:00:00Z", season_1_identity_basis: FRENCH_GC_BASIS }],
+    board_profiles: [{ id: "bp-1", team_id: "team-1", plan_type: "1yr", seasons_completed: 0 }],
+    team_board_members: [
+      { id: "m-1", team_id: "team-1", archetype_key: "klassiker_purist", selection_kind: "identity", alignment_score: 4, is_chairman: true },
+    ],
+  };
+  const supabase = makeFakeSupabase(state);
+
+  const result = await chooseDnaForTeam({ supabase, teamId: "team-1", dnaKey: "fransk_klatrer" });
+
+  assert.equal(result.dnaKey, "fransk_klatrer", "DNA er uændret");
+  assert.equal(state.teams[0].team_dna_key, "fransk_klatrer");
+  assert.equal(state.team_board_members.filter((m) => m.team_id === "team-1").length, TEAM_BOARD_MEMBERS_COUNT);
+});
+
+test("chooseDnaForTeam refuses with the season-agnostic code when identity basis is missing (#2022)", async () => {
   const state = {
     teams: [{ id: "team-1", team_dna_key: null, team_dna_chosen_at: null, season_1_identity_basis: null }],
     team_board_members: [],
@@ -1876,6 +1959,7 @@ test("chooseDnaForTeam refuses when season 1 identity basis is missing", async (
     () => chooseDnaForTeam({ supabase, teamId: "team-1", dnaKey: "italiensk_klassiker" }),
     (err) => {
       assert.equal(err.status, 409);
+      assert.equal(err.errorCode, "dna_requires_identity_basis", "sæson-agnostisk error-kode, ikke dna_requires_season_1");
       return true;
     },
   );

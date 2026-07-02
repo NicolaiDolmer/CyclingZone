@@ -6,10 +6,11 @@ import { selectionSizeForRace, suitabilityScore, stageSuitabilityScores } from "
 import { ABILITY_KEYS } from "./raceSimulator.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
 import { applyRiderEligibilityFilter } from "./riderEligibility.js";
+import { loadLoanedOutRiderIds } from "./raceEntriesLoader.js";
 
 export function validateSelection({
   riderIds = [], captainId = null, sprintCaptainId = null, hunterId = null,
-  teamRiderIds, injuredRiderIds, sizeRule, availableCount,
+  teamRiderIds, injuredRiderIds, sizeRule,
 }) {
   const errors = [];
   // Fejlrækkefølge (errors[0] vises til brugeren): duplikat → størrelse → fremmed → skadet → kaptajn → roller.
@@ -17,9 +18,10 @@ export function validateSelection({
   const unique = new Set(riderIds);
   if (unique.size !== riderIds.length) errors.push("selection_duplicate_rider");
 
-  // Lille-trup-lempelse: min sænkes til antal tilgængelige (autopick-paritet).
-  const effectiveMin = Math.min(sizeRule.min, Number.isFinite(availableCount) ? availableCount : sizeRule.min);
-  if (riderIds.length < effectiveMin || riderIds.length > sizeRule.max) errors.push("selection_wrong_size");
+  // Delvis trup TILLADT (ejer 28/6, afløser #1906): manageren gemmer sine egne picks frit;
+  // er truppen ikke fuld ved race-tid, top-fylder raceEntryGenerator gabet automatisk fra
+  // holdets ledige ryttere. Derfor afvises KUN for-mange (over feltstørrelsen) ved gem.
+  if (riderIds.length > sizeRule.max) errors.push("selection_wrong_size");
 
   for (const id of riderIds) {
     if (!teamRiderIds.has(id)) { errors.push("selection_rider_not_on_team"); break; }
@@ -28,8 +30,14 @@ export function validateSelection({
     if (injuredRiderIds.has(id)) { errors.push("selection_rider_injured"); break; }
   }
 
-  if (!captainId) errors.push("selection_captain_required");
-  else if (!unique.has(captainId)) errors.push("selection_captain_not_selected");
+  // Kaptajn kræves kun når der ER manuelt udtagne ryttere (en tom trup = ren auto-udtagelse).
+  // En tom trup må dog ikke bære en forældet kaptajn-reference uden for trupperne (input-hul).
+  if (riderIds.length === 0) {
+    if (captainId) errors.push("selection_captain_not_selected");
+  } else {
+    if (!captainId) errors.push("selection_captain_required");
+    else if (!unique.has(captainId)) errors.push("selection_captain_not_selected");
+  }
 
   for (const roleId of [sprintCaptainId, hunterId]) {
     if (roleId && !unique.has(roleId)) errors.push("selection_role_not_selected");
@@ -112,8 +120,16 @@ export async function getSelectionContext({ supabase, race, teamId }) {
   for (const [name, res] of [["riders", ridersRes], ["race_stage_profiles", profilesRes], ["race_entries", entriesRes]]) {
     if (res.error) throw new Error(`${name}: ${res.error.message}`);
   }
-  const riders = ridersRes.data || [];
+  const allRiders = ridersRes.data || [];
   const stages = profilesRes.data || [];
+  // Loan-aware (#1906): en udlånt rytter beholder ejer-holdets team_id men kører for
+  // låneren — udelad ham fra ejerens valgbare trup, så han hverken vises, tæller i
+  // kapacitet eller kan udtages (ellers fantom-rytter + mulig dobbelt-feltning).
+  const { data: loanedOut, error: loanErr } = await loadLoanedOutRiderIds({
+    supabase, riderIds: allRiders.map((r) => r.id),
+  });
+  if (loanErr) throw new Error(`loan_agreements: ${loanErr.message}`);
+  const riders = allRiders.filter((r) => !loanedOut.has(r.id));
   const riderIds = riders.map((r) => r.id);
 
   const abilityCols = ["rider_id", ...ABILITY_KEYS].join(", ");

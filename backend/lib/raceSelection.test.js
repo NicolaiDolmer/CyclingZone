@@ -3,6 +3,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { validateSelection, buildRiderRows, getSelectionContext } from "./raceSelection.js";
 
+// Ejer 28/6 (afløser #1906): delvis trup tilladt — kun OVER feltstørrelsen afvises.
 const base = {
   riderIds: ["r1", "r2", "r3", "r4", "r5", "r6"],
   captainId: "r1",
@@ -10,25 +11,39 @@ const base = {
   hunterId: null,
   teamRiderIds: new Set(["r1", "r2", "r3", "r4", "r5", "r6", "r7", "r8", "r9"]),
   injuredRiderIds: new Set(),
-  sizeRule: { min: 6, max: 8 },
+  sizeRule: { min: 6, max: 6 },
   availableCount: 9,
 };
 
-test("gyldig udtagelse passerer", () => {
+test("gyldig (fuld) udtagelse passerer", () => {
   assert.deepEqual(validateSelection(base), { ok: true, errors: [] });
 });
 
-test("størrelse håndhæves (for få / for mange / effectiveMin ved lille trup)", () => {
-  assert.ok(validateSelection({ ...base, riderIds: ["r1", "r2"] }).errors.includes("selection_wrong_size"));
-  assert.ok(validateSelection({ ...base, riderIds: ["r1","r2","r3","r4","r5","r6","r7","r8","r9"] }).errors.includes("selection_wrong_size"));
-  // Kun 5 raske på holdet → 5 er nok (effectiveMin).
+test("delvis trup tilladt (ejer 28/6): under-fuld + tom passerer, over-fuld afvises", () => {
+  // Delvis (2 af 6) → OK (resten auto-udtages ved race-tid).
+  assert.equal(validateSelection({ ...base, riderIds: ["r1", "r2"], captainId: "r1" }).ok, true);
+  // Tom trup (ingen manuelle picks) → OK; kaptajn ikke krævet.
+  assert.equal(validateSelection({ ...base, riderIds: [], captainId: null }).ok, true);
+  // ...men en tom trup med en forældet kaptajn-reference afvises (input-hul, CodeRabbit).
+  assert.ok(validateSelection({ ...base, riderIds: [], captainId: "r1" }).errors.includes("selection_captain_not_selected"));
+  // For mange (7 af 6) → wrong_size (over feltstørrelsen).
+  assert.ok(validateSelection({ ...base, riderIds: ["r1","r2","r3","r4","r5","r6","r7"] }).errors.includes("selection_wrong_size"));
+  // Default-klasse {6,8}: 6 af 8 = delvis → OK; 9 → wrong_size.
+  assert.equal(validateSelection({ ...base, sizeRule: { min: 6, max: 8 }, riderIds: ["r1","r2","r3","r4","r5","r6"] }).ok, true);
+  assert.ok(validateSelection({ ...base, sizeRule: { min: 6, max: 8 }, riderIds: ["r1","r2","r3","r4","r5","r6","r7","r8","r9"] }).errors.includes("selection_wrong_size"));
+});
+
+test("få raske ryttere er IKKE længere en fejl (delvis trup, top-fyld ved race-tid)", () => {
+  // Kun 5 berettigede ryttere, løbet har 6 pladser → tidligere selection_insufficient_riders.
+  // Nu: delvis trup tilladt; motoren top-fylder ved race-tid.
   const small = validateSelection({
     ...base,
-    riderIds: ["r1", "r2", "r3", "r4", "r5"],
+    riderIds: ["r1", "r2", "r3", "r4", "r5"], captainId: "r1",
     teamRiderIds: new Set(["r1", "r2", "r3", "r4", "r5"]),
-    availableCount: 5,
   });
   assert.equal(small.ok, true);
+  assert.ok(!small.errors.includes("selection_insufficient_riders"));
+  assert.ok(!small.errors.includes("selection_wrong_size"));
 });
 
 test("kaptajn kræves, skal være udtaget, roller skal være distinkte", () => {

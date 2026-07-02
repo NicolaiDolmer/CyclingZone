@@ -130,6 +130,10 @@
       "title": "Season {number} has started",
       "message": "A new season has begun. Check your dashboard for your board's goals and your squad for the season ahead."
     },
+    "raceResult": {
+      "title": "Race result is in",
+      "message": "{race} has been run. View the result."
+    },
     "contractExpiring": {
       "title": "Contract expiring",
       "message": "{rider}'s contract expires at the end of season {season}."

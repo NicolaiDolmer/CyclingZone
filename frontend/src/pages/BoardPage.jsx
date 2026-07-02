@@ -291,16 +291,24 @@ function BoardMemberDialog({ member, onClose }) {
 
 // Vises før første plan-card når manageren er i sæson 2+ (identity_basis findes,
 // is_baseline_phase=false), men endnu ikke har valgt DNA. 3 forslag-kort + Vælg-knap.
-function ClubDnaSelectionCard({ suggestions = [], onChoose, busy = false, error = "" }) {
+// #878 første-valg + #2022 re-valg i sæson 1. currentKey markerer det aktuelt
+// valgte DNA (re-valg-flowet) med accent-ramme + "Current"-label i stedet for en
+// vælg-knap. *Key-props lader re-valg-panelet vise sin egen copy uden at duplikere
+// markup.
+function ClubDnaSelectionCard({
+  suggestions = [], onChoose, busy = false, error = "", currentKey = null,
+  sectionLabelKey = "dna.sectionLabel", headingKey = "dna.selectHeading",
+  introKey = "dna.selectIntro", chooseLabelKey = "dna.choose",
+}) {
   const { t } = useTranslation("board");
   if (!suggestions.length) return null;
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz p-5 mt-4">
       <div className="flex items-start justify-between gap-3 mb-4">
         <div>
-          <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{t("dna.sectionLabel")}</p>
-          <h2 className="text-cz-1 font-semibold text-base">{t("dna.selectHeading")}</h2>
-          <p className="text-cz-2 text-sm mt-1">{t("dna.selectIntro")}</p>
+          <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{t(sectionLabelKey)}</p>
+          <h2 className="text-cz-1 font-semibold text-base">{t(headingKey)}</h2>
+          <p className="text-cz-2 text-sm mt-1">{t(introKey)}</p>
         </div>
       </div>
       {error && (
@@ -309,42 +317,91 @@ function ClubDnaSelectionCard({ suggestions = [], onChoose, busy = false, error 
         </div>
       )}
       <div className="grid gap-3 sm:grid-cols-3">
-        {suggestions.map((suggestion) => (
-          <div key={suggestion.key}
-            className="bg-cz-subtle border border-cz-border rounded-lg p-4 flex flex-col gap-3">
-            <div className="flex items-start gap-3">
-              <div className="w-12 h-12 rounded-full bg-cz-card border border-cz-border
-                flex items-center justify-center text-2xl flex-shrink-0">
-                <span aria-hidden>{suggestion.emoji}</span>
+        {suggestions.map((suggestion) => {
+          const isCurrent = currentKey != null && suggestion.key === currentKey;
+          return (
+            <div key={suggestion.key}
+              className={`bg-cz-subtle border rounded-lg p-4 flex flex-col gap-3 ${isCurrent ? "border-cz-accent/60" : "border-cz-border"}`}>
+              <div className="flex items-start gap-3">
+                <div className="w-12 h-12 rounded-full bg-cz-card border border-cz-border
+                  flex items-center justify-center text-2xl flex-shrink-0">
+                  <span aria-hidden>{suggestion.emoji}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-cz-3 text-[10px] uppercase tracking-wider">
+                    {t(`dna.slot.${suggestion.suggestion_slot}`, { defaultValue: t("dna.slot.fallback") })}
+                  </p>
+                  <p className="text-cz-1 font-semibold text-sm leading-tight">{getDnaCopy(t, suggestion, "label")}</p>
+                </div>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-cz-3 text-[10px] uppercase tracking-wider">
-                  {t(`dna.slot.${suggestion.suggestion_slot}`, { defaultValue: t("dna.slot.fallback") })}
+              <p className="text-cz-2 text-xs leading-relaxed">{getDnaCopy(t, suggestion, "shortDescription")}</p>
+              {getDnaCopy(t, suggestion, "longDescription") && (
+                <p className="text-cz-3 text-[11px] italic leading-relaxed line-clamp-3">
+                  {getDnaCopy(t, suggestion, "longDescription")}
                 </p>
-                <p className="text-cz-1 font-semibold text-sm leading-tight">{getDnaCopy(t, suggestion, "label")}</p>
-              </div>
+              )}
+              {getDnaRationale(t, suggestion) && (
+                <p className="text-cz-accent-t text-[11px]">{getDnaRationale(t, suggestion)}</p>
+              )}
+              {isCurrent ? (
+                <span className="mt-auto py-2 text-center text-cz-accent-t text-sm font-semibold
+                  bg-cz-accent/10 rounded-lg border border-cz-accent/30">
+                  {t("dna.current")}
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => onChoose(suggestion.key)}
+                  className="mt-auto py-2 bg-cz-accent text-cz-on-accent text-sm font-semibold rounded-lg
+                    hover:brightness-110 disabled:opacity-50 transition-all"
+                >
+                  {busy ? t("dna.saving") : t(chooseLabelKey)}
+                </button>
+              )}
             </div>
-            <p className="text-cz-2 text-xs leading-relaxed">{getDnaCopy(t, suggestion, "shortDescription")}</p>
-            {getDnaCopy(t, suggestion, "longDescription") && (
-              <p className="text-cz-3 text-[11px] italic leading-relaxed line-clamp-3">
-                {getDnaCopy(t, suggestion, "longDescription")}
-              </p>
-            )}
-            {getDnaRationale(t, suggestion) && (
-              <p className="text-cz-accent-t text-[11px]">{getDnaRationale(t, suggestion)}</p>
-            )}
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => onChoose(suggestion.key)}
-              className="mt-auto py-2 bg-cz-accent text-cz-on-accent text-sm font-semibold rounded-lg
-                hover:brightness-110 disabled:opacity-50 transition-all"
-            >
-              {busy ? t("dna.saving") : t("dna.choose")}
-            </button>
-          </div>
-        ))}
+          );
+        })}
       </div>
+    </div>
+  );
+}
+
+// #2022 fase 2 · Re-valg-affordance: så længe holdet er i sin første sæson kan
+// manageren folde forslagene ud og skifte DNA. Det valgte DNA vises stadig som
+// badge ovenfor; dette panel ligger under og er kollapset by default for at holde
+// fladen ren.
+function ClubDnaRechoosePanel({ suggestions = [], currentKey = null, onChoose, busy = false, error = "" }) {
+  const { t } = useTranslation("board");
+  const [open, setOpen] = useState(false);
+  if (!suggestions.length) return null;
+  return (
+    <div className="mt-3">
+      <div className="flex items-start gap-2 mb-2 px-1 text-cz-3 text-xs leading-relaxed">
+        <span>{t("dna.rechoose.hint")}</span>
+      </div>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="w-full flex items-center justify-center gap-2 py-2 border border-cz-border rounded-cz
+          text-cz-2 text-sm font-semibold hover:border-cz-accent/40 hover:bg-cz-subtle/40 transition-colors"
+      >
+        <EditIcon size={14} aria-hidden="true" /> {t("dna.rechoose.toggle")}
+      </button>
+      {open && (
+        <ClubDnaSelectionCard
+          suggestions={suggestions}
+          currentKey={currentKey}
+          onChoose={onChoose}
+          busy={busy}
+          error={error}
+          sectionLabelKey="dna.rechoose.sectionLabel"
+          headingKey="dna.rechoose.heading"
+          introKey="dna.rechoose.intro"
+          chooseLabelKey="dna.switch"
+        />
+      )}
     </div>
   );
 }
@@ -444,7 +501,7 @@ function BoardDriversPanel({ dna, plans }) {
 // #1030 · DNA-detalje-dialog — fuld beskrivelse + forklaring på at DNA er låst for sæsonen.
 // #1589 WP4 · Delt Modal-primitiv; rig header (DNA-emoji + label) i children, så
 // aria-labelledby peger på dens egen #club-dna-dialog-title.
-function ClubDnaDialog({ dna, onClose }) {
+function ClubDnaDialog({ dna, onClose, canRechoose = false }) {
   const { t } = useTranslation("board");
   if (!dna) return null;
   return (
@@ -472,8 +529,14 @@ function ClubDnaDialog({ dna, onClose }) {
         <p className="text-cz-3 text-sm mt-3 italic leading-relaxed">{getDnaCopy(t, dna, "longDescription")}</p>
       )}
       <div className="mt-4 pt-4 border-t border-cz-border">
-        <p className="text-cz-2 text-xs font-semibold flex items-center gap-1.5"><LockIcon size={14} aria-hidden="true" /> {t("dna.locked.heading")}</p>
-        <p className="text-cz-3 text-xs mt-1 leading-relaxed">{t("dna.locked.body")}</p>
+        {canRechoose ? (
+          <p className="text-cz-3 text-xs leading-relaxed">{t("dna.rechoose.hint")}</p>
+        ) : (
+          <>
+            <p className="text-cz-2 text-xs font-semibold flex items-center gap-1.5"><LockIcon size={14} aria-hidden="true" /> {t("dna.locked.heading")}</p>
+            <p className="text-cz-3 text-xs mt-1 leading-relaxed">{t("dna.locked.body")}</p>
+          </>
+        )}
       </div>
     </Modal>
   );
@@ -931,6 +994,10 @@ function BoardIdentityCard({ identityProfile, title, teamDna = null }) {
   const starProfileSub = starProfile?.star_rider_count
     ? t("identity.starProfileSub", { count: starProfile.star_rider_count })
     : t("identity.starProfileNone");
+  // #1889 · Vis HVILKE ryttere bestyrelsen læser som profilryttere (før kun et
+  // antal). Liste + score kommer fra backend (calculateStarProfile); tom liste
+  // håndteres som "ingen tydelige profiler endnu".
+  const starRiders = Array.isArray(starProfile?.star_riders) ? starProfile.star_riders : [];
   const primarySpecializationLabel = resolveBoardCopy(
     t, identityProfile.primary_specialization_label_key, identityProfile.primary_specialization_label
   );
@@ -1005,6 +1072,32 @@ function BoardIdentityCard({ identityProfile, title, teamDna = null }) {
           <p className="text-cz-1 text-sm font-medium mt-1 break-words">{starProfileValue}</p>
           <p className="text-cz-3 text-xs mt-1 break-words">{starProfileSub}</p>
         </div>
+      </div>
+      {/* #1889 · Navngiv profilrytterne under stjerneprofil-flisen, så kortet
+          viser HVEM bestyrelsen læser som stjerner — ikke kun et antal. Følger
+          det editorielle kort-look (subtil sektion + mono-score, ingen glow). */}
+      <div className="mt-4 border-t border-cz-border pt-3">
+        <p className="text-cz-3 text-[10px] uppercase tracking-wider">{t("identity.starRidersHeading")}</p>
+        {starRiders.length > 0 ? (
+          <ul className="mt-2 space-y-1.5">
+            {starRiders.map((rider, index) => (
+              <li
+                key={rider.id ?? `${rider.name}-${index}`}
+                className="flex items-baseline justify-between gap-3 min-w-0"
+              >
+                <span className="text-cz-1 text-sm break-words min-w-0">
+                  {rider.name || t("identity.starRiderUnnamed")}
+                </span>
+                <span className="text-cz-2 text-xs font-mono flex-shrink-0">
+                  {t("identity.starRiderScore", { score: Math.round(rider.score ?? 0) })}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-cz-3 text-sm mt-2 break-words">{t("identity.starRidersEmpty")}</p>
+        )}
+        <p className="text-cz-3 text-xs mt-2 leading-relaxed">{t("identity.starRidersExplainer")}</p>
       </div>
       {/* #1738 · Relation mellem squad-læsning og valgt klub-DNA — fjerner den
           oplevede selvmodsigelse (fx "Sprint-hold" + DNA "Britisk all-rounder"). */}
@@ -1866,6 +1959,8 @@ export default function BoardPage() {
   // S-02f: Klub-DNA — valgt arketype + 3 forslag når ikke valgt endnu
   const [teamDna, setTeamDna] = useState(null);
   const [dnaSuggestions, setDnaSuggestions] = useState([]);
+  // #2022 fase 2: DNA er om-vælgeligt indtil holdet har afsluttet sin første sæson.
+  const [dnaCanRechoose, setDnaCanRechoose] = useState(false);
   const [dnaChooseBusy, setDnaChooseBusy] = useState(false);
   const [dnaError, setDnaError] = useState("");
 
@@ -1970,6 +2065,7 @@ export default function BoardPage() {
     setBonusOffer(data.bonus_offer || null);
     setTeamDna(data.team_dna || null);
     setDnaSuggestions(Array.isArray(data.dna_suggestions) ? data.dna_suggestions : []);
+    setDnaCanRechoose(Boolean(data.dna_can_rechoose));
     setDnaError("");
 
     // S-02b: hent seneste board-relaterede notifs til feed-sektion (Q-batch 1C Q21)
@@ -2430,6 +2526,15 @@ export default function BoardPage() {
 
       {/* S-02f · Klub-DNA */}
       {!isBaselinePhase && teamDna && <ClubDnaBadge dna={teamDna} onSelect={() => setDnaDialogOpen(true)} />}
+      {!isBaselinePhase && teamDna && dnaCanRechoose && dnaSuggestions.length > 0 && (
+        <ClubDnaRechoosePanel
+          suggestions={dnaSuggestions}
+          currentKey={teamDna.key}
+          onChoose={chooseDna}
+          busy={dnaChooseBusy}
+          error={dnaError}
+        />
+      )}
       {!isBaselinePhase && teamDna && <BoardDriversPanel dna={teamDna} plans={plans} />}
       {!isBaselinePhase && !teamDna && dnaSuggestions.length > 0 && (
         <ClubDnaSelectionCard
@@ -2715,7 +2820,7 @@ export default function BoardPage() {
 
       {/* #1030 · Klub-DNA-detalje-dialog */}
       {dnaDialogOpen && teamDna && (
-        <ClubDnaDialog dna={teamDna} onClose={() => setDnaDialogOpen(false)} />
+        <ClubDnaDialog dna={teamDna} onClose={() => setDnaDialogOpen(false)} canRechoose={dnaCanRechoose} />
       )}
 
       {/* #1663 · Sponsor-tilbuds-modal — forhandling for kommende sæson */}

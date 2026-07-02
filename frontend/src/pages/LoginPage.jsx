@@ -12,6 +12,7 @@ import { Card, Button, Input, CheckIcon, InboxIcon } from "../components/ui";
 import { labelClass, helperClass } from "../components/ui/fieldStyles.js";
 import { getAttribution } from "../lib/attribution";
 import { markPendingSignup } from "../lib/logEvent";
+import { safeNextPath } from "../lib/safeNextPath.js";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -28,9 +29,13 @@ export default function LoginPage() {
   const navigate = useNavigate();
   // #672: landing kan deep-linke til signup-mode via ?mode=signup (Opret bruger-CTA).
   const [searchParams] = useSearchParams();
+  // #2042: cold deep-link-trafik ankommer med ?next= → default til signup-mode
+  // (de har sjældent en konto endnu), så CTA'en matcher intentionen.
+  const nextPath = safeNextPath(searchParams.get("next"));
   const [mode, setMode] = useState(() => {
     const requested = searchParams.get("mode");
-    return requested === "signup" || requested === "forgot" ? requested : "login";
+    if (requested === "signup" || requested === "forgot" || requested === "login") return requested;
+    return nextPath ? "signup" : "login";
   });
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -39,6 +44,15 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(null);
+  // #2068: "send bekræftelsesmail igen" — dækker både signup-succes-skærmen
+  // (kind: "confirm") og login-forsøg der rammer Supabases "email not
+  // confirmed"-fejl (bruger er stadig ubekræftet men prøver at logge ind).
+  const [resendState, setResendState] = useState("idle"); // idle | sending | sent
+  const [showResend, setShowResend] = useState(false);
+  // Eget fejl-state (ikke den delte `error`) — resend kan trigges fra
+  // success-skærmen, som ikke renderer #auth-error-blokken (den ligger kun i
+  // login-formularen).
+  const [resendError, setResendError] = useState("");
 
   // Per-route head for den public /login-rute (#1404/#1301).
   useDocumentHead({
@@ -55,6 +69,27 @@ export default function LoginPage() {
   function resetMessages() {
     setError("");
     setSuccess(null);
+    setShowResend(false);
+    setResendState("idle");
+    setResendError("");
+  }
+
+  // #2068: "send bekræftelsesmail igen". Bruges både fra signup-succes-skærmen
+  // og fra login-fejlen "email not confirmed" — begge kender allerede emailen.
+  async function handleResendConfirmation(targetEmail) {
+    if (!targetEmail || resendState === "sending") return;
+    setResendState("sending");
+    setResendError("");
+    const { error: err } = await supabase.auth.resend({
+      type: "signup",
+      email: targetEmail,
+    });
+    if (err) {
+      setResendState("idle");
+      setResendError(mapSupabaseAuthError(err, t));
+    } else {
+      setResendState("sent");
+    }
   }
 
   function switchMode(nextMode) {
@@ -107,7 +142,13 @@ export default function LoginPage() {
         // Vigtigst: "Email not confirmed" får sin egen besked, så en ny spiller
         // der prøver at logge ind før de har klikket bekræftelseslinket forstår
         // hvorfor — frem for fejlagtigt at tro deres adgangskode er forkert.
-        if (error) setError(mapSupabaseAuthError(error, t));
+        if (error) {
+          setError(mapSupabaseAuthError(error, t));
+          // #2068: samme fejl er også hvor "send igen"-knappen skal dukke op —
+          // brugeren står med en ubekræftet konto og ellers ingen vej videre.
+          setShowResend(/email not confirmed/i.test(error.message || ""));
+          setResendState("idle");
+        }
         return;
       }
 
@@ -154,7 +195,10 @@ export default function LoginPage() {
         email: email.trim(),
         password,
         options: {
-          data: { team_name: teamName.trim(), language },
+          // #2068: manager_name gemmes nu også i metadata (var kun team_name) —
+          // Layout auto-opretter holdet fra denne metadata efter email-bekræftelse,
+          // så en confirm-on-bruger ikke skal genindtaste navnene i SetupWizard.
+          data: { team_name: teamName.trim(), manager_name: managerName.trim(), language },
         },
       });
 
@@ -217,7 +261,7 @@ export default function LoginPage() {
       // #1570: holdet er oprettet og spilleren har en aktiv session → direkte ind
       // i spillet. SetupWizard/onboarding på dashboardet guider videre — ingen
       // selvmodsigende "dit hold er klar, men log ind igen"-success-skærm.
-      navigate("/dashboard");
+      navigate(nextPath || "/dashboard");
     } catch (err) {
       // #1348 — login/signup/forgot brugte try/finally uden catch: et rejected
       // Supabase-kald (offline/dropped connection) clearede loading men
@@ -264,6 +308,12 @@ export default function LoginPage() {
             <Wordmark className="mx-auto h-9 w-auto" />
           </h1>
           <p className="mt-4 text-sm text-cz-2">{subtitle}</p>
+          {nextPath && (
+            <div className="mt-5 rounded-cz border border-cz-border bg-cz-subtle px-4 py-3 text-left">
+              <p className="text-sm font-semibold text-cz-1">{t("auth:context.title")}</p>
+              <p className="mt-1 text-xs text-cz-2">{t("auth:context.body")}</p>
+            </div>
+          )}
         </div>
 
         <Card className="p-6">
@@ -286,6 +336,25 @@ export default function LoginPage() {
                     ? t("auth:success.confirmBody", { email: success.email })
                     : t("auth:success.forgotBody")}
               </p>
+              {success.kind === "confirm" && (
+                <p className="mt-3 text-xs text-cz-3">
+                  {resendState === "sent" ? (
+                    t("auth:success.resendSent")
+                  ) : (
+                    <>
+                      {resendError ? resendError : t("auth:success.resendPrompt")}{" "}
+                      <button
+                        type="button"
+                        disabled={resendState === "sending"}
+                        onClick={() => handleResendConfirmation(success.email)}
+                        className="underline hover:text-cz-1 disabled:opacity-60"
+                      >
+                        {resendState === "sending" ? t("auth:success.resendSending") : t("auth:success.resendCta")}
+                      </button>
+                    </>
+                  )}
+                </p>
+              )}
               <Button
                 type="button"
                 variant="primary"
@@ -407,6 +476,25 @@ export default function LoginPage() {
                   className="rounded-cz border border-cz-danger/30 bg-cz-danger-bg px-4 py-2.5 text-sm text-cz-danger"
                 >
                   {error}
+                  {showResend && (
+                    <div className="mt-1.5">
+                      {resendState === "sent" ? (
+                        t("auth:success.resendSent")
+                      ) : (
+                        <>
+                          {resendError && <span className="block">{resendError}</span>}
+                          <button
+                            type="button"
+                            disabled={resendState === "sending"}
+                            onClick={() => handleResendConfirmation(email.trim())}
+                            className="underline hover:text-cz-1 disabled:opacity-60"
+                          >
+                            {resendState === "sending" ? t("auth:success.resendSending") : t("auth:success.resendCta")}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 

@@ -73,7 +73,7 @@
       "blocks": {
         "duration": {
           "title": "Auktionslængde",
-          "text": "En auktion kører i {auctionActiveHours} aktive timer. Nattetimer tæller ikke med: hverdage (man.–fre.) er aktive 16:00–22:00, weekender (lør.–søn.) 08:00–23:00. Disse vinduer er admin-konfigurerbare."
+          "text": "En auktion kører i {auctionActiveHours, plural, one {# aktiv time} other {# aktive timer}}. Nattetimer tæller ikke med: handel er aktiv 08:00–24:00 alle dage (pause 00:00–08:00). Disse vinduer er admin-konfigurerbare."
         },
         "minBid": {
           "title": "Minimumsbud",
@@ -107,7 +107,7 @@
       "blocks": {
         "prize": {
           "title": "Præmiepenge",
-          "text": "Præmiepenge udbetales pr. resultat: point for placeringen × {prizePerPoint} CZ$. Kun løb med en løbsklasse (Tour de France, WorldTour, ProSeries osv.) genererer præmiepenge; løb uden klasse giver 0."
+          "text": "Præmiepenge udbetales pr. resultat: point for placeringen × {prizePerPoint} CZ$. Kun løb med en løbsklasse (Grand Tour, WorldTour, ProSeries osv.) genererer præmiepenge; løb uden klasse giver 0."
         },
         "resultType": {
           "title": "Resultattype",

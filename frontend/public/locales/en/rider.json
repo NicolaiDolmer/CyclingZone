@@ -46,6 +46,7 @@
     "heightCm": "{height} cm",
     "weightKg": "{weight} kg",
     "potential": "Potential",
+    "overall": "Rating",
     "teamPrefix": "Team:",
     "freeAgent": "Free agent",
     "nextSeasonPrefix": "Next season:",
@@ -58,7 +59,6 @@
     "contractExpires": "Expires after season {season}",
     "noContract": "Free agent (no contract)",
     "estSalary": "Est. salary CZ$",
-    "bestStat": "Best: {label} ({value})",
     "typeDefault": "All-rounder",
     "newValueBeta": "New value (beta): {amount} CZ$",
     "newValueBetaTooltip": "Preview of the upcoming ability-based valuation. Not yet used for buying, selling or salary."
@@ -79,7 +79,12 @@
   "stats": {
     "potentialRow": "Potential",
     "abilitiesPending": "Abilities not yet available",
-    "loadingDevelopment": "Loading development..."
+    "loadingDevelopment": "Loading development...",
+    "categories": {
+      "physical": "Physical",
+      "mental": "Mental",
+      "technical": "Technical"
+    }
   },
   "racePreview": {
     "title": "Cycling Zones",
@@ -203,9 +208,11 @@
   },
   "development": {
     "progressHint": "Progress toward next point",
-    "empty": "No history yet. Data accumulates from the next weekly sync",
-    "statsTitle": "Skill development",
-    "statsSubtitle": "Pick a skill and see how it changes over time",
+    "empty": "No history yet. Ratings build up as the rider trains and seasons progress.",
+    "statsTitle": "Rider-type rating over time",
+    "statsSubtitle": "How the rider's overall rating develops in each rider type. Click a type to toggle it.",
+    "filterAll": "All types",
+    "filterNone": "None",
     "recentTitle": "Latest data points",
     "table": {
       "date": "Date"
@@ -367,6 +374,42 @@
       "priceUpdated": "✅ Asking price updated",
       "removed": "✅ Removed from the transfer list",
       "errorPrefix": "❌"
+    }
+  },
+  "manage": {
+    "extend": {
+      "button": "Extend contract",
+      "description": "Extend this rider's contract by one season at a renegotiated salary.",
+      "currentSalary": "Current salary",
+      "newSalary": "New salary",
+      "newContract": "New contract",
+      "newContractValue": "Through season {season}",
+      "confirm": "Confirm extension",
+      "success": "Contract extended.",
+      "errorPrefix": "Couldn't extend:"
+    },
+    "release": {
+      "button": "Release rider",
+      "description": "End this rider's contract. They leave your squad and become a free agent.",
+      "fee": "Buyout fee",
+      "balance": "Your balance",
+      "feeHint": "The buyout fee is half the salary left on the contract.",
+      "freeHint": "This rider is out of contract, so there's no buyout fee.",
+      "cannotAfford": "You can't afford the buyout fee.",
+      "confirm": "Release rider",
+      "cancel": "Cancel",
+      "success": "Rider released.",
+      "errorPrefix": "Couldn't release:"
+    },
+    "promote": {
+      "button": "Promote to senior squad",
+      "success": "Rider promoted to your senior squad.",
+      "errorPrefix": "Couldn't promote:"
+    },
+    "demote": {
+      "button": "Move to academy",
+      "success": "Rider moved to your academy.",
+      "errorPrefix": "Couldn't move rider:"
     }
   },
   "swapOffer": {

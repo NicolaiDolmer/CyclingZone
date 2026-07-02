@@ -30,13 +30,15 @@ const DISTRIBUTION = {
   columns: [
     {
       id: "race-a", name: "Hamburger Klassiker", race_class: "ProSeries", race_type: "single",
-      stages: 1, status: "scheduled", window: { start: 1, end: 1 },
+      // bindingWindow = in-game-dag-span (samme shape som API'en); race-a og race-b deler
+      // game-dag 1 → de binder → r0 (i race-a) er låst fra race-b i puljen.
+      stages: 1, status: "scheduled", window: { start: 1, end: 1 }, bindingWindow: { start: 1, end: 1 },
       size: { min: 6, max: 6 }, withdrawn: false, counts: { selected: 1, target: 6 },
       riders: ROSTER, selection: { rider_ids: ["r0"], captain_id: "r0", sprint_captain_id: null, hunter_id: null, is_auto_filled: true },
     },
     {
       id: "race-b", name: "La Corsa dei Due Mari", race_class: "OtherWorldTourA", race_type: "stage_race",
-      stages: 7, status: "scheduled", window: { start: 1, end: 1 },
+      stages: 7, status: "scheduled", window: { start: 1, end: 1 }, bindingWindow: { start: 1, end: 1 },
       size: { min: 8, max: 8 }, withdrawn: false, counts: { selected: 0, target: 8 },
       riders: ROSTER, selection: null,
     },
@@ -70,17 +72,27 @@ test("trup-fordeling-board viser overlappende løb + låst rytter i puljen", asy
   const board = page.getByTestId("race-hub-board");
   await expect(board).toBeVisible();
 
-  // Begge overlappende løb vises som kolonner.
-  await expect(board.getByText("Hamburger Klassiker")).toBeVisible();
-  await expect(board.getByText("La Corsa dei Due Mari")).toBeVisible();
+  // Begge overlappende løb vises som kolonner. (#1984: race-navnet optræder nu også i
+  // pulje-chip'ens inline lås-grund, så vi peger entydigt på kolonne-headeren = link.)
+  await expect(board.getByRole("link", { name: "Hamburger Klassiker" })).toBeVisible();
+  await expect(board.getByRole("link", { name: "La Corsa dei Due Mari" })).toBeVisible();
 
   // Underbemandet-status på race-b (0/8).
   await expect(board.getByText(/0 \/ 8/)).toBeVisible();
 
-  // r0 er udtaget til race-a → låst (disabled) i puljen. Pulje-chip'en bærer
-  // bound-title; kolonne-knappen for samme rytter gør ikke (entydig selector).
+  // r0 er udtaget til race-a → låst i puljen. Pulje-chip'en bærer bound-title;
+  // kolonne-knappen for samme rytter gør ikke (entydig selector).
+  // #1984: chip'en er nu KLIKBAR (popoveren forklarer hvorfor) men markeret som låst
+  // via bound-title + en inline lås-grund ("kører <løb>").
   const lockedChip = board.locator("button[title]").filter({ hasText: "Rider 0" });
-  await expect(lockedChip).toBeDisabled();
+  await expect(lockedChip).toBeEnabled();
+  await expect(lockedChip).toHaveAttribute("title", /Hamburger Klassiker/);
+
+  // #1984/C: klik den låste chip → popoveren viser HVORFOR (optaget i overlappende løb)
+  // + navngiver det konkrete blokerende løb (verificerer blockedReason-interpolationen).
+  await lockedChip.click();
+  await expect(board.getByText("Optaget i overlappende løb")).toBeVisible();
+  await expect(board.getByText("Overlapper Hamburger Klassiker")).toBeVisible();
 
   // En ledig rytter (ikke udtaget nogen steder) er klikbar i puljen.
   await expect(board.getByRole("button", { name: /Rider 5/ })).toBeEnabled();
@@ -100,10 +112,9 @@ const FULL_RACE_A = {
   bindingMap: { r0: ["race-a"], r1: ["race-a"], r2: ["race-a"], r3: ["race-a"], r4: ["race-a"], r5: ["race-a"] },
 };
 
-// #1823: gem-fejl må IKKE være tavse — når en GYLDIG ændring afvises af serveren,
-// viser board'et en mappet fejlbesked. (Auto-gem-når-gyldig: en rolle-ændring på en
-// fuld trup PUT'er; her mocker vi et 409 og forventer alert'en.)
-test("board surfacer fejlbesked når en gyldig udtagelse afvises (#1823)", async ({ page }) => {
+// Gem-fejl må IKKE være tavse — når serveren afviser et Gem, viser board'et en mappet
+// fejlbesked. (Ejer 28/6: eksplicit Gem-knap PUT'er; her mocker vi et 409 og forventer alert'en.)
+test("board surfacer fejlbesked når et gem afvises (#1823)", async ({ page }) => {
   await stabilizePage(page);
   await installNetworkMocks(page);
   await mockDistribution(page, FULL_RACE_A);
@@ -121,18 +132,20 @@ test("board surfacer fejlbesked når en gyldig udtagelse afvises (#1823)", async
   const board = page.getByTestId("race-hub-board");
   await expect(board).toBeVisible();
 
-  // Klik en udtagen rytter → rolle-menu → sæt en rolle (gyldig ændring) → PUT → 409 → alert.
+  // Klik en udtagen rytter → rolle-menu → sæt en rolle (kladde-ændring, intet PUT endnu).
   await board.getByRole("button", { name: /Rider 1/ }).first().click();
   await board.getByRole("button", { name: /Sprint-kaptajn/ }).click();
+  // Ejer 28/6: ingen auto-gem — den eksplicitte "Gem ændringer"-knap udløser PUT (→ mocket 409 → alert).
+  await board.getByRole("button", { name: /Gem ændringer/ }).click();
   const alert = board.getByRole("alert");
   await expect(alert).toBeVisible();
-  await expect(alert).toContainText(/6/); // "Udtag mellem 6 og 6 ryttere" (ikke literal {min})
+  // Specifik mapping (ikke bare "indeholder 6"): den mappede selection_wrong_size-streng.
+  await expect(alert).toContainText(/højst udtage/);
 });
 
-// Rod A (#1823): auto-gem-når-gyldig — at fjerne en rytter under minimum GEMMER IKKE
-// (ingen PUT, ingen fejl-alert); kolonnen viser blot underbemandet, så man kan redigere
-// videre. Det er det fix der ophæver den hårde 6-og-6-lås.
-test("board: fjern under minimum gemmer ikke + viser underbemandet uden fejl (#1823)", async ({ page }) => {
+// Ejer 28/6: redigering PUT'er ALDRIG af sig selv (ingen auto-gem). At fjerne en rytter
+// viser blot underbemandet (5/6) lokalt — intet PUT, ingen fejl-alert — indtil man trykker Gem.
+test("board: redigering gemmer ikke før Gem (underbemandet vises lokalt)", async ({ page }) => {
   await stabilizePage(page);
   await installNetworkMocks(page);
   await mockDistribution(page, FULL_RACE_A);
@@ -230,8 +243,9 @@ test("browse: 'Andre divisioner' viser read-only startlister (bruttotrupper) + l
   await page.goto("/races");
   await expect(page.getByTestId("race-hub-board")).toBeVisible();
 
-  // Skift til "Andre divisioner" → read-only browse-flade.
-  await page.getByRole("button", { name: "Andre divisioner" }).click();
+  // Skift til "Andre divisioner" → read-only browse-flade. Scope-pillerne er
+  // ARIA-faner (role="tab", #1924), ikke generiske knapper.
+  await page.getByRole("tab", { name: "Andre divisioner" }).click();
   const browse = page.getByTestId("race-hub-browse");
   await expect(browse).toBeVisible();
 

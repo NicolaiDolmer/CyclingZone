@@ -14,7 +14,15 @@ import { toggleRider, validateSelectionClient } from "../../lib/raceSelectionLog
 import RiderTypeBadge from "../rider/RiderTypeBadge.jsx";
 import FitBar from "../racehub/FitBar.jsx";
 import HunterExplainer from "./HunterExplainer.jsx";
-import { effectiveStageFit, bestFitRiderId } from "../../lib/lineupInsight.js";
+import {
+  effectiveStageFit,
+  bestFitRiderId,
+  selectionComparator,
+  selectionDefaultSortDir,
+  SELECTION_SORT_KEYS,
+} from "../../lib/lineupInsight.js";
+import SortTh from "../rider/RiderSortTh.jsx";
+import { ArrowUpIcon, ArrowDownIcon } from "../ui/index.js";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -43,6 +51,12 @@ export default function RaceSelectionPanel({
   // #1747: skjul-skadede-toggle. Default false (skadede vises dæmpet + deaktiveret)
   // så manageren stadig kan se hvem der er ude — toggler skjuler dem helt.
   const [hideInjured, setHideInjured] = useState(false);
+  // #1951: klient-sortering af rytterlisten. Sortering er REN opt-in: default er
+  // ingen aktiv nøgle, så listen står i backendens oprindelige rækkefølge indtil
+  // manageren selv vælger en sortering (en auto-sort ved load ændrede den
+  // dokumenterede default-rækkefølge ud over #1951's scope og brød
+  // gem-udtagelses-smoke-testen). `sort: null` = uændret rækkefølge.
+  const [sort, setSort] = useState({ sort: null, dir: "desc" });
 
   useEffect(() => {
     let cancelled = false;
@@ -77,6 +91,18 @@ export default function RaceSelectionPanel({
   // Flag OFF eller løbet ikke længere åbent → intet panel.
   if (!data?.enabled || data.race?.status !== "scheduled") return null;
 
+  // #1954: løbet hører til en anden pulje/division end spillerens egen. Backend
+  // afviser alligevel et gem (409 selection_wrong_pool), så vis en tydelig read-only
+  // forklaring i stedet for et fuldt udtageligt panel der først fejler ved gem.
+  if (data.eligible === false) {
+    return (
+      <section data-testid="race-selection-wrong-pool" className="bg-cz-card border border-cz-border rounded-cz px-4 py-3">
+        <p className="text-sm font-semibold text-cz-1">{t("selection.wrongPool.title")}</p>
+        <p className="text-xs text-cz-3 mt-0.5">{t("selection.wrongPool.note")}</p>
+      </section>
+    );
+  }
+
   const { size, riders, availableCount } = data;
   const clientErrors = validateSelectionClient({ ...sel, size, availableCount });
   const selectedRiders = riders.filter((r) => sel.riderIds.includes(r.id));
@@ -88,9 +114,29 @@ export default function RaceSelectionPanel({
   // #1747: skjul skadede ryttere. En allerede-udtaget (skadet) rytter forbliver
   // synlig så manageren ikke mister overblikket over en ugyldig udtagelse.
   const injuredCount = riders.filter((r) => r.injured).length;
-  const visibleRiders = hideInjured
+  const filteredRiders = hideInjured
     ? riders.filter((r) => !r.injured || sel.riderIds.includes(r.id))
     : riders;
+  // #1951: sortering er opt-in. Ingen aktiv nøgle (sort.sort == null) → behold
+  // backendens oprindelige rækkefølge. Først når manageren vælger en kolonne/
+  // dropdown-nøgle sorteres en kopi (muter aldrig prop'en) via den delte comparator.
+  const visibleRiders = sort.sort
+    ? [...filteredRiders].sort(selectionComparator(sort.sort, sort.dir, selectedStageIndex))
+    : filteredRiders;
+
+  // #1951: header-klik (desktop) + dropdown (mobil) deler samme cyklus-konvention
+  // som resten af rytter-tabellerne (klik aktiv nøgle = vend retning; klik ny
+  // nøgle = nøglens default-retning). routeMatch-kolonnen viser "Suitability"
+  // når ingen etape er valgt — sort-nøglen er den samme (effektivt fit falder
+  // tilbage til løb-snittet).
+  function handleSort(key) {
+    setSort((s) => (s.sort === key
+      ? { sort: key, dir: s.dir === "desc" ? "asc" : "desc" }
+      : { sort: key, dir: selectionDefaultSortDir(key) }));
+  }
+  // Label for fit-kolonnen/sort-nøglen: rute-match når en etape er valgt, ellers
+  // generel egnethed.
+  const fitSortLabel = selectedStageIndex != null ? t("selection.routeMatch") : t("selection.suitability");
 
   function update(next) {
     setSel(next);
@@ -203,6 +249,10 @@ export default function RaceSelectionPanel({
           så klikket rammer en tabel-celle i stedet (#1834, frontend-smoke rød på
           CI). Stablede kort fjerner overflow'en helt + er bedre mobil-UX.
           Fra sm og op vises den klassiske tabel. */}
+      {/* #1951: mobil-sortering — desktop sorterer via kolonne-headers, men på
+          mobil er der ingen header-række. Denne kontrol eksponerer samme sort-
+          nøgler og deler handleSort med tabellen (ingen ny sort-logik). */}
+      <SelectionSortControl sort={sort} onSort={handleSort} fitLabel={fitSortLabel} t={t} />
       <ul className="sm:hidden divide-y divide-cz-border">
         {visibleRiders.map((rider) => {
           const checked = sel.riderIds.includes(rider.id);
@@ -255,14 +305,18 @@ export default function RaceSelectionPanel({
       <div className="hidden sm:block overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
+            {/* #1951: klikbare, sorterbare headers (delt SortTh + retnings-ikon). */}
             <tr className="border-b border-cz-border">
-              <th scope="col" className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("selection.thRider")}</th>
-              <th scope="col" className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("selection.type")}</th>
-              <th scope="col" className="px-4 py-3 text-right text-cz-3 font-medium text-xs uppercase">
-                {selectedStageIndex != null ? t("selection.routeMatch") : t("selection.suitability")}
-              </th>
-              <th scope="col" className="px-4 py-3 text-right text-cz-3 font-medium text-xs uppercase">{t("selection.form")}</th>
-              <th scope="col" className="px-4 py-3 text-right text-cz-3 font-medium text-xs uppercase">{t("selection.fatigue")}</th>
+              <SortTh sortKey="name" sort={sort.sort} sortDir={sort.dir} onSort={handleSort}
+                className="px-4 py-3 text-left font-medium text-xs uppercase">{t("selection.thRider")}</SortTh>
+              <SortTh sortKey="primaryType" sort={sort.sort} sortDir={sort.dir} onSort={handleSort}
+                className="px-4 py-3 text-left font-medium text-xs uppercase">{t("selection.type")}</SortTh>
+              <SortTh sortKey="routeMatch" sort={sort.sort} sortDir={sort.dir} onSort={handleSort}
+                className="px-4 py-3 text-right font-medium text-xs uppercase">{fitSortLabel}</SortTh>
+              <SortTh sortKey="form" sort={sort.sort} sortDir={sort.dir} onSort={handleSort}
+                className="px-4 py-3 text-right font-medium text-xs uppercase">{t("selection.form")}</SortTh>
+              <SortTh sortKey="fatigue" sort={sort.sort} sortDir={sort.dir} onSort={handleSort}
+                className="px-4 py-3 text-right font-medium text-xs uppercase">{t("selection.fatigue")}</SortTh>
             </tr>
           </thead>
           <tbody>
@@ -373,6 +427,70 @@ export default function RaceSelectionPanel({
         hunterId={sel.hunterId}
       />
     </section>
+  );
+}
+
+// #1951: mobil-sort-kontrol. Eksponerer de samme nøgler som desktop-headerne
+// (SELECTION_SORT_KEYS) + en retnings-toggle, og deler onSort med tabellen.
+//
+// Bevidst et segmenteret knap-bånd, IKKE et <select>: et native <select> har
+// rolle "combobox", og holdudtagelses-smoke-testen finder kaptajn-vælgeren via
+// `getByRole("combobox").first()`. En sort-dropdown her ville lægge sig FØR
+// kaptajn-comboboxen og kapre `.first()`, så kaptajnen aldrig blev sat og
+// gem-knappen forblev disabled. Knap-båndet sorterer lige så godt på mobil,
+// matcher rytter-tabellernes retnings-toggle-styling og rører ikke combobox-
+// rækkefølgen. Aktiv nøgle highlightes; retnings-toggle er kun aktiv når en
+// nøgle er valgt (sortering er opt-in, default = oprindelig rækkefølge).
+function SelectionSortControl({ sort, onSort, fitLabel, t }) {
+  const labels = {
+    name: t("selection.thRider"),
+    primaryType: t("selection.type"),
+    routeMatch: fitLabel,
+    form: t("selection.form"),
+    fatigue: t("selection.fatigue"),
+  };
+  const active = sort.sort != null;
+  const dirAria = sort.dir === "desc" ? t("selection.sort.descAria") : t("selection.sort.ascAria");
+  return (
+    <div className="sm:hidden flex flex-col gap-2 px-4 py-3 border-b border-cz-border">
+      <span className="block text-cz-3 text-[10px] uppercase tracking-wider">{t("selection.sort.label")}</span>
+      <div className="flex flex-wrap items-center gap-1.5">
+        {SELECTION_SORT_KEYS.map((key) => {
+          const on = sort.sort === key;
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => onSort(key)}
+              aria-pressed={on}
+              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-cz border text-xs transition-colors ${
+                on
+                  ? "border-cz-accent bg-cz-accent/10 text-cz-1"
+                  : "border-cz-border bg-cz-subtle text-cz-2 hover:text-cz-1"
+              }`}
+            >
+              {labels[key]}
+              {on && (sort.dir === "desc"
+                ? <ArrowDownIcon size={12} aria-hidden="true" />
+                : <ArrowUpIcon size={12} aria-hidden="true" />)}
+            </button>
+          );
+        })}
+        {active && (
+          <button
+            type="button"
+            onClick={() => onSort(sort.sort)}
+            aria-label={dirAria}
+            title={dirAria}
+            className="flex-shrink-0 flex items-center justify-center px-2.5 py-1 rounded-cz border border-cz-border bg-cz-subtle text-cz-2 hover:text-cz-1 transition-colors"
+          >
+            {sort.dir === "desc"
+              ? <ArrowDownIcon size={14} aria-hidden="true" />
+              : <ArrowUpIcon size={14} aria-hidden="true" />}
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
 

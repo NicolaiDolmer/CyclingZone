@@ -16,7 +16,10 @@ export function sortRidersForTable(riders, { key, dir } = {}) {
     if (key === "firstname") {
       const an = `${a.lastname} ${a.firstname}`.toLowerCase();
       const bn = `${b.lastname} ${b.firstname}`.toLowerCase();
-      return dir === "desc" ? bn.localeCompare(an) : an.localeCompare(bn);
+      // #1950: pin to 'en' so name order matches Postgres .order('lastname')
+      // (literal 'aa'). Bare localeCompare() resolves to da-DK in a Danish
+      // browser and sorts 'aa' as 'å' → DB and client lists disagree.
+      return dir === "desc" ? bn.localeCompare(an, "en") : an.localeCompare(bn, "en");
     }
     // Nation sorteres på den viste IOC-kode, ikke rå ISO2 (#802).
     if (key === "nationality_code") {

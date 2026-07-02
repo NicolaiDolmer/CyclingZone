@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
+import { buildHelpNumbers, interpolateHelp } from "../lib/helpNumbers.js";
 import {
   InfoIcon,
   RocketIcon,
@@ -183,7 +184,6 @@ const SECTION_DEFS = [
     blocks: [
       { id: "valueAndPrice", kind: "text" },
       { id: "salary", kind: "text" },
-      { id: "stats", kind: "text" },
       { id: "abilitiesExplained", kind: "rows" },
       { id: "development", kind: "text" },
       { id: "trainingFocus", kind: "text" },
@@ -303,52 +303,57 @@ const FAQ_KEYS = [
   "teamStrategyFaq",
 ];
 
-function buildSections(t) {
+function buildSections(t, vars) {
   return SECTION_DEFS.map((def) => {
     const base = `sections.${def.key}`;
     return {
       key: def.key,
       Icon: def.Icon,
-      label: t(`${base}.label`),
+      label: t(`${base}.label`, vars),
       content: def.blocks.map((block) => {
         const blockBase = `${base}.${block.id}`;
-        const title = t(`${blockBase}.title`);
+        const title = t(`${blockBase}.title`, vars);
         if (block.kind === "steps") {
-          return { title, steps: t(`${blockBase}.steps`, { returnObjects: true }) };
+          // i18next-icu does not interpolate returnObjects array elements, so fill
+          // the help numbers in manually (#1916).
+          return { title, steps: interpolateHelp(t(`${blockBase}.steps`, { returnObjects: true }), vars) };
         }
         if (block.kind === "rows") {
-          return { title, rows: t(`${blockBase}.rows`, { returnObjects: true }) };
+          return { title, rows: interpolateHelp(t(`${blockBase}.rows`, { returnObjects: true }), vars) };
         }
         if (block.kind === "textCta") {
           return {
             title,
-            text: t(`${blockBase}.text`),
-            cta: { label: t(`${blockBase}.ctaLabel`), to: t(`${blockBase}.ctaTo`) },
-            disclaimer: t(`${blockBase}.disclaimer`),
+            text: t(`${blockBase}.text`, vars),
+            cta: { label: t(`${blockBase}.ctaLabel`, vars), to: t(`${blockBase}.ctaTo`) },
+            disclaimer: t(`${blockBase}.disclaimer`, vars),
           };
         }
-        return { title, text: t(`${blockBase}.text`) };
+        return { title, text: t(`${blockBase}.text`, vars) };
       }),
     };
   });
 }
 
-function buildFaq(t) {
+function buildFaq(t, vars) {
   return FAQ_KEYS.map((id) => ({
     id,
-    q: t(`faq.${id}.q`),
-    a: t(`faq.${id}.a`),
+    q: t(`faq.${id}.q`, vars),
+    a: t(`faq.${id}.a`, vars),
   }));
 }
 
 export default function HelpPage() {
-  const { t } = useTranslation("help");
+  const { t, i18n } = useTranslation("help");
   const [activeSection, setActiveSection] = useState("start");
   const [search, setSearch] = useState("");
   const [faqOpen, setFaqOpen] = useState(null);
 
-  const sections = buildSections(t);
-  const faq = buildFaq(t);
+  // #1916: fill the hard game numbers in help prose from RULES_NUMBERS (pinned to
+  // the backend constants) so /help can't drift the way it did in #1907.
+  const helpNumbers = buildHelpNumbers(i18n.language);
+  const sections = buildSections(t, helpNumbers);
+  const faq = buildFaq(t, helpNumbers);
 
   const currentSection = sections.find((s) => s.key === activeSection);
 

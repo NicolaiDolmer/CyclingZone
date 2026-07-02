@@ -13,9 +13,13 @@ import { Flag } from "../components/Flag";
 import { formatCz, getRiderMarketValue, getRiderSalary } from "../lib/marketValues.js";
 import { formatNumber, formatDate } from "../lib/intl";
 import { resolveApiError } from "../lib/apiError";
-import { sortListings, LISTING_SORT_OPTIONS } from "../lib/transferListingSort";
+import { sortListings, LISTING_SORT_OPTIONS, ABILITY_SORT_KEYS } from "../lib/transferListingSort";
 import { Card, EmptyState, ExchangeIcon, ClipboardIcon, InboxIcon, PageLoader } from "../components/ui";
-import { ABILITY_STATS as LISTING_STATS, flattenAbilities } from "../lib/abilities";
+import { ABILITY_STATS as LISTING_STATS, ABILITY_KEYS, flattenAbilities } from "../lib/abilities";
+
+// #2031: pris/værdi/alder-sortering vises som knapper; de 15 evne-sorteringer
+// samles i en dropdown (for mange til knapper). Knap-rækken = alt undtagen evnerne.
+const LISTING_SORT_BUTTONS = LISTING_SORT_OPTIONS.filter(k => !ABILITY_SORT_KEYS.includes(k));
 import { getRiderAge } from "../lib/riderAge";
 import NationCell from "../components/rider/NationCell";
 import RiderNameCell from "../components/rider/RiderNameCell";
@@ -1698,10 +1702,11 @@ export default function TransfersPage() {
                   nationalities={riderFilters.nationalities}
                 />
               </div>
-              {/* #1185: sortér på listing-pris (asking_price) eller nyeste */}
+              {/* #1185: sortér på listing-pris (asking_price)/værdi/alder/nyeste.
+                  #2031: evne-sortering via dropdown (15 evner = for mange til knapper). */}
               <div className="flex items-center gap-2 mb-3 flex-wrap">
                 <span className="text-cz-3 text-xs uppercase tracking-wider">{t("marketSort.label")}</span>
-                {LISTING_SORT_OPTIONS.map(key => (
+                {LISTING_SORT_BUTTONS.map(key => (
                   <button key={key} onClick={() => setListingSort(key)}
                     className={`min-h-[44px] px-3 py-1.5 rounded-lg text-xs font-medium transition-all border
                       ${listingSort === key
@@ -1710,6 +1715,19 @@ export default function TransfersPage() {
                     {t(`marketSort.${key}`)}
                   </button>
                 ))}
+                <select
+                  aria-label={t("marketSort.abilityLabel")}
+                  value={ABILITY_SORT_KEYS.includes(listingSort) ? listingSort : ""}
+                  onChange={e => { if (e.target.value) setListingSort(e.target.value); }}
+                  className={`min-h-[44px] px-3 py-1.5 rounded-lg text-xs font-medium transition-all border
+                    ${ABILITY_SORT_KEYS.includes(listingSort)
+                      ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
+                      : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
+                  <option value="">{t("marketSort.abilityPlaceholder")}</option>
+                  {ABILITY_KEYS.map(key => (
+                    <option key={key} value={`ability_${key}`}>{t(`marketSort.abilities.${key}`)}</option>
+                  ))}
+                </select>
               </div>
               {filteredListings.length === 0 ? (
                 <EmptyState

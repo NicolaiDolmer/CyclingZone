@@ -23,10 +23,10 @@
           "Opret en konto og log ind.",
           "Vælg holdnavn og managernavn i velkomst-wizarden. Du skal udfylde begge felter for at fortsætte.",
           "Velkomstmodalen vises automatisk første gang og gennemgår de tre vigtigste funktioner: Marked, Auktioner og Bestyrelse. Den linker direkte til Hjælp & Regler.",
-          "Du starter i Division 3 med et startbudget på 500.000 CZ$.",
+          "Du starter i Division 3 med et startbudget på {startingBalance} CZ$.",
           "Gå til Ryttere og find frie ryttere du vil byde på.",
           "Start en auktion på en rytter. Vinder du auktionen, er rytteren din.",
-          "Du begynder med en 12-rytters start-trup. Der håndhæves ingen minimumsholdstørrelse, men du skal have ryttere på holdet for at stille op i løb."
+          "Du begynder med en {initialSquad}-rytters start-trup. Der håndhæves ingen minimumsholdstørrelse, men du skal have ryttere på holdet for at stille op i løb."
         ]
       }
     },
@@ -60,7 +60,7 @@
       },
       "clubDna": {
         "title": "Klub-DNA",
-        "text": "Fra starten af sæson 1 vælger du én af 5 klub-DNA-arketyper før bestyrelsen sammensættes: Skandinavisk udviklingshold, Italiensk klassiker-traditionalist, Sprint-fokuseret kommerciel, Fransk klatrer-arv, Britisk all-rounder. DNA påvirker tre ting: (1) 5-årsplaner får et ekstra tradition-mål (fx et podie i en klassiker, inkl. Monuments, for italiensk_klassiker), (2) mål der matcher DNA-prioriteter får boosted satisfaction-bonus og -penalty, (3) board-medlemmer og fremtidige formandsskifter tipper mod passende arketyper."
+        "text": "Når dit hold oprettes vælger du én af 5 klub-DNA-arketyper før bestyrelsen sammensættes: Skandinavisk udviklingshold, Italiensk klassiker-traditionalist, Sprint-fokuseret kommerciel, Fransk klatrer-arv, Britisk all-rounder. DNA påvirker tre ting: (1) 5-årsplaner får et ekstra tradition-mål (fx et podie i en klassiker, inkl. Monuments, for italiensk_klassiker), (2) mål der matcher DNA-prioriteter får boosted satisfaction-bonus og -penalty, (3) board-medlemmer og fremtidige formandsskifter tipper mod passende arketyper. Du kan stadig ændre dit DNA indtil din første sæson slutter; derefter er det låst. Et skift gentildeler dine bestyrelsesmedlemmer og målvægtning."
       },
       "consequenceTiers": {
         "title": "Konsekvens-tier (6 lag)",
@@ -113,7 +113,7 @@
       },
       "whenExpires": {
         "title": "Hvornår udløber en auktion?",
-        "text": "En auktion løber i 6 aktive timer. Nattimer tæller ikke med. Det aktive vindue er hverdage (man til fre) kl. 16 til 22 og weekender (lør til søn) kl. 08 til 23. Byder du kl. 19:40 en tirsdag, slutter auktionen onsdag kl. 19:40 (2t20m tirsdag + 3t40m onsdag). Byder du kl. 19:40 en lørdag, slutter den søndag kl. 10:40 (3t20m lørdag + 2t40m søndag)."
+        "text": "En auktion løber i 1 aktiv time. Nattetimer tæller ikke med: det aktive vindue er kl. 08 til 24 alle dage, og handel holder pause kl. 00 til 08. Byder du kl. 19:40, slutter auktionen samme aften kl. 20:40. Byder du kl. 23:30, bæres den resterende tid over natten, og auktionen slutter næste morgen kl. 08:30."
       },
       "flashAuction": {
         "title": "Flash Auktion (Deadline Day)",
@@ -121,7 +121,7 @@
       },
       "tenMinExtend": {
         "title": "10-minutters forlængelse",
-        "text": "Hvis der afgives et bud inden for de sidste 10 minutter af en auktion, forlænges auktionen automatisk med 10 minutter fra budtidspunktet. Dette fortsætter, indtil der ikke afgives bud i de sidste 10 minutter. Forlængelsen må overskride dagens vindueslukning med op til 1 time, så fx en hverdag (close 22:00) kan auktionen forlænges helt op til 23:00. Hvis et bud i den ekstra time ville skubbe slutningen længere, ruller de resterende minutter over til næste vindues åbning (fx fredag bud kl. 22:55, auktionen slutter lørdag kl. 08:05)."
+        "text": "Hvis der afgives et bud inden for de sidste 10 minutter af en auktion, forlænges auktionen automatisk med 10 minutter fra budtidspunktet. Dette fortsætter, indtil der ikke afgives bud i de sidste 10 minutter. Forlængelsen må overskride dagens lukning (kl. 24) med op til 1 time, så en auktion kan køre til kl. 01. Hvis et bud i den ekstra time ville skubbe slutningen længere, ruller de resterende minutter over til næste vindues åbning (fx bud kl. 00:55, auktionen slutter kl. 08:05)."
       },
       "squadAndAuctions": {
         "title": "Holdstørrelse og auktioner",
@@ -345,9 +345,13 @@
         "title": "Åbn et løb: rute, terræn-DNA og din opstilling",
         "text": "Løbsnavne er klikbare overalt i spillet. Når du åbner et løb, ser du resultaterne hvis det er kørt, eller for et kommende løb ruteprofilen pr. etape, en terræn-DNA-bar over hvilke evner hver etape belønner, og din egen opstilling med en rute-match pr. etape, så du kan vælge ryttere der passer parcouren. Vælg en etape i etape-striben for at skifte profil og rute-match. Terrænet er en vejledende kategori, ikke en målt højdeprofil."
       },
+      "teamSelection": {
+        "title": "Udtag dit hold og flyt ryttere mellem løb",
+        "text": "Til hvert løb du stiller op i, stiller du et fuldt hold: udtag alle løbets rytterpladser. Vil du hellere stå over, så afmeld dig løbet; mangler du ryttere, så hent fri-agenter fra Transfers-siden. Når to af dine løb overlapper samme dag, kan en rytter kun være med i ét af dem. På trup-fordeling-boardet kan du flytte en rytter fra ét løb til et andet ved at trække rytteren på desktop, eller ved at trykke på rytteren og vælge det andet løb på mobil. Det løb du flytter ham ud af, vises som underbemandet indtil du fylder det igen, og assistentens Auto-udfyld gør det hurtigt."
+      },
       "prizeMoney": {
         "title": "Præmiepenge fra løb",
-        "text": "Hvert resultat der tilhører en rytter på dit hold genererer præmiepenge: point for placeringen × 75 CZ$. Præmiepengene udbetales automatisk til dit holds balance når admin finaliserer resultaterne og vises som 'prize'-transaktion i din finance-log. Point til sæsonranglisten og præmier beregnes separat: pointene bestemmer ranglisten, mens CZ$-præmien kun påvirker din balance. Løb uden løbsklasse genererer ingen præmiepenge. Se den fulde pointtabel under Sæson & Resultater, Løb, Point & præmier."
+        "text": "Hvert resultat der tilhører en rytter på dit hold genererer præmiepenge: point for placeringen × {prizePerPoint} CZ$. Præmiepengene udbetales automatisk til dit holds balance når admin finaliserer resultaterne og vises som 'prize'-transaktion i din finance-log. Point til sæsonranglisten og præmier beregnes separat: pointene bestemmer ranglisten, mens CZ$-præmien kun påvirker din balance. Løb uden løbsklasse genererer ingen præmiepenge. Se den fulde pointtabel under Sæson & Resultater, Løb, Point & præmier."
       },
       "divisionBonus": {
         "title": "Divisionsbonus ved sæsonafslutning",
@@ -383,15 +387,15 @@
       "label": "Præmier",
       "formula": {
         "title": "Præmieformlen",
-        "text": "Præmiepenge beregnes direkte fra point: 1 point = 75 CZ$. Kun løb med en løbsklasse (Tour de France, Giro/Vuelta, Monumenter, WorldTour, ProSeries, Klasse 1, Klasse 2) genererer præmiepenge. Løb uden klasse giver 0 CZ$."
+        "text": "Præmiepenge beregnes direkte fra point: 1 point = {prizePerPoint} CZ$. Kun løb med en løbsklasse (Grand Tour, Major Tour, Monumenter, WorldTour, ProSeries, Klasse 1, Klasse 2) genererer præmiepenge. Løb uden klasse giver 0 CZ$."
       },
       "examples": {
         "title": "Eksempler på præmiebeløb",
         "rows": [
           ["Sejr", "Point", "Præmie"],
-          ["Tour de France-sejr", "1.300", "97.500 CZ$"],
+          ["Grand Tour-sejr", "1.300", "97.500 CZ$"],
           ["Monument-sejr", "800", "60.000 CZ$"],
-          ["Etapesejr (Tour de France)", "210", "15.750 CZ$"],
+          ["Etapesejr (Grand Tour)", "210", "15.750 CZ$"],
           ["ProSeries-sejr", "200", "15.000 CZ$"],
           ["Klasse 1-sejr", "125", "9.375 CZ$"],
           ["Klasse 2-sejr", "40", "3.000 CZ$"]
@@ -439,10 +443,6 @@
         "title": "Løn",
         "text": "Hver rytters årsløn fastsættes ved signering til ca. 6,7% af markedsværdien på det tidspunkt og fryses derefter: den ændrer sig ikke automatisk efterhånden som rytteren udvikler sig. Lønnen er synlig som en separat kolonne i Rytterdatabasen og på ønskelisten. Lønninger betales automatisk ved næste sæsons start, lige efter sponsor er udbetalt. Kan sponsor + din eksisterende balance ikke dække lønningerne, optager systemet automatisk et nødlån."
       },
-      "stats": {
-        "title": "Rytterstatistik",
-        "text": "Hver rytter har 14 stats: FL (Flad), BJ (Bjerg), KB (Mellembjerg), BK (Bakke), TT (Enkeltstart), PRL (Prolog), BRO (Brosten), SP (Sprint), ACC (Acceleration), NED (Nedkørsel), UDH (Udholdenhed), MOD (Modstandsdygtighed), RES (Restituering), FTR (Fighter)."
-      },
       "abilitiesExplained": {
         "title": "De 15 evner, og hvor de betyder noget",
         "rows": [
@@ -466,7 +466,7 @@
       },
       "development": {
         "title": "Udvikling over tid",
-        "text": "På en rytters statistikside ligger fanen 'Udvikling'. Her kan du vælge en af de 14 stats, følge stat-udviklingen som graf og se de seneste historiske datapunkter. Nye datapunkter kommer til når ryttere udvikler sig, fx ved sæsonskifte. Hvis fanen er tom, har rytteren endnu ingen registreret udvikling."
+        "text": "På en rytters statistikside ligger fanen 'Udvikling'. Her kan du vælge en evne, følge udviklingen som graf og se de seneste historiske datapunkter. Nye datapunkter kommer til når ryttere udvikler sig, fx ved sæsonskifte. Hvis fanen er tom, har rytteren endnu ingen registreret udvikling."
       },
       "trainingFocus": {
         "title": "Træningsfokus",
@@ -496,6 +496,10 @@
           "Gem. Programmet kører hver dag indtil du ændrer det.",
           "Der er ingen cap på hvor mange ryttere der kan have et program: du kan sætte ét for hele troppen."
         ]
+      },
+      "focusAbilities": {
+        "title": "Hvad hvert fokus træner",
+        "text": "Hvert fokus udvikler et bestemt sæt evner hurtigere mod deres loft, mens rytterens øvrige evner stadig forbedres en smule langsommere. Alle udvikler sig bredt, bare hurtigst i den valgte retning. Retningerne er: VO2max træner Klatring, Punch og Tempo. Tærskel/TT træner Enkeltstart og Tempo. Spurt træner Spurt og Acceleration. Udholdenhed træner Udholdenhed, Restitution og Modstandskraft. Teknik træner Nedkørsel, Positionering og Brosten. Aero træner Enkeltstart og Fladt. Intensitet sætter tempoet: Let er langsomst men sikker, Normal er den balancerede standard med en lille risiko for tilbageslag, og Hård er hurtigst men risikerer et tilbageslag eller en skade når rytterens træthed allerede er høj."
       },
       "trainToday": {
         "title": "Træn i dag og +25%-boostet",
@@ -588,7 +592,7 @@
       },
       "academySize": {
         "title": "Akademistørrelse (8 pladser)",
-        "text": "Dit Akademi rummer op til 8 ryttere. Disse 8 pladser er fuldstændig adskilt fra din seniorgruppe på maks. 30. Akademiryttere tæller aldrig med i din seniorgruppegrænse og er ikke berettiget til løb."
+        "text": "Dit Akademi rummer op til {academySlots} ryttere. Disse {academySlots} pladser er fuldstændig adskilt fra din seniorgruppe på maks. {squadCap}. Akademiryttere tæller aldrig med i din seniorgruppegrænse og er ikke berettiget til løb."
       },
       "dailyTrainingBoost": {
         "title": "Daglig træning og ungdomsboost",
@@ -600,7 +604,7 @@
       },
       "upkeepCost": {
         "title": "Akademiomkostninger",
-        "text": "Det koster et driftsgebyr per besat plads at drive Akademiet. Gebyret trækkes automatisk ved sæsonlønkørslen side om side med dine seniorlønninger. Planlæg dit budget derefter: et fuldt Akademi med 8 ryttere har en mærkbar løbende omkostning hver sæson."
+        "text": "Det koster et driftsgebyr per besat plads at drive Akademiet. Gebyret trækkes automatisk ved sæsonlønkørslen side om side med dine seniorlønninger. Planlæg dit budget derefter: et fuldt Akademi med {academySlots} ryttere har en mærkbar løbende omkostning hver sæson."
       },
       "graduation": {
         "title": "At forlade akademiet ved 22",
@@ -608,14 +612,14 @@
       },
       "promoteDemote": {
         "title": "Ryk op og flyt ryttere ned",
-        "text": "Du behøver ikke vente på, at de forlader akademiet. På Akademi-siden kan du rykke enhver akademirytter direkte op i din senior-trup, når du har en ledig senior-plads; rytteren får en senior-kontrakt og senior-lønnen. Det modsatte virker også: på din holdside kan enhver senior-rytter på 22 år eller derunder flyttes ned i dit akademi (så længe akademiet har en ledig plads, og rytteren ikke er på en auktion eller transferliste). En nedrykket rytter falder til ungdomsløn, tæller ikke længere mod din senior-trup og fjernes fra alle kommende løb, vedkommende var udtaget til. Begge handlinger viser hele effekten, før du bekræfter."
+        "text": "Du behøver ikke vente på, at de forlader akademiet. På Akademi-siden kan du rykke enhver akademirytter direkte op i din senior-trup, når du har en ledig senior-plads; rytteren får en senior-kontrakt og senior-lønnen. Det modsatte virker også: på din holdside kan enhver senior-rytter på 22 år eller derunder flyttes ned i dit akademi (så længe akademiet har en ledig plads, og rytteren ikke er på en auktion eller transferliste). En nedrykket rytter falder til ungdomsløn, tæller ikke længere mod din senior-trup og fjernes fra alle kommende løb, vedkommende var udtaget til. Begge handlinger viser hele effekten, før du bekræfter. Du kan også forlænge en kontrakt, fyre en rytter eller flytte ryttere mellem din senior-trup og dit akademi direkte fra rytterens egen profil-side."
       }
     },
     "raceSelection": {
       "label": "Holdudtagelse",
       "what": {
         "title": "Udtag din løbstrup",
-        "text": "Inden hvert løb vælger du 6-8 ryttere (Grand Tours bruger fulde trupper på 8). Gå til løbssiden og brug panelet Holdudtagelse. Vælger du ikke selv, stiller din assistent automatisk et fornuftigt hold, så du aldrig misser et løb."
+        "text": "Hvert løb kræver en komplet opstilling: den fulde feltstørrelse for løbets klasse (6 i de fleste løb, 7 i de større World Tour-løb og Monumenter, 8 i Grand Tours). Gå til løbssiden og brug panelet Holdudtagelse. Du kan ikke gemme en delvis trup. Vil du stå over et løb, så afmeld dig det; mangler du raske ryttere, så hent fri-agenter til at fylde pladserne. Vælger du ikke selv, fylder din assistent automatisk en fuld opstilling fra dine tilgængelige ryttere, så du aldrig misser et løb."
       },
       "suitability": {
         "title": "Sådan læser du udtagelses-tabellen",
@@ -646,7 +650,7 @@
   "faq": {
     "overlappingRaces": {
       "q": "Hvordan virker overlappende løb og trup-fordeling?",
-      "a": "Løb på samme dag overlapper i tid, og en rytter kan kun køre ét løb ad gangen, så det er et strategisk valg at fordele truppen mellem dem. Trup-fordelingen på Løb-siden (Sæson & Resultater -> Løb) viser dine overlappende løb side om side. Tilføj ryttere til et løb fra din pulje af ledige; en rytter du sætter i ét løb, er låst fra de andre løb der overlapper det. Vil du ikke stille op til et løb, så afmeld dig, og du starter simpelthen ikke. Assistenten udfylder dine opstillinger automatisk som udgangspunkt, og du kan få den til at udfylde dem igen: vælg Udfyld manglende for at beholde de valg du selv har sat, eller Genopbyg alt for at erstatte alle valg med assistentens forslag. Når et løb er gået i gang, er dets trup endelig og kan ikke længere ændres."
+      "a": "Løb overlapper når deres etaper falder på samme in-game-løbsdag, og en rytter kan kun køre ét løb pr. in-game-dag, så det er et strategisk valg at fordele truppen mellem overlappende løb. Flere løb kan ligge på samme kalenderdato uden at konflikte, når de falder på forskellige in-game-dage. Trup-fordelingen på Løb-siden (Sæson & Resultater -> Løb) viser dine overlappende løb side om side. Tilføj ryttere til et løb fra din pulje af ledige; en rytter du sætter i ét løb, er låst fra de andre løb der overlapper det, men fjerner du ham, er han straks ledig igen til et andet løb. Dine ændringer holdes lokalt indtil du trykker Gem ændringer (en advarsel dukker op hvis du prøver at forlade siden med ugemte ændringer). Du kan også gemme en delvis trup: de pladser du lader stå åbne, fyldes automatisk fra dine ledige ryttere når løbet køres. Vil du ikke stille op til et løb, så afmeld dig, og du starter simpelthen ikke. Assistenten udfylder dine opstillinger automatisk som udgangspunkt, og du kan få den til at udfylde dem igen: vælg Udfyld manglende for at beholde de valg du selv har sat, eller Genopbyg alt for at erstatte alle valg med assistentens forslag. Når et løb er gået i gang, er dets trup endelig og kan ikke længere ændres."
     },
     "teamStrategyFaq": {
       "q": "Hvordan får jeg assistenten til at vælge mine bedste ryttere til de store løb?",
@@ -654,7 +658,7 @@
     },
     "relaunchTeamMoney": {
       "q": "Hvad skete der med mit hold og mine penge ved sæson 1-relaunchen?",
-      "a": "Ved relaunchen starter alt forfra. Dit tidligere hold, din saldo og dine transfers føres ikke med over i den nye sæson 1. Du får et frisk 12-rytters hold og en startkapital på 500.000 CZ$, præcis som alle andre managers."
+      "a": "Ved relaunchen starter alt forfra. Dit tidligere hold, din saldo og dine transfers føres ikke med over i den nye sæson 1. Du får et frisk {initialSquad}-rytters hold og en startkapital på {startingBalance} CZ$, præcis som alle andre managers."
     },
     "relaunchRiderNames": {
       "q": "Hvorfor er rytternavnene anderledes efter relaunchen?",
@@ -694,7 +698,7 @@
     },
     "auctionExpiry": {
       "q": "Hvornår udløber en auktion?",
-      "a": "En auktion varer 6 aktive timer. Nattimer tæller ikke: hverdage (man til fre) er der aktiv tid kl. 16 til 22, weekender (lør til søn) kl. 08 til 23. Eksempel: auktion startet tirsdag 19:40 slutter onsdag 19:40. Auktion startet lørdag 19:40 slutter søndag 10:40."
+      "a": "En auktion varer 1 aktiv time. Nattetimer tæller ikke: det aktive vindue er kl. 08 til 24 alle dage. Eksempel: en auktion startet kl. 19:40 slutter samme aften kl. 20:40. En auktion startet kl. 23:30 slutter næste morgen kl. 08:30."
     },
     "flashAuction": {
       "q": "Hvad er en Flash Auktion?",
@@ -754,7 +758,7 @@
     },
     "prizeMoneyFaq": {
       "q": "Hvad er præmiepenge, og hvornår udbetales de?",
-      "a": "Præmiepenge er en direkte CZ$-belønning for resultater dine ryttere opnår i løbene. Beregningen er: point for placeringen × 75 CZ$. Pengene udbetales automatisk til din balance når admin finaliserer resultaterne og vises som 'prize' i din finance-log. Kun løb med en løbsklasse (Tour de France, WorldTour, ProSeries osv.) genererer præmiepenge. Løb uden løbsklasse giver 0."
+      "a": "Præmiepenge er en direkte CZ$-belønning for resultater dine ryttere opnår i løbene. Beregningen er: point for placeringen × {prizePerPoint} CZ$. Pengene udbetales automatisk til din balance når admin finaliserer resultaterne og vises som 'prize' i din finance-log. Kun løb med en løbsklasse (Grand Tour, WorldTour, ProSeries osv.) genererer præmiepenge. Løb uden løbsklasse giver 0."
     },
     "divisionBonusFaq": {
       "q": "Hvad er divisionsbonus, og hvornår udbetales den?",
@@ -799,6 +803,10 @@
     "boardCurrentAssessment": {
       "q": "Hvor ser jeg bestyrelsens aktuelle vurdering?",
       "a": "Dashboardet viser et kort bestyrelses-outlook med status og category-scores, mens Bestyrelsessiden viser den mere detaljerede vurdering. Bestyrelsessiden viser også bestyrelsens læsning af holdet med specialisering, U25-andel, national kerne, stjerneprofil og trupstatus, nu med landenavn og flag på den nationale kerne. Derudover forklarer Board-siden nu tydeligere hvorfor bestyrelsen reagerer, ved at vise hvilke kategorier der driver vurderingen, hvad der holder den tilbage, og hvilke signaler fra historik, identitet eller profiler der spiller ind. De to steder læser samme board-data fra backend, så de bruger den samme sandhed."
+    },
+    "boardProfileRiders": {
+      "q": "Hvem er mit holds profilryttere?",
+      "a": "Bestyrelsessiden navngiver dem nu. Under stjerneprofil-flisen viser bestyrelsens læsning af holdet hver rytter den tæller som en stjerne, med en stjerne-score. En rytter kvalificerer som stjerne når popularitet plus UCI-point er over stjernetærsklen. Popularitet vejer tungere end resultater (cirka 70/30), så en velkendt rytter kan være en stjerne selv uden store pointhøst, mens en stærk men anonym arbejdsrytter som regel ikke er det. Listen er din nuværende trup, så den ændrer sig når du køber eller sælger ryttere. Hvis ingen rytter rammer tærsklen endnu, siger kortet det i stedet for at liste navne."
     },
     "season1BaselineFaq": {
       "q": "Er bestyrelsen tilgængelig i sæson 1?",
@@ -886,11 +894,15 @@
     },
     "howToWinRace": {
       "q": "Hvordan vinder jeg et løb, og hvad afgør resultatet?",
-      "a": "Resultaterne afgøres af hvor godt dine rytteres evner passer til terrænet. Hvert løb deles op i etaper, og hver etape har en terræntype (fladt, kuperet, bjerge, enkeltstart, brosten osv.) der efterspørger bestemte evner. En flad etape belønner Sprint mest af alt; en bjergetape belønner Klatring; en enkeltstart belønner Enkeltstart; en brosten-etape belønner Brosten; en kuperet etape belønner Punch. For hver rytter lægger motoren de matchende evner sammen, vægtet efter hvad etapen kræver, til en etape-score. Oven på den score ligger nogle få mindre effekter: god form giver en lille favour og høj træthed en lille straf (hver begrænset til ca. ±3%, så en frisk rytter slår en træt af samme niveau, men en favorit vinder stadig på klasse), en kaptajn beskyttet af stærke, friske hjælpere får et boost, udbrud holder af og til hjem på det rette terræn, og en lille tilfældig faktor betyder at den stærkeste rytter vinder det meste af tiden, men ikke altid. Over et etapeløb lægges tidsgabene fra hver etape sammen til det samlede klassement: bjerge og enkeltstarter åbner de største gab og afgør typisk GC, mens flade etaper slutter i en samlet spurt. Placeringer bliver til point, og point bliver til både din rangliste-score og dine præmiepenge. Det praktiske: match hver rytter til de etaper der passer ham, hold dine stjerner friske til de dage der tæller, og sæt den rigtige kaptajn i Holdudtagelse."
+      "a": "Resultaterne afgøres af hvor godt dine rytteres evner passer til terrænet. Hvert løb deles op i etaper, og hver etape har en terræntype (fladt, kuperet, bjerge, enkeltstart, brosten osv.) der efterspørger bestemte evner. En flad etape belønner Sprint mest af alt; en bjergetape belønner Klatring; en enkeltstart belønner Enkeltstart; en brosten-etape belønner Brosten; en kuperet etape belønner Punch. For hver rytter lægger motoren de matchende evner sammen, vægtet efter hvad etapen kræver, til en etape-score. Oven på den score ligger nogle få mindre effekter: god form giver en lille favour og høj træthed en lille straf (hver begrænset til ca. ±3%, så en frisk rytter slår en træt af samme niveau, men en favorit vinder stadig på klasse), en kaptajn beskyttet af stærke, friske hjælpere får et boost, udbrud holder af og til hjem på det rette terræn, og en lille tilfældig faktor betyder at den stærkeste rytter vinder det meste af tiden, men ikke altid. Over et etapeløb lægges tidsgabene fra hver etape sammen til det samlede klassement: bjerge og enkeltstarter åbner de største gab og afgør typisk GC, mens flade etaper slutter i en samlet spurt. Placeringer bliver til point, og point bliver til både din rangliste-score og dine præmiepenge. Det praktiske: match hver rytter til de etaper der passer ham, hold dine stjerner friske til de dage der tæller, og sæt den rigtige kaptajn i Holdudtagelse. Hvert løb har også et holdklassement, der vindes af det hold hvis tre bedste ryttere har den laveste samlede tid."
     },
     "riderAbilities": {
       "q": "Hvad betyder de 15 rytter-evner?",
       "a": "Hver rytter vurderes 1-99 på 15 evner, samlet i tre familier. Fysiske (10): Klatring (lange stigninger og bjergetaper), Enkeltstart (at køre alene mod uret), Flad (at holde fart på flade veje som rouleur), Tempo (vedvarende indsats på mellembjerge og kuperet terræn), Sprint (topfart til en samlet spurt), Acceleration (det eksplosive ryk der starter en spurt eller lukker et hul), Punch (korte stejle stigninger og kuperede finaler), Udholdenhed (at holde hele distancen på lange, hårde dage), Restituering (at komme sig mellem etaper og dage) og Modstandsdygtighed (at modstå træthed så rytteren falder mindre af sent i hårde løb). Tekniske (3): Nedkørsel (en lille favour på etaper der slutter nedad), Brosten (cykelbeherskelse og kraft til brosten-klassikere) og Positionering (at blive foran for at undgå splitninger, og en faktor i enkeltstart). Taktisk/mentale (2): Aggression (lysten til at angribe og komme med i udbrud) og Taktik (race-forståelse der hjælper i holdtidskørsler og med at læse et løb). Race-motoren matcher disse mod hver etapes terræn, så den samme rytter kan være en stjerne på én profil og helt almindelig på en anden. Tip: en balanceret trup der dækker flere profiler scorer mere stabilt over en kalender end et ensidigt hold."
+    },
+    "riderRating": {
+      "q": "Hvad betyder en rytters samlede rating?",
+      "a": "Ratingen er ét 1-99-tal for hvor god en rytter er, vist som en farvet cirkel på rytterprofilen og som en sorterbar kolonne i rytter-ranglisten. Den blander to ting ligeligt: hvor stærk rytteren er i sin bedste type (klatrer, spurter, GC og så videre) og hans alsidighed på tværs af alle evner. Den bruger samme model som rytterens viste type og markedsværdi, så de tre altid hænger sammen. Skalaen er ankret mod hele rytterfeltet i stedet for mod et fast maksimum, så de allerbedste ryttere ligger tæt på 99, og resten af feltet spreder sig nedenunder. Ratingen afspejler kun nuværende evne. Den er ikke potentiale, og den medregner ikke form, træthed eller hvor godt rytteren passer til et bestemt løb."
     }
   }
 }

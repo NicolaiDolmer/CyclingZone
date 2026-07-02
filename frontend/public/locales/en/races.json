@@ -3,11 +3,15 @@
     "scope": { "mine": "My races", "division": "My division", "others": "Other divisions", "soon": "Coming soon" },
     "timeline": { "dayOf": "Day {day} of {total}", "youAreHere": "you are here", "prev": "Previous day", "next": "Next day" },
     "heading": "Squad distribution",
-    "overlap": "{count} overlapping races today",
+    "overlap": "{count} races today",
+    "save": "Save changes",
+    "discard": "Discard",
+    "unsaved": "You have unsaved changes",
+    "leaveUnsaved": "You have unsaved changes. Leave without saving?",
     "status": { "full": "{selected} / {target} selected", "understaffed": "{selected} / {target} · understaffed", "overfull": "{selected} / {target} · too many", "withdrawn": "Withdrawn", "locked": "Lineup locked" },
     "pool": { "title": "Available riders · {count}-squad", "autofill": "Auto-fill", "fillMissing": "Fill gaps", "fillAll": "Rebuild all", "bound": "Already racing in an overlapping race" },
     "column": { "add": "Add from available", "withdraw": "Withdraw", "reenter": "Re-enter", "remove": "Remove rider" },
-    "popover": { "title": "Add to which race?", "none": "No race available for this rider today", "understaffed": "needs riders" },
+    "popover": { "title": "Add to which race?", "none": "No race available for this rider today", "understaffed": "needs riders", "availableGroup": "Available for", "blockedGroup": "Busy in an overlapping race", "blockedReason": "Overlaps {race}" },
     "role": { "hint": "Tap a rider to set captain or role", "captain": "Captain", "sprintCaptain": "Sprint captain", "hunter": "Breakaway hunter", "rider": "Rider only" },
     "roleCard": {
       "heading": "Tactics",
@@ -100,8 +104,8 @@
     "stageRaceParen": "Stage race ({count})"
   },
   "classOption": {
-    "TourFrance": "Tour de France",
-    "GiroVuelta": "Giro / Vuelta",
+    "TourFrance": "Grand Tour",
+    "GiroVuelta": "Major Tour",
     "Monuments": "Monuments",
     "OtherWorldTourA": "WorldTour A",
     "OtherWorldTourB": "WorldTour B",
@@ -151,7 +155,7 @@
   },
   "library": {
     "searchLabel": "Search races",
-    "searchPlaceholder": "Tour, Giro, Roubaix…",
+    "searchPlaceholder": "Klassiker, Gran Premio, Trofeo…",
     "seasonLabel": "Season",
     "allSeasons": "All seasons",
     "seasonOption": "Season {number}",
@@ -201,9 +205,9 @@
     "showLess": "Hide ↑",
     "showAll": "Show all {count} ranks ↓",
     "prizeExample": {
-      "tourWin": "Tour de France win",
+      "tourWin": "Grand Tour win",
       "monumentWin": "Monument win",
-      "tourStageWin": "Stage win (TdF)",
+      "tourStageWin": "Stage win (Grand Tour)",
       "proSeriesWin": "ProSeries win",
       "class1Win": "Class 1 win",
       "class2Win": "Class 2 win"
@@ -225,7 +229,7 @@
   },
   "selection": {
     "title": "Team selection",
-    "subtitle": "Pick {min}-{max} riders for this race. If you don't pick, your assistant fields a sensible team. No penalty.",
+    "subtitle": "Pick up to {max} riders for this race. You can save a partial team, and your assistant fields the rest when the race runs. No penalty.",
     "count": "{count}/{max} selected",
     "captain": "Captain",
     "sprintCaptain": "Sprint captain (optional)",
@@ -237,6 +241,11 @@
     "hideInjured": "Hide injured",
     "suitability": "Suitability",
     "routeMatch": "Route match",
+    "sort": {
+      "label": "Sort by",
+      "ascAria": "Sorting ascending, tap for descending",
+      "descAria": "Sorting descending, tap for ascending"
+    },
     "best": "Best",
     "bestForStage": "Your strongest fit for this stage",
     "whyBest": "This {bucket} stage rewards your strongest fit: {name}.",
@@ -247,8 +256,19 @@
     "save": "Save selection",
     "saving": "Saving…",
     "saved": "Selection saved.",
+    "wrongPool": {
+      "title": "This race is in another division",
+      "note": "You can only enter races in your own division, so there's no line-up to set here."
+    },
     "errors": {
-      "selection_wrong_size": "Pick between {min} and {max} riders.",
+      "selection_wrong_size": "You can pick at most {max} riders.",
+      "selection_insufficient_riders": "You don't have enough available riders for a full team. Withdraw from this race or sign free agents.",
+      "move_target_full": "That race is already full. Remove a rider there first.",
+      "move_target_locked": "That race has started, so its lineup is locked.",
+      "move_wrong_pool": "You can only enter races in your own division.",
+      "move_rider_ineligible": "That rider can't race for your team right now.",
+      "move_invalid_body": "Couldn't move the rider. Try again.",
+      "move_failed": "Couldn't move the rider. Try again.",
       "selection_captain_required": "Pick a captain among your selected riders.",
       "selection_captain_not_selected": "Your captain must be one of the selected riders.",
       "selection_role_not_selected": "Role riders must be part of the selection.",
@@ -259,6 +279,7 @@
       "selection_race_not_open": "Selection is closed for this race.",
       "selection_race_started": "This race has started, so the lineup is locked.",
       "selection_rider_bound": "This rider is already racing in an overlapping race.",
+      "selection_rider_bound_named": "{rider} is already racing {race}, which overlaps. Remove them there, or pick someone else.",
       "selection_flag_disabled": "Team selection isn't active yet.",
       "selection_invalid_body": "Couldn't save the selection. Try again.",
       "selection_wrong_pool": "You can only enter races in your own division.",
@@ -362,6 +383,20 @@
       "mountain": "Mountains classification",
       "young": "Young rider",
       "team": "Team classification"
+    },
+    "team": {
+      "winner": "Winner"
+    },
+    "recap": {
+      "title": "Race recap",
+      "win": "{rider} took the win.",
+      "soloWin": "{rider} soloed clear to win by {marginText}.",
+      "sprintWin": "{rider} won the sprint.",
+      "breakawaySurvived": "{count, plural, one {A lone rider stayed away to the finish.} other {A #-rider breakaway stayed away to the finish.}}",
+      "breakawayCaught": "{count, plural, one {The lone breakaway rider was caught before the line.} other {The breakaway (# riders) was caught before the line.}}",
+      "teamDay": "{team} led the team classification with {count} riders in the top 10.",
+      "teamWon": "{team} won the team classification.",
+      "jerseys": "Jersey leaders: {points} in points, {mountain} in the mountains."
     },
     "jersey": {
       "leader": "Leader",

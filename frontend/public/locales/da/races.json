@@ -3,11 +3,15 @@
     "scope": { "mine": "Mine løb", "division": "Min division", "others": "Andre divisioner", "soon": "Kommer snart" },
     "timeline": { "dayOf": "Dag {day} af {total}", "youAreHere": "du er her", "prev": "Forrige dag", "next": "Næste dag" },
     "heading": "Trup-fordeling",
-    "overlap": "{count} overlappende løb i dag",
+    "overlap": "{count} løb i dag",
+    "save": "Gem ændringer",
+    "discard": "Kassér",
+    "unsaved": "Du har ugemte ændringer",
+    "leaveUnsaved": "Du har ugemte ændringer. Forlad uden at gemme?",
     "status": { "full": "{selected} / {target} valgt", "understaffed": "{selected} / {target} · underbemandet", "overfull": "{selected} / {target} · for mange", "withdrawn": "Afmeldt", "locked": "Trup låst" },
     "pool": { "title": "Ledige ryttere · {count}-trup", "autofill": "Auto-udfyld", "fillMissing": "Udfyld manglende", "fillAll": "Genopbyg alt", "bound": "Kører allerede et overlappende løb" },
     "column": { "add": "Tilføj fra ledige", "withdraw": "Afmeld", "reenter": "Deltag igen", "remove": "Fjern rytter" },
-    "popover": { "title": "Tilføj til hvilket løb?", "none": "Intet løb tilgængeligt for denne rytter i dag", "understaffed": "mangler ryttere" },
+    "popover": { "title": "Tilføj til hvilket løb?", "none": "Intet løb tilgængeligt for denne rytter i dag", "understaffed": "mangler ryttere", "availableGroup": "Ledig til", "blockedGroup": "Optaget i overlappende løb", "blockedReason": "Overlapper {race}" },
     "role": { "hint": "Tryk på en rytter for at sætte kaptajn eller rolle", "captain": "Kaptajn", "sprintCaptain": "Sprint-kaptajn", "hunter": "Udbrudsjæger", "rider": "Kun rytter" },
     "roleCard": {
       "heading": "Taktik",
@@ -100,8 +104,8 @@
     "stageRaceParen": "Etapeløb ({count})"
   },
   "classOption": {
-    "TourFrance": "Tour de France",
-    "GiroVuelta": "Giro / Vuelta",
+    "TourFrance": "Grand Tour",
+    "GiroVuelta": "Major Tour",
     "Monuments": "Monuments",
     "OtherWorldTourA": "WorldTour A",
     "OtherWorldTourB": "WorldTour B",
@@ -151,7 +155,7 @@
   },
   "library": {
     "searchLabel": "Søg løb",
-    "searchPlaceholder": "Tour, Giro, Roubaix…",
+    "searchPlaceholder": "Klassiker, Gran Premio, Trofeo…",
     "seasonLabel": "Sæson",
     "allSeasons": "Alle sæsoner",
     "seasonOption": "Sæson {number}",
@@ -201,9 +205,9 @@
     "showLess": "Skjul ↑",
     "showAll": "Vis alle {count} pladser ↓",
     "prizeExample": {
-      "tourWin": "Tour de France-sejr",
+      "tourWin": "Grand Tour-sejr",
       "monumentWin": "Monument-sejr",
-      "tourStageWin": "Etapesejr (TdF)",
+      "tourStageWin": "Etapesejr (Grand Tour)",
       "proSeriesWin": "ProSeries-sejr",
       "class1Win": "Klasse 1-sejr",
       "class2Win": "Klasse 2-sejr"
@@ -225,7 +229,7 @@
   },
   "selection": {
     "title": "Holdudtagelse",
-    "subtitle": "Udtag {min}-{max} ryttere til løbet. Vælger du ikke, stiller assistenten et fornuftigt hold. Ingen straf.",
+    "subtitle": "Udtag op til {max} ryttere til løbet. Du kan gemme en delvis trup, og assistenten stiller resten når løbet køres. Ingen straf.",
     "count": "{count}/{max} udtaget",
     "captain": "Kaptajn",
     "sprintCaptain": "Spurt-kaptajn (valgfri)",
@@ -237,6 +241,11 @@
     "hideInjured": "Skjul skadede",
     "suitability": "Egnethed",
     "routeMatch": "Rute-match",
+    "sort": {
+      "label": "Sortér efter",
+      "ascAria": "Sorterer stigende, tryk for faldende",
+      "descAria": "Sorterer faldende, tryk for stigende"
+    },
     "best": "Bedst",
     "bestForStage": "Dit stærkeste fit til denne etape",
     "whyBest": "Denne {bucket}-etape belønner dit stærkeste fit: {name}.",
@@ -247,8 +256,19 @@
     "save": "Gem udtagelse",
     "saving": "Gemmer…",
     "saved": "Udtagelsen er gemt.",
+    "wrongPool": {
+      "title": "Dette løb er i en anden division",
+      "note": "Du kan kun udtage hold til løb i din egen division, så der er ingen opstilling at sætte her."
+    },
     "errors": {
-      "selection_wrong_size": "Udtag mellem {min} og {max} ryttere.",
+      "selection_wrong_size": "Du kan højst udtage {max} ryttere.",
+      "selection_insufficient_riders": "Du har ikke nok ledige ryttere til et fuldt hold. Afmeld dig løbet, eller hent fri-agenter.",
+      "move_target_full": "Det løb er allerede fuldt. Fjern en rytter der først.",
+      "move_target_locked": "Det løb er startet, så opstillingen er låst.",
+      "move_wrong_pool": "Du kan kun stille op i din egen divisions løb.",
+      "move_rider_ineligible": "Den rytter kan ikke køre for dit hold lige nu.",
+      "move_invalid_body": "Kunne ikke flytte rytteren. Prøv igen.",
+      "move_failed": "Kunne ikke flytte rytteren. Prøv igen.",
       "selection_captain_required": "Vælg en kaptajn blandt de udtagne ryttere.",
       "selection_captain_not_selected": "Kaptajnen skal være blandt de udtagne ryttere.",
       "selection_role_not_selected": "Rolle-ryttere skal være en del af udtagelsen.",
@@ -259,6 +279,7 @@
       "selection_race_not_open": "Udtagelsen er lukket for dette løb.",
       "selection_race_started": "Løbet er gået i gang, så truppen er låst.",
       "selection_rider_bound": "Rytteren kører allerede et overlappende løb.",
+      "selection_rider_bound_named": "{rider} kører allerede {race}, som overlapper. Fjern ham der, eller vælg en anden rytter.",
       "selection_flag_disabled": "Holdudtagelse er ikke aktiv endnu.",
       "selection_invalid_body": "Udtagelsen kunne ikke gemmes. Prøv igen.",
       "selection_wrong_pool": "Du kan kun deltage i løb i din egen division.",
@@ -362,6 +383,20 @@
       "mountain": "Bjergkonkurrence",
       "young": "Ungdom",
       "team": "Holdkonkurrence"
+    },
+    "team": {
+      "winner": "Vinder"
+    },
+    "recap": {
+      "title": "Løbsreferat",
+      "win": "{rider} tog sejren.",
+      "soloWin": "{rider} kørte solo og vandt med {marginText}.",
+      "sprintWin": "{rider} vandt spurten.",
+      "breakawaySurvived": "{count, plural, one {En enkelt rytter holdt hjem til mål.} other {Et udbrud på # ryttere holdt hjem til mål.}}",
+      "breakawayCaught": "{count, plural, one {Den udbrudte rytter blev hentet før stregen.} other {Udbruddet (# ryttere) blev hentet før stregen.}}",
+      "teamDay": "{team} førte holdkonkurrencen med {count} ryttere i top 10.",
+      "teamWon": "{team} vandt holdkonkurrencen.",
+      "jerseys": "Trøjeførere: {points} i point, {mountain} i bjerg."
     },
     "jersey": {
       "leader": "Fører",
