@@ -302,6 +302,7 @@ const FAQ_KEYS = [
   "season1RaceCalendarFaq",
   "overlappingRaces",
   "teamStrategyFaq",
+  "relaunchTeamMoney",
 ];
 
 function buildSections(t, vars) {
