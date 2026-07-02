@@ -8323,8 +8323,10 @@ router.get("/managers/:teamId", requireAuth, async (req, res) => {
       .eq("team_id", teamId).order("market_value", { ascending: false }),
     supabase.from("season_standings")
       // #1095: status med i join, så frontend kan markere igangværende sæson i historikken.
+      // #2111: sortér på updated_at — tabellen har ingen created_at, så queryen fejlede
+      // (42703) og season_history var tavst tom siden fa4799a3.
       .select("*, season:season_id(number, status)")
-      .eq("team_id", teamId).order("created_at", { ascending: false }),
+      .eq("team_id", teamId).order("updated_at", { ascending: false }),
     supabase.from("achievements").select("*").order("category"),
     supabase.from("manager_achievements")
       .select("achievement_id, unlocked_at").eq("user_id", team.user_id),

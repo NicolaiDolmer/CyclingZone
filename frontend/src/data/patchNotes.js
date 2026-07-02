@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.49",
+    "date": "2026-07-03",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Managers",
+        "en": {
+          "title": "Manager profiles show season history again",
+          "body": "Opening a manager's profile always showed an empty season history, even for teams that had raced whole seasons. The page asked the database to sort the history by a column that doesn't exist, the query failed quietly, and the profile just showed nothing. The history now loads correctly, newest season first.",
+        },
+        "da": {
+          "title": "Manager-profiler viser sæsonhistorik igen",
+          "body": "Åbnede du en managers profil, var sæsonhistorikken altid tom, selv for hold der havde kørt hele sæsoner. Siden bad databasen sortere historikken efter en kolonne der ikke findes, queryen fejlede i stilhed, og profilen viste bare ingenting. Historikken loader nu korrekt, nyeste sæson først.",
+        },
+        "refs": [2111]
+      }
+    ]
+  },
+  {
     "version": "6.48",
     "date": "2026-07-03",
     "label": "Beta",
