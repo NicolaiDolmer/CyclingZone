@@ -12,7 +12,7 @@
 
 > **🎯 Next action:** (1) **#2072+#2081 GC-fix** — ny session/worktree (prompt givet 2/7): akkumulér GC fra persisterede race_results + persistér klassementer pr. etape; SKAL være live før Volta Algarvia finaliserer 4/7. (2) **#2000 rytterside-faner (PR #2037) færdige senest 3/7.** (3) #2080 kampagne-drafts + #2079 attribution før 4/7. (4) Ejer-klikliste sammen med Claude "senere i dag 2/7": #2076 uptime · #2085 mail-kapacitet · #1784 spend-cap · #929 · #2092 RAILWAY_TOKEN. Verify i aften: 18:00-slottet kører KUN due etaper (#2090 lukkes derefter). Shipped 2/7: P0 #2071 (1,69M udbetalt, rangliste frisk) · overlap-guard #2091 · patch note v6.41 + godkendt Discord-notat postet · CZ Pro-rails #1909. Beslutnings-dag 6/7: Alunta/CZ Pro + VMan + Discord-migration + trænings-scorecard (#2082: harness 5/7, ship 7-9/7; **ejer-mål: ~50 % af gap på 5-7 sæsoner, peak 27-28**). Marketing: ~10k DKK juli, 2026 maks 50k (Meta/Reddit/Google) — først når #2079 måler. Kill-liste eksekveret (−53; #671+#680 undtaget). Discord-posts kræver ALTID ejer-godkendt tekst.
 
-> **🤖 Working agent:** Ingen aktiv session.
+> **🤖 Working agent:** Claude Code — #2072+#2081 GC-akkumulering + løbende stilling (worktree `fix/gc-accumulation-2072`), startet 2/7 eftermiddag.
 
 ## Standing context (forever-relaunch)
 
