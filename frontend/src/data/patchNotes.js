@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.46",
+    "date": "2026-07-02",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Onboarding",
+        "en": {
+          "title": "Your very first login no longer shows an empty game",
+          "body": "Right after confirming your email, the app creates your team in the background - but the dashboard could load a split second earlier, find no team yet, and then just sit there empty: no riders, no league, nothing, even though the top bar showed your team name. Logging out and back in fixed it, which is a terrible first impression. The app now refreshes itself once your team is ready, so your first look at the game is the real thing.",
+        },
+        "da": {
+          "title": "Dit allerførste login viser ikke længere et tomt spil",
+          "body": "Lige efter du bekræfter din email, opretter appen dit hold i baggrunden - men dashboardet kunne nå at loade et splitsekund tidligere, finde intet hold endnu, og så bare stå tomt: ingen ryttere, ingen liga, ingenting, selvom topbaren viste dit holdnavn. Log ud og ind igen løste det, hvilket er et elendigt førstehåndsindtryk. Appen genindlæser nu sig selv når dit hold er klar, så dit første kig på spillet er det rigtige.",
+        },
+        "refs": [2102]
+      }
+    ]
+  },
+  {
     "version": "6.45",
     "date": "2026-07-02",
     "label": "Beta",
