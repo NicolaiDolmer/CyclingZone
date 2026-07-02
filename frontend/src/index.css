@@ -13,7 +13,7 @@
   --cz-chart-1:  96 165 250;  /* blue    (was #60a5fa) */
   --cz-chart-2: 167 139 250;  /* violet  (was #a78bfa) */
   --cz-chart-3:  52 211 153;  /* emerald (was #34d399) */
-  --cz-chart-4: 251 191  36;  /* amber   (was #fbbf24) */
+  --cz-chart-4: 245 158  11;  /* amber   (#f59e0b — pushed toward orange from #fbbf24 so it stays distinct from --cz-chart-8 yellow under deuteranopia/protanopia, #2033) */
   --cz-chart-5: 248 113 113;  /* red     (was #f87171) */
   --cz-chart-6:  34 211 238;  /* cyan    (was #22d3ee) */
   --cz-chart-7: 244 114 182;  /* pink    (was #f472b6) */
