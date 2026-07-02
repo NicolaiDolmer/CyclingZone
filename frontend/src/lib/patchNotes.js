@@ -1,6 +1,28 @@
-// Runtime rene funktioner for patch notes-siden. Læser den strukturerede data
-// (data/patchNotes.js) og leverer filter/group/lang-pick til komponenten.
+// Runtime rene funktioner for patch notes-siden. Leverer filter/group/lang-pick
+// til komponenten + en loader der henter den statiske patch-notes-JSON on-demand.
 // Holdt fri for React/Vite så den kan unit-testes med node:test.
+//
+// #2108/#2060: changelog-prosaen bundtes IKKE længere ind i JS. Den emitteres som
+// dist/patch-notes.json af vite-plugins/patch-notes-json.js (SSOT = data/patchNotes.js)
+// og hentes her ved runtime, så den route-lazy PatchNotesPage-chunk er slank.
+
+// Stien matcher assetet emitteret af patch-notes-json-pluginet (dist-roden) og
+// middleware'en i dev/preview. Absolut fra roden → uafhængig af route-dybde.
+export const PATCH_NOTES_URL = "/patch-notes.json";
+
+// Henter og parser patch-notes-JSON'en. Kaster ved HTTP-fejl eller ugyldig form,
+// så kalderen kan vise en fejl-tilstand i stedet for en tavst tom side.
+export async function loadPatches(url = PATCH_NOTES_URL, fetchImpl = fetch) {
+  const res = await fetchImpl(url, { headers: { Accept: "application/json" } });
+  if (!res.ok) {
+    throw new Error(`patch-notes: fetch fejlede (${res.status} ${res.statusText})`);
+  }
+  const data = await res.json();
+  if (!Array.isArray(data)) {
+    throw new Error("patch-notes: forventede en array af patches");
+  }
+  return data;
+}
 
 export const CATEGORY_META = {
   new: { en: "New", da: "Nyt", dot: "bg-cz-success" },
