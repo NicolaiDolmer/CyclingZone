@@ -39,6 +39,9 @@ const ALLOWED_ORIGINS = [
   "http://localhost:4173",
 ].filter(Boolean);
 app.use(cors({ origin: (origin, cb) => cb(null, !origin || ALLOWED_ORIGINS.includes(origin)), credentials: true }));
+// Webhooks skal have rå body (signatur/verifikation) → undtag fra JSON-parseren.
+// Rå-parseren sætter req._body, så den globale express.json() springer pathen over.
+app.use("/api/billing/alunta-webhook", express.raw({ type: "*/*" }));
 app.use(express.json({ limit: "10mb" }));
 
 app.use("/api", apiRoutes);
