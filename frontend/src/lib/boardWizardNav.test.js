@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { getWizardBackState, canResumeNegotiation } from "./boardWizardNav.js";
+import { getWizardBackState, canResumeNegotiation, shouldAutoOpenSetupWizard } from "./boardWizardNav.js";
 
 // #1240 · Regressionstests på wizard-tilbagenavigation.
 
@@ -54,4 +54,24 @@ test("resume requires same proposal reference and intact finalGoals", () => {
 
   // finalGoals ude af sync med forslaget → start forfra.
   assert.equal(canResumeNegotiation({ proposedGoals: goals, previewGoals: goals, finalGoals: [finalGoals[0]] }), false);
+});
+
+// #2104 · shouldAutoOpenSetupWizard — DNA-first-gate for setup-wizarden.
+
+test("setup wizard auto-opens only when club DNA is already chosen", () => {
+  const base = { isBaselinePhase: false, setupNextPlanType: "5yr", hasAnyPlan: true };
+
+  assert.equal(shouldAutoOpenSetupWizard({ ...base, teamDna: { key: "sprint_kommerciel" } }), true);
+
+  // Nyt hold uden DNA → DNA-valget på siden er første skridt, ingen wizard.
+  assert.equal(shouldAutoOpenSetupWizard({ ...base, teamDna: null }), false);
+});
+
+test("setup wizard never auto-opens in baseline phase or without pending setup plan", () => {
+  const dna = { key: "sprint_kommerciel" };
+
+  assert.equal(shouldAutoOpenSetupWizard({ isBaselinePhase: true, setupNextPlanType: "5yr", hasAnyPlan: true, teamDna: dna }), false);
+  assert.equal(shouldAutoOpenSetupWizard({ isBaselinePhase: false, setupNextPlanType: null, hasAnyPlan: true, teamDna: dna }), false);
+  assert.equal(shouldAutoOpenSetupWizard({ isBaselinePhase: false, setupNextPlanType: "5yr", hasAnyPlan: false, teamDna: dna }), false);
+  assert.equal(shouldAutoOpenSetupWizard({}), false);
 });

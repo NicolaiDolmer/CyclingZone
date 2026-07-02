@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.44",
+    "date": "2026-07-02",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "New teams choose their club DNA before the board plan wizard",
+          "body": "If you created a brand-new team, the Board page could throw you straight into the 5-year-plan wizard - with the start button locked behind the club DNA requirement and no way to close the window. The DNA choice now comes first, and the plan wizard opens right after you have picked it. The board also no longer decides your DNA and long-term plans for you minutes after signup: brand-new teams get their own 5-day negotiation window before the board steps in.",
+        },
+        "da": {
+          "title": "Nye hold vælger deres klub-DNA før bestyrelsens plan-wizard",
+          "body": "Oprettede du et helt nyt hold, kunne Bestyrelses-siden kaste dig direkte ind i 5-årsplan-wizarden - med start-knappen låst bag klub-DNA-kravet og ingen mulighed for at lukke vinduet. DNA-valget kommer nu først, og plan-wizarden åbner lige efter du har valgt. Bestyrelsen beslutter heller ikke længere dit DNA og dine langsigtede planer for dig få minutter efter signup: helt nye hold får deres eget 5-dages forhandlingsvindue før bestyrelsen tager over.",
+        },
+        "refs": [2104]
+      }
+    ]
+  },
+  {
     "version": "6.43",
     "date": "2026-07-02",
     "label": "Beta",

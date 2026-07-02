@@ -3,7 +3,7 @@ import { useTranslation, Trans } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { satisfactionToModifier, getPlanDuration, isBoardGoalAchieved, getEventSatisfactionTrend, computeOverallBoardSatisfaction } from "../lib/boardUtils";
 import { getBoardGoalLabel } from "../lib/boardGoalLabel";
-import { getWizardBackState, canResumeNegotiation } from "../lib/boardWizardNav";
+import { getWizardBackState, canResumeNegotiation, shouldAutoOpenSetupWizard } from "../lib/boardWizardNav";
 import { getCountryDisplay } from "../lib/countryUtils";
 import { formatNumber } from "../lib/intl";
 import { Flag } from "../components/Flag";
@@ -2087,8 +2087,16 @@ export default function BoardPage() {
     // S-02a: I baseline-fase (sæson 1) er wizard låst — bestyrelsen observerer.
     // Auto-åbn wizard ved sekventiel onboarding (sæson 2+) når mindst én plan allerede findes.
     // Første gangs setup (board_plan_set === false) viser BoardEmptyState i hovedvisningen.
+    // #2104: kræver også valgt klub-DNA — uden DNA er "Start forhandling" låst af
+    // DNA-kravet, og setup-modalen har ingen luk-knap → deadlock oven på det
+    // DNA-valg-kort wizarden skygger for. DNA først; wizarden åbner via refetch.
     const hasAnyPlan = Object.values(newPlans).some(p => p !== null);
-    if (!data.is_baseline_phase && data.setup_next_plan_type && hasAnyPlan) {
+    if (shouldAutoOpenSetupWizard({
+      isBaselinePhase: data.is_baseline_phase,
+      setupNextPlanType: data.setup_next_plan_type,
+      hasAnyPlan,
+      teamDna: data.team_dna,
+    })) {
       const existingFocus = newPlans[data.setup_next_plan_type]?.board?.focus || "balanced";
       setWizardPlanType(data.setup_next_plan_type);
       setWizardIsSetup(true);
@@ -2433,7 +2441,10 @@ export default function BoardPage() {
   // #1073 · Wizard-modalen rendres inline (ikke en mountet komponent), så a11y-hooket
   // kaldes her — før evt. early-return — med active styret af wizardPlanType. Escape
   // lukker kun når luk-knappen også er synlig (ikke under setup / multi-renewal-trin>0).
-  const wizardClosable = !wizardIsSetup && !(renewalQueue.length > 1 && renewalQueueIdx > 0);
+  // #2104: mangler klub-DNA er wizarden ALTID lukbar — "Start forhandling" er låst
+  // af DNA-kravet, så en ulukkelig modal ville være en deadlock (defensiv guard;
+  // auto-open-gaten i loadAll åbner normalt slet ikke wizarden uden DNA).
+  const wizardClosable = (!wizardIsSetup || !teamDna) && !(renewalQueue.length > 1 && renewalQueueIdx > 0);
   const wizardDialogRef = useModalA11y(wizardClosable ? closeWizard : null, Boolean(wizardPlanType));
 
   if (loading) return (
@@ -2791,8 +2802,9 @@ export default function BoardPage() {
               </button>
             )}
 
-            {/* Luk wizard — ikke vist under setup eller første trin i multi-renewal */}
-            {!wizardIsSetup && !(isMultiRenewal && renewalQueueIdx > 0) && (
+            {/* Luk wizard — ikke vist under setup eller første trin i multi-renewal.
+                #2104: følger wizardClosable, så DNA-mangel-guarden også viser knappen. */}
+            {wizardClosable && (
               <button onClick={closeWizard}
                 className="mt-4 w-full py-2 text-sm text-cz-3 hover:text-cz-2 transition-colors">
                 {t("wizard.backToOverview")}
