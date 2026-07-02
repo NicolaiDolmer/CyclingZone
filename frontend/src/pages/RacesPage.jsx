@@ -6,6 +6,7 @@ import RiderLink from "../components/RiderLink";
 import RacePointsPage from "./RacePointsPage";
 import RaceHubBoard from "../components/racehub/RaceHubBoard.jsx";
 import { dateTextToDayOfYear } from "../lib/raceCalendar";
+import { sortRacesByDateDesc } from "../lib/raceCalendarSort";
 import { racesForPool } from "../lib/racesByPool";
 import { deriveRaceStatus } from "../lib/raceHubLogic.js";
 import { computeExpectedRacePrize, formatExpectedPrize } from "../lib/expectedPrizeCalculator";
@@ -206,7 +207,10 @@ export default function RacesPage() {
     upcoming: myRaces
       .filter(r => !r.results?.length && r.status !== "completed")
       .sort((a, b) => dateTextToDayOfYear(a.pool_race?.date_text) - dateTextToDayOfYear(b.pool_race?.date_text)),
-    completed: myRaces.filter(r => r.results?.length > 0 || r.status === "completed"),
+    // #1930: afsluttede løb vises nyeste-først (spejler kommende-sorteringen men DESC).
+    completed: sortRacesByDateDesc(
+      myRaces.filter(r => r.results?.length > 0 || r.status === "completed"),
+    ),
   };
 
   if (loading) return (
