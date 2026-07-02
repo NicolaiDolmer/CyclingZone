@@ -377,7 +377,7 @@
     "jerseysAfterStage": "Trøjer efter etapen",
     "liveStandings": {
       "title": "Stillingen efter {number}. etape",
-      "note": "Løbet er stadig i gang — stillingen opdateres efter hver etape."
+      "note": "Løbet er stadig i gang. Stillingen opdateres efter hver etape."
     },
     "stageFinishOrder": "Etape {number} · målrækkefølge",
     "noResults": "Ingen resultater",

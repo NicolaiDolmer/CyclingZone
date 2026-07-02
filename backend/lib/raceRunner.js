@@ -911,7 +911,7 @@ export function buildStageRowsAccumulated({ race, stagesSorted, stageIndex, entr
   const acc = accumulateStageRows({ stageRows: [...priorStageRows, ...todayStageRows], profileTypeByStage });
   const classified = filterCompletedEntrants(entrants, acc.stagesByRider, acc.stageNumbers);
   if (!classified.length && entrants.length) {
-    console.error(`  ⚠️  race ${race.id} etape ${stageNumber}: ingen ryttere har fuldført alle ${acc.stageNumbers.size} etaper — klassementer udelades`);
+    console.error(`  ⚠️  race ${race.id} stage ${stageNumber}: no riders completed all ${acc.stageNumbers.size} ridden stages — classifications omitted`);
   }
 
   const gc = rankByCumTimeAsc(classified, acc.cumTime, acc.posSum);

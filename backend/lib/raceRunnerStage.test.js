@@ -1,10 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import {
-  buildRaceResults,
-  simulateStageByIndex,
-} from "./raceRunner.js";
+import { simulateStageByIndex } from "./raceRunner.js";
 import { ABILITY_KEYS } from "./raceSimulator.js";
 import { DEMAND_VECTORS } from "./raceStageProfileGenerator.js";
 
@@ -255,7 +252,6 @@ test("#2072 regression: solgt/slettet rytter beholder kørte etaper men udgår a
   // (solgt/slettet — ikke længere i race_entries/riders). #1844-frysningen
   // rapporterer ham missing; akkumuleringen skal (a) IKKE slette hans etaperækker,
   // (b) udelade ham af slut-klassementerne, (c) beregne de øvriges GC som ren gap-sum.
-  const leaver = { rider_id: "leaver", team_id: "B" };
   const prior = [];
   for (const stage of [1, 2]) {
     prior.push(stageRow(stage, "leaver", 1, "+0:00", "B"));

@@ -377,7 +377,7 @@
     "jerseysAfterStage": "Jerseys after the stage",
     "liveStandings": {
       "title": "Standings after stage {number}",
-      "note": "The race is still in progress — standings update after each stage."
+      "note": "The race is still in progress. Standings update after each stage."
     },
     "stageFinishOrder": "Stage {number} · finish order",
     "noResults": "No results",
