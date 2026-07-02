@@ -183,6 +183,47 @@ function weightedPick(rng, items) {
   return items[items.length - 1].value;
 }
 
+// Tidskørsels-profiler (ITT + TTT). Et etapeløb må realistisk kun have få —
+// #2029: en Grand Tour blev genereret med 5 enkeltstarter (4 ITT + 1 TTT), fordi
+// hver filler-plads ruller uafhængigt mod itt/ttt-vægte og intet loft samlede dem.
+const TIME_TRIAL_PROFILES = Object.freeze(["itt", "ttt"]);
+const isTimeTrial = (t) => TIME_TRIAL_PROFILES.includes(t);
+
+// Konservativt loft på antal tidskørsler pr. etapeløb (#2029). Balance-default:
+// rigtige grand tours har typisk 2 enkeltstarter (lejlighedsvis 3), aldrig 5.
+// Loftet udledes pr. arketype som max(garanterede tidskørsler, DEFAULT_TT_CAP),
+// så en arketype-garanteret TT ALDRIG fjernes; kun filler-tilføjede TT ud over
+// loftet re-rulles til ikke-TT-terræn.
+export const DEFAULT_TT_CAP = 2;
+
+// Udled TT-loftet for en (arketype- eller generisk) fordeling. guarantees kan
+// selv indeholde flere garanterede TT end default'en — dem respekterer vi (hæver
+// loftet), så en fremtidig arketype med 3 faste enkeltstarter ikke får dem trimmet.
+export function timeTrialCap(guaranteedTypes = []) {
+  const guaranteedTT = guaranteedTypes.filter(isTimeTrial).length;
+  return Math.max(guaranteedTT, DEFAULT_TT_CAP);
+}
+
+// Håndhæv TT-loftet på et allerede-bygget types-array. Filler-tilføjede TT ud over
+// loftet (dvs. TT ved index ≥ protectedCount, scannet fra enden) erstattes med et
+// re-rullet ikke-TT-filler-terræn. Guarantees (de første protectedCount) røres ikke.
+// Deterministisk: bruger den delte rng, og filtrerer TT ud af filler-vægtene så en
+// erstatning aldrig selv er en TT. Muterer + returnerer types (in-place, som resten).
+function capTimeTrials(rng, types, protectedCount, fillerWeights) {
+  const cap = timeTrialCap(types.slice(0, protectedCount));
+  const nonTtFiller = fillerWeights.filter((it) => !isTimeTrial(it.value));
+  let ttCount = types.filter(isTimeTrial).length;
+  // Scan bagfra: senere (filler-)pladser trimmes først; guarantee-regionen beskyttes.
+  for (let i = types.length - 1; i >= protectedCount && ttCount > cap; i--) {
+    if (!isTimeTrial(types[i])) continue;
+    // Erstatning: re-rul ikke-TT-filler; fald tilbage til "flat" hvis filleren KUN
+    // var TT (kan ikke ske for de nuværende arketyper, men holder funktionen total).
+    types[i] = nonTtFiller.length ? weightedPick(rng, nonTtFiller) : "flat";
+    ttCount--;
+  }
+  return types;
+}
+
 function demandVectorFor(profileType) {
   return { ...DEMAND_VECTORS[profileType] };
 }
@@ -221,17 +262,25 @@ function orderAndBuild(rng, types, stages) {
 }
 
 // Generisk (uændret adfærd): garanterer ≥1 flad + ≥1 bjerg; kort TT muligt ved N≥5.
+// STAGE_FILLER_WEIGHTS har ingen TT, så generisk kan ikke akkumulere TT fra filler;
+// TT-loftet håndhæves alligevel defensivt (guaranteed TT ⊆ de 2 første pladser).
 function buildStageRaceGeneric(rng, stages) {
   const types = ["flat", "mountain"];
   if (stages >= 5 && rng() < 0.7) types.push("itt");
+  const protectedCount = types.length; // flad+bjerg(+evt. itt) = garantier
   while (types.length < stages) types.push(weightedPick(rng, STAGE_FILLER_WEIGHTS));
+  capTimeTrials(rng, types, protectedCount, STAGE_FILLER_WEIGHTS);
   return orderAndBuild(rng, types, stages);
 }
 
 // Arketype-drevet: garantier (force-include, trimmet til stages) + filler-vægte.
+// TT-loftet (#2029) håndhæves EFTER filler er lagt på: filler-tilføjede TT ud over
+// loftet re-rulles til ikke-TT-terræn, mens arketypens garanterede TT bevares.
 function buildStageRaceArchetype(rng, stages, cfg) {
   const types = cfg.guarantees.slice(0, stages);
+  const protectedCount = types.length; // guarantees = beskyttet region
   while (types.length < stages) types.push(weightedPick(rng, cfg.filler));
+  capTimeTrials(rng, types, protectedCount, cfg.filler);
   return orderAndBuild(rng, types, stages);
 }
 
