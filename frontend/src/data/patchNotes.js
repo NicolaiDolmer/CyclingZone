@@ -4,6 +4,41 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.42",
+    "date": "2026-07-02",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Stage-race GC now always matches the published stage results",
+          "body": "Some of you did the maths on Vuelta Burgalesa and caught a real bug: the final GC could contradict the stage results we had already published. The engine used to re-simulate the whole race on every stage day, so the final overall standings came from a different simulation than the stage results you saw. That is fixed: the overall standings are now calculated by adding up the published stage gaps, exactly the way you would check it yourself. A rider who leaves the game mid-race keeps the results and prize money already earned, but no longer appears in the final classifications. Already-finished races keep their published results. Thanks to the managers who double-checked our numbers - that is exactly the scrutiny the game needs.",
+        },
+        "da": {
+          "title": "Etapeløbs samlede stilling matcher nu altid de publicerede etaperesultater",
+          "body": "Nogle af jer regnede efter på Vuelta Burgalesa og fangede en ægte fejl: den endelige samlede stilling kunne modsige de etaperesultater vi allerede havde publiceret. Motoren re-simulerede før hele løbet på hver etapedag, så slutstillingen kom fra en anden simulation end de etaperesultater I så. Det er rettet: den samlede stilling beregnes nu ved at lægge de publicerede etape-gaps sammen, præcis som I selv ville tjekke det. En rytter der forlader spillet midt i et løb beholder de resultater og præmiepenge han allerede har kørt hjem, men optræder ikke længere i slutklassementerne. Allerede afsluttede løb beholder deres publicerede resultater. Tak til de managers der regnede efter - det er præcis den vagtsomhed spillet har brug for.",
+        },
+        "refs": [2072]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Follow the overall standings while a stage race is running",
+          "body": "You no longer have to wait for the final stage to see who leads a stage race. The race page now shows the full running standings after each stage: GC with time gaps, the points, mountains and youth competitions, and the team classification. Open any race in progress and the Overall tab shows the standings after the latest completed stage, clearly marked so you know the race is not finished yet.",
+        },
+        "da": {
+          "title": "Følg den samlede stilling mens et etapeløb er i gang",
+          "body": "Du skal ikke længere vente på sidste etape for at se hvem der fører et etapeløb. Løbssiden viser nu den fulde løbende stilling efter hver etape: GC med tidsgab, point-, bjerg- og ungdomskonkurrencen samt holdkonkurrencen. Åbn et igangværende løb, så viser Samlet-fanen stillingen efter den senest kørte etape, tydeligt markeret så du ved at løbet ikke er slut endnu.",
+        },
+        "refs": [2081]
+      }
+    ]
+  },
+  {
     "version": "6.41",
     "date": "2026-07-02",
     "label": "Beta",
