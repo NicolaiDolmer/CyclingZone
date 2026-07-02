@@ -458,37 +458,56 @@ async function runAutoPrizeSweepCron() {
 
 const ensureSeasonStandingsCron = makeEnsureSeasonStandings(supabase);
 
+// #2090: overlap-guard. Under post-incident-catch-up 2/7 tog et tick >5 min →
+// setInterval startede næste tick OVENI; hvert tick udvalgte løb ud fra sit eget
+// forældede races-snapshot, og fordi runAdminSimulateStage kører "næste etape" ud
+// fra frisk stages_completed, blev 10 etaper afviklet FØR deres scheduled_at
+// (Volta Algarvia st2-3, Hauts Plateaux st8). Ét tick ad gangen — altid.
+let stageSchedulerTickRunning = false;
+
 async function runStageSchedulerCron() {
-  const result = await runStageScheduler({
-    supabase,
-    now: new Date(),
-    isStageSchedulerEnabled,
-    isRaceEngineV2Enabled,
-    runStageFn: async ({ raceId }) => {
-      const notifyDiscord = async ({ race, resultRows }) => {
-        const url = await getDefaultWebhook();
-        if (!url) return;
-        const embed = buildRaceSimEmbed({ race, resultRows });
-        await sendWebhook(url, { embeds: [{ ...embed, footer: { text: "Cycling Zone" } }] });
-      };
-      // #1952 · In-app resultat-notifikation til deltagende menneske-managers.
-      const notifyInApp = async ({ race }) => {
-        await emitRaceResultNotifications({ supabase, race });
-      };
-      return runAdminSimulateStage({
-        supabase,
-        raceId,
-        dryRun: false,
-        runSource: "scheduler", // FIX 4: kun scheduler-runs tæller i den daglige cap
-        ensureSeasonStandings: ensureSeasonStandingsCron,
-        updateStandings,
-        notifyDiscord,
-        notifyInApp,
-      });
-    },
-  });
-  if (result.ran || result.errors || result.recovered) {
-    console.log(`🚵 Stage-scheduler: ${result.ran} etape(r) afviklet, ${result.recovered || 0} finalization-recovery, ${result.errors} fejl`);
+  if (stageSchedulerTickRunning) {
+    console.log("⏭️ Stage-scheduler: forrige tick kører stadig — springer over (overlap-guard #2090)");
+    return;
+  }
+  stageSchedulerTickRunning = true;
+  try {
+    const result = await runStageScheduler({
+      supabase,
+      now: new Date(),
+      isStageSchedulerEnabled,
+      isRaceEngineV2Enabled,
+      runStageFn: async ({ raceId, stageIndex }) => {
+        const notifyDiscord = async ({ race, resultRows }) => {
+          const url = await getDefaultWebhook();
+          if (!url) return;
+          const embed = buildRaceSimEmbed({ race, resultRows });
+          await sendWebhook(url, { embeds: [{ ...embed, footer: { text: "Cycling Zone" } }] });
+        };
+        // #1952 · In-app resultat-notifikation til deltagende menneske-managers.
+        const notifyInApp = async ({ race }) => {
+          await emitRaceResultNotifications({ supabase, race });
+        };
+        return runAdminSimulateStage({
+          supabase,
+          raceId,
+          dryRun: false,
+          runSource: "scheduler", // FIX 4: kun scheduler-runs tæller i den daglige cap
+          // #2090 defense-in-depth: løbet må KUN afvikle præcis den etape scheduleren
+          // udvalgte som forfalden — er løbet imens bumpet af et andet run, 409'es der.
+          expectedStageIndex: stageIndex,
+          ensureSeasonStandings: ensureSeasonStandingsCron,
+          updateStandings,
+          notifyDiscord,
+          notifyInApp,
+        });
+      },
+    });
+    if (result.ran || result.errors || result.recovered) {
+      console.log(`🚵 Stage-scheduler: ${result.ran} etape(r) afviklet, ${result.recovered || 0} finalization-recovery, ${result.errors} fejl`);
+    }
+  } finally {
+    stageSchedulerTickRunning = false;
   }
 }
 

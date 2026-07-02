@@ -319,6 +319,50 @@ test("runAdminSimulateStage: alle etaper kørt men ikke completed → recovery m
   assert.equal(result.stageNumber, 3);
 });
 
+// #2090: stale-tick-guard — kaldet var møntet på én etape, men løbet er imens bumpet.
+test("runAdminSimulateStage: expectedStageIndex mismatch → 409, stub ikke kaldt (#2090)", async () => {
+  const supabase = makeSupabase({
+    app_config: [{ value: true }],
+    // Scheduleren udvalgte etape-index 0 (stage 1 forfalden), men et overlappende
+    // run har imens bumpet stages_completed til 1 → frisk næste etape = index 1.
+    races: [{ id: "r1", season_id: "s1", name: "Test GP", race_type: "stage_race", race_class: "ProSeries", stages: 5, stages_completed: 1, status: "scheduled" }],
+    race_stage_profiles: [{ id: "p1" }, { id: "p2" }, { id: "p3" }, { id: "p4" }, { id: "p5" }],
+  });
+  let stubCalled = false;
+  let err = null;
+  try {
+    await runAdminSimulateStage({ supabase, raceId: "r1", expectedStageIndex: 0, simulateStageByIndex: async () => { stubCalled = true; return {}; } });
+  } catch (e) { err = e; }
+  assert.ok(err, "skal kaste");
+  assert.equal(err.status, 409);
+  assert.ok(String(err.message).includes("Stale tick"), `forventede stale-tick-fejl, fik: ${err.message}`);
+  assert.equal(stubCalled, false, "stub må ikke kaldes ved stale tick");
+});
+
+test("runAdminSimulateStage: expectedStageIndex match → kører normalt (#2090)", async () => {
+  const supabase = makeSupabase({
+    app_config: [{ value: true }],
+    races: [{ id: "r1", season_id: "s1", name: "Test GP", race_type: "stage_race", race_class: "ProSeries", stages: 5, stages_completed: 1, status: "scheduled" }],
+    race_stage_profiles: [{ id: "p1" }, { id: "p2" }, { id: "p3" }, { id: "p4" }, { id: "p5" }],
+  });
+  let captured = null;
+  await runAdminSimulateStage({ supabase, raceId: "r1", expectedStageIndex: 1, simulateStageByIndex: async (args) => { captured = args; return {}; } });
+  assert.ok(captured, "stub skal kaldes ved match");
+  assert.equal(captured.stageIndex, 1);
+});
+
+test("runAdminSimulateStage: recovery + expectedStageIndex=stages-1 fungerer sammen (#2090)", async () => {
+  const supabase = makeSupabase({
+    app_config: [{ value: true }],
+    races: [{ id: "r1", season_id: "s1", name: "Test GP", race_type: "stage_race", race_class: "ProSeries", stages: 3, stages_completed: 3, status: "scheduled" }],
+    race_stage_profiles: [{ id: "p1" }, { id: "p2" }, { id: "p3" }],
+  });
+  let captured = null;
+  await runAdminSimulateStage({ supabase, raceId: "r1", expectedStageIndex: 2, simulateStageByIndex: async (args) => { captured = args; return {}; } });
+  assert.ok(captured, "recovery-stub skal kaldes");
+  assert.equal(captured.stageIndex, 2, "recovery bruger final-etapens index og matcher expected");
+});
+
 // dryRun har ingen recovery-semantik → 409 bevares dér.
 test("runAdminSimulateStage: alle etaper kørt + dryRun → stadig 409, stub ikke kaldt", async () => {
   const supabase = makeSupabase({
