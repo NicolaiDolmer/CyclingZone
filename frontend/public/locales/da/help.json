@@ -732,6 +732,10 @@
       "q": "Hvad betyder watchlist-tælleren på en rytterside?",
       "a": "Det viser hvor mange managers der har den pågældende rytter på deres ønskeliste. Du kan ikke se hvem, kun det samlede antal."
     },
+    "scoutVisibilityFaq": {
+      "q": "Kan andre managere se at jeg har scoutet en rytter?",
+      "a": "Rytterens ejer kan. På egen rytters profil viser Interesse-fanen hvilke hold der har brugt scout-slots på ham, hvor mange og hvornår. Alle andre ser kun anonyme totaler (hvor mange rivaler der har scoutet ham), aldrig hvilke hold."
+    },
     "watchlistSaleNotificationFaq": {
       "q": "Får jeg besked når en rytter på min ønskeliste sættes til salg?",
       "a": "Ja. Hvis en rytter du følger sættes på transferlisten eller sættes til auktion, modtager du automatisk en notifikation i Indbakken med pris og type. Du behøver altså ikke aktivt tjekke markedet for dine favoritter."

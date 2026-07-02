@@ -120,13 +120,17 @@ export default function RiderTypeRadar({ rider, onGoScouting }) {
           {t("profile.overview.radar.bestAs")}
         </span>
         <span className="font-bold text-[13.5px] text-cz-1">{tTypes(`types.${bestKey}`)}</span>
-        <button
-          type="button"
-          onClick={onGoScouting}
-          className="ms-auto py-1 -my-1 text-[11px] text-cz-accent-t hover:underline"
-        >
-          {t("profile.overview.radar.allTypes")}
-        </button>
+        {/* Linket skjules mens Scouting-fanen er udskudt (egen slice) — en knap
+            til en fane der ikke findes ville lande på tomt indhold. */}
+        {onGoScouting && (
+          <button
+            type="button"
+            onClick={onGoScouting}
+            className="ms-auto py-1 -my-1 text-[11px] text-cz-accent-t hover:underline"
+          >
+            {t("profile.overview.radar.allTypes")}
+          </button>
+        )}
       </div>
     </div>
   );

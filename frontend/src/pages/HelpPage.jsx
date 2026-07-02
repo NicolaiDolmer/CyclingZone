@@ -258,6 +258,7 @@ const FAQ_KEYS = [
   "secretAchievementsFaq",
   "onlineStatusFaq",
   "watchlistCounterFaq",
+  "scoutVisibilityFaq",
   "watchlistSaleNotificationFaq",
   "riderSalaryView",
   "riderDevelopment",

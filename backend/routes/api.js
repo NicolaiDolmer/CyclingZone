@@ -116,6 +116,7 @@ import {
   PARKED_LOAN_STATUSES,
 } from "../lib/loanAgreementWindowing.js";
 import { buildRiderHistory } from "../lib/riderHistory.js";
+import { buildRiderInterest } from "../lib/riderInterest.js";
 import { buildTeamTransferHistory } from "../lib/teamTransferHistory.js";
 import { buildRiderBidTimeline } from "../lib/riderBidTimeline.js";
 import { meanPhysiology, BENCHMARK_FIELDS } from "../lib/physiologyBenchmark.js";
@@ -847,6 +848,40 @@ router.get("/riders/:id/history", requireAuth, async (req, res) => {
   try {
     const events = await buildRiderHistory(supabase, req.params.id);
     res.json(events);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/riders/:id/interest — Interesse-fanen (#2000): scoutet-af + feed.
+// Aggregering + privacy-kontrakt (team-navne kun til ejeren, watchlist altid
+// anonym, ejerholdet filtreret ud) i lib/riderInterest.js. Følger/visninger
+// dækkes af de eksisterende watchlist-count/view-count-endpoints.
+router.get("/riders/:id/interest", requireAuth, async (req, res) => {
+  if (!UUID_RE.test(req.params.id)) {
+    return res.status(400).json({ error: "Ugyldigt rytter-id" });
+  }
+  try {
+    const [riderRes, scoutRes, watchRes] = await Promise.all([
+      supabase.from("riders").select("id, team_id").eq("id", req.params.id).maybeSingle(),
+      supabase.from("scout_actions")
+        .select("team_id, created_at, team:team_id(id, name), season:season_id(number)")
+        .eq("rider_id", req.params.id)
+        .order("created_at", { ascending: false }),
+      supabase.from("rider_watchlist")
+        .select("created_at")
+        .eq("rider_id", req.params.id)
+        .order("created_at", { ascending: false })
+        .limit(20),
+    ]);
+    if (riderRes.error || scoutRes.error || watchRes.error) {
+      // Fejl må ikke ligne "ingen interesse" (samme princip som buildRiderHistory, #1338).
+      throw new Error(riderRes.error?.message || scoutRes.error?.message || watchRes.error?.message);
+    }
+    if (!riderRes.data) return res.status(404).json({ error: "Rytter ikke fundet" });
+    const ownerTeamId = riderRes.data.team_id ?? null;
+    const isOwner = Boolean(req.team?.id && ownerTeamId === req.team.id);
+    res.json(buildRiderInterest({ scoutRows: scoutRes.data || [], watchRows: watchRes.data || [], isOwner, ownerTeamId }));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

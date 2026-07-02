@@ -161,10 +161,89 @@
       "academy": "Academy rider",
       "expiry": "Contract expires after Season {season}."
     },
-    "tabPlaceholder": "This tab is being rebuilt in the redesign.",
+    "history": {
+      "loading": "Loading history...",
+      "chipBid": "Bid",
+      "bidBy": "placed a bid",
+      "table": {
+        "date": "Date",
+        "type": "Type",
+        "event": "Event",
+        "amount": "Amount"
+      },
+      "loadError": "Trade history could not be loaded right now."
+    },
+    "results": {
+      "totalsTitle": "Season totals",
+      "filterLabel": "Season filter",
+      "filterAll": "All",
+      "totals": {
+        "wins": "Wins",
+        "races": "Races",
+        "top5": "Top 5",
+        "jerseys": "Jerseys",
+        "points": "Ranking points",
+        "prize": "Prize money"
+      },
+      "table": {
+        "date": "Date",
+        "race": "Race",
+        "class": "Class",
+        "terrain": "Terrain",
+        "pos": "Pos.",
+        "points": "Points",
+        "prize": "Prize"
+      },
+      "terrain": {
+        "flat_sprint": "Flat",
+        "long_sprint_classic": "Rolling",
+        "cobbled_classic": "Cobbles",
+        "puncheur": "Hilly",
+        "hilly_classic": "Hilly",
+        "mountain_classic": "Mountain"
+      },
+      "stagesCount": "{n} stages",
+      "stageRow": "Stage {n}",
+      "overallRow": "Overall (GC)",
+      "expandHint": "Tap a stage race to unfold all stages.",
+      "emptySeason": "No results in this season.",
+      "seasonShort": "S{n}",
+      "loadError": "Results could not be loaded right now."
+    },
     "interest": {
-      "followers": "Followers",
-      "views": "Views (7d)"
+      "loading": "Loading interest...",
+      "loadError": "Interest data could not be loaded right now.",
+      "trendNew": "new data",
+      "trendFlat": "stable",
+      "seasonShort": "S{n}",
+      "stats": {
+        "followers": "Followers",
+        "views7d": "Profile views (7d)",
+        "scoutedBy": "Scouted by"
+      },
+      "followersSub": "{count, plural, one {manager} other {managers}}",
+      "scoutedBySub": "{count, plural, one {rival team} other {rival teams}}",
+      "summary": {
+        "own": "{followers, plural, =0 {No managers follow him yet} one {1 manager follows him} other {# managers follow him}} · scouted by {scouted, plural, =0 {no rivals} one {1 rival team} other {# rival teams}} · {views, plural, =0 {no unique visitors} one {1 unique visitor} other {# unique visitors}} in the last 7 days.",
+        "ownQuiet": "No one has shown interest yet. He stays under the radar for now.",
+        "scouting": "{followers, plural, =0 {No managers follow him yet} one {1 manager follows him} other {# managers follow him}} · scouted by {scouted, plural, =0 {no rivals} one {1 rival team} other {# rival teams}} · {views, plural, =0 {no unique visitors} one {1 unique visitor} other {# unique visitors}} in the last 7 days.",
+        "scoutingQuiet": "No visible interest yet."
+      },
+      "whoScouts": {
+        "title": "Who is scouting your rider?",
+        "body": "{count, plural, one {1 rival team has used scout slots on him.} other {# rival teams have used scout slots on him.}}",
+        "empty": "No rivals have scouted him yet.",
+        "level": "Level {level}"
+      },
+      "feed": {
+        "title": "Activity",
+        "scout": "{team} scouted him",
+        "scoutAnon": "A rival scouted him",
+        "watch": "Added to a manager's watchlist",
+        "viewsTrend": "Profile views {pct}% vs the previous 7 days",
+        "viewsTrendMeta": "last 7 days",
+        "empty": "No activity yet"
+      }
     },
     "overview": {
       "skillCount": "{count} abilities",
@@ -391,46 +470,19 @@
     }
   },
   "season": {
-    "empty": "No history yet",
-    "table": {
-      "wins": "Wins",
-      "top3": "Top 3",
-      "stageWins": "Stage wins",
-      "gcWins": "GC wins",
-      "classicWins": "Classic wins",
-      "pointsJersey": "Points jersey",
-      "mountainJersey": "Mountain jersey",
-      "prizes": "Prizes",
-      "season": "Season"
-    },
     "row": "Season {n}"
   },
   "results": {
     "empty": "No race results yet",
-    "table": {
-      "race": "Race",
-      "type": "Type",
-      "position": "Pos.",
-      "prize": "Prize"
-    },
     "fallbackDash": "-"
   },
   "development": {
     "progressHint": "Progress toward next point"
   },
   "bids": {
-    "noAuction": "No current auction for this rider",
-    "noBids": "No bids yet",
-    "soldLabel": "Sold",
-    "soldFor": "for",
-    "winnerFallback": "Unknown buyer",
-    "sellerPrefix": "Seller:",
-    "activeAuction": "⚡ Active auction",
-    "fallbackDash": "-",
     "row": {
       "teamFallback": "Unknown",
-      "autoBidTag": "Auto-bid",
-      "highestTag": "Highest"
+      "autoBidTag": "Auto-bid"
     }
   },
   "history": {
