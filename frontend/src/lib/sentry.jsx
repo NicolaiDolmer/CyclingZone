@@ -5,6 +5,8 @@ import { isChunkLoadError, shouldAttemptChunkReload } from "./chunkErrors.js";
 // Button (+ deres ikon/styles) ind, ikke hele ui-laget (#479). #671 Plan 3.
 import ErrorState from "../components/ui/ErrorState.jsx";
 import Button from "../components/ui/Button.jsx";
+// denyUrls-moenstre i ren .js-fil (unit-testbar uden JSX-import), se #2018.
+import { DENY_URLS } from "./sentryDenyUrls.js";
 
 const DSN = import.meta.env.VITE_SENTRY_DSN;
 const ENABLED = import.meta.env.PROD && Boolean(DSN);
@@ -26,10 +28,9 @@ export function initSentry() {
     tracesSampleRate: sampleRateFromEnv("VITE_SENTRY_TRACES_SAMPLE_RATE"),
     replaysSessionSampleRate: sampleRateFromEnv("VITE_SENTRY_REPLAY_SAMPLE_RATE"),
     replaysOnErrorSampleRate: sampleRateFromEnv("VITE_SENTRY_REPLAY_ON_ERROR_SAMPLE_RATE", 0.1),
-    // #1792: tredjeparts browser-extensions (fx TronLink → CYCLINGZONE-15) injicerer
-    // kode på vores sider og kaster i deres egen kontekst — det er ikke vores app.
-    // denyUrls dropper events hvis "blame"-frame stammer fra en extension-URL.
-    denyUrls: [/^chrome-extension:\/\//, /^moz-extension:\/\//, /^safari-(web-)?extension:\/\//],
+    // #1792 (extensions) + #2018 (Vercel Live Feedback toolbar): dropper events
+    // hvis "blame"-frame stammer fra tredjeparts-injiceret kode. Se DENY_URLS.
+    denyUrls: DENY_URLS,
     beforeSend(event) {
       const value = event.exception?.values?.[0]?.value || event.message || "";
       if (/ResizeObserver loop completed|NetworkError when attempting to fetch resource/i.test(value)) {
