@@ -88,7 +88,7 @@ Division 4-aktiveringen (263→455 løb) fik `updateStandings` til at fejle på 
 5. **VMan-kontakt: beslutning 6/7.**
 6. **Discord-migration: afgøres senest 6/7** (frys indtil da).
 7. **Annoncer på hjemmesiden: NEJ** (bekræftet).
-8. **Trænings-nerf-mål:** afventer ejerens bekræftelse af "peak 27-28 + 35-50 % gap-lukning/sæson" (forklaring givet 2/7). Tidsplan #2082: harness 5/7 → scorecard-review 6/7 → ship 7-9/7.
+8. **Trænings-nerf-mål (ejer-fastsat 2/7):** ankomst ~16 år, peak ~27-28 → **~50 % af gappet lukket efter 5-7 sæsoner** (≈9-13 % af rest-gap pr. sæson, aftagende mod peak). Tidligere 35-50 %/sæson-forslag afvist som alt for hurtigt. Tidsplan #2082: harness 5/7 → scorecard-review 6/7 → ship 7-9/7.
 
 ## Nye ejer-deadlines (2/7)
 - **#2072 GC-akkumulering + #2081 GC undervejs: I DAG (2/7).**
