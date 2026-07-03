@@ -56,6 +56,12 @@
     },
     "actionButton": "Sell / Auction"
   },
+  "academy": {
+    "heading": "Academy riders ({count})",
+    "offCapNote": "Academy riders develop separately and never count toward the senior squad cap.",
+    "toggle": "Show academy riders",
+    "tag": "Academy"
+  },
   "actionModal": {
     "potentialLabel": "Potential",
     "tabs": {

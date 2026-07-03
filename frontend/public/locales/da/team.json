@@ -56,6 +56,12 @@
     },
     "actionButton": "Sælg / Auktion"
   },
+  "academy": {
+    "heading": "Akademiryttere ({count})",
+    "offCapNote": "Akademiryttere udvikles separat og tæller aldrig med i senior-truppens cap.",
+    "toggle": "Vis akademiryttere",
+    "tag": "Akademi"
+  },
   "actionModal": {
     "potentialLabel": "Potentiale",
     "tabs": {
