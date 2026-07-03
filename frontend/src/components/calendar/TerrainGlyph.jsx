@@ -9,6 +9,9 @@ const BUCKET_TO_PROFILE = {
   hilly: "hilly",
   mountain: "mountain",
   itt: "itt",
+  // Holdstart (TTT) får sin egen silhuet (to startramper) så den ikke deler form med
+  // enkeltstart (ITT). Kalender-buckets emitteres af backend/lib/raceCalendar.js (#1953).
+  ttt: "ttt",
 };
 
 // A compact terrain silhouette for a calendar race chip / legend. Inherits color via

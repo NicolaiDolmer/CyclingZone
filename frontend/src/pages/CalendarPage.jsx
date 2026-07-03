@@ -16,7 +16,7 @@ import {
 const API = import.meta.env.VITE_API_URL;
 
 const WEEKDAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
-const LEGEND_BUCKETS = ["sprint", "hilly", "mountain", "itt"];
+const LEGEND_BUCKETS = ["sprint", "hilly", "mountain", "itt", "ttt"];
 const TABS = ["mine", "all", "divisions"];
 
 // Today in Europe/Copenhagen as "YYYY-MM-DD" — used to highlight the current day cell

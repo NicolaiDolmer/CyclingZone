@@ -43,13 +43,15 @@
     "sprint": "Sprint",
     "hilly": "Kuperet",
     "mountain": "Bjerge",
-    "itt": "Enkeltstart"
+    "itt": "Enkeltstart",
+    "ttt": "Holdstart"
   },
   "terrain": {
     "sprint": "Sprint",
     "hilly": "Kuperet",
     "mountain": "Bjerge",
-    "itt": "Enkeltstart"
+    "itt": "Enkeltstart",
+    "ttt": "Holdstart"
   },
   "moreRaces": "+{count} flere",
   "prevMonth": "Forrige måned",

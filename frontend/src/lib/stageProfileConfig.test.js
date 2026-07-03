@@ -60,6 +60,21 @@ test("flade og bjerg-terræn har synligt forskellige silhuetter", () => {
   assert.ok(minY("mountain") < minY("flat"), "mountain burde toppe højere end flat");
 });
 
+test("enkeltstart (itt) og holdstart (ttt) har distinkte silhuetter — hverken lig flad eller hinanden (#1953)", () => {
+  const itt = profileShape("itt").points;
+  const ttt = profileShape("ttt").points;
+  const flat = profileShape("flat").points;
+  // Accept-kriterie: ITT må ikke ligne en flad sprint-etape.
+  assert.notEqual(itt, flat, "itt burde ikke dele silhuet med flat");
+  // Accept-kriterie: TTT (holdstart) skal skelnes fra ITT (enkeltstart).
+  assert.notEqual(ttt, itt, "ttt burde ikke dele silhuet med itt");
+  assert.notEqual(ttt, flat, "ttt burde ikke dele silhuet med flat");
+  // Startrampen giver ITT/TTT en markant venstre-spids terrænet ikke har (lav min-y).
+  const minY = (pts) => Math.min(...pts.split(" ").map((p) => Number(p.split(",")[1])));
+  assert.ok(minY(itt) < minY(flat), "itt burde have en startrampe (spids) flat ikke har");
+  assert.ok(minY(ttt) < minY(flat), "ttt burde have startramper (spidser) flat ikke har");
+});
+
 test("profileLabelKey returnerer races-namespace-nøgle for kendte typer, null ellers", () => {
   assert.equal(profileLabelKey("mountain"), "profileType.mountain");
   assert.equal(profileLabelKey("flat"), "profileType.flat");
