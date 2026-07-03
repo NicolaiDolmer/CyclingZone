@@ -4,6 +4,139 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.50",
+    "date": "2026-07-03",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "U25 and U23 status now follows the season, not today's date",
+          "body": "A rider's under-25 and under-23 status was worked out from today's calendar date instead of the season being played, so a young rider could drift in and out of the age brackets at the wrong moment. It is now derived from the season's reference year, so the brackets stay correct all season.",
+        },
+        "da": {
+          "title": "U25- og U23-status følger nu sæsonen, ikke dagens dato",
+          "body": "En rytters U25- og U23-status blev regnet ud fra dagens kalenderdato i stedet for den sæson der spilles, så en ung rytter kunne glide ind og ud af aldersgrupperne på det forkerte tidspunkt. Den afledes nu af sæsonens referenceår, så grupperne holder hele sæsonen.",
+        },
+        "refs": [2032]
+      },
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "Auction history shows how contested each sale was",
+          "body": "Each row in the auction history now shows how many bids were placed and how many different teams took part, so you can see at a glance which riders sparked a bidding war.",
+        },
+        "da": {
+          "title": "Auktionshistorik viser hvor omkæmpet hver handel var",
+          "body": "Hver række i auktionshistorikken viser nu hvor mange bud der blev afgivet og hvor mange forskellige hold der deltog, så du med et blik kan se hvilke ryttere der udløste en budkrig.",
+        },
+        "refs": [256]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "Type exact numbers into the rider filters",
+          "body": "Every ability filter now has a number field next to its slider, so you can type an exact minimum and maximum instead of nudging the handles. The field and slider stay in sync, and the slider is still there if you prefer dragging.",
+        },
+        "da": {
+          "title": "Skriv præcise tal i rytterfiltrene",
+          "body": "Hvert evne-filter har nu et talfelt ved siden af slideren, så du kan skrive et præcist minimum og maksimum i stedet for at flytte håndtagene. Feltet og slideren følges ad, og slideren er der stadig hvis du hellere vil trække.",
+        },
+        "refs": [261]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Calendar",
+        "en": {
+          "title": "Time trials have their own shape on the calendar",
+          "body": "Individual and team time trials used to share the flat glyph of a sprint stage, so you could not spot them at a glance. They now have their own distinct calendar glyph, with a matching legend entry.",
+        },
+        "da": {
+          "title": "Enkeltstart har sin egen form på kalenderen",
+          "body": "Enkeltstart og holdtidskørsel delte tidligere den flade glyf med en spurtetape, så du ikke kunne se dem med det samme. De har nu deres egen tydelige kalender-glyf, med en tilhørende signaturforklaring.",
+        },
+        "refs": [1953]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Navigation",
+        "en": {
+          "title": "Team names are clickable across the app",
+          "body": "Team names that used to be plain text, on rider profiles, start lists, the compare drawer and interest lists, are now links straight to the team page.",
+        },
+        "da": {
+          "title": "Holdnavne er klikbare i hele appen",
+          "body": "Holdnavne der før var almindelig tekst, på rytterprofiler, startlister, sammenlignings-panelet og interesselister, er nu links direkte til holdsiden.",
+        },
+        "refs": [260]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Finished races are sorted newest first",
+          "body": "The list of completed races sat in an inconsistent order. It now shows the most recent race first, matching the upcoming list.",
+        },
+        "da": {
+          "title": "Afsluttede løb sorteres nyeste først",
+          "body": "Listen over afsluttede løb lå i en inkonsekvent rækkefølge. Den viser nu det seneste løb først, ligesom listen over kommende løb.",
+        },
+        "refs": [1930]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Accessibility",
+        "en": {
+          "title": "Chart colours are easier to tell apart for colour-blind players",
+          "body": "Two of the colours in the stats charts sat too close together for players with red-green colour blindness, so the amber and yellow series were hard to separate. We pushed them apart and locked in a minimum perceptual distance under both deuteranopia and protanopia.",
+        },
+        "da": {
+          "title": "Grafernes farver er lettere at skelne for farveblinde",
+          "body": "To af farverne i statistik-graferne lå for tæt for spillere med rød-grøn farveblindhed, så de gule og ravgule serier var svære at skille ad. Vi skubbede dem fra hinanden og låste en minimums-afstand under både deuteranopi og protanopi.",
+        },
+        "refs": [2033]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "General",
+        "en": {
+          "title": "More error messages now appear in your language",
+          "body": "A number of error messages from the server, mostly around signing in and acting on riders, were sent as raw text that could not be translated, so some players saw them in the wrong language. They now carry a proper code and show up translated.",
+        },
+        "da": {
+          "title": "Flere fejlbeskeder vises nu på dit sprog",
+          "body": "En række fejlbeskeder fra serveren, mest omkring login og handlinger på ryttere, blev sendt som rå tekst der ikke kunne oversættes, så nogle spillere så dem på det forkerte sprog. De bærer nu en korrekt kode og vises oversat.",
+        },
+        "refs": [1665]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Performance",
+        "en": {
+          "title": "The landing page loads a little faster",
+          "body": "The flag icons used by the language switcher were loaded on every visit, even before they were needed. They now load only when the switcher is opened, trimming the initial page load.",
+        },
+        "da": {
+          "title": "Landingssiden loader lidt hurtigere",
+          "body": "Flag-ikonerne som sprogskifteren bruger blev loadet ved hvert besøg, selv før de var nødvendige. De loader nu først når skifteren åbnes, hvilket trimmer den første sideindlæsning.",
+        },
+        "refs": [2047]
+      }
+    ]
+  },
+  {
     "version": "6.49",
     "date": "2026-07-03",
     "label": "Beta",
