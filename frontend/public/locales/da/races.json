@@ -130,7 +130,6 @@
   "common": {
     "free": "Fri",
     "dash": "—",
-    "edition": "{year}-udgave",
     "loading": "Indlæser…",
     "points": "{count} pt"
   },

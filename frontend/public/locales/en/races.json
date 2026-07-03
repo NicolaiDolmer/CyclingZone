@@ -130,7 +130,6 @@
   "common": {
     "free": "Free",
     "dash": "—",
-    "edition": "{year} edition",
     "loading": "Loading…",
     "points": "{count} pt"
   },
