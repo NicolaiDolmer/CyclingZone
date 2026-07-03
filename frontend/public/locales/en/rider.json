@@ -10,6 +10,7 @@
     "bought": "You bought this rider",
     "sold": "You sold this rider",
     "injured": "Injured",
+    "academy": "Academy rider (off the senior squad cap)",
     "label": {
       "u23": "U23",
       "u25": "U25",
@@ -20,7 +21,8 @@
       "self": "OWN",
       "bought": "BUY",
       "sold": "SOLD",
-      "injured": "INJ"
+      "injured": "INJ",
+      "academy": "ACAD"
     }
   },
   "page": {

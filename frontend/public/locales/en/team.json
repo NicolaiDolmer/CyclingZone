@@ -26,6 +26,11 @@
       "upcoming": "Next season ({count})",
       "upcomingHint": "Shows the squad once pending transfers are completed."
     },
+    "filter": {
+      "label": "Show",
+      "seniors": "Seniors ({count})",
+      "academy": "Academy ({count})"
+    },
     "loanedIn": "Loaned riders ({count})",
     "loanedOut": "Riders on loan out ({count})",
     "emptyState": "Your squad is empty",
@@ -55,12 +60,6 @@
       "loanedTo": "Loaned to {team} · season {start}–{end}"
     },
     "actionButton": "Sell / Auction"
-  },
-  "academy": {
-    "heading": "Academy riders ({count})",
-    "offCapNote": "Academy riders develop separately and never count toward the senior squad cap.",
-    "toggle": "Show academy riders",
-    "tag": "Academy"
   },
   "actionModal": {
     "potentialLabel": "Potential",

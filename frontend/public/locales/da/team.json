@@ -26,6 +26,11 @@
       "upcoming": "Næste sæson ({count})",
       "upcomingHint": "Viser truppen når ventende transfers er gennemført."
     },
+    "filter": {
+      "label": "Vis",
+      "seniors": "Seniorer ({count})",
+      "academy": "Akademi ({count})"
+    },
     "loanedIn": "Lejede ryttere ({count})",
     "loanedOut": "Udlejede ryttere ({count})",
     "emptyState": "Din trup er tom",
@@ -55,12 +60,6 @@
       "loanedTo": "Udlejet til {team} · sæson {start}–{end}"
     },
     "actionButton": "Sælg / Auktion"
-  },
-  "academy": {
-    "heading": "Akademiryttere ({count})",
-    "offCapNote": "Akademiryttere udvikles separat og tæller aldrig med i senior-truppens cap.",
-    "toggle": "Vis akademiryttere",
-    "tag": "Akademi"
   },
   "actionModal": {
     "potentialLabel": "Potentiale",

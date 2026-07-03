@@ -23,7 +23,6 @@ import { resolveApiError } from "../lib/apiError";
 import { fetchRiderQuote, postRiderContractAction } from "../lib/riderContractActions.js";
 import SortTh from "../components/rider/RiderSortTh";
 import { cycleSortState } from "../lib/riderSort";
-import { sortRidersForTable } from "../lib/riderTableSort";
 import { Card, Button, Input, BikeIcon, PageLoader } from "../components/ui";
 import { buttonClass } from "../components/ui/buttonStyles.js";
 
@@ -346,32 +345,37 @@ function SquadTab({ riders, scouting, onSelectRider }) {
   // vis/skjul-toggles — spillere med ind-/udgående ryttere skal tydeligt
   // kunne se begge tilstande.
   const [squadView, setSquadView] = useState("current");
-  // #1929: akademiryttere lever på holdet men uden for senior-cap'en (30). De vises
-  // som en ADSKILT sektion under senior-truppen — og bag en toggle (default skjult),
-  // så de aldrig forveksles med senior-truppen eller cap'en. Datakilden er den samme
-  // som senior-truppen (loadAll henter allerede is_academy), så ingen ekstra fetch.
-  const [showAcademy, setShowAcademy] = useState(false);
+  // #1929 (redesign 3/7): akademiryttere lever på holdet men uden for senior-cap'en (30)
+  // og vises nu i SAMME tabel som seniorerne, styret af to gruppe-filtre (begge on som
+  // default → hele holdet vist). Datakilden er den samme (loadAll henter is_academy).
+  const [showSeniors, setShowSeniors] = useState(true);
+  const [showAcademy, setShowAcademy] = useState(true);
 
   // Incoming = riders with pending_team_id = myTeam but team_id != myTeam
   // Outgoing = riders with team_id = myTeam but pending different team
   const incomingRiders = riders.filter(r => r._isIncoming);
   const outgoingRiders = riders.filter(r => r._isOutgoing);
 
-  // #1929: akademiryttere splittes UD af senior-tabellen. En akademirytter er en egen
-  // rytter (is_academy=true) — aldrig indgående/lånt, så filteret er entydigt.
-  const academyRiders = riders.filter(r => r.is_academy && !r._isIncoming);
+  // Gruppe-tællere til filter-knapperne. Seniorer i den aktive transfer-visning;
+  // akademiryttere er off-cap og har hverken ind-/udgående flag.
+  const seniorGroupCount  = riders.filter(r => !r.is_academy && (squadView === "upcoming" ? !r._isOutgoing : !r._isIncoming)).length;
+  const academyGroupCount = riders.filter(r => r.is_academy && !r._isIncoming).length;
 
-  // Nuværende = ryttere på holdet nu (inkl. udgående, ekskl. indgående).
-  // Kommende = truppen efter ventende transfers (uden udgående, med indgående).
-  // #1929: akademiryttere tælles/vises IKKE i senior-truppen — de har egen sektion.
+  // Nuværende = senior-truppen nu (inkl. udgående, ekskl. indgående).
+  // Kommende = senior-truppen efter ventende transfers (uden udgående, med indgående).
   const currentCount  = riders.filter(r => !r._isIncoming && !r.is_academy).length;
   const upcomingCount = riders.filter(r => !r._isOutgoing && !r.is_academy).length;
+
+  // #1929-redesign: ÉT samlet roster. Base = aktiv transfer-visning (akademiryttere
+  // passerer begge ind-/udgående filtre) → filtrér efter gruppe-toggles (default begge on).
   const displayRidersBase = (squadView === "upcoming"
-    ? riders.filter(r => !r._isOutgoing && !r.is_academy)
-    : riders.filter(r => !r._isIncoming && !r.is_academy)
+    ? riders.filter(r => !r._isOutgoing)
+    : riders.filter(r => !r._isIncoming)
+  )
+    .filter(r => (r.is_academy ? showAcademy : showSeniors))
     // #1162: dekorér med estimat-midtpunktet så potentiale-kolonnen kan sorteres
     // uden den rå (server-skjulte) potentiale.
-  ).map(r => ({ ...r, _scoutMid: scoutSortValue(scouting.estimateFor(r.id)) }));
+    .map(r => ({ ...r, _scoutMid: scoutSortValue(scouting.estimateFor(r.id)) }));
   const riderFilters = useClientRiderFilters(displayRidersBase);
   const displayRiders = riderFilters.filtered;
   const sort = riderFilters.filters.sort;
@@ -383,28 +387,29 @@ function SquadTab({ riders, scouting, onSelectRider }) {
     riderFilters.onChange("sort_dir", next.dir);
   }
 
-  // #1929: akademi-sektionen får sin egen sort-cyklus (delt cycleSortState +
-  // sortRidersForTable), så den ikke deler sort-state med senior-tabellen. Default =
-  // markedsværdi faldende (som loadAll'ens order), men kolonnerne kan sorteres
-  // uafhængigt. Bruger sortRidersForTable (samme filter-løse tabel-comparator som
-  // TeamProfilePage), så value-kolonnen sorterer på getRiderMarketValue — ikke råt.
-  const [academySort, setAcademySort] = useState({ key: "market_value", dir: "desc" });
-  const academyDisplay = sortRidersForTable(
-    academyRiders.map(r => ({ ...r, _scoutMid: scoutSortValue(scouting.estimateFor(r.id)) })),
-    academySort,
-  );
-  function handleAcademySort(key) {
-    // cycleSortState arbejder på {sort,dir}; academySort bruger {key,dir} → adaptér.
-    const next = cycleSortState({ sort: academySort.key, dir: academySort.dir }, key);
-    setAcademySort({ key: next.sort, dir: next.dir });
-  }
-
   const loanedInRiders  = riders.filter(r => r._isLoanedIn);
   const loanedOutRiders = riders.filter(r => r._isLoanedOut);
   const hasTransfers = incomingRiders.length > 0 || outgoingRiders.length > 0 || loanedInRiders.length > 0 || loanedOutRiders.length > 0;
 
   return (
     <div>
+      {/* #1929-redesign: gruppe-filtre i toppen — inkludér/ekskludér seniorer og
+          akademiryttere uafhængigt. Default begge på = hele holdet vist. Kun synligt
+          når holdet har akademiryttere (ellers er der intet at filtrere). */}
+      {academyGroupCount > 0 && (
+        <div className="flex items-center gap-2 mb-4 flex-wrap">
+          <span className="text-xs text-cz-3">{t("squad.filter.label")}</span>
+          <button type="button" onClick={() => setShowSeniors(v => !v)} aria-pressed={showSeniors}
+            className={`px-3 py-1.5 text-xs font-medium rounded-cz border transition-all ${showSeniors ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "bg-cz-card text-cz-3 border-cz-border hover:text-cz-1"}`}>
+            {t("squad.filter.seniors", { count: seniorGroupCount })}
+          </button>
+          <button type="button" onClick={() => setShowAcademy(v => !v)} aria-pressed={showAcademy}
+            className={`px-3 py-1.5 text-xs font-medium rounded-cz border transition-all ${showAcademy ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "bg-cz-card text-cz-3 border-cz-border hover:text-cz-1"}`}>
+            {t("squad.filter.academy", { count: academyGroupCount })}
+          </button>
+        </div>
+      )}
+
       {/* #1095: segmenteret nuværende/kommende-visning + loan-pills */}
       {hasTransfers && (
         <div className="flex gap-2 mb-4 flex-wrap items-center">
@@ -552,7 +557,7 @@ function SquadTab({ riders, scouting, onSelectRider }) {
                         #1531: skade-badge når rytteren er skadet (injured_until i fremtiden). */}
                     <td className="px-3 py-2.5">
                       <div className="flex flex-wrap items-center gap-1">
-                        <RiderBadges badges={[isRiderInjured(r.injured_until) && "injured", ageBadgeKey(r), r._isIncoming && "incoming", r._isOutgoing && "outgoing"]} />
+                        <RiderBadges badges={[isRiderInjured(r.injured_until) && "injured", r.is_academy && "academy", ageBadgeKey(r), r._isIncoming && "incoming", r._isOutgoing && "outgoing"]} />
                       </div>
                     </td>
                     {/* #1674: numerisk alder i egen kolonne (Status-badget viser kun U23/U25-tier). */}
@@ -588,111 +593,6 @@ function SquadTab({ riders, scouting, onSelectRider }) {
             </table>
           </div>
         </Card>
-      )}
-
-      {/* #1929: ADSKILT akademi-sektion under senior-truppen. Bag en toggle
-          (default skjult) + tydeligt mærket "off-cap", så akademiryttere aldrig
-          forveksles med senior-truppen eller squad-cap'en (30). Datakilden er den
-          samme som senior-truppen (loadAll henter is_academy) — ingen ekstra fetch. */}
-      {academyRiders.length > 0 && (
-        <div className="mt-8">
-          <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
-            <div>
-              <h2 className="text-sm font-semibold text-cz-1">
-                {t("academy.heading", { count: academyRiders.length })}
-              </h2>
-              <p className="text-cz-3 text-xs mt-0.5">{t("academy.offCapNote")}</p>
-            </div>
-            <label className="flex items-center gap-2 text-xs text-cz-2 whitespace-nowrap cursor-pointer">
-              <input
-                type="checkbox"
-                checked={showAcademy}
-                onChange={() => setShowAcademy(v => !v)}
-                className="accent-cz-accent"
-              />
-              {t("academy.toggle")}
-            </label>
-          </div>
-
-          {showAcademy && (
-            <Card className="overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="border-b border-cz-border">
-                      <SortTh sortKey="nationality_code" sort={academySort.key} sortDir={academySort.dir} onSort={handleAcademySort}
-                        className="px-2 py-3 text-left font-medium uppercase tracking-wider">{t("squad.headers.nation")}</SortTh>
-                      <SortTh sortKey="firstname" sort={academySort.key} sortDir={academySort.dir} onSort={handleAcademySort}
-                        className="px-3 py-3 text-left font-medium uppercase tracking-wider sticky left-0 z-20 bg-cz-card border-r border-cz-border">{t("squad.headers.rider")}</SortTh>
-                      <SortTh sortKey="market_value" sort={academySort.key} sortDir={academySort.dir} onSort={handleAcademySort}
-                        className="px-3 py-3 text-right font-medium">{t("squad.headers.value")}</SortTh>
-                      <SortTh sortKey="salary" sort={academySort.key} sortDir={academySort.dir} onSort={handleAcademySort}
-                        className="px-3 py-3 text-right font-medium">{t("squad.headers.salary")}</SortTh>
-                      <SortTh sortKey="_scoutMid" sort={academySort.key} sortDir={academySort.dir} onSort={handleAcademySort}
-                        className="px-3 py-3 text-left font-medium">{t("squad.headers.potential")}</SortTh>
-                      <SortTh sortKey="birthdate" sort={academySort.key} sortDir={academySort.dir} onSort={handleAcademySort}
-                        className="px-3 py-3 text-center font-medium">{t("squad.headers.age")}</SortTh>
-                      <SortTh sortKey="primary_type" sort={academySort.key} sortDir={academySort.dir} onSort={handleAcademySort}
-                        className="px-3 py-3 text-left font-medium">{t("squad.headers.type")}</SortTh>
-                      {STATS.map(({ key, label }) => (
-                        <SortTh key={key} sortKey={key} sort={academySort.key} sortDir={academySort.dir} onSort={handleAcademySort}
-                          title={tRider(`racePreview.derived.${key}`)}
-                          className="px-1.5 py-3 text-center font-medium w-10">{label}</SortTh>
-                      ))}
-                      <th className="px-3 py-3 text-center text-cz-3 font-medium">{t("squad.headers.action")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {academyDisplay.map(r => (
-                      <tr key={r.id}
-                        onClick={() => navigate(`/riders/${r.id}`)}
-                        className="border-b border-cz-border hover:bg-cz-subtle cursor-pointer transition-colors">
-                        <td className="px-2 py-2.5">
-                          <NationCell code={r.nationality_code} />
-                        </td>
-                        <td className="px-3 py-2.5 sticky-name-cell sticky left-0 z-10 border-r border-cz-border shadow-[10px_0_16px_-16px_rgba(0,0,0,0.5)]">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <RiderLink id={r.id} stopPropagation
-                              className="text-cz-1 text-sm font-medium hover:text-cz-accent-t transition-colors">
-                              {r.firstname} {r.lastname}
-                            </RiderLink>
-                            <span className="text-[9px] uppercase bg-cz-accent/10 text-cz-accent-t px-1.5 py-0.5 rounded border border-cz-accent/20">
-                              {t("academy.tag")}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-3 py-2.5 text-right text-cz-accent-t font-mono text-sm font-bold">
-                          {formatNumber(getRiderMarketValue(r))}
-                        </td>
-                        <td className="px-3 py-2.5 text-right text-cz-2 font-mono text-xs">{r.salary || 0}</td>
-                        <td className="px-3 py-2.5">
-                          <ScoutablePotentiale rider={r} scouting={scouting} />
-                        </td>
-                        <td className="px-3 py-2.5 text-center text-cz-2 font-mono text-xs">{getRiderAge(r.birthdate) ?? "—"}</td>
-                        <td className="px-3 py-2.5">
-                          <RiderTypeBadge primaryType={r.primary_type} secondaryType={r.secondary_type} />
-                        </td>
-                        {STATS.map(({ key }) => (
-                          <td key={key} className="px-1.5 py-2.5 text-center">
-                            <span className="inline-block min-w-[28px] text-center text-xs font-mono px-1 py-0.5 rounded" style={statStyle(r[key] || 0)}>
-                              {r[key] || "-"}
-                            </span>
-                          </td>
-                        ))}
-                        <td className="px-3 py-2.5 text-center">
-                          <button onClick={(e) => { e.stopPropagation(); onSelectRider(r); }}
-                            className="px-3 min-h-[44px] bg-cz-subtle hover:bg-cz-subtle text-cz-2 hover:text-cz-1 rounded text-xs transition-all border border-cz-border whitespace-nowrap">
-                            {t("squad.actionButton")}
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </Card>
-          )}
-        </div>
       )}
     </div>
   );
