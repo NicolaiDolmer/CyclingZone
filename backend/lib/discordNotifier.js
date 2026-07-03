@@ -14,6 +14,7 @@ import { attemptDmDelivery } from "./discordDmDelivery.js";
 import { enqueueDm, processDmOutboxDrain } from "./discordDmOutbox.js";
 import { captureException as sentryCapture } from "./sentry.js";
 import { getOpsWebhookUrl, makeSendOpsWebhook } from "./opsWebhook.js";
+import { computeResultWebhookUrls } from "./resultWebhookRouting.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 config({ path: join(__dirname, "../.env"), quiet: true });
@@ -70,6 +71,48 @@ async function getWebhookByType(type) {
     .limit(1)
     .single();
   return data?.webhook_url || await getDefaultWebhook();
+}
+
+/**
+ * Resultat-webhooks for et løb (#2153): gruppe-kanal (league_division_id-match)
+ * + tier-samlekanal (tier-match + is_summary). Division 1 har kun én pool, så
+ * gruppe og samle kan pege på samme kanal — computeResultWebhookUrls dedupliker.
+ * Falder tilbage til default-webhooken hvis intet division-specifikt er
+ * konfigureret endnu (fx før Fase 3-wiring), så resultater ikke tavst forsvinder.
+ */
+export async function getResultWebhooks(leagueDivisionId) {
+  let groupUrl = null;
+  let summaryUrl = null;
+  if (leagueDivisionId) {
+    const { data: group } = await supabase
+      .from("discord_settings")
+      .select("webhook_url")
+      .eq("league_division_id", leagueDivisionId)
+      .limit(1)
+      .maybeSingle();
+    groupUrl = group?.webhook_url || null;
+
+    const { data: ld } = await supabase
+      .from("league_divisions")
+      .select("tier")
+      .eq("id", leagueDivisionId)
+      .maybeSingle();
+    if (ld?.tier != null) {
+      const { data: summary } = await supabase
+        .from("discord_settings")
+        .select("webhook_url")
+        .eq("tier", ld.tier)
+        .eq("is_summary", true)
+        .limit(1)
+        .maybeSingle();
+      summaryUrl = summary?.webhook_url || null;
+    }
+  }
+  return computeResultWebhookUrls({
+    groupUrl,
+    summaryUrl,
+    defaultUrl: await getDefaultWebhook(),
+  });
 }
 
 /**
