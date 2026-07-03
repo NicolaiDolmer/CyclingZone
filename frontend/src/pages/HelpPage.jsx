@@ -73,6 +73,7 @@ const SECTION_DEFS = [
       { id: "sendOffer", kind: "steps" },
       { id: "receiveAndReply", kind: "text" },
       { id: "finalConfirmation", kind: "text" },
+      { id: "midRaceTransfers", kind: "text" },
       { id: "negotiation", kind: "text" },
       { id: "privacy", kind: "text" },
       { id: "loansAndSquad", kind: "text" },

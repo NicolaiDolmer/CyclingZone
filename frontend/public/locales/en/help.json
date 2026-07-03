@@ -156,6 +156,10 @@
         "title": "Final confirmation",
         "text": "When an offer or counter-offer is accepted, the deal enters a short confirmation phase. Both managers must confirm the final agreement, and the system re-checks ownership, balance and squad limits just before the deal goes through."
       },
+      "midRaceTransfers": {
+        "title": "Trades during an active stage race",
+        "text": "If a rider is traded (transfer, swap or auction) while he is mid-way through an active stage race, the deal and payment complete immediately, but he finishes the race for his selling team and joins his new team right after the finish. His profile shows the upcoming team in the meantime, and he cannot be traded again until the move completes. Races that have not started yet are unaffected: the rider moves instantly."
+      },
       "negotiation": {
         "title": "Back-and-forth negotiation",
         "text": "Negotiation can continue indefinitely. The seller sends a counter, the buyer can accept the counter, send a new offer or withdraw. The round counter shows how far along you are in the negotiation."

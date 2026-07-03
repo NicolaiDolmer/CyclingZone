@@ -46,6 +46,8 @@ import { raceBindingWindow } from "./raceBinding.js";
 import { freezeEntrantsToStartField, excludeBoundRiders, filterEntriesToRaceDivision } from "./raceFieldIntegrity.js";
 import { applyRiderEligibilityFilter, filterEligibleEntries } from "./riderEligibility.js";
 import { loadEligibleEntries, loadLoanedOutRiderIds } from "./raceEntriesLoader.js";
+import { flushDeferredTransfersForRace } from "./stageRaceTransferDefer.js";
+import { notifyTeamOwner as notifyTeamOwnerShared } from "./notificationService.js";
 // #2072: klassements-kernen (ranking, tie-breaks, gap-parsing, akkumulering) er
 // udtrukket til raceClassifications.js så helt-løb-stien og stage-by-stage-
 // akkumuleringsstien deler PRÆCIS samme semantik.
@@ -59,6 +61,23 @@ import {
   accumulateStageRows,
   filterCompletedEntrants,
 } from "./raceClassifications.js";
+
+// #1995: flush parkerede holdskifter (pending_team_id → team_id) når et etapeløb
+// er finaliseret. Idempotent → sikker ved recovery-genkørsel (bevidst UDEN
+// finalizationPending-guard). Fejl sluges: løbet ER færdigt — en flush-fejl må
+// ikke vælte afviklingen (parkeringen står urørt og kan flushes manuelt/ved retry).
+async function flushDeferredTransfersSafe({ supabase, race }) {
+  try {
+    const notifyTeamOwner = (teamId, type, title, message, relatedId = null, metadata = null) =>
+      notifyTeamOwnerShared({ supabase, teamId, type, title, message, relatedId, metadata });
+    const { ridersFlushed } = await flushDeferredTransfersForRace(supabase, race, { notifyTeamOwner });
+    if (ridersFlushed > 0) {
+      console.log(`  🔁 ${ridersFlushed} parkeret holdskifte(r) flushet efter ${race.name || race.id} (#1995)`);
+    }
+  } catch (err) {
+    console.error(`  ⚠️  deferred-transfer flush fejlede for race ${race.id} (#1995, ikke-fatal):`, err.message);
+  }
+}
 
 // Fælles race_results-række-byggere — definerer rækkens form ét sted (deles af
 // buildRaceResults og buildStageRowsAccumulated). points_earned/prize_money
@@ -785,6 +804,9 @@ export async function simulateRace({
   await persistRuns({ supabase, race, runs });
   await supabase.from("races").update({ status: "completed" }).eq("id", race.id);
 
+  // #1995: løbet er finaliseret → flush parkerede holdskifter for deltagerne.
+  await flushDeferredTransfersSafe({ supabase, race });
+
   // #1306 spec 6.4: løbsdage bygger træthed — én batch pr. simuleret etape, kun ved
   // persist (dry-run returnerer allerede ovenfor). Fejl sluges: træthed er additiv
   // berigelse; et upsert-problem må ikke vælte finalization (mirror B2-beslutningen
@@ -1269,6 +1291,10 @@ export async function simulateStageByIndex({
     .from("races")
     .update({ status: "completed", stages_completed: totalStages })
     .eq("id", race.id);
+
+  // #1995: løbet er finaliseret → flush parkerede holdskifter for deltagerne.
+  // Idempotent, så den kører også i recovery-genkørsel (ingen finalizationPending-guard).
+  await flushDeferredTransfersSafe({ supabase, race });
 
   return {
     stageNumber, isFinalStage,

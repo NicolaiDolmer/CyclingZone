@@ -8,8 +8,8 @@ import {
   getIncomingSquadViolation,
   getOutgoingSquadViolation,
   getTeamMarketState,
-  getTransferWindowOpen,
 } from "./marketUtils.js";
+import { shouldDeferTeamChange } from "./stageRaceTransferDefer.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
 import { contractOnAcquirePatch } from "./contractSeed.js";
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
@@ -490,19 +490,8 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
   await withdrawTransferOffersForRiders(supabase, [rider.id], offer.id);
   await withdrawSwapOffersForRiders(supabase, [rider.id]);
 
-  if (deferRegistration) {
-    // Parkeret: betalt, men rytteren registreres først ved vindue-åbning. Kun
-    // de involverede holds ejere får besked nu; den offentlige aktivitet +
-    // Discord-historik + "gennemført"-notifikation sendes ved flush.
-    await expectMutation(
-      supabase.from("transfer_offers").update({ status: "window_pending" }).eq("id", offer.id)
-    );
-    const parkMsg = `Handlen på ${rider.firstname} ${rider.lastname} er aftalt og betalt — rytteren skifter hold, så snart transfervinduet åbner igen.`;
-    await notifyTeamOwner(offer.buyer_team_id, "transfer_offer_accepted", "Handel parkeret", parkMsg, offer.id, { riderId: rider.id });
-    await notifyTeamOwner(offer.seller_team_id, "transfer_offer_accepted", "Handel parkeret", parkMsg, offer.id, { riderId: rider.id });
-    return success({ action: "window_pending", price });
-  }
-
+  // #1995 Model B: handlen er fuldført (accepted) uanset defer — kun den fysiske
+  // rytter-flytning er evt. parkeret på pending_team_id og flushes ved race-slut.
   await expectMutation(
     supabase.from("transfer_offers").update({ status: "accepted" }).eq("id", offer.id)
   );
@@ -515,10 +504,13 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
     amount: price,
   });
 
+  const completedMsg = deferRegistration
+    ? `${rider.firstname} ${rider.lastname} er handlet for ${price.toLocaleString()} CZ$ — han skifter hold, når hans igangværende etapeløb er kørt færdigt.`
+    : `${rider.firstname} ${rider.lastname} skifter hold for ${price.toLocaleString()} CZ$`;
   await notifyTeamOwner(offer.buyer_team_id, "transfer_offer_accepted", "Transfer gennemført!",
-    `${rider.firstname} ${rider.lastname} skifter hold for ${price.toLocaleString()} CZ$`, offer.id, { riderId: rider.id });
+    completedMsg, offer.id, { riderId: rider.id });
   await notifyTeamOwner(offer.seller_team_id, "transfer_offer_accepted", "Transfer gennemført!",
-    `${rider.firstname} ${rider.lastname} skifter hold for ${price.toLocaleString()} CZ$`, offer.id, { riderId: rider.id });
+    completedMsg, offer.id, { riderId: rider.id });
 
   // #1836 · køb-trigger: hvis den købte rytters kontrakt udløber i NUVÆRENDE
   // sæson, advar køberen med det samme. contract_end_season kan netop være sat
@@ -559,7 +551,7 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
     price,
   });
 
-  return success({ action: "accepted", price });
+  return success({ action: deferRegistration ? "deferred_stage_race" : "accepted", price });
 }
 
 // Private: pay for + register/park a fully-agreed swap offer.
@@ -756,26 +748,17 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
   await withdrawTransferOffersForRiders(supabase, [swap.offered_rider_id, swap.requested_rider_id]);
   await withdrawSwapOffersForRiders(supabase, [swap.offered_rider_id, swap.requested_rider_id], swap.id);
 
-  if (deferRegistration) {
-    // Parkeret: kontanten er flyttet, men rytterskiftet sker først ved
-    // vindue-åbning. Kun ejer-notifikationer nu; Discord-historik ved flush.
-    await expectMutation(
-      supabase.from("swap_offers").update({ status: "window_pending" }).eq("id", swap.id)
-    );
-    const parkMsg = `Byttehandlen ${offered.firstname} ${offered.lastname} ↔ ${requested.firstname} ${requested.lastname} er aftalt — rytterne skifter hold, så snart transfervinduet åbner igen.`;
-    await notifyTeamOwner(swap.proposing_team_id, "transfer_offer_accepted", "Byttehandel parkeret", parkMsg, swap.id);
-    await notifyTeamOwner(swap.receiving_team_id, "transfer_offer_accepted", "Byttehandel parkeret", parkMsg, swap.id);
-    return success({ action: "window_pending" });
-  }
-
+  // #1995 Model B: byttehandlen er fuldført (accepted) uanset defer — kun de
+  // fysiske rytter-flytninger er evt. parkeret på pending_team_id (race-flush).
   await expectMutation(
     supabase.from("swap_offers").update({ status: "accepted" }).eq("id", swap.id)
   );
 
-  await notifyTeamOwner(swap.proposing_team_id, "transfer_offer_accepted", "Byttehandel gennemført!",
-    `${offered.firstname} ${offered.lastname} ↔ ${requested.firstname} ${requested.lastname} er nu skiftet`, swap.id);
-  await notifyTeamOwner(swap.receiving_team_id, "transfer_offer_accepted", "Byttehandel gennemført!",
-    `${offered.firstname} ${offered.lastname} ↔ ${requested.firstname} ${requested.lastname} er nu skiftet`, swap.id);
+  const swapCompletedMsg = deferRegistration
+    ? `${offered.firstname} ${offered.lastname} ↔ ${requested.firstname} ${requested.lastname} er byttet — rytterne skifter hold, når deres igangværende etapeløb er kørt færdigt.`
+    : `${offered.firstname} ${offered.lastname} ↔ ${requested.firstname} ${requested.lastname} er nu skiftet`;
+  await notifyTeamOwner(swap.proposing_team_id, "transfer_offer_accepted", "Byttehandel gennemført!", swapCompletedMsg, swap.id);
+  await notifyTeamOwner(swap.receiving_team_id, "transfer_offer_accepted", "Byttehandel gennemført!", swapCompletedMsg, swap.id);
 
   await notifyDiscordHistory({
     offeredName: `${offered.firstname} ${offered.lastname}`,
@@ -785,7 +768,7 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
     cash: cash !== 0 ? cash : null,
   });
 
-  return success({ action: "accepted" });
+  return success({ action: deferRegistration ? "deferred_stage_race" : "accepted" });
 }
 
 export async function confirmTransferOffer({
@@ -851,16 +834,16 @@ export async function confirmTransferOffer({
     return success({ action: "confirmed_partial" });
   }
 
-  // #19: betal + registrér når vinduet er åbent; betal + parkér (pending_team_id)
-  // når det er lukket. Begge stier flytter pengene nu — kun rytter-registreringen
-  // udskydes til vindue-åbning.
-  const windowOpen = await getTransferWindowOpen(supabase);
+  // #1995: betal + registrér straks — medmindre rytteren er i et AKTIVT
+  // fleretape-løb; så parkeres selve holdskiftet på pending_team_id og flushes
+  // når løbet finaliseres (attribution: hele det aktive løb tilhører sælgeren).
+  const deferRegistration = await shouldDeferTeamChange(supabase, [offer.rider_id]);
   return executeTransferOffer(supabase, confirmedOffer, {
     logActivity,
     notifyTeamOwner,
     notifyDiscordHistory,
     auditCtx,
-    deferRegistration: !windowOpen,
+    deferRegistration,
   });
 }
 
@@ -925,13 +908,17 @@ export async function confirmSwapOffer({
     return success({ action: "confirmed_partial" });
   }
 
-  // #19: betal + registrér når vinduet er åbent; betal + parkér når det er lukket.
-  const windowOpen = await getTransferWindowOpen(supabase);
+  // #1995: parkér HELE byttehandlen hvis bare én af rytterne er i et aktivt
+  // fleretape-løb (en swap er atomisk).
+  const deferRegistration = await shouldDeferTeamChange(supabase, [
+    swap.offered_rider_id,
+    swap.requested_rider_id,
+  ]);
   return executeSwapOffer(supabase, confirmedSwap, {
     notifyTeamOwner,
     notifyDiscordHistory,
     auditCtx,
-    deferRegistration: !windowOpen,
+    deferRegistration,
   });
 }
 

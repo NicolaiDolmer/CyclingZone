@@ -6,12 +6,12 @@ import {
   expectMutation,
   getIncomingSquadViolation,
   getTeamMarketState,
-  getTransferWindowOpen,
   withdrawOpenTransferDealsForRiders,
   MARKET_SQUAD_LIMITS,
 } from "./marketUtils.js";
 import { incrementBalanceWithAudit, DUPLICATE_VIOLATION_CODE } from "./balanceRpc.js";
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
+import { getRidersInActiveStageRace } from "./stageRaceTransferDefer.js";
 import { contractOnAcquirePatch } from "./contractSeed.js";
 import { buildContractExpiringNotification } from "./notificationService.js";
 import { ACADEMY } from "./academyFlag.js";
@@ -435,12 +435,11 @@ async function finalizeAuctionRecord({
       };
     }
 
-    // #267: under åbent transfervindue må køber gå +2 over division-cap (D3
-    // → 12, D2 → 22, D1 → 32). squadEnforcement-cron auto-sælger ned til
-    // hard-cap når vinduet lukker og fakturerer fine + penalty per afvigende
-    // rytter. Når vinduet allerede er lukket (post-cutoff) er hard-cap igen
-    // gældende og finalize sender rytteren til pending_team_id.
-    const windowOpen = await getTransferWindowOpen(supabase);
+    // #1995: er rytteren i et AKTIVT fleretape-løb, parkeres holdskiftet på
+    // pending_team_id (han kører løbet færdigt for sælgeren) og flushes når
+    // løbet finaliseres. Betaling + auktions-lukning sker straks (Model B).
+    const deferTeamChange =
+      (await getRidersInActiveStageRace(supabase, [auction.rider.id])).length > 0;
     const squadViolation = getIncomingSquadViolation(buyer, {
       // #16 altid-åben handel: intet transfervindue → ingen vindue-grace → hard cap ved handlen.
       softCapBuffer: 0,
@@ -496,16 +495,16 @@ async function finalizeAuctionRecord({
       supabase
         .from("riders")
         .update(
-          windowOpen
+          deferTeamChange
             ? {
-                team_id: effectiveBidderId,
-                pending_team_id: null,
-                acquired_at: actualEnd,
+                pending_team_id: effectiveBidderId,
                 ...winnerContractPatch,
                 ...graduatePatch,
               }
             : {
-                pending_team_id: effectiveBidderId,
+                team_id: effectiveBidderId,
+                pending_team_id: null,
+                acquired_at: actualEnd,
                 ...winnerContractPatch,
                 ...graduatePatch,
               }
@@ -515,7 +514,10 @@ async function finalizeAuctionRecord({
 
     // #1906 defense-in-depth: rytteren forlod sælgeren — ryd hans fremtidige
     // race_entries så de ikke hænger ved som ghost og phantom-binder en ægte rytter.
-    await clearFutureRaceEntriesSafe({ supabase, riderId: auction.rider.id, label: "auction_win" });
+    // #1995: i defer-stien bliver rytteren hos sælger til race-slut (flushen rydder).
+    if (!deferTeamChange) {
+      await clearFutureRaceEntriesSafe({ supabase, riderId: auction.rider.id, label: "auction_win" });
+    }
 
     // #822: rytteren er solgt — luk alle åbne transfer_listings så han ikke
     // står som zombie-"til salg" på transfermarkedet. Gælder også ved lukket
@@ -585,7 +587,9 @@ async function finalizeAuctionRecord({
       effectiveBidderId,
       "auction_won",
       "Du vandt auktionen! 🎉",
-      `${auction.rider.firstname} ${auction.rider.lastname} er nu på dit hold for ${price} CZ$`,
+      deferTeamChange
+        ? `${auction.rider.firstname} ${auction.rider.lastname} er købt for ${price} CZ$ — han skifter til dit hold, når hans igangværende etapeløb er kørt færdigt.`
+        : `${auction.rider.firstname} ${auction.rider.lastname} er nu på dit hold for ${price} CZ$`,
       auction.id,
       { riderId: auction.rider.id }
     );

@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.53",
+    "date": "2026-07-04",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Transfers",
+        "en": {
+          "title": "Riders traded mid-stage race now finish the race for their old team",
+          "body": "Buying or selling a rider in the middle of an active stage race no longer splits the race between two teams. The deal and payment complete immediately, but the rider finishes his current stage race for the selling team and joins his new team right after the finish. His profile shows the upcoming team until then. Races that haven't started yet are unaffected: the rider moves instantly.",
+        },
+        "da": {
+          "title": "Ryttere handlet midt i et etapeløb kører nu løbet færdigt for deres gamle hold",
+          "body": "Køb eller salg af en rytter midt i et aktivt etapeløb splitter ikke længere løbet mellem to hold. Handlen og betalingen gennemføres med det samme, men rytteren kører sit igangværende etapeløb færdigt for det sælgende hold og skifter til sit nye hold lige efter målstregen. Hans profil viser det kommende hold indtil da. Løb der endnu ikke er startet, påvirkes ikke: rytteren skifter med det samme.",
+        },
+        "refs": [1995]
+      }
+    ]
+  },
+  {
     "version": "6.52",
     "date": "2026-07-03",
     "label": "Beta",
