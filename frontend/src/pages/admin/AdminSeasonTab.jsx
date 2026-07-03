@@ -135,28 +135,8 @@ export default function AdminSeasonTab() {
     }
   }
 
-  async function toggleTransferWindow() {
-    const isOpen = window_?.status === "open";
-    setLoad("window", true);
-    const endpoint = isOpen ? "close" : "open";
-    const body = isOpen
-      ? {}
-      : { season_id: seasons.find(s => s.status === "active")?.id, ...(closesAtInput ? { closes_at: new Date(closesAtInput).toISOString() } : {}) };
-    if (!isOpen && !body.season_id) { showMsg("❌ Ingen aktiv sæson fundet", "error"); setLoad("window", false); return; }
-    try {
-      const res = await fetch(`${API}/api/admin/transfer-window/${endpoint}`, {
-        method: "POST", headers: await getAuth(), body: JSON.stringify(body),
-      });
-      const data = await readAdminJson(res);
-      if (res.ok) showMsg(isOpen ? "✅ Transfervindue lukket" : `✅ Transfervindue åbnet — ${data.riders_processed} ryttere behandlet`);
-      else showMsg(`❌ ${adminErrorMessage(data, res)}`, "error");
-      loadData();
-    } catch (e) {
-      showMsg(`❌ Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
-    } finally {
-      setLoad("window", false);
-    }
-  }
+  // #1996: toggleTransferWindow (åbn/luk vindue) fjernet — markedet er altid åbent,
+  // så der er intet vindue at åbne/lukke, og backend-endpointerne er væk.
 
   async function updateClosesAt() {
     if (!closesAtInput) { showMsg("❌ Vælg en lukketid", "error"); return; }
@@ -245,27 +225,11 @@ export default function AdminSeasonTab() {
         <DeadlineReadinessSection getAuth={getAuth} onMsg={showMsg} />
       </AdminSection>
 
-      <AdminSection title="Transfervindue">
-        <div className="flex items-center justify-between bg-cz-subtle rounded-cz p-4 mb-3">
-          <div>
-            <p className="text-cz-1 font-medium text-sm">
-              Status: <span className={windowOpen ? "text-cz-success" : "text-cz-2"}>
-                {windowOpen ? "🟢 Åbent" : "🔒 Lukket"}
-              </span>
-            </p>
-            {window_?.opened_at && (
-              <p className="text-cz-3 text-xs mt-0.5">Åbnede: {new Date(window_.opened_at).toLocaleString("da-DK")}</p>
-            )}
-          </div>
-          <button onClick={toggleTransferWindow} disabled={loading.window}
-            className={`px-4 py-2 font-bold rounded-lg text-sm transition-all disabled:opacity-50
-              ${windowOpen
-                ? "bg-cz-danger-bg text-cz-danger border border-cz-danger/30 hover:bg-cz-danger-bg"
-                : "bg-cz-success-bg text-cz-success border border-cz-success/30 hover:bg-cz-success-bg"}`}>
-            {loading.window ? "..." : windowOpen ? "Luk vindue" : "Åbn vindue"}
-          </button>
-        </div>
-
+      <AdminSection title="Deadline Day">
+        {/* #1996: markedet er altid åbent — der er intet transfervindue at åbne/lukke,
+            så Åbn/Luk-knappen + status-visningen er fjernet (den ville modsige altid-åben).
+            Lukketid + Deadline Day-tilstand nedenfor hører til countdown-featuren, som
+            behandles i en separat Deadline Day-opfølgning. */}
         <div className="bg-cz-subtle rounded-cz p-4 mb-3">
           <p className="text-cz-2 font-medium text-sm mb-2">Lukketidspunkt</p>
           <div className="flex items-center gap-2">
@@ -313,8 +277,6 @@ export default function AdminSeasonTab() {
             <p className="text-cz-accent-t text-xs mt-1 font-medium">⚠ Manuel tilstand aktiv — husk at sætte tilbage til Auto</p>
           )}
         </div>
-
-        <p className="text-cz-3 text-xs">Når vinduet åbnes behandles alle ventende transfers automatisk.</p>
       </AdminSection>
 
       <AdminSection title="Sæsoner">

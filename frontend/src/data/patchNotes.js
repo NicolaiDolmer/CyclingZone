@@ -4,7 +4,7 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
-    "version": "6.51",
+    "version": "6.52",
     "date": "2026-07-03",
     "label": "Beta",
     "changes": [
@@ -21,6 +21,27 @@ export const PATCHES = [
           "body": "Du kan nu vælge præcis hvilke begivenheder der sender dig en Discord-DM, i stedet for én alt-eller-intet-knap. I Discord-sektionen på din profil kan du slå hver begivenhed til eller fra: overbudt, auktion vundet, en ønskeliste-rytter der sættes på auktion, transfertilbud, svar på dine tilbud og bestyrelsesopdateringer. To af dem (en ønskeliste-rytter der sættes på auktion, og bestyrelsesopdateringer) er nye på Discord-DM. Master-knappen slår stadig alt fra på én gang, og hver begivenhed er tændt som standard.",
         },
         "refs": []
+      }
+    ]
+  },
+  {
+    "version": "6.51",
+    "date": "2026-07-03",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Transfers",
+        "en": {
+          "title": "Loans and buy-options now complete instantly instead of waiting for a transfer window",
+          "body": "Accepting a loan or exercising a buy option could leave the deal parked until the transfer window opened. But the transfer window was retired, so it never opened and the deal stayed stuck. Loans and buy-options now register immediately, just like transfers and auctions. The market is always open.",
+        },
+        "da": {
+          "title": "Lejeaftaler og købsoptioner gennemføres nu med det samme i stedet for at vente på et transfervindue",
+          "body": "At acceptere en lejeaftale eller udnytte en købsoption kunne efterlade handlen parkeret, indtil transfervinduet åbnede. Men transfervinduet er afskaffet, så det åbnede aldrig, og handlen sad fast. Lejeaftaler og købsoptioner registreres nu med det samme, ligesom transfers og auktioner. Markedet er altid åbent.",
+        },
+        "refs": [1996]
       }
     ]
   },
