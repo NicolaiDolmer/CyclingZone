@@ -47,7 +47,11 @@ export default function ProfilePage() {
   const { theme, setTheme } = useTheme();
   const { consent, openBanner } = useConsent();
 
-  useEffect(() => { loadProfile(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // Mount: load profile once. loadProfile is a hoisted function declaration, so
+  // calling it here is runtime-safe; disable the compiler's declaration-order
+  // check for the hoisted call (and exhaustive-deps for the intentional one-shot).
+  // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/immutability
+  useEffect(() => { loadProfile(); }, []);
 
   async function loadProfile() {
     const { data: { user: authUser } } = await supabase.auth.getUser();
@@ -196,6 +200,25 @@ export default function ProfilePage() {
     setSavingDmEnabled(false);
   }
 
+  async function toggleDmPref(prefKey, enabled) {
+    const headers = await getAuthHeaders();
+    if (!headers) { showMsg(t("discord.noSession"), "error"); return; }
+    // Optimistic; revert to server truth on error.
+    setDmStatus(prev => ({ ...prev, dm_prefs: { ...(prev?.dm_prefs || {}), [prefKey]: enabled } }));
+    const res = await fetch(`${API}/api/me/discord-dm-prefs`, {
+      method: "PATCH",
+      headers,
+      body: JSON.stringify({ prefs: { [prefKey]: enabled } }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      showMsg(data.error || t("discord.noSession"), "error");
+      await refreshDmStatus();
+    } else {
+      setDmStatus(prev => ({ ...prev, dm_prefs: data.dm_prefs }));
+    }
+  }
+
   async function sendTestDm() {
     setTestingDm(true);
     const headers = await getAuthHeaders();
@@ -264,6 +287,14 @@ export default function ProfilePage() {
     t("discord.eventOfferResolved"),
     t("discord.eventNewAuction"),
     t("discord.eventSeasonChange"),
+  ];
+
+  // Per-type Discord DM toggles, grouped as in the settings design. Keys match
+  // the pref keys enforced in backend/lib/discordDmPrefs.js.
+  const DM_PREF_GROUPS = [
+    { group: "auctions", keys: ["auction_outbid", "auction_won", "watchlist_rider_auction"] },
+    { group: "transfers", keys: ["transfer_offer", "transfer_response"] },
+    { group: "club", keys: ["board_update"] },
   ];
 
   const renderMessageBanner = (className = "") => {
@@ -579,6 +610,38 @@ export default function ProfilePage() {
             <p className="text-cz-3 text-xs leading-relaxed">
               {t("discord.toggleHint")}
             </p>
+
+            {/* Per-type DM prefs. Greyed + disabled when the master DM is off. */}
+            <div className="pt-1 space-y-3 border-t border-cz-border">
+              <p className="text-cz-3 text-xs font-medium pt-3">{t("discord.prefs.heading")}</p>
+              {!dmStatus.dm_enabled && (
+                <p className="text-cz-4 text-xs">{t("discord.prefs.masterOffHint")}</p>
+              )}
+              <div className={dmStatus.dm_enabled ? "space-y-3" : "space-y-3 opacity-50"}>
+                {DM_PREF_GROUPS.map(({ group, keys }) => (
+                  <div key={group}>
+                    <p className="text-cz-3 text-[11px] font-semibold mb-1.5">{t(`discord.prefs.group.${group}`)}</p>
+                    <div className="space-y-2">
+                      {keys.map(key => (
+                        <div key={key} className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-cz-1 text-sm">{t(`discord.prefs.${key}.label`)}</p>
+                            <p className="text-cz-3 text-xs leading-snug">{t(`discord.prefs.${key}.desc`)}</p>
+                          </div>
+                          <Toggle
+                            id={`dm-pref-${key}`}
+                            checked={dmStatus.dm_prefs?.[key] !== false}
+                            disabled={!dmStatus.dm_enabled}
+                            onChange={e => toggleDmPref(key, e.target.checked)}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <Button
               onClick={sendTestDm}
               disabled={testingDm || !dmStatus.bot_configured}
@@ -592,16 +655,18 @@ export default function ProfilePage() {
           </div>
         )}
 
-        <div className="mt-4 bg-cz-subtle border border-cz-border rounded-cz p-3">
-          <p className="text-cz-3 text-xs font-medium mb-2">{t("discord.eventsTitle")}</p>
-          <ul className="space-y-1">
-            {discordEvents.map(item => (
-              <li key={item} className="flex items-center gap-2 text-cz-3 text-xs">
-                <CheckIcon size={13} className="text-cz-success shrink-0" /> {item}
-              </li>
-            ))}
-          </ul>
-        </div>
+        {!dmStatus?.discord_id && (
+          <div className="mt-4 bg-cz-subtle border border-cz-border rounded-cz p-3">
+            <p className="text-cz-3 text-xs font-medium mb-2">{t("discord.eventsTitle")}</p>
+            <ul className="space-y-1">
+              {discordEvents.map(item => (
+                <li key={item} className="flex items-center gap-2 text-cz-3 text-xs">
+                  <CheckIcon size={13} className="text-cz-success shrink-0" /> {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </Card>
     </div>
   );

@@ -89,6 +89,7 @@ import {
   notifyTeamOwner as notifyTeamOwnerShared,
   notifyUser as notifyUserShared,
 } from "../lib/notificationService.js";
+import { sanitizeDmPrefs } from "../lib/discordDmPrefs.js";
 import {
   notifyNewAuction,
   notifyOutbid,
@@ -98,6 +99,7 @@ import {
   notifyTransferCompleted,
   notifySwapCompleted,
   notifySeasonEvent,
+  notifyWatchlistRiderAuction,
   sendTestEmbed,
   sendTestDM,
   getBotToken,
@@ -2706,11 +2708,17 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
       .from("rider_watchlist").select("user_id")
       .eq("rider_id", rider_id).neq("user_id", req.user.id);
     if (watchers?.length) {
-      await Promise.all(watchers.map(w =>
+      await Promise.all(watchers.map(w => Promise.all([
         notify(w.user_id, "watchlist_rider_auction", "Ønskeliste-rytter til auktion",
           `${riderFullName} er sat til auktion (startpris ${price.toLocaleString("da-DK")} CZ$)`,
-          auction.id, { riderId: rider_id }).catch(() => {})
-      ));
+          auction.id, { riderId: rider_id }).catch(() => {}),
+        // Discord DM (gated by the watchlist_rider_auction pref); DM by userId.
+        notifyWatchlistRiderAuction({
+          userId: w.user_id,
+          riderName: riderFullName,
+          endsAt: calculatedEnd.toISOString(),
+        }).catch(() => {}),
+      ])));
     }
   })().catch(() => {});
 
@@ -4839,12 +4847,13 @@ router.get("/admin/attribution", requireAdmin, async (req, res) => {
 router.get("/me/discord-status", requireAuth, async (req, res) => {
   const { data: user } = await supabase
     .from("users")
-    .select("discord_id, discord_dm_enabled")
+    .select("discord_id, discord_dm_enabled, discord_dm_prefs")
     .eq("id", req.user.id)
     .single();
   res.json({
     discord_id: user?.discord_id || null,
     dm_enabled: user?.discord_dm_enabled !== false,
+    dm_prefs: user?.discord_dm_prefs ?? {},
     bot_configured: Boolean(getBotToken()),
   });
 });
@@ -4873,6 +4882,33 @@ router.patch("/me/discord-dm-enabled", requireAuth, marketWriteLimiter, async (r
     .eq("id", req.user.id);
   if (error) return res.status(500).json({ error: error.message });
   res.json({ ok: true, dm_enabled: enabled });
+});
+
+// Per-type Discord DM prefs. Body: { prefs: { <pref key>: boolean, ... } }.
+// Merges into existing prefs; stores only opt-outs (keys set back to true are
+// dropped, since absent = enabled). Unknown keys are rejected.
+router.patch("/me/discord-dm-prefs", requireAuth, marketWriteLimiter, async (req, res) => {
+  const { prefs: patch, unknownKeys } = sanitizeDmPrefs(req.body?.prefs);
+  if (unknownKeys.length) {
+    return res.status(400).json({ error: `Unknown pref keys: ${unknownKeys.join(", ")}`, errorCode: "unknown_pref_keys" });
+  }
+  const { data: user, error: readErr } = await supabase
+    .from("users")
+    .select("discord_dm_prefs")
+    .eq("id", req.user.id)
+    .single();
+  if (readErr) return res.status(500).json({ error: readErr.message });
+
+  const merged = { ...(user?.discord_dm_prefs ?? {}), ...patch };
+  for (const key of Object.keys(merged)) {
+    if (merged[key] === true) delete merged[key];
+  }
+  const { error } = await supabase
+    .from("users")
+    .update({ discord_dm_prefs: merged })
+    .eq("id", req.user.id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true, dm_prefs: merged });
 });
 
 // PUT /api/me/username — skift brugernavn for den aktuelle bruger (#1746).

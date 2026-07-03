@@ -198,7 +198,7 @@ export function apiResponse(pathname) {
   if (pathname.endsWith("/api/me/onboarding-progress")) {
     return { steps: [], completed_steps: [], completion_pct: 0 };
   }
-  if (pathname.endsWith("/api/me/discord-status")) return { enabled: false, connected: false };
+  if (pathname.endsWith("/api/me/discord-status")) return { discord_id: "123456789012345678", dm_enabled: true, dm_prefs: { board_update: false }, bot_configured: true };
   if (pathname.endsWith("/api/race-pool")) return [];
   // Race-hub (#prelive-harness, A2): board-aggregat + strategi-flade.
   // S6 (#1835): read-only "andre divisioner"-browse. Tjekkes FØR distribution (mere
