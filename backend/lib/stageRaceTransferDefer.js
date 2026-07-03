@@ -119,13 +119,16 @@ export async function flushDeferredTransfersForRace(supabase, race, { notifyTeam
   const flushedAt = (now || new Date()).toISOString();
   const flushedIds = [];
   for (const rider of toFlush) {
+    // Captur målholdet FØR update — rider-objektet kan være samme reference som
+    // rækken der muteres (in-memory doubles), og notify skal bruge værdien bagefter.
+    const targetTeamId = rider.pending_team_id;
     // TOCTOU/idempotency-guard: flush KUN hvis pending_team_id stadig peger hvor vi
     // læste. En genkørsel (recovery) finder pending_team_id=null → 0 rows → skip.
     const { data: moved, error: mErr } = await supabase
       .from("riders")
-      .update({ team_id: rider.pending_team_id, pending_team_id: null, acquired_at: flushedAt })
+      .update({ team_id: targetTeamId, pending_team_id: null, acquired_at: flushedAt })
       .eq("id", rider.id)
-      .eq("pending_team_id", rider.pending_team_id)
+      .eq("pending_team_id", targetTeamId)
       .select("id");
     if (mErr) throw new Error(`flushDeferredTransfersForRace: flush update failed (${rider.id}): ${mErr.message}`);
     if (!moved || moved.length === 0) continue;
@@ -136,7 +139,7 @@ export async function flushDeferredTransfersForRace(supabase, race, { notifyTeam
 
     const riderName = `${rider.firstname ?? ""} ${rider.lastname ?? ""}`.trim();
     await notifyTeamOwner(
-      rider.pending_team_id,
+      targetTeamId,
       "transfer_offer_accepted",
       "Rytteren er ankommet",
       `${riderName} er nu skiftet til dit hold — ${race.name || "hans etapeløb"} er kørt færdigt.`,

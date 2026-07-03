@@ -94,6 +94,7 @@ function createFinalizeAuctionSupabase({
   listingUpdates = [],
   offerWithdrawals = [],
   swapWithdrawals = [],
+  activeStageRaceRiderIds = [], // #1995: ryttere i et aktivt fleretape-løb → defer
 } = {}) {
   const bankTeam = Object.values(teams).find(team => team.is_bank) || null;
 
@@ -405,6 +406,31 @@ function createFinalizeAuctionSupabase({
             };
           },
         };
+      }
+
+      // #1995: getRidersInActiveStageRace → races (aktive stage races) +
+      // race_entries (deltagere). Simuleret via activeStageRaceRiderIds-fixturen:
+      // ét syntetisk aktivt løb hvis listen er ikke-tom.
+      if (table === "races" || table === "race_entries") {
+        const rows = table === "races"
+          ? (activeStageRaceRiderIds.length ? [{ id: "active-stage-race" }] : [])
+          : activeStageRaceRiderIds.map((riderId) => ({ rider_id: riderId }));
+        const chain = {
+          _rows: rows,
+          select: () => chain,
+          eq: () => chain,
+          neq: () => chain,
+          gt: () => chain,
+          in: (col, vals) => {
+            if (table === "race_entries" && col === "rider_id") {
+              chain._rows = chain._rows.filter((r) => vals.includes(r.rider_id));
+            }
+            return chain;
+          },
+          then: (resolve, reject) =>
+            Promise.resolve({ data: chain._rows, error: null }).then(resolve, reject),
+        };
+        return chain;
       }
 
       throw new Error(`Unexpected table: ${table}`);
@@ -1979,4 +2005,55 @@ test("youth-auktion UDEN bud: rytter forbliver fri ungdom, auktion completed, in
   assert.equal(supabase._riderUpdates.length, 0, "rytter er allerede fri — ingen ejerskabsændring");
   assert.equal(supabase._financeInserts.length, 0, "ingen debit uden bud");
   assert.ok(supabase._auctionUpdates.some((u) => u.status === "completed"));
+});
+
+// ── #1995: rytter i AKTIVT fleretape-løb → auktions-vinderen får pending_team_id ──
+test("finalizeAuctionById parkerer holdskiftet når rytteren er i et aktivt etapeløb (#1995)", async () => {
+  const auctionUpdates = [];
+  const riderUpdates = [];
+  const notifications = [];
+
+  const result = await finalizeAuctionById({
+    supabase: createFinalizeAuctionSupabase({
+      auction: {
+        id: "auction-defer",
+        status: "active",
+        current_bidder_id: "buyer-team",
+        current_price: 100,
+        seller_team_id: "seller-team",
+        rider: {
+          id: "rider-in-race",
+          firstname: "Mid",
+          lastname: "Race",
+          team_id: "seller-team",
+          salary: 42_000,
+          contract_length: 3,
+          contract_end_season: 4,
+          base_value: 1_000_000,
+          prize_earnings_bonus: 0,
+        },
+      },
+      teams: {
+        "buyer-team": { id: "buyer-team", name: "Buyer", balance: 500000, division: 3, user_id: "user-buyer" },
+        "seller-team": { id: "seller-team", name: "Seller", balance: 250, division: 3, user_id: "user-seller", is_ai: false },
+      },
+      teamMarketCounts: {
+        "buyer-team": { riderCount: 6, pendingCount: 0, activeLoanCount: 0 },
+      },
+      auctionUpdates,
+      riderUpdates,
+      activeStageRaceRiderIds: ["rider-in-race"],
+    }),
+    auctionId: "auction-defer",
+    notifyTeamOwner: async (teamId, type, title, message) => { notifications.push({ teamId, type, title, message }); },
+    now: new Date("2026-07-03T11:00:00.000Z"),
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.code, "completed", "auktionen fuldføres straks (Model B)");
+  // Holdskiftet er parkeret: pending_team_id, IKKE team_id/acquired_at.
+  assert.deepEqual(riderUpdates, [{ pending_team_id: "buyer-team" }]);
+  // Vinder-beskeden forklarer at rytteren ankommer efter løbet.
+  const won = notifications.find((n) => n.type === "auction_won" && n.teamId === "buyer-team");
+  assert.match(won.message, /etapeløb/);
 });

@@ -12,6 +12,7 @@ import {
   getTransferCancelIssue,
   getTransferExecutionIssue,
 } from "./transferExecution.js";
+import { flushDeferredTransfersForRace } from "./stageRaceTransferDefer.js";
 
 test("getTransferExecutionIssue rejects a buyer that would exceed the squad max", () => {
   const issue = getTransferExecutionIssue({
@@ -411,6 +412,7 @@ function matches(row, filters) {
     if (f.kind === "eq") return v === f.val;
     if (f.kind === "neq") return v !== f.val;
     if (f.kind === "in") return f.val.includes(v);
+    if (f.kind === "gt") return v > f.val;
     if (f.kind === "isNull") return v === null || v === undefined;
     if (f.kind === "notNull") return v !== null && v !== undefined;
     return true;
@@ -446,6 +448,8 @@ function makeSupabase(db) {
       eq(col, val) { state.filters.push({ kind: "eq", col, val }); return api; },
       neq(col, val) { state.filters.push({ kind: "neq", col, val }); return api; },
       in(col, val) { state.filters.push({ kind: "in", col, val }); return api; },
+      gt(col, val) { state.filters.push({ kind: "gt", col, val }); return api; },
+      range(from, to) { state.range = [from, to]; return api; },
       is(col, _val) { state.filters.push({ kind: "isNull", col }); return api; },
       not(col, _op, _val) { state.filters.push({ kind: "notNull", col }); return api; },
       or() { return api; },
@@ -455,7 +459,8 @@ function makeSupabase(db) {
       maybeSingle() { const r = applyMutation(); return Promise.resolve({ data: r[0] ?? null, error: null }); },
       then(resolve, reject) {
         try {
-          const r = applyMutation();
+          let r = applyMutation();
+          if (state.range) r = r.slice(state.range[0], state.range[1] + 1);
           return Promise.resolve({ data: r, count: r.length, error: null }).then(resolve, reject);
         } catch (e) { return Promise.reject(e).then(resolve, reject); }
       },
@@ -503,7 +508,17 @@ function baseDb({ windowStatus }) {
     loan_agreements: [],
     seasons: [{ id: "season-1", status: "active" }],
     transfer_windows: [{ status: windowStatus, created_at: "2026-05-31" }],
+    races: [],
+    race_entries: [],
   };
+}
+
+// #1995: sæt rytteren ind i et AKTIVT fleretape-løb (stages_completed > 0).
+function putRiderInActiveStageRace(db, riderId, raceId = "race-active") {
+  if (!db.races.find((r) => r.id === raceId)) {
+    db.races.push({ id: raceId, name: "Test Rundt", race_type: "stage_race", status: "scheduled", stages_completed: 1 });
+  }
+  db.race_entries.push({ race_id: raceId, rider_id: riderId });
 }
 
 test("#16: confirmTransferOffer registrerer med det samme — selv med en 'closed' transfer_windows-række (altid-åben handel)", async () => {
@@ -726,4 +741,128 @@ test("#1309: confirmSwapOffer create-if-missing / inherit-if-present pr. rytter"
   assert.equal(movedRequested.salary, 7_500);
   assert.equal(movedRequested.contract_length, 1);
   assert.equal(movedRequested.contract_end_season, 1);
+});
+
+// ── #1995: udskudt holdskifte når rytteren er i et AKTIVT fleretape-løb ────────
+
+test("#1995: confirmTransferOffer parkerer holdskiftet (Model B) når rytteren er i et aktivt etapeløb", async () => {
+  const db = baseDb({ windowStatus: "open" });
+  putRiderInActiveStageRace(db, "rider-1");
+  db.transfer_offers.push({
+    id: "offer-d1", rider_id: "rider-1", seller_team_id: "seller", buyer_team_id: "buyer",
+    offer_amount: 200, counter_amount: null, status: "awaiting_confirmation",
+    buyer_confirmed: false, seller_confirmed: true,
+  });
+  const supabase = makeSupabase(db);
+
+  const notifs = [];
+  const result = await confirmTransferOffer({
+    supabase, offerId: "offer-d1", confirmingTeamId: "buyer",
+    notifyTeamOwner: async (...args) => { notifs.push(args); },
+  });
+
+  assert.equal(result.ok, true);
+  assert.equal(result.action, "deferred_stage_race", "aktivt etapeløb → deferred, ikke window_pending");
+
+  const rider = db.riders.find((r) => r.id === "rider-1");
+  assert.equal(rider.team_id, "seller", "rytteren bliver hos sælgeren til race-slut");
+  assert.equal(rider.pending_team_id, "buyer", "holdskiftet er parkeret på pending_team_id");
+
+  // Model B: pengene flyttes STRAKS og handlen er fuldført (accepted).
+  assert.equal(db.teams.find((t) => t.id === "buyer").balance, 800, "køber betaler nu");
+  assert.equal(db.teams.find((t) => t.id === "seller").balance, 700, "sælger krediteres nu");
+  assert.equal(db.transfer_offers[0].status, "accepted", "Model B: offer er accepted, ikke window_pending");
+
+  // Fuld "gennemført"-notifikation ved bekræftelsen — med etapeløbs-varianten.
+  const done = notifs.filter((n) => n[2] === "Transfer gennemført!");
+  assert.equal(done.length, 2, "begge ejere notificeres ved bekræftelsen");
+  assert.match(done[0][3], /etapeløb/, "beskeden forklarer at skiftet sker efter løbet");
+});
+
+test("#1995: rytter i endnu-ikke-startet etapeløb (stages_completed=0) skifter straks", async () => {
+  const db = baseDb({ windowStatus: "open" });
+  db.races.push({ id: "race-notstarted", name: "Fremtid Rundt", race_type: "stage_race", status: "scheduled", stages_completed: 0 });
+  db.race_entries.push({ race_id: "race-notstarted", rider_id: "rider-1" });
+  db.transfer_offers.push({
+    id: "offer-d2", rider_id: "rider-1", seller_team_id: "seller", buyer_team_id: "buyer",
+    offer_amount: 200, counter_amount: null, status: "awaiting_confirmation",
+    buyer_confirmed: false, seller_confirmed: true,
+  });
+  const supabase = makeSupabase(db);
+
+  const result = await confirmTransferOffer({
+    supabase, offerId: "offer-d2", confirmingTeamId: "buyer", notifyTeamOwner: async () => {},
+  });
+
+  assert.equal(result.action, "accepted", "ikke-startet løb → straks-skifte");
+  assert.equal(db.riders.find((r) => r.id === "rider-1").team_id, "buyer");
+});
+
+test("#1995: confirmSwapOffer parkerer BEGGE ryttere hvis én er i et aktivt etapeløb", async () => {
+  const db = baseDb({ windowStatus: "open" });
+  for (let i = 0; i < 9; i++) {
+    db.riders.push({ id: `r-rider-${i}`, firstname: "R", lastname: `${i}`, team_id: "buyer", pending_team_id: null });
+  }
+  db.riders.push({ id: "req-rider", firstname: "Req", lastname: "Star", team_id: "buyer", pending_team_id: null });
+  putRiderInActiveStageRace(db, "rider-1"); // kun den tilbudte er låst
+  db.swap_offers.push({
+    id: "swap-d1", offered_rider_id: "rider-1", requested_rider_id: "req-rider",
+    proposing_team_id: "seller", receiving_team_id: "buyer",
+    cash_adjustment: 0, counter_cash: null, status: "awaiting_confirmation",
+    proposing_confirmed: true, receiving_confirmed: false,
+  });
+  const supabase = makeSupabase(db);
+
+  const result = await confirmSwapOffer({
+    supabase, swapId: "swap-d1", confirmingTeamId: "buyer", notifyTeamOwner: async () => {},
+  });
+
+  assert.equal(result.action, "deferred_stage_race");
+  const offered = db.riders.find((r) => r.id === "rider-1");
+  const requested = db.riders.find((r) => r.id === "req-rider");
+  assert.equal(offered.team_id, "seller");
+  assert.equal(offered.pending_team_id, "buyer", "tilbudt rytter parkeret");
+  assert.equal(requested.team_id, "buyer");
+  assert.equal(requested.pending_team_id, "seller", "ønsket rytter parkeret (atomisk swap)");
+  assert.equal(db.swap_offers[0].status, "accepted", "Model B: swap er accepted");
+});
+
+// Wire-test: parkering ved confirm → flush ved race-finalisering flytter rytteren.
+test("#1995: flushDeferredTransfersForRace flytter parkeret rytter når løbet finaliseres", async () => {
+  const db = baseDb({ windowStatus: "open" });
+  putRiderInActiveStageRace(db, "rider-1", "race-x");
+  db.transfer_offers.push({
+    id: "offer-d3", rider_id: "rider-1", seller_team_id: "seller", buyer_team_id: "buyer",
+    offer_amount: 200, counter_amount: null, status: "awaiting_confirmation",
+    buyer_confirmed: false, seller_confirmed: true,
+  });
+  const supabase = makeSupabase(db);
+
+  await confirmTransferOffer({
+    supabase, offerId: "offer-d3", confirmingTeamId: "buyer", notifyTeamOwner: async () => {},
+  });
+  assert.equal(db.riders.find((r) => r.id === "rider-1").pending_team_id, "buyer");
+
+  // Løbet finaliseres → flush.
+  const raceRow = db.races.find((r) => r.id === "race-x");
+  raceRow.status = "completed";
+  const notifs = [];
+  const flushed = await flushDeferredTransfersForRace(
+    supabase,
+    { id: "race-x", race_type: "stage_race", name: "Test Rundt" },
+    { notifyTeamOwner: async (...args) => { notifs.push(args); } }
+  );
+
+  assert.equal(flushed.ridersFlushed, 1);
+  const rider = db.riders.find((r) => r.id === "rider-1");
+  assert.equal(rider.team_id, "buyer", "flush flytter team_id");
+  assert.equal(rider.pending_team_id, null, "parkering ryddet");
+  assert.equal(notifs.length, 1, "én ankomst-besked til køberen");
+  assert.equal(notifs[0][0], "buyer");
+
+  // Idempotens: genkørsel flusher intet.
+  const again = await flushDeferredTransfersForRace(
+    supabase, { id: "race-x", race_type: "stage_race" }, { notifyTeamOwner: async () => {} }
+  );
+  assert.equal(again.ridersFlushed, 0, "genkørsel er no-op");
 });
