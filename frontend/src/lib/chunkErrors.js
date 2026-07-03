@@ -59,17 +59,35 @@ export function shouldAttemptChunkReload({ error, release, storage } = {}) {
 //
 // Begge deler den samme per-release sessionStorage-nøgle som error-boundary'en,
 // så der sker MAKS ét reload pr. release på tværs af alle tre stier (loop-guard).
+//
+// Reload'en er UDSKUDT (delayMs), ikke synkron: når browseren navigerer til et nyt
+// dokument, aborterer den det gamle dokuments igangværende chunk-loads, og WebKit
+// melder aborten som præcis samme fejl som en ægte stale chunk ("Importing a module
+// script failed"). Et synkront reload i det døende dokument kaprer så den ægte
+// navigation (bruger-navigation væk fra appen; deterministisk reproduceret som
+// mobile-webkit e2e-flake: "Navigation to /dashboard is interrupted by another
+// navigation to /dashboard", 5/25 lokalt på Windows). Deferral betyder at det
+// gamle dokument dør — og timeren med det — før reload'en kan fyre; pagehide-
+// flaget dækker vinduet mellem commit og destruction. Ved en ÆGTE stale chunk
+// navigerer ingen andre, så reload'en fyrer stadig, blot delayMs senere.
+// (Bevidst pagehide og IKKE beforeunload: en beforeunload-listener kan gøre
+// siden ineligible til bfcache.)
+//
 // Returnerer en cleanup-funktion (afregistrerer listeners) — primært for tests.
-export function installChunkReloadHandlers({ target, release, storage, reload } = {}) {
+export function installChunkReloadHandlers({ target, release, storage, reload, delayMs = 250, schedule } = {}) {
   if (!target?.addEventListener) return () => {};
 
   const key = getChunkReloadKey(release);
+  const scheduleFn = schedule ?? ((fn, ms) => setTimeout(fn, ms));
   // Per-load-guard ud over storage-nøglen: dækker private browsing hvor
   // sessionStorage kaster, så vi aldrig reloader to gange i samme page-load.
   let reloadedThisLoad = false;
+  let unloading = false;
+  let pending = false;
 
-  const reloadOncePerRelease = () => {
-    if (reloadedThisLoad) return;
+  const fireReload = () => {
+    pending = false;
+    if (reloadedThisLoad || unloading) return;
     try {
       if (storage?.getItem(key) === "1") return;
       storage?.setItem(key, "1");
@@ -79,6 +97,16 @@ export function installChunkReloadHandlers({ target, release, storage, reload } 
     reloadedThisLoad = true;
     reload?.();
   };
+
+  const reloadOncePerRelease = () => {
+    if (reloadedThisLoad || unloading || pending) return;
+    pending = true;
+    scheduleFn(fireReload, delayMs);
+  };
+
+  const onPagehide = () => { unloading = true; };
+  // bfcache-restore: siden lever videre efter pagehide → gør recovery mulig igen.
+  const onPageshow = () => { unloading = false; };
 
   const onPreloadError = (event) => {
     event?.preventDefault?.();
@@ -94,9 +122,13 @@ export function installChunkReloadHandlers({ target, release, storage, reload } 
 
   target.addEventListener("vite:preloadError", onPreloadError);
   target.addEventListener("unhandledrejection", onUnhandledRejection);
+  target.addEventListener("pagehide", onPagehide);
+  target.addEventListener("pageshow", onPageshow);
 
   return () => {
     target.removeEventListener("vite:preloadError", onPreloadError);
     target.removeEventListener("unhandledrejection", onUnhandledRejection);
+    target.removeEventListener("pagehide", onPagehide);
+    target.removeEventListener("pageshow", onPageshow);
   };
 }
