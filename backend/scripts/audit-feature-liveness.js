@@ -212,6 +212,10 @@ const WHITELIST_ORPHANED_ENDPOINTS = new Set([
   // design — the full-race admin button (POST /admin/simulate-race) is the UI path;
   // per-stage runs are cron/admin-only. Intentional orphaned, not drift.
   "POST /admin/races/:id/simulate-stage",
+  // Discord division-role sync (#2153): admin-trigger for manuel reconcile efter
+  // sæson-skift; den daglige cron (backend/cron.js → runDiscordRoleSyncCron) gør
+  // arbejdet. Ingen frontend-kalder by design. Intentional orphaned, ikke drift.
+  "POST /admin/discord/sync-division-roles",
   // Health / probe
   "GET /health",
   // Admin-only via curl/admin-page-future-wiring (cancel-tools fra adminRouteOwnership-kontrakt #97)
