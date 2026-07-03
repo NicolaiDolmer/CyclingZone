@@ -14,10 +14,12 @@ import App from "./App.jsx";
 // som renderToString ikke eksekverer), så App renderer LandingPage — præcis som
 // klientens første render gør.
 //
-// Renderes én gang pr. sprog (prerender.mjs → index.en.html + index.da.html).
-// Vercel serverer den variant der matcher browserens Accept-Language, så en kold
-// besøgende får sit sprog fra første maling — samme sprog som klientens i18n
-// vælger (begge kommer fra browser-sproget) → ingen EN↔DA-flash.
+// Renderes ÉN gang på engelsk (prerender.mjs → dist/index.html). Header-baseret
+// per-sprog-servering er umulig: Vercels CDN cacher "/" på URL alene (ignorerer
+// Accept-Language). En da-klient hydrerer derfor mod EN og skifter til sit sprog
+// FØRST efter hydration (main.jsx's deferredLanguage → LanguageProvider mount-
+// effect) — ellers ville klientens da-render mismatche EN-HTML'en (React
+// #418/#422/#425, se .claude/learnings/2026-07-03-landing-hydration-lang-mismatch.md).
 export async function render(url = "/", lng = "en") {
   if (i18n.language !== lng) {
     await i18n.changeLanguage(lng);

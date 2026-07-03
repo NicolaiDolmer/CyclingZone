@@ -13,13 +13,17 @@ import { SentryBoundary } from "./lib/sentry.jsx";
 // Kun rene context-providers her — ingen side-effekter (initSentry,
 // captureFirstTouch, chunk-reload-handlers). De hører til client-only boot i
 // main.jsx og påvirker ikke markuppet, så de skal ikke køre under prerender.
-export function AppProviders({ children }) {
+// `deferredLanguage` (valgfri) videresendes til LanguageProvider: main.jsx tvinger
+// EN under landing-hydrationen og beder provideven skifte til den besøgendes
+// faktiske sprog EFTER mount. Prerender-entry (entry-server.jsx) sender den ikke
+// (undefined → null), så server-render og klientens hydrerings-render matcher 1:1.
+export function AppProviders({ children, deferredLanguage = null }) {
   return (
     <SentryBoundary>
       <I18nextProvider i18n={i18n}>
         <ThemeProvider>
           <ConsentProvider>
-            <LanguageProvider>{children}</LanguageProvider>
+            <LanguageProvider deferredLanguage={deferredLanguage}>{children}</LanguageProvider>
           </ConsentProvider>
         </ThemeProvider>
       </I18nextProvider>
