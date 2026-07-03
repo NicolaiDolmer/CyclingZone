@@ -20,3 +20,10 @@ bc9204d620ee1ce448d96a98b64bbbf0464e7ca8:backend/.env:jwt:2
 # Rettet til STORAGE_KEY + gitleaks:allow i en senere commit, men gitleaks scanner
 # HELE PR-historikken, så den oprindelige commit skal allowlistes (ikke en secret):
 4f96ee265b37c038cf9fb86696ac2062148e7b9e:frontend/src/lib/attribution.js:generic-api-key:8
+#
+# Falsk-positiv (PR #2157): fake sekventiel placeholder Discord-ID
+# (123456789012345678) i preview-mock'ens FØRSTE commit. Discord client-IDs er
+# offentlige (ikke secrets); værdien findes kun så preview'et viser connected
+# DM-settings-tilstand. gitleaks:allow tilføjet i en senere commit, men gitleaks
+# scanner HELE PR-historikken, så den oprindelige commit skal allowlistes:
+fa572f73006572659bbb76050b5b65aa78b9c1ef:frontend/src/preview/mockHandlers.js:discord-client-id:201
