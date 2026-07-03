@@ -9,6 +9,20 @@ export const PATCHES = [
     "label": "Beta",
     "changes": [
       {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Youth and academy wages now use the same rate as the rest of the squad",
+          "body": "Academy and youth contracts used a separate, higher wage rate than senior contracts, a leftover from before the wage rate was recalibrated. They now use the same rate as the rest of your squad, so an academy rider's wage lines up with what an equivalent senior would cost. This lowers academy wages to the standard rate.",
+        },
+        "da": {
+          "title": "Ungdoms- og akademiløn bruger nu samme rate som resten af truppen",
+          "body": "Akademi- og ungdomskontrakter brugte en separat, højere lønrate end senior-kontrakter, en rest fra før lønraten blev rekalibreret. De bruger nu samme rate som resten af din trup, så en akademirytters løn passer med hvad en tilsvarende senior ville koste. Det sænker akademiløn til standard-raten.",
+        },
+        "refs": [2083]
+      },
+      {
         "category": "improved",
         "audience": "player",
         "topic": "Training",

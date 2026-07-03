@@ -4,6 +4,7 @@
 // godkendes af ejer før flag-flip — placeholders her er sim-startpunkter.
 
 import { readFlagStage, evaluateFlagStage } from "./featureStage.js";
+import { SALARY_RATE } from "./economyConstants.js";
 
 export const ACADEMY = Object.freeze({
   FLAG_KEY: "academy_enabled",
@@ -20,7 +21,9 @@ export const ACADEMY = Object.freeze({
                             // den dominerende cost. 5k/plads → delvist akademi (3-4) trygt bæreligt
                             // i alle divisioner; fuldt 8-plads (~40k drift) = bevidst tung satsning.
   SIGNING_FEE_RATE: 0.25,   // signing-fee = rate × market_value (marginal ved lav youth-værdi)
-  SALARY_RATE: 0.10,        // ungdoms-løn = 10% af market_value (spejler kontrakt-seed)
+  SALARY_RATE,              // #2083: ungdoms-/akademi-løn ensrettet til den delte senior-rate
+                            // (economyConstants.SALARY_RATE = 0.067). Youth har ikke længere en
+                            // separat rate — ét fælles løn-system for alle ryttere (ejer-valgt 3/7).
   CONTRACT_LENGTH: 3,       // akademi-kontrakt-længde (sæsoner)
 });
 
