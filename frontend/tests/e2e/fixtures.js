@@ -184,6 +184,14 @@ export const ROUTE_READINESS = {
     ).toBeVisible();
     await expect(page.getByRole("link", { name: /Mikkel Hansen/ }).first()).toBeVisible();
   },
+  // #2108/#2060: /patch-notes henter nu prosaen on-demand som statisk JSON
+  // (/patch-notes.json), så first paint er h1 + "Loading updates…" FØR data er
+  // klar. Gaten venter på at loader-teksten er væk og mindst én dag-entry er
+  // rendret, så snapshot ikke lander på loading-state (deterministisk first paint).
+  "/patch-notes": async (page) => {
+    await expect(page.getByText(/^(Loading updates…|Indlæser opdateringer…)$/)).toHaveCount(0);
+    await expect(page.getByRole("button", { expanded: true }).first()).toBeVisible();
+  },
 };
 
 // Samlet readiness-entry. Erstatter den spredte sekvens

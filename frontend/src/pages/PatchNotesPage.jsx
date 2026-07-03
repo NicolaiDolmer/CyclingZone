@@ -1,8 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { PATCHES } from "../data/patchNotes.js";
 import {
-  flattenChanges, filterChanges, groupByDay, pickLang, computeNewDays, CATEGORY_META,
+  loadPatches, flattenChanges, filterChanges, groupByDay, pickLang, computeNewDays, CATEGORY_META,
 } from "../lib/patchNotes.js";
 import { ChevronDownIcon } from "../components/ui";
 
@@ -26,7 +25,21 @@ export default function PatchNotesPage() {
   const [openDays, setOpenDays] = useState(() => new Set());
   const [openChanges, setOpenChanges] = useState(() => new Set());
 
-  const flat = useMemo(() => flattenChanges(PATCHES), []);
+  // #2108/#2060: prosaen bundtes ikke længere i JS — hentes on-demand som statisk
+  // JSON (dist/patch-notes.json) via loaderen i ../lib/patchNotes.js.
+  const [patches, setPatches] = useState(null);
+  const [loadError, setLoadError] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    setLoadError(false);
+    loadPatches()
+      .then((data) => { if (active) setPatches(data); })
+      .catch(() => { if (active) setLoadError(true); });
+    return () => { active = false; };
+  }, []);
+
+  const flat = useMemo(() => flattenChanges(patches || []), [patches]);
   const days = useMemo(
     () => groupByDay(filterChanges(flat, { lang, category, query })),
     [flat, lang, category, query],
@@ -115,7 +128,17 @@ export default function PatchNotesPage() {
         })}
       </div>
 
-      {days.length === 0 && (
+      {loadError && (
+        <p role="alert" className="text-cz-3 text-sm">
+          {da ? "Kunne ikke indlæse opdateringer. Prøv at genindlæse siden." : "Couldn't load updates. Try reloading the page."}
+        </p>
+      )}
+
+      {!loadError && patches === null && (
+        <p role="status" className="text-cz-3 text-sm">{da ? "Indlæser opdateringer…" : "Loading updates…"}</p>
+      )}
+
+      {!loadError && patches !== null && days.length === 0 && (
         <p className="text-cz-3 text-sm">{da ? "Ingen opdateringer matcher." : "No updates match."}</p>
       )}
 
