@@ -9,7 +9,11 @@ import { captureFirstTouch } from "./lib/attribution.js";
 import { BrowserRouter } from "react-router-dom";
 import i18n from "./i18n";
 import "./index.css";
-import "flag-icons/css/flag-icons.min.css";
+// #2047: flag-icons-CSS (~ukomprimeret sprite) importeres IKKE længere globalt her.
+// Landing bruger ingen `fi fi-*`-glyffer (LanguageToggle er ren tekst), så den
+// blokerede boot uden gevinst. CSS'en scopes nu til de to moduler der faktisk
+// renderer flag: `Flag.jsx` og `LanguageSwitcher.jsx` — Vite deduper importen,
+// så den loades præcis én gang, første gang et flag-modul indlæses.
 
 // Stale-chunk recovery (#906): et globalt net der fanger dynamic-import/preload-
 // fejl efter et deploy FØR React's error-boundary kan ramme dem — både Vite's
