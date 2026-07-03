@@ -235,7 +235,7 @@ import {
   rederiveSeasonRacePoints,
 } from "../lib/raceResultsEngine.js";
 import { adminImportUploadMultipleFiles } from "../lib/adminImportUpload.js";
-import { getDefaultWebhook, sendWebhook } from "../lib/discordNotifier.js";
+import { getResultWebhooks, sendWebhook } from "../lib/discordNotifier.js";
 import { importPcmResults, buildPcmImportEmbed } from "../lib/pcmResultsImport.js";
 import { getRaceEngineStatus, runAdminSimulateRace, runAdminSimulateStage, buildRaceSimEmbed } from "../lib/adminSimulateRace.js";
 import { ensureSeasonStandings as ensureSeasonStandingsShared } from "../lib/seasonStandingsBootstrap.js";
@@ -4291,11 +4291,10 @@ router.patch("/loans/:id", requireAuth, marketWriteLimiter, async (req, res) => 
     // #1996: markedet er altid åbent → lejeaftaler aktiveres straks (aldrig parkeret).
     const nextStatus = getLoanAgreementAcceptedStatus({ windowOpen: true });
     await supabase.from("loan_agreements").update({ status: nextStatus, updated_at: new Date().toISOString() }).eq("id", loan.id);
-    const title = "Lejeaftale aktiveret";
-    const message = `${req.team.name} har accepteret din lejeforespørgsel på ${loan.rider.firstname} ${loan.rider.lastname}`;
     await notifyTeamOwner(loan.to_team_id, "transfer_offer_accepted",
-      title,
-      message, loan.id, { riderId: loan.rider.id });
+      "Lejeaftale aktiveret",
+      `${req.team.name} har accepteret din lejeforespørgsel på ${loan.rider.firstname} ${loan.rider.lastname}`,
+      loan.id, { riderId: loan.rider.id });
     return res.json({ success: true, action: nextStatus });
   }
 
@@ -4414,11 +4413,10 @@ router.patch("/loans/:id", requireAuth, marketWriteLimiter, async (req, res) => 
     // #1996: markedet er altid åbent → købsoptionen gennemføres straks (aldrig parkeret).
     const nextStatus = getLoanBuyoutStatus({ windowOpen: true });
     await supabase.from("loan_agreements").update({ status: nextStatus, updated_at: boughtAt }).eq("id", loan.id);
-    const title = "Købsoption udnyttet";
-    const message = `${req.team.name} har udnyttet købsoptionen på ${loan.rider.firstname} ${loan.rider.lastname} for ${price.toLocaleString()} CZ$`;
     await notifyTeamOwner(loan.from_team_id, "transfer_offer_accepted",
-      title,
-      message, loan.id);
+      "Købsoption udnyttet",
+      `${req.team.name} har udnyttet købsoptionen på ${loan.rider.firstname} ${loan.rider.lastname} for ${price.toLocaleString()} CZ$`,
+      loan.id);
     // Buyout moves rider permanently or parks a pending owner-change; drop /api/riders cache.
     invalidateNamespace("riders");
     return res.json({ success: true, action: nextStatus, price });
@@ -7537,10 +7535,12 @@ router.post(
     const notifyDiscord = dryRun
       ? null
       : async ({ race, preview, resultRows }) => {
-          const url = await getDefaultWebhook();
-          if (!url) return;
+          const urls = await getResultWebhooks(race.league_division_id);
+          if (!urls.length) return;
           const embed = buildPcmImportEmbed({ race, preview, resultRows });
-          await sendWebhook(url, { embeds: [{ ...embed, footer: { text: "Cycling Zone" } }] });
+          for (const url of urls) {
+            await sendWebhook(url, { embeds: [{ ...embed, footer: { text: "Cycling Zone" } }] });
+          }
         };
 
     try {
@@ -7577,10 +7577,12 @@ router.post("/admin/simulate-race", requireAdmin, adminWriteLimiter, async (req,
   const notifyDiscord = dryRun
     ? null
     : async ({ race, resultRows }) => {
-        const url = await getDefaultWebhook();
-        if (!url) return;
+        const urls = await getResultWebhooks(race.league_division_id);
+        if (!urls.length) return;
         const embed = buildRaceSimEmbed({ race, resultRows });
-        await sendWebhook(url, { embeds: [{ ...embed, footer: { text: "Cycling Zone" } }] });
+        for (const url of urls) {
+          await sendWebhook(url, { embeds: [{ ...embed, footer: { text: "Cycling Zone" } }] });
+        }
       };
   try {
     const result = await runAdminSimulateRace({
@@ -7601,10 +7603,12 @@ router.post("/admin/races/:id/simulate-stage", requireAdmin, adminWriteLimiter, 
   const notifyDiscord = dryRun
     ? null
     : async ({ race, resultRows }) => {
-        const url = await getDefaultWebhook();
-        if (!url) return;
+        const urls = await getResultWebhooks(race.league_division_id);
+        if (!urls.length) return;
         const embed = buildRaceSimEmbed({ race, resultRows });
-        await sendWebhook(url, { embeds: [{ ...embed, footer: { text: "Cycling Zone" } }] });
+        for (const url of urls) {
+          await sendWebhook(url, { embeds: [{ ...embed, footer: { text: "Cycling Zone" } }] });
+        }
       };
   try {
     const result = await runAdminSimulateStage({
