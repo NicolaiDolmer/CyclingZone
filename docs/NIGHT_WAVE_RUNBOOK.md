@@ -51,6 +51,16 @@ Detektion: `git worktree list` + `gh pr list --head <branch>` pr. spor. Genopret
 
 `resumeFromRunId` virker kun med uændret agent-rækkefølge — fortsættelser i worktrees er mere robuste.
 
+## Anti-hang (stall-watchdog + chunking + keep-awake)
+
+> **Indført efter natbølge 2026-07-03.** Maskinen gik i **S0 Modern Standby ~01:15** midt i kørslen (trods `standby-timeout-ac=0`) → 2 agenter frøs → `parallel()`-barrieren ventede evigt på dem → **ingen completion-notifikation**. Hanget blev først opdaget ~7 timer senere. 18/21 spor nåede i mål; de 2 frosne (+ 1 falsk-positiv) blev genoprettet manuelt. Tre lag lukker hullet:
+
+1. **Keep-awake (rod-årsag).** `powercfg standby-timeout-ac=0` er IKKE nok på en S0-maskine. Kør `scripts/keep-awake.ps1` i sit EGET terminal-vindue for hele bølgens varighed (`SetThreadExecutionState(ES_SYSTEM_REQUIRED)` holder systemet vågent så længe processen kører). Preflightens `powercfg /a`-linje afslører om maskinen er S0 (Standby S0 Low Power Idle) — er den det, er keep-awake obligatorisk.
+2. **Chunking (blast-radius).** Launch fleet'et i **flere Workflow-kald på ~6-8 agenter hver**, ikke ét stort 21-agent-`parallel()`-barrier. Et hang fryser da kun sit eget chunk; de øvrige chunks fuldfører + notificerer, så orkestratoren ser resultater inden for minutter og kan genoprette det frosne chunk uden at hele bølgen står stille. Checkpoint mellem chunks.
+3. **Stall-watchdog (detektion).** Kør `scripts/night-wave-stall-watch.ps1` periodisk (hvert ~8-10 min) under bølgen. Den krydser to ground-truth-signaler: worktree-fremdrift (0 ahead + rent arbejdstræ = intet produceret) og transcript-mtime (frossen > StallMinutes). Flagede spor genoprettes per §Recovery **uden** at vente på barrieren. Auto-detekterer nyeste Workflow-run; `-Json` for maskinlæsbart output.
+
+Kombinér: `status="running"` ≠ fremdrift (jf. memory `feedback_verify_background_progress`). En frossen transcript-mtime + 0 worktree-fremdrift = hang, ikke langsom agent.
+
 ## Vercel deploy-rate-limit (høj-tempo-bølger)
 
 **Status 2026-06-23: projektet er på Vercel Pro** — det aggressive hobby-rate-limit ("retry in 24 hours", ramt 2026-06-20 efter ~13 hurtige merges) gælder derfor ikke længere i praksis. *Historisk på hobby-tier:* en høj-tempo-bølge kunne fryse **frontend-prod på sidste gode deploy** indtil reset/manuel re-deploy; **Railway (backend) var upåvirket**. Pro kan teoretisk stadig ramme et loft ved ekstreme bølger — overvåg, men forvent ikke 24t-frys.
