@@ -31,13 +31,13 @@ const DEFAULT = "en";
 
 const LanguageContext = createContext(null);
 
-function readStored() {
-  try {
-    const v = localStorage.getItem(STORAGE_KEY);
-    return SUPPORTED.includes(v) ? v : null;
-  } catch {
-    return null;
-  }
+// i18next er kilden til det aktive UI-sprog: LanguageDetector har allerede
+// resolvet localStorage(cz_lang) → navigator → fallback ved init, så vi afleder
+// providerens sprog fra i18n.language i stedet for at læse cz_lang igen (dobbelt-
+// læsning kunne divergere fra i18n under landing-hydrationens tvungne EN-vindue).
+function normalizeLang(lng) {
+  const base = (lng || "").split("-")[0];
+  return SUPPORTED.includes(base) ? base : DEFAULT;
 }
 
 function writeStored(lng) {
@@ -49,12 +49,35 @@ function writeStored(lng) {
   }
 }
 
-export function LanguageProvider({ children }) {
+export function LanguageProvider({ children, deferredLanguage = null }) {
   const { i18n } = useTranslation();
-  const [language, setLanguageState] = useState(
-    () => readStored() || i18n.language?.split("-")[0] || DEFAULT
-  );
+  const [language, setLanguageState] = useState(() => normalizeLang(i18n.language));
   const [userId, setUserId] = useState(null);
+
+  // Hold providerens sprog i sync med i18next — også når skiftet kommer udefra
+  // (main.jsx's deferred switch, pseudo-locale, direkte i18n.changeLanguage). Så
+  // følger både <LanguageToggle> (aria-pressed) og <html lang> altid det aktive
+  // sprog uden at hvert kald skal huske at opdatere provider-state manuelt.
+  // Registreres FØR den deferrede switch nedenfor, så listeneren er på plads når
+  // dét skift emitter 'languageChanged' (ellers ville provideren misse eventet og
+  // vise EN-toggle mens teksten er dansk).
+  useEffect(() => {
+    const onLanguageChanged = (lng) => setLanguageState(normalizeLang(lng));
+    i18n.on("languageChanged", onLanguageChanged);
+    return () => i18n.off("languageChanged", onLanguageChanged);
+  }, [i18n]);
+
+  // Post-hydration sprog-skift (#landing-hydration): main.jsx tvinger EN under
+  // landing-hydrationen (matcher den EN-prerendrede index.html) og beder os
+  // skifte til den besøgendes sprog HER. Effekten kører FØRST efter hydrationen
+  // er committet → et normalt re-render, ikke en hydration → ingen #418/#422/#425.
+  // Kun mount: hint'et er en engangsværdi fra boot.
+  useEffect(() => {
+    if (deferredLanguage && i18n.language !== deferredLanguage) {
+      i18n.changeLanguage(deferredLanguage);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     let cancelled = false;

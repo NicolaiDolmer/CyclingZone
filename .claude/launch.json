@@ -8,6 +8,12 @@
       "port": 5173
     },
     {
+      "name": "frontend-preview",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "preview", "--prefix", "frontend", "--", "--port", "4180", "--strictPort"],
+      "port": 4180
+    },
+    {
       "name": "brand",
       "runtimeExecutable": "npx",
       "runtimeArgs": ["--yes", "serve", "-l", "4173", "docs/brand"],

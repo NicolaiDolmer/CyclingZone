@@ -60,12 +60,39 @@ captureFirstTouch();
 
   const rootEl = document.getElementById("root");
 
+  // Hydrér KUN når "/" faktisk ER serveret som den prerendrede landing (#root har
+  // markup). På alle andre ruter laver vi en frisk client-render: den tomme
+  // app-shell i prod, ELLER et miljø der — uden Vercel-rewriten — fejlserverer
+  // landing-index.html for en app-rute (fx `vite preview` i e2e). Uden pathname-
+  // gaten ville React forsøge at hydrere landing-markup mod en app-side → mismatch
+  // (#418/#422). Vi rydder stale markup før createRoot, så app-ruten ikke arver et
+  // glimt af landing.
+  const hydratingLanding = Boolean(rootEl.firstElementChild) && window.location.pathname === "/";
+
+  // Den prerendrede landing i dist/index.html renderes ALTID på engelsk
+  // (prerender.mjs → render("/", "en")). i18next's LanguageDetector har allerede
+  // valgt den besøgendes sprog (localStorage cz_lang → navigator → fallback) FØR
+  // vi når hertil, så en da-besøgende ville hydrere DANSK markup mod ENGELSK
+  // server-HTML → React #418/#422/#425 (tekst/attribut-mismatch), og prerender-
+  // gevinsten smides væk. Vi hydrerer derfor mod EN — identisk med server-HTML —
+  // og lader LanguageProvider skifte til det detekterede sprog FØRST efter
+  // hydrationen er committet (en effect → ren re-render, ingen mismatch).
+  const detectedLang = i18n.language;
+  const deferredLanguage =
+    hydratingLanding && typeof detectedLang === "string" && !detectedLang.startsWith("en")
+      ? detectedLang
+      : null;
+  if (deferredLanguage) {
+    await i18n.changeLanguage("en");
+  }
+
   // Providers ligger i AppProviders, så client-mount og build-time prerender
   // (entry-server.jsx) deler nøjagtig samme træ — det er forudsætningen for ren
-  // hydration på landing.
+  // hydration på landing. `deferredLanguage` er en engangs-hydrerings-hint:
+  // LanguageProvider skifter til det efter mount (null på app-ruter/EN-besøgende).
   const tree = (
     <React.StrictMode>
-      <AppProviders>
+      <AppProviders deferredLanguage={deferredLanguage}>
         {/* #969: v7_startTransition gør sidebar-nav interruptible. Routeren bor
             HER (ikke inde i App), så client-træet er identisk med prerenderens
             (entry-server bruger StaticRouter om samme <App/>) → ren hydration. */}
@@ -76,14 +103,7 @@ captureFirstTouch();
     </React.StrictMode>
   );
 
-  // Hydrér KUN når "/" faktisk ER serveret som den prerendrede landing (#root har
-  // markup). På alle andre ruter laver vi en frisk client-render: den tomme
-  // app-shell i prod, ELLER et miljø der — uden Vercel-rewriten — fejlserverer
-  // landing-index.html for en app-rute (fx `vite preview` i e2e). Uden pathname-
-  // gaten ville React forsøge at hydrere landing-markup mod en app-side → mismatch
-  // (#418/#422). Vi rydder stale markup før createRoot, så app-ruten ikke arver et
-  // glimt af landing.
-  if (rootEl.firstElementChild && window.location.pathname === "/") {
+  if (hydratingLanding) {
     hydrateRoot(rootEl, tree);
   } else {
     if (rootEl.firstElementChild) rootEl.replaceChildren();
