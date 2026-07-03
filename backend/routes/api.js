@@ -2790,7 +2790,7 @@ router.post("/auctions/:id/bid", requireAuth, bidLimiter, async (req, res) => {
 
   if (bidIssue?.code === "bid_below_minimum") {
     return res.status(400).json({
-      error: `Bud skal være mindst ${bidIssue.minimumBid.toLocaleString("da-DK")} CZ$`,
+      error: `Bid must be at least ${bidIssue.minimumBid.toLocaleString()} CZ$`,
       errorCode: "bid_below_minimum",
       errorParams: { min: bidIssue.minimumBid },
     });
@@ -3047,7 +3047,7 @@ router.patch("/auctions/:id/proxy", requireAuth, bidLimiter, async (req, res) =>
   });
   if (numericMax < minRequired) {
     return res.status(400).json({
-      error: `Max-loft skal være mindst ${minRequired.toLocaleString("da-DK")} CZ$`,
+      error: `Max limit must be at least ${minRequired.toLocaleString()} CZ$`,
       errorCode: "proxy_below_minimum",
       errorParams: { min: minRequired },
     });
@@ -3454,7 +3454,7 @@ router.post("/transfers/offer", requireAuth, marketWriteLimiter, async (req, res
   // Tidligere blev offer_amount brugt råt; en streng/decimal slap igennem `!offer_amount`
   // og gav ustabile sammenligninger (`> balance`). Vi normaliserer til et positivt heltal.
   const offer_amount = Number.parseInt(req.body.offer_amount, 10);
-  if (!rider_id) return res.status(400).json({ error: "rider_id og offer_amount kræves" });
+  if (!rider_id) return res.status(400).json({ error: "rider_id and offer_amount are required", errorCode: "offer_rider_amount_required" });
   if (!Number.isInteger(offer_amount) || offer_amount < 1)
     return res.status(400).json({ error: "Invalid amount", errorCode: "invalid_offer_amount" });
 
@@ -3922,7 +3922,7 @@ router.post("/transfers/swaps", requireAuth, marketWriteLimiter, async (req, res
 
   const { offered_rider_id, requested_rider_id, cash_adjustment = 0, message } = req.body;
   if (!offered_rider_id || !requested_rider_id)
-    return res.status(400).json({ error: "offered_rider_id og requested_rider_id kræves" });
+    return res.status(400).json({ error: "offered_rider_id and requested_rider_id are required", errorCode: "swap_rider_ids_required" });
 
   const [offeredRes, requestedRes] = await Promise.all([
     supabase.from("riders").select("id, team_id, firstname, lastname, is_retired").eq("id", offered_rider_id).single(),
@@ -4182,9 +4182,9 @@ router.post("/loans", requireAuth, marketWriteLimiter, async (req, res) => {
 
   const { rider_id, loan_fee = 0, start_season, end_season, buy_option_price } = req.body;
   if (!rider_id || !start_season || !end_season)
-    return res.status(400).json({ error: "rider_id, start_season og end_season kræves" });
+    return res.status(400).json({ error: "rider_id, start_season and end_season are required", errorCode: "loan_fields_required" });
   if (end_season < start_season)
-    return res.status(400).json({ error: "end_season skal være >= start_season" });
+    return res.status(400).json({ error: "end_season must be greater than or equal to start_season", errorCode: "loan_end_before_start" });
   if (end_season > start_season)
     return res.status(400).json({ error: "A loan can cover one season at most. Set the start and end to the same season number.", errorCode: "loan_max_one_season" });
 
@@ -4295,7 +4295,7 @@ router.patch("/loans/:id", requireAuth, marketWriteLimiter, async (req, res) => 
       });
       if (spendIssue?.code === "insufficient_available_balance") {
         return res.status(400).json({
-          error: `Lejer har kun ${spendIssue.availableBalance.toLocaleString("da-DK")} CZ$ tilgængelig efter aktive bud — kan ikke betale lejegebyr på ${loan.loan_fee.toLocaleString("da-DK")} CZ$`,
+          error: `The borrower only has ${spendIssue.availableBalance.toLocaleString()} CZ$ available after active bids and can't pay the loan fee of ${loan.loan_fee.toLocaleString()} CZ$`,
           errorCode: "loan_fee_insufficient",
           errorParams: { available: spendIssue.availableBalance, fee: loan.loan_fee },
         });
@@ -4395,7 +4395,7 @@ router.patch("/loans/:id", requireAuth, marketWriteLimiter, async (req, res) => 
     });
     if (buyoutIssue?.code === "insufficient_available_balance") {
       return res.status(400).json({
-        error: `Du har kun ${buyoutIssue.availableBalance.toLocaleString("da-DK")} CZ$ tilgængelig efter aktive bud — kan ikke udnytte købsoption på ${price.toLocaleString("da-DK")} CZ$`,
+        error: `You only have ${buyoutIssue.availableBalance.toLocaleString()} CZ$ available after active bids and can't exercise the buy option of ${price.toLocaleString()} CZ$`,
         errorCode: "buyout_insufficient",
         errorParams: { available: buyoutIssue.availableBalance, price },
       });
@@ -4855,7 +4855,7 @@ router.post("/me/discord-dm-test", requireAuth, marketWriteLimiter, async (req, 
     .select("discord_id")
     .eq("id", req.user.id)
     .single();
-  if (!user?.discord_id) return res.status(400).json({ error: "Tilføj først dit Discord-ID" });
+  if (!user?.discord_id) return res.status(400).json({ error: "Add your Discord ID first", errorCode: "discord_id_required_first" });
   try {
     await sendTestDM(user.discord_id);
     res.json({ ok: true });
@@ -4866,7 +4866,7 @@ router.post("/me/discord-dm-test", requireAuth, marketWriteLimiter, async (req, 
 
 router.patch("/me/discord-dm-enabled", requireAuth, marketWriteLimiter, async (req, res) => {
   const { enabled } = req.body || {};
-  if (typeof enabled !== "boolean") return res.status(400).json({ error: "enabled skal være boolean" });
+  if (typeof enabled !== "boolean") return res.status(400).json({ error: "enabled must be a boolean", errorCode: "enabled_must_be_boolean" });
   const { error } = await supabase
     .from("users")
     .update({ discord_dm_enabled: enabled })
@@ -6925,7 +6925,7 @@ router.post("/finance/loans", requireAuth, marketWriteLimiter, async (req, res) 
     if (!assertTeamNotTransferFrozen(req, res)) return;
     const { loan_type } = req.body;
     if (!["short", "long"].includes(loan_type))
-      return res.status(400).json({ error: "Ugyldig låntype — brug short eller long" });
+      return res.status(400).json({ error: "Invalid loan type. Use short or long", errorCode: "invalid_loan_type" });
     // Security-hardening (2026-06-20): parsér beløbet til et heltal FØR validering
     // (følger #1554). Tidligere ramte `!amount || amount < 1` den rå body-værdi, så en
     // ikke-numerisk streng eller decimal slap forbi og gav NaN i parseInt(amount) nedenfor.
@@ -6956,7 +6956,7 @@ router.post("/finance/loans/:id/repay", requireAuth, marketWriteLimiter, async (
     // `!amount || amount < 1` den rå body-værdi, så en ikke-numerisk streng slap
     // forbi og gav NaN i parseInt(amount) nedenfor.
     const amount = Number.parseInt(req.body.amount, 10);
-    if (!Number.isInteger(amount) || amount < 1) return res.status(400).json({ error: "Ugyldigt beløb" });
+    if (!Number.isInteger(amount) || amount < 1) return res.status(400).json({ error: "Invalid amount", errorCode: "invalid_amount" });
     const result = await repayLoan(req.params.id, req.team.id, amount, null, {
       actorType: FINANCE_ACTOR_TYPE.API,
       actorId: req.user.id,
@@ -8900,7 +8900,7 @@ router.post("/board/bonus-offer/accept", requireAuth, boardWriteLimiter, async (
   try {
     if (!req.team?.id) return res.status(404).json({ error: "No team" });
     const { offer_id } = req.body || {};
-    if (!offer_id) return res.status(400).json({ error: "offer_id kræves" });
+    if (!offer_id) return res.status(400).json({ error: "offer_id is required", errorCode: "offer_id_required" });
 
     const result = await acceptBonusOffer({ supabase, teamId: req.team.id, offerId: offer_id });
     if (!result.ok) {
@@ -8979,7 +8979,7 @@ router.post("/board/bonus-offer/decline", requireAuth, boardWriteLimiter, async 
   try {
     if (!req.team?.id) return res.status(404).json({ error: "No team" });
     const { offer_id } = req.body || {};
-    if (!offer_id) return res.status(400).json({ error: "offer_id kræves" });
+    if (!offer_id) return res.status(400).json({ error: "offer_id is required", errorCode: "offer_id_required" });
 
     const result = await declineBonusOffer({ supabase, teamId: req.team.id, offerId: offer_id });
     if (!result.ok) {
@@ -9063,7 +9063,7 @@ router.post("/board/dna-choose", requireAuth, boardWriteLimiter, async (req, res
 
     const { dna_key } = req.body || {};
     if (!isValidDnaKey(dna_key)) {
-      return res.status(400).json({ error: "Ukendt DNA-nøgle" });
+      return res.status(400).json({ error: "Unknown DNA key", errorCode: "unknown_dna_key" });
     }
 
     let result;
@@ -9116,7 +9116,7 @@ router.post("/board/proposal", requireAuth, boardWriteLimiter, async (req, res) 
     const context = await loadBoardPlanningContext(teamId);
     if (requiresBoardDnaChoice(context.team)) {
       return res.status(409).json({
-        error: "Klub-DNA skal vælges før bestyrelsesplanen kan forhandles",
+        error: "You must choose your club DNA before negotiating the board plan",
         code: "BOARD_DNA_REQUIRED",
         errorCode: "board_dna_required_plan",
       });
@@ -9161,7 +9161,7 @@ router.post("/board/sign", requireAuth, boardWriteLimiter, async (req, res) => {
     const { activeSeason, boards, riders, standing, team } = context;
     if (requiresBoardDnaChoice(team)) {
       return res.status(409).json({
-        error: "Klub-DNA skal vælges før bestyrelsesplanen kan signeres",
+        error: "You must choose your club DNA before signing the board plan",
         code: "BOARD_DNA_REQUIRED",
         errorCode: "board_dna_required_sign",
       });
@@ -9317,7 +9317,7 @@ router.post("/board/request", requireAuth, boardWriteLimiter, async (req, res) =
       // spilleren. Log til ops og returnér en generisk, lokaliserbar besked.
       console.warn("[board/request] board_request_log-tabellen mangler — kør SQL-migrationen for board_request_log");
       return res.status(503).json({
-        error: "Bestyrelsesfunktioner er ikke tilgængelige endnu",
+        error: "Board features aren't available yet",
         errorCode: "board_unavailable",
       });
     }
