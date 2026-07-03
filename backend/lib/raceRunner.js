@@ -534,7 +534,7 @@ async function loadSeasonReferenceYear({ supabase, seasonId }) {
       .select("start_date")
       .eq("id", seasonId);
     if (error) {
-      console.error(`season-referenceår-opslag fejlede (falder til lagret is_u25): ${error.message}`);
+      console.error(`season reference-year lookup failed (falling back to stored is_u25): ${error.message}`);
       return null;
     }
     const startDate = Array.isArray(data) ? data[0]?.start_date : data?.start_date;
@@ -542,7 +542,7 @@ async function loadSeasonReferenceYear({ supabase, seasonId }) {
     const year = new Date(startDate).getFullYear();
     return Number.isFinite(year) ? year : null;
   } catch (e) {
-    console.error(`season-referenceår-opslag kastede (falder til lagret is_u25): ${e.message}`);
+    console.error(`season reference-year lookup threw (falling back to stored is_u25): ${e.message}`);
     return null;
   }
 }
