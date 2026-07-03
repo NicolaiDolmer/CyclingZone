@@ -24,6 +24,7 @@ import {
 } from "./lib/notificationService.js";
 import {
   notifyAuctionWon,
+  notifyBoardUpdateDM,
   getDefaultWebhook,
   getResultWebhooks,
   sendWebhook,
@@ -252,11 +253,27 @@ async function runDeadlineDayCron() {
 // Tjek alle human teams for pending board-planer + send T-3/T-1 reminders +
 // auto-accept ved race_days_completed >= 5. Notif-dedup (24h) gør cron idempotent.
 
+// In-app board notifier that also mirrors board_update/board_critical to a
+// Discord DM (gated by the board_update pref). Shared by the board crons so the
+// toggle governs every board reminder, not just some. DM is fire-and-forget.
+const notifyUserWithBoardDM = async (args) => {
+  const result = await notifyUserShared({ supabase, ...args });
+  if (args.type === "board_update" || args.type === "board_critical") {
+    notifyBoardUpdateDM({
+      userId: args.userId,
+      type: args.type,
+      title: args.title,
+      description: args.message,
+    }).catch(() => {});
+  }
+  return result;
+};
+
 async function runBoardAutoAcceptCron() {
   try {
     const result = await processBoardAutoAcceptCron({
       supabase,
-      notifyUser: (args) => notifyUserShared({ supabase, ...args }),
+      notifyUser: notifyUserWithBoardDM,
       captureExceptionFn: sentryCapture,
       now: new Date(),
     });
@@ -279,7 +296,7 @@ async function runMidSeasonReviewCron() {
   try {
     const result = await processMidSeasonReviewCron({
       supabase,
-      notifyUser: (args) => notifyUserShared({ supabase, ...args }),
+      notifyUser: notifyUserWithBoardDM,
       captureExceptionFn: sentryCapture,
       now: new Date(),
     });

@@ -91,6 +91,21 @@
     "eventTransferOffer": "Du modtager et transfer-tilbud",
     "eventOfferResolved": "Dit transfer-tilbud accepteres eller afvises",
     "eventNewAuction": "En ny auktion oprettes",
-    "eventSeasonChange": "En ny sæson starter eller afsluttes"
+    "eventSeasonChange": "En ny sæson starter eller afsluttes",
+    "prefs": {
+      "heading": "Vælg hvad du får DM om",
+      "masterOffHint": "Slå DM'er til ovenfor for at vælge enkelte begivenheder.",
+      "group": {
+        "auctions": "Auktioner",
+        "transfers": "Transfers",
+        "club": "Klub"
+      },
+      "auction_outbid": { "label": "Overbudt", "desc": "Nogen byder over dig, inkl. autobud." },
+      "auction_won": { "label": "Auktion vundet", "desc": "Du vinder en rytter du bød på." },
+      "watchlist_rider_auction": { "label": "Ønskeliste-rytter på auktion", "desc": "En rytter på din ønskeliste sættes til salg." },
+      "transfer_offer": { "label": "Transfertilbud modtaget", "desc": "En anden manager byder på en af dine ryttere." },
+      "transfer_response": { "label": "Svar på dit tilbud", "desc": "Accepteret, afvist eller modbud." },
+      "board_update": { "label": "Bestyrelsesopdatering", "desc": "Din bestyrelse reagerer på resultater eller økonomi." }
+    }
   }
 }
