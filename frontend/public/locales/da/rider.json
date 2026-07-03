@@ -50,8 +50,8 @@
     "potential": "Potentiale",
     "teamPrefix": "Hold:",
     "freeAgent": "Fri agent",
-    "nextSeasonPrefix": "Næste sæson:",
-    "pendingTransfer": "Skifter til {team} næste sæson",
+    "nextSeasonPrefix": "På vej til:",
+    "pendingTransfer": "Skifter til {team}, når hans igangværende etapeløb er kørt færdigt",
     "activeAuctionBadge": "⚡ Aktiv auktion",
     "highestBidLabel": "Højeste bud: {amount} CZ$",
     "valueLabel": "Værdi CZ$",
@@ -66,7 +66,7 @@
     "newValueBetaTooltip": "Forhåndsvisning af det kommende evne-baserede værdisystem. Bruges endnu ikke til køb, salg eller løn."
   },
   "blocked": {
-    "pendingTransfer": "🔒 Rytteren er vundet på auktion og afventer overførsel til det nye hold. Kan ikke handles før overførslen er gennemført.",
+    "pendingTransfer": "🔒 Rytteren er handlet og skifter til sit nye hold, når hans igangværende etapeløb er kørt færdigt. Han kan ikke handles igen før da.",
     "retired": "Rytteren er pensioneret og kan ikke handles.",
     "errorFallback": "Noget gik galt"
   },

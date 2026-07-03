@@ -51,8 +51,8 @@
     "overall": "Rating",
     "teamPrefix": "Team:",
     "freeAgent": "Free agent",
-    "nextSeasonPrefix": "Next season:",
-    "pendingTransfer": "Joining {team} next season",
+    "nextSeasonPrefix": "Incoming:",
+    "pendingTransfer": "Joining {team} once his current stage race finishes",
     "activeAuctionBadge": "⚡ Active auction",
     "highestBidLabel": "Highest bid: {amount} CZ$",
     "valueLabel": "Value CZ$",
@@ -66,7 +66,7 @@
     "newValueBetaTooltip": "Preview of the upcoming ability-based valuation. Not yet used for buying, selling or salary."
   },
   "blocked": {
-    "pendingTransfer": "🔒 The rider has been won at auction and is awaiting transfer to the new team. Cannot be traded until the transfer is complete.",
+    "pendingTransfer": "🔒 The rider has been traded and joins his new team once his current stage race finishes. He cannot be traded again until then.",
     "retired": "The rider is retired and cannot be traded.",
     "errorFallback": "Something went wrong"
   },

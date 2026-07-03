@@ -16,7 +16,7 @@
     "salary": "Løn",
     "compareTooltip": "Vælg til sammenligning",
     "teamFree": "Fri",
-    "pendingTransfer": "Holdskifte på vej: skifter til {team}"
+    "pendingTransfer": "Holdskifte på vej: skifter til {team}, når hans igangværende etapeløb er kørt færdigt"
   },
   "abilityLegend": {
     "toggle": "Hvad betyder koderne?"

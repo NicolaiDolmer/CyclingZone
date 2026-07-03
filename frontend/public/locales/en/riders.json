@@ -16,7 +16,7 @@
     "salary": "Salary",
     "compareTooltip": "Select for comparison",
     "teamFree": "Free",
-    "pendingTransfer": "Transfer pending: moving to {team}"
+    "pendingTransfer": "Transfer pending: joining {team} once his current stage race finishes"
   },
   "abilityLegend": {
     "toggle": "What do the codes mean?"
