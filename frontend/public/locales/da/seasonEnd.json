@@ -27,8 +27,7 @@
     "expectedTotalTooltip": "Live-beregnet sum af forventet pulje for alle sæsonens løb",
     "summary": "{completed} afsluttet · {scheduled} kommende",
     "stageRace": "Etapeløb · {count, plural, one {# etape} other {# etaper}}",
-    "oneDay": "Enkeltdagsløb",
-    "edition": "{year}-udgave"
+    "oneDay": "Enkeltdagsløb"
   },
   "division": "Division {div}",
   "promotionNote": "Top 2 rykker op ↑",

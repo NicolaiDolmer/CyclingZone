@@ -90,9 +90,6 @@
     "statsToggleShowAll": "Vis alle",
     "statsToggleHideAll": "Skjul alle"
   },
-  "race": {
-    "editionYear": "{year}-udgave"
-  },
   "a11y": {
     "openMenu": "Åbn menu",
     "openNotifications": "Indbakke",

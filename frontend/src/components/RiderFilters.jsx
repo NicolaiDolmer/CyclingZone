@@ -81,8 +81,17 @@ function isStatActive(filters, key) {
   );
 }
 
-// ── Stat range slider (stacked min + max) ────────────────────────────────────
-function DualStatSlider({ statKey, label, filters, onChange }) {
+// #261: klem en tal-værdi ind i [0, 99] og respekter min≤max-invarianten.
+// Tomt/ugyldigt input falder tilbage til grænseværdien, så slider og input
+// aldrig kommer i en umulig tilstand.
+function clampStat(raw, { fallback, floor = STAT_DEFAULT_MIN, ceil = STAT_DEFAULT_MAX }) {
+  const n = parseInt(raw, 10);
+  if (Number.isNaN(n)) return fallback;
+  return Math.min(Math.max(n, floor), ceil);
+}
+
+// ── Stat range slider + number inputs (delt state) ───────────────────────────
+function DualStatSlider({ statKey, label, filters, onChange, t }) {
   const minKey = `${statKey}_min`;
   const maxKey = `${statKey}_max`;
   const propMin = parseInt(filters[minKey]) ?? STAT_DEFAULT_MIN;
@@ -92,7 +101,8 @@ function DualStatSlider({ statKey, label, filters, onChange }) {
   // trigge en fetch pr. tick (RidersPage re-fetcher på hvert filter-skift, så
   // listen "hoppede" mens man trak). Parent-onChange kaldes FØRST ved release
   // (pointer-up / touch-end / key-up) — svarer til MUI's onChangeCommitted.
-  // Synkronisér fra props når de ændres udefra (fx Nulstil-knappen).
+  // Synkronisér fra props når de ændres udefra (fx Nulstil-knappen ELLER det
+  // modsatte input/slider, jf. #261's to-vejs-sync — begge deler _min/_max).
   const [localMin, setLocalMin] = useState(propMin);
   const [localMax, setLocalMax] = useState(propMax);
   useEffect(() => { setLocalMin(propMin); }, [propMin]);
@@ -102,6 +112,25 @@ function DualStatSlider({ statKey, label, filters, onChange }) {
 
   const commitMin = v => { if (v !== propMin) onChange(minKey, v); };
   const commitMax = v => { if (v !== propMax) onChange(maxKey, v); };
+
+  // #261: tal-input committer sin clampede værdi til samme _min/_max-nøgle som
+  // slideren. Slideren re-synces via propMin/propMax-effekten ovenfor, så de to
+  // kontroller altid viser samme tal (to-vejs sync).
+  const commitMinInput = raw => {
+    const v = clampStat(raw, { fallback: STAT_DEFAULT_MIN, ceil: localMax });
+    setLocalMin(v);
+    commitMin(v);
+  };
+  const commitMaxInput = raw => {
+    const v = clampStat(raw, { fallback: STAT_DEFAULT_MAX, floor: localMin });
+    setLocalMax(v);
+    commitMax(v);
+  };
+
+  const numberInputClass =
+    "w-full bg-cz-subtle border border-cz-border rounded-cz px-2 py-1 " +
+    "text-cz-1 text-xs font-mono text-center placeholder-cz-3 " +
+    "focus:outline-none focus:border-cz-accent";
 
   return (
     <div>
@@ -127,6 +156,32 @@ function DualStatSlider({ statKey, label, filters, onChange }) {
           onTouchEnd={e => commitMax(Math.max(parseInt(e.target.value), localMin))}
           onKeyUp={e => commitMax(Math.max(parseInt(e.target.value), localMin))}
           className="w-full cursor-pointer accent-amber-500"
+        />
+      </div>
+      {/* #261: præcise tal-inputs som supplement til slideren — deler _min/_max.
+          Committer ved blur og Enter, så man kan taste "45" uden en fetch pr.
+          ciffer. localMin/localMax holder visningen live mens man taster. */}
+      <div className="flex items-center gap-1 mt-1">
+        <input
+          type="number" inputMode="numeric" min={0} max={99} step={1}
+          data-testid={`stat-min-${statKey}`}
+          aria-label={t("stats.minInput", { label })}
+          value={localMin}
+          onChange={e => setLocalMin(e.target.value)}
+          onBlur={e => commitMinInput(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter") { commitMinInput(e.target.value); e.target.blur(); } }}
+          className={numberInputClass}
+        />
+        <span aria-hidden="true" className="text-cz-3 text-xs">–</span>
+        <input
+          type="number" inputMode="numeric" min={0} max={99} step={1}
+          data-testid={`stat-max-${statKey}`}
+          aria-label={t("stats.maxInput", { label })}
+          value={localMax}
+          onChange={e => setLocalMax(e.target.value)}
+          onBlur={e => commitMaxInput(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter") { commitMaxInput(e.target.value); e.target.blur(); } }}
+          className={numberInputClass}
         />
       </div>
     </div>
@@ -339,6 +394,7 @@ export default function RiderFilters({
                   label={STAT_LABELS_MAP[key]}
                   filters={filters}
                   onChange={onChange}
+                  t={t}
                 />
               ))}
             </div>

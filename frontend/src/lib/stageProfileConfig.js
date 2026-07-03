@@ -42,10 +42,15 @@ const SHAPES = Object.freeze({
   mountain:      [21, 19, 9, 18, 7, 17, 19, 20],
   // Høje, spidse toppe der topper ud.
   high_mountain: [21, 16, 6, 14, 3, 12, 17, 20],
-  // Enkeltstart: ren, flad streg (én rytter mod uret) med en lille startrampe.
-  itt:           [21, 21, 20, 21, 20, 21, 20, 21],
-  // Holdstart: samme rene streg som ITT.
-  ttt:           [21, 21, 20, 21, 20, 21, 20, 21],
+  // Enkeltstart (ITT): ÉN skarp startrampe (rytter mod uret der ruller ned ad rampen
+  // fra starthuset) — højeste punkt yderst til venstre, ren nedstigning til en dead-flat
+  // aero-streg. Rampe-spidsen findes i intet terræn-profil → skelnes tydeligt fra flad
+  // sprint (#1953). En af de ejer-foreslåede løsninger ("rytter-mod-uret med startrampe").
+  itt:           [5, 11, 17, 20, 20, 20, 20, 20],
+  // Holdstart (TTT): TO startramper (et hold der ruller ud i formation, én rytter ad
+  // gangen), ellers samme aero-streg. To spidser adskiller den fra ITT (én rampe) og fra
+  // flad sprint (#1953).
+  ttt:           [6, 13, 20, 6, 13, 20, 20, 20],
   // Brosten: flad rute med tæt, lav rumlen (chikaneret, ikke bakket).
   cobbles:       [21, 20, 21, 19, 21, 20, 21, 20],
   // Klassiker: blandet rullende + et par korte stik.

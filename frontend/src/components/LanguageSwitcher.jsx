@@ -18,6 +18,9 @@ import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { useLanguage } from "../lib/language";
 import { CheckIcon, ChevronDownIcon } from "./ui/icons/index.jsx";
+// #2047: flag-icons-CSS scopes hertil (ud af global boot i main.jsx) — switcheren
+// viser `fi fi-*`-flag, så den skal have spritet. Vite deduper på tværs af moduler.
+import "flag-icons/css/flag-icons.min.css";
 
 const OPTIONS = [
   { code: "da", flag: "dk", labelKey: "language.danish" },

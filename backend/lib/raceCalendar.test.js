@@ -53,7 +53,7 @@ test("splitISODate parser uden TZ-skred", () => {
 
 // ── terræn-buckets ───────────────────────────────────────────────────────────
 
-test("calendarTerrainBucket folder 9 profile_types til 4 viste buckets", () => {
+test("calendarTerrainBucket folder 9 profile_types til 5 viste buckets", () => {
   assert.equal(calendarTerrainBucket("flat"), "sprint");
   assert.equal(calendarTerrainBucket("rolling"), "sprint");
   assert.equal(calendarTerrainBucket("cobbles"), "sprint");
@@ -62,7 +62,8 @@ test("calendarTerrainBucket folder 9 profile_types til 4 viste buckets", () => {
   assert.equal(calendarTerrainBucket("mountain"), "mountain");
   assert.equal(calendarTerrainBucket("high_mountain"), "mountain");
   assert.equal(calendarTerrainBucket("itt"), "itt");
-  assert.equal(calendarTerrainBucket("ttt"), "itt");
+  // ttt = holdstart har egen bucket/glyf (skelnes fra enkeltstart, #1953).
+  assert.equal(calendarTerrainBucket("ttt"), "ttt");
   assert.equal(calendarTerrainBucket("unknown"), "sprint"); // fallback
 });
 
@@ -71,6 +72,9 @@ test("dominantCalendarBucket vælger hyppigste bucket med stabil tiebreak", () =
   assert.equal(dominantCalendarBucket(["mountain", "high_mountain", "flat"]), "mountain");
   // Tie sprint(1) vs mountain(1) → bucket-rækkefølge sprint vinder.
   assert.equal(dominantCalendarBucket(["flat", "mountain"]), "sprint");
+  // Enkeltstart og holdstart er nu distinkte buckets (#1953).
+  assert.equal(dominantCalendarBucket(["itt"]), "itt");
+  assert.equal(dominantCalendarBucket(["ttt"]), "ttt");
   assert.equal(dominantCalendarBucket([]), null);
   assert.equal(dominantCalendarBucket(null), null);
 });

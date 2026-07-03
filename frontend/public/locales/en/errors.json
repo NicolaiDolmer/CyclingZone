@@ -138,6 +138,16 @@
     "dna_requires_identity_basis": "Your club identity isn't ready yet. Try again in a moment.",
     "dna_already_chosen": "Your club DNA is already set and can't be changed yet",
     "invalid_asking_price": "The asking price must be a positive whole number",
-    "team_transfer_frozen": "Your team is frozen because its debt is over the division ceiling. Reduce your debt before trading."
+    "team_transfer_frozen": "Your team is frozen because its debt is over the division ceiling. Reduce your debt before trading.",
+    "offer_rider_amount_required": "rider_id and offer_amount are required",
+    "swap_rider_ids_required": "offered_rider_id and requested_rider_id are required",
+    "loan_fields_required": "rider_id, start_season and end_season are required",
+    "loan_end_before_start": "end_season must be greater than or equal to start_season",
+    "discord_id_required_first": "Add your Discord ID first",
+    "enabled_must_be_boolean": "enabled must be a boolean",
+    "invalid_loan_type": "Invalid loan type. Use short or long",
+    "invalid_amount": "Invalid amount",
+    "offer_id_required": "offer_id is required",
+    "unknown_dna_key": "Unknown DNA key"
   }
 }

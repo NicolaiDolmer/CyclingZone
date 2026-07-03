@@ -4,6 +4,7 @@ import { sentryVitePlugin } from "@sentry/vite-plugin";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { formatWorktreeId, WORKTREE_ID_PATH } from "./playwright.ports.js";
+import { patchNotesJsonPlugin } from "./vite-plugins/patch-notes-json.js";
 
 const enableSentryUpload = Boolean(
   process.env.SENTRY_AUTH_TOKEN &&
@@ -35,6 +36,7 @@ export default defineConfig({
   plugins: [
     react(),
     worktreeIdPlugin(),
+    patchNotesJsonPlugin(),
     enableSentryUpload
       ? sentryVitePlugin({
           authToken: process.env.SENTRY_AUTH_TOKEN,

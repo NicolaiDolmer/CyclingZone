@@ -8,14 +8,15 @@ import { runStageScheduler, MAX_STAGES_PER_DAY } from "./stageScheduler.js";
 // registreret de anvendte filtre, så tests kan inspicere queries).
 function makeSupabase(tables = {}) {
   function from(table) {
-    const state = { table, eqs: [], ltes: [], gtes: [], neqs: [] };
+    const state = { table, eqs: [], ltes: [], gtes: [], neqs: [], opts: null };
     const b = {
-      select() { return b; },
+      select(_cols, opts) { state.opts = opts || null; return b; },
       eq(c, v) { state.eqs.push([c, v]); return b; },
       neq(c, v) { state.neqs.push([c, v]); return b; },
       lte(c, v) { state.ltes.push([c, v]); return b; },
       gte(c, v) { state.gtes.push([c, v]); return b; },
       lt(c, v) { state.ltes.push([c, v]); return b; },
+      gt(c, v) { state.gtes.push([c, v]); return b; },
       in() { return b; },
       order() { return b; },
       maybeSingle() {
@@ -24,6 +25,8 @@ function makeSupabase(tables = {}) {
       },
       then(res, rej) {
         const rows = resolve(table, state);
+        // head:true count-queries (raceActiveGuard-detektion) → returnér { count }.
+        if (state.opts?.head) return Promise.resolve({ count: rows.length, data: null, error: null }).then(res, rej);
         return Promise.resolve({ data: rows, error: null }).then(res, rej);
       },
     };
@@ -32,7 +35,16 @@ function makeSupabase(tables = {}) {
   function resolve(table, state) {
     const src = tables[table];
     if (typeof src === "function") return src(state) || [];
-    return src || [];
+    let rows = src || [];
+    // Kun for races: honorér .neq/.gt-filtrene, så raceActiveGuard-detektionens
+    // .neq('status','completed').gt('stages_completed',0) rammer korrekt (ellers ser
+    // den stages_completed=0-løb og fejl-alarmerer i tests der ikke handler om detektion).
+    // Scopet til races for ikke at forstyrre race_simulation_runs' created_at-.gte-cap-tælling.
+    if (table === "races") {
+      for (const [c, v] of state.neqs) rows = rows.filter((r) => r[c] !== v);
+      for (const [c, v] of state.gtes) rows = rows.filter((r) => (r[c] ?? 0) > v);
+    }
+    return rows;
   }
   return { from };
 }
@@ -150,6 +162,9 @@ test("forfaldne etaper: kører næste etape for hvert due løb (scheduled_at <= 
     seasons: [{ id: "s1" }],
     race_simulation_runs: [],
     races,
+    // rB er igangværende (stages_completed=1) → giv den entries så #2074-detektionen
+    // ikke fejl-alarmerer i en test der ikke handler om detektion.
+    race_entries: [{ race_id: "rB" }],
     race_stage_schedule: (state) => {
       // Returnér kun forfaldne rækker (scheduled_at <= now) — simulerer DB-filteret.
       const lteNow = state.ltes.some(([c]) => c === "scheduled_at");
@@ -180,6 +195,8 @@ test("kun forfaldne etaper for NÆSTE etape afvikles (skip hvis schedule-rækken
     seasons: [{ id: "s1" }],
     race_simulation_runs: [],
     races,
+    // rA er igangværende (stages_completed=1) → entries så #2074-detektionen ikke fejl-alarmerer.
+    race_entries: [{ race_id: "rA" }],
     race_stage_schedule: () => schedule,
   });
   let ran = 0;
@@ -322,6 +339,8 @@ test("P0 2/7: finalization-pending løb (alle etaper kørt, ikke completed) geno
     seasons: [{ id: "s1" }],
     race_simulation_runs: [],
     races,
+    // rStuck er igangværende (stages_completed=5) → entries så #2074-detektionen ikke fejl-alarmerer.
+    race_entries: [{ race_id: "rStuck" }],
     race_stage_schedule: () => [], // intet due slot — recovery må IKKE afhænge af schedule
     teams: [{ league_division_id: 1 }],
   });

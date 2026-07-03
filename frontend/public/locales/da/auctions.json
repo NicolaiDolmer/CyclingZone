@@ -73,9 +73,12 @@
     "colNation": "Nation",
     "colStatus": "Status",
     "colWinner": "Vinder",
+    "colBids": "Bud",
     "colPrice": "Pris",
     "colTime": "Tidspunkt",
     "noBids": "Ingen bud",
+    "bidsCount": "{count, plural, one {1 bud} other {# bud}}",
+    "bidsUniqueBidders": "{count, plural, one {1 hold} other {# hold}}",
     "riderMeta": "Værdi: {value} CZ$ · Løn: {salary}",
     "salaryNone": "—",
     "pageOf": "Side {page} af {total}",
@@ -147,7 +150,7 @@
     }
   },
   "section": {
-    "leading": "Du leder",
+    "leading": "Du fører",
     "overbid": "Du er overbudt",
     "selling": "Du sælger"
   },

@@ -18,7 +18,7 @@ export default function AdminDataTab() {
   const [racePool, setRacePool] = useState([]);
   const [raceForm, setRaceForm] = useState({
     season_id: "", name: "", race_type: "stage_race",
-    race_class: "", stages: 21, edition_year: "",
+    race_class: "", stages: 21,
   });
   const [editingRace, setEditingRace] = useState(null);
   const [poolSearchOpen, setPoolSearchOpen] = useState(false);
@@ -64,12 +64,11 @@ export default function AdminDataTab() {
         body: JSON.stringify({
           ...raceForm,
           stages: parseInt(raceForm.stages),
-          edition_year: raceForm.edition_year ? parseInt(raceForm.edition_year, 10) : null,
           race_class: raceForm.race_class || null,
         }),
       });
       const data = await readAdminJson(res);
-      if (res.ok) { showMsg(`Løb "${data.name}" tilføjet`); loadData(); setRaceForm(f => ({ ...f, name: "", edition_year: "", race_class: "" })); }
+      if (res.ok) { showMsg(`Løb "${data.name}" tilføjet`); loadData(); setRaceForm(f => ({ ...f, name: "", race_class: "" })); }
       else showMsg(adminErrorMessage(data, res), "error");
     } catch (e) {
       showMsg(`Forbindelsen fejlede: ${e.message || "ukendt"}`, "error");
@@ -101,9 +100,6 @@ export default function AdminDataTab() {
           race_class: editingRace.race_class || null,
           race_type: editingRace.race_type,
           stages: parseInt(editingRace.stages) || 1,
-          edition_year: editingRace.edition_year === "" || editingRace.edition_year == null
-            ? null
-            : parseInt(editingRace.edition_year, 10),
         }),
       });
       let data = {};
@@ -264,13 +260,6 @@ export default function AdminDataTab() {
                                 onChange={e => setEditingRace(er => ({ ...er, stages: e.target.value }))}
                                 className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none" />
                             </div>
-                            <div>
-                              <label className="block text-cz-3 text-xs mb-1">Løbsudgave (årstal)</label>
-                              <input type="number" min={2000} max={2099} placeholder="fx 2024"
-                                value={editingRace.edition_year || ""}
-                                onChange={e => setEditingRace(er => ({ ...er, edition_year: e.target.value }))}
-                                className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none" />
-                            </div>
                           </div>
                           <div className="flex gap-2">
                             <button onClick={saveRaceEdit} disabled={loading.raceEdit}
@@ -379,13 +368,6 @@ export default function AdminDataTab() {
             <label className="block text-cz-3 text-xs mb-1">Etaper</label>
             <input type="number" min={1} value={raceForm.stages}
               onChange={e => setRaceForm(f => ({ ...f, stages: e.target.value }))}
-              className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none" />
-          </div>
-          <div>
-            <label className="block text-cz-3 text-xs mb-1">Løbsudgave (årstal)</label>
-            <input type="number" min={2000} max={2099} placeholder="fx 2024"
-              value={raceForm.edition_year}
-              onChange={e => setRaceForm(f => ({ ...f, edition_year: e.target.value }))}
               className="w-full bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none" />
           </div>
           <div className="flex items-end">

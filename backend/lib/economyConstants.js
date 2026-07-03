@@ -176,8 +176,10 @@ export const UPKEEP_BEFORE_FIRST_RACE_ENABLED = false;
 // lønbyrden matcher den division-skalerede sponsor. Løn er FROSSEN ved signering
 // (#1309: salary er en plain INTEGER, ikke længere GENERATED) — denne rate bruges
 // af contractSeed.computeFrozenSalary (seed + on-acquire) og marketUtils.resolveRiderSalary
-// (free-agent-estimat). Ungdoms-/akademi-løn har sin EGEN rate (academyFlag.ACADEMY.SALARY_RATE)
-// og er IKKE påvirket. Ændring her → opdatér frontend-spejl marketValues.getRiderSalary.
+// (free-agent-estimat). #2083: akademi-/ungdoms-løn er nu ENSRETTET hertil —
+// academyFlag.ACADEMY.SALARY_RATE peger på denne værdi (ét fælles løn-system, ingen
+// separat ungdomssats). Ændring her → opdatér frontend-spejl marketValues
+// (getRiderSalary + projectYouthSalary, som har sin egen 0.067-konstant).
 export const SALARY_RATE = 0.067;
 
 // ============================================================

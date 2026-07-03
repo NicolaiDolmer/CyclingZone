@@ -3,6 +3,7 @@ import { supabase } from "../lib/supabase";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import RiderLink from "./RiderLink";
+import TeamLink from "./TeamLink";
 import { Flag } from "./Flag";
 import StatCompare from "./StatCompare";
 import { Portal, PageLoader } from "./ui";
@@ -121,12 +122,16 @@ export default function CompareDrawer({ teamA, teamB, onClose }) {
             {/* Team headers */}
             <div className="mb-5 flex items-center justify-center gap-4">
               <div className="text-center min-w-0">
-                <p className="text-cz-accent-t font-bold text-sm truncate">{teamA?.name}</p>
+                <p className="text-cz-accent-t font-bold text-sm truncate">
+                  <TeamLink id={teamA?.id} className="hover:underline">{teamA?.name}</TeamLink>
+                </p>
                 <p className="text-cz-3 text-xs">{t("division", { n: teamA?.division })}</p>
               </div>
               <span className="text-cz-3 text-lg font-bold">VS</span>
               <div className="text-center min-w-0">
-                <p className="text-cz-info font-bold text-sm truncate">{teamB?.name}</p>
+                <p className="text-cz-info font-bold text-sm truncate">
+                  <TeamLink id={teamB?.id} className="hover:underline">{teamB?.name}</TeamLink>
+                </p>
                 <p className="text-cz-3 text-xs">{t("division", { n: teamB?.division })}</p>
               </div>
             </div>

@@ -25,7 +25,9 @@
   },
   "stats": {
     "section": "Evne-filtre",
-    "active": "{count} aktive"
+    "active": "{count} aktive",
+    "minInput": "{label} min",
+    "maxInput": "{label} max"
   },
   "chips": {
     "value": {

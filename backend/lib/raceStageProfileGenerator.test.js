@@ -12,6 +12,8 @@ import {
   PROFILE_TYPES,
   FINALE_TYPES,
   GENERATOR_VERSION,
+  DEFAULT_TT_CAP,
+  timeTrialCap,
 } from "./raceStageProfileGenerator.js";
 import { ABILITY_KEYS } from "./raceSimulator.js";
 import { makeRng } from "./fictionalRiderGenerator.js";
@@ -165,6 +167,55 @@ test("arketype etapeløb: grand_tour (21) har ≥2 high_mountain + ≥1 itt", ()
     const types = generateRaceStageProfiles({ id: "r", external_id: `e${s}`, terrain_archetype: "grand_tour", race_type: "stage_race", stages: 21 }).map((p) => p.profile_type);
     assert.ok(types.filter((t) => t === "high_mountain").length >= 2, `gt ${s}: <2 high_mountain`);
     assert.ok(types.includes("itt"), `gt ${s}: ingen itt`);
+  }
+});
+
+// ── #2029: TT-loft — Grand Tour må ikke få 5 enkeltstarter ───────────────────
+const countTT = (types) => types.filter((t) => t === "itt" || t === "ttt").length;
+
+test("#2029 DEFAULT_TT_CAP er 2 (konservativ balance-default, flaget til ejer)", () => {
+  assert.equal(DEFAULT_TT_CAP, 2);
+});
+
+test("#2029 timeTrialCap: default 2, men respekterer flere garanterede TT", () => {
+  assert.equal(timeTrialCap([]), 2);
+  assert.equal(timeTrialCap(["flat", "itt", "mountain"]), 2);
+  assert.equal(timeTrialCap(["itt", "itt", "ttt"]), 3); // hæves af garantier, trimmes ikke
+});
+
+test("#2029 grand_tour (21): ≤2 TT (itt+ttt) over MANGE seeds (kernen i fixet)", () => {
+  // Før fixet gav ~2 af 3 GT'er 3-5 TT (verificeret mod prod). Loftet skal holde
+  // uanset seed. 400 seeds dækker filler-rulle-varians rigeligt.
+  for (let s = 1; s <= 400; s++) {
+    const types = generateRaceStageProfiles({ id: "r", external_id: `gt${s}`, terrain_archetype: "grand_tour", race_type: "stage_race", stages: 21 }).map((p) => p.profile_type);
+    assert.ok(countTT(types) <= 2, `gt seed ${s}: ${countTT(types)} TT (>2): ${types.join(",")}`);
+  }
+});
+
+test("#2029 grand_tour bevarer stadig ≥1 itt trods loftet (garanti ikke trimmet)", () => {
+  for (let s = 1; s <= 100; s++) {
+    const types = generateRaceStageProfiles({ id: "r", external_id: `gt${s}`, terrain_archetype: "grand_tour", race_type: "stage_race", stages: 21 }).map((p) => p.profile_type);
+    assert.ok(types.includes("itt"), `gt seed ${s}: garanteret itt tabt`);
+  }
+});
+
+test("#2029 loftet gælder ALLE etapeløbs-arketyper + generisk (≤2 TT), på tværs af seeds", () => {
+  const stageArchetypes = Object.entries(ARCHETYPE_PROFILES).filter(([, c]) => c.kind === "stage").map(([k]) => k);
+  for (const arch of stageArchetypes) {
+    for (const n of [3, 4, 5, 6, 8, 21]) {
+      for (let s = 1; s <= 30; s++) {
+        const types = generateRaceStageProfiles({ id: "r", external_id: `${arch}-${n}-${s}`, terrain_archetype: arch, race_type: "stage_race", stages: n }).map((p) => p.profile_type);
+        assert.ok(countTT(types) <= 2, `${arch} n=${n} seed ${s}: ${countTT(types)} TT (>2)`);
+      }
+    }
+  }
+  // Generisk (ukendt arketype): STAGE_FILLER_WEIGHTS har ingen TT, men loftet må
+  // heller ikke bryde her.
+  for (const n of [3, 4, 5, 6, 8, 21]) {
+    for (let seed = 1; seed <= 30; seed++) {
+      const types = generateRaceStageProfiles({ id: "x", race_type: "stage_race", stages: n }, { seed }).map((p) => p.profile_type);
+      assert.ok(countTT(types) <= 2, `generisk n=${n} seed ${seed}: ${countTT(types)} TT (>2)`);
+    }
   }
 });
 
