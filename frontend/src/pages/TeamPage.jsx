@@ -345,22 +345,37 @@ function SquadTab({ riders, scouting, onSelectRider }) {
   // vis/skjul-toggles — spillere med ind-/udgående ryttere skal tydeligt
   // kunne se begge tilstande.
   const [squadView, setSquadView] = useState("current");
+  // #1929 (redesign 3/7): akademiryttere lever på holdet men uden for senior-cap'en (30)
+  // og vises nu i SAMME tabel som seniorerne, styret af to gruppe-filtre (begge on som
+  // default → hele holdet vist). Datakilden er den samme (loadAll henter is_academy).
+  const [showSeniors, setShowSeniors] = useState(true);
+  const [showAcademy, setShowAcademy] = useState(true);
 
   // Incoming = riders with pending_team_id = myTeam but team_id != myTeam
   // Outgoing = riders with team_id = myTeam but pending different team
   const incomingRiders = riders.filter(r => r._isIncoming);
   const outgoingRiders = riders.filter(r => r._isOutgoing);
 
-  // Nuværende = ryttere på holdet nu (inkl. udgående, ekskl. indgående).
-  // Kommende = truppen efter ventende transfers (uden udgående, med indgående).
-  const currentCount  = riders.filter(r => !r._isIncoming).length;
-  const upcomingCount = riders.filter(r => !r._isOutgoing).length;
+  // Gruppe-tællere til filter-knapperne. Seniorer i den aktive transfer-visning;
+  // akademiryttere er off-cap og har hverken ind-/udgående flag.
+  const seniorGroupCount  = riders.filter(r => !r.is_academy && (squadView === "upcoming" ? !r._isOutgoing : !r._isIncoming)).length;
+  const academyGroupCount = riders.filter(r => r.is_academy && !r._isIncoming).length;
+
+  // Nuværende = senior-truppen nu (inkl. udgående, ekskl. indgående).
+  // Kommende = senior-truppen efter ventende transfers (uden udgående, med indgående).
+  const currentCount  = riders.filter(r => !r._isIncoming && !r.is_academy).length;
+  const upcomingCount = riders.filter(r => !r._isOutgoing && !r.is_academy).length;
+
+  // #1929-redesign: ÉT samlet roster. Base = aktiv transfer-visning (akademiryttere
+  // passerer begge ind-/udgående filtre) → filtrér efter gruppe-toggles (default begge on).
   const displayRidersBase = (squadView === "upcoming"
     ? riders.filter(r => !r._isOutgoing)
     : riders.filter(r => !r._isIncoming)
+  )
+    .filter(r => (r.is_academy ? showAcademy : showSeniors))
     // #1162: dekorér med estimat-midtpunktet så potentiale-kolonnen kan sorteres
     // uden den rå (server-skjulte) potentiale.
-  ).map(r => ({ ...r, _scoutMid: scoutSortValue(scouting.estimateFor(r.id)) }));
+    .map(r => ({ ...r, _scoutMid: scoutSortValue(scouting.estimateFor(r.id)) }));
   const riderFilters = useClientRiderFilters(displayRidersBase);
   const displayRiders = riderFilters.filtered;
   const sort = riderFilters.filters.sort;
@@ -378,6 +393,23 @@ function SquadTab({ riders, scouting, onSelectRider }) {
 
   return (
     <div>
+      {/* #1929-redesign: gruppe-filtre i toppen — inkludér/ekskludér seniorer og
+          akademiryttere uafhængigt. Default begge på = hele holdet vist. Kun synligt
+          når holdet har akademiryttere (ellers er der intet at filtrere). */}
+      {academyGroupCount > 0 && (
+        <div className="flex items-center gap-2 mb-4 flex-wrap">
+          <span className="text-xs text-cz-3">{t("squad.filter.label")}</span>
+          <button type="button" onClick={() => setShowSeniors(v => !v)} aria-pressed={showSeniors}
+            className={`px-3 py-1.5 text-xs font-medium rounded-cz border transition-all ${showSeniors ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "bg-cz-card text-cz-3 border-cz-border hover:text-cz-1"}`}>
+            {t("squad.filter.seniors", { count: seniorGroupCount })}
+          </button>
+          <button type="button" onClick={() => setShowAcademy(v => !v)} aria-pressed={showAcademy}
+            className={`px-3 py-1.5 text-xs font-medium rounded-cz border transition-all ${showAcademy ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30" : "bg-cz-card text-cz-3 border-cz-border hover:text-cz-1"}`}>
+            {t("squad.filter.academy", { count: academyGroupCount })}
+          </button>
+        </div>
+      )}
+
       {/* #1095: segmenteret nuværende/kommende-visning + loan-pills */}
       {hasTransfers && (
         <div className="flex gap-2 mb-4 flex-wrap items-center">
@@ -525,7 +557,7 @@ function SquadTab({ riders, scouting, onSelectRider }) {
                         #1531: skade-badge når rytteren er skadet (injured_until i fremtiden). */}
                     <td className="px-3 py-2.5">
                       <div className="flex flex-wrap items-center gap-1">
-                        <RiderBadges badges={[isRiderInjured(r.injured_until) && "injured", ageBadgeKey(r), r._isIncoming && "incoming", r._isOutgoing && "outgoing"]} />
+                        <RiderBadges badges={[isRiderInjured(r.injured_until) && "injured", r.is_academy && "academy", ageBadgeKey(r), r._isIncoming && "incoming", r._isOutgoing && "outgoing"]} />
                       </div>
                     </td>
                     {/* #1674: numerisk alder i egen kolonne (Status-badget viser kun U23/U25-tier). */}
@@ -717,7 +749,9 @@ export function TeamPage() {
   );
 
   const tabs = [
-    { key: "squad", label: t("tabs.squad", { count: currentRiders.length }) },
+    // #1929: squad-fane-tælleren matcher senior-tabellens indhold — akademiryttere
+    // er splittet ud i egen sektion, så de tælles ikke i "Squad (N)".
+    { key: "squad", label: t("tabs.squad", { count: currentRiders.filter(r => !r.is_academy).length }) },
     { key: "transfers", label: t("tabs.transfers") },
   ];
 

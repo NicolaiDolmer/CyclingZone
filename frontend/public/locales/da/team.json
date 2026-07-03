@@ -26,6 +26,11 @@
       "upcoming": "Næste sæson ({count})",
       "upcomingHint": "Viser truppen når ventende transfers er gennemført."
     },
+    "filter": {
+      "label": "Vis",
+      "seniors": "Seniorer ({count})",
+      "academy": "Akademi ({count})"
+    },
     "loanedIn": "Lejede ryttere ({count})",
     "loanedOut": "Udlejede ryttere ({count})",
     "emptyState": "Din trup er tom",

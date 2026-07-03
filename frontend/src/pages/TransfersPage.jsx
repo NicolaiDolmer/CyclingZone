@@ -15,7 +15,7 @@ import { formatNumber, formatDate } from "../lib/intl";
 import { resolveApiError } from "../lib/apiError";
 import { sortListings, LISTING_SORT_OPTIONS, ABILITY_SORT_KEYS } from "../lib/transferListingSort";
 import { Card, EmptyState, ExchangeIcon, ClipboardIcon, InboxIcon, PageLoader } from "../components/ui";
-import { ABILITY_STATS as LISTING_STATS, ABILITY_KEYS, flattenAbilities } from "../lib/abilities";
+import { ABILITY_STATS as LISTING_STATS, ABILITY_KEYS, ABILITY_SHORT, flattenAbilities } from "../lib/abilities";
 
 // #2031: pris/værdi/alder-sortering vises som knapper; de 15 evne-sorteringer
 // samles i en dropdown (for mange til knapper). Knap-rækken = alt undtagen evnerne.
@@ -32,13 +32,34 @@ const API = import.meta.env.VITE_API_URL;
 const VALID_TABS = ["received", "sent", "archive", "swaps", "loans", "market"];
 const DEFAULT_TAB = "received";
 
+// #58: de 6 sideordnede faner er grupperet i 3 handlingsorienterede modes, så en
+// manager hurtigt ser "hvad skal jeg handle på nu?" uden at scanne 6 faner. Modes
+// er ren UI-gruppering OVENPÅ det eksisterende ?tab=-dataflow: de gamle tab-værdier
+// (og deres deep-links) router uændret — hvert mode peger blot på en delmængde af
+// VALID_TABS. Rækkefølgen af faner i et mode = visnings-rækkefølge i sub-fane-båndet.
+const TAB_MODES = [
+  { key: "handle",       tabs: ["received"] },
+  { key: "negotiations", tabs: ["sent", "archive", "swaps", "loans"] },
+  { key: "market",       tabs: ["market"] },
+];
+
+// tab → mode-opslag (afledt af TAB_MODES, så de aldrig kan divergere). Bruges til at
+// udlede det aktive mode fra den aktive fane (som stadig lever i ?tab=).
+const TAB_TO_MODE = Object.fromEntries(
+  TAB_MODES.flatMap((m) => m.tabs.map((tab) => [tab, m.key])),
+);
+
 // #1529: stat-kolonnerne = de 15 CZ-evner (delt config, importeret som LISTING_STATS).
 // Erstattede de 14 PCM stat_*. Backend /api/transfers (+ my-offers/swaps) leverer
 // rider_derived_abilities, som flades op på rytter-objektet (flattenAbilities) ved load.
-// SwapCard's hurtig-preview (4 evner):
-const SWAP_PREVIEW = [
-  ["CLM", "climbing"], ["SPR", "sprint"], ["TT", "time_trial"], ["FLT", "flat"],
-];
+//
+// #2002: SwapCard's hurtig-preview er en KURATERET delmængde (4 evner) — men både
+// rækkefølge og labels udledes af SSOT (abilities.js), så den aldrig kan divergere
+// fra de andre evne-flader. Nøglerne holdes i ABILITY_KEYS-rækkefølge (guard-test i
+// TransfersPage.abilities.test.js fejler hvis en nøgle er ukendt eller ude af orden),
+// og labelen kommer fra ABILITY_SHORT i stedet for en hardcodet streng.
+const SWAP_PREVIEW_KEYS = ["climbing", "sprint", "flat", "time_trial"];
+const SWAP_PREVIEW = SWAP_PREVIEW_KEYS.map((key) => [ABILITY_SHORT[key], key]);
 
 function useTimeAgo() {
   const { t } = useTranslation("transfers");
@@ -1451,6 +1472,33 @@ export default function TransfersPage() {
   ].length;
   const pendingLoans = lendingLoans.filter(l => l.status === "pending").length;
 
+  // #58: pr-fane label + badge, delt af mode-båndet og sub-fane-båndet. Nøglerne
+  // matcher VALID_TABS; rækkefølgen styres af TAB_MODES.
+  const tabMeta = {
+    received: { label: t("tabs.received"), badge: pendingReceived },
+    sent:     { label: t("tabs.sent"),     badge: pendingSent },
+    archive:  { label: t("tabs.archive",  { count: archivedReceivedOffers.length + archivedSentOffers.length }) },
+    swaps:    { label: t("tabs.swaps"),    badge: pendingSwaps },
+    loans:    { label: t("tabs.loans"),    badge: pendingLoans },
+    market:   { label: t("tabs.market",   { count: listings.length }) },
+  };
+  // #58: aktivt mode udledes af den aktive fane (som stadig lever i ?tab=). Klik på
+  // et mode åbner modets FØRSTE fane; er man allerede i modet bevares underfanen.
+  const activeMode = TAB_TO_MODE[tab] || TAB_MODES[0].key;
+  function selectMode(modeKey) {
+    const mode = TAB_MODES.find((m) => m.key === modeKey);
+    if (!mode) return;
+    if (mode.tabs.includes(tab)) return; // allerede i modet — bevar underfane
+    setTab(mode.tabs[0]);
+  }
+  // Sum af pending-badges pr. mode → tydelig "handling påkrævet"-markør på mode-niveau.
+  const modeBadge = Object.fromEntries(
+    TAB_MODES.map((m) => [m.key, m.tabs.reduce((sum, k) => sum + (tabMeta[k]?.badge || 0), 0)]),
+  );
+  // Underfaner vises kun for modes med >1 fane (i praksis "Forhandlinger").
+  const activeModeTabs = (TAB_MODES.find((m) => m.key === activeMode)?.tabs) || [];
+  const showSubTabs = activeModeTabs.length > 1;
+
   const riderFilters = useClientRiderFilters(listings.map(l => l.rider).filter(Boolean));
   const filteredIds = new Set(riderFilters.filtered.map(r => r.id));
   // Rytter-filtrene styrer hvilke listings der vises; rækkefølgen styres på
@@ -1496,29 +1544,55 @@ export default function TransfersPage() {
         </div>
       )}
 
-      <div className="flex gap-2 mb-5 flex-wrap max-w-4xl">
-        {[
-          { key: "received", label: t("tabs.received"), badge: pendingReceived },
-          { key: "sent",     label: t("tabs.sent"),     badge: pendingSent },
-          { key: "archive",  label: t("tabs.archive",  { count: archivedReceivedOffers.length + archivedSentOffers.length }) },
-          { key: "swaps",    label: t("tabs.swaps"),    badge: pendingSwaps },
-          { key: "loans",    label: t("tabs.loans"),    badge: pendingLoans },
-          { key: "market",   label: t("tabs.market",   { count: listings.length }) },
-        ].map(tt => (
-          <button key={tt.key} onClick={() => setTab(tt.key)}
-            className={`min-h-[44px] relative px-4 py-2 rounded-lg text-sm font-medium transition-all border
-              ${tab === tt.key
-                ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
-                : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
-            {tt.label}
-            {tt.badge > 0 && (
-              <span className="ms-2 bg-cz-accent text-cz-on-accent text-[9px] font-black px-1.5 py-0.5 rounded-full">
-                {tt.badge}
-              </span>
-            )}
-          </button>
-        ))}
+      {/* #58: primær navigation = 3 handlingsorienterede modes (Skal handles /
+          Forhandlinger / Marked). Modet er den øverste beslutning ("hvad skal jeg
+          handle på nu?"); de gamle faner lever videre som underfaner i modet. */}
+      <div className="flex gap-2 mb-3 flex-wrap max-w-4xl">
+        {TAB_MODES.map(m => {
+          const on = m.key === activeMode;
+          return (
+            <button key={m.key} onClick={() => selectMode(m.key)}
+              aria-pressed={on}
+              className={`min-h-[44px] relative px-4 py-2 rounded-lg text-sm font-semibold transition-all border
+                ${on
+                  ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
+                  : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
+              {t(`modes.${m.key}`)}
+              {modeBadge[m.key] > 0 && (
+                <span className="ms-2 bg-cz-accent text-cz-on-accent text-[9px] font-black px-1.5 py-0.5 rounded-full">
+                  {modeBadge[m.key]}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
+
+      {/* #58: sekundært underfane-bånd — kun for modes med flere faner (Forhandlinger).
+          "Skal handles" og "Marked" har hver kun én fane, så de skjuler dette bånd. */}
+      {showSubTabs && (
+        <div className="flex gap-2 mb-5 flex-wrap max-w-4xl">
+          {activeModeTabs.map(key => {
+            const meta = tabMeta[key];
+            const on = tab === key;
+            return (
+              <button key={key} onClick={() => setTab(key)}
+                aria-pressed={on}
+                className={`min-h-[44px] relative px-3 py-1.5 rounded-lg text-xs font-medium transition-all border
+                  ${on
+                    ? "bg-cz-accent/10 text-cz-accent-t border-cz-accent/30"
+                    : "text-cz-2 hover:text-cz-1 bg-cz-card border-cz-border"}`}>
+                {meta.label}
+                {meta.badge > 0 && (
+                  <span className="ms-2 bg-cz-accent text-cz-on-accent text-[9px] font-black px-1.5 py-0.5 rounded-full">
+                    {meta.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {loading ? (
         <PageLoader />

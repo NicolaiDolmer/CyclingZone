@@ -35,6 +35,9 @@ const BADGE_DEFS = {
   // #1531: skade-badge — samme danger-tone som skade-chippen på rytterprofilen
   // (ConditionChips). Synlig i Status-kolonnen på eget hold + andres hold.
   injured: { tone: "danger" },
+  // #1929-redesign: akademi-badge — markerer off-cap-akademiryttere i badge-kolonnen
+  // (afløser den inline "Academy"-tag), overalt hvor badge-kolonnen bruges.
+  academy: { tone: "accent" },
 };
 
 export default function RiderBadges({ badges = [], className = "" }) {

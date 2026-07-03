@@ -71,13 +71,13 @@ export default function TeamProfilePage() {
         // #1529: evnerne hentes via join (ABILITY_SELECT) + flades op på rytter-objektet
         // med flattenAbilities, så rider.climbing osv. virker i render/sort.
         // #1531: rider_condition(injured_until) embeddes til skade-badget (RLS: alle authenticated).
-        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, primary_type, secondary_type, ${ABILITY_SELECT}, ${CONDITION_SELECT}`)
+        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, is_academy, pending_team_id, nationality_code, primary_type, secondary_type, ${ABILITY_SELECT}, ${CONDITION_SELECT}`)
         .eq("team_id", id)
         .order("market_value", { ascending: false }),
       supabase.from("riders")
         // #922: incoming-ryttere manglede nationality_code (var med for current på
         // linje 57), så NationCell fik undefined → intet flag på "se andet hold"-siden.
-        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, pending_team_id, nationality_code, primary_type, secondary_type, ${ABILITY_SELECT}, ${CONDITION_SELECT}`)
+        .select(`id, firstname, lastname, birthdate, market_value, salary, prize_earnings_bonus, is_u25, is_academy, pending_team_id, nationality_code, primary_type, secondary_type, ${ABILITY_SELECT}, ${CONDITION_SELECT}`)
         .eq("pending_team_id", id)
         .order("market_value", { ascending: false }),
       supabase.from("season_standings")
@@ -308,7 +308,7 @@ export default function TeamProfilePage() {
                     <td className="px-4 py-2.5 hidden sm:table-cell">
                       <div className="flex flex-wrap items-center gap-1">
                         {/* #1531: skade-badge først i Status-rækken når rytteren er skadet. */}
-                        <RiderBadges badges={[isRiderInjured(r.injured_until) && "injured", ageBadgeKey(r), r._isIncoming && "incoming", r._isOutgoing && "outgoing"]} />
+                        <RiderBadges badges={[isRiderInjured(r.injured_until) && "injured", r.is_academy && "academy", ageBadgeKey(r), r._isIncoming && "incoming", r._isOutgoing && "outgoing"]} />
                       </div>
                     </td>
                     {/* #1755: numerisk alder + ryttertype som egne celler (matcher eget hold). */}

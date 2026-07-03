@@ -10,6 +10,7 @@
     "bought": "Du købte denne rytter",
     "sold": "Du solgte denne rytter",
     "injured": "Skadet",
+    "academy": "Akademirytter (uden for senior-cap'en)",
     "label": {
       "u23": "U23",
       "u25": "U25",
@@ -20,7 +21,8 @@
       "self": "EGEN",
       "bought": "KØBT",
       "sold": "SOLGT",
-      "injured": "SKD"
+      "injured": "SKD",
+      "academy": "AKAD"
     }
   },
   "page": {
