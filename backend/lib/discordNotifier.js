@@ -13,6 +13,7 @@ import { assertDiscordWebhookUrl } from "./urlSafety.js";
 import { attemptDmDelivery } from "./discordDmDelivery.js";
 import { enqueueDm, processDmOutboxDrain } from "./discordDmOutbox.js";
 import { captureException as sentryCapture } from "./sentry.js";
+import { getOpsWebhookUrl, makeSendOpsWebhook } from "./opsWebhook.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 config({ path: join(__dirname, "../.env"), quiet: true });
@@ -90,6 +91,20 @@ export async function sendWebhook(webhookUrl, payload) {
     console.error("Discord webhook error:", err.message);
   }
 }
+
+// ── Ops-alarm-kanal (#2077) ───────────────────────────────────────────────────
+// Kritiske backend-alarmer (stall-watchdog, sæson-count-anomali, bot-token-drift,
+// DM-outbox-død) routes til en privat #ops-kanal via DISCORD_OPS_WEBHOOK_URL med
+// @mention (DISCORD_OPS_MENTION). getOpsWebhook falder gracefully tilbage til
+// default-webhooken indtil ops-kanalen er provisioneret, så intet regesserer.
+
+/** Ops-webhook-URL (DISCORD_OPS_WEBHOOK_URL → fallback default). */
+export async function getOpsWebhook() {
+  return getOpsWebhookUrl(getDefaultWebhook);
+}
+
+/** sendWebhook der auto-prepender ops-@mention (DISCORD_OPS_MENTION). */
+export const sendOpsWebhook = makeSendOpsWebhook(sendWebhook);
 
 // ── Discord DM (Bot REST) ─────────────────────────────────────────────────────
 // Requires DISCORD_BOT_TOKEN in env. Bot must share a server with recipient
@@ -257,8 +272,9 @@ export async function drainDiscordDmOutbox({ now = new Date() } = {}) {
   return processDmOutboxDrain({
     supabase,
     deliverFn: ({ discordId, payload }) => attemptDmDelivery({ discordId, payload, botToken }),
-    sendWebhookFn: sendWebhook,
-    getDefaultWebhookFn: getDefaultWebhook,
+    // #2077: DM-død-alarm → ops-kanal m. @mention (var "general" via getDefaultWebhook).
+    sendWebhookFn: sendOpsWebhook,
+    getDefaultWebhookFn: getOpsWebhook,
     captureExceptionFn: sentryCapture,
     now,
   });
