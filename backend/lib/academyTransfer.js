@@ -20,10 +20,11 @@ import { ACADEMY } from "./academyFlag.js";
 import { LAUNCH_REFERENCE_YEAR } from "./riderProgressionEngine.js";
 
 /**
- * Demote-løn = ACADEMY.SALARY_RATE (0.10) × base_value, gulvet på 1 (ejer-beslutning
- * D5: ignorér prize-bonus, gen-beregn ned til ren ungdomsrate). Bevidst en ANDEN sats
- * end computeFrozenSalary (senior 0.067) — en demote skal koste ungdomsrate, ikke den
- * frosne seniorløn.
+ * Demote-løn = ACADEMY.SALARY_RATE × base_value, gulvet på 1 (ejer-beslutning D5:
+ * ignorér prize-bonus, gen-beregn ned fra base_value). #2083: ACADEMY.SALARY_RATE
+ * er nu den delte senior-rate (0.067) — ét fælles løn-system, ikke længere en
+ * separat ungdomssats. Adskiller sig fra computeFrozenSalary kun ved at bruge rent
+ * base_value (uden prize-bonus).
  */
 export function demoteSalary({ base_value } = {}) {
   const base = Number(base_value) > 0 ? Number(base_value) : 0;
@@ -107,7 +108,7 @@ const DEMOTE_ERROR_CODES = new Set([
 /**
  * Demote en U23-senior-rytter ned i akademiet (D5).
  *
- * - newSalary = max(1, round(base_value × ACADEMY.SALARY_RATE)) (ungdomsrate).
+ * - newSalary = max(1, round(base_value × ACADEMY.SALARY_RATE)) (#2083: delt rate 0.067).
  * - p_season_start_year = LAUNCH_REFERENCE_YEAR + (seasonNumber - 1) (spejler
  *   ageForSeason, så RPC'ens alders-gate matcher motoren).
  * - kalder demote_rider_to_academy-RPC'en (advisory-lås + akademi-cap + atomisk

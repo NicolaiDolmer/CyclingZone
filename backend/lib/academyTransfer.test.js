@@ -80,7 +80,7 @@ const SENIOR_U23 = {
 
 // ─── demoteSalary helper ──────────────────────────────────────────────────────
 
-test("demoteSalary: 0.10 × base_value, gulvet på 1", () => {
+test("demoteSalary: SALARY_RATE × base_value, gulvet på 1", () => {
   assert.equal(demoteSalary({ base_value: 50000 }), Math.round(50000 * ACADEMY.SALARY_RATE));
   assert.equal(demoteSalary({ base_value: 0 }), 1);
   assert.equal(demoteSalary({ base_value: null }), 1);
@@ -173,7 +173,7 @@ test("promote: kaster ved rider-update-fejl", async () => {
 test("demote: kalder RPC med korrekt løn + sæson-år + kontrakt; notify; returnerer racesCleared", async () => {
   const { supabase, rec } = makeSupabase({
     rider: SENIOR_U23,
-    rpcResult: { ok: true, new_salary: 5000, rows_deleted: 3 },
+    rpcResult: { ok: true, new_salary: 3350, rows_deleted: 3 },
   });
   const notify = spyNotify();
   // seasonNumber 1 → p_season_start_year = 2026 + 0 = 2026

@@ -60,7 +60,7 @@ export const RULES_NUMBERS = {
   academySlots: 8, // ACADEMY.SLOTS
   academyMinAge: 16, // ACADEMY.MIN_AGE
   academyMaxAge: 21, // ACADEMY.MAX_AGE
-  academySalaryPct: 10, // ACADEMY.SALARY_RATE (0.10) × 100
+  academySalaryPct: 6.7, // ACADEMY.SALARY_RATE × 100 (#2083: ensrettet til den delte SALARY_RATE = salaryRatePct)
   academyContractLength: 3, // ACADEMY.CONTRACT_LENGTH
   academyDrift: 5000, // ACADEMY.DRIFT_PER_SEASON
 

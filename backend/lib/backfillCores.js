@@ -20,6 +20,7 @@ import { isAcademyAge } from "./academyFlag.js";
 import { computeRiderTypes, RIDER_TYPE_KEYS, ABILITY_KEYS } from "./riderTypes.js";
 import { predictBaseValue } from "./riderValuation.js";
 import { calculateRiderMarketValue } from "./marketUtils.js";
+import { computeFrozenSalary } from "./contractSeed.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const UPSERT_BATCH = 500;
@@ -282,32 +283,43 @@ export async function deriveForRiderIds(supabase, riderIds, {
 export async function runBaseValueBackfill(supabase, { dryRun = true, model, log = noop } = {}) {
   const m = model || JSON.parse(readFileSync(VALUATION_MODEL_PATH, "utf8"));
   const [riders, abilities] = await Promise.all([
-    fetchAllRows(() => supabase.from("riders").select("id, primary_type, base_value, market_value, prize_earnings_bonus").order("id")),
+    fetchAllRows(() => supabase.from("riders").select("id, primary_type, base_value, market_value, prize_earnings_bonus, is_academy, salary").order("id")),
     fetchAllRows(() => supabase.from("rider_derived_abilities").select("*").order("rider_id")),
   ]);
   const abilityByRider = new Map(abilities.map((a) => [a.rider_id, a]));
 
   const updates = [];
   let noAbilities = 0;
+  let salariesRecomputed = 0;
   const oldVals = [];
   const newVals = [];
   for (const r of riders) {
     const bv = predictBaseValue(r, abilityByRider.get(r.id), m);
     if (bv == null) { noAbilities++; continue; }
-    updates.push({ id: r.id, base_value: bv });
+    const update = { id: r.id, base_value: bv };
+    // #2083 forward-guard: hold in-academy-rytteres frosne løn i sync med den
+    // genberegnede base_value (delt SALARY_RATE via computeFrozenSalary). Uden dette
+    // efterlod #1791 lønnen frossen på den gamle, højere værdi. Seniorer
+    // (is_academy=false) røres ALDRIG — deres kontrakt-løn er bevidst frossen ved
+    // signering. Kun akademiryttere med en eksisterende løn re-synkes.
+    if (r.is_academy && r.salary != null) {
+      update.salary = computeFrozenSalary({ base_value: bv, prize_earnings_bonus: r.prize_earnings_bonus });
+      salariesRecomputed++;
+    }
+    updates.push(update);
     oldVals.push(calculateRiderMarketValue(r));
     newVals.push(bv);
   }
   oldVals.sort((a, b) => a - b);
   newVals.sort((a, b) => a - b);
-  log(`base_value: ${riders.length} ryttere · værdisat ${updates.length} · uden abilities ${noAbilities}`);
+  log(`base_value: ${riders.length} ryttere · værdisat ${updates.length} · uden abilities ${noAbilities} · akademi-løn re-synket ${salariesRecomputed}`);
   if (updates.length > 0) {
     log("Fordeling (CZ$):           p10        median        p90          max");
     log(`  GAMMEL (uci): ${fmt(pct(oldVals, 0.1)).padStart(12)} ${fmt(pct(oldVals, 0.5)).padStart(12)} ${fmt(pct(oldVals, 0.9)).padStart(12)} ${fmt(oldVals[oldVals.length - 1]).padStart(12)}`);
     log(`  NY  (base):   ${fmt(pct(newVals, 0.1)).padStart(12)} ${fmt(pct(newVals, 0.5)).padStart(12)} ${fmt(pct(newVals, 0.9)).padStart(12)} ${fmt(newVals[newVals.length - 1]).padStart(12)}`);
   }
 
-  if (dryRun) return { riders: riders.length, valued: updates.length, noAbilities, written: 0 };
+  if (dryRun) return { riders: riders.length, valued: updates.length, noAbilities, salariesRecomputed, written: 0 };
   const written = await updateRidersConcurrent(supabase, updates);
-  return { riders: riders.length, valued: updates.length, noAbilities, written };
+  return { riders: riders.length, valued: updates.length, noAbilities, salariesRecomputed, written };
 }
