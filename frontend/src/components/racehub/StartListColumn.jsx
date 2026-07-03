@@ -5,6 +5,7 @@
 import { useTranslation } from "react-i18next";
 import { Flag } from "../Flag.jsx";
 import RaceLink from "../RaceLink.jsx";
+import TeamLink from "../TeamLink";
 import { LockIcon } from "../ui";
 
 function riderLabel(r) {
@@ -51,7 +52,9 @@ export default function StartListColumn({ column }) {
           <p className="px-3 py-2 text-[11px] text-cz-3">{t("browse.noEntries")}</p>
         ) : column.teams.map((g) => (
           <div key={g.team.id} className="px-3 py-1.5 border-b border-cz-border/50 last:border-0">
-            <p className="text-[11px] font-medium text-cz-2 mb-1 truncate">{g.team.name ?? t("browse.unknownTeam")}</p>
+            <p className="text-[11px] font-medium text-cz-2 mb-1 truncate">
+              <TeamLink id={g.team.id} className="hover:text-cz-accent-t transition-colors">{g.team.name ?? t("browse.unknownTeam")}</TeamLink>
+            </p>
             <div className="flex flex-wrap gap-1">
               {g.riders.map((r) => (
                 <span key={r.id} className="inline-flex items-center gap-1 text-[11px] text-cz-1 bg-cz-subtle rounded-full px-2 py-0.5">
