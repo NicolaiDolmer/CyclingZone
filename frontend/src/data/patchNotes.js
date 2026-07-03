@@ -9,6 +9,20 @@ export const PATCHES = [
     "label": "Beta",
     "changes": [
       {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Training",
+        "en": {
+          "title": "Daily training shows when it ran and when your changes take effect",
+          "body": "The training page now shows the exact time today's training ran, and makes clear it runs once per day. If you change a rider's focus or intensity after today's training has already run, a note explains the change takes effect at the next training tomorrow, and that form and fatigue only update at the daily training rather than continuously.",
+        },
+        "da": {
+          "title": "Daglig træning viser hvornår den kørte, og hvornår dine ændringer gælder",
+          "body": "Træningssiden viser nu det præcise tidspunkt dagens træning kørte, og gør tydeligt at den kører én gang om dagen. Hvis du ændrer en rytters fokus eller intensitet efter dagens træning allerede er kørt, forklarer en besked at ændringen først træder i kraft ved næste træning i morgen, og at form og træthed kun opdateres ved den daglige træning frem for løbende.",
+        },
+        "refs": [1936]
+      },
+      {
         "category": "fixed",
         "audience": "player",
         "topic": "Riders",
