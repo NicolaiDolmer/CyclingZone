@@ -90,9 +90,6 @@
     "statsToggleShowAll": "Show all",
     "statsToggleHideAll": "Hide all"
   },
-  "race": {
-    "editionYear": "{year} edition"
-  },
   "a11y": {
     "openMenu": "Open menu",
     "openNotifications": "Inbox",

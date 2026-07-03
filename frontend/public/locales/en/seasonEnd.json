@@ -27,8 +27,7 @@
     "expectedTotalTooltip": "Live-calculated sum of the expected pool for all the season's races",
     "summary": "{completed} completed · {scheduled} upcoming",
     "stageRace": "Stage race · {count, plural, one {# stage} other {# stages}}",
-    "oneDay": "One-day race",
-    "edition": "{year} edition"
+    "oneDay": "One-day race"
   },
   "division": "Division {div}",
   "promotionNote": "Top 2 promoted ↑",
