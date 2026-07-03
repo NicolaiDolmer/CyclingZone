@@ -25,7 +25,9 @@
   },
   "stats": {
     "section": "Stat filters",
-    "active": "{count} active"
+    "active": "{count} active",
+    "minInput": "{label} min",
+    "maxInput": "{label} max"
   },
   "chips": {
     "value": {
