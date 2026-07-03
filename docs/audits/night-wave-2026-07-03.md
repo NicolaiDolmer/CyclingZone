@@ -4,7 +4,7 @@
 |---|---|
 | Start/slut (lokal tid) | 00:24 launch → 08:47 close-out (agent-arbejde 00:24–01:15, recovery 08:30–08:45) |
 | Agenter launched / fuldført / hang | 21 / 18 i første pass / 3 hang (F2, F9, I4) → alle 3 reddet i recovery |
-| PR'er åbnet / merged | 20 åbnet / **15 merged 3/7 morgen** (ejer-delegeret, per-PR-godkendt) + 3 Dependabot-PR'er · 5 owner-held (B1 #2119, B3 #2120, F2 #2137, I3 #2134, I5 #2135) |
+| PR'er åbnet / merged | 20 åbnet / **17 merged 3/7 morgen** (ejer-delegeret, per-PR-godkendt) + 3 Dependabot · 3 owner-held (B1 #2119, B3 #2120, F2 #2137) + patch-note PR #2139 |
 | Issues → claude:done | 15 lukket efter merge (#2017 #1668 #2074 #2033 #2018 #256 #261 #2029 #1665 #2047 #260 #1930 #1953 #2108 #2060 #2032 #109 #2073) + #2059 (allerede løst) |
 | gh-401-retries (preflight-probe + bølge) | Ikke talt eksakt; preflight-GraphQL-probe grøn på 1. forsøg |
 | Recoveries (type) | 3 (F2: fortsæt-uncommitted · F9: frisk-tom · I4: falsk-positiv/allerede-løst) |
@@ -49,10 +49,11 @@
 
 Ejeren delegerede merge af de PR'er der er svære for ham selv at bedømme (backend/interne/mekaniske), per-PR godkendt. Orkestratoren merged kun efter faktisk diff-review + grøn CI; ejeren beholdt de player-synlige beslutninger.
 
-- **Merged + verificeret (15 fleet + 3 Dependabot):** B2 #2121, B4 #2124, B5 #2122 (backend) · F1 #2123, F3 #2130, F4 #2125, F5 #2126, F6 #2129, F7 #2127, F8 #2128, F9 #2138, F10 #2133, F11 #2132 (frontend) · I1 #2131, I2 #2136 (infra) · Dependabot #2116/#2117/#2118. Alle grøn CI, done-flippet.
+- **Merged + verificeret (17 fleet + 3 Dependabot):** B2 #2121, B4 #2124, B5 #2122 (backend) · F1 #2123, F3 #2130, F4 #2125, F5 #2126, F6 #2129, F7 #2127, F8 #2128, F9 #2138, F10 #2133, F11 #2132 (frontend) · I1 #2131, I2 #2136, I3 #2134, I5 #2135 (infra) · Dependabot #2116/#2117/#2118. Alle grøn CI, done-flippet.
+- **Patch-note:** konsolideret v6.50 (9 player-synlige ændringer) i **PR #2139** — ikke auto-merged; afventer ejer-tone-godkendelse.
 - **Rødt-blokerede fixet af orkestrator før merge:** #2124 + #2123 fejlede `leak-check` på nye danske interne guard/log-strenge (`raceActiveGuard.js`, `raceEntryGenerator.js`, `raceRunner.js`). Gjort engelske (interne dev/Sentry-beskeder, ikke player-facing), test-assertion opdateret, verificeret grøn.
 - **#2124-migration LIVE i prod:** `trg_block_rider_delete_inflight` + funktionen verificeret via `Auto-migrate` (execute_sql: trigger_count=1, function_count=1).
-- **Owner-held (5):** B1 #2119 + B3 #2120 (player-synlige/race-engine — "snakker vi om til sidst, usikker på godkendelse"; review-verdikt `needs_owner/high`, teknisk defekt-fri), F2 #2137 (transfer-redesign — ejer-review senere), I3 #2134 + I5 #2135 (FAQ-nøgle + DA-copy — ikke behandlet).
+- **Owner-held (3):** B1 #2119 + B3 #2120 (player-synlige/race-engine — "snakker vi om til sidst, usikker på godkendelse"; review-verdikt `needs_owner/high`, teknisk defekt-fri), F2 #2137 (transfer-redesign — ejer-review senere).
 - **#2121-note:** loftet retter kun FREMTIDIGE løb; eksisterende 5-TT grand tours i `race_stage_profiles` rettes først når ejer kører `backfillRaceStageProfiles.js` uden `--dry-run`.
 
 ## Afvigelser/læringer
