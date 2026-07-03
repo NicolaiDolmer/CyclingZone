@@ -22,7 +22,7 @@ export function useTraining() {
   const [plans, setPlans] = useState({});         // { <rider_id>: { focus, intensity } }
   const [teamId, setTeamId] = useState(null);
   const [enabled, setEnabled] = useState(false);  // daglig træning aktiveret
-  const [todayRun, setTodayRun] = useState(null); // { executed_by, bonus_applied, report, tick_date } | null
+  const [todayRun, setTodayRun] = useState(null); // { executed_by, bonus_applied, report, tick_date, created_at } | null
   const [condition, setCondition] = useState({}); // { <rider_id>: { form, fatigue, injured_until, risk } }
   const [progress, setProgress] = useState({});   // { <rider_id>: { ability } }
   const [loading, setLoading] = useState(true);
@@ -154,7 +154,7 @@ export function useTraining() {
       }
       if (!res.ok) return { ok: false, error: data.error || "failed" };
       // Opdatér todayRun lokalt + kald refresh for konsistent state.
-      setTodayRun({ executed_by: "manual", bonus_applied: data.bonus_applied, report: data.report, tick_date: data.tickDate });
+      setTodayRun({ executed_by: "manual", bonus_applied: data.bonus_applied, report: data.report, tick_date: data.tickDate, created_at: new Date().toISOString() });
       logEvent("training_run_today", { tickDate: data.tickDate, bonus_applied: data.bonus_applied });
       await refresh();
       return data;

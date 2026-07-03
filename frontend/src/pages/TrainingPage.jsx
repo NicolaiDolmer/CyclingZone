@@ -118,11 +118,23 @@ export default function TrainingPage() {
     }
   }
 
-  // Bestem hvilken trained-today label der vises.
+  // Dagens tick-tidspunkt i dansk lokaltid (created_at er UTC). null → vis label uden kl.
+  function trainedTime() {
+    const ts = todayRun?.created_at;
+    if (!ts) return null;
+    const d = new Date(ts);
+    if (Number.isNaN(d.getTime())) return null;
+    return d.toLocaleTimeString("en-GB", {
+      hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Europe/Copenhagen",
+    });
+  }
+
+  // Bestem hvilken trained-today label der vises (med klokkeslæt når det kendes).
   function trainedTodayLabel() {
     const by = todayRun?.executed_by;
-    if (by === "assistant" || by === "cron") return t("trainedToday_assistant");
-    return t("trainedToday_you");
+    const who = by === "assistant" || by === "cron" ? "assistant" : "you";
+    const time = trainedTime();
+    return time ? t(`trainedTodayAt_${who}`, { time }) : t(`trainedToday_${who}`);
   }
 
   const today = new Date();
@@ -334,7 +346,9 @@ export default function TrainingPage() {
             <span className="text-sm text-cz-success font-medium">{trainedTodayLabel()}</span>
           ) : !enabled ? (
             <span className="text-sm text-cz-3 italic">{t("disabledNote")}</span>
-          ) : null}
+          ) : (
+            <span className="text-sm text-cz-3">{t("notTrainedYetToday")}</span>
+          )}
           <button
             type="button"
             onClick={handleRunToday}
@@ -348,6 +362,15 @@ export default function TrainingPage() {
 
       {runError && (
         <p className="text-cz-danger text-sm">{runError}</p>
+      )}
+
+      {/* Tick-model-besked (#1936): når dagens træning er kørt, forklar at ændringer
+          nu gælder fra i morgen + at form/træthed kun rykker ved det daglige tick.
+          Fjerner "fokus blev ikke gemt"/"træthed fryser"-forvirringen. */}
+      {todayRun && (
+        <div className="bg-cz-accent/5 border border-cz-accent/20 rounded-cz px-4 py-2.5">
+          <p className="text-sm text-cz-2 leading-relaxed">{t("tickModelDone")}</p>
+        </div>
       )}
 
       {/* Daglig recovery-forklaring (#1676) — svarer "Får man energi tilbage hver dag?" */}

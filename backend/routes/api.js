@@ -1310,7 +1310,7 @@ router.get("/training/me", requireAuth, async (req, res) => {
       activeSeasonId
         ? supabase
             .from("training_day_runs")
-            .select("executed_by, bonus_applied, report, tick_date")
+            .select("executed_by, bonus_applied, report, tick_date, created_at")
             .eq("team_id", teamId)
             .eq("tick_date", todayDate)
             .maybeSingle()
