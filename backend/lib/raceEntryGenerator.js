@@ -327,7 +327,7 @@ export async function runRaceEntryGenerator({ supabase, seasonId, dryRun = true 
       // men vi gør invarianten lokal til delete'en så en fremtidig refaktor ikke kan
       // nulstille et aktivt startfelt. startedRaceIds er allerede beregnet (ingen query).
       if (startedRaceIds.has(race_id)) {
-        throw new Error(`race_lineup_frozen: nægter at slette race_entries for igangværende løb ${race_id} (raceEntryGenerator)`);
+        throw new Error(`race_lineup_frozen: refusing to delete race_entries for in-flight race ${race_id} (raceEntryGenerator)`);
       }
       const { error: delErr } = await supabase
         .from("race_entries").delete()

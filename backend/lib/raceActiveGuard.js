@@ -64,13 +64,13 @@ export async function assertLineupMutationAllowed({ supabase, raceId, race = nul
     if (!supabase || !raceId) return; // intet at gå ud fra → fail-open (kalder-ansvar)
     const { data, error } = await supabase
       .from("races").select("status, stages_completed").eq("id", raceId).maybeSingle();
-    if (error) throw new Error(`raceActiveGuard: kunne ikke slå løb ${raceId} op: ${error.message}`);
+    if (error) throw new Error(`raceActiveGuard: could not look up race ${raceId}: ${error.message}`);
     target = data;
   }
   if (target && isRaceLineupFrozen(target)) {
     const err = new Error(
-      `race_lineup_frozen: nægter at slette race_entries for igangværende løb ${raceId} (${label}); ` +
-      `feltet er låst (stages_completed=${target.stages_completed ?? 0}, status=${target.status ?? "?"})`
+      `race_lineup_frozen: refusing to delete race_entries for in-flight race ${raceId} (${label}); ` +
+      `lineup is locked (stages_completed=${target.stages_completed ?? 0}, status=${target.status ?? "?"})`
     );
     err.code = "race_lineup_frozen";
     throw err;
@@ -123,10 +123,10 @@ export async function detectInFlightRacesWithoutEntries({ supabase, seasonId = n
   }
 
   if (affected.length) {
-    const names = affected.map((r) => `${r.name} (${r.stages_completed}/${r.stages} etaper)`).join(", ");
+    const names = affected.map((r) => `${r.name} (${r.stages_completed}/${r.stages} stages)`).join(", ");
     console.error(
-      `  🚨 raceActiveGuard: ${affected.length} IGANGVÆRENDE løb har MISTET sit startfelt (0 race_entries): ${names}. ` +
-      `Genopretning er ejer-only (#2074) — dette er kun en alarm.`
+      `  🚨 raceActiveGuard: ${affected.length} in-flight race(s) LOST their start field (0 race_entries): ${names}. ` +
+      `Recovery is owner-only (#2074); this is an alarm only.`
     );
     // Ét Sentry-event pr. sweep (ikke pr. løb) med løbe-id'erne som ekstra kontekst.
     captureException(new Error(`race_startfield_lost: ${affected.length} in-flight race(s) with 0 entries`), {

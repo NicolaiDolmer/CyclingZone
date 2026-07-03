@@ -34,7 +34,7 @@ test("assertLineupMutationAllowed: kaster for igangværende løb (medsendt race)
     () => assertLineupMutationAllowed({ raceId: "r1", race: { status: "scheduled", stages_completed: 2 }, label: "test" }),
     (err) => {
       assert.equal(err.code, "race_lineup_frozen");
-      assert.match(err.message, /igangværende løb r1/);
+      assert.match(err.message, /in-flight race r1/);
       return true;
     }
   );
