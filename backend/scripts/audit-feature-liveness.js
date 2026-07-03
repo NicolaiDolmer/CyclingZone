@@ -165,14 +165,15 @@ const WHITELIST_EMPTY_TABLES = new Set([
   // Samme flag-gated mønster som academy_intake ovenfor; tabellen fyldes først ved
   // relaunch. Skriv-path verificeret i academyGraduation.js. Fjern når flag tændes + rows.
   "academy_graduation",
-  // Signup-attribution (#679/#1403/#1408): fire-and-forget upsert kører på FØRSTE
-  // team-create (signup-bootstrap) i PUT /api/teams/my, men KUN når klienten sender en
-  // attribution-payload med et signal (utm_*/referrer/landing_path) — direkte signups
-  // uden UTM/referrer skriver ingen row (buildAttributionRow returnerer null). Featuren
-  // blev lige shippet (#1408 merged 2026-06-14, landing-page #1409/#1410 14/6), så tabellen
-  // er bevidst tom indtil de første attriburede signups akkumulerer efter TdF-launch (20/6).
-  // Skriv-path verificeret i backend/routes/api.js (PUT /teams/my) + backend/lib/signupAttribution.js.
-  // TODO(2026-06-27): fjern denne entry når tabellen har rows (tjek ~1 uge efter launch).
+  // Signup-attribution (#679/#1408, genoplivet i #2069/#2079): fire-and-forget upsert
+  // kører på FØRSTE team-create (signup-bootstrap) i PUT /api/teams/my, men KUN når
+  // klienten sender en attribution-payload med et signal (utm_*/referrer/landing_path) —
+  // direkte signups uden UTM/referrer skriver ingen row (buildAttributionRow returnerer
+  // null). Tabellen var 100% tom 15/6-2/7 fordi email-confirm var slået til og KUN
+  // LoginPage-bootstrappen sendte attribution (#2079's rod-årsag). Fixet 2-3/7: alle tre
+  // team-create-stier (LoginPage, Layout-bootstrap, SetupWizardModal) sender nu attribution
+  // med user_metadata som cross-device-fallback. De 65 historiske signups er tabt (accepteret).
+  // TODO(2026-07-10): fjern denne entry når tabellen har rows (tjek efter TdF-kampagnen 4/7).
   "signup_attribution",
   // In-app NPS (#940, shippet 2026-06-25): nps_responses fyldes KUN når en bruger
   // afgiver et NPS-svar (0-10 + valgfri fritekst). Skriv-path verificeret: klienten

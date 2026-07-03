@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
+import { getAttribution } from "../lib/attribution";
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -44,7 +45,15 @@ export default function SetupWizardModal({ onComplete, initialTeamName = "", ini
           "Content-Type": "application/json",
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ name: teamName.trim(), manager_name: managerName.trim() }),
+        // #2079: denne fallback-sti var den ENESTE team-create-sti i hele
+        // confirm-on-perioden 15/6-2/7 og sendte ingen attribution — derfor var
+        // signup_attribution tom. Send snapshottet med her også, med metadata
+        // som cross-device-fallback (samme kæde som Layout-bootstrappen).
+        body: JSON.stringify({
+          name: teamName.trim(),
+          manager_name: managerName.trim(),
+          attribution: getAttribution() || session.user?.user_metadata?.attribution || null,
+        }),
       });
       const data = await res.json().catch(() => ({}));
 
