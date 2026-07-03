@@ -9,6 +9,20 @@ export const PATCHES = [
     "label": "Beta",
     "changes": [
       {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Academy riders now sit in your main squad table, with a filter",
+          "body": "Academy riders used to live in a separate section on your team page. They now appear in the same table as your senior riders, marked with an Academy badge in the status column. A filter at the top lets you show or hide seniors and academy riders independently, and the full squad shows by default. Academy riders still develop separately and never count toward the senior squad cap.",
+        },
+        "da": {
+          "title": "Akademiryttere ligger nu i din hovedtrup-tabel, med et filter",
+          "body": "Akademiryttere lå tidligere i en separat sektion på holdsiden. De vises nu i samme tabel som dine senior-ryttere, markeret med et Akademi-badge i status-kolonnen. Et filter i toppen lader dig vise eller skjule seniorer og akademiryttere uafhængigt, og hele truppen vises som standard. Akademiryttere udvikles fortsat separat og tæller aldrig med i senior-truppens cap.",
+        },
+        "refs": [1929]
+      },
+      {
         "category": "fixed",
         "audience": "player",
         "topic": "Academy",
