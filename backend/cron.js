@@ -33,6 +33,7 @@ import {
   getOpsWebhook,
   sendOpsWebhook,
 } from "./lib/discordNotifier.js";
+import { syncAllDivisionRoles } from "./lib/discordRoleSync.js";
 import { processDeadlineDayCron } from "./lib/deadlineDayReport.js";
 import { processSquadEnforcementCron } from "./lib/squadEnforcement.js";
 import { processSeasonAutoTransitionCron } from "./lib/seasonAutoTransition.js";
@@ -386,6 +387,20 @@ async function runDiscordDmOutboxDrain() {
   }
 }
 
+// ─── Discord division-role sync (#2153) ──────────────────────────────────────
+// Spillet ejer sandheden om hvilken division/gruppe en spiller er i. Denne
+// daglige reconcile holder Discord-gruppe-rollen i sync (op-/nedrykning, sæson-
+// skift, nye links) uden manuelle reaction-roller. Idempotent + selv-helende.
+
+async function runDiscordRoleSyncCron() {
+  const botToken = getBotToken();
+  if (!botToken) return; // token-mangel fanges af runDiscordBotTokenCheck
+  const result = await syncAllDivisionRoles({ supabase, botToken });
+  if (result.changed) {
+    console.log(`🎭 Discord division-roller: ${result.changed} ændret (${result.synced} synket, ${result.skipped} sprunget over)`);
+  }
+}
+
 // ─── Stall-watchdog (#2077) ──────────────────────────────────────────────────
 // Fanger TAVSE stalls som exception-capture ikke ser: løb der er kørt men ikke
 // finalized, forfaldne etaper uden resultater (m. reelt startfelt), completede løb
@@ -658,6 +673,9 @@ export function startCron() {
 
   // Every 24 hours: Discord bot-token safety-net (forward-guard mod tavs token-drift).
   setInterval(trackedTick("discord bot-token check", runDiscordBotTokenCheck), 24 * 60 * 60 * 1000);
+
+  // Every 24 hours: reconcile Discord division-roller mod spillets tilstand (#2153).
+  setInterval(trackedTick("discord division-role sync", runDiscordRoleSyncCron), 24 * 60 * 60 * 1000);
 
   // Every 5 minutes: Discord DM-outbox drain (#1115 — retry af fejlede DMs).
   setInterval(trackedTick("discord dm-outbox drain", runDiscordDmOutboxDrain), 5 * 60 * 1000);

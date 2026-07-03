@@ -104,6 +104,7 @@ import {
   sendTestDM,
   getBotToken,
 } from "../lib/discordNotifier.js";
+import { syncAllDivisionRoles } from "../lib/discordRoleSync.js";
 import { getPendingInboxItems } from "../lib/inboxPending.js";
 import {
   contractOnAcquirePatch,
@@ -7542,6 +7543,20 @@ router.post("/admin/discord-settings/:id/test", requireAdmin, adminWriteLimiter,
   if (error || !data) return res.status(404).json({ error: "Webhook ikke fundet" });
   const result = await sendTestEmbed(data.webhook_url);
   res.json({ ...result, timestamp: new Date().toISOString() });
+});
+
+// POST /api/admin/discord/sync-division-roles — #2153: reconcile alle linkede
+// spilleres Discord-gruppe-rolle mod spillets league_division_id. Kør manuelt
+// efter sæson-skift/op-nedrykning; cron kører den også dagligt (selv-helende).
+router.post("/admin/discord/sync-division-roles", requireAdmin, adminWriteLimiter, async (req, res) => {
+  try {
+    const botToken = getBotToken();
+    if (!botToken) return res.status(400).json({ error: "Bot-token ikke sat på serveren" });
+    const result = await syncAllDivisionRoles({ supabase, botToken });
+    res.json({ ok: true, ...result });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // POST /api/admin/sync-dyn-cyclist + /api/admin/import-results-sheets fjernet
