@@ -175,6 +175,62 @@ export const PATCHES = [
           "body": "Flag-ikonerne som sprogskifteren bruger blev loadet ved hvert besøg, selv før de var nødvendige. De loader nu først når skifteren åbnes, hvilket trimmer den første sideindlæsning.",
         },
         "refs": [2047]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Racing",
+        "en": {
+          "title": "Stages now always run on their scheduled day",
+          "body": "During the results catch-up, a few stages ran earlier than scheduled as a one-time side effect. That can no longer happen: a guard makes sure a stage only runs on its own scheduled day, so races always follow the calendar.",
+        },
+        "da": {
+          "title": "Etaper kører nu altid på deres planlagte dag",
+          "body": "Under resultat-indhentningen kørte nogle få etaper tidligere end planlagt som en engangs-bivirkning. Det kan ikke længere ske: en kontrol sikrer at en etape kun kører på sin egen planlagte dag, så løb altid følger kalenderen.",
+        },
+        "refs": [2090]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Racing",
+        "en": {
+          "title": "Grand tours no longer stack up on time trials",
+          "body": "The race generator could hand a grand tour too many individual time trials, so one three-week race ended up with five. Time trials are now capped per stage race, keeping grand tours to a realistic mix of terrain.",
+        },
+        "da": {
+          "title": "Grand tours har ikke længere for mange enkeltstarter",
+          "body": "Løbs-generatoren kunne give en grand tour for mange enkeltstarter, så ét treugers-løb endte med fem. Enkeltstarter er nu loftet pr. etapeløb, så grand tours holder en realistisk blanding af terræn.",
+        },
+        "refs": [2029]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Teams",
+        "en": {
+          "title": "AI teams have more varied nationalities and rider types",
+          "body": "Computer-controlled teams could end up with one nationality dominating the roster. Their squads now draw from a broader range of nationalities and keep a healthier spread of rider types.",
+        },
+        "da": {
+          "title": "AI-hold har mere varierede nationaliteter og ryttertyper",
+          "body": "Computerstyrede hold kunne ende med at én nationalitet dominerede truppen. Deres trupper trækker nu fra et bredere udvalg af nationaliteter og holder en sundere spredning af ryttertyper.",
+        },
+        "refs": [2067]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Auctions",
+        "en": {
+          "title": "Danish auction wording fixed",
+          "body": "In Danish, the badge shown when you hold the top bid in an auction now reads 'Du fører' instead of the awkward 'Du leder'.",
+        },
+        "da": {
+          "title": "Dansk auktions-tekst rettet",
+          "body": "På dansk viser badget, når du har det højeste bud i en auktion, nu 'Du fører' i stedet for det akavede 'Du leder'.",
+        },
+        "refs": [2070]
       }
     ]
   },
