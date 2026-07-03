@@ -112,8 +112,6 @@ import {
   getLoanAgreementAcceptedStatus,
   getLoanBuyoutRiderUpdate,
   getLoanBuyoutStatus,
-  getWindowPendingLoanFlushStatus,
-  PARKED_LOAN_STATUSES,
 } from "../lib/loanAgreementWindowing.js";
 import { buildRiderHistory } from "../lib/riderHistory.js";
 import { buildRiderInterest } from "../lib/riderInterest.js";
@@ -211,7 +209,6 @@ import {
 import {
   confirmSwapOffer,
   confirmTransferOffer,
-  flushWindowPendingOffers,
   getListingCancelIssue,
   getListingPriceUpdateIssue,
   getLoanCancelIssue,
@@ -230,7 +227,6 @@ import {
   getActiveAuctionRiderIds,
   getIncomingSquadViolation,
   getTeamMarketState,
-  TRANSFER_WINDOW_SOFT_CAP_BUFFER,
 } from "../lib/marketUtils.js";
 import {
   applyRaceResults,
@@ -652,54 +648,14 @@ async function awardTeamOwnerXP(teamId, action) {
   }
 }
 
-// ── Transfer window helper ────────────────────────────────────────────────────
-
-async function getTransferWindowStatus() {
-  const { data: tw } = await supabase
-    .from("transfer_windows").select("status, season_id")
-    .order("created_at", { ascending: false }).limit(1).single();
-  return { open: tw?.status === "open", window: tw || null };
-}
-
-async function flushWindowPendingLoans() {
-  const { data: pendingLoans, error } = await supabase
-    .from("loan_agreements")
-    .select(`id, rider_id, from_team_id, to_team_id, loan_fee, buy_option_price,
-      rider:rider_id(id, firstname, lastname, team_id),
-      from_team:from_team_id(name),
-      to_team:to_team_id(name)`)
-    .in("status", PARKED_LOAN_STATUSES);
-  if (error) throw error;
-
-  let loansProcessed = 0;
-  let loanBuyoutsProcessed = 0;
-  for (const loan of pendingLoans || []) {
-    const riderName = `${loan.rider?.firstname ?? ""} ${loan.rider?.lastname ?? ""}`.trim();
-    const nextStatus = getWindowPendingLoanFlushStatus(loan);
-
-    if (nextStatus === "buyout") {
-      await supabase.from("loan_agreements").update({ status: "buyout", updated_at: new Date().toISOString() }).eq("id", loan.id);
-      await notifyTeamOwner(loan.from_team_id, "transfer_offer_accepted", "Købsoption gennemført",
-        `${riderName} er nu skiftet permanent til ${loan.to_team?.name || "lejerholdet"}.`, loan.id,
-        { riderId: loan.rider?.id });
-      await notifyTeamOwner(loan.to_team_id, "transfer_offer_accepted", "Købsoption gennemført",
-        `${riderName} er nu registreret permanent hos dit hold.`, loan.id,
-        { riderId: loan.rider?.id });
-      loanBuyoutsProcessed++;
-    } else {
-      await supabase.from("loan_agreements").update({ status: "active", updated_at: new Date().toISOString() }).eq("id", loan.id);
-      await notifyTeamOwner(loan.from_team_id, "transfer_offer_accepted", "Lejeaftale aktiveret",
-        `${riderName} er nu registreret som udlejet til ${loan.to_team?.name || "lejerholdet"}.`, loan.id,
-        { riderId: loan.rider?.id });
-      await notifyTeamOwner(loan.to_team_id, "transfer_offer_accepted", "Lejeaftale aktiveret",
-        `${riderName} er nu registreret som lejet af dit hold.`, loan.id,
-        { riderId: loan.rider?.id });
-      loansProcessed++;
-    }
-  }
-
-  return { loansProcessed, loanBuyoutsProcessed };
-}
+// ── Marked altid åbent (#1996) ────────────────────────────────────────────────
+// Transfervinduet er afskaffet (ejer-direktiv 2026-06-22): markedet er ALTID
+// åbent, så der findes ingen "window status"-kilde længere. Handler registreres
+// øjeblikkeligt (se marketUtils.getTransferWindowOpen). Den gamle
+// getTransferWindowStatus() + flushWindowPendingLoans() (flush ved vindue-åbning)
+// er fjernet, så der ikke længere er to modstridende kilder til om markedet er
+// åbent. pending_team_id-parkeringen bevares — den genbruges af etapeløb-udskudt-
+// skifte (#1995), som flusher ved løbs-finalisering, ikke ved vindue-åbning.
 
 // ── Deadline Day ──────────────────────────────────────────────────────────────
 
@@ -3447,8 +3403,6 @@ router.patch("/transfers/:id", requireAuth, marketWriteLimiter, async (req, res)
 router.post("/transfers/offer", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!(await assertMarketOpen(req, res, "market"))) return;
   if (!assertTeamNotTransferFrozen(req, res)) return;
-  const { open } = await getTransferWindowStatus();
-
   const { rider_id, message } = req.body;
   // Security-hardening (2026-06-20): parsér beløbet til et heltal FØR validering.
   // Tidligere blev offer_amount brugt råt; en streng/decimal slap igennem `!offer_amount`
@@ -3495,9 +3449,9 @@ router.post("/transfers/offer", requireAuth, marketWriteLimiter, async (req, res
     return res.status(400).json({ error: "You can't afford this offer", errorCode: "cannot_afford_offer" });
 
   // Check squad size limits for buyer.
-  // #19/#267: +2 soft-cap buffer gælder kun i åbent vindue; lukket → hard-cap.
+  // #1996: markedet er altid åbent → intet transfervindue-buffer, altid hard-cap.
   const squadViolation = getIncomingSquadViolation(buyerState, {
-    softCapBuffer: open ? TRANSFER_WINDOW_SOFT_CAP_BUFFER : 0,
+    softCapBuffer: 0,
   });
   if (squadViolation)
     return res.status(400).json({
@@ -3828,7 +3782,6 @@ router.patch("/transfers/offers/:id", requireAuth, marketWriteLimiter, async (re
 // #19: tilbud kan sendes uanset transfervindue (betal ved aftale, registrér ved åbning).
 router.post("/transfers/:id/offer", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!(await assertMarketOpen(req, res, "market"))) return;
-  const { open } = await getTransferWindowStatus();
 
   const { offer_amount, message } = req.body;
   const { data: listing } = await supabase
@@ -3860,9 +3813,9 @@ router.post("/transfers/:id/offer", requireAuth, marketWriteLimiter, async (req,
   const listingBuyerState = await getTeamMarketState(supabase, req.team.id);
   if (offer_amount > listingBuyerState.balance)
     return res.status(400).json({ error: "You can't afford this offer", errorCode: "cannot_afford_offer" });
-  // #19/#267: +2 soft-cap buffer kun i åbent vindue; lukket → hard-cap.
+  // #1996: markedet er altid åbent → intet transfervindue-buffer, altid hard-cap.
   const listingSquadViolation = getIncomingSquadViolation(listingBuyerState, {
-    softCapBuffer: open ? TRANSFER_WINDOW_SOFT_CAP_BUFFER : 0,
+    softCapBuffer: 0,
   });
   if (listingSquadViolation)
     return res.status(400).json({
@@ -4178,8 +4131,6 @@ router.get("/loans", requireAuth, async (req, res) => {
 router.post("/loans", requireAuth, marketWriteLimiter, async (req, res) => {
   if (!(await assertMarketOpen(req, res, "market"))) return;
   if (!assertTeamNotTransferFrozen(req, res)) return;
-  const { open } = await getTransferWindowStatus();
-
   const { rider_id, loan_fee = 0, start_season, end_season, buy_option_price } = req.body;
   if (!rider_id || !start_season || !end_season)
     return res.status(400).json({ error: "rider_id, start_season and end_season are required", errorCode: "loan_fields_required" });
@@ -4211,9 +4162,9 @@ router.post("/loans", requireAuth, marketWriteLimiter, async (req, res) => {
     return res.status(400).json({ error: "Rytteren er allerede udlejet eller har et afventende lejeforslag", errorCode: "rider_already_loaned" });
 
   const borrowerState = await getTeamMarketState(supabase, req.team.id);
-  // #19/#267: soft-cap buffer kun i åbent vindue; lukket vindue bruger hard-cap.
+  // #1996: markedet er altid åbent → intet transfervindue-buffer, altid hard-cap.
   const proposalSquadViolation = getIncomingSquadViolation(borrowerState, {
-    softCapBuffer: open ? TRANSFER_WINDOW_SOFT_CAP_BUFFER : 0,
+    softCapBuffer: 0,
   });
   if (proposalSquadViolation)
     return res.status(400).json({
@@ -4268,11 +4219,10 @@ router.patch("/loans/:id", requireAuth, marketWriteLimiter, async (req, res) => 
 
   // ACCEPT — lending team accepts
   if (action === "accept" && isLender && loan.status === "pending") {
-    const { open } = await getTransferWindowStatus();
     const borrowerState = await getTeamMarketState(supabase, loan.to_team_id);
-    // #19/#267: lukket vindue parkerer aktivering, så brug hard-cap her.
+    // #1996: markedet er altid åbent → intet transfervindue-buffer, altid hard-cap.
     const activationSquadViolation = getIncomingSquadViolation(borrowerState, {
-      softCapBuffer: open ? TRANSFER_WINDOW_SOFT_CAP_BUFFER : 0,
+      softCapBuffer: 0,
     });
     if (activationSquadViolation)
       return res.status(400).json({
@@ -4338,12 +4288,11 @@ router.patch("/loans/:id", requireAuth, marketWriteLimiter, async (req, res) => 
         },
       });
     }
-    const nextStatus = getLoanAgreementAcceptedStatus({ windowOpen: open });
+    // #1996: markedet er altid åbent → lejeaftaler aktiveres straks (aldrig parkeret).
+    const nextStatus = getLoanAgreementAcceptedStatus({ windowOpen: true });
     await supabase.from("loan_agreements").update({ status: nextStatus, updated_at: new Date().toISOString() }).eq("id", loan.id);
-    const title = open ? "Lejeaftale aktiveret" : "Lejeaftale parkeret";
-    const message = open
-      ? `${req.team.name} har accepteret din lejeforespørgsel på ${loan.rider.firstname} ${loan.rider.lastname}`
-      : `${req.team.name} har accepteret og betalt din lejeforespørgsel på ${loan.rider.firstname} ${loan.rider.lastname}. Rytteren bliver registreret som lejet, når transfervinduet åbner.`;
+    const title = "Lejeaftale aktiveret";
+    const message = `${req.team.name} har accepteret din lejeforespørgsel på ${loan.rider.firstname} ${loan.rider.lastname}`;
     await notifyTeamOwner(loan.to_team_id, "transfer_offer_accepted",
       title,
       message, loan.id, { riderId: loan.rider.id });
@@ -4381,7 +4330,6 @@ router.patch("/loans/:id", requireAuth, marketWriteLimiter, async (req, res) => 
 
   // BUYOUT — borrowing team exercises buy option
   if (action === "buyout" && isBorrower && loan.status === "active" && loan.buy_option_price) {
-    const { open } = await getTransferWindowStatus();
     const price = loan.buy_option_price;
     const { data: borrower } = await supabase.from("teams").select("balance").eq("id", req.team.id).single();
     if (!borrower)
@@ -4405,22 +4353,19 @@ router.patch("/loans/:id", requireAuth, marketWriteLimiter, async (req, res) => 
     // transfer/swap parking paths use, BEFORE moving any money. The rider must
     // still be owned by the lender and not already parked for another deal; a
     // 0-row result means a competing deal claimed the rider, so we abort before
-    // debiting. Open window → ownership moves now; closed → pending_team_id parks
-    // (status "buyout_pending", flushed at window-open).
+    // debiting. #1996: markedet er altid åbent → ejerskabet flyttes med det samme.
     const boughtAt = new Date().toISOString();
     // #1309 kontrakt-on-acquire: lejeren erhverver rytteren permanent via
     // købsoption → opret standard-kontrakt hvis kontraktløs (salary == null);
-    // ellers arves den uændret. Skrives både ved åbent vindue (team_id nu) og
-    // lukket vindue (pending_team_id parkeres), fordi den generiske pending-flush
-    // ved vindue-åbning kun flytter team_id og IKKE rører kontraktfelterne.
-    // Slå aktiv sæson op ÉN gang: number → contract_end_season, id → season_id-stamp.
+    // ellers arves den uændret. Slå aktiv sæson op ÉN gang: number →
+    // contract_end_season, id → season_id-stamp.
     const { data: buyoutSeason } = await supabase.from("seasons").select("id, number").eq("status", "active").maybeSingle();
     const buyoutSeasonId = buyoutSeason?.id ?? null;
     const buyoutSeasonNumber = buyoutSeason?.number ?? 1;
     const buyoutContractPatch = contractOnAcquirePatch(loan.rider, buyoutSeasonNumber);
     const { data: claimedRider, error: claimErr } = await supabase.from("riders")
       .update({
-        ...getLoanBuyoutRiderUpdate({ windowOpen: open, borrowerTeamId: req.team.id, timestamp: boughtAt }),
+        ...getLoanBuyoutRiderUpdate({ windowOpen: true, borrowerTeamId: req.team.id, timestamp: boughtAt }),
         ...buyoutContractPatch,
       })
       .eq("id", loan.rider_id)
@@ -4466,12 +4411,11 @@ router.patch("/loans/:id", requireAuth, marketWriteLimiter, async (req, res) => 
         related_entity_id: loan.id,
       },
     });
-    const nextStatus = getLoanBuyoutStatus({ windowOpen: open });
+    // #1996: markedet er altid åbent → købsoptionen gennemføres straks (aldrig parkeret).
+    const nextStatus = getLoanBuyoutStatus({ windowOpen: true });
     await supabase.from("loan_agreements").update({ status: nextStatus, updated_at: boughtAt }).eq("id", loan.id);
-    const title = open ? "Købsoption udnyttet" : "Købsoption parkeret";
-    const message = open
-      ? `${req.team.name} har udnyttet købsoptionen på ${loan.rider.firstname} ${loan.rider.lastname} for ${price.toLocaleString()} CZ$`
-      : `${req.team.name} har udnyttet og betalt købsoptionen på ${loan.rider.firstname} ${loan.rider.lastname} for ${price.toLocaleString()} CZ$. Rytteren skifter hold, når transfervinduet åbner.`;
+    const title = "Købsoption udnyttet";
+    const message = `${req.team.name} har udnyttet købsoptionen på ${loan.rider.firstname} ${loan.rider.lastname} for ${price.toLocaleString()} CZ$`;
     await notifyTeamOwner(loan.from_team_id, "transfer_offer_accepted",
       title,
       message, loan.id);
@@ -7291,89 +7235,13 @@ router.post("/admin/adjust-balance", requireAdmin, adminWriteLimiter, async (req
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// POST /api/admin/transfer-window/open — åbn transfervinduet for aktiv sæson
-router.post("/admin/transfer-window/open", requireAdmin, adminWriteLimiter, async (req, res) => {
-  try {
-    const { season_id } = req.body;
-    if (!season_id) return res.status(400).json({ error: "season_id kræves" });
-
-    const { closes_at } = req.body;
-
-    // S-02a: arv board_negotiation_state fra forrige window så onboarding-fasen
-    // ikke resettes til 'locked' bare fordi et nyt sæson-window oprettes.
-    const { data: priorWindow } = await supabase.from("transfer_windows")
-      .select("board_negotiation_state")
-      .order("created_at", { ascending: false }).limit(1).maybeSingle();
-    const inheritedState = priorWindow?.board_negotiation_state ?? "locked";
-
-    // Insert new window record with status "open"
-    const { error: insertErr } = await supabase.from("transfer_windows")
-      .insert({
-        season_id,
-        status: "open",
-        board_negotiation_state: inheritedState,
-        ...(closes_at ? { closes_at } : {}),
-      });
-    if (insertErr) return res.status(500).json({ error: insertErr.message });
-
-    // Flush auction winners (pending_team_id → team_id).
-    // Pagineret: et naivt .select() rammer PostgREST's 1000-row-loft og taber
-    // stille parkerede ryttere (samme klasse som #772/#774). .order("id") gør
-    // siderne stabile. Refs #879.
-    const pendingRiders = await fetchAllRows(() => supabase.from("riders")
-      .select("id, pending_team_id")
-      .not("pending_team_id", "is", null)
-      .order("id"));
-
-    let ridersProcessed = 0;
-    if (pendingRiders && pendingRiders.length > 0) {
-      const flushedAt = new Date().toISOString();
-      await Promise.all(pendingRiders.map(r =>
-        supabase.from("riders").update({ team_id: r.pending_team_id, pending_team_id: null, acquired_at: flushedAt }).eq("id", r.id)
-      ));
-      ridersProcessed = pendingRiders.length;
-    }
-
-    // Flush window_pending direct transfers, swaps, and rider-loans.
-    const { transfersProcessed, swapsProcessed } = await flushWindowPendingOffers(supabase, {
-      logActivity,
-      notifyTeamOwner,
-      notifyTransferCompleted,
-      notifySwapCompleted,
-    });
-    const { loansProcessed, loanBuyoutsProcessed } = await flushWindowPendingLoans();
-
-    res.json({
-      success: true,
-      riders_processed: ridersProcessed,
-      transfers_processed: transfersProcessed,
-      swaps_processed: swapsProcessed,
-      loans_processed: loansProcessed,
-      loan_buyouts_processed: loanBuyoutsProcessed,
-    });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-// POST /api/admin/transfer-window/close — luk transfervinduet
-router.post("/admin/transfer-window/close", requireAdmin, adminWriteLimiter, async (req, res) => {
-  try {
-    const { data: tw } = await supabase.from("transfer_windows")
-      .select("id").order("created_at", { ascending: false }).limit(1).single();
-    if (!tw) return res.status(404).json({ error: "Intet aktivt transfervindue fundet" });
-    // #544: sæt ALTID closed_at sammen med status='closed'. Et manuelt admin-close
-    // må aldrig efterlade en hybrid (status='closed' + closed_at=null) — det er
-    // signaturen på et "racing-window", som deadlineDay/squadEnforcement/season-
-    // transition-cron'erne filtrerer fra via `.not("closed_at","is",null)`. Matcher
-    // de kanoniske close-paths (deadlineDayReport.fireAutoCloseIfDue +
-    // seasonTransition.closePrevTransferWindow), der begge sætter closed_at.
-    // DB CHECK-constraints (2026-05-22-transfer-window-racing-guard.sql) er det
-    // strukturelle sikkerhedsnet; dette er kode-laget i samme forsvar-i-dybden.
-    await supabase.from("transfer_windows")
-      .update({ status: "closed", closed_at: new Date().toISOString() })
-      .eq("id", tw.id);
-    res.json({ success: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
+// #1996: admin transfer-window/open + close-endpoints fjernet. Markedet er altid
+// åbent (ejer-direktiv 2026-06-22), så der er intet vindue at åbne/lukke. Den
+// gamle open-endpoint bar også den nu-afskaffede pending_team_id-flush ("flush ved
+// vindue-åbning"); den flytter til løbs-finalisering i #1995. At bevare open/close
+// var desuden en aktiv fælde: et manuelt open/close kunne genskabe den
+// modstridende transfer_windows-state, som getTransferWindowOpen netop er
+// hardkodet til at ignorere.
 
 // PUT /api/admin/deadline-day/override — skift override-tilstand (auto/on/off)
 router.put("/admin/deadline-day/override", requireAdmin, adminWriteLimiter, async (req, res) => {
