@@ -28,6 +28,8 @@ import {
   sendWebhook,
   getBotToken,
   drainDiscordDmOutbox,
+  getOpsWebhook,
+  sendOpsWebhook,
 } from "./lib/discordNotifier.js";
 import { processDeadlineDayCron } from "./lib/deadlineDayReport.js";
 import { processSquadEnforcementCron } from "./lib/squadEnforcement.js";
@@ -41,20 +43,31 @@ import { processDiscordBotTokenCheck } from "./lib/discordBotTokenCheck.js";
 import { runTrainingSweep } from "./lib/trainingSweep.js";
 import { runAcademyGraduationSweep } from "./lib/academyGraduationSweep.js";
 import { runAutoPrizeSweep } from "./lib/autoPrizeSweep.js";
+import { isAutoPrizeEnabled } from "./lib/autoPrizeFlag.js";
 import { runStageScheduler } from "./lib/stageScheduler.js";
 import { isStageSchedulerEnabled } from "./lib/stageSchedulerFlag.js";
 import { isRaceEngineV2Enabled } from "./lib/raceEngineFlag.js";
+import { processStallWatchdog } from "./lib/stallWatchdog.js";
 import { runAdminSimulateStage, buildRaceSimEmbed } from "./lib/adminSimulateRace.js";
 import { makeEnsureSeasonStandings } from "./lib/seasonStandingsBootstrap.js";
 import { updateStandings } from "./lib/economyEngine.js";
 import { runStarterSquadHealSweep } from "./lib/starterSquadHealSweep.js";
 import { runAcademyHealSweep } from "./lib/academyHealSweep.js";
 import { runRiderDeriveHealSweep } from "./lib/riderDeriveHealSweep.js";
-import { captureException as sentryCapture } from "./lib/sentry.js";
+import { captureException as sentryCapture, monitorCron } from "./lib/sentry.js";
 const __envdir = dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: join(__envdir, "../.env"), quiet: true });
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
+
+// #2077 — Sentry cron-monitor-config for de to race-kritiske 5-min-ticks. Udebliver
+// et tick (proces død/deploy-hang) fyrer Sentry en MISSED-alarm ud fra schedulen.
+const CRON_MONITOR_5MIN = {
+  schedule: { type: "interval", value: 5, unit: "minute" },
+  checkinMargin: 5, // min forsinkelse før et manglende tick regnes MISSED
+  maxRuntime: 15, // min før et in_progress-tick regnes TIMEOUT
+  timezone: "Etc/UTC",
+};
 
 const XP_REWARDS = {
   auction_won: 15,
@@ -309,8 +322,9 @@ async function runDailySeasonCountCheck() {
   const result = await processDailySeasonCountCheck({
     supabase,
     now: new Date(),
-    sendWebhookFn: sendWebhook,
-    getDefaultWebhookFn: getDefaultWebhook,
+    // #2077: alarm → privat ops-kanal m. @mention (var "general").
+    sendWebhookFn: sendOpsWebhook,
+    getDefaultWebhookFn: getOpsWebhook,
     captureExceptionFn: sentryCapture,
   });
   if (result.alerted) {
@@ -328,8 +342,9 @@ async function runDailySeasonCountCheck() {
 async function runDiscordBotTokenCheck() {
   const result = await processDiscordBotTokenCheck({
     botToken: getBotToken(),
-    sendWebhookFn: sendWebhook,
-    getDefaultWebhookFn: getDefaultWebhook,
+    // #2077: alarm → privat ops-kanal m. @mention (var "general").
+    sendWebhookFn: sendOpsWebhook,
+    getDefaultWebhookFn: getOpsWebhook,
     captureExceptionFn: sentryCapture,
     now: new Date(),
   });
@@ -350,6 +365,29 @@ async function runDiscordDmOutboxDrain() {
     console.log(
       `📬 Discord DM-outbox: ${result.processed} behandlet — ${result.sent} sendt, ${result.rescheduled} replanlagt, ${result.dead} opgivet`
     );
+  }
+}
+
+// ─── Stall-watchdog (#2077) ──────────────────────────────────────────────────
+// Fanger TAVSE stalls som exception-capture ikke ser: løb der er kørt men ikke
+// finalized, forfaldne etaper uden resultater (m. reelt startfelt), completede løb
+// med ubetalte præmier, og standings der hænger bag results. Alarm → ops-kanal +
+// Sentry. Dedup pr. (check, løb, dag) via delt Set → ingen 30-min-spam.
+const stallWatchdogSeenKeys = new Set();
+
+async function runStallWatchdogCron() {
+  const autoPrizeEnabled = await isAutoPrizeEnabled(supabase);
+  const result = await processStallWatchdog({
+    supabase,
+    now: new Date(),
+    sendWebhookFn: sendOpsWebhook,
+    getOpsWebhookFn: getOpsWebhook,
+    captureExceptionFn: sentryCapture,
+    autoPrizeEnabled,
+    seenKeys: stallWatchdogSeenKeys,
+  });
+  if (result.alerted) {
+    console.error(`🚨 Stall-watchdog: ${result.newFindings.length} ny(e) tavs(e) stall(s) alarmeret`);
   }
 }
 
@@ -628,14 +666,27 @@ export function startCron() {
   // prize_paid_at. Gated bag auto_prize_enabled (fail-safe OFF) — sweep'en er en
   // no-op indtil flaget eksplicit tændes runtime. Bevidst INGEN immediate-run:
   // det periodiske tick er nok, og en udbetaling skal ikke fyre ved hver genstart.
-  setInterval(trackedTick("auto-prize sweep", runAutoPrizeSweepCron), 5 * 60 * 1000);
+  // #2077: Sentry-heartbeat (monitorCron) → MISSED-alarm hvis tick'et udebliver.
+  setInterval(
+    trackedTick("auto-prize sweep", monitorCron("auto-prize", runAutoPrizeSweepCron, CRON_MONITOR_5MIN)),
+    5 * 60 * 1000
+  );
 
   // Every 5 minutes: stage-scheduler — afvikl forfaldne etaper én ad gangen (#WS1 Fase 3).
   // trackedTick giver Sentry-capture + graceful-shutdown gratis. Gated bag
   // stage_scheduler_enabled + race_engine_v2 (fail-safe OFF) + daglig cap (maks 5/dag).
   // Bevidst INGEN immediate-run: det periodiske tick er nok, og en etape skal ikke
   // fyre ved hver genstart (mirror auto-prize-mønstret).
-  setInterval(trackedTick("stage scheduler", runStageSchedulerCron), 5 * 60 * 1000);
+  // #2077: Sentry-heartbeat (monitorCron) → MISSED-alarm hvis tick'et udebliver.
+  setInterval(
+    trackedTick("stage scheduler", monitorCron("stage-scheduler", runStageSchedulerCron, CRON_MONITOR_5MIN)),
+    5 * 60 * 1000
+  );
+
+  // Every 30 minutes: stall-watchdog (#2077) — fanger tavse stalls uden exception.
+  // Bevidst INGEN immediate-run: cadencen er nok, og en alarm skal ikke fyre ved
+  // hver genstart (mirror auto-prize/stage-scheduler-mønstret).
+  setInterval(trackedTick("stall-watchdog", runStallWatchdogCron), 30 * 60 * 1000);
 
   // Every 24 hours: traffic_events retention (#2040 — slet rå anonyme events >180 dage).
   setInterval(trackedTick("traffic retention", runTrafficRetentionCron), 24 * 60 * 60 * 1000);
