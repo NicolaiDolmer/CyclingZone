@@ -9,6 +9,20 @@ export const PATCHES = [
     "label": "Beta",
     "changes": [
       {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Stability",
+        "en": {
+          "title": "Leaving a page mid-load no longer triggers an unwanted reload",
+          "body": "The automatic recovery that reloads the game after an update could mistake an interrupted page load for a broken one. If you navigated away or refreshed while a page was still loading, that reload could cut in and hijack the navigation you had just started. Recovery now waits a moment and stands down when the page is closing, so it only steps in for genuinely broken loads.",
+        },
+        "da": {
+          "title": "At forlade en side midt i en indlæsning udløser ikke længere et uønsket reload",
+          "body": "Den automatiske gendannelse, der genindlæser spillet efter en opdatering, kunne forveksle en afbrudt sideindlæsning med en ødelagt en. Hvis du navigerede væk eller genindlæste, mens en side stadig var ved at loade, kunne det reload skære ind og kapre den navigation, du lige havde startet. Gendannelsen venter nu et øjeblik og trækker sig, når siden er ved at lukke, så den kun griber ind ved reelt ødelagte indlæsninger.",
+        },
+        "refs": [2145]
+      },
+      {
         "category": "improved",
         "audience": "player",
         "topic": "Academy",
