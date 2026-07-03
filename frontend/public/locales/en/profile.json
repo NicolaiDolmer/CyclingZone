@@ -91,6 +91,21 @@
     "eventTransferOffer": "You receive a transfer offer",
     "eventOfferResolved": "Your transfer offer is accepted or declined",
     "eventNewAuction": "A new auction is created",
-    "eventSeasonChange": "A new season starts or ends"
+    "eventSeasonChange": "A new season starts or ends",
+    "prefs": {
+      "heading": "Choose what you get DMed about",
+      "masterOffHint": "Turn on DMs above to choose individual events.",
+      "group": {
+        "auctions": "Auctions",
+        "transfers": "Transfers",
+        "club": "Club"
+      },
+      "auction_outbid": { "label": "Outbid", "desc": "Someone tops your bid, including auto-bids." },
+      "auction_won": { "label": "Auction won", "desc": "You win a rider you were bidding on." },
+      "watchlist_rider_auction": { "label": "Watchlisted rider up for auction", "desc": "A rider on your watchlist gets listed." },
+      "transfer_offer": { "label": "Transfer offer received", "desc": "Another manager bids on one of your riders." },
+      "transfer_response": { "label": "Reply to your offer", "desc": "Accepted, rejected, or countered." },
+      "board_update": { "label": "Board update", "desc": "Your board reacts to results or finances." }
+    }
   }
 }

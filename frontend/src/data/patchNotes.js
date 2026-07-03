@@ -4,8 +4,8 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
-    "version": "6.52",
-    "date": "2026-07-03",
+    "version": "6.53",
+    "date": "2026-07-04",
     "label": "Beta",
     "changes": [
       {
@@ -21,6 +21,27 @@ export const PATCHES = [
           "body": "Køb eller salg af en rytter midt i et aktivt etapeløb splitter ikke længere løbet mellem to hold. Handlen og betalingen gennemføres med det samme, men rytteren kører sit igangværende etapeløb færdigt for det sælgende hold og skifter til sit nye hold lige efter målstregen. Hans profil viser det kommende hold indtil da. Løb der endnu ikke er startet, påvirkes ikke: rytteren skifter med det samme.",
         },
         "refs": [1995]
+      }
+    ]
+  },
+  {
+    "version": "6.52",
+    "date": "2026-07-03",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Discord",
+        "en": {
+          "title": "Choose which Discord DMs you receive",
+          "body": "You can now pick exactly which events send you a Discord DM, instead of one all-or-nothing switch. In your profile's Discord section, toggle each event on or off: outbid, auction won, a watchlisted rider going up for auction, transfer offers, replies to your offers, and board updates. Two of these (a watchlisted rider going up for auction, and board updates) are new to Discord DMs. The master switch still turns everything off at once, and every event stays on by default.",
+        },
+        "da": {
+          "title": "Vælg hvilke Discord-DM'er du får",
+          "body": "Du kan nu vælge præcis hvilke begivenheder der sender dig en Discord-DM, i stedet for én alt-eller-intet-knap. I Discord-sektionen på din profil kan du slå hver begivenhed til eller fra: overbudt, auktion vundet, en ønskeliste-rytter der sættes på auktion, transfertilbud, svar på dine tilbud og bestyrelsesopdateringer. To af dem (en ønskeliste-rytter der sættes på auktion, og bestyrelsesopdateringer) er nye på Discord-DM. Master-knappen slår stadig alt fra på én gang, og hver begivenhed er tændt som standard.",
+        },
+        "refs": []
       }
     ]
   },

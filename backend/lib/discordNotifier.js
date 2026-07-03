@@ -14,6 +14,8 @@ import { attemptDmDelivery } from "./discordDmDelivery.js";
 import { enqueueDm, processDmOutboxDrain } from "./discordDmOutbox.js";
 import { captureException as sentryCapture } from "./sentry.js";
 import { getOpsWebhookUrl, makeSendOpsWebhook } from "./opsWebhook.js";
+import { isDmTypeEnabled } from "./discordDmPrefs.js";
+import { resolveDmRecipient } from "./discordDmRecipient.js";
 import { computeResultWebhookUrls } from "./resultWebhookRouting.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -33,6 +35,9 @@ const COLORS = {
   swap_completed:       0x1abc9c, // teal
   season_started:       0x9b59b6, // purple
   season_ended:         0x95a5a6, // grey
+  watchlist_rider_auction: 0xe8c547, // gold
+  board_update:         0x3498db, // blue
+  board_critical:       0xe74c3c, // red
 };
 
 const TYPE_LABELS = {
@@ -46,6 +51,9 @@ const TYPE_LABELS = {
   swap_completed:     "🔄 Byttehandel Gennemført",
   season_started:     "🚀 Sæson Startet",
   season_ended:       "🏁 Sæson Afsluttet",
+  watchlist_rider_auction: "👀 Ønskeliste-rytter på auktion",
+  board_update:       "📋 Bestyrelsesopdatering",
+  board_critical:     "⚠️ Bestyrelsen er utilfreds",
 };
 
 /**
@@ -164,23 +172,9 @@ export function getBotToken() {
   return process.env.DISCORD_BOT_TOKEN || process.env.DISCORD_TOKEN || null;
 }
 
-async function getDmRecipient(teamId) {
-  if (!teamId) return null;
-  const { data: team } = await supabase
-    .from("teams")
-    .select("user_id")
-    .eq("id", teamId)
-    .single();
-  if (!team?.user_id) return null;
-  const { data: user } = await supabase
-    .from("users")
-    .select("discord_id, discord_dm_enabled")
-    .eq("id", team.user_id)
-    .single();
-  if (!user?.discord_id) return null;
-  if (user.discord_dm_enabled === false) return null;
-  return user.discord_id;
-}
+// Recipient + per-type prefs resolution moved to ./discordDmRecipient.js
+// (client-injectable, unit-testable). notifyDiscordDM applies the per-type gate
+// via isDmTypeEnabled from ./discordDmPrefs.js.
 
 // #203: DM-routing kan styres via DISCORD_DM_TARGET env-var.
 //   webhook       → ægte Discord DM via bot (default, bagudkompat)
@@ -331,44 +325,41 @@ export async function drainDiscordDmOutbox({ now = new Date() } = {}) {
  * skriver til stdout/test-channel i stedet for ægte DM, så smoke-tests
  * kan asserter DM uden at spamme rigtige managers.
  */
-export async function notifyDiscordDM({ teamId, type, title, description, fields = [] }) {
-  const target = await resolveDmTarget(teamId);
+export async function notifyDiscordDM({ teamId = null, userId = null, type, title, description, fields = [] }) {
+  const payload = buildEmbed(type, title, description, fields);
 
-  const payload = {
-    embeds: [{
-      title: `${TYPE_LABELS[type] || type}: ${title}`,
-      description,
-      color: COLORS[type] || 0xe8c547,
-      fields: fields.map(f => ({ name: f.name, value: String(f.value), inline: f.inline ?? true })),
-      footer: { text: "Cycling Zone" },
-      timestamp: new Date().toISOString(),
-    }],
-  };
-
-  if (target === "stdout") {
-    console.log("[discord-dm:stdout]", JSON.stringify({ teamId, type, title, description, fields }));
-    return;
-  }
-
-  if (target === "test-channel") {
-    const url = process.env.DISCORD_TEST_CHANNEL_WEBHOOK_URL;
-    if (!url) {
-      console.warn("[discord-dm:test-channel] DISCORD_TEST_CHANNEL_WEBHOOK_URL ikke sat — falder tilbage til stdout");
+  // #203: test-account / staging routing (teamId-scoped smoke-tests only).
+  if (teamId) {
+    const target = await resolveDmTarget(teamId);
+    if (target === "stdout") {
       console.log("[discord-dm:stdout]", JSON.stringify({ teamId, type, title, description, fields }));
       return;
     }
-    await sendWebhook(url, payload);
-    return;
+    if (target === "test-channel") {
+      const url = process.env.DISCORD_TEST_CHANNEL_WEBHOOK_URL;
+      if (!url) {
+        console.warn("[discord-dm:test-channel] DISCORD_TEST_CHANNEL_WEBHOOK_URL ikke sat — falder tilbage til stdout");
+        console.log("[discord-dm:stdout]", JSON.stringify({ teamId, type, title, description, fields }));
+        return;
+      }
+      await sendWebhook(url, payload);
+      return;
+    }
   }
 
-  const discordId = await getDmRecipient(teamId);
-  if (!discordId) {
+  const recipient = await resolveDmRecipient({ teamId, userId, client: supabase });
+  if (!recipient) {
     // #449: ikke en fejl (user kan have valgt opt-out eller mangler discord_id),
     // men log som info så vi kan se hvis ALLE DMs skippes pga. data-issue.
-    console.info("[discord-dm:no-recipient]", { teamId, type });
+    console.info("[discord-dm:no-recipient]", { teamId, userId, type });
     return;
   }
-  await sendDM(discordId, payload);
+  // Per-type opt-out (default on when the pref is absent).
+  if (!isDmTypeEnabled(recipient.prefs, type)) {
+    console.info("[discord-dm:muted]", { teamId, userId, type });
+    return;
+  }
+  await sendDM(recipient.discordId, payload);
 }
 
 /**
@@ -483,6 +474,27 @@ export async function notifyTransferResponse({ riderName, accepted, teamId, coun
       ? `Dit tilbud på **${riderName}** fik et modbud`
       : `Dit tilbud på **${riderName}** blev afvist`;
   await notifyDiscordDM({ teamId, type, title: riderName, description, fields });
+}
+
+// Watchlist: en rytter på din ønskeliste er sat på auktion. DM'es på userId
+// (watcherens user_id er i hånden, ikke et teamId). Ny DM-strøm — styret af
+// `watchlist_rider_auction`-toggle i profilindstillingerne.
+export async function notifyWatchlistRiderAuction({ userId, riderName, endsAt }) {
+  const fields = [];
+  if (endsAt) fields.push({ name: "Slutter", value: new Date(endsAt).toLocaleString("da-DK") });
+  await notifyDiscordDM({
+    userId,
+    type: "watchlist_rider_auction",
+    title: riderName,
+    description: `En rytter på din ønskeliste er sat på auktion: **${riderName}**`,
+    fields,
+  });
+}
+
+// Bestyrelses-reaktion, DM til hold-ejeren. type = board_update | board_critical
+// — begge styret af `board_update`-toggle. Ny DM-strøm.
+export async function notifyBoardUpdateDM({ teamId, type = "board_update", title, description, fields = [] }) {
+  await notifyDiscordDM({ teamId, type, title, description, fields });
 }
 
 export async function notifyTransferCompleted({ riderName, sellerName, buyerName, price }) {
