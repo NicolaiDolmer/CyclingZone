@@ -4291,11 +4291,10 @@ router.patch("/loans/:id", requireAuth, marketWriteLimiter, async (req, res) => 
     // #1996: markedet er altid åbent → lejeaftaler aktiveres straks (aldrig parkeret).
     const nextStatus = getLoanAgreementAcceptedStatus({ windowOpen: true });
     await supabase.from("loan_agreements").update({ status: nextStatus, updated_at: new Date().toISOString() }).eq("id", loan.id);
-    const title = "Lejeaftale aktiveret";
-    const message = `${req.team.name} har accepteret din lejeforespørgsel på ${loan.rider.firstname} ${loan.rider.lastname}`;
     await notifyTeamOwner(loan.to_team_id, "transfer_offer_accepted",
-      title,
-      message, loan.id, { riderId: loan.rider.id });
+      "Lejeaftale aktiveret",
+      `${req.team.name} har accepteret din lejeforespørgsel på ${loan.rider.firstname} ${loan.rider.lastname}`,
+      loan.id, { riderId: loan.rider.id });
     return res.json({ success: true, action: nextStatus });
   }
 
@@ -4414,11 +4413,10 @@ router.patch("/loans/:id", requireAuth, marketWriteLimiter, async (req, res) => 
     // #1996: markedet er altid åbent → købsoptionen gennemføres straks (aldrig parkeret).
     const nextStatus = getLoanBuyoutStatus({ windowOpen: true });
     await supabase.from("loan_agreements").update({ status: nextStatus, updated_at: boughtAt }).eq("id", loan.id);
-    const title = "Købsoption udnyttet";
-    const message = `${req.team.name} har udnyttet købsoptionen på ${loan.rider.firstname} ${loan.rider.lastname} for ${price.toLocaleString()} CZ$`;
     await notifyTeamOwner(loan.from_team_id, "transfer_offer_accepted",
-      title,
-      message, loan.id);
+      "Købsoption udnyttet",
+      `${req.team.name} har udnyttet købsoptionen på ${loan.rider.firstname} ${loan.rider.lastname} for ${price.toLocaleString()} CZ$`,
+      loan.id);
     // Buyout moves rider permanently or parks a pending owner-change; drop /api/riders cache.
     invalidateNamespace("riders");
     return res.json({ success: true, action: nextStatus, price });
