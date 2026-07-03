@@ -241,7 +241,7 @@ import {
   rederiveSeasonRacePoints,
 } from "../lib/raceResultsEngine.js";
 import { adminImportUploadMultipleFiles } from "../lib/adminImportUpload.js";
-import { getDefaultWebhook, sendWebhook } from "../lib/discordNotifier.js";
+import { getResultWebhooks, sendWebhook } from "../lib/discordNotifier.js";
 import { importPcmResults, buildPcmImportEmbed } from "../lib/pcmResultsImport.js";
 import { getRaceEngineStatus, runAdminSimulateRace, runAdminSimulateStage, buildRaceSimEmbed } from "../lib/adminSimulateRace.js";
 import { ensureSeasonStandings as ensureSeasonStandingsShared } from "../lib/seasonStandingsBootstrap.js";
@@ -7705,10 +7705,12 @@ router.post(
     const notifyDiscord = dryRun
       ? null
       : async ({ race, preview, resultRows }) => {
-          const url = await getDefaultWebhook();
-          if (!url) return;
+          const urls = await getResultWebhooks(race.league_division_id);
+          if (!urls.length) return;
           const embed = buildPcmImportEmbed({ race, preview, resultRows });
-          await sendWebhook(url, { embeds: [{ ...embed, footer: { text: "Cycling Zone" } }] });
+          for (const url of urls) {
+            await sendWebhook(url, { embeds: [{ ...embed, footer: { text: "Cycling Zone" } }] });
+          }
         };
 
     try {
@@ -7745,10 +7747,12 @@ router.post("/admin/simulate-race", requireAdmin, adminWriteLimiter, async (req,
   const notifyDiscord = dryRun
     ? null
     : async ({ race, resultRows }) => {
-        const url = await getDefaultWebhook();
-        if (!url) return;
+        const urls = await getResultWebhooks(race.league_division_id);
+        if (!urls.length) return;
         const embed = buildRaceSimEmbed({ race, resultRows });
-        await sendWebhook(url, { embeds: [{ ...embed, footer: { text: "Cycling Zone" } }] });
+        for (const url of urls) {
+          await sendWebhook(url, { embeds: [{ ...embed, footer: { text: "Cycling Zone" } }] });
+        }
       };
   try {
     const result = await runAdminSimulateRace({
@@ -7769,10 +7773,12 @@ router.post("/admin/races/:id/simulate-stage", requireAdmin, adminWriteLimiter, 
   const notifyDiscord = dryRun
     ? null
     : async ({ race, resultRows }) => {
-        const url = await getDefaultWebhook();
-        if (!url) return;
+        const urls = await getResultWebhooks(race.league_division_id);
+        if (!urls.length) return;
         const embed = buildRaceSimEmbed({ race, resultRows });
-        await sendWebhook(url, { embeds: [{ ...embed, footer: { text: "Cycling Zone" } }] });
+        for (const url of urls) {
+          await sendWebhook(url, { embeds: [{ ...embed, footer: { text: "Cycling Zone" } }] });
+        }
       };
   try {
     const result = await runAdminSimulateStage({

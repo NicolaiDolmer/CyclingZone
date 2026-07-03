@@ -402,7 +402,7 @@ export async function importPcmResults({
   }
   const { data: dbRaces, error: racesErr } = await supabase
     .from("races")
-    .select("id, name, race_type, race_class, season_id, stages")
+    .select("id, name, race_type, race_class, season_id, stages, league_division_id")
     .eq("season_id", season.id);
   if (racesErr) throw new Error(`Kunne ikke hente løb: ${racesErr.message}`);
 

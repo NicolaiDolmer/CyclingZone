@@ -26,6 +26,7 @@ import {
   notifyAuctionWon,
   notifyBoardUpdateDM,
   getDefaultWebhook,
+  getResultWebhooks,
   sendWebhook,
   getBotToken,
   drainDiscordDmOutbox,
@@ -534,10 +535,12 @@ async function runStageSchedulerCron() {
       isRaceEngineV2Enabled,
       runStageFn: async ({ raceId, stageIndex }) => {
         const notifyDiscord = async ({ race, resultRows }) => {
-          const url = await getDefaultWebhook();
-          if (!url) return;
+          const urls = await getResultWebhooks(race.league_division_id);
+          if (!urls.length) return;
           const embed = buildRaceSimEmbed({ race, resultRows });
-          await sendWebhook(url, { embeds: [{ ...embed, footer: { text: "Cycling Zone" } }] });
+          for (const url of urls) {
+            await sendWebhook(url, { embeds: [{ ...embed, footer: { text: "Cycling Zone" } }] });
+          }
         };
         // #1952 · In-app resultat-notifikation til deltagende menneske-managers.
         const notifyInApp = async ({ race }) => {
