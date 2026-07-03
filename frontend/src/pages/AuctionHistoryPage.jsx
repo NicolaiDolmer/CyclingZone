@@ -56,6 +56,10 @@ export default function AuctionHistoryPage() {
   // tidligere blev de udregnet fra current page's 30 rækker, hvilket gjorde
   // counters inkonsistente med fane-filteret og misvisende totalt.
   const [stats, setStats] = useState({ wins: 0, sales: 0, spent: 0, earned: 0 });
+  // #256: bud-tal pr. auktion — antal bud + antal forskellige hold der bød.
+  // Client-side aggregation af auction_bids (public-read RLS) for de auktioner
+  // der er synlige på den aktuelle side. Map: auctionId -> { bids, bidders }.
+  const [bidStats, setBidStats] = useState({});
   const PER_PAGE = 30;
 
   async function loadMyTeam() {
@@ -98,9 +102,41 @@ export default function AuctionHistoryPage() {
       .range((page - 1) * PER_PAGE, page * PER_PAGE - 1);
 
     const { data, count } = await query;
-    setAuctions(data || []);
+    const rows = data || [];
+    setAuctions(rows);
     setTotal(count || 0);
     setLoading(false);
+    loadBidStats(rows.map(a => a.id));
+  }
+
+  // #256: hent bud-rækker for de synlige auktioner og aggregér client-side til
+  // antal bud + antal forskellige hold pr. auktion. auction_bids har public-read
+  // RLS (SELECT qual=true), så anon/authenticated får rækkerne uden service_role.
+  // Kun én ekstra query pr. side (afgrænset af de max 30 synlige auction-ids).
+  async function loadBidStats(auctionIds) {
+    if (!auctionIds || auctionIds.length === 0) {
+      setBidStats({});
+      return;
+    }
+    const { data, error } = await supabase
+      .from("auction_bids")
+      .select("auction_id, team_id")
+      .in("auction_id", auctionIds);
+    if (error || !data) {
+      setBidStats({});
+      return;
+    }
+    const agg = {};
+    for (const bid of data) {
+      const entry = agg[bid.auction_id] || (agg[bid.auction_id] = { bids: 0, bidders: new Set() });
+      entry.bids += 1;
+      if (bid.team_id) entry.bidders.add(bid.team_id);
+    }
+    const next = {};
+    for (const [auctionId, entry] of Object.entries(agg)) {
+      next[auctionId] = { bids: entry.bids, bidders: entry.bidders.size };
+    }
+    setBidStats(next);
   }
 
   // #246: aggregat-stats korrekt på tværs af alle ikke-kun-aktuel-side
@@ -223,6 +259,7 @@ export default function AuctionHistoryPage() {
                 <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase hidden sm:table-cell">{t("history.colStatus")}</th>
                 <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase hidden sm:table-cell">{t("table.seller")}</th>
                 <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase hidden sm:table-cell">{t("history.colWinner")}</th>
+                <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs uppercase hidden md:table-cell">{t("history.colBids")}</th>
                 <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs uppercase">{t("history.colPrice")}</th>
                 <th className="px-4 py-3 text-right text-cz-3 font-medium text-xs uppercase hidden md:table-cell">{t("history.colTime")}</th>
               </tr>
@@ -233,6 +270,7 @@ export default function AuctionHistoryPage() {
                 const iSold = isAuctionSeller(a, myTeamId);
                 const noSale = !a.current_bidder_id;
                 const iSelf = isSelfPurchase(a, myTeamId);
+                const bids = bidStats[a.id];
                 return (
                   <tr key={a.id}
                     className={`border-b border-cz-border hover:bg-cz-subtle cursor-pointer
@@ -268,6 +306,16 @@ export default function AuctionHistoryPage() {
                         <span className="text-cz-3 text-xs">{t("history.noBids")}</span>
                       ) : (
                         <TeamLink id={a.winner?.id} stopPropagation className="text-cz-2">{a.winner?.name || "—"}</TeamLink>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-right hidden md:table-cell whitespace-nowrap">
+                      {bids && bids.bids > 0 ? (
+                        <>
+                          <span className="font-mono text-cz-2 text-sm">{t("history.bidsCount", { count: bids.bids })}</span>
+                          <span className="block text-cz-3 text-xs mt-0.5">{t("history.bidsUniqueBidders", { count: bids.bidders })}</span>
+                        </>
+                      ) : (
+                        <span className="text-cz-3 text-xs">{t("history.noBids")}</span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-right">
