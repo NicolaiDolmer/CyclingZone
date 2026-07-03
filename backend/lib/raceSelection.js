@@ -7,6 +7,7 @@ import { ABILITY_KEYS } from "./raceSimulator.js";
 import { copenhagenDateString } from "./copenhagenTime.js";
 import { applyRiderEligibilityFilter } from "./riderEligibility.js";
 import { loadLoanedOutRiderIds } from "./raceEntriesLoader.js";
+import { assertLineupMutationAllowed } from "./raceActiveGuard.js";
 
 export function validateSelection({
   riderIds = [], captainId = null, sprintCaptainId = null, hunterId = null,
@@ -58,6 +59,10 @@ function roleFor(riderId, { captainId, sprintCaptainId, hunterId }) {
 // Gem udtagelsen: slet holdets eksisterende entries for løbet, indsæt de nye.
 // PK (race_id, rider_id) gør gen-kørsel ufarlig (delete-then-insert).
 export async function saveSelection({ supabase, race, teamId, riderIds, captainId, sprintCaptainId = null, hunterId = null }) {
+  // Forward-guard (#2074): nægt delete-then-insert hvis løbets felt er LÅST
+  // (stages_completed>0). Rute-laget gater allerede, men guarden gør invarianten lokal
+  // til mutationen så en fremtidig kalder ikke kan nulstille et aktivt startfelt.
+  await assertLineupMutationAllowed({ supabase, raceId: race?.id, race, label: "saveSelection" });
   // Deletes eksisterende entries og indsætter nye. Ingen transaktion:
   // fejler insert → holdet har 0 entries → autopick fylder dem ved
   // simuleringstid (race_entries.is_auto_filled = true). Accepteret degradering.
