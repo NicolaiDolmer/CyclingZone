@@ -341,7 +341,10 @@ export default function Layout() {
               body: JSON.stringify({
                 name: metaTeamName,
                 manager_name: metaManagerName,
-                attribution: getAttribution(),
+                // #2079: confirm-linket åbnes tit på en anden enhed end signup'et
+                // (mobil-mailapp) — localStorage er tom dér. Fald tilbage til
+                // attribution-snapshottet som LoginPage gemte i auth-metadata.
+                attribution: getAttribution() || meta.attribution || null,
               }),
             });
             if (res.ok) {

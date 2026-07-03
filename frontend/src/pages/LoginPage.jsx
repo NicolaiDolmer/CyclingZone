@@ -216,6 +216,11 @@ export default function LoginPage() {
       // ellers afvises den — og det er en dashboard-config-ændring uden for denne
       // opgaves scope. Confirm-links går derfor fortsat til Site URL ("/"), og
       // App fanger nu et evt. udløbet-link-fejl-hash der (parseAuthErrorHash).
+      // #2079: attribution-snapshottet lever kun i localStorage på DENNE enhed/
+      // browser — bekræfter brugeren mailen på en anden (mobil-mailapp, andet
+      // device), er snapshottet væk når bootstrappen kører. Gem det derfor også
+      // i auth-metadata ved signUp, så confirm-stien kan falde tilbage til det.
+      const attribution = getAttribution();
       const { data, error: signUpError } = await supabase.auth.signUp({
         email: email.trim(),
         password,
@@ -223,7 +228,12 @@ export default function LoginPage() {
           // #2068: manager_name gemmes nu også i metadata (var kun team_name) —
           // Layout auto-opretter holdet fra denne metadata efter email-bekræftelse,
           // så en confirm-on-bruger ikke skal genindtaste navnene i SetupWizard.
-          data: { team_name: teamName.trim(), manager_name: managerName.trim(), language },
+          data: {
+            team_name: teamName.trim(),
+            manager_name: managerName.trim(),
+            language,
+            ...(attribution ? { attribution } : {}),
+          },
         },
       });
 
