@@ -152,13 +152,15 @@ export function resolveRiderSalary(rider = {}) {
 // transfervinduet er AFSKAFFET — ryttere kan skifte hold når som helst i sæsonen.
 // Funktionen returnerer derfor ALTID true, så alle confirm-stier (transferExecution,
 // auctionFinalization) registrerer med det samme (deferRegistration=false) og intet
-// parkeres på pending_team_id. transfer_windows-tabellen + admin open/close-endpoints
-// bevares dvælende (ikke længere konsulteret her); fuld kode-oprydning er et separat,
-// valgfrit skridt. Signaturen (async, supabase-arg) bevares så ingen kaldere ændres.
+// parkeres på pending_team_id af vindue-årsager.
 //
-// SIDEEFFEKT (flagget til ejer): med vinduet altid åbent fyrer squadEnforcement's
-// vindue-luk-cron aldrig, så +2 soft-cap-bufferen ville være permanent. Squad-cap
-// håndhæves derfor ved selve handlen (hard cap, ingen buffer) — se getIncomingSquadViolation.
+// #1996: den modstridende getTransferWindowStatus() + admin open/close-endpoints (med
+// den gamle "flush ved vindue-åbning") er fjernet, så der ikke længere findes to kilder
+// til om markedet er åbent. Squad-cap håndhæves ved selve handlen (hard cap, ingen
+// buffer) — se getIncomingSquadViolation. pending_team_id-parkeringen bevares som
+// mekanik: den genbruges af etapeløb-udskudt-skifte (#1995), som parkerer når rytteren
+// er i et aktivt etapeløb og flusher ved løbs-finalisering (ikke ved vindue-åbning).
+// Signaturen (async, supabase-arg) bevares så ingen kaldere ændres.
 export async function getTransferWindowOpen() {
   return true;
 }
