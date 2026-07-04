@@ -18,6 +18,11 @@
  *       præmier manuelt og NULL er forventet → ingen alarm).
  *   (d) standings-lag       : season_standings.updated_at hænger > standingsHours
  *       bag race_results.imported_at (results importeret men standings ikke opdateret).
+ *   (e) matview-refresh-stall: rangliste-matviewsene (rider_rankings_mv m.fl.) driver
+ *       > matviewStaleHours bag race_results — dvs. refresh_ranking_matviews()-stien
+ *       (finalization-hook + 10-min cron-fallback) er død, så /standings +
+ *       /rider-rankings viser stale/langsomme tal UDEN exception (#2196 Del 2).
+ *       Uafhængig af (d): matviews og season_standings opdateres ad SEPARATE stier.
  *
  * races har INGEN updated_at-kolonne (verificeret mod prod 2026-07-03) → (a) og (c)
  * forankres på max(race_results.imported_at) pr. løb, ikke på en race-row-timestamp.
@@ -34,6 +39,9 @@ export const STALL_WATCHDOG_DEFAULT_THRESHOLDS = {
   stageHours: 2,
   prizeHours: 1,
   standingsHours: 1,
+  // 0.5t = 30 min. Refresh-cron kører hvert 10. min (+ finalization-hook straks),
+  // så et lag > 30 min = 3 missede/fejlede refreshes = klart død sti, ikke jitter.
+  matviewStaleHours: 0.5,
 };
 
 const HOUR_MS = 60 * 60 * 1000;
@@ -56,6 +64,7 @@ const TYPE_LABELS = {
   stage: "⏱️ Etape-stall",
   prize: "💰 Præmie-stall",
   standings: "📊 Standings-lag",
+  matview: "🐢 Rangliste-matview-stall",
 };
 
 export function labelForType(type) {
@@ -67,9 +76,11 @@ export function labelForType(type) {
  */
 export function findingKey(finding, now) {
   const day = dayKey(now);
-  // stage + standings er GLOBALE (sæson-brede) signaler → dedup pr. dag.
+  // stage + standings + matview er GLOBALE (sæson-brede/globale) signaler → dedup pr. dag.
   // finalize + prize er pr. løb → dedup pr. (løb, dag).
-  if (finding.type === "standings" || finding.type === "stage") return `${finding.type}:${day}`;
+  if (finding.type === "standings" || finding.type === "stage" || finding.type === "matview") {
+    return `${finding.type}:${day}`;
+  }
   return `${finding.type}:${finding.raceId}:${day}`;
 }
 
@@ -86,6 +97,7 @@ export function evaluateStallFindings({
   lastResultByRace = {},   // { [raceId]: importedAtISO | null }
   dueStages = [],          // [{ race_id, race_name, stage_number, scheduled_at, has_results, has_entries }]
   standings = { maxStandingsUpdated: null, maxResultsImported: null },
+  matviewHeartbeat = null, // ISO | null — sidste succesfulde refresh_ranking_matviews()
 } = {}) {
   const t = { ...STALL_WATCHDOG_DEFAULT_THRESHOLDS, ...thresholds };
   const findings = [];
@@ -162,6 +174,26 @@ export function evaluateStallFindings({
         detail: maxStandingsUpdated
           ? `season_standings ${Math.round(lag)}t bag seneste race_results`
           : "season_standings aldrig opdateret trods importerede race_results",
+      });
+    }
+  }
+
+  // (e) matview-refresh-stall (GLOBAL, #2196 Del 2). Fyrer KUN når vi HAR et
+  // heartbeat-timestamp OG friske results: mangler heartbeatet (tabellen ikke
+  // applied endnu, eller rækken tom) springes checken over, så et backend-deploy
+  // FØR migrationen ikke false-alarmerer. Kan derfor kun give en ægte positiv —
+  // et reelt heartbeat der er faldet bag race_results (refresh-sti død).
+  if (maxResultsImported && matviewHeartbeat) {
+    const lag =
+      (new Date(maxResultsImported).getTime() - new Date(matviewHeartbeat).getTime()) / HOUR_MS;
+    if (lag > t.matviewStaleHours) {
+      findings.push({
+        type: "matview",
+        ageHours: round1(lag),
+        detail:
+          `Rangliste-matviews ${Math.round(lag * 60)}min bag seneste race_results — ` +
+          `refresh_ranking_matviews()-stien (finalization-hook + cron) stallet; ` +
+          `/standings + /rider-rankings viser stale tal`,
       });
     }
   }
@@ -292,6 +324,27 @@ export async function fetchWatchdogState({ supabase, now = new Date(), threshold
     .maybeSingle();
   if (resErr) throw new Error(`stall-watchdog race_results(max): ${resErr.message}`);
 
+  // (e) matview-refresh-heartbeat. Findes tabellen ikke endnu (backend deployet FØR
+  // migrationen), degradér til null → check (e) springes over i stedet for at kaste
+  // og spamme Sentry hvert 30. min indtil ejeren merger. Andre fejl kastes (ægte problem).
+  let matviewHeartbeat = null;
+  const { data: hbRow, error: hbErr } = await supabase
+    .from("matview_refresh_heartbeat")
+    .select("refreshed_at")
+    .eq("matview_group", "ranking")
+    .maybeSingle();
+  if (hbErr) {
+    const missingTable =
+      hbErr.code === "42P01" || // Postgres undefined_table
+      hbErr.code === "PGRST205" || // PostgREST: table ikke i schema-cache
+      /does not exist|could not find the table/i.test(hbErr.message || "");
+    if (!missingTable) {
+      throw new Error(`stall-watchdog matview_refresh_heartbeat: ${hbErr.message}`);
+    }
+  } else {
+    matviewHeartbeat = hbRow?.refreshed_at ?? null;
+  }
+
   return {
     seasonId: sid,
     finalizeCandidates,
@@ -302,6 +355,7 @@ export async function fetchWatchdogState({ supabase, now = new Date(), threshold
       maxStandingsUpdated: standRow?.updated_at ?? null,
       maxResultsImported: resRow?.imported_at ?? null,
     },
+    matviewHeartbeat,
   };
 }
 

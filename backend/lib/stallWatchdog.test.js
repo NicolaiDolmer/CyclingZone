@@ -176,17 +176,60 @@ test("(d) ingen results overhovedet → ingen finding", () => {
   assert.equal(findings.length, 0);
 });
 
+// ── (e) matview-refresh-stall (#2196 Del 2) ───────────────────────────────────
+
+test("(e) heartbeat >30min bag friske results → matview-finding", () => {
+  const findings = evaluateStallFindings({
+    now: NOW,
+    // resultater 6 min gamle, sidste matview-refresh 60 min gammel → lag 54 min
+    standings: { maxStandingsUpdated: hoursAgo(0.05), maxResultsImported: hoursAgo(0.1) },
+    matviewHeartbeat: hoursAgo(1),
+  });
+  const mv = findings.filter((f) => f.type === "matview");
+  assert.equal(mv.length, 1);
+  assert.equal(mv[0].ageHours, 0.9);
+  assert.match(mv[0].detail, /refresh_ranking_matviews/);
+});
+
+test("(e) heartbeat friskt (lag <30min) → ingen matview-finding", () => {
+  const findings = evaluateStallFindings({
+    now: NOW,
+    standings: { maxStandingsUpdated: hoursAgo(0.1), maxResultsImported: hoursAgo(0.1) },
+    matviewHeartbeat: hoursAgo(0.2), // 12 min → lag ~6 min
+  });
+  assert.equal(findings.filter((f) => f.type === "matview").length, 0);
+});
+
+test("(e) heartbeat mangler (tabel ikke applied endnu) trods friske results → ingen finding", () => {
+  const findings = evaluateStallFindings({
+    now: NOW,
+    standings: { maxStandingsUpdated: hoursAgo(0.1), maxResultsImported: hoursAgo(0.1) },
+    matviewHeartbeat: null, // deploy FØR migration → spring (e) over, ingen false alarm
+  });
+  assert.equal(findings.filter((f) => f.type === "matview").length, 0);
+});
+
+test("(e) ingen results overhovedet → ingen matview-finding trods gammelt heartbeat", () => {
+  const findings = evaluateStallFindings({
+    now: NOW,
+    standings: { maxStandingsUpdated: null, maxResultsImported: null },
+    matviewHeartbeat: hoursAgo(10),
+  });
+  assert.equal(findings.filter((f) => f.type === "matview").length, 0);
+});
+
 test("clean baseline (alt tomt) → 0 findings", () => {
   assert.equal(evaluateStallFindings({ now: NOW }).length, 0);
 });
 
 // ── findingKey / dedup ────────────────────────────────────────────────────────
 
-test("findingKey — finalize/prize race-scoped; stage/standings sæson-globalt", () => {
+test("findingKey — finalize/prize race-scoped; stage/standings/matview sæson-globalt", () => {
   assert.equal(findingKey({ type: "finalize", raceId: "r1" }, NOW), "finalize:r1:2026-07-03");
   assert.equal(findingKey({ type: "prize", raceId: "r9" }, NOW), "prize:r9:2026-07-03");
   assert.equal(findingKey({ type: "standings" }, NOW), "standings:2026-07-03");
   assert.equal(findingKey({ type: "stage" }, NOW), "stage:2026-07-03");
+  assert.equal(findingKey({ type: "matview" }, NOW), "matview:2026-07-03");
 });
 
 // ── processStallWatchdog orchestrator (injiceret fetchStateFn) ─────────────────
@@ -199,6 +242,7 @@ function fakeState(overrides = {}) {
     lastResultByRace: {},
     dueStages: [],
     standings: { maxStandingsUpdated: null, maxResultsImported: null },
+    matviewHeartbeat: null,
     ...overrides,
   };
 }

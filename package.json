@@ -32,6 +32,8 @@
     "test:lint-postgrest-cap": "node --test scripts/lint-postgrest-in-cap.test.mjs",
     "lint:getuser-guard": "node scripts/lint-getuser-guard.mjs",
     "test:lint-getuser-guard": "node --test scripts/lint-getuser-guard.test.mjs",
+    "lint:rankings-fetch": "node scripts/lint-rankings-raceresults-fetch.mjs",
+    "test:lint-rankings-fetch": "node --test scripts/lint-rankings-raceresults-fetch.test.mjs",
     "test:setup": "node scripts/setup-test-accounts.mjs",
     "test:smoke": "node scripts/smoke-test-prod.mjs",
     "test:token": "node scripts/get-test-token.mjs",
