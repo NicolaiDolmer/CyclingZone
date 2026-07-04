@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.55",
+    "date": "2026-07-04",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Scheduled races that were failing to start now run again",
+          "body": "Some scheduled races could silently fail to start: the game mistakenly counted every rider as already committed to another race, so no field could be assembled and the race stalled. Those races now start and run on schedule.",
+        },
+        "da": {
+          "title": "Planlagte løb der ikke kunne starte, kører nu igen",
+          "body": "Nogle planlagte løb kunne stille og roligt fejle ved start: spillet talte fejlagtigt alle ryttere som allerede bundet til et andet løb, så der ikke kunne samles et felt, og løbet gik i stå. De løb starter og kører nu som planlagt.",
+        },
+        "refs": [2167]
+      }
+    ]
+  },
+  {
     "version": "6.54",
     "date": "2026-07-04",
     "label": "Beta",
