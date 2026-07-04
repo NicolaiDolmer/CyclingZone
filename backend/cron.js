@@ -48,6 +48,7 @@ import { runAcademyGraduationSweep } from "./lib/academyGraduationSweep.js";
 import { runAutoPrizeSweep } from "./lib/autoPrizeSweep.js";
 import { isAutoPrizeEnabled } from "./lib/autoPrizeFlag.js";
 import { runStageScheduler } from "./lib/stageScheduler.js";
+import { refreshRankingMatviewsSafe } from "./lib/refreshRankingMatviews.js";
 import { isStageSchedulerEnabled } from "./lib/stageSchedulerFlag.js";
 import { isRaceEngineV2Enabled } from "./lib/raceEngineFlag.js";
 import { processStallWatchdog } from "./lib/stallWatchdog.js";
@@ -584,6 +585,16 @@ async function runStageSchedulerCron() {
   }
 }
 
+// ─── Rangliste-matview refresh: fallback for race-finalization-hooken (#2175) ─
+// rider_rankings_mv/team_standings_ext_mv/team_race_points_mv aggregerer fra
+// race_results og refreshes primært ved race-finalization (raceRunner.js). Denne
+// periodiske fallback fanger enhver misset refresh (fx en fejlet finalization-sti)
+// + holder ranglisten fersk under et igangværende etapeløb (mellem-etaper). Best-
+// effort i sig selv (refreshRankingMatviewsSafe sluger + logger fejl).
+async function runRankingMatviewRefreshCron() {
+  await refreshRankingMatviewsSafe(supabase);
+}
+
 // ─── Traffic-events retention: hold rå anonyme web-events ≤180 dage (#2040) ───
 // traffic_events er bevidst PII-fri, men rå events skal ikke leve for evigt.
 // Idempotent delete; service_role bypasser RLS.
@@ -720,6 +731,12 @@ export function startCron() {
     trackedTick("stage scheduler", monitorCron("stage-scheduler", runStageSchedulerCron, CRON_MONITOR_5MIN)),
     5 * 60 * 1000
   );
+
+  // Every 10 minutes: rangliste-matview refresh (#2175) — fallback for race-
+  // finalization-hooken + fersk-holder under igangværende etapeløb. Best-effort;
+  // bevidst INGEN immediate-run (finalization-hooken dækker friske resultater, og
+  // en refresh skal ikke fyre ved hver genstart — mirror stage-scheduler-mønstret).
+  setInterval(trackedTick("ranking matview refresh", runRankingMatviewRefreshCron), 10 * 60 * 1000);
 
   // Every 30 minutes: stall-watchdog (#2077) — fanger tavse stalls uden exception.
   // Bevidst INGEN immediate-run: cadencen er nok, og en alarm skal ikke fyre ved

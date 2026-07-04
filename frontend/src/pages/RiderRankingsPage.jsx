@@ -1,6 +1,4 @@
-import { useState, useEffect } from "react";
-import { supabase } from "../lib/supabase";
-import { fetchAllRows } from "../lib/supabasePagination";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import TeamLink from "../components/TeamLink";
@@ -9,10 +7,9 @@ import RiderNameCell from "../components/rider/RiderNameCell";
 import RiderBadges from "../components/rider/RiderBadges";
 import { ageBadgeKey } from "../lib/riderAge";
 import { formatNumber } from "../lib/intl";
-import { riderOverallRating } from "../lib/riderRating";
-import { ABILITY_SELECT, flattenAbilities } from "../lib/abilities";
 import { compareNationality } from "../lib/countryUtils";
 import { CalendarIcon, SearchIcon, ArrowUpIcon, ArrowDownIcon, PageLoader } from "../components/ui";
+import { useRiderRankings } from "../hooks/useRiderRankings";
 
 // Altid-synlige sejr-kolonner (kategori-sejre) — venstre→højre.
 const WIN_COLS = [
@@ -68,9 +65,10 @@ const OWNER_FILTERS = [
 export default function RiderRankingsPage() {
   const navigate = useNavigate();
   const { t } = useTranslation("riders");
-  const [riders, setRiders] = useState([]);
-  const [season, setSeason] = useState(null);
-  const [loading, setLoading] = useState(true);
+  // #2175: rangliste-data (sæson + færdig-aggregerede rytter-stats) kommer fra
+  // useRiderRankings — ÉN let query mod rider_rankings_mv + display-join i stedet
+  // for den gamle client-agg over ~38k race_results. error → fejl-UI, ikke spinner.
+  const { riders, season, loading, error, reload } = useRiderRankings();
   const [sortKey, setSortKey] = useState("points");
   const [sortAsc, setSortAsc] = useState(false);
   const [ownerFilter, setOwnerFilter] = useState("all");
@@ -79,107 +77,6 @@ export default function RiderRankingsPage() {
   const [search, setSearch] = useState("");
   const [colVisible, setColVisible] = useState(loadColumnVisibility);
   const [colMenuOpen, setColMenuOpen] = useState(false);
-
-  async function loadAll() {
-    const { data: seasonData } = await supabase
-      .from("seasons").select("*").eq("status", "active").single();
-    setSeason(seasonData);
-
-    if (!seasonData) { setLoading(false); return; }
-
-    const { data: racesData } = await supabase
-      .from("races").select("id").eq("season_id", seasonData.id);
-
-    if (!racesData?.length) { setLoading(false); return; }
-
-    const raceIds = racesData.map(r => r.id);
-    // Paginér: PostgREST capper ved 1000 (også .range(0,9999)) → ellers
-    // underberegnes ranglisten for sæsoner med >1000 resultatrækker.
-    // #1009: rating-grundlaget hentes som separat parallel query (i stedet for at
-    // blæse evne-felter ind i rider-embed'et pr. resultatrække). #1529: rating er nu
-    // snittet af de 15 CZ-evner (rider_derived_abilities-join), ikke PCM stat_*.
-    // Hver række flades op (rider.climbing osv.) før riderStatRating. Best-effort:
-    // fejler abilities-fetch, viser ranglisten stadig (rating = 0).
-    const [results, abilityRows] = await Promise.all([
-      fetchAllRows(() => supabase
-        .from("race_results")
-        .select("rider_id, result_type, rank, points_earned, prize_money, race:race_id(race_type), rider:rider_id(id, firstname, lastname, birthdate, nationality_code, is_u25, is_retired, team:team_id(id, name, is_ai))")
-        .in("race_id", raceIds)
-        .not("rider_id", "is", null)
-        .order("id", { ascending: true })),
-      fetchAllRows(() => supabase
-        .from("riders")
-        .select(`id, primary_type, ${ABILITY_SELECT}`)
-        .eq("is_retired", false)
-        .order("id", { ascending: true }))
-        .catch(() => []),
-    ]);
-
-    // #2006: Rating-kolonnen er nu den type-bevidste 1-99 overall-rating
-    // (riderOverallRating) — samme blendede output O som værdimodellen, ankret
-    // mod populationen. primary_type følger med så ratingen bruger rytterens
-    // lagrede type (ejer-direktiv: samme model som den viste type).
-    const ratingByRider = new Map(
-      (abilityRows || []).map(r => [r.id, riderOverallRating(flattenAbilities(r))]),
-    );
-
-    const agg = {};
-    (results || []).forEach(r => {
-      if (!r.rider_id || !r.rider || r.rider.is_retired) return;
-      if (!agg[r.rider_id]) {
-        agg[r.rider_id] = {
-          ...r.rider,
-          rating: ratingByRider.get(r.rider_id) ?? 0,
-          points: 0,
-          stage_wins: 0,
-          gc_wins: 0,
-          classic_wins: 0,
-          pts_wins: 0,
-          mtn_wins: 0,
-          young_wins: 0,
-          yellow_days: 0,
-          green_days: 0,
-          polka_days: 0,
-          white_days: 0,
-          prize_earned: 0,
-          top3: 0,
-          top10: 0,
-        };
-      }
-      const a = agg[r.rider_id];
-      a.points += r.points_earned || 0;
-      a.prize_earned += r.prize_money || 0;
-      const raceType = r.race?.race_type;
-      if (r.rank === 1) {
-        if (r.result_type === "stage")                                  a.stage_wins++;
-        if (r.result_type === "gc" && raceType === "stage_race")        a.gc_wins++;
-        if (r.result_type === "gc" && raceType === "single")            a.classic_wins++;
-        if (r.result_type === "points")                                 a.pts_wins++;
-        if (r.result_type === "mountain")                               a.mtn_wins++;
-        if (r.result_type === "young")                                  a.young_wins++;
-        if (r.result_type === "leader")                                 a.yellow_days++;
-        if (r.result_type === "points_day")                             a.green_days++;
-        if (r.result_type === "mountain_day")                           a.polka_days++;
-        if (r.result_type === "young_day")                              a.white_days++;
-      }
-      // Top 3 / Top 10 — kun etape- og GC-placeringer (samlet/klassiker).
-      if (r.result_type === "stage" || r.result_type === "gc") {
-        if (r.rank <= 3)  a.top3++;
-        if (r.rank <= 10) a.top10++;
-      }
-    });
-
-    setRiders(
-      Object.values(agg).map(a => ({
-        ...a,
-        // #925: Sejre i alt = alle kategori-sejre, ikke kun etape + samlet.
-        total_wins: a.stage_wins + a.gc_wins + a.classic_wins + a.pts_wins + a.mtn_wins + a.young_wins,
-      }))
-    );
-    setLoading(false);
-  }
-
-  useEffect(() => { loadAll(); }, []);
 
   function handleSort(key) {
     if (sortKey === key) setSortAsc(a => !a);
@@ -226,6 +123,22 @@ export default function RiderRankingsPage() {
 
   if (loading) return (
     <PageLoader />
+  );
+
+  // #2175: eksplicit fejl-tilstand — en fejlet query viser en handlingsanvisende
+  // fejl med retry, ikke en uendelig spinner ("loading and going nowhere").
+  if (error) return (
+    <div className="max-w-full">
+      <h1 className="text-xl font-bold text-cz-1 mb-4">{t("rankings.title")}</h1>
+      <div className="text-center py-16 text-cz-3">
+        <p>{t("rankings.loadError")}</p>
+        <button onClick={reload}
+          className="mt-4 px-3 py-1.5 bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30
+            rounded-lg text-xs font-medium hover:bg-cz-accent/10 transition-all">
+          {t("rankings.retry")}
+        </button>
+      </div>
+    </div>
   );
 
   return (
@@ -341,9 +254,6 @@ export default function RiderRankingsPage() {
                   <th className="px-3 py-3 text-left text-xs font-medium text-cz-3 min-w-[120px] sticky left-0 z-20 bg-cz-subtle border-r border-cz-border">{t("rankings.thRider")}</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-cz-3 hidden sm:table-cell">{t("rankings.thBadges")}</th>
                   <th className="px-3 py-3 text-left text-xs font-medium text-cz-3 hidden md:table-cell">{t("rankings.thTeam")}</th>
-                  {/* #1009: Samlet rating (snit af rytterens stats) — attribut, ikke resultat, derfor før Point */}
-                  <SortHeader col={{ key: "rating", labelKey: "rankings.colRating", shortKey: "rankings.shortRating" }}
-                    sortKey={sortKey} sortAsc={sortAsc} onSort={handleSort} t={t} />
                   {/* Point — primær sortering, længst til venstre af stats */}
                   <SortHeader col={{ key: "points", labelKey: "rankings.colPoints", shortKey: "rankings.shortPoints" }}
                     sortKey={sortKey} sortAsc={sortAsc} onSort={handleSort} t={t} />
@@ -389,8 +299,6 @@ export default function RiderRankingsPage() {
                     <td className="px-3 py-3 text-xs hidden md:table-cell">
                       <TeamLink id={rider.team?.id} stopPropagation className="text-cz-2 hover:text-cz-accent-t transition-colors">{rider.team?.name || t("rankings.teamFree")}</TeamLink>
                     </td>
-                    {/* #1009: Samlet rating */}
-                    <StatCell value={rider.rating} active={sortKey === "rating"} />
                     {/* Point — bold, sorted col highlighted */}
                     <td className={`px-3 py-3 text-right font-mono font-bold
                       ${sortKey === "points" ? "text-cz-accent-t" : "text-cz-1"}`}>
@@ -428,7 +336,6 @@ export default function RiderRankingsPage() {
             <span>{t("rankings.legendPcl")}</span>
             <span>{t("rankings.legendMtn")}</span>
             <span>{t("rankings.legendU25")}</span>
-            <span>{t("rankings.legendRating")}</span>
             <span className="ms-auto">{t("rankings.legendSort")}</span>
           </div>
         </div>

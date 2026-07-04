@@ -4,6 +4,41 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.57",
+    "date": "2026-07-04",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Rankings",
+        "en": {
+          "title": "Rider rankings and standings now load fast",
+          "body": "The rider rankings and league standings pages could take a long time to load, and sometimes got stuck on a loading spinner that never finished. Both pages now load quickly, and if something does go wrong they show a clear error with a 'Try again' button instead of spinning forever."
+        },
+        "da": {
+          "title": "Rytterrangliste og rangliste loader nu hurtigt",
+          "body": "Rytterranglisten og liga-ranglisten kunne være lang tid om at loade og satte sig nogle gange fast i en spinner, der aldrig blev færdig. Begge sider loader nu hurtigt, og hvis noget alligevel går galt, viser de en tydelig fejl med en 'Prøv igen'-knap i stedet for at spinne i det uendelige."
+        },
+        "refs": [2175]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Rankings",
+        "en": {
+          "title": "Rating removed from the rider rankings",
+          "body": "The rider rankings list no longer shows a rating column. The rankings are about results earned on the road (points, wins, podiums), and a rider's ability rating is a different measure, so it no longer sits in the results table."
+        },
+        "da": {
+          "title": "Rating er fjernet fra rytterranglisten",
+          "body": "Rytterranglisten viser ikke længere en rating-kolonne. Ranglisten handler om resultater opnået på landevejen (point, sejre, podier), og en rytters evne-rating er et andet mål, så den ligger ikke længere i resultattabellen."
+        },
+        "refs": [2175]
+      }
+    ]
+  },
+  {
     "version": "6.56",
     "date": "2026-07-04",
     "label": "Beta",

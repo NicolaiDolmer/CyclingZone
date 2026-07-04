@@ -7,7 +7,7 @@
 // bærer hold-objektet (inkl. is_ai) videre, så tabellen kan markere AI-hold diskret.
 //
 // Ren funktion uden React/Supabase-afhængigheder, så den kan unit-testes med
-// `node --test` (samme mønster som standingsPodiums.js).
+// `node --test`.
 export function mergeStandings(teams, standingsMap) {
   const map = standingsMap || {};
   return (teams || []).map(team =>

@@ -63,6 +63,8 @@
     "searchPlaceholder": "Search rider name…",
     "noResults": "No results found",
     "noResultsFor": "No results found for \"{q}\"",
+    "loadError": "Couldn't load the rankings. Please try again.",
+    "retry": "Try again",
     "thNation": "Nation",
     "thRider": "Rider",
     "thTeam": "Team",
@@ -74,7 +76,6 @@
     "ownerFree": "Free agents",
     "teamFilterLabel": "Filter by team",
     "teamFilterAll": "All teams",
-    "colRating": "Rating",
     "colPoints": "Points",
     "colTotalWins": "Total wins",
     "colStageWins": "Stage wins",
@@ -90,7 +91,6 @@
     "colGreenDays": "Green days",
     "colPolkaDays": "Polka days",
     "colWhiteDays": "White days",
-    "shortRating": "Rtg",
     "shortPoints": "Pts",
     "shortTotalWins": "Wins",
     "shortStageWins": "Stage",
@@ -114,7 +114,6 @@
     "legendPcl": "PCL = points classification",
     "legendMtn": "Mtn = mountains classification",
     "legendU25": "U25 = youth classification",
-    "legendRating": "Rating = overall ability (1-99), weighted toward the rider's best type",
     "legendSort": "Click a column to sort"
   }
 }

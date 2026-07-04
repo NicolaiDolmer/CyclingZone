@@ -3,6 +3,8 @@
   "season": "Season {n}",
   "seasonTooltip": "Current season. Standings reset each season.",
   "noActiveSeason": "No active season",
+  "loadError": "Couldn't load the standings. Please try again.",
+  "retry": "Try again",
   "division": "Division {n}",
   "poolAll": "All",
   "noData": "No data for Division {n} yet",

@@ -47,6 +47,7 @@ import { freezeEntrantsToStartField, excludeBoundRiders, filterEntriesToRaceDivi
 import { applyRiderEligibilityFilter, filterEligibleEntries } from "./riderEligibility.js";
 import { loadEligibleEntries, loadLoanedOutRiderIds } from "./raceEntriesLoader.js";
 import { flushDeferredTransfersForRace } from "./stageRaceTransferDefer.js";
+import { refreshRankingMatviewsSafe } from "./refreshRankingMatviews.js";
 import { notifyTeamOwner as notifyTeamOwnerShared } from "./notificationService.js";
 // #2072: klassements-kernen (ranking, tie-breaks, gap-parsing, akkumulering) er
 // udtrukket til raceClassifications.js så helt-løb-stien og stage-by-stage-
@@ -866,6 +867,10 @@ export async function simulateRace({
     }
   }
 
+  // #2175: løbet er afviklet → refresh rangliste-matviews så /standings +
+  // /rider-rankings viser de nye tal. Best-effort (resultaterne er skrevet).
+  await refreshRankingMatviewsSafe(supabase);
+
   return {
     rowsImported: applied.rowsImported,
     rows: resultRows.length,
@@ -1301,6 +1306,10 @@ export async function simulateStageByIndex({
   // #1995: løbet er finaliseret → flush parkerede holdskifter for deltagerne.
   // Idempotent, så den kører også i recovery-genkørsel (ingen finalizationPending-guard).
   await flushDeferredTransfersSafe({ supabase, race });
+
+  // #2175: etapeløbet er finaliseret → refresh rangliste-matviews. Best-effort;
+  // cron-fallback holder ranglisten fersk under selve etapeløbet (mellem-etaper).
+  await refreshRankingMatviewsSafe(supabase);
 
   return {
     stageNumber, isFinalStage,

@@ -1,6 +1,5 @@
 import { useState, useEffect, Fragment } from "react";
 import { supabase } from "../lib/supabase";
-import { fetchAllRows } from "../lib/supabasePagination";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import TeamLink from "../components/TeamLink";
@@ -9,7 +8,6 @@ import CompareDrawer from "../components/CompareDrawer";
 import { formatNumber } from "../lib/intl";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 import { ABILITY_SELECT, ABILITY_SHORT, flattenAbilities } from "../lib/abilities";
-import { countTeamPodiums } from "../lib/standingsPodiums";
 import { mergeStandings } from "../lib/standingsMerge";
 import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch";
 import { Card, EmptyState, PageLoader, Input, PodiumIcon } from "../components/ui";
@@ -66,6 +64,7 @@ export default function StandingsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [standings, setStandings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [divTab, setDivTab] = useState(1);
   // #1688 pulje-sub-faner: valgt pulje inden for tieren (league_division_id) eller
   // POOL_ALL = hele tieren samlet. league_divisions hentes ved load.
@@ -97,10 +96,23 @@ export default function StandingsPage() {
   const [selected, setSelected] = useState([]); // op til 2 team_id'er
   const [compareTeams, setCompareTeams] = useState(null); // { a, b } når drawer åben
 
+  // #2175: loadAll pakket i try/catch/finally → en fejlet query viser fejl-UI,
+  // ikke en uendelig spinner. Både useEffect og realtime-refetch kalder wrapperen.
   async function loadAll() {
+    setError(null);
+    try {
+      await loadAllInner();
+    } catch (e) {
+      setError(e);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function loadAllInner() {
     const { data: { user } } = await supabase.auth.getUser();
     // #1792: udløbet/ugyldig session → user=null; stop før user.id (auth-flow redirecter til /login)
-    if (!user) { setLoading(false); return; }
+    if (!user) { return; }
     const { data: mine } = await supabase.from("teams").select("id, name, division").eq("user_id", user.id).single();
     setMyTeamId(mine?.id);
     if (mine?.division) setDivTab(mine.division);
@@ -156,60 +168,52 @@ export default function StandingsPage() {
     setStandings(merged);
     setRaces(racesRes.data || []);
 
-    // Build race-by-race point progression
-    if (racesRes.data?.length && merged.length) {
-      // Paginér: PostgREST capper ved 1000 → ellers undertæller progression-grafen.
-      const results = await fetchAllRows(() => supabase
-        .from("race_results")
-        .select("rider:rider_id(team_id), team_id, result_type, rank, prize_money, race_id")
-        .in("race_id", racesRes.data.map(r => r.id))
-        .order("id", { ascending: true }));
+    // #2175: afledte hold-metrics kommer nu fra matviews i stedet for en client-agg
+    // over ~38k race_results (den gamle uendelig-spinner-flaskehals). season_standings
+    // dækker fortsat points/stage_wins/gc_wins (uændret, backend-vedligeholdt).
+    //   team_standings_ext_mv  = holdkonkurrence, podier, præmie (skalar-kolonner)
+    //   team_race_points_mv    = pr-løb-points → kumuleres client-side til grafen
+    if (activeSeason && merged.length) {
+      const [extRes, progRes] = await Promise.all([
+        supabase.from("team_standings_ext_mv").select("*").eq("season_id", activeSeason.id),
+        supabase.from("team_race_points_mv").select("team_id, race_id, race_points").eq("season_id", activeSeason.id),
+      ]);
+      if (extRes.error) throw extRes.error;   // → loadAll's catch → fejl-UI
+      if (progRes.error) throw progRes.error;
 
+      // Skalar-kolonner. comp/podier keyes frit (UI slår op pr. team_id); præmie
+      // begrænses til merged-hold (matcher den gamle prize[team_id]!==undefined-guard).
+      const comp = {};
+      const podiums = {};
+      const prize = {};
+      merged.forEach(s => { prize[s.team_id] = 0; });
+      (extRes.data || []).forEach(row => {
+        comp[row.team_id] = { wins: Number(row.comp_wins) || 0, podiums: Number(row.comp_podiums) || 0 };
+        const p = Number(row.podiums) || 0;
+        if (p > 0) podiums[row.team_id] = p; // matcher countTeamPodiums: kun hold med podier
+        if (row.team_id in prize) prize[row.team_id] = Number(row.prize_earned) || 0;
+      });
+      setTeamComp(comp);
+      setPodiums(podiums);
+      setPrizeEarned(prize);
+
+      // Progressions-graf: pr-løb-points → kumuleret pr. hold over racesRes-
+      // rækkefølgen (samme orden som før). Attribution = rytterens nuværende hold
+      // (matview'ets ri.team_id, præcis som den gamle `r.rider?.team_id`).
+      const pointsByTeamRace = {};
+      (progRes.data || []).forEach(row => {
+        (pointsByTeamRace[row.team_id] ||= {})[row.race_id] = Number(row.race_points) || 0;
+      });
       const prog = {};
-      const cumul = {};
-      merged.forEach(s => { prog[s.team_id] = []; cumul[s.team_id] = 0; });
-
-      racesRes.data.forEach(race => {
-        const rr = (results || []).filter(r => r.race_id === race.id);
-        const pts = {};
-        rr.forEach(r => {
-          if (r.rider?.team_id) pts[r.rider.team_id] = (pts[r.rider.team_id] || 0) + (r.prize_money || 0);
-        });
-        merged.forEach(s => {
-          cumul[s.team_id] = (cumul[s.team_id] || 0) + (pts[s.team_id] || 0);
-          prog[s.team_id].push(cumul[s.team_id]);
+      merged.forEach(s => {
+        let cumul = 0;
+        prog[s.team_id] = (racesRes.data || []).map(race => {
+          cumul += pointsByTeamRace[s.team_id]?.[race.id] || 0;
+          return cumul;
         });
       });
       setRacePoints(prog);
-
-      // Holdkonkurrence: tæl team-classification-sejre — result_type='team', rider_id NULL, team_id sat.
-      const comp = {};
-      (results || []).forEach(r => {
-        if (r.result_type !== "team" || !r.team_id) return;
-        const c = comp[r.team_id] || (comp[r.team_id] = { wins: 0, podiums: 0 });
-        if (r.rank === 1) c.wins += 1;
-        if (r.rank <= 3) c.podiums += 1;
-      });
-      setTeamComp(comp);
-
-      // Podier pr. hold (#1093): season_standings har ingen podiums-kolonne,
-      // så kolonnen viste altid 0. Tælles client-side fra race_results —
-      // semantik = rytter-ranglistens "Top 3" (kun stage + gc, rank <= 3).
-      setPodiums(countTeamPodiums(results));
-
-      // Præmiepenge pr. hold: summér prize_money på race_results.team_id (det felt
-      // udbetalingen bogfører på — se prizePayoutEngine), så kolonnen viser præcis
-      // hvad holdet står til at få udbetalt. Inkluderer alle completed-løb.
-      const prize = {};
-      merged.forEach(s => { prize[s.team_id] = 0; });
-      (results || []).forEach(r => {
-        if (r.team_id != null && prize[r.team_id] !== undefined) {
-          prize[r.team_id] += (r.prize_money || 0);
-        }
-      });
-      setPrizeEarned(prize);
     }
-    setLoading(false);
   }
 
   useEffect(() => { loadAll(); }, []);
@@ -369,6 +373,21 @@ export default function StandingsPage() {
 
   if (loading) return (
     <PageLoader />
+  );
+
+  // #2175: eksplicit fejl-tilstand med retry frem for uendelig spinner ved fejl.
+  if (error) return (
+    <div className="max-w-full">
+      <h1 className="text-xl font-bold text-cz-1 mb-4">{t("title")}</h1>
+      <div className="text-center py-16 text-cz-3">
+        <p>{t("loadError")}</p>
+        <button onClick={() => { setLoading(true); loadAll(); }}
+          className="mt-4 px-3 py-1.5 bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30
+            rounded-lg text-xs font-medium hover:bg-cz-accent/10 transition-all">
+          {t("retry")}
+        </button>
+      </div>
+    </div>
   );
 
   return (
