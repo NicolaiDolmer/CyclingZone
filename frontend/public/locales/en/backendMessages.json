@@ -244,8 +244,8 @@
         "buyerCannotAfford": "The deal on {riderName} could not be completed because the buyer lacks funds.",
         "offeredMoved": "{offeredName} is no longer available for the swap.",
         "requestedMoved": "{requestedName} is no longer available for the swap.",
-        "proposingCannotAfford": "The swap {offeredName} ↔ {requestedName} could not be completed because the proposing team lacks funds.",
-        "receivingCannotAfford": "The swap {offeredName} ↔ {requestedName} could not be completed because the receiving team lacks funds."
+        "proposingCannotAfford": "The swap {offeredName} ⇄ {requestedName} could not be completed because the proposing team lacks funds.",
+        "receivingCannotAfford": "The swap {offeredName} ⇄ {requestedName} could not be completed because the receiving team lacks funds."
       },
       "swapProposed": {
         "title": "Swap proposed",
@@ -254,8 +254,8 @@
       },
       "swapAccepted": {
         "title": "Swap accepted: confirm the deal",
-        "message": "{accepterName} accepted the swap: {offeredName} ↔ {requestedName}. Confirm to complete.",
-        "messageCash": "{accepterName} accepted the swap: {offeredName} ↔ {requestedName} · {cashSign}{cash} CZ$. Confirm to complete."
+        "message": "{accepterName} accepted the swap: {offeredName} ⇄ {requestedName}. Confirm to complete.",
+        "messageCash": "{accepterName} accepted the swap: {offeredName} ⇄ {requestedName} · {cashSign}{cash} CZ$. Confirm to complete."
       },
       "swapRejected": {
         "title": "Swap rejected",
@@ -263,7 +263,7 @@
       },
       "swapCounter": {
         "title": "Counter-offer on swap",
-        "message": "{counterName} sends a counter-offer: {offeredName} ↔ {requestedName} ({cashSign}{counterCash} CZ$)"
+        "message": "{counterName} sends a counter-offer: {offeredName} ⇄ {requestedName} ({cashSign}{counterCash} CZ$)"
       },
       "swapCounterAccepted": {
         "title": "Counter-offer accepted: confirm the deal",
@@ -271,8 +271,8 @@
       },
       "swapCompleted": {
         "title": "Swap completed!",
-        "message": "{offeredName} ↔ {requestedName} have now switched",
-        "messageDeferred": "{offeredName} ↔ {requestedName} swapped. The riders change teams once their ongoing stage race finishes."
+        "message": "{offeredName} ⇄ {requestedName} have now switched",
+        "messageDeferred": "{offeredName} ⇄ {requestedName} swapped. The riders change teams once their ongoing stage race finishes."
       },
       "swapCancelledStale": {
         "title": "Swap cancelled",
@@ -312,8 +312,8 @@
       },
       "adminSwapCancelled": {
         "title": "Swap cancelled by admin",
-        "message": "The swap {offeredName} ↔ {requestedName} was cancelled by an admin.",
-        "messageReason": "The swap {offeredName} ↔ {requestedName} was cancelled by an admin: {reason}"
+        "message": "The swap {offeredName} ⇄ {requestedName} was cancelled by an admin.",
+        "messageReason": "The swap {offeredName} ⇄ {requestedName} was cancelled by an admin: {reason}"
       },
       "adminLoanCancelled": {
         "title": "Loan agreement cancelled by admin",

@@ -275,7 +275,7 @@ function describeTransferIssue(issue, { rider, buyerState, sellerState }) {
 
   if (issue.code === "seller_no_longer_owns_rider") {
     return {
-      error: "The seller no longer owns the rider — the deal was cancelled",
+      error: "The seller no longer owns the rider. The deal was cancelled",
       ...cancelTitle,
       notificationMessage: `${riderName} could not be completed because the rider is no longer on the seller's team.`,
       notificationMessageCode: "notif.transfer.issue.sellerNoLongerOwns",
@@ -285,7 +285,7 @@ function describeTransferIssue(issue, { rider, buyerState, sellerState }) {
 
   if (issue.code === "seller_squad_too_small") {
     return {
-      error: `The seller can't drop below ${issue.minRiders} riders in Division ${sellerState.division} — the deal was cancelled`,
+      error: `The seller can't drop below ${issue.minRiders} riders in Division ${sellerState.division}. The deal was cancelled`,
       errorParams: { minRiders: issue.minRiders, division: sellerState.division },
       ...cancelTitle,
       notificationMessage: `${riderName} could not be sold because the seller would otherwise drop below ${issue.minRiders} riders in Division ${sellerState.division}.`,
@@ -296,7 +296,7 @@ function describeTransferIssue(issue, { rider, buyerState, sellerState }) {
 
   if (issue.code === "buyer_squad_full") {
     return {
-      error: `The buyer's team can hold at most ${issue.maxRiders} riders in Division ${buyerState.division} — the deal was cancelled`,
+      error: `The buyer's team can hold at most ${issue.maxRiders} riders in Division ${buyerState.division}. The deal was cancelled`,
       errorParams: { maxRiders: issue.maxRiders, division: buyerState.division },
       ...cancelTitle,
       notificationMessage: `${riderName} could not be transferred because the buyer's team is already full.`,
@@ -306,7 +306,7 @@ function describeTransferIssue(issue, { rider, buyerState, sellerState }) {
   }
 
   return {
-    error: "The buyer can no longer afford it — the deal was cancelled",
+    error: "The buyer can no longer afford it. The deal was cancelled",
     ...cancelTitle,
     notificationMessage: `The deal on ${riderName} could not be completed because the buyer lacks funds.`,
     notificationMessageCode: "notif.transfer.issue.buyerCannotAfford",
@@ -321,7 +321,7 @@ function describeSwapIssue(issue, { offered, requested }) {
 
   if (issue.code === "offered_rider_moved") {
     return {
-      error: "Your offered rider is no longer on your team — the swap was cancelled",
+      error: "Your offered rider is no longer on your team. The swap was cancelled",
       ...cancelTitle,
       notificationMessage: `${offeredName} is no longer available for the swap.`,
       notificationMessageCode: "notif.transfer.issue.offeredMoved",
@@ -331,7 +331,7 @@ function describeSwapIssue(issue, { offered, requested }) {
 
   if (issue.code === "requested_rider_moved") {
     return {
-      error: "The requested rider no longer belongs to the counterparty — the swap was cancelled",
+      error: "The requested rider no longer belongs to the counterparty. The swap was cancelled",
       ...cancelTitle,
       notificationMessage: `${requestedName} is no longer available for the swap.`,
       notificationMessageCode: "notif.transfer.issue.requestedMoved",
@@ -341,18 +341,18 @@ function describeSwapIssue(issue, { offered, requested }) {
 
   if (issue.code === "proposing_insufficient_balance") {
     return {
-      error: "The proposing team can no longer afford it — the swap was cancelled",
+      error: "The proposing team can no longer afford it. The swap was cancelled",
       ...cancelTitle,
-      notificationMessage: `The swap ${offeredName} ↔ ${requestedName} could not be completed because the proposing team lacks funds.`,
+      notificationMessage: `The swap ${offeredName} ⇄ ${requestedName} could not be completed because the proposing team lacks funds.`,
       notificationMessageCode: "notif.transfer.issue.proposingCannotAfford",
       notificationParams: { offeredName, requestedName },
     };
   }
 
   return {
-    error: "The receiving team can no longer afford it — the swap was cancelled",
+    error: "The receiving team can no longer afford it. The swap was cancelled",
     ...cancelTitle,
-    notificationMessage: `The swap ${offeredName} ↔ ${requestedName} could not be completed because the receiving team lacks funds.`,
+    notificationMessage: `The swap ${offeredName} ⇄ ${requestedName} could not be completed because the receiving team lacks funds.`,
     notificationMessageCode: "notif.transfer.issue.receivingCannotAfford",
     notificationParams: { offeredName, requestedName },
   };
@@ -472,7 +472,7 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
     });
     await notifyTeamOwner(offer.buyer_team_id, stalePayload.type, stalePayload.title, stalePayload.message, offer.id, stalePayload.metadata);
     await notifyTeamOwner(offer.seller_team_id, stalePayload.type, stalePayload.title, stalePayload.message, offer.id, stalePayload.metadata);
-    return failure(409, "The rider changed status during confirmation — the deal was cancelled", "stale_rider_state");
+    return failure(409, "The rider changed status during confirmation. The deal was cancelled", "stale_rider_state");
   }
 
   // #1906 defense-in-depth: når rytteren reelt skifter hold (team_id flyttet ved
@@ -680,7 +680,7 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
     const offeredStalePayload = buildSwapCancelledStaleNotification({ riderName: `${offered.firstname} ${offered.lastname}` });
     await notifyTeamOwner(swap.proposing_team_id, offeredStalePayload.type, offeredStalePayload.title, offeredStalePayload.message, swap.id, offeredStalePayload.metadata);
     await notifyTeamOwner(swap.receiving_team_id, offeredStalePayload.type, offeredStalePayload.title, offeredStalePayload.message, swap.id, offeredStalePayload.metadata);
-    return failure(409, "The offered rider changed status during confirmation — the swap was cancelled", "stale_offered_rider_state");
+    return failure(409, "The offered rider changed status during confirmation. The swap was cancelled", "stale_offered_rider_state");
   }
 
   const movedRequested = deferRegistration
@@ -717,7 +717,7 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
     const requestedStalePayload = buildSwapCancelledStaleNotification({ riderName: `${requested.firstname} ${requested.lastname}` });
     await notifyTeamOwner(swap.proposing_team_id, requestedStalePayload.type, requestedStalePayload.title, requestedStalePayload.message, swap.id, requestedStalePayload.metadata);
     await notifyTeamOwner(swap.receiving_team_id, requestedStalePayload.type, requestedStalePayload.title, requestedStalePayload.message, swap.id, requestedStalePayload.metadata);
-    return failure(409, "The requested rider changed status during confirmation — the swap was cancelled", "stale_requested_rider_state");
+    return failure(409, "The requested rider changed status during confirmation. The swap was cancelled", "stale_requested_rider_state");
   }
 
   // #1906 defense-in-depth: begge byttede ryttere skifter hold ved direkte

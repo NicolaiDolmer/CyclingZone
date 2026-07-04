@@ -129,7 +129,7 @@ export function buildTransferNewBidNotification({ buyerName, amount, riderName, 
 export function buildTransferOfferAcceptedNotification({ sellerName, riderName, price, riderId }) {
   return {
     type: "transfer_offer_accepted",
-    title: "Offer accepted — confirm the deal",
+    title: "Offer accepted: confirm the deal",
     message: `${sellerName} accepted your offer on ${riderName} for ${price.toLocaleString("en-US")} CZ$. Confirm to complete the deal.`,
     metadata: withRider({
       titleCode: "notif.transfer.offerAccepted.title",
@@ -143,7 +143,7 @@ export function buildTransferOfferAcceptedNotification({ sellerName, riderName, 
 export function buildTransferCounterAcceptedNotification({ buyerName, riderName, price, riderId }) {
   return {
     type: "transfer_offer_accepted",
-    title: "Counter-offer accepted — confirm the deal",
+    title: "Counter-offer accepted: confirm the deal",
     message: `${buyerName} accepted your counter-offer on ${riderName} for ${price.toLocaleString("en-US")} CZ$. Confirm to complete the deal.`,
     metadata: withRider({
       titleCode: "notif.transfer.counterAccepted.title",
@@ -214,7 +214,7 @@ export function buildTransferOnAuctionCancelledNotification({ riderName, riderId
   return {
     type: "transfer_offer_rejected",
     title: "Transfer cancelled",
-    message: `${riderName} went to an active auction — the deal was cancelled. Bid on the auction instead.`,
+    message: `${riderName} went to an active auction. The deal was cancelled. Bid on the auction instead.`,
     metadata: withRider({
       titleCode: "notif.transfer.onAuctionCancelled.title",
       titleParams: {},
@@ -281,8 +281,8 @@ export function buildSwapAcceptedNotification({ accepterName, offeredName, reque
   const cashSuffix = cash ? ` · ${cash > 0 ? "+" : ""}${cash.toLocaleString("en-US")} CZ$` : "";
   return {
     type: "transfer_offer_accepted",
-    title: "Swap accepted — confirm the deal",
-    message: `${accepterName} accepted the swap: ${offeredName} ↔ ${requestedName}${cashSuffix}. Confirm to complete.`,
+    title: "Swap accepted: confirm the deal",
+    message: `${accepterName} accepted the swap: ${offeredName} ⇄ ${requestedName}${cashSuffix}. Confirm to complete.`,
     metadata: {
       titleCode: "notif.transfer.swapAccepted.title",
       titleParams: {},
@@ -310,7 +310,7 @@ export function buildSwapCounterNotification({ counterName, offeredName, request
   return {
     type: "transfer_counter",
     title: "Counter-offer on swap",
-    message: `${counterName} sends a counter-offer: ${offeredName} ↔ ${requestedName} (${counterCash > 0 ? "+" : ""}${counterCash.toLocaleString("en-US")} CZ$)`,
+    message: `${counterName} sends a counter-offer: ${offeredName} ⇄ ${requestedName} (${counterCash > 0 ? "+" : ""}${counterCash.toLocaleString("en-US")} CZ$)`,
     metadata: {
       titleCode: "notif.transfer.swapCounter.title",
       titleParams: {},
@@ -323,7 +323,7 @@ export function buildSwapCounterNotification({ counterName, offeredName, request
 export function buildSwapCounterAcceptedNotification({ accepterName }) {
   return {
     type: "transfer_offer_accepted",
-    title: "Counter-offer accepted — confirm the deal",
+    title: "Counter-offer accepted: confirm the deal",
     message: `${accepterName} accepted your counter-offer. Confirm to complete the swap.`,
     metadata: {
       titleCode: "notif.transfer.swapCounterAccepted.title",
@@ -339,8 +339,8 @@ export function buildSwapCompletedNotification({ offeredName, requestedName, def
     type: "transfer_offer_accepted",
     title: "Swap completed!",
     message: deferred
-      ? `${offeredName} ↔ ${requestedName} swapped — the riders change teams once their ongoing stage race finishes.`
-      : `${offeredName} ↔ ${requestedName} have now switched`,
+      ? `${offeredName} ⇄ ${requestedName} swapped. The riders change teams once their ongoing stage race finishes.`
+      : `${offeredName} ⇄ ${requestedName} have now switched`,
     metadata: {
       titleCode: "notif.transfer.swapCompleted.title",
       titleParams: {},
@@ -483,7 +483,7 @@ export function buildAdminSwapCancelledNotification({ offeredName, requestedName
   return {
     type: "transfer_offer_rejected",
     title: "Swap cancelled by admin",
-    message: `The swap ${offeredName} ↔ ${requestedName} was cancelled by an admin${reasonSuffix(reason)}`,
+    message: `The swap ${offeredName} ⇄ ${requestedName} was cancelled by an admin${reasonSuffix(reason)}`,
     metadata: {
       titleCode: "notif.transfer.adminSwapCancelled.title",
       titleParams: {},
