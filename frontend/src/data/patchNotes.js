@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.58",
+    "date": "2026-07-04",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Calendar",
+        "en": {
+          "title": "Old placeholder race dates are gone",
+          "body": "Race cards used to show leftover dates like 3/10 or 5/9 that did not line up with anything in the game and confused new managers. Those dates are removed everywhere they appeared (dashboard, race pages, team selection, and the season calendar). Races are now identified by the in-game calendar and the countdown to their next stage, so the dashboard shows how long until a race starts instead of a date that meant nothing."
+        },
+        "da": {
+          "title": "Gamle pladsholder-løbsdatoer er væk",
+          "body": "Løbskort viste tidligere efterladte datoer som 3/10 eller 5/9, der ikke passede med noget i spillet og forvirrede nye managere. De datoer er fjernet alle de steder, de optrådte (dashboard, løbssider, holdudtagelse og sæsonkalenderen). Løb identificeres nu via spillets kalender og nedtællingen til næste etape, så dashboardet viser hvor længe der er til et løb starter i stedet for en dato, der ikke betød noget."
+        },
+        "refs": [2171]
+      }
+    ]
+  },
+  {
     "version": "6.57",
     "date": "2026-07-04",
     "label": "Beta",

@@ -65,7 +65,7 @@
       "empty": "Ingen planlagte løb",
       "stages": "{count, plural, one {1 etape} other {# etaper}}",
       "oneDay": "Enkeltdagsløb",
-      "dateTbd": "Dato TBD",
+      "scheduled": "Planlagt",
       "live": "I gang"
     },
     "standings": {

@@ -312,7 +312,6 @@ export default function RaceDetailPage() {
             ? t("raceType.stageRaceWithStages", { count: race.stages })
             : t("raceType.oneDay")}
           {race.season?.number != null && ` · ${t("library.seasonOption", { number: race.season.number })}`}
-          {race.pool_race?.date_text && ` · ${race.pool_race.date_text}`}
         </p>
         {race.status === "scheduled" && nextStart && (
           <p className="text-cz-accent-t text-xs font-mono mt-1 tabular-nums">

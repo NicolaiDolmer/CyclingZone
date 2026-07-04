@@ -293,18 +293,24 @@ export default function DashboardPage() {
   useEffect(() => { loadAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
   useRealtimeRefetch("dashboard-live", REALTIME_TABLES, loadAll);
 
-  // #1828: for igangværende etapeløb i "Kommende løb"-kortet, hent næste etapes
-  // tidspunkt så vi kan vise en countdown. Få live-løb → lille direkte query.
+  // #1828 + #2171: for "Kommende løb"-kortet henter vi den ægte kalender-tid for
+  // næste etape (game-day-countdown), både for igangværende OG endnu-ikke-startede
+  // løb. #2171 fjernede de forvirrende PCM-datoer (pool_race.date_text) fra kortet;
+  // countdown'en til første/næste etape er den meningsfulde erstatning ("starter om
+  // X dage"), afledt af race_stage_schedule.scheduled_at — ikke af date_text.
   useEffect(() => {
-    const live = nextRaces.filter((r) => deriveRaceStatus(r.status, r.stages_completed, r.stages) === "live");
-    if (!live.length) { setNextStageByRace({}); return undefined; }
+    const scheduled = nextRaces.filter((r) => {
+      const s = deriveRaceStatus(r.status, r.stages_completed, r.stages);
+      return s === "live" || s === "scheduled";
+    });
+    if (!scheduled.length) { setNextStageByRace({}); return undefined; }
     let cancelled = false;
     (async () => {
       const { data } = await supabase.from("race_stage_schedule")
-        .select("race_id, stage_number, scheduled_at").in("race_id", live.map((r) => r.id));
+        .select("race_id, stage_number, scheduled_at").in("race_id", scheduled.map((r) => r.id));
       if (cancelled) return;
       const map = {};
-      for (const r of live) {
+      for (const r of scheduled) {
         const next = (data || []).find((s) => s.race_id === r.id && s.stage_number === (r.stages_completed ?? 0) + 1);
         const ms = next ? Date.parse(next.scheduled_at) : NaN;
         if (Number.isFinite(ms)) map[r.id] = ms;
@@ -720,9 +726,9 @@ export default function DashboardPage() {
                           <span className="text-[10px] text-cz-3 tabular-nums">{nextStageCountdown(nextStageByRace[race.id], nowMs, t)}</span>
                         )}
                       </span>
-                    ) : race.pool_race?.date_text
-                      ? <p className="text-cz-2 text-sm">{race.pool_race.date_text}</p>
-                      : <p className="text-cz-3 text-sm">{t("dashboard:cards.races.dateTbd")}</p>}
+                    ) : nextStageByRace[race.id]
+                      ? <p className="text-cz-2 text-sm tabular-nums">{nextStageCountdown(nextStageByRace[race.id], nowMs, t)}</p>
+                      : <p className="text-cz-3 text-sm">{t("dashboard:cards.races.scheduled")}</p>}
                   </div>
                 </Link>
               ))}

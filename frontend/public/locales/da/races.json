@@ -169,7 +169,6 @@
     "thSeason": "Sæson",
     "thClass": "Klasse",
     "thType": "Type",
-    "thDate": "Dato",
     "thStatus": "Status",
     "seasonLink": "Sæson {number} →"
   },
@@ -182,8 +181,7 @@
     "thRace": "Løb",
     "thClass": "Klasse",
     "thType": "Type",
-    "thStages": "Etaper",
-    "thDate": "Dato"
+    "thStages": "Etaper"
   },
   "resultType": {
     "stage": "Etape",
