@@ -7,43 +7,46 @@
 
 import { FINANCE_REASON } from "./economyConstants.js";
 
-// Mapping fra reason_code → menneskelæsbar dansk label til donut-segmenter.
-// Holdes her (ikke i UI) så backend-output er self-describing.
+// Mapping fra reason_code → menneskelæsbar label til donut-segmenter.
+// #2174 · EN-first fallback (ingen rå dansk i backend): frontend resolver den
+// locale-aware via finance.json report.reasonCode.<code>; disse værdier vises
+// kun hvis en kode mangler en frontend-oversættelse. Holdes her (ikke kun i UI)
+// så backend-output er self-describing i logs/admin.
 export const REASON_LABEL = Object.freeze({
   [FINANCE_REASON.SEASON_START_SPONSOR]: "Sponsor",
-  [FINANCE_REASON.SPONSOR_RACE_DAY]: "Sponsor (løbsdag)",
-  [FINANCE_REASON.SEASON_END_SALARY]: "Løn",
-  [FINANCE_REASON.SEASON_END_DIVISION_BONUS]: "Divisionsbonus",
-  [FINANCE_REASON.SEASON_END_NEGATIVE_INTEREST]: "Negativ rente",
-  [FINANCE_REASON.SEASON_END_LOAN_INTEREST]: "Lånerente",
-  [FINANCE_REASON.STARTING_BUDGET]: "Startbudget",
-  [FINANCE_REASON.RACE_PRIZE_PAYOUT]: "Præmiepenge",
-  [FINANCE_REASON.AUCTION_WINNER_PAYMENT]: "Auktion-køb",
-  [FINANCE_REASON.AUCTION_SELLER_PAYOUT]: "Auktion-salg",
-  [FINANCE_REASON.AUCTION_GUARANTEED_BANK_SALE]: "Bank-garanti-salg",
-  [FINANCE_REASON.TRANSFER_PURCHASE]: "Transfer-køb",
-  [FINANCE_REASON.TRANSFER_SALE]: "Transfer-salg",
-  [FINANCE_REASON.SWAP_CASH_DELTA]: "Bytte (kontant-difference)",
-  [FINANCE_REASON.RIDER_RELEASE_BUYOUT]: "Opsigelsesgebyr",
-  [FINANCE_REASON.LOAN_FEE_PAID]: "Lejegebyr betalt",
-  [FINANCE_REASON.LOAN_FEE_RECEIVED]: "Lejegebyr modtaget",
-  [FINANCE_REASON.LOAN_FEE_REFUNDED]: "Lejegebyr refunderet",
-  [FINANCE_REASON.LOAN_PRINCIPAL_RECEIVED]: "Lån optaget",
-  [FINANCE_REASON.LOAN_REPAYMENT]: "Låneafdrag",
-  [FINANCE_REASON.LOAN_BUYOUT]: "Lån indfriet",
-  [FINANCE_REASON.LOAN_ORIGINATION_FEE]: "Låne-oprettelsesgebyr",
-  [FINANCE_REASON.EMERGENCY_LOAN_RECEIVED]: "Nødlån",
-  [FINANCE_REASON.SQUAD_AUTO_PURCHASE]: "Tvungent rytter-køb",
-  [FINANCE_REASON.SQUAD_AUTO_SALE]: "Tvungent rytter-salg",
-  [FINANCE_REASON.SQUAD_VIOLATION_FINE]: "Sammensætnings-bøde",
-  [FINANCE_REASON.BOARD_BONUS_ACCEPTED]: "Bestyrelsesbonus",
-  [FINANCE_REASON.ADMIN_BALANCE_ADJUSTMENT]: "Admin-justering",
-  [FINANCE_REASON.ADMIN_FORCE_PRIZE]: "Admin-præmie-tildeling",
-  [FINANCE_REASON.ADMIN_BETA_RESET]: "Beta-reset",
-  [FINANCE_REASON.SEASON_START_UPKEEP]: "Drift og vedligehold",
+  [FINANCE_REASON.SPONSOR_RACE_DAY]: "Sponsor (race day)",
+  [FINANCE_REASON.SEASON_END_SALARY]: "Salaries",
+  [FINANCE_REASON.SEASON_END_DIVISION_BONUS]: "Division bonus",
+  [FINANCE_REASON.SEASON_END_NEGATIVE_INTEREST]: "Negative interest",
+  [FINANCE_REASON.SEASON_END_LOAN_INTEREST]: "Loan interest",
+  [FINANCE_REASON.STARTING_BUDGET]: "Starting budget",
+  [FINANCE_REASON.RACE_PRIZE_PAYOUT]: "Prize money",
+  [FINANCE_REASON.AUCTION_WINNER_PAYMENT]: "Auction purchase",
+  [FINANCE_REASON.AUCTION_SELLER_PAYOUT]: "Auction sale",
+  [FINANCE_REASON.AUCTION_GUARANTEED_BANK_SALE]: "Bank-guaranteed sale",
+  [FINANCE_REASON.TRANSFER_PURCHASE]: "Transfer purchase",
+  [FINANCE_REASON.TRANSFER_SALE]: "Transfer sale",
+  [FINANCE_REASON.SWAP_CASH_DELTA]: "Swap (cash difference)",
+  [FINANCE_REASON.RIDER_RELEASE_BUYOUT]: "Release fee",
+  [FINANCE_REASON.LOAN_FEE_PAID]: "Loan fee paid",
+  [FINANCE_REASON.LOAN_FEE_RECEIVED]: "Loan fee received",
+  [FINANCE_REASON.LOAN_FEE_REFUNDED]: "Loan fee refunded",
+  [FINANCE_REASON.LOAN_PRINCIPAL_RECEIVED]: "Loan taken out",
+  [FINANCE_REASON.LOAN_REPAYMENT]: "Loan repayment",
+  [FINANCE_REASON.LOAN_BUYOUT]: "Loan bought out",
+  [FINANCE_REASON.LOAN_ORIGINATION_FEE]: "Loan origination fee",
+  [FINANCE_REASON.EMERGENCY_LOAN_RECEIVED]: "Emergency loan",
+  [FINANCE_REASON.SQUAD_AUTO_PURCHASE]: "Forced rider purchase",
+  [FINANCE_REASON.SQUAD_AUTO_SALE]: "Forced rider sale",
+  [FINANCE_REASON.SQUAD_VIOLATION_FINE]: "Squad-composition fine",
+  [FINANCE_REASON.BOARD_BONUS_ACCEPTED]: "Board bonus",
+  [FINANCE_REASON.ADMIN_BALANCE_ADJUSTMENT]: "Admin adjustment",
+  [FINANCE_REASON.ADMIN_FORCE_PRIZE]: "Admin prize award",
+  [FINANCE_REASON.ADMIN_BETA_RESET]: "Beta reset",
+  [FINANCE_REASON.SEASON_START_UPKEEP]: "Upkeep & maintenance",
 });
 
-const FALLBACK_LABEL = "Andet";
+const FALLBACK_LABEL = "Other";
 
 function labelFor(reasonCode) {
   return REASON_LABEL[reasonCode] || FALLBACK_LABEL;

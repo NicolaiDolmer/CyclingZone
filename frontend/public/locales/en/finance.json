@@ -222,6 +222,8 @@
       "transfer_purchase": "Transfer purchase",
       "transfer_sale": "Transfer sale",
       "swap_cash_delta": "Swap (cash difference)",
+      "sponsor_race_day": "Sponsor (race day)",
+      "rider_release_buyout": "Release fee",
       "loan_fee_paid": "Loan fee paid",
       "loan_fee_received": "Loan fee received",
       "loan_fee_refunded": "Loan fee refunded",

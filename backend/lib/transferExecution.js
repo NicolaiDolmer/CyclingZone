@@ -15,6 +15,13 @@ import { contractOnAcquirePatch } from "./contractSeed.js";
 import { clearFutureRaceEntriesSafe } from "./raceEntryCleanup.js";
 import { buildContractExpiringNotification } from "./notificationService.js";
 import {
+  buildSwapCancelledStaleNotification,
+  buildSwapCompletedNotification,
+  buildTransferOnAuctionCancelledNotification,
+  buildTransferStaleCancelledNotification,
+  buildTransferCompletedNotification,
+} from "./transferNotifications.js";
+import {
   FINANCE_ACTOR_TYPE,
   FINANCE_REASON,
   FINANCE_RELATED_ENTITY,
@@ -259,70 +266,107 @@ async function withdrawSwapOffersForRiders(supabase, riderIds, excludeSwapId = n
   await expectMutation(query);
 }
 
+// #2174 · describeTransferIssue/describeSwapIssue emitter nu EN-first `error` +
+// notification-i18n-koder (notif.transfer.issue.*) så både API-svaret (#678
+// errorCode-kontrakt) og indbakke-notifikationen følger brugerens sprog.
 function describeTransferIssue(issue, { rider, buyerState, sellerState }) {
+  const riderName = `${rider.firstname} ${rider.lastname}`;
+  const cancelTitle = { notificationTitle: "Transfer cancelled", notificationTitleCode: "notif.transfer.issue.title" };
+
   if (issue.code === "seller_no_longer_owns_rider") {
     return {
-      error: "Sælger ejer ikke længere rytteren — handlen er annulleret",
-      notificationTitle: "Transfer annulleret",
-      notificationMessage: `${rider.firstname} ${rider.lastname} kunne ikke gennemføres, fordi rytteren ikke længere står på sælgers hold.`,
+      error: "The seller no longer owns the rider — the deal was cancelled",
+      ...cancelTitle,
+      notificationMessage: `${riderName} could not be completed because the rider is no longer on the seller's team.`,
+      notificationMessageCode: "notif.transfer.issue.sellerNoLongerOwns",
+      notificationParams: { riderName },
     };
   }
 
   if (issue.code === "seller_squad_too_small") {
     return {
-      error: `Sælger må ikke komme under ${issue.minRiders} ryttere i Division ${sellerState.division} — handlen er annulleret`,
+      error: `The seller can't drop below ${issue.minRiders} riders in Division ${sellerState.division} — the deal was cancelled`,
       errorParams: { minRiders: issue.minRiders, division: sellerState.division },
-      notificationTitle: "Transfer annulleret",
-      notificationMessage: `${rider.firstname} ${rider.lastname} kunne ikke sælges, fordi sælgeren ellers ville komme under ${issue.minRiders} ryttere i Division ${sellerState.division}.`,
+      ...cancelTitle,
+      notificationMessage: `${riderName} could not be sold because the seller would otherwise drop below ${issue.minRiders} riders in Division ${sellerState.division}.`,
+      notificationMessageCode: "notif.transfer.issue.sellerSquadTooSmall",
+      notificationParams: { riderName, minRiders: issue.minRiders, division: sellerState.division },
     };
   }
 
   if (issue.code === "buyer_squad_full") {
     return {
-      error: `Købers hold kan max have ${issue.maxRiders} ryttere i Division ${buyerState.division} — handlen er annulleret`,
+      error: `The buyer's team can hold at most ${issue.maxRiders} riders in Division ${buyerState.division} — the deal was cancelled`,
       errorParams: { maxRiders: issue.maxRiders, division: buyerState.division },
-      notificationTitle: "Transfer annulleret",
-      notificationMessage: `${rider.firstname} ${rider.lastname} kunne ikke overdrages, fordi købers hold allerede er fuldt.`,
+      ...cancelTitle,
+      notificationMessage: `${riderName} could not be transferred because the buyer's team is already full.`,
+      notificationMessageCode: "notif.transfer.issue.buyerSquadFull",
+      notificationParams: { riderName },
     };
   }
 
   return {
-    error: "Køber har ikke længere råd — handlen er annulleret",
-    notificationTitle: "Transfer annulleret",
-    notificationMessage: `Handlen på ${rider.firstname} ${rider.lastname} kunne ikke gennemføres, fordi køber mangler midler.`,
+    error: "The buyer can no longer afford it — the deal was cancelled",
+    ...cancelTitle,
+    notificationMessage: `The deal on ${riderName} could not be completed because the buyer lacks funds.`,
+    notificationMessageCode: "notif.transfer.issue.buyerCannotAfford",
+    notificationParams: { riderName },
   };
 }
 
 function describeSwapIssue(issue, { offered, requested }) {
+  const offeredName = `${offered.firstname} ${offered.lastname}`;
+  const requestedName = `${requested.firstname} ${requested.lastname}`;
+  const cancelTitle = { notificationTitle: "Swap cancelled", notificationTitleCode: "notif.transfer.issue.swapTitle" };
+
   if (issue.code === "offered_rider_moved") {
     return {
-      error: "Din tilbudte rytter tilhører ikke længere dit hold — byttehandlen er annulleret",
-      notificationTitle: "Byttehandel annulleret",
-      notificationMessage: `${offered.firstname} ${offered.lastname} er ikke længere tilgængelig til byttehandlen.`,
+      error: "Your offered rider is no longer on your team — the swap was cancelled",
+      ...cancelTitle,
+      notificationMessage: `${offeredName} is no longer available for the swap.`,
+      notificationMessageCode: "notif.transfer.issue.offeredMoved",
+      notificationParams: { offeredName },
     };
   }
 
   if (issue.code === "requested_rider_moved") {
     return {
-      error: "Den ønskede rytter tilhører ikke længere modparten — byttehandlen er annulleret",
-      notificationTitle: "Byttehandel annulleret",
-      notificationMessage: `${requested.firstname} ${requested.lastname} er ikke længere tilgængelig til byttehandlen.`,
+      error: "The requested rider no longer belongs to the counterparty — the swap was cancelled",
+      ...cancelTitle,
+      notificationMessage: `${requestedName} is no longer available for the swap.`,
+      notificationMessageCode: "notif.transfer.issue.requestedMoved",
+      notificationParams: { requestedName },
     };
   }
 
   if (issue.code === "proposing_insufficient_balance") {
     return {
-      error: "Det foreslående hold har ikke længere råd — byttehandlen er annulleret",
-      notificationTitle: "Byttehandel annulleret",
-      notificationMessage: `Handlen på ${offered.firstname} ${offered.lastname} ↔ ${requested.firstname} ${requested.lastname} kunne ikke gennemføres, fordi det foreslående hold mangler midler.`,
+      error: "The proposing team can no longer afford it — the swap was cancelled",
+      ...cancelTitle,
+      notificationMessage: `The swap ${offeredName} ↔ ${requestedName} could not be completed because the proposing team lacks funds.`,
+      notificationMessageCode: "notif.transfer.issue.proposingCannotAfford",
+      notificationParams: { offeredName, requestedName },
     };
   }
 
   return {
-    error: "Det modtagende hold har ikke længere råd — byttehandlen er annulleret",
-    notificationTitle: "Byttehandel annulleret",
-    notificationMessage: `Handlen på ${offered.firstname} ${offered.lastname} ↔ ${requested.firstname} ${requested.lastname} kunne ikke gennemføres, fordi det modtagende hold mangler midler.`,
+    error: "The receiving team can no longer afford it — the swap was cancelled",
+    ...cancelTitle,
+    notificationMessage: `The swap ${offeredName} ↔ ${requestedName} could not be completed because the receiving team lacks funds.`,
+    notificationMessageCode: "notif.transfer.issue.receivingCannotAfford",
+    notificationParams: { offeredName, requestedName },
   };
+}
+
+// #2174 · Byg notify-metadata fra en describe*-issue-payload.
+function issueNotificationMetadata(message, riderId = null) {
+  const meta = {
+    titleCode: message.notificationTitleCode,
+    titleParams: {},
+    messageCode: message.notificationMessageCode,
+    messageParams: message.notificationParams || {},
+  };
+  return riderId != null ? { riderId, ...meta } : meta;
 }
 
 // Private: pay for + register/park a fully-agreed transfer offer.
@@ -360,9 +404,11 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
   const onAuction = await getActiveAuctionRiderIds(supabase, [rider.id]);
   if (onAuction.length > 0) {
     await withdrawTransferOffer(supabase, offer.id);
-    const auctionMsg = `${rider.firstname} ${rider.lastname} kom på en aktiv auktion — handlen blev annulleret. Byd på auktionen i stedet.`;
-    await notifyTeamOwner(offer.buyer_team_id, "transfer_offer_rejected", "Transfer annulleret", auctionMsg, offer.id, { riderId: rider.id });
-    await notifyTeamOwner(offer.seller_team_id, "transfer_offer_rejected", "Transfer annulleret", auctionMsg, offer.id, { riderId: rider.id });
+    const onAuctionPayload = buildTransferOnAuctionCancelledNotification({
+      riderName: `${rider.firstname} ${rider.lastname}`, riderId: rider.id,
+    });
+    await notifyTeamOwner(offer.buyer_team_id, onAuctionPayload.type, onAuctionPayload.title, onAuctionPayload.message, offer.id, onAuctionPayload.metadata);
+    await notifyTeamOwner(offer.seller_team_id, onAuctionPayload.type, onAuctionPayload.title, onAuctionPayload.message, offer.id, onAuctionPayload.metadata);
     return failure(409, "This rider is on an active auction — the transfer was cancelled. Bid on the auction instead.", "rider_on_auction_transfer");
   }
 
@@ -380,8 +426,9 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
   if (issue) {
     const message = describeTransferIssue(issue, { rider, buyerState, sellerState });
     await withdrawTransferOffer(supabase, offer.id);
-    await notifyTeamOwner(offer.buyer_team_id, "transfer_offer_rejected", message.notificationTitle, message.notificationMessage, offer.id, { riderId: rider.id });
-    await notifyTeamOwner(offer.seller_team_id, "transfer_offer_rejected", message.notificationTitle, message.notificationMessage, offer.id, { riderId: rider.id });
+    const issueMeta = issueNotificationMetadata(message, rider.id);
+    await notifyTeamOwner(offer.buyer_team_id, "transfer_offer_rejected", message.notificationTitle, message.notificationMessage, offer.id, issueMeta);
+    await notifyTeamOwner(offer.seller_team_id, "transfer_offer_rejected", message.notificationTitle, message.notificationMessage, offer.id, issueMeta);
     return failure(400, message.error, issue.code, message.errorParams ? { errorParams: message.errorParams } : {});
   }
 
@@ -420,11 +467,12 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
 
   if (!movedRider) {
     await withdrawTransferOffer(supabase, offer.id);
-    await notifyTeamOwner(offer.buyer_team_id, "transfer_offer_rejected", "Transfer annulleret",
-      `${rider.firstname} ${rider.lastname} kunne ikke gennemføres, fordi rytteren skiftede status under bekræftelsen.`, offer.id, { riderId: rider.id });
-    await notifyTeamOwner(offer.seller_team_id, "transfer_offer_rejected", "Transfer annulleret",
-      `${rider.firstname} ${rider.lastname} kunne ikke gennemføres, fordi rytteren skiftede status under bekræftelsen.`, offer.id, { riderId: rider.id });
-    return failure(409, "Rytteren skiftede status under bekræftelsen — handlen er annulleret", "stale_rider_state");
+    const stalePayload = buildTransferStaleCancelledNotification({
+      riderName: `${rider.firstname} ${rider.lastname}`, riderId: rider.id,
+    });
+    await notifyTeamOwner(offer.buyer_team_id, stalePayload.type, stalePayload.title, stalePayload.message, offer.id, stalePayload.metadata);
+    await notifyTeamOwner(offer.seller_team_id, stalePayload.type, stalePayload.title, stalePayload.message, offer.id, stalePayload.metadata);
+    return failure(409, "The rider changed status during confirmation — the deal was cancelled", "stale_rider_state");
   }
 
   // #1906 defense-in-depth: når rytteren reelt skifter hold (team_id flyttet ved
@@ -504,13 +552,11 @@ async function executeTransferOffer(supabase, offer, { logActivity = NOOP, notif
     amount: price,
   });
 
-  const completedMsg = deferRegistration
-    ? `${rider.firstname} ${rider.lastname} er handlet for ${price.toLocaleString()} CZ$ — han skifter hold, når hans igangværende etapeløb er kørt færdigt.`
-    : `${rider.firstname} ${rider.lastname} skifter hold for ${price.toLocaleString()} CZ$`;
-  await notifyTeamOwner(offer.buyer_team_id, "transfer_offer_accepted", "Transfer gennemført!",
-    completedMsg, offer.id, { riderId: rider.id });
-  await notifyTeamOwner(offer.seller_team_id, "transfer_offer_accepted", "Transfer gennemført!",
-    completedMsg, offer.id, { riderId: rider.id });
+  const completedPayload = buildTransferCompletedNotification({
+    riderName: `${rider.firstname} ${rider.lastname}`, price, deferred: deferRegistration, riderId: rider.id,
+  });
+  await notifyTeamOwner(offer.buyer_team_id, completedPayload.type, completedPayload.title, completedPayload.message, offer.id, completedPayload.metadata);
+  await notifyTeamOwner(offer.seller_team_id, completedPayload.type, completedPayload.title, completedPayload.message, offer.id, completedPayload.metadata);
 
   // #1836 · køb-trigger: hvis den købte rytters kontrakt udløber i NUVÆRENDE
   // sæson, advar køberen med det samme. contract_end_season kan netop være sat
@@ -592,8 +638,9 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
   if (issue) {
     const message = describeSwapIssue(issue, { offered, requested });
     await withdrawSwapOffer(supabase, swap.id);
-    await notifyTeamOwner(swap.proposing_team_id, "transfer_offer_rejected", message.notificationTitle, message.notificationMessage, swap.id);
-    await notifyTeamOwner(swap.receiving_team_id, "transfer_offer_rejected", message.notificationTitle, message.notificationMessage, swap.id);
+    const swapIssueMeta = issueNotificationMetadata(message);
+    await notifyTeamOwner(swap.proposing_team_id, "transfer_offer_rejected", message.notificationTitle, message.notificationMessage, swap.id, swapIssueMeta);
+    await notifyTeamOwner(swap.receiving_team_id, "transfer_offer_rejected", message.notificationTitle, message.notificationMessage, swap.id, swapIssueMeta);
     return failure(400, message.error, issue.code);
   }
 
@@ -630,11 +677,10 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
 
   if (!movedOffered) {
     await withdrawSwapOffer(supabase, swap.id);
-    await notifyTeamOwner(swap.proposing_team_id, "transfer_offer_rejected", "Byttehandel annulleret",
-      `${offered.firstname} ${offered.lastname} ændrede status under bekræftelsen.`, swap.id);
-    await notifyTeamOwner(swap.receiving_team_id, "transfer_offer_rejected", "Byttehandel annulleret",
-      `${offered.firstname} ${offered.lastname} ændrede status under bekræftelsen.`, swap.id);
-    return failure(409, "Den tilbudte rytter ændrede status under bekræftelsen — byttehandlen er annulleret", "stale_offered_rider_state");
+    const offeredStalePayload = buildSwapCancelledStaleNotification({ riderName: `${offered.firstname} ${offered.lastname}` });
+    await notifyTeamOwner(swap.proposing_team_id, offeredStalePayload.type, offeredStalePayload.title, offeredStalePayload.message, swap.id, offeredStalePayload.metadata);
+    await notifyTeamOwner(swap.receiving_team_id, offeredStalePayload.type, offeredStalePayload.title, offeredStalePayload.message, swap.id, offeredStalePayload.metadata);
+    return failure(409, "The offered rider changed status during confirmation — the swap was cancelled", "stale_offered_rider_state");
   }
 
   const movedRequested = deferRegistration
@@ -668,11 +714,10 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
       );
     }
     await withdrawSwapOffer(supabase, swap.id);
-    await notifyTeamOwner(swap.proposing_team_id, "transfer_offer_rejected", "Byttehandel annulleret",
-      `${requested.firstname} ${requested.lastname} ændrede status under bekræftelsen.`, swap.id);
-    await notifyTeamOwner(swap.receiving_team_id, "transfer_offer_rejected", "Byttehandel annulleret",
-      `${requested.firstname} ${requested.lastname} ændrede status under bekræftelsen.`, swap.id);
-    return failure(409, "Den ønskede rytter ændrede status under bekræftelsen — byttehandlen er annulleret", "stale_requested_rider_state");
+    const requestedStalePayload = buildSwapCancelledStaleNotification({ riderName: `${requested.firstname} ${requested.lastname}` });
+    await notifyTeamOwner(swap.proposing_team_id, requestedStalePayload.type, requestedStalePayload.title, requestedStalePayload.message, swap.id, requestedStalePayload.metadata);
+    await notifyTeamOwner(swap.receiving_team_id, requestedStalePayload.type, requestedStalePayload.title, requestedStalePayload.message, swap.id, requestedStalePayload.metadata);
+    return failure(409, "The requested rider changed status during confirmation — the swap was cancelled", "stale_requested_rider_state");
   }
 
   // #1906 defense-in-depth: begge byttede ryttere skifter hold ved direkte
@@ -754,11 +799,13 @@ async function executeSwapOffer(supabase, swap, { notifyTeamOwner = NOOP, notify
     supabase.from("swap_offers").update({ status: "accepted" }).eq("id", swap.id)
   );
 
-  const swapCompletedMsg = deferRegistration
-    ? `${offered.firstname} ${offered.lastname} ↔ ${requested.firstname} ${requested.lastname} er byttet — rytterne skifter hold, når deres igangværende etapeløb er kørt færdigt.`
-    : `${offered.firstname} ${offered.lastname} ↔ ${requested.firstname} ${requested.lastname} er nu skiftet`;
-  await notifyTeamOwner(swap.proposing_team_id, "transfer_offer_accepted", "Byttehandel gennemført!", swapCompletedMsg, swap.id);
-  await notifyTeamOwner(swap.receiving_team_id, "transfer_offer_accepted", "Byttehandel gennemført!", swapCompletedMsg, swap.id);
+  const swapCompletedPayload = buildSwapCompletedNotification({
+    offeredName: `${offered.firstname} ${offered.lastname}`,
+    requestedName: `${requested.firstname} ${requested.lastname}`,
+    deferred: deferRegistration,
+  });
+  await notifyTeamOwner(swap.proposing_team_id, swapCompletedPayload.type, swapCompletedPayload.title, swapCompletedPayload.message, swap.id, swapCompletedPayload.metadata);
+  await notifyTeamOwner(swap.receiving_team_id, swapCompletedPayload.type, swapCompletedPayload.title, swapCompletedPayload.message, swap.id, swapCompletedPayload.metadata);
 
   await notifyDiscordHistory({
     offeredName: `${offered.firstname} ${offered.lastname}`,
@@ -966,10 +1013,9 @@ export async function flushWindowPendingOffers(supabase, {
       rider_name: riderName,
       amount: price,
     });
-    await notifyTeamOwner(offer.buyer_team_id, "transfer_offer_accepted", "Transfer gennemført!",
-      `${riderName} skifter hold for ${price.toLocaleString()} CZ$`, offer.id);
-    await notifyTeamOwner(offer.seller_team_id, "transfer_offer_accepted", "Transfer gennemført!",
-      `${riderName} skifter hold for ${price.toLocaleString()} CZ$`, offer.id);
+    const flushTransferPayload = buildTransferCompletedNotification({ riderName, price, deferred: false, riderId: offer.rider_id });
+    await notifyTeamOwner(offer.buyer_team_id, flushTransferPayload.type, flushTransferPayload.title, flushTransferPayload.message, offer.id, flushTransferPayload.metadata);
+    await notifyTeamOwner(offer.seller_team_id, flushTransferPayload.type, flushTransferPayload.title, flushTransferPayload.message, offer.id, flushTransferPayload.metadata);
     await notifyTransferCompleted({
       riderName,
       sellerName: offer.seller?.name,
@@ -987,10 +1033,9 @@ export async function flushWindowPendingOffers(supabase, {
     await expectMutation(
       supabase.from("swap_offers").update({ status: "accepted" }).eq("id", swap.id)
     );
-    await notifyTeamOwner(swap.proposing_team_id, "transfer_offer_accepted", "Byttehandel gennemført!",
-      `${offeredName} ↔ ${requestedName} er nu skiftet`, swap.id);
-    await notifyTeamOwner(swap.receiving_team_id, "transfer_offer_accepted", "Byttehandel gennemført!",
-      `${offeredName} ↔ ${requestedName} er nu skiftet`, swap.id);
+    const flushSwapPayload = buildSwapCompletedNotification({ offeredName, requestedName, deferred: false });
+    await notifyTeamOwner(swap.proposing_team_id, flushSwapPayload.type, flushSwapPayload.title, flushSwapPayload.message, swap.id, flushSwapPayload.metadata);
+    await notifyTeamOwner(swap.receiving_team_id, flushSwapPayload.type, flushSwapPayload.title, flushSwapPayload.message, swap.id, flushSwapPayload.metadata);
     await notifySwapCompleted({
       offeredName,
       requestedName,

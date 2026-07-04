@@ -222,6 +222,8 @@
       "transfer_purchase": "Transfer-køb",
       "transfer_sale": "Transfer-salg",
       "swap_cash_delta": "Bytte (kontant-difference)",
+      "sponsor_race_day": "Sponsor (løbsdag)",
+      "rider_release_buyout": "Opsigelsesgebyr",
       "loan_fee_paid": "Lejegebyr betalt",
       "loan_fee_received": "Lejegebyr modtaget",
       "loan_fee_refunded": "Lejegebyr refunderet",

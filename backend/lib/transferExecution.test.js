@@ -773,10 +773,12 @@ test("#1995: confirmTransferOffer parkerer holdskiftet (Model B) når rytteren e
   assert.equal(db.teams.find((t) => t.id === "seller").balance, 700, "sælger krediteres nu");
   assert.equal(db.transfer_offers[0].status, "accepted", "Model B: offer er accepted, ikke window_pending");
 
-  // Fuld "gennemført"-notifikation ved bekræftelsen — med etapeløbs-varianten.
-  const done = notifs.filter((n) => n[2] === "Transfer gennemført!");
+  // #2174 · Fuld "gennemført"-notifikation ved bekræftelsen — med etapeløbs-
+  // varianten. Titel/besked er nu EN-first (locale-koder i metadata).
+  const done = notifs.filter((n) => n[2] === "Transfer completed!");
   assert.equal(done.length, 2, "begge ejere notificeres ved bekræftelsen");
-  assert.match(done[0][3], /etapeløb/, "beskeden forklarer at skiftet sker efter løbet");
+  assert.match(done[0][3], /stage race/, "beskeden forklarer at skiftet sker efter løbet");
+  assert.equal(done[0][5]?.messageCode, "notif.transfer.completed.messageDeferred", "deferred locale-kode medsendes");
 });
 
 test("#1995: rytter i endnu-ikke-startet etapeløb (stages_completed=0) skifter straks", async () => {
