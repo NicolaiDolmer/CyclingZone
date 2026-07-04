@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   DAILY_TRAINING_CONFIG, DEFAULT_PROGRAM, resolveProgram,
   growthFractionForAge, abilityMult, dailyAbilityDelta, applyDailyTick,
+  computeAcademySeasonCeiling,
 } from "./dailyTraining.js";
 import { TRAINING_CONFIG } from "./training.js";
 import { youthMultiplier } from "./academyFlag.js";
@@ -123,4 +124,54 @@ test("potentiale skalerer daglig vækst: pot6 > pot2 ved samme gap/alder/program
   const low = dailyAbilityDelta({ ...base, potentiale: 2 });
   const high = dailyAbilityDelta({ ...base, potentiale: 6 });
   assert.ok(high > low, `pot6 ${high} skal > pot2 ${low}`);
+});
+
+// ── #2082/#1938: sæson-budget-cap + hård dags-cap (ejer-godkendt 5/7) ────────
+
+test("computeAcademySeasonCeiling: loft = seasonStart + gap×frac pr. evne", () => {
+  const ceiling = computeAcademySeasonCeiling({
+    seasonStartAbilities: { climbing: 50, sprint: 30 },
+    lifetimeCaps: { climbing: 80, sprint: 20 }, // sprint: cap < current → gap clampes til 0
+    frac: 0.16,
+  });
+  assert.equal(ceiling.climbing, 50 + (80 - 50) * 0.16);
+  assert.equal(ceiling.sprint, 30); // intet negativt gap — uændret loft
+});
+
+test("computeAcademySeasonCeiling: manglende evne i seasonStart/lifetimeCaps giver ingen NaN", () => {
+  const ceiling = computeAcademySeasonCeiling({
+    seasonStartAbilities: { climbing: 50 },
+    lifetimeCaps: {},
+    frac: 0.11,
+  });
+  assert.equal(ceiling.climbing, 50);
+});
+
+test("applyDailyTick: hardDailyCap=1 begrænser én evnes dags-gevinst til +1 uanset delta-størrelse", () => {
+  // Stort gap (1→99) + akademi-alder + pot6 + bonus giver en rå delta langt over 1 —
+  // uden cap ville flere hele point kunne akkumuleres på ÉN dag (se kontrol-test nedenfor).
+  const input = {
+    riderId: "cap1", dateStr: "2026-07-05", age: 17,
+    abilities: { climbing: 1 },
+    caps: { climbing: 99 },
+    progress: { climbing: 0 },
+    program: { focus: "vo2max", intensity: "hard" },
+    conditionMult: 1, bonus: true, potentiale: 6, hardDailyCap: 1,
+  };
+  const out = applyDailyTick(input);
+  assert.equal(out.gains.climbing, 1, "maks +1 selvom rå delta ville give mere");
+  assert.equal(out.abilities.climbing, 2);
+});
+
+test("applyDailyTick: uden hardDailyCap (default) kan samme scenarie give mere end +1 (kontrol)", () => {
+  const input = {
+    riderId: "nocap1", dateStr: "2026-07-05", age: 17,
+    abilities: { climbing: 1 },
+    caps: { climbing: 99 },
+    progress: { climbing: 0 },
+    program: { focus: "vo2max", intensity: "hard" },
+    conditionMult: 1, bonus: true, potentiale: 6,
+  };
+  const out = applyDailyTick(input);
+  assert.ok(out.gains.climbing > 1, `forventede >1 uden cap, fik ${out.gains.climbing}`);
 });

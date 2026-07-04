@@ -57,9 +57,28 @@ export function dailyAbilityDelta({ ability, current, cap, age, program, conditi
     * (bonus ? cfg.bonusMult : 1) * noise;
 }
 
+// #2082/#1938 (ejer-godkendt 5/7): sæson-budget-loft for akademi-alder — det EFFEKTIVE
+// loft for daglige ticks i indeværende sæson, IKKE livstids-loftet direkte. Væksten
+// mætter dermed ved sæsonens andel af gappet uanset hvor mange dage sæsonen varer
+// (sæsonlængde er ikke en fast konstant, jf. issue-diskussion — S1 var stadig åben
+// efter 57+ dage). seasonStartAbilities er en snapshot taget ved sæsonens første tick.
+export function computeAcademySeasonCeiling({ seasonStartAbilities, lifetimeCaps, frac }) {
+  const ceiling = {};
+  for (const ability of VISIBLE_ABILITIES) {
+    const cur = seasonStartAbilities?.[ability];
+    if (cur == null) continue;
+    const life = lifetimeCaps?.[ability] ?? cur;
+    const gap = Math.max(0, life - cur);
+    ceiling[ability] = cur + gap * frac;
+  }
+  return ceiling;
+}
+
 // Ét dags-tick for én rytter. Muterer ikke input. Returnerer nye abilities/progress + rapportfelter.
 // caps er PÅKRÆVET: manglende evne-nøgle ⇒ nul vækst for den evne (konservativt, jf. L0's lazy-caps).
-export function applyDailyTick({ riderId, dateStr, age, abilities, caps, progress, program, conditionMult, bonus, potentiale }) {
+// hardDailyCap (valgfri, #2082/#1938): maks antal hele point én evne må stige pr. dag —
+// sikkerhedsnet mod enkelt-dags-spikes. Udeladt/null = ingen ekstra grænse (uændret adfærd).
+export function applyDailyTick({ riderId, dateStr, age, abilities, caps, progress, program, conditionMult, bonus, potentiale, hardDailyCap }) {
   const cfg = DAILY_TRAINING_CONFIG;
   const noise = 1 - cfg.noiseSpan + 2 * cfg.noiseSpan * seededUnit(`dtick:${riderId}:${dateStr}`);
   const nextAbilities = { ...abilities };
@@ -76,7 +95,12 @@ export function applyDailyTick({ riderId, dateStr, age, abilities, caps, progres
     if (delta <= 0) continue;
     score += delta;
     let bar = Number(nextProgress[ability] ?? 0) + delta;
-    while (bar >= 1 && current + (gains[ability] ?? 0) < Math.min(99, caps?.[ability] ?? 99)) {
+    const dailyCeiling = Number.isFinite(hardDailyCap) ? hardDailyCap : Infinity;
+    while (
+      bar >= 1
+      && (gains[ability] ?? 0) < dailyCeiling
+      && current + (gains[ability] ?? 0) < Math.min(99, caps?.[ability] ?? 99)
+    ) {
       bar -= 1;
       gains[ability] = (gains[ability] ?? 0) + 1;
     }

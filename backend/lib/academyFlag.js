@@ -25,10 +25,35 @@ export const ACADEMY = Object.freeze({
                             // (economyConstants.SALARY_RATE = 0.067). Youth har ikke længere en
                             // separat rate — ét fælles løn-system for alle ryttere (ejer-valgt 3/7).
   CONTRACT_LENGTH: 3,       // akademi-kontrakt-længde (sæsoner)
+
+  // #2082/#1938 (ejer-godkendt 5/7): daglig træning for akademi-alder brugte KUN
+  // livstids-loftet direkte + en dage-baseret rate → ubegrænset vækst så længe
+  // sæsonen varede (S1 var stadig åben efter 57+ dage, se issue-diskussion).
+  // Fix: sæson-budget mætter væksten ved sæsonens andel af gappet (afkoblet fra
+  // sæsonlængde), med en AFTAGENDE rate pr. alder — matcher ejerens mål om ~50%
+  // af ungdomsloft-gappet lukket efter 5-7 sæsoner, men mere synlig fremgang
+  // tidligt for nye akademi-spillere end en flad rate ville give.
+  SEASON_FRAC_BY_AGE: Object.freeze([
+    { maxAge: 17, frac: 0.16 },
+    { maxAge: 19, frac: 0.11 },
+    { maxAge: 99, frac: 0.08 },
+  ]),
+  // Hård dags-cap: maks +1 evne-point/dag pr. evne for akademi-alder — sikkerhedsnet
+  // mod enkelt-dags-spikes (prod-empiri #2082: værste +156 pt/10 dage for én rytter).
+  HARD_DAILY_CAP: 1,
 });
 
 export function isAcademyAge(age) {
   return Number.isFinite(age) && age >= ACADEMY.MIN_AGE && age <= ACADEMY.MAX_AGE;
+}
+
+// Sæson-budget-rate for akademi-alder — se ACADEMY.SEASON_FRAC_BY_AGE ovenfor.
+export function academySeasonFracForAge(age) {
+  const table = ACADEMY.SEASON_FRAC_BY_AGE;
+  for (const row of table) {
+    if (age <= row.maxAge) return row.frac;
+  }
+  return table[table.length - 1].frac;
 }
 
 // Lineær aftagning fra YOUTH_MULT (ved MIN_AGE) mod 1.0 (ved MAX_AGE+1=22).

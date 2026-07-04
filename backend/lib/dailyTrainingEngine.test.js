@@ -320,6 +320,56 @@ test("akademirytter med abilities-row trænes (ikke sprunget over) — #1478 bug
   assert.ok(rr.score > 0, `akademirytter får et tick med progress (score=${rr.score})`);
 });
 
+// ── #2082/#1938: sæson-budget-cap (ejer-godkendt 5/7) ────────────────────────
+test("akademi-alder: season_budget_baseline snapshottes ved 1. tick, genbruges uændret ved 2. tick (samme sæson)", async () => {
+  const state = seedState({
+    riders: [makeRider({ id: "ar2", is_academy: true, potentiale: 5, birthdate: "2009-01-01" })], // 17 år
+    abilities: [makeAbilityRow("ar2", { climbing: 45, ability_caps: { climbing: 90 } })],
+    conditions: [makeCondition("ar2")],
+    plans: [{ rider_id: "ar2", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" }],
+  });
+  const supabase = createMockSupabase(state);
+
+  await runTeamTrainingDay({ supabase, teamId: TEAM_ID, seasonId: SEASON_ID, seasonNumber: SEASON_NUMBER, executedBy: "manager", now: NOW });
+  const abAfterDay1 = state.rider_derived_abilities.find((a) => a.rider_id === "ar2");
+  assert.ok(abAfterDay1.season_budget_baseline, "baseline snapshottet ved 1. tick");
+  assert.equal(abAfterDay1.season_budget_baseline.climbing, 45, "baseline = FØR-tick-værdien, ikke efter");
+  assert.equal(abAfterDay1.season_budget_season, SEASON_NUMBER);
+
+  const day2 = new Date(NOW.getTime() + 24 * 60 * 60 * 1000);
+  await runTeamTrainingDay({ supabase, teamId: TEAM_ID, seasonId: SEASON_ID, seasonNumber: SEASON_NUMBER, executedBy: "manager", now: day2 });
+  const abAfterDay2 = state.rider_derived_abilities.find((a) => a.rider_id === "ar2");
+  assert.equal(abAfterDay2.season_budget_baseline.climbing, 45, "baseline uændret 2. dag samme sæson (ikke gen-snapshottet)");
+});
+
+test("akademi-alder: væksten mætter ved sæson-loftet — rammer ALDRIG livstids-loftet selv efter mange dage", async () => {
+  const state = seedState({
+    riders: [makeRider({ id: "ar3", is_academy: true, potentiale: 6, birthdate: "2009-01-01" })], // 17 år
+    abilities: [makeAbilityRow("ar3", { climbing: 20, ability_caps: { climbing: 90 } })], // gap=70
+    conditions: [makeCondition("ar3")],
+    plans: [{ rider_id: "ar3", team_id: TEAM_ID, season_id: SEASON_ID, focus: "vo2max", intensity: "hard" }],
+  });
+  const supabase = createMockSupabase(state);
+
+  for (let d = 0; d < 90; d++) {
+    const now = new Date(NOW.getTime() + d * 24 * 60 * 60 * 1000);
+    await runTeamTrainingDay({ supabase, teamId: TEAM_ID, seasonId: SEASON_ID, seasonNumber: SEASON_NUMBER, executedBy: "manager", now });
+  }
+  const ab = state.rider_derived_abilities.find((a) => a.rider_id === "ar3");
+  // frac for alder 17 = 0.16 → sæson-loft = 20 + 70×0.16 = 31.2 (afrundet ability, aldrig 90).
+  assert.ok(ab.climbing < 40, `climbing (${ab.climbing}) skal mætte langt under livstids-loftet 90 efter 90 dage`);
+  assert.ok(ab.climbing >= 28, `climbing (${ab.climbing}) skal nærme sig sæson-loftet ~31`);
+});
+
+test("voksen rytter (ikke-akademi): ingen season_budget_baseline skrives, uændret livstids-loft-adfærd", async () => {
+  const state = seedState(); // default rider r1 er 23 år (birthdate 2003-01-01, sæson 1)
+  const supabase = createMockSupabase(state);
+
+  await runTeamTrainingDay({ supabase, teamId: TEAM_ID, seasonId: SEASON_ID, seasonNumber: SEASON_NUMBER, executedBy: "manager", now: NOW });
+  const ab = state.rider_derived_abilities.find((a) => a.rider_id === "r1");
+  assert.equal(ab.season_budget_baseline, undefined, "ingen sæson-budget for voksne");
+});
+
 // ── Test 6: to på hinanden følgende runs (2. kald → alreadyRan via state) ────
 test("to kald i træk: 2. kald detekterer eksisterende run-row → alreadyRan", async () => {
   const state = seedState();
