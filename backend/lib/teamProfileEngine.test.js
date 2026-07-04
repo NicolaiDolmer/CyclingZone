@@ -20,12 +20,16 @@ const academyDisabled = async () => false;
 // verificerer det de var skrevet til. Tests der vil verificere trim-koblingen
 // sender deres egen recording-stub.
 const noopReconcileAiTeams = async () => ({ created: 0, removed: 0, skipped: "test-noop" });
+// #2149: hold kalender-reconcile'n ude af de eksisterende tests (no-op). Den ægte
+// default er også et no-op mod doubles uden aktiv sæson, men stubben gør det eksplicit.
+const noopReconcileCalendar = async () => ({ skipped: "test-noop" });
 function upsert(args) {
   return upsertOwnTeamProfile({
     allocateStarterSquad: noopAllocate,
     runAcademyCohort: noopRunAcademyCohort,
     academyEnabled: academyDisabled,
     reconcileAiTeams: noopReconcileAiTeams,
+    reconcilePoolCalendar: noopReconcileCalendar,
     ...args,
   });
 }
@@ -1135,6 +1139,94 @@ test("#1739 trim-fejl er IKKE-fatal — signup lykkes og holdet beholder sin tru
   });
 
   assert.equal(result.created, true, "signup lykkes trods trim-fejl");
+  assert.equal(squadCalls.length, 1, "start-truppen blev tildelt");
+  assert.equal(supabase.state.teams.length, 1, "holdet blev oprettet");
+});
+
+// ── #2149 · Kalender-reconcile koblet til hold-oprettelse ─────────────────────
+// Aktiverer et nyt hold en sovende pulje (første ægte manager i tier 3/4), skal
+// puljens løbskalender materialiseres. Stien er DI'et (reconcilePoolCalendar) så
+// koblingen kan verificeres uden at mocke hele materialiserings-kæden — selve
+// reconcile-logikken dækkes i tierCalendarMaterializer.test.js.
+
+test("#2149 created===true udløser kalender-reconcile for den pulje holdet landede i", async () => {
+  const pools = seedDiv4Pools();
+  const supabase = createSupabaseDouble({ leagueDivisions: pools });
+  const calendarCalls = [];
+  const recordingCalendar = async ({ poolId }) => { calendarCalls.push(poolId); return { skipped: "has-calendar" }; };
+
+  const result = await upsert({
+    supabase,
+    userId: "user-1",
+    name: "Calendar Trigger",
+    managerName: "Manager",
+    reconcilePoolCalendar: recordingCalendar,
+  });
+
+  assert.equal(result.created, true);
+  assert.equal(calendarCalls.length, 1, "kalender-reconcile kaldt præcis én gang");
+  assert.equal(calendarCalls[0], result.team.league_division_id, "reconcile for holdets pulje-id");
+});
+
+test("#2149 created===false (rename) udløser IKKE kalender-reconcile", async () => {
+  const supabase = createSupabaseDouble({
+    teams: [{
+      id: "team-1", user_id: "user-1", name: "Old Name", manager_name: "Old Manager",
+      balance: INITIAL_BALANCE, sponsor_income: SPONSOR_INCOME_BASE, league_division_id: 8,
+    }],
+    boardProfiles: [{ id: "board-1", team_id: "team-1" }],
+  });
+  const calendarCalls = [];
+  const recordingCalendar = async ({ poolId }) => { calendarCalls.push(poolId); return { skipped: "has-calendar" }; };
+
+  const result = await upsert({
+    supabase,
+    userId: "user-1",
+    existingTeam: clone(supabase.state.teams[0]),
+    name: "New Name",
+    managerName: "New Manager",
+    reconcilePoolCalendar: recordingCalendar,
+  });
+
+  assert.equal(result.created, false);
+  assert.equal(calendarCalls.length, 0, "rename må ikke materialisere kalender");
+});
+
+test("#2149 holdet uden pulje (league_division_id=null) udløser IKKE kalender-reconcile", async () => {
+  const supabase = createSupabaseDouble({ leagueDivisions: [] });
+  const calendarCalls = [];
+  const recordingCalendar = async ({ poolId }) => { calendarCalls.push(poolId); return { skipped: "no-pool" }; };
+
+  const result = await upsert({
+    supabase,
+    userId: "user-1",
+    name: "No Pool Calendar",
+    managerName: "Manager",
+    reconcilePoolCalendar: recordingCalendar,
+  });
+
+  assert.equal(result.created, true);
+  assert.equal(result.team.league_division_id, null);
+  assert.equal(calendarCalls.length, 0, "ingen pulje → ingen kalender-reconcile");
+});
+
+test("#2149 kalender-reconcile-fejl er IKKE-fatal — signup lykkes og holdet beholder sin trup", async () => {
+  const pools = seedDiv4Pools();
+  const supabase = createSupabaseDouble({ leagueDivisions: pools });
+  const squadCalls = [];
+  const recordingAllocate = async (_sb, teamId) => { squadCalls.push(teamId); return { assigned: 8 }; };
+  const failingCalendar = async () => { throw new Error("materializer nede"); };
+
+  const result = await upsert({
+    supabase,
+    userId: "user-1",
+    name: "Calendar Soft Fail",
+    managerName: "Manager",
+    allocateStarterSquad: recordingAllocate,
+    reconcilePoolCalendar: failingCalendar,
+  });
+
+  assert.equal(result.created, true, "signup lykkes trods kalender-fejl");
   assert.equal(squadCalls.length, 1, "start-truppen blev tildelt");
   assert.equal(supabase.state.teams.length, 1, "holdet blev oprettet");
 });
