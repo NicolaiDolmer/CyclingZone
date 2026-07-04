@@ -170,7 +170,17 @@ export default function RaceHubBoard() {
         if (captain === hunter) hunter = null;
       }
       const body = { rider_ids: ids, captain_id: captain ?? null, sprint_captain_id: sprint, hunter_id: hunter };
-      const res = await fetch(`${API}/api/races/${col.id}/selection`, { method: "PUT", headers, body: JSON.stringify(body) });
+      // #2173: putColumn returnerer et resultat-objekt i stedet for selv at kalde setError.
+      // Én PUT der fejler må IKKE stoppe de andre kolonners gem (det var rod-årsagen: et
+      // `break` efterlod resten ugemt, mens KUN én fejl blev vist → manageren troede alt
+      // blev gemt, og næste dag/scope-skift ryddede de tabte kladder tavst). saveAll samler
+      // alle fejl og viser hvilke løb der IKKE blev gemt.
+      let res;
+      try {
+        res = await fetch(`${API}/api/races/${col.id}/selection`, { method: "PUT", headers, body: JSON.stringify(body) });
+      } catch {
+        return { ok: false, error: { code: "generic", params: { min: col.size?.min, max: col.size?.max } } };
+      }
       if (res && !res.ok) {
         const b = await res.json().catch(() => ({}));
         // #1983/#1984: backend's overlap-afvisning er opak ("en rytter kører et overlappende løb").
@@ -188,30 +198,39 @@ export default function RaceHubBoard() {
           if (conf) {
             const riderName = roster.find((r) => r.id === conf.riderId)?.name || "—";
             const otherName = conf.raceIds[0] === col.id ? conf.raceNames[1] : conf.raceNames[0];
-            setError({ code: "selection_rider_bound_named", params: { rider: riderName, race: otherName } });
-            return false;
+            return { ok: false, error: { code: "selection_rider_bound_named", params: { rider: riderName, race: otherName } } };
           }
         }
-        setError({ code: b.error || "generic", params: { min: col.size?.min, max: col.size?.max } });
-        return false;
+        return { ok: false, error: { code: b.error || "generic", params: { min: col.size?.min, max: col.size?.max } } };
       }
-      return true;
+      return { ok: true };
     };
     const savedIds = [];
     const releasedFinal = new Set(); // rene fjernelser: endelige allerede efter fase 1
-    let failed = false;
+    const failedCols = []; // #2173: løb der IKKE blev gemt (navn + fejl), til den tydelige besked
+    // Kolonner hvis fase-1-frigivelse fejlede: deres tilføjede ryttere er ikke frigivet
+    // sikkert, så de springes også over i fase 2 (undgå at binde mod et ikke-frigivet sæt).
+    const releaseFailed = new Set();
+    let firstError = null;
+    const recordFail = (col, error) => {
+      failedCols.push(col);
+      if (!firstError) firstError = error; // bevar den mest specifikke (fx navngiven binding)
+    };
     try {
       // Fase 1 (frigiv): løb der fjerner ryttere → gem deres beholdte sæt (kladde ∩ server) først.
+      // #2173: fortsæt gennem ALLE (ingen break) — én fejl stopper ikke resten.
       for (const col of dirtyColumns) {
         if (removedCount(col) === 0) continue;
         const retained = draftIdsOf(col).filter((id) => serverIdsOf(col).has(id));
-        if (!(await putColumn(col, retained))) { failed = true; break; }
+        const r = await putColumn(col, retained);
+        if (!r.ok) { recordFail(col, r.error); releaseFailed.add(col.id); continue; }
         if (addedCount(col) === 0) { releasedFinal.add(col.id); savedIds.push(col.id); }
       }
       // Fase 2 (bind): gem fuld endelig trup for resten — tilføjede ryttere er nu frie på serveren.
-      if (!failed) for (const col of dirtyColumns) {
-        if (releasedFinal.has(col.id)) continue;
-        if (!(await putColumn(col, draftIdsOf(col)))) { failed = true; break; }
+      for (const col of dirtyColumns) {
+        if (releasedFinal.has(col.id) || releaseFailed.has(col.id)) continue;
+        const r = await putColumn(col, draftIdsOf(col));
+        if (!r.ok) { recordFail(col, r.error); continue; }
         savedIds.push(col.id);
       }
     } catch {
@@ -220,6 +239,13 @@ export default function RaceHubBoard() {
       await load(day);
       setDrafts((d) => { const next = { ...d }; for (const id of savedIds) delete next[id]; return next; });
       setBusy(false);
+    }
+    // #2173: tydelig besked om at gemme delvist fejlede — navngiv de løb der IKKE blev gemt,
+    // så en enkelt fejl aldrig kan skjule et tavst tab af en anden kolonnes udtagelse.
+    if (failedCols.length === 1) {
+      setError(firstError);
+    } else if (failedCols.length > 1) {
+      setError({ code: "saveAllPartial", params: { races: failedCols.map((c) => c.name).join(", ") } });
     }
   }
 

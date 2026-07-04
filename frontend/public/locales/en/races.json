@@ -282,7 +282,8 @@
       "selection_wrong_pool": "You can only enter races in your own division.",
       "strategy_invalid_body": "Couldn't save your strategy: invalid data.",
       "strategy_flag_disabled": "The race hub isn't active yet.",
-      "generic": "Couldn't save the selection. Try again."
+      "generic": "Couldn't save the selection. Try again.",
+      "saveAllPartial": "These lineups weren't saved: {races}. Your changes are still here, so try saving again."
     }
   },
   "strategy": {

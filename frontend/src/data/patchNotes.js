@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.59",
+    "date": "2026-07-04",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Race hub",
+        "en": {
+          "title": "Saving lineups for several races no longer fails silently",
+          "body": "When you set lineups for more than one race and hit Save, one of them could quietly fail to save while the others went through, with no error to tell you. Now every lineup is saved as one all-or-nothing write, and if any lineup can't be saved you get a clear message naming exactly which races didn't save, with your changes kept so you can try again."
+        },
+        "da": {
+          "title": "Gem af holdudtagelser til flere løb fejler ikke længere i stilhed",
+          "body": "Når du satte holdudtagelser til mere end ét løb og trykkede Gem, kunne ét af dem stille og roligt fejle mens de andre gik igennem, uden en fejl der fortalte dig det. Nu gemmes hver udtagelse som én alt-eller-intet-skrivning, og hvis en udtagelse ikke kan gemmes, får du en tydelig besked der navngiver præcis hvilke løb der ikke blev gemt, mens dine ændringer bevares så du kan prøve igen."
+        },
+        "refs": [2173]
+      }
+    ]
+  },
+  {
     "version": "6.58",
     "date": "2026-07-04",
     "label": "Beta",
