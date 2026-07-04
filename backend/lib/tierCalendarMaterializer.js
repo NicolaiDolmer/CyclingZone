@@ -134,6 +134,7 @@ export function buildTierMaterializationPlan({
 export async function materializeTierCalendars({
   supabase, seasonId, seasonStartDate = null, from = new Date(),
   baseSeed = 1, tiers = null, forceTiers = [], dryRun = true, log = () => {},
+  realDays = 28, quotas = TIER_GAME_DAY_QUOTA,
 } = {}) {
   const editionYear = editionYearFrom(seasonStartDate);
 
@@ -157,7 +158,7 @@ export async function materializeTierCalendars({
   if (exErr) throw new Error(`races (existing): ${exErr.message}`);
   const existingKey = new Set((existing || []).map((r) => `${r.league_division_id}:${r.pool_race_id}`));
 
-  const { tierPlans } = buildTierMaterializationPlan({ pools, catalog: catalog || [], from, baseSeed, forceTiers });
+  const { tierPlans } = buildTierMaterializationPlan({ pools, catalog: catalog || [], from, baseSeed, forceTiers, realDays, quotas });
   const summary = { dryRun, editionYear, racesInserted: 0, stageProfiles: 0, stageSchedules: 0, tiers: [] };
 
   for (const tierPlan of tierPlans) {
