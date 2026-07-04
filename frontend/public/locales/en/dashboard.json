@@ -65,7 +65,7 @@
       "empty": "No scheduled races",
       "stages": "{count, plural, one {1 stage} other {# stages}}",
       "oneDay": "One-day race",
-      "dateTbd": "Date TBD",
+      "scheduled": "Scheduled",
       "live": "Live"
     },
     "standings": {

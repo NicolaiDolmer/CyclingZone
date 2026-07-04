@@ -8,7 +8,6 @@ export default function ContextBand({ scope, day, currentDay, timeline, onScopeC
   const { t } = useTranslation("races");
   const total = timeline?.totalDays ?? 60;
   const days = timeline?.days ?? [];
-  const focused = days.find((d) => d.day === day);
   const scopes = [
     { key: "mine", enabled: true },
     { key: "division", enabled: true },
@@ -58,7 +57,7 @@ export default function ContextBand({ scope, day, currentDay, timeline, onScopeC
               <button
                 key={d.day}
                 type="button"
-                title={`${d.dateText || t("racehub.timeline.dayOf", { day: d.day, total })}${isToday ? ` — ${t("racehub.timeline.youAreHere")}` : ""}`}
+                title={`${t("racehub.timeline.dayOf", { day: d.day, total })}${isToday ? ` — ${t("racehub.timeline.youAreHere")}` : ""}`}
                 aria-current={isFocus ? "true" : undefined}
                 // #1919: klik på den allerede-fokuserede dag er en no-op → dead click.
                 onClick={() => { if (d.day !== day) onDayChange(d.day); }}
@@ -73,11 +72,7 @@ export default function ContextBand({ scope, day, currentDay, timeline, onScopeC
       <div className="flex justify-end mt-1.5">
         <span className="text-xs text-cz-accent-t font-medium">
           {t("racehub.timeline.dayOf", { day, total })}
-          {day === currentDay
-            ? ` — ${t("racehub.timeline.youAreHere")}`
-            : focused?.dateText
-            ? ` · ${focused.dateText}`
-            : ""}
+          {day === currentDay ? ` — ${t("racehub.timeline.youAreHere")}` : ""}
         </span>
       </div>
     </div>

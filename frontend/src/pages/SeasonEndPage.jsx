@@ -344,7 +344,6 @@ export default function SeasonEndPage() {
                     <div key={race.id}
                       onClick={() => navigate(`/race-archive/${encodeURIComponent(race.name)}`)}
                       className="flex items-center gap-3 px-5 py-2.5 hover:bg-cz-subtle cursor-pointer transition-colors">
-                      <span className="text-cz-3 text-xs font-mono w-14 flex-shrink-0">{race.pool_race?.date_text || "—"}</span>
                       <div className="flex-1 min-w-0">
                         <p className="text-cz-1 text-sm font-medium truncate">{race.name}</p>
                         <p className="text-cz-3 text-xs">

@@ -298,7 +298,6 @@ export default function RacesPage() {
                 <h2 className="text-cz-1 font-bold text-base mb-1">{selectedRace.name}</h2>
                 <p className="text-cz-3 text-xs mb-1">
                   {selectedRace.race_type === "stage_race" ? t("raceType.stages", { count: selectedRace.stages }) : t("raceType.oneDay")}
-                  {selectedRace.pool_race?.date_text && ` · ${selectedRace.pool_race.date_text}`}
                 </p>
                 {(() => {
                   const expected = computeExpectedRacePrize({
@@ -445,7 +444,6 @@ export default function RacesPage() {
                     <Th>{t("library.thSeason")}</Th>
                     <Th>{t("library.thClass")}</Th>
                     <Th>{t("library.thType")}</Th>
-                    <Th>{t("library.thDate")}</Th>
                     <Th>{t("library.thStatus")}</Th>
                   </Tr>
                 </thead>
@@ -473,9 +471,6 @@ export default function RacesPage() {
                         </Td>
                         <Td className="text-cz-2 text-xs">
                           {r.race_type === "stage_race" ? t("raceType.stageRaceParen", { count: r.stages }) : t("raceType.oneDayShort")}
-                        </Td>
-                        <Td className="text-cz-2 text-xs">
-                          {r.pool_race?.date_text || "—"}
                         </Td>
                         <Td className="text-xs">
                           <span className={`inline-block px-2 py-0.5 rounded-full border text-[10px] uppercase
@@ -544,7 +539,6 @@ export default function RacesPage() {
                       <Th>{t("world.thClass")}</Th>
                       <Th>{t("world.thType")}</Th>
                       <Th numeric>{t("world.thStages")}</Th>
-                      <Th>{t("world.thDate")}</Th>
                     </Tr>
                   </thead>
                   <tbody>
@@ -556,7 +550,6 @@ export default function RacesPage() {
                           <Td className="text-cz-2">{r.race_class}</Td>
                           <Td className="text-cz-2">{r.race_type === "single" ? t("raceType.oneDayShort") : t("resultType.stage")}</Td>
                           <Td numeric className="text-cz-2">{r.stages}</Td>
-                          <Td className="text-cz-3">{r.date_text || "—"}</Td>
                         </Tr>
                       ))}
                   </tbody>

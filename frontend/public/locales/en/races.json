@@ -169,7 +169,6 @@
     "thSeason": "Season",
     "thClass": "Class",
     "thType": "Type",
-    "thDate": "Date",
     "thStatus": "Status",
     "seasonLink": "Season {number} →"
   },
@@ -182,8 +181,7 @@
     "thRace": "Race",
     "thClass": "Class",
     "thType": "Type",
-    "thStages": "Stages",
-    "thDate": "Date"
+    "thStages": "Stages"
   },
   "resultType": {
     "stage": "Stage",
