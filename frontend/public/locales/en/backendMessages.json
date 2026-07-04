@@ -26,6 +26,7 @@
     "auctionBuy": "Bought {riderName} at auction",
     "auctionSell": "Sold {riderName} at auction",
     "guaranteedAiSale": "Guaranteed AI sale: {riderName}",
+    "forcedDebtSale": "Forced sale (debt ceiling): {riderName}",
     "youthAuctionWin": "Won youth rider {riderName} at auction",
     "academySigning": "Academy signing: {riderName}",
     "transferBuy": "Bought {riderName} via transfer",
@@ -167,6 +168,159 @@
       "30min": {
         "title": "Deadline Day in 30 minutes",
         "message": "Last chance: the transfer window closes in 30 minutes."
+      }
+    },
+    "transfer": {
+      "bidReceived": {
+        "title": "New bid received",
+        "message": "{bidderName} bid {amount} CZ$ on {riderName}"
+      },
+      "auctionOutbid": {
+        "title": "You've been outbid!"
+      },
+      "watchlistAuction": {
+        "title": "Watchlisted rider up for auction",
+        "message": "{riderName} is up for auction (starting price {startPrice} CZ$)"
+      },
+      "watchlistListed": {
+        "title": "Watchlisted rider up for sale",
+        "message": "{riderName} is up for sale ({askingPrice} CZ$)"
+      },
+      "transferInterest": {
+        "title": "Transfer rumour",
+        "message": "A manager is eyeing {riderName}"
+      },
+      "offerReceived": {
+        "title": "New transfer offer received",
+        "message": "{buyerName} offers {amount} CZ$ for {riderName}"
+      },
+      "newBid": {
+        "title": "New bid received",
+        "message": "{buyerName} now bids {amount} CZ$ for {riderName}"
+      },
+      "offerAccepted": {
+        "title": "Offer accepted: confirm the deal",
+        "message": "{sellerName} accepted your offer on {riderName} for {price} CZ$. Confirm to complete the deal."
+      },
+      "counterAccepted": {
+        "title": "Counter-offer accepted: confirm the deal",
+        "message": "{buyerName} accepted your counter-offer on {riderName} for {price} CZ$. Confirm to complete the deal."
+      },
+      "offerRejected": {
+        "title": "Transfer offer rejected",
+        "message": "Your offer on {riderName} was rejected"
+      },
+      "counter": {
+        "title": "Counter-offer received",
+        "message": "{counterName} sends a counter-offer on {riderName}: {counterAmount} CZ$"
+      },
+      "cancelled": {
+        "title": "Transfer cancelled",
+        "message": "{actorName} pulled out of the deal on {riderName}."
+      },
+      "withdrawn": {
+        "title": "Offer withdrawn",
+        "message": "{buyerName} withdrew their offer on {riderName}"
+      },
+      "onAuctionCancelled": {
+        "title": "Transfer cancelled",
+        "message": "{riderName} went to an active auction. The deal was cancelled. Bid on the auction instead."
+      },
+      "staleCancelled": {
+        "title": "Transfer cancelled",
+        "message": "{riderName} could not be completed because the rider changed status during confirmation."
+      },
+      "completed": {
+        "title": "Transfer completed!",
+        "message": "{riderName} switches teams for {price} CZ$",
+        "messageDeferred": "{riderName} was traded for {price} CZ$. They change teams once their ongoing stage race finishes."
+      },
+      "issue": {
+        "title": "Transfer cancelled",
+        "swapTitle": "Swap cancelled",
+        "sellerNoLongerOwns": "{riderName} could not be completed because the rider is no longer on the seller's team.",
+        "sellerSquadTooSmall": "{riderName} could not be sold because the seller would otherwise drop below {minRiders} riders in Division {division}.",
+        "buyerSquadFull": "{riderName} could not be transferred because the buyer's team is already full.",
+        "buyerCannotAfford": "The deal on {riderName} could not be completed because the buyer lacks funds.",
+        "offeredMoved": "{offeredName} is no longer available for the swap.",
+        "requestedMoved": "{requestedName} is no longer available for the swap.",
+        "proposingCannotAfford": "The swap {offeredName} ⇄ {requestedName} could not be completed because the proposing team lacks funds.",
+        "receivingCannotAfford": "The swap {offeredName} ⇄ {requestedName} could not be completed because the receiving team lacks funds."
+      },
+      "swapProposed": {
+        "title": "Swap proposed",
+        "message": "{proposerName} offers {offeredName} for {requestedName}",
+        "messageCash": "{proposerName} offers {offeredName} for {requestedName} ({cashSign}{cash} CZ$ from us)"
+      },
+      "swapAccepted": {
+        "title": "Swap accepted: confirm the deal",
+        "message": "{accepterName} accepted the swap: {offeredName} ⇄ {requestedName}. Confirm to complete.",
+        "messageCash": "{accepterName} accepted the swap: {offeredName} ⇄ {requestedName} · {cashSign}{cash} CZ$. Confirm to complete."
+      },
+      "swapRejected": {
+        "title": "Swap rejected",
+        "message": "{rejecterName} declined your swap offer"
+      },
+      "swapCounter": {
+        "title": "Counter-offer on swap",
+        "message": "{counterName} sends a counter-offer: {offeredName} ⇄ {requestedName} ({cashSign}{counterCash} CZ$)"
+      },
+      "swapCounterAccepted": {
+        "title": "Counter-offer accepted: confirm the deal",
+        "message": "{accepterName} accepted your counter-offer. Confirm to complete the swap."
+      },
+      "swapCompleted": {
+        "title": "Swap completed!",
+        "message": "{offeredName} ⇄ {requestedName} have now switched",
+        "messageDeferred": "{offeredName} ⇄ {requestedName} swapped. The riders change teams once their ongoing stage race finishes."
+      },
+      "swapCancelledStale": {
+        "title": "Swap cancelled",
+        "message": "{riderName} changed status during confirmation."
+      },
+      "swapPulledOut": {
+        "title": "Swap cancelled",
+        "message": "{actorName} pulled out of the swap."
+      },
+      "loanProposal": {
+        "title": "Loan proposal received",
+        "messageSingle": "{proposerName} wants to loan {riderName} (season {seasonFrom}, {fee} CZ$/season)",
+        "messageRange": "{proposerName} wants to loan {riderName} (season {seasonFrom}–{seasonTo}, {fee} CZ$/season)",
+        "messageBuySingle": "{proposerName} wants to loan {riderName} (season {seasonFrom}, {fee} CZ$/season · buy option {buyOption} CZ$)",
+        "messageBuyRange": "{proposerName} wants to loan {riderName} (season {seasonFrom}–{seasonTo}, {fee} CZ$/season · buy option {buyOption} CZ$)"
+      },
+      "loanActivated": {
+        "title": "Loan activated",
+        "message": "{lenderName} accepted your loan request for {riderName}"
+      },
+      "loanRejected": {
+        "title": "Loan request rejected",
+        "message": "{lenderName} declined your loan proposal for {riderName}"
+      },
+      "loanCancelled": {
+        "title": "Loan agreement cancelled",
+        "message": "{actorName} cancelled the loan agreement for {riderName}"
+      },
+      "loanBuyout": {
+        "title": "Buy option exercised",
+        "message": "{buyerName} exercised the buy option on {riderName} for {price} CZ$"
+      },
+      "adminTransferCancelled": {
+        "title": "Deal cancelled by admin",
+        "message": "The deal on {riderName} was cancelled by an admin.",
+        "messageReason": "The deal on {riderName} was cancelled by an admin: {reason}"
+      },
+      "adminSwapCancelled": {
+        "title": "Swap cancelled by admin",
+        "message": "The swap {offeredName} ⇄ {requestedName} was cancelled by an admin.",
+        "messageReason": "The swap {offeredName} ⇄ {requestedName} was cancelled by an admin: {reason}"
+      },
+      "adminLoanCancelled": {
+        "title": "Loan agreement cancelled by admin",
+        "message": "The loan agreement on {riderName} was cancelled by an admin.",
+        "messageReason": "The loan agreement on {riderName} was cancelled by an admin: {reason}",
+        "messageRefund": "The loan agreement on {riderName} was cancelled by an admin. The loan fee ({refundedFee} CZ$) has been refunded.",
+        "messageReasonRefund": "The loan agreement on {riderName} was cancelled by an admin: {reason} The loan fee ({refundedFee} CZ$) has been refunded."
       }
     }
   },

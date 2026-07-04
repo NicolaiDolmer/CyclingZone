@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.60",
+    "date": "2026-07-04",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Language",
+        "en": {
+          "title": "Your inbox and finance page now stay in your language",
+          "body": "With the game set to English, some messages still showed up in Danish: transfer, auction, swap and loan notifications in your inbox, the 'release fee' and 'other' lines on the finance page, and a couple of board texts. All of these now follow your language choice, so English stays English and Danish stays Danish."
+        },
+        "da": {
+          "title": "Din indbakke og økonomi-side bliver nu på dit sprog",
+          "body": "Med spillet sat til engelsk dukkede nogle beskeder stadig op på dansk: transfer-, auktions-, bytte- og leje-notifikationer i indbakken, 'opsigelsesgebyr'- og 'andet'-linjerne på økonomi-siden, samt et par bestyrelses-tekster. Alt det følger nu dit sprogvalg, så engelsk forbliver engelsk og dansk forbliver dansk."
+        },
+        "refs": [2174]
+      }
+    ]
+  },
+  {
     "version": "6.59",
     "date": "2026-07-04",
     "label": "Beta",

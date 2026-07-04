@@ -593,10 +593,16 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
             team.id,
             credit,
             "forced_debt_sale",
-            `Tvunget salg (gælds-loft): ${rider.firstname} ${rider.lastname}`,
+            // #2174 · EN-first fallback; frontend renderer locale-aware via
+            // metadata.code (tx.forcedDebtSale i backendMessages.json).
+            `Forced sale (debt ceiling): ${rider.firstname} ${rider.lastname}`,
             seasonId,
             supabaseClient,
             {
+              metadata: {
+                code: "tx.forcedDebtSale",
+                params: { riderName: `${rider.firstname} ${rider.lastname}` },
+              },
               audit: {
                 sourcePath: "economyEngine.processTeamSeasonPayroll.forcedDebtSale",
                 reasonCode: FINANCE_REASON.SQUAD_AUTO_SALE,

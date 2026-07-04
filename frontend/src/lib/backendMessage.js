@@ -31,6 +31,8 @@ const RAW_KEYS = new Set([
   "goalsMet", "goalsTotal", "percent", "raceDaysLeft", "penaltyPoints",
   "feeRate", "interestRate", "pct", "delta", "id", "layer",
   "seasonsCompleted", "planDuration",
+  // #2174 · sæson-numre i leje-forslag (fx 3, 5) må ikke få tusind-separator.
+  "seasonFrom", "seasonTo",
 ]);
 
 /**

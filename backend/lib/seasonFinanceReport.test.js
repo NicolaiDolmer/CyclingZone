@@ -59,11 +59,11 @@ test("aggregateByReason — splits income and expense by reason_code", () => {
   ]);
   assert.deepEqual(result.income, [
     { reason_code: "season_start_sponsor", label: "Sponsor", value: 240000 },
-    { reason_code: "auction_seller_payout", label: "Auktion-salg", value: 50000 },
+    { reason_code: "auction_seller_payout", label: "Auction sale", value: 50000 },
   ]);
   assert.deepEqual(result.expense, [
-    { reason_code: "auction_winner_payment", label: "Auktion-køb", value: 130000 },
-    { reason_code: "season_end_salary", label: "Løn", value: 20000 },
+    { reason_code: "auction_winner_payment", label: "Auction purchase", value: 130000 },
+    { reason_code: "season_end_salary", label: "Salaries", value: 20000 },
   ]);
 });
 
@@ -79,10 +79,10 @@ test("aggregateByReason — sorts descending by absolute value", () => {
   );
 });
 
-test("aggregateByReason — unknown reason_code falls back to 'Andet'", () => {
+test("aggregateByReason — unknown reason_code falls back to 'Other'", () => {
   const result = aggregateByReason([tx({ amount: -1000, reason_code: null })]);
   assert.equal(result.expense[0].reason_code, "unknown");
-  assert.equal(result.expense[0].label, "Andet");
+  assert.equal(result.expense[0].label, "Other");
 });
 
 test("aggregateByReason — skips zero-amount rows", () => {
@@ -197,7 +197,7 @@ test("buildSeasonFinanceReport — combines all sections", () => {
   assert.equal(report.hero.total_in, 240000);
   assert.equal(report.hero.net, 140000);
   assert.equal(report.donuts.income[0].label, "Sponsor");
-  assert.equal(report.donuts.expense[0].label, "Auktion-køb");
+  assert.equal(report.donuts.expense[0].label, "Auction purchase");
   assert.equal(report.top.top_in.length, 1);
   assert.equal(report.top.top_out.length, 1);
   assert.equal(report.loans.length, 1);

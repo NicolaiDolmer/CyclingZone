@@ -26,6 +26,7 @@
     "auctionBuy": "Købte {riderName} på auktion",
     "auctionSell": "Solgte {riderName} på auktion",
     "guaranteedAiSale": "Garanteret AI-salg: {riderName}",
+    "forcedDebtSale": "Tvunget salg (gælds-loft): {riderName}",
     "youthAuctionWin": "Vandt ungdomsrytter {riderName} på auktion",
     "academySigning": "Akademi-signing: {riderName}",
     "transferBuy": "Købt {riderName} via transfer",
@@ -167,6 +168,159 @@
       "30min": {
         "title": "Deadline Day om 30 minutter",
         "message": "Sidste chance: transfervinduet lukker om 30 minutter."
+      }
+    },
+    "transfer": {
+      "bidReceived": {
+        "title": "Nyt bud modtaget",
+        "message": "{bidderName} bød {amount} CZ$ på {riderName}"
+      },
+      "auctionOutbid": {
+        "title": "Du er blevet overbudt!"
+      },
+      "watchlistAuction": {
+        "title": "Ønskeliste-rytter til auktion",
+        "message": "{riderName} er sat til auktion (startpris {startPrice} CZ$)"
+      },
+      "watchlistListed": {
+        "title": "Ønskeliste-rytter til salg",
+        "message": "{riderName} er sat til salg ({askingPrice} CZ$)"
+      },
+      "transferInterest": {
+        "title": "Transferrygte",
+        "message": "En manager kigger på {riderName}"
+      },
+      "offerReceived": {
+        "title": "Nyt transfertilbud modtaget",
+        "message": "{buyerName} tilbyder {amount} CZ$ for {riderName}"
+      },
+      "newBid": {
+        "title": "Nyt bud modtaget",
+        "message": "{buyerName} byder nu {amount} CZ$ for {riderName}"
+      },
+      "offerAccepted": {
+        "title": "Tilbud accepteret: bekræft handlen",
+        "message": "{sellerName} har accepteret dit tilbud på {riderName} for {price} CZ$. Bekræft for at gennemføre handlen."
+      },
+      "counterAccepted": {
+        "title": "Modbud accepteret: bekræft handlen",
+        "message": "{buyerName} har accepteret dit modbud på {riderName} for {price} CZ$. Bekræft for at gennemføre handlen."
+      },
+      "offerRejected": {
+        "title": "Transfertilbud afvist",
+        "message": "Dit tilbud på {riderName} blev afvist"
+      },
+      "counter": {
+        "title": "Modbud modtaget",
+        "message": "{counterName} sender modbud på {riderName}: {counterAmount} CZ$"
+      },
+      "cancelled": {
+        "title": "Transfer annulleret",
+        "message": "{actorName} har trukket sig fra handlen på {riderName}."
+      },
+      "withdrawn": {
+        "title": "Tilbud trukket tilbage",
+        "message": "{buyerName} har trukket deres tilbud på {riderName} tilbage"
+      },
+      "onAuctionCancelled": {
+        "title": "Transfer annulleret",
+        "message": "{riderName} kom på en aktiv auktion. Handlen blev annulleret. Byd på auktionen i stedet."
+      },
+      "staleCancelled": {
+        "title": "Transfer annulleret",
+        "message": "{riderName} kunne ikke gennemføres, fordi rytteren skiftede status under bekræftelsen."
+      },
+      "completed": {
+        "title": "Transfer gennemført!",
+        "message": "{riderName} skifter hold for {price} CZ$",
+        "messageDeferred": "{riderName} er handlet for {price} CZ$. Han skifter hold, når hans igangværende etapeløb er kørt færdigt."
+      },
+      "issue": {
+        "title": "Transfer annulleret",
+        "swapTitle": "Byttehandel annulleret",
+        "sellerNoLongerOwns": "{riderName} kunne ikke gennemføres, fordi rytteren ikke længere står på sælgers hold.",
+        "sellerSquadTooSmall": "{riderName} kunne ikke sælges, fordi sælgeren ellers ville komme under {minRiders} ryttere i Division {division}.",
+        "buyerSquadFull": "{riderName} kunne ikke overdrages, fordi købers hold allerede er fuldt.",
+        "buyerCannotAfford": "Handlen på {riderName} kunne ikke gennemføres, fordi køber mangler midler.",
+        "offeredMoved": "{offeredName} er ikke længere tilgængelig til byttehandlen.",
+        "requestedMoved": "{requestedName} er ikke længere tilgængelig til byttehandlen.",
+        "proposingCannotAfford": "Handlen på {offeredName} ⇄ {requestedName} kunne ikke gennemføres, fordi det foreslående hold mangler midler.",
+        "receivingCannotAfford": "Handlen på {offeredName} ⇄ {requestedName} kunne ikke gennemføres, fordi det modtagende hold mangler midler."
+      },
+      "swapProposed": {
+        "title": "Byttehandel foreslået",
+        "message": "{proposerName} tilbyder {offeredName} for {requestedName}",
+        "messageCash": "{proposerName} tilbyder {offeredName} for {requestedName} ({cashSign}{cash} CZ$ fra os)"
+      },
+      "swapAccepted": {
+        "title": "Byttehandel accepteret: bekræft handlen",
+        "message": "{accepterName} accepterede byttehandlen: {offeredName} ⇄ {requestedName}. Bekræft for at gennemføre.",
+        "messageCash": "{accepterName} accepterede byttehandlen: {offeredName} ⇄ {requestedName} · {cashSign}{cash} CZ$. Bekræft for at gennemføre."
+      },
+      "swapRejected": {
+        "title": "Byttehandel afvist",
+        "message": "{rejecterName} afslog dit byttetilbud"
+      },
+      "swapCounter": {
+        "title": "Modbud på byttehandel",
+        "message": "{counterName} sender modbud: {offeredName} ⇄ {requestedName} ({cashSign}{counterCash} CZ$)"
+      },
+      "swapCounterAccepted": {
+        "title": "Modbud accepteret: bekræft handlen",
+        "message": "{accepterName} accepterede dit modbud. Bekræft for at gennemføre byttehandlen."
+      },
+      "swapCompleted": {
+        "title": "Byttehandel gennemført!",
+        "message": "{offeredName} ⇄ {requestedName} er nu skiftet",
+        "messageDeferred": "{offeredName} ⇄ {requestedName} er byttet. Rytterne skifter hold, når deres igangværende etapeløb er kørt færdigt."
+      },
+      "swapCancelledStale": {
+        "title": "Byttehandel annulleret",
+        "message": "{riderName} ændrede status under bekræftelsen."
+      },
+      "swapPulledOut": {
+        "title": "Byttehandel annulleret",
+        "message": "{actorName} har trukket sig fra byttehandlen."
+      },
+      "loanProposal": {
+        "title": "Lejeforslag modtaget",
+        "messageSingle": "{proposerName} ønsker at leje {riderName} (sæson {seasonFrom}, {fee} CZ$/sæson)",
+        "messageRange": "{proposerName} ønsker at leje {riderName} (sæson {seasonFrom}–{seasonTo}, {fee} CZ$/sæson)",
+        "messageBuySingle": "{proposerName} ønsker at leje {riderName} (sæson {seasonFrom}, {fee} CZ$/sæson · købsoption {buyOption} CZ$)",
+        "messageBuyRange": "{proposerName} ønsker at leje {riderName} (sæson {seasonFrom}–{seasonTo}, {fee} CZ$/sæson · købsoption {buyOption} CZ$)"
+      },
+      "loanActivated": {
+        "title": "Lejeaftale aktiveret",
+        "message": "{lenderName} har accepteret din lejeforespørgsel på {riderName}"
+      },
+      "loanRejected": {
+        "title": "Lejeforespørgsel afvist",
+        "message": "{lenderName} afslog dit lejeforslag på {riderName}"
+      },
+      "loanCancelled": {
+        "title": "Lejeaftale annulleret",
+        "message": "{actorName} har annulleret lejeaftalen på {riderName}"
+      },
+      "loanBuyout": {
+        "title": "Købsoption udnyttet",
+        "message": "{buyerName} har udnyttet købsoptionen på {riderName} for {price} CZ$"
+      },
+      "adminTransferCancelled": {
+        "title": "Handel annulleret af admin",
+        "message": "Handlen på {riderName} er annulleret af en admin.",
+        "messageReason": "Handlen på {riderName} er annulleret af en admin: {reason}"
+      },
+      "adminSwapCancelled": {
+        "title": "Byttehandel annulleret af admin",
+        "message": "Byttehandlen {offeredName} ⇄ {requestedName} er annulleret af en admin.",
+        "messageReason": "Byttehandlen {offeredName} ⇄ {requestedName} er annulleret af en admin: {reason}"
+      },
+      "adminLoanCancelled": {
+        "title": "Lejeaftale annulleret af admin",
+        "message": "Lejeaftalen på {riderName} er annulleret af en admin.",
+        "messageReason": "Lejeaftalen på {riderName} er annulleret af en admin: {reason}",
+        "messageRefund": "Lejeaftalen på {riderName} er annulleret af en admin. Lejegebyr ({refundedFee} CZ$) er refunderet.",
+        "messageReasonRefund": "Lejeaftalen på {riderName} er annulleret af en admin: {reason} Lejegebyr ({refundedFee} CZ$) er refunderet."
       }
     }
   },

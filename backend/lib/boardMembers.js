@@ -263,7 +263,9 @@ export async function chooseDnaForTeam({ supabase, teamId, dnaKey } = {}) {
     // sæson) — så denne sti er en sjælden "endnu ikke klar"-tilstand, ikke en
     // sæson-1-gate. Tidligere kode-/copy lød "Du skal afslutte sæson 1", hvilket
     // var forkert for en sæson-2+-nykommer.
-    const err = new Error("Dit holds identitet er ikke klar endnu. Prøv igen om lidt.");
+    // #2174 · EN-first fallback (ingen rå dansk i backend); frontend viser
+    // altid den locale-korrekte tekst via errorCode → api.dna_requires_identity_basis.
+    const err = new Error("Your club identity isn't ready yet. Try again in a moment.");
     err.status = 409;
     err.errorCode = "dna_requires_identity_basis"; // #678 Track 3 — EN-resolve via resolveApiError
     throw err;

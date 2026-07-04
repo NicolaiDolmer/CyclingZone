@@ -4,7 +4,6 @@
   "frontend": {},
   "backend": {
     "backend/lib/balanceRpc.js": 6,
-    "backend/lib/boardMembers.js": 1,
     "backend/lib/dailySeasonCountCheck.js": 1,
     "backend/lib/discordBotTokenCheck.js": 1,
     "backend/lib/discordNotifier.js": 2,
@@ -20,8 +19,7 @@
     "backend/lib/relaunchOrchestrator.js": 3,
     "backend/lib/seasonRaceDays.js": 3,
     "backend/lib/teamProfileEngine.js": 3,
-    "backend/lib/transferExecution.js": 8,
     "backend/lib/urlSafety.js": 6,
-    "backend/routes/api.js": 58
+    "backend/routes/api.js": 56
   }
 }
