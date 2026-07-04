@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { useLanguage } from "../lib/language";
 import { useDocumentHead } from "../hooks/useDocumentHead.js";
-import { mapSupabaseAuthError } from "../lib/authErrors";
+import { mapSupabaseAuthError, isEmailNotConfirmedError } from "../lib/authErrors";
 import LanguageSwitcher from "../components/LanguageSwitcher";
 import { Wordmark } from "../components/Brand";
 import DiscordJoinLink from "../components/DiscordJoinLink";
@@ -166,7 +166,9 @@ export default function LoginPage() {
           setError(mapSupabaseAuthError(error, t));
           // #2068: samme fejl er også hvor "send igen"-knappen skal dukke op —
           // brugeren står med en ubekræftet konto og ellers ingen vej videre.
-          setShowResend(/email not confirmed/i.test(error.message || ""));
+          // #2172: detektér via code ELLER message (isEmailNotConfirmedError), så
+          // resend-knappen ikke tavst forsvinder hvis Supabase ændrer ordlyden.
+          setShowResend(isEmailNotConfirmedError(error));
           setResendState("idle");
         }
         return;
@@ -359,6 +361,27 @@ export default function LoginPage() {
             >
               <p className="text-sm font-semibold text-cz-1">{t("auth:linkError.title")}</p>
               <p className="mt-1 text-xs text-cz-2">{t("auth:linkError.body")}</p>
+              {/* #2172: giv brugeren en direkte vej ud af loopet — et frisk link
+                  uden at skulle gætte password og fejl-logge-ind først. Vi kender
+                  ikke emailen fra fejl-hash'et, så knappen bruger email-feltet
+                  nedenfor (deaktiveret til det er udfyldt). */}
+              <div className="mt-2 text-xs">
+                {resendState === "sent" ? (
+                  <span className="text-cz-success">{t("auth:success.resendSent")}</span>
+                ) : (
+                  <>
+                    {resendError && <span className="block text-cz-danger">{resendError}</span>}
+                    <button
+                      type="button"
+                      disabled={resendState === "sending" || !email.trim()}
+                      onClick={() => handleResendConfirmation(email.trim())}
+                      className="underline hover:text-cz-1 disabled:opacity-60"
+                    >
+                      {resendState === "sending" ? t("auth:success.resendSending") : t("auth:linkError.resendCta")}
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           )}
           {success ? (
