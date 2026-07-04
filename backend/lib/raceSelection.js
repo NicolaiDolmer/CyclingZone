@@ -56,27 +56,31 @@ function roleFor(riderId, { captainId, sprintCaptainId, hunterId }) {
   return "helper";
 }
 
-// Gem udtagelsen: slet holdets eksisterende entries for løbet, indsæt de nye.
-// PK (race_id, rider_id) gør gen-kørsel ufarlig (delete-then-insert).
+// Gem udtagelsen atomisk: erstat holdets entries for løbet i ÉN transaktion via
+// replace_race_selection-RPC'en (#2173). Enten gemmes hele truppen, eller intet
+// ændres — ingen delete-uden-insert-degradering, ingen delvist gemt trup.
 export async function saveSelection({ supabase, race, teamId, riderIds, captainId, sprintCaptainId = null, hunterId = null }) {
   // Forward-guard (#2074): nægt delete-then-insert hvis løbets felt er LÅST
   // (stages_completed>0). Rute-laget gater allerede, men guarden gør invarianten lokal
   // til mutationen så en fremtidig kalder ikke kan nulstille et aktivt startfelt.
   await assertLineupMutationAllowed({ supabase, raceId: race?.id, race, label: "saveSelection" });
-  // Deletes eksisterende entries og indsætter nye. Ingen transaktion:
-  // fejler insert → holdet har 0 entries → autopick fylder dem ved
-  // simuleringstid (race_entries.is_auto_filled = true). Accepteret degradering.
-  const { error: delErr } = await supabase
-    .from("race_entries").delete().eq("race_id", race.id).eq("team_id", teamId);
-  if (delErr) throw new Error(`race_entries delete: ${delErr.message}`);
-
+  // #2173: atomisk erstat via RPC. Tidligere var det en delete-then-insert UDEN
+  // transaktion ("accepteret degradering") — fejlede insert efter delete, stod
+  // løbet med 0 entries (tavst tab). replace_race_selection kører delete+insert i
+  // ÉN transaktion under advisory-lås på holdet, så et gem enten lykkes fuldt
+  // eller ruller helt tilbage (og en samtidig PUT til samme hold serialiseres).
   const rows = riderIds.map((rider_id) => ({
     race_id: race.id, rider_id, team_id: teamId,
     race_role: roleFor(rider_id, { captainId, sprintCaptainId, hunterId }),
     is_auto_filled: false,
   }));
-  const { error: insErr } = await supabase.from("race_entries").insert(rows);
-  if (insErr) throw new Error(`race_entries insert: ${insErr.message}`);
+  const { error: rpcErr } = await supabase.rpc("replace_race_selection", {
+    p_team_id: teamId,
+    p_race_id: race.id,
+    p_rider_ids: riderIds,
+    p_roles: rows.map((r) => r.race_role),
+  });
+  if (rpcErr) throw new Error(`replace_race_selection: ${rpcErr.message}`);
   return rows;
 }
 
