@@ -44,6 +44,27 @@ export function isNetworkError(error) {
 }
 
 /**
+ * Detect Supabase's "email not confirmed" sign-in error.
+ *
+ * #2172 — a player who signed up but never confirmed hits this when they try to
+ * log in; it is the one place the resend-confirmation affordance must appear, so
+ * a stuck player has a way out. Detecting it by English message alone (`Email
+ * not confirmed`) is brittle: supabase-js also carries a stable machine `code`
+ * (`email_not_confirmed`), and the wording could drift. We match EITHER, so the
+ * resend button never silently disappears if Supabase changes the copy.
+ *
+ * @param {unknown} error - a supabase-js AuthError, plain object, or string
+ * @returns {boolean}
+ */
+export function isEmailNotConfirmedError(error) {
+  if (!error) return false;
+  const code = typeof error === "string" ? "" : (error?.code || "");
+  if (/email_not_confirmed/i.test(code)) return true;
+  const msg = typeof error === "string" ? error : error?.message || "";
+  return /email not confirmed/i.test(msg);
+}
+
+/**
  * Translate a Supabase auth error using the provided t-function.
  * Returns a localised string, falling back to the raw message.
  *

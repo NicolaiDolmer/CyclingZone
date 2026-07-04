@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.56",
+    "date": "2026-07-04",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Sign-up",
+        "en": {
+          "title": "A clearer way out if your confirmation link stopped working",
+          "body": "If your email confirmation link had already expired, you could get stuck: login kept saying your account was not confirmed, and it was not obvious how to get a working link. Now the expired-link screen has a 'Send a fresh link' button right there, and the resend option on login is more reliable, so a new confirmation email is always one click away.",
+        },
+        "da": {
+          "title": "En tydeligere vej ud hvis dit bekræftelseslink holdt op med at virke",
+          "body": "Hvis dit bekræftelseslink allerede var udløbet, kunne du sidde fast: login blev ved med at sige at din konto ikke var bekræftet, og det var uklart hvordan du fik et virkende link. Nu har udløbet-link-skærmen en 'Send et nyt link'-knap med det samme, og send-igen-muligheden ved login er mere pålidelig, så en ny bekræftelsesmail altid er ét klik væk.",
+        },
+        "refs": [2172]
+      }
+    ]
+  },
+  {
     "version": "6.55",
     "date": "2026-07-04",
     "label": "Beta",

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { isNetworkError, mapSupabaseAuthError } from "./authErrors.js";
+import { isNetworkError, mapSupabaseAuthError, isEmailNotConfirmedError } from "./authErrors.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const localesDir = join(__dirname, "..", "..", "public", "locales");
@@ -80,6 +80,20 @@ test("mapSupabaseAuthError mapper begge rate-limit-varianter til rateLimited (#2
     mapSupabaseAuthError({ message: "For security purposes, you can only request this after 54 seconds" }, t),
     "errors:supabase.rateLimited",
   );
+});
+
+test("isEmailNotConfirmedError genkender BÅDE code og message (#2172)", () => {
+  // Kernen i #2172-hærdningen: resend-knappen må aldrig tavst forsvinde. Vi
+  // matcher supabase-js' stabile machine-code OG den engelske message, så et
+  // ordlyds-skifte fra Supabase ikke efterlader en ubekræftet spiller uden
+  // vej videre.
+  assert.equal(isEmailNotConfirmedError({ code: "email_not_confirmed" }), true);
+  assert.equal(isEmailNotConfirmedError({ message: "Email not confirmed" }), true);
+  // Kun en anden fejl med samme HTTP-status må IKKE trigge resend.
+  assert.equal(isEmailNotConfirmedError({ code: "invalid_credentials", message: "Invalid login credentials" }), false);
+  assert.equal(isEmailNotConfirmedError(null), false);
+  assert.equal(isEmailNotConfirmedError(""), false);
+  assert.equal(isEmailNotConfirmedError("Email not confirmed"), true);
 });
 
 test("mapSupabaseAuthError falder tilbage til unknown ved tom besked (#1348)", () => {
