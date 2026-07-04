@@ -83,7 +83,7 @@ import {
   conditionMultiplier,
 } from "../lib/riderCondition.js";
 import { computeRiderTypes } from "../lib/riderTypes.js";
-import { ACADEMY, isAcademyAge } from "../lib/academyFlag.js";
+import { isAcademyAge } from "../lib/academyFlag.js";
 
 // ── CLI-args (spejler simulateSeasonDryRun.js) ────────────────────────────────
 function arg(name, def) {
