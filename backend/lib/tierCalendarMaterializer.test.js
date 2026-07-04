@@ -364,6 +364,44 @@ test("#2149 ingen aktiv sæson / ukendt pulje / null pulje: no-op uden kast", as
   assert.equal((await reconcilePoolCalendarOnActivation({ supabase: sb, poolId: null, now: FROM })).skipped, "no-pool");
 });
 
+test("#2149 midt-sæson-aktivering afkortes til de-facto sæson-slut (ingen etaper efter sidste eksisterende etape)", async () => {
+  // Ejer-krav 4/7: alle divisioner slutter deres kalender SAMME dag. En pulje aktiveret midt i
+  // sæsonen skal derfor kun have rest-horisonten — ikke materializerens fulde 28-dages default.
+  const state = tier4ActivationState();
+  state.league_divisions.push({ id: 4, tier: 3, pool_index: 0, label: "Division 3 — A" });
+  state.teams.push(mgrTeam("m2", 4));
+  state.races = [{ id: "race-d3", season_id: "s1", league_division_id: 4, pool_race_id: "eksisterende-d3" }];
+  // Eksisterende sæson slutter 2026-07-10 (sidste planlagte etape).
+  state.race_stage_schedule = [
+    { race_id: "race-d3", stage_number: 1, scheduled_at: "2026-07-01T16:00:00Z", game_day: 10 },
+    { race_id: "race-d3", stage_number: 2, scheduled_at: "2026-07-10T16:00:00Z", game_day: 40 },
+  ];
+  const sb = makeSupabase(state);
+
+  const summary = await reconcilePoolCalendarOnActivation({ supabase: sb, poolId: 8, now: FROM }); // now=28/6 → from=29/6
+  assert.equal(summary.skipped, null);
+  assert.equal(summary.realDays, 11, "29/6 → 10/7 = 11 rest-dage");
+  assert.equal(summary.tiers[0].quota, 22, "kvote = density 2 × 11 dage");
+  assert.ok(summary.racesInserted > 0);
+
+  const insertedRaceIds = new Set(sb.state.races.filter((r) => r.league_division_id === 8).map((r) => r.id));
+  const seasonEnd = Date.parse("2026-07-10T23:59:59Z");
+  for (const s of sb.state.race_stage_schedule.filter((s) => insertedRaceIds.has(s.race_id))) {
+    assert.ok(Date.parse(s.scheduled_at) <= seasonEnd, `etape ${s.scheduled_at} ligger efter sæson-slut 10/7`);
+  }
+});
+
+test("#2149 aktivering på/efter sæsonens sidste dag: no-op (season-ending) i stedet for 0-dages kalender", async () => {
+  const state = tier4ActivationState();
+  state.races = [{ id: "race-d3", season_id: "s1", league_division_id: 4, pool_race_id: "eksisterende-d3" }];
+  state.race_stage_schedule = [{ race_id: "race-d3", stage_number: 1, scheduled_at: "2026-06-29T16:00:00Z", game_day: 1 }];
+  const sb = makeSupabase(state);
+
+  const summary = await reconcilePoolCalendarOnActivation({ supabase: sb, poolId: 8, now: FROM }); // from=29/6 = sidste dag
+  assert.equal(summary.skipped, "season-ending");
+  assert.equal(sb.state.races.filter((r) => r.league_division_id === 8).length, 0, "ingen kalender de sidste dage af sæsonen");
+});
+
 test("#2149 sovende pulje der STADIG er managerløs: materializeren gater selv (0 løb indsat)", async () => {
   // Defensivt hjørne: kaldes reconcile'n for en pulje uden ægte manager (fx race mellem
   // insert og læsning), holder poolHasCalendar-gaten i materializeren stadig — intet indsættes.

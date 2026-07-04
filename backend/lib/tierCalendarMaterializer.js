@@ -231,6 +231,10 @@ export async function materializeTierCalendars({
  *   næste dags UTC-midnat, så dagens allerede-planlagte afvikling ikke forstyrres.
  * - materializeTierCalendars gater selv på poolHasCalendar + dedup'er mod eksisterende løb,
  *   så et dobbelt-kald (samtidige signups) er harmløst.
+ * - Horisonten AFKORTES til de-facto sæson-slut (sidste planlagte etape i den aktive sæson),
+ *   så en midt-sæson-aktiveret pulje slutter sin kalender SAMME dag som alle andre divisioner
+ *   (ejer-krav 4/7: div 4 — A endte 2/8 mens div 1-3 endte 26/7). Uden eksisterende løb i
+ *   sæsonen (helt frisk sæson) bruges materializerens fulde default-horisont.
  */
 export async function reconcilePoolCalendarOnActivation({
   supabase, poolId, now = new Date(), materialize = materializeTierCalendars, log = () => {},
@@ -253,9 +257,36 @@ export async function reconcilePoolCalendarOnActivation({
   if (!division) return { skipped: "unknown-pool" };
 
   const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+
+  // De-facto sæson-slut = sidste planlagte etape på tværs af HELE den aktive sæson.
+  // Findes den, afkortes horisonten (realDays + kvote = density × dage), så puljens
+  // kalender slutter samme dag som de øvrige divisioner. Etaper lægges på from+1..from+realDays.
+  const horizon = {};
+  const { data: seasonRaces, error: allErr } = await supabase.from("races").select("id").eq("season_id", season.id);
+  if (allErr) throw new Error(`races (sæson-horisont): ${allErr.message}`);
+  const seasonRaceIds = (seasonRaces || []).map((r) => r.id);
+  if (seasonRaceIds.length) {
+    const { data: sched, error: schErr } = await supabase
+      .from("race_stage_schedule").select("scheduled_at").in("race_id", seasonRaceIds);
+    if (schErr) throw new Error(`race_stage_schedule (sæson-horisont): ${schErr.message}`);
+    let maxAt = null;
+    for (const s of sched || []) {
+      const t = Date.parse(s.scheduled_at);
+      if (Number.isFinite(t) && (maxAt == null || t > maxAt)) maxAt = t;
+    }
+    if (maxAt != null) {
+      const end = new Date(maxAt);
+      const endDayUtc = Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate());
+      const realDays = Math.floor((endDayUtc - from.getTime()) / 86_400_000);
+      if (realDays < 1) return { skipped: "season-ending", seasonEnd: end.toISOString() };
+      horizon.realDays = realDays;
+      horizon.quotas = { [division.tier]: (TIER_DENSITY[division.tier] ?? 1) * realDays };
+    }
+  }
+
   const summary = await materialize({
     supabase, seasonId: season.id, seasonStartDate: season.start_date ?? null,
-    from, tiers: [division.tier], dryRun: false, log,
+    from, tiers: [division.tier], dryRun: false, log, ...horizon,
   });
-  return { skipped: null, poolId, tier: division.tier, from: from.toISOString(), ...summary };
+  return { skipped: null, poolId, tier: division.tier, from: from.toISOString(), realDays: horizon.realDays ?? null, ...summary };
 }
