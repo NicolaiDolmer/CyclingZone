@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildTierMaterializationPlan, MONUMENT_GAMEDAY_BASE, materializeTierCalendars } from "./tierCalendarMaterializer.js";
+import { buildTierMaterializationPlan, MONUMENT_GAMEDAY_BASE, materializeTierCalendars, reconcilePoolCalendarOnActivation } from "./tierCalendarMaterializer.js";
 import { generateRaceStageProfiles } from "./raceStageProfileGenerator.js";
 
 const FROM = new Date("2026-06-28T00:00:00Z");
@@ -25,6 +25,7 @@ function makeSupabase(initial = {}) {
       eq(c, v) { filters.push({ t: "eq", c, v }); return builder; },
       in(c, v) { filters.push({ t: "in", c, v }); return builder; },
       order() { return builder; },
+      maybeSingle() { return Promise.resolve({ data: rows().filter(matches)[0] ?? null, error: null }); },
       insert(payload) {
         const arr = Array.isArray(payload) ? payload : [payload];
         const inserted = arr.map((r) => ({ id: `${table}-${idSeq++}`, ...r }));
@@ -297,4 +298,80 @@ test("forceTiers: uden flaget (default) springes en mandagsløs tier-4-pulje sta
   const { tierPlans } = buildTierMaterializationPlan({ pools, catalog, quotas: { 1: 21, 4: 1 } });
 
   assert.equal(tierPlans.find((p) => p.tier === 4), undefined, "uden forceTiers er adfærden uændret: tier 4 uden managers får ingen plan");
+});
+
+// ── #2149 · reconcilePoolCalendarOnActivation: forward-guard ved pulje-aktivering ──
+// Signup i en sovende tier 3/4-pulje gør poolHasCalendar true, men intet materialiserede
+// historisk kalenderen. Reconcile'n skal materialisere KUN den ramte puljes tier — og være
+// et billigt no-op i alle normale tilfælde (pulje har allerede løb / ingen aktiv sæson).
+
+const mgrTeam = (id, pool) => ({ id, is_ai: false, is_bank: false, is_frozen: false, is_test_account: false, league_division_id: pool });
+
+function tier4ActivationState() {
+  return {
+    seasons: [{ id: "s1", number: 2, status: "active", start_date: "2026-06-22" }],
+    league_divisions: [
+      { id: 8, tier: 4, pool_index: 0, label: "Division 4 — A" },
+      { id: 9, tier: 4, pool_index: 1, label: "Division 4 — B" },
+    ],
+    teams: [mgrTeam("m1", 8)], // første ægte manager aktiverer pulje 8; pulje 9 forbliver sovende
+    race_pool: tier3Catalog(),
+  };
+}
+
+test("#2149 aktivering af sovende tier-4-pulje materialiserer kalender for den pulje (søster-pulje forbliver tom)", async () => {
+  const sb = makeSupabase(tier4ActivationState());
+  const summary = await reconcilePoolCalendarOnActivation({ supabase: sb, poolId: 8, now: FROM });
+
+  assert.equal(summary.skipped, null);
+  assert.equal(summary.tier, 4);
+  assert.ok(summary.racesInserted > 0, "der skal indsættes løb for den aktiverede pulje");
+  assert.ok(sb.state.races.filter((r) => r.league_division_id === 8).length > 0, "pulje 8 har løb");
+  assert.equal(sb.state.races.filter((r) => r.league_division_id === 9).length, 0, "managerløs pulje 9 må IKKE få kalender (ingen forceTiers)");
+  // from = næste dags UTC-midnat efter now — dagens afvikling forstyrres ikke.
+  assert.equal(summary.from, "2026-06-29T00:00:00.000Z");
+});
+
+test("#2149 idempotent: andet kald er no-op (has-calendar) og duplikerer intet", async () => {
+  const sb = makeSupabase(tier4ActivationState());
+  await reconcilePoolCalendarOnActivation({ supabase: sb, poolId: 8, now: FROM });
+  const racesAfterFirst = sb.state.races.length;
+
+  const second = await reconcilePoolCalendarOnActivation({ supabase: sb, poolId: 8, now: FROM });
+  assert.equal(second.skipped, "has-calendar");
+  assert.equal(sb.state.races.length, racesAfterFirst, "ingen dubletter ved dobbelt-kald");
+});
+
+test("#2149 pulje med eksisterende kalender: no-op UDEN at røre materialiseringen", async () => {
+  const state = tier4ActivationState();
+  state.races = [{ id: "race-1", season_id: "s1", league_division_id: 8, pool_race_id: "ps-od-0" }];
+  const sb = makeSupabase(state);
+  const materializeCalls = [];
+  const recording = async (args) => { materializeCalls.push(args); return { racesInserted: 0 }; };
+
+  const summary = await reconcilePoolCalendarOnActivation({ supabase: sb, poolId: 8, now: FROM, materialize: recording });
+  assert.equal(summary.skipped, "has-calendar");
+  assert.equal(materializeCalls.length, 0, "precheck skal kortslutte før den tunge materialisering");
+});
+
+test("#2149 ingen aktiv sæson / ukendt pulje / null pulje: no-op uden kast", async () => {
+  const noSeason = makeSupabase({ ...tier4ActivationState(), seasons: [] });
+  assert.equal((await reconcilePoolCalendarOnActivation({ supabase: noSeason, poolId: 8, now: FROM })).skipped, "no-active-season");
+  assert.equal(noSeason.state.races.length, 0);
+
+  const sb = makeSupabase(tier4ActivationState());
+  assert.equal((await reconcilePoolCalendarOnActivation({ supabase: sb, poolId: 9999, now: FROM })).skipped, "unknown-pool");
+  assert.equal((await reconcilePoolCalendarOnActivation({ supabase: sb, poolId: null, now: FROM })).skipped, "no-pool");
+});
+
+test("#2149 sovende pulje der STADIG er managerløs: materializeren gater selv (0 løb indsat)", async () => {
+  // Defensivt hjørne: kaldes reconcile'n for en pulje uden ægte manager (fx race mellem
+  // insert og læsning), holder poolHasCalendar-gaten i materializeren stadig — intet indsættes.
+  const state = tier4ActivationState();
+  state.teams = []; // ingen managere overhovedet
+  const sb = makeSupabase(state);
+  const summary = await reconcilePoolCalendarOnActivation({ supabase: sb, poolId: 8, now: FROM });
+  assert.equal(summary.skipped, null, "reconcile'n når materialiseringen");
+  assert.equal(summary.racesInserted, 0, "poolHasCalendar-gaten holder — 0 løb");
+  assert.equal(sb.state.races.length, 0);
 });

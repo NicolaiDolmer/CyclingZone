@@ -5,6 +5,7 @@ import { allocateStarterSquadForTeam } from "./starterSquadAllocator.js";
 import { runAcademyIntakeForTeam } from "./academyIntake.js";
 import { isAcademyEnabled } from "./academyFlag.js";
 import { reconcileAiTeamsForPool } from "./aiTeamGenerator.js";
+import { reconcilePoolCalendarOnActivation } from "./tierCalendarMaterializer.js";
 import { captureException as sentryCapture } from "./sentry.js";
 import {
   INITIAL_BALANCE,
@@ -432,6 +433,11 @@ export async function upsertOwnTeamProfile({
   // størrelsen holdes konstant. DI så testen kan verificere koblingen uden at mocke
   // hele AI-generator-kæden.
   reconcileAiTeams = reconcileAiTeamsForPool,
+  // #2149 forward-guard: aktiverer det nye hold en SOVENDE pulje (første ægte manager i
+  // tier 3/4), skal puljens løbskalender materialiseres — ellers står managere i en pulje
+  // uden løb indtil næste manuelle/seasonTransition-kørsel. DI så testen kan verificere
+  // koblingen uden at mocke hele materialiserings-kæden.
+  reconcilePoolCalendar = reconcilePoolCalendarOnActivation,
 } = {}) {
   if (!supabase?.from) {
     throw createHttpError(500, "Supabase client is required");
@@ -607,6 +613,32 @@ export async function upsertOwnTeamProfile({
         sentryCapture(
           reconcileError instanceof Error ? reconcileError : new Error(String(reconcileError)),
           { tags: { component: "team-create-ai-trim" }, extra: { teamId: team.id, poolId: team.league_division_id } },
+        );
+      }
+
+      // #2149: signup-flowet fyldte AI-hold op i en sovende tier 3/4-pulje (poolHasCalendar
+      // blev true), men INTET materialiserede kalenderen — puljen stod uden løb indtil en
+      // manuel kørsel (4/7: pulje 8 håndmaterialiseret som engangsfix). Reconcile'n er
+      // idempotent (no-op når puljen allerede har løb i den aktive sæson, dvs. alle normale
+      // signups) og afgrænset til den ramte puljes tier, fra næste dag, uden forceTiers.
+      //
+      // BEVIDST IKKE-FATAL (samme mønster som AI-trimmen): en manglende kalender er en
+      // genoprettelig blindgyde (materializeren kan køres igen), ikke en blokeret signup.
+      try {
+        const calSummary = await reconcilePoolCalendar({ supabase, poolId: team.league_division_id });
+        if (calSummary && calSummary.skipped == null) {
+          console.log(
+            `[teamProfileEngine] #2149 sovende pulje ${team.league_division_id} aktiveret af hold ${team.id} — kalender materialiseret (tier ${calSummary.tier}, ${calSummary.racesInserted} løb fra ${calSummary.from})`,
+          );
+        }
+      } catch (calendarError) {
+        console.error(
+          `[teamProfileEngine] #2149 kalender-reconcile FEJLEDE for nyt hold ${team.id} i pulje ${team.league_division_id} (ikke-fatal, signup fortsætter):`,
+          calendarError?.message || calendarError,
+        );
+        sentryCapture(
+          calendarError instanceof Error ? calendarError : new Error(String(calendarError)),
+          { tags: { component: "team-create-calendar-reconcile" }, extra: { teamId: team.id, poolId: team.league_division_id } },
         );
       }
     }

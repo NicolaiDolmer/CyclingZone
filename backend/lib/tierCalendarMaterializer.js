@@ -218,3 +218,43 @@ export async function materializeTierCalendars({
   }
   return summary;
 }
+
+/**
+ * Forward-guard (#2149, jf. .claude/learnings/2026-07-03-ghost-tier4-calendar-cleanup.md):
+ * når signup-allokeringen aktiverer en SOVENDE pulje (første ægte manager i en tier 3/4-pulje),
+ * bliver poolHasCalendar true — men intet materialiserede historisk kalenderen (kun manuel/
+ * seasonTransition-kørsel). Denne reconcile lukker hullet idempotent:
+ * - No-op hvis puljen allerede har løb i den aktive sæson (det normale for tier 1/2 + allerede
+ *   aktive puljer) — billigt precheck før den tunge materialisering.
+ * - Ellers materialiseres KUN den ramte puljes tier (tiers=[tier], ALDRIG forceTiers), fra
+ *   næste dags UTC-midnat, så dagens allerede-planlagte afvikling ikke forstyrres.
+ * - materializeTierCalendars gater selv på poolHasCalendar + dedup'er mod eksisterende løb,
+ *   så et dobbelt-kald (samtidige signups) er harmløst.
+ */
+export async function reconcilePoolCalendarOnActivation({
+  supabase, poolId, now = new Date(), materialize = materializeTierCalendars, log = () => {},
+} = {}) {
+  if (poolId == null) return { skipped: "no-pool" };
+
+  const { data: season, error: sErr } = await supabase
+    .from("seasons").select("id, number, start_date").eq("status", "active").maybeSingle();
+  if (sErr) throw new Error(`seasons: ${sErr.message}`);
+  if (!season) return { skipped: "no-active-season" };
+
+  const { data: existingRaces, error: rErr } = await supabase
+    .from("races").select("id").eq("season_id", season.id).eq("league_division_id", poolId);
+  if (rErr) throw new Error(`races (precheck): ${rErr.message}`);
+  if ((existingRaces || []).length > 0) return { skipped: "has-calendar", races: existingRaces.length };
+
+  const { data: division, error: dErr } = await supabase
+    .from("league_divisions").select("id, tier").eq("id", poolId).maybeSingle();
+  if (dErr) throw new Error(`league_divisions: ${dErr.message}`);
+  if (!division) return { skipped: "unknown-pool" };
+
+  const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+  const summary = await materialize({
+    supabase, seasonId: season.id, seasonStartDate: season.start_date ?? null,
+    from, tiers: [division.tier], dryRun: false, log,
+  });
+  return { skipped: null, poolId, tier: division.tier, from: from.toISOString(), ...summary };
+}
