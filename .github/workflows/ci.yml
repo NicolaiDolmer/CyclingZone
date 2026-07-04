@@ -205,3 +205,28 @@ jobs:
 
       - name: Run getuser guard
         run: node scripts/lint-getuser-guard.mjs
+
+  rankings-fetch-guard:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # Forward-guard mod rangliste perf-regressionen (#2196 Del 2). #2175 (Del 1)
+    # flyttede /standings + /rider-rankings fra en ~38k-rækkers client-fetch af
+    # race_results til Postgres-matviews. En ny direkte .from("race_results")-fetch
+    # i en rangliste-sti gen-introducerer den tavse perf-regression (langsom side,
+    # ingen fejl). Flagger de tre rangliste-datastier; query matviewet i stedet.
+    # Opt-out: `rankings-raceresults-ok`-kommentar med begrundelse.
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Test rankings-fetch guard
+        run: node --test scripts/lint-rankings-raceresults-fetch.test.mjs
+
+      - name: Run rankings-fetch guard
+        run: node scripts/lint-rankings-raceresults-fetch.mjs
