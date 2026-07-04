@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.61",
+    "date": "2026-07-04",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Academy",
+        "en": {
+          "title": "Academy riders now develop at a more realistic pace",
+          "body": "Academy prospects were gaining ability points much faster than intended, sometimes several points in a signature skill from a single day of training. Development now follows a season by season pace matched to your prospect's potential, so promising 16 to 19 year olds grow steadily toward their ceiling over several seasons instead of maxing out almost immediately."
+        },
+        "da": {
+          "title": "Akademi-ryttere udvikler sig nu i et mere realistisk tempo",
+          "body": "Akademi-emner fik evne-point meget hurtigere end tilsigtet, nogle gange flere point i en signatur-evne fra én enkelt træningsdag. Udviklingen følger nu et tempo pr. sæson tilpasset dit emnes potentiale, så lovende 16-19-årige vokser støt mod deres loft over flere sæsoner i stedet for næsten øjeblikkeligt at nå deres maksimum."
+        },
+        "refs": [2082, 1938]
+      }
+    ]
+  },
+  {
     "version": "6.60",
     "date": "2026-07-04",
     "label": "Beta",
