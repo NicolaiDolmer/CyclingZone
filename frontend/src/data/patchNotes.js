@@ -4,6 +4,41 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.54",
+    "date": "2026-07-04",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Notifications",
+        "en": {
+          "title": "You now get a notification when one of your races has been run",
+          "body": "The in-app notification telling you that a race you took part in had finished was never being delivered. It now works: after a race you competed in wraps up, you get a 'Race result is in' notification that links straight to the result.",
+        },
+        "da": {
+          "title": "Du får nu en notifikation, når et af dine løb er kørt",
+          "body": "Den in-app-notifikation, der fortæller dig, at et løb du deltog i, var afviklet, blev aldrig leveret. Den virker nu: når et løb du var med i, er kørt færdigt, får du en 'Løbsresultat klar'-notifikation, der linker direkte til resultatet.",
+        },
+        "refs": [2158, 1952]
+      },
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Finance",
+        "en": {
+          "title": "You now get warned when an emergency loan can't fully cover your wages",
+          "body": "When your team couldn't pay wages and an emergency loan hit your division's debt ceiling, the warning that some wages were left uncovered was never delivered. It now reaches you, so you know to sell riders or cut costs.",
+        },
+        "da": {
+          "title": "Du advares nu, når et nødlån ikke kan dække hele din lønudgift",
+          "body": "Når dit hold ikke kunne betale løn, og et nødlån ramte din divisions gældsloft, blev advarslen om, at en del af lønnen stod udækket, aldrig leveret. Den når nu frem, så du ved, at du skal sælge ryttere eller skære i omkostningerne.",
+        },
+        "refs": [2158, 1464]
+      }
+    ]
+  },
+  {
     "version": "6.53",
     "date": "2026-07-04",
     "label": "Beta",

@@ -530,12 +530,13 @@ CREATE TABLE notifications (
     'bid_received','bid_placed','auction_won','auction_lost','auction_outbid','auction_proxy_outbid',
     'transfer_offer_received','transfer_offer_accepted','transfer_offer_rejected','transfer_counter',
     'transfer_offer_withdrawn','transfer_interest',
-    'new_race','race_results_imported','season_started','season_ended',
+    'new_race','race_results_imported','race_result','season_started','season_ended',
     'board_update','board_critical','salary_paid','sponsor_paid',
-    'watchlist_rider_listed','watchlist_rider_auction','loan_created','emergency_loan','loan_paid_off',
+    'watchlist_rider_listed','watchlist_rider_auction','loan_created','emergency_loan','emergency_loan_breach','loan_paid_off',
     'deadline_day_warning','auction_cancelled','squad_enforced','rider_retired',
     'academy_intake_ready','academy_signed','academy_rejected',
-    'academy_graduation_ready','academy_graduated'
+    'academy_graduation_ready','academy_graduated','contract_expiring',
+    'academy_promoted','academy_demoted'
   )),
   title TEXT NOT NULL,
   message TEXT NOT NULL,
