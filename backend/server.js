@@ -1,3 +1,12 @@
+// MUST be first import (#2186): kører dotenv + Sentry.init FØR express (og alt der
+// transitivt loader express) importeres. ESM evaluerer imports i kilde-rækkefølge, så
+// en tidligere `import express` ville ellers loade Express uinstrumenteret medmindre
+// processen startes med `node --import ./instrument.mjs`. Denne side-effect-import gør
+// instrumenteringen robust uanset Railways start-command (som ikke bruger --import →
+// "[Sentry] express is not instrumented", 1× pr. deploy). instrument.mjs er idempotent
+// (initSentry() har en enabled-guard), så dobbelt-load via --import er harmløst.
+import "./instrument.mjs";
+
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import dotenv from "dotenv";
@@ -7,14 +16,12 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 dotenv.config({ path: join(__dirname, ".env"), quiet: true });
 
-import { initSentry, setupSentryExpressErrorHandler } from "./lib/sentry.js";
+import { setupSentryExpressErrorHandler } from "./lib/sentry.js";
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import apiRoutes from "./routes/api.js";
 import { startCron, awaitCronsIdle, getCronInFlight } from "./cron.js";
-
-initSentry();
 
 const app = express();
 const PORT = process.env.PORT || 3001;
