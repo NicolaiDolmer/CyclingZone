@@ -145,6 +145,21 @@ function abilitySum(abilities) {
   return s;
 }
 
+// Sum af PR.ABILITY-clampede gaps (cap-current, floor 0) — IKKE aggregate-sum-så-clamp.
+// Nødvendig fordi off-type-evner ofte ligger OVER deres (lave) ungdomsloft allerede ved
+// baseline (fx en climber's sprint-evne > sprint-youthCap); et aggregate-niveau-clamp
+// lader det negative bidrag skjule sig i summen og kan overdrive "gap lukket %" for
+// hele kohorten (fundet 5/7 under rekalibrerings-analysen, se trainingRecalibrationCandidates.js).
+function clampedGapSum(caps, abilities) {
+  let s = 0;
+  for (const ab of VISIBLE_ABILITIES) {
+    const cur = abilities[ab] ?? 0;
+    const cap = caps?.[ab] ?? cur;
+    s += Math.max(0, cap - cur);
+  }
+  return s;
+}
+
 function deepCopyAbilities(ab) {
   const out = {};
   for (const k of VISIBLE_ABILITIES) if (ab[k] != null) out[k] = ab[k];
@@ -320,10 +335,10 @@ function simulateAcademyMember(p) {
     if (retirement.retire) retired = true;
 
     seasonEndSums.push(abilitySum(abilityState));
-    seasonEndGaps.push(inAcademy ? Math.max(0, abilitySum(caps) - abilitySum(abilityState)) : null);
+    seasonEndGaps.push(inAcademy ? clampedGapSum(caps, abilityState) : null);
   }
 
-  const initialGap = Math.max(0, abilitySum(p.youthCaps) - abilitySum(p.abilities));
+  const initialGap = clampedGapSum(p.youthCaps, p.abilities);
   return { p, seasonEndSums, seasonEndGaps, day10Sum, initialGap, startSum: abilitySum(p.abilities) };
 }
 
