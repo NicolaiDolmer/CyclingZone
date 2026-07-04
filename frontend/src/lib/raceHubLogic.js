@@ -159,6 +159,43 @@ export function freshnessTier(fatigue) {
   return "fresh";
 }
 
+// #2195: gruppér dagens kolonne-løb efter in-game løbsdag, så brættet kan vise tydelige
+// "Race day N"-sektioner når én rigtig dato er komprimeret til flere spil-dage. Kolonner uden
+// game_day (null) samles i en trailing gruppe (gameDay=null) så de aldrig blander sig med de
+// dag-mærkede. Bevarer kolonnernes indbyrdes rækkefølge inden for hver gruppe. Pure → testbar.
+// Returnerer [{ gameDay, gameDayEnd, columns }] sorteret efter gameDay (null sidst).
+export function groupColumnsByGameDay(columns = []) {
+  const byDay = new Map();
+  for (const c of columns) {
+    const key = Number.isFinite(c?.game_day) ? c.game_day : null;
+    if (!byDay.has(key)) byDay.set(key, { gameDay: key, gameDayEnd: c?.game_day_end ?? key, columns: [] });
+    const g = byDay.get(key);
+    g.columns.push(c);
+    if (Number.isFinite(c?.game_day_end)) g.gameDayEnd = Math.max(g.gameDayEnd ?? c.game_day_end, c.game_day_end);
+  }
+  return [...byDay.values()].sort((a, b) => {
+    if (a.gameDay == null) return 1;
+    if (b.gameDay == null) return -1;
+    return a.gameDay - b.gameDay;
+  });
+}
+
+// #1984/#2195: når en rytter kan tilføjes et kolonne-løb OG allerede er udtaget i et ANDET
+// ikke-afmeldt løb på brættet (som pr. definition ligger på en anden — ikke-overlappende —
+// spil-dag, ellers ville han være bundet), returnér det andet løbs navn + spil-dag, så popoveren
+// positivt kan forklare "samme dag, men race day N — kan bruges begge steder" i stedet for at lade
+// genbrug se vilkårlig ud. null hvis rytteren ikke er i noget andet løb. Pure → testbar.
+export function sameDayCompatibilityHint({ column, columns = [], riderId }) {
+  if (!column) return null;
+  for (const c of columns) {
+    if (c.id === column.id || c.withdrawn) continue;
+    if ((c.selection?.rider_ids || []).includes(riderId)) {
+      return { raceId: c.id, name: c.name ?? null, gameDay: Number.isFinite(c.game_day) ? c.game_day : null };
+    }
+  }
+  return null;
+}
+
 // #1925 + kronologi-rebuild: kladde-bevidst binding. Pr. rytter: de IKKE-afmeldte kolonne-løb
 // han er i kladden, MED hvert løbs in-game-dag-vindue, så isRiderBound kun binder mod løb hvis
 // game-dage faktisk overlapper (samme IRL-dag ≠ binding når game-dagene er forskellige).

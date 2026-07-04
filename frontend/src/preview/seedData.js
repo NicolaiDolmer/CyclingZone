@@ -248,6 +248,7 @@ export const SEED_DISTRIBUTION = {
       id: "race-up-1", name: "Tour de Preview", race_class: "TourFrance", race_type: "stage_race",
       // Etapeløb gd 12-14 (bindingWindow = in-game-dag-span, samme shape som API'en).
       stages: 3, stages_completed: 0, status: "scheduled", window: { day: 12 }, bindingWindow: { start: 12, end: 14 },
+      game_day: 12, game_day_end: 14, // #2195: synligt "Race days 12-14"-mærke
       // S5: fladt løb → jæger-chip = høj udbruds-chance.
       primaryProfileType: "flat", primaryFinaleType: null,
       size: { min: 6, max: 8 }, riders: SEED_BOARD_ROSTER,
@@ -259,6 +260,7 @@ export const SEED_DISTRIBUTION = {
       // In-game-dag-overlap med race-up-1 (gd 12 ⊂ 12-14) → én-rytter/ét-løb-binding.
       id: "race-overlap-1", name: "Critérium Preview", race_class: "ProSeries", race_type: "single",
       stages: 1, stages_completed: 0, status: "scheduled", window: { day: 12 }, bindingWindow: { start: 12, end: 12 },
+      game_day: 12, game_day_end: 12, // in-game-dag 12 → ægte overlap med race-up-1
       // S5: bjerg-løb med summit-finale → jæger-chip = lav udbruds-chance (favoritterne afgør).
       primaryProfileType: "high_mountain", primaryFinaleType: "long_climb",
       size: { min: 6, max: 7 }, riders: SEED_BOARD_ROSTER,
@@ -271,6 +273,7 @@ export const SEED_DISTRIBUTION = {
       // IKKE race-up-1's ryttere. En rytter i Tour de Preview KAN derfor også stilles her.
       id: "race-free-1", name: "Klassiker Preview", race_class: "ProSeries", race_type: "single",
       stages: 1, stages_completed: 0, status: "scheduled", window: { day: 12 }, bindingWindow: { start: 15, end: 15 },
+      game_day: 15, game_day_end: 15, // samme IRL-dag, in-game-dag 15 → kompatibel med race-up-1
       primaryProfileType: "cobbles", primaryFinaleType: null,
       size: { min: 6, max: 7 }, riders: SEED_BOARD_ROSTER,
       selection: { rider_ids: [], captain_id: null, sprint_captain_id: null, hunter_id: null, is_auto_filled: false },

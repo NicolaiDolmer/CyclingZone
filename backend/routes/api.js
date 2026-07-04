@@ -130,7 +130,7 @@ import { runTeamTrainingDay } from "../lib/dailyTrainingEngine.js";
 import { refreshChangedRiderValues } from "../lib/riderValueRefresh.js";
 import { validateSelection, saveSelection, getSelectionContext } from "../lib/raceSelection.js";
 import { isRaceLineupFrozen } from "../lib/raceActiveGuard.js";
-import { loadTeamBindingContext, findRiderBindingConflicts, teamInRacePool, raceTimeWindow, raceBindingWindow } from "../lib/raceBinding.js";
+import { loadTeamBindingContext, findRiderBindingConflicts, teamInRacePool, raceTimeWindow, raceBindingWindow, raceGameDaySpan } from "../lib/raceBinding.js";
 import { buildColumnSet, buildBindingMap, seasonDayProjection, dominantTerrain, lockedWindowsFromEntries, partitionRegenTargets, startListVisible, daysUntilStart, groupGrossSquads, STARTLIST_HORIZON_DAYS } from "../lib/raceDistribution.js";
 import { isRaceEngineV2Enabled } from "../lib/raceEngineFlag.js";
 import { buildCalendarModel } from "../lib/raceCalendar.js";
@@ -1698,17 +1698,23 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
       .select("id, name, race_type, race_class, stages, stages_completed, status, league_division_id, pool_race:pool_race_id(date_text)")
       .eq("season_id", season.id);
     const raceIds = (races || []).map((r) => r.id);
-    const schedRows = await fetchAllScheduleRows(supabase, raceIds);
+    // #1984/#2195 rod-årsag: load MED game_day, så binding-vinduet regnes i in-game-dag-rum —
+    // SAMME nøgle-rum som save-guarden (loadTeamBindingContext). Loades det uden game_day (som før),
+    // falder raceBindingWindow til CET-kalenderdag-ordinaler, og to løb på samme CET-dato men
+    // FORSKELLIGE spil-dage vises fejlagtigt som gensidigt låsende, selv om gem tillader genbrug.
+    const schedRows = await fetchAllScheduleRowsWithGameDay(supabase, raceIds);
     const schedByRace = new Map();
     for (const s of schedRows || []) {
       if (!schedByRace.has(s.race_id)) schedByRace.set(s.race_id, []);
       schedByRace.get(s.race_id).push(s);
     }
-    // To vinduer pr. løb: raceTimeWindow (ms) til DISPLAY (hvilke løb er kolonner på
-    // den valgte dag) og raceBindingWindow (CET-dag-ordinal) til BINDING (bindingMap —
-    // hvilke ryttere er låst pga. samme-dag-overlap, #1823).
+    // To vinduer pr. løb: raceTimeWindow (ms) til DISPLAY (hvilke løb er kolonner på den valgte
+    // dag) og raceBindingWindow (in-game-dag-rum, jf. game_day ovenfor) til BINDING (bindingMap —
+    // hvilke ryttere er låst pga. ægte samme-spil-dag-overlap, #1823). gameDaySpan = det synlige
+    // "Race day N"-mærke (#2195), afledt direkte af game_day.
     const withWindow = (races || []).map((r) => ({ ...r, window: raceTimeWindow(schedByRace.get(r.id)) }));
     const bindingWindowByRace = new Map(raceIds.map((id) => [id, raceBindingWindow(schedByRace.get(id))]));
+    const gameDaySpanByRace = new Map(raceIds.map((id) => [id, raceGameDaySpan(schedByRace.get(id))]));
 
     const dayParam = Number.parseInt(req.query.day, 10);
     // Holdets kolonne-egnede løbsdage (scheduled, egen pulje, har vindue) — så board'et
@@ -1758,6 +1764,9 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
         id: race.id, name: race.name, race_class: race.race_class, race_type: race.race_type,
         stages: race.stages, stages_completed: race.stages_completed ?? 0, status: race.status,
         window: race.window, bindingWindow: bindingWindowByRace.get(race.id),
+        // #2195: in-game løbsdag(e) til det synlige "Race day N"-mærke. null-defensiv (skjul mærket).
+        game_day: gameDaySpanByRace.get(race.id)?.start ?? null,
+        game_day_end: gameDaySpanByRace.get(race.id)?.end ?? null,
         // S5: dominerende terræn (+ finale ved 1-etape) til rolle-hints/jæger-chip.
         primaryProfileType: dominantTerrain(profTypes),
         primaryFinaleType: profTypes.length === 1 ? finaleByRace.get(race.id) ?? null : null,
@@ -2101,13 +2110,16 @@ router.post("/races/distribution/regenerate", requireAuth, marketWriteLimiter, a
     const { data: races } = await supabase
       .from("races").select("id, race_class, race_type, stages, stages_completed, status, league_division_id").eq("season_id", season.id);
     const raceIds = (races || []).map((r) => r.id);
-    const schedRows = await fetchAllScheduleRows(supabase, raceIds);
+    // #1984/#2195: load MED game_day, så autofill-bindingen regnes i in-game-dag-rum — SAMME
+    // nøgle-rum som save-guarden. Uden game_day (CET-ordinal) ville autofill nægte at placere en
+    // rytter i to løb på samme CET-dato men forskellige spil-dage, selv om manuel gem tillader det.
+    const schedRows = await fetchAllScheduleRowsWithGameDay(supabase, raceIds);
     const schedByRace = new Map();
     for (const s of schedRows || []) {
       if (!schedByRace.has(s.race_id)) schedByRace.set(s.race_id, []);
       schedByRace.get(s.race_id).push(s);
     }
-    // ms til display (buildColumnSet), CET-dag-ordinal til binding (#1823).
+    // ms til display (buildColumnSet), in-game-dag-rum til binding (jf. game_day ovenfor, #1823).
     const windowByRace = new Map(raceIds.map((id) => [id, raceTimeWindow(schedByRace.get(id))]));
     const bindingWindowByRace = new Map(raceIds.map((id) => [id, raceBindingWindow(schedByRace.get(id))]));
     const withWindow = (races || []).map((r) => ({ ...r, window: windowByRace.get(r.id) }));
@@ -2357,7 +2369,8 @@ router.post("/races/strategy/preview", requireAuth, marketWriteLimiter, async (r
     const raceIds = myRaces.map((r) => r.id);
     if (!raceIds.length) return res.json({ ok: true, diff: {} });
 
-    const schedRows = await fetchAllScheduleRows(supabase, raceIds);
+    // #1984/#2195: game_day-rum til binding (som save-guard + autofill), ikke CET-ordinal.
+    const schedRows = await fetchAllScheduleRowsWithGameDay(supabase, raceIds);
     const schedByRace = new Map();
     for (const s of schedRows || []) {
       if (!schedByRace.has(s.race_id)) schedByRace.set(s.race_id, []);

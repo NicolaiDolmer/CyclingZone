@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.62",
+    "date": "2026-07-05",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Races on the same afternoon now clearly show their race day",
+          "body": "When two races landed on the same real afternoon but on different in-game race days, the squad board could wrongly show a rider as locked out of the second one, even though he was free to ride both. Each race now shows its race day (for example Race day 11), same-day races are grouped by race day, and a rider you are already using elsewhere is marked as compatible when the days do not actually overlap. Reusing a rider across two race days is allowed, but he still carries fatigue into the later race."
+        },
+        "da": {
+          "title": "Løb på samme eftermiddag viser nu tydeligt deres løbsdag",
+          "body": "Når to løb lå på samme rigtige eftermiddag men på forskellige in-game løbsdage, kunne trup-brættet fejlagtigt vise en rytter som låst fra det andet løb, selv om han frit kunne køre begge. Hvert løb viser nu sin løbsdag (for eksempel Løbsdag 11), samme-dags-løb grupperes efter løbsdag, og en rytter du allerede bruger et andet sted markeres som kompatibel når dagene ikke reelt overlapper. At genbruge en rytter på tværs af to løbsdage er tilladt, men han bærer stadig træthed med ind i det senere løb."
+        },
+        "refs": [1984, 2195]
+      }
+    ]
+  },
+  {
     "version": "6.61",
     "date": "2026-07-04",
     "label": "Beta",

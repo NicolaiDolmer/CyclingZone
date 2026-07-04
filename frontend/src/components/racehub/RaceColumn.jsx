@@ -49,6 +49,13 @@ export default function RaceColumn({ column, onRemoveRider, onToggleWithdraw, on
     if (id === s.hunter_id) return "hunter";
     return null;
   };
+  // #2195: synlig in-game løbsdag, så to løb på samme rigtige eftermiddag er tydeligt
+  // forskellige spil-dage. Etapeløb spænder start..slut; endagsløb er én dag. Skjult hvis ukendt.
+  const gd = column.game_day;
+  const gdEnd = column.game_day_end;
+  const raceDayLabel = Number.isFinite(gd)
+    ? (Number.isFinite(gdEnd) && gdEnd > gd ? t("racehub.raceDays", { start: gd, end: gdEnd }) : t("racehub.raceDay", { day: gd }))
+    : null;
   const status = locked
     ? { kind: "locked" }
     : computeColumnStatus({ selected: column.counts.selected, target: column.counts.target, max: column.size?.max, withdrawn: column.withdrawn });
@@ -72,6 +79,9 @@ export default function RaceColumn({ column, onRemoveRider, onToggleWithdraw, on
           {locked && <LockIcon size={13} className="text-cz-3 mt-0.5 flex-shrink-0" aria-hidden="true" />}
         </div>
         <p className="text-[11px] text-cz-3 mt-0.5">
+          {raceDayLabel && (
+            <span className="inline-block me-1.5 text-cz-accent-t font-medium">{raceDayLabel}</span>
+          )}
           {column.race_type === "stage_race" ? t("raceType.stages", { count: column.stages }) : t("raceType.oneDay")} · {t(`classOption.${column.race_class}`)}
         </p>
         <span className={`inline-block mt-2 text-[10px] uppercase tracking-wide px-2 py-0.5 rounded-full border ${STATUS_CLASS[status.kind]}`}>

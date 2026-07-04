@@ -1,6 +1,23 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { raceTimeWindow, raceBindingWindow, windowsOverlap, findRiderBindingConflicts, loadTeamBindingContext, findManualOverlapConflicts, teamInRacePool } from "./raceBinding.js";
+import { raceTimeWindow, raceBindingWindow, raceGameDaySpan, windowsOverlap, findRiderBindingConflicts, loadTeamBindingContext, findManualOverlapConflicts, teamInRacePool } from "./raceBinding.js";
+
+test("raceGameDaySpan: endagsløb → start===end fra game_day", () => {
+  assert.deepEqual(raceGameDaySpan([{ game_day: 10, scheduled_at: "2026-07-04T13:00:00Z" }]), { start: 10, end: 10 });
+});
+
+test("raceGameDaySpan: etapeløb → første..sidste in-game-dag", () => {
+  assert.deepEqual(raceGameDaySpan([{ game_day: 10 }, { game_day: 12 }, { game_day: 11 }]), { start: 10, end: 12 });
+});
+
+test("raceGameDaySpan: en række uden game_day → null (skjul mærket, vis ikke skrald)", () => {
+  assert.equal(raceGameDaySpan([{ game_day: 10 }, { scheduled_at: "2026-07-04T13:00:00Z" }]), null);
+});
+
+test("raceGameDaySpan: tom/null → null", () => {
+  assert.equal(raceGameDaySpan([]), null);
+  assert.equal(raceGameDaySpan(null), null);
+});
 
 test("raceTimeWindow: start=tidligste, end=seneste etape", () => {
   const w = raceTimeWindow([

@@ -13,7 +13,7 @@ import ContextBand from "./ContextBand.jsx";
 import RaceColumn from "./RaceColumn.jsx";
 import AvailableRidersPool from "./AvailableRidersPool.jsx";
 import DivisionStartLists from "./DivisionStartLists.jsx";
-import { draftBindingMap, findSelectionOverlaps } from "../../lib/raceHubLogic.js";
+import { draftBindingMap, findSelectionOverlaps, groupColumnsByGameDay } from "../../lib/raceHubLogic.js";
 import { decodeDrag, dropAction } from "../../lib/raceHubDnd.js";
 import { pickFallbackCaptain } from "../../lib/raceSelectionLogic.js";
 import { Spinner, EmptyState, FlagIcon, Button } from "../ui";
@@ -53,6 +53,10 @@ export default function RaceHubBoard() {
   // når-gyldig). En ugyldig mellemtilstand (5 eller 7 på en 6/6) lever lokalt uden at
   // gemmes, så manageren kan redigere/bytte frit uden den hårde 6-og-6-lås.
   const [drafts, setDrafts] = useState({}); // raceId → { rider_ids, captain_id, sprint_captain_id, hunter_id }
+  // #2195: er engangs-genbrugs-noten allerede afvist? (localStorage, tåler private mode)
+  const [reuseNoteDismissed, setReuseNoteDismissed] = useState(() => {
+    try { return localStorage.getItem("cz_learn_reuse") === "1"; } catch { return false; }
+  });
 
   const load = useCallback(async (day) => {
     const headers = await authHeaders();
@@ -327,6 +331,31 @@ export default function RaceHubBoard() {
   // #1925: kladde-bevidst binding til pulje/popover (afspejler dine live-redigeringer).
   const liveBindingMap = draftBindingMap(effectiveColumns);
 
+  // #2195: gruppér dagens løb efter in-game løbsdag. Er der >1 spil-dag på den samme rigtige
+  // dato, rendes tydelige "Race day N"-sektioner + en forklarende note, så komprimeringen (og
+  // dermed hvorfor en rytter må genbruges) er synlig i stedet for at ligne en glitch.
+  const dayGroups = groupColumnsByGameDay(effectiveColumns);
+  const multiDay = dayGroups.filter((g) => g.gameDay != null).length > 1;
+
+  // #2195: engangs-læringsnote. Trigges første gang kladden har SAMME rytter i to løb på
+  // forskellige (ikke-overlappende) spil-dage — netop det øjeblik hvor tvivlen "er det en bug?"
+  // opstår. Dismissal huskes i localStorage, så den kun vises én gang pr. bruger.
+  const reuseAcrossDays = (() => {
+    const seen = new Map();
+    for (const c of effectiveColumns) {
+      if (c.withdrawn || !Number.isFinite(c.game_day)) continue;
+      for (const id of c.selection?.rider_ids || []) {
+        if (seen.has(id) && seen.get(id) !== c.game_day) return true;
+        if (!seen.has(id)) seen.set(id, c.game_day);
+      }
+    }
+    return false;
+  })();
+  const dismissReuseNote = () => {
+    try { localStorage.setItem("cz_learn_reuse", "1"); } catch { /* private mode */ }
+    setReuseNoteDismissed(true);
+  };
+
   // #1925: oversæt et drag-and-drop til board-handling (add / move / remove).
   function handleDrop(toKind, toRaceId, raw) {
     const payload = decodeDrag(raw);
@@ -372,12 +401,50 @@ export default function RaceHubBoard() {
         <EmptyState icon={<FlagIcon size={24} />} title={t("racehub.empty")} />
       ) : (
         <>
-          <div className="grid sm:grid-cols-2 gap-3 mb-4">
-            {effectiveColumns.map((c) => (
-              <RaceColumn key={c.id} column={c} busy={busy} onRemoveRider={removeRider} onSetRole={setRole}
-                onToggleWithdraw={toggleWithdraw} onDropRider={(raw) => handleDrop("column", c.id, raw)} />
-            ))}
-          </div>
+          {/* #2195: forklar komprimeringen når dagen rummer flere spil-dage. */}
+          {multiDay && (
+            <p className="mb-3 text-[11px] text-cz-3 flex items-center gap-1.5">
+              <FlagIcon size={12} aria-hidden="true" /> {t("racehub.sameDayNote")}
+            </p>
+          )}
+          {/* #2195: engangs-læringsnote i genbrugs-øjeblikket. */}
+          {reuseAcrossDays && !reuseNoteDismissed && (
+            <div className="mb-3 flex items-start justify-between gap-3 rounded-cz border border-cz-accent/30 bg-cz-accent/10 px-3 py-2">
+              <span className="text-xs text-cz-1">
+                <span className="font-semibold">{t("racehub.learnReuse.title")}</span>
+                <span className="block text-cz-2 mt-0.5">{t("racehub.learnReuse.body")}</span>
+              </span>
+              <button type="button" onClick={dismissReuseNote} className="text-xs text-cz-accent-t hover:underline flex-shrink-0 whitespace-nowrap">
+                {t("racehub.learnReuse.dismiss")}
+              </button>
+            </div>
+          )}
+          {multiDay ? (
+            dayGroups.map((g) => (
+              <div key={g.gameDay ?? "no-day"} className="mb-4">
+                {g.gameDay != null && (
+                  // Gruppen defineres af den delte binding-dag (start). Et etapeløbs fulde span
+                  // står på løbets egen chip; her holder vi headeren entydig = "Race day N".
+                  <p className="mb-2 text-xs font-semibold text-cz-accent-t">
+                    {t("racehub.raceDay", { day: g.gameDay })}
+                  </p>
+                )}
+                <div className="grid sm:grid-cols-2 gap-3">
+                  {g.columns.map((c) => (
+                    <RaceColumn key={c.id} column={c} busy={busy} onRemoveRider={removeRider} onSetRole={setRole}
+                      onToggleWithdraw={toggleWithdraw} onDropRider={(raw) => handleDrop("column", c.id, raw)} />
+                  ))}
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="grid sm:grid-cols-2 gap-3 mb-4">
+              {effectiveColumns.map((c) => (
+                <RaceColumn key={c.id} column={c} busy={busy} onRemoveRider={removeRider} onSetRole={setRole}
+                  onToggleWithdraw={toggleWithdraw} onDropRider={(raw) => handleDrop("column", c.id, raw)} />
+              ))}
+            </div>
+          )}
           <AvailableRidersPool roster={roster} columns={effectiveColumns} bindingMap={liveBindingMap}
             onAddRiderToRace={addRider} onRegenerate={regenerate} busy={busy}
             onDropRider={(raw) => handleDrop("pool", null, raw)} />
