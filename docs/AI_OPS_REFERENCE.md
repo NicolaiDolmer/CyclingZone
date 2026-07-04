@@ -68,6 +68,27 @@ Supabase-inspektion: start med målrettede `npm run db:ai:*` frem for brede dump
 
 ---
 
+## Railway-adgang (headless, incident-beredskab) — #2092
+
+Prod-backenden (service **CyclingZone**, projekt **fantastic-connection**, environment **production**) hostes på Railway. For at læse prod-logs ved incidents uden dagligt interaktivt `railway login` findes en **permanent project-token i Infisical**:
+
+- **Hvor tokenen bor:** Infisical, **dev**-environment, secret-navn `RAILWAY_TOKEN` (project-scoped → kun `fantastic-connection`/production, minimal blast radius). Aldrig i repo/transcripts.
+- **Læs prod-logs headless (incident-brug):**
+  ```bash
+  infisical run --env=dev -- railway logs           # live container-logs
+  infisical run --env=dev -- railway logs | grep -i 'stage-scheduler\|error\|stall'
+  infisical run --env=dev -- railway status          # bekræft projekt/environment
+  ```
+- **Kør en engangskommando med prod-service-vars injiceret** (fx verificér env-drevet routing uden at læse secret-værdier):
+  ```bash
+  infisical run --env=dev -- railway run -s CyclingZone -- node <script.mjs>
+  ```
+- **Gotcha:** `railway whoami` returnerer `Unauthorized` med en project-token — det er **forventet** (tokenen har ingen user-kontekst). Brug `railway status`/`railway logs` som liveness-tjek, ikke `whoami`.
+- **Railway MCP** kan også være logget ind via interaktiv session, men den udløber; Infisical-token-vejen er den kanoniske, ikke-udløbende adgang.
+- **Secret-hygiejne:** dump aldrig tokenen. `railway logs`/`status` er sikre; undgå `railway variables` (dumper alle secret-værdier — jf. secret-leak-reglerne).
+
+---
+
 ## Session-rytme & token-effektivitet
 
 _AI'en skal proaktivt signalere session-tilstand. Brugeren behøver ikke selv huske at lukke en session — AI'en forslår det ved naturlige break-points._
