@@ -63,6 +63,8 @@
     "searchPlaceholder": "Søg rytternavn…",
     "noResults": "Ingen resultater fundet",
     "noResultsFor": "Ingen resultater fundet for \"{q}\"",
+    "loadError": "Kunne ikke indlæse ranglisten. Prøv igen.",
+    "retry": "Prøv igen",
     "thNation": "Nation",
     "thRider": "Rytter",
     "thTeam": "Hold",
@@ -74,7 +76,6 @@
     "ownerFree": "Fri agenter",
     "teamFilterLabel": "Filtrér på hold",
     "teamFilterAll": "Alle hold",
-    "colRating": "Rating",
     "colPoints": "Point",
     "colTotalWins": "Sejre i alt",
     "colStageWins": "Etapesejre",
@@ -90,7 +91,6 @@
     "colGreenDays": "Grønne dage",
     "colPolkaDays": "Prikdage",
     "colWhiteDays": "Hvide dage",
-    "shortRating": "Rtg",
     "shortPoints": "Pt",
     "shortTotalWins": "Sejre",
     "shortStageWins": "Etape",
@@ -114,7 +114,6 @@
     "legendPcl": "PKL = pointklassement",
     "legendMtn": "Bjerg = bjergklassement",
     "legendU25": "U25 = ungdomsklassement",
-    "legendRating": "Rating = samlet evne (1-99), vægtet mod rytterens bedste type",
     "legendSort": "Klik kolonne for at sortere"
   }
 }

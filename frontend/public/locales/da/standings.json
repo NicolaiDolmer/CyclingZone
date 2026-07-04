@@ -3,6 +3,8 @@
   "season": "Sæson {n}",
   "seasonTooltip": "Nuværende sæson. Ranglisten nulstilles hver sæson.",
   "noActiveSeason": "Ingen aktiv sæson",
+  "loadError": "Kunne ikke indlæse ranglisten. Prøv igen.",
+  "retry": "Prøv igen",
   "division": "Division {n}",
   "poolAll": "Alle",
   "noData": "Ingen data for Division {n} endnu",
