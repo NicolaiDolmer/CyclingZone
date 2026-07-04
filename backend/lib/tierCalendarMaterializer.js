@@ -263,12 +263,12 @@ export async function reconcilePoolCalendarOnActivation({
   // kalender slutter samme dag som de øvrige divisioner. Etaper lægges på from+1..from+realDays.
   const horizon = {};
   const { data: seasonRaces, error: allErr } = await supabase.from("races").select("id").eq("season_id", season.id);
-  if (allErr) throw new Error(`races (sæson-horisont): ${allErr.message}`);
+  if (allErr) throw new Error(`races (season horizon): ${allErr.message}`);
   const seasonRaceIds = (seasonRaces || []).map((r) => r.id);
   if (seasonRaceIds.length) {
     const { data: sched, error: schErr } = await supabase
       .from("race_stage_schedule").select("scheduled_at").in("race_id", seasonRaceIds);
-    if (schErr) throw new Error(`race_stage_schedule (sæson-horisont): ${schErr.message}`);
+    if (schErr) throw new Error(`race_stage_schedule (season horizon): ${schErr.message}`);
     let maxAt = null;
     for (const s of sched || []) {
       const t = Date.parse(s.scheduled_at);
