@@ -12,11 +12,12 @@
 // updated_at-timestamps.
 
 import { copenhagenDateString } from "./copenhagenTime.js";
-import { resolveProgram, applyDailyTick } from "./dailyTraining.js";
+import { resolveProgram, applyDailyTick, computeAcademySeasonCeiling } from "./dailyTraining.js";
 import { nextFatigue, nextForm, conditionMultiplier, injuryRisk, rollInjury } from "./riderCondition.js";
 import { buildCaps } from "./riderProgression.js";
 import { ageForSeason } from "./riderProgressionEngine.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
+import { isAcademyAge, academySeasonFracForAge, ACADEMY } from "./academyFlag.js";
 
 // Batched async-runner (samme hjælper som riderProgressionEngine.js).
 async function runBatched(items, concurrency, fn) {
@@ -152,6 +153,28 @@ export async function runTeamTrainingDay({
       caps = buildCaps(abilities, rider.primary_type, rider.potentiale);
     }
 
+    // #2082/#1938 (ejer-godkendt 5/7): akademi-alder får et SÆSON-BUDGET-loft i stedet
+    // for livstids-loftet direkte — væksten mætter ved sæsonens andel af gappet, uanset
+    // hvor mange dage sæsonen varer (sæsonlængde er ikke en fast konstant, jf. #2082).
+    // seasonBudgetBaseline snapshottes ved sæsonens FØRSTE tick (season_budget_season
+    // matcher ikke den aktuelle seasonNumber) og genbruges resten af sæsonen.
+    const inAcademy = isAcademyAge(age);
+    let seasonBudgetBaseline = null;
+    let seasonBudgetRefreshed = false;
+    if (inAcademy) {
+      const staleBaseline = abRow.season_budget_season !== seasonNumber
+        || !abRow.season_budget_baseline || typeof abRow.season_budget_baseline !== "object";
+      if (staleBaseline) {
+        seasonBudgetBaseline = abilities; // snapshot FØR dagens tick
+        seasonBudgetRefreshed = true;
+      } else {
+        seasonBudgetBaseline = abRow.season_budget_baseline;
+      }
+    }
+    const tickCaps = inAcademy
+      ? computeAcademySeasonCeiling({ seasonStartAbilities: seasonBudgetBaseline, lifetimeCaps: caps, frac: academySeasonFracForAge(age) })
+      : caps;
+
     // Er rytteren skadet i dag?
     const injuredToday = !!(cond.injured_until && cond.injured_until >= tickDate);
 
@@ -168,12 +191,13 @@ export async function runTeamTrainingDay({
         dateStr: tickDate,
         age,
         abilities,
-        caps,
+        caps: tickCaps,
         progress: abRow.ability_progress ?? {},
         program,
         conditionMult: condMult,
         bonus,
         potentiale: rider.potentiale,
+        hardDailyCap: inAcademy ? ACADEMY.HARD_DAILY_CAP : undefined,
       });
     }
 
@@ -224,6 +248,10 @@ export async function runTeamTrainingDay({
     }
     if (capsWasNull) {
       abilityPatch.ability_caps = caps;
+    }
+    if (seasonBudgetRefreshed) {
+      abilityPatch.season_budget_baseline = seasonBudgetBaseline;
+      abilityPatch.season_budget_season = seasonNumber;
     }
     if (Object.keys(abilityPatch).length > 0) {
       abilityUpdates.push({ riderId: rider.id, patch: abilityPatch });
