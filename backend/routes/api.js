@@ -2522,7 +2522,7 @@ router.post("/auctions", requireAuth, marketWriteLimiter, async (req, res) => {
     .select("id")
     .eq("rider_id", rider_id)
     .in("status", ["active", "extended"])
-    .single();
+    .maybeSingle();
 
   if (existing) {
     return res.status(409).json({ error: "Rider already has an active auction" });
@@ -8417,7 +8417,7 @@ async function loadBoardPlanningContext(teamId) {
     supabase.from("teams").select("id, balance, sponsor_income, division, season_1_identity_basis, team_dna_key").eq("id", teamId).single(),
     supabase.from("riders").select(BOARD_IDENTITY_RIDER_SELECT).eq("team_id", teamId),
     supabase.from("season_standings").select("*").eq("team_id", teamId)
-      .order("updated_at", { ascending: false }).limit(1).single(),
+      .order("updated_at", { ascending: false }).limit(1).maybeSingle(),
     supabase.from("board_profiles").select("*").eq("team_id", teamId),
   ]);
 
@@ -8503,7 +8503,7 @@ router.get("/board/status", requireAuth, async (req, res) => {
       supabase.from("teams").select("id, balance, sponsor_income, division, season_1_identity_basis, consecutive_low_satisfaction_expirations, team_dna_key, team_dna_chosen_at").eq("id", teamId).single(),
       supabase.from("riders").select(BOARD_IDENTITY_RIDER_SELECT).eq("team_id", teamId),
       supabase.from("season_standings").select("*").eq("team_id", teamId)
-        .order("updated_at", { ascending: false }).limit(1).single(),
+        .order("updated_at", { ascending: false }).limit(1).maybeSingle(),
       supabase.from("loans").select("id", { count: "exact", head: true })
         .eq("team_id", teamId).eq("status", "active"),
       supabase.from("transfer_windows")

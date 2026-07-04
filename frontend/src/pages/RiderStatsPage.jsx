@@ -829,7 +829,7 @@ export default function RiderStatsPage() {
     const user = await getAuthedUser();
     if (!user) return;
     const { data } = await supabase.from("rider_watchlist")
-      .select("id").eq("user_id", user.id).eq("rider_id", id).single();
+      .select("id").eq("user_id", user.id).eq("rider_id", id).maybeSingle();
     if (data) { setOnWatchlist(true); setWatchlistId(data.id); }
     else      { setOnWatchlist(false); setWatchlistId(null); }
   }
