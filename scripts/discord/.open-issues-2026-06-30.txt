@@ -1,0 +1,331 @@
+2022	[bug] Nyt holds bestyrelse dannes ufuldstændigt: ukalibrerede mål + ingen DNA-valg (basis sættes kun ved sæson-slut)
+2018	Filtrér Vercel Live Feedback toolbar-støj fra Sentry (denyUrls + inbound filter)
+2017	Ekskludér docs/** fra CodeQL → 3 falske XSS-alerts fra wireframe-mockups (#165/166/167)
+2014	Ryttertype: 'utypet / udvikler sig endnu'-tilstand for ryttere uden reelt speciale
+2010	Slice 6: History/Results/Interesse-faner på rytter-siden
+2009	Slice 5: Hover mini-profil (FM-stil, genbrugskomponent)
+2008	Slice 4: Development/Træning-fane + migrér Dev-fane af PCM
+2007	Slice 3: Rytter-handlinger (egen + anden/AI)
+2006	Slice 2: Overall 1-99 rytter-rating (V1 absolut)
+2002	Ensret evne-rækkefølge + P/M/T overalt (forbrug abilities.js SSOT, ingen PCM-rester)
+2001	Populér rider_derived_abilities.ability_progress + ability_caps (null i prod) — prerequisite for rytter-rework
+2000	EPIC: Verdensklasse rework af rytter-siden (nye 1-99-evner, P/M/T, rating, hover-kort, handlinger)
+1997	Verdensklasse historik/palmares (rytter + hold) — design + build
+1996	Ryd op i efterladt transfervindue-kode (én sandhed: altid-åbent marked)
+1995	Holdskifte midt i etapeløb: udskyd fuldførelse til løbs-slut (option c)
+1994	Fjern ubrugt udlåns-/leje-funktion (0 aftaler i prod)
+1993	Immutabelt hold-snapshot på race_results (team_name backfill + re-import-guard)
+1987	[bot] Perf & SEO inbox (rå)
+1984	[ux] Verdensklasse holdudtagelse ved samtidige løb: gør overlap-status læsbar + tillad genbrug af rytter på tværs af ikke-overlappende samme-dags-løb
+1983	[ux/bug] Overlap-fejl ved gem af holdudtagelse navngiver ikke hvilken rytter/løb der konflikter
+1981	[Investigation] Catch-up for nye/tilbagevendende klubber: billigere udviklingsveje
+1980	[Investigation] Op/nedrykning-økonomi: nedryknings-faldskærm + højere opryknings-krav
+1979	[ux] Omdøb/fjern forvirrende 'udbrud' (breakaway) etapeprofil-navn
+1978	[feature] Vis potentiale på akademi-siden ud for rytterne
+1977	[feature] Tillad en valgfri kommentar/note på en rytter sat til salg (sælger-reklame)
+1976	[feature] Vis etape-distance (km) på alle ruteprofiler, inkl. enkeltstart (ITT)
+1975	[bug/i18n] Kalender-siden: ikke oversat til dansk + viser forkert '60 racedays' (skal være per-division)
+1974	[bug/balance] Træning: FLAD/SPRINT/ACCELERATION-færdigheder udvikles næsten ikke — ryttere ser fast i VO2Max-klyngen
+1972	[chore/db] Drop ~40 forældede backup_*-tabeller (27-28/6 reset/rebuild-batch) — reducér API-surface + advisor-støj
+1970	[ux] Frisk Clarity 27-29/6: /team (208) + /teams/{id} (90, 12 rage) + /training (141) stadig høje dead clicks EFTER #1794/#1796 — virkede fixene?
+1953	[ux] Kalender: enkeltstart (ITT) kan ikke skelnes fra flad sprint-etape — identiske silhuetter + ingen tekst-label
+1952	[feature] Notifikation når et løb er kørt ("du har et resultat at se på" på dashboard/indbakke)
+1951	[feature] Sortér ryttere på holdudtagelses-/lineup-siden (navn, type, rute-match, form, træthed)
+1950	[bug] Inkonsistent rytter-navnesortering på tværs af sider (dobbelt-a kollation)
+1944	Evaluér Bun som package manager / runtime (parkeret fra chat 2026-06-27)
+1942	[chore] Forældreløs FAQ-nøgle relaunchTeamMoney i help.json (renderes aldrig)
+1941	[bug] Auktions-forlængelses-grace = 0 i prod (mangler extension_grace_minutes-kolonne)
+1938	[balance] Ungdoms-growth pr. træning for høj (klatring +4 på én session)
+1936	[bug/ux] Daglig træning kommunikerer ikke 'ét tick pr. dag' — fokus-ændringer efter tick + frossen træthed opfattes som fejl
+1930	[feature] Sortér listen af afsluttede løb med nyeste øverst
+1929	[feature] Vis akademiryttere på "My Team" (med valgfri toggle for vis/skjul)
+1928	[feature] Gør det tydeligt HVILKE ryttere der er holdets stjerne-/profilryttere
+1926	[chore] 4 orphaned endpoints gør audit-gaten rød på hver PR (transfer-window + deadline-day/*)
+1925	Follow-ups efter holdudtagelses-overhaul (#1924): help.json, trigger-verify, edge-cases, oprydning
+1922	[feature] Træningsfokus-rework: meningsfulde trade-offs (cykelnørd møder casual) i stedet for near-placeholder
+1919	[ux] Race-/strategi-/lineup-flader: 15-17% dead clicks — statisk tekst & overskrifter ser klikbare ud (Clarity 24-26/6)
+1917	[bot] Feature-liveness audit fandt 1 drift-finding(s)
+1914	[help] To design-intent-uoverensstemmelser fundet i help-audit: fokus-slots (3 vs unlimited) + divisions-tabel (3 vs 4)
+1905	[feature] Lad spillere vælge hvornår deres auktion slutter
+1903	CZ Pro monetisering — billing rails + Founder-tier (Slice 1)
+1900	[ux] Cross-division standings-overblik: alle divisioner i én visning + filter til egen (#1835-split)
+1899	[beslutning] Skal seasons.race_days_total bumpes/gøres per-division når 140-generatoren lander?
+1896	Træning: synliggør hvad det koster ikke at træne selv (assistent-default + mistet bonus)
+1895	Træning: ugentlig plan (daglig +25%-bonus bevares, kun ved selv-udførelse)
+1894	Træning: smart default-fokus pr. ryttertype (i stedet for blind vo2max)
+1889	[ux] Vis/forklar hvem ens 4 profilryttere er
+1888	[feature] Auto-push patch notes til Discord når patch notes opdateres in-game
+1887	[ux] Dashboard: gør de nederste moduler skjulbare/tilpasselige
+1886	[bug] Auktioner: squad-cap (30) håndhæves ikke ved bud → trup nåede 32 + massebudte ryttere vises fejlagtigt som "til salg"
+1884	Race-hub taktik: fold jæger-dropdown ind i HunterExplainer + RoleCards på detalje-panel (S5-opfølgning)
+1879	Governance ret-størrelse batch 3 — de-multi-AI resterende live-docs + konsolidér AI_OPS-docs
+1875	Sæt Vercel preview-env (VITE_PREVIEW_MOCK + sentinel) — aktivér self-serve mock-previews
+1865	Genmål harness-snapshot i ren lokal session (token-tal forældede siden 29/5)
+1857	[enhancement] Race-sim reproducerbarhed: snapshot rytter-betingelser (form/træthed/abilities) i race_simulation_runs
+1856	[bug] Kalender/scheduler tillader samtidige overlappende etapeløb i samme division (Div 1 ufyldbar)
+1847	[bug] Orphaned race_results (247 rækker, NULL rider_id) efter rytter-sletning
+1837	[feature] Autobud/proxy-bud fra rytterprofil når man starter en auktion
+1835	[ux] Sæson-overblik: divisions-visning (alle divisioner samlet + filtrér til egen division)
+1833	[ux] In-game forklaring af rytter-evner + fysiologiske power-intervaller (tooltips/mouse-over)
+1831	[bug] Alder uoverensstemmende: akademiside viser 17, rytterside viser 18 (samme rytter)
+1819	Opfølgning efter præmie ÷20: bekræft økonomi-coherence + ryd backup
+1818	Økonomi-gates ignorerer 0c hale-ryttere: gen-kør #1441/#1606 med fuld 12-trup
+1815	Design-session: Discord-webhook per etape i etapeløb (i dag kun final-etape)
+1812	test(infra): frontend-smoke advisory → ægte regressions/stale tests driver uset; gør drift synlig
+1807	Forward-guard mod getUser()→null-deref: delt getAuthedUser()-helper + lint-regel (follow-up #1792)
+1801	[bug] Resultatside 'Afsluttet' viser forkerte løb (kun ét løb man ikke deltog i)
+1800	[bug] Fyrede ryttere hænger ved i startopstilling/lineup (6/8, 8. rytter-fejl, kaptajn-kandidater)
+1799	[bug] Akademi-signering lægger rytter på senior-holdet i stedet for akademiet
+1791	[rework] Ungdoms-ryttere: svag start + reel rejse til peak (loft fra potentiale+anlaeg)
+1788	Discord bot-token-check: vedvarende HTTP 429 fra delt Railway-egress-IP (Sentry CYCLINGZONE-Z)
+1784	Vercel Pro: sæt spend management / budget-loft op (forsikring før marketing-bølge)
+1778	[ux] Sponsor-deadlines er utydelige — vis hvornår man vælger/skifter/udløber sponsor
+1777	[ux] Browser-tilbage fra rytterprofil under auktioner lander altid på "Min situation"
+1776	[bug] Transferhistorik: sæson 1-transfers vises under sæson 0 + akademiryttere mangler helt
+1775	[ux] AI-fyld-holdnavne er generiske ("AI 1/2/3") — gør realistiske + fjern "AI" fra navnet
+1774	[bug] Antal etapedage stemmer ikke: forside vs. division vs. pulje (40 vs. 60 vs. 41)
+1734	Udvid løb-katalog så hver pulje får fulde 8 etapeløb
+1712	Fuld 140-etaper/5-per-dag sæson-rekalibrering (post-launch)
+1688	[#1608] Forever-pyramide: additive follow-ups efter form-frys (post-forever, ingen reset)
+1679	[feature] Se andre holds træning på deres ryttere
+1677	[feature] Fyr/opsig rytterkontrakter (frigør rytter fra holdet)
+1668	Ugentlig worktree-cleanup kører ikke orphan-sweep (prune-stale) — projects-dirs hober sig op igen
+1667	Ryd op i forældet edition_year-admin-editor + orphan i18n-keys (opfølgning #1126)
+1665	chore(i18n): reducér resterende api.js i18n-leaks (76) — player-facing errorCode-migration + admin-allowlist-policy
+1616	Beslutnings-session: åbne ejer-beslutninger fra 20/6-auditten
+1614	Squad-cap display ≠ håndhævelse: Panic Board viser D2 20/D3 10, men cap er 30 for alle
+1608	[Epic] Skalerbar divisions-struktur (20→1000+ hold) — tier-pyramide, parallelle løb-instanser, selv-tilmelding
+1602	[Epic] Mobil-optimering: luk de resterende huller (ikke en omskrivning)
+1596	[forever] WS1 Fase 3 aktivering + beta-stress-test (forever-gate §6.1)
+1595	[forever] WS2-backend — PCM-sletning: fjern resultat-pipeline, behold stat_* som derive-kilde (Option B)
+1583	Måle-hul: funnel-events (signup/onboarding_completed/first_bid) + verificér signup_attribution
+1576	EPIC: AI-slop cleanup (2026-06-20 fuld frontend-audit)
+1569	Ny-spiller onboarding-audit (2026-06-20) — prioriteret handlingsplan
+1543	Decideret talentspejder-funktion — afløs interim scout-knap (#1138 L1)
+1528	[AI-ops] A1: Autonomt selv-forbedrende burndown-loop (natbølge gjort selvkørende)
+1473	Test-harness-fixtures lander i prod og overlever relaunch som orphan-hold
+1466	Repeatable rehearsal-provisioning harness (skema-spejl + seed + nøgler + teardown)
+1464	Forward-guard: test der fanger nye finance/enum-typer uden constraint-migration
+1462	security(web): CSP report-only → enforcing
+1461	security(email): DMARC enforcement — p=none → quarantine → reject
+1450	[ops] Vercel Secret Sync via Infisical App Connections (single source of truth)
+1441	Epic: langsigtet sammenhængende økonomi — anti-inflation, gold sinks, rigtige sponsorer
+1407	SEO measurement layer: GSC + GA4 + Ahrefs + Morningscore korrekt opsat + ownership-doc
+1406	SEO-research: Morningscore trial-sprint (keyword + konkurrent + audit baseline)
+1379	Genbesøg evnesystemet + watt-intervaller (5/10/15-min power-kurve)
+1378	Genbesøg ryttertyperne: kalibrér de nye typer bedre vs. det gamle PCM-system
+1375	[perf] Performance-arkitektur — eksekverings-tracker (spec 2026-06-13)
+1374	[perf] Targeted Realtime-invalidering: erstat broad loadAll-refetches (auktion først)
+1373	[perf] Frontend: delt query-cache + risk-baseret optimistic/pending UI (spec 2026-06-13)
+1369	[Meta] Langsigtet CRO-loop — activation, retention, bounce og konvertering
+1364	Værdimodel: rytterværdi skal stige når evner udvikles (akademi-forretningsmodel-enabler)
+1341	[AI-ops] AI Council → Claude-only: Manus udfases + ny kanal/model/redskabs-matrix
+1310	Markeds-pakke fast-follow: system-bølger, AI-bud, uopfordrede bud, forlængelses-UI
+1304	Ejer-huskeliste 11/6: GA4-deploy blokeret af Vercel-kvote + domæne/analytics-opfølgninger
+1301	SEO-fundament: cyclingzone.org skal kunne findes og rangere (epic)
+1299	Dynamiske OG share-billeder via @vercel/og (etaperesultat-kort) — før 20/6-relaunch
+1294	Race-motor test-værktøjer: seed-variation i preview (flere udfald) + preview på afviklede løb (motor vs. faktisk resultat)
+1293	Race-motor: population-berigelse + endelige gate-bånd (cobbles/hilly/itt op til fulde mål)
+1290	[AI-ops] Codex udfases — ryd op i roller, labels, docs og lokal cache
+1284	[AI-ops] HOT MEMORY.md over budget igen (2041 tok) — konsolidér + demotér til WARM
+1283	ToV-session: definér founder-stemmen (ejer-ledet) — struktur fra AI, prosa fra Nicolai
+1281	Vaerdisystem v1.1: base_value glider mod faktisk handelspris ved auktion/transfer (udskilt fra #1101)
+1279	GO/NO-GO-gate ~11/7: beslutningsissue med evidens-checkliste + user-interview-plan
+1278	Relaunch-kommunikation til spillere: hvad betyder 20/6-resettet (in-app + Discord + FAQ)
+1276	Beslutning foer 20/6: PCM-dump-xlsx med rigtige rytternavne ligger synligt i public repo
+1270	Session-hardening hooks: pre-push område-tests (D1) + dep-sync-vagt (D7) + kollisionsvarsel (D4)
+1240	[ux] Board-forhandling: tilbageknap i wizard + fjern/erstat mål
+1239	[Design] Board-DNA og holdfokus v2: sportslige fokus-typer, nationalitet, egen avl
+1237	[feature] Board-økonomi: vurdér saldo vs gæld, ikke kun antal lån
+1235	[feature] Board: forhandle mål OP (high risk, high reward)
+1208	Kalibrér boardIdentity star-score væk fra frossen uci_points (sidste funktionelle læser)
+1199	Natlig harness-vagt: kør gates mod prod-data på cron + rapportér drift som GitHub-kommentar
+1189	[investigation] Auktions- & transfer-timing policy — post-launch tuning (Discord-konsensus)
+1182	Verificér + slet ubrugte Railway Postgres + Redis (pleasing-spontaneity)
+1178	Brugerrettet: fyre/frigive en rytter (release)
+1177	Holddynamik-dybde: vejkaptajner + mentor + erfaring
+1176	Race engine-realisme: løbsform/year-form + startliste + styrt
+1175	Domæne: primary-flip til cyclingzone.org
+1173	Vækst/viralitets-loop: referral (del spillet med en ven)
+1154	[Epic] Rider personality & club relationship — roles, ambition, loyalty and rebuilding
+1151	[Epic] Human-driven transfer market & AI liquidity
+1150	[Design] Contracts, rider demands, relegation clauses and development loans
+1149	[Epic] Club development & facilities — academy, training, scouting, medical and operations
+1148	[Epic] World history & Club Museum — records, legends, rivalries and season stories
+1147	[Epic] Living World feed — results, transfers, breakthroughs, rivalries and club stories
+1146	[Design] Shared race calendar — selection, overlap, fatigue, qualification, and assistant planning
+1144	[ops] World-class harness engineering gates for TdF launch
+1141	Instrumentér board-brug → datagrundlag for at forenkle bestyrelses-systemet
+1140	Strømlin ny-spiller-onboarding til ét sammenhængende flow (konsolidér 6+ elementer)
+1138	Progression L1: scouting & skjult potentiale (usikkerhed, stjerne-ranges)
+1137	Progression L0: passiv udviklings-motor — potentiale-loft, aldring/peak, retirement (launch-minimum)
+1136	[Epic] Progression & livscyklus — rytterudvikling, træning, ungdom (samler #930/#931/#932/#934/#958)
+1132	Ejer-verify: board-wizard 'Kan ikke forhandles' i prod (#1128)
+1125	Sæson-kalender: 'genbrug tidligere sæsons kalender' som skabelon
+1114	Marketing: organisk + betalt annoncering (TdF-acquisition)
+1113	Fans som spil-mekanik (popularity → effekt på økonomi/moral)
+1112	Manager-omdømme (del af renown-motor)
+1111	Bestyrelsesmedlemmer får rigtige navne (immersion)
+1110	Bestyrelsen går op i ryttertyper (mål baseret på rolle-sammensætning)
+1109	Manager-evner (FM-stil): forhandling, scouting, økonomi m.m.
+1108	Managerprofil: nationalitet (manageren vælger selv)
+1106	Multi-sæson visning: rangliste/historik/kalender på tværs af sæsoner (10+)
+1102	Light egen race-afvikling + PCM-fallback (launch-motor)
+1099	[Epic] Omdømme/Renown-system — optjent popularity (resultater, sejre, ranglister, nationsmester, landshold)
+1033	UI/UX-beslutning: skal world/auktion/standings-headers sortere eller afklikkes? (#864)
+1027	Pre-launch UI: whitespace/density + nav-header/IA-restructure (#481 Phase 4)
+1021	[BUILD] Race engine V1 — simulator + stage-profiler (sæson 3-overgang)
+1017	Preview-deployments: ejer kan ikke logge ind → blokerer logget-ind UI-verify på PR-previews
+1011	Attribut-farver: darkmode-læsbarhed + toggle mellem farve-versioner
+1010	Sæsonoverblik: vis rute-/etapeprofiler for kommende løb
+988	Sæson-snapshot: pointudviklings-graf bør forbedres eller fjernes
+986	Økonomiside: rework af struktur (faner, forecast, lån, sæson-historik)
+985	Udlejning: max-grænser (antal/varighed), løndeling, label + indbakke-routing
+977	Dashboard: konsolidér økonomi-risiko + Deadline Day i "Næste træk"
+976	UX/IA: fold Min Aktivitet ind i Indbakke + Transfers (mental model)
+961	Kontekstuel hjaelp: omraade-specifikt FAQ-link overalt (banner -> ikon, progressive)
+959	[Epic] Etape-resultater: detaljeret visning pr. etape (V1 foer launch + V2 PCS-dybde)
+958	[Epic] Junior + U23 pathway — separate hold og kalendere efter academy-validering
+957	[Epic] Rytter-popularitet: mest besoegte ryttere (24t/7d + trend)
+956	[Epic] Deadline-hub: liv aaret rundt (optakt / dag / efter + algoritmiske rygter)
+955	[Epic] Bestyrelse UI/UX-rework: 5/3/1-aars-plan som faner
+954	[Epic] Transparens-hub: Changelog / Patch notes / Roadmap (+ voting & styrings-score)
+944	Forretningsplan
+941	Regnskabsprogram — vælg + opsæt
+939	Vejr + vind på etaper som race-faktor (sub-scope af race-engine #675/#676)
+938	Global søgefunktion — søg på tværs af ryttere, hold, løb og managers
+936	[Epic] 3D race-visualisering (afspil etaper i 3D)
+935	[Epic] Sociale features (venne-/follow-funktion + billeder på rytterne)
+934	[Epic] Landshold & internationale mesterskaber (VM, EM, U23-VM, junior-VM, nationale mesterskaber)
+933	[Epic] Hold-ejerskab & sponsor-økonomi (start uden hold, køb/sælg hold, holdnavne, sponsorforhandling)
+932	[Epic] Ungdomsakademi — intake, udvikling, promotion og ungdomsauktion
+931	[Epic] Træningssystem — nøglerytterplaner først, individuel dybde senere
+930	[Epic] Staff & manager-rolle som direktør (ansatte, sportsdirektører, læger, fysioterapeuter, kokke)
+929	security: enable HaveIBeenPwned leaked password protection i Supabase Auth
+923	Rytterresultater: filtrér/sortér resultater (skjul "dårlige" / separat præmie-fane)
+918	Rytterens "Udvikling"-fane viser kun IRL UCI-point (mangler in-game værdi-udvikling)
+908	R2 v1.1: akse-1 ratio-editor for master-ankre (pointtrøje = X% af etapesejr)
+904	[chore] Migrér preview/dev til Supabase publishable key (luk legacy band-aid, follow-up #767)
+886	Udvid Sentry auth-token til event:write — auto-resolve verificerede issues (Plan B fra #882)
+873	Codex-doctor-hardening
+844	Lande-system: countries-tabel + 3-akset nationsstyrke (fødselsrate, talent, omdømme)
+819	Bestyrelsesforhandling mangler konsekvens/cap (kun upside ved at forhandle ned)
+797	Langsigtet mobil-visning af brede rytter-tabeller
+794	[rework] Rytter-historik-side (RiderStatsPage) — fuld rework + optimering
+748	Discord-token: rotation + lag D env-injection + lag B restart-verifikation (follow-up #745/#634)
+739	Adopt a stable Node version strategy for Windows development
+738	Decide whether to remove McAfee and confirm Defender protection
+735	Follow-up PR #732: sync chat/Cowork-projekter til live-first + verificér A1
+734	docs: opret COWORK_PLAYBOOK.md (safe/forbidden Cowork-tasks)
+725	[security] Afklar én kanonisk secret-sti (runtime-injection vs export-til-.env) + doctor-WARN på secrets-på-disk
+724	[DX] Ét verify-setup.ps1 med samlet grøn/gul/rød-verdikt (MCP + secret-on-disk + python-sanity)
+723	[DX] bootstrap-pc.ps1: installer gitleaks via Scoop (robust pre-commit primær-sti)
+722	[DX] Discord-MCP setup fuldt non-interaktivt på frisk PC (autonom Railway-link)
+720	[security] Verificér disk-kryptering på PC3 (DolmerPC) før produktionsbrug
+708	Supabase Data API explicit grants for new public tables
+691	[ops] Full SUPABASE_SERVICE_KEY rotation — generate new key + sync all surfaces
+680	EPIC: TdF 2026 Launch Sprint (hard deadline 2026-06-20)
+679	Discord-struktur + welcome-flow (TdF-ready)
+677	Fiktive ryttere V2: stats via ny ability-model (efter #676)
+673	Alunta-integration: Founder Supporter waitlist + payment-flow
+672	Landing page polish + founder waitlist (TdF-ready)
+671	Brand minimum: accent + font + wordmark (TdF-deadline subset af #481)
+662	Routine prompt tuning: strict label-list on summary issue (sub of #627)
+658	chore(ops): Schedule check-agent-token-hygiene.ps1 as local cron (Windows Task Scheduler)
+637	ops: stale scheduled-tasks cleanup på EmmaPC (cross-PC dedup #455 follow-up)
+633	Investigation: sync pattern local Claude Code memory ↔ cloud Memory Store
+632	Pilot: Memory Store for Discord-bridge state
+631	Dreaming over routine transcripts for continuous learning
+630	Memory Store as context-backend for routines (#622)
+629	Evaluate Anthropic Memory Stores + Dreaming for cloud-agent infrastructure
+624	Routine candidate: Post-deploy Verifier (Vercel webhook + Sentry baseline)
+622	Evaluate Claude Code Routines as automation layer for CyclingZone
+621	[ops] Sentry hardening backlog — efter #348 baseline
+615	[ops] finalizeExpiredAuctions tick-overlap-guard (P2-B cron-audit)
+609	[investigation] Bash-tool fejler på PowerShell-syntax — find verdens-klasse fix
+605	P0: AI World-Class v2 — token-friendly agent setup
+563	[security] OneDrive secret-folder decommission acceleration (B10)
+543	Feature: season_transition_paused admin-håndsving
+542	Refactor: split transfer_windows.status overload til lifecycle_phase enum
+530	[security] Pre-merge detection af manglende rate-limit + workflow-permissions
+528	[security] P3: Phase C — classify 6× rls_enabled_no_policy tables (follow-up #525)
+527	[security] P2: Phase B — tighten 6× rls_policy_always_true policies (follow-up #525)
+523	[quality] Installer/verificér Playwright browsers og gør lokal e2e audit-kørsel reproducerbar
+520	[refactor] Split AdminPage/RacesPage og fastlæg frontend vs backend data ownership
+519	[refactor] Split backend/routes/api.js i domain routers uden adfærdsændring
+499	Weekly time-reports — automated postings (Sunday 21:00)
+493	feat(i18n): RacesPage på EN/DA (Fase 3.5)
+492	feat(i18n): ProfilePage på EN/DA (Fase 3.5)
+491	feat(i18n): ManagerProfilePage på EN/DA (Fase 3.5)
+490	feat(i18n): ActivityPage på EN/DA (Fase 3.5)
+483	[Epic] feat(i18n): Fase 3.5 — Authenticated long-tail (10 sider)
+481	Brand identity overhaul — logo + design manual (once-and-for-all)
+479	Mobile Performance optim for /founder-supporter waitlist (follow-up #361)
+464	Monitorér Actions-minutter efter privatisering (2.000 min/mdr-loft)
+452	[feature] Tilmeld-knap til kommende sæson når manager ikke kan stille hold (sub-issue til #239)
+451	[ux] Genovervej: skal alle auktion-starter pinges i #auktioner, eller kun ønskeliste-ryttere?
+450	[feature] Minimumspris på egne ryttere — passive floor mod spam-bud (Vman-style)
+442	[security] CodeQL alert housekeeping efter #328 (rate limiting) + Discord script sanitization
+435	Privacy copy: nævn Vercel Analytics + Speed Insights i consent/policy
+431	Discord: Planlæg første AMA (community Q&A)
+430	Discord: Rekrutter 2 community-moderatorer
+429	Discord: Manager of the Week-tradition + auto-post
+428	Discord: Ugentlig content-kalender (Man/Ons/Søn templates)
+427	Discord: Annoncér Discord-link i CyclingZone UI + waitlist-mail
+426	Discord: /mit-hold slash-command (embed spillerens hold)
+425	Discord: Auto-tildel Top-50 Manager-rolle (cron + Supabase-query)
+424	Discord: Byg CyclingZone verify-bot (Discord ↔ Supabase konto-link)
+419	Discord: Inviter Carl-bot + Dyno + konfigurér auto-mod
+415	Discord community: world-class opsætning (epic/tracker)
+414	chore(i18n): Fase 5 — lint-guard + docs + retro
+413	feat(i18n): Fase 4 — PatchNotes refactor + Privacy merge + Supabase emails
+409	[Epic] i18n: EN-default + DK-version, fundament for 3-7 sprog
+401	Migration-drift: schema.sql spejler kan kollidere med auto-migrate (post #392 postmortem)
+389	Manus noter audit + selective commit til docs/research/
+388	Skill-portefoelje per slice (dynamisk enabled-skills.json)
+374	[ops] Drill 1 pre-req blockers — PITR-status + CLI-tools før attempt 2
+355	AI Ops: Disconnect 7 ubrugte MCP-connectors (~2.5K tok)
+353	[ops] Aktivér Vercel Speed Insights og verificér vitals events
+349	[ops] Opgradér gitleaks action før Node 20 runner deprecation
+347	[ops] Gør deploy-verify robust for script/doc-only commits og manglende Railway-status
+346	[bot] Quality Inbox: 0 fail, 10 warn
+333	[scaling] Fase 3: Supabase Realtime WebSockets som primær live-kanal
+332	[ops] Fase 4: fuldtidsdrift, incident playbook, backups og cost model
+331	[scaling] Fase 3: loadtest og DB performance baseline
+330	[platform] Fase 3: cron ud af webserveren og job-locking til multi-instance
+324	[ops] Fase 0: gør AI/release baseline reel og verificerbar
+323	[epic] Verdensklasse AI/Ops setup mod 5.000-10.000 brugere
+311	[feature] "På Hold"-knap inde under rytter (watchlist/parkér uden ønskeliste)
+306	[obs] Instrumenter resterende ~10 events fra #137 scope
+288	[quality] E2E test foundation — Playwright + 3 kritiske flows
+266	[feature] Mester-trøjer: verdensmester, europamester, lands-mestre
+264	[feature] Discord: dedikeret kanal til sæsonstart/slut + transfervindue-events
+261	[feature] Manuel tal-input på rytter-filtre (i stedet for kun slider)
+260	[ux] Holdnavn altid clickable → leder til holdsiden
+256	[feature] Auktionshistorik: vis antal bud + antal forskellige hold per rytter
+241	Slice 07h Fase B · Manager spotcheck + iteration på sæson-finansrapport
+230	[feature] Auto-cancel egne proxy-bud når man bliver outbiddet over max-loft
+228	[ux/feature] Auktionsside: prioritér kolonner + ønskeliste-indikator + Mine-auktioner-fane
+227	[feature] Auktionsside: filter på nuværende bud (≤ X)
+226	[ux] Auktionsside (PC): rytter-kolonnen skal være sticky ved horisontal scroll
+198	[chore] Auktioner code-cleanup: magic numbers + stale 10%-rule comments
+165	[feature] Bestyrelsens overall tilfredshed som progress bar
+135	[Meta] Living World scorecard — retention, planlægning og brug af de fire produktmotorer
+109	[bug] Ikke alle ryttere under 25 år er kategoriseret som U25
+103	[investigate] Multi-year mål — tidlig opfyldelse og genforhandling
+101	[feature] Vis bestyrelsens konkrete effekter (sponsor m.m.) i UI
+99	[feature] Tooltip/inline forklaring af rytter-værdi
+97	[Slice 07i] Hard-enforcement debt-ceiling — beslutning på live-evidens (nødlån cross-season spiral)
+94	[Feature] Manager cross-season statistik
+91	[Feature] Race Day Live-ticker
+88	[DX Lag 5] Branch protection + auto-merge på main
+87	[DX Lag 4] GitHub Projects v2 board
+78	[Automation] Scheduled memory-konsolidering (ugentlig)
+62	[Epic] Today / Manager Inbox — hvad skete, hvad ændrede sig, hvad kræver handling
+58	[task] Transferside: gruppér faner i handlingsorienterede modes
+50	[task] Mere inddeling i Admin UI — flere menupunkter, mere overskuelig
+33	[feature] Tillad salg af rytter under division-minimum i transfer-vinduet
+27	[feature] Custom gemte scoutingfiltre
+26	[feature] Transfer war-room (shortlist + sammenligning + budget-forecast)
+21	[bug] Kommende løb-funktionen viser forkerte løb
+17	[design] Lån — skal renter starte med det samme + skal gebyr betales kontant?
