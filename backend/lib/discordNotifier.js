@@ -279,18 +279,27 @@ export async function sendDM(discordId, payload) {
     return;
   }
 
-  // Permanent fejl: 401 = infra (token roteret/ugyldigt) → alarm.
-  // 403/400/404 = data (modtager har lukket DMs / ugyldigt id) → log, ingen alarm-spam.
-  console.error("[discord-dm:error] sendDM failed permanent", {
-    discordId,
-    status: result.status,
-    reason: result.failure?.reason,
-    error: result.error,
-  });
+  // Permanent fejl: 401 = infra (token roteret/ugyldigt) → error + Sentry-alarm.
+  // 403/400/404 = data (modtager har lukket DMs / ugyldigt id / recipient-blocked) →
+  // warn, IKKE error: det er en forventet, ikke-actionable tilstand pr. bruger.
+  // error-severity druknede ægte fejl i loggen + Sentry (#2189, samme mønster som #2169).
   if (result.failure?.reason === "token-invalid") {
+    console.error("[discord-dm:error] sendDM failed permanent (infra)", {
+      discordId,
+      status: result.status,
+      reason: result.failure?.reason,
+      error: result.error,
+    });
     sentryCapture(new Error(`Discord DM fejlede permanent (token-invalid): ${result.error}`), {
       tags: { component: "discord-dm" },
       extra: { status: result.status },
+    });
+  } else {
+    console.warn("[discord-dm:undeliverable] modtager kan ikke modtage DM — dropper", {
+      discordId,
+      status: result.status,
+      reason: result.failure?.reason,
+      error: result.error,
     });
   }
 }
