@@ -322,8 +322,14 @@ async function loadFieldBindingContext({ supabase, race, teamIds }) {
   const empty = { thisWindow: null, otherRacesByTeam: new Map() };
   if (!teamIds?.length) return empty;
 
+  // game_day er OBLIGATORISK i disse to selects: raceBindingWindow (raceBinding.js:56)
+  // nøgler på in-game-dagen KUN hvis hver row har et endeligt game_day — ellers falder den
+  // tavst tilbage til real-kalenderdag-ordinalen. Efter kalender-rebuilden (2026-06-27,
+  // #1945) er mange in-game-dage komprimeret til samme real-eftermiddag, så kalenderdag-
+  // nøgling lader ALLE løb overlappe → excludeBoundRiders udelukker hele feltet → tomt
+  // startfelt → "No start list". Søster-stien loadTeamBindingContext selecter allerede game_day.
   const { data: thisSched, error: e0 } = await supabase
-    .from("race_stage_schedule").select("scheduled_at").eq("race_id", race.id);
+    .from("race_stage_schedule").select("scheduled_at, game_day").eq("race_id", race.id);
   if (e0) throw new Error(`race_stage_schedule (binding this): ${e0.message}`);
   const thisWindow = raceBindingWindow(thisSched);
   if (!thisWindow) return empty; // dette løb har intet vindue → kan ikke binde
@@ -344,7 +350,7 @@ async function loadFieldBindingContext({ supabase, race, teamIds }) {
   for (let i = 0; i < otherRaceIds.length; i += 200) {
     const chunk = otherRaceIds.slice(i, i + 200);
     const { data, error } = await fetchAllPaged(() =>
-      supabase.from("race_stage_schedule").select("race_id, scheduled_at").in("race_id", chunk)
+      supabase.from("race_stage_schedule").select("race_id, scheduled_at, game_day").in("race_id", chunk)
     );
     if (error) throw new Error(`race_stage_schedule (binding others): ${error.message}`);
     scheds.push(...data);
