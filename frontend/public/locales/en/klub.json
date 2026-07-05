@@ -24,7 +24,7 @@
     "label": "Effect",
     "live": "live",
     "target": "target",
-    "note": "Effect column shows the target model — each track's in-game effect activates as its engine lands."
+    "note": "Effect column shows the target model. Each track's in-game effect activates as its engine lands."
   },
   "tracks": {
     "training": { "name": "Training Center", "effect": "training" },
@@ -43,7 +43,7 @@
   },
   "staff": {
     "none": "No staff hired",
-    "locked": "Locked — build tier 1 first",
+    "locked": "Locked: build tier 1 first",
     "hired": "Hired",
     "salary": "Salary {amount} CZ$/season",
     "candidates": "Candidates",
