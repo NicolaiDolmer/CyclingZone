@@ -368,7 +368,7 @@
       },
       "raceLibrary": {
         "title": "Race library",
-        "text": "Under Season & Results, Races, Library you can search and filter all races across seasons (season, class, status, name). Click a race to open its history page with previous editions, the winner of each season and a cumulative overview of the riders who have historically performed best in that race."
+        "text": "Under Season & Results, Races, Library you can search and filter all races across seasons (season, class, status, name). The list is sorted newest-first, and a 'My division only' filter narrows it to races in your own division so you can quickly find what you raced today. Click a race to open its history page with previous editions, the winner of each season and a cumulative overview of the riders who have historically performed best in that race."
       },
       "promotionRelegation": {
         "title": "Promotion and relegation",

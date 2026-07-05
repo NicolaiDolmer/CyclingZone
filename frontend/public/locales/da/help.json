@@ -368,7 +368,7 @@
       },
       "raceLibrary": {
         "title": "Løbsbibliotek",
-        "text": "Under Sæson & Resultater, Løb, Bibliotek kan du søge og filtrere alle løb på tværs af sæsoner (sæson, klasse, status, navn). Klik på et løb for at åbne dets historikside med tidligere udgaver, vinderen af hver sæson og en akkumuleret oversigt over de ryttere der historisk har klaret sig bedst i netop det løb."
+        "text": "Under Sæson & Resultater, Løb, Bibliotek kan du søge og filtrere alle løb på tværs af sæsoner (sæson, klasse, status, navn). Listen er sorteret nyeste-først, og et 'Kun min division'-filter indsnævrer den til løb i din egen division, så du hurtigt kan finde det du kørte i dag. Klik på et løb for at åbne dets historikside med tidligere udgaver, vinderen af hver sæson og en akkumuleret oversigt over de ryttere der historisk har klaret sig bedst i netop det løb."
       },
       "promotionRelegation": {
         "title": "Op- og nedrykning",

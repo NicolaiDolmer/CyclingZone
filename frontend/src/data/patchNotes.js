@@ -14,11 +14,11 @@ export const PATCHES = [
         "topic": "Races",
         "en": {
           "title": "Stage results now have classification tabs, plus a team filter",
-          "body": "Each stage tab now lets you switch between Stage, Overall, Points, Mountain, Youth and Teams, so you can see the standings after that stage without waiting for the race to finish. A team filter (all teams, your team, or a specific team) highlights the rows that matter and carries over when you switch stages, and long result tables now show the top 10 with a 'Show all' button instead of one long list."
+          "body": "Each stage tab now lets you switch between Stage, Overall, Points, Mountain, Youth and Teams, so you can see the standings after that stage without waiting for the race to finish. A team filter (all teams, your team, or a specific team) highlights the rows that matter and carries over when you switch stages, and long result tables now show the top 10 with a 'Show all' button instead of one long list. The race library also sorts newest-first now, with a 'My division only' filter to quickly find what you raced today."
         },
         "da": {
           "title": "Etaperesultater har nu klassement-faner, plus et holdfilter",
-          "body": "Hver etape-fane lader dig nu skifte mellem Etape, Samlet, Point, Bjerg, Ungdom og Hold, så du kan se stillingen efter den etape uden at vente på at løbet slutter. Et holdfilter (alle hold, dit hold, eller et bestemt hold) fremhæver de rækker der betyder noget, og følger med når du skifter etape, og lange resultattabeller viser nu top 10 med en 'Vis alle'-knap i stedet for én lang liste."
+          "body": "Hver etape-fane lader dig nu skifte mellem Etape, Samlet, Point, Bjerg, Ungdom og Hold, så du kan se stillingen efter den etape uden at vente på at løbet slutter. Et holdfilter (alle hold, dit hold, eller et bestemt hold) fremhæver de rækker der betyder noget, og følger med når du skifter etape, og lange resultattabeller viser nu top 10 med en 'Vis alle'-knap i stedet for én lang liste. Løbsbiblioteket sorterer nu også nyeste-først, med et 'Kun min division'-filter så du hurtigt kan finde det du kørte i dag."
         },
         "refs": [2081]
       }
