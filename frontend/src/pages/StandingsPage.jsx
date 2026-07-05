@@ -9,6 +9,7 @@ import { formatNumber } from "../lib/intl";
 import { formatCz, getRiderMarketValue } from "../lib/marketValues";
 import { ABILITY_SELECT, ABILITY_SHORT, flattenAbilities } from "../lib/abilities";
 import { mergeStandings } from "../lib/standingsMerge";
+import { fetchAllRows } from "../lib/supabasePagination";
 import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch";
 import { Card, EmptyState, PageLoader, Input, PodiumIcon } from "../components/ui";
 import { RULES_NUMBERS } from "../lib/rulesNumbers";
@@ -174,12 +175,18 @@ export default function StandingsPage() {
     //   team_standings_ext_mv  = holdkonkurrence, podier, præmie (skalar-kolonner)
     //   team_race_points_mv    = pr-løb-points → kumuleres client-side til grafen
     if (activeSeason && merged.length) {
-      const [extRes, progRes] = await Promise.all([
-        supabase.from("team_standings_ext_mv").select("*").eq("season_id", activeSeason.id),
-        supabase.from("team_race_points_mv").select("team_id, race_id, race_points").eq("season_id", activeSeason.id),
+      // BEGGE matview-reads pagineres via fetchAllRows: team_race_points_mv har
+      // >1000 rækker (hold × løb), og PostgREST capper stille ved db-max-rows
+      // (1000) → progressions-grafen mistede punkter for de sidste hold (#2206,
+      // samme rod-årsag som rytterranglisten). Stabil .order() kræves af helper'en.
+      const [extData, progData] = await Promise.all([
+        fetchAllRows(() => supabase.from("team_standings_ext_mv").select("*")
+          .eq("season_id", activeSeason.id)
+          .order("team_id", { ascending: true })),
+        fetchAllRows(() => supabase.from("team_race_points_mv").select("team_id, race_id, race_points")
+          .eq("season_id", activeSeason.id)
+          .order("team_id", { ascending: true }).order("race_id", { ascending: true })),
       ]);
-      if (extRes.error) throw extRes.error;   // → loadAll's catch → fejl-UI
-      if (progRes.error) throw progRes.error;
 
       // Skalar-kolonner. comp/podier keyes frit (UI slår op pr. team_id); præmie
       // begrænses til merged-hold (matcher den gamle prize[team_id]!==undefined-guard).
@@ -187,7 +194,7 @@ export default function StandingsPage() {
       const podiums = {};
       const prize = {};
       merged.forEach(s => { prize[s.team_id] = 0; });
-      (extRes.data || []).forEach(row => {
+      (extData || []).forEach(row => {
         comp[row.team_id] = { wins: Number(row.comp_wins) || 0, podiums: Number(row.comp_podiums) || 0 };
         const p = Number(row.podiums) || 0;
         if (p > 0) podiums[row.team_id] = p; // matcher countTeamPodiums: kun hold med podier
@@ -201,7 +208,7 @@ export default function StandingsPage() {
       // rækkefølgen (samme orden som før). Attribution = rytterens nuværende hold
       // (matview'ets ri.team_id, præcis som den gamle `r.rider?.team_id`).
       const pointsByTeamRace = {};
-      (progRes.data || []).forEach(row => {
+      (progData || []).forEach(row => {
         (pointsByTeamRace[row.team_id] ||= {})[row.race_id] = Number(row.race_points) || 0;
       });
       const prog = {};
@@ -227,10 +234,13 @@ export default function StandingsPage() {
     let cancelled = false;
     (async () => {
       setStrengthLoading(true);
-      const { data: riders } = await supabase
+      // Paginér: ~4.9k ryttere er på hold, men PostgREST capper ved 1000 → uden
+      // dette manglede trup-styrke for de fleste hold i Linse B (#2206).
+      const riders = await fetchAllRows(() => supabase
         .from("riders")
         .select(`id, team_id, firstname, lastname, market_value, is_u25, ${ABILITY_SELECT}`)
-        .not("team_id", "is", null);
+        .not("team_id", "is", null)
+        .order("id", { ascending: true }));
       const ridersByTeam = {};
       (riders || []).forEach(raw => {
         const r = flattenAbilities(raw);
