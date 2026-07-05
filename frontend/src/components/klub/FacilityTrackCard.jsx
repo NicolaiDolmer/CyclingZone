@@ -1,7 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Card, Button } from "../ui";
 import { formatNumber } from "../../lib/intl";
-import { formatSeasons } from "../../lib/facilityDisplay";
+import { formatSeasons, formatTrackEffect } from "../../lib/facilityDisplay";
 import TierLadder from "./TierLadder";
 
 // Én facilitet-række: venstre = navn + tier-ladder + effekt + staff-linje;
@@ -14,7 +14,6 @@ export default function FacilityTrackCard({ facility, onUpgrade, onOpenStaff, bu
   const isCommercial = track === "commercial";
   const maxed = upgradePrice == null;
   const nextTier = tier + 1;
-  const effectPct = `${(effectiveBonus * 100).toFixed(1)}%`;
 
   return (
     <Card className={`px-[14px] py-[12px] grid grid-cols-[1fr_auto] gap-[14px] items-center ${isCommercial ? "border-l-2 border-l-cz-warning rounded-l-none" : ""}`}>
@@ -32,7 +31,7 @@ export default function FacilityTrackCard({ facility, onUpgrade, onOpenStaff, bu
         </div>
         <div className="my-[6px]"><TierLadder tier={tier} /></div>
         <div className="text-[11px] text-cz-2">
-          {t("effect.label")} <span className="font-data text-cz-1">{effectPct}</span> {t(`tracks.${track}.effect`)}
+          {t("effect.label")} <span className="font-data text-cz-1">{formatTrackEffect(track, effectiveBonus)}</span> {t(`tracks.${track}.effect`)}
           <span className="text-cz-3"> · {effectLive ? t("effect.live") : t("effect.target")}</span>
           {" · "}
           {staff
