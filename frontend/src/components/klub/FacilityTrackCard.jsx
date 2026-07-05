@@ -1,16 +1,16 @@
 import { useTranslation } from "react-i18next";
 import { Card, Button } from "../ui";
 import { formatNumber } from "../../lib/intl";
-import { formatSeasons, formatTrackEffect } from "../../lib/facilityDisplay";
+import { formatTrackEffect } from "../../lib/facilityDisplay";
 import TierLadder from "./TierLadder";
 
 // Én facilitet-række: venstre = navn + tier-ladder + effekt + staff-linje;
-// højre = upgrade-knap + tid-som-valuta ("≈ X sæsoners overskud") + drift.
+// højre = upgrade-knap + drift.
 // Kommerciel får venstre accent-border + ærligt "pure sink"-tag (Q2). Max tier
 // (upgradePrice=null) → "Fully upgraded" i stedet for knap.
 export default function FacilityTrackCard({ facility, onUpgrade, onOpenStaff, busy }) {
   const { t } = useTranslation("klub");
-  const { track, tier, upgradePrice, tierUpkeep, staff, effectiveBonus, seasonsEquivalent, effectLive } = facility;
+  const { track, tier, upgradePrice, tierUpkeep, staff, effectiveBonus, effectLive } = facility;
   const isCommercial = track === "commercial";
   const maxed = upgradePrice == null;
   const nextTier = tier + 1;
@@ -49,7 +49,6 @@ export default function FacilityTrackCard({ facility, onUpgrade, onOpenStaff, bu
             <Button variant="primary" size="sm" loading={busy} onClick={() => onUpgrade(track)}>
               {(tier === 0 ? t("facilities.buildTier", { tier: nextTier }) : t("facilities.upgradeTo", { tier: nextTier }))} · <span className="font-data">{formatNumber(upgradePrice)}</span>
             </Button>
-            <div className="text-[10.5px] text-cz-accent-t mt-[5px]">{t("facilities.seasonsProfit", { seasons: formatSeasons(seasonsEquivalent) })}</div>
           </>
         )}
         <div className="text-[10.5px] text-cz-2 mt-[2px]">{t("facilities.upkeep", { amount: formatNumber(tierUpkeep) })}</div>

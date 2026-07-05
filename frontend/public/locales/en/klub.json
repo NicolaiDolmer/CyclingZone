@@ -14,11 +14,8 @@
     "notBuilt": "Not built",
     "upgradeTo": "Upgrade to T{tier}",
     "buildTier": "Build T{tier}",
-    "seasonsProfit": "≈ {seasons} seasons' profit",
     "upkeep": "Upkeep {amount}/season",
-    "maxed": "Fully upgraded",
-    "fullTree": "Full tree (all tracks T5)",
-    "fullTreeSeasons": "≈ {seasons} Division-{division} seasons of profit"
+    "maxed": "Fully upgraded"
   },
   "effect": {
     "label": "Effect",

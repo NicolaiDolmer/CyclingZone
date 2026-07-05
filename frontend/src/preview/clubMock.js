@@ -15,9 +15,7 @@ const BASE_EFFECT = {
   commercial: { 0: 0, 1: 0.0006, 2: 0.0013, 3: 0.0027, 4: 0.0057, 5: 0.012 },
 };
 const TRACKS = ["training", "scouting", "medical", "academy", "commercial"];
-const PRIZE_PROXY = { 1: 160000, 2: 70000, 3: 25000, 4: 25000 };
 const NAME_POOL = ["Marc Vandenbroucke", "Henrik Sørensen", "Luca Bertolini", "Íñigo Sarasola", "Tomas Nyholm", "Ruben De Waele"];
-const DIVISION = 2; // TEST_TEAM.division
 
 // Deep-clone seed én gang pr. session (module-scope state).
 const state = JSON.parse(JSON.stringify(SEED_CLUB));
@@ -34,7 +32,6 @@ function facilitiesPayload() {
         track, tier: f.tier, upgradePrice, tierUpkeep: UPKEEP[f.tier],
         staff: f.staff ? { name: f.staff.name, tier: f.staff.tier, salary: SALARY[f.staff.tier] } : null,
         effectiveBonus: (BASE_EFFECT[track][f.tier] || 0) * util(staffTier),
-        seasonsEquivalent: upgradePrice == null ? null : Math.round((upgradePrice / PRIZE_PROXY[DIVISION]) * 100) / 100,
         effectLive: false,
       };
     }),

@@ -21,7 +21,7 @@ const {
   postStaffHireHandler,
   postStaffFireHandler,
 } = await import("./facilityRoutesHandlers.js");
-const { FACILITY_TRACKS, FACILITY_TIER_UPKEEP, FACILITY_TIER_PRICE, PRIZE_PROXY_BY_DIVISION } = await import("./facilityConstants.js");
+const { FACILITY_TRACKS, FACILITY_TIER_UPKEEP, FACILITY_TIER_PRICE } = await import("./facilityConstants.js");
 const { effectiveBonus } = await import("./facilityEngine.js");
 const { generateStaffCandidates } = await import("./staffCandidates.js");
 
@@ -29,22 +29,11 @@ const ENABLED = { facilitiesEnabled: true };
 const TEAM_ID = "team-1";
 
 // Minimal mock: dækker de query-kæder handlerne bruger (select→eq[→eq][→maybeSingle]).
-function createSupabaseMock({ facilities = [], staff = [], season = { id: "season-1", number: 3 }, team = { division: 2 } } = {}) {
+function createSupabaseMock({ facilities = [], staff = [], season = { id: "season-1", number: 3 } } = {}) {
   return {
     from(table) {
       if (table === "seasons") {
         return { select: () => ({ eq: () => ({ maybeSingle: () => Promise.resolve({ data: season, error: null }) }) }) };
-      }
-      if (table === "teams") {
-        return {
-          select: () => ({
-            eq: (col, val) => {
-              assert.equal(col, "id");
-              assert.equal(val, TEAM_ID);
-              return { maybeSingle: () => Promise.resolve({ data: team, error: null }) };
-            },
-          }),
-        };
       }
       if (table === "team_facilities") {
         return {
@@ -125,15 +114,12 @@ test("GET facilities: 5 spor, manglende rows = tier 0, upkeep + upgradePrice + e
   assert.equal(training.tierUpkeep, FACILITY_TIER_UPKEEP[2]);
   assert.deepEqual(training.staff, { name: "Sofie Lindqvist", tier: 2, salary: 22_000 });
   assert.equal(training.effectiveBonus, effectiveBonus("training", 2, 2));
-  // display-felter (#1441 A3): division 2 → proxy 70k; 50000/70000 = 0.7143 → 0.71
-  assert.equal(training.seasonsEquivalent, 0.71);
   assert.equal(training.effectLive, false);
 
   const commercial = body.facilities.find((f) => f.track === "commercial");
   assert.equal(commercial.upgradePrice, null); // max tier
   assert.equal(commercial.staff, null);
   assert.equal(commercial.effectiveBonus, effectiveBonus("commercial", 5, null)); // 50% uden staff
-  assert.equal(commercial.seasonsEquivalent, null); // maxed → ingen pris → ingen ækvivalent
   assert.equal(commercial.effectLive, false);
 
   const scouting = body.facilities.find((f) => f.track === "scouting");
@@ -143,18 +129,14 @@ test("GET facilities: 5 spor, manglende rows = tier 0, upkeep + upgradePrice + e
   assert.equal(scouting.effectiveBonus, 0);
 });
 
-test("GET facilities: display-felter — seasonsEquivalent (division-proxy) + effectLive=false alle spor (#1441 A3)", async () => {
-  // Tomt facilitets-sæt: alle spor tier 0 → upgradePrice = FACILITY_TIER_PRICE[1] = 12000.
-  // Division 2 → proxy 70000. 12000/70000 = 0.1714 → 0.17 (2 decimaler).
-  const supabase = createSupabaseMock({ team: { division: 2 } });
+test("GET facilities: display-felter — effectLive=false alle spor (#1441 A3)", async () => {
+  // Tomt facilitets-sæt: alle spor tier 0.
+  const supabase = createSupabaseMock();
   const { status, body } = await getClubFacilitiesHandler({ teamId: TEAM_ID }, supabase, { flags: ENABLED });
   assert.equal(status, 200);
 
-  const expected = Math.round((FACILITY_TIER_PRICE[1] / PRIZE_PROXY_BY_DIVISION[2]) * 100) / 100;
-  assert.equal(expected, 0.17);
   for (const f of body.facilities) {
     assert.equal(f.tier, 0);
-    assert.equal(f.seasonsEquivalent, 0.17, `${f.track} seasonsEquivalent`);
     assert.equal(f.effectLive, false, `${f.track} effectLive skal være false i A3`);
   }
 });

@@ -7,11 +7,6 @@ export const TRACK_ORDER = ["training", "scouting", "medical", "academy", "comme
 export function trackDisplayKey(track) { return `tracks.${track}.name`; }
 export function roleDisplayKey(track) { return `roles.${track}`; }
 
-// Tid-som-valuta: sæsoner med 1 decimal; null (max tier) videreføres som null.
-export function formatSeasons(seasons) {
-  return seasons == null ? null : (Math.round(seasons * 10) / 10).toFixed(1);
-}
-
 // Ærlig live-vs-target-mærkning af effekt-kolonnen (Q3).
 export function effectStatusKey(effectLive) { return effectLive ? "effect.live" : "effect.target"; }
 

@@ -11,11 +11,8 @@
     "notBuilt": "Ikke bygget",
     "upgradeTo": "Opgradér til T{tier}",
     "buildTier": "Byg T{tier}",
-    "seasonsProfit": "≈ {seasons} sæsoners overskud",
     "upkeep": "Drift {amount}/sæson",
-    "maxed": "Fuldt udbygget",
-    "fullTree": "Hele træet (alle spor T5)",
-    "fullTreeSeasons": "≈ {seasons} Division-{division}-sæsoners overskud"
+    "maxed": "Fuldt udbygget"
   },
   "effect": {
     "label": "Effekt",

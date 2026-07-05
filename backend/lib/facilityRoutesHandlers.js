@@ -7,7 +7,6 @@ import {
   FACILITIES_ENABLED,
   FACILITY_TRACKS,
   FACILITY_TIER_UPKEEP,
-  PRIZE_PROXY_BY_DIVISION,
   EFFECT_LIVE_BY_TRACK,
 } from "./facilityConstants.js";
 import { getUpgradePrice, effectiveBonus } from "./facilityEngine.js";
@@ -57,16 +56,6 @@ export async function getClubFacilitiesHandler({ teamId }, supabaseClient, { fla
     .eq("status", "active");
   if (staffError) throw new Error(`facilityRoutes: could not load staff for ${teamId}: ${staffError.message}`);
 
-  // Holdets division → tid-som-valuta-proxy (§2.4). Blødt display-input; ingen
-  // gameplay-effekt. Ukendt/ny division falder tilbage på D3-proxyen.
-  const { data: teamRow, error: teamError } = await supabaseClient
-    .from("teams")
-    .select("division")
-    .eq("id", teamId)
-    .maybeSingle();
-  if (teamError) throw new Error(`facilityRoutes: could not load team ${teamId}: ${teamError.message}`);
-  const prizeProxy = PRIZE_PROXY_BY_DIVISION[teamRow?.division] ?? PRIZE_PROXY_BY_DIVISION[3];
-
   const tierByTrack = new Map((facilityRows ?? []).map((r) => [r.track, r.tier]));
   const staffByRole = new Map((staffRows ?? []).map((s) => [s.role, s]));
 
@@ -74,7 +63,6 @@ export async function getClubFacilitiesHandler({ teamId }, supabaseClient, { fla
     const tier = tierByTrack.get(track) ?? 0;
     const staff = staffByRole.get(track) ?? null;
     const upgradePrice = getUpgradePrice(tier);
-    const seasonsEquivalent = upgradePrice == null ? null : Math.round((upgradePrice / prizeProxy) * 100) / 100;
     return {
       track,
       tier,
@@ -82,7 +70,6 @@ export async function getClubFacilitiesHandler({ teamId }, supabaseClient, { fla
       tierUpkeep: FACILITY_TIER_UPKEEP[tier] ?? 0,
       staff: staff ? { name: staff.name, tier: staff.tier, salary: staff.salary } : null,
       effectiveBonus: effectiveBonus(track, tier, staff?.tier ?? null),
-      seasonsEquivalent,
       effectLive: EFFECT_LIVE_BY_TRACK[track] ?? false,
     };
   });
