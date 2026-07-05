@@ -138,3 +138,18 @@ export function deriveStaffAbilities({ role, tier, name }) {
 export function staffOverall(profile) {
   return profile?.overall ?? null;
 }
+
+// Etiket på den højest-scorende akse på tværs af dimensions/levels/roleSkills —
+// UI'ets "top-specialisering" (fx en trænings-chefs stærkeste dimension eller
+// alders-affinitet). Deterministisk: ved uafgjort vinder første akse i objekt-
+// rækkefølgen (dimensions → levels → roleSkills), som er stabil på refresh.
+export function topSpecialization(profile) {
+  if (!profile) return null;
+  const axes = { ...profile.dimensions, ...profile.levels, ...profile.roleSkills };
+  let bestKey = null;
+  let bestVal = -Infinity;
+  for (const [key, val] of Object.entries(axes)) {
+    if (val > bestVal) { bestVal = val; bestKey = key; }
+  }
+  return bestKey;
+}

@@ -168,6 +168,7 @@ import {
   getStaffCandidatesHandler,
   postStaffHireHandler,
   postStaffFireHandler,
+  getStaffProfileHandler,
 } from "../lib/facilityRoutesHandlers.js";
 import {
   buildSeasonEndPreviewRows,
@@ -7094,6 +7095,19 @@ router.post("/club/staff/fire", requireAuth, async (req, res) => {
     const { seasonId, seasonNumber } = await resolveFacilitySeason(supabase);
     const { status, body } = await postStaffFireHandler(
       { teamId: req.team.id, role: req.body?.role, seasonId, seasonNumber },
+      supabase
+    );
+    res.status(status).json(body);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/club/staff/:id — fuld evne-profil for en ejet staff. staff_not_found → 404.
+// NB: registreret EFTER /club/staff/candidates (statisk sti matcher før :id-param).
+router.get("/club/staff/:id", requireAuth, async (req, res) => {
+  try {
+    if (!req.team?.id) return res.status(404).json({ error: "No team" });
+    const { status, body } = await getStaffProfileHandler(
+      { teamId: req.team.id, staffId: req.params.id },
       supabase
     );
     res.status(status).json(body);

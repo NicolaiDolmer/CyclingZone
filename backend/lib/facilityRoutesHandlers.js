@@ -11,6 +11,7 @@ import {
 } from "./facilityConstants.js";
 import { getUpgradePrice, effectiveBonus } from "./facilityEngine.js";
 import { generateStaffCandidates } from "./staffCandidates.js";
+import { deriveStaffAbilities } from "./staffAbilityDerivation.js";
 import {
   purchaseFacilityUpgrade as defaultPurchase,
   hireStaff as defaultHire,
@@ -68,7 +69,16 @@ export async function getClubFacilitiesHandler({ teamId }, supabaseClient, { fla
       tier,
       upgradePrice,
       tierUpkeep: FACILITY_TIER_UPKEEP[tier] ?? 0,
-      staff: staff ? { name: staff.name, tier: staff.tier, salary: staff.salary } : null,
+      // #2216 A4: overall afledes på læsning fra (role,tier,name) — deterministisk,
+      // så vi ikke behøver et join for facilitets-oversigten (fuld profil = /club/staff/:id).
+      staff: staff
+        ? {
+            name: staff.name,
+            tier: staff.tier,
+            salary: staff.salary,
+            overall: deriveStaffAbilities({ role: staff.role, tier: staff.tier, name: staff.name }).overall,
+          }
+        : null,
       effectiveBonus: effectiveBonus(track, tier, staff?.tier ?? null),
       effectLive: EFFECT_LIVE_BY_TRACK[track] ?? false,
     };
@@ -131,4 +141,45 @@ export async function postStaffFireHandler(
   const result = await fireStaff({ teamId, role, seasonId, seasonNumber }, supabaseClient, flags);
   if (!result.ok) return { status: statusForError(result.error, { no_active_staff: 404 }), body: { error: result.error } };
   return { status: 200, body: result };
+}
+
+// GET /api/club/staff/:id — fuld evne-profil for en EJET staff.
+// Ejerskab håndhæves ved at kræve staff.team_id === teamId (teamId er allerede
+// resolvet fra req.team.id). Ukendt/ikke-ejet → 404. Ability-row mangler
+// (fx staff ansat før A4) → afledes on-the-fly (self-heal, deterministisk).
+export async function getStaffProfileHandler({ teamId, staffId }, supabaseClient, { flags = DEFAULT_FLAGS } = {}) {
+  if (!flags.facilitiesEnabled) return { status: 403, body: { error: "facilities_disabled" } };
+
+  const { data: staff, error: staffError } = await supabaseClient
+    .from("team_staff")
+    .select("id, team_id, role, tier, salary, name")
+    .eq("id", staffId)
+    .eq("team_id", teamId)
+    .maybeSingle();
+  if (staffError) throw new Error(`facilityRoutes: could not load staff ${staffId}: ${staffError.message}`);
+  if (!staff) return { status: 404, body: { error: "staff_not_found" } };
+
+  const { data: abilityRow, error: abilityError } = await supabaseClient
+    .from("staff_derived_abilities")
+    .select("overall, dimensions, levels, role_skills")
+    .eq("staff_id", staffId)
+    .maybeSingle();
+  if (abilityError) throw new Error(`facilityRoutes: could not load abilities for ${staffId}: ${abilityError.message}`);
+
+  const abilities = abilityRow
+    ? {
+        overall: abilityRow.overall,
+        dimensions: abilityRow.dimensions ?? {},
+        levels: abilityRow.levels ?? {},
+        roleSkills: abilityRow.role_skills ?? {},
+      }
+    : (() => {
+        const p = deriveStaffAbilities({ role: staff.role, tier: staff.tier, name: staff.name });
+        return { overall: p.overall, dimensions: p.dimensions, levels: p.levels, roleSkills: p.roleSkills };
+      })();
+
+  return {
+    status: 200,
+    body: { role: staff.role, tier: staff.tier, salary: staff.salary, name: staff.name, abilities },
+  };
 }

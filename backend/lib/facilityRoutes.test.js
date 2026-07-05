@@ -20,10 +20,12 @@ const {
   getStaffCandidatesHandler,
   postStaffHireHandler,
   postStaffFireHandler,
+  getStaffProfileHandler,
 } = await import("./facilityRoutesHandlers.js");
 const { FACILITY_TRACKS, FACILITY_TIER_UPKEEP, FACILITY_TIER_PRICE } = await import("./facilityConstants.js");
 const { effectiveBonus } = await import("./facilityEngine.js");
 const { generateStaffCandidates } = await import("./staffCandidates.js");
+const { deriveStaffAbilities } = await import("./staffAbilityDerivation.js");
 
 const ENABLED = { facilitiesEnabled: true };
 const TEAM_ID = "team-1";
@@ -112,7 +114,9 @@ test("GET facilities: 5 spor, manglende rows = tier 0, upkeep + upgradePrice + e
   assert.equal(training.tier, 2);
   assert.equal(training.upgradePrice, FACILITY_TIER_PRICE[3]);
   assert.equal(training.tierUpkeep, FACILITY_TIER_UPKEEP[2]);
-  assert.deepEqual(training.staff, { name: "Sofie Lindqvist", tier: 2, salary: 22_000 });
+  // #2216 A4: staff-objektet inkluderer nu overall (afledt på læsning).
+  const trainingOverall = deriveStaffAbilities({ role: "training", tier: 2, name: "Sofie Lindqvist" }).overall;
+  assert.deepEqual(training.staff, { name: "Sofie Lindqvist", tier: 2, salary: 22_000, overall: trainingOverall });
   assert.equal(training.effectiveBonus, effectiveBonus("training", 2, 2));
   assert.equal(training.effectLive, false);
 
@@ -303,6 +307,110 @@ test("POST fire: flag off → 403 facilities_disabled (via ægte service-gate)",
   assert.equal(body.error, "facilities_disabled");
 });
 
+// ── GET /api/club/staff/:id — fuld profil ────────────────────────────────────
+
+// Mock for profil-handleren: team_staff-opslag (id+team_id → single) +
+// staff_derived_abilities-opslag (staff_id → maybeSingle).
+function createProfileSupabase({ staffRow = null, abilityRow = null } = {}) {
+  return {
+    from(table) {
+      if (table === "team_staff") {
+        return {
+          select: () => {
+            const filters = {};
+            const chain = {
+              eq(col, val) { filters[col] = val; return chain; },
+              maybeSingle() {
+                const match = staffRow && staffRow.id === filters.id && staffRow.team_id === filters.team_id;
+                return Promise.resolve({ data: match ? staffRow : null, error: null });
+              },
+              single() { return chain.maybeSingle(); },
+            };
+            return chain;
+          },
+        };
+      }
+      if (table === "staff_derived_abilities") {
+        return {
+          select: () => ({
+            eq: (col, val) => {
+              assert.equal(col, "staff_id");
+              return {
+                maybeSingle: () => Promise.resolve({
+                  data: abilityRow && abilityRow.staff_id === val ? abilityRow : null,
+                  error: null,
+                }),
+              };
+            },
+          }),
+        };
+      }
+      throw new Error(`unexpected table ${table}`);
+    },
+  };
+}
+
+test("GET staff profile: ejer-staff → 200 med role/tier/salary/name/abilities", async () => {
+  const staffRow = { id: "staff-7", team_id: TEAM_ID, role: "training", tier: 4, salary: 55_000, name: "Sofie Lindqvist" };
+  const derived = deriveStaffAbilities({ role: "training", tier: 4, name: "Sofie Lindqvist" });
+  const abilityRow = {
+    staff_id: "staff-7", overall: derived.overall,
+    dimensions: derived.dimensions, levels: derived.levels, role_skills: derived.roleSkills,
+  };
+  const supabase = createProfileSupabase({ staffRow, abilityRow });
+
+  const { status, body } = await getStaffProfileHandler(
+    { teamId: TEAM_ID, staffId: "staff-7" }, supabase, { flags: ENABLED }
+  );
+  assert.equal(status, 200);
+  assert.equal(body.role, "training");
+  assert.equal(body.tier, 4);
+  assert.equal(body.salary, 55_000);
+  assert.equal(body.name, "Sofie Lindqvist");
+  assert.equal(body.abilities.overall, derived.overall);
+  assert.deepEqual(body.abilities.dimensions, derived.dimensions);
+  assert.deepEqual(body.abilities.levels, derived.levels);
+  assert.deepEqual(body.abilities.roleSkills, derived.roleSkills);
+});
+
+test("GET staff profile: manglende ability-row → afledes on-the-fly (self-heal)", async () => {
+  const staffRow = { id: "staff-8", team_id: TEAM_ID, role: "scouting", tier: 3, salary: 30_000, name: "Iker Zabaleta" };
+  const supabase = createProfileSupabase({ staffRow, abilityRow: null });
+
+  const { status, body } = await getStaffProfileHandler(
+    { teamId: TEAM_ID, staffId: "staff-8" }, supabase, { flags: ENABLED }
+  );
+  assert.equal(status, 200);
+  const derived = deriveStaffAbilities({ role: "scouting", tier: 3, name: "Iker Zabaleta" });
+  assert.equal(body.abilities.overall, derived.overall);
+  assert.deepEqual(body.abilities.roleSkills, derived.roleSkills);
+});
+
+test("GET staff profile: ukendt/ikke-ejet staff → 404", async () => {
+  const supabase = createProfileSupabase({ staffRow: null });
+  const { status, body } = await getStaffProfileHandler(
+    { teamId: TEAM_ID, staffId: "nope" }, supabase, { flags: ENABLED }
+  );
+  assert.equal(status, 404);
+  assert.equal(body.error, "staff_not_found");
+});
+
+test("GET staff profile: anden ejers staff → 404 (ejerskab)", async () => {
+  const staffRow = { id: "staff-9", team_id: "other-team", role: "training", tier: 2, salary: 20_000, name: "X" };
+  const supabase = createProfileSupabase({ staffRow });
+  const { status } = await getStaffProfileHandler(
+    { teamId: TEAM_ID, staffId: "staff-9" }, supabase, { flags: ENABLED }
+  );
+  assert.equal(status, 404);
+});
+
+test("GET staff profile: flag off → 403 facilities_disabled", async () => {
+  const supabase = createProfileSupabase({ staffRow: null });
+  const { status, body } = await getStaffProfileHandler({ teamId: TEAM_ID, staffId: "x" }, supabase);
+  assert.equal(status, 403);
+  assert.equal(body.error, "facilities_disabled");
+});
+
 // ── Source-contract: api.js wirer routes tyndt med requireAuth + team-guard ─
 // (samme mønster som loanAmountValidation.routes.test.js — beviser at auth-
 // middleware + "No team"-guard sidder på hver route uden at starte Express.)
@@ -316,6 +424,7 @@ const CLUB_ROUTES = [
   ['router.get("/club/staff/candidates"', "getStaffCandidatesHandler"],
   ['router.post("/club/staff/hire"', "postStaffHireHandler"],
   ['router.post("/club/staff/fire"', "postStaffFireHandler"],
+  ['router.get("/club/staff/:id"', "getStaffProfileHandler"],
 ];
 
 for (const [marker, handler] of CLUB_ROUTES) {

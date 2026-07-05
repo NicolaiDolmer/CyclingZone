@@ -10,6 +10,7 @@ process.env.SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || "test-ser
 const { purchaseFacilityUpgrade, hireStaff, fireStaff } = await import("./facilityService.js");
 const { FACILITY_TIER_PRICE } = await import("./facilityConstants.js");
 const { generateStaffCandidates } = await import("./staffCandidates.js");
+const { deriveStaffAbilities } = await import("./staffAbilityDerivation.js");
 
 const ENABLED = { facilitiesEnabled: true };
 
@@ -26,6 +27,7 @@ function createFacilitySupabase({ team, facilities = [], staff = [] }) {
     upserts: [],
     staffInserts: [],
     staffUpdates: [],
+    abilityUpserts: [],
   };
 
   return {
@@ -114,7 +116,16 @@ function createFacilitySupabase({ team, facilities = [], staff = [] }) {
             const row = { id: `staff-${state.staff.length + 1}`, ...clone(payload) };
             state.staff.push(row);
             state.staffInserts.push(clone(payload));
-            return Promise.resolve({ error: null });
+            // Thenable builder: hireStaff kæder .select("id").single() for at få
+            // den nye staff_id (til ability-upsert). Objektet er selv await-bart
+            // ({ error: null }) OG chainbart via .select() — spejler supabase-js.
+            return {
+              error: null,
+              then(resolve) { return resolve({ error: null }); },
+              select() {
+                return { single: () => Promise.resolve({ data: { id: row.id }, error: null }) };
+              },
+            };
           },
           update(payload) {
             return {
@@ -127,6 +138,15 @@ function createFacilitySupabase({ team, facilities = [], staff = [] }) {
                 return Promise.resolve({ error: null });
               },
             };
+          },
+        };
+      }
+
+      if (table === "staff_derived_abilities") {
+        return {
+          upsert(payload, options) {
+            state.abilityUpserts.push({ payload: clone(payload), options: options ?? null });
+            return Promise.resolve({ error: null });
           },
         };
       }
@@ -248,6 +268,40 @@ test("hire: happy path inserts active staff with candidate's tier/salary", async
   assert.equal(inserted.status, "active");
   // Ingen upfront debit — sæsonløn opkræves af payroll (Task 6).
   assert.equal(supabase.state.finance_transactions.length, 0);
+
+  // #2216 A4: evner persisteres ved hire (staff_derived_abilities-upsert).
+  assert.equal(supabase.state.abilityUpserts.length, 1);
+  const abilityRow = supabase.state.abilityUpserts[0].payload;
+  const expected = deriveStaffAbilities({ role: "training", tier: candidate.tier, name: candidate.name });
+  assert.equal(abilityRow.staff_id, "staff-1");
+  assert.equal(abilityRow.overall, expected.overall);
+  assert.deepEqual(abilityRow.dimensions, expected.dimensions);
+  assert.deepEqual(abilityRow.levels, expected.levels);
+  assert.deepEqual(abilityRow.role_skills, expected.roleSkills);
+});
+
+test("hire: ability-upsert bruger onConflict staff_id + sætter updated_at", async () => {
+  const supabase = createFacilitySupabase({
+    team: { id: "team-1", balance: 1_000_000 },
+    facilities: [{ team_id: "team-1", track: "scouting", tier: 5 }],
+  });
+  const candidate = generateStaffCandidates({
+    teamId: "team-1", seasonNumber: 7, role: "scouting", facilityTier: 5,
+  })[0];
+
+  const result = await hireStaff(
+    { ...BASE_ARGS, role: "scouting", candidateName: candidate.name },
+    supabase,
+    ENABLED
+  );
+  assert.equal(result.ok, true);
+  assert.equal(supabase.state.abilityUpserts.length, 1);
+  const { payload, options } = supabase.state.abilityUpserts[0];
+  assert.deepEqual(options, { onConflict: "staff_id" });
+  // scouting-rollen: role_skills udfyldt, dimensions tom.
+  const expected = deriveStaffAbilities({ role: "scouting", tier: candidate.tier, name: candidate.name });
+  assert.deepEqual(payload.role_skills, expected.roleSkills);
+  assert.ok(typeof payload.updated_at === "string" && Date.parse(payload.updated_at) > 0);
 });
 
 test("hire: role occupied → role_occupied, no insert", async () => {
@@ -281,7 +335,14 @@ test("hire: concurrent insert hits partial unique index (23505) → role_occupie
   supabase.from = (table) => {
     const chain = originalFrom(table);
     if (table === "team_staff") {
-      chain.insert = () => Promise.resolve({ error: { code: "23505", message: "duplicate key" } });
+      // Erroring insert — await-bart OG chainbart (.select().single()), spejler
+      // supabase-js: en fejlet insert-with-select resolver til { data:null, error }.
+      const dup = { code: "23505", message: "duplicate key" };
+      chain.insert = () => ({
+        error: dup,
+        then(resolve) { return resolve({ error: dup }); },
+        select() { return { single: () => Promise.resolve({ data: null, error: dup }) }; },
+      });
     }
     return chain;
   };
