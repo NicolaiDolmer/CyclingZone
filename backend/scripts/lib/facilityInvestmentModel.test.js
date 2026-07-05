@@ -7,6 +7,11 @@ import {
   simulateStrategy, runAntiOptimalPath, computeCommercialPayback, computePriceInSeasons,
 } from "./facilityInvestmentModel.js";
 
+// Co-SSOT drift-guard: harnessets computeBonus (sweepbar effekt-tabel × prod-staff-faktor)
+// skal matche prod-effectiveBonus på DEFAULT_MODEL_CONSTANTS (hvor constants.effect ===
+// FACILITY_BASE_EFFECT). #2216 A4 flyttede prod til den ability-drevne staffEffectFactor,
+// men bevarede tier-skalaren bag effectiveBonus-adapteren for integer/null-tiers — som
+// harnesset bruger. Guarden asserterer at den paritet holder over integer/null-tiers.
 test("computeBonus matcher prod-effectiveBonus på prod-konstanterne (drift-guard)", () => {
   for (const [track, fac, staff] of [["training", 5, 5], ["training", 3, 1], ["commercial", 2, null], ["academy", 4, 2], ["scouting", 0, null]]) {
     assert.equal(computeBonus(DEFAULT_MODEL_CONSTANTS, track, fac, staff), effectiveBonus(track, fac, staff));

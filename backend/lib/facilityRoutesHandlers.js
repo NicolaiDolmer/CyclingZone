@@ -64,22 +64,25 @@ export async function getClubFacilitiesHandler({ teamId }, supabaseClient, { fla
     const tier = tierByTrack.get(track) ?? 0;
     const staff = staffByRole.get(track) ?? null;
     const upgradePrice = getUpgradePrice(tier);
+    // #2216 A4: overall afledes på læsning fra (role,tier,name) — deterministisk,
+    // så vi ikke behøver et join for facilitets-oversigten (fuld profil = /club/staff/:id).
+    const staffOut = staff
+      ? {
+          name: staff.name,
+          tier: staff.tier,
+          salary: staff.salary,
+          overall: deriveStaffAbilities({ role: staff.role, tier: staff.tier, name: staff.name }).overall,
+        }
+      : null;
     return {
       track,
       tier,
       upgradePrice,
       tierUpkeep: FACILITY_TIER_UPKEEP[tier] ?? 0,
-      // #2216 A4: overall afledes på læsning fra (role,tier,name) — deterministisk,
-      // så vi ikke behøver et join for facilitets-oversigten (fuld profil = /club/staff/:id).
-      staff: staff
-        ? {
-            name: staff.name,
-            tier: staff.tier,
-            salary: staff.salary,
-            overall: deriveStaffAbilities({ role: staff.role, tier: staff.tier, name: staff.name }).overall,
-          }
-        : null,
-      effectiveBonus: effectiveBonus(track, tier, staff?.tier ?? null),
+      staff: staffOut,
+      // #2216 A4 (Task 6): display-magnitude = base × staffEffectFactor(staff) — ability-
+      // drevet (overall), IKKE tier-skalaren. staffOut bærer overall (eller null = gulv).
+      effectiveBonus: effectiveBonus(track, tier, staffOut),
       effectLive: EFFECT_LIVE_BY_TRACK[track] ?? false,
     };
   });

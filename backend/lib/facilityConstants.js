@@ -41,10 +41,59 @@ export const FACILITY_TIER_PRICE = Object.freeze({ 1: 12_000, 2: 26_000, 3: 50_0
 // upkeep ved tier T er 35-63% af den kumulative pris til T (form-gate: < 100%).
 export const FACILITY_TIER_UPKEEP = Object.freeze({ 0: 0, 1: 1_500, 2: 3_500, 3: 8_000, 4: 15_000, 5: 30_000 });
 
-// Staff-sæsonløn pr. kvalitets-tier (løbende sink oveni upkeep). Forankret i
-// staff'ens marginale værdi-tilførsel (se kalibrerings-design ovenfor): ansættelse
-// er en god men ikke gratis beslutning i alle divisioner.
+// DEPRECATED (#2216 A4): flad tier→løn-tabel. Erstattet af den rating-drevne
+// staffSalaryFor(overall)-kurve nedenfor, så løn bider proportionalt med staffens
+// faktiske kvalitet (Q1) i stedet for et groft 5-trins-tier. Bevaret som fallback
+// indtil A4b (kandidat-/profil-UI) er migreret, og som referenceanker for kurven.
 export const STAFF_SALARY_BY_TIER = Object.freeze({ 1: 100, 2: 250, 3: 600, 4: 1_300, 5: 2_600 });
+
+// ── Ability-drevet effekt-model (#2216 A4, Task 6) ───────────────────────────────
+// Erstatter A3's tier→udnyttelses-skalar (staffUtilization) med en overall-drevet
+// faktor: staffEffectFactor(staff) = FLOOR + SLOPE·(overall/99).
+//   • FLOOR (0.5) = udnyttelsen UDEN chef (uændret fra staffUtilization(null)) — en
+//     facilitet uden ansat kører på halv kraft.
+//   • SLOPE (0.5) = det ekstra span en overall-99-chef tilfører → faktor 1.0 ved 99.
+// Lineær + monoton i overall. Kurve-parametrene er named-constants så harnesset
+// (facilityInvestmentModel) kan kalibrere dem i Task 8 uden at røre call-sites.
+export const STAFF_EFFECT_FACTOR_FLOOR = 0.5;
+export const STAFF_EFFECT_FACTOR_SLOPE = 0.5;
+
+// Per-rytter specialiserings-multiplikator (specializationMatch) — IKKE i facilitets-
+// display-magnituden; bruges af trænings-hooket i Task 7 (dimension×niveau pr. rytter).
+// baseline 1.0 for en generalist / manglende akse; > 1.0 når chefens dimension OG
+// niveau er stærke; loftet ved `cap`. baselineOverall = det referencepunkt hvor en
+// "flad" chef giver præcis 1.0 (akser over/under skubber match op/ned).
+//   contribution = 1 + weightDimension·norm(dim − baseline) + weightLevel·norm(lvl − baseline)
+// hvor norm(x) = x / (99 − baseline) klippes til [-1, +1]; resultatet clampes [floor, cap].
+export const STAFF_SPECIALIZATION = Object.freeze({
+  baselineOverall: 50,
+  weightDimension: 0.25,
+  weightLevel: 0.15,
+  floor: 0.85,
+  cap: 1.4,
+});
+
+// Rating-drevet staff-løn (staffSalaryFor) — erstatter STAFF_SALARY_BY_TIER.
+// Konveks potens-kurve forankret i de gamle tier-lønninger ved tier-båndenes
+// midtpunkter (t1≈36→~100, t5≈81→~2600): salary = round(floor + base·(overall/ref)^exp).
+// Løn bider dermed med staffens faktiske overall (Q1) i stedet for et groft tier-trin.
+// floor/cap = kalibrerings-bånd (positiv bund, loftet top); kalibreres i Task 8.
+export const STAFF_SALARY_CURVE = Object.freeze({
+  base: 2600,
+  refOverall: 81,
+  exponent: 4,
+  floor: 50,
+  cap: 6000,
+  minOverall: 20,
+});
+
+// Rating-drevet staff-sæsonløn. Monoton stigende i overall, clampet til [floor, cap].
+export function staffSalaryFor(overall) {
+  const c = STAFF_SALARY_CURVE;
+  const o = Math.max(0, overall ?? 0);
+  const raw = c.floor + c.base * Math.pow(o / c.refOverall, c.exponent);
+  return Math.round(Math.min(c.cap, raw));
+}
 
 // Fyring: betal resterende sæsonløn × faktor (spec §2.2, sink + friktion).
 export const STAFF_SEVERANCE_FACTOR = 0.5;

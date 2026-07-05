@@ -117,7 +117,9 @@ test("GET facilities: 5 spor, manglende rows = tier 0, upkeep + upgradePrice + e
   // #2216 A4: staff-objektet inkluderer nu overall (afledt på læsning).
   const trainingOverall = deriveStaffAbilities({ role: "training", tier: 2, name: "Sofie Lindqvist" }).overall;
   assert.deepEqual(training.staff, { name: "Sofie Lindqvist", tier: 2, salary: 22_000, overall: trainingOverall });
-  assert.equal(training.effectiveBonus, effectiveBonus("training", 2, 2));
+  // #2216 A4 (Task 6): display-magnitude er nu ability-drevet (base × staffEffectFactor(staff)),
+  // dvs. faktoren afhænger af staffens overall — ikke længere tier-skalaren.
+  assert.equal(training.effectiveBonus, effectiveBonus("training", 2, training.staff));
   assert.equal(training.effectLive, false);
 
   const commercial = body.facilities.find((f) => f.track === "commercial");

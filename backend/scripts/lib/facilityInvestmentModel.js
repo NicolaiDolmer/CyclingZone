@@ -65,8 +65,13 @@ export const STRATEGIES = Object.freeze({
   "balanced":         null,
 });
 
-// Delt bonus-formel med sweepbar effekt-tabel. staffUtilization importeres fra prod
-// (facilityEngine) — drift-guard-testen sikrer paritet med effectiveBonus.
+// Delt bonus-formel med sweepbar effekt-tabel (base fra constants.effect, IKKE prod-
+// konstanten, så kalibrerings-sweeps kan variere den). Staff-faktoren importeres fra
+// prod som co-SSOT: #2216 A4 flyttede prod-modellen til den ability-drevne
+// staffEffectFactor(staff), men bevarede den deprecated tier-skalar (staffUtilization)
+// bag effectiveBonus-adapteren for integer-tier-kald. Harnesset arbejder i integer-tiers
+// (staff = tier-indeks), så det bruger netop den adapter-sti → paritet med prod holder.
+// Drift-guard-testen asserterer computeBonus == effectiveBonus over integer/null-tiers.
 export function computeBonus(constants, track, facilityTier, staffTier) {
   const base = constants.effect[track]?.[facilityTier] ?? 0;
   return base * staffUtilization(staffTier);
