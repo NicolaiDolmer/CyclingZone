@@ -54,13 +54,15 @@ export async function purchaseFacilityUpgrade(
   const balance = await loadTeamBalance(teamId, supabaseClient);
   const currentTier = await loadFacilityTier(teamId, track, supabaseClient);
 
+  // NB: to samtidige køb af FORSKELLIGE tracks kan tilsammen overtrække
+  // balancen (accepteret ved beta-skala; negativ-rente er backstop).
   const validationError = validateUpgrade({ track, currentTier, balance });
   if (validationError) return { ok: false, error: validationError };
 
   const nextTier = currentTier + 1;
   const price = getUpgradePrice(currentTier);
 
-  await debitTeam(teamId, price, "facility_purchase", null, seasonId, supabaseClient, {
+  const debit = await debitTeam(teamId, price, "facility_purchase", null, seasonId, supabaseClient, {
     idempotent: true,
     metadata: { code: "tx.facilityPurchase", params: { track, tier: nextTier } },
     audit: {
@@ -84,7 +86,9 @@ export async function purchaseFacilityUpgrade(
     );
   if (upsertError) throw new Error(`facilityService: facility upsert failed for ${teamId}/${track}: ${upsertError.message}`);
 
-  return { ok: true, track, tier: nextTier, price };
+  // skipped=true = idempotent retry (debit allerede bogført); upsert ovenfor
+  // re-stamper purchased_season/updated_at — harmløst, samme værdier.
+  return { ok: true, track, tier: nextTier, price, ...(debit.skipped ? { skipped: true } : {}) };
 }
 
 export async function hireStaff(
@@ -119,7 +123,12 @@ export async function hireStaff(
     hired_season: seasonNumber,
     status: "active",
   });
-  if (insertError) throw new Error(`facilityService: staff insert failed for ${teamId}/${role}: ${insertError.message}`);
+  if (insertError) {
+    // Race: samtidig hire vandt insertet — partial unique index på
+    // (team_id, role) WHERE status='active' afviser med 23505.
+    if (insertError.code === "23505") return { ok: false, error: "role_occupied" };
+    throw new Error(`facilityService: staff insert failed for ${teamId}/${role}: ${insertError.message}`);
+  }
 
   return {
     ok: true,
@@ -141,7 +150,7 @@ export async function fireStaff(
   // negativ (negative-interest håndterer det) — severance er sink + friktion.
   const cost = severanceCost(staff);
 
-  await debitTeam(teamId, cost, "staff_severance", null, seasonId, supabaseClient, {
+  const debit = await debitTeam(teamId, cost, "staff_severance", null, seasonId, supabaseClient, {
     idempotent: true,
     metadata: { code: "tx.staffSeverance", params: { role } },
     audit: {
@@ -156,5 +165,5 @@ export async function fireStaff(
     .eq("id", staff.id);
   if (updateError) throw new Error(`facilityService: staff fire-update failed for ${staff.id}: ${updateError.message}`);
 
-  return { ok: true, severance: cost };
+  return { ok: true, severance: cost, ...(debit.skipped ? { skipped: true } : {}) };
 }

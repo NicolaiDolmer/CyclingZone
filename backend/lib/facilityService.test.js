@@ -266,6 +266,34 @@ test("hire: role occupied → role_occupied, no insert", async () => {
   assert.equal(supabase.state.staffInserts.length, 0);
 });
 
+test("hire: concurrent insert hits partial unique index (23505) → role_occupied, no throw", async () => {
+  const supabase = createFacilitySupabase({
+    team: { id: "team-1", balance: 1_000_000 },
+    facilities: [{ team_id: "team-1", track: "training", tier: 5 }],
+  });
+  const candidate = generateStaffCandidates({
+    teamId: "team-1", seasonNumber: 7, role: "training", facilityTier: 5,
+  })[0];
+
+  // Simulér race: select så ingen aktiv staff, men insert taber til en
+  // samtidig hire (partial unique index på (team_id, role) WHERE status='active').
+  const originalFrom = supabase.from.bind(supabase);
+  supabase.from = (table) => {
+    const chain = originalFrom(table);
+    if (table === "team_staff") {
+      chain.insert = () => Promise.resolve({ error: { code: "23505", message: "duplicate key" } });
+    }
+    return chain;
+  };
+
+  const result = await hireStaff(
+    { ...BASE_ARGS, role: "training", candidateName: candidate.name },
+    supabase,
+    ENABLED
+  );
+  assert.deepEqual(result, { ok: false, error: "role_occupied" });
+});
+
 test("hire: fired staff in role does NOT block a new hire", async () => {
   const supabase = createFacilitySupabase({
     team: { id: "team-1", balance: 1_000_000 },
@@ -341,6 +369,38 @@ test("hire: insufficient balance for salary → insufficient_funds, no insert", 
   assert.equal(supabase.state.staffInserts.length, 0);
 });
 
+// ─── idempotent-skip propagation ────────────────────────────────────────────
+
+// Simulér idempotent retry: RPC'en afviser med 23505 (idempotency_key findes
+// allerede) → debitTeam returnerer { skipped: true } → resultat flager skipped.
+function makeRpcDuplicate(supabase) {
+  supabase.rpc = () => Promise.resolve({ data: null, error: { code: "23505", message: "duplicate key" } });
+}
+
+test("purchase: idempotent debit-skip (23505 på idempotency_key) → ok med skipped:true", async () => {
+  const supabase = createFacilitySupabase({ team: { id: "team-1", balance: 100_000 } });
+  makeRpcDuplicate(supabase);
+
+  const result = await purchaseFacilityUpgrade({ ...BASE_ARGS, track: "training" }, supabase, ENABLED);
+  assert.deepEqual(result, {
+    ok: true, track: "training", tier: 1, price: FACILITY_TIER_PRICE[1], skipped: true,
+  });
+  // Upsert kører stadig (re-stamper purchased_season på retry).
+  assert.equal(supabase.state.upserts.length, 1);
+});
+
+test("fire: idempotent debit-skip → ok med skipped:true, staff stadig fired", async () => {
+  const supabase = createFacilitySupabase({
+    team: { id: "team-1", balance: 5_000 },
+    staff: [{ id: "staff-9", team_id: "team-1", role: "training", status: "active", salary: 22_000, tier: 2 }],
+  });
+  makeRpcDuplicate(supabase);
+
+  const result = await fireStaff({ ...BASE_ARGS, role: "training" }, supabase, ENABLED);
+  assert.deepEqual(result, { ok: true, severance: 11_000, skipped: true });
+  assert.equal(supabase.state.staff[0].status, "fired");
+});
+
 // ─── fireStaff ───────────────────────────────────────────────────────────────
 
 test("fire: debits severance (round(salary×0.5)), sets status='fired' + fired_season", async () => {
@@ -366,6 +426,17 @@ test("fire: debits severance (round(salary×0.5)), sets status='fired' + fired_s
   assert.equal(supabase.state.staffUpdates[0].id, "staff-9");
   assert.deepEqual(supabase.state.staffUpdates[0].payload, { status: "fired", fired_season: 7 });
   assert.equal(supabase.state.staff[0].status, "fired");
+});
+
+test("fire: odd salary rounds severance med Math.round (22_001 → 11_001)", async () => {
+  const supabase = createFacilitySupabase({
+    team: { id: "team-1", balance: 100_000 },
+    staff: [{ id: "staff-odd", team_id: "team-1", role: "training", status: "active", salary: 22_001, tier: 2 }],
+  });
+
+  const result = await fireStaff({ ...BASE_ARGS, role: "training" }, supabase, ENABLED);
+  assert.deepEqual(result, { ok: true, severance: 11_001 });
+  assert.equal(supabase.state.finance_transactions[0].amount, -11_001);
 });
 
 test("fire: no active staff → no_active_staff, no debit", async () => {
