@@ -347,7 +347,7 @@
       },
       "raceDetail": {
         "title": "Open a race: route, terrain DNA and your lineup",
-        "text": "Race names are clickable across the game. Opening a race shows its results if it has run, or for an upcoming race the route profile per stage, a terrain-DNA bar of which abilities each stage rewards, and your own lineup with a route match per stage so you can pick riders that suit the parcours. Pick a stage from the stage stripe to switch the profile and the route match. The terrain is an indicative category, not a measured elevation profile."
+        "text": "Race names are clickable across the game. Opening a race shows its results if it has run, or for an upcoming race the route profile per stage, a terrain-DNA bar of which abilities each stage rewards, and your own lineup with a route match per stage so you can pick riders that suit the parcours. Pick a stage from the stage stripe to switch the profile and the route match. The terrain is an indicative category, not a measured elevation profile. On a stage's result tab you can switch between Stage, Overall, Points, Mountain, Youth and Teams to see the standings after that stage, and a team filter lets you narrow the tables to all teams, your own team, or one specific team."
       },
       "teamSelection": {
         "title": "Pick your team and move riders between races",

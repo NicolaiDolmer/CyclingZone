@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.64",
+    "date": "2026-07-05",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Races",
+        "en": {
+          "title": "Stage results now have classification tabs, plus a team filter",
+          "body": "Each stage tab now lets you switch between Stage, Overall, Points, Mountain, Youth and Teams, so you can see the standings after that stage without waiting for the race to finish. A team filter (all teams, your team, or a specific team) highlights the rows that matter and carries over when you switch stages, and long result tables now show the top 10 with a 'Show all' button instead of one long list."
+        },
+        "da": {
+          "title": "Etaperesultater har nu klassement-faner, plus et holdfilter",
+          "body": "Hver etape-fane lader dig nu skifte mellem Etape, Samlet, Point, Bjerg, Ungdom og Hold, så du kan se stillingen efter den etape uden at vente på at løbet slutter. Et holdfilter (alle hold, dit hold, eller et bestemt hold) fremhæver de rækker der betyder noget, og følger med når du skifter etape, og lange resultattabeller viser nu top 10 med en 'Vis alle'-knap i stedet for én lang liste."
+        },
+        "refs": [2081]
+      }
+    ]
+  },
+  {
     "version": "6.63",
     "date": "2026-07-05",
     "label": "Beta",
