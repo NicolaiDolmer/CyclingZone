@@ -3,7 +3,7 @@
 // Hård gate: alle funktioner er no-ops mens FACILITIES_ENABLED=false; tests
 // injicerer flags-parameteren ({ facilitiesEnabled: true }) — prod-callsites
 // udelader den så koden følger kode-konstanten.
-import { FACILITIES_ENABLED } from "./facilityConstants.js";
+import { FACILITIES_ENABLED, FACILITY_TRACKS } from "./facilityConstants.js";
 import { validateUpgrade, validateHire, getUpgradePrice, severanceCost } from "./facilityEngine.js";
 import { generateStaffCandidates } from "./staffCandidates.js";
 import { debitTeam } from "./economyEngine.js";
@@ -50,6 +50,8 @@ export async function purchaseFacilityUpgrade(
   flags = DEFAULT_FLAGS
 ) {
   if (!flags.facilitiesEnabled) return { ok: false, error: "facilities_disabled" };
+  // Membership-validering FØR DB-queries — ugyldig track skal aldrig koste queries.
+  if (!FACILITY_TRACKS.includes(track)) return { ok: false, error: "invalid_track" };
 
   const balance = await loadTeamBalance(teamId, supabaseClient);
   const currentTier = await loadFacilityTier(teamId, track, supabaseClient);
@@ -97,6 +99,8 @@ export async function hireStaff(
   flags = DEFAULT_FLAGS
 ) {
   if (!flags.facilitiesEnabled) return { ok: false, error: "facilities_disabled" };
+  // Membership-validering FØR DB-queries — ugyldig role skal aldrig koste queries.
+  if (!FACILITY_TRACKS.includes(role)) return { ok: false, error: "invalid_role" };
   void seasonId; // ingen upfront debit — sæsonløn opkræves af payroll (Task 6)
 
   const existing = await loadActiveStaff(teamId, role, supabaseClient);
