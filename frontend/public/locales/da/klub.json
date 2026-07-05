@@ -58,5 +58,16 @@
     "failed": "Noget gik galt. Prøv igen.",
     "network": "Kunne ikke nå serveren. Prøv igen."
   },
-  "empty": { "title": "Klubben er lukket", "description": "Faciliteter og staff er ikke tilgængelige endnu." }
+  "empty": { "title": "Klubben er lukket", "description": "Faciliteter og staff er ikke tilgængelige endnu." },
+  "confirm": {
+    "upgradeTitle": "Bekræft opgradering",
+    "buildTitle": "Bekræft byggeri",
+    "fireTitle": "Fyr {name}?",
+    "cost": "Pris",
+    "newTier": "Nyt tier",
+    "deductNote": "Trækkes fra din saldo nu",
+    "severanceNote": "Fratrædelsen trækkes nu",
+    "confirm": "Bekræft",
+    "cancel": "Annullér"
+  }
 }

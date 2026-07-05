@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Modal, Button } from "../ui";
 import { formatNumber } from "../../lib/intl";
+import ConfirmModal from "./ConfirmModal";
 
 // Staff-panel (modal) for ét spor: nuværende staff (Release + fratrædelse) +
 // kandidat-liste (Hire). Loader kandidater via loadCandidates(role) on open.
@@ -12,6 +13,7 @@ export default function StaffPanel({ open, track, facility, onClose, loadCandida
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+  const [confirmingFire, setConfirmingFire] = useState(false);
   const staff = facility?.staff;
 
   useEffect(() => {
@@ -38,6 +40,7 @@ export default function StaffPanel({ open, track, facility, onClose, loadCandida
     const r = await onFire(track);
     if (!r.ok) setError(t(`errors.${r.error}`, { defaultValue: t("errors.failed") }));
     setBusy(false);
+    setConfirmingFire(false);
   };
 
   return (
@@ -51,7 +54,7 @@ export default function StaffPanel({ open, track, facility, onClose, loadCandida
             <div className="text-[11px] text-cz-2 mt-[3px]">{t("staff.hired")} · {t("staff.salary", { amount: formatNumber(staff.salary) })}</div>
           </div>
           <div className="text-right">
-            <Button variant="secondary" size="sm" loading={busy} onClick={doFire}>{t("staff.release")}</Button>
+            <Button variant="secondary" size="sm" loading={busy} onClick={() => setConfirmingFire(true)}>{t("staff.release")}</Button>
             <div className="text-[10.5px] text-cz-2 mt-[5px]">{t("staff.severance", { amount: formatNumber(Math.round(staff.salary * 0.5)) })}</div>
           </div>
         </div>
@@ -75,6 +78,20 @@ export default function StaffPanel({ open, track, facility, onClose, loadCandida
             </div>
           )}
         </>
+      )}
+      {staff && (
+        <ConfirmModal
+          open={confirmingFire}
+          title={t("confirm.fireTitle", { name: staff.name })}
+          lines={[
+            { label: t("confirm.cost"), value: formatNumber(Math.round(staff.salary * 0.5)) },
+          ]}
+          note={t("confirm.severanceNote")}
+          confirmLabel={t("staff.release")}
+          busy={busy}
+          onConfirm={doFire}
+          onClose={() => setConfirmingFire(false)}
+        />
       )}
     </Modal>
   );

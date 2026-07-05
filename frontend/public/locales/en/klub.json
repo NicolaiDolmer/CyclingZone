@@ -61,5 +61,16 @@
     "failed": "Something went wrong. Try again.",
     "network": "Couldn't reach the server. Try again."
   },
-  "empty": { "title": "The club is closed", "description": "Facilities and staff aren't available yet." }
+  "empty": { "title": "The club is closed", "description": "Facilities and staff aren't available yet." },
+  "confirm": {
+    "upgradeTitle": "Confirm upgrade",
+    "buildTitle": "Confirm build",
+    "fireTitle": "Release {name}?",
+    "cost": "Cost",
+    "newTier": "New tier",
+    "deductNote": "Deducted from your balance now",
+    "severanceNote": "Severance is deducted now",
+    "confirm": "Confirm",
+    "cancel": "Cancel"
+  }
 }

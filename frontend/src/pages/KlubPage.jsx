@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { EmptyState, PageLoader } from "../components/ui";
+import { formatNumber } from "../lib/intl";
 import { useFacilities } from "../lib/useFacilities";
 import { TRACK_ORDER } from "../lib/facilityDisplay";
 import FacilityTrackCard from "../components/klub/FacilityTrackCard";
 import StaffPanel from "../components/klub/StaffPanel";
+import ConfirmModal from "../components/klub/ConfirmModal";
 
 // Klub-fladen (#1441 A3): orkestrerer useFacilities-hooken + sub-komponenterne.
 // Gater på API'ets `enabled` (403 facilities_disabled → tom-state) så nav + side
@@ -15,6 +17,7 @@ export default function KlubPage() {
   const facs = useFacilities();
   const [staffTrack, setStaffTrack] = useState(null);
   const [busyTrack, setBusyTrack] = useState(null);
+  const [pendingUpgrade, setPendingUpgrade] = useState(null);
 
   if (facs.loading) return <PageLoader />;
   if (!facs.enabled) return <EmptyState title={t("empty.title")} description={t("empty.description")} />;
@@ -22,8 +25,17 @@ export default function KlubPage() {
   const byTrack = Object.fromEntries(facs.facilities.map((f) => [f.track, f]));
   const ordered = TRACK_ORDER.map((tr) => byTrack[tr]).filter(Boolean);
   const staffFacility = staffTrack ? byTrack[staffTrack] : null;
+  const pendingFacility = pendingUpgrade ? byTrack[pendingUpgrade] : null;
 
-  const doUpgrade = async (track) => { setBusyTrack(track); await facs.upgrade(track); setBusyTrack(null); };
+  // Køb/opgradering binder gold nu → åbn bekræftelses-dialog i stedet for at
+  // købe direkte fra kortet (ejer-feedback #1441 A3).
+  const confirmUpgrade = async () => {
+    const track = pendingUpgrade;
+    setBusyTrack(track);
+    await facs.upgrade(track);
+    setBusyTrack(null);
+    setPendingUpgrade(null);
+  };
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-6">
@@ -45,7 +57,7 @@ export default function KlubPage() {
             key={f.track}
             facility={f}
             busy={busyTrack === f.track}
-            onUpgrade={doUpgrade}
+            onUpgrade={setPendingUpgrade}
             onOpenStaff={setStaffTrack}
           />
         ))}
@@ -59,6 +71,24 @@ export default function KlubPage() {
         loadCandidates={facs.loadCandidates}
         onHire={facs.hire}
         onFire={facs.fire}
+      />
+
+      <ConfirmModal
+        open={!!pendingUpgrade}
+        title={t(pendingFacility?.tier === 0 ? "confirm.buildTitle" : "confirm.upgradeTitle")}
+        lines={
+          pendingFacility
+            ? [
+                { label: t("confirm.newTier"), value: `T${pendingFacility.tier} → T${pendingFacility.tier + 1}` },
+                { label: t("confirm.cost"), value: formatNumber(pendingFacility.upgradePrice) },
+              ]
+            : []
+        }
+        note={t("confirm.deductNote")}
+        confirmLabel={t("confirm.confirm")}
+        busy={busyTrack === pendingUpgrade}
+        onConfirm={confirmUpgrade}
+        onClose={() => setPendingUpgrade(null)}
       />
     </div>
   );
