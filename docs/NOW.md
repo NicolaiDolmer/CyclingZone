@@ -14,7 +14,7 @@
 
 > **Shipped 5/7 — #2206 rangliste/standings viser alle ryttere (PR #2210, v6.63, afventer prod-verify):** Supabase Data API's 1000-rækkers cap slugte brede reads → rytterrangliste viste kun ~1000 af 3142 (top-rangerede forsvandt) + standings-graf/styrke-linse manglede data. Fix: 5 reads pagineret via `fetchAllRows`. Verificeret mod prod-DB (3142/5590/1321/4871 rækker). Postmortem: `.claude/learnings/2026-07-05-supabase-1000-row-cap-rankings.md`. **Discord-triage 5/7:** alle 3 kanaler + 15 forum-tråde læst; #2206–#2209 oprettet (rangliste, height/weight+compare væk, auktions-dobbeltbesked, in-game kommunikation), evidens-kommentarer på #2170/#2081/#2177.
 
-> **🤖 Working agent:** Ingen aktiv session.
+> **🤖 Working agent:** Claude Code (desktop) — #1441 Fase 3 bølge A2 harness-kalibrering, worktree `feat/1441-facilities-staff-a2` (startet 5/7).
 
 ## Standing context (forever-relaunch)
 
