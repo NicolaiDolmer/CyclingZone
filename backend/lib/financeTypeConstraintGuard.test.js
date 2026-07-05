@@ -108,6 +108,7 @@ const FINANCE_SOURCE_FILES = [
   "lib/academyIntake.js",
   "lib/prizePayoutEngine.js",
   "lib/loanEngine.js",
+  "lib/facilityService.js",
   "routes/api.js",
 ];
 

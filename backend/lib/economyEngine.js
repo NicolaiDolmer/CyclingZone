@@ -1938,7 +1938,8 @@ async function creditTeam(teamId, amount, type, description, seasonId, supabaseC
   return { skipped: result.skipped };
 }
 
-async function debitTeam(teamId, amount, type, description, seasonId, supabaseClient = null, options = {}) {
+// Eksporteret så facilityService (Wave A1, #1441) kan debitere via samme ledger-path.
+export async function debitTeam(teamId, amount, type, description, seasonId, supabaseClient = null, options = {}) {
   const client = supabaseClient ?? await getDefaultSupabaseClient();
   const audit = options.audit || {};
 
