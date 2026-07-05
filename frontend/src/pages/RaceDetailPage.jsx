@@ -17,6 +17,7 @@ import { logEvent } from "../lib/logEvent";
 import { profileShape, profileLabelKey, finaleLabelKey } from "../lib/stageProfileConfig";
 import { deriveRaceStatus } from "../lib/raceHubLogic.js";
 import { buildLiveStandings } from "../lib/raceLiveStandings.js";
+import { classificationRowsForStage } from "../lib/raceStageClassifications.js";
 import { bucketCounts, terrainBucket } from "../lib/stageTerrain.js";
 import { RACE_TIMEZONE, countdownParts, countdownSegments } from "../lib/stageScheduleConfig.js";
 
@@ -43,6 +44,10 @@ const CLASSIFICATIONS = [
   { key: "young" },
   { key: "team" },
 ];
+
+// #2081: klassement-sub-faner INDE i en etape-fane (Stage · Overall · Points ·
+// Mountain · Youth · Teams) — samme 5 nøgler som CLASSIFICATIONS + 'stage'.
+const STAGE_CLASS_TABS = ["stage", "gc", "points", "mountain", "young", "team"];
 
 // Daglige trøjebærere — vist som badges på hver etape-fane.
 // Label kommer fra t(`detail.jersey.${dayType}`).
@@ -81,6 +86,26 @@ function byRank(a, b) {
   return (a.rank ?? 9999) - (b.rank ?? 9999);
 }
 
+// #2081 Discord-ønske: holdfilter (alle / mit hold / vælg hold) — delt af Samlet-
+// og etape-fanerne, så filteret følger med når man skifter etape.
+function TeamFilterSelect({ value, onChange, teamOptions, hasMyTeam, t }) {
+  return (
+    <select
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      aria-label={t("detail.teamFilter.label")}
+      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all border max-w-[14rem] cursor-pointer
+        focus:outline-none focus:ring-1 focus:ring-cz-accent
+        ${value !== "all" ? "bg-cz-accent/10 border-cz-accent/30 text-cz-accent-t" : "bg-cz-card border-cz-border text-cz-2"}`}>
+      <option value="all">{t("detail.teamFilter.all")}</option>
+      {hasMyTeam && <option value="mine">{t("detail.teamFilter.mine")}</option>}
+      {teamOptions.map(team => (
+        <option key={team.id} value={team.id}>{team.name}</option>
+      ))}
+    </select>
+  );
+}
+
 // Etape-tid i København-tid (HH:MM) — kompakt til stribe-chip + header.
 function formatStageTime(date, locale) {
   try {
@@ -109,6 +134,8 @@ export default function RaceDetailPage() {
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [teamFilter, setTeamFilter] = useState("all"); // "all" | "mine" | teamId
+  const [myTeamId, setMyTeamId] = useState(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(() => {
     const s = searchParams.get("stage");
@@ -141,6 +168,12 @@ export default function RaceDetailPage() {
       setNotFound(true);
       setLoading(false);
       return;
+    }
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: myTeam } = await supabase.from("teams").select("id").eq("user_id", user.id).maybeSingle();
+      setMyTeamId(myTeam?.id ?? null);
     }
 
     const rows = await fetchAllRows(() =>
@@ -260,6 +293,26 @@ export default function RaceDetailPage() {
     if (race?.race_type !== "stage_race" || finalByType.gc?.length) return null;
     return buildLiveStandings(results);
   }, [race?.race_type, finalByType, results]);
+
+  // #2081: "mit hold" løses til den faktiske team_id (kan være ukendt hvis ikke logget
+  // ind endnu ved første render) — "all" og en eksplicit team_id går uændret igennem.
+  const resolvedTeamFilter = teamFilter === "mine" ? myTeamId : (teamFilter === "all" ? null : teamFilter);
+
+  // Holdfilter-valgmuligheder: unikke {id, name} par fundet i de indlæste resultater.
+  const teamOptions = useMemo(() => {
+    const byId = new Map();
+    for (const r of results) {
+      const id = r.rider?.team?.id ?? r.team_id;
+      const name = r.rider?.team?.name ?? r.team_name;
+      if (id != null && name && !byId.has(String(id))) byId.set(String(id), { id, name });
+    }
+    return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }, [results]);
+
+  function filterRowsByTeam(rows) {
+    if (resolvedTeamFilter == null) return rows;
+    return (rows || []).filter(r => String(r.team_id ?? r.rider?.team?.id) === String(resolvedTeamFilter));
+  }
 
   // Sørg for at active tab altid er gyldig når data skifter.
   useEffect(() => {
@@ -386,16 +439,21 @@ export default function RaceDetailPage() {
             onSelect={(v) => changeTab(v === "overall" ? "samlet" : `stage-${v}`)}
           />
 
+          <div className="flex justify-end">
+            <TeamFilterSelect value={teamFilter} onChange={setTeamFilter} teamOptions={teamOptions} hasMyTeam={myTeamId != null} t={t} />
+          </div>
+
           {activeTab === "samlet" && (
             <div className="space-y-5">
               <RaceRecap results={results} scopeType="overall" />
               {liveStandings
-                ? <LiveOverallTab byType={liveStandings.byType} stage={liveStandings.stage} />
-                : <OverallTab finalByType={finalByType} />}
+                ? <LiveOverallTab byType={liveStandings.byType} stage={liveStandings.stage} filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} />
+                : <OverallTab finalByType={finalByType} filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} />}
             </div>
           )}
           {stageNumbers.map(n => activeTab === `stage-${n}` && (
-            <StageTab key={n} stage={n} results={results} profile={profileByStage[n]} />
+            <StageTab key={n} stage={n} results={results} profile={profileByStage[n]}
+              filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} t={t} />
           ))}
         </>
       )}
@@ -405,12 +463,16 @@ export default function RaceDetailPage() {
         <div className="space-y-5">
           <StageProfileCard profile={profileByStage[1]} />
           <RaceRecap results={results} scopeType="overall" />
+          <div className="flex justify-end">
+            <TeamFilterSelect value={teamFilter} onChange={setTeamFilter} teamOptions={teamOptions} hasMyTeam={myTeamId != null} t={t} />
+          </div>
           <ResultTable
             title={t("detail.tableResult")}
-            rows={(finalByType.gc?.length ? finalByType.gc : results.filter(r => r.result_type === "stage").sort(byRank))}
+            rows={filterRowsByTeam(finalByType.gc?.length ? finalByType.gc : results.filter(r => r.result_type === "stage").sort(byRank))}
+            highlightTeamId={resolvedTeamFilter}
           />
           {finalByType.team?.length > 0 && (
-            <ResultTable title={t("detail.classification.team")} rows={finalByType.team} highlightWinner />
+            <ResultTable title={t("detail.classification.team")} rows={filterRowsByTeam(finalByType.team)} highlightWinner highlightTeamId={resolvedTeamFilter} />
           )}
         </div>
       )}
@@ -444,7 +506,7 @@ function RaceRecap({ results, scopeType, stageNumber }) {
   );
 }
 
-function OverallTab({ finalByType }) {
+function OverallTab({ finalByType, filterRows, myTeamId }) {
   const { t } = useTranslation("races");
   const any = CLASSIFICATIONS.some(c => finalByType[c.key]?.length > 0);
   if (!any) return (
@@ -455,9 +517,9 @@ function OverallTab({ finalByType }) {
   return (
     <div className="space-y-5">
       {CLASSIFICATIONS.map(c => {
-        const rows = finalByType[c.key];
+        const rows = filterRows(finalByType[c.key]);
         if (!rows?.length) return null;
-        return <ResultTable key={c.key} title={t(`detail.classification.${c.key}`)} rows={rows} highlightWinner={c.key === "team"} />;
+        return <ResultTable key={c.key} title={t(`detail.classification.${c.key}`)} rows={rows} highlightWinner={c.key === "team"} highlightTeamId={myTeamId} />;
       })}
     </div>
   );
@@ -466,7 +528,7 @@ function OverallTab({ finalByType }) {
 // #2081: løbende klassementer for et igangværende etapeløb — samme tabeller som
 // det endelige klassement, med eksplicit "stillingen efter etape N"-ramme så
 // ingen forveksler den med slutresultatet.
-function LiveOverallTab({ byType, stage }) {
+function LiveOverallTab({ byType, stage, filterRows, myTeamId }) {
   const { t } = useTranslation("races");
   return (
     <div className="space-y-5">
@@ -475,25 +537,28 @@ function LiveOverallTab({ byType, stage }) {
         <p className="text-xs text-cz-3 mt-0.5">{t("detail.liveStandings.note")}</p>
       </div>
       {CLASSIFICATIONS.map(c => {
-        const rows = byType[c.key];
+        const rows = filterRows(byType[c.key]);
         if (!rows?.length) return null;
-        return <ResultTable key={c.key} title={t(`detail.classification.${c.key}`)} rows={rows} highlightWinner={c.key === "team"} />;
+        return <ResultTable key={c.key} title={t(`detail.classification.${c.key}`)} rows={rows} highlightWinner={c.key === "team"} highlightTeamId={myTeamId} />;
       })}
     </div>
   );
 }
 
-function StageTab({ stage, results, profile }) {
-  const { t } = useTranslation("races");
-  const rows = results
-    .filter(r => r.result_type === "stage" && (r.stage_number ?? 1) === stage)
-    .sort(byRank);
+function StageTab({ stage, results, profile, filterRows, myTeamId, t }) {
+  const [classTab, setClassTab] = useState("stage");
+
+  const rows = filterRows(classificationRowsForStage(results, stage, classTab));
 
   // #2081: dag-rækkerne er nu FULDE klassementer (rank 1..N pr. etape) — trøje-
   // bæreren er eksplicit rank 1 (legacy-etaper har kun rank-1-rækker; samme filter).
   const jerseys = JERSEYS
     .map(j => ({ ...j, holder: results.find(r => r.result_type === j.dayType && (r.stage_number ?? 1) === stage && (r.rank ?? 1) === 1) }))
     .filter(j => j.holder);
+
+  const title = classTab === "stage"
+    ? t("detail.stageFinishOrder", { number: stage })
+    : `${t(`detail.classTab.${classTab}`)} — ${t("detail.liveStandings.title", { number: stage })}`;
 
   return (
     <div className="space-y-5">
@@ -523,7 +588,19 @@ function StageTab({ stage, results, profile }) {
         </div>
       )}
 
-      <ResultTable title={t("detail.stageFinishOrder", { number: stage })} rows={rows} />
+      {/* #2081: klassement-sub-faner — samme etape, forskellig klassement-linse. */}
+      <div className="flex gap-1.5 flex-wrap">
+        {STAGE_CLASS_TABS.map(key => (
+          <button key={key} type="button" onClick={() => setClassTab(key)}
+            aria-pressed={classTab === key}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border
+              ${classTab === key ? "bg-cz-accent/10 border-cz-accent/30 text-cz-accent-t" : "bg-cz-card border-cz-border text-cz-2 hover:text-cz-1"}`}>
+            {t(`detail.classTab.${key}`)}
+          </button>
+        ))}
+      </div>
+
+      <ResultTable title={title} rows={rows} highlightWinner={classTab === "team"} highlightTeamId={myTeamId} />
     </div>
   );
 }
