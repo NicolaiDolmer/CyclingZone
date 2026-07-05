@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../lib/supabase";
+import { fetchAllRows } from "../lib/supabasePagination";
 
 // Rytter-rangliste for den aktive sæson (#2175). Erstatter den gamle client-agg
 // der hentede ALLE ~38k race_results til browseren og aggregerede der (én fejlet
@@ -34,21 +35,29 @@ export function useRiderRankings() {
       setSeason(seasonData);
       if (!seasonData) { setRiders([]); return; }
 
-      // Færdig-aggregerede stats (lille: kun ryttere med resultater i sæsonen) +
-      // lette display/hold-felter (ferske). is_retired=false spejler den gamle
+      // Færdig-aggregerede stats (kun ryttere med resultater i sæsonen) + lette
+      // display/hold-felter (ferske). is_retired=false spejler den gamle
       // `r.rider.is_retired`-skip: pensionerede droppes ved merge.
-      const [statsRes, displayRes] = await Promise.all([
-        supabase.from("rider_rankings_mv").select("*").eq("season_id", seasonData.id),
-        supabase.from("riders")
+      //
+      // BEGGE queries SKAL pagineres via fetchAllRows: matview'et har >3k rækker
+      // og riders >5k, men PostgREST capper stille ved db-max-rows (1000). Et
+      // naivt .select() droppede derfor de fleste rangliste-ryttere — og de
+      // top-rangerede (nyere id'er uden for de første 1000) forsvandt helt (#2206).
+      // Stabil .order() er påkrævet af fetchAllRows for at undgå side-overlap.
+      const [statsData, displayData] = await Promise.all([
+        fetchAllRows(() => supabase
+          .from("rider_rankings_mv").select("*")
+          .eq("season_id", seasonData.id)
+          .order("rider_id", { ascending: true })),
+        fetchAllRows(() => supabase.from("riders")
           .select("id, firstname, lastname, birthdate, nationality_code, is_u25, is_retired, team:team_id(id, name, is_ai)")
-          .eq("is_retired", false),
+          .eq("is_retired", false)
+          .order("id", { ascending: true })),
       ]);
-      if (statsRes.error) throw statsRes.error;
-      if (displayRes.error) throw displayRes.error;
 
-      const displayById = new Map((displayRes.data || []).map((r) => [r.id, r]));
+      const displayById = new Map((displayData || []).map((r) => [r.id, r]));
       const rows = [];
-      for (const s of statsRes.data || []) {
+      for (const s of statsData || []) {
         const d = displayById.get(s.rider_id);
         if (!d) continue; // pensioneret/slettet → droppes (matcher gammel adfærd)
         const winTotal = WIN_KEYS.reduce((sum, k) => sum + n(s[k]), 0);

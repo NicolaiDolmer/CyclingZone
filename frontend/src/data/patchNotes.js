@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.63",
+    "date": "2026-07-05",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Rankings",
+        "en": {
+          "title": "The rider rankings now show every rider",
+          "body": "The full rider rankings page was only loading part of the field, and the top ranked riders could go missing entirely. It now shows every rider with results this season. The same fix also restores the team standings strength view and the points progression graph, which were quietly missing data for some teams."
+        },
+        "da": {
+          "title": "Rytterranglisten viser nu alle ryttere",
+          "body": "Den fulde rytterrangliste hentede kun en del af feltet, og de topplacerede ryttere kunne forsvinde helt. Den viser nu alle ryttere med resultater i denne sæson. Samme rettelse genskaber også styrke-visningen i holdstillingen og points-progressionsgrafen, som stille manglede data for nogle hold."
+        },
+        "refs": [2206]
+      }
+    ]
+  },
+  {
     "version": "6.62",
     "date": "2026-07-05",
     "label": "Beta",
