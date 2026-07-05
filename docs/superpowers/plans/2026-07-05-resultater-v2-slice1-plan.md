@@ -1036,3 +1036,17 @@ git push -u origin <branch-name>
 - Spec section C (findability) → Task 10.
 - Spec "Data/kontrakt" (CHECK constraint, `fetchAllRows` for broad reads) → Task 1 (constraint); `RaceDetailPage.jsx` already uses `fetchAllRows` (verified in research, line 146) — no change needed.
 - Spec "Scope-afgrænsning (YAGNI)" exclusions (per-rider relative gap-click, bonus seconds, sprint/KOM per checkpoint, live-ticker, staged-reveal animation) — none of these are implemented by this plan, consistent with the spec.
+
+## Patch-notes CI note (Task 12 close-out)
+
+Bumping to v6.64 triggers `scripts/check-patch-notes-version.js`'s new-top-version
+snapshot-refresh requirement. That requirement predates #2211 (same day, earlier),
+which dropped the fragile `/patch-notes` pixel-snapshot entirely (`skipSnapshot: true`
+in `core-smoke.spec.js`, kept only the blank-screen heading check) — so no snapshot
+files exist to refresh anymore. Verified: `2510dce1` (#2211) is already an ancestor of
+`origin/main`, and no `patch-notes-*.png` files exist in this branch's tree. The
+check script itself is stale relative to #2211 and will keep demanding an
+impossible snapshot refresh on every future top-version bump until it's updated —
+worth a follow-up issue. For THIS PR, using the script's own documented escape
+hatch (a commit message containing `[patch-notes-snapshot-ok]`) is the correct,
+intended way to pass this gate.
