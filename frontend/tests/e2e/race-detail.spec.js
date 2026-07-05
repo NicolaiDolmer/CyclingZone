@@ -98,8 +98,11 @@ test("race detail page renders stage tabs, jerseys and overall classifications",
   // Etape 1: trøje-badges + målrækkefølge + pr.-etape-gab (#959 gaps)
   await page.getByRole("button", { name: "Etape 1" }).click();
   await expect(page.getByText("Trøjer efter etapen")).toBeVisible();
+  // #2081: jersey-badges collide on text with the classTab button strip
+  // (added in 317e5dc7) for "Point"/"Bjerg"/"Ungdom" — scope to `span` so the
+  // classTab `<button>` can't match (same fix pattern as #1485/#1311 above).
   await expect(page.getByText("Fører", { exact: true })).toBeVisible();
-  await expect(page.getByText("Bjerg", { exact: true })).toBeVisible();
+  await expect(page.locator("span", { hasText: /^Bjerg$/ })).toBeVisible();
   await expect(page.getByText("Etape 1 · målrækkefølge")).toBeVisible();
   await expect(page.getByText("+0:23")).toBeVisible();
 
