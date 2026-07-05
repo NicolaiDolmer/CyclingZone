@@ -256,6 +256,9 @@ export const FINANCE_REASON = Object.freeze({
   SEASON_START_SPONSOR: "season_start_sponsor",
   SEASON_START_UPKEEP: "season_start_upkeep",
   SEASON_START_ACADEMY_DRIFT: "season_start_academy_drift",
+  // #1441 Fase 3 A1: facilitets-upkeep + staff-sæsonløn (payroll gold sinks)
+  SEASON_START_FACILITY_UPKEEP: "season_start_facility_upkeep",
+  SEASON_START_STAFF_SALARY: "season_start_staff_salary",
   SEASON_END_SALARY: "season_end_salary",
   SEASON_END_DIVISION_BONUS: "season_end_division_bonus",
   SEASON_END_NEGATIVE_INTEREST: "season_end_negative_interest",

@@ -57,6 +57,8 @@ import { reconcileAiTeamsForPool } from "./aiTeamGenerator.js";
 import { incrementBalanceWithAudit } from "./balanceRpc.js";
 import { closeTransferListingsForRiders } from "./marketUtils.js";
 import { ACADEMY } from "./academyFlag.js";
+import { FACILITIES_ENABLED } from "./facilityConstants.js";
+import { getFacilityUpkeepTotal } from "./facilityEngine.js";
 import {
   buildSponsorStandingsContext,
   computeSponsorForSeason,
@@ -435,7 +437,8 @@ export async function processSeasonStart(seasonId, deps = {}) {
 // #535: Returnerer både per-hold results (legacy) og aggregated summary så
 // processSeasonStart kan eksponere én struktureret payroll-summary til
 // admin-UI uden at admin skal læse finance_transactions manuelt.
-async function defaultRunSeasonPayroll(supabaseClient, seasonId, deps = {}) {
+// Eksporteret så tests kan asserte aggregate-summary-kontrakten direkte.
+export async function defaultRunSeasonPayroll(supabaseClient, seasonId, deps = {}) {
   const teamsWithRoster = await loadHumanSeasonEndTeams(supabaseClient);
   const processLoanInterestFn = deps.processLoanInterest ?? processLoanInterest;
   const createEmergencyLoanFn = deps.createEmergencyLoan ?? createEmergencyLoan;
@@ -468,6 +471,9 @@ async function defaultRunSeasonPayroll(supabaseClient, seasonId, deps = {}) {
     acc.upkeep_count += (p.upkeep_count || 0);
     acc.forced_sale_count += (p.forced_sale_count || 0);
     acc.forced_sale_total += (p.forced_sale_total || 0);
+    // #1441 Fase 3 A1: facilitets-upkeep + staff-sæsonløn (0 når flag disabled)
+    acc.facility_upkeep_total += (p.facility_upkeep || 0);
+    acc.staff_salary_total += (p.staff_salary || 0);
     return acc;
   }, {
     teams_processed: results.length,
@@ -483,6 +489,8 @@ async function defaultRunSeasonPayroll(supabaseClient, seasonId, deps = {}) {
     upkeep_count: 0,
     forced_sale_count: 0,
     forced_sale_total: 0,
+    facility_upkeep_total: 0,
+    staff_salary_total: 0,
   });
 
   return { results, summary };
@@ -745,6 +753,15 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
     console.log(`  🏭 ${team.name}: -${upkeepCharged} pts upkeep (div ${team.division})`);
   }
 
+  // 6+7. Facilitets-upkeep + staff-sæsonløn (#1441 Fase 3 A1) — flag-gated,
+  //      idempotent pr. sæson+hold. Ekstraheret til chargeFacilityCosts så tests
+  //      kan injicere enabled:true (FACILITIES_ENABLED er compile-time const=false).
+  const { facilityUpkeepCharged, staffSalaryCharged } = await chargeFacilityCosts({
+    team,
+    seasonId,
+    supabaseClient,
+  });
+
   return {
     team: team.name,
     team_id: team.id,
@@ -768,7 +785,69 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
     // B3: tvunget salg + breach-streak-eskalering (#1441/#97)
     forced_sale_count: forcedSaleCount,
     forced_sale_total: forcedSaleTotal,
+    // #1441 Fase 3 A1: facilitets-upkeep + staff-sæsonløn (0 når flag disabled)
+    facility_upkeep: facilityUpkeepCharged,
+    staff_salary: staffSalaryCharged,
   };
+}
+
+/**
+ * #1441 Fase 3 A1 · Facilitets-upkeep + staff-sæsonløn som payroll-sinks.
+ *
+ * Flag-gated (FACILITIES_ENABLED, compile-time const): når disabled queries
+ * team_facilities/team_staff slet ikke. `enabled` er injektionspunkt for tests.
+ * Begge debits er idempotente pr. sæson+hold (idempotencyKey).
+ * Returnerer { facilityUpkeepCharged, staffSalaryCharged } (rene tal).
+ */
+export async function chargeFacilityCosts({ team, seasonId, supabaseClient, enabled = FACILITIES_ENABLED }) {
+  let facilityUpkeepCharged = 0;
+  let staffSalaryCharged = 0;
+  if (!enabled) {
+    return { facilityUpkeepCharged, staffSalaryCharged };
+  }
+
+  // 6. Facilitets-upkeep — sum af tier-upkeep over holdets facility-tracks.
+  const { data: facilities, error: facError } = await supabaseClient
+    .from("team_facilities")
+    .select("track, tier")
+    .eq("team_id", team.id);
+  throwIfSupabaseError(facError, `Could not load facilities for ${team.name}`);
+  facilityUpkeepCharged = getFacilityUpkeepTotal(facilities || []);
+  if (facilityUpkeepCharged > 0) {
+    await debitTeam(team.id, facilityUpkeepCharged, "facility_upkeep", null, seasonId, supabaseClient, {
+      idempotent: true,
+      metadata: { code: "tx.facilityUpkeep", params: { tracks: (facilities || []).length } },
+      audit: {
+        sourcePath: "economyEngine.processSeasonStart.facilityUpkeep",
+        reasonCode: FINANCE_REASON.SEASON_START_FACILITY_UPKEEP,
+        idempotencyKey: `facility_upkeep:${team.id}:${seasonId}`,
+      },
+    });
+    console.log(`  🏗️ ${team.name}: -${facilityUpkeepCharged} pts facilitets-upkeep (${(facilities || []).length} tracks)`);
+  }
+
+  // 7. Staff-sæsonløn — sum af aktive staff-lønninger (fyrede tælles ikke).
+  const { data: staff, error: staffError } = await supabaseClient
+    .from("team_staff")
+    .select("salary")
+    .eq("team_id", team.id)
+    .eq("status", "active");
+  throwIfSupabaseError(staffError, `Could not load staff for ${team.name}`);
+  staffSalaryCharged = (staff || []).reduce((sum, row) => sum + (row.salary || 0), 0);
+  if (staffSalaryCharged > 0) {
+    await debitTeam(team.id, staffSalaryCharged, "staff_salary", null, seasonId, supabaseClient, {
+      idempotent: true,
+      metadata: { code: "tx.staffSalary", params: { count: (staff || []).length } },
+      audit: {
+        sourcePath: "economyEngine.processSeasonStart.staffSalary",
+        reasonCode: FINANCE_REASON.SEASON_START_STAFF_SALARY,
+        idempotencyKey: `staff_salary:${team.id}:${seasonId}`,
+      },
+    });
+    console.log(`  🧑‍💼 ${team.name}: -${staffSalaryCharged} pts staff-sæsonløn (${(staff || []).length} ansatte)`);
+  }
+
+  return { facilityUpkeepCharged, staffSalaryCharged };
 }
 
 async function loadSponsorStandingsContextForSeason(supabaseClient, seasonNumber) {
@@ -1938,7 +2017,8 @@ async function creditTeam(teamId, amount, type, description, seasonId, supabaseC
   return { skipped: result.skipped };
 }
 
-async function debitTeam(teamId, amount, type, description, seasonId, supabaseClient = null, options = {}) {
+// Eksporteret så facilityService (Wave A1, #1441) kan debitere via samme ledger-path.
+export async function debitTeam(teamId, amount, type, description, seasonId, supabaseClient = null, options = {}) {
   const client = supabaseClient ?? await getDefaultSupabaseClient();
   const audit = options.audit || {};
 

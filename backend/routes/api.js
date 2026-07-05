@@ -162,6 +162,14 @@ import {
   acceptOffer,
 } from "../lib/sponsorContractsService.js";
 import {
+  resolveActiveSeason as resolveFacilitySeason,
+  getClubFacilitiesHandler,
+  postFacilityUpgradeHandler,
+  getStaffCandidatesHandler,
+  postStaffHireHandler,
+  postStaffFireHandler,
+} from "../lib/facilityRoutesHandlers.js";
+import {
   buildSeasonEndPreviewRows,
   DEFAULT_SPONSOR_INCOME,
   loadHumanSeasonEndTeams,
@@ -7025,6 +7033,71 @@ router.post("/sponsor/offers/accept", requireAuth, async (req, res) => {
     const contract = await acceptOffer({ supabase, teamId: req.team.id, upcomingSeasonNumber: state.upcomingSeasonNumber, variant });
     res.json({ contract, upcomingSeasonNumber: state.upcomingSeasonNumber });
   } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
+// ── Klub: faciliteter + staff (#1441 Fase 3, bølge A1 — gated bag FACILITIES_ENABLED) ──
+// Tynde wrappers: auth + team-guard her; al logik/fejl-mapping i facilityRoutesHandlers.js
+// (unit-testet i lib/facilityRoutes.test.js — api.js selv er ikke unit-testbar).
+
+// GET /api/club/facilities — 5 spor m. tier, upgrade-pris, upkeep, staff, effektiv bonus.
+router.get("/club/facilities", requireAuth, async (req, res) => {
+  try {
+    if (!req.team?.id) return res.status(404).json({ error: "No team" });
+    const { status, body } = await getClubFacilitiesHandler({ teamId: req.team.id }, supabase);
+    res.status(status).json(body);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/club/facilities/upgrade — body { track }. Domænefejl → 400 (flag off → 403).
+router.post("/club/facilities/upgrade", requireAuth, async (req, res) => {
+  try {
+    if (!req.team?.id) return res.status(404).json({ error: "No team" });
+    const { seasonId, seasonNumber } = await resolveFacilitySeason(supabase);
+    const { status, body } = await postFacilityUpgradeHandler(
+      { teamId: req.team.id, track: req.body?.track, seasonId, seasonNumber },
+      supabase
+    );
+    res.status(status).json(body);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/club/staff/candidates?role=training — deterministiske kandidater for sporet.
+router.get("/club/staff/candidates", requireAuth, async (req, res) => {
+  try {
+    if (!req.team?.id) return res.status(404).json({ error: "No team" });
+    const { seasonNumber } = await resolveFacilitySeason(supabase);
+    const { status, body } = await getStaffCandidatesHandler(
+      { teamId: req.team.id, role: req.query?.role, seasonNumber },
+      supabase
+    );
+    res.status(status).json(body);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/club/staff/hire — body { role, candidateName }. role_occupied → 409.
+router.post("/club/staff/hire", requireAuth, async (req, res) => {
+  try {
+    if (!req.team?.id) return res.status(404).json({ error: "No team" });
+    const { seasonId, seasonNumber } = await resolveFacilitySeason(supabase);
+    const { status, body } = await postStaffHireHandler(
+      { teamId: req.team.id, role: req.body?.role, candidateName: req.body?.candidateName, seasonId, seasonNumber },
+      supabase
+    );
+    res.status(status).json(body);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/club/staff/fire — body { role }. no_active_staff → 404.
+router.post("/club/staff/fire", requireAuth, async (req, res) => {
+  try {
+    if (!req.team?.id) return res.status(404).json({ error: "No team" });
+    const { seasonId, seasonNumber } = await resolveFacilitySeason(supabase);
+    const { status, body } = await postStaffFireHandler(
+      { teamId: req.team.id, role: req.body?.role, seasonId, seasonNumber },
+      supabase
+    );
+    res.status(status).json(body);
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // PATCH /api/admin/loan-config — opdater lånekonfiguration
