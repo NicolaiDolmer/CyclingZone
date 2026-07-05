@@ -10,6 +10,7 @@ const {
   processDivisionEnd,
   processSeasonEnd,
   processSeasonStart,
+  chargeFacilityCosts,
   processTeamSeasonPayroll,
   repairSeasonEndFinanceAndBoard,
   updateRiderValues,
@@ -3674,4 +3675,173 @@ test("#1721: sæson-1-afledt modifier får FULD effekt på sæson-2-sponsor (ikk
     modifierApplied > 340000,
     `Sæson-2-sponsor skal afspejle modifier > 1.0 fra sæson-1-plan (fik ${modifierApplied}, base sponsor_income 340000)`
   );
+});
+
+// ─── #1441 Fase 3 A1 · Facilitets-upkeep + staff-sæsonløn (payroll-sinks) ─────
+// FACILITIES_ENABLED er en compile-time const (false). Injektionspunkt:
+// chargeFacilityCosts({ team, seasonId, supabaseClient, enabled }) — testes
+// direkte med enabled:true; payroll-testen dækker default-disabled-stien.
+
+function makeFacilitySupabase({ facilities = [], staff = [] } = {}) {
+  const financeRows = [];
+  const queriedTables = [];
+  const supabase = {
+    rpc(name, params) {
+      assert.equal(name, "increment_balance_with_audit");
+      financeRows.push({ team_id: params.p_team_id, ...params.p_finance_payload });
+      return Promise.resolve({ data: 0, error: null });
+    },
+    from(table) {
+      queriedTables.push(table);
+      if (table === "team_facilities") {
+        return {
+          select() {
+            return { eq() { return Promise.resolve({ data: facilities, error: null }); } };
+          },
+        };
+      }
+      if (table === "team_staff") {
+        return {
+          select() {
+            return {
+              eq() {
+                return { eq() { return Promise.resolve({ data: staff, error: null }); } };
+              },
+            };
+          },
+        };
+      }
+      throw new Error(`Unexpected table in facility-cost faken: ${table}`);
+    },
+  };
+  return { supabase, financeRows, queriedTables };
+}
+
+test("#1441 A1: chargeFacilityCosts debiterer summeret tier-upkeep som facility_upkeep med idempotency-key", async () => {
+  const { supabase, financeRows } = makeFacilitySupabase({
+    facilities: [
+      { track: "training", tier: 2 }, // 5_000
+      { track: "medical", tier: 1 },  // 2_000
+    ],
+  });
+  const team = { id: "team-fac-1", name: "Facility FC" };
+  const seasonId = "season-fac-1";
+
+  const result = await chargeFacilityCosts({ team, seasonId, supabaseClient: supabase, enabled: true });
+
+  assert.equal(result.facilityUpkeepCharged, 7_000);
+  const rows = financeRows.filter((r) => r.type === "facility_upkeep");
+  assert.equal(rows.length, 1, "Præcis én facility_upkeep-transaktion");
+  assert.equal(rows[0].amount, -7_000);
+  assert.equal(rows[0].team_id, "team-fac-1");
+  assert.equal(rows[0].idempotency_key, "facility_upkeep:team-fac-1:season-fac-1");
+});
+
+test("#1441 A1: chargeFacilityCosts debiterer aktiv staff-løn som staff_salary (fyrede tælles ikke)", async () => {
+  // Mocken returnerer kun aktive rows (query'en filtrerer .eq('status','active')) —
+  // fyrede staff-rows kommer aldrig tilbage fra queryen og indgår derfor ikke.
+  const { supabase, financeRows } = makeFacilitySupabase({
+    staff: [{ salary: 40_000 }],
+  });
+  const team = { id: "team-staff-1", name: "Staff FC" };
+  const seasonId = "season-staff-1";
+
+  const result = await chargeFacilityCosts({ team, seasonId, supabaseClient: supabase, enabled: true });
+
+  assert.equal(result.staffSalaryCharged, 40_000);
+  const rows = financeRows.filter((r) => r.type === "staff_salary");
+  assert.equal(rows.length, 1, "Præcis én staff_salary-transaktion");
+  assert.equal(rows[0].amount, -40_000);
+  assert.equal(rows[0].idempotency_key, "staff_salary:team-staff-1:season-staff-1");
+});
+
+test("#1441 A1: chargeFacilityCosts med staff-query verificerer status=active-filteret", async () => {
+  // Fang eq-kald: team_staff-queryen SKAL filtrere på status='active'.
+  const eqCalls = [];
+  const supabase = {
+    rpc() { return Promise.resolve({ data: 0, error: null }); },
+    from(table) {
+      if (table === "team_facilities") {
+        return { select() { return { eq() { return Promise.resolve({ data: [], error: null }); } }; } };
+      }
+      if (table === "team_staff") {
+        return {
+          select() {
+            return {
+              eq(col, val) {
+                eqCalls.push([col, val]);
+                return { eq(col2, val2) { eqCalls.push([col2, val2]); return Promise.resolve({ data: [], error: null }); } };
+              },
+            };
+          },
+        };
+      }
+      throw new Error(`Unexpected table: ${table}`);
+    },
+  };
+
+  await chargeFacilityCosts({ team: { id: "t1", name: "T1" }, seasonId: "s1", supabaseClient: supabase, enabled: true });
+  assert.deepEqual(eqCalls.find(([c]) => c === "status"), ["status", "active"], "team_staff-query skal filtrere status='active'");
+});
+
+test("#1441 A1: chargeFacilityCosts skriver INGEN debits ved 0 faciliteter/0 staff (flag enabled)", async () => {
+  const { supabase, financeRows } = makeFacilitySupabase({ facilities: [], staff: [] });
+
+  const result = await chargeFacilityCosts({
+    team: { id: "team-empty", name: "Empty FC" },
+    seasonId: "season-empty",
+    supabaseClient: supabase,
+    enabled: true,
+  });
+
+  assert.equal(result.facilityUpkeepCharged, 0);
+  assert.equal(result.staffSalaryCharged, 0);
+  assert.equal(financeRows.length, 0, "Ingen finance-rows ved 0 faciliteter og 0 staff");
+});
+
+test("#1441 A1: chargeFacilityCosts disabled → ingen queries, ingen debits", async () => {
+  const { supabase, financeRows, queriedTables } = makeFacilitySupabase({
+    facilities: [{ track: "training", tier: 5 }],
+    staff: [{ salary: 120_000 }],
+  });
+
+  const result = await chargeFacilityCosts({
+    team: { id: "team-off", name: "Off FC" },
+    seasonId: "season-off",
+    supabaseClient: supabase,
+    enabled: false,
+  });
+
+  assert.equal(result.facilityUpkeepCharged, 0);
+  assert.equal(result.staffSalaryCharged, 0);
+  assert.equal(queriedTables.length, 0, "Ingen team_facilities/team_staff-queries når disabled");
+  assert.equal(financeRows.length, 0);
+});
+
+test("#1441 A1: processTeamSeasonPayroll-summary indeholder facility_upkeep + staff_salary (0 ved default-disabled flag)", async () => {
+  const financeRows = [];
+  const supabase = makeUpkeepSupabase(financeRows);
+
+  const team = {
+    id: "team-fac-summary",
+    name: "Summary FC",
+    division: 2,
+    balance: 999_999,
+    riders: [],
+  };
+
+  const summary = await processTeamSeasonPayroll(team, "season-fac-summary", {
+    supabase,
+    seasonNumber: 2,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => {},
+    getTotalDebt: async () => 0,
+  });
+
+  assert.equal(summary.facility_upkeep, 0, "facility_upkeep-felt skal findes og være 0 med default-disabled flag");
+  assert.equal(summary.staff_salary, 0, "staff_salary-felt skal findes og være 0 med default-disabled flag");
+  // Default-flag (FACILITIES_ENABLED=false): makeUpkeepSupabase kender IKKE
+  // team_facilities/team_staff — ingen throw beviser at der ikke queries.
+  assert.equal(financeRows.filter((r) => r.type === "facility_upkeep").length, 0);
+  assert.equal(financeRows.filter((r) => r.type === "staff_salary").length, 0);
 });
