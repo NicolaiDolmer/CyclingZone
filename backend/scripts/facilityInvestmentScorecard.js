@@ -28,7 +28,12 @@ const fseas = (n) => (Number.isFinite(n) ? n.toFixed(1) : "∞");
 function resolveConstants() {
   const cfgArg = arg("config", null);
   if (!cfgArg || cfgArg === true) return { constants: DEFAULT_MODEL_CONSTANTS, overridden: false };
-  const cfg = JSON.parse(readFileSync(cfgArg, "utf8"));
+  let cfg;
+  try {
+    cfg = JSON.parse(readFileSync(cfgArg, "utf8"));
+  } catch (e) {
+    throw new Error(`Kunne ikke læse --config=${cfgArg}: ${e.message}`, { cause: e });
+  }
   const merged = { ...DEFAULT_MODEL_CONSTANTS };
   for (const key of ["price", "upkeep", "staffSalary", "effect", "sponsorBase", "minPaybackSeasons"]) {
     if (cfg[key] != null) {
@@ -101,8 +106,10 @@ function main() {
     };
     const isBaseline = sc.mult === 1.0;
     if (isBaseline) console.log(`  [${sc.name}]`);
+    const counts = [];
     for (const d of [1, 2, 3]) {
       const r = runAntiOptimalPath({ division: d, seasons, constants, leverage });
+      counts.push(r.competitiveCount);
       if (isBaseline) {
         baselineByDiv[d] = r;
         const parts = r.results
@@ -114,7 +121,6 @@ function main() {
       if (r.competitiveCount < 3) antiOptimalPass = false;
     }
     if (!isBaseline) {
-      const counts = [1, 2, 3].map((d) => runAntiOptimalPath({ division: d, seasons, constants, leverage }).competitiveCount);
       console.log(`  [${sc.name}] konkurrencedygtige pr. division: D1=${counts[0]} D2=${counts[1]} D3=${counts[2]} ${counts.every((c) => c >= 3) ? "✅" : "❌"}`);
     }
   }
