@@ -33,6 +33,8 @@ test("validateUpgrade: track, tier-loft, balance", () => {
   assert.equal(validateUpgrade({ track: "bogus", currentTier: 0, balance: 1e9 }), "invalid_track");
   assert.equal(validateUpgrade({ track: "training", currentTier: 5, balance: 1e9 }), "max_tier");
   assert.equal(validateUpgrade({ track: "training", currentTier: 0, balance: 10_000 }), "insufficient_funds");
+  assert.equal(validateUpgrade({ track: "training", currentTier: -1, balance: 1e9 }), "invalid_tier");
+  assert.equal(validateUpgrade({ track: "training", currentTier: NaN, balance: 1e9 }), "invalid_tier");
 });
 
 test("validateHire: staff-tier gated af facilitets-tier (spec §2.2)", () => {
@@ -40,4 +42,11 @@ test("validateHire: staff-tier gated af facilitets-tier (spec §2.2)", () => {
   assert.equal(validateHire({ role: "training", staffTier: 4, facilityTier: 3, balance: 1e9 }), "staff_tier_exceeds_facility");
   assert.equal(validateHire({ role: "training", staffTier: 1, facilityTier: 1, balance: 5_000 }), "insufficient_funds");
   assert.equal(validateHire({ role: "bogus", staffTier: 1, facilityTier: 1, balance: 1e9 }), "invalid_role");
+  assert.equal(validateHire({ role: "training", staffTier: 0, facilityTier: 5, balance: 1e9 }), "invalid_staff_tier");
+  assert.equal(validateHire({ role: "training", staffTier: 7, facilityTier: 5, balance: 1e9 }), "invalid_staff_tier");
+});
+
+test("edge: ukendt tier/track giver 0, ikke crash", () => {
+  assert.equal(getFacilityUpkeepTotal([{ track: "training", tier: 9 }]), 0);
+  assert.equal(effectiveBonus("bogus", 3, 3), 0);
 });

@@ -33,6 +33,7 @@ function hashString(s) {
 
 export function generateStaffCandidates({ teamId, seasonNumber, role, facilityTier }) {
   const rand = mulberry32(hashString(`${teamId}:${seasonNumber}:${role}`));
+  // facilityTier 0 giver stadig tier-1-kandidater (teaser i UI); selve ansættelsen blokeres af validateHire (staff-tier > facilitets-tier).
   const maxTier = Math.max(1, Math.min(5, facilityTier));
   const candidates = [];
   const usedNames = new Set();

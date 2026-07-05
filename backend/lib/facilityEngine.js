@@ -32,6 +32,7 @@ export function effectiveBonus(track, facilityTier, staffTier) {
 }
 
 export function validateUpgrade({ track, currentTier, balance }) {
+  if (!Number.isInteger(currentTier) || currentTier < 0) return "invalid_tier";
   if (!FACILITY_TRACKS.includes(track)) return "invalid_track";
   const price = getUpgradePrice(currentTier);
   if (price == null) return "max_tier";
@@ -40,6 +41,7 @@ export function validateUpgrade({ track, currentTier, balance }) {
 }
 
 export function validateHire({ role, staffTier, facilityTier, balance }) {
+  if (!Number.isInteger(staffTier) || staffTier < 1 || staffTier > MAX_FACILITY_TIER) return "invalid_staff_tier";
   if (!FACILITY_TRACKS.includes(role)) return "invalid_role";
   if (staffTier > facilityTier) return "staff_tier_exceeds_facility";
   if (balance < STAFF_SALARY_BY_TIER[staffTier]) return "insufficient_funds";

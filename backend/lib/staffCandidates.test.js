@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { generateStaffCandidates, STAFF_NAME_POOL } from "./staffCandidates.js";
+import { getStaffSalary } from "./facilityEngine.js";
 
 const ARGS = { teamId: "11111111-1111-1111-1111-111111111111", seasonNumber: 3, role: "training", facilityTier: 3 };
 
@@ -17,6 +18,7 @@ test("kandidat-tiers overstiger aldrig facilitets-tier og salary matcher tier", 
     assert.equal(typeof c.name, "string");
     assert.ok(STAFF_NAME_POOL.includes(c.name));
     assert.ok(c.salary > 0);
+    assert.equal(c.salary, getStaffSalary(c.tier));
   }
 });
 
