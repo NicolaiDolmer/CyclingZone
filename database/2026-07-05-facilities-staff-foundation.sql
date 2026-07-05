@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS team_facilities (
   track TEXT NOT NULL CHECK (track IN ('training','scouting','medical','academy','commercial')),
   tier INTEGER NOT NULL DEFAULT 0 CHECK (tier BETWEEN 0 AND 5),
   purchased_season INTEGER,
+  -- NB: updated_at vedligeholdes af app-koden (repo-konvention: ingen update-triggers) — backend-UPDATEs SKAL sætte den eksplicit.
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   UNIQUE (team_id, track)
 );
@@ -26,11 +27,14 @@ CREATE TABLE IF NOT EXISTS team_staff (
   salary BIGINT NOT NULL CHECK (salary >= 0),
   hired_season INTEGER NOT NULL,
   status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','fired')),
+  fired_season INTEGER,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+COMMENT ON COLUMN team_staff.fired_season IS 'season_number hvor staff blev fyret (audit trail); NULL mens active.';
 COMMENT ON TABLE team_staff IS 'Navngivet staff (1 aktiv pr. rolle pr. hold). Sæsonløn = løbende sink. salary frosset ved ansættelse.';
 CREATE UNIQUE INDEX IF NOT EXISTS idx_team_staff_active_role
   ON team_staff(team_id, role) WHERE status = 'active';
+CREATE INDEX IF NOT EXISTS idx_team_staff_team_id ON team_staff(team_id);
 
 -- Finance-typer (twin-guard mod #1463/#1465-fælden: type SKAL i CHECK'et i SAMME PR som koden).
 ALTER TABLE finance_transactions DROP CONSTRAINT IF EXISTS finance_transactions_type_check;
@@ -47,10 +51,10 @@ ALTER TABLE team_facilities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE team_staff ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS team_facilities_owner_select ON team_facilities;
 CREATE POLICY team_facilities_owner_select ON team_facilities FOR SELECT TO authenticated
-  USING (team_id IN (SELECT id FROM teams WHERE user_id = auth.uid()));
+  USING (team_id IN (SELECT id FROM teams WHERE user_id = (select auth.uid())));
 DROP POLICY IF EXISTS team_staff_owner_select ON team_staff;
 CREATE POLICY team_staff_owner_select ON team_staff FOR SELECT TO authenticated
-  USING (team_id IN (SELECT id FROM teams WHERE user_id = auth.uid()));
+  USING (team_id IN (SELECT id FROM teams WHERE user_id = (select auth.uid())));
 GRANT SELECT ON team_facilities TO authenticated;
 GRANT SELECT ON team_staff TO authenticated;
 -- Skrivning: KUN service_role (backend). Ingen INSERT/UPDATE-policies til authenticated.

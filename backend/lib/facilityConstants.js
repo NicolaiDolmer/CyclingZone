@@ -4,7 +4,7 @@
 // enkeltvis så economyCalibrationOverrides kan sweepe dem.
 
 // Hård gate: køb/ansæt/payroll-debits er no-ops mens false. Tændes KUN efter
-// A2-harness-grøn + ejer-go (samme mønster som academyFlag.isAcademyEnabled).
+// A2-harness-grøn + ejer-go (kode-konstant (kræver deploy at flippe); om den skal være app_config-runtime-gated som academy afgøres i A2).
 export const FACILITIES_ENABLED = false;
 
 export const FACILITY_TRACKS = Object.freeze(["training", "scouting", "medical", "academy", "commercial"]);
