@@ -87,6 +87,10 @@ export default function RacesPage() {
   const [libFilterClass, setLibFilterClass] = useState("");
   const [libFilterStatus, setLibFilterStatus] = useState("");
   const [libSearch, setLibSearch] = useState("");
+  // #2081 (zootne, Discord 2/7): "hvad kørte jeg i dag" er lettere at finde når
+  // listen er begrænset til egen pulje. Genbruger myPoolId (allerede hentet i
+  // loadAll for kalender-fanen — samme state, ikke division-specifik data).
+  const [libMyDivisionOnly, setLibMyDivisionOnly] = useState(false);
 
   // World pool state (Slice 09 — lazy load når tab="world" åbnes)
   const [worldPool, setWorldPool] = useState([]);
@@ -148,7 +152,7 @@ export default function RacesPage() {
     const [racesRes, seasonsRes] = await Promise.all([
       supabase
         .from("races")
-        .select("id, name, race_type, race_class, stages, stages_completed, status, edition_year, pool_race:pool_race_id(date_text), season:season_id(id, number, status)")
+        .select("id, name, race_type, race_class, stages, stages_completed, status, edition_year, league_division_id, pool_race:pool_race_id(date_text), season:season_id(id, number, status)")
         .order("name"),
       supabase
         .from("seasons")
@@ -173,14 +177,18 @@ export default function RacesPage() {
   }, [tab, libLoaded, libLoading, worldLoaded, worldLoading]);
 
   const filteredLibRaces = useMemo(() => {
-    return libRaces.filter(r => {
+    const base = libMyDivisionOnly ? racesForPool(libRaces, myPoolId) : libRaces;
+    const filtered = base.filter(r => {
       if (libFilterSeason && r.season?.id !== libFilterSeason) return false;
       if (libFilterClass && r.race_class !== libFilterClass) return false;
       if (libFilterStatus && r.status !== libFilterStatus) return false;
       if (libSearch && !r.name.toLowerCase().includes(libSearch.toLowerCase())) return false;
       return true;
     });
-  }, [libRaces, libFilterSeason, libFilterClass, libFilterStatus, libSearch]);
+    // #2081: nyeste (afsluttede) løb først i stedet for alfabetisk — "hvad kørte
+    // jeg i dag" skal ligge øverst uden at spilleren skal gennemgå hele listen.
+    return sortRacesByDateDesc(filtered);
+  }, [libRaces, libFilterSeason, libFilterClass, libFilterStatus, libSearch, libMyDivisionOnly, myPoolId]);
 
   async function loadRaceResults(raceId) {
     const { data } = await supabase
@@ -414,16 +422,25 @@ export default function RacesPage() {
                 ))}
               </Select>
             </div>
+            <div>
+              <label htmlFor="lib-my-division" className={labelClass()}>{t("library.myDivisionOnly")}</label>
+              <label htmlFor="lib-my-division" className="flex items-center gap-2 h-10 px-1 cursor-pointer select-none">
+                <input id="lib-my-division" type="checkbox" checked={libMyDivisionOnly}
+                  onChange={e => setLibMyDivisionOnly(e.target.checked)}
+                  className="rounded border-cz-border" />
+                <span className="text-sm text-cz-2">{t("library.myDivisionOnly")}</span>
+              </label>
+            </div>
           </Card>
 
-          {(libFilterSeason || libFilterClass || libFilterStatus || libSearch) && (
+          {(libFilterSeason || libFilterClass || libFilterStatus || libSearch || libMyDivisionOnly) && (
             <div className="flex items-center justify-between mb-3 px-1">
               <p className="text-cz-3 text-xs">
                 {t("library.filteredCount", { filtered: filteredLibRaces.length, total: libRaces.length })}
               </p>
               <button
                 onClick={() => {
-                  setLibFilterSeason(""); setLibFilterClass(""); setLibFilterStatus(""); setLibSearch("");
+                  setLibFilterSeason(""); setLibFilterClass(""); setLibFilterStatus(""); setLibSearch(""); setLibMyDivisionOnly(false);
                 }}
                 className="text-cz-accent-t text-xs hover:underline">
                 {t("library.clearFilters")}

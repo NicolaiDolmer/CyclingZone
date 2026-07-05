@@ -213,6 +213,36 @@ test("#2072: klassementer på mellem-etape = akkumulering af persisterede gaps +
   assert.ok(!rows.some((r) => r.result_type === "team"), "mellem-etape må ikke skrive team-rækker");
 });
 
+test("#2081: team_day emitteres på mellem-etape (stage-by-stage-stien), ikke 'team'", async () => {
+  const prior = [
+    stageRow(1, "b4", 1, "+0:00"),
+    stageRow(1, "climber", 2, "+0:10"),
+    stageRow(1, "sprinter", 3, "+5:00"),
+    stageRow(1, "a3", 4, "+5:00"),
+    stageRow(1, "a4", 5, "+5:00"),
+    stageRow(1, "b1", 6, "+5:00"),
+    stageRow(1, "b2", 7, "+5:00"),
+    stageRow(1, "b3", 8, "+5:00"),
+  ];
+  const race = { ...STAGE_RACE, stages_completed: 1 };
+  const supabase = cannedFor(race, STAGES_3, { race_results: prior });
+  const cap = captureStageResult();
+  await simulateStageByIndex({
+    supabase, race, stageIndex: 1, // etape 2 (mellem-etape)
+    ...NOOP_DEPS,
+    applyStageResult: cap.applyStageResult,
+  });
+  const rows = cap.rows();
+  const teamDay = rows.filter((r) => r.result_type === "team_day");
+  assert.equal(teamDay.length, 2, "2 hold (A, B)");
+  assert.deepEqual(teamDay.map((r) => r.rank).sort(), [1, 2]);
+  assert.ok(teamDay.every((r) => r.stage_number === 2), "team_day bærer dagens stage_number");
+  assert.ok(!rows.some((r) => r.result_type === "team"), "mellem-etape må stadig ikke skrive 'team'-rækker");
+  for (const r of teamDay) {
+    assert.equal(r.points_earned, 0, "cannedFor har tom race_points → 0 point");
+  }
+});
+
 test("#2072 accept: slut-GC = sum af persisterede etape-gaps — modsiger ALDRIG publicerede resultater", async () => {
   // Vuelta Burgalesa-formen: de persisterede etaper siger at 'climber' samlet står
   // LANGT foran alle. En frisk re-simulation (gamle arkitektur) kunne sige noget

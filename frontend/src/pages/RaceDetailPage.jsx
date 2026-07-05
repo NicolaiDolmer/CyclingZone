@@ -17,6 +17,7 @@ import { logEvent } from "../lib/logEvent";
 import { profileShape, profileLabelKey, finaleLabelKey } from "../lib/stageProfileConfig";
 import { deriveRaceStatus } from "../lib/raceHubLogic.js";
 import { buildLiveStandings } from "../lib/raceLiveStandings.js";
+import { classificationRowsForStage } from "../lib/raceStageClassifications.js";
 import { bucketCounts, terrainBucket } from "../lib/stageTerrain.js";
 import { RACE_TIMEZONE, countdownParts, countdownSegments } from "../lib/stageScheduleConfig.js";
 
@@ -43,6 +44,10 @@ const CLASSIFICATIONS = [
   { key: "young" },
   { key: "team" },
 ];
+
+// #2081: klassement-sub-faner INDE i en etape-fane (Stage · Overall · Points ·
+// Mountain · Youth · Teams) — samme 5 nøgler som CLASSIFICATIONS + 'stage'.
+const STAGE_CLASS_TABS = ["stage", "gc", "points", "mountain", "young", "team"];
 
 // Daglige trøjebærere — vist som badges på hver etape-fane.
 // Label kommer fra t(`detail.jersey.${dayType}`).
@@ -81,6 +86,26 @@ function byRank(a, b) {
   return (a.rank ?? 9999) - (b.rank ?? 9999);
 }
 
+// #2081 Discord-ønske: holdfilter (alle / mit hold / vælg hold) — delt af Samlet-
+// og etape-fanerne, så filteret følger med når man skifter etape.
+function TeamFilterSelect({ value, onChange, teamOptions, hasMyTeam, t }) {
+  return (
+    <select
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      aria-label={t("detail.teamFilter.label")}
+      className={`px-3 py-2 rounded-lg text-sm font-medium transition-all border max-w-[14rem] cursor-pointer
+        focus:outline-none focus:ring-1 focus:ring-cz-accent
+        ${value !== "all" ? "bg-cz-accent/10 border-cz-accent/30 text-cz-accent-t" : "bg-cz-card border-cz-border text-cz-2"}`}>
+      <option value="all">{t("detail.teamFilter.all")}</option>
+      {hasMyTeam && <option value="mine">{t("detail.teamFilter.mine")}</option>}
+      {teamOptions.map(team => (
+        <option key={team.id} value={team.id}>{team.name}</option>
+      ))}
+    </select>
+  );
+}
+
 // Etape-tid i København-tid (HH:MM) — kompakt til stribe-chip + header.
 function formatStageTime(date, locale) {
   try {
@@ -109,6 +134,8 @@ export default function RaceDetailPage() {
   const [nowMs, setNowMs] = useState(() => Date.now());
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [teamFilter, setTeamFilter] = useState("all"); // "all" | "mine" | teamId
+  const [myTeamId, setMyTeamId] = useState(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(() => {
     const s = searchParams.get("stage");
@@ -143,7 +170,17 @@ export default function RaceDetailPage() {
       return;
     }
 
-    const rows = await fetchAllRows(() =>
+    // #2081 code-review: myTeamId ikke afhængig af raceRow og bruges først ved
+    // render — kør den SAMTIDIG med de øvrige uafhængige queries (ikke sekventielt
+    // foran race_results) for at undgå en ekstra round-trip i critical path.
+    const myTeamPromise = (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+      const { data: myTeam } = await supabase.from("teams").select("id").eq("user_id", user.id).maybeSingle();
+      return myTeam?.id ?? null;
+    })();
+
+    const rowsPromise = fetchAllRows(() =>
       supabase
         .from("race_results")
         .select("id, stage_number, result_type, rank, rider_id, rider_name, team_id, team_name, finish_time, points_earned, prize_money, in_breakaway, breakaway_caught, rider:rider_id(id, firstname, lastname, nationality_code, team:team_id(id, name)), team:team_id(id, name)")
@@ -154,7 +191,7 @@ export default function RaceDetailPage() {
     // #1484 Stiliseret terræn-indikator. race_stage_profiles er læsbar for
     // authenticated (siden er auth-gated via ProtectedRoute). Degraderer pænt:
     // en fejl/tom tabel → ingen profil-badges, ingen fejl-UI.
-    const { data: profiles } = await supabase
+    const profilesPromise = supabase
       .from("race_stage_profiles")
       .select("stage_number, profile_type, finale_type, demand_vector")
       .eq("race_id", raceId)
@@ -162,12 +199,17 @@ export default function RaceDetailPage() {
 
     // #1597 → S4: etape-kalenderen foldes ind i etape-striben (per-etape-tid) +
     // næste-start-countdown i headeren. Degraderer pænt (tom = ingen tider).
-    const { data: scheduleRows } = await supabase
+    const schedulePromise = supabase
       .from("race_stage_schedule")
       .select("stage_number, scheduled_at")
       .eq("race_id", raceId)
       .order("stage_number", { ascending: true });
 
+    const [myTeamId, rows, { data: profiles }, { data: scheduleRows }] = await Promise.all([
+      myTeamPromise, rowsPromise, profilesPromise, schedulePromise,
+    ]);
+
+    setMyTeamId(myTeamId);
     setRace(raceRow);
     setResults(rows);
     setStageProfiles(profiles ?? []);
@@ -260,6 +302,34 @@ export default function RaceDetailPage() {
     if (race?.race_type !== "stage_race" || finalByType.gc?.length) return null;
     return buildLiveStandings(results);
   }, [race?.race_type, finalByType, results]);
+
+  // #2081: "mit hold" løses til den faktiske team_id (kan være ukendt hvis ikke logget
+  // ind endnu ved første render) — "all" og en eksplicit team_id går uændret igennem.
+  const resolvedTeamFilter = teamFilter === "mine" ? myTeamId : (teamFilter === "all" ? null : teamFilter);
+
+  // Holdfilter-valgmuligheder: unikke {id, name} par fundet i de indlæste resultater.
+  const teamOptions = useMemo(() => {
+    const byId = new Map();
+    for (const r of results) {
+      const id = r.rider?.team?.id ?? r.team_id;
+      const name = r.rider?.team?.name ?? r.team_name;
+      if (id != null && name && !byId.has(String(id))) byId.set(String(id), { id, name });
+    }
+    return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }, [results]);
+
+  function filterRowsByTeam(rows) {
+    if (resolvedTeamFilter == null) return rows;
+    return (rows || []).filter(r => String(r.team_id ?? r.rider?.team?.id) === String(resolvedTeamFilter));
+  }
+
+  // #2081 code-review: samme TeamFilterSelect-wiring optrådte identisk i både
+  // etapeløbs- og enkeltdagsløbs-render-grenen — udtrukket én gang her.
+  const teamFilterBar = (
+    <div className="flex justify-end">
+      <TeamFilterSelect value={teamFilter} onChange={setTeamFilter} teamOptions={teamOptions} hasMyTeam={myTeamId != null} t={t} />
+    </div>
+  );
 
   // Sørg for at active tab altid er gyldig når data skifter.
   useEffect(() => {
@@ -386,16 +456,19 @@ export default function RaceDetailPage() {
             onSelect={(v) => changeTab(v === "overall" ? "samlet" : `stage-${v}`)}
           />
 
+          {teamFilterBar}
+
           {activeTab === "samlet" && (
             <div className="space-y-5">
               <RaceRecap results={results} scopeType="overall" />
               {liveStandings
-                ? <LiveOverallTab byType={liveStandings.byType} stage={liveStandings.stage} />
-                : <OverallTab finalByType={finalByType} />}
+                ? <LiveOverallTab byType={liveStandings.byType} stage={liveStandings.stage} filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} />
+                : <OverallTab finalByType={finalByType} filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} />}
             </div>
           )}
           {stageNumbers.map(n => activeTab === `stage-${n}` && (
-            <StageTab key={n} stage={n} results={results} profile={profileByStage[n]} />
+            <StageTab key={n} stage={n} results={results} profile={profileByStage[n]}
+              filterRows={filterRowsByTeam} myTeamId={resolvedTeamFilter} t={t} />
           ))}
         </>
       )}
@@ -405,12 +478,14 @@ export default function RaceDetailPage() {
         <div className="space-y-5">
           <StageProfileCard profile={profileByStage[1]} />
           <RaceRecap results={results} scopeType="overall" />
+          {teamFilterBar}
           <ResultTable
             title={t("detail.tableResult")}
-            rows={(finalByType.gc?.length ? finalByType.gc : results.filter(r => r.result_type === "stage").sort(byRank))}
+            rows={filterRowsByTeam(finalByType.gc?.length ? finalByType.gc : results.filter(r => r.result_type === "stage").sort(byRank))}
+            highlightTeamId={resolvedTeamFilter}
           />
           {finalByType.team?.length > 0 && (
-            <ResultTable title={t("detail.classification.team")} rows={finalByType.team} highlightWinner />
+            <ResultTable title={t("detail.classification.team")} rows={filterRowsByTeam(finalByType.team)} highlightWinner highlightTeamId={resolvedTeamFilter} />
           )}
         </div>
       )}
@@ -444,7 +519,7 @@ function RaceRecap({ results, scopeType, stageNumber }) {
   );
 }
 
-function OverallTab({ finalByType }) {
+function OverallTab({ finalByType, filterRows, myTeamId }) {
   const { t } = useTranslation("races");
   const any = CLASSIFICATIONS.some(c => finalByType[c.key]?.length > 0);
   if (!any) return (
@@ -455,9 +530,9 @@ function OverallTab({ finalByType }) {
   return (
     <div className="space-y-5">
       {CLASSIFICATIONS.map(c => {
-        const rows = finalByType[c.key];
+        const rows = filterRows(finalByType[c.key]);
         if (!rows?.length) return null;
-        return <ResultTable key={c.key} title={t(`detail.classification.${c.key}`)} rows={rows} highlightWinner={c.key === "team"} />;
+        return <ResultTable key={c.key} title={t(`detail.classification.${c.key}`)} rows={rows} highlightWinner={c.key === "team"} highlightTeamId={myTeamId} />;
       })}
     </div>
   );
@@ -466,7 +541,7 @@ function OverallTab({ finalByType }) {
 // #2081: løbende klassementer for et igangværende etapeløb — samme tabeller som
 // det endelige klassement, med eksplicit "stillingen efter etape N"-ramme så
 // ingen forveksler den med slutresultatet.
-function LiveOverallTab({ byType, stage }) {
+function LiveOverallTab({ byType, stage, filterRows, myTeamId }) {
   const { t } = useTranslation("races");
   return (
     <div className="space-y-5">
@@ -475,25 +550,28 @@ function LiveOverallTab({ byType, stage }) {
         <p className="text-xs text-cz-3 mt-0.5">{t("detail.liveStandings.note")}</p>
       </div>
       {CLASSIFICATIONS.map(c => {
-        const rows = byType[c.key];
+        const rows = filterRows(byType[c.key]);
         if (!rows?.length) return null;
-        return <ResultTable key={c.key} title={t(`detail.classification.${c.key}`)} rows={rows} highlightWinner={c.key === "team"} />;
+        return <ResultTable key={c.key} title={t(`detail.classification.${c.key}`)} rows={rows} highlightWinner={c.key === "team"} highlightTeamId={myTeamId} />;
       })}
     </div>
   );
 }
 
-function StageTab({ stage, results, profile }) {
-  const { t } = useTranslation("races");
-  const rows = results
-    .filter(r => r.result_type === "stage" && (r.stage_number ?? 1) === stage)
-    .sort(byRank);
+function StageTab({ stage, results, profile, filterRows, myTeamId, t }) {
+  const [classTab, setClassTab] = useState("stage");
+
+  const rows = filterRows(classificationRowsForStage(results, stage, classTab));
 
   // #2081: dag-rækkerne er nu FULDE klassementer (rank 1..N pr. etape) — trøje-
   // bæreren er eksplicit rank 1 (legacy-etaper har kun rank-1-rækker; samme filter).
   const jerseys = JERSEYS
     .map(j => ({ ...j, holder: results.find(r => r.result_type === j.dayType && (r.stage_number ?? 1) === stage && (r.rank ?? 1) === 1) }))
     .filter(j => j.holder);
+
+  const title = classTab === "stage"
+    ? t("detail.stageFinishOrder", { number: stage })
+    : `${t(`detail.classTab.${classTab}`)} — ${t("detail.liveStandings.title", { number: stage })}`;
 
   return (
     <div className="space-y-5">
@@ -523,7 +601,19 @@ function StageTab({ stage, results, profile }) {
         </div>
       )}
 
-      <ResultTable title={t("detail.stageFinishOrder", { number: stage })} rows={rows} />
+      {/* #2081: klassement-sub-faner — samme etape, forskellig klassement-linse. */}
+      <div className="flex gap-1.5 flex-wrap">
+        {STAGE_CLASS_TABS.map(key => (
+          <button key={key} type="button" onClick={() => setClassTab(key)}
+            aria-pressed={classTab === key}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border
+              ${classTab === key ? "bg-cz-accent/10 border-cz-accent/30 text-cz-accent-t" : "bg-cz-card border-cz-border text-cz-2 hover:text-cz-1"}`}>
+            {t(`detail.classTab.${key}`)}
+          </button>
+        ))}
+      </div>
+
+      <ResultTable title={title} rows={rows} highlightWinner={classTab === "team"} highlightTeamId={myTeamId} />
     </div>
   );
 }
@@ -613,28 +703,40 @@ function ResultEntityCell({ row, highlightWinner, t }) {
   );
 }
 
-function ResultTable({ title, rows, highlightWinner = false }) {
+function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = null, defaultLimit = 10 }) {
   const { t } = useTranslation("races");
+  const [expanded, setExpanded] = useState(false);
   const showPoints = rows.some(r => (r.points_earned ?? 0) > 0);
   // Gap-kolonne kun når motoren har skrevet tider (stage/gc fra Race Engine v2);
   // gamle PCM-løb og point/bjerg/ungdom/hold-klassementer har tom finish_time.
   const showTime = rows.some(r => r.finish_time);
   // Holdklassement (rider_id=null) har ingen rytter-team-kolonne at vise.
   const showTeamCol = rows.some(r => resultEntity(r).kind === "rider");
+  // #2081 (Discord-ønske): top-10 default + "Show all N"-knap, når feltet er stort.
+  const collapsible = rows.length > defaultLimit;
+  const visibleRows = collapsible && !expanded ? rows.slice(0, defaultLimit) : rows;
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
-      <div className="px-4 py-3 border-b border-cz-border">
+      <div className="px-4 py-3 border-b border-cz-border flex items-center justify-between gap-3">
         <h2 className="font-semibold text-cz-1 text-sm">{title}</h2>
+        {collapsible && (
+          <button type="button" onClick={() => setExpanded(e => !e)}
+            aria-pressed={expanded}
+            className="text-xs text-cz-accent-t hover:underline shrink-0">
+            {expanded ? t("detail.showLess") : t("detail.showAll", { count: rows.length })}
+          </button>
+        )}
       </div>
       {rows.length === 0 ? (
         <div className="px-4 py-8 text-center text-cz-3 text-sm">{t("detail.noResults")}</div>
       ) : (
         <table className="w-full text-sm">
           <tbody className="divide-y divide-cz-border">
-            {rows.map(r => {
+            {visibleRows.map(r => {
               const isWinner = highlightWinner && r.rank === 1;
+              const isMyTeam = highlightTeamId != null && String(r.team_id) === String(highlightTeamId);
               return (
-              <tr key={r.id} className={`transition-colors ${isWinner ? "bg-cz-accent/10" : "hover:bg-cz-subtle"}`}>
+              <tr key={r.id} className={`transition-colors ${isWinner ? "bg-cz-accent/10" : isMyTeam ? "bg-cz-accent/5" : "hover:bg-cz-subtle"}`}>
                 <td className={`px-4 py-2 w-10 font-mono text-xs ${isWinner ? "text-cz-accent-t" : "text-cz-3"}`}>{r.rank ?? "—"}</td>
                 <td className="px-2 py-2">
                   <ResultEntityCell row={r} highlightWinner={highlightWinner} t={t} />
