@@ -167,6 +167,7 @@
     "allClasses": "All classes",
     "statusLabel": "Status",
     "allStatuses": "All",
+    "myDivisionOnly": "My division only",
     "filteredCount": "{filtered} of {total} races",
     "clearFilters": "Clear filters",
     "thRace": "Race",
@@ -390,6 +391,21 @@
       "young": "Young rider",
       "team": "Team classification"
     },
+    "classTab": {
+      "stage": "Stage",
+      "gc": "Overall",
+      "points": "Points",
+      "mountain": "Mountain",
+      "young": "Youth",
+      "team": "Teams"
+    },
+    "teamFilter": {
+      "label": "Team",
+      "all": "All teams",
+      "mine": "My team"
+    },
+    "showAll": "Show all {count} ↓",
+    "showLess": "Hide ↑",
     "team": {
       "winner": "Winner"
     },

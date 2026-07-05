@@ -167,6 +167,7 @@
     "allClasses": "Alle klasser",
     "statusLabel": "Status",
     "allStatuses": "Alle",
+    "myDivisionOnly": "Kun min division",
     "filteredCount": "{filtered} af {total} løb",
     "clearFilters": "Ryd filtre",
     "thRace": "Løb",
@@ -390,6 +391,21 @@
       "young": "Ungdom",
       "team": "Holdkonkurrence"
     },
+    "classTab": {
+      "stage": "Etape",
+      "gc": "Samlet",
+      "points": "Point",
+      "mountain": "Bjerg",
+      "young": "Ungdom",
+      "team": "Hold"
+    },
+    "teamFilter": {
+      "label": "Hold",
+      "all": "Alle hold",
+      "mine": "Mit hold"
+    },
+    "showAll": "Vis alle {count} ↓",
+    "showLess": "Skjul ↑",
     "team": {
       "winner": "Vinder"
     },

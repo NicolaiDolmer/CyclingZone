@@ -347,7 +347,7 @@
       },
       "raceDetail": {
         "title": "Open a race: route, terrain DNA and your lineup",
-        "text": "Race names are clickable across the game. Opening a race shows its results if it has run, or for an upcoming race the route profile per stage, a terrain-DNA bar of which abilities each stage rewards, and your own lineup with a route match per stage so you can pick riders that suit the parcours. Pick a stage from the stage stripe to switch the profile and the route match. The terrain is an indicative category, not a measured elevation profile."
+        "text": "Race names are clickable across the game. Opening a race shows its results if it has run, or for an upcoming race the route profile per stage, a terrain-DNA bar of which abilities each stage rewards, and your own lineup with a route match per stage so you can pick riders that suit the parcours. Pick a stage from the stage stripe to switch the profile and the route match. The terrain is an indicative category, not a measured elevation profile. On a stage's result tab you can switch between Stage, Overall, Points, Mountain, Youth and Teams to see the standings after that stage, and a team filter lets you narrow the tables to all teams, your own team, or one specific team."
       },
       "teamSelection": {
         "title": "Pick your team and move riders between races",
@@ -368,7 +368,7 @@
       },
       "raceLibrary": {
         "title": "Race library",
-        "text": "Under Season & Results, Races, Library you can search and filter all races across seasons (season, class, status, name). Click a race to open its history page with previous editions, the winner of each season and a cumulative overview of the riders who have historically performed best in that race."
+        "text": "Under Season & Results, Races, Library you can search and filter all races across seasons (season, class, status, name). The list is sorted newest-first, and a 'My division only' filter narrows it to races in your own division so you can quickly find what you raced today. Click a race to open its history page with previous editions, the winner of each season and a cumulative overview of the riders who have historically performed best in that race."
       },
       "promotionRelegation": {
         "title": "Promotion and relegation",

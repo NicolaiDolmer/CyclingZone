@@ -14,7 +14,7 @@ import { DEMAND_VECTORS } from "./raceStageProfileGenerator.js";
 
 const ALLOWED_RESULT_TYPES = new Set([
   "stage", "gc", "points", "mountain", "young", "team",
-  "leader", "mountain_day", "points_day", "young_day",
+  "leader", "mountain_day", "points_day", "young_day", "team_day",
 ]);
 
 function abil(overrides = {}) {
@@ -93,6 +93,24 @@ test("etapeløb: emission — stage hver etape, FULDE dag-klassementer mellem (#
   assert.equal(rowsBy(resultRows, "mountain").length, N);
   assert.equal(rowsBy(resultRows, "young").length, 2); // 2 U25
   assert.equal(rowsBy(resultRows, "team").length, 2);  // 2 hold
+});
+
+test("etapeløb: team_day emitteres på mellem-etaper (#2081), ikke på slut-etapen", () => {
+  const { resultRows } = buildRaceResults({ race: STAGE_RACE, stages: STAGES_3, entrants: ENTRANTS, pointsLookup: POINTS });
+  const teamDay = rowsBy(resultRows, "team_day");
+  assert.equal(teamDay.length, 2 * 2, "2 hold × 2 mellem-etaper");
+  for (const stage of [1, 2]) {
+    const ranks = teamDay.filter((r) => r.stage_number === stage).map((r) => r.rank).sort();
+    assert.deepEqual(ranks, [1, 2]);
+  }
+  // Payout-neutral: POINTS-lookup har intet team_day__N-opslag → altid 0.
+  for (const r of teamDay) {
+    assert.equal(r.points_earned, 0);
+    assert.equal(r.prize_money, 0);
+  }
+  assert.ok(rowsBy(resultRows, "team_day").every((r) => r.stage_number !== 3), "ingen team_day på slut-etapen");
+  // Slut-etapens 'team'-rækker er uændrede (2 hold).
+  assert.equal(rowsBy(resultRows, "team").length, 2);
 });
 
 test("countback: efter en flad etape leder etapevinderen GC (ikke alfabetisk)", () => {
