@@ -32,9 +32,13 @@ const CORE_PAGES = [
   // at miste blank-screen-detektion. Hvis trusler fra fremtidige layout-changes
   // sneaker forbi, kig på inbox-actual.png attachment i Playwright-report.
   { path: "/notifications", heading: "Indbakke", snapshot: "inbox.png", maxDiffPixelRatio: 0.12 },
-  // Patch notes-h1 er sprog-uafhængig ("Patch notes" i begge sprog). Nyeste dag
-  // åbnes by default (localStorage tom i test) → deterministisk first paint.
-  { path: "/patch-notes", heading: "Patch notes", snapshot: "patch-notes.png" },
+  // Patch notes-h1 er sprog-uafhængig ("Patch notes" i begge sprog).
+  // skipSnapshot: siden får en NY version-blok øverst ved hver brugerrettet PR, så
+  // et pixel-snapshot driver hver gang (layout-shift fra tilføjede blokke — text-
+  // masken hjælper ikke). Formålet her er blank-screen-detektion, dækket af
+  // waitForPageReady's heading-gate + den eksplicitte heading-assertion i loopet.
+  // (v6.63/#2210 gav 0.17 pixel-diff på alle 3 projekter → blokerede auto-merge.)
+  { path: "/patch-notes", heading: "Patch notes", skipSnapshot: true },
 ];
 
 test.beforeEach(async ({ page }) => {
@@ -142,6 +146,13 @@ test("core manager pages render without blank screens", async ({ page }, testInf
     // (ROUTE_READINESS) + snapshot-overflade-stabilisering — så screenshot ikke
     // lander mid-render på data-drevne sider.
     await waitForPageReady(page, spec);
+    // skipSnapshot-sider (fx patch notes) ændrer layout by design ved hver release,
+    // så der findes intet stabilt pixel-snapshot. Blank-screen-detektion sikres i
+    // stedet af waitForPageReady + denne eksplicitte heading-assertion.
+    if (spec.skipSnapshot) {
+      await expect(page.getByRole("heading", { name: spec.heading })).toBeVisible();
+      continue;
+    }
     await expect(page).toHaveScreenshot(spec.snapshot, {
       animations: "disabled",
       caret: "hide",
