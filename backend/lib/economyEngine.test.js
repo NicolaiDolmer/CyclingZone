@@ -11,6 +11,7 @@ const {
   processSeasonEnd,
   processSeasonStart,
   chargeFacilityCosts,
+  defaultRunSeasonPayroll,
   processTeamSeasonPayroll,
   repairSeasonEndFinanceAndBoard,
   updateRiderValues,
@@ -3735,6 +3736,7 @@ test("#1441 A1: chargeFacilityCosts debiterer summeret tier-upkeep som facility_
   assert.equal(rows[0].amount, -7_000);
   assert.equal(rows[0].team_id, "team-fac-1");
   assert.equal(rows[0].idempotency_key, "facility_upkeep:team-fac-1:season-fac-1");
+  assert.equal(rows[0].reason_code, "season_start_facility_upkeep");
 });
 
 test("#1441 A1: chargeFacilityCosts debiterer aktiv staff-løn som staff_salary (fyrede tælles ikke)", async () => {
@@ -3753,6 +3755,7 @@ test("#1441 A1: chargeFacilityCosts debiterer aktiv staff-løn som staff_salary 
   assert.equal(rows.length, 1, "Præcis én staff_salary-transaktion");
   assert.equal(rows[0].amount, -40_000);
   assert.equal(rows[0].idempotency_key, "staff_salary:team-staff-1:season-staff-1");
+  assert.equal(rows[0].reason_code, "season_start_staff_salary");
 });
 
 test("#1441 A1: chargeFacilityCosts med staff-query verificerer status=active-filteret", async () => {
@@ -3844,4 +3847,28 @@ test("#1441 A1: processTeamSeasonPayroll-summary indeholder facility_upkeep + st
   // team_facilities/team_staff — ingen throw beviser at der ikke queries.
   assert.equal(financeRows.filter((r) => r.type === "facility_upkeep").length, 0);
   assert.equal(financeRows.filter((r) => r.type === "staff_salary").length, 0);
+});
+
+test("#1441 A1: defaultRunSeasonPayroll aggregate-summary indeholder facility_upkeep_total + staff_salary_total (0 by default)", async () => {
+  // Fake: ingen human-teams → loadHumanSeasonEndTeams returnerer [] og
+  // aggregate-summary'en skal alligevel eksponere alle felter med 0.
+  const supabase = {
+    from(table) {
+      assert.equal(table, "teams");
+      return {
+        select() {
+          return {
+            eq() { return { eq() { return { eq() { return Promise.resolve({ data: [], error: null }); } }; } }; },
+          };
+        },
+      };
+    },
+  };
+
+  const { summary } = await defaultRunSeasonPayroll(supabase, "season-agg-1", {});
+
+  assert.equal(summary.teams_processed, 0);
+  assert.equal(summary.upkeep_total, 0);
+  assert.equal(summary.facility_upkeep_total, 0, "facility_upkeep_total skal findes i aggregate-summary");
+  assert.equal(summary.staff_salary_total, 0, "staff_salary_total skal findes i aggregate-summary");
 });
