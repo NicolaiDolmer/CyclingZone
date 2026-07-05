@@ -35,14 +35,20 @@ export const DEFAULT_MODEL_CONSTANTS = Object.freeze({
 // anti-optimal-path-gaten skal holde over hele leverage-intervallet (robusthed).
 //   training : bonus komposterer i rytterudvikling → resultater (høj leverage)
 //   medical  : form-genopretning → flere point i tætte perioder (medium)
-//   scouting : info-fordel → bedre køb/intake (lav-medium, indirekte)
-//   academy  : værdi pr. ekstra slot pr. sæson, NETTO efter 5k slot-drift
+//   scouting : info-fordel → bedre køb/intake (indirekte — info konverterer IKKE
+//              1:1 til resultater; justeret 0.8 → 0.3 i A2-kalibreringen: fuld
+//              synlighed ≈ 80% af en sæsons præmie var urimelig højt for en ren
+//              informations-fordel, se audit-rapporten §Antagelser)
+//   academy  : forventet netto-værdi pr. ekstra slot pr. sæson (justeret 5000 →
+//              900 i A2: 5k/slot/sæson antog at hvert intake-slot producerer
+//              nær-startklar værdi hver sæson; et slot er en LOTTERISEDDEL på en
+//              prospect med års modning — se audit-rapporten §Antagelser)
 //   commercial: direkte CZ$ (bonus × sponsor-base) — ingen leverage-antagelse
 export const DEFAULT_LEVERAGE = Object.freeze({
   training: 3.0,
   medical: 1.5,
-  scouting: 0.8,
-  academySlotValue: 5000,
+  scouting: 0.3,
+  academySlotValue: 900,
 });
 
 // Andel af sæson-budgettet der maksimalt må bindes i løbende facility-omkostninger

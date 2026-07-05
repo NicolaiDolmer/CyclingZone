@@ -15,12 +15,12 @@ test("computeBonus matcher prod-effectiveBonus på prod-konstanterne (drift-guar
 
 test("strengthValuePerSeason: commercial i sponsor-kroner, training via leverage×præmie", () => {
   const c = DEFAULT_MODEL_CONSTANTS;
-  // commercial tier 5 + staff 5 i D1: 0.05 × 1.0 × 600.000 = 30.000
-  assert.equal(strengthValuePerSeason(c, DEFAULT_LEVERAGE, "commercial", 5, 5, 1), 0.05 * 600000);
-  // training tier 5 + staff 5 i D1: 0.10 × 1.0 × leverage(3.0) × 160.000 = 48.000
-  assert.equal(strengthValuePerSeason(c, DEFAULT_LEVERAGE, "training", 5, 5, 1), 0.10 * 3.0 * 160000);
-  // academy tier 2 uden staff: slots-effekt 2 × util 0.5 × slotValue 5.000 = 5.000
-  assert.equal(strengthValuePerSeason(c, DEFAULT_LEVERAGE, "academy", 2, null, 1), 2 * 0.5 * 5000);
+  // commercial tier 5 + staff 5 i D1: 0.022 × 1.0 × 600.000 = 13.200
+  assert.equal(strengthValuePerSeason(c, DEFAULT_LEVERAGE, "commercial", 5, 5, 1), 0.022 * 600000);
+  // training tier 5 + staff 5 i D1: 0.12 × 1.0 × leverage(3.0) × 160.000 = 57.600
+  assert.equal(strengthValuePerSeason(c, DEFAULT_LEVERAGE, "training", 5, 5, 1), 0.12 * 3.0 * 160000);
+  // academy tier 2 uden staff: slots-effekt 2 × util 0.5 × slotValue 900 = 900
+  assert.equal(strengthValuePerSeason(c, DEFAULT_LEVERAGE, "academy", 2, null, 1), 2 * 0.5 * 900);
   // intet bygget = 0
   assert.equal(strengthValuePerSeason(c, DEFAULT_LEVERAGE, "training", 0, null, 1), 0);
 });
@@ -73,10 +73,10 @@ test("computeCommercialPayback: payback = pris/netto-marginal; Infinity ved nett
 
 test("computePriceInSeasons: kumulativ pris / divisions-præmie", () => {
   const r = computePriceInSeasons({ constants: DEFAULT_MODEL_CONSTANTS });
-  // prod-startkandidater: tier 1 = 25.000; D3-præmie 25.000 → 1.0 sæson
-  assert.equal(r.table.find((x) => x.tier === 1).seasons[3], 1.0);
-  // tier 3 kumulativ = 25+60+140 = 225.000; D2 70.000 → ~3.21
-  assert.ok(Math.abs(r.table.find((x) => x.tier === 3).seasons[2] - 225000 / 70000) < 1e-9);
+  // kalibreret: tier 1 = 7.000; D3-præmie 25.000 → 0.28 sæson
+  assert.equal(r.table.find((x) => x.tier === 1).seasons[3], 7000 / 25000);
+  // tier 3 kumulativ = 7+10,5+18 = 35.500; D2 70.000 → ~0.51
+  assert.ok(Math.abs(r.table.find((x) => x.tier === 3).seasons[2] - 35500 / 70000) < 1e-9);
   assert.ok(Array.isArray(r.gates));
   for (const g of r.gates) {
     assert.ok(["tier1_d3", "tier3cum_d2", "tier5cum_d1"].includes(g.key));
