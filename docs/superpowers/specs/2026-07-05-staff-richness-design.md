@@ -91,9 +91,9 @@ Udvid `generateStaffCandidates` (`backend/lib/staffCandidates.js`): hver kandida
 ## 7. Simulér-før-ship-gates (A4)
 
 - Fresh-gate + Gini uændret grønne (staff-model rører ikke fresh-population-nettoen direkte, men effekt-model-ændringen skal bevises harmløs).
-- `facilityInvestmentScorecard` grøn på ny effekt-model (anti-optimal-path holder; staff er nu en meningsfuld men ikke-dominerende akse).
+- `facilityInvestmentScorecard` grøn på ny effekt-model (anti-optimal-path holder; staff er nu en meningsfuld men ikke-dominerende akse). **Anti-optimal-tolerance for den staff-inkluderende model = ±15%** (ejer-valg 2026-07-05; løsnet fra ±10% så specialisering er en reel strategisk løftestang med robuste marginer — se `docs/audits/2026-07-05-staff-richness-a4-calibration.md`).
 - Rating-drevet løn: staff er en reel omkostning (Q1) uden at være en fælde (relevans-gaten: løn ∈ rimeligt bånd af marginal værdi-tilførsel).
-- Specialiserings-balance: generalist- OG specialist-chefer er spilbare (specialist bedre for matchende trup, generalist bredere) — ingen enkelt-specialisering dominant.
+- Specialiserings-balance: generalist- OG specialist-chefer er spilbare (specialist bedre for matchende trup — kalibreret +14% ved matchet behov — generalist bredere) — ingen enkelt-specialisering dominant; begge inden for ±15%.
 
 ## 8. Ejer-beslutninger (LÅST 2026-07-05)
 
