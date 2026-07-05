@@ -12,7 +12,7 @@ Sentry-fejl ([#2186](https://github.com/NicolaiDolmer/CyclingZone/issues/2186) E
 4. ⚪ [#2221](https://github.com/NicolaiDolmer/CyclingZone/issues/2221) Snyd-undersøgelse — dataanalyse af ensidige handler; rapport til ejer.
 
 ## 2 · DENNE UGE (7–13/7)
-5. 🟠 [#2081](https://github.com/NicolaiDolmer/CyclingZone/issues/2081)+[#2072](https://github.com/NicolaiDolmer/CyclingZone/issues/2072) Resultatside V2 + GC-fejl — samlet stilling undervejs, nemmere at finde. **Live FØR Giroen 14/7.**
+5. 🟢 [#2081](https://github.com/NicolaiDolmer/CyclingZone/issues/2081)+[#2072](https://github.com/NicolaiDolmer/CyclingZone/issues/2072) Resultatside V2 + GC-fejl — **slice 1 merged (PR #2225)**, afventer ejer-prod-verifikation.
 6. ⚪ [#2224](https://github.com/NicolaiDolmer/CyclingZone/issues/2224) Race-balance-analyse — samme-hold-top-10-dominans + gentagne vindere; harness+scorecard (m. [#1378](https://github.com/NicolaiDolmer/CyclingZone/issues/1378)).
 7. ⚪ [#1145](https://github.com/NicolaiDolmer/CyclingZone/issues/1145)/[#1147](https://github.com/NicolaiDolmer/CyclingZone/issues/1147) Living World design-session — gennemgå doktrin, vælg næste motor-slices.
 8. 🟠 [#1441](https://github.com/NicolaiDolmer/CyclingZone/issues/1441) Økonomi fase 3 færdig — engine-slice (Plan B) + staff-UI [#2220](https://github.com/NicolaiDolmer/CyclingZone/issues/2220) → flip for alle.
