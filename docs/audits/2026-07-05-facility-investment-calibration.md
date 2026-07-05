@@ -211,7 +211,29 @@ realistiske gate.
 
 ## Non-regression
 
-_(udfyldes af Task 7: moneySupplyScorecard --synthetic-only HEADLINE + prizeDistributionScorecard Gini-tal + npm test-resultat — `npm test` i backend er allerede kørt grøn her: 2750/2750)_
+Kørt 2026-07-05 af verifikations-agent på HEAD `e2be282a` (Task 7 i A2-planen). Alle outputs er faktiske kørsler, ikke citater fra tidligere rapporter.
+
+**Fresh-gate (moneySupplyScorecard --synthetic-only):**
+
+```
+HEADLINE: syntetisk net-gate ✅ PASS (primær). Live er reference only.
+```
+
+Per-division net/sæson uændret af facility-kalibreringen: D1 net 3.557 ✅ · D2 net 13.557 ✅ · D3 net 8.557 ✅ (alle gates PASS; balance-trajektorie S5 1,03×/1,11×/1,07× start).
+
+**Prize-distribution (prizeDistributionScorecard, default seed 2026, 22 hold):** kørslen grøn (exit 0), divergens per division:
+
+| Division | Gini | p10–p90 spread |
+|---|---|---|
+| D1 | 0.357 | 331.790 |
+| D2 | 0.377 | 236.760 |
+| D3 | 0.387 | 150.512 |
+
+**Strukturelt bevis (grep):** `grep -rn "facilityConstants" backend/scripts/moneySupplyScorecard.js backend/scripts/prizeDistributionScorecard.js backend/scripts/economyCalibrationSweep.js backend/scripts/lib/economyCalibrationOverrides.js` → **0 hits**. Fresh-/Gini-harnesserne importerer ikke facility-konstanterne, så facility-rekalibreringen KAN ikke påvirke de gates.
+
+**Fuld lokal verifikation (`scripts/verify-local.ps1`):** exit 0 — backend-tests 2750/2750 pass, 0 fail · frontend-tests 975/975 pass, 0 fail · frontend-build grøn.
+
+**Test-diff-audit (`git show e2be282a -- '*test*'`):** kun forventnings-TAL opdateret til de nye konstanter (priser 12k/26k/50k/100k/240k, upkeep, effekt-kurver, staff-løn); ingen assertions fjernet eller svækket, samme test-struktur og -antal.
 
 ## Anbefaling
 
