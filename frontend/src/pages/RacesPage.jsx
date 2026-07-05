@@ -422,24 +422,25 @@ export default function RacesPage() {
                 ))}
               </Select>
             </div>
-            <div className="flex items-end">
-              <label className="flex items-center gap-2 text-sm text-cz-2 cursor-pointer select-none">
-                <input type="checkbox" checked={libMyDivisionOnly}
+            <div>
+              <label htmlFor="lib-my-division" className={labelClass()}>{t("library.myDivisionOnly")}</label>
+              <label htmlFor="lib-my-division" className="flex items-center gap-2 h-10 px-1 cursor-pointer select-none">
+                <input id="lib-my-division" type="checkbox" checked={libMyDivisionOnly}
                   onChange={e => setLibMyDivisionOnly(e.target.checked)}
                   className="rounded border-cz-border" />
-                {t("library.myDivisionOnly")}
+                <span className="text-sm text-cz-2">{t("library.myDivisionOnly")}</span>
               </label>
             </div>
           </Card>
 
-          {(libFilterSeason || libFilterClass || libFilterStatus || libSearch) && (
+          {(libFilterSeason || libFilterClass || libFilterStatus || libSearch || libMyDivisionOnly) && (
             <div className="flex items-center justify-between mb-3 px-1">
               <p className="text-cz-3 text-xs">
                 {t("library.filteredCount", { filtered: filteredLibRaces.length, total: libRaces.length })}
               </p>
               <button
                 onClick={() => {
-                  setLibFilterSeason(""); setLibFilterClass(""); setLibFilterStatus(""); setLibSearch("");
+                  setLibFilterSeason(""); setLibFilterClass(""); setLibFilterStatus(""); setLibSearch(""); setLibMyDivisionOnly(false);
                 }}
                 className="text-cz-accent-t text-xs hover:underline">
                 {t("library.clearFilters")}
