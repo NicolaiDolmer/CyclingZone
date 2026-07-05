@@ -4,7 +4,7 @@
 //   • "Optaget i overlappende løb" — løb han er låst fra, MED hvilket løb der binder ham (grunden)
 // Åbnes også for låste ryttere (kan ikke tilføjes nogen) → de ser stadig HVORFOR.
 import { useTranslation } from "react-i18next";
-import { canAddRiderToColumn, overlapConflictColumn } from "../../lib/raceHubLogic.js";
+import { canAddRiderToColumn, overlapConflictColumn, sameDayCompatibilityHint } from "../../lib/raceHubLogic.js";
 import { LockIcon } from "../ui";
 import FitBar from "./FitBar.jsx";
 
@@ -16,6 +16,9 @@ export default function AddRiderPopover({ rider, columns, bindingMap, onPick, on
       c,
       fit: c.riders.find((x) => x.id === rider.id)?.suitability ?? null,
       understaffed: (c.counts?.selected ?? 0) < (c.counts?.target ?? 0),
+      // #1984/#2195: er rytteren allerede i et andet (ikke-overlappende) samme-dags-løb? Så
+      // forklar HVORFOR genbrug er tilladt i stedet for at lade det se vilkårligt ud.
+      compat: sameDayCompatibilityHint({ column: c, columns, riderId: rider.id }),
     }))
     .sort((a, b) => (b.fit ?? -1) - (a.fit ?? -1)); // bedste fit øverst
   // #1984: løb rytteren er optaget i pga. ægte game-dag-overlap (ikke afmeldt/startet, ikke
@@ -29,7 +32,7 @@ export default function AddRiderPopover({ rider, columns, bindingMap, onPick, on
       <p className="text-xs text-cz-3 px-2 py-1">{t("racehub.popover.title")}</p>
       {targets.length === 0 && blocked.length === 0 && <p className="text-xs text-cz-3 px-2 py-1.5">{t("racehub.popover.none")}</p>}
       {targets.length > 0 && <p className="text-[10px] uppercase tracking-wide text-cz-success px-2 pt-1 pb-0.5">{t("racehub.popover.availableGroup")}</p>}
-      {targets.map(({ c, fit, understaffed }) => (
+      {targets.map(({ c, fit, understaffed, compat }) => (
         <button
           key={c.id}
           type="button"
@@ -38,6 +41,13 @@ export default function AddRiderPopover({ rider, columns, bindingMap, onPick, on
         >
           <span className="min-w-0">
             <span className="block text-sm text-cz-1 truncate">{c.name}</span>
+            {compat && (
+              <span className="block text-[10px] text-cz-success truncate">
+                {Number.isFinite(compat.gameDay)
+                  ? t("racehub.popover.compatibleHint", { race: compat.name, day: compat.gameDay })
+                  : t("racehub.popover.compatibleHintNoDay", { race: compat.name })}
+              </span>
+            )}
             {understaffed && <span className="text-[10px] text-cz-warning">{t("racehub.popover.understaffed")}</span>}
           </span>
           <FitBar score={fit} />

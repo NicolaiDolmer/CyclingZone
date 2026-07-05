@@ -1,9 +1,43 @@
 // frontend/src/lib/raceHubLogic.test.js
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { computeColumnStatus, isRiderBound, deriveRaceStatus, poolRaceDayTotals, fitTier, freshnessTier, draftBindingMap, windowsOverlap, canAddRiderToColumn, overlapConflictColumn, riderColumnState, findSelectionOverlaps } from "./raceHubLogic.js";
+import { computeColumnStatus, isRiderBound, deriveRaceStatus, poolRaceDayTotals, fitTier, freshnessTier, draftBindingMap, windowsOverlap, canAddRiderToColumn, overlapConflictColumn, riderColumnState, findSelectionOverlaps, groupColumnsByGameDay, sameDayCompatibilityHint } from "./raceHubLogic.js";
 
 const W = (g) => ({ start: g, end: g }); // 1-dags in-game-vindue på game-dag g
+
+test("groupColumnsByGameDay: grupperer + sorterer efter spil-dag, null-gruppe sidst", () => {
+  const cols = [
+    { id: "A", game_day: 11, game_day_end: 11 },
+    { id: "B", game_day: 10, game_day_end: 10 },
+    { id: "C", game_day: null },
+    { id: "D", game_day: 10, game_day_end: 10 },
+  ];
+  const groups = groupColumnsByGameDay(cols);
+  assert.deepEqual(groups.map((g) => g.gameDay), [10, 11, null]);
+  assert.deepEqual(groups[0].columns.map((c) => c.id), ["B", "D"]); // rækkefølge bevaret i gruppen
+});
+
+test("groupColumnsByGameDay: etapeløb → gameDayEnd = seneste spil-dag", () => {
+  const groups = groupColumnsByGameDay([{ id: "S", game_day: 12, game_day_end: 15 }]);
+  assert.deepEqual(groups, [{ gameDay: 12, gameDayEnd: 15, columns: [{ id: "S", game_day: 12, game_day_end: 15 }] }]);
+});
+
+test("sameDayCompatibilityHint: rytter i et andet (ikke-overlappende) løb → navn + spil-dag", () => {
+  const columns = [
+    { id: "A", game_day: 10, name: "Léon", selection: { rider_ids: ["r1"] } },
+    { id: "B", game_day: 11, name: "Navarra", selection: { rider_ids: [] } },
+  ];
+  const hint = sameDayCompatibilityHint({ column: columns[1], columns, riderId: "r1" });
+  assert.deepEqual(hint, { raceId: "A", name: "Léon", gameDay: 10 });
+});
+
+test("sameDayCompatibilityHint: afmeldte løb tæller ikke; ingen andre løb → null", () => {
+  const columns = [
+    { id: "A", game_day: 10, name: "Léon", withdrawn: true, selection: { rider_ids: ["r1"] } },
+    { id: "B", game_day: 11, name: "Navarra", selection: { rider_ids: [] } },
+  ];
+  assert.equal(sameDayCompatibilityHint({ column: columns[1], columns, riderId: "r1" }), null);
+});
 
 test("draftBindingMap: binder rytter til de kolonner han er i kladden, med game-dag-vindue (ekskl. afmeldte)", () => {
   const cols = [

@@ -61,6 +61,18 @@ export function raceBindingWindow(scheduleRows) {
   return { start: Math.min(...keys), end: Math.max(...keys) };
 }
 
+// Display-span for et løbs in-game løbsdage (#1984/#2195): { start, end } i game_day-heltal,
+// afledt DIREKTE af schedule-rækkernes game_day. Adskilt fra raceBindingWindow (der falder til
+// CET-ordinaler når game_day mangler) — dette er KUN til visning ("Race day N" / "Race days N–M")
+// og returnerer null hvis nogen række mangler game_day, så UI'et kan skjule mærket frem for at vise
+// skrald. Et endagsløb → start===end; et etapeløb → første..sidste in-game-dag.
+export function raceGameDaySpan(scheduleRows) {
+  if (!scheduleRows?.length) return null;
+  const days = scheduleRows.map((r) => r?.game_day).filter((d) => Number.isFinite(d));
+  if (days.length !== scheduleRows.length) return null; // en delvist-backfillet række → skjul mærket
+  return { start: Math.min(...days), end: Math.max(...days) };
+}
+
 // To vinduer overlapper hvis de deler mindst ét tidspunkt (inklusiv ender —
 // to løb der starter samtidig overlapper). Defensiv mod null.
 export function windowsOverlap(a, b) {
