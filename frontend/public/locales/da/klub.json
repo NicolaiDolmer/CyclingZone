@@ -1,0 +1,64 @@
+{
+  "page": {
+    "title": "Klub",
+    "subtitle": "Faciliteter og staff",
+    "balance": "Saldo",
+    "division": "Division {division}"
+  },
+  "sections": { "facilities": "Faciliteter", "staff": "Staff" },
+  "facilities": {
+    "tier": "Tier {tier} / {max}",
+    "notBuilt": "Ikke bygget",
+    "upgradeTo": "Opgradér til T{tier}",
+    "buildTier": "Byg T{tier}",
+    "seasonsProfit": "≈ {seasons} sæsoners overskud",
+    "upkeep": "Drift {amount}/sæson",
+    "maxed": "Fuldt udbygget",
+    "fullTree": "Hele træet (alle spor T5)",
+    "fullTreeSeasons": "≈ {seasons} Division-{division}-sæsoners overskud"
+  },
+  "effect": {
+    "label": "Effekt",
+    "live": "live",
+    "target": "mål",
+    "note": "Effekt-kolonnen viser mål-modellen — hvert spors effekt i spillet aktiveres når dets motor lander."
+  },
+  "tracks": {
+    "training": { "name": "Træningscenter", "effect": "træning" },
+    "scouting": { "name": "Scouting-netværk", "effect": "rytter-indsigt" },
+    "medical": { "name": "Medicinsk afdeling", "effect": "restitution" },
+    "academy": { "name": "Akademi-udvidelse", "effect": "intake-slots" },
+    "commercial": { "name": "Kommerciel afdeling", "effect": "sponsor (loftet)" }
+  },
+  "commercial": { "sinkTag": "Rent sink · Fase 4-payoff", "sinkNote": "Betaler sig aldrig tilbage — bevidst design." },
+  "roles": {
+    "training": "Sportsdirektør",
+    "scouting": "Chefscout",
+    "medical": "Læge",
+    "academy": "Akademichef",
+    "commercial": "Kommerciel direktør"
+  },
+  "staff": {
+    "none": "Ingen staff ansat",
+    "locked": "Låst — byg tier 1 først",
+    "hired": "Ansat",
+    "salary": "Løn {amount} CZ$/sæson",
+    "candidates": "Kandidater",
+    "candidate": "Tier {tier} · {amount}/sæson",
+    "hire": "Ansæt",
+    "release": "Fyr",
+    "severance": "Fratrædelse {amount}",
+    "tierGate": "Højere tiers låses op når du opgraderer faciliteten",
+    "billNote": "Lønnen trækkes ved sæsonstart"
+  },
+  "errors": {
+    "insufficient_funds": "Ikke nok saldo til den opgradering.",
+    "max_tier": "Dette spor er allerede fuldt udbygget.",
+    "role_occupied": "Du har allerede staff i denne rolle.",
+    "staff_tier_exceeds_facility": "Opgradér faciliteten før du ansætter en højere-tier chef.",
+    "invalid_candidate": "Den kandidat er ikke længere tilgængelig.",
+    "failed": "Noget gik galt. Prøv igen.",
+    "network": "Kunne ikke nå serveren. Prøv igen."
+  },
+  "empty": { "title": "Klubben er lukket", "description": "Faciliteter og staff er ikke tilgængelige endnu." }
+}

@@ -1,0 +1,67 @@
+{
+  "page": {
+    "title": "Club",
+    "subtitle": "Facilities and staff",
+    "balance": "Balance",
+    "division": "Division {division}"
+  },
+  "sections": {
+    "facilities": "Facilities",
+    "staff": "Staff"
+  },
+  "facilities": {
+    "tier": "Tier {tier} / {max}",
+    "notBuilt": "Not built",
+    "upgradeTo": "Upgrade to T{tier}",
+    "buildTier": "Build T{tier}",
+    "seasonsProfit": "≈ {seasons} seasons' profit",
+    "upkeep": "Upkeep {amount}/season",
+    "maxed": "Fully upgraded",
+    "fullTree": "Full tree (all tracks T5)",
+    "fullTreeSeasons": "≈ {seasons} Division-{division} seasons of profit"
+  },
+  "effect": {
+    "label": "Effect",
+    "live": "live",
+    "target": "target",
+    "note": "Effect column shows the target model — each track's in-game effect activates as its engine lands."
+  },
+  "tracks": {
+    "training": { "name": "Training Center", "effect": "training" },
+    "scouting": { "name": "Scouting Network", "effect": "rider insight" },
+    "medical": { "name": "Medical Department", "effect": "recovery" },
+    "academy": { "name": "Academy Expansion", "effect": "intake slots" },
+    "commercial": { "name": "Commercial Department", "effect": "sponsor (capped)" }
+  },
+  "commercial": { "sinkTag": "Pure sink · Phase 4 payoff", "sinkNote": "Never pays for itself by design." },
+  "roles": {
+    "training": "Sports Director",
+    "scouting": "Chief Scout",
+    "medical": "Team Doctor",
+    "academy": "Academy Director",
+    "commercial": "Commercial Director"
+  },
+  "staff": {
+    "none": "No staff hired",
+    "locked": "Locked — build tier 1 first",
+    "hired": "Hired",
+    "salary": "Salary {amount} CZ$/season",
+    "candidates": "Candidates",
+    "candidate": "Tier {tier} · {amount}/season",
+    "hire": "Hire",
+    "release": "Release",
+    "severance": "Severance {amount}",
+    "tierGate": "Higher tiers unlock as you upgrade the facility",
+    "billNote": "Salary is billed at season start"
+  },
+  "errors": {
+    "insufficient_funds": "Not enough balance for that upgrade.",
+    "max_tier": "This track is already fully upgraded.",
+    "role_occupied": "You already have staff in this role.",
+    "staff_tier_exceeds_facility": "Upgrade the facility before hiring a higher-tier chief.",
+    "invalid_candidate": "That candidate is no longer available.",
+    "failed": "Something went wrong. Try again.",
+    "network": "Couldn't reach the server. Try again."
+  },
+  "empty": { "title": "The club is closed", "description": "Facilities and staff aren't available yet." }
+}
