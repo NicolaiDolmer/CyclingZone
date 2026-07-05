@@ -170,13 +170,17 @@ export default function RaceDetailPage() {
       return;
     }
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
+    // #2081 code-review: myTeamId ikke afhængig af raceRow og bruges først ved
+    // render — kør den SAMTIDIG med de øvrige uafhængige queries (ikke sekventielt
+    // foran race_results) for at undgå en ekstra round-trip i critical path.
+    const myTeamPromise = (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
       const { data: myTeam } = await supabase.from("teams").select("id").eq("user_id", user.id).maybeSingle();
-      setMyTeamId(myTeam?.id ?? null);
-    }
+      return myTeam?.id ?? null;
+    })();
 
-    const rows = await fetchAllRows(() =>
+    const rowsPromise = fetchAllRows(() =>
       supabase
         .from("race_results")
         .select("id, stage_number, result_type, rank, rider_id, rider_name, team_id, team_name, finish_time, points_earned, prize_money, in_breakaway, breakaway_caught, rider:rider_id(id, firstname, lastname, nationality_code, team:team_id(id, name)), team:team_id(id, name)")
@@ -187,7 +191,7 @@ export default function RaceDetailPage() {
     // #1484 Stiliseret terræn-indikator. race_stage_profiles er læsbar for
     // authenticated (siden er auth-gated via ProtectedRoute). Degraderer pænt:
     // en fejl/tom tabel → ingen profil-badges, ingen fejl-UI.
-    const { data: profiles } = await supabase
+    const profilesPromise = supabase
       .from("race_stage_profiles")
       .select("stage_number, profile_type, finale_type, demand_vector")
       .eq("race_id", raceId)
@@ -195,12 +199,17 @@ export default function RaceDetailPage() {
 
     // #1597 → S4: etape-kalenderen foldes ind i etape-striben (per-etape-tid) +
     // næste-start-countdown i headeren. Degraderer pænt (tom = ingen tider).
-    const { data: scheduleRows } = await supabase
+    const schedulePromise = supabase
       .from("race_stage_schedule")
       .select("stage_number, scheduled_at")
       .eq("race_id", raceId)
       .order("stage_number", { ascending: true });
 
+    const [myTeamId, rows, { data: profiles }, { data: scheduleRows }] = await Promise.all([
+      myTeamPromise, rowsPromise, profilesPromise, schedulePromise,
+    ]);
+
+    setMyTeamId(myTeamId);
     setRace(raceRow);
     setResults(rows);
     setStageProfiles(profiles ?? []);
@@ -313,6 +322,14 @@ export default function RaceDetailPage() {
     if (resolvedTeamFilter == null) return rows;
     return (rows || []).filter(r => String(r.team_id ?? r.rider?.team?.id) === String(resolvedTeamFilter));
   }
+
+  // #2081 code-review: samme TeamFilterSelect-wiring optrådte identisk i både
+  // etapeløbs- og enkeltdagsløbs-render-grenen — udtrukket én gang her.
+  const teamFilterBar = (
+    <div className="flex justify-end">
+      <TeamFilterSelect value={teamFilter} onChange={setTeamFilter} teamOptions={teamOptions} hasMyTeam={myTeamId != null} t={t} />
+    </div>
+  );
 
   // Sørg for at active tab altid er gyldig når data skifter.
   useEffect(() => {
@@ -439,9 +456,7 @@ export default function RaceDetailPage() {
             onSelect={(v) => changeTab(v === "overall" ? "samlet" : `stage-${v}`)}
           />
 
-          <div className="flex justify-end">
-            <TeamFilterSelect value={teamFilter} onChange={setTeamFilter} teamOptions={teamOptions} hasMyTeam={myTeamId != null} t={t} />
-          </div>
+          {teamFilterBar}
 
           {activeTab === "samlet" && (
             <div className="space-y-5">
@@ -463,9 +478,7 @@ export default function RaceDetailPage() {
         <div className="space-y-5">
           <StageProfileCard profile={profileByStage[1]} />
           <RaceRecap results={results} scopeType="overall" />
-          <div className="flex justify-end">
-            <TeamFilterSelect value={teamFilter} onChange={setTeamFilter} teamOptions={teamOptions} hasMyTeam={myTeamId != null} t={t} />
-          </div>
+          {teamFilterBar}
           <ResultTable
             title={t("detail.tableResult")}
             rows={filterRowsByTeam(finalByType.gc?.length ? finalByType.gc : results.filter(r => r.result_type === "stage").sort(byRank))}
