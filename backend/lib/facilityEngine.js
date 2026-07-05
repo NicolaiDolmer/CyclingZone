@@ -22,7 +22,8 @@ export function severanceCost(staff) {
 }
 
 // staffTier null = ingen ansat → 50% udnyttelse. Tier 1..5 → 0.6..1.0.
-function staffUtilization(staffTier) {
+// Eksporteret så harness-modellen (facilityInvestmentModel) deler formlen (co-SSOT).
+export function staffUtilization(staffTier) {
   return staffTier == null ? 0.5 : 0.5 + 0.1 * staffTier;
 }
 

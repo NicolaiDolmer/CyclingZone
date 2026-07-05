@@ -189,7 +189,7 @@ test("purchase: tier 4→5 works; tier 5 → max_tier, NO debit", async () => {
 });
 
 test("purchase: insufficient balance → insufficient_funds, NO debit", async () => {
-  const supabase = createFacilitySupabase({ team: { id: "team-1", balance: 10_000 } });
+  const supabase = createFacilitySupabase({ team: { id: "team-1", balance: 5_000 } });
 
   const result = await purchaseFacilityUpgrade({ ...BASE_ARGS, track: "training" }, supabase, ENABLED);
   assert.deepEqual(result, { ok: false, error: "insufficient_funds" });
