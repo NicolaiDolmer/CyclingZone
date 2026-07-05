@@ -44,6 +44,7 @@ export const REASON_LABEL = Object.freeze({
   [FINANCE_REASON.ADMIN_FORCE_PRIZE]: "Admin prize award",
   [FINANCE_REASON.ADMIN_BETA_RESET]: "Beta reset",
   [FINANCE_REASON.SEASON_START_UPKEEP]: "Upkeep & maintenance",
+  [FINANCE_REASON.SEASON_START_ACADEMY_DRIFT]: "Academy drift",
 });
 
 const FALLBACK_LABEL = "Other";

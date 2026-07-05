@@ -20,6 +20,7 @@ const {
   MAX_BOARD_MODIFIER,
   INITIAL_BALANCE,
   UPKEEP_BY_DIVISION,
+  FINANCE_REASON,
 } = await import("./economyConstants.js");
 const { ACADEMY } = await import("./academyFlag.js");
 
@@ -2423,6 +2424,7 @@ test("processTeamSeasonPayroll debits N * DRIFT_PER_SEASON as academy_drift for 
   const expectedAmount = -(ACADEMY_COUNT * ACADEMY.DRIFT_PER_SEASON);
   assert.equal(drift.amount, expectedAmount, `Beløb skal være ${expectedAmount} (negativt)`);
   assert.equal(drift.team_id, teamId);
+  assert.equal(drift.reason_code, FINANCE_REASON.SEASON_START_ACADEMY_DRIFT);
 
   // Idempotency-nøgle skal indeholde sæson + hold
   assert.ok(

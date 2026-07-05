@@ -210,6 +210,7 @@
     "reasonCode": {
       "season_start_sponsor": "Sponsor",
       "season_start_upkeep": "Drift og vedligehold",
+      "season_start_academy_drift": "Akademi-drift",
       "season_end_salary": "Løn",
       "season_end_division_bonus": "Divisionsbonus",
       "season_end_negative_interest": "Negativ rente",
