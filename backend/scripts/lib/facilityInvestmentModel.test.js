@@ -64,13 +64,13 @@ test("strengthValuePerSeason: commercial i sponsor-kroner, training via leverage
   // #2216 A4: staff-faktoren er nu ability-drevet — staff 5 → overall tierToOverall(5)
   // → staffEffectFactor, IKKE længere util 1.0. Vi ankrer mod prod-funktionen (co-SSOT).
   const factor5 = staffEffectFactor(staffObjOf(5));
-  const factorNull = staffEffectFactor(null); // = gulv (kalibreret 0.4)
-  assert.equal(factorNull, 0.4);
+  const factorNull = staffEffectFactor(null); // = gulv (rekalibreret 0.5)
+  assert.equal(factorNull, 0.5);
   // commercial tier 5 + staff 5 i D1: 0.012 × factor5 × 600.000
   assert.equal(strengthValuePerSeason(c, DEFAULT_LEVERAGE, "commercial", 5, 5, 1), 0.012 * factor5 * 600000);
   // training tier 5 + staff 5 i D1: 0.165 × factor5 × leverage(3.0) × 160.000
   assert.equal(strengthValuePerSeason(c, DEFAULT_LEVERAGE, "training", 5, 5, 1), 0.165 * factor5 * 3.0 * 160000);
-  // academy tier 2 uden staff: slots-effekt 2 × gulv-faktor (kalibreret 0.4) × slotValue 900 = 720
+  // academy tier 2 uden staff: slots-effekt 2 × gulv-faktor (rekalibreret 0.5) × slotValue 900 = 900
   assert.equal(strengthValuePerSeason(c, DEFAULT_LEVERAGE, "academy", 2, null, 1), 2 * factorNull * 900);
   // intet bygget = 0
   assert.equal(strengthValuePerSeason(c, DEFAULT_LEVERAGE, "training", 0, null, 1), 0);
@@ -115,8 +115,8 @@ test("computeCommercialPayback: payback = pris/netto-marginal; Infinity ved nett
   };
   const r = computeCommercialPayback({ division: 1, constants: c });
   const tier1NoStaff = r.rows.find((x) => x.tier === 1 && x.staffMode === "none");
-  // uden staff: gulv-faktor 0.4 (kalibreret Task 8) → 0.10×0.4×100k = 4k/sæson → 30k/4k = 7.5
-  assert.ok(Math.abs(tier1NoStaff.paybackSeasons - 7.5) < 1e-9);
+  // uden staff: gulv-faktor 0.5 (rekalibreret ejer-valg) → 0.10×0.5×100k = 5k/sæson → 30k/5k = 6.0
+  assert.ok(Math.abs(tier1NoStaff.paybackSeasons - 6.0) < 1e-9);
   const tier2NoStaff = r.rows.find((x) => x.tier === 2 && x.staffMode === "none");
   assert.equal(tier2NoStaff.paybackSeasons, Infinity); // marginal effekt-delta = 0
   assert.equal(typeof r.minPayback, "number");

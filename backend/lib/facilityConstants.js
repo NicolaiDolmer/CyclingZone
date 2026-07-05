@@ -47,21 +47,21 @@ export const FACILITY_TIER_UPKEEP = Object.freeze({ 0: 0, 1: 1_500, 2: 3_500, 3:
 // indtil A4b (kandidat-/profil-UI) er migreret, og som referenceanker for kurven.
 export const STAFF_SALARY_BY_TIER = Object.freeze({ 1: 100, 2: 250, 3: 600, 4: 1_300, 5: 2_600 });
 
-// ── Ability-drevet effekt-model (#2216 A4, Task 6 · KALIBRERET Task 8) ────────────
+// ── Ability-drevet effekt-model (#2216 A4, Task 6 · KALIBRERET Task 8, REKALIBRERET
+//    efter ejer-valg 2026-07-05: ±15%-gate) ───────────────────────────────────────
 // Erstatter A3's tier→udnyttelses-skalar (staffUtilization) med en overall-drevet
-// faktor: staffEffectFactor(staff) = FLOOR + SLOPE·(overall/99). Range [FLOOR, 1.0].
-//   • FLOOR (0.4) = udnyttelsen UDEN chef — en facilitet uden ansat kører på 40%.
-//   • SLOPE (0.6) = span en overall-99-chef tilfører → faktor PRÆCIS 1.0 ved overall 99.
-// Lineær + monoton i overall. KALIBRERET i Task 8 (harness): FLOOR 0.5→0.4 + SLOPE
-// 0.5→0.6. Begrundelse (se docs/audits/2026-07-05-staff-richness-a4-calibration.md):
-// den ability-drevne faktor er FLADERE mellem tiers end den gamle 0.5+0.1·tier-skalar
-// (tier-midtpunkterne ligger tæt), så et gulv på 0.5 gjorde "ingen chef" for stærkt
-// relativt til en ansat → dybde-strategier kunne ikke indhente "balanced" i D3's stramme
-// budget (anti-optimal-path-gaten fejlede på ×0,5-leverage-cellen). Gulv 0.4 gør det at
-// ANSÆTTE en chef til et større relativt spring → gaten grøn (D3-worst-cell 0,901).
-// Bemærk: 99-chef giver nu 1.0 (før 0.909) — en perfekt chef opnår FULD udnyttelse.
-export const STAFF_EFFECT_FACTOR_FLOOR = 0.4;
-export const STAFF_EFFECT_FACTOR_SLOPE = 0.6;
+// faktor: staffEffectFactor(staff) = FLOOR + SLOPE·(overall/99). Range [0.5, 1.0].
+//   • FLOOR (0.5) = udnyttelsen UDEN chef — en facilitet uden ansat kører på 50%.
+//   • SLOPE (0.5) = span en overall-99-chef tilfører → faktor PRÆCIS 1.0 ved overall 99.
+// Lineær + monoton i overall. HISTORIK: Task 8 sænkede FLOOR til 0.4 for at få anti-
+// optimal-path-D3-cellen grøn under den STRAMME ±10%-gate (den ability-drevne faktor er
+// fladere mellem tiers end den gamle skalar, så gulv 0.5 gjorde "ingen chef" for stærkt).
+// EJER-VALG 2026-07-05: gaten løsnet til ±15% (se COMPETITIVE_THRESHOLD i
+// facilityInvestmentModel.js) → FLOOR kan nu restaureres til 0.5 med KOMFORTABEL margin
+// (D3-worst-cell 0,871 = 2,1pp over 0,85-tærsklen; før razor-thin 0,901/0,90). Det giver
+// den rene semantik "ingen chef = 50%" + faktor 1.0 ved en perfekt overall-99-chef.
+export const STAFF_EFFECT_FACTOR_FLOOR = 0.5;
+export const STAFF_EFFECT_FACTOR_SLOPE = 0.5;
 
 // Per-rytter specialiserings-multiplikator (specializationMatch) — IKKE i facilitets-
 // display-magnituden; bruges af trænings-hooket i Task 7 (dimension×niveau pr. rytter).
@@ -70,27 +70,33 @@ export const STAFF_EFFECT_FACTOR_SLOPE = 0.6;
 // "flad" chef giver præcis 1.0 (akser over/under skubber match op/ned).
 //   contribution = 1 + weightDimension·norm(dim − baseline) + weightLevel·norm(lvl − baseline)
 // hvor norm(x) = x / (99 − baseline) klippes til [-1, +1]; resultatet clampes [floor, cap].
-// KALIBRERET Task 8: weightDimension 0.25→0.15 + weightLevel 0.15→0.08. Begrundelse:
-// den nye specialiserings-balance-gate (§7) kræver at en MATCHET specialist er BEDRE
-// end en generalist, men ikke DOMINERENDE (begge inden for ±10%). Ved de gamle vægte
-// var en matchet specialist ~14% bedre (over ±10%-loftet). De kalibrerede vægte giver
-// specialist +8,6% over generalist (inden for ±10%, ~1,4pp margin) — en meningsfuld
-// men ikke-dominerende specialiserings-fordel. floor/cap uændrede (ikke bindende).
+// EJER-VALG 2026-07-05: weightDimension/weightLevel restaureret til 0.25/0.15 (de
+// oprindelige Task-6-værdier). Med den løsnede ±15%-specialiserings-balance-gate (§7)
+// SKAL specialisering være en REEL strategisk løftestang: en matchet specialist er nu
+// +14% bedre end en generalist (inden for ±15%, ~1pp fra loftet — bevidst tæt på for at
+// UDNYTTE headroom'et; ejeren ville have specialisering til at "føles konsekvensfuld").
+// Task 8 havde sænket dem til 0.15/0.08 (+8,6%) for at holde ±10%-gaten, men det gjorde
+// specialisering til en nuance snarere end en beslutning. floor/cap uændrede (cap 1.4
+// ikke bindende: max-akser giver 1 + 0.25 + 0.15 = 1.4 = præcis cap).
 export const STAFF_SPECIALIZATION = Object.freeze({
   baselineOverall: 50,
-  weightDimension: 0.15,
-  weightLevel: 0.08,
+  weightDimension: 0.25,
+  weightLevel: 0.15,
   floor: 0.85,
   cap: 1.4,
 });
 
 // Rating-drevet staff-løn (staffSalaryFor) — erstatter STAFF_SALARY_BY_TIER.
 // Konveks potens-kurve forankret i de gamle tier-lønninger ved tier-båndenes
-// midtpunkter (t1≈36→~100, t5≈81→~2600): salary = round(floor + base·(overall/ref)^exp).
-// Løn bider dermed med staffens faktiske overall (Q1) i stedet for et groft tier-trin.
-// floor/cap = kalibrerings-bånd (positiv bund, loftet top); kalibreres i Task 8.
+// midtpunkter: salary = round(floor + base·(overall/ref)^exp). Løn bider dermed med
+// staffens faktiske overall (Q1) i stedet for et groft tier-trin.
+// REKALIBRERET (ejer-valg 2026-07-05, floor→0.5): base 2600→2400. Med et effekt-gulv på
+// 0.5 (i stedet for Task-8's 0.4) er en ansættelses MARGINALE værdi mindre (chefen løfter
+// fra 0.5, ikke 0.4), så løn/værdi-forholdet stiger. base 2400 holder staff-relevans-gaten
+// komfortabelt inden for [0.05, 0.40] (t4-topper på 0.371 mod tidligere 0.401-overskridelse).
+// floor/cap = kalibrerings-bånd (positiv bund, loftet top).
 export const STAFF_SALARY_CURVE = Object.freeze({
-  base: 2600,
+  base: 2400,
   refOverall: 81,
   exponent: 4,
   floor: 50,

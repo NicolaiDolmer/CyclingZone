@@ -193,13 +193,21 @@ export function simulateStrategy({
   };
 }
 
-// §2.3-gaten: ≥3 strategier inden for ±10% af bedste langsigtede styrke-proxy.
+// Anti-optimal-path-tolerance: en strategi er "konkurrencedygtig" hvis dens styrke-proxy
+// er ≥ COMPETITIVE_THRESHOLD × bedste. EJER-VALG 2026-07-05: løsnet fra ±10% (0,90) til
+// ±15% (0,85) for den staff-inkluderende model, så staff-specialisering kan være en reel
+// strategisk løftestang og marginerne bliver robuste (se
+// docs/audits/2026-07-05-staff-richness-a4-calibration.md). Deles af anti-optimal-path-
+// gaten OG specialiserings-balance-gaten (samme ±15%-tolerance).
+export const COMPETITIVE_THRESHOLD = 0.85; // ±15% (ejer-valg 2026-07-05; før 0.90 = ±10%)
+
+// §2.3-gaten: ≥3 strategier inden for ±15% af bedste langsigtede styrke-proxy (ejer-valg).
 export function runAntiOptimalPath({ division, seasons = 10, constants = DEFAULT_MODEL_CONSTANTS, leverage = DEFAULT_LEVERAGE }) {
   const results = Object.entries(STRATEGIES).map(([name, priorities]) => ({
     name, ...simulateStrategy({ priorities, division, seasons, constants, leverage }),
   }));
   const max = Math.max(...results.map((r) => r.strength));
-  for (const r of results) r.competitive = r.strength >= 0.9 * max;
+  for (const r of results) r.competitive = r.strength >= COMPETITIVE_THRESHOLD * max;
   return { results, max, competitiveCount: results.filter((r) => r.competitive).length };
 }
 
@@ -331,11 +339,11 @@ export function computeFormGates({ constants = DEFAULT_MODEL_CONSTANTS, leverage
 
 // ── #2216 A4: specialiserings-balance-gate (§7) ─────────────────────────────────
 // Spec-krav: en GENERALIST-strategi OG en SPECIALIST-strategi (staff hvis
-// specialisering matcher truppens behov) er BEGGE konkurrencedygtige inden for ±10%;
-// INGEN enkelt specialisering dominerer. specializationMatch(staff,{dimension,level})
-// er prod-multiplikatoren (co-SSOT). Vi bygger repræsentative staff-profiler ved en
-// fast overall og måler den effektive trænings-værdi hver profil giver mod et
-// givent trup-behov (dimension × niveau).
+// specialisering matcher truppens behov) er BEGGE konkurrencedygtige inden for ±15%
+// (EJER-VALG 2026-07-05 — se COMPETITIVE_THRESHOLD); INGEN enkelt specialisering
+// dominerer. specializationMatch(staff,{dimension,level}) er prod-multiplikatoren
+// (co-SSOT). Vi bygger repræsentative staff-profiler ved en fast overall og måler den
+// effektive trænings-værdi hver profil giver mod et givent trup-behov (dimension × niveau).
 //
 // Model-detalje: en specialist løfter ÉN akse `spread` op og de øvrige `spread` ned
 // omkring `overall` (samme netto som derivationens specialisering+kontrast — se
@@ -345,7 +353,7 @@ export function computeFormGates({ constants = DEFAULT_MODEL_CONSTANTS, leverage
 export const SPECIALIZATION_BALANCE = Object.freeze({
   overall: 70,          // repræsentativ besat-facilitets-kvalitet (≈ tier-4-bånd-midt)
   spread: 20,           // hvor meget en specialist løfter sin akse over/under overall
-  competitiveBand: 0.10, // ±10% (spec §7)
+  competitiveBand: 1 - COMPETITIVE_THRESHOLD, // ±15% (ejer-valg 2026-07-05; deler tolerance med anti-optimal)
   dimensions: ["physical", "mental", "technical"],
 });
 
@@ -403,7 +411,7 @@ export function runSpecializationBalance({
     const gVal = trainingValueFor(constants, leverage, generalist, need, division);
     const sVal = trainingValueFor(constants, leverage, specialist, need, division);
     perDimMatched.push({ dim, gVal, sVal });
-    // Generalist konkurrencedygtig mod matchet specialist (spec: begge inden for ±10%).
+    // Generalist konkurrencedygtig mod matchet specialist (spec: begge inden for ±15%).
     const ratio = gVal / sVal; // < 1 (specialist bedre på match)
     checks.push({
       group: "generalist-vs-specialist", key: `generalist/${dim}-specialist (matchet behov)`,
@@ -413,7 +421,7 @@ export function runSpecializationBalance({
   }
 
   // (2) Ingen enkelt-specialisering dominerer: de tre matchede specialister (hver mod
-  //     SIT eget behov) inden for ±10% af hinanden (symmetri — physical-spec er ikke
+  //     SIT eget behov) inden for ±15% af hinanden (symmetri — physical-spec er ikke
   //     iboende stærkere end mental/technical-spec).
   const matchedVals = perDimMatched.map((r) => r.sVal);
   const maxS = Math.max(...matchedVals);
