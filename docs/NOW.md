@@ -14,7 +14,7 @@
 
 > **Shipped 5/7 — #2206 rangliste/standings viser alle ryttere (PR #2210, v6.63, afventer prod-verify):** Supabase Data API's 1000-rækkers cap slugte brede reads → rytterrangliste viste kun ~1000 af 3142 (top-rangerede forsvandt) + standings-graf/styrke-linse manglede data. Fix: 5 reads pagineret via `fetchAllRows`. Verificeret mod prod-DB (3142/5590/1321/4871 rækker). Postmortem: `.claude/learnings/2026-07-05-supabase-1000-row-cap-rankings.md`. **Discord-triage 5/7:** alle 3 kanaler + 15 forum-tråde læst; #2206–#2209 oprettet (rangliste, height/weight+compare væk, auktions-dobbeltbesked, in-game kommunikation), evidens-kommentarer på #2170/#2081/#2177.
 
-> **🤖 Working agent:** Ingen aktiv session.
+> **🤖 Working agent:** Claude Code — #1441 Fase 3 A3 (Klub-UI). Plan: `docs/superpowers/plans/2026-07-05-facilities-staff-wave-a3-klub-ui.md`. Worktree `feat/1441-facilities-staff-a3`. Design-runde 5/7: ejer valgte Q1 udvid-util-model + Q2 kommerciel-rent-sink + Q3 wire-training-effekt-før-flip → A3 splittet i Plan A (UI, denne) + Plan B (pre-flip engine-slice, skrives efter preview).
 
 ## Standing context (forever-relaunch)
 
