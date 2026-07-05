@@ -77,6 +77,7 @@ const ProfilePage = lazy(() => import("./pages/ProfilePage"));
 const RacePointsPage = lazy(() => import("./pages/RacePointsPage"));
 const TrainingPage = lazy(() => import("./pages/TrainingPage"));
 const AcademyPage = lazy(() => import("./pages/AcademyPage"));
+const KlubPage = lazy(() => import("./pages/KlubPage"));
 
 function LoadingScreen() {
   return (
@@ -275,6 +276,7 @@ export default function App() {
             <Route path="admin/attribution" element={<AdminAttributionPage />} />
             <Route path="training" element={<TrainingPage />} />
             <Route path="academy" element={<AcademyPage />} />
+            <Route path="klub" element={<KlubPage />} />
 
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Route>
