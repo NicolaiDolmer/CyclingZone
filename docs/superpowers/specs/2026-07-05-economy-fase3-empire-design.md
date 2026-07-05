@@ -56,7 +56,7 @@ De verificerede gaps, som Fase 3 lukker:
 
 ### 2.3 Anti-optimal-path (merge-gate)
 
-Ingen facilitet må dominere: harness-sweep skal vise **mindst 3 forskellige investerings-rækkefølger konkurrencedygtige inden for ±10% langsigtet holdstyrke-proxy**. Er én rækkefølge dominant → rekalibrér effekter/priser før ship. Dette er en hård gate på linje med fresh-gaten.
+Ingen facilitet må dominere: harness-sweep skal vise **mindst 3 forskellige investerings-rækkefølger konkurrencedygtige inden for ±10% langsigtet holdstyrke-proxy** (for den staff-INKLUDERENDE model justeret til **±15%**, ejer-valg 2026-07-05 — så staff-specialisering kan være en reel strategisk løftestang med robuste marginer; se `docs/audits/2026-07-05-staff-richness-a4-calibration.md`). Er én rækkefølge dominant → rekalibrér effekter/priser før ship. Dette er en hård gate på linje med fresh-gaten.
 
 ### 2.4 Tid-som-valuta (ny designdisciplin → GAME_INVARIANTS.md)
 
