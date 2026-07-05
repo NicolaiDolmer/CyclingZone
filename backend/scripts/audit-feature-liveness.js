@@ -254,6 +254,14 @@ const WHITELIST_ORPHANED_ENDPOINTS = new Set([
   // CZ Pro billing: Alunta-webhook er EKSTERN (kaldes af Alunta efter betaling,
   // ikke af frontend). Intentional orphaned, ikke drift (#1903).
   "POST /billing/alunta-webhook",
+  // Faciliteter/staff (#1441 Fase 3 A1): backend-fundament shippet FØR UI'en —
+  // alt er dødt bag FACILITIES_ENABLED=false; Klub-UI'en lander i bølge A3 og
+  // fjerner disse fra whitelisten. Intentional orphaned indtil da, ikke drift.
+  "GET /club/facilities",
+  "POST /club/facilities/upgrade",
+  "GET /club/staff/candidates",
+  "POST /club/staff/hire",
+  "POST /club/staff/fire",
 ]);
 
 // Detector C: schema-files der er committed men IKKE migrations (pre-workflow dumps).
