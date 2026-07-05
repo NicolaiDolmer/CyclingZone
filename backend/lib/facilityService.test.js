@@ -8,7 +8,7 @@ process.env.SUPABASE_URL = process.env.SUPABASE_URL || "http://localhost";
 process.env.SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY || "test-service-key";
 
 const { purchaseFacilityUpgrade, hireStaff, fireStaff } = await import("./facilityService.js");
-const { FACILITY_TIER_PRICE } = await import("./facilityConstants.js");
+const { FACILITY_TIER_PRICE, staffSalaryFor } = await import("./facilityConstants.js");
 const { generateStaffCandidates } = await import("./staffCandidates.js");
 const { deriveStaffAbilities } = await import("./staffAbilityDerivation.js");
 
@@ -246,6 +246,7 @@ test("hire: happy path inserts active staff with candidate's tier/salary", async
     teamId: "team-1", seasonNumber: 7, role: "training", facilityTier: 5,
   });
   const candidate = candidates[0];
+  const expectedOverall = deriveStaffAbilities({ role: "training", tier: candidate.tier, name: candidate.name }).overall;
 
   const result = await hireStaff(
     { ...BASE_ARGS, role: "training", candidateName: candidate.name },
@@ -263,7 +264,9 @@ test("hire: happy path inserts active staff with candidate's tier/salary", async
   assert.equal(inserted.name, candidate.name);
   assert.equal(inserted.role, "training");
   assert.equal(inserted.tier, candidate.tier);
+  // #2216 A4 (Q1): persisteret løn er rating-drevet = staffSalaryFor(overall), ikke flad tier.
   assert.equal(inserted.salary, candidate.salary);
+  assert.equal(inserted.salary, staffSalaryFor(expectedOverall));
   assert.equal(inserted.hired_season, 7);
   assert.equal(inserted.status, "active");
   // Ingen upfront debit — sæsonløn opkræves af payroll (Task 6).

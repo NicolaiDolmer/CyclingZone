@@ -1,7 +1,7 @@
 // Deterministisk staff-kandidat-generering. Seed = teamId+season+role → stabil på refresh.
 // Navne: fiktive, kuraterede (anti-AI-slop, ingen ægte personer) — samme disciplin som
 // SPONSOR_NAME_POOL. Udvid gerne puljen, men kuratér manuelt.
-import { getStaffSalary } from "./facilityEngine.js";
+import { staffSalaryFor } from "./facilityConstants.js";
 import { deriveStaffAbilities, topSpecialization } from "./staffAbilityDerivation.js";
 
 export const STAFF_NAME_POOL = Object.freeze([
@@ -48,7 +48,10 @@ export function generateStaffCandidates({ teamId, seasonNumber, role, facilityTi
     const profile = deriveStaffAbilities({ role, tier, name });
     candidates.push({
       name, role, tier,
-      salary: getStaffSalary(tier),
+      // #2216 A4 (Q1): rating-drevet løn — staffSalaryFor(overall) i stedet for den flade
+      // tier-tabel, så lønnen bider proportionalt med kandidatens faktiske kvalitet.
+      // Deterministisk (overall er deterministisk af (role,tier,name)).
+      salary: staffSalaryFor(profile.overall),
       overall: profile.overall,
       topSpecialization: topSpecialization(profile),
     });

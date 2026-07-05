@@ -3,7 +3,7 @@
 // Hård gate: alle funktioner er no-ops mens FACILITIES_ENABLED=false; tests
 // injicerer flags-parameteren ({ facilitiesEnabled: true }) — prod-callsites
 // udelader den så koden følger kode-konstanten.
-import { FACILITIES_ENABLED, FACILITY_TRACKS } from "./facilityConstants.js";
+import { FACILITIES_ENABLED, FACILITY_TRACKS, staffSalaryFor } from "./facilityConstants.js";
 import { validateUpgrade, validateHire, getUpgradePrice, severanceCost } from "./facilityEngine.js";
 import { generateStaffCandidates } from "./staffCandidates.js";
 import { deriveStaffAbilities } from "./staffAbilityDerivation.js";
@@ -119,6 +119,13 @@ export async function hireStaff(
   const validationError = validateHire({ role, staffTier: candidate.tier, facilityTier, balance });
   if (validationError) return { ok: false, error: validationError };
 
+  // #2216 A4 (Q1): den PERSISTEREDE løn er rating-drevet — staffSalaryFor(overall) af den
+  // afledte profil, så den ansatte chefs løn matcher hans faktiske evne (ikke et groft tier).
+  // Profilen udledes FØR insert, så salary + evner stammer fra ét deterministisk objekt.
+  // Er identisk med candidate.salary (samme overall, samme kurve), men forankres i profilen.
+  const profile = deriveStaffAbilities({ role, tier: candidate.tier, name: candidate.name });
+  const salary = staffSalaryFor(profile.overall);
+
   // .select("id").single() henter den nye staff_id, som ability-upserten kræver.
   const { data: inserted, error: insertError } = await supabaseClient
     .from("team_staff")
@@ -127,7 +134,7 @@ export async function hireStaff(
       name: candidate.name,
       role,
       tier: candidate.tier,
-      salary: candidate.salary,
+      salary,
       hired_season: seasonNumber,
       status: "active",
     })
@@ -143,7 +150,6 @@ export async function hireStaff(
   // #2216 A4: persistér den afledte evne-profil (spejler rider_derived_abilities).
   // Samme idempotens-disciplin som ledger-debitten: upsert på staff_id, så en
   // retry re-stamper i stedet for at fejle. updated_at er app-vedligeholdt.
-  const profile = deriveStaffAbilities({ role, tier: candidate.tier, name: candidate.name });
   const { error: abilityError } = await supabaseClient
     .from("staff_derived_abilities")
     .upsert(
@@ -161,7 +167,7 @@ export async function hireStaff(
 
   return {
     ok: true,
-    staff: { name: candidate.name, role, tier: candidate.tier, salary: candidate.salary },
+    staff: { name: candidate.name, role, tier: candidate.tier, salary },
   };
 }
 
