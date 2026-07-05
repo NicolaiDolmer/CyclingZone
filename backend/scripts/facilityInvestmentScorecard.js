@@ -1,18 +1,23 @@
 #!/usr/bin/env node
 // #1441 Fase 3 bølge A2 — facility-investment-scorecard. MERGE-GATE for FACILITIES_ENABLED.
-// Tre gates (spec §2.3 + §2.4 + §2.1/§5):
+// Fire gates (spec §2.3 + §2.4 + §2.1/§5):
 //   (1) Anti-optimal-path: ≥3 investerings-strategier inden for ±10% af bedste
 //       langsigtede holdstyrke-proxy — pr. division, robust over leverage-sensitivitet.
 //   (2) Kommerciel payback ≥ COMMERCIAL_MIN_PAYBACK_SEASONS (aldrig selvfinansierende
 //       hurtigere) — mest gunstige kombination af tier/staff/division tæller.
 //   (3) Tid-som-valuta: tier-priser i "sæsoner af repræsentativ præmie-indkomst" inden
 //       for spec-forankrede bånd (T1≈0,5 D3 · T3≈1 D2 · T5≈2+ D1).
+//   (4) Form-gates (§2.1-intent): pris-trappe monoton uden anomalier · upkeep er det
+//       MINDRE sink · effekt strengt stigende pr. tier · staff-løn i relevant forhold
+//       til staff-værdi. Tilføjet efter review af første kalibrering (8235bc46) der
+//       viste at rene niveau-gates lod konstanterne degenerere i formen.
 // 100% syntetisk — ingen DB, prod-konstanter UÆNDREDE af en kørsel.
 //   node scripts/facilityInvestmentScorecard.js [--config=fil.json] [--seasons=10] [--markdown]
 import { readFileSync } from "node:fs";
 import {
   DEFAULT_MODEL_CONSTANTS, DEFAULT_LEVERAGE, STRATEGIES, PRIZE_ESTIMATE_BY_DIVISION,
-  runAntiOptimalPath, computeCommercialPayback, computePriceInSeasons, RECURRING_CAP,
+  runAntiOptimalPath, computeCommercialPayback, computePriceInSeasons, computeFormGates,
+  RECURRING_CAP,
 } from "./lib/facilityInvestmentModel.js";
 
 function arg(name, def) {
@@ -70,6 +75,18 @@ function main() {
     console.log(`  Gate [${g.key}: ${g.value.toFixed(2)} ∈ [${g.lo}, ${g.hi}]]: ${g.pass ? "✅ PASS" : "❌ FAIL"}`);
   }
   console.log();
+
+  // ── Gate 4: form-gates (§2.1-intent) ──────────────────────────────────────────
+  const form = computeFormGates({ constants });
+  console.log("── GATE: form-gates (§2.1-intent) — kurve-form, ikke kun niveauer ──");
+  let lastGroup = null;
+  for (const g of form.gates) {
+    if (g.group !== lastGroup) { console.log(`  [${g.group}]`); lastGroup = g.group; }
+    const band = Number.isFinite(g.hi) ? `∈ [${g.lo}, ${g.hi}]` : `≥ ${g.lo}`;
+    const extra = g.meanAdded != null ? ` (staff-værdi ${fmt(g.meanAdded)}/sæson)` : "";
+    console.log(`    ${g.key}: ${g.value.toFixed(3)} ${band}${extra}: ${g.pass ? "✅" : "❌"}`);
+  }
+  console.log(`  Gate [alle form-checks]: ${form.allPass ? "✅ PASS" : "❌ FAIL — konstant-formen er degenereret, rekalibrér"}\n`);
 
   // ── Gate 2: kommerciel payback (§2.1 anti-runaway) ────────────────────────────
   console.log("── GATE: kommerciel payback ≥ " + constants.minPaybackSeasons + " sæsoner (aldrig selvfinansierende hurtigere) ──");
@@ -141,10 +158,10 @@ function main() {
     console.log();
   }
 
-  const allPass = pis.allPass && paybackPass && antiOptimalPass;
+  const allPass = pis.allPass && paybackPass && antiOptimalPass && form.allPass;
   console.log("──────────────────────────────────────────────────────────────────────");
   console.log(`HEADLINE: facility-gates ${allPass ? "✅ PASS — A2-merge-gate opfyldt" : "❌ FAIL — rekalibrér før FACILITIES_ENABLED"}`);
-  console.log(`  tid-som-valuta ${pis.allPass ? "✅" : "❌"} · kommerciel payback ${paybackPass ? "✅" : "❌"} · anti-optimal-path ${antiOptimalPass ? "✅" : "❌"}`);
+  console.log(`  tid-som-valuta ${pis.allPass ? "✅" : "❌"} · kommerciel payback ${paybackPass ? "✅" : "❌"} · anti-optimal-path ${antiOptimalPass ? "✅" : "❌"} · form-gates ${form.allPass ? "✅" : "❌"}`);
   console.log("NOTE: flag-flip er en separat EJER-beslutning — harness grøn er forudsætningen, ikke beslutningen.\n");
 }
 

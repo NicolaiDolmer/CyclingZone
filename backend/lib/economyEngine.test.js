@@ -3721,8 +3721,8 @@ function makeFacilitySupabase({ facilities = [], staff = [] } = {}) {
 test("#1441 A1: chargeFacilityCosts debiterer summeret tier-upkeep som facility_upkeep med idempotency-key", async () => {
   const { supabase, financeRows } = makeFacilitySupabase({
     facilities: [
-      { track: "training", tier: 2 }, // 11_000
-      { track: "medical", tier: 1 },  // 2_700
+      { track: "training", tier: 2 }, // 3_500
+      { track: "medical", tier: 1 },  // 1_500
     ],
   });
   const team = { id: "team-fac-1", name: "Facility FC" };
@@ -3730,10 +3730,10 @@ test("#1441 A1: chargeFacilityCosts debiterer summeret tier-upkeep som facility_
 
   const result = await chargeFacilityCosts({ team, seasonId, supabaseClient: supabase, enabled: true });
 
-  assert.equal(result.facilityUpkeepCharged, 13_700);
+  assert.equal(result.facilityUpkeepCharged, 5_000);
   const rows = financeRows.filter((r) => r.type === "facility_upkeep");
   assert.equal(rows.length, 1, "Præcis én facility_upkeep-transaktion");
-  assert.equal(rows[0].amount, -13_700);
+  assert.equal(rows[0].amount, -5_000);
   assert.equal(rows[0].team_id, "team-fac-1");
   assert.equal(rows[0].idempotency_key, "facility_upkeep:team-fac-1:season-fac-1");
   assert.equal(rows[0].reason_code, "season_start_facility_upkeep");

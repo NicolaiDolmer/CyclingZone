@@ -106,16 +106,18 @@ function nextPurchase(constants, priorities, tiers) {
   return best;
 }
 
-// Simulér én strategi over N sæsoner. Budget = repræsentativ præmie-indkomst pr.
-// division (overskuds-laget). Politik pr. sæson: (1) betal recurring, (2) køb næste
-// opgradering i strategi-rækkefølgen mens der er råd, (3) opgradér staff (op til
-// facilitets-tier) i prioritets-rækkefølge så længe recurring-cap'en holder,
-// (4) akkumulér styrke-værdi. Deterministisk — ingen tilfældighed.
+// Simulér én strategi over N sæsoner. Budget = budgetShare × repræsentativ
+// præmie-indkomst pr. division (overskuds-laget). budgetShare (default 1,0 = hele
+// præmien) lader inflations-scorecardet modellere realistisk adoption (fx 0,6)
+// UDEN duplikeret sim-logik — modellen er SSOT. Politik pr. sæson: (1) betal
+// recurring, (2) køb næste opgradering i strategi-rækkefølgen mens der er råd,
+// (3) opgradér staff (op til facilitets-tier) i prioritets-rækkefølge så længe
+// recurring-cap'en holder, (4) akkumulér styrke-værdi. Deterministisk.
 export function simulateStrategy({
   priorities, division, seasons = 10,
-  constants = DEFAULT_MODEL_CONSTANTS, leverage = DEFAULT_LEVERAGE,
+  constants = DEFAULT_MODEL_CONSTANTS, leverage = DEFAULT_LEVERAGE, budgetShare = 1.0,
 }) {
-  const budget = PRIZE_ESTIMATE_BY_DIVISION[division] || 0;
+  const budget = (PRIZE_ESTIMATE_BY_DIVISION[division] || 0) * budgetShare;
   const tiers = Object.fromEntries(constants.tracks.map((t) => [t, 0]));
   const staff = Object.fromEntries(constants.tracks.map((t) => [t, null]));
   let cash = 0, spent = 0, strength = 0;
@@ -211,6 +213,86 @@ export const TIME_AS_CURRENCY_BANDS = Object.freeze({
   tier3cum_d2: { lo: 0.5, hi: 2.0 },
   tier5cum_d1: { lo: 2.0, hi: 6.0 },
 });
+
+// ── Form-gates (§2.1-intent) — håndhæver kurve-FORMEN maskinelt ─────────────────
+// Review-fund efter første A2-kalibrering (8235bc46): rene niveau-gates lod
+// konstanterne degenerere (dublet-tiers, ×15-prishop, upkeep > pris, staff-løn
+// uden relation til staff-værdi). Disse gates låser spec §2.1's intent:
+//   1. Pris-trappe: monotone steps, price[t+1]/price[t] ∈ [1.5, 4] (ingen dubletter,
+//      ingen anomalier).
+//   2. Upkeep-andel: 5 sæsoners upkeep ved stop-tier T < kumulativ pris til T
+//      ("engangs-pris + MINDRE løbende upkeep" — upkeep er det mindre sink).
+//   3. Effekt-monotoni: strengt stigende pr. tier i alle tracks; hvert step ≥ 20%
+//      af track'ets gennemsnitsstep (ingen de-facto-dublet-tiers).
+//   4. Staff-relevans: staff-løn[t] ∈ [5%, 40%] af den styrke-værdi staffen tilfører
+//      i D2 ved matched facilitets-tier (gennemsnit over tracks — én løn-tabel deler
+//      alle roller). Hverken gratis eller prohibitiv. Beregnet via
+//      strengthValuePerSeason med/uden staff (delta = marginal værdi af ansættelsen).
+export const FORM_GATE_BANDS = Object.freeze({
+  priceStep: { lo: 1.5, hi: 4 },
+  upkeepHorizonSeasons: 5,
+  effectStepMinShare: 0.2,
+  staffSalaryShare: { lo: 0.05, hi: 0.40 },
+  staffReferenceDivision: 2,
+});
+
+export function computeFormGates({ constants = DEFAULT_MODEL_CONSTANTS, leverage = DEFAULT_LEVERAGE }) {
+  const B = FORM_GATE_BANDS;
+  const gates = [];
+
+  // 1. Pris-trappe
+  for (let t = 1; t < constants.maxTier; t++) {
+    const ratio = constants.price[t + 1] / constants.price[t];
+    gates.push({
+      group: "pris-trappe", key: `price t${t}→t${t + 1}`, value: ratio,
+      lo: B.priceStep.lo, hi: B.priceStep.hi,
+      pass: ratio >= B.priceStep.lo && ratio <= B.priceStep.hi,
+    });
+  }
+
+  // 2. Upkeep-andel (upkeep = det mindre sink)
+  let cum = 0;
+  for (let t = 1; t <= constants.maxTier; t++) {
+    cum += constants.price[t];
+    const upkeep5 = B.upkeepHorizonSeasons * (constants.upkeep[t] || 0);
+    gates.push({
+      group: "upkeep-andel", key: `${B.upkeepHorizonSeasons}×upkeep[t${t}]/cumPris[t${t}]`,
+      value: upkeep5 / cum, lo: 0, hi: 1, pass: upkeep5 < cum,
+    });
+  }
+
+  // 3. Effekt-monotoni (ingen de-facto-dublet-tiers)
+  for (const track of constants.tracks) {
+    const eff = constants.effect[track];
+    const steps = [];
+    for (let t = 1; t <= constants.maxTier; t++) steps.push((eff[t] ?? 0) - (eff[t - 1] ?? 0));
+    const meanStep = steps.reduce((a, b) => a + b, 0) / steps.length;
+    const minStep = Math.min(...steps);
+    gates.push({
+      group: "effekt-monotoni", key: `${track} min-step/mean-step`,
+      value: meanStep > 0 ? minStep / meanStep : -1,
+      lo: B.effectStepMinShare, hi: Infinity,
+      pass: minStep > 0 && meanStep > 0 && minStep >= B.effectStepMinShare * meanStep,
+    });
+  }
+
+  // 4. Staff-relevans (D2, matched tier, delta-værdi af staffen, gennemsnit over tracks)
+  const d = B.staffReferenceDivision;
+  for (let t = 1; t <= constants.maxTier; t++) {
+    const added = constants.tracks.map((track) =>
+      strengthValuePerSeason(constants, leverage, track, t, t, d)
+      - strengthValuePerSeason(constants, leverage, track, t, null, d));
+    const meanAdded = added.reduce((a, b) => a + b, 0) / added.length;
+    const share = meanAdded > 0 ? (constants.staffSalary[t] || 0) / meanAdded : Infinity;
+    gates.push({
+      group: "staff-relevans", key: `løn[t${t}]/staff-værdi (D${d})`, value: share,
+      lo: B.staffSalaryShare.lo, hi: B.staffSalaryShare.hi, meanAdded,
+      pass: share >= B.staffSalaryShare.lo && share <= B.staffSalaryShare.hi,
+    });
+  }
+
+  return { gates, allPass: gates.every((g) => g.pass) };
+}
 
 export function computePriceInSeasons({ constants = DEFAULT_MODEL_CONSTANTS }) {
   let cum = 0;

@@ -15,10 +15,10 @@ test("computeBonus matcher prod-effectiveBonus på prod-konstanterne (drift-guar
 
 test("strengthValuePerSeason: commercial i sponsor-kroner, training via leverage×præmie", () => {
   const c = DEFAULT_MODEL_CONSTANTS;
-  // commercial tier 5 + staff 5 i D1: 0.022 × 1.0 × 600.000 = 13.200
-  assert.equal(strengthValuePerSeason(c, DEFAULT_LEVERAGE, "commercial", 5, 5, 1), 0.022 * 600000);
-  // training tier 5 + staff 5 i D1: 0.12 × 1.0 × leverage(3.0) × 160.000 = 57.600
-  assert.equal(strengthValuePerSeason(c, DEFAULT_LEVERAGE, "training", 5, 5, 1), 0.12 * 3.0 * 160000);
+  // commercial tier 5 + staff 5 i D1: 0.012 × 1.0 × 600.000 = 7.200
+  assert.equal(strengthValuePerSeason(c, DEFAULT_LEVERAGE, "commercial", 5, 5, 1), 0.012 * 600000);
+  // training tier 5 + staff 5 i D1: 0.165 × 1.0 × leverage(3.0) × 160.000 = 79.200
+  assert.equal(strengthValuePerSeason(c, DEFAULT_LEVERAGE, "training", 5, 5, 1), 0.165 * 3.0 * 160000);
   // academy tier 2 uden staff: slots-effekt 2 × util 0.5 × slotValue 900 = 900
   assert.equal(strengthValuePerSeason(c, DEFAULT_LEVERAGE, "academy", 2, null, 1), 2 * 0.5 * 900);
   // intet bygget = 0
@@ -73,10 +73,10 @@ test("computeCommercialPayback: payback = pris/netto-marginal; Infinity ved nett
 
 test("computePriceInSeasons: kumulativ pris / divisions-præmie", () => {
   const r = computePriceInSeasons({ constants: DEFAULT_MODEL_CONSTANTS });
-  // kalibreret: tier 1 = 7.000; D3-præmie 25.000 → 0.28 sæson
-  assert.equal(r.table.find((x) => x.tier === 1).seasons[3], 7000 / 25000);
-  // tier 3 kumulativ = 7+10,5+18 = 35.500; D2 70.000 → ~0.51
-  assert.ok(Math.abs(r.table.find((x) => x.tier === 3).seasons[2] - 35500 / 70000) < 1e-9);
+  // kalibreret: tier 1 = 12.000; D3-præmie 25.000 → 0.48 sæson
+  assert.equal(r.table.find((x) => x.tier === 1).seasons[3], 12000 / 25000);
+  // tier 3 kumulativ = 12+26+50 = 88.000; D2 70.000 → ~1.26
+  assert.ok(Math.abs(r.table.find((x) => x.tier === 3).seasons[2] - 88000 / 70000) < 1e-9);
   assert.ok(Array.isArray(r.gates));
   for (const g of r.gates) {
     assert.ok(["tier1_d3", "tier3cum_d2", "tier5cum_d1"].includes(g.key));
