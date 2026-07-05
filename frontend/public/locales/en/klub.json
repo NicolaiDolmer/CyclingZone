@@ -47,6 +47,7 @@
     "hired": "Hired",
     "salary": "Salary {amount} CZ$/season",
     "candidates": "Candidates",
+    "occupied": "Release your current chief to hire a replacement.",
     "candidate": "Tier {tier} · {amount}/season",
     "hire": "Hire",
     "release": "Release",

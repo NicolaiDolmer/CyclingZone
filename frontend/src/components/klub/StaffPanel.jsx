@@ -56,18 +56,25 @@ export default function StaffPanel({ open, track, facility, onClose, loadCandida
           </div>
         </div>
       ) : null}
-      <div className="text-[10px] uppercase tracking-[1.4px] text-cz-2 mb-2">{t("staff.candidates")}</div>
-      {loading ? (
-        <p className="text-[12px] text-cz-3">…</p>
+      {staff ? (
+        // Én chef pr. rolle (backend 409 ved besat) → skjul kandidater, vis fyr-først-note.
+        <p className="text-[11px] text-cz-3">{t("staff.occupied")}</p>
       ) : (
-        <div className="flex flex-col gap-[6px]">
-          {candidates.map((c) => (
-            <div key={c.name} className="rounded-cz border border-cz-border bg-cz-card px-[14px] py-[9px] flex justify-between items-center">
-              <div className="text-[13px]">{c.name} <span className="text-[11px] text-cz-2">· {t("staff.candidate", { tier: c.tier, amount: formatNumber(c.salary) })}</span></div>
-              <Button variant="secondary" size="sm" loading={busy} onClick={() => doHire(c.name)}>{t("staff.hire")}</Button>
+        <>
+          <div className="text-[10px] uppercase tracking-[1.4px] text-cz-2 mb-2">{t("staff.candidates")}</div>
+          {loading ? (
+            <p className="text-[12px] text-cz-3">…</p>
+          ) : (
+            <div className="flex flex-col gap-[6px]">
+              {candidates.map((c) => (
+                <div key={c.name} className="rounded-cz border border-cz-border bg-cz-card px-[14px] py-[9px] flex justify-between items-center">
+                  <div className="text-[13px]">{c.name} <span className="text-[11px] text-cz-2">· {t("staff.candidate", { tier: c.tier, amount: formatNumber(c.salary) })}</span></div>
+                  <Button variant="secondary" size="sm" loading={busy} onClick={() => doHire(c.name)}>{t("staff.hire")}</Button>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          )}
+        </>
       )}
     </Modal>
   );

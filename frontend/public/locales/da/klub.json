@@ -44,6 +44,7 @@
     "hired": "Ansat",
     "salary": "Løn {amount} CZ$/sæson",
     "candidates": "Kandidater",
+    "occupied": "Fyr din nuværende chef for at ansætte en ny.",
     "candidate": "Tier {tier} · {amount}/sæson",
     "hire": "Ansæt",
     "release": "Fyr",
