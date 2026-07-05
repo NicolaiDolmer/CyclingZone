@@ -210,6 +210,7 @@
     "reasonCode": {
       "season_start_sponsor": "Sponsor",
       "season_start_upkeep": "Upkeep & maintenance",
+      "season_start_academy_drift": "Academy drift",
       "season_end_salary": "Salaries",
       "season_end_division_bonus": "Division bonus",
       "season_end_negative_interest": "Negative interest",

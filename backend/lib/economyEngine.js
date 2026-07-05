@@ -707,6 +707,7 @@ export async function processTeamSeasonPayroll(team, seasonId, deps = {}) {
         },
         audit: {
           sourcePath: "economyEngine.processSeasonStart.academyDrift",
+          reasonCode: FINANCE_REASON.SEASON_START_ACADEMY_DRIFT,
           idempotencyKey: `academy_drift:${team.id}:${seasonId}`,
         },
       }

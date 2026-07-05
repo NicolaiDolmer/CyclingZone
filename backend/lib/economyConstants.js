@@ -255,6 +255,7 @@ export const FINANCE_REASON = Object.freeze({
   // Sæson-baserede payouts (cron)
   SEASON_START_SPONSOR: "season_start_sponsor",
   SEASON_START_UPKEEP: "season_start_upkeep",
+  SEASON_START_ACADEMY_DRIFT: "season_start_academy_drift",
   SEASON_END_SALARY: "season_end_salary",
   SEASON_END_DIVISION_BONUS: "season_end_division_bonus",
   SEASON_END_NEGATIVE_INTEREST: "season_end_negative_interest",
