@@ -106,12 +106,12 @@ function makeResultRowPushers({ race, byId, teamNameByTeam, pointsLookup, result
       breakaway_caught,
     });
   };
-  const pushTeam = ({ rank, team_id, stage_number }) => {
-    const pts = pointsLookup[`team__${rank}`] || 0;
+  const pushTeam = ({ rank, team_id, stage_number, result_type = "team" }) => {
+    const pts = pointsLookup[`${result_type}__${rank}`] || 0;
     resultRows.push({
       race_id: race.id,
       stage_number,
-      result_type: "team",
+      result_type,
       rank,
       rider_id: null,
       rider_name: null,
@@ -253,6 +253,7 @@ export function buildRaceResults({ race, stages = [], entrants = [], pointsLooku
       for (const p of pointsCls) pushIndiv({ result_type: "points_day", rank: p.rank, rider_id: p.rider_id, stage_number: stageNumber });
       for (const k of komCls) pushIndiv({ result_type: "mountain_day", rank: k.rank, rider_id: k.rider_id, stage_number: stageNumber });
       for (const y of young) pushIndiv({ result_type: "young_day", rank: y.rank, rider_id: y.rider_id, stage_number: stageNumber });
+      for (const t of teamClassification(entrants, cumTime)) pushTeam({ rank: t.rank, team_id: t.team_id, stage_number: stageNumber, result_type: "team_day" });
     } else {
       // Slut-etape: hele klassementet udbetales.
       const young = rankByCumTimeAsc(entrants.filter((e) => e.is_u25), cumTime, posSum);
