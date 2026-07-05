@@ -631,6 +631,7 @@ function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = n
         <h2 className="font-semibold text-cz-1 text-sm">{title}</h2>
         {collapsible && (
           <button type="button" onClick={() => setExpanded(e => !e)}
+            aria-pressed={expanded}
             className="text-xs text-cz-accent-t hover:underline shrink-0">
             {expanded ? t("detail.showLess") : t("detail.showAll", { count: rows.length })}
           </button>
