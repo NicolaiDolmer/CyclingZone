@@ -14,7 +14,7 @@
 
 > **Shipped 5/7 — #2206 rangliste/standings viser alle ryttere (PR #2210, v6.63, afventer prod-verify):** Supabase Data API's 1000-rækkers cap slugte brede reads → rytterrangliste viste kun ~1000 af 3142 (top-rangerede forsvandt) + standings-graf/styrke-linse manglede data. Fix: 5 reads pagineret via `fetchAllRows`. Verificeret mod prod-DB (3142/5590/1321/4871 rækker). Postmortem: `.claude/learnings/2026-07-05-supabase-1000-row-cap-rankings.md`. **Discord-triage 5/7:** alle 3 kanaler + 15 forum-tråde læst; #2206–#2209 oprettet (rangliste, height/weight+compare væk, auktions-dobbeltbesked, in-game kommunikation), evidens-kommentarer på #2170/#2081/#2177.
 
-> **🤖 Working agent:** Ingen aktiv session. (Sidst: #1441 A3 Klub-UI → PR #2215, afventer ejer-preview-review + flip-beslutning; Plan B pre-flip engine-slice er næste hvis flip ønskes.)
+> **🤖 Working agent:** Claude Code — #1441 A4 staff-rigdom (evner+profiler+ability-drevet effekt). Spec: `docs/superpowers/specs/2026-07-05-staff-richness-design.md`. Design ejer-godkendt 5/7 (efter A3-preview): staff får evne-model (dimension Fysisk/Mental/Teknisk × niveau Ungdom/Junior/Senior), rating-drevet effekt+løn (svar på Q1), fuld profil-side (spejler rytter), klikbar staff — FØR flip. Dekomponering i GitHub: **#2216 A4 (før-flip, aktiv)** · #2217 staff-kontrakter (m. Slice B) · #2218 pension→staff. A3 (PR #2215) afventer stadig flip-beslutning; A4 bygger ovenpå.
 
 ## Standing context (forever-relaunch)
 

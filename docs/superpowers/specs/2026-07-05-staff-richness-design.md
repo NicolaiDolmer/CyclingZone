@@ -74,9 +74,9 @@ Udvid `generateStaffCandidates` (`backend/lib/staffCandidates.js`): hver kandida
 
 | Bølge | Indhold | Timing | GitHub |
 |---|---|---|---|
-| **A4 — Rigt staff-system** | §1 ability-model + §2 ability-drevet effekt (erstatter tier-skalar, wirer training-effekt) + §3 fuld profil-side + §4 kandidat-generering m. evner + klikbar staff + re-harness + migration (staff-evne-kolonner) + `app_config`-flag-migration | **FØR flip** | (A4-issue) |
-| **B-kobling — Staff-kontrakter** | Staff får kontrakt-længde + genforhandling + udløb, spejler rytter-kontrakt-livscyklussen | **Med Slice B** | (issue) |
-| **Pension→staff** | Retired ryttere bliver staff efter deres styrker (rytter-evner → staff-evner via §1.3-mapping). **Dependency:** kræver et rytter-pensions-/aldrings-system (verificér om det findes; ellers del af slicen) | **Senere slice** | (issue) |
+| **A4 — Rigt staff-system** | §1 ability-model + §2 ability-drevet effekt (erstatter tier-skalar, wirer training-effekt) + §3 fuld profil-side + §4 kandidat-generering m. evner + klikbar staff + re-harness + migration (staff-evne-kolonner) + `app_config`-flag-migration | **FØR flip** | [#2216](https://github.com/NicolaiDolmer/CyclingZone/issues/2216) |
+| **B-kobling — Staff-kontrakter** | Staff får kontrakt-længde + genforhandling + udløb, spejler rytter-kontrakt-livscyklussen | **Med Slice B** | [#2217](https://github.com/NicolaiDolmer/CyclingZone/issues/2217) |
+| **Pension→staff** | Retired ryttere bliver staff efter deres styrker (rytter-evner → staff-evner via §1.3-mapping). **Dependency:** kræver et rytter-pensions-/aldrings-system (verificér om det findes; ellers del af slicen) | **Senere slice** | [#2218](https://github.com/NicolaiDolmer/CyclingZone/issues/2218) |
 
 **Spændings-resolution (Q1 "alt før flip" vs. Q3 "sammen med rytter-forhandlinger + pension"):** det rige staff-SYSTEM (evner/profiler/effekt/specialiseringer) bygges før flip. Staff-KONTRAKTER + PENSION→STAFF kobles til andre systemer (Slice B + pensions-system) og kommer bagefter — men A4-modellen designes kompatibel med begge fra dag 1. Flippet kobles IKKE til hele Slice B + et nyt pensions-system.
 
