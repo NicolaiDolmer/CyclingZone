@@ -613,28 +613,39 @@ function ResultEntityCell({ row, highlightWinner, t }) {
   );
 }
 
-function ResultTable({ title, rows, highlightWinner = false }) {
+function ResultTable({ title, rows, highlightWinner = false, highlightTeamId = null, defaultLimit = 10 }) {
   const { t } = useTranslation("races");
+  const [expanded, setExpanded] = useState(false);
   const showPoints = rows.some(r => (r.points_earned ?? 0) > 0);
   // Gap-kolonne kun når motoren har skrevet tider (stage/gc fra Race Engine v2);
   // gamle PCM-løb og point/bjerg/ungdom/hold-klassementer har tom finish_time.
   const showTime = rows.some(r => r.finish_time);
   // Holdklassement (rider_id=null) har ingen rytter-team-kolonne at vise.
   const showTeamCol = rows.some(r => resultEntity(r).kind === "rider");
+  // #2081 (Discord-ønske): top-10 default + "Show all N"-knap, når feltet er stort.
+  const collapsible = rows.length > defaultLimit;
+  const visibleRows = collapsible && !expanded ? rows.slice(0, defaultLimit) : rows;
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
-      <div className="px-4 py-3 border-b border-cz-border">
+      <div className="px-4 py-3 border-b border-cz-border flex items-center justify-between gap-3">
         <h2 className="font-semibold text-cz-1 text-sm">{title}</h2>
+        {collapsible && (
+          <button type="button" onClick={() => setExpanded(e => !e)}
+            className="text-xs text-cz-accent-t hover:underline shrink-0">
+            {expanded ? t("detail.showLess") : t("detail.showAll", { count: rows.length })}
+          </button>
+        )}
       </div>
       {rows.length === 0 ? (
         <div className="px-4 py-8 text-center text-cz-3 text-sm">{t("detail.noResults")}</div>
       ) : (
         <table className="w-full text-sm">
           <tbody className="divide-y divide-cz-border">
-            {rows.map(r => {
+            {visibleRows.map(r => {
               const isWinner = highlightWinner && r.rank === 1;
+              const isMyTeam = highlightTeamId != null && String(r.team_id) === String(highlightTeamId);
               return (
-              <tr key={r.id} className={`transition-colors ${isWinner ? "bg-cz-accent/10" : "hover:bg-cz-subtle"}`}>
+              <tr key={r.id} className={`transition-colors ${isWinner ? "bg-cz-accent/10" : isMyTeam ? "bg-cz-accent/5" : "hover:bg-cz-subtle"}`}>
                 <td className={`px-4 py-2 w-10 font-mono text-xs ${isWinner ? "text-cz-accent-t" : "text-cz-3"}`}>{r.rank ?? "—"}</td>
                 <td className="px-2 py-2">
                   <ResultEntityCell row={r} highlightWinner={highlightWinner} t={t} />
