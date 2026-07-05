@@ -17,7 +17,7 @@ import { readFileSync } from "node:fs";
 import {
   DEFAULT_MODEL_CONSTANTS, DEFAULT_LEVERAGE, STRATEGIES, PRIZE_ESTIMATE_BY_DIVISION,
   runAntiOptimalPath, computeCommercialPayback, computePriceInSeasons, computeFormGates,
-  RECURRING_CAP,
+  runSpecializationBalance, SPECIALIZATION_BALANCE, RECURRING_CAP,
 } from "./lib/facilityInvestmentModel.js";
 
 function arg(name, def) {
@@ -158,10 +158,21 @@ function main() {
     console.log();
   }
 
-  const allPass = pis.allPass && paybackPass && antiOptimalPass && form.allPass;
+  // ── Gate 5: specialiserings-balance (#2216 A4, spec §7) ───────────────────────
+  console.log("── GATE: specialiserings-balance (#2216 A4) — generalist OG specialist spilbare, ingen dominant spec ──");
+  const spec = runSpecializationBalance({ constants, division: SPECIALIZATION_BALANCE.division ?? 2 });
+  let lastSpecGroup = null;
+  for (const c of spec.checks) {
+    if (c.group !== lastSpecGroup) { console.log(`  [${c.group}]`); lastSpecGroup = c.group; }
+    const band = Number.isFinite(c.hi) ? `∈ [${c.lo.toFixed(2)}, ${c.hi.toFixed(2)}]` : `≥ ${c.lo.toFixed(2)}`;
+    console.log(`    ${c.key}: ${c.value.toFixed(3)} ${band}: ${c.pass ? "✅" : "❌"}`);
+  }
+  console.log(`  Gate [specialiserings-balance — generalist/specialist ±${(SPECIALIZATION_BALANCE.competitiveBand * 100).toFixed(0)}%, ingen dominant]: ${spec.allPass ? "✅ PASS" : "❌ FAIL — en specialisering dominerer / staff-akse skævvrider, rekalibrér spec-vægte"}\n`);
+
+  const allPass = pis.allPass && paybackPass && antiOptimalPass && form.allPass && spec.allPass;
   console.log("──────────────────────────────────────────────────────────────────────");
-  console.log(`HEADLINE: facility-gates ${allPass ? "✅ PASS — A2-merge-gate opfyldt" : "❌ FAIL — rekalibrér før FACILITIES_ENABLED"}`);
-  console.log(`  tid-som-valuta ${pis.allPass ? "✅" : "❌"} · kommerciel payback ${paybackPass ? "✅" : "❌"} · anti-optimal-path ${antiOptimalPass ? "✅" : "❌"} · form-gates ${form.allPass ? "✅" : "❌"}`);
+  console.log(`HEADLINE: facility-gates ${allPass ? "✅ PASS — A2/A4-merge-gate opfyldt" : "❌ FAIL — rekalibrér før FACILITIES_ENABLED"}`);
+  console.log(`  tid-som-valuta ${pis.allPass ? "✅" : "❌"} · kommerciel payback ${paybackPass ? "✅" : "❌"} · anti-optimal-path ${antiOptimalPass ? "✅" : "❌"} · form-gates ${form.allPass ? "✅" : "❌"} · specialiserings-balance ${spec.allPass ? "✅" : "❌"}`);
   console.log("NOTE: flag-flip er en separat EJER-beslutning — harness grøn er forudsætningen, ikke beslutningen.\n");
 }
 

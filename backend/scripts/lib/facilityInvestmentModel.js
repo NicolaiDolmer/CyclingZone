@@ -5,10 +5,34 @@
 // (backend/lib/facilityConstants.js) — samme princip som economyCalibrationOverrides.
 import {
   FACILITY_TRACKS, MAX_FACILITY_TIER, FACILITY_TIER_PRICE, FACILITY_TIER_UPKEEP,
-  STAFF_SALARY_BY_TIER, FACILITY_BASE_EFFECT, COMMERCIAL_MIN_PAYBACK_SEASONS,
+  FACILITY_BASE_EFFECT, COMMERCIAL_MIN_PAYBACK_SEASONS, staffSalaryFor,
 } from "../../lib/facilityConstants.js";
-import { staffUtilization } from "../../lib/facilityEngine.js";
+import { effectiveBonus, staffEffectFactor, specializationMatch } from "../../lib/facilityEngine.js";
+import { TIER_OVERALL_BAND, LEVEL_BANDS } from "../../lib/staffAbilityConstants.js";
 import { SPONSOR_INCOME_BY_DIVISION } from "../../lib/economyConstants.js";
+
+// ── #2216 A4: tier → repræsentativ overall (co-SSOT med prod-modellen) ──────────
+// A2-harnesset arbejdede i integer-tiers (staff = tier-indeks) mod den nu-deprecerede
+// staffUtilization(tier)-skalar. A4 flyttede prod til den ability-drevne model, hvor
+// EFFEKT og LØN drives af en staffs overall (1..99), ikke tier. En besat facilitets-
+// staff har en repræsentativ kvalitet = MIDTPUNKTET af tier-kvalitets-båndet
+// (TIER_OVERALL_BAND[tier], samme bånd kandidat-derivationen trækker i). Midtpunktet
+// (ikke et PRNG-draw) er det stabile, reproducerbare repræsentative punkt for et
+// scorecard — kandidat-varians udjævnes over en trup, så gennemsnits-staffen ≈ midt.
+// tier 0 / null = ingen staff (gulv-faktoren i staffEffectFactor(null)).
+export function tierToOverall(staffTier) {
+  if (staffTier == null || staffTier < 1) return null;
+  const band = TIER_OVERALL_BAND[staffTier] ?? TIER_OVERALL_BAND[MAX_FACILITY_TIER];
+  return Math.round((band.lo + band.hi) / 2);
+}
+
+// Byg det staff-OBJEKT prod-effekt-modellen forventer (kun `overall` bruges af
+// staffEffectFactor). null tier → null (ingen staff). Bruges så harnessets
+// computeBonus rammer PRÆCIS samme kodesti som prod (effectiveBonus med staff-objekt).
+export function staffObjOf(staffTier) {
+  const overall = tierToOverall(staffTier);
+  return overall == null ? null : { overall };
+}
 
 // ── ASSUMPTION: repræsentativ PRÆMIE-indkomst pr. division (ambitions-laget) ─────
 // Samme proxy som moneySupplyScorecard.PRIZE_ESTIMATE_BY_DIVISION (ejer-reviewet for
@@ -22,7 +46,13 @@ export const DEFAULT_MODEL_CONSTANTS = Object.freeze({
   maxTier: MAX_FACILITY_TIER,
   price: FACILITY_TIER_PRICE,
   upkeep: FACILITY_TIER_UPKEEP,
-  staffSalary: STAFF_SALARY_BY_TIER,
+  // #2216 A4: løn er nu RATING-drevet (staffSalaryFor(overall)), ikke en flad tier-tabel.
+  // Modellen holder en per-tier løn-CACHE afledt af tier→overall→staffSalaryFor så
+  // recurring/relevans-beregningerne stadig er tier-indekserede (co-SSOT: samme kurve
+  // som prod). Kan sweepes ved at override `staffSalary` i --config.
+  staffSalary: Object.freeze(Object.fromEntries(
+    [1, 2, 3, 4, 5].map((t) => [t, staffSalaryFor(tierToOverall(t))]),
+  )),
   effect: FACILITY_BASE_EFFECT,
   sponsorBase: SPONSOR_INCOME_BY_DIVISION,
   minPaybackSeasons: COMMERCIAL_MIN_PAYBACK_SEASONS,
@@ -66,15 +96,15 @@ export const STRATEGIES = Object.freeze({
 });
 
 // Delt bonus-formel med sweepbar effekt-tabel (base fra constants.effect, IKKE prod-
-// konstanten, så kalibrerings-sweeps kan variere den). Staff-faktoren importeres fra
-// prod som co-SSOT: #2216 A4 flyttede prod-modellen til den ability-drevne
-// staffEffectFactor(staff), men bevarede den deprecated tier-skalar (staffUtilization)
-// bag effectiveBonus-adapteren for integer-tier-kald. Harnesset arbejder i integer-tiers
-// (staff = tier-indeks), så det bruger netop den adapter-sti → paritet med prod holder.
-// Drift-guard-testen asserterer computeBonus == effectiveBonus over integer/null-tiers.
+// konstanten, så kalibrerings-sweeps kan variere den). Staff-FAKTOREN kommer fra prod
+// som co-SSOT: #2216 A4 flyttede prod-modellen til den ability-drevne staffEffectFactor
+// (staff-objekt med overall). Harnesset mapper sit integer-staff-tier → repræsentativt
+// overall (tierToOverall) → staff-objekt og kalder staffEffectFactor DIREKTE, så det
+// rammer PRÆCIS samme kodesti som prod. Drift-guard-testen asserterer at computeBonus
+// == prod-effectiveBonus(track, fac, staffObj) over staff-objekt/null-input.
 export function computeBonus(constants, track, facilityTier, staffTier) {
   const base = constants.effect[track]?.[facilityTier] ?? 0;
-  return base * staffUtilization(staffTier);
+  return base * staffEffectFactor(staffObjOf(staffTier));
 }
 
 export function strengthValuePerSeason(constants, leverage, track, facilityTier, staffTier, division) {
@@ -297,6 +327,122 @@ export function computeFormGates({ constants = DEFAULT_MODEL_CONSTANTS, leverage
   }
 
   return { gates, allPass: gates.every((g) => g.pass) };
+}
+
+// ── #2216 A4: specialiserings-balance-gate (§7) ─────────────────────────────────
+// Spec-krav: en GENERALIST-strategi OG en SPECIALIST-strategi (staff hvis
+// specialisering matcher truppens behov) er BEGGE konkurrencedygtige inden for ±10%;
+// INGEN enkelt specialisering dominerer. specializationMatch(staff,{dimension,level})
+// er prod-multiplikatoren (co-SSOT). Vi bygger repræsentative staff-profiler ved en
+// fast overall og måler den effektive trænings-værdi hver profil giver mod et
+// givent trup-behov (dimension × niveau).
+//
+// Model-detalje: en specialist løfter ÉN akse `spread` op og de øvrige `spread` ned
+// omkring `overall` (samme netto som derivationens specialisering+kontrast — se
+// staffAbilityDerivation.applySpecialization/applyContrast). En generalist er flad
+// (alle akser = overall). `specializationMatch` clampes i [floor, cap] i prod, så
+// spread'et er begrænset i sin effekt — det er netop det gaten verificerer.
+export const SPECIALIZATION_BALANCE = Object.freeze({
+  overall: 70,          // repræsentativ besat-facilitets-kvalitet (≈ tier-4-bånd-midt)
+  spread: 20,           // hvor meget en specialist løfter sin akse over/under overall
+  competitiveBand: 0.10, // ±10% (spec §7)
+  dimensions: ["physical", "mental", "technical"],
+});
+
+// Byg en staff-profil ved fast overall. spec = {dimension, level} → den akse løftes,
+// øvrige akser i samme gruppe sænkes (netto-bevaret ≈ overall). null spec = generalist (flad).
+function buildStaffProfile({ overall, spread, spec = null }) {
+  const dims = {}; const lvls = {};
+  for (const d of SPECIALIZATION_BALANCE.dimensions) dims[d] = overall;
+  for (const l of LEVEL_BANDS) lvls[l] = overall;
+  if (spec) {
+    if (spec.dimension) {
+      for (const d of SPECIALIZATION_BALANCE.dimensions) {
+        dims[d] = d === spec.dimension ? overall + spread : overall - spread / 2;
+      }
+    }
+    if (spec.level) {
+      for (const l of LEVEL_BANDS) {
+        lvls[l] = l === spec.level ? overall + spread : overall - spread / 2;
+      }
+    }
+  }
+  return { overall, dimensions: dims, levels: lvls };
+}
+
+// Effektiv trænings-værdi en staff giver MOD et trup-behov: facilitets-basis-effekt
+// (tier via overall-band) × staffEffectFactor(overall) × specializationMatch(staff, behov).
+// Vi holder facilitets-tier + overall fast på tværs af profiler → forskellen er REN
+// specialiserings-effekt. Behov = {dimension, level}.
+function trainingValueFor(constants, leverage, staff, need, division) {
+  // Repræsentativt facilitets-tier for den faste overall (tier hvis bånd rummer overall).
+  const facTier = 4; // overall 70 ≈ tier-4-bånd; fast så profiler sammenlignes rent
+  const base = constants.effect.training?.[facTier] ?? 0;
+  const factor = staffEffectFactor(staff);
+  const match = specializationMatch(staff, need);
+  const bonus = base * factor * match;
+  return bonus * (leverage.training ?? 1) * (PRIZE_ESTIMATE_BY_DIVISION[division] || 0);
+}
+
+// Kør specialiserings-balance-gaten. Returnerer per-check pass + marginer.
+export function runSpecializationBalance({
+  constants = DEFAULT_MODEL_CONSTANTS, leverage = DEFAULT_LEVERAGE, division = 2,
+}) {
+  const S = SPECIALIZATION_BALANCE;
+  const generalist = buildStaffProfile({ overall: S.overall, spread: S.spread, spec: null });
+  const checks = [];
+
+  // (1) Pr. dimension: en matchende specialist vs. generalisten, MOD et behov der
+  //     matcher specialisten. Krav: specialisten er ikke DOMINERENDE bedre end
+  //     generalisten (generalist ≥ (1 − band) × specialist) OG omvendt specialisten
+  //     er spilbar MOD et MISMATCH-behov (specialist-mismatch ≥ (1 − stor-band) × generalist).
+  const perDimMatched = [];
+  for (const dim of S.dimensions) {
+    const need = { dimension: dim, level: "senior" };
+    const specialist = buildStaffProfile({ overall: S.overall, spread: S.spread, spec: { dimension: dim, level: "senior" } });
+    const gVal = trainingValueFor(constants, leverage, generalist, need, division);
+    const sVal = trainingValueFor(constants, leverage, specialist, need, division);
+    perDimMatched.push({ dim, gVal, sVal });
+    // Generalist konkurrencedygtig mod matchet specialist (spec: begge inden for ±10%).
+    const ratio = gVal / sVal; // < 1 (specialist bedre på match)
+    checks.push({
+      group: "generalist-vs-specialist", key: `generalist/${dim}-specialist (matchet behov)`,
+      value: ratio, lo: 1 - S.competitiveBand, hi: 1 + S.competitiveBand,
+      pass: ratio >= 1 - S.competitiveBand && ratio <= 1 + S.competitiveBand,
+    });
+  }
+
+  // (2) Ingen enkelt-specialisering dominerer: de tre matchede specialister (hver mod
+  //     SIT eget behov) inden for ±10% af hinanden (symmetri — physical-spec er ikke
+  //     iboende stærkere end mental/technical-spec).
+  const matchedVals = perDimMatched.map((r) => r.sVal);
+  const maxS = Math.max(...matchedVals);
+  const minS = Math.min(...matchedVals);
+  const symmetryRatio = minS / maxS;
+  checks.push({
+    group: "ingen-dominant-specialisering", key: "svageste/stærkeste dim-specialist (matchet)",
+    value: symmetryRatio, lo: 1 - S.competitiveBand, hi: Infinity,
+    pass: symmetryRatio >= 1 - S.competitiveBand,
+  });
+
+  // (3) Specialist mod MISMATCH-behov er stadig spilbar (ikke en fælde): en physical-
+  //     specialist mod et technical-behov ≥ (1 − 2·band) × generalist. Straffen for
+  //     fejl-match er reel men ikke ødelæggende (specializationMatch-floor beskytter).
+  for (const dim of S.dimensions) {
+    const other = S.dimensions.find((d) => d !== dim);
+    const need = { dimension: other, level: "youth" }; // helt andet behov
+    const specialist = buildStaffProfile({ overall: S.overall, spread: S.spread, spec: { dimension: dim, level: "senior" } });
+    const gVal = trainingValueFor(constants, leverage, generalist, need, division);
+    const sVal = trainingValueFor(constants, leverage, specialist, need, division);
+    const ratio = sVal / gVal; // specialist mod mismatch vs. flad generalist
+    checks.push({
+      group: "specialist-mismatch-spilbar", key: `${dim}-specialist mod ${other}-behov / generalist`,
+      value: ratio, lo: 1 - 2 * S.competitiveBand, hi: Infinity,
+      pass: ratio >= 1 - 2 * S.competitiveBand,
+    });
+  }
+
+  return { checks, allPass: checks.every((c) => c.pass), perDimMatched, symmetryRatio };
 }
 
 export function computePriceInSeasons({ constants = DEFAULT_MODEL_CONSTANTS }) {

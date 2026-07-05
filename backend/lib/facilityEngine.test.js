@@ -22,18 +22,21 @@ test("getStaffSalary + severanceCost", () => {
 });
 
 test("effectiveBonus: bagud-kompat — integer staffTier (A1-service/A3-UI rå-tier-sti)", () => {
+  // Den DEPRECEREDE integer-sti bruger staffUtilization (0.5 + 0.1·tier) UÆNDRET —
+  // Task 8-kalibreringen rørte kun den ability-drevne staffEffectFactor, ikke denne
+  // bagud-kompat-adapter (integer-tier-kald skal give bit-identisk resultat som før).
   assert.equal(effectiveBonus("training", 0, null), 0);                 // intet bygget
-  assert.equal(effectiveBonus("training", 5, null), 0.165 * 0.5);       // uden staff: 50% (gulv)
+  assert.equal(effectiveBonus("training", 5, null), 0.165 * 0.4);       // uden staff: gulv (nu 0.4)
   assert.equal(effectiveBonus("training", 5, 5), 0.165 * 1.0);          // fuld tier-staff: 100%
   assert.equal(effectiveBonus("training", 3, 1), 0.074 * 0.6);          // tier-skalar bevaret
 });
 
 test("effectiveBonus: #2216 A4 — ability-drevet display-magnitude (staff-objekt med overall)", () => {
-  // Ny model: base × staffEffectFactor(staff) = base × (0.5 + 0.5·overall/99).
-  assert.equal(effectiveBonus("training", 5, { overall: 99 }), 0.165 * 1.0);       // overall 99 → faktor 1.0
-  assert.equal(effectiveBonus("training", 5, { overall: 0 }), 0.165 * 0.5);        // overall 0 → gulv
-  assert.equal(effectiveBonus("training", 5, null), 0.165 * 0.5);                  // ingen staff → gulv
-  assert.ok(Math.abs(effectiveBonus("training", 5, { overall: 50 }) - 0.165 * (0.5 + 0.5 * (50 / 99))) < 1e-12);
+  // Kalibreret model (Task 8): base × staffEffectFactor(staff) = base × (0.4 + 0.6·overall/99).
+  assert.equal(effectiveBonus("training", 5, { overall: 99 }), 0.165 * 1.0);       // overall 99 → faktor 1.0 (0.4+0.6)
+  assert.equal(effectiveBonus("training", 5, { overall: 0 }), 0.165 * 0.4);        // overall 0 → gulv 0.4
+  assert.equal(effectiveBonus("training", 5, null), 0.165 * 0.4);                  // ingen staff → gulv 0.4
+  assert.ok(Math.abs(effectiveBonus("training", 5, { overall: 50 }) - 0.165 * (0.4 + 0.6 * (50 / 99))) < 1e-12);
   assert.equal(effectiveBonus("bogus", 3, { overall: 80 }), 0);                    // ukendt track
 });
 

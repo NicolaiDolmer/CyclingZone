@@ -47,16 +47,21 @@ export const FACILITY_TIER_UPKEEP = Object.freeze({ 0: 0, 1: 1_500, 2: 3_500, 3:
 // indtil A4b (kandidat-/profil-UI) er migreret, og som referenceanker for kurven.
 export const STAFF_SALARY_BY_TIER = Object.freeze({ 1: 100, 2: 250, 3: 600, 4: 1_300, 5: 2_600 });
 
-// ── Ability-drevet effekt-model (#2216 A4, Task 6) ───────────────────────────────
+// ── Ability-drevet effekt-model (#2216 A4, Task 6 · KALIBRERET Task 8) ────────────
 // Erstatter A3's tier→udnyttelses-skalar (staffUtilization) med en overall-drevet
-// faktor: staffEffectFactor(staff) = FLOOR + SLOPE·(overall/99).
-//   • FLOOR (0.5) = udnyttelsen UDEN chef (uændret fra staffUtilization(null)) — en
-//     facilitet uden ansat kører på halv kraft.
-//   • SLOPE (0.5) = det ekstra span en overall-99-chef tilfører → faktor 1.0 ved 99.
-// Lineær + monoton i overall. Kurve-parametrene er named-constants så harnesset
-// (facilityInvestmentModel) kan kalibrere dem i Task 8 uden at røre call-sites.
-export const STAFF_EFFECT_FACTOR_FLOOR = 0.5;
-export const STAFF_EFFECT_FACTOR_SLOPE = 0.5;
+// faktor: staffEffectFactor(staff) = FLOOR + SLOPE·(overall/99). Range [FLOOR, 1.0].
+//   • FLOOR (0.4) = udnyttelsen UDEN chef — en facilitet uden ansat kører på 40%.
+//   • SLOPE (0.6) = span en overall-99-chef tilfører → faktor PRÆCIS 1.0 ved overall 99.
+// Lineær + monoton i overall. KALIBRERET i Task 8 (harness): FLOOR 0.5→0.4 + SLOPE
+// 0.5→0.6. Begrundelse (se docs/audits/2026-07-05-staff-richness-a4-calibration.md):
+// den ability-drevne faktor er FLADERE mellem tiers end den gamle 0.5+0.1·tier-skalar
+// (tier-midtpunkterne ligger tæt), så et gulv på 0.5 gjorde "ingen chef" for stærkt
+// relativt til en ansat → dybde-strategier kunne ikke indhente "balanced" i D3's stramme
+// budget (anti-optimal-path-gaten fejlede på ×0,5-leverage-cellen). Gulv 0.4 gør det at
+// ANSÆTTE en chef til et større relativt spring → gaten grøn (D3-worst-cell 0,901).
+// Bemærk: 99-chef giver nu 1.0 (før 0.909) — en perfekt chef opnår FULD udnyttelse.
+export const STAFF_EFFECT_FACTOR_FLOOR = 0.4;
+export const STAFF_EFFECT_FACTOR_SLOPE = 0.6;
 
 // Per-rytter specialiserings-multiplikator (specializationMatch) — IKKE i facilitets-
 // display-magnituden; bruges af trænings-hooket i Task 7 (dimension×niveau pr. rytter).
@@ -65,10 +70,16 @@ export const STAFF_EFFECT_FACTOR_SLOPE = 0.5;
 // "flad" chef giver præcis 1.0 (akser over/under skubber match op/ned).
 //   contribution = 1 + weightDimension·norm(dim − baseline) + weightLevel·norm(lvl − baseline)
 // hvor norm(x) = x / (99 − baseline) klippes til [-1, +1]; resultatet clampes [floor, cap].
+// KALIBRERET Task 8: weightDimension 0.25→0.15 + weightLevel 0.15→0.08. Begrundelse:
+// den nye specialiserings-balance-gate (§7) kræver at en MATCHET specialist er BEDRE
+// end en generalist, men ikke DOMINERENDE (begge inden for ±10%). Ved de gamle vægte
+// var en matchet specialist ~14% bedre (over ±10%-loftet). De kalibrerede vægte giver
+// specialist +8,6% over generalist (inden for ±10%, ~1,4pp margin) — en meningsfuld
+// men ikke-dominerende specialiserings-fordel. floor/cap uændrede (ikke bindende).
 export const STAFF_SPECIALIZATION = Object.freeze({
   baselineOverall: 50,
-  weightDimension: 0.25,
-  weightLevel: 0.15,
+  weightDimension: 0.15,
+  weightLevel: 0.08,
   floor: 0.85,
   cap: 1.4,
 });

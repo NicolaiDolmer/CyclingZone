@@ -15,21 +15,22 @@ import {
 
 // ── staffEffectFactor ─────────────────────────────────────────────────────────
 
-test("staffEffectFactor(null) = gulv (uændret fra staffUtilization(null))", () => {
+test("staffEffectFactor(null) = gulv STAFF_EFFECT_FACTOR_FLOOR", () => {
+  // Kalibreret Task 8: gulvet er 0.4 (før 0.5). Ankres mod konstanten (co-SSOT).
   assert.equal(staffEffectFactor(null), STAFF_EFFECT_FACTOR_FLOOR);
-  assert.equal(staffEffectFactor(null), 0.5);
-  assert.equal(staffEffectFactor(undefined), 0.5);
+  assert.equal(staffEffectFactor(null), 0.4);
+  assert.equal(staffEffectFactor(undefined), 0.4);
 });
 
-test("staffEffectFactor({overall:99}) ≈ gulv + hældning (≈1.0)", () => {
+test("staffEffectFactor({overall:99}) = gulv + hældning = 1.0", () => {
   assert.ok(Math.abs(staffEffectFactor({ overall: 99 }) - (STAFF_EFFECT_FACTOR_FLOOR + STAFF_EFFECT_FACTOR_SLOPE)) < 1e-9);
   assert.ok(Math.abs(staffEffectFactor({ overall: 99 }) - 1.0) < 1e-9);
 });
 
 test("staffEffectFactor: gulv ved overall 0, lineær i overall", () => {
   assert.ok(Math.abs(staffEffectFactor({ overall: 0 }) - STAFF_EFFECT_FACTOR_FLOOR) < 1e-9);
-  // midtpunkt: 0.5 + 0.5·(50/99)
-  assert.ok(Math.abs(staffEffectFactor({ overall: 50 }) - (0.5 + 0.5 * (50 / 99))) < 1e-9);
+  // midtpunkt (kalibreret): FLOOR + SLOPE·(50/99) = 0.4 + 0.6·(50/99)
+  assert.ok(Math.abs(staffEffectFactor({ overall: 50 }) - (STAFF_EFFECT_FACTOR_FLOOR + STAFF_EFFECT_FACTOR_SLOPE * (50 / 99))) < 1e-9);
 });
 
 test("staffEffectFactor: strengt monotont stigende i overall", () => {
@@ -77,9 +78,14 @@ test("specializationMatch: svag akse giver < baseline-boost (men aldrig < gulv)"
   assert.ok(onWeak >= STAFF_SPECIALIZATION.floor - 1e-9, `under gulv: ${onWeak}`);
 });
 
-test("specializationMatch: loftet håndhæves ved max akser", () => {
+test("specializationMatch: aldrig over loftet (cap er øvre grænse)", () => {
+  // Kalibreret Task 8: med de reducerede vægte (0.15 + 0.08) rammer selv MAX-akser
+  // (99,99) kun 1 + 0.15 + 0.08 = 1.23 — under cap (1.4). Cap'en er dermed en ikke-
+  // bindende sikkerheds-øvre-grænse; det VIGTIGE invariant er "aldrig over cap".
   const max = { overall: 99, dimensions: { physical: 99, mental: 99, technical: 99 }, levels: { youth: 99, junior: 99, senior: 99 } };
-  assert.ok(Math.abs(specializationMatch(max, { dimension: "physical", level: "youth" }) - STAFF_SPECIALIZATION.cap) < 1e-9);
+  const m = specializationMatch(max, { dimension: "physical", level: "youth" });
+  assert.ok(m <= STAFF_SPECIALIZATION.cap + 1e-9, `over loft: ${m}`);
+  assert.ok(Math.abs(m - (1 + STAFF_SPECIALIZATION.weightDimension + STAFF_SPECIALIZATION.weightLevel)) < 1e-9);
 });
 
 // ── staffSalaryFor ────────────────────────────────────────────────────────────
@@ -111,8 +117,8 @@ test("staffSalaryFor: heltal (rene CZ$)", () => {
 test("effectiveBonus: display-magnitude = base × staffEffectFactor (INGEN specialisering)", () => {
   // Med staff-objekt (overall 99): fuld faktor 1.0.
   assert.equal(effectiveBonus("training", 5, { overall: 99 }), FACILITY_BASE_EFFECT.training[5] * 1.0);
-  // Uden staff (null): gulv 0.5.
-  assert.equal(effectiveBonus("training", 5, null), FACILITY_BASE_EFFECT.training[5] * 0.5);
+  // Uden staff (null): gulv (kalibreret 0.4).
+  assert.equal(effectiveBonus("training", 5, null), FACILITY_BASE_EFFECT.training[5] * STAFF_EFFECT_FACTOR_FLOOR);
   // Intet bygget = 0.
   assert.equal(effectiveBonus("training", 0, null), 0);
   // Ukendt track = 0.

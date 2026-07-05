@@ -32,10 +32,11 @@ export function staffUtilization(staffTier) {
   return staffTier == null ? 0.5 : 0.5 + 0.1 * staffTier;
 }
 
-// #2216 A4 (Task 6): ability-drevet udnyttelses-faktor. staff==null → gulv (uændret fra
-// staffUtilization(null) = 0.5). Ellers FLOOR + SLOPE·(overall/99): lineær, strengt
-// monoton i overall, faktor 1.0 ved overall 99. Erstatter tier→util-skalaren i display-
-// magnituden (effectiveBonus). Kurve-parametre er named-constants (harness-kalibreres).
+// #2216 A4 (Task 6, kalibreret Task 8): ability-drevet udnyttelses-faktor. staff==null →
+// gulv STAFF_EFFECT_FACTOR_FLOOR (0.4 efter Task 8-kalibrering — en facilitet uden chef
+// kører på 40%). Ellers FLOOR + SLOPE·(overall/99): lineær, strengt monoton i overall,
+// faktor PRÆCIS 1.0 ved overall 99 (0.4 + 0.6·1). Erstatter tier→util-skalaren i display-
+// magnituden (effectiveBonus). Kurve-parametrene er harness-kalibrerede named-constants.
 export function staffEffectFactor(staff) {
   if (staff == null) return STAFF_EFFECT_FACTOR_FLOOR;
   const overall = Math.max(0, staff.overall ?? 0);
