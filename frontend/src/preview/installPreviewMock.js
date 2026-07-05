@@ -6,6 +6,7 @@
 // til den ægte fetch, så Vite-assets/HMR/WS stadig virker. Bag VITE_PREVIEW_MOCK-
 // guarden i main.jsx ⇒ prod tree-shaker hele preview/-mappen væk.
 import { parseTable, wantsObject, restRows, restObject, apiResponse } from "./mockHandlers.js";
+import { clubMockRoute } from "./clubMock.js";
 import { TEST_USER } from "./seedData.js";
 
 // Læs Accept-headeren robust: init.headers kan være en Headers-instans, et plain
@@ -74,6 +75,16 @@ export function installPreviewMock() {
         }
         const table = parseTable(url);
         return jsonResponse(wantsObject(accept) ? restObject(table, url) : restRows(table, url));
+      }
+
+      // Statefuld Klub-mock (#1441 A3): rout /api/club/* FØR den generiske /api/-
+      // blok, så køb/ansæt/fyr muterer in-memory-state og gennemklikket er ægte.
+      if (/\/api\/club\//.test(url)) {
+        const u = new URL(url, window.location.origin);
+        let body = null;
+        if (method !== "GET" && init && init.body) { try { body = JSON.parse(init.body); } catch { body = null; } }
+        const res = clubMockRoute(method, u.pathname, u.search, body);
+        if (res) return jsonResponse(res.body, res.status);
       }
 
       // Express-API (/api/...).

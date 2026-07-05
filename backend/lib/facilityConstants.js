@@ -71,3 +71,10 @@ export const FACILITY_BASE_EFFECT = Object.freeze({
 // Kalibreret resultat: payback ∞ i alle tier/staff/divisions-kombinationer —
 // kommerciel er et rent, loftet sink (indtægten dækker aldrig driften).
 export const COMMERCIAL_MIN_PAYBACK_SEASONS = 4;
+
+// Hvilke spor har en LIVE gameplay-effekt (motor-hook findes). Alle false i A3;
+// training flippes til true i Plan B når multiplikatoren wires. UI'et bruger det til
+// ærlig "live vs. target"-mærkning, så vi aldrig lover en effekt der ikke virker.
+export const EFFECT_LIVE_BY_TRACK = Object.freeze({
+  training: false, scouting: false, medical: false, academy: false, commercial: false,
+});

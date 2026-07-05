@@ -10,6 +10,8 @@ import { Wordmark } from "./Brand";
 import DiscordJoinLink from "./DiscordJoinLink";
 import { MenuIcon, BellIcon, ChevronDownIcon, ChevronLeftIcon } from "./ui/icons";
 import { resolveAcademyNavVisible, readCachedAcademyNav, writeCachedAcademyNav } from "../lib/academyNavVisibility";
+import { facilitiesNavItem } from "../lib/facilitiesNavVisibility";
+import { useFacilities } from "../lib/useFacilities";
 import ProBadge from "./ProBadge";
 import { useSubscription } from "../lib/useSubscription";
 import { getAttribution } from "../lib/attribution";
@@ -39,7 +41,7 @@ function buildBottomItems(t) {
   ];
 }
 
-function buildNavGroups(team, t, academyEnabled = false) {
+function buildNavGroups(team, t, academyEnabled = false, facilitiesEnabled = false) {
   return [
     {
       key: "klubhus", label: t("nav.group.klubhus"),
@@ -50,6 +52,7 @@ function buildNavGroups(team, t, academyEnabled = false) {
         ...(academyEnabled ? [{ to: "/academy", label: t("nav.item.academy") }] : []),
         { to: "/board",          label: t("nav.item.board") },
         { to: "/finance",        label: t("nav.item.finance") },
+        ...facilitiesNavItem(facilitiesEnabled, t),
         { to: "/notifications",  label: t("nav.item.notifications"), badge: true },
         ...(team?.id ? [{ to: `/managers/${team.id}`, label: t("nav.item.managerProfile") }] : []),
       ],
@@ -277,6 +280,9 @@ export default function Layout() {
   // Init fra cache (#1792-klasse): vis akademiet med det samme hvis brugeren har
   // set det før, så et forbigående fetch-hikke ikke skjuler et fungerende akademi.
   const [academyEnabled, setAcademyEnabled] = useState(readCachedAcademyNav);
+  // #1441 A3: Klub-nav gater på API'ets `enabled` (403 facilities_disabled →
+  // false), samme flag-kilde som selve /klub-siden. Skjult i prod indtil ejer-flip.
+  const { enabled: facilitiesEnabled } = useFacilities();
   const heartbeatRef = useRef(null);
   const teamId = team?.id;
   const isWideContent = WIDE_CONTENT_ROUTES.has(location.pathname)
@@ -294,7 +300,7 @@ export default function Layout() {
 
   useEffect(() => {
     const path = location.pathname;
-    const groups = buildNavGroups(teamId ? { id: teamId } : null, t, academyEnabled);
+    const groups = buildNavGroups(teamId ? { id: teamId } : null, t, academyEnabled, facilitiesEnabled);
     if (isAdmin) groups.push({ key: "admin", label: t("nav.group.admin"), items: [
       { to: "/admin", label: t("nav.item.admin"), exact: true },
       { to: "/admin/waitlist", label: t("nav.item.waitlist") },
@@ -305,7 +311,7 @@ export default function Layout() {
       || (path.startsWith("/managers/") ? groups.find(g => g.key === "klubhus") : null);
     if (activeGroup) setOpenGroups(prev => ({ ...prev, [activeGroup.key]: true }));
     setMobileOpen(false);
-  }, [location, teamId, isAdmin, t, academyEnabled]);
+  }, [location, teamId, isAdmin, t, academyEnabled, facilitiesEnabled]);
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
@@ -448,7 +454,7 @@ export default function Layout() {
     setBalance(updatedTeam.balance);
   }
 
-  const baseGroups = buildNavGroups(team, t, academyEnabled);
+  const baseGroups = buildNavGroups(team, t, academyEnabled, facilitiesEnabled);
   const navGroups = isAdmin
     ? [...baseGroups, { key: "admin", label: t("nav.group.admin"), items: [
         { to: "/admin", label: t("nav.item.admin") },

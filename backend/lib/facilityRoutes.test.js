@@ -114,17 +114,31 @@ test("GET facilities: 5 spor, manglende rows = tier 0, upkeep + upgradePrice + e
   assert.equal(training.tierUpkeep, FACILITY_TIER_UPKEEP[2]);
   assert.deepEqual(training.staff, { name: "Sofie Lindqvist", tier: 2, salary: 22_000 });
   assert.equal(training.effectiveBonus, effectiveBonus("training", 2, 2));
+  assert.equal(training.effectLive, false);
 
   const commercial = body.facilities.find((f) => f.track === "commercial");
   assert.equal(commercial.upgradePrice, null); // max tier
   assert.equal(commercial.staff, null);
   assert.equal(commercial.effectiveBonus, effectiveBonus("commercial", 5, null)); // 50% uden staff
+  assert.equal(commercial.effectLive, false);
 
   const scouting = body.facilities.find((f) => f.track === "scouting");
   assert.equal(scouting.tier, 0);
   assert.equal(scouting.upgradePrice, FACILITY_TIER_PRICE[1]);
   assert.equal(scouting.tierUpkeep, 0);
   assert.equal(scouting.effectiveBonus, 0);
+});
+
+test("GET facilities: display-felter — effectLive=false alle spor (#1441 A3)", async () => {
+  // Tomt facilitets-sæt: alle spor tier 0.
+  const supabase = createSupabaseMock();
+  const { status, body } = await getClubFacilitiesHandler({ teamId: TEAM_ID }, supabase, { flags: ENABLED });
+  assert.equal(status, 200);
+
+  for (const f of body.facilities) {
+    assert.equal(f.tier, 0);
+    assert.equal(f.effectLive, false, `${f.track} effectLive skal være false i A3`);
+  }
 });
 
 test("GET facilities: flag off → 403 facilities_disabled", async () => {

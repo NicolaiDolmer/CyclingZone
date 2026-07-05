@@ -580,3 +580,14 @@ export const SEED_CALENDAR = {
     calEntry({ id: "cal-10", name: "Klasika Bizkaia", raceType: "single", stages: 1, division: 1, poolId: 1, poolLabel: "Division 1", gameDayStart: 22, date: "2026-07-12", terrain: "itt", isMine: false }),
   ],
 };
+
+// #1441 A3 — start-tilstand for Klub-preview (mid-game D2-hold). Muteres af clubMock.
+export const SEED_CLUB = {
+  facilities: {
+    training: { tier: 2, staff: { name: "Sofie Lindqvist", tier: 2 } },
+    scouting: { tier: 1, staff: null },
+    medical: { tier: 0, staff: null },
+    academy: { tier: 3, staff: { name: "Aldo Terranova", tier: 1 } },
+    commercial: { tier: 0, staff: null },
+  },
+};

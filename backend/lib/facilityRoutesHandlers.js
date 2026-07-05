@@ -3,7 +3,12 @@
 // al route-logik ligger her så den kan unit-testes (api.js selv er ikke unit-testbar —
 // eksisterende konvention er source-contract-tests, se loanAmountValidation.routes.test.js).
 // Ingen forretningslogik: delegerer til facilityService og mapper domænefejl → HTTP-status.
-import { FACILITIES_ENABLED, FACILITY_TRACKS, FACILITY_TIER_UPKEEP } from "./facilityConstants.js";
+import {
+  FACILITIES_ENABLED,
+  FACILITY_TRACKS,
+  FACILITY_TIER_UPKEEP,
+  EFFECT_LIVE_BY_TRACK,
+} from "./facilityConstants.js";
 import { getUpgradePrice, effectiveBonus } from "./facilityEngine.js";
 import { generateStaffCandidates } from "./staffCandidates.js";
 import {
@@ -57,13 +62,15 @@ export async function getClubFacilitiesHandler({ teamId }, supabaseClient, { fla
   const facilities = FACILITY_TRACKS.map((track) => {
     const tier = tierByTrack.get(track) ?? 0;
     const staff = staffByRole.get(track) ?? null;
+    const upgradePrice = getUpgradePrice(tier);
     return {
       track,
       tier,
-      upgradePrice: getUpgradePrice(tier),
+      upgradePrice,
       tierUpkeep: FACILITY_TIER_UPKEEP[tier] ?? 0,
       staff: staff ? { name: staff.name, tier: staff.tier, salary: staff.salary } : null,
       effectiveBonus: effectiveBonus(track, tier, staff?.tier ?? null),
+      effectLive: EFFECT_LIVE_BY_TRACK[track] ?? false,
     };
   });
 
