@@ -9,7 +9,7 @@ import { TRAINING_CONFIG } from "./training.js";
 import { youthMultiplier } from "./academyFlag.js";
 import { youthRateForPotential } from "./riderProgression.js";
 import { deriveStaffAbilities } from "./staffAbilityDerivation.js";
-import { staffTrainingBonus } from "./staffTrainingBonus.js";
+import { staffTrainingBonus, facilityTrainingMultiplier } from "./staffTrainingBonus.js";
 
 test("default-program bruges når plan mangler (spec 6.3: følger ALTID program)", () => {
   assert.deepEqual(resolveProgram(null), DEFAULT_PROGRAM);
@@ -202,21 +202,27 @@ test("dailyAbilityDelta: fysisk-ungdoms-coach hæver en ung rytters fysiske delt
   const base = { ability: "climbing", current: 40, cap: 85, age: 18, program, conditionMult: 1, bonus: false, noise: 1, potentiale: 4 };
   const withoutStaff = dailyAbilityDelta(base);
   const withStaff = dailyAbilityDelta({ ...base, staff: PHYS_YOUTH_COACH, facilityTier: 5, riderLevel: "youth" });
-  const factor = staffTrainingBonus({ facilityTier: 5, staff: PHYS_YOUTH_COACH, ability: "climbing", riderLevel: "youth" });
+  const factor = staffTrainingBonus({ facilityTier: 5, staff: PHYS_YOUTH_COACH, ability: "climbing", riderLevel: "youth" })
+    // Plan B (#1441): facilitets-magnitude (effectiveBonus) ganges også ind i kæden.
+    * facilityTrainingMultiplier({ facilityTier: 5, staff: PHYS_YOUTH_COACH });
   assert.ok(factor > 1.0, "fixture skal give en ægte bonus");
-  // Delta'en er skaleret PRÆCIST med staff-bonus-faktoren (proportionalt løft).
+  // Delta'en er skaleret PRÆCIST med staff-bonus × facilitets-multiplikator.
   assert.ok(Math.abs(withStaff - withoutStaff * factor) < 1e-12, `got ${withStaff}, expected ${withoutStaff * factor}`);
   assert.ok(withStaff > withoutStaff, "bonus skal hæve delta");
 });
 
 test("dailyAbilityDelta: dimension-miss (mental) + niveau-miss (senior) → uændret delta (= uden staff)", () => {
   const program = { focus: "endurance", intensity: "normal" };
-  // aggression = mental-evne; coachens mental-akse er under baseline → ingen bonus.
+  // aggression = mental-evne; coachens mental-akse er under baseline → ingen
+  // SPECIALISERINGS-bonus. Plan B: facilitets-MAGNITUDEN gælder dog stadig (den er
+  // evne-uafhængig), så delta = uden-staff × facilityTrainingMultiplier præcist.
   const mentalBase = { ability: "aggression", current: 40, cap: 85, age: 18, program: { focus: "aggression", intensity: "normal" }, conditionMult: 1, bonus: false, noise: 1, potentiale: 4 };
-  assert.equal(
-    dailyAbilityDelta({ ...mentalBase, staff: PHYS_YOUTH_COACH, facilityTier: 5, riderLevel: "youth" }),
-    dailyAbilityDelta(mentalBase),
-    "mental-evne (dimension-miss) → delta uændret"
+  const facMult = facilityTrainingMultiplier({ facilityTier: 5, staff: PHYS_YOUTH_COACH });
+  const mentalWith = dailyAbilityDelta({ ...mentalBase, staff: PHYS_YOUTH_COACH, facilityTier: 5, riderLevel: "youth" });
+  const mentalWithout = dailyAbilityDelta(mentalBase);
+  assert.ok(
+    Math.abs(mentalWith - mentalWithout * facMult) < 1e-12,
+    "mental-evne (dimension-miss) → KUN facilitets-magnitude, ingen specialiserings-bonus"
   );
   // En senior rytters fysiske evne løftes MINDRE end en ungdoms (niveau-target).
   const physBase = { ability: "climbing", current: 40, cap: 85, age: 30, program, conditionMult: 1, bonus: false, noise: 1, potentiale: 4 };

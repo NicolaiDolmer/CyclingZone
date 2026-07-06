@@ -14,8 +14,22 @@
 //      giver præcis 1.0 — aldrig < 1.0. En chef gør en rytter bedre eller neutral, aldrig værre.
 //   3) KUN DAGLIG DELTA: bonussen skalerer delta'en; cap-loopet i dailyTrainingEngine.js klipper
 //      stadig hver evne ved ability_caps. Bonussen kan ALDRIG udvide et cap (bevist i test).
-import { specializationMatch } from "./facilityEngine.js";
+import { specializationMatch, effectiveBonus } from "./facilityEngine.js";
 import { dimensionOf } from "./staffAbilityConstants.js";
+
+// ── Plan B (#1441 pre-flip engine-slice): facilitets-MAGNITUDE på træning ──────────
+// Spec §2.1: Træningscenter = "træningseffekt-bonus (multiplikator på eksisterende
+// trænings-motor)". Multiplikatoren er præcis den effectiveBonus UI'et viser
+// (FACILITY_BASE_EFFECT.training[tier] × staffEffectFactor(staff)) — så "Effect 8.3%
+// training" på Klub-fladen betyder bogstaveligt +8,3% på den daglige trænings-delta.
+// Adskilt fra staffTrainingBonus (specialisering, per-rytter) fordi de to led har
+// forskellig semantik: magnitude = facilitet+chef-kvalitet (ens for hele truppen);
+// specialisering = dimension×niveau-match (varierer pr. rytter-evne).
+// Nul regression: facilityTier null/0 → base 0 → multiplikator PRÆCIS 1.0.
+// Caps udvides ALDRIG: leddet skalerer kun daglig delta; cap-loopet klipper stadig.
+export function facilityTrainingMultiplier({ facilityTier, staff } = {}) {
+  return 1 + effectiveBonus("training", facilityTier ?? 0, staff ?? null);
+}
 
 // Kalibrerings-konstanter (named-config, så harnesset i Task 8 kan sweepe dem uden at røre
 // call-sites). k = global styrke på specialiserings-fordelen; facilityScale = pr.-tier-vægt

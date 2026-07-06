@@ -6,7 +6,7 @@ import { PROGRESSION_CONFIG, seededUnit, youthRateForPotential } from "./riderPr
 import { TRAINING_CONFIG, TRAINING_FOCUSES } from "./training.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { youthMultiplier } from "./academyFlag.js";
-import { staffTrainingBonus } from "./staffTrainingBonus.js";
+import { staffTrainingBonus, facilityTrainingMultiplier } from "./staffTrainingBonus.js";
 
 export const DAILY_TRAINING_CONFIG = Object.freeze({
   daysPerSeason: 28,        // budget-konvertering; kalibreres i sim (Task A10)
@@ -66,8 +66,11 @@ export function dailyAbilityDelta({
   // Bonussen skalerer KUN denne daglige delta — cap-loopet i dailyTrainingEngine.js klipper
   // stadig hver evne ved ability_caps, så et cap kan ALDRIG udvides af bonussen.
   const staffBonus = staffTrainingBonus({ facilityTier, staff, ability, riderLevel });
+  // Plan B (#1441): facilitets-MAGNITUDE (spec §2.1) — samme effectiveBonus som Klub-UI'et
+  // viser. facilityTier null/0 → PRÆCIS 1.0 (nul regression for hold uden faciliteter).
+  const facilityMult = facilityTrainingMultiplier({ facilityTier, staff });
   return base * mult * conditionMult * youthMultiplier(age) * youthRateForPotential(potentiale)
-    * (bonus ? cfg.bonusMult : 1) * noise * staffBonus;
+    * (bonus ? cfg.bonusMult : 1) * noise * staffBonus * facilityMult;
 }
 
 // #2082/#1938 (ejer-godkendt 5/7): sæson-budget-loft for akademi-alder — det EFFEKTIVE

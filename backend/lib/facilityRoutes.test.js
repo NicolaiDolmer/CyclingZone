@@ -132,7 +132,8 @@ test("GET facilities: 5 spor, manglende rows = tier 0, upkeep + upgradePrice + e
   // #2216 A4 (Task 6): display-magnitude er nu ability-drevet (base × staffEffectFactor(staff)),
   // dvs. faktoren afhænger af staffens overall — ikke længere tier-skalaren.
   assert.equal(training.effectiveBonus, effectiveBonus("training", 2, training.staff));
-  assert.equal(training.effectLive, false);
+  // Plan B (#1441): training-effekten er nu LIVE (wired i dailyTrainingEngine).
+  assert.equal(training.effectLive, true);
 
   const commercial = body.facilities.find((f) => f.track === "commercial");
   assert.equal(commercial.upgradePrice, null); // max tier
@@ -147,7 +148,7 @@ test("GET facilities: 5 spor, manglende rows = tier 0, upkeep + upgradePrice + e
   assert.equal(scouting.effectiveBonus, 0);
 });
 
-test("GET facilities: display-felter — effectLive=false alle spor (#1441 A3)", async () => {
+test("GET facilities: effectLive — KUN training er live (Plan B #1441)", async () => {
   // Tomt facilitets-sæt: alle spor tier 0.
   const supabase = createSupabaseMock();
   const { status, body } = await getClubFacilitiesHandler({ teamId: TEAM_ID }, supabase, { flags: ENABLED });
@@ -155,7 +156,7 @@ test("GET facilities: display-felter — effectLive=false alle spor (#1441 A3)",
 
   for (const f of body.facilities) {
     assert.equal(f.tier, 0);
-    assert.equal(f.effectLive, false, `${f.track} effectLive skal være false i A3`);
+    assert.equal(f.effectLive, f.track === "training", `${f.track} effectLive: kun training er wired (Plan B)`);
   }
 });
 
