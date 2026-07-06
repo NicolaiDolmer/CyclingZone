@@ -2,8 +2,7 @@
 // Spejler rytter-evne-taksonomien: de 3 coaching-DIMENSIONER (physical/mental/technical)
 // partitionerer de 15 synlige rytter-evner (abilityDerivation.VISIBLE_ABILITIES) præcist,
 // så en trænings-chefs dimension direkte matcher hvilke rytter-evner han løfter.
-// Drift-guard-test asserterer union == VISIBLE_ABILITIES.
-import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
+// Drift-guard-test (staffAbilityConstants.test.js) asserterer union == abilityDerivation.VISIBLE_ABILITIES.
 
 // De 5 staff-roller (§1). training = den fulde dimension×niveau-model; øvrige = rolle-akser.
 export const STAFF_ROLES = Object.freeze(["training", "scouting", "medical", "academy", "commercial"]);

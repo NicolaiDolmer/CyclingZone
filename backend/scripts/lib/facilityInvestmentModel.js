@@ -7,7 +7,7 @@ import {
   FACILITY_TRACKS, MAX_FACILITY_TIER, FACILITY_TIER_PRICE, FACILITY_TIER_UPKEEP,
   FACILITY_BASE_EFFECT, COMMERCIAL_MIN_PAYBACK_SEASONS, staffSalaryFor,
 } from "../../lib/facilityConstants.js";
-import { effectiveBonus, staffEffectFactor, specializationMatch } from "../../lib/facilityEngine.js";
+import { staffEffectFactor, specializationMatch } from "../../lib/facilityEngine.js";
 import { TIER_OVERALL_BAND, LEVEL_BANDS } from "../../lib/staffAbilityConstants.js";
 import { SPONSOR_INCOME_BY_DIVISION } from "../../lib/economyConstants.js";
 
