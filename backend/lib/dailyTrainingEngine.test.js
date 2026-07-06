@@ -557,3 +557,40 @@ test("ability-history: en upsert-fejl kaster ikke — træningsdagen committes a
   assert.ok(runRow?.report?.tick_date, "training_day_runs committet");
   assert.equal((state.rider_derived_ability_history ?? []).length, 0, "historik ikke skrevet (fejlen blev slugt)");
 });
+
+// ── Plan B (#1441): trænings-facilitet + chef wired ind i tick'et ──────────────
+test("Plan B: trænings-facilitet + chef løfter dags-score; uden club-data = bit-identisk baseline", async () => {
+  // Baseline: intet club-data (team_facilities/team_staff findes ikke) → neutral kontekst.
+  const baseState = seedState();
+  const baseResult = await runTeamTrainingDay({
+    supabase: createMockSupabase(baseState), teamId: TEAM_ID, seasonId: SEASON_ID,
+    seasonNumber: SEASON_NUMBER, executedBy: "manager", now: NOW,
+  });
+  const baseScore = baseResult.report.riders[0].score;
+  assert.ok(baseScore > 0, "baseline-tick giver positiv score");
+
+  // Med t5-træningscenter + aktiv chef (ability-række persisteret, fysisk-stærk).
+  const clubState = seedState();
+  clubState.team_facilities = [{ team_id: TEAM_ID, track: "training", tier: 5 }];
+  clubState.team_staff = [{ id: "st-1", team_id: TEAM_ID, role: "training", status: "active", tier: 5, name: "Karel Novotny" }];
+  clubState.staff_derived_abilities = [{ staff_id: "st-1", overall: 90, dimensions: { physical: 95, mental: 60, technical: 60 }, levels: { youth: 60, junior: 90, senior: 70 } }];
+  const clubResult = await runTeamTrainingDay({
+    supabase: createMockSupabase(clubState), teamId: TEAM_ID, seasonId: SEASON_ID,
+    seasonNumber: SEASON_NUMBER, executedBy: "manager", now: NOW,
+  });
+  const clubScore = clubResult.report.riders[0].score;
+
+  // Facilitets-magnituden (1 + effectiveBonus ≈ 1.16 ved t5/overall-90) + junior-match
+  // skal give en STRENGT højere dags-score end baseline (samme rytter/dato/noise-seed).
+  assert.ok(clubScore > baseScore, `club-score ${clubScore} skal være > baseline ${baseScore}`);
+
+  // Et hold m. tier 0 + ingen chef (rækker findes men er neutrale) = præcis baseline.
+  const zeroState = seedState();
+  zeroState.team_facilities = [{ team_id: TEAM_ID, track: "training", tier: 0 }];
+  zeroState.team_staff = [];
+  const zeroResult = await runTeamTrainingDay({
+    supabase: createMockSupabase(zeroState), teamId: TEAM_ID, seasonId: SEASON_ID,
+    seasonNumber: SEASON_NUMBER, executedBy: "manager", now: NOW,
+  });
+  assert.equal(zeroResult.report.riders[0].score, baseScore, "tier 0 → bit-identisk med baseline");
+});

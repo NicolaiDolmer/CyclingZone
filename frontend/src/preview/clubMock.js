@@ -78,7 +78,8 @@ function facilitiesPayload() {
       // #2220 A4b: staff bærer nu id (dyb-link) + overall (rating-cirkel/sammenligning).
       staff: f.staff ? { id: `staff-${track}`, name: f.staff.name, tier: f.staff.tier, salary: SALARY[f.staff.tier], overall: OVERALL_BY_TIER[f.staff.tier] } : null,
       effectiveBonus: (BASE_EFFECT[track][f.tier] || 0) * util(staffTier),
-      effectLive: false,
+      // Plan B (#1441): training-effekten er wired i trænings-motoren → live.
+      effectLive: track === "training",
     };
   });
   // #2220 A4b: sæson-omkostnings-resume (upkeep + payroll vs. saldo).

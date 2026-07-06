@@ -16,6 +16,13 @@
 // 100% syntetisk — ingen DB, prod-konstanter UÆNDREDE af en kørsel.
 //   node scripts/facilityInvestmentScorecard.js [--config=fil.json] [--seasons=10] [--markdown]
 import { readFileSync } from "node:fs";
+// Plan B (#1441): gate (6) verificerer den LIVE trænings-wiring mod prod-kæden selv —
+// disse imports er prod-SSOT (ikke model-kopier) og påvirkes bevidst IKKE af --config.
+import { dailyAbilityDelta } from "../lib/dailyTraining.js";
+import { staffTrainingBonus, facilityTrainingMultiplier } from "../lib/staffTrainingBonus.js";
+import { effectiveBonus } from "../lib/facilityEngine.js";
+import { deriveStaffAbilities } from "../lib/staffAbilityDerivation.js";
+import { EFFECT_LIVE_BY_TRACK } from "../lib/facilityConstants.js";
 import {
   DEFAULT_MODEL_CONSTANTS, DEFAULT_LEVERAGE, STRATEGIES, PRIZE_ESTIMATE_BY_DIVISION,
   runAntiOptimalPath, computeCommercialPayback, computePriceInSeasons, computeFormGates,
@@ -171,10 +178,55 @@ function main() {
   }
   console.log(`  Gate [specialiserings-balance — generalist/specialist ±${(SPECIALIZATION_BALANCE.competitiveBand * 100).toFixed(0)}%, ingen dominant]: ${spec.allPass ? "✅ PASS" : "❌ FAIL — en specialisering dominerer / staff-akse skævvrider, rekalibrér spec-vægte"}\n`);
 
-  const allPass = pis.allPass && paybackPass && antiOptimalPass && form.allPass && spec.allPass;
+  // ── Gate 6: training-live-wiring-paritet (Plan B #1441, pre-flip) ─────────────
+  // Beviser at den LIVE trænings-kæde (dailyAbilityDelta) implementerer PRÆCIS den
+  // effekt harness-modellen + Klub-UI'et lover: ratio med/uden club-kontekst ==
+  // (1 + effectiveBonus) × staffTrainingBonus — og PRÆCIS 1.0 uden faciliteter.
+  // Kører altid mod PROD-konstanterne (uafhængig af --config): det er wiring, ikke balance.
+  console.log("── GATE: training-live-wiring-paritet (Plan B) — live-kæden == harness/UI-løftet ──");
+  const wiringChecks = [];
+  const deltaArgs = { ability: "climbing", current: 50, cap: 90, age: 24, program: { focus: "vo2max", intensity: "normal" }, conditionMult: 1, bonus: false, noise: 1, potentiale: 4 };
+  const baselineDelta = dailyAbilityDelta(deltaArgs);
+  wiringChecks.push({
+    key: "effectLive.training er sand (UI lover live)",
+    value: EFFECT_LIVE_BY_TRACK.training ? 1 : 0, pass: EFFECT_LIVE_BY_TRACK.training === true,
+  });
+  const neutralDelta = dailyAbilityDelta({ ...deltaArgs, staff: null, facilityTier: 0, riderLevel: "senior" });
+  wiringChecks.push({
+    key: "uden club-kontekst → ratio PRÆCIS 1.0 (nul regression)",
+    value: neutralDelta / baselineDelta, pass: neutralDelta === baselineDelta,
+  });
+  for (const tier of [1, 2, 3, 4, 5]) {
+    const staffObj = deriveStaffAbilities({ role: "training", tier, name: `Wiring Probe ${tier}` });
+    // Facilitet uden chef: ratio == 1 + effectiveBonus(track, tier, null) — UI-tallet ordret.
+    const noStaffRatio = dailyAbilityDelta({ ...deltaArgs, staff: null, facilityTier: tier, riderLevel: "senior" }) / baselineDelta;
+    const noStaffExpected = 1 + effectiveBonus("training", tier, null);
+    wiringChecks.push({
+      key: `t${tier} uden chef: ratio == 1+effectiveBonus (${noStaffExpected.toFixed(4)})`,
+      value: noStaffRatio, pass: Math.abs(noStaffRatio - noStaffExpected) < 1e-9,
+    });
+    // Facilitet + chef: ratio == facilityTrainingMultiplier × staffTrainingBonus (fuld kæde).
+    const withStaffRatio = dailyAbilityDelta({ ...deltaArgs, staff: staffObj, facilityTier: tier, riderLevel: "senior" }) / baselineDelta;
+    const withStaffExpected = facilityTrainingMultiplier({ facilityTier: tier, staff: staffObj })
+      * staffTrainingBonus({ facilityTier: tier, staff: staffObj, ability: "climbing", riderLevel: "senior" });
+    wiringChecks.push({
+      key: `t${tier} med chef (o${staffObj.overall}): ratio == magnitude×specialisering (${withStaffExpected.toFixed(4)})`,
+      value: withStaffRatio, pass: Math.abs(withStaffRatio - withStaffExpected) < 1e-9,
+    });
+  }
+  // Sanity-loft: selv max-kombinationen holder sig under (1 + 0.165) × spec-cap-produktet.
+  const maxRatio = dailyAbilityDelta({ ...deltaArgs, staff: { overall: 99, dimensions: { physical: 99 }, levels: { senior: 99 } }, facilityTier: 5, riderLevel: "senior" }) / baselineDelta;
+  wiringChecks.push({ key: "absolut loft: max-kombination ≤ 1.165 × 1.4", value: maxRatio, pass: maxRatio <= 1.165 * 1.4 + 1e-9 });
+  for (const c of wiringChecks) {
+    console.log(`    ${c.key}: ${c.value.toFixed(4)} ${c.pass ? "✅" : "❌"}`);
+  }
+  const wiringPass = wiringChecks.every((c) => c.pass);
+  console.log(`  Gate [live-wiring-paritet]: ${wiringPass ? "✅ PASS" : "❌ FAIL — live-kæden matcher ikke det harness/UI lover"}\n`);
+
+  const allPass = pis.allPass && paybackPass && antiOptimalPass && form.allPass && spec.allPass && wiringPass;
   console.log("──────────────────────────────────────────────────────────────────────");
-  console.log(`HEADLINE: facility-gates ${allPass ? "✅ PASS — A2/A4-merge-gate opfyldt" : "❌ FAIL — rekalibrér før FACILITIES_ENABLED"}`);
-  console.log(`  tid-som-valuta ${pis.allPass ? "✅" : "❌"} · kommerciel payback ${paybackPass ? "✅" : "❌"} · anti-optimal-path ${antiOptimalPass ? "✅" : "❌"} · form-gates ${form.allPass ? "✅" : "❌"} · specialiserings-balance ${spec.allPass ? "✅" : "❌"}`);
+  console.log(`HEADLINE: facility-gates ${allPass ? "✅ PASS — A2/A4/Plan-B-merge-gate opfyldt" : "❌ FAIL — rekalibrér før FACILITIES_ENABLED"}`);
+  console.log(`  tid-som-valuta ${pis.allPass ? "✅" : "❌"} · kommerciel payback ${paybackPass ? "✅" : "❌"} · anti-optimal-path ${antiOptimalPass ? "✅" : "❌"} · form-gates ${form.allPass ? "✅" : "❌"} · specialiserings-balance ${spec.allPass ? "✅" : "❌"} · live-wiring ${wiringPass ? "✅" : "❌"}`);
   console.log("NOTE: flag-flip er en separat EJER-beslutning — harness grøn er forudsætningen, ikke beslutningen.\n");
 }
 

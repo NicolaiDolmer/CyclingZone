@@ -7,7 +7,8 @@
 //     ved ability_caps (bevist i dailyTraining.test.js + dailyTrainingEngine.test.js).
 import test from "node:test";
 import assert from "node:assert/strict";
-import { staffTrainingBonus, STAFF_TRAINING_BONUS_CONFIG } from "./staffTrainingBonus.js";
+import { staffTrainingBonus, facilityTrainingMultiplier, STAFF_TRAINING_BONUS_CONFIG } from "./staffTrainingBonus.js";
+import { effectiveBonus } from "./facilityEngine.js";
 import { deriveStaffAbilities } from "./staffAbilityDerivation.js";
 
 // Fixture: en ren fysisk-ungdoms-coach. physical 99 (stærk) / mental 33 (svag);
@@ -95,4 +96,46 @@ test("staffTrainingBonus: config-objekt eksponeret til harness-kalibrering (k + 
     assert.ok(s >= prev, `facilityScale[${tier}]=${s} ikke ≥ ${prev}`);
     prev = s;
   }
+});
+
+// ── Plan B (#1441): facilityTrainingMultiplier — facilitets-MAGNITUDE på træning ──
+
+test("facilityTrainingMultiplier: ingen facilitet (tier 0/null/udeladt) → præcis 1.0", () => {
+  assert.equal(facilityTrainingMultiplier({ facilityTier: 0, staff: null }), 1.0);
+  assert.equal(facilityTrainingMultiplier({ facilityTier: null, staff: PHYS_YOUTH_COACH }), 1.0);
+  assert.equal(facilityTrainingMultiplier({}), 1.0);
+  assert.equal(facilityTrainingMultiplier(), 1.0);
+});
+
+test("facilityTrainingMultiplier: = 1 + effectiveBonus (samme tal som Klub-UI'et viser)", () => {
+  for (const tier of [1, 2, 3, 4, 5]) {
+    assert.equal(
+      facilityTrainingMultiplier({ facilityTier: tier, staff: PHYS_YOUTH_COACH }),
+      1 + effectiveBonus("training", tier, PHYS_YOUTH_COACH),
+      `tier ${tier} med chef`
+    );
+    assert.equal(
+      facilityTrainingMultiplier({ facilityTier: tier, staff: null }),
+      1 + effectiveBonus("training", tier, null),
+      `tier ${tier} uden chef (gulv 0.5)`
+    );
+  }
+});
+
+test("facilityTrainingMultiplier: monoton i tier + i chef-kvalitet; loftet af spec-bonussen", () => {
+  let prev = 1.0;
+  for (const tier of [1, 2, 3, 4, 5]) {
+    const m = facilityTrainingMultiplier({ facilityTier: tier, staff: PHYS_YOUTH_COACH });
+    assert.ok(m > prev, `tier ${tier} skal løfte mere end tier ${tier - 1}`);
+    prev = m;
+  }
+  // Chef > ingen chef ved samme tier (staffEffectFactor > gulv).
+  assert.ok(
+    facilityTrainingMultiplier({ facilityTier: 3, staff: PHYS_YOUTH_COACH })
+      > facilityTrainingMultiplier({ facilityTier: 3, staff: null })
+  );
+  // Absolut loft: t5 + teoretisk overall-99-chef = 1 + 0.165 (base-effekten × 1.0).
+  assert.ok(
+    facilityTrainingMultiplier({ facilityTier: 5, staff: { overall: 99 } }) <= 1.165 + 1e-12
+  );
 });

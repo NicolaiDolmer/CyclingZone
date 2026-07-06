@@ -18,6 +18,8 @@ import { buildCaps } from "./riderProgression.js";
 import { ageForSeason } from "./riderProgressionEngine.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { isAcademyAge, academySeasonFracForAge, ACADEMY } from "./academyFlag.js";
+import { loadTrainingStaffContext } from "./trainingStaffContext.js";
+import { riderLevelBand } from "./staffAbilityConstants.js";
 
 // Batched async-runner (samme hjælper som riderProgressionEngine.js).
 async function runBatched(items, concurrency, fn) {
@@ -122,6 +124,12 @@ export async function runTeamTrainingDay({
   const planByRider = new Map((planRows ?? []).map((p) => [p.rider_id, p]));
   const condByRider = new Map((conditionRows ?? []).map((c) => [c.rider_id, c]));
 
+  // ── 3b) Plan B (#1441): trænings-facilitet + chef (én load pr. hold pr. dag) ──
+  // Data-drevet: hold uden faciliteter/chef → { 0, null } → multiplikator præcis 1.0
+  // (nul regression). Best-effort inde i loaderen — kan aldrig vælte træningsdagen.
+  const { facilityTier: trainingFacilityTier, staff: trainingStaff } =
+    await loadTrainingStaffContext(supabase, teamId);
+
   // ── 4) Tick pr. rytter ────────────────────────────────────────────────────────
   abilityUpdates = []; // { riderId, patch }
   conditionUpserts = []; // { rider_id, form, fatigue, injured_until, injury_cause, updated_at }
@@ -198,6 +206,11 @@ export async function runTeamTrainingDay({
         bonus,
         potentiale: rider.potentiale,
         hardDailyCap: inAcademy ? ACADEMY.HARD_DAILY_CAP : undefined,
+        // Plan B (#1441): facilitets-magnitude + chef-specialisering. riderLevel
+        // (youth/junior/senior) styrer chefens niveau-affinitets-match pr. rytter.
+        staff: trainingStaff,
+        facilityTier: trainingFacilityTier,
+        riderLevel: riderLevelBand({ is_academy: rider.is_academy, age }),
       });
     }
 
