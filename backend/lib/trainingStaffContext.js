@@ -53,7 +53,7 @@ export async function loadTrainingStaffContext(supabase, teamId) {
     }
     return { facilityTier, staff };
   } catch (err) {
-    console.error(`  ⚠️ trainingStaffContext load fejlede for hold ${teamId} (fortsætter uden bonus):`, err.message);
+    console.error(`  ⚠️ trainingStaffContext load failed for team ${teamId} (continuing without bonus):`, err.message);
     return NEUTRAL;
   }
 }
