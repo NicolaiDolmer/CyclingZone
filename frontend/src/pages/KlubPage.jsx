@@ -63,6 +63,14 @@ export default function KlubPage() {
         ))}
       </div>
 
+      {facs.seasonCost && (
+        <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-1 text-[12px] border-t border-cz-border pt-3">
+          <span className="text-cz-2">{t("cost.upkeep")}: <span className="font-mono text-cz-1">{formatNumber(facs.seasonCost.totalUpkeep)}</span></span>
+          <span className="text-cz-2">{t("cost.payroll")}: <span className="font-mono text-cz-1">{formatNumber(facs.seasonCost.totalPayroll)}</span></span>
+          <span className="text-cz-2 ms-auto">{t("cost.balance")}: <span className="font-mono text-cz-1">{formatNumber(facs.seasonCost.balance)}</span></span>
+        </div>
+      )}
+
       <StaffPanel
         open={!!staffTrack}
         track={staffTrack}

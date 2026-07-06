@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Modal, Button } from "../ui";
 import { formatNumber } from "../../lib/intl";
+import { statColor } from "../../lib/statColor.js";
 import ConfirmModal from "./ConfirmModal";
 
 // Staff-panel (modal) for ét spor: nuværende staff (Release + fratrædelse) +
@@ -9,6 +11,7 @@ import ConfirmModal from "./ConfirmModal";
 // Fejl mappes til klub-namespace-nøgler med failed som defaultValue-fallback.
 export default function StaffPanel({ open, track, facility, onClose, loadCandidates, onHire, onFire }) {
   const { t } = useTranslation("klub");
+  const { t: tStaff } = useTranslation("staff");
   const [candidates, setCandidates] = useState([]);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -50,7 +53,7 @@ export default function StaffPanel({ open, track, facility, onClose, loadCandida
       {staff ? (
         <div className="rounded-cz border border-cz-accent/60 bg-cz-card px-[14px] py-[12px] mb-3 flex justify-between items-center">
           <div>
-            <div className="text-[14px] font-medium">{staff.name} <span className="text-[11px] text-cz-2 font-normal">· {track ? t(`roles.${track}`) : ""} · T{staff.tier}</span></div>
+            <div className="text-[14px] font-medium"><Link to={`/staff/${staff.id}`} onClick={onClose} className="text-cz-1 hover:text-cz-accent-t underline underline-offset-2">{staff.name}</Link> <span className="text-[11px] text-cz-2 font-normal">· {track ? t(`roles.${track}`) : ""} · T{staff.tier}</span></div>
             <div className="text-[11px] text-cz-2 mt-[3px]">{t("staff.hired")} · {t("staff.salary", { amount: formatNumber(staff.salary) })}</div>
           </div>
           <div className="text-right">
@@ -70,9 +73,15 @@ export default function StaffPanel({ open, track, facility, onClose, loadCandida
           ) : (
             <div className="flex flex-col gap-[6px]">
               {candidates.map((c) => (
-                <div key={c.name} className="rounded-cz border border-cz-border bg-cz-card px-[14px] py-[9px] flex justify-between items-center">
-                  <div className="text-[13px]">{c.name} <span className="text-[11px] text-cz-2">· {t("staff.candidate", { tier: c.tier, amount: formatNumber(c.salary) })}</span></div>
-                  <Button variant="secondary" size="sm" loading={busy} onClick={() => doHire(c.name)}>{t("staff.hire")}</Button>
+                <div key={c.name} className="rounded-cz border border-cz-border bg-cz-card px-[14px] py-[9px] flex justify-between items-center gap-3">
+                  <div className="text-[13px] min-w-0">
+                    <span className="truncate">{c.name}</span>
+                    <span className="text-[11px] text-cz-2"> · {t("staff.candidate", { tier: c.tier, amount: formatNumber(c.salary) })}{c.topSpecialization && <> · {tStaff(`axes.${c.topSpecialization}`)}</>}</span>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className="font-mono tabular-nums font-bold text-[14px]" style={{ color: statColor(c.overall) }}>{c.overall}</span>
+                    <Button variant="secondary" size="sm" loading={busy} onClick={() => doHire(c.name)}>{t("staff.hire")}</Button>
+                  </div>
                 </div>
               ))}
             </div>

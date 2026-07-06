@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Card, Button } from "../ui";
 import { formatNumber } from "../../lib/intl";
@@ -35,7 +36,7 @@ export default function FacilityTrackCard({ facility, onUpgrade, onOpenStaff, bu
           <span className="text-cz-3"> · {effectLive ? t("effect.live") : t("effect.target")}</span>
           {" · "}
           {staff
-            ? <>Staff <span className="text-cz-1">{staff.name}</span> (T{staff.tier})</>
+            ? <>Staff <Link to={`/staff/${staff.id}`} className="text-cz-1 hover:text-cz-accent-t underline underline-offset-2">{staff.name}</Link> (T{staff.tier})</>
             : tier === 0
               ? <span className="text-cz-3">{t("staff.locked")}</span>
               : <button type="button" onClick={() => onOpenStaff(track)} className="text-cz-accent-t underline underline-offset-2">{t("staff.none")}</button>}
