@@ -17,32 +17,83 @@ const BASE_EFFECT = {
 const TRACKS = ["training", "scouting", "medical", "academy", "commercial"];
 const NAME_POOL = ["Marc Vandenbroucke", "Henrik Sørensen", "Luca Bertolini", "Íñigo Sarasola", "Tomas Nyholm", "Ruben De Waele"];
 
+// #2220 A4b: preview-repræsentative evner. Overall-bånd pr. tier (spejler backendens
+// TIER_OVERALL_BAND-midtpunkter groft) + rolle-akser (spejler lib/staffAbilities.js).
+// Ikke backendens deterministiske derivation — kun plausible tal så profil-flowet kan
+// klikkes igennem i preview. staff.id = `staff-<track>` (1 aktiv pr. spor).
+const OVERALL_BY_TIER = { 1: 36, 2: 52, 3: 63, 4: 74, 5: 82 };
+const DIMENSIONS = ["physical", "mental", "technical"];
+const LEVELS = ["youth", "junior", "senior"];
+const ROLE_SKILLS = {
+  training: [],
+  scouting: ["evaluation", "reach"],
+  medical: ["recovery", "injuryPrevention"],
+  academy: ["intake", "growth"],
+  commercial: ["negotiation", "marketing"],
+};
+
 // Deep-clone seed én gang pr. session (module-scope state).
 const state = JSON.parse(JSON.stringify(SEED_CLUB));
 
 function util(staffTier) { return staffTier == null ? 0.5 : 0.5 + 0.1 * staffTier; }
 
+function hashish(str) { let h = 0; for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0; return h; }
+function clampAxis(v) { return Math.max(1, Math.min(99, Math.round(v))); }
+
+// Evne-profil for preview: primær-kolonnens første akse boostes (+12) så
+// specialiserings-headline er meningsfuld; niveauer ligger lidt lavere.
+function abilitiesFor(role, tier, name) {
+  const overall = OVERALL_BY_TIER[tier] ?? 40;
+  const seed = hashish(`${role}:${tier}:${name}`);
+  const val = (axis, base) => clampAxis(base + ((hashish(String(axis) + seed) % 11) - 5));
+  const dimensions = {};
+  const roleSkills = {};
+  const levels = {};
+  const primary = role === "training" ? DIMENSIONS : ROLE_SKILLS[role];
+  const target = role === "training" ? dimensions : roleSkills;
+  primary.forEach((k, i) => { target[k] = val(k, overall + (i === 0 ? 12 : 0)); });
+  LEVELS.forEach((k) => { levels[k] = val(k, overall - 3); });
+  return { overall, dimensions, levels, roleSkills };
+}
+
+// Højest-scorende akse (spejler frontendens topStaffAxis) → akse-nøgle | null.
+function topAxisKey(ab) {
+  const entries = [
+    ...Object.entries(ab.dimensions || {}),
+    ...Object.entries(ab.levels || {}),
+    ...Object.entries(ab.roleSkills || {}),
+  ];
+  if (!entries.length) return null;
+  entries.sort((a, b) => b[1] - a[1]);
+  return entries[0][0];
+}
+
 function facilitiesPayload() {
-  return {
-    facilities: TRACKS.map((track) => {
-      const f = state.facilities[track];
-      const upgradePrice = f.tier >= 5 ? null : PRICE[f.tier + 1];
-      const staffTier = f.staff?.tier ?? null;
-      return {
-        track, tier: f.tier, upgradePrice, tierUpkeep: UPKEEP[f.tier],
-        staff: f.staff ? { name: f.staff.name, tier: f.staff.tier, salary: SALARY[f.staff.tier] } : null,
-        effectiveBonus: (BASE_EFFECT[track][f.tier] || 0) * util(staffTier),
-        effectLive: false,
-      };
-    }),
-  };
+  const facilities = TRACKS.map((track) => {
+    const f = state.facilities[track];
+    const upgradePrice = f.tier >= 5 ? null : PRICE[f.tier + 1];
+    const staffTier = f.staff?.tier ?? null;
+    return {
+      track, tier: f.tier, upgradePrice, tierUpkeep: UPKEEP[f.tier],
+      // #2220 A4b: staff bærer nu id (dyb-link) + overall (rating-cirkel/sammenligning).
+      staff: f.staff ? { id: `staff-${track}`, name: f.staff.name, tier: f.staff.tier, salary: SALARY[f.staff.tier], overall: OVERALL_BY_TIER[f.staff.tier] } : null,
+      effectiveBonus: (BASE_EFFECT[track][f.tier] || 0) * util(staffTier),
+      effectLive: false,
+    };
+  });
+  // #2220 A4b: sæson-omkostnings-resume (upkeep + payroll vs. saldo).
+  const totalUpkeep = facilities.reduce((s, fac) => s + (fac.tierUpkeep || 0), 0);
+  const totalPayroll = facilities.reduce((s, fac) => s + (fac.staff ? fac.staff.salary : 0), 0);
+  return { facilities, seasonCost: { totalUpkeep, totalPayroll, balance: 500000 } };
 }
 
 function candidatesFor(role) {
   const facTier = Math.max(1, state.facilities[role]?.tier || 0);
   return NAME_POOL.slice(0, 3).map((name, i) => {
     const tier = 1 + (i % facTier);
-    return { name, role, tier, salary: SALARY[tier] };
+    // #2220 A4b: kandidater bærer overall + topSpecialization til sammenligning.
+    const ab = abilitiesFor(role, tier, name);
+    return { name, role, tier, salary: SALARY[tier], overall: ab.overall, topSpecialization: topAxisKey(ab) };
   });
 }
 
@@ -80,6 +131,16 @@ export function clubMockRoute(method, pathname, search, body) {
     const severance = Math.round(SALARY[f.staff.tier] * 0.5);
     f.staff = null;
     return { status: 200, body: { ok: true, severance } };
+  }
+  // #2220 A4b: GET /api/club/staff/:id — fuld evne-profil (id = `staff-<track>`).
+  // Efter candidates-tjekket ovenfor, så /candidates ikke fanges her.
+  if (/\/api\/club\/staff\/[^/]+$/.test(pathname) && !pathname.endsWith("/candidates") && method === "GET") {
+    const id = pathname.split("/").pop();
+    const track = id.replace(/^staff-/, "");
+    const f = state.facilities[track];
+    if (!f?.staff) return { status: 404, body: { error: "staff_not_found" } };
+    const abilities = abilitiesFor(track, f.staff.tier, f.staff.name);
+    return { status: 200, body: { role: track, tier: f.staff.tier, salary: SALARY[f.staff.tier], name: f.staff.name, abilities } };
   }
   return null; // ikke en club-route
 }
