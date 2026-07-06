@@ -52,7 +52,7 @@ export async function getClubFacilitiesHandler({ teamId }, supabaseClient, { fla
 
   const { data: staffRows, error: staffError } = await supabaseClient
     .from("team_staff")
-    .select("name, role, tier, salary")
+    .select("id, name, role, tier, salary")
     .eq("team_id", teamId)
     .eq("status", "active");
   if (staffError) throw new Error(`facilityRoutes: could not load staff for ${teamId}: ${staffError.message}`);
@@ -68,6 +68,7 @@ export async function getClubFacilitiesHandler({ teamId }, supabaseClient, { fla
     // så vi ikke behøver et join for facilitets-oversigten (fuld profil = /club/staff/:id).
     const staffOut = staff
       ? {
+          id: staff.id,
           name: staff.name,
           tier: staff.tier,
           salary: staff.salary,
@@ -87,7 +88,15 @@ export async function getClubFacilitiesHandler({ teamId }, supabaseClient, { fla
     };
   });
 
-  return { status: 200, body: { facilities } };
+  // #2220 A4b: sæson-omkostnings-resume til UI-headeren (upkeep + payroll vs. balance).
+  const { data: teamRow, error: teamErr } = await supabaseClient
+    .from("teams").select("balance").eq("id", teamId).maybeSingle();
+  if (teamErr) throw new Error(`facilityRoutes: could not load balance for ${teamId}: ${teamErr.message}`);
+  const totalUpkeep = facilities.reduce((sum, f) => sum + (f.tierUpkeep ?? 0), 0);
+  const totalPayroll = (staffRows ?? []).reduce((sum, s) => sum + (s.salary ?? 0), 0);
+  const seasonCost = { totalUpkeep, totalPayroll, balance: teamRow?.balance ?? 0 };
+
+  return { status: 200, body: { facilities, seasonCost } };
 }
 
 // POST /api/club/facilities/upgrade — body { track }.
