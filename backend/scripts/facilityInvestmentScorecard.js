@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 // #1441 Fase 3 bølge A2 — facility-investment-scorecard. MERGE-GATE for FACILITIES_ENABLED.
 // Fire gates (spec §2.3 + §2.4 + §2.1/§5):
-//   (1) Anti-optimal-path: ≥3 investerings-strategier inden for ±10% af bedste
-//       langsigtede holdstyrke-proxy — pr. division, robust over leverage-sensitivitet.
+//   (1) Anti-optimal-path: ≥3 investerings-strategier inden for ±15% af bedste (EJER-VALG
+//       2026-07-05; før ±10%) langsigtede holdstyrke-proxy — pr. division, robust over
+//       leverage-sensitivitet. ±15% giver staff-specialisering plads til at være en reel
+//       strategisk løftestang med robuste marginer (se A4-audit).
 //   (2) Kommerciel payback ≥ COMMERCIAL_MIN_PAYBACK_SEASONS (aldrig selvfinansierende
 //       hurtigere) — mest gunstige kombination af tier/staff/division tæller.
 //   (3) Tid-som-valuta: tier-priser i "sæsoner af repræsentativ præmie-indkomst" inden
@@ -17,7 +19,7 @@ import { readFileSync } from "node:fs";
 import {
   DEFAULT_MODEL_CONSTANTS, DEFAULT_LEVERAGE, STRATEGIES, PRIZE_ESTIMATE_BY_DIVISION,
   runAntiOptimalPath, computeCommercialPayback, computePriceInSeasons, computeFormGates,
-  RECURRING_CAP,
+  runSpecializationBalance, SPECIALIZATION_BALANCE, RECURRING_CAP,
 } from "./lib/facilityInvestmentModel.js";
 
 function arg(name, def) {
@@ -106,7 +108,7 @@ function main() {
   console.log(`  Gate [min payback ${fseas(minPaybackAll)} ≥ ${constants.minPaybackSeasons}]: ${paybackPass ? "✅ PASS" : "❌ FAIL — kommerciel er en pengemaskine, rekalibrér"}\n`);
 
   // ── Gate 1: anti-optimal-path (§2.3) — pr. division + leverage-robusthed ──────
-  console.log("── GATE: anti-optimal-path (§2.3) — ≥3 strategier inden for ±10% af bedste ──");
+  console.log("── GATE: anti-optimal-path (§2.3) — ≥3 strategier inden for ±15% af bedste (ejer-valg 2026-07-05) ──");
   const leverageScenarios = [
     { name: "leverage ×1,0 (baseline)", mult: 1.0 },
     { name: "leverage ×0,5", mult: 0.5 },
@@ -158,10 +160,21 @@ function main() {
     console.log();
   }
 
-  const allPass = pis.allPass && paybackPass && antiOptimalPass && form.allPass;
+  // ── Gate 5: specialiserings-balance (#2216 A4, spec §7) ───────────────────────
+  console.log("── GATE: specialiserings-balance (#2216 A4) — generalist OG specialist spilbare, ingen dominant spec ──");
+  const spec = runSpecializationBalance({ constants, division: SPECIALIZATION_BALANCE.division ?? 2 });
+  let lastSpecGroup = null;
+  for (const c of spec.checks) {
+    if (c.group !== lastSpecGroup) { console.log(`  [${c.group}]`); lastSpecGroup = c.group; }
+    const band = Number.isFinite(c.hi) ? `∈ [${c.lo.toFixed(2)}, ${c.hi.toFixed(2)}]` : `≥ ${c.lo.toFixed(2)}`;
+    console.log(`    ${c.key}: ${c.value.toFixed(3)} ${band}: ${c.pass ? "✅" : "❌"}`);
+  }
+  console.log(`  Gate [specialiserings-balance — generalist/specialist ±${(SPECIALIZATION_BALANCE.competitiveBand * 100).toFixed(0)}%, ingen dominant]: ${spec.allPass ? "✅ PASS" : "❌ FAIL — en specialisering dominerer / staff-akse skævvrider, rekalibrér spec-vægte"}\n`);
+
+  const allPass = pis.allPass && paybackPass && antiOptimalPass && form.allPass && spec.allPass;
   console.log("──────────────────────────────────────────────────────────────────────");
-  console.log(`HEADLINE: facility-gates ${allPass ? "✅ PASS — A2-merge-gate opfyldt" : "❌ FAIL — rekalibrér før FACILITIES_ENABLED"}`);
-  console.log(`  tid-som-valuta ${pis.allPass ? "✅" : "❌"} · kommerciel payback ${paybackPass ? "✅" : "❌"} · anti-optimal-path ${antiOptimalPass ? "✅" : "❌"} · form-gates ${form.allPass ? "✅" : "❌"}`);
+  console.log(`HEADLINE: facility-gates ${allPass ? "✅ PASS — A2/A4-merge-gate opfyldt" : "❌ FAIL — rekalibrér før FACILITIES_ENABLED"}`);
+  console.log(`  tid-som-valuta ${pis.allPass ? "✅" : "❌"} · kommerciel payback ${paybackPass ? "✅" : "❌"} · anti-optimal-path ${antiOptimalPass ? "✅" : "❌"} · form-gates ${form.allPass ? "✅" : "❌"} · specialiserings-balance ${spec.allPass ? "✅" : "❌"}`);
   console.log("NOTE: flag-flip er en separat EJER-beslutning — harness grøn er forudsætningen, ikke beslutningen.\n");
 }
 

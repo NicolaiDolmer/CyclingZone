@@ -41,10 +41,76 @@ export const FACILITY_TIER_PRICE = Object.freeze({ 1: 12_000, 2: 26_000, 3: 50_0
 // upkeep ved tier T er 35-63% af den kumulative pris til T (form-gate: < 100%).
 export const FACILITY_TIER_UPKEEP = Object.freeze({ 0: 0, 1: 1_500, 2: 3_500, 3: 8_000, 4: 15_000, 5: 30_000 });
 
-// Staff-sæsonløn pr. kvalitets-tier (løbende sink oveni upkeep). Forankret i
-// staff'ens marginale værdi-tilførsel (se kalibrerings-design ovenfor): ansættelse
-// er en god men ikke gratis beslutning i alle divisioner.
+// DEPRECATED (#2216 A4): flad tier→løn-tabel. Erstattet af den rating-drevne
+// staffSalaryFor(overall)-kurve nedenfor, så løn bider proportionalt med staffens
+// faktiske kvalitet (Q1) i stedet for et groft 5-trins-tier. Bevaret som fallback
+// indtil A4b (kandidat-/profil-UI) er migreret, og som referenceanker for kurven.
 export const STAFF_SALARY_BY_TIER = Object.freeze({ 1: 100, 2: 250, 3: 600, 4: 1_300, 5: 2_600 });
+
+// ── Ability-drevet effekt-model (#2216 A4, Task 6 · KALIBRERET Task 8, REKALIBRERET
+//    efter ejer-valg 2026-07-05: ±15%-gate) ───────────────────────────────────────
+// Erstatter A3's tier→udnyttelses-skalar (staffUtilization) med en overall-drevet
+// faktor: staffEffectFactor(staff) = FLOOR + SLOPE·(overall/99). Range [0.5, 1.0].
+//   • FLOOR (0.5) = udnyttelsen UDEN chef — en facilitet uden ansat kører på 50%.
+//   • SLOPE (0.5) = span en overall-99-chef tilfører → faktor PRÆCIS 1.0 ved overall 99.
+// Lineær + monoton i overall. HISTORIK: Task 8 sænkede FLOOR til 0.4 for at få anti-
+// optimal-path-D3-cellen grøn under den STRAMME ±10%-gate (den ability-drevne faktor er
+// fladere mellem tiers end den gamle skalar, så gulv 0.5 gjorde "ingen chef" for stærkt).
+// EJER-VALG 2026-07-05: gaten løsnet til ±15% (se COMPETITIVE_THRESHOLD i
+// facilityInvestmentModel.js) → FLOOR kan nu restaureres til 0.5 med KOMFORTABEL margin
+// (D3-worst-cell 0,871 = 2,1pp over 0,85-tærsklen; før razor-thin 0,901/0,90). Det giver
+// den rene semantik "ingen chef = 50%" + faktor 1.0 ved en perfekt overall-99-chef.
+export const STAFF_EFFECT_FACTOR_FLOOR = 0.5;
+export const STAFF_EFFECT_FACTOR_SLOPE = 0.5;
+
+// Per-rytter specialiserings-multiplikator (specializationMatch) — IKKE i facilitets-
+// display-magnituden; bruges af trænings-hooket i Task 7 (dimension×niveau pr. rytter).
+// baseline 1.0 for en generalist / manglende akse; > 1.0 når chefens dimension OG
+// niveau er stærke; loftet ved `cap`. baselineOverall = det referencepunkt hvor en
+// "flad" chef giver præcis 1.0 (akser over/under skubber match op/ned).
+//   contribution = 1 + weightDimension·norm(dim − baseline) + weightLevel·norm(lvl − baseline)
+// hvor norm(x) = x / (99 − baseline) klippes til [-1, +1]; resultatet clampes [floor, cap].
+// EJER-VALG 2026-07-05: weightDimension/weightLevel restaureret til 0.25/0.15 (de
+// oprindelige Task-6-værdier). Med den løsnede ±15%-specialiserings-balance-gate (§7)
+// SKAL specialisering være en REEL strategisk løftestang: en matchet specialist er nu
+// +14% bedre end en generalist (inden for ±15%, ~1pp fra loftet — bevidst tæt på for at
+// UDNYTTE headroom'et; ejeren ville have specialisering til at "føles konsekvensfuld").
+// Task 8 havde sænket dem til 0.15/0.08 (+8,6%) for at holde ±10%-gaten, men det gjorde
+// specialisering til en nuance snarere end en beslutning. floor/cap uændrede (cap 1.4
+// ikke bindende: max-akser giver 1 + 0.25 + 0.15 = 1.4 = præcis cap).
+export const STAFF_SPECIALIZATION = Object.freeze({
+  baselineOverall: 50,
+  weightDimension: 0.25,
+  weightLevel: 0.15,
+  floor: 0.85,
+  cap: 1.4,
+});
+
+// Rating-drevet staff-løn (staffSalaryFor) — erstatter STAFF_SALARY_BY_TIER.
+// Konveks potens-kurve forankret i de gamle tier-lønninger ved tier-båndenes
+// midtpunkter: salary = round(floor + base·(overall/ref)^exp). Løn bider dermed med
+// staffens faktiske overall (Q1) i stedet for et groft tier-trin.
+// REKALIBRERET (ejer-valg 2026-07-05, floor→0.5): base 2600→2400. Med et effekt-gulv på
+// 0.5 (i stedet for Task-8's 0.4) er en ansættelses MARGINALE værdi mindre (chefen løfter
+// fra 0.5, ikke 0.4), så løn/værdi-forholdet stiger. base 2400 holder staff-relevans-gaten
+// komfortabelt inden for [0.05, 0.40] (t4-topper på 0.371 mod tidligere 0.401-overskridelse).
+// floor/cap = kalibrerings-bånd (positiv bund, loftet top).
+export const STAFF_SALARY_CURVE = Object.freeze({
+  base: 2400,
+  refOverall: 81,
+  exponent: 4,
+  floor: 50,
+  cap: 6000,
+  minOverall: 20,
+});
+
+// Rating-drevet staff-sæsonløn. Monoton stigende i overall, clampet til [floor, cap].
+export function staffSalaryFor(overall) {
+  const c = STAFF_SALARY_CURVE;
+  const o = Math.max(0, overall ?? 0);
+  const raw = c.floor + c.base * Math.pow(o / c.refOverall, c.exponent);
+  return Math.round(Math.min(c.cap, raw));
+}
 
 // Fyring: betal resterende sæsonløn × faktor (spec §2.2, sink + friktion).
 export const STAFF_SEVERANCE_FACTOR = 0.5;

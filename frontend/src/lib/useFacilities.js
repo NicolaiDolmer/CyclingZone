@@ -18,6 +18,7 @@ async function authHeaders() {
 export function useFacilities() {
   const [enabled, setEnabled] = useState(false);
   const [facilities, setFacilities] = useState([]);
+  const [seasonCost, setSeasonCost] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -34,6 +35,7 @@ export function useFacilities() {
       const data = await res.json();
       setEnabled(true);
       setFacilities(data.facilities ?? []);
+      setSeasonCost(data.seasonCost ?? null);
       setError(null);
     } catch { /* netværk — behold state */ } finally { setLoading(false); }
   }, []);
@@ -90,5 +92,5 @@ export function useFacilities() {
     } catch { return { ok: false, error: "network" }; }
   }, [refresh]);
 
-  return { enabled, facilities, loading, error, refresh, upgrade, loadCandidates, hire, fire };
+  return { enabled, facilities, seasonCost, loading, error, refresh, upgrade, loadCandidates, hire, fire };
 }

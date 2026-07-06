@@ -168,6 +168,7 @@ import {
   getStaffCandidatesHandler,
   postStaffHireHandler,
   postStaffFireHandler,
+  getStaffProfileHandler,
 } from "../lib/facilityRoutesHandlers.js";
 import {
   buildSeasonEndPreviewRows,
@@ -7035,15 +7036,24 @@ router.post("/sponsor/offers/accept", requireAuth, async (req, res) => {
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
-// ── Klub: faciliteter + staff (#1441 Fase 3, bølge A1 — gated bag FACILITIES_ENABLED) ──
+// ── Klub: faciliteter + staff (#1441 Fase 3, bølge A1 — gated bag facilities_enabled) ──
 // Tynde wrappers: auth + team-guard her; al logik/fejl-mapping i facilityRoutesHandlers.js
 // (unit-testet i lib/facilityRoutes.test.js — api.js selv er ikke unit-testbar).
+
+// A4b (#2220): faciliteter/staff er admin-synlige på prod FØR flip. Gate =
+// app_config-flaget ('facilities_enabled' true/"on") ELLER requester er admin.
+async function resolveFacilitiesEnabled(req) {
+  const stage = await readFlagStage(supabase, "facilities_enabled");
+  if (evaluateFlagStage(stage)) return true;
+  return await isViewerAdmin(req);
+}
 
 // GET /api/club/facilities — 5 spor m. tier, upgrade-pris, upkeep, staff, effektiv bonus.
 router.get("/club/facilities", requireAuth, async (req, res) => {
   try {
     if (!req.team?.id) return res.status(404).json({ error: "No team" });
-    const { status, body } = await getClubFacilitiesHandler({ teamId: req.team.id }, supabase);
+    const facilitiesEnabled = await resolveFacilitiesEnabled(req);
+    const { status, body } = await getClubFacilitiesHandler({ teamId: req.team.id }, supabase, { flags: { facilitiesEnabled } });
     res.status(status).json(body);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -7052,10 +7062,12 @@ router.get("/club/facilities", requireAuth, async (req, res) => {
 router.post("/club/facilities/upgrade", requireAuth, async (req, res) => {
   try {
     if (!req.team?.id) return res.status(404).json({ error: "No team" });
+    const facilitiesEnabled = await resolveFacilitiesEnabled(req);
     const { seasonId, seasonNumber } = await resolveFacilitySeason(supabase);
     const { status, body } = await postFacilityUpgradeHandler(
       { teamId: req.team.id, track: req.body?.track, seasonId, seasonNumber },
-      supabase
+      supabase,
+      { flags: { facilitiesEnabled } }
     );
     res.status(status).json(body);
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -7065,10 +7077,12 @@ router.post("/club/facilities/upgrade", requireAuth, async (req, res) => {
 router.get("/club/staff/candidates", requireAuth, async (req, res) => {
   try {
     if (!req.team?.id) return res.status(404).json({ error: "No team" });
+    const facilitiesEnabled = await resolveFacilitiesEnabled(req);
     const { seasonNumber } = await resolveFacilitySeason(supabase);
     const { status, body } = await getStaffCandidatesHandler(
       { teamId: req.team.id, role: req.query?.role, seasonNumber },
-      supabase
+      supabase,
+      { flags: { facilitiesEnabled } }
     );
     res.status(status).json(body);
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -7078,10 +7092,12 @@ router.get("/club/staff/candidates", requireAuth, async (req, res) => {
 router.post("/club/staff/hire", requireAuth, async (req, res) => {
   try {
     if (!req.team?.id) return res.status(404).json({ error: "No team" });
+    const facilitiesEnabled = await resolveFacilitiesEnabled(req);
     const { seasonId, seasonNumber } = await resolveFacilitySeason(supabase);
     const { status, body } = await postStaffHireHandler(
       { teamId: req.team.id, role: req.body?.role, candidateName: req.body?.candidateName, seasonId, seasonNumber },
-      supabase
+      supabase,
+      { flags: { facilitiesEnabled } }
     );
     res.status(status).json(body);
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -7091,10 +7107,27 @@ router.post("/club/staff/hire", requireAuth, async (req, res) => {
 router.post("/club/staff/fire", requireAuth, async (req, res) => {
   try {
     if (!req.team?.id) return res.status(404).json({ error: "No team" });
+    const facilitiesEnabled = await resolveFacilitiesEnabled(req);
     const { seasonId, seasonNumber } = await resolveFacilitySeason(supabase);
     const { status, body } = await postStaffFireHandler(
       { teamId: req.team.id, role: req.body?.role, seasonId, seasonNumber },
-      supabase
+      supabase,
+      { flags: { facilitiesEnabled } }
+    );
+    res.status(status).json(body);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/club/staff/:id — fuld evne-profil for en ejet staff. staff_not_found → 404.
+// NB: registreret EFTER /club/staff/candidates (statisk sti matcher før :id-param).
+router.get("/club/staff/:id", requireAuth, async (req, res) => {
+  try {
+    if (!req.team?.id) return res.status(404).json({ error: "No team" });
+    const facilitiesEnabled = await resolveFacilitiesEnabled(req);
+    const { status, body } = await getStaffProfileHandler(
+      { teamId: req.team.id, staffId: req.params.id },
+      supabase,
+      { flags: { facilitiesEnabled } }
     );
     res.status(status).json(body);
   } catch (e) { res.status(500).json({ error: e.message }); }

@@ -21,11 +21,23 @@ test("getStaffSalary + severanceCost", () => {
   assert.equal(severanceCost({ salary: 40_000 }), 20_000); // 0.5 × sæsonløn
 });
 
-test("effectiveBonus: facilitet = kapacitet, staff = udnyttelse", () => {
+test("effectiveBonus: bagud-kompat — integer staffTier (A1-service/A3-UI rå-tier-sti)", () => {
+  // Den DEPRECEREDE integer-sti bruger staffUtilization (0.5 + 0.1·tier) UÆNDRET —
+  // kun den ability-drevne staffEffectFactor er blevet kalibreret, ikke denne bagud-
+  // kompat-adapter (integer-tier-kald giver bit-identisk resultat som før).
   assert.equal(effectiveBonus("training", 0, null), 0);                 // intet bygget
-  assert.equal(effectiveBonus("training", 5, null), 0.165 * 0.5);       // uden staff: 50%
-  assert.equal(effectiveBonus("training", 5, 5), 0.165 * 1.0);          // fuld staff: 100%
-  assert.equal(effectiveBonus("training", 3, 1), 0.074 * 0.6);
+  assert.equal(effectiveBonus("training", 5, null), 0.165 * 0.5);       // null → staffEffectFactor-gulv 0.5
+  assert.equal(effectiveBonus("training", 5, 5), 0.165 * 1.0);          // fuld tier-staff: 100%
+  assert.equal(effectiveBonus("training", 3, 1), 0.074 * 0.6);          // integer-tier-skalar bevaret (0.5+0.1·1)
+});
+
+test("effectiveBonus: #2216 A4 — ability-drevet display-magnitude (staff-objekt med overall)", () => {
+  // Rekalibreret model (ejer-valg 2026-07-05): base × staffEffectFactor(staff) = base × (0.5 + 0.5·overall/99).
+  assert.equal(effectiveBonus("training", 5, { overall: 99 }), 0.165 * 1.0);       // overall 99 → faktor 1.0 (0.5+0.5)
+  assert.equal(effectiveBonus("training", 5, { overall: 0 }), 0.165 * 0.5);        // overall 0 → gulv 0.5
+  assert.equal(effectiveBonus("training", 5, null), 0.165 * 0.5);                  // ingen staff → gulv 0.5
+  assert.ok(Math.abs(effectiveBonus("training", 5, { overall: 50 }) - 0.165 * (0.5 + 0.5 * (50 / 99))) < 1e-12);
+  assert.equal(effectiveBonus("bogus", 3, { overall: 80 }), 0);                    // ukendt track
 });
 
 test("validateUpgrade: track, tier-loft, balance", () => {

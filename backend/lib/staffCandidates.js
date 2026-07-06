@@ -1,7 +1,8 @@
 // Deterministisk staff-kandidat-generering. Seed = teamId+season+role → stabil på refresh.
 // Navne: fiktive, kuraterede (anti-AI-slop, ingen ægte personer) — samme disciplin som
 // SPONSOR_NAME_POOL. Udvid gerne puljen, men kuratér manuelt.
-import { getStaffSalary } from "./facilityEngine.js";
+import { staffSalaryFor } from "./facilityConstants.js";
+import { deriveStaffAbilities, topSpecialization } from "./staffAbilityDerivation.js";
 
 export const STAFF_NAME_POOL = Object.freeze([
   "Marc Vandenbroucke", "Sofie Lindqvist", "Aldo Terranova", "Pieter Claes", "Jonas Weinberger",
@@ -42,7 +43,18 @@ export function generateStaffCandidates({ teamId, seasonNumber, role, facilityTi
     if (usedNames.has(name)) continue;
     usedNames.add(name);
     const tier = 1 + Math.floor(rand() * maxTier);
-    candidates.push({ name, role, tier, salary: getStaffSalary(tier) });
+    // #2216 A4: berig med afledt overall + top-specialisering til UI-visning/
+    // -sammenligning. Deterministisk (samme (role,tier,name) → samme profil).
+    const profile = deriveStaffAbilities({ role, tier, name });
+    candidates.push({
+      name, role, tier,
+      // #2216 A4 (Q1): rating-drevet løn — staffSalaryFor(overall) i stedet for den flade
+      // tier-tabel, så lønnen bider proportionalt med kandidatens faktiske kvalitet.
+      // Deterministisk (overall er deterministisk af (role,tier,name)).
+      salary: staffSalaryFor(profile.overall),
+      overall: profile.overall,
+      topSpecialization: topSpecialization(profile),
+    });
   }
   return candidates;
 }

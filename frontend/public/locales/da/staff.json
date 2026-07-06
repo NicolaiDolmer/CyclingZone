@@ -1,0 +1,20 @@
+{
+  "back": "Tilbage",
+  "gate": { "title": "Ikke tilgængelig endnu", "description": "Staff-området er ikke åbnet endnu." },
+  "missing": { "title": "Staff ikke fundet", "description": "Denne chef er ikke på dit hold." },
+  "roles": { "training": "Sportsdirektør", "scouting": "Chefscout", "medical": "Holdlæge", "academy": "Akademichef", "commercial": "Kommerciel direktør" },
+  "hero": { "tier": "Tier {tier}", "salary": "{amount} CZ$/sæson", "ratingEyebrow": "Rating /99", "specHeadline": "Bedst til {axis}" },
+  "tabs": { "overview": "Overblik", "effect": "Effekt", "history": "Historik" },
+  "columns": { "dimensions": "Coaching", "levels": "Niveau-fokus", "roleSkills": "Rolle-evner" },
+  "axes": {
+    "physical": "fysisk træning", "mental": "mental træning", "technical": "teknisk træning",
+    "youth": "ungdom", "junior": "junior", "senior": "senior",
+    "evaluation": "talentvurdering", "reach": "netværk",
+    "recovery": "restitution", "injuryPrevention": "skadesforebyggelse",
+    "intake": "intake-kvalitet", "growth": "vækstfart",
+    "negotiation": "forhandling", "marketing": "marketing"
+  },
+  "effect": { "body": "Chefens samlede rating ({rating}) afgør hvor stor en del af facilitetens effekt der realiseres. Kun trænings-sporet har live effekt i dag; de øvrige viser deres mål og aktiveres når hver motor lander." },
+  "history": { "body": "Kontrakt-historik og anciennitet vises her når staff-kontrakter lander." },
+  "switcher": { "count": "{index} / {total}" }
+}

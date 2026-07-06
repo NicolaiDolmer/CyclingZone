@@ -1,0 +1,20 @@
+{
+  "back": "Back",
+  "gate": { "title": "Not available yet", "description": "The staff area isn't open yet." },
+  "missing": { "title": "Staff not found", "description": "This chief isn't on your team." },
+  "roles": { "training": "Sports Director", "scouting": "Chief Scout", "medical": "Team Doctor", "academy": "Academy Director", "commercial": "Commercial Director" },
+  "hero": { "tier": "Tier {tier}", "salary": "{amount} CZ$/season", "ratingEyebrow": "Rating /99", "specHeadline": "Best at {axis}" },
+  "tabs": { "overview": "Overview", "effect": "Effect", "history": "History" },
+  "columns": { "dimensions": "Coaching", "levels": "Level focus", "roleSkills": "Role skills" },
+  "axes": {
+    "physical": "physical training", "mental": "mental training", "technical": "technical training",
+    "youth": "youth", "junior": "junior", "senior": "senior",
+    "evaluation": "talent evaluation", "reach": "network reach",
+    "recovery": "recovery", "injuryPrevention": "injury prevention",
+    "intake": "intake quality", "growth": "growth rate",
+    "negotiation": "negotiation", "marketing": "marketing"
+  },
+  "effect": { "body": "This chief's overall rating ({rating}) drives how much of the facility's effect is realised. Only the training track's effect is live today; the others show their target and activate as each engine lands." },
+  "history": { "body": "Contract history and tenure will appear here once staff contracts land." },
+  "switcher": { "count": "{index} / {total}" }
+}

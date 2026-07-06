@@ -6,6 +6,7 @@ import { PROGRESSION_CONFIG, seededUnit, youthRateForPotential } from "./riderPr
 import { TRAINING_CONFIG, TRAINING_FOCUSES } from "./training.js";
 import { VISIBLE_ABILITIES } from "./abilityDerivation.js";
 import { youthMultiplier } from "./academyFlag.js";
+import { staffTrainingBonus } from "./staffTrainingBonus.js";
 
 export const DAILY_TRAINING_CONFIG = Object.freeze({
   daysPerSeason: 28,        // budget-konvertering; kalibreres i sim (Task A10)
@@ -46,15 +47,27 @@ export function abilityMult(ability, program) {
     : TRAINING_CONFIG.offFocusMult;
 }
 
-export function dailyAbilityDelta({ ability, current, cap, age, program, conditionMult, bonus, noise, potentiale }) {
+// #2216 A4 (Task 7): staff/facilityTier/riderLevel er VALGFRIE med sikre defaults
+// (staff=null → staffTrainingBonus=1.0). Eksisterende callers, der ikke sender dem,
+// får et staffBonus på præcis 1.0 → bit-identisk output (nul regression, bevist i test).
+export function dailyAbilityDelta({
+  ability, current, cap, age, program, conditionMult, bonus, noise, potentiale,
+  staff = null, facilityTier = null, riderLevel = null,
+}) {
   const gap = Math.max(0, (cap ?? current) - current);
   if (gap === 0) return 0;
   const mult = abilityMult(ability, program);
   if (mult === 0) return 0;
   const cfg = DAILY_TRAINING_CONFIG;
   const base = (gap * growthFractionForAge(age) * cfg.dailyBudgetBoost) / cfg.daysPerSeason;
+  // Staff-trænings-bonus (dimension×niveau): ét ekstra multiplikator-led SIDST i kæden,
+  // efter manager-klik-bonussen (cfg.bonusMult) og noise. ≥ 1.0 og = 1.0 uden staff, så
+  // rækkefølgen er ligegyldig for regression men dokumenteres eksplicit for læsbarhed.
+  // Bonussen skalerer KUN denne daglige delta — cap-loopet i dailyTrainingEngine.js klipper
+  // stadig hver evne ved ability_caps, så et cap kan ALDRIG udvides af bonussen.
+  const staffBonus = staffTrainingBonus({ facilityTier, staff, ability, riderLevel });
   return base * mult * conditionMult * youthMultiplier(age) * youthRateForPotential(potentiale)
-    * (bonus ? cfg.bonusMult : 1) * noise;
+    * (bonus ? cfg.bonusMult : 1) * noise * staffBonus;
 }
 
 // #2082/#1938 (ejer-godkendt 5/7): sæson-budget-loft for akademi-alder — det EFFEKTIVE
@@ -78,7 +91,13 @@ export function computeAcademySeasonCeiling({ seasonStartAbilities, lifetimeCaps
 // caps er PÅKRÆVET: manglende evne-nøgle ⇒ nul vækst for den evne (konservativt, jf. L0's lazy-caps).
 // hardDailyCap (valgfri, #2082/#1938): maks antal hele point én evne må stige pr. dag —
 // sikkerhedsnet mod enkelt-dags-spikes. Udeladt/null = ingen ekstra grænse (uændret adfærd).
-export function applyDailyTick({ riderId, dateStr, age, abilities, caps, progress, program, conditionMult, bonus, potentiale, hardDailyCap }) {
+// #2216 A4 (Task 7): staff/facilityTier/riderLevel er VALGFRIE med sikre defaults, så
+// eksisterende callers (uden staff) får bit-identisk adfærd. Trænings-motoren
+// (dailyTrainingEngine.js) sender dem videre til dailyAbilityDelta pr. evne.
+export function applyDailyTick({
+  riderId, dateStr, age, abilities, caps, progress, program, conditionMult, bonus, potentiale, hardDailyCap,
+  staff = null, facilityTier = null, riderLevel = null,
+}) {
   const cfg = DAILY_TRAINING_CONFIG;
   const noise = 1 - cfg.noiseSpan + 2 * cfg.noiseSpan * seededUnit(`dtick:${riderId}:${dateStr}`);
   const nextAbilities = { ...abilities };
@@ -91,6 +110,7 @@ export function applyDailyTick({ riderId, dateStr, age, abilities, caps, progres
     if (!Number.isFinite(current)) continue; // korrupt input må ikke forgifte score/progress
     const delta = dailyAbilityDelta({
       ability, current, cap: caps?.[ability], age, program, conditionMult, bonus, noise, potentiale,
+      staff, facilityTier, riderLevel,
     });
     if (delta <= 0) continue;
     score += delta;
