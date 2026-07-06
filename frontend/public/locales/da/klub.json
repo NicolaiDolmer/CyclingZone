@@ -6,6 +6,11 @@
     "division": "Division {division}"
   },
   "sections": { "facilities": "Faciliteter", "staff": "Staff" },
+  "cost": {
+    "upkeep": "Drift",
+    "payroll": "Lønninger",
+    "balance": "Saldo"
+  },
   "facilities": {
     "tier": "Tier {tier} / {max}",
     "notBuilt": "Ikke bygget",

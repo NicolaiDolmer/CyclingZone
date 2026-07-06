@@ -9,6 +9,11 @@
     "facilities": "Facilities",
     "staff": "Staff"
   },
+  "cost": {
+    "upkeep": "Upkeep",
+    "payroll": "Payroll",
+    "balance": "Balance"
+  },
   "facilities": {
     "tier": "Tier {tier} / {max}",
     "notBuilt": "Not built",
