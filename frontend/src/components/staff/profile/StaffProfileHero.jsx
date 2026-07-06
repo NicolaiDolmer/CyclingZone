@@ -44,7 +44,7 @@ export default function StaffProfileHero({ profile }) {
           {headline && <p className="text-[12px] text-cz-1 mt-2">{headline}</p>}
         </div>
       </div>
-      <div className="hidden sm:block border border-cz-border rounded-cz p-3">
+      <div className="border border-cz-border rounded-cz p-2 sm:p-3 flex-shrink-0">
         <RatingCircle rating={overall} label={t("hero.ratingEyebrow")} />
       </div>
     </div>
