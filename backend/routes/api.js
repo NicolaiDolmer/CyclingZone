@@ -7876,7 +7876,9 @@ router.delete("/admin/users/:userId", requireAdmin, adminWriteLimiter, async (re
       .from("teams").select("id").eq("user_id", userId).eq("is_test_account", true).maybeSingle();
     if (testTeam && req.body?.confirm_test_account !== true) {
       return res.status(409).json({
-        error: `"${target.username}" er en permanent test-konto (is_test_account). Bekræft eksplicit for at slette.`,
+        error: "This is a permanent test account. Confirm explicitly to delete it.",
+        errorCode: "test_account_delete_needs_confirm",
+        errorParams: { username: target.username },
       });
     }
 
