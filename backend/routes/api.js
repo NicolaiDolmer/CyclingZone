@@ -123,6 +123,7 @@ import { buildTeamTransferHistory } from "../lib/teamTransferHistory.js";
 import { buildRiderBidTimeline } from "../lib/riderBidTimeline.js";
 import { meanPhysiology, BENCHMARK_FIELDS } from "../lib/physiologyBenchmark.js";
 import { SCOUTING_CONFIG, deriveScoutState, canScout, buildScoutEstimate, estimatePotentialRange } from "../lib/scouting.js";
+import { buildTypeCeilingBands, buildVerdict } from "../lib/scoutingReport.js";
 import { deriveTrainingState, canTrain, isValidFocus, isValidIntensity, partitionBulkTrainingTargets, BULK_TRAINING_MAX_RIDERS } from "../lib/training.js";
 import { isDailyTrainingEnabled, DAILY_TRAINING_FLAG_KEY } from "../lib/dailyTrainingFlag.js";
 import { readFlagStage, evaluateFlagStage } from "../lib/featureStage.js";
@@ -1253,6 +1254,78 @@ router.post("/scouting/:riderId", requireAuth, marketWriteLimiter, async (req, r
       slots: next.slots,
       maxLevel: next.maxLevel,
       estimate: buildScoutEstimate(rider, nextLevel, req.team.id),
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/riders/:id/scouting-report — fuld scouting-rapport (#1543 Fase 1).
+// Viewer-maskeret: stjerne-bånd + per-ryttertype loft-BÅND + deterministisk
+// verdict. Rå potentiale/ability_caps forlader ALDRIG serveren (#1162) — kun
+// bånd fra buildScoutEstimate/buildTypeCeilingBands. Level 0 + ikke-egen →
+// { hidden: true } (samme kontrakt som POST /scouting/estimates).
+router.get("/riders/:id/scouting-report", requireAuth, async (req, res) => {
+  if (!req.team) return res.status(400).json({ error: "No team found" });
+  try {
+    const [{ state }, { data: rider, error }] = await Promise.all([
+      loadScoutState(req.team.id),
+      supabase
+        .from("riders")
+        .select("id, team_id, potentiale, birthdate, primary_type, market_value")
+        .eq("id", req.params.id)
+        .maybeSingle(),
+    ]);
+    if (error) throw new Error(error.message);
+    if (!rider) return res.status(404).json({ error: "Rider not found" });
+
+    const own = rider.team_id != null && rider.team_id === req.team.id;
+    const level = own ? state.maxLevel : (state.levels[rider.id] ?? 0);
+    if (!own && level <= 0) {
+      return res.json({ hidden: true, level: 0, maxLevel: state.maxLevel, own: false });
+    }
+
+    const { data: ab, error: abErr } = await supabase
+      .from("rider_derived_abilities").select("*").eq("rider_id", rider.id).maybeSingle();
+    if (abErr) throw new Error(abErr.message);
+
+    const stars = buildScoutEstimate(rider, level, req.team.id);
+    const starsMasked = stars && !stars.hidden ? { lo: stars.lo, hi: stars.hi } : null;
+
+    // Data-gap (#2001-backfill dækker aktive ryttere, men vær defensiv): uden
+    // caps kan loft-bånd ikke beregnes — rapporten degraderer til stjerner alene.
+    const caps = ab?.ability_caps && typeof ab.ability_caps === "object" ? ab.ability_caps : null;
+    let types = [];
+    let verdict = null;
+    if (caps && ab) {
+      types = buildTypeCeilingBands({
+        nowAbilities: ab, caps, level, riderId: rider.id, teamId: req.team.id,
+      });
+      const best = types.reduce((a, b) => (b.now > a.now ? b : a), types[0]);
+      const bestCeil = types.reduce((a, b) => ((b.ceilLo + b.ceilHi) > (a.ceilLo + a.ceilHi) ? b : a), types[0]);
+      const age = rider.birthdate
+        ? new Date().getFullYear() - new Date(rider.birthdate).getFullYear()
+        : null;
+      // Forventet værdi fra SYNLIGE evner (ingen potentiale-input → ingen lækage).
+      const expected = VALUATION_MODEL ? predictBaseValue(rider, ab, VALUATION_MODEL) : null;
+      const valueGap = expected != null && rider.market_value != null
+        ? expected - rider.market_value : 0;
+      verdict = buildVerdict({
+        age, own, level, maxLevel: state.maxLevel,
+        bestNow: best.now,
+        bestCeilMid: (bestCeil.ceilLo + bestCeil.ceilHi) / 2,
+        valueGap,
+      });
+      return res.json({
+        level, maxLevel: state.maxLevel, own,
+        stars: starsMasked, types, verdict,
+        value: expected != null ? { market: rider.market_value, expected } : null,
+        capsMissing: false,
+      });
+    }
+    res.json({
+      level, maxLevel: state.maxLevel, own,
+      stars: starsMasked, types, verdict, value: null, capsMissing: true,
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

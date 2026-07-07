@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons@7.2.3/css/flag-icons.min.css">
+  <link rel="stylesheet" href="_ds/cycling-zone-design-system-a332ec00-12d3-4aa5-9064-2fd004541e5d/tokens/colors.css">
+  <link rel="stylesheet" href="_ds/cycling-zone-design-system-a332ec00-12d3-4aa5-9064-2fd004541e5d/tokens/typography.css">
+  <link rel="stylesheet" href="_ds/cycling-zone-design-system-a332ec00-12d3-4aa5-9064-2fd004541e5d/tokens/spacing.css">
+  <link rel="stylesheet" href="_ds/cycling-zone-design-system-a332ec00-12d3-4aa5-9064-2fd004541e5d/tokens/base.css">
+  <link rel="stylesheet" href="_ds/cycling-zone-design-system-a332ec00-12d3-4aa5-9064-2fd004541e5d/components/components.css">
+  <link rel="stylesheet" href="_ds/cycling-zone-design-system-a332ec00-12d3-4aa5-9064-2fd004541e5d/styles.css">
+  <script src="_ds/cycling-zone-design-system-a332ec00-12d3-4aa5-9064-2fd004541e5d/_ds_bundle.js"></script>
+  <style> body { margin: 0; background: #e7e4dd; } </style>
+  <template id="__bundler_thumbnail">
+    <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><rect width="100" height="100" fill="#0e0f15"/><circle cx="50" cy="40" r="15" fill="none" stroke="#e8c547" stroke-width="3"/><path d="M30 70h40M35 78h30" stroke="#e8c547" stroke-width="3" stroke-linecap="round"/><path d="M44 40l5 5 9-11" stroke="#e8c547" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </template>
+</helmet>
+<div style="min-height:100vh;width:100%;box-sizing:border-box;background:#e7e4dd;color:#33312c;font-family:'DM Sans',system-ui,sans-serif;overflow-x:hidden;-webkit-font-smoothing:antialiased">
+
+  <header style="position:sticky;top:0;z-index:30;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:13px 26px;background:rgba(231,228,221,.9);backdrop-filter:blur(8px);border-bottom:1px solid #d2cdc3">
+    <div style="display:flex;align-items:baseline;gap:11px;min-width:0;flex-wrap:wrap">
+      <span style="font-family:'Bebas Neue','Impact',sans-serif;font-size:23px;letter-spacing:.04em;color:#15171f">CYCLING ZONE</span>
+      <span style="font-size:12px;color:#6f6c64">Rytterprofil · v3</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <span style="font-size:10.5px;text-transform:uppercase;letter-spacing:.12em;color:#8a8780;font-weight:600">Tema</span>
+      <div style="{{ segWrap }}"><sc-for list="{{ themeTabs }}" as="t" hint-placeholder-count="2"><button style="{{ t.style }}" onClick="{{ t.onClick }}">{{ t.label }}</button></sc-for></div>
+    </div>
+  </header>
+
+  <section style="padding:24px 26px 40px">
+    <div style="display:flex;align-items:baseline;gap:11px;margin-bottom:8px">
+      <span style="font:700 11px/1 'DM Sans',sans-serif;padding:4px 8px;background:#15171f;color:#fff;border-radius:5px;letter-spacing:.04em">TURN 3</span>
+      <span style="font-size:14px;font-weight:600;color:#15171f">Én retning, finpudset — venstre-rail dossier</span>
+    </div>
+    <p style="margin:0 0 24px;font-size:13px;line-height:1.6;color:#5f5c54;max-width:88ch">Nyt siden sidst: <b style="color:#33312c">frem/tilbage-pile</b> i toppen (skift rytter på holdet), <b style="color:#33312c">foto-felt</b>, <b style="color:#33312c">tydelig værdi</b>, og <b style="color:#33312c">tilstands-banner</b> (på transferliste / i auktion). Dommen er flyttet til <b style="color:#33312c">Scouting</b> som "Din spejders vurdering". Evnerne sidder nu på <b style="color:#33312c">Overblik</b> (kolonner + ryttertype-radar nu vs loft). <b style="color:#33312c">Fysiologi</b> udvidet (FTP, VO₂max, Pmax, Zone 2, watt-kurve m. 10/20 min, Critical Power + W′, Z1–Z7). Ny <b style="color:#33312c">Scouting</b>: potentiale pr. ryttertype. <b style="color:#33312c">Resultater</b> i PCS-stil.</p>
+
+    <div style="display:flex;flex-direction:column;gap:36px">
+
+      <!-- ===== OWN ===== -->
+      <div id="own" style="scroll-margin-top:74px">
+        <div style="display:flex;align-items:baseline;gap:11px;margin-bottom:13px;flex-wrap:wrap">
+          <span style="font:700 11px/1 'DM Sans',sans-serif;padding:4px 8px;background:#1f7a4d;color:#fff;border-radius:5px;letter-spacing:.05em">DIN RYTTER</span>
+          <span style="font-size:13px;color:#6f6c64">Fuld styring · desktop viser tilstanden <b style="color:#33312c">på transferlisten</b>, mobil viser normal.</span>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start">
+          <div style="flex:1 1 660px;min-width:0;display:flex;flex-direction:column;gap:8px">
+            <span style="font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:#8a8780;font-weight:700">Desktop · på transferlisten</span>
+            <div data-theme="{{ themeAttr }}" style="border:1px solid #c7c2b8;border-radius:11px;overflow:hidden;background:var(--bg-body);box-shadow:0 12px 32px -18px rgba(20,18,14,.4)">
+              <div style="display:flex;align-items:center;gap:7px;padding:8px 13px;background:var(--bg-elevated);border-bottom:1px solid var(--border)"><span style="width:9px;height:9px;border-radius:9999px;background:#ec6a5e"></span><span style="width:9px;height:9px;border-radius:9999px;background:#f4bf4f"></span><span style="width:9px;height:9px;border-radius:9999px;background:#61c554"></span><span style="margin-left:9px;font-family:var(--font-data);font-size:10.5px;color:var(--text-3)">cyclingzone.app / riders / ayoub-cherif</span></div>
+              <div style="height:660px;overflow:auto"><dc-import name="ProfileScreen" viewer="own" lifecycle="listed" mode="desktop" style="display:block;width:100%" hint-size="100%,1500px"></dc-import></div>
+            </div>
+          </div>
+          <div style="flex:0 0 390px;display:flex;flex-direction:column;gap:8px">
+            <span style="font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:#8a8780;font-weight:700">Mobil · 390px</span>
+            <div data-theme="{{ themeAttr }}" style="width:390px;max-width:100%;border:1px solid #c7c2b8;border-radius:20px;overflow:hidden;background:var(--bg-body);box-shadow:0 12px 32px -18px rgba(20,18,14,.4)">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 20px 4px;background:var(--bg-body);font-family:var(--font-data);font-size:11px;font-weight:600;color:var(--text-1)"><span>9:41</span><span style="letter-spacing:1px;color:var(--text-2)">●●● ⌃ ▮</span></div>
+              <div style="height:700px;overflow:auto"><dc-import name="ProfileScreen" viewer="own" lifecycle="active" mode="mobile" style="display:block;width:100%" hint-size="100%,2600px"></dc-import></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== SCOUTING ===== -->
+      <div id="scouting" style="scroll-margin-top:74px;border-top:1px solid #d2cdc3;padding-top:32px">
+        <div style="display:flex;align-items:baseline;gap:11px;margin-bottom:13px;flex-wrap:wrap">
+          <span style="font:700 11px/1 'DM Sans',sans-serif;padding:4px 8px;background:#2a2f4a;color:#fff;border-radius:5px;letter-spacing:.05em">SCOUTING</span>
+          <span style="font-size:13px;color:#6f6c64">Rival/AI-rytter · sløret loft, ingen form/træthed. Desktop viser <b style="color:#33312c">i auktion</b>.</span>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start">
+          <div style="flex:1 1 660px;min-width:0;display:flex;flex-direction:column;gap:8px">
+            <span style="font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:#8a8780;font-weight:700">Desktop · i auktion</span>
+            <div data-theme="{{ themeAttr }}" style="border:1px solid #c7c2b8;border-radius:11px;overflow:hidden;background:var(--bg-body);box-shadow:0 12px 32px -18px rgba(20,18,14,.4)">
+              <div style="display:flex;align-items:center;gap:7px;padding:8px 13px;background:var(--bg-elevated);border-bottom:1px solid var(--border)"><span style="width:9px;height:9px;border-radius:9999px;background:#ec6a5e"></span><span style="width:9px;height:9px;border-radius:9999px;background:#f4bf4f"></span><span style="width:9px;height:9px;border-radius:9999px;background:#61c554"></span><span style="margin-left:9px;font-family:var(--font-data);font-size:10.5px;color:var(--text-3)">cyclingzone.app / riders / ayoub-cherif</span></div>
+              <div style="height:660px;overflow:auto"><dc-import name="ProfileScreen" viewer="scouting" lifecycle="auction" mode="desktop" style="display:block;width:100%" hint-size="100%,1500px"></dc-import></div>
+            </div>
+          </div>
+          <div style="flex:0 0 390px;display:flex;flex-direction:column;gap:8px">
+            <span style="font-size:10px;text-transform:uppercase;letter-spacing:.12em;color:#8a8780;font-weight:700">Mobil · 390px</span>
+            <div data-theme="{{ themeAttr }}" style="width:390px;max-width:100%;border:1px solid #c7c2b8;border-radius:20px;overflow:hidden;background:var(--bg-body);box-shadow:0 12px 32px -18px rgba(20,18,14,.4)">
+              <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 20px 4px;background:var(--bg-body);font-family:var(--font-data);font-size:11px;font-weight:600;color:var(--text-1)"><span>9:41</span><span style="letter-spacing:1px;color:var(--text-2)">●●● ⌃ ▮</span></div>
+              <div style="height:700px;overflow:auto"><dc-import name="ProfileScreen" viewer="scouting" lifecycle="active" mode="mobile" style="display:block;width:100%" hint-size="100%,2600px"></dc-import></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <p style="margin:30px 0 0;font-size:12.5px;line-height:1.6;color:#6f6c64">Justeringer: "gør radaren større" · "flyt Fysiologi som standard-fane" · "tilføj sammenlign-mod-trup" · "vis akademi-rytter-tilstanden". Skift <a href="#own" style="color:#2a3a8c;text-decoration:none;font-weight:600">Din rytter</a> / <a href="#scouting" style="color:#2a3a8c;text-decoration:none;font-weight:600">Scouting</a>.</p>
+  </section>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { theme: "light" };
+  renderVals() {
+    const { theme } = this.state;
+    const set = (o) => this.setState(o);
+    const segWrap = { display:"inline-flex", gap:"2px", background:"#dcd8d0", border:"1px solid #cbc6bc", borderRadius:"8px", padding:"3px" };
+    const seg = (active) => ({ padding:"5px 12px", borderRadius:"6px", border:0, cursor:"pointer", fontFamily:"'DM Sans',system-ui,sans-serif", fontSize:"12px", fontWeight:600, whiteSpace:"nowrap", background: active ? "#fbfaf7" : "transparent", color: active ? "#15171f" : "#6f6c64", boxShadow: active ? "0 1px 2px rgba(0,0,0,.14)" : "none" });
+    const themeTabs = [["light","Lys"],["dark","Mørk"]].map(([k,l]) => ({ label:l, onClick:() => set({ theme:k }), style:seg(theme===k) }));
+    return { themeAttr:theme, segWrap, themeTabs };
+  }
+}
+</script>
+</body>
+</html>

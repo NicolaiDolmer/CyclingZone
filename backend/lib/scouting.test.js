@@ -47,7 +47,7 @@ test("deriveScoutState: slots tæller KUN handlinger i den aktive sæson", () =>
 });
 
 test("deriveScoutState: remaining bunder ud i 0 (aldrig negativ)", () => {
-  const rows = Array.from({ length: 10 }, (_, i) => ({ rider_id: `r${i}`, season_id: "s2" }));
+  const rows = Array.from({ length: SCOUTING_CONFIG.slotsPerSeason + 5 }, (_, i) => ({ rider_id: `r${i}`, season_id: "s2" }));
   const s = deriveScoutState(rows, "s2");
   assert.equal(s.slots.remaining, 0);
 });
@@ -86,9 +86,21 @@ test("estimatet er stabilt mellem kald (samme input → samme interval)", () => 
   assert.deepEqual(a, b);
 });
 
-test("fuldt scoutet (level == maxLevel) → eksakt sandhed, exact=true", () => {
-  const r = estimatePotentialRange(4.5, 3, 22, "r1", "t1", 3);
-  assert.deepEqual(r, { lo: 4.5, hi: 4.5, exact: true, scoutLevel: 3 });
+test("fuldt scoutet (level == maxLevel) → rest-bånd, aldrig eksakt (#1543 beslutning 3)", () => {
+  const r = estimatePotentialRange(4.0, 3, 22, "r1", "t1", 3);
+  assert.equal(r.exact, false);
+  assert.equal(r.scoutLevel, 3);
+  assert.ok(r.hi - r.lo >= 0.5 && r.hi - r.lo <= 1.5, `rest-bånd forventet, fik ${r.lo}–${r.hi}`);
+  assert.ok(r.lo <= 4.0 + 0.75 && r.hi >= 4.0 - 0.75, "båndet skal omslutte nabolaget af sandheden");
+});
+
+test("rest-båndets midtpunkt er IKKE altid sandheden (anti-inversion, #1543)", () => {
+  let offCenter = 0;
+  for (let i = 0; i < 50; i++) {
+    const r = estimatePotentialRange(3.5, 3, 22, `r${i}`, "t1", 3);
+    if ((r.lo + r.hi) / 2 !== 3.5) offCenter++;
+  }
+  assert.ok(offCenter > 10, `bias-spredning for lav: ${offCenter}/50 off-center`);
 });
 
 test("uscoutet ung rytter → bredt interval der indeholder et spænd", () => {
@@ -141,10 +153,13 @@ test("ugyldig potentiale → null", () => {
 
 const YEAR = 2026;
 
-test("buildScoutEstimate: egen rytter → eksakt (lo == hi), uanset scout-niveau", () => {
-  const rider = { id: "r1", potentiale: 4.5, birthdate: "2004-03-01", team_id: "tMe" };
+test("buildScoutEstimate: egen rytter → smalt bånd, ikke eksakt (#1543 beslutning 4)", () => {
+  const rider = { id: "r1", potentiale: 4.0, birthdate: "2004-03-01", team_id: "tMe" };
   const est = buildScoutEstimate(rider, 0, "tMe", SCOUTING_CONFIG, YEAR);
-  assert.deepEqual(est, { lo: 4.5, hi: 4.5, exact: true, level: SCOUTING_CONFIG.maxLevel });
+  assert.equal(est.exact, false);
+  assert.equal(est.level, SCOUTING_CONFIG.maxLevel);
+  assert.ok(est.hi > est.lo, "egen rytter skal have et bånd");
+  assert.ok(est.hi - est.lo <= 1.5, "egen-rytter-båndet skal være smalt");
 });
 
 test("buildScoutEstimate: fremmed uscoutet rytter → SKJULT (#1543), intet lo/hi-spænd", () => {
@@ -166,10 +181,12 @@ test("buildScoutEstimate: fremmed rytter scoutet (level 1) → usikkert interval
   assert.ok(est.hi - est.lo > 0, "scoutet rytter skal have spænd");
 });
 
-test("buildScoutEstimate: fuldt scoutet fremmed rytter → eksakt", () => {
+test("buildScoutEstimate: fuldt scoutet fremmed rytter → rest-bånd (#1543 beslutning 3)", () => {
   const rider = { id: "r1", potentiale: 3.5, birthdate: "1998-03-01", team_id: "tOther" };
   const est = buildScoutEstimate(rider, SCOUTING_CONFIG.maxLevel, "tMe", SCOUTING_CONFIG, YEAR);
-  assert.deepEqual(est, { lo: 3.5, hi: 3.5, exact: true, level: SCOUTING_CONFIG.maxLevel });
+  assert.equal(est.exact, false);
+  assert.equal(est.level, SCOUTING_CONFIG.maxLevel);
+  assert.ok(est.hi > est.lo, "fuldt scoutet skal stadig have et rest-bånd");
 });
 
 test("buildScoutEstimate: rytter uden potentiale → null", () => {

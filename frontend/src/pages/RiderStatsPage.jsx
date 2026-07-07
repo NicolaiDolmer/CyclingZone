@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { supabase } from "../lib/supabase";
 import { getAuthedUser } from "../lib/getAuthedUser.js";
@@ -40,6 +40,7 @@ import RiderOverviewPhysiology from "../components/rider/profile/RiderOverviewPh
 import RiderPhysiologyTab from "../components/rider/profile/RiderPhysiologyTab.jsx";
 import RiderTrainingTab from "../components/rider/profile/RiderTrainingTab.jsx";
 import RiderDevelopmentTab from "../components/rider/profile/RiderDevelopmentTab.jsx";
+import RiderScoutingTab from "../components/rider/profile/RiderScoutingTab.jsx";
 import RiderHistoryTab from "../components/rider/profile/RiderHistoryTab.jsx";
 import RiderResultsTab from "../components/rider/profile/RiderResultsTab.jsx";
 import RiderInterestTab from "../components/rider/profile/RiderInterestTab.jsx";
@@ -1554,6 +1555,7 @@ export default function RiderStatsPage() {
           setTab(key);
           // Telemetri pr. redesign-fane (#2000) — samme mønster som Udvikling.
           if (key === "development") logEvent("feature_rider_development_tab_opened", { rider_id: rider.id });
+          if (key === "scouting") logEvent("feature_rider_scouting_tab_opened", { rider_id: rider.id });
           if (key === "history") logEvent("feature_rider_history_tab_opened", { rider_id: rider.id });
           if (key === "results") logEvent("feature_rider_results_tab_opened", { rider_id: rider.id });
           if (key === "interest") logEvent("feature_rider_interest_tab_opened", { rider_id: rider.id });
@@ -1639,25 +1641,7 @@ export default function RiderStatsPage() {
       {/* Scouting bygges i egen slice — "på vej"-flade med roadmap-link +
           stemme-opfordring (ejer-beslutning 3/7). Scout-flowet (estimat +
           scout-knap) lever indtil da i hero'en. */}
-      {tab === "scouting" && (
-        <div className="bg-cz-card border border-cz-border border-l-2 border-l-cz-accent rounded-cz py-[15px] px-[17px]">
-          <span className="font-mono text-[9.5px] font-bold uppercase tracking-[0.12em] text-cz-accent-t">
-            {t("profile.scouting.comingEyebrow")}
-          </span>
-          <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0 mt-2">
-            {t("profile.scouting.comingTitle")}
-          </h3>
-          <p className="text-cz-2 text-[12.5px] leading-[1.55] mt-2 mb-0 max-w-prose">
-            {t("profile.scouting.comingBody")}
-          </p>
-          <div className="mt-4 pt-3.5 border-t border-cz-border flex items-center gap-x-3 gap-y-2 flex-wrap">
-            <p className="text-cz-3 text-xs m-0">{t("profile.scouting.roadmapHint")}</p>
-            <Link to="/roadmap" className={buttonClass({ variant: "secondary", size: "sm" })}>
-              {t("profile.scouting.roadmapCta")}
-            </Link>
-          </div>
-        </div>
-      )}
+      {tab === "scouting" && <RiderScoutingTab key={rider.id} rider={rider} scouting={scouting} />}
     </div>
   );
 }

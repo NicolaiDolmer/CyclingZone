@@ -4,8 +4,9 @@
 // label), plus en valgfri scout-knap der bruger ét slot og indsnævrer estimatet.
 //
 // #1162: Estimatet beregnes på SERVEREN (POST /api/scouting/estimates) — den rå
-// riders.potentiale findes ikke i klienten. Egne ryttere + fuldt scoutede får et
-// eksakt estimat (lo == hi) og vises som eksakte stjerner + kvalitativ tekst.
+// riders.potentiale findes ikke i klienten. #1543 beslutning 3+4: egne ryttere +
+// fuldt scoutede får et SMALT REST-BÅND (aldrig eksakt) — ingen når 100% viden.
+// Eksakt-branchen nedenfor er defensiv (clamping ved 1/6 kan stadig give lo==hi).
 // #1242 (ejer-beslutning dokumenteret her): egne ryttere viser SAMME kvalitative
 // præsentation som andres — aldrig et råt tal. Stjernerne (0,5-trin) ER den
 // fulde indsigt; potentiale-skalaen er ikke spillervendt som tal.
