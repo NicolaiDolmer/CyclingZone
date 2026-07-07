@@ -1507,12 +1507,14 @@ async function processTeamSeasonEnd(team, seasonId, standings, currentSeasonNumb
         team,
         board,
         newSatisfaction,
+        previousSatisfaction: anchorSatisfaction,
         goalsMet,
         goalsTotal: goals.length,
         planIsComplete,
         seasonId,
         consecutiveLowExpirations: triggerDoublePlanLapse ? 2 : 0,
         boardTestMode,
+        now: deps.now ?? new Date(),
         notify: ({ type, title, message, metadata }) => notifyManager(team.id, type, title, message, notificationDeps, metadata ?? null),
       });
     } catch (error) {

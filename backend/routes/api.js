@@ -230,6 +230,7 @@ import {
 } from "../lib/transferExecution.js";
 import {
   acceptBonusOffer,
+  assertSalaryIncreaseAllowed,
   assertSigningAllowed,
   declineBonusOffer,
   getActiveConsequencesForTeam,
@@ -1120,6 +1121,18 @@ router.post("/riders/:id/extend-contract", requireAuth, marketWriteLimiter, asyn
 
   const currentSeason = await getActiveSeasonNumber();
   const next = computeContractExtension({ ...rider, currentSeason });
+
+  // #2237 · Lag 2 (salary cap) håndhæves nu også her — den eneste manager-initierede
+  // løn-forøgelses-vej udenom transfer/auktion (som allerede er dækket af assertSigningAllowed).
+  const capBlock = await assertSalaryIncreaseAllowed({
+    supabase,
+    teamId: req.team.id,
+    oldSalary: rider.salary,
+    newSalary: next.salary,
+  });
+  if (capBlock) {
+    return res.status(403).json({ error: capBlock.reason, code: capBlock.code, layer: capBlock.layer });
+  }
 
   const { data: updated } = await supabase
     .from("riders")

@@ -37,6 +37,18 @@ const BONUS_OFFER_AMOUNT = 200_000;
 // Lag 6 — eligibility. Mindst 75% af mål 'ahead' (proxy: goalsMet / goalsTotal ≥ 0.75).
 const BONUS_OFFER_GOALS_THRESHOLD = 0.75;
 
+// Lag 2 — #2237: cappen skal give reelt vækstrum, ikke fryse til aktuel lønsum.
+// Ejer-beslutning 2026-07-07: bindende men mildt — 50% headroom over lønsum ved
+// oprettelse/re-evaluering, ALDRIG strammet under en tidligere sat cap (kun opad).
+const SALARY_CAP_HEADROOM_FACTOR = 1.5;
+// Guard mod cap≈0 for hold med (næsten) løn-fri trup på trigger-tidspunktet.
+const SALARY_CAP_FLOOR = 5_000;
+// Lag 2 — #2237 ejer-krav 2026-07-07: cappen må ALDRIG opstå for et helt nyt hold i
+// dets første ~30 dage/første sæson (nybegynder-venlighed — vi skal ikke skræmme nye
+// managere væk). Distinkt fra #1721 (afviser sæson-1-observation for satisfaction
+// generelt) — denne grace gælder kun lag-2-TRIGGER, ikke satisfaction-bevægelsen selv.
+const NEW_MANAGER_SALARY_CAP_GRACE_DAYS = 30;
+
 // Lag 4 — beskytter star/popularity-rytter mod tvunget listing. Stjerne-definitionen
 // er market_value-baseret (#1205, delt konstant) — uci_points er frosset/afkoblet (#1101).
 const FORCED_LISTING_PROTECTION_POPULARITY = 70;
@@ -57,6 +69,9 @@ export const CONSEQUENCE_CONSTANTS = {
   FORCED_LISTING_PROTECTION_STAR_VALUE,
   PULLOUT_PLAN_LAPSE_TRIGGER,
   PULLOUT_PLAN_LAPSE_SATISFACTION,
+  SALARY_CAP_HEADROOM_FACTOR,
+  SALARY_CAP_FLOOR,
+  NEW_MANAGER_SALARY_CAP_GRACE_DAYS,
 };
 
 export const CONSEQUENCE_LAYERS = {
@@ -96,6 +111,19 @@ export function getLayerLabelKey(layer) {
 
 function ensureSupabase(supabase) {
   if (!supabase?.from) throw new Error("Supabase client is required");
+}
+
+/**
+ * #2237 · Er holdet stadig indenfor sin nybegynder-grace for lag 2 (løncap)?
+ * Manglende/ugyldig `created_at` behandles konservativt som "ikke i grace"
+ * (undgår at ældre data uden feltet uventet får evig grace).
+ */
+function isWithinNewManagerSalaryCapGrace(teamCreatedAt, now) {
+  if (!teamCreatedAt) return false;
+  const createdMs = new Date(teamCreatedAt).getTime();
+  if (!Number.isFinite(createdMs)) return false;
+  const nowMs = (now instanceof Date ? now : new Date(now || Date.now())).getTime();
+  return nowMs - createdMs < NEW_MANAGER_SALARY_CAP_GRACE_DAYS * 24 * 60 * 60 * 1000;
 }
 
 async function loadActiveConsequencesByLayer(supabase, teamId) {
@@ -151,6 +179,21 @@ export async function expireSeasonScopedConsequences(supabase, completedSeasonId
 // ─── Hard-block helpers (lag 2-3) ─────────────────────────────────────────────
 
 /**
+ * #2237 · Selv-helende effektiv cap: en gemt `cap.severity` kan stamme fra FØR
+ * denne fix (frosset til en near-0 lønsum, se GAP 1) og først re-kalibreres til
+ * 1.5x-headroom-formlen ved næste sæson-end re-evaluering. Indtil da må håndhævelse
+ * ALDRIG straffe den lønsum holdet allerede reelt har LIGE NU — ellers ville en
+ * hidtil uhåndhævet vej (fx kontraktforlængelse) med ét blive en hård retroaktiv
+ * klemme for eksisterende hold, hvilket ejeren eksplicit afviste (2026-07-07).
+ * Giver bevidst INGEN ekstra headroom ud over nuværende lønsum her — headroommet
+ * (1.5x) leveres af evaluateAndApplyConsequences ved næste sæson-end; dette er kun
+ * en stop-gap-guard mod at bide på data fra før fixet.
+ */
+function effectiveCapSeverity(cap, currentTotalSalary) {
+  return Math.max(cap.severity, currentTotalSalary || 0);
+}
+
+/**
  * Aggregerer signing-block-tjek for én potentiel handel.
  * Returnerer null hvis tilladt, ellers { code, layer, reason, threshold }.
  *
@@ -204,16 +247,56 @@ export async function assertSigningAllowed({ supabase, buyerTeamId, riderId, pur
       }
     }
 
-    if (currentSalary + incomingSalary > cap.severity) {
+    const effectiveCap = effectiveCapSeverity(cap, currentSalary);
+    if (currentSalary + incomingSalary > effectiveCap) {
       return {
         code: "board_salary_cap",
         layer: CONSEQUENCE_LAYERS.SALARY_CAP,
-        threshold: cap.severity,
-        reason: `Salary cap set by the board (${cap.severity} CZ$). You cannot increase the team's total salary — sell a rider first.`,
+        threshold: effectiveCap,
+        reason: `Salary cap set by the board (${effectiveCap} CZ$). You cannot increase the team's total salary — sell a rider first.`,
         reasonCode: "error.boardSalaryCap",
-        reasonParams: { cap: cap.severity },
+        reasonParams: { cap: effectiveCap },
       };
     }
+  }
+
+  return null;
+}
+
+/**
+ * #2237 · Lag 2 håndhævet på kontraktforlængelse (den eneste manager-initierede
+ * løn-forøgelses-vej udenom transfer/auktion, som allerede dækkes af assertSigningAllowed).
+ * Blokerer kun rene FORØGELSER — en forlængelse der sænker/holder lønnen uændret blokeres aldrig.
+ * Returnerer null hvis tilladt, ellers { code, layer, reason, threshold } (samme form som assertSigningAllowed).
+ */
+export async function assertSalaryIncreaseAllowed({ supabase, teamId, oldSalary, newSalary }) {
+  ensureSupabase(supabase);
+  if (!teamId) return null;
+  if (Number(newSalary || 0) <= Number(oldSalary || 0)) return null;
+
+  const byLayer = await loadActiveConsequencesByLayer(supabase, teamId);
+  const cap = byLayer.get(CONSEQUENCE_LAYERS.SALARY_CAP);
+  if (!cap) return null;
+
+  const { data: teamRiders, error } = await supabase
+    .from("riders")
+    .select("id, salary")
+    .eq("team_id", teamId);
+  if (error) throw new Error(`Could not load team salaries: ${error.message}`);
+
+  const currentTotal = (teamRiders || []).reduce((sum, r) => sum + (r.salary || 0), 0);
+  const projectedTotal = currentTotal - Number(oldSalary || 0) + Number(newSalary || 0);
+  const effectiveCap = effectiveCapSeverity(cap, currentTotal);
+
+  if (projectedTotal > effectiveCap) {
+    return {
+      code: "board_salary_cap",
+      layer: CONSEQUENCE_LAYERS.SALARY_CAP,
+      threshold: effectiveCap,
+      reason: `Salary cap set by the board (${effectiveCap} CZ$). This contract extension would push your total salary over the cap — sell a rider first.`,
+      reasonCode: "error.boardSalaryCapExtension",
+      reasonParams: { cap: effectiveCap },
+    };
   }
 
   return null;
@@ -301,6 +384,7 @@ export async function evaluateAndApplyConsequences({
   team,
   board,
   newSatisfaction,
+  previousSatisfaction = null,
   goalsMet,
   goalsTotal,
   planIsComplete,
@@ -308,6 +392,7 @@ export async function evaluateAndApplyConsequences({
   notify,
   consecutiveLowExpirations = 0,
   boardTestMode = false,
+  now = new Date(),
 }) {
   ensureSupabase(supabase);
   if (!team?.id || !board?.id) {
@@ -327,28 +412,49 @@ export async function evaluateAndApplyConsequences({
 
   // ── Lag 2: Salary cap (sat<40)
   if (newSatisfaction < SATISFACTION_THRESHOLDS.SALARY_CAP) {
-    // Cap = current total salary at trigger-time. Re-evalueres hver sæson-end (frosset til
-    // næste season-end re-evaluering).
-    const totalSalary = (team.riders || []).reduce((sum, r) => sum + (r.salary || 0), 0);
-    const newCap = Math.max(totalSalary, 0);
     const existing = byLayer.get(CONSEQUENCE_LAYERS.SALARY_CAP);
-    if (existing && existing.severity === newCap) {
-      skipped.push({ layer: 2, reason: "unchanged" });
+
+    // #2237 ejer-krav 2026-07-07: helt nyt hold (< 30 dage) må ALDRIG få cappen
+    // opstå — nybegynder-venlighed. Kan ikke ramme et hold der allerede har en
+    // aktiv cap (den ville kun kunne være oprettet efter grace-perioden sluttede).
+    const inGrace = !existing && isWithinNewManagerSalaryCapGrace(team.created_at, now);
+
+    // #2237 ejer-krav: cappen må ikke opstå på et enkelt dyk — kun hvis krisen er
+    // VEDVARENDE (denne OG forrige evaluering under 40%), medmindre den allerede
+    // er aktiv (så er re-evaluering/opdatering altid tilladt).
+    const sustainedLow =
+      Boolean(existing) ||
+      (previousSatisfaction != null && Number(previousSatisfaction) < SATISFACTION_THRESHOLDS.SALARY_CAP);
+
+    if (inGrace) {
+      skipped.push({ layer: 2, reason: "new_manager_grace" });
+    } else if (!sustainedLow) {
+      skipped.push({ layer: 2, reason: "first_dip_not_sustained" });
     } else {
-      // Mark previous as expired før insert (unique-active-index ville ellers fejle).
-      if (existing) {
-        await supabase
-          .from("board_consequences")
-          .update({ status: "expired", resolved_at: new Date().toISOString() })
-          .eq("id", existing.id);
+      // #2237: cap = 50% headroom over lønsum ved trigger-tid, floor mod cap≈0, og
+      // ALDRIG strammet under en tidligere sat cap (kun re-evalueret opad når lønsummen
+      // vokser videre — bevidst mildt, jf. ejer-beslutning 2026-07-07).
+      const totalSalary = (team.riders || []).reduce((sum, r) => sum + (r.salary || 0), 0);
+      const candidateCap = Math.max(Math.round(totalSalary * SALARY_CAP_HEADROOM_FACTOR), SALARY_CAP_FLOOR);
+      const newCap = Math.max(candidateCap, existing?.severity || 0);
+      if (existing && existing.severity === newCap) {
+        skipped.push({ layer: 2, reason: "unchanged" });
+      } else {
+        // Mark previous as expired før insert (unique-active-index ville ellers fejle).
+        if (existing) {
+          await supabase
+            .from("board_consequences")
+            .update({ status: "expired", resolved_at: new Date().toISOString() })
+            .eq("id", existing.id);
+        }
+        await supabase.from("board_consequences").insert({
+          ...baseRow,
+          layer: CONSEQUENCE_LAYERS.SALARY_CAP,
+          severity: newCap,
+          payload: { satisfaction: newSatisfaction, total_salary_at_create: totalSalary },
+        });
+        applied.push({ layer: 2, severity: newCap });
       }
-      await supabase.from("board_consequences").insert({
-        ...baseRow,
-        layer: CONSEQUENCE_LAYERS.SALARY_CAP,
-        severity: newCap,
-        payload: { satisfaction: newSatisfaction, total_salary_at_create: totalSalary },
-      });
-      applied.push({ layer: 2, severity: newCap });
     }
   } else {
     // Sat steg over 40 → expirér aktiv cap.
