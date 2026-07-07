@@ -17,7 +17,9 @@
 export const SCOUTING_CONFIG = Object.freeze({
   // Antal aktive scout-handlinger en manager har pr. sæson. Genopfyldes implicit
   // ved sæson-skifte (slots udledes pr. aktiv sæson — ingen reset-hook nødvendig).
-  slotsPerSeason: 3,
+  // 3 → 15 (ejer-beslutning 7/7, sammen med Fase 1): med scouting-fanen som reel
+  // beslutningsflade var 3 pr. sæson for stramt til at udforske markedet.
+  slotsPerSeason: 15,
   // Hvor mange gange samme rytter kan scoutes før estimatet er fuldt afdækket
   // (niveau == maxLevel ⇒ smallest mulige rest-bånd — ALDRIG eksakt, #1543).
   maxLevel: 3,

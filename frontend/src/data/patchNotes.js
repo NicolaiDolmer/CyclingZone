@@ -14,7 +14,7 @@ export const PATCHES = [
         "topic": "Scouting",
         "en": {
           "title": "Rider profiles now have a real Scouting tab",
-          "body": "The Scouting tab on rider profiles is live. It shows your scout's verdict in plain language with a confidence level and the reasons behind it, the rider's potential per rider type as a current level with a shaded ceiling band, and a value comparison between his market value and what the numbers suggest he is worth. Scouting a rider again narrows the bands."
+          "body": "The Scouting tab on rider profiles is live. It shows your scout's verdict in plain language with a confidence level and the reasons behind it, the rider's potential per rider type as a current level with a shaded ceiling band, and a value comparison between his market value and what the numbers suggest he is worth. Scouting a rider again narrows the bands. To go with it, every team now gets 15 scout uses per season instead of 3."
         },
         "da": {
           "title": "Rytterprofiler har nu en rigtig Scouting-fane",

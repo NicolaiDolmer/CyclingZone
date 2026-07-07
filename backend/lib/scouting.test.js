@@ -47,7 +47,7 @@ test("deriveScoutState: slots tæller KUN handlinger i den aktive sæson", () =>
 });
 
 test("deriveScoutState: remaining bunder ud i 0 (aldrig negativ)", () => {
-  const rows = Array.from({ length: 10 }, (_, i) => ({ rider_id: `r${i}`, season_id: "s2" }));
+  const rows = Array.from({ length: SCOUTING_CONFIG.slotsPerSeason + 5 }, (_, i) => ({ rider_id: `r${i}`, season_id: "s2" }));
   const s = deriveScoutState(rows, "s2");
   assert.equal(s.slots.remaining, 0);
 });
