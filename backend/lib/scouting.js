@@ -19,7 +19,7 @@ export const SCOUTING_CONFIG = Object.freeze({
   // ved sæson-skifte (slots udledes pr. aktiv sæson — ingen reset-hook nødvendig).
   slotsPerSeason: 3,
   // Hvor mange gange samme rytter kan scoutes før estimatet er fuldt afdækket
-  // (niveau == maxLevel ⇒ eksakt potentiale vises).
+  // (niveau == maxLevel ⇒ smallest mulige rest-bånd — ALDRIG eksakt, #1543).
   maxLevel: 3,
 });
 
@@ -93,6 +93,16 @@ export const SCOUT_DISPLAY_CONFIG = Object.freeze({
   ]),
   // Andel af halvbredden som center-biasen (per-manager skævhed) kan udgøre.
   biasFactor: 0.7,
+  // #1543 beslutning 3+4: INGEN når 100% præcision. Ved fuldt scout-niveau (og
+  // for egne ryttere, som altid behandles som maxLevel) er der et REST-BÅND:
+  residualHalfWidth: 0.5,   // stjerne-halvbredde ved fuld viden
+  // Rest-center kan ligge skævt (seeded pr. rytter+hold) så båndets midtpunkt
+  // ikke er sandheden — ellers var rest-båndet trivielt inverterbart (#1162).
+  // BEVIDST eget seed ("scout-residual:") afkoblet fra level-biasens seed, så
+  // sandheden ikke kan løses lineært af to observationer på tværs af levels.
+  // 0.4 (ikke 0.25): 0,5-trins-afrundingen sluger bias < 0.25 helt — båndet
+  // ville altid være centreret på sandheden og dermed inverterbart.
+  residualBiasFactor: 0.4,
 });
 
 function baseUncertainty(age, cfg = SCOUT_DISPLAY_CONFIG) {
@@ -114,10 +124,19 @@ export function estimatePotentialRange(truePotentiale, scoutLevel, age, riderId,
   if (!Number.isFinite(truth)) return null;
   const level = clamp(Number(scoutLevel) || 0, 0, maxLevel);
 
-  // Fuldt scoutet (eller maxLevel==0) → eksakt sandhed (0,5-trin = stjerne-visning).
+  // Fuldt scoutet (eller maxLevel==0) → REST-BÅND (#1543 beslutning 3+4): selv
+  // fuld viden er et smalt interval om et let skævt center — aldrig eksakt.
   if (level >= maxLevel) {
-    const v = roundHalf(truth);
-    return { lo: v, hi: v, exact: true, scoutLevel: level };
+    const half = SCOUT_DISPLAY_CONFIG.residualHalfWidth;
+    const bias = (seededUnit(`scout-residual:${riderId}:${teamId}`) * 2 - 1)
+      * SCOUT_DISPLAY_CONFIG.residualBiasFactor;
+    const center = clamp(truth + bias, 1, 6);
+    return {
+      lo: clamp(roundHalf(center - half), 1, 6),
+      hi: clamp(roundHalf(center + half), 1, 6),
+      exact: false,
+      scoutLevel: level,
+    };
   }
 
   const knowledge = level / maxLevel;            // 0..1, stiger med scouting
@@ -145,7 +164,8 @@ export function estimatePotentialRange(truePotentiale, scoutLevel, age, riderId,
 //                                  potentiale eller et lo–hi-spænd forlader serveren
 //                                  før et scout-slot er brugt — intet gratis level-0
 //                                  hint længere.
-//   • { lo, hi, exact, level }   — egen rytter (eksakt) eller scoutet (level > 0).
+//   • { lo, hi, exact, level }   — egen rytter (smalleste rest-bånd, #1543
+//                                  beslutning 4) eller scoutet (level > 0).
 export function buildScoutEstimate(rider, level, viewerTeamId, cfg = SCOUTING_CONFIG, currentYear = new Date().getFullYear()) {
   if (!rider || rider.potentiale == null) return null;
   const isOwn = rider.team_id != null && viewerTeamId != null && rider.team_id === viewerTeamId;
