@@ -150,7 +150,7 @@ export default function AdminUsersTab() {
     // af disposable workflow-exec-konti — kræv at admin skriver navnet for netop disse.
     if (isTestAccount) {
       const typed = prompt(`"${username}" er en PERMANENT test-konto (bruges til preview-login). Skriv brugernavnet for at bekræfte sletning:`);
-      if (typed !== username) { showMsg("❌ Sletning annulleret — navn matchede ikke", "error"); return; }
+      if (typed !== username) { showMsg("Sletning annulleret — navn matchede ikke", "error"); return; }
     }
     setLoad(`del_user_${userId}`, true);
     try {
