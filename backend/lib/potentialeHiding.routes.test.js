@@ -45,17 +45,32 @@ test("kun scouting-interne selects i api.js læser potentiale-kolonnen (#1162)",
   //   1. POST /scouting/estimates — batch-estimater
   //   2. POST /scouting/:riderId   — enkelt-rytter scout
   //   3. GET  /academy/me          — akademi-kandidat potentiale-fetch (#1308)
-  // Dukker en fjerde select med potentiale op, skal den reviewes bevidst —
+  //   4. GET  /riders/:id/scouting-report — rapport-beregning (#1543); maskeres
+  //      som bånd via buildScoutEstimate/buildTypeCeilingBands før response.
+  // Dukker en femte select med potentiale op, skal den reviewes bevidst —
   // den må ikke ende i et klient-response.
   const matches = apiSource.match(/\.select\([^)]*\bpotentiale\b[^)]*\)/g) ?? [];
   assert.equal(
     matches.length,
-    3,
+    4,
     `forventede præcis 3 scouting-interne potentiale-selects i api.js, fandt ${matches.length}: ${matches.join(" | ")}`,
   );
   for (const m of matches) {
     assert.match(m, /id,\s*(team_id,\s*potentiale|potentiale)/, `uventet potentiale-select: ${m}`);
   }
+});
+
+test("scouting-report returnerer aldrig rå potentiale eller ability_caps (#1543)", () => {
+  const idx = apiSource.indexOf('"/riders/:id/scouting-report"');
+  assert.ok(idx !== -1, "scouting-report-routen skal findes");
+  const block = apiSource.slice(idx, idx + 4000);
+  assert.doesNotMatch(
+    block,
+    /res\.json\([^)]*\b(potentiale|ability_caps)\b/,
+    "rå potentiale/ability_caps må ikke indgå i payloaden",
+  );
+  assert.match(block, /buildTypeCeilingBands\(/, "skal bruge bånd-beregningen");
+  assert.match(block, /buildScoutEstimate\(/, "stjerne-båndet skal komme fra buildScoutEstimate");
 });
 
 test("migrationen maskerer både riders.potentiale og rider_derived_abilities.hidden_potential (#1162)", () => {
