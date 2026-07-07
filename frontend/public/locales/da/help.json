@@ -67,7 +67,7 @@
         "rows": [
           ["Lag", "Trigger", "Effekt"],
           ["1", "Tilfredshed-baseret", "Sponsor-modifier ±20% (passiv)"],
-          ["2", "Tilfredshed <40% i 2 evalueringer i træk", "Lønloft: total løn loftbelagt til 1,5x niveauet ved udløsning — blokerer køb/kontraktforlængelser der ville vokse den yderligere. Rammer aldrig et holds første 30 dage"],
+          ["2", "Tilfredshed <40% i 2 evalueringer i træk", "Lønloft: total løn loftbelagt til 1,5x niveauet ved udløsning, hvilket blokerer køb/kontraktforlængelser der ville vokse den yderligere. Rammer aldrig et holds første 30 dage"],
           ["3", "Tilfredshed <30%", "Signing-restriktion: køb >300K blokeres"],
           ["4", "Tilfredshed <15%", "Tvunget salg: din rytter med lavest værdi auto-listes (ryttere med popularity ≥70 eller værdi ≥8.000.000 CZ$ er beskyttede)"],
           ["5", "<10% eller 2× plan-udløb under 30%", "Sponsor-pull-out: −10% sponsor én sæson"],
