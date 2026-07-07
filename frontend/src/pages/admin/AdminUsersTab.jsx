@@ -135,7 +135,7 @@ export default function AdminUsersTab() {
 
   async function loadData() {
     const [u, t] = await Promise.all([
-      supabase.from("users").select("id, email, username, role, created_at, teams(id, name, division)").order("created_at", { ascending: false }),
+      supabase.from("users").select("id, email, username, role, created_at, teams(id, name, division, is_test_account)").order("created_at", { ascending: false }),
       supabase.from("teams").select("id,name,balance,division").eq("is_ai", false).order("name"),
     ]);
     setUsers(u.data || []);
@@ -144,12 +144,19 @@ export default function AdminUsersTab() {
 
   useEffect(() => { loadData(); }, []);
 
-  async function handleDeleteUser(userId, username) {
+  async function handleDeleteUser(userId, username, isTestAccount) {
     if (!confirm(`Slet bruger "${username}" permanent?\n\nHoldet bevares, men mister sin ejer. Notifikationer slettes.`)) return;
+    // #2245: test-a/b/seller er permanente og er blevet slettet ved fejl under bulk-oprydning
+    // af disposable workflow-exec-konti — kræv at admin skriver navnet for netop disse.
+    if (isTestAccount) {
+      const typed = prompt(`"${username}" er en PERMANENT test-konto (bruges til preview-login). Skriv brugernavnet for at bekræfte sletning:`);
+      if (typed !== username) { showMsg("❌ Sletning annulleret — navn matchede ikke", "error"); return; }
+    }
     setLoad(`del_user_${userId}`, true);
     try {
       const res = await fetch(`${API}/api/admin/users/${userId}`, {
         method: "DELETE", headers: await getAuth(),
+        body: JSON.stringify({ confirm_test_account: isTestAccount }),
       });
       const data = await readAdminJson(res);
       if (res.ok) { showMsg(`✅ Bruger ${username} slettet`); loadData(); }
@@ -199,10 +206,19 @@ export default function AdminUsersTab() {
                 </tr>
               </thead>
               <tbody>
-                {users.map(u => (
+                {users.map(u => {
+                  const isTestAccount = !!u.teams?.[0]?.is_test_account;
+                  return (
                   <tr key={u.id} className="border-b border-cz-border last:border-0">
                     <td className="px-3 py-2.5">
-                      <p className="text-cz-1 font-medium">{u.username}</p>
+                      <p className="text-cz-1 font-medium">
+                        {u.username}
+                        {isTestAccount && (
+                          <span className="ms-2 text-xs border px-2 py-0.5 rounded-full bg-cz-accent/10 text-cz-accent-t border-cz-accent/30">
+                            permanent test-konto
+                          </span>
+                        )}
+                      </p>
                       <p className="text-cz-3 text-xs font-mono truncate max-w-[120px]">{u.id.slice(0, 8)}…</p>
                     </td>
                     <td className="px-3 py-2.5 text-cz-2 hidden sm:table-cell">{u.email}</td>
@@ -227,7 +243,7 @@ export default function AdminUsersTab() {
                           {loading[`role_${u.id}`] ? "..." : u.role === "admin" ? "→ Manager" : "→ Admin"}
                         </button>
                         <button
-                          onClick={() => handleDeleteUser(u.id, u.username)}
+                          onClick={() => handleDeleteUser(u.id, u.username, isTestAccount)}
                           disabled={loading[`del_user_${u.id}`]}
                           className="text-xs px-2 py-1 bg-cz-danger-bg text-red-600 border border-cz-danger/30 rounded hover:bg-cz-danger-bg disabled:opacity-50 transition-all">
                           {loading[`del_user_${u.id}`] ? "..." : "Slet"}
@@ -235,7 +251,8 @@ export default function AdminUsersTab() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

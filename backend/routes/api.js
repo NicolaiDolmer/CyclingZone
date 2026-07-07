@@ -7869,6 +7869,17 @@ router.delete("/admin/users/:userId", requireAdmin, adminWriteLimiter, async (re
       .from("users").select("email, username").eq("id", userId).single();
     if (!target) return res.status(404).json({ error: "Bruger ikke fundet" });
 
+    // #2245: permanente test-konti (test-a/b/seller, docs/TESTING.md) er blevet slettet
+    // 2x ved fejl som del af oprydning i disposable workflow-exec-konti — kræv eksplicit
+    // bekræftelse så et bulk-sweep ikke rammer dem igen.
+    const { data: testTeam } = await supabase
+      .from("teams").select("id").eq("user_id", userId).eq("is_test_account", true).maybeSingle();
+    if (testTeam && req.body?.confirm_test_account !== true) {
+      return res.status(409).json({
+        error: `"${target.username}" er en permanent test-konto (is_test_account). Bekræft eksplicit for at slette.`,
+      });
+    }
+
     // Nullify non-cascade FK references to prevent RESTRICT violations
     await Promise.allSettled([
       supabase.from("import_log").update({ imported_by: null }).eq("imported_by", userId),
