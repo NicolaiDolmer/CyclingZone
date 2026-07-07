@@ -18,6 +18,7 @@ const DEFAULTS = {
   u25: false,
   u23: false,
   free_agent: false,
+  show_ai: false,
   team_id: "",
   stat_bro_min: 50,
   stat_bro_max: 85,
@@ -43,6 +44,14 @@ test("filtersToSearchParams — booleans encodes som '1'", () => {
   );
   assert.equal(params.get("u25"), "1");
   assert.equal(params.get("free_agent"), "1");
+});
+
+test("filtersToSearchParams — show_ai default (false=skjul AI) giver ren URL; true encodes+round-trips (#2238)", () => {
+  const off = filtersToSearchParams({ ...DEFAULTS }, DEFAULTS);
+  assert.equal(off.has("show_ai"), false, "default (AI skjult) må ikke fylde i URL'en");
+  const on = filtersToSearchParams({ ...DEFAULTS, show_ai: true }, DEFAULTS);
+  assert.equal(on.get("show_ai"), "1");
+  assert.equal(searchParamsToFilters(on, DEFAULTS).show_ai, true, "vis-AI overlever round-trip");
 });
 
 test("filtersToSearchParams — stat min/max encodes kun når forskellig fra default", () => {

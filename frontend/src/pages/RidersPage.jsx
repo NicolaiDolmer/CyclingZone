@@ -407,7 +407,7 @@ export default function RidersPage() {
       )}
 
       <div data-tour="riders-filters" className="max-w-[1600px]">
-        <RiderFilters filters={filters} onChange={setFilter} onReset={onReset} showTeamFilter={false} nationalities={nationalities} />
+        <RiderFilters filters={filters} onChange={setFilter} onReset={onReset} showTeamFilter={false} nationalities={nationalities} showAiToggle={true} />
       </div>
 
       {/* #1592: evne-kode-legende — afkoder de 15 kolonne-koder for nye spillere. */}

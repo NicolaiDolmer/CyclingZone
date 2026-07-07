@@ -21,7 +21,8 @@
   "toggles": {
     "freeAgent": "Fri agent",
     "u25": "U25",
-    "u23": "U23"
+    "u23": "U23",
+    "showAi": "Vis AI-hold"
   },
   "stats": {
     "section": "Evne-filtre",

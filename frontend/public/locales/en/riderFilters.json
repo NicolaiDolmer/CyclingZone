@@ -21,7 +21,8 @@
   "toggles": {
     "freeAgent": "Free agent",
     "u25": "U25",
-    "u23": "U23"
+    "u23": "U23",
+    "showAi": "Show AI teams"
   },
   "stats": {
     "section": "Stat filters",

@@ -62,6 +62,9 @@ export const DEFAULT_FILTERS = {
   u25: false,
   u23: false,
   free_agent: false,
+  // #2238: default false = ryttere på AI-hold skjules (man kan ikke købe/auktionere
+  // dem). true = vis dem alligevel. Fri-agenter påvirkes aldrig (owner_is_ai=false).
+  show_ai: false,
   team_id: "",
   ...makeStatDefaults(),
 };
@@ -71,7 +74,7 @@ export const DEFAULT_FILTERS = {
 const BASIC_FILTER_KEYS = [
   "q", "nationality_code", "rider_type", "min_value", "max_value", "min_salary", "max_salary",
   "min_age", "max_age",
-  "min_auction_price", "max_auction_price", "u25", "u23", "free_agent", "team_id",
+  "min_auction_price", "max_auction_price", "u25", "u23", "free_agent", "show_ai", "team_id",
 ];
 
 function isStatActive(filters, key) {
@@ -192,7 +195,7 @@ function DualStatSlider({ statKey, label, filters, onChange, t }) {
 export default function RiderFilters({
   filters, onChange, onReset,
   showTeamFilter = true, compact = false, teams = [], nationalities = [],
-  showAuctionPriceFilter = false,
+  showAuctionPriceFilter = false, showAiToggle = false,
 }) {
   const { t, i18n } = useTranslation("riderFilters");
   const { t: tTypes } = useTranslation("riderTypes");
@@ -357,9 +360,16 @@ export default function RiderFilters({
             </div>
           )}
 
-          {/* Toggles */}
-          <div className={`grid grid-cols-3 gap-2 items-end ${compact ? "sm:col-span-2" : ""}`}>
-            {[{ key: "free_agent", label: t("toggles.freeAgent") }, { key: "u25", label: t("toggles.u25") }, { key: "u23", label: t("toggles.u23") }].map(({ key, label }) => (
+          {/* Toggles. #2238: show_ai (default false = skjul AI-hold-ryttere) vises KUN
+              på rytter-databasen (showAiToggle) — de andre lister har ingen AI-ryttere.
+              3 knapper → cols-3; med show_ai → 4 knapper i cols-2. */}
+          <div className={`grid ${showAiToggle ? "grid-cols-2" : "grid-cols-3"} gap-2 items-end ${compact ? "sm:col-span-2" : ""}`}>
+            {[
+              { key: "free_agent", label: t("toggles.freeAgent") },
+              { key: "u25", label: t("toggles.u25") },
+              { key: "u23", label: t("toggles.u23") },
+              ...(showAiToggle ? [{ key: "show_ai", label: t("toggles.showAi") }] : []),
+            ].map(({ key, label }) => (
               <button key={key} onClick={() => onChange(key, !filters[key])}
                 className={`px-2 py-2 rounded-cz text-xs font-medium transition-all border
                   ${filters[key]
@@ -425,6 +435,7 @@ export default function RiderFilters({
           {filters.u25 && <Chip t={t} label={t("toggles.u25")} onRemove={() => onChange("u25", false)} />}
           {filters.u23 && <Chip t={t} label={t("toggles.u23")} onRemove={() => onChange("u23", false)} />}
           {filters.free_agent && <Chip t={t} label={t("toggles.freeAgent")} onRemove={() => onChange("free_agent", false)} />}
+          {showAiToggle && filters.show_ai && <Chip t={t} label={t("toggles.showAi")} onRemove={() => onChange("show_ai", false)} />}
           {filters.team_id && <Chip t={t} label={t("chips.teamSelected")} onRemove={() => onChange("team_id", "")} />}
           {activeStatKeys.map(key => {
             const min = parseInt(filters[`${key}_min`]) ?? STAT_DEFAULT_MIN;

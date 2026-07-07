@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.65",
+    "date": "2026-07-07",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Riders",
+        "en": {
+          "title": "The rider database now hides AI teams' riders by default",
+          "body": "The rider database was full of riders on AI teams that you can't sign or bid on. It now hides them by default, so the list shows the riders you can actually acquire: free agents and riders on real manager teams. A 'Show AI teams' toggle in the filters brings them back whenever you want to browse the full field."
+        },
+        "da": {
+          "title": "Rytterdatabasen skjuler nu AI-holdenes ryttere som standard",
+          "body": "Rytterdatabasen var fyldt med ryttere på AI-hold, som du ikke kan købe eller byde på. Den skjuler dem nu som standard, så listen viser de ryttere du reelt kan hente: fri agenter og ryttere på rigtige manager-hold. Et 'Vis AI-hold'-filter i filtrene henter dem frem igen, når du vil se hele feltet."
+        },
+        "refs": [2238]
+      }
+    ]
+  },
+  {
     "version": "6.64",
     "date": "2026-07-05",
     "label": "Beta",

@@ -67,6 +67,9 @@ export function useClientRiderFilters(riders = []) {
     if (filters.u23) result = result.filter(r => isU23(r.birthdate));
 
     if (filters.free_agent) result = result.filter(r => !r.team_id);
+    // #2238: show_ai er RidersPage-only (server-pathen fetchRidersPage). Denne
+    // klient-variant driver auktions-/transfer-/hold-/watchlist-lister, hvor
+    // AI-hold-ryttere ikke optræder — så ingen AI-filtrering her.
     if (filters.team_id) result = result.filter(r => r.team_id === filters.team_id);
     if (filters.nationality_code) result = result.filter(r => r.nationality_code === filters.nationality_code);
 
@@ -185,6 +188,9 @@ function applyRiderColumnFilters(query, filters, { prefix = "", ref = null } = {
     query = query.gte(col("birthdate"), minBirth);
   }
   if (filters.free_agent) query = query.is(col("team_id"), null);
+  // #2238: skjul ryttere på AI-hold (kan ikke købes/auktioneres) medmindre toggle er slået til.
+  // owner_is_ai er denormaliseret (fri-agenter = false → altid synlige).
+  if (!filters.show_ai) query = query.eq(col("owner_is_ai"), false);
   if (filters.team_id) query = query.eq(col("team_id"), filters.team_id);
   if (filters.nationality_code) query = query.eq(col("nationality_code"), filters.nationality_code);
 
