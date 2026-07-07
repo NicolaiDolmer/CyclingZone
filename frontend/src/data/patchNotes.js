@@ -4,6 +4,41 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.66",
+    "date": "2026-07-07",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Scouting",
+        "en": {
+          "title": "Rider profiles now have a real Scouting tab",
+          "body": "The Scouting tab on rider profiles is live. It shows your scout's verdict in plain language with a confidence level and the reasons behind it, the rider's potential per rider type as a current level with a shaded ceiling band, and a value comparison between his market value and what the numbers suggest he is worth. Scouting a rider again narrows the bands."
+        },
+        "da": {
+          "title": "Rytterprofiler har nu en rigtig Scouting-fane",
+          "body": "Scouting-fanen på rytterprofilerne er live. Den viser din spejders vurdering i klart sprog med et tillidsniveau og begrundelserne bag, rytterens potentiale pr. ryttertype som nuværende niveau med et skraveret loft-bånd, og en værdi-sammenligning mellem hans markedsværdi og hvad tallene antyder han er værd. Scouter du rytteren igen, indsnævres båndene."
+        },
+        "refs": [1543]
+      },
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Scouting",
+        "en": {
+          "title": "Potential is now always a range, for everyone",
+          "body": "No scout knows a rider's exact ceiling anymore, and that includes your own riders. Fully scouted riders and your own squad now show a narrow potential range instead of an exact star value, and every scout's read is a little different, so two managers can judge the same talent differently. Finding out who was right is what the racing is for."
+        },
+        "da": {
+          "title": "Potentiale er nu altid et interval, for alle",
+          "body": "Ingen spejder kender længere en rytters præcise loft, og det gælder også dine egne ryttere. Fuldt scoutede ryttere og din egen trup viser nu et smalt potentiale-interval i stedet for en eksakt stjerneværdi, og hver spejders vurdering er en anelse forskellig, så to managers kan bedømme samme talent forskelligt. At finde ud af hvem der havde ret er dét, løbene er til for."
+        },
+        "refs": [1543]
+      }
+    ]
+  },
+  {
     "version": "6.65",
     "date": "2026-07-07",
     "label": "Beta",
