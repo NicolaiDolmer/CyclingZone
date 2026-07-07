@@ -1,0 +1,202 @@
+- generic [ref=f7e1]:
+  - generic [ref=f7e3]:
+    - complementary [ref=f7e4]:
+      - generic [ref=f7e5]:
+        - button "Cycling Zone" [ref=f7e6] [cursor=pointer]:
+          - paragraph [ref=f7e9]: E2E Racing
+        - generic [ref=f7e10]:
+          - paragraph [ref=f7e11]: Balance
+          - paragraph [ref=f7e12]: 500,000 CZ$
+          - paragraph [ref=f7e13]: Division 2
+        - generic [ref=f7e17]: 1 online now
+        - navigation [ref=f7e18]:
+          - generic [ref=f7e19]:
+            - button "Clubhouse" [ref=f7e20] [cursor=pointer]:
+              - generic [ref=f7e21]: Clubhouse
+              - img [ref=f7e22]
+            - generic [ref=f7e24]:
+              - link "Dashboard" [ref=f7e25] [cursor=pointer]:
+                - /url: /dashboard
+                - generic [ref=f7e28]: Dashboard
+              - link "My Team" [ref=f7e29] [cursor=pointer]:
+                - /url: /team
+                - generic [ref=f7e32]: My Team
+              - link "Daily Training" [ref=f7e33] [cursor=pointer]:
+                - /url: /training
+                - generic [ref=f7e36]: Daily Training
+              - link "Academy" [ref=f7e37] [cursor=pointer]:
+                - /url: /academy
+                - generic [ref=f7e40]: Academy
+              - link "Board" [ref=f7e41] [cursor=pointer]:
+                - /url: /board
+                - generic [ref=f7e44]: Board
+              - link "Finance" [ref=f7e45] [cursor=pointer]:
+                - /url: /finance
+                - generic [ref=f7e48]: Finance
+              - link "Club" [ref=f7e49]:
+                - /url: /klub
+                - generic [ref=f7e52]: Club
+              - link "Inbox" [ref=f7e53] [cursor=pointer]:
+                - /url: /notifications
+                - generic [ref=f7e56]: Inbox
+              - link "My Manager Profile" [ref=f7e57] [cursor=pointer]:
+                - /url: /managers/team-e2e
+                - generic [ref=f7e60]: My Manager Profile
+          - button "Market" [ref=f7e62] [cursor=pointer]:
+            - generic [ref=f7e63]: Market
+            - img [ref=f7e64]
+          - button "Season & Results" [ref=f7e67] [cursor=pointer]:
+            - generic [ref=f7e68]: Season & Results
+            - img [ref=f7e69]
+          - link "Settings" [ref=f7e72] [cursor=pointer]:
+            - /url: /profile
+            - generic [ref=f7e75]: Settings
+          - link "Help" [ref=f7e76] [cursor=pointer]:
+            - /url: /help
+            - generic [ref=f7e79]: Help
+          - link "Rules" [ref=f7e80] [cursor=pointer]:
+            - /url: /rules
+            - generic [ref=f7e83]: Rules
+          - link "Roadmap" [ref=f7e84] [cursor=pointer]:
+            - /url: /roadmap
+            - generic [ref=f7e87]: Roadmap
+          - link "Patch Notes" [ref=f7e88] [cursor=pointer]:
+            - /url: /patch-notes
+            - generic [ref=f7e91]: Patch Notes
+          - link "Join Discord" [ref=f7e92] [cursor=pointer]:
+            - /url: https://discord.gg/ykysBrWUyC
+            - img [ref=f7e93]
+            - generic [ref=f7e95]: Join Discord
+        - generic [ref=f7e96]:
+          - button "Log out" [ref=f7e97] [cursor=pointer]:
+            - img [ref=f7e98]
+            - text: Log out
+          - button "Change language" [ref=f7e101] [cursor=pointer]:
+            - img [ref=f7e102]
+            - generic [ref=f7e103]: en
+            - img [ref=f7e104]
+    - main [ref=f7e106]:
+      - generic [ref=f7e108]:
+        - generic [ref=f7e110]:
+          - heading "Club" [level=1] [ref=f7e111]
+          - paragraph [ref=f7e112]: Facilities and staff
+        - generic [ref=f7e113]:
+          - generic [ref=f7e114]: Facilities
+          - generic [ref=f7e115]: Effect column shows the target model. Each track's in-game effect activates as its engine lands.
+        - generic [ref=f7e116]:
+          - generic [ref=f7e117]:
+            - generic [ref=f7e118]:
+              - generic [ref=f7e119]:
+                - generic [ref=f7e120]: Training Center
+                - generic [ref=f7e121]: Tier 2 / 5
+              - img "Tier 2 of 5" [ref=f7e123]
+              - generic [ref=f7e129]:
+                - text: Effect +3.1% training
+                - generic [ref=f7e130]: · target
+                - text: · Staff
+                - link "Sofie Lindqvist" [ref=f7e131] [cursor=pointer]:
+                  - /url: /staff/staff-training
+                - text: (T2)
+            - generic [ref=f7e132]:
+              - button "Upgrade to T3 · 50,000" [ref=f7e133] [cursor=pointer]:
+                - text: Upgrade to T3 ·
+                - generic [ref=f7e134]: 50,000
+              - generic [ref=f7e135]: Upkeep 3,500/season
+          - generic [ref=f7e136]:
+            - generic [ref=f7e137]:
+              - generic [ref=f7e138]:
+                - generic [ref=f7e139]: Scouting Network
+                - generic [ref=f7e140]: Tier 1 / 5
+              - img "Tier 1 of 5" [ref=f7e142]
+              - generic [ref=f7e148]:
+                - text: Effect +0.8% rider insight
+                - generic [ref=f7e149]: · target
+                - text: ·
+                - button "No staff hired" [ref=f7e150] [cursor=pointer]
+            - generic [ref=f7e151]:
+              - button "Upgrade to T2 · 26,000" [ref=f7e152] [cursor=pointer]:
+                - text: Upgrade to T2 ·
+                - generic [ref=f7e153]: 26,000
+              - generic [ref=f7e154]: Upkeep 1,500/season
+          - generic [ref=f7e155]:
+            - generic [ref=f7e156]:
+              - generic [ref=f7e157]:
+                - generic [ref=f7e158]: Medical Department
+                - generic [ref=f7e159]: Not built
+              - img "Tier 0 of 5" [ref=f7e161]
+              - generic [ref=f7e167]:
+                - text: Effect +0.0% recovery
+                - generic [ref=f7e168]: · target
+                - text: "· Locked: build tier 1 first"
+            - generic [ref=f7e169]:
+              - button "Build T1 · 12,000" [ref=f7e170] [cursor=pointer]:
+                - text: Build T1 ·
+                - generic [ref=f7e171]: 12,000
+              - generic [ref=f7e172]: Upkeep 0/season
+          - generic [ref=f7e173]:
+            - generic [ref=f7e174]:
+              - generic [ref=f7e175]:
+                - generic [ref=f7e176]: Academy Expansion
+                - generic [ref=f7e177]: Tier 3 / 5
+              - img "Tier 3 of 5" [ref=f7e179]
+              - generic [ref=f7e185]:
+                - text: Effect +1.8 intake slots
+                - generic [ref=f7e186]: · target
+                - text: · Staff
+                - link "Aldo Terranova" [ref=f7e187] [cursor=pointer]:
+                  - /url: /staff/staff-academy
+                - text: (T1)
+            - generic [ref=f7e188]:
+              - button "Upgrade to T4 · 100,000" [ref=f7e189] [cursor=pointer]:
+                - text: Upgrade to T4 ·
+                - generic [ref=f7e190]: 100,000
+              - generic [ref=f7e191]: Upkeep 8,000/season
+          - generic [ref=f7e192]:
+            - generic [ref=f7e193]:
+              - generic [ref=f7e194]:
+                - generic [ref=f7e195]: Commercial Department
+                - generic [ref=f7e196]: Not built
+                - generic [ref=f7e197]: Pure sink · Phase 4 payoff
+              - img "Tier 0 of 5" [ref=f7e199]
+              - generic [ref=f7e205]:
+                - text: Effect +0.0% sponsor (capped)
+                - generic [ref=f7e206]: · target
+                - text: "· Locked: build tier 1 first"
+            - generic [ref=f7e207]:
+              - button "Build T1 · 12,000" [ref=f7e208] [cursor=pointer]:
+                - text: Build T1 ·
+                - generic [ref=f7e209]: 12,000
+              - generic [ref=f7e210]: Upkeep 0/season
+        - generic [ref=f7e211]:
+          - generic [ref=f7e212]: "Upkeep: 13,000"
+          - generic [ref=f7e213]: "Payroll: 350"
+          - generic [ref=f7e214]: "Balance: 500,000"
+  - dialog "Staff · Scouting Network" [ref=f7e217]:
+    - button "Close" [active] [ref=f7e218] [cursor=pointer]:
+      - img [ref=f7e219]
+    - heading "Staff · Scouting Network" [level=2] [ref=f7e222]
+    - generic [ref=f7e223]:
+      - paragraph [ref=f7e224]: Salary is billed at season start · Higher tiers unlock as you upgrade the facility
+      - generic [ref=f7e225]: Candidates
+      - generic [ref=f7e226]:
+        - generic [ref=f7e227]:
+          - generic [ref=f7e228]:
+            - text: Marc Vandenbroucke
+            - generic [ref=f7e229]: · Tier 1 · 100/season · talent evaluation
+          - generic [ref=f7e230]:
+            - generic [ref=f7e231]: "36"
+            - button "Hire" [ref=f7e232] [cursor=pointer]
+        - generic [ref=f7e233]:
+          - generic [ref=f7e234]:
+            - text: Henrik Sørensen
+            - generic [ref=f7e235]: · Tier 1 · 100/season · talent evaluation
+          - generic [ref=f7e236]:
+            - generic [ref=f7e237]: "36"
+            - button "Hire" [ref=f7e238] [cursor=pointer]
+        - generic [ref=f7e239]:
+          - generic [ref=f7e240]:
+            - text: Luca Bertolini
+            - generic [ref=f7e241]: · Tier 1 · 100/season · talent evaluation
+          - generic [ref=f7e242]:
+            - generic [ref=f7e243]: "36"
+            - button "Hire" [ref=f7e244] [cursor=pointer]

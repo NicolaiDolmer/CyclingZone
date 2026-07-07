@@ -231,6 +231,7 @@ import {
 } from "../lib/transferExecution.js";
 import {
   acceptBonusOffer,
+  assertSalaryIncreaseAllowed,
   assertSigningAllowed,
   declineBonusOffer,
   getActiveConsequencesForTeam,
@@ -1121,6 +1122,18 @@ router.post("/riders/:id/extend-contract", requireAuth, marketWriteLimiter, asyn
 
   const currentSeason = await getActiveSeasonNumber();
   const next = computeContractExtension({ ...rider, currentSeason });
+
+  // #2237 · Lag 2 (salary cap) håndhæves nu også her — den eneste manager-initierede
+  // løn-forøgelses-vej udenom transfer/auktion (som allerede er dækket af assertSigningAllowed).
+  const capBlock = await assertSalaryIncreaseAllowed({
+    supabase,
+    teamId: req.team.id,
+    oldSalary: rider.salary,
+    newSalary: next.salary,
+  });
+  if (capBlock) {
+    return res.status(403).json({ error: capBlock.reason, code: capBlock.code, layer: capBlock.layer });
+  }
 
   const { data: updated } = await supabase
     .from("riders")
@@ -7928,6 +7941,19 @@ router.delete("/admin/users/:userId", requireAdmin, adminWriteLimiter, async (re
     const { data: target } = await supabase
       .from("users").select("email, username").eq("id", userId).single();
     if (!target) return res.status(404).json({ error: "Bruger ikke fundet" });
+
+    // #2245: permanente test-konti (test-a/b/seller, docs/TESTING.md) er blevet slettet
+    // 2x ved fejl som del af oprydning i disposable workflow-exec-konti — kræv eksplicit
+    // bekræftelse så et bulk-sweep ikke rammer dem igen.
+    const { data: testTeam } = await supabase
+      .from("teams").select("id").eq("user_id", userId).eq("is_test_account", true).maybeSingle();
+    if (testTeam && req.body?.confirm_test_account !== true) {
+      return res.status(409).json({
+        error: "This is a permanent test account. Confirm explicitly to delete it.",
+        errorCode: "test_account_delete_needs_confirm",
+        errorParams: { username: target.username },
+      });
+    }
 
     // Nullify non-cascade FK references to prevent RESTRICT violations
     await Promise.allSettled([

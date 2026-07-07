@@ -10,6 +10,7 @@ import {
   CONSEQUENCE_CONSTANTS,
   CONSEQUENCE_LAYERS,
   acceptBonusOffer,
+  assertSalaryIncreaseAllowed,
   assertSigningAllowed,
   declineBonusOffer,
   evaluateAndApplyConsequences,
@@ -155,7 +156,7 @@ function makeBaseBoard() {
   return { id: "board-1", focus: "balanced" };
 }
 
-test("evaluateAndApplyConsequences inserts salary_cap at sat<40", async () => {
+test("evaluateAndApplyConsequences inserts salary_cap at sat<40 with 1.5x headroom (#2237)", async () => {
   const supabase = makeFakeSupabase({ board_consequences: [] });
   const team = makeBaseTeam({
     riders: [{ id: "r-1", salary: 30_000 }, { id: "r-2", salary: 20_000 }],
@@ -166,6 +167,7 @@ test("evaluateAndApplyConsequences inserts salary_cap at sat<40", async () => {
     team,
     board: makeBaseBoard(),
     newSatisfaction: 35,
+    previousSatisfaction: 32, // #2237: krise skal være vedvarende (2 evalueringer i træk)
     goalsMet: 1,
     goalsTotal: 3,
     planIsComplete: false,
@@ -176,7 +178,140 @@ test("evaluateAndApplyConsequences inserts salary_cap at sat<40", async () => {
   assert.ok(layers.includes(2), "Layer 2 must be applied");
   const cap = supabase.state.board_consequences.find((c) => c.layer === 2 && c.status === "active");
   assert.ok(cap);
-  assert.equal(cap.severity, 50_000, "Cap = current total salary");
+  assert.equal(cap.severity, 75_000, "Cap = 1.5x current total salary (50K), not the frozen raw sum");
+});
+
+test("evaluateAndApplyConsequences guards against cap≈0 via SALARY_CAP_FLOOR (#2237)", async () => {
+  const supabase = makeFakeSupabase({ board_consequences: [] });
+  const team = makeBaseTeam({ riders: [{ id: "r-1", salary: 0 }] });
+
+  await evaluateAndApplyConsequences({
+    supabase,
+    team,
+    board: makeBaseBoard(),
+    newSatisfaction: 35,
+    previousSatisfaction: 32,
+    goalsMet: 1,
+    goalsTotal: 3,
+    planIsComplete: false,
+    seasonId: "season-1",
+  });
+
+  const cap = supabase.state.board_consequences.find((c) => c.layer === 2 && c.status === "active");
+  assert.equal(cap.severity, CONSEQUENCE_CONSTANTS.SALARY_CAP_FLOOR, "Zero-salary roster must not freeze cap to 0");
+});
+
+test("evaluateAndApplyConsequences does NOT create salary_cap on a single dip below 40% (#2237)", async () => {
+  const supabase = makeFakeSupabase({ board_consequences: [] });
+  const team = makeBaseTeam({ riders: [{ id: "r-1", salary: 30_000 }] });
+
+  const result = await evaluateAndApplyConsequences({
+    supabase,
+    team,
+    board: makeBaseBoard(),
+    newSatisfaction: 35,
+    previousSatisfaction: 55, // forrige evaluering var IKKE i krise
+    goalsMet: 1,
+    goalsTotal: 3,
+    planIsComplete: false,
+    seasonId: "season-1",
+  });
+
+  assert.equal(supabase.state.board_consequences.filter((c) => c.layer === 2).length, 0);
+  assert.ok(result.skipped.some((s) => s.layer === 2 && s.reason === "first_dip_not_sustained"));
+});
+
+test("evaluateAndApplyConsequences does NOT create salary_cap when previousSatisfaction is unknown (first-ever evaluation) (#2237)", async () => {
+  const supabase = makeFakeSupabase({ board_consequences: [] });
+  const team = makeBaseTeam({ riders: [{ id: "r-1", salary: 30_000 }] });
+
+  const result = await evaluateAndApplyConsequences({
+    supabase,
+    team,
+    board: makeBaseBoard(),
+    newSatisfaction: 35,
+    // previousSatisfaction omitted → null default (ingen tidligere data at bekræfte mod)
+    goalsMet: 1,
+    goalsTotal: 3,
+    planIsComplete: false,
+    seasonId: "season-1",
+  });
+
+  assert.equal(supabase.state.board_consequences.filter((c) => c.layer === 2).length, 0);
+  assert.ok(result.skipped.some((s) => s.layer === 2 && s.reason === "first_dip_not_sustained"));
+});
+
+test("evaluateAndApplyConsequences never creates salary_cap for a team within its first 30 days, even with sustained low satisfaction (#2237)", async () => {
+  const supabase = makeFakeSupabase({ board_consequences: [] });
+  const now = new Date("2026-07-07T00:00:00Z");
+  const team = makeBaseTeam({
+    riders: [{ id: "r-1", salary: 30_000 }],
+  });
+  team.created_at = new Date("2026-07-01T00:00:00Z").toISOString(); // 6 dage gammel
+
+  const result = await evaluateAndApplyConsequences({
+    supabase,
+    team,
+    board: makeBaseBoard(),
+    newSatisfaction: 20,
+    previousSatisfaction: 18, // vedvarende krise — ville ellers udløse cappen
+    goalsMet: 0,
+    goalsTotal: 3,
+    planIsComplete: false,
+    seasonId: "season-1",
+    now,
+  });
+
+  assert.equal(supabase.state.board_consequences.filter((c) => c.layer === 2).length, 0);
+  assert.ok(result.skipped.some((s) => s.layer === 2 && s.reason === "new_manager_grace"));
+});
+
+test("evaluateAndApplyConsequences allows salary_cap once the 30-day new-manager grace has passed (#2237)", async () => {
+  const supabase = makeFakeSupabase({ board_consequences: [] });
+  const now = new Date("2026-07-07T00:00:00Z");
+  const team = makeBaseTeam({ riders: [{ id: "r-1", salary: 30_000 }] });
+  team.created_at = new Date("2026-06-01T00:00:00Z").toISOString(); // 36 dage gammel
+
+  const result = await evaluateAndApplyConsequences({
+    supabase,
+    team,
+    board: makeBaseBoard(),
+    newSatisfaction: 20,
+    previousSatisfaction: 18,
+    goalsMet: 0,
+    goalsTotal: 3,
+    planIsComplete: false,
+    seasonId: "season-1",
+    now,
+  });
+
+  assert.ok(result.applied.some((a) => a.layer === 2));
+});
+
+test("evaluateAndApplyConsequences never lowers an existing cap on re-evaluation (#2237)", async () => {
+  const supabase = makeFakeSupabase({
+    board_consequences: [
+      { id: "cap-1", team_id: "team-1", layer: 2, severity: 90_000, status: "active", payload: {} },
+    ],
+  });
+  // Lønsummen er nu FALDET siden cappen blev sat (fx efter en tvunget listing).
+  const team = makeBaseTeam({ riders: [{ id: "r-1", salary: 10_000 }] });
+
+  await evaluateAndApplyConsequences({
+    supabase,
+    team,
+    board: makeBaseBoard(),
+    newSatisfaction: 35,
+    goalsMet: 1,
+    goalsTotal: 3,
+    planIsComplete: false,
+    seasonId: "season-1",
+  });
+
+  // Ingen ny row indsat (severity uændret) — den gamle, højere cap forbliver aktiv.
+  const cap = supabase.state.board_consequences.find((c) => c.id === "cap-1");
+  assert.equal(cap.status, "active");
+  assert.equal(cap.severity, 90_000, "Cap må aldrig strammes bagud — kun re-evalueres opad");
 });
 
 test("evaluateAndApplyConsequences expires salary_cap when sat rises ≥40", async () => {
@@ -204,7 +339,7 @@ test("evaluateAndApplyConsequences expires salary_cap when sat rises ≥40", asy
 test("evaluateAndApplyConsequences skips salary_cap when severity unchanged (idempotency)", async () => {
   const supabase = makeFakeSupabase({
     board_consequences: [
-      { id: "cap-1", team_id: "team-1", layer: 2, severity: 50_000, status: "active", payload: {} },
+      { id: "cap-1", team_id: "team-1", layer: 2, severity: 75_000, status: "active", payload: {} },
     ],
   });
   const team = makeBaseTeam({
@@ -681,6 +816,106 @@ test("assertSigningAllowed prefers signing_restriction error code when both lag 
     purchasePrice: 400_000,
   });
   assert.equal(blocked.code, "board_signing_restriction");
+});
+
+// =====================================================================
+// assertSalaryIncreaseAllowed — #2237 lag 2 håndhævet på kontraktforlængelse
+// =====================================================================
+
+test("assertSalaryIncreaseAllowed returns null when no cap is active", async () => {
+  const supabase = makeFakeSupabase({ board_consequences: [] });
+  const result = await assertSalaryIncreaseAllowed({
+    supabase,
+    teamId: "team-1",
+    oldSalary: 10_000,
+    newSalary: 500_000,
+  });
+  assert.equal(result, null);
+});
+
+test("assertSalaryIncreaseAllowed allows non-increases even with cap active", async () => {
+  const supabase = makeFakeSupabase({
+    board_consequences: [
+      { id: "cap-1", team_id: "team-1", layer: 2, severity: 100_000, status: "active", payload: {} },
+    ],
+  });
+  const result = await assertSalaryIncreaseAllowed({
+    supabase,
+    teamId: "team-1",
+    oldSalary: 20_000,
+    newSalary: 15_000,
+  });
+  assert.equal(result, null, "A decrease/unchanged extension must never be blocked");
+});
+
+test("assertSalaryIncreaseAllowed blocks an extension that would push the team over the cap", async () => {
+  const supabase = makeFakeSupabase({
+    board_consequences: [
+      { id: "cap-1", team_id: "team-1", layer: 2, severity: 100_000, status: "active", payload: {} },
+    ],
+    riders: [
+      { id: "r-1", team_id: "team-1", salary: 20_000 },
+      { id: "r-2", team_id: "team-1", salary: 70_000 },
+    ],
+  });
+
+  const blocked = await assertSalaryIncreaseAllowed({
+    supabase,
+    teamId: "team-1",
+    oldSalary: 20_000,
+    newSalary: 40_000,
+  });
+  assert.ok(blocked, "20K→40K on r-1 pushes total from 90K to 110K, over the 100K cap");
+  assert.equal(blocked.code, "board_salary_cap");
+  assert.equal(blocked.layer, 2);
+});
+
+test("assertSalaryIncreaseAllowed self-heals a stale pre-fix cap: does not retroactively punish existing salary, but still blocks further growth (#2237)", async () => {
+  // Simulerer prod-tilstanden fra #2237: cap frosset til near-0 (4.670), men holdet
+  // har reelt allerede 33.710 i lønsum (kommet ind via veje udenom den gamle guard).
+  const supabase = makeFakeSupabase({
+    board_consequences: [
+      { id: "cap-1", team_id: "team-1", layer: 2, severity: 4_670, status: "active", payload: {} },
+    ],
+    riders: [{ id: "r-1", team_id: "team-1", salary: 33_710 }],
+  });
+
+  const allowed = await assertSalaryIncreaseAllowed({
+    supabase,
+    teamId: "team-1",
+    oldSalary: 33_710,
+    newSalary: 33_710,
+  });
+  assert.equal(allowed, null, "Must never retroactively punish salary the team already has");
+
+  const blocked = await assertSalaryIncreaseAllowed({
+    supabase,
+    teamId: "team-1",
+    oldSalary: 33_710,
+    newSalary: 40_000,
+  });
+  assert.ok(blocked, "Further growth beyond current salary is still capped until next season-end re-evaluation");
+  assert.equal(blocked.threshold, 33_710);
+});
+
+test("assertSalaryIncreaseAllowed allows an extension that stays under the cap", async () => {
+  const supabase = makeFakeSupabase({
+    board_consequences: [
+      { id: "cap-1", team_id: "team-1", layer: 2, severity: 100_000, status: "active", payload: {} },
+    ],
+    riders: [
+      { id: "r-1", team_id: "team-1", salary: 20_000 },
+      { id: "r-2", team_id: "team-1", salary: 50_000 },
+    ],
+  });
+
+  const allowed = await assertSalaryIncreaseAllowed({
+    supabase,
+    teamId: "team-1",
+    oldSalary: 20_000,
+    newSalary: 25_000,
+  });
+  assert.equal(allowed, null, "70K→75K stays under the 100K cap");
 });
 
 // =====================================================================

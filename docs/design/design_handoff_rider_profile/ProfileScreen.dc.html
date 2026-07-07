@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flag-icons@7.2.3/css/flag-icons.min.css">
+  <link rel="stylesheet" href="_ds/cycling-zone-design-system-a332ec00-12d3-4aa5-9064-2fd004541e5d/tokens/colors.css">
+  <link rel="stylesheet" href="_ds/cycling-zone-design-system-a332ec00-12d3-4aa5-9064-2fd004541e5d/tokens/typography.css">
+  <link rel="stylesheet" href="_ds/cycling-zone-design-system-a332ec00-12d3-4aa5-9064-2fd004541e5d/tokens/spacing.css">
+  <link rel="stylesheet" href="_ds/cycling-zone-design-system-a332ec00-12d3-4aa5-9064-2fd004541e5d/tokens/base.css">
+  <link rel="stylesheet" href="_ds/cycling-zone-design-system-a332ec00-12d3-4aa5-9064-2fd004541e5d/components/components.css">
+  <link rel="stylesheet" href="_ds/cycling-zone-design-system-a332ec00-12d3-4aa5-9064-2fd004541e5d/styles.css">
+  <script src="_ds/cycling-zone-design-system-a332ec00-12d3-4aa5-9064-2fd004541e5d/_ds_bundle.js"></script>
+</helmet>
+<div style="{{ sRoot }}">
+
+  <!-- ============================ PREV / NEXT ============================ -->
+  <div style="{{ sNavBar }}">
+    <button style="{{ navBtn }}" style-hover="{{ navBtnHover }}"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg><span style="font-size:12px">{{ prevName }}</span></button>
+    <div style="display:flex;align-items:center;gap:9px;min-width:0">
+      <span style="font-family:var(--font-data);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ rosterLabel }}</span>
+      <span style="font-family:var(--font-data);font-size:11px;font-weight:700;color:var(--text-2);background:var(--bg-subtle);border:1px solid var(--border);border-radius:9999px;padding:2px 9px;white-space:nowrap">{{ rosterIndex }}</span>
+      <span style="font-size:10px;color:var(--text-3);white-space:nowrap" data-desktop-only="{{ isDesktop }}">‹ › skift rytter</span>
+    </div>
+    <button style="{{ navBtnR }}" style-hover="{{ navBtnHover }}"><span style="font-size:12px">{{ nextName }}</span><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></button>
+  </div>
+
+  <!-- ============================ HERO ============================ -->
+  <div data-screen-label="Rider hero" style="{{ sHeroOuter }}">
+    <div style="{{ sHeroTopRow }}">
+      <!-- photo + identity -->
+      <div style="display:flex;gap:15px;align-items:flex-start;min-width:0;flex:1">
+        <div style="position:relative;flex:none">
+          <div style="{{ sPhoto }}"><span style="font-family:var(--font-display);font-size:30px;color:var(--text-3);letter-spacing:.02em">AC</span><span style="position:absolute;bottom:6px;left:0;right:0;text-align:center;font-family:var(--font-data);font-size:8px;letter-spacing:.1em;color:var(--text-3);text-transform:uppercase">Foto</span></div>
+        </div>
+        <div style="min-width:0;flex:1">
+          <h1 style="{{ sName }}">Ayoub Cherif</h1>
+          <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:7px">
+            <span style="display:inline-flex;align-items:center;gap:5px;font-family:var(--font-data);font-size:12px;font-weight:600;color:var(--text-2)"><span class="fi fi-dz" style="width:18px;height:13px;border-radius:2px;box-shadow:inset 0 0 0 1px rgb(0 0 0 / .15)"></span>ALG</span>
+            <span style="width:3px;height:3px;border-radius:9999px;background:var(--text-3)"></span>
+            <span style="font-size:12.5px;color:var(--text-2)">20 år</span>
+            <span style="{{ sU23 }}">U23</span>
+            <span style="{{ sTypeChip }}"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l6 6-6 6M12 6l6 6-6 6"/></svg>Sprinter</span>
+            <span style="font-family:var(--font-data);font-size:9.5px;font-weight:700;letter-spacing:.06em;padding:2px 7px;border-radius:9999px;color:#1d2735;background:rgb(96 165 250 / .92)">DIV 2</span>
+          </div>
+          <div style="font-size:11.5px;color:var(--text-3);margin-top:6px;display:flex;align-items:center;gap:6px">{{ teamLabel }}<sc-if value="{{ teamIsAI }}"><span style="font-family:var(--font-data);font-size:8.5px;font-weight:700;letter-spacing:.1em;padding:0 4px;border-radius:3px;background:var(--bg-subtle);border:1px solid var(--border);color:var(--text-3)">AI</span></sc-if></div>
+          <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:9px">
+            <span style="font-family:var(--font-data);font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.13em;color:var(--text-3)">Vinder på</span>
+            <span style="display:inline-flex;align-items:center;gap:6px;font-weight:700;color:var(--text-1);font-size:13.5px"><span style="color:rgb(var(--accent-t));display:flex"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6l6 6-6 6M12 6l6 6-6 6"/></svg></span>Flade massespurter</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- rating + stars cluster + value -->
+      <div style="{{ sCluster }}">
+        <div style="display:flex;align-items:center;gap:14px">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:none">
+            <div style="{{ ratingChip }}">28</div>
+            <span style="font-family:var(--font-data);font-size:9px;font-weight:600;letter-spacing:.08em;color:var(--text-3);text-transform:uppercase">Rating /99</span>
+          </div>
+          <div style="width:1px;align-self:stretch;background:var(--border)"></div>
+          <div style="display:flex;flex-direction:column;gap:4px;min-width:0">
+            <span style="font-family:var(--font-data);font-size:9px;font-weight:700;letter-spacing:.1em;color:var(--text-3);text-transform:uppercase">{{ potLabel }}</span>
+            <div style="display:flex;align-items:center;gap:7px">{{ potStars }}</div>
+            <span style="font-size:11px;color:var(--text-2);font-weight:600">{{ potText }}</span>
+          </div>
+        </div>
+        <div style="height:1px;background:var(--border)"></div>
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:10px">
+          <div style="min-width:0">
+            <span style="font-family:var(--font-data);font-size:9px;font-weight:700;letter-spacing:.1em;color:var(--text-3);text-transform:uppercase">Markedsværdi</span>
+            <div style="display:flex;align-items:baseline;gap:7px;margin-top:2px"><span style="font-family:var(--font-data);font-variant-numeric:tabular-nums;font-size:23px;font-weight:700;color:var(--text-1)">CZ$ 4.366</span></div>
+          </div>
+          <div style="text-align:right;flex:none">
+            <div style="font-size:10.5px;color:var(--text-3)">Løn <b style="font-family:var(--font-data);color:var(--text-1)">CZ$ 293</b>/år</div>
+            <div style="font-size:10.5px;color:var(--text-3);margin-top:2px">Kontrakt <b style="font-family:var(--font-data);color:rgb(var(--warning))">Sæson 2</b></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- status banner (lifecycle) -->
+    <sc-if value="{{ hasBanner }}" hint-placeholder-val="{{ true }}">
+      <div style="{{ bannerStyle }}">
+        <span style="display:flex;flex:none;color:{{ bannerColor }}">{{ bannerIcon }}</span>
+        <span style="font-family:var(--font-data);font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:{{ bannerColor }}">{{ bannerLabel }}</span>
+        <span style="font-size:12px;color:var(--text-2)">{{ bannerDetail }}</span>
+      </div>
+    </sc-if>
+
+    <!-- contract-expiry alert (own, active) -->
+    <sc-if value="{{ contractAlert }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;align-items:center;gap:8px;margin-top:10px;padding:7px 11px;border-radius:6px;background:rgb(var(--warning) / .1);border:1px solid rgb(var(--warning) / .3)">
+        <span style="color:rgb(var(--warning));display:flex;flex:none"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg></span>
+        <span style="font-size:12px;color:var(--text-1)"><b>Kontrakt udløber efter Sæson 2.</b></span>
+      </div>
+    </sc-if>
+
+    <div style="{{ sActionsWrap }}">
+      <sc-for list="{{ actions }}" as="a" hint-placeholder-count="4"><button style="{{ a.style }}" style-hover="{{ a.styleHover }}">{{ a.label }}</button></sc-for>
+    </div>
+  </div>
+
+  <!-- ============================ STICKY TABS ============================ -->
+  <div style="{{ sTabBar }}">
+    <sc-for list="{{ tabs }}" as="tb" hint-placeholder-count="8"><button style="{{ tb.style }}" onClick="{{ tb.onClick }}">{{ tb.label }}</button></sc-for>
+  </div>
+
+  <!-- ============================ TAB CONTENT ============================ -->
+  <div style="{{ sContent }}">
+
+    <!-- ===================== OVERBLIK ===================== -->
+    <sc-if value="{{ showOverblik }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-direction:column;gap:13px">
+        <!-- abilities columns -->
+        <div style="{{ sColsGrid }}">
+          <sc-for list="{{ groups }}" as="g" hint-placeholder-count="3">
+            <div style="{{ card }}">
+              <div style="display:flex;align-items:center;gap:8px;padding-bottom:8px;border-bottom:2px solid rgb(var(--accent) / .5);margin-bottom:4px"><span style="color:rgb(var(--accent-t));display:flex">{{ g.icon }}</span><h3 style="font-family:var(--font-display);font-size:16px;letter-spacing:.03em;color:var(--text-1);margin:0;text-transform:uppercase">{{ g.label }}</h3><span style="font-family:var(--font-data);font-size:9.5px;color:var(--text-3);margin-left:auto">{{ g.count }}</span></div>
+              <sc-for list="{{ g.skills }}" as="it" hint-placeholder-count="4">
+                <div style="display:flex;align-items:center;gap:9px;padding:3.5px 0"><span style="flex:1;font-size:11.5px;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ it.label }}</span><div style="{{ it.trackStyle }}"><div style="{{ it.fillStyle }}"></div></div><span style="{{ it.numStyle }}">{{ it.value }}</span></div>
+              </sc-for>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:-4px">
+          <span style="font-size:10.5px;color:var(--text-3)">Tal = niveau 1–99</span><span style="color:var(--text-3)">·</span><span style="display:inline-flex;align-items:center;gap:5px;font-size:10.5px;color:var(--text-3)"><span style="display:inline-block;width:14px;height:4px;background:rgb(var(--accent) / .75);border-radius:2px"></span>træningsfremgang mod næste +1</span>
+        </div>
+
+        <!-- type radar + value + physio -->
+        <div style="{{ sOverGrid }}">
+          <div style="{{ card }}">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:2px"><h3 style="{{ h3 }}">Ryttertyper</h3><span style="font-size:10.5px;color:var(--text-3)">nu vs loft</span></div>
+            <svg viewBox="0 0 280 230" style="width:100%;max-width:430px;height:auto;display:block;margin:2px auto 0">
+              <sc-for list="{{ tRings }}" as="r" hint-placeholder-count="3"><circle cx="140" cy="112" r="{{ r.r }}" fill="none" stroke="var(--border)" stroke-width="1"></circle></sc-for>
+              <sc-for list="{{ tAxes }}" as="ax" hint-placeholder-count="8"><line x1="140" y1="112" x2="{{ ax.x }}" y2="{{ ax.y }}" stroke="var(--border)" stroke-width="1" opacity="0.55"></line></sc-for>
+              <polygon points="{{ tCeilPoly }}" fill="none" stroke="rgb(var(--accent) / .55)" stroke-width="1.5" stroke-dasharray="3 3" stroke-linejoin="round"></polygon>
+              <polygon points="{{ tNowPoly }}" fill="rgb(var(--accent) / .2)" stroke="rgb(var(--accent-t))" stroke-width="2" stroke-linejoin="round"></polygon>
+              <sc-for list="{{ tLabels }}" as="l" hint-placeholder-count="8"><text x="{{ l.x }}" y="{{ l.y }}" font-size="8.5" font-weight="700" letter-spacing="0.3" fill="{{ l.color }}" font-family="var(--font-data)" text-anchor="{{ l.anchor }}">{{ l.label }}</text></sc-for>
+            </svg>
+            <div style="display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin-top:4px">
+              <span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--text-2)"><span style="width:13px;height:3px;border-radius:2px;background:rgb(var(--accent-t))"></span>Nu</span>
+              <span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--text-2)"><span style="width:13px;height:0;border-top:2px dashed rgb(var(--accent) / .7)"></span>Loft (scoutet)</span>
+            </div>
+            <div style="margin-top:11px;padding-top:11px;border-top:1px solid var(--border);display:flex;align-items:center;gap:9px;flex-wrap:wrap">
+              <span style="font-family:var(--font-data);font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text-3)">Bedst som</span>
+              <span style="font-weight:700;font-size:13.5px;color:var(--text-1)">Sprinter</span>
+              <div style="display:flex;align-items:center;gap:6px">{{ topTypeStars }}</div>
+              <a href="#scouting" onClick="{{ goScouting }}" style="font-size:11px;color:rgb(var(--accent-t));text-decoration:none;margin-left:auto">Alle typer →</a>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:13px;min-width:0">
+            <div style="{{ card }}">
+              <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:10px"><h3 style="{{ h3 }}">Fysiologi</h3><span style="font-size:10.5px;color:var(--text-3)">72 kg</span></div>
+              <div style="display:flex;flex-direction:column;gap:11px">
+                <sc-for list="{{ physioTrio }}" as="p" hint-placeholder-count="3">
+                  <div>
+                    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px"><span style="font-size:11.5px;color:var(--text-2)">{{ p.label }}</span><div style="display:flex;align-items:baseline;gap:7px"><span style="font-family:var(--font-data);font-variant-numeric:tabular-nums;font-weight:700;font-size:15px;color:var(--text-1)">{{ p.big }}</span><span style="font-size:10px;color:var(--text-3)">{{ p.unit }}</span><span style="{{ p.deltaStyle }}">{{ p.delta }}</span></div></div>
+                    <div style="{{ p.trackStyle }}"><div style="{{ p.fillStyle }}"></div><div style="{{ p.meanStyle }}"></div></div>
+                  </div>
+                </sc-for>
+              </div>
+              <button style="{{ linkBtn }}" style-hover="{{ linkBtnHover }}" onClick="{{ goFysiologi }}">Watt-kurve & zoner →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ===================== FYSIOLOGI ===================== -->
+    <sc-if value="{{ showFysiologi }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-direction:column;gap:13px">
+        <div style="{{ sPhysio4 }}">
+          <sc-for list="{{ physioBig }}" as="p" hint-placeholder-count="4">
+            <div style="{{ card }}">
+              <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-family:var(--font-data);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--text-3)">{{ p.label }}</span><span style="{{ p.deltaStyle }}">{{ p.delta }}</span></div>
+              <div style="display:flex;align-items:baseline;gap:6px;margin:7px 0 3px"><span style="font-family:var(--font-data);font-variant-numeric:tabular-nums;font-size:24px;font-weight:700;color:var(--text-1)">{{ p.big }}</span><span style="font-size:11px;color:var(--text-3)">{{ p.unit }}</span></div>
+              <span style="font-size:10.5px;color:var(--text-2)">{{ p.sub }}</span>
+              <div style="{{ p.trackStyle }}"><div style="{{ p.fillStyle }}"></div><div style="{{ p.meanStyle }}"></div></div>
+              <div style="font-size:9.5px;color:var(--text-3);margin-top:5px">Div 2-snit {{ p.divLabel }}</div>
+            </div>
+          </sc-for>
+        </div>
+
+        <!-- power curve -->
+        <div style="{{ card }}">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:6px">
+            <div><h3 style="{{ h3 }}">Watt-kurve</h3><span style="font-size:10.5px;color:var(--text-3)">Maks. effekt pr. varighed · log-skala</span></div>
+            <div style="{{ pillWrap }}"><sc-for list="{{ unitTabs }}" as="u" hint-placeholder-count="2"><button style="{{ u.style }}" onClick="{{ u.onClick }}">{{ u.label }}</button></sc-for></div>
+          </div>
+          <svg viewBox="0 0 340 196" style="width:100%;height:auto;display:block">
+            <sc-for list="{{ pcGrid }}" as="gy" hint-placeholder-count="3"><line x1="46" y1="{{ gy.y }}" x2="320" y2="{{ gy.y }}" stroke="var(--border)" stroke-width="1" stroke-dasharray="2 3" opacity="0.7"></line><text x="42" y="{{ gy.ty }}" font-size="8.5" fill="var(--text-3)" font-family="var(--font-data)" text-anchor="end">{{ gy.label }}</text></sc-for>
+            <rect x="{{ pcZoneX }}" y="20" width="{{ pcZoneW }}" height="130" fill="rgb(var(--accent) / .07)"></rect>
+            <text x="{{ pcZoneTx }}" y="31" font-size="8" fill="rgb(var(--accent-t))" font-family="var(--font-data)" text-anchor="middle">HANS ZONE</text>
+            <polyline points="{{ pcDivPts }}" fill="none" stroke="var(--text-3)" stroke-width="1.6" stroke-dasharray="4 3" opacity="0.85"></polyline>
+            <polyline points="{{ pcRiderPts }}" fill="none" stroke="rgb(var(--accent-t))" stroke-width="2.4"></polyline>
+            <sc-for list="{{ pcDots }}" as="d" hint-placeholder-count="7"><circle cx="{{ d.x }}" cy="{{ d.y }}" r="2.4" fill="rgb(var(--accent-t))"></circle><text x="{{ d.x }}" y="{{ d.ty }}" font-size="8" font-weight="700" fill="var(--text-1)" font-family="var(--font-data)" text-anchor="middle">{{ d.v }}</text></sc-for>
+            <sc-for list="{{ pcXLabels }}" as="x" hint-placeholder-count="7"><text x="{{ x.x }}" y="190" font-size="8.5" fill="var(--text-2)" font-family="var(--font-data)" text-anchor="middle">{{ x.label }}</text></sc-for>
+          </svg>
+          <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:6px">
+            <span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--text-2)"><span style="width:15px;height:3px;border-radius:2px;background:rgb(var(--accent-t))"></span>Ayoub</span>
+            <span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--text-2)"><span style="width:15px;height:0;border-top:2px dashed var(--text-3)"></span>Div 2-snit</span>
+            <span style="font-size:11px;color:var(--text-3);margin-left:auto">{{ pcCaption }}</span>
+          </div>
+        </div>
+
+        <!-- watt profile + CP/W' -->
+        <div style="{{ sOverGrid }}">
+          <div style="{{ card }}">
+            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:2px"><h3 style="{{ h3 }}">Watt-profil</h3><span style="font-size:10.5px;color:var(--text-3)">vs Div 2 · <span style="display:inline-block;width:8px;height:8px;vertical-align:-1px;border-left:2px solid var(--text-1)"></span></span></div>
+            <sc-for list="{{ wattProfile }}" as="w" hint-placeholder-count="6">
+              <div style="padding:8px 0;border-top:1px solid var(--border)">
+                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px"><div style="display:flex;align-items:baseline;gap:8px"><span style="font-weight:700;font-size:12.5px;color:var(--text-1);min-width:42px">{{ w.label }}</span><span style="font-size:10.5px;color:var(--text-3)">{{ w.note }}</span></div><div style="display:flex;align-items:baseline;gap:9px"><span style="font-family:var(--font-data);font-variant-numeric:tabular-nums;font-weight:700;font-size:13px;color:var(--text-1)">{{ w.val }}</span><span style="{{ w.deltaStyle }}">{{ w.delta }}</span></div></div>
+                <div style="{{ w.trackStyle }}"><div style="{{ w.fillStyle }}"></div><div style="{{ w.meanStyle }}"></div></div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:13px;min-width:0">
+            <div style="{{ card }}">
+              <h3 style="{{ h3b }}">Critical Power-model</h3>
+              <div style="display:flex;gap:18px;flex-wrap:wrap">
+                <div><div style="font-family:var(--font-data);font-variant-numeric:tabular-nums;font-size:21px;font-weight:700;color:var(--text-1)">268 <span style="font-size:11px;color:var(--text-3);font-weight:500">W</span></div><div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em">CP (critical power)</div></div>
+                <div><div style="font-family:var(--font-data);font-variant-numeric:tabular-nums;font-size:21px;font-weight:700;color:var(--text-1)">14,5 <span style="font-size:11px;color:var(--text-3);font-weight:500">kJ</span></div><div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em">W′ anaerob kapacitet</div></div>
+              </div>
+              <p style="margin:9px 0 0;font-size:11px;color:var(--text-2);line-height:1.45">Stort W′ for sin CP — han kan grave dybt i de sidste 200 m, men har lille aerob motor at trække på.</p>
+            </div>
+            <div style="{{ card }}">
+              <h3 style="{{ h3b }}">Effekt-zoner</h3>
+              <div style="display:flex;height:13px;border-radius:4px;overflow:hidden;border:1px solid var(--border)"><sc-for list="{{ zones }}" as="z" hint-placeholder-count="7"><div style="{{ z.segStyle }}"></div></sc-for></div>
+              <div style="display:flex;flex-direction:column;gap:3px;margin-top:9px">
+                <sc-for list="{{ zones }}" as="z" hint-placeholder-count="7"><div style="display:flex;align-items:center;gap:8px"><span style="width:9px;height:9px;border-radius:2px;flex:none;background:{{ z.color }}"></span><span style="font-family:var(--font-data);font-size:10px;font-weight:700;color:var(--text-2);flex:0 0 22px">{{ z.z }}</span><span style="font-size:11px;color:var(--text-1);flex:1">{{ z.name }}</span><span style="font-family:var(--font-data);font-size:10.5px;color:var(--text-3)">{{ z.range }}</span></div></sc-for>
+              </div>
+              <p style="margin:8px 0 0;font-size:9.5px;color:var(--text-3)">Afledt af FTP 270 W (Coggan-zoner)</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ===================== TRÆNING ===================== -->
+    <sc-if value="{{ showTraening }}" hint-placeholder-val="{{ true }}">
+      <sc-if value="{{ isOwn }}" hint-placeholder-val="{{ true }}">
+        <div style="{{ sOverGrid }}">
+          <div style="display:flex;flex-direction:column;gap:13px;min-width:0">
+            <div style="{{ card }}">
+              <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:11px"><h3 style="{{ h3 }}">Træningsfokus</h3><span style="font-size:10.5px;color:var(--text-3)">2 / 3 slots brugt</span></div>
+              <div style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:12px"><sc-for list="{{ focusChips }}" as="f" hint-placeholder-count="6"><span style="{{ f.style }}">{{ f.label }}</span></sc-for></div>
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:11px"><span style="font-family:var(--font-data);font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text-3)">Intensitet</span><div style="{{ pillWrap }}"><sc-for list="{{ intensityTabs }}" as="i" hint-placeholder-count="4"><span style="{{ i.style }}">{{ i.label }}</span></sc-for></div></div>
+              <div style="border-top:1px solid var(--border);padding-top:11px">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><span style="color:rgb(var(--accent-t));display:flex"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9a2 2 0 0 0-3-3L5 17z"/><path d="M14 7l3 3"/></svg></span><span style="font-size:13px;color:var(--text-1);font-weight:600">Aktiv: Spurt · Hård — træner Spurt + Acceleration</span></div>
+                <div style="position:relative;height:7px;background:var(--bg-subtle);border-radius:9999px"><div style="position:absolute;left:0;top:0;height:100%;width:62%;background:rgb(var(--accent) / .85);border-radius:9999px"></div></div>
+                <div style="display:flex;justify-content:space-between;margin-top:6px"><span style="font-size:10.5px;color:var(--text-3)">Spurt 21 → 22 · 62% mod næste +1</span><span style="font-size:10.5px;color:var(--text-3)">effekt ved sæsonskift</span></div>
+                <p style="margin:8px 0 0;font-size:11px;color:var(--text-2);line-height:1.4">Hård intensitet vokser hurtigst, men har risiko for tilbageslag der koster en del af sæsonens fremgang.</p>
+                <div style="margin-top:11px;padding-top:10px;border-top:1px solid var(--border)"><span style="font-family:var(--font-data);font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text-3)">Hvert fokus træner</span><div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 14px;margin-top:7px"><sc-for list="{{ focusRef }}" as="fr" hint-placeholder-count="6"><div style="display:flex;justify-content:space-between;gap:8px"><span style="font-size:11px;color:var(--text-1);font-weight:600">{{ fr.k }}</span><span style="font-size:10.5px;color:var(--text-3);text-align:right">{{ fr.v }}</span></div></sc-for></div></div>
+              </div>
+            </div>
+            <div style="{{ card }}">
+              <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:9px"><h3 style="{{ h3 }}">Daglig træning · sidste 7 dage</h3></div>
+              <sc-for list="{{ sessions }}" as="s" hint-placeholder-count="5">
+                <div style="display:flex;align-items:center;gap:11px;padding:8px 0;border-top:1px solid var(--border)"><span style="font-family:var(--font-data);font-size:11px;color:var(--text-3);flex:0 0 42px">{{ s.day }}</span><span style="font-size:12px;color:var(--text-1);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ s.focus }}</span><span style="font-size:11px;color:var(--text-3);flex:none">{{ s.load }}</span><span style="{{ s.scoreStyle }}">{{ s.score }}</span></div>
+              </sc-for>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:13px;min-width:0">
+            <div style="{{ cardLeftAccent }}">
+              <span style="font-family:var(--font-data);font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:rgb(var(--accent-t))">Træningsscore · 30 dage</span>
+              <div style="display:flex;align-items:flex-end;gap:10px;margin:6px 0 2px"><span style="font-family:var(--font-data);font-variant-numeric:tabular-nums;font-size:34px;font-weight:700;line-height:1;color:var(--text-1)">73</span><span style="font-size:11px;color:rgb(var(--success));padding-bottom:5px">▴ 8 vs forrige</span></div>
+              <span style="font-size:11px;color:var(--text-2)">Kvalitet af gennemførte pas — så ryttere kan måles mod hinanden.</span>
+              <svg viewBox="0 0 300 70" style="width:100%;height:auto;display:block;margin-top:10px">
+                <polyline points="{{ trainSpark }}" fill="none" stroke="rgb(var(--accent-t))" stroke-width="2"></polyline>
+                <line x1="0" y1="{{ trainAvgY }}" x2="300" y2="{{ trainAvgY }}" stroke="var(--text-3)" stroke-width="1" stroke-dasharray="3 3" opacity="0.6"></line>
+              </svg>
+              <div style="display:flex;justify-content:space-between"><span style="font-size:9.5px;color:var(--text-3)">−30d · snit 65</span><span style="font-size:9.5px;color:var(--text-3)">i dag 73</span></div>
+            </div>
+            <div style="{{ card }}">
+              <h3 style="{{ h3b }}">Form & restitution</h3>
+              <div style="display:flex;flex-direction:column;gap:11px">
+                <div><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font-size:12px;color:var(--text-2)">Form</span><span style="font-family:var(--font-data);font-weight:700;font-size:13px;color:rgb(var(--success))">61</span></div><div style="position:relative;height:6px;background:var(--bg-subtle);border-radius:9999px"><div style="position:absolute;left:0;top:0;height:100%;width:61%;background:rgb(var(--success) / .8);border-radius:9999px"></div></div></div>
+                <div><div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font-size:12px;color:var(--text-2)">Træthed</span><span style="font-family:var(--font-data);font-weight:700;font-size:13px;color:var(--text-1)">28</span></div><div style="position:relative;height:6px;background:var(--bg-subtle);border-radius:9999px"><div style="position:absolute;left:0;top:0;height:100%;width:28%;background:rgb(var(--warning) / .8);border-radius:9999px"></div></div></div>
+                <div style="display:flex;align-items:center;gap:7px;padding-top:3px"><span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:3px 9px;border-radius:9999px;background:rgb(var(--success) / .12);color:rgb(var(--success));border:1px solid rgb(var(--success) / .25)">Skadefri</span><span style="font-size:11px;color:var(--text-3)">Klar til at træne hårdt</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+      <sc-if value="{{ isScouting }}" hint-placeholder-val="{{ true }}">
+        <div style="{{ cardCenter }}">
+          <span style="color:var(--text-3);display:inline-flex"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>
+          <h3 style="{{ h3c }}">Træning er skjult</h3>
+          <p style="margin:0 auto;font-size:12.5px;color:var(--text-2);max-width:42ch;line-height:1.5">Du kan ikke se eller styre en fremmed rytters træning, form eller træthed. Køb ham, så låser det op.</p>
+        </div>
+      </sc-if>
+    </sc-if>
+
+    <!-- ===================== UDVIKLING ===================== -->
+    <sc-if value="{{ showUdvikling }}" hint-placeholder-val="{{ true }}">
+      <div style="{{ sOverGrid }}">
+        <div style="{{ card }}">
+          <div style="margin-bottom:6px"><h3 style="{{ h3 }}">Rating pr. type · over sæsoner</h3></div>
+          <svg viewBox="0 0 300 172" style="width:100%;height:auto;display:block">
+            <line x1="36" y1="22" x2="290" y2="22" stroke="rgb(var(--accent))" stroke-width="1.3" stroke-dasharray="4 4" opacity="0.7"></line>
+            <text x="40" y="18" font-size="8" fill="rgb(var(--accent-t))" font-family="var(--font-data)">LOFT ★★★–★★★★</text>
+            <line x1="36" y1="140" x2="290" y2="140" stroke="var(--border)" stroke-width="1"></line>
+            <line x1="120" y1="24" x2="120" y2="140" stroke="var(--border)" stroke-width="1" stroke-dasharray="2 3" opacity="0.7"></line>
+            <polyline points="36,109.7 120,103.2" fill="none" stroke="#a78bfa" stroke-width="2"></polyline>
+            <polyline points="120,103.2 205,94.5 290,85.8" fill="none" stroke="#a78bfa" stroke-width="2" stroke-dasharray="3 3" opacity="0.55"></polyline>
+            <polyline points="36,105.3 120,96.7" fill="none" stroke="#60a5fa" stroke-width="2"></polyline>
+            <polyline points="120,96.7 205,85.8 290,75" fill="none" stroke="#60a5fa" stroke-width="2" stroke-dasharray="3 3" opacity="0.55"></polyline>
+            <polyline points="36,92.3 120,79.3" fill="none" stroke="rgb(var(--accent-t))" stroke-width="2.4"></polyline>
+            <polyline points="120,79.3 205,62 290,44.7" fill="none" stroke="rgb(var(--accent-t))" stroke-width="2.4" stroke-dasharray="3 3" opacity="0.6"></polyline>
+            <circle cx="120" cy="79.3" r="3" fill="rgb(var(--accent-t))"></circle>
+            <text x="36" y="155" font-size="8.5" fill="var(--text-3)" font-family="var(--font-data)" text-anchor="middle">S1</text>
+            <text x="120" y="155" font-size="8.5" fill="var(--text-1)" font-family="var(--font-data)" text-anchor="middle">S2 nu</text>
+            <text x="205" y="155" font-size="8.5" fill="var(--text-3)" font-family="var(--font-data)" text-anchor="middle">S3</text>
+            <text x="290" y="155" font-size="8.5" fill="var(--text-3)" font-family="var(--font-data)" text-anchor="middle">S4</text>
+            <text x="163" y="168" font-size="7.5" fill="var(--text-3)" font-family="var(--font-data)" text-anchor="middle">fuldt = registreret · stiplet = projekteret mod loft</text>
+          </svg>
+          <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:8px">
+            <span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--text-2)"><span style="width:14px;height:3px;border-radius:2px;background:rgb(var(--accent-t))"></span>Sprinter</span>
+            <span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--text-2)"><span style="width:14px;height:3px;border-radius:2px;background:#60a5fa"></span>Puncheur</span>
+            <span style="display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--text-2)"><span style="width:14px;height:3px;border-radius:2px;background:#a78bfa"></span>Rouleur</span>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:13px">
+          <div style="{{ card }}">
+            <h3 style="{{ h3b }}">Vækst pr. sæson</h3>
+            <div style="display:flex;flex-direction:column;gap:9px">
+              <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:12.5px;color:var(--text-2)">Sprinter-rating</span><span style="font-family:var(--font-data);font-weight:700;color:rgb(var(--success))">+6 / sæson</span></div>
+              <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:12.5px;color:var(--text-2)">Til loft</span><span style="font-family:var(--font-data);font-weight:700;color:var(--text-1)">~2 sæsoner</span></div>
+              <div style="display:flex;align-items:center;justify-content:space-between"><span style="font-size:12.5px;color:var(--text-2)">Alder ved loft</span><span style="font-family:var(--font-data);font-weight:700;color:var(--text-1)">22</span></div>
+            </div>
+          </div>
+          <div style="{{ cardLeftAccent }}">
+            <span style="font-family:var(--font-data);font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:rgb(var(--accent-t))">Læsning</span>
+            <p style="margin:7px 0 0;font-size:12.5px;color:var(--text-2);line-height:1.55">{{ devReadout }}</p>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:13px">
+        <div style="{{ card }}">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:2px"><h3 style="{{ h3 }}">Udviklingslog</h3><span style="font-size:10.5px;color:var(--text-3)">træning → evne-gevinst pr. sæson</span></div>
+          <sc-if value="{{ isOwn }}" hint-placeholder-val="{{ true }}">
+            <sc-for list="{{ devLog }}" as="d" hint-placeholder-count="3">
+              <div style="{{ d.rowStyle }}">
+                <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap;min-width:0"><span style="font-weight:700;font-size:12.5px;color:var(--text-1);min-width:130px">{{ d.season }}</span><span style="{{ d.focusStyle }}">{{ d.focus }}</span><span style="font-family:var(--font-data);font-size:12px;font-weight:700;color:{{ d.deltaColor }}">{{ d.ratingDelta }} rating</span></div>
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:7px"><sc-for list="{{ d.gains }}" as="g" hint-placeholder-count="3"><span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:2px 8px;border-radius:9999px;background:var(--bg-subtle);border:1px solid var(--border);color:var(--text-1)">{{ g.k }} <b style="font-family:var(--font-data);color:rgb(var(--success))">{{ g.v }}</b></span></sc-for><span style="font-size:11px;color:var(--text-3)">{{ d.note }}</span></div>
+              </div>
+            </sc-for>
+          </sc-if>
+          <sc-if value="{{ isScouting }}" hint-placeholder-val="{{ true }}">
+            <p style="margin:8px 0 0;font-size:12px;color:var(--text-2);line-height:1.5">Den træningsdrevne udviklingslog er skjult på fremmede ryttere. Du ser kun den scoutede trend ovenfor — scout ham for at indsnævre projektionen.</p>
+          </sc-if>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ===================== SCOUTING ===================== -->
+    <sc-if value="{{ showScouting }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-direction:column;gap:13px">
+        <!-- scout verdict -->
+        <div style="{{ cardLeftAccent }}">
+          <div style="display:flex;align-items:center;gap:11px;flex-wrap:wrap;margin-bottom:9px">
+            <span style="{{ verdictIconWrap }}"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></span>
+            <div style="min-width:0">
+              <span style="font-family:var(--font-data);font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:rgb(var(--accent-t))">{{ verdictKicker }}</span>
+              <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:2px"><span style="font-family:var(--font-display);font-size:26px;line-height:.9;letter-spacing:.01em;color:var(--text-1);text-transform:uppercase">{{ verdict }}</span><span style="{{ confChip }}">{{ confidence }}</span></div>
+            </div>
+          </div>
+          <p style="margin:0 0 11px;font-size:13px;line-height:1.55;color:var(--text-2);max-width:80ch">{{ reason }}</p>
+          <div style="{{ sFactorGrid }}">
+            <sc-for list="{{ factors }}" as="f" hint-placeholder-count="4"><div style="display:flex;gap:7px;align-items:flex-start"><span style="color:rgb(var(--accent-t));margin-top:2px;flex:none"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span><span style="font-size:12px;color:var(--text-2);line-height:1.4">{{ f }}</span></div></sc-for>
+          </div>
+        </div>
+
+        <!-- per-type potential -->
+        <div style="{{ card }}">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:4px"><h3 style="{{ h3 }}">Potentiale pr. ryttertype</h3><span style="{{ scoutLevelChip }}">{{ scoutLevelLabel }}</span></div>
+          <p style="margin:0 0 6px;font-size:11.5px;color:var(--text-2);line-height:1.45">{{ typeIntro }}</p>
+          <sc-for list="{{ typeBars }}" as="ty" hint-placeholder-count="8">
+            <div style="padding:9px 0;border-top:1px solid var(--border)">
+              <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:6px">
+                <div style="display:flex;align-items:baseline;gap:9px;min-width:0"><span style="font-weight:700;font-size:13px;color:var(--text-1);min-width:78px">{{ ty.label }}</span><span style="font-size:10.5px;color:var(--text-3)">nu <b style="font-family:var(--font-data);color:var(--text-2)">{{ ty.cur }}</b></span></div>
+                <div style="display:flex;align-items:center;gap:8px">{{ ty.stars }}<span style="font-size:10.5px;color:var(--text-3);min-width:54px;text-align:right">loft {{ ty.ceilLabel }}</span></div>
+              </div>
+              <div style="{{ ty.trackStyle }}"><div style="{{ ty.bandStyle }}"></div><div style="{{ ty.fillStyle }}"></div></div>
+            </div>
+          </sc-for>
+          <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;padding-top:9px;border-top:1px solid var(--border)">
+            <span style="display:inline-flex;align-items:center;gap:6px;font-size:10.5px;color:var(--text-2)"><span style="width:13px;height:6px;border-radius:2px;background:rgb(var(--accent-t))"></span>Nu</span>
+            <span style="display:inline-flex;align-items:center;gap:6px;font-size:10.5px;color:var(--text-2)"><span style="width:13px;height:6px;border-radius:2px;background:rgb(var(--accent) / .25)"></span>Usikkert loft-spænd</span>
+            <sc-if value="{{ isScouting }}"><button style="{{ scoutBtn }}" style-hover="{{ scoutBtnHover }}"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>Scout igen · indsnævrer spændet (2 tilbage)</button></sc-if>
+          </div>
+        </div>
+        <div style="{{ card }}">
+          <h3 style="{{ h3b }}">Røverkøb?</h3>
+          <div style="display:flex;align-items:flex-end;gap:14px;margin-bottom:9px">
+            <div><div style="font-family:var(--font-data);font-variant-numeric:tabular-nums;font-size:19px;font-weight:700;color:var(--text-1)">CZ$ 4.366</div><div style="font-size:9.5px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em">Markedsværdi</div></div>
+            <div style="font-size:13px;color:var(--text-3);padding-bottom:3px">vs</div>
+            <div><div style="font-family:var(--font-data);font-variant-numeric:tabular-nums;font-size:19px;font-weight:700;color:rgb(var(--accent-t))">CZ$ 7.800</div><div style="font-size:9.5px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em">Forventet · alder+loft</div></div>
+          </div>
+          <div style="position:relative;height:7px;background:var(--bg-subtle);border-radius:9999px"><div style="position:absolute;left:0;top:0;height:100%;width:56%;background:rgb(var(--accent) / .85);border-radius:9999px"></div><div style="position:absolute;left:56%;top:-3px;height:13px;width:2px;background:var(--text-1)"></div></div>
+          <p style="margin:8px 0 0;font-size:11.5px;color:var(--text-2);line-height:1.45">{{ valueLine }}</p>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ===================== HISTORIK ===================== -->
+    <sc-if value="{{ showHistorik }}" hint-placeholder-val="{{ true }}">
+      <div style="{{ cardFlush }}">
+        <div style="{{ histHeadRow }}"><span style="{{ thStyle }}">Dato</span><span style="{{ thStyle }}">Type</span><span style="{{ thStyle }}">Begivenhed</span><span style="{{ thStyleR }}">Beløb</span></div>
+        <sc-for list="{{ history }}" as="h" hint-placeholder-count="10">
+          <div style="{{ histRow }}">
+            <span style="font-family:var(--font-data);font-size:11px;color:var(--text-3);white-space:nowrap">{{ h.date }}</span>
+            <span style="{{ h.typeStyle }}">{{ h.type }}</span>
+            <span style="font-size:12.5px;color:var(--text-1);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ h.event }}</span>
+            <span style="font-family:var(--font-data);font-variant-numeric:tabular-nums;font-size:12px;font-weight:600;color:{{ h.amtColor }};text-align:right;white-space:nowrap">{{ h.amount }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <!-- ===================== RESULTATER ===================== -->
+    <sc-if value="{{ showResultater }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-direction:column;gap:13px">
+        <div style="{{ card }}">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:11px"><h3 style="{{ h3 }}">Sæson-totaler</h3><div style="{{ pillWrap }}"><sc-for list="{{ seasonTabs }}" as="s" hint-placeholder-count="3"><span style="{{ s.style }}">{{ s.label }}</span></sc-for></div></div>
+          <div style="{{ sTotalsGrid }}">
+            <sc-for list="{{ totals }}" as="t" hint-placeholder-count="6"><div><div style="font-family:var(--font-data);font-variant-numeric:tabular-nums;font-size:20px;font-weight:700;color:{{ t.color }}">{{ t.value }}</div><div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em">{{ t.label }}</div></div></sc-for>
+          </div>
+        </div>
+        <div style="{{ cardFlush }}">
+          <div style="{{ resHeadRow }}"><span style="{{ thStyle }}">Dato</span><span style="{{ thStyle }}">Løb</span><span style="{{ thStyle }}">Klasse</span><span style="{{ thStyle }}">Terræn</span><span style="{{ thStyleR }}">Plac.</span><span style="{{ thStyleR }}">Point</span><span style="{{ thStyleR }}">Præmie</span></div>
+          <sc-for list="{{ results }}" as="r" hint-placeholder-count="4">
+            <div>
+              <div style="{{ r.rowStyle }}" onClick="{{ r.onToggle }}">
+                <span style="font-family:var(--font-data);font-size:11px;color:var(--text-3)">{{ r.date }}</span>
+                <div style="display:flex;align-items:center;gap:6px;min-width:0"><sc-if value="{{ r.isStage }}"><span style="{{ r.chevStyle }}">▸</span></sc-if><span style="font-size:12.5px;color:var(--text-1);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.race }}</span></div>
+                <span style="{{ r.classStyle }}">{{ r.cls }}</span>
+                <span style="font-size:11.5px;color:var(--text-2)">{{ r.terrain }}</span>
+                <span style="{{ r.posStyle }}">{{ r.pos }}</span>
+                <span style="font-family:var(--font-data);font-size:11.5px;color:var(--text-2);text-align:right">{{ r.points }}</span>
+                <span style="font-family:var(--font-data);font-size:11.5px;color:{{ r.prizeColor }};text-align:right">{{ r.prize }}</span>
+              </div>
+              <sc-if value="{{ r.open }}">
+                <sc-for list="{{ r.stages }}" as="st" hint-placeholder-count="3">
+                  <div style="{{ st.rowStyle }}"><span></span><div style="min-width:0;padding-left:18px"><span style="font-size:11.5px;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ st.label }}</span></div><span></span><span></span><span style="{{ st.posStyle }}">{{ st.pos }}</span><span style="font-family:var(--font-data);font-size:11px;color:var(--text-3);text-align:right">{{ st.points }}</span><span style="font-family:var(--font-data);font-size:11px;color:{{ st.prizeColor }};text-align:right">{{ st.prize }}</span></div>
+                </sc-for>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+        <p style="margin:0;font-size:11px;color:var(--text-3)">Tryk på et etapeløb for at folde alle etaper ud.</p>
+      </div>
+    </sc-if>
+
+    <!-- ===================== INTERESSE ===================== -->
+    <sc-if value="{{ showInteresse }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-direction:column;gap:13px">
+        <div style="{{ cardLeftAccent }}"><p style="margin:0;font-size:13px;color:var(--text-1);line-height:1.5">{{ interestLine }}</p></div>
+        <div style="{{ sPhysioCards }}">
+          <sc-for list="{{ interestStats }}" as="s" hint-placeholder-count="3"><div style="{{ card }}"><span style="display:inline-flex;align-items:center;gap:6px;font-family:var(--font-data);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--text-3)">{{ s.iconEl }}{{ s.label }}</span><div style="margin-top:7px"><span style="font-family:var(--font-data);font-variant-numeric:tabular-nums;font-size:20px;font-weight:700;color:var(--text-1)">{{ s.value }}</span> <span style="{{ s.subStyle }}">{{ s.sub }}</span></div></div></sc-for>
+        </div>
+        <!-- hvem scouter ham (own only) -->
+        <sc-if value="{{ isOwn }}" hint-placeholder-val="{{ true }}">
+          <div style="{{ card }}">
+            <h3 style="{{ h3b }}">Hvem scouter din rytter?</h3>
+            <p style="margin:0 0 4px;font-size:12px;color:var(--text-2);line-height:1.45">2 rivaler har brugt scout-slots på ham. Hans lave værdi gør ham til et nemt mål, hvis du ikke forlænger.</p>
+            <sc-for list="{{ rivalScouts }}" as="x" hint-placeholder-count="2"><div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--border)"><span style="color:var(--text-3);display:flex"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></span><span style="flex:1;font-size:12.5px;color:var(--text-1)">{{ x.team }}</span><span style="font-size:11px;color:var(--text-3)">{{ x.meta }}</span></div></sc-for>
+          </div>
+        </sc-if>
+        <div style="{{ cardFlush }}">
+          <sc-for list="{{ interestEvents }}" as="e" hint-placeholder-count="3"><div style="display:flex;gap:12px;padding:12px 18px;border-top:1px solid var(--border);align-items:center"><span style="color:var(--text-3);flex:none;display:flex">{{ e.iconEl }}</span><span style="flex:1;font-size:12.5px;color:var(--text-1)">{{ e.t }}</span><span style="font-size:11px;color:var(--text-3)">{{ e.meta }}</span></div></sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1180,&quot;height&quot;:920},&quot;viewer&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;own&quot;,&quot;options&quot;:[&quot;own&quot;,&quot;scouting&quot;],&quot;tsType&quot;:&quot;string&quot;},&quot;mode&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;desktop&quot;,&quot;options&quot;:[&quot;desktop&quot;,&quot;mobile&quot;],&quot;tsType&quot;:&quot;string&quot;},&quot;lifecycle&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;active&quot;,&quot;options&quot;:[&quot;active&quot;,&quot;listed&quot;,&quot;auction&quot;,&quot;academy&quot;],&quot;tsType&quot;:&quot;string&quot;},&quot;tab&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;overblik&quot;,&quot;options&quot;:[&quot;overblik&quot;,&quot;fysiologi&quot;,&quot;traening&quot;,&quot;udvikling&quot;,&quot;scouting&quot;,&quot;historik&quot;,&quot;resultater&quot;,&quot;interesse&quot;],&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  state = { tab: null, unit: "wkg", expanded: {} };
+
+  statColor(value) {
+    const K = [[0,[86,89,105]],[20,[111,114,133]],[33,[174,177,192]],[42,[51,252,150]],[55,[253,228,71]],[64,[253,192,50]],[74,[253,50,99]],[85,[226,16,76]],[99,[168,8,47]]];
+    const v = Number.isFinite(+value) ? +value : 0;
+    const hx = (c) => "#" + c.map((x) => Math.round(x).toString(16).padStart(2, "0")).join("");
+    if (v <= K[0][0]) return hx(K[0][1]);
+    if (v >= K[8][0]) return hx(K[8][1]);
+    for (let i = 0; i < 8; i++) { const a = K[i], b = K[i + 1]; if (v >= a[0] && v <= b[0]) { const t = (v - a[0]) / (b[0] - a[0]); return hx([0,1,2].map((k) => a[1][k] + (b[1][k] - a[1][k]) * t)); } }
+    return hx(K[8][1]);
+  }
+  statText(v) { const h = this.statColor(v); const r = parseInt(h.slice(1,3),16), g = parseInt(h.slice(3,5),16), b = parseInt(h.slice(5,7),16); return (0.299*r + 0.587*g + 0.114*b) > 140 ? "#101014" : "#f5f5fa"; }
+
+  starsNode(lo, hi, px) {
+    const STAR = "M12 3l2.6 5.6 6 .8-4.4 4.2 1.1 6L12 17l-5.3 2.6 1.1-6L3.4 9.4l6-.8z";
+    const tone = "rgb(var(--accent))", soft = "rgb(var(--accent) / .42)", empty = "rgb(var(--text-3) / .28)";
+    const clamp01 = (n) => Math.max(0, Math.min(1, n));
+    const svg = (color) => React.createElement("svg", { viewBox: "0 0 24 24", width: px, height: px, style: { display: "block" } }, React.createElement("path", { d: STAR, fill: color }));
+    const layer = (frac, color) => React.createElement("div", { style: { position: "absolute", left: 0, top: 0, height: "100%", width: (frac * 100) + "%", overflow: "hidden" } }, svg(color));
+    const stars = [];
+    for (let i = 1; i <= 6; i++) {
+      const certain = clamp01(lo - (i - 1)), uncertain = clamp01(hi - (i - 1));
+      const kids = [svg(empty)];
+      if (uncertain > 0) kids.push(layer(uncertain, soft));
+      if (certain > 0) kids.push(layer(certain, tone));
+      stars.push(React.createElement("div", { key: i, style: { position: "relative", width: px + "px", height: px + "px", flex: "none" } }, kids));
+    }
+    return React.createElement("span", { style: { display: "inline-flex", gap: "2px" } }, stars);
+  }
+
+  icon(d) { return React.createElement("svg", { viewBox:"0 0 24 24", width:16, height:16, fill:"none", stroke:"currentColor", strokeWidth:2, strokeLinecap:"round", strokeLinejoin:"round", dangerouslySetInnerHTML:{ __html:d } }); }
+
+  renderVals() {
+    const P = this.props || {};
+    const viewer = P.viewer || "own", mode = P.mode || "desktop", lifecycle = P.lifecycle || (viewer === "own" ? "active" : "active");
+    const isOwn = viewer === "own", isScouting = !isOwn;
+    const isDesktop = mode === "desktop", isMobile = !isDesktop;
+    const tab = this.state.tab || P.tab || "overblik";
+    const unit = this.state.unit || "wkg";
+    const sc = (v) => this.statColor(v), stx = (v) => this.statText(v), ic = (d) => this.icon(d);
+    const setTab = (k) => this.setState({ tab: k });
+
+    // ---------- abilities ----------
+    const abil = { climbing:1, tempo:8, punch:16, sprint:21, acceleration:21, flat:19, time_trial:6, endurance:11, durability:14, recovery:13, aggression:30, tactics:18, descending:12, cobblestone:7, positioning:17 };
+    const prog = { climbing:0, tempo:.15, punch:.41, sprint:.34, acceleration:.62, flat:.18, time_trial:.05, endurance:.12, durability:.28, recovery:.55, aggression:.7, tactics:.22, descending:.33, cobblestone:.08, positioning:.5 };
+    const SK = { climbing:"Klatring", tempo:"Tempo", punch:"Punch", sprint:"Spurt", acceleration:"Acceleration", flat:"Fladt", time_trial:"Enkeltstart", endurance:"Udholdenhed", durability:"Robusthed", recovery:"Restitution", aggression:"Aggression", tactics:"Taktik", descending:"Nedkørsel", cobblestone:"Brosten", positioning:"Positionering" };
+    const mkSkill = (k) => ({ label:SK[k], value:abil[k],
+      numStyle:{ fontFamily:"var(--font-data)", fontVariantNumeric:"tabular-nums", fontWeight:700, fontSize:"12.5px", color:sc(abil[k]), flex:"none", minWidth:"19px", textAlign:"right" },
+      trackStyle:{ position:"relative", flex:"0 0 44px", height:"4px", background:"var(--bg-subtle)", borderRadius:"9999px", overflow:"hidden" },
+      fillStyle:{ position:"absolute", left:0, top:0, height:"100%", width:(isOwn ? Math.round((prog[k]||0)*100) : 0) + "%", background:"rgb(var(--accent) / .75)", borderRadius:"9999px" } });
+    const groupDefs = [
+      ["Fysisk", ["climbing","tempo","punch","sprint","acceleration","flat","time_trial","endurance","durability","recovery"], '<path d="M6 12h3l2-5 3 9 2-4h2"/>'],
+      ["Mental", ["aggression","tactics"], '<path d="M12 3a4 4 0 0 0-4 4v1a3 3 0 0 0-1 5l1 1v3a3 3 0 0 0 6 0 3 3 0 0 0 6 0v-3l1-1a3 3 0 0 0-1-5V7a4 4 0 0 0-4-4z"/>'],
+      ["Teknisk", ["descending","cobblestone","positioning"], '<path d="M14 4l6 6-8 8H6v-6z"/><path d="M11 7l6 6"/>'],
+    ];
+    const groups = groupDefs.map(([label, keys, d]) => ({ label, count: keys.length + " evner", icon: ic(d), skills: keys.map(mkSkill) }));
+
+    // ---------- rider types ----------
+    const TYPES = [
+      ["Sprinter", 34, 56, 66], ["Puncheur", 22, 40, 50], ["Rouleur", 18, 34, 44], ["Baroudeur", 16, 32, 42],
+      ["Brosten", 14, 28, 38], ["Enkeltstart", 8, 18, 28], ["GC", 7, 14, 24], ["Klatrer", 5, 12, 20],
+    ];
+    // narrower band for own (more known), wider for scouting
+    const bandAdj = isOwn ? 0.6 : 1.0;
+    const typeMid = (lo,hi) => (lo+hi)/2;
+    // radar order (spectrum)
+    const radarOrder = ["Sprinter","Puncheur","Brosten","Baroudeur","Rouleur","Enkeltstart","GC","Klatrer"];
+    const short = { Sprinter:"SPURT", Puncheur:"PUNCH", Brosten:"BROSTEN", Baroudeur:"BAROUD", Rouleur:"ROULEUR", Enkeltstart:"ITT", GC:"GC", Klatrer:"KLATRER" };
+    const byName = {}; TYPES.forEach(([n,c,lo,hi]) => byName[n] = { cur:c, lo, hi });
+    const cx=140, cy=112, R=82, n=radarOrder.length;
+    const ang = (i) => -Math.PI/2 + i*2*Math.PI/n;
+    const tNowPoly = radarOrder.map((nm,i) => (cx+Math.cos(ang(i))*R*byName[nm].cur/99).toFixed(1)+","+(cy+Math.sin(ang(i))*R*byName[nm].cur/99).toFixed(1)).join(" ");
+    const tCeilPoly = radarOrder.map((nm,i) => { const m=typeMid(byName[nm].lo,byName[nm].hi); return (cx+Math.cos(ang(i))*R*m/99).toFixed(1)+","+(cy+Math.sin(ang(i))*R*m/99).toFixed(1); }).join(" ");
+    const tAxes = radarOrder.map((nm,i) => ({ x:(cx+Math.cos(ang(i))*R).toFixed(1), y:(cy+Math.sin(ang(i))*R).toFixed(1) }));
+    const tRings = [R/3, R*2/3, R].map((r) => ({ r:r.toFixed(1) }));
+    const tLabels = radarOrder.map((nm,i) => { const a=ang(i); const lx=cx+Math.cos(a)*(R+13), ly=cy+Math.sin(a)*(R+13)+3; return { x:lx.toFixed(1), y:ly.toFixed(1), label:short[nm], color: nm==="Sprinter"?"rgb(var(--accent-t))":"var(--text-3)", anchor: Math.cos(a)>0.3?"start":(Math.cos(a)<-0.3?"end":"middle") }; });
+    const topTypeStars = this.starsNode(56/99*6, (isOwn?62:66)/99*6, 13);
+
+    // per-type bars (sorted by ceiling)
+    const typeBarMax = 75;
+    const typeBars = TYPES.slice().sort((a,b) => typeMid(b[2],b[3])-typeMid(a[2],a[3])).map(([label,cur,lo,hi]) => {
+      const hiAdj = isOwn ? lo + (hi-lo)*bandAdj : hi;
+      return { label, cur,
+        ceilLabel: "★ " + (lo/99*6).toFixed(1) + "–" + (hiAdj/99*6).toFixed(1),
+        stars: this.starsNode(lo/99*6, hiAdj/99*6, 12),
+        trackStyle:{ position:"relative", height:"8px", background:"var(--bg-subtle)", borderRadius:"9999px", overflow:"hidden" },
+        bandStyle:{ position:"absolute", left:(cur/typeBarMax*100).toFixed(1)+"%", top:0, height:"100%", width:Math.max(0,(hiAdj-cur)/typeBarMax*100).toFixed(1)+"%", background:"rgb(var(--accent) / .25)" },
+        fillStyle:{ position:"absolute", left:0, top:0, height:"100%", width:(cur/typeBarMax*100).toFixed(1)+"%", background:"rgb(var(--accent-t))", borderRadius:"9999px" } };
+    });
+
+    // ---------- potential stars (hero) — always fuzzy ----------
+    const potStars = isOwn ? this.starsNode(3.0, 3.6, 17) : this.starsNode(3.0, 4.0, 17);
+    const potText = isOwn ? "Lovende proemne" : "Proemne · usikkert";
+    const potLabel = isOwn ? "Potentiale · loft" : "Scoutet loft";
+
+    // ---------- rating chip ----------
+    const ratingChip = { width:"56px", height:"56px", borderRadius:"9999px", display:"flex", alignItems:"center", justifyContent:"center", background:sc(28), color:stx(28), fontFamily:"var(--font-data)", fontVariantNumeric:"tabular-nums", fontWeight:700, fontSize:"24px", boxShadow:"inset 0 0 0 1px rgb(0 0 0 / .08)", flex:"none" };
+
+    // ---------- value ----------
+    const valueVerdict = "Underpris";
+    const valueTag = { fontFamily:"var(--font-data)", fontSize:"9px", fontWeight:700, textTransform:"uppercase", letterSpacing:".07em", padding:"2px 7px", borderRadius:"9999px", background:"rgb(var(--success) / .12)", color:"rgb(var(--success))" };
+    const valueLine = "~44% under forventet værdi for alder + potentiale. Et røverkøb hvis du tror på loftet — og dyrt at lade en rival hugge.";
+
+    // ---------- scout verdict ----------
+    const verdict = isOwn ? "Behold & udvikl" : "Bud værd at overveje";
+    const verdictKicker = isOwn ? "Din spejders vurdering" : "Talentspejder-rapport";
+    const confidence = isOwn ? "Høj tillid" : "Begrænset · niveau 1/3";
+    const confChip = { fontFamily:"var(--font-data)", fontSize:"9.5px", fontWeight:700, textTransform:"uppercase", letterSpacing:".08em", padding:"3px 9px", borderRadius:"9999px", background: isOwn ? "rgb(var(--success) / .12)" : "rgb(var(--warning) / .14)", color: isOwn ? "rgb(var(--success))" : "rgb(var(--warning))" };
+    const reason = isOwn
+      ? "En 20-årig ren spurter — under Division 2-niveau i dag, men med et reelt loft som sprinter. Til CZ$293/år er han billig at beholde. Træn hans spurt og acceleration og giv ham to sæsoner før du dømmer ham."
+      : "Billig, ung og endimensionel. Et lavt bud køber en udviklings-chance eller dybde i truppen — men loftet er ubekræftet. Scout én gang mere før du betaler.";
+    const factors = isOwn
+      ? ["Alder 20 · U23 — 2-3 sæsoners bane","Klart bedst som sprinter; resten er bonus","Billig at beholde — CZ$293/år","Endimensionel i dag — ingen motor eller bjerge"]
+      : ["Alder 20 · U23 — langsigtet upside","Spurt-profil peger på ren massespurter","Lav indgangspris — værdi CZ$4.366","Loft ubekræftet — 2 scout-rapporter mangler"];
+    const verdictIconWrap = { width:"34px", height:"34px", flex:"none", borderRadius:"9999px", display:"flex", alignItems:"center", justifyContent:"center", color:"rgb(var(--accent-t))", background:"rgb(var(--accent) / .1)", border:"1px solid rgb(var(--accent) / .25)" };
+    const scoutLevelChip = { fontFamily:"var(--font-data)", fontSize:"9px", fontWeight:700, letterSpacing:".08em", padding:"2px 8px", borderRadius:"9999px", background: isOwn ? "rgb(var(--success) / .12)" : "rgb(var(--warning) / .14)", color: isOwn ? "rgb(var(--success))" : "rgb(var(--warning))" };
+    const scoutLevelLabel = isOwn ? "EGEN RYTTER" : "NIVEAU 1 / 3";
+    const typeIntro = isOwn ? "Loftet pr. type er stadig et estimat — det indsnævres jo længere du udvikler ham." : "Estimater fra ét scout-slot. Brug flere slots for at indsnævre spændet før du byder.";
+
+    // ---------- prev/next ----------
+    const rosterLabel = isOwn ? "Pavé Collective" : "Strada CC 2";
+    const rosterIndex = isOwn ? "9 / 24" : "3 / 26";
+    const prevName = isDesktop ? (isOwn ? "L. Mørk" : "T. Haddad") : "";
+    const nextName = isDesktop ? (isOwn ? "S. Beck" : "R. Saidi") : "";
+    const navBtn = { display:"inline-flex", alignItems:"center", gap:"6px", fontFamily:"var(--font-body)", fontWeight:600, color:"var(--text-2)", background:"var(--bg-card)", border:"1px solid var(--border)", borderRadius:"6px", padding:"5px 10px", cursor:"pointer" };
+    const navBtnR = { ...navBtn, flexDirection:"row" };
+    const navBtnHover = { borderColor:"var(--text-3)", color:"var(--text-1)" };
+
+    // ---------- lifecycle banner ----------
+    let banner = null;
+    if (lifecycle === "listed") banner = { color:"rgb(var(--accent-t))", label:"På transferlisten", detail:"Udbudspris CZ$ 5.000 · ingen bud endnu", bg:"rgb(var(--accent) / .1)", bd:"rgb(var(--accent) / .35)", icon: ic('<path d="M20 12V6a2 2 0 0 0-2-2h-6L3 13l8 8 9-9z"/><circle cx="8.5" cy="8.5" r="1.5"/>') };
+    else if (lifecycle === "auction") banner = { color:"rgb(var(--accent-t))", label:"I auktion · slutter om 2t 14m", detail:(isOwn ? "Højeste bud CZ$ 4.500" : "Højeste bud CZ$ 4.500 · Helios CC fører"), bg:"rgb(var(--accent) / .1)", bd:"rgb(var(--accent) / .35)", icon: ic('<path d="M14 3l7 7-4 4-7-7zM10 10l-7 7 4 4 7-7M13 13l3 3"/>') };
+    else if (lifecycle === "academy") banner = { color:"rgb(var(--info))", label:"Akademirytter", detail:"Optager ikke en senior-plads", bg:"rgb(var(--info) / .1)", bd:"rgb(var(--info) / .3)", icon: ic('<path d="M3 9l9-5 9 5-9 5z"/><path d="M7 11v5a5 3 0 0 0 10 0v-5"/>') };
+    const hasBanner = !!banner;
+    const bannerStyle = banner ? { display:"flex", alignItems:"center", gap:"9px", flexWrap:"wrap", marginTop:"11px", padding:"8px 12px", borderRadius:"6px", background:banner.bg, border:"1px solid "+banner.bd } : {};
+    const contractAlert = isOwn && lifecycle === "active";
+
+    // ---------- actions ----------
+    const btnBase = { display:"inline-flex", alignItems:"center", justifyContent:"center", gap:"6px", fontFamily:"var(--font-body)", fontWeight:600, fontSize:"12.5px", lineHeight:"1.2", borderRadius:"5px", border:"1px solid transparent", cursor:"pointer", padding:"8px 13px", whiteSpace:"nowrap", transition:"filter .12s" };
+    const kindStyle = { primary:{ ...btnBase, background:"rgb(var(--accent))", color:"var(--on-accent)" }, secondary:{ ...btnBase, background:"transparent", color:"var(--text-1)", borderColor:"var(--border)" }, ghost:{ ...btnBase, background:"transparent", color:"var(--text-2)" }, danger:{ ...btnBase, background:"transparent", color:"rgb(var(--danger))", borderColor:"rgb(var(--danger) / .5)" } };
+    const kindHover = { primary:{ filter:"brightness(1.06)" }, secondary:{ borderColor:"var(--text-3)" }, ghost:{ background:"var(--bg-subtle)" }, danger:{ background:"rgb(var(--danger) / .1)" } };
+    const mkA = (label, kind) => ({ label, style:kindStyle[kind], styleHover:kindHover[kind] });
+    let actions;
+    if (isOwn) {
+      if (lifecycle === "listed") actions = [mkA("Fjern fra transferliste","primary"), mkA("Forlæng kontrakt","secondary"), mkA("Tildel træning","secondary"), mkA("Start auktion","ghost"), mkA("Frigiv","danger")];
+      else if (lifecycle === "auction") actions = [mkA("Se auktion","primary"), mkA("Tildel træning","secondary"), mkA("Frigiv","danger")];
+      else if (lifecycle === "academy") actions = [mkA("Promovér til senior","primary"), mkA("Forlæng kontrakt","secondary"), mkA("Sæt til salg","secondary"), mkA("Start auktion","ghost"), mkA("Frigiv","danger")];
+      else actions = [mkA("Forlæng kontrakt","primary"), mkA("Tildel træning","secondary"), mkA("Sæt til salg","secondary"), mkA("Start auktion","ghost"), mkA("Frigiv","danger")];
+    } else {
+      if (lifecycle === "auction") actions = [mkA("Byd nu · min. CZ$ 4.600","primary"), mkA("Føj til liste","secondary"), mkA("Scout · 2 tilbage","secondary")];
+      else actions = [mkA("Giv transferbud","primary"), mkA("Byttehandel","secondary"), mkA("Føj til liste","secondary"), mkA("Scout · 2 tilbage","secondary")];
+    }
+    const scoutBtn = { display:"inline-flex", alignItems:"center", gap:"7px", fontFamily:"var(--font-body)", fontWeight:600, fontSize:"11.5px", padding:"7px 12px", borderRadius:"5px", border:"1px solid rgb(var(--accent))", background:"rgb(var(--accent) / .12)", color:"rgb(var(--accent-t))", cursor:"pointer", marginLeft:"auto" };
+    const scoutBtnHover = { background:"rgb(var(--accent) / .2)" };
+    const linkBtn = { marginTop:"11px", display:"inline-flex", alignItems:"center", gap:"5px", fontFamily:"var(--font-body)", fontWeight:600, fontSize:"11.5px", padding:0, border:0, background:"none", color:"rgb(var(--accent-t))", cursor:"pointer" };
+    const linkBtnHover = { textDecoration:"underline" };
+    const goFysiologi = () => setTab("fysiologi");
+    const goScouting = (e) => { if (e && e.preventDefault) e.preventDefault(); setTab("scouting"); };
+
+    // ---------- physiology ----------
+    const weight = 72;
+    const durs = ["5s","15s","1 min","5 min","10 min","20 min","FTP"];
+    const riderW = [1350,1060,560,355,310,290,270], divW = [1220,1010,545,372,330,305,285];
+    const toU = (w) => unit === "wkg" ? +(w/weight).toFixed(1) : w;
+    const unitSuffix = unit === "wkg" ? " W/kg" : " W";
+    const riderV = riderW.map(toU), divV = divW.map(toU);
+    const allV = riderV.concat(divV), loV = Math.min(...allV), hiV = Math.max(...allV);
+    const llo = Math.log(loV*0.82), lhi = Math.log(hiV*1.08);
+    const X0=46, X1=320, Y0=20, Y1=150, NP=durs.length;
+    const xAt = (i) => (X0 + i*((X1-X0)/(NP-1)));
+    const yAt = (v) => (Y1 - (Math.log(v)-llo)/(lhi-llo)*(Y1-Y0));
+    const ptsOf = (arr) => arr.map((v,i) => xAt(i).toFixed(1) + "," + yAt(v).toFixed(1)).join(" ");
+    const pcRiderPts = ptsOf(riderV), pcDivPts = ptsOf(divV);
+    const fmtV = (v) => unit === "wkg" ? v.toFixed(1) : Math.round(v);
+    const pcDots = riderV.map((v,i) => ({ x:xAt(i).toFixed(1), y:yAt(v).toFixed(1), ty:(yAt(v)-7).toFixed(1), v:fmtV(v) }));
+    const pcXLabels = durs.map((d,i) => ({ x:xAt(i).toFixed(1), label:d }));
+    const gridVals = unit === "wkg" ? [4,8,16] : [300,600,1200];
+    const pcGrid = gridVals.map((g) => ({ y:yAt(g).toFixed(1), ty:(yAt(g)+3).toFixed(1), label:g }));
+    const pcZoneX = xAt(0).toFixed(1), pcZoneW = (xAt(2)-xAt(0)).toFixed(1), pcZoneTx = ((xAt(0)+xAt(2))/2).toFixed(1);
+    const pcCaption = "Over snittet i 5s–1min, under fra 5min";
+
+    const mkPhysCard = (label, big, unit2, sub, val, mean, divLabel) => ({ label, big, unit:unit2, sub, divLabel,
+      trackStyle:{ position:"relative", height:"6px", background:"var(--bg-subtle)", borderRadius:"9999px", marginTop:"9px" },
+      fillStyle:{ position:"absolute", left:0, top:0, height:"100%", width:Math.min(100,val/(mean*1.6)*100).toFixed(0) + "%", background:"rgb(var(--accent) / .8)", borderRadius:"9999px" },
+      meanStyle:{ position:"absolute", left:(mean/(mean*1.6)*100).toFixed(0) + "%", top:"-3px", height:"12px", width:"2px", background:"var(--text-1)" },
+      deltaStyle:{ fontFamily:"var(--font-data)", fontSize:"10.5px", fontWeight:600, color: val>=mean ? "rgb(var(--success))" : "rgb(var(--danger))" },
+      delta:(val>=mean ? "▴ " : "▾ ") + (val>=mean?"over":"under") });
+    const physioBig = [
+      mkPhysCard("FTP", "270", "W · 3,75 W/kg", "Tærskel (~1 time)", 270, 285, "285 W"),
+      mkPhysCard("VO₂max", "62", "ml/kg/min", "Aerobt loft", 62, 64, "64"),
+      mkPhysCard("Pmax", "1.350", "W · 18,8 W/kg", "Maks. spurt-effekt", 1350, 1220, "1.220 W"),
+      mkPhysCard("Zone 2", "210", "W · 2,9 W/kg", "Udholdenheds-base", 210, 230, "230 W"),
+    ];
+    const physioTrio = [
+      { label:"FTP", big:"270", unit:"W", ...(() => { const c=mkPhysCard("","","","",270,285,""); return { trackStyle:c.trackStyle, fillStyle:c.fillStyle, meanStyle:c.meanStyle, deltaStyle:c.deltaStyle, delta:c.delta }; })() },
+      { label:"VO₂max", big:"62", unit:"ml/kg", ...(() => { const c=mkPhysCard("","","","",62,64,""); return { trackStyle:c.trackStyle, fillStyle:c.fillStyle, meanStyle:c.meanStyle, deltaStyle:c.deltaStyle, delta:c.delta }; })() },
+      { label:"Pmax (5s)", big:"1.350", unit:"W", ...(() => { const c=mkPhysCard("","","","",1350,1220,""); return { trackStyle:c.trackStyle, fillStyle:c.fillStyle, meanStyle:c.meanStyle, deltaStyle:c.deltaStyle, delta:c.delta }; })() },
+    ];
+    const mkWatt = (label, note, w, dw) => { const v = toU(w), dv = toU(dw); const max = dv*1.65; return { label, note, val: fmtV(v) + unitSuffix,
+      trackStyle:{ position:"relative", height:"9px", background:"var(--bg-subtle)", borderRadius:"9999px", marginTop:"8px" },
+      fillStyle:{ position:"absolute", left:0, top:0, height:"100%", width:Math.min(100,v/max*100).toFixed(0) + "%", background:"rgb(var(--accent-t))", borderRadius:"9999px" },
+      meanStyle:{ position:"absolute", left:(dv/max*100).toFixed(0) + "%", top:"-3px", height:"15px", width:"2px", background:"var(--text-1)", borderRadius:"1px" },
+      deltaStyle:{ fontFamily:"var(--font-data)", fontSize:"11px", fontWeight:600, color: v>=dv ? "rgb(var(--success))" : "rgb(var(--danger))" },
+      delta:(v>=dv ? "▴ " : "▾ ") + (Math.abs(v-dv)>=1 ? Math.round(Math.abs(v-dv)) : Math.abs(v-dv).toFixed(1)) }; };
+    const wattProfile = [ mkWatt("5s","Spurt-top",1350,1220), mkWatt("1 min","Anaerob",560,545), mkWatt("5 min","VO₂",355,372), mkWatt("10 min","Tærskel+",310,330), mkWatt("20 min","Tærskel",290,305), mkWatt("FTP","1 time",270,285) ];
+
+    // zones (Coggan, FTP 270)
+    const ftp = 270;
+    const zoneDefs = [
+      ["Z1","Aktiv restitution", 0, 0.55, "rgb(var(--text-3) / .35)"],
+      ["Z2","Udholdenhed", 0.56, 0.75, "rgb(96 165 250 / .55)"],
+      ["Z3","Tempo", 0.76, 0.90, "rgb(var(--success) / .6)"],
+      ["Z4","Tærskel", 0.91, 1.05, "rgb(var(--accent) / .85)"],
+      ["Z5","VO₂max", 1.06, 1.20, "rgb(var(--accent-t) / .9)"],
+      ["Z6","Anaerob", 1.21, 1.50, "rgb(var(--warning) / .85)"],
+      ["Z7","Neuromuskulær", 1.51, 2.0, "rgb(var(--danger) / .8)"],
+    ];
+    const zTotal = zoneDefs.reduce((s,[, ,lo,hi]) => s + (hi-lo), 0);
+    const zones = zoneDefs.map(([z,name,lo,hi,color]) => ({ z, name, color,
+      range: (z==="Z1" ? "<"+Math.round(ftp*0.55) : (z==="Z7" ? ">"+Math.round(ftp*1.5) : Math.round(ftp*lo)+"–"+Math.round(ftp*hi))) + " W",
+      segStyle:{ flex:(hi-lo)/zTotal, background:color, borderRight:"1px solid var(--bg-card)" } }));
+
+    // ---------- training ----------
+    const focusChips = [["VO2max",0],["Tærskel",0],["Spurt",1],["Udholdenhed",0],["Teknik",0],["Aero",0]].map(([label,on]) => ({ label, style: on
+      ? { display:"inline-flex", alignItems:"center", gap:"5px", padding:"5px 11px", borderRadius:"9999px", border:"1px solid rgb(var(--accent))", background:"rgb(var(--accent) / .14)", color:"rgb(var(--accent-t))", fontSize:"12px", fontWeight:600 }
+      : { display:"inline-flex", alignItems:"center", gap:"5px", padding:"5px 11px", borderRadius:"9999px", border:"1px dashed var(--border)", background:"transparent", color:"var(--text-3)", fontSize:"12px" } }));
+    const intensityTabs = [["Hvile",0],["Let",0],["Normal",0],["Hård",1]].map(([label,on]) => ({ label, style:{ padding:"4px 11px", borderRadius:"6px", fontFamily:"var(--font-body)", fontSize:"11.5px", fontWeight:600, background: on?"var(--bg-card)":"transparent", color: on?"var(--text-1)":"var(--text-3)", boxShadow: on?"0 1px 2px rgb(0 0 0 / .12)":"none" } }));
+    const sessDefs = [["I dag","Spurt · 6×10s",91,"Hård"],["−1","Acceleration · 4×30s",84,"Hård"],["−2","Restitution · rolig",66,"Let"],["−3","Tempo · 3×8min",78,"Normal"],["−4","Spurt · lead-out sim",88,"Hård"]];
+    const sessions = sessDefs.map(([day,focus,score,load]) => ({ day, focus, load, score, scoreStyle:{ fontFamily:"var(--font-data)", fontVariantNumeric:"tabular-nums", fontWeight:700, fontSize:"13px", color:sc(score), flex:"none", minWidth:"24px", textAlign:"right" } }));
+    const sparkVals = [58,62,55,64,60,68,63,71,66,73,69,76,72,73];
+    const sx0=4, sx1=296, sy0=8, sy1=62, smin=50, smax=80;
+    const trainSpark = sparkVals.map((v,i) => (sx0 + i*((sx1-sx0)/(sparkVals.length-1))).toFixed(1) + "," + (sy1-(v-smin)/(smax-smin)*(sy1-sy0)).toFixed(1)).join(" ");
+    const trainAvgY = (sy1-(65-smin)/(smax-smin)*(sy1-sy0)).toFixed(1);
+
+    const devReadout = isOwn
+      ? "Et spring på ~2 stjerner til loftet, og det meste ligger i de næste to sæsoner — grunden til at være tålmodig fremfor at sælge nu."
+      : "Stigende kurve siden S1. Den fulde træningsplan er skjult — scout ham for at indsnævre projektionen.";
+    const devLog = [
+      { season:"Sæson 2 · nu", focus:"Spurt · Hård", ratingDelta:"+6", deltaColor:"rgb(var(--success))", projected:false, gains:[{k:"Spurt",v:"+3"},{k:"Acceleration",v:"+2"},{k:"Punch",v:"+1"}], note:"stærk blok · intet tilbageslag" },
+      { season:"Sæson 1", focus:"Udholdenhed · Normal", ratingDelta:"+4", deltaColor:"rgb(var(--success))", projected:false, gains:[{k:"Udholdenhed",v:"+2"},{k:"Restitution",v:"+1"},{k:"Fladt",v:"+1"}], note:"byggede en basismotor" },
+      { season:"Sæson 3 · projekteret", focus:"Spurt · Hård (planlagt)", ratingDelta:"~+5", deltaColor:"var(--text-3)", projected:true, gains:[{k:"Spurt",v:"~+3"},{k:"Acceleration",v:"~+2"}], note:"~46 som sprinter ved S4" },
+    ].map((d,i) => ({ ...d, rowStyle:{ padding:"11px 0", borderTop: i===0?"none":"1px solid var(--border)", opacity: d.projected?0.65:1 }, focusStyle:{ fontFamily:"var(--font-data)", fontSize:"10px", fontWeight:700, letterSpacing:".03em", padding:"2px 8px", borderRadius:"9999px", background: d.projected?"transparent":"rgb(var(--accent) / .12)", border: d.projected?"1px dashed var(--border)":"0", color: d.projected?"var(--text-3)":"rgb(var(--accent-t))" } }));
+
+    // ---------- history (table) ----------
+    const histType = (t) => ({ Auktion:"rgb(var(--accent-t))", Bud:"rgb(var(--info))", Kontrakt:"rgb(var(--info))", Transfer:"rgb(var(--accent-t))", Resultat:"rgb(var(--success))", Scouting:"var(--text-2)", Interesse:"var(--text-2)", Oprindelse:"var(--text-3)" }[t] || "var(--text-2)");
+    const histChip = (t) => ({ fontFamily:"var(--font-data)", fontSize:"9px", fontWeight:700, letterSpacing:".04em", textTransform:"uppercase", padding:"2px 7px", borderRadius:"4px", background:"var(--bg-subtle)", border:"1px solid var(--border)", color:histType(t), justifySelf:"start", whiteSpace:"nowrap" });
+    const histDefs = isOwn ? [
+      ["S2 · 12.04","Resultat","1. plads · Critérium d'Alger","+CZ$ 1.250","rgb(var(--success))"],
+      ["S2 · 09.04","Bud","Bud afvist — Helios CC","CZ$ 4.200","var(--text-2)"],
+      ["S2 · 02.04","Scouting","Scoutet af Atlas Racing (niv. 1)","",""],
+      ["S2 · 28.03","Bud","Bud afvist — Atlas Racing","CZ$ 3.800","var(--text-2)"],
+      ["S2 · 20.03","Interesse","Føjet til 2 rivalers ønskeliste","",""],
+      ["S1 · slut","Kontrakt","Underskrev første prokontrakt","CZ$ 293/år","var(--text-1)"],
+      ["S1 · 14.02","Auktion","Vundet af Pavé Collective (2 bud)","CZ$ 3.900","rgb(var(--accent-t))"],
+      ["S1 · 14.02","Bud","Pavé Collective bød","CZ$ 3.900","var(--text-2)"],
+      ["S1 · 14.02","Bud","Helios CC bød","CZ$ 3.600","var(--text-2)"],
+      ["S1 · 10.02","Auktion","Sat på åbningsauktion","Udråb CZ$ 3.000","var(--text-2)"],
+      ["S1 · start","Oprindelse","Algerisk ungdoms-intake, 19 år","",""],
+    ] : [
+      ["S2 · i dag","Auktion","Sat på auktion af Strada CC 2","Udråb CZ$ 4.000","rgb(var(--accent-t))"],
+      ["S2 · 12.04","Resultat","1. plads · Critérium d'Alger","+CZ$ 1.250","rgb(var(--success))"],
+      ["S2 · 02.04","Scouting","Du scoutede ham (niv. 1)","",""],
+      ["S1 · slut","Kontrakt","Kontrakt med Strada CC 2","CZ$ 293/år","var(--text-1)"],
+      ["S1 · 14.02","Auktion","Vundet af Strada CC 2 (2 bud)","CZ$ 3.900","rgb(var(--accent-t))"],
+      ["S1 · start","Oprindelse","Algerisk ungdoms-intake, 19 år","",""],
+    ];
+    const history = histDefs.map(([date,type,event,amount,amtColor]) => ({ date, type, event, amount: amount || "—", amtColor: amount ? amtColor : "var(--text-3)", typeStyle: histChip(type) }));
+    const histCols = isDesktop ? "84px 88px 1fr 116px" : "58px 64px 1fr 78px";
+    const histHeadRow = { display:"grid", gridTemplateColumns:histCols, gap:"10px", padding:"9px 16px", borderBottom:"1px solid var(--border)", alignItems:"center" };
+    const histRow = { display:"grid", gridTemplateColumns:histCols, gap:"10px", padding:"9px 16px", borderTop:"1px solid var(--border)", alignItems:"center" };
+    const focusRef = [ { k:"VO2max", v:"Klatring · Punch · Tempo" }, { k:"Tærskel", v:"Enkeltstart · Tempo" }, { k:"Spurt", v:"Spurt · Acceleration" }, { k:"Udholdenhed", v:"Udhold. · Restit. · Robust." }, { k:"Teknik", v:"Nedk. · Position · Brosten" }, { k:"Aero", v:"Enkeltstart · Fladt" } ];
+
+    // ---------- results (PCS-style, grouped + expandable) ----------
+    const expanded = this.state.expanded || {};
+    const toggleRace = (id) => this.setState(s => ({ expanded: { ...(s.expanded||{}), [id]: !(s.expanded||{})[id] } }));
+    const clsStyle = (cls) => ({ fontFamily:"var(--font-data)", fontSize:"10px", fontWeight:700, letterSpacing:".03em", padding:"1px 6px", borderRadius:"4px", background: cls==="2.2" ? "rgb(96 165 250 / .15)" : "var(--bg-subtle)", color:"var(--text-2)", justifySelf:"start" });
+    const posStyle = (p, sub) => ({ fontFamily:"var(--font-data)", fontWeight:700, fontSize: sub?"12px":"13px", color: p==="1" ? "rgb(var(--accent-t))" : (sub?"var(--text-2)":"var(--text-1)"), textAlign:"right" });
+    const resCols = isDesktop ? "64px 1fr 52px 70px 48px 48px 84px" : "1fr 44px 40px 70px";
+    const resHeadRow = { display:"grid", gridTemplateColumns:resCols, gap:"10px", padding:"9px 16px", borderBottom:"1px solid var(--border)", alignItems:"center" };
+    const baseRow = { display:"grid", gridTemplateColumns:resCols, gap:"10px", padding:"10px 16px", borderTop:"1px solid var(--border)", alignItems:"center" };
+    const resDefs = [
+      { id:"crit", date:"12.04", race:"Critérium d'Alger", cls:"1.2", terrain:"Fladt", pos:"1", points:"60", prize:"CZ$ 1.250" },
+      { id:"gp", date:"28.03", race:"GP Constantine", cls:"1.2", terrain:"Bakket", pos:"14", points:"8", prize:"—" },
+      { id:"sahel", date:"13–15.03", race:"Tour du Sahel", cls:"2.2", terrain:"3 etaper", pos:"31", points:"18", prize:"CZ$ 240", stages:[
+        { label:"Etape 1 · fladt", pos:"7", points:"4", prize:"—" },
+        { label:"Etape 2 · bakket", pos:"22", points:"0", prize:"—" },
+        { label:"Etape 3 · fladt", pos:"4", points:"14", prize:"CZ$ 240" },
+        { label:"Samlet (GC)", pos:"31", points:"0", prize:"—" },
+      ] },
+      { id:"oran", date:"02.03", race:"Oran Classic", cls:"1.2", terrain:"Fladt", pos:"9", points:"12", prize:"—" },
+    ];
+    const results = resDefs.map((r) => { const isStage = !!r.stages; const open = !!expanded[r.id]; return {
+      date:r.date, race:r.race, cls:r.cls, terrain:r.terrain, pos:r.pos, points:r.points, prize:r.prize, isStage, open,
+      onToggle: isStage ? (() => toggleRace(r.id)) : (() => {}),
+      rowStyle: { ...baseRow, cursor: isStage ? "pointer" : "default" },
+      chevStyle: { display:"inline-block", fontSize:"9px", color:"var(--text-3)", transform: open ? "rotate(90deg)" : "none", transition:"transform .12s" },
+      classStyle: clsStyle(r.cls), posStyle: posStyle(r.pos, false), prizeColor: r.prize==="—" ? "var(--text-3)" : "rgb(var(--success))",
+      stages: (r.stages||[]).map((st) => ({ label:st.label, pos:st.pos, points:st.points, prize:st.prize, rowStyle: { ...baseRow, background:"var(--bg-subtle)", padding:"7px 16px" }, posStyle: posStyle(st.pos, true), prizeColor: st.prize==="—" ? "var(--text-3)" : "rgb(var(--success))" })),
+    }; });
+    const seasonTabs = [["s2","Sæson 2",1],["s1","Sæson 1",0],["all","Alle",0]].map(([k,label,on]) => ({ label, style:{ padding:"4px 11px", borderRadius:"6px", fontFamily:"var(--font-body)", fontSize:"11.5px", fontWeight:600, background:on?"var(--bg-card)":"transparent", color:on?"var(--text-1)":"var(--text-3)", boxShadow:on?"0 1px 2px rgb(0 0 0 / .12)":"none" } }));
+    const totals = [ { value:"1", label:"Sejre", color:"var(--text-1)" }, { value:"5", label:"Løb", color:"var(--text-1)" }, { value:"1", label:"Top 5", color:"var(--text-1)" }, { value:"0", label:"Trøjer", color:"var(--text-1)" }, { value:"92", label:"Ranking-point", color:"var(--text-1)" }, { value:"CZ$ 1.490", label:"Præmiepenge", color:"rgb(var(--success))" } ];
+    const thStyle = { fontFamily:"var(--font-data)", fontSize:"9px", fontWeight:600, textTransform:"uppercase", letterSpacing:".05em", color:"var(--text-3)" };
+    const thStyleR = { ...thStyle, textAlign:"right" };
+
+    // ---------- interest ----------
+    const eye = ic('<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/>');
+    const search = ic('<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>');
+    const star = ic('<path d="M12 3l2.6 5.6 6 .8-4.4 4.2 1.1 6L12 17l-5.3 2.6 1.1-6L3.4 9.4l6-.8z"/>');
+    const interestLine = isOwn
+      ? "Ingen bud endnu — men 4 rivaler følger ham. Hans lave værdi gør ham til et nemt mål, hvis du venter for længe med kontrakten."
+      : "Du er 1 af 4 managere der følger ham. Et direkte bud til Strada CC 2 er vejen — eller byd hvis han kommer på auktion.";
+    const interestStats = [
+      { iconEl:star, label:"Følger", value:"4", sub:"managere", subStyle:{ fontSize:"11px", color:"var(--text-3)" } },
+      { iconEl:eye, label:"Profilvisninger", value:"41", sub:"▴ 18%", subStyle:{ fontSize:"11px", color:"rgb(var(--success))", fontWeight:600 } },
+      { iconEl:search, label:"Scoutet af", value:"2", sub:"rivaler", subStyle:{ fontSize:"11px", color:"var(--text-3)" } },
+    ];
+    const rivalScouts = [ { team:"Helios CC", meta:"Niveau 1 · S2" }, { team:"Atlas Racing", meta:"Niveau 1 · S2" } ];
+    const interestEvents = [
+      { iconEl:search, t:"Helios CC scoutede ham", meta:"Sæson 2 · niv. 1" },
+      { iconEl:star, t: isOwn ? "Føjet til 2 rivalers liste" : "Føjet til din liste", meta:"Sæson 2" },
+      { iconEl:eye, t:"Profilvisninger steg 18%", meta:"sidste 7 dage" },
+    ];
+
+    // ---------- tabs ----------
+    const tabDefs = [["overblik","Overblik"],["fysiologi","Fysiologi"],["traening","Træning"],["udvikling","Udvikling"],["scouting","Scouting"],["historik","Historik"],["resultater","Resultater"],["interesse","Interesse"]];
+    const tabs = tabDefs.map(([key,label]) => ({ key, label, onClick:() => setTab(key), style:{ appearance:"none", background:"none", border:0, borderBottom:"2px solid " + (tab===key ? "rgb(var(--accent))" : "transparent"), cursor:"pointer", padding:"11px 2px", marginRight: isDesktop ? "19px" : "15px", marginBottom:"-1px", fontFamily:"var(--font-body)", fontSize:"13px", fontWeight: tab===key ? 700 : 500, color: tab===key ? "var(--text-1)" : "var(--text-2)", whiteSpace:"nowrap", flex:"none" } }));
+
+    const unitTabs = [["wkg","W/kg"],["w","Watt"]].map(([key,label]) => ({ key, label, onClick:() => this.setState({ unit:key }), style:{ appearance:"none", border:0, cursor:"pointer", padding:"5px 12px", borderRadius:"6px", fontFamily:"var(--font-data)", fontSize:"12px", fontWeight:600, background: unit===key ? "var(--bg-card)" : "transparent", color: unit===key ? "var(--text-1)" : "var(--text-3)", boxShadow: unit===key ? "0 1px 2px rgb(0 0 0 / .12)" : "none" } }));
+    const pillWrap = { display:"inline-flex", gap:"2px", background:"var(--bg-subtle)", border:"1px solid var(--border)", borderRadius:"8px", padding:"3px" };
+
+    // ---------- shared styles ----------
+    const card = { background:"var(--bg-card)", border:"1px solid var(--border)", borderRadius:"5px", padding:"15px 17px" };
+    const cardLeftAccent = { ...card, borderLeft:"2px solid rgb(var(--accent))" };
+    const cardValue = { ...card };
+    const cardFlush = { ...card, padding:0, overflow:"hidden" };
+    const cardCenter = { ...card, padding:"40px 24px", textAlign:"center" };
+    const h3 = { fontFamily:"var(--font-display)", fontSize:"17px", letterSpacing:".02em", color:"var(--text-1)", margin:0, textTransform:"uppercase" };
+    const h3b = { ...h3, marginBottom:"9px" };
+    const h3c = { ...h3, margin:"11px 0 5px" };
+
+    const sRoot = { background:"var(--bg-body)", color:"var(--text-1)", fontFamily:"var(--font-body)", fontSize:"14px", lineHeight:"1.5", width:"100%", minHeight:"100%", boxSizing:"border-box", WebkitFontSmoothing:"antialiased" };
+    const sNavBar = { display:"flex", alignItems:"center", justifyContent:"space-between", gap:"10px", padding: isDesktop ? "9px 24px" : "8px 14px", borderBottom:"1px solid var(--border)", background:"var(--bg-elevated)" };
+    const sHeroOuter = { background:"var(--bg-card)", borderBottom:"1px solid var(--border)", borderTop:"2px solid rgb(var(--accent))", padding: isDesktop ? "16px 24px 14px" : "14px 15px 12px" };
+    const sHeroTopRow = { display:"flex", flexDirection: isDesktop ? "row" : "column", gap: isDesktop ? "20px" : "14px", alignItems:"stretch", justifyContent:"space-between" };
+    const sCluster = { display:"flex", flexDirection:"column", gap:"10px", flex:"none", width: isDesktop ? "320px" : "auto", maxWidth:"100%", padding: isDesktop ? "0 0 0 20px" : "13px 0 0", borderLeft: isDesktop ? "1px solid var(--border)" : "none", borderTop: isDesktop ? "none" : "1px solid var(--border)" };
+    const sActionsWrap = { display:"flex", flexWrap:"wrap", gap:"7px", marginTop:"12px" };
+    const sName = { fontFamily:"var(--font-display)", fontWeight:400, fontSize: isDesktop ? "clamp(34px,4.6vw,46px)" : "34px", lineHeight:".9", letterSpacing:".005em", color:"var(--text-1)", margin:0, textTransform:"uppercase", overflowWrap:"break-word" };
+    const sPhoto = { position:"relative", width: isDesktop ? "70px" : "60px", height: isDesktop ? "92px" : "80px", borderRadius:"6px", background:"var(--bg-subtle)", border:"1px solid var(--border)", display:"flex", alignItems:"center", justifyContent:"center", overflow:"hidden" };
+    const sPhotoFlag = { position:"absolute", bottom:"-5px", right:"-5px", width:"22px", height:"16px", borderRadius:"2px", boxShadow:"0 0 0 2px var(--bg-card),inset 0 0 0 1px rgb(0 0 0 / .15)" };
+    const sU23 = { fontFamily:"var(--font-data)", fontSize:"9px", fontWeight:700, textTransform:"uppercase", letterSpacing:".06em", padding:"2px 6px", borderRadius:"4px", background:"rgb(var(--info) / .12)", color:"rgb(var(--info))" };
+    const sTypeChip = { display:"inline-flex", alignItems:"center", gap:"5px", fontFamily:"var(--font-data)", fontSize:"9.5px", fontWeight:700, textTransform:"uppercase", letterSpacing:".06em", padding:"2px 8px", borderRadius:"9999px", background:"rgb(var(--accent) / .12)", color:"rgb(var(--accent-t))" };
+    const sTabBar = { position:"sticky", top:0, zIndex:10, display:"flex", overflowX:"auto", borderBottom:"1px solid var(--border)", background:"var(--bg-body)", padding: isDesktop ? "0 24px" : "0 15px" };
+    const sContent = { padding: isDesktop ? "16px 24px 28px" : "14px 15px 22px" };
+    const sOverGrid = { display:"grid", gridTemplateColumns: isDesktop ? "minmax(0,1fr) minmax(0,1fr)" : "1fr", gap:"13px", alignItems:"start" };
+    const sFactorGrid = { display:"grid", gridTemplateColumns: isDesktop ? "1fr 1fr" : "1fr", gap:"8px 18px" };
+    const sColsGrid = { display:"grid", gridTemplateColumns: isDesktop ? "repeat(3,minmax(0,1fr))" : "1fr", gap:"13px", alignItems:"start" };
+    const sPhysioCards = { display:"grid", gridTemplateColumns: isDesktop ? "repeat(3,minmax(0,1fr))" : "1fr", gap:"11px" };
+    const sPhysio4 = { display:"grid", gridTemplateColumns: isDesktop ? "repeat(4,minmax(0,1fr))" : "repeat(2,minmax(0,1fr))", gap:"11px" };
+    const sTotalsGrid = { display:"grid", gridTemplateColumns: isDesktop ? "repeat(6,minmax(0,1fr))" : "repeat(3,minmax(0,1fr))", gap:"13px" };
+
+    return {
+      isOwn, isScouting, isDesktop, isMobile,
+      teamLabel: isOwn ? "Pavé Collective" : "Strada Cycling Collective 2", teamIsAI: isScouting,
+      ratingChip, potStars, potText, potLabel,
+      valueVerdict, valueTag, valueLine,
+      verdict, verdictKicker, confidence, confChip, reason, factors, verdictIconWrap, scoutLevelChip, scoutLevelLabel, typeIntro,
+      rosterLabel, rosterIndex, prevName, nextName, navBtn, navBtnR, navBtnHover,
+      hasBanner, bannerStyle, bannerColor: banner ? banner.color : "", bannerIcon: banner ? banner.icon : null, bannerLabel: banner ? banner.label : "", bannerDetail: banner ? banner.detail : "", contractAlert,
+      actions, scoutBtn, scoutBtnHover, linkBtn, linkBtnHover, goFysiologi, goScouting,
+      groups,
+      tNowPoly, tCeilPoly, tAxes, tRings, tLabels, topTypeStars, typeBars,
+      physioBig, physioTrio, wattProfile, zones, pcRiderPts, pcDivPts, pcDots, pcXLabels, pcGrid, pcZoneX, pcZoneW, pcZoneTx, pcCaption, unitTabs,
+      focusChips, intensityTabs, sessions, trainSpark, trainAvgY, devReadout, devLog,
+      history, histHeadRow, histRow, focusRef, results, seasonTabs, totals, thStyle, thStyleR, resHeadRow,
+      interestLine, interestStats, rivalScouts, interestEvents,
+      tabs, pillWrap,
+      showOverblik: tab==="overblik", showFysiologi: tab==="fysiologi", showTraening: tab==="traening", showUdvikling: tab==="udvikling", showScouting: tab==="scouting", showHistorik: tab==="historik", showResultater: tab==="resultater", showInteresse: tab==="interesse",
+      card, cardLeftAccent, cardValue, cardFlush, cardCenter, h3, h3b, h3c,
+      sRoot, sNavBar, sHeroOuter, sHeroTopRow, sCluster, sActionsWrap, sName, sPhoto, sPhotoFlag, sU23, sTypeChip, sTabBar, sContent, sOverGrid, sFactorGrid, sColsGrid, sPhysioCards, sPhysio4, sTotalsGrid,
+    };
+  }
+}
+</script>
+</body>
+</html>
