@@ -142,7 +142,7 @@ export async function processBoardWeekendFinalization({
   // 1. Rigtige human-hold (match-UI-filter: ikke-AI/bank/test/frosne).
   const { data: teams, error: teamsError } = await supabase
     .from("teams")
-    .select("id, user_id, name, division, sponsor_income, season_1_identity_basis, team_dna_key")
+    .select("id, user_id, name, division, sponsor_income, season_1_identity_basis, team_dna_key, created_at")
     .eq("is_ai", false)
     .eq("is_bank", false)
     .eq("is_frozen", false)
@@ -348,12 +348,14 @@ export async function processBoardWeekendFinalization({
             team: teamWithRiders,
             board,
             newSatisfaction: update.newSatisfaction,
+            previousSatisfaction: update.previousSatisfaction,
             goalsMet: update.goalsMet,
             goalsTotal: update.goalsTotal,
             planIsComplete: false,
             seasonId: season.id,
             consecutiveLowExpirations: 0,
             boardTestMode,
+            now,
             notify: ({ type, title, message, metadata }) => notifyTeamOwnerFn({
               supabase,
               teamId: team.id,

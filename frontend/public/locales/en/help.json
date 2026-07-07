@@ -67,7 +67,7 @@
         "rows": [
           ["Layer", "Trigger", "Effect"],
           ["1", "Satisfaction-based", "Sponsor modifier ±20% (passive)"],
-          ["2", "Satisfaction <40%", "Salary cap: total salary frozen, no growth"],
+          ["2", "Satisfaction <40% for 2 evaluations in a row", "Salary cap: total salary capped at 1.5x its level when triggered — blocks buys/contract extensions that would grow it further. Never triggers in a team's first 30 days"],
           ["3", "Satisfaction <30%", "Signing restriction: buys >300K blocked"],
           ["4", "Satisfaction <15%", "Forced sale: your lowest-value rider is auto-listed (riders with popularity ≥70 or value ≥8,000,000 CZ$ are protected)"],
           ["5", "<10% or 2× plan expiry below 30%", "Sponsor pullout: −10% sponsor for one season"],

@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.66",
+    "date": "2026-07-07",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "fixed",
+        "audience": "player",
+        "topic": "Board",
+        "en": {
+          "title": "The board's salary cap is now actually binding",
+          "body": "When the board sets a salary cap after a satisfaction crisis, it was frozen to whatever your wage bill happened to be at that exact moment — sometimes near 0 — and only checked when signing a rider via transfer or auction. It didn't stop you from growing past it through contract extensions. The cap now gives real headroom (1.5x your wage bill), never tightens below a level it was already at, and also blocks contract extensions that would push you over it. It's also more forgiving on the way in: it never triggers on a single bad patch (satisfaction has to stay below 40% for two evaluations in a row) and it can't happen at all during your team's first 30 days."
+        },
+        "da": {
+          "title": "Bestyrelsens løncap er nu reelt bindende",
+          "body": "Når bestyrelsen sætter et løncap efter en tilfredshedskrise, blev det frosset til lige præcis den lønsum du havde i det øjeblik — nogle gange næsten 0 — og blev kun tjekket ved signering af en rytter via transfer eller auktion. Det stoppede dig ikke fra at vokse forbi det via kontraktforlængelser. Cappen giver nu reelt vækstrum (1,5x din lønsum), strammes aldrig under et niveau den allerede har været på, og blokerer nu også kontraktforlængelser der ville sende dig over det. Den er også mildere på vej ind: den udløses aldrig af en enkelt dårlig periode (tilfredsheden skal være under 40% to evalueringer i træk), og den kan slet ikke ramme i dit holds første 30 dage."
+        },
+        "refs": [2237]
+      }
+    ]
+  },
+  {
     "version": "6.65",
     "date": "2026-07-07",
     "label": "Beta",
