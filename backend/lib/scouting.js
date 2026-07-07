@@ -96,13 +96,16 @@ export const SCOUT_DISPLAY_CONFIG = Object.freeze({
   // #1543 beslutning 3+4: INGEN når 100% præcision. Ved fuldt scout-niveau (og
   // for egne ryttere, som altid behandles som maxLevel) er der et REST-BÅND:
   residualHalfWidth: 0.5,   // stjerne-halvbredde ved fuld viden
-  // Rest-center kan ligge skævt (seeded pr. rytter+hold) så båndets midtpunkt
-  // ikke er sandheden — ellers var rest-båndet trivielt inverterbart (#1162).
-  // BEVIDST eget seed ("scout-residual:") afkoblet fra level-biasens seed, så
-  // sandheden ikke kan løses lineært af to observationer på tværs af levels.
-  // 0.4 (ikke 0.25): 0,5-trins-afrundingen sluger bias < 0.25 helt — båndet
-  // ville altid være centreret på sandheden og dermed inverterbart.
-  residualBiasFactor: 0.4,
+  // PERSISTENT anker-bias (seeded pr. rytter+hold, uniform ±anchorBias): lægges
+  // til centeret på ALLE levels, inkl. rest-båndet. Fordi den er KONSTANT på
+  // tværs af levels kan ingen kombination af observationer (gennemsnit,
+  // least-squares) fjerne den — det er det der gør rest-båndet ikke-inverterbart
+  // (#1162; valideret empirisk i scripts/scoutingInversionHarness.js). Den
+  // level-skalerede bias (biasFactor ovenfor) giver derudover VARIERENDE
+  // skævhed der konvergerer mod 0 — ankeret konvergerer aldrig.
+  // 0.6: kvantisering (0,5-trin) + clamping ved 1/6 trækker den effektive
+  // fejl ned — 0.5 gav median-rekonstruktionsfejl 0.227 (< 0.25-gaten).
+  anchorBias: 0.6,
 });
 
 function baseUncertainty(age, cfg = SCOUT_DISPLAY_CONFIG) {
@@ -124,13 +127,15 @@ export function estimatePotentialRange(truePotentiale, scoutLevel, age, riderId,
   if (!Number.isFinite(truth)) return null;
   const level = clamp(Number(scoutLevel) || 0, 0, maxLevel);
 
+  // Persistent per-(rytter, hold) anker-bias — konstant på tværs af levels.
+  const anchor = (seededUnit(`scout-anchor:${riderId}:${teamId}`) * 2 - 1)
+    * SCOUT_DISPLAY_CONFIG.anchorBias;
+
   // Fuldt scoutet (eller maxLevel==0) → REST-BÅND (#1543 beslutning 3+4): selv
-  // fuld viden er et smalt interval om et let skævt center — aldrig eksakt.
+  // fuld viden er et smalt interval om det ankrede center — aldrig eksakt.
   if (level >= maxLevel) {
     const half = SCOUT_DISPLAY_CONFIG.residualHalfWidth;
-    const bias = (seededUnit(`scout-residual:${riderId}:${teamId}`) * 2 - 1)
-      * SCOUT_DISPLAY_CONFIG.residualBiasFactor;
-    const center = clamp(truth + bias, 1, 6);
+    const center = clamp(truth + anchor, 1, 6);
     return {
       lo: clamp(roundHalf(center - half), 1, 6),
       hi: clamp(roundHalf(center + half), 1, 6),
@@ -141,11 +146,11 @@ export function estimatePotentialRange(truePotentiale, scoutLevel, age, riderId,
 
   const knowledge = level / maxLevel;            // 0..1, stiger med scouting
   const base = baseUncertainty(age);
-  const halfWidth = base * (1 - knowledge);       // → 0 ved fuld viden
-  // Center kan ligge skævt (per-manager), men skævheden konvergerer mod 0.
+  const halfWidth = base * (1 - knowledge);       // → residual ved fuld viden
+  // Center = anker (persistent) + level-skaleret skævhed (konvergerer mod 0).
   const bias = (seededUnit(`scout:${riderId}:${teamId}`) * 2 - 1)
     * base * SCOUT_DISPLAY_CONFIG.biasFactor * (1 - knowledge);
-  const center = clamp(truth + bias, 1, 6);
+  const center = clamp(truth + anchor + bias, 1, 6);
 
   const lo = clamp(roundHalf(center - halfWidth), 1, 6);
   const hi = clamp(roundHalf(center + halfWidth), 1, 6);
