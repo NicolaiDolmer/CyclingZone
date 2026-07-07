@@ -67,9 +67,9 @@ export function useClientRiderFilters(riders = []) {
     if (filters.u23) result = result.filter(r => isU23(r.birthdate));
 
     if (filters.free_agent) result = result.filter(r => !r.team_id);
-    // #2238: skjul AI-hold-ryttere medmindre toggle er slået til. No-op for datasæt
-    // der ikke henter owner_is_ai (undefined → vises), så eksisterende paneler er upåvirket.
-    if (!filters.show_ai) result = result.filter(r => !r.owner_is_ai);
+    // #2238: show_ai er RidersPage-only (server-pathen fetchRidersPage). Denne
+    // klient-variant driver auktions-/transfer-/hold-/watchlist-lister, hvor
+    // AI-hold-ryttere ikke optræder — så ingen AI-filtrering her.
     if (filters.team_id) result = result.filter(r => r.team_id === filters.team_id);
     if (filters.nationality_code) result = result.filter(r => r.nationality_code === filters.nationality_code);
 
