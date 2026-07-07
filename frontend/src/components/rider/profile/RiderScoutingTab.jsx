@@ -75,7 +75,11 @@ export default function RiderScoutingTab({ rider, scouting }) {
   const [failed, setFailed] = useState(false);
 
   const riderId = rider?.id;
-  const { maxLevel, scout, scoutingId, slots } = scouting;
+  const { maxLevel, scout, scoutingId, slots, levels } = scouting;
+  // Scout-niveauet kan også stige via hero'ens scout-knap (useScouting er delt
+  // side-state) — genindlæs rapporten når niveauet ændrer sig, uanset hvor der
+  // blev scoutet fra.
+  const hookLevel = levels?.[riderId] ?? 0;
 
   const load = useCallback(async () => {
     if (!riderId) return;
@@ -95,6 +99,7 @@ export default function RiderScoutingTab({ rider, scouting }) {
   }, [riderId]);
 
   useEffect(() => { setReport(null); load(); }, [load]);
+  useEffect(() => { if (hookLevel > 0) load(); }, [hookLevel, load]);
 
   const level = report?.level ?? 0;
   const remaining = slots?.remaining ?? 0;
@@ -236,8 +241,12 @@ export default function RiderScoutingTab({ rider, scouting }) {
         </SectionCard>
       )}
 
-      {/* Røverkøb? — sammenligning + one-line read, ingen verdict-label. */}
-      {value && (
+      {/* Røverkøb? — sammenligning + one-line read, ingen verdict-label.
+          Skjules når markedsværdi == modelværdi (tautologi — market_value ER
+          i dag modelbaseret for ryttere uden auktions-drift; kortet siger så
+          intet. Får reel signalværdi når expected bliver potentiale-justeret
+          i Fase 2/3). */}
+      {value && value.expected !== value.market && (
         <SectionCard>
           <h3 className="font-display text-[17px] leading-none tracking-[0.02em] uppercase text-cz-1 m-0 mb-3">
             {t("profile.scouting.valueTitle")}
