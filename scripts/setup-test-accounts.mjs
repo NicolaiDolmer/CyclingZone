@@ -91,13 +91,58 @@ async function ensureUsersRow(admin, { authUser, username, dryRun }) {
   return { row: data, action: "inserted" };
 }
 
+async function findOrphanTeamByName(admin, teamName) {
+  // #2245: efter en tidligere brugersletning (auth-user + users-række slettet) står
+  // teams.user_id NULL, men rækken (og dens navn) består. En ren user_id-lookup ser
+  // den ikke og forsøger et nyt insert af samme navn → kolliderer med
+  // teams_name_lower_unique_idx. Relink orphanen i stedet for at crashe.
+  const { data, error } = await admin
+    .from("teams")
+    .select("id, name, manager_name, balance, is_test_account, is_ai, is_bank, is_frozen, user_id")
+    .is("user_id", null)
+    .ilike("name", teamName)
+    .maybeSingle();
+  if (error) throw new Error(`select orphan team: ${error.message}`);
+  return data;
+}
+
 async function ensureTeamRow(admin, { authUser, teamName, managerName, division, dryRun }) {
-  const { data: existing, error: selErr } = await admin
+  const { data: byUser, error: selErr } = await admin
     .from("teams")
     .select("id, name, manager_name, balance, is_test_account, is_ai, is_bank, is_frozen")
     .eq("user_id", authUser.id)
     .maybeSingle();
   if (selErr) throw new Error(`select teams: ${selErr.message}`);
+
+  let existing = byUser;
+  let needsRelink = false;
+  if (!existing) {
+    const orphan = await findOrphanTeamByName(admin, teamName);
+    if (orphan) {
+      existing = orphan;
+      needsRelink = true;
+    }
+  }
+
+  if (existing && needsRelink) {
+    if (dryRun) return { row: existing, action: "would-relink" };
+    const { data, error } = await admin
+      .from("teams")
+      .update({
+        user_id: authUser.id,
+        is_test_account: true,
+        is_ai: false,
+        is_bank: false,
+        is_frozen: false,
+        manager_name: existing.manager_name || managerName,
+        balance: 800000,
+      })
+      .eq("id", existing.id)
+      .select("id, name, balance, is_test_account")
+      .single();
+    if (error) throw new Error(`relink teams: ${error.message}`);
+    return { row: data, action: "relinked" };
+  }
 
   if (existing) {
     // Tving korrekte flags + balance — uden at overskrive name hvis allerede sat.
