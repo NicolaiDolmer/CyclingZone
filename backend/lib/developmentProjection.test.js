@@ -23,13 +23,15 @@ test("projectCeilingBand: season 0 = nu (afrundet)", () => {
   assert.equal(band[0].hi, 63);
 });
 
-test("vækst: nedre envelope er fladt gulv (≥ now), øvre stiger (aldrig under now i vækst)", () => {
+test("vækst: nedre envelope ≥ now og stiger langsomt, øvre stiger hurtigere", () => {
   const now = 60;
   const band = projectCeilingBand({ now, ceilLo: 70, ceilHi: 78, age: 20, seasons: 6 });
-  // Alle vækst-sæsoner (age 21..26 ≤ peak 28): lo == now (fladt gulv), hi > now.
+  // Alle vækst-sæsoner (age 21..26 ≤ peak 28): nedre kant ≥ now og aldrig over øvre;
+  // øvre stiger over now. Nedre må stige (smalt bånd, ejer-valgt) men aldrig under now.
   for (let s = 1; s <= 6; s++) {
-    assert.equal(band[s].lo, now, `nedre gulv holder ved season ${s}`);
+    assert.ok(band[s].lo >= now, `nedre kant ≥ now ved season ${s}: ${band[s].lo}`);
     assert.ok(band[s].hi > now, `øvre stiger ved season ${s}`);
+    assert.ok(band[s].lo <= band[s].hi, `lo ≤ hi ved season ${s}`);
   }
 });
 

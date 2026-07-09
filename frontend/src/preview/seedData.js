@@ -607,9 +607,9 @@ export const SEED_PROJECTION = {
   level: 3, maxLevel: 3, own: true, capsMissing: false,
   primaryKey: "sprinter", now: 70, ceil: { lo: 78, hi: 86 },
   band: [
-    { season: 0, lo: 70, hi: 70 }, { season: 1, lo: 70, hi: 77 }, { season: 2, lo: 70, hi: 81 },
-    { season: 3, lo: 70, hi: 82 }, { season: 4, lo: 70, hi: 83 }, { season: 5, lo: 70, hi: 84 },
-    { season: 6, lo: 70, hi: 84 },
+    { season: 0, lo: 70, hi: 70 }, { season: 1, lo: 71, hi: 76 }, { season: 2, lo: 72, hi: 79 },
+    { season: 3, lo: 72, hi: 81 }, { season: 4, lo: 73, hi: 82 }, { season: 5, lo: 73, hi: 83 },
+    { season: 6, lo: 73, hi: 83 },
   ],
   timing: { seasons: { lo: 2, hi: null }, ageAt: { lo: 23, hi: null } },
   pastPeak: false,

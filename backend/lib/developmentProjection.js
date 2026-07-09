@@ -36,11 +36,14 @@ export const DISPLAY_SEASONS = 6;          // tegnet bånd-horisont (længere = 
 // i intervallet per konstruktion. Kalibreret empirisk mod den ægte motor i
 // scripts/developmentProjectionHarness.js (coverage-gate).
 //
-// Nedre envelope (pessimistisk): den langsomste rytter vokser knap nok → fladt gulv ved
-// nu i vækstfasen; efter peak falder han STEJLT. Øvre envelope (optimistisk): hurtig
-// vækst mod ceilHi; efter peak falder han MILDT.
-export const RATE_GROWTH_LO = 0.0;   // nedre: intet garanteret vækst (kan stå stille)
-export const RATE_GROWTH_HI = 1.4;   // øvre: max potentiale-rate (+ nonlinearitets-margin)
+// Nedre envelope (pessimistisk): den langsomste rytter vokser LANGSOMT (rate 0.5 <
+// motorens min-rate 0.6 → nedre kant forbliver under reality = 0% over-lovende, men
+// stiger så båndet viser forventet vækst frem for et fladt gulv). Efter peak falder han.
+// Øvre envelope (optimistisk): hurtig vækst mod ceilHi; efter peak falder han mildt.
+// Ejer-valgt "smalt" bånd (2026-07-09): tættere/mere informativt end det flade gulv,
+// samme sikkerhed (validér i developmentProjectionHarness.js: median 1.0, 0% over-lovende).
+export const RATE_GROWTH_LO = 0.5;   // nedre: langsom-men-reel vækst (< motorens min 0.6)
+export const RATE_GROWTH_HI = 1.15;  // øvre: lidt under max-rate → strammere top
 
 // Rating-niveau decline pr. sæson efter peak. Re-ratet type-decline er ~2-4 pt/sæson
 // (flere signatur-evner falder samtidig), IKKE de 1-2.6 ability-point motoren bruger
@@ -50,8 +53,8 @@ export const RATING_DECLINE_BY_YEARS_PAST_PEAK = Object.freeze([
   { maxYears: 6, drop: 3.5 },
   { maxYears: 99, drop: 4.5 },
 ]);
-export const DECLINE_MULT_STEEP = 1.2;   // nedre envelope (worst case)
-export const DECLINE_MULT_MILD = 0.5;    // øvre envelope (best case)
+export const DECLINE_MULT_STEEP = 0.9;   // nedre envelope (worst case)
+export const DECLINE_MULT_MILD = 0.6;    // øvre envelope (best case)
 
 function growthFracForAge(age, cfg) {
   for (const row of cfg.growthFractionByAge) if (age <= row.maxAge) return row.frac;

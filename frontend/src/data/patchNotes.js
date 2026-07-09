@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.68",
+    "date": "2026-07-09",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "new",
+        "audience": "player",
+        "topic": "Rider development",
+        "en": {
+          "title": "The Development tab now projects toward a rider's ceiling",
+          "body": "The Development tab draws a projection now: a dashed line from where a rider is today toward a shaded ceiling band, plus roughly how many seasons and at what age he is likely to reach it. Like everything about potential it is a range, never an exact number, and it stays hidden for rival riders you have not scouted."
+        },
+        "da": {
+          "title": "Udvikling-fanen projicerer nu mod rytterens loft",
+          "body": "Udvikling-fanen tegner nu en projektion: en stiplet linje fra hvor rytteren er i dag mod et skraveret loft-bånd, plus cirka hvor mange sæsoner og i hvilken alder han sandsynligvis når det. Som alt om potentiale er det et interval, aldrig et eksakt tal, og det er skjult for fremmede ryttere du ikke har scoutet."
+        },
+        "refs": [2100]
+      }
+    ]
+  },
+  {
     "version": "6.67",
     "date": "2026-07-07",
     "label": "Beta",
