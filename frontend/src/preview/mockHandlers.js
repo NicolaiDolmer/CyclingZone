@@ -21,6 +21,8 @@ import {
   SEED_STRATEGY,
   SEED_ACADEMY,
   SEED_CALENDAR,
+  SEED_DEVELOPMENT,
+  SEED_PROJECTION,
 } from "./seedData.js";
 
 // Tager Accept-strengen direkte (ikke et Playwright-request). PostgREST signalerer
@@ -215,6 +217,11 @@ export function apiResponse(pathname) {
   }
 
   if (pathname.endsWith("/api/academy/me")) return SEED_ACADEMY;
+
+  // #2100 Udvikling-fane: registreret kurve + fuzzy loft-projektion. Projektion-ruten
+  // tjekkes FØR /development (endsWith er disjunkt, men rækkefølgen holder intentionen klar).
+  if (pathname.endsWith("/development-projection")) return SEED_PROJECTION;
+  if (pathname.endsWith("/development")) return SEED_DEVELOPMENT;
 
   return {};
 }

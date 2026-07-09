@@ -758,6 +758,7 @@ export default function RiderStatsPage() {
   // #2000 Historik: null = loader — [] betyder ægte "ingen handelshistorik".
   const [history, setHistory]               = useState(null);
   const [statHistory, setStatHistory]       = useState(null); // null = loader endnu
+  const [projection, setProjection]         = useState(null); // #2100 fuzzy loft-projektion
   const [physBenchmark, setPhysBenchmark]   = useState(null);
   const [ddActive, setDdActive]             = useState(false);
   // #195: live bud-timeline for seneste auktion (aktiv eller completed).
@@ -776,6 +777,7 @@ export default function RiderStatsPage() {
   const myTeamIdRef      = useRef(null);
   // #2000 stykke 5: stale-guard for development-fetchen (hurtig prev/next-switch).
   const developmentFetchIdRef = useRef(null);
+  const projectionFetchIdRef = useRef(null); // #2100 samme stale-guard for projektionen
   // #2000 sidste faner: samme stale-guards for historik + interesse + de
   // datastroemme fanerne konsumerer (bid-timeline, visits, watchlist-count,
   // rider/seasonRows) — review-fund: uden guards kan hurtig prev/next i
@@ -969,6 +971,24 @@ export default function RiderStatsPage() {
     }
   }
 
+  async function loadDevelopmentProjection() {
+    // #2100: fuzzy loft-projektion til Udvikling-fanen. Backend maskerer alt (hidden for
+    // uscoutede rivaler, capsMissing hvis ingen caps) → null her betyder bare "vis den
+    // rene registrerede kurve". Samme stale-guard som development-historikken.
+    const fetchId = id;
+    projectionFetchIdRef.current = fetchId;
+    setProjection(null);
+    try {
+      const h = await authHeaders();
+      const res = await fetch(`${API}/api/riders/${fetchId}/development-projection`, { headers: h });
+      const data = res.ok ? await res.json() : null;
+      if (projectionFetchIdRef.current !== fetchId) return; // stale svar — ny rytter er i gang
+      setProjection(data);
+    } catch {
+      if (projectionFetchIdRef.current === fetchId) setProjection(null);
+    }
+  }
+
   async function loadMyTeam() {
     const { data: { user } } = await supabase.auth.getUser();
     // #1792: udløbet/ugyldig session → user=null; stop før user.id (auth-flow redirecter til /login)
@@ -1123,7 +1143,7 @@ export default function RiderStatsPage() {
     } catch { /* non-critical: deadline-day banner falls back to inactive */ }
   }
 
-  useEffect(() => { loadRider(); loadMyTeam(); loadWatchlistStatus(); loadHistory(); loadDevelopmentHistory(); loadDdStatus(); loadBidTimeline(); loadVisits(); loadInterest(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { loadRider(); loadMyTeam(); loadWatchlistStatus(); loadHistory(); loadDevelopmentHistory(); loadDevelopmentProjection(); loadDdStatus(); loadBidTimeline(); loadVisits(); loadInterest(); }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function pushOverbidToast({ riderName, amount }) {
     const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
@@ -1631,6 +1651,7 @@ export default function RiderStatsPage() {
           types={developmentTypes}
           trainingHistory={trainingHistory}
           viewer={isMyRider ? "own" : "scouting"}
+          projection={projection}
         />
       )}
 

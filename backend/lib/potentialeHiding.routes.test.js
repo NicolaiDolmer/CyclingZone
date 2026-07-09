@@ -73,6 +73,24 @@ test("scouting-report returnerer aldrig rå potentiale eller ability_caps (#1543
   assert.match(block, /buildScoutEstimate\(/, "stjerne-båndet skal komme fra buildScoutEstimate");
 });
 
+test("development-projection returnerer aldrig rå potentiale eller ability_caps (#2100)", () => {
+  const idx = apiSource.indexOf('"/riders/:id/development-projection"');
+  assert.ok(idx !== -1, "development-projection-routen skal findes");
+  const block = apiSource.slice(idx, idx + 3000);
+  assert.doesNotMatch(
+    block,
+    /res\.json\([^)]*\b(potentiale|ability_caps)\b/,
+    "rå potentiale/ability_caps må ikke indgå i projektions-payloaden",
+  );
+  // Projektionen skal bygge på det MASKEREDE loft-bånd + den rene projektions-funktion —
+  // ikke rå caps direkte til klienten.
+  assert.match(block, /buildTypeCeilingBands\(/, "projektionen skal bruge det maskerede loft-bånd");
+  assert.match(block, /projectCeilingBand\(/, "projektionen skal komme fra projectCeilingBand");
+  // Routen må IKKE selecte potentiale (loft-båndet bærer den allerede maskeret).
+  const selectBlock = block.slice(0, block.indexOf(".maybeSingle()"));
+  assert.doesNotMatch(selectBlock, /\bpotentiale\b/, "development-projection må ikke selecte potentiale");
+});
+
 test("migrationen maskerer både riders.potentiale og rider_derived_abilities.hidden_potential (#1162)", () => {
   assert.match(migrationSource, /REVOKE SELECT ON public\.riders FROM anon, authenticated/);
   assert.match(migrationSource, /column_name <> 'potentiale'/);

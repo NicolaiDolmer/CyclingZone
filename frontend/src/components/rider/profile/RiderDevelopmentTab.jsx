@@ -6,11 +6,12 @@
 // udviklingslog (training_day_runs via useTrainingHistory — kun egne ryttere,
 // fremmede ser en forklaring, spejler designets scouting-skjul).
 //
-// BEVIDST UDSKUDT (ejer-gate, samme disciplin som Træningsscore): loft-linje,
-// stiplet projektion mod loft, "til loft"/"alder ved loft" og den projekterede
-// næste-sæson-logrække. Per-type-loft kræver ability_caps (invertérbar til det
-// server-skjulte potentiale, #1162); en ærlig projektion skal komme fuzzy fra
-// backend efter ejer-review. Se lib/developmentReport.js.
+// LOFT-PROJEKTION (#2100): stiplet projektion mod loft + skraveret loft-bånd +
+// "til loft"/"alder ved loft" kommer FUZZY fra backend (GET /riders/:id/development-
+// projection). Projektionen bygger KUN på nu-rating + det maskerede loft-bånd + den
+// offentlige alderskurve → aldrig invertérbar til det server-skjulte potentiale (#1162).
+// hidden/capsMissing (rival uden scouting, eller manglende caps) → fald tilbage til den
+// rene registrerede kurve. Se backend/lib/developmentProjection.js + developmentReport.js.
 //
 // Token-only (ingen rå hex — chart-serier bruger den delte token-palette,
 // slot-farver chart-1/chart-2 = prototypens blå/violet 1:1); SVG bruger CSS-vars
@@ -37,23 +38,42 @@ const VB = { w: 300, h: 172, x0: 36, x1: 290, y0: 26, y1: 140 };
 
 const fmtSigned = (n) => (n > 0 ? `+${n}` : `${n}`);
 
-// ── Chart-kort: rating pr. type over tid ─────────────────────────────────────────
-function ChartCard({ snapshots, chartTypes, t }) {
+// Projektion aktiv? Kun når backend leverer et bånd (egen rytter, eller scoutet rival
+// med caps). hidden/capsMissing → fald tilbage til den rene registrerede kurve (#2100).
+function projectionActive(projection) {
+  return Boolean(
+    projection && !projection.hidden && !projection.capsMissing &&
+    Array.isArray(projection.band) && projection.band.length > 1 &&
+    projection.ceil && typeof projection.ceil.lo === "number",
+  );
+}
+
+// ── Chart-kort: rating pr. type over tid + fuzzy loft-projektion (#2100) ────────────
+function ChartCard({ snapshots, chartTypes, projection, t }) {
   const seriesByKey = chartTypes.map((tp) => ({ ...tp, points: typeSeries(snapshots, tp.key) }));
   const segments = seasonSegments(snapshots);
   const currentSeason = segments.length > 0 ? segments[segments.length - 1].season : null;
+  const hasProj = projectionActive(projection);
+  const primaryColor = chartTypes[0]?.color ?? "rgb(var(--accent-t))";
 
-  // X = ægte tid (dato-skaleret — index-baseret x ville lyve om kurvens hældning,
-  // fordi daily-snapshots kun skrives på gevinst-dage og derfor ikke er ækvidistante).
+  // X: registreret historik (dato-skaleret — index-baseret x ville lyve om hældningen,
+  // fordi daily-snapshots kun skrives på gevinst-dage) fylder venstre del; når en
+  // projektion findes reserveres højre ~44% til de fremtidige sæsoner.
+  const xNow = hasProj ? VB.x0 + 0.56 * (VB.x1 - VB.x0) : VB.x1;
   const ts = snapshots.map((s) => Date.parse(s.snapshot_date));
   const tMin = Math.min(...ts), tMax = Math.max(...ts);
   const xAt = (i) => (tMax === tMin
-    ? (VB.x0 + VB.x1) / 2
-    : VB.x0 + ((ts[i] - tMin) / (tMax - tMin)) * (VB.x1 - VB.x0));
+    ? (VB.x0 + xNow) / 2
+    : VB.x0 + ((ts[i] - tMin) / (tMax - tMin)) * (xNow - VB.x0));
+  const H = hasProj ? projection.band.length - 1 : 0; // fremtidige sæsoner (band[0] = nu)
+  const xProj = (s) => (H === 0 ? xNow : xNow + (s / H) * (VB.x1 - xNow));
 
-  // Y = lineær rating-skala med luft, klampet til [1,99] (samme domæne-idé som
-  // resten af appen: ratings er 1-99).
-  const allRatings = seriesByKey.flatMap((s) => s.points.map((p) => p.rating));
+  // Y: lineær rating-skala med luft, klampet til [1,99]. Domænet skal rumme både den
+  // registrerede kurve OG projektions-båndet + loft-zonen.
+  const projVals = hasProj
+    ? projection.band.flatMap((p) => [p.lo, p.hi]).concat([projection.ceil.lo, projection.ceil.hi])
+    : [];
+  const allRatings = seriesByKey.flatMap((s) => s.points.map((p) => p.rating)).concat(projVals);
   const lo = Math.max(1, Math.min(...allRatings) - 4);
   const hi = Math.min(99, Math.max(...allRatings) + 4);
   const span = Math.max(1, hi - lo);
@@ -62,6 +82,20 @@ function ChartCard({ snapshots, chartTypes, t }) {
 
   const single = snapshots.length === 1;
   const lastIdx = snapshots.length - 1;
+
+  // Projektions-geometri (kun når aktiv): skraveret bånd (lo/hi-areal), stiplet
+  // center-linje og loft-zone i højre kant.
+  let bandArea = "", centerLine = "", ceilTop = 0, ceilBot = 0;
+  if (hasProj) {
+    const top = projection.band.map((p) => `${xProj(p.season).toFixed(1)},${yAt(p.hi).toFixed(1)}`);
+    const bot = projection.band.map((p) => `${xProj(p.season).toFixed(1)},${yAt(p.lo).toFixed(1)}`).reverse();
+    bandArea = [...top, ...bot].join(" ");
+    centerLine = projection.band
+      .map((p) => `${xProj(p.season).toFixed(1)},${yAt((p.lo + p.hi) / 2).toFixed(1)}`)
+      .join(" ");
+    ceilTop = yAt(projection.ceil.hi);
+    ceilBot = yAt(projection.ceil.lo);
+  }
 
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
@@ -77,12 +111,38 @@ function ChartCard({ snapshots, chartTypes, t }) {
         ))}
         <line x1={VB.x0} y1={VB.y1} x2={VB.x1} y2={VB.y1} stroke="var(--border)" strokeWidth="1" />
 
+        {/* Loft-zone + projektions-bånd (bag serierne). */}
+        {hasProj && (
+          <g>
+            <rect
+              x={xNow.toFixed(1)} y={Math.min(ceilTop, ceilBot).toFixed(1)}
+              width={(VB.x1 - xNow).toFixed(1)} height={Math.max(1, Math.abs(ceilBot - ceilTop)).toFixed(1)}
+              fill={primaryColor} opacity="0.13"
+            />
+            <text x={(VB.x1 - 1).toFixed(1)} y={(Math.min(ceilTop, ceilBot) - 2).toFixed(1)} fontSize="7" fill={primaryColor} fontFamily={DATA_FONT} textAnchor="end" opacity="0.9">
+              {t("profile.development.projection.ceilingLabel")}
+            </text>
+            <polygon points={bandArea} fill={primaryColor} opacity="0.1" />
+            <polyline points={centerLine} fill="none" stroke={primaryColor} strokeWidth="1.6" strokeDasharray="3 2.5" opacity="0.85" />
+          </g>
+        )}
+
+        {/* "Nu"-skillelinje. */}
+        {hasProj && (
+          <g>
+            <line x1={xNow.toFixed(1)} y1={VB.y0 - 2} x2={xNow.toFixed(1)} y2={VB.y1} stroke="var(--border)" strokeWidth="1" />
+            <text x={(xNow + 2).toFixed(1)} y={(VB.y0 + 4).toFixed(1)} fontSize="7.5" fill="var(--text-3)" fontFamily={DATA_FONT} textAnchor="start">
+              {t("profile.development.projection.now")}
+            </text>
+          </g>
+        )}
+
         {/* Sæson-grænser (lodret stiplet) + sæson-labels centreret pr. segment. */}
         {segments.map((seg, i) => {
           const cx = (xAt(seg.startIndex) + xAt(seg.endIndex)) / 2;
           const isCurrent = seg.season === currentSeason && i === segments.length - 1;
           const label = seg.season == null
-            ? "—"
+            ? "–"
             : isCurrent
               ? t("profile.development.chart.seasonNow", { n: seg.season })
               : t("profile.development.chart.season", { n: seg.season });
@@ -111,7 +171,7 @@ function ChartCard({ snapshots, chartTypes, t }) {
         })}
 
         <text x={(VB.x0 + VB.x1) / 2} y="168" fontSize="7.5" fill="var(--text-3)" fontFamily={DATA_FONT} textAnchor="middle">
-          {t("profile.development.chart.caption")}
+          {t(hasProj ? "profile.development.projection.caption" : "profile.development.chart.caption")}
         </text>
       </svg>
       <div className="flex gap-3.5 flex-wrap mt-2">
@@ -121,13 +181,62 @@ function ChartCard({ snapshots, chartTypes, t }) {
             {s.label}
           </span>
         ))}
+        {hasProj && (
+          <span className="inline-flex items-center gap-1.5 text-[11px] text-cz-2">
+            <span className="w-3.5 h-[3px] rounded-sm border-t-2 border-dashed" style={{ borderColor: primaryColor }} aria-hidden="true" />
+            {t("profile.development.projection.legend")}
+          </span>
+        )}
       </div>
     </div>
   );
 }
 
+// Formatér et sæson-/alders-interval fra projektions-timingen (#2100). Loftet leveres
+// altid som et BÅND (aldrig et eksakt tal) — copy afspejler det.
+function rangeText(lo, hi, t, keys) {
+  if (lo == null && hi == null) return null;
+  if (lo === 0) return t(keys.atCeiling);         // allerede ved loftet
+  if (hi == null) return t(keys.open, { lo });    // "~{lo}+"
+  if (lo === hi) return t(keys.single, { n: lo });
+  return t(keys.range, { lo, hi });
+}
+
+// Loft-rækker til Vækst-kortet: "Til loft ~X–Y sæsoner" + "Alder ved loft ~X–Y".
+// Returnerer [] når der ingen meningsfuld projektion er (skjult/mangler/efter peak).
+function ceilingRows(projection, t) {
+  if (!projectionActive(projection)) return [];
+  if (!projection.timing) {
+    // Ingen ren "til loft"-ETA: enten efter peak (i tilbagegang) eller en rytter hvis
+    // vækst flader ud lige under loftet (plateauer). Vis en ærlig kvalitativ udsigt.
+    const value = projection.pastPeak
+      ? t("profile.development.projection.pastPeak")
+      : t("profile.development.projection.approaching");
+    return [{ label: t("profile.development.projection.outlook"), value, cls: "text-cz-2" }];
+  }
+  const { seasons, ageAt } = projection.timing;
+  const rows = [];
+  const toCeiling = rangeText(seasons.lo, seasons.hi, t, {
+    atCeiling: "profile.development.projection.atCeiling",
+    open: "profile.development.projection.seasonsOpen",
+    single: "profile.development.projection.seasonsSingle",
+    range: "profile.development.projection.seasonsRange",
+  });
+  if (toCeiling) rows.push({ label: t("profile.development.projection.toCeiling"), value: toCeiling, cls: "text-cz-1" });
+  if (seasons.lo !== 0) {
+    const ageText = rangeText(ageAt.lo, ageAt.hi, t, {
+      atCeiling: "profile.development.projection.atCeiling",
+      open: "profile.development.projection.ageOpen",
+      single: "profile.development.projection.ageSingle",
+      range: "profile.development.projection.ageRange",
+    });
+    if (ageText) rows.push({ label: t("profile.development.projection.ageAtCeiling"), value: ageText, cls: "text-cz-1" });
+  }
+  return rows;
+}
+
 // ── Vækst denne sæson ────────────────────────────────────────────────────────────
-function GrowthCard({ primaryLabel, growth, totalPoints, trackedSince, t }) {
+function GrowthCard({ primaryLabel, growth, totalPoints, trackedSince, projection, t }) {
   const rows = [
     {
       label: t("profile.development.growth.typeRating", { type: primaryLabel }),
@@ -144,6 +253,7 @@ function GrowthCard({ primaryLabel, growth, totalPoints, trackedSince, t }) {
       value: trackedSince ? formatDate(trackedSince, null, { day: "numeric", month: "short" }) : "—",
       cls: "text-cz-1",
     },
+    ...ceilingRows(projection, t),
   ];
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz py-[15px] px-[17px]">
@@ -230,7 +340,7 @@ function LogCard({ viewer, entries, t }) {
   );
 }
 
-export default function RiderDevelopmentTab({ rider, history = [], types = [], trainingHistory, viewer = "own" }) {
+export default function RiderDevelopmentTab({ rider, history = [], types = [], trainingHistory, viewer = "own", projection = null }) {
   const { t } = useTranslation("rider");
 
   // null = fetch undervejs: vis loader, ikke en misvisende "ingen udvikling"-
@@ -290,13 +400,14 @@ export default function RiderDevelopmentTab({ rider, history = [], types = [], t
   return (
     <div className="flex flex-col gap-[13px]">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-[13px] items-start">
-        <ChartCard snapshots={snapshots} chartTypes={chartTypes} t={t} />
+        <ChartCard snapshots={snapshots} chartTypes={chartTypes} projection={projection} t={t} />
         <div className="flex flex-col gap-[13px] min-w-0">
           <GrowthCard
             primaryLabel={primaryLabel}
             growth={growth}
             totalPoints={totalPoints}
             trackedSince={snapshots[0].snapshot_date}
+            projection={projection}
             t={t}
           />
           <ReadingCard viewer={viewer} growth={growth} primaryLabel={primaryLabel} t={t} />
