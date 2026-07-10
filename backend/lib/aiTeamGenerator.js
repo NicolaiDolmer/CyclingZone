@@ -89,11 +89,55 @@ async function createAiTeam(supabase, { pool, ordinal, baseSeed, usedNames, allo
   return teamId;
 }
 
+// #2269: har holdets ryttere entries i et IGANGVÆRENDE løb (låst felt, samme
+// definition som #2074-guarden: ikke-completed + stages_completed>0)? Et låst hold
+// kan ikke hard-slettes — DB-triggeren trg_block_rider_delete_inflight kaster.
+async function teamHasInflightEntries(supabase, teamId, inflightRaceIds) {
+  if (!inflightRaceIds.length) return false;
+  const { data: riders, error: rErr } = await supabase.from("riders").select("id").eq("team_id", teamId);
+  if (rErr) throw new Error(`AI-trim (riders for ${teamId}): ${rErr.message}`);
+  const riderIds = (riders || []).map((r) => r.id);
+  if (!riderIds.length) return false;
+  const { data: entries, error: eErr } = await supabase
+    .from("race_entries")
+    .select("rider_id")
+    .in("race_id", inflightRaceIds)
+    .in("rider_id", riderIds);
+  if (eErr) throw new Error(`AI-trim (race_entries for ${teamId}): ${eErr.message}`);
+  return (entries || []).length > 0;
+}
+
 // Fjern N AI-hold fra en pulje (deterministisk: laveste id først). Sletter holdets
 // ryttere FØR holdet (riders.team_id -> teams er ON DELETE SET NULL i skemaet, men
 // vi vil ikke efterlade ejerløse AI-ryttere i markedet → eksplicit delete).
+// #2269: hold hvis ryttere har entries i et igangværende løb SPRINGES OVER (DB-guarden
+// fra #2074 blokerer hard delete af dem) — næste kandidat i id-ordenen tages i stedet.
+// Er der ikke nok ledige kandidater, trimmes færre end ønsket (deferred): en senere
+// reconcile/relaunch tager resten når løbet er kørt færdigt.
 async function removeAiTeams(supabase, aiTeams, count) {
-  const toRemove = [...aiTeams].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)).slice(0, count);
+  const sorted = [...aiTeams].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  if (!sorted.length || count <= 0) return 0;
+
+  const { data: inflight, error: infErr } = await supabase
+    .from("races")
+    .select("id")
+    .neq("status", "completed")
+    .gt("stages_completed", 0);
+  if (infErr) throw new Error(`AI-trim (inflight races): ${infErr.message}`);
+  const inflightRaceIds = (inflight || []).map((r) => r.id);
+
+  const toRemove = [];
+  for (const team of sorted) {
+    if (toRemove.length >= count) break;
+    if (await teamHasInflightEntries(supabase, team.id, inflightRaceIds)) continue;
+    toRemove.push(team);
+  }
+  if (toRemove.length < count) {
+    console.warn(
+      `  ⏳ AI-trim deferred: ${count - toRemove.length} AI-hold har entries i igangværende løb (låst felt, #2074) ` +
+      `og kan ikke trimmes nu — tages af en senere reconcile (#2269).`
+    );
+  }
   if (!toRemove.length) return 0;
   const ids = toRemove.map((t) => t.id);
   for (let i = 0; i < ids.length; i += INSERT_BATCH) {
