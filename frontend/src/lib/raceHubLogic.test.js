@@ -1,7 +1,7 @@
 // frontend/src/lib/raceHubLogic.test.js
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { computeColumnStatus, isRiderBound, deriveRaceStatus, poolRaceDayTotals, fitTier, freshnessTier, draftBindingMap, windowsOverlap, canAddRiderToColumn, overlapConflictColumn, riderColumnState, findSelectionOverlaps, groupColumnsByGameDay, sameDayCompatibilityHint } from "./raceHubLogic.js";
+import { computeColumnStatus, isRiderBound, deriveRaceStatus, poolRaceDayTotals, fitTier, freshnessTier, draftBindingMap, windowsOverlap, canAddRiderToColumn, overlapConflictColumn, riderColumnState, findSelectionOverlaps, groupColumnsByGameDay, sameDayCompatibilityHint, mergeBindingMaps } from "./raceHubLogic.js";
 
 const W = (g) => ({ start: g, end: g }); // 1-dags in-game-vindue på game-dag g
 
@@ -215,4 +215,33 @@ test("findSelectionOverlaps: ingen overlap → tom liste", () => {
     { id: "b", name: "B", bindingWindow: W(5), selection: { rider_ids: ["r1"] } },
   ];
   assert.deepEqual(findSelectionOverlaps({ columns: cols }), []);
+});
+
+// #2256: mergeBindingMaps — kladde-binding + serverens eksterne bindings.
+test("mergeBindingMaps: fletter eksterne entries ind uden dubletter og uden at mutere input", () => {
+  const base = { r1: [{ id: "a", window: W(4) }] };
+  const extra = {
+    r1: [{ id: "a", window: W(4), name: "Dublet" }, { id: "ext", window: W(9), name: "Vuelta al Sol" }],
+    r2: [{ id: "ext2", window: W(5), name: "Giro di Notte" }],
+  };
+  const merged = mergeBindingMaps(base, extra);
+  assert.deepEqual(merged.r1.map((e) => e.id), ["a", "ext"], "samme id fra extra ignoreres");
+  assert.equal(merged.r1[1].name, "Vuelta al Sol");
+  assert.equal(merged.r2[0].id, "ext2");
+  assert.deepEqual(base.r1.map((e) => e.id), ["a"], "input muteres ikke");
+  assert.deepEqual(mergeBindingMaps(base, undefined).r1.map((e) => e.id), ["a"], "extra=null tolereres");
+});
+
+test("isRiderBound + riderColumnState: ekstern binding (løb uden for brættet) greyer rytteren (#2256)", () => {
+  const colB = { id: "b", bindingWindow: W(9), selection: { rider_ids: [] } };
+  const map = mergeBindingMaps({}, { r1: [{ id: "ext", window: W(9), name: "Vuelta al Sol" }] });
+  assert.equal(isRiderBound({ bindingMap: map, riderId: "r1", forRaceId: "b", forWindow: colB.bindingWindow }), true);
+  assert.equal(riderColumnState({ column: colB, bindingMap: map, riderId: "r1" }), "overlap");
+});
+
+test("overlapConflictColumn: løb uden for brættet → navn fra binding-entry (#2256)", () => {
+  const colB = { id: "b", bindingWindow: W(9) };
+  const map = { r1: [{ id: "ext", window: W(9), name: "Vuelta al Sol" }] };
+  const hit = overlapConflictColumn({ column: colB, columns: [colB], bindingMap: map, riderId: "r1" });
+  assert.deepEqual(hit, { id: "ext", name: "Vuelta al Sol" });
 });

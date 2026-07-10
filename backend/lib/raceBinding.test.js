@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { raceTimeWindow, raceBindingWindow, raceGameDaySpan, windowsOverlap, findRiderBindingConflicts, loadTeamBindingContext, findManualOverlapConflicts, teamInRacePool } from "./raceBinding.js";
+import { raceTimeWindow, raceBindingWindow, raceGameDaySpan, windowsOverlap, findRiderBindingConflicts, loadTeamBindingContext, findManualOverlapConflicts, teamInRacePool, mapRiderBindingDetails } from "./raceBinding.js";
 
 test("raceGameDaySpan: endagsløb → start===end fra game_day", () => {
   assert.deepEqual(raceGameDaySpan([{ game_day: 10, scheduled_at: "2026-07-04T13:00:00Z" }]), { start: 10, end: 10 });
@@ -338,4 +338,36 @@ test("teamInRacePool: løb uden pulje (racePoolId null) → true (ingen restrikt
 
 test("teamInRacePool: hold uden pulje men løb har pulje → false", () => {
   assert.equal(teamInRacePool({ teamDivisionId: null, racePoolId: 4 }), false);
+});
+
+// #2265: mapRiderBindingDetails — hvilket løb binder hver rytter (til "optaget i <løbsnavn>").
+test("mapRiderBindingDetails: rytter → første overlappende løb; ikke-overlap tæller ikke", () => {
+  const details = mapRiderBindingDetails({
+    riderIds: ["r1", "r2", "r3"],
+    thisWindow: { start: 10, end: 11 },
+    otherRaces: [
+      { raceId: "race-a", window: { start: 11, end: 12 }, riderIds: ["r1"] },   // overlap
+      { raceId: "race-b", window: { start: 20, end: 21 }, riderIds: ["r2"] },   // ingen overlap
+      { raceId: "race-c", window: { start: 10, end: 10 }, riderIds: ["r1", "r3"] }, // overlap
+    ],
+  });
+  assert.equal(details.get("r1"), "race-a", "første overlappende løb vinder (deterministisk)");
+  assert.equal(details.has("r2"), false, "ikke-overlappende løb binder ikke");
+  assert.equal(details.get("r3"), "race-c");
+});
+
+test("mapRiderBindingDetails: intet vindue for dette løb → tom map", () => {
+  const details = mapRiderBindingDetails({
+    riderIds: ["r1"], thisWindow: null,
+    otherRaces: [{ raceId: "race-a", window: { start: 1, end: 1 }, riderIds: ["r1"] }],
+  });
+  assert.equal(details.size, 0);
+});
+
+test("mapRiderBindingDetails: kun ønskede riderIds medtages", () => {
+  const details = mapRiderBindingDetails({
+    riderIds: ["r1"], thisWindow: { start: 5, end: 5 },
+    otherRaces: [{ raceId: "race-a", window: { start: 5, end: 6 }, riderIds: ["r1", "ghost"] }],
+  });
+  assert.deepEqual([...details.keys()], ["r1"]);
 });

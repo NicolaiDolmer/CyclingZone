@@ -104,6 +104,10 @@ export default function RaceSelectionPanel({
   }
 
   const { size, riders, availableCount } = data;
+  // #2265: ryttere bundet i et ANDET løb med overlappende in-game-dag-vindue (server-
+  // beregnet). Bundne ryttere greyes + kan ikke tilføjes; er en bunden rytter allerede
+  // valgt (fx efter en reschedule) vises en konflikt-markering, men han kan fjernes.
+  const boundByRider = new Map((data.bound_riders || []).map((b) => [b.rider_id, b]));
   const clientErrors = validateSelectionClient({ ...sel, size, availableCount });
   const selectedRiders = riders.filter((r) => sel.riderIds.includes(r.id));
   // S4: best-fit-nudge — den valgte rytter med højest rute-match til den valgte etape.
@@ -256,10 +260,13 @@ export default function RaceSelectionPanel({
       <ul className="sm:hidden divide-y divide-cz-border">
         {visibleRiders.map((rider) => {
           const checked = sel.riderIds.includes(rider.id);
-          const disabled = rider.injured || (!checked && atMax) || saving;
+          const bound = boundByRider.get(rider.id) ?? null;
+          // #2265: en bunden, IKKE-valgt rytter kan ikke tilføjes; en bunden, VALGT rytter
+          // beholder aktiv checkbox så konflikten kan løses ved at fjerne ham.
+          const disabled = rider.injured || (bound && !checked) || (!checked && atMax) || saving;
           const fitLabel = selectedStageIndex != null ? t("selection.routeMatch") : t("selection.suitability");
           return (
-            <li key={rider.id} className={rider.injured ? "opacity-60" : ""}>
+            <li key={rider.id} className={rider.injured || (bound && !checked) ? "opacity-60" : ""}>
               <label className={`flex items-start gap-3 px-4 py-3 ${disabled ? "cursor-not-allowed" : "cursor-pointer"}`}>
                 <input
                   type="checkbox"
@@ -274,6 +281,13 @@ export default function RaceSelectionPanel({
                     {rider.injured && (
                       <span className="text-[10px] px-2 py-0.5 rounded-full bg-cz-danger/10 text-cz-danger border border-cz-danger/20">
                         {t("selection.injured")}
+                      </span>
+                    )}
+                    {bound && (
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full border ${checked
+                        ? "bg-cz-danger/10 text-cz-danger border-cz-danger/20"
+                        : "bg-cz-subtle text-cz-3 border-cz-border"}`}>
+                        {t(checked ? "selection.boundConflict" : "selection.boundIn", { race: bound.bound_race_name ?? "" })}
                       </span>
                     )}
                     <RiderTypeBadge primaryType={rider.primaryType} secondaryType={rider.secondaryType} />
@@ -322,9 +336,10 @@ export default function RaceSelectionPanel({
           <tbody>
             {visibleRiders.map((rider) => {
               const checked = sel.riderIds.includes(rider.id);
-              const disabled = rider.injured || (!checked && atMax) || saving;
+              const bound = boundByRider.get(rider.id) ?? null;
+              const disabled = rider.injured || (bound && !checked) || (!checked && atMax) || saving;
               return (
-                <tr key={rider.id} className={`border-b border-cz-border last:border-0 hover:bg-cz-subtle ${rider.injured ? "opacity-60" : ""}`}>
+                <tr key={rider.id} className={`border-b border-cz-border last:border-0 hover:bg-cz-subtle ${rider.injured || (bound && !checked) ? "opacity-60" : ""}`}>
                   <td className="px-4 py-2.5">
                     <label className={`flex items-center gap-2 ${disabled ? "cursor-not-allowed" : "cursor-pointer"}`}>
                       <input
@@ -338,6 +353,13 @@ export default function RaceSelectionPanel({
                       {rider.injured && (
                         <span className="text-[10px] px-2 py-0.5 rounded-full bg-cz-danger/10 text-cz-danger border border-cz-danger/20">
                           {t("selection.injured")}
+                        </span>
+                      )}
+                      {bound && (
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full border whitespace-nowrap ${checked
+                          ? "bg-cz-danger/10 text-cz-danger border-cz-danger/20"
+                          : "bg-cz-subtle text-cz-3 border-cz-border"}`}>
+                          {t(checked ? "selection.boundConflict" : "selection.boundIn", { race: bound.bound_race_name ?? "" })}
                         </span>
                       )}
                     </label>
