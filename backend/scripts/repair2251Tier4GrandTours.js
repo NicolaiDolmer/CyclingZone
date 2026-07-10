@@ -151,7 +151,8 @@ export async function repairTier4GrandTours({ supabase, now = new Date(), dryRun
 
 if (process.argv[1] && process.argv[1].endsWith("repair2251Tier4GrandTours.js")) {
   const __envdir = dirname(fileURLToPath(import.meta.url));
-  dotenv.config({ path: join(__envdir, "../../.env"), quiet: true });
+  dotenv.config({ path: join(__envdir, "../.env"), quiet: true });   // backend/.env
+  dotenv.config({ path: join(__envdir, "../../.env"), quiet: true }); // repo-root fallback
   const dryRun = !process.argv.includes("--live");
   const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
   repairTier4GrandTours({ supabase, dryRun })
