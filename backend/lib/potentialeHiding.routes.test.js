@@ -115,7 +115,7 @@ test("#2244: POST /scouting/:riderId (slots) er kill-switch-gatet bag scout_syst
   const idx = apiSource.indexOf('router.post("/scouting/:riderId"');
   assert.ok(idx !== -1, "POST /scouting/:riderId skal findes");
   const block = apiSource.slice(idx, idx + 1000);
-  assert.match(block, /isScoutSystemEnabled\(\)/, "routen skal tjekke scout_system_enabled-flaget");
+  assert.match(block, /isScoutSystemEnabled\(req\)/, "routen skal tjekke scout_system_enabled-flaget (m. admin-preview, A4b-moenster)");
   assert.match(block, /410/, "routen skal returnere 410 når job-modellen er slået til");
 });
 
