@@ -3,7 +3,7 @@
 > Ejer-godkendt 2026-07-05. **Regel: ét spor gøres FÆRDIGT før næste startes.** Status: 🟠 i gang (skal føres til dørs) · 🟢 næsten i mål/kun verify · ⚪ ikke startet. Detaljer/deadlines: [audits/2026-07-02-ejer-dashboard.md](audits/2026-07-02-ejer-dashboard.md) + issues. Visuel udgave: [Artifact-dashboard](https://claude.ai/code/artifact/e12714cc-8f93-482d-a87a-eba4e05e1635) (regenereres når denne fil ændres). Opdateres ved close-out; budget ≤1.500 tok.
 
 ## Stående spor (viger aldrig): stabilitet + fastholdelse
-Sentry-fejl ([#2186](https://github.com/NicolaiDolmer/CyclingZone/issues/2186) Express-fejl fanges ikke — blind plet, [#2189](https://github.com/NicolaiDolmer/CyclingZone/issues/2189)), løb der sidder fast ([#2149](https://github.com/NicolaiDolmer/CyclingZone/issues/2149) + rod-årsag), alle spillervendte bugs. Kører hver uge uanset alt andet — brugerne må ikke forlade os pga. fejl.
+Sentry-fejl ([#2186](https://github.com/NicolaiDolmer/CyclingZone/issues/2186) Express-fejl fanges ikke — blind plet, [#2189](https://github.com/NicolaiDolmer/CyclingZone/issues/2189)), løb der sidder fast ([#2149](https://github.com/NicolaiDolmer/CyclingZone/issues/2149) + rod-årsag), alle spillervendte bugs. Kører hver uge uanset alt andet — brugerne må ikke forlade os pga. fejl. **Triage 10/7 (#2251–#2266) slottet her:** race-motor #2251/#2265/#2256/#2260 · frontend-crashes #2252/#2253 · auktion #2257/#2264 · high-profile-flag #2261 · stats-reset #2263 · Supabase-sikkerhed #2258 · Clarity dead-clicks #2254 · DB-hygiejne #2259 (lav) · CodeQL PR #2255 (merge). Top-2 til næste sessioner: **#2251** (escalating, fyrer live) → **#2256** (Div 4).
 
 ## 1 · NU (5–6/7)
 1. 🟢 [#2206](https://github.com/NicolaiDolmer/CyclingZone/issues/2206) Rangliste manglede ryttere — årsag fundet (1000-rækkers DB-cap), fixet/merged; kun prod-verify.
@@ -16,14 +16,14 @@ Sentry-fejl ([#2186](https://github.com/NicolaiDolmer/CyclingZone/issues/2186) E
 6. ⚪ [#2224](https://github.com/NicolaiDolmer/CyclingZone/issues/2224) Race-balance-analyse — samme-hold-top-10-dominans + gentagne vindere; harness+scorecard (m. [#1378](https://github.com/NicolaiDolmer/CyclingZone/issues/1378)).
 7. ⚪ [#1145](https://github.com/NicolaiDolmer/CyclingZone/issues/1145)/[#1147](https://github.com/NicolaiDolmer/CyclingZone/issues/1147) Living World design-session — gennemgå doktrin, vælg næste motor-slices.
 8. 🟠 [#1441](https://github.com/NicolaiDolmer/CyclingZone/issues/1441) Økonomi fase 3 færdig — engine-slice (Plan B) + staff-UI [#2220](https://github.com/NicolaiDolmer/CyclingZone/issues/2220) → flip for alle.
-9. 🟠 [#2082](https://github.com/NicolaiDolmer/CyclingZone/issues/2082) Trænings-nerf — ejer-mål fastsat; harness → scorecard → ship 7–9/7.
+9. 🟠 [#2082](https://github.com/NicolaiDolmer/CyclingZone/issues/2082) Trænings-nerf — ejer-mål fastsat; harness → scorecard → ship 7–9/7. Feedback 10/7: 19-20-årige føles dødfødte #2262 · skæv fokus-udvikling #1974.
 10. ⚪ [#2180](https://github.com/NicolaiDolmer/CyclingZone/issues/2180)/[#2181](https://github.com/NicolaiDolmer/CyclingZone/issues/2181) Holdudtagelses-QoL · [#1279](https://github.com/NicolaiDolmer/CyclingZone/issues/1279) GO/NO-GO betalt marketing 11/7.
 
 ## 3 · RESTEN AF JULI (ét spor ad gangen)
 11. ⚪ [#2034](https://github.com/NicolaiDolmer/CyclingZone/issues/2034) Roller pr. etape + hjælperytter-adfærd + dominans-fix ([#2224](https://github.com/NicolaiDolmer/CyclingZone/issues/2224)) shippes.
 12. ⚪ [#1922](https://github.com/NicolaiDolmer/CyclingZone/issues/1922) Trænings-rework (ægte trade-offs, + ugeplan [#1895](https://github.com/NicolaiDolmer/CyclingZone/issues/1895)) — oven på nerf'en.
 13. ⚪ [#932](https://github.com/NicolaiDolmer/CyclingZone/issues/932)+[#2064](https://github.com/NicolaiDolmer/CyclingZone/issues/2064) Akademi-rework + intake-øgning (sim først) + junior/U23 [#958](https://github.com/NicolaiDolmer/CyclingZone/issues/958) design.
-14. 🟠 [#2000](https://github.com/NicolaiDolmer/CyclingZone/issues/2000) Rytterprofil rest — scouting-fane + hero + rating [#2006](https://github.com/NicolaiDolmer/CyclingZone/issues/2006).
+14. 🟠 [#2000](https://github.com/NicolaiDolmer/CyclingZone/issues/2000) Rytterprofil rest — scouting-fane + hero + rating [#2006](https://github.com/NicolaiDolmer/CyclingZone/issues/2006) + højde/vægt + compare retur #2266.
 15. ⚪ Værdi-gennemgang — auto-opdatering kører allerede; session om frekvens + glid mod handelspris [#1281](https://github.com/NicolaiDolmer/CyclingZone/issues/1281).
 16. ⚪ Marketing fase 2 — delebilleder [#1299](https://github.com/NicolaiDolmer/CyclingZone/issues/1299) + referral [#1173](https://github.com/NicolaiDolmer/CyclingZone/issues/1173) (hvis GO 11/7).
 17. 🟠 Discord [#2176](https://github.com/NicolaiDolmer/CyclingZone/issues/2176)–[#2183](https://github.com/NicolaiDolmer/CyclingZone/issues/2183) + migration (efter 27/7) · onboarding/EN-mails [#413](https://github.com/NicolaiDolmer/CyclingZone/issues/413) · kørerprogram lag 2.
