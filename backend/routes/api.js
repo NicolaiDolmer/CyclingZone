@@ -9178,6 +9178,12 @@ router.get("/board/status", requireAuth, async (req, res) => {
           currentSponsorIncome: teamRes.data?.sponsor_income ?? SPONSOR_INCOME_BASE,
           planDuration,
           seasonsCompleted: workingSeasonIndex,
+          // #2308 · Weekend/season-end sætter isFinalSeason (seasonsCompleted+1 >=
+          // planDuration); uden den her scorer no_outstanding_debt 1.0 i stedet for
+          // 1.05 og final-only mål pro-rates forkert i live-outlook-displayet.
+          // workingSeasonIndex er allerede min(planDuration, seasonsCompleted+1),
+          // så >= planDuration er ækvivalent med den uncappede sammenligning.
+          isFinalSeason: workingSeasonIndex >= planDuration,
           hasSeasonData: Boolean(currentStanding),
           isExpired,
           recentSnapshots: boardSnapshots.slice(-3).reverse(),

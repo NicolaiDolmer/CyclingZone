@@ -122,15 +122,21 @@ export async function loadGoalContextForBoard({
   // ellers (pre-pulje-DB'er / kald uden pulje) falder vi tilbage til den gamle
   // tier-brede tælling, så eksisterende sæsoner bevarer adfærd.
   // Fra pre-loaded standings hvis muligt (sparer en query), ellers løs fra DB.
+  // #2308 · divisionTeamCount = FULD pulje/division-størrelse (inkl. AI), matcher
+  // rank_in_division (som også rangerer inkl. AI). Bruges af
+  // computeResultsCompetitivenessFloor (boardEvaluation.js) til at normalisere
+  // gulvet mod samme population som placeringen selv blev udregnet mod — ellers
+  // normaliserer gulvet fejlagtigt mod den (mindre) human-only-tælling
+  // (divisionManagerCount) og inflaterer competitiveness.
   let divisionManagerCount = null;
+  let divisionTeamCount = null;
   const usePool = leagueDivisionId != null;
   if (Array.isArray(standings) && (usePool || division != null)) {
-    divisionManagerCount = standings
-      .filter((s) => {
-        if (!s.team || s.team.is_ai) return false;
-        return usePool ? s.league_division_id === leagueDivisionId : s.division === division;
-      })
-      .length;
+    const poolStandings = standings.filter((s) =>
+      usePool ? s.league_division_id === leagueDivisionId : s.division === division
+    );
+    divisionTeamCount = poolStandings.length;
+    divisionManagerCount = poolStandings.filter((s) => s.team && !s.team.is_ai).length;
   } else if (usePool) {
     const { data: poolStandings, error: poolErr } = await supabase
       .from("season_standings")
@@ -138,6 +144,7 @@ export async function loadGoalContextForBoard({
       .eq("season_id", currentSeasonId)
       .eq("league_division_id", leagueDivisionId);
     if (!poolErr) {
+      divisionTeamCount = (poolStandings || []).length;
       divisionManagerCount = (poolStandings || [])
         .filter((s) => s.team && !s.team.is_ai)
         .length;
@@ -149,6 +156,7 @@ export async function loadGoalContextForBoard({
       .eq("season_id", currentSeasonId)
       .eq("division", division);
     if (!divErr) {
+      divisionTeamCount = (divisionStandings || []).length;
       divisionManagerCount = (divisionStandings || [])
         .filter((s) => s.team && !s.team.is_ai)
         .length;
@@ -164,5 +172,6 @@ export async function loadGoalContextForBoard({
     seasonJerseyWins,
     cumulativeTransferBalance,
     divisionManagerCount,
+    divisionTeamCount,
   };
 }
