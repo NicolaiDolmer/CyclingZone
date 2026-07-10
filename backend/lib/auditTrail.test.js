@@ -298,7 +298,23 @@ function makeLoanEngineCaptureClient({ rpcOverride } = {}) {
               single: () => Promise.resolve({ data: { id: "loan-N" }, error: null }),
             }),
           }),
-          select: () => ({ eq: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }) }),
+          // #2301 · to query-shapes rammer "loans": app-guardens
+          // `.select("*").eq×3.maybeSingle()` (ingen eksisterende lån i denne fixture)
+          // og getTotalDebt's `.select("amount_remaining").eq×2`.
+          select: (columns) => {
+            if (columns === "*") {
+              return {
+                eq: () => ({
+                  eq: () => ({
+                    eq: () => ({
+                      maybeSingle: () => Promise.resolve({ data: null, error: null }),
+                    }),
+                  }),
+                }),
+              };
+            }
+            return { eq: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }) };
+          },
         };
       }
       if (table === "notifications") {

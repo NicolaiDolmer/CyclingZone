@@ -159,6 +159,9 @@ function createIdempotencySupabase({
 
         if (table === "loans") {
           return {
+            // #2301 · app-guarden i createEmergencyLoan tilføjer en 3. eq() + .maybeSingle()
+            // (team_id, loan_type, season_id) — genbruger samme filter-akkumulator som
+            // getTotalDebt's `.select("amount_remaining").eq(team_id).eq(status)`.
             select(_columns) {
               const filters = {};
               const query = {
@@ -171,6 +174,13 @@ function createIdempotencySupabase({
                   if (filters.team_id) rows = rows.filter((l) => l.team_id === filters.team_id);
                   if (filters.status) rows = rows.filter((l) => l.status === filters.status);
                   return Promise.resolve({ data: rows, error: null }).then(resolve, reject);
+                },
+                maybeSingle() {
+                  let rows = state.loans;
+                  if (filters.team_id) rows = rows.filter((l) => l.team_id === filters.team_id);
+                  if (filters.loan_type) rows = rows.filter((l) => l.loan_type === filters.loan_type);
+                  if (filters.season_id) rows = rows.filter((l) => l.season_id === filters.season_id);
+                  return Promise.resolve({ data: rows[0] || null, error: null });
                 },
               };
               return query;
@@ -993,6 +1003,15 @@ test("payroll-summary counts matcher antal finance_transactions rows skrevet (#5
               (!filters.status || l.status === filters.status)
             );
             return Promise.resolve({ data: rows, error: null }).then(resolve, reject);
+          },
+          // #2301 · app-guarden i createEmergencyLoan: .select("*").eq(team_id).eq(loan_type).eq(season_id).maybeSingle()
+          maybeSingle() {
+            const rows = loans.filter((l) =>
+              (!filters.team_id || l.team_id === filters.team_id) &&
+              (!filters.loan_type || l.loan_type === filters.loan_type) &&
+              (!filters.season_id || l.season_id === filters.season_id)
+            );
+            return Promise.resolve({ data: rows[0] || null, error: null });
           },
           update(payload) {
             return {

@@ -3176,6 +3176,353 @@ test("processTeamSeasonPayroll: team under ceiling nulstiller breach-streak + fj
   assert.equal(forcedSaleRows.length, 0, "Ingen forced_debt_sale ved recovery");
 });
 
+// ─── #2301 · Nødlån-idempotens + eskalering ───────────────────────────────────
+
+test("#2301 · processTeamSeasonPayroll: nødlån-streak >= 2 fryser transfers via board-eskalering", async () => {
+  const seasonId = "season-emergency-streak-2";
+  const teamId = "team-chronic-shortfall";
+
+  const financeRows = [];
+  const teamUpdates = [];
+  const notifications = [];
+
+  const supabase = {
+    rpc(name, params) {
+      assert.equal(name, "increment_balance_with_audit");
+      financeRows.push({ team_id: params.p_team_id, ...params.p_finance_payload });
+      return Promise.resolve({ data: 0, error: null });
+    },
+    from(table) {
+      if (table === "teams") {
+        return {
+          select(columns) {
+            return {
+              eq(_col, _val) {
+                return {
+                  single() {
+                    if (columns === "user_id") return Promise.resolve({ data: { user_id: "user-1" }, error: null });
+                    // Under ceiling så kun emergency_loan_streak-eskaleringen er i spil
+                    // (isolerer testen fra den eksisterende debt-breach-mekanik).
+                    return Promise.resolve({ data: { balance: 0 }, error: null });
+                  },
+                };
+              },
+            };
+          },
+          update(payload) {
+            return {
+              eq(col, val) {
+                assert.equal(col, "id");
+                teamUpdates.push({ id: val, payload: { ...payload } });
+                return Promise.resolve({ error: null });
+              },
+            };
+          },
+        };
+      }
+
+      if (table === "riders") {
+        return {
+          select(_cols, opts) {
+            if (opts && opts.count === "exact" && opts.head === true) {
+              return {
+                eq(_col, _val) {
+                  return {
+                    eq(_col2, _val2) {
+                      return Promise.resolve({ count: 0, error: null });
+                    },
+                  };
+                },
+              };
+            }
+            return {
+              in(_col, _vals) {
+                return Promise.resolve({ data: [], error: null });
+              },
+            };
+          },
+        };
+      }
+
+      if (table === "notifications") {
+        const q = {
+          eq() { return q; }, gte() { return q; }, order() { return q; },
+          is() { return q; }, limit() { return Promise.resolve({ data: [], error: null }); },
+        };
+        return {
+          select() { return q; },
+          insert(row) { notifications.push(row); return Promise.resolve({ data: row, error: null }); },
+        };
+      }
+
+      throw new Error(`Unexpected table in emergency-loan-escalation test: ${table}`);
+    },
+  };
+
+  // Holdet havde allerede ét nødlån sidste sæson (streak=1) — denne sæson kræver
+  // den IGEN (riders har løn, balance 0) → streak skal blive 2 → eskalering.
+  const team = {
+    id: teamId,
+    name: "Chronic Shortfall FC",
+    division: null, // ukendt division → debt-breach-blokken (2c) springes eksplicit over
+    balance: 0,
+    emergency_loan_streak: 1,
+    transfer_frozen: false,
+    riders: [{ id: "rider-1", salary: 500 }],
+  };
+
+  await processTeamSeasonPayroll(team, seasonId, {
+    supabase,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => {}, // stub — kun streak-tælling under test her
+  });
+
+  const streakUpdate = teamUpdates.find(u => u.id === teamId && "emergency_loan_streak" in u.payload);
+  assert.ok(streakUpdate, "teams.update med emergency_loan_streak skal være kaldt");
+  assert.equal(streakUpdate.payload.emergency_loan_streak, 2, "streak skal incrementeres til 2");
+
+  const freezeUpdate = teamUpdates.find(u => u.id === teamId && u.payload.transfer_frozen === true);
+  assert.ok(freezeUpdate, "teams.update med transfer_frozen:true skal være kaldt ved streak >= 2");
+
+  assert.equal(notifications.length, 1, "manageren skal advares om transfer-fryse");
+  assert.equal(notifications[0].type, "board_critical");
+});
+
+test("#2301 · processTeamSeasonPayroll: nødlån-streak nulstilles når sæsonen IKKE kræver nødlån", async () => {
+  const seasonId = "season-emergency-recovered";
+  const teamId = "team-recovered-salary";
+
+  const teamUpdates = [];
+  const supabase = {
+    rpc(name, params) {
+      return Promise.resolve({ data: 0, error: null });
+    },
+    from(table) {
+      if (table === "teams") {
+        return {
+          select(_cols) {
+            return {
+              eq(_col, _val) {
+                return {
+                  single() {
+                    return Promise.resolve({ data: { balance: 999_999 }, error: null });
+                  },
+                };
+              },
+            };
+          },
+          update(payload) {
+            return {
+              eq(col, val) {
+                teamUpdates.push({ id: val, payload: { ...payload } });
+                return Promise.resolve({ error: null });
+              },
+            };
+          },
+        };
+      }
+      if (table === "riders") {
+        return {
+          select(_cols, opts) {
+            if (opts && opts.count === "exact" && opts.head === true) {
+              return { eq() { return { eq() { return Promise.resolve({ count: 0, error: null }); } }; } };
+            }
+            return { in() { return Promise.resolve({ data: [], error: null }); } };
+          },
+        };
+      }
+      throw new Error(`Unexpected table: ${table}`);
+    },
+  };
+
+  const team = {
+    id: teamId,
+    name: "Recovered Salary FC",
+    division: null,
+    balance: 999_999,
+    emergency_loan_streak: 1, // havde streak sidste sæson
+    riders: [{ id: "rider-1", salary: 500 }], // rigelig balance dækker lønnen
+  };
+
+  await processTeamSeasonPayroll(team, seasonId, {
+    supabase,
+    processLoanInterest: async () => ({ charged: [] }),
+    createEmergencyLoan: async () => { throw new Error("skal IKKE kaldes — ingen shortfall"); },
+  });
+
+  const streakUpdate = teamUpdates.find(u => u.id === teamId && "emergency_loan_streak" in u.payload);
+  assert.ok(streakUpdate, "streak skal nulstilles eksplicit");
+  assert.equal(streakUpdate.payload.emergency_loan_streak, 0);
+
+  const freezeUpdate = teamUpdates.find(u => u.payload.transfer_frozen === true);
+  assert.equal(freezeUpdate, undefined, "ingen freeze når streak er nulstillet");
+});
+
+test("#2301 · processTeamSeasonPayroll kørt to gange giver præcis ét nødlån og én løn-post (cron-genkørsel)", async () => {
+  const seasonId = "season-rerun";
+  const teamId = "team-rerun";
+
+  const financeRows = [];
+  const loansStore = [];
+  const usedIdempotencyKeys = new Set();
+  const notifications = [];
+  let balance = 0; // starter uden dækning — første kørsel skal udløse nødlån
+  let nextLoanId = 1;
+
+  const loanConfig = {
+    loan_type: "emergency",
+    origination_fee_pct: 0.15,
+    interest_rate_pct: 0.15,
+    debt_ceiling: 600_000,
+  };
+
+  const supabase = {
+    // Simulerer den ægte DB-adfærd: 2. forsøg på samme idempotency_key
+    // rammer uniq_finance_idempotency_key (23505) og rulles tilbage.
+    rpc(name, params) {
+      if (name === "create_emergency_loan_atomic") {
+        return Promise.resolve({ data: null, error: { code: "PGRST202", message: "function not exposed in mock" } });
+      }
+      assert.equal(name, "increment_balance_with_audit");
+      const key = params.p_finance_payload.idempotency_key;
+      if (key && usedIdempotencyKeys.has(key)) {
+        return Promise.resolve({ data: null, error: { code: "23505", message: "duplicate key" } });
+      }
+      if (key) usedIdempotencyKeys.add(key);
+      balance += params.p_delta;
+      financeRows.push({ team_id: params.p_team_id, ...params.p_finance_payload });
+      return Promise.resolve({ data: balance, error: null });
+    },
+    from(table) {
+      if (table === "teams") {
+        return {
+          select(columns) {
+            return {
+              eq(_col, _val) {
+                return {
+                  single() {
+                    if (columns === "division") return Promise.resolve({ data: { division: 3 }, error: null });
+                    if (columns === "user_id") return Promise.resolve({ data: { user_id: "user-1" }, error: null });
+                    if (columns === "balance") return Promise.resolve({ data: { balance }, error: null });
+                    throw new Error(`Unexpected teams.select columns: ${columns}`);
+                  },
+                };
+              },
+            };
+          },
+          update() {
+            return { eq() { return Promise.resolve({ error: null }); } };
+          },
+        };
+      }
+
+      if (table === "riders") {
+        return {
+          select(_cols, opts) {
+            if (opts && opts.count === "exact" && opts.head === true) {
+              return { eq() { return { eq() { return Promise.resolve({ count: 0, error: null }); } }; } };
+            }
+            return { in() { return Promise.resolve({ data: [], error: null }); } };
+          },
+        };
+      }
+
+      if (table === "loan_config") {
+        return {
+          select() { return { eq() { return Promise.resolve({ data: [loanConfig], error: null }); } }; },
+        };
+      }
+
+      if (table === "loans") {
+        return {
+          // #2301 app-guard (select *, 3× eq, maybeSingle) vs. getTotalDebt (amount_remaining, 2× eq).
+          select(columns) {
+            if (columns === "*") {
+              return {
+                eq(_c1, _v1) {
+                  return {
+                    eq(_c2, _v2) {
+                      return {
+                        eq(_c3, seasonIdVal) {
+                          return {
+                            maybeSingle() {
+                              const existing = loansStore.find(l => l.season_id === seasonIdVal && l.loan_type === "emergency");
+                              return Promise.resolve({ data: existing || null, error: null });
+                            },
+                          };
+                        },
+                      };
+                    },
+                  };
+                },
+              };
+            }
+            return {
+              eq() {
+                return {
+                  eq() {
+                    const activeDebt = loansStore
+                      .filter(l => l.status === "active")
+                      .reduce((sum, l) => sum + l.amount_remaining, 0);
+                    return Promise.resolve({
+                      data: loansStore.map(l => ({ amount_remaining: l.amount_remaining })),
+                      error: null,
+                    });
+                  },
+                };
+              },
+            };
+          },
+          insert(row) {
+            const inserted = { id: `loan-${nextLoanId++}`, ...row };
+            loansStore.push(inserted);
+            return { select() { return { single() { return Promise.resolve({ data: inserted, error: null }); } }; } };
+          },
+        };
+      }
+
+      if (table === "notifications") {
+        const q = {
+          eq() { return q; }, gte() { return q; }, order() { return q; },
+          is() { return q; }, limit() { return Promise.resolve({ data: [], error: null }); },
+        };
+        return {
+          select() { return q; },
+          insert(row) { notifications.push(row); return Promise.resolve({ data: row, error: null }); },
+        };
+      }
+
+      throw new Error(`Unexpected table in rerun test: ${table}`);
+    },
+  };
+
+  const team = {
+    id: teamId,
+    name: "Rerun FC",
+    division: 3,
+    riders: [{ id: "rider-1", salary: 1000 }],
+  };
+
+  // #2301: bruger IKKE createEmergencyLoan-stub — kalder den ægte loanEngine-funktion
+  // (default via deps ?? import i economyEngine.js) for at teste hele idempotens-kæden.
+  await processTeamSeasonPayroll(team, seasonId, {
+    supabase,
+    processLoanInterest: async () => ({ charged: [] }),
+  });
+  await processTeamSeasonPayroll(team, seasonId, {
+    supabase,
+    processLoanInterest: async () => ({ charged: [] }),
+  });
+
+  assert.equal(loansStore.length, 1, "præcis ét emergency-lån skal være oprettet på tværs af begge kørsler");
+
+  const emergencyLoanCredits = financeRows.filter(r => r.type === "emergency_loan");
+  assert.equal(emergencyLoanCredits.length, 1, "præcis én emergency_loan-kreditering");
+
+  const salaryDebits = financeRows.filter(r => r.type === "salary");
+  assert.equal(salaryDebits.length, 1, "præcis én løn-post — 2. kørsel skal skippe (idempotent)");
+});
+
 // ─── #1608 form-frys: tier 4 (DIVISION_BONUSES[4] + [1,2,3]→MIN..MAX-loop) ────────
 
 test("#1608 · payDivisionBonuses krediterer tier-4-hold (DIVISION_BONUSES[4] findes)", async () => {

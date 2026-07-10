@@ -322,6 +322,28 @@ export async function createLoan(teamId, loanType, principalAmount, supabaseClie
 
 export async function createEmergencyLoan(teamId, amountNeeded, supabaseClient = null, seasonId = null, auditCtx = null) {
   const client = supabaseClient ?? await getDefaultSupabaseClient();
+
+  // #2301 · App-guard: maks ét emergency-lån pr. (team, season). Tjekkes FØR
+  // config/RPC/balance-kreditering — cron-genkørsel af season-start (fx løn
+  // sprunget over pga. idempotent debitTeam, men balance stadig < løn) må
+  // IKKE udstede et nyt lån oveni. No-op: returnér det eksisterende lån.
+  // Kun håndhævet når seasonId er kendt — ældre/manuelle call-sites uden
+  // seasonId falder tilbage til gammel adfærd (ingen per-sæson-nøgle at tjekke mod).
+  if (seasonId) {
+    const { data: existingLoan, error: existingError } = await client
+      .from("loans")
+      .select("*")
+      .eq("team_id", teamId)
+      .eq("loan_type", "emergency")
+      .eq("season_id", seasonId)
+      .maybeSingle();
+    if (existingError) throw existingError;
+    if (existingLoan) {
+      console.log(`  ↩️  Emergency-lån for team ${teamId} sæson ${seasonId} findes allerede — no-op (idempotent)`);
+      return existingLoan;
+    }
+  }
+
   const configs = await getLoanConfig(teamId, client);
   const config = configs.find(c => c.loan_type === "emergency");
 
@@ -354,6 +376,7 @@ export async function createEmergencyLoan(teamId, amountNeeded, supabaseClient =
       p_origination_fee_pct: feeRate,
       p_interest_rate: interestRate,
       p_debt_ceiling: effectiveCeiling ?? null,
+      p_season_id: seasonId ?? null,
     });
     if (rpcError) {
       // PGRST202 = funktion ikke eksponeret (migration ikke kørt / test-mock) → JS-fallback.
@@ -399,6 +422,7 @@ export async function createEmergencyLoan(teamId, amountNeeded, supabaseClient =
       seasons_remaining: 1,
       amount_remaining: issuedPrincipal + computeLoanFee(issuedPrincipal, feeRate),
       status: "active",
+      season_id: seasonId ?? null,
     }).select().single();
 
     if (error) throw error;
@@ -411,7 +435,11 @@ export async function createEmergencyLoan(teamId, amountNeeded, supabaseClient =
   const issuedTotalOwed = issuedPrincipal + issuedFee;
   const residual = amountNeeded - issuedPrincipal; // >= 0; > 0 = løn delvist udækket
 
-  await incrementBalanceWithAudit(client, {
+  // #2301 · idempotency_key + allowDuplicate: forsvar-i-dybden mod double-credit
+  // hvis en race (to samtidige payroll-kørsler) begge passerer app-guarden ovenfor
+  // FØR den ene har skrevet loans-rowet — DB-unique på finance_transactions
+  // fanger den anden kreditering og ruller den tilbage (skipped=true).
+  const creditResult = await incrementBalanceWithAudit(client, {
     teamId,
     delta: issuedPrincipal,
     payload: {
@@ -425,6 +453,7 @@ export async function createEmergencyLoan(teamId, amountNeeded, supabaseClient =
       reason_code: FINANCE_REASON.EMERGENCY_LOAN_RECEIVED,
       related_entity_type: FINANCE_RELATED_ENTITY.LOAN,
       related_entity_id: loan.id,
+      idempotency_key: seasonId ? `emergency_loan:${teamId}:${seasonId}` : null,
       metadata: {
         code: "tx.emergencyLoan",
         params: {
@@ -433,7 +462,12 @@ export async function createEmergencyLoan(teamId, amountNeeded, supabaseClient =
         },
       },
     },
-  });
+  }, { allowDuplicate: !!seasonId });
+
+  if (creditResult.skipped) {
+    console.warn(`  ↩️  emergency_loan-kreditering allerede skrevet for team ${teamId} sæson ${seasonId} — skip (race-defense)`);
+    return loan;
+  }
 
   await notifyManager(teamId, "emergency_loan",
     "⚠️ Emergency loan opened",
