@@ -9,6 +9,7 @@ import { dateTextToDayOfYear } from "../lib/raceCalendar";
 import { sortRacesByDateDesc } from "../lib/raceCalendarSort";
 import { racesForPool } from "../lib/racesByPool";
 import { deriveRaceStatus } from "../lib/raceHubLogic.js";
+import { useSortState, sortRows } from "../lib/useTableSort.js";
 import { computeExpectedRacePrize, formatExpectedPrize } from "../lib/expectedPrizeCalculator";
 import {
   Card,
@@ -57,6 +58,25 @@ const RACE_STATUS_OPTIONS = [
 
 const VALID_TABS = ["calendar", "library", "world", "points"];
 
+// Sorterbare kolonner i løbs-bibliotek + verdens-katalog (klient-side, delt
+// useSortState/sortRows). Tekst-kolonner starter stigende; sæson/etaper (tal)
+// starter faldende (nyeste/flest først) via descFirstKeys.
+const LIBRARY_ACCESSORS = {
+  name: (r) => r.name,
+  season: (r) => r.season?.number ?? 0,
+  race_class: (r) => r.race_class ?? "",
+  race_type: (r) => r.race_type ?? "",
+  status: (r) => deriveRaceStatus(r.status, r.stages_completed, r.stages),
+};
+const LIBRARY_DESC_FIRST = new Set(["season"]);
+const WORLD_ACCESSORS = {
+  name: (r) => r.name,
+  race_class: (r) => r.race_class ?? "",
+  race_type: (r) => r.race_type ?? "",
+  stages: (r) => r.stages ?? 0,
+};
+const WORLD_DESC_FIRST = new Set(["stages"]);
+
 export default function RacesPage() {
   const { t } = useTranslation("races");
   const navigate = useNavigate();
@@ -98,6 +118,10 @@ export default function RacesPage() {
   const [worldLoaded, setWorldLoaded] = useState(false);
   const [worldLoading, setWorldLoading] = useState(false);
   const [worldFilterClass, setWorldFilterClass] = useState("");
+
+  // Klient-sortering af bibliotek- + verdens-tabellerne (klikbare headers).
+  const librarySort = useSortState({ descFirstKeys: LIBRARY_DESC_FIRST });
+  const worldSort = useSortState({ descFirstKeys: WORLD_DESC_FIRST });
 
   // Tab → URL sync (deep-linkbar fra eksterne kilder, fx /races?tab=library)
   function changeTab(next) {
@@ -345,7 +369,7 @@ export default function RacesPage() {
                       return (
                         <div key={rt.key} className="mb-4">
                           <p className="text-cz-2 text-xs uppercase tracking-wider mb-2 font-semibold">{t(`resultType.${rt.key}`)}</p>
-                          <table className="w-full text-xs">
+                          <table data-sort-exempt="Loebsresultat top-10, sorteret paa placering" className="w-full text-xs">
                             <tbody>
                               {rows.map(r => (
                                 <tr key={r.id} className="border-b border-cz-border last:border-0">
@@ -454,18 +478,18 @@ export default function RacesPage() {
             <EmptyState icon={<FlagIcon size={28} />} title={t("empty.noRacesMatch")} />
           ) : (
             <Card className="overflow-hidden">
-              <Table className="text-sm">
+              <Table className="text-sm" data-sortable>
                 <thead>
                   <Tr className="hover:bg-transparent">
-                    <Th>{t("library.thRace")}</Th>
-                    <Th>{t("library.thSeason")}</Th>
-                    <Th>{t("library.thClass")}</Th>
-                    <Th>{t("library.thType")}</Th>
-                    <Th>{t("library.thStatus")}</Th>
+                    <Th sortKey="name" sort={librarySort.sort} sortDir={librarySort.sortDir} onSort={librarySort.handleSort}>{t("library.thRace")}</Th>
+                    <Th sortKey="season" sort={librarySort.sort} sortDir={librarySort.sortDir} onSort={librarySort.handleSort}>{t("library.thSeason")}</Th>
+                    <Th sortKey="race_class" sort={librarySort.sort} sortDir={librarySort.sortDir} onSort={librarySort.handleSort}>{t("library.thClass")}</Th>
+                    <Th sortKey="race_type" sort={librarySort.sort} sortDir={librarySort.sortDir} onSort={librarySort.handleSort}>{t("library.thType")}</Th>
+                    <Th sortKey="status" sort={librarySort.sort} sortDir={librarySort.sortDir} onSort={librarySort.handleSort}>{t("library.thStatus")}</Th>
                   </Tr>
                 </thead>
                 <tbody>
-                  {filteredLibRaces.map(r => {
+                  {sortRows(filteredLibRaces, librarySort.sort ? LIBRARY_ACCESSORS[librarySort.sort] : null, librarySort.sortDir).map(r => {
                     const classMeta = RACE_CLASS_OPTIONS.find(c => c.value === r.race_class);
                     // Afled visnings-status (#1828): igangværende etapeløb vises "Live", ikke "Kommende".
                     const derivedStatus = deriveRaceStatus(r.status, r.stages_completed, r.stages);
@@ -549,19 +573,21 @@ export default function RacesPage() {
               </Card>
 
               <Card className="overflow-hidden">
-                <Table className="text-sm">
+                <Table className="text-sm" data-sortable>
                   <thead>
                     <Tr className="hover:bg-transparent">
-                      <Th>{t("world.thRace")}</Th>
-                      <Th>{t("world.thClass")}</Th>
-                      <Th>{t("world.thType")}</Th>
-                      <Th numeric>{t("world.thStages")}</Th>
+                      <Th sortKey="name" sort={worldSort.sort} sortDir={worldSort.sortDir} onSort={worldSort.handleSort}>{t("world.thRace")}</Th>
+                      <Th sortKey="race_class" sort={worldSort.sort} sortDir={worldSort.sortDir} onSort={worldSort.handleSort}>{t("world.thClass")}</Th>
+                      <Th sortKey="race_type" sort={worldSort.sort} sortDir={worldSort.sortDir} onSort={worldSort.handleSort}>{t("world.thType")}</Th>
+                      <Th numeric sortKey="stages" sort={worldSort.sort} sortDir={worldSort.sortDir} onSort={worldSort.handleSort}>{t("world.thStages")}</Th>
                     </Tr>
                   </thead>
                   <tbody>
-                    {worldPool
-                      .filter(r => !worldFilterClass || r.race_class === worldFilterClass)
-                      .map(r => (
+                    {sortRows(
+                      worldPool.filter(r => !worldFilterClass || r.race_class === worldFilterClass),
+                      worldSort.sort ? WORLD_ACCESSORS[worldSort.sort] : null,
+                      worldSort.sortDir,
+                    ).map(r => (
                         <Tr key={r.id}>
                           <Td className="text-cz-1">{r.name}</Td>
                           <Td className="text-cz-2">{r.race_class}</Td>

@@ -115,7 +115,7 @@ export default function ValuationPreviewSection({ getAuth, onMsg }) {
       {/* Fordeling gammel vs ny */}
       <div className="bg-cz-subtle border border-cz-border rounded-lg px-4 py-3 text-xs">
         <p className="text-cz-2 font-semibold mb-2">Fordeling — {d.count.toLocaleString("da-DK")} ryttere (CZ$)</p>
-        <table className="w-full">
+        <table data-sort-exempt="Fast fordelings-tabel, 2 raekker" className="w-full">
           <thead>
             <tr className="text-cz-3 border-b border-cz-border">
               <th className="text-left py-1"></th><th className="text-right py-1 px-2">p10</th>
@@ -151,7 +151,7 @@ export default function ValuationPreviewSection({ getAuth, onMsg }) {
           className="w-full sm:w-64 bg-cz-subtle border border-cz-border rounded-lg px-3 py-2 text-cz-1 text-sm focus:outline-none mb-2"
         />
         <div className="overflow-x-auto rounded-lg border border-cz-border">
-          <table className="w-full text-xs">
+          <table data-sortable className="w-full text-xs">
             <thead>
               <tr className="border-b border-cz-border text-cz-3">
                 <Th label="Rytter" k="name" sort={sort} onSort={toggleSort} align="left" />

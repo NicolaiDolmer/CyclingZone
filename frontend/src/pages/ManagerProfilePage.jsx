@@ -8,6 +8,7 @@ import OnlineBadge from "../components/OnlineBadge";
 import { formatNumber, formatDate } from "../lib/intl";
 import { ABILITY_STATS, ABILITY_SHORT, flattenAbilities } from "../lib/abilities";
 import { statStyle } from "../lib/statColor";
+import { useSortState, sortRows } from "../lib/useTableSort.js";
 import {
   Card,
   CategoryTag,
@@ -31,6 +32,14 @@ import {
 } from "../components/ui";
 
 const API = import.meta.env.VITE_API_URL;
+
+// Sorterbare kolonner i manager-profilens trup-tabel: navn (efternavn-først),
+// markedsværdi + de 15 CZ-evner. Modul-konstant så hook-referencen er stabil.
+const MANAGER_RIDER_ACCESSORS = {
+  firstname: (r) => `${r.lastname ?? ""} ${r.firstname ?? ""}`.trim(),
+  value: (r) => r.market_value ?? 0,
+  ...Object.fromEntries(ABILITY_STATS.map(({ key }) => [key, (r) => r[key] ?? 0])),
+};
 
 async function authHeaders() {
   const { data: { session } } = await supabase.auth.getSession();
@@ -96,6 +105,9 @@ export default function ManagerProfilePage() {
   const [loading, setLoading] = useState(true);
   const [tab, setTab]         = useState("overview");
   const [myTeamId, setMyTeamId] = useState(null);
+  // Trup-tabellen (Riders-fanen) sorteres klient-side; state ligger her øverst
+  // fordi rytterne først udledes efter early-returns nedenfor.
+  const riderSort = useSortState();
 
   const loadMyTeam = useCallback(async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -132,6 +144,7 @@ export default function ManagerProfilePage() {
   // #1529: backend leverer rytteren med nested rider_derived_abilities — flad evnerne
   // op på rytter-objektet så r.climbing osv. virker i render-cellerne nedenfor.
   const riders = (rawRiders || []).map(flattenAbilities);
+  const sortedRiders = sortRows(riders, riderSort.sort ? MANAGER_RIDER_ACCESSORS[riderSort.sort] : null, riderSort.sortDir);
   const unlockedCount = achievements.filter(a => a.unlocked).length;
   const isOwnProfile  = team.id === myTeamId;
 
@@ -264,18 +277,19 @@ export default function ManagerProfilePage() {
             <EmptyState icon={<InboxIcon size={32} />} title={t("manager.noRiders")} />
           ) : (
             <Card className="overflow-hidden">
-              <Table>
+              <Table data-sortable>
                 <thead><tr>
-                  <Th>{t("manager.thRider")}</Th>
-                  <Th numeric>{t("manager.thValue")}</Th>
+                  <Th sortKey="firstname" sort={riderSort.sort} sortDir={riderSort.sortDir} onSort={riderSort.handleSort}>{t("manager.thRider")}</Th>
+                  <Th numeric sortKey="value" sort={riderSort.sort} sortDir={riderSort.sortDir} onSort={riderSort.handleSort}>{t("manager.thValue")}</Th>
                   {/* #1529: de 15 CZ-evner (delt config lib/abilities.js) erstatter de
                       hardkodede 3 PCM-stats (BJ/SP/TT). Korte labels = ingen i18n (#487). */}
                   {ABILITY_STATS.map(({ key }) => (
-                    <Th key={key} numeric className="hidden sm:table-cell px-1.5">{ABILITY_SHORT[key]}</Th>
+                    <Th key={key} numeric sortKey={key} sort={riderSort.sort} sortDir={riderSort.sortDir} onSort={riderSort.handleSort}
+                      className="hidden sm:table-cell px-1.5">{ABILITY_SHORT[key]}</Th>
                   ))}
                 </tr></thead>
                 <tbody>
-                  {riders.map(r => (
+                  {sortedRiders.map(r => (
                     <Tr key={r.id} onClick={() => navigate(`/riders/${r.id}`)} className="cursor-pointer">
                       <Td>
                         <RiderLink id={r.id} stopPropagation
@@ -313,7 +327,7 @@ export default function ManagerProfilePage() {
             <EmptyState icon={<InboxIcon size={32} />} title={t("manager.noSeasonHistory")} />
           ) : (
             <Card className="overflow-hidden">
-              <Table>
+              <Table data-sort-exempt="Saeson-historik, kronologisk">
                 <thead><tr>
                   <Th>{t("manager.thSeason")}</Th>
                   <Th className="text-center">{t("manager.thDivision")}</Th>

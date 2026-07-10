@@ -1519,7 +1519,7 @@ function AuctionList({ auctions, sectionId, sharedProps }) {
       </div>
       <Card className="hidden md:block overflow-hidden min-w-0">
         <div className="overflow-auto max-h-[calc(100vh-220px)]">
-          <table className="w-full text-xs">
+          <table data-sortable className="w-full text-xs">
             <AuctionTableHead
               visibleStats={sharedProps.visibleStats}
               activeSort={sharedProps.activeSort}

@@ -379,7 +379,7 @@ export default function SeasonEndPage() {
                     <span className="text-xs text-cz-3">{t("relegationNote")}</span>
                   )}
                 </div>
-                <table className="w-full text-sm">
+                <table data-sort-exempt="Slutstilling, iboende point-orden + op/nedryknings-zoner" className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-cz-border">
                       <th className="px-4 py-2.5 text-left text-cz-3 font-medium text-xs w-8">{t("table.rank")}</th>

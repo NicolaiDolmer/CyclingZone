@@ -475,7 +475,7 @@ function SquadTab({ riders, scouting, onSelectRider }) {
       ) : (
         <Card className="overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-xs">
+            <table data-sortable className="w-full text-xs">
               <thead>
                 <tr className="border-b border-cz-border">
                   {/* #1186: nation altid synlig (var skjult på mobil) — tabellen h-scroller allerede. */}

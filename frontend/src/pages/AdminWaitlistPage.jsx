@@ -328,7 +328,7 @@ export default function AdminWaitlistPage() {
 
       <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table data-sortable className="w-full text-sm">
             <thead className="bg-cz-subtle border-b border-cz-border">
               <tr>
                 <SortableHeader label="Kontakt" sortKey="email" currentSort={sort} onSort={handleSort} />

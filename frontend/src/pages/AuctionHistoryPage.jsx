@@ -251,7 +251,7 @@ export default function AuctionHistoryPage() {
         />
       ) : (
         <Card className="overflow-hidden">
-          <table className="w-full text-sm">
+          <table data-sort-exempt="Server-pagineret; kolonne-sort kraever server-side sort-parametre (opfoelgning)" className="w-full text-sm">
             <thead>
               <tr className="border-b border-cz-border">
                 <th className="px-2 py-3 text-left text-cz-3 font-medium text-xs uppercase hidden sm:table-cell">{t("history.colNation")}</th>

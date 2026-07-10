@@ -176,7 +176,7 @@ export default function TeamResultsTab({ teamId, isOwnTeam = false }) {
 
       {filtered.length > 0 && (
         <div className="overflow-x-auto">
-          <table className="w-full text-xs">
+          <table data-sortable className="w-full text-xs">
             <thead>
               <tr className="border-b border-cz-border">
                 <th className="text-left py-2 text-cz-3">{t("results.thRace")}</th>

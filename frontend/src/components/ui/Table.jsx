@@ -1,4 +1,5 @@
 import { cellClass } from "./tableStyles.js";
+import { SortIndicator } from "./SortableTh.jsx";
 
 export function Table({ className = "", children, ...rest }) {
   return (
@@ -18,11 +19,27 @@ export function Tr({ className = "", children, ...rest }) {
   );
 }
 
-export function Th({ numeric = false, sticky = false, className = "", children, ...rest }) {
+// Th — statisk header som standard. Angiv sortKey + sort + sortDir + onSort for
+// at gøre den til en klikbar, sorterbar header med samme retnings-indikator og
+// aria-sort som den kanoniske SortableTh (så en <Table>-baseret tabel kan
+// sortere uden at skifte til rå <table>/<SortTh>). Uden onSort er adfærden
+// uændret — eksisterende ikke-sorterbare headers rører intet.
+export function Th({ numeric = false, sticky = false, sortKey, sort, sortDir, onSort, className = "", children, ...rest }) {
+  const sortable = typeof onSort === "function" && sortKey != null;
+  const active = sortable && sort === sortKey;
   const stickyCls = sticky ? "sticky left-0 z-sticky" : "";
+  const sortableCls = sortable
+    ? `cursor-pointer select-none transition-colors ${active ? "text-cz-accent-t/80" : "hover:text-cz-2"}`
+    : "";
   return (
-    <th className={`${cellClass({ numeric, header: true })} bg-cz-subtle ${stickyCls} ${className}`} {...rest}>
+    <th
+      className={`${cellClass({ numeric, header: true })} bg-cz-subtle ${stickyCls} ${sortableCls} ${className}`}
+      onClick={sortable ? () => onSort(sortKey) : undefined}
+      aria-sort={sortable ? (active ? (sortDir === "desc" ? "descending" : "ascending") : "none") : undefined}
+      {...rest}
+    >
       {children}
+      {sortable && <SortIndicator active={active} dir={sortDir} />}
     </th>
   );
 }

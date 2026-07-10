@@ -112,7 +112,7 @@ function TransferProfitPanel({ trades, totals }) {
         <p className="text-cz-3 text-xs mt-0.5">{t("profit.subtitle")}</p>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full text-xs">
+        <table data-sortable className="w-full text-xs">
           <thead>
             <tr className="border-b border-cz-border">
               <th className="text-left py-2 text-cz-3">{t("profit.header.rider")}</th>
@@ -259,7 +259,7 @@ export default function TeamTransferHistoryTab({ teamId }) {
 
       {filtered.length > 0 && (
         <div className="overflow-x-auto">
-          <table className="w-full text-xs">
+          <table data-sort-exempt="Profit-opsummeringspanel, faa raekker (sortering: opfoelgning)" className="w-full text-xs">
             <thead>
               <tr className="border-b border-cz-border">
                 <SortTh sortKey="date" current={sortKey} dir={sortDir} onSort={handleSort}>{t("history.header.date")}</SortTh>

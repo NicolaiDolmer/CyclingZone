@@ -230,7 +230,7 @@ function LoanPortfolioCard({ loans }) {
         <p className="text-cz-3 text-sm">{t("report.noActiveLoans")}</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table data-sort-exempt="Aktive laan, typisk 0-3 raekker" className="w-full text-sm">
             <thead>
               <tr className="text-cz-3 text-xs uppercase tracking-wide border-b border-cz-border">
                 <th className="text-left py-2">{t("report.loanType")}</th>
