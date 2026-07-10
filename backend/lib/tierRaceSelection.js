@@ -32,12 +32,18 @@ const prestigeOf = (rc) => PRESTIGE_RANK[rc] ?? 99;
 /**
  * Vælg en divisions løb op til en præcis game-day-kvote, prestige-først.
  *
- * @param {{ catalog?: Array<{id,name,race_class,race_type,stages}>, quota?: number, seed?: number }} args
+ * @param {{ catalog?: Array<{id,name,race_class,race_type,stages}>, quota?: number, seed?: number, allowGrandTours?: boolean }} args
  * @returns {{ stageRaces, oneDayRaces, stageGameDays, totalGameDays, quotaHit, shortfall }}
  */
-export function selectTierRaceSet({ catalog = [], quota = 0, seed = 1 } = {}) {
+export function selectTierRaceSet({ catalog = [], quota = 0, seed = 1, allowGrandTours = true } = {}) {
+  // #2251: Grand Tours (≥15 etaper) hører KUN til Division 1 (spec'ens GT-rygrad).
+  // Uden denne gate lod prestige-først-walket leftover-GT'er kaskadere ned i lavere
+  // tiers (to samtidige 21-etapers GT'er i tier 4 → binding-kollaps, tomme startfelter).
+  const eligible = allowGrandTours
+    ? catalog
+    : catalog.filter((r) => (Math.max(1, Number(r.stages) || 1)) < GRAND_TOUR_MIN_STAGES);
   // Rang: prestige asc → størrelse desc (de største af samme prestige først) → seed → id.
-  const ranked = [...catalog].sort((a, b) => {
+  const ranked = [...eligible].sort((a, b) => {
     const ra = prestigeOf(a.race_class), rb = prestigeOf(b.race_class);
     if (ra !== rb) return ra - rb;
     const sa = Math.max(1, Number(a.stages) || 1), sb = Math.max(1, Number(b.stages) || 1);
