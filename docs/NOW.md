@@ -4,9 +4,9 @@
 
 ## Aktiv styring
 
-> **🎯 Next action:** **Næste session: #2256 + #2265 (Div 4 entry-validering pr. tier + kalender-greying).** Prod-tal 10/7: 8 puljer à ~25 hold (2-3 ægte), 17 løb (pulje A: 27 — skævhed skal forklares), 0 GT'er efter #2251-fix; verificér om 0-entry-løb AI-fyldes ved løbsstart. **Arbejdsform (ejer 10/7):** Fable = arkitekt, udførende subagenter på sonnet i worktrees; PR der afventer aftalt justering = draft.
+> **🎯 Next action:** **Ejer: merge PR #2275** (#2256+#2265 — greying + save-guard; indeholder migration → ejer-merge-only). Derefter: #2274 (monumenter på egen eksklusiv game day, ejer-afklaring 10/7) eller Talentspejder Fase 3 (#2244). **Arbejdsform (ejer 10/7):** Fable = arkitekt, udførende subagenter på sonnet i worktrees; PR der afventer aftalt justering = draft.
 
-> **Session 10/7 shipped (stabilitets-sporet):** #2251 verificeret rolig (watchdog-kø tom, tier 4 kører); #2252 lukket (allerede fixet juni — chunk-retry #883/#906/#1423; 3 Sentry-grupper resolved); #2253 løst (PR #2272 + #2273 merged, v6.70 — translate-guard indsnævret til 6 crash-udsatte sider, evidens = alle 14 Sentry-events); #2269 rytter-slet-friktion (PR #2271); **#2270 oprettet** (natlig game-day smoke-sim, ejer-godkendt — fanger #2251-klassen i CI); #2228 Sentry-connector verificeret OK → luk efter mandagens (13/7) triage. Known-issues-panel = fælles design-session senere. **TdF #2080: intet postes; ejer vælger dag.** RangeError CYCLINGZONE-27 parkeret (2 events, usymboliseret).
+> **Session 10/7 aften (#2256+#2265):** PR #2275 klar (greying på per-løb-side + bredere bræt-bindingMap + TOCTOU-guard i RPC via migration, v6.71) — ejer merger. Prod-verificeret: AI-fill virker (Div 4 completed-løb fyldt), pulje A's 27 løb = ældre seed-generation (4/7), guarden holder i alle tiers i game_day-rummet. Monument-afklaring (skal ligge på EGEN game day, binde normalt) → **#2274 oprettet**. #2270 (natlig smoke-sim) fortsat åben; #2228 luk efter 13/7-triage; TdF #2080: ejer vælger dag.
 
 > **Ejer-verify-kø:** #2100 loft-projektion (v6.68) på en ung rytter · scouting-fanen #2243 (v6.67) · #2206 rangliste+holdstilling · #2081 slice 1 (PR #2225). **Ejer-klikliste:** #2076 uptime-rest · #2085 mail-kapacitet · #1784 spend-cap · #929 · Alunta-tokens · #1903 CZ Pro testkøb.
 
@@ -14,7 +14,7 @@
 
 > **Talentspejder (design låst 7/7, spec `docs/superpowers/specs/2026-07-07-talentspejder-design.md`):** Fase 1 merged (#2243, v6.67) · Fase 2 loft-projektion merged (#2100, v6.68) · næste: Fase 3 spejder-system (#2244, m. #2216) · Fase 4 gemte filtre #27. Kendt problem: test-konti wipes i prod (#2245, bug/high).
 
-> **🤖 Working agent:** Claude Code (Fable) — aktiv på #2256+#2265 (startet 10/7).
+> **🤖 Working agent:** Ingen aktiv session.
 
 ## Standing context (forever-relaunch)
 
