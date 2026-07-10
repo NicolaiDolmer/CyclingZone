@@ -2,6 +2,7 @@
   "page": {
     "title": "Club",
     "subtitle": "Facilities and staff",
+    "intro": "Facilities make your riders develop faster, recover better, and scout smarter. Each one you build costs money every season, so invest where it fits your plan.",
     "balance": "Balance",
     "division": "Division {division}"
   },
@@ -12,7 +13,8 @@
   "cost": {
     "upkeep": "Upkeep",
     "payroll": "Payroll",
-    "balance": "Balance"
+    "balance": "Balance",
+    "seasonLine": "Every season you pay {upkeep} upkeep + {payroll} wages = {total} CZ$. Budget for it before you upgrade."
   },
   "facilities": {
     "tier": "Tier {tier} / {max}",
@@ -20,7 +22,12 @@
     "upgradeTo": "Upgrade to T{tier}",
     "buildTier": "Build T{tier}",
     "upkeep": "Upkeep {amount}/season",
-    "maxed": "Fully upgraded"
+    "maxed": "Fully upgraded",
+    "comingSoon": "Coming soon"
+  },
+  "roi": {
+    "training": "Your riders train {value} faster every day",
+    "trainingBuild": "Build it to start training your riders faster"
   },
   "effect": {
     "label": "Effect",
@@ -29,11 +36,11 @@
     "note": "Not every effect is live yet"
   },
   "tracks": {
-    "training": { "name": "Training Center", "effect": "training" },
-    "scouting": { "name": "Scouting Network", "effect": "rider insight" },
-    "medical": { "name": "Medical Department", "effect": "recovery" },
-    "academy": { "name": "Academy Expansion", "effect": "intake slots" },
-    "commercial": { "name": "Commercial Department", "effect": "sponsor (capped)" }
+    "training": { "name": "Training Center", "effect": "training", "soon": "Faster rider development" },
+    "scouting": { "name": "Scouting Network", "effect": "rider insight", "soon": "Sharper rider insight" },
+    "medical": { "name": "Medical Department", "effect": "recovery", "soon": "Faster recovery" },
+    "academy": { "name": "Academy Expansion", "effect": "intake slots", "soon": "More intake slots" },
+    "commercial": { "name": "Commercial Department", "effect": "sponsor (capped)", "soon": "Long-term sponsor income" }
   },
   "commercial": { "sinkTag": "Long-term sponsor play", "sinkNote": "Builds sponsor income over time rather than paying for itself now." },
   "roles": {

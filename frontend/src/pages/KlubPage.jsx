@@ -24,6 +24,12 @@ export default function KlubPage() {
 
   const byTrack = Object.fromEntries(facs.facilities.map((f) => [f.track, f]));
   const ordered = TRACK_ORDER.map((tr) => byTrack[tr]).filter(Boolean);
+  // Live faciliteter først (købbare), derefter "Coming soon"-teasers; TRACK_ORDER
+  // bevares inden for hver gruppe (#1441 Slice 1).
+  const groupedFacilities = [
+    ...ordered.filter((f) => f.effectLive),
+    ...ordered.filter((f) => !f.effectLive),
+  ];
   const staffFacility = staffTrack ? byTrack[staffTrack] : null;
   const pendingFacility = pendingUpgrade ? byTrack[pendingUpgrade] : null;
 
@@ -46,13 +52,15 @@ export default function KlubPage() {
         </div>
       </div>
 
+      <p className="text-[13px] text-cz-2 leading-relaxed mb-4 max-w-[56ch]">{t("page.intro")}</p>
+
       <div className="flex justify-between items-center mb-2">
         <span className="font-display text-[20px]">{t("sections.facilities")}</span>
         <span className="text-[10px] uppercase tracking-[1.4px] text-cz-2">{t("effect.note")}</span>
       </div>
 
       <div className="flex flex-col gap-2">
-        {ordered.map((f) => (
+        {groupedFacilities.map((f) => (
           <FacilityTrackCard
             key={f.track}
             facility={f}
@@ -64,10 +72,12 @@ export default function KlubPage() {
       </div>
 
       {facs.seasonCost && (
-        <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-1 text-[12px] border-t border-cz-border pt-3">
-          <span className="text-cz-2">{t("cost.upkeep")}: <span className="font-mono text-cz-1">{formatNumber(facs.seasonCost.totalUpkeep)}</span></span>
-          <span className="text-cz-2">{t("cost.payroll")}: <span className="font-mono text-cz-1">{formatNumber(facs.seasonCost.totalPayroll)}</span></span>
-          <span className="text-cz-2 ms-auto">{t("cost.balance")}: <span className="font-mono text-cz-1">{formatNumber(facs.seasonCost.balance)}</span></span>
+        <div className="mt-4 text-[12px] text-cz-2 leading-relaxed border-t border-cz-border pt-3">
+          {t("cost.seasonLine", {
+            upkeep: formatNumber(facs.seasonCost.totalUpkeep),
+            payroll: formatNumber(facs.seasonCost.totalPayroll),
+            total: formatNumber(facs.seasonCost.totalUpkeep + facs.seasonCost.totalPayroll),
+          })}
         </div>
       )}
 
