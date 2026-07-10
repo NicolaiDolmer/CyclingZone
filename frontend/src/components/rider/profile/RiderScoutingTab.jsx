@@ -122,14 +122,14 @@ export default function RiderScoutingTab({ rider, scouting }) {
     if (r?.ok && !scoutSystemEnabled) load();
   };
 
-  // #2244: job-model-knappen viser altid opgavens pris (3 dage, 15.000/niveau,
+  // #2244: job-model-knappen viser altid opgavens pris (3 dage, 1.000/niveau,
   // samme konstanter som backend scoutEngine.SCOUT_JOB_CONFIG.target), duplikeret
   // her KUN til visning; se Slice C-rapportens kontrakt-note om et evt. fremtidigt
   // config-felt i GET /scouting/me/central så dette ikke skal holdes i sync manuelt.
   // TONE: "Send scout"/"Send spejder"-copy er plain/factual v1 — ejer-tone-session
   // for scouting-job-copy er stadig åben (spec §Åbne detaljer); review pending.
   const TARGET_JOB_DAYS = 3;
-  const TARGET_JOB_COST = 15000;
+  const TARGET_JOB_COST = 1000;
 
   const scoutButton = (labelKey) => {
     if (pending) {
