@@ -428,7 +428,7 @@ export default function RidersPage() {
           />
         <Card data-tour="riders-list" className="overflow-hidden">
           <div className="overflow-auto max-h-[calc(100vh-220px)]">
-            <table className="w-full text-xs">
+            <table data-sortable className="w-full text-xs">
               <thead className="sticky top-0 z-20 bg-cz-card shadow-sm">
                 <tr className="border-b border-cz-border">
                   <SortTh sortKey="nationality_code" sort={filters.sort} sortDir={filters.sort_dir} onSort={handleSort}

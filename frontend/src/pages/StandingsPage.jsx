@@ -526,7 +526,7 @@ export default function StandingsPage() {
       ) : (
         <Card className="overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            <table data-sort-exempt="Stilling, iboende point-orden + zone-logik" className="w-full text-sm">
               <thead>
                 <tr className="border-b border-cz-border">
                   <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs w-8">#</th>

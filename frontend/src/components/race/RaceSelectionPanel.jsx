@@ -317,7 +317,7 @@ export default function RaceSelectionPanel({
       </ul>
 
       <div className="hidden sm:block overflow-x-auto">
-        <table className="w-full text-sm">
+        <table data-sortable className="w-full text-sm">
           <thead>
             {/* #1951: klikbare, sorterbare headers (delt SortTh + retnings-ikon). */}
             <tr className="border-b border-cz-border">

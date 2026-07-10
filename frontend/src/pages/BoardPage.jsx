@@ -920,7 +920,7 @@ function SeasonSnapshotGrid({ snapshots }) {
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz p-5">
       <p className="text-cz-3 text-xs uppercase tracking-wider mb-3">{t("snapshot.heading")}</p>
-      <table className="w-full text-xs">
+      <table data-sort-exempt="Saeson-snapshot, kronologisk (faa raekker)" className="w-full text-xs">
         <thead>
           <tr className="text-cz-3 border-b border-cz-border">
             <th className="text-left pb-2">{t("snapshot.columns.season")}</th>

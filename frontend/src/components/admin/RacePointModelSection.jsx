@@ -235,7 +235,7 @@ export default function RacePointModelSection({ getAuth, onMsg }) {
       {/* Kaskade-grid */}
       <p className="text-cz-3 text-xs uppercase tracking-wide mb-2">{t("racePoints.model.cascadeTitle")}</p>
       <div className="overflow-x-auto rounded-lg border border-cz-border">
-        <table className="w-full text-xs">
+        <table data-sort-exempt="Pivot-grid: race-klasser x result-typer, ikke en liste" className="w-full text-xs">
           <thead>
             <tr className="border-b border-cz-border">
               <th className="px-3 py-2 text-left text-cz-3 font-medium min-w-[140px] sticky left-0 bg-cz-bg">

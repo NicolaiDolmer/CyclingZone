@@ -160,7 +160,7 @@ export default function RulesPage() {
                   <p className="text-cz-2 text-sm leading-relaxed">{t(`${base}.text`, vars)}</p>
                   {kind === "table" && (
                     <div className="overflow-x-auto mt-3">
-                      <table className="w-full text-sm">
+                      <table data-sort-exempt="Statisk regel-reference (i18n rows)" className="w-full text-sm">
                         <tbody>
                           {t(`${base}.rows`, { returnObjects: true }).map((row, ri) => {
                             const cells = row.map((cell) => interpolateCell(cell, vars));

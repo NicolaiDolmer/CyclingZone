@@ -193,7 +193,7 @@ export default function RacePointsPage() {
                   <p className="text-xs text-cz-3">{desc}</p>
                 </div>
                 <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+                  <table data-sort-exempt="Point-reference opslag, sorteret paa rank" className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-cz-border text-left">
                         <th className="px-4 py-2 font-medium text-cz-2 text-xs w-14">{t("points.thRank")}</th>

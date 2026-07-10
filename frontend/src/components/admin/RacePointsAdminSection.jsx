@@ -229,7 +229,7 @@ export default function RacePointsAdminSection({ getAuth, onMsg }) {
           {/* Grid */}
           {selectedClass && (
             <div className="overflow-x-auto rounded-lg border border-cz-border">
-              <table className="w-full text-xs">
+              <table data-sort-exempt="Point-matrix: result-typer x rank, ikke en liste" className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-cz-border">
                     <th className="px-3 py-2 text-left text-cz-3 font-medium min-w-[200px]">

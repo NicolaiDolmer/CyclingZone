@@ -23,7 +23,7 @@ function executedByLabel(executedBy, t) {
 function DayRiderTable({ rows, t, tRider }) {
   return (
     <div className="overflow-x-auto border-t border-cz-border">
-      <table className="w-full text-sm">
+      <table data-sort-exempt="Per-dag traeningsrapport i rapport-orden" className="w-full text-sm">
         <thead>
           <tr className="border-b border-cz-border">
             <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("colRider")}</th>

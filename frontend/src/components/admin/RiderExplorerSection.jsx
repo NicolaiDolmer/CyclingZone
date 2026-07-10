@@ -91,7 +91,7 @@ export default function RiderExplorerSection({ getAuth, onMsg }) {
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-cz-border">
-        <table className="w-full text-xs">
+        <table data-sortable className="w-full text-xs">
           <thead>
             <tr className="border-b border-cz-border text-cz-3">
               <Th label="Rytter" k="name" sort={sort} onSort={toggleSort} align="left" />

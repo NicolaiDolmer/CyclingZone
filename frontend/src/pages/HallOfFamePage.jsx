@@ -152,7 +152,7 @@ export default function HallOfFamePage() {
                     {t("noRecords")}
                   </div>
                 ) : (
-                  <table className="w-full text-sm">
+                  <table data-sort-exempt="Top-5 rekord-liste, iboende orden" className="w-full text-sm">
                     <tbody>
                       {entries.map((e, i) => (
                         <tr key={i} className="border-b border-cz-border last:border-0 hover:bg-cz-subtle">
@@ -190,7 +190,7 @@ export default function HallOfFamePage() {
       {/* Managers tab */}
       {tab === "managers" && (
         <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
-          <table className="w-full text-sm">
+          <table data-sort-exempt="Manager-rangliste, iboende level/xp-orden" className="w-full text-sm">
             <thead>
               <tr className="border-b border-cz-border">
                 <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">#</th>
@@ -259,7 +259,7 @@ export default function HallOfFamePage() {
                     <span className="text-cz-accent-t font-bold text-sm">{t("season", { n: season })}</span>
                     <span className="text-cz-3 text-xs">{t("division1")}</span>
                   </div>
-                  <table className="w-full text-sm">
+                  <table data-sort-exempt="Saeson-liste, iboende point-orden" className="w-full text-sm">
                     <tbody>
                       {entries.sort((a, b) => b.total_points - a.total_points).map((s, i) => (
                         <tr key={s.id} className="border-b border-cz-border last:border-0 hover:bg-cz-subtle">

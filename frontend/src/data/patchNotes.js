@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.74",
+    "date": "2026-07-10",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Interface",
+        "en": {
+          "title": "Click any column to sort your training roster, squads and race lists",
+          "body": "More tables can now be sorted by clicking their column headers. On the training page you can order your riders by form or fatigue to see at a glance who needs a rest, and by name or type. A rival team's squad on their manager profile sorts by value or any of the 15 abilities. The race library and world calendar sort by name, season, class and stages. Click a header once to sort, click again to reverse it, and empty cells always stay at the bottom."
+        },
+        "da": {
+          "title": "Klik på en kolonne for at sortere din træningstrup, hold og løbslister",
+          "body": "Flere tabeller kan nu sorteres ved at klikke på kolonne-overskrifterne. På træningssiden kan du sortere dine ryttere efter form eller træthed, så du med ét blik ser hvem der trænger til hvile, samt efter navn eller type. Et rivaliserende holds trup på deres managerprofil sorteres efter værdi eller en hvilken som helst af de 15 evner. Løbsbiblioteket og verdenskalenderen sorteres efter navn, sæson, klasse og etaper. Klik på en overskrift én gang for at sortere, klik igen for at vende retningen, og tomme celler ligger altid nederst."
+        },
+        "refs": [2290]
+      }
+    ]
+  },
+  {
     "version": "6.73",
     "date": "2026-07-10",
     "label": "Beta",

@@ -66,7 +66,7 @@ function BreakdownCard({ title, items, total, max = 12 }) {
         <p className="text-cz-3 text-sm">Ingen data endnu.</p>
       ) : (
         <>
-          <Table>
+          <Table data-sort-exempt="Attribution-breakdown, server-aggregeret top-N">
             <thead>
               <Tr>
                 <Th>Kanal</Th>
@@ -251,7 +251,7 @@ export default function AdminAttributionPage() {
           <p className="text-cz-3 text-xs uppercase tracking-wide">Seneste signups</p>
           <p className="text-cz-3 text-xs">Viser {rows.length} af {total}</p>
         </div>
-        <Table>
+        <Table data-sort-exempt="Signup-log, server-ordnet tid desc (sortering: opfoelgning)">
           <thead>
             <Tr>
               <Th>Tilmeldt</Th>

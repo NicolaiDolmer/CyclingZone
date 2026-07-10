@@ -54,11 +54,17 @@ export function defaultSortDir(key) {
  *
  * @param {{sort: string, dir: "asc"|"desc"}} current
  * @param {string} key
+ * @param {Set<string>} [descFirstKeys]  Valgfrit: ikke-rytter-tabeller kan angive
+ *   hvilke (typisk numeriske) nøgler der skal starte FALDENDE. Er sættet givet,
+ *   overstyrer det den rytter-centrerede defaultSortDir: nøgle i sættet → desc,
+ *   ellers asc (naturligt for tekst-kolonner: A→Å ved første klik). Uden sættet
+ *   er adfærden uændret (rytter-tabellernes eksisterende default).
  * @returns {{sort: string, dir: "asc"|"desc"}}
  */
-export function cycleSortState(current, key) {
+export function cycleSortState(current, key, descFirstKeys) {
   if (current?.sort === key) {
     return { sort: key, dir: current.dir === "desc" ? "asc" : "desc" };
   }
-  return { sort: key, dir: defaultSortDir(key) };
+  const dir = descFirstKeys ? (descFirstKeys.has(key) ? "desc" : "asc") : defaultSortDir(key);
+  return { sort: key, dir };
 }

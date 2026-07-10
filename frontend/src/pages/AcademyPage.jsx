@@ -365,7 +365,7 @@ export default function AcademyPage() {
         ) : (
           <div className="bg-cz-card border border-cz-border rounded-cz overflow-hidden">
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table data-sort-exempt="Akademi-roster, slot-begraenset (faa raekker)" className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-cz-border">
                     <th className="px-4 py-3 text-left text-cz-3 font-medium text-xs uppercase">{t("colRider")}</th>
