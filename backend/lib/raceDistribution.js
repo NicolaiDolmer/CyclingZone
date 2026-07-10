@@ -38,6 +38,24 @@ export function buildBindingMap({ columns = [], withdrawnIds } = {}) {
   return map;
 }
 
+// #2256: eksterne bindings — holdets committede entries i løb UDEN FOR dagens kolonner,
+// så brættet kan gråne en rytter der er optaget i et løb på en anden dag/pulje (buildBindingMap
+// ser kun kolonnerne). Shape matcher frontendens bindingMap-entries ({ id, window }) + name til
+// "optaget i <løbsnavn>". Afmeldte løb binder ikke (Rod A, #1823); løb uden binding-vindue kan
+// ikke binde. Pure — ingen DB.
+export function buildExternalBindings({ entries = [], columnIds, withdrawnIds, windowByRace, nameByRace } = {}) {
+  const cols = columnIds instanceof Set ? columnIds : new Set(columnIds || []);
+  const withdrawn = withdrawnIds instanceof Set ? withdrawnIds : new Set(withdrawnIds || []);
+  const map = {};
+  for (const e of entries) {
+    if (cols.has(e.race_id) || withdrawn.has(e.race_id)) continue;
+    const window = windowByRace?.get(e.race_id);
+    if (!window) continue;
+    (map[e.rider_id] ||= []).push({ id: e.race_id, name: nameByRace?.get(e.race_id) ?? null, window });
+  }
+  return map;
+}
+
 // Tidslinje-projektion: 60 dage med dato-tekst + terræn-glyf-nøgle + om holdet har et løb.
 // `dayProfiles` = Map<day, { dateText, terrain, hasMyRace }>. Manglende dag → tom standard.
 export function seasonDayProjection({ totalDays = 60, currentDay, dayProfiles = new Map() }) {

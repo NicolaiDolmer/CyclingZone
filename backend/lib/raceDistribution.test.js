@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   buildColumnSet,
   buildBindingMap,
+  buildExternalBindings,
   dominantTerrain,
   lockedWindowsFromEntries,
   partitionRegenTargets,
@@ -187,4 +188,38 @@ test("groupGrossSquads: springer ukendte ryttere + hold-løse entries over", () 
   assert.equal(out[0].riders.length, 1);
   assert.equal(out[0].team.name, null, "manglende team-opslag → navn null (id bevares)");
   assert.equal(out[0].team.id, "t1");
+});
+
+// #2256: buildExternalBindings — bindings for løb UDEN FOR dagens kolonner.
+test("buildExternalBindings: kolonne-løb + afmeldte + løb uden vindue filtreres fra", () => {
+  const W = (d) => ({ start: d, end: d });
+  const map = buildExternalBindings({
+    entries: [
+      { race_id: "col-1", rider_id: "r1" },       // dagens kolonne → ude
+      { race_id: "ext-1", rider_id: "r1" },       // ekstern → med
+      { race_id: "ext-2", rider_id: "r2" },       // afmeldt → ude
+      { race_id: "ext-3", rider_id: "r3" },       // intet binding-vindue → ude
+      { race_id: "ext-1", rider_id: "r4" },       // ekstern → med
+    ],
+    columnIds: new Set(["col-1"]),
+    withdrawnIds: new Set(["ext-2"]),
+    windowByRace: new Map([["col-1", W(1)], ["ext-1", W(5)], ["ext-2", W(6)]]),
+    nameByRace: new Map([["ext-1", "Vuelta al Sol"]]),
+  });
+  assert.deepEqual(map.r1, [{ id: "ext-1", name: "Vuelta al Sol", window: W(5) }]);
+  assert.deepEqual(map.r4, [{ id: "ext-1", name: "Vuelta al Sol", window: W(5) }]);
+  assert.equal(map.r2, undefined, "afmeldt løb binder ikke");
+  assert.equal(map.r3, undefined, "løb uden vindue kan ikke binde");
+});
+
+test("buildExternalBindings: manglende navn → null; tom input → tom map", () => {
+  const map = buildExternalBindings({
+    entries: [{ race_id: "ext-1", rider_id: "r1" }],
+    columnIds: new Set(),
+    withdrawnIds: new Set(),
+    windowByRace: new Map([["ext-1", { start: 2, end: 3 }]]),
+    nameByRace: new Map(),
+  });
+  assert.equal(map.r1[0].name, null);
+  assert.deepEqual(buildExternalBindings({}), {});
 });

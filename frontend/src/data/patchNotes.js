@@ -4,6 +4,27 @@
 // CI: scripts/check-patch-notes-version.js læser version:-felterne herfra.
 export const PATCHES = [
   {
+    "version": "6.71",
+    "date": "2026-07-10",
+    "label": "Beta",
+    "changes": [
+      {
+        "category": "improved",
+        "audience": "player",
+        "topic": "Racing",
+        "en": {
+          "title": "Busy riders are now greyed out everywhere you pick a line-up",
+          "body": "A rider can only ride one race per race day. The race page line-up picker now greys out riders who are already committed to an overlapping race and shows which race holds them, matching the Race Hub board. The board also recognises riders committed to races outside the day you are viewing. Saving is protected against rare double-booking too: the server now rechecks overlaps at the exact moment your line-up is stored, so two near-simultaneous saves can no longer book the same rider into two overlapping races."
+        },
+        "da": {
+          "title": "Optagede ryttere gråtones nu alle steder hvor du sætter en trup",
+          "body": "En rytter kan kun køre ét løb pr. løbsdag. Løbssidens udtagelsespanel gråtoner nu ryttere der allerede er committet til et overlappende løb og viser hvilket løb der holder dem, præcis som Race Hub-brættet. Brættet genkender også ryttere der er committet til løb uden for den dag du kigger på. Gem er samtidig beskyttet mod sjælden dobbeltbooking: serveren gentjekker overlap i samme øjeblik din trup gemmes, så to næsten-samtidige gem ikke længere kan booke samme rytter i to overlappende løb."
+        },
+        "refs": [2256, 2265]
+      }
+    ]
+  },
+  {
     "version": "6.70",
     "date": "2026-07-10",
     "label": "Beta",

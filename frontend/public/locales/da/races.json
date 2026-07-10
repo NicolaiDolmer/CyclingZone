@@ -254,6 +254,8 @@
     "form": "Form",
     "fatigue": "Træthed",
     "injured": "Skadet",
+    "boundIn": "Kører {race}",
+    "boundConflict": "Overlapper {race}",
     "autoPicked": "Assistentens valg. Justér og gem for selv at tage styringen.",
     "save": "Gem udtagelse",
     "saving": "Gemmer…",

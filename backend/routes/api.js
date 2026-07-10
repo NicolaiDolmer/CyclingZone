@@ -132,8 +132,9 @@ import { runTeamTrainingDay } from "../lib/dailyTrainingEngine.js";
 import { refreshChangedRiderValues } from "../lib/riderValueRefresh.js";
 import { validateSelection, saveSelection, getSelectionContext } from "../lib/raceSelection.js";
 import { isRaceLineupFrozen } from "../lib/raceActiveGuard.js";
-import { loadTeamBindingContext, findRiderBindingConflicts, teamInRacePool, raceTimeWindow, raceBindingWindow, raceGameDaySpan } from "../lib/raceBinding.js";
-import { buildColumnSet, buildBindingMap, seasonDayProjection, dominantTerrain, lockedWindowsFromEntries, partitionRegenTargets, startListVisible, daysUntilStart, groupGrossSquads, STARTLIST_HORIZON_DAYS } from "../lib/raceDistribution.js";
+import { loadTeamBindingContext, findRiderBindingConflicts, mapRiderBindingDetails, teamInRacePool, raceTimeWindow, raceBindingWindow, raceGameDaySpan } from "../lib/raceBinding.js";
+import { loadEligibleEntries } from "../lib/raceEntriesLoader.js";
+import { buildColumnSet, buildBindingMap, buildExternalBindings, seasonDayProjection, dominantTerrain, lockedWindowsFromEntries, partitionRegenTargets, startListVisible, daysUntilStart, groupGrossSquads, STARTLIST_HORIZON_DAYS } from "../lib/raceDistribution.js";
 import { isRaceEngineV2Enabled } from "../lib/raceEngineFlag.js";
 import { buildCalendarModel } from "../lib/raceCalendar.js";
 import { injuryRisk } from "../lib/riderCondition.js";
@@ -1677,7 +1678,32 @@ router.get("/races/:raceId/selection", requireAuth, async (req, res) => {
     // opstilling bygges og fejle ved gem med selection_wrong_pool.
     const eligible = teamInRacePool({ teamDivisionId: req.team.league_division_id, racePoolId: race.league_division_id });
     const ctx = await getSelectionContext({ supabase, race, teamId: req.team.id });
-    res.json({ enabled: true, eligible, race, ...ctx });
+
+    // #2265: binding-info pr. rytter — hvem er allerede optaget i et ANDET løb hvis
+    // in-game-dag-vindue overlapper DETTE løbs? Samme datavej som PUT-guarden
+    // (loadTeamBindingContext), så panelet kan gråne bundne ryttere op-front i stedet
+    // for at lade en opstilling bygges og først fejle ved gem (409 selection_rider_bound).
+    // Overlap beregnes server-side; kun {rider_id, bound_race_id, bound_race_name} sendes.
+    let boundRiders = [];
+    if (eligible) {
+      const binding = await loadTeamBindingContext({ supabase, race, teamId: req.team.id });
+      const details = mapRiderBindingDetails({
+        riderIds: ctx.riders.map((r) => r.id),
+        thisWindow: binding.thisWindow,
+        otherRaces: binding.otherRaces,
+      });
+      if (details.size) {
+        const boundRaceIds = [...new Set(details.values())];
+        const { data: boundRaces, error: nameErr } = await supabase
+          .from("races").select("id, name").in("id", boundRaceIds);
+        if (nameErr) return res.status(500).json({ error: nameErr.message });
+        const nameById = new Map((boundRaces || []).map((r) => [r.id, r.name]));
+        boundRiders = [...details.entries()].map(([rider_id, raceId]) => ({
+          rider_id, bound_race_id: raceId, bound_race_name: nameById.get(raceId) ?? null,
+        }));
+      }
+    }
+    res.json({ enabled: true, eligible, race, ...ctx, bound_riders: boundRiders });
   } catch (err) {
     captureException(err);
     res.status(500).json({ error: err.message });
@@ -1943,12 +1969,31 @@ router.get("/races/distribution", requireAuth, async (req, res) => {
       withdrawnIds: withdrawnSet, // Rod A: afmeldte kolonner binder ikke
     });
 
+    // #2256: eksterne bindings — holdets committede entries i løb UDEN FOR dagens kolonner
+    // (fx et etapeløb der rækker ind i dagen fra en anden pulje-dag), så brættet også kan
+    // gråne ryttere der er optaget uden for brættet. Samme eligibility-datavej som save-
+    // guarden (loadEligibleEntries: ghosts/udlånte binder ikke, #1906). Vinduerne er de
+    // allerede beregnede in-game-dag-binding-vinduer (bindingWindowByRace).
+    const { data: teamEntries, error: teamEntriesErr } = await loadEligibleEntries({
+      supabase,
+      baseQuery: () => supabase
+        .from("race_entries").select("race_id, rider_id, team_id").eq("team_id", req.team.id),
+    });
+    if (teamEntriesErr) throw new Error(`race_entries (external bindings): ${teamEntriesErr.message}`);
+    const externalBindings = buildExternalBindings({
+      entries: teamEntries || [],
+      columnIds: new Set(colRaceIds),
+      withdrawnIds: withdrawnSet,
+      windowByRace: bindingWindowByRace,
+      nameByRace: new Map((races || []).map((r) => [r.id, r.name])),
+    });
+
     const timeline = await buildTimeline({
       supabase, races: withWindow, schedByRace,
       teamDivisionId: req.team.league_division_id, currentDay, totalDays,
     });
 
-    res.json({ enabled: true, season: { id: season.id, number: season.number }, currentDay, focusDay, columns, bindingMap, timeline });
+    res.json({ enabled: true, season: { id: season.id, number: season.number }, currentDay, focusDay, columns, bindingMap, externalBindings, timeline });
   } catch (err) {
     captureException(err);
     res.status(500).json({ error: err.message });
@@ -2181,10 +2226,10 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
 
     // Race-hub Fase 0a: håndhæv overlap-binding — en rytter må ikke være udtaget i
     // et tidsoverlappende løb (et etapeløb binder hele sit vindue).
-    // NB: dette er applikationslags-best-effort. Der er ingen cross-race DB-constraint
-    // (race_entries-PK er kun (race_id, rider_id)), så to næsten-samtidige PUT'er til
-    // overlappende løb kan i teorien begge passere. Acceptabelt her (lavfrekvent, ét
-    // hold ad gangen bag marketWriteLimiter); en hård garanti kræver en DB-constraint i en senere fase.
+    // Dette pre-flight-tjek giver den NAVNGIVNE fejl (bound_rider_ids) til UI'et; den
+    // hårde garanti ligger i replace_race_selection-RPC'en, der gentager overlap-
+    // tjekket UNDER advisory-låsen på holdet (#2256, TOCTOU-hullet mellem læs og lås
+    // lukket i database/2026-07-10-replace-race-selection-binding-guard.sql).
     const binding = await loadTeamBindingContext({ supabase, race, teamId: req.team.id });
     const bound = findRiderBindingConflicts({ riderIds, thisWindow: binding.thisWindow, otherRaces: binding.otherRaces });
     if (bound.length) {
@@ -2194,6 +2239,10 @@ router.put("/races/:raceId/selection", requireAuth, marketWriteLimiter, async (r
     await saveSelection({ supabase, race, teamId: req.team.id, riderIds, captainId, sprintCaptainId, hunterId });
     res.json({ ok: true });
   } catch (err) {
+    // #2256: RPC'ens binding-guard tabte kapløbet for os — samme 409 som pre-flight.
+    if (err?.code === "selection_rider_bound") {
+      return res.status(409).json({ error: "selection_rider_bound" });
+    }
     captureException(err);
     res.status(500).json({ error: err.message });
   }

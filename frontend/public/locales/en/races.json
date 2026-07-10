@@ -254,6 +254,8 @@
     "form": "Form",
     "fatigue": "Fatigue",
     "injured": "Injured",
+    "boundIn": "Riding {race}",
+    "boundConflict": "Overlaps {race}",
     "autoPicked": "Assistant's pick. Adjust and save to take control.",
     "save": "Save selection",
     "saving": "Saving…",

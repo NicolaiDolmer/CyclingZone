@@ -48,7 +48,10 @@ export default function AvailableRidersPool({ roster, columns, bindingMap, onAdd
           const locked = isLocked(r.id);
           // #1984: låst chip kan stadig klikkes → popoveren forklarer HVORFOR (overlappende løb).
           // Lås-grunden vises også inline (ikke kun som hover-titel), så det er synligt med det samme.
-          const boundRace = locked && raceByRider.has(r.id) ? raceByRider.get(r.id) : null;
+          // #2256: er lås-grunden et løb UDEN FOR brættet (ekstern binding), står navnet på
+          // binding-entry'en i stedet for i en kolonne.
+          const externalName = (bindingMap?.[r.id] || []).find((e) => e.name)?.name ?? null;
+          const boundRace = locked ? (raceByRider.get(r.id) ?? externalName) : null;
           return (
             <div key={r.id} className="relative flex flex-col items-start gap-0.5">
               <button

@@ -80,7 +80,15 @@ export async function saveSelection({ supabase, race, teamId, riderIds, captainI
     p_rider_ids: riderIds,
     p_roles: rows.map((r) => r.race_role),
   });
-  if (rpcErr) throw new Error(`replace_race_selection: ${rpcErr.message}`);
+  if (rpcErr) {
+    // #2256: RPC'ens binding-guard (overlap-tjek UNDER advisory-låsen) afviser med
+    // 'selection_rider_bound'. Markér fejlen med en kode så ruten kan svare 409 med
+    // den eksisterende i18n-nøgle i stedet for en opak 500 (TOCTOU-taberen skal se
+    // samme besked som pre-flight-tjekket giver).
+    const err = new Error(`replace_race_selection: ${rpcErr.message}`);
+    if (String(rpcErr.message || "").includes("selection_rider_bound")) err.code = "selection_rider_bound";
+    throw err;
+  }
   return rows;
 }
 

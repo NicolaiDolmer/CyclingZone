@@ -52,7 +52,9 @@ export function overlapConflictColumn({ column, columns = [], bindingMap, riderI
   if (!entries || !entries.length) return null;
   const hit = entries.find((e) => e.id !== column.id && windowsOverlap(e.window, column.bindingWindow));
   if (!hit) return null;
-  return columns.find((c) => c.id === hit.id) || { id: hit.id, name: null };
+  // #2256: løb uden for brættet (eksterne bindings) er ikke i `columns` — bær navnet fra
+  // binding-entry'en igennem, så UI'et stadig kan sige "optaget i <løbsnavn>".
+  return columns.find((c) => c.id === hit.id) || { id: hit.id, name: hit.name ?? null };
 }
 
 // #1984: klassificér en rytters forhold til ét kolonne-løb i dag. Driver tilgængeligheds-UI'et:
@@ -205,6 +207,23 @@ export function draftBindingMap(columns = []) {
   for (const c of columns) {
     if (c.withdrawn) continue;
     for (const id of c.selection?.rider_ids || []) (map[id] ||= []).push({ id: c.id, window: c.bindingWindow ?? null });
+  }
+  return map;
+}
+
+// #2256: flet kladde-bindingen (dagens kolonner) med serverens eksterne bindings (holdets
+// committede entries i løb UDEN FOR brættet), så en rytter optaget i et løb på en anden
+// dag/pulje også greyes korrekt. Eksterne entries bærer { id, name, window } — navnet bruges
+// til "optaget i <løbsnavn>" for løb der ikke er kolonner. Muterer ikke input. Pure → testbar.
+export function mergeBindingMaps(base = {}, extra = {}) {
+  const map = {};
+  for (const [rid, entries] of Object.entries(base)) map[rid] = [...entries];
+  for (const [rid, entries] of Object.entries(extra || {})) {
+    if (!Array.isArray(entries)) continue;
+    for (const e of entries) {
+      if ((map[rid] ||= []).some((x) => x.id === e.id)) continue;
+      map[rid].push(e);
+    }
   }
   return map;
 }
