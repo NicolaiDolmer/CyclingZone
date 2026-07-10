@@ -15,7 +15,9 @@ import OnboardingTour from "../components/OnboardingTour";
 import { startTour } from "../lib/onboardingTour";
 import { logEvent } from "../lib/logEvent";
 import { resolveApiError } from "../lib/apiError";
+import { renderBackendMessage } from "../lib/backendMessage";
 import { useModalA11y } from "../hooks/useModalA11y";
+import { useRealtimeRefetch } from "../hooks/useRealtimeRefetch";
 import Modal from "../components/ui/Modal";
 import {
   resolveBoardCopy,
@@ -41,6 +43,10 @@ import {
 
 const API = import.meta.env.VITE_API_URL;
 const PLAN_SEQUENCE = ["5yr", "3yr", "1yr"];
+// #2307 · stabil reference til useRealtimeRefetch (SKAL være modul-konstant,
+// se hookens JSDoc). board_profiles = bestyrelsestal/mål/modifier; seasons +
+// race_results = trigger ved løbs-finalisering (samme tabeller som Dashboard).
+const BOARD_REALTIME_TABLES = ["board_profiles", "seasons", "race_results"];
 
 function buildBoardTourSteps(t) {
   return [
@@ -564,8 +570,12 @@ function MemberReactionPanel({ reaction, compact = false }) {
 
 // ── Delte komponenter ─────────────────────────────────────────────────────────
 
-function SatisfactionMeter({ value }) {
+function SatisfactionMeter({ value, modifier }) {
   const { t } = useTranslation("board");
+  // #2307 · backend-tallet (`board.budget_modifier`) er sandheden; fald kun
+  // tilbage til den lokale tærskel-funktion hvis kalderen ikke har det (bør
+  // ikke ske i praksis — se satisfactionToModifier-kommentaren).
+  const effectiveModifier = modifier ?? satisfactionToModifier(value);
   // #1072 WCAG: tidligere injicerede komponenten en rå hex via inline style — bright
   // guld (#e8c547) som tekst på Chalk ≈1.6:1 = AA-fail i light-mode. Nu tema-adaptive
   // semantiske tokens; teksten bruger cz-accent-t (deep-gold, kontrast-sikker i begge
@@ -581,16 +591,26 @@ function SatisfactionMeter({ value }) {
         <p className="text-cz-3 text-xs uppercase tracking-wider">{t("satisfactionMeter.label")}</p>
         <span className={`font-data font-bold text-lg ${textClass}`}>{value}%</span>
       </div>
-      <div className="bg-cz-subtle rounded-full h-3 mb-2">
+      <div className="bg-cz-subtle rounded-full h-3 mb-2" role="progressbar"
+        aria-valuenow={value} aria-valuemin={0} aria-valuemax={100}
+        aria-label={t("satisfactionMeter.label")}>
         <div className={`h-3 rounded-full transition-all duration-500 ${barClass}`}
           style={{ width: `${value}%` }} />
       </div>
       <div className="flex items-center justify-between">
         <p className="text-cz-2 text-sm font-medium">{t(`satisfactionMeter.${labelKey}`)}</p>
-        <p className="text-cz-3 text-xs">{t("satisfactionMeter.sponsorModifier", { modifier: satisfactionToModifier(value).toFixed(2) })}</p>
+        <p className="text-cz-3 text-xs">{t("satisfactionMeter.sponsorModifier", { modifier: effectiveModifier.toFixed(2) })}</p>
       </div>
     </div>
   );
+}
+
+// #2307 · NaN-guard: goal.target kan være 0/undefined (fx endnu-uevalueret mål) →
+// division uden guard giver `width: NaN%` / Math.round(NaN) i UI. Brug ALTID
+// denne helper i stedet for rå `(x / goal.target) * 100`.
+function goalProgressPct(current, target) {
+  if (!target) return 0;
+  return Math.min(100, Math.round(((current ?? 0) / target) * 100));
 }
 
 function GoalCard({ goal, achieved, cumulativeProgress, evaluation, onSelect }) {
@@ -650,9 +670,11 @@ function GoalCard({ goal, achieved, cumulativeProgress, evaluation, onSelect }) 
         )}
         {goal.cumulative && cumulativeProgress !== undefined && (
           <div className="flex items-center gap-2 mt-1.5">
-            <div className="flex-1 bg-cz-subtle rounded-full h-1">
+            <div className="flex-1 bg-cz-subtle rounded-full h-1" role="progressbar"
+              aria-valuenow={goalProgressPct(cumulativeProgress, goal.target)} aria-valuemin={0} aria-valuemax={100}
+              aria-label={t("a11y.goalProgress")}>
               <div className={`h-1 rounded-full transition-all ${achieved ? "bg-cz-success-bg0" : "bg-cz-accent"}`}
-                style={{ width: `${Math.min(100, Math.round((cumulativeProgress / goal.target) * 100))}%` }} />
+                style={{ width: `${goalProgressPct(cumulativeProgress, goal.target)}%` }} />
             </div>
             <span className="text-cz-3 text-xs font-mono">{cumulativeProgress}/{goal.target}</span>
           </div>
@@ -795,9 +817,11 @@ function GoalMiniDialog({ goal, achieved, evaluation, cumulativeProgress, onClos
 
       {goal.cumulative && cumulativeProgress !== undefined && (
         <div className="mb-4">
-          <div className="bg-cz-subtle rounded-full h-2">
+          <div className="bg-cz-subtle rounded-full h-2" role="progressbar"
+            aria-valuenow={goalProgressPct(cumulativeProgress, goal.target)} aria-valuemin={0} aria-valuemax={100}
+            aria-label={t("a11y.goalProgress")}>
             <div className={`h-2 rounded-full transition-all ${achieved ? "bg-cz-success-bg0" : "bg-cz-accent"}`}
-              style={{ width: `${Math.min(100, Math.round((cumulativeProgress / goal.target) * 100))}%` }} />
+              style={{ width: `${goalProgressPct(cumulativeProgress, goal.target)}%` }} />
           </div>
           <p className="text-cz-3 text-xs text-center mt-1">{cumulativeProgress}/{goal.target}</p>
         </div>
@@ -890,7 +914,7 @@ function CumulativeStatsRow({ goals, cumStats }) {
     <div className="grid grid-cols-2 gap-3">
       {cumulativeGoals.map((goal, i) => {
         const current = goal.type === "stage_wins" ? (cumStats?.stage_wins || 0) : (cumStats?.gc_wins || 0);
-        const pct = Math.min(100, Math.round((current / goal.target) * 100));
+        const pct = goalProgressPct(current, goal.target);
         const achieved = current >= goal.target;
         return (
           <div key={i} className="bg-cz-card border border-cz-border rounded-cz p-4">
@@ -903,7 +927,9 @@ function CumulativeStatsRow({ goals, cumStats }) {
               </span>
               <span className="text-cz-3 text-sm mb-1">/ {goal.target}</span>
             </div>
-            <div className="bg-cz-subtle rounded-full h-1.5">
+            <div className="bg-cz-subtle rounded-full h-1.5" role="progressbar"
+              aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}
+              aria-label={goal.type === "stage_wins" ? t("cumulative.stageWins") : t("cumulative.gcWins")}>
               <div className={`h-1.5 rounded-full transition-all ${achieved ? "bg-cz-success-bg0" : "bg-cz-accent"}`}
                 style={{ width: `${pct}%` }} />
             </div>
@@ -920,7 +946,10 @@ function SeasonSnapshotGrid({ snapshots }) {
   return (
     <div className="bg-cz-card border border-cz-border rounded-cz p-5">
       <p className="text-cz-3 text-xs uppercase tracking-wider mb-3">{t("snapshot.heading")}</p>
-      <table data-sort-exempt="Saeson-snapshot, kronologisk (faa raekker)" className="w-full text-xs">
+      {/* #2307 · 6-kolonne tabel kan overflowe smalle viewports; scroll containeren
+          (ikke siden) horisontalt, samme mønster som PlanTimelineBar ovenfor. */}
+      <div className="overflow-x-auto">
+      <table data-sort-exempt="Saeson-snapshot, kronologisk (faa raekker)" className="w-full text-xs min-w-[420px]">
         <thead>
           <tr className="text-cz-3 border-b border-cz-border">
             <th className="text-left pb-2">{t("snapshot.columns.season")}</th>
@@ -963,6 +992,7 @@ function SeasonSnapshotGrid({ snapshots }) {
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }
@@ -1369,8 +1399,29 @@ function BonusOfferCard({ offer, onAccept, onDecline, busy }) {
   );
 }
 
+// #2307 · Notifs kan bære { code, params } via metadata.{titleCode,messageCode}
+// (Refs #666); resolve gennem backendMessages-namespacet, ellers falder vi
+// tilbage til den rå title/message der er gemt på notification-rowen — samme
+// mønster som NotificationsPage.jsx (renderNotificationTitle/-Message).
+function resolveFeedTitle(item, tBackend) {
+  const meta = item?.metadata;
+  if (meta?.titleCode) {
+    return renderBackendMessage({ code: meta.titleCode, params: meta.titleParams }, tBackend, item.title);
+  }
+  return item.title;
+}
+
+function resolveFeedMessage(item, tBackend) {
+  const meta = item?.metadata;
+  if (meta?.messageCode) {
+    return renderBackendMessage({ code: meta.messageCode, params: meta.messageParams }, tBackend, item.message);
+  }
+  return item.message;
+}
+
 function BoardFeedSection({ items = [] }) {
   const { t } = useTranslation("board");
+  const { t: tBackend } = useTranslation("backendMessages");
   if (!items.length) return null;
 
   const recent = items.slice(0, 5);
@@ -1392,9 +1443,9 @@ function BoardFeedSection({ items = [] }) {
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1">
                   <p className={`text-sm font-medium ${isCritical ? "text-cz-danger" : "text-cz-2"}`}>
-                    {item.title}
+                    {resolveFeedTitle(item, tBackend)}
                   </p>
-                  <p className="text-cz-3 text-xs mt-1 leading-relaxed">{item.message}</p>
+                  <p className="text-cz-3 text-xs mt-1 leading-relaxed">{resolveFeedMessage(item, tBackend)}</p>
                 </div>
                 {isCritical && (
                   <span className="text-[10px] uppercase tracking-wider text-cz-danger flex-shrink-0">
@@ -1492,7 +1543,10 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
   const nonCumGoals = goals.filter(g => !g.cumulative);
   const cumGoals = goals.filter(g => g.cumulative);
   const goalsAchieved = nonCumGoals.filter(g => goalAchieved(g, goals.indexOf(g))).length;
-  const modifier = satisfactionToModifier(board.satisfaction);
+  // #2307 · backend-tallet er sandheden (inkl. konsekvens-stacking); vis
+  // ALDRIG et frontend-genberegnet tal her, ellers kan Board og Dashboard vise
+  // forskellige modifiers for samme plan.
+  const modifier = board.budget_modifier ?? satisfactionToModifier(board.satisfaction);
   const satColor = board.satisfaction >= 70 ? "text-cz-success"
     : board.satisfaction >= 40 ? "text-cz-accent-t" : "text-cz-danger";
   const benchmark = getBenchmarkMeta(t, board.satisfaction);
@@ -1549,7 +1603,9 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
               </div>
               <span className="text-cz-2 text-xs font-data flex-shrink-0">{t("plan.goalsLabel")} {goalsAchieved}/{nonCumGoals.length}</span>
             </div>
-            <div className="bg-cz-subtle rounded-full h-1.5">
+            <div className="bg-cz-subtle rounded-full h-1.5" role="progressbar"
+              aria-valuenow={nonCumGoals.length ? Math.round((goalsAchieved / nonCumGoals.length) * 100) : 0}
+              aria-valuemin={0} aria-valuemax={100} aria-label={t("a11y.goalsProgress")}>
               <div className="h-1.5 rounded-full bg-cz-accent transition-all"
                 style={{ width: `${nonCumGoals.length ? (goalsAchieved / nonCumGoals.length) * 100 : 0}%` }} />
             </div>
@@ -1604,7 +1660,9 @@ function DashboardPlanPanel({ planType, planData, riders, standing, activeLoanCo
               <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{t("plan.timelineHeading")}</p>
               <PlanTimelineBar planDuration={plan_duration} seasonsCompleted={seasons_completed} snapshots={snapshots} />
               <div className="mt-2">
-                <div className="bg-cz-subtle rounded-full h-1.5">
+                <div className="bg-cz-subtle rounded-full h-1.5" role="progressbar"
+                  aria-valuenow={plan_progress_pct || 0} aria-valuemin={0} aria-valuemax={100}
+                  aria-label={t("a11y.planProgress")}>
                   <div className="h-1.5 rounded-full bg-cz-accent transition-all"
                     style={{ width: `${plan_progress_pct || 0}%` }} />
                 </div>
@@ -1796,7 +1854,9 @@ function WizardStep2({ goals, goalIdx, negotiated, negotiationOptions = [], pend
           </button>
         )}
         <span className="text-cz-3 text-xs flex-shrink-0">{t("wizard.goalCounter", { current: goalIdx + 1, total })}</span>
-        <div className="flex-1 bg-cz-subtle rounded-full h-1.5">
+        <div className="flex-1 bg-cz-subtle rounded-full h-1.5" role="progressbar"
+          aria-valuenow={total ? Math.round((goalIdx / total) * 100) : 0} aria-valuemin={0} aria-valuemax={100}
+          aria-label={t("a11y.wizardProgress")}>
           <div className="h-1.5 rounded-full bg-cz-accent transition-all"
             style={{ width: `${((goalIdx) / total) * 100}%` }} />
         </div>
@@ -1945,6 +2005,9 @@ export default function BoardPage() {
   const [identityProfile, setIdentityProfile] = useState(null);
   const [activeLoanCount, setActiveLoanCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  // #2307 · eksplicit fejl-tilstand med retry frem for stille tom side ved fejl
+  // (samme mønster som StandingsPage #2175).
+  const [loadError, setLoadError] = useState(false);
   // S-02a: sæson 1 = baseline observation. Window-state låser wizard.
   const [isBaselinePhase, setIsBaselinePhase] = useState(false);
   // S-02b: auto-accept countdown + board-feed
@@ -1994,6 +2057,10 @@ export default function BoardPage() {
   const [accepting, setAccepting] = useState(false);
 
   useEffect(() => { loadAll(); }, []);
+  // #2307 · andre sider (Dashboard) refetcher live når et løb finaliseres eller
+  // bestyrelsen ændrer sig; /board manglede denne — så modifier/mål kunne stå
+  // stale indtil manuel reload. Samme mønster + debounce som DashboardPage.
+  useRealtimeRefetch("board-live", BOARD_REALTIME_TABLES, loadAll);
 
   // #1663 · hent sponsor-forhandlings-state (fejl håndteres stille — må ikke vælte Board)
   useEffect(() => {
@@ -2033,6 +2100,7 @@ export default function BoardPage() {
 
   async function loadAll() {
     setLoading(true);
+    setLoadError(false);
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;
     if (!token) { setLoading(false); return; }
@@ -2044,11 +2112,12 @@ export default function BoardPage() {
       });
     } catch {
       setLoading(false);
+      setLoadError(true);
       return;
     }
-    if (!res.ok) { setLoading(false); return; }
+    if (!res.ok) { setLoading(false); setLoadError(true); return; }
     const data = await res.json().catch(() => null);
-    if (!data) { setLoading(false); return; }
+    if (!data) { setLoading(false); setLoadError(true); return; }
 
     const newPlans = data.plans || { "5yr": null, "3yr": null, "1yr": null };
     setPlans(newPlans);
@@ -2451,6 +2520,21 @@ export default function BoardPage() {
     <PageLoader />
   );
 
+  // #2307 · fejlet load → vis brugervendt fejl + retry i stedet for stille tom side.
+  if (loadError) return (
+    <div className="max-w-4xl mx-auto board-a11y">
+      <h1 className="text-xl font-bold text-cz-1 mb-4">{t("page.title")}</h1>
+      <div className="text-center py-16 text-cz-3">
+        <p>{t("loadError")}</p>
+        <button onClick={() => loadAll()}
+          className="mt-4 px-3 py-1.5 bg-cz-accent/10 text-cz-accent-t border border-cz-accent/30
+            rounded-lg text-xs font-medium hover:bg-cz-accent/10 transition-all">
+          {t("retry")}
+        </button>
+      </div>
+    </div>
+  );
+
   // ── Hoved-visning + wizard modal ────────────────────────────────────────────
   const hasAnyPlan = Object.values(plans).some(p => p !== null);
   // S-02h: wizard-context beregnes inline (bruges i modal nedenfor)
@@ -2743,7 +2827,7 @@ export default function BoardPage() {
 
             {wizardExistingPlanData?.board && (
               <div className="mb-4">
-                <SatisfactionMeter value={wizardExistingPlanData.board.satisfaction} />
+                <SatisfactionMeter value={wizardExistingPlanData.board.satisfaction} modifier={wizardExistingPlanData.board.budget_modifier} />
               </div>
             )}
 

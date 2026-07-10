@@ -252,6 +252,11 @@ export async function processBoardWeekendFinalization({
           boardId: board.id,
           currentSeasonId: season.id,
           division: standing.division,
+          // #2308 · Pulje-id skal med, ellers falder divisionManagerCount tilbage
+          // til tier-bred tælling mens /board/status + season-end er pulje-baseret
+          // (#1608) → relative_rank-målet konvergerer mod et target season-end
+          // ikke reproducerer.
+          leagueDivisionId: standing.league_division_id ?? null,
           standings,
           planStartSeasonNumber: board.plan_start_season_number,
         });

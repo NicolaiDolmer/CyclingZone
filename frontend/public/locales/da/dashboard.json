@@ -83,7 +83,6 @@
     "board": {
       "title": "Bestyrelsens Status",
       "linkAll": "Detaljer →",
-      "empty": "Ingen bestyrelsesdata",
       "satisfaction": "Tilfredshed",
       "focus": "Fokus",
       "budgetMultiplier": "Budget multiplikator",

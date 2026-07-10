@@ -46,9 +46,9 @@ export default function BoardEmptyState({ onOpenWizard, onStartTour }) {
       <div data-tour="board-satisfaction" className="bg-cz-subtle border border-cz-border rounded-lg p-3 mb-4">
         <p className="text-cz-3 text-[10px] uppercase tracking-wider mb-1">{t("emptyState.satisfactionLabel")}</p>
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs">
-          <span><span className="text-cz-success font-mono">70–100%</span> <span className="text-cz-2">→ sponsor × &gt; 1.0</span></span>
-          <span><span className="text-cz-accent-t font-mono">40–69%</span> <span className="text-cz-2">→ sponsor × 1.0</span></span>
-          <span><span className="text-cz-danger font-mono">0–39%</span> <span className="text-cz-2">→ sponsor × &lt; 1.0</span></span>
+          <span className="text-cz-success font-mono">{t("emptyState.bands.high")}</span>
+          <span className="text-cz-accent-t font-mono">{t("emptyState.bands.moderate")}</span>
+          <span className="text-cz-danger font-mono">{t("emptyState.bands.low")}</span>
         </div>
         <p className="text-cz-3 text-xs mt-2">{t("emptyState.satisfactionFooter")}</p>
       </div>

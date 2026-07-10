@@ -44,6 +44,15 @@ export function computeOverallBoardSatisfaction(plans) {
   return Math.round(sats.reduce((a, b) => a + b, 0) / sats.length);
 }
 
+/**
+ * #2307 · KUN til forklaringstekst (fx bånd-oversigten i BoardEmptyState/
+ * satisfactionExplainer) — ALDRIG til at vise "det gældende tal" for en
+ * konkret plan. Den reelle modifier er `board.budget_modifier` fra backend
+ * (`boardEngine`/`boardWeekendFinalization`), som inkluderer konsekvens-
+ * stacking som denne rene tærskel-funktion ikke kender til. Board- og
+ * Dashboard-siderne skal begge vise `board.budget_modifier`, aldrig et
+ * frontend-genberegnet tal — ellers kan de divergere (#2307).
+ */
 export function satisfactionToModifier(satisfaction) {
   if (satisfaction >= 80) return 1.20;
   if (satisfaction >= 60) return 1.10;

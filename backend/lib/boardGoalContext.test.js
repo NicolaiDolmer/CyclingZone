@@ -127,6 +127,50 @@ test("#1608 · divisionManagerCount falder tilbage til tier-tælling når pulje 
   assert.equal(ctx.divisionManagerCount, 3, "tier-bred tælling bevaret uden pulje");
 });
 
+test("#2308 · divisionTeamCount tæller FULD pulje (inkl. AI), divisionManagerCount ekskluderer AI", async () => {
+  // computeResultsCompetitivenessFloor (boardEvaluation.js) normaliserer
+  // rank_in_division (rangerer inkl. AI) mod divisionTeamCount — skal derfor
+  // matche den fulde population, ikke den human-only divisionManagerCount.
+  const recorder = [];
+  const standings = [
+    { division: 4, league_division_id: 11, team: { is_ai: false } },
+    { division: 4, league_division_id: 11, team: { is_ai: false } },
+    { division: 4, league_division_id: 11, team: { is_ai: true } },
+    { division: 4, league_division_id: 12, team: { is_ai: false } },
+  ];
+  const supabase = makeSupabase({
+    board_plan_snapshots: [], race_results: [], finance_transactions: [],
+  }, recorder);
+
+  const ctx = await loadGoalContextForBoard({
+    supabase, teamId: "t1", boardId: "b1", currentSeasonId: "s-cur",
+    division: 4, leagueDivisionId: 11, standings,
+  });
+
+  assert.equal(ctx.divisionTeamCount, 3, "pulje 11 har 3 hold i alt (2 human + 1 AI)");
+  assert.equal(ctx.divisionManagerCount, 2, "divisionManagerCount ekskluderer stadig AI");
+});
+
+test("#2308 · divisionTeamCount fra DB-fallback (uden pre-loaded standings)", async () => {
+  const recorder = [];
+  const supabase = makeSupabase({
+    board_plan_snapshots: [], race_results: [], finance_transactions: [],
+    season_standings: [
+      { team: { is_ai: false } },
+      { team: { is_ai: false } },
+      { team: { is_ai: true } },
+    ],
+  }, recorder);
+
+  const ctx = await loadGoalContextForBoard({
+    supabase, teamId: "t1", boardId: "b1", currentSeasonId: "s-cur",
+    leagueDivisionId: 11,
+  });
+
+  assert.equal(ctx.divisionTeamCount, 3);
+  assert.equal(ctx.divisionManagerCount, 2);
+});
+
 test("#1238 · podie-query bruger kanonisk klassiker-liste og splitter monument/klassiker-optælling", async () => {
   const recorder = [];
   const supabase = makeSupabase({

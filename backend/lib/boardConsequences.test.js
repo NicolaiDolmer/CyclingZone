@@ -136,7 +136,11 @@ test("isBonusOfferEligible requires satisfaction > 75 AND ≥75% goals met", () 
 test("selectBonusExtraGoal picks signature_rider for star_signing focus", () => {
   const goal = selectBonusExtraGoal({ focus: "star_signing" });
   assert.equal(goal.type, "signature_rider");
-  assert.equal(goal.target, 75);
+  // #2308 · target er ANTAL kvalificerende ryttere (evalueres i boardGoals.js
+  // som riders.filter(popularity>=75).length >= target). target: 75 var
+  // matematisk uopfyldeligt (kræver 75 ryttere med popularity>=75); "Sign 1
+  // star" betyder target: 1.
+  assert.equal(goal.target, 1);
 });
 
 test("selectBonusExtraGoal defaults to monument_podium for non-star focuses", () => {
@@ -611,7 +615,8 @@ test("evaluateAndApplyConsequences uses signature_rider extra-goal for star_sign
 
   const offer = supabase.state.board_consequences.find((c) => c.layer === 6);
   assert.equal(offer.payload.extra_goal_type, "signature_rider");
-  assert.equal(offer.payload.extra_goal_target, 75);
+  // #2308 · target: 75 var opfyldelighed-buggen (se selectBonusExtraGoal-test).
+  assert.equal(offer.payload.extra_goal_target, 1);
 });
 
 test("evaluateAndApplyConsequences skips bonus_offer if one already issued this season", async () => {
