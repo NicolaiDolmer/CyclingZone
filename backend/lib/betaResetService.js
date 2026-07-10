@@ -50,6 +50,9 @@ export const BLOCKING_FK_BASELINE = Object.freeze([
   { child: "board_plan_snapshots", column: "season_id", parent: "seasons", strategy: "delete-child-first", handled_by: "resetBetaSeasons" },
   { child: "academy_intake", column: "season_id", parent: "seasons", strategy: "delete-child-first", handled_by: "resetBetaSeasons" },
   { child: "academy_graduation", column: "season_id", parent: "seasons", strategy: "delete-child-first", handled_by: "resetBetaSeasons" },
+  // #2301: loans.season_id (nødlåns-idempotens pr. sæson) — nulles i resetBetaSeasons
+  // fordi resetBetaLoans kun rammer beta-manager-teams' loans.
+  { child: "loans", column: "season_id", parent: "seasons", strategy: "null-before-delete", handled_by: "resetBetaSeasons" },
 ]);
 // NB: board_profiles.tradeoff_active_until_season_id -> seasons står som NO ACTION i de
 // statiske dumps (schema.sql/supabase_setup.sql) men er SET NULL i prod (2026-05-05-board-
@@ -523,6 +526,10 @@ export async function resetBetaSeasons(supabase) {
   // finance_transactions: nullable FK til seasons med ON DELETE NO ACTION — null det ud
   // for alle hold (også AI/bank), ellers blokerer FK-constraint sæson-delete.
   ensureOk(await supabase.from("finance_transactions").update({ season_id: null }).not("season_id", "is", null));
+  // loans.season_id (#2301): nullable NO ACTION FK til seasons (nødlåns-idempotens pr.
+  // sæson). resetBetaLoans sletter kun beta-manager-teams' loans, så null resterende
+  // referencer her (samme mønster som finance_transactions.season_id) før sæson-delete.
+  ensureOk(await supabase.from("loans").update({ season_id: null }).not("season_id", "is", null));
   const seasons = ensureOk(await supabase.from("seasons").delete().not("id", "is", null).select("id"));
   return { seasons: countRows(seasons) };
 }

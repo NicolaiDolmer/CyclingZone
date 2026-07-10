@@ -3294,7 +3294,7 @@ test("#2301 · processTeamSeasonPayroll: nødlån-streak nulstilles når sæsone
 
   const teamUpdates = [];
   const supabase = {
-    rpc(name, params) {
+    rpc(_name, _params) {
       return Promise.resolve({ data: 0, error: null });
     },
     from(table) {
@@ -3461,9 +3461,6 @@ test("#2301 · processTeamSeasonPayroll kørt to gange giver præcis ét nødlå
               eq() {
                 return {
                   eq() {
-                    const activeDebt = loansStore
-                      .filter(l => l.status === "active")
-                      .reduce((sum, l) => sum + l.amount_remaining, 0);
                     return Promise.resolve({
                       data: loansStore.map(l => ({ amount_remaining: l.amount_remaining })),
                       error: null,
