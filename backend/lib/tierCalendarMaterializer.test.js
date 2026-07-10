@@ -589,3 +589,57 @@ test("#2276 reconcile: aktivering af en enkelt tier-4-pulje senere respekterer a
   assert.ok(!tier4Names.has("Il Lombardia"), "tier 4 må ikke vælge et navn allerede brugt i tier 1");
   assert.equal(summary.tiers.find((t) => t.tier === 4)?.calendarViolations?.length ?? 0, 0);
 });
+
+test("#2276 rest-af-sæson override: buildTierMaterializationPlan tager eksplicit density/quota-override for ét tier uden at røre andre tiers' design-defaults", () => {
+  const overrideRealDays = 16; // forkortet vindue (reparationsdag+1..sæson-slut)
+  const overrideDensity = 3;
+  const { tierPlans } = buildTierMaterializationPlan({
+    pools: cascadePools, catalog: fullCascadeCatalog(), from: FROM,
+    realDays: overrideRealDays,
+    quotas: { ...TIER_GAME_DAY_QUOTA, 4: overrideDensity * overrideRealDays },
+    density: { 1: 5, 2: 4, 3: 3, 4: overrideDensity },
+  });
+  const tier4 = tierPlans.find((t) => t.tier === 4);
+  const tier3 = tierPlans.find((t) => t.tier === 3);
+  // kvote = density × vinduesdage (48 for tier 4 i #2276-scenariet: 3 × 16).
+  assert.equal(tier4.quota, overrideDensity * overrideRealDays);
+  assert.equal(tier4.density, overrideDensity);
+  assert.ok(tier4.load.every((x) => x === overrideDensity), `tier 4 tæthed ikke ${overrideDensity} hver dag: ${tier4.load.join(",")}`);
+  // andre tiers uændrede design-defaults (tier 3 kører stadig tæthed 3 / kvote 84, IKKE 16-dages-vinduet).
+  assert.equal(tier3.quota, TIER_GAME_DAY_QUOTA[3]);
+  assert.equal(tier3.density, 3);
+  // #2276-invarianter (klasse-whitelist, cross-tier-dedup, identisk pulje-signatur) håndhæves stadig.
+  assert.equal(tier4.calendarViolations.length, 0, tier4.calendarViolations.join(" · "));
+  const allowed4 = new Set(TIER_CLASS_WHITELIST[4]);
+  for (const r of tier4.pools[0].raceRows) assert.ok(allowed4.has(r.race_class), `ulovlig klasse ${r.race_class} i override-plan`);
+});
+
+test("#2276 rest-af-sæson override: materializeTierCalendars respekterer density-parameteren og slutdatoen ligger inden for vinduet", async () => {
+  const overrideRealDays = 10;
+  const overrideDensity = 3;
+  const divisions = [
+    { id: 101, tier: 1 }, { id: 201, tier: 2 }, { id: 301, tier: 3 },
+    { id: 401, tier: 4 }, { id: 402, tier: 4 },
+  ];
+  const teams = divisions.map((d) => ({ league_division_id: d.id, is_ai: false, is_bank: false, is_frozen: false, is_test_account: false }));
+  const state = { league_divisions: divisions, teams, race_pool: fullCascadeCatalog(), races: [], race_stage_profiles: [], race_stage_schedule: [] };
+  const sb = makeSupabase(state);
+  const summary = await materializeTierCalendars({
+    supabase: sb, seasonId: "s1", from: FROM, tiers: [4], dryRun: false,
+    realDays: overrideRealDays,
+    quotas: { ...TIER_GAME_DAY_QUOTA, 4: overrideDensity * overrideRealDays },
+    density: { 1: 5, 2: 4, 3: 3, 4: overrideDensity },
+  });
+  const tier4Line = summary.tiers.find((t) => t.tier === 4);
+  assert.equal(tier4Line.quota, overrideDensity * overrideRealDays);
+  assert.equal(tier4Line.calendarViolations.length, 0);
+  // buildScheduleRows planlægger real_day 0..realDays-1 på from+1..from+realDays (real_day+1
+  // dage efter `from`) — windowEnd er derfor from + (realDays+1) dage.
+  const scheduled = sb.state.race_stage_schedule.map((s) => new Date(s.scheduled_at).getTime());
+  const windowEnd = new Date(FROM.getTime() + (overrideRealDays + 1) * 86_400_000).getTime();
+  assert.ok(scheduled.every((t) => t < windowEnd), "en etape-tid ligger uden for det forkortede vindue");
+  // begge tier 4-puljer får identisk kalender (invariant 3).
+  const pool401 = sb.state.races.filter((r) => r.league_division_id === 401).map((r) => r.name).sort();
+  const pool402 = sb.state.races.filter((r) => r.league_division_id === 402).map((r) => r.name).sort();
+  assert.deepEqual(pool401, pool402);
+});
