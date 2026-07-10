@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { buildTierMaterializationPlan, MONUMENT_GAMEDAY_BASE, materializeTierCalendars, reconcilePoolCalendarOnActivation } from "./tierCalendarMaterializer.js";
+import { buildTierMaterializationPlan, MONUMENT_GAMEDAY_BASE, materializeTierCalendars, reconcilePoolCalendarOnActivation, detectCalendarViolations } from "./tierCalendarMaterializer.js";
+import { TIER_GAME_DAY_QUOTA } from "./tierRaceSelection.js";
 import { generateRaceStageProfiles } from "./raceStageProfileGenerator.js";
 
 const FROM = new Date("2026-06-28T00:00:00Z");
@@ -298,6 +299,78 @@ test("forceTiers: uden flaget (default) springes en mandagsløs tier-4-pulje sta
   const { tierPlans } = buildTierMaterializationPlan({ pools, catalog, quotas: { 1: 21, 4: 1 } });
 
   assert.equal(tierPlans.find((p) => p.tier === 4), undefined, "uden forceTiers er adfærden uændret: tier 4 uden managers får ingen plan");
+});
+
+// ── #2251 · GT-gate + kalender-invarianter ──────────────────────────────────────
+
+test("#2251 plan: tier 4 vælger ALDRIG Grand Tours, selv når kataloget har ledige GT'er", () => {
+  // GT'er ud over div 1's behov må ikke kaskadere ned: tier 4 skal fylde sin kvote
+  // med ikke-GT-løb. Katalog: 2 GT'er + rigeligt småløb.
+  const catalog = [
+    { id: "gt-a", name: "GT A", race_class: "TourFrance", race_type: "stage_race", stages: 21 },
+    { id: "gt-b", name: "GT B", race_class: "GiroVuelta", race_type: "stage_race", stages: 21 },
+    ...tier3Catalog(),
+  ];
+  const t4pools = [{ id: 8, tier: 4, realManagerCount: 2 }];
+  const { tierPlans } = buildTierMaterializationPlan({ pools: t4pools, catalog, from: FROM });
+  const t4 = tierPlans.find((p) => p.tier === 4);
+  assert.ok(t4, "tier 4 skal have en plan");
+  const stagesById = new Map(catalog.map((c) => [c.id, c.stages]));
+  for (const r of t4.pools[0].raceRows) {
+    assert.ok((stagesById.get(r.pool_race_id) ?? 1) < 15, `GT i tier 4: ${r.pool_race_id}`);
+  }
+  assert.equal(t4.calendarViolations.length, 0);
+  assert.equal(t4.quotaHit, true, `tier 4 skal stadig ramme kvoten (shortfall=${t4.shortfall})`);
+});
+
+test("#2251 detectCalendarViolations: GT i tier >1 + overlappende GT-rygrad flages; spredt rygrad i tier 1 er ren", () => {
+  const gt = (id, gdStart) => ({
+    id, stages: 21,
+    stagesPlaced: Array.from({ length: 21 }, (_, k) => ({ stage_number: k + 1, game_day: gdStart + k })),
+  });
+  // Prod-tilstanden 5-10/7: to GT'er begge gd 0-20 i tier 4 → begge regler brudt.
+  const bad = detectCalendarViolations({ tier: 4, placements: [gt("ib", 0), gt("hex", 0)] });
+  assert.equal(bad.length, 2, bad.join(" · "));
+  // Div 1's faktiske form (0-20 / 30-50 / 60-80): ingen brud.
+  const good = detectCalendarViolations({ tier: 1, placements: [gt("a", 0), gt("b", 30), gt("c", 60)] });
+  assert.deepEqual(good, []);
+  // Småløb trigger aldrig.
+  const small = detectCalendarViolations({ tier: 4, placements: [{ id: "s", stages: 6, stagesPlaced: [{ game_day: 0 }] }] });
+  assert.deepEqual(small, []);
+});
+
+test("#2251 dryRun rapporterer calendarViolations pr. tier (tom liste når planen er ren)", async () => {
+  const catalog = tier3Catalog();
+  const league_divisions = [{ id: 8, tier: 4, pool_index: 0, label: "Division 4 — A" }];
+  const teams = [mgrTeam("m1", 8)];
+  const sb = makeSupabase({ league_divisions, teams, race_pool: catalog });
+  const summary = await materializeTierCalendars({ supabase: sb, seasonId: "s1", from: FROM, dryRun: true });
+  assert.ok(summary.tiers.length > 0);
+  assert.ok(summary.tiers.every((t) => Array.isArray(t.calendarViolations) && t.calendarViolations.length === 0));
+});
+
+test("#2251 reconcile: kvote-override MERGES oven på defaults, så tier 1-3's selections stadig optager løb i cross-tier-dedup'en", async () => {
+  // Rod-årsagen bag GT'erne i div 4: quotas = { [tier4]: X } gav tier 1-3 kvote 0 i
+  // plan-genberegningen → tom selection → tom dedup → tier 4 valgte frit (GT'er først).
+  const state = tier4ActivationState();
+  state.league_divisions.push({ id: 1, tier: 1, pool_index: 0, label: "Division 1" });
+  state.teams.push(mgrTeam("d1-m1", 1));
+  state.races = [{ id: "race-d1", season_id: "s1", league_division_id: 1, pool_race_id: "eksisterende-d1" }];
+  state.race_stage_schedule = [
+    { race_id: "race-d1", stage_number: 1, scheduled_at: "2026-07-01T16:00:00Z", game_day: 3 },
+    { race_id: "race-d1", stage_number: 2, scheduled_at: "2026-07-10T16:00:00Z", game_day: 12 },
+  ];
+  const sb = makeSupabase(state);
+  const calls = [];
+  const recording = async (args) => { calls.push(args); return { racesInserted: 0, tiers: [] }; };
+
+  await reconcilePoolCalendarOnActivation({ supabase: sb, poolId: 8, now: FROM, materialize: recording });
+  assert.equal(calls.length, 1);
+  const q = calls[0].quotas;
+  assert.equal(q[1], TIER_GAME_DAY_QUOTA[1], "tier 1 skal beholde sin default-kvote i dedup-genberegningen");
+  assert.equal(q[2], TIER_GAME_DAY_QUOTA[2]);
+  assert.equal(q[3], TIER_GAME_DAY_QUOTA[3]);
+  assert.equal(q[4], 2 * 11, "den aktiverede tiers kvote = density × rest-dage");
 });
 
 // ── #2149 · reconcilePoolCalendarOnActivation: forward-guard ved pulje-aktivering ──

@@ -46,6 +46,36 @@ function editionYearFrom(startDate) {
   return Number.isFinite(y) && y >= 2000 && y <= 2099 ? y : null;
 }
 
+// #2251 kalender-invarianter (defense-in-depth oven på selectTierRaceSet's GT-gate):
+// (1) GT'er (≥ minStages etaper) må ALDRIG optræde i tier > 1 — spec'ens GT-rygrad hører
+//     til Division 1 (to samtidige 21-etapers GT'er i tier 4 kollapsede lav-divisionernes
+//     startfelter 5-10/7).
+// (2) GT-rygraden må ikke overlappe sig selv (spec: "GT'er lægges spredt og IKKE
+//     overlappende hinanden") — målt på game-day-spans.
+// Ren + deterministisk; materializeTierCalendars nægter at APPLY'e en tier med brud.
+export function detectCalendarViolations({ tier, placements = [], minStages = GRAND_TOUR_MIN_STAGES } = {}) {
+  const violations = [];
+  const gtSpans = placements
+    .filter((pl) => (pl.stages ?? 1) >= minStages && pl.stagesPlaced?.length)
+    .map((pl) => ({
+      id: pl.id,
+      start: Math.min(...pl.stagesPlaced.map((s) => s.game_day)),
+      end: Math.max(...pl.stagesPlaced.map((s) => s.game_day)),
+    }));
+  if (tier > 1 && gtSpans.length) {
+    violations.push(`tier ${tier}: ${gtSpans.length} Grand Tour(s) i planen — GT'er er kun tilladt i tier 1 (#2251)`);
+  }
+  for (let i = 0; i < gtSpans.length; i++) {
+    for (let j = i + 1; j < gtSpans.length; j++) {
+      const a = gtSpans[i], b = gtSpans[j];
+      if (a.start <= b.end && b.start <= a.end) {
+        violations.push(`tier ${tier}: GT-overlap ${a.id} (gd ${a.start}–${a.end}) × ${b.id} (gd ${b.start}–${b.end})`);
+      }
+    }
+  }
+  return violations;
+}
+
 /**
  * @param {{ pools, catalog, from?, realDays?, quotas?, density?, slots?, baseSeed? }} args
  * @returns {{ tierPlans: Array<object> }}
@@ -82,7 +112,8 @@ export function buildTierMaterializationPlan({
     const cap = overlapCaps[tier] ?? 2;
     const tierSlots = slots[tier] ?? slots[3];
 
-    const sel = selectTierRaceSet({ catalog: availableCatalog, quota, seed: (baseSeed ^ tier) >>> 0 });
+    // #2251: GT'er (≥15 etaper) er KUN tilladt i tier 1 (spec'ens GT-rygrad).
+    const sel = selectTierRaceSet({ catalog: availableCatalog, quota, seed: (baseSeed ^ tier) >>> 0, allowGrandTours: tier === 1 });
     for (const r of sel.stageRaces) usedRaceIds.add(r.id);
     for (const r of sel.oneDayRaces) usedRaceIds.add(r.id);
 
@@ -111,8 +142,10 @@ export function buildTierMaterializationPlan({
       return { leagueDivisionId: pool.id, tier, raceRows, stageRows: poolStageRows };
     });
 
+    const calendarViolations = detectCalendarViolations({ tier, placements: packed.placements });
+
     tierPlans.push({
-      tier, quota, density: dens, overlapCap: cap,
+      tier, quota, density: dens, overlapCap: cap, calendarViolations,
       totalGameDays: sel.totalGameDays, quotaHit: sel.quotaHit, shortfall: sel.shortfall,
       raceCount: packed.placements.length,
       load: packed.load, emptyDays: packed.emptyDays, underfilledDays: packed.underfilledDays,
@@ -163,10 +196,16 @@ export async function materializeTierCalendars({
 
   for (const tierPlan of tierPlans) {
     if (tiers && !tiers.includes(tierPlan.tier)) continue;
+    // #2251: nægt at APPLY'e en plan med kalender-invariant-brud (GT i tier >1 /
+    // GT-rygrad-overlap). dryRun må gerne rapportere planen, så bruddene kan inspiceres.
+    if (!dryRun && tierPlan.calendarViolations?.length) {
+      throw new Error(`kalender-invariant brudt (apply nægtet): ${tierPlan.calendarViolations.join(" · ")}`);
+    }
     const tLine = {
       tier: tierPlan.tier, quota: tierPlan.quota, totalGameDays: tierPlan.totalGameDays, quotaHit: tierPlan.quotaHit,
       shortfall: tierPlan.shortfall, emptyDays: tierPlan.emptyDays, overlapDays: tierPlan.overlapDays,
-      unplacedStages: tierPlan.unplacedStages, unplacedSingles: tierPlan.unplacedSingles, pools: [],
+      unplacedStages: tierPlan.unplacedStages, unplacedSingles: tierPlan.unplacedSingles,
+      calendarViolations: tierPlan.calendarViolations ?? [], pools: [],
     };
     for (const poolPlan of tierPlan.pools) {
       const fresh = poolPlan.raceRows.filter((r) => !existingKey.has(`${poolPlan.leagueDivisionId}:${r.pool_race_id}`));
@@ -280,7 +319,12 @@ export async function reconcilePoolCalendarOnActivation({
       const realDays = Math.floor((endDayUtc - from.getTime()) / 86_400_000);
       if (realDays < 1) return { skipped: "season-ending", seasonEnd: end.toISOString() };
       horizon.realDays = realDays;
-      horizon.quotas = { [division.tier]: (TIER_DENSITY[division.tier] ?? 1) * realDays };
+      // #2251 rod-årsag: denne override erstattede HELE kvote-tabellen med kun den
+      // aktiverede tiers kvote → tier 1-3 fik kvote 0 i plan-genberegningen → deres
+      // selection blev tom → cross-tier dedup så INGEN optagne løb → tier 4 valgte frit
+      // fra hele kataloget (prestige-først = Grand Tours). Merge oven på defaults, så
+      // de højere tiers' (ikke-appliede) selections stadig optager deres løb i dedup'en.
+      horizon.quotas = { ...TIER_GAME_DAY_QUOTA, [division.tier]: (TIER_DENSITY[division.tier] ?? 1) * realDays };
     }
   }
 

@@ -52,6 +52,20 @@ test("selectTierRaceSet: vælger ikke lavere prestige før højere er opbrugt", 
   assert.equal(betterUnpicked.length, 0, `højere-prestige løb sprunget over: ${betterUnpicked.map((r) => r.id)}`);
 });
 
+test("#2251 selectTierRaceSet: allowGrandTours=false udelukker ≥15-etapers løb men rammer stadig kvoten", () => {
+  const sel = selectTierRaceSet({ catalog: catalog(), quota: 56, seed: 1, allowGrandTours: false });
+  const picked = [...sel.stageRaces, ...sel.oneDayRaces];
+  assert.ok(picked.length > 0);
+  assert.ok(picked.every((r) => (r.stages ?? 1) < 15), `GT sluppet igennem: ${picked.filter((r) => r.stages >= 15).map((r) => r.id)}`);
+  assert.equal(gameDays(sel), 56, "kvoten skal stadig fyldes af ikke-GT-løb");
+});
+
+test("#2251 selectTierRaceSet: allowGrandTours default (true) er uændret adfærd", () => {
+  const a = selectTierRaceSet({ catalog: catalog(), quota: 140, seed: 1 });
+  const b = selectTierRaceSet({ catalog: catalog(), quota: 140, seed: 1, allowGrandTours: true });
+  assert.deepEqual(a, b);
+});
+
 test("selectTierRaceSet: marker oneDayRaces vs stageRaces korrekt + bærer race_class", () => {
   const sel = selectTierRaceSet({ catalog: catalog(), quota: 84, seed: 1 });
   assert.ok(sel.stageRaces.every((r) => r.stages >= 2 && r.race_class), "stageRaces ≥2 etaper + klasse");
