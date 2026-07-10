@@ -49,6 +49,7 @@ export function useScouting() {
   const [pendingTargets, setPendingTargets] = useState({}); // { <rider_id>: { readyOn } }
   const [jobCapacity, setJobCapacity] = useState(1);
   const [jobActiveCount, setJobActiveCount] = useState(0);
+  const [jobConfig, setJobConfig] = useState(null); // { targetDaysPerLevel, targetCostPerLevel, missionDays, missionCost } | null (før første fetch)
 
   const requestedRef = useRef(new Set()); // ids vi allerede har bedt om (dedup)
   const pendingRef = useRef(new Set());   // ids der venter på næste batch
@@ -76,6 +77,7 @@ export function useScouting() {
         setPendingTargets(nextPending);
         setJobActiveCount(active.length);
         setJobCapacity(data.jobModel?.capacity ?? 1);
+        setJobConfig(data.jobModel?.jobConfig ?? null);
       }
     } catch {
       /* netværk — behold tidligere state, UI falder tilbage til uscoutet */
@@ -198,7 +200,7 @@ export function useScouting() {
 
   return {
     slots, maxLevel, levels, teamId, loading, scoutingId, scoutSystemEnabled,
-    jobCapacity, jobActiveCount,
+    jobCapacity, jobActiveCount, jobConfig,
     scout, refresh, levelFor, pendingFor, requestEstimates, estimateFor, estimates,
   };
 }

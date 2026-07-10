@@ -77,7 +77,7 @@ export default function RiderScoutingTab({ rider, scouting }) {
   const riderId = rider?.id;
   const {
     maxLevel, scout, scoutingId, slots, levels,
-    scoutSystemEnabled, jobCapacity, jobActiveCount, pendingFor,
+    scoutSystemEnabled, jobCapacity, jobActiveCount, jobConfig, pendingFor,
   } = scouting;
   // Scout-niveauet kan også stige via hero'ens scout-knap (useScouting er delt
   // side-state) — genindlæs rapporten når niveauet ændrer sig, uanset hvor der
@@ -122,14 +122,13 @@ export default function RiderScoutingTab({ rider, scouting }) {
     if (r?.ok && !scoutSystemEnabled) load();
   };
 
-  // #2244: job-model-knappen viser altid opgavens pris (3 dage, 1.000/niveau,
-  // samme konstanter som backend scoutEngine.SCOUT_JOB_CONFIG.target), duplikeret
-  // her KUN til visning; se Slice C-rapportens kontrakt-note om et evt. fremtidigt
-  // config-felt i GET /scouting/me/central så dette ikke skal holdes i sync manuelt.
+  // #2244: job-model-knappen viser opgavens pris fra jobConfig i GET /scouting/me
+  // (SSOT: backend scoutEngine.SCOUT_JOB_CONFIG.target); fallbacks dækker kun
+  // vinduet før første fetch.
   // TONE: "Send scout"/"Send spejder"-copy er plain/factual v1 — ejer-tone-session
   // for scouting-job-copy er stadig åben (spec §Åbne detaljer); review pending.
-  const TARGET_JOB_DAYS = 3;
-  const TARGET_JOB_COST = 1000;
+  const TARGET_JOB_DAYS = jobConfig?.targetDaysPerLevel ?? 3;
+  const TARGET_JOB_COST = jobConfig?.targetCostPerLevel ?? 1000;
 
   const scoutButton = (labelKey) => {
     if (pending) {

@@ -32,7 +32,7 @@
       "scopeLabel": "Omfang",
       "countryLabel": "Land",
       "submit": "Start mission",
-      "costNote": "Missioner varer 14 dage og koster rejseomkostninger fra din kasse. Ingen refusion ved annullering."
+      "costNote": "Missioner varer {days} dage og koster {cost, number} i rejseomkostninger fra din kasse. Ingen refusion ved annullering."
     },
     "scope": {
       "u23": "U23-ryttere",
