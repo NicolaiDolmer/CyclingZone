@@ -529,12 +529,11 @@ export async function repayLoan(loanId, teamId, amount, supabaseClient = null, a
   });
 
   if (rpcError) {
-    // Genskab samme fejl-kontrakt som før RPC-flytningen (message-only, ingen
-    // .code — routen forwarder blot e.message til klienten).
-    if (/allerede betalt/.test(rpcError.message || "")) throw new Error("Lånet er allerede betalt");
-    if (/Lån ikke fundet/.test(rpcError.message || "")) throw new Error("Lån ikke fundet");
-    if (/Ikke nok midler/.test(rpcError.message || "")) throw new Error("Ikke nok midler");
-    throw rpcError;
+    // repay_loan_atomic RAISE'r med præcis de samme beskeder som de gamle
+    // JS-checks kastede (se pre-flight ovenfor) — forward message'n uændret
+    // så API-fejl-kontrakten (message-only, ingen .code) er bevaret uden at
+    // duplikere strengene her (i18n-leak-ratchet, #1068).
+    throw new Error(rpcError.message || "Loan repayment failed");
   }
 
   const result = Array.isArray(rpcData) ? rpcData[0] : rpcData;
