@@ -49,7 +49,8 @@
   "debt": {
     "label": "Total debt",
     "ceiling": "Cap: {value} CZ$",
-    "headroom": "Room under cap: {value} CZ$"
+    "headroom": "Room under cap: {value} CZ$",
+    "accruedInterest": "Incl. {value} CZ$ interest accrued"
   },
   "prize": {
     "label": "Prize money (season {season})",
@@ -76,6 +77,7 @@
       "principal": "Principal",
       "interestPerSeason": "Interest/season",
       "seasonsRemaining": "Seasons left",
+      "accruedInterest": "Interest accrued",
       "startRepay": "Pay installment →",
       "startRepayMaxPlaceholder": "Max {value}",
       "repayPlaceholder": "0",
@@ -199,6 +201,7 @@
     "transactionCount": "{count} transactions",
     "income": "Income",
     "expense": "Expenses",
+    "nonCashLoanInterest": "Interest accrued on debt (non-cash, excluded from net)",
     "total": "Total",
     "activeLoans": "Active loans",
     "noActiveLoans": "No active loans.",
@@ -207,6 +210,7 @@
     "loanInterest": "Interest",
     "loanSeasons": "Seasons",
     "loanNextInterest": "Next season's interest",
+    "loanAccruedInterest": "Interest accrued",
     "loanShort": "Short loan",
     "loanLong": "Long loan",
     "loanEmergency": "Emergency loan",

@@ -594,6 +594,15 @@ export async function repayLoan(loanId, teamId, amount, supabaseClient = null, a
 
 // ── Tilskriv renter ved sæsonafslutning ───────────────────────────────────────
 
+// #2304 (finance-audit 10/7): renten kapitaliseres IKKE længere som en
+// kontant-lignende finance_transactions-post — den blev dobbelttalt (én gang
+// her, én gang inde i den efterfølgende loan_repayment-debitering) og
+// hero-cashflow-nettet i sæsonrapporten matchede ikke den faktiske
+// balanceændring (der sker jo ingen debitering af teams.balance ved
+// kapitalisering). Renten akkumuleres nu synligt på selve lånet
+// (loans.accrued_interest, database/2026-07-10-loans-accrued-interest.sql) —
+// UI viser tallet direkte i stedet for at læne sig på en ledger-linje.
+//
 // #535: Returnerer { charged: [{ loan_id, interest, skipped }] } så
 // payroll-summary kan aggregere counts + totaler. Charged-array er backward
 // compatible — callers der ignorerer return-værdien påvirkes ikke.
@@ -610,43 +619,36 @@ export async function processLoanInterest(teamId, seasonId, supabaseClient = nul
 
   for (const loan of loans || []) {
     const interest = Math.round(loan.amount_remaining * loan.interest_rate);
-
-    // Slice 07b · Idempotency: skriv finance_transactions FØRST. Hvis DB
-    // afviser med unique_violation (uniq_loan_interest_per_loan_season), er
-    // renten allerede tilskrevet i en tidligere cron-kørsel — skip stille.
-    const { error: transactionError } = await client.from("finance_transactions").insert({
-      team_id: teamId,
-      type: "loan_interest",
-      amount: -interest,
-      description: null,
-      season_id: seasonId,
-      related_loan_id: loan.id,
-      reason_code: FINANCE_REASON.SEASON_END_LOAN_INTEREST,
-      metadata: {
-        code: "tx.loanInterest",
-        params: { rate: Math.round(loan.interest_rate * 100) },
-      },
-    });
-    if (transactionError) {
-      if (transactionError.code === "23505") {
-        console.warn(
-          `[economy] loan-interest already charged for loan ${loan.id} season ${seasonId} — skip`
-        );
-        charged.push({ loan_id: loan.id, interest, skipped: true });
-        continue;
-      }
-      throw transactionError;
-    }
-
     const newRemaining = loan.amount_remaining + interest;
+    const newAccruedInterest = (loan.accrued_interest || 0) + interest;
     const newSeasonsRemaining = loan.seasons_remaining - 1;
 
-    const { error: updateError } = await client.from("loans").update({
-      amount_remaining: newRemaining,
-      seasons_remaining: newSeasonsRemaining,
-      updated_at: new Date().toISOString(),
-    }).eq("id", loan.id);
+    // Idempotency: betinget UPDATE (erstatter det gamle unique-index-på-
+    // finance_transactions-mønster, som forudsatte en INSERT). Kun rows hvor
+    // last_interest_season_id enten er NULL eller afviger fra denne sæson
+    // opdateres — en 2. cron-kørsel for samme sæson rammer 0 rows og skipper
+    // stille i stedet for at dobbelt-charge.
+    const { data: updatedRows, error: updateError } = await client
+      .from("loans")
+      .update({
+        amount_remaining: newRemaining,
+        accrued_interest: newAccruedInterest,
+        last_interest_season_id: seasonId,
+        seasons_remaining: newSeasonsRemaining,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", loan.id)
+      .or(`last_interest_season_id.is.null,last_interest_season_id.neq.${seasonId}`)
+      .select("id");
     if (updateError) throw updateError;
+
+    if (!updatedRows || updatedRows.length === 0) {
+      console.warn(
+        `[economy] loan-interest already charged for loan ${loan.id} season ${seasonId} — skip`
+      );
+      charged.push({ loan_id: loan.id, interest, skipped: true });
+      continue;
+    }
 
     charged.push({ loan_id: loan.id, interest, skipped: false });
   }

@@ -5,8 +5,10 @@ import {
   aggregateByReason,
   buildSeasonFinanceReport,
   computeHeroCashflow,
+  partitionCashflowTransactions,
   REASON_LABEL,
   summarizeLoans,
+  summarizeNonCashLoanInterest,
   summarizePrizes,
   topTransactions,
 } from "./seasonFinanceReport.js";
@@ -146,6 +148,66 @@ test("topTransactions — public output strips audit internals", () => {
   assert.ok(!("idempotency_key" in row));
 });
 
+// ── #2304: loan_interest ekskluderes fra hero-net (ikke-kontant) ──────────────
+
+test("partitionCashflowTransactions — flytter SEASON_END_LOAN_INTEREST-rows til non-cash", () => {
+  const result = partitionCashflowTransactions([
+    tx({ amount: 240000, reason_code: "season_start_sponsor" }),
+    tx({ amount: -5000, type: "loan_interest", reason_code: "season_end_loan_interest" }),
+    tx({ amount: -100000, reason_code: "auction_winner_payment" }),
+  ]);
+  assert.equal(result.cash.length, 2);
+  assert.equal(result.nonCashLoanInterest.length, 1);
+  assert.equal(result.nonCashLoanInterest[0].amount, -5000);
+});
+
+test("partitionCashflowTransactions — legacy loan_interest-rows uden reason_code flyttes også", () => {
+  const result = partitionCashflowTransactions([
+    tx({ amount: -3000, type: "loan_interest", reason_code: null }),
+  ]);
+  assert.equal(result.cash.length, 0);
+  assert.equal(result.nonCashLoanInterest.length, 1);
+});
+
+test("partitionCashflowTransactions — loan_repayment (kontant) forbliver i cash", () => {
+  const result = partitionCashflowTransactions([
+    tx({ amount: -20000, type: "loan_repayment", reason_code: "loan_repayment" }),
+  ]);
+  assert.equal(result.cash.length, 1);
+  assert.equal(result.nonCashLoanInterest.length, 0);
+});
+
+test("summarizeNonCashLoanInterest — summerer beløb + tæller rows", () => {
+  const result = summarizeNonCashLoanInterest([
+    tx({ amount: -5000 }),
+    tx({ amount: -3000 }),
+  ]);
+  assert.equal(result.total, -8000);
+  assert.equal(result.transaction_count, 2);
+});
+
+test("summarizeNonCashLoanInterest — tomt input giver nul", () => {
+  assert.deepEqual(summarizeNonCashLoanInterest([]), { total: 0, transaction_count: 0 });
+});
+
+test("buildSeasonFinanceReport — ekskluderer loan_interest fra hero.net, eksponerer non_cash_loan_interest", () => {
+  const report = buildSeasonFinanceReport({
+    transactions: [
+      tx({ amount: 240000, reason_code: "season_start_sponsor" }),
+      tx({ amount: -100000, reason_code: "auction_winner_payment" }),
+      tx({ amount: -5000, type: "loan_interest", reason_code: "season_end_loan_interest" }),
+    ],
+    loans: [],
+  });
+  // Hero-net må IKKE indeholde de -5000 fra rente-kapitalisering.
+  assert.equal(report.hero.total_out, -100000);
+  assert.equal(report.hero.net, 140000);
+  assert.equal(report.hero.transaction_count, 2);
+  assert.deepEqual(report.hero.non_cash_loan_interest, { total: -5000, transaction_count: 1 });
+  // Donuts viser fortsat den fulde liste inkl. rente (informativ drill-down).
+  assert.equal(report.donuts.expense.length, 2);
+});
+
 test("summarizeLoans — only active loans + computes next-season interest", () => {
   const result = summarizeLoans([
     {
@@ -156,6 +218,7 @@ test("summarizeLoans — only active loans + computes next-season interest", () 
       amount_remaining: 150000,
       interest_rate: 0.08,
       seasons_remaining: 3,
+      accrued_interest: 24000,
     },
     { id: "l2", status: "settled", amount_remaining: 0, interest_rate: 0.08 },
     { id: "l3", status: "pending", amount_remaining: 100000, interest_rate: 0.05 },
@@ -163,6 +226,7 @@ test("summarizeLoans — only active loans + computes next-season interest", () 
   assert.equal(result.length, 1);
   assert.equal(result[0].id, "l1");
   assert.equal(result[0].next_season_interest, 12000); // 150000 × 0.08
+  assert.equal(result[0].accrued_interest, 24000);
 });
 
 test("summarizeLoans — handles missing/null fields", () => {
