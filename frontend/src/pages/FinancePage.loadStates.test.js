@@ -64,10 +64,17 @@ test("#1350 FinancePage settler loading i finally (ikke kun på success-stien)",
 test("#1350 FinancePage behandler Supabase-error som load-fejl (ikke tom-state)", () => {
   // En Supabase-fejl returnerer { data: null, error } → uden denne guard ses et
   // tomt finans-overblik i stedet for en retry-bar fejl.
+  // #2305: prize-query flyttede server-side (finance-report); guard'en dækker nu
+  // txRes (Supabase) + reportRes.ok (fetch).
   assert.match(
     loadAll,
-    /if\s*\(\s*txRes\.error\s*\|\|\s*prizeTxRes\.error\s*\)/,
-    "loadAll mangler guard på txRes.error/prizeTxRes.error",
+    /if\s*\(\s*txRes\.error\s*\)/,
+    "loadAll mangler guard på txRes.error",
+  );
+  assert.match(
+    loadAll,
+    /if\s*\(\s*!reportRes\.ok\s*\)/,
+    "loadAll mangler guard på reportRes.ok (finance-report-fetch, #2305)",
   );
   assert.match(loadAll, /setLoadError\(true\)/, "loadAll skal sætte loadError ved Supabase-fejl");
 });

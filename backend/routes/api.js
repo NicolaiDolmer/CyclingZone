@@ -156,7 +156,7 @@ import {
   computeSustainabilityTier,
 } from "../lib/economyAdminDashboard.js";
 import { computeMultiSeasonForecast } from "../lib/financeForecast.js";
-import { buildSeasonFinanceReport } from "../lib/seasonFinanceReport.js";
+import { buildSeasonFinanceReport, summarizePrizes } from "../lib/seasonFinanceReport.js";
 import { groupCronRuns } from "../lib/cronRunCorrelation.js";
 import { getSeasonPrizePreview, paySeasonPrizesToDate } from "../lib/prizePayoutEngine.js";
 import { payRaceDaySponsorsToDate } from "../lib/sponsorRaceDayIncome.js";
@@ -5517,7 +5517,7 @@ router.get("/teams/:teamId/finance-report", requireAuth, async (req, res) => {
       return res.status(403).json({ error: "Forbidden" });
     }
 
-    const [teamRes, seasonRes, txRes, loansRes] = await Promise.all([
+    const [teamRes, seasonRes, txRes, loansRes, prizeSeasonRes, prizeAllTimeRes] = await Promise.all([
       supabase
         .from("teams")
         .select("id, name, division, balance, sponsor_income")
@@ -5539,6 +5539,21 @@ router.get("/teams/:teamId/finance-report", requireAuth, async (req, res) => {
         .select("id, loan_type, principal, amount_remaining, interest_rate, seasons_remaining, status")
         .eq("team_id", teamId)
         .eq("status", "active"),
+      // #2305: sæson-scoped præmieliste til Oversigt-kortet (server-side, med
+      // løbsnavn embedded via FK så klienten slipper for et ekstra opslag).
+      supabase
+        .from("finance_transactions")
+        .select("id, amount, race_id, description, created_at, race:race_id(name)")
+        .eq("team_id", teamId)
+        .eq("season_id", seasonId)
+        .in("type", ["prize", "bonus"])
+        .order("amount", { ascending: false }),
+      // #2305: all-time-sum — henter KUN amount-kolonnen og summerer server-side.
+      supabase
+        .from("finance_transactions")
+        .select("amount")
+        .eq("team_id", teamId)
+        .in("type", ["prize", "bonus"]),
     ]);
 
     if (teamRes.error || !teamRes.data) {
@@ -5546,6 +5561,12 @@ router.get("/teams/:teamId/finance-report", requireAuth, async (req, res) => {
     }
     if (seasonRes.error || !seasonRes.data) {
       return res.status(404).json({ error: "Season not found" });
+    }
+    // #1840-postmortem: Supabase-fejl returnerer { data: null, error } uden at
+    // reject — behandl som hård fejl i stedet for tavst tomt "|| []"-resultat.
+    if (txRes.error || loansRes.error || prizeSeasonRes.error || prizeAllTimeRes.error) {
+      const dbError = txRes.error || loansRes.error || prizeSeasonRes.error || prizeAllTimeRes.error;
+      throw new Error(`finance-report query failed: ${dbError.message}`);
     }
 
     const report = buildSeasonFinanceReport({
@@ -5557,6 +5578,8 @@ router.get("/teams/:teamId/finance-report", requireAuth, async (req, res) => {
       team: { id: teamRes.data.id, name: teamRes.data.name, division: teamRes.data.division },
       season: seasonRes.data,
       ...report,
+      // #2305: præmie-resumé til Finance → Oversigt-kortet.
+      prizes: summarizePrizes(prizeSeasonRes.data, prizeAllTimeRes.data),
       // Sponsor-modifier-kurve: tilgængelig fra sæson 2 når board_plan_snapshots
       // er populeret. Vi returnerer eksplicit null så frontend kan vise
       // "Tilgængelig fra sæson 2" frem for at tro vi glemte den.

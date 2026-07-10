@@ -56,8 +56,8 @@ export default function FinancePage() {
   const [loanData, setLoanData] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [team, setTeam] = useState(null);
-  const [prizeTotal, setPrizeTotal] = useState(0);
-  const [prizeRows, setPrizeRows] = useState([]);
+  // #2305: sæson-scoped præmie-resumé, server-beregnet via finance-report.
+  const [prizeSummary, setPrizeSummary] = useState({ seasonNumber: null, total: 0, raceCount: 0, allTimeTotal: 0, rows: [] });
   const [reservedBalance, setReservedBalance] = useState(0);
   const [forecast, setForecast] = useState(null);
   const [forecastLoading, setForecastLoading] = useState(true);
@@ -148,16 +148,11 @@ export default function FinancePage() {
 
     const { data: { session } } = await supabase.auth.getSession();
     const authHeaders = { Authorization: `Bearer ${session.access_token}` };
-    const [loanRes, forecastRes, txRes, prizeTxRes, leadingRes, proxiesRes, seasonsRes] = await Promise.all([
+    const [loanRes, forecastRes, txRes, leadingRes, proxiesRes, seasonsRes] = await Promise.all([
       fetch(`${API}/api/finance/loans`, { headers: authHeaders }),
       fetch(`${API}/api/me/finance-forecast`, { headers: authHeaders }),
       supabase.from("finance_transactions").select("*")
         .eq("team_id", teamData.id).order("created_at", { ascending: false }).limit(30),
-      supabase.from("finance_transactions")
-        .select("id, amount, race_id, description, created_at")
-        .eq("team_id", teamData.id)
-        .in("type", ["prize", "bonus"])
-        .order("amount", { ascending: false }),
       // #44: hent leading auktioner + proxies så vi kan vise reserveret balance
       supabase.from("auctions")
         .select("id, current_price")
@@ -174,7 +169,7 @@ export default function FinancePage() {
     // #1350: en Supabase-fejl returnerer { data: null, error } i stedet for at
     // reject — uden denne guard ville et fejlet transaktions-kald ligne et tomt
     // finans-overblik. Behandl det som en (retry-bar) load-fejl.
-    if (txRes.error || prizeTxRes.error) {
+    if (txRes.error) {
       setLoadError(true);
       return;
     }
@@ -222,16 +217,28 @@ export default function FinancePage() {
     }
     setReservedBalance(reserved);
 
-    const allPrizeTxs = prizeTxRes.data || [];
-    setPrizeTotal(allPrizeTxs.reduce((s, r) => s + (r.amount || 0), 0));
-
-    const raceIds = [...new Set(allPrizeTxs.map(r => r.race_id).filter(Boolean))];
-    if (raceIds.length > 0) {
-      const { data: raceNames } = await supabase.from("races").select("id, name").in("id", raceIds);
-      const raceMap = Object.fromEntries((raceNames || []).map(r => [r.id, r.name]));
-      setPrizeRows(allPrizeTxs.map(tx => ({ ...tx, raceName: raceMap[tx.race_id] || null })));
-    } else {
-      setPrizeRows(allPrizeTxs);
+    // #2305: præmie-kortet er sæson-scoped og server-beregnet. Genbruger
+    // finance-report-endpointets prizes-blok (season-sum + antal løb + all-time)
+    // i stedet for den tidligere ubegrænsede klient-side prize-query.
+    const prizeSeason = active || allSeasons[0] || null;
+    if (prizeSeason) {
+      const reportRes = await fetch(
+        `${API}/api/teams/${teamData.id}/finance-report?seasonId=${prizeSeason.id}`,
+        { headers: authHeaders },
+      );
+      if (!reportRes.ok) {
+        setLoadError(true);
+        return;
+      }
+      const report = await reportRes.json();
+      const prizes = report.prizes || { season_total: 0, race_count: 0, all_time_total: 0, rows: [] };
+      setPrizeSummary({
+        seasonNumber: prizeSeason.number,
+        total: prizes.season_total || 0,
+        raceCount: prizes.race_count || 0,
+        allTimeTotal: prizes.all_time_total || 0,
+        rows: prizes.rows || [],
+      });
     }
     } catch (e) {
       // #1350: rejected request (netværk/auth) — vis retry-bar fejl i stedet for
@@ -416,11 +423,16 @@ export default function FinancePage() {
               )}
             </Card>
             <Card className="col-span-2 md:col-span-1 p-5">
-              <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">{t("prize.label")}</p>
-              <p className={`font-mono font-bold text-2xl ${prizeTotal > 0 ? "text-cz-success" : "text-cz-3"}`}>
-                {prizeTotal > 0 ? "+" : ""}{formatNumber(prizeTotal)} CZ$
+              <p className="text-cz-3 text-xs uppercase tracking-wider mb-1">
+                {prizeSummary.seasonNumber != null
+                  ? t("prize.label", { season: prizeSummary.seasonNumber })
+                  : t("prize.labelNoSeason")}
               </p>
-              <p className="text-cz-3 text-xs mt-1">{t("prize.raceCount", { count: prizeRows.length })}</p>
+              <p className={`font-mono font-bold text-2xl ${prizeSummary.total > 0 ? "text-cz-success" : "text-cz-3"}`}>
+                {prizeSummary.total > 0 ? "+" : ""}{formatNumber(prizeSummary.total)} CZ$
+              </p>
+              <p className="text-cz-3 text-xs mt-1">{t("prize.raceCount", { count: prizeSummary.raceCount })}</p>
+              <p className="text-cz-3 text-xs mt-1">{t("prize.allSeasons", { amount: formatNumber(prizeSummary.allTimeTotal) })}</p>
             </Card>
           </div>
 
@@ -448,18 +460,18 @@ export default function FinancePage() {
           />
 
           {/* Løbspræmier */}
-          {prizeRows.length > 0 && (
+          {prizeSummary.rows.length > 0 && (
             <Card className="p-5 mb-4">
               <h2 className="text-cz-1 font-semibold text-sm mb-3">{t("prizeList.title")}</h2>
               <div className="flex flex-col divide-y divide-cz-border">
                 {/* #1131: løbsnavne fik 690+ dead clicks (Clarity 5/6-12/6) — spillere forventer
                     navigation. Hele rækken er ét klikmål til løbet når race_id findes. */}
-                {prizeRows.map(tx => {
+                {prizeSummary.rows.map(tx => {
                   const rowInner = (
                     <>
                       <div className="flex-1 min-w-0 pe-3">
                         <p className="text-cz-2 text-xs font-medium truncate">
-                          {tx.raceName || tx.description || t("prizeList.fallbackName")}
+                          {tx.race_name || tx.description || t("prizeList.fallbackName")}
                         </p>
                         <p className="text-cz-3 text-xs mt-0.5">{timeAgo(tx.created_at)}</p>
                       </div>
