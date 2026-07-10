@@ -392,10 +392,17 @@ test("repayLoan respekterer api auditCtx", async () => {
     status: "active",
   };
   const client = {
+    // #2302: repayLoan flyttede fra 2-trins update+increment_balance_with_audit
+    // til ét atomisk repay_loan_atomic RPC-kald.
     rpc(name, params) {
-      assert.equal(name, "increment_balance_with_audit");
+      assert.equal(name, "repay_loan_atomic");
       captures.push(params.p_finance_payload);
-      return Promise.resolve({ data: 0, error: null });
+      const actualAmount = Math.min(params.p_amount, loanRow.amount_remaining);
+      const remaining = loanRow.amount_remaining - actualAmount;
+      return Promise.resolve({
+        data: { paid: actualAmount, remaining, paid_off: remaining <= 0, balance: 100000 - actualAmount },
+        error: null,
+      });
     },
     from(table) {
       if (table === "seasons") {
@@ -564,7 +571,11 @@ const CALLSITE_FILES = [
   { rel: "./transferExecution.js", expectedCalls: 4 },
   { rel: "./squadEnforcement.js", expectedCalls: 3 },
   { rel: "./prizePayoutEngine.js", expectedCalls: 1 },
-  { rel: "./loanEngine.js", expectedCalls: 5 },
+  // #2302: repayLoan's callsite moved from incrementBalanceWithAudit to the
+  // atomic repay_loan_atomic RPC (database/2026-07-10-repay-loan-atomic.sql),
+  // so callsites here dropped from 5 to 4 (createLoan, createEmergencyLoan,
+  // processLoanAgreementSeasonFees.payer + .receiver).
+  { rel: "./loanEngine.js", expectedCalls: 4 },
   { rel: "./economyEngine.js", expectedCalls: 2 },
   // #1558: youth-stiens debit flyttede til finalize_academy_acquisition-RPC'en,
   // så incrementBalanceWithAudit-callsites faldt fra 4 til 3 (senior buyer/seller

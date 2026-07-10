@@ -10,6 +10,7 @@ const {
   createEmergencyLoan,
   createLoan,
   processLoanAgreementSeasonFees,
+  repayLoan,
   shouldChargeLoanAgreementSeasonFee,
 } = await import("./loanEngine.js");
 
@@ -766,4 +767,301 @@ test("createEmergencyLoan HARD clamp: returnerer null når gæld allerede er fyl
   assert.equal(loan, null, "null når ingen headroom");
   assert.equal(supabase.state.loans.length, 0, "ingen loan-insert ved 0 headroom");
   assert.equal(supabase.state.financeRows.length, 0, "ingen financeRow ved 0 headroom");
+});
+
+// ── #2302: repayLoan — atomic repay_loan_atomic RPC ───────────────────────────
+//
+// Mock simulerer repay_loan_atomic-RPC'en (database/2026-07-10-repay-loan-
+// atomic.sql): lås+valider+debitér balance+skriv ledger+opdatér loan sker som
+// ÉT rpc()-kald i mocken, ligesom i den ægte DB-transaktion. Testene beviser
+// at repayLoan (a) opdaterer balance+remaining+ledger konsistent ved succes,
+// (b) afviser ved utilstrækkelig balance/for stort beløb, (c) sætter
+// paid_off-status ved fuld indfrielse, og (d) bevarer den eksisterende
+// fejl-kontrakt (message/errorCode) som API'et allerede afhænger af.
+function createRepayLoanSupabase({
+  teamId = "team-1",
+  balance = 1000,
+  loan = {
+    id: "loan-1",
+    team_id: "team-1",
+    status: "active",
+    amount_remaining: 500,
+  },
+  leadingAuctions = [],
+  proxyBids = [],
+  rpcErrorFor = null, // { message } — simuler at RPC'en selv afviser
+} = {}) {
+  const state = {
+    balance,
+    loan: { ...loan },
+    financeRows: [],
+    notifications: [],
+    rpcCalls: [],
+  };
+
+  return {
+    state,
+    client: {
+      rpc(name, params) {
+        assert.equal(name, "repay_loan_atomic");
+        state.rpcCalls.push(params);
+
+        if (rpcErrorFor) {
+          return Promise.resolve({ data: null, error: rpcErrorFor });
+        }
+
+        // Mirror repay_loan_atomic's server-side validation + mutation.
+        if (!state.loan || state.loan.id !== params.p_loan_id || state.loan.team_id !== params.p_team_id) {
+          return Promise.resolve({ data: null, error: { message: "Lån ikke fundet" } });
+        }
+        if (state.loan.status === "paid_off") {
+          return Promise.resolve({ data: null, error: { message: "Lånet er allerede betalt" } });
+        }
+
+        const actualAmount = Math.min(params.p_amount, state.loan.amount_remaining);
+        if (state.balance < actualAmount) {
+          return Promise.resolve({ data: null, error: { message: "Ikke nok midler" } });
+        }
+
+        state.balance -= actualAmount;
+        const newRemaining = state.loan.amount_remaining - actualAmount;
+        const isPaidOff = newRemaining <= 0;
+        state.loan.amount_remaining = isPaidOff ? 0 : newRemaining;
+        state.loan.status = isPaidOff ? "paid_off" : "active";
+
+        state.financeRows.push({
+          team_id: params.p_team_id,
+          type: "loan_repayment",
+          amount: -actualAmount,
+          related_loan_id: params.p_loan_id,
+          ...params.p_finance_payload,
+        });
+
+        return Promise.resolve({
+          data: {
+            paid: actualAmount,
+            remaining: isPaidOff ? 0 : newRemaining,
+            paid_off: isPaidOff,
+            balance: state.balance,
+          },
+          error: null,
+        });
+      },
+      from(table) {
+        if (table === "loans") {
+          return {
+            select(columns) {
+              assert.equal(columns, "*");
+              return {
+                eq(column, value) {
+                  assert.equal(column, "id");
+                  return {
+                    single() {
+                      if (!state.loan || state.loan.id !== value) {
+                        return Promise.resolve({ data: null, error: null });
+                      }
+                      return Promise.resolve({ data: { ...state.loan }, error: null });
+                    },
+                  };
+                },
+              };
+            },
+          };
+        }
+        if (table === "teams") {
+          return {
+            select(columns) {
+              assert.equal(["balance", "user_id"].includes(columns), true);
+              return {
+                eq(column, value) {
+                  assert.equal(column, "id");
+                  assert.equal(value, teamId);
+                  return {
+                    single() {
+                      if (columns === "user_id") {
+                        return Promise.resolve({ data: { user_id: "user-1" }, error: null });
+                      }
+                      return Promise.resolve({ data: { balance: state.balance }, error: null });
+                    },
+                  };
+                },
+              };
+            },
+          };
+        }
+        if (table === "auctions") {
+          return {
+            select() {
+              return {
+                in() {
+                  return {
+                    eq() {
+                      return Promise.resolve({ data: leadingAuctions, error: null });
+                    },
+                  };
+                },
+              };
+            },
+          };
+        }
+        if (table === "auction_proxy_bids") {
+          return {
+            select() {
+              return {
+                eq() {
+                  return Promise.resolve({ data: proxyBids, error: null });
+                },
+              };
+            },
+          };
+        }
+        if (table === "seasons") {
+          return {
+            select() {
+              return {
+                eq() {
+                  return {
+                    order() {
+                      return {
+                        limit() {
+                          return {
+                            maybeSingle() {
+                              return Promise.resolve({ data: { id: "season-active-mock" }, error: null });
+                            },
+                          };
+                        },
+                      };
+                    },
+                  };
+                },
+              };
+            },
+          };
+        }
+        if (table === "notifications") {
+          const q = {
+            eq() { return q; }, gte() { return q; }, order() { return q; },
+            is() { return q; }, limit() { return Promise.resolve({ data: [], error: null }); },
+          };
+          return {
+            select() { return q; },
+            insert(row) { state.notifications.push(row); return Promise.resolve({ data: row, error: null }); },
+          };
+        }
+        throw new Error(`Unexpected table: ${table}`);
+      },
+    },
+  };
+}
+
+test("repayLoan: succesfuld delvis repay opdaterer balance+remaining+ledger konsistent", async () => {
+  const supabase = createRepayLoanSupabase({ balance: 1000, loan: { id: "loan-1", team_id: "team-1", status: "active", amount_remaining: 500 } });
+
+  const result = await repayLoan("loan-1", "team-1", 200, supabase.client);
+
+  assert.deepEqual(result, { paid: 200, remaining: 300, paid_off: false });
+  assert.equal(supabase.state.balance, 800, "balance skal debiteres med det faktisk betalte beløb");
+  assert.equal(supabase.state.loan.amount_remaining, 300);
+  assert.equal(supabase.state.loan.status, "active");
+  assert.equal(supabase.state.financeRows.length, 1, "ledger-post skal skrives atomisk med balance+loan-mutationen");
+  assert.equal(supabase.state.financeRows[0].amount, -200);
+  assert.equal(supabase.state.financeRows[0].type, "loan_repayment");
+  assert.equal(supabase.state.financeRows[0].related_loan_id, "loan-1");
+  assert.equal(supabase.state.notifications.length, 0, "ingen paid-off notifikation ved delvis repay");
+
+  // Beviser at hele mutationen sker via ÉT repay_loan_atomic RPC-kald (atomicitet).
+  assert.equal(supabase.state.rpcCalls.length, 1);
+  assert.equal(supabase.state.rpcCalls[0].p_amount, 200);
+});
+
+test("repayLoan: fuld indfrielse sætter paid_off-status + trigger notifikation", async () => {
+  const supabase = createRepayLoanSupabase({ balance: 1000, loan: { id: "loan-1", team_id: "team-1", status: "active", amount_remaining: 500 } });
+
+  const result = await repayLoan("loan-1", "team-1", 500, supabase.client);
+
+  assert.deepEqual(result, { paid: 500, remaining: 0, paid_off: true });
+  assert.equal(supabase.state.balance, 500);
+  assert.equal(supabase.state.loan.status, "paid_off");
+  assert.equal(supabase.state.loan.amount_remaining, 0);
+  assert.equal(supabase.state.notifications.length, 1, "paid-off notifikation skal sendes");
+  assert.equal(supabase.state.financeRows[0].metadata?.code, undefined, "JS bygger ikke metadata længere — det gør RPC'en");
+});
+
+test("repayLoan: overbetaling klampes til amount_remaining (repay > gæld)", async () => {
+  const supabase = createRepayLoanSupabase({ balance: 1000, loan: { id: "loan-1", team_id: "team-1", status: "active", amount_remaining: 300 } });
+
+  const result = await repayLoan("loan-1", "team-1", 500, supabase.client);
+
+  assert.deepEqual(result, { paid: 300, remaining: 0, paid_off: true });
+  assert.equal(supabase.state.balance, 700, "kun de faktiske 300 debiteres, ikke de anmodede 500");
+});
+
+test("repayLoan: afviser ved utilstrækkelig balance (Ikke nok midler)", async () => {
+  const supabase = createRepayLoanSupabase({ balance: 100, loan: { id: "loan-1", team_id: "team-1", status: "active", amount_remaining: 500 } });
+
+  await assert.rejects(
+    () => repayLoan("loan-1", "team-1", 200, supabase.client),
+    /Ikke nok midler/,
+  );
+  assert.equal(supabase.state.balance, 100, "balance uændret ved afvist repay");
+  assert.equal(supabase.state.financeRows.length, 0, "ingen ledger-post ved afvist repay");
+});
+
+test("repayLoan: afviser når beløb overstiger tilgængeligt pga. bud-commitment (#44)", async () => {
+  // balance 1000, leading auction med current_price 800 → kun 200 tilgængelig.
+  const supabase = createRepayLoanSupabase({
+    balance: 1000,
+    loan: { id: "loan-1", team_id: "team-1", status: "active", amount_remaining: 500 },
+    leadingAuctions: [{ id: "auction-1", current_price: 800 }],
+  });
+
+  await assert.rejects(
+    () => repayLoan("loan-1", "team-1", 300, supabase.client),
+    (err) => {
+      assert.equal(err.code, "error.repayInsufficient");
+      assert.equal(err.params?.available, 200);
+      return true;
+    },
+  );
+  assert.equal(supabase.state.rpcCalls.length, 0, "RPC må ikke kaldes når commitment-checket afviser først");
+});
+
+test("repayLoan: kaster 'Lån ikke fundet' hvis loan tilhører andet team", async () => {
+  const supabase = createRepayLoanSupabase({
+    balance: 1000,
+    loan: { id: "loan-1", team_id: "other-team", status: "active", amount_remaining: 500 },
+  });
+
+  await assert.rejects(
+    () => repayLoan("loan-1", "team-1", 100, supabase.client),
+    /Lån ikke fundet/,
+  );
+});
+
+test("repayLoan: kaster 'Lånet er allerede betalt' for et paid_off lån", async () => {
+  const supabase = createRepayLoanSupabase({
+    balance: 1000,
+    loan: { id: "loan-1", team_id: "team-1", status: "paid_off", amount_remaining: 0 },
+  });
+
+  await assert.rejects(
+    () => repayLoan("loan-1", "team-1", 100, supabase.client),
+    /allerede betalt/,
+  );
+});
+
+test("repayLoan: RPC'ens 'Ikke nok midler'-afvisning propagerer som samme fejl-kontrakt", async () => {
+  // Simulerer at et concurrent repay tømmer balancen MELLEM JS-pre-checket og
+  // RPC-kaldet — den autoritative RPC-lås fanger det, JS skal bare forwarde
+  // den samme fejlbesked som det gamle pre-RPC-check gav.
+  const supabase = createRepayLoanSupabase({
+    balance: 1000,
+    loan: { id: "loan-1", team_id: "team-1", status: "active", amount_remaining: 500 },
+    rpcErrorFor: { message: "Ikke nok midler" },
+  });
+
+  await assert.rejects(
+    () => repayLoan("loan-1", "team-1", 200, supabase.client),
+    /Ikke nok midler/,
+  );
 });
