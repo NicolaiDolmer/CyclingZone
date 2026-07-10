@@ -1,0 +1,11 @@
+# CodeQL analysis-konfiguration.
+#
+# Ekskluder docs/ fra analyse. docs/design/** indeholder selvstændige design-
+# prototyper / wireframe-HTML der bruger DOMParser på en udvikler-skrevet statisk
+# template i deres egen self-render-harness (ikke bruger-input) og aldrig serveres
+# af prod-appen. js/xss-through-dom-fund der (alarmer #165-168) er derfor false
+# positives. paths-ignore virker for fortolkede sprog som JavaScript/TypeScript.
+name: "CyclingZone CodeQL config"
+
+paths-ignore:
+  - 'docs/**'
