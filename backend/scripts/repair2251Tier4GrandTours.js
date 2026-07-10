@@ -16,15 +16,28 @@
 // for den nye horisont). Igangværende gamle løb (fx Tour du Léman, gd 0-5) kan derfor
 // false-binde et par ryttere mod nye løb i nogle dage — lille blast radius, selv-korrigerende
 // når de gamle løb er færdige.
+//
+// D3-blitz-tjekliste (2026-06-27-postmortemet — det vi glemte/lærte sidst):
+//   ✓ from = FREMTIDIG dato (i morgen UTC-midnat) — aldrig scheduled_at <= now på live spil
+//   ✓ scheduler-flag slås FRA under kørslen og genoprettes til før-tilstanden bagefter
+//     (del af den ejer-godkendte sekvens; race_engine_v2-kill-switchen røres IKKE)
+//   ✓ præmier/sponsor-race-day: verificeret 0 udbetalt (kun ved finalization; ingen af de
+//     13 løb er completed — prize_paid_at NULL + 0 finance_transactions, prod-tjek 10/7)
+//   ✓ fatigue: nulstilles for ryttere med entries i de slettede løb (1.742 ryttere, avg 47)
+//   ✓ standings: fuld updateStandings-recompute efter sletning
+//   ✓ rangliste-matviews: refresh efter sletning
+//   ✓ backup FØR sletning (JSON, alle berørte tabeller)
 
 import { createClient } from "@supabase/supabase-js";
 import dotenv from "dotenv";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { writeFileSync, mkdirSync } from "fs";
-import { materializeTierCalendars } from "../lib/tierCalendarMaterializer.js";
+import { materializeTierCalendars, TIER_DENSITY } from "../lib/tierCalendarMaterializer.js";
 import { TIER_GAME_DAY_QUOTA } from "../lib/tierRaceSelection.js";
-import { TIER_DENSITY } from "../lib/tierCalendarMaterializer.js";
+import { updateStandings } from "../lib/economyEngine.js";
+import { refreshRankingMatviewsSafe } from "../lib/refreshRankingMatviews.js";
+import { STAGE_SCHEDULER_FLAG_KEY } from "../lib/stageSchedulerFlag.js";
 
 const GT_MIN_STAGES = 15;
 const CHILD_TABLES = [
@@ -113,6 +126,21 @@ export async function repairTier4GrandTours({ supabase, now = new Date(), dryRun
     return { deleted: 0, dryRun: true, plan: summary.tiers };
   }
 
+  // 0) Scheduler-flag FRA under kørslen (D3-læring: et igangværende tick kan skrive
+  // resultater midt i sletningen). Før-tilstanden huskes og genoprettes i finally —
+  // genopretningen er del af den ejer-godkendte sekvens. Kill-switchen røres ikke.
+  const { data: flagRow, error: flagErr } = await supabase
+    .from("app_config").select("value").eq("key", STAGE_SCHEDULER_FLAG_KEY).maybeSingle();
+  if (flagErr) throw new Error(`app_config (${STAGE_SCHEDULER_FLAG_KEY}): ${flagErr.message}`);
+  const flagBefore = flagRow?.value ?? null;
+  const setFlag = async (value) => {
+    const { error } = await supabase.from("app_config").upsert({ key: STAGE_SCHEDULER_FLAG_KEY, value }, { onConflict: "key" });
+    if (error) throw new Error(`app_config upsert: ${error.message}`);
+  };
+  await setFlag("off");
+  log(`scheduler-flag '${STAGE_SCHEDULER_FLAG_KEY}' sat til 'off' (var: ${JSON.stringify(flagBefore)})`);
+  try {
+
   // 1) Backup (JSON, timestampet) — alle berørte rækker før sletning.
   const backup = { generated_at: now.toISOString(), season_id: season.id, races: gtRaces, children: {} };
   const ids = [...gtIds];
@@ -128,7 +156,19 @@ export async function repairTier4GrandTours({ supabase, now = new Date(), dryRun
   writeFileSync(backupPath, JSON.stringify(backup));
   log(`backup skrevet: ${backupPath}`);
 
-  // 2) Slet børn → løb.
+  // 2) Fatigue-nulstilling for ryttere med entries i de slettede løb (D3-præcedens:
+  // løbene erklæres ugyldige → deres belastning skal ikke hænge ved). Bemærk: ryttere
+  // der OGSÅ har kørt legitime løb får en lille "gratis" restitution — accepteret
+  // (selv-korrigerende, og alternativet kan ikke dekomponeres pr. løb).
+  const affectedRiderIds = [...new Set(backup.children.race_entries.map((e) => e.rider_id).filter(Boolean))];
+  for (let i = 0; i < affectedRiderIds.length; i += 200) {
+    const { error } = await supabase
+      .from("rider_condition").update({ fatigue: 0 }).in("rider_id", affectedRiderIds.slice(i, i + 200));
+    if (error) throw new Error(`rider_condition fatigue-reset: ${error.message}`);
+  }
+  log(`  fatigue nulstillet for ${affectedRiderIds.length} berørte ryttere`);
+
+  // 3) Slet børn → løb.
   for (const table of CHILD_TABLES) {
     const { error } = await supabase.from(table).delete().in("race_id", ids);
     if (error) throw new Error(`delete ${table}: ${error.message}`);
@@ -138,7 +178,14 @@ export async function repairTier4GrandTours({ supabase, now = new Date(), dryRun
   if (delErr) throw new Error(`delete races: ${delErr.message}`);
   log(`  slettet ${ids.length} løb`);
 
-  // 3) Re-materialisér tier 4 (rettet kode: GT-gate + dedup) frem til fælles sæson-slut.
+  // 4) Standings-recompute (fuld sæson — updateStandings genberegner fra race_results)
+  // + rangliste-matview-refresh, så point fra de slettede GT-etaper forsvinder overalt.
+  await updateStandings(season.id, null, { supabase });
+  log("  season_standings genberegnet");
+  await refreshRankingMatviewsSafe(supabase);
+  log("  rangliste-matviews refreshet");
+
+  // 5) Re-materialisér tier 4 (rettet kode: GT-gate + dedup) frem til fælles sæson-slut.
   const summary = await materializeTierCalendars({
     supabase, seasonId: season.id, seasonStartDate: season.start_date, from,
     tiers: [4], dryRun: false, realDays,
@@ -146,7 +193,15 @@ export async function repairTier4GrandTours({ supabase, now = new Date(), dryRun
     log,
   });
   log(`\nre-materialiseret: +${summary.racesInserted} løb, ${summary.stageSchedules} etape-tider`);
-  return { deleted: ids.length, backupPath, ...summary };
+  return { deleted: ids.length, backupPath, affectedRiders: affectedRiderIds.length, ...summary };
+
+  } finally {
+    // 6) Genopret scheduler-flaget til før-tilstanden (også ved fejl midtvejs).
+    if (flagBefore != null) {
+      await setFlag(flagBefore);
+      log(`scheduler-flag genoprettet til ${JSON.stringify(flagBefore)}`);
+    }
+  }
 }
 
 if (process.argv[1] && process.argv[1].endsWith("repair2251Tier4GrandTours.js")) {
