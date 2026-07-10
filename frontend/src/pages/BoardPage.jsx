@@ -1550,7 +1550,7 @@ function SatisfactionProgressLine({ progress }) {
   const up = target > current;
   return (
     <p className="text-cz-3 text-[11px] font-data -mt-2 mb-1 flex items-center gap-1">
-      <span aria-hidden="true" className={up ? "text-cz-success" : "text-cz-danger"}>{up ? "↗" : "↘"}</span>
+      <span aria-hidden="true" className={up ? "text-cz-success" : "text-cz-danger"}>{up ? "↑" : "↓"}</span>
       {t("transparency.progressTowards", { target: Math.round(target) })}
     </p>
   );

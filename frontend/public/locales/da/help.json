@@ -878,7 +878,7 @@
     },
     "boardMemberWeights": {
       "q": "Hvad vægter et bestyrelsesmedlem når jeg åbner deres kort?",
-      "a": "Klik på et medlem i avatar-gridet for at åbne deres kort. Under beskrivelsen ser du de fire feedback-kategorier (resultater, økonomi, identitet, rangering) med en bar pr. kategori, der viser hvor kraftigt netop det medlems arketype vægter hver af dem. Det er den samme vægtning bestyrelses-motoren bruger til at vælge hvilket medlem der 'taler' om en given mål-reaktion — nu gjort synlig i stedet for kun brugt internt."
+      "a": "Klik på et medlem i avatar-gridet for at åbne deres kort. Under beskrivelsen ser du de fire feedback-kategorier (resultater, økonomi, identitet, rangering) med en bar pr. kategori, der viser hvor kraftigt netop det medlems arketype vægter hver af dem. Det er den samme vægtning bestyrelses-motoren bruger til at vælge hvilket medlem der 'taler' om en given mål-reaktion, nu gjort synlig i stedet for kun brugt internt."
     },
     "boardTradeoffWarning": {
       "q": "Hvad er tradeoff-varslet på et plan-kort?",
