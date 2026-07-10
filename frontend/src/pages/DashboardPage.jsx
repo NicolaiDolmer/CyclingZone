@@ -357,7 +357,9 @@ export default function DashboardPage() {
         .eq("race_id", nextRace.id)
         .eq("team_id", team.id)
         .eq("is_auto_filled", false);
-      if (!cancelled) setSquadSelectionMissingRace((count || 0) > 0 ? null : nextRace);
+      // Kun eksplicit count===0 viser nudgen — null (fejl/ukendt, fx e2e-mock
+      // uden Content-Range) må ikke udløse et falsk "udtagelse mangler".
+      if (!cancelled) setSquadSelectionMissingRace(count === 0 ? nextRace : null);
     })();
     return () => { cancelled = true; };
   }, [nextRaces, team?.id]);
