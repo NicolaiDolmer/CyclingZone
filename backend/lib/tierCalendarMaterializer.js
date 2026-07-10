@@ -63,13 +63,13 @@ export function detectCalendarViolations({ tier, placements = [], minStages = GR
       end: Math.max(...pl.stagesPlaced.map((s) => s.game_day)),
     }));
   if (tier > 1 && gtSpans.length) {
-    violations.push(`tier ${tier}: ${gtSpans.length} Grand Tour(s) i planen — GT'er er kun tilladt i tier 1 (#2251)`);
+    violations.push(`tier ${tier}: ${gtSpans.length} grand tour(s) in plan — grand tours are only allowed in tier 1 (#2251)`);
   }
   for (let i = 0; i < gtSpans.length; i++) {
     for (let j = i + 1; j < gtSpans.length; j++) {
       const a = gtSpans[i], b = gtSpans[j];
       if (a.start <= b.end && b.start <= a.end) {
-        violations.push(`tier ${tier}: GT-overlap ${a.id} (gd ${a.start}–${a.end}) × ${b.id} (gd ${b.start}–${b.end})`);
+        violations.push(`tier ${tier}: grand tour overlap ${a.id} (gd ${a.start}-${a.end}) x ${b.id} (gd ${b.start}-${b.end})`);
       }
     }
   }
@@ -199,7 +199,7 @@ export async function materializeTierCalendars({
     // #2251: nægt at APPLY'e en plan med kalender-invariant-brud (GT i tier >1 /
     // GT-rygrad-overlap). dryRun må gerne rapportere planen, så bruddene kan inspiceres.
     if (!dryRun && tierPlan.calendarViolations?.length) {
-      throw new Error(`kalender-invariant brudt (apply nægtet): ${tierPlan.calendarViolations.join(" · ")}`);
+      throw new Error(`calendar invariant violated (apply refused): ${tierPlan.calendarViolations.join(" · ")}`);
     }
     const tLine = {
       tier: tierPlan.tier, quota: tierPlan.quota, totalGameDays: tierPlan.totalGameDays, quotaHit: tierPlan.quotaHit,
