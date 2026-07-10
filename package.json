@@ -48,11 +48,11 @@
   },
   "devDependencies": {
     "lint-staged": "^17.0.8",
-    "png-to-ico": "^3.0.1",
+    "png-to-ico": "^3.0.2",
     "sharp": "^0.35.3"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.110.0",
+    "@supabase/supabase-js": "^2.110.2",
     "dotenv": "^16.4.5"
   }
 }
