@@ -475,12 +475,18 @@ export async function createEmergencyLoan(teamId, amountNeeded, supabaseClient =
 
 export async function repayLoan(loanId, teamId, amount, supabaseClient = null, auditCtx = null) {
   const client = supabaseClient ?? await getDefaultSupabaseClient();
+
+  // #2302: pre-flight lookup for friendly "not found"/"already paid off"
+  // errors + the bid-commitment check below. NOT the source of truth for the
+  // actual mutation — repay_loan_atomic re-validates loan ownership/status/
+  // balance itself, under an advisory lock + FOR UPDATE, so a concurrent
+  // repay or a stale read here can never create money or double-spend debt.
   const { data: loan } = await client.from("loans").select("*").eq("id", loanId).single();
   if (!loan || loan.team_id !== teamId) throw new Error("Lån ikke fundet");
   if (loan.status === "paid_off") throw new Error("Lånet er allerede betalt");
 
   const { data: team } = await client.from("teams").select("balance").eq("id", teamId).single();
-  if (team.balance < amount) throw new Error("Ikke nok midler");
+  if (!team || team.balance < amount) throw new Error("Ikke nok midler");
 
   // #44: penge låst i aktive bud/autobud kan ikke bruges til at betale gæld.
   // Eksempel fra issue: balance 500K, gæld 200K, 400K i bud → kun 100K kan betales.
@@ -500,24 +506,18 @@ export async function repayLoan(loanId, teamId, amount, supabaseClient = null, a
     throw err;
   }
 
-  const actualAmount = Math.min(amount, loan.amount_remaining);
-  const newRemaining = loan.amount_remaining - actualAmount;
-  const isPaidOff = newRemaining <= 0;
-
-  await client.from("loans").update({
-    amount_remaining: isPaidOff ? 0 : newRemaining,
-    status: isPaidOff ? "paid_off" : "active",
-    updated_at: new Date().toISOString(),
-  }).eq("id", loanId);
-
+  // #2302: hele mutationen (lås → validér balance+amount_remaining → debitér
+  // teams.balance + skriv finance_transactions-ledger + opdatér loans) sker nu
+  // i ÉN Postgres-transaktion (repay_loan_atomic, database/2026-07-10-repay-
+  // loan-atomic.sql). Fjerner det gamle "opdatér loan FØRST, debitér balance
+  // BAGEFTER i separat kald"-hul (fejl mellem de to trin slettede gæld uden
+  // betaling) + tilføjer row-level lås mod concurrent repayments.
   const repaySeasonId = await fetchActiveSeasonId(client);
-  await incrementBalanceWithAudit(client, {
-    teamId,
-    delta: -actualAmount,
-    payload: {
-      type: "loan_repayment",
-      amount: -actualAmount,
-      description: null,
+  const { data: rpcData, error: rpcError } = await client.rpc("repay_loan_atomic", {
+    p_loan_id: loanId,
+    p_team_id: teamId,
+    p_amount: amount,
+    p_finance_payload: {
       season_id: repaySeasonId,
       actor_type: auditCtx?.actorType || FINANCE_ACTOR_TYPE.API,
       actor_id: auditCtx?.actorId || null,
@@ -525,11 +525,22 @@ export async function repayLoan(loanId, teamId, amount, supabaseClient = null, a
       reason_code: FINANCE_REASON.LOAN_REPAYMENT,
       related_entity_type: FINANCE_RELATED_ENTITY.LOAN,
       related_entity_id: loanId,
-      metadata: isPaidOff
-        ? { code: "tx.loanRepaymentFinal", params: {} }
-        : { code: "tx.loanRepaymentRemaining", params: { remaining: newRemaining } },
     },
   });
+
+  if (rpcError) {
+    // Genskab samme fejl-kontrakt som før RPC-flytningen (message-only, ingen
+    // .code — routen forwarder blot e.message til klienten).
+    if (/allerede betalt/.test(rpcError.message || "")) throw new Error("Lånet er allerede betalt");
+    if (/Lån ikke fundet/.test(rpcError.message || "")) throw new Error("Lån ikke fundet");
+    if (/Ikke nok midler/.test(rpcError.message || "")) throw new Error("Ikke nok midler");
+    throw rpcError;
+  }
+
+  const result = Array.isArray(rpcData) ? rpcData[0] : rpcData;
+  const actualAmount = result.paid;
+  const newRemaining = result.remaining;
+  const isPaidOff = result.paid_off;
 
   if (isPaidOff) {
     await notifyManager(teamId, "loan_paid_off",
