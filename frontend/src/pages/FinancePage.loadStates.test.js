@@ -65,12 +65,16 @@ test("#1350 FinancePage behandler Supabase-error som load-fejl (ikke tom-state)"
   // En Supabase-fejl returnerer { data: null, error } → uden denne guard ses et
   // tomt finans-overblik i stedet for en retry-bar fejl.
   // #2305: prize-query flyttede server-side (finance-report); guard'en dækker nu
-  // txRes (Supabase) + reportRes.ok (fetch).
+  // reportRes.ok (fetch).
+  // #2306: transaktionslistens fetch flyttede til sin egen fetchTxPage-funktion
+  // (sæson-/kategori-filter + pagination), inkl. sin egen error-guard/state.
+  const fetchTxPage = extractFn("fetchTxPage");
   assert.match(
-    loadAll,
-    /if\s*\(\s*txRes\.error\s*\)/,
-    "loadAll mangler guard på txRes.error",
+    fetchTxPage,
+    /if\s*\(\s*error\s*\)\s*throw\s+error/,
+    "fetchTxPage mangler guard på Supabase-error (throw, ikke tavst [])",
   );
+  assert.match(fetchTxPage, /setTxError\(true\)/, "fetchTxPage skal sætte txError ved Supabase-fejl");
   assert.match(
     loadAll,
     /if\s*\(\s*!reportRes\.ok\s*\)/,

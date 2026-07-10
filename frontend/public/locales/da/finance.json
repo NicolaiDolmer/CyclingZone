@@ -19,8 +19,22 @@
   },
   "history": {
     "seasonPicker": "Sæson",
+    "allSeasons": "Alle sæsoner",
     "option": "Sæson {number}",
-    "optionActive": "Sæson {number} (igangværende)"
+    "optionActive": "Sæson {number} (igangværende)",
+    "categoryFilterAria": "Filtrér transaktioner efter kategori",
+    "category": {
+      "all": "Alle",
+      "salary": "Løn",
+      "prizes": "Præmier",
+      "loans": "Lån",
+      "transfers": "Transfers & auktioner",
+      "sponsor": "Sponsor",
+      "other": "Øvrige"
+    },
+    "loadMore": "Vis flere",
+    "loadingMore": "Henter...",
+    "txLoadError": "Kunne ikke hente transaktioner. Prøv igen."
   },
   "loadError": {
     "message": "Kunne ikke hente dine finanser. Prøv igen.",
