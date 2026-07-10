@@ -5,7 +5,6 @@ import {
   buildTypeCeilingBands,
   buildVerdict,
   ratingFromAbilities,
-  CEIL_HALF_WIDTH_BY_LEVEL,
   RATING_ALPHA,
   RATING_O_ELITE,
   RATING_O_MIN,

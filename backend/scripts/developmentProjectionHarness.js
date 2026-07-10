@@ -17,7 +17,7 @@
 //
 // Kørsel: node scripts/developmentProjectionHarness.js  [--level N]
 
-import { developRiderSeason, buildCaps, PROGRESSION_CONFIG } from "../lib/riderProgression.js";
+import { developRiderSeason, buildCaps } from "../lib/riderProgression.js";
 import { buildTypeCeilingBands, ratingFromAbilities } from "../lib/scoutingReport.js";
 import { SCOUTING_CONFIG, seededUnit } from "../lib/scouting.js";
 import { VISIBLE_ABILITIES } from "../lib/abilityDerivation.js";
@@ -30,9 +30,9 @@ const COVERAGE_TARGET = 0.75;      // median per-rytter coverage-gate
 const levelArg = process.argv.indexOf("--level");
 const SCOUT_LEVEL = levelArg !== -1 ? Number(process.argv[levelArg + 1]) : SCOUTING_CONFIG.maxLevel;
 
-// Baseline-abilities for én syntetisk rytter: 35-63 pr. evne + signatur-boost på
-// typens positivt-vægtede evner (så caps/loft varierer realistisk med type+potentiale).
-function baselineAbilities(seed, primaryType) {
+// Baseline-abilities for én syntetisk rytter: 35-63 pr. evne (caps/loft varierer via
+// buildCaps ud fra type+potentiale, så baseline behøver ikke selv kende typen).
+function baselineAbilities(seed) {
   const ab = {};
   for (const a of VISIBLE_ABILITIES) {
     ab[a] = 35 + Math.round(seededUnit(`base:${seed}:${a}`) * 28);
@@ -44,7 +44,7 @@ const riders = Array.from({ length: N }, (_, i) => {
   const primary_type = RIDER_TYPE_KEYS[Math.floor(seededUnit(`type:${i}`) * RIDER_TYPE_KEYS.length)];
   const potentiale = 1 + seededUnit(`pot:${i}`) * 5;              // 1.0–6.0
   const age = 18 + Math.floor(seededUnit(`age:${i}`) * 14);       // 18–31
-  return { id: `sim-r${i}`, primary_type, potentiale, age, baseline: baselineAbilities(i, primary_type) };
+  return { id: `sim-r${i}`, primary_type, potentiale, age, baseline: baselineAbilities(i) };
 });
 
 // Udvikl abilities fra alder 18 til targetAge med den ægte motor (ingen træning).

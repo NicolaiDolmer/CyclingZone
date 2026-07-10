@@ -42,14 +42,13 @@ for (const x of scored) console.log(`  ${x.k.padEnd(15)} ${x.s.toFixed(3)}`);
 console.log(`  (z(time_trial)=${z(a,"time_trial").toFixed(3)}, z(sprint)=${z(a,"sprint").toFixed(3)}, z(acceleration)=${z(a,"acceleration").toFixed(3)})`);
 
 // How often is tt's single-ability score simply the argmax across the population (no guards)?
-let ttWins = 0;
+// tt-antallet aflæses fra winBy["tt"] nedenfor.
 const winBy = Object.fromEntries(RIDER_TYPE_KEYS.map((k) => [k, 0]));
 for (const r of data) {
   const ab = r.rider_derived_abilities[0] || r.rider_derived_abilities;
   if (!ab) continue;
   const best = RIDER_TYPES.map((t) => ({ k: t.key, s: posFit(ab, t.weights) })).sort((x, y) => y.s - x.s)[0];
   winBy[best.k]++;
-  if (best.k === "tt") ttWins++;
 }
 console.log(`\n## Argmax winner (no guards, full pop n=${data.length}):`);
 for (const k of RIDER_TYPE_KEYS) console.log(`  ${k.padEnd(15)} ${winBy[k]}`);

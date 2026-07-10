@@ -31,7 +31,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { fetchAllRows } from "../lib/supabasePagination.js";
-import { outputScore, meanAbilityScore } from "../lib/riderValuation.js";
+import { outputScore } from "../lib/riderValuation.js";
 import { RIDER_TYPE_KEYS } from "../lib/riderTypes.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
