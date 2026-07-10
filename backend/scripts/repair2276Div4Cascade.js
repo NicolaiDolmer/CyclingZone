@@ -214,7 +214,22 @@ export async function repairDiv4Cascade({ supabase, now = new Date(), dryRun = t
   const playedIds = toReverse.map((r) => r.id);
 
   log(`\n── FULD Div 4-nulstilling: ${raceIdsToDelete.length} løb i alt på tværs af ${tier4PoolIds.length} puljer (${illegalIds.size} kaskade-ulovlige, ${raceIdsToDelete.length - illegalIds.size} øvrige) ──`);
-  if (!raceIdsToDelete.length) { log("intet at reparere — ingen tier 4-løb i sæsonen"); return { deleted: 0 }; }
+  if (!raceIdsToDelete.length) {
+    // Genkørsel efter fuldført sletning: intet at slette, men kalenderen kan mangle
+    // (fx hvis en tidligere kørsel fejlede mellem delete og re-materialisering).
+    log("ingen tier 4-løb at slette — springer direkte til re-materialisering");
+    const { from, realDays } = await computeDiv4RestOfSeasonWindow({ supabase, seasonId: season.id, lowerTierPoolIds, now });
+    if (realDays < 1) throw new Error("sæsonen er ved at slutte — ingen re-materialisering");
+    const summary = await materializeTierCalendars({
+      supabase, seasonId: season.id, seasonStartDate: season.start_date, from,
+      tiers: [4], forceTiers: [4], dryRun, realDays,
+      quotas: { ...TIER_GAME_DAY_QUOTA, 4: DIV4_REPAIR_DENSITY * realDays },
+      density: { ...TIER_DENSITY, 4: DIV4_REPAIR_DENSITY },
+      log,
+    });
+    log(`re-materialiseret: +${summary.racesInserted} løb, ${summary.stageSchedules} etape-tider`);
+    return { deleted: 0, dryRun, ...summary };
+  }
 
   // Finance-reversering for ALLE afviklede tier 4-løb (dry-run beregner + rapporterer, --live udfører).
   const financeTx = playedIds.length
@@ -343,6 +358,16 @@ export async function repairDiv4Cascade({ supabase, now = new Date(), dryRun = t
     if (error) throw new Error(`delete ${table}: ${error.message}`);
     log(`  slettet ${backup.children[table].length} rækker fra ${table}`);
   }
+  // finance_transactions.race_id er NO ACTION (audit-loggen SKAL overleve løbs-sletning) —
+  // detach referencen før delete. Beløb + idempotency_key (indeholder race-id'et) +
+  // related_entity_id bevarer det fulde audit-spor. Rammer både originaler og reverseringer.
+  for (let i = 0; i < raceIdsToDelete.length; i += 100) {
+    const slice = raceIdsToDelete.slice(i, i + 100);
+    const { error: ftErr } = await supabase.from("finance_transactions")
+      .update({ race_id: null }).in("race_id", slice);
+    if (ftErr) throw new Error(`detach finance_transactions.race_id: ${ftErr.message}`);
+  }
+  log(`  finance_transactions.race_id detached (audit-rækker bevaret)`);
   const { error: delErr } = await supabase.from("races").delete().in("id", raceIdsToDelete);
   if (delErr) throw new Error(`delete races: ${delErr.message}`);
   log(`  slettet ${raceIdsToDelete.length} løb`);
@@ -364,7 +389,7 @@ export async function repairDiv4Cascade({ supabase, now = new Date(), dryRun = t
 
   const summary = await materializeTierCalendars({
     supabase, seasonId: season.id, seasonStartDate: season.start_date, from,
-    tiers: [4], dryRun: false, realDays,
+    tiers: [4], forceTiers: [4], dryRun: false, realDays,
     quotas: { ...TIER_GAME_DAY_QUOTA, 4: DIV4_REPAIR_DENSITY * realDays },
     density: { ...TIER_DENSITY, 4: DIV4_REPAIR_DENSITY },
     log,

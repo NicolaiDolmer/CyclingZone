@@ -275,7 +275,13 @@ export async function materializeTierCalendars({
       .map((r) => r.name)
   );
 
-  const { tierPlans } = buildTierMaterializationPlan({ pools, catalog: catalog || [], from, baseSeed, forceTiers, realDays, quotas, density, usedRaceNames });
+  // Planlæg KUN mål-tiers: ikke-mål-tiers må ikke re-selektere i hukommelsen — deres egne
+  // navne er dedup-blokeret (usedRaceNames), så de ville kannibalisere kataloget med NYE valg
+  // og efterlade mål-tier'en med 0 løb (#2276-genkørsel: tier 4 fik selected=0 fordi tier 3's
+  // in-memory-genvalg åd alle ledige Class1). Cross-tier-dedup er allerede dækket af
+  // usedRaceNames-seedingen fra DB ovenfor.
+  const plannedPools = tiers && tiers.length ? pools.filter((p) => targetTiers.has(p.tier)) : pools;
+  const { tierPlans } = buildTierMaterializationPlan({ pools: plannedPools, catalog: catalog || [], from, baseSeed, forceTiers, realDays, quotas, density, usedRaceNames });
   const summary = { dryRun, editionYear, racesInserted: 0, stageProfiles: 0, stageSchedules: 0, tiers: [] };
 
   for (const tierPlan of tierPlans) {
